@@ -31,6 +31,7 @@ from indicators import (
     sma, pct_change_n, slope, adx, mfi,
     turnover_stats, sector_score
 )
+from adaptive import get_effective_cfg
 
 
 # -----------------------------
@@ -353,6 +354,8 @@ def recommend_buy_sell(asof: str | pd.Timestamp, cfg: dict
       sell_df: SELL 추천(보유 중 규칙 위반)
       meta:    {"regime_ok": bool, "asof": Timestamp, "universe_size": int, "after_filters": int}
     """
+    cfg = get_effective_cfg(pd.to_datetime(asof), cfg)
+
     asof_ts = pd.to_datetime(asof)
 
     # 1) 레짐 체크
@@ -382,9 +385,11 @@ def recommend_buy_sell(asof: str | pd.Timestamp, cfg: dict
         sell_df = check_sell_rules(pos_df, panel, cfg, asof_ts)
 
     meta = {
-        "regime_ok": bool(regime),
-        "asof": asof_ts,
-        "universe_size": int(len(set(panel["code"])) if not panel.empty else 0),
-        "after_filters": int(len(buy_df)) if not (buy_df is None or buy_df.empty) else 0
+    "regime_ok": bool(regime),
+    "asof": asof_ts,
+    "universe_size": int(len(set(panel["code"])) if not panel.empty else 0),
+    "after_filters": (len(buy_df) if (buy_df is not None and not buy_df.empty) else 0),
+    "adaptive_state": (cfg.get("meta", {}) or {}).get("adaptive_state", ""),
     }
+
     return buy_df, sell_df, meta

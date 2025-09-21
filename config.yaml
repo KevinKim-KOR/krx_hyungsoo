@@ -47,3 +47,47 @@ notifications:
   telegram:
     bot_token: "8216278192:AAFLuiVI8hrWr86uV2zs9gMLrTcZdO9tGyk"
     chat_id: 7457035904
+
+adaptive:
+  enabled: true
+  regime_source: "069500.KS"     # 코스피200 ETF
+  regime_lookback_days: 200
+  # ATR/Close 비율이 이 이상이면 bull→neutral 강등 (선택)
+  vol_downgrade_atr_pct: 0.03
+
+  profiles:
+    bull:
+      scanner:
+        daily_jump_threshold: 0.3     # 당일 점프 완화(%)   예: 0.3
+        adx_window: 14
+        mfi_window: 14
+        vol_z_window: 20
+        min_adx: 15
+        mfi_low: 45
+        mfi_high: 85
+        min_volz: 0.5
+      universe:
+        min_avg_turnover: 0           # 유동성 완화
+        top_n: 10
+
+    neutral:
+      scanner:
+        daily_jump_threshold: 0.5
+        min_adx: 20
+        mfi_low: 45
+        mfi_high: 80
+        min_volz: 1.0
+      universe:
+        min_avg_turnover: 0
+        top_n: 8
+
+    bear:
+      scanner:
+        daily_jump_threshold: 0.8     # 더 보수적
+        min_adx: 25
+        mfi_low: 40
+        mfi_high: 70
+        min_volz: 1.5
+      universe:
+        min_avg_turnover: 0
+        top_n: 5
