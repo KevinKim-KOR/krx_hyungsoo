@@ -1,1 +1,1 @@
-fatal: too many arguments for a rename operation
+error: No such remote: 'origin'
