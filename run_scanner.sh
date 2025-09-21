@@ -1,4 +1,17 @@
+#!/bin/bash
 set -e
+LOCK="/tmp/krx_scanner.lock"
+if ! mkdir "$LOCK" 2>/dev/null; then exit 0; fi
+trap 'r=$?; rm -rf "$LOCK"; exit $r' INT TERM EXIT
 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular
 source venv/bin/activate
-python app.py scanner-slack --date $(date +%F) >> logs/scanner_$(date +%F).log 2>&1
+LOG="logs/scanner_$(date +%F).log"
+python app.py scanner-slack --date $(date +%F) >> "$LOG" 2>&1 || true
+if grep -qE "Traceback|ERROR" "$LOG"; then
+python - <<'PY'
+from scanner import load_config_yaml
+from notifications import send_notify
+cfg=load_config_yaml("config.yaml")
+send_notify("❗️스캐너 실패 감지: 로그 확인 필요", cfg)
+PY
+fi
