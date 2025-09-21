@@ -1,0 +1,27 @@
+peewee==3.16.2
+# ===== Base (Py3.8 + ARM 호환) =====
+numpy==1.24.4            # Py3.8 마지막 호환
+pandas==1.5.3            # Py3.8/ARM 안정 버전
+python-dateutil==2.9.0.post0
+pytz==2024.1
+PyYAML==6.0.2
+requests==2.32.3
+urllib3==2.2.3
+certifi==2024.8.30
+idna==3.8
+charset-normalizer==3.3.2
+
+# DB/ORM (SQLite만 사용할 때 권장)
+SQLAlchemy==1.4.52       # 2.x보다 1.4가 Py3.8에서 더 호환적
+alembic==1.13.2          # (마이그가 필요할 때만)
+
+# 데이터 소스
+yfinance==0.2.52         # 순수 파이썬, ARM 호환
+pandas-datareader==0.10.0
+
+# 파싱/유틸 (필요 시)
+beautifulsoup4==4.12.3
+lxml==5.3.0              # ARM 휠 제공, 실패하면 이 줄 주석 처리
+
+# 로깅/스케줄(선택)
+loguru==0.7.2
