@@ -4,3 +4,5 @@ data/
 backups/
 *.db
 __pycache__/
+
+config.yaml
