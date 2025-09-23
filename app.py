@@ -24,6 +24,11 @@ def send_slack(text, webhook):
 from backtest import run_backtest
 from sector_autotag import autotag_sectors
 from notifications import send_notify
+import logging, os
+from logging.handlers import RotatingFileHandler
+
+from calendar_kr import is_trading_day, next_trading_day, load_trading_days
+
 
 # -----------------------------
 # 명령어 핸들러
@@ -36,7 +41,14 @@ def cmd_init(args):
 
 def cmd_ingest_eod(args):
     """일별 종가 수집"""
-    ingest_eod(args.date)
+    asof = pd.to_datetime(pd.Timestamp.today().date() if args.date == "auto" else args.date)
+    load_trading_days(asof)
+    if not is_trading_day(asof):
+        log.info(f"[INGEST] 휴장일 {asof.date()} → 수집 스킵")
+        print(f"[SKIP] 휴장일 {asof.date()} — ingest-eod 생략")
+        return
+    ingest_eod(asof.strftime("%Y-%m-%d"))
+
 
 def cmd_ingest_realtime(args):
     """실시간 가격 수집 (단발 실행)"""
@@ -60,6 +72,13 @@ def cmd_report(args):
 
 def cmd_scanner(args):
     """BUY/SELL 추천"""
+    asof = pd.to_datetime(args.date)
+    load_trading_days(asof)
+    if not is_trading_day(asof):
+        log.info(f"[SCANNER] 휴장일 {asof.date()} → 스캐너 스킵")
+        print(f"[SKIP] 휴장일 {asof.date()} — scanner 생략")
+        return
+    
     cfg = load_config_yaml("config.yaml")
     buy_df, sell_df, meta = recommend_buy_sell(asof=args.date, cfg=cfg)
 
@@ -87,6 +106,13 @@ def cmd_scanner(args):
 
 def cmd_scanner_slack(args):
     """BUY/SELL 추천 + Slack 알림 전송"""
+    asof = pd.to_datetime(args.date)
+    load_trading_days(asof)
+    if not is_trading_day(asof):
+        log.info(f"[SCANNER] 휴장일 {asof.date()} → 슬랙 전송도 스킵")
+        print(f"[SKIP] 휴장일 {asof.date()} — scanner-slack 생략")
+        return
+    
     cfg = load_config_yaml("config.yaml")
     buy_df, sell_df, meta = recommend_buy_sell(asof=args.date, cfg=cfg)
 
@@ -180,6 +206,20 @@ def main():
         args.func(args)
     else:
         parser.print_help()
+
+def setup_logging():
+    os.makedirs("logs", exist_ok=True)
+    root = logging.getLogger()
+    if root.handlers:
+        return
+    root.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    fh = RotatingFileHandler("logs/app.log", maxBytes=2_000_000, backupCount=3, encoding="utf-8")
+    fh.setFormatter(fmt); root.addHandler(fh)
+    sh = logging.StreamHandler(); sh.setFormatter(fmt); root.addHandler(sh)
+
+setup_logging()
+log = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     main()
