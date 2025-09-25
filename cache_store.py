@@ -1,6 +1,7 @@
 # cache_store.py - 간단한 OHLCV 파일 캐시
 from pathlib import Path
 import pandas as pd
+from typing import Optional
 
 BASE = Path("data/cache/kr")  # 규칙: data/cache/{country}/*.pkl
 
@@ -12,7 +13,7 @@ def cache_path(code: str) -> Path:
     safe = code.replace("/", "_")
     return BASE / f"{safe}.pkl"
 
-def load_cached(code: str) -> pd.DataFrame | None:
+def load_cached(code: str) -> Optional[pd.DataFrame]:
     p = cache_path(code)
     if not p.exists():
         return None
