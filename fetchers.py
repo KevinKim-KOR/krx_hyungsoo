@@ -16,6 +16,7 @@ from sqlalchemy import select, delete
 from db import SessionLocal, Security, PriceDaily
 from krx_helpers import get_ohlcv_safe
 from calendar_kr import is_trading_day, prev_trading_day
+from typing import List
 
 SEOUL = pytz.timezone(TIMEZONE)
 
