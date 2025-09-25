@@ -45,3 +45,10 @@ def next_trading_day(d):
     idx = load_trading_days(asof=d + pd.Timedelta(days=10))
     pos = idx.searchsorted(d + pd.Timedelta(days=1))
     return (idx[pos] if pos < len(idx) else d)
+
+def prev_trading_day(d):
+    """d 이전 직전 거래일 반환 (없으면 d 그대로)"""
+    d = pd.to_datetime(d).normalize()
+    idx = load_trading_days(asof=d)
+    pos = idx.searchsorted(d)
+    return (idx[pos-1] if pos > 0 else d)

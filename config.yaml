@@ -9,18 +9,28 @@ regime:
   sma_days: 200
 
 scanner:
-  daily_jump_threshold: 3.0      # 당일 등락률 (%) 기준
+  daily_jump_threshold: 3.0      # (구버전 키) fallback 용 — 없애지 말고 둬도 됩니다
   trend_sma_short: 50
   trend_sma_long: 200
   trend_sma20_slope_days: 20
   adx_window: 14
   mfi_window: 14
   vol_z_window: 20
-  sector_top_k: 5                # ✅ 확정
+
+  # ✅ 새 임계값 섹션 (이 값들이 우선 적용됩니다)
+  thresholds:
+    adx_min: 20
+    mfi_min: 50
+    mfi_max: 80
+    volz_min: 1.0
+    daily_jump_pct: 3.0   # % 단위 (예: 3.0이면 3%)
+
+  sector_top_k: 5
   per_sector_cap: 2
-  top_n: 10                      # ✅ 확정
+  top_n: 10
   weight_scheme: "equal"         # equal | inv_vol
-  rebalance: "W"                 # D|W|M (일/주/월)
+  rebalance: "W"                 # D|W|M
+
 
 sell_rules:
   hard_exit_under_sma200: true

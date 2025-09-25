@@ -201,15 +201,28 @@ def build_candidate_table(df: pd.DataFrame, asof: pd.Timestamp, cfg: dict) -> pd
         return out
 
     # 필터 적용
-    th = float(cfg["scanner"]["daily_jump_threshold"]) / 100.0
+    #th = float(cfg["scanner"]["daily_jump_threshold"]) / 100.0
+    # --- thresholds from config (with sane defaults) ---
+    _scn = (cfg.get("scanner", {}) or {})
+    _thr = (_scn.get("thresholds", {}) or {})
+    adx_min = float(_thr.get("adx_min", 20.0))
+    mfi_min = float(_thr.get("mfi_min", 50.0))
+    mfi_max = float(_thr.get("mfi_max", 80.0))
+    volz_min = float(_thr.get("volz_min", 1.0))
+    jump_pct = float(_thr.get("daily_jump_pct", _scn.get("daily_jump_threshold", 2.0))) / 100.0
+# ----------------------------------------------------
+
     # sanitize numeric cols to avoid NoneType comparison
     for _c in ["close","sma50","sma200","slope20"]:
         out[_c] = pd.to_numeric(out[_c], errors="coerce")
     out = out.dropna(subset=["close","sma50","sma200","slope20"])
 
+    # 필터 적용
     out["trend_ok"] = (out["close"] > out["sma50"]) & (out["close"] > out["sma200"]) & (out["slope20"] > 0)
-    out["jump_ok"]  = (out["ret1"] >= th)
-    out["strength_ok"] = (out["adx"] >= 20) & (out["mfi"].between(50, 80, inclusive="both")) & (out["volz"] >= 1)
+    out["jump_ok"] = (out["ret1"] >= jump_pct)
+    out["strength_ok"] = (out["adx"] >= adx_min) & (out["mfi"].between(mfi_min, mfi_max, inclusive="both")) & (out["volz"] >= volz_min)
+# 유동성 필터는 기존 그대로
+
     # 유동성 필터
     if need_turnover_mean > 0:
         out["liquidity_ok"] = out["turnover_mean20"] >= need_turnover_mean
