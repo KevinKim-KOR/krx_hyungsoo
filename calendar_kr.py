@@ -21,21 +21,27 @@ def build_trading_days(start="2010-01-01", end=None) -> pd.DatetimeIndex:
     return idx
 
 def load_trading_days(asof=None) -> pd.DatetimeIndex:
-    """캐시가 없거나 asof를 포함하지 못하면 재빌드"""
-    _ensure_cache_dir()
-    asof = pd.to_datetime(asof or pd.Timestamp.today().date())
-    if _CACHE.exists():
-        try:
-            s = pd.read_pickle(_CACHE)
-            idx = pd.DatetimeIndex(s.index) if hasattr(s, "index") else pd.DatetimeIndex(s)
-            if len(idx) and idx[-1] >= asof - pd.Timedelta(days=5):
-                return idx
-        except Exception:
-            pass
-    return build_trading_days(end=asof)
+    """
+    ETF(069500.KS) 일봉으로 거래일 인덱스를 만든다.
+    - 연말 경계(1월 초/12월 말) 보완을 위해 이전 해 12월도 포함
+    """
+    d = pd.to_datetime(asof or pd.Timestamp.today()).normalize()
+    y = d.year
+    # 이전 해 12월 1일부터 현재 연말까지 확보(경계일 prev_trading_day 대비)
+    df = get_ohlcv_safe("069500.KS", f"{y-1}-12-01", f"{y}-12-31")
+    idx = pd.DatetimeIndex(df.index).tz_localize(None).normalize().sort_values().unique()
+    return idx
 
 def is_trading_day(d) -> bool:
-    d = pd.to_datetime(d).normalize()
+    """주말 제외 + (오늘은 평일이면 거래일 취급) + 과거/미래는 일봉 존재일로 판정"""
+    d = pd.to_datetime(d).tz_localize(None).normalize()
+    # 주말 즉시 제외
+    if d.weekday() >= 5:
+        return False
+    # 오늘(일중)은 평일이면 거래일로 간주 (일봉 미생성이라도 스킵 방지)
+    if d.date() == pd.Timestamp.today().date():
+        return True
+    # 과거/미래: 실제 일봉이 존재하는 날만 거래일로 간주
     idx = load_trading_days(asof=d)
     return d in idx
 
