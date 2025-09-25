@@ -13,7 +13,9 @@ import numpy as np
 import pandas as pd
 from tabulate import tabulate
 import yfinance as yf
+from krx_helpers import get_ohlcv_safe
 from sqlalchemy import select
+
 
 from db import SessionLocal, PriceDaily, Security
 from scanner import (
@@ -192,27 +194,33 @@ def run_backtest(start: str, end: str, config_path: str = "config.yaml"):
     # 4) NAV 시뮬
     nav = _series_nav_from_weights(wide, trade_dates, cfg, sectors, all_dates)
 
-    # 5) 벤치마크(기본: 379800.KS)
+        # 5) 벤치마크(기본: 379800.KS)
     bench_code = cfg["backtest"].get("benchmark_code", "379800")
-    bench = None
-    # 우선 DB 시세가 있다면 활용
-    bcol = wide.get(bench_code)
-    if isinstance(bcol, pd.Series):
-        bench = bcol.reindex(all_dates).ffill()
-    if bench is None or bench.dropna().empty:
-        # 야후 보조
-        try:
-            y = yf.download(f"{bench_code}.KS", start=start_ts.date(), end=end_ts.date()+pd.Timedelta(days=1),
-                            interval="1d", progress=False)["Close"].dropna()
-            bench = y.reindex(all_dates).ffill()
-        except Exception:
-            pass
 
-    if bench is None or bench.dropna().empty:
+    # bench_nav: 벤치마크 종가 시리즈(거래일 인덱스에 맞춰 정렬/보간)
+    bench_nav = None
+
+    # 5-1) DB 시세에 있으면 그대로 사용
+    if bench_code in wide.columns:
+        bench_nav = wide[bench_code].reindex(all_dates).ffill()
+
+    # 5-2) DB에 없으면 KRX에서 수집(야후 사용 안 함, 레이트리밋 회피)
+    if bench_nav is None or bench_nav.dropna().empty:
+        bcode = bench_code if str(bench_code).endswith(".KS") else f"{bench_code}.KS"
+        try:
+            y = get_ohlcv_safe(bcode, start_ts.date(), end_ts.date())  # DataFrame(OHLCV)
+            if y is not None and not y.empty:
+                bench_nav = y["Close"].reindex(all_dates).ffill()
+        except Exception:
+            bench_nav = None
+
+    # 5-3) 결과 확인 + 누적수익 계산
+    if bench_nav is None or bench_nav.dropna().empty:
         print("벤치마크 데이터를 불러오지 못했습니다. NAV만 출력합니다.")
-        bench_nav = None
+        bench_cum = float("nan")
     else:
-        bench_nav = bench / bench.iloc[0]
+        bench_nav = pd.Series(bench_nav).astype(float).dropna().sort_index()
+        bench_cum = (bench_nav.iloc[-1] / bench_nav.iloc[0]) - 1.0
 
     # 6) 성과 요약
     def _mdd(s: pd.Series) -> float:
@@ -230,7 +238,7 @@ def run_backtest(start: str, end: str, config_path: str = "config.yaml"):
         ["전략 MDD", f"{port_mdd*100:.2f}%"],
     ]
     if bench_nav is not None:
-        bench_cum = float(bench_nav.iloc[-1] / bench_nav.iloc[0] - 1.0)
+        bench_cum = ((bench_nav.iloc[-1] / bench_nav.iloc[0]) - 1.0) if len(bench_nav)>=2 else float('nan')
         bench_mdd = _mdd(bench_nav)
         rows += [
             [f"벤치마크({bench_code}) 누적", f"{bench_cum*100:.2f}%"],
@@ -238,6 +246,20 @@ def run_backtest(start: str, end: str, config_path: str = "config.yaml"):
             ["초과수익(전략-벤치)", f"{(port_cum-bench_cum)*100:.2f}%"],
         ]
 
+    # --- save run to CSV ---
+    try:
+        import os
+        os.makedirs("backtests", exist_ok=True)
+        dd = pd.Index(all_dates, name="date")
+        nav_s   = pd.Series(nav, index=dd, name="strategy").astype(float).ffill()
+        bench_s = pd.Series(bench_nav, index=dd, name="benchmark").astype(float).ffill() if "bench_nav" in locals() and bench_nav is not None else None
+
+        out = pd.concat([nav_s, bench_s], axis=1) if bench_s is not None else nav_s.to_frame()
+        out.reset_index().to_csv(f"backtests/run_{pd.Timestamp.now():%Y%m%d_%H%M%S}.csv", index=False)
+        print(f"[백테스트] CSV 저장 완료 → backtests/run_YYYYMMDD_HHMMSS.csv")
+    except Exception as e:
+        print(f"[백테스트] CSV 저장 실패: {e}")
+    
     print(tabulate(rows, tablefmt="plain"))
 
     # (선택) CSV 저장 등은 필요 시 추가
