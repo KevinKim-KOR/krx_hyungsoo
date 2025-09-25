@@ -1,8 +1,15 @@
+# venv & IDE
 venv/
-logs/
-data/
-backups/
-*.db
+.venv/
 __pycache__/
+.vscode/
 
-config.yaml
+# runtime artifacts
+logs/
+backups/
+data/cache/
+*.sqlite3
+
+# OS temp
+.DS_Store
+Thumbs.db
