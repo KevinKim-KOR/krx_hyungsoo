@@ -11,6 +11,11 @@ from db import SessionLocal, Security, PriceDaily, PriceRealtime
 from sqlalchemy import select, exists
 from config import TIMEZONE
 import time
+import pandas as pd
+from sqlalchemy import select, delete
+from db import SessionLocal, Security, PriceDaily
+from krx_helpers import get_ohlcv_safe
+from calendar_kr import is_trading_day, prev_trading_day
 
 SEOUL = pytz.timezone(TIMEZONE)
 
@@ -179,3 +184,61 @@ def _last_trading_date_on_or_before(d: DateLike) -> dt.date:
     while target.weekday() >= 5:  # 5,6 = 토,일
         target -= dt.timedelta(days=1)
     return target
+
+def _resolve_asof(date_str: str) -> pd.Timestamp:
+    """--date auto/YYYY-MM-DD → 실제 거래일(휴장일이면 직전 거래일)"""
+    if (date_str or "").strip().lower() == "auto":
+        d = pd.Timestamp.now(tz=None).normalize().date()
+    else:
+        d = pd.to_datetime(date_str).date()
+    if not is_trading_day(d):
+        d = prev_trading_day(d)
+    return pd.Timestamp(d)
+
+def _get_active_codes(session) -> list[str]:
+    """Security 테이블에서 종목코드 목록"""
+    try:
+        # is_active 컬럼이 있으면 True만, 없으면 전부
+        return session.execute(
+            select(Security.code).where(getattr(Security, "is_active", True) == True)  # noqa
+        ).scalars().all()
+    except Exception:
+        return session.execute(select(Security.code)).scalars().all()
+
+def ingest_eod(date_str: str):
+    """
+    캐시+증분(get_ohlcv_safe)로 EOD 적재.
+    - 휴장일이면 직전 거래일로 자동 이동
+    - 동일 (date, code)는 delete→insert(멱등)
+    """
+    asof = _resolve_asof(date_str)
+    start = asof - pd.Timedelta(days=7)   # 안전버퍼
+    end   = asof
+
+    n_ok = n_skip = 0
+    with SessionLocal() as s:
+        codes = [str(c) for c in _get_active_codes(s)]
+        for code in codes:
+            df = get_ohlcv_safe(code, start, end)
+            if df is None or df.empty:
+                n_skip += 1
+                continue
+
+            row = df[df.index <= asof].tail(1)
+            if row.empty:
+                n_skip += 1
+                continue
+
+            r = row.iloc[0]
+            # upsert: delete→insert (SQLAlchemy 2.0 호환)
+            s.execute(delete(PriceDaily).where(
+                (PriceDaily.date == asof.date()) & (PriceDaily.code == code)
+            ))
+            s.add(PriceDaily(
+                date=asof.date(), code=code,
+                open=float(r["Open"]), high=float(r["High"]), low=float(r["Low"]),
+                close=float(r["Close"]), volume=int(r.get("Volume", 0))
+            ))
+            n_ok += 1
+        s.commit()
+    print(f"[ingest-eod] {asof.date()} ok={n_ok} skip={n_skip} total={len(codes)}")
