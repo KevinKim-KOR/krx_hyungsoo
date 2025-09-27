@@ -16,6 +16,7 @@ except Exception:
 from urllib.parse import quote_plus
 from urllib.request import urlopen
 import datetime as dt
+from pathlib import Path
 
 MARKET_CANDIDATES = ("069500", "069500.KS")
 
@@ -253,10 +254,8 @@ def _diag_checklist(d0: Optional[str], d1: Optional[str], db_ok: bool) -> str:
         items.append("DB 파일 없음/권한(krx_alertor.sqlite3)")
     if not d0:
         items.append("prices_daily 데이터 없음")
-    else:
-        if _is_weekday(today) and d0 < str(today):
-            items.append(f"지연: 최신일 {d0} < 오늘 {today.isoformat()}")
-    # 운영 공통 체크
+    elif today.weekday() < 5 and d0 < str(today):
+        items.append(f"지연: 최신일 {d0} < 오늘 {today.isoformat()}")
     items.extend([
         "텔레그램 token/chat_id (config.yaml) 확인",
         "NAS 시간 동기화(NTP) 확인",
@@ -294,25 +293,23 @@ def generate_and_send_report_eod(target_date: Optional[str] = "auto",
             # 지연 감지
             if expect_today and _is_weekday(today) and (d0 is None or d0 < str(today)):
                 rc = 2
+                run_id = _make_run_id()
                 prefix = _std_prefix(run_id, rc, "EOD")
-                diag = _diag_checklist(d0, d1, db_ok)
-                text = (f"{prefix} 지연 감지\n"
-                        f" - 최신일: {d0}\n - 오늘: {today.isoformat()}\n\n"
-                        f"[Checklist]\n{diag}")
-                print(text)
-                _send_notify(text, _load_cfg(), fallback_print=False)
+                diag = _diag_checklist(d0, d1, Path("krx_alertor.sqlite3").exists())
+                text = (f"{prefix} 지연 감지\n - 최신일: {d0}\n - 오늘: {today.isoformat()}\n\n[Checklist]\n{diag}")
+                print(text);
+                _send_notify(text, _load_cfg(), fallback_print=False);
                 return rc
 
             # 데이터 부족(정상 스킵)
             if not d0 or not d1:
                 rc = 0
+                run_id = _make_run_id()
                 prefix = _std_prefix(run_id, rc, "EOD")
-                diag = _diag_checklist(d0, d1, db_ok)
-                text = (f"{prefix} 데이터 부족으로 스킵\n"
-                        f" - d0={d0}, d1={d1}\n\n"
-                        f"[Checklist]\n{diag}")
-                print(text)
-                _send_notify(text, _load_cfg(), fallback_print=False)
+                diag = _diag_checklist(d0, d1, Path("krx_alertor.sqlite3").exists())
+                text = (f"{prefix} 데이터 부족으로 스킵\n - d0={d0}, d1={d1}\n\n[Checklist]\n{diag}")
+                print(text);
+                _send_notify(text, _load_cfg(), fallback_print=False);
                 return rc
 
             # 정상 보고
