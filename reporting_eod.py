@@ -3,11 +3,47 @@
 from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func
 from db import SessionLocal, PriceDaily, Security
-from scanner import load_config_yaml
-from notifications import send_notify
 
-# DB에 저장된 코드가 '069500' 또는 '069500.KS' 중 무엇이든 잡도록 후보 두 개 사용
+# 옵션 의존성 (없어도 동작)
+try:
+    import yaml
+except Exception:
+    yaml = None
+try:
+    import requests
+except Exception:
+    requests = None
+from urllib.parse import quote_plus
+from urllib.request import urlopen
+
 MARKET_CANDIDATES = ("069500", "069500.KS")
+
+def _load_cfg(path: str = "config.yaml") -> Dict:
+    if yaml is None:
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+
+def _send_notify(text: str, cfg: Optional[Dict] = None) -> None:
+    cfg = cfg or _load_cfg()
+    tg = (cfg.get("telegram") or {})
+    token, chat_id = tg.get("token"), tg.get("chat_id")
+    if not (token and chat_id):
+        # 설정이 없으면 콘솔만
+        print(text)
+        return
+    url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={quote_plus(text)}&disable_web_page_preview=true"
+    try:
+        if requests is not None:
+            requests.get(url, timeout=10)
+        else:
+            with urlopen(url) as r:
+                r.read()
+    except Exception as e:
+        print(f"[WARN] Telegram send failed: {e}")
 
 def _latest_two_dates(session) -> Tuple[Optional[str], Optional[str]]:
     d0 = session.execute(select(func.max(PriceDaily.date))).scalar()
@@ -29,7 +65,7 @@ def _returns_for_dates(session, d0: str, d1: str):
     px1 = {c: (float(x) if x is not None else None) for c, x in rows1}
     codes = sorted(set(px0) & set(px1))
 
-    # 종목명 매핑(테이블 없으면 코드만 사용)
+    # 종목명(없어도 안전)
     try:
         name_rows = session.execute(select(Security.code, Security.name)).all()
         names: Dict[str, str] = dict(name_rows)
@@ -59,7 +95,7 @@ def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) ->
     if not data:
         return f"[KRX EOD Report] {d0}\n데이터가 없습니다."
 
-    # ▼▼ 여기부터 Top5 로직 (질문 주신 블록을 이 위치에 둡니다)
+    # Top5 선정 (양수만 상승, 음수만 하락, 부족분 보충·중복 제거)
     data_pos = [x for x in data if x.get("ret") is not None and x["ret"] > 0]
     data_neg = [x for x in data if x.get("ret") is not None and x["ret"] < 0]
 
@@ -72,7 +108,6 @@ def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) ->
     if len(losers) < 5:
         fill = [x for x in sorted(data, key=lambda x: x["ret"]) if x not in losers]
         losers = (losers + fill)[:5]
-    # ▲▲ 여기까지 교체
 
     lines = []
     lines.append(f"[KRX EOD Report] {d0}")
@@ -89,7 +124,7 @@ def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) ->
     return "\n".join(lines)
 
 def generate_and_send_report_eod(target_date: Optional[str] = "auto") -> int:
-    """DB 최신일(d0)과 그 전일(d1) 비교 Top5 요약 → 텔레그램/슬랙 전송"""
+    """DB 최신일(d0)과 그 전일(d1) 비교 Top5 요약 → 텔레그램 전송(설정 없으면 콘솔 출력)"""
     with SessionLocal() as session:
         if target_date and target_date != "auto":
             d0 = target_date
@@ -101,15 +136,13 @@ def generate_and_send_report_eod(target_date: Optional[str] = "auto") -> int:
             d0, d1 = _latest_two_dates(session)
 
         if not d0 or not d1:
-            msg = f"[KRX EOD Report] 데이터 부족으로 스킵 (d0={d0}, d1={d1})"
-            print(msg)
-            cfg = load_config_yaml("config.yaml")
-            send_notify(msg, cfg)
+            text = f"[KRX EOD Report] 데이터 부족으로 스킵 (d0={d0}, d1={d1})"
+            print(text)
+            _send_notify(text, _load_cfg())
             return 0
 
         data, mkt = _returns_for_dates(session, d0, d1)
         text = _compose_message(d0, d1, data, mkt)
         print(text)
-        cfg = load_config_yaml("config.yaml")
-        send_notify(text, cfg)
+        _send_notify(text, _load_cfg())
         return 0

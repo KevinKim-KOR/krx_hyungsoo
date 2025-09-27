@@ -4,39 +4,22 @@ cd "$(dirname "$0")"
 
 mkdir -p .locks logs
 LOCKDIR=".locks/report_eod.lock"
-if mkdir "$LOCKDIR" 2>/dev/null; then
-  trap 'rmdir "$LOCKDIR"' EXIT
-else
-  echo "[SKIP] another report-eod is running" | tee -a "logs/report_$(date +%F).log"
-  exit 0
-fi
+if mkdir "$LOCKDIR" 2>/dev/null; then trap 'rmdir "$LOCKDIR"' EXIT; else
+  echo "[SKIP] another report-eod is running" | tee -a "logs/report_$(date +%F).log"; exit 0; fi
 
-# venv
-if [ -f "venv/bin/activate" ]; then
-  source venv/bin/activate
-fi
+[ -f "venv/bin/activate" ] && source venv/bin/activate
 
-TS="$(date +%F)"
-LOG="logs/report_${TS}.log"
+TS="$(date +%F)"; LOG="logs/report_${TS}.log"
 echo "[RUN] report-eod $(date +'%F %T')" | tee -a "$LOG"
 
-# app.py에 서브커맨드가 등록된 경우에만 app 경로로 실행, 아니면 모듈 폴백
-if ./venv/bin/python app.py -h | grep -q "report-eod"; then
-  ./venv/bin/python app.py report-eod --date auto >> "$LOG" 2>&1 || true
-else
-  ./venv/bin/python - <<'PY' >> "$LOG" 2>&1
-from reporting_eod import generate_and_send_report_eod
-raise SystemExit(generate_and_send_report_eod("auto"))
-PY
-fi
+# app.py 우회: 전용 CLI 사용
+./venv/bin/python report_eod_cli.py --date auto >> "$LOG" 2>&1 || true
 
-# 에러 키워드 감지 시 알림
+# 에러 키워드 감지 시 알림(선택)
 if grep -qE "Traceback|ERROR" "$LOG"; then
   ./venv/bin/python - <<'PY' >> "$LOG" 2>&1
-from scanner import load_config_yaml
-from notifications import send_notify
-cfg = load_config_yaml("config.yaml")
-send_notify("❗️EOD 리포트 실패 감지: 로그 확인 필요", cfg)
+from reporting_eod import _load_cfg, _send_notify
+_send_notify("❗️EOD 리포트 실패 감지: 로그 확인 필요", _load_cfg())
 PY
 fi
 
