@@ -243,12 +243,42 @@ def generate_and_send_watchlist_report(target_date: Optional[str] = "auto",
 def _is_weekday(d: dt.date) -> bool:
     return d.weekday() < 5  # 0~4: 월~금
 
+def _make_run_id() -> str:
+    return dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+def _diag_checklist(d0: Optional[str], d1: Optional[str], db_ok: bool) -> str:
+    today = dt.date.today()
+    items = []
+    if not db_ok:
+        items.append("DB 파일 없음/권한(krx_alertor.sqlite3)")
+    if not d0:
+        items.append("prices_daily 데이터 없음")
+    else:
+        if _is_weekday(today) and d0 < str(today):
+            items.append(f"지연: 최신일 {d0} < 오늘 {today.isoformat()}")
+    # 운영 공통 체크
+    items.extend([
+        "텔레그램 token/chat_id (config.yaml) 확인",
+        "NAS 시간 동기화(NTP) 확인",
+        "락 디렉토리(.locks) 잔여 락 유무 확인",
+        "최근 git pull 정상/충돌 無 확인(update_from_git.sh)",
+    ])
+    return "\n".join(f" - {x}" for x in items)
+
+def _std_prefix(run_id: str, rc: int, tag: str = "EOD") -> str:
+    # 예: [KRX EOD][RUN:20250927-205530][RC:2]
+    return f"[KRX {tag}][RUN:{run_id}][RC:{rc}]"
+
 def generate_and_send_report_eod(target_date: Optional[str] = "auto",
                                  expect_today: bool = True) -> int:
     """
-    target_date: 'YYYY-MM-DD' | 'auto'
-    expect_today: 평일에는 오늘 데이터가 들어오길 기대(지연시 EXIT 2)
+    EXIT CODE
+      0: 성공/정상 스킵
+      1: 예외/치명 오류
+      2: 지연 데이터(평일에 최신일이 오늘보다 과거)
     """
+    run_id = _make_run_id()
+    db_ok = Path("krx_alertor.sqlite3").exists()
     try:
         today = dt.date.today()
         with SessionLocal() as session:
@@ -261,27 +291,44 @@ def generate_and_send_report_eod(target_date: Optional[str] = "auto",
             else:
                 d0, d1 = _latest_two_dates(session)
 
-            # 지연 감지: 평일이며 expect_today=True, 그리고 d0가 오늘보다 과거
-            if expect_today and _is_weekday(today):
-                if d0 is None or d0 < str(today):
-                    text = f"[KRX EOD Report] 지연 감지: 최신일={d0}, 오늘={today} -> 재시도 권장"
-                    print(text)
-                    _send_notify(text, _load_cfg(), fallback_print=False)
-                    return 2  # STALE_DATA
-
-            if not d0 or not d1:
-                text = f"[KRX EOD Report] 데이터 부족으로 스킵 (d0={d0}, d1={d1})"
+            # 지연 감지
+            if expect_today and _is_weekday(today) and (d0 is None or d0 < str(today)):
+                rc = 2
+                prefix = _std_prefix(run_id, rc, "EOD")
+                diag = _diag_checklist(d0, d1, db_ok)
+                text = (f"{prefix} 지연 감지\n"
+                        f" - 최신일: {d0}\n - 오늘: {today.isoformat()}\n\n"
+                        f"[Checklist]\n{diag}")
                 print(text)
                 _send_notify(text, _load_cfg(), fallback_print=False)
-                return 0
+                return rc
 
+            # 데이터 부족(정상 스킵)
+            if not d0 or not d1:
+                rc = 0
+                prefix = _std_prefix(run_id, rc, "EOD")
+                diag = _diag_checklist(d0, d1, db_ok)
+                text = (f"{prefix} 데이터 부족으로 스킵\n"
+                        f" - d0={d0}, d1={d1}\n\n"
+                        f"[Checklist]\n{diag}")
+                print(text)
+                _send_notify(text, _load_cfg(), fallback_print=False)
+                return rc
+
+            # 정상 보고
             data, mkt = _returns_for_dates(session, d0, d1)
-            text = _compose_message(d0, d1, data, mkt)
+            body = _compose_message(d0, d1, data, mkt)
+            text = f"{_std_prefix(run_id, 0, 'EOD')}\n{body}"
             print(text)  # 로그 1회
             _send_notify(text, _load_cfg(), fallback_print=False)
             return 0
+
     except Exception as e:
-        # 에러 메시지 간결/표준화
-        print(f"[KRX EOD Report] ERROR: {e}")
-        _send_notify(f"[KRX EOD Report] ❗ 실패: {e}", _load_cfg(), fallback_print=False)
-        return 1
+        rc = 1
+        prefix = _std_prefix(run_id, rc, "EOD")
+        diag = _diag_checklist(None, None, db_ok)
+        text = (f"{prefix} 실패: {e}\n\n"
+                f"[Checklist]\n{diag}")
+        print(text)
+        _send_notify(text, _load_cfg(), fallback_print=False)
+        return rc
