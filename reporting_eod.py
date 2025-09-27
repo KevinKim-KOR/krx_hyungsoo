@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func
 from db import SessionLocal, PriceDaily, Security
 
-# 옵션 의존성 (없어도 동작)
+# 옵션 의존성(없어도 동작)
 try:
     import yaml
 except Exception:
@@ -32,8 +32,7 @@ def _send_notify(text: str, cfg: Optional[Dict] = None) -> None:
     tg = (cfg.get("telegram") or {})
     token, chat_id = tg.get("token"), tg.get("chat_id")
     if not (token and chat_id):
-        # 설정이 없으면 콘솔만
-        print(text)
+        print(text)  # 설정 없으면 콘솔로만
         return
     url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={quote_plus(text)}&disable_web_page_preview=true"
     try:
