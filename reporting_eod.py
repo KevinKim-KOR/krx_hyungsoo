@@ -139,3 +139,89 @@ def generate_and_send_report_eod(target_date: Optional[str] = "auto") -> int:
         print(text)  # 로그에 한 번만 남김
         _send_notify(text, _load_cfg(), fallback_print=False)  # 여기서는 중복 출력 금지
         return 0
+
+# === Watchlist Report (append) ===============================================
+
+def _load_watchlist(path: str = "watchlist.yaml") -> List[str]:
+    if yaml is None:
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+    except Exception:
+        return []
+    for key in ("watchlist", "basket", "codes"):
+        if key in cfg and isinstance(cfg[key], list):
+            wl = [str(x).strip() for x in cfg[key] if str(x).strip()]
+            return wl
+    return []
+
+def _norm(code: str) -> str:
+    return code.replace(".KS", "")
+
+def generate_and_send_watchlist_report(target_date: Optional[str] = "auto",
+                                       watchlist_path: str = "watchlist.yaml") -> int:
+    wl = _load_watchlist(watchlist_path)
+    if not wl:
+        text = "[KRX Watchlist EOD] watchlist.yaml 비어있음(또는 없음) — 스킵"
+        print(text)
+        _send_notify(text, _load_cfg(), fallback_print=False)
+        return 0
+
+    wl_set = set(_norm(c) for c in wl)
+
+    with SessionLocal() as session:
+        if target_date and target_date != "auto":
+            d0 = target_date
+            d1 = session.execute(
+                select(func.max(PriceDaily.date)).where(PriceDaily.date < d0)
+            ).scalar()
+            d1 = str(d1) if d1 else None
+        else:
+            d0, d1 = _latest_two_dates(session)
+
+        if not d0 or not d1:
+            text = f"[KRX Watchlist EOD] 데이터 부족으로 스킵 (d0={d0}, d1={d1})"
+            print(text)
+            _send_notify(text, _load_cfg(), fallback_print=False)
+            return 0
+
+        # 전체 수익률 표에서 watchlist만 필터
+        data, mkt = _returns_for_dates(session, d0, d1)
+        basket = [x for x in data if (_norm(x["code"]) in wl_set or x["code"] in wl_set)]
+        if not basket:
+            text = f"[KRX Watchlist EOD] {d0}\nwatchlist 매칭 종목이 없습니다."
+            print(text)
+            _send_notify(text, _load_cfg(), fallback_print=False)
+            return 0
+
+        pos = [x for x in basket if x.get("ret") is not None and x["ret"] > 0]
+        neg = [x for x in basket if x.get("ret") is not None and x["ret"] < 0]
+        winners = sorted(pos, key=lambda x: x["ret"], reverse=True)[:5]
+        losers  = sorted(neg, key=lambda x: x["ret"])[:5]
+
+        avg_ret = None
+        try:
+            avg_ret = sum(x["ret"] for x in basket) / len(basket)
+        except Exception:
+            pass
+
+        lines = []
+        lines.append(f"[KRX Watchlist EOD] {d0}")
+        if avg_ret is not None:
+            lines.append(f"바스켓 평균: {_fmt_pct(avg_ret)}  (커버: {len(basket)}/{len(wl)})")
+        else:
+            lines.append(f"커버: {len(basket)}/{len(wl)}")
+        lines.append("")
+        lines.append(f"상승 Top {len(winners)}")
+        for x in winners:
+            lines.append(f" · {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
+        lines.append("")
+        lines.append(f"하락 Top {len(losers)}")
+        for x in losers:
+            lines.append(f" · {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
+        text = "\n".join(lines)
+
+        print(text)  # 로그 1회
+        _send_notify(text, _load_cfg(), fallback_print=False)
+        return 0
