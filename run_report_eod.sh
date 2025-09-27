@@ -39,3 +39,4 @@ PY
 fi
 
 echo "[DONE] report-eod $(date +'%F %T')" | tee -a "$LOG"
+echo "[EXIT $rc] report-eod $(date +'%F %T')" | tee -a "$LOG"
