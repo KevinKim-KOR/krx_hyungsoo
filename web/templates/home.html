@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8"/>
+    <title>KRX EOD 대시보드</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <style>
+      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;margin:24px;line-height:1.4}
+      header{margin-bottom:12px}
+      h1{font-size:20px;margin:0 0 8px}
+      .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f2f3f5;margin-left:8px}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+      table{width:100%;border-collapse:collapse}
+      th,td{padding:6px 8px;border-bottom:1px solid #eee;font-size:14px}
+      th{background:#fafafa;text-align:left}
+      .muted{color:#777;font-size:13px}
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>KRX EOD 대시보드
+        {% if mkt %}<span class="pill">시장(069500): {{ fmt_pct(mkt.ret) }} {{ arrow(mkt.ret) }}</span>{% endif %}
+      </h1>
+      <div class="muted">기준일: {{ d0 }} (전일: {{ d1 }}), 커버리지: {{ count }} 종목</div>
+    </header>
+
+    <div class="grid">
+      <section>
+        <h3>상승 Top</h3>
+        <table><thead><tr><th>종목</th><th>코드</th><th>등락</th></tr></thead><tbody>
+        {% for x in winners %}
+          <tr><td>{{ x.name }}</td><td>{{ x.code }}</td><td>{{ fmt_pct(x.ret) }} {{ arrow(x.ret) }}</td></tr>
+        {% endfor %}
+        {% if not winners %}<tr><td colspan="3" class="muted">상승 없음 (≥ 0.3%)</td></tr>{% endif %}
+        </tbody></table>
+      </section>
+      <section>
+        <h3>하락 Top</h3>
+        <table><thead><tr><th>종목</th><th>코드</th><th>등락</th></tr></thead><tbody>
+        {% for x in losers %}
+          <tr><td>{{ x.name }}</td><td>{{ x.code }}</td><td>{{ fmt_pct(x.ret) }} {{ arrow(x.ret) }}</td></tr>
+        {% endfor %}
+        {% if not losers %}<tr><td colspan="3" class="muted">하락 없음 (≥ 0.3%)</td></tr>{% endif %}
+        </tbody></table>
+      </section>
+    </div>
+  </body>
+</html>
