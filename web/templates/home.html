@@ -1,48 +1,130 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="utf-8"/>
-    <title>KRX EOD 대시보드</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <style>
-      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;margin:24px;line-height:1.4}
-      header{margin-bottom:12px}
-      h1{font-size:20px;margin:0 0 8px}
-      .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f2f3f5;margin-left:8px}
-      .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
-      table{width:100%;border-collapse:collapse}
-      th,td{padding:6px 8px;border-bottom:1px solid #eee;font-size:14px}
-      th{background:#fafafa;text-align:left}
-      .muted{color:#777;font-size:13px}
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>KRX EOD 대시보드
+<head>
+  <meta charset="utf-8"/>
+  <title>KRX EOD 대시보드</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{
+      --bg:#f7f8fa; --panel:#ffffff; --muted:#6b7280;
+      --border:#e5e7eb; --up:#ef4444; --down:#2563eb; --pill:#eef2ff;
+      --accent:#111827;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:#111;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif}
+    .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+    .sidebar{background:#fff;border-right:1px solid var(--border);padding:20px}
+    .brand{font-weight:700;font-size:18px;margin-bottom:16px}
+    .nav a{display:block;padding:10px 12px;border-radius:10px;color:#111;text-decoration:none}
+    .nav a.active{background:#111;color:#fff}
+    .nav a span{opacity:.7;margin-left:6px}
+    .content{padding:24px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px}
+    .title{font-size:24px;font-weight:800;margin:0 0 8px;display:flex;align-items:center;gap:10px}
+    .title .emoji{font-size:22px}
+    .muted{color:var(--muted);font-size:13px}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+    .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px}
+    .card h4{margin:0 0 6px;font-size:13px;color:var(--muted);font-weight:600}
+    .big{font-size:22px;font-weight:800}
+    .pill{display:inline-block;background:var(--pill);border:1px solid var(--border);padding:2px 10px;border-radius:999px;font-size:12px;margin-left:8px}
+    .toolbar{display:flex;align-items:center;gap:8px;margin-top:12px}
+    button.primary{
+      appearance:none;border:1px solid #111;background:#111;color:#fff;
+      padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;
+    }
+    button.primary:disabled{opacity:.6;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left}
+    th{background:#fafafa;font-weight:700}
+    .up{color:var(--up);font-weight:700}
+    .down{color:var(--down);font-weight:700}
+    .toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 12px;border-radius:12px;opacity:0;transform:translateY(8px);transition:all .25s}
+    .toast.show{opacity:1;transform:none}
+    @media (max-width:980px){.layout{grid-template-columns:1fr}.sidebar{display:none}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">web app</div>
+    <nav class="nav">
+      <a class="active" href="/"><b>대시보드</b><span>overview</span></a>
+      <a href="#"><b>assets</b><span>자산</span></a>
+      <a href="#"><b>signal</b><span>시그널</span></a>
+      <a href="#"><b>master data</b><span>마스터</span></a>
+      <a href="#"><b>settings</b><span>설정</span></a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <div class="panel">
+      <h1 class="title"><span class="emoji">📈</span> 통합 현황
         {% if mkt %}<span class="pill">시장(069500): {{ fmt_pct(mkt.ret) }} {{ arrow(mkt.ret) }}</span>{% endif %}
       </h1>
-      <div class="muted">기준일: {{ d0 }} (전일: {{ d1 }}), 커버리지: {{ count }} 종목</div>
-    </header>
+      <div class="muted">기준일: {{ d0 }} (전일: {{ d1 }}), 커버리지: {{ count }} 종목 · 임계치: {{ (min_abs*100)|round(1) }}%</div>
 
-    <div class="grid">
-      <section>
-        <h3>상승 Top</h3>
-        <table><thead><tr><th>종목</th><th>코드</th><th>등락</th></tr></thead><tbody>
-        {% for x in winners %}
-          <tr><td>{{ x.name }}</td><td>{{ x.code }}</td><td>{{ fmt_pct(x.ret) }} {{ arrow(x.ret) }}</td></tr>
-        {% endfor %}
-        {% if not winners %}<tr><td colspan="3" class="muted">상승 없음 (≥ 0.3%)</td></tr>{% endif %}
-        </tbody></table>
-      </section>
-      <section>
-        <h3>하락 Top</h3>
-        <table><thead><tr><th>종목</th><th>코드</th><th>등락</th></tr></thead><tbody>
-        {% for x in losers %}
-          <tr><td>{{ x.name }}</td><td>{{ x.code }}</td><td>{{ fmt_pct(x.ret) }} {{ arrow(x.ret) }}</td></tr>
-        {% endfor %}
-        {% if not losers %}<tr><td colspan="3" class="muted">하락 없음 (≥ 0.3%)</td></tr>{% endif %}
-        </tbody></table>
-      </section>
+      <div class="stats">
+        <div class="card"><h4>기준일</h4><div class="big">{{ d0 or '-' }}</div></div>
+        <div class="card"><h4>상승 Top</h4><div class="big">{{ winners|length }}</div></div>
+        <div class="card"><h4>하락 Top</h4><div class="big">{{ losers|length }}</div></div>
+      </div>
+
+      <div class="toolbar">
+        <button id="btn-send" class="primary">EOD 리포트 지금 전송</button>
+        <span id="hint" class="muted">버튼을 누르면 텔레그램으로 즉시 발송됩니다.</span>
+      </div>
+
+      <div class="grid">
+        <section>
+          <h3>상승 Top {{ winners|length }}</h3>
+          <table>
+            <thead><tr><th>종목</th><th>코드</th><th>등락</th></tr></thead>
+            <tbody>
+              {% for x in winners %}
+              <tr><td>{{ x.name }}</td><td>{{ x.code }}</td>
+                  <td class="up">{{ fmt_pct(x.ret) }} {{ arrow(x.ret) }}</td></tr>
+              {% endfor %}
+              {% if not winners %}<tr><td colspan="3" class="muted">상승 없음 (≥ {{ (min_abs*100)|round(1) }}%)</td></tr>{% endif %}
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h3>하락 Top {{ losers|length }}</h3>
+          <table>
+            <thead><tr><th>종목</th><th>코드</th><th>등락</th></tr></thead>
+            <tbody>
+              {% for x in losers %}
+              <tr><td>{{ x.name }}</td><td>{{ x.code }}</td>
+                  <td class="down">{{ fmt_pct(x.ret) }} {{ arrow(x.ret) }}</td></tr>
+              {% endfor %}
+              {% if not losers %}<tr><td colspan="3" class="muted">하락 없음 (≥ {{ (min_abs*100)|round(1) }}%)</td></tr>{% endif %}
+            </tbody>
+          </table>
+        </section>
+      </div>
     </div>
-  </body>
+  </main>
+</div>
+
+<div id="toast" class="toast">전송 완료</div>
+<script>
+  const btn = document.getElementById('btn-send');
+  const toast = document.getElementById('toast');
+  function showToast(text){ toast.textContent = text; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 2500); }
+  btn?.addEventListener('click', async () => {
+    btn.disabled = true; showToast('전송 중…');
+    try {
+      const res = await fetch('/api/report/eod', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) showToast('전송 완료 ✅');
+      else if (data.rc === 2) showToast('지연 상태 ⏳');
+      else showToast('전송 실패 ❌');
+    } catch(e){ showToast('네트워크 오류 ❌'); }
+    btn.disabled = false;
+  });
+</script>
+</body>
 </html>
