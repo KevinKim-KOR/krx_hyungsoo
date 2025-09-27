@@ -151,6 +151,17 @@ def cmd_scanner_slack(args):
     print(text)
     if not ok:
         print("⚠️ Slack 전송 실패 또는 webhook 미설정 (config.yaml > ui.slack_webhook 확인)")
+        
+def cmd_report_eod(args):
+    """장마감 요약 Top5 리포트 전송"""
+    try:
+        # 지연 임포트(의존 최소화 + 실행 시점에만 로드)
+        from reporting_eod import generate_and_send_report_eod
+    except Exception as e:
+        print(f"[ERROR] reporting_eod 모듈 임포트 실패: {e}")
+        return
+    exit(generate_and_send_report_eod(args.date))
+
 
 
 # -----------------------------
@@ -185,6 +196,11 @@ def main():
     sp = sub.add_parser("scanner", help="BUY/SELL 추천 스캐너 실행")
     sp.add_argument("--date", required=True, help="YYYY-MM-DD 기준일")
     sp.set_defaults(func=cmd_scanner)
+    
+    # report-eod
+    sp = sub.add_parser("report-eod", help="EOD 요약 Top5 텔레그램/슬랙 전송")
+    sp.add_argument("--date", default="auto", help="YYYY-MM-DD 또는 auto")
+    sp.set_defaults(func=cmd_report_eod)
     
     # main() 안의 subparser 정의들 뒤에 이어서 추가
     sp = sub.add_parser("backtest", help="급등+추세+강도+섹터TOP 규칙 백테스트")
