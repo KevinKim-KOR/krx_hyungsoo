@@ -15,6 +15,7 @@ except Exception:
     requests = None
 from urllib.parse import quote_plus
 from urllib.request import urlopen
+import datetime as dt
 
 MARKET_CANDIDATES = ("069500", "069500.KS")
 
@@ -147,30 +148,6 @@ def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) ->
     return "\n".join(lines)
 
 
-def generate_and_send_report_eod(target_date: Optional[str] = "auto") -> int:
-    """DB 최신일(d0)과 그 전일(d1) 비교 Top5 요약 → 텔레그램 전송(설정 없으면 콘솔 출력)"""
-    with SessionLocal() as session:
-        if target_date and target_date != "auto":
-            d0 = target_date
-            d1 = session.execute(
-                select(func.max(PriceDaily.date)).where(PriceDaily.date < d0)
-            ).scalar()
-            d1 = str(d1) if d1 else None
-        else:
-            d0, d1 = _latest_two_dates(session)
-
-        if not d0 or not d1:
-            text = f"[KRX EOD Report] 데이터 부족으로 스킵 (d0={d0}, d1={d1})"
-            print(text)
-            _send_notify(text, _load_cfg(), fallback_print=False)  # 여기선 추가 출력 금지
-            return 0
-
-        data, mkt = _returns_for_dates(session, d0, d1)
-        text = _compose_message(d0, d1, data, mkt)
-        print(text)  # 로그에 한 번만 남김
-        _send_notify(text, _load_cfg(), fallback_print=False)  # 여기서는 중복 출력 금지
-        return 0
-
 # === Watchlist Report (append) ===============================================
 
 def _load_watchlist(path: str = "watchlist.yaml") -> List[str]:
@@ -256,3 +233,55 @@ def generate_and_send_watchlist_report(target_date: Optional[str] = "auto",
         print(text)  # 로그 1회
         _send_notify(text, _load_cfg(), fallback_print=False)
         return 0
+
+# ---- EXIT CODE 참고 ----
+# 0: 성공 또는 정상 스킵(휴장/데이터 없음 통지)
+# 1: 예외/치명적 오류
+# 2: 지연 데이터(오늘 평일인데 d0 < 오늘) -> 재시도 대상
+# ------------------------
+
+def _is_weekday(d: dt.date) -> bool:
+    return d.weekday() < 5  # 0~4: 월~금
+
+def generate_and_send_report_eod(target_date: Optional[str] = "auto",
+                                 expect_today: bool = True) -> int:
+    """
+    target_date: 'YYYY-MM-DD' | 'auto'
+    expect_today: 평일에는 오늘 데이터가 들어오길 기대(지연시 EXIT 2)
+    """
+    try:
+        today = dt.date.today()
+        with SessionLocal() as session:
+            if target_date and target_date != "auto":
+                d0 = target_date
+                d1 = session.execute(
+                    select(func.max(PriceDaily.date)).where(PriceDaily.date < d0)
+                ).scalar()
+                d1 = str(d1) if d1 else None
+            else:
+                d0, d1 = _latest_two_dates(session)
+
+            # 지연 감지: 평일이며 expect_today=True, 그리고 d0가 오늘보다 과거
+            if expect_today and _is_weekday(today):
+                if d0 is None or d0 < str(today):
+                    text = f"[KRX EOD Report] 지연 감지: 최신일={d0}, 오늘={today} -> 재시도 권장"
+                    print(text)
+                    _send_notify(text, _load_cfg(), fallback_print=False)
+                    return 2  # STALE_DATA
+
+            if not d0 or not d1:
+                text = f"[KRX EOD Report] 데이터 부족으로 스킵 (d0={d0}, d1={d1})"
+                print(text)
+                _send_notify(text, _load_cfg(), fallback_print=False)
+                return 0
+
+            data, mkt = _returns_for_dates(session, d0, d1)
+            text = _compose_message(d0, d1, data, mkt)
+            print(text)  # 로그 1회
+            _send_notify(text, _load_cfg(), fallback_print=False)
+            return 0
+    except Exception as e:
+        # 에러 메시지 간결/표준화
+        print(f"[KRX EOD Report] ERROR: {e}")
+        _send_notify(f"[KRX EOD Report] ❗ 실패: {e}", _load_cfg(), fallback_print=False)
+        return 1
