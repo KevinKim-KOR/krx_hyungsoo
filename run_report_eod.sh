@@ -9,7 +9,12 @@ source venv/bin/activate
 LOG="logs/report_$(date +%F).log"
 
 # run_report_eod.sh 중 실행 라인만 교체
-./venv/bin/python app.py report-eod --date auto >> "$LOG" 2>&1 || true
+./venv/bin/python app.py report-eod --date auto >> "$LOG" 2>&1 || \
+./venv/bin/python - <<'PY' >> "$LOG" 2>&1
+from reporting_eod import generate_and_send_report_eod
+raise SystemExit(generate_and_send_report_eod("auto"))
+PY
+
 
 if grep -qE "Traceback|ERROR" "$LOG"; then
 python - <<'PY'

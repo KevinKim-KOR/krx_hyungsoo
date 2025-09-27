@@ -63,9 +63,21 @@ def _fmt_pct(x: float) -> str:
 def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) -> str:
     if not data:
         return f"[KRX EOD Report] {d0}\n데이터가 없습니다."
-    data_sorted = sorted(data, key=lambda x: x["ret"])
-    losers = data_sorted[:5]
-    winners = list(reversed(data_sorted[-5:]))
+    # ret 기준 분리
+    data_pos = [x for x in data if x.get("ret") is not None and x["ret"] > 0]
+    data_neg = [x for x in data if x.get("ret") is not None and x["ret"] < 0]
+
+    # 내림차순 상위 5, 오름차순 하위 5
+    winners = sorted(data_pos, key=lambda x: x["ret"], reverse=True)[:5]
+    losers  = sorted(data_neg, key=lambda x: x["ret"])[:5]
+
+    # (필요 시) 부족분을 보충하되, 서로 중복은 제거
+    if len(winners) < 5:
+        fill = [x for x in sorted(data, key=lambda x: x["ret"], reverse=True) if x not in winners]
+        winners = (winners + fill)[:5]
+    if len(losers) < 5:
+        fill = [x for x in sorted(data, key=lambda x: x["ret"]) if x not in losers]
+        losers = (losers + fill)[:5]
 
     lines = []
     lines.append(f"[KRX EOD Report] {d0}")

@@ -160,6 +160,16 @@ def cmd_report_eod(args):
         print(f"[ERROR] reporting_eod 모듈 임포트 실패: {e}")
         return
     exit(generate_and_send_report_eod(args.date))
+    
+def cmd_report_eod(args):
+    """장마감 요약 Top5 리포트 전송"""
+    try:
+        from reporting_eod import generate_and_send_report_eod
+    except Exception as e:
+        print(f"[ERROR] reporting_eod 모듈 임포트 실패: {e}")
+        return
+    exit(generate_and_send_report_eod(args.date))
+
 
 
 
@@ -215,6 +225,10 @@ def main():
     sp = sub.add_parser("scanner-slack", help="스캐너 실행 후 Slack 전송")
     sp.add_argument("--date", required=True, help="YYYY-MM-DD 기준일")
     sp.set_defaults(func=cmd_scanner_slack)
+    
+    sp = sub.add_parser("report-eod", help="EOD 요약 Top5 텔레그램/슬랙 전송")
+    sp.add_argument("--date", default="auto", help="YYYY-MM-DD 또는 auto")
+    sp.set_defaults(func=cmd_report_eod)
 
     args = parser.parse_args()
     if hasattr(args, "func"):
