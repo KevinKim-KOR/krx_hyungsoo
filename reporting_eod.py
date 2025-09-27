@@ -27,12 +27,13 @@ def _load_cfg(path: str = "config.yaml") -> Dict:
     except Exception:
         return {}
 
-def _send_notify(text: str, cfg: Optional[Dict] = None) -> None:
+def _send_notify(text: str, cfg: Optional[Dict] = None, fallback_print: bool = True) -> None:
     cfg = cfg or _load_cfg()
     tg = (cfg.get("telegram") or {})
     token, chat_id = tg.get("token"), tg.get("chat_id")
     if not (token and chat_id):
-        print(text)  # 설정 없으면 콘솔로만
+        if fallback_print:
+            print(text)  # 설정 없으면 콘솔로만
         return
     url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={quote_plus(text)}&disable_web_page_preview=true"
     try:
@@ -101,23 +102,16 @@ def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) ->
     winners = sorted(data_pos, key=lambda x: x["ret"], reverse=True)[:5]
     losers  = sorted(data_neg, key=lambda x: x["ret"])[:5]
 
-    if len(winners) < 5:
-        fill = [x for x in sorted(data, key=lambda x: x["ret"], reverse=True) if x not in winners]
-        winners = (winners + fill)[:5]
-    if len(losers) < 5:
-        fill = [x for x in sorted(data, key=lambda x: x["ret"]) if x not in losers]
-        losers = (losers + fill)[:5]
-
     lines = []
     lines.append(f"[KRX EOD Report] {d0}")
     lines.append(f"커버리지: {len(data)} 종목 (전일 {d1} 대비)")
     lines.append(f"시장(069500): {_fmt_pct(mkt['ret']) if mkt else 'N/A'}")
     lines.append("")
-    lines.append("상승 Top 5")
+    lines.append(f"상승 Top {len(winners)}")
     for x in winners:
         lines.append(f" · {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
     lines.append("")
-    lines.append("하락 Top 5")
+    lines.append(f"하락 Top {len(losers)}")
     for x in losers:
         lines.append(f" · {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
     return "\n".join(lines)
@@ -137,11 +131,11 @@ def generate_and_send_report_eod(target_date: Optional[str] = "auto") -> int:
         if not d0 or not d1:
             text = f"[KRX EOD Report] 데이터 부족으로 스킵 (d0={d0}, d1={d1})"
             print(text)
-            _send_notify(text, _load_cfg())
+            _send_notify(text, _load_cfg(), fallback_print=False)  # 여기선 추가 출력 금지
             return 0
 
         data, mkt = _returns_for_dates(session, d0, d1)
         text = _compose_message(d0, d1, data, mkt)
-        print(text)
-        _send_notify(text, _load_cfg())
+        print(text)  # 로그에 한 번만 남김
+        _send_notify(text, _load_cfg(), fallback_print=False)  # 여기서는 중복 출력 금지
         return 0
