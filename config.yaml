@@ -57,6 +57,9 @@ notifications:
   telegram:
     bot_token: "8216278192:AAFLuiVI8hrWr86uV2zs9gMLrTcZdO9tGyk"
     chat_id: 7457035904
+  report:
+    top_n: 5
+    min_abs_ret: 0.003   # 0.3%
 
 adaptive:
   enabled: true

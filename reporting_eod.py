@@ -91,30 +91,61 @@ def _returns_for_dates(session, d0: str, d1: str):
 def _fmt_pct(x: float) -> str:
     return f"{x*100:+.2f}%"
 
+def _arrow(x: float) -> str:
+    return "▲" if x > 0 else ("▼" if x < 0 else "→")
+
+def _load_report_cfg_defaults():
+    cfg = _load_cfg()
+    r = (cfg.get("report") or {}) if isinstance(cfg, dict) else {}
+    try:
+        top_n = int(r.get("top_n", 5))
+    except Exception:
+        top_n = 5
+    try:
+        min_abs = float(r.get("min_abs_ret", 0.003))  # 0.3%
+    except Exception:
+        min_abs = 0.003
+    return top_n, min_abs
+
+
 def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) -> str:
     if not data:
         return f"[KRX EOD Report] {d0}\n데이터가 없습니다."
 
-    # Top5 선정 (양수만 상승, 음수만 하락, 부족분 보충·중복 제거)
-    data_pos = [x for x in data if x.get("ret") is not None and x["ret"] > 0]
-    data_neg = [x for x in data if x.get("ret") is not None and x["ret"] < 0]
+    top_n, min_abs = _load_report_cfg_defaults()
 
-    winners = sorted(data_pos, key=lambda x: x["ret"], reverse=True)[:5]
-    losers  = sorted(data_neg, key=lambda x: x["ret"])[:5]
+    # 임계치 필터 적용
+    pos = [x for x in data if x.get("ret") is not None and x["ret"] >=  min_abs]
+    neg = [x for x in data if x.get("ret") is not None and x["ret"] <= -min_abs]
+
+    winners = sorted(pos, key=lambda x: x["ret"], reverse=True)[:top_n]
+    losers  = sorted(neg, key=lambda x: x["ret"])[:top_n]
+
+    # 시장 라인
+    if mkt and mkt.get("ret") is not None:
+        mkt_line = f"시장(069500): {_fmt_pct(mkt['ret'])} {_arrow(mkt['ret'])}"
+    else:
+        mkt_line = "시장(069500): N/A"
 
     lines = []
     lines.append(f"[KRX EOD Report] {d0}")
+    lines.append(mkt_line)
     lines.append(f"커버리지: {len(data)} 종목 (전일 {d1} 대비)")
-    lines.append(f"시장(069500): {_fmt_pct(mkt['ret']) if mkt else 'N/A'}")
     lines.append("")
-    lines.append(f"상승 Top {len(winners)}")
+
+    # 상승
+    lines.append(f"상승 Top {len(winners)} (≥ {min_abs*100:.1f}%)" if winners else f"상승 없음 (≥ {min_abs*100:.1f}%)")
     for x in winners:
-        lines.append(f" · {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
+        lines.append(f" · {_arrow(x['ret'])} {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
     lines.append("")
-    lines.append(f"하락 Top {len(losers)}")
+
+    # 하락
+    lines.append(f"하락 Top {len(losers)} (≥ {min_abs*100:.1f}%)" if losers else f"하락 없음 (≥ {min_abs*100:.1f}%)")
     for x in losers:
-        lines.append(f" · {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
+        lines.append(f" · {_arrow(x['ret'])} {x['name']} ({x['code']}): {_fmt_pct(x['ret'])}")
+
     return "\n".join(lines)
+
 
 def generate_and_send_report_eod(target_date: Optional[str] = "auto") -> int:
     """DB 최신일(d0)과 그 전일(d1) 비교 Top5 요약 → 텔레그램 전송(설정 없으면 콘솔 출력)"""
