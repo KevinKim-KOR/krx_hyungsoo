@@ -1,4 +1,4 @@
-# reporting_eod.py  (PC에서 수정)
+# reporting_eod.py
 # -*- coding: utf-8 -*-
 from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func
@@ -6,8 +6,7 @@ from db import SessionLocal, PriceDaily, Security
 from scanner import load_config_yaml
 from notifications import send_notify
 
-# DB에 저장된 코드 포맷이 종종 '069500' 형태입니다.
-# 혹시 '.KS'로 저장되어 있다면 아래 후보 둘 다 체크해서 잡습니다.
+# DB에 저장된 코드가 '069500' 또는 '069500.KS' 중 무엇이든 잡도록 후보 두 개 사용
 MARKET_CANDIDATES = ("069500", "069500.KS")
 
 def _latest_two_dates(session) -> Tuple[Optional[str], Optional[str]]:
@@ -30,7 +29,7 @@ def _returns_for_dates(session, d0: str, d1: str):
     px1 = {c: (float(x) if x is not None else None) for c, x in rows1}
     codes = sorted(set(px0) & set(px1))
 
-    # 종목명 매핑(있으면)
+    # 종목명 매핑(테이블 없으면 코드만 사용)
     try:
         name_rows = session.execute(select(Security.code, Security.name)).all()
         names: Dict[str, str] = dict(name_rows)
@@ -43,13 +42,9 @@ def _returns_for_dates(session, d0: str, d1: str):
         if p0 is None or p1 is None or p1 == 0:
             continue
         ret = (p0 - p1) / p1
-        data.append({
-            "code": code,
-            "name": names.get(code, code),
-            "ret": ret
-        })
+        data.append({"code": code, "name": names.get(code, code), "ret": ret})
 
-    # 시장 지표(두 가지 코드 포맷 모두 탐색)
+    # 시장 지표
     mkt = None
     for c in MARKET_CANDIDATES:
         mkt = next((x for x in data if x["code"] == c), None)
@@ -63,21 +58,21 @@ def _fmt_pct(x: float) -> str:
 def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) -> str:
     if not data:
         return f"[KRX EOD Report] {d0}\n데이터가 없습니다."
-    # ret 기준 분리
+
+    # ▼▼ 여기부터 Top5 로직 (질문 주신 블록을 이 위치에 둡니다)
     data_pos = [x for x in data if x.get("ret") is not None and x["ret"] > 0]
     data_neg = [x for x in data if x.get("ret") is not None and x["ret"] < 0]
 
-    # 내림차순 상위 5, 오름차순 하위 5
     winners = sorted(data_pos, key=lambda x: x["ret"], reverse=True)[:5]
     losers  = sorted(data_neg, key=lambda x: x["ret"])[:5]
 
-    # (필요 시) 부족분을 보충하되, 서로 중복은 제거
     if len(winners) < 5:
         fill = [x for x in sorted(data, key=lambda x: x["ret"], reverse=True) if x not in winners]
         winners = (winners + fill)[:5]
     if len(losers) < 5:
         fill = [x for x in sorted(data, key=lambda x: x["ret"]) if x not in losers]
         losers = (losers + fill)[:5]
+    # ▲▲ 여기까지 교체
 
     lines = []
     lines.append(f"[KRX EOD Report] {d0}")
