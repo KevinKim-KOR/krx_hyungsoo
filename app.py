@@ -155,7 +155,6 @@ def cmd_scanner_slack(args):
 def cmd_report_eod(args):
     """장마감 요약 Top5 리포트 전송"""
     try:
-        # 지연 임포트(의존 최소화 + 실행 시점에만 로드)
         from reporting_eod import generate_and_send_report_eod
     except Exception as e:
         print(f"[ERROR] reporting_eod 모듈 임포트 실패: {e}")

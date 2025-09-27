@@ -8,7 +8,9 @@ cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular
 source venv/bin/activate
 LOG="logs/report_$(date +%F).log"
 
-python app.py report-eod --date auto >> "$LOG" 2>&1 || true
+# run_report_eod.sh 중 실행 라인만 교체
+./venv/bin/python app.py report-eod --date auto >> "$LOG" 2>&1 || true
+
 if grep -qE "Traceback|ERROR" "$LOG"; then
 python - <<'PY'
 from scanner import load_config_yaml
