@@ -9,6 +9,9 @@ if mkdir "$LOCKDIR" 2>/dev/null; then trap 'rmdir "$LOCKDIR"' EXIT; else
 
 [ -f "venv/bin/activate" ] && source venv/bin/activate
 
+# 🔽🔽🔽 이 줄 추가 (config.yaml 위치가 다르면 그 절대경로로 바꾸세요)
+export KRX_CONFIG="$PWD/secret/config.yaml"
+
 TS="$(date +%F)"; LOG="logs/report_${TS}.log"
 echo "[RUN] report-eod $(date +'%F %T')" | tee -a "$LOG"
 
