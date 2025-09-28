@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Signals</title>
+<style>
+  :root{--bg:#f7f8fa;--panel:#fff;--border:#e5e7eb;--muted:#6b7280;--up:#ef4444;--down:#2563eb}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif}
+  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px}
+  h1{margin:0 0 8px}
+  .muted{color:var(--muted);font-size:13px}
+  .toolbar{display:flex;gap:8px;margin:8px 0 16px}
+  button{appearance:none;border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left}
+  th{background:#fafafa}
+  .up{color:var(--up);font-weight:700}
+  .down{color:var(--down);font-weight:700}
+  .toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 12px;border-radius:12px;opacity:0;transform:translateY(8px);transition:all .25s}
+  .toast.show{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>시그널</h1>
+    <div class="muted">기준일: {{ date or '-' }} · 임계치: {{ (min_abs*100)|round(1) }}%</div>
+    <div class="toolbar">
+      <button id="btn-recalc">시그널 재계산</button>
+      <span id="msg" class="muted"></span>
+    </div>
+    <table>
+      <thead><tr><th>종목</th><th>코드</th><th>등락</th><th>신호</th></tr></thead>
+      <tbody>
+      {% for x in signals %}
+        <tr>
+          <td>{{ x.name }}</td>
+          <td>{{ x.code }}</td>
+          <td class="{{ 'up' if x.ret>0 else 'down' if x.ret<0 else '' }}">{{ '%+.2f%%' % (x.ret*100) }}</td>
+          <td>{{ x.signal }}</td>
+        </tr>
+      {% endfor %}
+      {% if not signals %}<tr><td colspan="4" class="muted">표시할 시그널이 없습니다.</td></tr>{% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div id="toast" class="toast">완료</div>
+<script>
+  const btn = document.getElementById('btn-recalc');
+  const msg = document.getElementById('msg');
+  const toast = document.getElementById('toast');
+  function toastShow(t){ toast.textContent=t; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 2000); }
+  btn?.addEventListener('click', async ()=>{
+    btn.disabled = true; msg.textContent = '재계산 중…';
+    try{
+      const r = await fetch('/api/signals/recalc', {method:'POST'});
+      const j = await r.json();
+      toastShow(j.ok ? `완료 (${j.count}건)` : '실패');
+      location.reload();
+    }catch(e){ toastShow('네트워크 오류'); }
+    btn.disabled = false; msg.textContent = '';
+  });
+</script>
+</body></html>
