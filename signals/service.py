@@ -5,21 +5,20 @@ from typing import List, Dict, Optional
 from utils.config import get_report_cfg_defaults, get_signals_cfg_defaults
 from .queries import recent_trading_dates_kr, load_universe_from_json, load_prices_for_dates, load_names, load_turnover_for_dates
 from reporting_eod import _load_cfg, _send_notify
-import logging
+# signals/service.py
 import os
 
 def _load_watchlist_safe() -> List[str]:
     """
-    utils.config.load_watchlist 에 의존하지 않고 스스로 해결:
-    1) reporting_eod._load_watchlist() 시도
-    2) 환경변수 KRX_WATCHLIST 경로의 YAML
-    3) 기본 후보: watchlist.yaml, conf/watchlist.yaml, ~/.config/...
-    포맷:
+    외부 의존성 없이 스스로 해결:
+      1) reporting_eod._load_watchlist() 시도
+      2) 파일 후보(KRX_WATCHLIST > watchlist.yaml > conf/watchlist.yaml > ~/.config/...)
+    허용 포맷:
       - ["069500","005930", ...]
       - {"codes":[...]} / {"tickers":[...]} / {"watchlist":[...]}
       - [{"code":"069500","is_active":true}, ...] (is_active=false 제외)
     """
-    # 1) reporting_eod 내장 로더 우선
+    # 1) reporting_eod 로더 우선
     try:
         from reporting_eod import _load_watchlist as _wl
         wl = _wl()
@@ -28,7 +27,7 @@ def _load_watchlist_safe() -> List[str]:
     except Exception:
         pass
 
-    # 2) 파일 경로 후보
+    # 2) 파일 후보
     cand = []
     envp = os.environ.get("KRX_WATCHLIST")
     for p in (envp, "watchlist.yaml", "conf/watchlist.yaml",
@@ -37,7 +36,7 @@ def _load_watchlist_safe() -> List[str]:
             cand.append(p)
 
     try:
-        import yaml  # PyYAML
+        import yaml
     except Exception:
         return []
 
