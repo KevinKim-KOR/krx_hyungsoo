@@ -1,6 +1,5 @@
-<!doctype html>
-<html lang="ko">
-<head>
+<!-- web/templates/signals.html -->
+<!doctype html><html lang="ko"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Signals</title>
 <style>
@@ -10,64 +9,89 @@
   .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px}
   h1{margin:0 0 8px}
   .muted{color:var(--muted);font-size:13px}
-  .toolbar{display:flex;gap:8px;margin:8px 0 16px}
-  button{appearance:none;border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 16px}
+  .btn{appearance:none;border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;text-decoration:none}
+  .pill{display:inline-block;border:1px solid var(--border);padding:2px 8px;border-radius:999px;background:#fafafa;margin-left:6px;font-size:12px}
+  select{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:#fff}
   table{width:100%;border-collapse:collapse;font-size:14px}
   th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
   th{background:#fafafa}
-  .up{color:var(--up);font-weight:700}
-  .down{color:var(--down);font-weight:700}
-  .pill{display:inline-block;border:1px solid var(--border);padding:2px 8px;border-radius:999px;background:#fafafa;margin-left:6px;font-size:12px}
+  .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}
 </style>
-</head>
-<body>
-<div class="wrap">
-  <div class="panel">
-    <h1>시그널
-      <span class="pill">모드: {{ mode }}</span>
-      <span class="pill">윈도우: {{ windows }}</span>
-      <span class="pill">가중치: {{ weights }}</span>
-      {% if mode == 'score_abs' %}<span class="pill">임계 score: {{ '%.2f%%' % (thr*100) }}</span>{% endif %}
-      {% if mode == 'rank' %}<span class="pill">top_k: {{ top_k }}, bottom_k: {{ bottom_k }}</span>{% endif %}
-      {% if use_watchlist %}<span class="pill">watchlist</span>{% endif %}
-    </h1>
-    <div class="muted">기준일: {{ date or '-' }} · 부족 데이터 제외: {{ insufficient }}건</div>
-    <div class="toolbar">
-      <button id="btn-recalc">시그널 재계산</button>
-      <span id="msg" class="muted"></span>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>종목</th><th>코드</th>
-          <th>1D</th><th>5D</th><th>20D</th>
-          <th>Score</th><th>신호</th>
-        </tr>
-      </thead>
-      <tbody>
+</head><body>
+<div class="wrap"><div class="panel">
+  <h1>시그널
+    <span class="pill">모드: {{ mode }}</span>
+    <span class="pill">윈도우: {{ windows }}</span>
+    <span class="pill">가중치: {{ weights }}</span>
+    {% if mode == 'score_abs' %}<span class="pill">임계 score: {{ '%.2f%%' % (thr*100) }}</span>{% endif %}
+    {% if use_watchlist %}<span class="pill">watchlist</span>{% endif %}
+  </h1>
+  <div class="muted">기준일: {{ date or '-' }} · 부족 데이터 제외: {{ insufficient }}건 · 요약: BUY {{ summary.BUY }}, SELL {{ summary.SELL }}, HOLD {{ summary.HOLD }}</div>
+
+  <div class="toolbar">
+    <!-- 모드 토글 -->
+    <a class="btn" href="/signals?mode=score_abs&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">score_abs</a>
+    <a class="btn" href="/signals?mode=rank&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">rank</a>
+
+    <!-- watchlist 토글 -->
+    <a class="btn" href="/signals?mode={{ mode }}&wl={{ 0 if use_watchlist else 1 }}&sort={{ sort }}">
+      {{ 'watchlist 해제' if use_watchlist else 'watchlist 사용' }}
+    </a>
+
+    <!-- 정렬 선택 -->
+    <form id="sortForm" action="/signals" method="get" style="display:flex;gap:6px;align-items:center">
+      <input type="hidden" name="mode" value="{{ mode }}"/>
+      <input type="hidden" name="wl" value="{{ 1 if use_watchlist else 0 }}"/>
+      <label class="muted">정렬:</label>
+      <select name="sort" onchange="this.form.submit()">
+        <option value="score_desc" {{ 'selected' if sort=='score_desc' else '' }}>Score ↓</option>
+        <option value="score_asc"  {{ 'selected' if sort=='score_asc' else '' }}>Score ↑</option>
+        <option value="r1_desc"    {{ 'selected' if sort=='r1_desc' else '' }}>1D ↓</option>
+        <option value="r1_asc"     {{ 'selected' if sort=='r1_asc' else '' }}>1D ↑</option>
+        <option value="name_asc"   {{ 'selected' if sort=='name_asc' else '' }}>이름 A→Z</option>
+        <option value="code_asc"   {{ 'selected' if sort=='code_asc' else '' }}>코드 ↑</option>
+      </select>
+    </form>
+
+    <!-- CSV 다운로드 -->
+    <a class="btn" href="/api/signals.csv?mode={{ mode }}&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">CSV 다운로드</a>
+
+    <!-- 재계산 -->
+    <button id="btn-recalc" class="btn" type="button">시그널 재계산</button>
+    <span id="msg" class="muted"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>종목</th><th>코드</th><th>1D</th><th>5D</th><th>20D</th><th>Score</th><th>신호</th></tr>
+    </thead>
+    <tbody>
       {% for x in signals %}
-        <tr>
-          <td>{{ x.name }}</td>
-          <td>{{ x.code }}</td>
-          <td class="{{ 'up' if x.r1 and x.r1>0 else 'down' if x.r1 and x.r1<0 else '' }}">{{ x.r1 is not none and ('%+.2f%%' % (x.r1*100)) or '-' }}</td>
-          <td class="{{ 'up' if x.r5 and x.r5>0 else 'down' if x.r5 and x.r5<0 else '' }}">{{ x.r5 is not none and ('%+.2f%%' % (x.r5*100)) or '-' }}</td>
-          <td class="{{ 'up' if x.r20 and x.r20>0 else 'down' if x.r20 and x.r20<0 else '' }}">{{ x.r20 is not none and ('%+.2f%%' % (x.r20*100)) or '-' }}</td>
-          <td class="{{ 'up' if x.score>0 else 'down' if x.score<0 else '' }}">{{ '%+.2f%%' % (x.score*100) }}</td>
-          <td>{{ x.signal }}</td>
-        </tr>
+      <tr>
+        <td>{{ x.name }}</td>
+        <td>{{ x.code }}</td>
+        <td class="{{ 'up' if x.r1 and x.r1>0 else 'down' if x.r1 and x.r1<0 else '' }}">{{ x.r1 is not none and ('%+.2f%%' % (x.r1*100)) or '-' }}</td>
+        <td class="{{ 'up' if x.r5 and x.r5>0 else 'down' if x.r5 and x.r5<0 else '' }}">{{ x.r5 is not none and ('%+.2f%%' % (x.r5*100)) or '-' }}</td>
+        <td class="{{ 'up' if x.r20 and x.r20>0 else 'down' if x.r20 and x.r20<0 else '' }}">{{ x.r20 is not none and ('%+.2f%%' % (x.r20*100)) or '-' }}</td>
+        <td class="{{ 'up' if x.score>0 else 'down' if x.score<0 else '' }}">{{ '%+.2f%%' % (x.score*100) }}</td>
+        <td>{{ x.signal }}</td>
+      </tr>
       {% endfor %}
       {% if not signals %}<tr><td colspan="7" class="muted">표시할 시그널이 없습니다.</td></tr>{% endif %}
-      </tbody>
-    </table>
-  </div>
-</div>
+    </tbody>
+  </table>
+
+</div></div>
+
 <script>
   const btn = document.getElementById('btn-recalc');
   const msg = document.getElementById('msg');
   btn?.addEventListener('click', async ()=>{
     btn.disabled = true; msg.textContent = '재계산 중…';
     try{
-      const r = await fetch('/api/signals/recalc', {method:'POST'});
+      const qs = new URLSearchParams(window.location.search);
+      const r = await fetch('/api/signals/recalc?'+qs.toString(), {method:'POST'});
       const j = await r.json();
       msg.textContent = j.ok ? `완료 (${j.count}건)` : '실패';
       location.reload();
@@ -76,5 +100,4 @@
     btn.disabled = false;
   });
 </script>
-</body>
-</html>
+</body></html>
