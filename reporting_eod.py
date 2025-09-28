@@ -340,3 +340,52 @@ def generate_and_send_report_eod(target_date: Optional[str] = "auto",
         print(text)
         _send_notify(text, _load_cfg(), fallback_print=False)
         return rc
+
+def _normalize_cfg(cfg: Dict) -> Dict:
+    """config.yaml의 다양한 표기(레거시/변형)를 표준형으로 맞춘다."""
+    if not isinstance(cfg, dict):
+        return {}
+    out = dict(cfg)
+
+    # telegram 표준화
+    tg = out.get("telegram")
+    # 레거시/변형 키 수용
+    legacy_token = out.get("telegram_token") or out.get("TELEGRAM_TOKEN")
+    legacy_chat  = out.get("telegram_chat_id") or out.get("TELEGRAM_CHAT_ID") or out.get("chat_id")
+    if not tg:
+        if legacy_token or legacy_chat:
+            tg = {}
+    if tg is not None:
+        # 딕셔너리 보장
+        if not isinstance(tg, dict):
+            tg = {}
+        # 표준 키 주입
+        tg.setdefault("token", legacy_token or tg.get("token"))
+        tg.setdefault("chat_id", legacy_chat or tg.get("chat_id"))
+        # 대문자/다른 철자 변형도 수용
+        tg["token"]   = tg.get("token")   or out.get("token")   or out.get("TOKEN")
+        tg["chat_id"] = tg.get("chat_id") or out.get("CHAT_ID") or tg.get("channel_id")
+        out["telegram"] = tg
+
+    return out
+
+def _load_cfg(path: str = None) -> Dict:
+    # 후보 경로: 인자 → 환경변수 → 프로젝트 루트 → 홈 디렉터리
+    cand = []
+    envp = os.environ.get("KRX_CONFIG") or os.environ.get("ALERTOR_CONFIG")
+    for p in (path, envp, "config.yaml", "config.local.yaml",
+              "conf/config.yaml",
+              os.path.expanduser("~/.config/krx_alertor_modular/config.yaml")):
+        if p: cand.append(p)
+    if yaml is None:
+        return {}
+    for p in cand:
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    raw = f.read()
+                cfg = yaml.safe_load(raw) or {}
+                return _normalize_cfg(cfg)
+        except Exception:
+            continue
+    return {}
