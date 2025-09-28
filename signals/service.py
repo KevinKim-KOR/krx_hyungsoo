@@ -1,92 +1,148 @@
 # signals/service.py
-from typing import List, Dict, Optional, Tuple
-from utils.config import get_report_cfg_defaults, get_signals_cfg_defaults
-from reporting_eod import _load_watchlist
-from .queries import recent_trading_dates_kr, load_universe_from_json, load_prices_for_dates, load_names
+# -*- coding: utf-8 -*-
+from typing import List, Dict, Optional
+from utils.config import get_report_cfg_defaults, get_signals_cfg_defaults, load_watchlist
+from .queries import recent_trading_dates_kr, load_universe_from_json, load_prices_for_dates, load_names, load_turnover_for_dates
 
 def _merge_cfg(base: Dict, overrides: Optional[Dict]) -> Dict:
-    if not overrides:
-        return base
+    if not overrides: return base
     out = dict(base)
-    for k in ("mode","windows","weights","score_threshold","top_k","bottom_k","use_watchlist"):
-        if k in overrides and overrides[k] is not None:
-            out[k] = overrides[k]
+    for k,v in overrides.items():
+        if v is not None:
+            if k=="filters": out["filters"] = {**base.get("filters",{}), **(v or {})}
+            else: out[k]=v
     return out
+
+def _mean(xs: List[float]) -> Optional[float]:
+    xs = [x for x in xs if x is not None]
+    return sum(xs)/len(xs) if xs else None
 
 def compute_daily_signals(codes: Optional[List[str]] = None,
                           overrides: Optional[Dict] = None) -> Dict[str, object]:
     """
-    멀티-모멘텀 점수 기반.
-    overrides로 mode/rank/threshold/watchlist 등을 일시 변경 가능(웹 UI에서 사용).
+    멀티-모멘텀 + 전략 필터(유동성/변동성/SMA 추세)
+    - 병렬 금지, 휴장일에는 생성 안 함(최근 거래일 리스트 기반)
     """
     cfg = _merge_cfg(get_signals_cfg_defaults(), overrides)
+    filt = cfg["filters"]
     top_n, min_abs = get_report_cfg_defaults()
 
-    dates = recent_trading_dates_kr(limit=max(cfg["windows"]) + 60)
-    if not dates:
+    # 필요한 히스토리 길이
+    need_hist = max(max(cfg["windows"]), int(filt["sma_long"]), int(filt["vol_window"])) + 1
+    dates = recent_trading_dates_kr(limit=need_hist + 60)
+    if not dates:  # 휴장/데이터 부족
         return {"date": None, "signals": [], "mode": cfg["mode"], "windows": cfg["windows"]}
 
-    d0 = dates[-1]
-    need_dates: List[str] = [d0]
-    for w in cfg["windows"]:
-        idx = len(dates) - 1 - int(w)
-        if idx >= 0:
-            need_dates.append(dates[idx])
-    need_dates = sorted(set(need_dates))
+    d0_idx = len(dates)-1
+    d0 = dates[d0_idx]
+    start_idx = max(0, d0_idx - need_hist + 1)
+    need_dates = dates[start_idx:d0_idx+1]  # 연속 구간(평균/표준편차/SMA 계산용)
 
+    # 유니버스
     if codes is None:
         if cfg.get("use_watchlist"):
-            try:
-                codes = _load_watchlist() or []
-            except Exception:
-                codes = []
+            codes = load_watchlist() or []
         if not codes:
             codes = load_universe_from_json()
 
     names = load_names(codes)
-    px = load_prices_for_dates(codes, need_dates)
+    px_map  = load_prices_for_dates(codes, need_dates)
+    tov_map = load_turnover_for_dates(codes, need_dates)
 
     rows: List[Dict] = []
-    insufficient = 0
-    for code in codes:
-        m = px.get(code, {})
-        p0 = m.get(d0)
-        if p0 is None:
-            insufficient += 1; continue
+    counts = {"insufficient_price":0, "liquidity":0, "volatility":0, "sma":0}
 
-        rets: List[float] = []
+    for code in codes:
+        series_map = px_map.get(code, {})
+        closes = [series_map.get(d) for d in need_dates]  # 시간순
+        if closes[-1] is None:        # 당일 종가 없어도 제외
+            counts["insufficient_price"] += 1; continue
+        # 수익률들(1D/5D/20D 등)
+        rets = []
         ok = True
         for w in cfg["windows"]:
-            idx = len(dates) - 1 - int(w)
-            if idx < 0: ok = False; break
-            d_prev = dates[idx]
-            p1 = m.get(d_prev)
-            if p1 is None or p1 == 0: ok = False; break
-            rets.append((p0 - p1) / p1)
+            idx = len(closes)-1 - int(w)
+            if idx < 0 or closes[idx] is None or closes[-1] is None or closes[idx]==0:
+                ok = False; break
+            rets.append((closes[-1]-closes[idx])/closes[idx])
         if not ok:
-            insufficient += 1; continue
+            counts["insufficient_price"] += 1; continue
 
+        # --- 유동성 필터: 평균 거래대금 ---
+        passed_liq = True
+        liq_avg = None
+        if float(filt["min_turnover_krw"]) > 0:
+            tov_series = [tov_map.get(code,{}).get(d) for d in need_dates[-int(filt["turnover_window"]):]]
+            liq_avg = _mean([float(x) for x in tov_series if x is not None])
+            if liq_avg is None or liq_avg < float(filt["min_turnover_krw"]):
+                passed_liq = False
+        if not passed_liq:
+            counts["liquidity"] += 1; continue
+
+        # --- 변동성 필터: 표준편차(일간 수익률) ---
+        passed_vol = True
+        if float(filt["max_vol_std"]) < 1.0:   # 1.0(=100%)면 사실상 비활성
+            win = int(filt["vol_window"])
+            rr = []
+            for i in range(len(closes)-win, len(closes)):
+                if i<=0: continue
+                p0, p1 = closes[i], closes[i-1]
+                if p0 is None or p1 in (None,0): continue
+                rr.append((p0-p1)/p1)
+            if rr:
+                mu = sum(rr)/len(rr)
+                var = sum((x-mu)**2 for x in rr)/len(rr)
+                std = var**0.5
+                if std > float(filt["max_vol_std"]):
+                    passed_vol = False
+            else:
+                passed_vol = False
+        if not passed_vol:
+            counts["volatility"] += 1; continue
+
+        # --- SMA 추세 필터 ---
+        passed_sma = True
+        req = str(filt["sma_require"]).lower()
+        if req in ("up","down"):
+            sN = int(filt["sma_short"]); lN = int(filt["sma_long"])
+            s_vals = [x for x in closes[-sN:] if x is not None]
+            l_vals = [x for x in closes[-lN:] if x is not None]
+            if len(s_vals)<sN or len(l_vals)<lN:
+                passed_sma = False
+            else:
+                sma_s = sum(s_vals)/sN
+                sma_l = sum(l_vals)/lN
+                if req=="up"   and not (sma_s >= sma_l): passed_sma = False
+                if req=="down" and not (sma_s <= sma_l): passed_sma = False
+        if not passed_sma:
+            counts["sma"] += 1; continue
+
+        # 점수/신호
         score = sum(r * float(wt) for r, wt in zip(rets, cfg["weights"]))
-        signal = "HOLD"
-        if cfg["mode"] == "score_abs":
+        if cfg["mode"]=="score_abs":
             thr = float(cfg["score_threshold"])
-            if score >= thr: signal = "BUY"
-            elif score <= -thr: signal = "SELL"
+            if score >= thr: sig="BUY"
+            elif score <= -thr: sig="SELL"
+            else: sig="HOLD"
+        else:
+            sig="HOLD"  # rank 모드는 이후 라벨링
 
         rows.append({
             "code": code, "name": names.get(code, code), "date": d0,
             "r1": rets[0] if len(rets)>0 else None,
             "r5": rets[1] if len(rets)>1 else None,
             "r20": rets[2] if len(rets)>2 else None,
-            "score": score, "signal": signal
+            "score": score, "signal": sig,
+            "liq_avg": liq_avg,
         })
 
-    if cfg["mode"] == "rank":
+    # rank 모드 라벨링
+    if cfg["mode"]=="rank":
         rows = sorted(rows, key=lambda x: x["score"], reverse=True)
         for i, row in enumerate(rows):
-            if i < int(cfg["top_k"]): row["signal"] = "BUY"
-            elif i >= max(0, len(rows)-int(cfg["bottom_k"])): row["signal"] = "SELL"
-            else: row["signal"] = "HOLD"
+            if i < int(cfg["top_k"]): row["signal"]="BUY"
+            elif i >= max(0, len(rows)-int(cfg["bottom_k"])): row["signal"]="SELL"
+            else: row["signal"]="HOLD"
     else:
         rows = sorted(rows, key=lambda x: abs(x["score"]), reverse=True)
 
@@ -95,6 +151,7 @@ def compute_daily_signals(codes: Optional[List[str]] = None,
         "windows": cfg["windows"], "weights": cfg["weights"],
         "score_threshold": float(cfg["score_threshold"]),
         "top_k": int(cfg["top_k"]), "bottom_k": int(cfg["bottom_k"]),
-        "use_watchlist": bool(cfg["use_watchlist"]),
-        "insufficient_count": insufficient, "min_abs": min_abs,
+        "use_watchlist": bool(cfg.get("use_watchlist", False)),
+        "filters": filt, "filtered_counts": counts,
+        "min_abs": min_abs,
     }

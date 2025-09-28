@@ -24,29 +24,20 @@ def _summary(rows):
 
 @router.get("/signals", response_class=HTMLResponse)
 def signals_page(request: Request,
-                 mode: str = Query(None),      # 'score_abs' | 'rank'
-                 wl: int = Query(0),           # 1이면 watchlist 사용
-                 sort: str = Query("score_desc")):
+                 mode: str = Query(None), wl: int = Query(0), sort: str = Query("score_desc")):
     overrides = {}
-    if mode in ("score_abs","rank"): overrides["mode"] = mode
-    overrides["use_watchlist"] = bool(wl)
-
+    if mode in ("score_abs","rank"): overrides["mode"]=mode
+    overrides["use_watchlist"]=bool(wl)
     p = compute_daily_signals(overrides=overrides)
-    rows = _sort_rows(p.get("signals", []), sort)
-    summ = _summary(rows)
-
+    rows = sorted(p.get("signals", []), key=lambda x: x["score"], reverse=True) if sort=="score_desc" else p.get("signals", [])
+    summ = {"BUY":0,"SELL":0,"HOLD":0}
+    for r in rows: summ[r["signal"]] = summ.get(r["signal"],0)+1
     return tpl.TemplateResponse("signals.html", {
-        "request": request,
-        "date": p.get("date"),
-        "signals": rows,
-        "mode": p.get("mode"),
-        "windows": p.get("windows", []),
-        "weights": p.get("weights", []),
-        "thr": p.get("score_threshold"),
-        "top_k": p.get("top_k"), "bottom_k": p.get("bottom_k"),
-        "use_watchlist": bool(wl),
-        "insufficient": p.get("insufficient_count", 0),
-        "sort": sort, "summary": summ,
+        "request": request, "date": p.get("date"), "signals": rows,
+        "mode": p.get("mode"), "windows": p.get("windows", []), "weights": p.get("weights", []),
+        "thr": p.get("score_threshold"), "top_k": p.get("top_k"), "bottom_k": p.get("bottom_k"),
+        "use_watchlist": bool(wl), "insufficient": p.get("filtered_counts",{}).get("insufficient_price",0),
+        "filters": p.get("filters",{}), "filtered_counts": p.get("filtered_counts",{}),
     })
 
 @router.post("/api/signals/recalc")

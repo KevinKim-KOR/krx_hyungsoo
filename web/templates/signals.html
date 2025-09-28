@@ -26,8 +26,15 @@
     <span class="pill">가중치: {{ weights }}</span>
     {% if mode == 'score_abs' %}<span class="pill">임계 score: {{ '%.2f%%' % (thr*100) }}</span>{% endif %}
     {% if use_watchlist %}<span class="pill">watchlist</span>{% endif %}
-  </h1>
-  <div class="muted">기준일: {{ date or '-' }} · 부족 데이터 제외: {{ insufficient }}건 · 요약: BUY {{ summary.BUY }}, SELL {{ summary.SELL }}, HOLD {{ summary.HOLD }}</div>
+    {% if filters %}
+        <span class="pill">유동성≥ {{ '%.1f' % (filters.min_turnover_krw/1e8) }} 억 / {{ filters.turnover_window }}D</span>
+        <span class="pill">변동성≤ {{ '%.1f' % (filters.max_vol_std*100) }}% / {{ filters.vol_window }}D</span>
+        <span class="pill">SMA {{ filters.sma_short }}/{{ filters.sma_long }} req={{ filters.sma_require }}</span>
+    {% endif %}
+    </h1>
+    <div class="muted">
+    기준일: {{ date or '-' }} · 제외(가격: {{ filtered_counts.insufficient_price or 0 }}, 유동성: {{ filtered_counts.liquidity or 0 }}, 변동성: {{ filtered_counts.volatility or 0 }}, SMA: {{ filtered_counts.sma or 0 }})
+</div>
 
   <div class="toolbar">
     <!-- 모드 토글 -->
