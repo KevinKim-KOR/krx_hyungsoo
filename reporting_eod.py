@@ -17,17 +17,28 @@ from urllib.parse import quote_plus
 from urllib.request import urlopen
 import datetime as dt
 from pathlib import Path
+import os
 
 MARKET_CANDIDATES = ("069500", "069500.KS")
 
 def _load_cfg(path: str = "config.yaml") -> Dict:
+    # 탐색 후보: 명시 인자 → 환경변수 → 프로젝트 루트 일반 이름들 → 홈 디렉터리
+    cand = []
+    envp = os.environ.get("KRX_CONFIG") or os.environ.get("ALERTOR_CONFIG")
+    for p in (path, envp, "config.yaml", "config.local.yaml", "conf/config.yaml",
+              os.path.expanduser("~/.config/krx_alertor_modular/config.yaml")):
+        if p:
+            cand.append(p)
     if yaml is None:
         return {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
+    for p in cand:
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    return yaml.safe_load(f) or {}
+        except Exception:
+            continue
+    return {}
 
 def _send_notify(text: str, cfg: Optional[Dict] = None, fallback_print: bool = True) -> None:
     cfg = cfg or _load_cfg()
