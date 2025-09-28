@@ -156,6 +156,7 @@ def compute_daily_signals(codes: Optional[List[str]] = None,
         "filters": filt, "filtered_counts": counts,
         "min_abs": min_abs,
     }
+
 def build_signals_summary(payload: Dict, top: int = 5) -> str:
     d0 = payload.get("date") or "-"
     mode = payload.get("mode")

@@ -37,37 +37,37 @@
 </div>
 
 <div class="toolbar">
-    <!-- 모드 토글 -->
-    <a class="btn" href="/signals?mode=score_abs&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">score_abs</a>
-    <a class="btn" href="/signals?mode=rank&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">rank</a>
+  <!-- 모드 토글 -->
+  <a class="btn" href="/signals?mode=score_abs&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">score_abs</a>
+  <a class="btn" href="/signals?mode=rank&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">rank</a>
 
-    <!-- watchlist 토글 -->
-    <a class="btn" href="/signals?mode={{ mode }}&wl={{ 0 if use_watchlist else 1 }}&sort={{ sort }}">
-        {{ 'watchlist 해제' if use_watchlist else 'watchlist 사용' }}
-    </a>
+  <!-- watchlist 토글 -->
+  <a class="btn" href="/signals?mode={{ mode }}&wl={{ 0 if use_watchlist else 1 }}&sort={{ sort }}">
+    {{ 'watchlist 해제' if use_watchlist else 'watchlist 사용' }}
+  </a>
 
-    <!-- 정렬 선택 (현재 sort 반영) -->
-    <form id="sortForm" action="/signals" method="get" style="display:flex;gap:6px;align-items:center">
-        <input type="hidden" name="mode" value="{{ mode }}"/>
-        <input type="hidden" name="wl" value="{{ 1 if use_watchlist else 0 }}"/>
-        <label class="muted">정렬:</label>
-        <select name="sort" onchange="this.form.submit()">
-        <option value="score_desc" {{ 'selected' if sort=='score_desc' else '' }}>Score ↓</option>
-        <option value="score_asc"  {{ 'selected' if sort=='score_asc' else '' }}>Score ↑</option>
-        <option value="r1_desc"    {{ 'selected' if sort=='r1_desc' else '' }}>1D ↓</option>
-        <option value="r1_asc"     {{ 'selected' if sort=='r1_asc' else '' }}>1D ↑</option>
-        <option value="name_asc"   {{ 'selected' if sort=='name_asc' else '' }}>이름 A→Z</option>
-        <option value="code_asc"   {{ 'selected' if sort=='code_asc' else '' }}>코드 ↑</option>
-        </select>
-    </form>
+  <!-- 정렬 선택 (현재 sort 반영) -->
+  <form id="sortForm" action="/signals" method="get" style="display:flex;gap:6px;align-items:center">
+    <input type="hidden" name="mode" value="{{ mode }}"/>
+    <input type="hidden" name="wl" value="{{ 1 if use_watchlist else 0 }}"/>
+    <label class="muted">정렬:</label>
+    <select name="sort" onchange="this.form.submit()">
+      <option value="score_desc" {{ 'selected' if sort=='score_desc' else '' }}>Score ↓</option>
+      <option value="score_asc"  {{ 'selected' if sort=='score_asc' else '' }}>Score ↑</option>
+      <option value="r1_desc"    {{ 'selected' if sort=='r1_desc' else '' }}>1D ↓</option>
+      <option value="r1_asc"     {{ 'selected' if sort=='r1_asc' else '' }}>1D ↑</option>
+      <option value="name_asc"   {{ 'selected' if sort=='name_asc' else '' }}>이름 A→Z</option>
+      <option value="code_asc"   {{ 'selected' if sort=='code_asc' else '' }}>코드 ↑</option>
+    </select>
+  </form>
 
-    <!-- CSV 다운로드 (현재 뷰와 동일 파라미터 유지) -->
-    <a class="btn" href="/api/signals.csv?mode={{ mode }}&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">CSV 다운로드</a>
+  <!-- CSV 다운로드 (현재 뷰와 동일 파라미터 유지) -->
+  <a class="btn" href="/api/signals.csv?mode={{ mode }}&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">CSV 다운로드</a>
 
-    <!-- 재계산 & 텔레그램 전송 -->
-    <button id="btn-recalc" class="btn" type="button">시그널 재계산</button>
-    <button id="btn-send"   class="btn" type="button">텔레그램 전송</button>
-    <span id="msg" class="muted"></span>
+  <!-- 재계산 & 텔레그램 전송 -->
+  <button id="btn-recalc" class="btn" type="button">시그널 재계산</button>
+  <button id="btn-send"   class="btn" type="button">텔레그램 전송</button>
+  <span id="msg" class="muted"></span>
 </div>
 
 <script>
