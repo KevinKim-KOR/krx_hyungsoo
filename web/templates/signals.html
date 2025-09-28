@@ -1,24 +1,19 @@
 <!-- web/templates/signals.html -->
-<!doctype html><html lang="ko"><head>
+<!doctype html><html lang="ko">
+<head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Signals</title>
-<style>
-  :root{--bg:#f7f8fa;--panel:#fff;--border:#e5e7eb;--muted:#6b7280;--up:#ef4444;--down:#2563eb}
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif}
-  .wrap{max-width:1080px;margin:24px auto;padding:0 16px}
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px}
-  h1{margin:0 0 8px}
-  .muted{color:var(--muted);font-size:13px}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 16px}
-  .btn{appearance:none;border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;text-decoration:none}
-  .pill{display:inline-block;border:1px solid var(--border);padding:2px 8px;border-radius:999px;background:#fafafa;margin-left:6px;font-size:12px}
-  select{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:#fff}
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-  th{background:#fafafa}
-  .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}
-</style>
-</head><body>
+  <style>
+    .chip{display:inline-block;padding:4px 8px;border:1px solid #eee;border-radius:999px;font-size:12px;margin-right:6px}
+    .pos{color:#0a7}
+    .neg{color:#d33}
+    table.signals tbody tr.buy td.name{font-weight:600}
+    table.signals tbody tr.buy td.score{color:#0a7}
+    table.signals tbody tr.sell td.score{color:#d33}
+    td.pct.pos::before{content:"▲ ";} td.pct.neg::before{content:"▼ ";}
+  </style>
+</head>
+<body>
 <div class="wrap"><div class="panel">
   <h1>시그널
   <span class="pill">모드: {{ mode }}</span>
@@ -37,6 +32,11 @@
 </div>
 
 <div class="toolbar">
+  <div class="chips">
+    <span class="chip">as of: {{ date }}</span>
+    <span class="chip">mode: {{ mode }}</span>
+    <span class="chip">watchlist: {{ 'on' if use_watchlist else 'off' }}</span>
+  </div>
   <!-- 모드 토글 -->
   <a class="btn" href="/signals?mode=score_abs&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">score_abs</a>
   <a class="btn" href="/signals?mode=rank&wl={{ 1 if use_watchlist else 0 }}&sort={{ sort }}">rank</a>
@@ -101,37 +101,50 @@
       <tr><th>종목</th><th>코드</th><th>1D</th><th>5D</th><th>20D</th><th>Score</th><th>신호</th></tr>
     </thead>
     <tbody>
-      {% for x in signals %}
-      <tr>
-        <td>{{ x.name }}</td>
-        <td>{{ x.code }}</td>
-        <td class="{{ 'up' if x.r1 and x.r1>0 else 'down' if x.r1 and x.r1<0 else '' }}">{{ x.r1 is not none and ('%+.2f%%' % (x.r1*100)) or '-' }}</td>
-        <td class="{{ 'up' if x.r5 and x.r5>0 else 'down' if x.r5 and x.r5<0 else '' }}">{{ x.r5 is not none and ('%+.2f%%' % (x.r5*100)) or '-' }}</td>
-        <td class="{{ 'up' if x.r20 and x.r20>0 else 'down' if x.r20 and x.r20<0 else '' }}">{{ x.r20 is not none and ('%+.2f%%' % (x.r20*100)) or '-' }}</td>
-        <td class="{{ 'up' if x.score>0 else 'down' if x.score<0 else '' }}">{{ '%+.2f%%' % (x.score*100) }}</td>
-        <td>{{ x.signal }}</td>
-      </tr>
+      {% for r in rows %}
+        {% set r1 = (r.get('r1') or 0.0) %}
+        <tr class="{{ 'buy' if r.get('signal')=='BUY' else ('sell' if r.get('signal')=='SELL' else '') }}">
+          <td class="name">{{ r['name'] }}</td>
+          <td class="code">{{ r['code'] }}</td>
+          <td class="pct {{ 'pos' if r1>0 else ('neg' if r1<0 else '') }}">{{ (r1*100)|round(2) }}%</td>
+          <td class="score">{{ (r.get('score',0)*100)|round(2) }}%</td>
+          <td class="sig">{{ r.get('signal','') }}</td>
+        </tr>
       {% endfor %}
-      {% if not signals %}<tr><td colspan="7" class="muted">표시할 시그널이 없습니다.</td></tr>{% endif %}
     </tbody>
   </table>
 
 </div></div>
 
 <script>
-  const btn = document.getElementById('btn-recalc');
-  const msg = document.getElementById('msg');
-  btn?.addEventListener('click', async ()=>{
-    btn.disabled = true; msg.textContent = '재계산 중…';
-    try{
-      const qs = new URLSearchParams(window.location.search);
-      const r = await fetch('/api/signals/recalc?'+qs.toString(), {method:'POST'});
-      const j = await r.json();
-      msg.textContent = j.ok ? `완료 (${j.count}건)` : '실패';
-      location.reload();
-    }catch(e){ msg.textContent='네트워크 오류'; }
-    setTimeout(()=> msg.textContent='', 3000);
-    btn.disabled = false;
-  });
+  (function(){
+    const url = new URL(location.href);
+    const sp  = url.searchParams;
+
+    // 1) 쿼리에 값이 없으면 저장된 선호값으로 리다이렉트
+    const savedMode = localStorage.getItem('sig_mode');
+    const savedWL   = localStorage.getItem('sig_wl');
+    const savedSort = localStorage.getItem('sig_sort');
+    if(!sp.has('mode') && (savedMode || savedWL || savedSort)){
+      if(savedMode) sp.set('mode', savedMode);
+      if(savedWL)   sp.set('wl', savedWL);
+      if(savedSort) sp.set('sort', savedSort);
+      location.replace(url.pathname + '?' + sp.toString());
+      return;
+    }
+
+    // 2) 현재 값을 저장
+    localStorage.setItem('sig_mode', sp.get('mode') || 'score_abs');
+    localStorage.setItem('sig_wl',   sp.get('wl')   || '0');
+    localStorage.setItem('sig_sort', sp.get('sort') || 'score_desc');
+
+    // 3) 드롭다운/버튼 조작 시에도 저장(선택사항: 없어도 #2에서 매 뷰마다 저장됨)
+    document.getElementById('sortForm')?.addEventListener('change', ()=>{
+      const sp = new URLSearchParams(new FormData(document.getElementById('sortForm')));
+      localStorage.setItem('sig_mode', sp.get('mode') || 'score_abs');
+      localStorage.setItem('sig_wl',   sp.get('wl')   || '0');
+      localStorage.setItem('sig_sort', sp.get('sort') || 'score_desc');
+    });
+  })();
 </script>
 </body></html>
