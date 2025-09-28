@@ -1,9 +1,69 @@
 # signals/service.py
 # -*- coding: utf-8 -*-
 from typing import List, Dict, Optional
-from utils.config import get_report_cfg_defaults, get_signals_cfg_defaults, load_watchlist
+#from utils.config import get_report_cfg_defaults, get_signals_cfg_defaults, load_watchlist
+from utils.config import get_report_cfg_defaults, get_signals_cfg_defaults
 from .queries import recent_trading_dates_kr, load_universe_from_json, load_prices_for_dates, load_names, load_turnover_for_dates
 from reporting_eod import _load_cfg, _send_notify
+import logging
+import os
+
+def _load_watchlist_safe() -> List[str]:
+    """
+    utils.config.load_watchlist 에 의존하지 않고 스스로 해결:
+    1) reporting_eod._load_watchlist() 시도
+    2) 환경변수 KRX_WATCHLIST 경로의 YAML
+    3) 기본 후보: watchlist.yaml, conf/watchlist.yaml, ~/.config/...
+    포맷:
+      - ["069500","005930", ...]
+      - {"codes":[...]} / {"tickers":[...]} / {"watchlist":[...]}
+      - [{"code":"069500","is_active":true}, ...] (is_active=false 제외)
+    """
+    # 1) reporting_eod 내장 로더 우선
+    try:
+        from reporting_eod import _load_watchlist as _wl
+        wl = _wl()
+        if wl:
+            return sorted({str(x).strip() for x in wl if str(x).strip()})
+    except Exception:
+        pass
+
+    # 2) 파일 경로 후보
+    cand = []
+    envp = os.environ.get("KRX_WATCHLIST")
+    for p in (envp, "watchlist.yaml", "conf/watchlist.yaml",
+              os.path.expanduser("~/.config/krx_alertor_modular/watchlist.yaml")):
+        if p:
+            cand.append(p)
+
+    try:
+        import yaml  # PyYAML
+    except Exception:
+        return []
+
+    for p in cand:
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    y = yaml.safe_load(f) or []
+                if isinstance(y, dict):
+                    lst = y.get("codes") or y.get("tickers") or y.get("watchlist") or []
+                else:
+                    lst = y
+                out: List[str] = []
+                for it in lst:
+                    if isinstance(it, str):
+                        c = it.strip()
+                        if c: out.append(c)
+                    elif isinstance(it, dict):
+                        if it.get("is_active") is False:
+                            continue
+                        c = str(it.get("code") or it.get("ticker") or "").strip()
+                        if c: out.append(c)
+                return sorted(set(out))
+        except Exception:
+            continue
+    return []
 
 def _merge_cfg(base: Dict, overrides: Optional[Dict]) -> Dict:
     if not overrides: return base
@@ -39,10 +99,10 @@ def compute_daily_signals(codes: Optional[List[str]] = None,
     start_idx = max(0, d0_idx - need_hist + 1)
     need_dates = dates[start_idx:d0_idx+1]  # 연속 구간(평균/표준편차/SMA 계산용)
 
-    # 유니버스
+    # 유니버스 결정 부분
     if codes is None:
         if cfg.get("use_watchlist"):
-            codes = load_watchlist() or []
+            codes = _load_watchlist_safe() or []
         if not codes:
             codes = load_universe_from_json()
 
@@ -186,6 +246,11 @@ def build_signals_summary(payload: Dict, top: int = 5) -> str:
     return "\n".join(lines)
 
 def send_signals_to_telegram(payload: Dict, top: int = 5) -> bool:
+    """보내기 전에 로그에 미리보기와 결과를 남긴다."""
+    log = logging.getLogger(__name__)
+    text = build_signals_summary(payload, top=top)
+    log.info("[signals.notify] preview:\n%s", text)
+    
     try:
         text = build_signals_summary(payload, top=top)
         _send_notify(text, _load_cfg())   # 텔레그램 설정 없으면 콘솔 출력
