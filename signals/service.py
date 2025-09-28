@@ -7,6 +7,7 @@ from .queries import recent_trading_dates_kr, load_universe_from_json, load_pric
 from reporting_eod import _load_cfg, _send_notify
 # signals/service.py
 import os
+import logging   # 🔸 이 줄 추가
 
 def _load_watchlist_safe() -> List[str]:
     """
