@@ -117,16 +117,26 @@
       <tr><th>종목</th><th>코드</th><th>1D</th><th>5D</th><th>20D</th><th>Score</th><th>신호</th></tr>
     </thead>
     <tbody>
-      {% for r in rows %}
-        {% set r1 = (r.get('r1') or 0.0) %}
-        <tr class="{{ 'buy' if r.get('signal')=='BUY' else ('sell' if r.get('signal')=='SELL' else '') }}">
-          <td class="name">{{ r['name'] }}</td>
-          <td class="code">{{ r['code'] }}</td>
-          <td class="pct {{ 'pos' if r1>0 else ('neg' if r1<0 else '') }}">{{ (r1*100)|round(2) }}%</td>
-          <td class="score">{{ (r.get('score',0)*100)|round(2) }}%</td>
-          <td class="sig">{{ r.get('signal','') }}</td>
-        </tr>
-      {% endfor %}
+        {# 반복에 사용할 리스트를 rows > signals > payload.signals 순으로 결정 #}
+        {% set list_rows = (rows if rows is defined and rows
+                            else (signals if signals is defined and signals
+                                  else (payload.signals if payload is defined and payload.signals
+                                        else []))) %}
+
+        {% if list_rows|length == 0 %}
+          <tr><td colspan="6" style="color:#888;padding:24px;text-align:center">표시할 데이터가 없습니다.</td></tr>
+        {% else %}
+          {% for r in list_rows %}
+            {% set r1 = (r.get('r1') or 0.0) %}
+            <tr class="{{ 'buy' if r.get('signal')=='BUY' else ('sell' if r.get('signal')=='SELL' else '') }}">
+              <td class="name">{{ r['name'] }}</td>
+              <td class="code">{{ r['code'] }}</td>
+              <td class="pct {{ 'pos' if r1>0 else ('neg' if r1<0 else '') }}">{{ (r1*100)|round(2) }}%</td>
+              <td class="score">{{ (r.get('score',0)*100)|round(2) }}%</td>
+              <td class="sig">{{ r.get('signal','') }}</td>
+            </tr>
+          {% endfor %}
+        {% endif %}
     </tbody>
 
   </table>
