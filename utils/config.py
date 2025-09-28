@@ -70,23 +70,23 @@ def get_signals_cfg_defaults() -> Dict:
 def load_watchlist(path: str = None) -> List[str]:
     """
     watchlist.yaml을 읽어 코드 목록을 반환.
-    - 우선 reporting_eod._load_watchlist()를 시도(있는 경우 재사용)
-    - 환경변수 KRX_WATCHLIST > 인자 path > 기본 경로 순으로 탐색
-    - 형식 허용:
-        1) ["069500","005930", ...]
-        2) {"codes": [...]} / {"tickers": [...]} / {"watchlist": [...]}
-        3) [{"code":"069500","is_active":true}, ...]  (is_active=false는 제외)
+    우선 reporting_eod._load_watchlist()가 있으면 재사용하고,
+    없으면 KRX_WATCHLIST > 인자 path > 기본 경로에서 YAML을 읽습니다.
+    허용 포맷:
+      - ["069500","005930", ...]
+      - {"codes":[...]} / {"tickers":[...]} / {"watchlist":[...]}
+      - [{"code":"069500","is_active":true}, ...]  (is_active=false 제외)
     """
-    # 0) reporting_eod 제공 로더가 있으면 우선 사용
+    # 0) reporting_eod에 로더가 이미 있으면 우선 사용
     try:
-        from reporting_eod import _load_watchlist as _lw
-        wl = _lw()
+        from reporting_eod import _load_watchlist as _wl
+        wl = _wl()
         if wl:
             return sorted({str(x).strip() for x in wl if str(x).strip()})
     except Exception:
         pass
 
-    # 1) 탐색 경로 구성
+    # 1) 경로 후보
     cand = []
     envp = os.environ.get("KRX_WATCHLIST")
     for p in (path, envp, "watchlist.yaml", "conf/watchlist.yaml",
@@ -94,9 +94,8 @@ def load_watchlist(path: str = None) -> List[str]:
         if p:
             cand.append(p)
 
-    # 2) 실제 로드
     try:
-        import yaml  # PyYAML
+        import yaml
     except Exception:
         return []
 
@@ -105,7 +104,6 @@ def load_watchlist(path: str = None) -> List[str]:
             if os.path.exists(p):
                 with open(p, "r", encoding="utf-8") as f:
                     y = yaml.safe_load(f) or []
-                # 다양한 포맷 허용
                 if isinstance(y, dict):
                     lst = y.get("codes") or y.get("tickers") or y.get("watchlist") or []
                 else:
@@ -113,15 +111,13 @@ def load_watchlist(path: str = None) -> List[str]:
                 out: List[str] = []
                 for it in lst:
                     if isinstance(it, str):
-                        code = it.strip()
-                        if code:
-                            out.append(code)
+                        c = it.strip()
+                        if c: out.append(c)
                     elif isinstance(it, dict):
-                        if it.get("is_active") is False:
+                        if it.get("is_active") is False: 
                             continue
-                        code = str(it.get("code") or it.get("ticker") or "").strip()
-                        if code:
-                            out.append(code)
+                        c = str(it.get("code") or it.get("ticker") or "").strip()
+                        if c: out.append(c)
                 return sorted(set(out))
         except Exception:
             continue
