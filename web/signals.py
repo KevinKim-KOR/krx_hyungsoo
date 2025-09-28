@@ -10,15 +10,22 @@ tpl = Jinja2Templates(directory="web/templates")
 
 @router.get("/signals", response_class=HTMLResponse)
 def signals_page(request: Request):
-    payload = compute_daily_signals()
+    p = compute_daily_signals()
     return tpl.TemplateResponse("signals.html", {
         "request": request,
-        "date": payload.get("date"),
-        "signals": payload.get("signals", []),
-        "min_abs": payload.get("min_abs", 0.003)
+        "date": p.get("date"),
+        "signals": p.get("signals", []),
+        "mode": p.get("mode"),
+        "windows": p.get("windows", []),
+        "weights": p.get("weights", []),
+        "thr": p.get("score_threshold"),
+        "top_k": p.get("top_k"),
+        "bottom_k": p.get("bottom_k"),
+        "use_watchlist": p.get("use_watchlist"),
+        "insufficient": p.get("insufficient_count", 0),
     })
 
 @router.post("/api/signals/recalc")
 def signals_recalc():
-    payload = compute_daily_signals()
-    return JSONResponse({"ok": True, "count": len(payload.get("signals", [])), "date": payload.get("date")})
+    p = compute_daily_signals()
+    return JSONResponse({"ok": True, "count": len(p.get("signals", [])), "date": p.get("date")})
