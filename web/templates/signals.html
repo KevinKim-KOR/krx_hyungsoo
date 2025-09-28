@@ -4,6 +4,22 @@
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Signals</title>
   <style>
+    :root{--bg:#f7f8fa;--panel:#fff;--border:#e5e7eb;--muted:#6b7280;--up:#ef4444;--down:#2563eb}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif}
+    .wrap{max-width:1080px;margin:24px auto;padding:0 16px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px}
+    h1{margin:0 0 8px}
+    .muted{color:var(--muted);font-size:13px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 16px}
+    .btn{appearance:none;border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;text-decoration:none}
+    .pill{display:inline-block;border:1px solid var(--border);padding:2px 8px;border-radius:999px;background:#fafafa;margin-left:6px;font-size:12px}
+    select{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:#fff}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+    th{background:#fafafa}
+    .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}
+  </style>
+  <style>
     .chip{display:inline-block;padding:4px 8px;border:1px solid #eee;border-radius:999px;font-size:12px;margin-right:6px}
     .pos{color:#0a7}
     .neg{color:#d33}
@@ -112,39 +128,56 @@
         </tr>
       {% endfor %}
     </tbody>
+
   </table>
 
 </div></div>
 
 <script>
-  (function(){
-    const url = new URL(location.href);
-    const sp  = url.searchParams;
-
-    // 1) 쿼리에 값이 없으면 저장된 선호값으로 리다이렉트
-    const savedMode = localStorage.getItem('sig_mode');
-    const savedWL   = localStorage.getItem('sig_wl');
-    const savedSort = localStorage.getItem('sig_sort');
-    if(!sp.has('mode') && (savedMode || savedWL || savedSort)){
-      if(savedMode) sp.set('mode', savedMode);
-      if(savedWL)   sp.set('wl', savedWL);
-      if(savedSort) sp.set('sort', savedSort);
-      location.replace(url.pathname + '?' + sp.toString());
-      return;
-    }
-
-    // 2) 현재 값을 저장
-    localStorage.setItem('sig_mode', sp.get('mode') || 'score_abs');
-    localStorage.setItem('sig_wl',   sp.get('wl')   || '0');
-    localStorage.setItem('sig_sort', sp.get('sort') || 'score_desc');
-
-    // 3) 드롭다운/버튼 조작 시에도 저장(선택사항: 없어도 #2에서 매 뷰마다 저장됨)
-    document.getElementById('sortForm')?.addEventListener('change', ()=>{
-      const sp = new URLSearchParams(new FormData(document.getElementById('sortForm')));
-      localStorage.setItem('sig_mode', sp.get('mode') || 'score_abs');
-      localStorage.setItem('sig_wl',   sp.get('wl')   || '0');
-      localStorage.setItem('sig_sort', sp.get('sort') || 'score_desc');
-    });
-  })();
+  const btn = document.getElementById('btn-recalc');
+  const msg = document.getElementById('msg');
+  btn?.addEventListener('click', async ()=>{
+    btn.disabled = true; msg.textContent = '재계산 중…';
+    try{
+      const qs = new URLSearchParams(window.location.search);
+      const r = await fetch('/api/signals/recalc?'+qs.toString(), {method:'POST'});
+      const j = await r.json();
+      msg.textContent = j.ok ? `완료 (${j.count}건)` : '실패';
+      location.reload();
+    }catch(e){ msg.textContent='네트워크 오류'; }
+    setTimeout(()=> msg.textContent='', 3000);
+    btn.disabled = false;
+  });
 </script>
-</body></html>
+<script>
+(function(){
+  const url = new URL(location.href);
+  const sp  = url.searchParams;
+
+  const savedMode = localStorage.getItem('sig_mode');
+  const savedWL   = localStorage.getItem('sig_wl');
+  const savedSort = localStorage.getItem('sig_sort');
+
+  if(!sp.has('mode') && (savedMode || savedWL || savedSort)){
+    if(savedMode) sp.set('mode', savedMode);
+    if(savedWL)   sp.set('wl', savedWL);
+    if(savedSort) sp.set('sort', savedSort);
+    location.replace(url.pathname + '?' + sp.toString());
+    return;
+  }
+
+  localStorage.setItem('sig_mode', sp.get('mode') || 'score_abs');
+  localStorage.setItem('sig_wl',   sp.get('wl')   || '0');
+  localStorage.setItem('sig_sort', sp.get('sort') || 'score_desc');
+
+  document.getElementById('sortForm')?.addEventListener('change', ()=>{
+    const sp2 = new URLSearchParams(new FormData(document.getElementById('sortForm')));
+    localStorage.setItem('sig_mode', sp2.get('mode') || 'score_abs');
+    localStorage.setItem('sig_wl',   sp2.get('wl')   || '0');
+    localStorage.setItem('sig_sort', sp2.get('sort') || 'score_desc');
+  });
+})();
+</script>
+
+</body>
+</html>
