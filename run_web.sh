@@ -9,6 +9,7 @@ if mkdir "$LOCK" 2>/dev/null; then trap 'rmdir "$LOCK"' EXIT; else
 
 # 🔽🔽🔽 이 줄 추가 (config.yaml 위치가 다르면 그 절대경로로 바꾸세요)
 export KRX_CONFIG="$PWD/secret/config.yaml"
+export KRX_WATCHLIST="$PWD/secret/watchlist.yaml"
 
 LOG="logs/web_$(date +%F).log"
 nohup ./venv/bin/uvicorn web.main:app --host 0.0.0.0 --port 8899 --proxy-headers >> "$LOG" 2>&1 &

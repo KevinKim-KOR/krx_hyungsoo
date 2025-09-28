@@ -1,7 +1,7 @@
 # utils/config.py
 # -*- coding: utf-8 -*-
 from typing import Tuple, Dict, List
-import os
+import os, time, shutil
 
 try:
     import yaml  # noqa
@@ -122,3 +122,74 @@ def load_watchlist(path: str = None) -> List[str]:
         except Exception:
             continue
     return []
+
+def get_watchlist_path() -> str:
+    p = os.environ.get("KRX_WATCHLIST")
+    if p: return p
+    # 선호 순서: secret > repo root > conf > 홈
+    for c in (
+        "secret/watchlist.yaml",
+        "watchlist.yaml",
+        "conf/watchlist.yaml",
+        os.path.expanduser("~/.config/krx_alertor_modular/watchlist.yaml"),
+    ):
+        if os.path.exists(c):
+            return c
+    # 기본 경로
+    return "secret/watchlist.yaml"
+
+def _parse_watchlist_yaml(y) -> List[str]:
+    # 다양한 포맷을 codes 리스트로 통일
+    if isinstance(y, dict):
+        lst = y.get("codes") or y.get("tickers") or y.get("watchlist") or []
+    else:
+        lst = y or []
+    out: List[str] = []
+    for it in lst:
+        if isinstance(it, str):
+            c = it.strip()
+            if c: out.append(c)
+        elif isinstance(it, dict):
+            if it.get("is_active") is False:  # 규칙: is_active=false 제외
+                continue
+            c = str(it.get("code") or it.get("ticker") or "").strip()
+            if c: out.append(c)
+    return sorted(set(out))
+
+def read_watchlist_codes() -> List[str]:
+    try:
+        import yaml
+    except Exception:
+        return []
+    p = get_watchlist_path()
+    if not os.path.exists(p):
+        return []
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            y = yaml.safe_load(f) or []
+        return _parse_watchlist_yaml(y)
+    except Exception:
+        return []
+
+def write_watchlist_codes(codes: List[str]) -> bool:
+    """한 줄당 1코드 형식으로 저장(단순 리스트). 저장 전 자동 백업."""
+    try:
+        import yaml
+    except Exception:
+        return False
+    codes = [str(c).strip() for c in codes if str(c).strip()]
+    p = get_watchlist_path()
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    # 백업
+    if os.path.exists(p):
+        bdir = os.path.join(os.path.dirname(p), "backup")
+        os.makedirs(bdir, exist_ok=True)
+        ts = time.strftime("%Y%m%d-%H%M%S")
+        shutil.copy2(p, os.path.join(bdir, f"watchlist-{ts}.yaml"))
+    # 저장(단순 리스트로)
+    try:
+        with open(p, "w", encoding="utf-8") as f:
+            yaml.safe_dump(sorted(set(codes)), f, allow_unicode=True, sort_keys=False)
+        return True
+    except Exception:
+        return False

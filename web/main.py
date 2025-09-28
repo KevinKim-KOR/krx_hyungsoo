@@ -8,10 +8,12 @@ from db import SessionLocal, PriceDaily, Security
 from reporting_eod import generate_and_send_report_eod, _load_report_cfg_defaults  # ← 추가
 
 from web.signals import router as signals_router
+from web.watchlist import router as watchlist_router
 
 app = FastAPI(title="KRX Alertor Web")
 templates = Jinja2Templates(directory="web/templates")
 app.include_router(signals_router)
+app.include_router(watchlist_router)
 
 def latest_two_dates(session):
     d0 = session.execute(select(func.max(PriceDaily.date))).scalar()
