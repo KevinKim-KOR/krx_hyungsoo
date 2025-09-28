@@ -3,6 +3,7 @@
 from typing import List, Dict, Optional
 from utils.config import get_report_cfg_defaults, get_signals_cfg_defaults, load_watchlist
 from .queries import recent_trading_dates_kr, load_universe_from_json, load_prices_for_dates, load_names, load_turnover_for_dates
+from reporting_eod import _load_cfg, _send_notify
 
 def _merge_cfg(base: Dict, overrides: Optional[Dict]) -> Dict:
     if not overrides: return base
@@ -155,3 +156,38 @@ def compute_daily_signals(codes: Optional[List[str]] = None,
         "filters": filt, "filtered_counts": counts,
         "min_abs": min_abs,
     }
+def build_signals_summary(payload: Dict, top: int = 5) -> str:
+    d0 = payload.get("date") or "-"
+    mode = payload.get("mode")
+    windows = payload.get("windows", [])
+    rows: List[Dict] = payload.get("signals", [])
+
+    buys  = [r for r in rows if r.get("signal") == "BUY"][:top]
+    sells = [r for r in rows if r.get("signal") == "SELL"][:top]
+
+    lines = []
+    lines.append(f"[Signals] {d0}")
+    lines.append(f"mode={mode}, windows={windows}")
+    lines.append("")
+    lines.append("BUY Top")
+    if buys:
+        for r in buys:
+            lines.append(f" · {r['name']}({r['code']}): {r['score']*100:+.2f}%")
+    else:
+        lines.append(" · (none)")
+    lines.append("")
+    lines.append("SELL Top")
+    if sells:
+        for r in sells:
+            lines.append(f" · {r['name']}({r['code']}): {r['score']*100:+.2f}%")
+    else:
+        lines.append(" · (none)")
+    return "\n".join(lines)
+
+def send_signals_to_telegram(payload: Dict, top: int = 5) -> bool:
+    try:
+        text = build_signals_summary(payload, top=top)
+        _send_notify(text, _load_cfg())   # 텔레그램 설정 없으면 콘솔 출력
+        return True
+    except Exception:
+        return False
