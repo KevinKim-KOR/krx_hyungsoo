@@ -26,6 +26,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.include_router(signals_router)
 app.include_router(watchlist_router)
 app.include_router(bt_inbox_router)
+# wire bt inbox router (route order fixed)
 
 def latest_two_dates(session):
     d0 = session.execute(select(func.max(PriceDaily.date))).scalar()
