@@ -17,10 +17,20 @@
     .neg { color: #d33; }
     .tag { font-size: 12px; color: #555; background: #f3f3f3; border-radius: 6px; padding: 2px 6px; display: inline-block; }
     .k { color: #555; }
+    .toolbar { display: flex; gap: 8px; align-items: center; }
+    .btn { display:inline-block; padding:6px 10px; border:1px solid #ccc; border-radius:8px; text-decoration:none; color:#333; background:#fafafa; }
+    .btn:hover { background:#f2f2f2; }
+    canvas { width:100%; max-width:1100px; height:360px; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>백테스트 비교 (최근 2개)</h1>
+  <div class="toolbar">
+    <h1 style="margin:0">백테스트 비교 (최근 2개)</h1>
+    {% if has_data %}
+      <a class="btn" href="/bt/history.csv">CSV 내보내기</a>
+    {% endif %}
+  </div>
 
   {% if not has_data %}
     <div class="card">{{ msg }}</div>
@@ -39,7 +49,6 @@
       </div>
     </div>
 
-    <!-- 신규: 설정/요약 카드 -->
     <div class="card grid">
       <div>
         <h3>설정 & 요약 (최신)</h3>
@@ -98,6 +107,12 @@
       </div>
     </div>
 
+    <!-- NAV 라인 차트 -->
+    <div class="card">
+      <h3>NAV 추이 (최근 360거래일, 공통구간)</h3>
+      <canvas id="navChart"></canvas>
+    </div>
+
     <div class="card">
       <h3>최근 50개 일자 비교 (공통구간)</h3>
       <table>
@@ -117,6 +132,31 @@
         </tbody>
       </table>
     </div>
+
+    <script>
+      (function(){
+        const labels = {{ labels|tojson }};
+        const cur = {{ series_cur|tojson }};
+        const prev = {{ series_prev|tojson }};
+        const ctx = document.getElementById('navChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {label: '최신 NAV', data: cur, fill: false, borderWidth: 2, tension: 0.2},
+              {label: '이전 NAV', data: prev, fill: false, borderWidth: 2, tension: 0.2}
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'top' } },
+            scales: { x: { ticks: { maxRotation: 0, autoSkip: true } }, y: { beginAtZero: false } }
+          }
+        });
+      })();
+    </script>
 
   {% endif %}
 </body>
