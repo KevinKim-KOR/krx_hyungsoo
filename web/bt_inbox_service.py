@@ -8,6 +8,7 @@ FastAPI 라우트 + 인박스 워커(통합)
 import os
 import re
 import json
+import logging
 import shutil
 import hashlib
 from datetime import datetime, timezone, timedelta
@@ -28,6 +29,7 @@ PROC_DIR  = os.path.join(REPO_ROOT, "reports", "backtests", "processed")
 INDEX_JSON = os.path.join(REPO_ROOT, "reports", "backtests", "index.json")
 
 router = APIRouter(prefix="/bt", tags=["backtests"])
+log = logging.getLogger(__name__)
 
 def _read_config() -> Dict:
     cfg_path = os.environ.get("KRX_CONFIG", os.path.join(REPO_ROOT, "secret", "config.yaml"))
@@ -83,12 +85,11 @@ def verify_sha256sums(pkg_dir: str) -> Tuple[bool, List[str]]:
                 bad.append(f"mismatch: {fname}")
     return (len(bad) == 0), bad
 
-def load_manifest(pkg_dir: str) -> Dict:
-    mpath = os.path.join(pkg_dir, "manifest.json")
-    if os.path.exists(mpath):
-        with open(mpath, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+def load_manifest(pkg_dir: str):
+    return _load_json_tolerant(os.path.join(pkg_dir, "manifest.json"))
+
+def load_summary(pkg_dir: str):
+    return _load_json_tolerant(os.path.join(pkg_dir, "summary.json"))
 
 def ensure_dirs() -> None:
     os.makedirs(INBOX_DIR, exist_ok=True)
@@ -169,6 +170,23 @@ def build_app() -> FastAPI:
     app = FastAPI()
     app.include_router(router)
     return app
+
+def _load_json_tolerant(path: str):
+    """
+    JSON 파일을 UTF-8 또는 UTF-8-SIG(BOM 포함) 모두 허용해서 로드.
+    """
+    # 1) BOM 허용
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            return json.load(f)
+    except Exception as e1:
+        # 2) 일반 UTF-8 재시도(혹시 모를 인코딩 이슈 대비)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e2:
+            log.error("JSON load failed for %s: %s / %s", path, e1, e2)
+            raise
 
 app = build_app()
 
