@@ -17,8 +17,17 @@ def fetch_close(symbol: str, start="2018-01-01"):
     df = yf.download(symbol, start=start, progress=False, auto_adjust=True, threads=False)
     if df is None or df.empty:
         return None
-    out = pd.DataFrame({"date": df.index.tz_localize(None).date, "close": df["Close"].astype(float).values})
+    # 안전한 변환: 인덱스를 풀고(dt), 컬럼 리네임
+    out = df[['Close']].copy()
+    # 인덱스가 DatetimeIndex라고 가정하고 TZ 제거
+    out.index = pd.to_datetime(out.index).tz_localize(None)
+    out = out.rename_axis('date').reset_index()           # date 컬럼 생김 (datetime64[ns])
+    out['date'] = pd.to_datetime(out['date']).dt.date     # 또는 .dt.strftime('%Y-%m-%d')
+    out = out.rename(columns={'Close': 'close'})
+    # 최종 컬럼 순서 고정
+    out = out[['date', 'close']].dropna()
     return out
+
 
 def main():
     ap = argparse.ArgumentParser()
