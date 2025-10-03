@@ -172,15 +172,11 @@ def build_app() -> FastAPI:
     return app
 
 def _load_json_tolerant(path: str):
-    """
-    JSON 파일을 UTF-8 또는 UTF-8-SIG(BOM 포함) 모두 허용해서 로드.
-    """
-    # 1) BOM 허용
+    """Allow UTF-8 and UTF-8 with BOM (utf-8-sig)."""
     try:
         with open(path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
     except Exception as e1:
-        # 2) 일반 UTF-8 재시도(혹시 모를 인코딩 이슈 대비)
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
