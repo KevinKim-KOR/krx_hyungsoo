@@ -1,23 +1,43 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
-
 mkdir -p .locks logs
-LOCKDIR=".locks/report_eod.lock"
-if mkdir "$LOCKDIR" 2>/dev/null; then trap 'rmdir "$LOCKDIR"' EXIT; else
-  echo "[SKIP] another report-eod is running" | tee -a "logs/report_$(date +%F).log"; exit 0; fi
 
+# ── venv / ENV ─────────────────────────────────────────────
 [ -f "venv/bin/activate" ] && source venv/bin/activate
+export KRX_CONFIG="${KRX_CONFIG:-$PWD/secret/config.yaml}"
 
-# 🔽🔽🔽 이 줄 추가 (config.yaml 위치가 다르면 그 절대경로로 바꾸세요)
-export KRX_CONFIG="$PWD/secret/config.yaml"
+LOG="logs/report_$(date +%F).log"
+LOCK=".locks/report_eod.lock"
 
-TS="$(date +%F)"; LOG="logs/report_${TS}.log"
+# ── lock ───────────────────────────────────────────────────
+if mkdir "$LOCK" 2>/dev/null; then
+  trap 'rmdir "$LOCK"' EXIT
+else
+  echo "[SKIP] another report-eod is running" | tee -a "$LOG"
+  exit 0
+fi
+
 echo "[RUN] report-eod $(date +'%F %T')" | tee -a "$LOG"
 
-# run_report_eod.sh (핵심 실행부만 발췌)
-RETRY_MAX="${RETRY_MAX:-2}"      # 기본 2회 추가 시도
-RETRY_SLEEP="${RETRY_SLEEP:-300}"# 기본 300초(5분)
+# ── 휴장 가드 ───────────────────────────────────────────────
+set +e
+./venv/bin/python - <<'PY' >> "$LOG" 2>&1
+import sys
+from utils.trading_day import is_trading_day
+if not is_trading_day():
+    print("[SKIP] non-trading day"); sys.exit(200)
+PY
+rc=$?
+set -e
+if [ $rc -ge 200 ]; then
+  echo "[DONE] report-eod guarded-skip $(date +'%F %T')" | tee -a "$LOG"
+  exit 0
+fi
+
+# ── 재시도 루프 ────────────────────────────────────────────
+RETRY_MAX="${RETRY_MAX:-2}"       # 추가 시도 횟수
+RETRY_SLEEP="${RETRY_SLEEP:-300}" # 300s(5분)
 
 attempt=0
 rc=1
@@ -34,6 +54,7 @@ while [ $attempt -le $RETRY_MAX ]; do
   break
 done
 
+# ── 실패 시 알림 ───────────────────────────────────────────
 if [ $rc -ne 0 ] && grep -qE "Traceback|ERROR" "$LOG"; then
   ./venv/bin/python - <<'PY' >> "$LOG" 2>&1
 from reporting_eod import _load_cfg, _send_notify
@@ -43,3 +64,4 @@ fi
 
 echo "[DONE] report-eod $(date +'%F %T')" | tee -a "$LOG"
 echo "[EXIT $rc] report-eod $(date +'%F %T')" | tee -a "$LOG"
+exit $rc
