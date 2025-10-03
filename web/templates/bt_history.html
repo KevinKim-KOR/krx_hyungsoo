@@ -17,18 +17,44 @@
     .neg { color: #d33; }
     .tag { font-size: 12px; color: #555; background: #f3f3f3; border-radius: 6px; padding: 2px 6px; display: inline-block; }
     .k { color: #555; }
-    .toolbar { display: flex; gap: 8px; align-items: center; }
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
     .btn { display:inline-block; padding:6px 10px; border:1px solid #ccc; border-radius:8px; text-decoration:none; color:#333; background:#fafafa; }
     .btn:hover { background:#f2f2f2; }
+    select, input[type="number"] { padding:4px 8px; border:1px solid #ccc; border-radius:8px; }
+    label { font-size: 14px; color:#444; margin-right: 6px; }
     canvas { width:100%; max-width:1100px; height:360px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="toolbar">
-    <h1 style="margin:0">백테스트 비교 (최근 2개)</h1>
+    <h1 style="margin:0">백테스트 비교</h1>
     {% if has_data %}
-      <a class="btn" href="/bt/history.csv">CSV 내보내기</a>
+      <form id="ctl" method="get" action="/bt/history" class="toolbar">
+        <label>A</label>
+        <select name="pkg_a" id="pkg_a">
+          {% for opt in options %}
+            <option value="{{ opt.key }}" {{ 'selected' if opt.key==sel_a else '' }}>
+              {{ opt.label }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <label>B</label>
+        <select name="pkg_b" id="pkg_b">
+          {% for opt in options %}
+            <option value="{{ opt.key }}" {{ 'selected' if opt.key==sel_b else '' }}>
+              {{ opt.label }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <label>최근 거래일</label>
+        <input type="number" name="ndays" min="30" max="2000" value="{{ ndays }}" />
+        <button class="btn" type="submit">적용</button>
+
+        <a class="btn" id="csvBtn" href="#">CSV 내보내기</a>
+      </form>
     {% endif %}
   </div>
 
@@ -38,41 +64,41 @@
 
     <div class="card grid">
       <div>
-        <h3>최신 패키지</h3>
-        <div class="muted">{{ cur_pkg.final_dir }}</div>
-        <div class="tag">commit: {{ cur_pkg.manifest.commit[:10] }}</div>
+        <h3>패키지 A</h3>
+        <div class="muted">{{ pkg_a.final_dir }}</div>
+        <div class="tag">commit: {{ pkg_a.manifest.commit[:10] }}</div>
       </div>
       <div>
-        <h3>이전 패키지</h3>
-        <div class="muted">{{ prev_pkg.final_dir }}</div>
-        <div class="tag">commit: {{ prev_pkg.manifest.commit[:10] }}</div>
+        <h3>패키지 B</h3>
+        <div class="muted">{{ pkg_b.final_dir }}</div>
+        <div class="tag">commit: {{ pkg_b.manifest.commit[:10] }}</div>
       </div>
     </div>
 
     <div class="card grid">
       <div>
-        <h3>설정 & 요약 (최신)</h3>
+        <h3>설정 & 요약 (A)</h3>
         <table>
           <tbody>
-            <tr><td class="k">기간</td><td>{{ cur_info.start }} → {{ cur_info.end }}</td></tr>
-            <tr><td class="k">모드</td><td>{{ cur_info.mode }}</td></tr>
-            <tr><td class="k">Watchlist</td><td>{{ cur_info.wl }}</td></tr>
-            <tr><td class="k">Top N</td><td>{{ cur_info.top }}</td></tr>
-            <tr><td class="k">행 수</td><td>{{ cur_info.rows }}</td></tr>
-            {% if cur_info.notes %}<tr><td class="k">비고</td><td>{{ cur_info.notes }}</td></tr>{% endif %}
+            <tr><td class="k">기간</td><td>{{ a_info.start }} → {{ a_info.end }}</td></tr>
+            <tr><td class="k">모드</td><td>{{ a_info.mode }}</td></tr>
+            <tr><td class="k">Watchlist</td><td>{{ a_info.wl }}</td></tr>
+            <tr><td class="k">Top N</td><td>{{ a_info.top }}</td></tr>
+            <tr><td class="k">행 수</td><td>{{ a_info.rows }}</td></tr>
+            {% if a_info.notes %}<tr><td class="k">비고</td><td>{{ a_info.notes }}</td></tr>{% endif %}
           </tbody>
         </table>
       </div>
       <div>
-        <h3>설정 & 요약 (이전)</h3>
+        <h3>설정 & 요약 (B)</h3>
         <table>
           <tbody>
-            <tr><td class="k">기간</td><td>{{ prev_info.start }} → {{ prev_info.end }}</td></tr>
-            <tr><td class="k">모드</td><td>{{ prev_info.mode }}</td></tr>
-            <tr><td class="k">Watchlist</td><td>{{ prev_info.wl }}</td></tr>
-            <tr><td class="k">Top N</td><td>{{ prev_info.top }}</td></tr>
-            <tr><td class="k">행 수</td><td>{{ prev_info.rows }}</td></tr>
-            {% if prev_info.notes %}<tr><td class="k">비고</td><td>{{ prev_info.notes }}</td></tr>{% endif %}
+            <tr><td class="k">기간</td><td>{{ b_info.start }} → {{ b_info.end }}</td></tr>
+            <tr><td class="k">모드</td><td>{{ b_info.mode }}</td></tr>
+            <tr><td class="k">Watchlist</td><td>{{ b_info.wl }}</td></tr>
+            <tr><td class="k">Top N</td><td>{{ b_info.top }}</td></tr>
+            <tr><td class="k">행 수</td><td>{{ b_info.rows }}</td></tr>
+            {% if b_info.notes %}<tr><td class="k">비고</td><td>{{ b_info.notes }}</td></tr>{% endif %}
           </tbody>
         </table>
       </div>
@@ -82,16 +108,16 @@
       <div>
         <h3>종합지표 (공통구간)</h3>
         <table>
-          <thead><tr><th>지표</th><th>최신</th><th>이전</th></tr></thead>
+          <thead><tr><th>지표</th><th>A</th><th>B</th></tr></thead>
           <tbody>
-            <tr><td>최종 NAV</td><td>{{ '%.4f' % cur_end if cur_end is not none else '-' }}</td><td>{{ '%.4f' % prev_end if prev_end is not none else '-' }}</td></tr>
+            <tr><td>최종 NAV</td><td>{{ '%.4f' % a_end if a_end is not none else '-' }}</td><td>{{ '%.4f' % b_end if b_end is not none else '-' }}</td></tr>
             <tr><td>최근 30일 수익</td>
-              <td class="{{ 'pos' if cur_30d and cur_30d>0 else ('neg' if cur_30d and cur_30d<0 else '') }}">{{ '%.2f%%' % (cur_30d*100) if cur_30d is not none else '-' }}</td>
-              <td class="{{ 'pos' if prev_30d and prev_30d>0 else ('neg' if prev_30d and prev_30d<0 else '') }}">{{ '%.2f%%' % (prev_30d*100) if prev_30d is not none else '-' }}</td>
+              <td class="{{ 'pos' if a_30d and a_30d>0 else ('neg' if a_30d and a_30d<0 else '') }}">{{ '%.2f%%' % (a_30d*100) if a_30d is not none else '-' }}</td>
+              <td class="{{ 'pos' if b_30d and b_30d>0 else ('neg' if b_30d and b_30d<0 else '') }}">{{ '%.2f%%' % (b_30d*100) if b_30d is not none else '-' }}</td>
             </tr>
             <tr><td>최대 낙폭(MDD)</td>
-              <td class="{{ 'neg' if cur_mdd and cur_mdd<0 else '' }}">{{ '%.2f%%' % (cur_mdd*100) if cur_mdd is not none else '-' }}</td>
-              <td class="{{ 'neg' if prev_mdd and prev_mdd<0 else '' }}">{{ '%.2f%%' % (prev_mdd*100) if prev_mdd is not none else '-' }}</td>
+              <td class="{{ 'neg' if a_mdd and a_mdd<0 else '' }}">{{ '%.2f%%' % (a_mdd*100) if a_mdd is not none else '-' }}</td>
+              <td class="{{ 'neg' if b_mdd and b_mdd<0 else '' }}">{{ '%.2f%%' % (b_mdd*100) if b_mdd is not none else '-' }}</td>
             </tr>
           </tbody>
         </table>
@@ -99,17 +125,16 @@
       <div>
         <h3>설명</h3>
         <ul>
-          <li>비교는 두 패키지의 <b>공통 거래일 구간</b>으로 정렬합니다.</li>
-          <li>NAV는 <code>equity1.csv</code> 기준(동일 로직 복제라 1개만 비교로 충분).</li>
-          <li><b>설정/요약</b>은 <code>summary.json</code>과 데이터 범위를 함께 반영합니다.</li>
-          <li>세부 로그와 원본 파일은 NAS의 <code>processed/</code> 하위 디렉터리에서 확인.</li>
+          <li>드롭다운에서 <b>임의의 두 패키지</b>를 선택해 비교할 수 있습니다.</li>
+          <li><b>최근 거래일 수</b>를 조절해 차트/표의 표시 구간을 바꿀 수 있습니다.</li>
+          <li>NAV는 <code>equity1.csv</code> 기준으로 비교합니다.</li>
         </ul>
       </div>
     </div>
 
     <!-- NAV 라인 차트 -->
     <div class="card">
-      <h3>NAV 추이 (최근 360거래일, 공통구간)</h3>
+      <h3>NAV 추이 (공통구간, 최근 {{ ndays }}거래일)</h3>
       <canvas id="navChart"></canvas>
     </div>
 
@@ -117,16 +142,16 @@
       <h3>최근 50개 일자 비교 (공통구간)</h3>
       <table>
         <thead>
-          <tr><th>date</th><th>NAV(최신)</th><th>NAV(이전)</th><th>ret(최신)</th><th>ret(이전)</th></tr>
+          <tr><th>date</th><th>NAV(A)</th><th>NAV(B)</th><th>ret(A)</th><th>ret(B)</th></tr>
         </thead>
         <tbody>
-          {% for d,navc,navp,rc,rp in rows %}
+          {% for d,na,nb,ra,rb in rows %}
             <tr>
               <td>{{ d }}</td>
-              <td>{{ '%.4f' % navc }}</td>
-              <td>{{ '%.4f' % navp }}</td>
-              <td class="{{ 'pos' if rc>0 else ('neg' if rc<0 else '') }}">{{ '%.3f' % rc }}</td>
-              <td class="{{ 'pos' if rp>0 else ('neg' if rp<0 else '') }}">{{ '%.3f' % rp }}</td>
+              <td>{{ '%.4f' % na }}</td>
+              <td>{{ '%.4f' % nb }}</td>
+              <td class="{{ 'pos' if ra>0 else ('neg' if ra<0 else '') }}">{{ '%.3f' % ra }}</td>
+              <td class="{{ 'pos' if rb>0 else ('neg' if rb<0 else '') }}">{{ '%.3f' % rb }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -136,16 +161,16 @@
     <script>
       (function(){
         const labels = {{ labels|tojson }};
-        const cur = {{ series_cur|tojson }};
-        const prev = {{ series_prev|tojson }};
+        const a = {{ series_a|tojson }};
+        const b = {{ series_b|tojson }};
         const ctx = document.getElementById('navChart').getContext('2d');
         new Chart(ctx, {
           type: 'line',
           data: {
             labels: labels,
             datasets: [
-              {label: '최신 NAV', data: cur, fill: false, borderWidth: 2, tension: 0.2},
-              {label: '이전 NAV', data: prev, fill: false, borderWidth: 2, tension: 0.2}
+              {label: 'A NAV', data: a, fill: false, borderWidth: 2, tension: 0.2},
+              {label: 'B NAV', data: b, fill: false, borderWidth: 2, tension: 0.2}
             ]
           },
           options: {
@@ -155,6 +180,19 @@
             scales: { x: { ticks: { maxRotation: 0, autoSkip: true } }, y: { beginAtZero: false } }
           }
         });
+
+        // CSV 버튼: 현재 선택값 그대로 전달
+        const form = document.getElementById('ctl');
+        const csvBtn = document.getElementById('csvBtn');
+        if (form && csvBtn) {
+          function updateCsvHref(){
+            const sp = new URLSearchParams(new FormData(form));
+            csvBtn.href = '/bt/history.csv?' + sp.toString();
+          }
+          updateCsvHref();
+          form.addEventListener('change', updateCsvHref);
+          form.addEventListener('input', updateCsvHref);
+        }
       })();
     </script>
 
