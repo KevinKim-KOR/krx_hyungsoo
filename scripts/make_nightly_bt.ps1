@@ -28,6 +28,7 @@ Write-Host "Activating conda env: $EnvName"
 conda activate $EnvName | Out-Null
 
 # --- Timestamp & Out dirs
+$YEST = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd')
 $ts = Get-Date -Format "yyyyMMdd_HHmmss"
 $pkgRoot = Join-Path $RepoRoot "reports\backtests\$ts`_v1"
 $inboxLocal = $pkgRoot
@@ -44,9 +45,9 @@ $bt2 = Join-Path $pkgRoot "equity2.csv"
 $bt3 = Join-Path $pkgRoot "equity3.csv"
 
 # NOTE: backtest_cli.py는 v1 기준(score_abs, Top5, 주간 리밸런스) 구현 전제
-Run "python backtest_cli.py --start 2018-01-02 --end (Get-Date).AddDays(-1).ToString('yyyy-MM-dd') --mode score_abs --wl 1 --top 5 --out `"$bt1`""
-Run "python backtest_cli.py --start 2018-01-02 --end (Get-Date).AddDays(-1).ToString('yyyy-MM-dd') --mode score_abs --wl 1 --top 5 --out `"$bt2`""
-Run "python backtest_cli.py --start 2018-01-02 --end (Get-Date).AddDays(-1).ToString('yyyy-MM-dd') --mode score_abs --wl 1 --top 5 --out `"$bt3`""
+Run "python backtest_cli.py --start 2018-01-02 --end $YEST --mode score_abs --wl 63 --top 5 --out `"$bt1`""
+Run "python backtest_cli.py --start 2018-01-02 --end $YEST --mode score_abs --wl 63 --top 5 --out `"$bt2`""
+Run "python backtest_cli.py --start 2018-01-02 --end $YEST --mode score_abs --wl 63 --top 5 --out `"$bt3`""
 
 # --- 재현성 검사
 Run "python tools/hash_compare.py `"$bt1`" `"$bt2`" `"$bt3`""
@@ -91,7 +92,7 @@ Get-ChildItem $pkgRoot -File | ForEach-Object {
 
 # --- 업로드(scp) → NAS inbox
 $nasInbox = "$NasRepo/reports/backtests/inbox/$ts`_v1"
-Run "scp -r `"$pkgRoot`" ${NasUser}@${NasHost}:$nasInbox"
+Run "scp -O -r `"$pkgRoot`" ${NasUser}@${NasHost}:$nasInbox"
 
 # --- NAS 웹훅 호출
 $payload = @{ path = "$nasInbox"; strategy_id = "v1_score_abs_top5"; ts = "$ts" } | ConvertTo-Json -Depth 4
