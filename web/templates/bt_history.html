@@ -15,7 +15,8 @@
     .muted { color: #777; }
     .pos { color: #0a7; }
     .neg { color: #d33; }
-    .tag { font-size: 12px; color: #555; background: #f3f3f3; border-radius: 6px; padding: 2px 6px; }
+    .tag { font-size: 12px; color: #555; background: #f3f3f3; border-radius: 6px; padding: 2px 6px; display: inline-block; }
+    .k { color: #555; }
   </style>
 </head>
 <body>
@@ -24,6 +25,7 @@
   {% if not has_data %}
     <div class="card">{{ msg }}</div>
   {% else %}
+
     <div class="card grid">
       <div>
         <h3>최신 패키지</h3>
@@ -34,6 +36,36 @@
         <h3>이전 패키지</h3>
         <div class="muted">{{ prev_pkg.final_dir }}</div>
         <div class="tag">commit: {{ prev_pkg.manifest.commit[:10] }}</div>
+      </div>
+    </div>
+
+    <!-- 신규: 설정/요약 카드 -->
+    <div class="card grid">
+      <div>
+        <h3>설정 & 요약 (최신)</h3>
+        <table>
+          <tbody>
+            <tr><td class="k">기간</td><td>{{ cur_info.start }} → {{ cur_info.end }}</td></tr>
+            <tr><td class="k">모드</td><td>{{ cur_info.mode }}</td></tr>
+            <tr><td class="k">Watchlist</td><td>{{ cur_info.wl }}</td></tr>
+            <tr><td class="k">Top N</td><td>{{ cur_info.top }}</td></tr>
+            <tr><td class="k">행 수</td><td>{{ cur_info.rows }}</td></tr>
+            {% if cur_info.notes %}<tr><td class="k">비고</td><td>{{ cur_info.notes }}</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>설정 & 요약 (이전)</h3>
+        <table>
+          <tbody>
+            <tr><td class="k">기간</td><td>{{ prev_info.start }} → {{ prev_info.end }}</td></tr>
+            <tr><td class="k">모드</td><td>{{ prev_info.mode }}</td></tr>
+            <tr><td class="k">Watchlist</td><td>{{ prev_info.wl }}</td></tr>
+            <tr><td class="k">Top N</td><td>{{ prev_info.top }}</td></tr>
+            <tr><td class="k">행 수</td><td>{{ prev_info.rows }}</td></tr>
+            {% if prev_info.notes %}<tr><td class="k">비고</td><td>{{ prev_info.notes }}</td></tr>{% endif %}
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -60,6 +92,7 @@
         <ul>
           <li>비교는 두 패키지의 <b>공통 거래일 구간</b>으로 정렬합니다.</li>
           <li>NAV는 <code>equity1.csv</code> 기준(동일 로직 복제라 1개만 비교로 충분).</li>
+          <li><b>설정/요약</b>은 <code>summary.json</code>과 데이터 범위를 함께 반영합니다.</li>
           <li>세부 로그와 원본 파일은 NAS의 <code>processed/</code> 하위 디렉터리에서 확인.</li>
         </ul>
       </div>
@@ -84,6 +117,7 @@
         </tbody>
       </table>
     </div>
+
   {% endif %}
 </body>
 </html>
