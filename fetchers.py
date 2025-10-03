@@ -196,7 +196,7 @@ def _resolve_asof(date_str: str) -> pd.Timestamp:
         d = prev_trading_day(d)
     return pd.Timestamp(d)
 
-def _get_active_codes(session) -> list[str]:
+def _get_active_codes(session) -> List[str]:
     """Security 테이블에서 종목코드 목록"""
     try:
         # is_active 컬럼이 있으면 True만, 없으면 전부

@@ -17,9 +17,7 @@ except Exception:
 from scanner import recommend_buy_sell, load_config_yaml
 # --- compat wrapper: route legacy send_slack() to new send_notify() ---
 from notifications import send_notify
-def send_slack(text, webhook):
-    cfg = load_config_yaml("config.yaml")
-    return send_notify(text, cfg)
+
 
 from backtest import run_backtest
 from sector_autotag import autotag_sectors
@@ -151,7 +149,11 @@ def cmd_scanner_slack(args):
     print(text)
     if not ok:
         print("⚠️ Slack 전송 실패 또는 webhook 미설정 (config.yaml > ui.slack_webhook 확인)")
-        
+
+def send_slack(text, webhook):
+    cfg = load_config_yaml("config.yaml")
+    return send_notify(text, cfg)
+
 def cmd_report_eod(args):
     """장마감 요약 Top5 리포트 전송"""
     try:
