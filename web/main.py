@@ -1,19 +1,31 @@
 # web/main.py
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, func
 
-from db import SessionLocal, PriceDaily, Security
-from reporting_eod import generate_and_send_report_eod, _load_report_cfg_defaults  # ← 추가
+# 불필요하면 주석/삭제 가능
+# from db import SessionLocal, PriceDaily, Security
+# from reporting_eod import generate_and_send_report_eod, _load_report_cfg_defaults
 
 from web.signals import router as signals_router
 from web.watchlist import router as watchlist_router
+from web.bt_inbox_service import router as bt_inbox_router
 
+# --- app/템플릿 생성이 먼저 ---
 app = FastAPI(title="KRX Alertor Web")
-templates = Jinja2Templates(directory="web/templates")
+
+# 루트 기준 고정이면 "web/templates"로 둬도 됨
+# templates = Jinja2Templates(directory="web/templates")
+# 경로 안전하게 가려면:
+BASE_DIR = Path(__file__).resolve().parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# --- 라우터 등록은 app 생성 이후 ---
 app.include_router(signals_router)
 app.include_router(watchlist_router)
+app.include_router(bt_inbox_router)
 
 def latest_two_dates(session):
     d0 = session.execute(select(func.max(PriceDaily.date))).scalar()
