@@ -12,6 +12,7 @@ from sqlalchemy import select, func
 from web.signals import router as signals_router
 from web.watchlist import router as watchlist_router
 from web.bt_inbox_service import router as bt_inbox_router
+from web.bt_history import router as bt_history_router
 
 # --- app/템플릿 생성이 먼저 ---
 app = FastAPI(title="KRX Alertor Web")
@@ -26,6 +27,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.include_router(signals_router)
 app.include_router(watchlist_router)
 app.include_router(bt_inbox_router)
+app.include_router(bt_history_router)
 # wire bt inbox router (route order fixed)
 
 
