@@ -28,6 +28,7 @@ app.include_router(watchlist_router)
 app.include_router(bt_inbox_router)
 # wire bt inbox router (route order fixed)
 
+
 def latest_two_dates(session):
     d0 = session.execute(select(func.max(PriceDaily.date))).scalar()
     if not d0:
