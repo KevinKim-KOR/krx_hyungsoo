@@ -1,10 +1,41 @@
 from __future__ import annotations
-from pathlib import Path
-from datetime import datetime
 import os, re, time
+from pathlib import Path
+from typing import Dict, Any, List
 import pandas as pd
 
-# ---------- 공용 유틸 ----------
+class ExternalDataUnavailable(RuntimeError):
+    pass
+
+# --- env policy ---
+def _allow_net() -> bool:
+    # 기본 온라인 허용; 필요시 config/env.*.sh 에서 ALLOW_NET_FETCH로 제어
+    return str(os.environ.get("ALLOW_NET_FETCH", "1")).lower() in ("1", "true", "yes", "y")
+
+# --- defaults (최소 하드코딩) ---
+DEFAULT_POLICY = {
+    "KOSPI":  {"providers": ["local_cache", "parquet", "pykrx_index", "yf_index", "yf_etf"],
+               "symbols":   {"pykrx_index": "1001", "yf_index": "^KS11", "yf_etf": "069500.KS",
+                             "local_keys": ["069500.KS", "069500", "KOSPI", "KOSPI_ETF"]}},
+    "KOSDAQ": {"providers": ["local_cache", "parquet", "pykrx_index", "yf_index", "yf_etf"],
+               "symbols":   {"pykrx_index": "2001", "yf_index": "^KQ11", "yf_etf": "229200.KS",
+                             "local_keys": ["229200.KS", "229200", "KOSDAQ", "KOSDAQ_ETF"]}},
+    "S&P500": {"providers": ["local_cache", "parquet", "yf_index", "yf_etf"],
+               "symbols":   {"yf_index": "^GSPC", "yf_etf": "SPY",
+                             "local_keys": ["SPY", "^GSPC"]}},
+}
+
+def _load_policy() -> Dict[str, Any]:
+    p = Path("config/data_sources.yaml")
+    if p.exists():
+        try:
+            import yaml  # PyYAML
+            return yaml.safe_load(p.read_text(encoding="utf-8")).get("benchmarks", DEFAULT_POLICY)
+        except Exception:
+            pass
+    return DEFAULT_POLICY
+
+# --- common helpers ---
 def _bdate_range(start: str, end: str) -> pd.DatetimeIndex:
     return pd.bdate_range(start=pd.to_datetime(start), end=pd.to_datetime(end), freq="B")
 
@@ -14,26 +45,94 @@ def _to_yyyymmdd(s: str) -> str:
 def _safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", s)
 
-def _ensure_dir(p: Path):
-    p.parent.mkdir(parents=True, exist_ok=True)
+def _extract_close_from_obj(obj) -> pd.Series:
+    """로컬 캐시 포맷 다양성 대응: Series/DataFrame/Dict/중첩 모두에서 'close' 유도."""
+    if isinstance(obj, pd.Series):
+        s = obj.copy(); s.name = "close"; return s
 
-# ---------- 야후 파트: 캐시 + 재시도 ----------
-def _yf_download_with_cache(ticker: str, start: str, end: str, tries: int = 4, backoff: int = 4) -> pd.DataFrame:
-    """yfinance 다운로드를 파일 캐시와 재시도로 안정화."""
+    if isinstance(obj, pd.DataFrame):
+        df = obj.copy()
+        # 명시 컬럼
+        for c in ["close", "Close", "adj_close", "Adj Close", "Adj_Close", "AdjClose", "종가", "price", "Price"]:
+            if c in df.columns:
+                return df[c].rename("close")
+        # MultiIndex 평탄화
+        if isinstance(df.columns, pd.MultiIndex):
+            flat_cols = [" | ".join(map(str, c)) for c in df.columns]
+            df = df.copy(); df.columns = flat_cols
+            cand = [c for c in flat_cols if ("Adj Close" in c or "Close" in c or "종가" in c)]
+            if cand:
+                return df[cand[0]].rename("close")
+        # 숫자 첫 컬럼
+        num = df.select_dtypes("number")
+        if num.shape[1] > 0:
+            return num.iloc[:, 0].rename("close")
+
+    if isinstance(obj, dict):
+        # 흔한 키
+        for k in ["close", "Close", "Adj Close", "adj_close", "종가", "price", "Price"]:
+            if k in obj:
+                return _extract_close_from_obj(obj[k])
+        # 하위 값 탐색
+        for v in obj.values():
+            try:
+                s = _extract_close_from_obj(v)
+                if isinstance(s, pd.Series):
+                    return s
+            except Exception:
+                pass
+
+    try:
+        df = pd.DataFrame(obj)
+        return _extract_close_from_obj(df)
+    except Exception:
+        pass
+
+    raise ValueError("could not extract close from local object")
+
+def _frame_from_close_series(s: pd.Series, start: str, end: str) -> pd.DataFrame:
+    s.index = pd.to_datetime(s.index); s = s.sort_index()
+    idx = _bdate_range(start, end)
+    out = pd.DataFrame({"close": s.reindex(idx).ffill()})
+    out["ret"] = out["close"].pct_change().fillna(0.0)
+    return out
+
+# --- local cache / parquet ---
+def _load_local_cache(symbol_candidates: List[str], start: str, end: str) -> pd.DataFrame:
+    roots = [Path("data/benchmarks"), Path("data/cache/kr"), Path("data/cache")]
+    names = []
+    for sym in symbol_candidates:
+        names += [f"{sym}.parquet", f"{sym}.pkl", sym]  # parquet 우선
+    for root in roots:
+        for name in names:
+            p = root / name
+            if not p.exists():
+                continue
+            try:
+                if p.suffix.lower() in (".parquet", ".pq"):
+                    obj = pd.read_parquet(p)
+                elif p.suffix.lower() in (".pkl", ".pickle", ""):
+                    obj = pd.read_pickle(p)
+                else:
+                    continue
+                s = _extract_close_from_obj(obj)
+                return _frame_from_close_series(s, start, end)
+            except Exception:
+                continue
+    raise FileNotFoundError(f"no local cache for {symbol_candidates}")
+
+# --- yfinance with cache+retry ---
+def _yf_download_with_cache(ticker: str, start: str, end: str, tries: int = 5, backoff: int = 5) -> pd.DataFrame:
     import yfinance as yf
-
-    cache_dir = Path("data/webcache/yf")
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir = Path("data/webcache/yf"); cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path = cache_dir / f"{_safe_name(ticker)}_{start}_{end}.csv"
 
-    # 1) 캐시 우선 사용
     if cache_path.exists():
         try:
             df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
-            if len(df):
-                return df
+            if len(df): return df
         except Exception:
-            pass  # 캐시가 손상되었으면 새로 받는다
+            pass
 
     last_err = None
     for i in range(1, tries + 1):
@@ -44,111 +143,83 @@ def _yf_download_with_cache(ticker: str, start: str, end: str, tries: int = 4, b
                 group_by="column", threads=False
             )
             if df is not None and len(df):
-                # 캐시 저장
                 df.to_csv(cache_path)
                 return df
             last_err = ValueError("empty dataframe")
         except Exception as e:
             last_err = e
-        # 레이트리밋/네트워크 이슈 → 대기 후 재시도
-        time.sleep(backoff * i)
+        time.sleep(backoff * i)  # 기하급수 백오프
 
-    # 모두 실패
-    raise last_err if last_err else RuntimeError("yfinance failed unexpectedly")
+    raise last_err if last_err else RuntimeError("yfinance failed")
 
-def _extract_close(df: pd.DataFrame, ticker_hint: str = "") -> pd.Series:
-    """단일/멀티 컬럼 안전하게 'Close' 계열 시리즈를 뽑는다."""
+def _extract_close_from_yf(df: pd.DataFrame, ticker_hint: str = "") -> pd.Series:
     if not isinstance(df.columns, pd.MultiIndex):
-        if "Adj Close" in df.columns:
-            s = df["Adj Close"]
-        elif "Close" in df.columns:
-            s = df["Close"]
+        if "Adj Close" in df.columns: s = df["Adj Close"]
+        elif "Close" in df.columns:   s = df["Close"]
         else:
-            cand = [c for c in df.columns if "Adj" in c or "Close" in c]
-            if not cand:
-                raise KeyError(f"Adj/Close not in columns: {df.columns.tolist()}")
+            cand = [c for c in df.columns if ("Adj" in c or "Close" in c)]
+            if not cand: raise KeyError(f"Adj/Close not found: {df.columns.tolist()}")
             s = df[cand[0]]
         return s.rename("close")
 
-    # MultiIndex → 평탄화
     flat_cols = [" | ".join(map(str, c)) for c in df.columns]
-    df_flat = df.copy()
-    df_flat.columns = flat_cols
-
-    # 힌트가 있으면 우선
+    df_flat = df.copy(); df_flat.columns = flat_cols
     if ticker_hint:
-        cand = [c for c in flat_cols if ("Adj Close" in c or "Close" in c) and ticker_hint in c]
-        if cand:
-            return df_flat[cand[0]].rename("close")
-
+        cand = [c for c in flat_cols if (("Adj Close" in c or "Close" in c) and ticker_hint in c)]
+        if cand: return df_flat[cand[0]].rename("close")
     cand = [c for c in flat_cols if "Adj Close" in c] or [c for c in flat_cols if "Close" in c]
-    if not cand:
-        raise KeyError(f"Adj/Close not in MultiIndex columns: {flat_cols}")
+    if not cand: raise KeyError(f"Adj/Close not in MultiIndex: {flat_cols}")
     return df_flat[cand[0]].rename("close")
 
 def _load_yf_index_close_ret(ticker: str, start: str, end: str) -> pd.DataFrame:
-    """야후에서 인덱스/ETF를 받아 close/ret 생성."""
+    if not _allow_net():
+        raise ExternalDataUnavailable("network disabled by policy")
     df = _yf_download_with_cache(ticker, start, end)
-    s = _extract_close(df, ticker_hint=ticker)
-    s.index = pd.to_datetime(s.index)
-    s = s.sort_index()
+    s  = _extract_close_from_yf(df, ticker_hint=ticker)
+    return _frame_from_close_series(s, start, end)
 
+# --- pykrx index ---
+def _load_pykrx_index(code: str, start: str, end: str) -> pd.DataFrame:
+    if not _allow_net():
+        raise ExternalDataUnavailable("network disabled by policy")
+    from pykrx import stock
+    s, e = _to_yyyymmdd(start), _to_yyyymmdd(end)
+    df = stock.get_index_ohlcv_by_date(s, e, code)[["종가"]].rename(columns={"종가": "close"})
+    df.index = pd.to_datetime(df.index)
     idx = _bdate_range(start, end)
-    out = pd.DataFrame({"close": s.reindex(idx).ffill()})
-    out["ret"] = out["close"].pct_change().fillna(0.0)
-    return out
+    df = df.reindex(idx).ffill()
+    df["ret"] = df["close"].pct_change().fillna(0.0)
+    return df
 
-# ---------- 인덱스 로더 ----------
-def load_kospi(start: str, end: str) -> pd.DataFrame:
-    """KOSPI: 우선 pykrx → 실패 시 야후(^KS11) → 그래도 실패 시 ETF(069500.KS) 프록시."""
-    # 1) pykrx 시도
-    try:
-        from pykrx import stock
-        s, e = _to_yyyymmdd(start), _to_yyyymmdd(end)
-        df = stock.get_index_ohlcv_by_date(s, e, "1001")[["종가"]].rename(columns={"종가": "close"})
-        df.index = pd.to_datetime(df.index)
-        idx = _bdate_range(start, end)
-        df = df.reindex(idx).ffill()
-        df["ret"] = df["close"].pct_change().fillna(0.0)
-        return df
-    except Exception:
-        pass
-    # 2) 야후 지수(^KS11)
-    try:
-        return _load_yf_index_close_ret("^KS11", start, end)
-    except Exception:
-        # 3) 최후: KOSPI200 ETF(069500.KS) 프록시
-        return _load_yf_index_close_ret("069500.KS", start, end)
-
-def load_kosdaq(start: str, end: str) -> pd.DataFrame:
-    """KOSDAQ: pykrx → 야후(^KQ11) → ETF(229200.KS) 프록시."""
-    try:
-        from pykrx import stock
-        s, e = _to_yyyymmdd(start), _to_yyyymmdd(end)
-        df = stock.get_index_ohlcv_by_date(s, e, "2001")[["종가"]].rename(columns={"종가": "close"})
-        df.index = pd.to_datetime(df.index)
-        idx = _bdate_range(start, end)
-        df = df.reindex(idx).ffill()
-        df["ret"] = df["close"].pct_change().fillna(0.0)
-        return df
-    except Exception:
-        pass
-    try:
-        return _load_yf_index_close_ret("^KQ11", start, end)
-    except Exception:
-        return _load_yf_index_close_ret("229200.KS", start, end)
-
-
-def load_sp500(start: str, end: str) -> pd.DataFrame:
-    """S&P500: 야후 ^GSPC → 실패 시 SPY ETF 프록시."""
-    try:
-        return _load_yf_index_close_ret("^GSPC", start, end)
-    except Exception:
-        return _load_yf_index_close_ret("SPY", start, end)
-
+# --- public API ---
 def load_benchmark(name: str, start: str, end: str) -> pd.DataFrame:
-    name = name.upper()
-    if name == "KOSPI":  return load_kospi(start, end)
-    if name == "KOSDAQ": return load_kosdaq(start, end)
-    if name in {"S&P500", "SP500", "GSPC"}: return load_sp500(start, end)
-    raise ValueError(f"Unsupported benchmark: {name}")
+    norm = name.upper()
+    key = "S&P500" if norm in {"S&P500", "SP500", "GSPC"} else norm
+    pol = _load_policy().get(key)
+    if not pol:
+        raise ValueError(f"Unsupported benchmark: {name}")
+
+    providers: List[str] = pol["providers"]
+    sym = pol["symbols"]
+
+    for p in providers:
+        try:
+            if p == "local_cache":
+                return _load_local_cache(sym.get("local_keys", []), start, end)
+            if p == "parquet":
+                # parquet도 local_cache 경로에서 처리 (우선순위만 다름)
+                return _load_local_cache(sym.get("local_keys", []), start, end)
+            if p == "pykrx_index":
+                return _load_pykrx_index(sym["pykrx_index"], start, end)
+            if p == "yf_index":
+                return _load_yf_index_close_ret(sym["yf_index"], start, end)
+            if p == "yf_etf":
+                return _load_yf_index_close_ret(sym["yf_etf"], start, end)
+        except ExternalDataUnavailable:
+            # 정책상 네트워크 금지 등 → 다음 프로바이더 시도
+            continue
+        except Exception:
+            # 제공처 오류/레이트리밋 → 다음 프로바이더 시도
+            continue
+
+    raise ExternalDataUnavailable(f"all providers failed for {name}")
