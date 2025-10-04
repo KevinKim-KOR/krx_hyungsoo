@@ -36,3 +36,21 @@ if [ -n "$prev" ]; then
 else
   echo "[POST] prev run not found; compare skipped"
 fi
+
+# ...위쪽 동일...
+if [ -n "$prev" ]; then
+  out="logs/compare_${STRATEGY}_$(date +%F).log"
+  set +e
+  "$PYTHONBIN" scripts/bt/compare_runs.py --a "$prev" --b "$latest" --report_out "$out"
+  RC=$?
+  set -e
+
+  if [ $RC -ne 0 ]; then
+    echo "[POST] DRIFT detected (see $out)"
+    if [ -f "$out" ]; then head -n 20 "$out"; else echo "[POST] compare report not found"; fi
+  else
+    echo "[POST] compare OK"
+  fi
+else
+  echo "[POST] prev run not found; compare skipped"
+fi
