@@ -13,16 +13,16 @@ def max_drawdown(series: pd.Series) -> float:
 
 def run_strategy_ma200(kospi_close: pd.Series, kospi_ret: pd.Series) -> pd.Series:
     ma = kospi_close.rolling(200, min_periods=200).mean()
-    regime = (kospi_close > ma).astype(float)  # 위면 1, 아니면 0
+    regime = (kospi_close > ma).astype(float)
     return kospi_ret * regime
 
 def main():
-    ap = argparse.ArgumentParser(description="Backtest Runner (online skip-on-external-errors)")
+    ap = argparse.ArgumentParser(description="Backtest Runner (skip-on-external-errors)")
     ap.add_argument("--strategy", required=True)
-    ap.add_argument("--benchmarks", default="KOSPI,KOSDAQ")
+    ap.add_argument("--benchmarks", default="KOSPI,S&P500")
     ap.add_argument("--start", required=True)
     ap.add_argument("--end", required=True)
-    ap.add_argument("--out_root", default=r"\\192.168.0.18\homes\Hyungsoo\krx\krx_alertor_modular\backtests")
+    ap.add_argument("--out_root", default="backtests")
     args = ap.parse_args()
 
     strategy = args.strategy
@@ -30,21 +30,19 @@ def main():
     start, end = args.start, args.end
     OUT_ROOT = Path(args.out_root)
 
-    # 1) 필수 데이터(KOSPI) 로드 (실패 시 스킵)
+    # 필수 데이터: KOSPI
     try:
         kospi = load_benchmark("KOSPI", start, end)
     except ExternalDataUnavailable:
         print("[SKIP] external-data-unavailable: KOSPI")
         sys.exit(0)
 
-    # 2) 전략 수익률
     if strategy.lower() == "krx_ma200":
         strat_ret = run_strategy_ma200(kospi["close"], kospi["ret"])
     else:
         print(f"[SKIP] unsupported strategy: {strategy}")
         sys.exit(0)
 
-    # 3) 벤치마크 로드(개별 실패 허용)
     returns = pd.DataFrame({"STRAT": strat_ret})
     loaded_bench = []
     for b in benchmarks:
@@ -57,20 +55,23 @@ def main():
             print(f"[WARN] benchmark unavailable: {b} (skipped)")
             continue
 
-    # 4) 산출물이 유효한지 체크
-    if returns.shape[0] == 0:
+    if returns.empty:
         print("[SKIP] no data rows after loading")
         sys.exit(0)
 
     equity = (1 + returns).cumprod()
     n_days = len(equity)
     summary = equity.iloc[-1] - 1.0
+    final = float(summary["STRAT"])
+    cagr = float(equity["STRAT"].iloc[-1]**(252/max(n_days,1)) - 1) if n_days > 0 else 0.0
+    mdd  = max_drawdown(equity["STRAT"])
+
     metrics = {
         "strategy": strategy,
         "period": {"start": start, "end": end, "n_days": int(n_days)},
-        "Final_Return": float(summary["STRAT"]),
-        "CAGR_like": float(equity["STRAT"].iloc[-1]**(252/max(n_days,1)) - 1) if n_days > 0 else 0.0,
-        "MDD": max_drawdown(equity["STRAT"]),
+        "Final_Return": final,
+        "CAGR_like": cagr,
+        "MDD": mdd,
         "benchmarks": { b: float(summary[b]) for b in loaded_bench if b in summary.index },
     }
 
@@ -82,18 +83,6 @@ def main():
     equity.to_csv(run_dir / "equity_curve.csv", encoding="utf-8-sig")
     (run_dir / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 리포트
-    lines = [
-        f"[REPORT] strategy={strategy}",
-        f"period={start}~{end} (N={n_days} days)",
-        f"Final Return: {metrics['Final_Return']:.2%}",
-        f"CAGR_like: {metrics['CAGR_like']:.2%}",
-        f"MDD: {metrics['MDD']:.2%}",
-        "Benchmarks:",
-    ] + [f"  - {b}: {metrics['benchmarks'].get(b, float('nan')):.2%}" for b in loaded_bench]
-    (run_dir / "report.txt").write_text("\n".join(lines), encoding="utf-8")
-
-    # PNG 차트 (기본 색상)
     plt.figure()
     equity.rename(columns={"STRAT": f"STRAT({strategy})"}).plot()
     plt.title(f"Equity Curve: {strategy}")
