@@ -181,3 +181,66 @@ NAS: ./update_from_git.sh → stop_web.sh → run_web.sh → 로그 OK
 텔레그램: 테스트 메시지 수신 확인
 
 스케줄: DSM에서 run_* 잡 활성화
+
+---
+
+## 12) 백테스트 패키지 인박스/히스토리 기능 (2025-10-03 작업 내역)
+
+### A. 주요 변경 사항
+- **웹 라우트 확장**
+  - `/bt/inbox/notify`: PC → NAS 업로드 후 처리 트리거
+  - `/bt/history`: 최근 두 개 백테스트 패키지 비교 뷰 추가
+- **구현 모듈**
+  - `web/bt_inbox_service.py`: inbox 처리 (업로드, 검증, BOM tolerant JSON 로딩)
+  - `web/bt_history.py`: processed 영역 두 개 패키지 비교 후 HTML 렌더링
+  - `web/templates/bt_history.html`: winners/losers 비교 화면
+- **런타임 개선**
+  - run/stop 스크립트 CRLF → LF 정리
+  - `run_web.sh` 환경변수 내 `KRX_CONFIG`, `KRX_WATCHLIST` 보장
+  - 잔여 uvicorn 프로세스 종료 절차 추가 (`kill`, `.locks` 제거)
+
+### B. 운영 절차
+1. **PC에서 백테스트 실행**
+   ```powershell
+   .\scripts\make_nightly_bt.ps1 -DoBootstrap:$false -NasHost '192.168.0.18'
+3중 실행 → hash 검증 → SCP 업로드 → NAS 인박스 진입
+
+NAS에서 인박스 처리
+
+curl -s -X POST http://127.0.0.1:8899/bt/inbox/notify | ./venv/bin/python -m json.tool
+
+
+성공 시: reports/backtests/processed/YYYYMMDD/TS_v1 로 이동 + index.json 갱신
+
+히스토리 확인
+
+브라우저에서 /bt/history 접속
+
+최근 2개 패키지 비교: winners / losers / 카운트
+
+(TODO) summary.json 주요 설정값과 설명 표시
+
+C. 문제/해결 내역
+
+문제: 초기엔 BOM 이슈(Unexpected UTF-8 BOM)로 JSONDecodeError 발생
+해결: _load_json_tolerant() 유틸 도입, utf-8-sig 허용
+
+문제: 다중 uvicorn 인스턴스 중복 실행 → 포트 충돌
+해결: stop_web.sh 실행 시 PID/lock 정리, 수동 kill 수행
+
+문제: PowerShell curl은 Invoke-WebRequest와 충돌
+해결: PC 측은 Invoke-RestMethod 또는 curl.exe 사용
+
+D. 현재 상태
+
+인박스 → 처리 파이프라인 정상 동작
+
+/bt/history 비교 화면 최초 버전 동작 확인
+
+
+## 2025-10-04 Backtest Runner Upgrade
+- 실데이터 로더 추가: scripts/bt/data_loader.py (KOSPI=pykrx 1001, KOSDAQ=pykrx 2001, S&P500=yfinance ^GSPC)
+- 러너 교체: scripts/bt/run_bt.py (MA200 레짐 전략, metrics.json/report.txt, equity_curve.png 저장)
+- PC(GPU) 수동 실행 예:
+  python scripts/bt/run_bt.py --strategy krx_ma200 --benchmarks "KOSPI,S&P500" --start 2020-01-01 --end 2025-10-03
+- NAS 배치: scripts/linux/batch/run_bt.sh (락/로그 표준)

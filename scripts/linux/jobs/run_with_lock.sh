@@ -8,8 +8,12 @@ cd "$(dirname "$0")/../../.."
 LOCKDIR=".locks"
 mkdir -p "$LOCKDIR"
 
-TARGET="${1:-}"
-[ -z "$TARGET" ] && { echo "Usage: $0 <script_to_run>"; exit 2; }
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <script_to_run> [args...]" ; exit 2
+fi
+
+TARGET="$1"
+shift
 
 LOCKFILE="$LOCKDIR/$(basename "$TARGET").lock"
 exec 9>"$LOCKFILE"
@@ -18,4 +22,4 @@ if ! flock -n 9; then
   exit 0
 fi
 
-bash "$TARGET"
+bash "$TARGET" "$@"

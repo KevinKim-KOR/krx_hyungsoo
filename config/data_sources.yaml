@@ -1,0 +1,27 @@
+env:
+  nas:
+    allow_network: false
+  pc:
+    allow_network: true
+
+benchmarks:
+  KOSPI:
+    providers: [local_cache, parquet, pykrx_index, yf_index, yf_etf]
+    symbols:
+      pykrx_index: "1001"
+      yf_index: "^KS11"
+      yf_etf: "069500.KS"
+      local_keys: ["069500.KS", "069500"]  # 로컬 캐시 파일명 후보
+  KOSDAQ:
+    providers: [local_cache, parquet, pykrx_index, yf_index, yf_etf]
+    symbols:
+      pykrx_index: "2001"
+      yf_index: "^KQ11"
+      yf_etf: "229200.KS"
+      local_keys: ["229200.KS", "229200"]
+  S&P500:
+    providers: [local_cache, parquet, yf_index, yf_etf]
+    symbols:
+      yf_index: "^GSPC"
+      yf_etf: "SPY"
+      local_keys: ["SPY", "^GSPC"]

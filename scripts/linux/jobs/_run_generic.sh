@@ -34,13 +34,20 @@ CMD=( "$@" )
 LOG="logs/${LOG_PREFIX}_$(date +%F).log"
 mkdir -p logs
 
+# ★ GUARD=th이면 파이썬 가드가 읽을 수 있게 미리 export
+if [[ "$GUARD" == "th" ]]; then
+  export GENERIC_GUARD_MODE="th"
+else
+  unset GENERIC_GUARD_MODE 2>/dev/null || true
+fi
+
 {
   echo "[RUN] ${LOG_PREFIX} $(date '+%F %T')"
   # ---- 가드 처리 ----
   if [[ "$GUARD" == "td" || "$GUARD" == "th" ]]; then
     set +e
     "$PYTHONBIN" - <<'PY'
-import sys
+import sys, os
 try:
     from utils.trading_day import is_trading_day, in_trading_hours
 except Exception:
@@ -50,14 +57,12 @@ except Exception:
 if not is_trading_day():
     print("[SKIP] non-trading day"); sys.exit(200)
 
-# th면 장중 여부도 본다
-if __import__('os').environ.get('GENERIC_GUARD_MODE','')=='th':
+if os.environ.get('GENERIC_GUARD_MODE') == 'th':
     if not in_trading_hours():
         print("[SKIP] out-of-trading-hours"); sys.exit(201)
 PY
     rc=$?
     set -e
-    if [[ "$GUARD" == "th" ]]; then export GENERIC_GUARD_MODE="th"; fi
     if [ $rc -ge 200 ]; then
       echo "[DONE] ${LOG_PREFIX} guarded-skip $(date '+%F %T')"
       exit 0
