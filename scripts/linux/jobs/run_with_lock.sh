@@ -2,6 +2,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 
+# 환경 로드 (있으면 항상 로드)
+[ -f "config/env.nas.sh" ] && source config/env.nas.sh
+# NAS가 아닌 경우를 대비해, PYTHONBIN이 비어 있으면 PC용도 로드
+[ -z "${PYTHONBIN:-}" ] && [ -f "config/env.pc.sh" ] && source config/env.pc.sh
+
 LOCKDIR=".locks"
 mkdir -p "$LOCKDIR"
 
