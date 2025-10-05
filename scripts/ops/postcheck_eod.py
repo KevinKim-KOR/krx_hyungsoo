@@ -2,7 +2,11 @@
 import sys, yaml
 from pathlib import Path
 import pandas as pd
-from datetime import date
+
+# --- ensure repo root on sys.path ---
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 # 기대되는 "마지막 거래일"
 try:
@@ -16,12 +20,12 @@ def _max_dt_from_pickle(p: Path):
     # DatetimeIndex 우선
     if isinstance(getattr(df, "index", None), pd.DatetimeIndex) and len(df.index):
         return pd.to_datetime(df.index).max().date()
-    # date 컬럼/첫 컬럼 탐색
+    # 'date' 컬럼 추정
     for col in (c for c in getattr(df, "columns", []) if "date" in str(c).lower()):
         s = pd.to_datetime(df[col], errors="coerce")
         if s.notna().any():
             return s.max().date()
-    # 최후 수단: 전 값에서 날짜 추출
+    # 최후 수단: 값 전체에서 datetime 추출
     s = pd.to_datetime(getattr(df, "stack", lambda *a, **k: pd.Series([]))(), errors="coerce")
     if s.notna().any():
         return s.max().date()
@@ -30,9 +34,8 @@ def _max_dt_from_pickle(p: Path):
 def main():
     expected = last_trading_day().date()
 
-    # 프로브 심볼(환경/설정이 있으면 그것 사용)
     probes = ["069500.KS.pkl", "069500.pkl"]
-    cfg = Path("config/data_sources.yaml")
+    cfg = ROOT / "config" / "data_sources.yaml"
     if cfg.exists():
         try:
             y = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
@@ -40,7 +43,7 @@ def main():
         except Exception:
             pass
 
-    base = Path("data/cache/kr")
+    base = ROOT / "data" / "cache" / "kr"
     if not base.exists():
         print(f"[STALE] cache dir missing: {base}", file=sys.stderr)
         return 2
@@ -61,9 +64,7 @@ def main():
         except Exception as e:
             print(f"[STALE] {name}: read error: {e}", file=sys.stderr)
 
-    if ok == 0:
-        return 2
-    return 0
+    return 0 if ok > 0 else 2
 
 if __name__ == "__main__":
     sys.exit(main())
