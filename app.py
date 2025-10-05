@@ -70,19 +70,27 @@ def cmd_report(args):
 
 def cmd_scanner(args):
     """BUY/SELL 추천"""
-    asof = pd.to_datetime(args.date)
-    load_trading_days(asof)
-    if not is_trading_day(asof):
-        log.info(f"[SCANNER] 휴장일 {asof.date()} → 스캐너 스킵")
-        print(f"[SKIP] 휴장일 {asof.date()} — scanner 생략")
-        return
-    
-    cfg = load_config_yaml("config.yaml")
-    buy_df, sell_df, meta = recommend_buy_sell(asof=args.date, cfg=cfg)
+    # 날짜 정규화: NaT/None/문자열 모두 안전
+    asof_norm = _normalize_asof(getattr(args, "asof", None))
 
-    print(f"\n기준일: {meta['asof'].date()} (ETF)")
-    print(f"레짐 상태: {'ON(투자 가능)' if meta['regime_ok'] else 'OFF(투자 중단)'}")
-    print(f"유니버스 크기: {meta['universe_size']} → 조건 충족: {meta['after_filters']} 종목\n")
+    # 거래일 캘린더 로딩 (내부에서 테이블/캐시 세팅)
+    from calendar_kr import load_trading_days
+    load_trading_days(asof_norm)
+
+    # 거래일 가드 (배치 외 수동 실행 시에도 스킵 규칙 유지)
+    from utils.trading_day import is_trading_day
+    if not is_trading_day(asof_norm):
+        print(f"[SKIP] 휴장일 {asof_norm.date()} — scanner 생략")
+        return 0
+
+    # 실제 스캐너 로직 (기존 코드와 동일 시그니처 유지)
+    # - load_config_yaml / recommend_buy_sell는 기존 import/정의 사용
+    cfg = load_config_yaml("config.yaml")
+    buy_df, sell_df, meta = recommend_buy_sell(asof=asof_norm, cfg=cfg)
+
+    print(f"\n기준일: {asof_norm.date()} (ETF)")
+    print(f"레짐 상태: {'ON(투자 가능)' if meta.get('regime_ok') else 'OFF(투자 중단)'}")
+    print(f"유니버스 크기: {meta.get('universe_size')} → 조건 충족: {meta.get('after_filters')} 종목\n")
 
     if buy_df is not None and not buy_df.empty:
         print("--- BUY 추천 TOP N ---")
@@ -101,6 +109,8 @@ def cmd_scanner(args):
                   f"(close={row['close']}, sma50={row['sma50']}, sma200={row['sma200']})")
     else:
         print("\nSELL 추천 없음")
+
+    return 0
 
 def cmd_scanner_slack(args):
     """BUY/SELL 추천 + Slack 알림 전송"""
@@ -163,7 +173,20 @@ def cmd_report_eod(args):
         return
     raise SystemExit(generate_and_send_report_eod(args.date))
 
-
+# --- NaT/None/문자열 안전 변환 ---
+def _normalize_asof(asof):
+    """
+    Convert 'asof' to normalized pandas.Timestamp safely.
+    - None / "" / NaT / 파싱 실패 → 오늘 날짜 normalize()
+    - 문자열/Datetime 모두 허용
+    """
+    if asof in (None, "", pd.NaT):
+        ts = pd.Timestamp.today()
+    else:
+        ts = pd.to_datetime(asof, errors="coerce")
+        if pd.isna(ts):
+            ts = pd.Timestamp.today()
+    return ts.normalize()
 
 
 # -----------------------------
@@ -171,50 +194,59 @@ def cmd_report_eod(args):
 # -----------------------------
 def main():
     parser = argparse.ArgumentParser(description="KRX Alertor Modular")
-    sub = parser.add_subparsers()
+    # NOTE: subparsers 변수명 일관화 + required=True (서브커맨드 강제)
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
     # init
-    sp = sub.add_parser("init", help="DB 초기화 및 시드 로드")
+    sp = subparsers.add_parser("init", help="DB 초기화 및 시드 로드")
     sp.set_defaults(func=cmd_init)
 
     # ingest-eod
-    sp = sub.add_parser("ingest-eod", help="일별 종가 수집")
+    sp = subparsers.add_parser("ingest-eod", help="일별 종가 수집")
     sp.add_argument("--date", required=True, help="YYYY-MM-DD 또는 auto")
     sp.set_defaults(func=cmd_ingest_eod)
 
     # ingest-realtime
-    sp = sub.add_parser("ingest-realtime", help="실시간 가격 단발 수집")
+    sp = subparsers.add_parser("ingest-realtime", help="실시간 가격 단발 수집")
     sp.add_argument("--code", required=True, help="종목 코드")
     sp.set_defaults(func=cmd_ingest_realtime)
 
     # report
-    sp = sub.add_parser("report", help="성과 리포트")
+    sp = subparsers.add_parser("report", help="성과 리포트")
     sp.add_argument("--start", required=True, help="YYYY-MM-DD 시작일")
     sp.add_argument("--end", required=True, help="YYYY-MM-DD 종료일")
     sp.add_argument("--benchmark", required=True, help="벤치마크 코드 (예: 069500)")
     sp.set_defaults(func=cmd_report)
 
-    # scanner
-    sp = sub.add_parser("scanner", help="BUY/SELL 추천 스캐너 실행")
-    sp.add_argument("--date", required=True, help="YYYY-MM-DD 기준일")
+    # ✅ scanner (단일 정의, --date/--asof 병합)
+    sp = subparsers.add_parser("scanner", help="BUY/SELL 추천 스캐너 실행")
+    sp.add_argument(
+        "--date", "--asof",
+        dest="asof",
+        default=None,
+        help="YYYY-MM-DD (생략 시 오늘/가드 규칙 적용)"
+    )
     sp.set_defaults(func=cmd_scanner)
-    
-    # main() 안의 subparser 정의들 뒤에 이어서 추가
-    sp = sub.add_parser("backtest", help="급등+추세+강도+섹터TOP 규칙 백테스트")
+
+    # backtest
+    sp = subparsers.add_parser("backtest", help="급등+추세+강도+섹터TOP 규칙 백테스트")
     sp.add_argument("--start", required=True, help="YYYY-MM-DD 시작일")
     sp.add_argument("--end", required=True, help="YYYY-MM-DD 종료일")
     sp.add_argument("--config", default="config.yaml", help="설정 파일 경로")
     sp.set_defaults(func=lambda args: run_backtest(args.start, args.end, args.config))
 
-    sp = sub.add_parser("autotag", help="ETF 이름 기반 섹터 자동 분류 실행")
+    # autotag
+    sp = subparsers.add_parser("autotag", help="ETF 이름 기반 섹터 자동 분류 실행")
     sp.add_argument("--output", default="sectors_map.csv", help="저장 파일 경로")
     sp.set_defaults(func=lambda args: autotag_sectors(args.output))
 
-    sp = sub.add_parser("scanner-slack", help="스캐너 실행 후 Slack 전송")
+    # scanner-slack
+    sp = subparsers.add_parser("scanner-slack", help="스캐너 실행 후 Slack 전송")
     sp.add_argument("--date", required=True, help="YYYY-MM-DD 기준일")
     sp.set_defaults(func=cmd_scanner_slack)
-    
-    sp = sub.add_parser("report-eod", help="EOD 요약 Top5 텔레그램/슬랙 전송")
+
+    # report-eod
+    sp = subparsers.add_parser("report-eod", help="EOD 요약 Top5 텔레그램/슬랙 전송")
     sp.add_argument("--date", default="auto", help="YYYY-MM-DD 또는 auto")
     sp.set_defaults(func=cmd_report_eod)
 
@@ -239,4 +271,4 @@ setup_logging()
 log = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -25,7 +25,7 @@ def load_trading_days(asof=None) -> pd.DatetimeIndex:
     ETF(069500.KS) 일봉으로 거래일 인덱스를 만든다.
     - 연말 경계(1월 초/12월 말) 보완을 위해 이전 해 12월도 포함
     """
-    d = pd.to_datetime(asof or pd.Timestamp.today()).normalize()
+    d = _normalize_asof(asof)
     y = d.year
     # 이전 해 12월 1일부터 현재 연말까지 확보(경계일 prev_trading_day 대비)
     df = get_ohlcv_safe("069500.KS", f"{y-1}-12-01", f"{y}-12-31")
@@ -58,3 +58,17 @@ def prev_trading_day(d):
     idx = load_trading_days(asof=d)
     pos = idx.searchsorted(d)
     return (idx[pos-1] if pos > 0 else d)
+
+def _normalize_asof(asof):
+    """
+    Convert asof to normalized Timestamp safely.
+    - None/''/NaT 모두 오늘 날짜로 대체
+    - string/datetime 모두 허용
+    """
+    if asof in (None, "", pd.NaT):
+        ts = pd.Timestamp.today()
+    else:
+        ts = pd.to_datetime(asof, errors="coerce")
+        if pd.isna(ts):
+            ts = pd.Timestamp.today()
+    return ts.normalize()
