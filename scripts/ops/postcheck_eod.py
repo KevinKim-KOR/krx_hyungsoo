@@ -2,38 +2,73 @@
 import sys, yaml
 from pathlib import Path
 import pandas as pd
+from datetime import date
 
-# --- ensure repo root on sys.path ---
 ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
-# 기대되는 "마지막 거래일"
-try:
-    from utils.trading_day import last_trading_day
-except Exception as e:
-    print(f"[POSTCHECK] import utils.trading_day failed: {e}", file=sys.stderr)
-    sys.exit(2)
+def _latest_trading_day_from_cache() -> date:
+    """data/cache/kr/trading_days.pkl 에서 오늘 이하의 가장 최근 거래일을 계산."""
+    p = ROOT / "data" / "cache" / "kr" / "trading_days.pkl"
+    if not p.exists():
+        raise FileNotFoundError(f"trading_days cache missing: {p}")
+    obj = pd.read_pickle(p)
 
-def _max_dt_from_pickle(p: Path):
+    # 인덱스/컬럼/값 어디에 있든 최대한 날짜를 추출
+    candidates = []
+    if isinstance(getattr(obj, "index", None), pd.DatetimeIndex) and len(obj.index):
+        candidates.append(pd.to_datetime(obj.index))
+    if hasattr(obj, "columns"):
+        for c in obj.columns:
+            if "date" in str(c).lower():
+                s = pd.to_datetime(obj[c], errors="coerce")
+                candidates.append(s)
+    if not candidates:
+        try:
+            s = pd.to_datetime(obj.stack(dropna=False), errors="coerce")
+            candidates.append(s)
+        except Exception:
+            pass
+
+    if not candidates:
+        raise ValueError("no datetime found in trading_days cache")
+
+    today = pd.Timestamp.today().normalize()
+    latest = pd.concat(candidates, axis=0).dropna()
+    latest = latest[latest <= today]
+    if latest.empty:
+        raise ValueError("no trading day <= today in cache")
+    return latest.max().date()
+
+def _max_dt_from_pickle(p: Path) -> date:
     df = pd.read_pickle(p)
     # DatetimeIndex 우선
     if isinstance(getattr(df, "index", None), pd.DatetimeIndex) and len(df.index):
         return pd.to_datetime(df.index).max().date()
     # 'date' 컬럼 추정
-    for col in (c for c in getattr(df, "columns", []) if "date" in str(c).lower()):
-        s = pd.to_datetime(df[col], errors="coerce")
+    if hasattr(df, "columns"):
+        for col in df.columns:
+            if "date" in str(col).lower():
+                s = pd.to_datetime(df[col], errors="coerce")
+                if s.notna().any():
+                    return s.max().date()
+    # 최후 수단: 전체 값에서 날짜 추출
+    try:
+        s = pd.to_datetime(df.stack(dropna=False), errors="coerce")
         if s.notna().any():
             return s.max().date()
-    # 최후 수단: 값 전체에서 datetime 추출
-    s = pd.to_datetime(getattr(df, "stack", lambda *a, **k: pd.Series([]))(), errors="coerce")
-    if s.notna().any():
-        return s.max().date()
-    raise ValueError("no datetime found")
+    except Exception:
+        pass
+    raise ValueError(f"no datetime found in {p.name}")
 
 def main():
-    expected = last_trading_day().date()
+    # 0) 기대 거래일: trading_days 캐시 기반 (utils 의존 제거)
+    try:
+        expected = _latest_trading_day_from_cache()
+    except Exception as e:
+        print(f"[STALE] cannot determine expected trading day: {e}", file=sys.stderr)
+        return 2
 
+    # 1) 프로브 심볼 목록
     probes = ["069500.KS.pkl", "069500.pkl"]
     cfg = ROOT / "config" / "data_sources.yaml"
     if cfg.exists():
