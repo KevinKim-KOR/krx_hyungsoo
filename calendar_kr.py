@@ -20,7 +20,7 @@ def build_trading_days(start="2010-01-01", end=None) -> pd.DatetimeIndex:
     idx.to_series(index=idx).to_pickle(_CACHE)
     return idx
 
-def load_trading_days(asof=None) -> pd.DatetimeIndex:
+def load_trading_days(asof=None):
     """
     ETF(069500.KS) 일봉으로 거래일 인덱스를 만든다.
     - 연말 경계(1월 초/12월 말) 보완을 위해 이전 해 12월도 포함
@@ -61,9 +61,8 @@ def prev_trading_day(d):
 
 def _normalize_asof(asof):
     """
-    Convert asof to normalized Timestamp safely.
-    - None/''/NaT 모두 오늘 날짜로 대체
-    - string/datetime 모두 허용
+    - None / "" / NaT / 파싱 실패 → 오늘 날짜 normalize()
+    - 문자열/Datetime 모두 허용
     """
     if asof in (None, "", pd.NaT):
         ts = pd.Timestamp.today()

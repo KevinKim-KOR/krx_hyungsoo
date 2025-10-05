@@ -1,9 +1,9 @@
-# adaptive.py
+# adaptive.py  (repo root)
 """
-Legacy import shim for scanner.py.
-Maps `from adaptive import get_effective_cfg` to the current config loader.
+Legacy import shim for scanner.py
+`from adaptive import get_effective_cfg` → utils.config로 매핑
 """
 try:
-    from utils.config import get_effective_cfg  # preferred
+    from utils.config import get_effective_cfg  # 선호
 except Exception:
-    from utils.config import load_cfg as get_effective_cfg  # fallback
+    from utils.config import load_cfg as get_effective_cfg  # 호환

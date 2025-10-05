@@ -70,21 +70,20 @@ def cmd_report(args):
 
 def cmd_scanner(args):
     """BUY/SELL 추천"""
-    # 날짜 정규화: NaT/None/문자열 모두 안전
+    # 날짜 정규화 (NaT/None/문자열 안전)
     asof_norm = _normalize_asof(getattr(args, "asof", None))
 
-    # 거래일 캘린더 로딩 (내부에서 테이블/캐시 세팅)
+    # 캘린더 로딩 (테이블/캐시 준비)
     from calendar_kr import load_trading_days
     load_trading_days(asof_norm)
 
-    # 거래일 가드 (배치 외 수동 실행 시에도 스킵 규칙 유지)
+    # 거래일 가드 (배치 외 수동 실행에서도 일관 동작)
     from utils.trading_day import is_trading_day
     if not is_trading_day(asof_norm):
         print(f"[SKIP] 휴장일 {asof_norm.date()} — scanner 생략")
         return 0
 
-    # 실제 스캐너 로직 (기존 코드와 동일 시그니처 유지)
-    # - load_config_yaml / recommend_buy_sell는 기존 import/정의 사용
+    # 실제 스캐너 로직 (기존 함수 그대로 사용)
     cfg = load_config_yaml("config.yaml")
     buy_df, sell_df, meta = recommend_buy_sell(asof=asof_norm, cfg=cfg)
 
@@ -173,13 +172,8 @@ def cmd_report_eod(args):
         return
     raise SystemExit(generate_and_send_report_eod(args.date))
 
-# --- NaT/None/문자열 안전 변환 ---
+# --- NaT/None/문자열 안전 변환 (scanner에서도 사용) ---
 def _normalize_asof(asof):
-    """
-    Convert 'asof' to normalized pandas.Timestamp safely.
-    - None / "" / NaT / 파싱 실패 → 오늘 날짜 normalize()
-    - 문자열/Datetime 모두 허용
-    """
     if asof in (None, "", pd.NaT):
         ts = pd.Timestamp.today()
     else:
@@ -194,7 +188,7 @@ def _normalize_asof(asof):
 # -----------------------------
 def main():
     parser = argparse.ArgumentParser(description="KRX Alertor Modular")
-    # NOTE: subparsers 변수명 일관화 + required=True (서브커맨드 강제)
+    # 변수명 **subparsers**로 통일 + required=True (서브커맨드 필수)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # init
@@ -218,14 +212,10 @@ def main():
     sp.add_argument("--benchmark", required=True, help="벤치마크 코드 (예: 069500)")
     sp.set_defaults(func=cmd_report)
 
-    # ✅ scanner (단일 정의, --date/--asof 병합)
+    # ✅ scanner (단일 정의, --date/--asof 병합 → asof)
     sp = subparsers.add_parser("scanner", help="BUY/SELL 추천 스캐너 실행")
-    sp.add_argument(
-        "--date", "--asof",
-        dest="asof",
-        default=None,
-        help="YYYY-MM-DD (생략 시 오늘/가드 규칙 적용)"
-    )
+    sp.add_argument("--date", "--asof", dest="asof", default=None,
+                    help="YYYY-MM-DD (생략 시 오늘/가드 규칙)")
     sp.set_defaults(func=cmd_scanner)
 
     # backtest
