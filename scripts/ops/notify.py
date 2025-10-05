@@ -5,20 +5,45 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 def load_secret():
-    y = {}
-    p = ROOT / "secret" / "config.yaml"
-    if p.exists():
+    import yaml
+
+    def _read_yaml(p):
         try:
-            import yaml
-            y = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
         except Exception:
-            y = {}
-    # env가 우선
+            return {}
+
+    y = {}
+    # 우선순위: env > secret/notify.yaml > secret/config.yaml
+    notify = ROOT / "secret" / "notify.yaml"
+    config = ROOT / "secret" / "config.yaml"
+    if notify.exists():
+        y.update(_read_yaml(notify))
+    if config.exists():
+        # config.yaml 안쪽에도 telegram/slack 섹션이 있을 수 있음 → 덮어쓰기 X, 빈 곳만 채움
+        y2 = _read_yaml(config)
+        # 평면 키 또는 섹션 키 모두 허용
+        for key in ("telegram", "slack"):
+            y.setdefault(key, {})
+            if key in y2 and isinstance(y2[key], dict):
+                for k, v in y2[key].items():
+                    y[key].setdefault(k, v)
+        # 평면 키도 병합
+        for k in ("telegram_bot_token", "telegram_chat_id", "slack_webhook_url"):
+            if k in y2 and k not in y:
+                y[k] = y2[k]
+
+    # env 최우선
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or (y.get("telegram", {}) or {}).get("bot_token") or y.get("telegram_bot_token")
+    chat_id   = os.getenv("TELEGRAM_CHAT_ID")  or (y.get("telegram", {}) or {}).get("chat_id")
+    slack_wh  = os.getenv("SLACK_WEBHOOK_URL") or (y.get("slack", {}) or {}).get("webhook_url") or y.get("slack_webhook_url")
+
     return {
-        "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN") or (y.get("telegram",{}) or {}).get("bot_token"),
-        "telegram_chat_id":  os.getenv("TELEGRAM_CHAT_ID")  or (y.get("telegram",{}) or {}).get("chat_id"),
-        "slack_webhook":     os.getenv("SLACK_WEBHOOK_URL") or (y.get("slack",{}) or {}).get("webhook_url"),
+        "telegram_bot_token": bot_token,
+        "telegram_chat_id":  chat_id,
+        "slack_webhook":     slack_wh,
     }
+
 
 def send_slack(webhook, text):
     import requests
