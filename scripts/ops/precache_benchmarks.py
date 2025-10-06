@@ -39,7 +39,13 @@ def main():
         if cfg.exists():
             try:
                 y = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
-                names = y.get("benchmarks", []) or []
+                b = y.get("benchmarks", [])
+                if isinstance(b, dict):
+                    names = list(b.keys())
+                elif isinstance(b, list):
+                    names = b
+                else:
+                    names = []
             except Exception:
                 pass
     if not names:
