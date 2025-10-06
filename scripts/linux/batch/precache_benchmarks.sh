@@ -15,6 +15,8 @@ if [[ "$JITTER_MAX" =~ ^[0-9]+$ ]] && [ "$JITTER_MAX" -gt 0 ]; then
 fi
 
 # 락 + 제너릭 + 영업일 가드(td) + 실패(RC=2) 재시도(5분 x 2회)
+# 언버퍼 출력 (파이썬 즉시 flush)
+PYTHONUNBUFFERED=1 \
 bash scripts/linux/jobs/run_with_lock.sh \
   scripts/linux/jobs/_run_generic.sh \
     --log precache_bm \

@@ -1,29 +1,23 @@
 #!/usr/bin/env python3
-import sys, os, signal, time
+import sys, os
 from pathlib import Path
 from datetime import datetime, timedelta
+from multiprocessing import Process, Queue
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.bt.data_loader import load_benchmark
-
 def day(n): return (datetime.today() + timedelta(days=n)).strftime("%Y-%m-%d")
 
-class Timeout:
-    def __init__(self, seconds: int):
-        self.seconds = seconds
-        self.enabled = hasattr(signal, "SIGALRM")  # Unix only
-    def __enter__(self):
-        if self.enabled and self.seconds > 0:
-            signal.signal(signal.SIGALRM, self._raise)
-            signal.alarm(self.seconds)
-    def __exit__(self, exc_type, exc, tb):
-        if self.enabled:
-            signal.alarm(0)
-    @staticmethod
-    def _raise(*_): raise TimeoutError("operation timed out")
+def _worker(q: Queue, name: str, start: str, end: str):
+    """별도 프로세스에서 벤치마크 로드 실행."""
+    try:
+        from scripts.bt.data_loader import load_benchmark
+        _ = load_benchmark(name, start, end)
+        q.put(("ok", None))
+    except Exception as e:
+        q.put(("err", str(e)))
 
 def main():
     import argparse, yaml
@@ -52,16 +46,34 @@ def main():
         names = ["KOSPI", "S&P500"]
 
     tmo = int(os.getenv("PRECACHE_TIMEOUT_SEC", "90"))
-    print(f"[PRECACHE] {names} {start}~{end} (timeout {tmo}s each)")
+    print(f"[PRECACHE] {names} {start}~{end} (timeout {tmo}s each)", flush=True)
 
     failed = []
     for name in names:
+        q = Queue()
+        p = Process(target=_worker, args=(q, name, start, end))
+        p.start()
+        p.join(timeout=tmo)
+
+        if p.is_alive():
+            # 타임아웃 → 강제 종료
+            try:
+                p.terminate()
+            finally:
+                p.join(3)
+            print(f"[WARN] {name} timeout after {tmo}s", flush=True)
+            failed.append(name)
+            continue
+
         try:
-            with Timeout(tmo):
-                _ = load_benchmark(name, start, end)
-            print(f"[OK] {name}")
-        except Exception as e:
-            print(f"[WARN] {name} failed: {e}", file=sys.stderr)
+            status, msg = q.get_nowait()
+        except Exception:
+            status, msg = ("err", "no result from worker")
+
+        if status == "ok":
+            print(f"[OK] {name}", flush=True)
+        else:
+            print(f"[WARN] {name} failed: {msg}", file=sys.stderr, flush=True)
             failed.append(name)
 
     # 일부/전부 실패 → RC=2 (재시도 유도)
