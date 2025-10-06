@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys, yaml
+import sys
 from pathlib import Path
 import pandas as pd
 from datetime import date, datetime
@@ -52,16 +52,20 @@ def _max_dt_from_pickle(p: Path):
 
 def latest_probe_date():
     """config/data_sources.yaml 의 probes(신규) 또는 postcheck_probes(구키) 사용."""
+    from pathlib import Path
+    import pandas as pd
     base = ROOT / "data" / "cache" / "kr"
     cfg  = ROOT / "config" / "data_sources.yaml"
+
     probes = ["069500.KS.pkl", "069500.pkl"]
     if cfg.exists():
         try:
-            import yaml
+            import yaml  # ← 여기서만 lazy import
             y = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
             probes = y.get("probes") or y.get("postcheck_probes") or probes
         except Exception:
             pass
+
     dates = []
     for name in probes:
         p = base / name
@@ -72,6 +76,7 @@ def latest_probe_date():
         except Exception:
             pass
     return max(dates) if dates else None
+
 
 def main():
     try:

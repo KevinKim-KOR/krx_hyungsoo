@@ -38,6 +38,7 @@ def main():
         cfg = ROOT / "config" / "data_sources.yaml"
         if cfg.exists():
             try:
+                import yaml
                 y = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
                 b = y.get("benchmarks", [])
                 if isinstance(b, dict):
