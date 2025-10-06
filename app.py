@@ -85,6 +85,14 @@ def cmd_scanner(args):
 
     # 실제 스캐너 로직 (기존 함수 그대로 사용)
     cfg = load_config_yaml("config.yaml")
+    # ← 여기서 YAML(universe) 주입 (없으면 폴백)
+    try:
+        from scripts.ops.universe import load_universe
+        if not cfg.get("universe"):
+            cfg["universe"] = load_universe()
+    except Exception:
+        pass
+    
     buy_df, sell_df, meta = recommend_buy_sell(asof=asof_norm, cfg=cfg)
 
     print(f"\n기준일: {asof_norm.date()} (ETF)")

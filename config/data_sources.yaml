@@ -25,3 +25,16 @@ benchmarks:
       yf_index: "^GSPC"
       yf_etf: "SPY"
       local_keys: ["SPY", "^GSPC"]
+universe:
+  etfs:
+    - "069500.KS"
+    - "133690.KS"
+    - "091160.KS"
+    - "305720.KS"
+    - "373220.KS"
+    - "005930.KS"
+    - "000660.KS"
+
+# 사후 신선도 체크용 프로브(기존 호환: postcheck_probes, 새 권장: probes)
+probes: ["069500.KS.pkl", "069500.pkl"]
+# postcheck_probes: ["069500.KS.pkl", "069500.pkl"]  # (구키 계속 지원)
