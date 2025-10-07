@@ -172,13 +172,22 @@ def send_slack(text, webhook):
     return send_notify(text, cfg)
 
 def cmd_report_eod(args):
-    """장마감 요약 Top5 리포트 전송"""
+    """EOD 요약 보고서 생성/전송 엔트리 (reporting_eod.py와 호환)"""
     try:
-        from reporting_eod import generate_and_send_report_eod
+        import reporting_eod as mod
     except Exception as e:
-        print(f"[ERROR] reporting_eod 모듈 임포트 실패: {e}")
-        return
-    raise SystemExit(generate_and_send_report_eod(args.date))
+        raise SystemExit(f"[ERROR] reporting_eod import failed: {e}")
+
+    # 호환 가능한 진입점 모두 지원
+    if hasattr(mod, "main"):
+        # argparse 스타일: main(args)
+        return mod.main(args)
+    if hasattr(mod, "run"):
+        # 함수형 스타일: run(date="auto")
+        return mod.run(date=getattr(args, "date", "auto"))
+
+    raise SystemExit("[ERROR] reporting_eod entry not found (expected main(args) or run(date=...))")
+
 
 # --- NaT/None/문자열 안전 변환 (scanner에서도 사용) ---
 def _normalize_asof(asof):
