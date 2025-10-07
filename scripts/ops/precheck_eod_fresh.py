@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 from datetime import date, datetime
+from scripts.ops.cal_cache import trading_days_cached_or_build
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -18,7 +19,8 @@ def _latest_trading_day_from_cache():
         raise FileNotFoundError(f"missing: {p}")
     obj = pd.read_pickle(p)
     parts = []
-    idx = getattr(obj, "index", None)
+    #idx = getattr(obj, "index", None)
+    idx = trading_days_cached_or_build()
     if isinstance(idx, pd.DatetimeIndex) and len(idx): parts.append(_to_series(idx))
     for c in getattr(obj, "columns", []):
         if "date" in str(c).lower(): parts.append(_to_series(obj[c]))
@@ -36,7 +38,8 @@ def _latest_trading_day_from_cache():
 
 def _max_dt_from_pickle(p: Path):
     df = pd.read_pickle(p)
-    idx = getattr(df, "index", None)
+    #idx = getattr(df, "index", None)
+    idx = trading_days_cached_or_build()
     if isinstance(idx, pd.DatetimeIndex) and len(idx):
         return pd.to_datetime(idx).max().date()
     for col in getattr(df, "columns", []):
@@ -102,6 +105,40 @@ def main():
         print(f"[STALE] EOD stale (probes {lp} < expected {prev_day})", file=sys.stderr)
         return 2
     return 0
+
+# ===== CLI entrypoint for batch precheck =====
+def _expected_trading_day_from_cache():
+    import pandas as pd
+    from datetime import date
+    p = ROOT / "data" / "cache" / "kr" / "trading_days.pkl"
+    try:
+        s = pd.read_pickle(p)
+        s = pd.to_datetime(s, errors="coerce")
+        s = s[s.notna()]
+        exp = s[s <= pd.Timestamp.today().normalize()].max()
+        return exp.date() if exp is not None else None
+    except Exception:
+        return None
+
+def main(task="watchlist") -> int:
+    """Return 0=OK/skip, 2=stale(retry). Print human logs."""
+    exp = _expected_trading_day_from_cache()
+    probe = latest_probe_date()
+    if exp is None or probe is None:
+        print("[PRECHECK] cannot determine expected/probe → OK")
+        return 0
+    if probe < exp:
+        print(f"[STALE] expected {exp}, found {probe}")
+        return 2
+    print(f"[PRECHECK] OK: expected={exp}, probe={probe}")
+    return 0
+
+if __name__ == "__main__":
+    import argparse, sys
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--task", choices=["watchlist", "report", "scanner", "ingest"], default="watchlist")
+    args = ap.parse_args()
+    sys.exit(main(args.task))
 
 if __name__ == "__main__":
     sys.exit(main())
