@@ -2,9 +2,13 @@
 from pathlib import Path
 import pandas as pd
 from datetime import date
-from krx_helpers import get_ohlcv_safe
+#from krx_helpers import get_ohlcv_safe
+from utils.datasources import calendar_symbol_priority
+from fetchers import get_ohlcv_safe
+import logging
 
 _CACHE = Path("data/cache/kr/trading_days.pkl")
+SYMS = calendar_symbol_priority()
 
 def _ensure_cache_dir():
     _CACHE.parent.mkdir(parents=True, exist_ok=True)
@@ -13,9 +17,10 @@ def build_trading_days(start="2010-01-01", end=None) -> pd.DatetimeIndex:
     """069500.KS 일자를 기준으로 거래일 캘린더 구축 후 캐시 저장"""
     _ensure_cache_dir()
     end = pd.to_datetime(end or pd.Timestamp.today().date())
-    df = get_ohlcv_safe("069500.KS", pd.to_datetime(start).date(), end.date())
-    if df is None or df.empty:
-        return pd.DatetimeIndex([])
+    #df = get_ohlcv_safe("069500.KS", pd.to_datetime(start).date(), end.date())
+    df, _used = _first_available_ohlcv(start, end)
+    if df is None or len(df) == 0:
+        raise RuntimeError("calendar source unavailable (see logs)")
     idx = pd.DatetimeIndex(pd.to_datetime(df.index).normalize().unique()).sort_values()
     idx.to_series(index=idx).to_pickle(_CACHE)
     return idx
@@ -28,7 +33,9 @@ def load_trading_days(asof=None):
     d = _normalize_asof(asof)
     y = d.year
     # 이전 해 12월 1일부터 현재 연말까지 확보(경계일 prev_trading_day 대비)
-    df = get_ohlcv_safe("069500.KS", f"{y-1}-12-01", f"{y}-12-31")
+    df, _used = _first_available_ohlcv(start, end)
+    if df is None or len(df) == 0:
+        raise RuntimeError("calendar source unavailable (see logs)")
     idx = pd.DatetimeIndex(df.index).tz_localize(None).normalize().sort_values().unique()
     return idx
 
@@ -71,3 +78,32 @@ def _normalize_asof(asof):
         if pd.isna(ts):
             ts = pd.Timestamp.today()
     return ts.normalize()
+
+def _first_available_ohlcv(start, end):
+    """calendar_symbol_priority()에 정의된 심볼 우선순위로 OHLCV 조회, 성공한 첫 DF를 반환."""
+    syms = calendar_symbol_priority()           # 예: ["069500.KS","069500"]
+    start_d = pd.to_datetime(start).date()
+    end_d   = pd.to_datetime(end).date()
+    last_err = None
+
+    for sym in syms:
+        try:
+            df = get_ohlcv_safe(sym, start_d, end_d)
+            if df is not None and len(df) > 0:
+                logging.getLogger(__name__).info("[CAL] calendar source = %s (n=%d)", sym, len(df))
+                return df, sym
+        except Exception as e:
+            last_err = e
+
+    # (옵션) 마지막 시도로 yfinance 직접 조회
+    try:
+        import yfinance as yf
+        df = yf.download(syms[0], start=start_d, end=end_d, progress=False, auto_adjust=False, group_by="column", threads=False)
+        if df is not None and len(df) > 0:
+            logging.getLogger(__name__).info("[CAL] fallback yfinance source = %s (n=%d)", syms[0], len(df))
+            return df, syms[0]
+    except Exception as e:
+        last_err = e
+
+    logging.getLogger(__name__).warning("[CAL] all calendar sources failed: %s", last_err)
+    return pd.DataFrame(), None

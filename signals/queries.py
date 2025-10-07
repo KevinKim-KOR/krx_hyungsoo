@@ -4,6 +4,9 @@ from typing import List, Dict, Optional, Tuple
 import json, os
 from sqlalchemy import select, func
 from db import SessionLocal, PriceDaily, Security
+from utils.datasources import benchmark_candidates
+
+CANDS = benchmark_candidates()
 
 def latest_trading_date_kr() -> Optional[str]:
     with SessionLocal() as s:
@@ -14,7 +17,7 @@ def latest_trading_date_kr() -> Optional[str]:
 def recent_trading_dates_kr(limit: int = 260) -> List[str]:
     with SessionLocal() as s:
         rows = s.execute(select(PriceDaily.date)
-            .where(PriceDaily.code.in_(("069500","069500.KS")))
+            .where(PriceDaily.code.in_(tuple(CANDS)))
             .order_by(PriceDaily.date.desc()).limit(limit)).all()
     dates = [str(r[0]) for r in rows][::-1]
     return dates

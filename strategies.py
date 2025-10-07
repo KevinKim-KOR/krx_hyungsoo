@@ -4,9 +4,11 @@ from sqlalchemy import select
 from db import SessionLocal, Security
 from config import EXCLUDE_KEYWORDS, TOP_N, MOM_LOOKBACK_D, TREND_SMA_D, REGIME_TICKER_YF, REGIME_SMA_D
 import yfinance as yf
-from krx_helpers import get_ohlcv_safe
+#from krx_helpers import get_ohlcv_safe
+from fetchers import get_ohlcv_safe
+from utils.datasources import regime_ticker
 
-# --- 유틸 ---
+REGIME_TICKER = regime_ticker()
 
 def _name_excluded(name: str, excludes: Sequence[str]) -> bool:
     n = (name or "").lower()
@@ -26,7 +28,10 @@ def load_etf_universe(session: SessionLocal, excludes: Sequence[str]=EXCLUDE_KEY
 def market_regime_ok(end_date: pd.Timestamp) -> bool:
     """S&P500(야후 069500.KS)의 200일 단순이평 위인지 체크"""
     start = (end_date - pd.Timedelta(days=REGIME_SMA_D * 3)).date()
-    df = get_ohlcv_safe(REGIME_TICKER_YF, start, end_date.date())+pd.Timedelta(days=1), interval="1d", progress=False)
+    #df = get_ohlcv_safe(REGIME_TICKER_YF, start, end_date.date())+pd.Timedelta(days=1), interval="1d", progress=False)
+    start_d = pd.to_datetime(start).date()
+    end_d   = (pd.to_datetime(end_date).normalize() + pd.Timedelta(days=1)).date()
+    df = get_ohlcv_safe(REGIME_TICKER, start_d, end_d)  # get_ohlcv_safe가 **kwargs 미지원인 경우 안전
     if df is None or df.empty:
         # 데이터 없으면 보수적으로 '중단' 판단
         return False

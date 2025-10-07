@@ -13,6 +13,9 @@ from web.signals import router as signals_router
 from web.watchlist import router as watchlist_router
 from web.bt_inbox_service import router as bt_inbox_router
 from web.bt_history import router as bt_history_router
+from utils.datasources import benchmark_candidates
+
+CANDS = set(benchmark_candidates())
 
 # --- app/템플릿 생성이 먼저 ---
 app = FastAPI(title="KRX Alertor Web")
@@ -65,7 +68,8 @@ def home(request: Request):
     with SessionLocal() as session:
         d0, d1 = latest_two_dates(session)
         data = returns_for_dates(session, d0, d1) if d0 and d1 else []
-    mkt = next((x for x in data if x["code"] in ("069500", "069500.KS")), None)
+    #mkt = next((x for x in data if x["code"] in ("069500", "069500.KS")), None)
+    mkt = next((x for x in data if x["code"] in CANDS), None)
     pos = [x for x in data if x["ret"] >=  min_abs]
     neg = [x for x in data if x["ret"] <= -min_abs]
     winners = sorted(pos, key=lambda x: x["ret"], reverse=True)[:top_n]
