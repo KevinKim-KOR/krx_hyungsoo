@@ -7,6 +7,9 @@ from utils.datasources import calendar_symbol_priority
 from fetchers import get_ohlcv_safe
 import logging
 
+ROOT = Path(__file__).resolve().parents[0].parent  # 프로젝트 루트 기준 조정 필요 시 사용
+PKL  = ROOT / "data" / "cache" / "kr" / "trading_days.pkl"
+
 _CACHE = Path("data/cache/kr/trading_days.pkl")
 SYMS = calendar_symbol_priority()
 
@@ -25,19 +28,39 @@ def build_trading_days(start="2010-01-01", end=None) -> pd.DatetimeIndex:
     idx.to_series(index=idx).to_pickle(_CACHE)
     return idx
 
-def load_trading_days(asof=None):
+def load_trading_days(asof=None, start=None, end=None):
     """
-    ETF(069500.KS) 일봉으로 거래일 인덱스를 만든다.
-    - 연말 경계(1월 초/12월 말) 보완을 위해 이전 해 12월도 포함
+    1) 캐시(data/cache/kr/trading_days.pkl) 우선 사용
+    2) 없거나 비어있으면 외부 소스로 빌드 후 캐시 저장
     """
-    d = _normalize_asof(asof)
-    y = d.year
-    # 이전 해 12월 1일부터 현재 연말까지 확보(경계일 prev_trading_day 대비)
-    df, _used = _first_available_ohlcv(start, end)
+    # 1) 캐시 먼저
+    try:
+        if PKL.exists():
+            idx = pd.read_pickle(PKL)
+            if isinstance(idx, pd.DatetimeIndex) and len(idx) > 0:
+                globals()["_TRADING_DAYS"] = idx
+                return idx
+    except Exception:
+        pass  # 캐시 손상 시 아래 빌드 시도
+
+    # 2) 외부로 재빌드 (최근 2년 범위 정도)
+    _start = start or (pd.Timestamp.today() - pd.DateOffset(years=2)).normalize()
+    _end   = end   or pd.Timestamp.today().normalize()
+
+    df, used = _first_available_ohlcv(_start, _end)
     if df is None or len(df) == 0:
-        raise RuntimeError("calendar source unavailable (see logs)")
-    idx = pd.DatetimeIndex(df.index).tz_localize(None).normalize().sort_values().unique()
+        # 외부도 실패 → 프리체크는 재시도(RC=2)로 처리되게 예외 메시지 명확히
+        raise RuntimeError("calendar source unavailable")
+
+    idx = pd.DatetimeIndex(pd.to_datetime(df.index).tz_localize(None).normalize().unique()).sort_values()
+
+    # 3) 캐시 저장
+    PKL.parent.mkdir(parents=True, exist_ok=True)
+    pd.to_pickle(idx, PKL)
+
+    globals()["_TRADING_DAYS"] = idx
     return idx
+
 
 def is_trading_day(d) -> bool:
     """주말 제외 + (오늘은 평일이면 거래일 취급) + 과거/미래는 일봉 존재일로 판정"""
@@ -80,30 +103,28 @@ def _normalize_asof(asof):
     return ts.normalize()
 
 def _first_available_ohlcv(start, end):
-    """calendar_symbol_priority()에 정의된 심볼 우선순위로 OHLCV 조회, 성공한 첫 DF를 반환."""
-    syms = calendar_symbol_priority()           # 예: ["069500.KS","069500"]
-    start_d = pd.to_datetime(start).date()
-    end_d   = pd.to_datetime(end).date()
-    last_err = None
+    """calendar_symbol_priority() 우선순위로 일봉 조회. 성공하면 (df,symbol), 아니면 (빈DF, None)."""
+    syms = calendar_symbol_priority()  # 예: ["069500.KS","069500"]
+    sd   = pd.to_datetime(start).date()
+    ed   = pd.to_datetime(end).date()
 
+    last_err = None
     for sym in syms:
         try:
-            df = get_ohlcv_safe(sym, start_d, end_d)
+            df = get_ohlcv_safe(sym, sd, ed)
             if df is not None and len(df) > 0:
-                logging.getLogger(__name__).info("[CAL] calendar source = %s (n=%d)", sym, len(df))
                 return df, sym
         except Exception as e:
             last_err = e
 
-    # (옵션) 마지막 시도로 yfinance 직접 조회
+    # 마지막 시도로 yfinance 직접(선택)
     try:
         import yfinance as yf
-        df = yf.download(syms[0], start=start_d, end=end_d, progress=False, auto_adjust=False, group_by="column", threads=False)
+        df = yf.download(syms[0], start=sd, end=ed, progress=False,
+                         auto_adjust=False, group_by="column", threads=False)
         if df is not None and len(df) > 0:
-            logging.getLogger(__name__).info("[CAL] fallback yfinance source = %s (n=%d)", syms[0], len(df))
             return df, syms[0]
     except Exception as e:
         last_err = e
 
-    logging.getLogger(__name__).warning("[CAL] all calendar sources failed: %s", last_err)
     return pd.DataFrame(), None
