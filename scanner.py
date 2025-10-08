@@ -37,14 +37,27 @@ from pathlib import Path
 # -----------------------------
 # 설정 / 섹터 맵 로더
 # -----------------------------
-def load_config_yaml(path: str = "secret/config.yaml"):
-    p = Path(path)
-    if not p.exists():
-        alt = Path("config.yaml")
-        if alt.exists():
-            p = alt
-    with open(p, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+def load_config_yaml(path: str = None):
+    """
+    설정 파일 탐색 우선순위:
+      1) 인자로 들어온 path (있다면)
+      2) config/config.yaml
+      3) config.yaml
+    둘 다 없으면 FileNotFoundError
+    """
+    candidates = []
+    if path:
+        candidates.append(Path(path))
+    candidates += [Path("config/config.yaml"), Path("config.yaml")]
+
+    for p in candidates:
+        if p.exists():
+            with open(p, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+
+    raise FileNotFoundError(
+        "No config file found (tried: given path, config/config.yaml, config.yaml)"
+    )
 
 def load_sectors_map(path: str = "sectors_map.csv") -> Dict[str, str]:
     if not os.path.exists(path):
