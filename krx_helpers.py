@@ -5,7 +5,6 @@ from pykrx import stock as krx
 import logging, pandas as pd
 from datetime import timedelta
 from cache_store import load_cached, save_cache
-from fetchers import get_ohlcv_safe as get_ohlcv_safe  # compat re-export
 log = logging.getLogger(__name__)
 
 

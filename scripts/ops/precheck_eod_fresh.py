@@ -3,7 +3,14 @@ import sys
 from pathlib import Path
 import pandas as pd
 from datetime import date, datetime
-from scripts.ops.refresh_calendar_cache import trading_days_cached_or_build
+try:
+    from scripts.ops.refresh_calendar_cache import trading_days_cached_or_build
+except Exception:
+    import pathlib, sys
+    ROOT = pathlib.Path(__file__).resolve().parents[2]
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from scripts.ops.refresh_calendar_cache import trading_days_cached_or_build
 
 
 ROOT = Path(__file__).resolve().parents[2]  # repo root
