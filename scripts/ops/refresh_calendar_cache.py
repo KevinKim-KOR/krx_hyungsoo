@@ -3,15 +3,15 @@ from pathlib import Path
 from datetime import date, timedelta
 import sys
 import pandas as pd
+from utils.datasources import calendar_symbol_priority as _ds_calendar_syms
 
 ROOT = Path(__file__).resolve().parents[2]
 DATADIR = ROOT / "data" / "cache" / "kr"
 DATADIR.mkdir(parents=True, exist_ok=True)
 OUTP = DATADIR / "trading_days.pkl"
 
-def _pick_symbols():
-    # 최소 의존: 우선순위(캐시키/ETF)
-    return ["069500.KS", "069500"]
+def calendar_symbols_priority():
+    return _ds_calendar_syms()  # YAML → 기본값까지 포함
 
 def _fetch_ohlcv(symbol: str, start: str, end: str) -> pd.DataFrame:
     """
@@ -38,7 +38,7 @@ def _fetch_ohlcv(symbol: str, start: str, end: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 def build_calendar(start: str, end: str) -> pd.DatetimeIndex:
-    for sym in _pick_symbols():
+    for sym in calendar_symbols_priority():
         df = _fetch_ohlcv(sym, start, end)
         if df is not None and len(df) > 0:
             idx = pd.to_datetime(df.index).tz_localize(None)

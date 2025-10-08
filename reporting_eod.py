@@ -20,10 +20,8 @@ import datetime as dt
 from pathlib import Path
 import os
 
-#MARKET_CANDIDATES = ("069500", "069500.KS")
-MARKET_CANDIDATES = tuple(benchmark_candidates())
-MKT_KEYS = local_keys_for_benchmark("KOSPI")
-MKT_LABEL = label_for_benchmark("KOSPI")
+MKT_KEYS  = tuple(local_keys_for_benchmark("KOSPI") or ("069500","069500.KS"))
+MKT_LABEL = label_for_benchmark("KOSPI")  # "KOSPI" 그대로 반환(표시용)
 
 def _load_cfg(path: str = "config.yaml") -> Dict:
     # 탐색 후보: 명시 인자 → 환경변수 → 프로젝트 루트 일반 이름들 → 홈 디렉터리
@@ -98,11 +96,7 @@ def _returns_for_dates(session, d0: str, d1: str):
         data.append({"code": code, "name": names.get(code, code), "ret": ret})
 
     # 시장 지표
-    mkt = None
-    for c in MARKET_CANDIDATES:
-        mkt = next((x for x in data if x["code"] == c), None)
-        if mkt:
-            break
+    mkt = next((x for x in data if x["code"] in MKT_KEYS), None)
     return data, mkt
 
 def _fmt_pct(x: float) -> str:

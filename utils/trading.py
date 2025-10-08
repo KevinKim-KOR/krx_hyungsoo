@@ -13,8 +13,7 @@ def now_kst() -> datetime:
 #def latest_trading_date_by_market(code: str = "069500") -> Optional[str]:
 def latest_trading_date_by_market(code: str | None = None) -> Optional[str]:
     if not code:
-        #code = benchmark_candidates()[0].split(".")[0]
-        code = code or default_market_code("kr")
+        code = default_market_code("kr")  # 없으면 "069500" 폴백
     with SessionLocal() as s:
         d0 = s.execute(select(func.max(PriceDaily.date)).where(PriceDaily.code.in_((code, f"{code}.KS")))).scalar()
         return str(d0) if d0 else None

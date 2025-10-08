@@ -4,9 +4,8 @@ from sqlalchemy import select
 from db import SessionLocal, Security
 from config import EXCLUDE_KEYWORDS, TOP_N, MOM_LOOKBACK_D, TREND_SMA_D, REGIME_TICKER_YF, REGIME_SMA_D
 import yfinance as yf
-#from krx_helpers import get_ohlcv_safe
 from fetchers import get_ohlcv_safe
-from utils.datasources import regime_ticker
+from utils.datasources import regime_ticker, regime_ticker_priority
 
 REGIME_TICKER = regime_ticker()
 
@@ -93,3 +92,22 @@ def trend_following_etf(prices: pd.DataFrame,
 
     w = 1.0 / len(picks)
     return {c: w for c in picks}
+
+def _pick_first_available(symbols, start, end):
+    for s in symbols:
+        try:
+            df = get_ohlcv_safe(s, start, end)
+            if df is not None and len(df) > 200:
+                return s, df
+        except Exception:
+            pass
+    return None, None
+
+def is_regime_on(start, end):
+    SYMS = regime_ticker_priority()  # 예: ["^GSPC","SPY","069500.KS"]
+    sym, df = _pick_first_available(SYMS, start, end)
+    if df is None:
+        # 외부요인(다운로드 실패)이면 안전하게 OFF 처리 또는 직전 캐시 사용 등
+        return False
+    ma200 = df["close"].rolling(200).mean()
+    return bool(df["close"].iloc[-1] > ma200.iloc[-1])
