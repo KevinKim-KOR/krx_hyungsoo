@@ -34,21 +34,26 @@ def load_etf_universe(session: SessionLocal, excludes: Sequence[str]=EXCLUDE_KEY
         codes.append(s.code)
     return sorted(list(set(codes)))
 
-def market_regime_ok(end_date: pd.Timestamp) -> bool:
-    """Regime: data_sources.yaml의 우선 티커 기준 SMA(REGIME_SMA_D) 위 여부."""
-    start = (end_date - pd.Timedelta(days=REGIME_SMA_D * 3)).date()
+def market_regime_ok(asof: pd.Timestamp) -> bool:
+    """우선순위(예: ['^GSPC','SPY','069500.KS'])를 순회하며
+       200SMA 상단 여부를 판단. 모두 실패 시 보수적으로 False."""
+    asof = pd.to_datetime(asof)
+    s = (asof - pd.Timedelta(days=420)).date()
+    e = asof.date()
 
-    start_d = pd.to_datetime(start).date()
-    end_d   = (pd.to_datetime(end_date).normalize() + pd.Timedelta(days=1)).date()
-    df = get_ohlcv_safe(REGIME_TICKER, start_d, end_d)
-    if df is None or df.empty:
-        # 데이터 없으면 보수적으로 '중단' 판단
-        return False
-    close = _series_close(df).dropna()
-    if close.shape[0] < REGIME_SMA_D:
-        return False
-    sma = close.rolling(REGIME_SMA_D).mean()
-    return float(close.iloc[-1]) >= float(sma.iloc[-1])
+    for tk in regime_ticker_priority():
+        try:
+            df = get_ohlcv_safe(tk, s, e)
+            if df is None or df.empty or "close" not in df.columns:
+                continue
+            close = pd.to_numeric(df["close"], errors="coerce").dropna()
+            if len(close) < 200:
+                continue
+            sma200 = close.rolling(200).mean()
+            return bool(close.iloc[-1] > sma200.iloc[-1])
+        except Exception:
+            continue
+    return False
 
 # --- 전략 본체 ---
 
