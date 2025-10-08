@@ -37,7 +37,7 @@ from pathlib import Path
 # -----------------------------
 # 설정 / 섹터 맵 로더
 # -----------------------------
-def load_config_yaml(path: str = "config.yaml") -> dict:
+def load_config_yaml(path: str = "secret/config.yaml"):
     p = Path(path)
     if not p.exists():
         alt = Path("config.yaml")
