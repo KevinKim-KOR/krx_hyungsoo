@@ -32,14 +32,19 @@ from indicators import (
     turnover_stats, sector_score
 )
 from adaptive import get_effective_cfg
-
+from pathlib import Path
 
 # -----------------------------
 # 설정 / 섹터 맵 로더
 # -----------------------------
 def load_config_yaml(path: str = "config.yaml") -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    p = Path(path)
+    if not p.exists():
+        alt = Path("config.yaml")
+        if alt.exists():
+            p = alt
+    with open(p, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 def load_sectors_map(path: str = "sectors_map.csv") -> Dict[str, str]:
     if not os.path.exists(path):

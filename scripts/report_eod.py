@@ -1,64 +1,51 @@
 #!/usr/bin/env python3
 # scripts/report_eod.py
 from __future__ import annotations
-import sys, argparse, inspect
+import sys, argparse, subprocess, inspect
 from pathlib import Path
+import importlib
 
-# 1) 프로젝트 루트를 import 경로에 추가 (서브폴더 실행 보완)
 ROOT = Path(__file__).resolve().parents[1]
+ADAPTER_FILE = Path(__file__).resolve()
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# 2) 대상 모듈 후보들: reporting_eod(권장) → report_eod(대안)
-MOD_NAMES = ("reporting_eod", "report_eod")
-
-def _import_module():
-    last_err = None
-    for name in MOD_NAMES:
+def _call_entrypoints(mod, date_arg: str):
+    """reporting_eod 모듈에서 다양한 엔트리포인트를 시도하고, 성공 시 RC(int)를 반환."""
+    candidates = (
+        "run", "main", "generate_eod_report", "generate",
+        "report_eod", "report", "make_eod_report", "make_report",
+    )
+    for name in candidates:
+        fn = getattr(mod, name, None)
+        if not callable(fn):
+            continue
+        # 어댑터 자기 자신(main 등)을 잘못 잡아오는 경우 스킵
         try:
-            return __import__(name)
-        except Exception as e:
-            last_err = e
-    print(f"[ERROR] import reporting_eod failed: {last_err}", file=sys.stderr)
-    sys.exit(1)
+            src = Path(inspect.getsourcefile(fn) or "")
+            if src == ADAPTER_FILE:
+                continue
+        except Exception:
+            pass
 
-def _ns(**kw):
-    return argparse.Namespace(**kw)
-
-def _try_call(fn, date_arg: str):
-    """
-    다양한 시그니처(run(date=...), main(args), main(), report(date), generate_eod_report(date) 등)를
-    안전하게 시도하고, 성공시 반환값을 정수 RC로 변환해서 돌려줌.
-    """
-    try:
-        sig = inspect.signature(fn)
-        params = list(sig.parameters.values())
-
-        # date 인자를 직접 받는 케이스 우선
-        if any(p.name in ("date", "asof") for p in params):
-            rc = fn(date=date_arg) if "date" in {p.name for p in params} else fn(asof=date_arg)
-        # argparse-style main(args)
-        elif len(params) == 1 and params[0].annotation in (inspect._empty, argparse.Namespace):
-            rc = fn(_ns(date=date_arg))
-        # 인자 없이 동작
-        elif len(params) == 0:
-            rc = fn()
-        # 기타: 그냥 한 번 date만 넣어본다(예외 무시)
-        else:
-            rc = fn(date_arg)
-    except TypeError:
-        return None
-    except SystemExit as e:  # argparse 내부에서 sys.exit 사용 시
-        return int(getattr(e, "code", 0) or 0)
-    except Exception as e:
-        print(f"[WARN] call failed: {fn.__name__}: {e}", file=sys.stderr)
-        return None
-
-    # 반환값이 None이면 0으로 간주
-    try:
-        return int(rc) if rc is not None else 0
-    except Exception:
-        return 0
+        try:
+            sig = inspect.signature(fn)
+            params = sig.parameters
+            if "date" in params:
+                rc = fn(date=date_arg)
+            elif "asof" in params:
+                rc = fn(asof=date_arg)
+            elif len(params) == 1:
+                rc = fn(argparse.Namespace(date=date_arg))
+            else:
+                rc = fn()
+            return int(rc) if rc is not None else 0
+        except SystemExit as e:
+            return int(getattr(e, "code", 0) or 0)
+        except Exception:
+            # 다른 후보 계속 시도
+            continue
+    return None
 
 def main():
     ap = argparse.ArgumentParser(description="EOD report runner adapter")
@@ -66,28 +53,32 @@ def main():
     args = ap.parse_args()
     date_arg = args.date
 
-    mod = _import_module()
+    # 1) 모듈 임포트 시도
+    mod = None
+    try:
+        mod = importlib.import_module("reporting_eod")
+    except Exception:
+        mod = None
 
-    # 3) 시도할 엔트리포인트 후보들(우선순위)
-    candidates = [
-        "run",
-        "main",
-        "generate_eod_report",
-        "generate",
-        "report_eod",
-        "report",
-        "make_eod_report",
-        "make_report",
-    ]
+    # 2) 모듈이 로드되면 엔트리포인트 호출 → 실패 시 파일 자체 실행
+    if mod:
+        rc = _call_entrypoints(mod, date_arg)
+        if rc is not None:
+            return rc
+        try:
+            file_path = Path(mod.__file__)
+            return subprocess.call([sys.executable, str(file_path), "--date", date_arg])
+        except Exception:
+            pass
+        print("[ERROR] reporting_eod entry not found (expected main(args) or run(date=...))", file=sys.stderr)
+        return 1
 
-    for name in candidates:
-        fn = getattr(mod, name, None)
-        if callable(fn):
-            rc = _try_call(fn, date_arg)
-            if rc is not None:
-                return rc
+    # 3) 마지막 폴백: 루트의 파일 실행
+    file_path = ROOT / "reporting_eod.py"
+    if file_path.exists():
+        return subprocess.call([sys.executable, str(file_path), "--date", date_arg])
 
-    print("[ERROR] reporting_eod entry not found (expected main(args) or run(date=...))", file=sys.stderr)
+    print("[ERROR] import reporting_eod failed and file not found", file=sys.stderr)
     return 1
 
 if __name__ == "__main__":
