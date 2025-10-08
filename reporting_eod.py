@@ -3,7 +3,7 @@
 from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func
 from db import SessionLocal, PriceDaily, Security
-from utils.datasources import benchmark_candidates
+from utils.datasources import benchmark_candidates, local_keys_for_benchmark, label_for_benchmark
 
 # 옵션 의존성(없어도 동작)
 try:
@@ -20,7 +20,10 @@ import datetime as dt
 from pathlib import Path
 import os
 
-MARKET_CANDIDATES = ("069500", "069500.KS")
+#MARKET_CANDIDATES = ("069500", "069500.KS")
+MARKET_CANDIDATES = tuple(benchmark_candidates())
+MKT_KEYS = local_keys_for_benchmark("KOSPI")
+MKT_LABEL = label_for_benchmark("KOSPI")
 
 def _load_cfg(path: str = "config.yaml") -> Dict:
     # 탐색 후보: 명시 인자 → 환경변수 → 프로젝트 루트 일반 이름들 → 홈 디렉터리
@@ -137,9 +140,9 @@ def _compose_message(d0: str, d1: str, data: List[Dict], mkt: Optional[Dict]) ->
 
     # 시장 라인
     if mkt and mkt.get("ret") is not None:
-        mkt_line = f"시장(069500): {_fmt_pct(mkt['ret'])} {_arrow(mkt['ret'])}"
+        mkt_line = f"시장({MKT_LABEL}): {_fmt_pct(mkt['ret'])} {_arrow(mkt['ret'])}"
     else:
-        mkt_line = "시장(069500): N/A"
+        mkt_line = f"시장({MKT_LABEL}): N/A"
 
     lines = []
     lines.append(f"[KRX EOD Report] {d0}")

@@ -4,20 +4,19 @@ from typing import List, Dict, Optional, Tuple
 import json, os
 from sqlalchemy import select, func
 from db import SessionLocal, PriceDaily, Security
-from utils.datasources import benchmark_candidates
-
-CANDS = benchmark_candidates()
+from utils.datasources import local_keys_for_benchmark
+_KEYS = local_keys_for_benchmark("KOSPI")
 
 def latest_trading_date_kr() -> Optional[str]:
     with SessionLocal() as s:
         d0 = s.execute(select(func.max(PriceDaily.date)).where(
-            PriceDaily.code.in_(("069500","069500.KS")))).scalar()
+            PriceDaily.code.in_(_KEYS))).scalar()
         return str(d0) if d0 else None
 
 def recent_trading_dates_kr(limit: int = 260) -> List[str]:
     with SessionLocal() as s:
         rows = s.execute(select(PriceDaily.date)
-            .where(PriceDaily.code.in_(tuple(CANDS)))
+            .where(PriceDaily.code.in_(_KEYS))
             .order_by(PriceDaily.date.desc()).limit(limit)).all()
     dates = [str(r[0]) for r in rows][::-1]
     return dates

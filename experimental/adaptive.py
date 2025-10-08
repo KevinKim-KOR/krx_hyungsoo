@@ -2,13 +2,15 @@
 import copy
 import pandas as pd
 from krx_helpers import get_ohlcv_safe
+from utils.datasources import regime_ticker
 
 def _sma(s, n): return s.rolling(n).mean()
 
 def detect_market_state(asof, cfg):
     """bull / neutral / bear 중 하나를 리턴"""
     ad = (cfg.get("adaptive") or {})
-    src   = ad.get("regime_source") or (cfg.get("regime", {}) or {}).get("spx_ticker", "069500.KS")
+    #src   = ad.get("regime_source") or (cfg.get("regime", {}) or {}).get("spx_ticker", "069500.KS")
+    src   = ad.get("regime_source") or (cfg.get("regime", {}) or {}).get("spx_ticker", regime_ticker())
     lb    = int(ad.get("regime_lookback_days", 200))
 
     start = (pd.to_datetime(asof) - pd.Timedelta(days=lb*3)).date()

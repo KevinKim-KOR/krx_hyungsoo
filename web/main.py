@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, func
+from utils.datasources import local_keys_for_benchmark
 
 # 불필요하면 주석/삭제 가능
 # from db import SessionLocal, PriceDaily, Security
@@ -16,6 +17,8 @@ from web.bt_history import router as bt_history_router
 from utils.datasources import benchmark_candidates
 
 CANDS = set(benchmark_candidates())
+_KEYS = set(local_keys_for_benchmark("KOSPI"))
+mkt = next((x for x in data if x["code"] in _KEYS), None)
 
 # --- app/템플릿 생성이 먼저 ---
 app = FastAPI(title="KRX Alertor Web")
