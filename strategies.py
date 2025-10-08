@@ -2,12 +2,22 @@ import pandas as pd
 from typing import Dict, List, Sequence
 from sqlalchemy import select
 from db import SessionLocal, Security
-from config import EXCLUDE_KEYWORDS, TOP_N, MOM_LOOKBACK_D, TREND_SMA_D, REGIME_TICKER_YF, REGIME_SMA_D
-import yfinance as yf
+from config import EXCLUDE_KEYWORDS, TOP_N, MOM_LOOKBACK_D, TREND_SMA_D, REGIME_SMA_D
 from fetchers import get_ohlcv_safe
 from utils.datasources import regime_ticker, regime_ticker_priority
 
 REGIME_TICKER = regime_ticker()
+
+def _series_close(df):
+    """Robust close extractor: supports ['close','Close','Adj Close']"""
+    for k in ("close", "Close", "Adj Close"):
+        if k in df.columns:
+            s = df[k]
+            try:
+                return s.astype(float)
+            except Exception:
+                return s
+    raise KeyError(f"close column not found in {list(df.columns)}")
 
 def _name_excluded(name: str, excludes: Sequence[str]) -> bool:
     n = (name or "").lower()
@@ -25,16 +35,16 @@ def load_etf_universe(session: SessionLocal, excludes: Sequence[str]=EXCLUDE_KEY
     return sorted(list(set(codes)))
 
 def market_regime_ok(end_date: pd.Timestamp) -> bool:
-    """S&P500(야후 069500.KS)의 200일 단순이평 위인지 체크"""
+    """Regime: data_sources.yaml의 우선 티커 기준 SMA(REGIME_SMA_D) 위 여부."""
     start = (end_date - pd.Timedelta(days=REGIME_SMA_D * 3)).date()
-    #df = get_ohlcv_safe(REGIME_TICKER_YF, start, end_date.date())+pd.Timedelta(days=1), interval="1d", progress=False)
+
     start_d = pd.to_datetime(start).date()
     end_d   = (pd.to_datetime(end_date).normalize() + pd.Timedelta(days=1)).date()
-    df = get_ohlcv_safe(REGIME_TICKER, start_d, end_d)  # get_ohlcv_safe가 **kwargs 미지원인 경우 안전
+    df = get_ohlcv_safe(REGIME_TICKER, start_d, end_d)
     if df is None or df.empty:
         # 데이터 없으면 보수적으로 '중단' 판단
         return False
-    close = df["Close"].dropna()
+    close = _series_close(df).dropna()
     if close.shape[0] < REGIME_SMA_D:
         return False
     sma = close.rolling(REGIME_SMA_D).mean()
@@ -109,5 +119,6 @@ def is_regime_on(start, end):
     if df is None:
         # 외부요인(다운로드 실패)이면 안전하게 OFF 처리 또는 직전 캐시 사용 등
         return False
-    ma200 = df["close"].rolling(200).mean()
-    return bool(df["close"].iloc[-1] > ma200.iloc[-1])
+    c = _series_close(df)
+    ma200 = c.rolling(200, min_periods=200).mean()
+    return bool(float(c.iloc[-1]) > float(ma200.iloc[-1]))

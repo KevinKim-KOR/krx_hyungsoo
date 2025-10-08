@@ -3,7 +3,7 @@
 from typing import List, Tuple, Optional, Dict
 from sqlalchemy import select, func
 from db import SessionLocal, PriceDaily, Security
-from utils.datasources import benchmark_candidates, local_keys_for_benchmark, label_for_benchmark
+from utils.datasources import local_keys_for_benchmark, label_for_benchmark
 
 # 옵션 의존성(없어도 동작)
 try:
