@@ -39,27 +39,34 @@ if [ -s "$RPT" ]; then echo " - OK: $RPT"; else echo " - MISS: $RPT"; fi
 # [4] Recent errors (48h)
 echo "[4] Recent errors"
 MARKER=".state/last_deploy"
+HAS_ERR=0   # ← set -u 대비 초기화
+
 if [ -f "$MARKER" ]; then
   echo "since $(cat .state/last_deploy.txt 2>/dev/null || echo 'last deploy')"
-  # 배포시점 이후에 수정된 로그 파일만 추립니다.
-  mapfile -t ERRFILES < <(find logs -type f -newer "$MARKER" | sort)
+  mapfile -t ERRFILES < <(find logs -type f -newer "$MARKER" ! -name 'health_*.log' | sort)
 else
-  # 마커 없으면, 최근 변경된 로그 20개만 스캔(초기 구동/마이그레이션 대비)
+  # 마커가 없을 땐 최근 로그만 제한적으로 스캔
   mapfile -t ERRFILES < <(find logs -type f -printf '%T@ %p\n' | sort -nr | head -n 20 | cut -d' ' -f2-)
 fi
 
 if [ ${#ERRFILES[@]} -eq 0 ]; then
   echo " - none since last deploy"
 else
-  # 흔한 에러 패턴만 긁어오고, 너무 길어지는 걸 방지해 파일당 하이라이트 10줄만
   for f in "${ERRFILES[@]}"; do
+    # 필요하면 패턴 조정 가능(예: 외부 요인 소음 더 줄이기)
     HITS=$(grep -nE '(^Traceback|^\[ERROR\]|ERROR:yfinance)' "$f" | tail -n 10 || true)
     if [ -n "$HITS" ]; then
       echo "$f:"
       echo "$HITS"
+      HAS_ERR=1
     fi
   done
+  # 에러 파일을 순회했는데도 히트가 전혀 없으면 깔끔히 안내
+  if [ "$HAS_ERR" -eq 0 ]; then
+    echo " - none since last deploy"
+  fi
 fi
+
 
 
 # [5] Locks
