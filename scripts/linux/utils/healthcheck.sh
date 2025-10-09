@@ -38,16 +38,29 @@ if [ -s "$RPT" ]; then echo " - OK: $RPT"; else echo " - MISS: $RPT"; fi
 
 # [4] Recent errors (48h)
 echo "[4] Recent errors"
-ERRS="$( (find logs -type f -mtime -2 -name "*.log" -print0 2>/dev/null || true) \
-  | xargs -0 -I{} sh -c 'grep -HnE "ERROR|Traceback|Exception" "{}" || true' \
-  | tail -n 20 || true)"
-if [ -n "${ERRS}" ]; then
-  echo "${ERRS}"
-  HAS_ERR=1
+MARKER=".state/last_deploy"
+if [ -f "$MARKER" ]; then
+  echo "since $(cat .state/last_deploy.txt 2>/dev/null || echo 'last deploy')"
+  # 배포시점 이후에 수정된 로그 파일만 추립니다.
+  mapfile -t ERRFILES < <(find logs -type f -newer "$MARKER" | sort)
 else
-  echo " - none"
-  HAS_ERR=0
+  # 마커 없으면, 최근 변경된 로그 20개만 스캔(초기 구동/마이그레이션 대비)
+  mapfile -t ERRFILES < <(find logs -type f -printf '%T@ %p\n' | sort -nr | head -n 20 | cut -d' ' -f2-)
 fi
+
+if [ ${#ERRFILES[@]} -eq 0 ]; then
+  echo " - none since last deploy"
+else
+  # 흔한 에러 패턴만 긁어오고, 너무 길어지는 걸 방지해 파일당 하이라이트 10줄만
+  for f in "${ERRFILES[@]}"; do
+    HITS=$(grep -nE '(^Traceback|^\[ERROR\]|ERROR:yfinance)' "$f" | tail -n 10 || true)
+    if [ -n "$HITS" ]; then
+      echo "$f:"
+      echo "$HITS"
+    fi
+  done
+fi
+
 
 # [5] Locks
 echo "[5] Locks"
