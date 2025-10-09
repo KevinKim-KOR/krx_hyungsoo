@@ -15,6 +15,19 @@ from web.watchlist import router as watchlist_router
 from web.bt_inbox_service import router as bt_inbox_router
 from web.bt_history import router as bt_history_router
 from utils.datasources import benchmark_candidates
+from fastapi.staticfiles import StaticFiles
+
+try:
+    # web/ 디렉터리 기준 repo root 추정
+    ROOT = Path(__file__).resolve().parents[1]
+    REPORTS_DIR = (ROOT / "reports").resolve()
+    if REPORTS_DIR.exists():
+        app.mount("/reports", StaticFiles(directory=str(REPORTS_DIR)), name="reports")
+        print(f"[WEB] mount /reports -> {REPORTS_DIR}")
+    else:
+        print(f"[WEB] skip /reports (not found): {REPORTS_DIR}")
+except Exception as e:
+    print(f"[WEB] WARN: failed to mount /reports: {e}")
 
 CANDS = set(benchmark_candidates())
 _KEYS = set(local_keys_for_benchmark("KOSPI"))
