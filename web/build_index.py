@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Generate lightweight web index for backtests with:
+Generate lightweight web index for backtests (no external deps):
 - Export CSV of the current view
 - Recent N filter
 - Simple color dots based on Sharpe/MDD
@@ -11,11 +11,10 @@ Env:
 """
 from __future__ import annotations
 
-import json, os, re
+import json, os, csv, math
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 BT_DIR = ROOT / "backtests"
@@ -26,7 +25,8 @@ def _coerce_float(x):
     try:
         if x is None: return None
         if isinstance(x, (int, float)): return float(x)
-        s = str(x).replace(",", "")
+        s = str(x).strip().replace(",", "")
+        if s == "": return None
         return float(s)
     except Exception:
         return None
@@ -48,7 +48,6 @@ def _pick_meta(name: str) -> Dict[str, Optional[str]]:
 
 def _load_metrics_from_json(mfile: Path) -> Dict[str, Any]:
     d = json.loads(mfile.read_text(encoding="utf-8"))
-    # Normalize keys
     def g(*keys, default=None):
         for k in keys:
             if k in d: return d[k]
@@ -64,18 +63,48 @@ def _load_metrics_from_json(mfile: Path) -> Dict[str, Any]:
         "pnl": _coerce_float(g("pnl", "final_pnl", "net_profit")),
     }
 
-def _read_equity_curve_csv(fname: Path) -> Optional[List[float]]:
+def _read_csv_first_numeric_series(fname: Path, max_rows: int = 500) -> Optional[List[float]]:
+    """
+    CSV에서 숫자열 후보를 찾아 변동성(분산) 최대 컬럼을 선택, 마지막 60개를 [0..1] 정규화하여 반환.
+    pandas 없이 csv 모듈로 처리.
+    """
     try:
-        df = pd.read_csv(fname)
-        num_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
-        if not num_cols: return None
-        # choose most variant numeric col for sparkline
-        col = max(num_cols, key=lambda c: df[c].var())
-        s = pd.to_numeric(df[col], errors="coerce").dropna().tail(60)
-        if s.empty: return None
-        mn, mx = float(s.min()), float(s.max())
-        if mx == mn: return [0.5]*len(s)
-        return [ (float(v)-mn)/(mx-mn) for v in s.tolist() ]
+        with fname.open("r", encoding="utf-8", newline="") as f:
+            rdr = csv.reader(f)
+            headers = next(rdr, None)
+            if not headers: return None
+            cols = [[] for _ in headers]
+            rows = 0
+            for row in rdr:
+                rows += 1
+                for i, v in enumerate(row):
+                    fv = _coerce_float(v)
+                    cols[i].append(fv)
+                if rows >= max_rows:
+                    break
+        # 숫자열 후보만 추출(유효 숫자 비율 > 50%)
+        num_cols = []
+        for i, series in enumerate(cols):
+            vals = [v for v in series if isinstance(v, (int, float)) and v is not None]
+            if len(series) == 0: continue
+            if len(vals) / max(1, len(series)) >= 0.5:
+                # 분산 계산
+                if len(vals) >= 2:
+                    mean = sum(vals) / len(vals)
+                    var = sum((v - mean) ** 2 for v in vals) / (len(vals) - 1)
+                else:
+                    var = 0.0
+                num_cols.append((i, vals, var))
+        if not num_cols:
+            return None
+        # 분산 최대 컬럼 선택
+        _, vals, _ = max(num_cols, key=lambda t: t[2])
+        vals = vals[-60:] if len(vals) > 60 else vals
+        if not vals: return None
+        mn, mx = min(vals), max(vals)
+        if mx == mn:
+            return [0.5] * len(vals)
+        return [(v - mn) / (mx - mn) for v in vals]
     except Exception:
         return None
 
@@ -93,7 +122,7 @@ def _gather_loose_csvs(bt_dir: Path) -> List[Dict[str, Any]]:
             "universe": meta.get("universe"),
             "sharpe": None, "cagr": None, "mdd": None,
             "winrate": None, "trades": None, "pnl": None,
-            "spark": _read_equity_curve_csv(csvf),
+            "spark": _read_csv_first_numeric_series(csvf),
         }
         out.append(entry)
     return out
@@ -101,7 +130,6 @@ def _gather_loose_csvs(bt_dir: Path) -> List[Dict[str, Any]]:
 def _gather_subdirs(bt_dir: Path) -> List[Dict[str, Any]]:
     out = []
     for d in sorted([p for p in bt_dir.iterdir() if p.is_dir()]):
-        # look for metrics.json & equity_curve.csv
         mfile = d / "metrics.json"
         eq = d / "equity_curve.csv"
         meta = _pick_meta(d.name)
@@ -116,7 +144,7 @@ def _gather_subdirs(bt_dir: Path) -> List[Dict[str, Any]]:
             "universe": meta.get("universe"),
             "sharpe": None, "cagr": None, "mdd": None,
             "winrate": None, "trades": None, "pnl": None,
-            "spark": _read_equity_curve_csv(eq) if eq.exists() else None,
+            "spark": _read_csv_first_numeric_series(eq) if eq.exists() else None,
         }
         if mfile.exists():
             try:
@@ -132,7 +160,7 @@ def gather_runs() -> List[Dict[str, Any]]:
     runs.extend(_gather_subdirs(BT_DIR))
     runs.extend(_gather_loose_csvs(BT_DIR))
     # sort desc by started_at
-    def k(e): 
+    def k(e):
         try:
             return datetime.strptime(e["started_at"], "%Y-%m-%d %H:%M:%S")
         except Exception:
@@ -141,14 +169,11 @@ def gather_runs() -> List[Dict[str, Any]]:
     return runs
 
 def build_html(rows: List[Dict[str, Any]]) -> str:
-    # minimal CSS/JS; client-side sort/filter/export
     html = f"""<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Backtests Index</title>
 <style>
-:root {{
-  --muted:#f8f8fb; --line:#e5e7eb; --txt:#111827;
-}}
+:root {{ --muted:#f8f8fb; --line:#e5e7eb; --txt:#111827; }}
 body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:20px;color:var(--txt)}}
 h2{{margin:0 0 12px 0}}
 .toolbar{{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 16px 0}}
@@ -243,17 +268,15 @@ function currentView() {{
   const N = document.querySelector("#recentN").value;
   const q = document.querySelector("#q").value.toLowerCase();
   let arr = Array.from(ROWS);
-  // filter by recent N (already sorted desc by date)
+  // date desc
   arr.sort((a,b)=> cmp(a,b,"started_at")).reverse();
   if (N !== "all") {{
     const n = parseInt(N);
     if (!isNaN(n)) arr = arr.slice(0, n);
   }}
-  // search on strategy/universe
   if (q) {{
     arr = arr.filter(r => (r.strategy||"").toLowerCase().includes(q) || (r.universe||"").toLowerCase().includes(q));
   }}
-  // sort
   arr.sort((a,b)=> sortAsc ? cmp(a,b,sortKey) : cmp(b,a,sortKey));
   return arr;
 }}
@@ -316,9 +339,7 @@ render();
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     rows = gather_runs()
-    # dump json
     (OUT_DIR / "index.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
-    # html
     (OUT_DIR / "index.html").write_text(build_html(rows), encoding="utf-8")
     print(f"[INDEX] wrote {OUT_DIR/'index.json'} and {OUT_DIR/'index.html'}")
 
