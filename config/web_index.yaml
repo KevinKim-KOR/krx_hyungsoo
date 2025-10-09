@@ -1,0 +1,26 @@
+# 웹 인덱스 UI 설정 (SPoT)
+defaults:
+  recentN: 30           # "최근 N" 기본값
+  sort_key: started_at  # 기본 정렬 키
+  sort_asc: false       # 오름차순 여부
+
+colors:
+  sharpe:
+    green: 1.0          # Sharpe ≥ green → 녹색
+    amber: 0.5          # Sharpe ≥ amber → 호박색 (green 미만)
+  mdd:
+    green_min: -0.2     # mdd ≥ green_min 일 때만 녹색 허용
+
+columns:
+  # key: 데이터 키, label: 헤더, fmt: (num|pct|int|none)
+  - { key: started_at, label: Date,     fmt: none }
+  - { key: run_id,     label: Run,      fmt: none }
+  - { key: strategy,   label: Strategy, fmt: none }
+  - { key: universe,   label: Universe, fmt: none }
+  - { key: sharpe,     label: Sharpe,   fmt: num  }
+  - { key: cagr,       label: CAGR,     fmt: pct  }
+  - { key: mdd,        label: MDD,      fmt: pct  }
+  - { key: winrate,    label: Win%,     fmt: pct  }
+  - { key: trades,     label: Trades,   fmt: int  }
+  - { key: pnl,        label: PnL,      fmt: num  }
+  - { key: spark,      label: Spark,    fmt: none }
