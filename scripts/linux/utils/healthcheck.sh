@@ -59,9 +59,17 @@ ls -l "$LOCKDIR" 2>/dev/null || true
 
 echo "=== END ==="
 
-# (옵션) 텔레그램 알림: jobs/ping_telegram.sh가 존재하고 최근 에러 있으면 알림
-if [ "${HAS_ERR}" -eq 1 ] && [ -x "scripts/linux/jobs/ping_telegram.sh" ]; then
-  echo "[ALERT] send telegram"
-  # 제목/메시지는 심플하게
-  scripts/linux/jobs/ping_telegram.sh "HEALTHCHECK ERRORS" "최근 에러가 감지되었습니다. 로그를 확인하세요."
+# (선택) 텔레그램 알림: 환경변수 있는 경우에만 전송, 없으면 조용히 스킵
+if [ "${HAS_ERR}" -eq 1 ]; then
+  if [ -x "scripts/linux/jobs/ping_telegram.sh" ]; then
+    if [ -n "${TG_TOKEN:-}" ] && [ -n "${TG_CHAT_ID:-}" ]; then
+      echo "[ALERT] send telegram"
+      scripts/linux/jobs/ping_telegram.sh \
+        "HEALTHCHECK ERRORS" \
+        "최근 에러가 감지되었습니다. 로그를 확인하세요." \
+        || echo "[ALERT] telegram failed (non-fatal)"
+    else
+      echo "[ALERT] skip: no TG_TOKEN/TG_CHAT_ID"
+    fi
+  fi
 fi
