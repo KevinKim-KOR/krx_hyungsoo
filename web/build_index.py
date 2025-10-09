@@ -1,356 +1,343 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Backtests Web Index (stdlib only)
-- Recent-N, search, sort, export CSV, color dots
-- Robust path detection:
-  * Repo root auto-discovery
-  * Support both layouts:
-      A) <repo>/reports/backtests/...
-      B) <repo>/backtests/...
-- Outputs: <repo>/reports/index.json, <repo>/reports/index.html
-"""
-from __future__ import annotations
-
-import json, os, csv
+import json, os, re
 from pathlib import Path
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import datetime, date
+import pandas as pd
 
-# ---------- Path discovery ----------
-def _is_repo_root(p: Path) -> bool:
-    # Heuristics: must have "web" dir and either "scripts" or "config"
-    return (p / "web").is_dir() and ((p / "scripts").is_dir() or (p / "config").is_dir())
-
-def _find_repo_root() -> Path:
-    here = Path(__file__).resolve().parent  # e.g., .../web
-    for up in [here] + list(here.parents):
-        if _is_repo_root(up):
-            return up
-    # Fallback: if this file is under .../web, parent is repo root
-    if here.name == "web":
-        return here.parent
-    return Path.cwd()
-
-ROOT = _find_repo_root()
+ROOT = Path(__file__).resolve().parents[2]
+BT_DIR = ROOT / "backtests"
 OUT_DIR = ROOT / "reports"
+LINK_BASE = os.environ.get("WEB_BASE_PREFIX", "..")  # reports 기준 ../backtests
 
-# Decide backtests directory (supports both layouts)
-BT_DIR_A = OUT_DIR / "backtests"      # <repo>/reports/backtests
-BT_DIR_B = ROOT / "backtests"         # <repo>/backtests
-BT_DIR = BT_DIR_A if BT_DIR_A.exists() else BT_DIR_B
-
-# Decide link base (href from reports/index.html to backtests)
-def _decide_link_base() -> str:
-    # Allow explicit override first
-    env = os.environ.get("WEB_BASE_PREFIX")
-    if env:
-        return env
-    if BT_DIR == BT_DIR_A:
-        return "backtests"          # reports/index.html -> reports/backtests
-    elif BT_DIR == BT_DIR_B:
-        return "../backtests"       # reports/index.html -> ../backtests
-    return "."                      # safe fallback
-
-LINK_BASE = _decide_link_base()
-
-# ---------- Helpers ----------
-def _coerce_float(x):
+def _load_metrics(run_dir: Path):
+    m = run_dir / "metrics.json"
+    if not m.exists(): return None
     try:
-        if x is None: return None
-        if isinstance(x, (int, float)): return float(x)
-        s = str(x).strip().replace(",", "")
-        if s == "": return None
-        return float(s)
+        d = json.loads(m.read_text(encoding="utf-8"))
+        d["_mtime"] = run_dir.stat().st_mtime
+        d["_name"]  = run_dir.name
+        return d
     except Exception:
         return None
 
-def _pick_meta(name: str) -> Dict[str, Optional[str]]:
-    meta = {"strategy": None, "universe": None}
-    if "__" in name:
-        for p in name.split("__"):
-            if p.startswith("strat-"):
-                meta["strategy"] = p[6:]
-            if p.startswith("uni-"):
-                meta["universe"] = p[4:]
-    return meta
-
-def _load_metrics_from_json(mfile: Path) -> Dict[str, Any]:
-    d = json.loads(mfile.read_text(encoding="utf-8"))
-    def g(*keys, default=None):
-        for k in keys:
-            if k in d: return d[k]
-        return default
-    return {
-        "strategy": g("strategy", "name"),
-        "universe": g("universe", "univ"),
-        "sharpe": _coerce_float(g("sharpe", "sharpe_ratio")),
-        "cagr": _coerce_float(g("cagr", "annual_return", "ann_return")),
-        "mdd": _coerce_float(g("mdd", "max_drawdown")),
-        "winrate": _coerce_float(g("winrate", "win_rate")),
-        "trades": int(g("trades", "num_trades", "n_trades", default=0) or 0),
-        "pnl": _coerce_float(g("pnl", "final_pnl", "net_profit")),
-    }
-
-def _read_csv_first_numeric_series(fname: Path, max_rows: int = 500) -> Optional[List[float]]:
+def _spark_values(run_dir: Path, N=60):
+    f = run_dir / "equity_curve.csv"
+    if not f.exists(): return None
     try:
-        with fname.open("r", encoding="utf-8", newline="") as f:
-            rdr = csv.reader(f)
-            headers = next(rdr, None)
-            if not headers: return None
-            cols = [[] for _ in headers]
-            rows = 0
-            for row in rdr:
-                rows += 1
-                for i, v in enumerate(row):
-                    fv = _coerce_float(v)
-                    cols[i].append(fv)
-                if rows >= max_rows:
-                    break
-        num_cols = []
-        for i, series in enumerate(cols):
-            vals = [v for v in series if isinstance(v, (int, float)) and v is not None]
-            if not series: continue
-            if len(vals) / max(1, len(series)) >= 0.5:
-                if len(vals) >= 2:
-                    m = sum(vals) / len(vals)
-                    var = sum((v - m) ** 2 for v in vals) / (len(vals) - 1)
-                else:
-                    var = 0.0
-                num_cols.append((i, vals, var))
-        if not num_cols:
-            return None
-        _, vals, _ = max(num_cols, key=lambda t: t[2])
-        vals = vals[-60:] if len(vals) > 60 else vals
-        if not vals: return None
-        mn, mx = min(vals), max(vals)
-        if mx == mn: return [0.5] * len(vals)
-        return [(v - mn) / (mx - mn) for v in vals]
+        df = pd.read_csv(f)
+        num_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if not num_cols: return None
+        col = max(num_cols, key=lambda c: df[c].var())
+        s = pd.to_numeric(df[col], errors="coerce").dropna().tail(N)
+        if s.empty: return None
+        mn, mx = float(s.min()), float(s.max())
+        if mx == mn: return [0.5]*len(s)
+        return [ (v-mn)/(mx-mn) for v in s.tolist() ]
     except Exception:
         return None
 
-def _gather_loose_csvs(bt_dir: Path) -> List[Dict[str, Any]]:
-    out = []
-    for csvf in sorted(bt_dir.glob("run_*.csv")):
-        meta = _pick_meta(csvf.name)
-        mt = datetime.fromtimestamp(csvf.stat().st_mtime)
-        out.append({
-            "run_id": csvf.stem,
-            "started_at": mt.strftime("%Y-%m-%d %H:%M:%S"),
-            "path": f"{LINK_BASE}/{csvf.name}",
-            "folder": None,
-            "strategy": meta.get("strategy"),
-            "universe": meta.get("universe"),
-            "sharpe": None, "cagr": None, "mdd": None,
-            "winrate": None, "trades": None, "pnl": None,
-            "spark": _read_csv_first_numeric_series(csvf),
-        })
-    return out
+def _svg_spark(values, w=100, h=24, pad=2):
+    if not values: return ""
+    xs = []
+    n = len(values)
+    for i, v in enumerate(values):
+        x = pad + (w-2*pad) * (i/(n-1 if n>1 else 1))
+        y = pad + (h-2*pad) * (1.0 - v)
+        xs.append(f"{x:.1f},{y:.1f}")
+    return f"<svg width='{w}' height='{h}' viewBox='0 0 {w} {h}'><polyline fill='none' stroke='currentColor' stroke-width='1.5' points='{' '.join(xs)}'/></svg>"
 
-def _gather_subdirs(bt_dir: Path) -> List[Dict[str, Any]]:
-    out = []
-    for d in sorted([p for p in bt_dir.iterdir() if p.is_dir()]):
-        mfile = d / "metrics.json"
-        eq = d / "equity_curve.csv"
-        meta = _pick_meta(d.name)
-        mt = datetime.fromtimestamp(d.stat().st_mtime)
-        base_link = f"{LINK_BASE}/{d.name}"
-        entry = {
-            "run_id": d.name,
-            "started_at": mt.strftime("%Y-%m-%d %H:%M:%S"),
-            "path": base_link + ("/metrics.json" if mfile.exists() else ""),
-            "folder": f"{LINK_BASE}/{d.name}/",
-            "strategy": meta.get("strategy"),
-            "universe": meta.get("universe"),
-            "sharpe": None, "cagr": None, "mdd": None,
-            "winrate": None, "trades": None, "pnl": None,
-            "spark": _read_csv_first_numeric_series(eq) if eq.exists() else None,
-        }
-        if mfile.exists():
-            try:
-                entry.update(_load_metrics_from_json(mfile))
-            except Exception:
-                pass
-        out.append(entry)
-    return out
-
-def gather_runs() -> List[Dict[str, Any]]:
-    BT_DIR.mkdir(exist_ok=True, parents=True)
+def gather_runs():
     runs = []
-    runs.extend(_gather_subdirs(BT_DIR))
-    runs.extend(_gather_loose_csvs(BT_DIR))
-    def k(e):
-        try:
-            return datetime.strptime(e["started_at"], "%Y-%m-%d %H:%M:%S")
-        except Exception:
-            return datetime.fromtimestamp(0)
-    runs.sort(key=k, reverse=True)
+    if BT_DIR.exists():
+        for p in sorted(BT_DIR.glob("*_*"), key=lambda x: x.stat().st_mtime, reverse=True):
+            mt = _load_metrics(p)
+            if mt:
+                mt["_spark"] = _svg_spark(_spark_values(p))
+                runs.append(mt)
     return runs
 
-def build_html(rows: List[Dict[str, Any]]) -> str:
-    return f"""<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Backtests Index</title>
+# ---- Status badges ----
+def _to_series(obj) -> pd.Series:
+    if isinstance(obj, pd.DatetimeIndex): return pd.Series(obj)
+    if isinstance(obj, pd.Series): return pd.to_datetime(obj, errors="coerce")
+    if isinstance(obj, pd.Index):  return pd.to_datetime(pd.Series(obj), errors="coerce")
+    return pd.to_datetime(pd.Series(obj), errors="coerce")
+
+def latest_trading_day_from_cache() -> date:
+    p = ROOT / "data" / "cache" / "kr" / "trading_days.pkl"
+    obj = pd.read_pickle(p)
+    parts = []
+    idx = getattr(obj, "index", None)
+    if isinstance(idx, pd.DatetimeIndex) and len(idx): parts.append(_to_series(idx))
+    for c in getattr(obj, "columns", []):
+        if "date" in str(c).lower(): parts.append(_to_series(obj[c]))
+    if not parts:
+        try: parts.append(pd.to_datetime(obj.stack(dropna=False), errors="coerce"))
+        except Exception: pass
+    cat = pd.concat(parts, axis=0).dropna()
+    today = pd.Timestamp.today().normalize()
+    cat = cat[cat <= today]
+    return cat.max().date()
+
+def probe_latest() -> date:
+    """config/data_sources.yaml 의 probes/postcheck_probes 사용."""
+    import pandas as pd
+    base = ROOT / "data" / "cache" / "kr"
+    probes = ["069500.KS.pkl","069500.pkl"]
+    cfg = ROOT / "config" / "data_sources.yaml"
+    if cfg.exists():
+        try:
+            import yaml
+            y = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
+            probes = y.get("probes") or y.get("postcheck_probes") or probes
+        except Exception:
+            pass
+
+    dates = []
+    for name in probes:
+        p = base / name
+        if not p.exists():
+            continue
+        df = pd.read_pickle(p)
+        idx = getattr(df, "index", None)
+        if isinstance(idx, pd.DatetimeIndex) and len(idx):
+            dates.append(pd.to_datetime(idx).max().date()); continue
+        # date 컬럼 탐색
+        hit = False
+        for col in getattr(df,"columns",[]):
+            if "date" in str(col).lower():
+                s = pd.to_datetime(df[col], errors="coerce")
+                if s.notna().any():
+                    dates.append(s.max().date()); hit=True; break
+        if hit: continue
+        # 마지막 수단: stack
+        try:
+            s = pd.to_datetime(df.stack(dropna=False), errors="coerce")
+            if s.notna().any(): dates.append(s.max().date())
+        except Exception:
+            pass
+    return max(dates) if dates else None
+
+
+def drift_today():
+    today = datetime.today().strftime("%Y-%m-%d")
+    logs = sorted((ROOT / "logs").glob(f"compare_*_{today}.log"))
+    out = []
+    for p in logs:
+        txt = p.read_text(encoding="utf-8", errors="ignore")
+        if "[RESULT] DRIFT" in txt:
+            m = re.search(r"compare_(.+?)_"+re.escape(today), p.name)
+            strat = m.group(1) if m else "unknown"
+            out.append({"strategy": strat, "path": f"../logs/{p.name}"})
+    return out
+
+def row_html(r):
+    ts = datetime.fromtimestamp(r["_mtime"]).strftime("%Y-%m-%d %H:%M")
+    period = r.get("period", {})
+    period_str = f"{period.get('start','')}~{period.get('end','')}"
+    folder = r.get("_name","")
+    href = f"{LINK_BASE}/backtests/{folder}"
+    final = r.get("Final_Return","")
+    cagr  = r.get("CAGR_like","")
+    mdd   = r.get("MDD","")
+    tag   = r.get("strategy","")
+    spark = r.get("_spark","") or ""
+    return (
+        f"<tr data-strategy='{tag}' data-mtime='{int(r['_mtime'])}'>"
+        f"<td class='str'><span class='dot' data-tag='{tag}'></span>{tag}</td>"
+        f"<td>{period_str}</td>"
+        f"<td class='num'>{final}</td>"
+        f"<td class='num'>{cagr}</td>"
+        f"<td class='num'>{mdd}</td>"
+        f"<td>{ts}</td>"
+        f"<td><a href='{href}' target='_blank'>{folder}</a></td>"
+        f"<td class='spark'>{spark}</td>"
+        "</tr>"
+    )
+
+def build_html(entries):
+    rows = "\n".join(row_html(r) for r in entries) or "<tr><td colspan=8>No runs</td></tr>"
+
+    # status
+    drift = drift_today()
+    drift_badge = f"<span class='badge badge-red'>DRIFT {len(drift)}</span>" if drift else "<span class='badge badge-green'>DRIFT 0</span>"
+    # data freshness
+    data_badge = "<span class='badge'>Data n/a</span>"
+    try:
+        cal = latest_trading_day_from_cache()
+        prb = probe_latest()
+        if prb and cal:
+            ok = (prb == cal) or (prb >= cal)
+            cls = "badge-green" if ok else "badge-red"
+            data_badge = f"<span class='badge {cls}'>Data { 'OK' if ok else 'STALE' } — calendar {cal}, probes {prb}</span>"
+        elif prb:
+            data_badge = f"<span class='badge badge-amber'>Data probes {prb}</span>"
+        elif cal:
+            data_badge = f"<span class='badge badge-amber'>Calendar {cal}</span>"
+    except Exception:
+        pass
+
+    tpl = """<!doctype html>
+<html><head><meta charset="utf-8"><title>Backtests Index</title>
 <style>
-:root {{ --muted:#f8f8fb; --line:#e5e7eb; --txt:#111827; }}
-body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:20px;color:var(--txt)}}
-h2{{margin:0 0 12px 0}}
-.toolbar{{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 16px 0}}
-select,input,button{{padding:6px 8px}}
-table{{border-collapse:collapse;width:100%}}
-th,td{{border:1px solid var(--line);padding:8px;font-size:14px}}
-th{{background:var(--muted);text-align:left;cursor:pointer;user-select:none}}
-td.num{{text-align:right}}
-.badge{{background:#eef;border:1px solid #ccd;border-radius:6px;padding:2px 6px;font-size:12px}}
-.dot{{display:inline-block;width:10px;height:10px;border-radius:5px;margin-right:6px;vertical-align:middle;border:1px solid #0001}}
-td.spark svg{{display:block}}
-caption{{text-align:left;margin:0 0 6px 0;font-weight:600}}
-</style>
-</head>
+body{font-family:system-ui,Arial,sans-serif;margin:24px}
+.toolbar{display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+select,input,button{padding:6px 8px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #ddd;padding:8px;font-size:14px}
+th{background:#f8f8f8;text-align:left;cursor:pointer;user-select:none}
+td.num{text-align:right}
+.badge{background:#eef;border:1px solid #ccd;border-radius:6px;padding:2px 6px;font-size:12px}
+.badge-green{background:#e6f7ec;border-color:#b9e0c5}
+.badge-red{background:#fde8e8;border-color:#f5b5b5}
+.badge-amber{background:#fff7e6;border-color:#f4dbb5}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid #0001}
+td.spark svg{display:block}
+ul{margin:8px 0 0 18px}
+</style></head>
 <body>
-<h2>Backtests Index <span class="badge">{len(rows)} runs</span></h2>
+<h2>Backtests Index <span class="badge">%%COUNT%% runs</span> %%DRIFT%% %%DATA%%</h2>
 
 <div class="toolbar">
-  <label>최근
-    <select id="recentN">
-      <option value="all">전체</option>
-      <option>10</option>
-      <option selected>30</option>
-      <option>50</option>
-      <option>100</option>
-    </select> 개</label>
-  <label>전략
-    <input id="q" type="search" placeholder="strategy/universe 검색">
+  <label>Strategy
+    <input id="q" type="text" placeholder="filter by strategy…">
   </label>
-  <button id="export">Export CSV</button>
+  <label>최근 N건
+    <select id="limit">
+      <option>10</option><option selected>20</option><option>50</option><option>100</option><option>All</option>
+    </select>
+  </label>
+  <button id="btnCsv">CSV export</button>
 </div>
 
+%%DRIFT_LIST%%
+
 <table id="tbl">
-  <caption>runs</caption>
   <thead>
     <tr>
-      <th data-k="started_at">Date</th>
-      <th data-k="run_id">Run</th>
-      <th data-k="strategy">Strategy</th>
-      <th data-k="universe">Universe</th>
-      <th data-k="sharpe" class="num">Sharpe</th>
-      <th data-k="cagr" class="num">CAGR</th>
-      <th data-k="mdd" class="num">MDD</th>
-      <th data-k="winrate" class="num">Win%</th>
-      <th data-k="trades" class="num">Trades</th>
-      <th data-k="pnl" class="num">PnL</th>
-      <th>Spark</th>
+      <th data-key="strategy">Strategy</th>
+      <th data-key="period">Period</th>
+      <th data-key="Final">Final</th>
+      <th data-key="CAGR">CAGR</th>
+      <th data-key="MDD">MDD</th>
+      <th data-key="_mtime">mtime</th>
+      <th data-key="_name">folder</th>
+      <th data-key="spark">spark</th>
     </tr>
   </thead>
-  <tbody></tbody>
+  <tbody>
+%%ROWS%%
+  </tbody>
 </table>
 
 <script>
-const ROWS = {json.dumps(gather_runs(), ensure_ascii=False)};
-let sortKey = "started_at";
-let sortAsc = false;
+(function(){
+  const tbl = document.getElementById('tbl');
+  const q   = document.getElementById('q');
+  const lim = document.getElementById('limit');
+  const btn = document.getElementById('btnCsv');
 
-function formatNum(v, pct=false) {{
-  if (v === null || v === undefined || isNaN(v)) return "";
-  const n = Number(v);
-  return pct ? (n*100).toFixed(2) + "%" : n.toFixed(3);
-}}
-function sparkSVG(vals) {{
-  if (!vals || vals.length < 2) return "";
-  const w = 80, h = 28;
-  const pts = vals.map((v,i)=>[i*(w/(vals.length-1)), (1-v)*h]);
-  const d = "M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
-  return `<svg width="${{w}}" height="${{h}}" viewBox="0 0 ${{w}} ${{h}}"><path d="${{d}}" fill="none" stroke="currentColor" stroke-width="1"/></svg>`;
-}}
-function colorDot(sharpe, mdd) {{
-  let color = "#dc2626";
-  if (sharpe !== null && sharpe !== undefined) {{
-    if (sharpe >= 1.0 && (mdd === null || mdd >= -0.2)) color = "#16a34a";
-    else if (sharpe >= 0.5) color = "#ca8a04";
-  }}
-  return `<span class="dot" style="background:${{color}}"></span>`;
-}}
-function cmp(a,b,k) {{
-  const va = a[k], vb = b[k];
-  if (va === vb) return 0;
-  if (va === null || va === undefined) return 1;
-  if (vb === null || vb === undefined) return -1;
-  if (k === "started_at") return (new Date(va) - new Date(vb));
-  if (typeof va === "number" && typeof vb === "number") return va - vb;
-  return (""+va).localeCompare(""+vb);
-}}
-function currentView() {{
-  const N = document.querySelector("#recentN").value;
-  const q = document.querySelector("#q").value.toLowerCase();
-  let arr = Array.from(ROWS);
-  arr.sort((a,b)=> cmp(a,b,"started_at")).reverse();
-  if (N !== "all") {{
-    const n = parseInt(N);
-    if (!isNaN(n)) arr = arr.slice(0, n);
-  }}
-  if (q) {{
-    arr = arr.filter(r => (r.strategy||"").toLowerCase().includes(q) || (r.universe||"").toLowerCase().includes(q));
-  }}
-  arr.sort((a,b)=> sortAsc ? cmp(a,b,sortKey) : cmp(b,a,sortKey));
-  return arr;
-}}
-function render() {{
-  const tbody = document.querySelector("#tbl tbody");
-  tbody.innerHTML = "";
-  for (const r of currentView()) {{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${{r.started_at}}</td>
-      <td><a href="${{r.folder || r.path}}" target="_blank">${{colorDot(r.sharpe, r.mdd)}}${{r.run_id}}</a></td>
-      <td>${{r.strategy||""}}</td>
-      <td>${{r.universe||""}}</td>
-      <td class="num">${{formatNum(r.sharpe)}}</td>
-      <td class="num">${{formatNum(r.cagr, true)}}</td>
-      <td class="num">${{formatNum(r.mdd, true)}}</td>
-      <td class="num">${{formatNum(r.winrate, true)}}</td>
-      <td class="num">${{r.trades||""}}</td>
-      <td class="num">${{formatNum(r.pnl)}}</td>
-      <td class="spark">${{sparkSVG(r.spark)}}</td>
-    `;
-    tbody.appendChild(tr);
-  }}
-}}
-function exportCSV() {{
-  const rows = currentView();
-  const headers = ["started_at","run_id","strategy","universe","sharpe","cagr","mdd","winrate","trades","pnl"];
-  const lines = [headers.join(",")];
-  for (const r of rows) {{
-    const vals = headers.map(h => r[h]===null||r[h]===undefined?"":r[h]);
-    lines.push(vals.join(","));
-  }}
-  const blob = new Blob([lines.join("\\n")], {{type:"text/csv;charset=utf-8;"}});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "index_view.csv";
-  a.click();
-  URL.revokeObjectURL(a.href);
-}}
-document.querySelector("#export").addEventListener("click", exportCSV);
-document.querySelector("#recentN").addEventListener("change", render);
-document.querySelector("#q").addEventListener("input", render);
-document.querySelectorAll("th[data-k]").forEach(th => {{
-  th.addEventListener("click", () => {{
-    const k = th.getAttribute("data-k");
-    if (sortKey === k) sortAsc = !sortAsc; else {{ sortKey = k; sortAsc = (k==="run_id"||k==="strategy"||k==="universe"); }}
-    render();
-  }});
-}});
-render();
+  let sortKey = '_mtime';
+  let asc = false;
+
+  function getRows(){ return Array.from(tbl.tBodies[0].rows); }
+
+  function cmp(a,b,k){
+    const ia = a.cells, ib = b.cells;
+    let va, vb;
+    switch(k){
+      case 'strategy': va = ia[0].textContent.trim(); vb = ib[0].textContent.trim(); break;
+      case 'period':   va = ia[1].textContent; vb = ib[1].textContent; break;
+      case 'Final':    va = parseFloat(ia[2].textContent)||-1e99; vb = parseFloat(ib[2].textContent)||-1e99; break;
+      case 'CAGR':     va = parseFloat(ia[3].textContent)||-1e99; vb = parseFloat(ib[3].textContent)||-1e99; break;
+      case 'MDD':      va = parseFloat(ia[4].textContent)|| 1e99; vb = parseFloat(ib[4].textContent)|| 1e99; break;
+      case '_mtime':   va = parseInt(a.dataset.mtime||'0'); vb = parseInt(b.dataset.mtime||'0'); break;
+      default:         va = a.textContent; vb = b.textContent;
+    }
+    if(va<vb) return asc?-1:1;
+    if(va>vb) return asc?1:-1;
+    return 0;
+  }
+
+  function render(){
+    let rows = getRows();
+
+    rows.forEach(r=>{
+      const tag = r.cells[0].textContent.trim();
+      const dot = r.querySelector('.dot');
+      const h = Math.abs([...tag].reduce((a,c)=>a*33 + c.charCodeAt(0), 7)) % 360;
+      dot.style.background = `hsl(${h} 70% 85%)`;
+      dot.style.borderColor = `hsl(${h} 60% 40% / 0.3)`;
+    });
+
+    const needle = (q.value||'').trim().toLowerCase();
+    if(needle){
+      rows = rows.filter(r => r.cells[0].textContent.toLowerCase().includes(needle));
+    }
+
+    rows.sort((a,b)=>cmp(a,b,sortKey));
+
+    const sel = lim.value;
+    let n = rows.length;
+    if(sel!=='All'){ n = Math.min(parseInt(sel||'20'), rows.length); }
+    getRows().forEach(r => r.style.display = 'none');
+    rows.forEach((r,i)=>{ r.style.display = (i<n)?'':'none'; });
+  }
+
+  Array.from(tbl.tHead.rows[0].cells).forEach((th, idx)=>{
+    th.addEventListener('click', ()=>{
+      const map = ['strategy','period','Final','CAGR','MDD','_mtime','_name','spark'];
+      const key = map[idx]||'_mtime';
+      if(sortKey===key) asc=!asc; else { sortKey=key; asc=false; }
+      render();
+    });
+  });
+
+  btn.addEventListener('click', ()=>{
+    const rows = getRows().filter(r => r.style.display !== 'none');
+    const header = ['Strategy','Period','Final','CAGR','MDD','mtime','folder'];
+    const lines = [header.join(',')];
+    rows.forEach(r=>{
+      const tds = r.cells;
+      const rec = [tds[0].textContent.trim(), tds[1].textContent, tds[2].textContent,
+                   tds[3].textContent, tds[4].textContent, tds[5].textContent, tds[6].textContent];
+      lines.push(rec.map(v => `"${v.replaceAll('"','""')}"`).join(','));
+    });
+    const blob = new Blob([lines.join('\\n')], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'backtests_index.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  const tblEl = document.getElementById('tbl');
+  window.addEventListener('load', render);
+  document.getElementById('q').addEventListener('input', render);
+  document.getElementById('limit').addEventListener('change', render);
+})();
 </script>
-</body></html>
-"""
+
+</body></html>"""
+    drift_list = ""
+    d = drift_today()
+    if d:
+        drift_list = "<div><b>Recent DRIFT:</b><ul>" + "".join(
+            f"<li>{x['strategy']} — <a href='{x['path']}' target='_blank'>{x['path'].split('/')[-1]}</a></li>" for x in d
+        ) + "</ul></div>"
+
+    return (tpl
+            .replace("%%ROWS%%", rows)
+            .replace("%%COUNT%%", str(len(entries)))
+            .replace("%%DRIFT%%", drift_badge)
+            .replace("%%DATA%%", data_badge)
+            .replace("%%DRIFT_LIST%%", drift_list))
 
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "index.json").write_text(
-        json.dumps(gather_runs(), ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    (OUT_DIR / "index.html").write_text(build_html([]), encoding="utf-8")
+    entries = gather_runs()
+    (OUT_DIR / "index.json").write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+    (OUT_DIR / "index.html").write_text(build_html(entries), encoding="utf-8")
     print(f"[INDEX] wrote {OUT_DIR/'index.json'} and {OUT_DIR/'index.html'}")
 
 if __name__ == "__main__":

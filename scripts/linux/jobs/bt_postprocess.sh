@@ -41,3 +41,9 @@ if [ $RC -ne 0 ]; then
 else
   echo "[POST] compare OK"
 fi
+
+# ... (bt_postprocess 기존 로직)
+if [ -x scripts/linux/batch/build_web_index.sh ]; then
+  echo "[POST] rebuild web index"
+  bash scripts/linux/batch/build_web_index.sh || true
+fi

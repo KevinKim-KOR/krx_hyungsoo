@@ -4,6 +4,15 @@ env:
   pc:
     allow_network: true
 
+defaults:
+  benchmark_candidates: ["069500", "069500.KS"]   # 보고/웹에서 시장 라인 찾을 때 사용
+  regime:
+    source: "yf"               # "yf" | "pykrx" 등
+    ticker: "069500.KS"        # 시장 레짐용 티커(예: ^GSPC 또는 069500.KS)
+
+calendar:
+  symbol_priority: ["069500.KS","069500"]  # 거래일 캘린더용 심볼 우선순위
+
 benchmarks:
   KOSPI:
     providers: [local_cache, parquet, pykrx_index, yf_index, yf_etf]
@@ -11,29 +20,37 @@ benchmarks:
       pykrx_index: "1001"
       yf_index: "^KS11"
       yf_etf: "069500.KS"
-      local_keys: ["069500.KS", "069500"]  # 로컬 캐시 파일명 후보
+      local_keys: ["069500.KS", "069500", "KOSPI", "KOSPI_ETF"]  # 로컬 캐시 파일명 후보
   KOSDAQ:
     providers: [local_cache, parquet, pykrx_index, yf_index, yf_etf]
     symbols:
       pykrx_index: "2001"
       yf_index: "^KQ11"
       yf_etf: "229200.KS"
-      local_keys: ["229200.KS", "229200"]
+      local_keys: ["229200.KS","229200","KOSDAQ"]
   S&P500:
     providers: [local_cache, parquet, yf_index, yf_etf]
     symbols:
       yf_index: "^GSPC"
       yf_etf: "SPY"
-      local_keys: ["SPY", "^GSPC"]
+      local_keys: ["SPY","^GSPC","S&P500"]
 universe:
   etfs:
-    - "069500.KS"
-    - "133690.KS"
-    - "091160.KS"
-    - "305720.KS"
-    - "373220.KS"
-    - "005930.KS"
-    - "000660.KS"
+    - 069500.KS
+    - 133690.KS
+    - 091160.KS
+    - 305720.KS
+    - 373220.KS
+  equities:
+    - 005930.KS
+    - 000660.KS
+
+probes:
+  eod_fresh: ["069500.KS.pkl", "069500.pkl"]
+  calendar_symbols_priority: ["069500.KS", "069500"]
+
+regime:
+  ticker_priority: ["^GSPC", "SPY", "069500.KS"]
 
 # 사후 신선도 체크용 프로브(기존 호환: postcheck_probes, 새 권장: probes)
 probes: ["069500.KS.pkl", "069500.pkl"]

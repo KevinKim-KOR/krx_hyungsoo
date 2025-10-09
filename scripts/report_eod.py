@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 import sys, importlib, argparse, inspect
+from pathlib import Path
 
-def _import_module(name):
-    return importlib.import_module(name)
+# 프로젝트 루트 경로를 sys.path에 추가 (scripts/에서 루트 모듈 import 가능)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-def _call_if_exists(mod, func_name, date):
-    fn = getattr(mod, func_name, None)
-    if callable(fn):
-        # run(date) or report(date) or generate_eod_report(date)
-        try:
-            return fn(date=date) if "date" in inspect.signature(fn).parameters else fn(date)
-        except TypeError:
-            # 혹시 시그니처가 다르면 그냥 단일 인자로도 시도
-            return fn(date)
+def _try_call(mod, names, date):
+    for n in names:
+        fn = getattr(mod, n, None)
+        if callable(fn):
+            try:
+                return fn(date=date) if "date" in inspect.signature(fn).parameters else fn(date)
+            except TypeError:
+                try:
+                    return fn(date)
+                except TypeError:
+                    pass
     return None
 
 def main():
@@ -21,24 +24,22 @@ def main():
     args = ap.parse_args()
 
     try:
-        mod = _import_module("reporting_eod")
+        mod = importlib.import_module("reporting_eod")
     except Exception as e:
-        print(f"[ERROR] import reporting_eod failed: {e}", file=sys.stderr)
-        sys.exit(1)
+        print(f"[ERROR] import reporting_eod failed: {e}")
+        return 1
 
-    # 우선순위대로 시도
-    for name in ("run", "report", "generate_eod_report"):
-        out = _call_if_exists(mod, name, args.date)
-        if out is not None:
-            return 0
+    # run()/report()/generate_eod_report() 우선 시도
+    if _try_call(mod, ("run", "report", "generate_eod_report"), args.date) is not None:
+        return 0
 
-    # 마지막으로 main(args) 시도
+    # main(args) 폴백
     main_fn = getattr(mod, "main", None)
     if callable(main_fn):
         main_fn(args)
         return 0
 
-    print("[ERROR] reporting_eod entry not found (expected run()/report()/generate_eod_report() or main(args))", file=sys.stderr)
+    print("[ERROR] reporting_eod entry not found (expected run()/report()/generate_eod_report() or main(args))")
     return 1
 
 if __name__ == "__main__":

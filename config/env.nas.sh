@@ -3,3 +3,5 @@ export TZ=Asia/Seoul
 export ENV=nas
 export PYTHONBIN="/volume2/homes/Hyungsoo/krx/krx_alertor_modular/venv/bin/python"
 export ALLOW_NET_FETCH=1   # 운영시간엔 온라인 허용
+export TG_TOKEN="8216278192:AAFLuiVI8hrWr86uV2zs9gMLrTcZdO9tGyk"
+export TG_CHAT_ID=7457035904
