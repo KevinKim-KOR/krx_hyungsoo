@@ -1,55 +1,139 @@
-#!/bin/bash
-# Robust single-instance launcher for uvicorn web.main:app
+#!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
 
-mkdir -p logs .locks
-LOCK=".locks/web.lock"
-PIDFILE=".locks/web.pid"
-LOG="logs/web_$(date +%F).log"
+# ---------------------------------------
+# KRX Web launcher (uvicorn)
+# - start/stop/restart/status/logs
+# - health check & crash diagnostics
+# ---------------------------------------
 
-# 0) 기존 pidfile 검증(좀비/스테일 정리)
-if [[ -s "$PIDFILE" ]]; then
-  oldpid="$(cat "$PIDFILE" 2>/dev/null || true)"
-  if [[ -n "${oldpid:-}" ]] && kill -0 "$oldpid" 2>/dev/null; then
-    echo "[SKIP] web already running (pid=$oldpid)" | tee -a "$LOG"
-    exit 0
-  else
-    echo "[WARN] stale pidfile for pid=$oldpid -> cleaning" | tee -a "$LOG"
-    rm -f "$PIDFILE"
-  fi
-fi
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+cd "$ROOT"
 
-# 1) 락으로 중복 기동 방지
-if mkdir "$LOCK" 2>/dev/null; then
-  trap 'rmdir "$LOCK"' EXIT
+LOGDIR="$ROOT/logs"; mkdir -p "$LOGDIR"
+PIDFILE="$ROOT/web.pid"
+PORT="${PORT:-8899}"
+APP_MODULE="${APP_MODULE:-web.main:app}"   # 필요시 환경변수로 override
+
+# venv + env 설정
+if [[ -f "config/env.nas.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "config/env.nas.sh"
 else
-  echo "[SKIP] web already starting (lock held)" | tee -a "$LOG"
-  exit 0
+  echo "[WARN] config/env.nas.sh not found; trying system python" >&2
+  PYTHONBIN="${PYTHONBIN:-python3}"
 fi
+PY="${PYTHONBIN:-python3}"
 
-# 2) 포트(8899) 점유 프로세스 강제 정리 (있다면)
-pids=""
-if command -v lsof >/dev/null 2>&1; then
-  pids="$(lsof -t -iTCP:8899 -sTCP:LISTEN || true)"
-elif command -v fuser >/dev/null 2>&1; then
-  pids="$(fuser -n tcp 8899 2>/dev/null || true)"
-fi
-if [[ -n "${pids// /}" ]]; then
-  echo "[INFO] killing pids on :8899 -> $pids" | tee -a "$LOG"
-  kill $pids 2>/dev/null || true
+logfile() { echo "$LOGDIR/web_$(date +%F).log"; }
+
+is_listening() {
+  # ss/lsof 없는 NAS 대비 netstat 사용
+  netstat -ltnp 2>/dev/null | grep -q ":${PORT} "
+}
+
+is_running() {
+  [[ -f "$PIDFILE" ]] || return 1
+  local p; p="$(cat "$PIDFILE" 2>/dev/null || true)"
+  [[ -n "${p:-}" ]] && kill -0 "$p" 2>/dev/null
+}
+
+start() {
+  # stale pid 정리
+  if [[ -f "$PIDFILE" ]]; then
+    local p; p="$(cat "$PIDFILE" 2>/dev/null || true)"
+    if [[ -n "${p:-}" ]] && kill -0 "$p" 2>/dev/null; then
+      echo "[SKIP] already running pid=$p"
+      exit 0
+    else
+      echo "[WARN] stale pidfile for pid=${p:-?} -> cleaning"
+      rm -f "$PIDFILE"
+    fi
+  fi
+
+  # 기존 리스너가 있으면 중지 유도
+  if is_listening; then
+    echo "[WARN] port ${PORT} already in use. Showing processes:"
+    netstat -ltnp 2>/dev/null | grep ":${PORT} " || true
+    exit 2
+  fi
+
+  local logf; logf="$(logfile)"
+  echo "[RUN] web $(date '+%F %T') port=${PORT} logfile=$(basename "$logf")"
+
+  # 백그라운드 기동
+  nohup "$PY" -m uvicorn "$APP_MODULE" \
+      --host 0.0.0.0 --port "$PORT" --workers 1 --proxy-headers \
+      >> "$logf" 2>&1 &
+
+  echo $! > "$PIDFILE"
   sleep 1
-  kill -9 $pids 2>/dev/null || true
-fi
 
-# 3) 가상환경/환경변수
-[ -f "venv/bin/activate" ] && source venv/bin/activate || true
-export KRX_CONFIG="$PWD/secret/config.yaml"
-export KRX_WATCHLIST="$PWD/secret/watchlist.yaml"
+  # 빠른 크래시 감지
+  if ! is_running; then
+    echo "[EXIT] uvicorn crashed immediately. Tail of log:"
+    tail -n 200 "$logf" || true
+    exit 2
+  fi
 
-# 4) 기동
-nohup ./venv/bin/uvicorn web.main:app \
-  --host 0.0.0.0 --port 8899 --proxy-headers >> "$LOG" 2>&1 &
+  # 헬스체크(최대 10초 대기)
+  for i in {1..20}; do
+    if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
+      echo "[OK] health check passed"
+      is_listening && netstat -ltnp 2>/dev/null | grep ":${PORT} " || true
+      exit 0
+    fi
+    sleep 0.5
+    # 중간에 죽었는지 재확인
+    if ! is_running; then
+      echo "[EXIT] uvicorn terminated during warmup. Tail of log:"
+      tail -n 200 "$logf" || true
+      exit 2
+    fi
+  done
 
-echo $! > "$PIDFILE"
-echo "[RUN] web $(date +'%F %T') pid=$(cat "$PIDFILE")" | tee -a "$LOG"
+  echo "[WARN] health check timed out (10s). Tail of log:"
+  tail -n 200 "$logf" || true
+  exit 2
+}
+
+stop() {
+  if ! is_running; then
+    echo "[SKIP] not running"
+    rm -f "$PIDFILE"
+    exit 0
+  fi
+  local p; p="$(cat "$PIDFILE")"
+  kill "$p" 2>/dev/null || true
+  sleep 1
+  if kill -0 "$p" 2>/dev/null; then
+    echo "[WARN] force kill pid=$p"
+    kill -9 "$p" 2>/dev/null || true
+  fi
+  rm -f "$PIDFILE"
+  echo "[DONE] stopped"
+}
+
+status() {
+  if is_running; then
+    local p; p="$(cat "$PIDFILE")"
+    echo "[STATUS] running pid=$p"
+  else
+    echo "[STATUS] not running"
+  fi
+  is_listening && netstat -ltnp 2>/dev/null | grep ":${PORT} " || true
+  exit 0
+}
+
+logs() {
+  tail -n 200 -F "$(logfile)"
+}
+
+case "${1:-start}" in
+  start) start ;;
+  stop) stop ;;
+  restart) stop; start ;;
+  status) status ;;
+  logs) logs ;;
+  *) echo "usage: $0 {start|stop|restart|status|logs}" ; exit 2 ;;
+esac
