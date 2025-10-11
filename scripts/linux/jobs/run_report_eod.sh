@@ -8,6 +8,13 @@ PYTHONBIN="${PYTHONBIN:-python3}"
 LOG="logs/report_$(date +%F).log"
 mkdir -p logs
 
+bash scripts/linux/jobs/precheck_calendar_guard.sh
+RC=$?
+if [[ $RC -eq 2 ]]; then
+  # 데이터 신선도 부족 → 재시도 루프에서 처리
+  exit 2
+fi
+
 {
   echo "[RUN] report-eod $(date '+%F %T')"
 
