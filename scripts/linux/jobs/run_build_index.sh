@@ -37,6 +37,11 @@ LOG="$LOGDIR/build_index_$(date +%F).log"
   RC=$?
   set -e
 
+  # (신규) UX 강화: 최근N/CSV/색상 주입
+  if [[ -f "$ROOT/reports/index.html" ]]; then
+    "$PY" "$ROOT/web/enhance_index.py" || true
+  fi
+
   if [[ $RC -ne 0 ]]; then
     echo "[EXIT] RC=2 (build_index.py exited with $RC)"
     exit 2
