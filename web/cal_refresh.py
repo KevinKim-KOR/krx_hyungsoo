@@ -96,12 +96,15 @@ def _fallback_weekdays():
     return days
 
 def main():
-    # Priority 1: pmc
-    days = _try_pmc()
-    # Priority 2: exchange_calendars
+    import sys as _sys
+    days = None
+
+    # Py<3.9에서는 pmc 건너뜀 (backports.zoneinfo 빌드 이슈 회피)
+    if _sys.version_info >= (3, 9):
+        days = _try_pmc()
+
     if not days:
         days = _try_excals()
-    # Fallback: weekdays
     if not days:
         days = _fallback_weekdays()
 
