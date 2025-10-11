@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")/../.."
 
-[ -f config/env.nas.sh ] && source config/env.nas.sh
-PYTHONBIN="${PYTHONBIN:-python3}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+cd "$ROOT"
+
+source config/env.nas.sh
+PY="${PYTHONBIN:-python3}"
 
 LOG="logs/watchlist_$(date +%F).log"
 mkdir -p logs
 
-bash scripts/linux/jobs/precheck_calendar_guard.sh
+bash "$ROOT/scripts/linux/jobs/precheck_calendar_guard.sh"
 RC=$?
 if [[ $RC -eq 2 ]]; then
-  # 데이터 신선도 부족 → 재시도 루프에서 처리
   exit 2
 fi
+
+# 이하 기존 내용 …
+
 
 {
   echo "[RUN] report-watchlist $(date '+%F %T')"

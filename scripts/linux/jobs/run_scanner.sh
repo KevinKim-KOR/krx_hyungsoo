@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")/../.."   # ← 레포 루트로 이동 (scripts/linux/jobs → ../..)
 
-# 환경 로드
-[ -f config/env.nas.sh ] && source config/env.nas.sh
-PYTHONBIN="${PYTHONBIN:-python3}"
+# ── repo root 고정 ─────────────────────────────────────────────────────────────
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+cd "$ROOT"
+
+# env / python 로드
+# shellcheck disable=SC1091
+source config/env.nas.sh
+PY="${PYTHONBIN:-python3}"
 
 LOG="logs/scanner_$(date +%F).log"
 mkdir -p logs
 
-bash scripts/linux/jobs/precheck_calendar_guard.sh
+# ── 캘린더 가드(절대경로 호출) ────────────────────────────────────────────────
+bash "$ROOT/scripts/linux/jobs/precheck_calendar_guard.sh"
 RC=$?
 if [[ $RC -eq 2 ]]; then
   # 데이터 신선도 부족 → 재시도 루프에서 처리
