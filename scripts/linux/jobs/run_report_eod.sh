@@ -66,6 +66,13 @@ _send_notify("❗️EOD 리포트 실패 감지: 로그 확인 필요", _load_cf
 PY
   fi
 
+  # --- post: web index ---
+  bash "$ROOT/scripts/linux/jobs/run_build_index.sh"
+  RBI_RC=$?
+  if [[ $RBI_RC -eq 2 ]]; then
+    exit 2
+  fi
+
   echo "[DONE] report-eod $(date '+%F %T')"
   echo "[EXIT $rc] report-eod $(date '+%F %T')"
   exit $rc

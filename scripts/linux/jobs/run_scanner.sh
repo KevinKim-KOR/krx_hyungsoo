@@ -44,5 +44,13 @@ PY
   # 2) 본 실행 (외부요인 → 스킵으로 전환)
   bash scripts/linux/jobs/run_py_guarded.sh "$PYTHONBIN" app.py scanner
 
+  # --- post: web index ---
+  bash "$ROOT/scripts/linux/jobs/run_build_index.sh"
+  RBI_RC=$?
+  if [[ $RBI_RC -eq 2 ]]; then
+    # 데이터 신선도/내부오류 → 재시도 루프로 올림
+    exit 2
+  fi
+
   echo "[DONE] scanner $(date '+%F %T')"
 } | tee -a "$LOG"

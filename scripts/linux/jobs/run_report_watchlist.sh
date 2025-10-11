@@ -33,5 +33,12 @@ _send_notify("❗️Watchlist 리포트 실패: 로그 확인 필요", _load_cfg
 PY
   fi
 
+  # --- post: web index ---
+  bash "$ROOT/scripts/linux/jobs/run_build_index.sh"
+  RBI_RC=$?
+  if [[ $RBI_RC -eq 2 ]]; then
+    exit 2
+  fi
+
   echo "[DONE] report-watchlist $(date '+%F %T')"
 } | tee -a "$LOG"
