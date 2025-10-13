@@ -13,14 +13,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 import sys
-import json
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS_HTML = ROOT / "reports" / "index.html"
-REPORTS_JSON = ROOT / "reports" / "index.json"
 CFG = ROOT / "config" / "web_index.yaml"
 
-# defaults (can be overridden by config keys if you already wrote them later)
+# defaults (can be overridden by config keys if present)
 RECENT_OPTIONS = [20, 50, 100, 200, "All"]
 RECENT_DEFAULT = 50
 
@@ -36,7 +34,7 @@ try:
             # sanitize (int or "All")
             RECENT_OPTIONS = []
             for v in rec_opts:
-                if (isinstance(v, int) and v > 0) or (isinstance(v, str) and v.lower() == "all"):
+                if (isinstance(v, int) and v > 0) or (isinstance(v, str) and str(v).lower() == "all"):
                     RECENT_OPTIONS.append(v if isinstance(v, int) else "All")
 except Exception:
     pass
@@ -48,21 +46,24 @@ if not REPORTS_HTML.exists():
 # read html
 html = REPORTS_HTML.read_text(encoding="utf-8", errors="ignore")
 
-# 1) inject toolbar (Recent N + CSV)
-toolbar_html = f"""
+# build options html separately to avoid f-string/braces issues
+options_html = "".join([f'<option value="{o}">{o}</option>' for o in RECENT_OPTIONS])
+
+# toolbar template (plain string; placeholders replaced below)
+toolbar_tpl = """
 <!-- injected by enhance_index.py -->
 <style>
-  .idx-toolbar{{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;display:flex;gap:.75rem;align-items:center;margin:8px 0 12px}}
-  .idx-toolbar label{{font-size:.9rem;opacity:.8}}
-  .idx-toolbar select, .idx-toolbar button{{padding:.3rem .5rem;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer}}
-  .idx-muted{{opacity:.6;font-size:.85rem}}
+  .idx-toolbar{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;display:flex;gap:.75rem;align-items:center;margin:8px 0 12px}
+  .idx-toolbar label{font-size:.9rem;opacity:.8}
+  .idx-toolbar select, .idx-toolbar button{padding:.3rem .5rem;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer}
+  .idx-muted{opacity:.6;font-size:.85rem}
   /* simple coloring */
-  table#idxTable td.pos{{color:#0a7f28; font-weight:600}}
-  table#idxTable td.neg{{color:#c2371c; font-weight:600}}
+  table#idxTable td.pos{color:#0a7f28; font-weight:600}
+  table#idxTable td.neg{color:#c2371c; font-weight:600}
 </style>
 <div class="idx-toolbar" id="idxToolbar">
   <label for="recentN">Recent N</label>
-  <select id="recentN">{''.join([f'<option value="{o}">{o}</option>' for o in RECENT_OPTIONS])}</select>
+  <select id="recentN">{OPTIONS}</select>
   <button id="btnCsv" type="button">Export CSV</button>
   <span class="idx-muted">* 색상: + (초록) / − (빨강)</span>
 </div>
@@ -139,7 +140,7 @@ toolbar_html = f"""
   colorize(tbl);
 
   const sel = document.getElementById('recentN');
-  const defN = {RECENT_DEFAULT!r};
+  const defN = __RECENT_DEFAULT__;
   if(sel){
     if([...sel.options].some(o=>o.value == String(defN))) sel.value = String(defN);
     sel.addEventListener('change', ()=> filterRecent(tbl, sel.value==='All' ? 'All' : parseInt(sel.value)));
@@ -152,8 +153,14 @@ toolbar_html = f"""
 </script>
 """
 
+toolbar_html = (
+    toolbar_tpl
+    .replace("{OPTIONS}", options_html)
+    .replace("__RECENT_DEFAULT__", ("'All'" if str(RECENT_DEFAULT).lower() == "all" else str(RECENT_DEFAULT)))
+)
+
 # insert toolbar before first <table>, else at end of <body>
-if re.search(r"<table", html, flags=re.IGNORECASE|re.DOTALL):
+if re.search(r"<table", html, flags=re.IGNORECASE | re.DOTALL):
     html = re.sub(r"(?i)(<table[^>]*>)", toolbar_html + r"\1", html, count=1)
 elif re.search(r"</body>", html, flags=re.IGNORECASE):
     html = re.sub(r"(?i)</body>", toolbar_html + r"</body>", html, count=1)
