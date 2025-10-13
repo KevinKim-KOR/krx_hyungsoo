@@ -5,8 +5,6 @@ Enhance generated reports/index.html:
 - Inject toolbar (Recent N filter + Export CSV)
 - Add client-side row coloring for +/- values
 - No dependency on pandas; in-place post-process
-
-Safe: If markers not found, it appends at end of <body>.
 """
 
 from __future__ import annotations
@@ -18,11 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORTS_HTML = ROOT / "reports" / "index.html"
 CFG = ROOT / "config" / "web_index.yaml"
 
-# defaults (can be overridden by config keys if present)
 RECENT_OPTIONS = [20, 50, 100, 200, "All"]
 RECENT_DEFAULT = 50
 
-# try to load default recentN from config/web_index.yaml (optional)
+# optional config
 try:
     import yaml  # type: ignore
     if CFG.exists():
@@ -31,7 +28,6 @@ try:
         RECENT_DEFAULT = int(ui.get("recentN_default", RECENT_DEFAULT))
         rec_opts = ui.get("recentN_options")
         if isinstance(rec_opts, list) and rec_opts:
-            # sanitize (int or "All")
             RECENT_OPTIONS = []
             for v in rec_opts:
                 if (isinstance(v, int) and v > 0) or (isinstance(v, str) and str(v).lower() == "all"):
@@ -43,13 +39,10 @@ if not REPORTS_HTML.exists():
     print(f"[ENHANCE] skip (no html): {REPORTS_HTML}")
     sys.exit(0)
 
-# read html
 html = REPORTS_HTML.read_text(encoding="utf-8", errors="ignore")
 
-# build options html separately to avoid f-string/braces issues
+# HTML/JS 조각 (f-string/escape 충돌 회피를 위해 plain 템플릿+replace 사용)
 options_html = "".join([f'<option value="{o}">{o}</option>' for o in RECENT_OPTIONS])
-
-# toolbar template (plain string; placeholders replaced below)
 toolbar_tpl = """
 <!-- injected by enhance_index.py -->
 <style>
@@ -57,9 +50,8 @@ toolbar_tpl = """
   .idx-toolbar label{font-size:.9rem;opacity:.8}
   .idx-toolbar select, .idx-toolbar button{padding:.3rem .5rem;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer}
   .idx-muted{opacity:.6;font-size:.85rem}
-  /* simple coloring */
-  table#idxTable td.pos{color:#0a7f28; font-weight:600}
-  table#idxTable td.neg{color:#c2371c; font-weight:600}
+  table#idxTable td.pos{color:#0a7f28;font-weight:600}
+  table#idxTable td.neg{color:#c2371c;font-weight:600}
 </style>
 <div class="idx-toolbar" id="idxToolbar">
   <label for="recentN">Recent N</label>
@@ -69,7 +61,6 @@ toolbar_tpl = """
 </div>
 <script>
 (function(){
-  // helpers
   function parsePercentOrSign(txt){
     if(!txt) return 0;
     const s = txt.trim();
@@ -85,7 +76,6 @@ toolbar_tpl = """
   function ensureTableId(){
     let tbl = document.querySelector('table#idxTable');
     if(!tbl){
-      // fallback: first table
       tbl = document.querySelector('table');
       if(tbl) tbl.setAttribute('id','idxTable');
     }
@@ -107,23 +97,19 @@ toolbar_tpl = """
     if(!tbl) return;
     const tbody = tbl.tBodies[0] || tbl.createTBody();
     const rows = Array.from(tbody.rows);
-    rows.forEach((tr,idx)=>{
-      tr.style.display = (n==='All' ? '' : (idx < n ? '' : 'none'));
-    });
+    rows.forEach((tr,idx)=>{ tr.style.display = (n==='All' ? '' : (idx < n ? '' : 'none')); });
   }
   function exportCSV(tbl){
     if(!tbl) return;
     const rows = [];
-    const pushRow = (tr)=>rows.push(Array.from(tr.children).map(td=> {
+    const pushRow = (tr)=>rows.push(Array.from(tr.children).map(td=>{
       let v = (td.innerText||'').replaceAll('\\n',' ').trim();
       v = v.replaceAll('"','""');
       if(v.search(/[",\\n]/)>=0) v = '"'+v+'"';
       return v;
     }).join(','));
-    // header
     const thead = tbl.tHead;
     if(thead && thead.rows.length) pushRow(thead.rows[0]);
-    // body (only visible rows)
     const visible = Array.from(tbl.tBodies[0]?.rows || []).filter(tr=>tr.style.display!=='none');
     visible.forEach(pushRow);
     const csv = rows.join('\\n');
@@ -144,7 +130,6 @@ toolbar_tpl = """
   if(sel){
     if([...sel.options].some(o=>o.value == String(defN))) sel.value = String(defN);
     sel.addEventListener('change', ()=> filterRecent(tbl, sel.value==='All' ? 'All' : parseInt(sel.value)));
-    // apply default
     filterRecent(tbl, sel.value==='All' ? 'All' : parseInt(sel.value));
   }
   const btn = document.getElementById('btnCsv');
@@ -152,18 +137,20 @@ toolbar_tpl = """
 })();
 </script>
 """
-
 toolbar_html = (
     toolbar_tpl
-    .replace("{OPTIONS}", options_html)
-    .replace("__RECENT_DEFAULT__", ("'All'" if str(RECENT_DEFAULT).lower() == "all" else str(RECENT_DEFAULT)))
+      .replace("{OPTIONS}", options_html)
+      .replace("__RECENT_DEFAULT__", ("'All'" if str(RECENT_DEFAULT).lower() == "all" else str(RECENT_DEFAULT)))
 )
 
-# insert toolbar before first <table>, else at end of <body>
+# re.sub 치환 문자열 escape 이슈 회피: 함수 치환 사용
+def _inject_before_first_table(m):
+    return toolbar_html + m.group(1)
+
 if re.search(r"<table", html, flags=re.IGNORECASE | re.DOTALL):
-    html = re.sub(r"(?i)(<table[^>]*>)", toolbar_html + r"\1", html, count=1)
+    html = re.sub(r"(?i)(<table[^>]*>)", _inject_before_first_table, html, count=1)
 elif re.search(r"</body>", html, flags=re.IGNORECASE):
-    html = re.sub(r"(?i)</body>", toolbar_html + r"</body>", html, count=1)
+    html = re.sub(r"(?i)</body>", lambda m: toolbar_html + "</body>", html, count=1)
 else:
     html += toolbar_html
 
