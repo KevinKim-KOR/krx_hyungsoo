@@ -12,7 +12,7 @@ LOGFILE="logs/${TASK}_$(date +%F).log"
 # 1) 야간 윈도우/거래일 가드
 bash scripts/linux/jobs/precheck_yf_window.sh 2>&1 | tee -a "$LOGFILE"
 
-# 2) 랜덤 지터 (동시호출 완화)
+# 2) 랜덤 지터
 JITTER_MAX_SEC=${JITTER_MAX_SEC:-60}
 if [ "$JITTER_MAX_SEC" -gt 0 ]; then
   s=$(( RANDOM % JITTER_MAX_SEC ))
@@ -20,21 +20,41 @@ if [ "$JITTER_MAX_SEC" -gt 0 ]; then
   sleep "$s"
 fi
 
-# 3) 본 실행(최대 3회 지수 백오프)
+# 3) 파이썬 엔트리 자동탐색 (모듈 우선 → 스크립트 경로 폴백)
+pick_entry() {
+  # 모듈 후보
+  for m in web.ingest_eod ingest.eod ingest.main ingest_eod; do
+    if "$PYTHONBIN" -c "import importlib; importlib.import_module('$m')" >/dev/null 2>&1; then
+      echo "-m $m"; return 0
+    fi
+  done
+  # 스크립트 후보
+  for f in web/ingest_eod.py ingest/eod.py ingest/main.py tools/ingest_eod.py; do
+    [ -f "$f" ] && { echo "$f"; return 0; }
+  done
+  return 1
+}
+
+ENTRY=$(pick_entry || true)
+if [ -z "${ENTRY:-}" ]; then
+  echo "[EXIT 2] ingest_entry_not_found" | tee -a "$LOGFILE"
+  exit 2
+fi
+echo "[INFO] ingest_entry=${ENTRY}" | tee -a "$LOGFILE"
+
+# 4) 최대 3회 지수 백오프 재시도
 MAX_TRY=${MAX_TRY:-3}
-BASE_BACKOFF=${BASE_BACKOFF:-60} # sec
+BASE_BACKOFF=${BASE_BACKOFF:-60}
 i=1
 while :; do
   echo "[TRY $i] ${TASK} $(date '+%F %T')" | tee -a "$LOGFILE"
 
-  # 기존 파이썬 엔트리 (여기서는 코드 변경 없음)
-  # * 향후 하이브리드 적용 시 -m ingest.yf_hybrid 로 교체 예정
-  if bash scripts/linux/jobs/run_py_guarded.sh "$PYTHONBIN" -m web.ingest_eod 2>&1 | tee -a "$LOGFILE"; then
+  if bash scripts/linux/jobs/run_py_guarded.sh "$PYTHONBIN" $ENTRY 2>&1 | tee -a "$LOGFILE"; then
     echo "[DONE] ${TASK} $(date '+%F %T')" | tee -a "$LOGFILE"
     exit 0
   fi
 
-  # 실패 원인 판독 (레이트리밋/네트워크 → 외부요인)
+  # 외부요인 판독 → 재시도
   if grep -qE "YFRateLimitError|429|Read timed out|Temporary failure in name resolution|Connection reset by peer" "$LOGFILE"; then
     if [ "$i" -lt "$MAX_TRY" ]; then
       backoff=$(( BASE_BACKOFF * 2 ** (i-1) ))
@@ -48,7 +68,6 @@ while :; do
     fi
   fi
 
-  # 로직 오류는 즉시 종료(RC=2)
   echo "[EXIT 2] logic_error $(date '+%F %T')" | tee -a "$LOGFILE"
   exit 2
 done
