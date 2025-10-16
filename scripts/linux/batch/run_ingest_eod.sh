@@ -9,17 +9,17 @@ cd "$(dirname "$0")/../../.."
 TASK="ingest"
 LOGFILE="logs/${TASK}_$(date +%F).log"
 
-# 1) 야간 윈도우/거래일 가드
-if ! bash scripts/linux/jobs/precheck_yf_window.sh 2>&1 | tee -a "$LOGFILE"; then
-  rc=$?
-  if [ "$rc" -eq 100 ]; then
-    # 윈도우 외: 즉시 정상 종료
-    exit 0
-  else
-    echo "[EXIT 2] precheck_failed rc=$rc" | tee -a "$LOGFILE"
-    exit 2
-  fi
-fi
+# 1) 야간 윈도우/거래일 가드 (반환코드 정확히 판독)
+PRECHECK_OUT="$(bash scripts/linux/jobs/precheck_yf_window.sh 2>&1)"; PRE_RC=$?
+echo "$PRECHECK_OUT" | tee -a "$LOGFILE"
+
+case "$PRE_RC" in
+  0)    : ;;  # 가드 통과 → 계속
+  100)  # 윈도우 밖 → 정상 스킵 종료
+        exit 0 ;;
+  *)    echo "[EXIT 2] precheck_failed rc=${PRE_RC}" | tee -a "$LOGFILE"
+        exit 2 ;;
+esac
 
 # 2) 랜덤 지터
 JITTER_MAX_SEC=${JITTER_MAX_SEC:-60}
@@ -37,7 +37,7 @@ pick_entry() {
 import importlib, sys
 try:
     importlib.import_module("$m")
-except Exception as e:
+except Exception:
     sys.exit(1)
 PY
     then
