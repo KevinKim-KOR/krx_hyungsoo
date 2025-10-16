@@ -10,7 +10,16 @@ TASK="ingest"
 LOGFILE="logs/${TASK}_$(date +%F).log"
 
 # 1) 야간 윈도우/거래일 가드
-bash scripts/linux/jobs/precheck_yf_window.sh 2>&1 | tee -a "$LOGFILE"
+if ! bash scripts/linux/jobs/precheck_yf_window.sh 2>&1 | tee -a "$LOGFILE"; then
+  rc=$?
+  if [ "$rc" -eq 100 ]; then
+    # 윈도우 외: 즉시 정상 종료
+    exit 0
+  else
+    echo "[EXIT 2] precheck_failed rc=$rc" | tee -a "$LOGFILE"
+    exit 2
+  fi
+fi
 
 # 2) 랜덤 지터
 JITTER_MAX_SEC=${JITTER_MAX_SEC:-60}
@@ -20,16 +29,28 @@ if [ "$JITTER_MAX_SEC" -gt 0 ]; then
   sleep "$s"
 fi
 
-# 3) 파이썬 엔트리 자동탐색 (모듈 우선 → 스크립트 경로 폴백)
+# 3) 파이썬 엔트리 자동탐색
 pick_entry() {
-  # 모듈 후보
-  for m in web.ingest_eod ingest.eod ingest.main ingest_eod; do
-    if "$PYTHONBIN" -c "import importlib; importlib.import_module('$m')" >/dev/null 2>&1; then
-      echo "-m $m"; return 0
+  # (A) 모듈 후보(우선)
+  for m in web.ingest_eod ingest.eod ingest.main ingest_eod app.ingest_eod; do
+    if "$PYTHONBIN" - <<PY >/dev/null 2>&1
+import importlib, sys
+try:
+    importlib.import_module("$m")
+except Exception as e:
+    sys.exit(1)
+PY
+    then
+      echo "-m $m"
+      return 0
     fi
   done
-  # 스크립트 후보
-  for f in web/ingest_eod.py ingest/eod.py ingest/main.py tools/ingest_eod.py; do
+  # (B) 스크립트 후보
+  for f in \
+    web/ingest_eod.py web/ingest.py \
+    ingest/eod.py ingest/main.py ingest/ingest_eod.py \
+    tools/ingest_eod.py scripts/python/ingest_eod.py
+  do
     [ -f "$f" ] && { echo "$f"; return 0; }
   done
   return 1
@@ -48,26 +69,21 @@ BASE_BACKOFF=${BASE_BACKOFF:-60}
 i=1
 while :; do
   echo "[TRY $i] ${TASK} $(date '+%F %T')" | tee -a "$LOGFILE"
-
   if bash scripts/linux/jobs/run_py_guarded.sh "$PYTHONBIN" $ENTRY 2>&1 | tee -a "$LOGFILE"; then
     echo "[DONE] ${TASK} $(date '+%F %T')" | tee -a "$LOGFILE"
     exit 0
   fi
-
-  # 외부요인 판독 → 재시도
+  # 외부요인 → 재시도
   if grep -qE "YFRateLimitError|429|Read timed out|Temporary failure in name resolution|Connection reset by peer" "$LOGFILE"; then
     if [ "$i" -lt "$MAX_TRY" ]; then
       backoff=$(( BASE_BACKOFF * 2 ** (i-1) ))
       echo "[WARN] external_issue_retry sleep=${backoff}s (try=$i/$MAX_TRY)" | tee -a "$LOGFILE"
-      sleep "$backoff"
-      i=$((i+1))
-      continue
+      sleep "$backoff"; i=$((i+1)); continue
     else
       echo "[SKIP] external_issue_after_retries RC=0 $(date '+%F %T')" | tee -a "$LOGFILE"
       exit 0
     fi
   fi
-
   echo "[EXIT 2] logic_error $(date '+%F %T')" | tee -a "$LOGFILE"
   exit 2
 done
