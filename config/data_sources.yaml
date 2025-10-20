@@ -55,3 +55,16 @@ regime:
 # 사후 신선도 체크용 프로브(기존 호환: postcheck_probes, 새 권장: probes)
 probes: ["069500.KS.pkl", "069500.pkl"]
 # postcheck_probes: ["069500.KS.pkl", "069500.pkl"]  # (구키 계속 지원)
+
+yf:
+  mode: hybrid      # bulk | per_ticker | hybrid
+  universe_key: "yf_universe"   # 티커 리스트를 찾을 키명 (없으면 fallback)
+  per_ticker:
+    delay_sec: 1.2
+    jitter_sec: 0.6
+    retry: 3
+    backoff_base_sec: 2
+    timeout_sec: 25
+    max_fail_ratio: 0.2   # 실패비율 20% 넘으면 외부요인으로 [SKIP]
+  net:
+    session_reuse: true
