@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os, sys, argparse, datetime, traceback, inspect
+import os, sys, argparse, datetime, traceback, inspect, types
 
 def log(msg: str): print(msg, flush=True)
 
@@ -10,33 +10,51 @@ PREFERRED_NAMES = [
     "send_all","send_summary","emit","notify","push"
 ]
 
+def _is_callable_function(obj):
+    """Return True only for plain functions or bound methods (exclude classes/types/typing)."""
+    if inspect.isfunction(obj) or inspect.ismethod(obj):
+        return True
+    return False  # exclude classes, modules, typing aliases, etc.
+
+def _call_fn(fn, mode: str):
+    sig = None
+    try:
+        sig = inspect.signature(fn)
+    except (ValueError, TypeError):
+        pass
+    if sig and "mode" in sig.parameters:
+        fn(mode=mode)
+    else:
+        fn()
+
 def try_call_business(mode: str) -> bool:
     try:
         from signals import service  # noqa
     except Exception:
         return False
 
-    # 1) 우선순위 이름 매핑
+    # 1) 우선순위 이름 매핑 (함수/메서드만)
     for name in PREFERRED_NAMES:
         fn = getattr(service, name, None)
-        if callable(fn):
+        if fn and _is_callable_function(fn):
             log(f"[INFO] using signals.service.{name}()")
-            try:
-                fn(mode=mode) if "mode" in inspect.signature(fn).parameters else fn()
-            except TypeError:
-                fn()  # 인자 불일치시 무인자 호출
+            _call_fn(fn, mode)
             return True
 
-    # 2) 마지막 수단: service 모듈 내 public callable 자동탐색
-    cands = [(n, getattr(service, n)) for n in dir(service)
-             if not n.startswith("_") and callable(getattr(service, n))]
+    # 2) 자동탐색: service 내 public 함수/메서드만
+    cands = []
+    for n in dir(service):
+        if n.startswith("_"):
+            continue
+        obj = getattr(service, n)
+        if _is_callable_function(obj):
+            cands.append((n, obj))
+
     if cands:
-        name, fn = sorted(cands)[0]
+        cands.sort(key=lambda x: x[0])  # 이름순 안정 선택
+        name, fn = cands[0]
         log(f"[INFO] using signals.service.{name}() (auto-picked)")
-        try:
-            fn(mode=mode) if "mode" in inspect.signature(fn).parameters else fn()
-        except TypeError:
-            fn()
+        _call_fn(fn, mode)
         return True
 
     return False
