@@ -6,7 +6,7 @@ scanner:
     source: data_sources         # data_sources | file | inline
     universe_key: "yf_universe"  # data_sources.yaml 의 yf.universe_key 와 일치
     file_fallback: "data/universe/yf_universe.txt"
-    inline: []                   # 필요 시 여기에 ["AAPL","MSFT"] 처럼 직접 기입
+    inline: ["005930.KS", "000660.KS", "035420.KQ", "AAPL", "MSFT", "NVDA"]
 
   threshold:
     abs_pct: 0.03                # 절대 변화율 3% 이상 시 신호
@@ -22,3 +22,5 @@ scanner:
   regime:
     sma_days: 20
     spx_ticker: "^GSPC"   # S&P500 지수 티커 (yfinance 기준). 필요시 다른 지수로 교체 가능.
+
+  adx_window: 14     # 스캐너가 요구하는 ADX 윈도우, 일반적으로 14 사용
