@@ -1,70 +1,51 @@
-env:
-  nas:
-    allow_network: false
-  pc:
-    allow_network: true
+# config/data_sources.yaml
+# [U-STEP] 자동 유니버스 빌더 설정
+universe_builder:
+  output:
+    yfinance: data/universe/yf_universe.txt      # 스캐너/인덱서가 참조하는 기본 유니버스
+    krx: data/universe/krx_universe.txt          # (옵션) KRX 전용 유니버스 (미사용시 유지만)
+  sources:
+    # 1) 라인 기반 정적 리스트들(주석/공백 허용)
+    static_lists:
+      - data/universe/static/watchlist_core.txt
+      - data/universe/static/etf_growth.txt
+      - data/universe/static/etf_dividend.txt
+      # 필요 시 자유롭게 추가
+    # 2) CSV 기반 소스(심볼 컬럼 지정 + 간단 필터)
+    csv_sources:
+      - path: data/universe/custom.csv
+        symbol_col: symbol
+        filters:
+          include_if:
+            - column: active
+              equals: 1
+          exclude_if:
+            - column: delisted
+              equals: 1
+    # 3) (선택) 질의형 소스 — 현재는 훅/플레이스홀더. 캐시나 사전생성 파일 없으면 [SKIP].
+    queries:
+      - provider: krx
+        market: KOSPI
+        top_n_by_market_cap: 200
+        cache_file: data/cache/krx_top200.txt   # 있으면 사용, 없으면 [SKIP]
+      - provider: yahoo
+        indices: ["^GSPC", "^NDX"]
+        top_n_by_weight: 100
+        cache_file: data/cache/yahoo_index_top.txt
 
-defaults:
-  benchmark_candidates: ["069500", "069500.KS"]   # 보고/웹에서 시장 라인 찾을 때 사용
-  regime:
-    source: "yf"               # "yf" | "pykrx" 등
-    ticker: "069500.KS"        # 시장 레짐용 티커(예: ^GSPC 또는 069500.KS)
+  rules:
+    # 정규화/클린 규칙
+    uppercase: true
+    strip_prefixes: ["KRX:", "YF:", "XSHE:", "XSHG:"]
+    dedup: true
+    # 블랙리스트(한 줄당 하나)
+    blacklist: data/universe/blacklist.txt
 
-calendar:
-  symbol_priority: ["069500.KS","069500"]  # 거래일 캘린더용 심볼 우선순위
+  # (훗날 UI에서 조정할 변수들 — 일단 기본값만 보유, 빌더는 값만 보관)
+  ui_defaults:
+    recentN_default: 30
+    recentN_options: [10, 20, 30, 60, 120]
+    min_price_krw: 1000           # 필터는 현재 비활성(캐시 미연결). 보관만.
+    min_avg_volume: 50000
 
-benchmarks:
-  KOSPI:
-    providers: [local_cache, parquet, pykrx_index, yf_index, yf_etf]
-    symbols:
-      pykrx_index: "1001"
-      yf_index: "^KS11"
-      yf_etf: "069500.KS"
-      local_keys: ["069500.KS", "069500", "KOSPI", "KOSPI_ETF"]  # 로컬 캐시 파일명 후보
-  KOSDAQ:
-    providers: [local_cache, parquet, pykrx_index, yf_index, yf_etf]
-    symbols:
-      pykrx_index: "2001"
-      yf_index: "^KQ11"
-      yf_etf: "229200.KS"
-      local_keys: ["229200.KS","229200","KOSDAQ"]
-  S&P500:
-    providers: [local_cache, parquet, yf_index, yf_etf]
-    symbols:
-      yf_index: "^GSPC"
-      yf_etf: "SPY"
-      local_keys: ["SPY","^GSPC","S&P500"]
-universe:
-  etfs:
-    - 069500.KS
-    - 133690.KS
-    - 091160.KS
-    - 305720.KS
-    - 373220.KS
-  equities:
-    - 005930.KS
-    - 000660.KS
-
-probes:
-  eod_fresh: ["069500.KS.pkl", "069500.pkl"]
-  calendar_symbols_priority: ["069500.KS", "069500"]
-
-regime:
-  ticker_priority: ["^GSPC", "SPY", "069500.KS"]
-
-# 사후 신선도 체크용 프로브(기존 호환: postcheck_probes, 새 권장: probes)
-probes: ["069500.KS.pkl", "069500.pkl"]
-# postcheck_probes: ["069500.KS.pkl", "069500.pkl"]  # (구키 계속 지원)
-
-yf:
-  mode: hybrid      # bulk | per_ticker | hybrid
-  universe_key: "yf_universe"   # 티커 리스트를 찾을 키명 (없으면 fallback)
-  per_ticker:
-    delay_sec: 1.2
-    jitter_sec: 0.6
-    retry: 3
-    backoff_base_sec: 2
-    timeout_sec: 25
-    max_fail_ratio: 0.2   # 실패비율 20% 넘으면 외부요인으로 [SKIP]
-  net:
-    session_reuse: true
+# 기존 data_sources.* 항목들은 그대로 유지하세요(아래에 다른 섹션이 있다면 그대로 두십시오).
