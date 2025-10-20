@@ -5,7 +5,9 @@ Run KRX scanner directly (bypass app.py subcommand) with robust config adapters.
 
 - Reads config from config/config.yaml (or ./config.yaml) as SPoT link.
 - Patches scanner.load_cfg and scanner.get_effective_cfg at module namespace.
-- Calls scanner.recommend_buy_sell(asof=today, cfg=config_dict).
+- Builds an effective cfg that provides root-level keys expected by scanner.py
+  (e.g., cfg["regime"]) with safe defaults if missing.
+- Calls scanner.recommend_buy_sell(asof=today, cfg=effective_cfg).
 - Writes CSV to data/output/scanner_latest.csv.
 - Optionally sends Telegram if config says so.
 
@@ -50,11 +52,12 @@ def _patch_scanner_namespace():
             return _ensure_dict(args[1])
         if len(args) >= 1 and isinstance(args[0], dict):
             return _ensure_dict(args[0])
-        return _ensure_dict(_read_yaml_default())
+        return {}
 
     def get_effective_cfg_compat(asof=None, cfg=None):
         # Ignore asof for config materialization; return dict cfg
         try:
+            import pandas as pd  # noqa
             if asof is not None:
                 pd.to_datetime(asof)
         except Exception:
@@ -64,6 +67,28 @@ def _patch_scanner_namespace():
     # Install into module globals (overwrite)
     scanner.load_cfg = load_cfg_compat
     scanner.get_effective_cfg = get_effective_cfg_compat
+
+def _build_effective_cfg(raw_cfg):
+    """
+    scanner.py가 기대하는 루트 키들을 보장:
+      - regime: { sma_days: int }  (없으면 기본값 주입)
+    또한 config가 scanner: {...} 아래에 있을 때 루트로 승격.
+    """
+    cfg = _ensure_dict(raw_cfg).copy()
+
+    # 1) scanner: 섹션 내 하위 키들을 루트로 승격(없으면 무시)
+    scn = _ensure_dict(cfg.get("scanner"))
+    for k in ("regime", "threshold", "universe", "output", "runtime"):
+        if k not in cfg and k in scn:
+            cfg[k] = _ensure_dict(scn[k])
+
+    # 2) regime 기본값 보강 (루트 기준)
+    regime = _ensure_dict(cfg.get("regime"))
+    if "sma_days" not in regime:
+        regime["sma_days"] = 20  # 안전 기본값
+    cfg["regime"] = regime
+
+    return cfg
 
 def _send_telegram(text: str):
     import os, requests
@@ -79,25 +104,26 @@ def _send_telegram(text: str):
     return ok
 
 def main():
-    import pandas as pd
+    import pandas as pd, scanner
     log(f"[RUN] scanner {datetime.datetime.now():%F %T}")
 
     # Load config once (SPoT: config/config.yaml symlink)
-    cfg = _read_yaml_default()
-    cfg_scn = _ensure_dict(cfg.get("scanner", {}))
-    out_csv = cfg_scn.get("output", {}).get("csv", "data/output/scanner_latest.csv")
-    send_tg = bool(cfg_scn.get("output", {}).get("send_telegram", True))
-
+    raw_cfg = _read_yaml_default()
     # Patch scanner namespace to neutralize signature mismatch
-    import scanner
     _patch_scanner_namespace()
+    # Build effective cfg (root-level keys guaranteed)
+    eff_cfg = _build_effective_cfg(raw_cfg)
+
+    # 파생 설정: 출력/푸시 옵션은 scanner: 섹션/루트 둘 다 지원
+    scn = _ensure_dict(raw_cfg.get("scanner"))
+    out_csv = (scn.get("output", {}) if "output" in scn else raw_cfg.get("output", {})).get("csv", "data/output/scanner_latest.csv")
+    send_tg = bool((scn.get("output", {}) if "output" in scn else raw_cfg.get("output", {})).get("send_telegram", True))
 
     # asof: 오늘(로컬)
     asof = pd.Timestamp.today().normalize()
 
-    # Run
     try:
-        buy_df, sell_df, meta = scanner.recommend_buy_sell(asof=asof, cfg=cfg)
+        buy_df, sell_df, meta = scanner.recommend_buy_sell(asof=asof, cfg=eff_cfg)
     except Exception as e:
         log(f"[EXIT 2] recommend_buy_sell_error: {e}\n{traceback.format_exc()}")
         sys.exit(2)
@@ -106,16 +132,12 @@ def main():
     os.makedirs(os.path.dirname(out_csv), exist_ok=True)
     try:
         import pandas as pd
-        # 합본 저장(간단)
         frames = []
         if buy_df is not None and not buy_df.empty:
             t = buy_df.copy(); t["__side__"]="BUY"; frames.append(t)
         if sell_df is not None and not sell_df.empty:
             t = sell_df.copy(); t["__side__"]="SELL"; frames.append(t)
-        if frames:
-            out = pd.concat(frames, sort=False)
-        else:
-            out = pd.DataFrame()
+        out = pd.concat(frames, sort=False) if frames else pd.DataFrame()
         out.to_csv(out_csv, index=False)
         log(f"[INFO] wrote {out_csv} rows={len(out)}")
     except Exception as e:
