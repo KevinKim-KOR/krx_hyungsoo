@@ -9,6 +9,7 @@ UF="data/universe/yf_universe.txt"
 
 # 환경 로딩(있을 경우)
 [ -f "config/env.nas.sh" ] && source config/env.nas.sh
+export YF_FORCE="${YF_FORCE:-1}"
 
 DELAY="${YF_DELAY_SEC:-1.5}"   # 심볼당 대기(초). 필요 시 env로 조정.
 COUNT=0
