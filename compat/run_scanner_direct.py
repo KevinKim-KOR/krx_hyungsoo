@@ -4,14 +4,16 @@
 Run KRX scanner directly (bypass app.py subcommand) with robust adapters.
 
 - Reads config from config/config.yaml (or ./config.yaml).
-- Patches scanner.load_cfg / scanner.get_effective_cfg (cfg 시그니처 불일치 해소).
-- Patches krx_helpers.get_ohlcv_safe to a non-recursive, rate-limit-friendly fetcher.
-- Builds an effective cfg that guarantees root-level keys (e.g., cfg['regime']).
+- Patches:
+    * scanner.load_cfg / scanner.get_effective_cfg (cfg 시그니처 불일치 해소)
+    * krx_helpers.get_ohlcv_safe (비재귀, 재시도/백오프)
+    * scanner.get_universe_codes (DB우회: SPoT/file 기반)
+- Builds effective cfg with root-level keys (regime.sma_days, regime.spx_ticker).
 - Calls scanner.recommend_buy_sell(asof=today, cfg=effective_cfg).
 - Writes CSV to data/output/scanner_latest.csv.
-- Optionally sends Telegram if config says so.
+- Optionally sends Telegram.
 
-Standard log tokens: [RUN]/[TRY]/[INFO]/[SKIP]/[DONE]/[EXIT]
+Tokens: [RUN]/[TRY]/[INFO]/[SKIP]/[DONE]/[EXIT]
 """
 import os, sys, time, random, datetime, traceback
 
@@ -41,6 +43,14 @@ def _read_yaml_default():
                 return _ensure_dict(yaml.safe_load(f) or {})
     return {}
 
+def _read_data_sources():
+    import yaml
+    p = "config/data_sources.yaml"
+    if os.path.isfile(p):
+        with open(p,"r",encoding="utf-8") as f:
+            return _ensure_dict(yaml.safe_load(f) or {})
+    return {}
+
 def _patch_scanner_namespace():
     import scanner
 
@@ -54,19 +64,12 @@ def _patch_scanner_namespace():
         return {}
 
     def get_effective_cfg_compat(asof=None, cfg=None):
-        # asof는 무시하고 cfg만 실체화
         return load_cfg_compat(cfg)
 
     scanner.load_cfg = load_cfg_compat
     scanner.get_effective_cfg = get_effective_cfg_compat
 
 def _patch_helpers_namespace():
-    """
-    krx_helpers.get_ohlcv_safe 를 비재귀 안전 구현으로 교체.
-    - yfinance 단건 history() 사용
-    - 재시도 + 지수백오프 + 지연(jitter)
-    - 실패 시 빈 DataFrame 반환 (외부요인 SKIP)
-    """
     import pandas as pd, requests, yfinance as yf
     import krx_helpers as KH
 
@@ -79,28 +82,22 @@ def _patch_helpers_namespace():
 
     def get_ohlcv_safe_nonrec(ticker: str, start, end, retry=3, base_backoff=2, delay=0.6, jitter=0.6, timeout=20):
         try:
-            import datetime as dt
-            # 날짜 정규화
             if isinstance(start, (pd.Timestamp, )):
                 start = start.date()
             if isinstance(end, (pd.Timestamp, )):
                 end = end.date()
-            # 세션 재사용
             session = requests.Session()
             t = yf.Ticker(ticker, session=session)
-
             last_err = None
             for attempt in range(1, retry + 1):
                 try:
                     df = t.history(start=start, end=end, auto_adjust=False, timeout=timeout)
-                    # 기대 형식 보정
                     if df is None or df.empty:
                         raise RuntimeError("empty")
-                    # 컬럼 표준화(Open, High, Low, Close, Volume 보장)
+                    # Normalize columns
                     cols = {c.lower(): c for c in df.columns}
                     need = ["open","high","low","close","volume"]
                     if not all(k in cols for k in need):
-                        # yfinance는 대소문자 섞임 방지
                         df = df.rename(columns={v: v.title() for v in df.columns})
                     return df
                 except Exception as e:
@@ -111,22 +108,72 @@ def _patch_helpers_namespace():
                         time.sleep(sleep_s)
                         continue
                     break
-            # 모두 실패
             log(f"[SKIP] ohlcv_fetch_failed ticker={ticker} err={last_err}")
             return pd.DataFrame()
         finally:
-            # inter-request delay + jitter
             time.sleep(delay + random.uniform(0, jitter))
 
-    # 모듈 전역에 주입(재귀 방지)
     KH.get_ohlcv_safe = get_ohlcv_safe_nonrec
 
+def _load_universe_from_file(path):
+    tickers = []
+    try:
+        with open(path,"r",encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if s and not s.startswith("#"):
+                    tickers.append(s)
+    except Exception as e:
+        log(f"[WARN] universe_file_read_failed: {e}")
+    return tickers
+
+def _get_universe_codes_safe(cfg):
+    """
+    DB 대신 SPoT/file에서 유니버스 로드:
+      1) config/data_sources.yaml 의 yf.universe_key 를 찾아 data/universe/<key>.txt
+      2) config/scanner.yaml 의 universe.file_fallback
+      3) config/scanner.yaml 의 universe.inline 리스트
+    """
+    cfg = _ensure_dict(cfg)
+    ds = _read_data_sources()
+
+    # 1) SPoT: data_sources.yaml → yf.universe_key
+    yf_src = _ensure_dict(ds.get("yf"))
+    key = yf_src.get("universe_key") or "yf_universe"
+    path1 = os.path.join("data","universe", f"{key}.txt")
+    if os.path.isfile(path1):
+        codes = _load_universe_from_file(path1)
+        if codes:
+            log(f"[INFO] universe_spot key={key} size={len(codes)}")
+            return codes
+
+    # 2) scanner.yaml file_fallback
+    scn = _ensure_dict(cfg.get("scanner"))
+    uni = _ensure_dict(scn.get("universe") or cfg.get("universe"))
+    file_fb = uni.get("file_fallback") or os.path.join("data","universe","yf_universe.txt")
+    if os.path.isfile(file_fb):
+        codes = _load_universe_from_file(file_fb)
+        if codes:
+            log(f"[INFO] universe_file_fallback path={file_fb} size={len(codes)}")
+            return codes
+
+    # 3) inline
+    inline = uni.get("inline") or []
+    if inline:
+        log(f"[INFO] universe_inline size={len(inline)}")
+        return list(inline)
+
+    log("[SKIP] universe_missing (no SPoT/file/inline)")
+    return []
+
+def _patch_universe_namespace():
+    """scanner.get_universe_codes 를 파일/SPoT 기반 안전구현으로 치환"""
+    import scanner
+    def get_universe_codes_safe(session_unused, cfg):
+        return _get_universe_codes_safe(cfg)
+    scanner.get_universe_codes = get_universe_codes_safe
+
 def _build_effective_cfg(raw_cfg):
-    """
-    scanner.py가 기대하는 루트 키 보장:
-      cfg['regime']['sma_days'], cfg['regime']['spx_ticker']
-    scanner: 섹션에만 있으면 루트로 승격
-    """
     cfg = _ensure_dict(raw_cfg).copy()
     scn = _ensure_dict(cfg.get("scanner"))
     for k in ("regime", "threshold", "universe", "output", "runtime"):
@@ -160,7 +207,8 @@ def main():
 
     raw_cfg = _read_yaml_default()
     _patch_scanner_namespace()   # cfg 시그니처 호환
-    _patch_helpers_namespace()   # OHLCV 안전 패치(비재귀)
+    _patch_helpers_namespace()   # OHLCV 안전 패치
+    _patch_universe_namespace()  # 유니버스: DB우회 → SPoT/파일/인라인
 
     eff_cfg = _build_effective_cfg(raw_cfg)
 
