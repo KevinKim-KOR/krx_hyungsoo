@@ -24,3 +24,7 @@ columns:
   - { key: trades,     label: Trades,   fmt: int  }
   - { key: pnl,        label: PnL,      fmt: num  }
   - { key: spark,      label: Spark,    fmt: none }
+
+ui:
+  recentN_default: 30
+  recentN_options: [10, 20, 30, 50, 100]
