@@ -30,7 +30,7 @@ def main():
         return 1
 
     # run()/report()/generate_eod_report() 우선 시도
-    if _try_call(mod, ("run", "report", "generate_eod_report"), args.date) is not None:
+    if _try_call(mod, ("run", "report", "generate_eod_report", "generate_and_send_report_eod"), args.date) is not None:
         return 0
 
     # main(args) 폴백

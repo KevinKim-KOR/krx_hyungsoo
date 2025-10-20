@@ -16,9 +16,12 @@ bash scripts/linux/jobs/_run_generic.sh \
 # 기본은 app.py report-eod 사용
 CMD=( "$PYTHONBIN" app.py report-eod --date auto )
 if ! "$PYTHONBIN" app.py -h 2>/dev/null | grep -qi 'report-eod'; then
-  # 호환 폴백: reporting_eod.py 직접 실행
-  if [ -f ./reporting_eod.py ]; then
-    CMD=( "$PYTHONBIN" ./reporting_eod.py --date auto )
+  # 우선: report_eod_cli.py가 있으면 모듈 실행(권장)
+  if [ -f ./report_eod_cli.py ]; then
+    CMD=( "$PYTHONBIN" -m report_eod_cli --date auto )
+  elif [ -f ./reporting_eod.py ]; then
+    # 래퍼를 통해 reporting_eod의 generate_and_send_report_eod 호출
+    CMD=( "$PYTHONBIN" -m scripts.report_eod --date auto )
   fi
 fi
 
