@@ -19,6 +19,15 @@ PRECHECK_RC_FILE=".state/report_precheck.rc"
 mkdir -p "$(dirname "$PRECHECK_RC_FILE")"
 echo "$RC_PRE" > "$PRECHECK_RC_FILE"
 
+# 🔧 추가: 프리체크 OK면 본 보고서는 재시도 끄기
+if [ "${RC_PRE:-1}" = "0" ]; then
+  RETRY_MAX_REPORT=0
+  RETRY_SLEEP_REPORT=0
+else
+  RETRY_MAX_REPORT=3
+  RETRY_SLEEP_REPORT=300
+fi
+
 # 2) 엔트리 결정 (우선순위: report_eod_cli.py > scripts/report_eod.py > reporting_eod.py)
 if [ -f ./report_eod_cli.py ]; then
   CMD=( "$PYTHONBIN" -m report_eod_cli --date auto )
@@ -37,7 +46,7 @@ bash scripts/linux/jobs/run_with_lock.sh \
   scripts/linux/jobs/_run_generic.sh \
     --log report \
     --guard td \
-    --retry-rc 2 --retry-max 3 --retry-sleep 300 \
+    --retry-rc 2 --retry-max ${RETRY_MAX_REPORT} --retry-sleep ${RETRY_SLEEP_REPORT} \
     -- \
     "${CMD[@]}"
 RC_REPORT=$?
