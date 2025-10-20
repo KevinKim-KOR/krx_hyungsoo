@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os, sys, argparse, datetime, traceback, inspect, types
+import os, sys, argparse, datetime, traceback, inspect
 
 def log(msg: str): print(msg, flush=True)
 
@@ -10,49 +10,67 @@ PREFERRED_NAMES = [
     "send_all","send_summary","emit","notify","push"
 ]
 
-def _is_callable_function(obj):
-    """Return True only for plain functions or bound methods (exclude classes/types/typing)."""
-    if inspect.isfunction(obj) or inspect.ismethod(obj):
-        return True
-    return False  # exclude classes, modules, typing aliases, etc.
+def _is_plain_callable(obj):
+    # 함수/메서드만 허용(클래스/타입/모듈 제외)
+    return inspect.isfunction(obj) or inspect.ismethod(obj)
 
-def _call_fn(fn, mode: str):
-    sig = None
+def _is_compatible(fn):
+    """
+    선택 기준:
+    - mode 외에 추가 '필수(positional, default 없음)' 인자가 없어야 함
+    - *args 또는 **kwargs 있으면 허용
+    """
     try:
         sig = inspect.signature(fn)
-    except (ValueError, TypeError):
-        pass
-    if sig and "mode" in sig.parameters:
+    except (TypeError, ValueError):
+        return False
+    has_varargs = any(p.kind == p.VAR_POSITIONAL for p in sig.parameters.values())
+    has_varkw  = any(p.kind == p.VAR_KEYWORD   for p in sig.parameters.values())
+    if has_varargs or has_varkw:
+        return True
+    for name, p in sig.parameters.items():
+        if name == "mode":
+            continue
+        # 위치/키워드 인자이면서 기본값 없음 => 필수 인자 → 불가
+        if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) and p.default is inspect._empty:
+            return False
+    return True
+
+def _call_fn(fn, mode: str):
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        fn(); return
+    if "mode" in sig.parameters:
         fn(mode=mode)
     else:
         fn()
 
 def try_call_business(mode: str) -> bool:
     try:
-        from signals import service  # noqa
+        from signals import service  # 사용자 비즈니스 모듈
     except Exception:
         return False
 
-    # 1) 우선순위 이름 매핑 (함수/메서드만)
+    # 1) 이름 우선순위에서 호환 가능한 함수 선택
     for name in PREFERRED_NAMES:
         fn = getattr(service, name, None)
-        if fn and _is_callable_function(fn):
+        if fn and _is_plain_callable(fn) and _is_compatible(fn):
             log(f"[INFO] using signals.service.{name}()")
             _call_fn(fn, mode)
             return True
 
-    # 2) 자동탐색: service 내 public 함수/메서드만
-    cands = []
+    # 2) 자동 탐색: public 함수 중 호환 가능한 것만
+    candidates = []
     for n in dir(service):
-        if n.startswith("_"):
+        if n.startswith("_"):  # private 제외
             continue
         obj = getattr(service, n)
-        if _is_callable_function(obj):
-            cands.append((n, obj))
-
-    if cands:
-        cands.sort(key=lambda x: x[0])  # 이름순 안정 선택
-        name, fn = cands[0]
+        if _is_plain_callable(obj) and _is_compatible(obj):
+            candidates.append((n, obj))
+    if candidates:
+        candidates.sort(key=lambda x: x[0])  # 이름순 안정성
+        name, fn = candidates[0]
         log(f"[INFO] using signals.service.{name}() (auto-picked)")
         _call_fn(fn, mode)
         return True
@@ -83,7 +101,7 @@ def main():
             log("[DONE] signals"); sys.exit(0)
         if args.force:
             send_heartbeat(); log("[DONE] signals (force-heartbeat)"); sys.exit(0)
-        log("[SKIP] no_business_logic_found (use --force or add entry in signals/service.py)")
+        log("[SKIP] no_business_logic_found (use --force or add compatible entry in signals/service.py)")
         sys.exit(0)
     except SystemExit:
         raise
