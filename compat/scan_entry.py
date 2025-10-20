@@ -51,8 +51,9 @@ def _patch_load_cfg_if_needed():
     setattr(scanner, "load_cfg", load_cfg_compat)
 
 def main():
-    _patch_load_cfg_if_needed()
     import app  # app.py defines main()
+    _patch_load_cfg_if_needed()
+    
     # emulate CLI: app.py scanner
     sys.argv = ["app.py", "scanner"]
     rc = app.main()
