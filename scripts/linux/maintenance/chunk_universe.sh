@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# 분할 대상 유니버스를 정리 후 N줄씩 청크로 쪼갭니다.
 # 사용: bash scripts/linux/maintenance/chunk_universe.sh [SRC] [CHUNK_SIZE]
-# 예:   bash scripts/linux/maintenance/chunk_universe.sh data/universe/yf_universe.txt 5
+# 옵션: SHUFFLE=1 로 줄 순서 랜덤화
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 
 SRC="${1:-data/universe/yf_universe.txt}"
 CHUNK="${2:-5}"
-
 [ -f "$SRC" ] || { echo "[ERR] not found: $SRC" >&2; exit 2; }
+
 OUTDIR="data/universe/chunks"; rm -rf "$OUTDIR"; mkdir -p "$OUTDIR"
 
-# 1) 정리(주석/빈줄/EOF 제거, 공백트림, 대문자)
 TMP="data/universe/.clean.$(date +%s)"
 sed -e 's/\r$//' -e 's/^[ \t]*//;s/[ \t]*$//' "$SRC" \
 | grep -Ev '^(#|$|EOF)' \
@@ -21,9 +19,13 @@ sed -e 's/\r$//' -e 's/^[ \t]*//;s/[ \t]*$//' "$SRC" \
 CNT=$(wc -l < "$TMP" || echo 0)
 [ "$CNT" -gt 0 ] || { echo "[ERR] cleaned list is empty"; rm -f "$TMP"; exit 3; }
 
-# 2) 청크 생성
+if [ "${SHUFFLE:-0}" = "1" ] && command -v shuf >/dev/null 2>&1; then
+  SHU="data/universe/.shuf.$(date +%s)"
+  shuf "$TMP" > "$SHU"
+  mv -f "$SHU" "$TMP"
+fi
+
 split -l "$CHUNK" -a 2 -d "$TMP" "$OUTDIR/chunk_"
-# 확장자 통일
 for f in "$OUTDIR"/chunk_*; do mv "$f" "${f}.txt"; done
 rm -f "$TMP"
 
