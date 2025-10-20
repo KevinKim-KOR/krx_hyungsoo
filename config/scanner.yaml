@@ -9,7 +9,7 @@ scanner:
     inline: []
 
   threshold:
-    abs_pct: 0.015                # 절대 변화율 3% 이상 시 신호
+    abs_pct: 0.010                # 절대 변화율 3% 이상 시 신호
 
   output:
     csv: "data/output/scanner_latest.csv"   # 최근 스캔 결과 저장
