@@ -228,6 +228,30 @@ def _patch_regime_softgate():
 
     scanner.regime_ok = regime_ok_soft
 
+# --- Fallback: 본 스캐너 결과가 0건이면 Top/Bottom N 산출 ---
+def _fallback_topn_when_empty(universe_codes, out_csv, topn):
+    import pandas as pd, yfinance as yf, requests, time, random
+    rows = []
+    for i, t in enumerate(universe_codes):
+        try:
+            h = yf.Ticker(t).history(period="5d", auto_adjust=False, timeout=15)
+            if h is None or len(h) < 2: 
+                continue
+            c0, c1 = float(h["Close"].iloc[-2]), float(h["Close"].iloc[-1])
+            if c0 and c1:
+                pct = (c1 / c0) - 1.0
+                rows.append({"ticker": t, "pct": pct})
+        except Exception:
+            pass
+        time.sleep(0.2 + random.random()*0.4)  # 레이트리밋 완화 소량지연
+    if not rows:
+        return 0, 0
+    df = pd.DataFrame(rows).sort_values("pct", ascending=False)
+    top = df.head(topn).copy(); top["__side__"] = "BUY"
+    bottom = df.tail(topn).copy(); bottom["__side__"] = "SELL"
+    out = pd.concat([top, bottom], ignore_index=True)
+    out.to_csv(out_csv, index=False)
+    return len(top), len(bottom)
 
 def main():
     import pandas as pd, scanner
@@ -268,6 +292,22 @@ def main():
         log(f"[INFO] wrote {out_csv} rows={len(out)}")
     except Exception as e:
         log(f"[WARN] save_csv_failed: {e}")
+
+    # 저장 이후…
+    if (buy_df is None or buy_df.empty) and (sell_df is None or sell_df.empty):
+        try:
+            topn = int(os.environ.get("SCANNER_FALLBACK_TOPN", "0"))
+        except Exception:
+            topn = 0
+        if topn > 0:
+            # 유니버스 확보(파일/SPoT/inline 사용)
+            universe_codes = _get_universe_codes_safe(eff_cfg)
+            if universe_codes:
+                bN, sN = _fallback_topn_when_empty(universe_codes, out_csv, topn)
+                if (bN + sN) > 0:
+                    log(f"[INFO] fallback_emitted rows={bN+sN} (buy={bN}/sell={sN})")
+                    if send_tg:
+                        _send_telegram(f"[scanner-fallback] {asof.date()} buy={bN} sell={sN}")
 
     # 텔레그램(옵션)
     if send_tg:
