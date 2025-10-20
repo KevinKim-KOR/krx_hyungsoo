@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Compat entry to run 'app.py scanner' with a robust load_cfg adapter.
-- Unconditionally replaces scanner.load_cfg with a tolerant adapter that accepts
-  (asof, cfg) | (cfg) | () and returns a dict config.
+Compat entry for 'app.py scanner'
+- Replaces scanner.load_cfg and scanner.get_effective_cfg to tolerate (asof, cfg)
+- Safe for repeated imports and Python 3.8 environments
 """
-import sys, os, inspect, types
+import sys, os, inspect
 
 def _ensure_dict(x):
     try:
-        # pandas/object-like config? Accept mapping-ish
         import collections
         if isinstance(x, dict):
             return x
@@ -21,7 +20,6 @@ def _ensure_dict(x):
 
 def _read_yaml_default():
     import yaml
-    # search order: config/config.yaml -> ./config.yaml
     paths = ["config/config.yaml", "config.yaml"]
     for p in paths:
         if os.path.isfile(p):
@@ -33,39 +31,52 @@ def _read_yaml_default():
                 continue
     return {}
 
-def _install_load_cfg_adapter():
-    import scanner  # scanner.py
+def _install_scanner_patches():
+    import scanner
+    orig_load = getattr(scanner, "load_cfg", None)
+    if not callable(orig_load):
+        return
+
     def load_cfg_compat(*args, **kwargs):
-        """
-        Accept:
-          - load_cfg(asof, cfg)
-          - load_cfg(cfg)
-          - load_cfg()
-        Rules to extract cfg:
-          1) kwargs['cfg']
-          2) second positional arg (args[1])
-          3) first positional arg (args[0]) if dict-like
-          4) fallback: read YAML (config/config.yaml or ./config.yaml)
-        """
-        # 1) kw
+        # Flexible signature (asof, cfg), (cfg), or ()
         if "cfg" in kwargs and kwargs["cfg"] is not None:
             return _ensure_dict(kwargs["cfg"])
-        # 2) pos[1]
         if len(args) >= 2 and args[1] is not None:
             return _ensure_dict(args[1])
-        # 3) pos[0] if dict-like
         if len(args) >= 1 and isinstance(args[0], dict):
             return _ensure_dict(args[0])
-        # 4) fallback: YAML
+        # fallback
         return _ensure_dict(_read_yaml_default())
 
-    # 강제 바인딩(모듈 전역 치환)
+    # Override load_cfg globally
     scanner.load_cfg = load_cfg_compat
 
+    # Patch get_effective_cfg to call our version
+    orig_get_eff = getattr(scanner, "get_effective_cfg", None)
+    if callable(orig_get_eff):
+        def get_effective_cfg_compat(*args, **kwargs):
+            import pandas as pd
+            asof = None
+            cfg = None
+            if len(args) >= 1:
+                asof = args[0]
+            if len(args) >= 2:
+                cfg = args[1]
+            if "cfg" in kwargs:
+                cfg = kwargs["cfg"]
+            # Normalize
+            try:
+                if asof is not None:
+                    pd.to_datetime(asof)
+            except Exception:
+                asof = None
+            # Return load_cfg(cfg) effectively
+            return load_cfg_compat(cfg)
+        scanner.get_effective_cfg = get_effective_cfg_compat
+
 def main():
-    import app  # app.py defines main(); this import triggers scanner import
-    _install_load_cfg_adapter()  # scanner가 로드된 직후 강제로 치환
-    # emulate CLI: app.py scanner
+    import app  # triggers scanner import
+    _install_scanner_patches()  # enforce patch AFTER import
     sys.argv = ["app.py", "scanner"]
     rc = app.main()
     sys.exit(rc if isinstance(rc, int) else 0)
