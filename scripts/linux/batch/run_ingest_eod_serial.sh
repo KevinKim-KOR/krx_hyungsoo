@@ -6,7 +6,7 @@ cd "$(dirname "$0")/../../.."
 [ -f "config/env.nas.sh" ] && source config/env.nas.sh
 [ -z "${PYTHONBIN:-}" ] && [ -f "config/env.pc.sh" ] && source config/env.pc.sh
 
-UF="data/universe/yf_universe.txt"
+UF="${UF:-data/universe/yf_universe.txt}"
 LOG="logs/ingest_serial_$(date +%F).log"
 DELAY="${YF_DELAY_SEC:-2}"
 
