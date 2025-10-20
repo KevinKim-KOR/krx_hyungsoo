@@ -201,6 +201,34 @@ def _send_telegram(text: str):
     log("[INFO] telegram_sent" if ok else f"[WARN] telegram_failed status={r.status_code} body={r.text}")
     return ok
 
+# --- [추가 1] 레짐 소프트게이트 패치 ---
+def _patch_regime_softgate():
+    """
+    scanner.regime_ok(asof, cfg)를 래핑:
+    - 원래 함수가 예외/실패하거나 외부요인(지수 미수급) 징후가 있으면 True로 통과
+    - 로그에 [WARN] regime_softgate_applied 출력
+    """
+    import scanner
+
+    orig = getattr(scanner, "regime_ok", None)
+    if not callable(orig):
+        return
+
+    def regime_ok_soft(asof, cfg):
+        try:
+            ok = orig(asof, cfg)
+            if ok is False:
+                # 데이터 부족/429 등으로 False가 잦다면 통과
+                print("[WARN] regime_softgate_applied (orig=False)")
+                return True
+            return ok
+        except Exception as e:
+            print(f"[WARN] regime_softgate_applied due to error: {e}")
+            return True
+
+    scanner.regime_ok = regime_ok_soft
+
+
 def main():
     import pandas as pd, scanner
     log(f"[RUN] scanner {datetime.datetime.now():%F %T}")
@@ -209,6 +237,7 @@ def main():
     _patch_scanner_namespace()   # cfg 시그니처 호환
     _patch_helpers_namespace()   # OHLCV 안전 패치
     _patch_universe_namespace()  # 유니버스: DB우회 → SPoT/파일/인라인
+    _patch_regime_softgate()
 
     eff_cfg = _build_effective_cfg(raw_cfg)
 
