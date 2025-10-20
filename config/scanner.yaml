@@ -18,3 +18,7 @@ scanner:
   runtime:
     max_rows: 10000              # 안전장치(과도한 출력 방지)
     timeout_sec: 60              # 스캔 타임아웃(있다면 앱에서 사용)
+
+  regime:
+    sma_days: 20
+    spx_ticker: "^GSPC"   # S&P500 지수 티커 (yfinance 기준). 필요시 다른 지수로 교체 가능.

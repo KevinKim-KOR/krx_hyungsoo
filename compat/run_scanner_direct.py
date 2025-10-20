@@ -86,6 +86,8 @@ def _build_effective_cfg(raw_cfg):
     regime = _ensure_dict(cfg.get("regime"))
     if "sma_days" not in regime:
         regime["sma_days"] = 20  # 안전 기본값
+    if "spx_ticker" not in regime:
+        regime["spx_ticker"] = "^GSPC"   # ← 이 줄 추가
     cfg["regime"] = regime
 
     return cfg
