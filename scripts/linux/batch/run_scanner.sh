@@ -21,13 +21,14 @@ fi
 
 if [ -z "$CFG" ]; then
   echo "[EXIT 2] missing_config (need: config/config.yaml or ./config.yaml)" | tee -a "$LOGFILE"
-  echo "[HINT] ln -sf scanner.yaml config/config.yaml  # link to your SPoT config" | tee -a "$LOGFILE"
+  echo "[HINT] ln -sf scanner.yaml config/config.yaml" | tee -a "$LOGFILE"
   exit 2
 fi
 echo "[INFO] using_config $CFG" | tee -a "$LOGFILE"
 
-# --- 실제 실행 (top-level app.py, subcommand: scanner, 인자 없음) ---
-bash scripts/linux/jobs/run_py_guarded.sh "$PYTHONBIN" app.py scanner \
+# --- 실행: 호환 엔트리 통해 app.py scanner 구동 ---
+bash scripts/linux/jobs/run_py_guarded.sh "$PYTHONBIN" -m compat.scan_entry \
   2>&1 | tee -a "$LOGFILE"
 
 echo "[DONE] ${TASK} $(date '+%F %T')" | tee -a "$LOGFILE"
+
