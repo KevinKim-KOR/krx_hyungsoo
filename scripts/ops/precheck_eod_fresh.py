@@ -1,154 +1,116 @@
 #!/usr/bin/env python3
-import sys
+from __future__ import annotations
+import argparse, glob, os, sys
+from datetime import datetime, timedelta, date
 from pathlib import Path
+
 import pandas as pd
-from datetime import date, datetime
-try:
-    from scripts.ops.refresh_calendar_cache import trading_days_cached_or_build
-except Exception:
-    import pathlib, sys
-    ROOT = pathlib.Path(__file__).resolve().parents[2]
-    if str(ROOT) not in sys.path:
-        sys.path.insert(0, str(ROOT))
-    from scripts.ops.refresh_calendar_cache import trading_days_cached_or_build
 
+def _now_kr():
+    # NAS는 Asia/Seoul이 기본일 가능성이 높지만, 안전하게 로컬 날짜 사용
+    return pd.Timestamp(datetime.now()).tz_localize(None)
 
-ROOT = Path(__file__).resolve().parents[2]  # repo root
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-def _to_series(obj) -> pd.Series:
-    if isinstance(obj, pd.DatetimeIndex): return pd.Series(obj)
-    if isinstance(obj, pd.Series):        return pd.to_datetime(obj, errors="coerce")
-    if isinstance(obj, pd.Index):         return pd.to_datetime(pd.Series(obj), errors="coerce")
-    return pd.to_datetime(pd.Series(obj), errors="coerce")
-
-def _latest_trading_day_from_cache():
-    p = ROOT / "data" / "cache" / "kr" / "trading_days.pkl"
-    if not p.exists():
-        raise FileNotFoundError(f"missing: {p}")
-    obj = pd.read_pickle(p)
-    parts = []
-    #idx = getattr(obj, "index", None)
-    idx = trading_days_cached_or_build()
-    if isinstance(idx, pd.DatetimeIndex) and len(idx): parts.append(_to_series(idx))
-    for c in getattr(obj, "columns", []):
-        if "date" in str(c).lower(): parts.append(_to_series(obj[c]))
-    if not parts:
-        try: parts.append(pd.to_datetime(obj.stack(dropna=False), errors="coerce"))
-        except Exception: pass
-    cat = pd.concat(parts, axis=0).dropna().sort_values()
-    today = pd.Timestamp.today().normalize()
-    # 오늘이 영업일이면 “전일 영업일”, 아니면 “오늘 이전 마지막 영업일”
-    prev = cat[cat < today]
-    if prev.empty: raise ValueError("no trading day < today")
-    prev_day = prev.max().date()
-    is_today_trading = (cat.max().normalize().date() == today.date()) or (today.date() in set(d.date() for d in cat))
-    return prev_day, is_today_trading
-
-def _max_dt_from_pickle(p: Path):
-    df = pd.read_pickle(p)
-    #idx = getattr(df, "index", None)
-    idx = trading_days_cached_or_build()
-    if isinstance(idx, pd.DatetimeIndex) and len(idx):
-        return pd.to_datetime(idx).max().date()
-    for col in getattr(df, "columns", []):
-        if "date" in str(col).lower():
-            s = pd.to_datetime(df[col], errors="coerce")
-            if s.notna().any(): return s.max().date()
+def _load_trading_days_cache(cache_path: str) -> pd.DatetimeIndex | None:
     try:
-        s = pd.to_datetime(df.stack(dropna=False), errors="coerce")
-        if s.notna().any(): return s.max().date()
+        if os.path.isfile(cache_path):
+            ser = pd.read_pickle(cache_path)
+            # 캐시에 DatetimeIndex or Series 형태 저장돼 있을 수 있음
+            if isinstance(ser, pd.DatetimeIndex):
+                return ser
+            if hasattr(ser, "index") and isinstance(ser.index, pd.DatetimeIndex):
+                return ser.index
+            # 리스트/Series를 DatetimeIndex로 시도
+            return pd.DatetimeIndex(pd.to_datetime(ser))
     except Exception:
         pass
-    raise ValueError(f"no datetime in {p.name}")
+    return None
 
-def latest_probe_date():
-    """config/data_sources.yaml 의 probes(신규) 또는 postcheck_probes(구키) 사용."""
-    from pathlib import Path
-    import pandas as pd
-    base = ROOT / "data" / "cache" / "kr"
-    cfg  = ROOT / "config" / "data_sources.yaml"
+def _build_trading_days_fallback(start: date, end: date) -> pd.DatetimeIndex:
+    # exchange_calendars 가용 시 사용, 없으면 영업일 가정(월~금)
+    try:
+        import exchange_calendars as xcals
+        cal = xcals.get_calendar("XKRX")
+        days = cal.sessions_in_range(pd.Timestamp(start), pd.Timestamp(end))
+        return pd.DatetimeIndex(days.tz_localize(None))
+    except Exception:
+        rng = pd.bdate_range(start=start, end=end, freq="C")  # 월~금
+        return pd.DatetimeIndex(rng)
 
-    probes = ["069500.KS.pkl", "069500.pkl"]
-    if cfg.exists():
-        try:
-            import yaml  # ← 여기서만 lazy import
-            y = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
-            probes = y.get("probes") or y.get("postcheck_probes") or probes
-        except Exception:
-            pass
+def _expected_trading_day(today: date, cache_path="data/cache/kr/trading_days.pkl") -> pd.Timestamp:
+    td = _load_trading_days_cache(cache_path)
+    if td is None or len(td) == 0:
+        # 캐시가 없거나 오래되면 2년 범위로 재구성
+        td = _build_trading_days_fallback(today - timedelta(days=730), today + timedelta(days=365))
+    # today(현지) 기준, today 이하의 마지막 세션
+    td = td.tz_localize(None)
+    last = td[td <= pd.Timestamp(today)]
+    if len(last) == 0:
+        return pd.Timestamp(today)
+    return pd.Timestamp(last.max().date())
 
-    dates = []
-    for name in probes:
-        p = base / name
-        if not p.exists():
-            continue
-        try:
-            dates.append(_max_dt_from_pickle(p))
-        except Exception:
-            pass
-    return max(dates) if dates else None
-
+def _cache_latest_parquet(glob_pat="data/cache/ohlcv/*.parquet") -> pd.Timestamp | None:
+    paths = sorted(glob.glob(glob_pat))
+    if not paths:
+        return None
+    latest = None
+    # 빠르게 최대 인덱스만 구함 (pyarrow가 있으면 메모리 효율 ↑)
+    try:
+        import pyarrow.parquet as pq
+        for p in paths:
+            try:
+                tbl = pq.read_table(p)
+                # 파케를 바로 스캔하기 어렵다면 전체 로드 대신 판다스로 인덱스만 추정할 수도 있음
+                df = tbl.to_pandas()
+                if df.empty:
+                    continue
+                idx = pd.to_datetime(df.index)
+                mx = idx.max().tz_localize(None)
+                latest = mx if (latest is None or mx > latest) else latest
+            except Exception:
+                # 파케 로드 실패 시 판다스 parquet로 재시도
+                try:
+                    df = pd.read_parquet(p)
+                    if df.empty:
+                        continue
+                    mx = pd.to_datetime(df.index).max().tz_localize(None)
+                    latest = mx if (latest is None or mx > latest) else latest
+                except Exception:
+                    continue
+    except Exception:
+        # pyarrow 미가용이면 판다스 경로
+        for p in paths:
+            try:
+                df = pd.read_parquet(p)
+                if df.empty:
+                    continue
+                mx = pd.to_datetime(df.index).max().tz_localize(None)
+                latest = mx if (latest is None or mx > latest) else latest
+            except Exception:
+                continue
+    return latest
 
 def main():
-    try:
-        prev_day, is_today_trading = _latest_trading_day_from_cache()
-    except Exception as e:
-        print(f"[PRECHECK] calendar unavailable: {e}", file=sys.stderr)
-        # 달력이 없으면 일단 재시도 유도
-        return 2
-
-    # 오늘이 영업일이 아니면 스캐너도 어차피 스킵 → 통과
-    if not is_today_trading:
-        print("[PRECHECK] non-trading day → OK")
-        return 0
-
-    lp = latest_probe_date()
-    if not lp:
-        print(f"[PRECHECK] probe missing → expected {prev_day}, found None", file=sys.stderr)
-        return 2
-
-    print(f"[PRECHECK] expected(prev trading day)={prev_day}, probes_latest={lp}")
-    # 전일 영업일보다 프로브가 과거면 스테일 → 재시도 유도(RC=2)
-    if lp < prev_day:
-        print(f"[STALE] EOD stale (probes {lp} < expected {prev_day})", file=sys.stderr)
-        return 2
-    return 0
-
-# ===== CLI entrypoint for batch precheck =====
-def _expected_trading_day_from_cache():
-    import pandas as pd
-    from datetime import date
-    p = ROOT / "data" / "cache" / "kr" / "trading_days.pkl"
-    try:
-        s = pd.read_pickle(p)
-        s = pd.to_datetime(s, errors="coerce")
-        s = s[s.notna()]
-        exp = s[s <= pd.Timestamp.today().normalize()].max()
-        return exp.date() if exp is not None else None
-    except Exception:
-        return None
-
-def main(task="watchlist") -> int:
-    """Return 0=OK/skip, 2=stale(retry). Print human logs."""
-    exp = _expected_trading_day_from_cache()
-    probe = latest_probe_date()
-    if exp is None or probe is None:
-        print("[PRECHECK] cannot determine expected/probe → OK")
-        return 0
-    if probe < exp:
-        print(f"[STALE] expected {exp}, found {probe}")
-        return 2
-    print(f"[PRECHECK] OK: expected={exp}, probe={probe}")
-    return 0
-
-if __name__ == "__main__":
-    import argparse, sys
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", choices=["watchlist", "report", "scanner", "ingest"], default="watchlist")
+    ap.add_argument("--task", default="report")
     args = ap.parse_args()
-    sys.exit(main(args.task))
+
+    now = _now_kr()
+    today = now.date()
+
+    expected = _expected_trading_day(today)
+    cache_latest = _cache_latest_parquet()
+
+    print(f"[RUN] report_precheck {now:%Y-%m-%d %H:%M:%S}")
+    print(f"[INFO] expected={expected.date()}", flush=True)
+    print(f"[INFO] cache_latest={None if cache_latest is None else cache_latest.date()}", flush=True)
+
+    if cache_latest is None or cache_latest.date() < expected.date():
+        print("[KRX EOD][RC:2] 지연 감지 (캐시 최신일 < 기대 최신일)")
+        print(" - 조치: 인게스트(캐시) 더 수집 또는 잠시 후 재시도")
+        sys.exit(2)
+
+    print("[DONE] report_precheck OK (cache covers expected)")
+    sys.exit(0)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
