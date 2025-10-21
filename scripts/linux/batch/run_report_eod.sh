@@ -14,12 +14,12 @@ bash scripts/linux/jobs/_run_generic.sh \
   "$PYTHONBIN" -m scripts.ops.precheck_eod_fresh --task report
 RC_PRE=$?
 
-# (추가) 프리체크 결과를 파일로 기록
+# 기록
 PRECHECK_RC_FILE=".state/report_precheck.rc"
 mkdir -p "$(dirname "$PRECHECK_RC_FILE")"
 echo "$RC_PRE" > "$PRECHECK_RC_FILE"
 
-# 🔧 추가: 프리체크 OK면 본 보고서는 재시도 끄기
+# 프리체크 결과에 따라 리포트 재시도 정책 결정
 if [ "${RC_PRE:-1}" = "0" ]; then
   RETRY_MAX_REPORT=0
   RETRY_SLEEP_REPORT=0
@@ -28,20 +28,19 @@ else
   RETRY_SLEEP_REPORT=300
 fi
 
-# 2) 엔트리 결정 (우선순위: report_eod_cli.py > scripts/report_eod.py > reporting_eod.py)
+# 2) 엔트리 결정
 if [ -f ./report_eod_cli.py ]; then
   CMD=( "$PYTHONBIN" -m report_eod_cli --date auto )
 elif [ -f scripts/report_eod.py ]; then
   CMD=( "$PYTHONBIN" -m scripts.report_eod --date auto )
 elif [ -f ./reporting_eod.py ]; then
-  # 최후 폴백: generate_and_send_report_eod 직접 호출 시도
   CMD=( "$PYTHONBIN" -c "from reporting_eod import generate_and_send_report_eod as f; import sys; sys.exit(f('auto'))" )
 else
   echo "[ERR] no EOD report entry found (report_eod_cli.py / scripts/report_eod.py / reporting_eod.py not present)" >&2
   exit 2
 fi
 
-# 3) 본 실행(거래일 가드 + 락 + 재시도)
+# 3) 본 실행
 bash scripts/linux/jobs/run_with_lock.sh \
   scripts/linux/jobs/_run_generic.sh \
     --log report \
@@ -51,21 +50,20 @@ bash scripts/linux/jobs/run_with_lock.sh \
     "${CMD[@]}"
 RC_REPORT=$?
 
-# (기존) 리포트 본체 실행 후 RC_REPORT 판정 아래에 추가
+# 3.5) 프리체크 OK & RC=2이면: DB 싱크 후 1회 재시도
 if [ "${RC_PRE:-1}" = "0" ] && [ "${RC_REPORT:-1}" = "2" ]; then
-  echo "[FALLBACK] generating cache-based EOD report..."
-  ${PYTHONBIN:-python3} -m scripts.ops.report_from_cache
-  RC_FB=$?
-  if [ "$RC_FB" = "0" ]; then
-    echo "[SOFT-OK] cache-based EOD report created."
-    exit 0
-  else
-    echo "[WARN] cache-based report failed; keep RC=2"
-  fi
+  echo "[BRIDGE] cache -> DB sync (to lift latest date)"
+  bash scripts/linux/batch/run_sync_cache_to_db.sh || true
+
+  echo "[RETRY] report once after DB sync"
+  "${CMD[@]}"
+  RC_REPORT=$?
 fi
 
-# (추가) 프리체크가 0(OK)이었고, 리포트 RC가 2(지연)면 소프트 성공으로 다운그레이드
+# 4) 프리체크 OK & 여전히 RC=2이면: 캐시 리포트 백업 생성 → 성공 마킹
 if [ "${RC_PRE:-1}" = "0" ] && [ "${RC_REPORT:-1}" = "2" ]; then
+  echo "[FALLBACK] generating cache-based EOD report..."
+  ${PYTHONBIN:-python3} -m scripts.ops.report_from_cache || true
   echo "[SOFT-OK] report deferred (DB stale), but cache is fresh. Marking as success."
   exit 0
 fi
