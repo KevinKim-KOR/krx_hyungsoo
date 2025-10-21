@@ -33,6 +33,8 @@ from indicators import (
 )
 from adaptive import get_effective_cfg
 from pathlib import Path
+from providers.ohlcv_bridge import get_ohlcv_df as get_ohlcv
+
 
 # -----------------------------
 # 설정 / 섹터 맵 로더
