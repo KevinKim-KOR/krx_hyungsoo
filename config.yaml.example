@@ -1,0 +1,96 @@
+# KRX Alertor Modular - 설정 파일 템플릿
+# 사용법: 이 파일을 config.yaml로 복사 후 수정
+
+# ========================================
+# 유니버스 설정
+# ========================================
+universe:
+  type: ETF                    # ETF 또는 STOCK
+  market: KS                   # KS(코스피) / KQ(코스닥) / null(전체)
+  exclude_keywords:            # 제외할 키워드
+    - 레버리지
+    - 채권
+    - 커버드콜
+    - 인버스
+    - 선물
+    - ETN
+  min_avg_turnover: 1000000000  # 최소 평균 거래대금 (10억원)
+
+# ========================================
+# 스캐너 설정
+# ========================================
+scanner:
+  top_n: 5                     # 최종 추천 종목 수
+  sector_top_k: 3              # 상위 섹터 개수
+  per_sector_cap: 2            # 섹터당 최대 보유 개수
+  
+  # 지표 윈도우
+  adx_window: 14
+  mfi_window: 14
+  vol_z_window: 20
+  
+  # 필터 임계값 (완화된 설정)
+  thresholds:
+    daily_jump_pct: 1.0        # 일일 급등 임계값 (%) - 기본 2.0에서 완화
+    adx_min: 15.0              # ADX 최소값 - 기본 20.0에서 완화
+    mfi_min: 40.0              # MFI 최소값 - 기본 50.0에서 완화
+    mfi_max: 85.0              # MFI 최대값 - 기본 80.0에서 확대
+    volz_min: 0.5              # 거래량 Z-Score 최소값 - 기본 1.0에서 완화
+
+# ========================================
+# 레짐 가드 (시장 상태 체크)
+# ========================================
+regime:
+  spx_ticker: "069500.KS"      # 레짐 판단 기준 (KODEX200)
+  sma_days: 200                # 이동평균선 기간
+  # enabled: false             # 레짐 가드 비활성화 (테스트용)
+
+# ========================================
+# 청산 규칙
+# ========================================
+sell_rules:
+  hard_exit_under_sma200: true           # SMA200 이탈 시 즉시 청산
+  soft_exit_under_sma50: true            # SMA50 이탈 + 약세신호 시 청산
+  adx_soft_threshold: 15.0               # 약세 ADX 임계값
+  mfi_soft_threshold: 40.0               # 약세 MFI 임계값
+  vol_z_soft_threshold: 0.0              # 약세 거래량 Z 임계값
+
+# ========================================
+# 백테스트 설정
+# ========================================
+backtest:
+  trade_frequency: W           # W(주간) / M(월간) / D(일간)
+  benchmark_code: "379800"     # 벤치마크 (KODEX 미국S&P500)
+  slippage_bps: 8              # 슬리피지 (bps)
+  fee_bps: 5                   # 수수료 (bps)
+
+# ========================================
+# 알림 설정
+# ========================================
+notifications:
+  channel: telegram            # telegram 또는 slack
+  
+  telegram:
+    bot_token: ""              # 텔레그램 봇 토큰
+    chat_id: ""                # 텔레그램 채팅 ID
+  
+  slack:
+    webhook: ""                # Slack Webhook URL (레거시)
+
+# 레거시 호환성 (ui.slack_webhook)
+ui:
+  slack_webhook: ""
+
+# ========================================
+# 어댑티브 전략 (선택)
+# ========================================
+adaptive:
+  enabled: false
+  rules: []
+
+# ========================================
+# 메타 정보
+# ========================================
+meta:
+  version: "1.0"
+  last_updated: "2025-10-21"

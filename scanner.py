@@ -33,7 +33,7 @@ from indicators import (
 )
 from adaptive import get_effective_cfg
 from pathlib import Path
-from providers.ohlcv_bridge import get_ohlcv_df as get_ohlcv
+# from providers.ohlcv_bridge import get_ohlcv_df as get_ohlcv  # 미사용
 
 
 # -----------------------------

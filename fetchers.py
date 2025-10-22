@@ -5,18 +5,14 @@ from typing import Optional, List, Union
 import pandas as pd
 import pytz
 import requests
+import time
 import yfinance as yf
 from pykrx import stock as krx
+from sqlalchemy import select, exists, delete
 from db import SessionLocal, Security, PriceDaily, PriceRealtime
-from sqlalchemy import select, exists
 from config import TIMEZONE
-import time
-import pandas as pd
-from sqlalchemy import select, delete
-from db import SessionLocal, Security, PriceDaily
 from krx_helpers import get_ohlcv_safe
 from calendar_kr import is_trading_day, prev_trading_day
-from typing import List
 
 SEOUL = pytz.timezone(TIMEZONE)
 
@@ -96,7 +92,11 @@ def fetch_eod_yf(ticker: str, start: DateLike, end: DateLike) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"]).dt.date
     return df
 
-def ingest_eod(date: DateLike = None):
+def ingest_eod_legacy(date: DateLike = None):
+    """
+    DEPRECATED: 레거시 인게스트 함수 (KRX/YF 직접 호출)
+    → 현재는 ingest_eod (Line 209)가 캐시 기반으로 사용됨
+    """
     # 기존: date_norm = _to_date(date)
     # 변경: 최근 거래일로 보정
     date_norm = _last_trading_date_on_or_before(date if date is not None else "auto")
