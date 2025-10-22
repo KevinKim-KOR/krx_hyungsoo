@@ -16,7 +16,9 @@ def _map_fetch_symbol(symbol: str) -> str:
     return s
 
 def _norm_cols(df: pd.DataFrame) -> pd.DataFrame:
-    if df is None or df.empty:
+    if df is None:
+        return df
+    if df.empty:
         return df
     # 표준 컬럼 네이밍
     df = df.rename(columns={
