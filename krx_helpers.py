@@ -29,9 +29,14 @@ def _fetch_ohlcv_krx(code: str, start, end) -> pd.DataFrame:
     df = df[["Open","High","Low","Close","Volume"]].astype({"Open":float,"High":float,"Low":float,"Close":float,"Volume":"int64"})
     return df.sort_index()
 
-# 캐시 + 증분 통합: 기존 호출부에서 쓰던 이름 유지
-# krx_helpers.py (상단 re-export 삭제하고 아래 함수로 대체)
-def get_ohlcv_safe(*args, **kwargs):
-    # 늦은 시점에 import하여 순환 임포트 방지
-    from fetchers import get_ohlcv_safe as _impl
-    return _impl(*args, **kwargs)
+# 캐시 + 증분 통합: 순환 참조 방지를 위해 직접 구현
+def get_ohlcv_safe(ticker: str, start, end):
+    """
+    순환 참조 방지 버전 - providers.ohlcv_bridge 직접 사용
+    """
+    try:
+        from providers.ohlcv_bridge import get_ohlcv_df
+        return get_ohlcv_df(ticker, start, end)
+    except Exception as e:
+        log.warning(f"get_ohlcv_safe failed for {ticker}: {e}")
+        return pd.DataFrame(columns=["Open","High","Low","Close","Volume"])
