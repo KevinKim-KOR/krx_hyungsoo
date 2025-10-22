@@ -9,7 +9,7 @@ fi
 # 환경 설정
 export ENV=nas
 export PYTHONBIN="$PROJECT_ROOT/venv/bin/python"
-export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH:-}"
 export ALLOW_NET_FETCH=1   # 운영시간엔 온라인 허용
 export TG_TOKEN="8216278192:AAFLuiVI8hrWr86uV2zs9gMLrTcZdO9tGyk"
 export TG_CHAT_ID=7457035904
