@@ -6,6 +6,10 @@ indicators.py 단위 테스트
 실행: pytest tests/test_indicators.py -v
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import pytest
 import pandas as pd
 import numpy as np

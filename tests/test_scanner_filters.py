@@ -6,6 +6,10 @@ scanner.py 필터 로직 테스트
 실행: pytest tests/test_scanner_filters.py -v
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import pytest
 import pandas as pd
 import numpy as np
