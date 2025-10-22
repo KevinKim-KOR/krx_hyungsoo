@@ -39,9 +39,10 @@ def test_indicators():
         assert abs(result.iloc[2] - 20.0) < 0.01, "SMA 계산 오류"
         
         # 수익률 테스트
+        # data = [10, 20, 30, 40, 50]
+        # pct_change(2): data[2]=30, data[0]=10 → (30-10)/10 = 2.0
         ret = pct_change_n(data, 2)
-        # pandas 버전별 차이 허용 (1.5.x vs 2.x)
-        assert abs(ret.iloc[2] - 0.20) < 0.05, f"수익률 계산 오류 (expected: 0.20, got: {ret.iloc[2]:.4f})"
+        assert abs(ret.iloc[2] - 2.0) < 0.01, f"수익률 계산 오류 (expected: 2.0, got: {ret.iloc[2]:.4f})"
         
         print("  [OK] 지표 계산 정상")
         return True
