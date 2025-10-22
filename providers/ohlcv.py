@@ -62,7 +62,12 @@ def _norm(df: pd.DataFrame | None) -> pd.DataFrame | None:
     return df[keep] if keep else df
 
 def _is_kr(sym: str) -> bool:
-    return sym.endswith(".KS") or sym.startswith("^KS")
+    """한국 종목 판별: .KS 접미사 또는 6자리 숫자 코드"""
+    if sym.endswith(".KS") or sym.startswith("^KS"):
+        return True
+    # 6자리 숫자 코드 (예: 069500, 005930)
+    clean = sym.split(".")[0].strip()
+    return clean.isdigit() and len(clean) == 6
 
 def _to_fdr(sym: str) -> str:
     return sym.split(".")[0] if sym.endswith(".KS") else sym
