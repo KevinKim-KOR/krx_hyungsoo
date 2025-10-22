@@ -15,6 +15,7 @@ LOG="$LOGDIR/update_$(date +%F).log"
   echo "[HEAD]   $(git rev-parse --short HEAD)"
 
   # 2) 환경 로드(있으면)
+  export PYTHONPATH="${PYTHONPATH:-}"
   [ -f "config/env.nas.sh" ] && source config/env.nas.sh
 
   # 3) venv 준비
