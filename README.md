@@ -1,20 +1,42 @@
 # 📈 KRX Alertor Modular
 
-한국 ETF/주식 자동 매매 시스템 - 데이터 수집, 스캐너, 백테스트, 알림 통합 플랫폼
+한국 ETF/주식 자동 매매 시스템 - 모멘텀 추세 추종 전략
 
-[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## 🎯 주요 기능
+## 🎯 핵심 개념
 
-- **📥 데이터 수집**: PyKRX → FDR → Stooq → YahooFinance 다중 소스 폴백
-- **🔍 스캐너**: 급등+추세+강도+섹터 다중 조건 필터링
-- **📊 백테스트**: 리밸런싱 전략 시뮬레이션 (수수료/슬리피지 반영)
-- **📢 알림**: Telegram/Slack 실시간 알림
-- **💾 캐시**: Parquet 기반 증분 업데이트
-- **🔄 배치**: NAS/PC 환경 분리, 락 파일 기반 중복 실행 방지
+이동평균선 기반 모멘텀 추세 추종 전략으로 ETF 포트폴리오를 자동 관리합니다.
+- **데이터 소스**: PyKRX → FDR → Stooq → YahooFinance (폴백)
+- **저장**: SQLite DB + Parquet 캐시
+- **환경**: Synology NAS (운영) + Windows PC (개발)
+
+## 🏗️ 아키텍처
+
+```
+krx_alertor_modular/
+├── core/              # 공통 모듈 (NAS + PC)
+│   ├── db.py
+│   ├── fetchers.py
+│   ├── providers/     # 멀티 소스 라우팅
+│   └── utils/
+├── nas/               # NAS 전용 (경량, Python 3.8)
+│   ├── app_nas.py
+│   └── scanner_nas.py
+├── pc/                # PC 전용 (전체 기능)
+│   ├── app_pc.py
+│   ├── backtest.py
+│   └── ml/
+├── config/            # 설정 파일
+│   ├── common.yaml
+│   ├── scanner_config.yaml
+│   └── universe.yaml
+└── scripts/           # 배치 스크립트
+    └── linux/batch/
+```
 
 ---
 
@@ -33,146 +55,122 @@ pip install -r requirements.txt
 ### 2. 초기 설정
 
 ```bash
-# 1) 설정 파일 생성
-cp config.yaml.example config.yaml
-# config.yaml 편집 (Telegram/Slack 토큰 등)
+# 1) DB 초기화
+python pc/app_pc.py init
 
-# 2) DB 초기화
-python app.py init
+# 2) 종목 데이터 수집
+python pc/app_pc.py ingest-eod --date auto
 
-# 3) 종목 데이터 수집
-python app.py ingest-eod --date auto
-
-# 4) 섹터 자동 분류
-python app.py autotag
+# 3) 섹터 자동 분류
+python pc/app_pc.py autotag
 ```
 
 ### 3. 스캐너 실행
 
+**PC에서 테스트:**
 ```bash
-# 오늘 날짜 기준 BUY/SELL 추천
-python app.py scanner
+python nas/app_nas.py scanner --date 2024-10-23
+```
 
-# 특정 날짜 지정
-python app.py scanner --date 2025-10-20
-
-# 진단 스크립트 (0건 출력 시)
-python scripts/diagnostics/diagnose_scanner_zero.py
+**NAS에서 운영:**
+```bash
+cd ~/krx/krx_alertor_modular
+bash scripts/linux/batch/update_from_git.sh
+source venv/bin/activate
+python nas/app_nas.py scanner --date auto
 ```
 
 ---
 
 ## 📖 명령어 가이드
 
-### 데이터 수집
+### 데이터 수집 (PC)
 
 ```bash
-# EOD 데이터 수집 (자동 날짜)
-python app.py ingest-eod --date auto
+# EOD 데이터 수집
+python pc/app_pc.py ingest-eod --date auto
 
 # 특정 날짜 수집
-python app.py ingest-eod --date 2025-10-20
-
-# 실시간 가격 (단일 종목)
-python app.py ingest-realtime --code 005930
+python pc/app_pc.py ingest-eod --date 2024-10-23
 ```
 
-### 스캐너
+### 스캐너 (NAS)
 
 ```bash
 # 기본 실행
-python app.py scanner
+python nas/app_nas.py scanner --date auto
 
-# Slack 알림 포함
-python app.py scanner-slack --date 2025-10-20
+# 특정 날짜
+python nas/app_nas.py scanner --date 2024-10-23
 ```
 
-### 백테스트
+### 백테스트 (PC)
 
 ```bash
 # 기간 지정 백테스트
-python app.py backtest --start 2024-01-01 --end 2025-10-20 --config config.yaml
+python pc/app_pc.py backtest --start 2024-01-01 --end 2024-10-23
 
 # 결과는 backtests/ 폴더에 CSV로 저장
 ```
 
-### 리포트
+### 리포트 (PC)
 
 ```bash
 # 성과 리포트 생성
-python app.py report --start 2024-01-01 --end 2025-10-20 --benchmark 069500
-
-# EOD 요약 리포트 (Telegram 전송)
-python app.py report-eod --date auto
+python pc/app_pc.py report --start 2024-01-01
 ```
 
 ---
 
-## 🏗️ 아키텍처
+## 📊 개발 워크플로우
 
 ```
-krx_alertor_modular/
-├── app.py                 # CLI 진입점
-├── config.yaml            # 설정 파일 (gitignore)
-├── config.yaml.example    # 설정 템플릿
-│
-├── db.py                  # SQLAlchemy ORM
-├── fetchers.py            # 데이터 수집 (PyKRX/YF)
-├── scanner.py             # 스캐너 로직
-├── backtest.py            # 백테스트 엔진
-├── indicators.py          # 기술 지표 (SMA, ADX, MFI 등)
-├── notifications.py       # Telegram/Slack 알림
-├── calendar_kr.py         # 한국 거래일 캘린더
-│
-├── providers/             # 멀티 소스 라우팅
-│   ├── ohlcv.py          # PyKRX → FDR → Stooq → YF
-│   └── ohlcv_bridge.py   # 캐시 우선 브리지
-│
-├── data/
-│   ├── cache/            # Parquet 캐시
-│   └── kr/               # 한국 시장 데이터
-│
-├── scripts/
-│   ├── linux/batch/      # NAS 배치 스크립트
-│   ├── diagnostics/      # 진단 도구
-│   └── ops/              # 운영 스크립트
-│
-├── tests/                 # 단위 테스트
-│   ├── test_indicators.py
-│   └── test_scanner_filters.py
-│
-└── web/                   # UI (개발 중)
+PC (개발/테스트)           NAS (운영)
+─────────────────         ─────────────
+1. 코드 수정               4. Git pull
+2. 로컬 테스트             5. 스캐너 실행
+3. Git push                6. 알림 전송
 ```
+
+**권장 프로세스:**
+1. PC에서 `nas/app_nas.py` 테스트
+2. 성공 시 Git commit & push
+3. NAS에서 `update_from_git.sh` 실행
+4. NAS에서 최종 확인
 
 ---
 
-## 🔧 설정 파일 (config.yaml)
+## 🔧 설정 파일
 
-주요 설정 항목:
-
+### config/common.yaml
 ```yaml
-# 유니버스
-universe:
-  type: ETF
-  exclude_keywords: [레버리지, 채권, 인버스]
-  min_avg_turnover: 1000000000  # 10억원
-
-# 스캐너 임계값
-scanner:
-  thresholds:
-    daily_jump_pct: 1.0    # 급등 기준 (완화)
-    adx_min: 15.0          # ADX 최소값 (완화)
-    mfi_min: 40.0          # MFI 범위 (완화)
-
-# 알림
-notifications:
-  channel: telegram
-  telegram:
-    bot_token: "YOUR_BOT_TOKEN"
-    chat_id: "YOUR_CHAT_ID"
+database:
+  path: "krx_alertor.sqlite3"
+timezone: "Asia/Seoul"
+cache:
+  ohlcv_dir: "data/cache/ohlcv"
 ```
 
-자세한 설정은 `config.yaml.example` 참고
+### config/scanner_config.yaml
+```yaml
+strategy:
+  name: "MAPS"
+  ma_period: 60
+  portfolio_topn: 5
+  
+market_regime:
+  indices:
+    - symbol: "^KS11"
+      ma_period: 60
+```
+
+### config/universe.yaml
+```yaml
+etfs:
+  - symbol: "069500"
+    name: "KODEX 200"
+    category: "대형주"
+```
 
 ---
 
@@ -220,13 +218,21 @@ pytest tests/test_scanner_filters.py -v
 
 ## 📅 로드맵
 
+### ✅ 완료
+- [x] 모듈 분리 (core/, nas/, pc/)
 - [x] Multi-provider 라우팅 (PyKRX/FDR/Stooq/YF)
 - [x] Parquet 캐시 시스템
-- [x] 스캐너 브리지 통합
-- [ ] 신호 튜닝 (RSI, MACD 추가)
+- [x] NAS 배포 자동화
+
+### 🚧 진행 중
+- [ ] DataFrame ambiguous error 수정
+- [ ] 캘린더 로딩 안정화
+- [ ] 스캐너 신호 튜닝
+
+### 📋 계획
 - [ ] 백테스트 피드백 루프
+- [ ] Telegram 알림 통합
 - [ ] Web UI 완성
-- [ ] 배치 스케줄러 등록
 
 ---
 

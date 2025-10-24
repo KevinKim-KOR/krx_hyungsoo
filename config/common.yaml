@@ -1,0 +1,42 @@
+# 공통 설정 (NAS + PC)
+# 친구 코드 구조 참고: data/settings/common.py
+
+# 데이터베이스
+database:
+  path: "krx_alertor.sqlite3"
+  echo: false
+
+# 타임존
+timezone: "Asia/Seoul"
+
+# 캐시 설정
+cache:
+  ohlcv_dir: "data/cache/ohlcv"
+  calendar_dir: "data/cache/kr"
+  enable: true
+
+# 로그 설정
+logging:
+  level: "INFO"
+  dir: "logs"
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+# 데이터 소스 우선순위
+data_sources:
+  priority:
+    - pykrx
+    - fdr
+    - stooq
+    - yfinance
+  
+  # 캘린더용 심볼
+  calendar_symbols:
+    - "069500"  # KODEX 200
+    - "^KS11"   # KOSPI
+    - "^KQ11"   # KOSDAQ
+
+# 거래일 설정
+trading:
+  market_open_hour: 9
+  market_close_hour: 15
+  cooldown_days: 5

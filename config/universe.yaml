@@ -1,0 +1,38 @@
+# 투자 유니버스 설정 (친구 코드: data/stocks/)
+
+# KRX ETF 리스트
+etfs:
+  # 국내 주요 ETF
+  - symbol: "069500"
+    name: "KODEX 200"
+    category: "대형주"
+  
+  - symbol: "102110"
+    name: "TIGER 200"
+    category: "대형주"
+  
+  - symbol: "229200"
+    name: "KODEX 코스닥150"
+    category: "중소형주"
+  
+  - symbol: "091160"
+    name: "KODEX 반도체"
+    category: "섹터"
+  
+  - symbol: "091180"
+    name: "KODEX 자동차"
+    category: "섹터"
+  
+  - symbol: "091170"
+    name: "KODEX 은행"
+    category: "섹터"
+
+# 개별 종목 (선택사항)
+stocks:
+  enabled: false
+  symbols: []
+
+# 제외 종목
+exclude:
+  symbols: []
+  categories: []
