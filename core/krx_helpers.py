@@ -35,8 +35,12 @@ def get_ohlcv_safe(ticker: str, start, end):
     순환 참조 방지 버전 - providers.ohlcv_bridge 직접 사용
     """
     try:
-        from providers.ohlcv_bridge import get_ohlcv_df
-        return get_ohlcv_df(ticker, start, end)
+        from core.providers.ohlcv_bridge import get_ohlcv_df
+        df = get_ohlcv_df(ticker, start, end)
+        # DataFrame 체크 (ambiguous error 방지)
+        if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+            return pd.DataFrame(columns=["Open","High","Low","Close","Volume"])
+        return df
     except Exception as e:
         log.warning(f"get_ohlcv_safe failed for {ticker}: {e}")
         return pd.DataFrame(columns=["Open","High","Low","Close","Volume"])
