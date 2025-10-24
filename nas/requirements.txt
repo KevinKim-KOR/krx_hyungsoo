@@ -1,0 +1,10 @@
+# NAS 전용 최소 의존성 (경량)
+# 설치 시간: ~1분, 용량: ~50MB
+
+pykrx==1.0.45
+pandas==1.5.3
+pytz==2024.1
+requests==2.32.3
+pyyaml==6.0.2
+SQLAlchemy>=2.0,<2.1
+FinanceDataReader>=0.9.50

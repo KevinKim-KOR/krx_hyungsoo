@@ -1,0 +1,40 @@
+# NAS 전용 설정 (경량)
+environment: nas
+
+universe:
+  type: ETF
+  market: KS
+  exclude_keywords:
+    - 레버리지
+    - 인버스
+    - 채권
+  min_avg_turnover: 1000000000
+
+scanner:
+  adx_window: 14
+  mfi_window: 14
+  vol_z_window: 20
+  sector_top_k: 3
+  per_sector_cap: 2
+  top_n: 5
+  
+  thresholds:
+    daily_jump_pct: 1.0
+    adx_min: 15.0
+    mfi_min: 40.0
+    mfi_max: 80.0
+    volz_min: 1.0
+
+regime:
+  enabled: true
+  spx_ticker: "069500.KS"
+  sma_days: 200
+
+notifications:
+  channel: telegram
+  telegram:
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+
+database:
+  path: "krx_alertor.sqlite3"

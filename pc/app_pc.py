@@ -1,0 +1,281 @@
+# -*- coding: utf-8 -*-
+"""
+app.py
+- ETF 데이터 수집/리포트/전략 실행 CLI
+"""
+
+import argparse
+import pandas as pd
+from db import init_db, SessionLocal, Security, Position
+from fetchers import ingest_eod, ingest_realtime_once
+# 지연 임포트: report 커맨드에서만 사용
+try:
+    from analyzer import make_report  # optional at import time
+except Exception:
+    make_report = None
+
+from scanner import recommend_buy_sell, load_config_yaml
+# --- compat wrapper: route legacy send_slack() to new send_notify() ---
+from notifications import send_notify
+
+
+from backtest import run_backtest
+from sector_autotag import autotag_sectors
+from notifications import send_notify
+import logging, os
+from logging.handlers import RotatingFileHandler
+
+from calendar_kr import is_trading_day, next_trading_day, load_trading_days
+
+
+# -----------------------------
+# 명령어 핸들러
+# -----------------------------
+
+def cmd_init(args):
+    """DB 초기화 및 시드 로드"""
+    init_db()
+    print("DB 초기화 완료")
+
+def cmd_ingest_eod(args):
+    """일별 종가 수집"""
+    asof = pd.to_datetime(pd.Timestamp.today().date() if args.date == "auto" else args.date)
+    load_trading_days(asof)
+    if not is_trading_day(asof):
+        log.info(f"[INGEST] 휴장일 {asof.date()} → 수집 스킵")
+        print(f"[SKIP] 휴장일 {asof.date()} — ingest-eod 생략")
+        return
+    ingest_eod(asof.strftime("%Y-%m-%d"))
+
+
+def cmd_ingest_realtime(args):
+    """실시간 가격 수집 (단발 실행)"""
+    ingest_realtime_once(args.code)
+
+def cmd_report(args):
+    """기간 성과 리포트"""
+    global make_report
+    # 지연 임포트: report 커맨드가 실제로 호출될 때만 analyzer 로드
+    if make_report is None:
+        try:
+            from analyzer import make_report as _make_report
+            make_report = _make_report
+        except Exception as e:
+            print(f"[ERROR] analyzer.make_report 임포트 실패: {e}")
+            print("→ requirements / analyzer.py 를 확인하세요. "
+                  "init·autotag·scanner 명령에는 영향 없습니다.")
+            return
+    # 실제 실행
+    make_report(start=args.start, end=args.end, benchmark=args.benchmark)
+
+def cmd_scanner(args):
+    """BUY/SELL 추천"""
+    # 날짜 정규화 (NaT/None/문자열 안전)
+    asof_norm = _normalize_asof(getattr(args, "asof", None))
+
+    # 캘린더 로딩 (테이블/캐시 준비)
+    from calendar_kr import load_trading_days
+    load_trading_days(asof_norm)
+
+    # 거래일 가드 (배치 외 수동 실행에서도 일관 동작)
+    from utils.trading_day import is_trading_day
+    if not is_trading_day(asof_norm):
+        print(f"[SKIP] 휴장일 {asof_norm.date()} — scanner 생략")
+        return 0
+
+    # 실제 스캐너 로직 (기존 함수 그대로 사용)
+    cfg = load_config_yaml("config.yaml")
+    # ← 여기서 YAML(universe) 주입 (없으면 폴백)
+    try:
+        from scripts.ops.universe import load_universe
+        if not cfg.get("universe"):
+            cfg["universe"] = load_universe()
+    except Exception:
+        pass
+    
+    buy_df, sell_df, meta = recommend_buy_sell(asof=asof_norm, cfg=cfg)
+
+    print(f"\n기준일: {asof_norm.date()} (ETF)")
+    print(f"레짐 상태: {'ON(투자 가능)' if meta.get('regime_ok') else 'OFF(투자 중단)'}")
+    print(f"유니버스 크기: {meta.get('universe_size')} → 조건 충족: {meta.get('after_filters')} 종목\n")
+
+    if buy_df is not None and not buy_df.empty:
+        print("--- BUY 추천 TOP N ---")
+        for _, row in buy_df.iterrows():
+            print(f"  - {row['code']} (섹터:{row['sector']}): 점수 {row['score']:.1f}, "
+                  f"1일 {row['ret1']*100:.2f}%, 20일 {row['ret20']*100:.2f}%, "
+                  f"60일 {row['ret60']*100:.2f}%, ADX {row['adx']:.1f}, "
+                  f"MFI {row['mfi']:.1f}, VolZ {row['volz']:.2f}")
+    else:
+        print("BUY 추천 없음")
+
+    if sell_df is not None and not sell_df.empty:
+        print("\n--- SELL 추천 (보유 종목 중 조건 위반) ---")
+        for _, row in sell_df.iterrows():
+            print(f"  - {row['code']}: {row['reason']} "
+                  f"(close={row['close']}, sma50={row['sma50']}, sma200={row['sma200']})")
+    else:
+        print("\nSELL 추천 없음")
+
+    return 0
+
+def cmd_scanner_slack(args):
+    """BUY/SELL 추천 + Slack 알림 전송"""
+    asof = pd.to_datetime(args.date)
+    load_trading_days(asof)
+    if not is_trading_day(asof):
+        log.info(f"[SCANNER] 휴장일 {asof.date()} → 슬랙 전송도 스킵")
+        print(f"[SKIP] 휴장일 {asof.date()} — scanner-slack 생략")
+        return
+    
+    cfg = load_config_yaml("config.yaml")
+    buy_df, sell_df, meta = recommend_buy_sell(asof=args.date, cfg=cfg)
+
+    header = f"*[KRX Scanner]* {meta['asof'].date()}  |  레짐: {'ON' if meta['regime_ok'] else 'OFF'}  |  유니버스: {meta['universe_size']}  |  조건충족: {meta['after_filters']}"
+    lines = [header, ""]  # 빈 줄
+
+    # BUY
+    if buy_df is not None and not buy_df.empty:
+        lines.append("*BUY 추천 TOP N*")
+        for _, row in buy_df.iterrows():
+            lines.append(
+                f"- `{row['code']}` [{row['sector']}] 점수 {row['score']:.1f} | "
+                f"1D {row['ret1']*100:.2f}% / 20D {row['ret20']*100:.2f}% / 60D {row['ret60']*100:.2f}% | "
+                f"ADX {row['adx']:.1f} / MFI {row['mfi']:.1f} / VolZ {row['volz']:.2f}"
+            )
+    else:
+        lines.append("_BUY 추천 없음_")
+
+    lines.append("")  # 빈 줄
+
+    # SELL
+    if sell_df is not None and not sell_df.empty:
+        lines.append("*SELL 추천 (보유 위반)*")
+        for _, row in sell_df.iterrows():
+            lines.append(
+                f"- `{row['code']}`: {row['reason']} "
+                f"(close={row['close']}, SMA50={row['sma50']}, SMA200={row['sma200']})"
+            )
+    else:
+        lines.append("_SELL 추천 없음_")
+
+    text = "\n".join(lines)
+
+    webhook = (cfg.get("ui", {}) or {}).get("slack_webhook", "")
+    ok = send_slack(text, webhook)
+    print(text)
+    if not ok:
+        print("⚠️ Slack 전송 실패 또는 webhook 미설정 (config.yaml > ui.slack_webhook 확인)")
+
+def send_slack(text, webhook):
+    cfg = load_config_yaml("config.yaml")
+    return send_notify(text, cfg)
+
+def cmd_report_eod(args):
+    """EOD 요약 보고서 생성/전송 엔트리 (reporting_eod.py와 호환)"""
+    try:
+        import reporting_eod as mod
+    except Exception as e:
+        raise SystemExit(f"[ERROR] reporting_eod import failed: {e}")
+
+    # 호환 가능한 진입점 모두 지원
+    if hasattr(mod, "main"):
+        # argparse 스타일: main(args)
+        return mod.main(args)
+    if hasattr(mod, "run"):
+        # 함수형 스타일: run(date="auto")
+        return mod.run(date=getattr(args, "date", "auto"))
+
+    raise SystemExit("[ERROR] reporting_eod entry not found (expected main(args) or run(date=...))")
+
+
+# --- NaT/None/문자열 안전 변환 (scanner에서도 사용) ---
+def _normalize_asof(asof):
+    if asof in (None, "", pd.NaT):
+        ts = pd.Timestamp.today()
+    else:
+        ts = pd.to_datetime(asof, errors="coerce")
+        if pd.isna(ts):
+            ts = pd.Timestamp.today()
+    return ts.normalize()
+
+
+# -----------------------------
+# 메인 엔트리
+# -----------------------------
+def main():
+    parser = argparse.ArgumentParser(description="KRX Alertor Modular")
+    # 변수명 **subparsers**로 통일 + required=True (서브커맨드 필수)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # init
+    sp = subparsers.add_parser("init", help="DB 초기화 및 시드 로드")
+    sp.set_defaults(func=cmd_init)
+
+    # ingest-eod
+    sp = subparsers.add_parser("ingest-eod", help="일별 종가 수집")
+    sp.add_argument("--date", required=True, help="YYYY-MM-DD 또는 auto")
+    sp.set_defaults(func=cmd_ingest_eod)
+
+    # ingest-realtime
+    sp = subparsers.add_parser("ingest-realtime", help="실시간 가격 단발 수집")
+    sp.add_argument("--code", required=True, help="종목 코드")
+    sp.set_defaults(func=cmd_ingest_realtime)
+
+    # report
+    sp = subparsers.add_parser("report", help="성과 리포트")
+    sp.add_argument("--start", required=True, help="YYYY-MM-DD 시작일")
+    sp.add_argument("--end", required=True, help="YYYY-MM-DD 종료일")
+    sp.add_argument("--benchmark", required=True, help="벤치마크 코드 (예: 069500)")
+    sp.set_defaults(func=cmd_report)
+
+    # ✅ scanner (단일 정의, --date/--asof 병합 → asof)
+    sp = subparsers.add_parser("scanner", help="BUY/SELL 추천 스캐너 실행")
+    sp.add_argument("--date", "--asof", dest="asof", default=None,
+                    help="YYYY-MM-DD (생략 시 오늘/가드 규칙)")
+    sp.set_defaults(func=cmd_scanner)
+
+    # backtest
+    sp = subparsers.add_parser("backtest", help="급등+추세+강도+섹터TOP 규칙 백테스트")
+    sp.add_argument("--start", required=True, help="YYYY-MM-DD 시작일")
+    sp.add_argument("--end", required=True, help="YYYY-MM-DD 종료일")
+    sp.add_argument("--config", default="config.yaml", help="설정 파일 경로")
+    sp.set_defaults(func=lambda args: run_backtest(args.start, args.end, args.config))
+
+    # autotag
+    sp = subparsers.add_parser("autotag", help="ETF 이름 기반 섹터 자동 분류 실행")
+    sp.add_argument("--output", default="sectors_map.csv", help="저장 파일 경로")
+    sp.set_defaults(func=lambda args: autotag_sectors(args.output))
+
+    # scanner-slack
+    sp = subparsers.add_parser("scanner-slack", help="스캐너 실행 후 Slack 전송")
+    sp.add_argument("--date", required=True, help="YYYY-MM-DD 기준일")
+    sp.set_defaults(func=cmd_scanner_slack)
+
+    # report-eod
+    sp = subparsers.add_parser("report-eod", help="EOD 요약 Top5 텔레그램/슬랙 전송")
+    sp.add_argument("--date", default="auto", help="YYYY-MM-DD 또는 auto")
+    sp.set_defaults(func=cmd_report_eod)
+
+    args = parser.parse_args()
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
+
+def setup_logging():
+    os.makedirs("logs", exist_ok=True)
+    root = logging.getLogger()
+    if root.handlers:
+        return
+    root.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    fh = RotatingFileHandler("logs/app.log", maxBytes=2_000_000, backupCount=3, encoding="utf-8")
+    fh.setFormatter(fmt); root.addHandler(fh)
+    sh = logging.StreamHandler(); sh.setFormatter(fmt); root.addHandler(sh)
+
+setup_logging()
+log = logging.getLogger(__name__)
+
+if __name__ == "__main__":
+    raise SystemExit(main())
