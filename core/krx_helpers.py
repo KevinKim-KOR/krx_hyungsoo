@@ -1,10 +1,8 @@
 import pandas as pd
-from datetime import date
+import logging
+from datetime import date, timedelta
 from pykrx import stock as krx
-# krx_helpers.py  상단에 추가
-import logging, pandas as pd
-from datetime import timedelta
-from cache_store import load_cached, save_cache
+
 log = logging.getLogger(__name__)
 
 
@@ -20,7 +18,7 @@ def _fetch_ohlcv_krx(code: str, start, end) -> pd.DataFrame:
     e = pd.to_datetime(end).date()
     raw_code = code.split(".")[0]  # '069500.KS' -> '069500'
     df = krx.get_market_ohlcv_by_date(s.strftime("%Y%m%d"), e.strftime("%Y%m%d"), raw_code)
-    if df is None or df.empty:
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         return pd.DataFrame(columns=["Open","High","Low","Close","Volume"])
     # pykrx 컬럼 매핑
     colmap = {"시가":"Open","고가":"High","저가":"Low","종가":"Close","거래량":"Volume"}

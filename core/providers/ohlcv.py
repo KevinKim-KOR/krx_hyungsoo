@@ -47,7 +47,7 @@ def _write_parquet(path: Path, df: pd.DataFrame):
     df.to_parquet(path)
 
 def _norm(df: pd.DataFrame | None) -> pd.DataFrame | None:
-    if df is None or df.empty: return None
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty): return None
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
         df = df.loc[:, ~df.columns.duplicated()]
@@ -82,7 +82,7 @@ def fetch_with_route(symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> tup
             s = start.strftime("%Y%m%d"); e = end.strftime("%Y%m%d")
             # pykrx는 한국장 기준으로 일자 인덱스 반환
             df = krx.get_market_ohlcv_by_date(s, e, _to_fdr(symbol))
-            if df is not None and not df.empty:
+            if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
                 df.index = pd.to_datetime(df.index)
                 df = df.rename(columns={"시가":"Open","고가":"High","저가":"Low","종가":"Close","거래량":"Volume"})
                 return _norm(df), "pykrx"
@@ -93,7 +93,7 @@ def fetch_with_route(symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> tup
             try:
                 _throttle("fdr_last.ts", "FDR_MIN_INTERVAL_SEC", 1.2)
                 df = fdr.DataReader(_to_fdr(symbol), start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
-                if df is not None and not df.empty:
+                if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
                     return _norm(df), "fdr"
             except Exception:
                 pass
@@ -102,7 +102,7 @@ def fetch_with_route(symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> tup
         try:
             _throttle("stooq_last.ts", "STOOQ_MIN_INTERVAL_SEC", 0.8)
             df = pdr.DataReader(symbol, "stooq", start, end)
-            if df is not None and not df.empty:
+            if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
                 df = df.rename(columns=str.title)  # Open, High, Low, Close, Volume
                 return _norm(df), "stooq"
         except Exception:
@@ -113,7 +113,7 @@ def fetch_with_route(symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> tup
             _throttle("yf_last.ts", "YF_MIN_INTERVAL_SEC", 3.5)
             df = yf.download(symbol, start=start.tz_localize(None), end=(end+pd.Timedelta(days=1)).tz_localize(None),
                              auto_adjust=False, progress=False)
-            if df is not None and not df.empty:
+            if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
                 return _norm(df), "yfinance"
         except Exception:
             pass
@@ -126,20 +126,20 @@ def ingest_symbol(symbol: str, since: str | None = None) -> dict:
     today = pd.Timestamp(datetime.utcnow().date())
     if since:
         start = pd.Timestamp(since)
-    elif cached is not None and not cached.empty:
+    elif cached is not None and isinstance(cached, pd.DataFrame) and not cached.empty:
         start = cached.index.max() + pd.Timedelta(days=1)
     else:
         start = today - pd.DateOffset(years=2)
     end = today
-    if cached is not None and not cached.empty and start > end:
+    if cached is not None and isinstance(cached, pd.DataFrame) and not cached.empty and start > end:
         return {"symbol": symbol, "provider":"cache", "rows": int(cached.shape[0]), "status":"up_to_date"}
 
     df, prov = fetch_with_route(symbol, start, end)
-    if df is None or df.empty:
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         rows = 0 if cached is None else int(cached.shape[0])
         return {"symbol": symbol, "provider":prov, "rows": rows, "status":"fetch_empty_or_failed"}
 
-    merged = df if cached is None or cached.empty else pd.concat([cached, df]).sort_index().pipe(
+    merged = df if cached is None or (isinstance(cached, pd.DataFrame) and cached.empty) else pd.concat([cached, df]).sort_index().pipe(
         lambda x: x[~x.index.duplicated(keep="last")]
     )
     _write_parquet(path, merged)

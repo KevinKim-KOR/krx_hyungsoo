@@ -1,0 +1,8 @@
+﻿{
+  "repo":  "krx_alertor_modular",
+  "commit": "e6e7b4fab82edbf4e533cfd6ff1bbbbbb1aa31bc",
+  "package_ts": "20251003_211335",
+  "producer": "pc-nightly",
+  "schema": "btpkg/1.0",
+  "entrypoints": {"equity":"equity1.csv","summary":"summary.json"}
+}

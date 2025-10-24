@@ -67,7 +67,7 @@ def ensure_yahoo_ticker(code: str, market: str) -> str:
 def fetch_eod_krx(code: str, start: DateLike, end: DateLike) -> pd.DataFrame:
     """pykrx로 OHLCV 일별 수집 (양식: date, open, high, low, close, volume)"""
     df = krx.get_market_ohlcv_by_date(_yyyymmdd(start), _yyyymmdd(end), code)
-    if df is None or df.empty:
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         return pd.DataFrame(columns=["date","open","high","low","close","volume"])
     df = df.rename(columns={"시가":"open","고가":"high","저가":"low","종가":"close","거래량":"volume"})
     df = df.reset_index().rename(columns={"날짜":"date"})
@@ -176,7 +176,7 @@ def _last_trading_date_on_or_before(d: DateLike) -> dt.date:
             df = krx.get_market_ohlcv_by_date(
                 target.strftime("%Y%m%d"), target.strftime("%Y%m%d"), "005930"
             )
-            if df is not None and not df.empty:
+            if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
                 return target
         except Exception:
             pass
@@ -222,7 +222,7 @@ def ingest_eod(date_str: str):
         codes = [str(c) for c in _get_active_codes(s)]
         for code in codes:
             df = get_ohlcv_safe(code, start, end)
-            if df is None or df.empty:
+            if df is None or (isinstance(df, pd.DataFrame) and df.empty):
                 n_skip += 1
                 continue
 

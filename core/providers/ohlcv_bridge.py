@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 import os
 import pandas as pd
-from providers.ohlcv import ingest_symbol  # 우리가 앞서 만든 라우터/인게스터
+from core.providers.ohlcv import ingest_symbol  # 우리가 앞서 만든 라우터/인게스터
 
 CACHE_DIR = Path("data/cache/ohlcv")
 
@@ -18,7 +18,7 @@ def _map_fetch_symbol(symbol: str) -> str:
 def _norm_cols(df: pd.DataFrame) -> pd.DataFrame:
     if df is None:
         return df
-    if df.empty:
+    if isinstance(df, pd.DataFrame) and df.empty:
         return df
     # 표준 컬럼 네이밍
     df = df.rename(columns={
@@ -68,7 +68,7 @@ def get_ohlcv_df(symbol: str,
     # 기본 범위
     today = pd.Timestamp("today").normalize()
     if start is None:
-        if df is not None and not df.empty:
+        if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
             start = df.index.min().normalize()
         else:
             start = today - pd.DateOffset(years=backfill_years)
@@ -76,7 +76,7 @@ def get_ohlcv_df(symbol: str,
         end = today
 
     need_fetch = False
-    if df is None or df.empty:
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         need_fetch = True
     else:
         have_min, have_max = df.index.min().normalize(), df.index.max().normalize()
@@ -90,7 +90,7 @@ def get_ohlcv_df(symbol: str,
         # 재로드
         df = _read_cache(fetch_sym) or _read_cache(orig)
 
-    if df is None or df.empty:
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         return pd.DataFrame()  # 빈 프레임 반환(스캐너는 스킵하도록)
 
     # 최종 슬라이스

@@ -3,9 +3,10 @@ from typing import Optional, Dict
 import pandas as pd
 from sqlalchemy import select
 from tabulate import tabulate
-from db import SessionLocal, PriceDaily, Security, Position
-from fetchers import ensure_yahoo_ticker, fetch_eod_yf
-from config import DEFAULT_BENCHMARK
+from core.db import SessionLocal, PriceDaily, Security, Position
+from core.fetchers import ensure_yahoo_ticker, fetch_eod_yf
+# from config import DEFAULT_BENCHMARK
+DEFAULT_BENCHMARK = "^KS11"
 
 def load_prices(session, start: Optional[dt.date], end: Optional[dt.date]) -> pd.DataFrame:
     q = select(PriceDaily)

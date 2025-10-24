@@ -1,0 +1,100 @@
+2025-10-23 00:17:24,966 WARNING get_ohlcv_safe failed for 069500.KS: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.
+A suitable version of pyarrow or fastparquet is required for parquet support.
+Trying to import the above resulted in these errors:
+ - Missing optional dependency 'pyarrow'. pyarrow is required for parquet support. Use pip or conda to install pyarrow.
+ - Missing optional dependency 'fastparquet'. fastparquet is required for parquet support. Use pip or conda to install fastparquet.
+2025-10-23 00:17:26,819 ERROR HTTP Error 404: 
+2025-10-23 00:17:27,061 ERROR 
+1 Failed download:
+2025-10-23 00:17:27,061 ERROR ['069500']: YFTzMissingError('possibly delisted; no timezone found')
+2025-10-23 00:17:27,394 INFO [CAL] fallback yfinance source = 069500.KS (n=482)
+2025-10-23 00:17:27,397 INFO [CAL] wrote E:\AI Study\krx_alertor_modular\data\cache\kr\trading_days.pkl (n=482, 2023-10-23~2025-10-22)
+2025-10-23 00:17:29,923 ERROR HTTP Error 404: 
+2025-10-23 00:17:30,226 ERROR 
+1 Failed download:
+2025-10-23 00:17:30,226 ERROR ['000660']: YFTzMissingError('possibly delisted; no timezone found')
+2025-10-23 00:17:32,640 ERROR 
+1 Failed download:
+2025-10-23 00:17:32,640 ERROR ['005930']: YFTzMissingError('possibly delisted; no timezone found')
+2025-10-23 00:17:35,505 ERROR 
+1 Failed download:
+2025-10-23 00:17:35,505 ERROR ['069500']: YFTzMissingError('possibly delisted; no timezone found')
+2025-10-23 00:22:32,489 WARNING get_ohlcv_safe failed for 000660: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.
+A suitable version of pyarrow or fastparquet is required for parquet support.
+Trying to import the above resulted in these errors:
+ - Missing optional dependency 'pyarrow'. pyarrow is required for parquet support. Use pip or conda to install pyarrow.
+ - Missing optional dependency 'fastparquet'. fastparquet is required for parquet support. Use pip or conda to install fastparquet.
+2025-10-23 00:22:33,072 WARNING get_ohlcv_safe failed for 005930: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.
+A suitable version of pyarrow or fastparquet is required for parquet support.
+Trying to import the above resulted in these errors:
+ - Missing optional dependency 'pyarrow'. pyarrow is required for parquet support. Use pip or conda to install pyarrow.
+ - Missing optional dependency 'fastparquet'. fastparquet is required for parquet support. Use pip or conda to install fastparquet.
+2025-10-23 00:22:33,682 WARNING get_ohlcv_safe failed for 069500: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.
+A suitable version of pyarrow or fastparquet is required for parquet support.
+Trying to import the above resulted in these errors:
+ - Missing optional dependency 'pyarrow'. pyarrow is required for parquet support. Use pip or conda to install pyarrow.
+ - Missing optional dependency 'fastparquet'. fastparquet is required for parquet support. Use pip or conda to install fastparquet.
+2025-10-23 00:22:34,287 WARNING get_ohlcv_safe failed for 091160: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.
+A suitable version of pyarrow or fastparquet is required for parquet support.
+Trying to import the above resulted in these errors:
+ - Missing optional dependency 'pyarrow'. pyarrow is required for parquet support. Use pip or conda to install pyarrow.
+ - Missing optional dependency 'fastparquet'. fastparquet is required for parquet support. Use pip or conda to install fastparquet.
+2025-10-23 00:22:34,899 WARNING get_ohlcv_safe failed for 133690: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.
+A suitable version of pyarrow or fastparquet is required for parquet support.
+Trying to import the above resulted in these errors:
+ - Missing optional dependency 'pyarrow'. pyarrow is required for parquet support. Use pip or conda to install pyarrow.
+ - Missing optional dependency 'fastparquet'. fastparquet is required for parquet support. Use pip or conda to install fastparquet.
+2025-10-23 00:22:35,506 WARNING get_ohlcv_safe failed for 305720: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.
+A suitable version of pyarrow or fastparquet is required for parquet support.
+Trying to import the above resulted in these errors:
+ - Missing optional dependency 'pyarrow'. pyarrow is required for parquet support. Use pip or conda to install pyarrow.
+ - Missing optional dependency 'fastparquet'. fastparquet is required for parquet support. Use pip or conda to install fastparquet.
+2025-10-24 10:48:49,325 WARNING get_ohlcv_safe failed for 000660: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:48:49,631 WARNING get_ohlcv_safe failed for 005930: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:48:50,229 WARNING get_ohlcv_safe failed for 069500: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:48:50,827 WARNING get_ohlcv_safe failed for 091160: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:48:51,432 WARNING get_ohlcv_safe failed for 133690: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:48:52,031 WARNING get_ohlcv_safe failed for 305720: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:48:52,630 WARNING get_ohlcv_safe failed for 373220: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:50:52,904 WARNING get_ohlcv_safe failed for 000660: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:50:52,907 WARNING get_ohlcv_safe failed for 005930: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:50:52,909 WARNING get_ohlcv_safe failed for 069500: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:50:52,912 WARNING get_ohlcv_safe failed for 091160: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:50:52,914 WARNING get_ohlcv_safe failed for 133690: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:50:52,916 WARNING get_ohlcv_safe failed for 305720: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:50:52,918 WARNING get_ohlcv_safe failed for 373220: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:19,850 WARNING get_ohlcv_safe failed for 000660: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:19,854 WARNING get_ohlcv_safe failed for 005930: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:19,856 WARNING get_ohlcv_safe failed for 069500: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:19,859 WARNING get_ohlcv_safe failed for 091160: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:19,862 WARNING get_ohlcv_safe failed for 133690: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:19,864 WARNING get_ohlcv_safe failed for 305720: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:19,867 WARNING get_ohlcv_safe failed for 373220: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:47,358 WARNING get_ohlcv_safe failed for 000660: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:47,361 WARNING get_ohlcv_safe failed for 005930: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:47,363 WARNING get_ohlcv_safe failed for 069500: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:47,365 WARNING get_ohlcv_safe failed for 091160: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:47,368 WARNING get_ohlcv_safe failed for 133690: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:47,370 WARNING get_ohlcv_safe failed for 305720: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:51:47,371 WARNING get_ohlcv_safe failed for 373220: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:15,881 WARNING get_ohlcv_safe failed for 000660: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:15,886 WARNING get_ohlcv_safe failed for 005930: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:15,890 WARNING get_ohlcv_safe failed for 069500: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:15,893 WARNING get_ohlcv_safe failed for 091160: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:15,895 WARNING get_ohlcv_safe failed for 133690: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:15,898 WARNING get_ohlcv_safe failed for 305720: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:15,900 WARNING get_ohlcv_safe failed for 373220: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:51,982 WARNING get_ohlcv_safe failed for 000660: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:51,985 WARNING get_ohlcv_safe failed for 005930: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:51,987 WARNING get_ohlcv_safe failed for 069500: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:51,990 WARNING get_ohlcv_safe failed for 091160: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:51,992 WARNING get_ohlcv_safe failed for 133690: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:51,994 WARNING get_ohlcv_safe failed for 305720: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:52:51,996 WARNING get_ohlcv_safe failed for 373220: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:53:24,962 WARNING get_ohlcv_safe failed for 000660: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:53:24,965 WARNING get_ohlcv_safe failed for 005930: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:53:24,968 WARNING get_ohlcv_safe failed for 069500: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:53:24,971 WARNING get_ohlcv_safe failed for 091160: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:53:24,973 WARNING get_ohlcv_safe failed for 133690: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:53:24,976 WARNING get_ohlcv_safe failed for 305720: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
+2025-10-24 10:53:24,978 WARNING get_ohlcv_safe failed for 373220: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().

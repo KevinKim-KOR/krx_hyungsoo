@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 import pandas as pd
 from sqlalchemy import select
-from db import SessionLocal, Security
+from core.db import SessionLocal, Security
 
 # 키워드 → 섹터 매핑 규칙
 SECTOR_RULES = {

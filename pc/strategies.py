@@ -1,10 +1,15 @@
 import pandas as pd
 from typing import Dict, List, Sequence
 from sqlalchemy import select
-from db import SessionLocal, Security
-from config import EXCLUDE_KEYWORDS, TOP_N, MOM_LOOKBACK_D, TREND_SMA_D, REGIME_SMA_D
-from fetchers import get_ohlcv_safe
-from utils.datasources import regime_ticker, regime_ticker_priority
+from core.db import SessionLocal, Security
+# from config import EXCLUDE_KEYWORDS, TOP_N, MOM_LOOKBACK_D, TREND_SMA_D, REGIME_SMA_D
+EXCLUDE_KEYWORDS = ["레버리지", "인버스", "채권"]
+TOP_N = 5
+MOM_LOOKBACK_D = 60
+TREND_SMA_D = 60
+REGIME_SMA_D = 200
+from core.krx_helpers import get_ohlcv_safe
+from core.utils.datasources import regime_ticker, regime_ticker_priority
 
 REGIME_TICKER = regime_ticker()
 
