@@ -39,7 +39,12 @@ def cmd_ingest_eod(args):
 
 def cmd_scanner(args):
     """스캐너 실행"""
-    asof = pd.to_datetime(args.date if args.date else pd.Timestamp.today().date())
+    # --date auto 또는 None 처리
+    if not args.date or args.date == "auto":
+        asof = pd.Timestamp.today()
+    else:
+        asof = pd.to_datetime(args.date)
+    
     load_trading_days(asof)
     
     if not is_trading_day(asof):
@@ -69,7 +74,7 @@ def main():
     
     # scanner
     parser_scanner = subparsers.add_parser("scanner", help="스캐너 실행")
-    parser_scanner.add_argument("--date", help="날짜 (YYYY-MM-DD)")
+    parser_scanner.add_argument("--date", default="auto", help="날짜 (YYYY-MM-DD 또는 auto)")
     parser_scanner.set_defaults(func=cmd_scanner)
     
     # notify
