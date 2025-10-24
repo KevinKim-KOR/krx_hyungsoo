@@ -25,9 +25,11 @@ LOG="$LOGDIR/update_$(date +%F).log"
   # shellcheck disable=SC1091
   source venv/bin/activate
 
-  # 4) 의존성
+  # 4) 의존성 (모듈 분리 후 nas/requirements.txt 사용)
   python -m pip install -q --upgrade pip || true
-  if [ -f "requirements-nas.txt" ]; then
+  if [ -f "nas/requirements.txt" ]; then
+    python -m pip install -q -r nas/requirements.txt || true
+  elif [ -f "requirements-nas.txt" ]; then
     python -m pip install -q -r requirements-nas.txt || true
   else
     python -m pip install -q \

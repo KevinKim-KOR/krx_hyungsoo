@@ -5,27 +5,31 @@ app.py
 """
 
 import argparse
+import sys
+import os
+
+# core 모듈 import 경로 추가
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import pandas as pd
-from db import init_db, SessionLocal, Security, Position
-from fetchers import ingest_eod, ingest_realtime_once
+from core.db import init_db, SessionLocal, Security, Position
+from core.fetchers import ingest_eod, ingest_realtime_once
+from core.calendar_kr import is_trading_day, next_trading_day, load_trading_days
+from core.notifications import send_notify
+
+# PC 전용 모듈
+from pc.scanner import recommend_buy_sell, load_config_yaml
+from pc.backtest import run_backtest
+from pc.sector_autotag import autotag_sectors
+
 # 지연 임포트: report 커맨드에서만 사용
 try:
-    from analyzer import make_report  # optional at import time
+    from pc.analyzer import make_report
 except Exception:
     make_report = None
 
-from scanner import recommend_buy_sell, load_config_yaml
-# --- compat wrapper: route legacy send_slack() to new send_notify() ---
-from notifications import send_notify
-
-
-from backtest import run_backtest
-from sector_autotag import autotag_sectors
-from notifications import send_notify
-import logging, os
+import logging
 from logging.handlers import RotatingFileHandler
-
-from calendar_kr import is_trading_day, next_trading_day, load_trading_days
 
 
 # -----------------------------
@@ -58,7 +62,7 @@ def cmd_report(args):
     # 지연 임포트: report 커맨드가 실제로 호출될 때만 analyzer 로드
     if make_report is None:
         try:
-            from analyzer import make_report as _make_report
+            from pc.analyzer import make_report as _make_report
             make_report = _make_report
         except Exception as e:
             print(f"[ERROR] analyzer.make_report 임포트 실패: {e}")
@@ -74,11 +78,10 @@ def cmd_scanner(args):
     asof_norm = _normalize_asof(getattr(args, "asof", None))
 
     # 캘린더 로딩 (테이블/캐시 준비)
-    from calendar_kr import load_trading_days
     load_trading_days(asof_norm)
 
     # 거래일 가드 (배치 외 수동 실행에서도 일관 동작)
-    from utils.trading_day import is_trading_day
+    from core.utils.trading_day import is_trading_day
     if not is_trading_day(asof_norm):
         print(f"[SKIP] 휴장일 {asof_norm.date()} — scanner 생략")
         return 0
@@ -174,7 +177,7 @@ def send_slack(text, webhook):
 def cmd_report_eod(args):
     """EOD 요약 보고서 생성/전송 엔트리 (reporting_eod.py와 호환)"""
     try:
-        import reporting_eod as mod
+        from pc import reporting_eod as mod
     except Exception as e:
         raise SystemExit(f"[ERROR] reporting_eod import failed: {e}")
 
