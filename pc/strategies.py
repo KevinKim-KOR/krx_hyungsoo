@@ -8,7 +8,7 @@ TOP_N = 5
 MOM_LOOKBACK_D = 60
 TREND_SMA_D = 60
 REGIME_SMA_D = 200
-from core.krx_helpers import get_ohlcv_safe
+from core.data_loader import get_ohlcv_safe
 from core.utils.datasources import regime_ticker, regime_ticker_priority
 
 REGIME_TICKER = regime_ticker()

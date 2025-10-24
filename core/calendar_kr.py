@@ -109,7 +109,7 @@ def _normalize_asof(asof):
 
 def _first_available_ohlcv(start, end):
     """calendar_symbol_priority() 우선순위로 일봉 조회. 성공하면 (df, symbol), 실패면 (빈DF, None)."""
-    from core.krx_helpers import get_ohlcv_safe  # 지연 import
+    from core.data_loader import get_ohlcv_safe  # 지연 import
     syms = calendar_symbol_priority()  # 예: ["069500.KS", "069500"]
     sd   = pd.to_datetime(start).date()
     ed   = pd.to_datetime(end).date()

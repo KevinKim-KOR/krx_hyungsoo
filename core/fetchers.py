@@ -11,7 +11,7 @@ from pykrx import stock as krx
 from sqlalchemy import select, exists, delete
 from core.db import SessionLocal, Security, PriceDaily, PriceRealtime
 from config import TIMEZONE
-from core.krx_helpers import get_ohlcv_safe
+from core.data_loader import get_ohlcv_safe
 # calendar_kr import는 함수 내부에서 지연 import로 처리 (순환 import 방지)
 
 SEOUL = pytz.timezone(TIMEZONE)

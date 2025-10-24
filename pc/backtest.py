@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from core.indicators import sma
 import yfinance as yf
-from core.krx_helpers import get_ohlcv_safe
+from core.data_loader import get_ohlcv_safe
 from sqlalchemy import select
 
 

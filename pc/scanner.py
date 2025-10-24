@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import yaml
 import yfinance as yf
-from core.krx_helpers import get_ohlcv_safe
+from core.data_loader import get_ohlcv_safe
 from sqlalchemy import select
 from core.db import SessionLocal, Security, PriceDaily, Position
 from core.indicators import (
