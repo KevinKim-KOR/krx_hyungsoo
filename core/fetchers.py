@@ -9,10 +9,10 @@ import time
 import yfinance as yf
 from pykrx import stock as krx
 from sqlalchemy import select, exists, delete
-from db import SessionLocal, Security, PriceDaily, PriceRealtime
+from core.db import SessionLocal, Security, PriceDaily, PriceRealtime
 from config import TIMEZONE
-from krx_helpers import get_ohlcv_safe
-from calendar_kr import is_trading_day, prev_trading_day
+from core.krx_helpers import get_ohlcv_safe
+# calendar_kr import는 함수 내부에서 지연 import로 처리 (순환 import 방지)
 
 SEOUL = pytz.timezone(TIMEZONE)
 
@@ -188,6 +188,7 @@ def _last_trading_date_on_or_before(d: DateLike) -> dt.date:
 
 def _resolve_asof(date_str: str) -> pd.Timestamp:
     """--date auto/YYYY-MM-DD → 실제 거래일(휴장일이면 직전 거래일)"""
+    from core.calendar_kr import is_trading_day, prev_trading_day  # 지연 import
     if (date_str or "").strip().lower() == "auto":
         d = pd.Timestamp.now(tz=None).normalize().date()
     else:
