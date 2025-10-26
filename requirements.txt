@@ -1,0 +1,11 @@
+# Core dependencies
+pandas>=1.5.0
+numpy>=1.21.0
+pyyaml>=5.4.0
+requests>=2.25.0
+pykrx>=1.0.51
+
+# Optional dependencies (PC only)
+# optuna>=3.0.0
+# scikit-learn>=1.0.0
+# plotly>=5.0.0
