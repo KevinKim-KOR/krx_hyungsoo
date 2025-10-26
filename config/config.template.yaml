@@ -1,0 +1,14 @@
+notifications:
+  channel: "telegram"
+  telegram:
+    bot_token: "YOUR_BOT_TOKEN_HERE"
+    chat_id: YOUR_CHAT_ID_HERE
+  report:
+    top_n: 5
+    min_abs_ret: 0.003   # 0.3%
+
+universe:
+  type: ETF                # ETF | COIN | STOCK
+  market: KS               # KS=코스피(국내 상장 ETF)
+  exclude_keywords: ["레버리지","채권","커버드콜","인버스","선물","ETN"]
+  min_avg_turnover: 500000000    # 최근 20일 평균 거래대금 최소치

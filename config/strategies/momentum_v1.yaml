@@ -1,0 +1,23 @@
+id: momentum_topn_v1
+universe: KOR_ETF_CORE
+lookback: [21, 63, 126]
+weights: [0.5, 0.3, 0.2]
+filters:
+  min_liquidity: 3e8
+  exclude_categories: [LEVERAGED, INVERSE]
+top_n: 5
+core_holdings:
+  - "069500"  # KODEX 200
+  - "091170"  # KODEX Auto
+  - "364980"  # KODEX Battery
+rebalance: WEEKLY_FRI
+risk:
+  position_cap: 0.25
+  portfolio_vol_target: 0.12
+  cooldown_days: 5
+fees:
+  commission_bps: 3
+  slippage_bps: 5
+alert:
+  channel: slack:invest_ops
+  template: default_v1
