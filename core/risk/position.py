@@ -5,7 +5,7 @@ core/risk/position.py
 """
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, List
 
 @dataclass
 class Position:
@@ -39,7 +39,7 @@ class PositionManager:
     
     def __init__(self, max_position_count: int = 5):
         self.max_position_count = max_position_count
-        self.positions: dict[str, Position] = {}
+        self.positions: Dict[str, Position] = {}
     
     def add_position(self, position: Position) -> bool:
         """새 포지션 추가"""
@@ -78,7 +78,7 @@ class PositionManager:
         """총 익스포저"""
         return sum(pos.market_value for pos in self.positions.values())
     
-    def get_position_weights(self) -> dict[str, float]:
+    def get_position_weights(self) -> Dict[str, float]:
         """포지션별 비중"""
         total = self.get_total_exposure()
         if total == 0:
