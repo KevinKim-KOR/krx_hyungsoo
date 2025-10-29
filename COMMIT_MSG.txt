@@ -1,0 +1,30 @@
+feat: 1단계 완료 - ETF 필터링, 실시간 업데이트, Integration Tests
+
+## 주요 구현사항
+
+### 1. ETF 필터링 로직 (core/data/filtering.py)
+- 거래량 기준 필터링 (최소 거래대금 3억)
+- 가격 기준 필터링 (최소 가격 1,000원)
+- 이름 기반 필터링 (레버리지, 인버스 등 제외)
+- 카테고리 중복 방지 (친구 코드 참고)
+
+### 2. 실시간 데이터 업데이트 (infra/data/updater.py)
+- 증분 업데이트 지원 (마지막 날짜 이후만 다운로드)
+- 캐시 상태 조회 기능
+- 유니버스 일괄 업데이트
+- 강제 업데이트 옵션
+
+### 3. Integration Tests (tests/integration/test_data_pipeline.py)
+- 단일 종목 업데이트 테스트
+- 전체 파이프라인 테스트 (업데이트 → 필터링)
+- 모든 테스트 통과 확인
+
+## 참고
+- 친구 프로젝트: https://github.com/jasonisdoing/momentum-etf
+- docs/NEW/ 문서 기반 개발
+- Clean Architecture 원칙 준수
+
+## 다음 단계
+- 전략 지표 확장
+- 포지션 관리 구현
+- 백테스트 엔진 개발
