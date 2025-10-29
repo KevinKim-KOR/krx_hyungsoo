@@ -132,6 +132,82 @@ def mfi(high: pd.Series, low: pd.Series, close: pd.Series, volume: pd.Series, n:
     mfr = pos_roll / neg_roll
     return 100 - (100 / (1 + mfr))
 
+def macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """
+    MACD (Moving Average Convergence Divergence)
+    
+    Returns:
+        macd_line: MACD 라인 (fast EMA - slow EMA)
+        signal_line: Signal 라인 (MACD의 signal일 EMA)
+        histogram: Histogram (MACD - Signal)
+    """
+    c = _to_series(close).astype(float)
+    ema_fast = c.ewm(span=fast, adjust=False, min_periods=fast).mean()
+    ema_slow = c.ewm(span=slow, adjust=False, min_periods=slow).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False, min_periods=signal).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
+def bollinger_bands(close: pd.Series, n: int = 20, std_dev: float = 2.0) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """
+    Bollinger Bands
+    
+    Returns:
+        upper: 상단 밴드
+        middle: 중간 밴드 (SMA)
+        lower: 하단 밴드
+    """
+    c = _to_series(close).astype(float)
+    middle = c.rolling(n, min_periods=n).mean()
+    std = c.rolling(n, min_periods=n).std(ddof=0)
+    upper = middle + (std * std_dev)
+    lower = middle - (std * std_dev)
+    return upper, middle, lower
+
+def stochastic(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 14, smooth_k: int = 3, smooth_d: int = 3) -> Tuple[pd.Series, pd.Series]:
+    """
+    Stochastic Oscillator
+    
+    Returns:
+        k: %K 라인
+        d: %D 라인 (K의 이동평균)
+    """
+    h, l, c = map(lambda x: _to_series(x).astype(float), (high, low, close))
+    lowest_low = l.rolling(n, min_periods=n).min()
+    highest_high = h.rolling(n, min_periods=n).max()
+    k_raw = 100 * (c - lowest_low) / ((highest_high - lowest_low) + 1e-12)
+    k = k_raw.rolling(smooth_k, min_periods=smooth_k).mean()
+    d = k.rolling(smooth_d, min_periods=smooth_d).mean()
+    return k, d
+
+def williams_r(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 14) -> pd.Series:
+    """
+    Williams %R
+    
+    Returns:
+        williams_r: -100 ~ 0 범위 (과매도: -80 이하, 과매수: -20 이상)
+    """
+    h, l, c = map(lambda x: _to_series(x).astype(float), (high, low, close))
+    highest_high = h.rolling(n, min_periods=n).max()
+    lowest_low = l.rolling(n, min_periods=n).min()
+    wr = -100 * (highest_high - c) / ((highest_high - lowest_low) + 1e-12)
+    return wr
+
+def cci(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 20) -> pd.Series:
+    """
+    Commodity Channel Index (CCI)
+    
+    Returns:
+        cci: CCI 값 (일반적으로 -100 ~ +100 범위)
+    """
+    h, l, c = map(lambda x: _to_series(x).astype(float), (high, low, close))
+    tp = (h + l + c) / 3.0
+    sma_tp = tp.rolling(n, min_periods=n).mean()
+    mad = tp.rolling(n, min_periods=n).apply(lambda x: np.abs(x - x.mean()).mean(), raw=True)
+    cci_val = (tp - sma_tp) / ((0.015 * mad) + 1e-12)
+    return cci_val
+
 
 # ---------- 유동성(거래대금) 관련 ----------
 

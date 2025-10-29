@@ -16,38 +16,64 @@
   - 데이터 타입 일관성 확보
   - Mock 데이터와 실제 데이터 간 일관성 확보
 
-### 2. 신규 완료 (2025-10-29) 
-1. **ETF 필터링 로직 구현** 
+### 2. 신규 완료 (2025-10-29) 🎉
+
+#### 1단계: 실전 데이터 연동 ✅
+1. **ETF 필터링 로직 구현**
    - `core/data/filtering.py` 생성
    - 거래량 기준 필터링 (최소 거래대금 3억)
    - 가격 기준 필터링 (최소 가격 1,000원)
    - 이름 기반 필터링 (레버리지, 인버스 등 제외)
    - 카테고리 중복 방지 (친구 코드 참고)
    
-2. **실시간 데이터 업데이트 메커니즘** 
+2. **실시간 데이터 업데이트 메커니즘**
    - `infra/data/updater.py` 생성
    - 증분 업데이트 지원 (마지막 날짜 이후만 다운로드)
    - 캐시 상태 조회 기능
    - 유니버스 일괄 업데이트
    - 강제 업데이트 옵션
    
-3. **Integration Tests 구현** 
+3. **Integration Tests 구현**
    - `tests/integration/test_data_pipeline.py` 생성
    - 단일 종목 업데이트 테스트
    - 전체 파이프라인 테스트 (업데이트 → 필터링)
    - 모든 테스트 통과 확인
 
+#### 2단계: 전략 지표 확장 ✅
+1. **기술적 지표 추가** (`core/indicators.py`)
+   - MACD (Moving Average Convergence Divergence)
+   - Bollinger Bands
+   - Stochastic Oscillator
+   - Williams %R
+   - CCI (Commodity Channel Index)
+   - 기존: RSI, ADX, MFI, ATR
+   
+2. **매매 규칙 다양화** (`core/strategy/signals.py`)
+   - 모멘텀 신호 생성 (이동평균, RSI, MACD, ADX, MFI)
+   - 추세 추종 신호 (단기/장기 이동평균, ADX, 모멘텀)
+   - 평균 회귀 신호 (Bollinger Bands, RSI, Williams %R)
+   - 복합 신호 생성 (3가지 전략 가중 평균)
+   
+3. **리스크 관리 고도화** (`core/risk/manager.py`)
+   - 포지션 크기 제한 (종목당 최대 25%)
+   - 포트폴리오 변동성 관리 (목표 12%)
+   - 최대 낙폭 제한 (MDD -15%)
+   - 쿨다운 메커니즘 (매도 후 5일)
+   - 상관계수 관리 (최대 0.7)
+   - 유동성 검증 (최소 거래대금 3억)
+   
+4. **Integration Tests 확장** (`tests/integration/test_strategy_pipeline.py`)
+   - 신호 생성 테스트 (모멘텀, 복합)
+   - 리스크 관리 테스트 (포지션, 쿨다운, 낙폭)
+   - 전체 파이프라인 테스트
+   - 모든 테스트 통과 (6/6 passed)
+
 ### 3. 현재 상태
-- **1단계 완료**: 실전 데이터 연동 (pykrx)
-  - ETF 필터링 로직 
-  - 실시간 업데이트 메커니즘 
-  - Integration Tests 
+- ✅ **1단계 완료**: 실전 데이터 연동 (pykrx)
+- ✅ **2단계 완료**: 전략 지표 확장
   
 ### 4. 다음 단계 작업
-1. **전략 지표 확장** 
-   - 기술적 지표 추가 (RSI, MACD 등)
-   - 매매 규칙 다양화
-   - 리스크 관리 고도화
+1. **포지션 관리** 
 
 2. **포지션 관리** 
    - SQLite 데이터베이스 연동
