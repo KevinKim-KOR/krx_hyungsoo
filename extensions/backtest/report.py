@@ -138,7 +138,7 @@ class BacktestReport:
             return pd.DataFrame()
         
         # 월말 NAV
-        monthly_nav = nav_series.resample('M').last()
+        monthly_nav = nav_series.resample('ME').last()
         
         # 월별 수익률
         monthly_returns = monthly_nav.pct_change() * 100

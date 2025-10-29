@@ -222,3 +222,68 @@ def load_market_data(universe: str, end_date: pd.Timestamp, start_date: pd.Times
     result.to_parquet(cache_file)
     
     return result
+
+
+def load_price_data(
+    universe: List[str],
+    start_date: date,
+    end_date: date,
+    cache_dir: Path = None
+) -> pd.DataFrame:
+    """
+    가격 데이터 로드 (백테스트/스캔용)
+    
+    Args:
+        universe: 종목 코드 리스트
+        start_date: 시작일
+        end_date: 종료일
+        cache_dir: 캐시 디렉토리
+        
+    Returns:
+        MultiIndex DataFrame (code, date)
+    """
+    if cache_dir is None:
+        cache_dir = Path('data/cache/ohlcv')
+    
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    dfs = []
+    
+    for code in universe:
+        try:
+            # 캐시 파일 확인
+            cache_file = cache_dir / f"{code}.parquet"
+            
+            if cache_file.exists():
+                df = pd.read_parquet(cache_file)
+                
+                # 날짜 필터링
+                if 'date' in df.columns:
+                    df['date'] = pd.to_datetime(df['date'])
+                    df = df[(df['date'].dt.date >= start_date) & (df['date'].dt.date <= end_date)]
+                elif df.index.name == 'date':
+                    df = df[(df.index.date >= start_date) & (df.index.date <= end_date)]
+                
+                if not df.empty:
+                    df['code'] = code
+                    dfs.append(df)
+        
+        except Exception as e:
+            print(f"가격 데이터 로드 실패 ({code}): {e}")
+    
+    if not dfs:
+        return pd.DataFrame()
+    
+    # 데이터 결합
+    result = pd.concat(dfs, axis=0)
+    
+    # 인덱스 설정
+    if 'code' in result.columns and 'date' in result.columns:
+        result.set_index(['code', 'date'], inplace=True)
+    elif result.index.name != 'date':
+        result.reset_index(inplace=True)
+        result.set_index(['code', 'date'], inplace=True)
+    
+    result.sort_index(inplace=True)
+    
+    return result
