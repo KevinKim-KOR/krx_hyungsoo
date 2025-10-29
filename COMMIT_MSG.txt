@@ -1,33 +1,34 @@
-feat: 2단계 완료 - 전략 지표 확장, 매매 규칙, 리스크 관리
+feat: 3단계 완료 - 백테스트 엔진, 실행기, 성과 리포트
 
 ## 주요 구현사항
 
-### 1. 기술적 지표 추가 (core/indicators.py)
-- MACD (Moving Average Convergence Divergence)
-- Bollinger Bands
-- Stochastic Oscillator
-- Williams %R
-- CCI (Commodity Channel Index)
-- 기존: RSI, ADX, MFI, ATR
+### 1. 백테스트 엔진 (core/engine/backtest.py)
+- 포지션 관리 (매수/매도/리밸런싱)
+- 수수료 및 슬리피지 적용 (0.015%, 0.1%)
+- NAV 추적 및 성과 지표 계산
+- 총 수익률, 연율화 수익률, 샤프 비율, MDD, 승률
 
-### 2. 매매 규칙 다양화 (core/strategy/signals.py)
-- 모멘텀 신호 생성 (이동평균, RSI, MACD, ADX, MFI)
-- 추세 추종 신호 (단기/장기 이동평균, ADX, 모멘텀)
-- 평균 회귀 신호 (Bollinger Bands, RSI, Williams %R)
-- 복합 신호 생성 (3가지 전략 가중 평균)
+### 2. 백테스트 실행기 (extensions/backtest/runner.py)
+- 일별/주별/월별 리밸런싱 지원
+- 신호 기반 목표 비중 생성
+- 모멘텀 전략 특화 실행기
+- 유니버스 관리 및 가격 데이터 처리
 
-### 3. 리스크 관리 고도화 (core/risk/manager.py)
-- 포지션 크기 제한 (종목당 최대 25%)
-- 포트폴리오 변동성 관리 (목표 12%)
-- 최대 낙폭 제한 (MDD -15%)
-- 쿨다운 메커니즘 (매도 후 5일)
-- 상관계수 관리 (최대 0.7)
-- 유동성 검증 (최소 거래대금 3억)
+### 3. 성과 리포트 (extensions/backtest/report.py)
+- 요약 리포트 (수익률, 리스크, 거래 통계)
+- 거래 로그 (CSV)
+- 포지션 요약 (CSV)
+- NAV 시계열 (CSV)
+- 월별 수익률 테이블
+- 전략 비교 리포트
 
-### 4. Integration Tests 확장 (tests/integration/test_strategy_pipeline.py)
-- 신호 생성 테스트 (모멘텀, 복합)
-- 리스크 관리 테스트 (포지션, 쿨다운, 낙폭)
+### 4. Integration Tests (tests/integration/test_backtest_pipeline.py)
+- 백테스트 엔진 기본 테스트
+- 리밸런싱 테스트
+- 백테스트 실행기 테스트
+- 리포트 생성 테스트
 - 전체 파이프라인 테스트
+- 성과 지표 계산 테스트
 - 모든 테스트 통과 (6/6 passed)
 
 ## 참고
@@ -35,6 +36,12 @@ feat: 2단계 완료 - 전략 지표 확장, 매매 규칙, 리스크 관리
 - docs/NEW/ 문서 기반 개발
 - Clean Architecture 원칙 준수
 
+## 완료된 단계
+- ✅ 1단계: 실전 데이터 연동 (ETF 필터링, 실시간 업데이트)
+- ✅ 2단계: 전략 지표 확장 (기술적 지표, 매매 규칙, 리스크 관리)
+- ✅ 3단계: 백테스트 엔진 개발 (엔진, 실행기, 리포트)
+
 ## 다음 단계
-- 포지션 관리 구현
-- 백테스트 엔진 개발
+- 실전 운영 준비 (CLI, 스케줄러)
+- 텔레그램 알림 연동
+- 파라미터 최적화
