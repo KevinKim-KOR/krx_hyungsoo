@@ -199,7 +199,8 @@ def cmd_scan(args):
                     'symbol': symbol,
                     'signal': result['signal'],
                     'confidence': result['confidence'],
-                    'price': recent_data['close'].iloc[-1]
+                    'price': recent_data['close'].iloc[-1],
+                    'components': result.get('components', {})
                 })
         
         except Exception as e:
@@ -230,6 +231,24 @@ def cmd_scan(args):
         output_file.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(output_file, index=False, encoding='utf-8-sig')
         logger.info(f"신호 저장: {output_file}")
+    
+    # 텔레그램 알림
+    if args.notify:
+        try:
+            from infra.notify.telegram import send_to_telegram
+            
+            message = f"*[장마감] 매매 신호 알림*\n\n"
+            message += f"📅 날짜: {scan_date}\n"
+            message += f"📊 신호 수: {len(top_signals)}개\n\n"
+            
+            for i, sig in enumerate(top_signals, 1):
+                message += f"{i}. `{sig['symbol']}`: *{sig['signal']}*\n"
+                message += f"   신뢰도: {sig['confidence']:.1%} | 가격: {sig['price']:,.0f}원\n"
+            
+            send_to_telegram(message)
+            logger.info("텔레그램 알림 전송 완료")
+        except Exception as e:
+            logger.error(f"텔레그램 알림 실패: {e}")
     
     logger.info("=" * 60)
     logger.info("스캔 완료")
@@ -282,6 +301,7 @@ def main():
     parser_scan.add_argument('--min-confidence', type=float, default=0.6, help='최소 신뢰도 (기본: 0.6)')
     parser_scan.add_argument('--top-n', type=int, default=10, help='상위 N개 (기본: 10)')
     parser_scan.add_argument('--output', help='신호 저장 경로 (CSV)')
+    parser_scan.add_argument('--notify', action='store_true', help='텔레그램 알림 전송')
     parser_scan.set_defaults(func=cmd_scan)
     
     # 파싱

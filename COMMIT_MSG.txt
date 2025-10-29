@@ -1,69 +1,70 @@
-feat: 4단계 완료 - 실전 운영 준비 (CLI, 로깅, 설정)
+feat: 5단계 완료 - 텔레그램 알림 및 NAS 자동화
 
 ## 주요 구현사항
 
-### 1. CLI 인터페이스 (pc/cli.py)
-- update 명령: 데이터 업데이트
-- backtest 명령: 백테스트 실행 및 리포트 생성
-- scan 명령: 매매 신호 스캔 및 상위 N개 추출
-- argparse 기반 명령행 인터페이스
+### 1. CLI 텔레그램 통합 (pc/cli.py)
+- scan 명령에 --notify 옵션 추가
+- 매매 신호 자동 텔레그램 알림
+- 마크다운 포맷 메시지 (신호, 신뢰도, 가격)
 
-### 2. 로깅 시스템 (infra/logging/setup.py)
-- 구조화된 로깅 (시간, 레벨, 메시지)
-- 파일 로깅 (일별 로그, 30일 보관, 10MB 로테이션)
-- 로그 컨텍스트 매니저 (작업 시작/완료 자동 로깅)
-- 함수 호출 로깅 데코레이터
+### 2. NAS 자동화 스크립트
+- scripts/linux/jobs/daily_scan_notify.sh
+  * 장마감 후 매매 신호 스캔 및 알림
+  * 평일 18:00 실행
+  * RC 기반 성공/실패 판정
+  
+- scripts/linux/jobs/weekly_backtest_report.sh
+  * 주간 백테스트 실행 및 리포트 전송
+  * 일요일 09:00 실행
+  * 텔레그램으로 요약 리포트 전송
+  
+- scripts/linux/setup_cron.sh
+  * Cron 작업 자동 설정 스크립트
+  * 백업 및 설치 확인 기능
 
-### 3. 설정 관리 (config/config.yaml, infra/config/loader.py)
-- YAML 기반 설정 파일
-- 환경 변수 덮어쓰기 지원
-- 데이터, 백테스트, 전략, 리스크 설정
-- 로깅, 알림, 스케줄 설정
+### 3. Cron 스케줄
+- 평일 18:00: 장마감 신호 스캔 + 텔레그램 알림
+- 일요일 09:00: 주간 백테스트 리포트
+- 로그 파일 자동 생성 (logs/)
 
-### 4. 데이터 로더 개선 (infra/data/loader.py)
-- load_price_data 함수 추가
-- 캐시 기반 가격 데이터 로딩
-- 날짜 필터링 지원
+### 4. 문서화 (docs/TELEGRAM_SETUP.md)
+- 텔레그램 봇 설정 가이드
+- NAS 자동화 설정 가이드
+- Cron 스케줄 설명
+- 트러블슈팅 가이드
 
-### 5. Integration Tests (tests/integration/test_production_ready.py)
-- 설정 로딩 테스트
-- 로깅 시스템 테스트
-- CLI 도움말 테스트
-- 디렉토리 구조 테스트
-- 필수 파일 존재 테스트
-- 설정 값 검증 테스트
-- 모든 테스트 통과 (7/7 passed)
+## 기존 구조 활용
+- 기존 infra/notify/telegram.py 활용
+- 기존 app/cli/alerts.py 참고
+- secret/config.yaml 설정 방식 유지
 
-### 6. 버그 수정
-- FutureWarning 제거 (resample 'M' → 'ME')
-- 로깅 핸들러 명시적 닫기 (Windows 파일 잠금 문제)
+## 사용 예시
 
-## 테스트 현황
-- ✅ 전체 테스트: 21/21 passed (워닝 0개)
-- ✅ 데이터 파이프라인: 2/2 passed
-- ✅ 전략 파이프라인: 6/6 passed
-- ✅ 백테스트 파이프라인: 6/6 passed
-- ✅ 실전 운영 준비: 7/7 passed
+### PC에서 테스트
+```bash
+# 매매 신호 스캔 + 텔레그램 알림
+python pc/cli.py scan --date auto --notify --top-n 10
+```
+
+### NAS에서 자동화
+```bash
+# Cron 설정
+bash scripts/linux/setup_cron.sh
+
+# 수동 실행 테스트
+bash scripts/linux/jobs/daily_scan_notify.sh
+
+# 로그 확인
+tail -f logs/daily_scan_*.log
+```
 
 ## 완료된 단계
 - ✅ 1단계: 실전 데이터 연동
 - ✅ 2단계: 전략 지표 확장
 - ✅ 3단계: 백테스트 엔진 개발
 - ✅ 4단계: 실전 운영 준비
-
-## 사용 예시
-```bash
-# 데이터 업데이트
-python pc/cli.py update --date auto
-
-# 백테스트 실행
-python pc/cli.py backtest --start 2024-01-01 --output reports/backtest_2024
-
-# 매매 신호 스캔
-python pc/cli.py scan --date auto --top-n 10 --output signals/today.csv
-```
+- ✅ 5단계: 텔레그램 알림 및 자동화
 
 ## 다음 단계
-- 텔레그램 알림 연동
-- 스케줄러 연동
-- 파라미터 최적화
+- 파라미터 최적화 (Optuna)
+- 웹 대시보드 (선택)
