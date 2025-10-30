@@ -10,7 +10,7 @@ import numpy as np
 
 from extensions.backtest.runner import BacktestRunner
 from extensions.optuna.space import suggest_all_params
-from core.data.filtering import ETFFilter
+from core.data.filtering import get_filtered_universe
 from infra.data.loader import load_price_data
 
 
@@ -46,8 +46,7 @@ class BacktestObjective:
         self.seed = seed
         
         # 유니버스 및 데이터 로드 (한 번만)
-        etf_filter = ETFFilter()
-        self.universe = etf_filter.get_filtered_universe()
+        self.universe = get_filtered_universe()
         self.price_data = load_price_data(
             self.universe,
             self.start_date,
@@ -68,29 +67,54 @@ class BacktestObjective:
         params = suggest_all_params(trial)
         
         try:
-            # 백테스트 실행
-            runner = BacktestRunner(
-                universe=self.universe,
-                start_date=self.start_date,
-                end_date=self.end_date,
+            # 백테스트 엔진 생성
+            from core.engine.backtest import BacktestEngine
+            from core.strategy.signals import SignalGenerator
+            from core.risk.manager import RiskManager
+            
+            engine = BacktestEngine(
                 initial_capital=self.initial_capital,
                 commission_rate=self.commission_rate,
-                slippage_rate=self.slippage_rate,
-                rebalance_frequency=params['rebalance_frequency'],
-                max_positions=params['max_positions']
+                slippage_rate=self.slippage_rate
             )
             
-            # 가격 데이터 설정
-            runner.price_data = self.price_data
+            # 신호 생성기 (파라미터 적용)
+            signal_generator = SignalGenerator(
+                ma_period=params['ma_period'],
+                rsi_period=params['rsi_period'],
+                adx_threshold=params['adx_threshold']
+            )
+            
+            # 리스크 관리자 (파라미터 적용)
+            risk_manager = RiskManager(
+                position_cap=params['position_cap'],
+                portfolio_vol_target=params['portfolio_vol_target'],
+                max_drawdown_threshold=params['max_drawdown_threshold'],
+                cooldown_days=params['cooldown_days'],
+                max_correlation=params['max_correlation']
+            )
+            
+            # 백테스트 실행기
+            runner = BacktestRunner(
+                engine=engine,
+                signal_generator=signal_generator,
+                risk_manager=risk_manager
+            )
             
             # 실행
-            result = runner.run()
+            result = runner.run(
+                price_data=self.price_data,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                universe=self.universe,
+                rebalance_frequency=params['rebalance_frequency']
+            )
             
-            if result is None or result.empty:
+            if result is None or len(result) == 0:
                 return -999.0
             
             # 성과 지표 계산
-            metrics = runner.engine.calculate_performance_metrics()
+            metrics = engine.calculate_performance_metrics()
             
             # 목적 함수: 연율화 수익률 - λ·MDD
             annual_return = metrics.get('annual_return', 0.0)
@@ -110,6 +134,8 @@ class BacktestObjective:
         
         except Exception as e:
             print(f"Trial {trial.number} failed: {e}")
+            import traceback
+            traceback.print_exc()
             return -999.0
 
 

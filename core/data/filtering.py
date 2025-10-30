@@ -249,3 +249,32 @@ def create_default_filter() -> ETFFilter:
         min_price=1000,  # 1,000원
         exclude_keywords=["레버리지", "인버스", "선물", "채권", "커버드콜", "곱버스"]
     )
+
+
+def get_filtered_universe() -> List[str]:
+    """
+    필터링된 ETF 유니버스 코드 리스트 반환
+    
+    Returns:
+        ETF 코드 리스트
+    """
+    from pykrx import stock
+    
+    # 전체 ETF 리스트
+    tickers = stock.get_etf_ticker_list()
+    
+    # 이름 기반 필터링
+    filter_obj = create_default_filter()
+    exclude_keywords = filter_obj.exclude_keywords
+    
+    filtered = []
+    for ticker in tickers:
+        try:
+            name = stock.get_etf_ticker_name(ticker)
+            if not any(kw in name for kw in exclude_keywords):
+                filtered.append(ticker)
+        except Exception:
+            pass
+    
+    logger.info(f"ETF 유니버스: {len(tickers)} → {len(filtered)} (이름 필터링)")
+    return filtered

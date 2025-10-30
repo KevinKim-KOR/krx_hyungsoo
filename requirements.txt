@@ -4,6 +4,7 @@ numpy>=1.21.0
 pyyaml>=5.4.0
 requests>=2.25.0
 pykrx>=1.0.51
+pyarrow>=10.0.0
 
 # Optional dependencies (PC only)
 optuna>=3.0.0

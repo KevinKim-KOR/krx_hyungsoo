@@ -14,7 +14,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from infra.data.updater import DataUpdater
-from core.data.filtering import ETFFilter
+from core.data.filtering import ETFFilter, get_filtered_universe
 from extensions.backtest.runner import create_momentum_runner
 from extensions.backtest.report import create_report
 from extensions.optuna.objective import create_objective
@@ -44,8 +44,7 @@ def cmd_update_data(args):
     start_date = end_date - timedelta(days=365)
     
     # 유니버스 필터링
-    etf_filter = ETFFilter()
-    universe = etf_filter.get_filtered_universe()
+    universe = get_filtered_universe()
     
     logger.info(f"유니버스: {len(universe)}개 종목")
     logger.info(f"기간: {start_date} ~ {end_date}")
@@ -92,8 +91,7 @@ def cmd_backtest(args):
     if args.universe:
         universe = args.universe.split(',')
     else:
-        etf_filter = ETFFilter()
-        universe = etf_filter.get_filtered_universe()
+        universe = get_filtered_universe()
     
     logger.info(f"유니버스: {len(universe)}개 종목")
     
@@ -153,8 +151,7 @@ def cmd_scan(args):
     logger.info(f"스캔 날짜: {scan_date}")
     
     # 유니버스
-    etf_filter = ETFFilter()
-    universe = etf_filter.get_filtered_universe()
+    universe = get_filtered_universe()
     
     logger.info(f"유니버스: {len(universe)}개 종목")
     
