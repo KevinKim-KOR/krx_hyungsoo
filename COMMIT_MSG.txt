@@ -1,0 +1,22 @@
+fix: DataUpdater 호출 오류 수정 및 전체 시스템 통합 테스트 추가
+
+## 수정 사항
+1. pc/cli.py update 명령 수정
+   - update_universe 호출 시 start_date 제거
+   - update_symbol로 메서드명 통일
+
+2. 전체 시스템 통합 테스트 추가 (test_full_system.py)
+   - CLI 명령 테스트 (update, backtest, scan, optimize)
+   - 데이터 업데이트 테스트
+   - 유니버스 필터링 테스트
+   - 신호 생성기 테스트
+   - 리스크 관리자 테스트
+   - 백테스트 엔진 테스트
+   - 설정 로딩 테스트
+   - 로깅 시스템 테스트
+   - Optuna 검색 공간 테스트
+
+## 테스트 실행
+```bash
+pytest tests/integration/test_full_system.py -v -m integration
+```

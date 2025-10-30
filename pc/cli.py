@@ -56,10 +56,10 @@ def cmd_update_data(args):
         # 특정 종목만
         symbols = args.symbols.split(',')
         for symbol in symbols:
-            updater.update_single(symbol.strip(), start_date, end_date, force=args.force)
+            updater.update_symbol(symbol.strip(), end_date, force=args.force)
     else:
         # 전체 유니버스
-        updater.update_universe(universe, start_date, end_date, force=args.force)
+        updater.update_universe(universe, end_date, force=args.force)
     
     logger.info("=" * 60)
     logger.info("데이터 업데이트 완료")
