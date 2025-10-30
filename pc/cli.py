@@ -17,6 +17,7 @@ from infra.data.updater import DataUpdater
 from core.data.filtering import ETFFilter
 from extensions.backtest.runner import create_momentum_runner
 from extensions.backtest.report import create_report
+from extensions.optuna.objective import create_objective
 
 # 로깅 설정
 logging.basicConfig(
@@ -257,6 +258,147 @@ def cmd_scan(args):
     return 0
 
 
+def cmd_optimize(args):
+    """파라미터 최적화 명령 (Optuna)"""
+    logger.info("=" * 60)
+    logger.info("파라미터 최적화 시작 (Optuna)")
+    logger.info("=" * 60)
+    
+    import optuna
+    import yaml
+    from datetime import datetime
+    
+    # 날짜 파싱
+    start_date = datetime.strptime(args.start, '%Y-%m-%d').date()
+    
+    if args.end == 'today':
+        end_date = date.today()
+    else:
+        end_date = datetime.strptime(args.end, '%Y-%m-%d').date()
+    
+    logger.info(f"최적화 기간: {start_date} ~ {end_date}")
+    logger.info(f"Trials: {args.trials}, Timeout: {args.timeout}초")
+    logger.info(f"목적함수: 연율화 수익률 - {args.mdd_lambda} × MDD")
+    
+    # 출력 디렉토리
+    if args.output:
+        output_dir = Path(args.output)
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_dir = Path(f'reports/optuna/study_{timestamp}')
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Optuna study 생성
+    study_name = f"krx_alertor_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    storage_path = output_dir / 'study.db'
+    
+    study = optuna.create_study(
+        study_name=study_name,
+        storage=f'sqlite:///{storage_path}',
+        direction='maximize',
+        load_if_exists=True,
+        sampler=optuna.samplers.TPESampler(seed=args.seed) if args.seed else None
+    )
+    
+    # 목적 함수 생성
+    objective = create_objective(
+        start_date=start_date,
+        end_date=end_date,
+        initial_capital=args.capital,
+        mdd_penalty_lambda=args.mdd_lambda,
+        seed=args.seed
+    )
+    
+    # 최적화 실행
+    logger.info("최적화 실행 중...")
+    
+    try:
+        study.optimize(
+            objective,
+            n_trials=args.trials,
+            timeout=args.timeout,
+            show_progress_bar=True
+        )
+    except KeyboardInterrupt:
+        logger.warning("사용자에 의해 중단됨")
+    
+    # 결과 저장
+    logger.info("=" * 60)
+    logger.info("최적화 완료")
+    logger.info("=" * 60)
+    
+    # 최적 파라미터
+    best_params = study.best_params
+    best_value = study.best_value
+    
+    logger.info(f"최적 목적함수 값: {best_value:.4f}")
+    logger.info(f"최적 파라미터: {best_params}")
+    
+    # 최적 파라미터 저장
+    params_file = output_dir / 'best_params.yaml'
+    with open(params_file, 'w', encoding='utf-8') as f:
+        yaml.dump(best_params, f, allow_unicode=True)
+    
+    logger.info(f"최적 파라미터 저장: {params_file}")
+    
+    # 리포트 생성
+    report_file = output_dir / 'study_report.md'
+    
+    with open(report_file, 'w', encoding='utf-8') as f:
+        f.write(f"# Optuna 최적화 리포트\n\n")
+        f.write(f"## 설정\n\n")
+        f.write(f"- 기간: {start_date} ~ {end_date}\n")
+        f.write(f"- Trials: {len(study.trials)}\n")
+        f.write(f"- 목적함수: 연율화 수익률 - {args.mdd_lambda} × MDD\n")
+        f.write(f"- 초기 자본: {args.capital:,}원\n\n")
+        
+        f.write(f"## 최적 결과\n\n")
+        f.write(f"- 목적함수 값: {best_value:.4f}\n")
+        
+        # 최적 trial의 메트릭
+        best_trial = study.best_trial
+        if best_trial.user_attrs:
+            f.write(f"- 연율화 수익률: {best_trial.user_attrs.get('annual_return', 0):.2%}\n")
+            f.write(f"- MDD: {best_trial.user_attrs.get('mdd', 0):.2%}\n")
+            f.write(f"- Sharpe: {best_trial.user_attrs.get('sharpe', 0):.2f}\n")
+            f.write(f"- 총 수익률: {best_trial.user_attrs.get('total_return', 0):.2%}\n")
+            f.write(f"- 변동성: {best_trial.user_attrs.get('volatility', 0):.2%}\n")
+            f.write(f"- 승률: {best_trial.user_attrs.get('win_rate', 0):.2%}\n")
+        
+        f.write(f"\n## 최적 파라미터\n\n")
+        f.write(f"```yaml\n")
+        f.write(yaml.dump(best_params, allow_unicode=True))
+        f.write(f"```\n")
+    
+    logger.info(f"리포트 저장: {report_file}")
+    logger.info(f"Study DB: {storage_path}")
+    
+    # 시각화 (선택)
+    if args.plot:
+        try:
+            import optuna.visualization as vis
+            import plotly
+            
+            # Optimization history
+            fig = vis.plot_optimization_history(study)
+            plotly.offline.plot(fig, filename=str(output_dir / 'optimization_history.html'), auto_open=False)
+            
+            # Parameter importances
+            fig = vis.plot_param_importances(study)
+            plotly.offline.plot(fig, filename=str(output_dir / 'param_importances.html'), auto_open=False)
+            
+            logger.info(f"시각화 저장: {output_dir}")
+        except Exception as e:
+            logger.warning(f"시각화 생성 실패: {e}")
+    
+    logger.info("=" * 60)
+    logger.info("최적화 완료")
+    logger.info("=" * 60)
+    
+    return 0
+
+
 def main():
     """메인 함수"""
     parser = argparse.ArgumentParser(
@@ -303,6 +445,19 @@ def main():
     parser_scan.add_argument('--output', help='신호 저장 경로 (CSV)')
     parser_scan.add_argument('--notify', action='store_true', help='텔레그램 알림 전송')
     parser_scan.set_defaults(func=cmd_scan)
+    
+    # optimize 명령
+    parser_optimize = subparsers.add_parser('optimize', help='파라미터 최적화 (Optuna)')
+    parser_optimize.add_argument('--start', required=True, help='시작일 (YYYY-MM-DD)')
+    parser_optimize.add_argument('--end', default='today', help='종료일 (YYYY-MM-DD 또는 today)')
+    parser_optimize.add_argument('--capital', type=int, default=10000000, help='초기 자본 (기본: 1천만원)')
+    parser_optimize.add_argument('--trials', type=int, default=100, help='Trial 수 (기본: 100)')
+    parser_optimize.add_argument('--timeout', type=int, help='타임아웃 (초)')
+    parser_optimize.add_argument('--mdd-lambda', type=float, default=2.0, help='MDD 패널티 계수 (기본: 2.0)')
+    parser_optimize.add_argument('--seed', type=int, help='랜덤 시드 (재현성)')
+    parser_optimize.add_argument('--output', help='결과 저장 경로')
+    parser_optimize.add_argument('--plot', action='store_true', help='시각화 생성')
+    parser_optimize.set_defaults(func=cmd_optimize)
     
     # 파싱
     args = parser.parse_args()

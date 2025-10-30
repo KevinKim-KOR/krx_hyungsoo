@@ -165,13 +165,51 @@
    - NAS 자동화 설정 가이드
    - 트러블슈팅 가이드
 
-### 5. 다음 단계 작업
-1. **파라미터 최적화**
-   - Optuna 기반 최적화
-   - 워크포워드 분석
-   - 로버스트니스 테스트
+#### 6단계: 파라미터 최적화 (Optuna) ✅
+1. **검색 공간 정의** (`extensions/optuna/space.py`)
+   - 기술적 지표 파라미터 (MA, RSI, ADX, BB)
+   - 신호 생성 가중치 (모멘텀, 추세, 평균회귀)
+   - 리밸런싱 주기 (daily, weekly, monthly)
+   - 포지션 관리 (max_positions, position_cap)
+   - 리스크 관리 (vol_target, mdd_threshold, cooldown, correlation)
    
-2. **웹 대시보드** (선택)
+2. **목적 함수 구현** (`extensions/optuna/objective.py`)
+   - 목적함수: 연율화 수익률 - λ × MDD (λ=2.0)
+   - 백테스트 기반 평가
+   - 메트릭 로깅 (annual_return, mdd, sharpe, total_return, volatility, win_rate)
+   - 재현성 보장 (고정 시드 지원)
+   
+3. **CLI 통합** (`pc/cli.py`)
+   - optimize 서브커맨드 추가
+   - TPE Sampler 사용
+   - SQLite Study DB 저장
+   - 최적 파라미터 YAML 저장
+   - 리포트 자동 생성 (Markdown)
+   - 시각화 옵션 (optimization_history, param_importances)
+   
+4. **문서화** (`docs/OPTUNA_GUIDE.md`)
+   - 사용 방법 및 예시
+   - 파라미터 설명
+   - 출력 파일 설명
+   - 트러블슈팅 가이드
+
+### 5. 다음 단계 작업
+1. **워크포워드 분석**
+   - 슬라이딩/확장 윈도우 지원
+   - Out-of-sample 검증
+   
+2. **로버스트니스 테스트**
+   - 시드 변동 테스트
+   - 샘플 드랍 (k-fold out)
+   - 부트스트랩
+   - 수수료/슬리피지 민감도
+   
+3. **푸쉬 고도화** (3종)
+   - 일중 매매 신호 (실시간)
+   - 포지션 변경 알림
+   - 레짐 변경 감지
+   
+4. **웹 대시보드** (선택)
    - Streamlit/Dash 기반 대시보드
    - 실시간 포지션 모니터링
    - 성과 시각화

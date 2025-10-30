@@ -6,6 +6,6 @@ requests>=2.25.0
 pykrx>=1.0.51
 
 # Optional dependencies (PC only)
-# optuna>=3.0.0
-# scikit-learn>=1.0.0
-# plotly>=5.0.0
+optuna>=3.0.0
+scikit-learn>=1.0.0
+plotly>=5.0.0
