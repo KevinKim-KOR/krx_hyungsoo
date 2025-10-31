@@ -35,7 +35,7 @@ class DataUpdater:
             return None
         
         try:
-            df = pd.read_parquet(path)
+            df = pd.read_parquet(path, engine='pyarrow')
             if df.empty:
                 return None
             return df
@@ -50,7 +50,7 @@ class DataUpdater:
         
         try:
             path = self._get_cache_path(symbol)
-            df.to_parquet(path)
+            df.to_parquet(path, engine='pyarrow')
             logger.debug(f"캐시 저장 완료: {symbol} ({len(df)} rows)")
         except Exception as e:
             logger.error(f"캐시 쓰기 실패 ({symbol}): {e}")

@@ -1,22 +1,25 @@
-fix: DataUpdater 호출 오류 수정 및 전체 시스템 통합 테스트 추가
+fix: pyarrow engine 명시 - Parquet 읽기/쓰기 오류 해결
 
-## 수정 사항
-1. pc/cli.py update 명령 수정
-   - update_universe 호출 시 start_date 제거
-   - update_symbol로 메서드명 통일
+## 문제
+- pandas read_parquet/to_parquet에서 engine 미지정
+- pyarrow 설치되어 있지만 pandas가 자동 감지 실패
+- "Unable to find a usable engine" 오류 발생
 
-2. 전체 시스템 통합 테스트 추가 (test_full_system.py)
-   - CLI 명령 테스트 (update, backtest, scan, optimize)
-   - 데이터 업데이트 테스트
-   - 유니버스 필터링 테스트
-   - 신호 생성기 테스트
-   - 리스크 관리자 테스트
-   - 백테스트 엔진 테스트
-   - 설정 로딩 테스트
-   - 로깅 시스템 테스트
-   - Optuna 검색 공간 테스트
+## 해결
+1. infra/data/loader.py
+   - read_parquet(path, engine='pyarrow')
+   - to_parquet(path, engine='pyarrow')
 
-## 테스트 실행
+2. infra/data/updater.py
+   - read_parquet(path, engine='pyarrow')
+   - to_parquet(path, engine='pyarrow')
+
+3. test_pyarrow.py 추가
+   - pyarrow 설치 확인 스크립트
+   - Parquet 읽기/쓰기 테스트
+
+## 검증
 ```bash
-pytest tests/integration/test_full_system.py -v -m integration
+python test_pyarrow.py  # ✅ 통과
+python pc/cli.py update --symbols 069500 --date 2024-10-30  # ✅ 정상
 ```

@@ -42,9 +42,9 @@ class CachedDataProvider(DataProvider):
             return None
             
         try:
-            return pd.read_parquet(path)
+            return pd.read_parquet(path, engine='pyarrow')
         except Exception as e:
-            print(f"캐시 읽기 실패 ({symbol}): {e}")
+            print(f"가격 데이터 로드 실패 ({symbol}): {e}")
             return None
     
     def _write_cache(self, symbol: str, df: pd.DataFrame) -> None:
@@ -54,7 +54,7 @@ class CachedDataProvider(DataProvider):
             
         try:
             path = self._get_cache_path(symbol)
-            df.to_parquet(path)
+            df.to_parquet(path, engine='pyarrow')
         except Exception as e:
             print(f"캐시 쓰기 실패 ({symbol}): {e}")
 
