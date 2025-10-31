@@ -15,7 +15,7 @@ sys.path.insert(0, str(project_root))
 
 from infra.data.updater import DataUpdater
 from core.data.filtering import ETFFilter, get_filtered_universe
-from extensions.backtest.runner import create_momentum_runner
+from extensions.backtest.runner import create_default_runner, create_momentum_runner
 from extensions.backtest.report import create_report
 from extensions.optuna.objective import create_objective
 
@@ -95,16 +95,18 @@ def cmd_backtest(args):
     
     logger.info(f"유니버스: {len(universe)}개 종목")
     
-    # 가격 데이터 로드
+    # 가격 데이터 로드 (lookback 고려하여 더 많은 데이터 로드)
     from infra.data.loader import load_price_data
-    price_data = load_price_data(universe, start_date, end_date)
+    lookback_days = 120  # 60일 lookback + 여유
+    data_start_date = start_date - timedelta(days=lookback_days)
+    price_data = load_price_data(universe, data_start_date, end_date)
     
     if price_data.empty:
         logger.error("가격 데이터가 없습니다. 먼저 데이터를 업데이트하세요.")
         return 1
     
-    # 백테스트 실행
-    runner = create_momentum_runner(
+    # 백테스트 실행 (MAPS 전략)
+    runner = create_default_runner(
         initial_capital=args.capital,
         max_positions=args.max_positions
     )

@@ -1,0 +1,40 @@
+feat: MAPS 전략 구현 (jasonisdoing/momentum-etf 참고)
+
+## 주요 구현 사항
+
+### 1. MAPS (Moving Average Position Score) 전략 추가
+- core/strategy/signals.py
+  - generate_maps_signal() 메서드 추가
+  - 이동평균 대비 수익률 % 계산
+  - RSI 과매수 필터링
+  - 연속 상승일 계산
+  - 신뢰도 0~1 정규화
+
+### 2. BacktestRunner 통합
+- extensions/backtest/runner.py
+  - create_default_runner() 사용하도록 변경
+  - MAPS 전략 기반 신호 생성
+  - 상세 디버깅 로그 추가
+
+### 3. CLI 수정
+- pc/cli.py
+  - create_default_runner 사용 (MAPS 전략)
+  - lookback 고려하여 데이터 로드
+
+## 참고 코드
+- https://github.com/jasonisdoing/momentum-etf
+- strategies/maps/scoring.py
+- logic/common/signals.py
+
+## 알려진 이슈
+- 데이터 로딩 문제: price_data.loc[symbol] 추출 시 필터링된 데이터만 가져옴
+- 해결 필요: _generate_target_weights에서 전체 데이터 사용하도록 수정
+
+## 테스트
+```bash
+# 데이터 업데이트
+python pc/cli.py update --symbols 133690,305720 --date 2024-12-31
+
+# 백테스트 (데이터 부족으로 거래 미발생)
+python pc/cli.py backtest --start 2024-10-01 --end 2024-12-31 --universe 133690,305720
+```

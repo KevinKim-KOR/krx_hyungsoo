@@ -80,23 +80,44 @@ class BacktestRunner:
             if (i + 1) % 20 == 0 or i == len(trading_dates) - 1:
                 logger.info(f"진행: {i+1}/{len(trading_dates)} ({(i+1)/len(trading_dates)*100:.1f}%)")
             
+            # 리밸런싱 날짜인 경우
+            logger.debug(f"날짜 체크: {current_date}, 리밸런싱: {current_date in rebalance_dates}")
+            if current_date in rebalance_dates:
+                logger.info(f"=== 리밸런싱 실행: {current_date} ===")
+                # 현재 가격 데이터
+                current_prices = {}
+                for symbol in universe:
+                    try:
+                        price = price_data.loc[(symbol, current_date), 'close']
+                        current_prices[symbol] = price
+                    except KeyError:
+                        pass
+                
+                # 목표 비중 계산 (MAPS 전략 기반)
+                logger.info(f"목표 비중 계산 시작: {len(universe)}개 종목")
+                try:
+                    target_weights = self._generate_target_weights(
+                        price_data,
+                        current_date,
+                        universe,
+                        lookback_days=60
+                    )
+                    
+                    logger.info(f"목표 비중 계산 완료: {len(target_weights)}개 종목")
+                    if target_weights:
+                        logger.info(f"리밸런싱 실행: {target_weights}")
+                        self.engine.rebalance(target_weights, current_prices, current_date)
+                    else:
+                        logger.warning("목표 비중 없음 - 리밸런싱 건너뜀")
+                except Exception as e:
+                    logger.error(f"목표 비중 계산 실패: {e}", exc_info=True)
+                    target_weights = {}
+            
             # 현재 가격 추출
             current_prices = self._get_prices_on_date(price_data, current_date, universe)
             
             if not current_prices:
                 continue
-            
-            # 리밸런싱 날짜인 경우
-            if current_date in rebalance_dates:
-                target_weights = self._generate_target_weights(
-                    price_data,
-                    current_date,
-                    universe,
-                    lookback_days=60
-                )
-                
-                if target_weights:
-                    self.engine.rebalance(target_weights, current_prices, current_date)
             
             # NAV 업데이트
             self.engine.update_nav(current_date, current_prices)
@@ -168,6 +189,10 @@ class BacktestRunner:
         lookback_days: int = 60
     ) -> Dict[str, float]:
         """목표 비중 생성"""
+        logger.info(f"[_generate_target_weights] 시작: current_date={current_date}, universe={universe}, lookback={lookback_days}")
+        logger.info(f"[_generate_target_weights] price_data shape: {price_data.shape}")
+        logger.info(f"[_generate_target_weights] price_data index levels: {price_data.index.names}")
+        
         # 룩백 기간
         start_date = current_date - timedelta(days=lookback_days * 2)  # 여유있게
         
@@ -176,14 +201,19 @@ class BacktestRunner:
         
         for symbol in universe:
             try:
+                logger.info(f"[{symbol}] 처리 시작")
                 if symbol not in price_data.index.get_level_values('code'):
+                    logger.warning(f"[{symbol}] 데이터 없음")
                     continue
                 
                 # 종목 데이터 추출
                 symbol_data = price_data.loc[symbol]
+                logger.info(f"[{symbol}] 전체 데이터: {len(symbol_data)}행")
                 symbol_data = symbol_data[symbol_data.index <= current_date]
+                logger.info(f"[{symbol}] 필터 후 데이터: {len(symbol_data)}행 (current_date={current_date})")
                 
                 if len(symbol_data) < lookback_days:
+                    logger.warning(f"[{symbol}] 데이터 부족 ({len(symbol_data)} < {lookback_days})")
                     continue
                 
                 # 최근 데이터
@@ -197,14 +227,17 @@ class BacktestRunner:
                     volume=recent_data.get('volume')
                 )
                 
+                logger.info(f"{symbol}: {signal_result['signal']} (신뢰도: {signal_result.get('confidence', 0):.2f}, 점수: {signal_result.get('score', 0):.2f})")
+                
                 # 매수 신호만
                 if signal_result['signal'] == 'BUY':
                     signals[symbol] = signal_result['confidence']
                     
             except Exception as e:
-                logger.debug(f"신호 생성 실패 ({symbol}): {e}")
+                logger.warning(f"신호 생성 실패 ({symbol}): {e}")
         
         if not signals:
+            logger.info("매수 신호 없음")
             return {}
         
         # 상위 N개 선택

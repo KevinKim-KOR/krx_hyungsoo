@@ -13,7 +13,7 @@ from core.indicators import (
 
 
 class SignalGenerator:
-    """매매 신호 생성기"""
+    """매매 신호 생성기 (MAPS 전략 기반)"""
     
     def __init__(
         self,
@@ -22,7 +22,8 @@ class SignalGenerator:
         rsi_overbought: int = 70,
         rsi_oversold: int = 30,
         adx_threshold: float = 25.0,
-        mfi_threshold: float = 40.0
+        mfi_threshold: float = 40.0,
+        maps_enabled: bool = True
     ):
         """
         Args:
@@ -39,6 +40,7 @@ class SignalGenerator:
         self.rsi_oversold = rsi_oversold
         self.adx_threshold = adx_threshold
         self.mfi_threshold = mfi_threshold
+        self.maps_enabled = maps_enabled
     
     def generate_momentum_signal(
         self,
@@ -232,6 +234,88 @@ class SignalGenerator:
             }
         }
     
+    def generate_maps_signal(
+        self,
+        close: pd.Series,
+        high: Optional[pd.Series] = None,
+        low: Optional[pd.Series] = None,
+        volume: Optional[pd.Series] = None
+    ) -> Dict[str, any]:
+        """
+        MAPS (Moving Average Position Score) 신호 생성
+        친구 코드 참고: jasonisdoing/momentum-etf
+        
+        Returns:
+            {
+                'signal': 'BUY' | 'SELL' | 'HOLD',
+                'score': float (이동평균 대비 수익률 %),
+                'confidence': float (0~1),
+                'indicators': {...}
+            }
+        """
+        if len(close) < self.ma_period:
+            return {
+                'signal': 'HOLD',
+                'score': 0.0,
+                'confidence': 0.0,
+                'indicators': {}
+            }
+        
+        # 1. 이동평균 계산
+        ma = sma(close, self.ma_period)
+        
+        # 2. MAPS 점수 계산 (이동평균 대비 수익률 %)
+        current_price = close.iloc[-1]
+        current_ma = ma.iloc[-1]
+        
+        if current_ma == 0 or pd.isna(current_ma):
+            maps_score = 0.0
+        else:
+            maps_score = ((current_price / current_ma) - 1.0) * 100
+        
+        # 3. 연속 상승일 계산
+        buy_signal_active = close > ma
+        consecutive_days = 0
+        if buy_signal_active.iloc[-1]:
+            # 역순으로 연속 True 카운트
+            for i in range(len(buy_signal_active) - 1, -1, -1):
+                if buy_signal_active.iloc[i]:
+                    consecutive_days += 1
+                else:
+                    break
+        
+        # 4. RSI 확인 (과매수 방지)
+        rsi_val = 50.0
+        if len(close) >= self.rsi_period:
+            rsi_series = rsi(close, self.rsi_period)
+            rsi_val = rsi_series.iloc[-1] if not rsi_series.empty else 50.0
+        
+        # 5. 신호 판단
+        signal = 'HOLD'
+        confidence = 0.0
+        
+        # 매수 조건: MAPS 점수 > 0 (이동평균 위) AND RSI < 과매수
+        if maps_score > 0 and rsi_val < self.rsi_overbought:
+            signal = 'BUY'
+            # 신뢰도: MAPS 점수를 0~1로 정규화 (0~30% 범위)
+            confidence = min(maps_score / 30.0, 1.0)
+        # 매도 조건: MAPS 점수 < -5 (이동평균 5% 이하) OR RSI 과매수
+        elif maps_score < -5 or rsi_val > self.rsi_overbought:
+            signal = 'SELL'
+            confidence = min(abs(maps_score) / 30.0, 1.0)
+        
+        return {
+            'signal': signal,
+            'score': maps_score,
+            'confidence': confidence,
+            'indicators': {
+                'ma': current_ma,
+                'maps_score': maps_score,
+                'consecutive_days': consecutive_days,
+                'rsi': rsi_val
+            }
+        }
+    
     def generate_combined_signal(
         self,
         close: pd.Series,
@@ -241,7 +325,9 @@ class SignalGenerator:
         weights: Tuple[float, float, float] = (0.5, 0.3, 0.2)
     ) -> Dict[str, any]:
         """
-        복합 신호 생성 (모멘텀 + 추세 + 평균회귀)
+        복합 신호 생성
+        - MAPS 활성화 시: MAPS 전략 우선 사용
+        - MAPS 비활성화 시: 모멘텀 + 추세 + 평균회귀
         
         Args:
             weights: (모멘텀, 추세, 평균회귀) 가중치
@@ -253,6 +339,10 @@ class SignalGenerator:
                 'components': {...}
             }
         """
+        # MAPS 전략 우선 사용
+        if self.maps_enabled:
+            return self.generate_maps_signal(close, high, low, volume)
+        
         # 1. 각 전략 신호 생성
         momentum = self.generate_momentum_signal(close, high, low, volume)
         trend = self.generate_trend_following_signal(close, high, low)
@@ -306,12 +396,13 @@ class SignalGenerator:
 
 
 def create_default_signal_generator() -> SignalGenerator:
-    """기본 신호 생성기 생성"""
+    """기본 신호 생성기 생성 (MAPS 전략)"""
     return SignalGenerator(
         ma_period=60,
         rsi_period=14,
         rsi_overbought=70,
         rsi_oversold=30,
         adx_threshold=25.0,
-        mfi_threshold=40.0
+        mfi_threshold=40.0,
+        maps_enabled=True  # MAPS 전략 활성화
     )
