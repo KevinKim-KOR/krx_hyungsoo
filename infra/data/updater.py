@@ -141,11 +141,15 @@ class DataUpdater:
                 start_date = end_date - timedelta(days=730)
                 logger.info(f"전체 다운로드: {symbol} ({start_date} ~ {end_date})")
                 
-                df = stock.get_etf_ohlcv_by_date(
-                    fromdate=start_date.strftime("%Y%m%d"),
-                    todate=end_date.strftime("%Y%m%d"),
-                    ticker=symbol
-                )
+                try:
+                    df = stock.get_etf_ohlcv_by_date(
+                        start_date.strftime('%Y%m%d'),
+                        end_date.strftime('%Y%m%d'),
+                        symbol
+                    )
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"데이터 없음 ({symbol}): {e}")
+                    return False
                 
                 if df is None or df.empty:
                     logger.warning(f"데이터 없음: {symbol}")
@@ -168,11 +172,15 @@ class DataUpdater:
                 start_date = last_date + timedelta(days=1)
                 logger.info(f"증분 업데이트: {symbol} ({start_date} ~ {end_date})")
                 
-                df_new = stock.get_etf_ohlcv_by_date(
-                    fromdate=start_date.strftime("%Y%m%d"),
-                    todate=end_date.strftime("%Y%m%d"),
-                    ticker=symbol
-                )
+                try:
+                    df_new = stock.get_etf_ohlcv_by_date(
+                        fromdate=start_date.strftime("%Y%m%d"),
+                        todate=end_date.strftime("%Y%m%d"),
+                        ticker=symbol
+                    )
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"증분 업데이트 실패 ({symbol}): {e}")
+                    return True  # 기존 캐시 유지
                 
                 if df_new is None or df_new.empty:
                     logger.debug(f"신규 데이터 없음: {symbol}")
