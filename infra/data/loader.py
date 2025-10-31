@@ -255,14 +255,17 @@ def load_price_data(
             cache_file = cache_dir / f"{code}.parquet"
             
             if cache_file.exists():
-                df = pd.read_parquet(cache_file)
+                df = pd.read_parquet(cache_file, engine='pyarrow')
+                
+                # Index를 date 컬럼으로 변환
+                if df.index.name in ['날짜', 'date']:
+                    df = df.reset_index()
+                    df = df.rename(columns={'날짜': 'date'})
                 
                 # 날짜 필터링
                 if 'date' in df.columns:
                     df['date'] = pd.to_datetime(df['date'])
                     df = df[(df['date'].dt.date >= start_date) & (df['date'].dt.date <= end_date)]
-                elif df.index.name == 'date':
-                    df = df[(df.index.date >= start_date) & (df.index.date <= end_date)]
                 
                 if not df.empty:
                     df['code'] = code
@@ -275,15 +278,11 @@ def load_price_data(
         return pd.DataFrame()
     
     # 데이터 결합
-    result = pd.concat(dfs, axis=0)
+    result = pd.concat(dfs, axis=0, ignore_index=True)
     
     # 인덱스 설정
     if 'code' in result.columns and 'date' in result.columns:
         result.set_index(['code', 'date'], inplace=True)
-    elif result.index.name != 'date':
-        result.reset_index(inplace=True)
-        result.set_index(['code', 'date'], inplace=True)
-    
-    result.sort_index(inplace=True)
+        result.sort_index(inplace=True)
     
     return result

@@ -37,30 +37,30 @@ class BacktestReport:
         
         # 수익률
         lines.append("## 수익률")
-        lines.append(f"총 수익률: {self.metrics['total_return']:>15.2f}%")
-        lines.append(f"연율화 수익률: {self.metrics['annual_return']:>11.2f}%")
+        lines.append(f"총 수익률: {self.metrics.get('total_return', 0):>15.2f}%")
+        lines.append(f"연율화 수익률: {self.metrics.get('annual_return', 0):>11.2f}%")
         lines.append("")
         
         # 리스크
         lines.append("## 리스크")
-        lines.append(f"변동성 (연): {self.metrics['volatility']:>14.2f}%")
-        lines.append(f"최대 낙폭 (MDD): {self.metrics['max_drawdown']:>10.2f}%")
+        lines.append(f"변동성 (연): {self.metrics.get('volatility', 0):>14.2f}%")
+        lines.append(f"최대 낙폭 (MDD): {self.metrics.get('max_drawdown', 0):>10.2f}%")
         lines.append("")
         
         # 위험조정 수익률
         lines.append("## 위험조정 수익률")
-        lines.append(f"샤프 비율: {self.metrics['sharpe_ratio']:>17.2f}")
+        lines.append(f"샤프 비율: {self.metrics.get('sharpe_ratio', 0):>17.2f}")
         lines.append("")
         
         # 거래 통계
         lines.append("## 거래 통계")
-        lines.append(f"총 거래 횟수: {self.metrics['total_trades']:>14}회")
-        lines.append(f"승률: {self.metrics['win_rate']:>24.2f}%")
+        lines.append(f"총 거래 횟수: {self.metrics.get('total_trades', 0):>14}회")
+        lines.append(f"승률: {self.metrics.get('win_rate', 0):>24.2f}%")
         lines.append("")
         
         # 최종 자산
         lines.append("## 최종 자산")
-        lines.append(f"최종 가치: {self.metrics['final_value']:>16,.0f}원")
+        lines.append(f"최종 가치: {self.metrics.get('final_value', 0):>16,.0f}원")
         lines.append("")
         
         lines.append("=" * 60)

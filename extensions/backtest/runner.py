@@ -63,9 +63,10 @@ class BacktestRunner:
         logger.info(f"백테스트 시작: {start_date} ~ {end_date}")
         logger.info(f"유니버스: {len(universe)}개 종목")
         
-        # 날짜 범위
+        # 거래일 목록
         all_dates = sorted(price_data.index.get_level_values('date').unique())
-        trading_dates = [d for d in all_dates if start_date <= d <= end_date]
+        # Timestamp를 date로 변환하여 비교
+        trading_dates = [d for d in all_dates if start_date <= d.date() <= end_date]
         
         logger.info(f"거래일 수: {len(trading_dates)}일")
         
@@ -100,14 +101,13 @@ class BacktestRunner:
             # NAV 업데이트
             self.engine.update_nav(current_date, current_prices)
         
-        # 성과 지표 계산
-        metrics = self.engine.get_performance_metrics()
-        
+        # 성과 지표 출력
         logger.info("백테스트 완료")
-        logger.info(f"총 수익률: {metrics['total_return']:.2f}%")
-        logger.info(f"연율화 수익률: {metrics['annual_return']:.2f}%")
-        logger.info(f"샤프 비율: {metrics['sharpe_ratio']:.2f}")
-        logger.info(f"MDD: {metrics['max_drawdown']:.2f}%")
+        metrics = self.engine.get_performance_metrics()
+        logger.info(f"총 수익률: {metrics.get('total_return', 0):.2f}%")
+        logger.info(f"연율화 수익률: {metrics.get('annual_return', 0):.2f}%")
+        logger.info(f"최대 낙폭: {metrics.get('max_drawdown', 0):.2f}%")
+        logger.info(f"샤프 비율: {metrics.get('sharpe_ratio', 0):.2f}")
         
         return {
             'metrics': metrics,
