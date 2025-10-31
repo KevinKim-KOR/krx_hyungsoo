@@ -206,11 +206,14 @@ class BacktestRunner:
                     logger.warning(f"[{symbol}] 데이터 없음")
                     continue
                 
-                # 종목 데이터 추출
+                # 종목 데이터 추출 (전체 데이터 사용)
                 symbol_data = price_data.loc[symbol]
                 logger.info(f"[{symbol}] 전체 데이터: {len(symbol_data)}행")
+                
+                # current_date까지의 데이터만 사용 (미래 데이터 방지)
+                # 하지만 lookback을 위해 충분한 과거 데이터 유지
                 symbol_data = symbol_data[symbol_data.index <= current_date]
-                logger.info(f"[{symbol}] 필터 후 데이터: {len(symbol_data)}행 (current_date={current_date})")
+                logger.info(f"[{symbol}] current_date까지 데이터: {len(symbol_data)}행 (current_date={current_date})")
                 
                 if len(symbol_data) < lookback_days:
                     logger.warning(f"[{symbol}] 데이터 부족 ({len(symbol_data)} < {lookback_days})")

@@ -243,7 +243,7 @@ def load_price_data(
         MultiIndex DataFrame (code, date)
     """
     if cache_dir is None:
-        cache_dir = Path('data/cache/ohlcv')
+        cache_dir = Path('data/cache')  # ohlcv 서브디렉토리 제거
     
     cache_dir.mkdir(parents=True, exist_ok=True)
     
