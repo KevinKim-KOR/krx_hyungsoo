@@ -78,27 +78,18 @@ class BacktestObjective:
                 slippage_rate=self.slippage_rate
             )
             
-            # 신호 생성기 (파라미터 적용)
+            # 신호 생성기 (MAPS 전략 파라미터 적용)
             signal_generator = SignalGenerator(
-                ma_period=params['ma_period'],
-                rsi_period=params['rsi_period'],
-                adx_threshold=params['adx_threshold']
+                ma_period=params.get('ma_period', 60),
+                rsi_period=params.get('rsi_period', 14),
+                rsi_overbought=params.get('rsi_overbought', 70)
             )
             
-            # 리스크 관리자 (파라미터 적용)
-            risk_manager = RiskManager(
-                position_cap=params['position_cap'],
-                portfolio_vol_target=params['portfolio_vol_target'],
-                max_drawdown_threshold=params['max_drawdown_threshold'],
-                cooldown_days=params['cooldown_days'],
-                max_correlation=params['max_correlation']
-            )
-            
-            # 백테스트 실행기
+            # 백테스트 실행기 (간소화)
             runner = BacktestRunner(
                 engine=engine,
                 signal_generator=signal_generator,
-                risk_manager=risk_manager
+                max_positions=params.get('max_positions', 10)
             )
             
             # 실행

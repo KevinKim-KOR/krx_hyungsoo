@@ -9,7 +9,7 @@ from typing import Dict, Any
 
 def suggest_strategy_params(trial: optuna.Trial) -> Dict[str, Any]:
     """
-    전략 파라미터 검색 공간
+    MAPS 전략 파라미터 검색 공간
     
     Args:
         trial: Optuna trial 객체
@@ -18,40 +18,25 @@ def suggest_strategy_params(trial: optuna.Trial) -> Dict[str, Any]:
         파라미터 딕셔너리
     """
     params = {
-        # 기술적 지표
-        'ma_period': trial.suggest_int('ma_period', 10, 120),
-        'rsi_period': trial.suggest_int('rsi_period', 7, 30),
-        'adx_threshold': trial.suggest_float('adx_threshold', 10.0, 40.0),
-        'bb_period': trial.suggest_int('bb_period', 10, 40),
-        'bb_std': trial.suggest_float('bb_std', 1.5, 3.0),
+        # MAPS 전략 핵심 파라미터
+        'ma_period': trial.suggest_int('ma_period', 20, 120, step=10),  # 이동평균 기간
+        'rsi_period': trial.suggest_int('rsi_period', 7, 21, step=2),   # RSI 기간
+        'rsi_overbought': trial.suggest_int('rsi_overbought', 65, 80, step=5),  # RSI 과매수 임계값
         
-        # 신호 생성
-        'momentum_weight': trial.suggest_float('momentum_weight', 0.0, 1.0),
-        'trend_weight': trial.suggest_float('trend_weight', 0.0, 1.0),
-        'mean_reversion_weight': trial.suggest_float('mean_reversion_weight', 0.0, 1.0),
+        # 신호 임계값
+        'maps_buy_threshold': trial.suggest_float('maps_buy_threshold', -2.0, 5.0, step=1.0),  # MAPS 매수 임계값
+        'maps_sell_threshold': trial.suggest_float('maps_sell_threshold', -10.0, -2.0, step=1.0),  # MAPS 매도 임계값
         
         # 리밸런싱
         'rebalance_frequency': trial.suggest_categorical(
             'rebalance_frequency', 
-            ['daily', 'weekly', 'monthly']
+            ['weekly', 'biweekly', 'monthly']
         ),
         
         # 포지션 관리
-        'max_positions': trial.suggest_int('max_positions', 5, 15),
-        'position_cap': trial.suggest_float('position_cap', 0.15, 0.35),
+        'max_positions': trial.suggest_int('max_positions', 5, 20, step=5),
+        'min_confidence': trial.suggest_float('min_confidence', 0.0, 0.3, step=0.05),  # 최소 신뢰도
     }
-    
-    # 가중치 정규화
-    total_weight = (
-        params['momentum_weight'] + 
-        params['trend_weight'] + 
-        params['mean_reversion_weight']
-    )
-    
-    if total_weight > 0:
-        params['momentum_weight'] /= total_weight
-        params['trend_weight'] /= total_weight
-        params['mean_reversion_weight'] /= total_weight
     
     return params
 

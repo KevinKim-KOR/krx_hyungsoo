@@ -1,0 +1,10 @@
+{
+  "ma_period": 60,
+  "rsi_period": 14,
+  "rsi_overbought": 70,
+  "maps_buy_threshold": 0.0,
+  "maps_sell_threshold": -5.0,
+  "rebalance_frequency": "monthly",
+  "max_positions": 10,
+  "min_confidence": 0.1
+}

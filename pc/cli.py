@@ -398,6 +398,96 @@ def cmd_optimize(args):
     return 0
 
 
+def cmd_walk_forward(args):
+    """워크포워드 분석 명령"""
+    from datetime import datetime
+    from pathlib import Path
+    from extensions.optuna.walk_forward import run_walk_forward
+    
+    logger.info("=" * 60)
+    logger.info("워크포워드 분석 시작")
+    logger.info("=" * 60)
+    
+    # 날짜 파싱
+    start_date = datetime.strptime(args.start, '%Y-%m-%d').date()
+    end_date = datetime.strptime(args.end, '%Y-%m-%d').date()
+    
+    # 출력 디렉토리
+    if args.output:
+        output_dir = Path(args.output)
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_dir = Path(f'reports/walk_forward/{args.window_type}_{timestamp}')
+    
+    # 실행
+    results = run_walk_forward(
+        start_date=start_date,
+        end_date=end_date,
+        train_months=args.train_months,
+        test_months=args.test_months,
+        window_type=args.window_type,
+        n_trials=args.trials,
+        output_dir=output_dir,
+        seed=args.seed
+    )
+    
+    logger.info("=" * 60)
+    logger.info("워크포워드 분석 완료")
+    logger.info("=" * 60)
+    
+    return 0
+
+
+def cmd_robustness(args):
+    """로버스트니스 테스트 명령"""
+    from datetime import datetime
+    from pathlib import Path
+    import json
+    from extensions.optuna.robustness import run_robustness_tests
+    
+    logger.info("=" * 60)
+    logger.info("로버스트니스 테스트 시작")
+    logger.info("=" * 60)
+    
+    # 날짜 파싱
+    start_date = datetime.strptime(args.start, '%Y-%m-%d').date()
+    end_date = datetime.strptime(args.end, '%Y-%m-%d').date()
+    
+    # 파라미터 로드
+    params_file = Path(args.params)
+    if not params_file.exists():
+        logger.error(f"파라미터 파일 없음: {params_file}")
+        return 1
+    
+    with open(params_file, 'r', encoding='utf-8') as f:
+        base_params = json.load(f)
+    
+    logger.info(f"기본 파라미터: {base_params}")
+    
+    # 출력 디렉토리
+    if args.output:
+        output_dir = Path(args.output)
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_dir = Path(f'reports/robustness/{timestamp}')
+    
+    # 실행
+    results = run_robustness_tests(
+        base_params=base_params,
+        start_date=start_date,
+        end_date=end_date,
+        n_iterations=args.iterations,
+        output_dir=output_dir,
+        seed=args.seed
+    )
+    
+    logger.info("=" * 60)
+    logger.info("로버스트니스 테스트 완료")
+    logger.info("=" * 60)
+    
+    return 0
+
+
 def main():
     """메인 함수"""
     parser = argparse.ArgumentParser(
@@ -453,10 +543,32 @@ def main():
     parser_optimize.add_argument('--trials', type=int, default=100, help='Trial 수 (기본: 100)')
     parser_optimize.add_argument('--timeout', type=int, help='타임아웃 (초)')
     parser_optimize.add_argument('--mdd-lambda', type=float, default=2.0, help='MDD 패널티 계수 (기본: 2.0)')
-    parser_optimize.add_argument('--seed', type=int, help='랜덤 시드 (재현성)')
+    parser_optimize.add_argument('--seed', type=int, default=42, help='랜덤 시드 (재현성)')
     parser_optimize.add_argument('--output', help='결과 저장 경로')
     parser_optimize.add_argument('--plot', action='store_true', help='시각화 생성')
     parser_optimize.set_defaults(func=cmd_optimize)
+    
+    # walk-forward 명령
+    parser_wf = subparsers.add_parser('walk-forward', help='워크포워드 분석')
+    parser_wf.add_argument('--start', required=True, help='시작일 (YYYY-MM-DD)')
+    parser_wf.add_argument('--end', required=True, help='종료일 (YYYY-MM-DD)')
+    parser_wf.add_argument('--train-months', type=int, default=12, help='학습 기간 (개월)')
+    parser_wf.add_argument('--test-months', type=int, default=3, help='검증 기간 (개월)')
+    parser_wf.add_argument('--window-type', choices=['sliding', 'expanding'], default='sliding', help='윈도우 타입')
+    parser_wf.add_argument('--trials', type=int, default=50, help='각 윈도우당 Optuna trials')
+    parser_wf.add_argument('--seed', type=int, default=42, help='랜덤 시드')
+    parser_wf.add_argument('--output', help='출력 디렉토리')
+    parser_wf.set_defaults(func=cmd_walk_forward)
+    
+    # robustness 명령
+    parser_robust = subparsers.add_parser('robustness', help='로버스트니스 테스트')
+    parser_robust.add_argument('--start', required=True, help='시작일 (YYYY-MM-DD)')
+    parser_robust.add_argument('--end', required=True, help='종료일 (YYYY-MM-DD)')
+    parser_robust.add_argument('--params', required=True, help='파라미터 JSON 파일 경로')
+    parser_robust.add_argument('--iterations', type=int, default=30, help='반복 횟수')
+    parser_robust.add_argument('--seed', type=int, default=42, help='랜덤 시드')
+    parser_robust.add_argument('--output', help='출력 디렉토리')
+    parser_robust.set_defaults(func=cmd_robustness)
     
     # 파싱
     args = parser.parse_args()
