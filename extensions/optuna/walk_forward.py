@@ -219,6 +219,8 @@ class WalkForwardAnalyzer:
             price_data = load_price_data(universe, start_date, end_date)
             
             # 백테스트 실행
+            from core.risk.manager import RiskManager
+            
             engine = BacktestEngine(initial_capital=10_000_000)
             signal_generator = SignalGenerator(
                 ma_period=params.get('ma_period', 60),
@@ -226,10 +228,12 @@ class WalkForwardAnalyzer:
                 rsi_overbought=params.get('rsi_overbought', 70)
             )
             
+            risk_manager = RiskManager()
+            
             runner = BacktestRunner(
                 engine=engine,
                 signal_generator=signal_generator,
-                max_positions=params.get('max_positions', 10)
+                risk_manager=risk_manager
             )
             
             runner.run(
@@ -241,8 +245,7 @@ class WalkForwardAnalyzer:
             )
             
             # 성과 계산
-            metrics = engine.calculate_performance_metrics()
-            return metrics
+            return engine.get_performance_metrics()
         
         except Exception as e:
             logger.error(f"백테스트 실패: {e}")

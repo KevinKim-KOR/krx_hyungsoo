@@ -243,6 +243,8 @@ class RobustnessAnalyzer:
                 price_data = price_data.iloc[indices].sort_index()
             
             # 백테스트 실행
+            from core.risk.manager import RiskManager
+            
             engine = BacktestEngine(
                 initial_capital=10_000_000,
                 commission_rate=commission_rate,
@@ -255,10 +257,12 @@ class RobustnessAnalyzer:
                 rsi_overbought=params.get('rsi_overbought', 70)
             )
             
+            risk_manager = RiskManager()
+            
             runner = BacktestRunner(
                 engine=engine,
                 signal_generator=signal_generator,
-                max_positions=params.get('max_positions', 10)
+                risk_manager=risk_manager
             )
             
             runner.run(
@@ -269,7 +273,7 @@ class RobustnessAnalyzer:
                 rebalance_frequency=params.get('rebalance_frequency', 'monthly')
             )
             
-            return engine.calculate_performance_metrics()
+            return engine.get_performance_metrics()
         
         except Exception as e:
             logger.error(f"백테스트 실패: {e}")

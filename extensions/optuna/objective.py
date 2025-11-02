@@ -85,11 +85,20 @@ class BacktestObjective:
                 rsi_overbought=params.get('rsi_overbought', 70)
             )
             
-            # 백테스트 실행기 (간소화)
+            # 리스크 관리자 (파라미터 적용)
+            risk_manager = RiskManager(
+                position_cap=params.get('position_cap', 0.2),
+                portfolio_vol_target=params.get('portfolio_vol_target', 0.15),
+                max_drawdown_threshold=params.get('max_drawdown_threshold', -0.20),
+                cooldown_days=params.get('cooldown_days', 5),
+                max_correlation=params.get('max_correlation', 0.7)
+            )
+            
+            # 백테스트 실행기
             runner = BacktestRunner(
                 engine=engine,
                 signal_generator=signal_generator,
-                max_positions=params.get('max_positions', 10)
+                risk_manager=risk_manager
             )
             
             # 실행
@@ -105,7 +114,7 @@ class BacktestObjective:
                 return -999.0
             
             # 성과 지표 계산
-            metrics = engine.calculate_performance_metrics()
+            metrics = engine.get_performance_metrics()
             
             # 목적 함수: 연율화 수익률 - λ·MDD
             annual_return = metrics.get('annual_return', 0.0)
