@@ -1,0 +1,39 @@
+# NAS Cron 설정 - 실시간 신호 생성 및 알림
+# 설치: crontab -e 후 아래 내용 추가
+
+# 환경 변수
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# 프로젝트 루트
+PROJECT_ROOT=/volume2/homes/Hyungsoo/krx/krx_alertor_modular
+
+# ============================================
+# 실시간 신호 생성 및 알림
+# ============================================
+
+# 1. 장마감 후 신호 생성 및 텔레그램 알림
+#    - 시간: 평일 15:40 (장마감 15:30 + 10분 대기)
+#    - 작업: 최신 데이터로 신호 생성 및 알림
+40 15 * * 1-5 cd $PROJECT_ROOT && bash scripts/nas/daily_realtime_signals.sh
+
+# 2. 주간 리포트 (선택)
+#    - 시간: 매주 일요일 09:00
+#    - 작업: 주간 성과 요약 및 전송
+# 0 9 * * 0 cd $PROJECT_ROOT && bash scripts/nas/weekly_report.sh
+
+# ============================================
+# 로그 정리 (선택)
+# ============================================
+
+# 30일 이상 된 로그 파일 삭제
+# 0 2 * * * find $PROJECT_ROOT/logs -name "*.log" -mtime +30 -delete
+
+# ============================================
+# 설치 방법
+# ============================================
+# 1. NAS SSH 접속
+# 2. crontab -e
+# 3. 위 내용 복사/붙여넣기
+# 4. 저장 후 종료
+# 5. 확인: crontab -l
