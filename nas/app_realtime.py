@@ -15,6 +15,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from extensions.realtime import RealtimeSignalGenerator, RealtimeDataCollector
 from extensions.notification import send_daily_signals
+from extensions.monitoring import SignalTracker, PerformanceTracker, DailyReporter, RegimeDetector
 from infra.logging.setup import setup_logging
 
 # 로깅 설정
@@ -83,12 +84,29 @@ def main():
         # 5. 포트폴리오 요약
         summary = generator.get_portfolio_summary(signals)
         
-        # 6. 신호 저장
+        # 6. 신호 CSV 저장
         output_dir = PROJECT_ROOT / "reports" / "realtime"
         output_file = output_dir / f"signals_{target_date:%Y%m%d}.csv"
         generator.save_signals(signals, output_file)
         
-        # 7. 텔레그램 알림
+        # 7. 신호 이력 DB 저장
+        logger.info("신호 이력 저장...")
+        signal_tracker = SignalTracker()
+        signal_tracker.save_signals(signals, target_date)
+        
+        # 8. 레짐 감지
+        logger.info("시장 레짐 감지...")
+        regime_detector = RegimeDetector()
+        regime = regime_detector.detect_regime(target_date)
+        logger.info(f"레짐: {regime['state']}, 변동성={regime['volatility']:.2%}")
+        
+        # 9. 일일 리포트 생성
+        logger.info("일일 리포트 생성...")
+        reporter = DailyReporter(signal_tracker)
+        report = reporter.generate_daily_report(target_date, signals)
+        reporter.save_report(target_date, report)
+        
+        # 10. 텔레그램 알림
         logger.info("텔레그램 알림 전송...")
         success = send_daily_signals(signals, target_date, summary)
         
@@ -97,7 +115,7 @@ def main():
         else:
             logger.warning("⚠️ 알림 전송 실패")
         
-        # 8. 완료
+        # 11. 완료
         logger.info("=" * 60)
         logger.info("작업 완료")
         logger.info("=" * 60)
