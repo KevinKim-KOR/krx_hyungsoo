@@ -1,0 +1,111 @@
+#!/usr/bin/env python3.8
+# -*- coding: utf-8 -*-
+"""
+scripts/nas/regime_change_alert.py
+시장 레짐 변경 알림
+"""
+import sys
+import logging
+from datetime import date, timedelta
+from pathlib import Path
+import json
+
+# 프로젝트 루트를 PYTHONPATH에 추가
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from extensions.monitoring import RegimeDetector
+from extensions.notification.telegram_sender import TelegramSender
+from infra.logging.setup import setup_logging
+
+# 로깅 설정
+setup_logging()
+logger = logging.getLogger(__name__)
+
+
+def load_previous_regime():
+    """이전 레짐 로드"""
+    regime_file = PROJECT_ROOT / "data" / "monitoring" / "last_regime.json"
+    
+    if not regime_file.exists():
+        return None
+    
+    try:
+        with open(regime_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning(f"이전 레짐 로드 실패: {e}")
+        return None
+
+
+def save_current_regime(regime: dict):
+    """현재 레짐 저장"""
+    regime_file = PROJECT_ROOT / "data" / "monitoring" / "last_regime.json"
+    regime_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        with open(regime_file, 'w', encoding='utf-8') as f:
+            json.dump(regime, f, ensure_ascii=False, indent=2, default=str)
+    except Exception as e:
+        logger.error(f"레짐 저장 실패: {e}")
+
+
+def main():
+    """레짐 변경 감지 및 알림"""
+    logger.info("=" * 60)
+    logger.info("시장 레짐 변경 감지")
+    logger.info("=" * 60)
+    
+    try:
+        # 현재 레짐 감지
+        detector = RegimeDetector()
+        target_date = date.today() - timedelta(days=1)
+        current_regime = detector.detect_regime(target_date)
+        
+        logger.info(f"현재 레짐: {current_regime['state']}")
+        
+        # 이전 레짐 로드
+        previous_regime = load_previous_regime()
+        
+        if previous_regime:
+            logger.info(f"이전 레짐: {previous_regime.get('state', 'unknown')}")
+            
+            # 레짐 변경 감지
+            changed, message = detector.detect_regime_change(current_regime, previous_regime)
+            
+            if changed:
+                logger.warning("⚠️ 레짐 변경 감지!")
+                
+                # 텔레그램 알림
+                description = detector.get_regime_description(current_regime)
+                
+                alert_message = f"*[시장 레짐 변경]*\n\n"
+                alert_message += f"📅 {target_date}\n\n"
+                alert_message += f"{message}\n\n"
+                alert_message += f"*현재 상태*\n{description}\n\n"
+                alert_message += "_포트폴리오 리스크 관리에 유의하세요._"
+                
+                sender = TelegramSender()
+                success = sender.send_custom(alert_message, parse_mode='Markdown')
+                
+                if success:
+                    logger.info("✅ 레짐 변경 알림 전송 성공")
+                else:
+                    logger.warning("⚠️ 레짐 변경 알림 전송 실패")
+            else:
+                logger.info("레짐 변경 없음")
+        else:
+            logger.info("이전 레짐 없음 (첫 실행)")
+        
+        # 현재 레짐 저장
+        save_current_regime(current_regime)
+        
+        return 0
+    
+    except Exception as e:
+        logger.error(f"❌ 레짐 변경 감지 실패: {e}", exc_info=True)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
