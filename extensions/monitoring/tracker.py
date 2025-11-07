@@ -360,3 +360,45 @@ class PerformanceTracker:
             'cumulative_return': row[6],
             'position_count': row[7]
         }
+    
+    def get_performance_history(
+        self,
+        start_date: date,
+        end_date: date
+    ) -> List[Dict]:
+        """
+        성과 히스토리 조회 (대시보드용)
+        
+        Args:
+            start_date: 시작 날짜
+            end_date: 종료 날짜
+            
+        Returns:
+            성과 리스트
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT performance_date, total_value, cash, positions_value,
+                   daily_return, cumulative_return, position_count
+            FROM daily_performance
+            WHERE performance_date >= ? AND performance_date <= ?
+            ORDER BY performance_date
+        """, (start_date.isoformat(), end_date.isoformat()))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [
+            {
+                'date': row[0],
+                'total_value': row[1],
+                'cash': row[2],
+                'positions_value': row[3],
+                'daily_return': row[4],
+                'cumulative_return': row[5],
+                'position_count': row[6]
+            }
+            for row in rows
+        ]
