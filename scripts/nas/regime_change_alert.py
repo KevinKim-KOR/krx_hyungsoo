@@ -15,11 +15,15 @@ import json
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# 환경 변수 로드 (.env 파일)
-from dotenv import load_dotenv
+# 환경 변수 로드 (.env 파일 직접 파싱)
 env_file = PROJECT_ROOT / ".env"
 if env_file.exists():
-    load_dotenv(env_file)
+    with open(env_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                os.environ[key.strip()] = value.strip()
 
 from extensions.monitoring import RegimeDetector
 from extensions.notification.telegram_sender import TelegramSender

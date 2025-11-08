@@ -199,16 +199,8 @@ class DailyReport:
         try:
             # 종목명 조회 함수
             def get_stock_name(code: str) -> str:
-                """ETF 코드를 종목명으로 변환"""
-                try:
-                    import pykrx.stock as stock
-                    name = stock.get_market_ticker_name(code)
-                    if name:
-                        return name
-                except:
-                    pass
-                
-                # 주요 ETF 매핑
+                """종목명 조회 (매핑 우선, pykrx 보조)"""
+                # 주요 ETF 매핑 (우선 사용)
                 etf_names = {
                     '069500': 'KODEX 200',
                     '102110': 'TIGER 200',
@@ -221,8 +213,29 @@ class DailyReport:
                     '360750': 'TIGER 미국NASDAQ100',
                     '133690': 'TIGER 미국NASDAQ100레버리지',
                     '138230': 'KOSEF 미국S&P500',
+                    '388420': 'KBSTAR 미국S&P500',
+                    '379800': 'KODEX 미구S&P500TR',
+                    '360200': 'TIGER 미구S&P500선물(H)',
+                    '332620': 'KODEX 미구S&P500선물(H)',
+                    '364980': 'TIGER 미구NASDAQ100TR',
+                    '379810': 'KODEX 미구NASDAQ100TR',
                 }
-                return etf_names.get(code, code)
+                
+                # 매핑 테이블에 있으면 바로 반환
+                if code in etf_names:
+                    return etf_names[code]
+                
+                # 매핑에 없으면 pykrx로 조회 시도
+                try:
+                    import pykrx.stock as stock
+                    name = stock.get_market_ticker_name(code)
+                    if name and name.strip():
+                        return name.strip()
+                except Exception as e:
+                    logger.debug(f"종목명 조회 실패 [{code}]: {e}")
+                
+                # 모두 실패하면 코드 반환
+                return code
             
             # 상세 일일 리포트 메시지 생성
             message_lines = []
