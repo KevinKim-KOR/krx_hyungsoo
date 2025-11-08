@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Phase 2 재테스트 - 3-1단계: Jason 엔진 백테스트
-Week 1 Day 3-4: Jason 어댑터 통합 테스트
+Phase 2 재테스트 - 3-1단계: KRX MAPS 엔진 백테스트
+Week 1 Day 3-4: KRX MAPS 어댑터 통합 테스트
 """
 import sys
 from pathlib import Path
@@ -16,10 +16,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 # 로거 생성
 from scripts.phase2.utils.logger import create_logger
-logger = create_logger("3_1_run_backtest_jason", PROJECT_ROOT)
+logger = create_logger("3_1_run_backtest_krx_maps", PROJECT_ROOT)
 
-logger.info("Phase 2 재테스트 - 3-1단계: Jason 엔진 백테스트")
-logger.info("Week 1 Day 3-4: Jason 어댑터 통합 테스트")
+logger.info("Phase 2 재테스트 - 3-1단계: KRX MAPS 엔진 백테스트")
+logger.info("Week 1 Day 3-4: KRX MAPS 어댑터 통합 테스트")
 
 # 1. 유니버스 로드
 logger.section("1. 유니버스 로드")
@@ -65,10 +65,10 @@ except Exception as e:
     logger.finish()
     sys.exit(1)
 
-# 3. Jason 어댑터 초기화
-logger.section("3. Jason 어댑터 초기화")
+# 3. KRX MAPS 어댑터 초기화
+logger.section("3. KRX MAPS 어댑터 초기화")
 
-from core.engine.jason_adapter import JasonBacktestAdapter
+from core.engine.krx_maps_adapter import KRXMAPSAdapter
 from extensions.strategy.signal_generator import SignalGenerator
 
 # 백테스트 설정
@@ -84,9 +84,9 @@ logger.info("백테스트 설정:")
 for key, value in backtest_config.items():
     logger.info(f"  {key}: {value}")
 
-# Jason 어댑터 생성
-adapter = JasonBacktestAdapter(**backtest_config)
-logger.success("Jason 어댑터 초기화 완료")
+# KRX MAPS 어댑터 생성
+adapter = KRXMAPSAdapter(**backtest_config)
+logger.success("KRX MAPS 어댑터 초기화 완료")
 
 # 4. 전략 설정
 logger.section("4. 전략 설정")
@@ -122,10 +122,10 @@ strategy = SignalGenerator(
 logger.success("전략 초기화 완료")
 
 # 5. 백테스트 실행
-logger.section("5. Jason 백테스트 실행")
+logger.section("5. KRX MAPS 백테스트 실행")
 
 logger.info("백테스트 실행 중...")
-logger.info("(Jason 어댑터를 통한 실행)")
+logger.info("(KRX MAPS 어댑터를 통한 실행)")
 
 try:
     results = adapter.run(
@@ -156,7 +156,7 @@ try:
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # 결과 요약 저장
-    summary_file = output_dir / 'backtest_jason_summary.json'
+    summary_file = output_dir / 'backtest_krx_maps_summary.json'
     summary = {
         'config': backtest_config,
         'params': params,
@@ -179,14 +179,14 @@ try:
     
     # 거래 내역 저장
     if results['trades']:
-        trades_file = output_dir / 'backtest_jason_trades.csv'
+        trades_file = output_dir / 'backtest_krx_maps_trades.csv'
         trades_df = pd.DataFrame(results['trades'])
         trades_df.to_csv(trades_file, index=False, encoding='utf-8-sig')
         logger.success(f"거래 내역 저장: {trades_file}")
     
     # 일별 평가액 저장
     if results['daily_values']:
-        daily_file = output_dir / 'backtest_jason_daily.csv'
+        daily_file = output_dir / 'backtest_krx_maps_daily.csv'
         daily_df = pd.DataFrame(results['daily_values'], columns=['date', 'value'])
         daily_df.to_csv(daily_file, index=False, encoding='utf-8-sig')
         logger.success(f"일별 평가액 저장: {daily_file}")
@@ -201,13 +201,13 @@ try:
     logger.info("  Sharpe: N/A")
     logger.info("  MDD: N/A")
     
-    logger.info("\nJason 엔진 결과:")
+    logger.info("\nKRX MAPS 엔진 결과:")
     logger.info(f"  수익률: {results['total_return_pct']:.2f}%")
     logger.info(f"  CAGR: {results['cagr']:.2f}%")
     logger.info(f"  Sharpe: {results['sharpe_ratio']:.2f}")
     logger.info(f"  MDD: {results['max_drawdown']:.2f}%")
     
-    logger.info("\n✅ Jason 엔진을 통해 정확한 성과 지표를 계산했습니다!")
+    logger.info("\n✅ KRX MAPS 엔진을 통해 정확한 성과 지표를 계산했습니다!")
     
 except Exception as e:
     logger.fail(f"백테스트 실패: {e}")

@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Jason 백테스트 엔진 어댑터
+KRX MAPS 백테스트 엔진 어댑터
 
-Jason의 검증된 백테스트 엔진을 우리 시스템에 통합하기 위한 어댑터
+MAPS (Moving Average Position Score) 전략 백테스트 엔진
+원본: Jason의 momentum-etf 프로젝트
+개선: KRX Alertor 프로젝트에 맞게 최적화
 """
 from typing import Dict, Optional
 from datetime import date, datetime
@@ -12,24 +14,26 @@ import pandas as pd
 import numpy as np
 import logging
 
-# Jason 모듈 경로 추가
+# MAPS 전략 모듈 경로 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-JASON_PATH = PROJECT_ROOT / "momentum-etf"
-if str(JASON_PATH) not in sys.path:
-    sys.path.insert(0, str(JASON_PATH))
+MAPS_PATH = PROJECT_ROOT / "momentum-etf"
+if str(MAPS_PATH) not in sys.path:
+    sys.path.insert(0, str(MAPS_PATH))
 
-from core.engine.jason.rules import StrategyRules
+from core.engine.maps.rules import StrategyRules
 
 logger = logging.getLogger(__name__)
 
 
-class JasonBacktestAdapter:
+class KRXMAPSAdapter:
     """
-    Jason 백테스트 엔진 어댑터
+    KRX MAPS 백테스트 엔진 어댑터
+    
+    MAPS (Moving Average Position Score) 전략 백테스트
     
     역할:
-    1. 데이터 형식 변환 (우리 ↔ Jason)
-    2. Jason 엔진 실행
+    1. 데이터 형식 변환 (우리 형식 ↔ MAPS 형식)
+    2. MAPS 엔진 실행
     3. 에러 처리 및 롤백
     """
     
@@ -55,7 +59,7 @@ class JasonBacktestAdapter:
         self.max_positions = max_positions
         self.country_code = country_code
         
-        logger.info(f"JasonBacktestAdapter 초기화: capital={initial_capital:,}, positions={max_positions}")
+        logger.info(f"KRXMAPSAdapter 초기화: capital={initial_capital:,}, positions={max_positions}")
     
     def run(
         self,
@@ -89,9 +93,9 @@ class JasonBacktestAdapter:
             jason_strategy = self._convert_strategy(strategy, self.max_positions)
             logger.info(f"   변환 완료: MA={jason_strategy.ma_period}, TopN={jason_strategy.portfolio_topn}")
             
-            # 3. Jason 백테스트 실행
-            logger.info("3. Jason 백테스트 실행 중...")
-            jason_results = self._run_jason_backtest(
+            # 3. MAPS 백테스트 실행
+            logger.info("3. MAPS 백테스트 실행 중...")
+            maps_results = self._run_maps_backtest(
                 jason_data,
                 jason_strategy,
                 start_date,
@@ -101,7 +105,7 @@ class JasonBacktestAdapter:
             
             # 4. 결과 변환
             logger.info("4. 결과 변환 중...")
-            our_results = self._convert_results(jason_results, start_date, end_date)
+            our_results = self._convert_results(maps_results, start_date, end_date)
             logger.info("   변환 완료")
             
             logger.info(f"백테스트 완료: 수익률 {our_results['total_return_pct']:.2f}%")
@@ -117,7 +121,7 @@ class JasonBacktestAdapter:
     
     def _convert_data(self, df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
         """
-        데이터 변환: 우리 형식 → Jason 형식
+        데이터 변환: 우리 형식 → MAPS 형식
         
         입력: MultiIndex DataFrame (code, date)
         출력: Dict[ticker, DataFrame(Date, Open, Close, ...)]
@@ -195,18 +199,17 @@ class JasonBacktestAdapter:
                 core_holdings=[]
             )
     
-    def _run_jason_backtest(
+    def _run_maps_backtest(
         self,
-        jason_data: Dict[str, pd.DataFrame],
-        jason_strategy: StrategyRules,
+        maps_data: Dict[str, pd.DataFrame],
+        maps_strategy: StrategyRules,
         start_date: Optional[date],
         end_date: Optional[date]
     ) -> Dict:
         """
-        Jason 백테스트 실행
+        MAPS 백테스트 실행
         
-        현재는 간단한 MAPS 전략으로 구현
-        추후 Jason의 portfolio_runner.py 통합 예정
+        MAPS (Moving Average Position Score) 전략 백테스트
         """
         try:
             # 간단한 MAPS 백테스트 구현
@@ -217,7 +220,7 @@ class JasonBacktestAdapter:
                 end_date
             )
         except Exception as e:
-            logger.error(f"Jason 백테스트 실행 실패: {e}")
+            logger.error(f"MAPS 백테스트 실행 실패: {e}")
             raise
     
     def _simple_maps_backtest(
@@ -367,22 +370,22 @@ class JasonBacktestAdapter:
     
     def _convert_results(
         self,
-        jason_results: Dict,
+        maps_results: Dict,
         start_date: Optional[date],
         end_date: Optional[date]
     ) -> Dict:
         """
-        결과 변환: Jason 형식 → 우리 형식
+        결과 변환: MAPS 형식 → 우리 형식
         """
         try:
             # 기본 지표
-            initial_capital = jason_results['initial_capital']
-            final_value = jason_results['final_value']
+            initial_capital = maps_results['initial_capital']
+            final_value = maps_results['final_value']
             total_return = final_value - initial_capital
-            total_return_pct = jason_results['total_return_pct']
+            total_return_pct = maps_results['total_return_pct']
             
             # 일별 수익률 계산
-            daily_values = jason_results['daily_values']
+            daily_values = maps_results['daily_values']
             daily_returns = []
             for i in range(1, len(daily_values)):
                 prev_value = daily_values[i-1][1]
@@ -410,12 +413,12 @@ class JasonBacktestAdapter:
                     max_drawdown = drawdown
             
             # CAGR 계산
-            start_dt = jason_results.get('start_date') or start_date
-            end_dt = jason_results.get('end_date') or end_date
+            start_dt = maps_results.get('start_date') or start_date
+            end_dt = maps_results.get('end_date') or end_date
             cagr = self._calculate_cagr(initial_capital, final_value, start_dt, end_dt)
             
             # 거래 통계
-            trades = jason_results['trades']
+            trades = maps_results['trades']
             num_trades = len(trades)
             
             return {
@@ -482,4 +485,4 @@ class JasonBacktestAdapter:
         return self._get_fallback_results()
 
 
-__all__ = ['JasonBacktestAdapter']
+__all__ = ['KRXMAPSAdapter']
