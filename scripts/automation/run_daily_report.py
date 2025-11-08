@@ -15,18 +15,50 @@ import os
 from datetime import date
 import logging
 
-# 환경 변수 로드 (.env 파일)
+# 환경 변수 로드 (config/env.nas.sh 우선, .env 보조)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-env_file = PROJECT_ROOT / ".env"
 
-if env_file.exists():
-    # .env 파일을 직접 파싱하여 환경 변수 로드
-    with open(env_file, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#') and '=' in line:
-                key, value = line.split('=', 1)
-                os.environ[key.strip()] = value.strip()
+def load_env_vars():
+    """NAS 환경 변수 로드"""
+    # 1. config/env.nas.sh에서 로드 (우선)
+    env_sh = PROJECT_ROOT / "config" / "env.nas.sh"
+    if env_sh.exists():
+        import subprocess
+        try:
+            # bash로 env.nas.sh 실행 후 환경 변수 추출
+            result = subprocess.run(
+                f'source {env_sh} && env',
+                shell=True,
+                capture_output=True,
+                text=True,
+                executable='/bin/bash'
+            )
+            if result.returncode == 0:
+                for line in result.stdout.split('\n'):
+                    if '=' in line:
+                        key, _, value = line.partition('=')
+                        if key in ['TG_TOKEN', 'TG_CHAT_ID', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']:
+                            os.environ[key] = value
+        except Exception as e:
+            print(f"⚠️ env.nas.sh 로드 실패: {e}")
+    
+    # 2. .env 파일에서 로드 (보조)
+    env_file = PROJECT_ROOT / ".env"
+    if env_file.exists():
+        with open(env_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
+    
+    # 3. TG_TOKEN -> TELEGRAM_BOT_TOKEN 변환
+    if 'TG_TOKEN' in os.environ and 'TELEGRAM_BOT_TOKEN' not in os.environ:
+        os.environ['TELEGRAM_BOT_TOKEN'] = os.environ['TG_TOKEN']
+    if 'TG_CHAT_ID' in os.environ and 'TELEGRAM_CHAT_ID' not in os.environ:
+        os.environ['TELEGRAM_CHAT_ID'] = os.environ['TG_CHAT_ID']
+
+load_env_vars()
 
 from extensions.automation.daily_report import DailyReport
 
