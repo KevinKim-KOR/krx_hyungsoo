@@ -214,11 +214,15 @@ class DailyReport:
                     '133690': 'TIGER 미국NASDAQ100레버리지',
                     '138230': 'KOSEF 미국S&P500',
                     '388420': 'KBSTAR 미국S&P500',
-                    '379800': 'KODEX 미구S&P500TR',
-                    '360200': 'TIGER 미구S&P500선물(H)',
-                    '332620': 'KODEX 미구S&P500선물(H)',
-                    '364980': 'TIGER 미구NASDAQ100TR',
-                    '379810': 'KODEX 미구NASDAQ100TR',
+                    '379800': 'KODEX 미국S&P500TR',
+                    '360200': 'TIGER 미국S&P500선물(H)',
+                    '332620': 'KODEX 미국S&P500선물(H)',
+                    '364980': 'TIGER 미국NASDAQ100TR',
+                    '379810': 'KODEX 미국NASDAQ100TR',
+                    '462010': 'ARIRANG 미국S&P500(H)',
+                    '453810': 'TIGER 미국S&P500패시브',
+                    '448630': 'TIGER 미구S&P500선물레버리지(H)',
+                    '308620': 'KODEX 미구S&P500선물레버리지(H)',
                 }
                 
                 # 매핑 테이블에 있으면 바로 반환
@@ -290,8 +294,10 @@ class DailyReport:
                     name = get_stock_name(code)
                     maps_score = signal.get('maps_score', 0)
                     
-                    message_lines.append(f"  {i}. *{name}*")
-                    message_lines.append(f"     🏷 코드: `{code}`")
+                    # 종목명(코드: 123456) 형태
+                    display_name = f"{name}(코드: {code})"
+                    
+                    message_lines.append(f"  {i}. *{display_name}*")
                     message_lines.append(f"     📊 MAPS 점수: {maps_score:.2f}")
                     
                     # MAPS 점수에 따른 강도 표시
@@ -326,8 +332,10 @@ class DailyReport:
                     }
                     reason_kr = reason_map.get(reason, reason)
                     
-                    message_lines.append(f"  {i}. *{name}*")
-                    message_lines.append(f"     🏷 코드: `{code}`")
+                    # 종목명(코드: 123456) 형태
+                    display_name = f"{name}(코드: {code})"
+                    
+                    message_lines.append(f"  {i}. *{display_name}*")
                     message_lines.append(f"     🚨 사유: {reason_kr}")
                     message_lines.append("")
             else:

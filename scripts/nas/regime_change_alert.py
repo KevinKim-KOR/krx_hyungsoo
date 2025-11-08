@@ -63,6 +63,9 @@ def save_current_regime(regime: dict):
 
 def main():
     """레짐 변경 감지 및 알림"""
+    print("=" * 60)
+    print("시장 레짐 변경 감지")
+    print("=" * 60)
     logger.info("=" * 60)
     logger.info("시장 레짐 변경 감지")
     logger.info("=" * 60)
@@ -73,18 +76,27 @@ def main():
         target_date = date.today() - timedelta(days=1)
         current_regime = detector.detect_regime(target_date)
         
+        print(f"현재 레짐: {current_regime['state']}")
         logger.info(f"현재 레짐: {current_regime['state']}")
         
         # 이전 레짐 로드
         previous_regime = load_previous_regime()
         
+        # 환경 변수 확인
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        print(f"\nTELEGRAM_BOT_TOKEN: {'*' * 10 if bot_token else 'None'}")
+        print(f"TELEGRAM_CHAT_ID: {chat_id if chat_id else 'None'}\n")
+        
         if previous_regime:
+            print(f"이전 레짐: {previous_regime.get('state', 'unknown')}")
             logger.info(f"이전 레짐: {previous_regime.get('state', 'unknown')}")
             
             # 레짐 변경 감지
             changed, message = detector.detect_regime_change(current_regime, previous_regime)
             
             if changed:
+                print("⚠️ 레짐 변경 감지!")
                 logger.warning("⚠️ 레짐 변경 감지!")
                 
                 # 텔레그램 알림
@@ -103,12 +115,16 @@ def main():
                 success = sender.send_custom(alert_message, parse_mode='Markdown')
                 
                 if success:
+                    print("✅ 레짐 변경 알림 전송 성공")
                     logger.info("✅ 레짐 변경 알림 전송 성공")
                 else:
+                    print("⚠️ 레짐 변경 알림 전송 실패")
                     logger.warning("⚠️ 레짐 변경 알림 전송 실패")
             else:
+                print("레짐 변경 없음")
                 logger.info("레짐 변경 없음")
         else:
+            print("이전 레짐 없음 (첫 실행)")
             logger.info("이전 레짐 없음 (첫 실행)")
             
             # 첫 실행 시에도 현재 레짐 알림 전송
@@ -126,8 +142,10 @@ def main():
             success = sender.send_custom(alert_message, parse_mode='Markdown')
             
             if success:
+                print("✅ 첫 실행 알림 전송 성공")
                 logger.info("✅ 첫 실행 알림 전송 성공")
             else:
+                print("⚠️ 첫 실행 알림 전송 실패")
                 logger.warning("⚠️ 첫 실행 알림 전송 실패")
         
         # 현재 레짐 저장
@@ -136,7 +154,10 @@ def main():
         return 0
     
     except Exception as e:
+        print(f"❌ 레짐 변경 감지 실패: {e}")
         logger.error(f"❌ 레짐 변경 감지 실패: {e}", exc_info=True)
+        import traceback
+        traceback.print_exc()
         return 1
 
 
