@@ -66,15 +66,16 @@ class TelegramNotifier:
             return
         
         try:
-            # 실제 텔레그램 봇 사용 시
-            # import telegram
-            # bot = telegram.Bot(token=self.bot_token)
-            # bot.send_message(
-            #     chat_id=self.chat_id,
-            #     text=message,
-            #     parse_mode=parse_mode
-            # )
-            logger.info(f"텔레그램 메시지 전송: {len(message)}자")
+            import requests
+            url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+            data = {
+                'chat_id': self.chat_id,
+                'text': message,
+                'parse_mode': parse_mode
+            }
+            response = requests.post(url, json=data)
+            response.raise_for_status()
+            logger.info(f"텔레그램 메시지 전송 성공: {len(message)}자")
         except Exception as e:
             logger.error(f"텔레그램 전송 실패: {e}")
     
