@@ -1,0 +1,48 @@
+{
+  "no_defense": {
+    "total_return_pct": 153.81830000000002,
+    "cagr": 39.005487867239296,
+    "sharpe_ratio": 1.7142761777762139,
+    "max_drawdown": -23.505603090614425,
+    "num_trades": 1440
+  },
+  "hybrid": {
+    "total_return_pct": 96.79545,
+    "cagr": 27.045232361584624,
+    "sharpe_ratio": 1.511378160328303,
+    "max_drawdown": -19.920155506858904,
+    "num_trades": 1406,
+    "regime_stats": {
+      "bull_days": 232,
+      "bear_days": 114,
+      "neutral_days": 135,
+      "regime_changes": 5,
+      "total_days": 481,
+      "bull_pct": 48.232848232848234,
+      "bear_pct": 23.7006237006237,
+      "neutral_pct": 28.06652806652807,
+      "current_regime": "bull"
+    },
+    "crash_stats": {
+      "market_crash_count": 2,
+      "portfolio_decline_count": 0,
+      "defense_mode_days": 8,
+      "is_defense_mode": false,
+      "defense_mode_start_date": null
+    },
+    "volatility_stats": {
+      "low_volatility_days": 0,
+      "normal_volatility_days": 594,
+      "high_volatility_days": 27,
+      "total_adjustments": 621,
+      "total_days": 621,
+      "low_volatility_pct": 0.0,
+      "high_volatility_pct": 4.3478260869565215
+    }
+  },
+  "improvement": {
+    "mdd_improvement_pct": 15.253586857284922,
+    "cagr_change": -11.960255505654672,
+    "sharpe_change": -0.20289801744791092
+  }
+}

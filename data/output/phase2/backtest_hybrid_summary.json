@@ -1,0 +1,79 @@
+{
+  "config": {
+    "initial_capital": 10000000,
+    "commission_rate": 0.00015,
+    "slippage_rate": 0.001,
+    "max_positions": 10,
+    "country_code": "kor",
+    "enable_defense": true,
+    "regime_detection": {
+      "short_ma": 50,
+      "long_ma": 200,
+      "bull_threshold": 0.02,
+      "bear_threshold": -0.02,
+      "position_ratios": {
+        "bull": "100~120%",
+        "bear": "40~60%",
+        "neutral": "80%"
+      },
+      "defense_mode_threshold": 0.85
+    },
+    "crash_detection": {
+      "single_day": -5.0,
+      "short_term": -7.0,
+      "period": 3
+    },
+    "volatility_management": {
+      "atr_period": 14,
+      "low_threshold": 0.5,
+      "high_threshold": 1.5
+    }
+  },
+  "params": {
+    "ma_period": 60,
+    "rsi_period": 14,
+    "rsi_overbought": 70,
+    "maps_buy_threshold": 0.0,
+    "maps_sell_threshold": -5.0,
+    "rebalance_frequency": "monthly",
+    "max_positions": 10,
+    "min_confidence": 0.1
+  },
+  "results": {
+    "initial_capital": 10000000,
+    "final_value": 19679545.0,
+    "total_return": 9679545.0,
+    "total_return_pct": 96.79545,
+    "cagr": 27.045232361584624,
+    "sharpe_ratio": 1.511378160328303,
+    "max_drawdown": -19.920155506858904,
+    "num_trades": 1406,
+    "regime_stats": {
+      "bull_days": 232,
+      "bear_days": 114,
+      "neutral_days": 135,
+      "regime_changes": 5,
+      "total_days": 481,
+      "bull_pct": 48.232848232848234,
+      "bear_pct": 23.7006237006237,
+      "neutral_pct": 28.06652806652807,
+      "current_regime": "bull"
+    },
+    "crash_stats": {
+      "market_crash_count": 2,
+      "portfolio_decline_count": 0,
+      "defense_mode_days": 8,
+      "is_defense_mode": false,
+      "defense_mode_start_date": null
+    },
+    "volatility_stats": {
+      "low_volatility_days": 0,
+      "normal_volatility_days": 594,
+      "high_volatility_days": 27,
+      "total_adjustments": 621,
+      "total_days": 621,
+      "low_volatility_pct": 0.0,
+      "high_volatility_pct": 4.3478260869565215
+    }
+  }
+}

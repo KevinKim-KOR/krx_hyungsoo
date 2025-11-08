@@ -24,6 +24,7 @@ from core.engine.maps.rules import StrategyRules
 from core.strategy.defense_system import DefenseSystem, Position as DefensePosition
 from core.strategy.market_crash_detector import MarketCrashDetector
 from core.strategy.volatility_manager import VolatilityManager
+from core.strategy.market_regime_detector import MarketRegimeDetector
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,12 @@ class KRXMAPSAdapter:
         fixed_stop_loss_pct: float = -7.0,
         trailing_stop_pct: float = -10.0,
         portfolio_stop_loss_pct: float = -15.0,
-        cooldown_days: int = 3
+        cooldown_days: int = 3,
+        # 레짐 감지 파라미터
+        regime_short_ma: int = 50,
+        regime_long_ma: int = 200,
+        regime_bull_threshold: float = 0.02,
+        regime_bear_threshold: float = -0.02
     ):
         """
         Args:
@@ -100,14 +106,25 @@ class KRXMAPSAdapter:
                 normal_volatility_position_ratio=1.0,
                 high_volatility_position_ratio=0.6
             )
+            # 시장 레짐 감지기 초기화
+            self.regime_detector = MarketRegimeDetector(
+                short_ma_period=regime_short_ma,
+                long_ma_period=regime_long_ma,
+                bull_threshold=regime_bull_threshold,
+                bear_threshold=regime_bear_threshold,
+                trend_strength_period=20
+            )
             logger.info(f"방어 시스템 활성화: 고정손절={fixed_stop_loss_pct}%, "
                        f"트레일링={trailing_stop_pct}%, 포트폴리오={portfolio_stop_loss_pct}%")
             logger.info("시장 급락 감지기 활성화: 단일 -5%, 단기 -7%/3일, 보유종목 60%/-5%")
             logger.info("변동성 관리자 활성화: ATR 14일, 고변동성 60% 포지션")
+            logger.info(f"시장 레짐 감지기 활성화: MA {regime_short_ma}/{regime_long_ma}일, "
+                       f"임계값 {regime_bull_threshold*100:+.0f}%/{regime_bear_threshold*100:+.0f}%")
         else:
             self.defense_system = None
             self.crash_detector = None
             self.volatility_manager = None
+            self.regime_detector = None
             logger.info("방어 시스템 비활성화")
         
         logger.info(f"KRXMAPSAdapter 초기화: capital={initial_capital:,}, positions={max_positions}")
@@ -300,7 +317,7 @@ class KRXMAPSAdapter:
         
         # KOSPI 데이터 로드 (KODEX 200 사용, High/Low 포함)
         market_data = None
-        if self.enable_defense and (self.crash_detector or self.volatility_manager):
+        if self.enable_defense and (self.crash_detector or self.volatility_manager or self.regime_detector):
             kospi_ticker = '069500'  # KODEX 200
             if kospi_ticker in price_data:
                 # Close, High, Low 모두 로드
@@ -542,16 +559,32 @@ class KRXMAPSAdapter:
                 # 기본 포지션 크기
                 base_position_size = total_value / len(top_tickers)
                 
-                # 변동성 기반 포지션 조정
+                # 시장 레짐 기반 포지션 조정 (최우선)
+                regime_ratio = 1.0
+                if self.enable_defense and self.regime_detector and market_data is not None:
+                    regime, confidence = self.regime_detector.detect_regime(
+                        market_data,
+                        current_date.date()
+                    )
+                    regime_ratio = self.regime_detector.get_position_ratio(regime, confidence)
+                    
+                    # 하락장이고 신뢰도가 높으면 매수 스킵
+                    if self.regime_detector.should_enter_defense_mode(regime, confidence):
+                        logger.info(f"{current_date.date()}: 하락장 방어 모드 - 매수 스킵")
+                        portfolio_stop_triggered = True
+                
+                # 변동성 기반 포지션 조정 (부가적)
+                volatility_ratio = 1.0
                 if self.enable_defense and self.volatility_manager and market_data is not None:
                     adjusted_position_size, volatility_level = self.volatility_manager.calculate_position_size(
                         base_position_size,
                         market_data,
                         current_date.date()
                     )
-                    target_value_per_position = adjusted_position_size
-                else:
-                    target_value_per_position = base_position_size
+                    volatility_ratio = adjusted_position_size / base_position_size if base_position_size > 0 else 1.0
+                
+                # 최종 포지션 크기 = 기본 * 레짐 비율 * 변동성 비율
+                target_value_per_position = base_position_size * regime_ratio * volatility_ratio
                 
                 for ticker in top_tickers:
                     if ticker not in positions:
@@ -613,10 +646,17 @@ class KRXMAPSAdapter:
         }
         
         # 방어 시스템 통계 추가
-        if self.enable_defense and self.defense_system:
-            defense_stats = self.defense_system.get_stats()
-            result['defense_stats'] = defense_stats
-            logger.info(f"방어 시스템 통계: {defense_stats}")
+        if self.enable_defense:
+            logger.info(f"통계 수집 시작: enable_defense={self.enable_defense}")
+            logger.info(f"  defense_system={self.defense_system is not None}")
+            logger.info(f"  crash_detector={self.crash_detector is not None}")
+            logger.info(f"  volatility_manager={self.volatility_manager is not None}")
+            logger.info(f"  regime_detector={self.regime_detector is not None}")
+            
+            if self.defense_system:
+                defense_stats = self.defense_system.get_stats()
+                result['defense_stats'] = defense_stats
+                logger.info(f"방어 시스템 통계: {defense_stats}")
             
             # 시장 급락 감지 통계 추가
             if self.crash_detector:
@@ -629,6 +669,14 @@ class KRXMAPSAdapter:
                 volatility_stats = self.volatility_manager.get_stats()
                 result['volatility_stats'] = volatility_stats
                 logger.info(f"변동성 관리 통계: {volatility_stats}")
+            
+            # 시장 레짐 통계 추가
+            if self.regime_detector:
+                logger.info("레짐 감지기 통계 수집 시작...")
+                regime_stats = self.regime_detector.get_stats()
+                logger.info(f"레짐 통계 원본: {regime_stats}")
+                result['regime_stats'] = regime_stats
+                logger.info(f"시장 레짐 통계: {regime_stats}")
         
         return result
     
@@ -685,7 +733,7 @@ class KRXMAPSAdapter:
             trades = maps_results['trades']
             num_trades = len(trades)
             
-            return {
+            result = {
                 'final_value': final_value,
                 'total_return': total_return,
                 'total_return_pct': total_return_pct,
@@ -696,6 +744,18 @@ class KRXMAPSAdapter:
                 'trades': trades,
                 'daily_values': daily_values
             }
+            
+            # 방어 시스템 통계 추가 (있으면)
+            if 'defense_stats' in maps_results:
+                result['defense_stats'] = maps_results['defense_stats']
+            if 'crash_stats' in maps_results:
+                result['crash_stats'] = maps_results['crash_stats']
+            if 'volatility_stats' in maps_results:
+                result['volatility_stats'] = maps_results['volatility_stats']
+            if 'regime_stats' in maps_results:
+                result['regime_stats'] = maps_results['regime_stats']
+            
+            return result
             
         except Exception as e:
             logger.error(f"결과 변환 실패: {e}")
