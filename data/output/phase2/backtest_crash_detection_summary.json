@@ -1,0 +1,37 @@
+{
+  "config": {
+    "initial_capital": 10000000,
+    "commission_rate": 0.00015,
+    "slippage_rate": 0.001,
+    "max_positions": 10,
+    "country_code": "kor",
+    "enable_defense": true,
+    "single_day_crash_threshold": -5.0,
+    "short_term_crash_threshold": -7.0,
+    "short_term_crash_period": 3,
+    "portfolio_decline_threshold": 0.6,
+    "portfolio_decline_pct": -5.0,
+    "defense_mode_duration": 5
+  },
+  "params": {
+    "ma_period": 60,
+    "rsi_period": 14,
+    "rsi_overbought": 70,
+    "maps_buy_threshold": 0.0,
+    "maps_sell_threshold": -5.0,
+    "rebalance_frequency": "monthly",
+    "max_positions": 10,
+    "min_confidence": 0.1
+  },
+  "results": {
+    "initial_capital": 10000000,
+    "final_value": 23232085.0,
+    "total_return": 13232085.0,
+    "total_return_pct": 132.32084999999998,
+    "cagr": 34.72311651109044,
+    "sharpe_ratio": 1.5723313326837305,
+    "max_drawdown": -23.505603090614425,
+    "num_trades": 1464,
+    "crash_stats": {}
+  }
+}

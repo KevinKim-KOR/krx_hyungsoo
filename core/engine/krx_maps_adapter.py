@@ -22,6 +22,7 @@ if str(MAPS_PATH) not in sys.path:
 
 from core.engine.maps.rules import StrategyRules
 from core.strategy.defense_system import DefenseSystem, Position as DefensePosition
+from core.strategy.market_crash_detector import MarketCrashDetector
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +81,21 @@ class KRXMAPSAdapter:
                 portfolio_stop_loss_pct=portfolio_stop_loss_pct,
                 cooldown_days=cooldown_days
             )
+            # 시장 급락 감지기 초기화 (개선)
+            self.crash_detector = MarketCrashDetector(
+                single_day_crash_threshold=-5.0,
+                short_term_crash_threshold=-7.0,
+                short_term_crash_period=3,
+                portfolio_decline_threshold=0.6,
+                portfolio_decline_pct=-5.0,
+                defense_mode_duration=5
+            )
             logger.info(f"방어 시스템 활성화: 고정손절={fixed_stop_loss_pct}%, "
                        f"트레일링={trailing_stop_pct}%, 포트폴리오={portfolio_stop_loss_pct}%")
+            logger.info("시장 급락 감지기 활성화: 단일 -5%, 단기 -7%/3일, 보유종목 60%/-5%")
         else:
             self.defense_system = None
+            self.crash_detector = None
             logger.info("방어 시스템 비활성화")
         
         logger.info(f"KRXMAPSAdapter 초기화: capital={initial_capital:,}, positions={max_positions}")
@@ -274,6 +286,24 @@ class KRXMAPSAdapter:
         daily_values = []
         peak_portfolio_value = self.initial_capital  # 포트폴리오 최고 가치
         
+        # KOSPI 데이터 로드 (KODEX 200 사용, Low 포함)
+        market_data = None
+        if self.enable_defense and self.crash_detector:
+            kospi_ticker = '069500'  # KODEX 200
+            if kospi_ticker in price_data:
+                # Close와 Low 모두 로드
+                if 'Low' in price_data[kospi_ticker].columns:
+                    market_data = price_data[kospi_ticker][['Close', 'Low']].copy()
+                else:
+                    market_data = price_data[kospi_ticker][['Close']].copy()
+                    market_data['Low'] = market_data['Close']  # Low 없으면 Close 사용
+                logger.info(f"KOSPI 데이터 로드 완료: {len(market_data)}일 (Low 포함)")
+            else:
+                logger.warning("KOSPI 데이터 없음 - 시장 급락 감지 비활성화")
+        
+        # 이전 가격 저장 (보유 종목 하락 감지용)
+        previous_prices = {}
+        
         # 모든 날짜 추출
         all_dates = set()
         for ticker_df in price_data.values():
@@ -327,8 +357,53 @@ class KRXMAPSAdapter:
             
             # 3. 방어 시스템 체크 (활성화된 경우)
             portfolio_stop_triggered = False
+            market_crash_triggered = False
             
             if self.enable_defense and self.defense_system:
+                # 3-0. 시장 급락 감지 및 방어 모드 업데이트
+                if self.crash_detector and market_data is not None:
+                    # 방어 모드 상태 업데이트
+                    self.crash_detector.update_defense_mode(current_date.date())
+                    
+                    # 방어 모드가 아닐 때만 급락 감지
+                    if not self.crash_detector.is_in_defense_mode():
+                        crash_detected, crash_reason = self.crash_detector.check_crash(
+                            market_data,
+                            current_date.date(),
+                            positions,
+                            current_prices,
+                            previous_prices
+                        )
+                        
+                        if crash_detected:
+                            # 방어 모드 진입 및 전체 청산
+                            self.crash_detector.enter_defense_mode(current_date.date(), crash_reason)
+                            market_crash_triggered = True
+                            
+                            logger.warning(f"시장 급락 감지! {current_date.date()}: {crash_reason}")
+                            for ticker in list(positions.keys()):
+                                position = positions[ticker]
+                                price = current_prices.get(ticker, 0)
+                                if price > 0:
+                                    sell_amount = position.quantity * price
+                                    cash += sell_amount
+                                    trades.append({
+                                        'date': current_date.date(),
+                                        'ticker': ticker,
+                                        'action': 'SELL',
+                                        'shares': position.quantity,
+                                        'price': price,
+                                        'reason': crash_reason
+                                    })
+                                    del positions[ticker]
+                            
+                            # Peak 값 리셋
+                            peak_portfolio_value = cash
+                    
+                    # 방어 모드 중이면 매수 스킵
+                    if self.crash_detector.is_in_defense_mode():
+                        portfolio_stop_triggered = True
+                
                 # 3-1. 트레일링 스톱 업데이트
                 for ticker, position in positions.items():
                     if ticker in current_prices:
@@ -464,6 +539,9 @@ class KRXMAPSAdapter:
             )
             total_value = cash + holdings_value
             daily_values.append((current_date.date(), total_value))
+            
+            # 6. 이전 가격 업데이트 (다음 날 보유 종목 하락 감지용)
+            previous_prices = current_prices.copy()
         
         # 결과 반환
         final_value = daily_values[-1][1] if daily_values else self.initial_capital
@@ -483,6 +561,12 @@ class KRXMAPSAdapter:
             defense_stats = self.defense_system.get_stats()
             result['defense_stats'] = defense_stats
             logger.info(f"방어 시스템 통계: {defense_stats}")
+            
+            # 시장 급락 감지 통계 추가
+            if self.crash_detector:
+                crash_stats = self.crash_detector.get_stats()
+                result['crash_stats'] = crash_stats
+                logger.info(f"시장 급락 감지 통계: {crash_stats}")
         
         return result
     

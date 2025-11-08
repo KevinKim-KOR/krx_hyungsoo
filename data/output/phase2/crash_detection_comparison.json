@@ -1,0 +1,21 @@
+{
+  "no_defense": {
+    "total_return_pct": 153.81830000000002,
+    "cagr": 39.005487867239296,
+    "sharpe_ratio": 1.7142761777762139,
+    "max_drawdown": -23.505603090614425,
+    "num_trades": 1440
+  },
+  "with_crash_detection": {
+    "total_return_pct": 132.32084999999998,
+    "cagr": 34.72311651109044,
+    "sharpe_ratio": 1.5723313326837305,
+    "max_drawdown": -23.505603090614425,
+    "num_trades": 1464,
+    "crash_stats": {}
+  },
+  "improvement": {
+    "mdd_improvement_pct": 0.0,
+    "cagr_change": -4.2823713561488574
+  }
+}
