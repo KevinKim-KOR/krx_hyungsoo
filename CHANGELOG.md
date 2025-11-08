@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Week 4] - 2025-11-08
+
+### Added - 자동화 시스템 구현
+- **Day 1: 실시간 모니터링 시스템**
+  - `DataUpdater`: 데이터 수집 자동화
+  - `RegimeMonitor`: 레짐 감지 자동화
+  - `AutoSignalGenerator`: 매매 신호 생성
+  
+- **Day 2: 알림 시스템**
+  - `TelegramNotifier`: 텔레그램 알림
+  - `DailyReport`: 일일 리포트
+  - `WeeklyReport`: 주간 리포트
+
+- **Day 3: 파라미터 조정 UI**
+  - `BacktestDatabase`: SQLite 기반 히스토리 DB
+  - `Dashboard`: Streamlit 대시보드
+  - 파라미터 조정 패널
+  - 백테스트 히스토리 뷰어
+  - 성과 비교 차트
+  - 레짐 타임라인
+
+- **NAS 배포**
+  - `run_daily_report.py`: 일일 리포트 실행 스크립트
+  - `run_weekly_report.py`: 주간 리포트 실행 스크립트
+  - `daily_alert.sh`: NAS Cron 스크립트 (일일)
+  - `weekly_alert.sh`: NAS Cron 스크립트 (주간)
+  - `.env.template`: 환경 변수 템플릿
+
+### Documentation
+- `docs/WEEK4_AUTOMATION_COMPLETE.md`: Week 4 완료 보고서
+- `docs/NAS_DEPLOYMENT_GUIDE.md`: NAS 배포 가이드
+- `docs/PHASE2_COMPLETE_SUMMARY.md`: Phase 2 최종 요약
+
+### Performance - 자동화
+- ✅ 평일 5분, 주말 30분 투자로 운영 가능
+- ✅ 텔레그램 자동 알림
+- ✅ 파라미터 실시간 조정
+- ✅ 백테스트 히스토리 관리
+
+---
+
 ## [Week 3] - 2025-11-08
 
 ### Added - 하이브리드 전략 구현
