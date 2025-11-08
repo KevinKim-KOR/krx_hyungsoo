@@ -21,6 +21,7 @@ if str(MAPS_PATH) not in sys.path:
     sys.path.insert(0, str(MAPS_PATH))
 
 from core.engine.maps.rules import StrategyRules
+from core.strategy.defense_system import DefenseSystem, Position as DefensePosition
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,13 @@ class KRXMAPSAdapter:
         commission_rate: float = 0.00015,
         slippage_rate: float = 0.001,
         max_positions: int = 10,
-        country_code: str = "kor"
+        country_code: str = "kor",
+        # 방어 시스템 파라미터
+        enable_defense: bool = True,
+        fixed_stop_loss_pct: float = -7.0,
+        trailing_stop_pct: float = -10.0,
+        portfolio_stop_loss_pct: float = -15.0,
+        cooldown_days: int = 3
     ):
         """
         Args:
@@ -52,12 +59,32 @@ class KRXMAPSAdapter:
             slippage_rate: 슬리피지율 (0.1%)
             max_positions: 최대 보유 종목 수
             country_code: 국가 코드
+            enable_defense: 방어 시스템 활성화
+            fixed_stop_loss_pct: 고정 손절 비율 (%)
+            trailing_stop_pct: 트레일링 스톱 비율 (%)
+            portfolio_stop_loss_pct: 포트폴리오 손절 비율 (%)
+            cooldown_days: 쿨다운 기간 (일)
         """
         self.initial_capital = initial_capital
         self.commission_rate = commission_rate
         self.slippage_rate = slippage_rate
         self.max_positions = max_positions
         self.country_code = country_code
+        self.enable_defense = enable_defense
+        
+        # 방어 시스템 초기화
+        if enable_defense:
+            self.defense_system = DefenseSystem(
+                fixed_stop_loss_pct=fixed_stop_loss_pct,
+                trailing_stop_pct=trailing_stop_pct,
+                portfolio_stop_loss_pct=portfolio_stop_loss_pct,
+                cooldown_days=cooldown_days
+            )
+            logger.info(f"방어 시스템 활성화: 고정손절={fixed_stop_loss_pct}%, "
+                       f"트레일링={trailing_stop_pct}%, 포트폴리오={portfolio_stop_loss_pct}%")
+        else:
+            self.defense_system = None
+            logger.info("방어 시스템 비활성화")
         
         logger.info(f"KRXMAPSAdapter 초기화: capital={initial_capital:,}, positions={max_positions}")
     
@@ -85,19 +112,19 @@ class KRXMAPSAdapter:
             
             # 1. 데이터 변환
             logger.info("1. 데이터 변환 중...")
-            jason_data = self._convert_data(price_data)
-            logger.info(f"   변환 완료: {len(jason_data)}개 종목")
+            maps_data = self._convert_data(price_data)
+            logger.info(f"   변환 완료: {len(maps_data)}개 종목")
             
             # 2. 전략 변환
             logger.info("2. 전략 변환 중...")
-            jason_strategy = self._convert_strategy(strategy, self.max_positions)
-            logger.info(f"   변환 완료: MA={jason_strategy.ma_period}, TopN={jason_strategy.portfolio_topn}")
+            maps_strategy = self._convert_strategy(strategy, self.max_positions)
+            logger.info(f"   변환 완료: MA={maps_strategy.ma_period}, TopN={maps_strategy.portfolio_topn}")
             
             # 3. MAPS 백테스트 실행
             logger.info("3. MAPS 백테스트 실행 중...")
             maps_results = self._run_maps_backtest(
-                jason_data,
-                jason_strategy,
+                maps_data,
+                maps_strategy,
                 start_date,
                 end_date
             )
@@ -126,7 +153,7 @@ class KRXMAPSAdapter:
         입력: MultiIndex DataFrame (code, date)
         출력: Dict[ticker, DataFrame(Date, Open, Close, ...)]
         """
-        jason_data = {}
+        maps_data = {}
         
         try:
             # 종목 코드 추출
@@ -154,16 +181,16 @@ class KRXMAPSAdapter:
                         logger.warning(f"종목 {ticker}: 데이터 부족 ({len(ticker_df)}일)")
                         continue
                     
-                    jason_data[ticker] = ticker_df
+                    maps_data[ticker] = ticker_df
                     
                 except Exception as e:
                     logger.warning(f"종목 {ticker} 변환 실패: {e}")
                     continue
             
-            if not jason_data:
+            if not maps_data:
                 raise ValueError("변환된 데이터가 없습니다")
             
-            return jason_data
+            return maps_data
             
         except Exception as e:
             logger.error(f"데이터 변환 실패: {e}")
@@ -214,8 +241,8 @@ class KRXMAPSAdapter:
         try:
             # 간단한 MAPS 백테스트 구현
             return self._simple_maps_backtest(
-                jason_data,
-                jason_strategy,
+                maps_data,
+                maps_strategy,
                 start_date,
                 end_date
             )
@@ -242,9 +269,10 @@ class KRXMAPSAdapter:
         """
         # 초기화
         cash = self.initial_capital
-        positions = {}  # {ticker: shares}
+        positions = {}  # {ticker: DefensePosition}
         trades = []
         daily_values = []
+        peak_portfolio_value = self.initial_capital  # 포트폴리오 최고 가치
         
         # 모든 날짜 추출
         all_dates = set()
@@ -297,30 +325,97 @@ class KRXMAPSAdapter:
             top_n = sorted(candidates.items(), key=lambda x: x[1], reverse=True)[:strategy.portfolio_topn]
             top_tickers = [ticker for ticker, _ in top_n]
             
-            # 3. 리밸런싱
+            # 3. 방어 시스템 체크 (활성화된 경우)
+            portfolio_stop_triggered = False
+            
+            if self.enable_defense and self.defense_system:
+                # 3-1. 트레일링 스톱 업데이트
+                for ticker, position in positions.items():
+                    if ticker in current_prices:
+                        self.defense_system.update_trailing_stop(position, current_prices[ticker])
+                
+                # 3-2. 포트폴리오 손절 체크
+                holdings_value = sum(
+                    position.quantity * current_prices.get(position.ticker, 0)
+                    for position in positions.values()
+                )
+                current_portfolio_value = cash + holdings_value
+                
+                # 최고 가치 업데이트 (포지션이 있을 때만)
+                if len(positions) > 0 and current_portfolio_value > peak_portfolio_value:
+                    peak_portfolio_value = current_portfolio_value
+                
+                # 포트폴리오 손절 발동 시 전체 청산
+                if len(positions) > 0 and self.defense_system.check_portfolio_stop_loss(current_portfolio_value, peak_portfolio_value):
+                    logger.warning(f"포트폴리오 손절 발동! {current_date.date()}")
+                    for ticker in list(positions.keys()):
+                        position = positions[ticker]
+                        price = current_prices.get(ticker, 0)
+                        if price > 0:
+                            sell_amount = position.quantity * price
+                            cash += sell_amount
+                            trades.append({
+                                'date': current_date.date(),
+                                'ticker': ticker,
+                                'action': 'SELL',
+                                'shares': position.quantity,
+                                'price': price,
+                                'reason': 'portfolio_stop_loss'
+                            })
+                            self.defense_system.record_stop_loss(ticker, current_date.date())
+                            del positions[ticker]
+                    
+                    # 포트폴리오 손절 후 처리
+                    portfolio_stop_triggered = True
+                    # Peak 값을 현재 현금으로 리셋 (재시작)
+                    peak_portfolio_value = cash
+                    # 이번 날짜는 매수 스킵 (다음 날부터 재진입 가능)
+                
+                # 3-3. 개별 손절 체크
+                for ticker in list(positions.keys()):
+                    position = positions[ticker]
+                    price = current_prices.get(ticker, 0)
+                    if price > 0:
+                        should_stop, stop_type = self.defense_system.check_individual_stop_loss(position, price)
+                        if should_stop:
+                            sell_amount = position.quantity * price
+                            cash += sell_amount
+                            trades.append({
+                                'date': current_date.date(),
+                                'ticker': ticker,
+                                'action': 'SELL',
+                                'shares': position.quantity,
+                                'price': price,
+                                'reason': stop_type
+                            })
+                            self.defense_system.record_stop_loss(ticker, current_date.date())
+                            del positions[ticker]
+            
+            # 4. 리밸런싱
             # 매도: Top N에 없는 종목
             for ticker in list(positions.keys()):
                 if ticker not in top_tickers:
-                    shares = positions[ticker]
+                    position = positions[ticker]
                     price = current_prices.get(ticker, 0)
                     if price > 0:
-                        sell_amount = shares * price
+                        sell_amount = position.quantity * price
                         cash += sell_amount
                         trades.append({
                             'date': current_date.date(),
                             'ticker': ticker,
                             'action': 'SELL',
-                            'shares': shares,
-                            'price': price
+                            'shares': position.quantity,
+                            'price': price,
+                            'reason': 'rebalance'
                         })
                         del positions[ticker]
             
-            # 매수: Top N 중 미보유 종목
-            if top_tickers:
+            # 매수: Top N 중 미보유 종목 (포트폴리오 손절 발동 시 스킵)
+            if top_tickers and not portfolio_stop_triggered:
                 # 현재 포트폴리오 가치
                 holdings_value = sum(
-                    positions.get(ticker, 0) * current_prices.get(ticker, 0)
-                    for ticker in positions
+                    position.quantity * current_prices.get(position.ticker, 0)
+                    for position in positions.values()
                 )
                 total_value = cash + holdings_value
                 
@@ -329,6 +424,11 @@ class KRXMAPSAdapter:
                 
                 for ticker in top_tickers:
                     if ticker not in positions:
+                        # 쿨다운 체크 (방어 시스템 활성화 시)
+                        if self.enable_defense and self.defense_system:
+                            if not self.defense_system.can_reenter(ticker, current_date.date()):
+                                continue  # 쿨다운 중이면 매수 스킵
+                        
                         price = current_prices.get(ticker, 0)
                         if price > 0 and cash > target_value_per_position * 0.5:
                             # 매수 가능 금액
@@ -338,7 +438,17 @@ class KRXMAPSAdapter:
                             if shares > 0:
                                 actual_amount = shares * price
                                 cash -= actual_amount
-                                positions[ticker] = shares
+                                
+                                # DefensePosition 생성
+                                positions[ticker] = DefensePosition(
+                                    ticker=ticker,
+                                    entry_price=price,
+                                    entry_date=current_date.date(),
+                                    quantity=shares,
+                                    peak_price=price,
+                                    trailing_stop_price=price * 0.90
+                                )
+                                
                                 trades.append({
                                     'date': current_date.date(),
                                     'ticker': ticker,
@@ -347,10 +457,10 @@ class KRXMAPSAdapter:
                                     'price': price
                                 })
             
-            # 4. 일별 평가액 기록
+            # 5. 일별 평가액 기록
             holdings_value = sum(
-                positions.get(ticker, 0) * current_prices.get(ticker, 0)
-                for ticker in positions
+                position.quantity * current_prices.get(position.ticker, 0)
+                for position in positions.values()
             )
             total_value = cash + holdings_value
             daily_values.append((current_date.date(), total_value))
@@ -358,7 +468,7 @@ class KRXMAPSAdapter:
         # 결과 반환
         final_value = daily_values[-1][1] if daily_values else self.initial_capital
         
-        return {
+        result = {
             'initial_capital': self.initial_capital,
             'final_value': final_value,
             'total_return_pct': ((final_value / self.initial_capital) - 1) * 100,
@@ -367,6 +477,14 @@ class KRXMAPSAdapter:
             'start_date': all_dates[0].date() if all_dates else None,
             'end_date': all_dates[-1].date() if all_dates else None
         }
+        
+        # 방어 시스템 통계 추가
+        if self.enable_defense and self.defense_system:
+            defense_stats = self.defense_system.get_stats()
+            result['defense_stats'] = defense_stats
+            logger.info(f"방어 시스템 통계: {defense_stats}")
+        
+        return result
     
     def _convert_results(
         self,
