@@ -121,65 +121,58 @@ def main():
         print(f"\nTELEGRAM_BOT_TOKEN: {'*' * 10 if bot_token else 'None'}")
         print(f"TELEGRAM_CHAT_ID: {chat_id if chat_id else 'None'}\n")
         
+        # 현재 레짐 설명 생성
+        description = detector.get_regime_description(current_regime)
+        
+        # 레짐 변경 여부 확인
         if previous_regime:
             print(f"이전 레짐: {previous_regime.get('state', 'unknown')}")
             logger.info(f"이전 레짐: {previous_regime.get('state', 'unknown')}")
             
-            # 레짐 변경 감지
-            changed, message = detector.detect_regime_change(current_regime, previous_regime)
+            changed, change_message = detector.detect_regime_change(current_regime, previous_regime)
             
             if changed:
                 print("⚠️ 레짐 변경 감지!")
                 logger.warning("⚠️ 레짐 변경 감지!")
                 
-                # 텔레그램 알림
-                description = detector.get_regime_description(current_regime)
-                
+                # 레짐 변경 알림
                 alert_message = f"*[시장 레짐 변경]*\n\n"
                 alert_message += f"📅 {target_date}\n\n"
-                alert_message += f"{message}\n\n"
+                alert_message += f"{change_message}\n\n"
                 alert_message += f"*현재 상태*\n{description}\n\n"
                 alert_message += "_포트폴리오 리스크 관리에 유의하세요._"
-                
-                sender = TelegramSender(
-                    bot_token=os.getenv('TELEGRAM_BOT_TOKEN'),
-                    chat_id=int(os.getenv('TELEGRAM_CHAT_ID', 0))
-                )
-                success = sender.send_custom(alert_message, parse_mode='Markdown')
-                
-                if success:
-                    print("✅ 레짐 변경 알림 전송 성공")
-                    logger.info("✅ 레짐 변경 알림 전송 성공")
-                else:
-                    print("⚠️ 레짐 변경 알림 전송 실패")
-                    logger.warning("⚠️ 레짐 변경 알림 전송 실패")
             else:
                 print("레짐 변경 없음")
                 logger.info("레짐 변경 없음")
+                
+                # 레짐 변경 없어도 현재 상태 알림
+                alert_message = f"*[시장 레짐 현황]*\n\n"
+                alert_message += f"📅 {target_date}\n\n"
+                alert_message += f"*현재 상태*\n{description}\n\n"
+                alert_message += "_레짐 변경 없이 유지 중입니다._"
         else:
             print("이전 레짐 없음 (첫 실행)")
             logger.info("이전 레짐 없음 (첫 실행)")
             
-            # 첫 실행 시에도 현재 레짐 알림 전송
-            description = detector.get_regime_description(current_regime)
-            
+            # 첫 실행 알림
             alert_message = f"*[시장 레짐 모니터링 시작]*\n\n"
             alert_message += f"📅 {target_date}\n\n"
             alert_message += f"*현재 상태*\n{description}\n\n"
             alert_message += "_레짐 모니터링을 시작합니다._"
-            
-            sender = TelegramSender(
-                bot_token=os.getenv('TELEGRAM_BOT_TOKEN'),
-                chat_id=int(os.getenv('TELEGRAM_CHAT_ID', 0))
-            )
-            success = sender.send_custom(alert_message, parse_mode='Markdown')
-            
-            if success:
-                print("✅ 첫 실행 알림 전송 성공")
-                logger.info("✅ 첫 실행 알림 전송 성공")
-            else:
-                print("⚠️ 첫 실행 알림 전송 실패")
-                logger.warning("⚠️ 첫 실행 알림 전송 실패")
+        
+        # 텔레그램 전송 (무조건)
+        sender = TelegramSender(
+            bot_token=os.getenv('TELEGRAM_BOT_TOKEN'),
+            chat_id=int(os.getenv('TELEGRAM_CHAT_ID', 0))
+        )
+        success = sender.send_custom(alert_message, parse_mode='Markdown')
+        
+        if success:
+            print("✅ 레짐 알림 전송 성공")
+            logger.info("✅ 레짐 알림 전송 성공")
+        else:
+            print("⚠️ 레짐 알림 전송 실패")
+            logger.warning("⚠️ 레짐 알림 전송 실패")
         
         # 현재 레짐 저장
         save_current_regime(current_regime)
