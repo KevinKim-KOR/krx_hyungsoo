@@ -1,0 +1,21 @@
+{
+  "no_defense": {
+    "total_return_pct": 153.81830000000002,
+    "cagr": 39.005487867239296,
+    "sharpe_ratio": 1.7142761777762139,
+    "max_drawdown": -23.505603090614425,
+    "num_trades": 1440
+  },
+  "with_volatility": {
+    "total_return_pct": 120.10515000000001,
+    "cagr": 32.17453906439083,
+    "sharpe_ratio": 1.5086538194340713,
+    "max_drawdown": -23.505603090614425,
+    "num_trades": 1486,
+    "volatility_stats": {}
+  },
+  "improvement": {
+    "mdd_improvement_pct": 0.0,
+    "cagr_change": -6.830948802848468
+  }
+}

@@ -23,6 +23,7 @@ if str(MAPS_PATH) not in sys.path:
 from core.engine.maps.rules import StrategyRules
 from core.strategy.defense_system import DefenseSystem, Position as DefensePosition
 from core.strategy.market_crash_detector import MarketCrashDetector
+from core.strategy.volatility_manager import VolatilityManager
 
 logger = logging.getLogger(__name__)
 
@@ -90,12 +91,23 @@ class KRXMAPSAdapter:
                 portfolio_decline_pct=-5.0,
                 defense_mode_duration=5
             )
+            # 변동성 관리자 초기화
+            self.volatility_manager = VolatilityManager(
+                atr_period=14,
+                low_volatility_threshold=0.5,
+                high_volatility_threshold=1.5,
+                low_volatility_position_ratio=1.2,
+                normal_volatility_position_ratio=1.0,
+                high_volatility_position_ratio=0.6
+            )
             logger.info(f"방어 시스템 활성화: 고정손절={fixed_stop_loss_pct}%, "
                        f"트레일링={trailing_stop_pct}%, 포트폴리오={portfolio_stop_loss_pct}%")
             logger.info("시장 급락 감지기 활성화: 단일 -5%, 단기 -7%/3일, 보유종목 60%/-5%")
+            logger.info("변동성 관리자 활성화: ATR 14일, 고변동성 60% 포지션")
         else:
             self.defense_system = None
             self.crash_detector = None
+            self.volatility_manager = None
             logger.info("방어 시스템 비활성화")
         
         logger.info(f"KRXMAPSAdapter 초기화: capital={initial_capital:,}, positions={max_positions}")
@@ -286,20 +298,53 @@ class KRXMAPSAdapter:
         daily_values = []
         peak_portfolio_value = self.initial_capital  # 포트폴리오 최고 가치
         
-        # KOSPI 데이터 로드 (KODEX 200 사용, Low 포함)
+        # KOSPI 데이터 로드 (KODEX 200 사용, High/Low 포함)
         market_data = None
-        if self.enable_defense and self.crash_detector:
+        if self.enable_defense and (self.crash_detector or self.volatility_manager):
             kospi_ticker = '069500'  # KODEX 200
             if kospi_ticker in price_data:
-                # Close와 Low 모두 로드
-                if 'Low' in price_data[kospi_ticker].columns:
-                    market_data = price_data[kospi_ticker][['Close', 'Low']].copy()
+                # Close, High, Low 모두 로드
+                cols_to_load = []
+                kospi_df = price_data[kospi_ticker]
+                
+                for col in ['Close', 'High', 'Low']:
+                    # 대소문자 구분 없이 찾기
+                    found_col = None
+                    for df_col in kospi_df.columns:
+                        if df_col.lower() == col.lower():
+                            found_col = df_col
+                            break
+                    
+                    if found_col:
+                        cols_to_load.append(found_col)
+                
+                if cols_to_load:
+                    market_data = kospi_df[cols_to_load].copy()
+                    
+                    # 컬럼명 정규화
+                    col_mapping = {}
+                    for col in market_data.columns:
+                        if col.lower() == 'close':
+                            col_mapping[col] = 'Close'
+                        elif col.lower() == 'high':
+                            col_mapping[col] = 'High'
+                        elif col.lower() == 'low':
+                            col_mapping[col] = 'Low'
+                    
+                    if col_mapping:
+                        market_data = market_data.rename(columns=col_mapping)
+                    
+                    # 없는 컬럼은 Close로 대체
+                    if 'High' not in market_data.columns:
+                        market_data['High'] = market_data['Close']
+                    if 'Low' not in market_data.columns:
+                        market_data['Low'] = market_data['Close']
+                    
+                    logger.info(f"KOSPI 데이터 로드 완료: {len(market_data)}일 (High/Low 포함)")
                 else:
-                    market_data = price_data[kospi_ticker][['Close']].copy()
-                    market_data['Low'] = market_data['Close']  # Low 없으면 Close 사용
-                logger.info(f"KOSPI 데이터 로드 완료: {len(market_data)}일 (Low 포함)")
+                    logger.warning("KOSPI 데이터 컬럼 없음")
             else:
-                logger.warning("KOSPI 데이터 없음 - 시장 급락 감지 비활성화")
+                logger.warning("KOSPI 데이터 없음 - 시장 급락/변동성 감지 비활성화")
         
         # 이전 가격 저장 (보유 종목 하락 감지용)
         previous_prices = {}
@@ -494,8 +539,19 @@ class KRXMAPSAdapter:
                 )
                 total_value = cash + holdings_value
                 
-                # 목표 포지션 크기
-                target_value_per_position = total_value / len(top_tickers)
+                # 기본 포지션 크기
+                base_position_size = total_value / len(top_tickers)
+                
+                # 변동성 기반 포지션 조정
+                if self.enable_defense and self.volatility_manager and market_data is not None:
+                    adjusted_position_size, volatility_level = self.volatility_manager.calculate_position_size(
+                        base_position_size,
+                        market_data,
+                        current_date.date()
+                    )
+                    target_value_per_position = adjusted_position_size
+                else:
+                    target_value_per_position = base_position_size
                 
                 for ticker in top_tickers:
                     if ticker not in positions:
@@ -567,6 +623,12 @@ class KRXMAPSAdapter:
                 crash_stats = self.crash_detector.get_stats()
                 result['crash_stats'] = crash_stats
                 logger.info(f"시장 급락 감지 통계: {crash_stats}")
+            
+            # 변동성 관리 통계 추가
+            if self.volatility_manager:
+                volatility_stats = self.volatility_manager.get_stats()
+                result['volatility_stats'] = volatility_stats
+                logger.info(f"변동성 관리 통계: {volatility_stats}")
         
         return result
     

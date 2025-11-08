@@ -1,0 +1,36 @@
+{
+  "config": {
+    "initial_capital": 10000000,
+    "commission_rate": 0.00015,
+    "slippage_rate": 0.001,
+    "max_positions": 10,
+    "country_code": "kor",
+    "enable_defense": true,
+    "atr_period": 14,
+    "low_volatility_threshold": 0.5,
+    "high_volatility_threshold": 1.5,
+    "low_volatility_position_ratio": 1.2,
+    "high_volatility_position_ratio": 0.6
+  },
+  "params": {
+    "ma_period": 60,
+    "rsi_period": 14,
+    "rsi_overbought": 70,
+    "maps_buy_threshold": 0.0,
+    "maps_sell_threshold": -5.0,
+    "rebalance_frequency": "monthly",
+    "max_positions": 10,
+    "min_confidence": 0.1
+  },
+  "results": {
+    "initial_capital": 10000000,
+    "final_value": 22010515.0,
+    "total_return": 12010515.0,
+    "total_return_pct": 120.10515000000001,
+    "cagr": 32.17453906439083,
+    "sharpe_ratio": 1.5086538194340713,
+    "max_drawdown": -23.505603090614425,
+    "num_trades": 1486,
+    "volatility_stats": {}
+  }
+}
