@@ -6,6 +6,7 @@ scripts/nas/regime_change_alert.py
 """
 import sys
 import logging
+import os
 from datetime import date, timedelta
 from pathlib import Path
 import json
@@ -13,6 +14,12 @@ import json
 # 프로젝트 루트를 PYTHONPATH에 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# 환경 변수 로드 (.env 파일)
+from dotenv import load_dotenv
+env_file = PROJECT_ROOT / ".env"
+if env_file.exists():
+    load_dotenv(env_file)
 
 from extensions.monitoring import RegimeDetector
 from extensions.notification.telegram_sender import TelegramSender
@@ -85,7 +92,10 @@ def main():
                 alert_message += f"*현재 상태*\n{description}\n\n"
                 alert_message += "_포트폴리오 리스크 관리에 유의하세요._"
                 
-                sender = TelegramSender()
+                sender = TelegramSender(
+                    bot_token=os.getenv('TELEGRAM_BOT_TOKEN'),
+                    chat_id=int(os.getenv('TELEGRAM_CHAT_ID', 0))
+                )
                 success = sender.send_custom(alert_message, parse_mode='Markdown')
                 
                 if success:
@@ -96,6 +106,25 @@ def main():
                 logger.info("레짐 변경 없음")
         else:
             logger.info("이전 레짐 없음 (첫 실행)")
+            
+            # 첫 실행 시에도 현재 레짐 알림 전송
+            description = detector.get_regime_description(current_regime)
+            
+            alert_message = f"*[시장 레짐 모니터링 시작]*\n\n"
+            alert_message += f"📅 {target_date}\n\n"
+            alert_message += f"*현재 상태*\n{description}\n\n"
+            alert_message += "_레짐 모니터링을 시작합니다._"
+            
+            sender = TelegramSender(
+                bot_token=os.getenv('TELEGRAM_BOT_TOKEN'),
+                chat_id=int(os.getenv('TELEGRAM_CHAT_ID', 0))
+            )
+            success = sender.send_custom(alert_message, parse_mode='Markdown')
+            
+            if success:
+                logger.info("✅ 첫 실행 알림 전송 성공")
+            else:
+                logger.warning("⚠️ 첫 실행 알림 전송 실패")
         
         # 현재 레짐 저장
         save_current_regime(current_regime)

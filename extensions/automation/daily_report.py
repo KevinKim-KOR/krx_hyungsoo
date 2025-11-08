@@ -190,40 +190,97 @@ class DailyReport:
         signals: Dict
     ):
         """
-        텔레그램으로 리포트 전송
+        텔레그램으로 리포트 전송 (간결한 요약)
         
         Args:
             regime_info: 레짐 정보
             signals: 매매 신호
         """
         try:
-            # 레짐 변경 확인
-            change = self.regime_monitor.check_regime_change()
-            if change:
-                self.notifier.send_regime_change(
-                    old_regime=change['old_regime'],
-                    new_regime=change['new_regime'],
-                    confidence=change['new_confidence'],
-                    date_str=change['date']
-                )
+            # 간결한 일일 리포트 메시지 생성
+            message_lines = []
+            message_lines.append("📊 *일일 투자 리포트*")
+            message_lines.append(f"📅 {date.today().strftime('%Y년 %m월 %d일')}")
+            message_lines.append("")
             
-            # 방어 모드 확인
-            if regime_info and regime_info.get('defense_mode'):
-                self.notifier.send_defense_mode_alert(
-                    is_entering=True,
-                    reason=f"{regime_info['regime']} 레짐, 신뢰도 {regime_info['confidence']:.1%}",
-                    date_str=regime_info['date']
-                )
+            # 시장 레짐
+            if regime_info:
+                regime_emoji = {
+                    'bull': '📈',
+                    'bear': '📉',
+                    'neutral': '➡️'
+                }
+                regime_name = {
+                    'bull': '상승장',
+                    'bear': '하락장',
+                    'neutral': '중립장'
+                }
+                
+                emoji = regime_emoji.get(regime_info['regime'], '❓')
+                name = regime_name.get(regime_info['regime'], regime_info['regime'])
+                
+                message_lines.append("🎯 *시장 레짐*")
+                message_lines.append(f"  {emoji} 현재: {name}")
+                message_lines.append(f"  📊 신뢰도: {regime_info['confidence']:.1%}")
+                message_lines.append(f"  💪 포지션: {regime_info['position_ratio']:.0%}")
+                
+                if regime_info.get('defense_mode'):
+                    message_lines.append("  ⚠️ 방어 모드 활성")
+                
+                message_lines.append("")
             
-            # 매수 신호
+            # 매매 신호 요약
             buy_signals = signals.get('buy_signals', [])
-            if buy_signals:
-                self.notifier.send_buy_signals(buy_signals)
-            
-            # 매도 신호
             sell_signals = signals.get('sell_signals', [])
+            
+            message_lines.append("📈 *매매 신호*")
+            
+            if buy_signals:
+                message_lines.append(f"  🟢 매수: {len(buy_signals)}개")
+                for i, signal in enumerate(buy_signals[:3], 1):  # 상위 3개만
+                    message_lines.append(
+                        f"    {i}. `{signal['code']}` (MAPS: {signal['maps_score']:.1f})"
+                    )
+                if len(buy_signals) > 3:
+                    message_lines.append(f"    ... 외 {len(buy_signals)-3}개")
+            else:
+                message_lines.append("  🟢 매수: 없음")
+            
+            message_lines.append("")
+            
             if sell_signals:
-                self.notifier.send_sell_signals(sell_signals)
+                message_lines.append(f"  🔴 매도: {len(sell_signals)}개")
+                for i, signal in enumerate(sell_signals[:3], 1):
+                    message_lines.append(
+                        f"    {i}. `{signal['code']}` ({signal['reason']})"
+                    )
+                if len(sell_signals) > 3:
+                    message_lines.append(f"    ... 외 {len(sell_signals)-3}개")
+            else:
+                message_lines.append("  🔴 매도: 없음")
+            
+            # 주의사항
+            message_lines.append("")
+            if regime_info:
+                if regime_info['regime'] == 'bull':
+                    message_lines.append("⚠️ *주의사항*")
+                    message_lines.append(f"  - 현재 {regime_name.get(regime_info['regime'])} 유지 중")
+                    message_lines.append(f"  - 포지션 비율 {regime_info['position_ratio']:.0%} 권장")
+                elif regime_info['regime'] == 'bear':
+                    message_lines.append("⚠️ *주의사항*")
+                    message_lines.append(f"  - 현재 {regime_name.get(regime_info['regime'])} 진입")
+                    message_lines.append("  - 방어적 포지션 유지")
+                    message_lines.append(f"  - 포지션 비율 {regime_info['position_ratio']:.0%} 권장")
+                else:
+                    message_lines.append("💡 *전략*")
+                    message_lines.append(f"  - 중립장 대응 전략")
+                    message_lines.append(f"  - 포지션 비율 {regime_info['position_ratio']:.0%} 유지")
+            
+            message = "\n".join(message_lines)
+            
+            # 텔레그램 전송
+            self.notifier.send_message(message, parse_mode='Markdown')
+            logger.info("✅ 일일 리포트 텔레그램 전송 완료")
                 
         except Exception as e:
-            logger.error(f"텔레그램 전송 실패: {e}")
+            logger.error(f"텔레그램 전송 실패: {e}", exc_info=True)
