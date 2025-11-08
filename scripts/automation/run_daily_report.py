@@ -15,6 +15,19 @@ import os
 from datetime import date
 import logging
 
+# 환경 변수 로드 (.env 파일)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+env_file = PROJECT_ROOT / ".env"
+
+if env_file.exists():
+    # .env 파일을 직접 파싱하여 환경 변수 로드
+    with open(env_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                os.environ[key.strip()] = value.strip()
+
 from extensions.automation.daily_report import DailyReport
 
 # 로깅 설정
@@ -32,11 +45,17 @@ def main():
         bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
         chat_id = os.getenv('TELEGRAM_CHAT_ID')
         
+        # 디버깅 정보
+        logger.info(f"TELEGRAM_BOT_TOKEN: {'*' * 10 if bot_token else 'None'}")
+        logger.info(f"TELEGRAM_CHAT_ID: {chat_id if chat_id else 'None'}")
+        
         # 텔레그램 활성화 여부
         telegram_enabled = bool(bot_token and chat_id)
         
         if not telegram_enabled:
             logger.warning("텔레그램 설정이 없습니다. 로그 모드로 실행합니다.")
+        else:
+            logger.info("텔레그램 설정 확인 완료. 알림 모드로 실행합니다.")
         
         # 리포트 생성
         reporter = DailyReport(
