@@ -15,9 +15,68 @@ import pandas as pd
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+# 프리셋 import
+sys.path.insert(0, str(project_root / "extensions" / "ui"))
+from components.parameter_presets import get_presets
+
 st.set_page_config(page_title="Parameters", page_icon="⚙️", layout="wide")
 
 st.title("⚙️ 파라미터 조정")
+st.markdown("---")
+
+# 프리셋 선택
+st.subheader("🎯 프리셋 선택")
+st.markdown("미리 정의된 전략을 선택하거나 직접 조정하세요.")
+
+presets = get_presets()
+preset_names = list(presets.keys())
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    if st.button("⚖️ 균형 (기본)", use_container_width=True, type="secondary"):
+        preset = presets["균형 (기본)"]
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(preset['params'], f, ensure_ascii=False, indent=2)
+        st.success(f"✅ {preset['name']} 프리셋 적용!")
+        st.info(f"📊 예상 성과: CAGR {preset['expected']['cagr']}, Sharpe {preset['expected']['sharpe']}")
+        st.rerun()
+
+with col2:
+    if st.button("🚀 공격적", use_container_width=True, type="secondary"):
+        preset = presets["공격적"]
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(preset['params'], f, ensure_ascii=False, indent=2)
+        st.success(f"✅ {preset['name']} 프리셋 적용!")
+        st.info(f"📊 예상 성과: CAGR {preset['expected']['cagr']}, Sharpe {preset['expected']['sharpe']}")
+        st.rerun()
+
+with col3:
+    if st.button("🛡️ 보수적", use_container_width=True, type="secondary"):
+        preset = presets["보수적"]
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(preset['params'], f, ensure_ascii=False, indent=2)
+        st.success(f"✅ {preset['name']} 프리셋 적용!")
+        st.info(f"📊 예상 성과: CAGR {preset['expected']['cagr']}, Sharpe {preset['expected']['sharpe']}")
+        st.rerun()
+
+with col4:
+    if st.button("⭐ Week 3 최적", use_container_width=True, type="secondary"):
+        preset = presets["Week 3 최적"]
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(preset['params'], f, ensure_ascii=False, indent=2)
+        st.success(f"✅ {preset['name']} 프리셋 적용!")
+        st.info(f"📊 검증된 성과: CAGR {preset['expected']['cagr']}, Sharpe {preset['expected']['sharpe']}")
+        st.rerun()
+
+# 프리셋 설명
+with st.expander("💡 프리셋 상세 설명"):
+    for preset_name, preset_data in presets.items():
+        st.markdown(f"**{preset_data['name']}**")
+        st.markdown(f"- {preset_data['description']}")
+        st.markdown(f"- 예상 성과: CAGR {preset_data['expected']['cagr']}, Sharpe {preset_data['expected']['sharpe']}, MDD {preset_data['expected']['mdd']}")
+        st.markdown("")
+
 st.markdown("---")
 
 # 설정 파일 경로
