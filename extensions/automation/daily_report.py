@@ -17,6 +17,7 @@ import logging
 from extensions.automation.regime_monitor import RegimeMonitor
 from extensions.automation.signal_generator import AutoSignalGenerator
 from extensions.automation.telegram_notifier import TelegramNotifier
+from extensions.automation.portfolio_loader import PortfolioLoader
 
 logger = logging.getLogger(__name__)
 
@@ -51,22 +52,17 @@ class DailyReport:
             chat_id=chat_id,
             enabled=telegram_enabled
         )
+        self.portfolio_loader = PortfolioLoader()
     
     def generate_report(
         self,
-        target_date: Optional[date] = None,
-        current_holdings: Optional[List[str]] = None,
-        portfolio_value: Optional[float] = None,
-        initial_capital: float = 10000000
+        target_date: Optional[date] = None
     ) -> str:
         """
-        일일 리포트 생성
+        일일 리포트 생성 (실제 포트폴리오 기반)
         
         Args:
             target_date: 대상 날짜 (None이면 오늘)
-            current_holdings: 현재 보유 종목
-            portfolio_value: 포트폴리오 가치
-            initial_capital: 초기 자본
         
         Returns:
             str: 리포트 텍스트
@@ -74,10 +70,13 @@ class DailyReport:
         if target_date is None:
             target_date = date.today()
         
-        if current_holdings is None:
-            current_holdings = []
-        
         logger.info(f"일일 리포트 생성: {target_date}")
+        
+        # 실제 포트폴리오 로드
+        summary = self.portfolio_loader.get_portfolio_summary()
+        current_holdings = self.portfolio_loader.get_holdings_codes()
+        top5 = self.portfolio_loader.get_top_performers(5)
+        worst5 = self.portfolio_loader.get_worst_performers(5)
         
         # 1. 레짐 분석
         regime_info = self.regime_monitor.analyze_daily_regime(target_date)
@@ -99,17 +98,29 @@ class DailyReport:
         # 포트폴리오 현황
         report_lines.append("💼 포트폴리오 현황")
         report_lines.append("-" * 50)
+        report_lines.append(f"  총 평가액: {summary['total_value']:,.0f}원")
+        report_lines.append(f"  총 매입액: {summary['total_cost']:,.0f}원")
+        report_lines.append(f"  평가손익: {summary['return_amount']:+,.0f}원 ({summary['return_pct']:+.2f}%)")
+        report_lines.append(f"  보유 종목: {summary['holdings_count']}개")
+        report_lines.append("")
         
-        if portfolio_value:
-            total_return = portfolio_value - initial_capital
-            total_return_pct = (total_return / initial_capital) * 100
-            
-            report_lines.append(f"  평가액: {portfolio_value:,.0f}원")
-            report_lines.append(f"  수익: {total_return:+,.0f}원 ({total_return_pct:+.2f}%)")
-        else:
-            report_lines.append(f"  초기 자본: {initial_capital:,.0f}원")
+        # Top 5 수익/손실 종목
+        report_lines.append("📈 보유 종목 현황 (Top 5)")
+        report_lines.append("-" * 50)
+        report_lines.append("  🔴 수익 Top 5:")
+        for idx, row in top5.iterrows():
+            report_lines.append(
+                f"     {row['name'][:20]:20s} "
+                f"{row['return_amount']:+10,.0f}원 ({row['return_pct']:+6.2f}%)"
+            )
         
-        report_lines.append(f"  보유 종목: {len(current_holdings)}개")
+        report_lines.append("")
+        report_lines.append("  🔵 손실 Top 5:")
+        for idx, row in worst5.iterrows():
+            report_lines.append(
+                f"     {row['name'][:20]:20s} "
+                f"{row['return_amount']:+10,.0f}원 ({row['return_pct']:+6.2f}%)"
+            )
         report_lines.append("")
         
         # 시장 레짐
@@ -180,19 +191,25 @@ class DailyReport:
         report_text = "\n".join(report_lines)
         
         # 4. 텔레그램 전송
-        self._send_to_telegram(regime_info, signals)
+        self._send_to_telegram(summary, top5, worst5, regime_info, signals)
         
         return report_text
     
     def _send_to_telegram(
         self,
+        summary: Dict,
+        top5: 'pd.DataFrame',
+        worst5: 'pd.DataFrame',
         regime_info: Optional[Dict],
         signals: Dict
     ):
         """
-        텔레그램으로 리포트 전송 (상세 정보 포함)
+        텔레그램으로 리포트 전송 (실제 포트폴리오 기반)
         
         Args:
+            summary: 포트폴리오 요약
+            top5: 수익 Top 5
+            worst5: 손실 Top 5
             regime_info: 레짐 정보
             signals: 매매 신호
         """
@@ -247,6 +264,40 @@ class DailyReport:
             message_lines.append("📊 *일일 투자 리포트*")
             message_lines.append("="*40)
             message_lines.append(f"📅 날짜: {date.today().strftime('%Y년 %m월 %d일 (%A)')}")
+            message_lines.append("")
+            
+            # 포트폴리오 현황
+            message_lines.append("💼 *포트폴리오 현황*")
+            message_lines.append("-"*40)
+            message_lines.append(f"  총 평가액: `{summary['total_value']:,.0f}원`")
+            message_lines.append(f"  총 매입액: `{summary['total_cost']:,.0f}원`")
+            
+            # 수익/손실 색상 표시
+            if summary['return_amount'] >= 0:
+                message_lines.append(f"  평가손익: 🔴 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)")
+            else:
+                message_lines.append(f"  평가손익: 🔵 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)")
+            
+            message_lines.append(f"  보유 종목: `{summary['holdings_count']}개`")
+            message_lines.append("")
+            
+            # Top 3 수익/손실
+            message_lines.append("📈 *보유 종목 현황*")
+            message_lines.append("-"*40)
+            message_lines.append("  🔴 *수익 Top 3:*")
+            for idx, (_, row) in enumerate(top5.head(3).iterrows(), 1):
+                message_lines.append(
+                    f"     {idx}. {row['name'][:15]:15s} "
+                    f"`{row['return_amount']:+,.0f}원` ({row['return_pct']:+.2f}%)"
+                )
+            
+            message_lines.append("")
+            message_lines.append("  🔵 *손실 Top 3:*")
+            for idx, (_, row) in enumerate(worst5.head(3).iterrows(), 1):
+                message_lines.append(
+                    f"     {idx}. {row['name'][:15]:15s} "
+                    f"`{row['return_amount']:+,.0f}원` ({row['return_pct']:+.2f}%)"
+                )
             message_lines.append("")
             
             # 시장 레짐 상세
