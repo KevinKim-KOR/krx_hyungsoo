@@ -43,21 +43,65 @@ class PortfolioManager:
         self.data_file = data_file
         self.data_file.parent.mkdir(parents=True, exist_ok=True)
         
-        # ETF 이름 매핑
+        # ETF 이름 매핑 (확장)
         self.etf_names = {
+            # 국내 대형주
             '069500': 'KODEX 200',
             '102110': 'TIGER 200',
-            '229200': 'KODEX 코스닥150',
-            '091160': 'KODEX 반도체',
-            '091180': 'KODEX 자동차',
-            '091170': 'KODEX 은행',
             '102780': 'KODEX 삼성그룹',
+            
+            # 국내 코스닥
+            '229200': 'KODEX 코스닥150',
+            '091180': 'KODEX 자동차',
+            
+            # 국내 섹터
+            '091160': 'KODEX 반도체',
+            '091170': 'KODEX 은행',
+            '091220': 'TIGER 은행',
             '117460': 'KODEX 2차전지산업',
             '364980': 'KODEX 2차전지산업',
-            '272560': 'KODEX 미국S&P500TR',
-            '379800': 'KODEX 미국나스닥100TR',
+            '091230': 'TIGER 반도체',
+            
+            # 미국 S&P500
             '360750': 'TIGER 미국S&P500',
+            '379800': 'KODEX 미국S&P500TR',
+            '272560': 'KODEX 미국S&P500선물(H)',
+            '332620': 'KODEX 미국S&P500선물(H)',
+            '138230': 'KOSEF 미국S&P500',
+            '388420': 'KBSTAR 미국S&P500',
+            '360200': 'TIGER 미국S&P500선물(H)',
+            '453810': 'TIGER 미국S&P500패시브',
+            '462010': 'ARIRANG 미국S&P500(H)',
+            
+            # 미국 나스닥100
             '133690': 'TIGER 미국나스닥100',
+            '379810': 'KODEX 미국나스닥100TR',
+            '364980': 'TIGER 미국나스닥100TR',
+            
+            # 중국
+            '098560': 'TIGER 차이나전기차SOLACTIVE',
+            '371460': 'TIGER 차이나항셍테크',
+            
+            # 일본
+            '241390': 'KODEX 일본TOPIX100',
+            
+            # 인도
+            '455870': 'TIGER 인도니프티50',
+            
+            # 베트남
+            '245710': 'KODEX 베트남VN30',
+            
+            # 원자재/금
+            '132030': 'KODEX 골드선물(H)',
+            '411060': 'ACE 금현물',
+            
+            # 채권
+            '114260': 'KODEX 국고채3년',
+            '148070': 'KOSEF 국고채10년',
+            
+            # 배당
+            '251350': 'KODEX 코스닥150선물인버스',
+            '364960': 'KODEX 미국배당다우존스',
         }
     
     def load_portfolio(self) -> dict:
@@ -113,7 +157,7 @@ class PortfolioManager:
         
         return 0.0
     
-    def add_holding(self, portfolio: dict, code: str, quantity: int, avg_price: float):
+    def add_holding(self, portfolio: dict, code: str, quantity: float, avg_price: float, broker: str = ''):
         """종목 추가"""
         # 종목명 조회
         name = self.get_stock_name(code)
@@ -132,6 +176,7 @@ class PortfolioManager:
             'name': name,
             'quantity': quantity,
             'avg_price': avg_price,
+            'broker': broker,  # 증권사 추가
             'total_cost': total_cost,
             'current_price': current_price,
             'current_value': current_value,
@@ -143,7 +188,7 @@ class PortfolioManager:
         portfolio['holdings'].append(holding)
         return holding
     
-    def update_holding(self, portfolio: dict, index: int, quantity: int, avg_price: float):
+    def update_holding(self, portfolio: dict, index: int, quantity: float, avg_price: float, broker: str = None):
         """종목 수정"""
         holding = portfolio['holdings'][index]
         code = holding['code']
@@ -160,6 +205,8 @@ class PortfolioManager:
         # 업데이트
         holding['quantity'] = quantity
         holding['avg_price'] = avg_price
+        if broker is not None:
+            holding['broker'] = broker
         holding['total_cost'] = total_cost
         holding['current_price'] = current_price
         holding['current_value'] = current_value
@@ -167,7 +214,7 @@ class PortfolioManager:
         holding['return_pct'] = return_pct
         holding['last_updated'] = datetime.now().isoformat()
     
-    def add_purchase(self, portfolio: dict, index: int, add_quantity: int, add_price: float):
+    def add_purchase(self, portfolio: dict, index: int, add_quantity: float, add_price: float):
         """추가 매수 (평균 단가 자동 계산)"""
         holding = portfolio['holdings'][index]
         
@@ -184,7 +231,7 @@ class PortfolioManager:
         new_total_cost = old_total_cost + add_total_cost
         new_avg_price = new_total_cost / new_quantity
         
-        # 업데이트
+        # 업데이트 (증권사는 유지)
         self.update_holding(portfolio, index, new_quantity, new_avg_price)
         
         return {
@@ -276,18 +323,23 @@ def main():
             st.subheader("📈 보유 종목 목록")
             
             df = pd.DataFrame(holdings)
+            
+            # broker 필드가 없는 기존 데이터 처리
+            if 'broker' not in df.columns:
+                df['broker'] = ''
+            
             df_display = df[[
-                'name', 'code', 'quantity', 'avg_price', 'current_price',
+                'name', 'code', 'broker', 'quantity', 'avg_price', 'current_price',
                 'total_cost', 'current_value', 'return_amount', 'return_pct'
             ]].copy()
             
             df_display.columns = [
-                '종목명', '코드', '수량', '평균단가', '현재가',
+                '종목명', '코드', '증권사', '수량', '평균단가', '현재가',
                 '매입금액', '평가금액', '평가손익', '수익률(%)'
             ]
             
             # 숫자 포맷팅
-            df_display['수량'] = df_display['수량'].apply(lambda x: f"{x:,}")
+            df_display['수량'] = df_display['수량'].apply(lambda x: f"{x:,.4f}".rstrip('0').rstrip('.'))
             df_display['평균단가'] = df_display['평균단가'].apply(lambda x: f"{x:,.0f}")
             df_display['현재가'] = df_display['현재가'].apply(lambda x: f"{x:,.0f}")
             df_display['매입금액'] = df_display['매입금액'].apply(lambda x: f"{x:,.0f}")
@@ -311,7 +363,21 @@ def main():
                 name = manager.get_stock_name(code)
                 st.info(f"종목명: **{name}**")
             
-            quantity = st.number_input("보유 수량 (주)", min_value=1, value=100, step=1)
+            # 증권사 선택
+            broker = st.selectbox(
+                "증권사",
+                ["", "카카오페이", "키움 국내", "키움 해외", "토스뱅크", "삼성증권", "NH투자증권", "한국투자증권", "기타"],
+                index=0
+            )
+            
+            quantity = st.number_input(
+                "보유 수량 (주)",
+                min_value=0.001,
+                value=100.0,
+                step=0.001,
+                format="%.4f",
+                help="소수점 입력 가능 (예: 토스백크 매일모으기)"
+            )
             avg_price = st.number_input("평균 단가 (원)", min_value=1, value=50000, step=100)
             
             # 계산 미리보기
@@ -325,7 +391,7 @@ def main():
                     st.error("종목 코드를 입력하세요.")
                 else:
                     with st.spinner("종목 추가 중..."):
-                        holding = manager.add_holding(portfolio, code, quantity, avg_price)
+                        holding = manager.add_holding(portfolio, code, quantity, avg_price, broker)
                         manager.save_portfolio(portfolio)
                     
                     st.success(f"✅ {holding['name']} 추가 완료!")
@@ -347,9 +413,16 @@ def main():
             
             # 현재 보유 정보
             st.subheader("현재 보유")
+            
+            # 증권사 표시
+            broker = holding.get('broker', '')
+            if broker:
+                st.info(f"🏦 증권사: **{broker}**")
+            
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("수량", f"{holding['quantity']:,}주")
+                qty_str = f"{holding['quantity']:,.4f}".rstrip('0').rstrip('.')
+                st.metric("수량", f"{qty_str}주")
             with col2:
                 st.metric("평균 단가", f"{holding['avg_price']:,.0f}원")
             with col3:
@@ -361,7 +434,14 @@ def main():
             with st.form("add_purchase_form"):
                 st.subheader("추가 매수")
                 
-                add_quantity = st.number_input("추가 수량 (주)", min_value=1, value=10, step=1)
+                add_quantity = st.number_input(
+                    "추가 수량 (주)",
+                    min_value=0.001,
+                    value=10.0,
+                    step=0.001,
+                    format="%.4f",
+                    help="소수점 입력 가능"
+                )
                 add_price = st.number_input("매수 단가 (원)", min_value=1, value=int(holding['avg_price']), step=100)
                 
                 # 계산 미리보기
@@ -372,7 +452,9 @@ def main():
                 st.info("💡 **매수 후 예상**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("총 수량", f"{new_quantity:,}주", f"+{add_quantity}")
+                    new_qty_str = f"{new_quantity:,.4f}".rstrip('0').rstrip('.')
+                    add_qty_str = f"{add_quantity:,.4f}".rstrip('0').rstrip('.')
+                    st.metric("총 수량", f"{new_qty_str}주", f"+{add_qty_str}")
                 with col2:
                     st.metric("평균 단가", f"{new_avg_price:,.0f}원", f"{new_avg_price - holding['avg_price']:+,.0f}")
                 with col3:
@@ -407,7 +489,28 @@ def main():
             with st.form("update_holding_form"):
                 st.info(f"종목명: **{holding['name']}** (코드: {holding['code']})")
                 
-                quantity = st.number_input("보유 수량 (주)", min_value=1, value=holding['quantity'], step=1)
+                # 증권사 수정
+                current_broker = holding.get('broker', '')
+                broker_list = ["", "카카오페이", "키움 국내", "키움 해외", "토스백크", "삼성증권", "NH투자증권", "한국투자증권", "기타"]
+                try:
+                    broker_index = broker_list.index(current_broker) if current_broker in broker_list else 0
+                except:
+                    broker_index = 0
+                
+                broker = st.selectbox(
+                    "증권사",
+                    broker_list,
+                    index=broker_index
+                )
+                
+                quantity = st.number_input(
+                    "보유 수량 (주)",
+                    min_value=0.001,
+                    value=float(holding['quantity']),
+                    step=0.001,
+                    format="%.4f",
+                    help="소수점 입력 가능"
+                )
                 avg_price = st.number_input("평균 단가 (원)", min_value=1, value=int(holding['avg_price']), step=100)
                 
                 # 계산 미리보기
@@ -418,7 +521,7 @@ def main():
                 
                 if submitted:
                     with st.spinner("종목 수정 중..."):
-                        manager.update_holding(portfolio, selected_index, quantity, avg_price)
+                        manager.update_holding(portfolio, selected_index, quantity, avg_price, broker)
                         manager.save_portfolio(portfolio)
                     
                     st.success("✅ 수정 완료!")
