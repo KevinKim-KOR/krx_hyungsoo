@@ -25,45 +25,40 @@ def get_etf_universe():
     """ETF 유니버스 가져오기 (레버리지/인버스 제외)"""
     import pykrx.stock as stock
     
-    today = date.today()
+    # 주요 ETF 리스트 (수동 관리 - 가장 안정적)
+    # Jason 친구 코드 및 config/universe.yaml 참고
+    all_etfs = [
+        # 대형주 ETF
+        '069500',  # KODEX 200
+        '102110',  # TIGER 200
+        '114800',  # KODEX 인버스 (제외 예정)
+        '122630',  # KODEX 레버리지 (제외 예정)
+        
+        # 코스닥 ETF
+        '229200',  # KODEX 코스닥150
+        '233740',  # KODEX 코스닥150레버리지 (제외 예정)
+        '251340',  # KODEX 코스닥150선물인버스 (제외 예정)
+        
+        # 섹터 ETF
+        '091160',  # KODEX 반도체
+        '091180',  # KODEX 자동차
+        '091170',  # KODEX 은행
+        '102780',  # KODEX 삼성그룹
+        '117460',  # KODEX 2차전지산업
+        '364980',  # KODEX 2차전지산업 (신규)
+        
+        # 해외 ETF
+        '272560',  # KODEX 미국S&P500TR
+        '379800',  # KODEX 미국나스닥100TR
+        '360750',  # TIGER 미국S&P500
+        '133690',  # TIGER 미국나스닥100
+        
+        # 채권 ETF (제외 예정)
+        '148070',  # KOSEF 국고채10년
+        '114260',  # KODEX 국고채3년
+    ]
     
-    # KOSPI에서 ETF 필터링 (PyKRX는 ETF 마켓을 직접 지원하지 않음)
-    try:
-        # KOSPI 전체 종목 가져오기
-        all_codes = stock.get_market_ticker_list(date=today, market="KOSPI")
-        logger.info(f"KOSPI 전체: {len(all_codes)}개")
-        
-        # ETF 필터링 (종목명에 'ETF' 또는 'KODEX', 'TIGER' 등 포함)
-        etf_keywords = ['KODEX', 'TIGER', 'KINDEX', 'KOSEF', 'ARIRANG', 'KBSTAR', 'HANARO', 'TIMEFOLIO', 'SMART']
-        all_etfs = []
-        
-        for code in all_codes:
-            try:
-                name = stock.get_market_ticker_name(code)
-                if any(kw in name for kw in etf_keywords):
-                    all_etfs.append(code)
-            except:
-                continue
-        
-        logger.info(f"ETF 필터링: {len(all_etfs)}개")
-        
-    except Exception as e:
-        logger.warning(f"ETF 리스트 가져오기 실패: {e}")
-        # 기본 ETF 리스트 (주요 ETF)
-        all_etfs = [
-            '069500',  # KODEX 200
-            '102110',  # TIGER 200
-            '229200',  # KODEX 코스닥150
-            '091160',  # KODEX 반도체
-            '091180',  # KODEX 자동차
-            '091170',  # KODEX 은행
-            '102780',  # KODEX 삼성그룹
-            '148070',  # KOSEF 국고채10년
-            '272560',  # KODEX 미국S&P500TR
-            '379800',  # KODEX 미국나스닥100TR
-            '233740',  # KODEX 코스닥150레버리지 (제외 예정)
-            '251340',  # KODEX 코스닥150선물인버스 (제외 예정)
-        ]
+    logger.info(f"기본 ETF 리스트: {len(all_etfs)}개")
     
     # 레버리지/인버스/채권 ETF 제외
     exclude_keywords = [
