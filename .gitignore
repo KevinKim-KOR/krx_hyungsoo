@@ -1,1 +1,37 @@
 secret/config.yaml
+
+# 로그 파일 (실행 시 자동 생성)
+logs/*.log
+logs/**/*.log
+
+# 데이터 파일 (실행 시 자동 생성)
+data/output/*.json
+data/output/*.csv
+data/monitoring/**/*.json
+data/monitoring/**/*.txt
+data/optimization/*.csv
+data/optimization/*.json
+data/backtest_results/*.json
+data/parameter_history/*.json
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 환경 변수
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
