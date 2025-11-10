@@ -7,7 +7,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import sys
 import json
@@ -26,6 +26,9 @@ tab1, tab2 = st.tabs(["▶️ 백테스트 실행", "📊 결과 비교"])
 
 with tab1:
     st.subheader("▶️ 백테스트 실행")
+    
+    # 사용할 파라미터 먼저 표시
+    st.markdown("### 📋 백테스트 설정")
     
     # 설정 섹션
     col1, col2 = st.columns(2)
@@ -67,7 +70,14 @@ with tab1:
                 st.success("✅ 현재 설정 파일 로드 완료")
             else:
                 st.warning("⚠️ 설정 파일이 없습니다. 기본값을 사용합니다.")
-                params = {}
+                params = {
+                    'maps_threshold': 5.0,
+                    'regime_ma_short': 50,
+                    'regime_ma_long': 200,
+                    'position_bull': 120,
+                    'position_sideways': 80,
+                    'position_bear': 50
+                }
         
         elif param_source == "최적화 결과":
             opt_file = project_root / "data" / "optimization" / "best_params.json"
@@ -81,7 +91,55 @@ with tab1:
         
         else:  # 커스텀
             st.info("💡 파라미터 조정 페이지에서 설정을 변경하세요.")
-            params = {}
+            config_file = project_root / "config" / "strategy_params.json"
+            if config_file.exists():
+                with open(config_file, 'r') as f:
+                    params = json.load(f)
+            else:
+                params = {}
+    
+    # 사용할 파라미터 표시
+    if params:
+        st.markdown("---")
+        st.markdown("### 🎯 백테스트에 사용될 파라미터")
+        
+        param_col1, param_col2, param_col3 = st.columns(3)
+        
+        with param_col1:
+            st.markdown("""<div style='background-color: #e3f2fd; padding: 15px; border-radius: 8px;'>
+            <h5>📊 MAPS & 레짐</h5>
+            <p><b>MAPS 임계값:</b> {}</p>
+            <p><b>단기 MA:</b> {}일</p>
+            <p><b>장기 MA:</b> {}일</p>
+            </div>""".format(
+                params.get('maps_threshold', 'N/A'),
+                params.get('regime_ma_short', 'N/A'),
+                params.get('regime_ma_long', 'N/A')
+            ), unsafe_allow_html=True)
+        
+        with param_col2:
+            st.markdown("""<div style='background-color: #e8f5e9; padding: 15px; border-radius: 8px;'>
+            <h5>💼 포지션 비율</h5>
+            <p><b>상승장:</b> {}%</p>
+            <p><b>중립장:</b> {}%</p>
+            <p><b>하락장:</b> {}%</p>
+            </div>""".format(
+                params.get('position_bull', 'N/A'),
+                params.get('position_sideways', 'N/A'),
+                params.get('position_bear', 'N/A')
+            ), unsafe_allow_html=True)
+        
+        with param_col3:
+            st.markdown("""<div style='background-color: #fff3e0; padding: 15px; border-radius: 8px;'>
+            <h5>🛡️ 리스크 관리</h5>
+            <p><b>손절 라인:</b> {}%</p>
+            <p><b>방어 신뢰도:</b> {}%</p>
+            <p><b>최대 비중:</b> {}%</p>
+            </div>""".format(
+                params.get('stop_loss', 'N/A'),
+                params.get('defense_confidence', 'N/A'),
+                params.get('max_position_size', 'N/A')
+            ), unsafe_allow_html=True)
     
     # 고급 옵션
     with st.expander("🔧 고급 옵션"):
@@ -279,10 +337,12 @@ with tab1:
                 
                 result_data = {
                     'timestamp': timestamp,
+                    'datetime': datetime.now().isoformat(),
                     'period': {
                         'start': start_date.isoformat(),
                         'end': end_date.isoformat()
                     },
+                    'param_source': param_source,
                     'params': params,
                     'metrics': {
                         'cagr': 27.05,
@@ -294,6 +354,29 @@ with tab1:
                 
                 with open(result_file, 'w', encoding='utf-8') as f:
                     json.dump(result_data, f, ensure_ascii=False, indent=2)
+                
+                # 파라미터 히스토리에 백테스트 결과 연동
+                if param_source == "현재 설정":
+                    history_dir = project_root / "data" / "parameter_history"
+                    if history_dir.exists():
+                        # 가장 최근 파라미터 히스토리 파일 찾기
+                        history_files = sorted(history_dir.glob("params_*.json"), reverse=True)
+                        if history_files:
+                            latest_history = history_files[0]
+                            try:
+                                with open(latest_history, 'r', encoding='utf-8') as f:
+                                    history_data = json.load(f)
+                                
+                                # 백테스트 결과 업데이트
+                                history_data['backtest_result'] = result_data['metrics']
+                                history_data['backtest_timestamp'] = timestamp
+                                
+                                with open(latest_history, 'w', encoding='utf-8') as f:
+                                    json.dump(history_data, f, ensure_ascii=False, indent=2)
+                                
+                                st.info(f"📊 파라미터 히스토리에 백테스트 결과 연동 완료")
+                            except:
+                                pass
                 
                 st.success(f"✅ 결과 저장 완료: {result_file.name}")
 
@@ -312,17 +395,24 @@ with tab2:
             # 결과 비교 테이블
             comparison_data = []
             
-            for result_file in sorted(result_files, reverse=True)[:5]:  # 최근 5개
+            for result_file in sorted(result_files, reverse=True)[:10]:  # 최근 10개
                 with open(result_file, 'r', encoding='utf-8') as f:
                     result = json.load(f)
                 
+                # 파라미터 요약
+                params_summary = result.get('params', {})
+                param_str = f"MAPS:{params_summary.get('maps_threshold', 'N/A')} / "
+                param_str += f"MA:{params_summary.get('regime_ma_short', 'N/A')}/{params_summary.get('regime_ma_long', 'N/A')} / "
+                param_str += f"Pos:{params_summary.get('position_bull', 'N/A')}/{params_summary.get('position_sideways', 'N/A')}/{params_summary.get('position_bear', 'N/A')}"
+                
                 comparison_data.append({
-                    '실행 시간': result['timestamp'],
+                    '실행 시간': result.get('datetime', result['timestamp'])[:19] if 'datetime' in result else result['timestamp'],
+                    '파라미터 소스': result.get('param_source', 'N/A'),
+                    '파라미터': param_str,
                     '기간': f"{result['period']['start']} ~ {result['period']['end']}",
                     'CAGR': f"{result['metrics']['cagr']:.2f}%",
                     'Sharpe': f"{result['metrics']['sharpe']:.2f}",
-                    'MDD': f"{result['metrics']['mdd']:.2f}%",
-                    '총 수익률': f"{result['metrics']['total_return']:.2f}%"
+                    'MDD': f"{result['metrics']['mdd']:.2f}%"
                 })
             
             df_comparison = pd.DataFrame(comparison_data)

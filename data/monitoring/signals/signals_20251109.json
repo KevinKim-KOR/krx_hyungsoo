@@ -1,0 +1,27 @@
+{
+  "date": "2025-11-09",
+  "signals": [
+    {
+      "timestamp": "2025-11-09T11:41:12.000541",
+      "type": "buy",
+      "count": 2,
+      "signals": [
+        {
+          "code": "069500",
+          "name": "KODEX 200",
+          "maps_score": 85.23
+        },
+        {
+          "code": "143850",
+          "name": "TIGER 미국S&P500",
+          "maps_score": 82.15
+        }
+      ],
+      "regime": {
+        "state": "bull",
+        "confidence": 95.0,
+        "position_ratio": 120
+      }
+    }
+  ]
+}

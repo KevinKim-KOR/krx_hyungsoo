@@ -1,0 +1,49 @@
+# Week 3 Git Commit Commands
+
+# 1. 현재 상태 확인
+git status
+
+# 2. 변경 파일 추가
+git add core/strategy/market_regime_detector.py
+git add core/engine/krx_maps_adapter.py
+git add scripts/phase2/run_backtest_hybrid.py
+git add scripts/phase2/debug_regime.py
+git add docs/WEEK3_HYBRID_STRATEGY.md
+git add docs/PHASE2_WEEK3_SUMMARY.md
+git add CHANGELOG.md
+git add data/output/phase2/backtest_hybrid_summary.json
+git add data/output/phase2/hybrid_comparison.json
+
+# 3. 커밋
+git commit -m "feat: Week 3 하이브리드 전략 구현 완료
+
+- 시장 레짐 감지 시스템 (MarketRegimeDetector)
+  - MA 50/200일 기반 레짐 분류
+  - 포지션 비율: 상승 100~120%, 중립 80%, 하락 40~60%
+  - 방어 모드: 신뢰도 85% 이상만 매수 스킵
+
+- KRXMAPSAdapter 통합
+  - 레짐 기반 포지션 조정
+  - KOSPI 데이터 자동 로드
+  - 레짐 통계 수집
+
+- 성과
+  - CAGR: 27.05% (목표 90% 달성)
+  - Sharpe: 1.51 ✅ (목표 달성!)
+  - MDD: -19.92% (15% 개선)
+
+- 버그 수정
+  - 레짐 통계 손실 문제 해결
+  - KOSPI 데이터 로드 조건 수정
+
+- 문서화
+  - Week 3 상세 보고서
+  - CHANGELOG 업데이트
+"
+
+# 4. 푸시 (선택)
+# git push origin main
+
+# 5. 태그 생성 (선택)
+# git tag -a v0.3.0 -m "Week 3: 하이브리드 전략 구현"
+# git push origin v0.3.0

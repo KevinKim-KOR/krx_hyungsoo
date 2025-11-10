@@ -1,0 +1,58 @@
+{
+  "period": {
+    "start": "2025-11-03",
+    "end": "2025-11-09"
+  },
+  "daily_summary": [
+    {
+      "date": "2025-11-03",
+      "buy_signals": 0,
+      "sell_signals": 0,
+      "regime": null
+    },
+    {
+      "date": "2025-11-04",
+      "buy_signals": 0,
+      "sell_signals": 0,
+      "regime": null
+    },
+    {
+      "date": "2025-11-05",
+      "buy_signals": 0,
+      "sell_signals": 0,
+      "regime": null
+    },
+    {
+      "date": "2025-11-06",
+      "buy_signals": 0,
+      "sell_signals": 0,
+      "regime": null
+    },
+    {
+      "date": "2025-11-07",
+      "buy_signals": 0,
+      "sell_signals": 0,
+      "regime": null
+    },
+    {
+      "date": "2025-11-08",
+      "buy_signals": 0,
+      "sell_signals": 0,
+      "regime": null
+    },
+    {
+      "date": "2025-11-09",
+      "buy_signals": 1,
+      "sell_signals": 0,
+      "regime": "bull"
+    }
+  ],
+  "weekly_stats": {
+    "total_buy_signals": 1,
+    "total_sell_signals": 0,
+    "avg_signals_per_day": 0.14285714285714285,
+    "regime_distribution": {
+      "bull": 1
+    }
+  }
+}

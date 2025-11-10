@@ -8,6 +8,8 @@ import streamlit as st
 import json
 from pathlib import Path
 import sys
+from datetime import datetime
+import pandas as pd
 
 # 프로젝트 루트 경로 추가
 project_root = Path(__file__).parent.parent.parent.parent
@@ -22,6 +24,10 @@ st.markdown("---")
 config_dir = project_root / "config"
 config_dir.mkdir(exist_ok=True)
 config_file = config_dir / "strategy_params.json"
+
+# 히스토리 디렉토리
+history_dir = project_root / "data" / "parameter_history"
+history_dir.mkdir(parents=True, exist_ok=True)
 
 # 기본 파라미터
 def get_default_params():
@@ -38,12 +44,50 @@ def get_default_params():
         'stop_loss': -5.0
     }
 
+# 세션 상태 초기화
+if 'params_updated' not in st.session_state:
+    st.session_state.params_updated = False
+
 # 현재 파라미터 로드
 if config_file.exists():
     with open(config_file, 'r', encoding='utf-8') as f:
         params = json.load(f)
 else:
     params = get_default_params()
+
+# 파라미터 히스토리 로드
+def load_parameter_history():
+    """파라미터 히스토리 로드"""
+    history_files = sorted(history_dir.glob("params_*.json"), reverse=True)
+    history = []
+    
+    for file in history_files[:10]:  # 최근 10개
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                history.append(data)
+        except:
+            continue
+    
+    return history
+
+def save_parameter_history(params, note=""):
+    """파라미터 히스토리 저장"""
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    history_file = history_dir / f"params_{timestamp}.json"
+    
+    history_data = {
+        'timestamp': timestamp,
+        'datetime': datetime.now().isoformat(),
+        'note': note,
+        'params': params,
+        'backtest_result': None  # 나중에 백테스트 결과 연동
+    }
+    
+    with open(history_file, 'w', encoding='utf-8') as f:
+        json.dump(history_data, f, ensure_ascii=False, indent=2)
+    
+    return history_file
 
 # 탭 구성
 tab1, tab2, tab3, tab4 = st.tabs(["📊 MAPS 설정", "🎯 레짐 감지", "💼 포지션 관리", "🛡️ 리스크 관리"])
@@ -305,6 +349,9 @@ st.markdown("---")
 
 col1, col2, col3 = st.columns([1, 1, 1])
 
+with col1:
+    save_note = st.text_input("메모 (선택)", placeholder="예: 공격적 전략 테스트")
+
 with col2:
     if st.button("💾 파라미터 저장", type="primary", use_container_width=True):
         new_params = {
@@ -320,11 +367,16 @@ with col2:
             'stop_loss': stop_loss
         }
         
+        # 현재 설정 저장
         with open(config_file, 'w', encoding='utf-8') as f:
             json.dump(new_params, f, ensure_ascii=False, indent=2)
         
-        st.success("✅ 파라미터 저장 완료!")
+        # 히스토리 저장
+        history_file = save_parameter_history(new_params, save_note)
+        
+        st.success(f"✅ 파라미터 저장 완료! (히스토리: {history_file.name})")
         st.balloons()
+        st.session_state.params_updated = True
 
 with col3:
     if st.button("🔄 기본값으로 초기화", use_container_width=True):
@@ -333,7 +385,8 @@ with col3:
         with open(config_file, 'w', encoding='utf-8') as f:
             json.dump(default_params, f, ensure_ascii=False, indent=2)
         
-        st.success("✅ 기본값으로 초기화되었습니다. 페이지를 새로고침하세요.")
+        st.success("✅ 기본값으로 초기화되었습니다!")
+        st.session_state.params_updated = True
         st.rerun()
 
 # 현재 설정 요약
@@ -343,30 +396,77 @@ st.subheader("📋 현재 설정 요약")
 summary_col1, summary_col2 = st.columns(2)
 
 with summary_col1:
-    st.json({
-        "MAPS 설정": {
-            "임계값": maps_threshold,
-            "최대 종목 비중": f"{max_position_size}%"
-        },
-        "레짐 감지": {
-            "단기 MA": ma_short,
-            "장기 MA": ma_long,
-            "임계값": f"±{regime_threshold}%"
-        }
-    })
+    st.markdown("""<div style='background-color: #f0f2f6; padding: 20px; border-radius: 10px;'>
+    <h4 style='margin-top: 0;'>📊 MAPS 설정</h4>
+    <p><b>임계값:</b> {}</p>
+    <p><b>최대 종목 비중:</b> {}%</p>
+    <hr>
+    <h4>🎯 레짐 감지</h4>
+    <p><b>단기 MA:</b> {}일</p>
+    <p><b>장기 MA:</b> {}일</p>
+    <p><b>임계값:</b> ±{}%</p>
+    </div>""".format(maps_threshold, max_position_size, ma_short, ma_long, regime_threshold), unsafe_allow_html=True)
 
 with summary_col2:
-    st.json({
-        "포지션 비율": {
-            "상승장": f"{position_bull}%",
-            "중립장": f"{position_sideways}%",
-            "하락장": f"{position_bear}%"
-        },
-        "리스크 관리": {
-            "손절 라인": f"{stop_loss}%",
-            "방어 모드 신뢰도": f"{defense_confidence}%"
-        }
-    })
+    st.markdown("""<div style='background-color: #f0f2f6; padding: 20px; border-radius: 10px;'>
+    <h4 style='margin-top: 0;'>💼 포지션 비율</h4>
+    <p><b>상승장:</b> {}%</p>
+    <p><b>중립장:</b> {}%</p>
+    <p><b>하락장:</b> {}%</p>
+    <hr>
+    <h4>🛡️ 리스크 관리</h4>
+    <p><b>손절 라인:</b> {}%</p>
+    <p><b>방어 모드 신뢰도:</b> {}%</p>
+    </div>""".format(position_bull, position_sideways, position_bear, stop_loss, defense_confidence), unsafe_allow_html=True)
+
+# 파라미터 히스토리
+st.markdown("---")
+st.subheader("📜 파라미터 히스토리")
+
+history = load_parameter_history()
+
+if history:
+    # 히스토리 테이블
+    history_data = []
+    for h in history:
+        dt = datetime.fromisoformat(h['datetime'])
+        history_data.append({
+            '저장 시간': dt.strftime('%Y-%m-%d %H:%M:%S'),
+            '메모': h.get('note', '-'),
+            'MAPS': h['params'].get('maps_threshold', '-'),
+            '단기MA': h['params'].get('regime_ma_short', '-'),
+            '장기MA': h['params'].get('regime_ma_long', '-'),
+            '상승장': f"{h['params'].get('position_bull', '-')}%",
+            '중립장': f"{h['params'].get('position_sideways', '-')}%",
+            '하락장': f"{h['params'].get('position_bear', '-')}%",
+            '백테스트': '미실행' if h.get('backtest_result') is None else f"{h['backtest_result'].get('cagr', 0):.2f}%"
+        })
+    
+    df_history = pd.DataFrame(history_data)
+    st.dataframe(df_history, use_container_width=True, hide_index=True)
+    
+    # 히스토리 불러오기
+    st.markdown("---")
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        selected_history = st.selectbox(
+            "히스토리 선택",
+            options=range(len(history)),
+            format_func=lambda x: f"{history[x]['datetime'][:19]} - {history[x].get('note', '메모 없음')}"
+        )
+    
+    with col2:
+        if st.button("📥 불러오기", use_container_width=True):
+            selected_params = history[selected_history]['params']
+            
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(selected_params, f, ensure_ascii=False, indent=2)
+            
+            st.success("✅ 파라미터를 불러왔습니다!")
+            st.rerun()
+else:
+    st.info("💡 저장된 파라미터 히스토리가 없습니다. 파라미터를 저장하면 히스토리가 기록됩니다.")
 
 # 푸터
 st.markdown("---")

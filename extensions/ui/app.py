@@ -24,9 +24,10 @@ st.set_page_config(
 # 사이드바
 st.sidebar.title("📊 KRX Alertor")
 st.sidebar.markdown("---")
+st.sidebar.info("💡 좌측 메뉴에서 페이지를 선택하세요")
 
 # 메인 페이지
-st.title("🎯 KRX Alertor 통합 대시보드")
+st.title("🏠 Main")
 st.markdown("---")
 
 # 환영 메시지

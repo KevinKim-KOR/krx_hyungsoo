@@ -1,0 +1,63 @@
+# Week 4 Git Commit Commands
+
+# 1. 현재 상태 확인
+git status
+
+# 2. 변경 파일 추가
+git add extensions/automation/
+git add extensions/ui/
+git add scripts/automation/
+git add docs/WEEK4_AUTOMATION_COMPLETE.md
+git add docs/NAS_DEPLOYMENT_GUIDE.md
+git add docs/PHASE2_COMPLETE_SUMMARY.md
+git add CHANGELOG.md
+git add .env.template
+
+# 3. 커밋
+git commit -m "feat: Week 4 자동화 시스템 구현 완료 (Phase 2 완료!)
+
+Day 1: 실시간 모니터링 시스템
+- DataUpdater: 데이터 수집 자동화
+- RegimeMonitor: 레짐 감지 자동화
+- AutoSignalGenerator: 매매 신호 생성
+
+Day 2: 알림 시스템
+- TelegramNotifier: 텔레그램 알림
+- DailyReport: 일일 리포트
+- WeeklyReport: 주간 리포트
+
+Day 3: 파라미터 조정 UI
+- BacktestDatabase: SQLite 히스토리 DB
+- Dashboard: Streamlit 대시보드
+- 파라미터 조정 패널
+- 백테스트 히스토리 뷰어
+- 성과 비교 차트
+- 레짐 타임라인
+
+NAS 배포
+- run_daily_report.py: 일일 리포트 실행
+- run_weekly_report.py: 주간 리포트 실행
+- daily_alert.sh: NAS Cron (일일)
+- weekly_alert.sh: NAS Cron (주간)
+- .env.template: 환경 변수 템플릿
+
+문서화
+- Week 4 완료 보고서
+- NAS 배포 가이드
+- Phase 2 최종 요약
+- CHANGELOG 업데이트
+
+성과
+- ✅ 완전 자동화 시스템 구축
+- ✅ 평일 5분, 주말 30분 투자로 운영 가능
+- ✅ 파라미터 실시간 조정 UI
+- ✅ 백테스트 히스토리 관리
+- ✅ Phase 2 완료!
+"
+
+# 4. 푸시 (선택)
+# git push origin main
+
+# 5. 태그 생성 (Phase 2 완료)
+# git tag -a v0.4.0 -m "Phase 2 완료: 하이브리드 전략 및 자동화 시스템"
+# git push origin v0.4.0

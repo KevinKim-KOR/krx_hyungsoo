@@ -1,0 +1,9 @@
+{
+  "maps_threshold": 7.0,
+  "position_bull": 120,
+  "position_sideways": 90,
+  "position_bear": 60,
+  "defense_confidence": 90,
+  "regime_ma_short": 50,
+  "regime_ma_long": 200
+}
