@@ -246,9 +246,16 @@ class PortfolioManager:
         del portfolio['holdings'][index]
     
     def update_all_prices(self, portfolio: dict):
-        """모든 종목 현재가 업데이트"""
+        """모든 종목 현재가 업데이트 (+ 종목명 업데이트)"""
         for holding in portfolio['holdings']:
             code = holding['code']
+            
+            # 종목명 업데이트 (ETF 매핑 테이블 반영)
+            updated_name = self.get_stock_name(code)
+            if updated_name and updated_name != f"종목_{code}":
+                holding['name'] = updated_name
+            
+            # 현재가 업데이트
             current_price = self.get_current_price(code)
             
             if current_price > 0:
@@ -390,12 +397,18 @@ def main():
                 if not code:
                     st.error("종목 코드를 입력하세요.")
                 else:
-                    with st.spinner("종목 추가 중..."):
-                        holding = manager.add_holding(portfolio, code, quantity, avg_price, broker)
-                        manager.save_portfolio(portfolio)
-                    
-                    st.success(f"✅ {holding['name']} 추가 완료!")
-                    st.rerun()
+                    # 중복 체크
+                    existing_codes = [h['code'] for h in portfolio['holdings']]
+                    if code in existing_codes:
+                        st.error(f"⚠️ 이미 보유 중인 종목입니다: {code}")
+                        st.info("💡 추가 매수를 원하시면 '📈 추가 매수' 메뉴를 사용하세요.")
+                    else:
+                        with st.spinner("종목 추가 중..."):
+                            holding = manager.add_holding(portfolio, code, quantity, avg_price, broker)
+                            manager.save_portfolio(portfolio)
+                        
+                        st.success(f"✅ {holding['name']} 추가 완료!")
+                        st.rerun()
     
     # 3. 추가 매수
     elif menu == "📈 추가 매수":
