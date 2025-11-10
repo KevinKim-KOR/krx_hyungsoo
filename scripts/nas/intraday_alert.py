@@ -23,42 +23,40 @@ logger = logging.getLogger(__name__)
 
 def get_etf_universe():
     """ETF 유니버스 가져오기 (레버리지/인버스 제외)"""
-    import pykrx.stock as stock
-    
-    # 주요 ETF 리스트 (수동 관리 - 가장 안정적)
-    # Jason 친구 코드 및 config/universe.yaml 참고
-    all_etfs = [
+    # ETF 코드와 이름 매핑 (수동 관리)
+    etf_map = {
         # 대형주 ETF
-        '069500',  # KODEX 200
-        '102110',  # TIGER 200
-        '114800',  # KODEX 인버스 (제외 예정)
-        '122630',  # KODEX 레버리지 (제외 예정)
+        '069500': 'KODEX 200',
+        '102110': 'TIGER 200',
+        '114800': 'KODEX 인버스',  # 제외
+        '122630': 'KODEX 레버리지',  # 제외
         
         # 코스닥 ETF
-        '229200',  # KODEX 코스닥150
-        '233740',  # KODEX 코스닥150레버리지 (제외 예정)
-        '251340',  # KODEX 코스닥150선물인버스 (제외 예정)
+        '229200': 'KODEX 코스닥150',
+        '233740': 'KODEX 코스닥150레버리지',  # 제외
+        '251340': 'KODEX 코스닥150선물인버스',  # 제외
         
         # 섹터 ETF
-        '091160',  # KODEX 반도체
-        '091180',  # KODEX 자동차
-        '091170',  # KODEX 은행
-        '102780',  # KODEX 삼성그룹
-        '117460',  # KODEX 2차전지산업
-        '364980',  # KODEX 2차전지산업 (신규)
+        '091160': 'KODEX 반도체',
+        '091180': 'KODEX 자동차',
+        '091170': 'KODEX 은행',
+        '102780': 'KODEX 삼성그룹',
+        '117460': 'KODEX 2차전지산업',
+        '364980': 'KODEX 2차전지산업',
         
         # 해외 ETF
-        '272560',  # KODEX 미국S&P500TR
-        '379800',  # KODEX 미국나스닥100TR
-        '360750',  # TIGER 미국S&P500
-        '133690',  # TIGER 미국나스닥100
+        '272560': 'KODEX 미국S&P500TR',
+        '379800': 'KODEX 미국나스닥100TR',
+        '360750': 'TIGER 미국S&P500',
+        '133690': 'TIGER 미국나스닥100',
         
-        # 채권 ETF (제외 예정)
-        '148070',  # KOSEF 국고채10년
-        '114260',  # KODEX 국고채3년
-    ]
+        # 채권 ETF (제외)
+        '148070': 'KOSEF 국고채10년',  # 제외
+        '114260': 'KODEX 국고채3년',  # 제외
+    }
     
-    logger.info(f"기본 ETF 리스트: {len(all_etfs)}개")
+    logger.info(f"기본 ETF 리스트: {len(etf_map)}개")
+    print(f"기본 ETF 리스트: {len(etf_map)}개")
     
     # 레버리지/인버스/채권 ETF 제외 (코드 기반)
     exclude_codes = [
@@ -70,39 +68,27 @@ def get_etf_universe():
         '114260',  # KODEX 국고채3년
     ]
     
-    # 제외 키워드 (종목명 체크용)
-    exclude_keywords = [
-        '레버리지', '인버스', '곱버스', 'LEVERAGED', 'INVERSE',
-        '선물', 'FUTURES', '채권', 'BOND', '커버드콜', 'COVERED'
-    ]
-    
     filtered_etfs = []
-    for code in all_etfs:
+    for code, name in etf_map.items():
         # 제외 코드 체크
         if code in exclude_codes:
-            logger.debug(f"제외 (코드): {code}")
+            logger.debug(f"제외: {code} {name}")
+            print(f"  제외: {code} {name}")
             continue
         
-        try:
-            name = stock.get_market_ticker_name(code)
-            # 제외 키워드 체크
-            if any(kw in name for kw in exclude_keywords):
-                logger.debug(f"제외 (키워드): {code} {name}")
-                continue
-            filtered_etfs.append({'code': code, 'name': name})
-        except Exception as e:
-            # 종목명 조회 실패해도 코드만으로 추가 (나중에 다시 조회)
-            logger.warning(f"종목명 조회 실패 [{code}]: {e}, 코드만 추가")
-            filtered_etfs.append({'code': code, 'name': None})
+        filtered_etfs.append({'code': code, 'name': name})
+        print(f"  추가: {code} {name}")
     
     logger.info(f"필터링 후 ETF: {len(filtered_etfs)}개")
+    print(f"필터링 후 ETF: {len(filtered_etfs)}개")
     return filtered_etfs
 
 
 def check_intraday_movements():
-    """장중 급등/급락 체크 (ETF 전용)"""
+    """장중 급등/급락 체크 (ETF 전용) - 네이버 실시간 데이터 사용"""
     try:
         import pykrx.stock as stock
+        from pykrx.website import naver  # 네이버 실시간 데이터
         from datetime import datetime
         
         today = date.today()
@@ -110,8 +96,11 @@ def check_intraday_movements():
         # ETF 유니버스 가져오기
         etf_universe = get_etf_universe()
         
+        print(f"ETF 유니버스: {len(etf_universe)}개")
+        
         if not etf_universe:
             logger.warning("ETF 유니버스가 비어있습니다.")
+            print("❌ ETF 유니버스가 비어있습니다!")
             return []
         
         alerts = []
@@ -122,30 +111,29 @@ def check_intraday_movements():
             name = etf.get('name')
             
             try:
-                # 종목명이 없으면 다시 조회
+                # 종목명이 없으면 기본 이름 사용
                 if not name:
-                    try:
-                        name = stock.get_market_ticker_name(code)
-                    except:
-                        name = f"ETF_{code}"  # 조회 실패 시 기본 이름
+                    name = f"ETF_{code}"
                 
-                # 오늘 데이터 (장중)
-                df = stock.get_market_ohlcv_by_date(
-                    fromdate=today.strftime('%Y%m%d'),
-                    todate=today.strftime('%Y%m%d'),
-                    ticker=code
-                )
+                # 네이버 실시간 데이터 사용 (장중 데이터 포함)
+                # 최근 5일 데이터 가져오기
+                fromdate = (today - timedelta(days=5)).strftime('%Y%m%d')
+                todate = today.strftime('%Y%m%d')
+                
+                df = naver.get_market_ohlcv_by_date(fromdate, todate, code)
                 
                 if df.empty:
+                    print(f"  ❌ {code} {name}: 데이터 없음")
                     continue
                 
                 checked += 1
+                print(f"  ✅ {code} {name}: {len(df)}일 데이터")
                 
                 # 등락률 계산
                 change_pct = df.iloc[-1]['등락률']
                 
-                # 급등/급락 기준 (ETF는 1.0% 이상)
-                if abs(change_pct) >= 1.0:
+                # 급등/급락 기준 (ETF는 0.5% 이상)
+                if abs(change_pct) >= 0.5:
                     price = df.iloc[-1]['종가']
                     volume = df.iloc[-1]['거래량']
                     value = price * volume  # 거래대금
@@ -164,6 +152,7 @@ def check_intraday_movements():
                 continue
         
         logger.info(f"체크 완료: {checked}개 종목, 알림 대상: {len(alerts)}개")
+        print(f"체크 완료: {checked}개 ETF 중 {len(alerts)}개 알림 대상")
         
         # 등락률 절대값 기준으로 정렬
         alerts.sort(key=lambda x: abs(x['change']), reverse=True)
