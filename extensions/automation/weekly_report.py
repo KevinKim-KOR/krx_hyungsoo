@@ -15,6 +15,7 @@ import logging
 
 from extensions.automation.regime_monitor import RegimeMonitor
 from extensions.automation.telegram_notifier import TelegramNotifier
+from extensions.automation.portfolio_loader import PortfolioLoader
 
 logger = logging.getLogger(__name__)
 
@@ -47,19 +48,17 @@ class WeeklyReport:
             chat_id=chat_id,
             enabled=telegram_enabled
         )
+        self.portfolio_loader = PortfolioLoader()
     
     def generate_report(
         self,
-        end_date: Optional[date] = None,
-        portfolio_history: Optional[List[Dict]] = None
+        end_date: Optional[date] = None
     ) -> str:
         """
-        주간 리포트 생성
+        주간 리포트 생성 (실제 포트폴리오 기반)
         
         Args:
             end_date: 종료 날짜 (None이면 오늘)
-            portfolio_history: 포트폴리오 이력
-                [{'date': date, 'value': float, 'return_pct': float}, ...]
         
         Returns:
             str: 리포트 텍스트
@@ -70,6 +69,12 @@ class WeeklyReport:
         start_date = end_date - timedelta(days=7)
         
         logger.info(f"주간 리포트 생성: {start_date} ~ {end_date}")
+        
+        # 실제 포트폴리오 로드
+        summary = self.portfolio_loader.get_portfolio_summary()
+        top5 = self.portfolio_loader.get_top_performers(5)
+        worst5 = self.portfolio_loader.get_worst_performers(5)
+        by_broker = self.portfolio_loader.get_holdings_by_broker()
         
         # 1. 레짐 요약
         regime_summary = self.regime_monitor.get_regime_summary(days=7)
@@ -89,25 +94,45 @@ class WeeklyReport:
         report_lines.append("")
         
         # 포트폴리오 성과
-        if portfolio_history and len(portfolio_history) > 0:
-            report_lines.append("💼 주간 성과")
+        report_lines.append("💼 주간 성과")
+        report_lines.append("-" * 50)
+        report_lines.append(f"  총 평가액: {summary['total_value']:,.0f}원")
+        report_lines.append(f"  총 매입액: {summary['total_cost']:,.0f}원")
+        report_lines.append(f"  평가손익: {summary['return_amount']:+,.0f}원 ({summary['return_pct']:+.2f}%)")
+        report_lines.append(f"  보유 종목: {summary['holdings_count']}개")
+        report_lines.append("")
+        
+        # 주간 베스트/워스트
+        report_lines.append("📈 주간 베스트/워스트")
+        report_lines.append("-" * 50)
+        report_lines.append("  🏆 베스트:")
+        for idx, row in top5.head(3).iterrows():
+            report_lines.append(
+                f"     {row['name'][:20]:20s} "
+                f"{row['return_amount']:+10,.0f}원 ({row['return_pct']:+6.2f}%)"
+            )
+        
+        report_lines.append("")
+        report_lines.append("  💔 워스트:")
+        for idx, row in worst5.head(3).iterrows():
+            report_lines.append(
+                f"     {row['name'][:20]:20s} "
+                f"{row['return_amount']:+10,.0f}원 ({row['return_pct']:+6.2f}%)"
+            )
+        report_lines.append("")
+        
+        # 증권사별 성과
+        if len(by_broker) > 1:
+            report_lines.append("🏦 증권사별 성과")
             report_lines.append("-" * 50)
-            
-            # 주간 수익률 계산
-            start_value = portfolio_history[0]['value']
-            end_value = portfolio_history[-1]['value']
-            weekly_return = ((end_value - start_value) / start_value) * 100
-            
-            report_lines.append(f"  시작 평가액: {start_value:,.0f}원")
-            report_lines.append(f"  종료 평가액: {end_value:,.0f}원")
-            report_lines.append(f"  주간 수익률: {weekly_return:+.2f}%")
-            
-            # 최고/최저
-            max_value = max(h['value'] for h in portfolio_history)
-            min_value = min(h['value'] for h in portfolio_history)
-            report_lines.append(f"  최고 평가액: {max_value:,.0f}원")
-            report_lines.append(f"  최저 평가액: {min_value:,.0f}원")
-            
+            for broker, df in by_broker.items():
+                broker_value = df['current_value'].sum()
+                broker_return = df['return_amount'].sum()
+                broker_return_pct = (broker_return / df['total_cost'].sum() * 100) if df['total_cost'].sum() > 0 else 0
+                report_lines.append(
+                    f"  {broker:10s}: {broker_value:10,.0f}원 "
+                    f"({broker_return:+10,.0f}원, {broker_return_pct:+6.2f}%)"
+                )
             report_lines.append("")
         
         # 레짐 분석
