@@ -378,6 +378,9 @@ def main():
             if 'broker' not in df.columns:
                 df['broker'] = ''
             
+            # 정렬: 증권사 → 코드
+            df = df.sort_values(['broker', 'code'])
+            
             df_display = df[[
                 'name', 'code', 'broker', 'quantity', 'avg_price', 'current_price',
                 'total_cost', 'current_value', 'return_amount', 'return_pct'
@@ -397,7 +400,35 @@ def main():
             df_display['평가손익'] = df_display['평가손익'].apply(lambda x: f"{x:+,.0f}")
             df_display['수익률(%)'] = df_display['수익률(%)'].apply(lambda x: f"{x:+.2f}")
             
-            st.dataframe(df_display, use_container_width=True, hide_index=True)
+            # 색상 스타일 적용
+            def highlight_profit_loss(row):
+                # 평가손익 열 인덱스
+                profit_idx = df_display.columns.get_loc('평가손익')
+                return_pct_idx = df_display.columns.get_loc('수익률(%)')
+                
+                # 기본 스타일
+                styles = [''] * len(row)
+                
+                # 평가손익 색상
+                profit_text = row.iloc[profit_idx]
+                if '+' in str(profit_text):
+                    styles[profit_idx] = 'color: #d32f2f; font-weight: bold'  # 빨간색 (수익)
+                elif '-' in str(profit_text):
+                    styles[profit_idx] = 'color: #1976d2; font-weight: bold'  # 파란색 (손실)
+                
+                # 수익률 색상
+                return_text = row.iloc[return_pct_idx]
+                if '+' in str(return_text):
+                    styles[return_pct_idx] = 'color: #d32f2f; font-weight: bold'  # 빨간색 (수익)
+                elif '-' in str(return_text):
+                    styles[return_pct_idx] = 'color: #1976d2; font-weight: bold'  # 파란색 (손실)
+                
+                return styles
+            
+            # 스타일 적용
+            styled_df = df_display.style.apply(highlight_profit_loss, axis=1)
+            
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
             
         else:
             st.info("보유 종목이 없습니다. '➕ 종목 추가' 메뉴에서 종목을 추가하세요.")
@@ -428,7 +459,14 @@ def main():
                 format="%.4f",
                 help="소수점 입력 가능 (예: 토스백크 매일모으기)"
             )
-            avg_price = st.number_input("평균 단가 (원)", min_value=1, value=50000, step=100)
+            avg_price = st.number_input(
+                "평균 단가 (원)",
+                min_value=1,
+                value=50000,
+                step=100,
+                format="%d",
+                help="예: 50,000원 → 50000 입력"
+            )
             
             # 계산 미리보기
             total_cost = quantity * avg_price
@@ -498,7 +536,14 @@ def main():
                     format="%.4f",
                     help="소수점 입력 가능"
                 )
-                add_price = st.number_input("매수 단가 (원)", min_value=1, value=int(holding['avg_price']), step=100)
+                add_price = st.number_input(
+                    "매수 단가 (원)",
+                    min_value=1,
+                    value=int(holding['avg_price']),
+                    step=100,
+                    format="%d",
+                    help="예: 50,000원 → 50000 입력"
+                )
                 
                 # 계산 미리보기
                 new_quantity = holding['quantity'] + add_quantity
@@ -567,7 +612,14 @@ def main():
                     format="%.4f",
                     help="소수점 입력 가능"
                 )
-                avg_price = st.number_input("평균 단가 (원)", min_value=1, value=int(holding['avg_price']), step=100)
+                avg_price = st.number_input(
+                    "평균 단가 (원)",
+                    min_value=1,
+                    value=int(holding['avg_price']),
+                    step=100,
+                    format="%d",
+                    help="예: 50,000원 → 50000 입력"
+                )
                 
                 # 계산 미리보기
                 total_cost = quantity * avg_price
