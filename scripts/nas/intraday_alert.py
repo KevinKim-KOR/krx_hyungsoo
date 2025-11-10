@@ -144,8 +144,8 @@ def check_intraday_movements():
                 # 등락률 계산
                 change_pct = df.iloc[-1]['등락률']
                 
-                # 급등/급락 기준 (ETF는 1.5% 이상)
-                if abs(change_pct) >= 1.5:
+                # 급등/급락 기준 (ETF는 1.0% 이상)
+                if abs(change_pct) >= 1.0:
                     price = df.iloc[-1]['종가']
                     volume = df.iloc[-1]['거래량']
                     value = price * volume  # 거래대금
@@ -181,12 +181,22 @@ def main():
     logger.info("장중 알림 체크 시작")
     logger.info("=" * 60)
     
+    print("=" * 60)
+    print("장중 알림 체크 시작")
+    print("=" * 60)
+    
     try:
         # 장중 체크
         alerts = check_intraday_movements()
         
+        print(f"알림 대상: {len(alerts)}개")
+        
         if not alerts:
             logger.info("알림 대상 없음")
+            print("⚠️ 알림 대상 없음 (1.0% 이상 변동 ETF 없음)")
+            print("💡 현재 횡보장이거나 장 초반일 수 있습니다.")
+            print("💡 기준을 더 낮추려면 scripts/nas/intraday_alert.py 파일에서")
+            print("   'if abs(change_pct) >= 1.0:' 를 'if abs(change_pct) >= 0.5:' 으로 변경하세요")
             return 0
         
         # 메시지 생성
@@ -213,18 +223,27 @@ def main():
                 message += f"  거래대금: {alert['value']/1e8:.1f}억원\n\n"
         
         # 텔레그램 전송
+        print("\n텔레그램 전송 시도...")
+        print(f"메시지 길이: {len(message)} 문자")
+        
         sender = TelegramSender()
         success = sender.send_custom(message, parse_mode='Markdown')
         
         if success:
             logger.info(f"✅ 장중 알림 전송 성공: {len(alerts)}개")
+            print(f"✅ 텔레그램 전송 성공: {len(alerts)}개 ETF")
         else:
             logger.warning("⚠️ 장중 알림 전송 실패")
+            print("❌ 텔레그램 전송 실패")
+            print("💡 .env 파일의 TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID를 확인하세요")
         
         return 0
     
     except Exception as e:
         logger.error(f"❌ 장중 알림 실패: {e}", exc_info=True)
+        print(f"❌ 에러 발생: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
 
