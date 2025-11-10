@@ -60,7 +60,17 @@ def get_etf_universe():
     
     logger.info(f"기본 ETF 리스트: {len(all_etfs)}개")
     
-    # 레버리지/인버스/채권 ETF 제외
+    # 레버리지/인버스/채권 ETF 제외 (코드 기반)
+    exclude_codes = [
+        '114800',  # KODEX 인버스
+        '122630',  # KODEX 레버리지
+        '233740',  # KODEX 코스닥150레버리지
+        '251340',  # KODEX 코스닥150선물인버스
+        '148070',  # KOSEF 국고채10년
+        '114260',  # KODEX 국고채3년
+    ]
+    
+    # 제외 키워드 (종목명 체크용)
     exclude_keywords = [
         '레버리지', '인버스', '곱버스', 'LEVERAGED', 'INVERSE',
         '선물', 'FUTURES', '채권', 'BOND', '커버드콜', 'COVERED'
@@ -68,6 +78,11 @@ def get_etf_universe():
     
     filtered_etfs = []
     for code in all_etfs:
+        # 제외 코드 체크
+        if code in exclude_codes:
+            logger.debug(f"제외 (코드): {code}")
+            continue
+        
         try:
             name = stock.get_market_ticker_name(code)
             # 제외 키워드 체크
@@ -76,8 +91,9 @@ def get_etf_universe():
                 continue
             filtered_etfs.append({'code': code, 'name': name})
         except Exception as e:
-            logger.debug(f"종목명 조회 실패 [{code}]: {e}")
-            continue
+            # 종목명 조회 실패해도 코드만으로 추가 (나중에 다시 조회)
+            logger.warning(f"종목명 조회 실패 [{code}]: {e}, 코드만 추가")
+            filtered_etfs.append({'code': code, 'name': None})
     
     logger.info(f"필터링 후 ETF: {len(filtered_etfs)}개")
     return filtered_etfs
@@ -103,8 +119,16 @@ def check_intraday_movements():
         
         for etf in etf_universe:
             code = etf['code']
-            name = etf['name']
+            name = etf.get('name')
+            
             try:
+                # 종목명이 없으면 다시 조회
+                if not name:
+                    try:
+                        name = stock.get_market_ticker_name(code)
+                    except:
+                        name = f"ETF_{code}"  # 조회 실패 시 기본 이름
+                
                 # 오늘 데이터 (장중)
                 df = stock.get_market_ohlcv_by_date(
                     fromdate=today.strftime('%Y%m%d'),
