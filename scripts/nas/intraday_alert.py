@@ -27,18 +27,32 @@ def get_etf_universe():
     
     today = date.today()
     
-    # ETF 전체 리스트 가져오기
+    # KOSPI에서 ETF 필터링 (PyKRX는 ETF 마켓을 직접 지원하지 않음)
     try:
-        all_etfs = stock.get_market_ticker_list(date=today, market="ETF")
-        logger.info(f"전체 ETF: {len(all_etfs)}개")
+        # KOSPI 전체 종목 가져오기
+        all_codes = stock.get_market_ticker_list(date=today, market="KOSPI")
+        logger.info(f"KOSPI 전체: {len(all_codes)}개")
+        
+        # ETF 필터링 (종목명에 'ETF' 또는 'KODEX', 'TIGER' 등 포함)
+        etf_keywords = ['KODEX', 'TIGER', 'KINDEX', 'KOSEF', 'ARIRANG', 'KBSTAR', 'HANARO', 'TIMEFOLIO', 'SMART']
+        all_etfs = []
+        
+        for code in all_codes:
+            try:
+                name = stock.get_market_ticker_name(code)
+                if any(kw in name for kw in etf_keywords):
+                    all_etfs.append(code)
+            except:
+                continue
+        
+        logger.info(f"ETF 필터링: {len(all_etfs)}개")
+        
     except Exception as e:
         logger.warning(f"ETF 리스트 가져오기 실패: {e}")
         # 기본 ETF 리스트 (주요 ETF)
         all_etfs = [
             '069500',  # KODEX 200
             '102110',  # TIGER 200
-            '114800',  # KODEX 인버스 (제외 예정)
-            '122630',  # KODEX 레버리지 (제외 예정)
             '229200',  # KODEX 코스닥150
             '091160',  # KODEX 반도체
             '091180',  # KODEX 자동차
@@ -47,6 +61,8 @@ def get_etf_universe():
             '148070',  # KOSEF 국고채10년
             '272560',  # KODEX 미국S&P500TR
             '379800',  # KODEX 미국나스닥100TR
+            '233740',  # KODEX 코스닥150레버리지 (제외 예정)
+            '251340',  # KODEX 코스닥150선물인버스 (제외 예정)
         ]
     
     # 레버리지/인버스/채권 ETF 제외
