@@ -3,6 +3,7 @@ pandas>=1.5.0
 numpy>=1.21.0
 pyyaml>=5.4.0
 requests>=2.25.0
+beautifulsoup4>=4.9.0
 pykrx>=1.0.51
 pyarrow>=10.0.0
 

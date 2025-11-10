@@ -124,12 +124,32 @@ class PortfolioManager:
             json.dump(portfolio, f, ensure_ascii=False, indent=2)
     
     def get_stock_name(self, code: str) -> str:
-        """종목명 조회"""
-        # 매핑 테이블 우선
+        """종목명 조회 (네이버 금융 API 사용)"""
+        # 매핑 테이블 우선 (빠른 조회)
         if code in self.etf_names:
             return self.etf_names[code]
         
-        # PyKRX로 조회 시도
+        # 네이버 금융에서 종목명 조회
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            
+            url = f"https://finance.naver.com/item/main.naver?code={code}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=5)
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                # 종목명 추출
+                title_elem = soup.select_one('.wrap_company h2 a')
+                if title_elem:
+                    name = title_elem.text.strip()
+                    if name:
+                        return name
+        except Exception as e:
+            pass
+        
+        # PyKRX로 조회 시도 (보조)
         try:
             import pykrx.stock as stock
             name = stock.get_market_ticker_name(code)
@@ -141,7 +161,30 @@ class PortfolioManager:
         return f"종목_{code}"
     
     def get_current_price(self, code: str) -> float:
-        """현재가 조회 (네이버 API)"""
+        """현재가 조회 (네이버 금융 + PyKRX)"""
+        # 방법 1: 네이버 금융 크롤링 (실시간 현재가)
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            
+            url = f"https://finance.naver.com/item/main.naver?code={code}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=5)
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                # 현재가 추출
+                price_elem = soup.select_one('.today .blind')
+                if price_elem:
+                    price_text = price_elem.text.strip().replace(',', '')
+                    try:
+                        return float(price_text)
+                    except:
+                        pass
+        except Exception as e:
+            pass
+        
+        # 방법 2: PyKRX 네이버 API (국내 종목만)
         try:
             from datetime import date, timedelta
             today = date.today()
@@ -153,7 +196,7 @@ class PortfolioManager:
             if not df.empty:
                 return float(df.iloc[-1]['종가'])
         except Exception as e:
-            st.warning(f"현재가 조회 실패 [{code}]: {e}")
+            pass
         
         return 0.0
     
