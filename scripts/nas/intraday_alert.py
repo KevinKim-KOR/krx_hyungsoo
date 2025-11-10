@@ -29,17 +29,23 @@ def check_intraday_movements():
         
         today = date.today()
         
-        # KOSPI 200 전체 종목 가져오기
+        # KOSPI 200 + KOSDAQ 상위 종목 가져오기
         try:
-            codes = stock.get_market_ticker_list(date=today, market="KOSPI")
-            logger.info(f"체크 대상 종목 수: {len(codes)}개")
+            # KOSPI 200
+            kospi_codes = stock.get_market_ticker_list(date=today, market="KOSPI200")
+            logger.info(f"KOSPI 200: {len(kospi_codes)}개")
             
-            # 시가총액 상위 종목 우선 (옵션)
-            # 전체를 다 체크하면 시간이 오래 걸릴 수 있으므로 상위 100개 정도만
-            if len(codes) > 100:
-                # KOSPI 200 구성 종목만 가져오기
-                codes = stock.get_market_ticker_list(date=today, market="KOSPI200")
-                logger.info(f"KOSPI 200으로 제한: {len(codes)}개")
+            # KOSDAQ 상위 50개 추가 (변동성 큼)
+            try:
+                kosdaq_all = stock.get_market_ticker_list(date=today, market="KOSDAQ")
+                # 시가총액 기준 상위 50개 (간단히 앞 50개)
+                kosdaq_codes = kosdaq_all[:50]
+                logger.info(f"KOSDAQ 상위: {len(kosdaq_codes)}개")
+            except:
+                kosdaq_codes = []
+            
+            codes = kospi_codes + kosdaq_codes
+            logger.info(f"총 체크 대상: {len(codes)}개")
         except Exception as e:
             logger.warning(f"종목 리스트 가져오기 실패, 기본 종목 사용: {e}")
             # 기본 종목 (대형주 위주)
@@ -71,8 +77,8 @@ def check_intraday_movements():
                 # 등락률 계산
                 change_pct = df.iloc[-1]['등락률']
                 
-                # 급등/급락 기준 (2% 이상으로 완화)
-                if abs(change_pct) >= 2.0:
+                # 급등/급락 기준 (1.5% 이상으로 완화)
+                if abs(change_pct) >= 1.5:
                     name = stock.get_market_ticker_name(code)
                     price = df.iloc[-1]['종가']
                     volume = df.iloc[-1]['거래량']
