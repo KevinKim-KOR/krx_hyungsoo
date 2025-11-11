@@ -21,9 +21,9 @@ mkdir -p $LOG_DIR
 # 로그 파일
 LOG_FILE="$LOG_DIR/daily_alert_$(date +%Y%m%d).log"
 
-# 일일 리포트 실행
+# 일일 리포트 실행 (실제 포트폴리오 기반)
 echo "=== 일일 리포트 시작: $(date) ===" >> $LOG_FILE
-$PYTHON $PROJECT_DIR/scripts/automation/run_daily_report.py >> $LOG_FILE 2>&1
+$PYTHON $PROJECT_DIR/scripts/nas/daily_report_alert.py >> $LOG_FILE 2>&1
 EXIT_CODE=$?
 echo "=== 일일 리포트 완료: $(date), Exit Code: $EXIT_CODE ===" >> $LOG_FILE
 

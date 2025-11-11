@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 scripts/nas/intraday_alert.py
-장중 급등/급락 알림
+장중 급등/급락 알림 (보유 종목 우선)
 """
 import sys
 import logging
@@ -14,11 +14,24 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from extensions.notification.telegram_sender import TelegramSender
+from extensions.automation.portfolio_loader import PortfolioLoader
 from infra.logging.setup import setup_logging
 
 # 로깅 설정
 setup_logging()
 logger = logging.getLogger(__name__)
+
+# 급등/급락 기준 (특성별 차별화)
+THRESHOLDS = {
+    'leverage': 3.0,      # 레버리지 ETF: 3% 이상
+    'sector': 2.0,        # 섹터 ETF: 2% 이상
+    'index': 1.5,         # 지수 ETF: 1.5% 이상
+    'overseas': 1.5,      # 해외 ETF: 1.5% 이상
+    'default': 2.0        # 기본: 2% 이상
+}
+
+# 최소 거래대금 (의미 있는 알림만)
+MIN_TRADE_VALUE = 50e8  # 50억원 이상
 
 
 def get_etf_universe():
@@ -132,20 +145,37 @@ def check_intraday_movements():
                 # 등락률 계산
                 change_pct = df.iloc[-1]['등락률']
                 
-                # 급등/급락 기준 (ETF는 0.5% 이상)
-                if abs(change_pct) >= 0.5:
+                # ETF 특성 판별
+                etf_type = 'default'
+                if '레버리지' in name or '인버스' in name:
+                    etf_type = 'leverage'
+                elif '미국' in name or '글로벌' in name or '해외' in name:
+                    etf_type = 'overseas'
+                elif '200' in name or '코스닥' in name:
+                    etf_type = 'index'
+                elif any(sector in name for sector in ['반도체', '자동차', '은행', '배당', '에너지']):
+                    etf_type = 'sector'
+                
+                # 특성별 기준 적용
+                threshold = THRESHOLDS.get(etf_type, THRESHOLDS['default'])
+                
+                # 급등/급락 기준 체크
+                if abs(change_pct) >= threshold:
                     price = df.iloc[-1]['종가']
                     volume = df.iloc[-1]['거래량']
                     value = price * volume  # 거래대금
                     
-                    alerts.append({
-                        'code': code,
-                        'name': name,
-                        'change': change_pct,
-                        'price': price,
-                        'volume': volume,
-                        'value': value
-                    })
+                    # 거래대금 필터 (의미 있는 알림만)
+                    if value >= MIN_TRADE_VALUE:
+                        alerts.append({
+                            'code': code,
+                            'name': name,
+                            'change': change_pct,
+                            'price': price,
+                            'volume': volume,
+                            'value': value,
+                            'type': etf_type
+                        })
             
             except Exception as e:
                 logger.debug(f"종목 체크 실패 [{code}]: {e}")
@@ -167,7 +197,7 @@ def check_intraday_movements():
 def main():
     """메인 실행 함수"""
     logger.info("=" * 60)
-    logger.info("장중 알림 체크 시작")
+    logger.info("장중 알림 체크 시작 (보유 종목 우선)")
     logger.info("=" * 60)
     
     print("=" * 60)
@@ -175,39 +205,67 @@ def main():
     print("=" * 60)
     
     try:
+        # 보유 종목 로드
+        try:
+            loader = PortfolioLoader()
+            holdings_codes = loader.get_holdings_codes()
+            holdings_detail = loader.get_holdings_detail()
+            print(f"보유 종목: {len(holdings_codes)}개")
+            logger.info(f"보유 종목: {len(holdings_codes)}개")
+        except Exception as e:
+            logger.warning(f"보유 종목 로드 실패: {e}")
+            holdings_codes = []
+            holdings_detail = None
+        
         # 장중 체크
         alerts = check_intraday_movements()
         
         print(f"알림 대상: {len(alerts)}개")
         
         if not alerts:
-            logger.info("알림 대상 없음")
-            print("⚠️ 알림 대상 없음 (1.0% 이상 변동 ETF 없음)")
-            print("💡 현재 횡보장이거나 장 초반일 수 있습니다.")
-            print("💡 기준을 더 낮추려면 scripts/nas/intraday_alert.py 파일에서")
-            print("   'if abs(change_pct) >= 1.0:' 를 'if abs(change_pct) >= 0.5:' 으로 변경하세요")
+            logger.info("알림 대상 없음 - 전송 생략")
+            print("✅ 의미 있는 급등/급락 없음 (알림 생략)")
+            print("💡 현재 횡보장이거나 안정적인 장세입니다.")
+            print(f"💡 기준: 지수 ETF 1.5%, 섹터 ETF 2.0%, 해외 ETF 1.5%")
+            print(f"💡 최소 거래대금: 50억원 이상")
             return 0
+        
+        # 보유 종목 분류
+        holding_alerts = [a for a in alerts if a['code'] in holdings_codes]
+        other_alerts = [a for a in alerts if a['code'] not in holdings_codes]
         
         # 메시지 생성
         message = "*[장중 알림] ETF 급등/급락*\n\n"
         message += f"📅 {date.today()}\n"
-        message += f"📊 총 {len(alerts)}개 ETF 발견\n\n"
+        message += f"📊 총 {len(alerts)}개 ETF 발견\n"
         
-        # 급등 ETF
-        up_alerts = [a for a in alerts if a['change'] > 0][:10]
-        if up_alerts:
-            message += "*🟢 급등 ETF*\n"
-            for alert in up_alerts:
-                message += f"• {alert['name']} ({alert['code']})\n"
+        if holding_alerts:
+            message += f"💼 보유 종목: {len(holding_alerts)}개\n"
+        message += "\n"
+        
+        # 1순위: 보유 종목 급등/급락
+        if holding_alerts:
+            message += "*💼 보유 종목*\n"
+            for alert in holding_alerts[:5]:  # 최대 5개
+                emoji = "🟢" if alert['change'] > 0 else "🔴"
+                message += f"{emoji} {alert['name']} ({alert['code']})\n"
                 message += f"  변동: {alert['change']:+.2f}% | 가격: {alert['price']:,.0f}원\n"
                 message += f"  거래대금: {alert['value']/1e8:.1f}억원\n\n"
         
-        # 급락 ETF
-        down_alerts = [a for a in alerts if a['change'] < 0][:10]
-        if down_alerts:
-            message += "*🔴 급락 ETF*\n"
-            for alert in down_alerts:
-                message += f"• {alert['name']} ({alert['code']})\n"
+        # 2순위: 기타 주요 ETF (최대 5개)
+        if other_alerts and len(other_alerts) > 0:
+            message += "*📊 주요 ETF*\n"
+            # 급등 상위 3개
+            up_others = [a for a in other_alerts if a['change'] > 0][:3]
+            for alert in up_others:
+                message += f"🟢 {alert['name']} ({alert['code']})\n"
+                message += f"  변동: {alert['change']:+.2f}% | 가격: {alert['price']:,.0f}원\n"
+                message += f"  거래대금: {alert['value']/1e8:.1f}억원\n\n"
+            
+            # 급락 상위 3개
+            down_others = [a for a in other_alerts if a['change'] < 0][:3]
+            for alert in down_others:
+                message += f"🔴 {alert['name']} ({alert['code']})\n"
                 message += f"  변동: {alert['change']:+.2f}% | 가격: {alert['price']:,.0f}원\n"
                 message += f"  거래대금: {alert['value']/1e8:.1f}억원\n\n"
         

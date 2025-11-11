@@ -6,5 +6,21 @@
     "position_ratio": 1.2,
     "defense_mode": false,
     "timestamp": "2025-11-08T18:51:20.762642"
+  },
+  {
+    "date": "2025-11-10",
+    "regime": "bull",
+    "confidence": 1.0,
+    "position_ratio": 1.2,
+    "defense_mode": false,
+    "timestamp": "2025-11-10T18:59:36.106056"
+  },
+  {
+    "date": "2025-11-11",
+    "regime": "bull",
+    "confidence": 1.0,
+    "position_ratio": 1.2,
+    "defense_mode": false,
+    "timestamp": "2025-11-11T22:19:45.241390"
   }
 ]
