@@ -21,12 +21,14 @@ from pykrx import stock
 class HoldingsBacktest:
     """실제 보유 종목 백테스트"""
     
-    def __init__(self, holdings_file: str):
+    def __init__(self, holdings_file: str, entry_dates: Optional[Dict[str, str]] = None):
         """
         Args:
             holdings_file: 보유 종목 JSON 파일 경로
+            entry_dates: 매입일 정보 (code: 'YYYY-MM-DD')
         """
         self.holdings_file = holdings_file
+        self.entry_dates = entry_dates or {}
         self.holdings = self.load_holdings()
         
     def load_holdings(self) -> List[Dict]:
@@ -73,7 +75,8 @@ class HoldingsBacktest:
         df: pd.DataFrame, 
         entry_price: float,
         current_price: float,
-        stop_loss_levels: List[int] = [10, 15, 20, 25, 30]
+        entry_date: Optional[str] = None,
+        stop_loss_levels: List[int] = [7, 10, 15, 20, 25, 30]
     ) -> Optional[Dict]:
         """
         최적 손절 시점 찾기
@@ -82,6 +85,7 @@ class HoldingsBacktest:
             df: 가격 데이터
             entry_price: 매입가
             current_price: 현재가
+            entry_date: 매입일 (YYYY-MM-DD)
             stop_loss_levels: 손절 비율 리스트 (%)
             
         Returns:
@@ -89,6 +93,17 @@ class HoldingsBacktest:
         """
         # 현재 손실률
         current_return = ((current_price / entry_price) - 1) * 100
+        
+        # 매입일 이후 데이터만 사용
+        if entry_date:
+            try:
+                entry_datetime = pd.to_datetime(entry_date)
+                df = df[df.index >= entry_datetime]
+                if df.empty:
+                    print(f"  ⚠️ 매입일 {entry_date} 이후 데이터 없음")
+                    return None
+            except:
+                pass
         
         # 손절 시점 찾기 (매입가 기준)
         for stop_loss_pct in stop_loss_levels:
@@ -152,9 +167,19 @@ class HoldingsBacktest:
                 'optimal_stop': None
             }
         
-        # 가격 히스토리 조회 (최근 2년)
+        # 매입일 확인
+        entry_date = self.entry_dates.get(code)
+        
+        # 가격 히스토리 조회 (매입일부터 또는 최근 5년)
         end_date = datetime.now().strftime('%Y%m%d')
-        start_date = (datetime.now() - timedelta(days=730)).strftime('%Y%m%d')
+        if entry_date:
+            # 매입일부터 조회
+            start_date = pd.to_datetime(entry_date).strftime('%Y%m%d')
+            print(f"  📅 매입일: {entry_date}")
+        else:
+            # 매입일 정보 없으면 5년 전부터 조회
+            start_date = (datetime.now() - timedelta(days=1825)).strftime('%Y%m%d')
+            print(f"  ⚠️ 매입일 정보 없음 (5년 전부터 조회)")
         
         df = self.get_price_history(code, start_date, end_date)
         
@@ -171,7 +196,7 @@ class HoldingsBacktest:
             }
         
         # 최적 손절 시점 찾기
-        optimal_stop = self.find_optimal_stop_loss(df, avg_price, current_price)
+        optimal_stop = self.find_optimal_stop_loss(df, avg_price, current_price, entry_date)
         
         if optimal_stop:
             saved_amount = (optimal_stop['saved_pct'] / 100) * (avg_price * quantity)
@@ -263,8 +288,15 @@ def main():
     # 보유 종목 파일 경로
     holdings_file = PROJECT_ROOT / 'data' / 'portfolio' / 'holdings.json'
     
+    # 매입일 정보 (사용자 제공)
+    entry_dates = {
+        '001510': '2020-07-01',  # SK증권 (2020년 여름)
+        '221840': '2020-10-01',  # 하이즈항공 (2020년 가을)
+        '323410': '2020-07-01',  # 카카오뱅크 (2020년 여름)
+    }
+    
     # 백테스트 실행
-    backtest = HoldingsBacktest(holdings_file)
+    backtest = HoldingsBacktest(holdings_file, entry_dates)
     results = backtest.run_all()
     
     # 리포트 생성
