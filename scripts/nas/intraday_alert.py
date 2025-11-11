@@ -145,6 +145,22 @@ def check_intraday_movements():
                 # 등락률 계산
                 change_pct = df.iloc[-1]['등락률']
                 
+                # 3개월 수익률 계산 (약 60거래일)
+                if len(df) >= 60:
+                    price_3m_ago = df.iloc[-60]['종가']
+                    price_now = df.iloc[-1]['종가']
+                    return_3m = ((price_now / price_3m_ago) - 1) * 100
+                else:
+                    return_3m = None
+                
+                # 거래량 트렌드 (5일 평균 대비)
+                if len(df) >= 5:
+                    volume_5d_avg = df.iloc[-6:-1]['거래량'].mean()
+                    volume_today = df.iloc[-1]['거래량']
+                    volume_ratio = (volume_today / volume_5d_avg) if volume_5d_avg > 0 else 1.0
+                else:
+                    volume_ratio = 1.0
+                
                 # ETF 특성 판별
                 etf_type = 'default'
                 if '레버리지' in name or '인버스' in name:
@@ -167,6 +183,18 @@ def check_intraday_movements():
                     
                     # 거래대금 필터 (의미 있는 알림만)
                     if value >= MIN_TRADE_VALUE:
+                        # 괴리율 조회 (ETF 전용)
+                        try:
+                            from pykrx import stock
+                            etf_info = stock.get_etf_ohlcv_by_date(date.today().strftime('%Y%m%d'), date.today().strftime('%Y%m%d'), code)
+                            if not etf_info.empty and 'NAV' in etf_info.columns:
+                                nav = etf_info.iloc[-1]['NAV']
+                                tracking_error = ((price - nav) / nav) * 100 if nav > 0 else 0
+                            else:
+                                tracking_error = None
+                        except:
+                            tracking_error = None
+                        
                         alerts.append({
                             'code': code,
                             'name': name,
@@ -174,7 +202,10 @@ def check_intraday_movements():
                             'price': price,
                             'volume': volume,
                             'value': value,
-                            'type': etf_type
+                            'type': etf_type,
+                            'return_3m': return_3m,
+                            'volume_ratio': volume_ratio,
+                            'tracking_error': tracking_error
                         })
             
             except Exception as e:
@@ -250,8 +281,26 @@ def main():
             message += "*🟢 급등 ETF (신규 투자 기회)*\n"
             for i, alert in enumerate(up_alerts, 1):
                 message += f"{i}. {alert['name']} ({alert['code']})\n"
-                message += f"   금일: {alert['change']:+.2f}% | 가격: {alert['price']:,.0f}원\n"
-                message += f"   거래대금: {alert['value']/1e8:.1f}억원\n\n"
+                message += f"   금일: {alert['change']:+.2f}%"
+                
+                # 3개월 수익률
+                if alert.get('return_3m') is not None:
+                    message += f" | 3개월: {alert['return_3m']:+.2f}%"
+                
+                message += f" | 가격: {alert['price']:,.0f}원\n"
+                
+                # 거래량 트렌드
+                volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
+                message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
+                
+                if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
+                    message += f" (거래량 {alert['volume_ratio']:.1f}배)"
+                
+                # 괴리율
+                if alert.get('tracking_error') is not None:
+                    message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
+                
+                message += "\n\n"
         
         # 급락 종목 (상위 5개)
         down_alerts = [a for a in new_opportunities if a['change'] < 0][:5]
@@ -259,8 +308,26 @@ def main():
             message += "*🔴 급락 ETF (저가 매수 기회)*\n"
             for i, alert in enumerate(down_alerts, 1):
                 message += f"{i}. {alert['name']} ({alert['code']})\n"
-                message += f"   금일: {alert['change']:+.2f}% | 가격: {alert['price']:,.0f}원\n"
-                message += f"   거래대금: {alert['value']/1e8:.1f}억원\n\n"
+                message += f"   금일: {alert['change']:+.2f}%"
+                
+                # 3개월 수익률
+                if alert.get('return_3m') is not None:
+                    message += f" | 3개월: {alert['return_3m']:+.2f}%"
+                
+                message += f" | 가격: {alert['price']:,.0f}원\n"
+                
+                # 거래량 트렌드
+                volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
+                message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
+                
+                if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
+                    message += f" (거래량 {alert['volume_ratio']:.1f}배)"
+                
+                # 괴리율
+                if alert.get('tracking_error') is not None:
+                    message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
+                
+                message += "\n\n"
         
         # 텔레그램 전송
         print("\n텔레그램 전송 시도...")
