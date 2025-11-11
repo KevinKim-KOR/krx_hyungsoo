@@ -104,10 +104,10 @@ class DailyReport:
         report_lines.append(f"  보유 종목: {summary['holdings_count']}개")
         report_lines.append("")
         
-        # Top 5 수익/손실 종목
-        report_lines.append("📈 보유 종목 현황 (Top 5)")
+        # Top 5 수익/손실 종목 (누적 수익률)
+        report_lines.append("📈 보유 종목 성과 (Top 5)")
         report_lines.append("-" * 50)
-        report_lines.append("  🔴 수익 Top 5:")
+        report_lines.append("  🔴 누적 수익 Top 5:")
         for idx, row in top5.iterrows():
             report_lines.append(
                 f"     {row['name'][:20]:20s} "
@@ -115,12 +115,14 @@ class DailyReport:
             )
         
         report_lines.append("")
-        report_lines.append("  🔵 손실 Top 5:")
+        report_lines.append("  🔵 누적 손실 Top 5:")
         for idx, row in worst5.iterrows():
             report_lines.append(
                 f"     {row['name'][:20]:20s} "
                 f"{row['return_amount']:+10,.0f}원 ({row['return_pct']:+6.2f}%)"
             )
+        report_lines.append("")
+        report_lines.append("💡 *누적 수익률 = 매입가 대비 현재 수익률*")
         report_lines.append("")
         
         # 시장 레짐
@@ -150,15 +152,17 @@ class DailyReport:
             
             report_lines.append("")
         
-        # 매매 신호
+        # 매매 신호 (내일 액션 가이드)
         buy_signals = signals.get('buy_signals', [])
         sell_signals = signals.get('sell_signals', [])
         
-        report_lines.append("📈 매매 신호")
+        report_lines.append("📈 내일 매매 신호 (보유 종목 기반)")
         report_lines.append("-" * 50)
+        report_lines.append("💡 *현재 파라미터 기준 내일 액션 추천*")
+        report_lines.append("")
         
         if buy_signals:
-            report_lines.append(f"  🟢 매수: {len(buy_signals)}개")
+            report_lines.append(f"  🟢 매수 추천: {len(buy_signals)}개")
             for i, signal in enumerate(buy_signals[:5], 1):  # 상위 5개만
                 report_lines.append(
                     f"     {i}. {signal['code']} "
@@ -166,13 +170,15 @@ class DailyReport:
                 )
             if len(buy_signals) > 5:
                 report_lines.append(f"     ... 외 {len(buy_signals)-5}개")
+            report_lines.append("     ➡️ 내일 장 시작 후 매수 검토")
         else:
-            report_lines.append("  🟢 매수: 없음")
+            report_lines.append("  🟢 매수 추천: 없음")
+            report_lines.append("     ➡️ 현재 보유 종목 유지")
         
         report_lines.append("")
         
         if sell_signals:
-            report_lines.append(f"  🔴 매도: {len(sell_signals)}개")
+            report_lines.append(f"  🔴 매도 추천: {len(sell_signals)}개")
             for i, signal in enumerate(sell_signals[:5], 1):
                 report_lines.append(
                     f"     {i}. {signal['code']} "
@@ -180,8 +186,10 @@ class DailyReport:
                 )
             if len(sell_signals) > 5:
                 report_lines.append(f"     ... 외 {len(sell_signals)-5}개")
+            report_lines.append("     ➡️ 내일 장 시작 후 매도 검토")
         else:
-            report_lines.append("  🔴 매도: 없음")
+            report_lines.append("  🔴 매도 추천: 없음")
+            report_lines.append("     ➡️ 현재 보유 종목 유지")
         
         report_lines.append("")
         report_lines.append("=" * 50)
