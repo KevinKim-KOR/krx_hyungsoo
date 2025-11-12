@@ -22,5 +22,13 @@
     "position_ratio": 1.2,
     "defense_mode": false,
     "timestamp": "2025-11-11T22:33:22.674674"
+  },
+  {
+    "date": "2025-11-13",
+    "regime": "bull",
+    "confidence": 1.0,
+    "position_ratio": 1.2,
+    "defense_mode": false,
+    "timestamp": "2025-11-13T00:15:51.965227"
   }
 ]
