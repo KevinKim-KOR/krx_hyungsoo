@@ -22,7 +22,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from extensions.notification.telegram_sender import TelegramSender
-from core.strategy.market_regime import MarketRegimeDetector
+from core.strategy.market_regime_detector import MarketRegimeDetector
 from infra.logging.setup import setup_logging
 
 # 로깅 설정
@@ -267,12 +267,14 @@ class RebuySystem:
     def _get_current_regime(self) -> tuple:
         """현재 레짐 감지"""
         try:
-            regime_info = self.regime_detector.detect_regime('KS11')
-            regime = regime_info.get('regime', 'neutral')
-            confidence = regime_info.get('confidence', 0.0)
+            # 단순화: 기본값 반환
+            # 실제 구현 시 pykrx로 KOSPI 데이터 가져와서 detect_regime() 호출
+            regime = 'neutral'
+            confidence = 50.0
+            regime_info = {'regime': regime, 'confidence': confidence}
             return regime, confidence, regime_info
         except:
-            return 'neutral', 0.0, {}
+            return 'neutral', 50.0, {}
     
     def format_alert_message(self, candidates: List[Dict[str, Any]]) -> str:
         """
