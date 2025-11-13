@@ -94,23 +94,19 @@ class WeeklyReport:
         
         return message
     
-    def _format_top_performers(self, holdings_detail: List[Dict]) -> str:
+    def _format_top_performers(self, holdings_detail) -> str:
         """상위/하위 성과 종목 포맷"""
-        if not holdings_detail:
+        if holdings_detail.empty:
             return ""
         
         # 수익률 기준 정렬
-        sorted_holdings = sorted(
-            holdings_detail,
-            key=lambda x: x.get('return_pct', 0),
-            reverse=True
-        )
+        sorted_holdings = holdings_detail.sort_values('return_pct', ascending=False)
         
         message = "*📈 주간 성과 Top 5*\n\n"
         
         # 상위 5개
         message += "_🔴 수익 Top 5_\n"
-        for i, holding in enumerate(sorted_holdings[:5], 1):
+        for i, (_, holding) in enumerate(sorted_holdings.head(5).iterrows(), 1):
             name = holding.get('name', '알 수 없음')
             return_pct = holding.get('return_pct', 0)
             return_amount = holding.get('return_amount', 0)
@@ -119,7 +115,7 @@ class WeeklyReport:
         
         message += "\n_🔵 손실 Top 5_\n"
         # 하위 5개
-        for i, holding in enumerate(sorted_holdings[-5:][::-1], 1):
+        for i, (_, holding) in enumerate(sorted_holdings.tail(5).iloc[::-1].iterrows(), 1):
             name = holding.get('name', '알 수 없음')
             return_pct = holding.get('return_pct', 0)
             return_amount = holding.get('return_amount', 0)
@@ -130,9 +126,9 @@ class WeeklyReport:
         
         return message
     
-    def _format_risk_analysis(self, holdings_detail: List[Dict]) -> str:
+    def _format_risk_analysis(self, holdings_detail) -> str:
         """리스크 분석 포맷"""
-        if not holdings_detail:
+        if holdings_detail.empty:
             return ""
         
         # 손절 기준 -7%
@@ -142,7 +138,7 @@ class WeeklyReport:
         stop_loss_targets = []
         near_stop_loss = []
         
-        for holding in holdings_detail:
+        for _, holding in holdings_detail.iterrows():
             return_pct = holding.get('return_pct', 0)
             name = holding.get('name', '알 수 없음')
             

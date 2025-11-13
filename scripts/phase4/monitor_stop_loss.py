@@ -51,13 +51,13 @@ class StopLossMonitor:
             # 보유 종목 상세 정보 로드
             holdings_detail = self.loader.get_holdings_detail()
             
-            if not holdings_detail:
+            if holdings_detail.empty:
                 logger.warning("보유 종목 데이터 없음")
                 return []
             
             alerts = []
             
-            for holding in holdings_detail:
+            for _, holding in holdings_detail.iterrows():
                 code = holding.get('code')
                 name = holding.get('name', f'종목_{code}')
                 return_pct = holding.get('return_pct', 0.0)
@@ -111,12 +111,12 @@ class StopLossMonitor:
         try:
             holdings_detail = self.loader.get_holdings_detail()
             
-            if not holdings_detail:
+            if holdings_detail.empty:
                 return []
             
             near_alerts = []
             
-            for holding in holdings_detail:
+            for _, holding in holdings_detail.iterrows():
                 return_pct = holding.get('return_pct', 0.0)
                 
                 # 손절 라인 근접 체크 (-7% ~ -5%)
