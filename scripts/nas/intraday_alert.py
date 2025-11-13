@@ -35,66 +35,52 @@ MIN_TRADE_VALUE = 50e8  # 50억원 이상
 
 
 def get_etf_universe():
-    """ETF 유니버스 가져오기 (레버리지/인버스 제외)"""
-    # ETF 코드와 이름 매핑 (수동 관리)
-    etf_map = {
-        # 대형주 ETF
-        '069500': 'KODEX 200',
-        '102110': 'TIGER 200',
-        '114800': 'KODEX 인버스',  # 제외
-        '122630': 'KODEX 레버리지',  # 제외
-        
-        # 코스닥 ETF
-        '229200': 'KODEX 코스닥150',
-        '233740': 'KODEX 코스닥150레버리지',  # 제외
-        '251340': 'KODEX 코스닥150선물인버스',  # 제외
-        
-        # 섹터 ETF
-        '091160': 'KODEX 반도체',
-        '091180': 'KODEX 자동차',
-        '091170': 'KODEX 은행',
-        '102780': 'KODEX 삼성그룹',
-        '117460': 'KODEX 2차전지산업',
-        '364980': 'KODEX 2차전지산업',
-        
-        # 해외 ETF
-        '272560': 'KODEX 미국S&P500TR',
-        '379800': 'KODEX 미국나스닥100TR',
-        '360750': 'TIGER 미국S&P500',
-        '133690': 'TIGER 미국나스닥100',
-        
-        # 채권 ETF (제외)
-        '148070': 'KOSEF 국고채10년',  # 제외
-        '114260': 'KODEX 국고채3년',  # 제외
-    }
+    """ETF 유니버스 가져오기 (pykrx 전체 조회, 레버리지/인버스/채권 제외)"""
+    import pykrx.stock as stock
     
-    logger.info(f"기본 ETF 리스트: {len(etf_map)}개")
-    print(f"기본 ETF 리스트: {len(etf_map)}개")
-    
-    # 레버리지/인버스/채권 ETF 제외 (코드 기반)
-    exclude_codes = [
-        '114800',  # KODEX 인버스
-        '122630',  # KODEX 레버리지
-        '233740',  # KODEX 코스닥150레버리지
-        '251340',  # KODEX 코스닥150선물인버스
-        '148070',  # KOSEF 국고채10년
-        '114260',  # KODEX 국고채3년
-    ]
-    
-    filtered_etfs = []
-    for code, name in etf_map.items():
-        # 제외 코드 체크
-        if code in exclude_codes:
-            logger.debug(f"제외: {code} {name}")
-            print(f"  제외: {code} {name}")
-            continue
+    try:
+        # pykrx로 전체 ETF 조회
+        today = date.today().strftime('%Y%m%d')
+        all_etf_codes = stock.get_etf_ticker_list(today)
         
-        filtered_etfs.append({'code': code, 'name': name})
-        print(f"  추가: {code} {name}")
+        logger.info(f"전체 ETF: {len(all_etf_codes)}개")
+        print(f"전체 ETF: {len(all_etf_codes)}개")
+        
+        # 제외 키워드 (레버리지/인버스/채권)
+        exclude_keywords = [
+            '레버리지', '인버스', '곱버스', 'LEVERAGE', 'INVERSE',
+            '국고채', '회사채', '통안채', '채권', 'BOND',
+            '머니마켓', 'MMF', '단기자금',
+        ]
+        
+        filtered_etfs = []
+        excluded_count = 0
+        
+        for code in all_etf_codes:
+            try:
+                # 종목명 조회
+                name = stock.get_etf_ticker_name(code)
+                
+                # 제외 키워드 체크
+                if any(keyword in name for keyword in exclude_keywords):
+                    logger.debug(f"제외: {code} {name}")
+                    excluded_count += 1
+                    continue
+                
+                filtered_etfs.append({'code': code, 'name': name})
+            
+            except Exception as e:
+                logger.debug(f"종목명 조회 실패 [{code}]: {e}")
+                continue
+        
+        logger.info(f"필터링 후 ETF: {len(filtered_etfs)}개 (제외: {excluded_count}개)")
+        print(f"필터링 후 ETF: {len(filtered_etfs)}개 (제외: {excluded_count}개)")
+        return filtered_etfs
     
-    logger.info(f"필터링 후 ETF: {len(filtered_etfs)}개")
-    print(f"필터링 후 ETF: {len(filtered_etfs)}개")
-    return filtered_etfs
+    except Exception as e:
+        logger.error(f"ETF 유니버스 조회 실패: {e}")
+        print(f"❌ ETF 유니버스 조회 실패: {e}")
+        return []
 
 
 def check_intraday_movements():
@@ -165,11 +151,11 @@ def check_intraday_movements():
                 etf_type = 'default'
                 if '레버리지' in name or '인버스' in name:
                     etf_type = 'leverage'
-                elif '미국' in name or '글로벌' in name or '해외' in name:
+                elif '미국' in name or '글로벌' in name or '해외' in name or '중국' in name:
                     etf_type = 'overseas'
-                elif '200' in name or '코스닥' in name:
+                elif '200' in name or '코스닥' in name or 'KOSPI' in name:
                     etf_type = 'index'
-                elif any(sector in name for sector in ['반도체', '자동차', '은행', '배당', '에너지']):
+                elif any(sector in name for sector in ['반도체', '자동차', '은행', '배당', '에너지', '제약', '바이오', '헬스케어', '의료']):
                     etf_type = 'sector'
                 
                 # 특성별 기준 적용
