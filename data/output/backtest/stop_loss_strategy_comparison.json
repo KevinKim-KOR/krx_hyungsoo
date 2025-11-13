@@ -1,0 +1,1065 @@
+{
+  "timestamp": "2025-11-14T00:10:49.533622",
+  "total_holdings": 28,
+  "strategies": {
+    "fixed": {
+      "strategy_name": "fixed",
+      "strategy_info": {
+        "name": "고정 손절",
+        "description": "-7% 고정",
+        "threshold": -7.0
+      },
+      "total_holdings": 28,
+      "stop_loss_count": 5,
+      "safe_count": 23,
+      "stop_loss_targets": [
+        {
+          "code": "088980",
+          "name": "맥쿼리인프라",
+          "return_pct": -8.752929766426899,
+          "threshold": -7.0,
+          "current_value": 146770.0,
+          "total_cost": 160849.0,
+          "loss_amount": -14079.0
+        },
+        {
+          "code": "221840",
+          "name": "하이즈항공",
+          "return_pct": -58.88278388278388,
+          "threshold": -7.0,
+          "current_value": 112250.0,
+          "total_cost": 273000.0,
+          "loss_amount": -160750.0
+        },
+        {
+          "code": "323410",
+          "name": "카카오뱅크",
+          "return_pct": -66.57939319266902,
+          "threshold": -7.0,
+          "current_value": 108500.0,
+          "total_cost": 324650.0,
+          "loss_amount": -216150.0
+        },
+        {
+          "code": "415920",
+          "name": "PLUS 글로벌희토류&전략자원생산기업",
+          "return_pct": -16.43835616438356,
+          "threshold": -7.0,
+          "current_value": 67100.0,
+          "total_cost": 80300.0,
+          "loss_amount": -13200.0
+        },
+        {
+          "code": "001510",
+          "name": "SK증권",
+          "return_pct": -40.847457627118644,
+          "threshold": -7.0,
+          "current_value": 2094000.0,
+          "total_cost": 3540000.0,
+          "loss_amount": -1446000.0
+        }
+      ],
+      "safe_holdings": [
+        {
+          "code": "0015B0",
+          "name": "KoAct 미국나스닥성장기업액티브",
+          "return_pct": 34.50239537196059,
+          "threshold": -7.0
+        },
+        {
+          "code": "0028X0",
+          "name": "KODEX 미국금융테크액티브",
+          "return_pct": 9.834477901038916,
+          "threshold": -7.0
+        },
+        {
+          "code": "0035T0",
+          "name": "PLUS 글로벌휴머노이드로봇액티브",
+          "return_pct": 12.759957701797672,
+          "threshold": -7.0
+        },
+        {
+          "code": "0052D0",
+          "name": "TIGER 코리아배당다우존스",
+          "return_pct": 24.566012949235244,
+          "threshold": -7.0
+        },
+        {
+          "code": "005380",
+          "name": "현대차",
+          "return_pct": 23.79862700228833,
+          "threshold": -7.0
+        },
+        {
+          "code": "0097L0",
+          "name": "KIWOOM 한국고배당&미국AI테크",
+          "return_pct": 7.572056668295065,
+          "threshold": -7.0
+        },
+        {
+          "code": "0107F0",
+          "name": "KIWOOM 미국고배당&AI테크",
+          "return_pct": 1.2012012012012012,
+          "threshold": -7.0
+        },
+        {
+          "code": "064350",
+          "name": "현대로템",
+          "return_pct": 5.852417302798982,
+          "threshold": -7.0
+        },
+        {
+          "code": "161510",
+          "name": "PLUS 고배당주",
+          "return_pct": 4.9825610363726955,
+          "threshold": -7.0
+        },
+        {
+          "code": "245710",
+          "name": "KODEX 베트남VN30",
+          "return_pct": -6.384927384534869,
+          "threshold": -7.0
+        },
+        {
+          "code": "379800",
+          "name": "KODEX 미국S&P500TR",
+          "return_pct": 29.197249031959778,
+          "threshold": -7.0
+        },
+        {
+          "code": "379810",
+          "name": "KODEX 미국나스닥100TR",
+          "return_pct": 25.757575757575758,
+          "threshold": -7.0
+        },
+        {
+          "code": "381170",
+          "name": "TIGER 미국테크TOP10 INDXX",
+          "return_pct": 44.778628806276856,
+          "threshold": -7.0
+        },
+        {
+          "code": "390390",
+          "name": "KODEX 미국반도체",
+          "return_pct": 30.103359173126616,
+          "threshold": -7.0
+        },
+        {
+          "code": "394670",
+          "name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)",
+          "return_pct": -1.5760040671072701,
+          "threshold": -7.0
+        },
+        {
+          "code": "426030",
+          "name": "TIMEFOLIO 미국나스닥100액티브",
+          "return_pct": 10.183464236465015,
+          "threshold": -7.0
+        },
+        {
+          "code": "441800",
+          "name": "TIMEFOLIO Korea플러스배당액티브",
+          "return_pct": 20.15834348355664,
+          "threshold": -7.0
+        },
+        {
+          "code": "456600",
+          "name": "TIMEFOLIO 글로벌AI인공지능액티브",
+          "return_pct": -2.8527568120762443,
+          "threshold": -7.0
+        },
+        {
+          "code": "474800",
+          "name": "KIWOOM 미국원유에너지기업",
+          "return_pct": 7.299596954769369,
+          "threshold": -7.0
+        },
+        {
+          "code": "486450",
+          "name": "SOL 미국AI전력인프라",
+          "return_pct": -1.462716869693614,
+          "threshold": -7.0
+        },
+        {
+          "code": "491010",
+          "name": "TIGER 글로벌AI전력인프라액티브",
+          "return_pct": -1.3776722090261282,
+          "threshold": -7.0
+        },
+        {
+          "code": "0013P0",
+          "name": "RISE 미국은행TOP10",
+          "return_pct": 14.925373134328357,
+          "threshold": -7.0
+        },
+        {
+          "code": "000660",
+          "name": "SK하이닉스",
+          "return_pct": 10.181818181818182,
+          "threshold": -7.0
+        }
+      ],
+      "total_value": 8743795.0,
+      "total_cost": 9675695.0,
+      "total_return_pct": -9.631349479288055,
+      "after_stop_loss_return_pct": 17.336171976946503,
+      "improvement": 26.967521456234557
+    },
+    "regime": {
+      "strategy_name": "regime",
+      "strategy_info": {
+        "name": "레짐별 손절",
+        "description": "상승 -7%, 중립 -5%, 하락 -3%",
+        "thresholds": {
+          "bull": -7.0,
+          "neutral": -5.0,
+          "bear": -3.0
+        }
+      },
+      "total_holdings": 28,
+      "stop_loss_count": 6,
+      "safe_count": 22,
+      "stop_loss_targets": [
+        {
+          "code": "088980",
+          "name": "맥쿼리인프라",
+          "return_pct": -8.752929766426899,
+          "threshold": -5.0,
+          "current_value": 146770.0,
+          "total_cost": 160849.0,
+          "loss_amount": -14079.0
+        },
+        {
+          "code": "221840",
+          "name": "하이즈항공",
+          "return_pct": -58.88278388278388,
+          "threshold": -5.0,
+          "current_value": 112250.0,
+          "total_cost": 273000.0,
+          "loss_amount": -160750.0
+        },
+        {
+          "code": "245710",
+          "name": "KODEX 베트남VN30",
+          "return_pct": -6.384927384534869,
+          "threshold": -5.0,
+          "current_value": 171720.0,
+          "total_cost": 183432.0,
+          "loss_amount": -11712.0
+        },
+        {
+          "code": "323410",
+          "name": "카카오뱅크",
+          "return_pct": -66.57939319266902,
+          "threshold": -5.0,
+          "current_value": 108500.0,
+          "total_cost": 324650.0,
+          "loss_amount": -216150.0
+        },
+        {
+          "code": "415920",
+          "name": "PLUS 글로벌희토류&전략자원생산기업",
+          "return_pct": -16.43835616438356,
+          "threshold": -5.0,
+          "current_value": 67100.0,
+          "total_cost": 80300.0,
+          "loss_amount": -13200.0
+        },
+        {
+          "code": "001510",
+          "name": "SK증권",
+          "return_pct": -40.847457627118644,
+          "threshold": -5.0,
+          "current_value": 2094000.0,
+          "total_cost": 3540000.0,
+          "loss_amount": -1446000.0
+        }
+      ],
+      "safe_holdings": [
+        {
+          "code": "0015B0",
+          "name": "KoAct 미국나스닥성장기업액티브",
+          "return_pct": 34.50239537196059,
+          "threshold": -5.0
+        },
+        {
+          "code": "0028X0",
+          "name": "KODEX 미국금융테크액티브",
+          "return_pct": 9.834477901038916,
+          "threshold": -5.0
+        },
+        {
+          "code": "0035T0",
+          "name": "PLUS 글로벌휴머노이드로봇액티브",
+          "return_pct": 12.759957701797672,
+          "threshold": -5.0
+        },
+        {
+          "code": "0052D0",
+          "name": "TIGER 코리아배당다우존스",
+          "return_pct": 24.566012949235244,
+          "threshold": -5.0
+        },
+        {
+          "code": "005380",
+          "name": "현대차",
+          "return_pct": 23.79862700228833,
+          "threshold": -5.0
+        },
+        {
+          "code": "0097L0",
+          "name": "KIWOOM 한국고배당&미국AI테크",
+          "return_pct": 7.572056668295065,
+          "threshold": -5.0
+        },
+        {
+          "code": "0107F0",
+          "name": "KIWOOM 미국고배당&AI테크",
+          "return_pct": 1.2012012012012012,
+          "threshold": -5.0
+        },
+        {
+          "code": "064350",
+          "name": "현대로템",
+          "return_pct": 5.852417302798982,
+          "threshold": -5.0
+        },
+        {
+          "code": "161510",
+          "name": "PLUS 고배당주",
+          "return_pct": 4.9825610363726955,
+          "threshold": -5.0
+        },
+        {
+          "code": "379800",
+          "name": "KODEX 미국S&P500TR",
+          "return_pct": 29.197249031959778,
+          "threshold": -5.0
+        },
+        {
+          "code": "379810",
+          "name": "KODEX 미국나스닥100TR",
+          "return_pct": 25.757575757575758,
+          "threshold": -5.0
+        },
+        {
+          "code": "381170",
+          "name": "TIGER 미국테크TOP10 INDXX",
+          "return_pct": 44.778628806276856,
+          "threshold": -5.0
+        },
+        {
+          "code": "390390",
+          "name": "KODEX 미국반도체",
+          "return_pct": 30.103359173126616,
+          "threshold": -5.0
+        },
+        {
+          "code": "394670",
+          "name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)",
+          "return_pct": -1.5760040671072701,
+          "threshold": -5.0
+        },
+        {
+          "code": "426030",
+          "name": "TIMEFOLIO 미국나스닥100액티브",
+          "return_pct": 10.183464236465015,
+          "threshold": -5.0
+        },
+        {
+          "code": "441800",
+          "name": "TIMEFOLIO Korea플러스배당액티브",
+          "return_pct": 20.15834348355664,
+          "threshold": -5.0
+        },
+        {
+          "code": "456600",
+          "name": "TIMEFOLIO 글로벌AI인공지능액티브",
+          "return_pct": -2.8527568120762443,
+          "threshold": -5.0
+        },
+        {
+          "code": "474800",
+          "name": "KIWOOM 미국원유에너지기업",
+          "return_pct": 7.299596954769369,
+          "threshold": -5.0
+        },
+        {
+          "code": "486450",
+          "name": "SOL 미국AI전력인프라",
+          "return_pct": -1.462716869693614,
+          "threshold": -5.0
+        },
+        {
+          "code": "491010",
+          "name": "TIGER 글로벌AI전력인프라액티브",
+          "return_pct": -1.3776722090261282,
+          "threshold": -5.0
+        },
+        {
+          "code": "0013P0",
+          "name": "RISE 미국은행TOP10",
+          "return_pct": 14.925373134328357,
+          "threshold": -5.0
+        },
+        {
+          "code": "000660",
+          "name": "SK하이닉스",
+          "return_pct": 10.181818181818182,
+          "threshold": -5.0
+        }
+      ],
+      "total_value": 8743795.0,
+      "total_cost": 9675695.0,
+      "total_return_pct": -9.631349479288055,
+      "after_stop_loss_return_pct": 18.187103693308494,
+      "improvement": 27.81845317259655
+    },
+    "dynamic": {
+      "strategy_name": "dynamic",
+      "strategy_info": {
+        "name": "동적 손절",
+        "description": "저변동성 -5%, 중변동성 -7%, 고변동성 -10%",
+        "thresholds": {
+          "low": -5.0,
+          "medium": -7.0,
+          "high": -10.0
+        }
+      },
+      "total_holdings": 28,
+      "stop_loss_count": 6,
+      "safe_count": 22,
+      "stop_loss_targets": [
+        {
+          "code": "088980",
+          "name": "맥쿼리인프라",
+          "return_pct": -8.752929766426899,
+          "threshold": -7.0,
+          "current_value": 146770.0,
+          "total_cost": 160849.0,
+          "loss_amount": -14079.0
+        },
+        {
+          "code": "221840",
+          "name": "하이즈항공",
+          "return_pct": -58.88278388278388,
+          "threshold": -5.0,
+          "current_value": 112250.0,
+          "total_cost": 273000.0,
+          "loss_amount": -160750.0
+        },
+        {
+          "code": "245710",
+          "name": "KODEX 베트남VN30",
+          "return_pct": -6.384927384534869,
+          "threshold": -5.0,
+          "current_value": 171720.0,
+          "total_cost": 183432.0,
+          "loss_amount": -11712.0
+        },
+        {
+          "code": "323410",
+          "name": "카카오뱅크",
+          "return_pct": -66.57939319266902,
+          "threshold": -7.0,
+          "current_value": 108500.0,
+          "total_cost": 324650.0,
+          "loss_amount": -216150.0
+        },
+        {
+          "code": "415920",
+          "name": "PLUS 글로벌희토류&전략자원생산기업",
+          "return_pct": -16.43835616438356,
+          "threshold": -7.0,
+          "current_value": 67100.0,
+          "total_cost": 80300.0,
+          "loss_amount": -13200.0
+        },
+        {
+          "code": "001510",
+          "name": "SK증권",
+          "return_pct": -40.847457627118644,
+          "threshold": -7.0,
+          "current_value": 2094000.0,
+          "total_cost": 3540000.0,
+          "loss_amount": -1446000.0
+        }
+      ],
+      "safe_holdings": [
+        {
+          "code": "0015B0",
+          "name": "KoAct 미국나스닥성장기업액티브",
+          "return_pct": 34.50239537196059,
+          "threshold": -7.0
+        },
+        {
+          "code": "0028X0",
+          "name": "KODEX 미국금융테크액티브",
+          "return_pct": 9.834477901038916,
+          "threshold": -7.0
+        },
+        {
+          "code": "0035T0",
+          "name": "PLUS 글로벌휴머노이드로봇액티브",
+          "return_pct": 12.759957701797672,
+          "threshold": -7.0
+        },
+        {
+          "code": "0052D0",
+          "name": "TIGER 코리아배당다우존스",
+          "return_pct": 24.566012949235244,
+          "threshold": -7.0
+        },
+        {
+          "code": "005380",
+          "name": "현대차",
+          "return_pct": 23.79862700228833,
+          "threshold": -7.0
+        },
+        {
+          "code": "0097L0",
+          "name": "KIWOOM 한국고배당&미국AI테크",
+          "return_pct": 7.572056668295065,
+          "threshold": -7.0
+        },
+        {
+          "code": "0107F0",
+          "name": "KIWOOM 미국고배당&AI테크",
+          "return_pct": 1.2012012012012012,
+          "threshold": -7.0
+        },
+        {
+          "code": "064350",
+          "name": "현대로템",
+          "return_pct": 5.852417302798982,
+          "threshold": -7.0
+        },
+        {
+          "code": "161510",
+          "name": "PLUS 고배당주",
+          "return_pct": 4.9825610363726955,
+          "threshold": -5.0
+        },
+        {
+          "code": "379800",
+          "name": "KODEX 미국S&P500TR",
+          "return_pct": 29.197249031959778,
+          "threshold": -7.0
+        },
+        {
+          "code": "379810",
+          "name": "KODEX 미국나스닥100TR",
+          "return_pct": 25.757575757575758,
+          "threshold": -7.0
+        },
+        {
+          "code": "381170",
+          "name": "TIGER 미국테크TOP10 INDXX",
+          "return_pct": 44.778628806276856,
+          "threshold": -7.0
+        },
+        {
+          "code": "390390",
+          "name": "KODEX 미국반도체",
+          "return_pct": 30.103359173126616,
+          "threshold": -7.0
+        },
+        {
+          "code": "394670",
+          "name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)",
+          "return_pct": -1.5760040671072701,
+          "threshold": -7.0
+        },
+        {
+          "code": "426030",
+          "name": "TIMEFOLIO 미국나스닥100액티브",
+          "return_pct": 10.183464236465015,
+          "threshold": -7.0
+        },
+        {
+          "code": "441800",
+          "name": "TIMEFOLIO Korea플러스배당액티브",
+          "return_pct": 20.15834348355664,
+          "threshold": -7.0
+        },
+        {
+          "code": "456600",
+          "name": "TIMEFOLIO 글로벌AI인공지능액티브",
+          "return_pct": -2.8527568120762443,
+          "threshold": -7.0
+        },
+        {
+          "code": "474800",
+          "name": "KIWOOM 미국원유에너지기업",
+          "return_pct": 7.299596954769369,
+          "threshold": -7.0
+        },
+        {
+          "code": "486450",
+          "name": "SOL 미국AI전력인프라",
+          "return_pct": -1.462716869693614,
+          "threshold": -7.0
+        },
+        {
+          "code": "491010",
+          "name": "TIGER 글로벌AI전력인프라액티브",
+          "return_pct": -1.3776722090261282,
+          "threshold": -7.0
+        },
+        {
+          "code": "0013P0",
+          "name": "RISE 미국은행TOP10",
+          "return_pct": 14.925373134328357,
+          "threshold": -7.0
+        },
+        {
+          "code": "000660",
+          "name": "SK하이닉스",
+          "return_pct": 10.181818181818182,
+          "threshold": -7.0
+        }
+      ],
+      "total_value": 8743795.0,
+      "total_cost": 9675695.0,
+      "total_return_pct": -9.631349479288055,
+      "after_stop_loss_return_pct": 18.187103693308494,
+      "improvement": 27.81845317259655
+    },
+    "hybrid": {
+      "strategy_name": "hybrid",
+      "strategy_info": {
+        "name": "하이브리드 손절",
+        "description": "레짐 + 변동성 조합 (9가지)",
+        "matrix": {
+          "bull": {
+            "low": -5.0,
+            "medium": -7.0,
+            "high": -10.0
+          },
+          "neutral": {
+            "low": -4.0,
+            "medium": -5.0,
+            "high": -7.0
+          },
+          "bear": {
+            "low": -3.0,
+            "medium": -3.0,
+            "high": -5.0
+          }
+        }
+      },
+      "total_holdings": 28,
+      "stop_loss_count": 6,
+      "safe_count": 22,
+      "stop_loss_targets": [
+        {
+          "code": "088980",
+          "name": "맥쿼리인프라",
+          "return_pct": -8.752929766426899,
+          "threshold": -5.0,
+          "current_value": 146770.0,
+          "total_cost": 160849.0,
+          "loss_amount": -14079.0
+        },
+        {
+          "code": "221840",
+          "name": "하이즈항공",
+          "return_pct": -58.88278388278388,
+          "threshold": -4.0,
+          "current_value": 112250.0,
+          "total_cost": 273000.0,
+          "loss_amount": -160750.0
+        },
+        {
+          "code": "245710",
+          "name": "KODEX 베트남VN30",
+          "return_pct": -6.384927384534869,
+          "threshold": -4.0,
+          "current_value": 171720.0,
+          "total_cost": 183432.0,
+          "loss_amount": -11712.0
+        },
+        {
+          "code": "323410",
+          "name": "카카오뱅크",
+          "return_pct": -66.57939319266902,
+          "threshold": -5.0,
+          "current_value": 108500.0,
+          "total_cost": 324650.0,
+          "loss_amount": -216150.0
+        },
+        {
+          "code": "415920",
+          "name": "PLUS 글로벌희토류&전략자원생산기업",
+          "return_pct": -16.43835616438356,
+          "threshold": -5.0,
+          "current_value": 67100.0,
+          "total_cost": 80300.0,
+          "loss_amount": -13200.0
+        },
+        {
+          "code": "001510",
+          "name": "SK증권",
+          "return_pct": -40.847457627118644,
+          "threshold": -5.0,
+          "current_value": 2094000.0,
+          "total_cost": 3540000.0,
+          "loss_amount": -1446000.0
+        }
+      ],
+      "safe_holdings": [
+        {
+          "code": "0015B0",
+          "name": "KoAct 미국나스닥성장기업액티브",
+          "return_pct": 34.50239537196059,
+          "threshold": -5.0
+        },
+        {
+          "code": "0028X0",
+          "name": "KODEX 미국금융테크액티브",
+          "return_pct": 9.834477901038916,
+          "threshold": -5.0
+        },
+        {
+          "code": "0035T0",
+          "name": "PLUS 글로벌휴머노이드로봇액티브",
+          "return_pct": 12.759957701797672,
+          "threshold": -5.0
+        },
+        {
+          "code": "0052D0",
+          "name": "TIGER 코리아배당다우존스",
+          "return_pct": 24.566012949235244,
+          "threshold": -5.0
+        },
+        {
+          "code": "005380",
+          "name": "현대차",
+          "return_pct": 23.79862700228833,
+          "threshold": -5.0
+        },
+        {
+          "code": "0097L0",
+          "name": "KIWOOM 한국고배당&미국AI테크",
+          "return_pct": 7.572056668295065,
+          "threshold": -5.0
+        },
+        {
+          "code": "0107F0",
+          "name": "KIWOOM 미국고배당&AI테크",
+          "return_pct": 1.2012012012012012,
+          "threshold": -5.0
+        },
+        {
+          "code": "064350",
+          "name": "현대로템",
+          "return_pct": 5.852417302798982,
+          "threshold": -5.0
+        },
+        {
+          "code": "161510",
+          "name": "PLUS 고배당주",
+          "return_pct": 4.9825610363726955,
+          "threshold": -4.0
+        },
+        {
+          "code": "379800",
+          "name": "KODEX 미국S&P500TR",
+          "return_pct": 29.197249031959778,
+          "threshold": -5.0
+        },
+        {
+          "code": "379810",
+          "name": "KODEX 미국나스닥100TR",
+          "return_pct": 25.757575757575758,
+          "threshold": -5.0
+        },
+        {
+          "code": "381170",
+          "name": "TIGER 미국테크TOP10 INDXX",
+          "return_pct": 44.778628806276856,
+          "threshold": -5.0
+        },
+        {
+          "code": "390390",
+          "name": "KODEX 미국반도체",
+          "return_pct": 30.103359173126616,
+          "threshold": -5.0
+        },
+        {
+          "code": "394670",
+          "name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)",
+          "return_pct": -1.5760040671072701,
+          "threshold": -5.0
+        },
+        {
+          "code": "426030",
+          "name": "TIMEFOLIO 미국나스닥100액티브",
+          "return_pct": 10.183464236465015,
+          "threshold": -5.0
+        },
+        {
+          "code": "441800",
+          "name": "TIMEFOLIO Korea플러스배당액티브",
+          "return_pct": 20.15834348355664,
+          "threshold": -5.0
+        },
+        {
+          "code": "456600",
+          "name": "TIMEFOLIO 글로벌AI인공지능액티브",
+          "return_pct": -2.8527568120762443,
+          "threshold": -5.0
+        },
+        {
+          "code": "474800",
+          "name": "KIWOOM 미국원유에너지기업",
+          "return_pct": 7.299596954769369,
+          "threshold": -5.0
+        },
+        {
+          "code": "486450",
+          "name": "SOL 미국AI전력인프라",
+          "return_pct": -1.462716869693614,
+          "threshold": -5.0
+        },
+        {
+          "code": "491010",
+          "name": "TIGER 글로벌AI전력인프라액티브",
+          "return_pct": -1.3776722090261282,
+          "threshold": -5.0
+        },
+        {
+          "code": "0013P0",
+          "name": "RISE 미국은행TOP10",
+          "return_pct": 14.925373134328357,
+          "threshold": -5.0
+        },
+        {
+          "code": "000660",
+          "name": "SK하이닉스",
+          "return_pct": 10.181818181818182,
+          "threshold": -5.0
+        }
+      ],
+      "total_value": 8743795.0,
+      "total_cost": 9675695.0,
+      "total_return_pct": -9.631349479288055,
+      "after_stop_loss_return_pct": 18.187103693308494,
+      "improvement": 27.81845317259655
+    }
+  },
+  "best_strategy": {
+    "name": "regime",
+    "info": {
+      "strategy_name": "regime",
+      "strategy_info": {
+        "name": "레짐별 손절",
+        "description": "상승 -7%, 중립 -5%, 하락 -3%",
+        "thresholds": {
+          "bull": -7.0,
+          "neutral": -5.0,
+          "bear": -3.0
+        }
+      },
+      "total_holdings": 28,
+      "stop_loss_count": 6,
+      "safe_count": 22,
+      "stop_loss_targets": [
+        {
+          "code": "088980",
+          "name": "맥쿼리인프라",
+          "return_pct": -8.752929766426899,
+          "threshold": -5.0,
+          "current_value": 146770.0,
+          "total_cost": 160849.0,
+          "loss_amount": -14079.0
+        },
+        {
+          "code": "221840",
+          "name": "하이즈항공",
+          "return_pct": -58.88278388278388,
+          "threshold": -5.0,
+          "current_value": 112250.0,
+          "total_cost": 273000.0,
+          "loss_amount": -160750.0
+        },
+        {
+          "code": "245710",
+          "name": "KODEX 베트남VN30",
+          "return_pct": -6.384927384534869,
+          "threshold": -5.0,
+          "current_value": 171720.0,
+          "total_cost": 183432.0,
+          "loss_amount": -11712.0
+        },
+        {
+          "code": "323410",
+          "name": "카카오뱅크",
+          "return_pct": -66.57939319266902,
+          "threshold": -5.0,
+          "current_value": 108500.0,
+          "total_cost": 324650.0,
+          "loss_amount": -216150.0
+        },
+        {
+          "code": "415920",
+          "name": "PLUS 글로벌희토류&전략자원생산기업",
+          "return_pct": -16.43835616438356,
+          "threshold": -5.0,
+          "current_value": 67100.0,
+          "total_cost": 80300.0,
+          "loss_amount": -13200.0
+        },
+        {
+          "code": "001510",
+          "name": "SK증권",
+          "return_pct": -40.847457627118644,
+          "threshold": -5.0,
+          "current_value": 2094000.0,
+          "total_cost": 3540000.0,
+          "loss_amount": -1446000.0
+        }
+      ],
+      "safe_holdings": [
+        {
+          "code": "0015B0",
+          "name": "KoAct 미국나스닥성장기업액티브",
+          "return_pct": 34.50239537196059,
+          "threshold": -5.0
+        },
+        {
+          "code": "0028X0",
+          "name": "KODEX 미국금융테크액티브",
+          "return_pct": 9.834477901038916,
+          "threshold": -5.0
+        },
+        {
+          "code": "0035T0",
+          "name": "PLUS 글로벌휴머노이드로봇액티브",
+          "return_pct": 12.759957701797672,
+          "threshold": -5.0
+        },
+        {
+          "code": "0052D0",
+          "name": "TIGER 코리아배당다우존스",
+          "return_pct": 24.566012949235244,
+          "threshold": -5.0
+        },
+        {
+          "code": "005380",
+          "name": "현대차",
+          "return_pct": 23.79862700228833,
+          "threshold": -5.0
+        },
+        {
+          "code": "0097L0",
+          "name": "KIWOOM 한국고배당&미국AI테크",
+          "return_pct": 7.572056668295065,
+          "threshold": -5.0
+        },
+        {
+          "code": "0107F0",
+          "name": "KIWOOM 미국고배당&AI테크",
+          "return_pct": 1.2012012012012012,
+          "threshold": -5.0
+        },
+        {
+          "code": "064350",
+          "name": "현대로템",
+          "return_pct": 5.852417302798982,
+          "threshold": -5.0
+        },
+        {
+          "code": "161510",
+          "name": "PLUS 고배당주",
+          "return_pct": 4.9825610363726955,
+          "threshold": -5.0
+        },
+        {
+          "code": "379800",
+          "name": "KODEX 미국S&P500TR",
+          "return_pct": 29.197249031959778,
+          "threshold": -5.0
+        },
+        {
+          "code": "379810",
+          "name": "KODEX 미국나스닥100TR",
+          "return_pct": 25.757575757575758,
+          "threshold": -5.0
+        },
+        {
+          "code": "381170",
+          "name": "TIGER 미국테크TOP10 INDXX",
+          "return_pct": 44.778628806276856,
+          "threshold": -5.0
+        },
+        {
+          "code": "390390",
+          "name": "KODEX 미국반도체",
+          "return_pct": 30.103359173126616,
+          "threshold": -5.0
+        },
+        {
+          "code": "394670",
+          "name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)",
+          "return_pct": -1.5760040671072701,
+          "threshold": -5.0
+        },
+        {
+          "code": "426030",
+          "name": "TIMEFOLIO 미국나스닥100액티브",
+          "return_pct": 10.183464236465015,
+          "threshold": -5.0
+        },
+        {
+          "code": "441800",
+          "name": "TIMEFOLIO Korea플러스배당액티브",
+          "return_pct": 20.15834348355664,
+          "threshold": -5.0
+        },
+        {
+          "code": "456600",
+          "name": "TIMEFOLIO 글로벌AI인공지능액티브",
+          "return_pct": -2.8527568120762443,
+          "threshold": -5.0
+        },
+        {
+          "code": "474800",
+          "name": "KIWOOM 미국원유에너지기업",
+          "return_pct": 7.299596954769369,
+          "threshold": -5.0
+        },
+        {
+          "code": "486450",
+          "name": "SOL 미국AI전력인프라",
+          "return_pct": -1.462716869693614,
+          "threshold": -5.0
+        },
+        {
+          "code": "491010",
+          "name": "TIGER 글로벌AI전력인프라액티브",
+          "return_pct": -1.3776722090261282,
+          "threshold": -5.0
+        },
+        {
+          "code": "0013P0",
+          "name": "RISE 미국은행TOP10",
+          "return_pct": 14.925373134328357,
+          "threshold": -5.0
+        },
+        {
+          "code": "000660",
+          "name": "SK하이닉스",
+          "return_pct": 10.181818181818182,
+          "threshold": -5.0
+        }
+      ],
+      "total_value": 8743795.0,
+      "total_cost": 9675695.0,
+      "total_return_pct": -9.631349479288055,
+      "after_stop_loss_return_pct": 18.187103693308494,
+      "improvement": 27.81845317259655
+    }
+  },
+  "summary": "============================================================\n손절 전략 비교 요약\n============================================================\n\n[고정 손절]\n  설명: -7% 고정\n  손절 대상: 5개\n  현재 수익률: -9.63%\n  손절 후 수익률: 17.34%\n  개선: +26.97%p\n\n[레짐별 손절]\n  설명: 상승 -7%, 중립 -5%, 하락 -3%\n  손절 대상: 6개\n  현재 수익률: -9.63%\n  손절 후 수익률: 18.19%\n  개선: +27.82%p\n\n[동적 손절]\n  설명: 저변동성 -5%, 중변동성 -7%, 고변동성 -10%\n  손절 대상: 6개\n  현재 수익률: -9.63%\n  손절 후 수익률: 18.19%\n  개선: +27.82%p\n\n[하이브리드 손절]\n  설명: 레짐 + 변동성 조합 (9가지)\n  손절 대상: 6개\n  현재 수익률: -9.63%\n  손절 후 수익률: 18.19%\n  개선: +27.82%p\n\n"
+}
