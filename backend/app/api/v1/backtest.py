@@ -6,7 +6,7 @@ backend/app/api/v1/backtest.py
 """
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Union
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.core.config import settings
@@ -29,8 +29,8 @@ class BacktestResult(BaseModel):
 class ParameterComparison(BaseModel):
     """파라미터 비교 스키마"""
     parameter: str
-    optimal_value: any
-    current_value: any
+    optimal_value: Union[str, int, float]
+    current_value: Union[str, int, float]
     optimal_performance: float
     current_performance: float
     difference: float
