@@ -4,8 +4,11 @@
 backend/app/main.py
 FastAPI 메인 애플리케이션
 """
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.api.v1 import dashboard, assets, backtest, stop_loss, signals, market
 
@@ -36,14 +39,23 @@ app.include_router(stop_loss.router, prefix="/api/v1/stop-loss", tags=["stop-los
 app.include_router(signals.router, prefix="/api/v1/signals", tags=["signals"])
 app.include_router(market.router, prefix="/api/v1/market", tags=["market"])
 
+# Static files
+static_dir = Path(__file__).parent.parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
 
 @app.get("/")
 async def root():
-    """루트 엔드포인트"""
+    """루트 엔드포인트 - HTML 대시보드"""
+    index_file = static_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
     return {
         "message": "KRX Alertor API",
         "version": settings.VERSION,
-        "docs": "/api/docs"
+        "docs": "/api/docs",
+        "dashboard": "/"
     }
 
 

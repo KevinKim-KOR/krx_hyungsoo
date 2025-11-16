@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRX Alertor Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📊 KRX Alertor Dashboard</h1>
+            <p class="subtitle">FastAPI + React 대시보드 (Phase 4.5)</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <a href="#home" class="nav-link active">🏠 홈</a>
+            <a href="#assets" class="nav-link">💼 자산 관리</a>
+            <a href="#backtest" class="nav-link">📊 백테스트</a>
+            <a href="#stop-loss" class="nav-link">🎯 손절 전략</a>
+            <a href="#signals" class="nav-link">📈 신호 & 히스토리</a>
+            <a href="#market" class="nav-link">🌡️ 시장 분석</a>
+            <a href="/api/docs" class="nav-link api-link" target="_blank">📚 API 문서</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Home Section -->
+            <section id="home" class="section active">
+                <h2>🏠 대시보드</h2>
+                
+                <div class="cards">
+                    <div class="card">
+                        <h3>💰 총 자산</h3>
+                        <p class="value" id="total-assets">로딩 중...</p>
+                    </div>
+                    <div class="card">
+                        <h3>💵 현금</h3>
+                        <p class="value" id="cash">로딩 중...</p>
+                    </div>
+                    <div class="card">
+                        <h3>📈 주식 가치</h3>
+                        <p class="value" id="stocks-value">로딩 중...</p>
+                    </div>
+                    <div class="card">
+                        <h3>📊 총 수익률</h3>
+                        <p class="value" id="total-return">로딩 중...</p>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>ℹ️ 시스템 정보</h3>
+                    <ul>
+                        <li><strong>백엔드:</strong> FastAPI (Python)</li>
+                        <li><strong>데이터베이스:</strong> SQLite</li>
+                        <li><strong>API 엔드포인트:</strong> 18개</li>
+                        <li><strong>상태:</strong> <span class="status-ok">✅ 정상</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Assets Section -->
+            <section id="assets" class="section">
+                <h2>💼 자산 관리</h2>
+                <div class="api-demo">
+                    <h3>API 엔드포인트</h3>
+                    <ul>
+                        <li><code>GET /api/v1/assets/</code> - 자산 목록</li>
+                        <li><code>POST /api/v1/assets/</code> - 자산 추가</li>
+                        <li><code>GET /api/v1/assets/trades/</code> - 거래 기록</li>
+                    </ul>
+                    <a href="/api/docs#/assets" class="btn" target="_blank">API 문서 보기</a>
+                </div>
+            </section>
+
+            <!-- Backtest Section -->
+            <section id="backtest" class="section">
+                <h2>📊 백테스트</h2>
+                
+                <div class="cards">
+                    <div class="card">
+                        <h3>Jason 전략</h3>
+                        <p class="metric">CAGR: <span id="jason-cagr">로딩 중...</span></p>
+                        <p class="metric">Sharpe: <span id="jason-sharpe">로딩 중...</span></p>
+                    </div>
+                    <div class="card">
+                        <h3>Hybrid 전략</h3>
+                        <p class="metric">CAGR: <span id="hybrid-cagr">로딩 중...</span></p>
+                        <p class="metric">Sharpe: <span id="hybrid-sharpe">로딩 중...</span></p>
+                    </div>
+                </div>
+
+                <div class="api-demo">
+                    <h3>API 엔드포인트</h3>
+                    <ul>
+                        <li><code>GET /api/v1/backtest/results</code> - 백테스트 결과</li>
+                        <li><code>GET /api/v1/backtest/compare</code> - 파라미터 비교</li>
+                        <li><code>POST /api/v1/backtest/run</code> - 백테스트 실행 (로컬만)</li>
+                    </ul>
+                    <a href="/api/docs#/backtest" class="btn" target="_blank">API 문서 보기</a>
+                </div>
+            </section>
+
+            <!-- Stop Loss Section -->
+            <section id="stop-loss" class="section">
+                <h2>🎯 손절 전략</h2>
+                
+                <div class="table-container">
+                    <table id="stop-loss-table">
+                        <thead>
+                            <tr>
+                                <th>전략</th>
+                                <th>손절 횟수</th>
+                                <th>안전 횟수</th>
+                                <th>개선 효과</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4">로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="api-demo">
+                    <h3>API 엔드포인트</h3>
+                    <ul>
+                        <li><code>GET /api/v1/stop-loss/strategies</code> - 전략 목록</li>
+                        <li><code>GET /api/v1/stop-loss/comparison</code> - 전략 비교</li>
+                        <li><code>GET /api/v1/stop-loss/targets</code> - 손절 대상</li>
+                    </ul>
+                    <a href="/api/docs#/stop-loss" class="btn" target="_blank">API 문서 보기</a>
+                </div>
+            </section>
+
+            <!-- Signals Section -->
+            <section id="signals" class="section">
+                <h2>📈 신호 & 히스토리</h2>
+                
+                <div class="api-demo">
+                    <h3>API 엔드포인트</h3>
+                    <ul>
+                        <li><code>GET /api/v1/signals/</code> - 매매 신호</li>
+                        <li><code>GET /api/v1/signals/history</code> - 신호 히스토리</li>
+                        <li><code>GET /api/v1/signals/alerts</code> - 알림 히스토리</li>
+                    </ul>
+                    <a href="/api/docs#/signals" class="btn" target="_blank">API 문서 보기</a>
+                </div>
+            </section>
+
+            <!-- Market Section -->
+            <section id="market" class="section">
+                <h2>🌡️ 시장 분석</h2>
+                
+                <div class="cards">
+                    <div class="card">
+                        <h3>현재 레짐</h3>
+                        <p class="value" id="market-regime">로딩 중...</p>
+                    </div>
+                    <div class="card">
+                        <h3>신뢰도</h3>
+                        <p class="value" id="market-confidence">로딩 중...</p>
+                    </div>
+                    <div class="card">
+                        <h3>변동성</h3>
+                        <p class="value" id="market-volatility">로딩 중...</p>
+                    </div>
+                </div>
+
+                <div class="api-demo">
+                    <h3>API 엔드포인트</h3>
+                    <ul>
+                        <li><code>GET /api/v1/market/regime</code> - 시장 레짐</li>
+                        <li><code>GET /api/v1/market/volatility</code> - 변동성 분석</li>
+                        <li><code>GET /api/v1/market/sectors</code> - 섹터 분석</li>
+                    </ul>
+                    <a href="/api/docs#/market" class="btn" target="_blank">API 문서 보기</a>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 KRX Alertor | Phase 4.5 | FastAPI + React</p>
+            <p>
+                <a href="/api/docs" target="_blank">API 문서</a> | 
+                <a href="/api/redoc" target="_blank">ReDoc</a> | 
+                <a href="https://github.com/KevinKim-KOR/krx_hyungsoo" target="_blank">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
