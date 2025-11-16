@@ -1,0 +1,24 @@
+# FastAPI 백엔드 의존성
+
+# FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.12.1
+
+# Pydantic
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# CORS
+python-jose[cryptography]==3.3.0
+
+# 환경 변수
+python-dotenv==1.0.0
+
+# 기존 프로젝트 의존성 (필요한 것만)
+pandas==2.1.3
+numpy==1.26.2

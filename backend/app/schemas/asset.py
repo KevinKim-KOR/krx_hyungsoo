@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+backend/app/schemas/asset.py
+자산 관리 Pydantic 스키마
+"""
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, Field
+
+
+# Asset 스키마
+class AssetBase(BaseModel):
+    """자산 기본 스키마"""
+    name: str = Field(..., description="종목명")
+    code: str = Field(..., description="종목코드")
+    quantity: int = Field(..., description="수량", gt=0)
+    avg_price: float = Field(..., description="평균 매수가", gt=0)
+    purchase_date: datetime = Field(..., description="매수일")
+    notes: Optional[str] = Field(None, description="메모")
+
+
+class AssetCreate(AssetBase):
+    """자산 생성 스키마"""
+    pass
+
+
+class AssetUpdate(BaseModel):
+    """자산 수정 스키마"""
+    name: Optional[str] = None
+    quantity: Optional[int] = None
+    avg_price: Optional[float] = None
+    current_price: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class AssetResponse(AssetBase):
+    """자산 응답 스키마"""
+    id: int
+    current_price: Optional[float] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    # 계산 필드
+    total_value: Optional[float] = Field(None, description="총 가치")
+    return_pct: Optional[float] = Field(None, description="수익률 (%)")
+    return_amount: Optional[float] = Field(None, description="수익금")
+    
+    class Config:
+        from_attributes = True
+
+
+# Trade 스키마
+class TradeBase(BaseModel):
+    """거래 기본 스키마"""
+    asset_code: str = Field(..., description="종목코드")
+    asset_name: str = Field(..., description="종목명")
+    trade_type: str = Field(..., description="거래 유형 (buy/sell)")
+    quantity: int = Field(..., description="수량", gt=0)
+    price: float = Field(..., description="거래가", gt=0)
+    trade_date: datetime = Field(..., description="거래일")
+    notes: Optional[str] = Field(None, description="메모")
+
+
+class TradeCreate(TradeBase):
+    """거래 생성 스키마"""
+    pass
+
+
+class TradeResponse(TradeBase):
+    """거래 응답 스키마"""
+    id: int
+    total_amount: float = Field(..., description="총 금액")
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# Portfolio 스키마
+class PortfolioSnapshot(BaseModel):
+    """포트폴리오 스냅샷 스키마"""
+    snapshot_date: datetime
+    total_assets: float
+    cash: float
+    stocks_value: float
+    total_return_pct: Optional[float] = None
+    daily_return_pct: Optional[float] = None
+    
+    class Config:
+        from_attributes = True
+
+
+# Dashboard 응답 스키마
+class DashboardResponse(BaseModel):
+    """대시보드 응답 스키마"""
+    total_assets: float = Field(..., description="총 자산")
+    cash: float = Field(..., description="현금")
+    stocks_value: float = Field(..., description="주식 가치")
+    total_return_pct: float = Field(..., description="총 수익률 (%)")
+    daily_return: float = Field(..., description="오늘 수익")
+    daily_return_pct: float = Field(..., description="오늘 수익률 (%)")
+    weekly_return: float = Field(..., description="이번 주 수익")
+    weekly_return_pct: float = Field(..., description="이번 주 수익률 (%)")
+    monthly_return: float = Field(..., description="이번 달 수익")
+    monthly_return_pct: float = Field(..., description="이번 달 수익률 (%)")
+    holdings_count: int = Field(..., description="보유 종목 수")
