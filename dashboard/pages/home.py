@@ -98,19 +98,23 @@ def show():
         # 빠른 링크
         st.markdown("### 🔗 빠른 링크")
         
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            if st.button("💼 포트폴리오 보기", use_container_width=True):
+            if st.button("💼 포트폴리오", use_container_width=True):
                 st.switch_page("pages/portfolio.py")
         
         with col2:
-            if st.button("📈 신호 히스토리", use_container_width=True):
-                st.switch_page("pages/signals.py")
+            if st.button("🎯 손절 전략", use_container_width=True):
+                st.switch_page("pages/stop_loss.py")
         
         with col3:
-            if st.button("📊 성과 분석", use_container_width=True):
-                st.switch_page("pages/performance.py")
+            if st.button("📊 백테스트", use_container_width=True):
+                st.switch_page("pages/backtest.py")
+        
+        with col4:
+            if st.button("🔔 알림 히스토리", use_container_width=True):
+                st.switch_page("pages/alerts.py")
     
     except Exception as e:
         st.error(f"데이터 로드 실패: {e}")
