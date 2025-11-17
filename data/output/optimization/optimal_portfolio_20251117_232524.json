@@ -1,0 +1,34 @@
+[
+  {
+    "method": "max_sharpe",
+    "weights": {
+      "069500": 0.4,
+      "091160": 0.2,
+      "133690": 0.4
+    },
+    "expected_return": 0.29900811092105456,
+    "volatility": 0.18063335253664575,
+    "sharpe_ratio": 1.4892493946624832
+  },
+  {
+    "method": "min_volatility",
+    "weights": {
+      "069500": 0.4,
+      "091160": 0.2,
+      "133690": 0.4
+    },
+    "expected_return": 0.29900811092105456,
+    "volatility": 0.18063335253664572,
+    "sharpe_ratio": 1.4892493946624834
+  },
+  {
+    "method": "discrete_allocation",
+    "allocation": {
+      "069500": 120,
+      "133690": 33,
+      "091160": 63
+    },
+    "leftover": 21441.09765625,
+    "total_value": 10000000.0
+  }
+]
