@@ -1,0 +1,83 @@
+{
+  "config": {
+    "codes": [
+      "069500",
+      "091160",
+      "133690"
+    ],
+    "start_date": "2022-01-01",
+    "end_date": "2024-11-01",
+    "lookback_window": 252,
+    "rebalance_freq": 63,
+    "test_window": 21
+  },
+  "results": [
+    {
+      "date": "2023-09-25",
+      "method": "portfolio_optimization",
+      "weights": {
+        "069500": 0.0,
+        "091160": 0.0,
+        "133690": 1.0
+      },
+      "train_period": "2022-05-10 ~ 2023-09-25",
+      "test_period": "2023-09-25 ~ 2023-11-06",
+      "cumulative_return": -0.004577079427102948,
+      "volatility": 0.15167253526389793,
+      "sharpe_ratio": -0.23213816459678333
+    },
+    {
+      "date": "2024-01-29",
+      "method": "portfolio_optimization",
+      "weights": {
+        "069500": 0.0,
+        "091160": 0.20297,
+        "133690": 0.79703
+      },
+      "train_period": "2022-09-13 ~ 2024-01-29",
+      "test_period": "2024-01-29 ~ 2024-03-11",
+      "cumulative_return": 0.029611658004366603,
+      "volatility": 0.17168890131347378,
+      "sharpe_ratio": 1.6695791546211443
+    },
+    {
+      "date": "2024-06-03",
+      "method": "portfolio_optimization",
+      "weights": {
+        "069500": 0.0,
+        "091160": 0.08109,
+        "133690": 0.91891
+      },
+      "train_period": "2023-01-16 ~ 2024-06-03",
+      "test_period": "2024-06-03 ~ 2024-07-15",
+      "cumulative_return": 0.10089045006811603,
+      "volatility": 0.13400141460209766,
+      "sharpe_ratio": 6.3082211030694095
+    },
+    {
+      "date": "2024-10-07",
+      "method": "portfolio_optimization",
+      "weights": {
+        "069500": 0.0,
+        "091160": 0.0,
+        "133690": 1.0
+      },
+      "train_period": "2023-05-22 ~ 2024-10-07",
+      "test_period": "2024-10-07 ~ 2024-11-01",
+      "cumulative_return": 0.02232660344241144,
+      "volatility": 0.15804611246458247,
+      "sharpe_ratio": 2.1465383100622217
+    }
+  ],
+  "summary": {
+    "total_periods": 4,
+    "avg_return": 0.03706290802194778,
+    "avg_volatility": 0.15385224091101296,
+    "avg_sharpe": 2.4730501007889982,
+    "win_rate": 0.75,
+    "best_return": 0.10089045006811603,
+    "worst_return": -0.004577079427102948,
+    "best_sharpe": 6.3082211030694095,
+    "worst_sharpe": -0.23213816459678333
+  }
+}
