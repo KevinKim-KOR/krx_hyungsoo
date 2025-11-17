@@ -29,8 +29,7 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 from sklearn.preprocessing import StandardScaler
 
 # 프로젝트 모듈
-from core.db import SessionLocal
-from core.fetchers import OHLCVFetcher
+from core.data_loader import get_ohlcv
 from pc.ml.feature_engineering import FeatureEngineer
 
 logger = logging.getLogger(__name__)
@@ -86,8 +85,6 @@ class ETFRankingModel:
         logger.info("데이터 준비 시작")
         logger.info("=" * 60)
         
-        db = SessionLocal()
-        fetcher = OHLCVFetcher(db)
         engineer = FeatureEngineer()
         
         all_data = []
@@ -96,7 +93,9 @@ class ETFRankingModel:
             logger.info(f"처리 중: {code}")
             
             # 1. OHLCV 데이터 로드
-            df = fetcher.get_ohlcv(code, start_date=start_date, end_date=end_date)
+            # KRX 종목은 .KS 접미사 추가
+            symbol = f"{code}.KS" if len(code) == 6 else code
+            df = get_ohlcv(symbol, start=start_date, end=end_date)
             
             if df.empty:
                 logger.warning(f"데이터 없음: {code}")
@@ -112,8 +111,6 @@ class ETFRankingModel:
             df_features['code'] = code
             
             all_data.append(df_features)
-        
-        db.close()
         
         # 5. 전체 데이터 병합
         df_all = pd.concat(all_data, ignore_index=True)
@@ -287,12 +284,17 @@ class ETFRankingModel:
             pickle.dump(self.scaler, f)
         
         # 3. 메타데이터 저장
+        # numpy 타입을 Python 기본 타입으로 변환
+        feature_importance_json = {
+            k: float(v) for k, v in self.feature_importance.items()
+        }
+        
         meta = {
             'model_type': self.model_type,
             'task': self.task,
             'target_days': self.target_days,
             'feature_names': self.feature_names,
-            'feature_importance': self.feature_importance,
+            'feature_importance': feature_importance_json,
             'timestamp': timestamp
         }
         

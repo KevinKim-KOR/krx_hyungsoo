@@ -39,6 +39,19 @@ class FeatureEngineer:
         """
         df = df.copy()
         
+        # MultiIndex인 경우 단일 레벨로 변환
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        
+        # 컬럼명 정규화 (대문자 → 소문자)
+        df.columns = df.columns.str.lower()
+        
+        # 필수 컬럼 확인
+        required_cols = ['open', 'high', 'low', 'close', 'volume']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"필수 컬럼 누락: {missing_cols}")
+        
         # 1. RSI (Relative Strength Index)
         df['rsi_14'] = self._calculate_rsi(df['close'], period=14)
         df['rsi_28'] = self._calculate_rsi(df['close'], period=28)
