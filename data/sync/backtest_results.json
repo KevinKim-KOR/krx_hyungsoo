@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-11-17T21:53:17.371446",
+  "jason_strategy": {
+    "cagr": 39.02,
+    "sharpe": 1.71,
+    "mdd": -23.51,
+    "total_return": 153.88
+  },
+  "hybrid_strategy": {
+    "cagr": 27.05,
+    "sharpe": 1.51,
+    "mdd": -19.92,
+    "total_return": 96.8
+  }
+}

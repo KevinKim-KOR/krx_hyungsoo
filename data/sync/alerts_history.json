@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-11-17T21:53:17.921053",
+  "alerts": [
+    {
+      "timestamp": "2025-11-17T21:53:17.921047",
+      "type": "stop_loss",
+      "message": "손절 대상 6개 종목 발견",
+      "level": "warning"
+    }
+  ]
+}

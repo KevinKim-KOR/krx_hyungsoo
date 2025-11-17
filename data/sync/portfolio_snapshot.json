@@ -1,0 +1,91 @@
+{
+  "timestamp": "2025-11-17T21:53:17.369990",
+  "total_assets": 8743795,
+  "cash": 0,
+  "stocks_value": 8743795,
+  "total_return_pct": -9.63,
+  "daily_return_pct": 0.0,
+  "holdings_count": 28,
+  "holdings": [
+    {
+      "code": "0015B0",
+      "name": "KoAct 미국나스닥성장기업액티브",
+      "quantity": 5,
+      "avg_price": 11063,
+      "current_price": 14880,
+      "return_pct": 34.5
+    },
+    {
+      "code": "0028X0",
+      "name": "KODEX 미국금융테크액티브",
+      "quantity": 15,
+      "avg_price": 11358,
+      "current_price": 12475,
+      "return_pct": 9.83
+    },
+    {
+      "code": "0035T0",
+      "name": "PLUS 글로벌휴머노이드로봇액티브",
+      "quantity": 5,
+      "avg_price": 14185,
+      "current_price": 15995,
+      "return_pct": 12.76
+    },
+    {
+      "code": "0052D0",
+      "name": "TIGER 코리아배당다우존스",
+      "quantity": 9,
+      "avg_price": 10657,
+      "current_price": 13275,
+      "return_pct": 24.57
+    },
+    {
+      "code": "005380",
+      "name": "현대차",
+      "quantity": 2,
+      "avg_price": 218500,
+      "current_price": 270500,
+      "return_pct": 23.8
+    },
+    {
+      "code": "0097L0",
+      "name": "KIWOOM 한국고배당&미국AI테크",
+      "quantity": 10,
+      "avg_price": 10235,
+      "current_price": 11010,
+      "return_pct": 7.57
+    },
+    {
+      "code": "0107F0",
+      "name": "KIWOOM 미국고배당&AI테크",
+      "quantity": 10,
+      "avg_price": 9990,
+      "current_price": 10110,
+      "return_pct": 1.2
+    },
+    {
+      "code": "064350",
+      "name": "현대로템",
+      "quantity": 1,
+      "avg_price": 196500,
+      "current_price": 208000,
+      "return_pct": 5.85
+    },
+    {
+      "code": "088980",
+      "name": "맥쿼리인프라",
+      "quantity": 13,
+      "avg_price": 12373,
+      "current_price": 11290,
+      "return_pct": -8.75
+    },
+    {
+      "code": "161510",
+      "name": "PLUS 고배당주",
+      "quantity": 5,
+      "avg_price": 20070,
+      "current_price": 21070,
+      "return_pct": 4.98
+    }
+  ]
+}

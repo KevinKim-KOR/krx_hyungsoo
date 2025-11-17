@@ -5,11 +5,17 @@ backend/app/api/v1/backtest.py
 백테스트 API 엔드포인트
 """
 import json
+import logging
 from pathlib import Path
 from typing import Optional, Any, Union
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# 동기화 파일 경로
+SYNC_DIR = Path(__file__).parent.parent.parent.parent / "data" / "sync"
 
 router = APIRouter()
 
@@ -41,9 +47,57 @@ async def get_backtest_results():
     """
     백테스트 결과 조회
     
+    동기화된 파일 우선 사용, 없으면 로컬 파일 조회
+    
     Returns:
         백테스트 결과 리스트 (Jason, Hybrid 전략)
     """
+    # 1. 동기화 파일 확인
+    sync_file = SYNC_DIR / "backtest_results.json"
+    
+    if sync_file.exists():
+        try:
+            with open(sync_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            logger.info(f"✅ 동기화 파일 사용: {sync_file}")
+            
+            results = []
+            
+            # Jason 전략
+            jason = data.get("jason_strategy", {})
+            if jason:
+                results.append(BacktestResult(
+                    strategy="Jason",
+                    start_date="2022-01-01",
+                    end_date="2025-11-08",
+                    cagr=jason.get("cagr", 0),
+                    sharpe=jason.get("sharpe", 0),
+                    max_drawdown=jason.get("mdd", 0),
+                    total_return=jason.get("total_return", 0),
+                    total_trades=1436
+                ))
+            
+            # Hybrid 전략
+            hybrid = data.get("hybrid_strategy", {})
+            if hybrid:
+                results.append(BacktestResult(
+                    strategy="Hybrid",
+                    start_date="2022-01-01",
+                    end_date="2025-11-08",
+                    cagr=hybrid.get("cagr", 0),
+                    sharpe=hybrid.get("sharpe", 0),
+                    max_drawdown=hybrid.get("mdd", 0),
+                    total_return=hybrid.get("total_return", 0),
+                    total_trades=1406
+                ))
+            
+            return results
+        except Exception as e:
+            logger.error(f"동기화 파일 읽기 실패: {e}")
+    
+    # 2. 동기화 파일 없으면 로컬 파일 조회
+    logger.info("동기화 파일 없음, 로컬 파일 조회")
     results = []
     backtest_dir = Path(settings.BACKTEST_DIR)
     

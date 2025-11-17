@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-11-17T21:53:17.918194",
+  "strategy": "hybrid",
+  "threshold": -5.0,
+  "targets_count": 6,
+  "targets": [
+    {
+      "code": "088980",
+      "name": "맥쿼리인프라",
+      "return_pct": -8.75,
+      "threshold": -5.0,
+      "current_value": 146770,
+      "loss_amount": -14079
+    },
+    {
+      "code": "221840",
+      "name": "하이즈항공",
+      "return_pct": -58.88,
+      "threshold": -5.0,
+      "current_value": 112250,
+      "loss_amount": -160750
+    },
+    {
+      "code": "245710",
+      "name": "KODEX 베트남VN30",
+      "return_pct": -6.38,
+      "threshold": -5.0,
+      "current_value": 171720,
+      "loss_amount": -11712
+    },
+    {
+      "code": "323410",
+      "name": "카카오뱅크",
+      "return_pct": -66.58,
+      "threshold": -5.0,
+      "current_value": 108500,
+      "loss_amount": -216150
+    },
+    {
+      "code": "415920",
+      "name": "PLUS 글로벌희토류&전략자원생산기업",
+      "return_pct": -16.44,
+      "threshold": -5.0,
+      "current_value": 67100,
+      "loss_amount": -13200
+    },
+    {
+      "code": "001510",
+      "name": "SK증권",
+      "return_pct": -40.85,
+      "threshold": -5.0,
+      "current_value": 2094000,
+      "loss_amount": -1446000
+    }
+  ]
+}

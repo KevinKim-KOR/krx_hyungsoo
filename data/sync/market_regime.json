@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-11-17T21:53:17.929329",
+  "date": "2025-11-17",
+  "current_regime": "bull",
+  "confidence": 100.0,
+  "position_ratio": 120.0,
+  "defense_mode": false,
+  "ma50": 0,
+  "ma200": 0,
+  "trend_strength": 100.0,
+  "volatility": "low"
+}

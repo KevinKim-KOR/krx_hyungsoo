@@ -4,8 +4,16 @@
 backend/app/api/v1/market.py
 시장 분석 API 엔드포인트
 """
+import json
+import logging
+from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+
+# 동기화 파일 경로
+SYNC_DIR = Path(__file__).parent.parent.parent.parent / "data" / "sync"
 
 router = APIRouter()
 
@@ -41,12 +49,41 @@ async def get_market_regime():
     """
     시장 레짐 조회
     
+    동기화된 파일 우선 사용, 없으면 더미 데이터 반환
+    
     Returns:
         - 현재 레짐 (bull/neutral/bear)
         - 레짐 기준 (MA50, MA200, 추세 강도, 변동성)
         - 신뢰도
     """
-    # TODO: 실제 시장 데이터에서 레짐 계산
+    # 1. 동기화 파일 확인
+    sync_file = SYNC_DIR / "market_regime.json"
+    
+    if sync_file.exists():
+        try:
+            with open(sync_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            logger.info(f"✅ 동기화 파일 사용: {sync_file}")
+            
+            return MarketRegime(
+                current_regime=data.get("current_regime", "neutral"),
+                ma50=data.get("ma50", 0),
+                ma200=data.get("ma200", 0),
+                trend_strength=data.get("trend_strength", 0),
+                volatility=data.get("volatility", "unknown"),
+                confidence=data.get("confidence", 0),
+                criteria={
+                    "ma50_above_ma200": data.get("ma50", 0) > data.get("ma200", 0),
+                    "trend_strength_threshold": 80.0,
+                    "volatility_threshold": data.get("volatility", "unknown")
+                }
+            )
+        except Exception as e:
+            logger.error(f"동기화 파일 읽기 실패: {e}")
+    
+    # 2. 동기화 파일 없으면 더미 데이터
+    logger.info("동기화 파일 없음, 더미 데이터 반환")
     return MarketRegime(
         current_regime="bull",
         ma50=35000.0,

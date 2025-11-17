@@ -5,11 +5,17 @@ backend/app/api/v1/stop_loss.py
 손절 전략 API 엔드포인트
 """
 import json
+import logging
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# 동기화 파일 경로
+SYNC_DIR = Path(__file__).parent.parent.parent.parent / "data" / "sync"
 
 router = APIRouter()
 
@@ -141,12 +147,41 @@ async def get_stop_loss_targets(strategy: str = "hybrid"):
     """
     손절 대상 종목 조회
     
+    동기화된 파일 우선 사용, 없으면 로컬 파일 조회
+    
     Args:
         strategy: 손절 전략 (fixed, regime, dynamic, hybrid)
     
     Returns:
         손절 대상 종목 리스트
     """
+    # 1. 동기화 파일 확인
+    sync_file = SYNC_DIR / "stop_loss_targets.json"
+    
+    if sync_file.exists():
+        try:
+            with open(sync_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            logger.info(f"✅ 동기화 파일 사용: {sync_file}")
+            
+            targets = []
+            for target in data.get('targets', []):
+                targets.append(StopLossTarget(
+                    name=target.get('name', ''),
+                    code=target.get('code', ''),
+                    return_pct=target.get('return_pct', 0),
+                    threshold=target.get('threshold', 0),
+                    current_value=target.get('current_value', 0),
+                    loss_amount=target.get('loss_amount', 0)
+                ))
+            
+            return targets
+        except Exception as e:
+            logger.error(f"동기화 파일 읽기 실패: {e}")
+    
+    # 2. 동기화 파일 없으면 로컬 파일 조회
+    logger.info("동기화 파일 없음, 로컬 파일 조회")
     comparison_file = Path(settings.BACKTEST_DIR) / "stop_loss_strategy_comparison.json"
     
     if not comparison_file.exists():
