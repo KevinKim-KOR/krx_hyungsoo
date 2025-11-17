@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.core.config import settings
+from app.core.database import Base, engine
+from app.models import asset  # 테이블 등록을 위해 임포트
 from app.api.v1 import dashboard, assets, backtest, stop_loss, signals, market
 
 # FastAPI 앱 생성
@@ -38,6 +40,14 @@ app.include_router(backtest.router, prefix="/api/v1/backtest", tags=["backtest"]
 app.include_router(stop_loss.router, prefix="/api/v1/stop-loss", tags=["stop-loss"])
 app.include_router(signals.router, prefix="/api/v1/signals", tags=["signals"])
 app.include_router(market.router, prefix="/api/v1/market", tags=["market"])
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    """앱 시작 시 DB 테이블 자동 생성"""
+    # models.asset 모듈이 임포트되어 있어야 모든 테이블이 등록됨
+    Base.metadata.create_all(bind=engine)
+
 
 # Static files
 static_dir = Path(__file__).parent.parent / "static"
