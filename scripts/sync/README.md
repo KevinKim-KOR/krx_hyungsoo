@@ -58,11 +58,33 @@ bash scripts/sync/sync_to_oracle.sh
 # 1. SSH 키 생성 (없으면)
 ssh-keygen -t rsa -b 4096 -f ~/.ssh/oracle_cloud_key
 
-# 2. 공개 키를 Oracle에 등록
+# 2-A. 공개 키를 Oracle에 등록 (ssh-copy-id 있는 경우)
 ssh-copy-id -i ~/.ssh/oracle_cloud_key.pub ubuntu@168.107.51.68
 
-# 3. 권한 설정
+# 2-B. 공개 키를 Oracle에 등록 (ssh-copy-id 없는 경우 - Synology NAS)
+# 공개 키 내용 확인
+cat ~/.ssh/oracle_cloud_key.pub
+
+# Oracle에 SSH 접속 (비밀번호 입력)
+ssh ubuntu@168.107.51.68
+
+# Oracle에서 실행
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+echo "여기에_공개키_내용_붙여넣기" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+exit
+
+# 3. 권한 설정 (NAS에서)
 chmod 600 ~/.ssh/oracle_cloud_key
+
+# 4. 연결 테스트
+ssh -i ~/.ssh/oracle_cloud_key ubuntu@168.107.51.68
+```
+
+**또는 한 줄로 실행 (NAS에서)**:
+```bash
+cat ~/.ssh/oracle_cloud_key.pub | ssh ubuntu@168.107.51.68 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 
 ### 텔레그램 알림 (선택)
