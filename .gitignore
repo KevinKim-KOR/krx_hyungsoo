@@ -35,3 +35,10 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# 외부 프로젝트 (Jason의 momentum-etf)
+momentum-etf/
+
+# 가상 환경
+venv/
+.venv/
