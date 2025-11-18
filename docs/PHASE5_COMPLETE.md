@@ -13,19 +13,21 @@
 3. [Phase 5-2: 머신러닝 모델 개발](#phase-5-2-머신러닝-모델-개발)
 4. [Phase 5-3: 포트폴리오 최적화](#phase-5-3-포트폴리오-최적화)
 5. [Phase 5-4: 룩백 분석](#phase-5-4-룩백-분석)
-6. [성과 요약](#성과-요약)
-7. [다음 단계](#다음-단계)
+6. [Phase 5-5: UI/UX 통합](#phase-5-5-uiux-통합)
+7. [성과 요약](#성과-요약)
+8. [다음 단계](#다음-단계)
 
 ---
 
 ## 개요
 
-Phase 5는 **고급 분석 및 최적화**를 목표로 하며, 다음 4개 서브 페이즈로 구성됩니다:
+Phase 5는 **고급 분석 및 최적화**를 목표로 하며, 다음 5개 서브 페이즈로 구성됩니다:
 
 - **Phase 5-1**: NAS ↔ Oracle 데이터 연동 (자동 동기화)
 - **Phase 5-2**: 머신러닝 모델 개발 (ETF 랭킹 예측)
 - **Phase 5-3**: 포트폴리오 최적화 (효율적 프론티어)
 - **Phase 5-4**: 룩백 분석 (워크포워드 분석)
+- **Phase 5-5**: UI/UX 통합 (React 대시보드)
 
 ### 목표
 
@@ -33,6 +35,7 @@ Phase 5는 **고급 분석 및 최적화**를 목표로 하며, 다음 4개 서�
 2. ✅ ML 기반 ETF 랭킹 예측 모델 구축
 3. ✅ PyPortfolioOpt 기반 포트폴리오 최적화
 4. ✅ 워크포워드 분석을 통한 전략 검증
+5. ⏳ React 대시보드 구축 (초기 구조 완료)
 
 ---
 
@@ -391,6 +394,19 @@ data/output/optimization/
 | ML 랭킹 방법 | ✅ | 모멘텀 기반 |
 | 요약 통계 | ✅ | 승률 75% |
 
+### Phase 5-5: UI/UX 통합
+
+| 항목 | 상태 | 비고 |
+|-----|------|------|
+| React 프로젝트 구조 | ✅ | Vite + TypeScript |
+| 레이아웃 컴포넌트 | ✅ | 사이드바 + 헤더 |
+| 5개 주요 페이지 | ✅ | Dashboard, Portfolio, Backtest, MLModel, Lookback |
+| TailwindCSS 스타일링 | ✅ | shadcn/ui 색상 시스템 |
+| React Router 라우팅 | ✅ | 페이지 전환 |
+| npm install | ⏳ | Node.js 설치 필요 |
+| API 연동 | ⏳ | FastAPI 연결 예정 |
+| 차트 추가 | ⏳ | Recharts 예정 |
+
 ---
 
 ---
@@ -491,28 +507,133 @@ data/output/analysis/
 
 ---
 
+## Phase 5-5: UI/UX 통합
+
+### 목표
+
+모든 분석 결과를 하나의 대시보드에서 확인할 수 있도록 React 기반 웹 애플리케이션 구축.
+
+### 구현 내용
+
+#### 1. React 프로젝트 초기화
+
+**위치**: `web/dashboard/`
+
+**기술 스택**:
+- React 18 + TypeScript
+- Vite (빠른 개발 환경)
+- TailwindCSS (유틸리티 CSS)
+- React Router (라우팅)
+- Lucide React (아이콘)
+
+**주요 설정**:
+```typescript
+// vite.config.ts
+server: {
+  port: 3000,
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8000',
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+#### 2. 레이아웃 및 네비게이션
+
+**파일**: `src/components/Layout.tsx`
+
+**기능**:
+- 사이드바 네비게이션
+- 헤더
+- 활성 페이지 하이라이트
+
+#### 3. 주요 페이지
+
+**Dashboard** (`src/pages/Dashboard.tsx`):
+- 전체 요약 카드
+- 최근 분석 결과 타임라인
+
+**Portfolio** (`src/pages/Portfolio.tsx`):
+- 최적 비중 표시
+- 성과 지표 (Sharpe 1.49, 변동성 18.1%)
+- 이산 배분 (실제 매수 주식 수)
+
+**Backtest** (`src/pages/Backtest.tsx`):
+- MAPS vs ML 모델 성능 비교
+- CAGR, Sharpe, MDD 테이블
+
+**MLModel** (`src/pages/MLModel.tsx`):
+- 학습 결과 (Train R² 0.9986, Test R² -0.3973)
+- Top 5 Feature Importance
+- 과적합 경고
+
+**Lookback** (`src/pages/Lookback.tsx`):
+- 워크포워드 분석 결과
+- 리밸런싱 히스토리 (4회)
+- 평균 Sharpe 2.47, 승률 75%
+
+### 성과
+
+- ✅ React 프로젝트 구조 완성
+- ✅ 5개 주요 페이지 구현
+- ✅ TailwindCSS 스타일링
+- ✅ React Router 라우팅
+- ⏳ Node.js 설치 대기 (npm install 필요)
+
+### 파일 구조
+
+```
+web/dashboard/
+├── src/
+│   ├── components/
+│   │   └── Layout.tsx
+│   ├── pages/
+│   │   ├── Dashboard.tsx
+│   │   ├── Portfolio.tsx
+│   │   ├── Backtest.tsx
+│   │   ├── MLModel.tsx
+│   │   └── Lookback.tsx
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
+├── package.json
+├── vite.config.ts
+├── tailwind.config.js
+└── README.md
+```
+
+### 다음 단계
+
+1. **Node.js 설치 및 npm install**
+2. **API 연동**: FastAPI 백엔드와 연결
+3. **차트 추가**: Recharts 라이브러리
+4. **실시간 업데이트**: WebSocket 또는 폴링
+
+---
+
 ## 다음 단계
 
-### Phase 5-5: UI/UX 통합 (예정)
+### API 연동 (예정)
 
-**목표**: 모든 기능을 하나의 대시보드에 통합
+**목표**: FastAPI 백엔드와 React 프론트엔드 연결
 
-**구현 내용**:
-- React + TailwindCSS + shadcn/ui
-- 차트 라이브러리 (Recharts, Plotly)
-- 포트폴리오 최적화 결과 시각화
-- 백테스트 결과 비교
-- ML 모델 Feature Importance 시각화
-- 룩백 분석 결과 시각화
+**API 엔드포인트**:
+```
+GET /api/portfolio/optimization
+GET /api/backtest/results
+GET /api/ml/model/info
+GET /api/analysis/lookback
+```
 
-### 프로젝트 정리 (예정)
+### 차트 시각화 (예정)
 
-**목표**: 미사용 파일/폴더 정리
-
-**작업 내용**:
-- 미사용 파일 식별 및 제거
-- 폴더 구조 정리
-- 문서 업데이트
+**차트 종류**:
+- 포트폴리오 비중: 파이 차트
+- 백테스트 성과: 라인 차트
+- Feature Importance: 바 차트
+- 룩백 분석: 라인 차트
 
 ---
 
@@ -565,6 +686,7 @@ data/output/analysis/
 |-----|------|----------|
 | 2025-11-17 | 1.0 | Phase 5-1, 5-2, 5-3 완료 |
 | 2025-11-18 | 1.1 | Phase 5-4 추가 (룩백 분석) |
+| 2025-11-18 | 1.2 | Phase 5-5 추가 (UI/UX 통합 초기 구조) |
 
 ---
 
