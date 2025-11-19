@@ -122,23 +122,48 @@ async def get_portfolio_optimization() -> Dict[str, Any]:
         
         logger.info(f"✅ 최적화 결과 로드: {latest_file.name}")
         
-        # 응답 데이터 구성
-        response = {
-            "timestamp": data.get("timestamp", ""),
-            "method": data.get("method", "max_sharpe"),
-            "expected_return": data.get("expected_return", 0.0),
-            "volatility": data.get("volatility", 0.0),
-            "sharpe_ratio": data.get("sharpe_ratio", 0.0),
-            "weights": data.get("weights", {}),
-        }
-        
-        # 이산 배분 정보 추가
-        if "discrete_allocation" in data:
-            response["discrete_allocation"] = {
-                "allocation": data["discrete_allocation"].get("allocation", {}),
-                "leftover": data["discrete_allocation"].get("leftover", 0.0),
-                "total_value": data["discrete_allocation"].get("total_value", 0.0),
+        # 리스트 형태인 경우 처리
+        if isinstance(data, list):
+            # max_sharpe 결과 찾기
+            sharpe_data = next((item for item in data if item.get("method") == "max_sharpe"), data[0])
+            # discrete_allocation 찾기
+            discrete_data = next((item for item in data if item.get("method") == "discrete_allocation"), None)
+            
+            # 응답 데이터 구성
+            response = {
+                "timestamp": latest_file.stem.replace("optimal_portfolio_", ""),
+                "method": sharpe_data.get("method", "max_sharpe"),
+                "expected_return": sharpe_data.get("expected_return", 0.0),
+                "volatility": sharpe_data.get("volatility", 0.0),
+                "sharpe_ratio": sharpe_data.get("sharpe_ratio", 0.0),
+                "weights": sharpe_data.get("weights", {}),
             }
+            
+            # 이산 배분 정보 추가
+            if discrete_data:
+                response["discrete_allocation"] = {
+                    "allocation": discrete_data.get("allocation", {}),
+                    "leftover": discrete_data.get("leftover", 0.0),
+                    "total_value": discrete_data.get("total_value", 0.0),
+                }
+        else:
+            # 딕셔너리 형태인 경우 (기존 로직)
+            response = {
+                "timestamp": data.get("timestamp", ""),
+                "method": data.get("method", "max_sharpe"),
+                "expected_return": data.get("expected_return", 0.0),
+                "volatility": data.get("volatility", 0.0),
+                "sharpe_ratio": data.get("sharpe_ratio", 0.0),
+                "weights": data.get("weights", {}),
+            }
+            
+            # 이산 배분 정보 추가
+            if "discrete_allocation" in data:
+                response["discrete_allocation"] = {
+                    "allocation": data["discrete_allocation"].get("allocation", {}),
+                    "leftover": data["discrete_allocation"].get("leftover", 0.0),
+                    "total_value": data["discrete_allocation"].get("total_value", 0.0),
+                }
         
         return response
         
