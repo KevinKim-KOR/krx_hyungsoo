@@ -1,17 +1,25 @@
-import { AlertCircle, Play, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { AlertCircle, Play, RefreshCw, MessageSquare } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
 import type { MLModelInfo } from '../types';
+import { AIPromptModal } from '../components/AIPromptModal';
+import { generateMLPrompt } from '../utils/promptGenerator';
 
 export default function MLModel() {
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
 
   const { data: modelInfo, loading, error } = useApi<MLModelInfo>(
     () => apiClient.getMLModelInfo(),
     []
   );
+
+  const prompt = useMemo(() => {
+    if (!modelInfo) return '';
+    return generateMLPrompt(modelInfo);
+  }, [modelInfo]);
 
   const handleTrainModel = async () => {
     try {
@@ -61,23 +69,32 @@ export default function MLModel() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">ML 모델</h2>
-        <button
-          onClick={handleTrainModel}
-          disabled={running}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {running ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              학습 중...
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" />
-              모델 학습
-            </>
-          )}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowPrompt(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            <MessageSquare className="h-4 w-4" />
+            💬 AI에게 질문하기
+          </button>
+          <button
+            onClick={handleTrainModel}
+            disabled={running}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {running ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                학습 중...
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                모델 학습
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {runError && (
@@ -127,6 +144,14 @@ export default function MLModel() {
           ))}
         </div>
       </div>
+
+      {/* AI 프롬프트 모달 */}
+      <AIPromptModal
+        isOpen={showPrompt}
+        onClose={() => setShowPrompt(false)}
+        prompt={prompt}
+        title="ML 모델 학습 결과 - AI 질문"
+      />
     </div>
   )
 }
