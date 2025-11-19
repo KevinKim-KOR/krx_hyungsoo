@@ -16,6 +16,11 @@ export default function Portfolio() {
     []
   );
 
+  const prompt = useMemo(() => {
+    if (!optimization) return '';
+    return generatePortfolioPrompt(optimization);
+  }, [optimization]);
+
   const handleRunOptimization = async () => {
     try {
       setRunning(true);
@@ -29,6 +34,9 @@ export default function Portfolio() {
       setRunning(false);
     }
   };
+
+  const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+  const formatCurrency = (value: number) => new Intl.NumberFormat('ko-KR').format(value);
 
   if (loading) {
     return (
@@ -60,13 +68,6 @@ export default function Portfolio() {
       </div>
     );
   }
-
-  const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
-  const formatCurrency = (value: number) => new Intl.NumberFormat('ko-KR').format(value);
-
-  const prompt = useMemo(() => {
-    return generatePortfolioPrompt(optimization);
-  }, [optimization]);
 
   return (
     <div className="space-y-6">
