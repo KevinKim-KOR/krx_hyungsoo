@@ -39,7 +39,7 @@ class BacktestResult(BaseModel):
     start_date: str
     end_date: str
     cagr: float
-    sharpe: float
+    sharpe_ratio: float
     max_drawdown: float
     total_return: float
     total_trades: int
@@ -85,7 +85,7 @@ async def get_backtest_results():
                     start_date="2022-01-01",
                     end_date="2025-11-08",
                     cagr=jason.get("cagr", 0),
-                    sharpe=jason.get("sharpe", 0),
+                    sharpe_ratio=jason.get("sharpe", 0),
                     max_drawdown=jason.get("mdd", 0),
                     total_return=jason.get("total_return", 0),
                     total_trades=1436
@@ -99,7 +99,7 @@ async def get_backtest_results():
                     start_date="2022-01-01",
                     end_date="2025-11-08",
                     cagr=hybrid.get("cagr", 0),
-                    sharpe=hybrid.get("sharpe", 0),
+                    sharpe_ratio=hybrid.get("sharpe", 0),
                     max_drawdown=hybrid.get("mdd", 0),
                     total_return=hybrid.get("total_return", 0),
                     total_trades=1406
@@ -125,7 +125,7 @@ async def get_backtest_results():
                     start_date=jason_data.get('start_date', '2022-01-01'),
                     end_date=jason_data.get('end_date', '2025-11-08'),
                     cagr=jason_data.get('cagr', 0.3902) * 100,
-                    sharpe=jason_data.get('sharpe', 1.71),
+                    sharpe_ratio=jason_data.get('sharpe', 1.71),
                     max_drawdown=jason_data.get('max_drawdown', -0.2351) * 100,
                     total_return=jason_data.get('total_return', 1.5388) * 100,
                     total_trades=jason_data.get('total_trades', 1436)
@@ -144,7 +144,7 @@ async def get_backtest_results():
                     start_date=hybrid_data.get('start_date', '2022-01-01'),
                     end_date=hybrid_data.get('end_date', '2025-11-08'),
                     cagr=hybrid_data.get('cagr', 0.2705) * 100,
-                    sharpe=hybrid_data.get('sharpe', 1.51),
+                    sharpe_ratio=hybrid_data.get('sharpe', 1.51),
                     max_drawdown=hybrid_data.get('max_drawdown', -0.1992) * 100,
                     total_return=hybrid_data.get('total_return', 0.9680) * 100,
                     total_trades=hybrid_data.get('total_trades', 1406)
@@ -161,7 +161,7 @@ async def get_backtest_results():
                 start_date="2022-01-01",
                 end_date="2025-11-08",
                 cagr=27.05,
-                sharpe=1.51,
+                sharpe_ratio=1.51,
                 max_drawdown=-19.92,
                 total_return=96.80,
                 total_trades=1406
