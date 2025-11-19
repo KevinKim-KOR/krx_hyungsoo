@@ -1,0 +1,133 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+backend/app/api/v1/portfolio.py
+포트폴리오 최적화 API 엔드포인트
+"""
+from fastapi import APIRouter, HTTPException
+from pathlib import Path
+import json
+import logging
+from typing import Dict, Any, Optional
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+# 데이터 경로
+OUTPUT_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "output"
+OPTIMIZATION_DIR = OUTPUT_DIR / "optimization"
+
+router = APIRouter()
+
+
+def find_latest_file(directory: Path, pattern: str = "optimal_portfolio_*.json") -> Optional[Path]:
+    """최신 파일 찾기"""
+    if not directory.exists():
+        return None
+    
+    files = list(directory.glob(pattern))
+    if not files:
+        return None
+    
+    # 파일명에서 타임스탬프 추출하여 정렬
+    return max(files, key=lambda f: f.stat().st_mtime)
+
+
+@router.get("/optimization")
+async def get_portfolio_optimization() -> Dict[str, Any]:
+    """
+    포트폴리오 최적화 결과 조회
+    
+    Returns:
+        - timestamp: 분석 시각
+        - method: 최적화 방법
+        - expected_return: 기대 수익률
+        - volatility: 변동성
+        - sharpe_ratio: Sharpe Ratio
+        - weights: 종목별 비중
+        - discrete_allocation: 이산 배분 (실제 매수 주식 수)
+    """
+    # 최신 최적화 결과 파일 찾기
+    latest_file = find_latest_file(OPTIMIZATION_DIR)
+    
+    if not latest_file:
+        raise HTTPException(
+            status_code=404,
+            detail="포트폴리오 최적화 결과를 찾을 수 없습니다."
+        )
+    
+    try:
+        with open(latest_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        logger.info(f"✅ 최적화 결과 로드: {latest_file.name}")
+        
+        # 응답 데이터 구성
+        response = {
+            "timestamp": data.get("timestamp", ""),
+            "method": data.get("method", "max_sharpe"),
+            "expected_return": data.get("expected_return", 0.0),
+            "volatility": data.get("volatility", 0.0),
+            "sharpe_ratio": data.get("sharpe_ratio", 0.0),
+            "weights": data.get("weights", {}),
+        }
+        
+        # 이산 배분 정보 추가
+        if "discrete_allocation" in data:
+            response["discrete_allocation"] = {
+                "allocation": data["discrete_allocation"].get("allocation", {}),
+                "leftover": data["discrete_allocation"].get("leftover", 0.0),
+                "total_value": data["discrete_allocation"].get("total_value", 0.0),
+            }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"최적화 결과 로드 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"최적화 결과 로드 중 오류 발생: {str(e)}"
+        )
+
+
+@router.get("/history")
+async def get_portfolio_history(limit: int = 10) -> list[Dict[str, Any]]:
+    """
+    포트폴리오 최적화 히스토리 조회
+    
+    Args:
+        limit: 조회할 최대 개수
+    
+    Returns:
+        최적화 결과 리스트 (최신순)
+    """
+    if not OPTIMIZATION_DIR.exists():
+        return []
+    
+    try:
+        # 모든 최적화 파일 찾기
+        files = sorted(
+            OPTIMIZATION_DIR.glob("optimal_portfolio_*.json"),
+            key=lambda f: f.stat().st_mtime,
+            reverse=True
+        )[:limit]
+        
+        results = []
+        for file in files:
+            with open(file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            results.append({
+                "timestamp": data.get("timestamp", ""),
+                "method": data.get("method", ""),
+                "sharpe_ratio": data.get("sharpe_ratio", 0.0),
+                "expected_return": data.get("expected_return", 0.0),
+                "volatility": data.get("volatility", 0.0),
+            })
+        
+        logger.info(f"✅ 최적화 히스토리 {len(results)}개 로드")
+        return results
+        
+    except Exception as e:
+        logger.error(f"히스토리 로드 실패: {e}")
+        return []

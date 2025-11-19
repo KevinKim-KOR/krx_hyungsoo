@@ -16,8 +16,21 @@ logger = logging.getLogger(__name__)
 
 # 동기화 파일 경로
 SYNC_DIR = Path(__file__).parent.parent.parent.parent / "data" / "sync"
+OUTPUT_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "output"
 
 router = APIRouter()
+
+
+def find_latest_file(directory: Path, pattern: str) -> Optional[Path]:
+    """최신 파일 찾기"""
+    if not directory.exists():
+        return None
+    
+    files = list(directory.glob(pattern))
+    if not files:
+        return None
+    
+    return max(files, key=lambda f: f.stat().st_mtime)
 
 
 class BacktestResult(BaseModel):

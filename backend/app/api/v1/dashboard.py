@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 import json
 import logging
+from typing import Dict, Any, Optional
+from datetime import datetime
 
 from app.core.database import get_db
 from app.schemas.asset import DashboardResponse, AssetResponse
@@ -18,8 +20,21 @@ logger = logging.getLogger(__name__)
 
 # 동기화 파일 경로
 SYNC_DIR = Path(__file__).parent.parent.parent.parent / "data" / "sync"
+OUTPUT_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "output"
 
 router = APIRouter()
+
+
+def find_latest_file(directory: Path, pattern: str) -> Optional[Path]:
+    """최신 파일 찾기"""
+    if not directory.exists():
+        return None
+    
+    files = list(directory.glob(pattern))
+    if not files:
+        return None
+    
+    return max(files, key=lambda f: f.stat().st_mtime)
 
 
 @router.get("/summary", response_model=DashboardResponse)
@@ -105,3 +120,83 @@ async def get_current_holdings(db: Session = Depends(get_db)):
     logger.info("동기화 파일 없음, DB 조회")
     service = AssetService(db)
     return await service.get_current_holdings()
+
+
+@router.get("/recent")
+async def get_recent_analyses(limit: int = 5) -> list[Dict[str, Any]]:
+    """
+    최근 분석 결과 조회
+    
+    Args:
+        limit: 조회할 최대 개수
+    
+    Returns:
+        최근 분석 결과 리스트 (포트폴리오, 백테스트, ML, 룩백)
+    """
+    analyses = []
+    
+    # 1. 포트폴리오 최적화
+    opt_file = find_latest_file(OUTPUT_DIR / "optimization", "optimal_portfolio_*.json")
+    if opt_file:
+        try:
+            with open(opt_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            analyses.append({
+                "type": "portfolio",
+                "title": "포트폴리오 최적화",
+                "timestamp": data.get("timestamp", ""),
+                "summary": f"Sharpe {data.get('sharpe_ratio', 0):.2f}, 수익률 {data.get('expected_return', 0)*100:.1f}%"
+            })
+        except Exception as e:
+            logger.error(f"포트폴리오 최적화 로드 실패: {e}")
+    
+    # 2. 백테스트
+    bt_file = find_latest_file(OUTPUT_DIR / "phase2", "backtest_hybrid_summary.json")
+    if bt_file:
+        try:
+            with open(bt_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            analyses.append({
+                "type": "backtest",
+                "title": "하이브리드 전략 백테스트",
+                "timestamp": data.get("timestamp", ""),
+                "summary": f"CAGR {data.get('cagr', 0)*100:.1f}%, Sharpe {data.get('sharpe_ratio', 0):.2f}"
+            })
+        except Exception as e:
+            logger.error(f"백테스트 로드 실패: {e}")
+    
+    # 3. ML 모델
+    ml_file = find_latest_file(OUTPUT_DIR / "ml", "meta_*.json")
+    if ml_file:
+        try:
+            with open(ml_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            analyses.append({
+                "type": "ml",
+                "title": "ML 모델 학습",
+                "timestamp": data.get("timestamp", ""),
+                "summary": f"Test R² {data.get('test_score', 0):.3f}, {len(data.get('feature_importance', {}))}개 특징"
+            })
+        except Exception as e:
+            logger.error(f"ML 모델 로드 실패: {e}")
+    
+    # 4. 룩백 분석
+    lookback_file = find_latest_file(OUTPUT_DIR / "analysis", "lookback_analysis_*.json")
+    if lookback_file:
+        try:
+            with open(lookback_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            summary = data.get("summary", {})
+            analyses.append({
+                "type": "lookback",
+                "title": "룩백 분석",
+                "timestamp": data.get("timestamp", ""),
+                "summary": f"{summary.get('total_rebalances', 0)}회 리밸런싱, 평균 Sharpe {summary.get('avg_sharpe', 0):.2f}"
+            })
+        except Exception as e:
+            logger.error(f"룩백 분석 로드 실패: {e}")
+    
+    # 타임스탬프 기준 정렬 (최신순)
+    analyses.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    return analyses[:limit]
