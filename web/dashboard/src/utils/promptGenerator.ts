@@ -82,6 +82,12 @@ ${discreteText}
  * 백테스트 결과 프롬프트 생성
  */
 export function generateBacktestPrompt(data: BacktestResult): string {
+  const cagr = data.cagr ?? 0;
+  const sharpe = data.sharpe_ratio ?? 0;
+  const mdd = data.max_drawdown ?? 0;
+  const totalReturn = data.total_return ?? 0;
+  const trades = data.total_trades ?? 0;
+
   return `# 백테스트 결과 검토
 
 ## 백테스트 정보
@@ -89,11 +95,11 @@ export function generateBacktestPrompt(data: BacktestResult): string {
 - 기간: ${data.start_date} ~ ${data.end_date}
 
 ## 성과 지표
-- CAGR: ${data.cagr.toFixed(2)}%
-- Sharpe Ratio: ${data.sharpe_ratio.toFixed(2)}
-- Max Drawdown: ${data.max_drawdown.toFixed(2)}%
-- 총 수익률: ${data.total_return.toFixed(2)}%
-- 총 거래 횟수: ${data.total_trades ?? 0}회
+- CAGR: ${cagr.toFixed(2)}%
+- Sharpe Ratio: ${sharpe.toFixed(2)}
+- Max Drawdown: ${mdd.toFixed(2)}%
+- 총 수익률: ${totalReturn.toFixed(2)}%
+- 총 거래 횟수: ${trades}회
 
 ## 질문
 다음 사항에 대해 분석해주세요:
@@ -104,12 +110,12 @@ export function generateBacktestPrompt(data: BacktestResult): string {
    - 실전 투자 시 예상 성과는?
 
 2. **성과 평가**
-   - CAGR ${data.cagr.toFixed(2)}%는 좋은 수준인가요?
-   - Sharpe Ratio ${data.sharpe_ratio.toFixed(2)}는 어떻게 해석해야 하나요?
-   - MDD ${data.max_drawdown.toFixed(2)}%는 적절한 수준인가요?
+   - CAGR ${cagr.toFixed(2)}%는 좋은 수준인가요?
+   - Sharpe Ratio ${sharpe.toFixed(2)}는 어떻게 해석해야 하나요?
+   - MDD ${mdd.toFixed(2)}%는 적절한 수준인가요?
 
 3. **거래 분석**
-   - 총 거래 횟수 ${data.total_trades}회가 과도하지 않나요?
+   - 총 거래 횟수 ${trades}회가 과도하지 않나요?
    - 거래 비용을 고려하면 실제 수익률은?
    - 최적 거래 빈도는?
 
