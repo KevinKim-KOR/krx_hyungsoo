@@ -1,13 +1,31 @@
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Play, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
 import type { PortfolioOptimization } from '../types';
 
 export default function Portfolio() {
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  
   const { data: optimization, loading, error } = useApi<PortfolioOptimization>(
     () => apiClient.getPortfolioOptimization(),
     []
   );
+
+  const handleRunOptimization = async () => {
+    try {
+      setRunning(true);
+      setRunError(null);
+      await apiClient.runPortfolioOptimization('max_sharpe', 10000000);
+      // 성공 시 페이지 새로고침
+      window.location.reload();
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : '최적화 실행 실패');
+    } finally {
+      setRunning(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -45,7 +63,32 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold">포트폴리오 최적화</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold">포트폴리오 최적화</h2>
+        <button
+          onClick={handleRunOptimization}
+          disabled={running}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {running ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              실행 중...
+            </>
+          ) : (
+            <>
+              <Play className="h-4 w-4" />
+              최적화 실행
+            </>
+          )}
+        </button>
+      </div>
+
+      {runError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600">{runError}</p>
+        </div>
+      )}
 
       <div className="bg-card rounded-lg border p-6">
         <h3 className="text-xl font-bold mb-4">최적 비중 (Sharpe Ratio 최대화)</h3>

@@ -18,12 +18,23 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  private async fetch<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`);
+  private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, options);
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const error = await response.text();
+      throw new Error(error || `API Error: ${response.statusText}`);
     }
     return response.json();
+  }
+
+  private async post<T>(endpoint: string, data?: any): Promise<T> {
+    return this.fetch<T>(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
 
   // Dashboard
@@ -53,6 +64,19 @@ class ApiClient {
   // Lookback Analysis
   async getLookbackAnalysis(): Promise<LookbackAnalysis> {
     return this.fetch<LookbackAnalysis>('/api/v1/analysis/lookback');
+  }
+
+  // 실행 메서드
+  async runPortfolioOptimization(method: string = 'max_sharpe', capital: number = 10000000): Promise<PortfolioOptimization> {
+    return this.post<PortfolioOptimization>(`/api/v1/portfolio/optimize?method=${method}&initial_capital=${capital}`);
+  }
+
+  async runLookbackAnalysis(method: string = 'portfolio_optimization', lookbackDays: number = 120, rebalanceFreq: number = 30): Promise<LookbackAnalysis> {
+    return this.post<LookbackAnalysis>(`/api/v1/analysis/lookback/run?method=${method}&lookback_days=${lookbackDays}&rebalance_frequency=${rebalanceFreq}`);
+  }
+
+  async trainMLModel(modelType: string = 'xgboost', task: string = 'regression'): Promise<MLModelInfo> {
+    return this.post<MLModelInfo>(`/api/v1/ml/train?model_type=${modelType}&task=${task}`);
   }
 }
 

@@ -20,6 +20,70 @@ ML_DIR = OUTPUT_DIR / "ml"
 router = APIRouter()
 
 
+@router.post("/train")
+async def train_ml_model(
+    model_type: str = "xgboost",
+    task: str = "regression"
+) -> Dict[str, Any]:
+    """
+    ML 모델 학습 실행
+    
+    Args:
+        model_type: 모델 타입 (xgboost, lightgbm)
+        task: 태스크 (regression, classification)
+    
+    Returns:
+        학습 결과
+    """
+    try:
+        import subprocess
+        import sys
+        
+        # PC ML 학습 스크립트 실행
+        script_path = OUTPUT_DIR.parent.parent / "pc" / "ml" / "train_model.py"
+        
+        if not script_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="ML 학습 스크립트를 찾을 수 없습니다."
+            )
+        
+        # 스크립트 실행
+        result = subprocess.run(
+            [
+                sys.executable, str(script_path),
+                "--model-type", model_type,
+                "--task", task
+            ],
+            capture_output=True,
+            text=True,
+            timeout=900  # 15분 타임아웃
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"ML 학습 실행 실패: {result.stderr}"
+            )
+        
+        logger.info(f"✅ ML 모델 학습 완료: {model_type}")
+        
+        # 최신 결과 반환
+        return await get_ml_model_info()
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=504,
+            detail="ML 학습 실행 시간 초과 (15분)"
+        )
+    except Exception as e:
+        logger.error(f"ML 학습 실행 오류: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"ML 학습 실행 중 오류 발생: {str(e)}"
+        )
+
+
 def find_latest_file(directory: Path, pattern: str) -> Optional[Path]:
     """최신 파일 찾기"""
     if not directory.exists():

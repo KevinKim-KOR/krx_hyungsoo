@@ -19,6 +19,73 @@ ANALYSIS_DIR = OUTPUT_DIR / "analysis"
 router = APIRouter()
 
 
+@router.post("/lookback/run")
+async def run_lookback_analysis(
+    method: str = "portfolio_optimization",
+    lookback_days: int = 120,
+    rebalance_frequency: int = 30
+) -> Dict[str, Any]:
+    """
+    룩백 분석 실행
+    
+    Args:
+        method: 분석 방법 (portfolio_optimization, ml_ranking)
+        lookback_days: 룩백 기간 (일)
+        rebalance_frequency: 리밸런싱 주기 (일)
+    
+    Returns:
+        분석 결과
+    """
+    try:
+        import subprocess
+        import sys
+        
+        # PC 룩백 분석 스크립트 실행
+        script_path = OUTPUT_DIR.parent.parent / "pc" / "analysis" / "lookback_analysis.py"
+        
+        if not script_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="룩백 분석 스크립트를 찾을 수 없습니다."
+            )
+        
+        # 스크립트 실행
+        result = subprocess.run(
+            [
+                sys.executable, str(script_path),
+                "--method", method,
+                "--lookback-days", str(lookback_days),
+                "--rebalance-frequency", str(rebalance_frequency)
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600  # 10분 타임아웃
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"룩백 분석 실행 실패: {result.stderr}"
+            )
+        
+        logger.info(f"✅ 룩백 분석 완료: {method}")
+        
+        # 최신 결과 반환
+        return await get_lookback_analysis()
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=504,
+            detail="룩백 분석 실행 시간 초과 (10분)"
+        )
+    except Exception as e:
+        logger.error(f"룩백 분석 실행 오류: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"룩백 분석 실행 중 오류 발생: {str(e)}"
+        )
+
+
 def find_latest_file(directory: Path, pattern: str) -> Optional[Path]:
     """최신 파일 찾기"""
     if not directory.exists():

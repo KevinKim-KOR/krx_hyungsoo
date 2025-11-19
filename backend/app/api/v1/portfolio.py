@@ -20,6 +20,66 @@ OPTIMIZATION_DIR = OUTPUT_DIR / "optimization"
 router = APIRouter()
 
 
+@router.post("/optimize")
+async def run_portfolio_optimization(
+    method: str = "max_sharpe",
+    initial_capital: float = 10000000
+) -> Dict[str, Any]:
+    """
+    포트폴리오 최적화 실행
+    
+    Args:
+        method: 최적화 방법 (max_sharpe, min_volatility, efficient_risk)
+        initial_capital: 초기 자본금
+    
+    Returns:
+        최적화 결과
+    """
+    try:
+        import subprocess
+        import sys
+        
+        # PC 최적화 스크립트 실행
+        script_path = OUTPUT_DIR.parent.parent / "pc" / "optimization" / "run_optimization.py"
+        
+        if not script_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="최적화 스크립트를 찾을 수 없습니다."
+            )
+        
+        # 스크립트 실행
+        result = subprocess.run(
+            [sys.executable, str(script_path), "--method", method, "--capital", str(initial_capital)],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5분 타임아웃
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"최적화 실행 실패: {result.stderr}"
+            )
+        
+        logger.info(f"✅ 포트폴리오 최적화 완료: {method}")
+        
+        # 최신 결과 반환
+        return await get_portfolio_optimization()
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=504,
+            detail="최적화 실행 시간 초과 (5분)"
+        )
+    except Exception as e:
+        logger.error(f"최적화 실행 오류: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"최적화 실행 중 오류 발생: {str(e)}"
+        )
+
+
 def find_latest_file(directory: Path, pattern: str = "optimal_portfolio_*.json") -> Optional[Path]:
     """최신 파일 찾기"""
     if not directory.exists():
