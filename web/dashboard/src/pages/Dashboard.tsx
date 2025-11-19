@@ -50,12 +50,14 @@ export default function Dashboard() {
     );
   }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('ko-KR').format(value);
+  const formatPercent = (value?: number) => {
+    if (value === undefined || value === null) return '0.00%';
+    return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)}%`;
   };
 
-  const formatPercent = (value: number) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+  const formatCurrency = (value?: number) => {
+    if (value === undefined || value === null) return '0';
+    return new Intl.NumberFormat('ko-KR').format(value);
   };
 
   return (
@@ -75,21 +77,21 @@ export default function Dashboard() {
         {/* Sharpe Ratio */}
         <div className="p-6 bg-card rounded-lg border">
           <h3 className="text-sm font-medium text-muted-foreground">Sharpe Ratio</h3>
-          <p className="text-2xl font-bold mt-2">{summary.sharpe_ratio.toFixed(2)}</p>
+          <p className="text-2xl font-bold mt-2">{summary.sharpe_ratio?.toFixed(2) ?? '0.00'}</p>
           <p className="text-sm text-muted-foreground mt-1">최적화 결과</p>
         </div>
 
         {/* 변동성 */}
         <div className="p-6 bg-card rounded-lg border">
           <h3 className="text-sm font-medium text-muted-foreground">변동성</h3>
-          <p className="text-2xl font-bold mt-2">{(summary.volatility * 100).toFixed(1)}%</p>
+          <p className="text-2xl font-bold mt-2">{summary.volatility ? (summary.volatility * 100).toFixed(1) : '0.0'}%</p>
           <p className="text-sm text-muted-foreground mt-1">연율화</p>
         </div>
 
         {/* 기대 수익률 */}
         <div className="p-6 bg-card rounded-lg border">
           <h3 className="text-sm font-medium text-muted-foreground">기대 수익률</h3>
-          <p className="text-2xl font-bold mt-2">{(summary.expected_return * 100).toFixed(1)}%</p>
+          <p className="text-2xl font-bold mt-2">{summary.expected_return ? (summary.expected_return * 100).toFixed(1) : '0.0'}%</p>
           <p className="text-sm text-muted-foreground mt-1">연율화</p>
         </div>
       </div>
