@@ -87,12 +87,16 @@ class USMarketMonitor:
             
             # 컬럼명 확인 (close 또는 Close)
             close_col = 'Close' if 'Close' in data.columns else 'close'
-            current_price = float(data[close_col].iloc[-1])
+            
+            # Series → scalar 변환 (.item() 사용)
+            price_series = data[close_col].iloc[-1]
+            current_price = float(price_series.item() if hasattr(price_series, 'item') else price_series)
             
             # 이동평균 지표
             if 'period' in indicator_config:
                 period = indicator_config['period']
-                ma = float(data[close_col].rolling(period).mean().iloc[-1])
+                ma_series = data[close_col].rolling(period).mean().iloc[-1]
+                ma = float(ma_series.item() if hasattr(ma_series, 'item') else ma_series)
                 deviation = float((current_price - ma) / ma)
                 threshold = float(indicator_config.get('threshold', 0.02))
                 
