@@ -328,17 +328,20 @@ class RegimeMonitor:
 def send_telegram_alert(message: str):
     """텔레그램 알림 전송"""
     try:
-        # TODO: 텔레그램 봇 연동
-        # from extensions.automation.telegram_notifier import TelegramNotifier
-        # notifier = TelegramNotifier()
-        # notifier.send_message(message)
+        from extensions.automation.telegram_notifier import TelegramNotifier
         
-        # 현재는 로그만 출력
+        # 환경 변수에서 설정 읽기
+        import os
+        enabled = os.getenv('TELEGRAM_ENABLED', 'false').lower() == 'true'
+        
+        notifier = TelegramNotifier(enabled=enabled)
+        notifier.send_message(message)
+        
+        # 로그도 출력
         logger.info("=" * 60)
         logger.info("텔레그램 알림:")
         logger.info(message)
         logger.info("=" * 60)
-        
     except Exception as e:
         logger.error(f"텔레그램 알림 전송 실패: {e}")
 
