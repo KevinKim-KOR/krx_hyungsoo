@@ -3,7 +3,7 @@
  * ChatGPT, Gemini 등에 질의할 수 있는 구조화된 프롬프트 생성
  */
 
-import type { PortfolioOptimization, BacktestResult, MLModelInfo, LookbackAnalysis, LookbackResult } from '../types';
+import type { PortfolioOptimization, BacktestResult, MLModelInfo, LookbackAnalysis, LookbackResult, Holding, RegimeInfo } from '../types';
 
 /**
  * 숫자를 한국 원화 형식으로 포맷
@@ -249,6 +249,78 @@ ${rebalancesText}
    - 다음 리밸런싱 시점은 언제가 좋을까요?
    - 현재 시장 상황에서 주의할 점은?
    - 이 전략을 계속 사용해도 될까요?
+`;
+}
+
+/**
+ * 보유 종목 분석 프롬프트 생성
+ */
+export function generateHoldingsPrompt(holdings: Holding[], regime: RegimeInfo): string {
+  const totalValue = holdings.reduce((sum, h) => sum + (h.quantity * h.current_price), 0);
+  const totalCost = holdings.reduce((sum, h) => sum + (h.quantity * h.avg_price), 0);
+  const totalProfit = totalValue - totalCost;
+  const totalProfitRate = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+
+  const holdingsText = holdings
+    .map((h, i) => {
+      const profit = (h.current_price - h.avg_price) * h.quantity;
+      const profitRate = ((h.current_price - h.avg_price) / h.avg_price) * 100;
+      const value = h.current_price * h.quantity;
+      return `${i + 1}. ${h.name} (${h.code})
+   - 수량: ${formatCurrency(h.quantity)}주
+   - 평균가: ₩${formatCurrency(h.avg_price)}
+   - 현재가: ₩${formatCurrency(h.current_price)}
+   - 평가액: ₩${formatCurrency(value)}
+   - 손익: ${profit >= 0 ? '+' : ''}₩${formatCurrency(profit)} (${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(2)}%)`;
+    })
+    .join('\n\n');
+
+  const regimeEmoji = regime.regime === '상승장' ? '📈' : regime.regime === '하락장' ? '📉' : '➡️';
+
+  return `# 보유 종목 분석 및 전략 검토
+
+## 현재 시장 레짐
+${regimeEmoji} **${regime.regime}** (신뢰도: ${(regime.confidence * 100).toFixed(1)}%)
+${regime.us_market_regime ? `- 미국 시장: ${regime.us_market_regime}` : ''}
+
+## 포트폴리오 요약
+- 총 평가액: ₩${formatCurrency(totalValue)}
+- 총 투자액: ₩${formatCurrency(totalCost)}
+- 총 손익: ${totalProfit >= 0 ? '+' : ''}₩${formatCurrency(totalProfit)}
+- 수익률: ${totalProfitRate >= 0 ? '+' : ''}${totalProfitRate.toFixed(2)}%
+- 보유 종목 수: ${holdings.length}개
+
+## 보유 종목 상세
+${holdingsText}
+
+## 질문
+다음 사항에 대해 분석해주세요:
+
+1. **현재 레짐과 포트폴리오 적합성**
+   - 현재 ${regime.regime} 상황에서 이 포트폴리오가 적절한가요?
+   ${regime.us_market_regime ? `- 미국 시장이 ${regime.us_market_regime}인 점을 고려하면?` : ''}
+   - 레짐 변화에 대비한 조정이 필요한가요?
+
+2. **종목별 분석**
+   - 각 종목의 현재 상태는 어떤가요?
+   - 손실이 큰 종목은 손절해야 하나요?
+   - 수익이 큰 종목은 익절해야 하나요?
+
+3. **리스크 관리**
+   - 현재 포트폴리오의 주요 리스크는?
+   - 분산 투자가 잘 되어 있나요?
+   - 특정 종목 비중이 과도하지 않나요?
+
+4. **매도 전략**
+   ${regime.regime === '하락장' ? '- 하락장이므로 전체 매도를 고려해야 하나요?' : ''}
+   ${regime.regime === '중립장' ? '- 중립장이므로 일부 매도를 고려해야 하나요?' : ''}
+   - 어떤 종목을 먼저 매도해야 하나요?
+   - 매도 타이밍은 언제가 좋을까요?
+
+5. **다음 액션**
+   - 지금 당장 해야 할 조치는?
+   - 추가 매수를 고려해야 하나요?
+   - 리밸런싱이 필요한가요?
 `;
 }
 

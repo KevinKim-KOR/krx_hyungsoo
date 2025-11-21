@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.models import asset  # 테이블 등록을 위해 임포트
-from app.api.v1 import dashboard, assets, backtest, stop_loss, signals, market, portfolio, ml, analysis
+from app.api.v1 import dashboard, assets, backtest, stop_loss, signals, market, portfolio, ml, analysis, holdings, regime
 
 # FastAPI 앱 생성
 app = FastAPI(
@@ -43,6 +43,8 @@ app.include_router(market.router, prefix="/api/v1/market", tags=["market"])
 app.include_router(portfolio.router, prefix="/api/v1/portfolio", tags=["portfolio"])
 app.include_router(ml.router, prefix="/api/v1/ml", tags=["ml"])
 app.include_router(analysis.router, prefix="/api/v1/analysis", tags=["analysis"])
+app.include_router(holdings.router, prefix="/api/v1/holdings", tags=["holdings"])
+app.include_router(regime.router, prefix="/api/v1/regime", tags=["regime"])
 
 
 @app.on_event("startup")

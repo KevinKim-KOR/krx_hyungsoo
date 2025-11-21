@@ -1,11 +1,12 @@
 // API 호출을 위한 커스텀 훅
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface UseApiState<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+  refetch: () => Promise<void>;
 }
 
 export function useApi<T>(
@@ -15,6 +16,11 @@ export function useApi<T>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
+  const refetch = useCallback(async () => {
+    setRefetchTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,7 +49,7 @@ export function useApi<T>(
     return () => {
       isMounted = false;
     };
-  }, dependencies);
+  }, [...dependencies, refetchTrigger]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch };
 }

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PieChart, TrendingUp, Brain, History } from 'lucide-react'
+import { LayoutDashboard, PieChart, Wallet, TrendingUp, Brain, History } from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -11,6 +11,7 @@ export default function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: '대시보드' },
     { path: '/portfolio', icon: PieChart, label: '포트폴리오' },
+    { path: '/holdings', icon: Wallet, label: '보유 종목' },
     { path: '/backtest', icon: TrendingUp, label: '백테스트' },
     { path: '/ml-model', icon: Brain, label: 'ML 모델' },
     { path: '/lookback', icon: History, label: '룩백 분석' },

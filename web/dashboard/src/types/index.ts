@@ -74,3 +74,24 @@ export interface RecentAnalysis {
   timestamp: string;
   summary: string;
 }
+
+export interface Holding {
+  id: number;
+  code: string;
+  name: string;
+  quantity: number;
+  avg_price: number;
+  current_price: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RegimeInfo {
+  regime: string;
+  confidence: number;
+  date: string;
+  us_market_regime?: string;
+  ma_short?: number;
+  ma_long?: number;
+  current_price?: number;
+}

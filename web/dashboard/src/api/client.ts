@@ -7,6 +7,8 @@ import type {
   LookbackAnalysis,
   DashboardSummary,
   RecentAnalysis,
+  Holding,
+  RegimeInfo,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -77,6 +79,36 @@ class ApiClient {
 
   async trainMLModel(modelType: string = 'xgboost', task: string = 'regression'): Promise<MLModelInfo> {
     return this.post<MLModelInfo>(`/api/v1/ml/train?model_type=${modelType}&task=${task}`);
+  }
+
+  // Holdings
+  async getHoldings(): Promise<Holding[]> {
+    return this.fetch<Holding[]>('/api/v1/holdings');
+  }
+
+  async addHolding(holding: Omit<Holding, 'id' | 'created_at' | 'updated_at'>): Promise<Holding> {
+    return this.post<Holding>('/api/v1/holdings', holding);
+  }
+
+  async updateHolding(id: number, holding: Partial<Holding>): Promise<Holding> {
+    return this.fetch<Holding>(`/api/v1/holdings/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(holding),
+    });
+  }
+
+  async deleteHolding(id: number): Promise<void> {
+    return this.fetch<void>(`/api/v1/holdings/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Regime
+  async getCurrentRegime(): Promise<RegimeInfo> {
+    return this.fetch<RegimeInfo>('/api/v1/regime/current');
   }
 }
 
