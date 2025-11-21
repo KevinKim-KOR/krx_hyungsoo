@@ -2,7 +2,14 @@ from sqlalchemy import create_engine, String, Integer, Float, Date, DateTime
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, sessionmaker
 from sqlalchemy.sql import func
 from typing import Optional
-from config import DB_URL
+from pathlib import Path
+import os
+
+# DB URL 설정
+project_root = Path(__file__).parent.parent
+DB_PATH = project_root / "data" / "krx_alertor.db"
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+DB_URL = os.getenv("DB_URL", f"sqlite:///{DB_PATH}")
 
 engine = create_engine(DB_URL, echo=False, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
@@ -41,5 +48,22 @@ class Position(Base):
     code: Mapped[str] = mapped_column(String(16), index=True)
     weight: Mapped[float] = mapped_column(Float)  # 0~1 비중
 
+class Holdings(Base):
+    """보유 종목 테이블"""
+    __tablename__ = "holdings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(16), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    quantity: Mapped[int] = mapped_column(Integer)  # 보유 수량
+    avg_price: Mapped[float] = mapped_column(Float)  # 평균 매수가
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
 def init_db():
+    """데이터베이스 초기화"""
     Base.metadata.create_all(bind=engine)
+
+def get_db_connection():
+    """DB 연결 반환 (레거시 호환)"""
+    import sqlite3
+    return sqlite3.connect(str(DB_PATH))

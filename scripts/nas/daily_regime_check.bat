@@ -1,10 +1,11 @@
 @echo off
+chcp 65001 > nul
 REM ============================================
-REM 일일 레짐 감지 스크립트 (Windows 테스트용)
+REM Daily Regime Check Script (Windows)
 REM ============================================
 
 echo ========================================
-echo 일일 레짐 감지 시작
+echo Daily Regime Check Started
 echo ========================================
 echo.
 
@@ -16,7 +17,7 @@ python scripts\nas\daily_regime_check.py
 
 echo.
 echo ========================================
-echo 일일 레짐 감지 완료
+echo Daily Regime Check Completed
 echo ========================================
 
 pause
