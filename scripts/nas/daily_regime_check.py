@@ -110,14 +110,19 @@ class RegimeMonitor:
             # 컬럼명 확인 (close 또는 Close)
             close_col = 'Close' if 'Close' in kospi_data.columns else 'close'
             
+            # float 변환 (FutureWarning 방지)
+            current_price = kospi_data[close_col].iloc[-1]
+            ma_short_value = kospi_data[close_col].rolling(50).mean().iloc[-1]
+            ma_long_value = kospi_data[close_col].rolling(200).mean().iloc[-1]
+            
             return {
                 "regime": regime_map.get(regime, regime),
                 "confidence": float(confidence),
                 "ma_short": 50,
                 "ma_long": 200,
-                "current_price": float(kospi_data[close_col].iloc[-1]),
-                "ma_short_value": float(kospi_data[close_col].rolling(50).mean().iloc[-1]),
-                "ma_long_value": float(kospi_data[close_col].rolling(200).mean().iloc[-1]),
+                "current_price": float(current_price.item() if hasattr(current_price, 'item') else current_price),
+                "ma_short_value": float(ma_short_value.item() if hasattr(ma_short_value, 'item') else ma_short_value),
+                "ma_long_value": float(ma_long_value.item() if hasattr(ma_long_value, 'item') else ma_long_value),
             }
             
         except Exception as e:
