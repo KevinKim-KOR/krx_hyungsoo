@@ -22,7 +22,7 @@ from typing import Dict, List, Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from core.strategy.market_regime import MarketRegimeDetector
+from core.strategy.market_regime_detector import MarketRegimeDetector
 from core.strategy.us_market_monitor import USMarketMonitor
 from core.db import get_db_connection
 from core.fetchers import get_ohlcv_data
@@ -93,11 +93,16 @@ class RegimeMonitor:
                 return None
             
             # 레짐 감지
-            regime_info = self.detector.detect_regime(kospi_data)
+            current_date = datetime.now().date()
+            regime_info = self.detector.detect_regime(kospi_data, current_date)
+            
+            if regime_info is None:
+                logger.error("레짐 감지 결과 없음")
+                return None
             
             return {
                 "regime": regime_info["regime"],
-                "confidence": regime_info["confidence"],
+                "confidence": regime_info.get("confidence", 0.0),
                 "ma_short": regime_info.get("ma_short", 50),
                 "ma_long": regime_info.get("ma_long", 200),
                 "current_price": kospi_data['close'].iloc[-1],
