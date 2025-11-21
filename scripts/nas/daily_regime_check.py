@@ -107,14 +107,17 @@ class RegimeMonitor:
                 'neutral': '중립장'
             }
             
+            # 컬럼명 확인 (close 또는 Close)
+            close_col = 'Close' if 'Close' in kospi_data.columns else 'close'
+            
             return {
                 "regime": regime_map.get(regime, regime),
                 "confidence": confidence,
                 "ma_short": 50,
                 "ma_long": 200,
-                "current_price": kospi_data['close'].iloc[-1],
-                "ma_short_value": kospi_data['close'].rolling(50).mean().iloc[-1],
-                "ma_long_value": kospi_data['close'].rolling(200).mean().iloc[-1],
+                "current_price": kospi_data[close_col].iloc[-1],
+                "ma_short_value": kospi_data[close_col].rolling(50).mean().iloc[-1],
+                "ma_long_value": kospi_data[close_col].rolling(200).mean().iloc[-1],
             }
             
         except Exception as e:
