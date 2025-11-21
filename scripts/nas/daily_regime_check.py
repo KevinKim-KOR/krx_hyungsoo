@@ -24,7 +24,7 @@ sys.path.insert(0, str(project_root))
 
 from core.strategy.market_regime_detector import MarketRegimeDetector
 from core.strategy.us_market_monitor import USMarketMonitor
-from core.db import get_db_connection
+from core.db import get_db_connection, init_db
 from core.data_loader import get_ohlcv
 
 logging.basicConfig(level=logging.INFO)
@@ -112,12 +112,12 @@ class RegimeMonitor:
             
             return {
                 "regime": regime_map.get(regime, regime),
-                "confidence": confidence,
+                "confidence": float(confidence),
                 "ma_short": 50,
                 "ma_long": 200,
-                "current_price": kospi_data[close_col].iloc[-1],
-                "ma_short_value": kospi_data[close_col].rolling(50).mean().iloc[-1],
-                "ma_long_value": kospi_data[close_col].rolling(200).mean().iloc[-1],
+                "current_price": float(kospi_data[close_col].iloc[-1]),
+                "ma_short_value": float(kospi_data[close_col].rolling(50).mean().iloc[-1]),
+                "ma_long_value": float(kospi_data[close_col].rolling(200).mean().iloc[-1]),
             }
             
         except Exception as e:
@@ -343,6 +343,13 @@ def main():
     logger.info("=" * 60)
     logger.info("일일 레짐 감지 시작")
     logger.info("=" * 60)
+    
+    # DB 초기화
+    try:
+        init_db()
+        logger.info("✅ DB 초기화 완료")
+    except Exception as e:
+        logger.warning(f"DB 초기화 실패 (무시): {e}")
     
     monitor = RegimeMonitor()
     

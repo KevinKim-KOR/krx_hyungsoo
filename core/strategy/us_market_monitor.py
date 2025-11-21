@@ -85,12 +85,14 @@ class USMarketMonitor:
                 logger.error(f"데이터 없음: {symbol}")
                 return None
             
-            current_price = data['close'].iloc[-1]
+            # 컬럼명 확인 (close 또는 Close)
+            close_col = 'Close' if 'Close' in data.columns else 'close'
+            current_price = data[close_col].iloc[-1]
             
             # 이동평균 지표
             if 'period' in indicator_config:
                 period = indicator_config['period']
-                ma = data['close'].rolling(period).mean().iloc[-1]
+                ma = data[close_col].rolling(period).mean().iloc[-1]
                 deviation = (current_price - ma) / ma
                 threshold = indicator_config.get('threshold', 0.02)
                 
