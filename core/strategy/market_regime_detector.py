@@ -111,7 +111,8 @@ class MarketRegimeDetector:
             # 장기 이동평균
             long_ma = hist_data['Close'].tail(self.long_ma_period).mean()
             
-            return float(short_ma), float(long_ma)
+            return float(short_ma.iloc[0] if hasattr(short_ma, 'iloc') else short_ma), \
+                   float(long_ma.iloc[0] if hasattr(long_ma, 'iloc') else long_ma)
             
         except Exception as e:
             logger.error(f"이동평균 계산 실패: {e}")
@@ -157,7 +158,7 @@ class MarketRegimeDetector:
             
             trend_strength = up_days / total_days
             
-            return float(trend_strength)
+            return float(trend_strength.iloc[0] if hasattr(trend_strength, 'iloc') else trend_strength)
             
         except Exception as e:
             logger.error(f"추세 강도 계산 실패: {e}")

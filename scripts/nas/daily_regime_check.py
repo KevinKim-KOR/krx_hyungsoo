@@ -94,17 +94,24 @@ class RegimeMonitor:
             
             # 레짐 감지
             current_date = datetime.now().date()
-            regime_info = self.detector.detect_regime(kospi_data, current_date)
+            regime, confidence = self.detector.detect_regime(kospi_data, current_date)
             
-            if regime_info is None:
+            if regime is None:
                 logger.error("레짐 감지 결과 없음")
                 return None
             
+            # 레짐 한글 변환
+            regime_map = {
+                'bull': '상승장',
+                'bear': '하락장',
+                'neutral': '중립장'
+            }
+            
             return {
-                "regime": regime_info["regime"],
-                "confidence": regime_info.get("confidence", 0.0),
-                "ma_short": regime_info.get("ma_short", 50),
-                "ma_long": regime_info.get("ma_long", 200),
+                "regime": regime_map.get(regime, regime),
+                "confidence": confidence,
+                "ma_short": 50,
+                "ma_long": 200,
                 "current_price": kospi_data['close'].iloc[-1],
                 "ma_short_value": kospi_data['close'].rolling(50).mean().iloc[-1],
                 "ma_long_value": kospi_data['close'].rolling(200).mean().iloc[-1],
