@@ -10,10 +10,12 @@ import yfinance as yf
 from pykrx import stock as krx
 from sqlalchemy import select, exists, delete
 from core.db import SessionLocal, Security, PriceDaily, PriceRealtime
-from config import TIMEZONE
 from core.data_loader import get_ohlcv_safe
+import os
 # calendar_kr import는 함수 내부에서 지연 import로 처리 (순환 import 방지)
 
+# 타임존 설정
+TIMEZONE = os.getenv("TIMEZONE", "Asia/Seoul")
 SEOUL = pytz.timezone(TIMEZONE)
 
 # ---------------------------
