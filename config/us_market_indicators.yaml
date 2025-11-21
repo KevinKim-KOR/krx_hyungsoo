@@ -1,0 +1,121 @@
+# 미국 시장 지표 설정
+# ChatGPT와 대화를 통해 조정 가능
+
+# 활성화할 지표 선택
+enabled_indicators:
+  - nasdaq_50ma      # 나스닥 50일 이동평균
+  - sp500_200ma      # S&P 500 200일 이동평균
+  - vix              # 변동성 지수
+  # - nasdaq_100ma   # 나스닥 100일 이동평균 (비활성화)
+  # - dxy            # 달러 인덱스 (비활성화)
+
+# 나스닥 50일 이동평균
+nasdaq_50ma:
+  enabled: true
+  symbol: "^IXIC"
+  period: 50
+  threshold: 0.02    # 2% 괴리율
+  weight: 0.4        # 가중치 40%
+  description: "나스닥 50일선 - AI/반도체 섹터 모멘텀"
+  
+  # 신호 해석
+  signals:
+    bullish: "50일선 상향 돌파 → 상승 모멘텀"
+    bearish: "50일선 하향 이탈 → 하락 모멘텀"
+    neutral: "50일선 근처 횡보 → 방향성 불확실"
+
+# S&P 500 200일 이동평균
+sp500_200ma:
+  enabled: true
+  symbol: "^GSPC"
+  period: 200
+  threshold: 0.03    # 3% 괴리율
+  weight: 0.3        # 가중치 30%
+  description: "S&P 500 200일선 - 장기 추세"
+  
+  signals:
+    bullish: "200일선 상향 유지 → 장기 상승 추세"
+    bearish: "200일선 하향 이탈 → 장기 하락 추세"
+    neutral: "200일선 근처 → 추세 전환 가능"
+
+# VIX (변동성 지수)
+vix:
+  enabled: true
+  symbol: "^VIX"
+  threshold_high: 20   # 공포 수준
+  threshold_low: 12    # 안정 수준
+  weight: 0.3          # 가중치 30%
+  description: "VIX - 시장 공포 지수"
+  
+  signals:
+    bullish: "VIX < 12 → 시장 안정, 상승 가능"
+    bearish: "VIX > 20 → 시장 불안, 하락 위험"
+    neutral: "VIX 12~20 → 정상 범위"
+
+# 나스닥 100일 이동평균 (선택적)
+nasdaq_100ma:
+  enabled: false
+  symbol: "^IXIC"
+  period: 100
+  threshold: 0.03
+  weight: 0.2
+  description: "나스닥 100일선 - 중기 추세"
+
+# 달러 인덱스 (선택적)
+dxy:
+  enabled: false
+  symbol: "DX-Y.NYB"
+  threshold_high: 105
+  threshold_low: 100
+  weight: 0.2
+  description: "달러 인덱스 - 환율 영향"
+  
+  signals:
+    bullish: "달러 약세 → 한국 수출주 유리"
+    bearish: "달러 강세 → 한국 수출주 불리"
+
+# 레짐 판단 규칙
+regime_rules:
+  # 상승장 조건 (모든 조건 만족)
+  bullish:
+    - "nasdaq_50ma > 0"      # 나스닥 50일선 위
+    - "sp500_200ma > 0"      # S&P 500 200일선 위
+    - "vix < 15"             # VIX 낮음
+  
+  # 하락장 조건 (하나라도 만족)
+  bearish:
+    - "nasdaq_50ma < -0.02"  # 나스닥 50일선 2% 이하
+    - "sp500_200ma < -0.03"  # S&P 500 200일선 3% 이하
+    - "vix > 25"             # VIX 매우 높음
+  
+  # 중립장 (나머지)
+  neutral: "default"
+
+# 알림 설정
+alerts:
+  # 급락 신호 (즉시 알림)
+  urgent:
+    - "nasdaq_50ma < -0.05"   # 나스닥 50일선 5% 이하
+    - "vix > 30"              # VIX 공포 수준
+  
+  # 주의 신호 (일일 알림)
+  warning:
+    - "nasdaq_50ma < -0.02"   # 나스닥 50일선 2% 이하
+    - "vix > 20"              # VIX 상승
+
+# ChatGPT 프롬프트 템플릿
+chatgpt_prompt: |
+  현재 미국 시장 지표:
+  - 나스닥 50일선: {nasdaq_50ma_status}
+  - S&P 500 200일선: {sp500_200ma_status}
+  - VIX: {vix_value}
+  
+  한국 시장 상황:
+  - KOSPI: {kospi_status}
+  - 주요 섹터: {main_sector}
+  
+  질문:
+  1. 현재 미국 시장 지표를 어떻게 해석해야 하나요?
+  2. 한국 시장에 미치는 영향은?
+  3. 어떤 지표를 추가로 봐야 하나요?
+  4. 레짐 판단 규칙을 조정해야 하나요?
