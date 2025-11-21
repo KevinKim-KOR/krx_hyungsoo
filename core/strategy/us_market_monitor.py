@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 
-from core.fetchers import get_ohlcv_data
+from core.data_loader import get_ohlcv
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class USMarketMonitor:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=365)
             
-            data = get_ohlcv_data(
+            data = get_ohlcv(
                 symbol,
                 start_date.strftime("%Y-%m-%d"),
                 end_date.strftime("%Y-%m-%d")

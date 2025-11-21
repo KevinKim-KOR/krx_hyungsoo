@@ -25,7 +25,7 @@ sys.path.insert(0, str(project_root))
 from core.strategy.market_regime_detector import MarketRegimeDetector
 from core.strategy.us_market_monitor import USMarketMonitor
 from core.db import get_db_connection
-from core.fetchers import get_ohlcv_data
+from core.data_loader import get_ohlcv
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class RegimeMonitor:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=365)
             
-            kospi_data = get_ohlcv_data(
+            kospi_data = get_ohlcv(
                 "^KS11",  # KOSPI 지수
                 start_date.strftime("%Y-%m-%d"),
                 end_date.strftime("%Y-%m-%d")
