@@ -14,6 +14,11 @@ data/optimization/*.json
 data/backtest_results/*.json
 data/parameter_history/*.json
 
+# 캐시 파일 (자동 생성)
+data/cache/**/*.parquet
+data/cache/**/*.csv
+data/state/*.json
+
 # Python 캐시
 __pycache__/
 *.pyc
