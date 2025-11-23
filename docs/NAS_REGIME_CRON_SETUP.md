@@ -106,6 +106,32 @@ TELEGRAM_CHAT_ID=123456789
 
 ---
 
+## ⚙️ Python 3.8 호환성 설정 (중요!)
+
+### yfinance 문제 해결
+
+NAS는 Python 3.8을 사용하므로 yfinance 최신 버전과 호환되지 않습니다.
+
+**Option 1: yfinance 다운그레이드** (빠른 해결)
+```bash
+# NAS SSH 접속 후
+cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular
+pip3 install yfinance==0.2.28 --upgrade
+```
+
+**Option 2: 네이버 금융 사용** (이미 적용됨 ✅)
+- 한국 주식: 네이버 금융 자동 사용
+- 미국 주식: yfinance 필요 (다운그레이드 권장)
+- 코드에 이미 폴백 로직 구현됨
+
+### 필수 패키지 설치
+
+```bash
+pip3 install requests beautifulsoup4 pyyaml --upgrade
+```
+
+---
+
 ## 📊 알림 예시
 
 ### 레짐 변화 알림
@@ -144,47 +170,144 @@ TELEGRAM_CHAT_ID=123456789
 
 ## 🧪 테스트
 
-### 수동 실행 (테스트)
+### 1. 패키지 설치 확인
 
 ```bash
-# NAS에서 실행
+# NAS SSH 접속
+ssh Hyungsoo@your_nas_ip
+
+# 필수 패키지 설치
 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular
+pip3 install yfinance==0.2.28 requests beautifulsoup4 pyyaml --upgrade
+```
+
+### 2. 수동 실행 (테스트)
+
+```bash
+# Python 직접 실행 (권장)
+cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular
+python3 scripts/nas/daily_regime_check.py
+
+# 또는 Shell 스크립트
 bash scripts/nas/daily_regime_check.sh
 ```
 
-### 로그 확인
+**예상 출력**:
+```
+========================================
+일일 레짐 감지 시작
+========================================
+
+INFO: KOSPI 데이터 조회 중...
+INFO: 레짐 감지 완료: 상승장 (신뢰도: 87.5%)
+INFO: 미국 시장 지표 조회 중...
+INFO: 텔레그램 알림 전송 완료
+```
+
+### 3. 로그 확인
 
 ```bash
+# 실시간 로그 확인
 tail -f /volume2/homes/Hyungsoo/krx/logs/regime_check.log
+
+# 전체 로그 확인
+cat /volume2/homes/Hyungsoo/krx/logs/regime_check.log
 ```
+
+### 4. 텔레그램 알림 확인
+
+- 봇에서 메시지 수신 확인
+- 레짐 정보 표시 확인
+- 매도 신호 표시 확인
 
 ---
 
 ## 🔍 문제 해결
 
-### 1. Python 모듈 없음
+### 1. TypeError: 'type' object is not subscriptable
 
-```bash
-pip3 install pyyaml requests beautifulsoup4
+**증상**:
+```
+TypeError: 'type' object is not subscriptable
+  File "multitasking/__init__.py", line 44, in PoolConfig
+    engine: Union[type[Thread], type[Process]]
 ```
 
-### 2. 권한 오류
+**원인**: Python 3.8에서 yfinance 최신 버전 호환 문제
+
+**해결**:
+```bash
+pip3 install yfinance==0.2.28 --upgrade
+```
+
+### 2. Python 모듈 없음
+
+```bash
+pip3 install pyyaml requests beautifulsoup4 yfinance==0.2.28 --upgrade
+```
+
+### 3. 권한 오류
 
 ```bash
 chmod +x scripts/nas/daily_regime_check.sh
 ```
 
-### 3. 텔레그램 알림 안 옴
+### 4. 텔레그램 알림 안 옴
 
-- `.env` 파일 확인
-- 토큰과 Chat ID 재확인
-- 봇과 대화 시작했는지 확인
+**체크리스트**:
+- [ ] `.env` 파일 존재 확인
+- [ ] `TELEGRAM_BOT_TOKEN` 정확한지 확인
+- [ ] `TELEGRAM_CHAT_ID` 정확한지 확인
+- [ ] 봇과 대화 시작했는지 확인 (메시지 1개 전송)
+- [ ] 방화벽 확인 (NAS → 텔레그램 API)
 
-### 4. 데이터 없음
-
+**테스트**:
 ```bash
-# 데이터 수집 먼저 실행
-python3 scripts/ingest/ingest_all.py
+# .env 파일 확인
+cat .env | grep TELEGRAM
+
+# 수동 알림 테스트
+python3 -c "
+import os
+from dotenv import load_dotenv
+import requests
+
+load_dotenv()
+token = os.getenv('TELEGRAM_BOT_TOKEN')
+chat_id = os.getenv('TELEGRAM_CHAT_ID')
+
+url = f'https://api.telegram.org/bot{token}/sendMessage'
+data = {'chat_id': chat_id, 'text': '테스트 메시지'}
+response = requests.post(url, data=data)
+print(response.json())
+"
+```
+
+### 5. KOSPI 데이터 없음
+
+**yfinance 실패 시**:
+```bash
+# 캐시 삭제 후 재시도
+rm -rf data/cache/ohlcv/^KS11.parquet
+python3 scripts/nas/daily_regime_check.py
+```
+
+**네이버 금융 사용** (코드에 이미 구현됨):
+- 한국 주식은 자동으로 네이버 금융 사용
+- 과거 데이터는 yfinance 필요
+
+### 6. 미국 시장 지표 조회 실패
+
+**원인**: yfinance 버전 문제 또는 네트워크
+
+**해결**:
+```bash
+# yfinance 다운그레이드
+pip3 install yfinance==0.2.28 --upgrade
+
+# 또는 미국 지표 비활성화 (임시)
+nano config/us_market_indicators.yaml
+# enabled: false로 변경
 ```
 
 ---
