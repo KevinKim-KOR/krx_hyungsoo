@@ -17,6 +17,20 @@ interface Regime {
   us_market_regime?: string
 }
 
+interface SellSignal {
+  holding_id: number
+  code: string
+  name: string
+  quantity: number
+  avg_price: number
+  current_price: number
+  profit_rate: number
+  signal_type: string
+  signal_level: string
+  reason: string
+  recommendation: string
+}
+
 interface ModalData {
   type: 'add' | 'buy' | 'sell' | null
   holding?: Holding
@@ -25,6 +39,7 @@ interface ModalData {
 export default function Holdings() {
   const [holdings, setHoldings] = useState<Holding[]>([])
   const [regime, setRegime] = useState<Regime | null>(null)
+  const [sellSignals, setSellSignals] = useState<SellSignal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalData>({ type: null })
@@ -54,6 +69,13 @@ export default function Holdings() {
       if (!regimeRes.ok) throw new Error('Regime 조회 실패')
       const regimeData = await regimeRes.json()
       setRegime(regimeData)
+      
+      // 매도 신호 조회
+      const signalsRes = await fetch('http://localhost:8000/api/v1/holdings/sell-signals')
+      if (signalsRes.ok) {
+        const signalsData = await signalsRes.json()
+        setSellSignals(signalsData)
+      }
       
       setError(null)
     } catch (err) {
@@ -255,6 +277,76 @@ export default function Holdings() {
           </div>
         </div>
       </div>
+
+      {/* 매도 신호 */}
+      {sellSignals.length > 0 && (
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+            <h2 className="text-xl font-bold text-red-900">매도 신호 ({sellSignals.length}건)</h2>
+          </div>
+          
+          <div className="space-y-3">
+            {sellSignals.map((signal) => (
+              <div 
+                key={signal.holding_id}
+                className={`bg-white rounded-lg p-4 border-l-4 ${
+                  signal.signal_level === 'urgent' ? 'border-red-500' :
+                  signal.signal_level === 'warning' ? 'border-orange-500' :
+                  'border-blue-500'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-bold text-lg">{signal.name}</span>
+                      <span className="text-sm text-gray-500">({signal.code})</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        signal.signal_level === 'urgent' ? 'bg-red-100 text-red-800' :
+                        signal.signal_level === 'warning' ? 'bg-orange-100 text-orange-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {signal.signal_level === 'urgent' ? '🚨 긴급' :
+                         signal.signal_level === 'warning' ? '⚠️ 경고' :
+                         'ℹ️ 정보'}
+                      </span>
+                    </div>
+                    
+                    <div className="text-sm space-y-1">
+                      <div className="flex items-center gap-4">
+                        <span className="text-gray-600">보유: {formatNumber(signal.quantity)}주</span>
+                        <span className="text-gray-600">평균가: ₩{formatNumber(signal.avg_price)}</span>
+                        <span className="text-gray-600">현재가: ₩{formatNumber(signal.current_price)}</span>
+                        <span className={`font-medium ${
+                          signal.profit_rate >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {signal.profit_rate >= 0 ? '+' : ''}{signal.profit_rate.toFixed(2)}%
+                        </span>
+                      </div>
+                      
+                      <div className="mt-2 p-2 bg-gray-50 rounded">
+                        <div className="font-medium text-gray-900">📌 {signal.reason}</div>
+                        <div className="text-gray-700 mt-1">💡 {signal.recommendation}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => openModal('sell', holdings.find(h => h.id === signal.holding_id))}
+                    className={`ml-4 px-4 py-2 rounded font-medium ${
+                      signal.signal_level === 'urgent' 
+                        ? 'bg-red-600 hover:bg-red-700 text-white' 
+                        : 'bg-orange-600 hover:bg-orange-700 text-white'
+                    }`}
+                  >
+                    매도하기
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 보유 종목 테이블 */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
