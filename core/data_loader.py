@@ -8,10 +8,18 @@ import logging
 from pathlib import Path
 from typing import Optional
 import pandas as pd
-import yfinance as yf
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+
+# yfinance 선택적 import (NAS Python 3.8 호환성)
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except (ImportError, TypeError) as e:
+    logging.warning(f"yfinance 사용 불가: {e}")
+    YFINANCE_AVAILABLE = False
+    yf = None
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +105,11 @@ def get_ohlcv(symbol: str, start, end, use_cache: bool = True) -> pd.DataFrame:
                 if not result.empty:
                     return result
     
-    # 2. yfinance로 다운로드
+    # 2. yfinance로 다운로드 (사용 가능한 경우)
+    if not YFINANCE_AVAILABLE:
+        log.warning(f"yfinance 사용 불가 - 네이버 금융 폴백 시도: {symbol}")
+        return get_ohlcv_naver_fallback(symbol, start, end)
+    
     try:
         log.info(f"Downloading {symbol} from {start.date()} to {end.date()}")
         df = yf.download(
@@ -128,7 +140,8 @@ def get_ohlcv(symbol: str, start, end, use_cache: bool = True) -> pd.DataFrame:
         
     except Exception as e:
         log.error(f"Failed to download {symbol}: {e}")
-        return pd.DataFrame()
+        log.info(f"네이버 금융 폴백 시도: {symbol}")
+        return get_ohlcv_naver_fallback(symbol, start, end)
 
 
 def get_ohlcv_safe(symbol: str, start, end) -> pd.DataFrame:
