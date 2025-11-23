@@ -27,8 +27,31 @@ from core.strategy.us_market_monitor import USMarketMonitor
 from core.db import get_db_connection, init_db
 from core.data_loader import get_ohlcv, get_kospi_index_naver
 
-logging.basicConfig(level=logging.INFO)
+# 로거 설정 (force=True로 기존 설정 덮어쓰기)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s:%(name)s:%(message)s',
+    force=True
+)
+
+# 파일 핸들러 추가
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 콘솔 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(message)s'))
+
+# 파일 출력
+log_dir = project_root / "logs"
+log_dir.mkdir(exist_ok=True)
+file_handler = logging.FileHandler(log_dir / "daily_regime_check.log", encoding='utf-8')
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s:%(name)s:%(message)s'))
+
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
 
 # 상태 파일 경로
 STATE_DIR = project_root / "data" / "state"
@@ -82,23 +105,26 @@ class RegimeMonitor:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=365)
             
-            # yfinance 시도 (Python 3.8 호환 문제 가능)
-            kospi_data = None
-            try:
-                kospi_data = get_ohlcv(
-                    "^KS11",  # KOSPI 지수
-                    start_date.strftime("%Y-%m-%d"),
-                    end_date.strftime("%Y-%m-%d")
-                )
-            except Exception as e:
-                logger.warning(f"yfinance KOSPI 조회 실패: {e}")
-                logger.info("네이버 금융으로 대체 시도 (현재가만 가능)")
+            logger.info(f"KOSPI 데이터 조회 중... ({start_date.date()} ~ {end_date.date()})")
+            
+            # get_ohlcv()는 자동으로 yfinance → PyKRX → 네이버 금융 순서로 시도
+            kospi_data = get_ohlcv(
+                "^KS11",  # KOSPI 지수
+                start_date.strftime("%Y-%m-%d"),
+                end_date.strftime("%Y-%m-%d")
+            )
             
             if kospi_data is None or kospi_data.empty:
-                logger.error("KOSPI 데이터 없음 - 과거 데이터 필요")
+                logger.error("KOSPI 데이터 없음 - 모든 데이터 소스 실패")
+                logger.error("yfinance, PyKRX, 네이버 금융 모두 실패")
                 return None
             
+            logger.info(f"✅ KOSPI 데이터 조회 성공: {len(kospi_data)}행")
+            logger.info(f"   컬럼: {kospi_data.columns.tolist()}")
+            logger.info(f"   기간: {kospi_data.index.min()} ~ {kospi_data.index.max()}")
+            
             # 레짐 감지
+            logger.info("레짐 감지 시작...")
             current_date = datetime.now().date()
             regime, confidence = self.detector.detect_regime(kospi_data, current_date)
             
@@ -112,6 +138,9 @@ class RegimeMonitor:
                 'bear': '하락장',
                 'neutral': '중립장'
             }
+            
+            regime_kr = regime_map.get(regime, regime)
+            logger.info(f"✅ 레짐 감지 완료: {regime_kr} (신뢰도: {confidence:.1%})")
             
             # 컬럼명 확인 (close 또는 Close)
             close_col = 'Close' if 'Close' in kospi_data.columns else 'close'
@@ -133,6 +162,8 @@ class RegimeMonitor:
             
         except Exception as e:
             logger.error(f"레짐 감지 실패: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     def check_regime_change(self) -> bool:
@@ -259,6 +290,40 @@ class RegimeMonitor:
         
         return message.strip()
     
+    def get_current_price_naver(self, code: str) -> Optional[float]:
+        """네이버 금융에서 현재가 조회"""
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            
+            url = f"https://finance.naver.com/item/main.naver?code={code}"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=3)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # 현재가 추출
+            price_element = soup.select_one('.no_today .blind')
+            if price_element:
+                price_text = price_element.text.strip().replace(',', '')
+                return float(price_text)
+            
+            # 대체 방법
+            price_element = soup.select_one('.p11 .blind')
+            if price_element:
+                price_text = price_element.text.strip().replace(',', '')
+                return float(price_text)
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"현재가 조회 실패 ({code}): {e}")
+            return None
+    
     def check_holdings_sell_signals(self) -> List[Dict]:
         """보유 종목 매도 신호 확인"""
         sell_signals = []
@@ -281,31 +346,55 @@ class RegimeMonitor:
                 logger.info("보유 종목 없음")
                 return []
             
+            logger.info(f"보유 종목 {len(holdings)}개 확인 중...")
+            
             # 각 종목 확인
             for code, name, quantity, avg_price in holdings:
-                # TODO: MAPS 점수 및 모멘텀 계산
-                # 현재는 레짐 변화만으로 판단
+                # 현재가 조회
+                current_price = self.get_current_price_naver(code)
+                
+                if current_price is None:
+                    logger.warning(f"{name}({code}) 현재가 조회 실패 - 스킵")
+                    continue
+                
+                # 수익률 계산
+                profit_rate = ((current_price - avg_price) / avg_price) * 100
+                
+                # 매도 신호 판단
+                should_sell = False
+                reason = ""
+                sell_quantity = quantity
                 
                 if self.current_regime == "하락장":
-                    sell_signals.append({
-                        "code": code,
-                        "name": name,
-                        "quantity": quantity,
-                        "avg_price": avg_price,
-                        "reason": "하락장 전환"
-                    })
+                    should_sell = True
+                    reason = "하락장 전환"
+                    sell_quantity = quantity
                 elif self.current_regime == "중립장":
-                    # 중립장에서는 일부만 매도 권장
+                    should_sell = True
+                    reason = "중립장 전환 (일부 매도 권장)"
+                    sell_quantity = quantity // 2
+                elif profit_rate < -5.0:
+                    # 손실 5% 이상이면 상승장에서도 매도 권장
+                    should_sell = True
+                    reason = f"손실 {profit_rate:.1f}% (손절 권장)"
+                    sell_quantity = quantity
+                
+                if should_sell:
                     sell_signals.append({
                         "code": code,
                         "name": name,
-                        "quantity": quantity // 2,  # 절반만
+                        "quantity": sell_quantity,
                         "avg_price": avg_price,
-                        "reason": "중립장 전환 (일부 매도 권장)"
+                        "current_price": current_price,
+                        "profit_rate": profit_rate,
+                        "reason": reason
                     })
+                    logger.info(f"  매도 신호: {name}({code}) - {reason}")
             
         except Exception as e:
             logger.error(f"보유 종목 확인 실패: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
         
         return sell_signals
     
@@ -320,10 +409,14 @@ class RegimeMonitor:
 """
         
         for signal in sell_signals:
+            profit_emoji = "📈" if signal['profit_rate'] >= 0 else "📉"
+            
             message += f"""
 📌 {signal['name']} ({signal['code']})
    수량: {signal['quantity']:,}주
    평균가: {signal['avg_price']:,.0f}원
+   현재가: {signal['current_price']:,.0f}원
+   {profit_emoji} 수익률: {signal['profit_rate']:+.2f}%
    사유: {signal['reason']}
 
 """
@@ -376,15 +469,19 @@ def main():
         # 2. 레짐 변화 알림
         regime_alert = monitor.generate_regime_alert()
         send_telegram_alert(regime_alert)
-        
-        # 3. 보유 종목 매도 신호 확인
-        sell_signals = monitor.check_holdings_sell_signals()
-        
-        if sell_signals:
-            sell_alert = monitor.generate_sell_alert(sell_signals)
-            send_telegram_alert(sell_alert)
     else:
         logger.info(f"✅ 레짐 유지: {monitor.current_regime} (신뢰도: {monitor.regime_confidence:.1%})")
+    
+    # 3. 보유 종목 매도 신호 확인 (레짐 변화 여부와 무관하게 항상 체크)
+    logger.info("보유 종목 매도 신호 확인 중...")
+    sell_signals = monitor.check_holdings_sell_signals()
+    
+    if sell_signals:
+        logger.info(f"⚠️ 매도 신호 {len(sell_signals)}건 발견")
+        sell_alert = monitor.generate_sell_alert(sell_signals)
+        send_telegram_alert(sell_alert)
+    else:
+        logger.info("✅ 매도 신호 없음")
     
     logger.info("=" * 60)
     logger.info("일일 레짐 감지 완료")
