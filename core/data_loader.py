@@ -90,9 +90,22 @@ def _normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     
     # 컬럼명 정규화
     df = df.rename(columns={
+        # yfinance
         'Adj Close': 'AdjClose',
         'adj_close': 'AdjClose',
+        # PyKRX 한글 컬럼명
+        '시가': 'Open',
+        '고가': 'High',
+        '저가': 'Low',
+        '종가': 'Close',
+        '거래량': 'Volume',
+        '거래대금': 'Value',
+        '상장시가총액': 'MarketCap',
     })
+    
+    # AdjClose 컬럼 추가 (없으면 Close 사용)
+    if 'AdjClose' not in df.columns and 'Close' in df.columns:
+        df['AdjClose'] = df['Close']
     
     return df
 
@@ -279,12 +292,8 @@ def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
                 if df is not None and not df.empty:
                     log.info(f"PyKRX KOSPI 성공: {len(df)}행")
                     
-                    # 정규화
+                    # 정규화 (한글 컬럼명 → 영문, AdjClose 자동 추가)
                     df = _normalize_df(df)
-                    
-                    # AdjClose 컬럼 추가
-                    if 'AdjClose' not in df.columns and 'Close' in df.columns:
-                        df['AdjClose'] = df['Close']
                     
                     return df
             
@@ -299,12 +308,8 @@ def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
                 if df is not None and not df.empty:
                     log.info(f"PyKRX {code} 성공: {len(df)}행")
                     
-                    # 정규화
+                    # 정규화 (한글 컬럼명 → 영문, AdjClose 자동 추가)
                     df = _normalize_df(df)
-                    
-                    # AdjClose 컬럼 추가
-                    if 'AdjClose' not in df.columns and 'Close' in df.columns:
-                        df['AdjClose'] = df['Close']
                     
                     return df
             
