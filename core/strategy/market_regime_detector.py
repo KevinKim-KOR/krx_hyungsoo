@@ -16,6 +16,8 @@ from datetime import date
 import pandas as pd
 import numpy as np
 import logging
+import yaml
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -37,34 +39,42 @@ class MarketRegimeDetector:
     
     def __init__(
         self,
-        # 이동평균 파라미터
-        short_ma_period: int = 50,  # 단기 이동평균
-        long_ma_period: int = 200,  # 장기 이동평균
+        # 이동평균 파라미터 (None이면 YAML에서 로드)
+        short_ma_period: Optional[int] = None,
+        long_ma_period: Optional[int] = None,
         
-        # 레짐 분류 임계값
-        bull_threshold: float = 0.02,  # 상승장: 단기MA > 장기MA + 2%
-        bear_threshold: float = -0.02,  # 하락장: 단기MA < 장기MA - 2%
+        # 레짐 분류 임계값 (None이면 YAML에서 로드)
+        bull_threshold: Optional[float] = None,
+        bear_threshold: Optional[float] = None,
         
-        # 추세 강도 파라미터
-        trend_strength_period: int = 20,  # 추세 강도 계산 기간
+        # 추세 강도 파라미터 (None이면 YAML에서 로드)
+        trend_strength_period: Optional[int] = None,
         
         # 활성화 플래그
-        enable_regime_detection: bool = True
+        enable_regime_detection: bool = True,
+        
+        # 설정 파일 경로
+        config_path: Optional[str] = None
     ):
         """
         Args:
-            short_ma_period: 단기 이동평균 기간
-            long_ma_period: 장기 이동평균 기간
-            bull_threshold: 상승장 임계값 (%)
-            bear_threshold: 하락장 임계값 (%)
-            trend_strength_period: 추세 강도 계산 기간
+            short_ma_period: 단기 이동평균 기간 (None이면 YAML에서 로드)
+            long_ma_period: 장기 이동평균 기간 (None이면 YAML에서 로드)
+            bull_threshold: 상승장 임계값 (%) (None이면 YAML에서 로드)
+            bear_threshold: 하락장 임계값 (%) (None이면 YAML에서 로드)
+            trend_strength_period: 추세 강도 계산 기간 (None이면 YAML에서 로드)
             enable_regime_detection: 레짐 감지 활성화
+            config_path: 설정 파일 경로 (None이면 기본 경로)
         """
-        self.short_ma_period = short_ma_period
-        self.long_ma_period = long_ma_period
-        self.bull_threshold = bull_threshold
-        self.bear_threshold = bear_threshold
-        self.trend_strength_period = trend_strength_period
+        # YAML 설정 로드
+        config = self._load_config(config_path)
+        
+        # 파라미터 설정 (인자 우선, 없으면 YAML, 없으면 기본값)
+        self.short_ma_period = short_ma_period or config.get('short_ma_period', 50)
+        self.long_ma_period = long_ma_period or config.get('long_ma_period', 200)
+        self.bull_threshold = bull_threshold if bull_threshold is not None else config.get('bull_threshold', 0.02)
+        self.bear_threshold = bear_threshold if bear_threshold is not None else config.get('bear_threshold', -0.02)
+        self.trend_strength_period = trend_strength_period or config.get('trend_strength_period', 20)
         self.enable_regime_detection = enable_regime_detection
         
         # 현재 레짐
@@ -79,8 +89,31 @@ class MarketRegimeDetector:
         }
         
         logger.info(f"MarketRegimeDetector 초기화: "
-                   f"MA={short_ma_period}/{long_ma_period}일, "
-                   f"임계값={bull_threshold*100}/{bear_threshold*100}%")
+                   f"MA={self.short_ma_period}/{self.long_ma_period}일, "
+                   f"임계값={self.bull_threshold*100:.1f}/{self.bear_threshold*100:.1f}%")
+    
+    def _load_config(self, config_path: Optional[str] = None) -> Dict:
+        """YAML 설정 파일 로드"""
+        if config_path is None:
+            # 기본 경로: project_root/config/regime_params.yaml
+            project_root = Path(__file__).parent.parent.parent
+            config_path = project_root / "config" / "regime_params.yaml"
+        else:
+            config_path = Path(config_path)
+        
+        if not config_path.exists():
+            logger.warning(f"설정 파일 없음: {config_path}, 기본값 사용")
+            return {}
+        
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                regime_config = config.get('regime_detection', {})
+                logger.info(f"✅ 설정 파일 로드: {config_path}")
+                return regime_config
+        except Exception as e:
+            logger.error(f"설정 파일 로드 실패: {e}, 기본값 사용")
+            return {}
     
     def calculate_moving_averages(
         self,

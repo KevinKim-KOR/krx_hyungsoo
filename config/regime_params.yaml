@@ -1,0 +1,42 @@
+# Regime Detection Parameters
+# 백테스트 최적화 결과 (2025-11-08, Week 3)
+# CAGR: 27.05%, Sharpe: 1.51, MDD: -19.92%
+
+regime_detection:
+  # 이동평균 기간
+  short_ma_period: 50      # 단기 이동평균 (일)
+  long_ma_period: 200      # 장기 이동평균 (일)
+  
+  # 레짐 분류 임계값
+  bull_threshold: 0.02     # 상승장: MA50 > MA200 + 2%
+  bear_threshold: -0.02    # 하락장: MA50 < MA200 - 2%
+  
+  # 추세 강도
+  trend_strength_period: 20  # 추세 강도 계산 기간 (일)
+  
+  # 활성화
+  enable_regime_detection: true
+
+# 매도 신호 파라미터
+sell_signals:
+  # 손절 기준
+  stop_loss_threshold: -0.05  # 손실 5% 이상 시 손절 권장
+  
+  # 레짐별 매도 비율
+  bear_regime_sell_ratio: 1.0    # 하락장: 전체 매도
+  neutral_regime_sell_ratio: 0.5  # 중립장: 절반 매도
+  bull_regime_sell_ratio: 0.0     # 상승장: 손절만
+
+# 미국 시장 지표 (기존 파일 참조)
+us_market:
+  config_file: "config/us_market_indicators.yaml"
+
+# 백테스트 출처
+backtest_source:
+  date: "2025-11-08"
+  document: "docs/WEEK3_HYBRID_STRATEGY.md"
+  period: "2022-01-01 ~ 2025-11-08"
+  performance:
+    cagr: 0.2705
+    sharpe: 1.51
+    max_drawdown: -0.1992
