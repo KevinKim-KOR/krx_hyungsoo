@@ -19,6 +19,14 @@ data/cache/**/*.parquet
 data/cache/**/*.csv
 data/state/*.json
 
+# 런타임 데이터 (각 환경마다 다름 - PC, NAS, Oracle Cloud)
+data/*.db
+data/*.sqlite3
+data/sync/
+data/cache/
+data/output/
+data/state/
+
 # Python 캐시
 __pycache__/
 *.pyc
