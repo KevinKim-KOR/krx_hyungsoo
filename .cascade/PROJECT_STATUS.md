@@ -226,28 +226,32 @@
 
 ## 🔧 현재 작업 중 (Active Work)
 
-### 작업 내용
-**장 시작 레짐 감지 PUSH 구현**
+### ✅ 최근 완료 (2025-11-23)
+**Daily Regime Check 100% 완성**
+- 파일: `scripts/nas/daily_regime_check.py`
+- 소요 시간: 3시간 49분 (19:34 ~ 23:23)
+- Oracle Cloud 배포 완료
+- Cron 설정 완료 (08:00 Git pull, 09:00 실행)
 
-### 파일
-- `scripts/nas/daily_regime_check.py`
+### 📋 다음 작업 (우선순위)
 
-### 목표
-- 평일 09:00 텔레그램 알림
-- KOSPI 레짐 감지
-- 보유 종목 매도 신호
+#### 1. NAS 스크립트 정리 (우선순위: 높음)
+- `regime_change_alert.py` 제거 검토 (미사용)
+- `rising_etf_alert.py` 제거 검토 (미사용)
+- 사용 중인 스크립트만 유지
 
-### 문제
-- 레짐 감지 완료 메시지 없음
-- 미국 지표 조회 실패
+#### 2. React 파라미터 설정 UI (우선순위: 중간)
+- 백테스트 파라미터 설정 UI
+- ML 모델 파라미터 설정 UI
+- 현재: 코드 수정 필요
 
-### 소요 시간
-- **시작**: 2025-11-23 10:00
-- **현재**: 2025-11-23 15:50
-- **소요**: 5시간 50분
+#### 3. Oracle Cloud 최신 기능 반영 (우선순위: 낮음)
+- Holdings 페이지 배포
+- 매도 신호 API 배포
 
 ### 이전 작업
-- **어제 (2025-11-22)**: Holdings UI 구현 (10시간)
+- **2025-11-23**: Daily Regime Check 완성 (3시간 49분)
+- **2025-11-22**: Holdings UI 구현 (10시간)
 
 ---
 
@@ -256,13 +260,41 @@
 ### NAS 스크립트
 ```
 scripts/nas/
-├── daily_regime_check.py      # ❌ 현재 작업 중 (오류)
+├── daily_regime_check.py      # ✅ 완료 (09:00) - Oracle Cloud에서 실행
 ├── daily_report_alert.py       # ✅ 동작 (16:00)
 ├── weekly_report_alert.py      # ✅ 동작 (토 10:00)
-├── intraday_alert.py           # ✅ 동작 (장중)
-├── market_open_alert.py        # ⚠️ 사용 여부 불명
-├── regime_change_alert.py      # ⚠️ 사용 여부 불명
-└── rising_etf_alert.py         # ⚠️ 사용 여부 불명
+├── intraday_alert.py           # ✅ 동작 (10:00, 14:00)
+├── market_open_alert.py        # ✅ 사용 중 (NAS Cron)
+├── regime_change_alert.py      # ❌ 미사용 (제거 검토)
+└── rising_etf_alert.py         # ❌ 미사용 (제거 검토)
+```
+
+### NAS Cron 작업 (실제 사용 중)
+```bash
+# 로그 정리
+bash /scripts/nas/cleanup_logs.sh
+
+# DB 백업
+bash /scripts/nas/backup_db.sh
+
+# 장 시작 알림 (09:00)
+python3.8 scripts/nas/market_open_alert.py
+
+# 장중 알림 (10:00, 14:00)
+python3.8 scripts/nas/intraday_alert.py
+
+# Oracle Cloud 동기화
+python scripts/sync/generate_sync_data.py >> logs/sync/generate.log 2>&1
+/volume2/homes/Hyungsoo/krx/krx_alertor_modular/scripts/sync/sync_to_oracle.sh
+
+# 하이브리드 손절 전략
+python3.8 scripts/phase4/hybrid_stop_loss.py
+
+# 일일 스캔 알림
+bash scripts/linux/jobs/daily_scan_notify.sh
+
+# 주간 리포트 (토 10:00)
+python3.8 scripts/nas/weekly_report_alert.py
 ```
 
 ### 백엔드 API
@@ -303,22 +335,37 @@ core/
 **구현**: Intraday Alert (장중 알림)
 - 평일 10:00, 14:00
 - 보유 종목 급등/급락 감지
+- **상태**: 완료, NAS에서 동작 중
 
-### 2. 장 시작 시 시장 흐름 변화 ❌
-**구현 중**: Daily Regime Check (09:00)
-- **상태**: 오류 발생 중
-- **목표**: KOSPI 레짐 감지 + 매도 신호
+### 2. 장 시작 시 시장 흐름 변화 ✅ **완료!**
+**구현**: Daily Regime Check (09:00)
+- **상태**: 100% 완성 (2025-11-23)
+- **기능**: KOSPI 레짐 감지 + 매도 신호
+- **배포**: Oracle Cloud (Cron 설정 완료)
+- **알림**: 레짐 변경 + 레짐 유지 (매일)
 
-### 3. 보유 주식 손절/이상 알림 ⚠️
-**구현**: Holdings 페이지 + 매도 신호 API
-- **상태**: UI 완료 (어제 10시간)
-- **연동**: Daily Regime Check와 연동 필요
+### 3. 보유 주식 손절/이상 알림 ✅ **완료!**
+**구현**: Holdings 페이지 + 매도 신호 API + Daily Regime Check 연동
+- **상태**: 100% 완성
+- **UI**: Holdings 페이지 (2025-11-22)
+- **API**: 매도 신호 API (2025-11-22)
+- **연동**: Daily Regime Check에서 자동 체크 (2025-11-23)
+- **알림**: 텔레그램 PUSH (매도 신호 발생 시)
 
 ---
 
-## 📝 Cron 설정 (NAS)
+## 📝 Cron 설정
 
-### 현재 설정
+### Oracle Cloud Cron (새로 추가!)
+```bash
+# Git pull (매일 08:00) - 최신 파라미터 동기화
+0 8 * * * cd /home/ubuntu/krx_hyungsoo && git pull >> logs/git_pull.log 2>&1
+
+# Daily Regime Check (매일 09:00) - 레짐 감지 및 알림
+0 9 * * * cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/nas/daily_regime_check.py >> logs/cron.log 2>&1
+```
+
+### NAS Cron (기존)
 ```bash
 # 일일 리포트 (16:00)
 0 16 * * 1-5 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && python3 scripts/nas/daily_report_alert.py >> /volume2/homes/Hyungsoo/krx/logs/daily_report.log 2>&1
@@ -328,35 +375,35 @@ core/
 
 # 장중 알림 (10:00, 14:00)
 0 10,14 * * 1-5 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && python3 scripts/nas/intraday_alert.py >> /volume2/homes/Hyungsoo/krx/logs/intraday.log 2>&1
-
-# 장 시작 레짐 감지 (09:00) - 오류 발생 중!
-0 9 * * 1-5 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && python3 scripts/nas/daily_regime_check.py >> /volume2/homes/Hyungsoo/krx/logs/regime_check.log 2>&1
 ```
 
 ---
 
 ## 🚨 현재 문제점
 
-### 1. Daily Regime Check 오류 (최우선!)
+### ~~1. Daily Regime Check 오류~~ ✅ **해결!** (2025-11-23)
 **파일**: `scripts/nas/daily_regime_check.py`
 
-**증상**:
-```
-WARNING: yfinance 사용 불가
-WARNING: FinanceDataReader 사용 불가
-WARNING: yfinance 사용 불가 - 네이버 금융 폴백 시도: ^KS11
-WARNING: 지표 없음, 중립장으로 판단
-```
+**해결 내용**:
+- ✅ PyKRX 데이터 로딩 정상화
+- ✅ 레짐 감지 로직 검증
+- ✅ 보유 종목 매도 신호 구현
+- ✅ 텔레그램 알림 정상 동작
+- ✅ Oracle Cloud 배포 완료
+- ✅ 파라미터 YAML 설정
 
-**문제**:
-- 레짐 감지 완료 메시지 없음
-- 텔레그램 알림 없음
-- 동작 여부 불명
+---
 
-**해결 시도**:
-1. ✅ PyKRX 한글 컬럼명 변환 추가
-2. ⏳ 전체 로그 확인 필요
-3. ⏳ 미국 지표 비활성화 고려
+### 1. NAS 미사용 스크립트 정리 필요
+**대상**:
+- `regime_change_alert.py` (NAS Cron에서 미호출)
+- `rising_etf_alert.py` (NAS Cron에서 미호출)
+
+**조치**:
+- 다른 곳에서 사용 여부 확인
+- 미사용 시 제거 또는 archive 폴더로 이동
+
+**우선순위**: 낮음
 
 ---
 
