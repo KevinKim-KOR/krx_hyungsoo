@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Optional
 import pandas as pd
 import yfinance as yf
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
 
 log = logging.getLogger(__name__)
 
@@ -138,3 +141,113 @@ def get_ohlcv_safe(symbol: str, start, end) -> pd.DataFrame:
     except Exception as e:
         log.warning(f"get_ohlcv_safe failed for {symbol}: {e}")
         return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
+
+
+def get_current_price_naver(code: str) -> Optional[float]:
+    """
+    네이버 금융에서 현재가 조회 (한국 주식)
+    
+    Args:
+        code: 종목 코드 (예: '005930')
+    
+    Returns:
+        현재가 (float) 또는 None
+    """
+    try:
+        url = f"https://finance.naver.com/item/main.naver?code={code}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 현재가 추출
+        price_element = soup.select_one('.no_today .blind')
+        if price_element:
+            price_text = price_element.text.strip().replace(',', '')
+            return float(price_text)
+        
+        # 대체 방법
+        price_element = soup.select_one('.p11 .blind')
+        if price_element:
+            price_text = price_element.text.strip().replace(',', '')
+            return float(price_text)
+        
+        log.warning(f"현재가 요소를 찾을 수 없음: {code}")
+        return None
+        
+    except Exception as e:
+        log.error(f"네이버 금융 현재가 조회 실패 ({code}): {e}")
+        return None
+
+
+def get_kospi_index_naver() -> Optional[float]:
+    """
+    네이버 금융에서 KOSPI 지수 조회
+    
+    Returns:
+        KOSPI 지수 (float) 또는 None
+    """
+    try:
+        url = "https://finance.naver.com/sise/sise_index.naver?code=KOSPI"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # KOSPI 지수 추출
+        index_element = soup.select_one('#now_value')
+        if index_element:
+            index_text = index_element.text.strip().replace(',', '')
+            return float(index_text)
+        
+        log.warning("KOSPI 지수 요소를 찾을 수 없음")
+        return None
+        
+    except Exception as e:
+        log.error(f"네이버 금융 KOSPI 지수 조회 실패: {e}")
+        return None
+
+
+def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
+    """
+    네이버 금융 폴백 (yfinance 실패 시)
+    현재는 현재가만 제공, 과거 데이터는 yfinance 사용
+    
+    Args:
+        symbol: 종목 코드
+        start: 시작일
+        end: 종료일
+    
+    Returns:
+        DataFrame (현재는 빈 DataFrame, 추후 확장 가능)
+    """
+    log.info(f"네이버 금융 폴백 시도: {symbol}")
+    
+    # 한국 주식 코드 추출 (예: '005930.KS' -> '005930')
+    code = symbol.split('.')[0]
+    
+    # 현재가만 조회 가능
+    current_price = get_current_price_naver(code)
+    if current_price:
+        # 현재 날짜로 단일 행 DataFrame 생성
+        today = pd.Timestamp.now().normalize()
+        df = pd.DataFrame({
+            'Open': [current_price],
+            'High': [current_price],
+            'Low': [current_price],
+            'Close': [current_price],
+            'Volume': [0],
+            'AdjClose': [current_price]
+        }, index=[today])
+        
+        return df
+    
+    return pd.DataFrame()

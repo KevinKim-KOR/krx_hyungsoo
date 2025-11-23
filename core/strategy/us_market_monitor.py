@@ -75,11 +75,18 @@ class USMarketMonitor:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=365)
             
-            data = get_ohlcv(
-                symbol,
-                start_date.strftime("%Y-%m-%d"),
-                end_date.strftime("%Y-%m-%d")
-            )
+            # yfinance 시도 (Python 3.8 호환 문제 가능)
+            data = None
+            try:
+                data = get_ohlcv(
+                    symbol,
+                    start_date.strftime("%Y-%m-%d"),
+                    end_date.strftime("%Y-%m-%d")
+                )
+            except Exception as e:
+                logger.warning(f"yfinance {symbol} 조회 실패: {e}")
+                # 미국 주식은 네이버 금융 대체 불가
+                return None
             
             if data is None or data.empty:
                 logger.error(f"데이터 없음: {symbol}")

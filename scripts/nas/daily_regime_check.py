@@ -25,7 +25,7 @@ sys.path.insert(0, str(project_root))
 from core.strategy.market_regime_detector import MarketRegimeDetector
 from core.strategy.us_market_monitor import USMarketMonitor
 from core.db import get_db_connection, init_db
-from core.data_loader import get_ohlcv
+from core.data_loader import get_ohlcv, get_kospi_index_naver
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -82,14 +82,20 @@ class RegimeMonitor:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=365)
             
-            kospi_data = get_ohlcv(
-                "^KS11",  # KOSPI 지수
-                start_date.strftime("%Y-%m-%d"),
-                end_date.strftime("%Y-%m-%d")
-            )
+            # yfinance 시도 (Python 3.8 호환 문제 가능)
+            kospi_data = None
+            try:
+                kospi_data = get_ohlcv(
+                    "^KS11",  # KOSPI 지수
+                    start_date.strftime("%Y-%m-%d"),
+                    end_date.strftime("%Y-%m-%d")
+                )
+            except Exception as e:
+                logger.warning(f"yfinance KOSPI 조회 실패: {e}")
+                logger.info("네이버 금융으로 대체 시도 (현재가만 가능)")
             
             if kospi_data is None or kospi_data.empty:
-                logger.error("KOSPI 데이터 없음")
+                logger.error("KOSPI 데이터 없음 - 과거 데이터 필요")
                 return None
             
             # 레짐 감지
