@@ -39,12 +39,13 @@
 - ✅ 로컬(PC) 테스트 완료
 - ✅ 오류 없이 동작
 - ✅ 100% 기능 구현
-- ⏳ Oracle Cloud 배포 (다음 단계)
+- ✅ Oracle Cloud 배포 완료
 
 ### 현재 상태
 - ✅ **Phase 완료**: Daily Regime Check 100% 구현
 - ✅ **파라미터 YAML 설정**: 하드코딩 → YAML 변경
-- ⏳ **다음**: Oracle Cloud Cron 설정
+- ✅ **Oracle Cloud 배포**: Cron 설정 완료
+- ✅ **레짐 유지 알림**: 매일 발송 기능 추가
 
 ---
 
@@ -62,8 +63,72 @@ PC 백테스트 → regime_params.yaml 업데이트 → Git push
 Oracle Cloud Git pull (08:00) → Daily Regime Check (09:00)
 ```
 
-### 다음 단계
-- ⏳ Oracle Cloud Cron 설정 (Git pull + Daily Check)
+---
+
+## ☁️ Oracle Cloud 배포 (완료 23:23)
+
+### 배포 완료 항목
+1. ✅ Git pull 완료
+2. ✅ 의존성 설치 (yfinance, pandas, beautifulsoup4 등)
+3. ✅ .env 파일 설정 (텔레그램 봇 토큰)
+4. ✅ 텔레그램 연동 테스트 성공
+5. ✅ Cron 설정 완료
+
+### Cron 스케줄
+```bash
+# Git pull (매일 08:00) - 최신 파라미터 동기화
+0 8 * * * cd /home/ubuntu/krx_hyungsoo && git pull >> logs/git_pull.log 2>&1
+
+# Daily Regime Check (매일 09:00) - 레짐 감지 및 알림
+0 9 * * * cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/nas/daily_regime_check.py >> logs/cron.log 2>&1
+```
+
+### 알림 종류
+1. **레짐 변경 알림** (레짐이 바뀔 때)
+   - 이전 레짐 → 현재 레짐
+   - 신뢰도, 미국 시장 레짐
+   - 레짐별 권장 조치
+
+2. **레짐 유지 알림** (매일, 신규 추가!)
+   - 날짜, 현재 레짐, 신뢰도
+   - 미국 시장 레짐
+   - 현재 전략 권장 조치
+
+3. **매도 신호 알림** (신호 발생 시)
+   - 보유 종목 현재가 조회
+   - 수익률 계산
+   - 손절 권장 (손실 5% 이상)
+   - 레짐별 매도 권장
+
+---
+
+## 📊 세션 요약 (2025-11-23)
+
+### 작업 시간
+- **시작**: 19:34
+- **완료**: 23:23
+- **총 소요**: 3시간 49분
+
+### 완료 항목
+1. ✅ PyKRX 데이터 로딩 수정 (19:50)
+2. ✅ 레짐 감지 로직 검증 (19:50)
+3. ✅ 미국 지표 통합 (19:50)
+4. ✅ 보유 종목 매도 신호 (20:05)
+5. ✅ 텔레그램 알림 (20:05)
+6. ✅ Oracle Cloud 배포 (22:00)
+7. ✅ 파라미터 YAML 설정 (23:19)
+8. ✅ 레짐 유지 알림 추가 (23:23)
+
+### Git Commits
+- `776079d1` - Daily Regime Check 100% 구현 완료
+- `ddfd0e69` - 런타임 데이터 파일 .gitignore 추가
+- `46c05adf` - 파라미터 하드코딩 → YAML 설정 변경
+- `e0a46c28` - 레짐 유지 알림 추가 (매일 발송)
+
+### 다음 세션 계획
+- ⏳ NAS 역할 재검토 (Oracle Cloud 통합 가능성)
+- ⏳ 실행 시간 추가 (16:00 장 마감 후)
+- ⏳ 주말 점검 추가 (토요일 10:00)
 
 ---
 
