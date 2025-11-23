@@ -30,6 +30,15 @@ except ImportError:
     FDR_AVAILABLE = False
     fdr = None
 
+# PyKRX import (한국 시장 데이터, Python 3.8 호환)
+try:
+    from pykrx import stock as krx_stock
+    PYKRX_AVAILABLE = True
+except ImportError:
+    logging.warning("PyKRX 사용 불가")
+    PYKRX_AVAILABLE = False
+    krx_stock = None
+
 log = logging.getLogger(__name__)
 
 CACHE_DIR = Path("data/cache/ohlcv")
@@ -241,8 +250,9 @@ def get_kospi_index_naver() -> Optional[float]:
 def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
     """
     폴백 데이터 로더 (yfinance 실패 시)
-    1. FinanceDataReader 시도 (KOSPI 지수, 한국 주식)
-    2. 네이버 금융 시도 (현재가만)
+    1. PyKRX 시도 (KOSPI 지수, 한국 주식 - 기존 시스템 활용!)
+    2. FinanceDataReader 시도 (KOSPI 지수, 한국 주식)
+    3. 네이버 금융 시도 (현재가만)
     
     Args:
         symbol: 종목 코드
@@ -254,7 +264,54 @@ def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
     """
     log.info(f"폴백 데이터 로더 시도: {symbol}")
     
-    # 1. FinanceDataReader 시도 (Python 3.8 호환)
+    # 1. PyKRX 시도 (Python 3.8 호환, 기존 시스템!)
+    if PYKRX_AVAILABLE:
+        try:
+            log.info(f"PyKRX로 {symbol} 조회 시도")
+            
+            # KOSPI 지수
+            if symbol == '^KS11':
+                start_str = start.strftime("%Y%m%d") if hasattr(start, 'strftime') else start
+                end_str = end.strftime("%Y%m%d") if hasattr(end, 'strftime') else end
+                
+                df = krx_stock.get_index_ohlcv(start_str, end_str, "1001")  # KOSPI
+                
+                if df is not None and not df.empty:
+                    log.info(f"PyKRX KOSPI 성공: {len(df)}행")
+                    
+                    # 정규화
+                    df = _normalize_df(df)
+                    
+                    # AdjClose 컬럼 추가
+                    if 'AdjClose' not in df.columns and 'Close' in df.columns:
+                        df['AdjClose'] = df['Close']
+                    
+                    return df
+            
+            # 한국 주식
+            elif symbol.endswith('.KS'):
+                code = symbol.replace('.KS', '')
+                start_str = start.strftime("%Y%m%d") if hasattr(start, 'strftime') else start
+                end_str = end.strftime("%Y%m%d") if hasattr(end, 'strftime') else end
+                
+                df = krx_stock.get_market_ohlcv(start_str, end_str, code)
+                
+                if df is not None and not df.empty:
+                    log.info(f"PyKRX {code} 성공: {len(df)}행")
+                    
+                    # 정규화
+                    df = _normalize_df(df)
+                    
+                    # AdjClose 컬럼 추가
+                    if 'AdjClose' not in df.columns and 'Close' in df.columns:
+                        df['AdjClose'] = df['Close']
+                    
+                    return df
+            
+        except Exception as e:
+            log.warning(f"PyKRX 실패: {e}")
+    
+    # 2. FinanceDataReader 시도 (Python 3.8 호환)
     if FDR_AVAILABLE:
         try:
             log.info(f"FinanceDataReader로 {symbol} 조회 시도")
@@ -285,7 +342,7 @@ def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
         except Exception as e:
             log.warning(f"FinanceDataReader 실패: {e}")
     
-    # 2. 네이버 금융 시도 (현재가만)
+    # 3. 네이버 금융 시도 (현재가만)
     log.info(f"네이버 금융으로 현재가 조회 시도: {symbol}")
     
     # 한국 주식 코드 추출 (예: '005930.KS' -> '005930')
