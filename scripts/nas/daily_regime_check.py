@@ -290,6 +290,73 @@ class RegimeMonitor:
         
         return message.strip()
     
+    def generate_regime_maintain_alert(self) -> str:
+        """레짐 유지 알림 메시지 생성"""
+        emoji_map = {
+            "상승장": "📈",
+            "중립장": "➡️",
+            "하락장": "📉",
+            "bullish": "📈",
+            "neutral": "➡️",
+            "bearish": "📉"
+        }
+        
+        current_emoji = emoji_map.get(self.current_regime, "❓")
+        us_emoji = emoji_map.get(self.us_market_regime, "❓")
+        
+        message = f"""
+📅 {datetime.now().strftime('%Y년 %m월 %d일')}
+
+✅ 레짐 유지
+
+📍 한국 시장:
+{current_emoji} 현재 레짐: {self.current_regime}
+📊 신뢰도: {self.regime_confidence:.1%}
+
+🇺🇸 미국 시장:
+{us_emoji} 레짐: {self.us_market_regime}
+
+"""
+        
+        # 미국 시장 지표 추가
+        try:
+            us_report = self.us_monitor.generate_report()
+            message += f"\n{us_report}\n\n"
+        except Exception as e:
+            logger.error(f"미국 시장 리포트 생성 실패: {e}")
+        
+        message += "\n"
+        
+        # 현재 레짐 권장 조치
+        if self.current_regime == "상승장":
+            message += """
+💰 현재 전략:
+- 현금 보유율: 0~10%
+- 포지션 크기: 100~120%
+- 전략: 공격적 투자 유지
+
+"""
+        elif self.current_regime == "중립장":
+            message += """
+💰 현재 전략:
+- 현금 보유율: 40~50%
+- 포지션 크기: 50~60%
+- 전략: 중립적 투자 유지
+- 주의: 변동성 증가 가능
+
+"""
+        else:  # 하락장
+            message += """
+💰 현재 전략:
+- 현금 보유율: 70~80%
+- 포지션 크기: 20~30%
+- 전략: 방어적 투자 유지
+- 주의: 보유 종목 점검 필요
+
+"""
+        
+        return message.strip()
+    
     def get_current_price_naver(self, code: str) -> Optional[float]:
         """네이버 금융에서 현재가 조회"""
         try:
@@ -471,6 +538,10 @@ def main():
         send_telegram_alert(regime_alert)
     else:
         logger.info(f"✅ 레짐 유지: {monitor.current_regime} (신뢰도: {monitor.regime_confidence:.1%})")
+        
+        # 2-1. 레짐 유지 알림 (매일 발송)
+        maintain_alert = monitor.generate_regime_maintain_alert()
+        send_telegram_alert(maintain_alert)
     
     # 3. 보유 종목 매도 신호 확인 (레짐 변화 여부와 무관하게 항상 체크)
     logger.info("보유 종목 매도 신호 확인 중...")

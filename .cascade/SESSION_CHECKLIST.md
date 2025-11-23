@@ -43,7 +43,27 @@
 
 ### 현재 상태
 - ✅ **Phase 완료**: Daily Regime Check 100% 구현
-- ⏳ **다음**: Oracle Cloud 배포 및 Cron 설정
+- ✅ **파라미터 YAML 설정**: 하드코딩 → YAML 변경
+- ⏳ **다음**: Oracle Cloud Cron 설정
+
+---
+
+## 🔄 파라미터 동기화 (완료 23:19)
+
+### Git 기반 동기화
+- ✅ config/regime_params.yaml 생성
+- ✅ MarketRegimeDetector YAML 로드 기능
+- ✅ 백테스트 출처 문서화 (Week 3, 2025-11-08)
+
+### 워크플로우
+```
+PC 백테스트 → regime_params.yaml 업데이트 → Git push
+                                              ↓
+Oracle Cloud Git pull (08:00) → Daily Regime Check (09:00)
+```
+
+### 다음 단계
+- ⏳ Oracle Cloud Cron 설정 (Git pull + Daily Check)
 
 ---
 
