@@ -1,233 +1,142 @@
-# 📚 문서 인덱스
+# 📚 문서 목록
 
-**프로젝트**: KRX Alertor Modular  
-**최종 업데이트**: 2025-11-08
+**최종 업데이트**: 2025-11-23
 
 ---
 
-## 📋 문서 구조
+## 🎯 현재 작업 중 (Active)
+
+### 핵심 가이드
+- **`NAS_REGIME_CRON_SETUP.md`** - NAS 레짐 감지 Cron 설정 (⭐ 최신)
+- **`REGIME_MONITORING_GUIDE.md`** - 실시간 레짐 모니터링 가이드
+- **`BACKTEST_GUIDE.md`** - 백테스트 실행 가이드
+- **`TESTING_GUIDE.md`** - 테스트 가이드
+- **`PORT_ARCHITECTURE.md`** - 포트 아키텍처 (3000/8000/8899)
+
+### 배포 가이드
+- **`ORACLE_CLOUD_DEPLOYMENT.md`** - Oracle Cloud 배포
+- **`ORACLE_CLOUD_DEPLOY_GUIDE.md`** - Oracle Cloud 배포 상세
+- **`PROJECT_CLEANUP_COMPLETE.md`** - 프로젝트 정리 완료
+
+### 분석 및 계획
+- **`GAP_ANALYSIS.md`** - 원래 계획 vs 현재 구현 차이 (⭐ 중요)
+- **`AI_PROMPT_FEATURE.md`** - AI 프롬프트 기능
+
+---
+
+## ✅ 완료된 문서 (Completed)
+
+### Phase 완료 보고서
+- `PHASE2_COMPLETE_SUMMARY.md` - Phase 2 완료
+- `PHASE3_COMPLETE.md` - Phase 3 완료
+- `PHASE4_COMPLETE.md` - Phase 4 완료
+- `PHASE5_COMPLETE.md` - Phase 5 완료
+
+### Week 완료 보고서
+- `WEEK3_HYBRID_STRATEGY.md` - Week 3 하이브리드 전략
+- `WEEK4_AUTOMATION_PLAN.md` - Week 4 자동화 계획
+
+### 계획 문서
+- `MASTER_PLAN_2025.md` - 2025 마스터 플랜
+- `PORTFOLIO_INTEGRATION_PLAN.md` - 포트폴리오 통합 계획
+- `DOCS_REORGANIZATION_PLAN.md` - 문서 재구성 계획
+
+---
+
+## 📂 폴더 구조
 
 ```
 docs/
-├── guides/              # 📘 운영 가이드 (실전 사용)
-├── reports/             # 📊 완료 보고서 (Phase/Week)
-├── plans/               # 📝 계획서 (미래 작업)
-├── design/              # 🏗️ 설계 문서
-├── progress/            # 📅 일일 진행 기록
-├── archive/             # 🗄️ 구버전 (참고용)
-└── reference/           # 📚 참고 자료
+├── README.md                          # 이 파일
+├── NAS_REGIME_CRON_SETUP.md          # ⭐ 최신 가이드
+├── REGIME_MONITORING_GUIDE.md        # 레짐 모니터링
+├── BACKTEST_GUIDE.md                 # 백테스트
+├── GAP_ANALYSIS.md                   # ⭐ 작업 계획
+├── completed/                        # 완료된 문서
+│   ├── PHASE*.md
+│   ├── WEEK*.md
+│   └── *_PLAN.md
+├── archive/                          # 구버전
+├── guides/                           # 상세 가이드
+├── phases/                           # Phase별 문서
+├── plans/                            # 계획 문서
+├── progress/                         # 진행 상황
+├── reference/                        # 참고 자료
+└── reports/                          # 보고서
 ```
 
 ---
 
-## 📘 운영 가이드 (guides/)
+## 🚀 다음 작업 (Next Steps)
 
-**목적**: 실전 사용 가이드
+### 우선순위 1: 매도 신호 완성 ✅ (완료!)
+- ✅ 백엔드 API 구현
+- ✅ 프론트엔드 UI 추가
+- ✅ NAS Cron 설정 가이드
 
-### NAS 배포 및 운영
-- **[NAS 배포 가이드](guides/nas/deployment.md)** ⭐ 필수
-  - 파일 전송, 환경 설정, 텔레그램 봇 설정
-  - Cron 스케줄러 설정
-  - 테스트 및 문제 해결
-  
-- **[스케줄러 명령어](guides/nas/scheduler.md)**
-  - Cron 설정 상세
-  - 실행 시간표
-  
-- **[문제 해결](guides/nas/troubleshooting.md)**
-  - 일반적인 문제 및 해결 방법
-  
-- **[텔레그램 설정](guides/nas/telegram.md)**
-  - 봇 생성 및 Chat ID 확인
+### 우선순위 2: WebUI 파라미터 설정 (다음)
+- ⏳ 레짐 파라미터 조정 UI
+- ⏳ 미국 시장 지표 설정
+- ⏳ 백테스트 파라미터 설정
 
-### 개발 및 최적화
-- **[개발 가이드](guides/development.md)**
-  - 일일 운영 흐름
-  - NAS ↔ PC 파이프라인
-  - 로그 및 예외 처리
-  
-- **[Optuna 최적화](guides/optuna.md)**
-  - 파라미터 최적화 방법
+### 우선순위 3: Oracle Cloud 외부 접속
+- ⏳ 방화벽 설정
+- ⏳ 도메인 연결
+- ⏳ HTTPS 설정
 
 ---
 
-## 📊 완료 보고서 (reports/)
+## 📖 문서 읽는 순서
 
-**목적**: Phase/Week 완료 기록
+### 1. 처음 시작하는 경우
+1. `GAP_ANALYSIS.md` - 전체 계획 파악
+2. `PORT_ARCHITECTURE.md` - 아키텍처 이해
+3. `BACKTEST_GUIDE.md` - 백테스트 실행
 
-### Phase 2 (하이브리드 전략)
-- **[Phase 2 완료 요약](reports/phase2/phase2_complete_summary.md)** ⭐
-  - 최종 성과: CAGR 27.05%, Sharpe 1.51
-  - 4주간 작업 요약
-  
-- **[Week 1: Jason 통합](reports/phase2/week1_jason_integration.md)**
-  - KRX MAPS 엔진 통합
-  - 백테스트 결과: CAGR 39.02%
-  
-- **[Week 2: 방어 시스템](reports/phase2/week2_defense_system.md)**
-  - 손절, 급락 감지, 변동성 관리
-  
-- **[Week 3: 하이브리드 전략](reports/phase2/week3_hybrid_strategy.md)**
-  - 레짐 감지 + 포지션 조정
-  - 최종 성과: CAGR 27.05%
-  
-- **[Week 4: 자동화 시스템](reports/phase2/week4_automation_complete.md)**
-  - 실시간 모니터링, 알림, UI
-  - NAS 배포 스크립트
+### 2. NAS 배포하는 경우
+1. `NAS_REGIME_CRON_SETUP.md` - Cron 설정
+2. `REGIME_MONITORING_GUIDE.md` - 레짐 모니터링
 
-### 기타 보고서
-- **[Phase 3 완료](reports/phase3_completion_report.md)**
-  - Streamlit 대시보드, 장중 알림
-  
-- **[프로젝트 구조 점검](reports/project_structure_audit.md)**
-  - 구조 분석 및 개선 방안
-  
-- **[프로젝트 구조 정리](reports/project_structure_cleanup.md)**
-  - 정리 완료 요약
+### 3. Oracle Cloud 배포하는 경우
+1. `ORACLE_CLOUD_DEPLOYMENT.md` - 배포 가이드
+2. `ORACLE_CLOUD_DEPLOY_GUIDE.md` - 상세 가이드
 
 ---
 
-## 📝 계획서 (plans/)
+## 🔍 문서 검색
 
-**목적**: 미래 작업 계획
-
-- **[Phase 2 재테스트](plans/phase2_retest_plan.md)**
-  - Optuna 최적화 (50-100 trials)
-  - 워크포워드 분석
-  
-- **[Phase 5: Oracle Cloud](plans/phase5_oracle_cloud_plan.md)**
-  - 클라우드 배포 계획
-  
-- **[Phase 6: 고급 대시보드](plans/phase6_advanced_dashboard_plan.md)**
-  - 백테스트 실행 UI
-  - 전략 설정 UI
-  
-- **[하이브리드 전략 계획](plans/hybrid_strategy_plan.md)**
-  - 초기 계획서
-  
-- **[Week 4 자동화 계획](plans/week4_automation_plan.md)**
-  - 자동화 시스템 상세 계획
-
----
-
-## 🏗️ 설계 문서 (design/)
-
-**목적**: 아키텍처 및 설계
-
-- **[어댑터 설계](design/adapter_design.md)**
-  - Jason 백테스트 엔진 어댑터 패턴
-  
-- **[방어 시스템 설계](design/defense_system_design.md)**
-  - 손절, 급락 감지, 변동성 관리
-  
-- **[Jason 코드 분석](design/jason_code_analysis.md)**
-  - 원본 코드 분석 및 통합 방법
-  
-- **[아키텍처](design/architecture.md)**
-  - 전체 시스템 아키텍처
-  
-- **[전략 스펙](design/strategy_spec.md)**
-  - 전략 상세 스펙
-  
-- **[데이터 정책](design/data_policy.md)**
-  - 데이터 수집 및 관리 정책
-
----
-
-## 📅 일일 진행 기록 (progress/)
-
-**목적**: 날짜별 작업 기록
-
-- **[2025-11-06](progress/2025-11-06.md)** - Phase 4-1 완료
-- **[2025-11-07](progress/2025-11-07.md)** - Week 1 완료
-- **[2025-11-08](progress/2025-11-08.md)** - Week 4 완료, 구조 정리
-- **[최신 진행](progress/latest.md)** - 최신 작업 내역
-
----
-
-## 🗄️ 구버전 (archive/)
-
-**목적**: 참고용 보관
-
-- **[구버전 가이드](archive/old_guides/)** - Phase 3 이전 문서들
-- **[Phase 3 NAS 배포](archive/phase3_nas_deployment.md)** - 구버전 배포 가이드
-- **[세션 재개](archive/session_resume.md)** - 구버전 세션 기록
-
----
-
-## 📚 참고 자료 (reference/)
-
-**목적**: 외부 참고 자료
-
-- **[친구 전략](reference/friend_strategy/)** - 외부 전략 참고
-- **[알림 비교](reference/notification_comparison.md)** - 알림 시스템 비교
-- **[스케줄러 타이밍](reference/scheduler_timing_guide.md)** - 타이밍 가이드
-
----
-
-## 🚀 빠른 시작
-
-### 1. NAS 배포 (처음 사용자)
-1. **[NAS 배포 가이드](guides/nas/deployment.md)** 읽기
-2. 파일 전송 및 환경 설정
-3. 텔레그램 봇 설정
-4. Cron 스케줄러 설정
-5. 테스트 및 운영 시작
-
-### 2. 개발자
-1. **[개발 가이드](guides/development.md)** 읽기
-2. **[아키텍처](design/architecture.md)** 이해
-3. **[Phase 2 완료 요약](reports/phase2/phase2_complete_summary.md)** 확인
-
-### 3. 전략 이해
-1. **[하이브리드 전략 계획](plans/hybrid_strategy_plan.md)** 읽기
-2. **[Week 3 보고서](reports/phase2/week3_hybrid_strategy.md)** 확인
-3. **[방어 시스템 설계](design/defense_system_design.md)** 이해
-
----
-
-## 📊 주요 성과
-
-### Phase 2 최종 성과 (2022-01-01 ~ 2025-11-08)
-- **CAGR**: 27.05% (목표 90% 달성)
-- **Sharpe Ratio**: 1.51 ✅ (목표 100% 달성!)
-- **Max Drawdown**: -19.92% (방어 없음 대비 15% 개선)
-- **총 수익률**: 96.80%
-- **거래 수**: 1,406회
-
-### 자동화 성과
-- ✅ 평일 5분, 주말 30분 투자로 운영 가능
-- ✅ 텔레그램 자동 알림
-- ✅ 파라미터 실시간 조정
-- ✅ 백테스트 히스토리 관리
-
----
-
-## 🔗 관련 링크
-
-- **프로젝트 루트 README**: `../README.md`
-- **NAS 전용 README**: `../nas/README_NAS.md`
-- **자동화 스크립트 README**: `../scripts/automation/README.md`
+### 키워드별 문서
+- **레짐 감지**: `REGIME_MONITORING_GUIDE.md`, `NAS_REGIME_CRON_SETUP.md`
+- **백테스트**: `BACKTEST_GUIDE.md`
+- **배포**: `ORACLE_CLOUD_*.md`
+- **계획**: `GAP_ANALYSIS.md`
+- **완료**: `completed/PHASE*.md`
 
 ---
 
 ## 📝 문서 작성 규칙
 
-### 새 문서 추가 시
-1. **가이드**: `guides/` - 실전 사용 가이드
-2. **보고서**: `reports/` - 완료된 작업 기록
-3. **계획서**: `plans/` - 미래 작업 계획
-4. **설계**: `design/` - 아키텍처 및 설계
-5. **진행**: `progress/` - 일일 작업 기록
-
-### 파일명 규칙
-- 소문자 사용
-- 언더스코어(_) 사용
-- 명확한 이름
-- 예: `phase2_complete_summary.md`
+1. **제목**: 명확하고 간결하게
+2. **날짜**: 작성일 명시
+3. **상태**: ✅ 완료, ⏳ 진행 중, ❌ 미완료
+4. **이모지**: 가독성 향상
+5. **코드 블록**: 실행 가능한 명령어
 
 ---
 
-**작성일**: 2025-11-08  
-**관리자**: Hyungsoo Kim  
-**버전**: 2.0.0
+## 🎯 현재 상태 (2025-11-23)
+
+### 완료된 작업
+- ✅ Holdings 페이지 구축
+- ✅ 매도 신호 기능 구현
+- ✅ 네이버 금융 현재가 조회
+- ✅ NAS Cron 설정 가이드
+
+### 다음 작업
+- ⏳ WebUI 파라미터 설정
+- ⏳ Oracle Cloud 외부 접속
+- ⏳ 백테스트 UI 개선
+
+---
+
+**문의**: 문서 관련 문의는 이슈로 등록해주세요.
