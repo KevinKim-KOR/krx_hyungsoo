@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Wallet, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, AlertTriangle, Plus, Edit, Trash2, X } from 'lucide-react'
 
 interface Holding {
   id: number
@@ -17,11 +17,25 @@ interface Regime {
   us_market_regime?: string
 }
 
+interface ModalData {
+  type: 'add' | 'buy' | 'sell' | null
+  holding?: Holding
+}
+
 export default function Holdings() {
   const [holdings, setHoldings] = useState<Holding[]>([])
   const [regime, setRegime] = useState<Regime | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [modal, setModal] = useState<ModalData>({ type: null })
+  
+  // 폼 상태
+  const [formData, setFormData] = useState({
+    code: '',
+    name: '',
+    quantity: 0,
+    price: 0
+  })
 
   useEffect(() => {
     fetchData()
@@ -31,13 +45,11 @@ export default function Holdings() {
     try {
       setLoading(true)
       
-      // Holdings 조회
       const holdingsRes = await fetch('http://localhost:8000/api/v1/holdings')
       if (!holdingsRes.ok) throw new Error('Holdings 조회 실패')
       const holdingsData = await holdingsRes.json()
       setHoldings(holdingsData)
       
-      // Regime 조회
       const regimeRes = await fetch('http://localhost:8000/api/v1/regime/current')
       if (!regimeRes.ok) throw new Error('Regime 조회 실패')
       const regimeData = await regimeRes.json()
@@ -51,13 +63,84 @@ export default function Holdings() {
     }
   }
 
-  // 총 평가액, 손익 계산
+  // 신규 매수 또는 추가 매수
+  const handleAdd = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/holdings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+      if (!res.ok) throw new Error('추가 실패')
+      await fetchData()
+      closeModal()
+      alert('종목이 추가되었습니다!')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '추가 실패')
+    }
+  }
+
+  // 부분 매도
+  const handleSell = async () => {
+    if (!modal.holding) return
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/holdings/${modal.holding.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantity: formData.quantity,
+          price: formData.price,
+          action: 'sell'
+        })
+      })
+      if (!res.ok) throw new Error('매도 실패')
+      await fetchData()
+      closeModal()
+      alert('매도되었습니다!')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '매도 실패')
+    }
+  }
+
+  // 전체 매도 (삭제)
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`${name} 종목을 전체 매도하시겠습니까?`)) return
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/holdings/${id}`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) throw new Error('삭제 실패')
+      await fetchData()
+      alert('전체 매도되었습니다!')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '삭제 실패')
+    }
+  }
+
+  const openModal = (type: 'add' | 'buy' | 'sell', holding?: Holding) => {
+    setModal({ type, holding })
+    if (type === 'add') {
+      setFormData({ code: '', name: '', quantity: 0, price: 0 })
+    } else if (holding) {
+      setFormData({
+        code: holding.code,
+        name: holding.name,
+        quantity: 0,
+        price: holding.current_price
+      })
+    }
+  }
+
+  const closeModal = () => {
+    setModal({ type: null })
+    setFormData({ code: '', name: '', quantity: 0, price: 0 })
+  }
+
   const totalValue = holdings.reduce((sum, h) => sum + (h.current_price * h.quantity), 0)
   const totalCost = holdings.reduce((sum, h) => sum + (h.avg_price * h.quantity), 0)
   const totalProfit = totalValue - totalCost
   const totalProfitRate = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0
 
-  // 매도 신호 판단
   const getSellSignal = (holding: Holding) => {
     const profitRate = ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
     
@@ -107,12 +190,21 @@ export default function Holdings() {
           <Wallet className="w-8 h-8" />
           보유 종목
         </h1>
-        <button 
-          onClick={fetchData}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          새로고침
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => openModal('add')}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            종목 추가
+          </button>
+          <button 
+            onClick={fetchData}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            새로고침
+          </button>
+        </div>
       </div>
 
       {/* 현재 레짐 */}
@@ -178,6 +270,7 @@ export default function Holdings() {
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">손익</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">수익률</th>
                 <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">신호</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -215,6 +308,31 @@ export default function Holdings() {
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => openModal('buy', holding)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                          title="추가 매수"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openModal('sell', holding)}
+                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                          title="부분 매도"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(holding.id, holding.name)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          title="전체 매도"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
@@ -223,31 +341,121 @@ export default function Holdings() {
         </div>
       </div>
 
-      {/* 통계 및 안내 */}
+      {/* 통계 */}
       <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-sm text-gray-600 mb-2">
+        <div className="text-sm text-gray-600">
           총 {holdings.length}개 종목 보유 중
         </div>
-        <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border border-blue-200">
-          💡 <strong>종목 관리 방법:</strong>
-          <ul className="mt-2 ml-4 space-y-1">
-            <li>• <strong>신규 매수:</strong> API 문서에서 POST /api/v1/holdings 사용</li>
-            <li>• <strong>추가 매수:</strong> 같은 종목 코드로 POST 하면 자동으로 평균가 재계산</li>
-            <li>• <strong>부분 매도:</strong> PUT /api/v1/holdings/{'{id}'} (action: "sell")</li>
-            <li>• <strong>전체 매도:</strong> DELETE /api/v1/holdings/{'{id}'}</li>
-          </ul>
-          <div className="mt-2">
-            <a 
-              href="http://localhost:8000/api/docs" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-700 underline hover:text-blue-900"
-            >
-              → API 문서 열기 (http://localhost:8000/api/docs)
-            </a>
+      </div>
+
+      {/* 모달 */}
+      {modal.type && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">
+                {modal.type === 'add' && '신규 매수'}
+                {modal.type === 'buy' && `추가 매수 - ${modal.holding?.name}`}
+                {modal.type === 'sell' && `부분 매도 - ${modal.holding?.name}`}
+              </h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {modal.type === 'add' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">종목 코드</label>
+                    <input
+                      type="text"
+                      value={formData.code}
+                      onChange={(e) => setFormData({...formData, code: e.target.value})}
+                      className="w-full px-3 py-2 border rounded"
+                      placeholder="예: 005930"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">종목명</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className="w-full px-3 py-2 border rounded"
+                      placeholder="예: 삼성전자"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium mb-1">수량</label>
+                <input
+                  type="number"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border rounded"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">가격</label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border rounded"
+                  placeholder="0"
+                />
+              </div>
+
+              {modal.type === 'buy' && modal.holding && (
+                <div className="bg-blue-50 p-3 rounded text-sm">
+                  <div>현재 보유: {formatNumber(modal.holding.quantity)}주</div>
+                  <div>평균가: ₩{formatNumber(modal.holding.avg_price)}</div>
+                  <div className="mt-2 font-medium">
+                    추가 매수 후 평균가: ₩
+                    {formatNumber(
+                      ((modal.holding.avg_price * modal.holding.quantity) + (formData.price * formData.quantity)) /
+                      (modal.holding.quantity + formData.quantity)
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {modal.type === 'sell' && modal.holding && (
+                <div className="bg-orange-50 p-3 rounded text-sm">
+                  <div>현재 보유: {formatNumber(modal.holding.quantity)}주</div>
+                  <div>매도 후 잔량: {formatNumber(modal.holding.quantity - formData.quantity)}주</div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-2 border rounded hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={modal.type === 'sell' ? handleSell : handleAdd}
+                  className={`flex-1 px-4 py-2 text-white rounded ${
+                    modal.type === 'sell' 
+                      ? 'bg-orange-600 hover:bg-orange-700' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {modal.type === 'add' && '매수'}
+                  {modal.type === 'buy' && '추가 매수'}
+                  {modal.type === 'sell' && '매도'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
