@@ -15,9 +15,44 @@ project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from core.db import SessionLocal, Holdings
-from core.data_loader import get_ohlcv
+import requests
+from bs4 import BeautifulSoup
 
 router = APIRouter()
+
+
+def get_current_price(code: str, avg_price: float) -> float:
+    """현재가 조회 (네이버 금융 사용)"""
+    try:
+        # 네이버 금융 URL
+        url = f"https://finance.naver.com/item/main.naver?code={code}"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=3)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 현재가 추출
+        price_element = soup.select_one('.no_today .blind')
+        if price_element:
+            price_text = price_element.text.strip().replace(',', '')
+            return float(price_text)
+        
+        # 대체 방법: p11 클래스
+        price_element = soup.select_one('.p11 .blind')
+        if price_element:
+            price_text = price_element.text.strip().replace(',', '')
+            return float(price_text)
+            
+    except Exception as e:
+        print(f"현재가 조회 실패 ({code}): {e}")
+    
+    # 실패 시 평균가 반환
+    return avg_price
 
 
 class HoldingResponse(BaseModel):
@@ -55,11 +90,7 @@ def get_holdings():
         result = []
         for h in holdings:
             # 현재가 조회
-            try:
-                df = get_ohlcv(h.code, period='1y')
-                current_price = float(df['close'].iloc[-1]) if df is not None and len(df) > 0 else h.avg_price
-            except:
-                current_price = h.avg_price
+            current_price = get_current_price(h.code, h.avg_price)
             
             result.append(HoldingResponse(
                 id=h.id,
@@ -95,11 +126,7 @@ def add_holding(data: HoldingCreate):
             session.refresh(existing)
             
             # 현재가 조회
-            try:
-                df = get_ohlcv(existing.code, period='1y')
-                current_price = float(df['close'].iloc[-1]) if df is not None and len(df) > 0 else existing.avg_price
-            except:
-                current_price = existing.avg_price
+            current_price = get_current_price(existing.code, existing.avg_price)
             
             return HoldingResponse(
                 id=existing.id,
@@ -122,11 +149,7 @@ def add_holding(data: HoldingCreate):
             session.refresh(new_holding)
             
             # 현재가 조회
-            try:
-                df = get_ohlcv(new_holding.code, period='1y')
-                current_price = float(df['close'].iloc[-1]) if df is not None and len(df) > 0 else new_holding.avg_price
-            except:
-                current_price = new_holding.avg_price
+            current_price = get_current_price(new_holding.code, new_holding.avg_price)
             
             return HoldingResponse(
                 id=new_holding.id,
@@ -167,11 +190,7 @@ def update_holding(holding_id: int, data: HoldingUpdate):
         session.refresh(holding)
         
         # 현재가 조회
-        try:
-            df = get_ohlcv(holding.code, period='1y')
-            current_price = float(df['close'].iloc[-1]) if df is not None and len(df) > 0 else holding.avg_price
-        except:
-            current_price = holding.avg_price
+        current_price = get_current_price(holding.code, holding.avg_price)
         
         return HoldingResponse(
             id=holding.id,
