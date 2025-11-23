@@ -21,6 +21,15 @@ except (ImportError, TypeError) as e:
     YFINANCE_AVAILABLE = False
     yf = None
 
+# FinanceDataReader 선택적 import (Python 3.8 호환, KOSPI 지수용)
+try:
+    import FinanceDataReader as fdr
+    FDR_AVAILABLE = True
+except ImportError:
+    logging.warning("FinanceDataReader 사용 불가")
+    FDR_AVAILABLE = False
+    fdr = None
+
 log = logging.getLogger(__name__)
 
 CACHE_DIR = Path("data/cache/ohlcv")
@@ -231,8 +240,9 @@ def get_kospi_index_naver() -> Optional[float]:
 
 def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
     """
-    네이버 금융 폴백 (yfinance 실패 시)
-    현재는 현재가만 제공, 과거 데이터는 yfinance 사용
+    폴백 데이터 로더 (yfinance 실패 시)
+    1. FinanceDataReader 시도 (KOSPI 지수, 한국 주식)
+    2. 네이버 금융 시도 (현재가만)
     
     Args:
         symbol: 종목 코드
@@ -240,15 +250,53 @@ def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
         end: 종료일
     
     Returns:
-        DataFrame (현재는 빈 DataFrame, 추후 확장 가능)
+        DataFrame with OHLCV data
     """
-    log.info(f"네이버 금융 폴백 시도: {symbol}")
+    log.info(f"폴백 데이터 로더 시도: {symbol}")
+    
+    # 1. FinanceDataReader 시도 (Python 3.8 호환)
+    if FDR_AVAILABLE:
+        try:
+            log.info(f"FinanceDataReader로 {symbol} 조회 시도")
+            
+            # 심볼 변환 (yfinance → FDR)
+            fdr_symbol = symbol
+            if symbol == '^KS11':
+                fdr_symbol = 'KS11'  # KOSPI 지수
+            elif symbol == '^KQ11':
+                fdr_symbol = 'KQ11'  # KOSDAQ 지수
+            elif symbol.endswith('.KS'):
+                fdr_symbol = symbol.replace('.KS', '')  # 한국 주식
+            
+            df = fdr.DataReader(fdr_symbol, start, end)
+            
+            if df is not None and not df.empty:
+                log.info(f"FinanceDataReader 성공: {len(df)}행")
+                
+                # 정규화
+                df = _normalize_df(df)
+                
+                # AdjClose 컬럼 추가 (없으면)
+                if 'AdjClose' not in df.columns and 'Close' in df.columns:
+                    df['AdjClose'] = df['Close']
+                
+                return df
+            
+        except Exception as e:
+            log.warning(f"FinanceDataReader 실패: {e}")
+    
+    # 2. 네이버 금융 시도 (현재가만)
+    log.info(f"네이버 금융으로 현재가 조회 시도: {symbol}")
     
     # 한국 주식 코드 추출 (예: '005930.KS' -> '005930')
-    code = symbol.split('.')[0]
+    code = symbol.split('.')[0].replace('^', '')
     
-    # 현재가만 조회 가능
-    current_price = get_current_price_naver(code)
+    # KOSPI 지수
+    if symbol == '^KS11' or code == 'KS11':
+        current_price = get_kospi_index_naver()
+    else:
+        current_price = get_current_price_naver(code)
+    
     if current_price:
         # 현재 날짜로 단일 행 DataFrame 생성
         today = pd.Timestamp.now().normalize()
@@ -261,6 +309,8 @@ def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
             'AdjClose': [current_price]
         }, index=[today])
         
+        log.info(f"네이버 금융 현재가 조회 성공: {current_price}")
         return df
     
+    log.error(f"모든 폴백 실패: {symbol}")
     return pd.DataFrame()
