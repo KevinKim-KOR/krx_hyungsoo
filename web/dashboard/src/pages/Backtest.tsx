@@ -11,7 +11,6 @@ import { generateBacktestPrompt } from '../utils/promptGenerator';
 export default function Backtest() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [running, setRunning] = useState(false);
   const [parameters, setParameters] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -21,7 +20,7 @@ export default function Backtest() {
     []
   );
 
-  // 파라미터 및 히스토리 로드
+  // 파라미터 및 히스토리 자동 로드
   useEffect(() => {
     loadParameters();
     loadHistory();
@@ -89,10 +88,19 @@ export default function Backtest() {
     try {
       const params = await apiClient.applyPreset(presetName);
       setParameters(params);
-      alert(`${presetName} 프리셋이 적용되었습니다.`);
+      // 프리셋 적용 시 모달 닫지 않음
     } catch (err: any) {
       alert(`프리셋 적용 실패: ${err.message}`);
     }
+  };
+
+  const handleRefreshHistory = async () => {
+    await loadHistory();
+  };
+
+  const handleSelectHistory = (item: any) => {
+    // 히스토리 항목 선택 시 파라미터 적용
+    setParameters(item.parameters);
   };
 
   const prompt = useMemo(() => {
@@ -148,19 +156,19 @@ export default function Backtest() {
             파라미터 설정
           </button>
           <button
+            onClick={handleRefreshHistory}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <History className="h-4 w-4" />
+            히스토리 새로고침
+          </button>
+          <button
             onClick={handleRunBacktest}
             disabled={running}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Play className="h-4 w-4" />
             {running ? '실행 중...' : '백테스트 실행'}
-          </button>
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <History className="h-4 w-4" />
-            히스토리
           </button>
           <button
             onClick={() => setShowPrompt(true)}
@@ -237,20 +245,19 @@ export default function Backtest() {
         </div>
       )}
 
-      {/* 히스토리 */}
-      {showHistory && (
-        <div className="bg-card rounded-lg border p-6">
-          <h3 className="text-xl font-bold mb-4">백테스트 히스토리</h3>
-          <HistoryTable
-            items={history}
-            metricColumns={[
-              { key: 'cagr', label: 'CAGR', format: (v) => `${v.toFixed(2)}%` },
-              { key: 'sharpe', label: 'Sharpe', format: (v) => v.toFixed(2) },
-              { key: 'mdd', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
-            ]}
-          />
-        </div>
-      )}
+      {/* 히스토리 - 항상 표시 */}
+      <div className="bg-card rounded-lg border p-6">
+        <h3 className="text-xl font-bold mb-4">백테스트 히스토리</h3>
+        <HistoryTable
+          items={history}
+          metricColumns={[
+            { key: 'cagr', label: 'CAGR', format: (v) => `${v.toFixed(2)}%` },
+            { key: 'sharpe', label: 'Sharpe', format: (v) => v.toFixed(2) },
+            { key: 'mdd', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
+          ]}
+          onSelect={handleSelectHistory}
+        />
+      </div>
 
       {/* 파라미터 설정 모달 */}
       {parameters && (
@@ -271,8 +278,15 @@ export default function Backtest() {
             { name: 'balanced', label: '균형', description: '수익과 리스크 균형' },
             { name: 'aggressive', label: '공격적', description: '높은 수익 추구' },
           ]}
+          history={history}
+          historyMetricColumns={[
+            { key: 'cagr', label: 'CAGR', format: (v) => `${v.toFixed(2)}%` },
+            { key: 'sharpe', label: 'Sharpe', format: (v) => v.toFixed(2) },
+            { key: 'mdd', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
+          ]}
           onSave={handleSaveParameters}
           onApplyPreset={handleApplyPreset}
+          onSelectHistory={handleSelectHistory}
         />
       )}
 

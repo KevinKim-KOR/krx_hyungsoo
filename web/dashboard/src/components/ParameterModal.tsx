@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { HistoryTable } from './HistoryTable';
 
 interface ParameterField {
   name: string;
@@ -18,8 +19,11 @@ interface ParameterModalProps {
   title: string;
   fields: ParameterField[];
   presets?: { name: string; label: string; description: string }[];
+  history?: any[];
+  historyMetricColumns?: { key: string; label: string; format?: (value: number) => string }[];
   onSave: (params: Record<string, any>) => void;
   onApplyPreset?: (presetName: string) => void;
+  onSelectHistory?: (item: any) => void;
 }
 
 export function ParameterModal({
@@ -28,10 +32,14 @@ export function ParameterModal({
   title,
   fields,
   presets,
+  history,
+  historyMetricColumns,
   onSave,
   onApplyPreset,
+  onSelectHistory,
 }: ParameterModalProps) {
   const [params, setParams] = useState<Record<string, any>>({});
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -54,10 +62,23 @@ export function ParameterModal({
     onClose();
   };
 
+  const handleCancel = () => {
+    // 변경사항 버리고 닫기
+    onClose();
+  };
+
   const handlePreset = (presetName: string) => {
     if (onApplyPreset) {
       onApplyPreset(presetName);
-      onClose();
+      // 프리셋 적용 후 모달 닫지 않음 (사용자가 확인 후 저장)
+    }
+  };
+
+  const handleSelectHistory = (item: any) => {
+    if (onSelectHistory) {
+      onSelectHistory(item);
+      // 히스토리 선택 시 파라미터 적용
+      setParams(item.parameters);
     }
   };
 
@@ -93,6 +114,28 @@ export function ParameterModal({
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* History */}
+          {history && history.length > 0 && (
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold">히스토리</h3>
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  {showHistory ? '숨기기' : '보기'}
+                </button>
+              </div>
+              {showHistory && historyMetricColumns && (
+                <HistoryTable
+                  items={history}
+                  metricColumns={historyMetricColumns}
+                  onSelect={handleSelectHistory}
+                />
+              )}
             </div>
           )}
 
@@ -144,7 +187,7 @@ export function ParameterModal({
         {/* Footer */}
         <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
           <button
-            onClick={onClose}
+            onClick={handleCancel}
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
           >
             취소
@@ -153,7 +196,7 @@ export function ParameterModal({
             onClick={handleSave}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            저장
+            저장 및 적용
           </button>
         </div>
       </div>

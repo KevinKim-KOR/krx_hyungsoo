@@ -1,0 +1,20 @@
+{
+  "start_date": "2022-01-01",
+  "end_date": "2025-11-08",
+  "initial_capital": 10000000,
+  "ma_period": 60,
+  "rsi_period": 14,
+  "rsi_overbought": 70,
+  "rsi_oversold": 30,
+  "maps_buy_threshold": 0.0,
+  "maps_sell_threshold": -5.0,
+  "short_ma_period": 50,
+  "long_ma_period": 200,
+  "bull_threshold": 0.03,
+  "bear_threshold": -0.03,
+  "max_position_size": 0.15,
+  "top_n": 15,
+  "rebalancing": "daily",
+  "stop_loss": -0.03,
+  "take_profit": 0.15
+}
