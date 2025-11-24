@@ -1,0 +1,51 @@
+# ============================================
+# KRX Alertor 자동화 스케줄 (2025-11-24 수정)
+# ============================================
+# NAS: Synology DS220j
+# Python: 3.8
+# 프로젝트: /volume2/homes/Hyungsoo/krx/krx_alertor_modular
+# ============================================
+
+# 환경 변수 설정 (모든 작업에 적용)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TZ=Asia/Seoul
+PROJECT_ROOT=/volume2/homes/Hyungsoo/krx/krx_alertor_modular
+
+# 평일 알림
+# --------------------------------------------
+
+# 09:00 - 장시작 알림 (포트폴리오 현황)
+0 9 * * 1-5 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && source config/env.nas.sh && python3.8 scripts/nas/market_open_alert.py >> logs/cron_market_open.log 2>&1
+
+# 10:00, 11:00, 13:00, 14:00 - 장중 알림 (ETF 급등/급락, 거래대금 50억 이상)
+0 10,11,13,14 * * 1-5 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && source config/env.nas.sh && python3.8 scripts/nas/intraday_alert.py >> logs/cron_intraday.log 2>&1
+
+# 15:30 - 손절 모니터링 (Phase 4: 손절 대상 -7% 이하, 손절 근접 -5%~-7%)
+30 15 * * 1-5 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && source config/env.nas.sh && bash scripts/linux/jobs/stop_loss_check.sh >> logs/cron_stop_loss.log 2>&1
+
+# 16:00 - 일일 종합 리포트 (포트폴리오 + 레짐 + 신호 + 당일 성과)
+0 16 * * 1-5 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && source config/env.nas.sh && bash scripts/linux/jobs/daily_scan_notify.sh >> logs/cron_daily_report.log 2>&1
+
+# 주말 알림
+# --------------------------------------------
+
+# 토요일 10:00 - 주간 리포트 (Phase 4: 주간 성과 + 리스크 분석 + 다음 주 전략)
+0 10 * * 6 cd /volume2/homes/Hyungsoo/krx/krx_alertor_modular && source config/env.nas.sh && python3.8 scripts/nas/weekly_report_alert.py >> logs/cron_weekly_report.log 2>&1
+
+# ============================================
+# 적용 방법:
+# 1. NAS SSH 접속: ssh admin@nas-ip
+# 2. 백업: crontab -l > ~/crontab_backup_$(date +%Y%m%d).txt
+# 3. 편집: crontab -e
+# 4. 이 파일 내용 복사 후 붙여넣기
+# 5. 저장: :wq
+# 6. 확인: crontab -l
+# ============================================
+
+# ============================================
+# 변경 사항 (2025-11-24):
+# - 모든 작업에 "source config/env.nas.sh" 추가
+# - 각 작업별 로그 파일 분리 (디버깅 용이)
+# - SHELL, PATH, TZ 환경 변수 명시
+# ============================================
