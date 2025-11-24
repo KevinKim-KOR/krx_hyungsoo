@@ -113,6 +113,40 @@ class ApiClient {
   async saveBacktestHistory(history: any): Promise<any> {
     return this.post<any>('/api/v1/backtest/history/save', history);
   }
+
+  // ML Parameters
+  async getMLParameters(): Promise<any> {
+    return this.fetch<any>('/api/v1/ml/parameters/current');
+  }
+
+  async updateMLParameters(params: any): Promise<any> {
+    return this.post<any>('/api/v1/ml/parameters/update', params);
+  }
+
+  async getMLHistory(): Promise<any[]> {
+    return this.fetch<any[]>('/api/v1/ml/parameters/history');
+  }
+
+  async saveMLHistory(history: any): Promise<any> {
+    return this.post<any>('/api/v1/ml/parameters/history/save', history);
+  }
+
+  // Lookback Parameters
+  async getLookbackParameters(): Promise<any> {
+    return this.fetch<any>('/api/v1/lookback/parameters/current');
+  }
+
+  async updateLookbackParameters(params: any): Promise<any> {
+    return this.post<any>('/api/v1/lookback/parameters/update', params);
+  }
+
+  async getLookbackHistory(): Promise<any[]> {
+    return this.fetch<any[]>('/api/v1/lookback/parameters/history');
+  }
+
+  async saveLookbackHistory(history: any): Promise<any> {
+    return this.post<any>('/api/v1/lookback/parameters/history/save', history);
+  }
 }
 
 export const apiClient = new ApiClient();

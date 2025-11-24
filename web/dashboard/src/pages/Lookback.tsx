@@ -1,9 +1,11 @@
 import { AlertCircle, Play, RefreshCw, MessageSquare, Settings, History } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
 import type { LookbackAnalysis } from '../types';
 import { AIPromptModal } from '../components/AIPromptModal';
+import { ParameterModal } from '../components/ParameterModal';
+import { HistoryTable } from '../components/HistoryTable';
 import { generateLookbackPrompt } from '../utils/promptGenerator';
 
 export default function Lookback() {
@@ -11,6 +13,8 @@ export default function Lookback() {
   const [runError, setRunError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [parameters, setParameters] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
 
   const { data: analysis, loading, error } = useApi<LookbackAnalysis>(
     () => apiClient.getLookbackAnalysis(),
@@ -21,6 +25,47 @@ export default function Lookback() {
     if (!analysis) return '';
     return generateLookbackPrompt(analysis);
   }, [analysis]);
+
+  useEffect(() => {
+    loadParameters();
+    loadHistory();
+  }, []);
+
+  const loadParameters = async () => {
+    try {
+      const params = await apiClient.getLookbackParameters();
+      setParameters(params);
+    } catch (err) {
+      console.error('파라미터 로드 실패:', err);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const hist = await apiClient.getLookbackHistory();
+      setHistory(hist);
+    } catch (err) {
+      console.error('히스토리 로드 실패:', err);
+    }
+  };
+
+  const handleSaveParameters = async (params: any) => {
+    try {
+      await apiClient.updateLookbackParameters(params);
+      setParameters(params);
+      alert('파라미터가 저장되었습니다.');
+    } catch (err: any) {
+      alert(`저장 실패: ${err.message}`);
+    }
+  };
+
+  const handleRefreshHistory = async () => {
+    await loadHistory();
+  };
+
+  const handleSelectHistory = (item: any) => {
+    setParameters(item.parameters);
+  };
 
   const handleRunAnalysis = async () => {
     try {
@@ -77,15 +122,13 @@ export default function Lookback() {
           <button
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            title="파라미터 설정 (준비 중)"
           >
             <Settings className="h-4 w-4" />
             파라미터 설정
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleRefreshHistory}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            title="히스토리 새로고침"
           >
             <History className="h-4 w-4" />
             히스토리 새로고침
@@ -170,6 +213,44 @@ export default function Lookback() {
           </table>
         </div>
       </div>
+
+      {/* 히스토리 */}
+      <div className="bg-card rounded-lg border p-6">
+        <h3 className="text-xl font-bold mb-4">룩백 분석 히스토리</h3>
+        <HistoryTable
+          items={history}
+          metricColumns={[
+            { key: 'total_return', label: '총 수익률', format: (v) => `${v.toFixed(2)}%` },
+            { key: 'sharpe_ratio', label: 'Sharpe', format: (v) => v.toFixed(2) },
+            { key: 'max_drawdown', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
+          ]}
+          onSelect={handleSelectHistory}
+        />
+      </div>
+
+      {/* 파라미터 설정 모달 */}
+      {parameters && (
+        <ParameterModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          title="룩백 분석 파라미터 설정"
+          fields={[
+            { name: 'lookback_days', label: '룩백 기간 (일)', type: 'number', value: parameters.lookback_days, min: 30, max: 365 },
+            { name: 'rebalance_frequency', label: '리밸런싱 주기 (일)', type: 'number', value: parameters.rebalance_frequency, min: 1, max: 90 },
+            { name: 'min_weight', label: '최소 비중', type: 'number', value: parameters.min_weight, min: 0, max: 0.5, step: 0.01 },
+            { name: 'max_weight', label: '최대 비중', type: 'number', value: parameters.max_weight, min: 0, max: 1, step: 0.01 },
+            { name: 'risk_free_rate', label: '무위험 수익률', type: 'number', value: parameters.risk_free_rate, min: 0, max: 0.1, step: 0.001 },
+          ]}
+          history={history}
+          historyMetricColumns={[
+            { key: 'total_return', label: '총 수익률', format: (v) => `${v.toFixed(2)}%` },
+            { key: 'sharpe_ratio', label: 'Sharpe', format: (v) => v.toFixed(2) },
+            { key: 'max_drawdown', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
+          ]}
+          onSave={handleSaveParameters}
+          onSelectHistory={handleSelectHistory}
+        />
+      )}
 
       {/* AI 프롬프트 모달 */}
       <AIPromptModal

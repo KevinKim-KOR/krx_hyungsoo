@@ -1,9 +1,11 @@
 import { AlertCircle, Play, RefreshCw, MessageSquare, Settings, History } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
-import type { MLModelInfo } from '../types';
+import { type MLModelInfo } from '../types';
 import { AIPromptModal } from '../components/AIPromptModal';
+import { ParameterModal } from '../components/ParameterModal';
+import { HistoryTable } from '../components/HistoryTable';
 import { generateMLPrompt } from '../utils/promptGenerator';
 
 export default function MLModel() {
@@ -11,6 +13,8 @@ export default function MLModel() {
   const [runError, setRunError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [parameters, setParameters] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
 
   const { data: modelInfo, loading, error } = useApi<MLModelInfo>(
     () => apiClient.getMLModelInfo(),
@@ -21,6 +25,47 @@ export default function MLModel() {
     if (!modelInfo) return '';
     return generateMLPrompt(modelInfo);
   }, [modelInfo]);
+
+  useEffect(() => {
+    loadParameters();
+    loadHistory();
+  }, []);
+
+  const loadParameters = async () => {
+    try {
+      const params = await apiClient.getMLParameters();
+      setParameters(params);
+    } catch (err) {
+      console.error('파라미터 로드 실패:', err);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const hist = await apiClient.getMLHistory();
+      setHistory(hist);
+    } catch (err) {
+      console.error('히스토리 로드 실패:', err);
+    }
+  };
+
+  const handleSaveParameters = async (params: any) => {
+    try {
+      await apiClient.updateMLParameters(params);
+      setParameters(params);
+      alert('파라미터가 저장되었습니다.');
+    } catch (err: any) {
+      alert(`저장 실패: ${err.message}`);
+    }
+  };
+
+  const handleRefreshHistory = async () => {
+    await loadHistory();
+  };
+
+  const handleSelectHistory = (item: any) => {
+    setParameters(item.parameters);
+  };
 
   const handleTrainModel = async () => {
     try {
@@ -77,15 +122,13 @@ export default function MLModel() {
           <button
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            title="파라미터 설정 (준비 중)"
           >
             <Settings className="h-4 w-4" />
             파라미터 설정
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleRefreshHistory}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            title="히스토리 새로고침"
           >
             <History className="h-4 w-4" />
             히스토리 새로고침
@@ -164,6 +207,43 @@ export default function MLModel() {
           ))}
         </div>
       </div>
+
+      {/* 히스토리 */}
+      <div className="bg-card rounded-lg border p-6">
+        <h3 className="text-xl font-bold mb-4">ML 모델 히스토리</h3>
+        <HistoryTable
+          items={history}
+          metricColumns={[
+            { key: 'train_score', label: 'Train R²', format: (v) => v.toFixed(4) },
+            { key: 'test_score', label: 'Test R²', format: (v) => v.toFixed(4) },
+          ]}
+          onSelect={handleSelectHistory}
+        />
+      </div>
+
+      {/* 파라미터 설정 모달 */}
+      {parameters && (
+        <ParameterModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          title="ML 모델 파라미터 설정"
+          fields={[
+            { name: 'n_estimators', label: '트리 개수', type: 'number', value: parameters.n_estimators, min: 10, max: 500 },
+            { name: 'max_depth', label: '최대 깊이', type: 'number', value: parameters.max_depth, min: 1, max: 20 },
+            { name: 'learning_rate', label: '학습률', type: 'number', value: parameters.learning_rate, min: 0.001, max: 1, step: 0.001 },
+            { name: 'min_child_weight', label: '최소 자식 가중치', type: 'number', value: parameters.min_child_weight, min: 1, max: 10 },
+            { name: 'subsample', label: '서브샘플 비율', type: 'number', value: parameters.subsample, min: 0.1, max: 1, step: 0.1 },
+            { name: 'colsample_bytree', label: '특징 샘플링', type: 'number', value: parameters.colsample_bytree, min: 0.1, max: 1, step: 0.1 },
+          ]}
+          history={history}
+          historyMetricColumns={[
+            { key: 'train_score', label: 'Train R²', format: (v) => v.toFixed(4) },
+            { key: 'test_score', label: 'Test R²', format: (v) => v.toFixed(4) },
+          ]}
+          onSave={handleSaveParameters}
+          onSelectHistory={handleSelectHistory}
+        />
+      )}
 
       {/* AI 프롬프트 모달 */}
       <AIPromptModal
