@@ -53,17 +53,20 @@ class TelegramNotifier:
             logger.warning("텔레그램 설정이 없습니다. 로그 모드로 작동합니다.")
             self.enabled = False
     
-    def send_message(self, message: str, parse_mode: str = 'Markdown'):
+    def send_message(self, message: str, parse_mode: str = 'Markdown') -> bool:
         """
         메시지 전송
         
         Args:
             message: 전송할 메시지
             parse_mode: 파싱 모드 (Markdown, HTML)
+            
+        Returns:
+            bool: 전송 성공 여부
         """
         if not self.enabled:
-            logger.info(f"[텔레그램 알림]\n{message}")
-            return
+            logger.info(f"[텔레그램 알림 - 비활성화 모드]\n{message}")
+            return False
         
         try:
             import requests
@@ -73,11 +76,13 @@ class TelegramNotifier:
                 'text': message,
                 'parse_mode': parse_mode
             }
-            response = requests.post(url, json=data)
+            response = requests.post(url, json=data, timeout=10)
             response.raise_for_status()
             logger.info(f"텔레그램 메시지 전송 성공: {len(message)}자")
+            return True
         except Exception as e:
             logger.error(f"텔레그램 전송 실패: {e}")
+            return False
     
     def send_buy_signals(self, signals: List[Dict]):
         """

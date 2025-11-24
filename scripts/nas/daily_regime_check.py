@@ -14,6 +14,7 @@ NAS 일일 레짐 감지 및 알림
 import sys
 import json
 import logging
+import os
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
@@ -21,6 +22,18 @@ from typing import Dict, List, Optional
 # 프로젝트 루트 추가
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
+
+# 환경 변수 로드 (.env 파일)
+try:
+    from dotenv import load_dotenv
+    env_file = project_root / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+        print(f"✅ 환경 변수 로드: {env_file}")
+    else:
+        print(f"⚠️ .env 파일 없음: {env_file}")
+except ImportError:
+    print("⚠️ python-dotenv 패키지 없음 - 환경 변수 수동 설정 필요")
 
 from core.strategy.market_regime_detector import MarketRegimeDetector
 from core.strategy.us_market_monitor import USMarketMonitor
@@ -499,10 +512,25 @@ def send_telegram_alert(message: str) -> bool:
         # 환경 변수에서 설정 읽기
         import os
         enabled = os.getenv('TELEGRAM_ENABLED', 'false').lower() == 'true'
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN') or os.getenv('TG_TOKEN')
+        chat_id = os.getenv('TELEGRAM_CHAT_ID') or os.getenv('TG_CHAT_ID')
         
-        logger.info(f"텔레그램 전송 시도 (enabled={enabled})")
+        logger.info(f"텔레그램 설정 확인:")
+        logger.info(f"  - TELEGRAM_ENABLED: {enabled}")
+        logger.info(f"  - BOT_TOKEN 존재: {bool(bot_token)}")
+        logger.info(f"  - CHAT_ID 존재: {bool(chat_id)}")
         
-        notifier = TelegramNotifier(enabled=enabled)
+        # enabled가 false여도 bot_token과 chat_id가 있으면 활성화
+        if not enabled and bot_token and chat_id:
+            logger.info("  - TELEGRAM_ENABLED=false이지만 토큰/ID 있음 → 활성화")
+            enabled = True
+        
+        notifier = TelegramNotifier(
+            bot_token=bot_token,
+            chat_id=chat_id,
+            enabled=enabled
+        )
+        
         result = notifier.send_message(message)
         
         # 로그 출력
@@ -516,6 +544,10 @@ def send_telegram_alert(message: str) -> bool:
             return True
         else:
             logger.error("❌ 텔레그램 알림 전송 실패 (result=False)")
+            logger.error("   가능한 원인:")
+            logger.error("   1. TELEGRAM_ENABLED=false")
+            logger.error("   2. BOT_TOKEN 또는 CHAT_ID 없음")
+            logger.error("   3. 네트워크 오류")
             return False
             
     except Exception as e:
