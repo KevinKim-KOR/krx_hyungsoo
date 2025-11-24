@@ -6,6 +6,7 @@ import type { BacktestResult } from '../types';
 import { AIPromptModal } from '../components/AIPromptModal';
 import { ParameterModal } from '../components/ParameterModal';
 import { HistoryTable } from '../components/HistoryTable';
+import { ComparisonChart } from '../components/ComparisonChart';
 import { generateBacktestPrompt } from '../utils/promptGenerator';
 
 export default function Backtest() {
@@ -14,6 +15,8 @@ export default function Backtest() {
   const [running, setRunning] = useState(false);
   const [parameters, setParameters] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonItems, setComparisonItems] = useState<any[]>([]);
 
   const { data: results, loading, error } = useApi<BacktestResult[]>(
     () => apiClient.getBacktestResults(),
@@ -101,6 +104,11 @@ export default function Backtest() {
   const handleSelectHistory = (item: any) => {
     // 히스토리 항목 선택 시 파라미터 적용
     setParameters(item.parameters);
+  };
+
+  const handleCompare = (items: any[]) => {
+    setComparisonItems(items);
+    setShowComparison(true);
   };
 
   const prompt = useMemo(() => {
@@ -256,6 +264,7 @@ export default function Backtest() {
             { key: 'mdd', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
           ]}
           onSelect={handleSelectHistory}
+          onCompare={handleCompare}
         />
       </div>
 
@@ -290,6 +299,19 @@ export default function Backtest() {
         />
       )}
 
+      {/* 비교 차트 */}
+      <ComparisonChart
+        isOpen={showComparison}
+        onClose={() => setShowComparison(false)}
+        items={comparisonItems}
+        metricColumns={[
+          { key: 'cagr', label: 'CAGR', format: (v) => `${v.toFixed(2)}%` },
+          { key: 'sharpe', label: 'Sharpe', format: (v) => v.toFixed(2) },
+          { key: 'mdd', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
+        ]}
+        title="백테스트 결과 비교"
+      />
+
       {/* AI 프롬프트 모달 */}
       <AIPromptModal
         isOpen={showPrompt}
@@ -298,5 +320,5 @@ export default function Backtest() {
         title="백테스트 결과 - AI 질문"
       />
     </div>
-  )
+  );
 }

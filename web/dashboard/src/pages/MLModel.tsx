@@ -6,6 +6,7 @@ import { type MLModelInfo } from '../types';
 import { AIPromptModal } from '../components/AIPromptModal';
 import { ParameterModal } from '../components/ParameterModal';
 import { HistoryTable } from '../components/HistoryTable';
+import { ComparisonChart } from '../components/ComparisonChart';
 import { generateMLPrompt } from '../utils/promptGenerator';
 
 export default function MLModel() {
@@ -15,6 +16,8 @@ export default function MLModel() {
   const [showSettings, setShowSettings] = useState(false);
   const [parameters, setParameters] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonItems, setComparisonItems] = useState<any[]>([]);
 
   const { data: modelInfo, loading, error } = useApi<MLModelInfo>(
     () => apiClient.getMLModelInfo(),
@@ -65,6 +68,11 @@ export default function MLModel() {
 
   const handleSelectHistory = (item: any) => {
     setParameters(item.parameters);
+  };
+
+  const handleCompare = (items: any[]) => {
+    setComparisonItems(items);
+    setShowComparison(true);
   };
 
   const handleTrainModel = async () => {
@@ -218,6 +226,7 @@ export default function MLModel() {
             { key: 'test_score', label: 'Test R²', format: (v) => v.toFixed(4) },
           ]}
           onSelect={handleSelectHistory}
+          onCompare={handleCompare}
         />
       </div>
 
@@ -244,6 +253,18 @@ export default function MLModel() {
           onSelectHistory={handleSelectHistory}
         />
       )}
+
+      {/* 비교 차트 */}
+      <ComparisonChart
+        isOpen={showComparison}
+        onClose={() => setShowComparison(false)}
+        items={comparisonItems}
+        metricColumns={[
+          { key: 'train_score', label: 'Train R²', format: (v) => v.toFixed(4) },
+          { key: 'test_score', label: 'Test R²', format: (v) => v.toFixed(4) },
+        ]}
+        title="ML 모델 성능 비교"
+      />
 
       {/* AI 프롬프트 모달 */}
       <AIPromptModal

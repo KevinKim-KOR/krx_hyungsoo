@@ -6,6 +6,7 @@ import type { LookbackAnalysis } from '../types';
 import { AIPromptModal } from '../components/AIPromptModal';
 import { ParameterModal } from '../components/ParameterModal';
 import { HistoryTable } from '../components/HistoryTable';
+import { ComparisonChart } from '../components/ComparisonChart';
 import { generateLookbackPrompt } from '../utils/promptGenerator';
 
 export default function Lookback() {
@@ -15,6 +16,8 @@ export default function Lookback() {
   const [showSettings, setShowSettings] = useState(false);
   const [parameters, setParameters] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonItems, setComparisonItems] = useState<any[]>([]);
 
   const { data: analysis, loading, error } = useApi<LookbackAnalysis>(
     () => apiClient.getLookbackAnalysis(),
@@ -65,6 +68,11 @@ export default function Lookback() {
 
   const handleSelectHistory = (item: any) => {
     setParameters(item.parameters);
+  };
+
+  const handleCompare = (items: any[]) => {
+    setComparisonItems(items);
+    setShowComparison(true);
   };
 
   const handleRunAnalysis = async () => {
@@ -225,6 +233,7 @@ export default function Lookback() {
             { key: 'max_drawdown', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
           ]}
           onSelect={handleSelectHistory}
+          onCompare={handleCompare}
         />
       </div>
 
@@ -251,6 +260,19 @@ export default function Lookback() {
           onSelectHistory={handleSelectHistory}
         />
       )}
+
+      {/* 비교 차트 */}
+      <ComparisonChart
+        isOpen={showComparison}
+        onClose={() => setShowComparison(false)}
+        items={comparisonItems}
+        metricColumns={[
+          { key: 'total_return', label: '총 수익률', format: (v) => `${v.toFixed(2)}%` },
+          { key: 'sharpe_ratio', label: 'Sharpe', format: (v) => v.toFixed(2) },
+          { key: 'max_drawdown', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
+        ]}
+        title="룩백 분석 결과 비교"
+      />
 
       {/* AI 프롬프트 모달 */}
       <AIPromptModal
