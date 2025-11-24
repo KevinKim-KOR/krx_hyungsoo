@@ -1,6 +1,6 @@
 # API v1 패키지
 
-from . import dashboard, assets, backtest, stop_loss, signals, market, portfolio, ml, analysis
+from . import dashboard, assets, backtest, stop_loss, signals, market, portfolio, ml, analysis, parameters
 
 __all__ = [
     "dashboard",
@@ -12,4 +12,5 @@ __all__ = [
     "portfolio",
     "ml",
     "analysis",
+    "parameters",
 ]

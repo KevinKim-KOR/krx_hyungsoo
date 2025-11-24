@@ -174,7 +174,12 @@ async def get_backtest_results():
 @router.post("/run")
 async def run_backtest():
     """
-    백테스트 실행 (로컬만)
+    백테스트 실행
+    
+    파라미터는 config/backtest_params.json에서 로드
+    
+    Returns:
+        백테스트 실행 상태
     
     Raises:
         HTTPException: 클라우드 환경에서 실행 시
@@ -185,12 +190,38 @@ async def run_backtest():
             detail="백테스트는 로컬 환경에서만 실행 가능합니다"
         )
     
-    # TODO: 실제 백테스트 실행 로직
-    return {
-        "message": "백테스트 실행 시작",
-        "status": "running",
-        "note": "실제 구현은 기존 백테스트 스크립트 활용"
-    }
+    import subprocess
+    import sys
+    
+    # 백테스트 스크립트 경로
+    script_path = Path(__file__).parent.parent.parent.parent.parent / "scripts" / "dev" / "phase2" / "run_backtest_hybrid.py"
+    
+    if not script_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"백테스트 스크립트를 찾을 수 없습니다: {script_path}"
+        )
+    
+    try:
+        # 백그라운드에서 백테스트 실행
+        process = subprocess.Popen(
+            [sys.executable, str(script_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        logger.info(f"백테스트 실행 시작 (PID: {process.pid})")
+        
+        return {
+            "message": "백테스트 실행 시작",
+            "status": "running",
+            "pid": process.pid,
+            "script": str(script_path)
+        }
+    except Exception as e:
+        logger.error(f"백테스트 실행 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/history")

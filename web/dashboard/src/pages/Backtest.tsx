@@ -1,4 +1,4 @@
-import { AlertCircle, MessageSquare } from 'lucide-react';
+import { AlertCircle, MessageSquare, Play } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
@@ -8,11 +8,31 @@ import { generateBacktestPrompt } from '../utils/promptGenerator';
 
 export default function Backtest() {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [running, setRunning] = useState(false);
 
   const { data: results, loading, error } = useApi<BacktestResult[]>(
     () => apiClient.getBacktestResults(),
     []
   );
+
+  const handleRunBacktest = async () => {
+    if (running) return;
+    
+    setRunning(true);
+    
+    try {
+      await apiClient.runBacktest();
+      alert('백테스트가 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.');
+      
+      // 10초 후 페이지 새로고침
+      setTimeout(() => {
+        window.location.reload();
+      }, 10000);
+    } catch (err: any) {
+      alert(`실행 실패: ${err.message}`);
+      setRunning(false);
+    }
+  };
 
   const prompt = useMemo(() => {
     if (!results || results.length === 0) return '';
@@ -58,13 +78,23 @@ export default function Backtest() {
           <h2 className="text-3xl font-bold">백테스트</h2>
           <p className="text-muted-foreground mt-1">전략 성능 분석</p>
         </div>
-        <button
-          onClick={() => setShowPrompt(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-        >
-          <MessageSquare className="h-4 w-4" />
-          💬 AI에게 질문하기
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleRunBacktest}
+            disabled={running}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Play className="h-4 w-4" />
+            {running ? '실행 중...' : '백테스트 실행'}
+          </button>
+          <button
+            onClick={() => setShowPrompt(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            <MessageSquare className="h-4 w-4" />
+            💬 AI에게 질문하기
+          </button>
+        </div>
       </div>
       
       <div className="bg-card rounded-lg border p-6">

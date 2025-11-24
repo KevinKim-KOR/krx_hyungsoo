@@ -78,6 +78,32 @@ class ApiClient {
   async trainMLModel(modelType: string = 'xgboost', task: string = 'regression'): Promise<MLModelInfo> {
     return this.post<MLModelInfo>(`/api/v1/ml/train?model_type=${modelType}&task=${task}`);
   }
+
+  // Parameters
+  async getCurrentParameters(): Promise<any> {
+    return this.fetch<any>('/api/v1/parameters/current');
+  }
+
+  async updateParameters(params: any): Promise<any> {
+    return this.post<any>('/api/v1/parameters/update', params);
+  }
+
+  async getParameterPresets(): Promise<any> {
+    return this.fetch<any>('/api/v1/parameters/presets');
+  }
+
+  async applyPreset(presetName: string): Promise<any> {
+    return this.post<any>(`/api/v1/parameters/preset/${presetName}`);
+  }
+
+  async resetParameters(): Promise<any> {
+    return this.post<any>('/api/v1/parameters/reset');
+  }
+
+  // Backtest Run
+  async runBacktest(): Promise<any> {
+    return this.post<any>('/api/v1/backtest/run');
+  }
 }
 
 export const apiClient = new ApiClient();
