@@ -1,4 +1,4 @@
-import { AlertCircle, Play, RefreshCw, MessageSquare } from 'lucide-react';
+import { AlertCircle, Play, RefreshCw, MessageSquare, Settings, History } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
@@ -10,6 +10,7 @@ export default function Lookback() {
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const { data: analysis, loading, error } = useApi<LookbackAnalysis>(
     () => apiClient.getLookbackAnalysis(),
@@ -68,14 +69,26 @@ export default function Lookback() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">룩백 분석</h2>
+        <div>
+          <h2 className="text-3xl font-bold">룩백 분석</h2>
+          <p className="text-muted-foreground mt-1">과거 데이터 기반 성과 분석</p>
+        </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowPrompt(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            title="파라미터 설정 (준비 중)"
           >
-            <MessageSquare className="h-4 w-4" />
-            💬 AI에게 질문하기
+            <Settings className="h-4 w-4" />
+            파라미터 설정
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            title="히스토리 새로고침"
+          >
+            <History className="h-4 w-4" />
+            히스토리 새로고침
           </button>
           <button
             onClick={handleRunAnalysis}
@@ -93,6 +106,13 @@ export default function Lookback() {
                 분석 실행
               </>
             )}
+          </button>
+          <button
+            onClick={() => setShowPrompt(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            <MessageSquare className="h-4 w-4" />
+            💬 AI에게 질문하기
           </button>
         </div>
       </div>
