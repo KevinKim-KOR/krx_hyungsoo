@@ -1,0 +1,61 @@
+# ============================================
+# KRX Alertor - Oracle Cloud Crontab
+# ============================================
+# 서버: Oracle Cloud (Ubuntu)
+# Python: 3.x
+# 프로젝트: /home/ubuntu/krx_hyungsoo
+# ============================================
+
+# 환경 변수
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TZ=Asia/Seoul
+
+# 프로젝트 루트
+PROJECT_ROOT=/home/ubuntu/krx_hyungsoo
+
+# ============================================
+# 자동화 작업
+# ============================================
+
+# 08:00 - Git Pull (최신 코드 동기화)
+0 8 * * * cd /home/ubuntu/krx_hyungsoo && bash scripts/cloud/git_pull_with_log.sh
+
+# 09:00 - Daily Regime Check (레짐 감지 및 알림)
+0 9 * * * cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/nas/daily_regime_check.py
+
+# ============================================
+# 적용 방법:
+# ============================================
+# 1. Oracle Cloud SSH 접속
+#    ssh ubuntu@your-oracle-cloud-ip
+#
+# 2. 백업
+#    crontab -l > ~/crontab_backup_$(date +%Y%m%d).txt
+#
+# 3. 편집
+#    crontab -e
+#
+# 4. 이 파일 내용으로 교체
+#
+# 5. 저장 및 확인
+#    crontab -l
+#
+# 6. 로그 확인
+#    tail -f /home/ubuntu/krx_hyungsoo/logs/git_pull.log
+#    tail -f /home/ubuntu/krx_hyungsoo/logs/daily_regime_check.log
+# ============================================
+
+# ============================================
+# 변경 사항 (2025-11-25):
+# ============================================
+# - Git Pull: scripts/cloud/git_pull_with_log.sh 사용
+#   * 날짜/시간 명시적 기록
+#   * 이전/이후 커밋 정보 표시
+#   * 성공/실패 상태 명확히 기록
+#
+# - Daily Regime Check: 전용 로그 파일 사용
+#   * logs/daily_regime_check.log (스크립트 내부에서 자동 생성)
+#   * 시작/종료 시간 기록
+#   * 텔레그램 전송 결과 추적
+# ============================================

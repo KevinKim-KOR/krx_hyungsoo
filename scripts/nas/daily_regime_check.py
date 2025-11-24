@@ -491,7 +491,7 @@ class RegimeMonitor:
         return message.strip()
 
 
-def send_telegram_alert(message: str):
+def send_telegram_alert(message: str) -> bool:
     """텔레그램 알림 전송"""
     try:
         from extensions.automation.telegram_notifier import TelegramNotifier
@@ -500,63 +500,100 @@ def send_telegram_alert(message: str):
         import os
         enabled = os.getenv('TELEGRAM_ENABLED', 'false').lower() == 'true'
         
-        notifier = TelegramNotifier(enabled=enabled)
-        notifier.send_message(message)
+        logger.info(f"텔레그램 전송 시도 (enabled={enabled})")
         
-        # 로그도 출력
+        notifier = TelegramNotifier(enabled=enabled)
+        result = notifier.send_message(message)
+        
+        # 로그 출력
         logger.info("=" * 60)
-        logger.info("텔레그램 알림:")
+        logger.info("텔레그램 알림 내용:")
         logger.info(message)
         logger.info("=" * 60)
+        
+        if result:
+            logger.info("✅ 텔레그램 알림 전송 성공")
+            return True
+        else:
+            logger.error("❌ 텔레그램 알림 전송 실패 (result=False)")
+            return False
+            
     except Exception as e:
-        logger.error(f"텔레그램 알림 전송 실패: {e}")
+        logger.error(f"❌ 텔레그램 알림 전송 실패 (예외): {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return False
 
 
 def main():
     """메인 함수"""
-    logger.info("=" * 60)
-    logger.info("일일 레짐 감지 시작")
-    logger.info("=" * 60)
+    start_time = datetime.now()
     
-    # DB 초기화
+    logger.info("=" * 80)
+    logger.info(f"일일 레짐 감지 시작 - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("=" * 80)
+    
+    telegram_results = []
+    
     try:
-        init_db()
-        logger.info("✅ DB 초기화 완료")
+        # DB 초기화
+        try:
+            init_db()
+            logger.info("✅ DB 초기화 완료")
+        except Exception as e:
+            logger.warning(f"DB 초기화 실패 (무시): {e}")
+        
+        monitor = RegimeMonitor()
+        
+        # 1. 레짐 변화 확인
+        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] 레짐 변화 확인 시작")
+        regime_changed = monitor.check_regime_change()
+        
+        if regime_changed:
+            logger.info(f"🚨 레짐 변화 감지: {monitor.previous_regime} → {monitor.current_regime}")
+            
+            # 2. 레짐 변화 알림
+            regime_alert = monitor.generate_regime_alert()
+            result = send_telegram_alert(regime_alert)
+            telegram_results.append(("레짐 변화 알림", result))
+        else:
+            logger.info(f"✅ 레짐 유지: {monitor.current_regime} (신뢰도: {monitor.regime_confidence:.1%})")
+            
+            # 2-1. 레짐 유지 알림 (매일 발송)
+            maintain_alert = monitor.generate_regime_maintain_alert()
+            result = send_telegram_alert(maintain_alert)
+            telegram_results.append(("레짐 유지 알림", result))
+        
+        # 3. 보유 종목 매도 신호 확인 (레짐 변화 여부와 무관하게 항상 체크)
+        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] 보유 종목 매도 신호 확인 중...")
+        sell_signals = monitor.check_holdings_sell_signals()
+        
+        if sell_signals:
+            logger.info(f"⚠️ 매도 신호 {len(sell_signals)}건 발견")
+            sell_alert = monitor.generate_sell_alert(sell_signals)
+            result = send_telegram_alert(sell_alert)
+            telegram_results.append(("매도 신호 알림", result))
+        else:
+            logger.info("✅ 매도 신호 없음")
+        
     except Exception as e:
-        logger.warning(f"DB 초기화 실패 (무시): {e}")
+        logger.error(f"❌ 실행 중 오류 발생: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
     
-    monitor = RegimeMonitor()
-    
-    # 1. 레짐 변화 확인
-    regime_changed = monitor.check_regime_change()
-    
-    if regime_changed:
-        logger.info(f"🚨 레짐 변화 감지: {monitor.previous_regime} → {monitor.current_regime}")
+    finally:
+        end_time = datetime.now()
+        elapsed = (end_time - start_time).total_seconds()
         
-        # 2. 레짐 변화 알림
-        regime_alert = monitor.generate_regime_alert()
-        send_telegram_alert(regime_alert)
-    else:
-        logger.info(f"✅ 레짐 유지: {monitor.current_regime} (신뢰도: {monitor.regime_confidence:.1%})")
-        
-        # 2-1. 레짐 유지 알림 (매일 발송)
-        maintain_alert = monitor.generate_regime_maintain_alert()
-        send_telegram_alert(maintain_alert)
-    
-    # 3. 보유 종목 매도 신호 확인 (레짐 변화 여부와 무관하게 항상 체크)
-    logger.info("보유 종목 매도 신호 확인 중...")
-    sell_signals = monitor.check_holdings_sell_signals()
-    
-    if sell_signals:
-        logger.info(f"⚠️ 매도 신호 {len(sell_signals)}건 발견")
-        sell_alert = monitor.generate_sell_alert(sell_signals)
-        send_telegram_alert(sell_alert)
-    else:
-        logger.info("✅ 매도 신호 없음")
-    
-    logger.info("=" * 60)
-    logger.info("일일 레짐 감지 완료")
-    logger.info("=" * 60)
+        logger.info("=" * 80)
+        logger.info(f"일일 레짐 감지 완료 - {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info(f"실행 시간: {elapsed:.2f}초")
+        logger.info("")
+        logger.info("텔레그램 알림 전송 결과:")
+        for alert_type, success in telegram_results:
+            status = "✅ 성공" if success else "❌ 실패"
+            logger.info(f"  - {alert_type}: {status}")
+        logger.info("=" * 80)
 
 
 if __name__ == "__main__":
