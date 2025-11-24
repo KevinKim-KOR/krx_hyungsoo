@@ -1,19 +1,49 @@
-import { AlertCircle, MessageSquare, Play } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { AlertCircle, MessageSquare, Play, Settings, History } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
 import type { BacktestResult } from '../types';
 import { AIPromptModal } from '../components/AIPromptModal';
+import { ParameterModal } from '../components/ParameterModal';
+import { HistoryTable } from '../components/HistoryTable';
 import { generateBacktestPrompt } from '../utils/promptGenerator';
 
 export default function Backtest() {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [running, setRunning] = useState(false);
+  const [parameters, setParameters] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
 
   const { data: results, loading, error } = useApi<BacktestResult[]>(
     () => apiClient.getBacktestResults(),
     []
   );
+
+  // 파라미터 및 히스토리 로드
+  useEffect(() => {
+    loadParameters();
+    loadHistory();
+  }, []);
+
+  const loadParameters = async () => {
+    try {
+      const params = await apiClient.getCurrentParameters();
+      setParameters(params);
+    } catch (err) {
+      console.error('파라미터 로드 실패:', err);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const hist = await apiClient.getBacktestHistory();
+      setHistory(hist);
+    } catch (err) {
+      console.error('히스토리 로드 실패:', err);
+    }
+  };
 
   const handleRunBacktest = async () => {
     if (running) return;
@@ -21,7 +51,18 @@ export default function Backtest() {
     setRunning(true);
     
     try {
-      await apiClient.runBacktest();
+      const response = await apiClient.runBacktest();
+      
+      // 히스토리에 추가 (임시 - 실제로는 백테스트 완료 후)
+      const newHistory = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        parameters: parameters || {},
+        metrics: { cagr: 0, sharpe: 0, mdd: 0 },
+        status: 'running'
+      };
+      await apiClient.saveBacktestHistory(newHistory);
+      
       alert('백테스트가 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.');
       
       // 10초 후 페이지 새로고침
@@ -31,6 +72,26 @@ export default function Backtest() {
     } catch (err: any) {
       alert(`실행 실패: ${err.message}`);
       setRunning(false);
+    }
+  };
+
+  const handleSaveParameters = async (params: any) => {
+    try {
+      await apiClient.updateParameters(params);
+      setParameters(params);
+      alert('파라미터가 저장되었습니다.');
+    } catch (err: any) {
+      alert(`저장 실패: ${err.message}`);
+    }
+  };
+
+  const handleApplyPreset = async (presetName: string) => {
+    try {
+      const params = await apiClient.applyPreset(presetName);
+      setParameters(params);
+      alert(`${presetName} 프리셋이 적용되었습니다.`);
+    } catch (err: any) {
+      alert(`프리셋 적용 실패: ${err.message}`);
     }
   };
 
@@ -80,12 +141,26 @@ export default function Backtest() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <Settings className="h-4 w-4" />
+            파라미터 설정
+          </button>
+          <button
             onClick={handleRunBacktest}
             disabled={running}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Play className="h-4 w-4" />
             {running ? '실행 중...' : '백테스트 실행'}
+          </button>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <History className="h-4 w-4" />
+            히스토리
           </button>
           <button
             onClick={() => setShowPrompt(true)}
@@ -160,6 +235,45 @@ export default function Backtest() {
             <p className="text-sm text-muted-foreground mt-1">최대 손실</p>
           </div>
         </div>
+      )}
+
+      {/* 히스토리 */}
+      {showHistory && (
+        <div className="bg-card rounded-lg border p-6">
+          <h3 className="text-xl font-bold mb-4">백테스트 히스토리</h3>
+          <HistoryTable
+            items={history}
+            metricColumns={[
+              { key: 'cagr', label: 'CAGR', format: (v) => `${v.toFixed(2)}%` },
+              { key: 'sharpe', label: 'Sharpe', format: (v) => v.toFixed(2) },
+              { key: 'mdd', label: 'MDD', format: (v) => `${v.toFixed(2)}%` },
+            ]}
+          />
+        </div>
+      )}
+
+      {/* 파라미터 설정 모달 */}
+      {parameters && (
+        <ParameterModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          title="백테스트 파라미터 설정"
+          fields={[
+            { name: 'top_n', label: 'Top N 종목', type: 'number', value: parameters.top_n, min: 1, max: 50 },
+            { name: 'stop_loss', label: '손절 기준', type: 'number', value: parameters.stop_loss, min: -0.2, max: 0, step: 0.01 },
+            { name: 'take_profit', label: '익절 기준', type: 'number', value: parameters.take_profit, min: 0, max: 1, step: 0.01 },
+            { name: 'short_ma_period', label: '단기 MA', type: 'number', value: parameters.short_ma_period, min: 10, max: 100 },
+            { name: 'long_ma_period', label: '장기 MA', type: 'number', value: parameters.long_ma_period, min: 100, max: 300 },
+            { name: 'bull_threshold', label: '상승장 임계값', type: 'number', value: parameters.bull_threshold, min: 0, max: 0.1, step: 0.001 },
+          ]}
+          presets={[
+            { name: 'conservative', label: '보수적', description: '안정적인 수익 추구' },
+            { name: 'balanced', label: '균형', description: '수익과 리스크 균형' },
+            { name: 'aggressive', label: '공격적', description: '높은 수익 추구' },
+          ]}
+          onSave={handleSaveParameters}
+          onApplyPreset={handleApplyPreset}
+        />
       )}
 
       {/* AI 프롬프트 모달 */}
