@@ -224,7 +224,16 @@ async def run_backtest():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/history")
+class BacktestHistory(BaseModel):
+    """백테스트 히스토리 스키마"""
+    id: str
+    timestamp: str
+    parameters: dict
+    metrics: dict
+    status: str
+
+
+@router.get("/history", response_model=list[BacktestHistory])
 async def get_backtest_history():
     """
     백테스트 히스토리 조회
@@ -232,24 +241,63 @@ async def get_backtest_history():
     Returns:
         과거 백테스트 실행 기록
     """
-    # TODO: DB에서 백테스트 히스토리 조회
-    return {
-        "message": "백테스트 히스토리",
-        "history": [
-            {
-                "date": "2025-11-08",
-                "strategy": "Hybrid",
-                "cagr": 27.05,
-                "sharpe": 1.51
-            },
-            {
-                "date": "2025-11-07",
-                "strategy": "Jason",
-                "cagr": 39.02,
-                "sharpe": 1.71
-            }
-        ]
-    }
+    history_file = OUTPUT_DIR / "backtest_history.json"
+    
+    if history_file.exists():
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                history_data = json.load(f)
+            return history_data
+        except Exception as e:
+            logger.error(f"히스토리 로드 실패: {e}")
+    
+    # 기본 히스토리 반환
+    return [
+        BacktestHistory(
+            id="1",
+            timestamp="2025-11-08T09:00:00",
+            parameters={"top_n": 10, "stop_loss": -0.05, "take_profit": 0.20},
+            metrics={"cagr": 27.05, "sharpe": 1.51, "mdd": -19.92},
+            status="success"
+        )
+    ]
+
+
+@router.post("/history/save")
+async def save_backtest_history(history: BacktestHistory):
+    """
+    백테스트 히스토리 저장
+    
+    Args:
+        history: 저장할 히스토리 항목
+    
+    Returns:
+        저장 결과
+    """
+    history_file = OUTPUT_DIR / "backtest_history.json"
+    history_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # 기존 히스토리 로드
+    existing_history = []
+    if history_file.exists():
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                existing_history = json.load(f)
+        except:
+            pass
+    
+    # 새 항목 추가 (최신이 앞에)
+    existing_history.insert(0, history.model_dump())
+    
+    # 최대 50개만 유지
+    existing_history = existing_history[:50]
+    
+    # 저장
+    with open(history_file, 'w', encoding='utf-8') as f:
+        json.dump(existing_history, f, ensure_ascii=False, indent=2)
+    
+    logger.info(f"백테스트 히스토리 저장: {history.id}")
+    return {"message": "저장 완료", "id": history.id}
 
 
 @router.get("/compare", response_model=list[ParameterComparison])

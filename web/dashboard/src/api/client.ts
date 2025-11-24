@@ -104,6 +104,15 @@ class ApiClient {
   async runBacktest(): Promise<any> {
     return this.post<any>('/api/v1/backtest/run');
   }
+
+  // Backtest History
+  async getBacktestHistory(): Promise<any[]> {
+    return this.fetch<any[]>('/api/v1/backtest/history');
+  }
+
+  async saveBacktestHistory(history: any): Promise<any> {
+    return this.post<any>('/api/v1/backtest/history/save', history);
+  }
 }
 
 export const apiClient = new ApiClient();
