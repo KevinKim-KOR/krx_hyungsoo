@@ -251,10 +251,19 @@ class RegimeMonitor:
         
         # 미국 시장 지표 추가
         try:
+            logger.info("🇺🇸 미국 시장 리포트 생성 중... (레짐 변화)")
             us_report = self.us_monitor.generate_report()
-            message += f"\n{us_report}\n\n"
+            if us_report:
+                message += f"\n{us_report}\n\n"
+                logger.info("✅ 미국 시장 리포트 생성 성공")
+            else:
+                logger.warning("⚠️ 미국 시장 리포트가 비어있음")
+                message += "\n⚠️ 미국 시장 지표 조회 실패 (데이터 없음)\n\n"
         except Exception as e:
-            logger.error(f"미국 시장 리포트 생성 실패: {e}")
+            logger.error(f"❌ 미국 시장 리포트 생성 실패: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            message += "\n⚠️ 미국 시장 지표 조회 실패\n\n"
         
         message += "\n"
         
@@ -333,10 +342,19 @@ class RegimeMonitor:
         
         # 미국 시장 지표 추가
         try:
+            logger.info("🇺🇸 미국 시장 리포트 생성 중... (레짐 유지)")
             us_report = self.us_monitor.generate_report()
-            message += f"\n{us_report}\n\n"
+            if us_report:
+                message += f"\n{us_report}\n\n"
+                logger.info("✅ 미국 시장 리포트 생성 성공")
+            else:
+                logger.warning("⚠️ 미국 시장 리포트가 비어있음")
+                message += "\n⚠️ 미국 시장 지표 조회 실패 (데이터 없음)\n\n"
         except Exception as e:
-            logger.error(f"미국 시장 리포트 생성 실패: {e}")
+            logger.error(f"❌ 미국 시장 리포트 생성 실패: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            message += "\n⚠️ 미국 시장 지표 조회 실패\n\n"
         
         message += "\n"
         

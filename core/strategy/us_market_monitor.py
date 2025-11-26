@@ -60,13 +60,13 @@ class USMarketMonitor:
             지표 정보 딕셔너리
         """
         if indicator_name not in self.config:
-            logger.warning(f"지표 설정 없음: {indicator_name}")
+            logger.warning(f"⚠️ 지표 설정 없음: {indicator_name}")
             return None
         
         indicator_config = self.config[indicator_name]
         
         if not indicator_config.get('enabled', False):
-            logger.info(f"지표 비활성화: {indicator_name}")
+            logger.debug(f"지표 비활성화: {indicator_name}")
             return None
         
         try:
@@ -74,6 +74,8 @@ class USMarketMonitor:
             symbol = indicator_config['symbol']
             end_date = datetime.now()
             start_date = end_date - timedelta(days=365)
+            
+            logger.info(f"📊 {indicator_name} 조회 시작: {symbol}")
             
             # yfinance 시도 (Python 3.8 호환 문제 가능)
             data = None
@@ -83,13 +85,15 @@ class USMarketMonitor:
                     start_date.strftime("%Y-%m-%d"),
                     end_date.strftime("%Y-%m-%d")
                 )
+                if data is not None and not data.empty:
+                    logger.info(f"✅ {indicator_name} 조회 성공: {len(data)}일 데이터")
             except Exception as e:
-                logger.warning(f"yfinance {symbol} 조회 실패: {e}")
+                logger.warning(f"⚠️ {symbol} 조회 실패: {e}")
                 # 미국 주식은 네이버 금융 대체 불가
                 return None
             
             if data is None or data.empty:
-                logger.error(f"데이터 없음: {symbol}")
+                logger.error(f"❌ 데이터 없음: {symbol}")
                 return None
             
             # 컬럼명 확인 (close 또는 Close)
@@ -150,18 +154,30 @@ class USMarketMonitor:
                 }
             
         except Exception as e:
-            logger.error(f"지표 계산 실패 ({indicator_name}): {e}")
+            logger.error(f"❌ 지표 계산 실패 ({indicator_name}): {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return None
     
     def calculate_all_indicators(self) -> Dict[str, Dict]:
         """모든 활성화된 지표 계산"""
         enabled = self.config.get('enabled_indicators', [])
         
+        logger.info(f"📊 미국 시장 지표 계산 시작 ({len(enabled)}개)")
+        
         results = {}
+        success_count = 0
+        fail_count = 0
+        
         for indicator_name in enabled:
             result = self.calculate_indicator(indicator_name)
             if result:
                 results[indicator_name] = result
+                success_count += 1
+            else:
+                fail_count += 1
+        
+        logger.info(f"✅ 지표 계산 완료: 성공 {success_count}개, 실패 {fail_count}개")
         
         return results
     
@@ -172,10 +188,12 @@ class USMarketMonitor:
         Returns:
             'bullish', 'bearish', 'neutral'
         """
+        logger.info("🇺🇸 미국 시장 레짐 판단 시작")
+        
         indicators = self.calculate_all_indicators()
         
         if not indicators:
-            logger.warning("지표 없음, 중립장으로 판단")
+            logger.warning("⚠️ 지표 없음, 중립장으로 판단")
             return 'neutral'
         
         # 가중 평균 계산
@@ -203,11 +221,14 @@ class USMarketMonitor:
         
         # 레짐 판단
         if avg_score > 0.3:
-            return 'bullish'
+            regime = 'bullish'
         elif avg_score < -0.3:
-            return 'bearish'
+            regime = 'bearish'
         else:
-            return 'neutral'
+            regime = 'neutral'
+        
+        logger.info(f"✅ 미국 시장 레짐: {regime} (점수: {avg_score:.2f})")
+        return regime
     
     def check_urgent_alerts(self) -> List[str]:
         """긴급 알림 확인"""
