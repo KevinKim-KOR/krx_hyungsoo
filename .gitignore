@@ -27,6 +27,9 @@ data/cache/
 data/output/
 data/state/
 
+# 런타임 락 파일
+.locks/
+
 # Python 캐시
 __pycache__/
 *.pyc
