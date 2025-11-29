@@ -8,7 +8,6 @@ import sys
 import os
 from datetime import date
 from pathlib import Path
-from dotenv import load_dotenv
 
 # 프로젝트 루트를 PYTHONPATH에 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -20,9 +19,6 @@ from extensions.automation.daily_report import DailyReport
 # 스크립트 베이스 초기화
 script = ScriptBase("daily_report_alert")
 logger = script.logger
-
-# 환경 변수 로드
-load_dotenv()
 
 
 @handle_script_errors("일일 리포트")

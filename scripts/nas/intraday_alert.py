@@ -101,8 +101,11 @@ def check_intraday_movements():
         
         alerts = []
         checked = 0
+        total = len(etf_universe)
         
-        for etf in etf_universe:
+        print(f"\n📊 ETF 데이터 수집 시작 (총 {total}개)...")
+        
+        for idx, etf in enumerate(etf_universe, 1):
             code = etf['code']
             name = etf.get('name')
             
@@ -110,6 +113,10 @@ def check_intraday_movements():
                 # 종목명이 없으면 기본 이름 사용
                 if not name:
                     name = f"ETF_{code}"
+                
+                # 진행 상황 표시 (매 10개마다)
+                if idx % 10 == 0 or idx == total:
+                    print(f"  진행: {idx}/{total} ({idx/total*100:.1f}%) - 체크: {checked}개")
                 
                 # 네이버 실시간 데이터 사용 (장중 데이터 포함)
                 # 최근 5일 데이터 가져오기
@@ -119,11 +126,9 @@ def check_intraday_movements():
                 df = naver.get_market_ohlcv_by_date(fromdate, todate, code)
                 
                 if df.empty:
-                    print(f"  ❌ {code} {name}: 데이터 없음")
                     continue
                 
                 checked += 1
-                print(f"  ✅ {code} {name}: {len(df)}일 데이터")
                 
                 # 등락률 계산
                 change_pct = df.iloc[-1]['등락률']
