@@ -38,3 +38,32 @@ notifications:
 
 database:
   path: "krx_alertor.sqlite3"
+
+# 장중 알림 설정
+intraday_alert:
+  # 급등/급락 임계값 (%)
+  thresholds:
+    leverage: 3.0      # 레버리지 ETF: 3% 이상
+    sector: 2.0        # 섹터 ETF: 2% 이상
+    index: 1.5         # 지수 ETF: 1.5% 이상
+    overseas: 1.5      # 해외 ETF: 1.5% 이상
+    default: 2.0       # 기본: 2% 이상
+  
+  # 최소 거래대금 (원)
+  min_trade_value: 5000000000  # 50억원 이상
+  
+  # 제외 키워드 (레버리지/인버스/채권)
+  exclude_keywords:
+    - 레버리지
+    - 인버스
+    - 곱버스
+    - LEVERAGE
+    - INVERSE
+    - 국고채
+    - 회사채
+    - 통안채
+    - 채권
+    - BOND
+    - 머니마켓
+    - MMF
+    - 단기자금

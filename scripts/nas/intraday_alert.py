@@ -18,23 +18,31 @@ from pykrx import stock as pykrx_stock
 
 from extensions.automation.script_base import ScriptBase, handle_script_errors
 from extensions.automation.portfolio_helper import PortfolioHelper
+from extensions.automation.config_loader import get_config_loader
 from extensions.notification.telegram_helper import TelegramHelper
 
 # 스크립트 베이스 초기화
 script = ScriptBase("intraday_alert")
 logger = script.logger
 
-# 급등/급락 기준 (특성별 차별화)
-THRESHOLDS = {
-    'leverage': 3.0,      # 레버리지 ETF: 3% 이상
-    'sector': 2.0,        # 섹터 ETF: 2% 이상
-    'index': 1.5,         # 지수 ETF: 1.5% 이상
-    'overseas': 1.5,      # 해외 ETF: 1.5% 이상
-    'default': 2.0        # 기본: 2% 이상
-}
+# Config 로더 초기화
+config = get_config_loader()
 
-# 최소 거래대금 (의미 있는 알림만)
-MIN_TRADE_VALUE = 50e8  # 50억원 이상
+# 설정 로드 (config.nas.yaml에서)
+THRESHOLDS = config.get("intraday_alert.thresholds", {
+    'leverage': 3.0,
+    'sector': 2.0,
+    'index': 1.5,
+    'overseas': 1.5,
+    'default': 2.0
+})
+
+MIN_TRADE_VALUE = config.get("intraday_alert.min_trade_value", 50e8)
+EXCLUDE_KEYWORDS = config.get("intraday_alert.exclude_keywords", [
+    '레버리지', '인버스', '곱버스', 'LEVERAGE', 'INVERSE',
+    '국고채', '회사채', '통안채', '채권', 'BOND',
+    '머니마켓', 'MMF', '단기자금'
+])
 
 
 def get_etf_universe():
@@ -47,13 +55,6 @@ def get_etf_universe():
         logger.info(f"전체 ETF: {len(all_etf_codes)}개")
         print(f"전체 ETF: {len(all_etf_codes)}개")
         
-        # 제외 키워드 (레버리지/인버스/채권)
-        exclude_keywords = [
-            '레버리지', '인버스', '곱버스', 'LEVERAGE', 'INVERSE',
-            '국고채', '회사채', '통안채', '채권', 'BOND',
-            '머니마켓', 'MMF', '단기자금',
-        ]
-        
         filtered_etfs = []
         excluded_count = 0
         
@@ -62,8 +63,8 @@ def get_etf_universe():
                 # 종목명 조회
                 name = stock.get_etf_ticker_name(code)
                 
-                # 제외 키워드 체크
-                if any(keyword in name for keyword in exclude_keywords):
+                # 제외 키워드 체크 (Config에서 로드)
+                if any(keyword in name for keyword in EXCLUDE_KEYWORDS):
                     logger.debug(f"제외: {code} {name}")
                     excluded_count += 1
                     continue
