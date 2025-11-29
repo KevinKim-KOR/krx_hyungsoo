@@ -6,12 +6,17 @@ scripts/nas/intraday_alert.py
 """
 import sys
 import logging
-from datetime import date, timedelta
+import traceback
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 # 프로젝트 루트를 PYTHONPATH에 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+import pykrx.stock as stock
+from pykrx.website import naver
+from pykrx import stock as pykrx_stock
 
 from extensions.notification.telegram_sender import TelegramSender
 from extensions.automation.portfolio_loader import PortfolioLoader
@@ -36,8 +41,6 @@ MIN_TRADE_VALUE = 50e8  # 50억원 이상
 
 def get_etf_universe():
     """ETF 유니버스 가져오기 (pykrx 전체 조회, 레버리지/인버스/채권 제외)"""
-    import pykrx.stock as stock
-    
     try:
         # pykrx로 전체 ETF 조회
         today = date.today().strftime('%Y%m%d')
@@ -86,10 +89,6 @@ def get_etf_universe():
 def check_intraday_movements():
     """장중 급등/급락 체크 (ETF 전용) - 네이버 실시간 데이터 사용"""
     try:
-        import pykrx.stock as stock
-        from pykrx.website import naver  # 네이버 실시간 데이터
-        from datetime import datetime
-        
         today = date.today()
         
         # ETF 유니버스 가져오기
@@ -171,8 +170,7 @@ def check_intraday_movements():
                     if value >= MIN_TRADE_VALUE:
                         # 괴리율 조회 (ETF 전용)
                         try:
-                            from pykrx import stock
-                            etf_info = stock.get_etf_ohlcv_by_date(date.today().strftime('%Y%m%d'), date.today().strftime('%Y%m%d'), code)
+                            etf_info = pykrx_stock.get_etf_ohlcv_by_date(date.today().strftime('%Y%m%d'), date.today().strftime('%Y%m%d'), code)
                             if not etf_info.empty and 'NAV' in etf_info.columns:
                                 nav = etf_info.iloc[-1]['NAV']
                                 tracking_error = ((price - nav) / nav) * 100 if nav > 0 else 0
@@ -335,7 +333,6 @@ def main():
     except Exception as e:
         logger.error(f"❌ 장중 알림 실패: {e}", exc_info=True)
         print(f"❌ 에러 발생: {e}")
-        import traceback
         traceback.print_exc()
         return 1
 
