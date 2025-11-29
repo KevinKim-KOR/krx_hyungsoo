@@ -94,21 +94,45 @@ def find_latest_file(directory: Path, pattern: str = "optimal_portfolio_*.json")
 
 
 def load_ticker_names() -> Dict[str, str]:
-    """holdings.json에서 종목명 로드"""
+    """종목명 로드 (holdings.json + PyKRX)"""
+    ticker_names = {}
+    
+    # 1. holdings.json에서 로드
     holdings_file = OUTPUT_DIR.parent / "portfolio" / "holdings.json"
+    if holdings_file.exists():
+        try:
+            with open(holdings_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            ticker_names.update({h['code']: h['name'] for h in data.get('holdings', [])})
+        except Exception as e:
+            logger.error(f"holdings.json 로드 실패: {e}")
     
-    if not holdings_file.exists():
-        return {}
-    
+    # 2. PyKRX로 조회 (holdings.json에 없는 종목)
     try:
-        with open(holdings_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        import pykrx.stock as stock
+        from datetime import datetime
         
-        # code -> name 매핑
-        return {h['code']: h['name'] for h in data.get('holdings', [])}
+        today = datetime.now().strftime('%Y%m%d')
+        
+        # ETF 전체 조회
+        etf_codes = stock.get_etf_ticker_list(today)
+        for code in etf_codes:
+            if code not in ticker_names:
+                try:
+                    name = stock.get_etf_ticker_name(code)
+                    if name:
+                        ticker_names[code] = name
+                except Exception:
+                    pass
+        
+        # 주식 전체 조회 (필요시)
+        # stock_codes = stock.get_market_ticker_list(today)
+        # ...
+        
     except Exception as e:
-        logger.error(f"종목명 로드 실패: {e}")
-        return {}
+        logger.error(f"PyKRX 종목명 조회 실패: {e}")
+    
+    return ticker_names
 
 
 @router.get("/optimization")

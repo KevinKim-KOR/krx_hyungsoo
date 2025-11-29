@@ -139,11 +139,18 @@ async def get_recent_analyses(limit: int = 5) -> list[Dict[str, Any]]:
         try:
             with open(opt_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+            
+            # 리스트 형태인 경우 max_sharpe 찾기
+            if isinstance(data, list):
+                sharpe_data = next((item for item in data if item.get("method") == "max_sharpe"), data[0] if data else {})
+            else:
+                sharpe_data = data
+            
             analyses.append({
                 "type": "portfolio",
                 "title": "포트폴리오 최적화",
-                "timestamp": data.get("timestamp", ""),
-                "summary": f"Sharpe {data.get('sharpe_ratio', 0):.2f}, 수익률 {data.get('expected_return', 0)*100:.1f}%"
+                "timestamp": opt_file.stem.replace("optimal_portfolio_", ""),
+                "summary": f"Sharpe {sharpe_data.get('sharpe_ratio', 0):.2f}, 수익률 {sharpe_data.get('expected_return', 0)*100:.1f}%"
             })
         except Exception as e:
             logger.error(f"포트폴리오 최적화 로드 실패: {e}")
