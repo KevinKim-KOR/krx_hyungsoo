@@ -6,8 +6,11 @@ scripts/nas/daily_report_alert.py
 """
 import sys
 import logging
+import os
+import traceback
 from datetime import date
 from pathlib import Path
+from dotenv import load_dotenv
 
 # 프로젝트 루트를 PYTHONPATH에 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -15,8 +18,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from extensions.automation.daily_report import DailyReport
 from infra.logging.setup import setup_logging
-import os
-from dotenv import load_dotenv
 
 # 로깅 설정
 setup_logging()
@@ -78,7 +79,6 @@ def main():
     except Exception as e:
         logger.error(f"❌ 일일 리포트 생성 실패: {e}", exc_info=True)
         print(f"❌ 에러 발생: {e}")
-        import traceback
         traceback.print_exc()
         return 1
 
