@@ -93,6 +93,24 @@ def find_latest_file(directory: Path, pattern: str = "optimal_portfolio_*.json")
     return max(files, key=lambda f: f.stat().st_mtime)
 
 
+def load_ticker_names() -> Dict[str, str]:
+    """holdings.json에서 종목명 로드"""
+    holdings_file = OUTPUT_DIR.parent / "portfolio" / "holdings.json"
+    
+    if not holdings_file.exists():
+        return {}
+    
+    try:
+        with open(holdings_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # code -> name 매핑
+        return {h['code']: h['name'] for h in data.get('holdings', [])}
+    except Exception as e:
+        logger.error(f"종목명 로드 실패: {e}")
+        return {}
+
+
 @router.get("/optimization")
 async def get_portfolio_optimization() -> Dict[str, Any]:
     """
@@ -104,9 +122,12 @@ async def get_portfolio_optimization() -> Dict[str, Any]:
         - expected_return: 기대 수익률
         - volatility: 변동성
         - sharpe_ratio: Sharpe Ratio
-        - weights: 종목별 비중
+        - weights: 종목별 비중 (종목명 포함)
         - discrete_allocation: 이산 배분 (실제 매수 주식 수)
     """
+    # 종목명 로드
+    ticker_names = load_ticker_names()
+    
     # 최신 최적화 결과 파일 찾기
     latest_file = find_latest_file(OPTIMIZATION_DIR)
     
@@ -129,6 +150,13 @@ async def get_portfolio_optimization() -> Dict[str, Any]:
             # discrete_allocation 찾기
             discrete_data = next((item for item in data if item.get("method") == "discrete_allocation"), None)
             
+            # weights에 종목명 추가
+            weights = sharpe_data.get("weights", {})
+            weights_with_names = {}
+            for code, weight in weights.items():
+                name = ticker_names.get(code, code)  # 종목명 없으면 코드 사용
+                weights_with_names[f"{name} ({code})"] = weight
+            
             # 응답 데이터 구성
             response = {
                 "timestamp": latest_file.stem.replace("optimal_portfolio_", ""),
@@ -136,7 +164,7 @@ async def get_portfolio_optimization() -> Dict[str, Any]:
                 "expected_return": sharpe_data.get("expected_return", 0.0),
                 "volatility": sharpe_data.get("volatility", 0.0),
                 "sharpe_ratio": sharpe_data.get("sharpe_ratio", 0.0),
-                "weights": sharpe_data.get("weights", {}),
+                "weights": weights_with_names,
             }
             
             # 이산 배분 정보 추가
@@ -147,6 +175,13 @@ async def get_portfolio_optimization() -> Dict[str, Any]:
                     "total_value": discrete_data.get("total_value", 0.0),
                 }
         else:
+            # weights에 종목명 추가
+            weights = data.get("weights", {})
+            weights_with_names = {}
+            for code, weight in weights.items():
+                name = ticker_names.get(code, code)
+                weights_with_names[f"{name} ({code})"] = weight
+            
             # 딕셔너리 형태인 경우 (기존 로직)
             response = {
                 "timestamp": data.get("timestamp", ""),
@@ -154,7 +189,7 @@ async def get_portfolio_optimization() -> Dict[str, Any]:
                 "expected_return": data.get("expected_return", 0.0),
                 "volatility": data.get("volatility", 0.0),
                 "sharpe_ratio": data.get("sharpe_ratio", 0.0),
-                "weights": data.get("weights", {}),
+                "weights": weights_with_names,
             }
             
             # 이산 배분 정보 추가

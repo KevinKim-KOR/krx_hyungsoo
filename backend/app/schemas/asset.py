@@ -93,15 +93,10 @@ class PortfolioSnapshot(BaseModel):
 
 # Dashboard 응답 스키마
 class DashboardResponse(BaseModel):
-    """대시보드 응답 스키마"""
-    total_assets: float = Field(..., description="총 자산")
-    cash: float = Field(..., description="현금")
-    stocks_value: float = Field(..., description="주식 가치")
-    total_return_pct: float = Field(..., description="총 수익률 (%)")
-    daily_return: float = Field(..., description="오늘 수익")
-    daily_return_pct: float = Field(..., description="오늘 수익률 (%)")
-    weekly_return: float = Field(..., description="이번 주 수익")
-    weekly_return_pct: float = Field(..., description="이번 주 수익률 (%)")
-    monthly_return: float = Field(..., description="이번 달 수익")
-    monthly_return_pct: float = Field(..., description="이번 달 수익률 (%)")
-    holdings_count: int = Field(..., description="보유 종목 수")
+    """대시보드 응답 스키마 (프론트엔드 호환)"""
+    portfolio_value: float = Field(..., description="총 포트폴리오 가치")
+    portfolio_change: float = Field(..., description="포트폴리오 변동률 (소수)")
+    sharpe_ratio: float = Field(..., description="Sharpe Ratio")
+    volatility: float = Field(..., description="변동성 (소수)")
+    expected_return: float = Field(..., description="기대 수익률 (소수)")
+    last_updated: str = Field(..., description="마지막 업데이트")

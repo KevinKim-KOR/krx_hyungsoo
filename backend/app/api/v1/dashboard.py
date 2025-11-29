@@ -45,11 +45,11 @@ async def get_dashboard_summary(db: Session = Depends(get_db)):
     동기화된 파일 우선 사용, 없으면 DB 조회
     
     Returns:
-        - 총 자산
-        - 현금
-        - 주식 가치
-        - 수익률 (일/주/월)
-        - 보유 종목 수
+        - 포트폴리오 가치
+        - 변동률
+        - Sharpe Ratio
+        - 변동성
+        - 기대 수익률
     """
     # 1. 동기화 파일 확인
     snapshot_file = SYNC_DIR / "portfolio_snapshot.json"
@@ -61,15 +61,13 @@ async def get_dashboard_summary(db: Session = Depends(get_db)):
             
             logger.info(f"✅ 동기화 파일 사용: {snapshot_file}")
             
+            # 프론트엔드 스키마에 맞게 변환
             return DashboardResponse(
-                total_assets=data.get("total_assets", 0),
-                cash=data.get("cash", 0),
-                stocks_value=data.get("stocks_value", 0),
-                total_return_pct=data.get("total_return_pct", 0.0),
-                daily_return_pct=data.get("daily_return_pct", 0.0),
-                weekly_return_pct=0.0,  # TODO: 주간 수익률
-                monthly_return_pct=0.0,  # TODO: 월간 수익률
-                holdings_count=data.get("holdings_count", 0),
+                portfolio_value=data.get("total_assets", 0),
+                portfolio_change=data.get("total_return_pct", 0.0) / 100.0,  # % -> 소수
+                sharpe_ratio=0.0,  # TODO: Sharpe Ratio 계산
+                volatility=0.0,    # TODO: 변동성 계산
+                expected_return=0.0,  # TODO: 기대 수익률 계산
                 last_updated=data.get("timestamp", "")
             )
         except Exception as e:
