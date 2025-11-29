@@ -1,0 +1,70 @@
+# 백테스트 설정
+backtest:
+  # 기본 기간
+  default_start_date: "2022-01-01"
+  default_end_date: "2025-11-08"
+  
+  # 전략별 설정
+  strategies:
+    jason:
+      name: "Jason"
+      default_trades: 1436
+    hybrid:
+      name: "Hybrid"
+      default_trades: 1406
+  
+  # 더미 데이터 (파일 없을 때)
+  dummy_data:
+    strategy: "하이브리드 레짐 전략"
+    start_date: "2022-01-01"
+    end_date: "2025-11-08"
+    cagr: 27.05
+    sharpe_ratio: 1.51
+    max_drawdown: -19.92
+    total_return: 96.80
+    total_trades: 1406
+  
+  # 히스토리 설정
+  history:
+    max_items: 50  # 최대 저장 개수
+    default_entry:
+      id: "1"
+      timestamp: "2025-11-08T09:00:00"
+      parameters:
+        top_n: 10
+        stop_loss: -0.05
+        take_profit: 0.20
+      metrics:
+        cagr: 27.05
+        sharpe: 1.51
+        mdd: -19.92
+      status: "success"
+  
+  # 파라미터 비교 (최적 vs 현재)
+  parameter_comparison:
+    - parameter: "Top N"
+      optimal_value: 10
+      current_value: 15
+      optimal_performance: 39.02
+      current_performance: 27.05
+    - parameter: "Rebalancing"
+      optimal_value: "daily"
+      current_value: "daily"
+      optimal_performance: 39.02
+      current_performance: 27.05
+    - parameter: "MA Period"
+      optimal_value: "50/200"
+      current_value: "50/200"
+      optimal_performance: 27.05
+      current_performance: 27.05
+
+# 백테스트 실행 설정
+execution:
+  # 스크립트 경로 (프로젝트 루트 기준)
+  script_path: "scripts/dev/phase2/run_backtest_hybrid.py"
+  
+  # 실행 환경
+  local_only: true  # 로컬에서만 실행 가능
+  
+  # 타임아웃 (초)
+  timeout: 3600  # 1시간

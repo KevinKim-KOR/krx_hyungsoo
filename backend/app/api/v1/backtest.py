@@ -6,8 +6,9 @@ backend/app/api/v1/backtest.py
 """
 import json
 import logging
+import yaml
 from pathlib import Path
-from typing import Optional, Any, Union
+from typing import Optional, Any, Union, Dict
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.core.config import settings
@@ -17,8 +18,20 @@ logger = logging.getLogger(__name__)
 # 동기화 파일 경로
 SYNC_DIR = Path(__file__).parent.parent.parent.parent / "data" / "sync"
 OUTPUT_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "output"
+CONFIG_DIR = Path(__file__).parent.parent.parent.parent.parent / "config"
 
 router = APIRouter()
+
+# Config 로드
+def load_backtest_config() -> Dict:
+    """백테스트 설정 로드"""
+    config_file = CONFIG_DIR / "backtest.yaml"
+    if config_file.exists():
+        with open(config_file, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    return {}
+
+BACKTEST_CONFIG = load_backtest_config()
 
 
 def find_latest_file(directory: Path, pattern: str) -> Optional[Path]:
@@ -77,32 +90,40 @@ async def get_backtest_results():
             
             results = []
             
+            # Config에서 기본값 가져오기
+            bt_config = BACKTEST_CONFIG.get('backtest', {})
+            default_start = bt_config.get('default_start_date', '2022-01-01')
+            default_end = bt_config.get('default_end_date', '2025-11-08')
+            strategies_config = bt_config.get('strategies', {})
+            
             # Jason 전략
             jason = data.get("jason_strategy", {})
             if jason:
+                jason_config = strategies_config.get('jason', {})
                 results.append(BacktestResult(
-                    strategy="Jason",
-                    start_date="2022-01-01",
-                    end_date="2025-11-08",
+                    strategy=jason_config.get('name', 'Jason'),
+                    start_date=data.get('start_date', default_start),
+                    end_date=data.get('end_date', default_end),
                     cagr=jason.get("cagr", 0),
                     sharpe_ratio=jason.get("sharpe", 0),
                     max_drawdown=jason.get("mdd", 0),
                     total_return=jason.get("total_return", 0),
-                    total_trades=1436
+                    total_trades=jason.get('total_trades', jason_config.get('default_trades', 0))
                 ))
             
             # Hybrid 전략
             hybrid = data.get("hybrid_strategy", {})
             if hybrid:
+                hybrid_config = strategies_config.get('hybrid', {})
                 results.append(BacktestResult(
-                    strategy="Hybrid",
-                    start_date="2022-01-01",
-                    end_date="2025-11-08",
+                    strategy=hybrid_config.get('name', 'Hybrid'),
+                    start_date=data.get('start_date', default_start),
+                    end_date=data.get('end_date', default_end),
                     cagr=hybrid.get("cagr", 0),
                     sharpe_ratio=hybrid.get("sharpe", 0),
                     max_drawdown=hybrid.get("mdd", 0),
                     total_return=hybrid.get("total_return", 0),
-                    total_trades=1406
+                    total_trades=hybrid.get('total_trades', hybrid_config.get('default_trades', 0))
                 ))
             
             return results
@@ -152,21 +173,23 @@ async def get_backtest_results():
         except Exception as e:
             print(f"Error loading Hybrid backtest: {e}")
     
-    # 3. 파일이 없으면 더미 데이터 반환
+    # 3. 파일이 없으면 더미 데이터 반환 (Config에서)
     if not results:
         logger.info("백테스트 파일 없음, 더미 데이터 반환")
-        results = [
-            BacktestResult(
-                strategy="하이브리드 레짐 전략",
-                start_date="2022-01-01",
-                end_date="2025-11-08",
-                cagr=27.05,
-                sharpe_ratio=1.51,
-                max_drawdown=-19.92,
-                total_return=96.80,
-                total_trades=1406
-            )
-        ]
+        dummy = BACKTEST_CONFIG.get('backtest', {}).get('dummy_data', {})
+        if dummy:
+            results = [
+                BacktestResult(
+                    strategy=dummy.get('strategy', '하이브리드 레짐 전략'),
+                    start_date=dummy.get('start_date', '2022-01-01'),
+                    end_date=dummy.get('end_date', '2025-11-08'),
+                    cagr=dummy.get('cagr', 27.05),
+                    sharpe_ratio=dummy.get('sharpe_ratio', 1.51),
+                    max_drawdown=dummy.get('max_drawdown', -19.92),
+                    total_return=dummy.get('total_return', 96.80),
+                    total_trades=dummy.get('total_trades', 1406)
+                )
+            ]
     
     return results
 
@@ -251,16 +274,19 @@ async def get_backtest_history():
         except Exception as e:
             logger.error(f"히스토리 로드 실패: {e}")
     
-    # 기본 히스토리 반환
-    return [
-        BacktestHistory(
-            id="1",
-            timestamp="2025-11-08T09:00:00",
-            parameters={"top_n": 10, "stop_loss": -0.05, "take_profit": 0.20},
-            metrics={"cagr": 27.05, "sharpe": 1.51, "mdd": -19.92},
-            status="success"
-        )
-    ]
+    # 기본 히스토리 반환 (Config에서)
+    default_entry = BACKTEST_CONFIG.get('backtest', {}).get('history', {}).get('default_entry', {})
+    if default_entry:
+        return [
+            BacktestHistory(
+                id=default_entry.get('id', '1'),
+                timestamp=default_entry.get('timestamp', '2025-11-08T09:00:00'),
+                parameters=default_entry.get('parameters', {}),
+                metrics=default_entry.get('metrics', {}),
+                status=default_entry.get('status', 'success')
+            )
+        ]
+    return []
 
 
 @router.post("/history/save")
@@ -289,8 +315,9 @@ async def save_backtest_history(history: BacktestHistory):
     # 새 항목 추가 (최신이 앞에)
     existing_history.insert(0, history.model_dump())
     
-    # 최대 50개만 유지
-    existing_history = existing_history[:50]
+    # 최대 개수만 유지 (Config에서)
+    max_items = BACKTEST_CONFIG.get('backtest', {}).get('history', {}).get('max_items', 50)
+    existing_history = existing_history[:max_items]
     
     # 저장
     with open(history_file, 'w', encoding='utf-8') as f:
@@ -308,31 +335,18 @@ async def compare_parameters():
     Returns:
         파라미터별 비교 결과
     """
-    comparisons = [
-        ParameterComparison(
-            parameter="Top N",
-            optimal_value=10,
-            current_value=15,
-            optimal_performance=39.02,
-            current_performance=27.05,
-            difference=-11.97
-        ),
-        ParameterComparison(
-            parameter="Rebalancing",
-            optimal_value="daily",
-            current_value="daily",
-            optimal_performance=39.02,
-            current_performance=27.05,
-            difference=0.0
-        ),
-        ParameterComparison(
-            parameter="MA Period",
-            optimal_value="50/200",
-            current_value="50/200",
-            optimal_performance=27.05,
-            current_performance=27.05,
-            difference=0.0
-        )
-    ]
+    # Config에서 파라미터 비교 데이터 로드
+    param_comparisons = BACKTEST_CONFIG.get('backtest', {}).get('parameter_comparison', [])
+    
+    comparisons = []
+    for pc in param_comparisons:
+        comparisons.append(ParameterComparison(
+            parameter=pc.get('parameter', ''),
+            optimal_value=pc.get('optimal_value', 0),
+            current_value=pc.get('current_value', 0),
+            optimal_performance=pc.get('optimal_performance', 0.0),
+            current_performance=pc.get('current_performance', 0.0),
+            difference=pc.get('optimal_performance', 0.0) - pc.get('current_performance', 0.0)
+        ))
     
     return comparisons
