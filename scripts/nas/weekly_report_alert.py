@@ -8,7 +8,6 @@ scripts/nas/weekly_report_alert.py
 주간 성과 요약, 손절 실행 내역, 다음 주 전략
 """
 import sys
-import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, List
@@ -17,21 +16,21 @@ from typing import Dict, Any, List
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from extensions.automation.portfolio_loader import PortfolioLoader
-from extensions.notification.telegram_sender import TelegramSender
-from infra.logging.setup import setup_logging
+from extensions.automation.script_base import ScriptBase, handle_script_errors
+from extensions.automation.portfolio_helper import PortfolioHelper
+from extensions.notification.telegram_helper import TelegramHelper
 
-# 로깅 설정
-setup_logging()
-logger = logging.getLogger(__name__)
+# 스크립트 베이스 초기화
+script = ScriptBase("weekly_report_alert")
+logger = script.logger
 
 
 class WeeklyReport:
     """주간 리포트 클래스"""
     
     def __init__(self):
-        self.loader = PortfolioLoader()
-        self.telegram = TelegramSender()
+        self.portfolio = PortfolioHelper()
+        self.telegram = TelegramHelper()
         self.today = date.today()
         
         # 주간 기간 계산 (월~금)
@@ -47,9 +46,13 @@ class WeeklyReport:
         """
         try:
             # 포트폴리오 현황
-            summary = self.loader.get_portfolio_summary()
-            holdings_count = len(self.loader.get_holdings_codes())
-            holdings_detail = self.loader.get_holdings_detail()
+            data = self.portfolio.load_full_data()
+            if not data:
+                return self._format_error_message()
+            
+            summary = data['summary']
+            holdings_count = data['holdings_count']
+            holdings_detail = data['holdings_detail']
             
             # 메시지 생성
             message = self._format_header()
@@ -84,11 +87,8 @@ class WeeklyReport:
         message += f"총 평가액: `{summary['total_value']:,.0f}원`\n"
         message += f"총 매입액: `{summary['total_cost']:,.0f}원`\n"
         
-        # 수익/손실 색상 표시
-        if summary['return_amount'] >= 0:
-            message += f"평가손익: 🔴 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)\n"
-        else:
-            message += f"평가손익: 🔵 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)\n"
+        # 수익/손실 포맷 (공통 함수 사용)
+        message += f"평가손익: {PortfolioHelper.format_return(summary['return_amount'], summary['return_pct'])}\n"
         
         message += f"보유 종목: `{holdings_count}개`\n\n"
         
@@ -211,23 +211,20 @@ class WeeklyReport:
         Returns:
             전송 성공 여부
         """
-        logger.info("=" * 60)
-        logger.info("주간 리포트 생성 및 전송")
-        logger.info("=" * 60)
+        script.log_header("주간 리포트 생성 및 전송")
         
         try:
             # 리포트 생성
             message = self.generate_report()
             
             # 텔레그램 전송
-            success = self.telegram.send_custom(message, parse_mode='Markdown')
+            success = self.telegram.send_with_logging(
+                message,
+                "주간 리포트 전송 성공",
+                "주간 리포트 전송 실패"
+            )
             
-            if success:
-                logger.info("✅ 주간 리포트 전송 성공")
-            else:
-                logger.warning("⚠️ 주간 리포트 전송 실패")
-            
-            logger.info("=" * 60)
+            script.log_footer()
             
             return success
         
@@ -236,6 +233,7 @@ class WeeklyReport:
             return False
 
 
+@handle_script_errors("주간 리포트")
 def main():
     """메인 실행 함수"""
     report = WeeklyReport()

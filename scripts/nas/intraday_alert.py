@@ -5,8 +5,6 @@ scripts/nas/intraday_alert.py
 장중 급등/급락 알림 (보유 종목 우선)
 """
 import sys
-import logging
-import traceback
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -18,13 +16,13 @@ import pykrx.stock as stock
 from pykrx.website import naver
 from pykrx import stock as pykrx_stock
 
-from extensions.notification.telegram_sender import TelegramSender
-from extensions.automation.portfolio_loader import PortfolioLoader
-from infra.logging.setup import setup_logging
+from extensions.automation.script_base import ScriptBase, handle_script_errors
+from extensions.automation.portfolio_helper import PortfolioHelper
+from extensions.notification.telegram_helper import TelegramHelper
 
-# 로깅 설정
-setup_logging()
-logger = logging.getLogger(__name__)
+# 스크립트 베이스 초기화
+script = ScriptBase("intraday_alert")
+logger = script.logger
 
 # 급등/급락 기준 (특성별 차별화)
 THRESHOLDS = {
@@ -209,28 +207,28 @@ def check_intraday_movements():
         return []
 
 
+@handle_script_errors("장중 알림")
 def main():
     """메인 실행 함수"""
-    logger.info("=" * 60)
-    logger.info("장중 알림 체크 시작 (보유 종목 우선)")
-    logger.info("=" * 60)
+    script.log_header("장중 알림 체크 시작 (보유 종목 우선)")
     
     print("=" * 60)
     print("장중 알림 체크 시작")
     print("=" * 60)
     
-    try:
-        # 보유 종목 로드
-        try:
-            loader = PortfolioLoader()
-            holdings_codes = loader.get_holdings_codes()
-            holdings_detail = loader.get_holdings_detail()
-            print(f"보유 종목: {len(holdings_codes)}개")
-            logger.info(f"보유 종목: {len(holdings_codes)}개")
-        except Exception as e:
-            logger.warning(f"보유 종목 로드 실패: {e}")
-            holdings_codes = []
-            holdings_detail = None
+    # 보유 종목 로드
+    portfolio = PortfolioHelper()
+    data = portfolio.load_full_data()
+    
+    if data and data.get('holdings_codes'):
+        holdings_codes = data['holdings_codes']
+        holdings_detail = data['holdings_detail']
+        print(f"보유 종목: {len(holdings_codes)}개")
+        logger.info(f"보유 종목: {len(holdings_codes)}개")
+    else:
+        logger.warning("보유 종목 로드 실패")
+        holdings_codes = []
+        holdings_detail = None
         
         # 장중 체크
         alerts = check_intraday_movements()
@@ -317,24 +315,20 @@ def main():
         print("\n텔레그램 전송 시도...")
         print(f"메시지 길이: {len(message)} 문자")
         
-        sender = TelegramSender()
-        success = sender.send_custom(message, parse_mode='Markdown')
+        telegram = TelegramHelper()
+        success = telegram.send_with_logging(
+            message,
+            f"장중 알림 전송 성공: {len(alerts)}개",
+            "장중 알림 전송 실패"
+        )
         
         if success:
-            logger.info(f"✅ 장중 알림 전송 성공: {len(alerts)}개")
             print(f"✅ 텔레그램 전송 성공: {len(alerts)}개 ETF")
         else:
-            logger.warning("⚠️ 장중 알림 전송 실패")
             print("❌ 텔레그램 전송 실패")
             print("💡 .env 파일의 TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID를 확인하세요")
         
         return 0
-    
-    except Exception as e:
-        logger.error(f"❌ 장중 알림 실패: {e}", exc_info=True)
-        print(f"❌ 에러 발생: {e}")
-        traceback.print_exc()
-        return 1
 
 
 if __name__ == "__main__":
