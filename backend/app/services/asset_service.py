@@ -39,28 +39,16 @@ class AssetService:
         
         # 수익률 계산
         total_cost = sum(asset.quantity * asset.avg_price for asset in assets)
-        total_return_pct = ((total_stocks_value - total_cost) / total_cost * 100) if total_cost > 0 else 0
+        total_return_pct = ((total_stocks_value - total_cost) / total_cost) if total_cost > 0 else 0  # 소수로 변환
         
-        # 일/주/월 수익 (임시)
-        daily_return = 0.0  # TODO: 실제 계산
-        daily_return_pct = 0.0
-        weekly_return = 0.0
-        weekly_return_pct = 0.0
-        monthly_return = 0.0
-        monthly_return_pct = 0.0
-        
+        # 프론트엔드 스키마에 맞게 변환
         return DashboardResponse(
-            total_assets=total_assets,
-            cash=cash,
-            stocks_value=total_stocks_value,
-            total_return_pct=total_return_pct,
-            daily_return=daily_return,
-            daily_return_pct=daily_return_pct,
-            weekly_return=weekly_return,
-            weekly_return_pct=weekly_return_pct,
-            monthly_return=monthly_return,
-            monthly_return_pct=monthly_return_pct,
-            holdings_count=len(assets)
+            portfolio_value=total_assets,
+            portfolio_change=total_return_pct,  # 이미 소수
+            sharpe_ratio=0.0,  # TODO: 계산
+            volatility=0.0,    # TODO: 계산
+            expected_return=0.0,  # TODO: 계산
+            last_updated=datetime.now().isoformat()
         )
     
     async def get_current_holdings(self) -> list[AssetResponse]:
