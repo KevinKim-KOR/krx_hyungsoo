@@ -40,6 +40,8 @@ __pycache__/
 # 환경 변수
 .env
 .env.local
+config/env.nas.sh
+config/env.pc.sh
 
 # IDE
 .vscode/
