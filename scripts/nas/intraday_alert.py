@@ -234,106 +234,106 @@ def main():
         logger.warning("보유 종목 로드 실패")
         holdings_codes = []
         holdings_detail = None
-        
-        # 장중 체크
-        alerts = check_intraday_movements()
-        
-        print(f"알림 대상: {len(alerts)}개")
-        
-        if not alerts:
-            logger.info("알림 대상 없음 - 전송 생략")
-            print("✅ 의미 있는 급등/급락 없음 (알림 생략)")
-            print("💡 현재 횡보장이거나 안정적인 장세입니다.")
-            print(f"💡 기준: 지수 ETF 1.5%, 섹터 ETF 2.0%, 해외 ETF 1.5%")
-            print(f"💡 최소 거래대금: 50억원 이상")
-            return 0
-        
-        # 보유 종목 제외 (새로운 투자처 발굴 목적)
-        new_opportunities = [a for a in alerts if a['code'] not in holdings_codes]
-        
-        if not new_opportunities:
-            logger.info("신규 투자 기회 없음 - 전송 생략")
-            print("✅ 신규 투자 기회 없음 (보유 종목 외 급등/급락 없음)")
-            return 0
-        
-        # 메시지 생성 (새로운 투자처 발굴)
-        message = "*[장중 알림] 새로운 투자 기회*\n\n"
-        message += f"📅 {date.today()}\n"
-        message += f"🔍 신규 투자 기회: {len(new_opportunities)}개\n"
-        message += f"💼 현재 보유: {len(holdings_codes)}개 (제외됨)\n\n"
-        
-        # 급등 종목 (상위 10개)
-        up_alerts = [a for a in new_opportunities if a['change'] > 0][:10]
-        if up_alerts:
-            message += "*🟢 급등 ETF (신규 투자 기회)*\n"
-            for i, alert in enumerate(up_alerts, 1):
-                message += f"{i}. {alert['name']} ({alert['code']})\n"
-                message += f"   금일: {alert['change']:+.2f}%"
-                
-                # 3개월 수익률
-                if alert.get('return_3m') is not None:
-                    message += f" | 3개월: {alert['return_3m']:+.2f}%"
-                
-                message += f" | 가격: {alert['price']:,.0f}원\n"
-                
-                # 거래량 트렌드
-                volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
-                message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
-                
-                if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
-                    message += f" (거래량 {alert['volume_ratio']:.1f}배)"
-                
-                # 괴리율
-                if alert.get('tracking_error') is not None:
-                    message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
-                
-                message += "\n\n"
-        
-        # 급락 종목 (상위 5개)
-        down_alerts = [a for a in new_opportunities if a['change'] < 0][:5]
-        if down_alerts:
-            message += "*🔴 급락 ETF (저가 매수 기회)*\n"
-            for i, alert in enumerate(down_alerts, 1):
-                message += f"{i}. {alert['name']} ({alert['code']})\n"
-                message += f"   금일: {alert['change']:+.2f}%"
-                
-                # 3개월 수익률
-                if alert.get('return_3m') is not None:
-                    message += f" | 3개월: {alert['return_3m']:+.2f}%"
-                
-                message += f" | 가격: {alert['price']:,.0f}원\n"
-                
-                # 거래량 트렌드
-                volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
-                message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
-                
-                if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
-                    message += f" (거래량 {alert['volume_ratio']:.1f}배)"
-                
-                # 괴리율
-                if alert.get('tracking_error') is not None:
-                    message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
-                
-                message += "\n\n"
-        
-        # 텔레그램 전송
-        print("\n텔레그램 전송 시도...")
-        print(f"메시지 길이: {len(message)} 문자")
-        
-        telegram = TelegramHelper()
-        success = telegram.send_with_logging(
-            message,
-            f"장중 알림 전송 성공: {len(alerts)}개",
-            "장중 알림 전송 실패"
-        )
-        
-        if success:
-            print(f"✅ 텔레그램 전송 성공: {len(alerts)}개 ETF")
-        else:
-            print("❌ 텔레그램 전송 실패")
-            print("💡 .env 파일의 TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID를 확인하세요")
-        
+    
+    # 장중 체크
+    alerts = check_intraday_movements()
+    
+    print(f"알림 대상: {len(alerts)}개")
+    
+    if not alerts:
+        logger.info("알림 대상 없음 - 전송 생략")
+        print("✅ 의미 있는 급등/급락 없음 (알림 생략)")
+        print("💡 현재 횡보장이거나 안정적인 장세입니다.")
+        print(f"💡 기준: 지수 ETF 1.5%, 섹터 ETF 2.0%, 해외 ETF 1.5%")
+        print(f"💡 최소 거래대금: 50억원 이상")
         return 0
+    
+    # 보유 종목 제외 (새로운 투자처 발굴 목적)
+    new_opportunities = [a for a in alerts if a['code'] not in holdings_codes]
+    
+    if not new_opportunities:
+        logger.info("신규 투자 기회 없음 - 전송 생략")
+        print("✅ 신규 투자 기회 없음 (보유 종목 외 급등/급락 없음)")
+        return 0
+    
+    # 메시지 생성 (새로운 투자처 발굴)
+    message = "*[장중 알림] 새로운 투자 기회*\n\n"
+    message += f"📅 {date.today()}\n"
+    message += f"🔍 신규 투자 기회: {len(new_opportunities)}개\n"
+    message += f"💼 현재 보유: {len(holdings_codes)}개 (제외됨)\n\n"
+    
+    # 급등 종목 (상위 10개)
+    up_alerts = [a for a in new_opportunities if a['change'] > 0][:10]
+    if up_alerts:
+        message += "*🟢 급등 ETF (신규 투자 기회)*\n"
+        for i, alert in enumerate(up_alerts, 1):
+            message += f"{i}. {alert['name']} ({alert['code']})\n"
+            message += f"   금일: {alert['change']:+.2f}%"
+            
+            # 3개월 수익률
+            if alert.get('return_3m') is not None:
+                message += f" | 3개월: {alert['return_3m']:+.2f}%"
+            
+            message += f" | 가격: {alert['price']:,.0f}원\n"
+            
+            # 거래량 트렌드
+            volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
+            message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
+            
+            if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
+                message += f" (거래량 {alert['volume_ratio']:.1f}배)"
+            
+            # 괴리율
+            if alert.get('tracking_error') is not None:
+                message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
+            
+            message += "\n\n"
+    
+    # 급락 종목 (상위 5개)
+    down_alerts = [a for a in new_opportunities if a['change'] < 0][:5]
+    if down_alerts:
+        message += "*🔴 급락 ETF (저가 매수 기회)*\n"
+        for i, alert in enumerate(down_alerts, 1):
+            message += f"{i}. {alert['name']} ({alert['code']})\n"
+            message += f"   금일: {alert['change']:+.2f}%"
+            
+            # 3개월 수익률
+            if alert.get('return_3m') is not None:
+                message += f" | 3개월: {alert['return_3m']:+.2f}%"
+            
+            message += f" | 가격: {alert['price']:,.0f}원\n"
+            
+            # 거래량 트렌드
+            volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
+            message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
+            
+            if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
+                message += f" (거래량 {alert['volume_ratio']:.1f}배)"
+            
+            # 괴리율
+            if alert.get('tracking_error') is not None:
+                message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
+            
+            message += "\n\n"
+    
+    # 텔레그램 전송
+    print("\n텔레그램 전송 시도...")
+    print(f"메시지 길이: {len(message)} 문자")
+    
+    telegram = TelegramHelper()
+    success = telegram.send_with_logging(
+        message,
+        f"장중 알림 전송 성공: {len(alerts)}개",
+        "장중 알림 전송 실패"
+    )
+    
+    if success:
+        print(f"✅ 텔레그램 전송 성공: {len(alerts)}개 ETF")
+    else:
+        print("❌ 텔레그램 전송 실패")
+        print("💡 .env 파일의 TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID를 확인하세요")
+    
+    return 0
 
 
 if __name__ == "__main__":
