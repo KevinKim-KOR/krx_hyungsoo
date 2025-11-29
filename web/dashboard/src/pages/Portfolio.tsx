@@ -136,14 +136,21 @@ export default function Portfolio() {
 
       {optimization.discrete_allocation && (
         <div className="bg-card rounded-lg border p-6">
-          <h3 className="text-xl font-bold mb-4">이산 배분</h3>
+          <h3 className="text-xl font-bold mb-4">이산 배분 (실제 매수 주식 수)</h3>
           <div className="space-y-2">
-            {Object.entries(optimization.discrete_allocation.allocation).map(([code, shares]) => (
-              <div key={code} className="flex justify-between items-center p-3 bg-secondary rounded">
-                <span>{code}</span>
-                <span className="font-bold">{shares}주</span>
-              </div>
-            ))}
+            {Object.entries(optimization.discrete_allocation.allocation).map(([code, shares]) => {
+              // weights에서 해당 종목의 비율 찾기
+              const weightEntry = Object.entries(optimization.weights).find(([key]) => key.includes(code));
+              const weight = weightEntry ? weightEntry[1] : 0;
+              const tickerName = weightEntry ? weightEntry[0] : code;
+              
+              return (
+                <div key={code} className="flex justify-between items-center p-3 bg-secondary rounded">
+                  <span className="font-medium">{tickerName}</span>
+                  <span className="font-bold">{shares}주 ({formatPercent(weight)})</span>
+                </div>
+              );
+            })}
             <div className="flex justify-between items-center p-3 bg-primary/10 rounded mt-4">
               <span className="font-medium">잔액</span>
               <span className="font-bold">₩{formatCurrency(optimization.discrete_allocation.leftover)}</span>
