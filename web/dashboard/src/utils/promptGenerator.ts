@@ -132,6 +132,116 @@ export function generateBacktestPrompt(data: BacktestResult): string {
 }
 
 /**
+ * 백테스트 결과 + Train/Val/Test 분할 결과 + 파라미터 정보 포함 프롬프트 생성
+ */
+export function generateBacktestPromptWithSplit(
+  historyItem: any,
+  splitResults: any,
+  parameters: any
+): string {
+  const metrics = historyItem.metrics || historyItem;
+  const params = historyItem.parameters || parameters || {};
+  
+  const cagr = metrics.cagr ?? 0;
+  const sharpe = metrics.sharpe ?? metrics.sharpe_ratio ?? 0;
+  const mdd = metrics.mdd ?? metrics.max_drawdown ?? 0;
+  const totalReturn = metrics.total_return ?? 0;
+  const trades = metrics.total_trades ?? metrics.num_trades ?? 0;
+
+  // 파라미터 섹션 생성
+  const paramEntries = Object.entries(params);
+  const paramText = paramEntries.length > 0
+    ? paramEntries.map(([key, value]) => `- ${key}: ${value}`).join('\n')
+    : '- 파라미터 정보 없음';
+
+  // Train/Val/Test 분할 결과 섹션 생성
+  let splitText = '';
+  if (splitResults && splitResults.train) {
+    splitText = `
+## Train / Validation / Test 분할 결과
+
+### Train (학습 데이터)
+- 기간: ${splitResults.periods?.train?.start || '-'} ~ ${splitResults.periods?.train?.end || '-'} (${splitResults.periods?.train?.days || '-'}일)
+- CAGR: ${splitResults.train.cagr?.toFixed(2) || '-'}%
+- Sharpe: ${splitResults.train.sharpe_ratio?.toFixed(2) || '-'}
+- MDD: ${splitResults.train.max_drawdown?.toFixed(2) || '-'}%
+- 거래: ${splitResults.train.num_trades || '-'}회
+`;
+
+    if (splitResults.val) {
+      splitText += `
+### Validation (검증 데이터)
+- 기간: ${splitResults.periods?.val?.start || '-'} ~ ${splitResults.periods?.val?.end || '-'} (${splitResults.periods?.val?.days || '-'}일)
+- CAGR: ${splitResults.val.cagr?.toFixed(2) || '-'}%
+- Sharpe: ${splitResults.val.sharpe_ratio?.toFixed(2) || '-'}
+- MDD: ${splitResults.val.max_drawdown?.toFixed(2) || '-'}%
+- 거래: ${splitResults.val.num_trades || '-'}회
+`;
+    }
+
+    splitText += `
+### Test (테스트 데이터)
+- 기간: ${splitResults.periods?.test?.start || '-'} ~ ${splitResults.periods?.test?.end || '-'} (${splitResults.periods?.test?.days || '-'}일)
+- CAGR: ${splitResults.test.cagr?.toFixed(2) || '-'}%
+- Sharpe: ${splitResults.test.sharpe_ratio?.toFixed(2) || '-'}
+- MDD: ${splitResults.test.max_drawdown?.toFixed(2) || '-'}%
+- 거래: ${splitResults.test.num_trades || '-'}회
+
+### 과적합 판정
+- 상태: ${splitResults.comparison?.status || '-'}
+- 과적합 여부: ${splitResults.comparison?.is_overfit ? '예 (주의 필요)' : '아니오'}
+- 신뢰도: ${splitResults.comparison?.validation_reliability || '-'}
+${splitResults.comparison?.warnings?.length > 0 ? `- 경고: ${splitResults.comparison.warnings.join(', ')}` : ''}
+`;
+  }
+
+  return `# 백테스트 결과 검토
+
+## 실행 정보
+- 실행 시간: ${historyItem.timestamp ? new Date(historyItem.timestamp).toLocaleString('ko-KR') : '-'}
+- 상태: ${historyItem.status || 'success'}
+
+## 사용된 파라미터
+${paramText}
+
+## 전체 성과 지표
+- CAGR: ${cagr.toFixed(2)}%
+- Sharpe Ratio: ${sharpe.toFixed(2)}
+- Max Drawdown: ${mdd.toFixed(2)}%
+- 총 수익률: ${totalReturn.toFixed(2)}%
+- 총 거래 횟수: ${trades}회
+${splitText}
+## 질문
+다음 사항에 대해 분석해주세요:
+
+1. **과적합 분석**
+   - Train/Val/Test 결과를 보면 과적합 징후가 있나요?
+   - Train에서 Test로 갈수록 성과가 어떻게 변하나요?
+   - 이 전략을 실전에 사용해도 될까요?
+
+2. **파라미터 평가**
+   - 현재 사용된 파라미터가 적절한가요?
+   - 개선이 필요한 파라미터가 있나요?
+   - 파라미터 민감도는 어떤가요?
+
+3. **성과 평가**
+   - CAGR ${cagr.toFixed(2)}%는 좋은 수준인가요?
+   - Sharpe Ratio ${sharpe.toFixed(2)}는 어떻게 해석해야 하나요?
+   - MDD ${mdd.toFixed(2)}%는 적절한 수준인가요?
+
+4. **리스크 관리**
+   - 최대 손실 구간은 언제였나요?
+   - 연속 손실 시 대응 방안은?
+   - 리스크 조정 수익률을 개선할 방법은?
+
+5. **전략 개선**
+   - 이 전략의 강점과 약점은?
+   - 개선할 수 있는 부분은?
+   - 다른 전략과 비교하면?
+`;
+}
+
+/**
  * ML 모델 학습 결과 프롬프트 생성
  */
 export function generateMLPrompt(data: MLModelInfo): string {

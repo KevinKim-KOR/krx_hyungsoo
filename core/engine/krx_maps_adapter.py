@@ -25,6 +25,8 @@ from core.strategy.defense_system import DefenseSystem, Position as DefensePosit
 from core.strategy.market_crash_detector import MarketCrashDetector
 from core.strategy.volatility_manager import VolatilityManager
 from core.strategy.market_regime_detector import MarketRegimeDetector
+from core.engine.backtest import TAX_RATES
+from core.engine.analysis_logger import AnalysisLogger
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,7 @@ class KRXMAPSAdapter:
         slippage_rate: float = 0.001,
         max_positions: int = 10,
         country_code: str = "kor",
+        instrument_type: str = "etf",  # 상품 유형 (etf, stock, leveraged_etf, reit)
         # 방어 시스템 파라미터
         enable_defense: bool = True,
         fixed_stop_loss_pct: float = -7.0,
@@ -67,6 +70,7 @@ class KRXMAPSAdapter:
             slippage_rate: 슬리피지율 (0.1%)
             max_positions: 최대 보유 종목 수
             country_code: 국가 코드
+            instrument_type: 상품 유형 (거래세 결정: etf=0%, stock=0.23%)
             enable_defense: 방어 시스템 활성화
             fixed_stop_loss_pct: 고정 손절 비율 (%)
             trailing_stop_pct: 트레일링 스톱 비율 (%)
@@ -78,7 +82,20 @@ class KRXMAPSAdapter:
         self.slippage_rate = slippage_rate
         self.max_positions = max_positions
         self.country_code = country_code
+        self.instrument_type = instrument_type
+        self.tax_rate = TAX_RATES.get(instrument_type, TAX_RATES['default'])
         self.enable_defense = enable_defense
+        
+        # 거래비용 추적
+        self.total_commission = 0.0
+        self.total_tax = 0.0
+        self.total_slippage = 0.0
+        
+        # 분석 로거 (Phase 5)
+        self.analysis_logger = AnalysisLogger()
+        self.enable_analysis_logging = True
+        
+        logger.info(f"KRXMAPSAdapter: instrument_type={instrument_type}, tax_rate={self.tax_rate*100:.2f}%")
         
         # 방어 시스템 초기화
         if enable_defense:
@@ -315,6 +332,25 @@ class KRXMAPSAdapter:
         daily_values = []
         peak_portfolio_value = self.initial_capital  # 포트폴리오 최고 가치
         
+        # 거래비용 추적 초기화
+        total_commission = 0.0
+        total_tax = 0.0
+        total_slippage = 0.0
+        
+        # 거래비용 계산 헬퍼 함수
+        def calculate_sell_costs(amount: float) -> tuple:
+            """매도 시 거래비용 계산 (수수료, 세금, 슬리피지)"""
+            commission = amount * self.commission_rate
+            tax = amount * self.tax_rate
+            slippage = amount * self.slippage_rate
+            return commission, tax, slippage
+        
+        def calculate_buy_costs(amount: float) -> tuple:
+            """매수 시 거래비용 계산 (수수료, 슬리피지)"""
+            commission = amount * self.commission_rate
+            slippage = amount * self.slippage_rate
+            return commission, slippage
+        
         # KOSPI 데이터 로드 (KODEX 200 사용, High/Low 포함)
         market_data = None
         if self.enable_defense and (self.crash_detector or self.volatility_manager or self.regime_detector):
@@ -448,13 +484,20 @@ class KRXMAPSAdapter:
                                 price = current_prices.get(ticker, 0)
                                 if price > 0:
                                     sell_amount = position.quantity * price
-                                    cash += sell_amount
+                                    commission, tax, slippage = calculate_sell_costs(sell_amount)
+                                    net_amount = sell_amount - commission - tax - slippage
+                                    cash += net_amount
+                                    total_commission += commission
+                                    total_tax += tax
+                                    total_slippage += slippage
                                     trades.append({
                                         'date': current_date.date(),
                                         'ticker': ticker,
                                         'action': 'SELL',
                                         'shares': position.quantity,
                                         'price': price,
+                                        'commission': commission,
+                                        'tax': tax,
                                         'reason': crash_reason
                                     })
                                     del positions[ticker]
@@ -490,13 +533,20 @@ class KRXMAPSAdapter:
                         price = current_prices.get(ticker, 0)
                         if price > 0:
                             sell_amount = position.quantity * price
-                            cash += sell_amount
+                            commission, tax, slippage = calculate_sell_costs(sell_amount)
+                            net_amount = sell_amount - commission - tax - slippage
+                            cash += net_amount
+                            total_commission += commission
+                            total_tax += tax
+                            total_slippage += slippage
                             trades.append({
                                 'date': current_date.date(),
                                 'ticker': ticker,
                                 'action': 'SELL',
                                 'shares': position.quantity,
                                 'price': price,
+                                'commission': commission,
+                                'tax': tax,
                                 'reason': 'portfolio_stop_loss'
                             })
                             self.defense_system.record_stop_loss(ticker, current_date.date())
@@ -516,17 +566,106 @@ class KRXMAPSAdapter:
                         should_stop, stop_type = self.defense_system.check_individual_stop_loss(position, price)
                         if should_stop:
                             sell_amount = position.quantity * price
-                            cash += sell_amount
+                            commission, tax, slippage = calculate_sell_costs(sell_amount)
+                            net_amount = sell_amount - commission - tax - slippage
+                            cash += net_amount
+                            total_commission += commission
+                            total_tax += tax
+                            total_slippage += slippage
                             trades.append({
                                 'date': current_date.date(),
                                 'ticker': ticker,
                                 'action': 'SELL',
                                 'shares': position.quantity,
                                 'price': price,
+                                'commission': commission,
+                                'tax': tax,
                                 'reason': stop_type
                             })
                             self.defense_system.record_stop_loss(ticker, current_date.date())
                             del positions[ticker]
+            
+            # 3-4. 레짐 기반 포지션 축소 (하락장 진입 시 기존 포지션 일부 매도)
+            if self.enable_defense and self.regime_detector and market_data is not None and positions:
+                regime, confidence = self.regime_detector.detect_regime(
+                    market_data,
+                    current_date.date()
+                )
+                target_ratio = self.regime_detector.get_position_ratio(regime, confidence)
+                
+                # 하락장 또는 중립장에서 포지션 축소 필요 시
+                if target_ratio < 1.0:
+                    # 현재 포트폴리오 가치
+                    holdings_value = sum(
+                        pos.quantity * current_prices.get(pos.ticker, 0)
+                        for pos in positions.values()
+                    )
+                    total_value = cash + holdings_value
+                    current_exposure = holdings_value / total_value if total_value > 0 else 0
+                    
+                    # 목표 노출도보다 현재 노출도가 높으면 축소
+                    if current_exposure > target_ratio + 0.05:  # 5% 버퍼
+                        excess_ratio = current_exposure - target_ratio
+                        # 각 포지션에서 비례적으로 축소
+                        for ticker in list(positions.keys()):
+                            position = positions[ticker]
+                            price = current_prices.get(ticker, 0)
+                            if price > 0 and position.quantity > 0:
+                                # 축소할 수량 계산 (비례 축소)
+                                reduce_ratio = excess_ratio / current_exposure
+                                reduce_shares = int(position.quantity * reduce_ratio)
+                                
+                                if reduce_shares > 0:
+                                    sell_amount = reduce_shares * price
+                                    commission, tax, slippage = calculate_sell_costs(sell_amount)
+                                    net_amount = sell_amount - commission - tax - slippage
+                                    cash += net_amount
+                                    total_commission += commission
+                                    total_tax += tax
+                                    total_slippage += slippage
+                                    
+                                    position.quantity -= reduce_shares
+                                    
+                                    reason = f'regime_reduce_{regime}_{target_ratio:.0%}'
+                                    trades.append({
+                                        'date': current_date.date(),
+                                        'ticker': ticker,
+                                        'action': 'SELL',
+                                        'shares': reduce_shares,
+                                        'price': price,
+                                        'commission': commission,
+                                        'tax': tax,
+                                        'reason': reason
+                                    })
+                                    
+                                    # 분석 로그 기록 (Phase 5)
+                                    if self.enable_analysis_logging:
+                                        self.analysis_logger.log_trade(
+                                            date=current_date.date(),
+                                            ticker=ticker,
+                                            side='SELL',
+                                            qty=reduce_shares,
+                                            price=price,
+                                            commission=commission,
+                                            tax=tax,
+                                            slippage=slippage,
+                                            reason=reason
+                                        )
+                                    
+                                    # 수량이 0이면 포지션 삭제
+                                    if position.quantity <= 0:
+                                        del positions[ticker]
+                        
+                        # 방어 이벤트 로그
+                        if self.enable_analysis_logging:
+                            self.analysis_logger.log_defense_event(
+                                date=current_date.date(),
+                                event_type='regime_reduce',
+                                details=f'{regime} 레짐 진입, 포지션 {target_ratio:.0%}로 축소',
+                                impact=target_ratio - current_exposure
+                            )
+                        
+                        logger.debug(f"{current_date.date()}: 레짐 축소 - {regime} (목표 {target_ratio:.0%}, 현재 {current_exposure:.0%})")
             
             # 4. 리밸런싱
             # 매도: Top N에 없는 종목
@@ -536,15 +675,37 @@ class KRXMAPSAdapter:
                     price = current_prices.get(ticker, 0)
                     if price > 0:
                         sell_amount = position.quantity * price
-                        cash += sell_amount
+                        commission, tax, slippage = calculate_sell_costs(sell_amount)
+                        net_amount = sell_amount - commission - tax - slippage
+                        cash += net_amount
+                        total_commission += commission
+                        total_tax += tax
+                        total_slippage += slippage
                         trades.append({
                             'date': current_date.date(),
                             'ticker': ticker,
                             'action': 'SELL',
                             'shares': position.quantity,
                             'price': price,
+                            'commission': commission,
+                            'tax': tax,
                             'reason': 'rebalance'
                         })
+                        
+                        # 분석 로그 기록 (Phase 5)
+                        if self.enable_analysis_logging:
+                            self.analysis_logger.log_trade(
+                                date=current_date.date(),
+                                ticker=ticker,
+                                side='SELL',
+                                qty=position.quantity,
+                                price=price,
+                                commission=commission,
+                                tax=tax,
+                                slippage=slippage,
+                                reason='rebalance'
+                            )
+                        
                         del positions[ticker]
             
             # 매수: Top N 중 미보유 종목 (포트폴리오 손절 발동 시 스킵)
@@ -595,13 +756,18 @@ class KRXMAPSAdapter:
                         
                         price = current_prices.get(ticker, 0)
                         if price > 0 and cash > target_value_per_position * 0.5:
-                            # 매수 가능 금액
+                            # 매수 가능 금액 (거래비용 고려)
                             buy_amount = min(target_value_per_position, cash)
-                            shares = int(buy_amount / price)
+                            commission, slippage = calculate_buy_costs(buy_amount)
+                            available_for_shares = buy_amount - commission - slippage
+                            shares = int(available_for_shares / price)
                             
                             if shares > 0:
                                 actual_amount = shares * price
-                                cash -= actual_amount
+                                total_cost = actual_amount + commission + slippage
+                                cash -= total_cost
+                                total_commission += commission
+                                total_slippage += slippage
                                 
                                 # DefensePosition 생성
                                 positions[ticker] = DefensePosition(
@@ -618,8 +784,23 @@ class KRXMAPSAdapter:
                                     'ticker': ticker,
                                     'action': 'BUY',
                                     'shares': shares,
-                                    'price': price
+                                    'price': price,
+                                    'commission': commission
                                 })
+                                
+                                # 분석 로그 기록 (Phase 5)
+                                if self.enable_analysis_logging:
+                                    self.analysis_logger.log_trade(
+                                        date=current_date.date(),
+                                        ticker=ticker,
+                                        side='BUY',
+                                        qty=shares,
+                                        price=price,
+                                        commission=commission,
+                                        tax=0,
+                                        slippage=slippage,
+                                        reason='rebalance'
+                                    )
             
             # 5. 일별 평가액 기록
             holdings_value = sum(
@@ -629,11 +810,42 @@ class KRXMAPSAdapter:
             total_value = cash + holdings_value
             daily_values.append((current_date.date(), total_value))
             
+            # 5-1. 분석 로그 기록 (Phase 5)
+            if self.enable_analysis_logging:
+                # 일간 수익률 계산
+                if len(daily_values) >= 2:
+                    prev_value = daily_values[-2][1]
+                    daily_return = (total_value / prev_value - 1) if prev_value > 0 else 0
+                else:
+                    daily_return = 0
+                
+                # 누적 수익률
+                cumulative_return = (total_value / self.initial_capital - 1) if self.initial_capital > 0 else 0
+                
+                # 현재 레짐 정보
+                current_regime = regime if 'regime' in dir() else 'neutral'
+                current_confidence = confidence if 'confidence' in dir() else 0.5
+                current_regime_ratio = regime_ratio if 'regime_ratio' in dir() else 1.0
+                
+                self.analysis_logger.log_daily(
+                    date=current_date.date(),
+                    portfolio_value=total_value,
+                    cash=cash,
+                    holdings_value=holdings_value,
+                    regime=current_regime,
+                    regime_confidence=current_confidence,
+                    regime_ratio=current_regime_ratio,
+                    num_positions=len(positions),
+                    daily_return=daily_return,
+                    cumulative_return=cumulative_return
+                )
+            
             # 6. 이전 가격 업데이트 (다음 날 보유 종목 하락 감지용)
             previous_prices = current_prices.copy()
         
         # 결과 반환
         final_value = daily_values[-1][1] if daily_values else self.initial_capital
+        total_costs = total_commission + total_tax + total_slippage
         
         result = {
             'initial_capital': self.initial_capital,
@@ -642,8 +854,20 @@ class KRXMAPSAdapter:
             'trades': trades,
             'daily_values': daily_values,
             'start_date': all_dates[0].date() if all_dates else None,
-            'end_date': all_dates[-1].date() if all_dates else None
+            'end_date': all_dates[-1].date() if all_dates else None,
+            # 거래비용 상세
+            'total_commission': total_commission,
+            'total_tax': total_tax,
+            'total_slippage': total_slippage,
+            'total_costs': total_costs,
+            'cost_ratio': (total_costs / self.initial_capital) * 100 if self.initial_capital > 0 else 0.0,
+            'instrument_type': self.instrument_type,
+            'tax_rate': self.tax_rate * 100
         }
+        
+        logger.info(f"거래비용 요약: 수수료={total_commission:,.0f}, 세금={total_tax:,.0f}, "
+                   f"슬리피지={total_slippage:,.0f}, 총={total_costs:,.0f} "
+                   f"({result['cost_ratio']:.2f}%)")
         
         # 방어 시스템 통계 추가
         if self.enable_defense:
@@ -745,6 +969,22 @@ class KRXMAPSAdapter:
                 'daily_values': daily_values
             }
             
+            # 거래비용 정보 추가
+            if 'total_commission' in maps_results:
+                result['total_commission'] = maps_results['total_commission']
+            if 'total_tax' in maps_results:
+                result['total_tax'] = maps_results['total_tax']
+            if 'total_slippage' in maps_results:
+                result['total_slippage'] = maps_results['total_slippage']
+            if 'total_costs' in maps_results:
+                result['total_costs'] = maps_results['total_costs']
+            if 'cost_ratio' in maps_results:
+                result['cost_ratio'] = maps_results['cost_ratio']
+            if 'instrument_type' in maps_results:
+                result['instrument_type'] = maps_results['instrument_type']
+            if 'tax_rate' in maps_results:
+                result['tax_rate'] = maps_results['tax_rate']
+            
             # 방어 시스템 통계 추가 (있으면)
             if 'defense_stats' in maps_results:
                 result['defense_stats'] = maps_results['defense_stats']
@@ -807,6 +1047,76 @@ class KRXMAPSAdapter:
     def _get_default_results(self) -> Dict:
         """기본 결과 반환"""
         return self._get_fallback_results()
+    
+    def reset(self):
+        """
+        어댑터 상태 리셋
+        
+        Train/Test 분리 백테스트 시 각 구간 실행 전 호출 필요
+        방어 시스템, 레짐 감지기 등의 내부 상태 초기화
+        """
+        logger.info("KRXMAPSAdapter 상태 리셋")
+        
+        # 거래비용 추적 초기화
+        self.total_commission = 0.0
+        self.total_tax = 0.0
+        self.total_slippage = 0.0
+        
+        # 방어 시스템 리셋
+        if self.enable_defense:
+            if self.defense_system:
+                self.defense_system = DefenseSystem(
+                    fixed_stop_loss_pct=self.defense_system.fixed_stop_loss_pct,
+                    trailing_stop_pct=self.defense_system.trailing_stop_pct,
+                    portfolio_stop_loss_pct=self.defense_system.portfolio_stop_loss_pct,
+                    cooldown_days=self.defense_system.cooldown_days
+                )
+            
+            if self.crash_detector:
+                self.crash_detector = MarketCrashDetector(
+                    single_day_crash_threshold=self.crash_detector.single_day_crash_threshold,
+                    short_term_crash_threshold=self.crash_detector.short_term_crash_threshold,
+                    short_term_crash_period=self.crash_detector.short_term_crash_period,
+                    portfolio_decline_threshold=self.crash_detector.portfolio_decline_threshold,
+                    portfolio_decline_pct=self.crash_detector.portfolio_decline_pct,
+                    defense_mode_duration=self.crash_detector.defense_mode_duration
+                )
+            
+            if self.volatility_manager:
+                self.volatility_manager = VolatilityManager(
+                    atr_period=self.volatility_manager.atr_period,
+                    low_volatility_threshold=self.volatility_manager.low_volatility_threshold,
+                    high_volatility_threshold=self.volatility_manager.high_volatility_threshold,
+                    low_volatility_position_ratio=self.volatility_manager.low_volatility_position_ratio,
+                    normal_volatility_position_ratio=self.volatility_manager.normal_volatility_position_ratio,
+                    high_volatility_position_ratio=self.volatility_manager.high_volatility_position_ratio
+                )
+            
+            if self.regime_detector:
+                self.regime_detector = MarketRegimeDetector(
+                    short_ma_period=self.regime_detector.short_ma_period,
+                    long_ma_period=self.regime_detector.long_ma_period,
+                    bull_threshold=self.regime_detector.bull_threshold,
+                    bear_threshold=self.regime_detector.bear_threshold,
+                    trend_strength_period=self.regime_detector.trend_strength_period
+                )
+        
+        # 분석 로거 리셋
+        self.analysis_logger.reset()
+    
+    def get_analysis_logs(self):
+        """분석 로그 반환"""
+        return {
+            'daily': self.analysis_logger.get_daily_logs(),
+            'trades': self.analysis_logger.get_trade_logs(),
+            'regime_changes': self.analysis_logger.get_regime_changes(),
+            'defense_events': self.analysis_logger.get_defense_events(),
+            'summary': self.analysis_logger.get_summary()
+        }
+    
+    def save_analysis_logs(self, output_dir, prefix='backtest'):
+        """분석 로그 저장"""
+        self.analysis_logger.save_logs(output_dir, prefix)
 
 
 __all__ = ['KRXMAPSAdapter']

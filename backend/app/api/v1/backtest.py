@@ -194,12 +194,90 @@ async def get_backtest_results():
     return results
 
 
-@router.post("/run")
-async def run_backtest():
+# 파라미터 파일 경로
+PARAMS_FILE = CONFIG_DIR / "backtest_params.json"
+
+
+@router.get("/parameters")
+async def get_parameters():
     """
-    백테스트 실행
+    백테스트 파라미터 조회
     
-    파라미터는 config/backtest_params.json에서 로드
+    Returns:
+        현재 설정된 파라미터
+    """
+    if PARAMS_FILE.exists():
+        try:
+            with open(PARAMS_FILE, 'r', encoding='utf-8') as f:
+                params = json.load(f)
+            return params
+        except Exception as e:
+            logger.error(f"파라미터 로드 실패: {e}")
+    
+    # 기본값 반환
+    return {
+        "start_date": "2022-01-01",
+        "end_date": "2025-12-01",
+        "initial_capital": 10000000,
+        "ma_period": 60,
+        "rsi_period": 14,
+        "rsi_overbought": 70,
+        "maps_buy_threshold": 0,
+        "maps_sell_threshold": -5,
+        "top_n": 5,
+        "stop_loss": -0.07,
+        "take_profit": 0.3,
+        "short_ma_period": 50,
+        "long_ma_period": 200,
+        "bull_threshold": 0.01
+    }
+
+
+@router.put("/parameters")
+async def update_parameters(params: dict):
+    """
+    백테스트 파라미터 업데이트
+    
+    Args:
+        params: 새 파라미터
+    
+    Returns:
+        업데이트된 파라미터
+    """
+    try:
+        # 기존 파라미터 로드
+        existing = {}
+        if PARAMS_FILE.exists():
+            with open(PARAMS_FILE, 'r', encoding='utf-8') as f:
+                existing = json.load(f)
+        
+        # 병합
+        existing.update(params)
+        
+        # 저장
+        with open(PARAMS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(existing, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"파라미터 업데이트: {params}")
+        return existing
+    except Exception as e:
+        logger.error(f"파라미터 저장 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class BacktestRunRequest(BaseModel):
+    """백테스트 실행 요청"""
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+
+@router.post("/run")
+async def run_backtest(request: BacktestRunRequest = None):
+    """
+    백테스트 실행 (Train/Val/Test 3-way 분할)
+    
+    Args:
+        request: 시작일/종료일 (선택)
     
     Returns:
         백테스트 실행 상태
@@ -216,31 +294,50 @@ async def run_backtest():
     import subprocess
     import sys
     
-    # 백테스트 스크립트 경로
-    script_path = Path(__file__).parent.parent.parent.parent.parent / "scripts" / "dev" / "phase2" / "run_backtest_hybrid.py"
+    # 3-way 분할 백테스트 스크립트 경로
+    script_path = Path(__file__).parent.parent.parent.parent.parent / "scripts" / "dev" / "phase3" / "run_train_val_test_split.py"
+    
+    # 대체 스크립트 (2-way)
+    if not script_path.exists():
+        script_path = Path(__file__).parent.parent.parent.parent.parent / "scripts" / "dev" / "phase3" / "run_train_test_split.py"
     
     if not script_path.exists():
         raise HTTPException(
             status_code=404,
-            detail=f"백테스트 스크립트를 찾을 수 없습니다: {script_path}"
+            detail=f"백테스트 스크립트를 찾을 수 없습니다"
         )
     
     try:
-        # 백그라운드에서 백테스트 실행
-        process = subprocess.Popen(
-            [sys.executable, str(script_path)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+        # 백그라운드에서 백테스트 실행 (출력을 파일로 리다이렉트)
+        log_file = OUTPUT_DIR / "backtest" / "backtest_run.log"
+        log_file.parent.mkdir(parents=True, exist_ok=True)
         
-        logger.info(f"백테스트 실행 시작 (PID: {process.pid})")
+        # 날짜 파라미터 준비
+        cmd = [sys.executable, str(script_path)]
+        if request and request.start_date:
+            cmd.extend(["--start-date", request.start_date])
+        if request and request.end_date:
+            cmd.extend(["--end-date", request.end_date])
+        
+        with open(log_file, 'w', encoding='utf-8') as f:
+            process = subprocess.Popen(
+                cmd,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                text=True,
+                cwd=str(script_path.parent.parent.parent.parent)  # 프로젝트 루트
+            )
+        
+        logger.info(f"백테스트 실행 시작 (PID: {process.pid}, 로그: {log_file})")
         
         return {
-            "message": "백테스트 실행 시작",
+            "message": "Train/Val/Test 분할 백테스트 실행 시작",
             "status": "running",
             "pid": process.pid,
-            "script": str(script_path)
+            "script": str(script_path),
+            "log_file": str(log_file),
+            "start_date": request.start_date if request else None,
+            "end_date": request.end_date if request else None
         }
     except Exception as e:
         logger.error(f"백테스트 실행 실패: {e}")
@@ -350,3 +447,79 @@ async def compare_parameters():
         ))
     
     return comparisons
+
+
+class SplitPeriod(BaseModel):
+    """분할 기간 스키마"""
+    start: str
+    end: str
+    days: int
+
+
+class SplitMetrics(BaseModel):
+    """분할 구간 성과 스키마"""
+    total_return_pct: float
+    cagr: float
+    sharpe_ratio: float
+    max_drawdown: float
+    num_trades: int
+    total_costs: float
+    cost_ratio: float
+
+
+class SplitComparison(BaseModel):
+    """분할 비교 결과 스키마"""
+    status: str
+    is_overfit: bool
+    validation_reliability: str
+    degradation_pattern: str
+    warnings: list[str]
+
+
+class ThreeWaySplitResult(BaseModel):
+    """Train/Val/Test 3-way 분할 결과 스키마"""
+    periods: dict[str, SplitPeriod]
+    train: SplitMetrics
+    val: SplitMetrics
+    test: SplitMetrics
+    comparison: SplitComparison
+
+
+@router.get("/split-results")
+async def get_split_results():
+    """
+    Train/Val/Test 분할 백테스트 결과 조회
+    
+    Returns:
+        3-way 분할 백테스트 결과
+    """
+    # 결과 파일 경로
+    result_file = OUTPUT_DIR / "backtest" / "train_val_test_split_results.json"
+    
+    if result_file.exists():
+        try:
+            with open(result_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            logger.info(f"✅ 분할 결과 로드: {result_file}")
+            return data
+        except Exception as e:
+            logger.error(f"분할 결과 로드 실패: {e}")
+    
+    # 2-way 분할 결과도 확인
+    result_file_2way = OUTPUT_DIR / "backtest" / "train_test_split_results.json"
+    if result_file_2way.exists():
+        try:
+            with open(result_file_2way, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            logger.info(f"✅ 2-way 분할 결과 로드: {result_file_2way}")
+            return data
+        except Exception as e:
+            logger.error(f"2-way 분할 결과 로드 실패: {e}")
+    
+    # 결과 없음
+    raise HTTPException(
+        status_code=404,
+        detail="분할 백테스트 결과가 없습니다. 먼저 백테스트를 실행해주세요."
+    )

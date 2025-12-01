@@ -71,15 +71,15 @@ class DualLogger:
     
     def success(self, message):
         """성공 메시지"""
-        self.logger.info(f"✅ {message}")
+        self.logger.info(f"[OK] {message}")
     
     def fail(self, message):
         """실패 메시지"""
-        self.logger.error(f"❌ {message}")
+        self.logger.error(f"[FAIL] {message}")
     
     def warn(self, message):
         """경고 메시지"""
-        self.logger.warning(f"⚠️ {message}")
+        self.logger.warning(f"[WARN] {message}")
     
     def finish(self):
         """종료 로그"""
@@ -94,13 +94,13 @@ def create_logger(step_name: str, project_root: Path) -> DualLogger:
     단계별 로거 생성
     
     Args:
-        step_name: 단계 이름 (예: "1_check_environment")
+        step_name: 단계 이름 (예: "phase0_train_test")
         project_root: 프로젝트 루트 경로
     
     Returns:
         DualLogger 인스턴스
     """
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = project_root / 'logs' / 'phase2' / f"{step_name}_{timestamp}.log"
+    log_file = project_root / 'logs' / 'backtest' / f"{step_name}_{timestamp}.log"
     
     return DualLogger(log_file)

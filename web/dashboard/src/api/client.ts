@@ -37,6 +37,16 @@ class ApiClient {
     });
   }
 
+  private async put<T>(endpoint: string, data?: any): Promise<T> {
+    return this.fetch<T>(endpoint, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
   // Dashboard
   async getDashboardSummary(): Promise<DashboardSummary> {
     return this.fetch<DashboardSummary>('/api/v1/dashboard/summary');
@@ -81,11 +91,11 @@ class ApiClient {
 
   // Parameters
   async getCurrentParameters(): Promise<any> {
-    return this.fetch<any>('/api/v1/parameters/current');
+    return this.fetch<any>('/api/v1/backtest/parameters');
   }
 
   async updateParameters(params: any): Promise<any> {
-    return this.post<any>('/api/v1/parameters/update', params);
+    return this.put<any>('/api/v1/backtest/parameters', params);
   }
 
   async getParameterPresets(): Promise<any> {
@@ -101,8 +111,11 @@ class ApiClient {
   }
 
   // Backtest Run
-  async runBacktest(): Promise<any> {
-    return this.post<any>('/api/v1/backtest/run');
+  async runBacktest(startDate?: string, endDate?: string): Promise<any> {
+    const body: any = {};
+    if (startDate) body.start_date = startDate;
+    if (endDate) body.end_date = endDate;
+    return this.post<any>('/api/v1/backtest/run', body);
   }
 
   // Backtest History
@@ -112,6 +125,11 @@ class ApiClient {
 
   async saveBacktestHistory(history: any): Promise<any> {
     return this.post<any>('/api/v1/backtest/history/save', history);
+  }
+
+  // Train/Val/Test Split Results
+  async getSplitResults(): Promise<any> {
+    return this.fetch<any>('/api/v1/backtest/split-results');
   }
 
   // ML Parameters

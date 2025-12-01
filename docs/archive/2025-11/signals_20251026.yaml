@@ -1,0 +1,15 @@
+- code: '364980'
+  reason: HOLD_CORE 자동 매수
+  score: 0.0
+  signal_type: BUY
+  timestamp: '2025-10-26T18:00:53.591842'
+- code: 069500
+  reason: HOLD_CORE 자동 매수
+  score: 0.0
+  signal_type: BUY
+  timestamp: '2025-10-26T18:00:53.591851'
+- code: 091170
+  reason: HOLD_CORE 자동 매수
+  score: 0.0
+  signal_type: BUY
+  timestamp: '2025-10-26T18:00:53.591853'

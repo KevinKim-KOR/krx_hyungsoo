@@ -49,11 +49,18 @@ class Trade:
     quantity: int
     price: float
     commission: float = 0.0
+    tax: float = 0.0  # 거래세 (매도 시만)
+    slippage: float = 0.0  # 슬리피지 비용
     
     @property
     def amount(self) -> float:
-        """거래 금액"""
+        """거래 금액 (수수료 포함)"""
         return self.quantity * self.price + self.commission
+    
+    @property
+    def total_cost(self) -> float:
+        """총 거래비용 (수수료 + 세금 + 슬리피지)"""
+        return self.commission + self.tax + self.slippage
 
 
 @dataclass
@@ -85,6 +92,16 @@ class Portfolio:
                 position.current_price = prices[symbol]
 
 
+# 상품별 거래세율 (한국 시장)
+TAX_RATES = {
+    'stock': 0.0023,       # 주식: 0.23% (증권거래세 0.18% + 농특세 0.05%)
+    'etf': 0.0,            # ETF: 면제
+    'leveraged_etf': 0.0,  # 레버리지 ETF: 면제
+    'reit': 0.0023,        # 리츠: 0.23%
+    'default': 0.0         # 기본값: 면제 (ETF 위주 전략)
+}
+
+
 class BacktestEngine:
     """백테스트 엔진"""
     
@@ -94,7 +111,8 @@ class BacktestEngine:
         commission_rate: float = 0.00015,  # 수수료율 (0.015%)
         slippage_rate: float = 0.001,  # 슬리피지 (0.1%)
         max_positions: int = 10,  # 최대 보유 종목 수
-        rebalance_frequency: str = 'daily'  # 리밸런싱 주기
+        rebalance_frequency: str = 'daily',  # 리밸런싱 주기
+        instrument_type: str = 'etf'  # 상품 유형 (etf, stock, leveraged_etf, reit)
     ):
         """
         Args:
@@ -103,12 +121,15 @@ class BacktestEngine:
             slippage_rate: 슬리피지율
             max_positions: 최대 보유 종목 수
             rebalance_frequency: 리밸런싱 주기 (daily, weekly, monthly)
+            instrument_type: 상품 유형 (거래세 결정)
         """
         self.initial_capital = initial_capital
         self.commission_rate = commission_rate
         self.slippage_rate = slippage_rate
         self.max_positions = max_positions
         self.rebalance_frequency = rebalance_frequency
+        self.instrument_type = instrument_type
+        self.tax_rate = TAX_RATES.get(instrument_type, TAX_RATES['default'])
         
         # 포트폴리오 초기화
         self.portfolio = Portfolio(cash=initial_capital)
@@ -116,6 +137,13 @@ class BacktestEngine:
         # 성과 추적
         self.nav_history: List[Tuple[date, float]] = []
         self.daily_returns: List[float] = []
+        
+        # 거래비용 추적
+        self.total_commission: float = 0.0
+        self.total_tax: float = 0.0
+        self.total_slippage: float = 0.0
+        
+        logger.info(f"BacktestEngine 초기화: instrument_type={instrument_type}, tax_rate={self.tax_rate*100:.2f}%")
         
     def calculate_commission(self, amount: float) -> float:
         """수수료 계산"""
@@ -160,6 +188,7 @@ class BacktestEngine:
         
         # 슬리피지 적용
         adjusted_price = self.calculate_slippage(price, 'BUY')
+        slippage_cost = abs(adjusted_price - price) * quantity
         
         # 수수료 계산
         commission = self.calculate_commission(quantity * adjusted_price)
@@ -186,6 +215,10 @@ class BacktestEngine:
         # 현금 차감
         self.portfolio.cash -= (quantity * adjusted_price + commission)
         
+        # 비용 추적
+        self.total_commission += commission
+        self.total_slippage += slippage_cost
+        
         # 거래 기록
         trade = Trade(
             date=trade_date,
@@ -193,11 +226,13 @@ class BacktestEngine:
             action='BUY',
             quantity=quantity,
             price=adjusted_price,
-            commission=commission
+            commission=commission,
+            tax=0.0,  # 매수 시 세금 없음
+            slippage=slippage_cost
         )
         self.portfolio.trades.append(trade)
         
-        logger.info(f"매수 실행: {symbol} {quantity}주 @ {adjusted_price:,.0f} (수수료: {commission:,.0f})")
+        logger.debug(f"매수 실행: {symbol} {quantity}주 @ {adjusted_price:,.0f} (수수료: {commission:,.0f})")
         return True
     
     def execute_sell(
@@ -222,12 +257,19 @@ class BacktestEngine:
         
         # 슬리피지 적용
         adjusted_price = self.calculate_slippage(price, 'SELL')
+        slippage_cost = abs(price - adjusted_price) * quantity
+        
+        # 거래 금액
+        trade_amount = quantity * adjusted_price
         
         # 수수료 계산
-        commission = self.calculate_commission(quantity * adjusted_price)
+        commission = self.calculate_commission(trade_amount)
         
-        # 현금 증가
-        self.portfolio.cash += (quantity * adjusted_price - commission)
+        # 거래세 계산 (매도 시에만 부과)
+        tax = trade_amount * self.tax_rate
+        
+        # 현금 증가 (수수료 + 세금 차감)
+        self.portfolio.cash += (trade_amount - commission - tax)
         
         # 포지션 감소
         position.quantity -= quantity
@@ -236,6 +278,11 @@ class BacktestEngine:
         if position.quantity == 0:
             del self.portfolio.positions[symbol]
         
+        # 비용 추적
+        self.total_commission += commission
+        self.total_tax += tax
+        self.total_slippage += slippage_cost
+        
         # 거래 기록
         trade = Trade(
             date=trade_date,
@@ -243,11 +290,13 @@ class BacktestEngine:
             action='SELL',
             quantity=quantity,
             price=adjusted_price,
-            commission=commission
+            commission=commission,
+            tax=tax,
+            slippage=slippage_cost
         )
         self.portfolio.trades.append(trade)
         
-        logger.info(f"매도 실행: {symbol} {quantity}주 @ {adjusted_price:,.0f} (수수료: {commission:,.0f})")
+        logger.debug(f"매도 실행: {symbol} {quantity}주 @ {adjusted_price:,.0f} (수수료: {commission:,.0f}, 세금: {tax:,.0f})")
         return True
     
     def rebalance(
@@ -348,6 +397,10 @@ class BacktestEngine:
         else:
             win_rate = 0.0
         
+        # 총 거래비용
+        total_costs = self.total_commission + self.total_tax + self.total_slippage
+        cost_ratio = (total_costs / self.initial_capital) * 100 if self.initial_capital > 0 else 0.0
+        
         return {
             'total_return': total_return,
             'annual_return': annual_return,
@@ -356,7 +409,15 @@ class BacktestEngine:
             'max_drawdown': max_drawdown,
             'win_rate': win_rate,
             'total_trades': len(self.portfolio.trades),
-            'final_value': nav_series.iloc[-1]
+            'final_value': nav_series.iloc[-1],
+            # 거래비용 상세
+            'total_commission': self.total_commission,
+            'total_tax': self.total_tax,
+            'total_slippage': self.total_slippage,
+            'total_costs': total_costs,
+            'cost_ratio': cost_ratio,  # 초기 자본 대비 비용 비율
+            'instrument_type': self.instrument_type,
+            'tax_rate': self.tax_rate * 100  # %로 표시
         }
 
 

@@ -2,7 +2,56 @@
 backtest:
   # 기본 기간
   default_start_date: "2022-01-01"
-  default_end_date: "2025-11-08"
+  default_end_date: "2025-11-30"
+  
+  # 자본금 및 포지션
+  initial_capital: 10000000
+  max_positions: 10
+  
+  # 거래비용 (Phase 1)
+  costs:
+    korea:
+      commission_rate: 0.00015  # 0.015%
+      slippage_rate: 0.001      # 0.1%
+      tax_rates:
+        stock: 0.0023           # 0.23% (증권거래세 + 농특세)
+        etf: 0.0                # ETF 면세
+        leveraged_etf: 0.0      # 레버리지 ETF 면세
+        reit: 0.0023            # 리츠 0.23%
+        default: 0.0
+    us:
+      commission_rate: 0.0      # 무료 (대부분 브로커)
+      slippage_rate: 0.001      # 0.1%
+      tax_rates:
+        stock: 0.0              # 양도세는 별도
+        etf: 0.0
+        default: 0.0
+  
+  # 레짐 스케일링 (Phase 2)
+  regime_scaling:
+    enabled: true
+    position_ratios:
+      bull: 1.0                 # 상승장: 100%
+      neutral: 0.8              # 중립장: 80%
+      bear: 0.5                 # 하락장: 50%
+    reduce_existing_positions: true  # 하락장 진입 시 기존 포지션 축소
+    exposure_buffer: 0.05       # 5% 버퍼
+  
+  # 방어 시스템
+  defense:
+    enabled: true
+    portfolio_stop_loss: -0.15  # 포트폴리오 손절 -15%
+    individual_stop_loss: -0.10 # 개별 손절 -10%
+    cooldown_days: 5            # 재진입 대기일
+  
+  # Train/Val/Test 분할 (Phase 3)
+  split:
+    train_ratio: 0.70
+    val_ratio: 0.15
+    test_ratio: 0.15
+    min_train_days: 504         # 최소 2년
+    min_val_days: 126           # 최소 6개월
+    min_test_days: 126          # 최소 6개월
   
   # 전략별 설정
   strategies:
