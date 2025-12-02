@@ -1,254 +1,243 @@
-# 📚 문서 인덱스
+# 📚 KRX Alertor Modular - 문서 인덱스
 
-**최종 업데이트**: 2025-11-27  
-**버전**: 2.0 (Phase 2 문서 정리 완료)
+**최종 업데이트**: 2025-12-02  
+**버전**: 3.0 (전체 문서 구조 정리)
 
 ---
 
 ## 📋 목차
 
-1. [사용 가이드](#사용-가이드)
-2. [배포 가이드](#배포-가이드)
-3. [개발 문서](#개발-문서)
-4. [설계 문서](#설계-문서)
-5. [완료된 Phase](#완료된-phase)
-
----
-
-## 사용 가이드
-
-### 📖 guides/
-
-**알림 시스템**:
-- [`alert-system.md`](guides/alert-system.md) - 텔레그램 알림 설정 및 사용법
-  - 장중 알림 (새로운 투자 기회)
-  - 장시작 알림 (일일 시장 현황)
-  - EOD 알림 (매매 신호)
-
-**백테스트**:
-- [`backtest.md`](guides/backtest.md) - 백테스트 실행 가이드
-  - 전략 테스트
-  - 성과 분석
-  - 파라미터 최적화
-
-**레짐 모니터링**:
-- [`regime-monitoring.md`](guides/regime-monitoring.md) - 시장 레짐 감지 및 모니터링
-  - 레짐 감지 원리
-  - 실시간 모니터링
-  - 알림 설정
-
-**포트폴리오 관리**:
-- [`portfolio-manager.md`](guides/portfolio-manager.md) - 포트폴리오 관리 UI
-  - 보유 종목 관리
-  - 매매 신호
-  - 성과 분석
-
----
-
-## 배포 가이드
-
-### 🚀 deployment/
-
-**Oracle Cloud**:
-- [`oracle-cloud.md`](deployment/oracle-cloud.md) - Oracle Cloud 배포 가이드
-  - VM 인스턴스 생성
-  - 환경 구축
-  - Cron 설정
-  - 문제 해결
-
-**NAS**:
-- [`nas.md`](deployment/nas.md) - Synology NAS 배포 가이드
-  - 경량 설치 (yfinance 없이)
-  - Python 3.8 호환
-  - Cron 설정
-  - 문제 해결
-
-**문제 해결**:
-- [`troubleshooting.md`](deployment/troubleshooting.md) - 통합 문제 해결 가이드
-  - Git 관련
-  - 텔레그램 알림
-  - Python 환경
-  - 데이터 수집
-  - 성능 문제
-
----
-
-## 개발 문서
-
-### 💻 development/
-
-**아키텍처**:
-- `architecture.md` - 시스템 아키텍처 (예정)
-- `api.md` - API 문서 (예정)
-
-**테스트**:
-- `testing.md` - 테스트 가이드 (예정)
-
----
-
-## 설계 문서
-
-### 🎨 design/
-
-**아키텍처**:
-- [`architecture.md`](design/architecture.md) - 전체 시스템 아키텍처
-- [`adapter_design.md`](design/adapter_design.md) - 어댑터 패턴 설계
-- [`data_policy.md`](design/data_policy.md) - 데이터 정책
-
-**분석**:
-- [`jason_code_analysis.md`](design/jason_code_analysis.md) - Jason 코드 분석
-
----
-
-## 완료된 Phase
-
-### ✅ completed/
-
-**Phase 완료 보고서**:
-- `PHASE2_COMPLETE_SUMMARY.md` - Phase 2 완료 (백테스트 시스템)
-- `PHASE3_COMPLETE.md` - Phase 3 완료 (최적화)
-- `PHASE4_COMPLETE.md` - Phase 4 완료 (자동화)
-- `PHASE5_COMPLETE.md` - Phase 5 완료 (UI)
-
-**Week 완료 보고서**:
-- `WEEK3_HYBRID_STRATEGY.md` - Week 3 하이브리드 전략
-- `WEEK4_AUTOMATION_PLAN.md` - Week 4 자동화 계획
-
-**계획 문서**:
-- `MASTER_PLAN_2025.md` - 2025 마스터 플랜
-- `PORTFOLIO_INTEGRATION_PLAN.md` - 포트폴리오 통합 계획
-- `DOCS_REORGANIZATION_PLAN.md` - 문서 재구성 계획
-
----
-
-## 📂 디렉토리 구조
-
-```
-docs/
-├── README.md                          # 이 파일 (문서 인덱스)
-│
-├── guides/                            # 사용 가이드
-│   ├── alert-system.md                # 알림 시스템
-│   ├── backtest.md                    # 백테스트
-│   ├── regime-monitoring.md           # 레짐 모니터링
-│   └── portfolio-manager.md           # 포트폴리오 관리
-│
-├── deployment/                        # 배포 가이드
-│   ├── oracle-cloud.md                # Oracle Cloud
-│   ├── nas.md                         # NAS
-│   └── troubleshooting.md             # 문제 해결
-│
-├── development/                       # 개발 문서
-│   ├── architecture.md                # 아키텍처 (예정)
-│   ├── api.md                         # API 문서 (예정)
-│   └── testing.md                     # 테스트 (예정)
-│
-├── design/                            # 설계 문서
-│   ├── architecture.md                # 시스템 아키텍처
-│   ├── adapter_design.md              # 어댑터 패턴
-│   ├── data_policy.md                 # 데이터 정책
-│   └── jason_code_analysis.md         # Jason 코드 분석
-│
-├── completed/                         # 완료된 Phase 문서
-│   ├── PHASE*.md                      # Phase 완료 보고서
-│   ├── WEEK*.md                       # Week 완료 보고서
-│   └── *_PLAN.md                      # 계획 문서
-│
-├── CODE_CLEANUP_*.md                  # 코드 정리 문서
-├── PHASE1_CLEANUP_COMPLETE.md         # Phase 1 완료
-├── GAP_ANALYSIS.md                    # Gap 분석
-├── PORT_ARCHITECTURE.md               # 포트 아키텍처
-└── US_MARKET_INDICATOR_IMPROVEMENT.md # 미국 시장 지표 개선
-```
+1. [빠른 시작](#-빠른-시작)
+2. [사용 가이드](#-사용-가이드)
+3. [배포 가이드](#-배포-가이드)
+4. [설계 문서](#-설계-문서)
+5. [참조 문서](#-참조-문서)
+6. [완료된 Phase](#-완료된-phase)
+7. [아카이브](#-아카이브)
 
 ---
 
 ## 🚀 빠른 시작
 
-### 1. 처음 시작하는 경우
-
-**순서**:
-1. [`GAP_ANALYSIS.md`](GAP_ANALYSIS.md) - 전체 계획 파악
-2. [`PORT_ARCHITECTURE.md`](PORT_ARCHITECTURE.md) - 아키텍처 이해
+### 처음 시작하는 경우
+1. [프로젝트 README](../README.md) - 전체 개요
+2. [`design/architecture.md`](design/architecture.md) - 시스템 아키텍처
 3. [`guides/backtest.md`](guides/backtest.md) - 백테스트 실행
 
-### 2. NAS 배포하는 경우
-
-**순서**:
+### NAS 배포하는 경우
 1. [`deployment/nas.md`](deployment/nas.md) - NAS 배포 가이드
-2. [`guides/regime-monitoring.md`](guides/regime-monitoring.md) - 레짐 모니터링
+2. [`guides/nas/`](guides/nas/) - NAS 상세 가이드
 3. [`guides/alert-system.md`](guides/alert-system.md) - 알림 설정
 
-### 3. Oracle Cloud 배포하는 경우
-
-**순서**:
+### Oracle Cloud 배포하는 경우
 1. [`deployment/oracle-cloud.md`](deployment/oracle-cloud.md) - Oracle Cloud 배포
 2. [`deployment/troubleshooting.md`](deployment/troubleshooting.md) - 문제 해결
-3. [`guides/alert-system.md`](guides/alert-system.md) - 알림 설정
 
 ---
 
-## 🔍 키워드별 문서 찾기
+## 📖 사용 가이드
 
-### 알림 시스템
-- [`guides/alert-system.md`](guides/alert-system.md) - 전체 가이드
-- [`deployment/troubleshooting.md`](deployment/troubleshooting.md#텔레그램-알림) - 문제 해결
+### guides/
 
-### 배포
-- [`deployment/oracle-cloud.md`](deployment/oracle-cloud.md) - Oracle Cloud
-- [`deployment/nas.md`](deployment/nas.md) - NAS
-- [`deployment/troubleshooting.md`](deployment/troubleshooting.md) - 문제 해결
+| 문서 | 설명 |
+|------|------|
+| [`alert-system.md`](guides/alert-system.md) | 텔레그램 알림 설정 (장중/장시작/EOD) |
+| [`backtest.md`](guides/backtest.md) | 백테스트 실행 가이드 |
+| [`regime-monitoring.md`](guides/regime-monitoring.md) | 시장 레짐 감지 및 모니터링 |
+| [`portfolio-manager.md`](guides/portfolio-manager.md) | 포트폴리오 관리 UI |
+| [`optuna.md`](guides/optuna.md) | Optuna 최적화 가이드 |
+| [`development.md`](guides/development.md) | 개발 환경 설정 |
 
-### 백테스트
-- [`guides/backtest.md`](guides/backtest.md) - 백테스트 가이드
-- [`completed/PHASE2_COMPLETE_SUMMARY.md`](completed/PHASE2_COMPLETE_SUMMARY.md) - Phase 2 완료
+### guides/nas/ (NAS 전용)
 
-### 레짐 감지
-- [`guides/regime-monitoring.md`](guides/regime-monitoring.md) - 레짐 모니터링
-- [`US_MARKET_INDICATOR_IMPROVEMENT.md`](US_MARKET_INDICATOR_IMPROVEMENT.md) - 미국 시장 지표
+| 문서 | 설명 |
+|------|------|
+| [`deployment.md`](guides/nas/deployment.md) | NAS 배포 상세 |
+| [`scheduler.md`](guides/nas/scheduler.md) | Cron 스케줄러 설정 |
+| [`telegram.md`](guides/nas/telegram.md) | 텔레그램 봇 설정 |
+| [`troubleshooting.md`](guides/nas/troubleshooting.md) | NAS 문제 해결 |
 
-### 포트폴리오
-- [`guides/portfolio-manager.md`](guides/portfolio-manager.md) - 포트폴리오 관리
-- [`completed/PORTFOLIO_INTEGRATION_PLAN.md`](completed/PORTFOLIO_INTEGRATION_PLAN.md) - 통합 계획
+---
+
+## 🚀 배포 가이드
+
+### deployment/
+
+| 문서 | 설명 |
+|------|------|
+| [`oracle-cloud.md`](deployment/oracle-cloud.md) | Oracle Cloud VM 배포 |
+| [`nas.md`](deployment/nas.md) | Synology NAS 배포 |
+| [`troubleshooting.md`](deployment/troubleshooting.md) | 통합 문제 해결 |
+
+---
+
+## 🎨 설계 문서
+
+### design/
+
+| 문서 | 설명 |
+|------|------|
+| [`architecture.md`](design/architecture.md) | 시스템 아키텍처 (Clean Architecture) |
+| [`adapter_design.md`](design/adapter_design.md) | Jason 어댑터 패턴 설계 |
+| [`data_policy.md`](design/data_policy.md) | 데이터 정책 및 캐시 |
+| [`defense_system_design.md`](design/defense_system_design.md) | 방어 시스템 설계 |
+| [`strategy_spec.md`](design/strategy_spec.md) | 전략 명세 |
+| [`jason_code_analysis.md`](design/jason_code_analysis.md) | Jason 코드 분석 |
+
+---
+
+## 📚 참조 문서
+
+### reference/
+
+| 문서 | 설명 |
+|------|------|
+| [`ACTIVE_SCRIPTS.md`](reference/ACTIVE_SCRIPTS.md) | NAS에서 사용 중인 스크립트 목록 |
+| [`AI_PROMPT_FEATURE.md`](reference/AI_PROMPT_FEATURE.md) | AI 프롬프트 기능 |
+| [`BACKTEST_AI_PROMPT.md`](reference/BACKTEST_AI_PROMPT.md) | 백테스트 AI 분석 |
+| [`notification_comparison.md`](reference/notification_comparison.md) | 알림 비교 |
+| [`scheduler_timing_guide.md`](reference/scheduler_timing_guide.md) | 스케줄러 타이밍 |
+
+---
+
+## ✅ 완료된 Phase
+
+### completed/
+
+**Phase 완료 보고서**:
+| 문서 | 설명 |
+|------|------|
+| [`PHASE3_COMPLETE.md`](completed/PHASE3_COMPLETE.md) | Phase 3 완료 (최적화) |
+| [`PHASE4_COMPLETE.md`](completed/PHASE4_COMPLETE.md) | Phase 4 완료 (대시보드) |
+| [`PHASE4.5_COMPLETE.md`](completed/PHASE4.5_COMPLETE.md) | Phase 4.5 완료 (FastAPI) |
+| [`PHASE5_COMPLETE.md`](completed/PHASE5_COMPLETE.md) | Phase 5 완료 (NAS-Oracle 동기화) |
+| [`PHASE5-1_COMPLETE.md`](completed/PHASE5-1_COMPLETE.md) | Phase 5-1 완료 |
+
+**Phase 2 상세** (`completed/phase2-hybrid/`):
+| 문서 | 설명 |
+|------|------|
+| [`phase2_complete_summary.md`](completed/phase2-hybrid/phase2_complete_summary.md) | Phase 2 완료 요약 |
+| [`week1_jason_integration.md`](completed/phase2-hybrid/week1_jason_integration.md) | Week 1: Jason 통합 |
+| [`week2_defense_system.md`](completed/phase2-hybrid/week2_defense_system.md) | Week 2: 방어 시스템 |
+| [`week3_hybrid_strategy.md`](completed/phase2-hybrid/week3_hybrid_strategy.md) | Week 3: 하이브리드 전략 |
+| [`week4_automation_complete.md`](completed/phase2-hybrid/week4_automation_complete.md) | Week 4: 자동화 |
+
+**계획 문서**:
+| 문서 | 설명 |
+|------|------|
+| [`MASTER_PLAN_2025.md`](completed/MASTER_PLAN_2025.md) | 2025 마스터 플랜 |
+| [`WEEK4_AUTOMATION_PLAN.md`](completed/WEEK4_AUTOMATION_PLAN.md) | Week 4 자동화 계획 |
+| [`PORTFOLIO_INTEGRATION_PLAN.md`](completed/PORTFOLIO_INTEGRATION_PLAN.md) | 포트폴리오 통합 계획 |
+
+---
+
+## 📦 아카이브
+
+### archive/2025-11/
+과거 작업 문서들이 보관되어 있습니다.
+- 일일 진행 기록 (2025-11-06 ~ 08)
+- 분석 문서 (GAP_ANALYSIS, PORT_ARCHITECTURE 등)
+- 정리 계획 문서
+
+### active/backtest-enhancement/
+현재 진행 중인 백테스트 개선 작업:
+- [`CRITICAL_REVIEW.md`](active/backtest-enhancement/CRITICAL_REVIEW.md) - 비판적 검토
+- [`SUMMARY.md`](active/backtest-enhancement/SUMMARY.md) - 요약
+
+---
+
+## 📂 전체 디렉토리 구조
+
+```
+docs/
+├── README.md                    # 이 파일 (문서 인덱스)
+│
+├── guides/                      # 📖 사용 가이드
+│   ├── alert-system.md          # 알림 시스템
+│   ├── backtest.md              # 백테스트
+│   ├── regime-monitoring.md     # 레짐 모니터링
+│   ├── portfolio-manager.md     # 포트폴리오 관리
+│   ├── optuna.md                # Optuna 최적화
+│   ├── development.md           # 개발 환경
+│   └── nas/                     # NAS 전용 가이드
+│       ├── deployment.md
+│       ├── scheduler.md
+│       ├── telegram.md
+│       └── troubleshooting.md
+│
+├── deployment/                  # 🚀 배포 가이드
+│   ├── oracle-cloud.md
+│   ├── nas.md
+│   └── troubleshooting.md
+│
+├── design/                      # 🎨 설계 문서
+│   ├── architecture.md
+│   ├── adapter_design.md
+│   ├── data_policy.md
+│   ├── defense_system_design.md
+│   ├── strategy_spec.md
+│   └── jason_code_analysis.md
+│
+├── reference/                   # 📚 참조 문서
+│   ├── ACTIVE_SCRIPTS.md
+│   ├── AI_PROMPT_FEATURE.md
+│   └── ...
+│
+├── completed/                   # ✅ 완료된 Phase
+│   ├── PHASE*.md
+│   ├── phase2-hybrid/
+│   ├── phase3-intraday/
+│   ├── phase4-dashboard/
+│   └── phase5-nas-sync/
+│
+├── active/                      # 🔄 진행 중
+│   └── backtest-enhancement/
+│
+├── archive/                     # 📦 아카이브
+│   └── 2025-11/
+│
+├── plans/                       # 📋 계획 문서
+├── progress/                    # 📊 진행 기록
+└── reports/                     # 📈 보고서
+```
+
+---
+
+## 🎯 현재 상태 (2025-12-02)
+
+### 완료된 기능
+- ✅ **Phase 2**: 하이브리드 전략 (CAGR 27%, Sharpe 1.51)
+- ✅ **Phase 3**: 장중 알림 개선
+- ✅ **Phase 4**: React 대시보드 + FastAPI 백엔드
+- ✅ **Phase 5**: NAS-Oracle 동기화
+- ✅ **캐시 업데이트 UI**: 버튼으로 ETF 데이터 갱신
+
+### 운영 환경
+- **NAS**: Synology DS220j (Python 3.8)
+- **PC**: Windows (Python 3.10+)
+- **Cloud**: Oracle Cloud (선택적)
+
+### 주요 스크립트
+- `scripts/nas/intraday_alert.py` - 장중 알림
+- `scripts/nas/market_open_alert.py` - 장시작 알림
+- `scripts/sync/sync_to_oracle.sh` - Oracle 동기화
 
 ---
 
 ## 📝 문서 작성 규칙
 
-1. **제목**: 명확하고 간결하게 (kebab-case)
+1. **파일명**: kebab-case (예: `alert-system.md`)
 2. **날짜**: 최종 업데이트 날짜 명시
 3. **상태**: ✅ 완료, ⏳ 진행 중, ❌ 미완료
-4. **이모지**: 가독성 향상 (적절히 사용)
-5. **코드 블록**: 실행 가능한 명령어 제공
-6. **링크**: 관련 문서 상호 참조
-
----
-
-## 🎯 현재 상태 (2025-11-27)
-
-### Phase 2 완료 ✅
-- ✅ 중복 문서 통합 (11개 → 3개)
-- ✅ 문서 디렉토리 재구성
-- ✅ README 업데이트
-- ✅ 문제 해결 가이드 추가
-
-### 문서 절감 효과
-- **ALERT_SYSTEM**: 3개 → 1개
-- **ORACLE_CLOUD**: 4개 → 1개
-- **NAS**: 4개 → 1개
-- **총 절감**: 11개 → 3개 (73% 감소)
-
-### 다음 작업
-- ⏳ Phase 3: 구조 개선
-- ⏳ Phase 4: 코드 품질
+4. **코드 블록**: 복사-붙여넣기 가능한 명령어
+5. **링크**: 상대 경로 사용
 
 ---
 
 ## 📞 문의
 
-**문서 관련 문의**:
-- GitHub Issues에 등록
-- 로그 파일 첨부 (`logs/`)
+- **GitHub Issues**: 버그 리포트, 기능 요청
+- **로그 파일**: `logs/` 디렉토리 첨부
 
 **참고**:
 - [프로젝트 README](../README.md)
