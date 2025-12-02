@@ -1,4 +1,4 @@
-import { AlertCircle, MessageSquare, Play, Settings, History, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { AlertCircle, MessageSquare, Play, Settings, History, TrendingUp, TrendingDown, Activity, Database, RefreshCw } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
@@ -8,6 +8,20 @@ import { ParameterModal } from '../components/ParameterModal';
 import { HistoryTable } from '../components/HistoryTable';
 import { ComparisonChart } from '../components/ComparisonChart';
 import { generateBacktestPromptWithSplit } from '../utils/promptGenerator';
+
+// 캐시 상태 타입
+interface CacheStatus {
+  status: string;
+  file_count: number;
+  sample?: {
+    code: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+    row_count: number;
+    error?: string;
+  };
+}
 
 // 분할 결과 타입
 interface SplitMetrics {
@@ -69,6 +83,10 @@ export default function Backtest() {
   const [comparisonItems, setComparisonItems] = useState<any[]>([]);
   const [splitResults, setSplitResults] = useState<SplitResults | null>(null);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
+  
+  // 캐시 관련 상태
+  const [cacheStatus, setCacheStatus] = useState<CacheStatus | null>(null);
+  const [cacheUpdating, setCacheUpdating] = useState(false);
 
   const { data: results, loading, error } = useApi<BacktestResult[]>(
     () => apiClient.getBacktestResults(),
@@ -80,6 +98,7 @@ export default function Backtest() {
     loadParameters();
     loadHistory();
     loadSplitResults();
+    loadCacheStatus();
   }, []);
 
   const loadParameters = async () => {
@@ -106,6 +125,32 @@ export default function Backtest() {
       setSplitResults(data);
     } catch (err) {
       console.error('분할 결과 로드 실패:', err);
+    }
+  };
+
+  const loadCacheStatus = async () => {
+    try {
+      const status = await apiClient.getCacheStatus();
+      setCacheStatus(status);
+    } catch (err) {
+      console.error('캐시 상태 로드 실패:', err);
+    }
+  };
+
+  const handleUpdateCache = async () => {
+    if (cacheUpdating) return;
+    
+    setCacheUpdating(true);
+    
+    try {
+      const result = await apiClient.updateCache();
+      alert(`✅ ${result.message}`);
+      // 캐시 상태 새로고침
+      await loadCacheStatus();
+    } catch (err: any) {
+      alert(`❌ 캐시 업데이트 실패: ${err.message}`);
+    } finally {
+      setCacheUpdating(false);
     }
   };
 
@@ -254,6 +299,29 @@ export default function Backtest() {
           <p className="text-muted-foreground mt-1">전략 성능 분석</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={handleUpdateCache}
+            disabled={cacheUpdating}
+            className="flex items-center gap-2 px-4 py-2 border border-orange-300 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={cacheStatus?.sample ? `캐시: ${cacheStatus.sample.start_date} ~ ${cacheStatus.sample.end_date}` : '캐시 상태 확인 중...'}
+          >
+            <Database className="h-4 w-4" />
+            {cacheUpdating ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                업데이트 중...
+              </>
+            ) : (
+              <>
+                캐시 업데이트
+                {cacheStatus?.sample && (
+                  <span className="text-xs bg-orange-200 px-1.5 py-0.5 rounded">
+                    ~{cacheStatus.sample.end_date.slice(5)}
+                  </span>
+                )}
+              </>
+            )}
+          </button>
           <button
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"

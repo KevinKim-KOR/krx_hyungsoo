@@ -523,3 +523,145 @@ async def get_split_results():
         status_code=404,
         detail="분할 백테스트 결과가 없습니다. 먼저 백테스트를 실행해주세요."
     )
+
+
+# ============================================================
+# 캐시 업데이트 API
+# ============================================================
+
+class CacheUpdateResponse(BaseModel):
+    """캐시 업데이트 응답"""
+    status: str
+    message: str
+    success_count: int = 0
+    fail_count: int = 0
+    details: list = []
+
+
+@router.post("/cache/update", response_model=CacheUpdateResponse)
+async def update_cache():
+    """
+    ETF 가격 캐시 업데이트 (2020년~현재)
+    
+    유니버스의 모든 ETF에 대해 PyKRX에서 데이터를 다운로드하고
+    parquet 캐시 파일로 저장합니다.
+    
+    Returns:
+        업데이트 결과 (성공/실패 개수)
+    """
+    import pandas as pd
+    from datetime import date
+    
+    try:
+        from pykrx import stock
+    except ImportError:
+        raise HTTPException(status_code=500, detail="pykrx 라이브러리가 설치되지 않았습니다.")
+    
+    # 경로 설정
+    project_root = Path(__file__).parent.parent.parent.parent.parent
+    universe_file = project_root / "data" / "universe" / "etf_universe.csv"
+    cache_dir = project_root / "data" / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    if not universe_file.exists():
+        raise HTTPException(status_code=404, detail="유니버스 파일을 찾을 수 없습니다.")
+    
+    # 유니버스 로드 및 6자리 코드로 정규화
+    try:
+        universe = pd.read_csv(universe_file, encoding="utf-8-sig")["ticker"]
+        tickers = sorted({str(t).zfill(6) for t in universe})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"유니버스 로드 실패: {e}")
+    
+    logger.info(f"캐시 업데이트 시작: {len(tickers)}개 ETF")
+    
+    # 날짜 범위
+    start_date = "20200101"
+    end_date = date.today().strftime("%Y%m%d")
+    
+    ok = 0
+    fail = 0
+    details = []
+    
+    for code in tickers:
+        try:
+            df = stock.get_etf_ohlcv_by_date(start_date, end_date, code)
+            
+            if df is None or df.empty:
+                details.append(f"{code}: 데이터 없음")
+                fail += 1
+                continue
+            
+            # 컬럼명 정규화
+            df = df.rename(columns={
+                "시가": "open",
+                "고가": "high",
+                "저가": "low",
+                "종가": "close",
+                "거래량": "volume",
+                "거래대금": "value",
+            })
+            
+            # 저장
+            df.to_parquet(cache_dir / f"{code}.parquet", engine="pyarrow")
+            ok += 1
+            
+        except Exception as e:
+            details.append(f"{code}: {str(e)[:50]}")
+            fail += 1
+    
+    logger.info(f"캐시 업데이트 완료: 성공 {ok}, 실패 {fail}")
+    
+    return CacheUpdateResponse(
+        status="success" if fail == 0 else "partial",
+        message=f"캐시 업데이트 완료: {ok}개 성공, {fail}개 실패",
+        success_count=ok,
+        fail_count=fail,
+        details=details[:10]  # 최대 10개만 반환
+    )
+
+
+@router.get("/cache/status")
+async def get_cache_status():
+    """
+    캐시 상태 조회
+    
+    Returns:
+        캐시 파일 개수, 대표 ETF 날짜 범위
+    """
+    import pandas as pd
+    
+    project_root = Path(__file__).parent.parent.parent.parent.parent
+    cache_dir = project_root / "data" / "cache"
+    
+    if not cache_dir.exists():
+        return {
+            "status": "empty",
+            "file_count": 0,
+            "sample": None
+        }
+    
+    parquet_files = list(cache_dir.glob("*.parquet"))
+    
+    # KODEX 200 (069500) 샘플 확인
+    sample_file = cache_dir / "069500.parquet"
+    sample_info = None
+    
+    if sample_file.exists():
+        try:
+            df = pd.read_parquet(sample_file)
+            sample_info = {
+                "code": "069500",
+                "name": "KODEX 200",
+                "start_date": str(df.index.min().date()) if hasattr(df.index.min(), 'date') else str(df.index.min()),
+                "end_date": str(df.index.max().date()) if hasattr(df.index.max(), 'date') else str(df.index.max()),
+                "row_count": len(df)
+            }
+        except Exception as e:
+            sample_info = {"error": str(e)}
+    
+    return {
+        "status": "ok",
+        "file_count": len(parquet_files),
+        "sample": sample_info
+    }

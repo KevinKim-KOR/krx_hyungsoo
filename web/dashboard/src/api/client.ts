@@ -132,6 +132,15 @@ class ApiClient {
     return this.fetch<any>('/api/v1/backtest/split-results');
   }
 
+  // Cache Management
+  async getCacheStatus(): Promise<any> {
+    return this.fetch<any>('/api/v1/backtest/cache/status');
+  }
+
+  async updateCache(): Promise<any> {
+    return this.post<any>('/api/v1/backtest/cache/update');
+  }
+
   // ML Parameters
   async getMLParameters(): Promise<any> {
     return this.fetch<any>('/api/v1/ml/parameters/current');
