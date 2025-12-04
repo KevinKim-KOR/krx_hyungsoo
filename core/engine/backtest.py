@@ -138,6 +138,12 @@ class BacktestEngine:
         self.nav_history: List[Tuple[date, float]] = []
         self.daily_returns: List[float] = []
         
+        # Gross 성과 추적 (비용 미반영)
+        self.track_gross_metrics = True  # 항상 추적하도록 설정 (분석용)
+        self.portfolio_gross = Portfolio(cash=initial_capital)
+        self.nav_history_gross: List[Tuple[date, float]] = []
+        self.daily_returns_gross: List[float] = []
+        
         # 거래비용 추적
         self.total_commission: float = 0.0
         self.total_tax: float = 0.0
@@ -193,9 +199,8 @@ class BacktestEngine:
         # 수수료 계산
         commission = self.calculate_commission(quantity * adjusted_price)
         
-        # 포지션 생성 또는 추가
+        # 1. Net 포트폴리오 업데이트 (비용 차감)
         if symbol in self.portfolio.positions:
-            # 기존 포지션 추가
             existing = self.portfolio.positions[symbol]
             total_qty = existing.quantity + quantity
             avg_price = (existing.entry_price * existing.quantity + adjusted_price * quantity) / total_qty
@@ -203,7 +208,6 @@ class BacktestEngine:
             existing.entry_price = avg_price
             existing.current_price = adjusted_price
         else:
-            # 신규 포지션
             self.portfolio.positions[symbol] = Position(
                 symbol=symbol,
                 quantity=quantity,
@@ -211,10 +215,29 @@ class BacktestEngine:
                 entry_date=trade_date,
                 current_price=adjusted_price
             )
-        
-        # 현금 차감
         self.portfolio.cash -= (quantity * adjusted_price + commission)
         
+        # 2. Gross 포트폴리오 업데이트 (비용 미차감, 슬리피지 미적용 가격 사용)
+        if self.track_gross_metrics:
+            if symbol in self.portfolio_gross.positions:
+                existing_gross = self.portfolio_gross.positions[symbol]
+                total_qty_gross = existing_gross.quantity + quantity
+                # Gross는 원래 가격(price) 사용
+                avg_price_gross = (existing_gross.entry_price * existing_gross.quantity + price * quantity) / total_qty_gross
+                existing_gross.quantity = total_qty_gross
+                existing_gross.entry_price = avg_price_gross
+                existing_gross.current_price = price
+            else:
+                self.portfolio_gross.positions[symbol] = Position(
+                    symbol=symbol,
+                    quantity=quantity,
+                    entry_price=price,
+                    entry_date=trade_date,
+                    current_price=price
+                )
+            # 수수료/슬리피지 없이 순수 가격만큼만 차감
+            self.portfolio_gross.cash -= (quantity * price)
+
         # 비용 추적
         self.total_commission += commission
         self.total_slippage += slippage_cost
@@ -268,15 +291,20 @@ class BacktestEngine:
         # 거래세 계산 (매도 시에만 부과)
         tax = trade_amount * self.tax_rate
         
-        # 현금 증가 (수수료 + 세금 차감)
+        # 1. Net 포트폴리오 업데이트
         self.portfolio.cash += (trade_amount - commission - tax)
-        
-        # 포지션 감소
         position.quantity -= quantity
-        
-        # 포지션 제거 (수량 0)
         if position.quantity == 0:
             del self.portfolio.positions[symbol]
+            
+        # 2. Gross 포트폴리오 업데이트
+        if self.track_gross_metrics and symbol in self.portfolio_gross.positions:
+            pos_gross = self.portfolio_gross.positions[symbol]
+            # 비용 없이 순수 가격으로 현금 증가
+            self.portfolio_gross.cash += (quantity * price)
+            pos_gross.quantity -= quantity
+            if pos_gross.quantity == 0:
+                del self.portfolio_gross.positions[symbol]
         
         # 비용 추적
         self.total_commission += commission
@@ -349,59 +377,59 @@ class BacktestEngine:
     
     def update_nav(self, current_date: date, current_prices: Dict[str, float]):
         """NAV 업데이트"""
-        # 포지션 가격 업데이트
+        # 1. Net 포트폴리오
         self.portfolio.update_prices(current_prices)
-        
-        # NAV 기록
         nav = self.portfolio.total_value
         self.nav_history.append((current_date, nav))
         
-        # 일간 수익률 계산
         if len(self.nav_history) > 1:
             prev_nav = self.nav_history[-2][1]
             daily_return = (nav / prev_nav - 1.0) if prev_nav > 0 else 0.0
             self.daily_returns.append(daily_return)
+            
+        # 2. Gross 포트폴리오
+        if self.track_gross_metrics:
+            self.portfolio_gross.update_prices(current_prices)
+            nav_gross = self.portfolio_gross.total_value
+            self.nav_history_gross.append((current_date, nav_gross))
+            
+            if len(self.nav_history_gross) > 1:
+                prev_nav_gross = self.nav_history_gross[-2][1]
+                daily_return_gross = (nav_gross / prev_nav_gross - 1.0) if prev_nav_gross > 0 else 0.0
+                self.daily_returns_gross.append(daily_return_gross)
     
     def get_performance_metrics(self) -> Dict[str, float]:
         """성과 지표 계산"""
         if not self.nav_history:
             return {}
         
-        # NAV 시계열
+        # Net 성과 계산
         nav_series = pd.Series([nav for _, nav in self.nav_history])
-        
-        # 총 수익률
         total_return = (nav_series.iloc[-1] / self.initial_capital - 1.0) * 100
-        
-        # 연율화 수익률
         days = len(nav_series)
         annual_return = ((nav_series.iloc[-1] / self.initial_capital) ** (252 / days) - 1.0) * 100 if days > 0 else 0.0
         
-        # 변동성
         if len(self.daily_returns) > 1:
             volatility = np.std(self.daily_returns) * np.sqrt(252) * 100
         else:
             volatility = 0.0
-        
-        # 샤프 비율 (무위험 수익률 0% 가정)
+            
         sharpe_ratio = (annual_return / volatility) if volatility > 0 else 0.0
         
-        # MDD
         cummax = nav_series.cummax()
         drawdown = (nav_series / cummax - 1.0) * 100
         max_drawdown = drawdown.min()
         
-        # 승률
         if len(self.daily_returns) > 0:
             win_rate = (np.array(self.daily_returns) > 0).sum() / len(self.daily_returns) * 100
         else:
             win_rate = 0.0
-        
-        # 총 거래비용
+            
+        # 비용 통계
         total_costs = self.total_commission + self.total_tax + self.total_slippage
         cost_ratio = (total_costs / self.initial_capital) * 100 if self.initial_capital > 0 else 0.0
         
-        return {
+        metrics = {
             'total_return': total_return,
             'annual_return': annual_return,
             'volatility': volatility,
@@ -410,15 +438,28 @@ class BacktestEngine:
             'win_rate': win_rate,
             'total_trades': len(self.portfolio.trades),
             'final_value': nav_series.iloc[-1],
-            # 거래비용 상세
             'total_commission': self.total_commission,
             'total_tax': self.total_tax,
             'total_slippage': self.total_slippage,
             'total_costs': total_costs,
-            'cost_ratio': cost_ratio,  # 초기 자본 대비 비용 비율
+            'cost_ratio': cost_ratio,
             'instrument_type': self.instrument_type,
-            'tax_rate': self.tax_rate * 100  # %로 표시
+            'tax_rate': self.tax_rate * 100
         }
+        
+        # Gross 성과 추가
+        if self.track_gross_metrics and self.nav_history_gross:
+            nav_series_gross = pd.Series([nav for _, nav in self.nav_history_gross])
+            total_return_gross = (nav_series_gross.iloc[-1] / self.initial_capital - 1.0) * 100
+            annual_return_gross = ((nav_series_gross.iloc[-1] / self.initial_capital) ** (252 / days) - 1.0) * 100 if days > 0 else 0.0
+            
+            metrics.update({
+                'total_return_gross': total_return_gross,
+                'annual_return_gross': annual_return_gross,
+                'cost_drag': total_return_gross - total_return  # 비용으로 인한 수익률 감소분
+            })
+            
+        return metrics
 
 
 def create_default_backtest_engine() -> BacktestEngine:
