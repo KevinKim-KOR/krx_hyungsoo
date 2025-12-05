@@ -1,5 +1,5 @@
 import { AlertCircle, Play, RefreshCw, MessageSquare, Settings, History } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
 import type { LookbackAnalysis } from '../types';
@@ -7,7 +7,6 @@ import { AIPromptModal } from '../components/AIPromptModal';
 import { ParameterModal } from '../components/ParameterModal';
 import { HistoryTable } from '../components/HistoryTable';
 import { ComparisonChart } from '../components/ComparisonChart';
-import { generateLookbackPrompt } from '../utils/promptGenerator';
 
 export default function Lookback() {
   const [running, setRunning] = useState(false);
@@ -24,10 +23,31 @@ export default function Lookback() {
     []
   );
 
-  const prompt = useMemo(() => {
-    if (!analysis) return '';
-    return generateLookbackPrompt(analysis);
-  }, [analysis]);
+  const [prompt, setPrompt] = useState('');
+  const [promptLoading, setPromptLoading] = useState(false);
+
+  // AI 질문하기 핸들러
+  const handleAskAI = async () => {
+    if (promptLoading) return;
+
+    setPromptLoading(true);
+    try {
+      if (!analysis) {
+        alert('분석할 룩백 분석 결과가 없습니다.');
+        setPromptLoading(false);
+        return;
+      }
+
+      // API 호출
+      const response = await apiClient.analyzeLookback(analysis.summary, analysis.results);
+      setPrompt(response.prompt);
+      setShowPrompt(true);
+    } catch (err: any) {
+      alert(`AI 분석 요청 실패: ${err.message}`);
+    } finally {
+      setPromptLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadParameters();
@@ -159,11 +179,12 @@ export default function Lookback() {
             )}
           </button>
           <button
-            onClick={() => setShowPrompt(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            onClick={handleAskAI}
+            disabled={promptLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <MessageSquare className="h-4 w-4" />
-            💬 AI에게 질문하기
+            {promptLoading ? '생성 중...' : '💬 AI에게 질문하기'}
           </button>
         </div>
       </div>

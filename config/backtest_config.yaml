@@ -1,0 +1,35 @@
+# config/backtest_config.yaml
+# 백테스트 설정 및 비용 모델
+
+backtest:
+  defaults:
+    initial_capital: 10000000
+    max_positions: 10
+    rebalance_frequency: daily
+
+  costs:
+    # 한국 시장 비용 설정
+    korea:
+      # 주식 (KOSPI/KOSDAQ)
+      stock:
+        commission_rate: 0.00015  # 0.015% (일반적인 온라인 수수료)
+        tax_rate: 0.0023          # 0.23% (증권거래세 + 농특세)
+        slippage_rate: 0.001      # 0.1% (슬리피지 가정)
+      
+      # ETF (Exchange Traded Fund)
+      etf:
+        commission_rate: 0.00015
+        tax_rate: 0.0             # 면제
+        slippage_rate: 0.0005     # 0.05% (주식보다 유동성 좋음 가정)
+      
+      # REITs
+      reit:
+        commission_rate: 0.00015
+        tax_rate: 0.0023          # 0.23%
+        slippage_rate: 0.001
+      
+      # Leveraged ETF
+      leveraged_etf:
+        commission_rate: 0.00015
+        tax_rate: 0.0             # 면제
+        slippage_rate: 0.001      # 0.1% (변동성 큼)

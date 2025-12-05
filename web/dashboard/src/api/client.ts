@@ -174,6 +174,38 @@ class ApiClient {
   async saveLookbackHistory(history: any): Promise<any> {
     return this.post<any>('/api/v1/lookback/parameters/history/save', history);
   }
+
+  // AI Analysis
+  async analyzeBacktest(metrics: any, trades: any[], userQuestion?: string): Promise<any> {
+    return this.post<any>('/api/v1/ai/analyze/backtest', {
+      metrics,
+      trades,
+      user_question: userQuestion
+    });
+  }
+
+  async analyzePortfolio(holdings: any[], marketStatus: any, userQuestion?: string): Promise<any> {
+    return this.post<any>('/api/v1/ai/analyze/portfolio', {
+      holdings,
+      market_status: marketStatus,
+      user_question: userQuestion
+    });
+  }
+
+  async analyzeMLModel(modelInfo: any, userQuestion?: string): Promise<any> {
+    return this.post<any>('/api/v1/ai/analyze/ml-model', {
+      model_info: modelInfo,
+      user_question: userQuestion
+    });
+  }
+
+  async analyzeLookback(summary: any, results: any[], userQuestion?: string): Promise<any> {
+    return this.post<any>('/api/v1/ai/analyze/lookback', {
+      summary,
+      results,
+      user_question: userQuestion
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

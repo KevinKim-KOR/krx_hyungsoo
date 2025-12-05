@@ -1,25 +1,55 @@
 import { AlertCircle, Play, RefreshCw, MessageSquare } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { apiClient } from '../api/client';
 import type { PortfolioOptimization } from '../types';
 import { AIPromptModal } from '../components/AIPromptModal';
-import { generatePortfolioPrompt } from '../utils/promptGenerator';
 
 export default function Portfolio() {
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
-  
+
   const { data: optimization, loading, error } = useApi<PortfolioOptimization>(
     () => apiClient.getPortfolioOptimization(),
     []
   );
 
-  const prompt = useMemo(() => {
-    if (!optimization) return '';
-    return generatePortfolioPrompt(optimization);
-  }, [optimization]);
+  const [prompt, setPrompt] = useState('');
+  const [promptLoading, setPromptLoading] = useState(false);
+
+  // AI 질문하기 핸들러
+  const handleAskAI = async () => {
+    if (promptLoading) return;
+
+    setPromptLoading(true);
+    try {
+      if (!optimization) {
+        alert('분석할 포트폴리오 최적화 결과가 없습니다.');
+        setPromptLoading(false);
+        return;
+      }
+
+      // 포트폴리오 데이터 준비 (API 기대 형식에 맞춤)
+      const holdings = Object.entries(optimization.weights).map(([code, weight]) => ({
+        code,
+        weight,
+        // 추가 정보가 있다면 여기에 포함
+      }));
+
+      // API 호출
+      const response = await apiClient.analyzePortfolio(holdings, {
+        regime: 'unknown', // 현재 레짐 정보가 없으면 unknown 또는 별도 조회 필요
+        trend: 'unknown'
+      });
+      setPrompt(response.prompt);
+      setShowPrompt(true);
+    } catch (err: any) {
+      alert(`AI 분석 요청 실패: ${err.message}`);
+    } finally {
+      setPromptLoading(false);
+    }
+  };
 
   const handleRunOptimization = async () => {
     try {
@@ -75,11 +105,12 @@ export default function Portfolio() {
         <h2 className="text-3xl font-bold">포트폴리오 최적화</h2>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowPrompt(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            onClick={handleAskAI}
+            disabled={promptLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <MessageSquare className="h-4 w-4" />
-            💬 AI에게 질문하기
+            {promptLoading ? '생성 중...' : '💬 AI에게 질문하기'}
           </button>
           <button
             onClick={handleRunOptimization}
@@ -143,7 +174,7 @@ export default function Portfolio() {
               const weightEntry = Object.entries(optimization.weights).find(([key]) => key.includes(code));
               const weight = weightEntry ? weightEntry[1] : 0;
               const tickerName = weightEntry ? weightEntry[0] : code;
-              
+
               return (
                 <div key={code} className="flex justify-between items-center p-3 bg-secondary rounded">
                   <span className="font-medium">{tickerName}</span>

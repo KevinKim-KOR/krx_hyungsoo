@@ -83,7 +83,7 @@ export default function Backtest() {
   const [comparisonItems, setComparisonItems] = useState<any[]>([]);
   const [splitResults, setSplitResults] = useState<SplitResults | null>(null);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
-  
+
   // 캐시 관련 상태
   const [cacheStatus, setCacheStatus] = useState<CacheStatus | null>(null);
   const [cacheUpdating, setCacheUpdating] = useState(false);
@@ -139,9 +139,9 @@ export default function Backtest() {
 
   const handleUpdateCache = async () => {
     if (cacheUpdating) return;
-    
+
     setCacheUpdating(true);
-    
+
     try {
       const result = await apiClient.updateCache();
       alert(`✅ ${result.message}`);
@@ -156,20 +156,20 @@ export default function Backtest() {
 
   const handleRunBacktest = async () => {
     if (running) return;
-    
+
     setRunning(true);
-    
+
     // 현재 히스토리 개수 저장
     const currentHistoryCount = history.length;
-    
+
     try {
       // 파라미터에서 날짜 가져오기
       const startDate = parameters?.start_date;
       const endDate = parameters?.end_date;
       await apiClient.runBacktest(startDate, endDate);
-      
+
       alert('백테스트가 시작되었습니다. 완료까지 1-2분이 소요됩니다.\n완료 후 자동으로 결과가 갱신됩니다.');
-      
+
       // 5초마다 히스토리 폴링 (최대 3분)
       let attempts = 0;
       const maxAttempts = 36; // 3분
@@ -181,25 +181,25 @@ export default function Backtest() {
           if (newHistory.length > currentHistoryCount && newHistory[0]?.status === 'success') {
             clearInterval(pollInterval);
             setHistory(newHistory);
-            
+
             // 분할 결과도 갱신
             const newResults = await apiClient.getSplitResults();
             setSplitResults(newResults);
-            
+
             setRunning(false);
             alert('✅ 백테스트가 완료되었습니다!');
           }
         } catch {
           // 아직 완료되지 않음
         }
-        
+
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
           setRunning(false);
           alert('백테스트가 아직 진행 중입니다. 잠시 후 새로고침해주세요.');
         }
       }, 5000);
-      
+
     } catch (err: any) {
       alert(`실행 실패: ${err.message}`);
       setRunning(false);
@@ -241,24 +241,40 @@ export default function Backtest() {
     setShowComparison(true);
   };
 
-  // 선택된 히스토리 또는 최신 결과 기반 프롬프트 생성
-  const prompt = useMemo(() => {
-    // 선택된 히스토리 항목이 있으면 해당 항목 기반 프롬프트 생성
-    if (selectedHistoryItem) {
-      return generateBacktestPromptWithSplit(
-        selectedHistoryItem,
-        splitResults,
-        parameters
-      );
+  const [prompt, setPrompt] = useState('');
+  const [promptLoading, setPromptLoading] = useState(false);
+
+  // AI 질문하기 핸들러
+  const handleAskAI = async () => {
+    if (promptLoading) return;
+
+    setPromptLoading(true);
+    try {
+      // 분석 대상 데이터 준비
+      let metrics, trades;
+
+      if (selectedHistoryItem) {
+        metrics = selectedHistoryItem.metrics;
+        trades = []; // 히스토리에는 거래 내역이 없을 수 있음 (필요 시 추가 로드)
+      } else if (results && results.length > 0) {
+        metrics = results[0];
+        trades = []; // 최신 결과의 거래 내역 (필요 시 추가 로드)
+      } else {
+        alert('분석할 백테스트 결과가 없습니다.');
+        setPromptLoading(false);
+        return;
+      }
+
+      // API 호출
+      const response = await apiClient.analyzeBacktest(metrics, trades);
+      setPrompt(response.prompt);
+      setShowPrompt(true);
+    } catch (err: any) {
+      alert(`AI 분석 요청 실패: ${err.message}`);
+    } finally {
+      setPromptLoading(false);
     }
-    // 없으면 최신 결과 사용
-    if (!results || results.length === 0) return '';
-    return generateBacktestPromptWithSplit(
-      { metrics: results[0], parameters },
-      splitResults,
-      parameters
-    );
-  }, [results, selectedHistoryItem, splitResults, parameters]);
+  };
 
   if (loading) {
     return (
@@ -345,11 +361,12 @@ export default function Backtest() {
             {running ? '실행 중...' : '백테스트 실행'}
           </button>
           <button
-            onClick={() => setShowPrompt(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            onClick={handleAskAI}
+            disabled={promptLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <MessageSquare className="h-4 w-4" />
-            💬 AI에게 질문하기
+            {promptLoading ? '생성 중...' : '💬 AI에게 질문하기'}
             {selectedHistoryItem && (
               <span className="text-xs bg-green-500 px-1.5 py-0.5 rounded">
                 선택됨
@@ -358,7 +375,7 @@ export default function Backtest() {
           </button>
         </div>
       </div>
-      
+
       <div className="bg-card rounded-lg border p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold">백테스트 결과</h3>
@@ -436,13 +453,13 @@ export default function Backtest() {
       {splitResults && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold">Train / Validation / Test 분할 결과</h3>
-          
+
           {/* 사용된 파라미터 카드 - 선택된 히스토리 또는 splitResults 기반 */}
           {(() => {
             // 선택된 히스토리 항목의 파라미터 또는 splitResults의 파라미터 사용
             const displayParams = selectedHistoryItem?.parameters || splitResults.strategy_params || {};
             const configParams = splitResults.backtest_config || {};
-            
+
             return (displayParams || configParams) && (
               <div className="bg-card rounded-lg border p-4">
                 <h4 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
@@ -495,7 +512,7 @@ export default function Backtest() {
               </div>
             );
           })()}
-          
+
           {/* 판정 상태 */}
           <div className={`p-4 rounded-lg border ${splitResults.comparison.is_overfit ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
             <div className="flex items-center gap-2">
@@ -521,7 +538,7 @@ export default function Backtest() {
               </div>
             )}
           </div>
-          
+
           {/* 3개 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Train 카드 */}
@@ -553,7 +570,7 @@ export default function Backtest() {
                 </div>
               </div>
             </div>
-            
+
             {/* Validation 카드 (있는 경우) */}
             {splitResults.val && splitResults.periods.val && (
               <div className="bg-card rounded-lg border-2 border-amber-200 p-6">
@@ -585,7 +602,7 @@ export default function Backtest() {
                 </div>
               </div>
             )}
-            
+
             {/* Test 카드 */}
             <div className="bg-card rounded-lg border-2 border-green-200 p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -712,7 +729,7 @@ export default function Backtest() {
         isOpen={showPrompt}
         onClose={() => setShowPrompt(false)}
         prompt={prompt}
-        title={selectedHistoryItem 
+        title={selectedHistoryItem
           ? `백테스트 결과 - AI 질문 (${new Date(selectedHistoryItem.timestamp).toLocaleDateString('ko-KR')} 실행)`
           : "백테스트 결과 - AI 질문 (최신)"
         }

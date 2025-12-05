@@ -28,21 +28,33 @@ FastAPI 백엔드와 React 프론트엔드로 구성되어 있으며, 시장 레
 - **Server Stop**: `stop.bat`
 - **Rules**: `.antigravityrules` (개발 규칙)
 
-## 4. Recent Changes (Phase 2)
-- **Regime-based Backtest**:
+## 4. Recent Changes (Phase 2 ~ 5)
+- **Phase 2: Regime-based Backtest**:
   - `MarketRegimeDetector`를 `BacktestRunner`에 통합.
   - 시장 상황(Bull/Bear/Neutral)에 따라 포지션 비중(Exposure) 동적 조절.
-  - 검증 스크립트: `scripts/dev/verify_regime_backtest.py`
+- **Phase 3: Performance Optimization**:
+  - `joblib`을 이용한 백테스트 병렬 처리 (`run_batch`).
+  - 벤치마크 스크립트: `scripts/dev/benchmark_backtest.py`
+- **Phase 4: AI Analysis Enhancement**:
+  - AI 분석 전용 API 엔드포인트 생성 (`backend/app/api/v1/ai.py`).
+  - 백테스트, 포트폴리오, ML 모델, 룩백 분석을 위한 컨텍스트 인식 프롬프트 구현.
+- **Phase 5: Frontend Integration**:
+  - `Backtest`, `Portfolio`, `MLModel`, `Lookback` 페이지에 AI 분석 기능 연동.
+  - `ApiClient` 업데이트 및 `AIPromptModal` 활용.
+  - 검증 스크립트: `scripts/dev/verify_ai_endpoints.py`
 
-## 5. Next Steps (Phase 3 & 4)
-- **Phase 3**: `BacktestRunner` 병렬 처리 (`joblib`)
-- **Phase 4**: AI 분석 API (`api/v1/ai.py`) 및 프롬프트 고도화
+## 5. Next Steps
+- **Deployment**: 운영 환경 배포 준비.
+- **Monitoring**: 실시간 모니터링 및 알림 강화.
 
 ## 6. How to Run Verification
 ```bash
 # 레짐 기반 백테스트 검증
 python scripts/dev/verify_regime_backtest.py
 
-# 비용 모델 검증
-python scripts/dev/verify_backtest_enhancement.py
+# 병렬 처리 벤치마크
+python scripts/dev/benchmark_backtest.py
+
+# AI API 엔드포인트 검증
+python scripts/dev/verify_ai_endpoints.py
 ```

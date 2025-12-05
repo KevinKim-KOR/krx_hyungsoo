@@ -21,6 +21,8 @@ router = APIRouter()
 
 class MLParameters(BaseModel):
     """ML 모델 파라미터 스키마"""
+    model_config = {'protected_namespaces': ()}
+    
     model_type: str = Field(default="xgboost", description="모델 타입")
     task: str = Field(default="regression", description="작업 타입")
     n_estimators: int = Field(default=100, description="트리 개수")
