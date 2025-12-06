@@ -22,6 +22,7 @@ from extensions.automation.script_base import ScriptBase, handle_script_errors
 from extensions.automation.portfolio_helper import PortfolioHelper
 from extensions.notification.telegram_helper import TelegramHelper
 from core.strategy.market_regime_detector import MarketRegimeDetector
+from extensions.automation.price_updater import PriceUpdater
 
 # 스크립트 베이스 초기화
 script = ScriptBase("weekly_report_alert")
@@ -32,7 +33,7 @@ class WeeklyReport:
     """주간 리포트 클래스"""
     
     def __init__(self):
-        self.portfolio = PortfolioHelper()
+        self.price_updater = PriceUpdater()
         self.telegram = TelegramHelper()
         self.regime_detector = MarketRegimeDetector()
         self.today = date.today()
@@ -59,14 +60,22 @@ class WeeklyReport:
     def generate_report(self) -> str:
         """주간 리포트 생성"""
         try:
-            # 포트폴리오 현황
-            data = self.portfolio.load_full_data()
+            # 포트폴리오 현황 (가격 업데이트 포함)
+            data = self.price_updater.update_prices()
             if not data:
                 return self._format_error_message()
             
             summary = data['summary']
-            holdings_count = data['holdings_count']
             holdings_detail = data['holdings_detail']
+            # holdings_count도 갱신된 summary 기준으로 재계산하거나 data에서 가져옴
+            # PriceUpdater는 holdings_count를 summary에 포함시키지 않고 원본 data 구조 유지
+            # 하지만 summary['holdings_count']는 PortfolioLoader에서 온 것일 수 있음.
+            # 안전하게 재계산
+            if holdings_detail is not None:
+                active_holdings = holdings_detail[holdings_detail['quantity'] > 0]
+                holdings_count = len(active_holdings)
+            else:
+                holdings_count = 0
             
             # 레짐 조회
             regime, confidence = self.get_market_regime()
