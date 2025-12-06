@@ -50,7 +50,11 @@ def get_etf_universe():
     try:
         # pykrx로 전체 ETF 조회
         today = date.today().strftime('%Y%m%d')
-        all_etf_codes = stock.get_etf_ticker_list(today)
+        try:
+            all_etf_codes = stock.get_etf_ticker_list(today)
+        except Exception as e:
+            logger.warning(f"오늘 날짜({today})로 ETF 조회 실패: {e}. 날짜 없이 재시도합니다.")
+            all_etf_codes = stock.get_etf_ticker_list()
         
         logger.info(f"전체 ETF: {len(all_etf_codes)}개")
         print(f"전체 ETF: {len(all_etf_codes)}개")
@@ -65,7 +69,7 @@ def get_etf_universe():
                 
                 # 제외 키워드 체크 (Config에서 로드)
                 if any(keyword in name for keyword in EXCLUDE_KEYWORDS):
-                    logger.debug(f"제외: {code} {name}")
+                    # logger.debug(f"제외: {code} {name}")
                     excluded_count += 1
                     continue
                 

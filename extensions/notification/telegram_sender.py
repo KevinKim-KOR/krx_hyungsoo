@@ -7,6 +7,11 @@ import logging
 from datetime import date
 from typing import List, Optional
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+# .env 파일 로드
+load_dotenv()
 
 from extensions.realtime.signal_generator import Signal
 from infra.notify.telegram import TelegramNotifier

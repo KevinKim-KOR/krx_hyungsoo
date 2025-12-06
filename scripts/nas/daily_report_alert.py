@@ -8,6 +8,10 @@ import sys
 import os
 from datetime import date
 from pathlib import Path
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 # 프로젝트 루트를 PYTHONPATH에 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
