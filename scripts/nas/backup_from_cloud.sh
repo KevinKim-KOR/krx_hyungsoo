@@ -35,13 +35,21 @@ echo "[$(date)] 백업 시작: Cloud($CLOUD_IP) -> NAS" | tee -a "$LOG_FILE"
 
 # rsync 실행 (아카이브 모드, 압축, 상세 출력, 삭제된 파일 반영)
 # --delete: Cloud에 없는 파일은 NAS에서도 삭제 (동기화)
-rsync -avz --delete -e "ssh -i $CLOUD_KEY" \
+# -o StrictHostKeyChecking=no: 호스트 키 확인 건너뛰기 (자동화에 필수)
+
+echo "실행 명령: rsync -avz --delete -e \"ssh -i $CLOUD_KEY -o StrictHostKeyChecking=no\" ${CLOUD_USER}@${CLOUD_IP}:${REMOTE_DIR} $LOCAL_DIR" | tee -a "$LOG_FILE"
+
+rsync -avz --delete -e "ssh -i $CLOUD_KEY -o StrictHostKeyChecking=no" \
     "${CLOUD_USER}@${CLOUD_IP}:${REMOTE_DIR}" \
     "$LOCAL_DIR" \
-    >> "$LOG_FILE" 2>&1
+    2>&1 | tee -a "$LOG_FILE"
 
-if [ $? -eq 0 ]; then
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "[$(date)] ✅ 백업 성공" | tee -a "$LOG_FILE"
 else
     echo "[$(date)] ❌ 백업 실패" | tee -a "$LOG_FILE"
+    echo "----------------------------------------"
+    echo "⚠️ 상세 오류 내용 (위 로그 확인 필요):"
+    tail -n 5 "$LOG_FILE"
+    echo "----------------------------------------"
 fi
