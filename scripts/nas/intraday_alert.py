@@ -86,6 +86,39 @@ def get_etf_universe():
     except Exception as e:
         logger.error(f"ETF 유니버스 조회 실패: {e}")
         print(f"❌ ETF 유니버스 조회 실패: {e}")
+        
+        # CSV 파일에서 로드 시도
+        csv_path = PROJECT_ROOT / "data" / "universe" / "etf_universe.csv"
+        if csv_path.exists():
+            logger.info(f"로컬 CSV 파일에서 로드 시도: {csv_path}")
+            print(f"📂 로컬 CSV 파일 로드: {csv_path}")
+            try:
+                import pandas as pd
+                df = pd.read_csv(csv_path, dtype={'ticker': str})
+                
+                # 컬럼 매핑 (ticker -> code, name -> name)
+                if 'ticker' in df.columns and 'name' in df.columns:
+                    filtered_etfs = []
+                    excluded_count = 0
+                    
+                    for _, row in df.iterrows():
+                        code = str(row['ticker']).zfill(6) # 6자리 문자열로 변환
+                        name = row['name']
+                        
+                        # 제외 키워드 체크
+                        if any(keyword in name for keyword in EXCLUDE_KEYWORDS):
+                            excluded_count += 1
+                            continue
+                        
+                        filtered_etfs.append({'code': code, 'name': name})
+                    
+                    logger.info(f"CSV 로드 성공: {len(filtered_etfs)}개 (제외: {excluded_count}개)")
+                    print(f"✅ CSV 로드 성공: {len(filtered_etfs)}개 ETF")
+                    return filtered_etfs
+            except Exception as csv_e:
+                logger.error(f"CSV 로드 실패: {csv_e}")
+                print(f"❌ CSV 로드 실패: {csv_e}")
+        
         return []
 
 
