@@ -1,61 +1,25 @@
-# ============================================
-# KRX Alertor - Oracle Cloud Crontab
-# ============================================
-# 서버: Oracle Cloud (Ubuntu)
-# Python: 3.x
-# 프로젝트: /home/ubuntu/krx_hyungsoo
-# ============================================
+# Oracle Cloud Crontab Configuration (2025-12-06 Updated)
+# 경로: /home/ubuntu/krx_hyungsoo
+# 사용자: ubuntu
+# 적용방법: crontab -e 후 붙여넣기
 
-# 환경 변수
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-TZ=Asia/Seoul
+# 1. Git Pull (매일 아침 08:00) - 코드 최신화
+0 8 * * * cd /home/ubuntu/krx_hyungsoo && bash scripts/cloud/git_pull_with_log.sh >> logs/git_pull.log 2>&1
 
-# 프로젝트 루트
-PROJECT_ROOT=/home/ubuntu/krx_hyungsoo
+# 2. Market Open Alert (평일 09:00) - 장시작 알림
+0 9 * * 1-5 cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/nas/market_open_alert.py >> logs/market_open.log 2>&1
 
-# ============================================
-# 자동화 작업
-# ============================================
+# 3. Intraday Alert (평일 09:10 ~ 15:10, 1시간 간격) - 장중 급등/급락 감지
+10 9-15 * * 1-5 cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/nas/intraday_alert.py >> logs/intraday.log 2>&1
 
-# 08:00 - Git Pull (최신 코드 동기화)
-0 8 * * * cd /home/ubuntu/krx_hyungsoo && bash scripts/cloud/git_pull_with_log.sh
+# 4. Stop Loss Check (평일 15:30) - 손절 체크
+30 15 * * 1-5 cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/phase4/hybrid_stop_loss.py >> logs/stop_loss.log 2>&1
 
-# 09:00 - Daily Regime Check (레짐 감지 및 알림)
-0 9 * * * cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/nas/daily_regime_check.py
+# 5. Daily Alert (평일 16:00) - 장마감 리포트 (통합 스크립트 사용)
+0 16 * * 1-5 cd /home/ubuntu/krx_hyungsoo && bash scripts/cloud/daily_scan_notify.sh >> logs/daily_scan.log 2>&1
 
-# ============================================
-# 적용 방법:
-# ============================================
-# 1. Oracle Cloud SSH 접속
-#    ssh ubuntu@your-oracle-cloud-ip
-#
-# 2. 백업
-#    crontab -l > ~/crontab_backup_$(date +%Y%m%d).txt
-#
-# 3. 편집
-#    crontab -e
-#
-# 4. 이 파일 내용으로 교체
-#
-# 5. 저장 및 확인
-#    crontab -l
-#
-# 6. 로그 확인
-#    tail -f /home/ubuntu/krx_hyungsoo/logs/git_pull.log
-#    tail -f /home/ubuntu/krx_hyungsoo/logs/daily_regime_check.log
-# ============================================
+# 6. Weekly Alert (토요일 10:00) - 주간 리포트
+0 10 * * 6 cd /home/ubuntu/krx_hyungsoo && /usr/bin/python3 scripts/nas/weekly_report_alert.py >> logs/weekly_report.log 2>&1
 
-# ============================================
-# 변경 사항 (2025-11-25):
-# ============================================
-# - Git Pull: scripts/cloud/git_pull_with_log.sh 사용
-#   * 날짜/시간 명시적 기록
-#   * 이전/이후 커밋 정보 표시
-#   * 성공/실패 상태 명확히 기록
-#
-# - Daily Regime Check: 전용 로그 파일 사용
-#   * logs/daily_regime_check.log (스크립트 내부에서 자동 생성)
-#   * 시작/종료 시간 기록
-#   * 텔레그램 전송 결과 추적
-# ============================================
+# 7. Cleanup Logs (매일 02:00) - 로그 정리
+0 2 * * * cd /home/ubuntu/krx_hyungsoo && bash scripts/cloud/cleanup_logs.sh >> logs/cleanup.log 2>&1
