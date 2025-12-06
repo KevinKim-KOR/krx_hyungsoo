@@ -262,8 +262,15 @@ class WeeklyReport:
 @handle_script_errors("주간 리포트")
 def main():
     """메인 실행 함수"""
+    print(f"[{datetime.now()}] 주간 리포트 스크립트 시작")
+    sys.stdout.flush()
+    
     report = WeeklyReport()
     success = report.send_report()
+    
+    print(f"[{datetime.now()}] 주간 리포트 완료: {'성공' if success else '실패'}")
+    sys.stdout.flush()
+    
     return 0 if success else 1
 
 

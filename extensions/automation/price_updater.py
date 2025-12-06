@@ -58,12 +58,24 @@ class PriceUpdater:
                     continue
                 
                 # 현재가 조회
+                current_price = 0
                 if code in market_df.index:
-                    current_price = market_df.loc[code]['종가']
-                else:
-                    # 없으면 기존 값 유지
-                    current_price = row.get('current_price', avg_price)
-                    
+                    current_price = float(market_df.loc[code]['종가'])
+                
+                # 만약 0원이면 개별 조회 시도 (혹시 누락되었을 경우)
+                if current_price <= 0:
+                    try:
+                        df = stock.get_market_ohlcv_by_date(today, today, code)
+                        if not df.empty:
+                            current_price = float(df.iloc[0]['종가'])
+                    except:
+                        pass
+                
+                # 여전히 0원이면 기존 값 유지
+                if current_price <= 0:
+                    current_price = float(row.get('current_price', avg_price))
+                    if current_price <= 0: current_price = avg_price # 최후의 수단
+                
                 # 값 갱신
                 val = current_price * quantity
                 cost = avg_price * quantity
