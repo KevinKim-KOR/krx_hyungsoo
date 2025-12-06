@@ -81,6 +81,21 @@ def get_etf_universe():
         
         logger.info(f"필터링 후 ETF: {len(filtered_etfs)}개 (제외: {excluded_count}개)")
         print(f"필터링 후 ETF: {len(filtered_etfs)}개 (제외: {excluded_count}개)")
+        
+        # 성공 시 CSV로 저장 (Cloud 환경에서 최신 데이터 유지)
+        try:
+            import pandas as pd
+            csv_path = PROJECT_ROOT / "data" / "universe" / "etf_universe.csv"
+            # 디렉토리 생성
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            df_save = pd.DataFrame(filtered_etfs)
+            df_save.rename(columns={'code': 'ticker'}, inplace=True) # 기존 포맷 호환
+            df_save.to_csv(csv_path, index=False, encoding='utf-8-sig')
+            logger.info(f"ETF 유니버스 저장 완료: {csv_path}")
+        except Exception as save_e:
+            logger.warning(f"ETF 유니버스 저장 실패: {save_e}")
+            
         return filtered_etfs
     
     except Exception as e:
