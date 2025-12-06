@@ -7,6 +7,10 @@ import yaml
 from pathlib import Path
 import requests
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 class TelegramNotifier:
     """텔레그램 알림 발송"""
@@ -17,14 +21,29 @@ class TelegramNotifier:
         chat_id: Optional[int] = None
     ):
         # 1. bot_token과 chat_id가 직접 전달되면 그것을 사용
-        # 2. 없으면 secret/config.yaml에서 로드
+        # 2. 환경 변수에서 로드 (TELEGRAM_BOT_TOKEN, KRX_TELEGRAM_TOKEN 등)
+        # 3. 없으면 secret/config.yaml에서 로드
+        
+        # 환경변수 확인
+        if not bot_token:
+            bot_token = os.getenv('TELEGRAM_BOT_TOKEN') or os.getenv('KRX_TELEGRAM_TOKEN')
+            
+        if not chat_id:
+            chat_id = os.getenv('TELEGRAM_CHAT_ID') or os.getenv('KRX_TELEGRAM_CHAT_ID')
+            # chat_id가 문자열로 올 수 있으므로 변환 시도
+            if chat_id and isinstance(chat_id, str) and chat_id.isdigit():
+                chat_id = int(chat_id)
+
+        # secret/config.yaml 확인 (환경변수에도 없으면)
         if not bot_token or not chat_id:
             config_path = Path(__file__).parent.parent.parent / "secret" / "config.yaml"
             if config_path.exists():
                 with open(config_path, encoding='utf-8') as f:
                     config = yaml.safe_load(f)
-                    bot_token = bot_token or config['notifications']['telegram']['bot_token']
-                    chat_id = chat_id or config['notifications']['telegram']['chat_id']
+                    # config 파일 구조에 따라 다를 수 있음. 안전하게 get 사용
+                    telegram_config = config.get('notifications', {}).get('telegram', {})
+                    bot_token = bot_token or telegram_config.get('bot_token')
+                    chat_id = chat_id or telegram_config.get('chat_id')
         
         self.bot_token = bot_token
         self.chat_id = chat_id

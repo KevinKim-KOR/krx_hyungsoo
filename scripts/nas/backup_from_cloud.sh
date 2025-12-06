@@ -4,9 +4,18 @@
 # 실행 주기: 매일 새벽 (Cloud 작업 완료 후)
 
 # 설정 (사용자 환경에 맞게 수정 필요)
-CLOUD_USER="ubuntu"
-CLOUD_IP="YOUR.ORACLE.CLOUD.IP"  # Oracle Cloud 공인 IP 입력
-CLOUD_KEY="/volume2/homes/Hyungsoo/.ssh/oracle_key" # SSH 키 경로
+# config/env.nas.sh 파일이 있으면 로드하여 설정 덮어쓰기
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+CONFIG_FILE="$PROJECT_ROOT/config/env.nas.sh"
+
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+CLOUD_USER="${CLOUD_USER:-ubuntu}"
+CLOUD_IP="${CLOUD_IP:-YOUR.ORACLE.CLOUD.IP}"  # config/env.nas.sh에 CLOUD_IP 설정 필요
+CLOUD_KEY="${CLOUD_KEY:-/volume2/homes/Hyungsoo/.ssh/oracle_key}" # SSH 키 경로
 REMOTE_DIR="/home/ubuntu/krx_hyungsoo/data/"
 LOCAL_DIR="/volume2/homes/Hyungsoo/krx/krx_alertor_modular/data/"
 
