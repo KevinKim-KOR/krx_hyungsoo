@@ -138,41 +138,66 @@ def get_etf_universe():
 
 
 def check_intraday_movements():
-    """장중 급등/급락 체크 (ETF 전용) - 네이버 실시간 데이터 사용"""
+    """장중 급등/급락 체크 (ETF + 보유종목) - 네이버 실시간 데이터 사용"""
     try:
         today = date.today()
         
-        # ETF 유니버스 가져오기
+        # 1. ETF 유니버스 가져오기
         etf_universe = get_etf_universe()
         
-        print(f"ETF 유니버스: {len(etf_universe)}개")
+        # 2. 보유 종목 가져오기 (추가)
+        portfolio = PortfolioHelper()
+        pf_data = portfolio.load_full_data()
+        holdings_codes = set()
+        if pf_data and pf_data.get('holdings_codes'):
+            holdings_codes = set(pf_data['holdings_codes'])
+            
+            # 유니버스에 보유 종목 병합 (없는 경우 추가)
+            universe_codes = {item['code'] for item in etf_universe}
+            for code in holdings_codes:
+                if code not in universe_codes:
+                    # 이름 조회 필요
+                    try:
+                        name = stock.get_market_ticker_name(code)
+                        if not name: name = stock.get_etf_ticker_name(code)
+                    except:
+                        name = f"보유종목_{code}"
+                    
+                    etf_universe.append({'code': code, 'name': name, 'is_holding': True})
+                else:
+                    # 기존 항목에 마킹
+                    for item in etf_universe:
+                        if item['code'] == code:
+                            item['is_holding'] = True
+                            break
+        
+        print(f"검사 대상: {len(etf_universe)}개 (보유 {len(holdings_codes)}개 포함)")
         
         if not etf_universe:
-            logger.warning("ETF 유니버스가 비어있습니다.")
-            print("❌ ETF 유니버스가 비어있습니다!")
+            logger.warning("검사 대상이 없습니다.")
             return []
         
         alerts = []
         checked = 0
         total = len(etf_universe)
         
-        print(f"\n📊 ETF 데이터 수집 시작 (총 {total}개)...")
+        print(f"\n📊 데이터 수집 및 분석 시작...")
         
         for idx, etf in enumerate(etf_universe, 1):
             code = etf['code']
             name = etf.get('name')
+            is_holding = etf.get('is_holding', False)
             
             try:
                 # 종목명이 없으면 기본 이름 사용
                 if not name:
                     name = f"ETF_{code}"
                 
-                # 진행 상황 표시 (매 10개마다)
-                if idx % 10 == 0 or idx == total:
+                # 진행 상황 표시 (매 50개마다)
+                if idx % 50 == 0 or idx == total:
                     print(f"  진행: {idx}/{total} ({idx/total*100:.1f}%) - 체크: {checked}개")
                 
-                # 네이버 실시간 데이터 사용 (장중 데이터 포함)
-                # 최근 5일 데이터 가져오기
+                # 네이버 실시간 데이터 사용
                 fromdate = (today - timedelta(days=5)).strftime('%Y%m%d')
                 todate = today.strftime('%Y%m%d')
                 
@@ -187,26 +212,9 @@ def check_intraday_movements():
                 try:
                     change_pct = df.iloc[-1]['등락률']
                 except IndexError:
-                    logger.debug(f"데이터 인덱스 오류 [{code}]: {len(df)} rows")
                     continue
                 
-                # 3개월 수익률 계산 (약 60거래일)
-                if len(df) >= 60:
-                    price_3m_ago = df.iloc[-60]['종가']
-                    price_now = df.iloc[-1]['종가']
-                    return_3m = ((price_now / price_3m_ago) - 1) * 100
-                else:
-                    return_3m = None
-                
-                # 거래량 트렌드 (5일 평균 대비)
-                if len(df) >= 5:
-                    volume_5d_avg = df.iloc[-6:-1]['거래량'].mean()
-                    volume_today = df.iloc[-1]['거래량']
-                    volume_ratio = (volume_today / volume_5d_avg) if volume_5d_avg > 0 else 1.0
-                else:
-                    volume_ratio = 1.0
-                
-                # ETF 특성 판별
+                # ETF 특성 판별 (보유 종목은 개별주 일수도 있음)
                 etf_type = 'default'
                 if '레버리지' in name or '인버스' in name:
                     etf_type = 'leverage'
@@ -220,44 +228,61 @@ def check_intraday_movements():
                 # 특성별 기준 적용
                 threshold = THRESHOLDS.get(etf_type, THRESHOLDS['default'])
                 
+                # 보유 종목은 기준 완화? (일단 동일 기준 적용하되, 급락 시 무조건 알림 검토)
                 # 급등/급락 기준 체크
+                is_alert = False
+                
                 if abs(change_pct) >= threshold:
                     price = df.iloc[-1]['종가']
                     volume = df.iloc[-1]['거래량']
-                    value = price * volume  # 거래대금
+                    value = price * volume
                     
-                    # 거래대금 필터 (의미 있는 알림만)
-                    if value >= MIN_TRADE_VALUE:
-                        # 괴리율 조회 (ETF 전용)
-                        try:
-                            etf_info = pykrx_stock.get_etf_ohlcv_by_date(date.today().strftime('%Y%m%d'), date.today().strftime('%Y%m%d'), code)
-                            if not etf_info.empty and 'NAV' in etf_info.columns:
-                                nav = etf_info.iloc[-1]['NAV']
-                                tracking_error = ((price - nav) / nav) * 100 if nav > 0 else 0
-                            else:
-                                tracking_error = None
-                        except:
-                            tracking_error = None
-                        
-                        alerts.append({
-                            'code': code,
-                            'name': name,
-                            'change': change_pct,
-                            'price': price,
-                            'volume': volume,
-                            'value': value,
-                            'type': etf_type,
-                            'return_3m': return_3m,
-                            'volume_ratio': volume_ratio,
-                            'tracking_error': tracking_error
-                        })
+                    # 거래대금 필터 (보유 종목은 거래대금 무관하게 알림)
+                    if is_holding or value >= MIN_TRADE_VALUE:
+                         is_alert = True
+
+                if is_alert:
+                    price = df.iloc[-1]['종가']
+                    volume = df.iloc[-1]['거래량']
+                    value = price * volume
+                    
+                    # 추가 정보 계산 (3개월 수익률, 괴리율 등)
+                    if len(df) >= 60:
+                        price_3m_ago = df.iloc[-60]['종가']
+                        return_3m = ((price / price_3m_ago) - 1) * 100
+                    else:
+                        return_3m = None
+
+                    if len(df) >= 5:
+                        volume_5d_avg = df.iloc[-6:-1]['거래량'].mean()
+                        volume_today = df.iloc[-1]['거래량']
+                        volume_ratio = (volume_today / volume_5d_avg) if volume_5d_avg > 0 else 1.0
+                    else:
+                        volume_ratio = 1.0
+
+                    tracking_error = None
+                    # ETF인 경우 괴리율 (생략 가능 또는 try)
+                    
+                    alerts.append({
+                        'code': code,
+                        'name': name,
+                        'change': change_pct,
+                        'price': price,
+                        'volume': volume,
+                        'value': value,
+                        'type': etf_type,
+                        'return_3m': return_3m,
+                        'volume_ratio': volume_ratio,
+                        'tracking_error': tracking_error,
+                        'is_holding': is_holding
+                    })
             
             except Exception as e:
-                logger.debug(f"종목 체크 실패 [{code}]: {e}")
+                # logger.debug(f"종목 체크 실패 [{code}]: {e}")
                 continue
         
         logger.info(f"체크 완료: {checked}개 종목, 알림 대상: {len(alerts)}개")
-        print(f"체크 완료: {checked}개 ETF 중 {len(alerts)}개 알림 대상")
+        print(f"체크 완료: {checked}개 중 {len(alerts)}개 알림 대상")
         
         # 등락률 절대값 기준으로 정렬
         alerts.sort(key=lambda x: abs(x['change']), reverse=True)
@@ -278,21 +303,7 @@ def main():
     print("장중 알림 체크 시작")
     print("=" * 60)
     
-    # 보유 종목 로드
-    portfolio = PortfolioHelper()
-    data = portfolio.load_full_data()
-    
-    if data and data.get('holdings_codes'):
-        holdings_codes = data['holdings_codes']
-        holdings_detail = data['holdings_detail']
-        print(f"보유 종목: {len(holdings_codes)}개")
-        logger.info(f"보유 종목: {len(holdings_codes)}개")
-    else:
-        logger.warning("보유 종목 로드 실패")
-        holdings_codes = []
-        holdings_detail = None
-    
-    # 장중 체크
+    # 장중 체크 (보유 종목 포함)
     alerts = check_intraday_movements()
     
     print(f"알림 대상: {len(alerts)}개")
@@ -301,81 +312,56 @@ def main():
         logger.info("알림 대상 없음 - 전송 생략")
         print("✅ 의미 있는 급등/급락 없음 (알림 생략)")
         print("💡 현재 횡보장이거나 안정적인 장세입니다.")
-        print(f"💡 기준: 지수 ETF 1.5%, 섹터 ETF 2.0%, 해외 ETF 1.5%")
-        print(f"💡 최소 거래대금: 50억원 이상")
+        print(f"💡 기준: 지수 ETF 1.5%, 섹터 ETF 2.0%, 해외 ETF 1.5% (보유종목 포함)")
+        print(f"💡 최소 거래대금: 50억원 이상 (보유종목 제외)")
         return 0
     
-    # 보유 종목 제외 (새로운 투자처 발굴 목적)
-    new_opportunities = [a for a in alerts if a['code'] not in holdings_codes]
+    # 알림 분류
+    holding_alerts = [a for a in alerts if a['is_holding']]
+    new_opportunities = [a for a in alerts if not a['is_holding']]
     
-    if not new_opportunities:
-        logger.info("신규 투자 기회 없음 - 전송 생략")
-        print("✅ 신규 투자 기회 없음 (보유 종목 외 급등/급락 없음)")
+    if not holding_alerts and not new_opportunities:
         return 0
     
-    # 메시지 생성 (새로운 투자처 발굴)
-    message = "*[장중 알림] 새로운 투자 기회*\n\n"
+    # 메시지 생성
+    message = "*[장중 알림] 급등/급락 감지*\n\n"
     message += f"📅 {date.today()}\n"
-    message += f"🔍 신규 투자 기회: {len(new_opportunities)}개\n"
-    message += f"💼 현재 보유: {len(holdings_codes)}개 (제외됨)\n\n"
     
-    # 급등 종목 (상위 10개)
-    up_alerts = [a for a in new_opportunities if a['change'] > 0][:10]
-    if up_alerts:
-        message += "*🟢 급등 ETF (신규 투자 기회)*\n"
-        for i, alert in enumerate(up_alerts, 1):
-            message += f"{i}. {alert['name']} ({alert['code']})\n"
-            message += f"   금일: {alert['change']:+.2f}%"
-            
-            # 3개월 수익률
-            if alert.get('return_3m') is not None:
-                message += f" | 3개월: {alert['return_3m']:+.2f}%"
-            
-            message += f" | 가격: {alert['price']:,.0f}원\n"
-            
-            # 거래량 트렌드
-            volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
-            message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
-            
-            if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
-                message += f" (거래량 {alert['volume_ratio']:.1f}배)"
-            
-            # 괴리율
-            if alert.get('tracking_error') is not None:
-                message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
-            
-            message += "\n\n"
+    # 1. 보유 종목 알림 (최우선)
+    if holding_alerts:
+        message += f"🚨 *보유 종목 변동 ({len(holding_alerts)}개)*\n\n"
+        for i, alert in enumerate(holding_alerts, 1):
+            emoji = "🔴" if alert['change'] < 0 else "🟢"
+            message += f"{i}. {emoji} *{alert['name']}* (`{alert['code']}`)\n"
+            message += f"   등락률: `{alert['change']:+.2f}%`\n"
+            message += f"   현재가: `{alert['price']:,.0f}원`\n"
+            message += f"   거래대금: `{alert['value']/1e8:.1f}억원`\n\n"
     
-    # 급락 종목 (상위 5개)
-    down_alerts = [a for a in new_opportunities if a['change'] < 0][:5]
-    if down_alerts:
-        message += "*🔴 급락 ETF (저가 매수 기회)*\n"
-        for i, alert in enumerate(down_alerts, 1):
-            message += f"{i}. {alert['name']} ({alert['code']})\n"
-            message += f"   금일: {alert['change']:+.2f}%"
-            
-            # 3개월 수익률
-            if alert.get('return_3m') is not None:
-                message += f" | 3개월: {alert['return_3m']:+.2f}%"
-            
-            message += f" | 가격: {alert['price']:,.0f}원\n"
-            
-            # 거래량 트렌드
-            volume_emoji = "🔥" if alert.get('volume_ratio', 1.0) > 2.0 else ""
-            message += f"   거래대금: {alert['value']/1e8:.1f}억원 {volume_emoji}"
-            
-            if alert.get('volume_ratio') and alert['volume_ratio'] > 1.5:
-                message += f" (거래량 {alert['volume_ratio']:.1f}배)"
-            
-            # 괴리율
-            if alert.get('tracking_error') is not None:
-                message += f" | 괴리율: {alert['tracking_error']:+.2f}%"
-            
-            message += "\n\n"
-    
+    # 2. 신규 투자 기회
+    if new_opportunities:
+        message += f"🔍 *신규 투자 기회 ({len(new_opportunities)}개)*\n\n"
+        
+        # 급등 (Top 5)
+        up_alerts = [a for a in new_opportunities if a['change'] > 0][:5]
+        if up_alerts:
+            message += "*🟢 급등 (매수 관점)*\n"
+            for i, alert in enumerate(up_alerts, 1):
+                message += f"{i}. {alert['name']} ({alert['code']})\n"
+                message += f"   {alert['change']:+.2f}% | {alert['value']/1e8:.1f}억\n"
+                if alert.get('volume_ratio', 0) > 1.5:
+                    message += f"   🔥 거래폭발 ({alert['volume_ratio']:.1f}배)\n"
+                message += "\n"
+        
+        # 급락 (Top 5)
+        down_alerts = [a for a in new_opportunities if a['change'] < 0][:5]
+        if down_alerts:
+            message += "*🔴 급락 (저점 매수)*\n"
+            for i, alert in enumerate(down_alerts, 1):
+                message += f"{i}. {alert['name']} ({alert['code']})\n"
+                message += f"   {alert['change']:+.2f}% | {alert['value']/1e8:.1f}억\n\n"
+
     # 텔레그램 전송
     print("\n텔레그램 전송 시도...")
-    print(f"메시지 길이: {len(message)} 문자")
     
     telegram = TelegramHelper()
     success = telegram.send_with_logging(
@@ -385,10 +371,9 @@ def main():
     )
     
     if success:
-        print(f"✅ 텔레그램 전송 성공: {len(alerts)}개 ETF")
+        print(f"✅ 텔레그램 전송 성공")
     else:
         print("❌ 텔레그램 전송 실패")
-        print("💡 .env 파일의 TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID를 확인하세요")
     
     return 0
 

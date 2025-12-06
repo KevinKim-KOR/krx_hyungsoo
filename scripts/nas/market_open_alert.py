@@ -7,6 +7,12 @@ scripts/nas/market_open_alert.py
 import sys
 from datetime import date
 from pathlib import Path
+import pandas as pd
+import pykrx.stock as stock
+from dotenv import load_dotenv
+
+# .env 로드
+load_dotenv()
 
 # 프로젝트 루트를 PYTHONPATH에 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -23,38 +29,95 @@ logger = script.logger
 
 @handle_script_errors("장 시작 알림")
 def main():
-    """장 시작 알림 (실제 포트폴리오 기반)"""
+    """장 시작 알림 (실시간 가격 반영)"""
     script.log_header("장 시작 알림")
     
-    # 포트폴리오 로드
+    # 1. 포트폴리오 로드 (기본 데이터)
     portfolio = PortfolioHelper()
     data = portfolio.load_full_data()
     
-    if not data or not data.get('summary'):
+    if not data or not data.get('holdings_detail') is not None:
         logger.warning("포트폴리오 데이터 없음")
         return 0
     
-    summary = data['summary']
-    holdings_count = data['holdings_count']
+    holdings_detail = data['holdings_detail']
     
-    # 메시지 생성
-    message = "*[장 시작] 포트폴리오 현황*\n\n"
-    message += f"📅 {date.today().strftime('%Y년 %m월 %d일 (%A)')}\n\n"
-    message += f"💰 총 평가액: `{summary['total_value']:,.0f}원`\n"
-    message += f"💵 총 매입액: `{summary['total_cost']:,.0f}원`\n"
-    message += f"📈 평가손익: {PortfolioHelper.format_return(summary['return_amount'], summary['return_pct'])}\n"
-    message += f"📊 보유 종목: `{holdings_count}개`\n\n"
-    message += "_오늘도 좋은 하루 되세요!_ 🚀"
-    
-    # 텔레그램 전송
-    telegram = TelegramHelper()
-    telegram.send_with_logging(
-        message,
-        "장 시작 알림 전송 성공",
-        "장 시작 알림 전송 실패"
-    )
+    # 2. 실시간(또는 최신) 가격 업데이트
+    try:
+        today = date.today().strftime("%Y%m%d")
+        # 전종목 시세 가져오기 (속도 향상)
+        market_df = stock.get_market_ohlcv_by_ticker(today)
+        
+        # 만약 장 시작 직후라 데이터가 없으면(빈 DF), 어제 종가 사용
+        if market_df.empty:
+            logger.info("금일 시세 미생성, 전일 종가 사용")
+            yesterday = (pd.Timestamp(today) - pd.tseries.offsets.BusinessDay(1)).strftime("%Y%m%d")
+            market_df = stock.get_market_ohlcv_by_ticker(yesterday)
+            date_str = f"{date.today()} (전일종가 기준)"
+        else:
+            date_str = f"{date.today()} (장시작)"
+
+        # 보유 종목 업데이트
+        total_value = 0
+        total_cost = 0
+        
+        updated_holdings = []
+        
+        for _, row in holdings_detail.iterrows():
+            code = row['code']
+            quantity = row['quantity']
+            avg_price = row['avg_price']
+            name = row['name']
+            
+            if code in market_df.index:
+                current_price = market_df.loc[code]['종가'] # 장중에는 현재가
+            else:
+                current_price = row['current_price'] # 실패 시 기존 값 유지
+            
+            val = current_price * quantity
+            cost = avg_price * quantity
+            
+            total_value += val
+            total_cost += cost
+            
+            # 수익률 계산
+            ret_pct = ((current_price - avg_price) / avg_price * 100) if avg_price > 0 else 0
+            ret_amt = val - cost
+            
+            updated_holdings.append({
+                'name': name,
+                'return_pct': ret_pct,
+                'return_amt': ret_amt
+            })
+
+        # 3. 요약 재계산
+        total_return_amt = total_value - total_cost
+        total_return_pct = (total_return_amt / total_cost * 100) if total_cost > 0 else 0
+        
+        # 4. 메시지 생성
+        message = "*[장 시작] 포트폴리오 현황*\n\n"
+        message += f"📅 {date_str}\n\n"
+        message += f"💰 총 평가액: `{total_value:,.0f}원`\n"
+        message += f"💵 총 매입액: `{total_cost:,.0f}원`\n"
+        message += f"📈 평가손익: {PortfolioHelper.format_return(total_return_amt, total_return_pct)}\n"
+        message += f"📊 보유 종목: `{len(holdings_detail)}개`\n\n"
+        
+        message += "_오늘도 성투하세요!_ 🚀"
+        
+        # 5. 텔레그램 전송
+        telegram = TelegramHelper()
+        telegram.send_with_logging(
+            message,
+            "장 시작 알림 전송 성공",
+            "장 시작 알림 전송 실패"
+        )
+
+    except Exception as e:
+        logger.error(f"가격 업데이트 중 오류: {e}", exc_info=True)
+        return 1
     
     return 0
+
 
 
 if __name__ == "__main__":

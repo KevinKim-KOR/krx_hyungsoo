@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import pandas as pd
 import numpy as np
+import pykrx.stock as stock
 
 # 프로젝트 루트를 PYTHONPATH에 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -81,19 +82,28 @@ class HybridStopLoss:
     
     def get_current_regime(self) -> Tuple[str, float]:
         """
-        현재 시장 레짐 감지
-        
-        Returns:
-            (레짐, 신뢰도)
+        현재 시장 레짐 감지 (실제 데이터 사용)
         """
         try:
-            # 단순화: 기본값 반환
-            # 실제 구현 시 pykrx로 KOSPI 데이터 가져와서 detect_regime() 호출
-            regime = 'neutral'
-            confidence = 50.0
+            # KOSPI 데이터 가져오기 (최근 1년)
+            today = date.today().strftime('%Y%m%d')
+            from_date = (datetime.now() - pd.DateOffset(years=1)).strftime('%Y%m%d')
             
-            logger.info(f"현재 레짐: {regime} (신뢰도: {confidence:.2f}%)")
-            return regime, confidence
+            # KOSPI 지수 (1001)
+            kospi = stock.get_index_ohlcv_by_date(from_date, today, "1001")
+            
+            if kospi.empty:
+                logger.warning("KOSPI 데이터 조회 실패")
+                return 'neutral', 50.0
+            
+            # 컬럼 이름 변경 (Open, High, Low, Close, Volume)
+            kospi.rename(columns={'시가': 'Open', '고가': 'High', '저가': 'Low', '종가': 'Close', '거래량': 'Volume'}, inplace=True)
+            
+            # 레짐 감지
+            regime, confidence = self.regime_detector.detect_regime(kospi, date.today())
+            
+            logger.info(f"현재 레짐: {regime} (신뢰도: {confidence*100:.2f}%)")
+            return regime, confidence * 100
         
         except Exception as e:
             logger.error(f"레짐 감지 실패: {e}", exc_info=True)
@@ -101,28 +111,37 @@ class HybridStopLoss:
     
     def calculate_atr(self, code: str) -> float:
         """
-        ATR (Average True Range) 계산
-        
-        Args:
-            code: 종목 코드
-        
-        Returns:
-            ATR (%) - 변동성 지표
+        ATR (Average True Range) 계산 (실제 데이터 사용)
         """
         try:
-            # 실제 구현 시 pykrx로 OHLC 데이터 가져오기
-            # 여기서는 단순화: 임의의 ATR 값 반환
+            today = date.today().strftime('%Y%m%d')
+            # ATR 계산을 위해 충분한 데이터 가져오기 (기간 + 10일 여유)
+            from_date = (datetime.now() - pd.DateOffset(days=self.atr_period * 2 + 30)).strftime('%Y%m%d')
             
-            # 종목별 임의 ATR (실제로는 계산 필요)
-            if code.startswith('1') or code.startswith('2'):
-                # ETF (1xxxxx, 2xxxxx)
-                atr = np.random.uniform(1.5, 3.0)
-            else:
-                # 개별주
-                atr = np.random.uniform(3.0, 7.0)
+            df = stock.get_market_ohlcv_by_date(from_date, today, code)
             
-            logger.debug(f"{code} ATR: {atr:.2f}%")
-            return atr
+            if df.empty or len(df) < self.atr_period + 1:
+                logger.warning(f"ATR 계산을 위한 데이터 부족: {code}")
+                return 3.5 # 기본값
+            
+            # TR 계산
+            df['High'] = df['고가']
+            df['Low'] = df['저가']
+            df['Close'] = df['종가']
+            
+            df['tr0'] = abs(df['High'] - df['Low'])
+            df['tr1'] = abs(df['High'] - df['Close'].shift(1))
+            df['tr2'] = abs(df['Low'] - df['Close'].shift(1))
+            df['tr'] = df[['tr0', 'tr1', 'tr2']].max(axis=1)
+            
+            # ATR 계산 (Wilder's Smoothing)
+            atr = df['tr'].ewm(alpha=1/self.atr_period, adjust=False).mean().iloc[-1]
+            price = df['Close'].iloc[-1]
+            
+            atr_pct = (atr / price) * 100
+            
+            logger.debug(f"{code} ATR: {atr_pct:.2f}%")
+            return atr_pct
         
         except Exception as e:
             logger.error(f"ATR 계산 실패 ({code}): {e}")
