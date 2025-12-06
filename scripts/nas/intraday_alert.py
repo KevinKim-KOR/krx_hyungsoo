@@ -130,13 +130,17 @@ def check_intraday_movements():
                 
                 df = naver.get_market_ohlcv_by_date(fromdate, todate, code)
                 
-                if df.empty:
+                if df is None or df.empty or len(df) == 0:
                     continue
                 
                 checked += 1
                 
                 # 등락률 계산
-                change_pct = df.iloc[-1]['등락률']
+                try:
+                    change_pct = df.iloc[-1]['등락률']
+                except IndexError:
+                    logger.debug(f"데이터 인덱스 오류 [{code}]: {len(df)} rows")
+                    continue
                 
                 # 3개월 수익률 계산 (약 60거래일)
                 if len(df) >= 60:

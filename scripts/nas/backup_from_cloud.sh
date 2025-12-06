@@ -16,6 +16,15 @@ fi
 CLOUD_USER="${CLOUD_USER:-ubuntu}"
 CLOUD_IP="${CLOUD_IP:-YOUR.ORACLE.CLOUD.IP}"  # config/env.nas.sh에 CLOUD_IP 설정 필요
 CLOUD_KEY="${CLOUD_KEY:-/volume2/homes/Hyungsoo/.ssh/oracle_key}" # SSH 키 경로
+
+# IP 설정 확인
+if [ "$CLOUD_IP" = "YOUR.ORACLE.CLOUD.IP" ]; then
+    echo "❌ 오류: CLOUD_IP가 설정되지 않았습니다."
+    echo "👉 config/env.nas.sh 파일을 생성하고 아래 내용을 추가하세요:"
+    echo "export CLOUD_IP=\"오라클_클라우드_IP\""
+    exit 1
+fi
+
 REMOTE_DIR="/home/ubuntu/krx_hyungsoo/data/"
 LOCAL_DIR="/volume2/homes/Hyungsoo/krx/krx_alertor_modular/data/"
 
