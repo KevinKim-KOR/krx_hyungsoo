@@ -115,7 +115,8 @@ class DailyReport:
         top5: 'pd.DataFrame',
         worst5: 'pd.DataFrame',
         regime_info: Optional[Dict],
-        signals: Dict
+        signals: Dict,
+        holdings_detail: Optional['pd.DataFrame'] = None
     ):
         """
         텔레그램으로 리포트 전송 (실제 포트폴리오 기반)
@@ -126,6 +127,7 @@ class DailyReport:
             worst5: 손실 Top 5
             regime_info: 레짐 정보
             signals: 매매 신호
+            holdings_detail: 보유 종목 상세 (선택)
         """
         try:
             # 종목명 조회 함수
