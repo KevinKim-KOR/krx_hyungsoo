@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Wallet, TrendingUp, TrendingDown, AlertTriangle, Plus, Edit, Trash2, X } from 'lucide-react'
+import { API_URLS } from '../config/api'
 
-// API URL 설정 (환경 변수 또는 기본값)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// 보유종목은 Cloud API 사용 (DB 관리)
+const API_BASE_URL = API_URLS.holdings
 
 interface Holding {
   id: number
