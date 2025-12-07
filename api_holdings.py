@@ -59,12 +59,8 @@ def get_holdings():
         
         result = []
         for h in holdings:
-            # 현재가 조회
-            try:
-                df = get_ohlcv(h.code, period='1y')
-                current_price = float(df['close'].iloc[-1]) if df is not None and len(df) > 0 else h.avg_price
-            except:
-                current_price = h.avg_price
+            # DB에 저장된 current_price 우선 사용
+            current_price = h.current_price if h.current_price and h.current_price > 0 else h.avg_price
             
             result.append(HoldingResponse(
                 id=h.id,
