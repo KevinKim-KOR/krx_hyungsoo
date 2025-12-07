@@ -7,12 +7,13 @@ export const CLOUD_API_URL = import.meta.env.VITE_CLOUD_API_URL || 'http://168.1
 export const LOCAL_API_URL = import.meta.env.VITE_LOCAL_API_URL || 'http://localhost:8000'
 
 // 페이지별 API URL 매핑
+// TODO: Cloud 네트워크 설정 완료 후 holdings, portfolio, dashboard를 CLOUD_API_URL로 변경
 export const API_URLS = {
-  // Cloud API 사용 (DB 관리)
-  holdings: CLOUD_API_URL,
-  portfolio: CLOUD_API_URL,
-  dashboard: CLOUD_API_URL,
-  regime: CLOUD_API_URL,
+  // 현재는 모두 Local API 사용 (Cloud 네트워크 설정 전까지)
+  holdings: LOCAL_API_URL,
+  portfolio: LOCAL_API_URL,
+  dashboard: LOCAL_API_URL,
+  regime: LOCAL_API_URL,
   
   // Local API 사용 (무거운 연산)
   backtest: LOCAL_API_URL,
