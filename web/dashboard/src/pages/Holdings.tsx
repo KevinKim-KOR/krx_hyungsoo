@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Wallet, TrendingUp, TrendingDown, AlertTriangle, Plus, Edit, Trash2, X } from 'lucide-react'
 
+// API URL 설정 (환경 변수 또는 기본값)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 interface Holding {
   id: number
   code: string
@@ -60,18 +63,18 @@ export default function Holdings() {
     try {
       setLoading(true)
       
-      const holdingsRes = await fetch('http://localhost:8000/api/v1/holdings')
+      const holdingsRes = await fetch(`${API_BASE_URL}/api/v1/holdings`)
       if (!holdingsRes.ok) throw new Error('Holdings 조회 실패')
       const holdingsData = await holdingsRes.json()
       setHoldings(holdingsData)
       
-      const regimeRes = await fetch('http://localhost:8000/api/v1/regime/current')
+      const regimeRes = await fetch(`${API_BASE_URL}/api/v1/regime/current`)
       if (!regimeRes.ok) throw new Error('Regime 조회 실패')
       const regimeData = await regimeRes.json()
       setRegime(regimeData)
       
       // 매도 신호 조회
-      const signalsRes = await fetch('http://localhost:8000/api/v1/holdings/sell-signals')
+      const signalsRes = await fetch(`${API_BASE_URL}/api/v1/holdings/sell-signals`)
       if (signalsRes.ok) {
         const signalsData = await signalsRes.json()
         setSellSignals(signalsData)
@@ -88,7 +91,7 @@ export default function Holdings() {
   // 신규 매수 또는 추가 매수
   const handleAdd = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/v1/holdings', {
+      const res = await fetch(`${API_BASE_URL}/api/v1/holdings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -106,7 +109,7 @@ export default function Holdings() {
   const handleSell = async () => {
     if (!modal.holding) return
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/holdings/${modal.holding.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/holdings/${modal.holding.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,7 +131,7 @@ export default function Holdings() {
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`${name} 종목을 전체 매도하시겠습니까?`)) return
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/holdings/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/holdings/${id}`, {
         method: 'DELETE'
       })
       if (!res.ok) throw new Error('삭제 실패')
