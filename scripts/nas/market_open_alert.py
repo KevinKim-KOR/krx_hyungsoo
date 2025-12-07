@@ -69,10 +69,18 @@ def main():
             avg_price = row['avg_price']
             name = row['name']
             
+            # 시세 조회 (0원이면 DB 저장 가격 사용)
+            current_price = 0
             if code in market_df.index:
-                current_price = market_df.loc[code]['종가'] # 장중에는 현재가
-            else:
-                current_price = row['current_price'] # 실패 시 기존 값 유지
+                current_price = market_df.loc[code]['종가']
+            
+            # 시세가 0원이거나 없으면 DB에 저장된 current_price 사용
+            if current_price <= 0:
+                current_price = row.get('current_price', 0)
+            
+            # 그래도 0원이면 매수가 사용
+            if current_price <= 0:
+                current_price = avg_price
             
             val = current_price * quantity
             cost = avg_price * quantity
