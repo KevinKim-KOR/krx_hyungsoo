@@ -1,11 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
-import Portfolio from './pages/Portfolio'
 import Holdings from './pages/Holdings'
-import Backtest from './pages/Backtest'
-import MLModel from './pages/MLModel'
-import Lookback from './pages/Lookback'
+import Strategy from './pages/Strategy'
+import Portfolio from './pages/Portfolio'
 
 function App() {
   return (
@@ -13,11 +11,9 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/holdings" element={<Holdings />} />
-          <Route path="/backtest" element={<Backtest />} />
-          <Route path="/ml-model" element={<MLModel />} />
-          <Route path="/lookback" element={<Lookback />} />
+          <Route path="/strategy" element={<Strategy />} />
+          <Route path="/portfolio" element={<Portfolio />} />
         </Routes>
       </Layout>
     </Router>
