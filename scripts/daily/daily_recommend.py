@@ -528,7 +528,8 @@ class DailyRecommendEngine:
         message = self.format_telegram_message(result)
         self.telegram.send_with_logging(
             message=message,
-            category="daily_recommend"
+            success_msg="일일 추천 발송 완료",
+            fail_msg="일일 추천 발송 실패"
         )
         logger.info("텔레그램 발송 완료")
     
