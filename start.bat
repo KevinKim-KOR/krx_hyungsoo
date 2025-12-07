@@ -3,8 +3,13 @@ chcp 65001 >nul
 setlocal
 
 echo ========================================
-echo KRX Alertor 서버 시작 (Start) - v3 (Stable)
+echo KRX Alertor 서버 시작 (Start) - v4
 echo ========================================
+echo.
+echo 포트 구조:
+echo   - 3000: React UI (프론트엔드)
+echo   - 8001: 백테스트/튜닝 API (PC 전용)
+echo   - 8000: Holdings API (Cloud에서 실행)
 echo.
 
 :: 프로젝트 루트 경로 설정
@@ -51,16 +56,16 @@ if defined ACTIVATE_SCRIPT (
 echo    - 실행 명령 준비 완료.
 
 :: ---------------------------------------------------------
-:: 2. 백엔드 서버 시작
+:: 2. 백테스트/튜닝 API 서버 시작 (Port 8001)
 :: ---------------------------------------------------------
-echo [2/3] 백엔드 서버 시작 (FastAPI, Port 8000)...
-start "KRX Backend" cmd /k "cd /d "%PROJECT_ROOT%backend" && %PRE_CMD% && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+echo [2/3] 백테스트/튜닝 API 시작 (FastAPI, Port 8001)...
+start "KRX Backtest API" cmd /k "cd /d "%PROJECT_ROOT%" && %PRE_CMD% && python api_backtest.py"
 
 :: 충돌 방지를 위해 3초 대기
 timeout /t 3 >nul
 
 :: ---------------------------------------------------------
-:: 3. 프론트엔드 서버 시작
+:: 3. 프론트엔드 서버 시작 (Port 3000)
 :: ---------------------------------------------------------
 echo [3/3] 프론트엔드 서버 시작 (React, Port 3000)...
 :: 프론트엔드는 npm만 있으면 되므로, 혹시 conda 활성화가 실패해도 실행되도록 처리
@@ -70,8 +75,9 @@ echo.
 echo ========================================
 echo 서버 실행 요청이 완료되었습니다.
 echo.
-echo - 백엔드: http://localhost:8000/api/docs
-echo - 프론트엔드: http://localhost:3000
+echo - 프론트엔드 (UI): http://localhost:3000
+echo - 백테스트 API:    http://localhost:8001
+echo - Holdings API:    http://168.107.51.68:8000 (Cloud)
 echo.
 echo 서버를 종료하려면 'stop.bat'을 실행하세요.
 echo ========================================

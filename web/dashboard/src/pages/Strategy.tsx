@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { API_URLS } from '../config/api'
 
-// API URL
-const API_BASE_URL = 'http://localhost:8000'
+// API URL (백테스트/튜닝은 PC의 8001 포트 사용)
+const API_BASE_URL = API_URLS.strategy
 
 interface BacktestParams {
   start_date: string

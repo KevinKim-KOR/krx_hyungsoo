@@ -110,12 +110,35 @@ def get_current_regime():
 @app.get("/")
 def root():
     return {
-        "message": "Holdings API",
+        "message": "Holdings API (Cloud/PC 공용)",
+        "port": 8000,
         "endpoints": {
             "holdings": "/api/v1/holdings",
-            "regime": "/api/v1/regime/current"
+            "regime": "/api/v1/regime/current",
+            "recommendations": "/api/v1/recommendations/today"
         }
     }
+
+
+# ============================================
+# 오늘의 추천 API
+# ============================================
+@app.get("/api/v1/recommendations/today")
+def get_today_recommendations():
+    """오늘의 추천 조회"""
+    import json
+    from datetime import date
+    
+    today = date.today().strftime("%Y%m%d")
+    rec_file = Path(f"data/output/recommendations/daily_recommend_{today}.json")
+    
+    if not rec_file.exists():
+        raise HTTPException(status_code=404, detail="오늘의 추천이 없습니다")
+    
+    with open(rec_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    return data
 
 
 if __name__ == "__main__":
@@ -125,9 +148,10 @@ if __name__ == "__main__":
     init_db()
     print("✅ DB 초기화 완료\n")
     
-    print("🚀 Holdings API 시작...")
+    print("🚀 Holdings API 시작 (Cloud/PC 공용)...")
     print("📍 URL: http://localhost:8000")
     print("💰 Holdings: http://localhost:8000/api/v1/holdings")
-    print("📊 Regime: http://localhost:8000/api/v1/regime/current\n")
+    print("📊 Regime: http://localhost:8000/api/v1/regime/current")
+    print("📋 Recommendations: http://localhost:8000/api/v1/recommendations/today\n")
     
     uvicorn.run(app, host="0.0.0.0", port=8000)
