@@ -132,8 +132,16 @@ class DailyReport:
         try:
             # 종목명 조회 함수
             def get_stock_name(code: str) -> str:
-                """종목명 조회 (매핑 우선, pykrx 보조)"""
-                # 주요 ETF 매핑 (우선 사용)
+                """종목명 조회 (보유목록 -> 매핑 -> pykrx 순)"""
+                # 1. 보유 종목 리스트에서 찾기 (가장 정확한 사용자 지정 명칭)
+                if holdings_detail is not None and not holdings_detail.empty:
+                    # code 컬럼이 있는지 확인
+                    if 'code' in holdings_detail.columns and 'name' in holdings_detail.columns:
+                        item = holdings_detail[holdings_detail['code'] == code]
+                        if not item.empty:
+                            return item.iloc[0]['name']
+                
+                # 2. 주요 ETF 매핑 (우선 사용)
                 etf_names = {
                     '069500': 'KODEX 200',
                     '102110': 'TIGER 200',
