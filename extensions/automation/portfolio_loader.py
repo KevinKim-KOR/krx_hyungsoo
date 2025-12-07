@@ -16,23 +16,91 @@ from datetime import datetime
 class PortfolioLoader:
     """포트폴리오 데이터 로더"""
     
-    def __init__(self, portfolio_file: str = None):
+    def __init__(self, portfolio_file: str = None, use_db: bool = True):
         """
         Args:
             portfolio_file: 포트폴리오 JSON 파일 경로 (기본: data/portfolio/holdings.json)
+            use_db: 데이터베이스 사용 여부 (기본: True)
         """
+        self.use_db = use_db
+        
+        # 프로젝트 루트 기준 경로
+        self.project_root = Path(__file__).parent.parent.parent
+        
         if portfolio_file is None:
-            # 프로젝트 루트 기준 경로
-            project_root = Path(__file__).parent.parent.parent
-            portfolio_file = project_root / "data" / "portfolio" / "holdings.json"
+            portfolio_file = self.project_root / "data" / "portfolio" / "holdings.json"
         
         self.portfolio_file = Path(portfolio_file)
         
-        if not self.portfolio_file.exists():
-            raise FileNotFoundError(f"포트폴리오 파일을 찾을 수 없습니다: {self.portfolio_file}")
-    
+        # DB 연결 준비
+        self.session = None
+        if self.use_db:
+            try:
+                from core.db import SessionLocal
+                self.session = SessionLocal()
+            except ImportError:
+                print("⚠️ DB 모듈(core.db)을 찾을 수 없어 파일 모드로 동작합니다.")
+                self.use_db = False
+            except Exception as e:
+                print(f"⚠️ DB 연결 실패: {e}")
+                self.use_db = False
+
+    def __del__(self):
+        """소멸자: DB 세션 종료"""
+        if self.session:
+            self.session.close()
+
     def load_portfolio(self) -> dict:
-        """포트폴리오 전체 데이터 로드"""
+        """포트폴리오 전체 데이터 로드 (DB 우선, 실패 시 파일)"""
+        if self.use_db and self.session:
+            try:
+                return self._load_from_db()
+            except Exception as e:
+                print(f"⚠️ DB 로드 실패 (파일로 대체): {e}")
+        
+        return self._load_from_file()
+
+    def _load_from_db(self) -> dict:
+        """DB에서 포트폴리오 로드"""
+        from core.db import Holdings
+        from datetime import datetime
+        
+        # 수량이 0보다 큰 종목만 조회
+        holdings = self.session.query(Holdings).filter(Holdings.quantity > 0).all()
+        
+        holdings_list = []
+        for h in holdings:
+            # 기본 데이터 구조 생성
+            item = {
+                'code': h.code,
+                'name': h.name,
+                'quantity': float(h.quantity),
+                'avg_price': float(h.avg_price),
+                'total_cost': float(h.quantity * h.avg_price),
+                'broker': '' # DB에 broker 컬럼이 없다면 빈 값
+            }
+            
+            # 현재가/평가액은 PriceUpdater에서 갱신하므로 여기서는 매수가 기준으로 초기화
+            # 단, DB에 현재가가 저장되어 있다면 그것을 쓸 수도 있음 (현재 모델엔 없음)
+            item['current_price'] = item['avg_price']
+            item['current_value'] = item['total_cost']
+            item['return_amount'] = 0.0
+            item['return_pct'] = 0.0
+            
+            holdings_list.append(item)
+            
+        return {
+            'last_updated': datetime.now().isoformat(),
+            'holdings': holdings_list
+        }
+
+    def _load_from_file(self) -> dict:
+        """파일에서 포트폴리오 로드"""
+        if not self.portfolio_file.exists():
+            # 파일도 없고 DB도 안되면 빈 딕셔너리 리턴보다는 에러가 낫지만,
+            # 호환성을 위해 빈 구조 리턴
+            return {'holdings': []}
+            
         with open(self.portfolio_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     
