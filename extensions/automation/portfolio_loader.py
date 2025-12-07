@@ -69,6 +69,8 @@ class PortfolioLoader:
         holdings = self.session.query(Holdings).filter(Holdings.quantity > 0).all()
         
         holdings_list = []
+        last_updated = None
+        
         for h in holdings:
             # 기본 데이터 구조 생성
             item = {
@@ -80,17 +82,25 @@ class PortfolioLoader:
                 'broker': '' # DB에 broker 컬럼이 없다면 빈 값
             }
             
-            # 현재가/평가액은 PriceUpdater에서 갱신하므로 여기서는 매수가 기준으로 초기화
-            # 단, DB에 현재가가 저장되어 있다면 그것을 쓸 수도 있음 (현재 모델엔 없음)
-            item['current_price'] = item['avg_price']
-            item['current_value'] = item['total_cost']
-            item['return_amount'] = 0.0
-            item['return_pct'] = 0.0
+            # DB에 저장된 현재가 사용 (없으면 매수가 fallback)
+            # 마이그레이션 직후에는 current_price가 None일 수 있음
+            current_price = float(h.current_price) if h.current_price is not None and h.current_price > 0 else float(h.avg_price)
+            
+            item['current_price'] = current_price
+            item['current_value'] = current_price * float(h.quantity)
+            item['return_amount'] = item['current_value'] - item['total_cost']
+            item['return_pct'] = (item['return_amount'] / item['total_cost'] * 100) if item['total_cost'] > 0 else 0
             
             holdings_list.append(item)
             
+            # 가장 최근 업데이트 시간 찾기
+            if h.updated_at:
+                h_updated = h.updated_at.isoformat() if hasattr(h.updated_at, 'isoformat') else str(h.updated_at)
+                if last_updated is None or h_updated > last_updated:
+                    last_updated = h_updated
+            
         return {
-            'last_updated': datetime.now().isoformat(),
+            'last_updated': last_updated or datetime.now().isoformat(),
             'holdings': holdings_list
         }
 

@@ -56,6 +56,7 @@ class Holdings(Base):
     name: Mapped[str] = mapped_column(String(100))
     quantity: Mapped[int] = mapped_column(Integer)  # 보유 수량
     avg_price: Mapped[float] = mapped_column(Float)  # 평균 매수가
+    current_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True) # 현재가 (최근 업데이트 기준)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
