@@ -252,7 +252,12 @@ export default function Holdings() {
       )}
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-1">총 매입액</div>
+          <div className="text-2xl font-bold">₩{formatNumber(totalCost)}</div>
+        </div>
+        
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 mb-1">총 평가액</div>
           <div className="text-2xl font-bold">₩{formatNumber(totalValue)}</div>
@@ -275,6 +280,101 @@ export default function Holdings() {
           }`}>
             {totalProfitRate >= 0 ? '+' : ''}{totalProfitRate.toFixed(2)}%
           </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-1">보유 종목</div>
+          <div className="text-2xl font-bold">{holdings.length}개</div>
+        </div>
+      </div>
+
+      {/* 보유 종목 테이블 */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">종목명</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">수량</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">평균가</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">현재가</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">평가액</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">손익</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">수익률</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">신호</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">관리</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {[...holdings].sort((a, b) => {
+                // 영웅문 기준: 수익률 내림차순 (수익률 높은 종목이 위로)
+                const profitRateA = ((a.current_price - a.avg_price) / a.avg_price) * 100
+                const profitRateB = ((b.current_price - b.avg_price) / b.avg_price) * 100
+                return profitRateB - profitRateA
+              }).map((holding) => {
+                const value = holding.current_price * holding.quantity
+                const profit = (holding.current_price - holding.avg_price) * holding.quantity
+                const profitRate = ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
+                const signal = getSellSignal(holding)
+                
+                return (
+                  <tr key={holding.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{holding.name}</div>
+                      <div className="text-sm text-gray-500">{holding.code}</div>
+                    </td>
+                    <td className="px-4 py-3 text-right">{formatNumber(holding.quantity)}</td>
+                    <td className="px-4 py-3 text-right">₩{formatNumber(holding.avg_price)}</td>
+                    <td className="px-4 py-3 text-right">₩{formatNumber(holding.current_price)}</td>
+                    <td className="px-4 py-3 text-right font-medium">₩{formatNumber(value)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${
+                      profit >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {profit >= 0 ? '+' : ''}₩{formatNumber(profit)}
+                    </td>
+                    <td className={`px-4 py-3 text-right font-medium ${
+                      profitRate >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {profitRate >= 0 ? '+' : ''}{profitRate.toFixed(2)}%
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {signal.show && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${signal.color}`}>
+                          <AlertTriangle className="w-3 h-3" />
+                          {signal.text}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => openModal('buy', holding)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                          title="추가 매수"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openModal('sell', holding)}
+                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                          title="부분 매도"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(holding.id, holding.name)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          title="전체 매도"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -347,98 +447,6 @@ export default function Holdings() {
           </div>
         </div>
       )}
-
-      {/* 보유 종목 테이블 */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">종목명</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">수량</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">평균가</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">현재가</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">평가액</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">손익</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">수익률</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">신호</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">관리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {holdings.map((holding) => {
-                const value = holding.current_price * holding.quantity
-                const profit = (holding.current_price - holding.avg_price) * holding.quantity
-                const profitRate = ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
-                const signal = getSellSignal(holding)
-                
-                return (
-                  <tr key={holding.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{holding.name}</div>
-                      <div className="text-sm text-gray-500">{holding.code}</div>
-                    </td>
-                    <td className="px-4 py-3 text-right">{formatNumber(holding.quantity)}</td>
-                    <td className="px-4 py-3 text-right">₩{formatNumber(holding.avg_price)}</td>
-                    <td className="px-4 py-3 text-right">₩{formatNumber(holding.current_price)}</td>
-                    <td className="px-4 py-3 text-right font-medium">₩{formatNumber(value)}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${
-                      profit >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {profit >= 0 ? '+' : ''}₩{formatNumber(profit)}
-                    </td>
-                    <td className={`px-4 py-3 text-right font-medium ${
-                      profitRate >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {profitRate >= 0 ? '+' : ''}{profitRate.toFixed(2)}%
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {signal.show && (
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${signal.color}`}>
-                          <AlertTriangle className="w-3 h-3" />
-                          {signal.text}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => openModal('buy', holding)}
-                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                          title="추가 매수"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openModal('sell', holding)}
-                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
-                          title="부분 매도"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(holding.id, holding.name)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="전체 매도"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 통계 */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-sm text-gray-600">
-          총 {holdings.length}개 종목 보유 중
-        </div>
-      </div>
 
       {/* 모달 */}
       {modal.type && (
