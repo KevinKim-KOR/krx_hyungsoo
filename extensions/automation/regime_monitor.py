@@ -109,6 +109,9 @@ class RegimeMonitor:
             # 이력 저장
             self._save_to_history(result)
             
+            # 현재 상태 저장 (Web UI 연동용)
+            self._save_current_state(result)
+            
             return result
             
         except Exception as e:
@@ -117,6 +120,33 @@ class RegimeMonitor:
             traceback.print_exc()
             return None
     
+    def _save_current_state(self, result: Dict):
+        """
+        현재 상태 저장 (Web UI 연동용)
+        Args:
+            result: 레짐 분석 결과
+        """
+        try:
+            state_file = Path("data/state/current_regime.json")
+            state_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Web UI 포맷에 맞게 변환
+            state_data = {
+                "regime": result['regime'],
+                "confidence": result['confidence'],
+                "date": result['date'],
+                "us_market_regime": result.get('us_market_regime', 'neutral'), # US 정보가 없다면 기본값
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            with open(state_file, 'w', encoding='utf-8') as f:
+                json.dump(state_data, f, indent=2, ensure_ascii=False)
+                
+            logger.info(f"현재 레짐 상태 저장 완료: {state_file}")
+            
+        except Exception as e:
+            logger.error(f"현재 상태 저장 실패: {e}")
+
     def check_regime_change(
         self,
         target_date: Optional[date] = None

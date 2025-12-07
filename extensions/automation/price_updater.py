@@ -33,15 +33,29 @@ class PriceUpdater:
             
             holdings_detail = data['holdings_detail']
             
-            # 2. 시장 데이터 가져오기 (오늘)
-            today = date.today().strftime("%Y%m%d")
-            market_df = stock.get_market_ohlcv_by_ticker(today)
+            # 2. 시장 데이터 가져오기 (가장 최근 영업일 찾기)
+            today = date.today()
+            market_df = pd.DataFrame()
+            target_date = today.strftime("%Y%m%d")
             
-            # 장 시작 전/휴일 등으로 데이터 없으면 어제 날짜 시도
+            # 최대 7일 전까지 조회하며 데이터 있는 날짜 찾기
+            for i in range(7):
+                check_date = (today - pd.Timedelta(days=i)).strftime("%Y%m%d")
+                try:
+                    df = stock.get_market_ohlcv_by_ticker(check_date)
+                    if not df.empty and len(df) > 100: # 충분한 데이터가 있는지 확인
+                        market_df = df
+                        target_date = check_date
+                        logger.info(f"시세 데이터 로드 성공: {target_date}")
+                        break
+                except Exception as e:
+                    logger.warning(f"{check_date} 시세 조회 실패: {e}")
+                    continue
+            
             if market_df.empty:
-                yesterday = (pd.Timestamp(today) - pd.tseries.offsets.BusinessDay(1)).strftime("%Y%m%d")
-                market_df = stock.get_market_ohlcv_by_ticker(yesterday)
-                logger.info(f"금일 시세 미생성, 전일 종가 사용 ({yesterday})")
+                logger.error("최근 7일간 유효한 시세 데이터를 찾을 수 없습니다.")
+                return data
+
             
             # 3. 가격 업데이트 및 요약 재계산
             total_value = 0
