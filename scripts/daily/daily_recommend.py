@@ -321,6 +321,36 @@ class DailyRecommendEngine:
             6
         )
     
+    def get_stock_name(self, code: str) -> str:
+        """종목코드로 종목명 조회"""
+        # 주요 ETF 매핑 (우선 사용 - 빠르고 안정적)
+        etf_names = {
+            "069500": "KODEX 200",
+            "091160": "KODEX 반도체",
+            "133690": "TIGER 미국나스닥100",
+            "379800": "KODEX 미국S&P500TR",
+            "379810": "KODEX 미국나스닥100TR",
+            "381170": "TIGER 미국테크TOP10 INDXX",
+            "390390": "KODEX 미국반도체",
+            "005930": "삼성전자",
+            "000660": "SK하이닉스",
+            "005380": "현대차",
+        }
+        
+        if code in etf_names:
+            return etf_names[code]
+        
+        # pykrx로 조회 시도 (평일에만 동작)
+        try:
+            from pykrx import stock
+            name = stock.get_market_ticker_name(code)
+            if name and isinstance(name, str):
+                return name
+        except Exception:
+            pass
+        
+        return code
+    
     def find_buy_candidates(
         self, 
         optimal_weights: Dict, 
@@ -343,13 +373,15 @@ class DailyRecommendEngine:
                 
                 target_value = total_value * weight
                 
-                # TODO: 현재가 조회 필요
-                # 임시로 스킵
+                # 종목명 조회
+                stock_name = self.get_stock_name(code)
+                display_name = f"{stock_name}({code})"
+                
                 candidates.append(Recommendation(
                     code=code,
-                    name=f"[신규] {code}",
+                    name=display_name,
                     signal=Signal.BUY,
-                    reason=f"최적 포트폴리오 편입 대상 (목표 {target_weight:.1f}%)",
+                    reason=f"최적 포트폴리오 편입 대상 (목표 {target_weight:.1f}%, 약 {target_value:,.0f}원)",
                     current_weight=0,
                     target_weight=round(target_weight, 2),
                     current_price=0,
