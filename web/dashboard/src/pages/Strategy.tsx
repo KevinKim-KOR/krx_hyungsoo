@@ -142,7 +142,15 @@ export default function Strategy() {
           const data = await res.json()
           setTuningStatus(data)
           
-          if (!data.is_running) {
+          // 튜닝 완료 시 히스토리에 추가
+          if (!data.is_running && data.trials && data.trials.length > 0) {
+            setHistory(prev => {
+              const newItems = data.trials.map((t: TuningTrial) => ({
+                ...t,
+                timestamp: new Date().toISOString()
+              }))
+              return [...newItems, ...prev].slice(0, 50)
+            })
             clearInterval(interval)
           }
         }
