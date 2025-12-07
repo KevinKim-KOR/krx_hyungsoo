@@ -64,8 +64,20 @@ export default function Strategy() {
     trials: [],
   })
 
-  // 히스토리
-  const [history, setHistory] = useState<TuningTrial[]>([])
+  // 히스토리 (localStorage에서 복원)
+  const [history, setHistory] = useState<TuningTrial[]>(() => {
+    try {
+      const saved = localStorage.getItem('backtest_history')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+  
+  // 히스토리 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('backtest_history', JSON.stringify(history))
+  }, [history])
 
   // 백테스트 실행
   const runBacktest = async () => {
