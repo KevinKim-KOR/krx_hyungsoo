@@ -39,8 +39,22 @@ class ScriptBase:
     
     def setup_logging(self):
         """로깅 설정"""
-        setup_logging()
-        self.logger = logging.getLogger(self.script_name)
+        # 1. 스크립트 이름으로 로거 및 핸들러 생성
+        self.logger = setup_logging(name=self.script_name)
+        
+        # 2. 루트 로거 설정 (다른 모듈의 로그 포착용)
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        
+        # 기존 루트 핸들러 제거 (중복 방지)
+        root_logger.handlers = []
+        
+        # 스크립트 로거의 핸들러를 루트 로거에 추가
+        for handler in self.logger.handlers:
+            root_logger.addHandler(handler)
+            
+        # 스크립트 로거의 전파 차단 (루트에서 한 번만 처리)
+        self.logger.propagate = False
     
     def log_header(self, message: str):
         """
