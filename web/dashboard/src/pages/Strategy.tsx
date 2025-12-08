@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, Target, Clock, CheckCircle, Database, BarChart3, HardDrive, Download, Bot, TrendingUp } from 'lucide-react'
+import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
@@ -258,11 +258,35 @@ export default function Strategy() {
     return () => clearInterval(interval)
   }, [tuningStatus.is_running])
 
-  // 최적 파라미터 적용 (알림만 표시)
-  const applyBestParams = () => {
-    if (tuningStatus.best_params) {
-      const params = tuningStatus.best_params
-      alert(`최적 파라미터:\nMA: ${params.ma_period}, RSI: ${params.rsi_period}, 손절: ${params.stop_loss}%`)
+  // 최적 파라미터 저장
+  const [saving, setSaving] = useState(false)
+  
+  const saveOptimalParams = async () => {
+    if (!tuningStatus.best_params || tuningStatus.trials.length === 0) return
+    
+    setSaving(true)
+    try {
+      const bestTrial = tuningStatus.trials[0]
+      const res = await fetch(`${API_BASE_URL}/api/v1/optimal-params/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          params: tuningStatus.best_params,
+          result: bestTrial.result,
+          source: 'tuning',
+          notes: `Sharpe: ${bestTrial.result.sharpe_ratio.toFixed(2)}, CAGR: ${bestTrial.result.cagr.toFixed(2)}%`
+        }),
+      })
+      
+      if (res.ok) {
+        alert('✅ 최적 파라미터가 저장되었습니다!')
+      } else {
+        throw new Error('저장 실패')
+      }
+    } catch (err) {
+      alert('❌ 저장 실패: ' + (err instanceof Error ? err.message : '알 수 없는 오류'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -396,11 +420,16 @@ export default function Strategy() {
           {tuningStatus.best_params && (
             <>
               <button
-                onClick={applyBestParams}
-                className="bg-purple-600 text-white rounded px-6 py-2 flex items-center gap-2 hover:bg-purple-700 mt-6"
+                onClick={saveOptimalParams}
+                disabled={saving}
+                className="bg-purple-600 text-white rounded px-6 py-2 flex items-center gap-2 hover:bg-purple-700 mt-6 disabled:opacity-50"
               >
-                <CheckCircle className="w-4 h-4" />
-                최적 파라미터 적용
+                {saving ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                최적 파라미터 저장
               </button>
               
               {/* 최적 결과 AI 분석 버튼 */}
