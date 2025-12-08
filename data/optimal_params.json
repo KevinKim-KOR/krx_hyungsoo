@@ -1,0 +1,52 @@
+{
+  "current": {
+    "id": 1,
+    "timestamp": "2025-12-08T22:03:27.810865",
+    "source": "tuning",
+    "params": {
+      "ma_period": 144,
+      "rsi_period": 10,
+      "stop_loss": -18,
+      "max_positions": 7,
+      "initial_capital": 10000000,
+      "enable_defense": true
+    },
+    "result": {
+      "cagr": 87.3425324728343,
+      "sharpe_ratio": 4.945394323731677,
+      "max_drawdown": 4.2100218343867235,
+      "total_return": 16.729169901310016,
+      "num_trades": 13,
+      "win_rate": 66.10169491525424,
+      "calmar_ratio": 20.746337170851643
+    },
+    "notes": "Sharpe: 4.95, CAGR: 87.34%",
+    "is_active": true
+  },
+  "history": [
+    {
+      "id": 1,
+      "timestamp": "2025-12-08T22:03:27.810865",
+      "source": "tuning",
+      "params": {
+        "ma_period": 144,
+        "rsi_period": 10,
+        "stop_loss": -18,
+        "max_positions": 7,
+        "initial_capital": 10000000,
+        "enable_defense": true
+      },
+      "result": {
+        "cagr": 87.3425324728343,
+        "sharpe_ratio": 4.945394323731677,
+        "max_drawdown": 4.2100218343867235,
+        "total_return": 16.729169901310016,
+        "num_trades": 13,
+        "win_rate": 66.10169491525424,
+        "calmar_ratio": 20.746337170851643
+      },
+      "notes": "Sharpe: 4.95, CAGR: 87.34%",
+      "is_active": true
+    }
+  ]
+}
