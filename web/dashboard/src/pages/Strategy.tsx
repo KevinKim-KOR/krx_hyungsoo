@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle, Database, BarChart3, HardDrive, Download, Bot } from 'lucide-react'
+import { Play, Square, RefreshCw, Target, Clock, CheckCircle, Database, BarChart3, HardDrive, Download, Bot, TrendingUp } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
@@ -66,8 +66,8 @@ interface TuningStatus {
 }
 
 export default function Strategy() {
-  // 백테스트 상태
-  const [backtestParams, setBacktestParams] = useState<BacktestParams>({
+  // 튜닝용 기본 파라미터
+  const [backtestParams] = useState<BacktestParams>({
     start_date: '2024-01-01',
     end_date: new Date().toISOString().split('T')[0],
     ma_period: 60,
@@ -75,9 +75,6 @@ export default function Strategy() {
     stop_loss: -8,
     initial_capital: 10000000,
   })
-  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null)
-  const [backtestLoading, setBacktestLoading] = useState(false)
-  const [backtestError, setBacktestError] = useState<string | null>(null)
 
   // 튜닝 상태
   const [tuningTrials, setTuningTrials] = useState(50)
@@ -198,38 +195,6 @@ export default function Strategy() {
     }
   }, [activeTab])
 
-  // 백테스트 실행
-  const runBacktest = async () => {
-    setBacktestLoading(true)
-    setBacktestError(null)
-    
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/backtest/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backtestParams),
-      })
-      
-      if (!res.ok) throw new Error('백테스트 실행 실패')
-      
-      const data = await res.json()
-      setBacktestResult(data)
-      
-      // 히스토리에 추가
-      setHistory(prev => [{
-        trial_number: prev.length + 1,
-        params: backtestParams,
-        result: data,
-        timestamp: new Date().toISOString(),
-      }, ...prev].slice(0, 20))
-      
-    } catch (err) {
-      setBacktestError(err instanceof Error ? err.message : '백테스트 실패')
-    } finally {
-      setBacktestLoading(false)
-    }
-  }
-
   // 튜닝 시작
   const startTuning = async () => {
     try {
@@ -293,11 +258,11 @@ export default function Strategy() {
     return () => clearInterval(interval)
   }, [tuningStatus.is_running])
 
-  // 최적 파라미터 적용
+  // 최적 파라미터 적용 (알림만 표시)
   const applyBestParams = () => {
     if (tuningStatus.best_params) {
-      setBacktestParams(tuningStatus.best_params)
-      alert('최적 파라미터가 적용되었습니다!')
+      const params = tuningStatus.best_params
+      alert(`최적 파라미터:\nMA: ${params.ma_period}, RSI: ${params.rsi_period}, 손절: ${params.stop_loss}%`)
     }
   }
 
@@ -389,155 +354,7 @@ export default function Strategy() {
         )}
       </div>
       
-      {/* 1. 빠른 백테스트 */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5" />
-          빠른 백테스트
-        </h3>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">시작일</label>
-            <input
-              type="date"
-              value={backtestParams.start_date}
-              onChange={e => setBacktestParams(p => ({ ...p, start_date: e.target.value }))}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">종료일</label>
-            <input
-              type="date"
-              value={backtestParams.end_date}
-              onChange={e => setBacktestParams(p => ({ ...p, end_date: e.target.value }))}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">MA 기간</label>
-            <input
-              type="number"
-              value={backtestParams.ma_period}
-              onChange={e => setBacktestParams(p => ({ ...p, ma_period: parseInt(e.target.value) }))}
-              className="w-full border rounded px-3 py-2"
-              min={10}
-              max={200}
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">RSI 기간</label>
-            <input
-              type="number"
-              value={backtestParams.rsi_period}
-              onChange={e => setBacktestParams(p => ({ ...p, rsi_period: parseInt(e.target.value) }))}
-              className="w-full border rounded px-3 py-2"
-              min={5}
-              max={30}
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">손절 (%)</label>
-            <input
-              type="number"
-              value={backtestParams.stop_loss}
-              onChange={e => setBacktestParams(p => ({ ...p, stop_loss: parseInt(e.target.value) }))}
-              className="w-full border rounded px-3 py-2"
-              min={-30}
-              max={-1}
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={runBacktest}
-              disabled={backtestLoading}
-              className="w-full bg-blue-600 text-white rounded px-4 py-2 flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50"
-            >
-              {backtestLoading ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-              실행
-            </button>
-          </div>
-        </div>
-        
-        {backtestError && (
-          <div className="bg-red-50 text-red-600 p-3 rounded mb-4 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            {backtestError}
-          </div>
-        )}
-        
-        {backtestResult && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 bg-gray-50 p-4 rounded">
-              <div>
-                <div className="text-sm text-gray-600">CAGR</div>
-                <div className={`text-xl font-bold ${backtestResult.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatPercent(backtestResult.cagr)}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Sharpe Ratio</div>
-                <div className="text-xl font-bold">{backtestResult.sharpe_ratio.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">MDD</div>
-                <div className="text-xl font-bold text-red-600">{formatMDD(backtestResult.max_drawdown)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">총 수익률</div>
-                <div className={`text-xl font-bold ${backtestResult.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatPercent(backtestResult.total_return)}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">거래 횟수</div>
-                <div className="text-xl font-bold">{backtestResult.num_trades}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">승률</div>
-                <div className="text-xl font-bold">{formatPercent(backtestResult.win_rate)}</div>
-              </div>
-            </div>
-            
-            {/* AI 분석 버튼 */}
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => {
-                  const promptData: BacktestResultType = {
-                    strategy: 'Momentum ETF',
-                    start_date: backtestParams.start_date,
-                    end_date: backtestParams.end_date,
-                    total_return: backtestResult.total_return,
-                    cagr: backtestResult.cagr,
-                    sharpe_ratio: backtestResult.sharpe_ratio,
-                    max_drawdown: backtestResult.max_drawdown,
-                    calmar_ratio: backtestResult.max_drawdown !== 0 
-                      ? backtestResult.cagr / backtestResult.max_drawdown 
-                      : 0,
-                    volatility: 0,
-                    trade_win_rate: backtestResult.win_rate,
-                    total_trades: backtestResult.num_trades,
-                    years: 1,
-                  }
-                  setAiPrompt(generateBacktestPrompt(promptData))
-                  setAiModalOpen(true)
-                }}
-                className="bg-purple-600 text-white rounded px-4 py-2 flex items-center gap-2 hover:bg-purple-700"
-              >
-                <Bot className="w-4 h-4" />
-                AI 분석
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-      
-      {/* 2. 자동 튜닝 */}
+      {/* 자동 튜닝 */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Target className="w-5 h-5" />
