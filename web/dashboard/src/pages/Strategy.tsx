@@ -137,27 +137,29 @@ export default function Strategy() {
   // 캐시 업데이트 시작
   const startCacheUpdate = async () => {
     try {
+      // 즉시 UI 업데이트
+      setCacheStatus(prev => ({ ...prev, is_running: true, progress: 0, total: 0, message: '업데이트 시작 중...' }))
+      
       const res = await fetch(`${API_BASE_URL}/api/v1/cache/update`, { method: 'POST' })
-      if (res.ok) {
-        setCacheStatus(prev => ({ ...prev, is_running: true, message: '업데이트 시작...' }))
+      if (!res.ok) {
+        setCacheStatus(prev => ({ ...prev, is_running: false, message: '시작 실패' }))
       }
     } catch (err) {
       console.error('캐시 업데이트 시작 실패:', err)
+      setCacheStatus(prev => ({ ...prev, is_running: false, message: '연결 실패' }))
     }
   }
 
-  // 캐시 상태 폴링
+  // 캐시 상태 폴링 (항상 실행)
   useEffect(() => {
     loadCacheStatus()
     
     const interval = setInterval(() => {
-      if (cacheStatus.is_running) {
-        loadCacheStatus()
-      }
-    }, 2000)
+      loadCacheStatus()
+    }, 1500)
 
     return () => clearInterval(interval)
-  }, [cacheStatus.is_running])
+  }, [])
 
   // DB 히스토리 로드
   const loadDbHistory = async () => {
