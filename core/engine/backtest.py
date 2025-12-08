@@ -53,6 +53,8 @@ class Trade:
     commission: float = 0.0
     tax: float = 0.0  # 거래세 (매도 시만)
     slippage: float = 0.0  # 슬리피지 비용
+    entry_price: float = 0.0  # 매수 시 진입가 (매도 시 사용)
+    realized_pnl: float = 0.0  # 실현 손익 (매도 시만)
 
     @property
     def amount(self) -> float:
@@ -63,6 +65,11 @@ class Trade:
     def total_cost(self) -> float:
         """총 거래비용 (수수료 + 세금 + 슬리피지)"""
         return self.commission + self.tax + self.slippage
+
+    @property
+    def is_winning_trade(self) -> bool:
+        """수익 거래 여부 (매도 시만 유효)"""
+        return self.action == "SELL" and self.realized_pnl > 0
 
 
 @dataclass
@@ -115,6 +122,7 @@ class BacktestEngine:
         slippage_rate: float = 0.001,  # 슬리피지 (0.1%)
         max_positions: int = 10,  # 최대 보유 종목 수
         rebalance_frequency: str = "daily",  # 리밸런싱 주기
+        rebalance_threshold: float = 0.01,  # 리밸런싱 임계값 (1%)
         instrument_type: str = "etf",  # 상품 유형 (etf, stock, leveraged_etf, reit)
     ):
         """
@@ -124,6 +132,7 @@ class BacktestEngine:
             slippage_rate: 슬리피지율
             max_positions: 최대 보유 종목 수
             rebalance_frequency: 리밸런싱 주기 (daily, weekly, monthly)
+            rebalance_threshold: 리밸런싱 임계값 (비중 차이가 이 값 이상이면 리밸런싱)
             instrument_type: 상품 유형 (거래세 결정)
         """
         self.initial_capital = initial_capital
@@ -131,6 +140,7 @@ class BacktestEngine:
         self.slippage_rate = slippage_rate
         self.max_positions = max_positions
         self.rebalance_frequency = rebalance_frequency
+        self.rebalance_threshold = rebalance_threshold
         self.instrument_type = instrument_type
         self.tax_rate = TAX_RATES.get(instrument_type, TAX_RATES["default"])
 
@@ -323,6 +333,10 @@ class BacktestEngine:
         self.total_tax += tax
         self.total_slippage += slippage_cost
 
+        # 실현 손익 계산 (매도가 - 매수가) * 수량 - 비용
+        entry_price = position.entry_price
+        realized_pnl = (adjusted_price - entry_price) * quantity - commission - tax
+
         # 거래 기록
         trade = Trade(
             date=trade_date,
@@ -333,6 +347,8 @@ class BacktestEngine:
             commission=commission,
             tax=tax,
             slippage=slippage_cost,
+            entry_price=entry_price,
+            realized_pnl=realized_pnl,
         )
         self.portfolio.trades.append(trade)
 
@@ -365,8 +381,8 @@ class BacktestEngine:
             current_weight = current_weights.get(symbol, 0.0)
             weight_diff = target_weight - current_weight
 
-            # 비중 차이가 1% 이상이면 리밸런싱
-            if abs(weight_diff) > 0.01:
+            # 비중 차이가 임계값 이상이면 리밸런싱
+            if abs(weight_diff) > self.rebalance_threshold:
                 target_value = total_value * target_weight
                 current_value = self.portfolio.positions.get(
                     symbol, Position(symbol, 0, 0.0, trade_date)
@@ -490,20 +506,29 @@ class BacktestEngine:
         else:
             daily_win_rate = 0.0
 
-        # 8. 거래 승률 계산 (실제 거래 기준)
+        # 8. 거래 승률 계산 (실제 매도 거래 기준)
         trades = self.portfolio.trades
-        if trades:
-            # 매도 거래에서 손익 계산
-            sell_trades = [t for t in trades if t.action == "SELL"]
-            if sell_trades:
-                # 간단한 방식: 매도가 > 평균매수가 면 승리
-                # 실제로는 Position에서 entry_price와 비교해야 하지만,
-                # 여기서는 일별 승률을 기본으로 사용
-                trade_win_rate = daily_win_rate  # 추후 개선 가능
-            else:
-                trade_win_rate = 0.0
+        sell_trades = [t for t in trades if t.action == "SELL"]
+        if sell_trades:
+            winning_trades = [t for t in sell_trades if t.realized_pnl > 0]
+            trade_win_rate = len(winning_trades) / len(sell_trades) * 100
+            total_realized_pnl = sum(t.realized_pnl for t in sell_trades)
+            avg_win = (
+                np.mean([t.realized_pnl for t in winning_trades])
+                if winning_trades
+                else 0.0
+            )
+            losing_trades = [t for t in sell_trades if t.realized_pnl <= 0]
+            avg_loss = (
+                np.mean([t.realized_pnl for t in losing_trades])
+                if losing_trades
+                else 0.0
+            )
         else:
             trade_win_rate = 0.0
+            total_realized_pnl = 0.0
+            avg_win = 0.0
+            avg_loss = 0.0
 
         # 비용 통계
         total_costs = self.total_commission + self.total_tax + self.total_slippage
@@ -522,8 +547,12 @@ class BacktestEngine:
             "max_drawdown": max_drawdown,  # 양수
             "calmar_ratio": calmar_ratio,  # 추가
             "win_rate": daily_win_rate,  # 일별 승률
-            "trade_win_rate": trade_win_rate,  # 거래 승률
+            "trade_win_rate": trade_win_rate,  # 거래 승률 (실제 매도 기준)
             "total_trades": len(trades),
+            "sell_trades": len(sell_trades),
+            "total_realized_pnl": total_realized_pnl,
+            "avg_win": avg_win,
+            "avg_loss": avg_loss,
             "final_value": final_value,
             "total_commission": self.total_commission,
             "total_tax": self.total_tax,

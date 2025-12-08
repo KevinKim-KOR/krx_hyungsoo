@@ -27,6 +27,7 @@ from app.services.tuning_service import (  # noqa: E402
     TuningParams as TuningParamsInternal,
     TuningService,
 )
+from app.services.optimal_params_service import OptimalParamsService  # noqa: E402
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +51,7 @@ app.add_middleware(
 # 서비스 인스턴스 (싱글톤)
 _backtest_service = None
 _tuning_service = None
+_optimal_params_service = OptimalParamsService()
 
 
 def get_backtest_service() -> BacktestService:
@@ -526,30 +528,66 @@ def start_cache_update():
     return {"message": "캐시 업데이트 시작됨"}
 
 
+# ============================================================
+# 최적 파라미터 저장/로드 API
+# ============================================================
+
+
+class SaveOptimalParamsRequest(BaseModel):
+    """최적 파라미터 저장 요청"""
+    params: dict
+    result: dict
+    source: str = "manual"
+    notes: str = ""
+
+
+@app.post("/api/v1/optimal-params/save")
+def save_optimal_params(request: SaveOptimalParamsRequest):
+    """최적 파라미터 저장"""
+    success = _optimal_params_service.save(
+        params=request.params,
+        result=request.result,
+        source=request.source,
+        notes=request.notes
+    )
+    if success:
+        return {"status": "success", "message": "최적 파라미터 저장 완료"}
+    raise HTTPException(status_code=500, detail="저장 실패")
+
+
+@app.get("/api/v1/optimal-params/current")
+def get_current_optimal_params():
+    """현재 활성 최적 파라미터 조회"""
+    current = _optimal_params_service.load_current()
+    return {"current": current}
+
+
+@app.get("/api/v1/optimal-params/history")
+def get_optimal_params_history(limit: int = 10):
+    """최적 파라미터 히스토리 조회"""
+    history = _optimal_params_service.load_history(limit=limit)
+    return {"history": history}
+
+
+@app.post("/api/v1/optimal-params/activate/{entry_id}")
+def activate_optimal_params(entry_id: int):
+    """특정 파라미터 활성화"""
+    success = _optimal_params_service.activate(entry_id)
+    if success:
+        return {"status": "success", "message": f"파라미터 #{entry_id} 활성화"}
+    raise HTTPException(status_code=404, detail="파라미터를 찾을 수 없음")
+
+
 @app.get("/")
 def root():
+    """API 정보"""
     return {
-        "message": "Backtest & Tuning API (PC 전용) - 실제 엔진 연동",
-        "port": 8001,
+        "name": "Backtest & Tuning API",
+        "version": "2.1.0",
         "features": {
-            "backtest": "실제 백테스트 엔진 연동",
-            "tuning": "Optuna TPE 샘플러 기반 최적화",
-            "lookback": "룩백 기간별 분석 (설정 기반)",
-            "ensemble": "룩백 가중 앙상블 (설정 기반)",
-            "history": "DB 기반 히스토리 저장 및 조회",
-            "cache": "캐시 데이터 관리",
-        },
-        "endpoints": {
-            "backtest": "POST /api/v1/backtest/run",
-            "tuning_start": "POST /api/v1/tuning/start",
-            "tuning_stop": "POST /api/v1/tuning/stop",
-            "tuning_status": "GET /api/v1/tuning/status",
-            "history_backtests": "GET /api/v1/history/backtests",
-            "history_sessions": "GET /api/v1/history/tuning-sessions",
-            "history_best": "GET /api/v1/history/best",
-            "history_stats": "GET /api/v1/history/statistics",
-            "cache_status": "GET /api/v1/cache/status",
-            "cache_update": "POST /api/v1/cache/update",
+            "backtest": "실제 백테스트 실행",
+            "tuning": "Optuna 기반 파라미터 최적화",
+            "optimal_params": "최적 파라미터 영구 저장",
         },
     }
 
