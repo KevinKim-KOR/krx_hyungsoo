@@ -22,8 +22,20 @@ export interface BacktestResult {
   cagr: number;
   sharpe_ratio: number;
   max_drawdown: number;
+  calmar_ratio?: number;
+  volatility?: number;
   win_rate?: number;
+  trade_win_rate?: number;
   total_trades?: number;
+  sell_trades?: number;
+  total_realized_pnl?: number;
+  avg_win?: number;
+  avg_loss?: number;
+  total_costs?: number;
+  cost_ratio?: number;
+  calendar_days?: number;
+  trading_days?: number;
+  years?: number;
 }
 
 export interface MLModelInfo {

@@ -79,55 +79,79 @@ ${discreteText}
 }
 
 /**
- * 백테스트 결과 프롬프트 생성
+ * 백테스트 결과 프롬프트 생성 (개선된 버전)
  */
 export function generateBacktestPrompt(data: BacktestResult): string {
   const cagr = data.cagr ?? 0;
   const sharpe = data.sharpe_ratio ?? 0;
   const mdd = data.max_drawdown ?? 0;
+  const calmar = data.calmar_ratio ?? 0;
+  const volatility = data.volatility ?? 0;
   const totalReturn = data.total_return ?? 0;
   const trades = data.total_trades ?? 0;
+  const sellTrades = data.sell_trades ?? 0;
+  const tradeWinRate = data.trade_win_rate ?? 0;
+  const avgWin = data.avg_win ?? 0;
+  const avgLoss = data.avg_loss ?? 0;
+  const totalCosts = data.total_costs ?? 0;
+  const costRatio = data.cost_ratio ?? 0;
+  const years = data.years ?? 0;
+
+  // 손익비 계산
+  const profitLossRatio = avgLoss !== 0 ? Math.abs(avgWin / avgLoss) : 0;
 
   return `# 백테스트 결과 검토
 
 ## 백테스트 정보
 - 전략: ${data.strategy}
-- 기간: ${data.start_date} ~ ${data.end_date}
-
-## 성과 지표
-- CAGR: ${cagr.toFixed(2)}%
-- Sharpe Ratio: ${sharpe.toFixed(2)}
-- Max Drawdown: ${mdd.toFixed(2)}%
+- 기간: ${data.start_date} ~ ${data.end_date} (${years.toFixed(2)}년)
 - 총 수익률: ${totalReturn.toFixed(2)}%
-- 총 거래 횟수: ${trades}회
+
+## 핵심 성과 지표
+| 지표 | 값 | 해석 |
+|------|-----|------|
+| CAGR | ${cagr.toFixed(2)}% | 연평균 복리 수익률 |
+| Sharpe Ratio | ${sharpe.toFixed(2)} | 위험 대비 수익 (>1 양호, >2 우수) |
+| MDD | ${mdd.toFixed(2)}% | 최대 낙폭 |
+| Calmar Ratio | ${calmar.toFixed(2)} | CAGR/MDD (>1 양호) |
+| 변동성 | ${volatility.toFixed(2)}% | 연율화 표준편차 |
+
+## 거래 분석
+| 항목 | 값 |
+|------|-----|
+| 총 거래 | ${trades}회 |
+| 매도 거래 | ${sellTrades}회 |
+| 거래 승률 | ${tradeWinRate.toFixed(1)}% |
+| 평균 수익 | ₩${formatCurrency(avgWin)} |
+| 평균 손실 | ₩${formatCurrency(Math.abs(avgLoss))} |
+| 손익비 | ${profitLossRatio.toFixed(2)} |
+
+## 비용 분석
+- 총 거래비용: ₩${formatCurrency(totalCosts)}
+- 비용 비율: ${costRatio.toFixed(2)}% (초기 자본 대비)
 
 ## 질문
 다음 사항에 대해 분석해주세요:
 
-1. **백테스트 신뢰성**
-   - 이 백테스트 결과가 신뢰할 만한가요?
-   - 과최적화(overfitting) 징후가 있나요?
-   - 실전 투자 시 예상 성과는?
+### 1. 성과 평가
+- CAGR ${cagr.toFixed(2)}%와 MDD ${mdd.toFixed(2)}%의 균형은 적절한가요?
+- Sharpe ${sharpe.toFixed(2)}, Calmar ${calmar.toFixed(2)}는 좋은 수준인가요?
+- 변동성 ${volatility.toFixed(2)}%는 감당할 만한 수준인가요?
 
-2. **성과 평가**
-   - CAGR ${cagr.toFixed(2)}%는 좋은 수준인가요?
-   - Sharpe Ratio ${sharpe.toFixed(2)}는 어떻게 해석해야 하나요?
-   - MDD ${mdd.toFixed(2)}%는 적절한 수준인가요?
+### 2. 거래 효율성
+- 거래 승률 ${tradeWinRate.toFixed(1)}%와 손익비 ${profitLossRatio.toFixed(2)}의 조합은 어떤가요?
+- 거래 빈도가 적절한가요? (연간 ${(trades / years).toFixed(0)}회)
+- 비용 ${costRatio.toFixed(2)}%가 수익에 미치는 영향은?
 
-3. **거래 분석**
-   - 총 거래 횟수 ${trades}회가 과도하지 않나요?
-   - 거래 비용을 고려하면 실제 수익률은?
-   - 최적 거래 빈도는?
+### 3. 리스크 관리
+- MDD ${mdd.toFixed(2)}%를 줄이기 위한 방법은?
+- 연속 손실 시 대응 전략은?
+- 추가해야 할 방어 메커니즘이 있나요?
 
-4. **리스크 관리**
-   - 최대 손실 구간은 언제였나요?
-   - 연속 손실 시 대응 방안은?
-   - 리스크 조정 수익률을 개선할 방법은?
-
-5. **전략 개선**
-   - 이 전략의 강점과 약점은?
-   - 개선할 수 있는 부분은?
-   - 다른 전략과 비교하면?
+### 4. 개선 제안
+- 이 전략의 강점과 약점은?
+- 어떤 시장 상황에서 이 전략이 취약한가요?
+- 추가로 고려해야 할 변수나 지표가 있나요?
 `;
 }
 
@@ -359,6 +383,133 @@ ${rebalancesText}
    - 다음 리밸런싱 시점은 언제가 좋을까요?
    - 현재 시장 상황에서 주의할 점은?
    - 이 전략을 계속 사용해도 될까요?
+`;
+}
+
+/**
+ * 손실 구간 분석 프롬프트 생성
+ */
+export interface LossAnalysisData {
+  loss_start_date: string;
+  loss_end_date: string;
+  loss_pct: number;
+  kospi_change?: number;
+  holdings?: string[];
+  params?: Record<string, any>;
+}
+
+export function generateLossAnalysisPrompt(data: LossAnalysisData): string {
+  const holdingsText = data.holdings?.length 
+    ? data.holdings.map((h, i) => `${i + 1}. ${h}`).join('\n')
+    : '- 정보 없음';
+
+  const paramsText = data.params 
+    ? Object.entries(data.params).map(([k, v]) => `- ${k}: ${v}`).join('\n')
+    : '- 정보 없음';
+
+  return `# 손실 구간 분석 요청
+
+## 손실 발생 기간
+- 시작: ${data.loss_start_date}
+- 종료: ${data.loss_end_date}
+- 손실률: ${data.loss_pct.toFixed(2)}%
+
+## 해당 기간 시장 상황
+- KOSPI 변동: ${data.kospi_change?.toFixed(2) ?? '정보 없음'}%
+
+## 사용된 파라미터
+${paramsText}
+
+## 보유 종목
+${holdingsText}
+
+## 질문
+다음 사항에 대해 분석해주세요:
+
+### 1. 손실 원인 분석
+- 이 손실의 주요 원인은 무엇으로 보이나요?
+- 시장 전체 하락인가요, 아니면 전략 문제인가요?
+- 특정 종목이 손실을 키웠나요?
+
+### 2. 사전 감지 가능성
+- 어떤 지표를 모니터링했다면 손실을 줄일 수 있었을까요?
+- 손실 전 경고 신호가 있었나요?
+- 조기 청산 타이밍은 언제였어야 하나요?
+
+### 3. 방어 메커니즘 제안
+- 새로운 방어 메커니즘으로 어떤 것을 제안하시나요?
+- 손절 기준을 어떻게 조정해야 하나요?
+- 포지션 비중 조절이 필요했나요?
+
+### 4. 파라미터 조정
+- 현재 파라미터 중 문제가 있는 것은?
+- 어떤 파라미터를 추가하면 좋을까요?
+- 시장 상황별로 다른 파라미터를 사용해야 하나요?
+`;
+}
+
+/**
+ * 새 변수 제안 요청 프롬프트 생성
+ */
+export interface VariableSuggestionData {
+  current_variables: string[];
+  problem_description: string;
+  recent_performance?: {
+    cagr: number;
+    sharpe: number;
+    mdd: number;
+  };
+}
+
+export function generateVariableSuggestionPrompt(data: VariableSuggestionData): string {
+  const currentVarsText = data.current_variables
+    .map((v, i) => `${i + 1}. ${v}`)
+    .join('\n');
+
+  const perfText = data.recent_performance
+    ? `- CAGR: ${data.recent_performance.cagr.toFixed(2)}%
+- Sharpe: ${data.recent_performance.sharpe.toFixed(2)}
+- MDD: ${data.recent_performance.mdd.toFixed(2)}%`
+    : '- 정보 없음';
+
+  return `# 새 변수 제안 요청
+
+## 현재 사용 중인 변수
+${currentVarsText}
+
+## 최근 성과
+${perfText}
+
+## 발견된 문제점
+${data.problem_description}
+
+## 질문
+다음 사항에 대해 제안해주세요:
+
+### 1. 새 변수 제안
+- 이 문제를 해결하기 위해 어떤 새 변수를 추가할 수 있을까요?
+- 해당 변수의 계산 방법은?
+- 적정 임계값은 어떻게 설정해야 하나요?
+
+### 2. 변수 상호작용
+- 기존 변수와 어떻게 조합해야 하나요?
+- 변수 간 우선순위는?
+- 충돌 시 어떻게 처리해야 하나요?
+
+### 3. 구현 고려사항
+- 이 변수를 계산하는 데 필요한 데이터는?
+- 계산 복잡도는 어느 정도인가요?
+- 실시간 적용이 가능한가요?
+
+### 4. 검증 방법
+- 변수 추가 효과를 어떻게 검증해야 하나요?
+- 과적합 위험은 없나요?
+- 백테스트 외에 추가 검증이 필요한가요?
+
+### 5. 대안
+- 변수 추가 대신 다른 접근법이 있나요?
+- 기존 변수의 파라미터 조정으로 해결 가능한가요?
+- 전략 자체를 변경해야 하나요?
 `;
 }
 
