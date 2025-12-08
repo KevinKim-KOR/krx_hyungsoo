@@ -189,20 +189,15 @@ class BacktestService:
                 f"(기간: {params.start_date} ~ {params.end_date})"
             )
 
-        # 승률 계산
-        win_rate = 0.0
-        if trades:
-            winning_trades = sum(1 for t in trades if hasattr(t, "pnl") and t.pnl > 0)
-            win_rate = winning_trades / len(trades)
-
         # 엔진에서 이미 퍼센트로 반환하므로 변환 불필요
+        # win_rate는 엔진에서 일별 수익률 기준으로 계산됨 (이미 %)
         result_obj = BacktestResult(
             cagr=annual_return,  # 이미 %
             sharpe_ratio=sharpe,
             max_drawdown=mdd,  # 이미 %
             total_return=metrics.get("total_return", 0),  # 이미 %
             num_trades=len(trades),
-            win_rate=win_rate * 100,  # 승률만 변환 (0~1 → %)
+            win_rate=metrics.get("win_rate", 0),  # 엔진에서 계산된 값 사용 (이미 %)
             volatility=metrics.get("volatility", 0),  # 이미 %
             calmar_ratio=metrics.get("calmar_ratio", 0),
         )
