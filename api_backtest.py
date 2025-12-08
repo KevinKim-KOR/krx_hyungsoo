@@ -72,16 +72,16 @@ def get_tuning_service() -> TuningService:
 # Request/Response 모델 (API용)
 # ============================================
 class BacktestRequest(BaseModel):
-    """백테스트 요청 (모든 필드 필수)"""
+    """백테스트 요청"""
 
     start_date: str
     end_date: str
     ma_period: int
     rsi_period: int
     stop_loss: float
-    initial_capital: int
-    max_positions: int
-    enable_defense: bool
+    initial_capital: int = 10000000
+    max_positions: int = 5
+    enable_defense: bool = True
 
     @validator("start_date", "end_date")
     def validate_date(cls, v):

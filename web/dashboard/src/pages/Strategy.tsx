@@ -620,6 +620,7 @@ export default function Strategy() {
                   <th className="px-3 py-2 text-left">Sharpe</th>
                   <th className="px-3 py-2 text-left">CAGR</th>
                   <th className="px-3 py-2 text-left">MDD</th>
+                  <th className="px-3 py-2 text-center">분석</th>
                 </tr>
               </thead>
               <tbody>
@@ -633,6 +634,34 @@ export default function Strategy() {
                     <td className="px-3 py-2 font-bold">{trial.result.sharpe_ratio.toFixed(2)}</td>
                     <td className="px-3 py-2">{formatPercent(trial.result.cagr)}</td>
                     <td className="px-3 py-2 text-red-600">{formatMDD(trial.result.max_drawdown)}</td>
+                    <td className="px-3 py-2 text-center">
+                      <button
+                        onClick={() => {
+                          const promptData: BacktestResultType = {
+                            strategy: 'Momentum ETF (Tuning)',
+                            start_date: trial.params.start_date,
+                            end_date: trial.params.end_date,
+                            total_return: trial.result.total_return ?? 0,
+                            cagr: trial.result.cagr,
+                            sharpe_ratio: trial.result.sharpe_ratio,
+                            max_drawdown: trial.result.max_drawdown,
+                            calmar_ratio: trial.result.max_drawdown !== 0 
+                              ? trial.result.cagr / trial.result.max_drawdown 
+                              : 0,
+                            volatility: 0,
+                            trade_win_rate: trial.result.win_rate,
+                            total_trades: trial.result.num_trades,
+                            years: 1,
+                          }
+                          setAiPrompt(generateBacktestPrompt(promptData))
+                          setAiModalOpen(true)
+                        }}
+                        className="p-1 text-purple-600 hover:bg-purple-100 rounded"
+                        title="AI 분석"
+                      >
+                        <Bot className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
