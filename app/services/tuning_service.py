@@ -100,8 +100,28 @@ class TuningService:
     def _run_tuning(self, params: TuningParams) -> None:
         """튜닝 실행 (내부)"""
         import uuid
+        from pathlib import Path
+        import pandas as pd
 
         self._session_id = str(uuid.uuid4())[:8]
+
+        # 캐시 데이터 범위 확인 및 end_date 조정
+        cache_dir = Path("data/cache")
+        sample_file = cache_dir / "069500.parquet"  # KODEX 200
+        actual_end_date = params.end_date
+
+        if sample_file.exists():
+            try:
+                sample_df = pd.read_parquet(sample_file)
+                cache_end = sample_df.index.max().date()
+                if params.end_date > cache_end:
+                    logger.warning(
+                        f"end_date({params.end_date})가 캐시 범위({cache_end})를 초과. "
+                        f"캐시 마지막 날짜로 조정"
+                    )
+                    actual_end_date = cache_end
+            except Exception as e:
+                logger.warning(f"캐시 날짜 확인 실패: {e}")
 
         with self._lock:
             self._state = TuningState(
@@ -122,10 +142,10 @@ class TuningService:
             param_ranges = self._get_param_ranges()
 
             for lookback in params.lookback_months:
-                start_date = params.end_date - timedelta(days=lookback * 30)
+                start_date = actual_end_date - timedelta(days=lookback * 30)
 
                 logger.info(
-                    f"룩백 {lookback}개월 최적화 시작: {start_date} ~ {params.end_date}"
+                    f"룩백 {lookback}개월 최적화 시작: {start_date} ~ {actual_end_date}"
                 )
 
                 def objective(trial: optuna.Trial) -> float:
@@ -141,7 +161,7 @@ class TuningService:
 
                     bt_params = BacktestParams(
                         start_date=start_date,
-                        end_date=params.end_date,
+                        end_date=actual_end_date,
                         ma_period=trial.suggest_int(
                             "ma_period",
                             ma_range["min"],
@@ -182,7 +202,7 @@ class TuningService:
                         "lookback_months": lookback,
                         "params": {
                             "start_date": start_date.isoformat(),
-                            "end_date": params.end_date.isoformat(),
+                            "end_date": actual_end_date.isoformat(),
                             "ma_period": bt_params.ma_period,
                             "rsi_period": bt_params.rsi_period,
                             "stop_loss": bt_params.stop_loss,
@@ -204,7 +224,7 @@ class TuningService:
                     self._history_service.save_backtest(
                         params={
                             "start_date": start_date.isoformat(),
-                            "end_date": params.end_date.isoformat(),
+                            "end_date": actual_end_date.isoformat(),
                             "ma_period": bt_params.ma_period,
                             "rsi_period": bt_params.rsi_period,
                             "stop_loss": bt_params.stop_loss,
