@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle, Database, BarChart3, HardDrive, Download } from 'lucide-react'
+import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle, Database, BarChart3, HardDrive, Download, Bot } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
+import { AIPromptModal } from '../components/AIPromptModal'
+import { generateBacktestPrompt } from '../utils/promptGenerator'
+import type { BacktestResult as BacktestResultType } from '../types'
 
 // API URL (백테스트/튜닝은 PC의 8001 포트 사용)
 const API_BASE_URL = API_URLS.strategy
@@ -102,6 +105,10 @@ export default function Strategy() {
   useEffect(() => {
     localStorage.setItem('backtest_history', JSON.stringify(history))
   }, [history])
+
+  // AI 분석 모달 상태
+  const [aiModalOpen, setAiModalOpen] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
 
   // DB 히스토리 상태
   const [dbHistory, setDbHistory] = useState<any[]>([])
@@ -465,36 +472,68 @@ export default function Strategy() {
         )}
         
         {backtestResult && (
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 bg-gray-50 p-4 rounded">
-            <div>
-              <div className="text-sm text-gray-600">CAGR</div>
-              <div className={`text-xl font-bold ${backtestResult.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatPercent(backtestResult.cagr)}
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 bg-gray-50 p-4 rounded">
+              <div>
+                <div className="text-sm text-gray-600">CAGR</div>
+                <div className={`text-xl font-bold ${backtestResult.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatPercent(backtestResult.cagr)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Sharpe Ratio</div>
+                <div className="text-xl font-bold">{backtestResult.sharpe_ratio.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">MDD</div>
+                <div className="text-xl font-bold text-red-600">{formatMDD(backtestResult.max_drawdown)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">총 수익률</div>
+                <div className={`text-xl font-bold ${backtestResult.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatPercent(backtestResult.total_return)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">거래 횟수</div>
+                <div className="text-xl font-bold">{backtestResult.num_trades}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">승률</div>
+                <div className="text-xl font-bold">{formatPercent(backtestResult.win_rate)}</div>
               </div>
             </div>
-            <div>
-              <div className="text-sm text-gray-600">Sharpe Ratio</div>
-              <div className="text-xl font-bold">{backtestResult.sharpe_ratio.toFixed(2)}</div>
+            
+            {/* AI 분석 버튼 */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  const promptData: BacktestResultType = {
+                    strategy: 'Momentum ETF',
+                    start_date: backtestParams.start_date,
+                    end_date: backtestParams.end_date,
+                    total_return: backtestResult.total_return,
+                    cagr: backtestResult.cagr,
+                    sharpe_ratio: backtestResult.sharpe_ratio,
+                    max_drawdown: backtestResult.max_drawdown,
+                    calmar_ratio: backtestResult.max_drawdown !== 0 
+                      ? backtestResult.cagr / backtestResult.max_drawdown 
+                      : 0,
+                    volatility: 0,
+                    trade_win_rate: backtestResult.win_rate,
+                    total_trades: backtestResult.num_trades,
+                    years: 1,
+                  }
+                  setAiPrompt(generateBacktestPrompt(promptData))
+                  setAiModalOpen(true)
+                }}
+                className="bg-purple-600 text-white rounded px-4 py-2 flex items-center gap-2 hover:bg-purple-700"
+              >
+                <Bot className="w-4 h-4" />
+                AI 분석
+              </button>
             </div>
-            <div>
-              <div className="text-sm text-gray-600">MDD</div>
-              <div className="text-xl font-bold text-red-600">{formatMDD(backtestResult.max_drawdown)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">총 수익률</div>
-              <div className={`text-xl font-bold ${backtestResult.total_return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatPercent(backtestResult.total_return)}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">거래 횟수</div>
-              <div className="text-xl font-bold">{backtestResult.num_trades}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">승률</div>
-              <div className="text-xl font-bold">{formatPercent(backtestResult.win_rate)}</div>
-            </div>
-          </div>
+          </>
         )}
       </div>
       
@@ -903,6 +942,14 @@ export default function Strategy() {
           )
         )}
       </div>
+
+      {/* AI 분석 모달 */}
+      <AIPromptModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        prompt={aiPrompt}
+        title="백테스트 결과 AI 분석"
+      />
     </div>
   )
 }
