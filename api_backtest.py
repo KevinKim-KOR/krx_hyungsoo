@@ -428,7 +428,6 @@ def start_cache_update():
             cache_update_state["message"] = f"{len(tickers)}개 ETF 업데이트 시작"
 
             end_date = date.today()
-            end_ts = pd.Timestamp(end_date)  # 비교용 Timestamp
 
             for i, ticker in enumerate(tickers):
                 try:
@@ -436,16 +435,22 @@ def start_cache_update():
 
                     if cache_file.exists():
                         existing = pd.read_parquet(cache_file)
-                        last_ts = existing.index.max()  # Timestamp
+                        last_idx = existing.index.max()
 
-                        # 이미 최신인 경우 (Timestamp끼리 비교)
-                        if last_ts >= end_ts:
+                        # 인덱스 타입에 따라 date로 통일
+                        if isinstance(last_idx, pd.Timestamp):
+                            last_date = last_idx.date()
+                        elif isinstance(last_idx, date):
+                            last_date = last_idx
+                        else:
+                            last_date = pd.to_datetime(last_idx).date()
+
+                        # 이미 최신인 경우 (date끼리 비교)
+                        if last_date >= end_date:
                             cache_update_state["skipped"] += 1
                             cache_update_state["progress"] = i + 1
                             continue
 
-                        # fetch_start는 date로 변환
-                        last_date = last_ts.date() if isinstance(last_ts, pd.Timestamp) else last_ts
                         fetch_start = last_date + timedelta(days=1)
                     else:
                         existing = None
@@ -478,6 +483,10 @@ def start_cache_update():
                     new_data = new_data.rename(columns=column_map)
 
                     if existing is not None:
+                        # 기존 인덱스를 Timestamp로 통일 (sort_index 오류 방지)
+                        if existing.index.dtype == 'object':
+                            existing.index = pd.to_datetime(existing.index)
+                        
                         for col in existing.columns:
                             if col not in new_data.columns:
                                 new_data[col] = 0
