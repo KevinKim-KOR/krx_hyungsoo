@@ -294,7 +294,10 @@ export default function Strategy() {
     }
   }
 
-  const formatPercent = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)}%`
+  // 백엔드에서 이미 % 단위로 반환하므로 100 곱하지 않음
+  const formatPercent = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+  // MDD는 양수로 반환되므로 음수로 표시
+  const formatMDD = (value: number) => `-${Math.abs(value).toFixed(2)}%`
 
   return (
     <div className="space-y-6">
@@ -475,7 +478,7 @@ export default function Strategy() {
             </div>
             <div>
               <div className="text-sm text-gray-600">MDD</div>
-              <div className="text-xl font-bold text-red-600">{formatPercent(backtestResult.max_drawdown)}</div>
+              <div className="text-xl font-bold text-red-600">{formatMDD(backtestResult.max_drawdown)}</div>
             </div>
             <div>
               <div className="text-sm text-gray-600">총 수익률</div>
@@ -590,7 +593,7 @@ export default function Strategy() {
                     <td className="px-3 py-2">{trial.params.stop_loss}%</td>
                     <td className="px-3 py-2 font-bold">{trial.result.sharpe_ratio.toFixed(2)}</td>
                     <td className="px-3 py-2">{formatPercent(trial.result.cagr)}</td>
-                    <td className="px-3 py-2 text-red-600">{formatPercent(trial.result.max_drawdown)}</td>
+                    <td className="px-3 py-2 text-red-600">{formatMDD(trial.result.max_drawdown)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -704,7 +707,7 @@ export default function Strategy() {
                       <td className={`px-3 py-2 ${item.result.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatPercent(item.result.cagr)}
                       </td>
-                      <td className="px-3 py-2 text-red-600">{formatPercent(item.result.max_drawdown)}</td>
+                      <td className="px-3 py-2 text-red-600">{formatMDD(item.result.max_drawdown)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -756,7 +759,7 @@ export default function Strategy() {
                       <td className={`px-3 py-2 ${item.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {item.cagr?.toFixed(2) || '-'}%
                       </td>
-                      <td className="px-3 py-2 text-red-600">{item.max_drawdown?.toFixed(2) || '-'}%</td>
+                      <td className="px-3 py-2 text-red-600">{item.max_drawdown ? formatMDD(item.max_drawdown) : '-'}</td>
                       <td className="px-3 py-2 text-gray-500 text-xs">
                         {new Date(item.created_at).toLocaleString()}
                       </td>
