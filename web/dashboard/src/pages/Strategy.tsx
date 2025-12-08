@@ -14,7 +14,9 @@ interface CacheStatus {
   progress: number
   total: number
   updated: number
+  skipped: number
   failed: number
+  errors: string[]
   message: string
 }
 
@@ -117,7 +119,9 @@ export default function Strategy() {
     progress: 0,
     total: 0,
     updated: 0,
+    skipped: 0,
     failed: 0,
+    errors: [],
     message: '',
   })
 
@@ -312,7 +316,7 @@ export default function Strategy() {
           
           <div className="flex items-center gap-4">
             {cacheStatus.is_running ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div className="w-32 bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all"
@@ -322,9 +326,29 @@ export default function Strategy() {
                 <span className="text-sm text-gray-600">
                   {cacheStatus.progress}/{cacheStatus.total}
                 </span>
+                <span className="text-xs text-green-600">+{cacheStatus.updated}</span>
+                <span className="text-xs text-gray-400">스킵 {cacheStatus.skipped}</span>
+                {cacheStatus.failed > 0 && (
+                  <span className="text-xs text-red-500">실패 {cacheStatus.failed}</span>
+                )}
               </div>
             ) : (
-              <span className="text-sm text-gray-500">{cacheStatus.message}</span>
+              <div className="flex items-center gap-2">
+                {cacheStatus.updated > 0 && (
+                  <span className="text-sm text-green-600">✓ {cacheStatus.updated}개 업데이트</span>
+                )}
+                {cacheStatus.skipped > 0 && (
+                  <span className="text-sm text-gray-500">• {cacheStatus.skipped}개 스킵</span>
+                )}
+                {cacheStatus.failed > 0 && (
+                  <span className="text-sm text-red-500" title={cacheStatus.errors?.join('\n')}>
+                    • {cacheStatus.failed}개 실패
+                  </span>
+                )}
+                {!cacheStatus.updated && !cacheStatus.skipped && !cacheStatus.failed && cacheStatus.message && (
+                  <span className="text-sm text-gray-500">{cacheStatus.message}</span>
+                )}
+              </div>
             )}
             
             <button
@@ -341,6 +365,18 @@ export default function Strategy() {
             </button>
           </div>
         </div>
+        
+        {/* 오류 상세 표시 */}
+        {cacheStatus.errors && cacheStatus.errors.length > 0 && !cacheStatus.is_running && (
+          <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-600">
+            <strong>오류 상세:</strong>
+            <ul className="mt-1 list-disc list-inside">
+              {cacheStatus.errors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       
       {/* 1. 빠른 백테스트 */}

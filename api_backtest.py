@@ -358,7 +358,9 @@ cache_update_state = {
     "progress": 0,
     "total": 0,
     "updated": 0,
-    "failed": 0,
+    "skipped": 0,  # 이미 최신
+    "failed": 0,   # 실제 오류
+    "errors": [],  # 오류 상세
     "message": "",
     "last_update": None,
 }
@@ -410,7 +412,9 @@ def start_cache_update():
             "progress": 0,
             "total": 0,
             "updated": 0,
+            "skipped": 0,
             "failed": 0,
+            "errors": [],
             "message": "유니버스 로드 중...",
             "last_update": None,
         }
@@ -435,7 +439,9 @@ def start_cache_update():
                         if isinstance(last_date, pd.Timestamp):
                             last_date = last_date.date()
 
+                        # 이미 최신인 경우
                         if last_date >= end_date:
+                            cache_update_state["skipped"] += 1
                             cache_update_state["progress"] = i + 1
                             continue
 
@@ -450,7 +456,9 @@ def start_cache_update():
                         ticker,
                     )
 
+                    # 데이터 없음 (상장폐지, 거래정지 등)
                     if new_data.empty:
+                        cache_update_state["skipped"] += 1
                         cache_update_state["progress"] = i + 1
                         continue
 
@@ -483,12 +491,16 @@ def start_cache_update():
 
                 except Exception as e:
                     cache_update_state["failed"] += 1
+                    # 오류 상세 기록 (최대 10개)
+                    if len(cache_update_state["errors"]) < 10:
+                        cache_update_state["errors"].append(f"{ticker}: {str(e)[:50]}")
 
                 cache_update_state["progress"] = i + 1
                 cache_update_state["message"] = f"진행 중: {i + 1}/{len(tickers)}"
 
             cache_update_state["message"] = (
                 f"완료: {cache_update_state['updated']}개 업데이트, "
+                f"{cache_update_state['skipped']}개 스킵, "
                 f"{cache_update_state['failed']}개 실패"
             )
             cache_update_state["last_update"] = date.today().isoformat()
