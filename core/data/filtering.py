@@ -254,32 +254,42 @@ def create_default_filter() -> ETFFilter:
 def get_filtered_universe() -> List[str]:
     """
     필터링된 ETF 유니버스 반환
-    
+
     Returns:
         필터링된 ETF 티커 리스트
     """
     from pathlib import Path
-    
+
     # 캐시된 파일 목록에서 유니버스 추출
-    cache_dir = Path('data/cache')
+    cache_dir = Path("data/cache")
     if cache_dir.exists():
         # .parquet 파일 목록에서 종목 코드 추출
-        tickers = [f.stem for f in cache_dir.glob('*.parquet')]
-        
-        # 6자리 숫자 또는 특수 코드만 필터링
-        filtered = [t for t in tickers if len(t) == 6]
-        
-        logger.info(f"캐시 기반 유니버스: {len(filtered)}개 종목")
+        tickers = [f.stem for f in cache_dir.glob("*.parquet")]
+
+        # 유효한 ETF 코드만 필터링:
+        # - 6자리 숫자
+        # - 숫자로만 구성 (지수 코드 '0000J0' 등 제외)
+        # - ETF 코드 패턴: 0으로 시작하지 않거나, 069500 같은 유효 코드
+        filtered = []
+        for t in tickers:
+            if len(t) == 6 and t.isdigit():
+                # 지수 코드 제외 (0000xx, 0001xx 등 패턴)
+                # 유효한 ETF는 보통 069500, 102110 등
+                if not t.startswith("000") and not t.startswith("0001"):
+                    filtered.append(t)
+
+        logger.info(f"캐시 기반 유니버스: {len(filtered)}개 종목 (지수 코드 제외)")
         return sorted(filtered)
-    
-    # 캐시가 없으면 pykrx 사용 (fallback)
+
+    # 캐시가 없으면 pykrx 사용
     try:
         from pykrx import stock
+
         tickers = stock.get_etf_ticker_list()
-        
+
         filter_obj = create_default_filter()
         exclude_keywords = filter_obj.exclude_keywords
-        
+
         filtered = []
         for ticker in tickers:
             try:
@@ -288,7 +298,7 @@ def get_filtered_universe() -> List[str]:
                     filtered.append(ticker)
             except Exception:
                 pass
-        
+
         logger.info(f"ETF 유니버스: {len(tickers)} → {len(filtered)} (이름 필터링)")
         return filtered
     except Exception as e:

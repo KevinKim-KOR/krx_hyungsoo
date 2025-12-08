@@ -95,7 +95,9 @@ class BacktestRunner:
             current_prices = {}
             if isinstance(price_data.index, pd.MultiIndex):
                 try:
-                    daily_data = price_data.xs(d, level='date')
+                    # date를 Timestamp로 변환하여 조회
+                    ts = pd.Timestamp(d)
+                    daily_data = price_data.xs(ts, level='date')
                     current_prices = daily_data['close'].to_dict()
                 except KeyError:
                     pass
