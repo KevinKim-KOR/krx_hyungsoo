@@ -349,6 +349,160 @@ def get_statistics():
     return service.get_statistics()
 
 
+# ========== 캐시 관리 ==========
+
+# 캐시 업데이트 상태
+cache_update_state = {
+    "is_running": False,
+    "progress": 0,
+    "total": 0,
+    "updated": 0,
+    "failed": 0,
+    "message": "",
+    "last_update": None,
+}
+
+
+@app.get("/api/v1/cache/status")
+def get_cache_status():
+    """캐시 상태 조회"""
+    from pathlib import Path
+    import pandas as pd
+
+    cache_dir = Path("data/cache")
+    sample_file = cache_dir / "069500.parquet"
+
+    cache_info = {
+        "exists": cache_dir.exists(),
+        "file_count": len(list(cache_dir.glob("*.parquet"))) if cache_dir.exists() else 0,
+        "last_date": None,
+    }
+
+    if sample_file.exists():
+        try:
+            df = pd.read_parquet(sample_file)
+            cache_info["last_date"] = df.index.max().strftime("%Y-%m-%d")
+        except Exception:
+            pass
+
+    return {**cache_info, **cache_update_state}
+
+
+@app.post("/api/v1/cache/update")
+def start_cache_update():
+    """캐시 업데이트 시작"""
+    global cache_update_state
+
+    if cache_update_state["is_running"]:
+        raise HTTPException(status_code=400, detail="이미 업데이트 중입니다")
+
+    def run_update():
+        global cache_update_state
+        from datetime import date, timedelta
+        from pathlib import Path
+        import pandas as pd
+        from pykrx import stock
+        from core.data.filtering import get_filtered_universe
+
+        cache_update_state = {
+            "is_running": True,
+            "progress": 0,
+            "total": 0,
+            "updated": 0,
+            "failed": 0,
+            "message": "유니버스 로드 중...",
+            "last_update": None,
+        }
+
+        try:
+            cache_dir = Path("data/cache")
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            tickers = get_filtered_universe()
+            cache_update_state["total"] = len(tickers)
+            cache_update_state["message"] = f"{len(tickers)}개 ETF 업데이트 시작"
+
+            end_date = date.today()
+
+            for i, ticker in enumerate(tickers):
+                try:
+                    cache_file = cache_dir / f"{ticker}.parquet"
+
+                    if cache_file.exists():
+                        existing = pd.read_parquet(cache_file)
+                        last_date = existing.index.max()
+                        if isinstance(last_date, pd.Timestamp):
+                            last_date = last_date.date()
+
+                        if last_date >= end_date:
+                            cache_update_state["progress"] = i + 1
+                            continue
+
+                        fetch_start = last_date + timedelta(days=1)
+                    else:
+                        existing = None
+                        fetch_start = end_date - timedelta(days=365)
+
+                    new_data = stock.get_etf_ohlcv_by_date(
+                        fetch_start.strftime("%Y%m%d"),
+                        end_date.strftime("%Y%m%d"),
+                        ticker,
+                    )
+
+                    if new_data.empty:
+                        cache_update_state["progress"] = i + 1
+                        continue
+
+                    new_data.index = pd.to_datetime(new_data.index)
+                    new_data.index.name = "날짜"
+
+                    column_map = {
+                        "시가": "open",
+                        "고가": "high",
+                        "저가": "low",
+                        "종가": "close",
+                        "거래량": "volume",
+                        "거래대금": "value",
+                        "NAV": "NAV",
+                    }
+                    new_data = new_data.rename(columns=column_map)
+
+                    if existing is not None:
+                        for col in existing.columns:
+                            if col not in new_data.columns:
+                                new_data[col] = 0
+                        combined = pd.concat([existing, new_data])
+                        combined = combined[~combined.index.duplicated(keep="last")]
+                        combined = combined.sort_index()
+                    else:
+                        combined = new_data
+
+                    combined.to_parquet(cache_file)
+                    cache_update_state["updated"] += 1
+
+                except Exception as e:
+                    cache_update_state["failed"] += 1
+
+                cache_update_state["progress"] = i + 1
+                cache_update_state["message"] = f"진행 중: {i + 1}/{len(tickers)}"
+
+            cache_update_state["message"] = (
+                f"완료: {cache_update_state['updated']}개 업데이트, "
+                f"{cache_update_state['failed']}개 실패"
+            )
+            cache_update_state["last_update"] = date.today().isoformat()
+
+        except Exception as e:
+            cache_update_state["message"] = f"오류: {str(e)}"
+        finally:
+            cache_update_state["is_running"] = False
+
+    thread = threading.Thread(target=run_update, daemon=True)
+    thread.start()
+
+    return {"message": "캐시 업데이트 시작됨"}
+
+
 @app.get("/")
 def root():
     return {
@@ -360,6 +514,7 @@ def root():
             "lookback": "룩백 기간별 분석 (설정 기반)",
             "ensemble": "룩백 가중 앙상블 (설정 기반)",
             "history": "DB 기반 히스토리 저장 및 조회",
+            "cache": "캐시 데이터 관리",
         },
         "endpoints": {
             "backtest": "POST /api/v1/backtest/run",
@@ -370,6 +525,8 @@ def root():
             "history_sessions": "GET /api/v1/history/tuning-sessions",
             "history_best": "GET /api/v1/history/best",
             "history_stats": "GET /api/v1/history/statistics",
+            "cache_status": "GET /api/v1/cache/status",
+            "cache_update": "POST /api/v1/cache/update",
         },
     }
 

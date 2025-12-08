@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle, Database, BarChart3 } from 'lucide-react'
+import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle, Database, BarChart3, HardDrive, Download } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 
 // API URL (백테스트/튜닝은 PC의 8001 포트 사용)
 const API_BASE_URL = API_URLS.strategy
+
+interface CacheStatus {
+  exists: boolean
+  file_count: number
+  last_date: string | null
+  is_running: boolean
+  progress: number
+  total: number
+  updated: number
+  failed: number
+  message: string
+}
 
 interface BacktestParams {
   start_date: string
@@ -95,6 +107,57 @@ export default function Strategy() {
   const [statistics, setStatistics] = useState<any>(null)
   const [dbLoading, setDbLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'local' | 'db' | 'sessions' | 'stats'>('local')
+
+  // 캐시 상태
+  const [cacheStatus, setCacheStatus] = useState<CacheStatus>({
+    exists: false,
+    file_count: 0,
+    last_date: null,
+    is_running: false,
+    progress: 0,
+    total: 0,
+    updated: 0,
+    failed: 0,
+    message: '',
+  })
+
+  // 캐시 상태 조회
+  const loadCacheStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/cache/status`)
+      if (res.ok) {
+        const data = await res.json()
+        setCacheStatus(data)
+      }
+    } catch (err) {
+      console.error('캐시 상태 조회 실패:', err)
+    }
+  }
+
+  // 캐시 업데이트 시작
+  const startCacheUpdate = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/cache/update`, { method: 'POST' })
+      if (res.ok) {
+        setCacheStatus(prev => ({ ...prev, is_running: true, message: '업데이트 시작...' }))
+      }
+    } catch (err) {
+      console.error('캐시 업데이트 시작 실패:', err)
+    }
+  }
+
+  // 캐시 상태 폴링
+  useEffect(() => {
+    loadCacheStatus()
+    
+    const interval = setInterval(() => {
+      if (cacheStatus.is_running) {
+        loadCacheStatus()
+      }
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [cacheStatus.is_running])
 
   // DB 히스토리 로드
   const loadDbHistory = async () => {
@@ -230,6 +293,53 @@ export default function Strategy() {
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold">전략 튜닝</h2>
+
+      {/* 0. 캐시 관리 */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <HardDrive className="w-5 h-5 text-gray-600" />
+            <div>
+              <span className="font-medium">가격 데이터 캐시</span>
+              <span className="text-sm text-gray-500 ml-2">
+                {cacheStatus.file_count}개 ETF
+                {cacheStatus.last_date && ` • 최신: ${cacheStatus.last_date}`}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {cacheStatus.is_running ? (
+              <div className="flex items-center gap-2">
+                <div className="w-32 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-500 h-2 rounded-full transition-all"
+                    style={{ width: `${cacheStatus.total > 0 ? (cacheStatus.progress / cacheStatus.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className="text-sm text-gray-600">
+                  {cacheStatus.progress}/{cacheStatus.total}
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-500">{cacheStatus.message}</span>
+            )}
+            
+            <button
+              onClick={startCacheUpdate}
+              disabled={cacheStatus.is_running}
+              className={`flex items-center gap-2 px-4 py-2 rounded text-sm ${
+                cacheStatus.is_running
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+            >
+              <Download className="w-4 h-4" />
+              {cacheStatus.is_running ? '업데이트 중...' : '캐시 업데이트'}
+            </button>
+          </div>
+        </div>
+      </div>
       
       {/* 1. 빠른 백테스트 */}
       <div className="bg-white rounded-lg shadow p-6">
