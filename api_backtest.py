@@ -428,6 +428,7 @@ def start_cache_update():
             cache_update_state["message"] = f"{len(tickers)}개 ETF 업데이트 시작"
 
             end_date = date.today()
+            end_ts = pd.Timestamp(end_date)  # 비교용 Timestamp
 
             for i, ticker in enumerate(tickers):
                 try:
@@ -435,16 +436,16 @@ def start_cache_update():
 
                     if cache_file.exists():
                         existing = pd.read_parquet(cache_file)
-                        last_date = existing.index.max()
-                        if isinstance(last_date, pd.Timestamp):
-                            last_date = last_date.date()
+                        last_ts = existing.index.max()  # Timestamp
 
-                        # 이미 최신인 경우
-                        if last_date >= end_date:
+                        # 이미 최신인 경우 (Timestamp끼리 비교)
+                        if last_ts >= end_ts:
                             cache_update_state["skipped"] += 1
                             cache_update_state["progress"] = i + 1
                             continue
 
+                        # fetch_start는 date로 변환
+                        last_date = last_ts.date() if isinstance(last_ts, pd.Timestamp) else last_ts
                         fetch_start = last_date + timedelta(days=1)
                     else:
                         existing = None
