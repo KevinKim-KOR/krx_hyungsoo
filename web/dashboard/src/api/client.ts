@@ -206,6 +206,48 @@ class ApiClient {
       user_question: userQuestion
     });
   }
+
+  // ============================================
+  // History API (Port 8001)
+  // ============================================
+  private historyBaseUrl = 'http://localhost:8001';
+
+  private async fetchHistory<T>(endpoint: string): Promise<T> {
+    const response = await fetch(`${this.historyBaseUrl}${endpoint}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || `API Error: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async getBacktestHistoryFromDB(limit: number = 100, runType?: string): Promise<any> {
+    let url = `/api/v1/history/backtests?limit=${limit}`;
+    if (runType) url += `&run_type=${runType}`;
+    return this.fetchHistory<any>(url);
+  }
+
+  async getTuningSessions(limit: number = 20, status?: string): Promise<any> {
+    let url = `/api/v1/history/tuning-sessions?limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    return this.fetchHistory<any>(url);
+  }
+
+  async getTuningSession(sessionId: string): Promise<any> {
+    return this.fetchHistory<any>(`/api/v1/history/tuning-sessions/${sessionId}`);
+  }
+
+  async getSessionTrials(sessionId: string): Promise<any> {
+    return this.fetchHistory<any>(`/api/v1/history/tuning-sessions/${sessionId}/trials`);
+  }
+
+  async getBestBacktest(metric: string = 'sharpe_ratio'): Promise<any> {
+    return this.fetchHistory<any>(`/api/v1/history/best?metric=${metric}`);
+  }
+
+  async getHistoryStatistics(): Promise<any> {
+    return this.fetchHistory<any>('/api/v1/history/statistics');
+  }
 }
 
 export const apiClient = new ApiClient();

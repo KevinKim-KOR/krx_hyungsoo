@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Play, Square, RefreshCw, TrendingUp, Target, Clock, CheckCircle, AlertCircle, Database, BarChart3 } from 'lucide-react'
 import { API_URLS } from '../config/api'
+import { apiClient } from '../api/client'
 
 // API URL (백테스트/튜닝은 PC의 8001 포트 사용)
 const API_BASE_URL = API_URLS.strategy
@@ -87,6 +88,39 @@ export default function Strategy() {
   useEffect(() => {
     localStorage.setItem('backtest_history', JSON.stringify(history))
   }, [history])
+
+  // DB 히스토리 상태
+  const [dbHistory, setDbHistory] = useState<any[]>([])
+  const [tuningSessions, setTuningSessions] = useState<any[]>([])
+  const [statistics, setStatistics] = useState<any>(null)
+  const [dbLoading, setDbLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'local' | 'db' | 'sessions' | 'stats'>('local')
+
+  // DB 히스토리 로드
+  const loadDbHistory = async () => {
+    setDbLoading(true)
+    try {
+      const [historyRes, sessionsRes, statsRes] = await Promise.all([
+        apiClient.getBacktestHistoryFromDB(50),
+        apiClient.getTuningSessions(10),
+        apiClient.getHistoryStatistics(),
+      ])
+      setDbHistory(historyRes.history || [])
+      setTuningSessions(sessionsRes.sessions || [])
+      setStatistics(statsRes)
+    } catch (err) {
+      console.error('DB 히스토리 로드 실패:', err)
+    } finally {
+      setDbLoading(false)
+    }
+  }
+
+  // 탭 변경 시 DB 데이터 로드
+  useEffect(() => {
+    if (activeTab !== 'local' && dbHistory.length === 0) {
+      loadDbHistory()
+    }
+  }, [activeTab])
 
   // 백테스트 실행
   const runBacktest = async () => {
@@ -442,48 +476,280 @@ export default function Strategy() {
       
       {/* 3. 히스토리 */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5" />
-          백테스트 히스토리
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Database className="w-5 h-5" />
+            백테스트 히스토리
+          </h3>
+          <button
+            onClick={loadDbHistory}
+            disabled={dbLoading}
+            className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+          >
+            <RefreshCw className={`w-4 h-4 ${dbLoading ? 'animate-spin' : ''}`} />
+            새로고침
+          </button>
+        </div>
         
-        {history.length === 0 ? (
-          <p className="text-gray-500">아직 백테스트 기록이 없습니다.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-3 py-2 text-left">시간</th>
-                  <th className="px-3 py-2 text-left">기간</th>
-                  <th className="px-3 py-2 text-left">MA</th>
-                  <th className="px-3 py-2 text-left">RSI</th>
-                  <th className="px-3 py-2 text-left">손절</th>
-                  <th className="px-3 py-2 text-left">Sharpe</th>
-                  <th className="px-3 py-2 text-left">CAGR</th>
-                  <th className="px-3 py-2 text-left">MDD</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-500">
-                      {new Date(item.timestamp).toLocaleTimeString()}
-                    </td>
-                    <td className="px-3 py-2">{item.params.start_date} ~ {item.params.end_date}</td>
-                    <td className="px-3 py-2">{item.params.ma_period}</td>
-                    <td className="px-3 py-2">{item.params.rsi_period}</td>
-                    <td className="px-3 py-2">{item.params.stop_loss}%</td>
-                    <td className="px-3 py-2 font-bold">{item.result.sharpe_ratio.toFixed(2)}</td>
-                    <td className={`px-3 py-2 ${item.result.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatPercent(item.result.cagr)}
-                    </td>
-                    <td className="px-3 py-2 text-red-600">{formatPercent(item.result.max_drawdown)}</td>
+        {/* 탭 */}
+        <div className="flex gap-2 mb-4 border-b">
+          <button
+            onClick={() => setActiveTab('local')}
+            className={`px-4 py-2 -mb-px ${activeTab === 'local' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+          >
+            <Clock className="w-4 h-4 inline mr-1" />
+            현재 세션
+          </button>
+          <button
+            onClick={() => setActiveTab('db')}
+            className={`px-4 py-2 -mb-px ${activeTab === 'db' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+          >
+            <Database className="w-4 h-4 inline mr-1" />
+            DB 히스토리
+          </button>
+          <button
+            onClick={() => setActiveTab('sessions')}
+            className={`px-4 py-2 -mb-px ${activeTab === 'sessions' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+          >
+            <Target className="w-4 h-4 inline mr-1" />
+            튜닝 세션
+          </button>
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`px-4 py-2 -mb-px ${activeTab === 'stats' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+          >
+            <BarChart3 className="w-4 h-4 inline mr-1" />
+            통계
+          </button>
+        </div>
+        
+        {/* 현재 세션 (localStorage) */}
+        {activeTab === 'local' && (
+          history.length === 0 ? (
+            <p className="text-gray-500">아직 백테스트 기록이 없습니다.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-2 text-left">시간</th>
+                    <th className="px-3 py-2 text-left">기간</th>
+                    <th className="px-3 py-2 text-left">MA</th>
+                    <th className="px-3 py-2 text-left">RSI</th>
+                    <th className="px-3 py-2 text-left">손절</th>
+                    <th className="px-3 py-2 text-left">Sharpe</th>
+                    <th className="px-3 py-2 text-left">CAGR</th>
+                    <th className="px-3 py-2 text-left">MDD</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {history.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-gray-500">
+                        {new Date(item.timestamp).toLocaleTimeString()}
+                      </td>
+                      <td className="px-3 py-2">{item.params.start_date} ~ {item.params.end_date}</td>
+                      <td className="px-3 py-2">{item.params.ma_period}</td>
+                      <td className="px-3 py-2">{item.params.rsi_period}</td>
+                      <td className="px-3 py-2">{item.params.stop_loss}%</td>
+                      <td className="px-3 py-2 font-bold">{item.result.sharpe_ratio.toFixed(2)}</td>
+                      <td className={`px-3 py-2 ${item.result.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatPercent(item.result.cagr)}
+                      </td>
+                      <td className="px-3 py-2 text-red-600">{formatPercent(item.result.max_drawdown)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+        
+        {/* DB 히스토리 */}
+        {activeTab === 'db' && (
+          dbLoading ? (
+            <div className="text-center py-8 text-gray-500">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+              로딩 중...
+            </div>
+          ) : dbHistory.length === 0 ? (
+            <p className="text-gray-500">DB에 저장된 백테스트 기록이 없습니다.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-2 text-left">ID</th>
+                    <th className="px-3 py-2 text-left">유형</th>
+                    <th className="px-3 py-2 text-left">기간</th>
+                    <th className="px-3 py-2 text-left">MA</th>
+                    <th className="px-3 py-2 text-left">RSI</th>
+                    <th className="px-3 py-2 text-left">손절</th>
+                    <th className="px-3 py-2 text-left">Sharpe</th>
+                    <th className="px-3 py-2 text-left">CAGR</th>
+                    <th className="px-3 py-2 text-left">MDD</th>
+                    <th className="px-3 py-2 text-left">저장일</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dbHistory.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-gray-500">{item.id}</td>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-0.5 rounded text-xs ${item.run_type === 'tuning' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {item.run_type === 'tuning' ? '튜닝' : '단일'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">{item.start_date} ~ {item.end_date}</td>
+                      <td className="px-3 py-2">{item.ma_period}</td>
+                      <td className="px-3 py-2">{item.rsi_period}</td>
+                      <td className="px-3 py-2">{item.stop_loss}%</td>
+                      <td className="px-3 py-2 font-bold">{item.sharpe_ratio?.toFixed(2) || '-'}</td>
+                      <td className={`px-3 py-2 ${item.cagr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {item.cagr?.toFixed(2) || '-'}%
+                      </td>
+                      <td className="px-3 py-2 text-red-600">{item.max_drawdown?.toFixed(2) || '-'}%</td>
+                      <td className="px-3 py-2 text-gray-500 text-xs">
+                        {new Date(item.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+        
+        {/* 튜닝 세션 */}
+        {activeTab === 'sessions' && (
+          dbLoading ? (
+            <div className="text-center py-8 text-gray-500">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+              로딩 중...
+            </div>
+          ) : tuningSessions.length === 0 ? (
+            <p className="text-gray-500">튜닝 세션 기록이 없습니다.</p>
+          ) : (
+            <div className="space-y-4">
+              {tuningSessions.map((session, idx) => (
+                <div key={idx} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{session.id}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        session.status === 'completed' ? 'bg-green-100 text-green-700' :
+                        session.status === 'running' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {session.status === 'completed' ? '완료' : session.status === 'running' ? '진행중' : '실패'}
+                      </span>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(session.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">Trials:</span>
+                      <span className="ml-2 font-bold">{session.completed_trials}/{session.total_trials}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Best Sharpe:</span>
+                      <span className="ml-2 font-bold text-blue-600">{session.best_sharpe?.toFixed(2) || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">룩백:</span>
+                      <span className="ml-2">{session.lookback_months?.join(', ')}개월</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">지표:</span>
+                      <span className="ml-2">{session.optimization_metric}</span>
+                    </div>
+                  </div>
+                  {session.ensemble_params && Object.keys(session.ensemble_params).length > 0 && (
+                    <div className="mt-3 p-2 bg-blue-50 rounded text-sm">
+                      <span className="font-bold">앙상블 파라미터:</span>
+                      <span className="ml-2">
+                        MA: {session.ensemble_params.ma_period}, 
+                        RSI: {session.ensemble_params.rsi_period}, 
+                        손절: {session.ensemble_params.stop_loss}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        )}
+        
+        {/* 통계 */}
+        {activeTab === 'stats' && (
+          dbLoading ? (
+            <div className="text-center py-8 text-gray-500">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+              로딩 중...
+            </div>
+          ) : !statistics ? (
+            <p className="text-gray-500">통계 데이터를 불러올 수 없습니다.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 백테스트 통계 */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-bold mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  백테스트 통계
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">총 백테스트 수</span>
+                    <span className="font-bold">{statistics.backtest?.total || 0}회</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">평균 Sharpe</span>
+                    <span className="font-bold">{statistics.backtest?.avg_sharpe?.toFixed(2) || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">최고 Sharpe</span>
+                    <span className="font-bold text-blue-600">{statistics.backtest?.max_sharpe?.toFixed(2) || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">평균 CAGR</span>
+                    <span className="font-bold">{statistics.backtest?.avg_cagr?.toFixed(2) || '-'}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">최고 CAGR</span>
+                    <span className="font-bold text-green-600">{statistics.backtest?.max_cagr?.toFixed(2) || '-'}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">평균 MDD</span>
+                    <span className="font-bold text-red-600">{statistics.backtest?.avg_mdd?.toFixed(2) || '-'}%</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 튜닝 통계 */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-bold mb-3 flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  튜닝 통계
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">총 세션 수</span>
+                    <span className="font-bold">{statistics.tuning?.total_sessions || 0}회</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">총 Trial 수</span>
+                    <span className="font-bold">{statistics.tuning?.total_trials || 0}회</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">최고 Sharpe</span>
+                    <span className="font-bold text-blue-600">{statistics.tuning?.best_sharpe?.toFixed(2) || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
         )}
       </div>
     </div>
