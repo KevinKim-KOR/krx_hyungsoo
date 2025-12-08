@@ -133,13 +133,13 @@ class BacktestResponse(BaseModel):
 
 
 class TuningRequest(BaseModel):
-    """튜닝 요청 (모든 필드 필수)"""
+    """튜닝 요청"""
 
     trials: int
     start_date: str
     end_date: str
-    lookback_months: List[int]
-    optimization_metric: str
+    lookback_months: List[int] = [3, 6, 12]  # 기본값: 3, 6, 12개월
+    optimization_metric: str = "sharpe"  # 기본값: sharpe
 
     @validator("trials")
     def validate_trials(cls, v):
