@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp } from 'lucide-react'
+import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
@@ -65,6 +65,22 @@ interface TuningStatus {
   lookback_results?: Record<number, LookbackResult>
 }
 
+interface TuningVariable {
+  enabled: boolean
+  range: [number, number]
+  default: number
+  step: number
+  description: string
+  category: string
+}
+
+interface TuningVariablesResponse {
+  all_variables: Record<string, TuningVariable>
+  enabled_variables: string[]
+  enabled_count: number
+  total_count: number
+}
+
 export default function Strategy() {
   // 튜닝용 기본 파라미터
   const [backtestParams] = useState<BacktestParams>({
@@ -114,6 +130,46 @@ export default function Strategy() {
   const [dbLoading, setDbLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'local' | 'db' | 'sessions' | 'stats'>('local')
 
+  // 튜닝 변수 상태
+  const [tuningVariables, setTuningVariables] = useState<Record<string, TuningVariable>>({})
+  const [variablesExpanded, setVariablesExpanded] = useState(false)
+  const [variableUpdating, setVariableUpdating] = useState<string | null>(null)
+
+  // 튜닝 변수 로드
+  const loadTuningVariables = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/tuning-variables`)
+      if (res.ok) {
+        const data: TuningVariablesResponse = await res.json()
+        setTuningVariables(data.all_variables)
+      }
+    } catch (err) {
+      console.error('튜닝 변수 로드 실패:', err)
+    }
+  }
+
+  // 튜닝 변수 토글
+  const toggleVariable = async (name: string, enabled: boolean) => {
+    setVariableUpdating(name)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/tuning-variables/${name}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+      if (res.ok) {
+        setTuningVariables(prev => ({
+          ...prev,
+          [name]: { ...prev[name], enabled }
+        }))
+      }
+    } catch (err) {
+      console.error('변수 업데이트 실패:', err)
+    } finally {
+      setVariableUpdating(null)
+    }
+  }
+
   // 캐시 상태
   const [cacheStatus, setCacheStatus] = useState<CacheStatus>({
     exists: false,
@@ -161,6 +217,9 @@ export default function Strategy() {
   // 캐시 상태 폴링 (항상 실행)
   useEffect(() => {
     loadCacheStatus()
+    
+    // 튜닝 변수 로드
+    loadTuningVariables()
     
     const interval = setInterval(() => {
       loadCacheStatus()
@@ -374,6 +433,70 @@ export default function Strategy() {
                 <li key={i}>{err}</li>
               ))}
             </ul>
+          </div>
+        )}
+      </div>
+      
+      {/* 튜닝 변수 설정 */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={() => setVariablesExpanded(!variablesExpanded)}
+        >
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            튜닝 변수 설정
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>{Object.values(tuningVariables).filter(v => v.enabled).length}개 활성화</span>
+            <span className="text-lg">{variablesExpanded ? '▲' : '▼'}</span>
+          </div>
+        </div>
+        
+        {variablesExpanded && (
+          <div className="mt-4 space-y-3">
+            {Object.entries(tuningVariables).map(([name, config]) => (
+              <div 
+                key={name}
+                className={`flex items-center justify-between p-3 rounded border ${
+                  config.enabled ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{name}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      config.category === 'trend' ? 'bg-blue-100 text-blue-700' :
+                      config.category === 'momentum' ? 'bg-purple-100 text-purple-700' :
+                      config.category === 'risk' ? 'bg-red-100 text-red-700' :
+                      config.category === 'market' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {config.category}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    {config.description} • 범위: [{config.range[0]}, {config.range[1]}] step={config.step}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleVariable(name, !config.enabled)
+                  }}
+                  disabled={variableUpdating === name}
+                  className="ml-4"
+                >
+                  {variableUpdating === name ? (
+                    <RefreshCw className="w-6 h-6 text-gray-400 animate-spin" />
+                  ) : config.enabled ? (
+                    <ToggleRight className="w-8 h-8 text-green-600" />
+                  ) : (
+                    <ToggleLeft className="w-8 h-8 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
