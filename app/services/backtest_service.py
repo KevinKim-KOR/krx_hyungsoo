@@ -166,13 +166,16 @@ class BacktestService:
         metrics = result.get("metrics", {})
         trades = result.get("trades", [])
 
-        # 결과 검증 (모두 0이면 에러)
+        # 결과 검증 (모두 0이면 경고)
         annual_return = metrics.get("annual_return", 0)
         sharpe = metrics.get("sharpe_ratio", 0)
         mdd = metrics.get("max_drawdown", 0)
 
         if annual_return == 0 and sharpe == 0 and mdd == 0:
-            raise ValueError("백테스트 결과가 비어있음 - 데이터 부족 가능성")
+            logger.warning(
+                f"백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 "
+                f"(기간: {params.start_date} ~ {params.end_date})"
+            )
 
         # 승률 계산
         win_rate = 0.0
