@@ -25,9 +25,16 @@ interface BacktestResult {
 
 interface TuningTrial {
   trial_number: number
+  lookback_months?: number
   params: BacktestParams
   result: BacktestResult
   timestamp: string
+}
+
+interface LookbackResult {
+  best_params: Record<string, number>
+  best_value: number
+  n_trials: number
 }
 
 interface TuningStatus {
@@ -37,6 +44,7 @@ interface TuningStatus {
   best_sharpe: number
   best_params: BacktestParams | null
   trials: TuningTrial[]
+  lookback_results?: Record<number, LookbackResult>
 }
 
 export default function Strategy() {
@@ -62,6 +70,7 @@ export default function Strategy() {
     best_sharpe: 0,
     best_params: null,
     trials: [],
+    lookback_results: {},
   })
 
   // 히스토리 (localStorage에서 복원)
@@ -380,6 +389,7 @@ export default function Strategy() {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="px-3 py-2 text-left">#</th>
+                  <th className="px-3 py-2 text-left">룩백</th>
                   <th className="px-3 py-2 text-left">MA</th>
                   <th className="px-3 py-2 text-left">RSI</th>
                   <th className="px-3 py-2 text-left">손절</th>
@@ -392,6 +402,7 @@ export default function Strategy() {
                 {tuningStatus.trials.slice(0, 10).map((trial, idx) => (
                   <tr key={idx} className={idx === 0 ? 'bg-green-50' : ''}>
                     <td className="px-3 py-2">{trial.trial_number}</td>
+                    <td className="px-3 py-2">{trial.lookback_months ? `${trial.lookback_months}개월` : '-'}</td>
                     <td className="px-3 py-2">{trial.params.ma_period}</td>
                     <td className="px-3 py-2">{trial.params.rsi_period}</td>
                     <td className="px-3 py-2">{trial.params.stop_loss}%</td>
@@ -402,6 +413,29 @@ export default function Strategy() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {/* 룩백 기간별 결과 */}
+        {tuningStatus.lookback_results && Object.keys(tuningStatus.lookback_results).length > 0 && (
+          <div className="mt-4 p-4 bg-blue-50 rounded">
+            <h4 className="font-bold mb-2">📊 룩백 기간별 최적 결과</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Object.entries(tuningStatus.lookback_results).map(([months, result]) => (
+                <div key={months} className="bg-white p-3 rounded shadow-sm">
+                  <div className="text-sm text-gray-600 mb-1">{months}개월 룩백</div>
+                  <div className="text-lg font-bold text-blue-600">
+                    Sharpe: {result.best_value.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    MA: {result.best_params.ma_period}, RSI: {result.best_params.rsi_period}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-sm text-gray-600">
+              💡 앙상블: 최근 기간(3개월)에 50%, 6개월에 30%, 12개월에 20% 가중치 적용
+            </div>
           </div>
         )}
       </div>
