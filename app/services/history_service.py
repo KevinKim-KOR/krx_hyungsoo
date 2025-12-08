@@ -78,7 +78,7 @@ class HistoryService:
                 """
                 CREATE TABLE IF NOT EXISTS backtest_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT (DATETIME('now', 'localtime')),
                     run_type TEXT NOT NULL,
                     tuning_session_id TEXT,
                     lookback_months INTEGER,
@@ -107,7 +107,7 @@ class HistoryService:
                 """
                 CREATE TABLE IF NOT EXISTS tuning_sessions (
                     id TEXT PRIMARY KEY,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT (DATETIME('now', 'localtime')),
                     total_trials INTEGER NOT NULL,
                     completed_trials INTEGER NOT NULL,
                     lookback_months_json TEXT NOT NULL,

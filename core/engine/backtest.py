@@ -407,13 +407,26 @@ class BacktestEngine:
         nav_series = pd.Series([nav for _, nav in self.nav_history])
         total_return = (nav_series.iloc[-1] / self.initial_capital - 1.0) * 100
         days = len(nav_series)
-        annual_return = ((nav_series.iloc[-1] / self.initial_capital) ** (252 / days) - 1.0) * 100 if days > 0 else 0.0
-        
+
+        # 연율화: 최소 126일(6개월) 이상일 때만 적용, 그 미만은 단순 비례
+        if days >= 126:
+            # 정상 연율화
+            annual_return = (
+                (nav_series.iloc[-1] / self.initial_capital) ** (252 / days) - 1.0
+            ) * 100
+        elif days > 0:
+            # 짧은 기간: 단순 비례 (연율화 왜곡 방지)
+            annual_return = total_return * (252 / days)
+            # 비현실적 값 제한 (-100% ~ 200%)
+            annual_return = max(-100, min(200, annual_return))
+        else:
+            annual_return = 0.0
+
         if len(self.daily_returns) > 1:
             volatility = np.std(self.daily_returns) * np.sqrt(252) * 100
         else:
             volatility = 0.0
-            
+
         sharpe_ratio = (annual_return / volatility) if volatility > 0 else 0.0
         
         cummax = nav_series.cummax()
