@@ -71,8 +71,12 @@ class TuningService:
         return ConfigLoader.get("tuning", "lookback_weights")
 
     def _get_param_ranges(self) -> Dict:
-        """설정에서 파라미터 범위 로드"""
+        """설정에서 파라미터 범위 로드 (기존 config.yaml 방식)"""
         return ConfigLoader.get("tuning", "param_ranges")
+
+    def _get_tuning_variables(self) -> Dict:
+        """backtest.yaml에서 활성화된 튜닝 변수 로드"""
+        return ConfigLoader.get_tuning_variables()
 
     def start(self, params: TuningParams) -> None:
         """
@@ -139,25 +143,38 @@ class TuningService:
 
         try:
             all_results = []
-            param_ranges = self._get_param_ranges()
+            # backtest.yaml의 tuning_variables 사용 (활성화된 변수만)
+            tuning_vars = self._get_tuning_variables()
+            # 기존 config.yaml의 param_ranges (fallback용)
+            legacy_ranges = self._get_param_ranges()
+
+            # 활성화된 변수 로깅
+            logger.info(f"활성화된 튜닝 변수: {list(tuning_vars.keys())}")
 
             for lookback in params.lookback_months:
                 start_date = actual_end_date - timedelta(days=lookback * 30)
 
-                logger.info(
-                    f"룩백 {lookback}개월 최적화 시작: {start_date} ~ {actual_end_date}"
-                )
+                logger.info(f"룩백 {lookback}개월 최적화 시작: {start_date} ~ {actual_end_date}")
 
                 def objective(trial: optuna.Trial) -> float:
                     with self._lock:
                         if self._state.stop_requested:
                             raise optuna.TrialPruned()
 
-                    # 파라미터 샘플링 (설정에서 범위 로드)
-                    ma_range = param_ranges["ma_period"]
-                    rsi_range = param_ranges["rsi_period"]
-                    stop_range = param_ranges["stop_loss"]
-                    pos_range = param_ranges["max_positions"]
+                    # 파라미터 샘플링 (tuning_variables 우선, 없으면 legacy 사용)
+                    def get_range(name: str) -> Dict:
+                        if name in tuning_vars:
+                            return tuning_vars[name]
+                        elif name in legacy_ranges:
+                            return legacy_ranges[name]
+                        else:
+                            raise KeyError(f"변수 '{name}' 설정 없음")
+
+                    ma_range = get_range("ma_period")
+                    rsi_range = get_range("rsi_period")
+                    stop_range = get_range("stop_loss")
+                    # max_positions는 legacy에서만 사용 (tuning_variables에 없음)
+                    pos_range = legacy_ranges.get("max_positions", {"min": 5, "max": 15, "step": 5})
 
                     bt_params = BacktestParams(
                         start_date=start_date,
@@ -166,25 +183,25 @@ class TuningService:
                             "ma_period",
                             ma_range["min"],
                             ma_range["max"],
-                            step=ma_range["step"],
+                            step=ma_range.get("step", 10),
                         ),
                         rsi_period=trial.suggest_int(
                             "rsi_period",
                             rsi_range["min"],
                             rsi_range["max"],
-                            step=rsi_range["step"],
+                            step=rsi_range.get("step", 1),
                         ),
                         stop_loss=trial.suggest_int(
                             "stop_loss",
                             stop_range["min"],
                             stop_range["max"],
-                            step=stop_range["step"],
+                            step=stop_range.get("step", 1),
                         ),
                         max_positions=trial.suggest_int(
                             "max_positions",
                             pos_range["min"],
                             pos_range["max"],
-                            step=pos_range["step"],
+                            step=pos_range.get("step", 5),
                         ),
                         initial_capital=ConfigLoader.get("backtest", "initial_capital"),
                         enable_defense=True,

@@ -83,11 +83,12 @@ variables:
   - `GET /api/v1/tuning-variables` - 변수 목록 조회
   - `PUT /api/v1/tuning-variables/{name}` - 변수 설정 수정
 
-### Phase 2: 백테스트 엔진 변수 연동 (다음 단계)
-- [ ] 튜닝 서비스에서 `get_tuning_variables()` 사용
-- [ ] 변수별 계산 로직 모듈화
-- [ ] 변수 → 전략 로직 매핑
-- [ ] 변수 유효성 검증
+### Phase 2: 튜닝 서비스 연동 ✅ 완료 (2025-12-08)
+- [x] 튜닝 서비스에서 `get_tuning_variables()` 사용
+- [x] `backtest.yaml` 우선, `config.yaml` fallback 구조
+- [x] 활성화된 변수 로깅
+- [ ] 변수별 계산 로직 모듈화 (Phase 4로 이동)
+- [ ] 변수 → 전략 로직 매핑 (Phase 4로 이동)
 
 ### Phase 3: UI 변수 관리 (Phase 2 이후)
 - [ ] UI 변수 설정 패널
@@ -225,7 +226,7 @@ def should_enter(self, ticker: str, params: dict) -> bool:
 ## 9. 체크리스트
 
 - [x] Phase 1: 설정 파일 기반 변수 관리 (2025-12-08)
-- [ ] Phase 2: 백테스트 엔진 변수 연동
+- [x] Phase 2: 튜닝 서비스 연동 (2025-12-08)
 - [ ] Phase 3: UI 변수 관리
 - [ ] Phase 4: 새 변수 추가 워크플로우
 - [ ] 첫 번째 새 변수 추가 (volatility_filter)
