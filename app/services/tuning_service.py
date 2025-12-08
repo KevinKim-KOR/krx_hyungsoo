@@ -1,0 +1,348 @@
+# -*- coding: utf-8 -*-
+"""
+app/services/tuning_service.py
+튜닝 서비스 (단일 책임: Optuna 기반 파라미터 최적화)
+"""
+import logging
+import threading
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Optional
+
+import optuna
+
+from app.services.backtest_service import (
+    BacktestParams,
+    BacktestService,
+    ConfigLoader,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TuningParams:
+    """튜닝 파라미터 (필수값만, default 없음)"""
+
+    trials: int
+    start_date: date
+    end_date: date
+    lookback_months: List[int]
+    optimization_metric: str  # sharpe, cagr, calmar
+
+
+@dataclass
+class TuningState:
+    """튜닝 상태"""
+
+    is_running: bool = False
+    current_trial: int = 0
+    total_trials: int = 0
+    best_sharpe: float = 0.0
+    best_params: Optional[Dict] = None
+    trials: List[Dict] = field(default_factory=list)
+    stop_requested: bool = False
+    lookback_results: Dict[int, Dict] = field(default_factory=dict)
+
+
+class TuningService:
+    """튜닝 서비스"""
+
+    def __init__(self):
+        self._state = TuningState()
+        self._lock = threading.Lock()
+        self._session_id: Optional[str] = None
+
+        # 백테스트 서비스 (튜닝 중에는 개별 저장하지 않음)
+        self._backtest_service = BacktestService(save_history=False)
+
+        # 히스토리 서비스
+        from app.services.history_service import HistoryService
+
+        self._history_service = HistoryService()
+
+    @property
+    def state(self) -> TuningState:
+        with self._lock:
+            return self._state
+
+    def _get_lookback_weights(self) -> Dict[int, float]:
+        """설정에서 룩백 가중치 로드"""
+        return ConfigLoader.get("tuning", "lookback_weights")
+
+    def _get_param_ranges(self) -> Dict:
+        """설정에서 파라미터 범위 로드"""
+        return ConfigLoader.get("tuning", "param_ranges")
+
+    def start(self, params: TuningParams) -> None:
+        """
+        튜닝 시작 (백그라운드)
+
+        Args:
+            params: 튜닝 파라미터 (모든 필드 필수)
+
+        Raises:
+            RuntimeError: 이미 실행 중인 경우
+        """
+        with self._lock:
+            if self._state.is_running:
+                raise RuntimeError("튜닝이 이미 실행 중입니다")
+
+        thread = threading.Thread(target=self._run_tuning, args=(params,))
+        thread.daemon = True
+        thread.start()
+
+    def stop(self) -> None:
+        """튜닝 중지 요청"""
+        with self._lock:
+            self._state.stop_requested = True
+
+    def _run_tuning(self, params: TuningParams) -> None:
+        """튜닝 실행 (내부)"""
+        import uuid
+
+        self._session_id = str(uuid.uuid4())[:8]
+
+        with self._lock:
+            self._state = TuningState(
+                is_running=True,
+                total_trials=params.trials,
+            )
+
+        # 튜닝 세션 생성
+        self._history_service.create_tuning_session(
+            session_id=self._session_id,
+            total_trials=params.trials,
+            lookback_months=params.lookback_months,
+            optimization_metric=params.optimization_metric,
+        )
+
+        try:
+            all_results = []
+            param_ranges = self._get_param_ranges()
+
+            for lookback in params.lookback_months:
+                start_date = params.end_date - timedelta(days=lookback * 30)
+
+                logger.info(
+                    f"룩백 {lookback}개월 최적화 시작: {start_date} ~ {params.end_date}"
+                )
+
+                def objective(trial: optuna.Trial) -> float:
+                    with self._lock:
+                        if self._state.stop_requested:
+                            raise optuna.TrialPruned()
+
+                    # 파라미터 샘플링 (설정에서 범위 로드)
+                    ma_range = param_ranges["ma_period"]
+                    rsi_range = param_ranges["rsi_period"]
+                    stop_range = param_ranges["stop_loss"]
+                    pos_range = param_ranges["max_positions"]
+
+                    bt_params = BacktestParams(
+                        start_date=start_date,
+                        end_date=params.end_date,
+                        ma_period=trial.suggest_int(
+                            "ma_period",
+                            ma_range["min"],
+                            ma_range["max"],
+                            step=ma_range["step"],
+                        ),
+                        rsi_period=trial.suggest_int(
+                            "rsi_period",
+                            rsi_range["min"],
+                            rsi_range["max"],
+                            step=rsi_range["step"],
+                        ),
+                        stop_loss=trial.suggest_int(
+                            "stop_loss",
+                            stop_range["min"],
+                            stop_range["max"],
+                            step=stop_range["step"],
+                        ),
+                        max_positions=trial.suggest_int(
+                            "max_positions",
+                            pos_range["min"],
+                            pos_range["max"],
+                            step=pos_range["step"],
+                        ),
+                        initial_capital=ConfigLoader.get("backtest", "initial_capital"),
+                        enable_defense=True,
+                    )
+
+                    try:
+                        result = self._backtest_service.run(bt_params)
+                    except Exception as e:
+                        logger.warning(f"Trial {trial.number} 실패: {e}")
+                        raise optuna.TrialPruned()
+
+                    # 결과 저장
+                    trial_data = {
+                        "trial_number": trial.number + 1,
+                        "lookback_months": lookback,
+                        "params": {
+                            "start_date": start_date.isoformat(),
+                            "end_date": params.end_date.isoformat(),
+                            "ma_period": bt_params.ma_period,
+                            "rsi_period": bt_params.rsi_period,
+                            "stop_loss": bt_params.stop_loss,
+                            "max_positions": bt_params.max_positions,
+                        },
+                        "result": {
+                            "cagr": result.cagr,
+                            "sharpe_ratio": result.sharpe_ratio,
+                            "max_drawdown": result.max_drawdown,
+                            "total_return": result.total_return,
+                            "num_trades": result.num_trades,
+                            "win_rate": result.win_rate,
+                            "calmar_ratio": result.calmar_ratio,
+                        },
+                        "timestamp": datetime.now().isoformat(),
+                    }
+
+                    # DB에 trial 저장
+                    self._history_service.save_backtest(
+                        params={
+                            "start_date": start_date.isoformat(),
+                            "end_date": params.end_date.isoformat(),
+                            "ma_period": bt_params.ma_period,
+                            "rsi_period": bt_params.rsi_period,
+                            "stop_loss": bt_params.stop_loss,
+                            "max_positions": bt_params.max_positions,
+                            "initial_capital": bt_params.initial_capital,
+                            "enable_defense": bt_params.enable_defense,
+                        },
+                        result={
+                            "cagr": result.cagr,
+                            "sharpe_ratio": result.sharpe_ratio,
+                            "max_drawdown": result.max_drawdown,
+                            "total_return": result.total_return,
+                            "num_trades": result.num_trades,
+                            "win_rate": result.win_rate,
+                            "volatility": result.volatility,
+                            "calmar_ratio": result.calmar_ratio,
+                        },
+                        run_type="tuning",
+                        tuning_session_id=self._session_id,
+                        lookback_months=lookback,
+                    )
+
+                    with self._lock:
+                        self._state.current_trial += 1
+                        self._state.trials.append(trial_data)
+
+                        if result.sharpe_ratio > self._state.best_sharpe:
+                            self._state.best_sharpe = result.sharpe_ratio
+                            self._state.best_params = trial_data["params"]
+
+                        # Sharpe 기준 정렬
+                        self._state.trials.sort(
+                            key=lambda x: x["result"]["sharpe_ratio"],
+                            reverse=True,
+                        )
+
+                        # 세션 업데이트
+                        self._history_service.update_tuning_session(
+                            session_id=self._session_id,
+                            completed_trials=self._state.current_trial,
+                            best_sharpe=self._state.best_sharpe,
+                            best_params=self._state.best_params,
+                        )
+
+                    # 목적 함수 값 반환
+                    if params.optimization_metric == "cagr":
+                        return result.cagr
+                    elif params.optimization_metric == "calmar":
+                        return result.calmar_ratio
+                    else:
+                        return result.sharpe_ratio
+
+                # Optuna Study 생성
+                study = optuna.create_study(
+                    direction="maximize",
+                    sampler=optuna.samplers.TPESampler(seed=42),
+                )
+
+                trials_per_lookback = params.trials // len(params.lookback_months)
+
+                try:
+                    study.optimize(
+                        objective,
+                        n_trials=trials_per_lookback,
+                        show_progress_bar=False,
+                        catch=(Exception,),
+                    )
+
+                    with self._lock:
+                        self._state.lookback_results[lookback] = {
+                            "best_params": study.best_params,
+                            "best_value": study.best_value,
+                            "n_trials": len(study.trials),
+                        }
+
+                    all_results.append(
+                        {
+                            "lookback": lookback,
+                            "best_params": study.best_params,
+                            "best_value": study.best_value,
+                        }
+                    )
+
+                except Exception as e:
+                    logger.error(f"룩백 {lookback}개월 최적화 실패: {e}")
+
+            # 앙상블 파라미터 계산
+            if all_results:
+                ensemble_params = self._calculate_ensemble(all_results)
+                with self._lock:
+                    self._state.best_params = ensemble_params
+
+                # 최종 세션 업데이트
+                self._history_service.update_tuning_session(
+                    session_id=self._session_id,
+                    ensemble_params=ensemble_params,
+                    lookback_results=self._state.lookback_results,
+                    status="completed",
+                )
+
+        except Exception as e:
+            logger.error(f"튜닝 실패: {e}")
+            self._history_service.update_tuning_session(
+                session_id=self._session_id,
+                status="failed",
+            )
+
+        finally:
+            with self._lock:
+                self._state.is_running = False
+
+        logger.info("Optuna 튜닝 완료")
+
+    def _calculate_ensemble(self, results: List[Dict]) -> Dict:
+        """룩백 기간별 결과를 앙상블하여 최종 파라미터 계산"""
+        if not results:
+            return {}
+
+        weights = self._get_lookback_weights()
+        ensemble = {}
+        param_keys = ["ma_period", "rsi_period", "stop_loss", "max_positions"]
+
+        for key in param_keys:
+            weighted_sum = 0.0
+            total_weight = 0.0
+
+            for r in results:
+                lookback = r["lookback"]
+                w = weights.get(lookback, 0.2)
+                value = r["best_params"].get(key, 0)
+
+                weighted_sum += w * value
+                total_weight += w
+
+            if total_weight > 0:
+                ensemble[key] = int(round(weighted_sum / total_weight))
+
+        ensemble["initial_capital"] = ConfigLoader.get("backtest", "initial_capital")
+        ensemble["enable_defense"] = True
+
+        return ensemble

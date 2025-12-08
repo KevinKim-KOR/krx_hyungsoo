@@ -79,3 +79,42 @@ schedule:
   scan:
     enabled: false
     cron: "0 9 * * 1-5"   # 평일 09:00
+
+# 시장 지수
+market_index:
+  kospi_code: "1001"
+  kosdaq_code: "2001"
+
+# 튜닝 (Optuna)
+tuning:
+  # 룩백 기간 (개월)
+  lookback_months:
+    - 3
+    - 6
+    - 12
+  # 룩백 가중치 (앙상블용)
+  lookback_weights:
+    3: 0.5   # 최근 3개월: 50%
+    6: 0.3   # 6개월: 30%
+    12: 0.2  # 12개월: 20%
+  # 파라미터 탐색 범위
+  param_ranges:
+    ma_period:
+      min: 20
+      max: 100
+      step: 10
+    rsi_period:
+      min: 7
+      max: 21
+      step: 2
+    stop_loss:
+      min: -15
+      max: -5
+      step: 1
+    max_positions:
+      min: 5
+      max: 15
+      step: 5
+  # 기본 설정
+  default_trials: 50
+  optimization_metric: "sharpe"  # sharpe, cagr, calmar
