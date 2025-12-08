@@ -75,23 +75,26 @@ variables:
 
 ## 3. 구현 계획
 
-### Phase 1: 설정 파일 기반 변수 관리 (1주)
-- [ ] `config/variables.yaml` 생성
-- [ ] 튜닝 서비스에서 설정 파일 읽기
-- [ ] 활성화된 변수만 Optuna에 전달
+### Phase 1: 설정 파일 기반 변수 관리 ✅ 완료 (2025-12-08)
+- [x] `config/backtest.yaml`에 `tuning_variables` 섹션 추가
+- [x] `ConfigLoader.get_tuning_variables()` 구현
+- [x] `ConfigLoader.get_all_tuning_variables()` 구현
+- [x] API 엔드포인트 추가:
+  - `GET /api/v1/tuning-variables` - 변수 목록 조회
+  - `PUT /api/v1/tuning-variables/{name}` - 변수 설정 수정
 
-### Phase 2: 백테스트 엔진 변수 연동 (1주)
+### Phase 2: 백테스트 엔진 변수 연동 (다음 단계)
+- [ ] 튜닝 서비스에서 `get_tuning_variables()` 사용
 - [ ] 변수별 계산 로직 모듈화
 - [ ] 변수 → 전략 로직 매핑
 - [ ] 변수 유효성 검증
 
-### Phase 3: UI 변수 관리 (1주)
-- [ ] 변수 목록 조회 API
-- [ ] 변수 활성화/비활성화 API
-- [ ] 변수 범위 수정 API
+### Phase 3: UI 변수 관리 (Phase 2 이후)
 - [ ] UI 변수 설정 패널
+- [ ] 변수 활성화/비활성화 토글
+- [ ] 변수 범위 슬라이더
 
-### Phase 4: 새 변수 추가 워크플로우 (1주)
+### Phase 4: 새 변수 추가 워크플로우 (Phase 3 이후)
 - [ ] 변수 정의 템플릿
 - [ ] 변수 계산 로직 플러그인
 - [ ] A/B 테스트 (변수 추가 전/후 비교)
@@ -221,7 +224,7 @@ def should_enter(self, ticker: str, params: dict) -> bool:
 
 ## 9. 체크리스트
 
-- [ ] Phase 1: 설정 파일 기반 변수 관리
+- [x] Phase 1: 설정 파일 기반 변수 관리 (2025-12-08)
 - [ ] Phase 2: 백테스트 엔진 변수 연동
 - [ ] Phase 3: UI 변수 관리
 - [ ] Phase 4: 새 변수 추가 워크플로우

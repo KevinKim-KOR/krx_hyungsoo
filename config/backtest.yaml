@@ -107,6 +107,74 @@ backtest:
       optimal_performance: 27.05
       current_performance: 27.05
 
+# 튜닝 변수 설정
+tuning_variables:
+  # 기본 변수 (항상 활성화)
+  ma_period:
+    enabled: true
+    range: [20, 200]
+    default: 60
+    step: 10
+    description: "이동평균 기간"
+    category: "trend"
+    
+  rsi_period:
+    enabled: true
+    range: [5, 30]
+    default: 14
+    step: 1
+    description: "RSI 기간"
+    category: "momentum"
+    
+  stop_loss:
+    enabled: true
+    range: [-20, -5]
+    default: -10
+    step: 1
+    description: "손절 비율 (%)"
+    category: "risk"
+  
+  # 확장 변수 (비활성화 상태)
+  volatility_filter:
+    enabled: false
+    range: [10, 50]
+    default: 25
+    step: 5
+    description: "20일 변동성 임계값 - 초과 시 진입 제한"
+    category: "risk"
+    
+  market_breadth:
+    enabled: false
+    range: [30, 70]
+    default: 50
+    step: 5
+    description: "시장 폭 - 상승 종목 비율 기준 (%)"
+    category: "market"
+    
+  rsi_overbought:
+    enabled: false
+    range: [60, 90]
+    default: 70
+    step: 5
+    description: "RSI 과매수 기준"
+    category: "momentum"
+    
+  rsi_oversold:
+    enabled: false
+    range: [10, 40]
+    default: 30
+    step: 5
+    description: "RSI 과매도 기준"
+    category: "momentum"
+    
+  rebalance_threshold:
+    enabled: false
+    range: [0.5, 5.0]
+    default: 1.0
+    step: 0.5
+    description: "리밸런싱 임계값 (%)"
+    category: "execution"
+
 # 백테스트 실행 설정
 execution:
   # 스크립트 경로 (프로젝트 루트 기준)

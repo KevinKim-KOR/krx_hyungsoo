@@ -162,9 +162,7 @@ class TuningRequest(BaseModel):
     @validator("optimization_metric")
     def validate_metric(cls, v):
         if v not in ["sharpe", "cagr", "calmar"]:
-            raise ValueError(
-                "optimization_metric은 sharpe, cagr, calmar 중 하나여야 합니다"
-            )
+            raise ValueError("optimization_metric은 sharpe, cagr, calmar 중 하나여야 합니다")
         return v
 
 
@@ -202,9 +200,7 @@ def run_backtest(request: BacktestRequest):
 
         result = service.run(params)
 
-        logger.info(
-            f"백테스트 완료: CAGR={result.cagr:.2f}%, Sharpe={result.sharpe_ratio:.2f}"
-        )
+        logger.info(f"백테스트 완료: CAGR={result.cagr:.2f}%, Sharpe={result.sharpe_ratio:.2f}")
 
         return BacktestResponse(
             cagr=result.cagr,
@@ -361,7 +357,7 @@ cache_update_state = {
     "total": 0,
     "updated": 0,
     "skipped": 0,  # 이미 최신
-    "failed": 0,   # 실제 오류
+    "failed": 0,  # 실제 오류
     "errors": [],  # 오류 상세
     "message": "",
     "last_update": None,
@@ -486,9 +482,9 @@ def start_cache_update():
 
                     if existing is not None:
                         # 기존 인덱스를 Timestamp로 통일 (sort_index 오류 방지)
-                        if existing.index.dtype == 'object':
+                        if existing.index.dtype == "object":
                             existing.index = pd.to_datetime(existing.index)
-                        
+
                         for col in existing.columns:
                             if col not in new_data.columns:
                                 new_data[col] = 0
@@ -535,6 +531,7 @@ def start_cache_update():
 
 class SaveOptimalParamsRequest(BaseModel):
     """최적 파라미터 저장 요청"""
+
     params: dict
     result: dict
     source: str = "manual"
@@ -545,10 +542,7 @@ class SaveOptimalParamsRequest(BaseModel):
 def save_optimal_params(request: SaveOptimalParamsRequest):
     """최적 파라미터 저장"""
     success = _optimal_params_service.save(
-        params=request.params,
-        result=request.result,
-        source=request.source,
-        notes=request.notes
+        params=request.params, result=request.result, source=request.source, notes=request.notes
     )
     if success:
         return {"status": "success", "message": "최적 파라미터 저장 완료"}
@@ -578,16 +572,91 @@ def activate_optimal_params(entry_id: int):
     raise HTTPException(status_code=404, detail="파라미터를 찾을 수 없음")
 
 
+# ============================================================
+# 튜닝 변수 관리 API
+# ============================================================
+
+
+@app.get("/api/v1/tuning-variables")
+def get_tuning_variables():
+    """모든 튜닝 변수 조회"""
+    from app.services.backtest_service import ConfigLoader
+
+    all_vars = ConfigLoader.get_all_tuning_variables()
+    enabled_vars = ConfigLoader.get_tuning_variables()
+
+    return {
+        "all_variables": all_vars,
+        "enabled_variables": list(enabled_vars.keys()),
+        "enabled_count": len(enabled_vars),
+        "total_count": len(all_vars),
+    }
+
+
+class VariableUpdateRequest(BaseModel):
+    """변수 업데이트 요청"""
+
+    enabled: bool = None
+    range_min: float = None
+    range_max: float = None
+    default: float = None
+    step: float = None
+
+
+@app.put("/api/v1/tuning-variables/{variable_name}")
+def update_tuning_variable(variable_name: str, request: VariableUpdateRequest):
+    """튜닝 변수 설정 업데이트"""
+    import yaml
+
+    config_path = Path(__file__).parent / "config" / "backtest.yaml"
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    if "tuning_variables" not in config:
+        raise HTTPException(status_code=404, detail="tuning_variables 섹션 없음")
+
+    if variable_name not in config["tuning_variables"]:
+        raise HTTPException(status_code=404, detail=f"변수 '{variable_name}' 없음")
+
+    var_config = config["tuning_variables"][variable_name]
+
+    # 업데이트
+    if request.enabled is not None:
+        var_config["enabled"] = request.enabled
+    if request.range_min is not None and request.range_max is not None:
+        var_config["range"] = [request.range_min, request.range_max]
+    if request.default is not None:
+        var_config["default"] = request.default
+    if request.step is not None:
+        var_config["step"] = request.step
+
+    # 저장
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+    # ConfigLoader 캐시 초기화
+    from app.services.backtest_service import ConfigLoader
+
+    ConfigLoader._backtest_config = None
+
+    return {
+        "message": f"변수 '{variable_name}' 업데이트 완료",
+        "variable": var_config,
+    }
+
+
 @app.get("/")
 def root():
     """API 정보"""
     return {
         "name": "Backtest & Tuning API",
-        "version": "2.1.0",
+        "version": "2.2.0",
         "features": {
             "backtest": "실제 백테스트 실행",
             "tuning": "Optuna 기반 파라미터 최적화",
             "optimal_params": "최적 파라미터 영구 저장",
+            "tuning_variables": "튜닝 변수 관리",
         },
     }
 

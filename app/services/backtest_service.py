@@ -46,6 +46,7 @@ class ConfigLoader:
     """설정 파일 로더"""
 
     _config: Optional[Dict] = None
+    _backtest_config: Optional[Dict] = None
 
     @classmethod
     def load(cls) -> Dict:
@@ -56,6 +57,17 @@ class ConfigLoader:
             with open(config_path, "r", encoding="utf-8") as f:
                 cls._config = yaml.safe_load(f)
         return cls._config
+
+    @classmethod
+    def load_backtest_config(cls) -> Dict:
+        """backtest.yaml 로드"""
+        if cls._backtest_config is None:
+            config_path = Path(__file__).parent.parent.parent / "config" / "backtest.yaml"
+            if not config_path.exists():
+                raise FileNotFoundError(f"설정 파일 없음: {config_path}")
+            with open(config_path, "r", encoding="utf-8") as f:
+                cls._backtest_config = yaml.safe_load(f)
+        return cls._backtest_config
 
     @classmethod
     def get(cls, *keys, required: bool = True):
@@ -70,6 +82,31 @@ class ConfigLoader:
                     raise KeyError(f"필수 설정값 누락: {'.'.join(keys)}")
                 return None
         return value
+
+    @classmethod
+    def get_tuning_variables(cls) -> Dict:
+        """활성화된 튜닝 변수 목록 반환"""
+        config = cls.load_backtest_config()
+        variables = config.get("tuning_variables", {})
+
+        enabled_vars = {}
+        for name, var_config in variables.items():
+            if var_config.get("enabled", False):
+                enabled_vars[name] = {
+                    "min": var_config["range"][0],
+                    "max": var_config["range"][1],
+                    "default": var_config.get("default"),
+                    "step": var_config.get("step", 1),
+                    "description": var_config.get("description", ""),
+                    "category": var_config.get("category", "other"),
+                }
+        return enabled_vars
+
+    @classmethod
+    def get_all_tuning_variables(cls) -> Dict:
+        """모든 튜닝 변수 목록 반환 (활성화 여부 포함)"""
+        config = cls.load_backtest_config()
+        return config.get("tuning_variables", {})
 
 
 class BacktestService:
