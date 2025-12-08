@@ -180,16 +180,22 @@ class BacktestService:
         Raises:
             ValueError: 데이터 부족 또는 결과 없음
         """
+        from datetime import timedelta
+
         # 데이터 로드
         universe = self._get_universe()
         if not universe:
             raise ValueError("유니버스가 비어있음")
 
-        price_data = self._load_price_data(universe, params.start_date, params.end_date)
+        # 모멘텀 스코어 계산을 위해 룩백 기간(90일) 추가하여 데이터 로드
+        lookback_buffer = timedelta(days=90)
+        data_start_date = params.start_date - lookback_buffer
+
+        price_data = self._load_price_data(universe, data_start_date, params.end_date)
         if price_data is None or price_data.empty:
             raise ValueError("가격 데이터 로드 실패")
 
-        market_data = self._load_market_index(params.start_date, params.end_date)
+        market_data = self._load_market_index(data_start_date, params.end_date)
 
         # 백테스트 러너 생성
         runner = self._runner_class(
