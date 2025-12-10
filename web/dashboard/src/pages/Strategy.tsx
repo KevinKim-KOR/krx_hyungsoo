@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
@@ -106,6 +106,23 @@ interface TuningVariablesResponse {
   total_count: number
 }
 
+// AI 분석 관련 인터페이스
+interface AnalysisSections {
+  param_summary: string
+  stability: string
+  overfitting: string
+  strategy_interpretation: string
+  risks: string
+  improvements: string
+  conclusion: string
+}
+
+interface AnalysisResult {
+  trial_id: number
+  lookback: string
+  sections: AnalysisSections
+}
+
 export default function Strategy() {
   // 튜닝용 기본 파라미터
   const [backtestParams] = useState<BacktestParams>({
@@ -144,9 +161,15 @@ export default function Strategy() {
     localStorage.setItem('backtest_history', JSON.stringify(history))
   }, [history])
 
-  // AI 분석 모달 상태
+  // AI 분석 모달 상태 (기존 프롬프트 생성용)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
+  
+  // AI 분석 결과 상태 (새로운 Claude API 분석)
+  const [selectedTrialIdx, setSelectedTrialIdx] = useState<number | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
 
   // DB 히스토리 상태
   const [dbHistory, setDbHistory] = useState<any[]>([])
@@ -318,6 +341,84 @@ export default function Strategy() {
       setTuningStatus(prev => ({ ...prev, is_running: false }))
     } catch (err) {
       console.error('튜닝 중지 실패:', err)
+    }
+  }
+
+  // AI 분석 요청
+  const requestAiAnalysis = async (trialIdx: number) => {
+    const trial = tuningStatus.trials[trialIdx]
+    if (!trial) return
+    
+    // 엔진 정합성 검증
+    const volatilityZero = trial.result.volatility === 0
+    const sellTradesZero = trial.result.num_trades > 0 && (trial.result.sell_trades ?? 0) === 0
+    const costsZero = trial.result.num_trades > 0 && (trial.result.total_costs ?? 0) === 0
+    const engineHealthInvalid = trial.engine_health && !trial.engine_health.is_valid
+    const isInvalid = engineHealthInvalid || volatilityZero || sellTradesZero || costsZero
+    
+    if (isInvalid) {
+      setAnalysisError('엔진 비정상 Trial은 분석할 수 없습니다.')
+      return
+    }
+    
+    setSelectedTrialIdx(trialIdx)
+    setAnalysisLoading(true)
+    setAnalysisError(null)
+    setAnalysisResult(null)
+    
+    try {
+      // 페이로드 구성
+      const payload = {
+        lookback: trial.lookback_months ? `${trial.lookback_months}M` : '3M',
+        trial_id: trial.trial_number,
+        strategy: 'Momentum ETF',
+        params: {
+          ma_period: trial.params.ma_period,
+          rsi_period: trial.params.rsi_period,
+          stop_loss: trial.params.stop_loss,
+        },
+        metrics: {
+          train: trial.train ? {
+            sharpe: trial.train.sharpe_ratio,
+            cagr: trial.train.cagr,
+            mdd: -trial.train.max_drawdown,
+          } : { sharpe: 0, cagr: 0, mdd: 0 },
+          val: trial.val ? {
+            sharpe: trial.val.sharpe_ratio,
+            cagr: trial.val.cagr,
+            mdd: -trial.val.max_drawdown,
+          } : { sharpe: 0, cagr: 0, mdd: 0 },
+          test: trial.test ? {
+            sharpe: trial.test.sharpe_ratio,
+            cagr: trial.test.cagr,
+            mdd: -trial.test.max_drawdown,
+          } : {
+            sharpe: trial.result.sharpe_ratio,
+            cagr: trial.result.cagr,
+            mdd: -trial.result.max_drawdown,
+          },
+        },
+        engine_health: trial.engine_health ?? { is_valid: true, warnings: [] },
+      }
+      
+      const res = await fetch(`${API_BASE_URL}/api/v1/tuning/analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || 'AI 분석 실패')
+      }
+      
+      const result: AnalysisResult = await res.json()
+      setAnalysisResult(result)
+      
+    } catch (err) {
+      setAnalysisError(err instanceof Error ? err.message : 'AI 분석 실패')
+    } finally {
+      setAnalysisLoading(false)
     }
   }
 
@@ -659,6 +760,7 @@ export default function Strategy() {
                   <th className="px-3 py-2 text-left">Test</th>
                   <th className="px-3 py-2 text-left">MDD</th>
                   <th className="px-3 py-2 text-left">상태</th>
+                  <th className="px-3 py-2 text-left">분석</th>
                 </tr>
               </thead>
               <tbody>
@@ -728,6 +830,23 @@ export default function Strategy() {
                           </span>
                         )}
                       </td>
+                      <td className="px-3 py-2">
+                        <button
+                          onClick={() => requestAiAnalysis(idx)}
+                          disabled={isInvalid || analysisLoading}
+                          className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
+                            isInvalid 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : selectedTrialIdx === idx && analysisLoading
+                                ? 'bg-purple-100 text-purple-600'
+                                : 'bg-purple-500 text-white hover:bg-purple-600'
+                          }`}
+                          title={isInvalid ? '무효 Trial은 분석 불가' : 'AI 분석 요청'}
+                        >
+                          <Bot className="w-3 h-3" />
+                          {selectedTrialIdx === idx && analysisLoading ? '분석중...' : 'AI'}
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -735,6 +854,98 @@ export default function Strategy() {
             </table>
             <div className="mt-2 text-xs text-gray-500">
               * Train/Val/Test: 70/15/15 비율 분할 | 과적합 기준: Train Sharpe &gt; Test Sharpe × 1.3
+            </div>
+          </div>
+        )}
+        
+        {/* AI 분석 결과 */}
+        {analysisError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertCircle className="w-5 h-5" />
+              <span className="font-bold">AI 분석 오류</span>
+            </div>
+            <p className="mt-2 text-red-600">{analysisError}</p>
+            <button
+              onClick={() => setAnalysisError(null)}
+              className="mt-2 text-sm text-red-500 underline"
+            >
+              닫기
+            </button>
+          </div>
+        )}
+        
+        {analysisResult && (
+          <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-bold text-purple-800 flex items-center gap-2">
+                <Bot className="w-5 h-5" />
+                AI 분석 결과 (Trial #{analysisResult.trial_id}, {analysisResult.lookback})
+              </h4>
+              <button
+                onClick={() => setAnalysisResult(null)}
+                className="text-purple-500 hover:text-purple-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 1. 최적 파라미터 요약 */}
+              <div className="bg-white p-4 rounded shadow-sm">
+                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
+                  📊 최적 파라미터 요약
+                </h5>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.param_summary}</p>
+              </div>
+              
+              {/* 2. 성과 안정성 평가 */}
+              <div className="bg-white p-4 rounded shadow-sm">
+                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
+                  📈 성과 안정성 평가
+                </h5>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.stability}</p>
+              </div>
+              
+              {/* 3. 과적합 여부 판단 */}
+              <div className="bg-white p-4 rounded shadow-sm">
+                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
+                  🔍 과적합 여부 판단
+                </h5>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.overfitting}</p>
+              </div>
+              
+              {/* 4. 전략적 해석 */}
+              <div className="bg-white p-4 rounded shadow-sm">
+                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
+                  🎯 전략적 해석
+                </h5>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.strategy_interpretation}</p>
+              </div>
+              
+              {/* 5. 리스크 요인 분석 */}
+              <div className="bg-white p-4 rounded shadow-sm">
+                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
+                  ⚠️ 리스크 요인 분석
+                </h5>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.risks}</p>
+              </div>
+              
+              {/* 6. 개선 제안 */}
+              <div className="bg-white p-4 rounded shadow-sm">
+                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
+                  💡 개선 제안
+                </h5>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.improvements}</p>
+              </div>
+              
+              {/* 7. 최종 결론 - 전체 너비 */}
+              <div className="bg-white p-4 rounded shadow-sm md:col-span-2 border-2 border-purple-200">
+                <h5 className="font-bold text-purple-800 mb-2 flex items-center gap-1">
+                  ✅ 최종 결론
+                </h5>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.conclusion}</p>
+              </div>
             </div>
           </div>
         )}

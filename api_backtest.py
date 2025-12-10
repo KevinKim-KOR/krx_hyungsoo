@@ -377,6 +377,77 @@ def get_tuning_status():
 
 
 # ============================================
+# AI 분석 API
+# ============================================
+
+class TuningTrialPayload(BaseModel):
+    """AI 분석용 튜닝 Trial 페이로드"""
+    lookback: str  # "3M", "6M", "12M"
+    trial_id: int
+    strategy: str = "Momentum ETF"
+    params: dict  # ma_period, rsi_period, stop_loss
+    metrics: dict  # train/val/test → sharpe, cagr, mdd
+    engine_health: dict  # is_valid, warnings
+
+
+class AnalysisResponse(BaseModel):
+    """AI 분석 응답"""
+    trial_id: int
+    lookback: str
+    sections: dict  # 7개 섹션
+
+
+@app.post("/api/v1/tuning/analysis", response_model=AnalysisResponse)
+def analyze_tuning_trial(payload: TuningTrialPayload):
+    """
+    튜닝 Trial AI 분석
+    
+    선택된 Trial 데이터를 Claude API로 분석하여 7개 섹션 리포트 반환
+    """
+    try:
+        from app.services.tuning_analysis_service import (
+            TuningTrialPayload as ServicePayload,
+            get_analysis_service,
+        )
+        
+        # 엔진 헬스체크
+        if not payload.engine_health.get("is_valid", True):
+            warnings = payload.engine_health.get("warnings", [])
+            raise HTTPException(
+                status_code=400,
+                detail=f"엔진 비정상: {', '.join(warnings)}"
+            )
+        
+        # 서비스 페이로드 생성
+        service_payload = ServicePayload(
+            lookback=payload.lookback,
+            trial_id=payload.trial_id,
+            strategy=payload.strategy,
+            params=payload.params,
+            metrics=payload.metrics,
+            engine_health=payload.engine_health,
+        )
+        
+        # AI 분석 실행
+        service = get_analysis_service()
+        result = service.analyze(service_payload)
+        
+        return AnalysisResponse(
+            trial_id=result["trial_id"],
+            lookback=result["lookback"],
+            sections=result["sections"],
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"AI 분석 오류: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"AI 분석 실패: {str(e)}")
+
+
+# ============================================
 # 히스토리 API
 # ============================================
 _history_service = None
