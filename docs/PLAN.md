@@ -98,9 +98,11 @@
 ### Phase 0: 엔진 정합성 검증 (즉시)
 | 항목 | 설명 | 상태 |
 |------|------|------|
-| 튜닝 결과 engine_health 검증 | 변동성0, 매도0, 비용0 등 이상 탐지 | ✅ 완료 |
+| 백테스트 엔진 engine_health | 변동성0, 매도0, 비용0 등 이상 탐지 | ✅ 완료 |
+| 튜닝 경로 정합성 통합 | 튜닝→요약→UI 경로에 engine_health 전달 | ✅ 완료 |
 | Train/Val/Test 분할 검증 | 과적합 경고 시스템 | ✅ 완료 |
 | DB 히스토리 저장 | Train/Val/Test + engine_health 저장 | ✅ 완료 |
+| UI 무효 표시 | volatility=0, sell=0, costs=0 시 무효 표시 | ✅ 완료 |
 
 ### Phase 1: 장기 백테스트 검증
 | 항목 | 설명 | 상태 |
