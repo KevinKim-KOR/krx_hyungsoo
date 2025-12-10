@@ -221,6 +221,111 @@ def run_backtest(request: BacktestRequest):
         raise HTTPException(status_code=500, detail=f"백테스트 실행 오류: {e}")
 
 
+class SplitMetricsResponse(BaseModel):
+    """분할 구간 성과 응답"""
+    cagr: float
+    sharpe_ratio: float
+    max_drawdown: float
+    num_trades: int
+
+
+class EngineHealthResponse(BaseModel):
+    """엔진 헬스체크 응답"""
+    is_valid: bool
+    warnings: List[str]
+
+
+class ExtendedBacktestResponse(BaseModel):
+    """확장된 백테스트 응답 (Train/Val/Test + engine_health)"""
+    # 전체 성과
+    cagr: float
+    sharpe_ratio: float
+    max_drawdown: float
+    total_return: float
+    num_trades: int
+    win_rate: float
+    volatility: float
+    calmar_ratio: float
+    # Train/Val/Test
+    train: SplitMetricsResponse | None = None
+    val: SplitMetricsResponse | None = None
+    test: SplitMetricsResponse | None = None
+    # 엔진 헬스체크
+    engine_health: EngineHealthResponse | None = None
+    # 일별 로그 (최근 N개)
+    daily_logs: list | None = None
+    # 경고
+    warnings: List[str] | None = None
+
+
+@app.post("/api/v1/backtest/run-split", response_model=ExtendedBacktestResponse)
+def run_backtest_with_split(request: BacktestRequest):
+    """Train/Val/Test 분할 백테스트 실행"""
+    try:
+        service = get_backtest_service()
+
+        params = BacktestParamsInternal(
+            start_date=datetime.strptime(request.start_date, "%Y-%m-%d").date(),
+            end_date=datetime.strptime(request.end_date, "%Y-%m-%d").date(),
+            ma_period=request.ma_period,
+            rsi_period=request.rsi_period,
+            stop_loss=request.stop_loss,
+            initial_capital=request.initial_capital,
+            max_positions=request.max_positions,
+            enable_defense=request.enable_defense,
+        )
+
+        result = service.run_with_split(params)
+
+        logger.info(
+            f"분할 백테스트 완료: CAGR={result.metrics.cagr:.2f}%, "
+            f"Train Sharpe={result.train_metrics.sharpe_ratio if result.train_metrics else 'N/A'}, "
+            f"Test Sharpe={result.test_metrics.sharpe_ratio if result.test_metrics else 'N/A'}"
+        )
+
+        return ExtendedBacktestResponse(
+            cagr=result.metrics.cagr,
+            sharpe_ratio=result.metrics.sharpe_ratio,
+            max_drawdown=result.metrics.max_drawdown,
+            total_return=result.metrics.total_return,
+            num_trades=result.metrics.num_trades,
+            win_rate=result.metrics.win_rate,
+            volatility=result.metrics.volatility,
+            calmar_ratio=result.metrics.calmar_ratio,
+            train=SplitMetricsResponse(
+                cagr=result.train_metrics.cagr,
+                sharpe_ratio=result.train_metrics.sharpe_ratio,
+                max_drawdown=result.train_metrics.max_drawdown,
+                num_trades=result.train_metrics.num_trades,
+            ) if result.train_metrics else None,
+            val=SplitMetricsResponse(
+                cagr=result.val_metrics.cagr,
+                sharpe_ratio=result.val_metrics.sharpe_ratio,
+                max_drawdown=result.val_metrics.max_drawdown,
+                num_trades=result.val_metrics.num_trades,
+            ) if result.val_metrics else None,
+            test=SplitMetricsResponse(
+                cagr=result.test_metrics.cagr,
+                sharpe_ratio=result.test_metrics.sharpe_ratio,
+                max_drawdown=result.test_metrics.max_drawdown,
+                num_trades=result.test_metrics.num_trades,
+            ) if result.test_metrics else None,
+            engine_health=EngineHealthResponse(
+                is_valid=result.engine_health.get("is_valid", False),
+                warnings=result.engine_health.get("warnings", []),
+            ) if result.engine_health else None,
+            daily_logs=result.daily_logs,
+            warnings=result.warnings,
+        )
+
+    except ValueError as e:
+        logger.error(f"분할 백테스트 실패: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"분할 백테스트 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"분할 백테스트 실행 오류: {e}")
+
+
 @app.post("/api/v1/tuning/start")
 def start_tuning(request: TuningRequest):
     """튜닝 시작"""
@@ -674,4 +779,5 @@ if __name__ == "__main__":
     print("상태: GET /api/v1/tuning/status")
     print("=" * 60)
 
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # reload=True: 코드 수정 시 자동 재시작 (개발 모드)
+    uvicorn.run("api_backtest:app", host="0.0.0.0", port=8001, reload=True)

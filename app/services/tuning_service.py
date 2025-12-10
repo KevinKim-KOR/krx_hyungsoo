@@ -208,12 +208,14 @@ class TuningService:
                     )
 
                     try:
-                        result = self._backtest_service.run(bt_params)
+                        # Train/Val/Test 분할 백테스트 실행
+                        ext_result = self._backtest_service.run_with_split(bt_params)
+                        result = ext_result.metrics
                     except Exception as e:
                         logger.warning(f"Trial {trial.number} 실패: {e}")
                         raise optuna.TrialPruned()
 
-                    # 결과 저장
+                    # 결과 저장 (Train/Val/Test 포함)
                     trial_data = {
                         "trial_number": trial.number + 1,
                         "lookback_months": lookback,
@@ -234,6 +236,28 @@ class TuningService:
                             "win_rate": result.win_rate,
                             "calmar_ratio": result.calmar_ratio,
                         },
+                        # Train/Val/Test 분할 성과
+                        "train": {
+                            "cagr": ext_result.train_metrics.cagr,
+                            "sharpe_ratio": ext_result.train_metrics.sharpe_ratio,
+                            "max_drawdown": ext_result.train_metrics.max_drawdown,
+                            "num_trades": ext_result.train_metrics.num_trades,
+                        } if ext_result.train_metrics else None,
+                        "val": {
+                            "cagr": ext_result.val_metrics.cagr,
+                            "sharpe_ratio": ext_result.val_metrics.sharpe_ratio,
+                            "max_drawdown": ext_result.val_metrics.max_drawdown,
+                            "num_trades": ext_result.val_metrics.num_trades,
+                        } if ext_result.val_metrics else None,
+                        "test": {
+                            "cagr": ext_result.test_metrics.cagr,
+                            "sharpe_ratio": ext_result.test_metrics.sharpe_ratio,
+                            "max_drawdown": ext_result.test_metrics.max_drawdown,
+                            "num_trades": ext_result.test_metrics.num_trades,
+                        } if ext_result.test_metrics else None,
+                        # 엔진 헬스체크
+                        "engine_health": ext_result.engine_health,
+                        "warnings": ext_result.warnings,
                         "timestamp": datetime.now().isoformat(),
                     }
 

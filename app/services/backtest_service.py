@@ -6,7 +6,7 @@ app/services/backtest_service.py
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import yaml
 from pathlib import Path
@@ -40,6 +40,37 @@ class BacktestResult:
     win_rate: float
     volatility: float
     calmar_ratio: float
+
+
+@dataclass
+class SplitMetrics:
+    """Train/Val/Test 분할 성과"""
+    cagr: float
+    sharpe_ratio: float
+    max_drawdown: float
+    num_trades: int
+
+
+@dataclass
+class ExtendedBacktestResult:
+    """확장된 백테스트 결과 (Train/Val/Test + engine_health + daily_logs)"""
+
+    # 전체 성과
+    metrics: BacktestResult
+    
+    # Train/Val/Test 분할 성과
+    train_metrics: Optional[SplitMetrics] = None
+    val_metrics: Optional[SplitMetrics] = None
+    test_metrics: Optional[SplitMetrics] = None
+    
+    # 엔진 헬스체크
+    engine_health: Optional[Dict] = None
+    
+    # 일별 비중 로그 (최근 N개만)
+    daily_logs: Optional[List[Dict]] = None
+    
+    # 경고 메시지
+    warnings: Optional[List[str]] = None
 
 
 class ConfigLoader:
@@ -204,18 +235,20 @@ class BacktestService:
             enable_defense=params.enable_defense,
         )
 
-        # 목표 비중 계산 (동일 가중)
-        top_n = min(params.max_positions, len(universe))
-        weight = 1.0 / top_n
-        target_weights = {code: weight for code in universe[:top_n]}
+        # 유니버스 전체를 target_weights로 전달 (runner가 모멘텀 스코어로 Top N 선정)
+        # 비중은 runner 내부에서 동적으로 계산됨
+        target_weights = {code: 1.0 / params.max_positions for code in universe}
 
-        # 백테스트 실행
+        # 백테스트 실행 (모든 튜닝 파라미터 전달)
         result = runner.run(
             price_data=price_data,
             target_weights=target_weights,
             start_date=params.start_date,
             end_date=params.end_date,
             market_index_data=market_data,
+            ma_period=params.ma_period,
+            rsi_period=params.rsi_period,
+            stop_loss=params.stop_loss / 100.0,  # % → 소수 변환 (예: -10 → -0.10)
         )
 
         metrics = result.get("metrics", {})
@@ -272,3 +305,147 @@ class BacktestService:
             )
 
         return result_obj
+
+    def run_with_split(
+        self, 
+        params: BacktestParams,
+        train_ratio: float = 0.70,
+        val_ratio: float = 0.15,
+        test_ratio: float = 0.15,
+        daily_log_limit: int = 30,
+    ) -> ExtendedBacktestResult:
+        """
+        Train/Val/Test 분할 백테스트 실행
+        
+        Args:
+            params: 백테스트 파라미터
+            train_ratio: Train 비율 (기본 70%)
+            val_ratio: Validation 비율 (기본 15%)
+            test_ratio: Test 비율 (기본 15%)
+            daily_log_limit: 반환할 daily_log 개수 (기본 30)
+        
+        Returns:
+            ExtendedBacktestResult (전체 + Train/Val/Test + engine_health + daily_logs)
+        """
+        from datetime import timedelta
+        
+        # 데이터 로드
+        universe = self._get_universe()
+        if not universe:
+            raise ValueError("유니버스가 비어있음")
+        
+        lookback_buffer = timedelta(days=90)
+        data_start_date = params.start_date - lookback_buffer
+        
+        price_data = self._load_price_data(universe, data_start_date, params.end_date)
+        if price_data is None or price_data.empty:
+            raise ValueError("가격 데이터 로드 실패")
+        
+        market_data = self._load_market_index(data_start_date, params.end_date)
+        
+        # 기간 분할 계산
+        total_days = (params.end_date - params.start_date).days
+        train_days = int(total_days * train_ratio)
+        val_days = int(total_days * val_ratio)
+        
+        train_end = params.start_date + timedelta(days=train_days)
+        val_end = train_end + timedelta(days=val_days)
+        
+        periods = {
+            "train": (params.start_date, train_end),
+            "val": (train_end + timedelta(days=1), val_end),
+            "test": (val_end + timedelta(days=1), params.end_date),
+        }
+        
+        logger.info(f"기간 분할: Train {periods['train']}, Val {periods['val']}, Test {periods['test']}")
+        
+        # 러너 생성
+        runner = self._runner_class(
+            initial_capital=params.initial_capital,
+            max_positions=params.max_positions,
+            enable_defense=params.enable_defense,
+        )
+        
+        target_weights = {code: 1.0 / params.max_positions for code in universe}
+        
+        # 전체 기간 백테스트
+        full_result = runner.run(
+            price_data=price_data,
+            target_weights=target_weights,
+            start_date=params.start_date,
+            end_date=params.end_date,
+            market_index_data=market_data,
+            ma_period=params.ma_period,
+            rsi_period=params.rsi_period,
+            stop_loss=params.stop_loss / 100.0,
+        )
+        
+        full_metrics = full_result.get("metrics", {})
+        engine_health = full_metrics.get("engine_health", {})
+        daily_logs = full_result.get("daily_logs", [])
+        
+        # 전체 성과 객체
+        overall = BacktestResult(
+            cagr=full_metrics.get("annual_return", 0),
+            sharpe_ratio=full_metrics.get("sharpe_ratio", 0),
+            max_drawdown=full_metrics.get("max_drawdown", 0),
+            total_return=full_metrics.get("total_return", 0),
+            num_trades=len(full_result.get("trades", [])),
+            win_rate=full_metrics.get("win_rate", 0),
+            volatility=full_metrics.get("volatility", 0),
+            calmar_ratio=full_metrics.get("calmar_ratio", 0),
+        )
+        
+        # 각 구간별 백테스트
+        split_results = {}
+        for split_name, (split_start, split_end) in periods.items():
+            if split_start >= split_end:
+                continue
+            try:
+                split_runner = self._runner_class(
+                    initial_capital=params.initial_capital,
+                    max_positions=params.max_positions,
+                    enable_defense=params.enable_defense,
+                )
+                split_result = split_runner.run(
+                    price_data=price_data,
+                    target_weights=target_weights,
+                    start_date=split_start,
+                    end_date=split_end,
+                    market_index_data=market_data,
+                    ma_period=params.ma_period,
+                    rsi_period=params.rsi_period,
+                    stop_loss=params.stop_loss / 100.0,
+                )
+                split_metrics = split_result.get("metrics", {})
+                split_results[split_name] = SplitMetrics(
+                    cagr=split_metrics.get("annual_return", 0),
+                    sharpe_ratio=split_metrics.get("sharpe_ratio", 0),
+                    max_drawdown=split_metrics.get("max_drawdown", 0),
+                    num_trades=len(split_result.get("trades", [])),
+                )
+            except Exception as e:
+                logger.warning(f"{split_name} 구간 백테스트 실패: {e}")
+                split_results[split_name] = None
+        
+        # 경고 생성
+        warnings = engine_health.get("warnings", []) if engine_health else []
+        
+        # 과적합 경고 추가
+        if split_results.get("train") and split_results.get("test"):
+            train_sharpe = split_results["train"].sharpe_ratio
+            test_sharpe = split_results["test"].sharpe_ratio
+            if train_sharpe > 0 and test_sharpe > 0:
+                degradation = (train_sharpe - test_sharpe) / train_sharpe
+                if degradation > 0.3:  # 30% 이상 성능 저하
+                    warnings.append(f"overfit_warning: Train→Test Sharpe 저하 {degradation*100:.1f}%")
+        
+        return ExtendedBacktestResult(
+            metrics=overall,
+            train_metrics=split_results.get("train"),
+            val_metrics=split_results.get("val"),
+            test_metrics=split_results.get("test"),
+            engine_health=engine_health,
+            daily_logs=daily_logs[-daily_log_limit:] if daily_logs else None,
+            warnings=warnings if warnings else None,
+        )

@@ -41,11 +41,30 @@ interface BacktestResult {
   win_rate: number
 }
 
+interface SplitMetrics {
+  cagr: number
+  sharpe_ratio: number
+  max_drawdown: number
+  num_trades: number
+}
+
+interface EngineHealth {
+  is_valid: boolean
+  warnings: string[]
+}
+
 interface TuningTrial {
   trial_number: number
   lookback_months?: number
   params: BacktestParams
   result: BacktestResult
+  // Train/Val/Test 분할 성과
+  train?: SplitMetrics
+  val?: SplitMetrics
+  test?: SplitMetrics
+  // 엔진 헬스체크
+  engine_health?: EngineHealth
+  warnings?: string[]
   timestamp: string
 }
 
@@ -629,26 +648,75 @@ export default function Strategy() {
                   <th className="px-3 py-2 text-left">MA</th>
                   <th className="px-3 py-2 text-left">RSI</th>
                   <th className="px-3 py-2 text-left">손절</th>
-                  <th className="px-3 py-2 text-left">Sharpe</th>
-                  <th className="px-3 py-2 text-left">CAGR</th>
+                  <th className="px-3 py-2 text-left">Train</th>
+                  <th className="px-3 py-2 text-left">Val</th>
+                  <th className="px-3 py-2 text-left">Test</th>
                   <th className="px-3 py-2 text-left">MDD</th>
+                  <th className="px-3 py-2 text-left">상태</th>
                 </tr>
               </thead>
               <tbody>
-                {tuningStatus.trials.slice(0, 10).map((trial, idx) => (
-                  <tr key={idx} className={idx === 0 ? 'bg-green-50' : ''}>
-                    <td className="px-3 py-2">{trial.trial_number}</td>
-                    <td className="px-3 py-2">{trial.lookback_months ? `${trial.lookback_months}개월` : '-'}</td>
-                    <td className="px-3 py-2">{trial.params.ma_period}</td>
-                    <td className="px-3 py-2">{trial.params.rsi_period}</td>
-                    <td className="px-3 py-2">{trial.params.stop_loss}%</td>
-                    <td className="px-3 py-2 font-bold">{trial.result.sharpe_ratio.toFixed(2)}</td>
-                    <td className="px-3 py-2">{formatPercent(trial.result.cagr)}</td>
-                    <td className="px-3 py-2 text-red-600">{formatMDD(trial.result.max_drawdown)}</td>
-                  </tr>
-                ))}
+                {tuningStatus.trials.slice(0, 10).map((trial, idx) => {
+                  // 과적합 판단: Train Sharpe > Test Sharpe * 1.3
+                  const trainSharpe = trial.train?.sharpe_ratio ?? trial.result.sharpe_ratio
+                  const testSharpe = trial.test?.sharpe_ratio ?? trial.result.sharpe_ratio
+                  const isOverfit = trainSharpe > 0 && testSharpe > 0 && trainSharpe > testSharpe * 1.3
+                  const hasWarnings = trial.warnings && trial.warnings.length > 0
+                  const isInvalid = trial.engine_health && !trial.engine_health.is_valid
+                  
+                  // 행 색상 결정
+                  let rowClass = ''
+                  if (idx === 0) rowClass = 'bg-green-50'
+                  if (isOverfit) rowClass = 'bg-yellow-50'
+                  if (isInvalid) rowClass = 'bg-red-50'
+                  
+                  return (
+                    <tr key={idx} className={rowClass}>
+                      <td className="px-3 py-2">{trial.trial_number}</td>
+                      <td className="px-3 py-2">{trial.lookback_months ? `${trial.lookback_months}개월` : '-'}</td>
+                      <td className="px-3 py-2">{trial.params.ma_period}</td>
+                      <td className="px-3 py-2">{trial.params.rsi_period}</td>
+                      <td className="px-3 py-2">{trial.params.stop_loss}%</td>
+                      <td className="px-3 py-2 text-blue-600">
+                        {trial.train?.sharpe_ratio?.toFixed(2) ?? '-'}
+                      </td>
+                      <td className="px-3 py-2 text-purple-600">
+                        {trial.val?.sharpe_ratio?.toFixed(2) ?? '-'}
+                      </td>
+                      <td className="px-3 py-2 font-bold text-green-600">
+                        {trial.test?.sharpe_ratio?.toFixed(2) ?? trial.result.sharpe_ratio.toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2 text-red-600">{formatMDD(trial.result.max_drawdown)}</td>
+                      <td className="px-3 py-2">
+                        {isInvalid && (
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs" title={trial.engine_health?.warnings?.join(', ')}>
+                            ❌ 무효
+                          </span>
+                        )}
+                        {isOverfit && !isInvalid && (
+                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs" title="Train > Test * 1.3">
+                            ⚠️ 과적합
+                          </span>
+                        )}
+                        {!isOverfit && !isInvalid && hasWarnings && (
+                          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs" title={trial.warnings?.join(', ')}>
+                            ⚠️ 경고
+                          </span>
+                        )}
+                        {!isOverfit && !isInvalid && !hasWarnings && (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                            ✅ 정상
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
+            <div className="mt-2 text-xs text-gray-500">
+              * Train/Val/Test: 70/15/15 비율 분할 | 과적합 기준: Train Sharpe &gt; Test Sharpe × 1.3
+            </div>
           </div>
         )}
         
