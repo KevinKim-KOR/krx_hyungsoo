@@ -261,7 +261,7 @@ class TuningService:
                         "timestamp": datetime.now().isoformat(),
                     }
 
-                    # DB에 trial 저장
+                    # DB에 trial 저장 (Train/Val/Test 포함)
                     self._history_service.save_backtest(
                         params={
                             "start_date": start_date.isoformat(),
@@ -286,6 +286,11 @@ class TuningService:
                         run_type="tuning",
                         tuning_session_id=self._session_id,
                         lookback_months=lookback,
+                        train_metrics=trial_data.get("train"),
+                        val_metrics=trial_data.get("val"),
+                        test_metrics=trial_data.get("test"),
+                        engine_health=trial_data.get("engine_health"),
+                        warnings=trial_data.get("warnings"),
                     )
 
                     with self._lock:

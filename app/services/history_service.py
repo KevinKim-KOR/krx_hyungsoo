@@ -97,7 +97,15 @@ class HistoryService:
                     num_trades INTEGER NOT NULL,
                     win_rate REAL NOT NULL,
                     volatility REAL NOT NULL,
-                    calmar_ratio REAL NOT NULL
+                    calmar_ratio REAL NOT NULL,
+                    -- Train/Val/Test 분할 성과 (JSON)
+                    train_metrics_json TEXT,
+                    val_metrics_json TEXT,
+                    test_metrics_json TEXT,
+                    -- 엔진 헬스체크 (JSON)
+                    engine_health_json TEXT,
+                    -- 경고 메시지 (JSON)
+                    warnings_json TEXT
                 )
             """
             )
@@ -141,6 +149,22 @@ class HistoryService:
             """
             )
 
+            # 기존 테이블에 새 컬럼 추가 (마이그레이션)
+            new_columns = [
+                ("train_metrics_json", "TEXT"),
+                ("val_metrics_json", "TEXT"),
+                ("test_metrics_json", "TEXT"),
+                ("engine_health_json", "TEXT"),
+                ("warnings_json", "TEXT"),
+            ]
+            for col_name, col_type in new_columns:
+                try:
+                    cursor.execute(
+                        f"ALTER TABLE backtest_history ADD COLUMN {col_name} {col_type}"
+                    )
+                except sqlite3.OperationalError:
+                    pass  # 컬럼이 이미 존재함
+
             conn.commit()
 
         logger.info(f"히스토리 DB 초기화 완료: {self._db_path}")
@@ -152,6 +176,11 @@ class HistoryService:
         run_type: str = "single",
         tuning_session_id: Optional[str] = None,
         lookback_months: Optional[int] = None,
+        train_metrics: Optional[Dict] = None,
+        val_metrics: Optional[Dict] = None,
+        test_metrics: Optional[Dict] = None,
+        engine_health: Optional[Dict] = None,
+        warnings: Optional[List[str]] = None,
     ) -> int:
         """
         백테스트 결과 저장
@@ -162,6 +191,11 @@ class HistoryService:
             run_type: 실행 유형 ('single' or 'tuning')
             tuning_session_id: 튜닝 세션 ID (튜닝 시)
             lookback_months: 룩백 기간 (튜닝 시)
+            train_metrics: Train 구간 성과 (선택)
+            val_metrics: Validation 구간 성과 (선택)
+            test_metrics: Test 구간 성과 (선택)
+            engine_health: 엔진 헬스체크 결과 (선택)
+            warnings: 경고 메시지 목록 (선택)
 
         Returns:
             저장된 레코드 ID
@@ -179,8 +213,10 @@ class HistoryService:
                     start_date, end_date, ma_period, rsi_period,
                     stop_loss, max_positions, initial_capital, enable_defense,
                     cagr, sharpe_ratio, max_drawdown, total_return,
-                    num_trades, win_rate, volatility, calmar_ratio
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    num_trades, win_rate, volatility, calmar_ratio,
+                    train_metrics_json, val_metrics_json, test_metrics_json,
+                    engine_health_json, warnings_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     run_type,
@@ -202,6 +238,11 @@ class HistoryService:
                     result["win_rate"],
                     result["volatility"],
                     result["calmar_ratio"],
+                    json.dumps(train_metrics) if train_metrics else None,
+                    json.dumps(val_metrics) if val_metrics else None,
+                    json.dumps(test_metrics) if test_metrics else None,
+                    json.dumps(engine_health) if engine_health else None,
+                    json.dumps(warnings) if warnings else None,
                 ),
             )
 
