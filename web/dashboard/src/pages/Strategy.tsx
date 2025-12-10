@@ -3,8 +3,6 @@ import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive,
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
-import { generateBacktestPrompt } from '../utils/promptGenerator'
-import type { BacktestResult as BacktestResultType } from '../types'
 
 // API URL (백테스트/튜닝은 PC의 8001 포트 사용)
 const API_BASE_URL = API_URLS.strategy
@@ -422,6 +420,59 @@ export default function Strategy() {
     }
   }
 
+  // DB 히스토리 항목에서 AI 분석 요청
+  const requestAiAnalysisFromHistory = async (item: any) => {
+    setAnalysisLoading(true)
+    setAnalysisError(null)
+    setAnalysisResult(null)
+    setSelectedTrialIdx(null)
+    
+    try {
+      // 페이로드 구성 (DB 히스토리 항목 기반)
+      const payload = {
+        lookback: '3M',  // DB에서 룩백 정보가 없으면 기본값
+        trial_id: item.id,
+        strategy: 'Momentum ETF',
+        params: {
+          ma_period: item.ma_period,
+          rsi_period: item.rsi_period,
+          stop_loss: item.stop_loss,
+        },
+        metrics: {
+          train: item.train_metrics ? JSON.parse(item.train_metrics) : { sharpe: 0, cagr: 0, mdd: 0 },
+          val: item.val_metrics ? JSON.parse(item.val_metrics) : { sharpe: 0, cagr: 0, mdd: 0 },
+          test: item.test_metrics ? JSON.parse(item.test_metrics) : {
+            sharpe: item.sharpe_ratio ?? 0,
+            cagr: item.cagr ?? 0,
+            mdd: -(item.max_drawdown ?? 0),
+          },
+        },
+        engine_health: item.engine_health 
+          ? (typeof item.engine_health === 'string' ? JSON.parse(item.engine_health) : item.engine_health)
+          : { is_valid: true, warnings: [] },
+      }
+      
+      const res = await fetch(`${API_BASE_URL}/api/v1/tuning/analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || 'AI 분석 실패')
+      }
+      
+      const result: AnalysisResult = await res.json()
+      setAnalysisResult(result)
+      
+    } catch (err) {
+      setAnalysisError(err instanceof Error ? err.message : 'AI 분석 실패')
+    } finally {
+      setAnalysisLoading(false)
+    }
+  }
+
   // 튜닝 상태 폴링
   useEffect(() => {
     if (!tuningStatus.is_running) return
@@ -691,34 +742,19 @@ export default function Strategy() {
                 최적 파라미터 저장
               </button>
               
-              {/* 최적 결과 AI 분석 버튼 */}
+              {/* 최적 결과 AI 분석 버튼 - 첫 번째 Trial(최적) 분석 */}
               {tuningStatus.trials.length > 0 && (
                 <button
-                  onClick={() => {
-                    const bestTrial = tuningStatus.trials[0]
-                    const promptData: BacktestResultType = {
-                      strategy: 'Momentum ETF (Best Tuning Result)',
-                      start_date: bestTrial.params.start_date,
-                      end_date: bestTrial.params.end_date,
-                      total_return: bestTrial.result.total_return ?? 0,
-                      cagr: bestTrial.result.cagr,
-                      sharpe_ratio: bestTrial.result.sharpe_ratio,
-                      max_drawdown: bestTrial.result.max_drawdown,
-                      calmar_ratio: bestTrial.result.max_drawdown !== 0 
-                        ? bestTrial.result.cagr / bestTrial.result.max_drawdown 
-                        : 0,
-                      volatility: 0,
-                      trade_win_rate: bestTrial.result.win_rate,
-                      total_trades: bestTrial.result.num_trades,
-                      years: 1,
-                    }
-                    setAiPrompt(generateBacktestPrompt(promptData))
-                    setAiModalOpen(true)
-                  }}
-                  className="bg-indigo-600 text-white rounded px-6 py-2 flex items-center gap-2 hover:bg-indigo-700 mt-6"
+                  onClick={() => requestAiAnalysis(0)}
+                  disabled={analysisLoading}
+                  className={`rounded px-6 py-2 flex items-center gap-2 mt-6 ${
+                    analysisLoading 
+                      ? 'bg-purple-300 text-white cursor-wait'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
                 >
                   <Bot className="w-4 h-4" />
-                  최적 결과 AI 분석
+                  {analysisLoading ? 'AI 분석 중...' : '최적 결과 AI 분석'}
                 </button>
               )}
             </>
@@ -1089,6 +1125,7 @@ export default function Strategy() {
                     <th className="px-3 py-2 text-left">CAGR</th>
                     <th className="px-3 py-2 text-left">MDD</th>
                     <th className="px-3 py-2 text-left">저장일</th>
+                    <th className="px-3 py-2 text-left">분석</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1111,6 +1148,17 @@ export default function Strategy() {
                       <td className="px-3 py-2 text-red-600">{item.max_drawdown ? formatMDD(item.max_drawdown) : '-'}</td>
                       <td className="px-3 py-2 text-gray-500 text-xs">
                         {new Date(item.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          onClick={() => requestAiAnalysisFromHistory(item)}
+                          disabled={analysisLoading}
+                          className="px-2 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
+                          title="AI 분석 요청"
+                        >
+                          <Bot className="w-3 h-3" />
+                          AI
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1167,13 +1215,31 @@ export default function Strategy() {
                     </div>
                   </div>
                   {session.ensemble_params && Object.keys(session.ensemble_params).length > 0 && (
-                    <div className="mt-3 p-2 bg-blue-50 rounded text-sm">
-                      <span className="font-bold">앙상블 파라미터:</span>
-                      <span className="ml-2">
-                        MA: {session.ensemble_params.ma_period}, 
-                        RSI: {session.ensemble_params.rsi_period}, 
-                        손절: {session.ensemble_params.stop_loss}%
-                      </span>
+                    <div className="mt-3 p-2 bg-blue-50 rounded text-sm flex items-center justify-between">
+                      <div>
+                        <span className="font-bold">앙상블 파라미터:</span>
+                        <span className="ml-2">
+                          MA: {session.ensemble_params.ma_period}, 
+                          RSI: {session.ensemble_params.rsi_period}, 
+                          손절: {session.ensemble_params.stop_loss}%
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => requestAiAnalysisFromHistory({
+                          id: session.id,
+                          ma_period: session.ensemble_params.ma_period,
+                          rsi_period: session.ensemble_params.rsi_period,
+                          stop_loss: session.ensemble_params.stop_loss,
+                          sharpe_ratio: session.best_sharpe,
+                          cagr: 0,
+                          max_drawdown: 0,
+                        })}
+                        disabled={analysisLoading}
+                        className="px-3 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
+                      >
+                        <Bot className="w-3 h-3" />
+                        AI 분석
+                      </button>
                     </div>
                   )}
                 </div>

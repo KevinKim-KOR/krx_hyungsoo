@@ -1,7 +1,28 @@
 # 📚 KRX Alertor Modular - 문서 인덱스
 
-**최종 업데이트**: 2025-12-02  
-**버전**: 3.0 (전체 문서 구조 정리)
+**최종 업데이트**: 2025-12-08  
+**버전**: 3.1 (AI Context Pack 추가)
+
+---
+
+## 🤖 AI 협업 필독
+
+> **AI와 협업 시 반드시 먼저 읽어주세요**
+
+### [📦 AI Context Pack](AI_CONTEXT_PACK.md)
+
+튜닝 시스템의 전체 컨텍스트를 담은 문서입니다:
+- ① 목적 (Purpose)
+- ② 입력 (Input)
+- ③ 처리 로직 (Logic Flow)
+- ④ 출력 (Output)
+- ⑤ 제약사항 / 규칙 (Constraints & Rules)
+
+**AI 협업 권장 방식**:
+1. Plan 수립 → 다른 AI (ChatGPT 등)에게 검토 요청
+2. Plan 보완 → Cascade가 세부 사항 추가
+3. 실행 → Cascade가 코드 수정
+4. 검증 → 사용자가 UI에서 End-to-End 테스트
 
 ---
 
@@ -203,7 +224,7 @@ docs/
 
 ---
 
-## 🎯 현재 상태 (2025-12-02)
+## 🎯 현재 상태 (2025-12-08)
 
 ### 완료된 기능
 - ✅ **Phase 2**: 하이브리드 전략 (CAGR 27%, Sharpe 1.51)
@@ -211,6 +232,8 @@ docs/
 - ✅ **Phase 4**: React 대시보드 + FastAPI 백엔드
 - ✅ **Phase 5**: NAS-Oracle 동기화
 - ✅ **캐시 업데이트 UI**: 버튼으로 ETF 데이터 갱신
+- ✅ **튜닝 시스템**: Optuna 기반 파라미터 최적화
+- ⚠️ **백테스트 엔진 디버깅 중**: RSI, 손절 파라미터 연결 필요
 
 ### 운영 환경
 - **NAS**: Synology DS220j (Python 3.8)
