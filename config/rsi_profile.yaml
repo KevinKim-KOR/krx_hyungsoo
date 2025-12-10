@@ -1,0 +1,50 @@
+# RSI 비중 스케일링 프로파일
+# 모멘텀 ETF 전략에서 종목별 비중 조절에 사용
+
+profiles:
+  # 균형 프로파일 (기본값)
+  balanced:
+    name: balanced
+    description: "균형 잡힌 RSI 스케일링 - 과열 회피, 적당한 과매도 부스트"
+    rsi_boost_enabled: true
+    rules:
+      - { min: 80, max: 100, scale: 0.0 }   # 극단적 과열 → 비중 0
+      - { min: 70, max: 80,  scale: 0.5 }   # 과열 → 비중 50%
+      - { min: 60, max: 70,  scale: 0.8 }   # 경계 → 비중 80%
+      - { min: 40, max: 60,  scale: 1.0 }   # 정상 → 비중 100%
+      - { min: 30, max: 40,  scale: 1.1 }   # 과매도 접근 → 비중 110%
+      - { min: 0,  max: 30,  scale: 1.2 }   # 과매도 → 비중 120%
+
+  # 보수적 프로파일 (과열 회피 강화, 부스트 없음)
+  conservative:
+    name: conservative
+    description: "보수적 RSI 스케일링 - 과열 회피만, 부스트 없음"
+    rsi_boost_enabled: false
+    rules:
+      - { min: 80, max: 100, scale: 0.0 }
+      - { min: 70, max: 80,  scale: 0.5 }
+      - { min: 60, max: 70,  scale: 0.8 }
+      - { min: 0,  max: 60,  scale: 1.0 }
+
+  # 공격적 프로파일 (과매도 부스트 강화)
+  aggressive:
+    name: aggressive
+    description: "공격적 RSI 스케일링 - 과매도 부스트 강화"
+    rsi_boost_enabled: true
+    rules:
+      - { min: 80, max: 100, scale: 0.0 }
+      - { min: 70, max: 80,  scale: 0.5 }
+      - { min: 60, max: 70,  scale: 0.8 }
+      - { min: 40, max: 60,  scale: 1.0 }
+      - { min: 20, max: 40,  scale: 1.2 }
+      - { min: 0,  max: 20,  scale: 1.4 }   # 극단적 과매도 → 비중 140%
+
+# 레짐별 RSI 프로파일 매핑
+# bear/neutral 레짐에서는 boost 비활성화
+regime_profile_mapping:
+  bull: balanced
+  neutral: conservative
+  bear: conservative
+
+# 기본 프로파일
+default_profile: balanced

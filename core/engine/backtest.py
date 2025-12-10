@@ -588,7 +588,60 @@ class BacktestEngine:
                 }
             )
 
+        # 엔진 헬스체크
+        engine_health = self._check_engine_health(metrics)
+        metrics["engine_health"] = engine_health
+
         return metrics
+
+    def _check_engine_health(self, metrics: Dict[str, float]) -> Dict:
+        """
+        엔진 헬스체크 - 백테스트 결과의 물리적 정합성 검증
+        
+        Returns:
+            {
+                "is_valid": bool,
+                "warnings": List[str]
+            }
+        """
+        warnings_list = []
+        
+        # 1. 변동성이 0인지 확인
+        if metrics.get("volatility", 0) == 0:
+            warnings_list.append("volatility_is_zero")
+        
+        # 2. 거래가 있는데 매도가 없는지 확인
+        total_trades = metrics.get("total_trades", 0)
+        sell_trades = metrics.get("sell_trades", 0)
+        if total_trades > 0 and sell_trades == 0:
+            warnings_list.append("no_sell_trades_detected")
+        
+        # 3. 비용이 전혀 없는지 확인 (거래가 있는 경우)
+        total_costs = metrics.get("total_costs", 0)
+        if total_trades > 0 and total_costs == 0:
+            warnings_list.append("no_costs_applied")
+        
+        # 4. 일간 수익률이 없는지 확인
+        if len(self.daily_returns) == 0:
+            warnings_list.append("no_daily_returns")
+        
+        # 5. 모든 realized_pnl이 0인지 확인 (매도가 있는 경우)
+        if sell_trades > 0:
+            sell_trade_list = [t for t in self.portfolio.trades if t.action == "SELL"]
+            all_zero_pnl = all(t.realized_pnl == 0 for t in sell_trade_list)
+            if all_zero_pnl:
+                warnings_list.append("all_realized_pnl_zero")
+        
+        # 6. NAV 히스토리가 비어있는지 확인
+        if len(self.nav_history) == 0:
+            warnings_list.append("no_nav_history")
+        
+        is_valid = len(warnings_list) == 0
+        
+        return {
+            "is_valid": is_valid,
+            "warnings": warnings_list,
+        }
 
 
 def create_default_backtest_engine() -> BacktestEngine:
