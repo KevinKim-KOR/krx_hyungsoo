@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
+import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
@@ -104,23 +104,6 @@ interface TuningVariablesResponse {
   total_count: number
 }
 
-// AI 분석 관련 인터페이스
-interface AnalysisSections {
-  param_summary: string
-  stability: string
-  overfitting: string
-  strategy_interpretation: string
-  risks: string
-  improvements: string
-  conclusion: string
-}
-
-interface AnalysisResult {
-  trial_id: number
-  lookback: string
-  sections: AnalysisSections
-}
-
 export default function Strategy() {
   // 튜닝용 기본 파라미터
   const [backtestParams] = useState<BacktestParams>({
@@ -163,11 +146,6 @@ export default function Strategy() {
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
   
-  // AI 분석 결과 상태 (새로운 Claude API 분석)
-  const [selectedTrialIdx, setSelectedTrialIdx] = useState<number | null>(null)
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
-  const [analysisLoading, setAnalysisLoading] = useState(false)
-  const [analysisError, setAnalysisError] = useState<string | null>(null)
 
   // DB 히스토리 상태
   const [dbHistory, setDbHistory] = useState<any[]>([])
@@ -342,8 +320,85 @@ export default function Strategy() {
     }
   }
 
-  // AI 분석 요청
-  const requestAiAnalysis = async (trialIdx: number) => {
+  // AI 분석 프롬프트 생성 (Claude 웹에 복사-붙여넣기용)
+  const generateAnalysisPrompt = (trial: TuningTrial) => {
+    // 페이로드 구성
+    const payload = {
+      lookback: trial.lookback_months ? `${trial.lookback_months}M` : '3M',
+      trial_id: trial.trial_number,
+      strategy: 'Momentum ETF',
+      params: {
+        ma_period: trial.params.ma_period,
+        rsi_period: trial.params.rsi_period,
+        stop_loss: trial.params.stop_loss,
+      },
+      metrics: {
+        train: trial.train ? {
+          sharpe: trial.train.sharpe_ratio,
+          cagr: trial.train.cagr,
+          mdd: -trial.train.max_drawdown,
+        } : { sharpe: 0, cagr: 0, mdd: 0 },
+        val: trial.val ? {
+          sharpe: trial.val.sharpe_ratio,
+          cagr: trial.val.cagr,
+          mdd: -trial.val.max_drawdown,
+        } : { sharpe: 0, cagr: 0, mdd: 0 },
+        test: trial.test ? {
+          sharpe: trial.test.sharpe_ratio,
+          cagr: trial.test.cagr,
+          mdd: -trial.test.max_drawdown,
+        } : {
+          sharpe: trial.result.sharpe_ratio,
+          cagr: trial.result.cagr,
+          mdd: -trial.result.max_drawdown,
+        },
+      },
+      engine_health: trial.engine_health ?? { is_valid: true, warnings: [] },
+    }
+    
+    const promptTemplate = `당신은 ETF 퀀트 전략 전문가입니다.
+
+아래 JSON은 모멘텀 ETF 전략 튜닝 결과 중
+"선택된 1개 Trial"의 정보입니다.
+
+이 데이터를 분석해서, 다음 7개 섹션으로 구성된 한국어 리포트를 만들어주세요.
+
+1) 최적 파라미터 요약
+   - 룩백, MA, RSI, 손절 비율
+   - Train/Val/Test Sharpe, CAGR, MDD 간단 요약
+
+2) 성과 안정성 평가
+   - Train → Val → Test Sharpe 흐름 분석
+   - 어느 구간에서 성과가 튀는지, 일관성이 있는지 평가
+
+3) 과적합 여부 판단
+   - 단순히 '과적합/아님'이 아니라,
+     어떤 지표 패턴 때문에 그렇게 판단하는지 근거를 함께 설명
+
+4) 전략적 해석
+   - MA/RSI/손절 조합이 어떤 시장 상황에서 잘 맞는지
+   - 이 파라미터가 만들어내는 전략 성격(공격/방어, 단기/중기)을 설명
+
+5) 리스크 요인 분석
+   - Validation 구간 부진, 특정 구간 민감도, 파라미터 민감도 등
+   - 어떤 시장 환경에서 이 세팅이 깨질 수 있는지
+
+6) 개선 제안
+   - MA/RSI/손절/룩백을 어떻게 조정해볼 수 있을지 방향 제시
+   - 추가로 검증해야 할 실험(예: Walk-Forward, 다른 룩백 등)
+
+7) 최종 결론
+   - 이 Trial을 실거래/모의거래/추가검증 중 어디에 쓸 수 있을지 권고
+
+지금부터 JSON 데이터입니다:
+
+${JSON.stringify(payload, null, 2)}`
+
+    return promptTemplate
+  }
+
+  // AI 분석 프롬프트 모달 열기
+  const requestAiAnalysis = (trialIdx: number) => {
     const trial = tuningStatus.trials[trialIdx]
     if (!trial) return
     
@@ -355,122 +410,81 @@ export default function Strategy() {
     const isInvalid = engineHealthInvalid || volatilityZero || sellTradesZero || costsZero
     
     if (isInvalid) {
-      setAnalysisError('엔진 비정상 Trial은 분석할 수 없습니다.')
+      alert('엔진 비정상 Trial은 분석할 수 없습니다.')
       return
     }
     
-    setSelectedTrialIdx(trialIdx)
-    setAnalysisLoading(true)
-    setAnalysisError(null)
-    setAnalysisResult(null)
-    
-    try {
-      // 페이로드 구성
-      const payload = {
-        lookback: trial.lookback_months ? `${trial.lookback_months}M` : '3M',
-        trial_id: trial.trial_number,
-        strategy: 'Momentum ETF',
-        params: {
-          ma_period: trial.params.ma_period,
-          rsi_period: trial.params.rsi_period,
-          stop_loss: trial.params.stop_loss,
-        },
-        metrics: {
-          train: trial.train ? {
-            sharpe: trial.train.sharpe_ratio,
-            cagr: trial.train.cagr,
-            mdd: -trial.train.max_drawdown,
-          } : { sharpe: 0, cagr: 0, mdd: 0 },
-          val: trial.val ? {
-            sharpe: trial.val.sharpe_ratio,
-            cagr: trial.val.cagr,
-            mdd: -trial.val.max_drawdown,
-          } : { sharpe: 0, cagr: 0, mdd: 0 },
-          test: trial.test ? {
-            sharpe: trial.test.sharpe_ratio,
-            cagr: trial.test.cagr,
-            mdd: -trial.test.max_drawdown,
-          } : {
-            sharpe: trial.result.sharpe_ratio,
-            cagr: trial.result.cagr,
-            mdd: -trial.result.max_drawdown,
-          },
-        },
-        engine_health: trial.engine_health ?? { is_valid: true, warnings: [] },
-      }
-      
-      const res = await fetch(`${API_BASE_URL}/api/v1/tuning/analysis`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'AI 분석 실패')
-      }
-      
-      const result: AnalysisResult = await res.json()
-      setAnalysisResult(result)
-      
-    } catch (err) {
-      setAnalysisError(err instanceof Error ? err.message : 'AI 분석 실패')
-    } finally {
-      setAnalysisLoading(false)
-    }
+    const prompt = generateAnalysisPrompt(trial)
+    setAiPrompt(prompt)
+    setAiModalOpen(true)
   }
 
-  // DB 히스토리 항목에서 AI 분석 요청
-  const requestAiAnalysisFromHistory = async (item: any) => {
-    setAnalysisLoading(true)
-    setAnalysisError(null)
-    setAnalysisResult(null)
-    setSelectedTrialIdx(null)
-    
-    try {
-      // 페이로드 구성 (DB 히스토리 항목 기반)
-      const payload = {
-        lookback: '3M',  // DB에서 룩백 정보가 없으면 기본값
-        trial_id: item.id,
-        strategy: 'Momentum ETF',
-        params: {
-          ma_period: item.ma_period,
-          rsi_period: item.rsi_period,
-          stop_loss: item.stop_loss,
+  // DB 히스토리 항목에서 AI 분석 프롬프트 생성
+  const requestAiAnalysisFromHistory = (item: any) => {
+    // 페이로드 구성 (DB 히스토리 항목 기반)
+    const payload = {
+      lookback: '3M',  // DB에서 룩백 정보가 없으면 기본값
+      trial_id: item.id,
+      strategy: 'Momentum ETF',
+      params: {
+        ma_period: item.ma_period,
+        rsi_period: item.rsi_period,
+        stop_loss: item.stop_loss,
+      },
+      metrics: {
+        train: item.train_metrics ? (typeof item.train_metrics === 'string' ? JSON.parse(item.train_metrics) : item.train_metrics) : { sharpe: 0, cagr: 0, mdd: 0 },
+        val: item.val_metrics ? (typeof item.val_metrics === 'string' ? JSON.parse(item.val_metrics) : item.val_metrics) : { sharpe: 0, cagr: 0, mdd: 0 },
+        test: item.test_metrics ? (typeof item.test_metrics === 'string' ? JSON.parse(item.test_metrics) : item.test_metrics) : {
+          sharpe: item.sharpe_ratio ?? 0,
+          cagr: item.cagr ?? 0,
+          mdd: -(item.max_drawdown ?? 0),
         },
-        metrics: {
-          train: item.train_metrics ? JSON.parse(item.train_metrics) : { sharpe: 0, cagr: 0, mdd: 0 },
-          val: item.val_metrics ? JSON.parse(item.val_metrics) : { sharpe: 0, cagr: 0, mdd: 0 },
-          test: item.test_metrics ? JSON.parse(item.test_metrics) : {
-            sharpe: item.sharpe_ratio ?? 0,
-            cagr: item.cagr ?? 0,
-            mdd: -(item.max_drawdown ?? 0),
-          },
-        },
-        engine_health: item.engine_health 
-          ? (typeof item.engine_health === 'string' ? JSON.parse(item.engine_health) : item.engine_health)
-          : { is_valid: true, warnings: [] },
-      }
-      
-      const res = await fetch(`${API_BASE_URL}/api/v1/tuning/analysis`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'AI 분석 실패')
-      }
-      
-      const result: AnalysisResult = await res.json()
-      setAnalysisResult(result)
-      
-    } catch (err) {
-      setAnalysisError(err instanceof Error ? err.message : 'AI 분석 실패')
-    } finally {
-      setAnalysisLoading(false)
+      },
+      engine_health: item.engine_health 
+        ? (typeof item.engine_health === 'string' ? JSON.parse(item.engine_health) : item.engine_health)
+        : { is_valid: true, warnings: [] },
     }
+    
+    const promptTemplate = `당신은 ETF 퀀트 전략 전문가입니다.
+
+아래 JSON은 모멘텀 ETF 전략 튜닝 결과 중
+"선택된 1개 Trial"의 정보입니다.
+
+이 데이터를 분석해서, 다음 7개 섹션으로 구성된 한국어 리포트를 만들어주세요.
+
+1) 최적 파라미터 요약
+   - 룩백, MA, RSI, 손절 비율
+   - Train/Val/Test Sharpe, CAGR, MDD 간단 요약
+
+2) 성과 안정성 평가
+   - Train → Val → Test Sharpe 흐름 분석
+   - 어느 구간에서 성과가 튀는지, 일관성이 있는지 평가
+
+3) 과적합 여부 판단
+   - 단순히 '과적합/아님'이 아니라,
+     어떤 지표 패턴 때문에 그렇게 판단하는지 근거를 함께 설명
+
+4) 전략적 해석
+   - MA/RSI/손절 조합이 어떤 시장 상황에서 잘 맞는지
+   - 이 파라미터가 만들어내는 전략 성격(공격/방어, 단기/중기)을 설명
+
+5) 리스크 요인 분석
+   - Validation 구간 부진, 특정 구간 민감도, 파라미터 민감도 등
+   - 어떤 시장 환경에서 이 세팅이 깨질 수 있는지
+
+6) 개선 제안
+   - MA/RSI/손절/룩백을 어떻게 조정해볼 수 있을지 방향 제시
+   - 추가로 검증해야 할 실험(예: Walk-Forward, 다른 룩백 등)
+
+7) 최종 결론
+   - 이 Trial을 실거래/모의거래/추가검증 중 어디에 쓸 수 있을지 권고
+
+지금부터 JSON 데이터입니다:
+
+${JSON.stringify(payload, null, 2)}`
+
+    setAiPrompt(promptTemplate)
+    setAiModalOpen(true)
   }
 
   // 튜닝 상태 폴링
@@ -746,15 +760,10 @@ export default function Strategy() {
               {tuningStatus.trials.length > 0 && (
                 <button
                   onClick={() => requestAiAnalysis(0)}
-                  disabled={analysisLoading}
-                  className={`rounded px-6 py-2 flex items-center gap-2 mt-6 ${
-                    analysisLoading 
-                      ? 'bg-purple-300 text-white cursor-wait'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                  className="rounded px-6 py-2 flex items-center gap-2 mt-6 bg-indigo-600 text-white hover:bg-indigo-700"
                 >
                   <Bot className="w-4 h-4" />
-                  {analysisLoading ? 'AI 분석 중...' : '최적 결과 AI 분석'}
+                  최적 결과 AI 분석
                 </button>
               )}
             </>
@@ -869,18 +878,16 @@ export default function Strategy() {
                       <td className="px-3 py-2">
                         <button
                           onClick={() => requestAiAnalysis(idx)}
-                          disabled={isInvalid || analysisLoading}
+                          disabled={isInvalid}
                           className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                             isInvalid 
                               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : selectedTrialIdx === idx && analysisLoading
-                                ? 'bg-purple-100 text-purple-600'
-                                : 'bg-purple-500 text-white hover:bg-purple-600'
+                              : 'bg-purple-500 text-white hover:bg-purple-600'
                           }`}
-                          title={isInvalid ? '무효 Trial은 분석 불가' : 'AI 분석 요청'}
+                          title={isInvalid ? '무효 Trial은 분석 불가' : 'AI 분석 프롬프트 생성'}
                         >
                           <Bot className="w-3 h-3" />
-                          {selectedTrialIdx === idx && analysisLoading ? '분석중...' : 'AI'}
+                          AI
                         </button>
                       </td>
                     </tr>
@@ -890,98 +897,6 @@ export default function Strategy() {
             </table>
             <div className="mt-2 text-xs text-gray-500">
               * Train/Val/Test: 70/15/15 비율 분할 | 과적합 기준: Train Sharpe &gt; Test Sharpe × 1.3
-            </div>
-          </div>
-        )}
-        
-        {/* AI 분석 결과 */}
-        {analysisError && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
-            <div className="flex items-center gap-2 text-red-700">
-              <AlertCircle className="w-5 h-5" />
-              <span className="font-bold">AI 분석 오류</span>
-            </div>
-            <p className="mt-2 text-red-600">{analysisError}</p>
-            <button
-              onClick={() => setAnalysisError(null)}
-              className="mt-2 text-sm text-red-500 underline"
-            >
-              닫기
-            </button>
-          </div>
-        )}
-        
-        {analysisResult && (
-          <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-bold text-purple-800 flex items-center gap-2">
-                <Bot className="w-5 h-5" />
-                AI 분석 결과 (Trial #{analysisResult.trial_id}, {analysisResult.lookback})
-              </h4>
-              <button
-                onClick={() => setAnalysisResult(null)}
-                className="text-purple-500 hover:text-purple-700"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 1. 최적 파라미터 요약 */}
-              <div className="bg-white p-4 rounded shadow-sm">
-                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
-                  📊 최적 파라미터 요약
-                </h5>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.param_summary}</p>
-              </div>
-              
-              {/* 2. 성과 안정성 평가 */}
-              <div className="bg-white p-4 rounded shadow-sm">
-                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
-                  📈 성과 안정성 평가
-                </h5>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.stability}</p>
-              </div>
-              
-              {/* 3. 과적합 여부 판단 */}
-              <div className="bg-white p-4 rounded shadow-sm">
-                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
-                  🔍 과적합 여부 판단
-                </h5>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.overfitting}</p>
-              </div>
-              
-              {/* 4. 전략적 해석 */}
-              <div className="bg-white p-4 rounded shadow-sm">
-                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
-                  🎯 전략적 해석
-                </h5>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.strategy_interpretation}</p>
-              </div>
-              
-              {/* 5. 리스크 요인 분석 */}
-              <div className="bg-white p-4 rounded shadow-sm">
-                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
-                  ⚠️ 리스크 요인 분석
-                </h5>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.risks}</p>
-              </div>
-              
-              {/* 6. 개선 제안 */}
-              <div className="bg-white p-4 rounded shadow-sm">
-                <h5 className="font-bold text-gray-800 mb-2 flex items-center gap-1">
-                  💡 개선 제안
-                </h5>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.improvements}</p>
-              </div>
-              
-              {/* 7. 최종 결론 - 전체 너비 */}
-              <div className="bg-white p-4 rounded shadow-sm md:col-span-2 border-2 border-purple-200">
-                <h5 className="font-bold text-purple-800 mb-2 flex items-center gap-1">
-                  ✅ 최종 결론
-                </h5>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{analysisResult.sections.conclusion}</p>
-              </div>
             </div>
           </div>
         )}
@@ -1152,9 +1067,8 @@ export default function Strategy() {
                       <td className="px-3 py-2">
                         <button
                           onClick={() => requestAiAnalysisFromHistory(item)}
-                          disabled={analysisLoading}
-                          className="px-2 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
-                          title="AI 분석 요청"
+                          className="px-2 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600"
+                          title="AI 분석 프롬프트 생성"
                         >
                           <Bot className="w-3 h-3" />
                           AI
@@ -1234,8 +1148,7 @@ export default function Strategy() {
                           cagr: 0,
                           max_drawdown: 0,
                         })}
-                        disabled={analysisLoading}
-                        className="px-3 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
+                        className="px-3 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600"
                       >
                         <Bot className="w-3 h-3" />
                         AI 분석
