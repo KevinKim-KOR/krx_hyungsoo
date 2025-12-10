@@ -150,7 +150,9 @@ export function HistoryTable({ items, metricColumns, onSelect, onCompare }: Hist
                   </td>
                 )}
                 <td className="p-3 text-sm text-gray-600">
-                  {new Date(item.timestamp).toLocaleString('ko-KR')}
+                  {item.timestamp.includes('T') || item.timestamp.includes('Z')
+                    ? new Date(item.timestamp).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+                    : item.timestamp}
                   {isFirst && (
                     <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded">
                       최신

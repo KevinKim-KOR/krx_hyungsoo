@@ -256,6 +256,12 @@ export default function Strategy() {
 
   // 튜닝 시작
   const startTuning = async () => {
+    // 프론트엔드 검증
+    if (tuningTrials < 10 || tuningTrials > 1000) {
+      alert('Trials는 10~1000 범위여야 합니다.')
+      return
+    }
+    
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/tuning/start`, {
         method: 'POST',
@@ -267,7 +273,11 @@ export default function Strategy() {
         }),
       })
       
-      if (!res.ok) throw new Error('튜닝 시작 실패')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        const detail = errorData.detail || '튜닝 시작 실패'
+        throw new Error(detail)
+      }
       
       setTuningStatus(prev => ({ ...prev, is_running: true, total_trials: tuningTrials }))
       
