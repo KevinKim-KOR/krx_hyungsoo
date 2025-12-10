@@ -320,9 +320,55 @@ export default function Strategy() {
     }
   }
 
-  // AI 분석 프롬프트 생성 (Claude 웹에 복사-붙여넣기용)
+  // AI 분석 프롬프트 템플릿 생성 (공통)
+  const buildPromptFromPayload = (payload: object) => {
+    return `당신은 한국 ETF 모멘텀/레짐 전략을 다루는 퀀트 전문가입니다.
+
+아래 JSON은 모멘텀 ETF 전략 튜닝 결과 중
+"선택된 1개 Trial"의 정보입니다.
+
+이 데이터를 분석해서, 아래 7개 섹션으로 된 한국어 리포트를 작성해 주세요.
+각 섹션은 Markdown 제목(## 1. …)으로 구분해 주세요.
+
+1) 최적 파라미터 요약
+   - 룩백, MA, RSI, 손절 비율
+   - Train/Val/Test Sharpe, CAGR, MDD 간단 요약
+
+2) 성과 안정성 평가
+   - Train → Val → Test Sharpe 흐름 분석
+   - 어느 구간에서 성과가 튀는지, 일관성이 있는지 평가
+   - Validation 구간 Sharpe/CAGR가 비정상적으로 크거나 작으면,
+     기간이 짧아서 생긴 이상치인지도 함께 언급
+
+3) 과적합 여부 판단
+   - 단순히 '과적합/아님'이 아니라,
+     어떤 지표 패턴 때문에 그렇게 판단하는지 근거 설명
+
+4) 전략적 해석
+   - MA/RSI/손절 조합이 어떤 시장 상황에서 잘 맞는지
+   - 이 파라미터가 만들어내는 전략 성격(공격/방어, 단기/중기) 설명
+
+5) 리스크 요인 분석
+   - Validation 구간 부진, 특정 구간 민감도, 파라미터 민감도 등
+   - 어떤 시장 환경에서 이 세팅이 깨질 수 있는지
+
+6) 개선 제안
+   - MA/RSI/손절/룩백을 어떻게 조정해볼 수 있을지 방향 제시
+   - 추가로 검증해야 할 실험(예: Walk-Forward, 다른 룩백, TP/SL 조합 등)
+
+7) 최종 결론
+   - 이 Trial을 실거래 / 모의거래 / 추가검증 중 어디에 쓸지 권고
+   - 한 줄 요약으로 정리
+
+아래는 분석할 JSON 데이터입니다. 그대로 참고해서 위 7개 섹션을 채워 주세요.
+
+\`\`\`json
+${JSON.stringify(payload, null, 2)}
+\`\`\``
+  }
+
+  // AI 분석 프롬프트 생성 (튜닝 Trial용)
   const generateAnalysisPrompt = (trial: TuningTrial) => {
-    // 페이로드 구성
     const payload = {
       lookback: trial.lookback_months ? `${trial.lookback_months}M` : '3M',
       trial_id: trial.trial_number,
@@ -355,46 +401,7 @@ export default function Strategy() {
       },
       engine_health: trial.engine_health ?? { is_valid: true, warnings: [] },
     }
-    
-    const promptTemplate = `당신은 ETF 퀀트 전략 전문가입니다.
-
-아래 JSON은 모멘텀 ETF 전략 튜닝 결과 중
-"선택된 1개 Trial"의 정보입니다.
-
-이 데이터를 분석해서, 다음 7개 섹션으로 구성된 한국어 리포트를 만들어주세요.
-
-1) 최적 파라미터 요약
-   - 룩백, MA, RSI, 손절 비율
-   - Train/Val/Test Sharpe, CAGR, MDD 간단 요약
-
-2) 성과 안정성 평가
-   - Train → Val → Test Sharpe 흐름 분석
-   - 어느 구간에서 성과가 튀는지, 일관성이 있는지 평가
-
-3) 과적합 여부 판단
-   - 단순히 '과적합/아님'이 아니라,
-     어떤 지표 패턴 때문에 그렇게 판단하는지 근거를 함께 설명
-
-4) 전략적 해석
-   - MA/RSI/손절 조합이 어떤 시장 상황에서 잘 맞는지
-   - 이 파라미터가 만들어내는 전략 성격(공격/방어, 단기/중기)을 설명
-
-5) 리스크 요인 분석
-   - Validation 구간 부진, 특정 구간 민감도, 파라미터 민감도 등
-   - 어떤 시장 환경에서 이 세팅이 깨질 수 있는지
-
-6) 개선 제안
-   - MA/RSI/손절/룩백을 어떻게 조정해볼 수 있을지 방향 제시
-   - 추가로 검증해야 할 실험(예: Walk-Forward, 다른 룩백 등)
-
-7) 최종 결론
-   - 이 Trial을 실거래/모의거래/추가검증 중 어디에 쓸 수 있을지 권고
-
-지금부터 JSON 데이터입니다:
-
-${JSON.stringify(payload, null, 2)}`
-
-    return promptTemplate
+    return buildPromptFromPayload(payload)
   }
 
   // AI 분석 프롬프트 모달 열기
@@ -445,45 +452,7 @@ ${JSON.stringify(payload, null, 2)}`
         : { is_valid: true, warnings: [] },
     }
     
-    const promptTemplate = `당신은 ETF 퀀트 전략 전문가입니다.
-
-아래 JSON은 모멘텀 ETF 전략 튜닝 결과 중
-"선택된 1개 Trial"의 정보입니다.
-
-이 데이터를 분석해서, 다음 7개 섹션으로 구성된 한국어 리포트를 만들어주세요.
-
-1) 최적 파라미터 요약
-   - 룩백, MA, RSI, 손절 비율
-   - Train/Val/Test Sharpe, CAGR, MDD 간단 요약
-
-2) 성과 안정성 평가
-   - Train → Val → Test Sharpe 흐름 분석
-   - 어느 구간에서 성과가 튀는지, 일관성이 있는지 평가
-
-3) 과적합 여부 판단
-   - 단순히 '과적합/아님'이 아니라,
-     어떤 지표 패턴 때문에 그렇게 판단하는지 근거를 함께 설명
-
-4) 전략적 해석
-   - MA/RSI/손절 조합이 어떤 시장 상황에서 잘 맞는지
-   - 이 파라미터가 만들어내는 전략 성격(공격/방어, 단기/중기)을 설명
-
-5) 리스크 요인 분석
-   - Validation 구간 부진, 특정 구간 민감도, 파라미터 민감도 등
-   - 어떤 시장 환경에서 이 세팅이 깨질 수 있는지
-
-6) 개선 제안
-   - MA/RSI/손절/룩백을 어떻게 조정해볼 수 있을지 방향 제시
-   - 추가로 검증해야 할 실험(예: Walk-Forward, 다른 룩백 등)
-
-7) 최종 결론
-   - 이 Trial을 실거래/모의거래/추가검증 중 어디에 쓸 수 있을지 권고
-
-지금부터 JSON 데이터입니다:
-
-${JSON.stringify(payload, null, 2)}`
-
-    setAiPrompt(promptTemplate)
+    setAiPrompt(buildPromptFromPayload(payload))
     setAiModalOpen(true)
   }
 
