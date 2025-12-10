@@ -93,6 +93,79 @@
 
 ---
 
+## 파라미터 생애주기 (Research → Live)
+
+### 개념
+
+```
+[튜닝 Trial] → Research (연구 결과)
+     ↓
+[AI 분석 + 사람 판단] → "이거 괜찮다"
+     ↓
+[실전 파라미터로 적용] → Live (운영 파라미터)
+     ↓
+[PUSH 스크립트] → 오직 Live만 사용
+```
+
+### 선별 조건 (pick_best_trial)
+
+```python
+def pick_best_trial(trials):
+    valid = [
+        t for t in trials
+        if t["engine_health"]["is_valid"]      # 1. 엔진 정상
+        and t["status"] == "정상"               # 2. 상태 정상
+        and t["test"]["sharpe"] > 0            # 3. Test Sharpe 양수
+        and t["test"]["sharpe"] >= t["train"]["sharpe"] * 0.7  # 4. 과적합 필터
+    ]
+    return max(valid, key=lambda t: t["test"]["sharpe"])
+```
+
+### 튜닝 UI 버튼
+
+| 버튼 | 기능 | 상태 |
+|------|------|------|
+| 최적 파라미터 저장 | Research로 저장 | ✅ 구현됨 |
+| 최적 결과 AI 분석 | Claude 프롬프트 생성 | ✅ 구현됨 |
+| **실전 파라미터로 적용** | Live로 승격 | ⏳ 예정 |
+
+### optimal_params.json 구조 (예정)
+
+```json
+{
+  "live": {
+    "params": { "ma_period": 69, "rsi_period": 17, "stop_loss": -12, ... },
+    "promoted_at": "2025-12-11T01:20:00",
+    "source_trial_id": 3,
+    "notes": "AI 분석 후 승격"
+  },
+  "live_history": [
+    { "params": {...}, "demoted_at": "2025-12-11T01:20:00", "reason": "새 파라미터로 교체" }
+  ],
+  "research": [...]
+}
+```
+
+### PUSH 스크립트 연동
+
+| 스크립트 | 파라미터 소스 | 상태 |
+|----------|---------------|------|
+| `market_open_alert.py` | `live.params` | ⏳ 예정 |
+| `intraday_alert.py` | `live.params` | ⏳ 예정 |
+| `daily_report_alert.py` | `live.params` | ⏳ 예정 |
+
+### 구현 계획
+
+| 단계 | 작업 | 상태 |
+|------|------|------|
+| 1 | `optimal_params.json` 구조 변경 (live/research 분리) | ⏳ 예정 |
+| 2 | "실전 파라미터로 적용" 버튼 추가 | ⏳ 예정 |
+| 3 | "현재 Live 파라미터" 표시 UI | ⏳ 예정 |
+| 4 | PUSH 스크립트에서 `live.params` 로드 | ⏳ 예정 |
+| 5 | 롤백 기능 (이전 Live 복원) | ⏳ 예정 |
+
+---
+
 ## 개발 로드맵 (2025-12-10 수립)
 
 ### Phase 0: 엔진 정합성 검증 (즉시)
