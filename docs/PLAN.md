@@ -44,16 +44,20 @@
 | Optuna 튜닝          | 파라미터 자동 최적화                   | ✅        | `app/services/tuning_service.py`             | Sharpe 최대화 |
 | 튜닝 변수 관리       | YAML 기반 변수 정의                    | ✅        | `config/backtest.yaml`                       | MA, RSI, 손절 등 |
 | 최적 파라미터 저장   | JSON 파일 저장                         | ✅        | `app/services/optimal_params_service.py`     | `data/optimal_params.json` |
-| Train/Test 분할      | 기간별 분할 검증                       | ✅        | `extensions/backtest/train_test_split.py`    | |
+| Train/Val/Test 분할  | 70/15/15 비율 분할 검증                | ✅        | `app/services/backtest_service.py`           | run_with_split() |
+| 과적합 경고          | Train→Test Sharpe 30%+ 저하 시 경고    | ✅        | `app/services/backtest_service.py`           | |
+| 엔진 헬스체크        | 변동성0, 매도0, 비용0 등 검증          | ✅        | `core/engine/backtest.py`                    | engine_health |
 
 ## 4. API/UI
 
 | 항목                 | 내용                                   | 구현 여부 | 파일/경로                                    | 메모 |
 |----------------------|----------------------------------------|-----------|----------------------------------------------|------|
 | 백테스트 API         | FastAPI 기반 백테스트/튜닝 API         | ✅        | `api_backtest.py`                            | Port 8001 |
+| 분할 백테스트 API    | Train/Val/Test 분할 백테스트           | ✅        | `api_backtest.py` `/run-split`               | ExtendedBacktestResponse |
 | 보유종목 API         | FastAPI 기반 포트폴리오 관리 API       | ✅        | `api_holdings.py`                            | Port 8000 |
 | React 대시보드       | 웹 UI                                  | ✅        | `web/dashboard/`                             | Vite + React |
-| 튜닝 UI              | Optuna 튜닝 인터페이스                 | ✅        | `web/dashboard/src/pages/Tuning.tsx`         | |
+| 튜닝 UI              | Optuna 튜닝 인터페이스                 | ✅        | `web/dashboard/src/pages/Strategy.tsx`       | Train/Val/Test 비교 |
+| 과적합 경고 UI       | Trial별 과적합/무효 상태 표시          | ✅        | `web/dashboard/src/pages/Strategy.tsx`       | 색상 구분 |
 
 ## 5. 자동화/운영
 
