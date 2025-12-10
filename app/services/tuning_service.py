@@ -20,6 +20,34 @@ from app.services.backtest_service import (
 logger = logging.getLogger(__name__)
 
 
+def pick_best_trial(trials: List[Dict]) -> Optional[Dict]:
+    """
+    최적 Trial 선별 알고리즘
+
+    조건:
+    1. engine_health.is_valid == True
+    2. status == "정상"
+    3. test.sharpe > 0
+    4. test.sharpe >= train.sharpe * 0.7 (과적합 필터)
+
+    정렬: test.sharpe 기준 내림차순
+    """
+    valid = [
+        t
+        for t in trials
+        if t.get("engine_health", {}).get("is_valid", False)
+        and t.get("status") == "정상"
+        and t.get("test", {}).get("sharpe_ratio", 0) > 0
+        and t.get("test", {}).get("sharpe_ratio", 0)
+        >= t.get("train", {}).get("sharpe_ratio", 0) * 0.7
+    ]
+
+    if not valid:
+        return None
+
+    return max(valid, key=lambda t: t.get("test", {}).get("sharpe_ratio", 0))
+
+
 @dataclass
 class TuningParams:
     """튜닝 파라미터 (필수값만, default 없음)"""
@@ -242,24 +270,36 @@ class TuningService:
                             "total_realized_pnl": result.total_realized_pnl,
                         },
                         # Train/Val/Test 분할 성과
-                        "train": {
-                            "cagr": ext_result.train_metrics.cagr,
-                            "sharpe_ratio": ext_result.train_metrics.sharpe_ratio,
-                            "max_drawdown": ext_result.train_metrics.max_drawdown,
-                            "num_trades": ext_result.train_metrics.num_trades,
-                        } if ext_result.train_metrics else None,
-                        "val": {
-                            "cagr": ext_result.val_metrics.cagr,
-                            "sharpe_ratio": ext_result.val_metrics.sharpe_ratio,
-                            "max_drawdown": ext_result.val_metrics.max_drawdown,
-                            "num_trades": ext_result.val_metrics.num_trades,
-                        } if ext_result.val_metrics else None,
-                        "test": {
-                            "cagr": ext_result.test_metrics.cagr,
-                            "sharpe_ratio": ext_result.test_metrics.sharpe_ratio,
-                            "max_drawdown": ext_result.test_metrics.max_drawdown,
-                            "num_trades": ext_result.test_metrics.num_trades,
-                        } if ext_result.test_metrics else None,
+                        "train": (
+                            {
+                                "cagr": ext_result.train_metrics.cagr,
+                                "sharpe_ratio": ext_result.train_metrics.sharpe_ratio,
+                                "max_drawdown": ext_result.train_metrics.max_drawdown,
+                                "num_trades": ext_result.train_metrics.num_trades,
+                            }
+                            if ext_result.train_metrics
+                            else None
+                        ),
+                        "val": (
+                            {
+                                "cagr": ext_result.val_metrics.cagr,
+                                "sharpe_ratio": ext_result.val_metrics.sharpe_ratio,
+                                "max_drawdown": ext_result.val_metrics.max_drawdown,
+                                "num_trades": ext_result.val_metrics.num_trades,
+                            }
+                            if ext_result.val_metrics
+                            else None
+                        ),
+                        "test": (
+                            {
+                                "cagr": ext_result.test_metrics.cagr,
+                                "sharpe_ratio": ext_result.test_metrics.sharpe_ratio,
+                                "max_drawdown": ext_result.test_metrics.max_drawdown,
+                                "num_trades": ext_result.test_metrics.num_trades,
+                            }
+                            if ext_result.test_metrics
+                            else None
+                        ),
                         # 엔진 헬스체크
                         "engine_health": ext_result.engine_health,
                         "warnings": ext_result.warnings,
@@ -302,13 +342,21 @@ class TuningService:
                         self._state.current_trial += 1
                         self._state.trials.append(trial_data)
 
-                        if result.sharpe_ratio > self._state.best_sharpe:
-                            self._state.best_sharpe = result.sharpe_ratio
-                            self._state.best_params = trial_data["params"]
+                        # pick_best_trial 알고리즘으로 최적 Trial 선별
+                        best_trial = pick_best_trial(self._state.trials)
+                        if best_trial:
+                            test_sharpe = best_trial.get("test", {}).get("sharpe_ratio", 0)
+                            if test_sharpe > self._state.best_sharpe:
+                                self._state.best_sharpe = test_sharpe
+                                self._state.best_params = best_trial["params"]
 
-                        # Sharpe 기준 정렬
+                        # Test Sharpe 기준 정렬 (유효한 Trial 우선)
                         self._state.trials.sort(
-                            key=lambda x: x["result"]["sharpe_ratio"],
+                            key=lambda x: (
+                                x.get("engine_health", {}).get("is_valid", False),
+                                x.get("status") == "정상",
+                                x.get("test", {}).get("sharpe_ratio", 0),
+                            ),
                             reverse=True,
                         )
 
