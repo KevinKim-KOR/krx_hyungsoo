@@ -40,6 +40,10 @@ class BacktestResult:
     win_rate: float
     volatility: float
     calmar_ratio: float
+    # 엔진 정합성 검증용 추가 필드
+    sell_trades: int = 0
+    total_costs: float = 0.0
+    total_realized_pnl: float = 0.0
 
 
 @dataclass
@@ -384,7 +388,7 @@ class BacktestService:
         engine_health = full_metrics.get("engine_health", {})
         daily_logs = full_result.get("daily_logs", [])
         
-        # 전체 성과 객체
+        # 전체 성과 객체 (엔진 정합성 검증용 필드 포함)
         overall = BacktestResult(
             cagr=full_metrics.get("annual_return", 0),
             sharpe_ratio=full_metrics.get("sharpe_ratio", 0),
@@ -394,6 +398,10 @@ class BacktestService:
             win_rate=full_metrics.get("win_rate", 0),
             volatility=full_metrics.get("volatility", 0),
             calmar_ratio=full_metrics.get("calmar_ratio", 0),
+            # 엔진 정합성 검증용
+            sell_trades=full_metrics.get("sell_trades", 0),
+            total_costs=full_metrics.get("total_costs", 0.0),
+            total_realized_pnl=full_metrics.get("total_realized_pnl", 0.0),
         )
         
         # 각 구간별 백테스트

@@ -234,7 +234,12 @@ class TuningService:
                             "total_return": result.total_return,
                             "num_trades": result.num_trades,
                             "win_rate": result.win_rate,
+                            "volatility": result.volatility,
                             "calmar_ratio": result.calmar_ratio,
+                            # 엔진 정합성 검증용
+                            "sell_trades": result.sell_trades,
+                            "total_costs": result.total_costs,
+                            "total_realized_pnl": result.total_realized_pnl,
                         },
                         # Train/Val/Test 분할 성과
                         "train": {

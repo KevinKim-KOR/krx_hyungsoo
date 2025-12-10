@@ -39,6 +39,12 @@ interface BacktestResult {
   total_return: number
   num_trades: number
   win_rate: number
+  volatility?: number
+  calmar_ratio?: number
+  // 엔진 정합성 검증용
+  sell_trades?: number
+  total_costs?: number
+  total_realized_pnl?: number
 }
 
 interface SplitMetrics {
@@ -662,12 +668,25 @@ export default function Strategy() {
                   const testSharpe = trial.test?.sharpe_ratio ?? trial.result.sharpe_ratio
                   const isOverfit = trainSharpe > 0 && testSharpe > 0 && trainSharpe > testSharpe * 1.3
                   const hasWarnings = trial.warnings && trial.warnings.length > 0
-                  const isInvalid = trial.engine_health && !trial.engine_health.is_valid
+                  
+                  // 엔진 정합성 검증 (engine_health 또는 result에서 직접 확인)
+                  const volatilityZero = trial.result.volatility === 0
+                  const sellTradesZero = trial.result.num_trades > 0 && (trial.result.sell_trades ?? 0) === 0
+                  const costsZero = trial.result.num_trades > 0 && (trial.result.total_costs ?? 0) === 0
+                  const engineHealthInvalid = trial.engine_health && !trial.engine_health.is_valid
+                  const isInvalid = engineHealthInvalid || volatilityZero || sellTradesZero || costsZero
+                  
+                  // 무효 사유 생성
+                  const invalidReasons: string[] = []
+                  if (volatilityZero) invalidReasons.push('변동성=0')
+                  if (sellTradesZero) invalidReasons.push('매도=0')
+                  if (costsZero) invalidReasons.push('비용=0')
+                  if (trial.engine_health?.warnings) invalidReasons.push(...trial.engine_health.warnings)
                   
                   // 행 색상 결정
                   let rowClass = ''
-                  if (idx === 0) rowClass = 'bg-green-50'
-                  if (isOverfit) rowClass = 'bg-yellow-50'
+                  if (idx === 0 && !isInvalid) rowClass = 'bg-green-50'
+                  if (isOverfit && !isInvalid) rowClass = 'bg-yellow-50'
                   if (isInvalid) rowClass = 'bg-red-50'
                   
                   return (
@@ -689,8 +708,8 @@ export default function Strategy() {
                       <td className="px-3 py-2 text-red-600">{formatMDD(trial.result.max_drawdown)}</td>
                       <td className="px-3 py-2">
                         {isInvalid && (
-                          <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs" title={trial.engine_health?.warnings?.join(', ')}>
-                            ❌ 무효
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs" title={invalidReasons.join(', ')}>
+                            ❌ 무효({invalidReasons.length > 0 ? invalidReasons[0] : '엔진오류'})
                           </span>
                         )}
                         {isOverfit && !isInvalid && (
