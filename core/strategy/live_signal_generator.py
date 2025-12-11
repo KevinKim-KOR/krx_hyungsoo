@@ -208,23 +208,36 @@ class LiveSignalGenerator:
                 # 모멘텀 스코어 = (현재가 - MA) / MA * 100
                 momentum_score = ((current_price - current_ma) / current_ma) * 100
 
-                # RSI 계산
+                # RSI 계산 (안전하게)
                 delta = close.diff()
                 gain = delta.where(delta > 0, 0).rolling(rsi_period).mean()
                 loss = (-delta.where(delta < 0, 0)).rolling(rsi_period).mean()
 
-                if loss.iloc[-1] == 0:
-                    rsi = 100
+                gain_val = gain.iloc[-1] if not pd.isna(gain.iloc[-1]) else 0
+                loss_val = loss.iloc[-1] if not pd.isna(loss.iloc[-1]) else 0
+
+                if gain_val == 0 and loss_val == 0:
+                    rsi = 50  # 변동 없음 → 중립
+                elif loss_val == 0:
+                    rsi = 100  # 상승만 있음
+                elif gain_val == 0:
+                    rsi = 0  # 하락만 있음
                 else:
-                    rs = gain.iloc[-1] / loss.iloc[-1]
+                    rs = gain_val / loss_val
                     rsi = 100 - (100 / (1 + rs))
 
-                # RSI 스케일링 (50 기준, 과매수/과매도 조정)
-                rsi_factor = 1.0
-                if rsi > 70:
-                    rsi_factor = 0.7  # 과매수 - 비중 감소
-                elif rsi < 30:
+                # RSI 스케일링 (과매수/과매도 조정)
+                # 과매수(RSI>=80): 비중 0 (매수 제외)
+                # 과매수(RSI>=70): 비중 50%
+                # 과매도(RSI<=30): 비중 130%
+                if rsi >= 80:
+                    rsi_factor = 0.0  # 과매수 심함 - 매수 제외
+                elif rsi >= 70:
+                    rsi_factor = 0.5  # 과매수 - 비중 절반
+                elif rsi <= 30:
                     rsi_factor = 1.3  # 과매도 - 비중 증가
+                else:
+                    rsi_factor = 1.0  # 중립
 
                 # 최종 스코어 = 모멘텀 * RSI 팩터
                 final_score = momentum_score * rsi_factor
@@ -259,13 +272,35 @@ class LiveSignalGenerator:
 
         top_n = sorted_scores[:target_count]
 
-        # 7. 목표 비중 계산 (Equal-Weight)
+        # 7. 목표 비중 계산 (Equal-Weight + RSI 스케일링 + 레짐 스케일링)
         if top_n:
-            target_weight = 100.0 / len(top_n)
+            base_weight = 100.0 / len(top_n)
         else:
-            target_weight = 0
+            base_weight = 0
 
-        target_weights = {code: target_weight for code, _ in top_n}
+        # RSI 스케일링 적용된 비중 계산
+        target_weights = {}
+        for code, score_info in top_n:
+            rsi_factor = score_info.get("rsi_factor", 1.0)
+            # RSI factor가 0이면 매수 제외
+            if rsi_factor <= 0:
+                continue
+            target_weights[code] = base_weight * rsi_factor
+
+        # Soft Normalize (합계가 100%를 넘지 않도록)
+        if target_weights:
+            total_weight = sum(target_weights.values())
+            if total_weight > 100:
+                normalize_factor = 100 / total_weight
+                target_weights = {k: v * normalize_factor for k, v in target_weights.items()}
+
+        # 레짐 스케일링 적용 (상승장: 120%, 하락장: 60%, 중립: 80%)
+        # normalize 이후에 적용하여 최종 비중에 반영
+        if target_weights:
+            target_weights = {k: v * position_ratio for k, v in target_weights.items()}
+
+        # 평균 목표 비중 (표시용)
+        target_weight = sum(target_weights.values()) / len(target_weights) if target_weights else 0
 
         # 8. 매수/매도 추천 생성
         buy_recommendations = []
