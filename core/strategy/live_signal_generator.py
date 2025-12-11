@@ -178,6 +178,32 @@ class LiveSignalGenerator:
         except ValueError:
             return 3
 
+    def _lookback_to_trading_days(self, lookback_months: int) -> int:
+        """
+        개월 수를 거래일 수로 변환
+
+        Args:
+            lookback_months: 개월 수 (예: 3)
+
+        Returns:
+            int: 거래일 수 (예: 63 = 3 * 21)
+        """
+        return lookback_months * 21
+
+    def get_default_params(self) -> Dict:
+        """기본 파라미터 반환 (fallback용)"""
+        return {
+            "params": {
+                "lookback": "3M",
+                "ma_period": 60,
+                "rsi_period": 14,
+                "stop_loss": -10,
+                "max_positions": 10,
+            },
+            "promoted_at": None,
+            "notes": "기본값 (fallback)",
+        }
+
     def generate_recommendation(
         self,
         target_date: Optional[date] = None,
@@ -239,8 +265,10 @@ class LiveSignalGenerator:
         try:
             from infra.data.loader import load_price_data
 
-            # 룩백 기간 + MA 기간 만큼 데이터 필요
-            data_days = lookback_months * 30 + ma_period + 30
+            # 룩백 기간(거래일) + MA 기간 + 여유분
+            lookback_trading_days = self._lookback_to_trading_days(lookback_months)
+            # 거래일을 달력일로 변환 (거래일 * 1.5 + 여유)
+            data_days = int((lookback_trading_days + ma_period) * 1.5) + 30
             start_date = target_date - timedelta(days=data_days)
 
             price_data = load_price_data(
@@ -528,3 +556,69 @@ class LiveSignalGenerator:
         lines.append(f"📅 생성: {generated_at}")
 
         return "\n".join(lines)
+
+    def get_params_summary(self, live_params: Optional[Dict] = None) -> str:
+        """
+        Live 파라미터 한 줄 요약
+
+        Args:
+            live_params: Live 파라미터 (None이면 로드)
+
+        Returns:
+            str: 예) "3M / MA60 / RSI14 / 손절-10%"
+        """
+        if live_params is None:
+            live_params = self.load_live_params()
+
+        if not live_params:
+            live_params = self.get_default_params()
+
+        params = live_params.get("params", {})
+        lookback = params.get("lookback", "3M")
+        ma = params.get("ma_period", 60)
+        rsi = params.get("rsi_period", 14)
+        stop = params.get("stop_loss", -10)
+
+        return f"{lookback} / MA{ma} / RSI{rsi} / 손절{stop}%"
+
+    def get_signal_summary(
+        self,
+        target_date: Optional[date] = None,
+        current_holdings: Optional[Dict[str, float]] = None,
+    ) -> Dict:
+        """
+        알림용 신호 요약 (캐싱 지원)
+
+        Args:
+            target_date: 대상 날짜
+            current_holdings: 현재 보유 비중
+
+        Returns:
+            Dict: {
+                'params_summary': str,  # 파라미터 한 줄 요약
+                'regime': str,          # 레짐 (bull/neutral/bear)
+                'regime_kr': str,       # 레짐 한글
+                'buy_count': int,       # 매수 검토 수
+                'sell_count': int,      # 매도 검토 수
+                'buy_recommendations': list,
+                'sell_recommendations': list,
+                'live_params': dict,
+                'regime_info': dict,
+            }
+        """
+        result = self.generate_recommendation(target_date, current_holdings)
+
+        regime = result.get("regime_info", {}).get("regime", "neutral")
+        regime_kr = {"bull": "상승장", "bear": "하락장", "neutral": "중립장"}.get(regime, "중립장")
+
+        return {
+            "params_summary": self.get_params_summary(),
+            "regime": regime,
+            "regime_kr": regime_kr,
+            "buy_count": len(result.get("buy_recommendations", [])),
+            "sell_count": len(result.get("sell_recommendations", [])),
+            "buy_recommendations": result.get("buy_recommendations", []),
+            "sell_recommendations": result.get("sell_recommendations", []),
+            "live_params": result.get("live_params", {}),
+            "regime_info": result.get("regime_info", {}),
+        }

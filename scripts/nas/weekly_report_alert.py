@@ -10,7 +10,7 @@ scripts/nas/weekly_report_alert.py
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 import pandas as pd
 import pykrx.stock as stock
 
@@ -23,6 +23,8 @@ from extensions.automation.portfolio_helper import PortfolioHelper
 from extensions.notification.telegram_helper import TelegramHelper
 from core.strategy.market_regime_detector import MarketRegimeDetector
 from extensions.automation.price_updater import PriceUpdater
+from core.strategy.live_signal_generator import LiveSignalGenerator
+from core.risk.stop_loss_manager import get_stop_loss_summary
 
 # 스크립트 베이스 초기화
 script = ScriptBase("weekly_report_alert")
@@ -31,31 +33,42 @@ logger = script.logger
 
 class WeeklyReport:
     """주간 리포트 클래스"""
-    
+
     def __init__(self):
         self.price_updater = PriceUpdater()
         self.telegram = TelegramHelper()
         self.regime_detector = MarketRegimeDetector()
+        self.signal_generator = LiveSignalGenerator()
         self.today = date.today()
-        
+
         # 주간 기간 계산 (월~금)
         self.week_start = self.today - timedelta(days=self.today.weekday())  # 월요일
         self.week_end = self.week_start + timedelta(days=4)  # 금요일
-    
+
     def get_market_regime(self):
         """시장 레짐 조회"""
         try:
-            today_str = self.today.strftime('%Y%m%d')
-            from_date = (datetime.now() - pd.DateOffset(years=1)).strftime('%Y%m%d')
+            today_str = self.today.strftime("%Y%m%d")
+            from_date = (datetime.now() - pd.DateOffset(years=1)).strftime("%Y%m%d")
             kospi = stock.get_index_ohlcv_by_date(from_date, today_str, "1001")
-            
+
             if kospi.empty:
-                return 'neutral', 0.5
-                
-            kospi.rename(columns={'시가': 'Open', '고가': 'High', '저가': 'Low', '종가': 'Close', '거래량': 'Volume'}, inplace=True)
+                return "neutral", 0.5
+
+            kospi.rename(
+                columns={
+                    "시가": "Open",
+                    "고가": "High",
+                    "저가": "Low",
+                    "종가": "Close",
+                    "거래량": "Volume",
+                },
+                inplace=True,
+            )
             return self.regime_detector.detect_regime(kospi, self.today)
-        except:
-            return 'neutral', 0.5
+        except Exception as e:
+            logger.error(f"시장 레짐 조회 실패: {e}", exc_info=True)
+            return "neutral", 0.5
 
     def generate_report(self) -> str:
         """주간 리포트 생성"""
@@ -64,36 +77,40 @@ class WeeklyReport:
             data = self.price_updater.update_prices()
             if not data:
                 return self._format_error_message()
-            
-            summary = data['summary']
-            holdings_detail = data['holdings_detail']
+
+            summary = data["summary"]
+            holdings_detail = data["holdings_detail"]
             # holdings_count도 갱신된 summary 기준으로 재계산하거나 data에서 가져옴
             # PriceUpdater는 holdings_count를 summary에 포함시키지 않고 원본 data 구조 유지
             # 하지만 summary['holdings_count']는 PortfolioLoader에서 온 것일 수 있음.
             # 안전하게 재계산
             if holdings_detail is not None:
-                active_holdings = holdings_detail[holdings_detail['quantity'] > 0]
+                active_holdings = holdings_detail[holdings_detail["quantity"] > 0]
                 holdings_count = len(active_holdings)
             else:
                 holdings_count = 0
-            
+
             # 레짐 조회
             regime, confidence = self.get_market_regime()
-            
+
+            # Live 파라미터 요약
+            params_summary = self.signal_generator.get_params_summary()
+
             # 메시지 생성
             message = self._format_header()
+            message += f"🔧 전략: `{params_summary}`\n\n"
             message += self._format_portfolio_summary(summary, holdings_count)
             message += self._format_top_performers(holdings_detail)
-            message += self._format_risk_analysis(holdings_detail)
+            message += self._format_risk_analysis(holdings_detail, regime)
             message += self._format_next_week_strategy(regime, confidence)
             message += self._format_footer()
-            
+
             return message
-        
+
         except Exception as e:
             logger.error(f"주간 리포트 생성 실패: {e}", exc_info=True)
             return self._format_error_message()
-    
+
     def _format_header(self) -> str:
         """헤더 포맷"""
         return (
@@ -102,12 +119,8 @@ class WeeklyReport:
             f"{self.week_end.strftime('%m/%d')} ({self.week_start.strftime('%Y년 %W주차')})\n"
             f"📆 리포트 생성: {self.today.strftime('%Y년 %m월 %d일 (%A)')}\n\n"
         )
-    
-    def _format_portfolio_summary(
-        self,
-        summary: Dict[str, Any],
-        holdings_count: int
-    ) -> str:
+
+    def _format_portfolio_summary(self, summary: Dict[str, Any], holdings_count: int) -> str:
         """포트폴리오 요약 포맷"""
         message = "*💼 포트폴리오 현황*\n"
         message += f"총 평가액: `{summary['total_value']:,.0f}원`\n"
@@ -115,107 +128,125 @@ class WeeklyReport:
         message += f"평가손익: {PortfolioHelper.format_return(summary['return_amount'], summary['return_pct'])}\n"
         message += f"보유 종목: `{holdings_count}개`\n\n"
         return message
-    
+
     def _format_top_performers(self, holdings_detail) -> str:
         """보유 종목 성과 (보유 수량 > 0 인 것만)"""
         if holdings_detail is None or holdings_detail.empty:
             return ""
-        
+
         # 보유 수량이 있는 것만 필터링
-        active_holdings = holdings_detail[holdings_detail['quantity'] > 0].copy()
-        
+        active_holdings = holdings_detail[holdings_detail["quantity"] > 0].copy()
+
         if active_holdings.empty:
             return "*📈 주간 성과*\n보유 종목이 없습니다.\n\n"
 
         # 수익률 기준 정렬
-        sorted_holdings = active_holdings.sort_values('return_pct', ascending=False)
-        
+        sorted_holdings = active_holdings.sort_values("return_pct", ascending=False)
+
         message = "*📈 내 보유 종목 성과 Top 5*\n\n"
-        
+
         # 상위 5개
         message += "_🔴 수익 Top 5_\n"
         for i, (_, holding) in enumerate(sorted_holdings.head(5).iterrows(), 1):
-            name = holding.get('name', '알 수 없음')
-            return_pct = holding.get('return_pct', 0)
-            return_amount = holding.get('return_amount', 0)
+            name = holding.get("name", "알 수 없음")
+            return_pct = holding.get("return_pct", 0)
+            return_amount = holding.get("return_amount", 0)
             message += f"{i}. {name}: `{return_pct:+.2f}%` (`{return_amount:+,.0f}원`)\n"
-        
+
         message += "\n_🔵 손실 Top 5_\n"
         # 하위 5개
         for i, (_, holding) in enumerate(sorted_holdings.tail(5).iloc[::-1].iterrows(), 1):
-            name = holding.get('name', '알 수 없음')
-            return_pct = holding.get('return_pct', 0)
-            return_amount = holding.get('return_amount', 0)
+            name = holding.get("name", "알 수 없음")
+            return_pct = holding.get("return_pct", 0)
+            return_amount = holding.get("return_amount", 0)
             message += f"{i}. {name}: `{return_pct:+.2f}%` (`{return_amount:+,.0f}원`)\n"
-        
+
         message += "\n"
         return message
-    
-    def _format_risk_analysis(self, holdings_detail) -> str:
-        """리스크 분석 포맷"""
+
+    def _format_risk_analysis(self, holdings_detail, regime: str = "neutral") -> str:
+        """리스크 분석 포맷 (손절 합성 로직 사용)"""
         if holdings_detail is None or holdings_detail.empty:
             return ""
-        
-        stop_loss_threshold = -7.0
-        stop_loss_targets = []
-        near_stop_loss = []
-        
+
+        # Live 파라미터 로드
+        live_params = self.signal_generator.load_live_params()
+        if not live_params:
+            live_params = self.signal_generator.get_default_params()
+
+        # 보유 종목 리스트 생성
+        holdings_list = []
         for _, holding in holdings_detail.iterrows():
-            if holding['quantity'] <= 0: continue
-            
-            return_pct = holding.get('return_pct', 0)
-            name = holding.get('name', '알 수 없음')
-            
-            if return_pct <= stop_loss_threshold:
-                stop_loss_targets.append((name, return_pct))
-            elif stop_loss_threshold < return_pct <= -5.0:
-                near_stop_loss.append((name, return_pct))
-        
+            if holding["quantity"] <= 0:
+                continue
+            holdings_list.append(
+                {
+                    "code": holding.get("code", ""),
+                    "name": holding.get("name", "알 수 없음"),
+                    "return_pct": holding.get("return_pct", 0),
+                    "volatility": 0.2,  # 기본 변동성 (추후 개선 가능)
+                }
+            )
+
+        # 손절 합성 로직으로 분류
+        stop_loss_result = get_stop_loss_summary(holdings_list, live_params, regime)
+
+        stop_loss_targets = stop_loss_result["stop_loss_targets"]
+        near_stop_loss = stop_loss_result["near_stop_loss"]
+
         message = "*🚨 리스크 분석*\n\n"
-        
+
+        # Live 손절 기준 표시
+        strategy_stop = live_params.get("params", {}).get("stop_loss", -10)
+        message += f"📊 손절 기준: `{strategy_stop}%` (레짐: {regime})\n\n"
+
         if stop_loss_targets:
             message += f"_🔴 손절 대상 ({len(stop_loss_targets)}개)_\n"
-            for name, return_pct in stop_loss_targets[:5]:
-                message += f"• {name}: `{return_pct:.2f}%`\n"
+            for item in stop_loss_targets[:5]:
+                message += (
+                    f"• {item['name']}: `{item['return_pct']:.2f}%` (기준: {item['stop_loss']}%)\n"
+                )
             message += "⚠️ *즉시 매도 검토 필요*\n\n"
-        
+
         if near_stop_loss:
             message += f"_⚠️ 손절 근접 ({len(near_stop_loss)}개)_\n"
-            for name, return_pct in near_stop_loss[:5]:
-                message += f"• {name}: `{return_pct:.2f}%`\n"
+            for item in near_stop_loss[:5]:
+                message += (
+                    f"• {item['name']}: `{item['return_pct']:.2f}%` (여유: {item['gap']:.1f}%)\n"
+                )
             message += "💡 모니터링 필요\n\n"
-        
+
         if not stop_loss_targets and not near_stop_loss:
             message += "✅ 모든 종목 안전 범위 내\n\n"
-        
+
         return message
-    
+
     def _format_next_week_strategy(self, regime: str, confidence: float) -> str:
         """다음 주 전략 포맷 (동적 생성)"""
         next_monday = self.week_start + timedelta(days=7)
         next_friday = next_monday + timedelta(days=4)
-        
-        regime_kr = {'bull': '상승장', 'neutral': '중립장', 'bear': '하락장'}.get(regime, '중립장')
-        conf_pct = confidence * 100 if confidence <= 1.0 else confidence # 0~1 or 0~100 handle
-        
+
+        regime_kr = {"bull": "상승장", "neutral": "중립장", "bear": "하락장"}.get(regime, "중립장")
+        conf_pct = confidence * 100 if confidence <= 1.0 else confidence  # 0~1 or 0~100 handle
+
         message = "*📋 다음 주 전략*\n\n"
         message += f"📅 기간: {next_monday.strftime('%m/%d')} ~ {next_friday.strftime('%m/%d')}\n"
         message += f"📊 시장 전망: *{regime_kr}* (신뢰도 {conf_pct:.0f}%)\n\n"
-        
+
         message += "_전략 포인트:_\n"
-        if regime == 'bull':
+        if regime == "bull":
             message += "• 상승 추세 지속 시 비중 확대\n"
             message += "• 주도 섹터(반도체/2차전지) 중심 매매\n"
             message += "• 손절 라인 상향 조정 (Trailing Stop)\n"
-        elif regime == 'bear':
+        elif regime == "bear":
             message += "• 🚨 보수적 대응 필요 (현금 비중 확대)\n"
             message += "• 신규 매수 자제 및 손절 기준 엄수\n"
             message += "• 인버스/달러 등 헷지 자산 고려\n"
-        else: # neutral
+        else:  # neutral
             message += "• 박스권 장세 예상 (단기 트레이딩)\n"
             message += "• 저평가 종목 분할 매수\n"
             message += "• 변동성 축소 시 방향성 탐색\n"
-            
+
         message += "• 평일 15:30 손절 모니터링 필참\n\n"
         return message
 
@@ -237,23 +268,21 @@ class WeeklyReport:
             "포트폴리오 데이터를 불러올 수 없습니다.\n"
             "holdings.json 파일을 확인해주세요."
         )
-    
+
     def send_report(self) -> bool:
         """주간 리포트 전송"""
         script.log_header("주간 리포트 생성 및 전송")
-        
+
         try:
             message = self.generate_report()
-            
+
             success = self.telegram.send_with_logging(
-                message,
-                "주간 리포트 전송 성공",
-                "주간 리포트 전송 실패"
+                message, "주간 리포트 전송 성공", "주간 리포트 전송 실패"
             )
-            
+
             script.log_footer()
             return success
-        
+
         except Exception as e:
             logger.error(f"주간 리포트 전송 실패: {e}", exc_info=True)
             return False
@@ -264,13 +293,13 @@ def main():
     """메인 실행 함수"""
     print(f"[{datetime.now()}] 주간 리포트 스크립트 시작")
     sys.stdout.flush()
-    
+
     report = WeeklyReport()
     success = report.send_report()
-    
+
     print(f"[{datetime.now()}] 주간 리포트 완료: {'성공' if success else '실패'}")
     sys.stdout.flush()
-    
+
     return 0 if success else 1
 
 

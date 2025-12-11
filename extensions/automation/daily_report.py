@@ -7,18 +7,18 @@ extensions/automation/daily_report.py
 - 포트폴리오 현황
 - 당일 수익률
 - 레짐 상태
-- 매매 신호
+- 매매 신호 (LiveSignalGenerator 사용)
 """
 
 from datetime import date, datetime
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 import logging
 import pandas as pd
 
 from extensions.automation.regime_monitor import RegimeMonitor
-from extensions.automation.signal_generator import AutoSignalGenerator
 from extensions.automation.telegram_notifier import TelegramNotifier
 from extensions.automation.price_updater import PriceUpdater
+from core.strategy.live_signal_generator import LiveSignalGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -26,19 +26,19 @@ logger = logging.getLogger(__name__)
 class DailyReport:
     """
     일일 리포트 생성 클래스
-    
+
     기능:
     1. 포트폴리오 현황 요약
     2. 레짐 상태 보고
     3. 매매 신호 요약
     4. 텔레그램 전송
     """
-    
+
     def __init__(
         self,
         telegram_enabled: bool = False,
         bot_token: Optional[str] = None,
-        chat_id: Optional[str] = None
+        chat_id: Optional[str] = None,
     ):
         """
         Args:
@@ -47,80 +47,105 @@ class DailyReport:
             chat_id: 채팅 ID
         """
         self.regime_monitor = RegimeMonitor()
-        self.signal_generator = AutoSignalGenerator()
+        self.signal_generator = LiveSignalGenerator()
         self.notifier = TelegramNotifier(
-            bot_token=bot_token,
-            chat_id=chat_id,
-            enabled=telegram_enabled
+            bot_token=bot_token, chat_id=chat_id, enabled=telegram_enabled
         )
         self.price_updater = PriceUpdater()
-    
-    def generate_report(
-        self,
-        target_date: Optional[date] = None
-    ) -> str:
+
+    def generate_report(self, target_date: Optional[date] = None) -> str:
         """
         일일 리포트 생성 (실시간 가격 기반)
-        
+
         Args:
             target_date: 대상 날짜 (None이면 오늘)
-        
+
         Returns:
             str: 리포트 텍스트
         """
         if target_date is None:
             target_date = date.today()
-        
+
         logger.info(f"일일 리포트 생성: {target_date}")
-        
+
         # 1. 가격 업데이트 및 포트폴리오 로드
         pf_data = self.price_updater.update_prices()
-        summary = pf_data.get('summary', {})
-        holdings_detail = pf_data.get('holdings_detail')
-        
+        summary = pf_data.get("summary", {})
+        holdings_detail = pf_data.get("holdings_detail")
+
         if holdings_detail is None or holdings_detail.empty:
-             current_holdings = []
-             top5 = pd.DataFrame()
-             worst5 = pd.DataFrame()
+            current_holdings = []
+            top5 = pd.DataFrame()
+            worst5 = pd.DataFrame()
         else:
-             # 보유 수량 > 0 인 것만 필터링
-             active_holdings = holdings_detail[holdings_detail['quantity'] > 0].copy()
-             current_holdings = active_holdings['code'].tolist()
-             
-             # Top 5 수익/손실
-             top5 = active_holdings.sort_values('return_pct', ascending=False).head(5)
-             worst5 = active_holdings.sort_values('return_pct', ascending=True).head(5)
-        
+            # 보유 수량 > 0 인 것만 필터링
+            active_holdings = holdings_detail[holdings_detail["quantity"] > 0].copy()
+            # current_holdings는 더 이상 사용하지 않음 (LiveSignalGenerator 사용)
+
+            # Top 5 수익/손실
+            top5 = active_holdings.sort_values("return_pct", ascending=False).head(5)
+            worst5 = active_holdings.sort_values("return_pct", ascending=True).head(5)
+
         # 2. 레짐 분석
         regime_info = self.regime_monitor.analyze_daily_regime(target_date)
-        
-        # 3. 매매 신호 생성
-        signals = self.signal_generator.generate_daily_signals(
-            target_date=target_date,
-            current_holdings=current_holdings
+
+        # 3. 매매 신호 생성 (LiveSignalGenerator 사용)
+        # 현재 보유 비중 계산
+        current_weights = {}
+        if active_holdings is not None and not active_holdings.empty:
+            total_value = summary.get("total_value", 0)
+            if total_value > 0:
+                for _, row in active_holdings.iterrows():
+                    code = row["code"]
+                    value = row.get("current_value", 0)
+                    current_weights[code] = (value / total_value) * 100
+
+        signal_result = self.signal_generator.generate_recommendation(
+            target_date=target_date, current_holdings=current_weights
         )
-        
+
+        # 기존 signals 형식으로 변환
+        signals = {
+            "buy_signals": [
+                {
+                    "code": rec["code"],
+                    "maps_score": rec.get("final_score", 0),
+                    "target_weight": rec.get("target_weight", 0),
+                }
+                for rec in signal_result.get("buy_recommendations", [])
+            ],
+            "sell_signals": [
+                {
+                    "code": rec["code"],
+                    "reason": rec.get("reason", "unknown"),
+                    "current_weight": rec.get("current_weight", 0),
+                }
+                for rec in signal_result.get("sell_recommendations", [])
+            ],
+            "live_params": signal_result.get("live_params", {}),
+        }
+
         # 4. 리포트 작성 (텍스트 생략 - 텔레그램 전송 위주)
         # ... (기존 텍스트 생성 로직은 유지하되 요약본만)
         report_text = "일일 리포트가 텔레그램으로 전송되었습니다."
-        
+
         # 5. 텔레그램 전송
         self._send_to_telegram(summary, top5, worst5, regime_info, signals, holdings_detail)
-        
+
         return report_text
-    
+
     def _send_to_telegram(
         self,
         summary: Dict,
-        top5: 'pd.DataFrame',
-        worst5: 'pd.DataFrame',
+        top5: "pd.DataFrame",
+        worst5: "pd.DataFrame",
         regime_info: Optional[Dict],
         signals: Dict,
-        holdings_detail: Optional['pd.DataFrame'] = None
+        holdings_detail: Optional["pd.DataFrame"] = None,
     ):
         """
         텔레그램으로 리포트 전송 (실제 포트폴리오 기반)
-        
+
         Args:
             summary: 포트폴리오 요약
             top5: 수익 Top 5
@@ -136,85 +161,96 @@ class DailyReport:
                 # 1. 보유 종목 리스트에서 찾기 (가장 정확한 사용자 지정 명칭)
                 if holdings_detail is not None and not holdings_detail.empty:
                     # code 컬럼이 있는지 확인
-                    if 'code' in holdings_detail.columns and 'name' in holdings_detail.columns:
-                        item = holdings_detail[holdings_detail['code'] == code]
+                    if "code" in holdings_detail.columns and "name" in holdings_detail.columns:
+                        item = holdings_detail[holdings_detail["code"] == code]
                         if not item.empty:
-                            return item.iloc[0]['name']
-                
+                            return item.iloc[0]["name"]
+
                 # 2. 주요 ETF 매핑 (우선 사용)
                 etf_names = {
-                    '069500': 'KODEX 200',
-                    '102110': 'TIGER 200',
-                    '229200': 'KODEX 코스닥150',
-                    '091160': 'KODEX 반도체',
-                    '091180': 'KODEX 자동차',
-                    '091170': 'KODEX 은행',
-                    '091220': 'TIGER 은행',
-                    '143850': 'TIGER 미국S&P500',
-                    '360750': 'TIGER 미국NASDAQ100',
-                    '133690': 'TIGER 미국NASDAQ100레버리지',
-                    '138230': 'KOSEF 미국S&P500',
-                    '388420': 'KBSTAR 미국S&P500',
-                    '379800': 'KODEX 미국S&P500TR',
-                    '360200': 'TIGER 미국S&P500선물(H)',
-                    '332620': 'KODEX 미국S&P500선물(H)',
-                    '364980': 'TIGER 미국NASDAQ100TR',
-                    '379810': 'KODEX 미국NASDAQ100TR',
-                    '462010': 'ARIRANG 미국S&P500(H)',
-                    '453810': 'TIGER 미국S&P500패시브',
-                    '448630': 'TIGER 미구S&P500선물레버리지(H)',
-                    '308620': 'KODEX 미구S&P500선물레버리지(H)',
+                    "069500": "KODEX 200",
+                    "102110": "TIGER 200",
+                    "229200": "KODEX 코스닥150",
+                    "091160": "KODEX 반도체",
+                    "091180": "KODEX 자동차",
+                    "091170": "KODEX 은행",
+                    "091220": "TIGER 은행",
+                    "143850": "TIGER 미국S&P500",
+                    "360750": "TIGER 미국NASDAQ100",
+                    "133690": "TIGER 미국NASDAQ100레버리지",
+                    "138230": "KOSEF 미국S&P500",
+                    "388420": "KBSTAR 미국S&P500",
+                    "379800": "KODEX 미국S&P500TR",
+                    "360200": "TIGER 미국S&P500선물(H)",
+                    "332620": "KODEX 미국S&P500선물(H)",
+                    "364980": "TIGER 미국NASDAQ100TR",
+                    "379810": "KODEX 미국NASDAQ100TR",
+                    "462010": "ARIRANG 미국S&P500(H)",
+                    "453810": "TIGER 미국S&P500패시브",
+                    "448630": "TIGER 미구S&P500선물레버리지(H)",
+                    "308620": "KODEX 미구S&P500선물레버리지(H)",
                 }
-                
+
                 # 매핑 테이블에 있으면 바로 반환
                 if code in etf_names:
                     return etf_names[code]
-                
+
                 # 매핑에 없으면 pykrx로 조회 시도
                 try:
                     import pykrx.stock as stock
+
                     name = stock.get_market_ticker_name(code)
                     if name and name.strip():
                         return name.strip()
                 except Exception as e:
                     logger.debug(f"종목명 조회 실패 [{code}]: {e}")
-                
+
                 # 모두 실패하면 코드 반환
                 return code
-            
+
             # 상세 일일 리포트 메시지 생성
             message_lines = []
-            message_lines.append("="*40)
+            message_lines.append("=" * 40)
             message_lines.append("📊 *일일 투자 리포트*")
-            message_lines.append("="*40)
+            message_lines.append("=" * 40)
             message_lines.append(f"📅 날짜: {date.today().strftime('%Y년 %m월 %d일 (%A)')}")
+
+            # Live 파라미터 요약
+            live_params = signals.get("live_params", {})
+            if live_params:
+                params_summary = self.signal_generator.get_params_summary(live_params)
+                message_lines.append(f"🔧 전략: `{params_summary}`")
             message_lines.append("")
-            
+
             # 포트폴리오 현황
             message_lines.append("💼 *포트폴리오 현황*")
-            message_lines.append("-"*40)
+            message_lines.append("-" * 40)
             message_lines.append(f"  총 평가액: `{summary['total_value']:,.0f}원`")
             message_lines.append(f"  총 매입액: `{summary['total_cost']:,.0f}원`")
-            
+
             # 수익/손실 색상 표시
-            if summary['return_amount'] >= 0:
-                message_lines.append(f"  평가손익: 🔴 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)")
+            if summary["return_amount"] >= 0:
+                message_lines.append(
+                    f"  평가손익: 🔴 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)"
+                )
             else:
-                message_lines.append(f"  평가손익: 🔵 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)")
-            
+                message_lines.append(
+                    f"  평가손익: 🔵 `{summary['return_amount']:+,.0f}원` ({summary['return_pct']:+.2f}%)"
+                )
+
             message_lines.append(f"  보유 종목: `{summary['holdings_count']}개`")
             message_lines.append("")
-            
+
             # Top 3 수익/손실
             message_lines.append("📈 *보유 종목 현황*")
-            message_lines.append("-"*40)
+            message_lines.append("-" * 40)
             message_lines.append("  🔴 *수익 Top 3:*")
             for idx, (_, row) in enumerate(top5.head(3).iterrows(), 1):
                 message_lines.append(
                     f"     {idx}. {row['name'][:15]:15s} "
                     f"`{row['return_amount']:+,.0f}원` ({row['return_pct']:+.2f}%)"
                 )
-            
+
             message_lines.append("")
             message_lines.append("  🔵 *손실 Top 3:*")
             for idx, (_, row) in enumerate(worst5.head(3).iterrows(), 1):
@@ -223,58 +259,50 @@ class DailyReport:
                     f"`{row['return_amount']:+,.0f}원` ({row['return_pct']:+.2f}%)"
                 )
             message_lines.append("")
-            
+
             # 시장 레짐 상세
             if regime_info:
-                regime_emoji = {
-                    'bull': '📈',
-                    'bear': '📉',
-                    'neutral': '➡️'
-                }
-                regime_name = {
-                    'bull': '상승장',
-                    'bear': '하락장',
-                    'neutral': '중립장'
-                }
-                
-                emoji = regime_emoji.get(regime_info['regime'], '❓')
-                name = regime_name.get(regime_info['regime'], regime_info['regime'])
-                
+                regime_emoji = {"bull": "📈", "bear": "📉", "neutral": "➡️"}
+                regime_name = {"bull": "상승장", "bear": "하락장", "neutral": "중립장"}
+
+                emoji = regime_emoji.get(regime_info["regime"], "❓")
+                name = regime_name.get(regime_info["regime"], regime_info["regime"])
+
                 message_lines.append("🎯 *시장 레짐 분석*")
-                message_lines.append("-"*40)
+                message_lines.append("-" * 40)
                 message_lines.append(f"  {emoji} *현재 레짐*: {name}")
                 message_lines.append(f"  📊 *신뢰도*: {regime_info['confidence']:.1%}")
                 message_lines.append(f"  💪 *권장 포지션*: {regime_info['position_ratio']:.0%}")
-                
-                if regime_info.get('defense_mode'):
+
+                if regime_info.get("defense_mode"):
                     message_lines.append("  ⚠️ *방어 모드*: 활성")
                 else:
                     message_lines.append("  ✅ *방어 모드*: 비활성")
-                
+
                 message_lines.append("")
-            
+
             # 매매 신호 상세
-            buy_signals = signals.get('buy_signals', [])
-            sell_signals = signals.get('sell_signals', [])
-            
+            buy_signals = signals.get("buy_signals", [])
+            sell_signals = signals.get("sell_signals", [])
+
             message_lines.append("📈 *매매 신호 상세*")
-            message_lines.append("-"*40)
-            
+            message_lines.append("-" * 40)
+
             # 매수 신호
             if buy_signals:
                 message_lines.append(f"\n🟢 *매수 신호*: {len(buy_signals)}개")
                 message_lines.append("")
                 for i, signal in enumerate(buy_signals, 1):
-                    code = signal['code']
+                    code = signal["code"]
                     name = get_stock_name(code)
-                    maps_score = signal.get('maps_score', 0)
-                    
+                    maps_score = signal.get("maps_score", 0)
+
                     # 종목명(코드: 123456) 형태
                     display_name = f"{name}(코드: {code})"
-                    
+
                     message_lines.append(f"  {i}. *{display_name}*")
                     message_lines.append(f"     📊 MAPS 점수: {maps_score:.2f}")
-                    
+
                     # MAPS 점수에 따른 강도 표시
                     if maps_score >= 10:
                         message_lines.append(f"     🔥 강도: 매우 강함")
@@ -282,34 +310,34 @@ class DailyReport:
                         message_lines.append(f"     ⭐ 강도: 강함")
                     else:
                         message_lines.append(f"     👍 강도: 보통")
-                    
+
                     message_lines.append("")
             else:
                 message_lines.append(f"\n🟢 *매수 신호*: 없음")
                 message_lines.append("  - 현재 매수 조건을 충족하는 종목이 없습니다.")
                 message_lines.append("")
-            
+
             # 매도 신호
             if sell_signals:
                 message_lines.append(f"\n🔴 *매도 신호*: {len(sell_signals)}개")
                 message_lines.append("")
                 for i, signal in enumerate(sell_signals, 1):
-                    code = signal['code']
+                    code = signal["code"]
                     name = get_stock_name(code)
-                    reason = signal.get('reason', 'unknown')
-                    
+                    reason = signal.get("reason", "unknown")
+
                     # 사유 한글화
                     reason_map = {
-                        'negative_maps_score': '하락 추세 (MAPS < 0)',
-                        'stop_loss': '손절 발동',
-                        'regime_change': '레짐 변경',
-                        'defense_mode': '방어 모드',
+                        "negative_maps_score": "하락 추세 (MAPS < 0)",
+                        "stop_loss": "손절 발동",
+                        "regime_change": "레짐 변경",
+                        "defense_mode": "방어 모드",
                     }
                     reason_kr = reason_map.get(reason, reason)
-                    
+
                     # 종목명(코드: 123456) 형태
                     display_name = f"{name}(코드: {code})"
-                    
+
                     message_lines.append(f"  {i}. *{display_name}*")
                     message_lines.append(f"     🚨 사유: {reason_kr}")
                     message_lines.append("")
@@ -317,24 +345,30 @@ class DailyReport:
                 message_lines.append(f"\n🔴 *매도 신호*: 없음")
                 message_lines.append("  - 모든 보유 종목이 정상 범위 내에 있습니다.")
                 message_lines.append("")
-            
+
             # 투자 전략 및 주의사항
-            message_lines.append("-"*40)
+            message_lines.append("-" * 40)
             if regime_info:
-                if regime_info['regime'] == 'bull':
+                if regime_info["regime"] == "bull":
                     message_lines.append("💡 *투자 전략*")
-                    message_lines.append(f"  ✅ 현재 {regime_name.get(regime_info['regime'])} 유지 중")
-                    message_lines.append(f"  ✅ 공격적 포지션 권장: {regime_info['position_ratio']:.0%}")
+                    message_lines.append(
+                        f"  ✅ 현재 {regime_name.get(regime_info['regime'])} 유지 중"
+                    )
+                    message_lines.append(
+                        f"  ✅ 공격적 포지션 권장: {regime_info['position_ratio']:.0%}"
+                    )
                     message_lines.append("  ✅ 적극적 매수 기회 탐색")
                     message_lines.append("")
                     message_lines.append("⚠️ *주의사항*")
                     message_lines.append("  - 과도한 레버리지 주의")
                     message_lines.append("  - 단기 급등종목 경계")
                     message_lines.append("  - 레짐 변경 신호 모니터링")
-                elif regime_info['regime'] == 'bear':
+                elif regime_info["regime"] == "bear":
                     message_lines.append("🚨 *투자 전략*")
                     message_lines.append(f"  ⚠️ 현재 {regime_name.get(regime_info['regime'])} 진입")
-                    message_lines.append(f"  ⚠️ 방어적 포지션 권장: {regime_info['position_ratio']:.0%}")
+                    message_lines.append(
+                        f"  ⚠️ 방어적 포지션 권장: {regime_info['position_ratio']:.0%}"
+                    )
                     message_lines.append("  ⚠️ 현금 비중 확대 권장")
                     message_lines.append("")
                     message_lines.append("🛑 *주의사항*")
@@ -344,24 +378,26 @@ class DailyReport:
                 else:
                     message_lines.append("🧐 *투자 전략*")
                     message_lines.append(f"  ➡️ 현재 {regime_name.get(regime_info['regime'])} 진입")
-                    message_lines.append(f"  ➡️ 중립적 포지션 권장: {regime_info['position_ratio']:.0%}")
+                    message_lines.append(
+                        f"  ➡️ 중립적 포지션 권장: {regime_info['position_ratio']:.0%}"
+                    )
                     message_lines.append("  ➡️ 선별적 매수 전략")
                     message_lines.append("")
                     message_lines.append("📌 *주의사항*")
                     message_lines.append("  - 레짐 방향성 확인 필요")
                     message_lines.append("  - 고품질 종목 선별")
                     message_lines.append("  - 리스크 관리 철저")
-            
+
             message_lines.append("")
-            message_lines.append("="*40)
+            message_lines.append("=" * 40)
             message_lines.append(f"🕒 생성 시간: {datetime.now().strftime('%H:%M:%S')}")
-            message_lines.append("="*40)
-            
+            message_lines.append("=" * 40)
+
             message = "\n".join(message_lines)
-            
+
             # 텔레그램 전송
-            self.notifier.send_message(message, parse_mode='Markdown')
+            self.notifier.send_message(message, parse_mode="Markdown")
             logger.info("✅ 일일 리포트 텔레그램 전송 완료")
-                
+
         except Exception as e:
             logger.error(f"텔레그램 전송 실패: {e}", exc_info=True)
