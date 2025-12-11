@@ -136,12 +136,13 @@ class OptimalParamsService:
             logger.error(f"Live 승격 실패: {e}")
             return False
 
-    def rollback_live(self, history_index: int = 0) -> bool:
+    def rollback_live(self, history_index: int = 0, reason: str = "사용자 수동 롤백") -> bool:
         """
         이전 Live 파라미터로 롤백
 
         Args:
             history_index: live_history 인덱스 (0 = 가장 최근)
+            reason: 롤백 사유
         """
         try:
             data = self._load_all()
@@ -155,7 +156,7 @@ class OptimalParamsService:
             if data.get("live"):
                 old_live = data["live"].copy()
                 old_live["demoted_at"] = datetime.now().isoformat()
-                old_live["reason"] = "롤백으로 교체"
+                old_live["reason"] = reason
                 live_history.insert(0, old_live)
 
             # 선택한 히스토리를 Live로 복원

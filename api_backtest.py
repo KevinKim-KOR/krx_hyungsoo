@@ -922,20 +922,31 @@ def set_rsi_profile(request: SetRsiProfileRequest):
         raise HTTPException(status_code=500, detail=f"RSI 프로파일 저장 실패: {e}")
 
 
+class RollbackLiveRequest(BaseModel):
+    """Live 롤백 요청"""
+
+    history_index: int = 0  # live_history 인덱스 (0 = 가장 최근)
+    reason: str = "사용자 수동 롤백"  # 롤백 사유
+
+
 @app.post("/api/v1/optimal-params/rollback-live")
-def rollback_live(history_index: int = 0):
+def rollback_live(request: RollbackLiveRequest):
     """
     이전 Live 파라미터로 롤백
 
     Args:
         history_index: live_history 인덱스 (0 = 가장 최근)
+        reason: 롤백 사유
     """
-    success = _optimal_params_service.rollback_live(history_index)
+    success = _optimal_params_service.rollback_live(request.history_index, request.reason)
     if success:
+        live = _optimal_params_service.load_live()
+        promoted_at = live.get("promoted_at", "") if live else ""
         return {
             "status": "success",
-            "message": "Live 롤백 완료",
-            "live": _optimal_params_service.load_live(),
+            "message": f"Live 롤백 완료 ({promoted_at[:10] if promoted_at else '알 수 없음'})",
+            "live": live,
+            "live_history": _optimal_params_service.get_live_history(limit=10),
         }
     raise HTTPException(status_code=400, detail="롤백할 히스토리가 없습니다")
 

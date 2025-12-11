@@ -590,6 +590,77 @@ ${JSON.stringify(payload, null, 2)}
   const [activeRsiProfile, setActiveRsiProfile] = useState('neutral')
   const [settingRsiProfile, setSettingRsiProfile] = useState(false)
 
+  // Live 히스토리 및 롤백 상태
+  const [liveHistory, setLiveHistory] = useState<any[]>([])
+  const [liveHistoryExpanded, setLiveHistoryExpanded] = useState(false)
+  const [rollingBack, setRollingBack] = useState<number | null>(null)
+
+  // Live 히스토리 로드
+  const fetchLiveHistory = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/optimal-params/live-history?limit=10`)
+      if (res.ok) {
+        const data = await res.json()
+        setLiveHistory(data.live_history || [])
+      }
+    } catch (err) {
+      console.error('Live 히스토리 로드 실패:', err)
+    }
+  }
+
+  // 롤백 실행
+  const executeRollback = async (historyIndex: number) => {
+    const historyItem = liveHistory[historyIndex]
+    if (!historyItem) return
+
+    const params = historyItem.params || {}
+    const promotedAt = historyItem.promoted_at ? new Date(historyItem.promoted_at).toLocaleString() : '알 수 없음'
+
+    const confirmed = window.confirm(
+      `현재 Live 파라미터를 이 버전으로 되돌릴까요?\n\n` +
+      `📅 시점: ${promotedAt}\n` +
+      `📊 파라미터: ${params.lookback || '3M'} / MA${params.ma_period || 60} / RSI${params.rsi_period || 14} / 손절${params.stop_loss || -10}%\n\n` +
+      `• 현재 Live 파라미터는 히스토리로 이동됩니다.`
+    )
+    if (!confirmed) return
+
+    setRollingBack(historyIndex)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/optimal-params/rollback-live`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history_index: historyIndex,
+          reason: '사용자 수동 롤백 (튜닝 UI)'
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setCurrentLive(data.live)
+        setLiveHistory(data.live_history || [])
+        if (data.live?.params) {
+          setLiveParams({
+            lookback: data.live.params.lookback || '3M',
+            ma_period: data.live.params.ma_period || 60,
+            rsi_period: data.live.params.rsi_period || 14,
+            stop_loss: data.live.params.stop_loss || -10,
+            max_positions: data.live.params.max_positions || 10,
+            notes: ''
+          })
+        }
+        alert(`✅ Live 파라미터를 ${promotedAt} 버전으로 롤백했습니다.`)
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || '롤백 실패')
+      }
+    } catch (err) {
+      alert('❌ 롤백 실패: ' + (err instanceof Error ? err.message : '알 수 없는 오류'))
+    } finally {
+      setRollingBack(null)
+    }
+  }
+
   // 현재 Live 파라미터 및 RSI 프로파일 로드
   useEffect(() => {
     const fetchLive = async () => {
@@ -629,6 +700,7 @@ ${JSON.stringify(payload, null, 2)}
 
     fetchLive()
     fetchRsiProfiles()
+    fetchLiveHistory()
   }, [])
 
   // RSI 프로파일 변경
@@ -829,6 +901,78 @@ ${JSON.stringify(payload, null, 2)}
               )}
               Live 파라미터 설정
             </button>
+
+            {/* Live 히스토리 및 롤백 */}
+            {liveHistory.length > 0 && (
+              <div className="mt-6 border-t pt-4">
+                <div 
+                  className="flex items-center justify-between cursor-pointer mb-3"
+                  onClick={() => setLiveHistoryExpanded(!liveHistoryExpanded)}
+                >
+                  <h4 className="font-medium text-gray-700 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Live 히스토리 ({liveHistory.length}개)
+                  </h4>
+                  <span className="text-gray-500">{liveHistoryExpanded ? '▲' : '▼'}</span>
+                </div>
+
+                {liveHistoryExpanded && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">승격 시점</th>
+                          <th className="px-3 py-2 text-left">해제 시점</th>
+                          <th className="px-3 py-2 text-left">파라미터</th>
+                          <th className="px-3 py-2 text-left">사유</th>
+                          <th className="px-3 py-2 text-center">롤백</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {liveHistory.map((item, idx) => {
+                          const params = item.params || {}
+                          return (
+                            <tr key={idx} className="border-t hover:bg-gray-50">
+                              <td className="px-3 py-2 text-gray-600">
+                                {item.promoted_at ? new Date(item.promoted_at).toLocaleString('ko-KR', { 
+                                  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+                                }) : '-'}
+                              </td>
+                              <td className="px-3 py-2 text-gray-600">
+                                {item.demoted_at ? new Date(item.demoted_at).toLocaleString('ko-KR', { 
+                                  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+                                }) : '-'}
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                                  {params.lookback || '3M'} / MA{params.ma_period || 60} / RSI{params.rsi_period || 14} / {params.stop_loss || -10}%
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-gray-500 text-xs max-w-[150px] truncate" title={item.reason || item.notes || ''}>
+                                {item.reason || item.notes || '-'}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <button
+                                  onClick={() => executeRollback(idx)}
+                                  disabled={rollingBack !== null}
+                                  className="text-blue-600 hover:text-blue-800 disabled:opacity-50 text-xs px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
+                                >
+                                  {rollingBack === idx ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin inline" />
+                                  ) : (
+                                    '이 버전으로 롤백'
+                                  )}
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
