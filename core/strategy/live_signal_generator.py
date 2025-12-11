@@ -229,13 +229,21 @@ class LiveSignalGenerator:
                 # RSI 스케일링 (과매수/과매도 조정)
                 # 과매수(RSI>=80): 비중 0 (매수 제외)
                 # 과매수(RSI>=70): 비중 50%
-                # 과매도(RSI<=30): 비중 130%
+                # 과매도(RSI<=30): Bull 레짐에서만 130% 부스트
+                #   - Bull: 추세 내 조정 매수 → boost OK
+                #   - Neutral/Bear: 과매도는 함정일 수 있음 → boost 끔
+                current_regime = regime_info.get("regime", "neutral")
+
                 if rsi >= 80:
                     rsi_factor = 0.0  # 과매수 심함 - 매수 제외
                 elif rsi >= 70:
                     rsi_factor = 0.5  # 과매수 - 비중 절반
                 elif rsi <= 30:
-                    rsi_factor = 1.3  # 과매도 - 비중 증가
+                    # Bull 레짐에서만 과매도 부스트
+                    if current_regime == "bull":
+                        rsi_factor = 1.3  # 과매도 + 상승장 - 비중 증가
+                    else:
+                        rsi_factor = 1.0  # Neutral/Bear - 부스트 없음
                 else:
                     rsi_factor = 1.0  # 중립
 
