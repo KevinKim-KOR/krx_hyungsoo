@@ -75,8 +75,8 @@ def load_current_holdings() -> dict:
 
 
 def get_stock_name(code: str) -> str:
-    """종목명 조회"""
-    # 주요 ETF 매핑
+    """종목명 조회 (ETF 매핑 우선, pykrx fallback)"""
+    # 주요 ETF 매핑 (확장)
     etf_names = {
         "069500": "KODEX 200",
         "102110": "TIGER 200",
@@ -92,30 +92,58 @@ def get_stock_name(code: str) -> str:
         "453810": "TIGER 미국S&P500패시브",
         "461930": "KODEX 미국빅테크10(H)",
         "446720": "TIGER 미국테크TOP10 INDXX",
+        "462010": "ARIRANG 미국S&P500(H)",
+        "464060": "TIGER 미국반도체FACTSET",
+        "464600": "KODEX 미국AI테크TOP10",
+        "367760": "TIGER 미국필라델피아반도체",
+        "461950": "KODEX 미국반도체MV",
+        "448290": "TIGER 미국테크TOP10타겟커버드콜",
+        "381170": "TIGER 미국나스닥100커버드콜",
+        "411060": "ACE 미국빅테크TOP7 Plus",
+        "453080": "RISE 미국AI밸류체인",
+        "465330": "KODEX 미국AI전력핵심인프라",
+        "472160": "TIGER 미국AI빅테크10",
+        "489250": "KODEX 미국서학개미",
     }
 
     if code in etf_names:
         return etf_names[code]
 
-    # pykrx로 조회 시도
+    # etf_universe.csv에서 조회 시도
+    try:
+        universe_path = PROJECT_ROOT / "data" / "universe" / "etf_universe.csv"
+        if universe_path.exists():
+            import pandas as pd
+
+            df = pd.read_csv(universe_path, dtype={"code": str})
+            if "code" in df.columns and "name" in df.columns:
+                row = df[df["code"] == code]
+                if not row.empty:
+                    return row.iloc[0]["name"]
+    except Exception:
+        pass
+
+    # pykrx로 조회 시도 (안전하게)
     try:
         from pykrx import stock
 
         name = stock.get_market_ticker_name(code)
-        if name and name.strip():
+        if name and isinstance(name, str) and name.strip():
             return name.strip()
     except Exception:
         pass
 
+    # 모두 실패 시 코드 반환
     return code
 
 
-def format_telegram_message(result: dict) -> str:
+def format_telegram_message(result: dict, total_capital: float = 10_000_000) -> str:
     """
-    추천 결과를 텔레그램 메시지 형식으로 변환
+    추천 결과를 실전용 텔레그램 메시지 형식으로 변환
 
     Args:
         result: generate_recommendation() 결과
+        total_capital: 총 투자금 (기본 1천만원)
 
     Returns:
         str: 포맷된 메시지
@@ -123,10 +151,8 @@ def format_telegram_message(result: dict) -> str:
     lines = []
 
     # 헤더
-    lines.append("=" * 35)
-    lines.append("📊 *일일 추천*")
-    lines.append(f"📅 {date.today().strftime('%Y-%m-%d (%a)')}")
-    lines.append("=" * 35)
+    lines.append("📊 *[일일 추천]* " + date.today().strftime("%Y-%m-%d (%a)"))
+    lines.append("")
 
     # Live 파라미터 요약
     params = result.get("live_params", {})
@@ -135,9 +161,7 @@ def format_telegram_message(result: dict) -> str:
         ma = params.get("ma_period", 60)
         rsi = params.get("rsi_period", 14)
         stop = params.get("stop_loss", -10)
-        lines.append(f"🔧 *전략*: {lookback} / MA{ma} / RSI{rsi}")
-        lines.append(f"   손절: {stop}%")
-        lines.append("")
+        lines.append(f"🔧 전략: {lookback} / MA{ma} / RSI{rsi} / SL{stop}%")
 
     # 레짐 정보
     regime_info = result.get("regime_info", {})
@@ -147,49 +171,89 @@ def format_telegram_message(result: dict) -> str:
         regime = regime_info.get("regime", "neutral")
         emoji = regime_emoji.get(regime, "❓")
         name = regime_name.get(regime, regime)
-        confidence = regime_info.get("confidence", 0)
         position = regime_info.get("position_ratio", 0.8)
-        lines.append(f"{emoji} *레짐*: {name}")
-        lines.append(f"   신뢰도: {confidence:.0%} / 포지션: {position:.0%}")
-        lines.append("")
-
-    # 매수 검토
-    buy_recs = result.get("buy_recommendations", [])
-    lines.append("📥 *매수 검토*")
-    lines.append("-" * 25)
-    if buy_recs:
-        for rec in buy_recs[:5]:  # 최대 5개
-            code = rec["code"]
-            name = get_stock_name(code)
-            target = rec["target_weight"]
-            score = rec["final_score"]
-            lines.append(f"  • {name}")
-            lines.append(f"    목표 {target:.1f}% (점수 {score:.1f})")
-    else:
-        lines.append("  (없음)")
+        lines.append(f"{emoji} 레짐: {name} (포지션 {position:.0%})")
     lines.append("")
 
-    # 매도 검토
+    # ========== 매수 검토 ==========
+    buy_recs = result.get("buy_recommendations", [])
+    lines.append("=" * 30)
+    lines.append("📥 *매수 검토*")
+    lines.append("=" * 30)
+
+    if buy_recs:
+        for i, rec in enumerate(buy_recs[:5], 1):  # 최대 5개
+            code = rec["code"]
+            name = get_stock_name(code)
+            current = rec.get("current_weight", 0)
+            target = rec["target_weight"]
+            diff = target - current
+            diff_amount = int(total_capital * diff / 100)
+            score = rec.get("final_score", 0)
+            rsi = rec.get("rsi", 0)
+
+            # RSI 상태
+            if rsi > 70:
+                rsi_status = "과매수"
+            elif rsi < 30:
+                rsi_status = "과매도"
+            else:
+                rsi_status = "중립"
+
+            lines.append("")
+            lines.append(f"{i}) *{name}* (`{code}`)")
+            lines.append(f"   현재 {current:.1f}% → 목표 {target:.1f}%")
+            lines.append(f"   매수 필요: +{diff:.1f}% ≈ {diff_amount:,}원")
+            lines.append(f"   점수: {score:.1f} / RSI: {rsi:.0f}({rsi_status})")
+    else:
+        lines.append("")
+        lines.append("  (매수 검토 종목 없음)")
+
+    lines.append("")
+
+    # ========== 매도 검토 ==========
     sell_recs = result.get("sell_recommendations", [])
+    lines.append("=" * 30)
     lines.append("📤 *매도 검토*")
-    lines.append("-" * 25)
+    lines.append("=" * 30)
+
     if sell_recs:
         for rec in sell_recs[:5]:  # 최대 5개
             code = rec["code"]
             name = get_stock_name(code)
-            current = rec["current_weight"]
-            reason = rec.get("reason", "")
-            lines.append(f"  • {name}")
-            lines.append(f"    {current:.1f}% → 0% ({reason})")
+            current = rec.get("current_weight", 0)
+            reason = rec.get("reason", "Top N 제외")
+            sell_amount = int(total_capital * current / 100)
+            score = rec.get("momentum_score", 0)
+
+            lines.append("")
+            lines.append(f"• *{name}* (`{code}`)")
+            lines.append(f"  현재 {current:.1f}% → 목표 0%")
+            lines.append(f"  매도 필요: -{current:.1f}% ≈ {sell_amount:,}원")
+            lines.append(f"  사유: {reason} (점수: {score:.1f})")
     else:
-        lines.append("  (없음)")
+        lines.append("")
+        lines.append("  (매도 검토 종목 없음)")
+
     lines.append("")
 
-    # 푸터
-    lines.append("=" * 35)
+    # ========== 비중 계산 요약 ==========
+    lines.append("=" * 30)
+    lines.append("🧮 *비중 계산 요약*")
+    lines.append("-" * 30)
+
     target_pos = result.get("target_positions", 0)
     target_wt = result.get("target_weight", 0)
-    lines.append(f"목표: {target_pos}종목 × {target_wt:.1f}%")
+    position_ratio = regime_info.get("position_ratio", 0.8) if regime_info else 0.8
+
+    lines.append(f"  Base: {target_pos}종목 × {target_wt:.1f}%")
+    lines.append("  RSI 스케일링: 적용됨")
+    lines.append(f"  레짐 스케일링: ×{position_ratio:.1f}")
+
+    # 최종 비중 합계
+    total_target = sum(r.get("target_weight", 0) for r in buy_recs)
+    lines.append(f"  *최종 목표 비중 합계*: {total_target:.1f}%")
+    lines.append("=" * 30)
 
     return "\n".join(lines)
 
