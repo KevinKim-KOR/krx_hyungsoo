@@ -44,13 +44,20 @@ profiles:
 
 ---
 
-## ⭐ 중요 (2주 내 완료)
+## ✅ 중요 (완료됨 - 2025-12-11)
 
-| # | 작업 | 설명 | 예상 시간 |
-|---|------|------|-----------|
-| 7 | **기존 알림에 Live 파라미터 연동** | 장시작/일일/주간 리포트 수정 | 3시간 |
-| 8 | **손절 합성 로직** | ETF: `min(전략 stop_loss, 하이브리드)` | 2시간 |
-| 9 | **lookback 파라미터 추가** | `optimal_params.json`에 룩백 기간 저장 | 1시간 |
+| # | 작업 | 설명 | 상태 |
+|---|------|------|------|
+| 7 | **기존 알림에 Live 파라미터 연동** | 장시작/일일/주간 리포트 수정 | ✅ 완료 |
+| 8 | **손절 합성 로직** | ETF: `min(전략 stop_loss, 하이브리드)` | ✅ 완료 |
+| 9 | **lookback 파라미터 추가** | `optimal_params.json`에 룩백 기간 저장 | ✅ 완료 |
+
+### 구현 파일 (#7~#9)
+- `core/risk/stop_loss_manager.py` - 손절 합성 로직 공용 함수
+- `core/strategy/live_signal_generator.py` - fallback 안전 처리, lookback 거래일 변환 (months*21)
+- `scripts/nas/market_open_alert.py` - Live 파라미터 한 줄 요약 추가
+- `extensions/automation/daily_report.py` - LiveSignalGenerator 사용으로 변경
+- `scripts/nas/weekly_report_alert.py` - 손절 합성 로직 적용, Live 파라미터 요약 추가
 
 ---
 
