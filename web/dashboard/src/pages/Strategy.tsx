@@ -572,11 +572,195 @@ ${JSON.stringify(payload, null, 2)}
   // MDD는 양수로 반환되므로 음수로 표시
   const formatMDD = (value: number) => `-${Math.abs(value).toFixed(2)}%`
 
+  // Live 파라미터 수동 설정 상태
+  const [liveParams, setLiveParams] = useState({
+    lookback: '3M',
+    ma_period: 60,
+    rsi_period: 14,
+    stop_loss: -10,
+    max_positions: 10,
+    notes: ''
+  })
+  const [liveParamsExpanded, setLiveParamsExpanded] = useState(false)
+  const [settingLive, setSettingLive] = useState(false)
+  const [currentLive, setCurrentLive] = useState<any>(null)
+
+  // 현재 Live 파라미터 로드
+  useEffect(() => {
+    const fetchLive = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/optimal-params/live`)
+        if (res.ok) {
+          const data = await res.json()
+          setCurrentLive(data.live)
+          if (data.live?.params) {
+            setLiveParams({
+              lookback: data.live.params.lookback || '3M',
+              ma_period: data.live.params.ma_period || 60,
+              rsi_period: data.live.params.rsi_period || 14,
+              stop_loss: data.live.params.stop_loss || -10,
+              max_positions: data.live.params.max_positions || 10,
+              notes: ''
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Live 파라미터 로드 실패:', err)
+      }
+    }
+    fetchLive()
+  }, [])
+
+  // Live 파라미터 수동 설정
+  const setLiveManually = async () => {
+    const confirmed = window.confirm(
+      'Live 파라미터를 수동으로 설정하시겠습니까?\n\n' +
+      '• 기존 Live 파라미터는 히스토리로 이동됩니다.\n' +
+      '• 일일 추천 알림에 이 파라미터가 사용됩니다.'
+    )
+    if (!confirmed) return
+
+    setSettingLive(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/optimal-params/set-live`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(liveParams)
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setCurrentLive(data.live)
+        alert('✅ Live 파라미터가 설정되었습니다!')
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || '설정 실패')
+      }
+    } catch (err) {
+      alert('❌ 설정 실패: ' + (err instanceof Error ? err.message : '알 수 없는 오류'))
+    } finally {
+      setSettingLive(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold">전략 튜닝</h2>
 
-      {/* 0. 캐시 관리 */}
+      {/* 0. Live 파라미터 설정 */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={() => setLiveParamsExpanded(!liveParamsExpanded)}
+        >
+          <div className="flex items-center gap-4">
+            <Rocket className="w-5 h-5 text-orange-600" />
+            <div>
+              <span className="font-medium">Live 파라미터</span>
+              {currentLive?.params && (
+                <span className="text-sm text-gray-500 ml-2">
+                  {currentLive.params.lookback} / MA{currentLive.params.ma_period} / RSI{currentLive.params.rsi_period} / 손절{currentLive.params.stop_loss}%
+                </span>
+              )}
+              {currentLive?.promoted_at && (
+                <span className="text-xs text-gray-400 ml-2">
+                  ({new Date(currentLive.promoted_at).toLocaleDateString()})
+                </span>
+              )}
+            </div>
+          </div>
+          <span className="text-lg text-gray-500">{liveParamsExpanded ? '▲' : '▼'}</span>
+        </div>
+
+        {liveParamsExpanded && (
+          <div className="mt-4 border-t pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Lookback</label>
+                <select
+                  value={liveParams.lookback}
+                  onChange={e => setLiveParams({...liveParams, lookback: e.target.value})}
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="1M">1M</option>
+                  <option value="3M">3M</option>
+                  <option value="6M">6M</option>
+                  <option value="12M">12M</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">MA Period</label>
+                <input
+                  type="number"
+                  value={liveParams.ma_period}
+                  onChange={e => setLiveParams({...liveParams, ma_period: parseInt(e.target.value)})}
+                  className="w-full border rounded px-3 py-2"
+                  min={5}
+                  max={200}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">RSI Period</label>
+                <input
+                  type="number"
+                  value={liveParams.rsi_period}
+                  onChange={e => setLiveParams({...liveParams, rsi_period: parseInt(e.target.value)})}
+                  className="w-full border rounded px-3 py-2"
+                  min={5}
+                  max={30}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">손절 (%)</label>
+                <input
+                  type="number"
+                  value={liveParams.stop_loss}
+                  onChange={e => setLiveParams({...liveParams, stop_loss: parseFloat(e.target.value)})}
+                  className="w-full border rounded px-3 py-2"
+                  min={-30}
+                  max={0}
+                  step={1}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">최대 포지션</label>
+                <input
+                  type="number"
+                  value={liveParams.max_positions}
+                  onChange={e => setLiveParams({...liveParams, max_positions: parseInt(e.target.value)})}
+                  className="w-full border rounded px-3 py-2"
+                  min={1}
+                  max={20}
+                />
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1">메모 (선택)</label>
+              <input
+                type="text"
+                value={liveParams.notes}
+                onChange={e => setLiveParams({...liveParams, notes: e.target.value})}
+                className="w-full border rounded px-3 py-2"
+                placeholder="예: 보수적 설정으로 변경"
+              />
+            </div>
+            <button
+              onClick={setLiveManually}
+              disabled={settingLive}
+              className="bg-orange-600 text-white rounded px-6 py-2 flex items-center gap-2 hover:bg-orange-700 disabled:opacity-50"
+            >
+              {settingLive ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Rocket className="w-4 h-4" />
+              )}
+              Live 파라미터 설정
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 1. 캐시 관리 */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

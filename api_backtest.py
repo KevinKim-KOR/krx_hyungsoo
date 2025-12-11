@@ -783,11 +783,56 @@ def promote_to_live(request: PromoteToLiveRequest):
     raise HTTPException(status_code=500, detail="Live 승격 실패")
 
 
+class SetLiveParamsRequest(BaseModel):
+    """Live 파라미터 수동 설정 요청"""
+
+    lookback: str = "3M"  # "3M", "6M", "12M"
+    ma_period: int = 60
+    rsi_period: int = 14
+    stop_loss: float = -10
+    max_positions: int = 10
+    notes: str = "수동 설정"
+
+
 @app.get("/api/v1/optimal-params/live")
 def get_live_params():
     """현재 Live 파라미터 조회"""
     live = _optimal_params_service.load_live()
     return {"live": live}
+
+
+@app.post("/api/v1/optimal-params/set-live")
+def set_live_params(request: SetLiveParamsRequest):
+    """
+    Live 파라미터 수동 설정 (튜닝 없이)
+
+    UI에서 직접 파라미터를 입력하여 Live로 설정합니다.
+    기존 Live는 live_history로 이동됩니다.
+    """
+    params = {
+        "lookback": request.lookback,
+        "ma_period": request.ma_period,
+        "rsi_period": request.rsi_period,
+        "stop_loss": request.stop_loss,
+        "max_positions": request.max_positions,
+    }
+
+    # 수동 설정은 result 없이 promote
+    success = _optimal_params_service.promote_to_live(
+        params=params,
+        result={"source": "manual_setting"},
+        source_trial_id=None,
+        lookback=request.lookback,
+        notes=request.notes,
+    )
+
+    if success:
+        return {
+            "status": "success",
+            "message": "Live 파라미터 수동 설정 완료",
+            "live": _optimal_params_service.load_live(),
+        }
+    raise HTTPException(status_code=500, detail="Live 설정 실패")
 
 
 @app.get("/api/v1/optimal-params/live-history")

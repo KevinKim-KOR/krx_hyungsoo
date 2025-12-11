@@ -1,0 +1,63 @@
+# RSI 스케일링 프로파일 설정
+# 이 값들은 Optuna 튜닝 대상이 아닌 "전략 설계값"입니다.
+# ma_period, rsi_period, stop_loss만 튜닝 대상
+
+profiles:
+  # 기본 모멘텀 전략용 프로파일
+  live_momentum_default:
+    description: "Live 모멘텀 전략 기본 RSI 프로파일"
+
+    # 과매수 규칙 (RSI가 높을수록 비중 감소)
+    # 순서대로 체크하여 첫 번째 매칭 규칙 적용
+    overbought_rules:
+      - { rsi_min: 85, factor: 0.0 }   # 85 이상: 완전 제외
+      - { rsi_min: 75, factor: 0.3 }   # 75~85: 30%
+      - { rsi_min: 65, factor: 0.7 }   # 65~75: 70%
+
+    # 과매도 규칙 (레짐별 차등 적용)
+    # Bull: 추세 내 조정 매수 → boost OK
+    # Neutral/Bear: 과매도는 함정일 수 있음 → boost 끔
+    oversold_rules:
+      bull:
+        - { rsi_max: 30, factor: 1.3 }   # Bull에서만 boost
+      neutral:
+        - { rsi_max: 30, factor: 1.0 }   # Neutral: 부스트 없음
+      bear:
+        - { rsi_max: 30, factor: 1.0 }   # Bear: 부스트 없음
+
+    # 기본 팩터 (위 규칙에 해당 안 되면)
+    default_factor: 1.0
+
+  # 보수적 프로파일 (참고용)
+  conservative:
+    description: "보수적 RSI 프로파일 - 과매수 회피 강화"
+    overbought_rules:
+      - { rsi_min: 80, factor: 0.0 }
+      - { rsi_min: 70, factor: 0.3 }
+      - { rsi_min: 60, factor: 0.6 }
+    oversold_rules:
+      bull:
+        - { rsi_max: 25, factor: 1.2 }
+      neutral:
+        - { rsi_max: 25, factor: 1.0 }
+      bear:
+        - { rsi_max: 25, factor: 0.8 }
+    default_factor: 1.0
+
+  # 공격적 프로파일 (참고용)
+  aggressive:
+    description: "공격적 RSI 프로파일 - 과매도 부스트 강화"
+    overbought_rules:
+      - { rsi_min: 90, factor: 0.0 }
+      - { rsi_min: 80, factor: 0.5 }
+    oversold_rules:
+      bull:
+        - { rsi_max: 35, factor: 1.5 }
+      neutral:
+        - { rsi_max: 30, factor: 1.2 }
+      bear:
+        - { rsi_max: 30, factor: 1.0 }
+    default_factor: 1.0
+
+# 현재 사용 프로파일
+active_profile: live_momentum_default

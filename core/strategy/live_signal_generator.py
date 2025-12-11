@@ -5,8 +5,9 @@ Live 파라미터 기반 매매 신호 생성
 
 기능:
 - Live 파라미터 로드 (lookback, ma_period, rsi_period, stop_loss)
+- RSI 프로파일 YAML 로드 (config/rsi_profiles.yaml)
 - 모멘텀 스코어 계산
-- RSI 스케일링
+- RSI 스케일링 (프로파일 기반)
 - 목표 비중 계산
 - 매수/매도 신호 생성
 """
@@ -16,6 +17,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Dict, Optional
 
+import yaml
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -36,14 +38,26 @@ class LiveSignalGenerator:
        - 초과/외부 → 매도 검토
     """
 
-    def __init__(self, optimal_params_path: Optional[Path] = None):
+    def __init__(
+        self,
+        optimal_params_path: Optional[Path] = None,
+        rsi_profiles_path: Optional[Path] = None,
+    ):
         """
         Args:
             optimal_params_path: optimal_params.json 경로 (None이면 기본 경로)
+            rsi_profiles_path: rsi_profiles.yaml 경로 (None이면 기본 경로)
         """
         if optimal_params_path is None:
             optimal_params_path = Path("data/optimal_params.json")
         self.optimal_params_path = optimal_params_path
+
+        if rsi_profiles_path is None:
+            rsi_profiles_path = Path("config/rsi_profiles.yaml")
+        self.rsi_profiles_path = rsi_profiles_path
+
+        # RSI 프로파일 로드
+        self.rsi_profile = self._load_rsi_profile()
 
     def load_live_params(self) -> Optional[Dict]:
         """Live 파라미터 로드"""
@@ -77,6 +91,76 @@ class LiveSignalGenerator:
         except Exception as e:
             logger.error(f"Live 파라미터 로드 실패: {e}")
             return None
+
+    def _load_rsi_profile(self) -> Dict:
+        """RSI 프로파일 YAML 로드"""
+        default_profile = {
+            "overbought_rules": [
+                {"rsi_min": 85, "factor": 0.0},
+                {"rsi_min": 75, "factor": 0.3},
+                {"rsi_min": 65, "factor": 0.7},
+            ],
+            "oversold_rules": {
+                "bull": [{"rsi_max": 30, "factor": 1.3}],
+                "neutral": [{"rsi_max": 30, "factor": 1.0}],
+                "bear": [{"rsi_max": 30, "factor": 1.0}],
+            },
+            "default_factor": 1.0,
+        }
+
+        if not self.rsi_profiles_path.exists():
+            logger.warning(f"RSI 프로파일 없음, 기본값 사용: {self.rsi_profiles_path}")
+            return default_profile
+
+        try:
+            with open(self.rsi_profiles_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+
+            active_profile_name = data.get("active_profile", "live_momentum_default")
+            profiles = data.get("profiles", {})
+            profile = profiles.get(active_profile_name, {})
+
+            if not profile:
+                logger.warning(f"프로파일 '{active_profile_name}' 없음, 기본값 사용")
+                return default_profile
+
+            logger.info(f"RSI 프로파일 로드: {active_profile_name}")
+            return profile
+
+        except Exception as e:
+            logger.error(f"RSI 프로파일 로드 실패: {e}")
+            return default_profile
+
+    def _calculate_rsi_factor(self, rsi: float, regime: str) -> float:
+        """
+        RSI 프로파일 기반 RSI factor 계산
+
+        Args:
+            rsi: RSI 값 (0-100)
+            regime: 현재 레짐 ('bull', 'neutral', 'bear')
+
+        Returns:
+            float: RSI factor (0.0 ~ 1.5)
+        """
+        profile = self.rsi_profile
+
+        # 1. 과매수 규칙 체크 (높은 RSI부터 순서대로)
+        overbought_rules = profile.get("overbought_rules", [])
+        for rule in overbought_rules:
+            rsi_min = rule.get("rsi_min", 100)
+            if rsi >= rsi_min:
+                return rule.get("factor", 1.0)
+
+        # 2. 과매도 규칙 체크 (레짐별)
+        oversold_rules = profile.get("oversold_rules", {})
+        regime_rules = oversold_rules.get(regime, [])
+        for rule in regime_rules:
+            rsi_max = rule.get("rsi_max", 0)
+            if rsi <= rsi_max:
+                return rule.get("factor", 1.0)
+
+        # 3. 기본값
+        return profile.get("default_factor", 1.0)
 
     def _parse_lookback(self, lookback: str) -> int:
         """룩백 문자열을 개월 수로 변환 (예: '3M' -> 3)"""
@@ -226,26 +310,10 @@ class LiveSignalGenerator:
                     rs = gain_val / loss_val
                     rsi = 100 - (100 / (1 + rs))
 
-                # RSI 스케일링 (과매수/과매도 조정)
-                # 과매수(RSI>=80): 비중 0 (매수 제외)
-                # 과매수(RSI>=70): 비중 50%
-                # 과매도(RSI<=30): Bull 레짐에서만 130% 부스트
-                #   - Bull: 추세 내 조정 매수 → boost OK
-                #   - Neutral/Bear: 과매도는 함정일 수 있음 → boost 끔
+                # RSI 스케일링 (프로파일 기반)
+                # config/rsi_profiles.yaml에서 규칙 로드
                 current_regime = regime_info.get("regime", "neutral")
-
-                if rsi >= 80:
-                    rsi_factor = 0.0  # 과매수 심함 - 매수 제외
-                elif rsi >= 70:
-                    rsi_factor = 0.5  # 과매수 - 비중 절반
-                elif rsi <= 30:
-                    # Bull 레짐에서만 과매도 부스트
-                    if current_regime == "bull":
-                        rsi_factor = 1.3  # 과매도 + 상승장 - 비중 증가
-                    else:
-                        rsi_factor = 1.0  # Neutral/Bear - 부스트 없음
-                else:
-                    rsi_factor = 1.0  # 중립
+                rsi_factor = self._calculate_rsi_factor(rsi, current_regime)
 
                 # 최종 스코어 = 모멘텀 * RSI 팩터
                 final_score = momentum_score * rsi_factor

@@ -1,5 +1,8 @@
 {
-  "live": {
+  "current": {
+    "id": 12,
+    "timestamp": "2025-12-10T23:52:25.956359",
+    "source": "tuning",
     "params": {
       "ma_period": 69,
       "rsi_period": 17,
@@ -8,8 +11,6 @@
       "initial_capital": 10000000,
       "enable_defense": true
     },
-    "promoted_at": "2025-12-10T23:52:25.956359",
-    "source_trial_id": 12,
     "result": {
       "cagr": 48.68435661049819,
       "sharpe_ratio": 4.01910750577751,
@@ -23,10 +24,10 @@
       "total_costs": 72955.53473174632,
       "total_realized_pnl": 831084.0639412532
     },
-    "notes": "Sharpe: 4.02, CAGR: 48.68%"
+    "notes": "Sharpe: 4.02, CAGR: 48.68%",
+    "is_active": true
   },
-  "live_history": [],
-  "research": [
+  "history": [
     {
       "id": 1,
       "timestamp": "2025-12-08T22:03:27.810865",
