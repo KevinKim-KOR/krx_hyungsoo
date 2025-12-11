@@ -11,32 +11,35 @@
 | 3 | **일일 추천 알림 신규 개발** | Live 파라미터 기반 매수/매도 신호 | ✅ 완료 |
 | 4 | **RSI 프로파일 YAML** | RSI 스케일링 규칙 외부화 (전략 설계값) | ✅ 완료 |
 | 5 | **Live 파라미터 수동 설정 UI** | 튜닝 없이 직접 파라미터 입력 | ✅ 완료 |
+| 6 | **RSI 프로파일 3단계 선택 UI** | conservative/neutral/aggressive 선택 | ✅ 완료 |
 
 ### 구현 파일
 - `app/services/optimal_params_service.py` - live/live_history/research 구조
-- `api_backtest.py` - promote-to-live, set-live, live, rollback-live API
-- `web/dashboard/src/pages/Strategy.tsx` - "실전 파라미터로 적용" 버튼 + Live 수동 설정 UI
+- `api_backtest.py` - promote-to-live, set-live, live, rollback-live, rsi-profiles API
+- `web/dashboard/src/pages/Strategy.tsx` - Live 수동 설정 UI + RSI 프로파일 선택
 - `core/strategy/live_signal_generator.py` - Live 기반 신호 생성 + RSI 프로파일 로드
 - `scripts/nas/daily_recommendation_alert.py` - 일일 추천 알림
-- `config/rsi_profiles.yaml` - RSI 스케일링 프로파일 (과매수/과매도 규칙)
+- `config/rsi_profiles.yaml` - RSI 스케일링 프로파일 (3단계)
 
-### RSI 프로파일 스펙
+### RSI 프로파일 3단계
+| 프로파일 | 과매수 컷 | Bull 부스트 | 설명 |
+|----------|-----------|-------------|------|
+| **conservative** | RSI 70+ | 1.1x | 안전 우선, 과매수 회피 강화 |
+| **neutral** | RSI 65+ | 1.2x | 균형잡힌 기본 설정 |
+| **aggressive** | RSI 70+ | 1.3x | 수익 추구, 과매도 부스트 강화 |
+
 ```yaml
 # config/rsi_profiles.yaml
 profiles:
-  live_momentum_default:
-    overbought_rules:
-      - { rsi_min: 85, factor: 0.0 }   # 85 이상: 완전 제외
-      - { rsi_min: 75, factor: 0.3 }   # 75~85: 30%
-      - { rsi_min: 65, factor: 0.7 }   # 65~75: 70%
-    oversold_rules:
-      bull:
-        - { rsi_max: 30, factor: 1.3 } # Bull에서만 boost
-      neutral:
-        - { rsi_max: 30, factor: 1.0 }
-      bear:
-        - { rsi_max: 30, factor: 1.0 }
-    default_factor: 1.0
+  conservative:
+    overbought: [85→0, 80→0.3, 70→0.6]
+    oversold: bull 1.1x / neutral,bear 1.0x
+  neutral:
+    overbought: [85→0, 75→0.3, 65→0.7]
+    oversold: bull 1.2x / neutral,bear 1.0x
+  aggressive:
+    overbought: [90→0, 80→0.3, 70→0.8]
+    oversold: bull 1.3x / neutral,bear 1.0x
 ```
 
 ---
@@ -45,9 +48,9 @@ profiles:
 
 | # | 작업 | 설명 | 예상 시간 |
 |---|------|------|-----------|
-| 6 | **기존 알림에 Live 파라미터 연동** | 장시작/일일/주간 리포트 수정 | 3시간 |
-| 7 | **손절 합성 로직** | ETF: `min(전략 stop_loss, 하이브리드)` | 2시간 |
-| 8 | **lookback 파라미터 추가** | `optimal_params.json`에 룩백 기간 저장 | 1시간 |
+| 7 | **기존 알림에 Live 파라미터 연동** | 장시작/일일/주간 리포트 수정 | 3시간 |
+| 8 | **손절 합성 로직** | ETF: `min(전략 stop_loss, 하이브리드)` | 2시간 |
+| 9 | **lookback 파라미터 추가** | `optimal_params.json`에 룩백 기간 저장 | 1시간 |
 
 ---
 
@@ -55,8 +58,8 @@ profiles:
 
 | # | 작업 | 설명 | 예상 시간 |
 |---|------|------|-----------|
-| 9 | **장중 알림 유니버스 필터** | ETF 유니버스 종목만 표시 옵션 | 1시간 |
-| 10 | **Live 파라미터 롤백 기능** | 이전 Live로 복원 (API 완료, UI 필요) | 1시간 |
+| 10 | **장중 알림 유니버스 필터** | ETF 유니버스 종목만 표시 옵션 | 1시간 |
+| 11 | **Live 파라미터 롤백 UI** | 이전 Live로 복원 (API 완료, UI 필요) | 1시간 |
 
 ---
 
