@@ -223,6 +223,7 @@ def run_backtest(request: BacktestRequest):
 
 class SplitMetricsResponse(BaseModel):
     """분할 구간 성과 응답"""
+
     cagr: float
     sharpe_ratio: float
     max_drawdown: float
@@ -231,12 +232,14 @@ class SplitMetricsResponse(BaseModel):
 
 class EngineHealthResponse(BaseModel):
     """엔진 헬스체크 응답"""
+
     is_valid: bool
     warnings: List[str]
 
 
 class ExtendedBacktestResponse(BaseModel):
     """확장된 백테스트 응답 (Train/Val/Test + engine_health)"""
+
     # 전체 성과
     cagr: float
     sharpe_ratio: float
@@ -292,28 +295,44 @@ def run_backtest_with_split(request: BacktestRequest):
             win_rate=result.metrics.win_rate,
             volatility=result.metrics.volatility,
             calmar_ratio=result.metrics.calmar_ratio,
-            train=SplitMetricsResponse(
-                cagr=result.train_metrics.cagr,
-                sharpe_ratio=result.train_metrics.sharpe_ratio,
-                max_drawdown=result.train_metrics.max_drawdown,
-                num_trades=result.train_metrics.num_trades,
-            ) if result.train_metrics else None,
-            val=SplitMetricsResponse(
-                cagr=result.val_metrics.cagr,
-                sharpe_ratio=result.val_metrics.sharpe_ratio,
-                max_drawdown=result.val_metrics.max_drawdown,
-                num_trades=result.val_metrics.num_trades,
-            ) if result.val_metrics else None,
-            test=SplitMetricsResponse(
-                cagr=result.test_metrics.cagr,
-                sharpe_ratio=result.test_metrics.sharpe_ratio,
-                max_drawdown=result.test_metrics.max_drawdown,
-                num_trades=result.test_metrics.num_trades,
-            ) if result.test_metrics else None,
-            engine_health=EngineHealthResponse(
-                is_valid=result.engine_health.get("is_valid", False),
-                warnings=result.engine_health.get("warnings", []),
-            ) if result.engine_health else None,
+            train=(
+                SplitMetricsResponse(
+                    cagr=result.train_metrics.cagr,
+                    sharpe_ratio=result.train_metrics.sharpe_ratio,
+                    max_drawdown=result.train_metrics.max_drawdown,
+                    num_trades=result.train_metrics.num_trades,
+                )
+                if result.train_metrics
+                else None
+            ),
+            val=(
+                SplitMetricsResponse(
+                    cagr=result.val_metrics.cagr,
+                    sharpe_ratio=result.val_metrics.sharpe_ratio,
+                    max_drawdown=result.val_metrics.max_drawdown,
+                    num_trades=result.val_metrics.num_trades,
+                )
+                if result.val_metrics
+                else None
+            ),
+            test=(
+                SplitMetricsResponse(
+                    cagr=result.test_metrics.cagr,
+                    sharpe_ratio=result.test_metrics.sharpe_ratio,
+                    max_drawdown=result.test_metrics.max_drawdown,
+                    num_trades=result.test_metrics.num_trades,
+                )
+                if result.test_metrics
+                else None
+            ),
+            engine_health=(
+                EngineHealthResponse(
+                    is_valid=result.engine_health.get("is_valid", False),
+                    warnings=result.engine_health.get("warnings", []),
+                )
+                if result.engine_health
+                else None
+            ),
             daily_logs=result.daily_logs,
             warnings=result.warnings,
         )
@@ -380,8 +399,10 @@ def get_tuning_status():
 # AI 분석 API
 # ============================================
 
+
 class TuningTrialPayload(BaseModel):
     """AI 분석용 튜닝 Trial 페이로드"""
+
     lookback: str  # "3M", "6M", "12M"
     trial_id: int
     strategy: str = "Momentum ETF"
@@ -392,6 +413,7 @@ class TuningTrialPayload(BaseModel):
 
 class AnalysisResponse(BaseModel):
     """AI 분석 응답"""
+
     trial_id: int
     lookback: str
     sections: dict  # 7개 섹션
@@ -401,7 +423,7 @@ class AnalysisResponse(BaseModel):
 def analyze_tuning_trial(payload: TuningTrialPayload):
     """
     튜닝 Trial AI 분석
-    
+
     선택된 Trial 데이터를 Claude API로 분석하여 7개 섹션 리포트 반환
     """
     try:
@@ -409,15 +431,12 @@ def analyze_tuning_trial(payload: TuningTrialPayload):
             TuningTrialPayload as ServicePayload,
             get_analysis_service,
         )
-        
+
         # 엔진 헬스체크
         if not payload.engine_health.get("is_valid", True):
             warnings = payload.engine_health.get("warnings", [])
-            raise HTTPException(
-                status_code=400,
-                detail=f"엔진 비정상: {', '.join(warnings)}"
-            )
-        
+            raise HTTPException(status_code=400, detail=f"엔진 비정상: {', '.join(warnings)}")
+
         # 서비스 페이로드 생성
         service_payload = ServicePayload(
             lookback=payload.lookback,
@@ -427,17 +446,17 @@ def analyze_tuning_trial(payload: TuningTrialPayload):
             metrics=payload.metrics,
             engine_health=payload.engine_health,
         )
-        
+
         # AI 분석 실행
         service = get_analysis_service()
         result = service.analyze(service_payload)
-        
+
         return AnalysisResponse(
             trial_id=result["trial_id"],
             lookback=result["lookback"],
             sections=result["sections"],
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -706,45 +725,126 @@ def start_cache_update():
 
 
 class SaveOptimalParamsRequest(BaseModel):
-    """최적 파라미터 저장 요청"""
+    """최적 파라미터 저장 요청 (Research)"""
 
     params: dict
     result: dict
     source: str = "manual"
+    lookback: str = None  # "3M", "6M", "12M"
+    notes: str = ""
+
+
+class PromoteToLiveRequest(BaseModel):
+    """실전 파라미터 승격 요청"""
+
+    params: dict
+    result: dict
+    trial_id: int = None
+    lookback: str = None  # "3M", "6M", "12M"
     notes: str = ""
 
 
 @app.post("/api/v1/optimal-params/save")
 def save_optimal_params(request: SaveOptimalParamsRequest):
-    """최적 파라미터 저장"""
+    """Research 파라미터 저장 (튜닝 결과)"""
     success = _optimal_params_service.save(
-        params=request.params, result=request.result, source=request.source, notes=request.notes
+        params=request.params,
+        result=request.result,
+        source=request.source,
+        lookback=request.lookback,
+        notes=request.notes,
     )
     if success:
-        return {"status": "success", "message": "최적 파라미터 저장 완료"}
+        return {"status": "success", "message": "Research 파라미터 저장 완료"}
     raise HTTPException(status_code=500, detail="저장 실패")
+
+
+@app.post("/api/v1/optimal-params/promote-to-live")
+def promote_to_live(request: PromoteToLiveRequest):
+    """
+    실전 파라미터로 승격
+
+    튜닝 UI에서 선택한 Trial을 Live로 승격합니다.
+    기존 Live는 live_history로 이동됩니다.
+    """
+    success = _optimal_params_service.promote_to_live(
+        params=request.params,
+        result=request.result,
+        source_trial_id=request.trial_id,
+        lookback=request.lookback,
+        notes=request.notes,
+    )
+    if success:
+        return {
+            "status": "success",
+            "message": "Live 파라미터 승격 완료",
+            "live": _optimal_params_service.load_live(),
+        }
+    raise HTTPException(status_code=500, detail="Live 승격 실패")
+
+
+@app.get("/api/v1/optimal-params/live")
+def get_live_params():
+    """현재 Live 파라미터 조회"""
+    live = _optimal_params_service.load_live()
+    return {"live": live}
+
+
+@app.get("/api/v1/optimal-params/live-history")
+def get_live_history(limit: int = 10):
+    """Live 파라미터 히스토리 조회"""
+    history = _optimal_params_service.get_live_history(limit=limit)
+    return {"live_history": history, "count": len(history)}
+
+
+@app.post("/api/v1/optimal-params/rollback-live")
+def rollback_live(history_index: int = 0):
+    """
+    이전 Live 파라미터로 롤백
+
+    Args:
+        history_index: live_history 인덱스 (0 = 가장 최근)
+    """
+    success = _optimal_params_service.rollback_live(history_index)
+    if success:
+        return {
+            "status": "success",
+            "message": "Live 롤백 완료",
+            "live": _optimal_params_service.load_live(),
+        }
+    raise HTTPException(status_code=400, detail="롤백할 히스토리가 없습니다")
+
+
+# ========== 하위 호환성 API (deprecated) ==========
 
 
 @app.get("/api/v1/optimal-params/current")
 def get_current_optimal_params():
-    """현재 활성 최적 파라미터 조회"""
+    """현재 활성 최적 파라미터 조회 (deprecated: /live 사용)"""
     current = _optimal_params_service.load_current()
     return {"current": current}
 
 
 @app.get("/api/v1/optimal-params/history")
 def get_optimal_params_history(limit: int = 10):
-    """최적 파라미터 히스토리 조회"""
+    """최적 파라미터 히스토리 조회 (deprecated: /research 사용)"""
     history = _optimal_params_service.load_history(limit=limit)
     return {"history": history}
 
 
+@app.get("/api/v1/optimal-params/research")
+def get_research_params(limit: int = 20):
+    """Research 파라미터 히스토리 조회"""
+    research = _optimal_params_service.load_research(limit=limit)
+    return {"research": research, "count": len(research)}
+
+
 @app.post("/api/v1/optimal-params/activate/{entry_id}")
 def activate_optimal_params(entry_id: int):
-    """특정 파라미터 활성화"""
+    """특정 파라미터 활성화 (deprecated: /promote-to-live 사용)"""
     success = _optimal_params_service.activate(entry_id)
     if success:
-        return {"status": "success", "message": f"파라미터 #{entry_id} 활성화"}
+        return {"status": "success", "message": f"파라미터 #{entry_id} Live로 승격"}
     raise HTTPException(status_code=404, detail="파라미터를 찾을 수 없음")
 
 
@@ -827,11 +927,12 @@ def root():
     """API 정보"""
     return {
         "name": "Backtest & Tuning API",
-        "version": "2.2.0",
+        "version": "2.3.0",
         "features": {
             "backtest": "실제 백테스트 실행",
             "tuning": "Optuna 기반 파라미터 최적화",
             "optimal_params": "최적 파라미터 영구 저장",
+            "live_params": "Live 파라미터 관리 (promote/rollback)",
             "tuning_variables": "튜닝 변수 관리",
         },
     }

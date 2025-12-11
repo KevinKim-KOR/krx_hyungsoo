@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight, Rocket, CheckCircle } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
@@ -489,6 +489,8 @@ ${JSON.stringify(payload, null, 2)}
 
   // 최적 파라미터 저장
   const [saving, setSaving] = useState(false)
+  const [promoting, setPromoting] = useState(false)
+  const [promoteSuccess, setPromoteSuccess] = useState(false)
   
   const saveOptimalParams = async () => {
     if (!tuningStatus.best_params || tuningStatus.trials.length === 0) return
@@ -516,6 +518,52 @@ ${JSON.stringify(payload, null, 2)}
       alert('❌ 저장 실패: ' + (err instanceof Error ? err.message : '알 수 없는 오류'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  // 실전 파라미터로 승격 (Live)
+  const promoteToLive = async () => {
+    if (!tuningStatus.best_params || tuningStatus.trials.length === 0) return
+    
+    // 확인 모달
+    const confirmed = window.confirm(
+      '이 파라미터를 실전 운영용으로 적용하시겠습니까?\n\n' +
+      '• 기존 Live 파라미터는 히스토리로 이동됩니다.\n' +
+      '• 일일 추천 알림에 이 파라미터가 사용됩니다.'
+    )
+    if (!confirmed) return
+    
+    setPromoting(true)
+    setPromoteSuccess(false)
+    try {
+      const bestTrial = tuningStatus.trials[0]
+      const lookback = bestTrial.lookback_months ? `${bestTrial.lookback_months}M` : '3M'
+      
+      const res = await fetch(`${API_BASE_URL}/api/v1/optimal-params/promote-to-live`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          params: tuningStatus.best_params,
+          result: bestTrial.result,
+          trial_id: bestTrial.trial_number,
+          lookback: lookback,
+          notes: `Sharpe: ${bestTrial.result.sharpe_ratio.toFixed(2)}, CAGR: ${bestTrial.result.cagr.toFixed(2)}% - UI에서 승격`
+        }),
+      })
+      
+      if (res.ok) {
+        setPromoteSuccess(true)
+        alert('✅ Live 파라미터로 승격되었습니다!\n\n이제 일일 추천 알림에 이 파라미터가 사용됩니다.')
+        // 3초 후 성공 상태 초기화
+        setTimeout(() => setPromoteSuccess(false), 3000)
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || 'Live 승격 실패')
+      }
+    } catch (err) {
+      alert('❌ Live 승격 실패: ' + (err instanceof Error ? err.message : '알 수 없는 오류'))
+    } finally {
+      setPromoting(false)
     }
   }
 
@@ -735,6 +783,26 @@ ${JSON.stringify(payload, null, 2)}
                   최적 결과 AI 분석
                 </button>
               )}
+              
+              {/* 실전 파라미터로 적용 버튼 */}
+              <button
+                onClick={promoteToLive}
+                disabled={promoting}
+                className={`rounded px-6 py-2 flex items-center gap-2 mt-6 disabled:opacity-50 ${
+                  promoteSuccess 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                }`}
+              >
+                {promoting ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : promoteSuccess ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : (
+                  <Rocket className="w-4 h-4" />
+                )}
+                {promoteSuccess ? 'Live 적용 완료!' : '실전 파라미터로 적용'}
+              </button>
             </>
           )}
         </div>
