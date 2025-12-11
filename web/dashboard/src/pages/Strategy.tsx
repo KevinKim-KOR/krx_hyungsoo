@@ -585,7 +585,12 @@ ${JSON.stringify(payload, null, 2)}
   const [settingLive, setSettingLive] = useState(false)
   const [currentLive, setCurrentLive] = useState<any>(null)
 
-  // 현재 Live 파라미터 로드
+  // RSI 프로파일 상태
+  const [rsiProfiles, setRsiProfiles] = useState<Record<string, { description: string }>>({})
+  const [activeRsiProfile, setActiveRsiProfile] = useState('neutral')
+  const [settingRsiProfile, setSettingRsiProfile] = useState(false)
+
+  // 현재 Live 파라미터 및 RSI 프로파일 로드
   useEffect(() => {
     const fetchLive = async () => {
       try {
@@ -608,8 +613,46 @@ ${JSON.stringify(payload, null, 2)}
         console.error('Live 파라미터 로드 실패:', err)
       }
     }
+
+    const fetchRsiProfiles = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/rsi-profiles`)
+        if (res.ok) {
+          const data = await res.json()
+          setRsiProfiles(data.profiles || {})
+          setActiveRsiProfile(data.active_profile || 'neutral')
+        }
+      } catch (err) {
+        console.error('RSI 프로파일 로드 실패:', err)
+      }
+    }
+
     fetchLive()
+    fetchRsiProfiles()
   }, [])
+
+  // RSI 프로파일 변경
+  const changeRsiProfile = async (profile: string) => {
+    setSettingRsiProfile(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/rsi-profiles/set`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile })
+      })
+
+      if (res.ok) {
+        setActiveRsiProfile(profile)
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || '프로파일 변경 실패')
+      }
+    } catch (err) {
+      alert('❌ RSI 프로파일 변경 실패: ' + (err instanceof Error ? err.message : '알 수 없는 오류'))
+    } finally {
+      setSettingRsiProfile(false)
+    }
+  }
 
   // Live 파라미터 수동 설정
   const setLiveManually = async () => {
@@ -674,6 +717,36 @@ ${JSON.stringify(payload, null, 2)}
 
         {liveParamsExpanded && (
           <div className="mt-4 border-t pt-4">
+            {/* RSI 프로파일 선택 */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">RSI 프로파일</label>
+                  <select
+                    value={activeRsiProfile}
+                    onChange={e => changeRsiProfile(e.target.value)}
+                    disabled={settingRsiProfile}
+                    className="border rounded px-3 py-2 bg-white min-w-[140px]"
+                  >
+                    <option value="conservative">보수적</option>
+                    <option value="neutral">중립</option>
+                    <option value="aggressive">공격적</option>
+                  </select>
+                </div>
+                <div className="flex-1 text-sm text-gray-600">
+                  {activeRsiProfile === 'conservative' && (
+                    <span>🛡️ <strong>보수적</strong> - 과매수 회피 강화, 안전 우선 (RSI 70+ 비중 감소, Bull 부스트 1.1x)</span>
+                  )}
+                  {activeRsiProfile === 'neutral' && (
+                    <span>⚖️ <strong>중립</strong> - 균형잡힌 기본 설정 (RSI 65+ 비중 감소, Bull 부스트 1.2x)</span>
+                  )}
+                  {activeRsiProfile === 'aggressive' && (
+                    <span>🚀 <strong>공격적</strong> - 과매도 부스트 강화, 수익 추구 (RSI 70+ 비중 감소, Bull 부스트 1.3x)</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Lookback</label>

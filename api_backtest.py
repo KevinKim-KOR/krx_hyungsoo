@@ -842,6 +842,86 @@ def get_live_history(limit: int = 10):
     return {"live_history": history, "count": len(history)}
 
 
+# ============================================================
+# RSI 프로파일 API
+# ============================================================
+
+
+@app.get("/api/v1/rsi-profiles")
+def get_rsi_profiles():
+    """RSI 프로파일 목록 및 현재 활성 프로파일 조회"""
+    import yaml
+    from pathlib import Path
+
+    rsi_profiles_path = Path("config/rsi_profiles.yaml")
+
+    if not rsi_profiles_path.exists():
+        return {
+            "profiles": {
+                "conservative": {"description": "보수적 - 과매수 회피 강화, 안전 우선"},
+                "neutral": {"description": "중립 - 균형잡힌 기본 설정"},
+                "aggressive": {"description": "공격적 - 과매도 부스트 강화, 수익 추구"},
+            },
+            "active_profile": "neutral",
+        }
+
+    try:
+        with open(rsi_profiles_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        profiles_summary = {}
+        for name, profile in data.get("profiles", {}).items():
+            profiles_summary[name] = {
+                "description": profile.get("description", name),
+            }
+
+        return {
+            "profiles": profiles_summary,
+            "active_profile": data.get("active_profile", "neutral"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RSI 프로파일 로드 실패: {e}")
+
+
+class SetRsiProfileRequest(BaseModel):
+    """RSI 프로파일 설정 요청"""
+
+    profile: str  # "conservative", "neutral", "aggressive"
+
+
+@app.post("/api/v1/rsi-profiles/set")
+def set_rsi_profile(request: SetRsiProfileRequest):
+    """RSI 프로파일 변경"""
+    import yaml
+    from pathlib import Path
+
+    valid_profiles = ["conservative", "neutral", "aggressive"]
+    if request.profile not in valid_profiles:
+        raise HTTPException(status_code=400, detail=f"유효하지 않은 프로파일: {request.profile}")
+
+    rsi_profiles_path = Path("config/rsi_profiles.yaml")
+
+    if not rsi_profiles_path.exists():
+        raise HTTPException(status_code=404, detail="RSI 프로파일 파일 없음")
+
+    try:
+        with open(rsi_profiles_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        data["active_profile"] = request.profile
+
+        with open(rsi_profiles_path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+        return {
+            "status": "success",
+            "message": f"RSI 프로파일 변경: {request.profile}",
+            "active_profile": request.profile,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RSI 프로파일 저장 실패: {e}")
+
+
 @app.post("/api/v1/optimal-params/rollback-live")
 def rollback_live(history_index: int = 0):
     """
