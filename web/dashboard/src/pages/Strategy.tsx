@@ -359,6 +359,7 @@ export default function Strategy() {
 각 섹션은 Markdown 제목(## 1. …)으로 구분해 주세요.
 
 1) 최적 파라미터 요약
+   - 백테스트 기간 (start_date ~ end_date)
    - 룩백, MA, RSI, 손절 비율
    - Train/Val/Test Sharpe, CAGR, MDD 간단 요약
 
@@ -398,6 +399,10 @@ ${JSON.stringify(payload, null, 2)}
   // AI 분석 프롬프트 생성 (튜닝 Trial용)
   const generateAnalysisPrompt = (trial: TuningTrial) => {
     const payload = {
+      backtest_period: {
+        start_date: backtestParams.start_date,
+        end_date: backtestParams.end_date,
+      },
       lookback: trial.lookback_months ? `${trial.lookback_months}M` : '3M',
       trial_id: trial.trial_number,
       strategy: 'Momentum ETF',
@@ -458,7 +463,11 @@ ${JSON.stringify(payload, null, 2)}
   const requestAiAnalysisFromHistory = (item: any) => {
     // 페이로드 구성 (DB 히스토리 항목 기반)
     const payload = {
-      lookback: '3M',  // DB에서 룩백 정보가 없으면 기본값
+      backtest_period: {
+        start_date: item.start_date ?? backtestParams.start_date,
+        end_date: item.end_date ?? backtestParams.end_date,
+      },
+      lookback: item.lookback ?? '3M',  // DB에서 룩백 정보가 없으면 기본값
       trial_id: item.id,
       strategy: 'Momentum ETF',
       params: {
