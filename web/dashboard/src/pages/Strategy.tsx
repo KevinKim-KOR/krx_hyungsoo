@@ -106,7 +106,7 @@ interface TuningVariablesResponse {
 
 export default function Strategy() {
   // 튜닝용 기본 파라미터
-  const [backtestParams] = useState<BacktestParams>({
+  const [backtestParams, setBacktestParams] = useState<BacktestParams>({
     start_date: '2024-01-01',
     end_date: new Date().toISOString().split('T')[0],
     ma_period: 60,
@@ -156,6 +156,9 @@ export default function Strategy() {
 
   // 튜닝 시작 확인 모달 상태
   const [tuningConfirmOpen, setTuningConfirmOpen] = useState(false)
+
+  // 튜닝 설정 상태 (명시적 설정 패널용)
+  const [tuningLookbacks, setTuningLookbacks] = useState<number[]>([3, 6, 12])
 
   // 튜닝 변수 상태
   const [tuningVariables, setTuningVariables] = useState<Record<string, TuningVariable>>({})
@@ -287,6 +290,10 @@ export default function Strategy() {
       alert('Trials는 10~1000 범위여야 합니다.')
       return
     }
+    if (tuningLookbacks.length === 0) {
+      alert('룩백 기간을 최소 1개 이상 선택해야 합니다.')
+      return
+    }
     setTuningConfirmOpen(true)
   }
 
@@ -302,6 +309,7 @@ export default function Strategy() {
           trials: tuningTrials,
           start_date: backtestParams.start_date,
           end_date: backtestParams.end_date,
+          lookback_months: tuningLookbacks,
         }),
       })
       
@@ -1175,19 +1183,110 @@ ${JSON.stringify(payload, null, 2)}
           자동 튜닝 (Optuna)
         </h3>
         
-        <div className="flex items-center gap-4 mb-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Trials</label>
-            <input
-              type="number"
-              value={tuningTrials}
-              onChange={e => setTuningTrials(parseInt(e.target.value))}
-              className="w-32 border rounded px-3 py-2"
-              min={10}
-              max={500}
-              disabled={tuningStatus.is_running}
-            />
+        {/* 튜닝 설정 패널 */}
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            튜닝 설정
+          </h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Backtest 기간 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-2">백테스트 기간</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={backtestParams.start_date}
+                  onChange={e => setBacktestParams(prev => ({ ...prev, start_date: e.target.value }))}
+                  className="flex-1 border rounded px-2 py-1.5 text-sm"
+                  disabled={tuningStatus.is_running}
+                />
+                <span className="text-gray-400 self-center">~</span>
+                <input
+                  type="date"
+                  value={backtestParams.end_date}
+                  onChange={e => setBacktestParams(prev => ({ ...prev, end_date: e.target.value }))}
+                  className="flex-1 border rounded px-2 py-1.5 text-sm"
+                  disabled={tuningStatus.is_running}
+                />
+              </div>
+            </div>
+            
+            {/* Lookback Preset */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-2">룩백 기간 (멀티 선택)</label>
+              <div className="flex gap-2">
+                {[3, 6, 12].map(month => (
+                  <button
+                    key={month}
+                    onClick={() => {
+                      if (tuningStatus.is_running) return
+                      setTuningLookbacks(prev => 
+                        prev.includes(month) 
+                          ? prev.filter(m => m !== month)
+                          : [...prev, month].sort((a, b) => a - b)
+                      )
+                    }}
+                    disabled={tuningStatus.is_running}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      tuningLookbacks.includes(month)
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    } ${tuningStatus.is_running ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {month}개월
+                  </button>
+                ))}
+              </div>
+              {tuningLookbacks.length === 0 && (
+                <p className="text-xs text-red-500 mt-1">최소 1개 이상 선택해야 합니다</p>
+              )}
+            </div>
+            
+            {/* Trials 수 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-2">Trials 수</label>
+              <div className="flex gap-2">
+                {[10, 30, 50, 100].map(t => (
+                  <button
+                    key={t}
+                    onClick={() => !tuningStatus.is_running && setTuningTrials(t)}
+                    disabled={tuningStatus.is_running}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      tuningTrials === t
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    } ${tuningStatus.is_running ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  value={tuningTrials}
+                  onChange={e => setTuningTrials(parseInt(e.target.value) || 10)}
+                  className="w-20 border rounded px-2 py-1.5 text-sm"
+                  min={10}
+                  max={500}
+                  disabled={tuningStatus.is_running}
+                  placeholder="직접입력"
+                />
+              </div>
+            </div>
           </div>
+          
+          <div className="mt-3 text-xs text-gray-500 flex items-start gap-1">
+            <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+            <span>
+              MA/RSI/손절 범위는 서버 기본 탐색 공간을 사용합니다. 
+              위 설정을 조정한 후 "튜닝 시작" 버튼을 클릭하세요.
+            </span>
+          </div>
+        </div>
+        
+        {/* 튜닝 실행 버튼 */}
+        <div className="flex items-center gap-4 mb-4">
           
           {!tuningStatus.is_running ? (
             <button
@@ -1223,15 +1322,35 @@ ${JSON.stringify(payload, null, 2)}
               </button>
               
               {/* 최적 결과 AI 분석 버튼 - 첫 번째 Trial(최적) 분석 */}
-              {tuningStatus.trials.length > 0 && (
-                <button
-                  onClick={() => requestAiAnalysis(0)}
-                  className="rounded px-6 py-2 flex items-center gap-2 mt-6 bg-indigo-600 text-white hover:bg-indigo-700"
-                >
-                  <Bot className="w-4 h-4" />
-                  최적 결과 AI 분석
-                </button>
-              )}
+              {tuningStatus.trials.length > 0 && (() => {
+                const bestTrial = tuningStatus.trials[0]
+                const trainS = bestTrial.train?.sharpe_ratio ?? bestTrial.result.sharpe_ratio
+                const testS = bestTrial.test?.sharpe_ratio ?? bestTrial.result.sharpe_ratio
+                const valS = bestTrial.val?.sharpe_ratio ?? 0
+                const mddVal = Math.abs(bestTrial.result.max_drawdown)
+                const diffRatio = trainS > 0 ? Math.abs(trainS - testS) / trainS : 1
+                const condCount = [testS > 1.0, valS > 0, diffRatio < 0.5, mddVal < 15].filter(Boolean).length
+                const enabled = condCount >= 2
+                
+                return (
+                  <button
+                    onClick={() => requestAiAnalysis(0)}
+                    disabled={!enabled}
+                    className={`rounded px-6 py-2 flex items-center gap-2 mt-6 ${
+                      enabled 
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                    title={enabled 
+                      ? `AI 분석 가능 (${condCount}/4 조건 통과)` 
+                      : `AI 분석 조건 미충족 (${condCount}/4)\n\n※ Test Sharpe > 1.0, Val Sharpe > 0, 과적합 < 50%, MDD < 15% 중 2개 이상 통과 필요`
+                    }
+                  >
+                    <Bot className="w-4 h-4" />
+                    최적 결과 AI 분석
+                  </button>
+                )
+              })()}
               
               {/* 실전 파라미터로 적용 버튼 */}
               <button
@@ -1316,6 +1435,27 @@ ${JSON.stringify(payload, null, 2)}
                   if (costsZero) invalidReasons.push('비용=0')
                   if (trial.engine_health?.warnings) invalidReasons.push(...trial.engine_health.warnings)
                   
+                  // AI 분석 활성화 조건 (2개 이상 통과 시 활성화)
+                  const valSharpe = trial.val?.sharpe_ratio ?? 0
+                  const mdd = Math.abs(trial.result.max_drawdown)
+                  const sharpeDiff = trainSharpe > 0 ? Math.abs(trainSharpe - testSharpe) / trainSharpe : 1
+                  
+                  const aiConditions = {
+                    testSharpeOk: testSharpe > 1.0,
+                    valSharpeOk: valSharpe > 0,
+                    overfitOk: sharpeDiff < 0.5, // 50% 이내
+                    mddOk: mdd < 15,
+                  }
+                  const aiConditionsPassed = Object.values(aiConditions).filter(Boolean).length
+                  const isAiAnalysisEnabled = !isInvalid && aiConditionsPassed >= 2
+                  
+                  // AI 분석 비활성화 사유
+                  const aiDisabledReasons: string[] = []
+                  if (!aiConditions.testSharpeOk) aiDisabledReasons.push(`Test Sharpe(${testSharpe.toFixed(2)}) ≤ 1.0`)
+                  if (!aiConditions.valSharpeOk) aiDisabledReasons.push(`Val Sharpe(${valSharpe.toFixed(2)}) ≤ 0`)
+                  if (!aiConditions.overfitOk) aiDisabledReasons.push(`Train/Test 차이(${(sharpeDiff * 100).toFixed(0)}%) > 50%`)
+                  if (!aiConditions.mddOk) aiDisabledReasons.push(`MDD(${mdd.toFixed(1)}%) ≥ 15%`)
+                  
                   // 행 색상 결정
                   let rowClass = ''
                   if (idx === 0 && !isInvalid) rowClass = 'bg-green-50'
@@ -1376,13 +1516,19 @@ ${JSON.stringify(payload, null, 2)}
                       <td className="px-3 py-2">
                         <button
                           onClick={() => requestAiAnalysis(idx)}
-                          disabled={isInvalid}
+                          disabled={!isAiAnalysisEnabled}
                           className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                            isInvalid 
+                            !isAiAnalysisEnabled 
                               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               : 'bg-purple-500 text-white hover:bg-purple-600'
                           }`}
-                          title={isInvalid ? '무효 Trial은 분석 불가' : 'AI 분석 프롬프트 생성'}
+                          title={
+                            isInvalid 
+                              ? '무효 Trial은 분석 불가' 
+                              : !isAiAnalysisEnabled 
+                                ? `AI 분석 조건 미충족 (${aiConditionsPassed}/4)\n\n${aiDisabledReasons.join('\n')}\n\n※ 4개 조건 중 2개 이상 통과 시 활성화`
+                                : `AI 분석 가능 (${aiConditionsPassed}/4 조건 통과)`
+                          }
                         >
                           <Bot className="w-3 h-3" />
                           AI
@@ -1393,8 +1539,12 @@ ${JSON.stringify(payload, null, 2)}
                 })}
               </tbody>
             </table>
-            <div className="mt-2 text-xs text-gray-500">
-              * Train/Val/Test: 70/15/15 비율 분할 | 과적합 기준: Train Sharpe &gt; Test Sharpe × 1.3
+            <div className="mt-2 text-xs text-gray-500 space-y-1">
+              <div>* Train/Val/Test: 70/15/15 비율 분할 | 과적합 기준: Train Sharpe &gt; Test Sharpe × 1.3</div>
+              <div className="flex items-center gap-1">
+                <Bot className="w-3 h-3" />
+                <span>AI 분석 조건: Test Sharpe &gt; 1.0, Val Sharpe &gt; 0, Train/Test 차이 &lt; 50%, MDD &lt; 15% 중 <strong>2개 이상</strong> 통과 시 활성화</span>
+              </div>
             </div>
           </div>
         )}
@@ -1792,10 +1942,10 @@ ${JSON.stringify(payload, null, 2)}
                 <div className="border rounded-lg p-3">
                   <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-1">
                     <Target className="w-4 h-4" />
-                    룩백 기간 (서버 기본값)
+                    룩백 기간 ({tuningLookbacks.length}개 선택)
                   </h4>
                   <div className="flex gap-2">
-                    {[3, 6, 12].map(m => (
+                    {tuningLookbacks.map(m => (
                       <span key={m} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
                         {m}개월
                       </span>
