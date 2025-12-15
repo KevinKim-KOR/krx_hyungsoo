@@ -1,31 +1,49 @@
 {
   "live": {
     "params": {
+      "lookback": "12M",
       "ma_period": 69,
       "rsi_period": 17,
-      "stop_loss": -12,
-      "max_positions": 12,
-      "initial_capital": 10000000,
-      "enable_defense": true
+      "stop_loss": -12.0,
+      "max_positions": 12
     },
-    "promoted_at": "2025-12-10T23:52:25.956359",
-    "source_trial_id": 12,
+    "promoted_at": "2025-12-14T12:09:03.162856",
+    "source_trial_id": null,
     "result": {
-      "cagr": 48.68435661049819,
-      "sharpe_ratio": 4.01910750577751,
-      "max_drawdown": 3.2311574923367115,
-      "total_return": 10.267441120952547,
-      "num_trades": 174,
-      "win_rate": 64.40677966101694,
-      "volatility": 10.53133329614666,
-      "calmar_ratio": 15.067156808655152,
-      "sell_trades": 84,
-      "total_costs": 72955.53473174632,
-      "total_realized_pnl": 831084.0639412532
+      "source": "manual_setting"
     },
-    "notes": "Sharpe: 4.02, CAGR: 48.68%"
+    "notes": "12M 설정"
   },
-  "live_history": [],
+  "live_history": [
+    {
+      "params": {
+        "ma_period": 69,
+        "rsi_period": 17,
+        "stop_loss": -12,
+        "max_positions": 12,
+        "initial_capital": 10000000,
+        "enable_defense": true
+      },
+      "promoted_at": "2025-12-10T23:52:25.956359",
+      "source_trial_id": 12,
+      "result": {
+        "cagr": 48.68435661049819,
+        "sharpe_ratio": 4.01910750577751,
+        "max_drawdown": 3.2311574923367115,
+        "total_return": 10.267441120952547,
+        "num_trades": 174,
+        "win_rate": 64.40677966101694,
+        "volatility": 10.53133329614666,
+        "calmar_ratio": 15.067156808655152,
+        "sell_trades": 84,
+        "total_costs": 72955.53473174632,
+        "total_realized_pnl": 831084.0639412532
+      },
+      "notes": "Sharpe: 4.02, CAGR: 48.68%",
+      "demoted_at": "2025-12-14T12:09:03.162856",
+      "reason": "새 파라미터로 교체"
+    }
+  ],
   "research": [
     {
       "id": 1,
@@ -318,6 +336,33 @@
       },
       "notes": "Sharpe: 4.02, CAGR: 48.68%",
       "is_active": true
+    },
+    {
+      "id": 13,
+      "timestamp": "2025-12-14T12:22:39.037629",
+      "source": "tuning",
+      "params": {
+        "ma_period": 69,
+        "rsi_period": 17,
+        "stop_loss": -12,
+        "max_positions": 12,
+        "initial_capital": 10000000,
+        "enable_defense": true
+      },
+      "result": {
+        "cagr": 69.89297623888062,
+        "sharpe_ratio": 3.487218358915166,
+        "max_drawdown": 6.845088741942784,
+        "total_return": 13.950631688932557,
+        "num_trades": 181,
+        "win_rate": 67.79661016949152,
+        "volatility": 16.3928120335943,
+        "calmar_ratio": 10.210674963293972,
+        "sell_trades": 84,
+        "total_costs": 74328.87214724632,
+        "total_realized_pnl": 1192868.7475515031
+      },
+      "notes": "Sharpe: 3.49, CAGR: 69.89%"
     }
   ]
 }

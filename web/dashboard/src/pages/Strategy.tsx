@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight, Rocket, CheckCircle } from 'lucide-react'
+import { Play, Square, RefreshCw, Target, Clock, Database, BarChart3, HardDrive, Download, Bot, TrendingUp, Settings, ToggleLeft, ToggleRight, Rocket, CheckCircle, AlertTriangle, Info, X } from 'lucide-react'
 import { API_URLS } from '../config/api'
 import { apiClient } from '../api/client'
 import { AIPromptModal } from '../components/AIPromptModal'
@@ -154,6 +154,9 @@ export default function Strategy() {
   const [dbLoading, setDbLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'local' | 'db' | 'sessions' | 'stats'>('local')
 
+  // 튜닝 시작 확인 모달 상태
+  const [tuningConfirmOpen, setTuningConfirmOpen] = useState(false)
+
   // 튜닝 변수 상태
   const [tuningVariables, setTuningVariables] = useState<Record<string, TuningVariable>>({})
   const [variablesExpanded, setVariablesExpanded] = useState(false)
@@ -278,13 +281,18 @@ export default function Strategy() {
     }
   }, [activeTab])
 
-  // 튜닝 시작
-  const startTuning = async () => {
-    // 프론트엔드 검증
+  // 튜닝 시작 버튼 클릭 → 확인 모달 열기
+  const handleTuningStart = () => {
     if (tuningTrials < 10 || tuningTrials > 1000) {
       alert('Trials는 10~1000 범위여야 합니다.')
       return
     }
+    setTuningConfirmOpen(true)
+  }
+
+  // 튜닝 실제 시작 (확인 모달에서 확인 클릭 시)
+  const confirmAndStartTuning = async () => {
+    setTuningConfirmOpen(false)
     
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/tuning/start`, {
@@ -308,6 +316,18 @@ export default function Strategy() {
     } catch (err) {
       alert(err instanceof Error ? err.message : '튜닝 시작 실패')
     }
+  }
+
+  // 활성화된 튜닝 변수 요약 생성
+  const getEnabledVariablesSummary = () => {
+    return Object.entries(tuningVariables)
+      .filter(([, v]) => v.enabled)
+      .map(([name, v]) => ({
+        name,
+        range: v.range,
+        step: v.step,
+        description: v.description,
+      }))
   }
 
   // 튜닝 중지
@@ -525,9 +545,38 @@ ${JSON.stringify(payload, null, 2)}
   const promoteToLive = async () => {
     if (!tuningStatus.best_params || tuningStatus.trials.length === 0) return
     
-    // 확인 모달
+    const bestTrial = tuningStatus.trials[0]
+    const trainSharpe = bestTrial.train?.sharpe_ratio ?? bestTrial.result.sharpe_ratio
+    const testSharpe = bestTrial.test?.sharpe_ratio ?? bestTrial.result.sharpe_ratio
+    const isOverfit = trainSharpe > 0 && testSharpe > 0 && trainSharpe > testSharpe * 1.3
+    const lookbackStr = bestTrial.lookback_months ? `${bestTrial.lookback_months}개월` : '기본'
+    
+    // 과적합 경고 메시지
+    const overfitWarning = isOverfit 
+      ? '\n\n⚠️ 경고: 이 파라미터는 과적합 위험이 있습니다!\n' +
+        `   Train Sharpe(${trainSharpe.toFixed(2)}) > Test Sharpe(${testSharpe.toFixed(2)}) × 1.3\n` +
+        '   실전 성과가 기대보다 낮을 수 있습니다.\n'
+      : ''
+    
+    // 상세 확인 모달
     const confirmed = window.confirm(
-      '이 파라미터를 실전 운영용으로 적용하시겠습니까?\n\n' +
+      '🚀 실전 파라미터로 적용하시겠습니까?\n\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '📊 적용할 파라미터\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      `• 룩백: ${lookbackStr}\n` +
+      `• MA Period: ${tuningStatus.best_params.ma_period}\n` +
+      `• RSI Period: ${tuningStatus.best_params.rsi_period}\n` +
+      `• 손절: ${tuningStatus.best_params.stop_loss}%\n\n` +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '📈 성과 지표\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      `• Train Sharpe: ${trainSharpe.toFixed(2)}\n` +
+      `• Test Sharpe: ${testSharpe.toFixed(2)}\n` +
+      `• CAGR: ${bestTrial.result.cagr.toFixed(2)}%\n` +
+      `• MDD: ${bestTrial.result.max_drawdown.toFixed(2)}%\n` +
+      overfitWarning +
+      '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
       '• 기존 Live 파라미터는 히스토리로 이동됩니다.\n' +
       '• 일일 추천 알림에 이 파라미터가 사용됩니다.'
     )
@@ -536,7 +585,6 @@ ${JSON.stringify(payload, null, 2)}
     setPromoting(true)
     setPromoteSuccess(false)
     try {
-      const bestTrial = tuningStatus.trials[0]
       const lookback = bestTrial.lookback_months ? `${bestTrial.lookback_months}M` : '3M'
       
       const res = await fetch(`${API_BASE_URL}/api/v1/optimal-params/promote-to-live`, {
@@ -1143,7 +1191,7 @@ ${JSON.stringify(payload, null, 2)}
           
           {!tuningStatus.is_running ? (
             <button
-              onClick={startTuning}
+              onClick={handleTuningStart}
               className="bg-green-600 text-white rounded px-6 py-2 flex items-center gap-2 hover:bg-green-700 mt-6"
             >
               <Play className="w-4 h-4" />
@@ -1293,22 +1341,34 @@ ${JSON.stringify(payload, null, 2)}
                       <td className="px-3 py-2 text-red-600">{formatMDD(trial.result.max_drawdown)}</td>
                       <td className="px-3 py-2">
                         {isInvalid && (
-                          <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs" title={invalidReasons.join(', ')}>
-                            ❌ 무효({invalidReasons.length > 0 ? invalidReasons[0] : '엔진오류'})
+                          <span 
+                            className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs cursor-help" 
+                            title={`❌ 실전 사용 불가\n\n사유: ${invalidReasons.join(', ')}\n\n이 Trial은 백테스트 엔진 오류로 인해 결과를 신뢰할 수 없습니다.`}
+                          >
+                            ❌ 무효
                           </span>
                         )}
                         {isOverfit && !isInvalid && (
-                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs" title="Train > Test * 1.3">
+                          <span 
+                            className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs cursor-help" 
+                            title={`⚠️ 과적합 위험\n\nTrain Sharpe: ${trainSharpe.toFixed(2)}\nTest Sharpe: ${testSharpe.toFixed(2)}\n\nTrain 대비 Test 성과가 30% 이상 저하되었습니다.\n실전에서 기대 성과가 크게 낮아질 수 있습니다.`}
+                          >
                             ⚠️ 과적합
                           </span>
                         )}
                         {!isOverfit && !isInvalid && hasWarnings && (
-                          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs" title={trial.warnings?.join(', ')}>
+                          <span 
+                            className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs cursor-help" 
+                            title={`⚠️ 주의 필요\n\n${trial.warnings?.join('\n')}\n\n결과는 유효하나 일부 지표에서 이상 징후가 감지되었습니다.`}
+                          >
                             ⚠️ 경고
                           </span>
                         )}
                         {!isOverfit && !isInvalid && !hasWarnings && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                          <span 
+                            className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs cursor-help" 
+                            title={`✅ 실전 적용 가능\n\nTrain/Test 성과가 안정적입니다.\n과적합 징후 없음.`}
+                          >
                             ✅ 정상
                           </span>
                         )}
@@ -1414,10 +1474,19 @@ ${JSON.stringify(payload, null, 2)}
         
         {/* 현재 세션 (localStorage) */}
         {activeTab === 'local' && (
-          history.length === 0 ? (
-            <p className="text-gray-500">아직 백테스트 기록이 없습니다.</p>
-          ) : (
-            <div className="overflow-x-auto">
+          <>
+            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800">
+                <strong>임시 결과</strong>: 이 데이터는 브라우저 메모리(localStorage)에만 저장됩니다. 
+                브라우저 캐시 삭제 시 사라지며, 다른 PC/브라우저에서는 보이지 않습니다.
+                튜닝 완료 후 DB에 영구 저장됩니다.
+              </div>
+            </div>
+            {history.length === 0 ? (
+              <p className="text-gray-500">아직 백테스트 기록이 없습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-100">
                   <tr>
@@ -1451,7 +1520,8 @@ ${JSON.stringify(payload, null, 2)}
                 </tbody>
               </table>
             </div>
-          )
+            )}
+          </>
         )}
         
         {/* DB 히스토리 */}
@@ -1567,30 +1637,40 @@ ${JSON.stringify(payload, null, 2)}
                     </div>
                   </div>
                   {session.ensemble_params && Object.keys(session.ensemble_params).length > 0 && (
-                    <div className="mt-3 p-2 bg-blue-50 rounded text-sm flex items-center justify-between">
-                      <div>
-                        <span className="font-bold">앙상블 파라미터:</span>
-                        <span className="ml-2">
-                          MA: {session.ensemble_params.ma_period}, 
-                          RSI: {session.ensemble_params.rsi_period}, 
-                          손절: {session.ensemble_params.stop_loss}%
-                        </span>
+                    <div className="mt-3 p-3 bg-blue-50 rounded text-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <span className="font-bold">앙상블 파라미터:</span>
+                          <span className="ml-2">
+                            MA: {session.ensemble_params.ma_period}, 
+                            RSI: {session.ensemble_params.rsi_period}, 
+                            손절: {session.ensemble_params.stop_loss}%
+                          </span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => requestAiAnalysisFromHistory({
-                          id: session.id,
-                          ma_period: session.ensemble_params.ma_period,
-                          rsi_period: session.ensemble_params.rsi_period,
-                          stop_loss: session.ensemble_params.stop_loss,
-                          sharpe_ratio: session.best_sharpe,
-                          cagr: 0,
-                          max_drawdown: 0,
-                        })}
-                        className="px-3 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600"
-                      >
-                        <Bot className="w-3 h-3" />
-                        AI 분석
-                      </button>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="text-xs text-blue-700 flex items-start gap-1">
+                          <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span>
+                            룩백별 최적 파라미터의 가중 평균 (3M: 50%, 6M: 30%, 12M: 20%)
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => requestAiAnalysisFromHistory({
+                            id: session.id,
+                            ma_period: session.ensemble_params.ma_period,
+                            rsi_period: session.ensemble_params.rsi_period,
+                            stop_loss: session.ensemble_params.stop_loss,
+                            sharpe_ratio: session.best_sharpe,
+                            cagr: 0,
+                            max_drawdown: 0,
+                          })}
+                          className="px-3 py-1 text-xs rounded flex items-center gap-1 bg-purple-500 text-white hover:bg-purple-600"
+                        >
+                          <Bot className="w-3 h-3" />
+                          AI 분석
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1669,6 +1749,131 @@ ${JSON.stringify(payload, null, 2)}
           )
         )}
       </div>
+
+      {/* 튜닝 시작 확인 모달 */}
+      {tuningConfirmOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  튜닝 실행 조건 확인
+                </h3>
+                <button
+                  onClick={() => setTuningConfirmOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-amber-800">
+                  <strong>주의:</strong> 아래 조건으로 튜닝이 실행됩니다. 
+                  Live 파라미터와는 무관하게 동작합니다.
+                </p>
+              </div>
+
+              <div className="space-y-4 text-sm">
+                {/* 기간 */}
+                <div className="border rounded-lg p-3">
+                  <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    백테스트 기간
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-gray-600">
+                    <div>시작: <span className="font-mono font-bold">{backtestParams.start_date}</span></div>
+                    <div>종료: <span className="font-mono font-bold">{backtestParams.end_date}</span></div>
+                  </div>
+                </div>
+
+                {/* 룩백 */}
+                <div className="border rounded-lg p-3">
+                  <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-1">
+                    <Target className="w-4 h-4" />
+                    룩백 기간 (서버 기본값)
+                  </h4>
+                  <div className="flex gap-2">
+                    {[3, 6, 12].map(m => (
+                      <span key={m} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                        {m}개월
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    * 각 룩백별로 독립적인 최적화가 수행됩니다
+                  </p>
+                </div>
+
+                {/* 튜닝 변수 */}
+                <div className="border rounded-lg p-3">
+                  <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-1">
+                    <Settings className="w-4 h-4" />
+                    튜닝 변수 ({getEnabledVariablesSummary().length}개 활성화)
+                  </h4>
+                  <div className="space-y-1">
+                    {getEnabledVariablesSummary().length === 0 ? (
+                      <p className="text-gray-500">활성화된 변수 없음</p>
+                    ) : (
+                      getEnabledVariablesSummary().map(v => (
+                        <div key={v.name} className="flex justify-between text-gray-600">
+                          <span>{v.description || v.name}</span>
+                          <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">
+                            [{v.range[0]} ~ {v.range[1]}] step={v.step}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Trials */}
+                <div className="border rounded-lg p-3">
+                  <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-1">
+                    <Play className="w-4 h-4" />
+                    Trials
+                  </h4>
+                  <span className="text-2xl font-bold text-green-600">{tuningTrials}</span>
+                  <span className="text-gray-500 ml-2">회 (룩백당)</span>
+                </div>
+
+                {/* 분할 비율 안내 */}
+                <div className="border rounded-lg p-3 bg-gray-50">
+                  <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-1">
+                    <Info className="w-4 h-4" />
+                    Train/Val/Test 분할
+                  </h4>
+                  <div className="flex gap-4 text-xs">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">Train 70%</span>
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Val 15%</span>
+                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded">Test 15%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    * 과적합 판정: Test Sharpe &lt; Train Sharpe × 0.7
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setTuningConfirmOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={confirmAndStartTuning}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
+                >
+                  <Play className="w-4 h-4" />
+                  이 조건으로 튜닝 시작
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI 분석 모달 */}
       <AIPromptModal

@@ -59,4 +59,4 @@ profiles:
       - rsi_max: 30
         factor: 1.0
     default_factor: 1.0
-active_profile: aggressive
+active_profile: neutral
