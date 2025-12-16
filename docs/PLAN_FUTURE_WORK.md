@@ -1,6 +1,6 @@
 # KRX Alertor — Future Development Roadmap
 
-> **작성**: 2025-12-11  
+> **작성**: 2025-12-11 (최종 수정: 2025-12-16)  
 > **Author**: 형수  
 > **목적**: 향후 개발 항목 영구 기록
 
@@ -14,22 +14,114 @@
 
 | Phase | 항목 | 개발 필요 여부 | 이유 |
 |-------|------|----------------|------|
-| 1 | 장기 백테스트 | ❌ 개발 아님 | Runner로 직접 돌리면 됨 |
-| 2 | Walk-Forward | ✅ 개발 필요 | 오케스트레이션/윈도우 시스템 자체가 없음 |
-| 3 | TP/SL 고도화 | ✅ 개발 필요 | 현재 단일 stop_loss 기반이라 구조 확장 필요 |
-| 4 | Breadth / 이벤트 | ✅ 개발 필요 | 신규 데이터 + 신규 레짐 로직 |
+| **1** | **튜닝/검증 체계** | ✅ **최우선** | Test 봉인, 목적함수 개선, 변수 스키마 표준화 |
+| 2 | 미니 Walk-Forward | ✅ 개발 필요 | 롤링 검증으로 안정성 확보 |
+| 3 | 정식 Walk-Forward | ✅ 개발 필요 | 오케스트레이션/윈도우 시스템 |
+| 4 | TP/SL 고도화 | ✅ 개발 필요 | 현재 단일 stop_loss 기반이라 구조 확장 필요 |
+| 5 | Breadth / 이벤트 | ✅ 개발 필요 | 신규 데이터 + 신규 레짐 로직 |
 
 ---
 
-## 1. Phase 2 — Walk-Forward Framework
+## 1. Phase 1 — 튜닝/검증 체계 강화 ⭐ 최우선
 
-### 1.1 목표
+> **상세 설계 문서**: `docs/tuning_validation_design.md`
+
+### 1.1 배경
+
+최근 튜닝 결과에서 **Train은 높고 Val은 부진한데 Test가 비정상적으로 높게 튀는** 패턴이 반복됨.  
+"미세조정으로 성능 올리기"보다 먼저 **검증 체계(Test 봉인, 목적함수, 재현성)**가 필요.
+
+### 1.2 핵심 개발 항목
+
+#### (1) Test 봉인 원칙 적용
+
+| 항목 | 현재 | 개선 |
+|------|------|------|
+| Optuna objective | Test Sharpe | **Val Sharpe** |
+| 결과 테이블 정렬 | Test 기준 | **Val 기준** |
+| Test 컬럼 | 항상 표시 | **🔒 선택 확정 후 공개** |
+
+#### (2) 목적함수 개선
+
+```python
+# 현재
+return test_sharpe
+
+# 개선 (Option A: Val + MDD 페널티)
+return val_sharpe - max(0, abs(val_mdd) - 15) * 0.1
+```
+
+#### (3) 변수 스키마 표준화
+
+`config/tuning_variables.yaml` 신규 작성:
+- 카테고리 분류 (trend/momentum/risk/market/execution)
+- 룩백별 추천 범위
+- 의존성/제약 조건
+- 전략적 의미/리스크 설명
+
+#### (4) UI 개선
+
+- 변수 카테고리별 접기/펼치기
+- 활성 변수 count + 탐색 공간 크기 표시
+- 튜닝 모드 프리셋 (Discovery / Stability / Refine)
+
+#### (5) run_manifest 저장
+
+모든 튜닝 실행 조건/결과를 JSON으로 저장하여 재현성 보장.
+
+### 1.3 구현 우선순위
+
+| 순서 | 항목 | 예상 시간 |
+|------|------|----------|
+| 1 | Test 봉인 UI 적용 | 1일 |
+| 2 | Objective 함수 변경 (Val 기반) | 0.5일 |
+| 3 | 변수 스키마 YAML 작성 | 1일 |
+| 4 | UI 카테고리 분류 | 1일 |
+| 5 | 튜닝 모드 프리셋 | 0.5일 |
+| 6 | run_manifest 저장 | 1일 |
+
+---
+
+## 2. Phase 2 — 미니 Walk-Forward
+
+### 2.1 목표
+
+정식 Walk-Forward 프레임워크 개발 전, **최소한의 롤링 검증**으로 안정성 확보.
+
+### 2.2 개발 항목
+
+#### (1) 롤링 윈도우 생성
+
+```
+전체 기간: 24개월
+Window 1: Train 18M | Val 3M | Test 3M
+Window 2: Train 18M | Val 3M | Test 3M (stride=2M)
+...
+```
+
+#### (2) 안정성 점수 계산
+
+```python
+stability_score = sharpe_mean / (sharpe_std + 0.1)
+```
+
+#### (3) UI 표시
+
+- 윈도우별 성과 테이블
+- 안정성 점수 뱃지
+- 승률 (Sharpe > 0인 윈도우 비율)
+
+---
+
+## 3. Phase 3 — 정식 Walk-Forward Framework
+
+### 3.1 목표
 
 - 단일 백테스트 샘플이 아닌, **여러 시점의 롤링 윈도우**에서의 성능 안정성 검증
 - **파라미터 민감도와 안정성 평가** (PSS Score)
 - 실전 적용 가능성 판단 기준 강화
 
-### 1.2 개발 필요 요소
+### 3.2 개발 필요 요소
 
 #### (1) 윈도우 생성기 (Window Generator)
 
@@ -99,14 +191,14 @@ PSS = Sharpe_mean / (Sharpe_std + epsilon)
 
 ---
 
-## 2. Phase 3 — TP / SL 고도화 (Take Profit / Trailing Stop)
+## 4. Phase 4 — TP / SL 고도화 (Take Profit / Trailing Stop)
 
-### 2.1 목표
+### 4.1 목표
 
 현재 단일 `stop_loss%` & 하이브리드 손절 매트릭스를 넘어선  
 **프로페셔널한 변동성 기반 리스크 관리 시스템** 구축
 
-### 2.2 개발 요소
+### 4.2 개발 요소
 
 #### (1) ATR 기반 Stop Loss
 
@@ -146,14 +238,14 @@ Optuna에 새로운 파라미터 추가:
 
 ---
 
-## 3. Phase 4 — Market Breadth & 이벤트 캘린더
+## 5. Phase 5 — Market Breadth & 이벤트 캘린더
 
-### 3.1 목표
+### 5.1 목표
 
 - 시장의 **체력(광범위한 상승/하락 참여도)**을 반영해 레짐 정확도 강화
 - **이벤트 기반 회피/방어 필터** 추가
 
-### 3.2 Breadth 개발 항목
+### 5.2 Breadth 개발 항목
 
 #### (1) 상승/하락 비율
 - 일간 상승 ETF 비율
@@ -175,7 +267,7 @@ elif breadth_score <= 0.3:
     # Bear 주의
 ```
 
-### 3.3 이벤트 캘린더
+### 5.3 이벤트 캘린더
 
 **수집 대상:**
 - FOMC
@@ -199,18 +291,35 @@ if event_today:
 
 ## 현재 코드 구조와의 연결
 
-| 현재 모듈 | Phase 2 연결 | Phase 3 연결 | Phase 4 연결 |
-|-----------|--------------|--------------|--------------|
-| `core/engine/backtest.py` | 윈도우별 실행 | TP/SL 로직 확장 | - |
-| `core/strategy/` | - | 익절/손절 전략 | Breadth 필터 |
-| `extensions/monitoring/regime.py` | - | - | Breadth Score 연동 |
-| `scripts/nas/` | - | - | 이벤트 캘린더 알림 |
-| `api_backtest.py` | Walk-Forward API | - | - |
+| 현재 모듈 | Phase 1 연결 | Phase 2-3 연결 | Phase 4 연결 | Phase 5 연결 |
+|-----------|--------------|----------------|--------------|---------------|
+| `web/dashboard/Strategy.tsx` | Test 봉인 UI | - | - | - |
+| `app/services/backtest_service.py` | Objective 변경 | 윈도우별 실행 | - | - |
+| `config/tuning_variables.yaml` | 변수 스키마 | - | - | - |
+| `core/engine/backtest.py` | - | 롤링 백테스트 | TP/SL 로직 확장 | - |
+| `core/strategy/` | - | - | 익절/손절 전략 | Breadth 필터 |
+| `extensions/monitoring/regime.py` | - | - | - | Breadth Score 연동 |
 
 ---
 
 ## 우선순위 제안
 
-1. **Phase 2 (Walk-Forward)** - 현재 튜닝 결과의 신뢰도 검증에 필수
-2. **Phase 3 (TP/SL)** - 실전 운용 시 리스크 관리 강화
-3. **Phase 4 (Breadth/이벤트)** - 고급 기능, 리서치 병행 필요
+1. **Phase 1 (튜닝/검증 체계)** ⭐ - 현재 튜닝 결과의 신뢰도 확보 **최우선**
+2. **Phase 2 (미니 Walk-Forward)** - 최소한의 롤링 검증
+3. **Phase 3 (정식 Walk-Forward)** - 본격적인 안정성 검증 프레임워크
+4. **Phase 4 (TP/SL)** - 실전 운용 시 리스크 관리 강화
+5. **Phase 5 (Breadth/이벤트)** - 고급 기능, 리서치 병행 필요
+
+---
+
+## Archive — 구현 완료 항목
+
+### ✅ 튜닝 UI/UX 기본 개선 (2025-12-15~16)
+
+| 항목 | 상태 |
+|------|------|
+| 튜닝 설정 패널 신설 (기간, 룩백, Trials) | ✅ 완료 |
+| 튜닝 실행 확인 모달 (Confirm 전용) | ✅ 완료 |
+| AI 분석 활성화 조건 강화 (4개 중 2개 이상) | ✅ 완료 |
+| 모달 문구 개선 (단일 백테스트 vs 범위 탐색 명확화) | ✅ 완료 |
+| AI 분석 프롬프트에 백테스트 기간 추가 | ✅ 완료 |
