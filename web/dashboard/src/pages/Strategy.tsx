@@ -1194,10 +1194,15 @@ ${JSON.stringify(payload, null, 2)}
         
         {/* 튜닝 설정 패널 */}
         <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-          <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            튜닝 설정
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-bold text-gray-700 flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              튜닝 설정
+            </h4>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+              범위 기반 자동 탐색
+            </span>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Backtest 기간 */}
@@ -1285,12 +1290,18 @@ ${JSON.stringify(payload, null, 2)}
             </div>
           </div>
           
-          <div className="mt-3 text-xs text-gray-500 flex items-start gap-1">
-            <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-            <span>
-              MA/RSI/손절 범위는 서버 기본 탐색 공간을 사용합니다. 
-              위 설정을 조정한 후 "튜닝 시작" 버튼을 클릭하세요.
-            </span>
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
+              <div className="text-xs text-blue-800">
+                <p className="font-medium mb-1">💡 자동 튜닝이란?</p>
+                <p>
+                  위에서 설정한 기간 내에서 MA/RSI/손절의 <strong>다양한 조합</strong>을 
+                  Optuna가 자동으로 탐색합니다. 현재 Live 파라미터 값(예: MA=20)으로 
+                  단일 백테스트를 실행하는 것이 <strong>아닙니다</strong>.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -1928,8 +1939,11 @@ ${JSON.stringify(payload, null, 2)}
               </div>
               
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-amber-800">
-                  <strong>주의:</strong> 아래 조건으로 튜닝이 실행됩니다. 
+                <p className="text-sm text-amber-800 mb-2">
+                  <strong>⚠️ 중요:</strong> 이번 실행은 <strong>현재 값으로 실행되는 단일 백테스트가 아닙니다.</strong>
+                </p>
+                <p className="text-sm text-amber-700">
+                  아래 범위에서 <strong>Optuna가 최적 조합을 탐색</strong>하는 자동 튜닝입니다.
                   Live 파라미터와는 무관하게 동작합니다.
                 </p>
               </div>
