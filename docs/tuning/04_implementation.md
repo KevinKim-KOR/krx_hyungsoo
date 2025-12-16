@@ -289,7 +289,7 @@ stop_loss:
    - 결과 테이블에서 Test 컬럼 🔒 표시
 
 3. **Objective 함수 변경**
-   - suggest_params → run_backtest(params) 흐름
+   - suggest_params → run_backtest_for_tuning() 흐름
    - 가드레일 추가
    - 비용 기본 적용
 

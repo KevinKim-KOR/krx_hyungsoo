@@ -154,9 +154,9 @@ result = run_backtest_for_final(
 ```
 
 ```
-⚠️ run_backtest()는 독립 호출 금지.
-   튜닝 단계에서는 반드시 run_backtest_for_tuning(),
+⚠️ 튜닝 단계에서는 반드시 run_backtest_for_tuning(),
    Gate3 이후 최종 보고서에서는 run_backtest_for_final()을 사용해야 합니다.
+   (backtest()는 내부 구현 함수로만 사용)
 ```
 
 ---
