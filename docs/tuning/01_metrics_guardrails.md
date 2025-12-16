@@ -37,6 +37,11 @@ class BacktestRunResult:
 | `rsi_scale_days` | RSI가 실제로 비중 조절에 영향을 준 일수 | ≥ 10일 |
 | `rsi_scale_events` | RSI 기반 비중 조절 횟수 | ≥ 5회 |
 
+```
+⚠️ Logic Checks는 **val 구간에서만** 집계한다.
+   (train에서만 집계하면 val에서 실제로 작동했는지 알 수 없음)
+```
+
 ---
 
 ## 3. 지표 정의
@@ -332,7 +337,7 @@ split_config = {
 ```
 
 ```python
-def make_cache_key(params, lookback, period, costs, data_config):
+def make_cache_key(params, lookback_months, period, costs, data_config):
     """
     동일한 조건의 백테스트 결과를 캐싱
     
@@ -344,7 +349,7 @@ def make_cache_key(params, lookback, period, costs, data_config):
     key_dict = {
         # 파라미터
         'params_hash': params_hash,
-        'lookback_months': lookback,
+        'lookback_months': lookback_months,
         
         # 기간 (v2.1: 실제 적용 범위 포함)
         'start_date': period['start_date'],
@@ -379,9 +384,22 @@ data_config = {
     'price_type': 'adj_close',
     'dividend_handling': 'total_return',
 }
-cache_key = make_cache_key(params, lookback, period, costs, data_config)
+cache_key = make_cache_key(
+    params=params,
+    lookback_months=lookback_months,
+    period=period,
+    costs=costs,
+    data_config=data_config
+)
 if cache_key in run_cache:
     return run_cache[cache_key]
-result = run_backtest_for_tuning(params, lookback, period, costs=costs)
+result = run_backtest_for_tuning(
+    params=params,
+    start_date=period['start_date'],
+    end_date=period['end_date'],
+    lookback_months=lookback_months,
+    split_config=split_config,
+    costs=costs
+)
 run_cache[cache_key] = result
 ```

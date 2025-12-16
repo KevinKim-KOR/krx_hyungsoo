@@ -25,7 +25,7 @@ period = {
 
 **캐시 키 강화 (v2.1):**
 ```python
-def make_cache_key(params, lookback, period, costs, data_config):
+def make_cache_key(params, lookback_months, period, costs, data_config):
     """
     v2.1: period 구조 표준화 반영
     """
@@ -35,7 +35,7 @@ def make_cache_key(params, lookback, period, costs, data_config):
     key_dict = {
         # 파라미터
         'params_hash': params_hash,
-        'lookback': lookback,
+        'lookback_months': lookback_months,
         
         # 기간 (v2.1: period 구조 반영)
         'start_date': period['start_date'],

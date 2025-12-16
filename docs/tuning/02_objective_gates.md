@@ -11,8 +11,9 @@
 ```python
 @dataclass
 class BacktestRunResult:
-    metrics: dict  # {'train': Metrics, 'val': Metrics, 'test': Metrics|None}
+    metrics: dict           # {'train': Metrics, 'val': Metrics, 'test': Metrics|None}
     guardrail_checks: dict  # {'num_trades': int, 'exposure_ratio': float, 'annual_turnover': float}
+    logic_checks: dict      # {'rsi_scale_days': int, 'rsi_scale_events': int}  # v2.1 추가
 ```
 
 ```
@@ -51,11 +52,12 @@ result = run_backtest_for_tuning(
 
 **올바른 흐름 (v2.1: Test 봉인 강제):**
 ```python
-def objective(trial, lookbacks=[3, 6, 12], period=None):
+def objective(trial, lookbacks=[3, 6, 12], start_date=None, end_date=None, split_config=None):
     """
     v2.1 절대 규칙:
     - objective에서는 Test를 계산하지 않는다.
     - 반드시 run_backtest_for_tuning()만 호출한다.
+    - period는 run_backtest_for_tuning 내부에서 룩백별로 계산된다.
     """
     params = {
         'ma_period': trial.suggest_int('ma_period', 20, 200, step=10),
@@ -65,10 +67,13 @@ def objective(trial, lookbacks=[3, 6, 12], period=None):
 
     scores = []
     for lb in lookbacks:
+        # ✅ period는 내부에서 룩백별로 계산됨
         result = run_backtest_for_tuning(
             params=params,
-            lookback_months=lb,       # ✅ 룩백별로 다른 데이터 사용
-            period=period,            # train/val 구간만 포함
+            start_date=start_date,
+            end_date=end_date,
+            lookback_months=lb,
+            split_config=split_config,
             costs=DEFAULT_COSTS
         )
 
@@ -128,10 +133,24 @@ DEFAULT_COSTS = {
 
 # 비용은 항상 적용
 # 튜닝 단계:
-result = run_backtest_for_tuning(params, period=period, costs=DEFAULT_COSTS)
+result = run_backtest_for_tuning(
+    params=params,
+    start_date=start_date,
+    end_date=end_date,
+    lookback_months=lookback_months,
+    split_config=split_config,
+    costs=DEFAULT_COSTS
+)
 
 # Gate3 이후 최종 보고서:
-result = run_backtest_for_final(params, period=period, costs=DEFAULT_COSTS)
+result = run_backtest_for_final(
+    params=params,
+    start_date=start_date,
+    end_date=end_date,
+    lookback_months=lookback_months,
+    split_config=split_config,
+    costs=DEFAULT_COSTS
+)
 ```
 
 ```
@@ -193,21 +212,24 @@ result = run_backtest_for_final(params, period=period, costs=DEFAULT_COSTS)
 
 ```
 ⚠️ MDD는 음수이므로 비교는 abs(MDD)로 한다.
-   Train MDD가 너무 작으면(신내림) 상대 비교가 무력화되므로 절대 상한을 함께 적용한다.
+   Train MDD가 너무 작으면(신내림) 상대 비교가 무력화되므로
+   **최소 허용 임계값(MIN_TOLERANCE)**을 함께 적용한다.
 ```
 
 ```python
-MAX_VAL_MDD = 0.10  # 10% 절대 상한
+MIN_TOLERANCE = 0.10  # 10% 최소 허용 임계값 (하한선)
 
 def check_mdd_consistency(result: BacktestRunResult) -> bool:
     """
-    MDD 일관성 Gate: 상대 + 절대 조건
+    MDD 일관성 Gate: 상대 + 최소 허용 조건
     - Train MDD가 -3%여도 Val MDD가 -15%면 통과 안 됨
+    - MIN_TOLERANCE는 Train MDD가 너무 작을 때 최소 허용 범위를 보장
     """
     train_mdd = abs(result.metrics['train'].mdd)
     val_mdd = abs(result.metrics['val'].mdd)
     
-    threshold = max(train_mdd * 1.2, MAX_VAL_MDD)
+    # Train MDD가 작아도 최소 10%까지는 허용
+    threshold = max(train_mdd * 1.2, MIN_TOLERANCE)
     return val_mdd <= threshold
 ```
 
