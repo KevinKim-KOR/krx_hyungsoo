@@ -26,7 +26,7 @@
 
 **윈도우 생성 알고리즘 (v2.1 수정):**
 ```python
-def generate_windows(start_date, end_date, train_months, val_months, test_months,
+def generate_windows(start_date, end_date, train_months, val_months, outsample_months,
                      stride_months, trading_calendar):
     """
     전체 기간 내에서만 윈도우 생성.
@@ -39,11 +39,11 @@ def generate_windows(start_date, end_date, train_months, val_months, test_months
         train_end = current_start + relativedelta(months=train_months)
         val_start = train_end
         val_end = val_start + relativedelta(months=val_months)
-        test_start = val_end
-        test_end = test_start + relativedelta(months=test_months)
+        outsample_start = val_end
+        outsample_end = outsample_start + relativedelta(months=outsample_months)
         
         # end_date 초과 시 중단
-        if test_end > end_date:
+        if outsample_end > end_date:
             break
         
         # v2.1: 시작일은 snap_start, 종료일은 snap_end
@@ -56,9 +56,9 @@ def generate_windows(start_date, end_date, train_months, val_months, test_months
                 snap_start(val_start, trading_calendar),
                 snap_end(val_end - timedelta(days=1), trading_calendar)
             ),
-            'outsample': (  # ✅ v2.1: test → outsample 용어 변경
-                snap_start(test_start, trading_calendar),
-                snap_end(test_end - timedelta(days=1), trading_calendar)
+            'outsample': (  # ✅ v2.1: WF에서는 outsample 용어 사용
+                snap_start(outsample_start, trading_calendar),
+                snap_end(outsample_end - timedelta(days=1), trading_calendar)
             ),
         })
         
@@ -71,7 +71,7 @@ def generate_windows(start_date, end_date, train_months, val_months, test_months
 
 **설정:**
 - 전체 기간: 2024-01-01 ~ 2025-12-31 (24개월)
-- Train: 12개월, Val: 3개월, Test: 3개월
+- Train: 12개월, Val: 3개월, Outsample: 3개월
 - Stride: 3개월
 
 **생성된 윈도우:**
@@ -207,6 +207,10 @@ def calculate_win_rate(sharpe_list):
         "num_trades": 45,
         "exposure_ratio": 0.65,
         "annual_turnover": 12
+      },
+      "logic_checks": {
+        "rsi_scale_days": 15,
+        "rsi_scale_events": 8
       },
       "anomaly_flags": []
     },

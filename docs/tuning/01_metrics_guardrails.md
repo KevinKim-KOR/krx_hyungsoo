@@ -17,6 +17,28 @@
 
 ---
 
+## Logic Checks 정의
+
+```
+⚠️ Logic Checks는 파라미터가 실제로 전략에 영향을 줬는지 검증한다.
+   예: RSI가 실제로 비중 조절에 영향을 준 일수
+```
+
+```python
+@dataclass
+class BacktestRunResult:
+    metrics: dict       # {'train': Metrics, 'val': Metrics, 'test': Metrics|None}
+    guardrail_checks: dict  # {'num_trades': int, 'exposure_ratio': float, 'annual_turnover': float}
+    logic_checks: dict  # {'rsi_scale_days': int, ...}  # v2.1 추가
+```
+
+| Logic Check | 정의 | 임계값 |
+|-------------|------|--------|
+| `rsi_scale_days` | RSI가 실제로 비중 조절에 영향을 준 일수 | ≥ 10일 |
+| `rsi_scale_events` | RSI 기반 비중 조절 횟수 | ≥ 5회 |
+
+---
+
 ## 3. 지표 정의
 
 ### 3.1 핵심 지표 정의
@@ -302,37 +324,38 @@ split_config = {
 }
 ```
 
-**캐시 키 설계:**
+**캐시 키 설계 (v2.1 표준):**
+
+```
+⚠️ 캐시 키에는 실제 적용된 기간 범위(train/val/test range)를 포함해야 한다.
+   start_date/end_date만으로는 휴장 스냅/룩백 절단 때문에 미묘하게 달라질 수 있음.
+```
+
 ```python
-def make_cache_key(params, lookback, period, costs, split_config, data_config):
+def make_cache_key(params, lookback, period, costs, data_config):
     """
     동일한 조건의 백테스트 결과를 캐싱
     
-    v2: hash() 대신 hashlib.md5() 사용 (프로세스 간 일관성)
-    v2: split_config 필드명 통일
+    v2.1: period 구조 표준화 반영 (train/val/test range 포함)
     """
-    # ⭐ v2: 안정 해시 사용 (hash()는 프로세스마다 다를 수 있음)
     params_sig = json.dumps(params, sort_keys=True)
     params_hash = hashlib.md5(params_sig.encode()).hexdigest()
     
     key_dict = {
         # 파라미터
         'params_hash': params_hash,
-        'lookback': lookback,
+        'lookback_months': lookback,
         
-        # 기간
+        # 기간 (v2.1: 실제 적용 범위 포함)
         'start_date': period['start_date'],
         'end_date': period['end_date'],
+        'train_range': period['train'],   # {'start': ..., 'end': ...}
+        'val_range': period['val'],
+        'test_range': period.get('test'),  # tuning stage면 None
         
         # 비용
         'commission': costs['commission_rate'],
         'slippage': costs['slippage_rate'],
-        
-        # Split (통일된 필드명)
-        'train_months': split_config['train_months'],
-        'val_months': split_config['val_months'],
-        'test_months': split_config['test_months'],
-        'split_method': split_config['method'],
         
         # 데이터/유니버스 버전
         'data_version': data_config['data_version'],
@@ -342,12 +365,13 @@ def make_cache_key(params, lookback, period, costs, split_config, data_config):
     }
     return hashlib.md5(json.dumps(key_dict, sort_keys=True).encode()).hexdigest()
 
-# 캐시 사용
-split_config = {
-    'train_months': 12,
-    'val_months': 6,
-    'test_months': 6,
-    'method': 'chronological',
+# 캐시 사용 예시
+period = {
+    'start_date': '2024-01-01',
+    'end_date': '2025-12-31',
+    'train': {'start': '2024-01-02', 'end': '2024-12-31'},
+    'val':   {'start': '2025-01-02', 'end': '2025-06-30'},
+    'test':  None  # tuning stage에서는 None
 }
 data_config = {
     'data_version': 'ohlcv_20251216',
@@ -355,9 +379,9 @@ data_config = {
     'price_type': 'adj_close',
     'dividend_handling': 'total_return',
 }
-cache_key = make_cache_key(params, lookback, period, costs, split_config, data_config)
+cache_key = make_cache_key(params, lookback, period, costs, data_config)
 if cache_key in run_cache:
     return run_cache[cache_key]
-result = run_backtest(params, lookback, costs=costs)
+result = run_backtest_for_tuning(params, lookback, period, costs=costs)
 run_cache[cache_key] = result
 ```

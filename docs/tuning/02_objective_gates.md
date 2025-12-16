@@ -31,6 +31,22 @@ class BacktestRunResult:
 ⚠️ for lb in lookbacks: 루프는 룩백별로 다른 데이터를 사용해야 합니다.
    lookback_months=lb를 인자로 전달하거나, period를 룩백별로 잘라서 넘겨야 합니다.
    그렇지 않으면 3회 반복되는 동일 백테스트가 실행됩니다 ("가짜 반복" 현상).
+
+⚠️ lookback_months는 **백테스트 입력 데이터 슬라이스(룩백 절단)**에 직접 영향을 준다.
+   즉, 같은 period로 3번 도는 게 아님.
+```
+
+**권장 구현 방식:**
+```python
+# run_backtest_for_tuning 내부에서 period를 룩백별로 계산
+result = run_backtest_for_tuning(
+    params=params,
+    start_date=start_date,
+    end_date=end_date,
+    lookback_months=lb,    # 룩백 절단 → split 적용은 내부에서
+    split_config=split_config,
+    costs=DEFAULT_COSTS
+)
 ```
 
 **올바른 흐름 (v2.1: Test 봉인 강제):**
@@ -167,9 +183,58 @@ result = run_backtest_for_final(params, period=period, costs=DEFAULT_COSTS)
 | Gate 1 | Val Top-N | Val Sharpe 상위 5개 |
 | Gate 1 | 가드레일 | num_trades ≥ 30, exposure ≥ 30%, turnover ≤ 24 |
 | Gate 1 | 이상치 | 🔴 경고 없음 |
+| Gate 1 | **MDD 일관성** | `abs(MDD_val) <= max(abs(MDD_train) * 1.2, 0.10)` |
+| Gate 1 | **Logic Check** | `rsi_scale_days >= 10` (RSI가 실제로 영향을 줬는지) |
 | Gate 2 | 안정성 점수 | stability_score ≥ 1.0 |
 | Gate 2 | 승률 | win_rate ≥ 60% |
 | Gate 3 | 최종 확인 | 사용자 수동 선택 |
+
+### 7.2.1 MDD 일관성 Gate (강화)
+
+```
+⚠️ MDD는 음수이므로 비교는 abs(MDD)로 한다.
+   Train MDD가 너무 작으면(신내림) 상대 비교가 무력화되므로 절대 상한을 함께 적용한다.
+```
+
+```python
+MAX_VAL_MDD = 0.10  # 10% 절대 상한
+
+def check_mdd_consistency(result: BacktestRunResult) -> bool:
+    """
+    MDD 일관성 Gate: 상대 + 절대 조건
+    - Train MDD가 -3%여도 Val MDD가 -15%면 통과 안 됨
+    """
+    train_mdd = abs(result.metrics['train'].mdd)
+    val_mdd = abs(result.metrics['val'].mdd)
+    
+    threshold = max(train_mdd * 1.2, MAX_VAL_MDD)
+    return val_mdd <= threshold
+```
+
+### 7.2.2 Logic Check (RSI 실효성)
+
+```
+⚠️ rsi_period만 튜닝하고 cutoff가 고정이면,
+   특정 rsi_period에서 "비중 조절이 거의 안 일어나는" 파라미터가 나올 수 있다.
+```
+
+```python
+MIN_RSI_SCALE_DAYS = 10  # RSI가 실제로 영향을 준 최소 일수
+
+def check_logic_rsi(result: BacktestRunResult) -> bool:
+    """
+    RSI가 실제로 전략에 영향을 줬는지 확인
+    """
+    logic = result.logic_checks
+    return logic.get('rsi_scale_days', 0) >= MIN_RSI_SCALE_DAYS
+```
+
+**RSI cutoff 자동 조정 옵션 (탐색 공간 유지):**
+```python
+# rsi_period에 따라 cutoff 자동 조정
+rsi_overbought = 70 + (20 - rsi_period) * 1  # 예시 식
+rsi_oversold = 30 - (20 - rsi_period) * 1
+```
 
 ### 7.3 UI 표시
 

@@ -28,7 +28,7 @@
 | v1.2 | objective 흐름 정리, 지표 정의 명시, 거래일 스냅, 캐시 설계, Live 승격 게이트, 이상치 감지, 생존편향/배당 처리 |
 | v1.3 | Split 충돌 규칙, Test 계산 시점, 룩백 정의(거래일), stop_loss 트리거 규칙, 캐시 키 강화 |
 | v1.4 → v2 | WF 윈도우 스냅 규칙 반영, Objective Test 봉인 강제, exposure_ratio 정의 명확화, stop_loss 비용 완전 적용, 룩백 end_date 스냅, manifest split_applied 추가, 스냅 함수 분리, WF/Holdout 기간 구분, 캐시 해시 안정화, split_config 필드 통일, entry_price 정의 |
-| **v2.1** | period 구조 표준화, BacktestRunResult 도입, WF 용어 구분(outsample) 반영, 캐시 키 강화, 멀티 룩백 "가짜 반복" 수정, run_backtest 명칭 통일 |
+| **v2.1** | period 구조 표준화, BacktestRunResult 도입, WF 용어 구분(outsample) 반영, 캐시 키 강화, 멀티 룩백 "가짜 반복" 수정, run_backtest 명칭 통일, MDD 일관성 Gate 강화, Logic Checks(RSI 실효성) 추가 |
 
 ```
 ⚠️ 버전 정리:
