@@ -13,7 +13,8 @@
 |--------|----------|
 | v1 | 초기 설계 |
 | v2 | Walk-Forward 윈도우 수정, 단위 통일, 멀티 룩백 결합, 누수 방지 체크리스트 |
-| **Final** | objective 흐름 정리, 지표 정의 명시, 거래일 스냅, 캐시 설계, Live 승격 게이트, 이상치 감지, 생존편향/배당 처리 |
+| Final | objective 흐름 정리, 지표 정의 명시, 거래일 스냅, 캐시 설계, Live 승격 게이트, 이상치 감지, 생존편향/배당 처리 |
+| **Final+0.1** | Split 충돌 규칙, Test 계산 시점, 룩백 정의(거래일), stop_loss 트리거 규칙, 캐시 키 강화 |
 
 ---
 
@@ -76,6 +77,38 @@ Test Sharpe: 비정상적으로 높음 (1.5+)
 - UI 결과 테이블 정렬 = Val Sharpe 기준
 - Test 컬럼은 "최종 리포트" 탭에서만 표시
 
+**Test 계산 시점 (Final+0.1 추가):**
+
+```
+⚠️ 절대 규칙: 튜닝 중에는 Test 자체를 계산하지 않는다.
+   Gate 2 통과 후에만 Test 백테스트를 실행한다.
+   (UI에서 숨기는 것만으로는 누수를 못 막음 - 로그로 볼 수 있음)
+```
+
+| 단계 | Test 계산 | 이유 |
+|------|----------|------|
+| 튜닝 중 (Optuna) | ❌ 계산 안 함 | 로그로도 누수 방지 |
+| Gate 1 (Val Top-N) | ❌ 계산 안 함 | 선택 기준에 영향 방지 |
+| Gate 2 (WF 안정성) | ❌ 계산 안 함 | 안정성 평가에 영향 방지 |
+| Gate 2 통과 후 | ✅ 계산 | 최종 보고서용 |
+
+**구현:**
+```python
+def run_backtest_for_tuning(params, period, costs):
+    """튜닝용 백테스트: Train/Val만 계산"""
+    train_result = backtest(params, period['train'])
+    val_result = backtest(params, period['val'])
+    # ❌ Test는 계산하지 않음
+    return {'train': train_result, 'val': val_result, 'test': None}
+
+def run_backtest_for_final(params, period, costs):
+    """최종 보고서용 백테스트: Test 포함 (Gate 2 통과 후에만 호출)"""
+    train_result = backtest(params, period['train'])
+    val_result = backtest(params, period['val'])
+    test_result = backtest(params, period['test'])  # ✅ 여기서만 계산
+    return {'train': train_result, 'val': val_result, 'test': test_result}
+```
+
 ### 2.2 Chronological Split 강제
 
 ```
@@ -95,20 +128,49 @@ test  = data[int(len(data) * 0.85):]
 train, val, test = random_split(data, [0.70, 0.15, 0.15])
 ```
 
-### 2.3 최소 기간 규칙
+### 2.3 최소 기간 규칙 및 Split 충돌 해결 (Final+0.1)
 
 | 구간 | 기본값 | 예외 (전체 기간 짧을 때) |
 |------|--------|-------------------------|
 | Val | **6개월 이상** | 최소 4개월 (경고 표시) |
 | Test | **6개월 이상** | 최소 4개월 (경고 표시) |
-| Train | **12개월 이상** | 최소 8개월 (경고 표시) |
+| Train | **나머지** | 최소 8개월 (경고 표시) |
 
-**예외 처리:**
+**Split 비율 vs 최소개월 충돌 해결 규칙:**
+
+```
+⚠️ 절대 규칙: 최소개월 우선, 비율은 목표치
+   Val = 6개월, Test = 6개월, Train = 나머지
+   기간이 짧으면 예외 + 경고 표시
+```
+
+**예시 (24개월 기간):**
+- 70/15/15 비율 적용 시: Val=3.6개월, Test=3.6개월 → 최소개월 미달
+- **실제 적용**: Val=6개월, Test=6개월, Train=12개월 (나머지)
+
+**Split 계산 로직:**
 ```python
-if val_months < 6:
-    if val_months < 4:
-        raise ValueError("Val 기간이 4개월 미만입니다.")
-    warnings.append("⚠️ Val 기간이 6개월 미만입니다. 노이즈에 취약할 수 있습니다.")
+def calculate_split(total_months, min_val=6, min_test=6, min_train=8):
+    """
+    최소개월 우선 Split 계산
+    """
+    # 1. 최소 기간 확보 가능 여부 확인
+    required = min_val + min_test + min_train
+    if total_months < required:
+        # 예외 모드: 4/4/8 최소값
+        if total_months < 16:
+            raise ValueError(f"전체 기간이 16개월 미만입니다: {total_months}개월")
+        val_months = 4
+        test_months = 4
+        train_months = total_months - val_months - test_months
+        warnings.append("⚠️ Val/Test가 최소값(4개월)으로 설정되었습니다.")
+    else:
+        # 정상 모드: 6/6/나머지
+        val_months = min_val
+        test_months = min_test
+        train_months = total_months - val_months - test_months
+    
+    return train_months, val_months, test_months
 ```
 
 ### 2.4 단위 통일 원칙
@@ -205,6 +267,56 @@ round_trip_cost = 2 * (commission + slippage)
 # 기본값: 2 * (0.00015 + 0.001) = 0.0023 (0.23%)
 ```
 
+### 3.4 stop_loss 트리거/체결 규칙 (Final+0.1 추가)
+
+```
+⚠️ 절대 규칙: 손절 판단과 체결 시점을 명확히 분리한다.
+   이 규칙 하나로 MDD/Sharpe가 크게 달라진다.
+```
+
+**권장 방식 (현실형):**
+
+| 단계 | 시점 | 설명 |
+|------|------|------|
+| 손절 조건 판단 | T일 종가 | 종가 기준으로 stop_loss 도달 여부 확인 |
+| 손절 체결 | T+1일 시가 | 다음 거래일 시가로 청산 |
+
+**구현:**
+```python
+def check_stop_loss(position, current_close, stop_loss_pct):
+    """
+    T일 종가 기준 손절 조건 판단
+    """
+    entry_price = position['entry_price']
+    return_pct = (current_close - entry_price) / entry_price
+    
+    # stop_loss_pct는 음수 (예: -0.10)
+    return return_pct <= stop_loss_pct
+
+def execute_stop_loss(position, next_open):
+    """
+    T+1일 시가로 손절 체결
+    """
+    return {
+        'action': 'SELL',
+        'price': next_open,  # T+1일 시가
+        'reason': 'STOP_LOSS',
+    }
+```
+
+**대안 방식:**
+
+| 방식 | 판단 기준 | 체결 시점 | 특징 |
+|------|----------|----------|------|
+| **현실형 (권장)** | T일 종가 | T+1일 시가 | 실제 거래 가능, 보수적 |
+| 보수형 | T일 종가 | T일 종가 | 슬리피지 없음 가정, 낙관적 |
+| 공격형 | T일 저가 | T일 저가 | Intraday 가정, OHLC만 있으면 비현실적 |
+
+```
+⚠️ 공격형(저가 기준)은 실제로 그 가격에 체결 가능한지 알 수 없음.
+   OHLC 데이터만 있으면 "가정"임을 명시해야 함.
+```
+
 ---
 
 ## 4. 이상치 감지 레이더 (Final 추가)
@@ -278,29 +390,95 @@ scores = [val_score_3m, val_score_6m, val_score_12m]
 final_score = np.mean(scores) - 1.0 * np.std(scores)
 ```
 
-### 5.4 캐시 설계 (Final 추가)
+### 5.4 룩백 정의 (Final+0.1 추가)
+
+```
+⚠️ 절대 규칙: 룩백은 거래일 기준으로 정의한다.
+   3M = 63거래일, 6M = 126거래일, 12M = 252거래일
+```
+
+| 룩백 | 거래일 수 | 비고 |
+|--------|----------|------|
+| 3M | **63일** | 약 3달량 |
+| 6M | **126일** | 약 6달량 |
+| 12M | **252일** | 약 1년량 |
+
+**룩백 계산 로직:**
+```python
+LOOKBACK_TRADING_DAYS = {
+    3: 63,    # 3개월 = 63거래일
+    6: 126,   # 6개월 = 126거래일
+    12: 252,  # 12개월 = 252거래일
+}
+
+def get_lookback_start(end_date, lookback_months, trading_calendar):
+    """
+    거래일 기준 룩백 시작일 계산
+    """
+    trading_days = LOOKBACK_TRADING_DAYS[lookback_months]
+    
+    # end_date부터 역순으로 trading_days만큼 거슬러 올라감
+    calendar_before_end = [d for d in trading_calendar if d <= end_date]
+    if len(calendar_before_end) < trading_days:
+        raise ValueError(f"데이터 부족: {trading_days}거래일 필요, {len(calendar_before_end)}일 존재")
+    
+    return calendar_before_end[-trading_days]
+```
+
+**달력월 대신 거래일을 쓰는 이유:**
+- 달력월은 휴장일/공휴일에 따라 실제 거래일 수가 다름
+- 3개월이 60일일 수도, 66일일 수도 있음
+- 거래일 기준이면 항상 동일한 데이터 양으로 비교 가능
+
+### 5.5 캐시 설계 (Final+0.1 강화)
 
 멀티 룩백 실행 시 계산량이 3배로 증가. 캐시로 중복 계산 방지.
 
-**캐시 키 설계:**
+```
+⚠️ 캐시 키에 data_version, universe_version 필수 포함.
+   다른 데이터인데 캐시 재사용되는 사고 방지.
+```
+
+**캐시 키 설계 (Final+0.1):**
 ```python
-def make_cache_key(params, lookback, period, costs, split_config):
+def make_cache_key(params, lookback, period, costs, split_config, data_config):
     """
     동일한 조건의 백테스트 결과를 캐싱
+    
+    Final+0.1: data_version, universe_version 필수 포함
     """
     key_dict = {
+        # 파라미터
         'params_hash': hash(frozenset(params.items())),
         'lookback': lookback,
+        
+        # 기간
         'start_date': period['start_date'],
         'end_date': period['end_date'],
+        
+        # 비용
         'commission': costs['commission_rate'],
         'slippage': costs['slippage_rate'],
+        
+        # Split
         'split_ratios': (split_config['train'], split_config['val'], split_config['test']),
+        
+        # ⭐ Final+0.1 추가: 데이터/유니버스 버전
+        'data_version': data_config['data_version'],
+        'universe_version': data_config['universe_version'],
+        'price_type': data_config.get('price_type', 'adj_close'),
+        'dividend_handling': data_config.get('dividend_handling', 'total_return'),
     }
     return hashlib.md5(json.dumps(key_dict, sort_keys=True).encode()).hexdigest()
 
 # 캐시 사용
-cache_key = make_cache_key(params, lookback, period, costs, split_config)
+data_config = {
+    'data_version': 'ohlcv_20251216',
+    'universe_version': 'krx_etf_20251216',
+    'price_type': 'adj_close',
+    'dividend_handling': 'total_return',
+}
+cache_key = make_cache_key(params, lookback, period, costs, split_config, data_config)
 if cache_key in run_cache:
     return run_cache[cache_key]
 result = run_backtest(params, lookback, ...)
