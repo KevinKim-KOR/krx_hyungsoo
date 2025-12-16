@@ -1,4 +1,4 @@
-# 튜닝/검증 체계 설계 문서 (Final)
+# 튜닝/검증 체계 설계 문서 (v2)
 
 > **작성**: 2025-12-16  
 > **최종 수정**: 2025-12-16  
@@ -10,11 +10,12 @@
 ## Changelog
 
 | 버전 | 변경 내용 |
-|--------|----------|
+|--------|---------|
 | v1 | 초기 설계 |
-| v2 | Walk-Forward 윈도우 수정, 단위 통일, 멀티 룩백 결합, 누수 방지 체크리스트 |
-| Final | objective 흐름 정리, 지표 정의 명시, 거래일 스냅, 캐시 설계, Live 승격 게이트, 이상치 감지, 생존편향/배당 처리 |
-| **Final+0.1** | Split 충돌 규칙, Test 계산 시점, 룩백 정의(거래일), stop_loss 트리거 규칙, 캐시 키 강화 |
+| v1.1 | Walk-Forward 윈도우 수정, 단위 통일, 멀티 룩백 결합, 누수 방지 체크리스트 |
+| v1.2 | objective 흐름 정리, 지표 정의 명시, 거래일 스냅, 캐시 설계, Live 승격 게이트, 이상치 감지, 생존편향/배당 처리 |
+| v1.3 | Split 충돌 규칙, Test 계산 시점, 룩백 정의(거래일), stop_loss 트리거 규칙, 캐시 키 강화 |
+| **v2** | 스냅 함수 분리(시작/종료), WF/Holdout 기간 구분, 이상치 규칙 적용 시점, 캐시 해시 안정화, split_config 필드 통일, entry_price 정의, 비용 예시 보완 |
 
 ---
 
@@ -92,20 +93,26 @@ Test Sharpe: 비정상적으로 높음 (1.5+)
 | Gate 2 (WF 안정성) | ❌ 계산 안 함 | 안정성 평가에 영향 방지 |
 | Gate 2 통과 후 | ✅ 계산 | 최종 보고서용 |
 
-**구현:**
+**구현 (v2: 비용 적용):**
 ```python
 def run_backtest_for_tuning(params, period, costs):
-    """튜닝용 백테스트: Train/Val만 계산"""
-    train_result = backtest(params, period['train'])
-    val_result = backtest(params, period['val'])
+    """
+    튜닝용 백테스트: Train/Val만 계산
+    v2: 비용(costs) 반드시 전달
+    """
+    train_result = backtest(params, period['train'], costs=costs)  # ⭐ 비용 적용
+    val_result = backtest(params, period['val'], costs=costs)      # ⭐ 비용 적용
     # ❌ Test는 계산하지 않음
     return {'train': train_result, 'val': val_result, 'test': None}
 
 def run_backtest_for_final(params, period, costs):
-    """최종 보고서용 백테스트: Test 포함 (Gate 2 통과 후에만 호출)"""
-    train_result = backtest(params, period['train'])
-    val_result = backtest(params, period['val'])
-    test_result = backtest(params, period['test'])  # ✅ 여기서만 계산
+    """
+    최종 보고서용 백테스트: Test 포함 (Gate 2 통과 후에만 호출)
+    v2: 비용(costs) 반드시 전달
+    """
+    train_result = backtest(params, period['train'], costs=costs)  # ⭐ 비용 적용
+    val_result = backtest(params, period['val'], costs=costs)      # ⭐ 비용 적용
+    test_result = backtest(params, period['test'], costs=costs)    # ⭐ 비용 적용
     return {'train': train_result, 'val': val_result, 'test': test_result}
 ```
 
@@ -128,10 +135,22 @@ test  = data[int(len(data) * 0.85):]
 train, val, test = random_split(data, [0.70, 0.15, 0.15])
 ```
 
-### 2.3 최소 기간 규칙 및 Split 충돌 해결 (Final+0.1)
+### 2.3 최소 기간 규칙 및 Split 충돌 해결 (v2 수정)
 
-| 구간 | 기본값 | 예외 (전체 기간 짧을 때) |
-|------|--------|-------------------------|
+**Holdout Split vs Mini Walk-Forward 기간 구분 (v2):**
+
+```
+⚠️ Holdout Split(Train/Val/Test)은 Val/Test 기본 6M
+   Mini Walk-Forward의 val/test는 3M (빠른 안정성 체크용)
+```
+
+| 용도 | Val 기간 | Test 기간 | 비고 |
+|------|----------|----------|------|
+| **Holdout Split** | 6개월 | 6개월 | 최종 평가용 |
+| **Mini Walk-Forward** | 3개월 | 3개월 | 빠른 안정성 체크 |
+
+| 구간 | 기본값 (Holdout) | 예외 (전체 기간 짧을 때) |
+|------|-----------------|-------------------------|
 | Val | **6개월 이상** | 최소 4개월 (경고 표시) |
 | Test | **6개월 이상** | 최소 4개월 (경고 표시) |
 | Train | **나머지** | 최소 8개월 (경고 표시) |
@@ -188,21 +207,36 @@ def calculate_split(total_months, min_val=6, min_test=6, min_train=8):
 | slippage | 0.001 | 0.1% |
 | Sharpe | 1.5 (무단위) | 1.5 |
 
-### 2.5 거래일 스냅 규칙 (Final 추가)
+### 2.5 거래일 스냅 규칙 (v2 수정)
 
 ```
-⚠️ 윈도우 경계일이 휴장일이면 가장 가까운 이전 영업일로 스냅한다.
+⚠️ 시작일은 다음 영업일로, 종료일은 이전 영업일로 스냅한다.
+   (시작일을 이전 영업일로 스냅하면 기간 밖으로 튀는 사고 발생)
 ```
 
-**예시:**
+**스냅 함수 분리 (v2):**
 ```python
-def snap_to_trading_day(date, trading_calendar):
-    """휴장일이면 이전 영업일로 스냅"""
+def snap_start(date, trading_calendar):
+    """시작일: 휴장일이면 다음 영업일로 스냅"""
     while date not in trading_calendar:
-        date = date - timedelta(days=1)
+        date = date + timedelta(days=1)  # 다음 영업일
     return date
 
-# 2025-06-30이 휴장일이면 → 2025-06-27 (금요일)로 스냅
+def snap_end(date, trading_calendar):
+    """종료일: 휴장일이면 이전 영업일로 스냅"""
+    while date not in trading_calendar:
+        date = date - timedelta(days=1)  # 이전 영업일
+    return date
+
+# 예시:
+# 2024-01-01(휴장) 시작일 → 2024-01-02로 스냅 (다음 영업일)
+# 2025-06-30(휴장) 종료일 → 2025-06-27로 스냅 (이전 영업일)
+```
+
+**잘못된 예시 (기간 밖으로 튀는 사고):**
+```python
+# ❌ 시작일을 이전 영업일로 스냅하면:
+# 2024-01-01(휴장) → 2023-12-29로 스냅 → 기간 밖!
 ```
 
 ### 2.6 탐색 공간 제어 원칙
@@ -267,12 +301,25 @@ round_trip_cost = 2 * (commission + slippage)
 # 기본값: 2 * (0.00015 + 0.001) = 0.0023 (0.23%)
 ```
 
-### 3.4 stop_loss 트리거/체결 규칙 (Final+0.1 추가)
+### 3.4 stop_loss 트리거/체결 규칙 (v2 수정)
 
 ```
 ⚠️ 절대 규칙: 손절 판단과 체결 시점을 명확히 분리한다.
    이 규칙 하나로 MDD/Sharpe가 크게 달라진다.
 ```
+
+**entry_price 정의 (v2 추가):**
+
+```
+⚠️ entry_price = 포지션의 VWAP(가중평균 매수가)
+   추가매수/리밸런싱이 있으면 평균단가로 갱신
+```
+
+| 상황 | entry_price 계산 |
+|------|-----------------|
+| 최초 매수 | 매수 체결가 |
+| 추가 매수 | VWAP = (기존금액 + 추가금액) / (기존수량 + 추가수량) |
+| 리밸런싱 | 리밸런싱 후 평균단가로 갱신 |
 
 **권장 방식 (현실형):**
 
@@ -286,20 +333,21 @@ round_trip_cost = 2 * (commission + slippage)
 def check_stop_loss(position, current_close, stop_loss_pct):
     """
     T일 종가 기준 손절 조건 판단
+    entry_price는 VWAP (가중평균 매수가)
     """
-    entry_price = position['entry_price']
+    entry_price = position['entry_price']  # VWAP
     return_pct = (current_close - entry_price) / entry_price
     
     # stop_loss_pct는 음수 (예: -0.10)
     return return_pct <= stop_loss_pct
 
-def execute_stop_loss(position, next_open):
+def execute_stop_loss(position, next_open, costs):
     """
-    T+1일 시가로 손절 체결
+    T+1일 시가로 손절 체결 (비용 적용)
     """
     return {
         'action': 'SELL',
-        'price': next_open,  # T+1일 시가
+        'price': next_open * (1 - costs['slippage_rate']),  # 슬리피지 반영
         'reason': 'STOP_LOSS',
     }
 ```
@@ -319,7 +367,7 @@ def execute_stop_loss(position, next_open):
 
 ---
 
-## 4. 이상치 감지 레이더 (Final 추가)
+## 4. 이상치 감지 레이더 (v2 수정)
 
 ### 4.1 자동 경고 규칙
 
@@ -327,13 +375,18 @@ def execute_stop_loss(position, next_open):
 ⚠️ 아래 조건 충족 시 UI에 경고 배지 표시 + 자동 검토 대상
 ```
 
-| 조건 | 경고 메시지 | 배지 |
-|------|------------|------|
-| Sharpe > 5.0 | "산출/표본/누수 점검 필요" | 🔴 |
-| CAGR > 1.0 (100%) | "비현실적 수익률, 누수 의심" | 🔴 |
-| num_trades < 30 | "표본 부족, 통계적 신뢰도 낮음" | 🟡 |
-| exposure_ratio < 0.30 | "노출 부족, 대부분 현금 보유" | 🟡 |
-| Val↓ Test↑↑ (Val < 0, Test > 1.5) | "Val/Test 괴리, 과적합 의심" | 🔴 |
+| 조건 | 경고 메시지 | 배지 | 적용 시점 |
+|------|------------|------|----------|
+| Sharpe > 5.0 | "산출/표본/누수 점검 필요" | 🔴 | 튜닝 중 |
+| CAGR > 1.0 (100%) | "비현실적 수익률, 누수 의심" | 🔴 | 튜닝 중 |
+| num_trades < 30 | "표본 부족, 통계적 신뢰도 낮음" | 🟡 | 튜닝 중 |
+| exposure_ratio < 0.30 | "노출 부족, 대부분 현금 보유" | 🟡 | 튜닝 중 |
+| Val↓ Test↑↑ (Val < 0, Test > 1.5) | "Val/Test 괴리, 과적합 의심" | 🔴 | **Gate 3 이후** |
+
+```
+⚠️ Val↓Test↑↑ 규칙은 Test 산출 이후(=Gate 3 시점)에만 평가한다.
+   튜닝 중에는 Test를 계산하지 않으므로 이 규칙 적용 불가.
+```
 
 ### 4.2 UI 표시 예시
 
@@ -430,26 +483,49 @@ def get_lookback_start(end_date, lookback_months, trading_calendar):
 - 3개월이 60일일 수도, 66일일 수도 있음
 - 거래일 기준이면 항상 동일한 데이터 양으로 비교 가능
 
-### 5.5 캐시 설계 (Final+0.1 강화)
+### 5.5 캐시 설계 (v2 수정)
 
 멀티 룩백 실행 시 계산량이 3배로 증가. 캐시로 중복 계산 방지.
 
 ```
 ⚠️ 캐시 키에 data_version, universe_version 필수 포함.
    다른 데이터인데 캐시 재사용되는 사고 방지.
+⚠️ hash() 대신 hashlib.md5() 사용 (프로세스 간 일관성 보장)
 ```
 
-**캐시 키 설계 (Final+0.1):**
+**split_config 필드 통일 (v2):**
+
+```python
+# ✅ 통일된 split_config 구조
+split_config = {
+    'train_months': 12,      # 실제 적용값 (개월)
+    'val_months': 6,
+    'test_months': 6,
+    'method': 'chronological',
+    'target_ratios': {       # 참고값 (비율)
+        'train': 0.70,
+        'val': 0.15,
+        'test': 0.15,
+    }
+}
+```
+
+**캐시 키 설계 (v2):**
 ```python
 def make_cache_key(params, lookback, period, costs, split_config, data_config):
     """
     동일한 조건의 백테스트 결과를 캐싱
     
-    Final+0.1: data_version, universe_version 필수 포함
+    v2: hash() 대신 hashlib.md5() 사용 (프로세스 간 일관성)
+    v2: split_config 필드명 통일
     """
+    # ⭐ v2: 안정 해시 사용 (hash()는 프로세스마다 다를 수 있음)
+    params_sig = json.dumps(params, sort_keys=True)
+    params_hash = hashlib.md5(params_sig.encode()).hexdigest()
+    
     key_dict = {
         # 파라미터
-        'params_hash': hash(frozenset(params.items())),
+        'params_hash': params_hash,  # ⭐ v2: 안정 해시
         'lookback': lookback,
         
         # 기간
@@ -460,10 +536,13 @@ def make_cache_key(params, lookback, period, costs, split_config, data_config):
         'commission': costs['commission_rate'],
         'slippage': costs['slippage_rate'],
         
-        # Split
-        'split_ratios': (split_config['train'], split_config['val'], split_config['test']),
+        # Split (v2: 통일된 필드명)
+        'train_months': split_config['train_months'],
+        'val_months': split_config['val_months'],
+        'test_months': split_config['test_months'],
+        'split_method': split_config['method'],
         
-        # ⭐ Final+0.1 추가: 데이터/유니버스 버전
+        # 데이터/유니버스 버전
         'data_version': data_config['data_version'],
         'universe_version': data_config['universe_version'],
         'price_type': data_config.get('price_type', 'adj_close'),
@@ -472,6 +551,12 @@ def make_cache_key(params, lookback, period, costs, split_config, data_config):
     return hashlib.md5(json.dumps(key_dict, sort_keys=True).encode()).hexdigest()
 
 # 캐시 사용
+split_config = {
+    'train_months': 12,
+    'val_months': 6,
+    'test_months': 6,
+    'method': 'chronological',
+}
 data_config = {
     'data_version': 'ohlcv_20251216',
     'universe_version': 'krx_etf_20251216',
@@ -481,7 +566,7 @@ data_config = {
 cache_key = make_cache_key(params, lookback, period, costs, split_config, data_config)
 if cache_key in run_cache:
     return run_cache[cache_key]
-result = run_backtest(params, lookback, ...)
+result = run_backtest(params, lookback, costs=costs)  # ⭐ v2: 비용 전달
 run_cache[cache_key] = result
 ```
 
