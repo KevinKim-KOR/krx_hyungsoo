@@ -6,11 +6,31 @@
 
 ## 6. 목적함수(Objective) 설계
 
+### 6.0 반환 자료구조 (BacktestRunResult)
+
+```python
+@dataclass
+class BacktestRunResult:
+    metrics: dict  # {'train': Metrics, 'val': Metrics, 'test': Metrics|None}
+    guardrail_checks: dict  # {'num_trades': int, 'exposure_ratio': float, 'annual_turnover': float}
+```
+
+```
+⚠️ backtest()는 BacktestMetrics를 반환하고,
+   run_backtest_for_tuning / run_backtest_for_final은 BacktestRunResult를 반환한다.
+   - result.metrics['train'] / ['val'] / ['test']
+   - result.guardrail_checks (num_trades, exposure_ratio, annual_turnover)
+```
+
 ### 6.1 Objective 흐름
 
 ```
 ⚠️ trial은 Optuna 객체, params는 파라미터 dict.
-   run_backtest()는 params를 받는다. trial을 직접 넘기지 않는다.
+   run_backtest_for_tuning()은 params를 받는다. trial을 직접 넘기지 않는다.
+
+⚠️ for lb in lookbacks: 루프는 룩백별로 다른 데이터를 사용해야 합니다.
+   lookback_months=lb를 인자로 전달하거나, period를 룩백별로 잘라서 넘겨야 합니다.
+   그렇지 않으면 3회 반복되는 동일 백테스트가 실행됩니다 ("가짜 반복" 현상).
 ```
 
 **올바른 흐름 (v2.1: Test 봉인 강제):**
@@ -31,6 +51,7 @@ def objective(trial, lookbacks=[3, 6, 12], period=None):
     for lb in lookbacks:
         result = run_backtest_for_tuning(
             params=params,
+            lookback_months=lb,       # ✅ 룩백별로 다른 데이터 사용
             period=period,            # train/val 구간만 포함
             costs=DEFAULT_COSTS
         )
@@ -47,35 +68,33 @@ def objective(trial, lookbacks=[3, 6, 12], period=None):
 ### 6.2 가드레일 체크 함수
 
 ```python
-def check_guardrails(result):
+def check_guardrails(result: BacktestRunResult):
     """
     가드레일 통과 여부 확인
     하나라도 실패하면 False
     """
-    if result.num_trades < 30:
-        return False
-    if result.exposure_ratio < 0.30:
-        return False
-    if result.annual_turnover > 24:
-        return False
-    return True
+    g = result.guardrail_checks
+    return (
+        g['num_trades'] >= 30 and
+        g['exposure_ratio'] >= 0.30 and
+        g['annual_turnover'] <= 24
+    )
 ```
 
 ### 6.3 점수 계산 함수
 
 ```python
-def calculate_score(result):
+def calculate_score(result: BacktestRunResult):
     """
     Val 기반 점수 계산 (MDD 페널티 포함)
     """
-    val_sharpe = result.val_sharpe
-    val_mdd = result.val_mdd  # 소수 (예: -0.12)
+    val = result.metrics['val']
     
     # MDD 페널티: 15% 초과 시
     mdd_threshold = 0.15
-    mdd_penalty = max(0, abs(val_mdd) - mdd_threshold) * 10
+    mdd_penalty = max(0, abs(val.mdd) - mdd_threshold) * 10
     
-    return val_sharpe - mdd_penalty
+    return val.sharpe - mdd_penalty
 ```
 
 ### 6.4 거래비용 기본 적용
@@ -92,7 +111,17 @@ DEFAULT_COSTS = {
 }
 
 # 비용은 항상 적용
-result = run_backtest(params, costs=DEFAULT_COSTS)
+# 튜닝 단계:
+result = run_backtest_for_tuning(params, period=period, costs=DEFAULT_COSTS)
+
+# Gate3 이후 최종 보고서:
+result = run_backtest_for_final(params, period=period, costs=DEFAULT_COSTS)
+```
+
+```
+⚠️ run_backtest()는 독립 호출 금지.
+   튜닝 단계에서는 반드시 run_backtest_for_tuning(),
+   Gate3 이후 최종 보고서에서는 run_backtest_for_final()을 사용해야 합니다.
 ```
 
 ---

@@ -27,9 +27,25 @@
 | v1.1 | Walk-Forward 윈도우 수정, 단위 통일, 멀티 룩백 결합, 누수 방지 체크리스트 |
 | v1.2 | objective 흐름 정리, 지표 정의 명시, 거래일 스냅, 캐시 설계, Live 승격 게이트, 이상치 감지, 생존편향/배당 처리 |
 | v1.3 | Split 충돌 규칙, Test 계산 시점, 룩백 정의(거래일), stop_loss 트리거 규칙, 캐시 키 강화 |
-| v1.4 | 스냅 함수 분리(시작/종료), WF/Holdout 기간 구분, 이상치 규칙 적용 시점, 캐시 해시 안정화, split_config 필드 통일, entry_price 정의, 비용 예시 보완 |
-| v2 | WF 윈도우 스냅 규칙 반영, Objective Test 봉인 강제, exposure_ratio 정의 명확화, stop_loss 비용 완전 적용, 룩백 end_date 스냅, manifest split_applied 추가 |
-| **v2.1** | WF 윈도우 스냅 규칙 반영, Objective에서 Test 계산 봉인 강제, exposure_ratio 정의 확정, stop_loss 비용(수수료 포함) 정합, 룩백 end_date 스냅 추가, run_manifest split_applied + 단계별(Test null) 정합 |
+| v1.4 → v2 | WF 윈도우 스냅 규칙 반영, Objective Test 봉인 강제, exposure_ratio 정의 명확화, stop_loss 비용 완전 적용, 룩백 end_date 스냅, manifest split_applied 추가, 스냅 함수 분리, WF/Holdout 기간 구분, 캐시 해시 안정화, split_config 필드 통일, entry_price 정의 |
+| **v2.1** | period 구조 표준화, BacktestRunResult 도입, WF 용어 구분(outsample) 반영, 캐시 키 강화, 멀티 룩백 "가짜 반복" 수정, run_backtest 명칭 통일 |
+
+```
+⚠️ 버전 정리:
+   기존 v1.4는 내용상 v2로 승격,
+   v2.1은 구조 정비 및 코드 일관성 패치 버전입니다.
+```
+
+---
+
+## 용어 구분
+
+```
+⚠️ 용어 구분:
+   - **Holdout Test**: 최종 봉인(Test 봉인 대상, Gate3에서만 계산)
+   - **Walk-Forward Out-of-Sample**: Gate2 안정성 평가용 (계산 허용)
+     - Walk-Forward 내부에서는 `outsample` 용어를 사용 권장
+```
 
 ---
 

@@ -4,6 +4,59 @@
 
 ---
 
+## period 구조 표준화
+
+```python
+# 표준 period 구조
+period = {
+    'start_date': '2024-01-01',
+    'end_date': '2025-12-31',
+    'train': {'start': '2024-01-02', 'end': '2024-12-31'},
+    'val':   {'start': '2025-01-02', 'end': '2025-06-30'},
+    'test':  {'start': '2025-07-01', 'end': '2025-12-30'}
+}
+```
+
+```
+⚠️ period는 반드시 위 구조를 사용하며,
+   캐시 키에는 train_range, val_range, test_range를 포함해야
+   룩백·기간이 다를 때 충돌을 방지할 수 있습니다.
+```
+
+**캐시 키 강화 (v2.1):**
+```python
+def make_cache_key(params, lookback, period, costs, data_config):
+    """
+    v2.1: period 구조 표준화 반영
+    """
+    params_sig = json.dumps(params, sort_keys=True)
+    params_hash = hashlib.md5(params_sig.encode()).hexdigest()
+    
+    key_dict = {
+        # 파라미터
+        'params_hash': params_hash,
+        'lookback': lookback,
+        
+        # 기간 (v2.1: period 구조 반영)
+        'start_date': period['start_date'],
+        'end_date': period['end_date'],
+        'train_range': period['train'],   # ✅ v2.1 추가
+        'val_range': period['val'],       # ✅ v2.1 추가
+        'test_range': period['test'],     # ✅ v2.1 추가
+        
+        # 비용
+        'commission': costs['commission_rate'],
+        'slippage': costs['slippage_rate'],
+        
+        # 데이터/유니버스 버전
+        'data_version': data_config['data_version'],
+        'universe_version': data_config['universe_version'],
+    }
+    return hashlib.md5(json.dumps(key_dict, sort_keys=True).encode()).hexdigest()
+```
+
+---
+
 ## 10. 누수 방지 체크리스트
 
 ### 10.1 신호 계산 vs 체결 시점

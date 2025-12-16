@@ -6,6 +6,13 @@
 
 ## 8. 미니 Walk-Forward 설계
 
+```
+⚠️ 용어 구분:
+   - Walk-Forward 내부의 "test"는 **Outsample**을 의미합니다.
+   - Holdout Test(최종 봉인)와 혼동하지 마세요.
+   - Walk-Forward Outsample은 Gate2 안정성 평가용으로 계산 허용됩니다.
+```
+
 ### 8.1 윈도우 생성 규칙
 
 ```
@@ -49,7 +56,7 @@ def generate_windows(start_date, end_date, train_months, val_months, test_months
                 snap_start(val_start, trading_calendar),
                 snap_end(val_end - timedelta(days=1), trading_calendar)
             ),
-            'test': (
+            'outsample': (  # ✅ v2.1: test → outsample 용어 변경
                 snap_start(test_start, trading_calendar),
                 snap_end(test_end - timedelta(days=1), trading_calendar)
             ),
@@ -69,13 +76,13 @@ def generate_windows(start_date, end_date, train_months, val_months, test_months
 
 **생성된 윈도우:**
 
-| Window | Train | Val | Test |
+| Window | Train | Val | Outsample |
 |--------|-------|-----|------|
 | W1 | 2024-01-02 ~ 2024-12-31 | 2025-01-02 ~ 2025-03-31 | 2025-04-01 ~ 2025-06-30 |
 | W2 | 2024-04-01 ~ 2025-03-31 | 2025-04-01 ~ 2025-06-30 | 2025-07-01 ~ 2025-09-30 |
 | W3 | 2024-07-01 ~ 2025-06-30 | 2025-07-01 ~ 2025-09-30 | 2025-10-01 ~ 2025-12-30 |
 
-**W4는 생성되지 않음** (Test가 2026-01~03으로 end_date 초과)
+**W4는 생성되지 않음** (Outsample이 2026-01~03으로 end_date 초과)
 
 ### 8.3 안정성 점수 계산
 

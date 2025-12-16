@@ -4,6 +4,19 @@
 
 ---
 
+## 반환 자료구조 참조
+
+```
+⚠️ 백테스트 함수별 반환 타입:
+   - backtest() → BacktestMetrics (단일 구간 지표)
+   - run_backtest_for_tuning() → BacktestRunResult (Train/Val 포함)
+   - run_backtest_for_final() → BacktestRunResult (Train/Val/Test 포함)
+
+자세한 정의는 02_objective_gates.md의 6.0 섹션 참조.
+```
+
+---
+
 ## 3. 지표 정의
 
 ### 3.1 핵심 지표 정의
