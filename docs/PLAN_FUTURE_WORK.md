@@ -314,32 +314,202 @@ if event_today:
 
 ## Archive — 구현 완료 항목
 
+---
+
 ### ✅ Phase 2.1 — 멀티룩백 증거 강화 & Real Data Gate0 (2025-12-21)
 
-| 항목 | 상태 | 설명 |
-|------|------|------|
-| 멀티룩백 debug 필드 추가 | ✅ 완료 | `lookback_start_date`, `effective_eval_start`, `bars_used`, `signal_days`, `order_count` |
-| manifest by_lookback debug 저장 | ✅ 완료 | 룩백별로 확실히 다른 필드 기록 |
-| replay_manifest debug 검증 | ✅ 완료 | 룩백별 `lookback_start_date` 차이 확인 |
-| Gate1 로그 문구 정리 | ✅ 완료 | `candidates=N, selected_top_n=M, dedup_removed=K` 형식 |
-| Real Data Gate0 (Preflight) | ✅ 완료 | `data_digest` 해시, `common_period` 추가 |
+#### 배경
+- 3M/6M/12M 룩백이 실제로 다른 결과를 만드는지 증거가 부족했음
+- 실데이터 튜닝 전 데이터 건전성 검사가 미흡했음
 
-**최종 검증 결과 (Mock 모드)**:
+#### 구현 내용
+
+**1) DebugInfo 필드 추가** (`extensions/tuning/types.py`)
+```python
+@dataclass
+class DebugInfo:
+    # Phase 2.1 추가: 멀티룩백 증거 강화
+    effective_eval_start: Optional[date] = None  # 룩백 적용 후 성과 계산 시작일
+    bars_used: int = 0  # 룩백 적용 후 실제 계산에 사용된 봉 수
+    signal_days: int = 0  # 신호 발생 일수
+    order_count: int = 0  # 주문 횟수
 ```
-[Lookback 3M]  lookback_start=2024-03-30
-[Lookback 6M]  lookback_start=2023-12-30
-[Lookback 12M] lookback_start=2023-06-30
-→ 룩백별로 확실히 다른 시작일 기록됨 (멀티룩백 적용 증거)
+
+**2) BacktestMetrics 필드 추가** (`extensions/tuning/types.py`)
+```python
+@dataclass
+class BacktestMetrics:
+    # Phase 2.1 추가
+    signal_days: int = 0
+    order_count: int = 0
+    first_trade_date: Optional[str] = None
 ```
+
+**3) Manifest by_lookback debug 저장** (`tools/run_phase15_realdata.py`)
+```python
+debug_fields = {
+    "effective_eval_start": bt_result.debug.effective_eval_start.isoformat(),
+    "bars_used": bt_result.debug.bars_used,
+    "signal_days": bt_result.debug.signal_days,
+    "order_count": bt_result.debug.order_count,
+    "lookback_start_date": bt_result.debug.lookback_start_date.isoformat(),
+}
+by_lookback[lb] = {..., "debug": debug_fields}
+```
+
+**4) replay_manifest debug 검증** (`tools/replay_manifest.py`)
+- 원본 debug 필드와 재실행 debug 필드 비교 출력
+- `lookback_start_date`가 룩백별로 다른지 확인
+
+**5) Gate1 로그 문구 정리** (`extensions/tuning/gates.py`)
+```python
+# 변경 전: "Gate1 Top-N 선정: 13개 → 3개 (중복 제거)"
+# 변경 후: "Gate1 Top-N 선정: candidates=13, selected_top_n=3, dedup_removed=0"
+```
+
+**6) Real Data Gate0 (Preflight)** (`app/services/data_preflight.py`)
+```python
+@dataclass
+class PreflightReport:
+    # Phase 2.1 추가
+    data_digest: str = ""  # 데이터 상태 해시 (16자)
+    common_period_start: Optional[date] = None
+    common_period_end: Optional[date] = None
+```
+
+#### 검증 결과 (Mock 모드)
+```
+Gate1: candidates=7, selected_top_n=3, dedup_removed=0
+Gate2: stability=2.68, win_rate=100% (6 windows)
+Replay: ✅ PASS (tol=1e-6)
+
+멀티룩백 증거:
+  [3M]  lookback_start=2024-03-30
+  [6M]  lookback_start=2023-12-30
+  [12M] lookback_start=2023-06-30
+→ 룩백별로 확실히 다른 시작일 기록됨
+```
+
+#### 수정된 파일
+- `extensions/tuning/types.py` — DebugInfo, BacktestMetrics 필드 추가
+- `extensions/tuning/runner.py` — debug 필드 채우기
+- `extensions/tuning/gates.py` — Gate1 로그 문구 변경
+- `tools/run_phase15_realdata.py` — by_lookback debug 저장, preflight data_digest 저장
+- `tools/replay_manifest.py` — debug 필드 검증 로그 출력
+- `app/services/data_preflight.py` — data_digest, common_period 추가
+
+---
 
 ### ✅ Phase 2.0 — Real Data Gate2 & Force-Gate2 (2025-12-20~21)
 
-| 항목 | 상태 |
-|------|------|
-| `--force-gate2` 옵션 구현 | ✅ 완료 |
-| `run_phase20_real_gate2.py` 스크립트 | ✅ 완료 |
-| MiniWalkForward universe_codes 전달 | ✅ 완료 |
-| replay_manifest Gate2 WF 검증 | ✅ 완료 |
+#### 배경
+- 실데이터에서 Gate1 후보가 0개일 때 Gate2를 테스트할 수 없었음
+- MiniWalkForward에 universe_codes가 전달되지 않아 백테스트 실패
+
+#### 구현 내용
+
+**1) `--force-gate2` 옵션** (`tools/run_phase15_realdata.py`)
+```python
+# Gate1 후보가 없어도 completed_trials에서 직접 Top-N 추출
+if len(deduped_candidates) == 0 and force_gate2 and analysis_mode:
+    sorted_trials = sorted(completed_trials, key=lambda x: x["val_sharpe"], reverse=True)[:top_n]
+    deduped_candidates = [{"params": t["params"], "val_sharpe": t["val_sharpe"]} for t in sorted_trials]
+```
+
+**2) `run_phase20_real_gate2.py` 스크립트** (`tools/`)
+- Gate2 전용 실행 스크립트
+- `--stop-at-gate2` 옵션으로 Gate3 이전 중단
+
+**3) MiniWalkForward universe_codes 전달** (`extensions/tuning/walkforward.py`)
+```python
+class MiniWalkForward:
+    def __init__(self, ..., universe_codes: Optional[List[str]] = None):
+        self.universe_codes = universe_codes
+    
+    def run(self, params):
+        train_metrics = _run_single_backtest(..., universe_codes=self.universe_codes)
+```
+
+**4) replay_manifest Gate2 WF 검증** (`tools/replay_manifest.py`)
+```python
+def replay_gate2_wf(config, use_mock):
+    wf = MiniWalkForward(..., universe_codes=config["universe_codes"])
+    wf_results_list = wf.run(params)
+    # stability, win_rate 비교
+```
+
+#### 수정된 파일
+- `tools/run_phase15_realdata.py` — `--force-gate2` CLI 옵션
+- `tools/run_phase20_real_gate2.py` — 신규 스크립트
+- `extensions/tuning/walkforward.py` — universe_codes 파라미터 추가
+- `tools/replay_manifest.py` — Gate2 WF 검증 로직
+
+---
+
+### ✅ Phase 1.5 ~ 1.7 — 튜닝 엔진 코어 (2025-12-17)
+
+#### 구현 내용
+
+**1) BacktestRunResult 도입** (`extensions/tuning/types.py`)
+```python
+@dataclass
+class BacktestRunResult:
+    train: Optional[BacktestMetrics] = None
+    val: Optional[BacktestMetrics] = None
+    test: Optional[BacktestMetrics] = None
+    debug: Optional[DebugInfo] = None
+    guardrail_failures: List[str] = field(default_factory=list)
+    logic_check_failures: List[str] = field(default_factory=list)
+```
+
+**2) 캐시 키 강화** (`extensions/tuning/cache.py`)
+- params_hash + period_signature + lookback_months 조합
+- 룩백별 캐시 격리
+
+**3) MDD 일관성 Gate** (`extensions/tuning/guardrails.py`)
+```python
+def check_mdd_consistency(train_mdd, val_mdd, threshold_ratio=1.2):
+    # Val MDD가 Train MDD의 1.2배 이상이면 실패
+```
+
+**4) RSI 실효성 Logic Check** (`extensions/tuning/guardrails.py`)
+```python
+def check_rsi_effectiveness(params, metrics):
+    # RSI 파라미터가 실제로 신호에 영향을 주는지 확인
+```
+
+**5) Manifest 검증** (`extensions/tuning/manifest.py`)
+- 필수 필드 검증
+- by_lookback 구조 검증
+
+**6) Replay 도구** (`tools/replay_manifest.py`)
+- Manifest 재현성 검증
+- Mock/Real 모드 지원
+- tolerance 기반 비교
+
+---
+
+### ✅ Phase 1.0 ~ 1.4 — 기본 설계 (2025-12-15~16)
+
+#### 구현 내용
+
+**1) Test 봉인 원칙**
+- Optuna objective = Val Sharpe만 사용
+- Gate2 통과 전 Test 계산 금지
+
+**2) Chronological Split**
+- 시간 순서 분할 강제
+- 최소 기간 규칙 (Val ≥ 6M, Test ≥ 6M)
+
+**3) 단위 통일**
+- 엔진 내부: 소수 (0.25 = 25%)
+- UI 표시: 퍼센트
+
+**4) 거래일 스냅**
+- 시작일: 다음 영업일로 스냅
+- 종료일: 이전 영업일로 스냅
+
+---
 
 ### ✅ 튜닝 UI/UX 기본 개선 (2025-12-15~16)
 
@@ -350,3 +520,40 @@ if event_today:
 | AI 분석 활성화 조건 강화 (4개 중 2개 이상) | ✅ 완료 |
 | 모달 문구 개선 (단일 백테스트 vs 범위 탐색 명확화) | ✅ 완료 |
 | AI 분석 프롬프트에 백테스트 기간 추가 | ✅ 완료 |
+
+---
+
+## 📌 다음 AI 인수인계 안내
+
+### 필독 문서 (우선순위 순)
+
+1. **[`docs/tuning/05_development_history.md`](tuning/05_development_history.md)** — AI 인수인계용 상세 개발 이력
+2. **[`docs/tuning/00_overview.md`](tuning/00_overview.md)** — 설계 원칙, 배경, 용어 정의
+3. **[`docs/AI_CONTEXT_PACK.md`](AI_CONTEXT_PACK.md)** — 전체 시스템 컨텍스트
+
+### 핵심 코드 파악
+
+1. `extensions/tuning/types.py` — 데이터 타입
+2. `extensions/tuning/runner.py` — 백테스트 실행
+3. `tools/run_phase15_realdata.py` — 메인 실행 스크립트
+
+### 테스트 실행
+
+```bash
+# 기본 동작 확인
+pytest tests/tuning/test_smoke.py -v
+
+# Mock 모드 튜닝 실행
+python -m tools.run_phase20_real_gate2 --runs 1 --trials 10 --seed 42 --top-n 3 --analysis-mode --force-gate2 --stop-at-gate2
+
+# Replay 검증
+python -m tools.replay_manifest "data\tuning_test\<manifest>.json" --mode mock --tolerance 1e-6
+```
+
+### 다음 작업 제안
+
+| 우선순위 | 작업 | 설명 |
+|----------|------|------|
+| 1 | 실데이터 테스트 | Mock이 아닌 실제 parquet으로 전체 파이프라인 검증 |
+| 2 | Gate3 구현 | Test 봉인 해제 및 최종 보고서 생성 |
+| 3 | UI 연동 | 튜닝 결과를 React 대시보드에 표시 |

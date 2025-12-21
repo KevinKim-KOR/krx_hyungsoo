@@ -29,12 +29,13 @@
 ## 📋 목차
 
 1. [빠른 시작](#-빠른-시작)
-2. [사용 가이드](#-사용-가이드)
-3. [배포 가이드](#-배포-가이드)
-4. [설계 문서](#-설계-문서)
-5. [참조 문서](#-참조-문서)
-6. [완료된 Phase](#-완료된-phase)
-7. [아카이브](#-아카이브)
+2. [튜닝 시스템](#-튜닝-시스템-신규)
+3. [사용 가이드](#-사용-가이드)
+4. [배포 가이드](#-배포-가이드)
+5. [설계 문서](#-설계-문서)
+6. [참조 문서](#-참조-문서)
+7. [완료된 Phase](#-완료된-phase)
+8. [아카이브](#-아카이브)
 
 ---
 
@@ -53,6 +54,67 @@
 ### Oracle Cloud 배포하는 경우
 1. [`deployment/oracle-cloud.md`](deployment/oracle-cloud.md) - Oracle Cloud 배포
 2. [`deployment/troubleshooting.md`](deployment/troubleshooting.md) - 문제 해결
+
+---
+
+## 🔧 튜닝 시스템 (신규)
+
+> **2025-12-15 ~ 12-21 개발 완료**
+
+### 튜닝 문서 (`docs/tuning/`)
+
+| 문서 | 설명 |
+|------|------|
+| [`00_overview.md`](tuning/00_overview.md) | 설계 원칙, 배경, 용어 정의 |
+| [`01_metrics_guardrails.md`](tuning/01_metrics_guardrails.md) | 지표 정의, 가드레일 |
+| [`02_objective_gates.md`](tuning/02_objective_gates.md) | 목적함수, Gate 로직 |
+| [`03_walkforward_manifest.md`](tuning/03_walkforward_manifest.md) | Walk-Forward, Manifest 스키마 |
+| [`04_implementation.md`](tuning/04_implementation.md) | 구현 세부사항 |
+| [`05_development_history.md`](tuning/05_development_history.md) | **⭐ AI 인수인계용 개발 이력** |
+
+### 튜닝 엔진 코어 (`extensions/tuning/`)
+
+| 파일 | 역할 |
+|------|------|
+| `types.py` | 데이터 타입 (`BacktestMetrics`, `BacktestRunResult`, `DebugInfo`) |
+| `runner.py` | 백테스트 실행 (`run_backtest_for_tuning()`) |
+| `split.py` | 기간 분할 (`calculate_split()`) |
+| `gates.py` | Gate 로직 (`deduplicate_top_n_candidates()`) |
+| `guardrails.py` | 가드레일 검사 (`check_mdd_consistency()`) |
+| `walkforward.py` | Walk-Forward (`MiniWalkForward`) |
+| `manifest.py` | Manifest 저장 |
+| `telemetry.py` | 텔레메트리 로깅 |
+| `cache.py` | 캐시 관리 |
+
+### 실행 스크립트 (`tools/`)
+
+| 파일 | 역할 |
+|------|------|
+| `run_phase15_realdata.py` | 메인 튜닝 실행 |
+| `run_phase20_real_gate2.py` | Gate2 전용 실행 |
+| `replay_manifest.py` | Manifest 재현성 검증 |
+
+### 테스트 (`tests/tuning/`)
+
+| 파일 | 테스트 대상 |
+|------|------------|
+| `test_smoke.py` | 기본 동작 검증 |
+| `test_gate_e2e.py` | Gate 전체 흐름 |
+| `test_gate2_loop.py` | Gate2 Walk-Forward |
+| `test_replay_determinism.py` | Replay 재현성 |
+
+### 빠른 실행
+
+```bash
+# Mock 모드 튜닝 실행
+python -m tools.run_phase20_real_gate2 --runs 1 --trials 10 --seed 42 --top-n 3 --analysis-mode --force-gate2 --stop-at-gate2
+
+# Replay 검증
+python -m tools.replay_manifest "data\tuning_test\<manifest>.json" --mode mock --tolerance 1e-6
+
+# 테스트
+pytest tests/tuning/test_smoke.py -v
+```
 
 ---
 
