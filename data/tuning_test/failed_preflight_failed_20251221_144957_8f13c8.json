@@ -1,0 +1,111 @@
+{
+  "run_id": "failed_preflight_failed_20251221_144957_8f13c8",
+  "created_at": "2025-12-21T14:49:57.369478",
+  "schema_version": "4.1",
+  "stage": "failed_preflight_failed",
+  "config": {
+    "period": {
+      "start_date": "2020-01-01",
+      "end_date": "2024-06-30"
+    },
+    "lookbacks": [
+      3,
+      6,
+      12
+    ],
+    "lookback_combination": "min",
+    "trials": 5,
+    "objective": "val_sharpe_with_mdd_penalty",
+    "split": {
+      "method": "chronological",
+      "target_ratios": {
+        "train": 0.7,
+        "val": 0.15,
+        "test": 0.15
+      },
+      "min_val_months": 6,
+      "min_test_months": 6,
+      "applied": {
+        "train_months": 0,
+        "val_months": 0,
+        "test_months": 0
+      }
+    },
+    "guardrails": {
+      "min_trades": 30,
+      "min_exposure_ratio": 0.3,
+      "max_annual_turnover": 24
+    },
+    "variables": {
+      "ma_period": {
+        "min": 20,
+        "max": 100,
+        "step": 10,
+        "type": "int"
+      },
+      "rsi_period": {
+        "min": 5,
+        "max": 25,
+        "step": 5,
+        "type": "int"
+      },
+      "stop_loss_pct": {
+        "min": 0.03,
+        "max": 0.1,
+        "step": 0.01,
+        "type": "float",
+        "unit": "decimal_positive"
+      }
+    },
+    "cost_assumptions": {
+      "commission_rate": 0.00015,
+      "slippage_rate": 0.001,
+      "cost_type": "one_way",
+      "unit": "decimal"
+    }
+  },
+  "data": {
+    "universe_version": "etf_a_v1",
+    "universe_source": "KRX",
+    "delisted_handling": "exclude_from_start",
+    "survivorship_bias": "point_in_time",
+    "price_type": "adj_close",
+    "dividend_handling": "total_return",
+    "data_version": "real_v1",
+    "universe_hash": "209b2c981e59009b",
+    "universe_count": 10,
+    "requested_codes_count": 10,
+    "effective_codes_count": 10,
+    "requested_hash": "209b2c981e59009b",
+    "effective_hash": "209b2c981e59009b",
+    "sample_codes": [
+      "069500",
+      "102110",
+      "229200",
+      "114800",
+      "122630"
+    ]
+  },
+  "results": {
+    "best_trial": null,
+    "all_trials_count": 0,
+    "convergence_trial": null,
+    "search_coverage": 0.013888888888888888
+  },
+  "environment": {
+    "code_version": "git:5ed8e533",
+    "python_version": "3.13.5",
+    "optuna_version": "4.5.0",
+    "random_seed": 42,
+    "splitter_version": "chronological_v1",
+    "cost_model_version": "simple_oneway_v1"
+  },
+  "engine_health": {
+    "is_valid": true,
+    "warnings": [],
+    "data_quality": {
+      "missing_ratio": 0.001,
+      "outlier_count": 0
+    }
+  }
+}

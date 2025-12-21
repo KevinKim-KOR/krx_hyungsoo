@@ -26,6 +26,7 @@ class BacktestParams:
     initial_capital: int
     max_positions: int
     enable_defense: bool
+    universe_codes: Optional[List[str]] = None  # 명시적 유니버스 (None이면 에러)
 
 
 @dataclass
@@ -44,11 +45,16 @@ class BacktestResult:
     sell_trades: int = 0
     total_costs: float = 0.0
     total_realized_pnl: float = 0.0
+    # 진단용 디버그 필드 (v2.2 추가)
+    signal_days: int = 0  # 매수 신호 발생 일수
+    order_count: int = 0  # 실제 주문 수
+    first_trade_date: Optional[str] = None  # 첫 거래일 (없으면 None)
 
 
 @dataclass
 class SplitMetrics:
     """Train/Val/Test 분할 성과"""
+
     cagr: float
     sharpe_ratio: float
     max_drawdown: float
@@ -61,18 +67,18 @@ class ExtendedBacktestResult:
 
     # 전체 성과
     metrics: BacktestResult
-    
+
     # Train/Val/Test 분할 성과
     train_metrics: Optional[SplitMetrics] = None
     val_metrics: Optional[SplitMetrics] = None
     test_metrics: Optional[SplitMetrics] = None
-    
+
     # 엔진 헬스체크
     engine_health: Optional[Dict] = None
-    
+
     # 일별 비중 로그 (최근 N개만)
     daily_logs: Optional[List[Dict]] = None
-    
+
     # 경고 메시지
     warnings: Optional[List[str]] = None
 
@@ -97,7 +103,9 @@ class ConfigLoader:
     def load_backtest_config(cls) -> Dict:
         """backtest.yaml 로드"""
         if cls._backtest_config is None:
-            config_path = Path(__file__).parent.parent.parent / "config" / "backtest.yaml"
+            config_path = (
+                Path(__file__).parent.parent.parent / "config" / "backtest.yaml"
+            )
             if not config_path.exists():
                 raise FileNotFoundError(f"설정 파일 없음: {config_path}")
             with open(config_path, "r", encoding="utf-8") as f:
@@ -202,6 +210,13 @@ class BacktestService:
 
         return df
 
+    def _compute_hash(self, codes: List[str]) -> str:
+        """유니버스 해시 계산"""
+        import hashlib
+
+        sorted_codes = sorted(codes)
+        return hashlib.md5(",".join(sorted_codes).encode()).hexdigest()
+
     def run(self, params: BacktestParams) -> BacktestResult:
         """
         백테스트 실행
@@ -217,8 +232,20 @@ class BacktestService:
         """
         from datetime import timedelta
 
-        # 데이터 로드
-        universe = self._get_universe()
+        # 유니버스 결정: 명시적 전달 필수 (기본 유니버스 사용 금지)
+        if params.universe_codes is not None:
+            universe = params.universe_codes
+            logger.info(
+                f"UNIVERSE requested={len(universe)}(hash={self._compute_hash(universe)[:8]}) "
+                f"effective={len(universe)}(hash={self._compute_hash(universe)[:8]})"
+            )
+        else:
+            # 기본 유니버스 사용 금지 - 명시적 전달 필수
+            raise ValueError(
+                "universe_codes 필수: BacktestParams에 universe_codes를 명시적으로 전달해야 합니다. "
+                "기본 유니버스 사용은 금지되어 있습니다."
+            )
+
         if not universe:
             raise ValueError("유니버스가 비어있음")
 
@@ -258,6 +285,15 @@ class BacktestService:
         metrics = result.get("metrics", {})
         trades = result.get("trades", [])
 
+        # 진단용 디버그 정보 수집
+        signal_days = metrics.get("signal_days", 0)
+        order_count = len(trades)
+        first_trade_date = None
+        if trades:
+            first_trade_date = (
+                str(trades[0].get("date", "")) if isinstance(trades[0], dict) else None
+            )
+
         # 결과 검증 (모두 0이면 경고)
         annual_return = metrics.get("annual_return", 0)
         sharpe = metrics.get("sharpe_ratio", 0)
@@ -266,7 +302,8 @@ class BacktestService:
         if annual_return == 0 and sharpe == 0 and mdd == 0:
             logger.warning(
                 f"백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 "
-                f"(기간: {params.start_date} ~ {params.end_date})"
+                f"(기간: {params.start_date} ~ {params.end_date}), "
+                f"signal_days={signal_days}, order_count={order_count}"
             )
 
         # 엔진에서 이미 퍼센트로 반환하므로 변환 불필요
@@ -280,6 +317,9 @@ class BacktestService:
             win_rate=metrics.get("win_rate", 0),  # 엔진에서 계산된 값 사용 (이미 %)
             volatility=metrics.get("volatility", 0),  # 이미 %
             calmar_ratio=metrics.get("calmar_ratio", 0),
+            signal_days=signal_days,
+            order_count=order_count,
+            first_trade_date=first_trade_date,
         )
 
         # 히스토리 저장
@@ -311,7 +351,7 @@ class BacktestService:
         return result_obj
 
     def run_with_split(
-        self, 
+        self,
         params: BacktestParams,
         train_ratio: float = 0.70,
         val_ratio: float = 0.15,
@@ -320,58 +360,60 @@ class BacktestService:
     ) -> ExtendedBacktestResult:
         """
         Train/Val/Test 분할 백테스트 실행
-        
+
         Args:
             params: 백테스트 파라미터
             train_ratio: Train 비율 (기본 70%)
             val_ratio: Validation 비율 (기본 15%)
             test_ratio: Test 비율 (기본 15%)
             daily_log_limit: 반환할 daily_log 개수 (기본 30)
-        
+
         Returns:
             ExtendedBacktestResult (전체 + Train/Val/Test + engine_health + daily_logs)
         """
         from datetime import timedelta
-        
+
         # 데이터 로드
         universe = self._get_universe()
         if not universe:
             raise ValueError("유니버스가 비어있음")
-        
+
         lookback_buffer = timedelta(days=90)
         data_start_date = params.start_date - lookback_buffer
-        
+
         price_data = self._load_price_data(universe, data_start_date, params.end_date)
         if price_data is None or price_data.empty:
             raise ValueError("가격 데이터 로드 실패")
-        
+
         market_data = self._load_market_index(data_start_date, params.end_date)
-        
+
         # 기간 분할 계산
         total_days = (params.end_date - params.start_date).days
         train_days = int(total_days * train_ratio)
         val_days = int(total_days * val_ratio)
-        
+
         train_end = params.start_date + timedelta(days=train_days)
         val_end = train_end + timedelta(days=val_days)
-        
+
         periods = {
             "train": (params.start_date, train_end),
             "val": (train_end + timedelta(days=1), val_end),
             "test": (val_end + timedelta(days=1), params.end_date),
         }
-        
-        logger.info(f"기간 분할: Train {periods['train']}, Val {periods['val']}, Test {periods['test']}")
-        
+
+        logger.info(
+            f"기간 분할: Train {periods['train']}, Val {periods['val']}, Test {periods['test']}"
+        )
+
         # 러너 생성
         runner = self._runner_class(
             initial_capital=params.initial_capital,
             max_positions=params.max_positions,
             enable_defense=params.enable_defense,
         )
-        
+
         target_weights = {code: 1.0 / params.max_positions for code in universe}
-        
+
         # 전체 기간 백테스트
         full_result = runner.run(
             price_data=price_data,
@@ -383,11 +425,11 @@ class BacktestService:
             rsi_period=params.rsi_period,
             stop_loss=params.stop_loss / 100.0,
         )
-        
+
         full_metrics = full_result.get("metrics", {})
         engine_health = full_metrics.get("engine_health", {})
         daily_logs = full_result.get("daily_logs", [])
-        
+
         # 전체 성과 객체 (엔진 정합성 검증용 필드 포함)
         overall = BacktestResult(
             cagr=full_metrics.get("annual_return", 0),
@@ -403,7 +445,7 @@ class BacktestService:
             total_costs=full_metrics.get("total_costs", 0.0),
             total_realized_pnl=full_metrics.get("total_realized_pnl", 0.0),
         )
-        
+
         # 각 구간별 백테스트
         split_results = {}
         for split_name, (split_start, split_end) in periods.items():
@@ -435,10 +477,10 @@ class BacktestService:
             except Exception as e:
                 logger.warning(f"{split_name} 구간 백테스트 실패: {e}")
                 split_results[split_name] = None
-        
+
         # 경고 생성
         warnings = engine_health.get("warnings", []) if engine_health else []
-        
+
         # 과적합 경고 추가
         if split_results.get("train") and split_results.get("test"):
             train_sharpe = split_results["train"].sharpe_ratio
@@ -446,8 +488,10 @@ class BacktestService:
             if train_sharpe > 0 and test_sharpe > 0:
                 degradation = (train_sharpe - test_sharpe) / train_sharpe
                 if degradation > 0.3:  # 30% 이상 성능 저하
-                    warnings.append(f"overfit_warning: Train→Test Sharpe 저하 {degradation*100:.1f}%")
-        
+                    warnings.append(
+                        f"overfit_warning: Train→Test Sharpe 저하 {degradation * 100:.1f}%"
+                    )
+
         return ExtendedBacktestResult(
             metrics=overall,
             train_metrics=split_results.get("train"),

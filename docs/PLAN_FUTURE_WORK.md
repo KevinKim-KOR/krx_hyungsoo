@@ -1,6 +1,6 @@
 # KRX Alertor — Future Development Roadmap
 
-> **작성**: 2025-12-11 (최종 수정: 2025-12-16)  
+> **작성**: 2025-12-11 (최종 수정: 2025-12-21)  
 > **Author**: 형수  
 > **목적**: 향후 개발 항목 영구 기록
 
@@ -313,6 +313,33 @@ if event_today:
 ---
 
 ## Archive — 구현 완료 항목
+
+### ✅ Phase 2.1 — 멀티룩백 증거 강화 & Real Data Gate0 (2025-12-21)
+
+| 항목 | 상태 | 설명 |
+|------|------|------|
+| 멀티룩백 debug 필드 추가 | ✅ 완료 | `lookback_start_date`, `effective_eval_start`, `bars_used`, `signal_days`, `order_count` |
+| manifest by_lookback debug 저장 | ✅ 완료 | 룩백별로 확실히 다른 필드 기록 |
+| replay_manifest debug 검증 | ✅ 완료 | 룩백별 `lookback_start_date` 차이 확인 |
+| Gate1 로그 문구 정리 | ✅ 완료 | `candidates=N, selected_top_n=M, dedup_removed=K` 형식 |
+| Real Data Gate0 (Preflight) | ✅ 완료 | `data_digest` 해시, `common_period` 추가 |
+
+**최종 검증 결과 (Mock 모드)**:
+```
+[Lookback 3M]  lookback_start=2024-03-30
+[Lookback 6M]  lookback_start=2023-12-30
+[Lookback 12M] lookback_start=2023-06-30
+→ 룩백별로 확실히 다른 시작일 기록됨 (멀티룩백 적용 증거)
+```
+
+### ✅ Phase 2.0 — Real Data Gate2 & Force-Gate2 (2025-12-20~21)
+
+| 항목 | 상태 |
+|------|------|
+| `--force-gate2` 옵션 구현 | ✅ 완료 |
+| `run_phase20_real_gate2.py` 스크립트 | ✅ 완료 |
+| MiniWalkForward universe_codes 전달 | ✅ 완료 |
+| replay_manifest Gate2 WF 검증 | ✅ 완료 |
 
 ### ✅ 튜닝 UI/UX 기본 개선 (2025-12-15~16)
 

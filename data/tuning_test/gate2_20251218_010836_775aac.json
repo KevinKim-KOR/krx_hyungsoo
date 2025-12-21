@@ -1,0 +1,136 @@
+{
+  "run_id": "gate2_20251218_010836_775aac",
+  "created_at": "2025-12-18T01:08:37.039854",
+  "schema_version": "4.0",
+  "stage": "gate2",
+  "config": {
+    "period": {
+      "start_date": "2020-01-01",
+      "end_date": "2024-06-30"
+    },
+    "lookbacks": [
+      3,
+      6,
+      12
+    ],
+    "lookback_combination": "min",
+    "trials": 20,
+    "objective": "val_sharpe_with_mdd_penalty",
+    "split": {
+      "method": "chronological",
+      "target_ratios": {
+        "train": 0.7,
+        "val": 0.15,
+        "test": 0.15
+      },
+      "min_val_months": 6,
+      "min_test_months": 6,
+      "applied": {
+        "train_months": 42,
+        "val_months": 6,
+        "test_months": 6
+      }
+    },
+    "guardrails": {
+      "min_trades": 30,
+      "min_exposure_ratio": 0.3,
+      "max_annual_turnover": 24
+    },
+    "variables": {
+      "ma_period": {
+        "min": 20,
+        "max": 100,
+        "step": 10,
+        "type": "int"
+      },
+      "rsi_period": {
+        "min": 5,
+        "max": 25,
+        "step": 5,
+        "type": "int"
+      },
+      "stop_loss": {
+        "min": 0.03,
+        "max": 0.1,
+        "step": 0.01,
+        "type": "float"
+      }
+    },
+    "cost_assumptions": {
+      "commission_rate": 0.00015,
+      "slippage_rate": 0.001,
+      "cost_type": "one_way",
+      "unit": "decimal"
+    }
+  },
+  "data": {
+    "universe_version": "etf_a_v1",
+    "universe_source": "KRX",
+    "delisted_handling": "exclude_from_start",
+    "survivorship_bias": "point_in_time",
+    "price_type": "adj_close",
+    "dividend_handling": "total_return",
+    "data_version": "mock_v1",
+    "universe_hash": "209b2c981e59009b",
+    "universe_count": 10
+  },
+  "results": {
+    "best_trial": {
+      "trial_number": 1,
+      "params": {
+        "ma_period": 60,
+        "rsi_period": 20,
+        "stop_loss": 0.05
+      },
+      "metrics": {
+        "train": {
+          "sharpe": 1.6123032322360324,
+          "cagr": 0.22717689765772736,
+          "mdd": -0.19453548880509958
+        },
+        "val": {
+          "sharpe": 1.9898535364807213,
+          "cagr": 0.2072343641512276,
+          "mdd": -0.11644399130986607
+        },
+        "test": null
+      },
+      "guardrail_checks": {
+        "num_trades": 40,
+        "exposure_ratio": 0.5586313494230987,
+        "annual_turnover": 14.367833432982442
+      },
+      "logic_checks": {
+        "rsi_scale_days": 20,
+        "rsi_scale_events": 10
+      },
+      "anomaly_flags": [],
+      "debug": {
+        "lookback_months": 12,
+        "lookback_start_date": "2023-06-30",
+        "params_hash": "b5f8970f7b11bd33",
+        "cache_key": "c4d40358",
+        "period_signature": "train:2020-01-01~2023-06-14|val:2023-06-15~2023-12-11"
+      }
+    },
+    "all_trials_count": 20,
+    "convergence_trial": null,
+    "search_coverage": 0.05555555555555555
+  },
+  "environment": {
+    "code_version": "git:5ed8e533",
+    "python_version": "3.13.5",
+    "optuna_version": "4.5.0",
+    "random_seed": 42,
+    "splitter_version": "chronological_v1",
+    "cost_model_version": "simple_oneway_v1"
+  },
+  "engine_health": {
+    "is_valid": true,
+    "warnings": [],
+    "data_quality": {
+      "missing_ratio": 0.001,
+      "outlier_count": 0
+    }
+  }
+}
