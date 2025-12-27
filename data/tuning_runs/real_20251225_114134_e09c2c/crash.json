@@ -1,0 +1,5 @@
+{
+  "error_type": "NameError",
+  "error_msg": "name 'logger' is not defined",
+  "traceback": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 554, in <module>\n    run_strict_phase15(\"A\", args)\n    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 443, in run_strict_phase15\n    wf_evidences = wf_runner.run(best_params)\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 145, in run\n    if logger.isEnabledFor(logging.INFO):\n       ^^^^^^\nNameError: name 'logger' is not defined\n"
+}

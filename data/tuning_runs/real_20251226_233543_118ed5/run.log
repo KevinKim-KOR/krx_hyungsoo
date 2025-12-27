@@ -1,0 +1,1778 @@
+2025-12-26 23:35:43,152 INFO: === STRICT PHASE 1.5 START (RunID: real_20251226_233543_118ed5) ===
+2025-12-26 23:35:43,871 INFO: NumExpr defaulting to 12 threads.
+2025-12-26 23:35:44,393 INFO: [Phase 0] Preflight Check
+2025-12-26 23:35:45,277 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-26 23:35:45,277 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:35:45,620 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,626 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2021-01-01 ~ 2021-01-31
+2025-12-26 23:35:45,628 INFO: [Loader Debug] 005930 Filtered rows: 21
+2025-12-26 23:35:45,688 INFO: [Phase 1] Tuning Loop
+2025-12-26 23:35:45,690 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-26 23:35:45,690 INFO: [캐시] lb=3M, key=a8081cfb
+2025-12-26 23:35:45,751 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:35:45,752 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:35:45,754 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,756 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,757 INFO: [Loader Debug] 005930 Filtered rows: 579
+2025-12-26 23:35:45,758 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:35:45,760 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,762 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,763 INFO: [Loader Debug] 035420 Filtered rows: 579
+2025-12-26 23:35:45,764 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:35:45,766 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,768 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,769 INFO: [Loader Debug] 035720 Filtered rows: 579
+2025-12-26 23:35:45,770 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:35:45,772 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,773 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,774 INFO: [Loader Debug] 051910 Filtered rows: 579
+2025-12-26 23:35:45,775 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:35:45,777 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,778 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,780 INFO: [Loader Debug] 069500 Filtered rows: 579
+2025-12-26 23:35:45,780 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:35:45,783 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,785 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,786 INFO: [Loader Debug] 091160 Filtered rows: 579
+2025-12-26 23:35:45,786 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:35:45,789 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,790 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,791 INFO: [Loader Debug] 102110 Filtered rows: 579
+2025-12-26 23:35:45,792 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:35:45,794 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,797 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,798 INFO: [Loader Debug] 114800 Filtered rows: 579
+2025-12-26 23:35:45,799 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:35:45,803 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,805 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,806 INFO: [Loader Debug] 122630 Filtered rows: 579
+2025-12-26 23:35:45,807 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:35:45,810 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,812 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,814 INFO: [Loader Debug] 229200 Filtered rows: 579
+2025-12-26 23:35:45,814 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:35:45,818 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,819 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,820 INFO: [Loader Debug] 233740 Filtered rows: 579
+2025-12-26 23:35:45,820 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:35:45,822 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,824 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,825 INFO: [Loader Debug] 252670 Filtered rows: 579
+2025-12-26 23:35:45,825 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:35:45,828 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,830 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,832 INFO: [Loader Debug] 261240 Filtered rows: 579
+2025-12-26 23:35:45,832 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:35:45,836 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:45,838 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:45,839 INFO: [Loader Debug] 305720 Filtered rows: 579
+2025-12-26 23:35:45,843 INFO: [Normalization] Initial Shape: (8106, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:45,845 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (8106, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:52,257 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:35:52,257 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:35:52,261 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:35:52,261 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:35:52,261 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:35:52,611 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,623 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,624 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,625 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,625 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,626 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,639 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,640 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,641 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,641 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,642 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,655 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,656 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,657 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,658 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,658 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,671 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,672 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,673 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,674 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,674 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,688 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,689 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,689 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,690 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,691 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,705 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,706 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,707 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,707 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,708 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,721 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,722 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,723 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,723 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,724 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,737 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,738 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,739 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,739 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,740 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,752 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,752 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,753 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,754 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,754 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,768 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,769 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,769 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,770 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,770 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,783 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,783 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,784 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,785 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,785 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,798 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,799 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,799 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,800 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,800 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,812 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,813 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,814 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,814 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,815 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,828 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,829 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,830 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,831 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,831 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,847 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,847 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,848 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,849 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,849 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,862 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,863 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,864 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,865 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,865 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,877 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,878 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,878 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,879 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,879 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,892 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,893 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,893 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,894 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,894 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,908 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,908 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,909 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,910 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,910 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,923 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,924 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,924 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,925 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,925 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,940 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,941 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,941 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,942 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,942 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,956 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,957 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,958 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,958 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,959 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,973 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,974 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,975 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,975 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,976 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,988 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,989 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,990 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,990 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:52,991 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,005 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,005 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,006 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,006 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,007 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,020 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,021 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,021 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,022 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,022 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,036 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,037 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,038 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,038 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,039 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,053 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,053 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,054 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,054 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,055 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,069 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,070 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,071 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,071 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,072 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,085 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,086 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,087 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,087 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,088 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,101 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,102 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,102 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,103 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,103 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,116 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,117 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,117 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,118 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,119 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,132 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,133 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,134 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,134 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,135 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,148 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,148 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,149 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,150 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,150 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,163 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,165 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,165 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,166 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,167 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,179 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,180 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,181 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,181 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,182 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,196 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,197 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,198 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,198 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,199 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,212 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,212 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,213 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,213 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,214 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,227 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,228 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,228 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,229 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,230 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,243 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,244 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,245 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,245 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,246 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,260 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,260 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,261 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,262 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,262 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,275 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,276 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,277 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,277 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,278 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,291 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,292 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,292 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,293 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,293 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,307 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,308 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,309 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,309 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,310 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,323 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,323 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,324 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,324 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,325 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,339 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,340 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,340 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,340 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,341 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,355 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,356 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,356 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,357 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,357 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,371 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,372 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,373 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,373 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,374 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,387 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,387 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,388 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,388 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,389 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,403 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,404 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,404 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,405 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,405 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,418 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,418 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,419 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,420 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,420 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,433 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,434 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,435 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,435 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,436 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,451 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,452 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,453 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,453 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,454 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,467 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,468 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,468 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,469 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,469 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,483 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,484 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,484 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,485 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,486 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,499 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,500 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,500 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,501 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,501 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,515 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,515 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,516 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,516 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,517 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,531 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,532 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,532 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,533 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,533 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,547 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,548 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,549 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,549 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,550 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,562 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,563 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,564 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,565 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,565 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,578 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,579 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,580 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,580 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,581 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,594 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,595 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,595 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,596 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,597 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,610 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,611 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,612 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,612 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,613 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,626 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,627 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,628 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,628 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,629 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,642 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,642 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,643 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,643 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,644 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,659 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,659 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,660 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,660 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,661 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,674 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,675 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,675 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,676 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,676 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,690 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,691 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,691 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,692 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,692 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,706 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,707 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,708 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,708 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,709 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,723 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,723 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,724 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,724 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,725 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,738 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,739 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,739 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,740 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,740 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,752 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,753 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,754 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,754 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,755 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,768 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,768 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,769 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,769 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,770 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,782 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,783 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,783 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,784 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,785 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:53,799 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:35:53,800 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:35:53,802 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,804 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,805 INFO: [Loader Debug] 005930 Filtered rows: 131
+2025-12-26 23:35:53,805 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:35:53,807 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,808 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,809 INFO: [Loader Debug] 035420 Filtered rows: 131
+2025-12-26 23:35:53,809 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:35:53,810 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,811 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,812 INFO: [Loader Debug] 035720 Filtered rows: 131
+2025-12-26 23:35:53,813 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:35:53,814 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,816 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,817 INFO: [Loader Debug] 051910 Filtered rows: 131
+2025-12-26 23:35:53,817 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:35:53,820 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,823 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,824 INFO: [Loader Debug] 069500 Filtered rows: 131
+2025-12-26 23:35:53,825 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:35:53,827 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,831 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,833 INFO: [Loader Debug] 091160 Filtered rows: 131
+2025-12-26 23:35:53,833 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:35:53,836 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,838 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,840 INFO: [Loader Debug] 102110 Filtered rows: 131
+2025-12-26 23:35:53,840 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:35:53,842 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,844 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,845 INFO: [Loader Debug] 114800 Filtered rows: 131
+2025-12-26 23:35:53,846 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:35:53,848 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,850 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,852 INFO: [Loader Debug] 122630 Filtered rows: 131
+2025-12-26 23:35:53,853 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:35:53,855 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,856 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,857 INFO: [Loader Debug] 229200 Filtered rows: 131
+2025-12-26 23:35:53,858 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:35:53,860 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,861 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,862 INFO: [Loader Debug] 233740 Filtered rows: 131
+2025-12-26 23:35:53,863 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:35:53,865 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,867 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,870 INFO: [Loader Debug] 252670 Filtered rows: 131
+2025-12-26 23:35:53,870 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:35:53,873 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,874 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,875 INFO: [Loader Debug] 261240 Filtered rows: 131
+2025-12-26 23:35:53,876 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:35:53,877 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:53,878 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-26 23:35:53,879 INFO: [Loader Debug] 305720 Filtered rows: 131
+2025-12-26 23:35:53,881 INFO: [Normalization] Initial Shape: (1834, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:53,882 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (1834, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:53,966 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:35:53,966 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:35:53,970 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:35:53,971 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:35:53,971 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:35:54,114 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-26 23:35:54,115 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-26 23:35:54,115 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:35:54,116 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:35:54,118 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,119 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,120 INFO: [Loader Debug] 005930 Filtered rows: 579
+2025-12-26 23:35:54,120 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:35:54,123 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,124 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,125 INFO: [Loader Debug] 035420 Filtered rows: 579
+2025-12-26 23:35:54,125 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:35:54,126 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,128 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,129 INFO: [Loader Debug] 035720 Filtered rows: 579
+2025-12-26 23:35:54,130 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:35:54,132 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,133 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,134 INFO: [Loader Debug] 051910 Filtered rows: 579
+2025-12-26 23:35:54,134 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:35:54,136 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,137 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,138 INFO: [Loader Debug] 069500 Filtered rows: 579
+2025-12-26 23:35:54,139 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:35:54,140 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,141 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,142 INFO: [Loader Debug] 091160 Filtered rows: 579
+2025-12-26 23:35:54,142 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:35:54,144 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,146 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,147 INFO: [Loader Debug] 102110 Filtered rows: 579
+2025-12-26 23:35:54,147 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:35:54,149 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,151 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,152 INFO: [Loader Debug] 114800 Filtered rows: 579
+2025-12-26 23:35:54,152 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:35:54,154 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,155 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,156 INFO: [Loader Debug] 122630 Filtered rows: 579
+2025-12-26 23:35:54,156 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:35:54,158 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,159 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,160 INFO: [Loader Debug] 229200 Filtered rows: 579
+2025-12-26 23:35:54,160 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:35:54,161 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,163 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,165 INFO: [Loader Debug] 233740 Filtered rows: 579
+2025-12-26 23:35:54,165 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:35:54,167 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,168 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,169 INFO: [Loader Debug] 252670 Filtered rows: 579
+2025-12-26 23:35:54,170 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:35:54,171 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,173 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,174 INFO: [Loader Debug] 261240 Filtered rows: 579
+2025-12-26 23:35:54,175 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:35:54,176 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:54,178 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:54,178 INFO: [Loader Debug] 305720 Filtered rows: 579
+2025-12-26 23:35:54,181 INFO: [Normalization] Initial Shape: (8106, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:54,182 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (8106, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:55,611 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:35:55,611 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:35:55,615 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:35:55,615 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:35:55,616 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:35:55,966 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,978 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,979 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,980 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,980 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,981 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,995 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,995 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,996 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,997 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:55,997 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,012 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,013 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,014 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,014 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,015 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,027 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,028 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,028 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,029 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,030 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,042 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,043 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,044 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,044 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,045 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,058 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,058 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,059 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,060 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,060 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,075 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,075 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,076 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,076 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,077 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,091 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,092 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,092 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,093 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,093 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,106 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,107 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,107 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,108 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,108 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,122 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,123 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,124 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,124 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,124 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,137 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,138 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,139 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,139 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,140 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,153 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,153 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,154 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,155 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,155 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,168 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,168 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,169 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,169 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,170 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,182 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,182 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,183 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,183 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,184 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,197 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,198 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,199 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,199 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,200 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,213 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,214 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,214 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,215 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,215 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,229 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,229 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,230 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,230 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,231 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,245 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,246 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,246 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,247 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,247 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,260 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,261 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,261 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,262 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,262 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,275 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,276 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,276 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,277 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,277 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,290 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,290 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,291 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,291 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,292 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,305 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,306 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,306 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,307 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,307 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,321 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,322 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,323 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,323 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,324 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,338 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,338 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,339 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,339 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,340 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,353 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,354 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,355 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,355 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,356 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,369 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,369 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,370 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,371 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,371 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,386 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,387 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,387 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,388 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,388 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,402 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,403 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,403 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,404 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,405 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,417 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,418 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,418 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,419 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,420 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,432 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,433 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,434 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,434 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,434 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,448 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,449 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,449 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,450 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,450 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,462 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,463 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,464 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,464 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,465 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,478 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,479 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,480 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,480 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,481 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,494 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,494 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,495 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,496 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,496 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,510 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,510 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,511 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,511 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,512 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,525 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,526 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,526 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,527 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,527 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,541 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,541 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,542 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,543 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,543 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,556 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,556 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,557 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,557 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,558 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,571 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,572 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,573 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,573 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,574 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,588 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,589 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,589 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,590 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,590 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,604 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,604 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,605 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,606 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,606 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,620 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,621 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,621 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,622 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,622 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,635 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,635 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,636 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,637 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,637 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,650 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,650 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,651 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,651 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,652 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,666 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,667 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,667 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,668 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,668 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,682 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,683 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,684 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,685 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,685 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,698 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,699 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,700 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,700 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,701 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,714 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,715 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,715 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,716 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,716 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,729 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,729 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,730 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,730 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,731 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,743 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,744 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,745 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,745 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,746 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,759 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,759 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,760 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,760 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,761 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,774 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,774 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,775 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,775 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,776 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,789 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,790 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,790 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,791 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,791 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,805 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,805 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,806 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,807 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,807 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,821 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,821 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,822 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,822 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,823 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,836 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,836 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,837 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,837 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,838 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,851 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,852 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,852 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,853 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,853 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,866 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,867 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,867 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,868 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,868 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,880 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,881 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,881 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,882 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,882 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,896 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,896 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,897 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,898 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,898 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,910 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,911 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,911 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,912 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,912 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,925 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,926 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,926 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,927 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,927 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,941 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,942 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,942 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,943 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,943 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,958 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,959 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,959 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,960 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,960 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,974 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,974 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,975 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,975 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,976 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,989 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,990 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,990 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,991 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:56,991 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,005 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,006 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,007 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,007 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,008 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,021 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,022 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,022 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,023 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,023 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,037 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,038 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,039 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,039 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,040 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,053 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,054 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,054 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,055 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,055 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,069 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,070 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,070 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,071 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,071 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,085 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,086 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,086 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,087 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,087 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,100 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,101 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,101 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,102 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,103 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,116 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,116 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,117 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,118 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,118 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:57,132 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-26 23:35:57,133 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:35:57,133 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:35:57,135 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,137 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,138 INFO: [Loader Debug] 005930 Filtered rows: 194
+2025-12-26 23:35:57,138 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:35:57,139 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,141 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,141 INFO: [Loader Debug] 035420 Filtered rows: 194
+2025-12-26 23:35:57,142 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:35:57,143 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,144 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,146 INFO: [Loader Debug] 035720 Filtered rows: 194
+2025-12-26 23:35:57,146 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:35:57,148 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,149 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,150 INFO: [Loader Debug] 051910 Filtered rows: 194
+2025-12-26 23:35:57,150 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:35:57,152 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,154 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,155 INFO: [Loader Debug] 069500 Filtered rows: 194
+2025-12-26 23:35:57,155 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:35:57,156 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,158 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,158 INFO: [Loader Debug] 091160 Filtered rows: 194
+2025-12-26 23:35:57,159 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:35:57,160 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,161 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,162 INFO: [Loader Debug] 102110 Filtered rows: 194
+2025-12-26 23:35:57,162 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:35:57,165 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,166 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,167 INFO: [Loader Debug] 114800 Filtered rows: 194
+2025-12-26 23:35:57,168 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:35:57,169 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,171 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,172 INFO: [Loader Debug] 122630 Filtered rows: 194
+2025-12-26 23:35:57,172 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:35:57,174 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,175 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,176 INFO: [Loader Debug] 229200 Filtered rows: 194
+2025-12-26 23:35:57,176 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:35:57,178 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,179 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,180 INFO: [Loader Debug] 233740 Filtered rows: 194
+2025-12-26 23:35:57,181 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:35:57,182 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,184 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,185 INFO: [Loader Debug] 252670 Filtered rows: 194
+2025-12-26 23:35:57,185 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:35:57,187 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,188 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,189 INFO: [Loader Debug] 261240 Filtered rows: 194
+2025-12-26 23:35:57,189 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:35:57,191 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,192 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:35:57,193 INFO: [Loader Debug] 305720 Filtered rows: 194
+2025-12-26 23:35:57,194 INFO: [Normalization] Initial Shape: (2716, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:57,195 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (2716, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:57,327 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:35:57,327 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:35:57,333 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:35:57,333 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:35:57,333 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:35:57,644 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-26 23:35:57,644 INFO: [캐시] lb=12M, key=73edb7cc
+2025-12-26 23:35:57,645 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:35:57,645 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:35:57,647 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,648 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,649 INFO: [Loader Debug] 005930 Filtered rows: 579
+2025-12-26 23:35:57,650 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:35:57,651 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,653 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,654 INFO: [Loader Debug] 035420 Filtered rows: 579
+2025-12-26 23:35:57,654 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:35:57,656 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,657 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,658 INFO: [Loader Debug] 035720 Filtered rows: 579
+2025-12-26 23:35:57,658 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:35:57,659 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,660 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,661 INFO: [Loader Debug] 051910 Filtered rows: 579
+2025-12-26 23:35:57,662 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:35:57,663 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,665 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,666 INFO: [Loader Debug] 069500 Filtered rows: 579
+2025-12-26 23:35:57,666 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:35:57,668 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,670 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,671 INFO: [Loader Debug] 091160 Filtered rows: 579
+2025-12-26 23:35:57,671 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:35:57,672 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,674 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,675 INFO: [Loader Debug] 102110 Filtered rows: 579
+2025-12-26 23:35:57,675 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:35:57,676 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,678 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,678 INFO: [Loader Debug] 114800 Filtered rows: 579
+2025-12-26 23:35:57,679 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:35:57,680 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,682 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,683 INFO: [Loader Debug] 122630 Filtered rows: 579
+2025-12-26 23:35:57,683 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:35:57,684 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,686 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,687 INFO: [Loader Debug] 229200 Filtered rows: 579
+2025-12-26 23:35:57,687 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:35:57,689 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,690 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,691 INFO: [Loader Debug] 233740 Filtered rows: 579
+2025-12-26 23:35:57,691 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:35:57,693 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,694 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,694 INFO: [Loader Debug] 252670 Filtered rows: 579
+2025-12-26 23:35:57,695 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:35:57,696 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,698 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,699 INFO: [Loader Debug] 261240 Filtered rows: 579
+2025-12-26 23:35:57,700 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:35:57,701 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:35:57,703 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-12-23
+2025-12-26 23:35:57,704 INFO: [Loader Debug] 305720 Filtered rows: 579
+2025-12-26 23:35:57,706 INFO: [Normalization] Initial Shape: (8106, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:57,707 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (8106, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:35:58,956 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:35:58,956 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:35:58,960 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:35:58,961 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:35:58,961 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:35:59,331 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,343 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,343 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,344 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,345 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,345 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,357 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,358 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,359 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,359 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,360 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,372 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,373 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,373 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,374 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,374 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,387 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,388 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,388 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,389 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,389 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,404 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,404 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,405 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,405 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,406 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,420 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,421 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,421 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,422 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,422 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,436 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,437 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,438 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,438 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,439 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,452 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,453 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,454 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,455 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,455 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,469 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,469 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,470 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,471 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,471 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,484 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,485 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,485 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,486 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,486 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,499 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,500 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,500 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,501 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,501 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,514 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,515 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,515 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,516 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,516 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,530 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,531 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,532 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,532 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,533 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,545 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,546 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,546 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,547 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,548 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,561 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,562 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,562 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,563 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,564 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,577 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,577 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,578 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,578 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,579 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,593 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,594 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,594 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,595 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,595 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,608 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,609 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,610 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,610 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,611 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,625 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,626 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,627 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,627 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,628 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,641 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,642 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,643 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,643 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,644 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,658 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,658 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,659 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,659 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,660 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,673 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,674 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,674 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,675 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,675 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,689 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,690 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,690 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,691 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,691 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,704 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,705 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,706 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,706 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,707 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,720 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,721 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,721 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,722 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,722 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,735 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,736 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,737 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,737 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,738 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,751 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,751 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,752 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,752 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,753 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,813 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,814 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,815 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,815 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,816 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,829 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,831 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,831 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,832 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,832 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,849 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,850 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,851 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,851 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,852 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,866 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,867 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,868 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,868 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,869 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,884 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,884 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,885 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,886 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,886 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,901 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,902 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,902 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,903 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,903 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,917 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,918 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,918 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,919 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,920 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,933 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,934 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,935 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,935 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,936 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,949 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,950 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,951 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,951 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,952 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,965 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,966 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,967 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,967 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,968 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,982 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,982 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,983 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,983 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,984 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,998 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,999 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:35:59,999 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,000 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,000 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,013 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,014 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,015 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,015 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,016 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,030 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,032 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,032 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,033 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,033 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,047 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,047 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,048 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,049 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,049 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,064 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,065 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,065 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,066 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,066 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,079 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,080 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,080 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,081 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,082 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,095 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,096 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,097 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,097 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,098 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,116 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,117 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,117 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,118 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,119 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,135 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,136 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,136 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,137 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,137 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,151 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,151 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,152 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,152 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,153 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,168 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,169 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,170 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,170 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,171 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,185 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,185 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,186 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,187 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,187 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,204 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,206 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,207 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,208 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,208 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,225 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,226 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,227 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,227 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,228 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,244 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,245 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,246 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,247 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,248 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,265 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,265 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,266 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,267 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,267 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,281 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,282 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,283 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,284 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,284 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,301 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,302 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,303 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,303 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,304 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,320 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,321 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,321 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,322 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,322 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,338 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,339 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,340 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,340 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,341 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,355 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,356 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,357 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,357 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,358 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,374 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,375 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,375 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,376 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,376 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,401 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,402 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,403 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,404 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,404 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,424 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,425 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,426 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,426 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,427 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,443 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,444 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,445 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,445 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,446 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,461 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,462 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,463 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,464 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,465 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,479 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,479 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,480 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,481 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,481 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,497 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,498 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,498 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,499 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,500 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,513 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,514 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,515 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,515 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,516 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,531 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,532 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,532 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,533 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,534 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,548 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,549 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,549 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,550 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,551 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,565 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,566 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,567 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,567 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,568 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,581 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,582 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,583 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,583 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,584 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,596 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,598 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,598 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,599 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,600 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,612 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,613 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,613 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,614 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,614 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,628 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,628 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,629 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,630 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,631 ERROR: 이동평균 계산 실패: 'Close'
+2025-12-26 23:36:00,647 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-26 23:36:00,648 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:36:00,648 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:36:00,651 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,652 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,654 INFO: [Loader Debug] 005930 Filtered rows: 194
+2025-12-26 23:36:00,654 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:36:00,656 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,657 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,658 INFO: [Loader Debug] 035420 Filtered rows: 194
+2025-12-26 23:36:00,659 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:36:00,661 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,663 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,664 INFO: [Loader Debug] 035720 Filtered rows: 194
+2025-12-26 23:36:00,664 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:36:00,667 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,668 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,669 INFO: [Loader Debug] 051910 Filtered rows: 194
+2025-12-26 23:36:00,669 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:36:00,671 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,672 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,673 INFO: [Loader Debug] 069500 Filtered rows: 194
+2025-12-26 23:36:00,674 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:36:00,675 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,677 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,678 INFO: [Loader Debug] 091160 Filtered rows: 194
+2025-12-26 23:36:00,678 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:36:00,680 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,682 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,683 INFO: [Loader Debug] 102110 Filtered rows: 194
+2025-12-26 23:36:00,684 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:36:00,686 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,687 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,688 INFO: [Loader Debug] 114800 Filtered rows: 194
+2025-12-26 23:36:00,688 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:36:00,690 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,692 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,693 INFO: [Loader Debug] 122630 Filtered rows: 194
+2025-12-26 23:36:00,694 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:36:00,695 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,698 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,699 INFO: [Loader Debug] 229200 Filtered rows: 194
+2025-12-26 23:36:00,699 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:36:00,701 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,703 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,704 INFO: [Loader Debug] 233740 Filtered rows: 194
+2025-12-26 23:36:00,704 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:36:00,706 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,707 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,709 INFO: [Loader Debug] 252670 Filtered rows: 194
+2025-12-26 23:36:00,709 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:36:00,711 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,712 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,714 INFO: [Loader Debug] 261240 Filtered rows: 194
+2025-12-26 23:36:00,714 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:36:00,716 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:00,717 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 ~ 2023-06-23
+2025-12-26 23:36:00,718 INFO: [Loader Debug] 305720 Filtered rows: 194
+2025-12-26 23:36:00,720 INFO: [Normalization] Initial Shape: (2716, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:00,721 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (2716, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:00,791 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:36:00,792 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:36:00,796 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:36:00,796 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:36:00,797 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:36:01,107 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-26 23:36:01,107 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-26 23:36:01,107 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-26 23:36:01,108 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:36:01,108 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:36:01,110 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,111 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,113 INFO: [Loader Debug] 005930 Filtered rows: 130
+2025-12-26 23:36:01,113 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:36:01,115 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,117 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,118 INFO: [Loader Debug] 035420 Filtered rows: 130
+2025-12-26 23:36:01,119 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:36:01,120 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,122 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,122 INFO: [Loader Debug] 035720 Filtered rows: 130
+2025-12-26 23:36:01,123 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:36:01,124 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,126 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,127 INFO: [Loader Debug] 051910 Filtered rows: 130
+2025-12-26 23:36:01,127 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:36:01,129 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,130 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,131 INFO: [Loader Debug] 069500 Filtered rows: 130
+2025-12-26 23:36:01,132 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:36:01,134 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,135 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,136 INFO: [Loader Debug] 091160 Filtered rows: 130
+2025-12-26 23:36:01,137 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:36:01,138 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,140 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,141 INFO: [Loader Debug] 102110 Filtered rows: 130
+2025-12-26 23:36:01,141 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:36:01,143 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,145 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,146 INFO: [Loader Debug] 114800 Filtered rows: 130
+2025-12-26 23:36:01,146 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:36:01,148 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,149 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,151 INFO: [Loader Debug] 122630 Filtered rows: 130
+2025-12-26 23:36:01,151 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:36:01,153 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,154 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,155 INFO: [Loader Debug] 229200 Filtered rows: 130
+2025-12-26 23:36:01,155 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:36:01,157 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,158 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,159 INFO: [Loader Debug] 233740 Filtered rows: 130
+2025-12-26 23:36:01,160 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:36:01,161 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,162 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,164 INFO: [Loader Debug] 252670 Filtered rows: 130
+2025-12-26 23:36:01,165 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:36:01,167 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,168 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,169 INFO: [Loader Debug] 261240 Filtered rows: 130
+2025-12-26 23:36:01,169 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:36:01,171 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,172 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 ~ 2022-07-01
+2025-12-26 23:36:01,173 INFO: [Loader Debug] 305720 Filtered rows: 130
+2025-12-26 23:36:01,175 INFO: [Normalization] Initial Shape: (1820, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:01,176 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (1820, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-01-03 00:00:00 ~ 2022-07-01 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:01,253 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:36:01,253 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:36:01,257 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:36:01,257 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:36:01,257 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:36:01,404 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-26 23:36:01,405 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:36:01,405 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:36:01,407 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,408 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,410 INFO: [Loader Debug] 005930 Filtered rows: 130
+2025-12-26 23:36:01,410 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:36:01,412 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,414 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,415 INFO: [Loader Debug] 035420 Filtered rows: 130
+2025-12-26 23:36:01,415 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:36:01,417 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,418 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,419 INFO: [Loader Debug] 035720 Filtered rows: 130
+2025-12-26 23:36:01,420 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:36:01,421 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,423 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,424 INFO: [Loader Debug] 051910 Filtered rows: 130
+2025-12-26 23:36:01,424 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:36:01,426 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,427 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,428 INFO: [Loader Debug] 069500 Filtered rows: 130
+2025-12-26 23:36:01,428 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:36:01,430 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,432 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,433 INFO: [Loader Debug] 091160 Filtered rows: 130
+2025-12-26 23:36:01,433 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:36:01,435 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,436 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,437 INFO: [Loader Debug] 102110 Filtered rows: 130
+2025-12-26 23:36:01,438 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:36:01,439 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,441 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,442 INFO: [Loader Debug] 114800 Filtered rows: 130
+2025-12-26 23:36:01,442 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:36:01,444 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,445 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,446 INFO: [Loader Debug] 122630 Filtered rows: 130
+2025-12-26 23:36:01,446 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:36:01,448 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,450 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,451 INFO: [Loader Debug] 229200 Filtered rows: 130
+2025-12-26 23:36:01,451 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:36:01,453 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,454 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,455 INFO: [Loader Debug] 233740 Filtered rows: 130
+2025-12-26 23:36:01,455 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:36:01,457 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,458 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,459 INFO: [Loader Debug] 252670 Filtered rows: 130
+2025-12-26 23:36:01,459 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:36:01,461 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,462 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,464 INFO: [Loader Debug] 261240 Filtered rows: 130
+2025-12-26 23:36:01,464 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:36:01,466 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,468 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 ~ 2023-01-01
+2025-12-26 23:36:01,469 INFO: [Loader Debug] 305720 Filtered rows: 130
+2025-12-26 23:36:01,471 INFO: [Normalization] Initial Shape: (1820, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:01,471 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (1820, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-07-04 00:00:00 ~ 2022-12-30 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:01,550 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:36:01,550 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:36:01,554 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:36:01,554 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:36:01,554 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:36:01,707 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-26 23:36:01,707 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-26 23:36:01,708 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-26 23:36:01,710 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,711 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,712 INFO: [Loader Debug] 005930 Filtered rows: 130
+2025-12-26 23:36:01,712 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-26 23:36:01,714 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,716 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,717 INFO: [Loader Debug] 035420 Filtered rows: 130
+2025-12-26 23:36:01,717 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-26 23:36:01,719 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,720 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,721 INFO: [Loader Debug] 035720 Filtered rows: 130
+2025-12-26 23:36:01,722 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-26 23:36:01,723 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,724 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,725 INFO: [Loader Debug] 051910 Filtered rows: 130
+2025-12-26 23:36:01,726 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-26 23:36:01,727 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,729 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,730 INFO: [Loader Debug] 069500 Filtered rows: 130
+2025-12-26 23:36:01,730 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-26 23:36:01,733 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,734 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,735 INFO: [Loader Debug] 091160 Filtered rows: 130
+2025-12-26 23:36:01,735 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-26 23:36:01,737 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,738 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,739 INFO: [Loader Debug] 102110 Filtered rows: 130
+2025-12-26 23:36:01,740 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-26 23:36:01,741 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,742 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,743 INFO: [Loader Debug] 114800 Filtered rows: 130
+2025-12-26 23:36:01,744 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-26 23:36:01,745 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,747 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,748 INFO: [Loader Debug] 122630 Filtered rows: 130
+2025-12-26 23:36:01,749 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-26 23:36:01,750 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,752 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,753 INFO: [Loader Debug] 229200 Filtered rows: 130
+2025-12-26 23:36:01,754 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-26 23:36:01,755 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,756 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,757 INFO: [Loader Debug] 233740 Filtered rows: 130
+2025-12-26 23:36:01,758 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-26 23:36:01,759 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,760 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,761 INFO: [Loader Debug] 252670 Filtered rows: 130
+2025-12-26 23:36:01,761 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-26 23:36:01,763 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,765 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,766 INFO: [Loader Debug] 261240 Filtered rows: 130
+2025-12-26 23:36:01,766 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-26 23:36:01,768 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-26 23:36:01,769 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 ~ 2023-07-01
+2025-12-26 23:36:01,770 INFO: [Loader Debug] 305720 Filtered rows: 130
+2025-12-26 23:36:01,772 INFO: [Normalization] Initial Shape: (1820, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:01,773 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (1820, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2023-01-02 00:00:00 ~ 2023-06-30 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-26 23:36:01,891 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-26 23:36:01,891 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-26 23:36:01,895 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-26 23:36:01,895 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-26 23:36:01,895 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-26 23:36:02,053 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-26 23:36:02,054 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-26 23:36:02,054 INFO: [캐시 HIT] lb=6M, key=cfd04f22
+2025-12-26 23:36:02,096 INFO: ResultPackager: Saving Artifacts...

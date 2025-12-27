@@ -1,0 +1,5 @@
+{
+  "error_type": "AttributeError",
+  "error_msg": "'BacktestMetrics' object has no attribute 'total_trades'",
+  "traceback": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 499, in <module>\n    run_strict_phase15(\"A\", args)\n    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 414, in run_strict_phase15\n    wf_evidences = wf_runner.run(best_params)\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 148, in run\n    trades = metrics.total_trades if metrics else 0\n             ^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'BacktestMetrics' object has no attribute 'total_trades'\n"
+}

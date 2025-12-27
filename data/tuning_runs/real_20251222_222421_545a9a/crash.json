@@ -1,0 +1,5 @@
+{
+  "error_type": "TypeError",
+  "error_msg": "'RunManifest' object is not subscriptable",
+  "traceback": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 499, in <module>\n    run_strict_phase15(\"A\", args)\n    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^\n  File \"E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py\", line 452, in run_strict_phase15\n    if target_key not in manifest[\"results\"]:\n                         ~~~~~~~~^^^^^^^^^^^\nTypeError: 'RunManifest' object is not subscriptable\n"
+}

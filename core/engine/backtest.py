@@ -161,6 +161,9 @@ class BacktestEngine:
         self.total_commission: float = 0.0
         self.total_tax: float = 0.0
         self.total_slippage: float = 0.0
+        
+        # Exposure Metric (Phase 3 Fix)
+        self.market_exposure_days: int = 0
 
         logger.info(
             f"BacktestEngine 초기화: instrument_type={instrument_type}, tax_rate={self.tax_rate*100:.2f}%"
@@ -433,6 +436,11 @@ class BacktestEngine:
                     (nav_gross / prev_nav_gross - 1.0) if prev_nav_gross > 0 else 0.0
                 )
                 self.daily_returns_gross.append(daily_return_gross)
+        
+        # 3. Exposure Tracking (Phase 3 Fix)
+        # 포지션 평가액이 0보다 크면 노출된 것으로 간주
+        if self.portfolio.market_value > 0:
+            self.market_exposure_days += 1
 
     def get_performance_metrics(self) -> Dict[str, float]:
         """
@@ -564,6 +572,7 @@ class BacktestEngine:
             "calendar_days": calendar_days,
             "trading_days": len(nav_series),
             "years": years,
+            "exposure_ratio": self.market_exposure_days / len(nav_series) if len(nav_series) > 0 else 0.0,
         }
 
         # Gross 성과 추가

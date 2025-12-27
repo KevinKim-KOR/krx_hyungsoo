@@ -1,0 +1,40 @@
+2025-12-25 12:23:17,229 INFO: === STRICT PHASE 1.5 START (RunID: real_20251225_122317_cbdd93) ===
+2025-12-25 12:23:17,371 INFO: NumExpr defaulting to 12 threads.
+2025-12-25 12:23:17,526 INFO: [Phase 0] Preflight Check
+2025-12-25 12:23:18,046 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-25 12:23:18,165 INFO: [Phase 1] Tuning Loop
+2025-12-25 12:23:18,166 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:23:18,167 INFO: [캐시] lb=3M, key=a8081cfb
+2025-12-25 12:23:18,190 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,246 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,247 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,293 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,294 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:23:18,295 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 12:23:18,295 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,338 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,338 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 12:23:18,338 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,379 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,380 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:23:18,381 INFO: [캐시] lb=12M, key=73edb7cc
+2025-12-25 12:23:18,381 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,422 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,423 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 12:23:18,423 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,466 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,466 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-25 12:23:18,466 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-25 12:23:18,466 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:23:18,467 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,510 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,510 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:23:18,511 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,554 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,554 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:23:18,554 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:23:18,597 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:23:18,597 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:23:18,598 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 12:23:18,598 INFO: [캐시 HIT] lb=6M, key=cfd04f22
+2025-12-25 12:23:18,640 INFO: ResultPackager: Saving Artifacts...

@@ -1,0 +1,42 @@
+{
+  "verdict": "FAIL",
+  "grade": "PASS",
+  "checks": {
+    "real_data": {
+      "status": "PASS",
+      "evidence": "Source: parquet"
+    },
+    "universe": {
+      "status": "PASS",
+      "evidence": "Count: 14"
+    },
+    "multi_lookback": {
+      "status": "FAIL",
+      "evidence": "",
+      "reason": "Missing lookbacks: [3, 6, 12]"
+    },
+    "walkforward": {
+      "status": "FAIL",
+      "evidence": "",
+      "reason": "Skipped due to earlier failure"
+    }
+  },
+  "top_reasons": [
+    "Missing lookbacks: [3, 6, 12]"
+  ],
+  "meta": {
+    "run_id": "real_20251223_223002_6960e7",
+    "timestamp": "2025-12-23T22:30:02.660160",
+    "python_version": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:37:03) [MSC v.1929 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "command_line": "E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py --real --trials 5 --guardrail-preset proof",
+    "git_hash": "d9c7f683"
+  },
+  "artifacts": {
+    "run_log": "run.log",
+    "manifest": "manifest.json",
+    "verdict": "verdict.json",
+    "report": "report.md",
+    "crash": null
+  }
+}

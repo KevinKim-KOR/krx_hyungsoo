@@ -1,0 +1,42 @@
+{
+  "verdict": "PASS",
+  "grade": "PASS",
+  "checks": {
+    "real_data": {
+      "status": "PASS",
+      "evidence": "Source: parquet"
+    },
+    "universe": {
+      "status": "PASS",
+      "evidence": "Count: 14"
+    },
+    "multi_lookback": {
+      "status": "PASS",
+      "evidence": "Dates: 12M(2022-12-26 00:00:00) <= 6M(2022-12-26 00:00:00) <= 3M(2023-03-23 00:00:00)"
+    },
+    "walkforward_presence": {
+      "status": "PASS",
+      "evidence": "Results Found"
+    },
+    "walkforward_validity": {
+      "status": "PASS",
+      "evidence": "Windows:3, ZeroTradeWins:0, GlobalTrades:620"
+    }
+  },
+  "top_reasons": [],
+  "meta": {
+    "run_id": "gate2_20251226_233602_7a0ada"
+  },
+  "diagnostics": {
+    "raw_signal_count": 0,
+    "filtered_signal_count": 0,
+    "executed_trades": 620
+  },
+  "artifacts": {
+    "run_log": "run.log",
+    "manifest": "manifest.json",
+    "verdict": "verdict.json",
+    "report": "report.md",
+    "crash": null
+  }
+}

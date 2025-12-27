@@ -1,0 +1,135 @@
+2025-12-25 10:49:26,688 INFO: === STRICT PHASE 1.5 START (RunID: real_20251225_104926_9ecaef) ===
+2025-12-25 10:49:26,821 INFO: NumExpr defaulting to 12 threads.
+2025-12-25 10:49:27,019 INFO: [Phase 0] Preflight Check
+2025-12-25 10:49:27,109 DEBUG: matplotlib data path: C:\Users\minan\anaconda3\Lib\site-packages\matplotlib\mpl-data
+2025-12-25 10:49:27,114 DEBUG: CONFIGDIR=C:\Users\minan\.matplotlib
+2025-12-25 10:49:27,115 DEBUG: interactive is False
+2025-12-25 10:49:27,115 DEBUG: platform is win32
+2025-12-25 10:49:27,160 DEBUG: CACHEDIR=C:\Users\minan\.matplotlib
+2025-12-25 10:49:27,164 DEBUG: Using fontManager instance from C:\Users\minan\.matplotlib\fontlist-v390.json
+2025-12-25 10:49:27,633 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-25 10:49:27,689 DEBUG: Starting new HTTP connection (1): fchart.stock.naver.com:80
+2025-12-25 10:49:27,723 DEBUG: http://fchart.stock.naver.com:80 "GET /sise.nhn?symbol=005930&timeframe=day&count=1821&requestType=0 HTTP/1.1" 200 None
+2025-12-25 10:49:27,750 INFO: [Phase 1] Tuning Loop
+2025-12-25 10:49:27,751 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 10:49:27,752 DEBUG: [CACHE] Generating key with: {"commission": 0.00015, "data_version": "", "dividend_handling": "total_return", "end_date": "2023-12-28T00:00:00", "lookback_months": 3, "params_hash": "ccae73cb8e88655b4dddb7a8372f6457", "price_type": "adj_close", "slippage": 0.001, "start_date": "2021-01-04T00:00:00", "test_range": null, "train_range": {"end": "2022-12-23T00:00:00", "start": "2021-01-04T00:00:00"}, "universe_version": "", "val_range": {"end": "2023-06-23T00:00:00", "start": "2022-12-26T00:00:00"}}
+2025-12-25 10:49:27,752 INFO: [캐시] lb=3M, key=a8081cfb
+2025-12-25 10:49:27,776 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:27,807 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:27,965 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 29488
+2025-12-25 10:49:28,972 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:29,166 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 3632
+2025-12-25 10:49:29,179 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:30,754 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 1255
+2025-12-25 10:49:30,757 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:32,030 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 1793
+2025-12-25 10:49:32,033 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:33,876 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 1510
+2025-12-25 10:49:33,879 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:34,392 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 1786
+2025-12-25 10:49:34,397 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:34,397 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:34,402 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:34,402 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:34,420 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 10:49:34,420 DEBUG: 레짐 변경: bull (confidence: 1.00)
+2025-12-25 10:49:34,447 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 10:49:34,447 DEBUG: 레짐 변경: neutral (confidence: 0.50)
+2025-12-25 10:49:34,462 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 10:49:34,462 DEBUG: 레짐 변경: bear (confidence: 0.70)
+2025-12-25 10:49:34,647 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:34,647 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:34,676 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:34,847 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 7665
+2025-12-25 10:49:34,853 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:34,853 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:34,858 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:34,858 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:34,865 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:34,866 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 10:49:34,866 DEBUG: [CACHE] Generating key with: {"commission": 0.00015, "data_version": "", "dividend_handling": "total_return", "end_date": "2023-12-28T00:00:00", "lookback_months": 6, "params_hash": "ccae73cb8e88655b4dddb7a8372f6457", "price_type": "adj_close", "slippage": 0.001, "start_date": "2021-01-04T00:00:00", "test_range": null, "train_range": {"end": "2022-12-23T00:00:00", "start": "2021-01-04T00:00:00"}, "universe_version": "", "val_range": {"end": "2023-06-23T00:00:00", "start": "2022-12-26T00:00:00"}}
+2025-12-25 10:49:34,867 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 10:49:34,867 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:34,893 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:35,030 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 29490
+2025-12-25 10:49:36,072 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:36,204 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 3631
+2025-12-25 10:49:36,215 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:36,215 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:36,220 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:36,220 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:36,237 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 10:49:36,238 DEBUG: 레짐 변경: bull (confidence: 1.00)
+2025-12-25 10:49:36,265 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 10:49:36,265 DEBUG: 레짐 변경: neutral (confidence: 0.50)
+2025-12-25 10:49:36,279 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 10:49:36,279 DEBUG: 레짐 변경: bear (confidence: 0.70)
+2025-12-25 10:49:36,443 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:36,443 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 10:49:36,443 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:36,467 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:36,563 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 11254
+2025-12-25 10:49:36,570 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:36,571 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:36,575 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:36,575 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:36,592 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:36,593 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 10:49:36,594 DEBUG: [CACHE] Generating key with: {"commission": 0.00015, "data_version": "", "dividend_handling": "total_return", "end_date": "2023-12-28T00:00:00", "lookback_months": 12, "params_hash": "ccae73cb8e88655b4dddb7a8372f6457", "price_type": "adj_close", "slippage": 0.001, "start_date": "2021-01-04T00:00:00", "test_range": null, "train_range": {"end": "2022-12-23T00:00:00", "start": "2021-01-04T00:00:00"}, "universe_version": "", "val_range": {"end": "2023-06-23T00:00:00", "start": "2022-12-26T00:00:00"}}
+2025-12-25 10:49:36,594 INFO: [캐시] lb=12M, key=73edb7cc
+2025-12-25 10:49:36,594 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:36,619 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:36,877 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 29489
+2025-12-25 10:49:37,881 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:37,958 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 3631
+2025-12-25 10:49:37,971 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:37,971 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:37,976 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:37,977 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:38,002 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 10:49:38,002 DEBUG: 레짐 변경: bull (confidence: 1.00)
+2025-12-25 10:49:38,032 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 10:49:38,032 DEBUG: 레짐 변경: neutral (confidence: 0.50)
+2025-12-25 10:49:38,046 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 10:49:38,047 DEBUG: 레짐 변경: bear (confidence: 0.70)
+2025-12-25 10:49:38,213 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:38,214 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 10:49:38,214 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:38,238 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:38,346 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 11254
+2025-12-25 10:49:38,354 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:38,354 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:38,360 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:38,360 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:38,374 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:38,375 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-25 10:49:38,375 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-25 10:49:38,376 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:38,402 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:38,492 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 7640
+2025-12-25 10:49:38,498 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:38,498 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:38,502 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:38,502 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:38,509 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-04-01 00:00:00 ~ 2022-07-01 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:38,510 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:38,534 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:38,594 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 7717
+2025-12-25 10:49:38,600 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:38,600 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:38,604 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:38,604 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:38,612 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-10-01 00:00:00 ~ 2023-01-01 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:38,612 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 10:49:38,639 DEBUG: Starting new HTTP connection (1): data.krx.co.kr:80
+2025-12-25 10:49:38,758 DEBUG: http://data.krx.co.kr:80 "POST /comm/bldAttendant/getJsonData.cmd HTTP/1.1" 200 7626
+2025-12-25 10:49:38,765 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 10:49:38,766 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 10:49:38,770 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 10:49:38,770 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 10:49:38,776 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-04-01 00:00:00 ~ 2023-07-01 00:00:00), signal_days=0, order_count=0
+2025-12-25 10:49:38,777 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 10:49:38,777 DEBUG: [CACHE] Generating key with: {"commission": 0.00015, "data_version": "", "dividend_handling": "total_return", "end_date": "2023-12-28T00:00:00", "lookback_months": 6, "params_hash": "ccae73cb8e88655b4dddb7a8372f6457", "price_type": "adj_close", "slippage": 0.001, "start_date": "2021-01-04T00:00:00", "test_range": null, "train_range": {"end": "2022-12-23T00:00:00", "start": "2021-01-04T00:00:00"}, "universe_version": "", "val_range": {"end": "2023-06-23T00:00:00", "start": "2022-12-26T00:00:00"}}
+2025-12-25 10:49:38,777 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 10:49:38,778 INFO: [캐시 HIT] lb=6M, key=cfd04f22
+2025-12-25 10:49:38,825 INFO: ResultPackager: Saving Artifacts...

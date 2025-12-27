@@ -1,0 +1,63 @@
+2025-12-22 22:23:13,331 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:13,444 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:14,870 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:14,870 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:14,979 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:16,433 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:16,433 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:16,589 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:18,013 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:18,118 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:19,581 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:19,581 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:19,681 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:21,074 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:21,074 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:21,195 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:22,652 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:22,747 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:24,154 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:24,154 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:24,289 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:25,727 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:25,727 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:25,834 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:27,257 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:27,392 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:28,833 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:28,833 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:29,002 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:30,426 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:30,427 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:30,529 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:31,929 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:32,134 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:33,652 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:33,653 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:33,756 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:35,153 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:35,153 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-22 22:23:35,301 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:35,301 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-22 22:23:35,441 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-04-01 00:00:00 ~ 2022-07-01 00:00:00), signal_days=0, order_count=0
+2025-12-22 22:23:35,441 ERROR: Orchestrator Crash: 'BacktestMetrics' object has no attribute 'total_trades'
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 414, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 148, in run
+    trades = metrics.total_trades if metrics else 0
+             ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BacktestMetrics' object has no attribute 'total_trades'
+2025-12-22 22:23:35,442 CRITICAL: Uncaught Exception:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 499, in <module>
+    run_strict_phase15("A", args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 414, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 148, in run
+    trades = metrics.total_trades if metrics else 0
+             ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BacktestMetrics' object has no attribute 'total_trades'

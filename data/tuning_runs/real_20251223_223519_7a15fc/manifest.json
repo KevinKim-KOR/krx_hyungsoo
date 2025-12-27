@@ -1,0 +1,223 @@
+{
+  "run_id": "gate2_20251223_223549_18a8f1",
+  "created_at": "2025-12-23T22:35:49.576743",
+  "schema_version": "4.1",
+  "stage": "gate2",
+  "config": {
+    "period": {
+      "start_date": "2021-01-01T00:00:00",
+      "end_date": "2023-12-31T00:00:00"
+    },
+    "lookbacks": [
+      3,
+      6,
+      12
+    ],
+    "lookback_combination": "min",
+    "trials": 5,
+    "objective": "val_sharpe_with_mdd_penalty",
+    "split": {
+      "method": "chronological",
+      "target_ratios": {
+        "train": 0.7,
+        "val": 0.15,
+        "test": 0.15
+      },
+      "min_val_months": 6,
+      "min_test_months": 6,
+      "applied": {
+        "train_months": 0,
+        "val_months": 0,
+        "test_months": 0
+      }
+    },
+    "guardrails": {
+      "preset": "proof",
+      "min_trades": 30,
+      "min_exposure_ratio": 0.3,
+      "max_annual_turnover": 24
+    },
+    "variables": {},
+    "cost_assumptions": {
+      "commission_rate": 0.00015,
+      "slippage_rate": 0.001,
+      "cost_type": "one_way",
+      "unit": "decimal"
+    }
+  },
+  "data": {
+    "universe_version": "",
+    "universe_source": "KRX",
+    "delisted_handling": "exclude_from_start",
+    "survivorship_bias": "point_in_time",
+    "price_type": "adj_close",
+    "dividend_handling": "total_return",
+    "data_version": "parquet_v1",
+    "universe_hash": "",
+    "universe_count": 14,
+    "requested_codes_count": 14,
+    "effective_codes_count": 14,
+    "requested_hash": "",
+    "effective_hash": "",
+    "sample_codes": [
+      "005930"
+    ]
+  },
+  "results": {
+    "best_trial": {
+      "trial_number": 1,
+      "params": {
+        "ma_period": 80,
+        "rsi_period": 29,
+        "stop_loss_pct": 0.12
+      },
+      "metrics": {
+        "train": {
+          "sharpe": 0,
+          "cagr": 0.0,
+          "mdd": 0.0
+        },
+        "val": {
+          "sharpe": 0,
+          "cagr": 0.0,
+          "mdd": 0.0
+        },
+        "test": null
+      },
+      "guardrail_checks": {
+        "num_trades": 0,
+        "exposure_ratio": 0.0,
+        "annual_turnover": 0.0
+      },
+      "logic_checks": {
+        "rsi_scale_days": 29,
+        "rsi_scale_events": 10
+      },
+      "anomaly_flags": [],
+      "debug": {
+        "min_lookback_months": 6,
+        "lookback_start_date": "2023-06-30 00:00:00",
+        "params_hash": "d627223fd87869d9",
+        "cache_key": "cfd04f22",
+        "period_signature": "train:2021-01-04 00:00:00~2022-12-23 00:00:00|val:2022-12-26 00:00:00~2023-06-23 00:00:00"
+      },
+      "by_lookback": {},
+      "combined_score": null,
+      "walkforward": null
+    },
+    "all_trials_count": 5,
+    "convergence_trial": null,
+    "search_coverage": 5.0,
+    "best_attempt": {
+      "by_lookback": {
+        "3": {
+          "requested_lb": 3,
+          "effective_lb": "N/A",
+          "val_effective_start_date": "2023-03-23 00:00:00",
+          "val_effective_end_date": "2023-12-31 00:00:00",
+          "val_bars_used": 63,
+          "val_trades": 0,
+          "val_is_capped": false,
+          "val_sharpe": 0,
+          "score": -999.0
+        },
+        "6": {
+          "requested_lb": 6,
+          "effective_lb": "N/A",
+          "val_effective_start_date": "2022-12-26 00:00:00",
+          "val_effective_end_date": "2023-12-31 00:00:00",
+          "val_bars_used": 122,
+          "val_trades": 0,
+          "val_is_capped": false,
+          "val_sharpe": 0,
+          "score": -999.0
+        },
+        "12": {
+          "requested_lb": 12,
+          "effective_lb": "N/A",
+          "val_effective_start_date": "2022-12-26 00:00:00",
+          "val_effective_end_date": "2023-12-31 00:00:00",
+          "val_bars_used": 122,
+          "val_trades": 0,
+          "val_is_capped": false,
+          "val_sharpe": 0,
+          "score": -999.0
+        }
+      },
+      "walkforward": {
+        "windows_detail": [
+          {
+            "train_period": {
+              "start": "2021-01-01 00:00:00",
+              "end": "2022-01-01 00:00:00"
+            },
+            "val_period": {
+              "start": "2022-01-01 00:00:00",
+              "end": "2022-04-01 00:00:00"
+            },
+            "outsample_period": {
+              "start": "2022-04-01 00:00:00",
+              "end": "2022-07-01 00:00:00"
+            },
+            "outsample_bars": 63,
+            "outsample_trades": 0,
+            "outsample_sharpe": 0
+          },
+          {
+            "train_period": {
+              "start": "2021-07-01 00:00:00",
+              "end": "2022-07-01 00:00:00"
+            },
+            "val_period": {
+              "start": "2022-07-01 00:00:00",
+              "end": "2022-10-01 00:00:00"
+            },
+            "outsample_period": {
+              "start": "2022-10-01 00:00:00",
+              "end": "2023-01-01 00:00:00"
+            },
+            "outsample_bars": 62,
+            "outsample_trades": 0,
+            "outsample_sharpe": 0
+          },
+          {
+            "train_period": {
+              "start": "2022-01-01 00:00:00",
+              "end": "2023-01-01 00:00:00"
+            },
+            "val_period": {
+              "start": "2023-01-01 00:00:00",
+              "end": "2023-04-01 00:00:00"
+            },
+            "outsample_period": {
+              "start": "2023-04-01 00:00:00",
+              "end": "2023-07-01 00:00:00"
+            },
+            "outsample_bars": 61,
+            "outsample_trades": 0,
+            "outsample_sharpe": 0
+          }
+        ],
+        "windows_count": 3,
+        "total_outsample_trades": 0,
+        "avg_outsample_sharpe": 0.0
+      }
+    }
+  },
+  "environment": {
+    "code_version": "git:d9c7f683",
+    "python_version": "3.13.5",
+    "optuna_version": "4.5.0",
+    "random_seed": 42,
+    "splitter_version": "chronological_v1",
+    "cost_model_version": "simple_oneway_v1"
+  },
+  "engine_health": {
+    "is_valid": true,
+    "warnings": [],
+    "data_quality": {
+      "missing_ratio": 0.001,
+      "outlier_count": 0
+    }
+  }
+}

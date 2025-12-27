@@ -173,6 +173,8 @@ def create_manifest(
     wf_outsample_sharpes: Optional[List[float]] = None,
     wf_stability_score: Optional[float] = None,
     wf_win_rate: Optional[float] = None,
+    # Guardrail Preset (v2.2)
+    guardrail_preset: str = "default",
 ) -> RunManifest:
     """
     run_manifest 생성
@@ -242,6 +244,7 @@ def create_manifest(
             },
         },
         guardrails={
+            "preset": guardrail_preset,
             "min_trades": 30,
             "min_exposure_ratio": 0.30,
             "max_annual_turnover": 24,

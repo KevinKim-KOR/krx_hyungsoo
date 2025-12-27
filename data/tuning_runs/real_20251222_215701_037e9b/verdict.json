@@ -1,0 +1,48 @@
+{
+  "verdict": "FAIL",
+  "grade": "FAIL",
+  "checks": {
+    "real_data": {
+      "status": "FAIL",
+      "evidence": "Source: error",
+      "reason": "cannot import name 'load_trading_calendar' from 'infra.data.loader' (E:\\AI Study\\krx_alertor_modular\\infra\\data\\loader.py)"
+    },
+    "universe": {
+      "status": "FAIL",
+      "evidence": "Count: 0",
+      "reason": "Universe count 0 < 5"
+    },
+    "multi_lookback": {
+      "status": "FAIL",
+      "evidence": "",
+      "reason": "Missing lookbacks: [3, 6, 12]"
+    },
+    "walkforward": {
+      "status": "FAIL",
+      "evidence": "Windows:0, ZeroTradeWins:0, GlobalTrades:0",
+      "reason": "Global Outsample Trades = 0"
+    }
+  },
+  "top_reasons": [
+    "Real mode requires 'parquet' source, got 'error'",
+    "cannot import name 'load_trading_calendar' from 'infra.data.loader' (E:\\AI Study\\krx_alertor_modular\\infra\\data\\loader.py)",
+    "Universe count 0 < 5",
+    "Missing lookbacks: [3, 6, 12]",
+    "Global Outsample Trades = 0"
+  ],
+  "meta": {
+    "run_id": "real_20251222_215701_037e9b",
+    "timestamp": "2025-12-22T21:57:01.111184",
+    "python_version": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:37:03) [MSC v.1929 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "command_line": "E:\\AI Study\\krx_alertor_modular\\tools\\run_phase15_realdata.py --real --trials 1",
+    "git_hash": "d9c7f683"
+  },
+  "artifacts": {
+    "run_log": "run.log",
+    "manifest": "manifest.json",
+    "verdict": "verdict.json",
+    "report": "report.md",
+    "crash": null
+  }
+}

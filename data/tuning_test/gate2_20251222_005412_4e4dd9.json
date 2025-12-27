@@ -1,0 +1,151 @@
+{
+  "run_id": "gate2_20251222_005412_4e4dd9",
+  "created_at": "2025-12-22T00:54:12.097013",
+  "schema_version": "4.1",
+  "stage": "gate2",
+  "config": {
+    "period": {
+      "start_date": "2021-01-01",
+      "end_date": "2023-12-31"
+    },
+    "lookbacks": [
+      3,
+      6,
+      12
+    ],
+    "lookback_combination": "min",
+    "trials": 3,
+    "objective": "val_sharpe_with_mdd_penalty",
+    "split": {
+      "method": "chronological",
+      "target_ratios": {
+        "train": 0.7,
+        "val": 0.15,
+        "test": 0.15
+      },
+      "min_val_months": 6,
+      "min_test_months": 6,
+      "applied": {
+        "train_months": 0,
+        "val_months": 0,
+        "test_months": 0
+      }
+    },
+    "guardrails": {
+      "preset": "lax",
+      "min_trades": 30,
+      "min_exposure_ratio": 0.3,
+      "max_annual_turnover": 24
+    },
+    "variables": {
+      "ma_period": {
+        "min": 20,
+        "max": 180,
+        "step": 10
+      },
+      "rsi_period": {
+        "min": 10,
+        "max": 30,
+        "step": 1
+      },
+      "stop_loss_pct": {
+        "min": 0.03,
+        "max": 0.15,
+        "step": 0.01
+      }
+    },
+    "cost_assumptions": {
+      "commission_rate": 0.00015,
+      "slippage_rate": 0.001,
+      "cost_type": "one_way",
+      "unit": "decimal"
+    }
+  },
+  "data": {
+    "universe_version": "mock_universe_v1",
+    "universe_source": "KRX",
+    "delisted_handling": "exclude_from_start",
+    "survivorship_bias": "point_in_time",
+    "price_type": "adj_close",
+    "dividend_handling": "total_return",
+    "data_version": "mock_v1",
+    "universe_hash": "",
+    "universe_count": 0,
+    "requested_codes_count": 0,
+    "effective_codes_count": 0,
+    "requested_hash": "",
+    "effective_hash": "",
+    "sample_codes": []
+  },
+  "results": {
+    "best_trial": {
+      "trial_number": 1,
+      "params": {
+        "ma_period": 80,
+        "rsi_period": 29,
+        "stop_loss_pct": 0.12
+      },
+      "metrics": {
+        "train": {
+          "sharpe": 0,
+          "cagr": 0.0,
+          "mdd": 0.0
+        },
+        "val": {
+          "sharpe": 0,
+          "cagr": 0.0,
+          "mdd": 0.0
+        },
+        "test": null
+      },
+      "guardrail_checks": {
+        "num_trades": 0,
+        "exposure_ratio": 0.0,
+        "annual_turnover": 0.0
+      },
+      "logic_checks": {
+        "rsi_scale_days": 29,
+        "rsi_scale_events": 10
+      },
+      "anomaly_flags": [],
+      "debug": {
+        "min_lookback_months": 6,
+        "lookback_start_date": "2023-06-30",
+        "params_hash": "d627223fd87869d9",
+        "cache_key": "4c288f31",
+        "period_signature": "train:2021-01-01~2022-12-22|val:2022-12-23~2023-06-20"
+      },
+      "by_lookback": {},
+      "combined_score": null,
+      "walkforward": {
+        "windows": 3,
+        "outsample_sharpes": [
+          0,
+          0,
+          0
+        ],
+        "stability_score": 0,
+        "win_rate": 0.0
+      }
+    },
+    "all_trials_count": 3,
+    "convergence_trial": null,
+    "search_coverage": 0.0006464124111182935
+  },
+  "environment": {
+    "code_version": "git:d9c7f683",
+    "python_version": "3.13.5",
+    "optuna_version": "4.5.0",
+    "random_seed": 42,
+    "splitter_version": "chronological_v1",
+    "cost_model_version": "simple_oneway_v1"
+  },
+  "engine_health": {
+    "is_valid": true,
+    "warnings": [],
+    "data_quality": {
+      "missing_ratio": 0.001,
+      "outlier_count": 0
+    }
+  }
+}

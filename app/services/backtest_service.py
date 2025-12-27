@@ -41,6 +41,8 @@ class BacktestResult:
     win_rate: float
     volatility: float
     calmar_ratio: float
+    # Phase 3: Metric Integrity
+    exposure_ratio: float = 0.0
     # 엔진 정합성 검증용 추가 필드
     sell_trades: int = 0
     total_costs: float = 0.0
@@ -199,12 +201,12 @@ class BacktestService:
 
         # 컬럼명 변환 (한글 → 영문)
         column_map = {
-            "시가": "Open",
-            "고가": "High",
-            "저가": "Low",
-            "종가": "Close",
-            "거래량": "Volume",
-            "거래대금": "Amount",
+            "시가": "open",
+            "고가": "high",
+            "저가": "low",
+            "종가": "close",
+            "거래량": "volume",
+            "거래대금": "amount",
         }
         df = df.rename(columns=column_map)
 
@@ -256,6 +258,69 @@ class BacktestService:
         price_data = self._load_price_data(universe, data_start_date, params.end_date)
         if price_data is None or price_data.empty:
             raise ValueError("가격 데이터 로드 실패")
+
+        # ---------------------------------------------------------------------
+        # [Action B] Loader Normalization (Producer Fix)
+        # ---------------------------------------------------------------------
+        # 0. Initial Log
+        if logging.getLogger().isEnabledFor(logging.INFO):
+             logging.getLogger().info(f"[Normalization] Initial Shape: {price_data.shape}, Index: {type(price_data.index)}, Columns: {list(price_data.columns)}")
+
+        # 1. Lowercase Columns
+        price_data = price_data.rename(columns={c: c.lower() for c in price_data.columns})
+        
+        # 2. Map 'Date'/'날짜' to 'date'
+        col_map = {'date': 'date', '날짜': 'date', 'time': 'date'}
+        for c in price_data.columns:
+            if c in col_map and 'date' not in price_data.columns:
+                 price_data = price_data.rename(columns={c: col_map[c]})
+        
+        # 3. Ensure MultiIndex(['code', 'date'])
+        import pandas as pd
+        if not isinstance(price_data.index, pd.MultiIndex):
+            # Try to recover columns from index if needed
+            if 'code' not in price_data.columns or 'date' not in price_data.columns:
+                 logging.getLogger().warning("[Normalization] Missing 'code' or 'date' columns. Attempting reset_index.")
+                 price_data = price_data.reset_index()
+                 # Re-lowercase after reset_index
+                 price_data = price_data.rename(columns={c: c.lower() for c in price_data.columns})
+
+            if 'code' in price_data.columns and 'date' in price_data.columns:
+                 price_data['date'] = pd.to_datetime(price_data['date'])
+                 price_data = price_data.set_index(['code', 'date']).sort_index()
+                 logging.getLogger().info("[Normalization] Successfully set MultiIndex(['code', 'date'])")
+            else:
+                 msg = f"[Normalization Failed] Cannot find 'code' and 'date' columns. Available: {list(price_data.columns)}"
+                 logging.getLogger().error(msg)
+                 # Don't raise immediately, let the assert catch it or pass if it's somehow valid (unlikely)
+        
+        # Safety Assert
+        if not isinstance(price_data.index, pd.MultiIndex):
+             raise ValueError(f"[Service Critical] Price Data Index must be MultiIndex. Got {type(price_data.index)}")
+
+        # [EVIDENCE] Data Pipeline Trace (Checkpoint 1-6)
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            import pandas as pd
+            log_msg = ["[EVIDENCE] Data Pipeline Trace:"]
+            log_msg.append(f"1. Load Shape: {price_data.shape}")
+            log_msg.append(f"   - Index Type: {type(price_data.index)}")
+            
+            if isinstance(price_data.index, pd.MultiIndex):
+                levels = price_data.index.names
+                log_msg.append(f"   - Levels: {levels}")
+                if 'date' in levels:
+                    dates = price_data.index.get_level_values('date')
+                    log_msg.append(f"   - Date Range: {dates.min()} ~ {dates.max()}")
+                if 'code' in levels:
+                    codes = price_data.index.get_level_values('code').unique()
+                    log_msg.append(f"   - Unique Symbols: {len(codes)} (Sample: {list(codes)[:3]})")
+                    missing = set(universe) - set(codes)
+                    log_msg.append(f"2. Universe Coverage: Requested={len(universe)}, Loaded={len(codes)}, Missing={len(missing)}")
+            
+            log_msg.append(f"6. Final Columns: {list(price_data.columns)}")
+            
+            logging.getLogger().info("\n".join(log_msg))
+        # ---------------------------------------------------------------------
 
         market_data = self._load_market_index(data_start_date, params.end_date)
 
@@ -317,6 +382,7 @@ class BacktestService:
             win_rate=metrics.get("win_rate", 0),  # 엔진에서 계산된 값 사용 (이미 %)
             volatility=metrics.get("volatility", 0),  # 이미 %
             calmar_ratio=metrics.get("calmar_ratio", 0),
+            exposure_ratio=metrics.get("exposure_ratio", 0.0),
             signal_days=signal_days,
             order_count=order_count,
             first_trade_date=first_trade_date,
@@ -384,6 +450,33 @@ class BacktestService:
         price_data = self._load_price_data(universe, data_start_date, params.end_date)
         if price_data is None or price_data.empty:
             raise ValueError("가격 데이터 로드 실패")
+
+        # ---------------------------------------------------------------------
+        # [Action B] Loader Normalization (Producer Fix) - for run_with_split
+        # ---------------------------------------------------------------------
+        if logging.getLogger().isEnabledFor(logging.INFO):
+             logging.getLogger().info(f"[Normalization] Initial Shape: {price_data.shape}, Index: {type(price_data.index)}, Columns: {list(price_data.columns)}")
+
+        price_data = price_data.rename(columns={c: c.lower() for c in price_data.columns})
+        col_map = {'date': 'date', '날짜': 'date', 'time': 'date'}
+        for c in price_data.columns:
+            if c in col_map and 'date' not in price_data.columns:
+                 price_data = price_data.rename(columns={c: col_map[c]})
+        
+        import pandas as pd
+        if not isinstance(price_data.index, pd.MultiIndex):
+            if 'code' not in price_data.columns or 'date' not in price_data.columns:
+                 logging.getLogger().warning("[Normalization] Missing 'code' or 'date' columns. Attempting reset_index.")
+                 price_data = price_data.reset_index()
+                 price_data = price_data.rename(columns={c: c.lower() for c in price_data.columns})
+
+            if 'code' in price_data.columns and 'date' in price_data.columns:
+                 price_data['date'] = pd.to_datetime(price_data['date'])
+                 price_data = price_data.set_index(['code', 'date']).sort_index()
+        
+        if not isinstance(price_data.index, pd.MultiIndex):
+             raise ValueError(f"[Service Critical] Price Data Index must be MultiIndex. Got {type(price_data.index)}")
+        # ---------------------------------------------------------------------
 
         market_data = self._load_market_index(data_start_date, params.end_date)
 

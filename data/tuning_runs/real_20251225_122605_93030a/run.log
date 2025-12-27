@@ -1,0 +1,421 @@
+2025-12-25 12:26:05,302 INFO: === STRICT PHASE 1.5 START (RunID: real_20251225_122605_93030a) ===
+2025-12-25 12:26:05,449 INFO: NumExpr defaulting to 12 threads.
+2025-12-25 12:26:05,613 INFO: [Phase 0] Preflight Check
+2025-12-25 12:26:06,155 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-25 12:26:06,155 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,204 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,211 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2021-01-01 00:00:00 ~ 2021-01-31 00:00:00
+2025-12-25 12:26:06,267 INFO: [Phase 1] Tuning Loop
+2025-12-25 12:26:06,269 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:26:06,270 INFO: [캐시] lb=3M, key=a8081cfb
+2025-12-25 12:26:06,293 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,293 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,295 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,297 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,298 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,300 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,301 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,302 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,303 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,304 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,305 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,306 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,308 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,308 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,310 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,312 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,312 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,314 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,315 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,315 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,317 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,318 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,319 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,320 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,322 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,323 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,324 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,326 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,327 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,328 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,330 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,330 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,332 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,333 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,334 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,335 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,336 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,337 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,339 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,340 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,341 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,343 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,344 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,345 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,345 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,346 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,347 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,348 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,349 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,350 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,353 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,353 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,355 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,356 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,357 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,359 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,360 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,361 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,362 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,363 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,364 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,365 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,366 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,367 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,368 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,370 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,370 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,372 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,373 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,373 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,375 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,376 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,377 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,378 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,380 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,380 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,382 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,383 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,384 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,386 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,387 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,388 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,389 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,391 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,392 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,394 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,396 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,396 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,397 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:26:06,398 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 12:26:06,398 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,398 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,400 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,401 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,402 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,403 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,405 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,405 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,407 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,408 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,409 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,410 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,412 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,412 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,414 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,415 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,416 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,417 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,419 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,419 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,421 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,423 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,423 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,425 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,427 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,427 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,429 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,430 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,431 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,432 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,433 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,434 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,435 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,436 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,437 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,438 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,440 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,440 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,442 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,443 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,443 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,445 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,447 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,448 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,448 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 12:26:06,448 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,448 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,450 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,452 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,453 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,454 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,456 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,456 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,458 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,459 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,460 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,462 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,463 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,464 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,465 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,467 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,467 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,468 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,470 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,470 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,472 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,473 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,474 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,476 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,478 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,478 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,480 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,481 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,482 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,483 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,485 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,485 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,487 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,488 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,488 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,490 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,491 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,492 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,494 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,495 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,496 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,497 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,498 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,499 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,499 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:26:06,500 INFO: [캐시] lb=12M, key=73edb7cc
+2025-12-25 12:26:06,500 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,500 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,502 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,503 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,504 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,505 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,506 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,507 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,508 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,510 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,511 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,512 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,514 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,514 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,516 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,517 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,518 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,519 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,520 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,521 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,523 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,525 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,531 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,534 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,535 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,536 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,538 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,541 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,543 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,546 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,548 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,548 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,551 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,552 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,553 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,557 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,559 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,560 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,562 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,564 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,565 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,567 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,568 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 00:00:00 ~ 2022-12-23 00:00:00
+2025-12-25 12:26:06,569 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,569 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 12:26:06,569 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,569 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,572 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,573 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,574 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,578 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,580 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,581 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,583 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,585 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,586 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,588 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,590 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,590 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,592 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,594 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,595 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,596 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,598 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,598 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,600 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,601 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,601 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,603 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,605 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,605 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,607 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,608 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,609 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,611 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,612 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,612 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,614 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,615 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,616 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,617 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,618 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,619 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,621 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,622 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,622 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,624 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,625 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-27 00:00:00 ~ 2023-06-23 00:00:00
+2025-12-25 12:26:06,626 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,626 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-25 12:26:06,627 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-25 12:26:06,627 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:26:06,627 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,627 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,629 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,630 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,631 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,632 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,634 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,634 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,636 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,637 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,638 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,640 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,641 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,642 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,644 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,645 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,646 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,647 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,649 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,649 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,651 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,653 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,653 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,656 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,657 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,658 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,659 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,661 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,661 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,662 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,664 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,665 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,666 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,668 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,668 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,670 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,672 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,672 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,674 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,675 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,675 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,677 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,678 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-01-01 00:00:00 ~ 2022-07-01 00:00:00
+2025-12-25 12:26:06,679 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,679 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:26:06,679 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,679 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,681 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,682 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,683 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,684 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,686 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,687 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,688 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,690 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,690 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,692 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,693 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,694 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,695 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,697 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,698 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,700 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,701 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,702 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,704 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,705 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,706 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,708 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,709 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,710 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,711 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,713 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,713 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,715 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,716 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,717 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,718 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,720 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,720 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,722 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,723 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,724 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,726 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,728 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,728 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,730 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,731 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-07-03 00:00:00 ~ 2023-01-01 00:00:00
+2025-12-25 12:26:06,732 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,732 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:26:06,732 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:26:06,733 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-25 12:26:06,734 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,735 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,736 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-25 12:26:06,737 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,739 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,739 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-25 12:26:06,741 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,742 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,743 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-25 12:26:06,745 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,746 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,746 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-25 12:26:06,748 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,749 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,750 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-25 12:26:06,751 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,752 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,753 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-25 12:26:06,754 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,756 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,757 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-25 12:26:06,759 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,760 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,761 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-25 12:26:06,763 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,764 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,764 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-25 12:26:06,766 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,767 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,767 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-25 12:26:06,769 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,770 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,771 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-25 12:26:06,772 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,774 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,774 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-25 12:26:06,776 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,777 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,778 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-25 12:26:06,779 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-25 12:26:06,780 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2023-01-01 00:00:00 ~ 2023-07-01 00:00:00
+2025-12-25 12:26:06,781 ERROR: 백테스트 실행 실패: 가격 데이터 로드 실패
+2025-12-25 12:26:06,782 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:26:06,782 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 12:26:06,782 INFO: [캐시 HIT] lb=6M, key=cfd04f22
+2025-12-25 12:26:06,829 INFO: ResultPackager: Saving Artifacts...

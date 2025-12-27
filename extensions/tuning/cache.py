@@ -85,7 +85,11 @@ def make_cache_key(
     }
     
     # MD5 해시 생성
+    # [Audit Item 2] Cache Key Logging
     key_json = json.dumps(key_dict, sort_keys=True)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"[CACHE] Generating key with: {key_json}")
+        
     return hashlib.md5(key_json.encode()).hexdigest()
 
 

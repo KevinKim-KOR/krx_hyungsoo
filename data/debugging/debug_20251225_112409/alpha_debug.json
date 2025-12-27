@@ -1,0 +1,52 @@
+{
+    "rows_loaded": 1559,
+    "rows_after_date_filter": 1559,
+    "rows_after_nan_drop": 1539,
+    "cond_maps_buy": 1040,
+    "cond_rsi_filter": 1497,
+    "cond_entry_signal": 998,
+    "first_date": "0",
+    "last_date": "1558",
+    "debug_trace": [
+        {
+            "date": "20",
+            "close": 86377.98848829538,
+            "maps": 13.1,
+            "rsi": 66.21,
+            "is_maps_buy": true,
+            "is_rsi_ok": true
+        },
+        {
+            "date": "21",
+            "close": 86471.36785297253,
+            "maps": 8.94,
+            "rsi": 66.47,
+            "is_maps_buy": true,
+            "is_rsi_ok": true
+        },
+        {
+            "date": "22",
+            "close": 88069.58938650553,
+            "maps": 9.85,
+            "rsi": 72.05,
+            "is_maps_buy": true,
+            "is_rsi_ok": true
+        },
+        {
+            "date": "23",
+            "close": 88371.53557468852,
+            "maps": 10.39,
+            "rsi": 80.49,
+            "is_maps_buy": true,
+            "is_rsi_ok": false
+        },
+        {
+            "date": "24",
+            "close": 86851.64200089866,
+            "maps": 4.07,
+            "rsi": 67.64,
+            "is_maps_buy": true,
+            "is_rsi_ok": true
+        }
+    ]
+}

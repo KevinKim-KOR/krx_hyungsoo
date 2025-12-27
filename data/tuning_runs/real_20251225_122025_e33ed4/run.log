@@ -1,0 +1,67 @@
+2025-12-25 12:20:25,666 INFO: === STRICT PHASE 1.5 START (RunID: real_20251225_122025_e33ed4) ===
+2025-12-25 12:20:25,812 INFO: NumExpr defaulting to 12 threads.
+2025-12-25 12:20:25,989 INFO: [Phase 0] Preflight Check
+2025-12-25 12:20:26,514 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-25 12:20:26,614 INFO: [Phase 1] Tuning Loop
+2025-12-25 12:20:26,616 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:20:26,616 INFO: [캐시] lb=3M, key=a8081cfb
+2025-12-25 12:20:26,644 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,667 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,668 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,669 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,669 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,669 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,690 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,691 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,692 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,692 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,693 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:20:26,693 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 12:20:26,693 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,714 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,715 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,716 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,716 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,717 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 12:20:26,717 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,737 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,738 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,739 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,739 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,740 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:20:26,740 INFO: [캐시] lb=12M, key=73edb7cc
+2025-12-25 12:20:26,741 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,762 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,762 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,763 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,763 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,764 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 12:20:26,764 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,784 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,786 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,787 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,787 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,787 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-25 12:20:26,788 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-25 12:20:26,788 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:20:26,788 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,808 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,809 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,810 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,810 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,810 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:20:26,811 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,831 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,831 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,832 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,833 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,833 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 12:20:26,833 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 12:20:26,855 INFO: [Normalization] Initial Shape: (21826, 6), Index: <class 'pandas.core.indexes.range.RangeIndex'>, Columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'code']
+2025-12-25 12:20:26,855 WARNING: [Normalization] Missing 'code' or 'date' columns. Attempting reset_index.
+2025-12-25 12:20:26,856 ERROR: [Normalization Failed] Cannot find 'code' and 'date' columns. Available: ['index', 'open', 'high', 'low', 'close', 'volume', 'code']
+2025-12-25 12:20:26,856 ERROR: 백테스트 실행 실패: [Service Critical] Price Data Index must be MultiIndex. Got <class 'pandas.core.indexes.range.RangeIndex'>
+2025-12-25 12:20:26,857 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 12:20:26,857 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 12:20:26,858 INFO: [캐시 HIT] lb=6M, key=cfd04f22
+2025-12-25 12:20:26,902 INFO: ResultPackager: Saving Artifacts...

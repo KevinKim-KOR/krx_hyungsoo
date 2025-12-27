@@ -1,0 +1,112 @@
+2025-12-25 11:45:04,743 INFO: === STRICT PHASE 1.5 START (RunID: real_20251225_114504_1ce330) ===
+2025-12-25 11:45:04,898 INFO: NumExpr defaulting to 12 threads.
+2025-12-25 11:45:05,088 INFO: [Phase 0] Preflight Check
+2025-12-25 11:45:05,657 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-25 11:45:05,780 INFO: [Phase 1] Tuning Loop
+2025-12-25 11:45:05,782 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 11:45:05,783 INFO: [캐시] lb=3M, key=a8081cfb
+2025-12-25 11:45:05,814 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:11,953 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:11,953 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:11,957 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:11,957 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:11,958 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:11,963 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2021-01-08
+2025-12-25 11:45:11,963 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:11,976 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 11:45:12,003 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 11:45:12,017 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 11:45:12,192 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:12,193 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:12,280 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:12,280 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:12,284 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:12,284 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:12,285 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:12,287 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2023-03-29
+2025-12-25 11:45:12,287 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:12,294 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:12,294 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 11:45:12,295 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 11:45:12,295 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:13,528 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:13,529 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:13,533 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:13,533 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:13,533 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:13,540 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2021-01-08
+2025-12-25 11:45:13,540 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:13,552 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 11:45:13,580 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 11:45:13,596 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 11:45:13,770 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:13,771 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 11:45:13,771 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:13,888 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:13,888 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:13,893 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:13,893 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:13,893 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:13,895 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2022-12-30
+2025-12-25 11:45:13,895 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:13,910 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:13,911 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 11:45:13,911 INFO: [캐시] lb=12M, key=73edb7cc
+2025-12-25 11:45:13,912 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:15,136 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:15,137 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:15,141 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:15,141 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:15,142 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:15,147 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2021-01-08
+2025-12-25 11:45:15,148 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:15,160 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 11:45:15,191 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 11:45:15,208 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 11:45:15,403 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:15,403 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 11:45:15,404 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:15,502 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:15,503 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:15,507 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:15,508 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:15,508 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:15,510 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2022-12-30
+2025-12-25 11:45:15,510 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:15,521 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:15,522 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-25 11:45:15,523 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-25 11:45:15,523 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 11:45:15,523 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:15,613 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:15,613 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:15,618 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:15,618 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:15,618 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:15,620 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2022-04-07
+2025-12-25 11:45:15,620 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:15,626 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-04-01 00:00:00 ~ 2022-07-01 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:15,627 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 11:45:15,627 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:15,722 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:15,722 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:15,727 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:15,728 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:15,728 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:15,731 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2022-10-07
+2025-12-25 11:45:15,731 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:15,736 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-10-01 00:00:00 ~ 2023-01-01 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:15,736 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 80, 'rsi_period': 29, 'stop_loss_pct': 0.12}
+2025-12-25 11:45:15,736 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:45:15,838 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:45:15,838 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:45:15,843 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:45:15,844 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:45:15,844 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:45:15,846 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2023-04-07
+2025-12-25 11:45:15,846 WARNING: [EVIDENCE] Force entry failed - No available prices in universe
+2025-12-25 11:45:15,852 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-04-01 00:00:00 ~ 2023-07-01 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:45:15,852 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 11:45:15,853 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 11:45:15,853 INFO: [캐시 HIT] lb=6M, key=cfd04f22
+2025-12-25 11:45:15,903 INFO: ResultPackager: Saving Artifacts...

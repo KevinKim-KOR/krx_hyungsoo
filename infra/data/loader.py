@@ -247,25 +247,56 @@ def load_price_data(
     
     cache_dir.mkdir(parents=True, exist_ok=True)
     
+    # Normalize comparison dates
+    if hasattr(start_date, 'date'):
+        start_date = start_date.date()
+    if hasattr(end_date, 'date'):
+        end_date = end_date.date()
+
     dfs = []
     
     for code in universe:
         try:
             # 캐시 파일 확인
             cache_file = cache_dir / f"{code}.parquet"
+            import logging
+            if logging.getLogger().isEnabledFor(logging.INFO):
+                 logging.getLogger().info(f"[Loader Debug] {code} path: {cache_file} exists: {cache_file.exists()}")
             
             if cache_file.exists():
                 df = pd.read_parquet(cache_file, engine='pyarrow')
+                if logging.getLogger().isEnabledFor(logging.INFO):
+                     logging.getLogger().info(f"[Loader Debug] {code} raw shape: {df.shape}, index: {type(df.index)}, cols: {df.columns}")
                 
-                # Index를 date 컬럼으로 변환
-                if df.index.name in ['날짜', 'date']:
+                # [Fix] Ensure Date is a column before concat
+                # 1. Check Index (Type OR Name)
+                # If index holds the date (common in pykrx/pandas), we must reset it to be a column
+                is_datetime_index = isinstance(df.index, pd.DatetimeIndex)
+                is_date_name = df.index.name in ['Date', 'date', '날짜', 'time', 'timestamp']
+                
+                if is_datetime_index or is_date_name:
                     df = df.reset_index()
-                    df = df.rename(columns={'날짜': 'date'})
                 
-                # 날짜 필터링
+                # 2. Normalize Column Names
+                df = df.rename(columns={c: c.lower() for c in df.columns})
+                col_map = {'날짜': 'date', 'time': 'date', 'index': 'date'} # 'index' might be created by reset_index
+                for c in df.columns:
+                    if c in col_map and 'date' not in df.columns:
+                        df = df.rename(columns={c: col_map[c]})
+
+                # 3. Filter Dates
                 if 'date' in df.columns:
                     df['date'] = pd.to_datetime(df['date'])
+                    dmin, dmax = df['date'].min(), df['date'].max()
+                    if logging.getLogger().isEnabledFor(logging.INFO):
+                         logging.getLogger().info(f"[Loader Debug] {code} Date Range: {dmin} ~ {dmax} vs Target: {start_date} ~ {end_date}")
+                    
                     df = df[(df['date'].dt.date >= start_date) & (df['date'].dt.date <= end_date)]
+                    if logging.getLogger().isEnabledFor(logging.INFO):
+                         logging.getLogger().info(f"[Loader Debug] {code} Filtered rows: {len(df)}")
+                else:
+                    logging.getLogger().warning(f"[Loader Warning] No date column in {code}. Columns: {df.columns}")
+                    continue
                 
                 if not df.empty:
                     df['code'] = code
@@ -286,3 +317,28 @@ def load_price_data(
         result.sort_index(inplace=True)
     
     return result
+
+def load_trading_calendar(start_date: Union[date, datetime], end_date: Union[date, datetime]) -> List[datetime]:
+    """
+    거래일 캘린더 로드 (Pykrx 기준)
+    """
+    # 삼성전자 기준으로 개장일 조회
+    s = start_date.strftime("%Y%m%d")
+    e = end_date.strftime("%Y%m%d")
+    try:
+        df = stock.get_market_ohlcv_by_date(s, e, "005930")
+        return pd.to_datetime(df.index).tolist()
+    except Exception as e:
+        print(f"Calendar Load Failed: {e}")
+        return []
+
+def load_daily_price(code: str, start_date: Union[date, datetime], end_date: Union[date, datetime]) -> pd.DataFrame:
+    """
+    단일 종목 일별 가격 로드 (Preflight용)
+    """
+    df = load_price_data([code], start_date, end_date)
+    if not df.empty and isinstance(df.index, pd.MultiIndex):
+        # Drop code level checking if present
+        if 'code' in df.index.names:
+             return df.droplevel('code')
+    return df

@@ -254,6 +254,61 @@ class BacktestRunner:
         Returns:
             성과 지표
         """
+        # [EVIDENCE] Strategy (Runner) initialized with params
+        if logger.isEnabledFor(logging.INFO):
+             logger.info(
+                 f"[EVIDENCE] BacktestRunner.run called with params: "
+                 f"ma_period={ma_period}, rsi_period={rsi_period}, stop_loss={stop_loss}"
+             )
+
+        # ---------------------------------------------------------------------
+        # [Action A] Index Type Check & Auto-Recovery (Fail-Fast)
+        # ---------------------------------------------------------------------
+        if not isinstance(price_data.index, pd.MultiIndex):
+            logger.warning(f"[Runner] Invalid Index Type detected: {type(price_data.index)}")
+            
+            # 1. Normalize Columns (Lowercase) for recovery attempt
+            price_data = price_data.rename(columns={c: c.lower() for c in price_data.columns})
+            
+            # Map common variations
+            col_map = {'date': 'date', '날짜': 'date', 'time': 'date'}
+            for c in price_data.columns:
+                if c.lower() in col_map and 'date' not in price_data.columns:
+                    price_data = price_data.rename(columns={c: col_map[c.lower()]})
+            
+            # 2. Check essential columns
+            has_code = 'code' in price_data.columns
+            has_date = 'date' in price_data.columns
+            
+            if has_code and has_date:
+                logger.info("[Runner] Attempting Auto-Recovery: Setting MultiIndex(['code', 'date'])")
+                try:
+                    price_data['date'] = pd.to_datetime(price_data['date'])
+                    price_data = price_data.set_index(['code', 'date']).sort_index()
+                    logger.info("[Runner] Auto-Recovery Successful.")
+                except Exception as e:
+                    logger.error(f"[Runner] Auto-Recovery Failed: {e}")
+                    raise ValueError(f"Runner requires MultiIndex(code, date) and recovery failed: {e}")
+            else:
+                # 3. Explicit Failure
+                msg = (
+                    f"[Runner Critical] Index must be MultiIndex(code, date). "
+                    f"Got {type(price_data.index)}. "
+                    f"Columns: {list(price_data.columns)}. "
+                    f"Sample: {price_data.head(1).to_dict() if not price_data.empty else 'Empty'}"
+                )
+                logger.error(msg)
+                raise ValueError(msg)
+        
+        # Double check MultiIndex levels
+        if 'code' not in price_data.index.names or 'date' not in price_data.index.names:
+             # Try to adjust level names if they match by position but not name? 
+             # For now, strict check is safer.
+             # Or swap levels if date is first?
+             pass 
+
+        # ---------------------------------------------------------------------
+
         # 엔진 생성 (각 실행마다 독립적)
         engine = BacktestEngine(
             initial_capital=self.initial_capital,
@@ -277,6 +332,11 @@ class BacktestRunner:
         current_top_n = []  # 현재 보유 종목
         current_rsi_values = {}  # 현재 RSI 값 (비중 스케일링용)
         daily_logs = []  # 일별 비중 스케일링 로그
+        signal_days = 0  # 신호 발생 일수 (v2.2 추가)
+        
+        # Funnel Metrics (Phase 2)
+        raw_signal_count = 0
+        filtered_signal_count = 0
 
         for current_date in dates:
             d = current_date.date()
@@ -292,6 +352,41 @@ class BacktestRunner:
 
                 regime_confidence = confidence
                 position_ratio = self.regime_detector.get_position_ratio(regime, confidence)
+
+            # [EVIDENCE] Force Entry Logic (Bypass Filters)
+            import os
+            if os.environ.get("FORCE_ENTRY_ONCE") == "1" and day_count == 5:
+                 logger.warning(f"[EVIDENCE] FORCE ENTRY TRIGGERED on {d}")
+                 # Force pick first AVAILABLE universe code
+                 available_codes = [c for c in universe if c in current_prices]
+                 
+                 if available_codes:
+                      first_code = available_codes[0]
+                      current_top_n = [first_code]
+                      adjusted_weights = {first_code: 1.0}
+                      
+                      engine.rebalance(adjusted_weights, current_prices, d)
+                      metrics = engine.get_performance_metrics()
+                      # Proceed to next day to avoid overwritten by normal logic
+                      continue
+                 else:
+                      logger.warning(f"[EVIDENCE] Force entry failed - No available prices in universe")
+                      logger.info(f"[EVIDENCE] Force Entry Diagnostics for {d}:")
+                      if isinstance(price_data.index, pd.MultiIndex):
+                          try:
+                              current_dates = price_data.index.get_level_values('date')
+                              logger.info(f"   - Date Range: {current_dates.min()} ~ {current_dates.max()}")
+                              logger.info(f"   - Is {d} in range? {current_dates.min().date() <= d <= current_dates.max().date()}")
+                              
+                              ts = pd.Timestamp(d)
+                              if ts in current_dates:
+                                   daily_slice = price_data.xs(ts, level="date")
+                                   logger.info(f"   - Raw Data for {d}: Found {len(daily_slice)} rows")
+                                   logger.info(f"   - Sample Codes: {list(daily_slice.index)[:5]}")
+                              else:
+                                   logger.info(f"   - Raw Data for {d}: timestamp not found in index")
+                          except Exception as e:
+                              logger.info(f"   - Diagnostics Error: {e}")
 
             # 2. 현재 가격 조회
             current_prices = {}
@@ -338,8 +433,14 @@ class BacktestRunner:
 
                 # 유니버스 내 종목만 필터링
                 universe_scores = {k: v for k, v in scores.items() if k in universe}
+                
+                # Raw Signal: 이번 리밸런싱 시점에 조건 만족한 종목 수 누적
+                raw_signal_count += len(universe_scores)
 
                 if universe_scores:
+                    # 신호 발생 일수 증가 (유효한 점수가 산출됨)
+                    signal_days += 1
+                    
                     # Top N 선정: 모멘텀 스코어 기준 (RSI 필터링은 비중 스케일링에서 처리)
                     sorted_scores = sorted(
                         universe_scores.items(),
@@ -347,6 +448,9 @@ class BacktestRunner:
                         reverse=True
                     )
                     new_top_n = [code for code, _ in sorted_scores[: self.max_positions]]
+                    
+                    # Filtered Signal: Top N에 선정된 종목 수 누적 (이번 리밸런싱에 '새로' 혹은 '유지'된 슬롯)
+                    filtered_signal_count += len(new_top_n)
 
                     # 종목 변경 로깅
                     if current_top_n and set(new_top_n) != set(current_top_n):
@@ -409,6 +513,12 @@ class BacktestRunner:
 
         # 성과 지표
         metrics = engine.get_performance_metrics()
+        
+        # 신호 통계 추가 (v2.2)
+        metrics["signal_days"] = signal_days
+        metrics["order_count"] = len(engine.portfolio.trades)
+        metrics["raw_signal_count"] = raw_signal_count
+        metrics["filtered_signal_count"] = filtered_signal_count
 
         return {
             "metrics": metrics,

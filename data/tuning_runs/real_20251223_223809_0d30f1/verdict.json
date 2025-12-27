@@ -1,0 +1,36 @@
+{
+  "verdict": "FAIL",
+  "grade": "PASS",
+  "checks": {
+    "real_data": {
+      "status": "PASS",
+      "evidence": "Source: parquet"
+    },
+    "universe": {
+      "status": "PASS",
+      "evidence": "Count: 14"
+    },
+    "multi_lookback": {
+      "status": "PASS",
+      "evidence": "Dates: 12M(2022-12-26 00:00:00) <= 6M(2022-12-26 00:00:00) <= 3M(2023-03-23 00:00:00)"
+    },
+    "walkforward": {
+      "status": "FAIL",
+      "evidence": "",
+      "reason": "Missing Walk-Forward results"
+    }
+  },
+  "top_reasons": [
+    "Missing Walk-Forward results"
+  ],
+  "meta": {
+    "run_id": "gate2_20251223_223840_cf48c4"
+  },
+  "artifacts": {
+    "run_log": "run.log",
+    "manifest": "manifest.json",
+    "verdict": "verdict.json",
+    "report": "report.md",
+    "crash": null
+  }
+}

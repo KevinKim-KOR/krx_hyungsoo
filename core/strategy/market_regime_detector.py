@@ -139,10 +139,10 @@ class MarketRegimeDetector:
                 return None, None
             
             # 단기 이동평균
-            short_ma = hist_data['Close'].tail(self.short_ma_period).mean()
+            short_ma = hist_data['close'].tail(self.short_ma_period).mean()
             
             # 장기 이동평균
-            long_ma = hist_data['Close'].tail(self.long_ma_period).mean()
+            long_ma = hist_data['close'].tail(self.long_ma_period).mean()
             
             return float(short_ma.iloc[0] if hasattr(short_ma, 'iloc') else short_ma), \
                    float(long_ma.iloc[0] if hasattr(long_ma, 'iloc') else long_ma)
@@ -180,7 +180,7 @@ class MarketRegimeDetector:
             recent_data = hist_data.tail(self.trend_strength_period)
             
             # 일별 수익률
-            daily_returns = recent_data['Close'].pct_change()
+            daily_returns = recent_data['close'].pct_change()
             
             # 상승일 비율
             up_days = (daily_returns > 0).sum()

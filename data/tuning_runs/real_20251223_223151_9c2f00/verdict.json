@@ -1,0 +1,37 @@
+{
+  "verdict": "FAIL",
+  "grade": "PASS",
+  "checks": {
+    "real_data": {
+      "status": "PASS",
+      "evidence": "Source: parquet"
+    },
+    "universe": {
+      "status": "PASS",
+      "evidence": "Count: 14"
+    },
+    "multi_lookback": {
+      "status": "FAIL",
+      "evidence": "",
+      "reason": "Missing lookbacks: [3, 6, 12]"
+    },
+    "walkforward": {
+      "status": "FAIL",
+      "evidence": "",
+      "reason": "Skipped due to earlier failure"
+    }
+  },
+  "top_reasons": [
+    "Missing lookbacks: [3, 6, 12]"
+  ],
+  "meta": {
+    "run_id": "Unknown"
+  },
+  "artifacts": {
+    "run_log": "run.log",
+    "manifest": "manifest.json",
+    "verdict": "verdict.json",
+    "report": "report.md",
+    "crash": null
+  }
+}

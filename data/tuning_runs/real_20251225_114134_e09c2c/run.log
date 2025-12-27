@@ -1,0 +1,100 @@
+2025-12-25 11:41:35,055 INFO: === STRICT PHASE 1.5 START (RunID: real_20251225_114134_e09c2c) ===
+2025-12-25 11:41:35,208 INFO: NumExpr defaulting to 12 threads.
+2025-12-25 11:41:35,380 INFO: [Phase 0] Preflight Check
+2025-12-25 11:41:35,923 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-25 11:41:36,058 INFO: [Phase 1] Tuning Loop
+2025-12-25 11:41:36,060 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 11:41:36,060 INFO: [캐시] lb=3M, key=a8081cfb
+2025-12-25 11:41:36,089 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:41:42,501 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:41:42,502 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:41:42,506 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:41:42,507 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:41:42,507 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:41:42,512 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2021-01-08
+2025-12-25 11:41:42,513 WARNING: [EVIDENCE] Force entry failed - No price for 005930
+2025-12-25 11:41:42,526 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 11:41:42,554 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 11:41:42,569 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 11:41:42,756 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:41:42,757 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:41:42,933 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:41:42,933 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:41:42,937 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:41:42,937 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:41:42,937 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:41:42,939 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2023-03-29
+2025-12-25 11:41:42,939 WARNING: [EVIDENCE] Force entry failed - No price for 005930
+2025-12-25 11:41:42,945 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2023-03-23 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:41:42,945 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 11:41:42,946 INFO: [캐시] lb=6M, key=cfd04f22
+2025-12-25 11:41:42,946 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:41:44,259 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:41:44,259 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:41:44,263 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:41:44,263 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:41:44,264 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:41:44,270 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2021-01-08
+2025-12-25 11:41:44,270 WARNING: [EVIDENCE] Force entry failed - No price for 005930
+2025-12-25 11:41:44,284 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 11:41:44,309 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 11:41:44,330 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 11:41:44,511 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:41:44,512 WARNING: Evaluation Window Clamped: lookback=6M, target_start=2022-12-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 11:41:44,512 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:41:44,655 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:41:44,655 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:41:44,660 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:41:44,660 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:41:44,660 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:41:44,662 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2022-12-30
+2025-12-25 11:41:44,662 WARNING: [EVIDENCE] Force entry failed - No price for 005930
+2025-12-25 11:41:44,673 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:41:44,674 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-25 11:41:44,674 INFO: [캐시] lb=12M, key=73edb7cc
+2025-12-25 11:41:44,675 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:41:45,901 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:41:45,901 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:41:45,906 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:41:45,906 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:41:45,906 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:41:45,911 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2021-01-08
+2025-12-25 11:41:45,912 WARNING: [EVIDENCE] Force entry failed - No price for 005930
+2025-12-25 11:41:45,925 INFO: 레짐 변경! 2021-07-23: neutral → bull (MA차이=9.07%, 추세강도=0.42)
+2025-12-25 11:41:45,951 INFO: 레짐 변경! 2021-09-28: bull → neutral (MA차이=1.98%, 추세강도=0.58)
+2025-12-25 11:41:45,965 INFO: 레짐 변경! 2021-11-01: neutral → bear (MA차이=-2.05%, 추세강도=0.42)
+2025-12-25 11:41:46,153 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2021-01-04 00:00:00 ~ 2022-12-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:41:46,153 WARNING: Evaluation Window Clamped: lookback=12M, target_start=2022-06-23 00:00:00, clamped_start=2022-12-26 00:00:00
+2025-12-25 11:41:46,154 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-25 11:41:46,271 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-25 11:41:46,271 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-25 11:41:46,277 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-25 11:41:46,277 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=80, rsi_period=29, stop_loss=0.12
+2025-12-25 11:41:46,277 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-25 11:41:46,281 WARNING: [EVIDENCE] FORCE ENTRY TRIGGERED on 2022-12-30
+2025-12-25 11:41:46,281 WARNING: [EVIDENCE] Force entry failed - No price for 005930
+2025-12-25 11:41:46,296 WARNING: 백테스트 결과가 비어있음 - 거래 없음 또는 데이터 부족 (기간: 2022-12-26 00:00:00 ~ 2023-06-23 00:00:00), signal_days=0, order_count=0
+2025-12-25 11:41:46,297 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-25 11:41:46,297 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-25 11:41:46,298 ERROR: Orchestrator Crash: name 'logger' is not defined
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 443, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 145, in run
+    if logger.isEnabledFor(logging.INFO):
+       ^^^^^^
+NameError: name 'logger' is not defined
+2025-12-25 11:41:46,299 CRITICAL: Uncaught Exception:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 554, in <module>
+    run_strict_phase15("A", args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 443, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 145, in run
+    if logger.isEnabledFor(logging.INFO):
+       ^^^^^^
+NameError: name 'logger' is not defined
+2025-12-25 11:41:46,302 INFO: ResultPackager: Saving Artifacts...

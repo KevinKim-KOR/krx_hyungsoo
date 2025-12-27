@@ -37,6 +37,10 @@ class BacktestMetrics:
     signal_days: int = 0  # 신호 발생 일수
     order_count: int = 0  # 주문 횟수
     first_trade_date: Optional[str] = None  # 첫 거래일
+    
+    # Phase 2.2 진단 (Funnel)
+    raw_signal_count: int = 0 # 조건 만족 횟수 (Top N 진입 전)
+    filtered_signal_count: int = 0 # 필터 통과/Top N 선정 횟수
 
 
 class GuardrailFailCode:
@@ -319,6 +323,12 @@ DEFAULT_GUARDRAILS = {
     "max_annual_turnover": 24,
 }
 
+LAX_GUARDRAILS = {
+    "min_trades": 5,
+    "min_exposure_ratio": 0.05,
+    "max_annual_turnover": 50,
+}
+
 
 def compute_params_hash(params: Dict[str, Any]) -> str:
     """
@@ -330,7 +340,18 @@ def compute_params_hash(params: Dict[str, Any]) -> str:
     import json
 
     sorted_params = sorted(params.items())
-    params_str = json.dumps(sorted_params, sort_keys=True, default=str)
+    
+    # [Audit Item 1] Float Normalization
+    normalized = []
+    for k, v in sorted_params:
+        if isinstance(v, float):
+            # 6 decimal places (0.300000004 -> "0.300000")
+            v_norm = f"{v:.6f}"
+        else:
+            v_norm = str(v)
+        normalized.append((k, v_norm))
+        
+    params_str = json.dumps(normalized, sort_keys=True)
     return hashlib.sha256(params_str.encode()).hexdigest()[:16]
 
 

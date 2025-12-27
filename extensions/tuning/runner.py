@@ -83,13 +83,27 @@ def _run_single_backtest(
             calmar=result.calmar_ratio if hasattr(result, "calmar_ratio") else 0.0,
             num_trades=result.num_trades,
             win_rate=result.win_rate / 100 if result.win_rate else 0.0,
-            exposure_ratio=0.0,  # TODO: 실제 계산 필요
+            exposure_ratio=result.exposure_ratio,  # Phase 3 Fix: Real Calculation
             annual_turnover=0.0,  # TODO: 실제 계산 필요
             # Phase 2.1: 멀티룩백 증거 강화
             signal_days=getattr(result, "signal_days", 0),
             order_count=getattr(result, "order_count", 0),
             first_trade_date=getattr(result, "first_trade_date", None),
         )
+        
+        # Phase 3 Sanity Check: 거래가 있는데 노출도가 0이면 논리적 오류
+        if metrics.num_trades > 0 and metrics.exposure_ratio == 0.0:
+             # 엔진 내부 소수점 이슈일 수 있으므로 warning 정도가 안전하나, 
+             # Phase 3 "Strict" 요구사항에 따라 Error 발생 시킴 (혹은 강한 Warning)
+             # 단, 1일치 거래 후 바로 매도한 경우 매우 낮을 순 있음. 
+             # 하지만 0.0은 불가능 (최소 1일 보유).
+             logger.error(f"[Sanity Check Failed] Trades={metrics.num_trades} but Exposure=0.0! (Run Integrity Violated)")
+             # raise ValueError(f"Metric Integrity Error: Trades > 0 but Exposure Ratio == 0.0") 
+             # 튜닝 중단 방지를 위해 로깅만 하고 넘어갈지, 멈출지 결정. 
+             # 사용자 요청: "즉시 에러를 발생시켜 조용한 버그를 차단할 것"
+             raise ValueError(f"Metric Integrity Error: Trades({metrics.num_trades}) > 0 but Exposure Ratio == 0.0")
+
+        return metrics
     except Exception as e:
         logger.error(f"백테스트 실행 실패: {e}")
         return BacktestMetrics()
@@ -105,17 +119,10 @@ def run_backtest_for_tuning(
     costs: Optional[CostConfig] = None,
     data_config: Optional[DataConfig] = None,
     use_cache: bool = True,
-    universe_codes: Optional[List[str]] = None,
+    universe_codes: List[str] = None,
+    guardrail_config: Optional[Dict] = None,
 ) -> BacktestRunResult:
     """
-    튜닝용 백테스트: Train/Val만 계산 (Test 봉인)
-
-    문서 참조: docs/tuning/00_overview.md 2.1절
-
-    ⚠️ 절대 규칙: 튜닝 중에는 Test 자체를 계산하지 않는다.
-
-    Args:
-        params: 전략 파라미터
         start_date: 전체 시작일
         end_date: 전체 종료일
         lookback_months: 룩백 기간 (3, 6, 12)
@@ -137,6 +144,8 @@ def run_backtest_for_tuning(
 
     if split_config is None:
         split_config = SplitConfig()
+
+    from dateutil.relativedelta import relativedelta
 
     # Period 생성 (전체 기간 사용, lookback_months는 캐시 키 구분용)
     # ⚠️ 룩백은 "멀티 룩백 결합" 시 다른 기간을 구분하는 용도로만 사용
@@ -187,22 +196,46 @@ def run_backtest_for_tuning(
         universe_codes=universe_codes,
     )
 
-    # Val 백테스트
+    # Phase 2.2: "진짜" 멀티 룩백 구현 (Trailing Evaluation)
+    # Val 평가는 전체 Val 기간이 아니라, 끝에서 lookback_months만큼의 기간(=Evaluation Window)만 수행한다.
+    # 단, effective_eval_start가 period.val["start"]보다 앞서면 안 된다 (Clamp).
+    
+    val_end = period.val["end"]
+    val_eval_start_target = val_end - relativedelta(months=lookback_months)
+    
+    # 평가 시작일이 Val 시작일보다 이전이면 Val 시작일로 Clamp (혹은 에러? Clamp가 안전)
+    # 다만, 룩백이 Val 기간보다 길면 의미가 퇴색되므로 경고 로그 남김
+    val_eval_start = max(period.val["start"], val_eval_start_target)
+    
+    if val_eval_start_target < period.val["start"]:
+        logger.warning(
+            f"Evaluation Window Clamped: lookback={lookback_months}M, "
+            f"target_start={val_eval_start_target}, clamped_start={val_eval_start}"
+        )
+
+    # bars_used: 룩백 적용 후 실제 계산에 사용된 봉 수
+    # = val_eval_start ~ val_end 기간의 거래일 수
+    bars_used = len([d for d in trading_calendar if val_eval_start <= d <= val_end])
+
+    # Val 백테스트 (Trailing Period 적용)
     val_metrics = _run_single_backtest(
         params=params,
-        start_date=period.val["start"],
-        end_date=period.val["end"],
+        start_date=val_eval_start,  # ✅ 변경된 평가 시작일 사용
+        end_date=val_end,
         costs=costs,
         trading_calendar=trading_calendar,
         universe_codes=universe_codes,
     )
 
     # 가드레일 체크 (Val 기준)
-    # TODO: 실제 거래 데이터에서 계산 필요
+    g_conf = guardrail_config or {}
     guardrail_checks = GuardrailChecks(
         num_trades=val_metrics.num_trades,
         exposure_ratio=val_metrics.exposure_ratio,
         annual_turnover=val_metrics.annual_turnover,
+        min_trades=g_conf.get("min_trades", 30),
+        min_exposure=g_conf.get("min_exposure", 0.30),
+        max_turnover=g_conf.get("max_turnover", 24.0),
     )
 
     # Logic Checks (Val 구간에서만 집계)
@@ -219,8 +252,7 @@ def run_backtest_for_tuning(
     )
 
     # lookback_start_date 계산: end_date에서 lookback_months만큼 뒤로
-    from dateutil.relativedelta import relativedelta
-
+    # from dateutil.relativedelta import relativedelta  # Moved up
     lookback_start = end_date - relativedelta(months=lookback_months)
 
     # Phase 1.8: 룩백 의미 검증용 필드 계산
@@ -236,13 +268,9 @@ def run_backtest_for_tuning(
 
     # Phase 2.1: 멀티룩백 증거 강화 - 룩백별로 확실히 달라지는 필드
     # effective_eval_start: 룩백 적용 후 성과 계산 시작일 (val 시작일 기준)
-    effective_eval_start = period.val["start"]
+    effective_eval_start = val_eval_start
 
-    # bars_used: 룩백 적용 후 실제 계산에 사용된 봉 수
-    # = val 기간의 거래일 수 (trading_calendar에서 계산)
-    val_start = period.val["start"]
-    val_end = period.val["end"]
-    bars_used = len([d for d in trading_calendar if val_start <= d <= val_end])
+    # bars_used: 이미 위에서 계산함
 
     # signal_days, order_count: val_metrics에서 가져옴
     val_signal_days = val_metrics.signal_days if val_metrics else 0
