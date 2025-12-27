@@ -90,6 +90,24 @@ def export_trials(run_id: str):
         f.write(f"- Total Trials: {len(df)}\n")
         completed = df[df.state == "COMPLETE"]
         f.write(f"- Completed: {len(completed)}\n")
+        f.write(f"- Completed: {len(completed)}\n")
+        
+        # Reporting Hygiene
+        if "valid" in df.columns:
+            # Handle string/bool mixed types if any
+            valid_mask = df["valid"].astype(str).str.lower() == "true"
+            valid_candidates = df[valid_mask]
+            f.write(f"- Valid Candidates: {len(valid_candidates)}\n")
+            
+            failures = len(completed) - len(valid_candidates)
+            f.write(f"- Invalid/Failed: {failures}\n")
+            
+            if "fail_reason" in df.columns:
+                f.write("\n### Failure Statistics\n")
+                fail_stats = df[~valid_mask]["fail_reason"].value_counts()
+                f.write(fail_stats.to_markdown())
+                f.write("\n")
+        
         f.write(f"- Best Score: {study.best_value:.4f} (Trial {study.best_trial.number})\n")
     
     logger.info(f"Saved Top 3 summary to {md_path}")

@@ -1,0 +1,113 @@
+2025-12-27 15:30:21,710 INFO: === STRICT PHASE 1.5 START (RunID: real_20251227_153021_80c84e) ===
+2025-12-27 15:30:21,856 INFO: NumExpr defaulting to 12 threads.
+2025-12-27 15:30:22,022 INFO: [Phase 0] Preflight Check
+2025-12-27 15:30:22,617 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-27 15:30:22,618 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-27 15:30:22,670 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-27 15:30:22,679 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2021-01-01 ~ 2021-01-31
+2025-12-27 15:30:22,680 INFO: [Loader Debug] 005930 Filtered rows: 21
+2025-12-27 15:30:22,744 INFO: [Phase 1] Tuning Loop
+2025-12-27 15:30:22,744 INFO: [Phase 4] Persistence Enabled: sqlite:///data\tuning_runs\real_20251227_153021_80c84e/optuna.db
+2025-12-27 15:30:23,238 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 15:30:23,238 INFO: [캐시] lb=3M, key=1060e29f
+2025-12-27 15:30:23,263 ERROR: Objective Failed: duplicate argument 'rebalance_frequency' in function definition (runner.py, line 34)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 348, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 34
+    rebalance_frequency: str = "daily",
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_frequency' in function definition
+2025-12-27 15:30:23,279 ERROR: Orchestrator Crash: cannot access local variable 'result' where it is not associated with a value
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 423, in run_strict_phase15
+    study.optimize(objective, n_trials=args.trials)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\study.py", line 490, in optimize
+    _optimize(
+    ~~~~~~~~~^
+        study=self,
+        ^^^^^^^^^^^
+    ...<7 lines>...
+        show_progress_bar=show_progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 63, in _optimize
+    _optimize_sequential(
+    ~~~~~~~~~~~~~~~~~~~~^
+        study,
+        ^^^^^^
+    ...<8 lines>...
+        progress_bar=progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 160, in _optimize_sequential
+    frozen_trial_id = _run_trial(study, func, catch)
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 258, in _run_trial
+    raise func_err
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 201, in _run_trial
+    value_or_values = func(trial)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 414, in objective
+    if result and result.guardrail_checks and result.guardrail_checks.failures:
+       ^^^^^^
+UnboundLocalError: cannot access local variable 'result' where it is not associated with a value
+2025-12-27 15:30:23,281 CRITICAL: Uncaught Exception:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 591, in <module>
+    run_strict_phase15("A", args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 423, in run_strict_phase15
+    study.optimize(objective, n_trials=args.trials)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\study.py", line 490, in optimize
+    _optimize(
+    ~~~~~~~~~^
+        study=self,
+        ^^^^^^^^^^^
+    ...<7 lines>...
+        show_progress_bar=show_progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 63, in _optimize
+    _optimize_sequential(
+    ~~~~~~~~~~~~~~~~~~~~^
+        study,
+        ^^^^^^
+    ...<8 lines>...
+        progress_bar=progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 160, in _optimize_sequential
+    frozen_trial_id = _run_trial(study, func, catch)
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 258, in _run_trial
+    raise func_err
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 201, in _run_trial
+    value_or_values = func(trial)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 414, in objective
+    if result and result.guardrail_checks and result.guardrail_checks.failures:
+       ^^^^^^
+UnboundLocalError: cannot access local variable 'result' where it is not associated with a value
+2025-12-27 15:30:23,284 INFO: ResultPackager: Saving Artifacts...

@@ -124,6 +124,7 @@ class BacktestEngine:
         rebalance_frequency: str = "daily",  # 리밸런싱 주기
         rebalance_threshold: float = 0.01,  # 리밸런싱 임계값 (1%)
         instrument_type: str = "etf",  # 상품 유형 (etf, stock, leveraged_etf, reit)
+        min_holding_days: int = 0,   # 최소 보유일 (0이면 제한 없음)
     ):
         """
         Args:
@@ -134,6 +135,7 @@ class BacktestEngine:
             rebalance_frequency: 리밸런싱 주기 (daily, weekly, monthly)
             rebalance_threshold: 리밸런싱 임계값 (비중 차이가 이 값 이상이면 리밸런싱)
             instrument_type: 상품 유형 (거래세 결정)
+            min_holding_days: 최소 보유 영업일 수
         """
         self.initial_capital = initial_capital
         self.commission_rate = commission_rate
@@ -142,6 +144,7 @@ class BacktestEngine:
         self.rebalance_frequency = rebalance_frequency
         self.rebalance_threshold = rebalance_threshold
         self.instrument_type = instrument_type
+        self.min_holding_days = min_holding_days
         self.tax_rate = TAX_RATES.get(instrument_type, TAX_RATES["default"])
 
         # 포트폴리오 초기화
@@ -400,8 +403,19 @@ class BacktestEngine:
                         # 매수
                         self.execute_buy(symbol, quantity, price, trade_date)
                     else:
-                        # 매도
-                        self.execute_sell(symbol, quantity, price, trade_date)
+                        # 매도 (최소 보유일 체크)
+                        can_sell = True
+                        if self.min_holding_days > 0:
+                             pos = self.portfolio.positions.get(symbol)
+                             if pos:
+                                  # 영업일 기준 단순 날짜 차이 사용 (휴일 고려X, 근사치)
+                                  held_days = (trade_date - pos.entry_date).days
+                                  if held_days < self.min_holding_days:
+                                       can_sell = False
+                                       # logger.debug(f"{symbol} 매도 유예 (보유 {held_days}일 < {self.min_holding_days}일)")
+                        
+                        if can_sell:
+                             self.execute_sell(symbol, quantity, price, trade_date)
 
         # 목표 비중에 없는 종목 청산
         for symbol in list(self.portfolio.positions.keys()):
@@ -661,4 +675,5 @@ def create_default_backtest_engine() -> BacktestEngine:
         slippage_rate=0.001,
         max_positions=10,
         rebalance_frequency="daily",
+        min_holding_days=0
     )

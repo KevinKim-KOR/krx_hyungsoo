@@ -263,6 +263,64 @@ class MarketRegimeDetector:
             
         except Exception as e:
             logger.error(f"레짐 감지 실패: {e}")
+        except Exception as e:
+            logger.error(f"레짐 감지 실패: {e}")
+            return 'neutral', 0.5
+
+    def detect_regime_v2(
+        self,
+        market_data: pd.DataFrame,
+        current_date: date,
+        ma_period: int = 200
+    ) -> Tuple[str, float]:
+        """
+        시장 레짐 감지 V2 (단순 Price vs MA)
+        
+        Args:
+            market_data: 시장 데이터
+            current_date: 현재 날짜
+            ma_period: MA 기간 (기본 200)
+
+        Returns:
+            tuple: (레짐, 신뢰도)
+        """
+        if not self.enable_regime_detection:
+            return 'neutral', 0.5
+        
+        try:
+            current_ts = pd.Timestamp(current_date)
+            hist_data = market_data[market_data.index <= current_ts]
+            
+            if len(hist_data) < ma_period:
+                return 'neutral', 0.5
+            
+            # MA 계산
+            ma = hist_data['close'].tail(ma_period).mean()
+            current_price = hist_data['close'].iloc[-1]
+            
+            # Price vs MA
+            if current_price < ma:
+                # Bear: 가격이 MA 아래
+                regime = 'bear'
+                # 신뢰도는 괴리율로 (최대 1.0)
+                diff = (ma - current_price) / ma
+                confidence = min(0.5 + diff * 5, 1.0)
+                self.stats['bear_days'] += 1
+            else:
+                # Bull: 가격이 MA 위
+                regime = 'bull'
+                diff = (current_price - ma) / ma
+                confidence = min(0.5 + diff * 5, 1.0)
+                self.stats['bull_days'] += 1
+                
+            if self.current_regime != regime:
+                 logger.debug(f"Regime V2 Change: {self.current_regime} -> {regime} (Price={current_price:.2f}, MA({ma_period})={ma:.2f})")
+            
+            self.current_regime = regime
+            return regime, confidence
+            
+        except Exception as e:
+            logger.error(f"Regime V2 Error: {e}")
             return 'neutral', 0.5
     
     def get_position_ratio(

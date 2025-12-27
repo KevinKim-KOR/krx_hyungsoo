@@ -31,7 +31,9 @@ class BacktestRunner:
         max_positions: int = 10,
         rebalance_frequency: str = "daily",
         instrument_type: str = "etf",
+
         enable_defense: bool = True,
+        min_holding_days: int = 0,
     ):
         self.initial_capital = initial_capital
         self.commission_rate = commission_rate
@@ -40,6 +42,7 @@ class BacktestRunner:
         self.rebalance_frequency = rebalance_frequency
         self.instrument_type = instrument_type
         self.enable_defense = enable_defense
+        self.min_holding_days = min_holding_days
 
         # 레짐 감지기 초기화
         from core.strategy.market_regime_detector import MarketRegimeDetector
@@ -317,6 +320,7 @@ class BacktestRunner:
             max_positions=self.max_positions,
             rebalance_frequency=self.rebalance_frequency,
             instrument_type=self.instrument_type,
+            min_holding_days=self.min_holding_days,
         )
 
         # 유니버스 (target_weights의 키들)
@@ -344,7 +348,11 @@ class BacktestRunner:
 
             # 1. 레짐 감지 및 비중 조절
             if self.enable_defense and market_index_data is not None:
-                regime, confidence = self.regime_detector.detect_regime(market_index_data, d)
+                # Phase 5: Price vs MA Regime Filter (V2)
+                # ma_period를 레짐 감지에도 사용하여 파라미터 일관성 확보
+                regime, confidence = self.regime_detector.detect_regime_v2(
+                    market_index_data, d, ma_period=ma_period
+                )
 
                 if regime != current_regime:
                     current_regime = regime
@@ -566,7 +574,9 @@ class BacktestRunner:
                 max_positions=self.max_positions,
                 rebalance_frequency=self.rebalance_frequency,
                 instrument_type=self.instrument_type,
+
                 enable_defense=self.enable_defense,
+                min_holding_days=self.min_holding_days,
             )
 
             # 파라미터 추출
