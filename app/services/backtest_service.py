@@ -26,6 +26,7 @@ class BacktestParams:
     initial_capital: int
     max_positions: int
     enable_defense: bool
+    regime_ma_period: int = 200  # Default 200 if not specified (though no default in dataclass usually, handling in caller)
     universe_codes: Optional[List[str]] = None  # 명시적 유니버스 (None이면 에러)
 
 
@@ -190,14 +191,28 @@ class BacktestService:
         from pykrx import stock
         import pandas as pd
 
-        kospi_code = ConfigLoader.get("market_index", "kospi_code")
-
-        df = stock.get_index_ohlcv_by_date(
-            start_date.strftime("%Y%m%d"),
-            end_date.strftime("%Y%m%d"),
-            kospi_code,
-        )
+        kospi_code = "069500" # Force KODEX 200
+        
+        # 069500 is an ETF (Stock), not an Index. Use get_market_ohlcv.
+        try:
+            df = stock.get_market_ohlcv_by_date(
+                start_date.strftime("%Y%m%d"),
+                end_date.strftime("%Y%m%d"),
+                kospi_code,
+            )
+        except:
+             # Fallback to Index if fails (e.g. if code was actually an index)
+             logger.warning(f"Market OHLCV failed for {kospi_code}, trying Index OHLCV")
+             df = stock.get_index_ohlcv_by_date(
+                start_date.strftime("%Y%m%d"),
+                end_date.strftime("%Y%m%d"),
+                kospi_code,
+            )
+        
         df.index = pd.to_datetime(df.index)
+
+        # DEBUG COLUMNS
+        logger.info(f"[MarketIndex] Raw Columns: {list(df.columns)}")
 
         # 컬럼명 변환 (한글 → 영문)
         column_map = {
@@ -209,7 +224,8 @@ class BacktestService:
             "거래대금": "amount",
         }
         df = df.rename(columns=column_map)
-
+        logger.info(f"[MarketIndex] Renamed Columns: {list(df.columns)}")
+        
         return df
 
     def _compute_hash(self, codes: List[str]) -> str:
@@ -345,6 +361,7 @@ class BacktestService:
             ma_period=params.ma_period,
             rsi_period=params.rsi_period,
             stop_loss=params.stop_loss / 100.0,  # % → 소수 변환 (예: -10 → -0.10)
+            regime_ma_period=getattr(params, 'regime_ma_period', 200),
         )
 
         metrics = result.get("metrics", {})
@@ -396,6 +413,7 @@ class BacktestService:
                     "end_date": params.end_date.isoformat(),
                     "ma_period": params.ma_period,
                     "rsi_period": params.rsi_period,
+                    "regime_ma_period": getattr(params, 'regime_ma_period', 200),
                     "stop_loss": params.stop_loss,
                     "max_positions": params.max_positions,
                     "initial_capital": params.initial_capital,
@@ -517,6 +535,7 @@ class BacktestService:
             ma_period=params.ma_period,
             rsi_period=params.rsi_period,
             stop_loss=params.stop_loss / 100.0,
+            regime_ma_period=getattr(params, 'regime_ma_period', 200),
         )
 
         full_metrics = full_result.get("metrics", {})
@@ -559,6 +578,7 @@ class BacktestService:
                     ma_period=params.ma_period,
                     rsi_period=params.rsi_period,
                     stop_loss=params.stop_loss / 100.0,
+                    regime_ma_period=getattr(params, 'regime_ma_period', 200),
                 )
                 split_metrics = split_result.get("metrics", {})
                 split_results[split_name] = SplitMetrics(

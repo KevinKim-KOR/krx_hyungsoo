@@ -1,0 +1,743 @@
+2025-12-28 13:03:23,805 INFO: === STRICT PHASE 1.5 START (RunID: real_20251228_130323_09fb29) ===
+2025-12-28 13:03:23,933 INFO: NumExpr defaulting to 12 threads.
+2025-12-28 13:03:24,074 INFO: [Phase 0] Preflight Check
+2025-12-28 13:03:24,575 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-28 13:03:24,576 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-28 13:03:24,621 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:24,626 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2021-01-01 ~ 2021-01-31
+2025-12-28 13:03:24,628 INFO: [Loader Debug] 005930 Filtered rows: 21
+2025-12-28 13:03:24,707 INFO: [Phase 1] Tuning Loop
+2025-12-28 13:03:24,708 INFO: [Phase 4] Persistence Enabled: sqlite:///data\tuning_runs\real_20251228_130323_09fb29/optuna.db
+2025-12-28 13:03:25,134 INFO: Split 계산: Train=16M, Val=14M, Test=6M
+2025-12-28 13:03:25,135 INFO: [캐시] lb=3M, key=f61310f4
+2025-12-28 13:03:25,156 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-28 13:03:25,156 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-28 13:03:25,158 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,160 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,161 INFO: [Loader Debug] 005930 Filtered rows: 409
+2025-12-28 13:03:25,161 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-28 13:03:25,162 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,163 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,164 INFO: [Loader Debug] 035420 Filtered rows: 409
+2025-12-28 13:03:25,165 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-28 13:03:25,166 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,167 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,168 INFO: [Loader Debug] 035720 Filtered rows: 409
+2025-12-28 13:03:25,169 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-28 13:03:25,170 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,171 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,172 INFO: [Loader Debug] 051910 Filtered rows: 409
+2025-12-28 13:03:25,173 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-28 13:03:25,174 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,175 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,176 INFO: [Loader Debug] 069500 Filtered rows: 409
+2025-12-28 13:03:25,176 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-28 13:03:25,177 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,179 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,180 INFO: [Loader Debug] 091160 Filtered rows: 409
+2025-12-28 13:03:25,180 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-28 13:03:25,181 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,183 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,184 INFO: [Loader Debug] 102110 Filtered rows: 409
+2025-12-28 13:03:25,184 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-28 13:03:25,186 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,187 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,188 INFO: [Loader Debug] 114800 Filtered rows: 409
+2025-12-28 13:03:25,188 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-28 13:03:25,190 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,191 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,192 INFO: [Loader Debug] 122630 Filtered rows: 409
+2025-12-28 13:03:25,192 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-28 13:03:25,193 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,195 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,195 INFO: [Loader Debug] 229200 Filtered rows: 409
+2025-12-28 13:03:25,196 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-28 13:03:25,197 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,198 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,199 INFO: [Loader Debug] 233740 Filtered rows: 409
+2025-12-28 13:03:25,199 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-28 13:03:25,201 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,202 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,203 INFO: [Loader Debug] 252670 Filtered rows: 409
+2025-12-28 13:03:25,203 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-28 13:03:25,205 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,206 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,207 INFO: [Loader Debug] 261240 Filtered rows: 409
+2025-12-28 13:03:25,207 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-28 13:03:25,208 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:25,209 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:25,210 INFO: [Loader Debug] 305720 Filtered rows: 409
+2025-12-28 13:03:25,212 INFO: [Normalization] Initial Shape: (5726, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:25,213 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (5726, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2020-10-06 00:00:00 ~ 2022-04-29 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:30,336 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-28 13:03:30,337 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-28 13:03:30,341 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-28 13:03:30,341 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=100, rsi_period=58, stop_loss=0.13
+2025-12-28 13:03:30,341 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-28 13:03:30,405 WARNING: 매수 불가 (035720): 자금 부족: 1,149,313 > 266,120
+2025-12-28 13:03:30,406 WARNING: 매수 불가 (035720): 자금 부족: 11,446,046 > 9,949,290
+2025-12-28 13:03:30,407 WARNING: 매수 불가 (035720): 자금 부족: 11,271,107 > 9,949,290
+2025-12-28 13:03:30,407 WARNING: 매수 불가 (035720): 자금 부족: 11,117,170 > 9,949,290
+2025-12-28 13:03:30,408 WARNING: 매수 불가 (035720): 자금 부족: 11,427,514 > 9,949,290
+2025-12-28 13:03:30,420 WARNING: 매수 불가 (252670): 자금 부족: 1,132,509 > 968,927
+2025-12-28 13:03:30,420 WARNING: 매수 불가 (229200): 자금 부족: 1,070,557 > 968,927
+2025-12-28 13:03:30,421 WARNING: 매수 불가 (229200): 자금 부족: 5,700,540 > 4,325,534
+2025-12-28 13:03:30,422 WARNING: 매수 불가 (229200): 자금 부족: 11,475,088 > 9,878,564
+2025-12-28 13:03:30,422 WARNING: 매수 불가 (229200): 자금 부족: 11,345,826 > 9,878,564
+2025-12-28 13:03:30,423 WARNING: 매수 불가 (229200): 자금 부족: 11,424,521 > 9,878,564
+2025-12-28 13:03:30,435 WARNING: 매수 불가 (252670): 자금 부족: 1,093,487 > 372,376
+2025-12-28 13:03:30,436 WARNING: 매수 불가 (252670): 자금 부족: 11,003,929 > 9,855,979
+2025-12-28 13:03:30,436 WARNING: 매수 불가 (252670): 자금 부족: 10,786,830 > 9,855,979
+2025-12-28 13:03:30,437 WARNING: 매수 불가 (252670): 자금 부족: 10,708,024 > 9,855,979
+2025-12-28 13:03:30,437 WARNING: 매수 불가 (252670): 자금 부족: 10,674,966 > 9,855,979
+2025-12-28 13:03:30,450 WARNING: 매수 불가 (091160): 자금 부족: 1,063,237 > 1,053,023
+2025-12-28 13:03:30,451 WARNING: 매수 불가 (091160): 자금 부족: 10,927,078 > 9,960,647
+2025-12-28 13:03:30,452 WARNING: 매수 불가 (091160): 자금 부족: 11,140,973 > 9,960,647
+2025-12-28 13:03:30,452 WARNING: 매수 불가 (091160): 자금 부족: 11,060,316 > 9,960,647
+2025-12-28 13:03:30,453 WARNING: 매수 불가 (091160): 자금 부족: 11,103,415 > 9,960,647
+2025-12-28 13:03:30,465 WARNING: 매수 불가 (102110): 자금 부족: 1,020,830 > 886,456
+2025-12-28 13:03:30,466 WARNING: 매수 불가 (102110): 자금 부족: 11,223,961 > 9,929,056
+2025-12-28 13:03:30,467 WARNING: 매수 불가 (102110): 자금 부족: 11,157,171 > 9,929,056
+2025-12-28 13:03:30,467 WARNING: 매수 불가 (102110): 자금 부족: 11,252,588 > 9,929,056
+2025-12-28 13:03:30,468 WARNING: 매수 불가 (102110): 자금 부족: 11,157,254 > 9,929,056
+2025-12-28 13:03:30,481 WARNING: 매수 불가 (252670): 자금 부족: 1,116,448 > 991,054
+2025-12-28 13:03:30,481 WARNING: 매수 불가 (252670): 자금 부족: 11,007,285 > 9,931,208
+2025-12-28 13:03:30,482 WARNING: 매수 불가 (252670): 자금 부족: 11,213,914 > 9,931,208
+2025-12-28 13:03:30,482 WARNING: 매수 불가 (252670): 자금 부족: 11,360,111 > 9,931,208
+2025-12-28 13:03:30,483 WARNING: 매수 불가 (252670): 자금 부족: 11,347,755 > 9,931,208
+2025-12-28 13:03:30,590 WARNING: 매수 불가 (091160): 자금 부족: 1,003,874 > 913,807
+2025-12-28 13:03:30,591 WARNING: 매수 불가 (091160): 자금 부족: 10,630,707 > 9,849,141
+2025-12-28 13:03:30,592 WARNING: 매수 불가 (091160): 자금 부족: 10,662,941 > 9,849,141
+2025-12-28 13:03:30,592 WARNING: 매수 불가 (091160): 자금 부족: 10,391,017 > 9,849,141
+2025-12-28 13:03:30,593 WARNING: 매수 불가 (091160): 자금 부족: 10,433,428 > 9,849,141
+2025-12-28 13:03:30,605 WARNING: 매수 불가 (252670): 자금 부족: 1,041,034 > 809,786
+2025-12-28 13:03:30,606 WARNING: 매수 불가 (252670): 자금 부족: 10,510,669 > 9,717,511
+2025-12-28 13:03:30,607 WARNING: 매수 불가 (252670): 자금 부족: 10,389,008 > 9,717,511
+2025-12-28 13:03:30,607 WARNING: 매수 불가 (252670): 자금 부족: 10,490,639 > 9,717,511
+2025-12-28 13:03:30,608 WARNING: 매수 불가 (252670): 자금 부족: 10,416,319 > 9,717,511
+2025-12-28 13:03:30,621 WARNING: 매수 불가 (305720): 자금 부족: 1,027,504 > 678,557
+2025-12-28 13:03:30,621 WARNING: 매수 불가 (305720): 자금 부족: 10,432,945 > 9,758,367
+2025-12-28 13:03:30,622 WARNING: 매수 불가 (305720): 자금 부족: 10,578,367 > 9,758,367
+2025-12-28 13:03:30,622 WARNING: 매수 불가 (305720): 자금 부족: 10,618,596 > 9,758,367
+2025-12-28 13:03:30,623 WARNING: 매수 불가 (305720): 자금 부족: 10,690,621 > 9,758,367
+2025-12-28 13:03:30,651 WARNING: 매수 불가 (114800): 자금 부족: 974,395 > 912,637
+2025-12-28 13:03:30,652 WARNING: 매수 불가 (114800): 자금 부족: 10,489,619 > 9,678,570
+2025-12-28 13:03:30,652 WARNING: 매수 불가 (114800): 자금 부족: 10,572,529 > 9,678,570
+2025-12-28 13:03:30,653 WARNING: 매수 불가 (114800): 자금 부족: 10,433,385 > 9,678,570
+2025-12-28 13:03:30,653 WARNING: 매수 불가 (114800): 자금 부족: 10,218,955 > 9,678,570
+2025-12-28 13:03:31,204 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-28 13:03:31,205 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-28 13:03:31,207 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,208 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,209 INFO: [Loader Debug] 005930 Filtered rows: 131
+2025-12-28 13:03:31,209 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-28 13:03:31,210 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,212 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,212 INFO: [Loader Debug] 035420 Filtered rows: 131
+2025-12-28 13:03:31,213 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-28 13:03:31,214 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,215 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,216 INFO: [Loader Debug] 035720 Filtered rows: 131
+2025-12-28 13:03:31,216 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-28 13:03:31,218 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,219 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,220 INFO: [Loader Debug] 051910 Filtered rows: 131
+2025-12-28 13:03:31,220 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-28 13:03:31,222 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,223 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,224 INFO: [Loader Debug] 069500 Filtered rows: 131
+2025-12-28 13:03:31,224 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-28 13:03:31,225 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,227 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,227 INFO: [Loader Debug] 091160 Filtered rows: 131
+2025-12-28 13:03:31,228 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-28 13:03:31,229 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,230 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,231 INFO: [Loader Debug] 102110 Filtered rows: 131
+2025-12-28 13:03:31,231 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-28 13:03:31,233 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,234 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,235 INFO: [Loader Debug] 114800 Filtered rows: 131
+2025-12-28 13:03:31,235 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-28 13:03:31,237 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,238 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,239 INFO: [Loader Debug] 122630 Filtered rows: 131
+2025-12-28 13:03:31,239 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-28 13:03:31,241 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,242 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,243 INFO: [Loader Debug] 229200 Filtered rows: 131
+2025-12-28 13:03:31,243 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-28 13:03:31,244 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,245 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,246 INFO: [Loader Debug] 233740 Filtered rows: 131
+2025-12-28 13:03:31,246 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-28 13:03:31,248 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,249 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,250 INFO: [Loader Debug] 252670 Filtered rows: 131
+2025-12-28 13:03:31,250 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-28 13:03:31,252 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,255 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,256 INFO: [Loader Debug] 261240 Filtered rows: 131
+2025-12-28 13:03:31,256 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-28 13:03:31,257 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,259 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-12-23 ~ 2023-06-23
+2025-12-28 13:03:31,259 INFO: [Loader Debug] 305720 Filtered rows: 131
+2025-12-28 13:03:31,261 INFO: [Normalization] Initial Shape: (1834, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:31,261 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (1834, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-12-23 00:00:00 ~ 2023-06-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:31,324 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-28 13:03:31,325 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-28 13:03:31,328 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-28 13:03:31,329 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=100, rsi_period=58, stop_loss=0.13
+2025-12-28 13:03:31,329 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-28 13:03:31,382 WARNING: 매수 불가 (233740): 자금 부족: 917,959 > 366,366
+2025-12-28 13:03:31,383 WARNING: 매수 불가 (233740): 자금 부족: 10,851,714 > 10,135,480
+2025-12-28 13:03:31,384 WARNING: 매수 불가 (233740): 자금 부족: 10,883,265 > 10,135,480
+2025-12-28 13:03:31,384 WARNING: 매수 불가 (233740): 자금 부족: 10,971,942 > 10,135,480
+2025-12-28 13:03:31,385 WARNING: 매수 불가 (233740): 자금 부족: 11,127,147 > 10,135,480
+2025-12-28 13:03:31,397 WARNING: 매수 불가 (252670): 자금 부족: 1,051,691 > 696,812
+2025-12-28 13:03:31,397 WARNING: 매수 불가 (252670): 자금 부족: 11,001,366 > 10,147,616
+2025-12-28 13:03:31,398 WARNING: 매수 불가 (252670): 자금 부족: 11,261,770 > 10,147,616
+2025-12-28 13:03:31,398 WARNING: 매수 불가 (252670): 자금 부족: 11,356,176 > 10,147,616
+2025-12-28 13:03:31,399 WARNING: 매수 불가 (252670): 자금 부족: 11,345,122 > 10,147,616
+2025-12-28 13:03:31,411 WARNING: 매수 불가 (252670): 자금 부족: 1,110,585 > 410,647
+2025-12-28 13:03:31,411 WARNING: 매수 불가 (252670): 자금 부족: 11,334,727 > 10,205,784
+2025-12-28 13:03:31,412 WARNING: 매수 불가 (252670): 자금 부족: 11,509,946 > 10,205,784
+2025-12-28 13:03:31,413 WARNING: 매수 불가 (252670): 자금 부족: 11,436,419 > 10,205,784
+2025-12-28 13:03:31,413 WARNING: 매수 불가 (252670): 자금 부족: 11,496,648 > 10,205,784
+2025-12-28 13:03:31,440 INFO: Split 계산: Train=16M, Val=14M, Test=6M
+2025-12-28 13:03:31,440 INFO: [캐시] lb=6M, key=b7489d5b
+2025-12-28 13:03:31,441 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-28 13:03:31,441 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-28 13:03:31,443 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,444 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,445 INFO: [Loader Debug] 005930 Filtered rows: 409
+2025-12-28 13:03:31,445 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-28 13:03:31,447 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,448 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,449 INFO: [Loader Debug] 035420 Filtered rows: 409
+2025-12-28 13:03:31,449 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-28 13:03:31,451 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,452 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,453 INFO: [Loader Debug] 035720 Filtered rows: 409
+2025-12-28 13:03:31,453 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-28 13:03:31,455 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,456 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,457 INFO: [Loader Debug] 051910 Filtered rows: 409
+2025-12-28 13:03:31,457 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-28 13:03:31,458 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,460 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,460 INFO: [Loader Debug] 069500 Filtered rows: 409
+2025-12-28 13:03:31,461 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-28 13:03:31,462 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,463 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,464 INFO: [Loader Debug] 091160 Filtered rows: 409
+2025-12-28 13:03:31,464 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-28 13:03:31,466 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,467 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,468 INFO: [Loader Debug] 102110 Filtered rows: 409
+2025-12-28 13:03:31,468 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-28 13:03:31,470 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,471 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,472 INFO: [Loader Debug] 114800 Filtered rows: 409
+2025-12-28 13:03:31,472 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-28 13:03:31,474 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,475 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,475 INFO: [Loader Debug] 122630 Filtered rows: 409
+2025-12-28 13:03:31,476 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-28 13:03:31,477 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,478 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,480 INFO: [Loader Debug] 229200 Filtered rows: 409
+2025-12-28 13:03:31,480 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-28 13:03:31,481 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,482 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,483 INFO: [Loader Debug] 233740 Filtered rows: 409
+2025-12-28 13:03:31,484 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-28 13:03:31,485 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,487 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,488 INFO: [Loader Debug] 252670 Filtered rows: 409
+2025-12-28 13:03:31,488 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-28 13:03:31,489 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,491 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,491 INFO: [Loader Debug] 261240 Filtered rows: 409
+2025-12-28 13:03:31,492 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-28 13:03:31,493 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:31,495 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:31,496 INFO: [Loader Debug] 305720 Filtered rows: 409
+2025-12-28 13:03:31,498 INFO: [Normalization] Initial Shape: (5726, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:31,498 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (5726, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2020-10-06 00:00:00 ~ 2022-04-29 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:31,610 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-28 13:03:31,611 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-28 13:03:31,615 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-28 13:03:31,615 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=100, rsi_period=58, stop_loss=0.13
+2025-12-28 13:03:31,615 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-28 13:03:31,687 WARNING: 매수 불가 (035720): 자금 부족: 1,149,313 > 266,120
+2025-12-28 13:03:31,687 WARNING: 매수 불가 (035720): 자금 부족: 11,446,046 > 9,949,290
+2025-12-28 13:03:31,688 WARNING: 매수 불가 (035720): 자금 부족: 11,271,107 > 9,949,290
+2025-12-28 13:03:31,689 WARNING: 매수 불가 (035720): 자금 부족: 11,117,170 > 9,949,290
+2025-12-28 13:03:31,689 WARNING: 매수 불가 (035720): 자금 부족: 11,427,514 > 9,949,290
+2025-12-28 13:03:31,701 WARNING: 매수 불가 (252670): 자금 부족: 1,132,509 > 968,927
+2025-12-28 13:03:31,701 WARNING: 매수 불가 (229200): 자금 부족: 1,070,557 > 968,927
+2025-12-28 13:03:31,702 WARNING: 매수 불가 (229200): 자금 부족: 5,700,540 > 4,325,534
+2025-12-28 13:03:31,702 WARNING: 매수 불가 (229200): 자금 부족: 11,475,088 > 9,878,564
+2025-12-28 13:03:31,703 WARNING: 매수 불가 (229200): 자금 부족: 11,345,826 > 9,878,564
+2025-12-28 13:03:31,703 WARNING: 매수 불가 (229200): 자금 부족: 11,424,521 > 9,878,564
+2025-12-28 13:03:31,715 WARNING: 매수 불가 (252670): 자금 부족: 1,093,487 > 372,376
+2025-12-28 13:03:31,716 WARNING: 매수 불가 (252670): 자금 부족: 11,003,929 > 9,855,979
+2025-12-28 13:03:31,717 WARNING: 매수 불가 (252670): 자금 부족: 10,786,830 > 9,855,979
+2025-12-28 13:03:31,717 WARNING: 매수 불가 (252670): 자금 부족: 10,708,024 > 9,855,979
+2025-12-28 13:03:31,718 WARNING: 매수 불가 (252670): 자금 부족: 10,674,966 > 9,855,979
+2025-12-28 13:03:31,735 WARNING: 매수 불가 (091160): 자금 부족: 1,063,237 > 1,053,023
+2025-12-28 13:03:31,736 WARNING: 매수 불가 (091160): 자금 부족: 10,927,078 > 9,960,647
+2025-12-28 13:03:31,737 WARNING: 매수 불가 (091160): 자금 부족: 11,140,973 > 9,960,647
+2025-12-28 13:03:31,737 WARNING: 매수 불가 (091160): 자금 부족: 11,060,316 > 9,960,647
+2025-12-28 13:03:31,738 WARNING: 매수 불가 (091160): 자금 부족: 11,103,415 > 9,960,647
+2025-12-28 13:03:31,751 WARNING: 매수 불가 (102110): 자금 부족: 1,020,830 > 886,456
+2025-12-28 13:03:31,752 WARNING: 매수 불가 (102110): 자금 부족: 11,223,961 > 9,929,056
+2025-12-28 13:03:31,753 WARNING: 매수 불가 (102110): 자금 부족: 11,157,171 > 9,929,056
+2025-12-28 13:03:31,753 WARNING: 매수 불가 (102110): 자금 부족: 11,252,588 > 9,929,056
+2025-12-28 13:03:31,754 WARNING: 매수 불가 (102110): 자금 부족: 11,157,254 > 9,929,056
+2025-12-28 13:03:31,767 WARNING: 매수 불가 (252670): 자금 부족: 1,116,448 > 991,054
+2025-12-28 13:03:31,768 WARNING: 매수 불가 (252670): 자금 부족: 11,007,285 > 9,931,208
+2025-12-28 13:03:31,768 WARNING: 매수 불가 (252670): 자금 부족: 11,213,914 > 9,931,208
+2025-12-28 13:03:31,769 WARNING: 매수 불가 (252670): 자금 부족: 11,360,111 > 9,931,208
+2025-12-28 13:03:31,769 WARNING: 매수 불가 (252670): 자금 부족: 11,347,755 > 9,931,208
+2025-12-28 13:03:31,875 WARNING: 매수 불가 (091160): 자금 부족: 1,003,874 > 913,807
+2025-12-28 13:03:31,876 WARNING: 매수 불가 (091160): 자금 부족: 10,630,707 > 9,849,141
+2025-12-28 13:03:31,877 WARNING: 매수 불가 (091160): 자금 부족: 10,662,941 > 9,849,141
+2025-12-28 13:03:31,878 WARNING: 매수 불가 (091160): 자금 부족: 10,391,017 > 9,849,141
+2025-12-28 13:03:31,878 WARNING: 매수 불가 (091160): 자금 부족: 10,433,428 > 9,849,141
+2025-12-28 13:03:31,891 WARNING: 매수 불가 (252670): 자금 부족: 1,041,034 > 809,786
+2025-12-28 13:03:31,892 WARNING: 매수 불가 (252670): 자금 부족: 10,510,669 > 9,717,511
+2025-12-28 13:03:31,892 WARNING: 매수 불가 (252670): 자금 부족: 10,389,008 > 9,717,511
+2025-12-28 13:03:31,893 WARNING: 매수 불가 (252670): 자금 부족: 10,490,639 > 9,717,511
+2025-12-28 13:03:31,894 WARNING: 매수 불가 (252670): 자금 부족: 10,416,319 > 9,717,511
+2025-12-28 13:03:31,906 WARNING: 매수 불가 (305720): 자금 부족: 1,027,504 > 678,557
+2025-12-28 13:03:31,907 WARNING: 매수 불가 (305720): 자금 부족: 10,432,945 > 9,758,367
+2025-12-28 13:03:31,907 WARNING: 매수 불가 (305720): 자금 부족: 10,578,367 > 9,758,367
+2025-12-28 13:03:31,908 WARNING: 매수 불가 (305720): 자금 부족: 10,618,596 > 9,758,367
+2025-12-28 13:03:31,908 WARNING: 매수 불가 (305720): 자금 부족: 10,690,621 > 9,758,367
+2025-12-28 13:03:31,932 WARNING: 매수 불가 (114800): 자금 부족: 974,395 > 912,637
+2025-12-28 13:03:31,933 WARNING: 매수 불가 (114800): 자금 부족: 10,489,619 > 9,678,570
+2025-12-28 13:03:31,934 WARNING: 매수 불가 (114800): 자금 부족: 10,572,529 > 9,678,570
+2025-12-28 13:03:31,935 WARNING: 매수 불가 (114800): 자금 부족: 10,433,385 > 9,678,570
+2025-12-28 13:03:31,935 WARNING: 매수 불가 (114800): 자금 부족: 10,218,955 > 9,678,570
+2025-12-28 13:03:32,488 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-28 13:03:32,489 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-28 13:03:32,490 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,492 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,493 INFO: [Loader Debug] 005930 Filtered rows: 195
+2025-12-28 13:03:32,493 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-28 13:03:32,494 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,495 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,496 INFO: [Loader Debug] 035420 Filtered rows: 195
+2025-12-28 13:03:32,497 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-28 13:03:32,498 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,499 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,500 INFO: [Loader Debug] 035720 Filtered rows: 195
+2025-12-28 13:03:32,500 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-28 13:03:32,502 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,503 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,504 INFO: [Loader Debug] 051910 Filtered rows: 195
+2025-12-28 13:03:32,504 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-28 13:03:32,506 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,507 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,508 INFO: [Loader Debug] 069500 Filtered rows: 195
+2025-12-28 13:03:32,508 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-28 13:03:32,510 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,511 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,512 INFO: [Loader Debug] 091160 Filtered rows: 195
+2025-12-28 13:03:32,512 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-28 13:03:32,513 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,515 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,516 INFO: [Loader Debug] 102110 Filtered rows: 195
+2025-12-28 13:03:32,516 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-28 13:03:32,517 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,519 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,520 INFO: [Loader Debug] 114800 Filtered rows: 195
+2025-12-28 13:03:32,520 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-28 13:03:32,522 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,523 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,524 INFO: [Loader Debug] 122630 Filtered rows: 195
+2025-12-28 13:03:32,524 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-28 13:03:32,525 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,527 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,527 INFO: [Loader Debug] 229200 Filtered rows: 195
+2025-12-28 13:03:32,528 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-28 13:03:32,529 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,530 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,531 INFO: [Loader Debug] 233740 Filtered rows: 195
+2025-12-28 13:03:32,531 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-28 13:03:32,533 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,534 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,535 INFO: [Loader Debug] 252670 Filtered rows: 195
+2025-12-28 13:03:32,535 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-28 13:03:32,537 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,538 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,539 INFO: [Loader Debug] 261240 Filtered rows: 195
+2025-12-28 13:03:32,539 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-28 13:03:32,541 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,542 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-09-24 ~ 2023-06-23
+2025-12-28 13:03:32,543 INFO: [Loader Debug] 305720 Filtered rows: 195
+2025-12-28 13:03:32,544 INFO: [Normalization] Initial Shape: (2730, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:32,545 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (2730, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-09-26 00:00:00 ~ 2023-06-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:32,618 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-28 13:03:32,618 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-28 13:03:32,623 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-28 13:03:32,623 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=100, rsi_period=58, stop_loss=0.13
+2025-12-28 13:03:32,623 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-28 13:03:32,763 WARNING: 매수 불가 (233740): 자금 부족: 1,096,447 > 265,015
+2025-12-28 13:03:32,764 WARNING: 매수 불가 (233740): 자금 부족: 11,163,764 > 9,885,945
+2025-12-28 13:03:32,765 WARNING: 매수 불가 (233740): 자금 부족: 11,171,088 > 9,885,945
+2025-12-28 13:03:32,765 WARNING: 매수 불가 (233740): 자금 부족: 11,129,356 > 9,885,945
+2025-12-28 13:03:32,766 WARNING: 매수 불가 (233740): 자금 부족: 11,039,740 > 9,885,945
+2025-12-28 13:03:32,779 WARNING: 매수 불가 (233740): 자금 부족: 1,105,643 > 669,818
+2025-12-28 13:03:32,779 WARNING: 매수 불가 (233740): 자금 부족: 10,851,317 > 9,938,381
+2025-12-28 13:03:32,780 WARNING: 매수 불가 (233740): 자금 부족: 10,718,907 > 9,938,381
+2025-12-28 13:03:32,781 WARNING: 매수 불가 (233740): 자금 부족: 10,419,897 > 9,938,381
+2025-12-28 13:03:32,781 WARNING: 매수 불가 (233740): 자금 부족: 10,454,813 > 9,938,381
+2025-12-28 13:03:32,868 WARNING: 매수 불가 (252670): 자금 부족: 1,052,953 > 495,482
+2025-12-28 13:03:32,869 WARNING: 매수 불가 (252670): 자금 부족: 11,323,298 > 9,990,263
+2025-12-28 13:03:32,869 WARNING: 매수 불가 (252670): 자금 부족: 11,187,801 > 9,990,263
+2025-12-28 13:03:32,870 WARNING: 매수 불가 (252670): 자금 부족: 11,194,105 > 9,990,263
+2025-12-28 13:03:32,870 WARNING: 매수 불가 (252670): 자금 부족: 11,027,251 > 9,990,263
+2025-12-28 13:03:32,894 WARNING: 매수 불가 (252670): 자금 부족: 1,064,077 > 806,996
+2025-12-28 13:03:32,895 WARNING: 매수 불가 (252670): 자금 부족: 10,477,177 > 9,911,648
+2025-12-28 13:03:32,896 INFO: Split 계산: Train=16M, Val=14M, Test=6M
+2025-12-28 13:03:32,896 INFO: [캐시] lb=12M, key=7bacf271
+2025-12-28 13:03:32,896 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-28 13:03:32,897 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-28 13:03:32,899 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,900 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,901 INFO: [Loader Debug] 005930 Filtered rows: 409
+2025-12-28 13:03:32,901 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-28 13:03:32,903 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,904 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,905 INFO: [Loader Debug] 035420 Filtered rows: 409
+2025-12-28 13:03:32,905 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-28 13:03:32,907 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,908 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,909 INFO: [Loader Debug] 035720 Filtered rows: 409
+2025-12-28 13:03:32,909 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-28 13:03:32,910 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,911 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,912 INFO: [Loader Debug] 051910 Filtered rows: 409
+2025-12-28 13:03:32,913 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-28 13:03:32,914 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,915 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,916 INFO: [Loader Debug] 069500 Filtered rows: 409
+2025-12-28 13:03:32,917 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-28 13:03:32,918 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,920 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,921 INFO: [Loader Debug] 091160 Filtered rows: 409
+2025-12-28 13:03:32,921 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-28 13:03:32,922 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,923 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,924 INFO: [Loader Debug] 102110 Filtered rows: 409
+2025-12-28 13:03:32,924 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-28 13:03:32,926 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,927 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,928 INFO: [Loader Debug] 114800 Filtered rows: 409
+2025-12-28 13:03:32,928 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-28 13:03:32,929 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,930 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,931 INFO: [Loader Debug] 122630 Filtered rows: 409
+2025-12-28 13:03:32,932 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-28 13:03:32,933 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,934 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,935 INFO: [Loader Debug] 229200 Filtered rows: 409
+2025-12-28 13:03:32,935 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-28 13:03:32,937 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,938 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,939 INFO: [Loader Debug] 233740 Filtered rows: 409
+2025-12-28 13:03:32,940 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-28 13:03:32,941 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,943 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,944 INFO: [Loader Debug] 252670 Filtered rows: 409
+2025-12-28 13:03:32,944 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-28 13:03:32,946 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,947 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,948 INFO: [Loader Debug] 261240 Filtered rows: 409
+2025-12-28 13:03:32,949 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-28 13:03:32,950 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:32,951 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2020-10-06 ~ 2022-04-29
+2025-12-28 13:03:32,952 INFO: [Loader Debug] 305720 Filtered rows: 409
+2025-12-28 13:03:32,954 INFO: [Normalization] Initial Shape: (5726, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:32,955 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (5726, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2020-10-06 00:00:00 ~ 2022-04-29 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:33,049 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-28 13:03:33,049 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-28 13:03:33,053 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-28 13:03:33,054 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=100, rsi_period=58, stop_loss=0.13
+2025-12-28 13:03:33,054 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-28 13:03:33,111 WARNING: 매수 불가 (035720): 자금 부족: 1,149,313 > 266,120
+2025-12-28 13:03:33,112 WARNING: 매수 불가 (035720): 자금 부족: 11,446,046 > 9,949,290
+2025-12-28 13:03:33,113 WARNING: 매수 불가 (035720): 자금 부족: 11,271,107 > 9,949,290
+2025-12-28 13:03:33,114 WARNING: 매수 불가 (035720): 자금 부족: 11,117,170 > 9,949,290
+2025-12-28 13:03:33,114 WARNING: 매수 불가 (035720): 자금 부족: 11,427,514 > 9,949,290
+2025-12-28 13:03:33,127 WARNING: 매수 불가 (252670): 자금 부족: 1,132,509 > 968,927
+2025-12-28 13:03:33,127 WARNING: 매수 불가 (229200): 자금 부족: 1,070,557 > 968,927
+2025-12-28 13:03:33,128 WARNING: 매수 불가 (229200): 자금 부족: 5,700,540 > 4,325,534
+2025-12-28 13:03:33,128 WARNING: 매수 불가 (229200): 자금 부족: 11,475,088 > 9,878,564
+2025-12-28 13:03:33,129 WARNING: 매수 불가 (229200): 자금 부족: 11,345,826 > 9,878,564
+2025-12-28 13:03:33,129 WARNING: 매수 불가 (229200): 자금 부족: 11,424,521 > 9,878,564
+2025-12-28 13:03:33,141 WARNING: 매수 불가 (252670): 자금 부족: 1,093,487 > 372,376
+2025-12-28 13:03:33,142 WARNING: 매수 불가 (252670): 자금 부족: 11,003,929 > 9,855,979
+2025-12-28 13:03:33,143 WARNING: 매수 불가 (252670): 자금 부족: 10,786,830 > 9,855,979
+2025-12-28 13:03:33,143 WARNING: 매수 불가 (252670): 자금 부족: 10,708,024 > 9,855,979
+2025-12-28 13:03:33,144 WARNING: 매수 불가 (252670): 자금 부족: 10,674,966 > 9,855,979
+2025-12-28 13:03:33,155 WARNING: 매수 불가 (091160): 자금 부족: 1,063,237 > 1,053,023
+2025-12-28 13:03:33,156 WARNING: 매수 불가 (091160): 자금 부족: 10,927,078 > 9,960,647
+2025-12-28 13:03:33,157 WARNING: 매수 불가 (091160): 자금 부족: 11,140,973 > 9,960,647
+2025-12-28 13:03:33,157 WARNING: 매수 불가 (091160): 자금 부족: 11,060,316 > 9,960,647
+2025-12-28 13:03:33,158 WARNING: 매수 불가 (091160): 자금 부족: 11,103,415 > 9,960,647
+2025-12-28 13:03:33,169 WARNING: 매수 불가 (102110): 자금 부족: 1,020,830 > 886,456
+2025-12-28 13:03:33,170 WARNING: 매수 불가 (102110): 자금 부족: 11,223,961 > 9,929,056
+2025-12-28 13:03:33,171 WARNING: 매수 불가 (102110): 자금 부족: 11,157,171 > 9,929,056
+2025-12-28 13:03:33,171 WARNING: 매수 불가 (102110): 자금 부족: 11,252,588 > 9,929,056
+2025-12-28 13:03:33,172 WARNING: 매수 불가 (102110): 자금 부족: 11,157,254 > 9,929,056
+2025-12-28 13:03:33,184 WARNING: 매수 불가 (252670): 자금 부족: 1,116,448 > 991,054
+2025-12-28 13:03:33,184 WARNING: 매수 불가 (252670): 자금 부족: 11,007,285 > 9,931,208
+2025-12-28 13:03:33,185 WARNING: 매수 불가 (252670): 자금 부족: 11,213,914 > 9,931,208
+2025-12-28 13:03:33,185 WARNING: 매수 불가 (252670): 자금 부족: 11,360,111 > 9,931,208
+2025-12-28 13:03:33,186 WARNING: 매수 불가 (252670): 자금 부족: 11,347,755 > 9,931,208
+2025-12-28 13:03:33,284 WARNING: 매수 불가 (091160): 자금 부족: 1,003,874 > 913,807
+2025-12-28 13:03:33,285 WARNING: 매수 불가 (091160): 자금 부족: 10,630,707 > 9,849,141
+2025-12-28 13:03:33,285 WARNING: 매수 불가 (091160): 자금 부족: 10,662,941 > 9,849,141
+2025-12-28 13:03:33,286 WARNING: 매수 불가 (091160): 자금 부족: 10,391,017 > 9,849,141
+2025-12-28 13:03:33,286 WARNING: 매수 불가 (091160): 자금 부족: 10,433,428 > 9,849,141
+2025-12-28 13:03:33,298 WARNING: 매수 불가 (252670): 자금 부족: 1,041,034 > 809,786
+2025-12-28 13:03:33,299 WARNING: 매수 불가 (252670): 자금 부족: 10,510,669 > 9,717,511
+2025-12-28 13:03:33,299 WARNING: 매수 불가 (252670): 자금 부족: 10,389,008 > 9,717,511
+2025-12-28 13:03:33,300 WARNING: 매수 불가 (252670): 자금 부족: 10,490,639 > 9,717,511
+2025-12-28 13:03:33,301 WARNING: 매수 불가 (252670): 자금 부족: 10,416,319 > 9,717,511
+2025-12-28 13:03:33,312 WARNING: 매수 불가 (305720): 자금 부족: 1,027,504 > 678,557
+2025-12-28 13:03:33,313 WARNING: 매수 불가 (305720): 자금 부족: 10,432,945 > 9,758,367
+2025-12-28 13:03:33,313 WARNING: 매수 불가 (305720): 자금 부족: 10,578,367 > 9,758,367
+2025-12-28 13:03:33,314 WARNING: 매수 불가 (305720): 자금 부족: 10,618,596 > 9,758,367
+2025-12-28 13:03:33,314 WARNING: 매수 불가 (305720): 자금 부족: 10,690,621 > 9,758,367
+2025-12-28 13:03:33,347 WARNING: 매수 불가 (114800): 자금 부족: 974,395 > 912,637
+2025-12-28 13:03:33,348 WARNING: 매수 불가 (114800): 자금 부족: 10,489,619 > 9,678,570
+2025-12-28 13:03:33,349 WARNING: 매수 불가 (114800): 자금 부족: 10,572,529 > 9,678,570
+2025-12-28 13:03:33,349 WARNING: 매수 불가 (114800): 자금 부족: 10,433,385 > 9,678,570
+2025-12-28 13:03:33,350 WARNING: 매수 불가 (114800): 자금 부족: 10,218,955 > 9,678,570
+2025-12-28 13:03:33,902 INFO: UNIVERSE requested=14(hash=989dbc28) effective=14(hash=989dbc28)
+2025-12-28 13:03:33,903 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-28 13:03:33,905 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,906 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,907 INFO: [Loader Debug] 005930 Filtered rows: 326
+2025-12-28 13:03:33,907 INFO: [Loader Debug] 035420 path: data\cache\035420.parquet exists: True
+2025-12-28 13:03:33,908 INFO: [Loader Debug] 035420 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,910 INFO: [Loader Debug] 035420 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,910 INFO: [Loader Debug] 035420 Filtered rows: 326
+2025-12-28 13:03:33,911 INFO: [Loader Debug] 035720 path: data\cache\035720.parquet exists: True
+2025-12-28 13:03:33,912 INFO: [Loader Debug] 035720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,913 INFO: [Loader Debug] 035720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,914 INFO: [Loader Debug] 035720 Filtered rows: 326
+2025-12-28 13:03:33,914 INFO: [Loader Debug] 051910 path: data\cache\051910.parquet exists: True
+2025-12-28 13:03:33,916 INFO: [Loader Debug] 051910 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,917 INFO: [Loader Debug] 051910 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,918 INFO: [Loader Debug] 051910 Filtered rows: 326
+2025-12-28 13:03:33,919 INFO: [Loader Debug] 069500 path: data\cache\069500.parquet exists: True
+2025-12-28 13:03:33,920 INFO: [Loader Debug] 069500 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,921 INFO: [Loader Debug] 069500 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,922 INFO: [Loader Debug] 069500 Filtered rows: 326
+2025-12-28 13:03:33,923 INFO: [Loader Debug] 091160 path: data\cache\091160.parquet exists: True
+2025-12-28 13:03:33,924 INFO: [Loader Debug] 091160 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,925 INFO: [Loader Debug] 091160 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,926 INFO: [Loader Debug] 091160 Filtered rows: 326
+2025-12-28 13:03:33,926 INFO: [Loader Debug] 102110 path: data\cache\102110.parquet exists: True
+2025-12-28 13:03:33,928 INFO: [Loader Debug] 102110 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,929 INFO: [Loader Debug] 102110 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,930 INFO: [Loader Debug] 102110 Filtered rows: 326
+2025-12-28 13:03:33,930 INFO: [Loader Debug] 114800 path: data\cache\114800.parquet exists: True
+2025-12-28 13:03:33,932 INFO: [Loader Debug] 114800 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,933 INFO: [Loader Debug] 114800 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,934 INFO: [Loader Debug] 114800 Filtered rows: 326
+2025-12-28 13:03:33,934 INFO: [Loader Debug] 122630 path: data\cache\122630.parquet exists: True
+2025-12-28 13:03:33,935 INFO: [Loader Debug] 122630 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,936 INFO: [Loader Debug] 122630 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,937 INFO: [Loader Debug] 122630 Filtered rows: 326
+2025-12-28 13:03:33,937 INFO: [Loader Debug] 229200 path: data\cache\229200.parquet exists: True
+2025-12-28 13:03:33,939 INFO: [Loader Debug] 229200 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,940 INFO: [Loader Debug] 229200 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,941 INFO: [Loader Debug] 229200 Filtered rows: 326
+2025-12-28 13:03:33,941 INFO: [Loader Debug] 233740 path: data\cache\233740.parquet exists: True
+2025-12-28 13:03:33,942 INFO: [Loader Debug] 233740 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,944 INFO: [Loader Debug] 233740 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,944 INFO: [Loader Debug] 233740 Filtered rows: 326
+2025-12-28 13:03:33,945 INFO: [Loader Debug] 252670 path: data\cache\252670.parquet exists: True
+2025-12-28 13:03:33,946 INFO: [Loader Debug] 252670 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,947 INFO: [Loader Debug] 252670 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,948 INFO: [Loader Debug] 252670 Filtered rows: 326
+2025-12-28 13:03:33,948 INFO: [Loader Debug] 261240 path: data\cache\261240.parquet exists: True
+2025-12-28 13:03:33,949 INFO: [Loader Debug] 261240 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,951 INFO: [Loader Debug] 261240 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,952 INFO: [Loader Debug] 261240 Filtered rows: 326
+2025-12-28 13:03:33,952 INFO: [Loader Debug] 305720 path: data\cache\305720.parquet exists: True
+2025-12-28 13:03:33,953 INFO: [Loader Debug] 305720 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-28 13:03:33,955 INFO: [Loader Debug] 305720 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2022-03-25 ~ 2023-06-23
+2025-12-28 13:03:33,956 INFO: [Loader Debug] 305720 Filtered rows: 326
+2025-12-28 13:03:33,957 INFO: [Normalization] Initial Shape: (4564, 5), Index: <class 'pandas.core.indexes.multi.MultiIndex'>, Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:33,958 INFO: [EVIDENCE] Data Pipeline Trace:
+1. Load Shape: (4564, 5)
+   - Index Type: <class 'pandas.core.indexes.multi.MultiIndex'>
+   - Levels: ['code', 'date']
+   - Date Range: 2022-03-25 00:00:00 ~ 2023-06-23 00:00:00
+   - Unique Symbols: 14 (Sample: ['005930', '035420', '035720'])
+2. Universe Coverage: Requested=14, Loaded=14, Missing=0
+6. Final Columns: ['open', 'high', 'low', 'close', 'volume']
+2025-12-28 13:03:34,040 INFO: ✅ 설정 파일 로드: E:\AI Study\krx_alertor_modular\config\regime_params.yaml
+2025-12-28 13:03:34,040 INFO: MarketRegimeDetector 초기화: MA=50/200일, 임계값=2.0/-2.0%
+2025-12-28 13:03:34,044 INFO: RSI 프로파일 로드 완료: ['balanced', 'conservative', 'aggressive']
+2025-12-28 13:03:34,044 INFO: [EVIDENCE] BacktestRunner.run called with params: ma_period=100, rsi_period=58, stop_loss=0.13
+2025-12-28 13:03:34,045 INFO: BacktestEngine 초기화: instrument_type=etf, tax_rate=0.00%
+2025-12-28 13:03:34,386 WARNING: 매수 불가 (261240): 자금 부족: 1,052,715 > 810,166
+2025-12-28 13:03:34,387 WARNING: 매수 불가 (261240): 자금 부족: 10,898,188 > 9,848,059
+2025-12-28 13:03:34,388 WARNING: 매수 불가 (261240): 자금 부족: 10,978,653 > 9,848,059
+2025-12-28 13:03:34,388 WARNING: 매수 불가 (261240): 자금 부족: 10,622,345 > 9,848,059
+2025-12-28 13:03:34,389 WARNING: 매수 불가 (261240): 자금 부족: 10,682,438 > 9,848,059
+2025-12-28 13:03:34,401 WARNING: 매수 불가 (005930): 자금 부족: 1,089,214 > 786,220
+2025-12-28 13:03:34,401 WARNING: 매수 불가 (005930): 자금 부족: 10,921,045 > 9,808,595
+2025-12-28 13:03:34,402 WARNING: 매수 불가 (005930): 자금 부족: 10,838,526 > 9,808,595
+2025-12-28 13:03:34,403 WARNING: 매수 불가 (005930): 자금 부족: 10,690,182 > 9,808,595
+2025-12-28 13:03:34,403 WARNING: 매수 불가 (005930): 자금 부족: 10,750,443 > 9,808,595
+2025-12-28 13:03:34,502 WARNING: 매수 불가 (122630): 자금 부족: 984,817 > 906,217
+2025-12-28 13:03:34,503 WARNING: 매수 불가 (122630): 자금 부족: 10,035,894 > 9,638,710
+2025-12-28 13:03:34,504 WARNING: 매수 불가 (122630): 자금 부족: 10,295,663 > 9,638,710
+2025-12-28 13:03:34,504 WARNING: 매수 불가 (122630): 자금 부족: 10,434,136 > 9,638,710
+2025-12-28 13:03:34,505 WARNING: 매수 불가 (122630): 자금 부족: 10,759,377 > 9,638,710
+2025-12-28 13:03:34,517 WARNING: 매수 불가 (233740): 자금 부족: 951,171 > 383,692
+2025-12-28 13:03:34,517 WARNING: 매수 불가 (233740): 자금 부족: 10,781,726 > 9,578,770
+2025-12-28 13:03:34,518 WARNING: 매수 불가 (233740): 자금 부족: 10,797,739 > 9,578,770
+2025-12-28 13:03:34,519 WARNING: 매수 불가 (233740): 자금 부족: 10,792,407 > 9,578,770
+2025-12-28 13:03:34,520 WARNING: 매수 불가 (233740): 자금 부족: 10,752,090 > 9,578,770
+2025-12-28 13:03:34,532 WARNING: 매수 불가 (233740): 자금 부족: 919,978 > 428,413
+2025-12-28 13:03:34,533 WARNING: 매수 불가 (233740): 자금 부족: 10,687,878 > 9,626,121
+2025-12-28 13:03:34,534 WARNING: 매수 불가 (233740): 자금 부족: 10,489,606 > 9,626,121
+2025-12-28 13:03:34,534 WARNING: 매수 불가 (233740): 자금 부족: 10,355,554 > 9,626,121
+2025-12-28 13:03:34,535 WARNING: 매수 불가 (233740): 자금 부족: 10,040,991 > 9,626,121
+2025-12-28 13:03:34,561 WARNING: 매수 불가 (035420): 자금 부족: 928,721 > 790,879
+2025-12-28 13:03:34,562 WARNING: 매수 불가 (035420): 자금 부족: 10,066,351 > 9,577,521
+2025-12-28 13:03:34,562 WARNING: 매수 불가 (035420): 자금 부족: 10,071,965 > 9,577,521
+2025-12-28 13:03:34,563 WARNING: 매수 불가 (035420): 자금 부족: 10,220,295 > 9,577,521
+2025-12-28 13:03:34,564 WARNING: 매수 불가 (035420): 자금 부족: 10,204,482 > 9,577,521
+2025-12-28 13:03:34,615 WARNING: 매수 불가 (252670): 자금 부족: 1,051,691 > 995,399
+2025-12-28 13:03:34,616 WARNING: 매수 불가 (252670): 자금 부족: 10,573,535 > 9,721,308
+2025-12-28 13:03:34,617 WARNING: 매수 불가 (252670): 자금 부족: 10,772,128 > 9,721,308
+2025-12-28 13:03:34,617 WARNING: 매수 불가 (252670): 자금 부족: 10,883,002 > 9,721,308
+2025-12-28 13:03:34,618 WARNING: 매수 불가 (252670): 자금 부족: 10,849,160 > 9,721,308
+2025-12-28 13:03:34,630 WARNING: 매수 불가 (252670): 자금 부족: 1,048,886 > 343,342
+2025-12-28 13:03:34,631 WARNING: 매수 불가 (252670): 자금 부족: 10,839,220 > 9,777,867
+2025-12-28 13:03:34,631 WARNING: 매수 불가 (252670): 자금 부족: 11,074,434 > 9,777,867
+2025-12-28 13:03:34,632 WARNING: 매수 불가 (252670): 자금 부족: 10,939,183 > 9,777,867
+2025-12-28 13:03:34,632 WARNING: 매수 불가 (252670): 자금 부족: 11,012,579 > 9,777,867
+2025-12-28 13:03:34,669 ERROR: Orchestrator Crash: cannot access local variable 'final_score' where it is not associated with a value
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 524, in run_strict_phase15
+    study.optimize(objective, n_trials=args.trials)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\study.py", line 490, in optimize
+    _optimize(
+    ~~~~~~~~~^
+        study=self,
+        ^^^^^^^^^^^
+    ...<7 lines>...
+        show_progress_bar=show_progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 63, in _optimize
+    _optimize_sequential(
+    ~~~~~~~~~~~~~~~~~~~~^
+        study,
+        ^^^^^^
+    ...<8 lines>...
+        progress_bar=progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 160, in _optimize_sequential
+    frozen_trial_id = _run_trial(study, func, catch)
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 258, in _run_trial
+    raise func_err
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 201, in _run_trial
+    value_or_values = func(trial)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 452, in objective
+    trial.set_user_attr("valid", bool(final_score > -100))
+                                      ^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'final_score' where it is not associated with a value
+2025-12-28 13:03:34,671 CRITICAL: Uncaught Exception:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 692, in <module>
+    run_strict_phase15("A", args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 524, in run_strict_phase15
+    study.optimize(objective, n_trials=args.trials)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\study.py", line 490, in optimize
+    _optimize(
+    ~~~~~~~~~^
+        study=self,
+        ^^^^^^^^^^^
+    ...<7 lines>...
+        show_progress_bar=show_progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 63, in _optimize
+    _optimize_sequential(
+    ~~~~~~~~~~~~~~~~~~~~^
+        study,
+        ^^^^^^
+    ...<8 lines>...
+        progress_bar=progress_bar,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 160, in _optimize_sequential
+    frozen_trial_id = _run_trial(study, func, catch)
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 258, in _run_trial
+    raise func_err
+  File "C:\Users\minan\anaconda3\Lib\site-packages\optuna\study\_optimize.py", line 201, in _run_trial
+    value_or_values = func(trial)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 452, in objective
+    trial.set_user_attr("valid", bool(final_score > -100))
+                                      ^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'final_score' where it is not associated with a value
+2025-12-28 13:03:34,673 INFO: ResultPackager: Saving Artifacts...

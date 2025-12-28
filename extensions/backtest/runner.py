@@ -242,6 +242,7 @@ class BacktestRunner:
         ma_period: int = 60,  # 모멘텀 계산용 MA 기간
         rsi_period: int = 14,  # RSI 계산 기간
         stop_loss: float = -0.10,  # 손절 기준 (예: -0.10 = -10%)
+        regime_ma_period: int = 200, # 레짐 감지용 MA 기간 (Phase 7)
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -348,10 +349,9 @@ class BacktestRunner:
 
             # 1. 레짐 감지 및 비중 조절
             if self.enable_defense and market_index_data is not None:
-                # Phase 5: Price vs MA Regime Filter (V2)
-                # ma_period를 레짐 감지에도 사용하여 파라미터 일관성 확보
+                # Phase 7: Split Regime MA (regime_ma_period) from Momentum MA (ma_period)
                 regime, confidence = self.regime_detector.detect_regime_v2(
-                    market_index_data, d, ma_period=ma_period
+                    market_index_data, d, ma_period=regime_ma_period
                 )
 
                 if regime != current_regime:
@@ -484,6 +484,8 @@ class BacktestRunner:
                         regime_confidence=regime_confidence,
                         regime_scale=position_ratio,
                         current_date=d,
+
+
                         log_details=(day_count == 1),  # 첫날만 상세 로깅
                     )
 
@@ -505,6 +507,8 @@ class BacktestRunner:
                         regime_confidence=regime_confidence,
                         regime_scale=position_ratio,
                         current_date=d,
+
+
                         log_details=False,
                     )
 
@@ -527,6 +531,15 @@ class BacktestRunner:
         metrics["order_count"] = len(engine.portfolio.trades)
         metrics["raw_signal_count"] = raw_signal_count
         metrics["filtered_signal_count"] = filtered_signal_count
+        
+        # [Phase 6.1] Post-Run Validation
+        if len(engine.portfolio.trades) == 0:
+             # Just warning or raising? If strictly no trades, metrics like sharpe are 0.0 which is fine, but maybe we want to classify?
+             # Let's keep it as is, but rely on 'metrics' check in tool.
+             # Actually, user wants specific Fail Reason.
+             # If we return, run_phase15 sees sharpe=0.0 and might think it's valid but bad.
+             # But if it's TRULY no trades due to logic, it's valid (just inactive).
+             pass
 
         return {
             "metrics": metrics,

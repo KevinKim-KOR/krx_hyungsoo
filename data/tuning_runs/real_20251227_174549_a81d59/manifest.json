@@ -1,0 +1,230 @@
+{
+  "run_id": "gate2_20251227_175337_b600b6",
+  "created_at": "2025-12-27T17:53:37.647418",
+  "schema_version": "4.1",
+  "stage": "gate2",
+  "config": {
+    "period": {
+      "start_date": "2021-01-01T00:00:00",
+      "end_date": "2023-12-31T00:00:00"
+    },
+    "lookbacks": [
+      3,
+      6,
+      12
+    ],
+    "lookback_combination": "min",
+    "trials": 50,
+    "objective": "val_sharpe_with_mdd_penalty",
+    "split": {
+      "method": "chronological",
+      "target_ratios": {
+        "train": 0.7,
+        "val": 0.15,
+        "test": 0.15
+      },
+      "min_val_months": 6,
+      "min_test_months": 6,
+      "applied": {
+        "train_months": 0,
+        "val_months": 0,
+        "test_months": 0
+      }
+    },
+    "guardrails": {
+      "preset": "lax",
+      "min_trades": 30,
+      "min_exposure_ratio": 0.3,
+      "max_annual_turnover": 24
+    },
+    "variables": {},
+    "cost_assumptions": {
+      "commission_rate": 0.00015,
+      "slippage_rate": 0.001,
+      "cost_type": "one_way",
+      "unit": "decimal"
+    }
+  },
+  "data": {
+    "universe_version": "",
+    "universe_source": "KRX",
+    "delisted_handling": "exclude_from_start",
+    "survivorship_bias": "point_in_time",
+    "price_type": "adj_close",
+    "dividend_handling": "total_return",
+    "data_version": "parquet_v1",
+    "universe_hash": "",
+    "universe_count": 14,
+    "requested_codes_count": 14,
+    "effective_codes_count": 14,
+    "requested_hash": "",
+    "effective_hash": "",
+    "sample_codes": [
+      "005930"
+    ]
+  },
+  "results": {
+    "best_trial": {
+      "trial_number": 1,
+      "params": {
+        "ma_period": 50,
+        "rsi_period": 39,
+        "stop_loss_pct": 0.060000000000000005,
+        "bear_rsi_boost": 8
+      },
+      "metrics": {
+        "train": {
+          "sharpe": -2.210432625601362,
+          "cagr": -0.08092592430938694,
+          "mdd": -0.16796746746753288
+        },
+        "val": {
+          "sharpe": -2.0269993156105435,
+          "cagr": -0.08809426105584194,
+          "mdd": -0.057952342027699055
+        },
+        "test": null
+      },
+      "guardrail_checks": {
+        "num_trades": 526,
+        "exposure_ratio": 0.2,
+        "annual_turnover": 0.0
+      },
+      "logic_checks": {
+        "rsi_scale_days": 39,
+        "rsi_scale_events": 10
+      },
+      "anomaly_flags": [],
+      "debug": {
+        "min_lookback_months": 6,
+        "lookback_start_date": "2023-06-30 00:00:00",
+        "params_hash": "cc91a7b683f91105",
+        "cache_key": "217ec29b",
+        "period_signature": "train:2021-01-04 00:00:00~2022-12-23 00:00:00|val:2022-12-26 00:00:00~2023-06-23 00:00:00"
+      },
+      "by_lookback": {
+        "3": {
+          "requested_lb": 3,
+          "effective_lb": "283d",
+          "val_effective_start_date": "2023-03-23 00:00:00",
+          "val_effective_end_date": "2023-12-31 00:00:00",
+          "val_bars_used": 63,
+          "val_trades": 272,
+          "val_is_capped": false,
+          "val_sharpe": -0.3456316340011018,
+          "score": -0.3456316340011018
+        },
+        "6": {
+          "requested_lb": 6,
+          "effective_lb": "370d",
+          "val_effective_start_date": "2022-12-26 00:00:00",
+          "val_effective_end_date": "2023-12-31 00:00:00",
+          "val_bars_used": 122,
+          "val_trades": 526,
+          "val_is_capped": false,
+          "val_sharpe": -2.0269993156105435,
+          "score": -2.0269993156105435
+        },
+        "12": {
+          "requested_lb": 12,
+          "effective_lb": "370d",
+          "val_effective_start_date": "2022-12-26 00:00:00",
+          "val_effective_end_date": "2023-12-31 00:00:00",
+          "val_bars_used": 122,
+          "val_trades": 526,
+          "val_is_capped": false,
+          "val_sharpe": -2.0269993156105435,
+          "score": -2.0269993156105435
+        }
+      },
+      "combined_score": null,
+      "walkforward": {
+        "windows_detail": [
+          {
+            "train_period": {
+              "start": "2021-01-01 00:00:00",
+              "end": "2022-01-01 00:00:00"
+            },
+            "val_period": {
+              "start": "2022-01-01 00:00:00",
+              "end": "2022-04-01 00:00:00"
+            },
+            "outsample_period": {
+              "start": "2022-04-01 00:00:00",
+              "end": "2022-07-01 00:00:00"
+            },
+            "outsample_bars": 63,
+            "outsample_trades": 281,
+            "outsample_sharpe": -2.468121719112008
+          },
+          {
+            "train_period": {
+              "start": "2021-07-01 00:00:00",
+              "end": "2022-07-01 00:00:00"
+            },
+            "val_period": {
+              "start": "2022-07-01 00:00:00",
+              "end": "2022-10-01 00:00:00"
+            },
+            "outsample_period": {
+              "start": "2022-10-01 00:00:00",
+              "end": "2023-01-01 00:00:00"
+            },
+            "outsample_bars": 62,
+            "outsample_trades": 266,
+            "outsample_sharpe": -1.0769337146347393
+          },
+          {
+            "train_period": {
+              "start": "2022-01-01 00:00:00",
+              "end": "2023-01-01 00:00:00"
+            },
+            "val_period": {
+              "start": "2023-01-01 00:00:00",
+              "end": "2023-04-01 00:00:00"
+            },
+            "outsample_period": {
+              "start": "2023-04-01 00:00:00",
+              "end": "2023-07-01 00:00:00"
+            },
+            "outsample_bars": 61,
+            "outsample_trades": 266,
+            "outsample_sharpe": -1.1305269366301463
+          }
+        ],
+        "windows_count": 3,
+        "total_outsample_trades": 813,
+        "avg_outsample_sharpe": -1.558527456792298,
+        "params_source": "best_trial",
+        "params_hash": "cc91a7b683f91105"
+      }
+    },
+    "all_trials_count": 50,
+    "convergence_trial": null,
+    "search_coverage": 50.0,
+    "failure_stats": {
+      "Unknown Error": 5,
+      "exposure_ratio(0.08) < 0.1": 3,
+      "exposure_ratio(0.05) < 0.1": 2,
+      "exposure_ratio(0.02) < 0.1": 1,
+      "exposure_ratio(0.00) < 0.1": 1,
+      "exposure_ratio(0.09) < 0.1": 1
+    }
+  },
+  "environment": {
+    "code_version": "git:6c05f5c4",
+    "python_version": "3.13.5",
+    "optuna_version": "4.5.0",
+    "random_seed": 42,
+    "splitter_version": "chronological_v1",
+    "cost_model_version": "simple_oneway_v1"
+  },
+  "engine_health": {
+    "is_valid": true,
+    "warnings": [],
+    "data_quality": {
+      "missing_ratio": 0.001,
+      "outlier_count": 0
+    }
+  }
+}

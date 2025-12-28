@@ -66,6 +66,7 @@ def _run_single_backtest(
         initial_capital=params.get("initial_capital", 10_000_000),
         enable_defense=params.get("enable_defense", True),
         universe_codes=universe_codes,
+        regime_ma_period=params.get("regime_ma_period", 200),
     )
 
     try:
@@ -106,7 +107,8 @@ def _run_single_backtest(
         return metrics
     except Exception as e:
         logger.error(f"백테스트 실행 실패: {e}")
-        return BacktestMetrics()
+        raise e  # Re-raise for debugging Phase 7
+        # return BacktestMetrics()
 
 
 def run_backtest_for_tuning(
@@ -305,6 +307,56 @@ def run_backtest_for_tuning(
         warnings=[],
         debug=debug_info,
     )
+
+    # [Phase 6.x] Invariant Check: Unknown Error 완전 제거
+    # is_valid가 False인데 reason이 없으면 -> Crash (Logic Error)
+    if result.guardrail_checks and getattr(result.guardrail_checks, 'failures', None):
+        has_reason = True
+    elif result.logic_checks and getattr(result.logic_checks, 'failures', None):
+        has_reason = True
+    elif result.warnings:
+        has_reason = True
+    # BacktestResult.is_valid logic depends on metric_failures too?
+    # No, types.py says is_valid checks guardrail and logic and metric_failures usually if any.
+    # Let's assume failures are the main source.
+        
+    if not result.is_valid and not has_reason:
+        # 상태 덤프 (User Request: params_full, lookback, effective_lb, trades, missing_keys)
+        metric_dict = val_metrics.__dict__ if val_metrics else {}
+        missing_keys = [k for k in ["sharpe", "num_trades", "exposure_ratio"] if k not in metric_dict or metric_dict[k] is None]
+        
+        dump_info = {
+            "error_type": "INVARIANT_VIOLATED_NO_REASON",
+            "context": {
+                "lookback_months": lookback_months,
+                "params_hash": params_hash,
+                "period_signature": period_signature,
+            },
+            "debug_metrics": {
+                "effective_lb": debug_info.effective_eval_start if debug_info else "N/A",
+                "bars_used": debug_info.bars_used if debug_info else "N/A",
+                "trades": val_metrics.num_trades if val_metrics else -1,
+                "exposure_ratio": val_metrics.exposure_ratio if val_metrics else -1.0,
+                "sharpe": val_metrics.sharpe if val_metrics else "N/A",
+            },
+            "integrity_check": {
+                "is_valid": result.is_valid,
+                "failures_guardrail": result.guardrail_checks.failures if result.guardrail_checks else [],
+                "failures_logic": result.logic_checks.failures if result.logic_checks else [],
+                "warnings": result.warnings,
+                "missing_metric_keys": missing_keys,
+            },
+            "params_full": params,
+        }
+        import json
+        try:
+             # Ensure serialization
+             dump_str = json.dumps(dump_info, default=str, indent=2, ensure_ascii=False)
+        except:
+             dump_str = str(dump_info)
+             
+        logger.critical(f"[CRITICAL INVARIANT] Result Invalid with NO Reason!\n{dump_str}")
+        raise ValueError(f"[Critical Invariant] Result is Invalid but No Failure Reason! (Unknown Error). See Log for Dump.")
 
     # 캐시/파라미터 깨짐 탐지: 다른 params_hash인데 같은 cache_key면 ERROR
     if use_cache:

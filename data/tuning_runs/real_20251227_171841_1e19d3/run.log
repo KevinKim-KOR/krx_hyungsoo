@@ -1,0 +1,1411 @@
+2025-12-27 17:18:42,005 INFO: === STRICT PHASE 1.5 START (RunID: real_20251227_171841_1e19d3) ===
+2025-12-27 17:18:42,156 INFO: NumExpr defaulting to 12 threads.
+2025-12-27 17:18:42,311 INFO: [Phase 0] Preflight Check
+2025-12-27 17:18:42,795 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-27 17:18:42,796 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-27 17:18:42,846 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-27 17:18:42,852 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2021-01-01 ~ 2021-01-31
+2025-12-27 17:18:42,853 INFO: [Loader Debug] 005930 Filtered rows: 21
+2025-12-27 17:18:42,912 INFO: [Phase 1] Tuning Loop
+2025-12-27 17:18:42,913 INFO: [Phase 4] Persistence Enabled: sqlite:///data\tuning_runs\real_20251227_171841_1e19d3/optuna.db
+2025-12-27 17:18:43,347 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,347 INFO: [캐시] lb=3M, key=81cec19d
+2025-12-27 17:18:43,369 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,412 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,413 INFO: [캐시] lb=3M, key=c47676b5
+2025-12-27 17:18:43,417 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,457 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,457 INFO: [캐시] lb=3M, key=52dedca1
+2025-12-27 17:18:43,461 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,501 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,502 INFO: [캐시] lb=3M, key=f422b20f
+2025-12-27 17:18:43,506 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,546 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,547 INFO: [캐시] lb=3M, key=64997ea8
+2025-12-27 17:18:43,551 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,590 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,590 INFO: [캐시] lb=3M, key=64f83e00
+2025-12-27 17:18:43,594 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,635 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,635 INFO: [캐시] lb=3M, key=0a420d8a
+2025-12-27 17:18:43,639 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,678 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,679 INFO: [캐시] lb=3M, key=92c67cc8
+2025-12-27 17:18:43,682 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,723 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,723 INFO: [캐시] lb=3M, key=7f692c6d
+2025-12-27 17:18:43,727 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,766 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,766 INFO: [캐시] lb=3M, key=1bdd707b
+2025-12-27 17:18:43,770 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,817 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,818 INFO: [캐시] lb=3M, key=1c0e4e8f
+2025-12-27 17:18:43,822 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,866 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,867 INFO: [캐시] lb=3M, key=08325422
+2025-12-27 17:18:43,871 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,917 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,918 INFO: [캐시] lb=3M, key=c66283ab
+2025-12-27 17:18:43,921 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:43,965 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:43,965 INFO: [캐시] lb=3M, key=367ebdf0
+2025-12-27 17:18:43,969 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,015 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,016 INFO: [캐시] lb=3M, key=97d440c6
+2025-12-27 17:18:44,019 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,063 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,064 INFO: [캐시] lb=3M, key=196c6d7b
+2025-12-27 17:18:44,068 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,113 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,113 INFO: [캐시] lb=3M, key=5f63e2d5
+2025-12-27 17:18:44,117 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,161 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,161 INFO: [캐시] lb=3M, key=ecaabf0b
+2025-12-27 17:18:44,165 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,209 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,209 INFO: [캐시] lb=3M, key=ae969fae
+2025-12-27 17:18:44,213 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,258 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,258 INFO: [캐시] lb=3M, key=0b620e0a
+2025-12-27 17:18:44,262 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,308 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,309 INFO: [캐시] lb=3M, key=b2b26498
+2025-12-27 17:18:44,313 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,359 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,360 INFO: [캐시] lb=3M, key=f72d0ea2
+2025-12-27 17:18:44,364 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,408 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,409 INFO: [캐시] lb=3M, key=57ca5902
+2025-12-27 17:18:44,412 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,458 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,458 INFO: [캐시] lb=3M, key=e5503dd2
+2025-12-27 17:18:44,462 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,508 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,509 INFO: [캐시] lb=3M, key=e0e073cf
+2025-12-27 17:18:44,513 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,557 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,557 INFO: [캐시] lb=3M, key=8212b45a
+2025-12-27 17:18:44,561 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,612 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,613 INFO: [캐시] lb=3M, key=7883405b
+2025-12-27 17:18:44,617 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,662 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,663 INFO: [캐시] lb=3M, key=9d7c3ee6
+2025-12-27 17:18:44,666 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,711 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,712 INFO: [캐시] lb=3M, key=4a7beba4
+2025-12-27 17:18:44,716 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,760 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,761 INFO: [캐시] lb=3M, key=5d644694
+2025-12-27 17:18:44,764 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,809 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,809 INFO: [캐시] lb=3M, key=6037b0ae
+2025-12-27 17:18:44,813 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,860 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,860 INFO: [캐시] lb=3M, key=a1c36bfb
+2025-12-27 17:18:44,864 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,914 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,915 INFO: [캐시] lb=3M, key=89705f66
+2025-12-27 17:18:44,919 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:44,969 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:44,969 INFO: [캐시] lb=3M, key=000249b4
+2025-12-27 17:18:44,973 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,020 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,021 INFO: [캐시] lb=3M, key=f9871145
+2025-12-27 17:18:45,025 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,072 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,072 INFO: [캐시] lb=3M, key=0bf7a704
+2025-12-27 17:18:45,076 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,126 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,127 INFO: [캐시] lb=3M, key=df383748
+2025-12-27 17:18:45,131 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,179 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,179 INFO: [캐시] lb=3M, key=d76076a9
+2025-12-27 17:18:45,183 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,228 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,228 INFO: [캐시] lb=3M, key=4079041b
+2025-12-27 17:18:45,232 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,297 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,298 INFO: [캐시] lb=3M, key=d77e45fa
+2025-12-27 17:18:45,302 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,357 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,358 INFO: [캐시] lb=3M, key=dc3c78a1
+2025-12-27 17:18:45,361 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,414 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,415 INFO: [캐시] lb=3M, key=efc970a6
+2025-12-27 17:18:45,419 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,474 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,474 INFO: [캐시] lb=3M, key=aab99af1
+2025-12-27 17:18:45,478 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,527 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,528 INFO: [캐시] lb=3M, key=19977e7e
+2025-12-27 17:18:45,532 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,597 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,598 INFO: [캐시] lb=3M, key=c5b33bb5
+2025-12-27 17:18:45,602 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,653 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,654 INFO: [캐시] lb=3M, key=2dd0daf8
+2025-12-27 17:18:45,658 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,713 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,714 INFO: [캐시] lb=3M, key=05188721
+2025-12-27 17:18:45,718 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,781 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,782 INFO: [캐시] lb=3M, key=c7d98aa6
+2025-12-27 17:18:45,785 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,832 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,833 INFO: [캐시] lb=3M, key=137a8205
+2025-12-27 17:18:45,837 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,888 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:18:45,888 INFO: [캐시] lb=3M, key=b0c44568
+2025-12-27 17:18:45,893 ERROR: Objective Failed: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,915 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-27 17:18:45,927 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-27 17:18:45,927 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 100, 'rsi_period': 58, 'stop_loss_pct': 0.13, 'bear_rsi_boost': 12, 'bear_size_mult': 0.2}
+2025-12-27 17:18:45,931 ERROR: Orchestrator Crash: keyword argument repeated: regime_scale (runner.py, line 491)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 497, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 148, in run
+    metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=self.universe_codes
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,932 CRITICAL: Uncaught Exception:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 608, in <module>
+    run_strict_phase15("A", args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 497, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 148, in run
+    metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=self.universe_codes
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 491
+    regime_scale=position_ratio,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: regime_scale
+2025-12-27 17:18:45,935 INFO: ResultPackager: Saving Artifacts...

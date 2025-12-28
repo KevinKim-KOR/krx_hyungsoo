@@ -309,6 +309,7 @@ def run_strict_phase15(
         )
         
         import optuna
+        import numpy as np # Added for NaN check
         optuna.logging.set_verbosity(optuna.logging.WARNING)
         
         # [Phase 4] DB Isolation
@@ -343,6 +344,14 @@ def run_strict_phase15(
             by_lookback_evidence = {}
             scores = []
             
+            # Result init for safety
+            result = None
+            final_fail_reason = None # Initialize to avoid UnboundLocalError globally in objective
+            
+            # [Phase 6.x Debug] Ensure Validation Window is large enough for 12M lookback
+            # Default is 6M, which causes 12M lookback to be clamped to 6M (same as 6M lookback)
+            tuning_split_config = SplitConfig(min_val_months=14)
+            
             try:
                 for lb in lookbacks:
                     result = run_backtest_for_tuning(
@@ -353,7 +362,8 @@ def run_strict_phase15(
                         trading_calendar=trading_calendar,
                         universe_codes=universe_codes,
                         use_cache=True,
-                        guardrail_config=guardrail_config
+                        guardrail_config=guardrail_config,
+                        split_config=tuning_split_config, # Fix: Enforce larger val window
                     )
                     
                     # Collect Evidence (Debug Info)
@@ -397,26 +407,118 @@ def run_strict_phase15(
                         scores.append(float(result.val.sharpe) if result.val else 0.0)
                     else:
                         scores.append(-999.0)
-                final_score = min(scores) if scores else -999.0
+                        
+                # [Phase 6.x Final] Data Integrity: Monotonicity Check
+                # Rule 1: Start Date (12M) <= Start Date (6M) <= Start Date (3M)
+                # Rule 2: Bars Used (12M) >= Bars Used (6M) >= Bars Used (3M)
+                if all(k in by_lookback_evidence for k in [3, 6, 12]):
+                    src3 = by_lookback_evidence[3]
+                    src6 = by_lookback_evidence[6]
+                    src12 = by_lookback_evidence[12]
+                    
+                    if src3["val_effective_start_date"] != "N/A" and src6["val_effective_start_date"] != "N/A" and src12["val_effective_start_date"] != "N/A":
+                        # Compare dates string lexicographically (YYYY-MM-DD format works)
+                        d3 = src3["val_effective_start_date"]
+                        d6 = src6["val_effective_start_date"]
+                        d12 = src12["val_effective_start_date"]
+                        
+                        b3 = src3["val_bars_used"]
+                        b6 = src6["val_bars_used"]
+                        b12 = src12["val_bars_used"]
+
+                        if not (d12 <= d6 <= d3):
+                            msg = f"[CRITICAL INTEGRITY] Date Monotonicity Failed! 12M({d12}) <= 6M({d6}) <= 3M({d3}) broken."
+                            logger.critical(msg)
+                            raise ValueError(msg)
+                        
+                        if not (b12 >= b6 >= b3):
+                            msg = f"[CRITICAL INTEGRITY] Bars Monotonicity Failed! 12M({b12}) >= 6M({b6}) >= 3M({b3}) broken."
+                            logger.critical(msg)
+                            raise ValueError(msg)
 
             except Exception as e:
                 logger.error(f"Objective Failed: {e}", exc_info=True)
                 final_score = -9999.0
+                # Capture exception for reporting
+                err_msg = f"Exception: {str(e)}"
+                trial.set_user_attr("fail_reason", err_msg)
+                try:
+                    with open("error_dump.txt", "w", encoding="utf-8") as f:
+                        f.write(err_msg)
+                except: pass
             finally:
                 # Store Evidence in Trial Attribute (CRITICAL)
                 # Ensure all values are JSON serializable (cast numpy types)
                 trial.set_user_attr("by_lookback", by_lookback_evidence)
                 trial.set_user_attr("valid", bool(final_score > -100))
                 
-                # Capture Failure Reason
+                # Per-Trial Debug Dump
+                try:
+                    t_dump = {
+                        "number": trial.number,
+                        "score": final_score,
+                        "reason": trial.user_attrs.get("fail_reason", "None"),
+                        "result_exists": bool(result),
+                        "val_exists": bool(result.val) if result else False,
+                        "is_valid": result.is_valid if result else False,
+                        "guardrail_fails": getattr(result.guardrail_checks, 'failures', []) if result and result.guardrail_checks else [],
+                        "logic_fails": getattr(result.logic_checks, 'failures', []) if result and result.logic_checks else [],
+                        "warnings": result.warnings if result else []
+                    }
+                    with open(f"debug_dump_{trial.number}.json", "w", encoding="utf-8") as f:
+                        json.dump(t_dump, f, indent=2, default=str)
+                except Exception as ex:
+                    logger.error(f"Dump Failed: {ex}")
+                # Capture Failure Reason (Prioritize existing reason if set, else check guardrails)
+                # Check fail reason logic
                 if final_score <= -100:
-                   reason = "Unknown Error"
-                   if result and result.guardrail_checks and result.guardrail_checks.failures:
-                       reason = result.guardrail_checks.failures[0] # Grab first fail reason
-                   # elif result and not result.is_valid ... capture other reasons?
-                   # For now, simplify to guardrail/metrics
-                   
-                   trial.set_user_attr("fail_reason", reason)
+                    current_reason = trial.user_attrs.get("fail_reason")
+                    if not current_reason:
+                        final_fail_reason = "Unknown Error"
+                        
+                        # Detailed Classification
+                        if result is None:
+                            final_fail_reason = "Critical_Crash (Result None)"
+                        elif not result.val:
+                            final_fail_reason = "Empty_Metrics"
+                        elif result.val and (pd.isna(result.val.sharpe) or np.isinf(result.val.sharpe)):
+                            final_fail_reason = "Result_NaN"
+                            if hasattr(result.val, 'num_trades') and result.val.num_trades == 0:
+                                final_fail_reason = "NO_TRADES"
+                        elif result.guardrail_checks and getattr(result.guardrail_checks, 'failures', None):
+                            final_fail_reason = result.guardrail_checks.failures[0] # Grab first fail reason
+                        elif result.logic_checks and getattr(result.logic_checks, 'failures', None):
+                            final_fail_reason = f"Logic: {result.logic_checks.failures[0]}"
+                        elif result.warnings:
+                            final_fail_reason = f"Warning: {result.warnings[0]}"
+                        
+                        # Extra Check for incomplete metrics
+                        if final_fail_reason == "Unknown Error" and result.val:
+                            if not hasattr(result.val, 'sharpe'):
+                                final_fail_reason = "METRICS_KEY_MISSING"
+                                
+                        # [Phase 6.x] Fail-Fast on Unknown Error
+                        if final_fail_reason == "Unknown Error":
+                            # Dump Context
+                            debug_ctx = {
+                                "is_valid": result.is_valid if result else "None",
+                                "val_exists": bool(result.val) if result else False,
+                                "guardrail": getattr(result.guardrail_checks, 'failures', 'N/A') if result else "N/A",
+                                "logic": getattr(result.logic_checks, 'failures', 'N/A') if result else "N/A",
+                                "warnings": result.warnings if result else "N/A"
+                            }
+                            msg = f"[CRITICAL UNKNOWN ERROR] Trial failed but reason is Unknown! Context: {debug_ctx}"
+                            
+                            # Dump to file for reliable debugging
+                            try:
+                                with open("crash_dump.json", "w", encoding="utf-8") as f:
+                                    json.dump(debug_ctx, f, indent=2, default=str)
+                            except: pass
+                            
+                            logger.critical(msg)
+                            raise RuntimeError(msg)
+                        
+                        trial.set_user_attr("fail_reason", final_fail_reason)
             
             return final_score
 
@@ -588,4 +690,12 @@ if __name__ == "__main__":
         # Assuming simple script usage or basicConfig was called earlier
         logging.basicConfig(level=numeric_level, style='{', format='{asctime} [{levelname}] {name}: {message}')
     
-    run_strict_phase15("A", args)
+    try:
+        run_strict_phase15("A", args)
+    except Exception as e:
+        import traceback
+        with open("fatal_error.log", "w", encoding="utf-8") as f:
+            f.write(traceback.format_exc())
+        print(f"FATAL ERROR: {e}")
+        import sys
+        sys.exit(1)

@@ -401,7 +401,19 @@ class BacktestEngine:
                 if quantity > 0:
                     if value_diff > 0:
                         # 매수
-                        self.execute_buy(symbol, quantity, price, trade_date)
+                        # 가용 현금 확인 (Best Effort Execution)
+                        # 예상 비용(1주당) = 가격 * (1+슬리피지) * (1+수수료율)
+                        est_price = price * (1 + self.slippage_rate)
+                        est_cost_per_share = est_price * (1 + self.commission_rate)
+                        
+                        max_qty_by_cash = int(self.portfolio.cash / est_cost_per_share)
+                        
+                        if quantity > max_qty_by_cash:
+                             logger.debug(f"{symbol} 수량 조정 (자금 부족): {quantity} -> {max_qty_by_cash}")
+                             quantity = max_qty_by_cash
+                        
+                        if quantity > 0:
+                            self.execute_buy(symbol, quantity, price, trade_date)
                     else:
                         # 매도 (최소 보유일 체크)
                         can_sell = True

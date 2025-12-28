@@ -1,0 +1,1411 @@
+2025-12-27 17:16:24,167 INFO: === STRICT PHASE 1.5 START (RunID: real_20251227_171624_d754ec) ===
+2025-12-27 17:16:24,307 INFO: NumExpr defaulting to 12 threads.
+2025-12-27 17:16:24,473 INFO: [Phase 0] Preflight Check
+2025-12-27 17:16:24,986 INFO: 캐시 기반 유니버스: 14개 종목 (지수 코드 제외)
+2025-12-27 17:16:24,986 INFO: [Loader Debug] 005930 path: data\cache\005930.parquet exists: True
+2025-12-27 17:16:25,036 INFO: [Loader Debug] 005930 raw shape: (1559, 5), index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>, cols: Index(['Open', 'High', 'Low', 'Close', 'Volume'], dtype='object')
+2025-12-27 17:16:25,042 INFO: [Loader Debug] 005930 Date Range: 2019-01-01 00:00:00 ~ 2024-12-20 00:00:00 vs Target: 2021-01-01 ~ 2021-01-31
+2025-12-27 17:16:25,044 INFO: [Loader Debug] 005930 Filtered rows: 21
+2025-12-27 17:16:25,098 INFO: [Phase 1] Tuning Loop
+2025-12-27 17:16:25,099 INFO: [Phase 4] Persistence Enabled: sqlite:///data\tuning_runs\real_20251227_171624_d754ec/optuna.db
+2025-12-27 17:16:25,544 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,544 INFO: [캐시] lb=3M, key=81cec19d
+2025-12-27 17:16:25,567 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,610 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,611 INFO: [캐시] lb=3M, key=c47676b5
+2025-12-27 17:16:25,614 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,655 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,655 INFO: [캐시] lb=3M, key=52dedca1
+2025-12-27 17:16:25,658 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,702 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,703 INFO: [캐시] lb=3M, key=f422b20f
+2025-12-27 17:16:25,706 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,748 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,749 INFO: [캐시] lb=3M, key=64997ea8
+2025-12-27 17:16:25,752 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,793 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,793 INFO: [캐시] lb=3M, key=64f83e00
+2025-12-27 17:16:25,796 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,837 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,837 INFO: [캐시] lb=3M, key=0a420d8a
+2025-12-27 17:16:25,840 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,887 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,887 INFO: [캐시] lb=3M, key=92c67cc8
+2025-12-27 17:16:25,890 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,934 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,934 INFO: [캐시] lb=3M, key=7f692c6d
+2025-12-27 17:16:25,938 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:25,980 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:25,981 INFO: [캐시] lb=3M, key=1bdd707b
+2025-12-27 17:16:25,984 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,030 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,031 INFO: [캐시] lb=3M, key=1c0e4e8f
+2025-12-27 17:16:26,034 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,080 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,081 INFO: [캐시] lb=3M, key=08325422
+2025-12-27 17:16:26,084 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,128 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,129 INFO: [캐시] lb=3M, key=c66283ab
+2025-12-27 17:16:26,132 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,178 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,178 INFO: [캐시] lb=3M, key=367ebdf0
+2025-12-27 17:16:26,182 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,227 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,227 INFO: [캐시] lb=3M, key=97d440c6
+2025-12-27 17:16:26,231 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,278 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,278 INFO: [캐시] lb=3M, key=196c6d7b
+2025-12-27 17:16:26,282 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,328 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,329 INFO: [캐시] lb=3M, key=5f63e2d5
+2025-12-27 17:16:26,333 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,378 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,379 INFO: [캐시] lb=3M, key=ecaabf0b
+2025-12-27 17:16:26,382 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,429 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,429 INFO: [캐시] lb=3M, key=ae969fae
+2025-12-27 17:16:26,432 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,477 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,478 INFO: [캐시] lb=3M, key=0b620e0a
+2025-12-27 17:16:26,481 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,529 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,529 INFO: [캐시] lb=3M, key=b2b26498
+2025-12-27 17:16:26,532 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,577 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,578 INFO: [캐시] lb=3M, key=f72d0ea2
+2025-12-27 17:16:26,581 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,629 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,630 INFO: [캐시] lb=3M, key=57ca5902
+2025-12-27 17:16:26,633 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,680 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,681 INFO: [캐시] lb=3M, key=e5503dd2
+2025-12-27 17:16:26,684 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,731 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,732 INFO: [캐시] lb=3M, key=e0e073cf
+2025-12-27 17:16:26,735 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,780 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,781 INFO: [캐시] lb=3M, key=8212b45a
+2025-12-27 17:16:26,784 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,829 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,829 INFO: [캐시] lb=3M, key=7883405b
+2025-12-27 17:16:26,832 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,878 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,878 INFO: [캐시] lb=3M, key=9d7c3ee6
+2025-12-27 17:16:26,881 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,927 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,927 INFO: [캐시] lb=3M, key=4a7beba4
+2025-12-27 17:16:26,930 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:26,976 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:26,976 INFO: [캐시] lb=3M, key=5d644694
+2025-12-27 17:16:26,980 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,030 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,030 INFO: [캐시] lb=3M, key=6037b0ae
+2025-12-27 17:16:27,034 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,082 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,083 INFO: [캐시] lb=3M, key=a1c36bfb
+2025-12-27 17:16:27,086 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,140 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,140 INFO: [캐시] lb=3M, key=89705f66
+2025-12-27 17:16:27,144 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,192 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,193 INFO: [캐시] lb=3M, key=000249b4
+2025-12-27 17:16:27,196 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,244 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,244 INFO: [캐시] lb=3M, key=f9871145
+2025-12-27 17:16:27,247 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,294 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,295 INFO: [캐시] lb=3M, key=0bf7a704
+2025-12-27 17:16:27,298 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,350 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,351 INFO: [캐시] lb=3M, key=df383748
+2025-12-27 17:16:27,354 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,405 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,406 INFO: [캐시] lb=3M, key=d76076a9
+2025-12-27 17:16:27,409 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,460 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,461 INFO: [캐시] lb=3M, key=4079041b
+2025-12-27 17:16:27,465 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,671 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,671 INFO: [캐시] lb=3M, key=d77e45fa
+2025-12-27 17:16:27,675 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,727 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,728 INFO: [캐시] lb=3M, key=dc3c78a1
+2025-12-27 17:16:27,731 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,778 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,778 INFO: [캐시] lb=3M, key=efc970a6
+2025-12-27 17:16:27,781 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,827 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,827 INFO: [캐시] lb=3M, key=aab99af1
+2025-12-27 17:16:27,830 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,877 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,877 INFO: [캐시] lb=3M, key=19977e7e
+2025-12-27 17:16:27,880 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,926 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,926 INFO: [캐시] lb=3M, key=c5b33bb5
+2025-12-27 17:16:27,929 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:27,978 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:27,978 INFO: [캐시] lb=3M, key=2dd0daf8
+2025-12-27 17:16:27,981 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:28,039 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:28,040 INFO: [캐시] lb=3M, key=05188721
+2025-12-27 17:16:28,044 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:28,098 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:28,099 INFO: [캐시] lb=3M, key=c7d98aa6
+2025-12-27 17:16:28,102 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:28,147 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:28,148 INFO: [캐시] lb=3M, key=137a8205
+2025-12-27 17:16:28,151 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:28,197 INFO: Split 계산: Train=24M, Val=6M, Test=6M
+2025-12-27 17:16:28,197 INFO: [캐시] lb=3M, key=b0c44568
+2025-12-27 17:16:28,200 ERROR: Objective Failed: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 355, in objective
+    result = run_backtest_for_tuning(
+        params=params,
+    ...<6 lines>...
+        guardrail_config=guardrail_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 190, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:28,220 WARNING: No valid trials found. Saving BEST ATTEMPT for evidence.
+2025-12-27 17:16:28,232 INFO: [Phase 2] Gate 2 Walk-Forward (Attempting with best params)
+2025-12-27 17:16:28,232 INFO: [EVIDENCE] Main Engine passing params to _run_single_backtest: {'ma_period': 100, 'rsi_period': 58, 'stop_loss_pct': 0.13, 'bear_rsi_boost': 12, 'bear_size_mult': 0.2}
+2025-12-27 17:16:28,236 ERROR: Orchestrator Crash: duplicate argument 'rebalance_period' in function definition (runner.py, line 243)
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 497, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 148, in run
+    metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=self.universe_codes
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:28,237 CRITICAL: Uncaught Exception:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 608, in <module>
+    run_strict_phase15("A", args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 497, in run_strict_phase15
+    wf_evidences = wf_runner.run(best_params)
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_realdata.py", line 148, in run
+    metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=self.universe_codes
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 55, in _run_single_backtest
+    service = BacktestService(save_history=False)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 163, in __init__
+    self._validate_dependencies()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 173, in _validate_dependencies
+    from extensions.backtest.runner import BacktestRunner
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 243
+    rebalance_period: int = 5,  # 리밸런싱 주기 (영업일)
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: duplicate argument 'rebalance_period' in function definition
+2025-12-27 17:16:28,239 INFO: ResultPackager: Saving Artifacts...

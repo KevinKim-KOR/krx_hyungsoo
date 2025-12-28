@@ -131,7 +131,7 @@ class WeightScaler:
         self.profiles["conservative"] = RSIProfile(
             name="conservative",
             description="보수적 프로파일",
-            rsi_boost_enabled=False,
+            rsi_boost_enabled=True,
             rules=[
                 RSIRule(min=80, max=100, scale=0.0),
                 RSIRule(min=70, max=80, scale=0.5),

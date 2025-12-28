@@ -343,12 +343,11 @@ class MarketRegimeDetector:
             return 1.0 + (confidence - 0.5) * 0.4
             
         elif regime == 'bear':
-            # 하락장: 40~60% 포지션 (신뢰도에 따라, 개선!)
-            # 신뢰도 높을수록 포지션 감소
-            return 0.6 - (confidence - 0.5) * 0.4
+            # 하락장: 0% 포지션 (완전 현금화)
+            return 0.0
             
         else:
-            # 중립장: 80% 포지션 (개선!)
+            # 중립장: 80% 포지션
             return 0.8
     
     def should_enter_defense_mode(
