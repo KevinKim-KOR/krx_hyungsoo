@@ -30,6 +30,7 @@
 *   **Features**:
     *   **Read Quality**: 로그 인코딩 손상 여부 감지 (Partial/Failed).
     *   **Evidence-Based**: 로그 키워드([OK], [ERROR]) 기반 상태 판정.
+    *   **Observer-Constitution**: `docs/design/ui_contract_v1.0.md`에 정의된 헌법(Color/Wording) 준수.
     *   **No-Touch**: 엔진에 영향을 주지 않는 순수 관찰자 패턴.
 
 ## 3. Operational Manual (How-to)
@@ -42,18 +43,20 @@
 *   **성공 시**: `logs/daily_YYYYMMDD.log`에 `[COMPLETED]` 기록.
 *   **실패 시**: 즉시 중단 및 에러 로그 기록.
 
-### Status Monitoring
+### Status Monitoring (`docs/ops/monitoring_guide.md`)
 ```bash
 # Dashboard Server Start
 uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 *   브라우저에서 `http://localhost:8000` 접속.
-*   **🟡 노란 배지** 발생 시: 로그 파일 직접 확인 필요 (인코딩 이슈 등).
+*   **🟡 노란 배지(Log Damaged)**: 로그 인코딩 문제, 운영 영향 없음.
+*   **🔴 빨간 배지(System Fail)**: 즉시 `[LOGS]` 탭 확인 필요.
 
 ## 4. Risk Acceptance & Policies
 본 프로젝트는 다음 리스크를 인지하고 수용했습니다 (`docs/architecture_freeze.md`).
-1.  **Partial Log Reading**: 인코딩 문제로 로그가 일부 깨져도 운영에 지장 없으므로 **"주의"** 단계로 표시하고 진행.
+1.  **Partial Log Reading**: 인코딩 문제로 로그가 일부 깨져도 운영에 지장 없으므로 **"주의(Yellow)"** 단계로 표시하고 진행.
 2.  **No Intraday**: 장중 실시간 시세는 무시하며, 오직 **종가(Close)** 기준으로만 판단.
+3.  **Zero Signal != Error**: 거래 신호가 없는 것은 정상적인 "No Action" 상태임.
 
 ## 5. Future Roadmap
 *   **Phase 15**: 실계좌 연동 (Broker API).

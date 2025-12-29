@@ -170,6 +170,7 @@ def get_status():
         log_file = LOG_DIR / f"daily_{today}.log"
         
         status = {
+            "schema_version": "UI-1.0",
             "date": today,
             "badge": "WAITING", 
             "message": "아직 실행 로그가 없습니다.",

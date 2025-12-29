@@ -442,3 +442,12 @@ windows = len(wf_results_list)
     - Daily Signals
     - Raw Log Viewer
 
+### 4. Phase 14.4 — UI/UX Hardening & "Observer" Constitution (2025-12-29)
+- **UI Constitution**: `docs/design/ui_contract_v1.0.md` 제정. 상태 코드(Color)와 용어(Wording)의 불변 규칙 정의.
+- **API Versioning**: `backend/main.py`에 `schema_version: UI-1.0` 도입하여 UI-Backend 간 계약 체결.
+- **Operational Dashboard**: `dashboard/index.html` 고도화.
+    - **Trust-First**: `read_quality` 기반의 Yellow/Orange Warning 시스템 구현.
+    - **Context Awareness**: 자산 추이(History) 차트 및 5일간의 컨텍스트 제공.
+    - **Safety**: System Fail 시 자동으로 로그 탭으로 포커스 이동.
+- **Documentation**: `docs/ops/monitoring_guide.md` (운영자 매뉴얼) 작성.
+
