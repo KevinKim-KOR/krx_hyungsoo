@@ -3,7 +3,7 @@
 
 # 데이터베이스
 database:
-  path: "krx_alertor.sqlite3"
+  path: "data/db/krx_alertor.sqlite3"
   echo: false
 
 # 타임존

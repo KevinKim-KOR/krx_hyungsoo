@@ -67,6 +67,10 @@ def _run_single_backtest(
         enable_defense=params.get("enable_defense", True),
         universe_codes=universe_codes,
         regime_ma_period=params.get("regime_ma_period", 200),
+        min_regime_hold_days=params.get("min_regime_hold_days", 20),
+        regime_ma_long=params.get("regime_ma_long", 200),
+        adx_period=params.get("adx_period", 14),
+        adx_threshold=params.get("adx_threshold", 20.0),
     )
 
     try:

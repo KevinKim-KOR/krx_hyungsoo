@@ -242,7 +242,11 @@ class BacktestRunner:
         ma_period: int = 60,  # 모멘텀 계산용 MA 기간
         rsi_period: int = 14,  # RSI 계산 기간
         stop_loss: float = -0.10,  # 손절 기준 (예: -0.10 = -10%)
-        regime_ma_period: int = 200, # 레짐 감지용 MA 기간 (Phase 7)
+        regime_ma_period: int = 200, # Legacy: internally mapped if needed
+        min_regime_hold_days: int = 20, # Phase 7.1: Hysteresis
+        regime_ma_long: int = 200, # Phase 8: Long Term MA for Regime
+        adx_period: int = 14, # Phase 9: ADX Period
+        adx_threshold: float = 20.0, # Phase 9: ADX Threshold (Chop Filter)
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -343,23 +347,85 @@ class BacktestRunner:
         raw_signal_count = 0
         filtered_signal_count = 0
 
-        for current_date in dates:
+        # Hysteresis Variables
+        locked_regime = None
+        last_regime_change_idx = -999
+        
+        # Phase 7.2 Diagnostics
+        regime_switch_count = 0
+        regime_locked_count = 0
+
+        for i, current_date in enumerate(dates):
             d = current_date.date()
             day_count += 1
 
             # 1. 레짐 감지 및 비중 조절
             if self.enable_defense and market_index_data is not None:
-                # Phase 7: Split Regime MA (regime_ma_period) from Momentum MA (ma_period)
-                regime, confidence = self.regime_detector.detect_regime_v2(
-                    market_index_data, d, ma_period=regime_ma_period
+                # Phase 9: Dual Timeframe + ADX Chop Filter
+                # detect_regime_adx returns (regime, confidence, is_golden_cross, is_chop)
+                raw_regime, raw_confidence, is_golden_cross, is_chop = self.regime_detector.detect_regime_adx(
+                    market_index_data, d, 
+                    long_ma_period=regime_ma_long, 
+                    short_ma_period=ma_period,
+                    adx_period=adx_period,
+                    adx_threshold=adx_threshold
                 )
+                
+                # Warm-up Safety: Default to 'bull' if not enough data
+                desired_regime = raw_regime if raw_regime else "bull"
+                
+                # Phase 7.1: Hysteresis Logic
+                if locked_regime is None:
+                    # 초기화
+                    locked_regime = desired_regime
+                    last_regime_change_idx = i
+                    current_regime = locked_regime
+                
+                if desired_regime != locked_regime:
+                    days_since_change = i - last_regime_change_idx
+                    if days_since_change < min_regime_hold_days:
+                        # Phase 8 Override: Golden Cross -> Force UNLOCK
+                        if is_golden_cross and locked_regime == 'bear' and desired_regime == 'bull':
+                             # 하락장 Lock 상태인데 골든크로스 발생 -> 즉시 상승장 전환 허용
+                             logger.debug(f"Hysteresis Override: Golden Cross Triggered on {d}!")
+                             # UNLOCK & SWITCH
+                             if locked_regime != desired_regime:
+                                  logger.debug(f"Regime Switched (Override): {locked_regime} -> {desired_regime}")
+                                  regime_switch_count += 1
+                             locked_regime = desired_regime
+                             last_regime_change_idx = i
+                             current_regime = locked_regime
+                        else:
+                            # LOCK Active: 변경 무시
+                            current_regime = locked_regime
+                            regime_locked_count += 1
+                            # logger.debug(f"Regime Locked: desire={desired_regime}, locked={locked_regime} ({days_since_change}/{min_regime_hold_days})")
+                    else:
+                        # UNLOCK & SWITCH: 변경 승인
+                        if locked_regime != desired_regime:
+                             logger.debug(f"Regime Switched: {locked_regime} -> {desired_regime} (Held {days_since_change} days)")
+                             regime_switch_count += 1
+                        locked_regime = desired_regime
+                        last_regime_change_idx = i
+                        current_regime = locked_regime
 
-                if regime != current_regime:
-                    current_regime = regime
-                    logger.debug(f"레짐 변경: {current_regime} (confidence: {confidence:.2f})")
+                # Phase 9 Priority: Chop Filter (Kill Switch)
+                # 우선순위: Hysteresis/Dual 결과가 'bull'이더라도, ADX < Threshold(Chop)이면 강제 Bear(Cash).
+                if is_chop:
+                    # Log chop event occasionally
+                    if current_regime == 'bull':
+                        # logger.debug(f"Chop Detected on {d} (ADX Low): Force Risk-Off")
+                        pass
+                    current_regime = 'bear' 
+                    # Note: We technically override 'current_regime' to bear, but keep 'locked_regime' state 
+                    # so that when chop ends, we resume the locked state logic.
+                else:
+                    current_regime = locked_regime
 
-                regime_confidence = confidence
-                position_ratio = self.regime_detector.get_position_ratio(regime, confidence)
+                # Use raw confidence for now, or maybe locked confidence? 
+                # Let's stick to raw confidence for position sizing inside the regime
+                regime_confidence = raw_confidence
+                position_ratio = self.regime_detector.get_position_ratio(current_regime, regime_confidence)
 
             # [EVIDENCE] Force Entry Logic (Bypass Filters)
             import os
@@ -540,6 +606,10 @@ class BacktestRunner:
              # If we return, run_phase15 sees sharpe=0.0 and might think it's valid but bad.
              # But if it's TRULY no trades due to logic, it's valid (just inactive).
              pass
+
+        # Metrics에 레짐 통계 추가
+        metrics['regime_switch_count'] = regime_switch_count
+        metrics['regime_locked_count'] = regime_locked_count
 
         return {
             "metrics": metrics,

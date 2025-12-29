@@ -1,100 +1,74 @@
-# ARCHITECTURE — 시스템 구조 및 설계 (v2 재작성)
+# System Architecture (v3)
 
-## 1. 설계 목표
-- **순차 처리 우선**: 모든 데이터와 연산은 순차적으로 처리한다. 병렬/멀티프로세싱은 금지 (튜닝 단계만 예외).
-- **Clean Architecture** 기반: 도메인(core) 독립성 확보, 외부 의존성(infra) 분리.
-- **NAS–PC 병행 구조**: NAS(Py3.8)는 운영/알림, PC(Py3.11+)는 백테스트/튜닝.
-- **핵심 보유 종목(HOLD_CORE)** 로직을 전략 및 백테스트 단계 모두에 통합.
+**Last Update**: 2025-12-29
 
----
+## 1. High-Level Overview
 
-## 2. 시스템 계층 구조
-```
-app/                    # 애플리케이션 진입점(CLI, API)
- ├─ cli/                # 공용 CLI (Py3.8 호환)
- ├─ services/backtest_api/  # (PC 전용) FastAPI 서비스
-core/                   # 도메인 로직 (순수 파이썬, Py3.8 호환)
- ├─ strategy/           # 전략 정의 및 룩백 규칙
- ├─ engine/             # 추천·백테스트 엔진
- ├─ risk/               # 리스크 및 포지션 규칙
- └─ metrics/            # 성과·지표 계산
-extensions/             # (Py3.11+) 백테스트·튜닝·병렬화 모듈
-infra/                  # 외부 시스템 어댑터
- ├─ data/               # pykrx, naver, yfinance 데이터소스
- ├─ notify/             # Slack, Telegram 등 알림 어댑터
- └─ storage/            # 파일/DB 입출력
-configs/                # YAML 설정 (전략·유니버스·알림 등)
-reports/                # 생성 리포트 및 결과물
-scripts/                # NAS·PC 운영 스크립트
-tests/                  # 단위 및 통합 테스트
-```
+KRX Alertor Modular 시스템은 **Clean Architecture** 원칙을 지향하며, 핵심 비즈니스 로직(`core`)을 외부 인터페이스(`app`, `web`, `infra`)로부터 격리하는 구조입니다.
+
+현재 시스템은 과도기적 단계로, 구형 진입점(`pc`, `web`)과 신형 아키텍처(`backend`)가 공존하고 있습니다.
 
 ---
 
-## 3. 데이터 처리 및 휴장일 정책
-- **데이터는 순차 인입 후 캐시 저장.**
-- **휴장일 처리 원칙:**
-  - 개장일 자정 이후는 다음 거래일로 간주.
-  - 휴장일에는 캐시 데이터를 그대로 재사용.
-  - 추천 및 알림 생성은 “다음 거래일 기준” 데이터로 수행.
-- **데이터 소스 우선순위:**
-  1. 한국: `pykrx` → `naver 금융`
-  2. 해외: `yfinance`
+## 2. Component Layers
+
+### Layer 1: Application Entry Points
+사용자와 시스템이 상호작용하는 진입점 계층입니다.
+
+*   **`backend/` (Recommended)**: FastAPI 기반의 현대적인 REST API 서버. Router 패턴을 사용하여 확장성이 뛰어남. 향후 메인 서버로 통합 권장.
+*   **`web/` (Legacy)**: 초기에 작성된 FastAPI/Jinja2 웹 대시보드 및 리포트 뷰어. 현재 운영 중이나 `backend`로 기능 이관 필요.
+*   **`pc/` (Legacy CLI)**: App PC (Personal Client). 로컬 커맨드라인에서 데이터 수집, 백테스트 등을 실행하는 Fat Client.
+*   **`app/cli/`**: 공용 CLI 도구 (`alerts`, `backtest` 등).
+
+### Layer 2: Core Domain (`core/`)
+시스템의 두뇌에 해당하며, 외부 디펜던시를 최소화한 순수 파이썬 로직입니다.
+
+*   **`engine/`**: 백테스트 및 라이브 트레이딩 실행 엔진.
+*   **`strategy/`**: 매매 전략 (Phase 9 등) 및 시그널 로직.
+*   **`risk/`**: 자금 관리 및 포지션 사이징 규칙.
+*   **`metrics/`**: 수익률, MDD 등 성과 지표 계산.
+
+### Layer 3: Extensions & Automation (`extensions/`)
+Core 기능을 확장하거나 장기 실행 작업을 처리하는 모듈입니다.
+
+*   **`tuning/`**: Optuna 기반 하이퍼파라미터 최적화/튜닝 엔진.
+*   **`automation/`**: 정기 리포트 발송, 데이터 업데이트 등 Cron Job 스크립트.
+
+### Layer 4: Infrastructure & Adapters (`infra/`, `config/`)
+외부 시스템과의 통신을 담당합니다.
+
+*   **`config/`**: `production_config.py` 등 전략 및 환경 설정.
+*   **`infra/data/`**: 주식 데이터 제공자 (PyKRX, FinanceDataReader 등).
+*   **`infra/notify/`**: 메신저 어댑터 (Telegram, Slack).
+*   **`infra/storage/`**: 데이터베이스(SQLite) 및 파일 시스템 핸들러.
 
 ---
 
-## 4. HOLD_CORE 구조
-| 요소 | 설명 |
-|------|------|
-| 정의 위치 | `core/strategy/rules.py` (`core_holdings: List[str]`) |
-| 추천 로직 | 매도 무시, 미보유 시 자동 매수, TOPN 제외 |
-| 백테스트 | 동일 로직 반영 (`extensions/backtest/portfolio_runner.py`) |
-| 상태 값 | `HOLD_CORE` (매도 금지, TOPN 제외, Slack 리포트 표시) |
+## 3. Data Flow & Pipelines
+
+### 3.1. Daily Operation Pipeline
+1.  **Data Ingest**: 장 마감 후 `backend` 또는 `pc` 트리거로 데이터 수집 (`infra/data`).
+2.  **Signal Gen**: `core/strategy`가 최신 데이터를 기반으로 추천 종목 선정.
+3.  **Notification**: `infra/notify`를 통해 Telegram/Slack 전송.
+
+### 3.2. Tuning Pipeline
+1.  **Config**: `extensions/tuning`에서 검색 공간 정의.
+2.  **Simulation**: `core/engine`을 병렬로 호출하여 시뮬레이션 수행.
+3.  **Evaluation**: 결과 지표(`core/metrics`)를 Gate 로직으로 검증.
+4.  **Selection**: 최적 파라미터를 선정하여 `config/`에 반영.
 
 ---
 
-## 5. NAS–PC 파이프라인
-```mermaid
-graph TD;
-  A[데이터 인입 (NAS)] --> B[전략 스캐너]
-  B --> C[TopN + HOLD_CORE 포함 알림]
-  C --> D[백테스트 요청 생성]
-  D --> E[PC 백테스트 수행]
-  E --> F[리포트 저장 및 NAS 동기화]
-```
+## 4. Current Architecture Issues (Cleanup Targets)
+
+1.  **Web/Backend Separation**: `web/` 폴더와 `backend/` 폴더가 기능적으로 중복됨. `backend` 중심의 통합이 필요함.
+2.  **NAS Support**: `nas/` 폴더는 과거 NAS 전용 배포를 위해 존재했으나, 현재는 컨테이너/클라우드 배포로 전환되는 추세임. Legacy로 분류.
+3.  **Scripts Sprawl**: `tools/`와 `scripts/`에 다양한 유틸리티가 산재해 있음. `docs/design/components/05_tools.md` 참조하여 정리 필요.
 
 ---
 
-## 6. 로깅 및 예외 처리
-- **로그 수준**: DEBUG / INFO / WARNING / ERROR.
-- **에러 보고**: `send_verbose_log_to_slack()` 자동 호출.
-- **비정상 데이터 처리**:
-  - 음수 가격, 결측, NaN → ERROR 로그 후 스킵.
-  - 거래정지/폐지 종목은 제외하되, 로그에 기록.
-  - 거래 데이터 부족 종목은 경고 후 제외.
+## 5. Development Guidelines
 
----
-
-## 7. 실행 환경 구분
-| 환경 | 역할 | Python | 설치 명령 |
-|------|------|---------|-------------|
-| NAS | 인입·스캔·알림 | 3.8 | `uv pip install -e .` |
-| PC | 백테스트·튜닝·룩백 | 3.11+ | `uv pip install -e "[backtest,tuning]"` |
-
----
-
-## 8. 테스트 및 품질 관리
-- **CI 매트릭스**: Python 3.8 / 3.11 모두 테스트.
-- **테스트 분리**: `tests/core`(공통) / `tests/extensions`(Py3.11 전용).
-- **회귀 검증**: 동일 dataset_id 결과 비교, 오차 허용치 ±0.1%.
-- **코드 품질 도구**: `ruff`, `black`, `flake8`, `mypy`.
-
----
-
-## 9. 향후 확장 계획
-- GPU 백테스트 지원 (numba/jax)
-- HOLD_CORE 시각화 리포트 자동 생성
-- 거래소 캘린더 API 기반 휴장일 자동 감지
-
-> v2에서는 병렬처리 금지, 휴장일 캐시 정책, HOLD_CORE 통합 로직, 에러 로깅 정책을 반영했다.
-
+*   **Core Logic**: 반드시 `core/` 내부에 작성하며, 웹 프레임워크나 DB 라이브러리에 직접 의존하지 않도록 함.
+*   **New Features**: 새로운 기능은 `backend/`의 Router로 구현하거나 `extensions/` 모듈로 추가.
+*   **Config**: 하드코딩을 피하고 `config/` 디렉토리의 설정 파일을 통해 주입받도록 설계.

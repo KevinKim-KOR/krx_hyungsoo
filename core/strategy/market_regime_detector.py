@@ -321,7 +321,128 @@ class MarketRegimeDetector:
             
         except Exception as e:
             logger.error(f"Regime V2 Error: {e}")
-            return 'neutral', 0.5
+            return regime, confidence, is_golden_cross
+            
+        except Exception as e:
+            logger.error(f"레짐 감지(Dual) 실패: {e}")
+            return 'neutral', 0.5, False
+
+    def _calculate_wilders_rma(self, series: pd.Series, period: int) -> pd.Series:
+        """
+        Wilder's Smoothing (RMA) 계산
+        RMA_t = (RMA_{t-1} * (n-1) + X_t) / n
+        """
+        return series.ewm(alpha=1/period, adjust=False).mean()
+
+    def _calculate_adx(
+        self, 
+        limit_data: pd.DataFrame, 
+        period: int = 14
+    ) -> float:
+        """
+        ADX 계산 (Wilder's Smoothing 적용)
+        """
+        try:
+            if len(limit_data) < period * 2: # 충분한 데이터 필요
+                return 0.0
+                
+            high = limit_data['high']
+            low = limit_data['low']
+            close = limit_data['close']
+            
+            # 1. TR, +DM, -DM 계산
+            tr1 = high - low
+            tr2 = (high - close.shift(1)).abs()
+            tr3 = (low - close.shift(1)).abs()
+            tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+            
+            up_move = high - high.shift(1)
+            down_move = low.shift(1) - low
+            
+            plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+            minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+            
+            plus_dm = pd.Series(plus_dm, index=limit_data.index)
+            minus_dm = pd.Series(minus_dm, index=limit_data.index)
+            
+            # 2. Wilder's Smoothing (TR, +DM, -DM)
+            tr_smooth = self._calculate_wilders_rma(tr, period)
+            plus_dm_smooth = self._calculate_wilders_rma(plus_dm, period)
+            minus_dm_smooth = self._calculate_wilders_rma(minus_dm, period)
+            
+            # 3. DI+, DI- 계산
+            plus_di = 100 * (plus_dm_smooth / tr_smooth)
+            minus_di = 100 * (minus_dm_smooth / tr_smooth)
+            
+            # 4. DX 계산
+            dx = 100 * (abs(plus_di - minus_di) / (plus_di + minus_di + 1e-9))
+            
+            # 5. ADX (DX의 RMA)
+            adx = self._calculate_wilders_rma(dx, period)
+            
+            return adx.iloc[-1]
+            
+        except Exception as e:
+            # logger.error(f"ADX Calc Error: {e}")
+            return 0.0
+
+    def detect_regime_adx(
+        self,
+        market_data: pd.DataFrame,
+        current_date: date,
+        long_ma_period: int = 200,
+        short_ma_period: int = 60,
+        adx_period: int = 14,
+        adx_threshold: float = 20.0
+    ) -> Tuple[str, float, bool, bool]:
+        """
+        시장 레짐 감지 V4 (ADX Chop Filter)
+        
+        Args:
+            market_data: 시장 데이터
+            current_date: 현재 날짜
+            long_ma_period: 장기 MA (레짐 정의용)
+            short_ma_period: 단기 MA (Golden Cross용)
+            adx_period: ADX 기간
+            adx_threshold: Chop 기준 (ADX < threshold -> Chop)
+
+        Returns:
+            tuple: (레짐, 신뢰도, 골든크로스여부, 찹여부)
+        """
+        if not self.enable_regime_detection:
+            return 'neutral', 0.5, False, False
+        
+        try:
+            current_ts = pd.Timestamp(current_date)
+            hist_data = market_data[market_data.index <= current_ts]
+            
+            if len(hist_data) < max(long_ma_period, adx_period * 2):
+                return 'neutral', 0.5, False, False
+            
+            # 1. Basic Regime & Golden Cross (Phase 8 Logic)
+            long_ma = hist_data['close'].tail(long_ma_period).mean()
+            short_ma = hist_data['close'].tail(short_ma_period).mean()
+            current_price = hist_data['close'].iloc[-1]
+            
+            if current_price >= long_ma:
+                regime = 'bull'
+                confidence = 1.0
+            else:
+                regime = 'bear'
+                confidence = 1.0
+                
+            is_golden_cross = short_ma > long_ma
+            
+            # 2. Chop Detection (ADX)
+            # ADX 계산을 위해 충분한 길이의 데이터 전달
+            adx_val = self._calculate_adx(hist_data.tail(adx_period * 5), adx_period)
+            is_chop = adx_val < adx_threshold
+            
+            return regime, confidence, is_golden_cross, is_chop
+            
+        except Exception as e:
+            logger.error(f"레짐 감지(ADX) 실패: {e}")
+            return 'neutral', 0.5, False, False
     
     def get_position_ratio(
         self,
@@ -329,53 +450,24 @@ class MarketRegimeDetector:
         confidence: float
     ) -> float:
         """
-        레짐에 따른 포지션 비율 계산 (개선된 버전)
-        
-        Args:
-            regime: 시장 레짐
-            confidence: 신뢰도
-        
-        Returns:
-            float: 포지션 비율 (0.4~1.2)
+        레짐에 따른 포지션 비율 계산
         """
         if regime == 'bull':
-            # 상승장: 100~120% 포지션 (신뢰도에 따라)
             return 1.0 + (confidence - 0.5) * 0.4
-            
         elif regime == 'bear':
-            # 하락장: 0% 포지션 (완전 현금화)
             return 0.0
-            
         else:
-            # 중립장: 80% 포지션
             return 0.8
-    
+            
     def should_enter_defense_mode(
         self,
         regime: str,
         confidence: float
     ) -> bool:
-        """
-        방어 모드 진입 여부 (완화된 버전)
-        
-        Args:
-            regime: 시장 레짐
-            confidence: 신뢰도
-        
-        Returns:
-            bool: True면 방어 모드 진입 (매수 스킵)
-        """
-        # 하락장이고 신뢰도가 매우 높을 때만 방어 모드 (완화!)
-        # 0.7 → 0.85로 상향 조정하여 덜 방어적으로
         return regime == 'bear' and confidence >= 0.85
     
     def get_stats(self) -> Dict:
-        """
-        통계 조회
-        
-        Returns:
-            dict: 레짐 감지 통계
-        """
+        """통계 조회"""
         total_days = sum([
             self.stats['bull_days'],
             self.stats['bear_days'],

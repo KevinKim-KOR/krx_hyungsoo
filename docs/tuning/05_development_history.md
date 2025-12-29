@@ -416,5 +416,29 @@ windows = len(wf_results_list)
 
 ---
 
-**마지막 업데이트**: 2025-12-21  
+**마지막 업데이트**: 2025-12-29
 **작성자**: Cascade AI (Claude)
+
+---
+
+## 4.5 Phase 13.5 & 14 — Operational Hardening & UI Integration (2025-12-29)
+
+### 1. Active Surface & Legacy Quarantine (Phase 13.5)
+- **Active Surface**: `deploy/`, `app.cli`, `tools.paper_trade`, `backend`.
+- **Legacy Quarantine**: `web/`, `pc/`, `scripts/daily/` 등 구형 코드를 `_archive/`로 격리.
+- **Audit**: Antigravity Rule(한국어 주석, 하드코딩 등) 감사 수행.
+
+### 2. Read-Only API Backend (Phase 14.1 ~ 14.2)
+- **Observer Pattern**: 엔진 코드 import 없이 오직 `logs/`, `state/`, `reports/` 파일만 읽는 FastAPI 백엔드 구축 (`backend/main.py`).
+- **Robustness**: PowerShell 생성 로그(UTF-16) 등 다양한 인코딩에 대응하는 `safe_read_text_advanced` 구현.
+- **Evidence-Based**: 로그 내 `[OK]`, `[ERROR]` 키워드를 카운트하여 상태 배지(`OK`, `FAIL`, `SKIP`) 판정.
+
+### 3. React Dashboard (Phase 14.3)
+- **Single HTML**: 빌드 과정 없이 `dashboard/index.html` 단일 파일로 동작하는 React 앱.
+- **Warning Indicator**: 로그 인코딩 손상 시 `read_quality: partial` 감지하여 🟡 노란 배지 표시.
+- **Features**: 
+    - Dashboard (Equity/Cash)
+    - Portfolio Table
+    - Daily Signals
+    - Raw Log Viewer
+

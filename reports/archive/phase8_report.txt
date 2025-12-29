@@ -1,0 +1,23 @@
+
+==================================================
+PHASE 8 DIAGNOSTIC REPORT
+==================================================
+[Run Configuration]
+MA(Short): 50, RSI: 17, Hold: 15
+Regime(Long): 140, SL: -0.08
+------------------------------
+[Overall Metrics]
+Total Return: -10.35%
+CAGR: -5.35%
+MDD: 32.28%
+Sharpe: -0.14
+Exposure Ratio: 0.60
+------------------------------
+[Regime Diagnostics]
+Total Switches: 12
+Total Locked: 26
+------------------------------
+[Yearly Breakdown]
+Year 2022: Return 12.81%, MDD 12.68%
+Year 2023: Return -20.52%, MDD 26.52%
+==================================================

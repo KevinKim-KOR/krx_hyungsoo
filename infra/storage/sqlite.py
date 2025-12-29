@@ -20,7 +20,7 @@ class SQLiteStorage:
         db_path: Optional[str] = None,
         echo: bool = False
     ):
-        self.db_path = db_path or "krx_alertor.sqlite3"
+        self.db_path = db_path or "data/db/krx_alertor.sqlite3"
         self.engine = sa.create_engine(f"sqlite:///{self.db_path}", echo=echo)
         self.Session = sessionmaker(bind=self.engine)
     

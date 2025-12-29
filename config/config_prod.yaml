@@ -1,0 +1,5 @@
+universe: ["005930", "000660"]
+core_holdings: []
+lookbacks: [21, 63]
+weights: [0.6, 0.4]
+top_n: 5

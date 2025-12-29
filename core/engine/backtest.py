@@ -613,16 +613,47 @@ class BacktestEngine:
                 ) * 100
             else:
                 cagr_gross = 0.0
+            
+            metrics["total_return_gross"] = total_return_gross
+            metrics["annual_return_gross"] = cagr_gross # Keep for backward compatibility
+            metrics["cagr_gross"] = cagr_gross
+            metrics["cost_drag"] = total_return_gross - total_return
 
-            metrics.update(
-                {
-                    "total_return_gross": total_return_gross,
-                    "annual_return_gross": cagr_gross,
-                    "cagr_gross": cagr_gross,
-                    "cost_drag": total_return_gross - total_return,
+        # 9. Yearly Breakdown (Phase 7.2)
+        # nav_history: [(date, nav), ...]
+        yearly_stats = {}
+        if self.nav_history:
+            df_nav = pd.DataFrame(self.nav_history, columns=['date', 'nav'])
+            # Ensure datetime
+            df_nav['date'] = pd.to_datetime(df_nav['date'])
+            df_nav.set_index('date', inplace=True)
+            df_nav['year'] = df_nav.index.year
+            
+            for year, group in df_nav.groupby('year'):
+                if group.empty: continue
+                
+                # Filter daily returns for this year
+                # Note: self.daily_returns matches nav_history[1:], so we need to be careful aligning
+                # Instead, simpler approach: Calculate stats from NAV curve of the year
+                start_val = group['nav'].iloc[0]
+                end_val = group['nav'].iloc[-1]
+                year_return = (end_val / start_val - 1.0) * 100
+                
+                # MDD for the year
+                cummax_y = group['nav'].cummax()
+                dd_y = (group['nav'] / cummax_y - 1.0) * 100
+                mdd_y = abs(dd_y.min())
+                
+                yearly_stats[int(year)] = {
+                    "return": year_return,
+                    "mdd": mdd_y,
+                    # Sharpe approximation for the year (need daily returns for this year)
+                    # This is complex to align with daily_returns list efficiently without date map
+                    # skipping sharpe for now unless critical
                 }
-            )
-
+        
+        metrics["yearly_stats"] = yearly_stats
+        
         # 엔진 헬스체크
         engine_health = self._check_engine_health(metrics)
         metrics["engine_health"] = engine_health

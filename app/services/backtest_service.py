@@ -26,7 +26,11 @@ class BacktestParams:
     initial_capital: int
     max_positions: int
     enable_defense: bool
-    regime_ma_period: int = 200  # Default 200 if not specified (though no default in dataclass usually, handling in caller)
+    regime_ma_period: int = 200  # Legacy (kept for safety)
+    min_regime_hold_days: int = 20  # Phase 7.1: Hysteresis
+    regime_ma_long: int = 200 # Phase 8: Long Term MA
+    adx_period: int = 14 # Phase 9: ADX Period
+    adx_threshold: float = 20.0 # Phase 9: ADX Threshold
     universe_codes: Optional[List[str]] = None  # 명시적 유니버스 (None이면 에러)
 
 
@@ -362,6 +366,7 @@ class BacktestService:
             rsi_period=params.rsi_period,
             stop_loss=params.stop_loss / 100.0,  # % → 소수 변환 (예: -10 → -0.10)
             regime_ma_period=getattr(params, 'regime_ma_period', 200),
+            min_regime_hold_days=getattr(params, 'min_regime_hold_days', 20),
         )
 
         metrics = result.get("metrics", {})
@@ -414,6 +419,7 @@ class BacktestService:
                     "ma_period": params.ma_period,
                     "rsi_period": params.rsi_period,
                     "regime_ma_period": getattr(params, 'regime_ma_period', 200),
+                    "min_regime_hold_days": getattr(params, 'min_regime_hold_days', 20),
                     "stop_loss": params.stop_loss,
                     "max_positions": params.max_positions,
                     "initial_capital": params.initial_capital,
@@ -536,6 +542,7 @@ class BacktestService:
             rsi_period=params.rsi_period,
             stop_loss=params.stop_loss / 100.0,
             regime_ma_period=getattr(params, 'regime_ma_period', 200),
+            min_regime_hold_days=getattr(params, 'min_regime_hold_days', 20),
         )
 
         full_metrics = full_result.get("metrics", {})
@@ -579,6 +586,10 @@ class BacktestService:
                     rsi_period=params.rsi_period,
                     stop_loss=params.stop_loss / 100.0,
                     regime_ma_period=getattr(params, 'regime_ma_period', 200),
+                    min_regime_hold_days=getattr(params, 'min_regime_hold_days', 20),
+                    regime_ma_long=getattr(params, 'regime_ma_long', 200),
+                    adx_period=getattr(params, 'adx_period', 14),
+                    adx_threshold=getattr(params, 'adx_threshold', 20.0),
                 )
                 split_metrics = split_result.get("metrics", {})
                 split_results[split_name] = SplitMetrics(

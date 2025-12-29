@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRX Alertor Modular Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+        .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const API_BASE = "http://localhost:8000";
+
+        function App() {
+            const [status, setStatus] = useState(null);
+            const [portfolio, setPortfolio] = useState(null);
+            const [signals, setSignals] = useState([]);
+            const [rawLogs, setRawLogs] = useState("");
+            const [activeTab, setActiveTab] = useState("dashboard");
+
+            useEffect(() => {
+                fetchStatus();
+                fetchPortfolio();
+                fetchSignals();
+            }, []);
+
+            const fetchStatus = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/status`);
+                    const data = await res.json();
+                    setStatus(data);
+                    // Fetch raw log if status available
+                    if (data.log_file) {
+                        fetchRawLog(data.log_file);
+                    }
+                } catch (e) { console.error(e); }
+            };
+
+            const fetchPortfolio = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/portfolio`);
+                    setPortfolio(await res.json());
+                } catch (e) { console.error(e); }
+            };
+
+            const fetchSignals = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/signals`);
+                    setSignals(await res.json());
+                } catch (e) { console.error(e); }
+            };
+
+            const fetchRawLog = async (filename) => {
+                try {
+                    // filename might be absolute path, we need relative for API query if setup that way
+                    // But backend API expects relative path from root. 
+                    // Let's assume filename from status is relative "logs/daily_..."
+                    const res = await fetch(`${API_BASE}/api/raw?filename=${filename}`);
+                    const data = await res.json();
+                    setRawLogs(data.content);
+                } catch (e) { console.error(e); }
+            };
+
+            const getBadgeColor = (badge, quality) => {
+                if (badge === "FAIL" || badge === "ERROR") return "bg-red-500";
+                if (badge === "OK" || badge === "SKIP") {
+                    if (quality === "partial" || quality === "failed") return "bg-yellow-500";
+                    return "bg-green-500";
+                }
+                return "bg-gray-500";
+            };
+
+            return (
+                <div className="container mx-auto p-4 max-w-6xl">
+                    <header className="mb-8 flex justify-between items-center">
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                            KRX Alertor Modular <span className="text-xs text-gray-500 ml-2">Phase 14.3</span>
+                        </h1>
+                        <button onClick={() => window.location.reload()} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-sm">
+                            Refresh
+                        </button>
+                    </header>
+                    
+                    {/* Status Card */}
+                    {status && (
+                        <div className="card mb-6 border-l-4" style={{borderColor: getBadgeColor(status.badge, status.read_quality).replace("bg-", "")}}>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className={`px-2 py-0.5 rounded text-black font-bold text-sm ${getBadgeColor(status.badge, status.read_quality)}`}>
+                                            {status.badge}
+                                        </span>
+                                        <span className="text-gray-400 text-sm">{status.date}</span>
+                                        {status.read_quality !== "perfect" && (
+                                            <span className="text-xs text-yellow-400 border border-yellow-600 px-1 rounded">로그 손상됨 ({status.read_encoding})</span>
+                                        )}
+                                    </div>
+                                    <p className="text-lg font-medium text-white">{status.message}</p>
+                                    <div className="text-xs text-slate-400 mt-2 font-mono">
+                                        Evidence: OK={status.evidence?.ok_count || 0}, ERR={status.evidence?.error_count || 0}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-slate-400 text-sm">Log File</div>
+                                    <div className="text-xs font-mono text-cyan-400">{status.log_file}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Navigation */}
+                    <nav className="flex gap-4 border-b border-slate-700 mb-6">
+                        {['dashboard', 'portfolio', 'signals', 'raw'].map(tab => (
+                            <button 
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`pb-2 px-1 capitalize ${activeTab === tab ? 'text-cyan-400 border-b-2 border-cyan-400 font-bold' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </nav>
+
+                    {/* Main Content */}
+                    <main>
+                        {activeTab === 'dashboard' && portfolio && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="card">
+                                    <h3 className="text-slate-400 text-sm mb-1">Total Equity</h3>
+                                    <div className="text-2xl font-bold text-white">
+                                        {portfolio.total_equity?.toLocaleString()} <span className="text-sm font-normal text-slate-500">KRW</span>
+                                    </div>
+                                </div>
+                                <div className="card">
+                                    <h3 className="text-slate-400 text-sm mb-1">Cash Balance</h3>
+                                    <div className="text-2xl font-bold text-indigo-300">
+                                        {portfolio.cash?.toLocaleString()} <span className="text-sm font-normal text-slate-500">KRW</span>
+                                    </div>
+                                </div>
+                                <div className="card">
+                                    <h3 className="text-slate-400 text-sm mb-1">Positions</h3>
+                                    <div className="text-2xl font-bold text-emerald-300">
+                                        {Object.keys(portfolio.positions || {}).length} <span className="text-sm font-normal text-slate-500">Items</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'portfolio' && portfolio && (
+                            <div className="card overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-800 text-slate-400">
+                                        <tr>
+                                            <th className="p-3">Code</th>
+                                            <th className="p-3">Qty</th>
+                                            <th className="p-3">Avg Price</th>
+                                            <th className="p-3">Est. Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700">
+                                        {Object.entries(portfolio.positions || {}).map(([code, pos]) => (
+                                            <tr key={code} className="hover:bg-slate-800/50">
+                                                <td className="p-3 font-mono text-cyan-300">{code}</td>
+                                                <td className="p-3">{pos.qty}</td>
+                                                <td className="p-3">{pos.avg_price?.toLocaleString()}</td>
+                                                <td className="p-3">{(pos.qty * pos.avg_price)?.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                        {Object.keys(portfolio.positions || {}).length === 0 && (
+                                            <tr><td colSpan="4" className="p-8 text-center text-slate-500">보유 종목이 없습니다.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {activeTab === 'signals' && (
+                            <div className="space-y-4">
+                                {signals.length === 0 && <div className="card text-center text-slate-500 p-8">금일 생성된 신호가 없습니다.</div>}
+                                {signals.map((sig, idx) => (
+                                    <div key={idx} className="card flex justify-between items-center">
+                                        <div>
+                                            <span className="font-bold font-mono text-lg mr-3">{sig.code}</span>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                                sig.signal_type === 'BUY' ? 'bg-red-900 text-red-200' : 
+                                                sig.signal_type === 'SELL' ? 'bg-blue-900 text-blue-200' : 'bg-gray-700'
+                                            }`}>
+                                                {sig.signal_type}
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-sm">{sig.reason}</div>
+                                            <div className="text-xs text-slate-500">Score: {sig.score?.toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'raw' && (
+                            <div className="card bg-black p-0 overflow-hidden">
+                                <pre className="p-4 text-xs font-mono text-green-400 overflow-auto max-h-[600px] whitespace-pre-wrap">{rawLogs || "로그를 불러을 수 없습니다."}</pre>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

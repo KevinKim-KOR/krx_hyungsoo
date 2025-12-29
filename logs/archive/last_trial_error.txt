@@ -1,0 +1,29 @@
+name 'adx_period' is not defined
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\tools\run_phase15_clean.py", line 99, in objective
+    result = run_backtest_for_tuning(
+        params=params, start_date=period["start"], end_date=period["end"],
+    ...<2 lines>...
+        split_config=tuning_split_config
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 196, in run_backtest_for_tuning
+    train_metrics = _run_single_backtest(
+        params=params,
+    ...<4 lines>...
+        universe_codes=universe_codes,
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 114, in _run_single_backtest
+    raise e  # Re-raise for debugging Phase 7
+    ^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\extensions\tuning\runner.py", line 77, in _run_single_backtest
+    result = service.run(bt_params)
+  File "E:\AI Study\krx_alertor_modular\app\services\backtest_service.py", line 359, in run
+    result = runner.run(
+        price_data=price_data,
+    ...<8 lines>...
+        min_regime_hold_days=getattr(params, 'min_regime_hold_days', 20),
+    )
+  File "E:\AI Study\krx_alertor_modular\extensions\backtest\runner.py", line 368, in run
+    adx_period=adx_period,
+               ^^^^^^^^^^
+NameError: name 'adx_period' is not defined. Did you mean: 'ma_period'?

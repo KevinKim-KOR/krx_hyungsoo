@@ -1,0 +1,10 @@
+{
+  "signal_file": "reports\\signals_20251229.yaml",
+  "execution_date": "2025-12-29",
+  "before_equity": 10000000.0,
+  "after_equity": 10000000.0,
+  "pnl": 0.0,
+  "trades_count": 0,
+  "trades": [],
+  "holdings_snapshot": {}
+}

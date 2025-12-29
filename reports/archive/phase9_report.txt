@@ -1,0 +1,24 @@
+
+==================================================
+PHASE 9 DIAGNOSTIC REPORT (ADX Chop Filter)
+==================================================
+[Run Configuration]
+MA(Short): 60, RSI: 40, Hold: 30
+Regime(Long): 120, SL: -0.12
+ADX: 30, Thr: 17.5
+------------------------------
+[Overall Metrics]
+Total Return: 12.62%
+CAGR: 6.17%
+MDD: 12.66%
+Sharpe: 0.65
+Exposure Ratio: 0.13
+------------------------------
+[Regime Diagnostics]
+Total Switches: 10
+Total Locked: 27
+------------------------------
+[Yearly Breakdown]
+Year 2022: Return 12.62%, MDD 12.66%
+Year 2023: Return 0.00%, MDD 0.00%
+==================================================

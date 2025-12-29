@@ -1,0 +1,23 @@
+
+==================================================
+PHASE 7.2 DIAGNOSTIC REPORT (Runner Direct)
+==================================================
+[Run Configuration]
+MA: 90, RSI: 20, Regime: 100, Hold: 19
+StopLoss (Effective): -0.06
+------------------------------
+[Overall Metrics]
+Total Return: -11.20%
+CAGR: -5.81%
+MDD: 11.60%
+Sharpe: -1.29
+Exposure Ratio: 0.10
+------------------------------
+[Regime Diagnostics]
+Total Switches: 10
+Total Locked: 39
+------------------------------
+[Yearly Breakdown]
+Year 2022: Return -1.92%, MDD 2.29%
+Year 2023: Return -9.46%, MDD 9.75%
+==================================================
