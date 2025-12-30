@@ -1,97 +1,156 @@
 {
-  "schema": "GATEKEEPER_DECISION_V3",
-  "asof": "2025-12-30",
+  "schema_id": "GATEKEEPER_DECISION_V3",
+  "schema_version": "3.0.0",
+  "meta": {
+    "asof": "2025-12-30",
+    "baseline_config_hash8": "current",
+    "candidate_id": "mock_candidate_v3",
+    "candidate_source": "internal_mock",
+    "policy": {
+      "decision_order": [
+        "ERROR",
+        "REJECT",
+        "HOLD",
+        "PROMOTE"
+      ]
+    }
+  },
   "baseline": {
-    "config_hash8": "current",
     "params": {
       "ma_short_period": 60,
-      "stop_loss": {
-        "value": 0.0,
-        "unit": "PCT"
-      }
+      "rsi_period": 40,
+      "regime_ma_long": 120,
+      "min_regime_hold_days": 30,
+      "adx_period": 30,
+      "adx_threshold": 17.5,
+      "stop_loss_pct": 0.12,
+      "initial_capital": 10000000,
+      "max_positions": 5,
+      "universe_codes": [
+        "005930",
+        "000660"
+      ]
     }
   },
   "candidate": {
-    "candidate_id": "mock_candidate",
     "params": {
       "ma_short_period": 120,
+      "regime_ma_long": 120,
+      "adx_threshold": 17.5,
       "stop_loss": {
-        "value": 0.0,
+        "value": 1200.0,
+        "unit": "BP"
+      }
+    },
+    "normalized": {
+      "stop_loss": {
+        "value": 12.0,
         "unit": "PCT"
       }
+    },
+    "scorecard": {
+      "period": {
+        "from": "2024-01-01",
+        "to": "2024-12-31"
+      },
+      "return_pct": 0.0,
+      "mdd_pct": 0.0,
+      "sharpe": 0.0,
+      "trades": 0,
+      "exposure": 0.0,
+      "baseline_return_pct": 0.0,
+      "baseline_trades": 0
     }
   },
   "similarity": {
     "method": "weighted_normalized_distance",
-    "score": 0.58,
-    "min_required": 0.7
+    "weights": {
+      "ma_short": 0.25
+    },
+    "normalization": {
+      "ma_short": 200
+    },
+    "score_0_1": 0.58,
+    "min_required": 0.7,
+    "passed": false
   },
   "checks": [
     {
       "check_id": "HC1_PARAM_DRIFT_LIMIT",
       "severity": "HARD",
       "passed": false,
-      "details": [
-        "ma_short_period drift > 25%",
-        "adx_threshold change > 3.0"
-      ],
-      "thresholds": {
-        "ma_change_pct_max": 0.25,
-        "adx_change_abs_max": 3.0
-      }
+      "metrics": {
+        "limits": {
+          "ma_short_period_max_change_pct": 0.25
+        },
+        "observed": {
+          "ma_short_period_change_pct": 1.0
+        }
+      },
+      "message_ko": "파라미터 변동폭(100%) 허용 범위(25%) 초과"
     },
     {
       "check_id": "HC2_SIMILARITY_MIN",
       "severity": "HARD",
       "passed": false,
-      "thresholds": {
-        "min_similarity": 0.7
-      }
+      "metrics": {
+        "similarity": 0.58,
+        "min_required": 0.7
+      },
+      "message_ko": "유사성 부족(과적합 위험)"
     },
     {
       "check_id": "HC3_RISK_BOUNDS",
       "severity": "HARD",
       "passed": true,
-      "thresholds": {
-        "mdd_pct_max": 15.0,
-        "monthly_loss_pct_max": 6.0
-      }
+      "metrics": {
+        "mdd_pct": 9.5,
+        "mdd_max": 15.0
+      },
+      "message_ko": "리스크 기준 통과"
     },
     {
       "check_id": "HC4_TRADE_SANITY",
       "severity": "HARD",
       "passed": false,
-      "details": [
-        "Trade Count Ratio 0.00 out of [0.5, 2.0]"
-      ],
-      "thresholds": {
-        "trade_ratio_min": 0.5,
-        "trade_ratio_max": 2.0
-      }
+      "metrics": {
+        "ratio": 0.0,
+        "min": 0.5,
+        "max": 2.0
+      },
+      "message_ko": "거래건수 비정상(0건)"
     },
     {
       "check_id": "SC1_RETURN_IMPROVEMENT",
       "severity": "SOFT",
       "passed": false,
-      "thresholds": {
-        "delta_return_pct_min": 1.0
-      }
+      "metrics": {},
+      "message_ko": "수익 개선폭 미달"
     },
     {
       "check_id": "SC2_EXPOSURE_NORMALIZATION",
       "severity": "SOFT",
       "passed": false,
-      "thresholds": {
-        "exposure_min": 0.12,
-        "exposure_max": 0.35
-      }
+      "metrics": {},
+      "message_ko": "노출도 정상 범위 이탈"
     }
   ],
-  "decision": "REJECT",
-  "reason": "Hard Check Failed",
   "integrity": {
-    "config_missing": false,
-    "unit_mismatch": false,
-    "notes": []
+    "ok": false,
+    "config_missing_keys": [
+      "stop_loss"
+    ],
+    "notes_ko": "필수키 누락 발생"
+  },
+  "decision": {
+    "result": "ERROR",
+    "reason_ko": "Integrity Check Failed",
+    "recommended_action_ko": "설정 파일 복구 필요"
+  },
+  "policy_matrix": {
+    "if_integrity_fail": "ERROR",
+    "if_any_hard_fail": "REJECT",
+    "else_if_any_soft_fail": "HOLD",
+    "else": "PROMOTE"
   }
 }

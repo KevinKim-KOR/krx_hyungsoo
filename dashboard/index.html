@@ -259,14 +259,14 @@
             );
         }
 
-        function DiagnosisView({ data }) {
+                function DiagnosisView({ data }) {
             const [expandedDay, setExpandedDay] = useState(null);
 
             if (!data || !data.years) {
                 return (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
                         <div className="text-4xl mb-4">🩺</div>
-                        <h3 className="text-xl font-bold text-slate-400">진단 리포트 준비 중 (V3)</h3>
+                        <h3 className="text-xl font-bold text-slate-400">진단 리포트 준비 중 (Contract-1 Strict)</h3>
                         <p className="text-sm text-slate-500 mt-2">{data ? data.message : "Data Loading..."}</p>
                     </div>
                 );
@@ -280,7 +280,6 @@
                         const yData = data.years[year];
                         if (!yData) return null;
 
-                        // Contract 3: Use V3 KPI names directly
                         const kpis = yData.kpis;
                         const breakdown = yData.reason_breakdown;
 
@@ -288,7 +287,8 @@
                             .map(([name, value]) => ({ name, value }))
                             .sort((a, b) => b.value - a.value);
 
-                        const daily = data.days ? data.days.filter(d => d.year === parseInt(year)) : [];
+                        // Contract 1: Array is named 'daily'
+                        const daily = yData.daily || [];
 
                         return (
                             <section key={year} className="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8">
@@ -296,7 +296,7 @@
                                     <span className="w-1 h-6 bg-cyan-500 rounded"></span> {year} (V3 Strict)
                                 </h2>
 
-                                {/* KPI Cards per Contract 3 */}
+                                {/* KPI Cards Contract 3 Order */}
                                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                                     <KPICard label="Gate Open Days" value={kpis.gate_open_days} sub="Bullish/Neutral" />
                                     <KPICard label="Chop Blocked" value={kpis.chop_blocked_days} color={kpis.chop_blocked_days > 0 ? "text-yellow-400" : "text-slate-400"} />
@@ -308,49 +308,48 @@
                                 {/* Chart & Table */}
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                     <div className="lg:col-span-1">
-                                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Reason Breakdown</h3>
-                                        <div className="h-48 bg-slate-900/50 rounded-lg p-2 border border-slate-800">
+                                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Reason Breakdown</h3>
+                                         <div className="h-48 bg-slate-900/50 rounded-lg p-2 border border-slate-800">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={chartData} layout="vertical" margin={{ left: 10 }}>
                                                     <XAxis type="number" hide />
                                                     <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 9, fill: '#64748b' }} />
                                                     <Tooltip contentStyle={{ backgroundColor: '#1e293b' }} />
-                                                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={15} />
+                                                    <Bar dataKey="value" fill="#3b82f6" radius={[0,4,4,0]} barSize={15} />
                                                 </BarChart>
                                             </ResponsiveContainer>
-                                        </div>
+                                         </div>
                                     </div>
-
+                                    
                                     <div className="lg:col-span-2">
                                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Daily Evidence Details</h3>
                                         <div className="overflow-x-auto bg-slate-900/50 rounded-lg border border-slate-800 max-h-[400px]">
                                             <table className="w-full text-xs text-left">
                                                 <thead className="text-slate-500 bg-slate-900 sticky top-0 uppercase font-mono">
                                                     <tr>
-                                                        <th className="p-3">Date</th>
-                                                        <th className="p-3">Regime</th>
-                                                        <th className="p-3">Reason</th>
-                                                        <th className="p-3 text-center">Exec</th>
-                                                        <th className="p-3 text-right">Trades</th>
-                                                        <th className="p-3">ADX / MA</th>
-                                                        <th className="p-3 text-center">GC</th>
-                                                        <th className="p-3">Conf</th>
+                                                        <th className="p-3">DATE</th>
+                                                        <th className="p-3">REGIME</th>
+                                                        <th className="p-3">REASON</th>
+                                                        <th className="p-3 text-center">EXEC</th>
+                                                        <th className="p-3 text-right">TRADES</th>
+                                                        <th className="p-3">ADX</th>
+                                                        <th className="p-3">MA</th>
+                                                        <th className="p-3">CONF</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-800">
-                                                    {daily.slice(0, 100).map((d, i) => { // Limit render for perf
+                                                    {daily.slice(0, 100).map((d, i) => { 
+                                                        const isAnomaly = d.integrity && d.integrity.anomaly;
                                                         return (
-                                                            <tr key={i} className={`hover:bg-slate-800/80 transition-colors ${d.integrity.anomaly ? "outline outline-1 outline-red-500 bg-red-900/20" : ""}`}>
+                                                            <tr key={i} className={`hover:bg-slate-800/80 transition-colors ${isAnomaly ? "outline outline-1 outline-red-500 bg-red-900/20" : ""}`}>
                                                                 <td className="p-3 font-mono text-slate-400">{d.date}</td>
                                                                 <td className="p-3">{d.market.regime}</td>
-                                                                <td className="p-3 text-xs">{d.market.block_reason}</td>
+                                                                <td className="p-3 text-xs">{d.decision.block_reason}</td>
                                                                 <td className="p-3 text-center text-lg">{d.execution.executed ? "✅" : ""}</td>
-                                                                <td className="p-3 text-right font-mono">{d.execution.actual_trades > 0 ? d.execution.actual_trades : "-"}</td>
-                                                                <td className="p-3 font-mono text-slate-400">
-                                                                    {d.evidence.adx.value.toFixed(1)} <span className="text-slate-600">|</span> {d.evidence.ma.relation === 'SHORT_ABOVE_LONG' ? 'S>L' : 'S<L'}
-                                                                </td>
-                                                                <td className="p-3 text-center">{d.evidence.golden_cross.is_golden_cross ? "🌟" : ""}</td>
-                                                                <td className="p-3">{d.evidence.confidence.band}</td>
+                                                                <td className="p-3 text-right font-mono">{d.execution.trade_count > 0 ? d.execution.trade_count : "-"}</td>
+                                                                <td className="p-3 font-mono text-slate-400">{d.evidence.adx.value.toFixed(1)}</td>
+                                                                <td className="p-3 font-mono text-slate-500 text-[10px]">{d.evidence.ma.relation}</td>
+                                                                <td className="p-3">{d.evidence.confidence.level}</td>
                                                             </tr>
                                                         )
                                                     })}
@@ -366,12 +365,13 @@
             )
         }
 
-        function GatekeeperView({ data }) {
+
+function GatekeeperView({ data }) {
             if (!data || data.status === 'not_ready') {
                 return (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
                         <div className="text-4xl mb-4">🛡️</div>
-                        <h3 className="text-xl font-bold text-slate-400">심사 결과 없음 (V3)</h3>
+                        <h3 className="text-xl font-bold text-slate-400">심사 결과 없음 (Contract-2 Strict)</h3>
                         <p className="text-sm text-slate-500 mt-2">{data ? data.message : "Tools > Gatekeeper 실행 필요"}</p>
                     </div>
                 );
@@ -382,17 +382,18 @@
                 "HOLD": "bg-yellow-500 text-black",
                 "REJECT": "bg-red-500 text-white",
                 "ERROR": "bg-red-600 text-white font-bold animate-pulse"
-            }[data.decision] || "bg-slate-500";
+            }[data.decision.result] || "bg-slate-500";
 
             return (
                 <div className="space-y-8">
                     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex justify-between items-center shadow-lg">
                         <div>
                             <div className="text-sm text-slate-400 mb-1">Gatekeeper Decision (Contract 2)</div>
-                            <h2 className="text-3xl font-bold text-white">{data.reason}</h2>
+                            <h2 className="text-3xl font-bold text-white">{data.decision.reason_ko}</h2>
+                            <p className="text-sm text-slate-400 mt-1">Action: {data.decision.recommended_action_ko}</p>
                         </div>
                         <div className={`px-8 py-4 rounded-xl text-3xl font-bold tracking-widest shadow-lg ${badgeColor}`}>
-                            {data.decision}
+                            {data.decision.result}
                         </div>
                     </div>
 
@@ -406,7 +407,7 @@
                                             <span className={`font-bold ${chk.passed ? 'text-green-300' : 'text-red-300'}`}>{chk.check_id}</span>
                                             <span className={`text-[10px] px-2 py-0.5 rounded ${chk.severity === 'HARD' ? 'bg-red-900 text-red-100' : 'bg-yellow-900 text-yellow-100'}`}>{chk.severity}</span>
                                         </div>
-                                        {chk.details && <div className="text-xs text-slate-400 mt-1">{chk.details.join(", ")}</div>}
+                                        <div className="text-xs text-slate-400 mt-1">{chk.message_ko}</div>
                                     </div>
                                 ))}
                             </div>
@@ -435,7 +436,7 @@
                             {data.similarity && (
                                 <div className="mt-6 flex justify-between items-center bg-slate-900 p-4 rounded-lg">
                                     <span className="text-slate-400">Similarity</span>
-                                    <span className="text-2xl font-mono font-bold text-cyan-400">{data.similarity.score.toFixed(2)}</span>
+                                    <span className="text-2xl font-mono font-bold text-cyan-400">{data.similarity.score_0_1 ? data.similarity.score_0_1.toFixed(2) : 'N/A'}</span>
                                 </div>
                             )}
                         </div>
