@@ -308,6 +308,19 @@ def get_raw(filename: str = Query(..., description="프로젝트 루트 기준 �
         raise HTTPException(status_code=500, detail="파일 읽기 실패")
 
 
+@app.get("/api/validation", summary="검증 리포트 조회")
+def get_validation_report():
+    """OOS 월별 검증 리포트를 반환합니다."""
+    logger.info("검증 리포트 조회 요청 (GET /api/validation)")
+    path = REPORTS_DIR / "validation" / "oos_2024_2025_monthly.json"
+    if not path.exists():
+        return {"status": "not_ready", "message": "검증 리포트가 없습니다."}
+    try:
+        return safe_read_json(path)
+    except Exception as e:
+        logger.error("검증 리포트 로드 실패", exc_info=True)
+        raise HTTPException(status_code=500, detail="리포트 로드 실패")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
