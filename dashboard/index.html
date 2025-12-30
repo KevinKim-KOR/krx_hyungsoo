@@ -4,98 +4,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KRX Alertor Cockpit</title>
-    <!-- Tailwind CSS -->
+    <title>KRX Alertor - Auto Trading Observer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        slate: { 850: '#1e293b', 900: '#0f172a' },
-                        cyan: { 400: '#22d3ee', 500: '#06b6d4', 900: '#164e63' }
-                    },
-                    fontFamily: { mono: ['Consolas', 'Monaco', 'monospace'] }
-                }
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"
+        crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
-    </script>
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Prop-types (Required for Recharts UMD) -->
-    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
-    <!-- Recharts (Use a compatible UMD version, e.g., 2.1.12) -->
-    <script src="https://unpkg.com/recharts@2.1.12/umd/Recharts.js"></script>
+    </style>
 </head>
 
-<body class="bg-slate-900 text-slate-200 font-sans selection:bg-cyan-500 selection:text-white">
-    <div id="root"></div>
+<body>
+    <div id="root">
+        <div style="padding: 20px; text-align: center; color: #94a3b8;">
+            Loading Dashboard...
+        </div>
+    </div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } = Recharts;
+        // Safety Check for Libraries
+        if (!window.React || !window.ReactDOM || !window.Recharts) {
+            document.getElementById('root').innerHTML = `
+                <div style="padding: 40px; text-align: center; color: #ef4444; border: 1px dashed #ef4444; margin: 20px; border-radius: 8px;">
+                    <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">Library Loading Failed</h2>
+                    <p>Required libraries (React or Recharts) failed to load from CDN.</p>
+                    <p style="font-size: 12px; margin-top: 10px; color: #94a3b8;">Please check your internet connection or try refreshing.</p>
+                    <p style="font-size: 10px; margin-top: 5px; color: #64748b;">Debug: React=${!!window.React}, Recharts=${!!window.Recharts}</p>
+                </div>
+            `;
+            throw new Error("Library loading failed");
+        }
 
+        const { useState, useEffect, useMemo } = React;
+        const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell } = window.Recharts;
+
+        // API Configuration
         const API_BASE = "http://localhost:8000";
 
-        // --- Utils ---
-        const formatMoney = (n) => n?.toLocaleString('ko-KR') || '0';
-        const formatDate = (d) => {
-            if (!d) return '-';
-            const s = String(d);
-            return `${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}`;
-        };
+        // Utils
+        const formatMoney = (val) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(val);
+        const formatAmount = (val) => new Intl.NumberFormat('ko-KR').format(val);
 
         // --- Components ---
 
         function Badge({ status }) {
-            // Rule 1: Badge & Quality 2-Axis Logic
-            let color = "bg-slate-500";
-            let text = "UNKNOWN";
-            let pulse = false;
+            if (!status) return <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-700 text-slate-400">LOADING</span>;
 
-            if (status) {
-                const { badge, read_quality, evidence } = status;
-
-                if (badge === "FAIL" || badge === "ERROR") {
-                    color = "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.7)]";
-                    text = "SYSTEM FAIL";
-                    pulse = true;
-                } else if (badge === "OK" || badge === "SKIP") {
-                    if (read_quality !== "perfect") {
-                        color = "bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.6)]";
-                        text = "OK (LOG DAMAGED)";
-                        pulse = true;
-                    } else if (evidence?.error_count > 0) {
-                        color = "bg-orange-500 text-white";
-                        text = "OK (ERRORS FOUND)";
-                    } else {
-                        color = "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]";
-                        text = "OPERATIONAL";
-                    }
-                }
-            }
+            const badgeColor =
+                status.badge === 'OK' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                    status.badge === 'SKIP' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                        status.badge === 'FAIL' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                            'bg-slate-500/20 text-slate-400 border border-slate-500/30';
 
             return (
-                <div className={`flex items-center gap-3 px-4 py-2 rounded-full font-bold text-sm tracking-wider transition-all duration-300 ${color} ${pulse ? 'animate-pulse' : ''}`}>
-                    <div className={`w-2 h-2 rounded-full bg-white ${pulse ? 'animate-ping' : ''}`}></div>
-                    {text}
+                <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 ${badgeColor}`}>
+                    <div className={`w-2 h-2 rounded-full ${status.badge === 'OK' ? 'bg-emerald-400 animate-pulse' : 'bg-current'}`}></div>
+                    {status.badge}
+                    <span className="opacity-50">|</span>
+                    <span className="font-mono">{status.asof}</span>
                 </div>
             );
         }
 
-        function SignalsTable({ signals }) {
-            // Rule 2 & 5: Honest Empty States
-            if (!signals) return <div className="p-8 text-center text-slate-500 font-mono">Loading Signals...</div>;
+        function StatCard({ label, value, subValue, trend }) {
+            return (
+                <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl relative overflow-hidden group hover:border-cyan-500/30 transition-all">
+                    <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">{label}</div>
+                    <div className="text-2xl font-bold text-white font-mono">{value}</div>
+                    {subValue && (
+                        <div className={`text-xs mt-1 font-mono flex items-center gap-1 ${trend === 'up' ? 'text-emerald-400' : trend === 'down' ? 'text-red-400' : 'text-slate-500'}`}>
+                            {trend === 'up' && '▲'} {trend === 'down' && '▼'} {subValue}
+                        </div>
+                    )}
+                </div>
+            )
+        }
 
-            if (signals.length === 0) {
+        function KPICard({ label, value, sub, color }) {
+            return (
+                <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{label}</div>
+                    <div className={`text-xl font-mono font-bold ${color || "text-white"}`}>{value}</div>
+                    {sub && <div className="text-[8px] text-slate-600 mt-1">{sub}</div>}
+                </div>
+            );
+        }
+
+        function SignalsList({ signals }) {
+            if (!signals || signals.length === 0) {
                 return (
-                    <div className="flex flex-col items-center justify-center py-12 border border-dashed border-slate-700 rounded-lg opacity-70">
-                        <div className="text-4xl mb-2">💤</div>
-                        <h3 className="text-xl font-bold text-slate-400">오늘 거래 없음 (No Action)</h3>
-                        <p className="text-sm text-slate-500">시장 감시 결과, 진입/청산 조건에 부합하는 종목이 없습니다.</p>
+                    <div className="p-8 text-center border border-dashed border-slate-700 rounded-lg">
+                        <div className="text-4xl mb-4">💤</div>
+                        <h3 className="text-lg font-bold text-slate-400">No Action Today</h3>
+                        <p className="text-sm text-slate-500 mt-2">오늘 실행된 진입/청산 시그널이 없습니다.</p>
                     </div>
                 );
             }
@@ -122,6 +164,26 @@
             );
         }
 
+        function IntegrityBanner({ issues }) {
+            if (!issues || issues.length === 0) return null;
+            return (
+                <div className="animate-fade-in-up mb-8 space-y-2">
+                    {issues.map((issue, i) => (
+                        <div key={i} className="bg-red-900/80 border border-red-500 text-red-100 px-6 py-4 rounded-lg flex items-start gap-4 shadow-lg shadow-red-900/20">
+                            <div className="text-2xl pt-0.5">🚨</div>
+                            <div>
+                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                    [CRITICAL] {issue.id}
+                                    <span className="text-xs bg-red-950 px-2 py-0.5 rounded text-red-300 font-mono">{issue.when}</span>
+                                </h3>
+                                <p className="text-red-200 mt-1">{issue.message}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
         function ValidationView({ data }) {
             if (!data || data.status === 'not_ready') {
                 return (
@@ -135,66 +197,254 @@
 
             return (
                 <div className="space-y-12">
-                    {Object.entries(data.years).map(([year, info]) => (
-                        <section key={year} className="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8">
-                            {/* Header */}
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700 pb-4 gap-4">
-                                <h2 className="text-2xl font-bold text-white tracking-widest">{year} <span className="text-sm font-normal text-slate-500 ml-2">Phase 9 Validation</span></h2>
-                                <div className="flex gap-6 text-right">
-                                    <div>
-                                        <div className="text-xs text-slate-400">Total Return</div>
-                                        <div className={`text-lg font-mono font-bold ${info.summary.total_return_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                            {info.summary.total_return_pct}%
+                    {Object.entries(data.years).map(([year, info]) => {
+                        const validSummary = info.summary;
+                        return (
+                            <section key={year} className="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8">
+                                {/* Header */}
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700 pb-4 gap-4">
+                                    <h2 className="text-2xl font-bold text-white tracking-widest">{year} <span className="text-sm font-normal text-slate-500 ml-2">Phase 9 Validation</span></h2>
+                                    <div className="flex gap-6 text-right">
+                                        <div>
+                                            <div className="text-xs text-slate-400">Total Return</div>
+                                            <div className="text-xl font-bold text-white mb-2">{formatAmount(validSummary.total_return_pct)}%</div>
+                                            <div className={`text-xs ${validSummary.total_return_pct > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {validSummary.total_return_pct > 0 ? '▲' : '▼'} Total Return
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-slate-400">MDD</div>
-                                        <div className="text-lg font-mono font-bold text-slate-200">{info.summary.mdd_pct}%</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-slate-400">Trades</div>
-                                        <div className="text-lg font-mono font-bold text-cyan-400">{info.summary.trades}</div>
+                                        <div>
+                                            <div className="text-xs text-slate-400">MDD</div>
+                                            <div className="text-lg font-mono font-bold text-slate-200">{info.summary.mdd_pct}%</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-slate-400">Trades</div>
+                                            <div className="text-lg font-mono font-bold text-cyan-400">{info.summary.trades}</div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Heatmap Grid */}
-                            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                {info.monthly.map((m) => {
-                                    const ret = m.return_pct;
-                                    const isProfit = ret > 0;
+                                {/* Heatmap Grid */}
+                                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                    {info.monthly.map((m) => {
+                                        const ret = m.return_pct;
+                                        const isProfit = ret > 0;
 
-                                    // Color Logic
-                                    let bgClass = "bg-slate-700";
-                                    if (ret <= -5) bgClass = "bg-red-900"; // Deep Red for Crash
-                                    else if (ret < 0) bgClass = "bg-red-900/40"; // Light Red
-                                    else if (ret >= 5) bgClass = "bg-green-700"; // Deep Green
-                                    else if (ret > 0) bgClass = "bg-green-900/40"; // Light Green
+                                        // Color Logic
+                                        let bgClass = "bg-slate-700";
+                                        if (ret <= -5) bgClass = "bg-red-900";
+                                        else if (ret < 0) bgClass = "bg-red-900/40";
+                                        else if (ret >= 5) bgClass = "bg-green-700";
+                                        else if (ret > 0) bgClass = "bg-green-900/40";
 
-                                    // Border for High Activity
-                                    const borderClass = m.trades >= 40 ? "border-2 border-yellow-500/50" : "border border-slate-600";
+                                        // Border for High Activity
+                                        const borderClass = m.trades >= 40 ? "border-2 border-yellow-500/50" : "border border-slate-600";
 
-                                    return (
-                                        <div key={m.month} className={`${bgClass} ${borderClass} rounded-lg p-3 relative h-24 hover:scale-105 transition-transform`}>
-                                            <div className="text-xs text-slate-400 mb-1">{m.month.split('-')[1]}월</div>
-                                            <div className={`text-lg font-mono font-bold ${isProfit ? 'text-green-300' : 'text-red-300'}`}>
-                                                {ret > 0 ? '+' : ''}{ret}%
+                                        return (
+                                            <div key={m.month} className={`${bgClass} ${borderClass} rounded-lg p-3 relative h-24 hover:scale-105 transition-transform`}>
+                                                <div className="text-xs text-slate-400 mb-1">{m.month.split('-')[1]}월</div>
+                                                <div className={`text-lg font-mono font-bold ${isProfit ? 'text-green-300' : 'text-red-300'}`}>
+                                                    {ret > 0 ? '+' : ''}{ret}%
+                                                </div>
+                                                <div className="absolute bottom-2 right-2 text-xs font-mono text-slate-500">
+                                                    {m.trades}t
+                                                </div>
                                             </div>
-                                            <div className="absolute bottom-2 right-2 text-xs font-mono text-slate-500">
-                                                {m.trades}t
-                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        function DiagnosisView({ data }) {
+            const [expandedDay, setExpandedDay] = useState(null);
+
+            if (!data || !data.years) {
+                return (
+                    <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
+                        <div className="text-4xl mb-4">🩺</div>
+                        <h3 className="text-xl font-bold text-slate-400">진단 리포트 준비 중 (V3)</h3>
+                        <p className="text-sm text-slate-500 mt-2">{data ? data.message : "Data Loading..."}</p>
+                    </div>
+                );
+            }
+
+            const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#ef4444', '#f472b6'];
+
+            return (
+                <div className="space-y-12">
+                    {['2024', '2025'].map(year => {
+                        const yData = data.years[year];
+                        if (!yData) return null;
+
+                        // Contract 3: Use V3 KPI names directly
+                        const kpis = yData.kpis;
+                        const breakdown = yData.reason_breakdown;
+
+                        const chartData = Object.entries(breakdown || {})
+                            .map(([name, value]) => ({ name, value }))
+                            .sort((a, b) => b.value - a.value);
+
+                        const daily = data.days ? data.days.filter(d => d.year === parseInt(year)) : [];
+
+                        return (
+                            <section key={year} className="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8">
+                                <h2 className="text-2xl font-bold text-white mb-6 border-b border-slate-700 pb-4 flex items-center gap-2">
+                                    <span className="w-1 h-6 bg-cyan-500 rounded"></span> {year} (V3 Strict)
+                                </h2>
+
+                                {/* KPI Cards per Contract 3 */}
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+                                    <KPICard label="Gate Open Days" value={kpis.gate_open_days} sub="Bullish/Neutral" />
+                                    <KPICard label="Chop Blocked" value={kpis.chop_blocked_days} color={kpis.chop_blocked_days > 0 ? "text-yellow-400" : "text-slate-400"} />
+                                    <KPICard label="Bear Blocked" value={kpis.bear_blocked_days} color={kpis.bear_blocked_days > 0 ? "text-red-400" : "text-slate-400"} />
+                                    <KPICard label="Executed Days" value={kpis.executed_days} color={kpis.executed_days > 0 ? "text-emerald-400" : "text-slate-500"} />
+                                    <KPICard label="Integrity Anomaly" value={kpis.integrity_anomaly_days} color={kpis.integrity_anomaly_days > 0 ? "text-red-600 font-bold animate-pulse" : "text-slate-700"} />
+                                </div>
+
+                                {/* Chart & Table */}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    <div className="lg:col-span-1">
+                                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Reason Breakdown</h3>
+                                        <div className="h-48 bg-slate-900/50 rounded-lg p-2 border border-slate-800">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={chartData} layout="vertical" margin={{ left: 10 }}>
+                                                    <XAxis type="number" hide />
+                                                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 9, fill: '#64748b' }} />
+                                                    <Tooltip contentStyle={{ backgroundColor: '#1e293b' }} />
+                                                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={15} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
                                         </div>
-                                    );
-                                })}
+                                    </div>
+
+                                    <div className="lg:col-span-2">
+                                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Daily Evidence Details</h3>
+                                        <div className="overflow-x-auto bg-slate-900/50 rounded-lg border border-slate-800 max-h-[400px]">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="text-slate-500 bg-slate-900 sticky top-0 uppercase font-mono">
+                                                    <tr>
+                                                        <th className="p-3">Date</th>
+                                                        <th className="p-3">Regime</th>
+                                                        <th className="p-3">Reason</th>
+                                                        <th className="p-3 text-center">Exec</th>
+                                                        <th className="p-3 text-right">Trades</th>
+                                                        <th className="p-3">ADX / MA</th>
+                                                        <th className="p-3 text-center">GC</th>
+                                                        <th className="p-3">Conf</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-800">
+                                                    {daily.slice(0, 100).map((d, i) => { // Limit render for perf
+                                                        return (
+                                                            <tr key={i} className={`hover:bg-slate-800/80 transition-colors ${d.integrity.anomaly ? "outline outline-1 outline-red-500 bg-red-900/20" : ""}`}>
+                                                                <td className="p-3 font-mono text-slate-400">{d.date}</td>
+                                                                <td className="p-3">{d.market.regime}</td>
+                                                                <td className="p-3 text-xs">{d.market.block_reason}</td>
+                                                                <td className="p-3 text-center text-lg">{d.execution.executed ? "✅" : ""}</td>
+                                                                <td className="p-3 text-right font-mono">{d.execution.actual_trades > 0 ? d.execution.actual_trades : "-"}</td>
+                                                                <td className="p-3 font-mono text-slate-400">
+                                                                    {d.evidence.adx.value.toFixed(1)} <span className="text-slate-600">|</span> {d.evidence.ma.relation === 'SHORT_ABOVE_LONG' ? 'S>L' : 'S<L'}
+                                                                </td>
+                                                                <td className="p-3 text-center">{d.evidence.golden_cross.is_golden_cross ? "🌟" : ""}</td>
+                                                                <td className="p-3">{d.evidence.confidence.band}</td>
+                                                            </tr>
+                                                        )
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        );
+                    })}
+                </div>
+            )
+        }
+
+        function GatekeeperView({ data }) {
+            if (!data || data.status === 'not_ready') {
+                return (
+                    <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
+                        <div className="text-4xl mb-4">🛡️</div>
+                        <h3 className="text-xl font-bold text-slate-400">심사 결과 없음 (V3)</h3>
+                        <p className="text-sm text-slate-500 mt-2">{data ? data.message : "Tools > Gatekeeper 실행 필요"}</p>
+                    </div>
+                );
+            }
+
+            const badgeColor = {
+                "PROMOTE": "bg-emerald-500 text-black",
+                "HOLD": "bg-yellow-500 text-black",
+                "REJECT": "bg-red-500 text-white",
+                "ERROR": "bg-red-600 text-white font-bold animate-pulse"
+            }[data.decision] || "bg-slate-500";
+
+            return (
+                <div className="space-y-8">
+                    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex justify-between items-center shadow-lg">
+                        <div>
+                            <div className="text-sm text-slate-400 mb-1">Gatekeeper Decision (Contract 2)</div>
+                            <h2 className="text-3xl font-bold text-white">{data.reason}</h2>
+                        </div>
+                        <div className={`px-8 py-4 rounded-xl text-3xl font-bold tracking-widest shadow-lg ${badgeColor}`}>
+                            {data.decision}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">Checks</h3>
+                            <div className="space-y-3">
+                                {data.checks.map((chk, i) => (
+                                    <div key={i} className={`p-4 rounded border ${chk.passed ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/50 bg-red-500/10'}`}>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className={`font-bold ${chk.passed ? 'text-green-300' : 'text-red-300'}`}>{chk.check_id}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded ${chk.severity === 'HARD' ? 'bg-red-900 text-red-100' : 'bg-yellow-900 text-yellow-100'}`}>{chk.severity}</span>
+                                        </div>
+                                        {chk.details && <div className="text-xs text-slate-400 mt-1">{chk.details.join(", ")}</div>}
+                                    </div>
+                                ))}
                             </div>
-                        </section>
-                    ))}
+                        </div>
+
+                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">Parameter Drift</h3>
+                            <table className="w-full text-sm">
+                                <thead className="text-slate-500 text-left border-b border-slate-700">
+                                    <tr><th className="py-2">Param</th><th className="py-2 text-right">Base</th><th className="py-2 text-right">Cand</th></tr>
+                                </thead>
+                                <tbody className="text-slate-300 divide-y divide-slate-700">
+                                    {data.baseline && data.candidate && Object.keys(data.baseline.params).map(k => {
+                                        const bV = JSON.stringify(data.baseline.params[k]);
+                                        const cV = JSON.stringify(data.candidate.params[k]);
+                                        return (
+                                            <tr key={k}>
+                                                <td className="py-3 font-mono text-slate-400">{k}</td>
+                                                <td className="py-3 text-right">{bV}</td>
+                                                <td className={`py-3 text-right font-bold ${bV !== cV ? 'text-amber-400' : ''}`}>{cV}</td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                            {data.similarity && (
+                                <div className="mt-6 flex justify-between items-center bg-slate-900 p-4 rounded-lg">
+                                    <span className="text-slate-400">Similarity</span>
+                                    <span className="text-2xl font-mono font-bold text-cyan-400">{data.similarity.score.toFixed(2)}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             );
         }
 
         function LogViewer({ logFile, content }) {
-            // Rule 5: Honest Empty States for Logs
             if (!logFile) return <div className="p-8 text-center text-slate-500">로그 파일 경로 정보가 없습니다.</div>
             if (content === null) return <div className="p-8 text-center text-cyan-400 animate-pulse">Connecting to Source...</div>
             if (content === "") return <div className="p-8 text-center text-red-400 border border-red-900 bg-red-900/10 rounded">로그 파일을 읽을 수 없습니다. (File Not Found or Access Denied)</div>
@@ -211,8 +461,6 @@
             )
         }
 
-        // --- Main App ---
-
         function App() {
             const [status, setStatus] = useState(null);
             const [portfolio, setPortfolio] = useState(null);
@@ -220,19 +468,51 @@
             const [history, setHistory] = useState([]);
             const [rawLogs, setRawLogs] = useState(null);
             const [validationData, setValidationData] = useState(null);
+            const [diagnosisData, setDiagnosisData] = useState(null);
+            const [gatekeeperData, setGatekeeperData] = useState(null);
             const [activeTab, setActiveTab] = useState("dashboard");
 
-            // Rule 3: Auto-Focus Logs on Failure
+            // Integrity Check Logic
+            const integrityIssues = useMemo(() => {
+                const issues = [];
+                if (validationData && diagnosisData) {
+                    // IC1: Diagnosis Validation Mismatch
+                    // Check years 2024, 2025
+                    ['2024', '2025'].forEach(y => {
+                        const vY = validationData.years && validationData.years[y];
+                        const dY = diagnosisData.years && diagnosisData.years[y];
+                        if (vY && dY) {
+                            if (vY.summary.trades > 0 && dY.kpis && dY.kpis.executed_days === 0) {
+                                issues.push({
+                                    id: 'IC1_DIAGNOSIS_VALIDATION_MISMATCH',
+                                    when: `Year ${y}`,
+                                    message: `검증(거래 ${vY.summary.trades}건) vs 진단(체결일 0) 불일치: 진단 SoT 또는 매핑 오류 가능`
+                                });
+                            }
+                        }
+                    });
+                }
+
+                if (gatekeeperData && gatekeeperData.integrity) {
+                    // IC2: Gatekeeper Baseline Mismatch
+                    if (gatekeeperData.integrity.config_missing || gatekeeperData.integrity.unit_mismatch) {
+                        issues.push({
+                            id: 'IC2_GATEKEEPER_BASELINE_MISMATCH',
+                            when: 'Gatekeeper',
+                            message: `Gatekeeper 기준값 무결성 오류: ${gatekeeperData.integrity.notes || "설정 누락/단위 혼선"}`
+                        });
+                    }
+                }
+                return issues;
+            }, [validationData, diagnosisData, gatekeeperData]);
+
             useEffect(() => {
                 if (status) {
                     const isCrash = status.badge === 'FAIL';
                     const isDamaged = status.read_quality !== 'perfect';
-                    const hasErrors = (status.evidence?.error_count || 0) > 0;
+                    const hasErrors = (status.evidence && status.evidence.error_count) ? status.evidence.error_count > 0 : false;
 
                     if (isCrash || isDamaged || hasErrors) {
-                        // Only switch if we haven't manually switched (simple logic: just switch once on load ideally, 
-                        // but here we force it to ensure attention)
-                        // To be user-friendly, maybe only switch if we are on dashboard.
                         if (activeTab === 'dashboard') {
                             setActiveTab('logs');
                         }
@@ -240,21 +520,14 @@
                 }
             }, [status]);
 
-            // Data Fetching
             const fetchData = async () => {
                 try {
                     const sRes = await fetch(`${API_BASE}/api/status`);
                     const sData = await sRes.json();
 
-                    // Rule 4: API Versioning Check (UI Constitution)
                     if (sData.schema_version !== "UI-1.0") {
                         console.warn(`Schema Mismatch: Expected UI-1.0, got ${sData.schema_version}`);
-                        // Optionally set a flag or show a toast. For now, strict validation might mean treating it as UNKNOWN or Partial.
-                        // However, to keep it operational, we will just warn in console unless it's critical.
-                        // Let's make it visible in the badge logic if we wanted, but the requirement was "UI가 이를 검증해야 합니다".
-                        // Minimal implementation: if mismatch, append warning to message set below.
                         sData.message = `[Schema Mismatch] ${sData.message}`;
-                        // Force a WARN state if mismatch
                         if (!sData.evidence) sData.evidence = { error_count: 1 };
                         else sData.evidence.error_count += 1;
                     }
@@ -271,33 +544,36 @@
                     const hRes = await fetch(`${API_BASE}/api/history`);
                     setHistory(await hRes.json());
 
+                    // Contract 1: Diagnosis V3 Consumption
+                    const dRes = await fetch(`${API_BASE}/api/diagnosis/v3`);
+                    const dData = await dRes.json();
+                    if (dData.status !== "not_ready") setDiagnosisData(dData);
+
+                    // Contract 2: Gatekeeper V3 Consumption
+                    const gRes = await fetch(`${API_BASE}/api/gatekeeper/v3`);
+                    const gData = await gRes.json();
+                    if (gData.status !== "not_ready") setGatekeeperData(gData);
+
+                    // Legacy Validation (Optional but keeping for now)
                     const vRes = await fetch(`${API_BASE}/api/validation`);
                     setValidationData(await vRes.json());
 
                 } catch (e) {
                     console.error("Fetch Error", e);
-                    // Minimal Fallback for total offline
                     setStatus({ badge: "ERROR", message: "Backend Disconnected", read_quality: "failed" });
                 }
             };
 
             const fetchLogs = async (filename) => {
                 try {
-                    // Assuming filename is relative like 'logs/daily_...'
                     const res = await fetch(`${API_BASE}/api/raw?filename=${filename}`);
-                    if (!res.ok) { setRawLogs(""); return; } // Empty string triggers error UI
+                    if (!res.ok) { setRawLogs(""); return; }
                     const data = await res.json();
                     setRawLogs(data.content);
                 } catch (e) { setRawLogs(""); }
             }
 
             useEffect(() => { fetchData(); }, []);
-
-            // Calculated Values
-            const recentHistory = useMemo(() => {
-                if (!history.length) return [];
-                return history.slice(-5); // Last 5 days for Context
-            }, [history]);
 
             return (
                 <div className="min-h-screen bg-slate-900 pb-20">
@@ -322,14 +598,16 @@
 
                     <div className="container mx-auto px-4 py-8 max-w-5xl">
 
+                        {/* Integrity Banner */}
+                        <IntegrityBanner issues={integrityIssues} />
+
                         {/* Tab Nav */}
-                        <div className="flex gap-1 bg-slate-800 p-1 rounded-lg mb-8 mx-auto max-w-lg">
-                            {['dashboard', 'signals', 'validation', 'logs'].map(tab => (
+                        <div className="flex gap-1 bg-slate-800 p-1 rounded-lg mb-8 mx-auto max-w-3xl">
+                            {['dashboard', 'signals', 'validation', 'diagnosis', 'gatekeeper', 'logs'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === tab ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                                        } capitalize`}
+                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === tab ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'} capitalize`}
                                 >
                                     {tab}
                                 </button>
@@ -339,124 +617,83 @@
                         {/* Content */}
                         <main className="animate-fade-in-up">
                             {activeTab === 'dashboard' && (
-                                <div className="space-y-6">
-                                    {/* Asset Card */}
-                                    <section className="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8">
-                                        <div className="flex justify-between items-end mb-6">
-                                            <div>
-                                                <h2 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">Total Equity</h2>
-                                                <div className="text-4xl md:text-5xl font-bold text-white font-mono tracking-tighter">
-                                                    {portfolio ? formatMoney(portfolio.total_equity) : '---'}
-                                                    <span className="text-lg text-slate-500 font-sans ml-2">KRW</span>
-                                                </div>
-                                            </div>
-                                            <div className="text-right hidden md:block">
-                                                <div className="text-slate-400 text-sm">Cash Available</div>
-                                                <div className="text-xl font-bold text-cyan-400 font-mono">{portfolio ? formatMoney(portfolio.cash) : '-'}</div>
-                                            </div>
-                                        </div>
+                                <div className="space-y-8">
+                                    {/* Summary Cards */}
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <StatCard label="Total Equity" value={portfolio ? formatMoney(portfolio.total_equity) : '-'} subValue="Waiting" trend="neutral" />
+                                        <StatCard label="Cash Available" value={portfolio ? formatMoney(portfolio.cash) : '-'} subValue={`${portfolio ? ((portfolio.cash / portfolio.total_equity) * 100).toFixed(1) : 0}%`} trend="neutral" />
+                                        <StatCard label="Daily PnL" value={history.length > 0 ? formatMoney(history[history.length - 1].date_pnl) : '-'} subValue={history.length > 0 ? `${history[history.length - 1].date_return_pct}%` : '-'} trend={history.length > 0 && history[history.length - 1].date_pnl > 0 ? 'up' : 'down'} />
+                                        <StatCard label="Active Positions" value={portfolio && portfolio.holdings ? Object.keys(portfolio.holdings).length : 0} />
+                                    </div>
 
-                                        {/* Chart (Context) */}
-                                        <div className="h-48 w-full bg-slate-900/50 rounded-lg border border-slate-800 p-2">
-                                            {history.length > 0 ? (
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <LineChart data={recentHistory}>
-                                                        <Tooltip
-                                                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155' }}
-                                                            itemStyle={{ color: '#22d3ee' }}
-                                                        />
-                                                        <XAxis dataKey="date" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                                                        <Line type="monotone" dataKey="equity" stroke="#22d3ee" strokeWidth={2} dot={{ fill: '#0f172a', stroke: '#22d3ee', r: 3 }} activeDot={{ r: 5, fill: '#22d3ee' }} />
-                                                    </LineChart>
-                                                </ResponsiveContainer>
-                                            ) : (
-                                                <div className="flex items-center justify-center h-full text-xs text-slate-600">History Data Not Available</div>
-                                            )}
-                                        </div>
-                                    </section>
-
-                                    {/* Portfolio Snippet */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-                                            <h3 className="text-slate-300 font-bold mb-4 flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded bg-cyan-500"></span> Holdings
-                                            </h3>
-                                            <div className="space-y-3">
-                                                {portfolio?.positions && Object.keys(portfolio.positions).length > 0 ? (
-                                                    Object.entries(portfolio.positions).map(([code, pos]) => (
-                                                        <div key={code} className="flex justify-between items-center text-sm p-3 bg-slate-900/50 rounded hover:bg-slate-900 transition-colors cursor-default">
-                                                            <span className="font-mono text-cyan-300 font-bold">{code}</span>
-                                                            <div className="text-right">
-                                                                <div className="text-white font-mono">{pos.qty} <span className="text-slate-500 text-xs">QTY</span></div>
-                                                                <div className="text-slate-500 text-xs">@{formatMoney(pos.avg_price)}</div>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-slate-500 text-sm py-8 text-center bg-slate-900/30 rounded border border-dashed border-slate-800">
-                                                        보유 종목이 없습니다 (Cash 100%)
-                                                    </div>
-                                                )}
+                                    {/* Holdings Table */}
+                                    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                                        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                            <span className="w-1 h-5 bg-cyan-500 rounded"></span> Current Holdings
+                                        </h2>
+                                        {!portfolio || !portfolio.holdings || Object.keys(portfolio.holdings).length === 0 ? (
+                                            <div className="text-center py-12 text-slate-500 bg-slate-900/50 rounded-lg border border-dashed border-slate-700">
+                                                No active positions (100% Cash)
                                             </div>
-                                        </div>
-
-                                        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-                                            <h3 className="text-slate-300 font-bold mb-4 flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded bg-purple-500"></span> System Evidence
-                                            </h3>
-                                            <div className="space-y-4 text-sm mt-6">
-                                                <div className="flex justify-between pb-2 border-b border-slate-700">
-                                                    <span className="text-slate-400">Date</span>
-                                                    <span className="text-white font-mono">{status ? formatDate(status.date) : '-'}</span>
-                                                </div>
-                                                <div className="flex justify-between pb-2 border-b border-slate-700">
-                                                    <span className="text-slate-400">Read Quality</span>
-                                                    <span className={`font-mono ${status?.read_quality === 'perfect' ? 'text-emerald-400' : 'text-yellow-400'}`}>
-                                                        {status?.read_quality?.toUpperCase() || '-'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between pb-2 border-b border-slate-700">
-                                                    <span className="text-slate-400">Last Status</span>
-                                                    <span className="text-white text-right max-w-[150px] truncate">{status?.message || '-'}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-400">Log File</span>
-                                                    <span className="text-slate-500 font-mono text-xs truncate max-w-[150px]" title={status?.log_file}>{status?.log_file || '-'}</span>
-                                                </div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm text-left text-slate-400">
+                                                    <thead className="text-slate-500 uppercase bg-slate-900/50">
+                                                        <tr>
+                                                            <th className="px-4 py-3 rounded-l-lg">Code</th>
+                                                            <th className="px-4 py-3">Qty</th>
+                                                            <th className="px-4 py-3">Avg Price</th>
+                                                            <th className="px-4 py-3">Mkt Value</th>
+                                                            <th className="px-4 py-3 text-right rounded-r-lg">P&L</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {Object.entries(portfolio.holdings).map(([code, h]) => (
+                                                            <tr key={code} className="border-b border-slate-700 hover:bg-slate-700/30 transition-colors">
+                                                                <td className="px-4 py-3 font-mono text-white font-bold">{code}</td>
+                                                                <td className="px-4 py-3">{h.qty}</td>
+                                                                <td className="px-4 py-3">{formatAmount(h.avg_price)}</td>
+                                                                <td className="px-4 py-3 text-white">{formatMoney(h.market_value)}</td>
+                                                                <td className={`px-4 py-3 text-right font-bold ${h.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                                    {h.pnl_pct}% ({formatAmount(h.pnl)})
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
 
                             {activeTab === 'signals' && (
-                                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h2 className="text-xl text-white font-bold">Daily Signals</h2>
-                                        <span className="text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded font-mono">
-                                            {status?.date ? formatDate(status.date) : 'TODAY'}
-                                        </span>
-                                    </div>
-                                    <SignalsTable signals={signals} />
-                                </div>
+                                <SignalsList signals={signals ? signals.signals : []} />
                             )}
 
                             {activeTab === 'validation' && (
                                 <ValidationView data={validationData} />
                             )}
 
+                            {activeTab === 'diagnosis' && (
+                                <DiagnosisView data={diagnosisData} />
+                            )}
+
+                            {activeTab === 'gatekeeper' && (
+                                <GatekeeperView data={gatekeeperData} />
+                            )}
+
                             {activeTab === 'logs' && (
                                 <div className="space-y-2">
                                     <div className="bg-black border border-slate-800 rounded-t-lg p-2 flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                        <span className="text-xs text-slate-500 ml-2 font-mono">Terminal Output</span>
+                                        <div className="flex gap-1.5 ml-2">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
+                                        </div>
+                                        <div className="mx-auto text-xs text-slate-500 font-mono opacity-50">Terminal Output Helper</div>
                                     </div>
                                     <LogViewer logFile={status?.log_file} content={rawLogs} />
-                                    <div className="text-center text-xs text-slate-600 mt-2">
-                                        * 이 로그는 읽기 전용이며, 수정할 수 없습니다.
-                                    </div>
                                 </div>
                             )}
                         </main>

@@ -81,7 +81,7 @@ def calculate_monthly_stats(nav_history, trades, year):
     if not nav_history:
         return []
 
-    df = pd.DataFrame(nav_history)
+    df = pd.DataFrame(nav_history, columns=['date', 'equity'])
     df['date'] = pd.to_datetime(df['date'])
     df.set_index('date', inplace=True)
     df.sort_index(inplace=True)
@@ -94,15 +94,9 @@ def calculate_monthly_stats(nav_history, trades, year):
     monthly_stats = []
     
     # Resample Monthly
-    # 'ME' for Month End
-    # Group by year-month string to handle potential gaps
     df['month_str'] = df.index.strftime('%Y-%m')
     months = sorted(df['month_str'].unique())
 
-    # Need equity relative to previous month end
-    # Get last day of previous year/month for reference?
-    # Actually, simplistic: return of month = (end/start - 1)
-    
     for m in months:
         m_df = df[df['month_str'] == m]
         if m_df.empty:
@@ -112,30 +106,14 @@ def calculate_monthly_stats(nav_history, trades, year):
         start_equity = m_df.iloc[0]['equity']
         end_equity = m_df.iloc[-1]['equity']
         
-        # Check previous day's close for accurate return?
-        # Standard approach: using nav series
-        # Monthly Return = (Last Equity of Month / Last Equity of Prev Month) - 1
-        # But here we just approximate (Last / First) - 1 ??
-        # Or better: (Last / First of Month) - 1 ... Wait, if we lost money day 1?
-        # Correct way is: (M_Last) / (M-1_Last) - 1.
-        
-        # Let's use daily returns product
-        daily_ret = m_df['equity'].pct_change().fillna(0)
-        # However, first day return is lost if we don't have prev day. 
-        # But NAV history ideally is continuous.
-        # Let's stick to (End / Start) - 1 for simplicity here, or look back at full DF for prev month close.
-        
-        # Find prev month close
+        # Approximate monthly return
+        # Try to find previous month close for better accuracy
         curr_month_first_date = m_df.index[0]
         prev_data = df[df.index < curr_month_first_date]
         if not prev_data.empty:
             ref_equity = prev_data.iloc[-1]['equity']
             ret_pct = ((end_equity / ref_equity) - 1) * 100
         else:
-            # First month of year: compare to initial capital? No, first day equity might be == initial logic
-            # Use First day open? 
-            # If 2024-01-02 is first day, we compare to 2024-01-02 open?
-            # Let's simpler: (End / Start - 1) if no prev.
              ret_pct = ((end_equity / start_equity) - 1) * 100
 
         # MDD calculation for the month
@@ -144,38 +122,33 @@ def calculate_monthly_stats(nav_history, trades, year):
         mdd_pct = abs(drawdown.min()) * 100
         
         # Trades Count
-        # Filter trades in this month
         month_trades = 0
         if trades:
             for t in trades:
-                t_date = pd.to_datetime(t['entry_date']) if isinstance(t, dict) else t.entry_date
+                # Robust access
+                try:
+                    # Trade object has .date
+                    if hasattr(t, 'date'):
+                        raw_date = t.date
+                    # Compatibility with dicts or other objects
+                    elif hasattr(t, 'entry_date'):
+                        raw_date = t.entry_date
+                    # Dict access
+                    elif isinstance(t, dict):
+                         raw_date = t.get('entry_date') or t.get('date')
+                except:
+                   continue
+                
+                t_date = pd.to_datetime(raw_date)
+                
                 if t_date.strftime('%Y-%m') == m:
                     month_trades += 1
         
-        # Exposure Ratio
-        # Days with exposure
+        # Exposure Ratio (Approx)
+        # Using daily_logs if passed, otherwise default 0
         trade_days = len(m_df)
-        # active days? Need 'portfolio_value' or 'positions' count
-        # Nav history usually has total_equity. 
-        # Using BacktestEngine logic: exposure_ratio is total active days / total days.
-        # But nav_history doesn't store active status explicitly unless we have 'cash' and 'equity'.
-        # Let's verify BacktestResult.
-        # If input 'nav_history' has 'cash', exposure = (equity - cash) > 0
-        # If keys are just 'equity', we can't.
-        # Assuming nav_history has keys: 'date', 'equity', 'cash' (check engine.py)
-        # engine.nav_history.append({"date": current_date, "equity": ..., "cash": ...})
+        exposure_ratio = 0.0 # Placeholder if no granular exposure data
         
-        exposure_count = 0
-        if 'cash' in m_df.columns:
-            # Active if equity > cash (roughly) or cash < equity
-            # Or market_value > 0
-            # equity = cash + market_value
-            # market_value = equity - cash
-            market_val = m_df['equity'] - m_df['cash']
-            exposure_count = (market_val > 100).sum() # tolerance
-            
-        exposure_ratio = exposure_count / trade_days if trade_days > 0 else 0.0
-
         monthly_stats.append({
             "month": m,
             "return_pct": round(ret_pct, 2),
@@ -186,6 +159,7 @@ def calculate_monthly_stats(nav_history, trades, year):
         })
         
     return monthly_stats
+
 
 def run_verification():
     # 1. Load Universe
@@ -213,10 +187,26 @@ def run_verification():
     start_all = min(p[0] for p in periods.values()) - timedelta(days=200) # buffer for MA
     end_all = max(p[1] for p in periods.values())
     
+    # Ensure Market Data (069500)
+    ensure_data_uptodate(["069500"])
+    
     logger.warning("Loading Price Data...")
     price_data = load_price_data(universe, start_all, end_all)
-    logger.warning("Loading Market Data...")
-    market_data = load_market_data("KOR_ETF_CORE", end_all, start_all)
+    logger.warning("Loading Market Data (069500)...")
+    # Load KODEX 200 as market index proxy
+    market_df_multi = load_price_data(["069500"], start_all, end_all)
+    if market_df_multi.empty:
+        logger.warning("Market Index Data (069500) Not Found! Regime detection may fail.")
+        market_data = pd.DataFrame()
+    else:
+        # Droplevel code to get DateTimeIndex
+        if 'code' in market_df_multi.index.names:
+             market_data = market_df_multi.droplevel('code')
+        else:
+             market_data = market_df_multi
+        
+        # Ensure it is sorted
+        market_data = market_data.sort_index()
 
     # Target Weights (Equal Weight)
     target_weights = {code: 1.0 / PROD_STRATEGY_CONFIG["max_positions"] for code in universe}

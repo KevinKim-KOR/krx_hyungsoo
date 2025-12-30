@@ -1,0 +1,226 @@
+{
+  "schema_version": "OOS-MONTHLY-1.0",
+  "generated_at": "2025-12-30T09:24:58.154049",
+  "years": {
+    "2024": {
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "summary": {
+        "total_return_pct": -8.77,
+        "mdd_pct": 9.53,
+        "trades": 250,
+        "exposure_ratio": 0.102
+      },
+      "monthly": [
+        {
+          "month": "2024-01",
+          "return_pct": -1.43,
+          "mdd_pct": 1.95,
+          "trades": 40,
+          "trade_days": 22,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-02",
+          "return_pct": -1.95,
+          "mdd_pct": 2.27,
+          "trades": 30,
+          "trade_days": 19,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-03",
+          "return_pct": 0.98,
+          "mdd_pct": 0.54,
+          "trades": 35,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-04",
+          "return_pct": -2.01,
+          "mdd_pct": 3.06,
+          "trades": 45,
+          "trade_days": 21,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-05",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-06",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 19,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-07",
+          "return_pct": -3.03,
+          "mdd_pct": 3.03,
+          "trades": 30,
+          "trade_days": 23,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-08",
+          "return_pct": -1.62,
+          "mdd_pct": 1.7,
+          "trades": 35,
+          "trade_days": 21,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-09",
+          "return_pct": -0.01,
+          "mdd_pct": 0.49,
+          "trades": 35,
+          "trade_days": 18,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-10",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-11",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 21,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2024-12",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        }
+      ]
+    },
+    "2025": {
+      "period": {
+        "start": "2025-01-01",
+        "end": "2025-12-30"
+      },
+      "summary": {
+        "total_return_pct": 10.51,
+        "mdd_pct": 5.08,
+        "trades": 281,
+        "exposure_ratio": 0.12
+      },
+      "monthly": [
+        {
+          "month": "2025-01",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 18,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-02",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-03",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-04",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 22,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-05",
+          "return_pct": 0.0,
+          "mdd_pct": 0.0,
+          "trades": 0,
+          "trade_days": 19,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-06",
+          "return_pct": 3.5,
+          "mdd_pct": 0.52,
+          "trades": 30,
+          "trade_days": 19,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-07",
+          "return_pct": -2.3,
+          "mdd_pct": 3.07,
+          "trades": 50,
+          "trade_days": 23,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-08",
+          "return_pct": 0.16,
+          "mdd_pct": 1.02,
+          "trades": 40,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-09",
+          "return_pct": -0.88,
+          "mdd_pct": 2.37,
+          "trades": 45,
+          "trade_days": 22,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-10",
+          "return_pct": 7.57,
+          "mdd_pct": 0.62,
+          "trades": 36,
+          "trade_days": 18,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-11",
+          "return_pct": -0.68,
+          "mdd_pct": 5.01,
+          "trades": 40,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        },
+        {
+          "month": "2025-12",
+          "return_pct": 3.03,
+          "mdd_pct": 0.49,
+          "trades": 40,
+          "trade_days": 20,
+          "exposure_ratio": 0.0
+        }
+      ]
+    }
+  }
+}

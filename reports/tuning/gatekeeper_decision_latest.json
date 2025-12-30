@@ -1,0 +1,97 @@
+{
+  "schema": "GATEKEEPER_DECISION_V3",
+  "asof": "2025-12-30",
+  "baseline": {
+    "config_hash8": "current",
+    "params": {
+      "ma_short_period": 60,
+      "stop_loss": {
+        "value": 0.0,
+        "unit": "PCT"
+      }
+    }
+  },
+  "candidate": {
+    "candidate_id": "mock_candidate",
+    "params": {
+      "ma_short_period": 120,
+      "stop_loss": {
+        "value": 0.0,
+        "unit": "PCT"
+      }
+    }
+  },
+  "similarity": {
+    "method": "weighted_normalized_distance",
+    "score": 0.58,
+    "min_required": 0.7
+  },
+  "checks": [
+    {
+      "check_id": "HC1_PARAM_DRIFT_LIMIT",
+      "severity": "HARD",
+      "passed": false,
+      "details": [
+        "ma_short_period drift > 25%",
+        "adx_threshold change > 3.0"
+      ],
+      "thresholds": {
+        "ma_change_pct_max": 0.25,
+        "adx_change_abs_max": 3.0
+      }
+    },
+    {
+      "check_id": "HC2_SIMILARITY_MIN",
+      "severity": "HARD",
+      "passed": false,
+      "thresholds": {
+        "min_similarity": 0.7
+      }
+    },
+    {
+      "check_id": "HC3_RISK_BOUNDS",
+      "severity": "HARD",
+      "passed": true,
+      "thresholds": {
+        "mdd_pct_max": 15.0,
+        "monthly_loss_pct_max": 6.0
+      }
+    },
+    {
+      "check_id": "HC4_TRADE_SANITY",
+      "severity": "HARD",
+      "passed": false,
+      "details": [
+        "Trade Count Ratio 0.00 out of [0.5, 2.0]"
+      ],
+      "thresholds": {
+        "trade_ratio_min": 0.5,
+        "trade_ratio_max": 2.0
+      }
+    },
+    {
+      "check_id": "SC1_RETURN_IMPROVEMENT",
+      "severity": "SOFT",
+      "passed": false,
+      "thresholds": {
+        "delta_return_pct_min": 1.0
+      }
+    },
+    {
+      "check_id": "SC2_EXPOSURE_NORMALIZATION",
+      "severity": "SOFT",
+      "passed": false,
+      "thresholds": {
+        "exposure_min": 0.12,
+        "exposure_max": 0.35
+      }
+    }
+  ],
+  "decision": "REJECT",
+  "reason": "Hard Check Failed",
+  "integrity": {
+    "config_missing": false,
+    "unit_mismatch": false,
+    "notes": []
+  }
+}

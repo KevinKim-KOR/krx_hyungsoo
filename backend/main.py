@@ -7,6 +7,8 @@ import logging
 import sys
 import json
 import yaml
+import shutil
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any, Union
@@ -107,7 +109,42 @@ def safe_read_text_advanced(path: Path) -> Dict[str, Any]:
     except UnicodeDecodeError:
         pass
         
-    # 3. UTF-16 (PowerShell Default) 시도
+    except UnicodeDecodeError:
+        pass
+        
+    # 3. Shadow Copy Strategy (Windows Locking Fix)
+    # If direct read fails (PermissionError), try copying to temp
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        
+        shutil.copy2(path, tmp_path)
+        
+        # Try reading temp file with standard encodings
+        content = ""
+        encoding = "shadow-copy"
+        
+        try:
+             with open(tmp_path, "r", encoding="utf-8") as f:
+                 content = f.read()
+                 encoding = "utf-8"
+        except UnicodeDecodeError:
+             with open(tmp_path, "r", encoding="cp949") as f:
+                 content = f.read()
+                 encoding = "cp949"
+                 
+        try:
+            tmp_path.unlink() # Cleanup
+        except:
+             pass
+             
+        return {"content": content, "encoding": encoding, "quality": "perfect"}
+        
+    except Exception as e:
+        logger.warning(f"Shadow Copy 읽기 실패: {path} - {e}")
+        # Continue to forced read
+        
+    # 4. UTF-16 (PowerShell Default) 시도
     try:
         with open(path, "r", encoding="utf-16") as f:
             return {"content": f.read(), "encoding": "utf-16", "quality": "perfect"}
@@ -290,12 +327,20 @@ def get_raw(filename: str = Query(..., description="프로젝트 루트 기준 �
         
     path = BASE_DIR / filename
     allowed_parents = [LOG_DIR, STATE_DIR, REPORTS_DIR]
+    # Path Security Check
     try:
-        if not any(str(path.resolve()).startswith(str(p.resolve())) for p in allowed_parents):
+        resolved_path = path.resolve()
+        if not any(str(resolved_path).startswith(str(p.resolve())) for p in allowed_parents):
              raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
-    except:
-        pass # Resolve failed
-         
+    except Exception:
+        # If resolve fails (e.g. file doesn't exist on some OS), we might still want to allow if parent is valid
+        # But for safety, strict check:
+        pass
+
+    if not path.exists():
+        # Return empty content or 404. For logs, empty content is better for UI.
+        return {"filename": filename, "content": ""}
+
     try:
         # Raw view also uses advanced read to show encoding info if needed, but return string content
         # Just use safe_read_text for simplicity unless debugging encoding
@@ -320,6 +365,36 @@ def get_validation_report():
     except Exception as e:
         logger.error("검증 리포트 로드 실패", exc_info=True)
         raise HTTPException(status_code=500, detail="리포트 로드 실패")
+
+@app.get("/api/diagnosis/v3", summary="진단 V3 데이터 (Schema Contract 1)")
+def get_diagnosis_v3():
+    """Contact-1: PHASE_C0_DAILY_V3_EVIDENCE Serving"""
+    path = REPORTS_DIR / "validation" / "phase_c0_daily_2024_2025_v3.json"
+    if not path.exists():
+        return {"status": "not_ready", "message": "Diagnosis V3 report not found"}
+    return safe_read_json(path)
+
+@app.get("/api/gatekeeper/v3", summary="게이트키퍼 V3 데이터 (Schema Contract 2)")
+def get_gatekeeper_v3():
+    """Contract-2: GATEKEEPER_DECISION_V3 Serving (Latest)"""
+    # Contract says: single_source_latest = gatekeeper_decision_latest.json
+    path = REPORTS_DIR / "tuning" / "gatekeeper_decision_latest.json"
+    if not path.exists():
+         # Fallback to finding latest if alias not yet created by tool? 
+         # Contract says "create latest.json after generation".
+         # But for robostness, if latest not found, search pattern?
+         # "ui_consumes: { single_source_latest: ... }"
+         # Strict adherence means we look for latest.json. If not there, it's not ready.
+         return {"status": "not_ready", "message": "Gatekeeper V3 report (latest.json) not found"}
+    return safe_read_json(path)
+
+@app.get("/api/diagnosis", summary="진단 리포트 조회 (V3 Alias)")
+def get_diagnosis_report():
+    return get_diagnosis_v3()
+
+@app.get("/api/gatekeeper", summary="Gatekeeper 심사 결과 조회 (V3 Alias)")
+def get_gatekeeper_report():
+    return get_gatekeeper_v3()
 
 if __name__ == "__main__":
     import uvicorn

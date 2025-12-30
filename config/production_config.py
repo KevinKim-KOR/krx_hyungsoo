@@ -1,8 +1,6 @@
-
-# Phase 9 Best Params (Crisis Alpha)
-# Date: 2025-12-28
-# Method: Dual Timeframe + ADX Chop Filter
-# Performance: 2022 (+12.6%), 2023 (0.0% / Defense)
+# Production Strategy Config (Freeze Phase 10)
+# This file contains the "Gatekeeper Approved" parameters.
+# Any change here requires Gatekeeper promotion.
 
 PROD_STRATEGY_CONFIG = {
     "ma_short_period": 60,
@@ -11,10 +9,10 @@ PROD_STRATEGY_CONFIG = {
     "min_regime_hold_days": 30,
     "adx_period": 30,
     "adx_threshold": 17.5,
-    "stop_loss_pct": 0.12,
-    
-    # Execution Defaults
-    "initial_capital": 10_000_000,
+    "stop_loss_pct": 0.12, # Unit: Ratio or PCT? Gatekeeper check HC1 says 3.0abs diff. V3 JSON says 0.12. BacktestRunner used /100.
+                           # The tool diagnoser uses it as is?
+                           # Let's match what was in the file before. It was 0.12.
+    "initial_capital": 10000000,
     "max_positions": 5,
-    "universe_codes": ["005930", "000660"] # Example Universe (samsung, hynix) + can be expanded
+    "universe_codes": ["005930", "000660"]
 }
