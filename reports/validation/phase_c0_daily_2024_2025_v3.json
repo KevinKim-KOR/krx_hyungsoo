@@ -2,7 +2,7 @@
   "schema_id": "PHASE_C0_DAILY_V3_EVIDENCE",
   "schema_version": "3.0.0",
   "meta": {
-    "generated_at": "2025-12-30T15:44:05.895051",
+    "generated_at": "2025-12-30T16:50:00.949230",
     "period": {
       "from": "2024-01-01",
       "to": "2025-12-31"
@@ -17,30 +17,30 @@
     }
   },
   "kpis": {
-    "gate_open_days": 77,
-    "chop_blocked_days": 143,
-    "bear_blocked_days": 35,
+    "gate_open_days": 202,
+    "chop_blocked_days": 111,
+    "bear_blocked_days": 16,
     "executed_days": 140,
-    "integrity_anomaly_days": 125
+    "integrity_anomaly_days": 0
   },
   "years": {
     "2024": {
       "kpis": {
-        "gate_open_days": 77,
-        "chop_blocked_days": 143,
-        "bear_blocked_days": 35,
+        "gate_open_days": 128,
+        "chop_blocked_days": 111,
+        "bear_blocked_days": 16,
         "executed_days": 66,
-        "integrity_anomaly_days": 51
+        "integrity_anomaly_days": 0
       },
       "reason_breakdown": {
         "CHOP_BLOCK": 111,
         "BEAR_BLOCK": 16,
-        "NO_SIGNAL": 0,
+        "NO_SIGNAL": 62,
         "NO_DATA": 7,
         "DATA_MISSING": 0,
         "EXECUTION_ANOMALY": 0,
-        "EXECUTED": 15,
-        "NONE": 62
+        "EXECUTED": 66,
+        "NONE": 0
       },
       "daily": [
         {
@@ -250,10 +250,10 @@
         {
           "date": "2024-01-05",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -261,10 +261,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -293,18 +293,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-08",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -312,10 +312,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -344,9 +344,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -454,10 +454,10 @@
         {
           "date": "2024-01-11",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -465,10 +465,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -497,18 +497,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-12",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -516,10 +516,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -548,18 +548,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-15",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -567,10 +567,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -599,18 +599,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-16",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -618,10 +618,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -650,18 +650,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-17",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -669,10 +669,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -701,9 +701,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -760,10 +760,10 @@
         {
           "date": "2024-01-19",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -771,10 +771,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -803,18 +803,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-22",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -822,10 +822,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -854,9 +854,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -913,10 +913,10 @@
         {
           "date": "2024-01-24",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -924,10 +924,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -956,18 +956,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-25",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -975,10 +975,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1007,18 +1007,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-26",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -1026,10 +1026,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1058,18 +1058,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-01-29",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -1077,10 +1077,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1109,9 +1109,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -1270,10 +1270,10 @@
         {
           "date": "2024-02-02",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -1281,10 +1281,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1313,18 +1313,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-02-05",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -1332,10 +1332,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1364,9 +1364,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -1780,10 +1780,10 @@
         {
           "date": "2024-02-16",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -1791,10 +1791,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1823,18 +1823,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-02-19",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -1842,10 +1842,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1874,17 +1874,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-02-20",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -1893,10 +1893,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -1925,9 +1925,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -2035,9 +2035,9 @@
         {
           "date": "2024-02-23",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -2046,10 +2046,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -2078,17 +2078,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-02-26",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -2097,10 +2097,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -2129,17 +2129,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-02-27",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -2148,10 +2148,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -2180,9 +2180,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -2545,9 +2545,9 @@
         {
           "date": "2024-03-08",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -2556,10 +2556,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -2588,17 +2588,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-03-11",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -2607,10 +2607,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -2639,9 +2639,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -2800,9 +2800,9 @@
         {
           "date": "2024-03-15",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -2811,10 +2811,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -2843,9 +2843,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -2902,9 +2902,9 @@
         {
           "date": "2024-03-19",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -2913,10 +2913,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -2945,9 +2945,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3055,9 +3055,9 @@
         {
           "date": "2024-03-22",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -3066,10 +3066,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3098,17 +3098,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-03-25",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -3117,10 +3117,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3149,9 +3149,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3310,9 +3310,9 @@
         {
           "date": "2024-03-29",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -3321,10 +3321,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3353,18 +3353,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(6건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-04-01",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -3372,10 +3372,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3404,18 +3404,18 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-04-02",
           "market": {
-            "regime": "bear",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
-            "bear": true
+            "bear": false
           },
           "execution": {
             "executed": true,
@@ -3423,10 +3423,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "BEAR_BLOCK",
-            "reason_ko": "BEAR_BLOCK (BEAR)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3455,9 +3455,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(BEAR_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3476,8 +3476,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3508,7 +3508,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3578,8 +3578,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3610,7 +3610,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3629,8 +3629,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3661,7 +3661,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3680,8 +3680,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3712,7 +3712,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3833,8 +3833,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3865,7 +3865,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -3884,8 +3884,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -3916,7 +3916,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -4037,8 +4037,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -4069,7 +4069,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -4088,8 +4088,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -4120,7 +4120,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -4139,8 +4139,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -4171,7 +4171,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -4343,8 +4343,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -4375,7 +4375,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -4394,8 +4394,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -4426,7 +4426,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -4445,8 +4445,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -4477,7 +4477,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -7097,8 +7097,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -7129,7 +7129,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -7148,8 +7148,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -7180,7 +7180,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -7301,8 +7301,8 @@
           "decision": {
             "gate_decision": "PASS",
             "block_reason": "NONE",
-            "reason_ko": "NONE (BULL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -7333,7 +7333,7 @@
           "integrity": {
             "anomaly": false,
             "anomaly_type": "NONE",
-            "message_ko": ""
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -7390,9 +7390,9 @@
         {
           "date": "2024-07-19",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -7401,10 +7401,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -7433,17 +7433,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(6건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-07-22",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -7452,10 +7452,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -7484,9 +7484,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -8206,9 +8206,9 @@
         {
           "date": "2024-08-12",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8217,10 +8217,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8249,17 +8249,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-08-13",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8268,10 +8268,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8300,9 +8300,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -8410,9 +8410,9 @@
         {
           "date": "2024-08-16",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8421,10 +8421,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8453,17 +8453,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-08-19",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8472,10 +8472,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8504,17 +8504,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-08-20",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8523,10 +8523,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8555,9 +8555,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -8665,9 +8665,9 @@
         {
           "date": "2024-08-23",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8676,10 +8676,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8708,17 +8708,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-08-26",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8727,10 +8727,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8759,17 +8759,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-08-27",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8778,10 +8778,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8810,9 +8810,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -8920,9 +8920,9 @@
         {
           "date": "2024-08-30",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8931,10 +8931,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -8963,17 +8963,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-02",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -8982,10 +8982,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9014,17 +9014,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-03",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9033,10 +9033,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9065,17 +9065,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-04",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9084,10 +9084,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9116,17 +9116,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-05",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9135,10 +9135,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9167,17 +9167,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-06",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9186,10 +9186,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9218,17 +9218,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-09",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9237,10 +9237,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9269,9 +9269,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -9430,9 +9430,9 @@
         {
           "date": "2024-09-13",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9441,10 +9441,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9473,9 +9473,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(6건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -9634,9 +9634,9 @@
         {
           "date": "2024-09-19",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9645,10 +9645,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9677,17 +9677,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-20",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9696,10 +9696,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9728,17 +9728,17 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2024-09-23",
           "market": {
-            "regime": "neutral",
-            "gate_open": false,
-            "chop": true,
+            "regime": "bull",
+            "gate_open": true,
+            "chop": false,
             "bear": false
           },
           "execution": {
@@ -9747,10 +9747,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "CHOP_BLOCK",
-            "reason_ko": "CHOP_BLOCK (NEUTRAL)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -9779,9 +9779,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(CHOP_BLOCK) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -13409,11 +13409,11 @@
     },
     "2025": {
       "kpis": {
-        "gate_open_days": 0,
+        "gate_open_days": 74,
         "chop_blocked_days": 0,
         "bear_blocked_days": 0,
         "executed_days": 74,
-        "integrity_anomaly_days": 74
+        "integrity_anomaly_days": 0
       },
       "reason_breakdown": {
         "CHOP_BLOCK": 0,
@@ -13422,7 +13422,7 @@
         "NO_DATA": 187,
         "DATA_MISSING": 0,
         "EXECUTION_ANOMALY": 0,
-        "EXECUTED": 0,
+        "EXECUTED": 74,
         "NONE": 0
       },
       "daily": [
@@ -19396,8 +19396,8 @@
         {
           "date": "2025-06-13",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19407,10 +19407,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -19439,9 +19439,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -19600,8 +19600,8 @@
         {
           "date": "2025-06-19",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19611,10 +19611,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -19643,16 +19643,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-06-20",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19662,10 +19662,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -19694,16 +19694,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-06-23",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19713,10 +19713,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -19745,16 +19745,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-06-24",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19764,10 +19764,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -19796,9 +19796,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -19855,8 +19855,8 @@
         {
           "date": "2025-06-26",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19866,10 +19866,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -19898,16 +19898,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-06-27",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19917,10 +19917,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -19949,16 +19949,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-06-30",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -19968,10 +19968,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20000,16 +20000,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-01",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20019,10 +20019,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20051,16 +20051,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-02",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20070,10 +20070,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20102,9 +20102,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -20161,8 +20161,8 @@
         {
           "date": "2025-07-04",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20172,10 +20172,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20204,16 +20204,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-07",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20223,10 +20223,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20255,9 +20255,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -20314,8 +20314,8 @@
         {
           "date": "2025-07-09",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20325,10 +20325,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20357,9 +20357,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -20416,8 +20416,8 @@
         {
           "date": "2025-07-11",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20427,10 +20427,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20459,16 +20459,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-14",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20478,10 +20478,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20510,16 +20510,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-15",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20529,10 +20529,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20561,16 +20561,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-16",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20580,10 +20580,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20612,9 +20612,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -20671,8 +20671,8 @@
         {
           "date": "2025-07-18",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20682,10 +20682,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20714,16 +20714,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-21",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20733,10 +20733,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20765,16 +20765,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-07-22",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20784,10 +20784,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20816,9 +20816,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -20926,8 +20926,8 @@
         {
           "date": "2025-07-25",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -20937,10 +20937,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -20969,9 +20969,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -21028,8 +21028,8 @@
         {
           "date": "2025-07-29",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21039,10 +21039,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21071,9 +21071,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -21181,8 +21181,8 @@
         {
           "date": "2025-08-01",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21192,10 +21192,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21224,16 +21224,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(8건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-08-04",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21243,10 +21243,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21275,9 +21275,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -21334,8 +21334,8 @@
         {
           "date": "2025-08-06",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21345,10 +21345,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21377,9 +21377,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -21436,8 +21436,8 @@
         {
           "date": "2025-08-08",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21447,10 +21447,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21479,16 +21479,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-08-11",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21498,10 +21498,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21530,16 +21530,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-08-12",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21549,10 +21549,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21581,9 +21581,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -21742,8 +21742,8 @@
         {
           "date": "2025-08-18",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21753,10 +21753,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21785,9 +21785,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -21946,8 +21946,8 @@
         {
           "date": "2025-08-22",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -21957,10 +21957,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -21989,16 +21989,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(6건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-08-25",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22008,10 +22008,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22040,9 +22040,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -22099,8 +22099,8 @@
         {
           "date": "2025-08-27",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22110,10 +22110,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22142,16 +22142,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-08-28",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22161,10 +22161,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22193,16 +22193,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-08-29",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22212,10 +22212,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22244,16 +22244,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(6건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-09-01",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22263,10 +22263,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22295,9 +22295,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -22456,8 +22456,8 @@
         {
           "date": "2025-09-05",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22467,10 +22467,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22499,9 +22499,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -22711,8 +22711,8 @@
         {
           "date": "2025-09-12",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22722,10 +22722,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22754,16 +22754,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-09-15",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22773,10 +22773,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22805,16 +22805,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-09-16",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22824,10 +22824,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -22856,9 +22856,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -22966,8 +22966,8 @@
         {
           "date": "2025-09-19",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -22977,10 +22977,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -23009,16 +23009,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-09-22",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -23028,10 +23028,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -23060,9 +23060,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -23119,8 +23119,8 @@
         {
           "date": "2025-09-24",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -23130,10 +23130,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -23162,9 +23162,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -23221,8 +23221,8 @@
         {
           "date": "2025-09-26",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -23232,10 +23232,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -23264,9 +23264,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(6건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -23374,8 +23374,8 @@
         {
           "date": "2025-10-01",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -23385,10 +23385,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -23417,9 +23417,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -23731,8 +23731,8 @@
         {
           "date": "2025-10-10",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -23742,10 +23742,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -23774,16 +23774,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-10-13",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -23793,10 +23793,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -23825,9 +23825,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -23986,8 +23986,8 @@
         {
           "date": "2025-10-17",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -23997,10 +23997,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24029,16 +24029,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-10-20",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24048,10 +24048,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24080,16 +24080,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-10-21",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24099,10 +24099,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24131,9 +24131,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -24241,8 +24241,8 @@
         {
           "date": "2025-10-24",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24252,10 +24252,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24284,9 +24284,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -24445,8 +24445,8 @@
         {
           "date": "2025-10-30",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24456,10 +24456,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24488,16 +24488,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-10-31",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24507,10 +24507,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24539,16 +24539,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-11-03",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24558,10 +24558,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24590,9 +24590,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -24649,8 +24649,8 @@
         {
           "date": "2025-11-05",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24660,10 +24660,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24692,9 +24692,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -24751,8 +24751,8 @@
         {
           "date": "2025-11-07",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24762,10 +24762,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24794,9 +24794,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -24955,8 +24955,8 @@
         {
           "date": "2025-11-13",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -24966,10 +24966,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -24998,16 +24998,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-11-14",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25017,10 +25017,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25049,16 +25049,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-11-17",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25068,10 +25068,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25100,16 +25100,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(1건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-11-18",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25119,10 +25119,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25151,9 +25151,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -25261,8 +25261,8 @@
         {
           "date": "2025-11-21",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25272,10 +25272,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25304,16 +25304,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(7건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-11-24",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25323,10 +25323,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25355,9 +25355,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -25516,8 +25516,8 @@
         {
           "date": "2025-11-28",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25527,10 +25527,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25559,16 +25559,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-12-01",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25578,10 +25578,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25610,16 +25610,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-12-02",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25629,10 +25629,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25661,9 +25661,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(3건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -25771,8 +25771,8 @@
         {
           "date": "2025-12-05",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25782,10 +25782,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25814,16 +25814,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-12-08",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25833,10 +25833,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25865,16 +25865,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-12-09",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25884,10 +25884,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -25916,9 +25916,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -25975,8 +25975,8 @@
         {
           "date": "2025-12-11",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -25986,10 +25986,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -26018,16 +26018,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(4건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-12-12",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -26037,10 +26037,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -26069,16 +26069,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(6건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-12-15",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -26088,10 +26088,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -26120,16 +26120,16 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
           "date": "2025-12-16",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -26139,10 +26139,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -26171,9 +26171,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -26281,8 +26281,8 @@
         {
           "date": "2025-12-19",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -26292,10 +26292,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -26324,9 +26324,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(5건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -26434,8 +26434,8 @@
         {
           "date": "2025-12-24",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -26445,10 +26445,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -26477,9 +26477,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {
@@ -26536,8 +26536,8 @@
         {
           "date": "2025-12-26",
           "market": {
-            "regime": "unknown",
-            "gate_open": false,
+            "regime": "bull",
+            "gate_open": true,
             "chop": false,
             "bear": false
           },
@@ -26547,10 +26547,10 @@
             "source": "OOS_LEDGER"
           },
           "decision": {
-            "gate_decision": "BLOCK",
-            "block_reason": "NO_DATA",
-            "reason_ko": "NO_DATA (UNKNOWN)",
-            "priority_note": "EXECUTION SoT 우선"
+            "gate_decision": "PASS",
+            "block_reason": "NONE",
+            "reason_ko": "EXECUTED (SoT: OOS_LEDGER)",
+            "priority_note": "SoT(ledger) override applied. Evidence may indicate chop/bear but execution took precedence."
           },
           "evidence": {
             "adx": {
@@ -26579,9 +26579,9 @@
             }
           },
           "integrity": {
-            "anomaly": true,
-            "anomaly_type": "EXECUTED_BUT_BLOCKED",
-            "message_ko": "실행됨(2건) 그러나 차단사유(NO_DATA) 존재"
+            "anomaly": false,
+            "anomaly_type": "NONE",
+            "message_ko": "실행됨 (SoT: Ledger)"
           }
         },
         {

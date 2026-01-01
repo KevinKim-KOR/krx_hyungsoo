@@ -23,15 +23,15 @@ UI 개발 시 다음 5가지 원칙을 절대적으로 준수해야 합니다.
 *   **Constraint**: 오직 **장 마감 후 확정된 데이터(Daily Close)**와 그에 따른 시그널/잔고만을 표시한다. 실시간 변동성은 UI의 관심사가 아니다.
 
 ### 4. Config Immutable (설정 불변)
-*   **Rule**: `config/production_config.py` (및 `.yaml`)는 UI 입장에서 **읽기 전용(Read-Only)**이다.
+*   **Rule**: `config/production_config.py` (V1) is **Immutable**. Upgrades use `production_config_v2.py`. UI treats them as **Read-Only**.
 *   **Constraint**: UI에서 슬라이더나 폼을 통해 파라미터를 변경하고 저장하는 기능을 구현하지 않는다. 파라미터 변경은 코드 수정 배포로 간주한다.
 
 ### 5. File-Based Coupling (파일 기반 느슨한 결합)
 *   **Rule**: UI 코드는 엔진 코드를 절대 `import` 하지 않는다.
-*   **Constraint**: 오직 엔진이 산출한 결과 파일(`json`, `yaml`, `log`)만을 읽어서 시각화한다.
-    *   `state/*.json`
-    *   `reports/*.yaml`
-    *   `reports/paper/*.json`
+*   **Constraint**: 오직 엔진이 산출하는 **Contract 5 Reports**와 로그만을 소비한다.
+    *   `reports/phase_c/report_human_v1.json` (Dashboard UI)
+    *   `reports/phase_c/report_ai_v1.json` (AI Agent Context)
+    *   `reports/phase_c/recon_daily.jsonl` (Detailed Tables)
 
 ---
 

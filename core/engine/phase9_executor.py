@@ -20,13 +20,32 @@ class Phase9Executor:
     - RSI Mean Reversion Logic (Entry/Exit)
     """
     
-    def __init__(self):
-        self.config = PROD_STRATEGY_CONFIG
+    def __init__(self, config: Dict[str, Any] = None):
+        # 1. Config Loading (Dependency Injection or Default)
+        if config:
+            self.config = config
+        else:
+            # Fallback (Should be avoided in Production V2 usage)
+            self.config = PROD_STRATEGY_CONFIG
+            
         self._log_config_hash()
+        self._validate_contract()
         
         self.detector = MarketRegimeDetector(enable_regime_detection=True)
         self.universe = self.config.get("universe_codes", [])
         
+    def _validate_contract(self):
+        """Phase 9 Parameter Contract Validation"""
+        req_keys = ["rsi_buy_threshold", "rsi_sell_threshold", "rsi_period"]
+        missing = [k for k in req_keys if k not in self.config]
+        
+        if missing:
+            logger.error(f"[Phase9Executor] Contract Violation: Missing keys {missing}")
+            raise ValueError(f"Phase9Executor requires {req_keys}. Config is missing: {missing}")
+            
+        # Log Effective Parameters
+        logger.info(f"Effective RSI Parameters: Buy < {self.config.get('rsi_buy_threshold')}, Sell > {self.config.get('rsi_sell_threshold')} (Period: {self.config.get('rsi_period')})")
+
     def _log_config_hash(self):
         """설정 변경 감지를 위한 해시 로깅"""
         # default=str handles date/numpy types if present
@@ -111,6 +130,8 @@ class Phase9Executor:
             # RISK-ON: RSI Logic
             # Calculate RSI for universe
             rsi_period = self.config['rsi_period']
+            rsi_buy = self.config['rsi_buy_threshold']
+            rsi_sell = self.config['rsi_sell_threshold']
             
             # Safe way to get available codes from MultiIndex (code, date)
             valid_codes = []
@@ -141,22 +162,15 @@ class Phase9Executor:
                  rs = gain / loss
                  rsi = 100 - (100 / (1 + rs)).iloc[-1]
                  
-                 # Simple Mean Reversion Logic (Phase 7 Style)
-                 # Buy if RSI < 30? Or high Momentum?
-                 # Phase 9 Winner Params suggest simple RSI Score usage.
-                 # Let's align with "Relative Momentum" usually. 
-                 # But wait, Phase 9 top params include RSI=40.
-                 # Assuming Lower implies Buy opportunity in Bull market (Dip Buying).
-                 
                  score = (50 - rsi) # Higher score if RSI is lower (Dip Buying)
                  
-                 # Threshold
-                 if rsi < 50: # Example Threshold for Dip
+                 # Threshold Logic (Contract V2)
+                 if rsi < rsi_buy:
                      signal_type = 'BUY'
-                     reason = f"Bull Dip (RSI {rsi:.1f})"
-                 elif rsi > 70:
+                     reason = f"Bull Dip (RSI {rsi:.1f} < {rsi_buy})"
+                 elif rsi > rsi_sell:
                      signal_type = 'SELL'
-                     reason = f"Overbought (RSI {rsi:.1f})"
+                     reason = f"Overbought (RSI {rsi:.1f} > {rsi_sell})"
                  else:
                      signal_type = 'HOLD'
                      reason = f"Neutral (RSI {rsi:.1f})"

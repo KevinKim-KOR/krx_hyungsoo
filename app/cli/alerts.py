@@ -15,9 +15,20 @@ from infra.notify.telegram import send_alerts  # slack에서 telegram으로 변�
 from infra.data.loader import load_market_data
 from core.risk.position import Position
 
+import importlib.util
+
 def load_config(config_path: Path) -> dict:
-    """설정 파일 로드"""
-    with open(config_path) as f:
+    """설정 파일 로드 (.yaml 또는 .py)"""
+    if config_path.suffix == '.py':
+        spec = importlib.util.spec_from_file_location("strategy_config", config_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        if hasattr(module, 'PROD_STRATEGY_CONFIG'):
+            return module.PROD_STRATEGY_CONFIG
+        else:
+            raise ValueError(f"Config file {config_path} missing PROD_STRATEGY_CONFIG dict.")
+    
+    with open(config_path, encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 def run(argv=None):
@@ -49,7 +60,7 @@ def run(argv=None):
                 # Phase 9: Crisis Alpha Executor
                 from core.engine.phase9_executor import Phase9Executor
                 print(f"[CLI] Phase 9 Strategy Selected. Date: {date.date()}")
-                executor = Phase9Executor()
+                executor = Phase9Executor(config=cfg)
                 signals = executor.execute(date.date())
                 
             else:

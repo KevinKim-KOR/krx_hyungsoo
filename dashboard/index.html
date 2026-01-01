@@ -259,114 +259,188 @@
             );
         }
 
-                function DiagnosisView({ data }) {
-            const [expandedDay, setExpandedDay] = useState(null);
+        function DiagnosisView({ humanReport, dailyRows }) {
+            // Contract 5: DiagnosisView only renders Human Report + Daily Rows. No calculations.
 
-            if (!data || !data.years) {
+            // 1. Loading State
+            if (!humanReport || !dailyRows) {
                 return (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
                         <div className="text-4xl mb-4">🩺</div>
-                        <h3 className="text-xl font-bold text-slate-400">진단 리포트 준비 중 (Contract-1 Strict)</h3>
-                        <p className="text-sm text-slate-500 mt-2">{data ? data.message : "Data Loading..."}</p>
+                        <h3 className="text-xl font-bold text-slate-400">Loading Contract 5 Report...</h3>
                     </div>
                 );
             }
 
-            const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#ef4444', '#f472b6'];
+            // 2. Critical/Error State Handling (Contract 5 Headline Badge)
+            const badge = humanReport.headline.status_badge;
+            const isCritical = ["ERROR", "CRITICAL"].includes(badge);
+
+            if (isCritical) {
+                return (
+                    <div className="flex flex-col items-center justify-center py-20 bg-red-900/10 border border-red-500 rounded-lg">
+                        <div className="text-6xl mb-6">🚨</div>
+                        <h2 className="text-3xl font-bold text-red-500 mb-2">SYSTEM ALERT: {badge}</h2>
+                        <p className="text-xl text-red-200 mb-8">{humanReport.headline.one_liner_ko}</p>
+
+                        <div className="bg-black/50 p-6 rounded-lg text-left font-mono text-sm text-slate-300 w-full max-w-2xl">
+                            <h4 className="font-bold text-white mb-2 border-b border-slate-600 pb-1">Integrity Summary</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <span>Critical Issues:</span> <span className="text-red-500 font-bold">{humanReport.integrity_summary.critical_total}</span>
+                                <span>Warning Issues:</span> <span className="text-amber-500">{humanReport.integrity_summary.warning_total}</span>
+                            </div>
+                            <div className="mt-4 border-t border-slate-700 pt-2">
+                                <h5 className="text-xs text-slate-500 mb-1">Top Issues</h5>
+                                {humanReport.top_issues.map((issue, idx) => (
+                                    <div key={idx} className="flex justify-between text-red-300">
+                                        <span>{issue.code}</span>
+                                        <span>{issue.count} days</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 3. Normal Dashboard (Ready / Warning)
+            // Drill-down Support
+            const [filteredCode, setFilteredCode] = useState(null);
+
+            // Filter Logic based on Row Integrity (Recon Daily V1 schema)
+            const filteredDaily = filteredCode
+                ? dailyRows.filter(row => row.integrity && row.integrity.codes.includes(filteredCode))
+                : dailyRows;
+
+            // Sorting (Contract 5 default: date_asc)
+            const sortedDaily = [...filteredDaily].sort((a, b) => a.trade_date.localeCompare(b.trade_date));
+
+            const toggleFilter = (code) => {
+                if (filteredCode === code) setFilteredCode(null);
+                else setFilteredCode(code);
+            };
 
             return (
-                <div className="space-y-12">
-                    {['2024', '2025'].map(year => {
-                        const yData = data.years[year];
-                        if (!yData) return null;
+                <div className="space-y-6">
+                    {/* Header Block */}
+                    <div className="flex justify-between items-start bg-slate-800 p-6 rounded-xl border border-slate-700">
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h2 className="text-2xl font-bold text-white">{humanReport.headline.title_ko}</h2>
+                                <span className={`px-2 py-0.5 text-xs font-bold rounded ${badge === 'READY' ? 'bg-emerald-900 text-emerald-300' : 'bg-amber-900 text-amber-300'}`}>
+                                    {badge}
+                                </span>
+                            </div>
+                            <p className="text-slate-400">{humanReport.headline.one_liner_ko}</p>
+                            <div className="text-xs text-slate-500 mt-2 font-mono">
+                                AsOf: {humanReport.asof} | SoT Hash: {humanReport.determinism.summary_hash.substring(0, 8)}...
+                            </div>
+                        </div>
 
-                        const kpis = yData.kpis;
-                        const breakdown = yData.reason_breakdown;
+                        <div className="text-right">
+                            <div className="text-sm text-slate-400">Trade Counts (Policy V1)</div>
+                            <div className="text-xl font-mono text-white">
+                                L1: {humanReport.trade_counts.L1_actions} / L2: {humanReport.trade_counts.L2_trades}
+                            </div>
+                            <div className={`text-sm ${humanReport.trade_counts.delta === 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                Delta: {humanReport.trade_counts.delta}
+                            </div>
+                        </div>
+                    </div>
 
-                        const chartData = Object.entries(breakdown || {})
-                            .map(([name, value]) => ({ name, value }))
-                            .sort((a, b) => b.value - a.value);
+                    {/* KPIs (Fixed 5) */}
+                    <div className="grid grid-cols-5 gap-4">
+                        <KPICard label="Gate Open" value={humanReport.kpis.gate_open_days} color="text-emerald-400" />
+                        <KPICard label="Executed" value={humanReport.kpis.executed_days} color="text-blue-400" />
+                        <KPICard label="Chop Block" value={humanReport.kpis.chop_block_days} color="text-slate-400" />
+                        <KPICard label="Bear Block" value={humanReport.kpis.bear_block_days} color="text-amber-400" />
+                        <KPICard label="No Data" value={humanReport.kpis.no_data_days} color={humanReport.kpis.no_data_days > 0 ? "text-red-400" : "text-slate-500"} />
+                    </div>
 
-                        // Contract 1: Array is named 'daily'
-                        const daily = yData.daily || [];
-
-                        return (
-                            <section key={year} className="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8">
-                                <h2 className="text-2xl font-bold text-white mb-6 border-b border-slate-700 pb-4 flex items-center gap-2">
-                                    <span className="w-1 h-6 bg-cyan-500 rounded"></span> {year} (V3 Strict)
-                                </h2>
-
-                                {/* KPI Cards Contract 3 Order */}
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-                                    <KPICard label="Gate Open Days" value={kpis.gate_open_days} sub="Bullish/Neutral" />
-                                    <KPICard label="Chop Blocked" value={kpis.chop_blocked_days} color={kpis.chop_blocked_days > 0 ? "text-yellow-400" : "text-slate-400"} />
-                                    <KPICard label="Bear Blocked" value={kpis.bear_blocked_days} color={kpis.bear_blocked_days > 0 ? "text-red-400" : "text-slate-400"} />
-                                    <KPICard label="Executed Days" value={kpis.executed_days} color={kpis.executed_days > 0 ? "text-emerald-400" : "text-slate-500"} />
-                                    <KPICard label="Integrity Anomaly" value={kpis.integrity_anomaly_days} color={kpis.integrity_anomaly_days > 0 ? "text-red-600 font-bold animate-pulse" : "text-slate-700"} />
-                                </div>
-
-                                {/* Chart & Table */}
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-1">
-                                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Reason Breakdown</h3>
-                                         <div className="h-48 bg-slate-900/50 rounded-lg p-2 border border-slate-800">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={chartData} layout="vertical" margin={{ left: 10 }}>
-                                                    <XAxis type="number" hide />
-                                                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 9, fill: '#64748b' }} />
-                                                    <Tooltip contentStyle={{ backgroundColor: '#1e293b' }} />
-                                                    <Bar dataKey="value" fill="#3b82f6" radius={[0,4,4,0]} barSize={15} />
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                         </div>
-                                    </div>
-                                    
-                                    <div className="lg:col-span-2">
-                                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Daily Evidence Details</h3>
-                                        <div className="overflow-x-auto bg-slate-900/50 rounded-lg border border-slate-800 max-h-[400px]">
-                                            <table className="w-full text-xs text-left">
-                                                <thead className="text-slate-500 bg-slate-900 sticky top-0 uppercase font-mono">
-                                                    <tr>
-                                                        <th className="p-3">DATE</th>
-                                                        <th className="p-3">REGIME</th>
-                                                        <th className="p-3">REASON</th>
-                                                        <th className="p-3 text-center">EXEC</th>
-                                                        <th className="p-3 text-right">TRADES</th>
-                                                        <th className="p-3">ADX</th>
-                                                        <th className="p-3">MA</th>
-                                                        <th className="p-3">CONF</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-800">
-                                                    {daily.slice(0, 100).map((d, i) => { 
-                                                        const isAnomaly = d.integrity && d.integrity.anomaly;
-                                                        return (
-                                                            <tr key={i} className={`hover:bg-slate-800/80 transition-colors ${isAnomaly ? "outline outline-1 outline-red-500 bg-red-900/20" : ""}`}>
-                                                                <td className="p-3 font-mono text-slate-400">{d.date}</td>
-                                                                <td className="p-3">{d.market.regime}</td>
-                                                                <td className="p-3 text-xs">{d.decision.block_reason}</td>
-                                                                <td className="p-3 text-center text-lg">{d.execution.executed ? "✅" : ""}</td>
-                                                                <td className="p-3 text-right font-mono">{d.execution.trade_count > 0 ? d.execution.trade_count : "-"}</td>
-                                                                <td className="p-3 font-mono text-slate-400">{d.evidence.adx.value.toFixed(1)}</td>
-                                                                <td className="p-3 font-mono text-slate-500 text-[10px]">{d.evidence.ma.relation}</td>
-                                                                <td className="p-3">{d.evidence.confidence.level}</td>
-                                                            </tr>
-                                                        )
-                                                    })}
-                                                </tbody>
-                                            </table>
+                    {/* Integrity Banners (Drill-down Triggers) */}
+                    {(humanReport.integrity_summary.warning_total > 0 || humanReport.integrity_summary.info_total > 0) && (
+                        <div className="space-y-2">
+                            {humanReport.top_issues.map((issue, idx) => {
+                                const isSelected = filteredCode === issue.code;
+                                return (
+                                    <div key={idx}
+                                        onClick={() => toggleFilter(issue.code)}
+                                        className={`p-3 rounded flex justify-between items-center cursor-pointer transition-all ${isSelected ? 'bg-amber-900/40 border border-amber-500' : 'bg-slate-800 border border-slate-700 hover:bg-slate-750'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-amber-400 font-bold">⚠️ {issue.title_ko}</span>
+                                            <span className="text-slate-400 text-sm">({issue.count} days)</span>
                                         </div>
+                                        <div className="text-xs text-slate-500 underline">{issue.action_ko}</div>
                                     </div>
-                                </div>
-                            </section>
-                        );
-                    })}
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    {/* Daily Log Table */}
+                    <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+                        <div className="bg-slate-800 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-300 text-sm">Daily Reconciliation Log (V1)</h3>
+                            <span className="text-xs text-slate-500">
+                                {filteredCode ? `Filter Active: ${sortedDaily.length} rows` : `Total Rows: ${sortedDaily.length}`}
+                            </span>
+                        </div>
+                        <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                            <table className="w-full text-xs text-left">
+                                <thead className="text-slate-500 bg-slate-800/50 sticky top-0">
+                                    <tr>
+                                        <th className="p-3">Date</th>
+                                        <th className="p-3">Gate</th>
+                                        <th className="p-3">Reason</th>
+                                        <th className="p-3">Evidence</th>
+                                        <th className="p-3 text-center">Exec</th>
+                                        <th className="p-3">Integrity</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800">
+                                    {sortedDaily.map((row, i) => {
+                                        const isExec = row.execution.executed;
+                                        const integrityCodes = row.integrity.codes || [];
+                                        const hasIntegrity = integrityCodes.length > 0;
+
+                                        return (
+                                            <tr key={i} className={`hover:bg-slate-800/50 ${isExec ? 'bg-blue-900/10' : ''}`}>
+                                                <td className="p-3 font-mono text-slate-400">{row.trade_date}</td>
+                                                <td className="p-3 flex items-center">
+                                                    <span className={`px-1.5 py-0.5 rounded ${row.final.gate_decision === 'PASS' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                                                        {row.final.gate_decision}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-slate-300">{row.final.reason}</td>
+                                                <td className="p-3 font-mono text-slate-500">
+                                                    {row.evidence.status === 'OK'
+                                                        ? `ADX:${row.evidence.adx} ${row.evidence.regime}`
+                                                        : <span className="text-red-900">{row.evidence.status}</span>}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    {isExec ? <span className="text-blue-400 font-bold">YES</span> : <span className="text-slate-600">-</span>}
+                                                </td>
+                                                <td className="p-3">
+                                                    {hasIntegrity ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {integrityCodes.map(c => (
+                                                                <span key={c} className="bg-amber-900/50 text-amber-400 px-1 rounded border border-amber-900">{c}</span>
+                                                            ))}
+                                                        </div>
+                                                    ) : <span className="text-green-900">OK</span>}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            )
+            );
         }
 
-
-function GatekeeperView({ data }) {
+        function GatekeeperView({ data }) {
             if (!data || data.status === 'not_ready') {
                 return (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
@@ -469,30 +543,36 @@ function GatekeeperView({ data }) {
             const [history, setHistory] = useState([]);
             const [rawLogs, setRawLogs] = useState(null);
             const [validationData, setValidationData] = useState(null);
-            const [diagnosisData, setDiagnosisData] = useState(null);
+
+            // Contract 5 States
+            const [humanReport, setHumanReport] = useState(null);
+            const [dailyRows, setDailyRows] = useState(null);
+
             const [gatekeeperData, setGatekeeperData] = useState(null);
             const [activeTab, setActiveTab] = useState("dashboard");
 
             // Integrity Check Logic
             const integrityIssues = useMemo(() => {
                 const issues = [];
-                if (validationData && diagnosisData) {
-                    // IC1: Diagnosis Validation Mismatch
-                    // Check years 2024, 2025
-                    ['2024', '2025'].forEach(y => {
-                        const vY = validationData.years && validationData.years[y];
-                        const dY = diagnosisData.years && diagnosisData.years[y];
-                        if (vY && dY) {
-                            if (vY.summary.trades > 0 && dY.kpis && dY.kpis.executed_days === 0) {
-                                issues.push({
-                                    id: 'IC1_DIAGNOSIS_VALIDATION_MISMATCH',
-                                    when: `Year ${y}`,
-                                    message: `검증(거래 ${vY.summary.trades}건) vs 진단(체결일 0) 불일치: 진단 SoT 또는 매핑 오류 가능`
-                                });
-                            }
-                        }
-                    });
+
+                // Contract 5: Human Report Integrity
+                if (humanReport && humanReport.integrity_summary) {
+                    const crit = humanReport.integrity_summary.critical_total;
+                    if (crit > 0) {
+                        issues.push({
+                            type: 'error',
+                            message: `CRITICAL Integrity Issues: ${crit} items (See Diagnosis)`
+                        });
+                    }
                 }
+
+                // IC1: Diagnosis Validation Mismatch (LEGACY PAUSED)
+                // Note: Human Report is aggregate, need new logic for yearly mismatch if required.
+                /*
+                ['2024', '2025'].forEach(y => {
+                     // ... legacy logic removed for stability
+                });
+                */
 
                 if (gatekeeperData && gatekeeperData.integrity) {
                     // IC2: Gatekeeper Baseline Mismatch
@@ -505,7 +585,7 @@ function GatekeeperView({ data }) {
                     }
                 }
                 return issues;
-            }, [validationData, diagnosisData, gatekeeperData]);
+            }, [validationData, humanReport, gatekeeperData]);
 
             useEffect(() => {
                 if (status) {
@@ -545,10 +625,22 @@ function GatekeeperView({ data }) {
                     const hRes = await fetch(`${API_BASE}/api/history`);
                     setHistory(await hRes.json());
 
-                    // Contract 1: Diagnosis V3 Consumption
-                    const dRes = await fetch(`${API_BASE}/api/diagnosis/v3`);
-                    const dData = await dRes.json();
-                    if (dData.status !== "not_ready") setDiagnosisData(dData);
+
+                    // Contract C-R.6: Fetch Human Report and Daily Rows
+                    const hReportRes = await fetch(`${API_BASE}/api/report/human`);
+                    if (hReportRes.ok) {
+                        const hReport = await hReportRes.json();
+                        setHumanReport(hReport);
+                    }
+
+                    const reconDailyRes = await fetch(`${API_BASE}/api/recon/daily`);
+                    if (reconDailyRes.ok) {
+                        const rData = await reconDailyRes.json();
+                        // Normalize Envelope
+                        const rows = (rData.rows) ? rData.rows : (Array.isArray(rData) ? rData : []);
+                        setDailyRows(rows);
+                        console.log(`Recon Daily Loaded: ${rows.length} rows`);
+                    }
 
                     // Contract 2: Gatekeeper V3 Consumption
                     const gRes = await fetch(`${API_BASE}/api/gatekeeper/v3`);
@@ -677,7 +769,10 @@ function GatekeeperView({ data }) {
                             )}
 
                             {activeTab === 'diagnosis' && (
-                                <DiagnosisView data={diagnosisData} />
+                                <DiagnosisView
+                                    humanReport={humanReport}
+                                    dailyRows={dailyRows}
+                                />
                             )}
 
                             {activeTab === 'gatekeeper' && (

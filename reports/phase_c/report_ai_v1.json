@@ -1,0 +1,20 @@
+{
+  "contract_id": "CONTRACT_5",
+  "schema_version": "REPORT_AI_V1",
+  "asof": "2026-01-01T22:35:05.374814Z",
+  "kpi_vector": {
+    "gate_open_days": 123,
+    "executed_days": 140,
+    "L2_trades": 531,
+    "no_data_days": 21
+  },
+  "integrity_flags": {
+    "critical_total": 0,
+    "critical_codes": []
+  },
+  "constraints_hint": {
+    "policy_id": "TRADE_COUNT_POLICY_V1",
+    "gatekeeper_schema": "GATEKEEPER_DECISION_V3",
+    "tuning_allowed": false
+  }
+}

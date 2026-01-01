@@ -50,6 +50,8 @@ Bull Regime일 때만 개별 종목 유니버스에 대해 신호를 생성합�
 | `adx_period` | **30** | 추세 강도(ADX) 계산 기간 |
 | `adx_threshold` | **17.5** | 횡보장 판단 기준값 (미만 시 Chop) |
 | `rsi_period` | **40** | 개별 종목 매매 타이밍 지표 |
+| `rsi_buy_threshold` | **50** | Dip Buying 기준 (V2) |
+| `rsi_sell_threshold` | **70** | Overbought 기준 (V2) |
 | `stop_loss_pct` | **0.12** | 손실 제한 (12%) |
 
 ## 4. 백테스트 성과 (Verification)
@@ -68,8 +70,8 @@ Bull Regime일 때만 개별 종목 유니버스에 대해 신호를 생성합�
 
 *   **Executor**: `core.engine.phase9_executor.Phase9Executor`
 *   **Detector**: `core.strategy.market_regime_detector.MarketRegimeDetector` (contains `detect_regime_adx`)
-*   **CLI**: `app.cli.alerts` (`--strategy phase9` 옵션)
-*   **Config**: `config.production_config.PROD_STRATEGY_CONFIG`
+*   **CLI**: `app.cli.alerts` (`--strategy phase9` option)
+*   **Config**: `config.production_config_v2.PROD_STRATEGY_CONFIG` (V2 Upgrade)
 
 ---
 **[참고]** 이 문서는 Phase 9 개발 완료 시점에 작성되었습니다. 향후 Phase 10+에서 변경될 수 있습니다.

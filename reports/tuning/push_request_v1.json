@@ -1,0 +1,16 @@
+{
+  "schema": "PUSH_REQUEST_V1",
+  "request_id": "push_template",
+  "candidate": {
+    "candidate_id": "cand_template",
+    "params_ref": "reports/tuning/candidates_latest.json"
+  },
+  "required_refs": {
+    "gatekeeper_decision": "reports/tuning/gatekeeper_decision_latest.json",
+    "report_ai": "reports/phase_c/report_ai_v1.json"
+  },
+  "policy": {
+    "allow_only_if_gatekeeper": "PROMOTE",
+    "require_integrity_critical_count_max": 0
+  }
+}

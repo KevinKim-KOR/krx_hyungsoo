@@ -1,0 +1,84 @@
+{
+  "schema": "RECON_SUMMARY_V1",
+  "generated_at": "2026-01-01T21:22:13.723192Z",
+  "period": {
+    "from": "2024-01-01",
+    "to": "2025-12-31"
+  },
+  "trade_count_policy_id": "TRADE_COUNT_POLICY_V1",
+  "counts": {
+    "L1_actions": 579,
+    "L2_trades": 531,
+    "L1_L2_delta": 48
+  },
+  "kpis": {
+    "gate_open": 123,
+    "chop_block": 327,
+    "bear_block": 52,
+    "executed": 140,
+    "no_data": 21
+  },
+  "integrity": {
+    "critical_days": 0,
+    "warning_days": 0,
+    "info_days": 0,
+    "top_codes": []
+  },
+  "coverage": {
+    "evidence_no_data_days": 21,
+    "regression": false,
+    "exec_within_evidence": true,
+    "baseline": {
+      "symbol": "069500",
+      "min_date": "2024-01-02",
+      "max_date": "2025-12-30"
+    },
+    "current": {
+      "min_date": "2019-01-01",
+      "max_date": "2025-12-30"
+    },
+    "execution_range": {
+      "min_date": "2024-01-05",
+      "max_date": "2025-12-26"
+    }
+  },
+  "provenance": {
+    "generated_at": "2026-01-01T21:22:13.724430Z",
+    "reconciler_version": "C-R.5",
+    "policy_ids": [
+      "TRADE_COUNT_POLICY_V1",
+      "COVERAGE_BASELINE_V1",
+      "INTEGRITY_POLICY_V1"
+    ],
+    "sources": [
+      {
+        "name": "LEDGER",
+        "path": "E:\\AI Study\\krx_alertor_modular\\reports\\validation\\phase_c0_daily_ledger_2024_2025.jsonl",
+        "mtime_iso": "2025-12-30T10:03:35.599320",
+        "size_bytes": 112498,
+        "sha256": "82b9421cab212de9487567ae1e62bb4f006895ec344ad47b3776907fa2153957"
+      },
+      {
+        "name": "EVIDENCE",
+        "path": "E:\\AI Study\\krx_alertor_modular\\data\\price\\069500.parquet",
+        "mtime_iso": "2026-01-01T21:05:33.009645",
+        "size_bytes": 99099,
+        "sha256": "12fd1f7c350c98cb8df07dd33dcf8e20f203095beeddccea521af78ce288a017"
+      },
+      {
+        "name": "VALIDATION",
+        "path": "E:\\AI Study\\krx_alertor_modular\\reports\\validation\\oos_2024_2025_monthly.json",
+        "mtime_iso": "2025-12-30T09:25:00.801205",
+        "size_bytes": 5466,
+        "sha256": "04bbbd083e3e15ecc3679166ff531805e8e08547ee5f4627b414eb4021906f04"
+      },
+      {
+        "name": "BASELINE",
+        "path": "E:\\AI Study\\krx_alertor_modular\\reports\\recon\\coverage_baseline.json",
+        "mtime_iso": "2026-01-01T21:10:01.903385",
+        "size_bytes": 214,
+        "sha256": "43bf2e961a3c9dcc36bb9308c963d378da216d7023ea08a802578c9b9628d62b"
+      }
+    ]
+  }
+}

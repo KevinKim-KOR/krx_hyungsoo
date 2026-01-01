@@ -1,0 +1,10 @@
+{
+  "phase": "C-R.5",
+  "generated_at": "2026-01-01T21:22:13.891355Z",
+  "determinism": {
+    "run1_hash_clean": "b3a2ba697f37813b0b32f69ad441520708fd8657d7d3b57ed396e51043cef107",
+    "run2_hash_clean": "b3a2ba697f37813b0b32f69ad441520708fd8657d7d3b57ed396e51043cef107",
+    "match": true,
+    "row_count_match": true
+  }
+}

@@ -1,8 +1,8 @@
 # Antigravity Project: Crisis Alpha - Final Closure Report
 
-**Date**: 2025-12-29
-**Status**: MISSION COMPLETE
-**Version**: 1.0 (Release)
+**Date**: 2026-01-01
+**Status**: MISSION COMPLETE (Phase 11 & C-R.6 Integrated)
+**Version**: 1.1 (Phase 9 Upgrade)
 
 ## 1. Executive Summary
 본 프로젝트는 **"하락장을 방어하고 횡보장을 피하는"** 위기 대응형 알파 전략(Crisis Alpha)을 구현하고, 이를 안전하게 운영하기 위한 **자동화(Ops)** 및 **관제 시스템(UI)**을 구축하는 것을 목표로 완수되었습니다.
@@ -11,11 +11,11 @@
 
 ### A. Core Engine (Brain)
 *   **Role**: 전략 신호 생성 및 리스크 관리.
-*   **Key Path**: `core/engine/scanner.py`, `tools/paper_trade_phase9.py`
+*   **Key Path**: `core/engine/phase9_executor.py` (New), `tools/reconcile_phase_c.py`
 *   **Features**:
-    *   **Market Regime**: 하락장(Bear) 감지 시 현금 100% (Cash Filter).
-    *   **Chop Filter**: 횡보장(ADX) 감지 시 진입 보류.
-    *   **Paper Trading**: 가상 매매 및 포트폴리오 상태 추적 (`state/paper_portfolio.json`).
+    *   **Phase 9 Strategy**: ADX Chop Filter + Dual Regime + RSI V2 logic.
+    *   **Config V2**: `production_config_v2.py` (Immutable Baseline + V2 Contract).
+    *   **Reconciliation First**: `recon_summary` becomes the Source of Truth.
 
 ### B. Operations (Nervous System)
 *   **Role**: 일일 배치 자동화 및 중복 방지.
@@ -28,10 +28,9 @@
 *   **Role**: 시스템 상태 관제 및 시각화 (Read-Only).
 *   **Key Path**: `backend/main.py`, `dashboard/index.html`
 *   **Features**:
-    *   **Read Quality**: 로그 인코딩 손상 여부 감지 (Partial/Failed).
-    *   **Evidence-Based**: 로그 키워드([OK], [ERROR]) 기반 상태 판정.
-    *   **Observer-Constitution**: `docs/design/ui_contract_v1.0.md`에 정의된 헌법(Color/Wording) 준수.
-    *   **No-Touch**: 엔진에 영향을 주지 않는 순수 관찰자 패턴.
+    *   **Contract 5 Reports**: `report_human_v1` (UI Header/KPI), `report_ai_v1` (Agent Context).
+    *   **Strict Separation**: UI는 엔진 로그/파일을 직접 해석하지 않고, 정제된 Report만 소비.
+    *   **Provenanced**: 모든 데이터는 Source Hash로 검증됨.
 
 ## 3. Operational Manual (How-to)
 
