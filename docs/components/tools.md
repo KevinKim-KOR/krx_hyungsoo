@@ -52,7 +52,6 @@
 |------|--------|-------------|
 | `diagnose_market.py` | ⚠️ | 시장 상태 진단 |
 | `diagnose_oos_reasons.py` | ✅ | OOS 검증 실패 원인 분석 |
-| `diagnose_oos_reasons_draft.py` | ❌ | 초안 (**삭제 검토**) |
 | `debug_alpha_autopsy.py` | ⚠️ | 알파 부검 (성과 분석) |
 | `debug_core_logic.py` | ⚠️ | 코어 로직 디버깅 |
 | `analyze_coverage_gap.py` | ✅ | 커버리지 갭 분석 |
@@ -69,12 +68,9 @@
 ### 🛠️ Utilities - ⚠️ MIXED
 | File | Status | Description |
 |------|--------|-------------|
-| `cat_log.py` | ⚠️ | 로그 파일 출력 (간단) |
-| `convert_docs_encoding.py` | ⚠️ | 문서 인코딩 변환 (일회성) |
-| `export_trials.py` | ⚠️ | Optuna Trial 내보내기 |
-| `patch_dashboard.py` | ❌ | Dashboard 패치 (**완료됨, 삭제 검토**) |
-| `patch_evidence_2025.py` | ❌ | 2025 Evidence 패치 (**완료됨, 삭제 검토**) |
 | `replay_manifest.py` | ⚠️ | Manifest 리플레이 |
+
+> 📦 **Archived**: `diagnose_oos_reasons_draft.py`, `patch_dashboard.py`, `patch_evidence_2025.py` → `_archive/deprecated_code/`
 
 ---
 
@@ -111,8 +107,7 @@ python tools/verify_contract5_api.py
 
 ---
 
-## 🧹 정리 권장 사항
-1. ❌ `diagnose_oos_reasons_draft.py`: 삭제 검토 (초안)
-2. ❌ `patch_dashboard.py`: 삭제 검토 (일회성 완료)
-3. ❌ `patch_evidence_2025.py`: 삭제 검토 (일회성 완료)
-4. ⚠️ `run_phase*` 시리즈: 개발용으로 `scripts/` 이동 검토
+## ✅ 정리 완료 (2026-01-02)
+- `diagnose_oos_reasons_draft.py` → `_archive/deprecated_code/`
+- `patch_dashboard.py` → `_archive/deprecated_code/`
+- `patch_evidence_2025.py` → `_archive/deprecated_code/`

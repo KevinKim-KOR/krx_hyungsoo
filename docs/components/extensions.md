@@ -17,7 +17,8 @@
 | `extensions/notification/` | ⚠️ **LOW** | 사용 빈도 낮음 |
 | `extensions/realtime/` | ⚠️ **LOW** | 사용 빈도 낮음 |
 | `extensions/strategy/` | ⚠️ **LOW** | 사용 빈도 낮음 |
-| `extensions/ui_archive/` | ❌ **DEPRECATED** | 아카이브됨 |
+
+> 📦 **Archived**: `ui_archive/` → `_archive/deprecated_code/`
 
 ---
 
@@ -33,8 +34,7 @@ extensions/
 ├── realtime/       # 실시간 처리 - ⚠️ LOW
 ├── scheduler/      # 스케줄러
 ├── strategy/       # 전략 확장 - ⚠️ LOW
-├── tuning/         # 파라미터 튜닝 - ✅ ACTIVE
-└── ui_archive/     # UI 아카이브 - ❌ DEPRECATED
+└── tuning/         # 파라미터 튜닝 - ✅ ACTIVE
 ```
 
 ---
@@ -76,9 +76,6 @@ Optuna 기반 하이퍼파라미터 튜닝
 ### `extensions/monitoring/` - ⚠️ LOW USAGE
 시스템 모니터링 도구
 
-### `extensions/ui_archive/` - ❌ DEPRECATED
-이전 UI 코드 아카이브 (삭제 검토)
-
 ---
 
 ## 🔗 Usage Example
@@ -93,8 +90,10 @@ regime_info = monitor.analyze_daily_regime(target_date)
 
 ---
 
-## 🧹 정리 권장 사항
-1. ❌ `extensions/ui_archive/`: 삭제 검토 (14 files)
-2. ⚠️ `extensions/notification/`: `infra/notify/`로 마이그레이션
-3. ⚠️ `extensions/realtime/`: 사용 여부 확인 후 정리
-4. ⚠️ `extensions/strategy/`: 사용 여부 확인 후 정리
+## ✅ 정리 완료 (2026-01-02)
+- `ui_archive/` → `_archive/deprecated_code/` (14 files)
+
+## ⚠️ 사용 빈도 확인 필요
+1. `extensions/notification/`: `infra/notify/`로 마이그레이션 검토
+2. `extensions/realtime/`: 사용 여부 확인
+3. `extensions/strategy/`: 사용 여부 확인

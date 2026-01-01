@@ -28,9 +28,8 @@ core/
 | `fetchers.py` | ✅ **ACTIVE** | 4 files (nas, app) |
 | `calendar_kr.py` | ✅ **ACTIVE** | 4 files (fetchers, nas, app) |
 | `db.py` | ✅ **ACTIVE** | 21+ files (전체 시스템) |
-| `cache_store.py` | ⚠️ **UNUSED** | 0 files (직접 import 없음) |
-| `notifications.py` | 🔶 **LEGACY** | 2 files (nas/app_nas.py, _archive) |
-| `adaptive.py` | ❌ **DEPRECATED** | 1 file (_archive only) |
+
+> 📦 **Archived**: `cache_store.py`, `notifications.py`, `adaptive.py` → `_archive/deprecated_code/`
 
 ---
 
@@ -115,31 +114,6 @@ core/
 | `Holdings` | ✅ | 보유 종목 테이블 |
 | `init_db()` | ✅ | 테이블 생성 |
 | `get_db_connection()` | 🔶 | SQLite 연결 (레거시 호환) |
-
----
-
-### `cache_store.py` (50 lines) - ⚠️ UNUSED
-**Purpose**: 간단한 OHLCV 파일 캐시 (Pickle)
-> ⚠️ **주의**: 이 파일은 현재 직접 import되지 않습니다. `data_loader.py`가 자체 캐시 로직을 사용합니다.
-
-| Function | Status | Description |
-|----------|--------|-------------|
-| `load_cached(code)` | ⚠️ | 미사용 |
-| `save_cache(code, df)` | ⚠️ | 미사용 |
-| `cache_path(code)` | ⚠️ | 미사용 |
-| `ensure_dir()` | ⚠️ | 미사용 |
-
----
-
-### `notifications.py` - 🔶 LEGACY
-**Purpose**: 알림 관련 유틸
-> 🔶 **레거시**: `nas/app_nas.py`에서만 사용됩니다. `infra/notify/telegram.py`로 대체 권장.
-
----
-
-### `adaptive.py` - ❌ DEPRECATED
-**Purpose**: 적응형 파라미터 유틸
-> ❌ **미사용**: `_archive` 폴더에서만 참조됩니다. 삭제 검토 대상.
 
 ---
 
