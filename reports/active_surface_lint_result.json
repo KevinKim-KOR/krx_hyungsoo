@@ -1,0 +1,27 @@
+{
+  "lint_date": "2026-01-03T08:03:37.429755",
+  "phase": "C-S.0",
+  "checks": {
+    "archive_dependency": {
+      "hits_count": 0,
+      "hits_samples": [],
+      "status": "PASS"
+    },
+    "external_report_path": {
+      "hits_count": 0,
+      "hits_samples": [],
+      "status": "PASS"
+    },
+    "latest_version_suffix": {
+      "hits_count": 0,
+      "hits_samples": [],
+      "status": "PASS"
+    },
+    "latest_files_present": {
+      "present": true,
+      "missing": [],
+      "status": "PASS"
+    }
+  },
+  "overall": "PASS"
+}
