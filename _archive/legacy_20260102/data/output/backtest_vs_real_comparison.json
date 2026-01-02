@@ -1,0 +1,98 @@
+{
+  "analysis_date": "2025-11-13T23:07:52.251924",
+  "backtest_prediction": {
+    "before_stop_loss": {
+      "total_value": 8743795,
+      "total_cost": 9675695,
+      "return_amount": -931900,
+      "return_pct": -9.63,
+      "holdings_count": 28
+    },
+    "after_stop_loss": {
+      "total_value": 6860216,
+      "total_cost": 7792116,
+      "return_amount": 951679,
+      "return_pct": 12.21,
+      "holdings_count": 23
+    },
+    "stop_loss_trades": {
+      "count": 5,
+      "total_loss": -1883579,
+      "trades": [
+        {
+          "code": "001510",
+          "name": "SK증권",
+          "loss": -1479000
+        },
+        {
+          "code": "323410",
+          "name": "카카오뱅크",
+          "loss": -216900
+        },
+        {
+          "code": "221840",
+          "name": "하이즈항공",
+          "loss": -161750
+        },
+        {
+          "code": "415920",
+          "name": "PLUS 희토류",
+          "loss": -11200
+        },
+        {
+          "code": "088980",
+          "name": "맥쿼리인프라",
+          "loss": -14729
+        }
+      ]
+    },
+    "improvement": {
+      "return_pct_change": 21.84,
+      "loss_ratio_change": -14.0,
+      "avg_return_change": 7.47
+    }
+  },
+  "real_performance": {
+    "total_value": 8743795.0,
+    "total_cost": 9675695.0,
+    "return_amount": -931900.0,
+    "return_pct": -9.631349479288051,
+    "holdings_count": 28,
+    "timestamp": "2025-11-13T23:07:52.251924"
+  },
+  "differences": {
+    "total_value": {
+      "predicted": 6860216,
+      "actual": 8743795.0,
+      "diff": 1883579.0,
+      "diff_pct": 27.456555303798027
+    },
+    "return_pct": {
+      "predicted": 12.21,
+      "actual": -9.631349479288051,
+      "diff": -21.841349479288052
+    },
+    "holdings_count": {
+      "predicted": 23,
+      "actual": 28,
+      "diff": 5
+    }
+  },
+  "slippage": {
+    "predicted_loss": -1883579,
+    "actual_loss": -1883579,
+    "slippage": 0,
+    "slippage_pct": 0.0,
+    "reason": "백테스트 예측 매우 정확"
+  },
+  "accuracy": {
+    "return_pct_accuracy": 78.15865052071194,
+    "overall_accuracy": 78.15865052071194
+  },
+  "lessons": [
+    "⚠️ 백테스트 예측과 차이 발생 (원인 분석 필요)",
+    "✅ 시장가 주문 슬리피지 정상 범위",
+    "✅ 손절 실행으로 포트폴리오 건전성 향상",
+    "✅ Jason -7% 손절 기준 검증 완료"
+  ]
+}

@@ -1,0 +1,3 @@
+﻿date,from_regime,to_regime,confidence,action_taken
+2024-01-03,bull,neutral,0.65,포지션 80%로 축소
+2024-01-04,neutral,bear,0.85,"포지션 50%로 축소, 매수 스킵"

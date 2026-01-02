@@ -1,0 +1,62 @@
+{
+  "periods": {
+    "train": {
+      "start": "2022-01-01",
+      "end": "2024-09-27",
+      "days": 1000
+    },
+    "test": {
+      "start": "2024-09-28",
+      "end": "2025-11-30",
+      "days": 428
+    }
+  },
+  "train": {
+    "total_return_pct": 0.3793560489411929,
+    "cagr": 0.2183731699611169,
+    "sharpe_ratio": 0.09707093894209759,
+    "max_drawdown": -23.58972142944964,
+    "num_trades": 978,
+    "total_costs": 947049.3951058792,
+    "total_commission": 123528.18197033205,
+    "total_tax": 0.0,
+    "total_slippage": 823521.2131355471,
+    "cost_ratio": 9.470493951058792,
+    "instrument_type": "etf",
+    "tax_rate": 0.0
+  },
+  "test": {
+    "total_return_pct": 59.72781064500814,
+    "cagr": 54.02376383654952,
+    "sharpe_ratio": 2.686357760209851,
+    "max_drawdown": -9.355351326270112,
+    "num_trades": 587,
+    "total_costs": 508398.9354991863,
+    "total_commission": 66312.90463032857,
+    "total_tax": 0.0,
+    "total_slippage": 442086.0308688577,
+    "cost_ratio": 5.083989354991862,
+    "instrument_type": "etf",
+    "tax_rate": 0.0
+  },
+  "comparison": {
+    "is_overfit": false,
+    "status": "✅ 정상 (Train/Test 차이 허용 범위)",
+    "warnings": []
+  },
+  "validation": {
+    "train": {
+      "return": 20.785180149558123,
+      "volatility": 18.348657744352455,
+      "days": 427
+    },
+    "test": {
+      "return": 67.46831797235022,
+      "volatility": 20.156962423286878,
+      "days": 263
+    },
+    "warnings": [
+      "⚠️ Test 기간 강세장: 시장 수익률 67.5%"
+    ]
+  }
+}

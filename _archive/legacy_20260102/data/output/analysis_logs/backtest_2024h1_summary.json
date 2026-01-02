@@ -1,0 +1,23 @@
+{
+  "total_days": 121,
+  "total_trades": 183,
+  "regime_changes": 0,
+  "defense_events": 5,
+  "regime_distribution": {
+    "neutral": {
+      "days": 121,
+      "pct": 100.0
+    }
+  },
+  "trade_stats": {
+    "buy_count": 88,
+    "sell_count": 95,
+    "total_commission": 25102.67943010368,
+    "total_tax": 0.0,
+    "total_slippage": 167351.19620069116,
+    "total_costs": 192453.87563079485
+  },
+  "defense_event_types": {
+    "regime_reduce": 5
+  }
+}

@@ -1,0 +1,83 @@
+{
+    "rebuild_date": "2026-01-02T22:20:00+09:00",
+    "branch": "archive-rebuild",
+    "moved_to_archive": [
+        "app",
+        "backend",
+        "config",
+        "core",
+        "dashboard",
+        "data",
+        "deploy",
+        "docs",
+        "extensions",
+        "infra",
+        "logs",
+        "nas",
+        "reports",
+        "scripts",
+        "state",
+        "tests",
+        "tools",
+        "secret",
+        ".venv",
+        "venv",
+        ".cascade",
+        ".locks",
+        ".state"
+    ],
+    "archive_path": "_archive/legacy_20260102",
+    "archive_item_count": 1068,
+    "root_tree": [
+        "adapters/",
+        "app/",
+        "backend/",
+        "config/",
+        "core/",
+        "dashboard/",
+        "docs/",
+        "reports/",
+        "state/",
+        "_archive/"
+    ],
+    "latest_files": {
+        "recon_summary.json": {
+            "exists": true,
+            "size_bytes": 2487,
+            "path": "reports/phase_c/latest/recon_summary.json"
+        },
+        "recon_daily.jsonl": {
+            "exists": true,
+            "size_bytes": 246697,
+            "path": "reports/phase_c/latest/recon_daily.jsonl"
+        },
+        "report_human.json": {
+            "exists": true,
+            "size_bytes": 1556,
+            "path": "reports/phase_c/latest/report_human.json"
+        },
+        "report_ai.json": {
+            "exists": true,
+            "size_bytes": 478,
+            "path": "reports/phase_c/latest/report_ai.json"
+        }
+    },
+    "active_surface_count": 11,
+    "active_surface_path": "docs/ops/active_surface.json",
+    "smoke_test_path": "docs/ops/smoke_test.md",
+    "smoke_test_results": {
+        "note": "Backend not started - manual verification required",
+        "/api/recon/summary": "PENDING",
+        "/api/recon/daily": "PENDING",
+        "/api/report/human": "PENDING",
+        "/api/report/ai": "PENDING"
+    },
+    "status": "REBUILD_COMPLETE",
+    "next_steps": [
+        "1. Create Python venv: py -3.13 -m venv .venv",
+        "2. Install deps: pip install -r requirements.txt",
+        "3. Start backend: uvicorn backend.main:app",
+        "4. Run smoke test per docs/ops/smoke_test.md",
+        "5. Commit changes: git add -A && git commit -m 'Archive-First Root Rebuild'"
+    ]
+}

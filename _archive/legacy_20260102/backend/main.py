@@ -399,22 +399,22 @@ def get_gatekeeper_report():
 
 @app.get("/api/report/human", summary="Human Report (Contract 5)")
 def get_report_human():
-    path = REPORTS_DIR / "phase_c" / "latest" / "report_human.json"
+    path = REPORTS_DIR / "phase_c" / "report_human_v1.json"
     if not path.exists():
         return {"result": "FAIL", "message": "Human report not found"}
     return safe_read_json(path)
 
 @app.get("/api/report/ai", summary="AI Report (Contract 5)")
 def get_report_ai():
-    path = REPORTS_DIR / "phase_c" / "latest" / "report_ai.json"
+    path = REPORTS_DIR / "phase_c" / "report_ai_v1.json"
     if not path.exists():
         return {"result": "FAIL", "message": "AI report not found"}
     return safe_read_json(path)
 
 @app.get("/api/recon/summary", summary="Reconciliation Summary (Source of Truth)")
 def get_recon_summary():
-    summary_path = REPORTS_DIR / "phase_c" / "latest" / "recon_summary.json"
-    daily_path = REPORTS_DIR / "phase_c" / "latest" / "recon_daily.jsonl"
+    summary_path = REPORTS_DIR / "phase_c" / "recon_summary.json"
+    daily_path = REPORTS_DIR / "phase_c" / "recon_daily.jsonl"
     
     # Invariant Check: Daily Ready but Summary Not Ready/Missing -> ERROR
     if daily_path.exists() and not summary_path.exists():
@@ -450,7 +450,7 @@ def get_recon_summary():
 
 @app.get("/api/recon/daily", summary="Reconciliation Daily Events (Source of Truth)")
 def get_recon_daily():
-    path = REPORTS_DIR / "phase_c" / "latest" / "recon_daily.jsonl"
+    path = REPORTS_DIR / "phase_c" / "recon_daily.jsonl"
     if not path.exists():
         return {"status": "not_ready", "message": "Recon daily not found", "rows": [], "row_count": 0}
     try:

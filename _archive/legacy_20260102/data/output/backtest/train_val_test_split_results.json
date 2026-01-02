@@ -1,0 +1,71 @@
+{
+  "strategy_params": {
+    "ma_period": 60,
+    "rsi_period": 14,
+    "rsi_overbought": 70,
+    "maps_buy_threshold": 0.0,
+    "maps_sell_threshold": -5.0
+  },
+  "backtest_config": {
+    "initial_capital": 10000000,
+    "commission_rate": 0.00015,
+    "slippage_rate": 0.001,
+    "max_positions": 10,
+    "country_code": "kor",
+    "instrument_type": "etf",
+    "enable_defense": true
+  },
+  "periods": {
+    "train": {
+      "start": "2022-01-01",
+      "end": "2024-09-11",
+      "days": 984
+    },
+    "val": {
+      "start": "2024-09-12",
+      "end": "2025-04-10",
+      "days": 210
+    },
+    "test": {
+      "start": "2025-04-11",
+      "end": "2025-11-08",
+      "days": 211
+    }
+  },
+  "train": {
+    "total_return_pct": -8.97526976386187,
+    "cagr": -3.437268383504466,
+    "sharpe_ratio": -0.13891903651912957,
+    "max_drawdown": -25.234714737206122,
+    "num_trades": 1523,
+    "total_costs": 1360746.9763861783,
+    "cost_ratio": 13.607469763861783
+  },
+  "val": {
+    "total_return_pct": 9.090573027304494,
+    "cagr": 16.338317091427434,
+    "sharpe_ratio": 1.3837751888336114,
+    "max_drawdown": -7.261166330512292,
+    "num_trades": 399,
+    "total_costs": 234282.69726955311,
+    "cost_ratio": 2.342826972695531
+  },
+  "test": {
+    "total_return_pct": 52.67309385558639,
+    "cagr": 108.7447214938078,
+    "sharpe_ratio": 3.744744615859008,
+    "max_drawdown": -8.07023002850955,
+    "num_trades": 250,
+    "total_costs": 338730.6144413614,
+    "cost_ratio": 3.387306144413614
+  },
+  "comparison": {
+    "status": "[+] 개선 (시장 환경 호전)",
+    "is_overfit": false,
+    "validation_reliability": "low",
+    "degradation_pattern": "improving",
+    "warnings": [
+      "[!] Val/Test 차이 큼: 565.6%"
+    ]
+  }
+}

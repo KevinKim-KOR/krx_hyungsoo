@@ -1,0 +1,53 @@
+{
+  "date": "2025-11-12",
+  "stop_loss_pct": -7.0,
+  "total_holdings": 28,
+  "stop_loss_count": 5,
+  "alerts": [
+    {
+      "code": "088980",
+      "name": "맥쿼리인프라",
+      "avg_price": 12373,
+      "current_price": 11240.0,
+      "quantity": 13.0,
+      "loss_pct": -9.15703548048169,
+      "loss_amount": -14729.0
+    },
+    {
+      "code": "221840",
+      "name": "하이즈항공",
+      "avg_price": 5460,
+      "current_price": 2225.0,
+      "quantity": 50.0,
+      "loss_pct": -59.24908424908425,
+      "loss_amount": -161750.0
+    },
+    {
+      "code": "323410",
+      "name": "카카오뱅크",
+      "avg_price": 64930,
+      "current_price": 21550.0,
+      "quantity": 5.0,
+      "loss_pct": -66.81041121207454,
+      "loss_amount": -216900.0
+    },
+    {
+      "code": "415920",
+      "name": "PLUS 글로벌희토류&전략자원생산기업",
+      "avg_price": 8030,
+      "current_price": 6910.0,
+      "quantity": 10.0,
+      "loss_pct": -13.947696139476962,
+      "loss_amount": -11200.0
+    },
+    {
+      "code": "001510",
+      "name": "SK증권",
+      "avg_price": 1180,
+      "current_price": 687.0,
+      "quantity": 3000.0,
+      "loss_pct": -41.779661016949156,
+      "loss_amount": -1479000.0
+    }
+  ]
+}

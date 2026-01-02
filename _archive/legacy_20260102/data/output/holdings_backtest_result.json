@@ -1,0 +1,310 @@
+[
+  {
+    "code": "0015B0",
+    "name": "KoAct 미국나스닥성장기업액티브",
+    "avg_price": 11063,
+    "quantity": 5.0,
+    "current_price": 14880.0,
+    "current_return": 34.50239537196059,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "0028X0",
+    "name": "KODEX 미국금융테크액티브",
+    "avg_price": 11358,
+    "quantity": 15.0,
+    "current_price": 12475.0,
+    "current_return": 9.834477901038916,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "0035T0",
+    "name": "PLUS 글로벌휴머노이드로봇액티브",
+    "avg_price": 14185,
+    "quantity": 5.0,
+    "current_price": 15995.0,
+    "current_return": 12.759957701797672,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "0052D0",
+    "name": "TIGER 코리아배당다우존스",
+    "avg_price": 10657,
+    "quantity": 9.0,
+    "current_price": 13275.0,
+    "current_return": 24.566012949235244,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "005380",
+    "name": "현대차",
+    "avg_price": 218500,
+    "quantity": 2.0,
+    "current_price": 270500.0,
+    "current_return": 23.79862700228833,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "0097L0",
+    "name": "KIWOOM 한국고배당&미국AI테크",
+    "avg_price": 10235,
+    "quantity": 10.0,
+    "current_price": 11010.0,
+    "current_return": 7.572056668295065,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "0107F0",
+    "name": "KIWOOM 미국고배당&AI테크",
+    "avg_price": 9990,
+    "quantity": 10.0,
+    "current_price": 10110.0,
+    "current_return": 1.2012012012012012,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "064350",
+    "name": "현대로템",
+    "avg_price": 196500,
+    "quantity": 1.0,
+    "current_price": 208000.0,
+    "current_return": 5.852417302798982,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "088980",
+    "name": "맥쿼리인프라",
+    "avg_price": 12373,
+    "quantity": 13.0,
+    "current_price": 11290.0,
+    "current_return": -8.752929766426899,
+    "analysis": "loss",
+    "optimal_stop": null
+  },
+  {
+    "code": "161510",
+    "name": "PLUS 고배당주",
+    "avg_price": 20070,
+    "quantity": 5.0,
+    "current_price": 21070.0,
+    "current_return": 4.9825610363726955,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "221840",
+    "name": "하이즈항공",
+    "avg_price": 5460,
+    "quantity": 50.0,
+    "current_price": 2245.0,
+    "current_return": -58.88278388278388,
+    "analysis": "loss",
+    "optimal_stop": {
+      "stop_loss_pct": 7,
+      "stop_date": "2020-10-05",
+      "stop_price": "3500",
+      "stop_return": -35.89743589743589,
+      "saved_pct": 22.985347985347993,
+      "saved_amount": 62750.00000000002
+    }
+  },
+  {
+    "code": "245710",
+    "name": "KODEX 베트남VN30",
+    "avg_price": 30572,
+    "quantity": 6.0,
+    "current_price": 28620.0,
+    "current_return": -6.384927384534869,
+    "analysis": "loss",
+    "optimal_stop": null
+  },
+  {
+    "code": "323410",
+    "name": "카카오뱅크",
+    "avg_price": 64930,
+    "quantity": 5.0,
+    "current_price": 21700.0,
+    "current_return": -66.57939319266902,
+    "analysis": "loss",
+    "optimal_stop": {
+      "stop_loss_pct": 7,
+      "stop_date": "2021-10-05",
+      "stop_price": "60000",
+      "stop_return": -7.592792237794543,
+      "saved_pct": 58.98660095487449,
+      "saved_amount": 191500.00000000003
+    }
+  },
+  {
+    "code": "379800",
+    "name": "KODEX 미국S&P500TR",
+    "avg_price": 17303,
+    "quantity": 50.0,
+    "current_price": 22355.0,
+    "current_return": 29.197249031959778,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "379810",
+    "name": "KODEX 미국나스닥100TR",
+    "avg_price": 19470,
+    "quantity": 30.0,
+    "current_price": 24485.0,
+    "current_return": 25.757575757575758,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "381170",
+    "name": "TIGER 미국테크TOP10 INDXX",
+    "avg_price": 21412,
+    "quantity": 13.0,
+    "current_price": 31000.0,
+    "current_return": 44.778628806276856,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "390390",
+    "name": "KODEX 미국반도체",
+    "avg_price": 27090,
+    "quantity": 10.0,
+    "current_price": 35245.0,
+    "current_return": 30.103359173126616,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "394670",
+    "name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)",
+    "avg_price": 9835,
+    "quantity": 1.0,
+    "current_price": 9680.0,
+    "current_return": -1.5760040671072701,
+    "analysis": "loss",
+    "optimal_stop": null
+  },
+  {
+    "code": "415920",
+    "name": "PLUS 글로벌희토류&전략자원생산기업",
+    "avg_price": 8030,
+    "quantity": 10.0,
+    "current_price": 6710.0,
+    "current_return": -16.43835616438356,
+    "analysis": "loss",
+    "optimal_stop": {
+      "stop_loss_pct": 7,
+      "stop_date": "2023-08-17",
+      "stop_price": "7455",
+      "stop_return": -7.1606475716064715,
+      "saved_pct": 9.277708592777088,
+      "saved_amount": 7450.000000000002
+    }
+  },
+  {
+    "code": "426030",
+    "name": "TIMEFOLIO 미국나스닥100액티브",
+    "avg_price": 33358,
+    "quantity": 10.0,
+    "current_price": 36755.0,
+    "current_return": 10.183464236465015,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "441800",
+    "name": "TIMEFOLIO Korea플러스배당액티브",
+    "avg_price": 16420,
+    "quantity": 10.0,
+    "current_price": 19730.0,
+    "current_return": 20.15834348355664,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "456600",
+    "name": "TIMEFOLIO 글로벌AI인공지능액티브",
+    "avg_price": 39085,
+    "quantity": 5.0,
+    "current_price": 37970.0,
+    "current_return": -2.8527568120762443,
+    "analysis": "loss",
+    "optimal_stop": null
+  },
+  {
+    "code": "474800",
+    "name": "KIWOOM 미국원유에너지기업",
+    "avg_price": 11165,
+    "quantity": 5.0,
+    "current_price": 11980.0,
+    "current_return": 7.299596954769369,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "486450",
+    "name": "SOL 미국AI전력인프라",
+    "avg_price": 21672,
+    "quantity": 10.0,
+    "current_price": 21355.0,
+    "current_return": -1.462716869693614,
+    "analysis": "loss",
+    "optimal_stop": null
+  },
+  {
+    "code": "491010",
+    "name": "TIGER 글로벌AI전력인프라액티브",
+    "avg_price": 21050,
+    "quantity": 10.0,
+    "current_price": 20760.0,
+    "current_return": -1.3776722090261282,
+    "analysis": "loss",
+    "optimal_stop": null
+  },
+  {
+    "code": "0013P0",
+    "name": "RISE 미국은행TOP10",
+    "avg_price": 10050,
+    "quantity": 5.0,
+    "current_price": 11550.0,
+    "current_return": 14.925373134328357,
+    "analysis": "profit",
+    "optimal_stop": null
+  },
+  {
+    "code": "001510",
+    "name": "SK증권",
+    "avg_price": 1180,
+    "quantity": 3000.0,
+    "current_price": 698.0,
+    "current_return": -40.847457627118644,
+    "analysis": "loss",
+    "optimal_stop": {
+      "stop_loss_pct": 7,
+      "stop_date": "2020-07-02",
+      "stop_price": "1020",
+      "stop_return": -13.559322033898303,
+      "saved_pct": 27.28813559322034,
+      "saved_amount": 966000.0000000001
+    }
+  },
+  {
+    "code": "000660",
+    "name": "SK하이닉스",
+    "avg_price": 550000,
+    "quantity": 1.0,
+    "current_price": 606000.0,
+    "current_return": 10.181818181818182,
+    "analysis": "profit",
+    "optimal_stop": null
+  }
+]

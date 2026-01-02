@@ -1,0 +1,56 @@
+[2025-12-29 15:51:15,583] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-29 15:51:15,584] WARNING - UTF-8 디코딩 실패, CP949 재시도: logs\daily_20251229.log
+[2025-12-29 15:51:15,585] ERROR - 파일 읽기 치명적 오류: logs\daily_20251229.log - 'cp949' codec can't decode byte 0xbf in position 2: illegal multibyte sequence
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 88, in safe_read_text
+    return f.read()
+           ~~~~~~^^
+  File "<frozen codecs>", line 325, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe0 in position 394: invalid continuation byte
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 92, in safe_read_text
+    return f.read()
+           ~~~~~~^^
+UnicodeDecodeError: 'cp949' codec can't decode byte 0xbf in position 2: illegal multibyte sequence
+[2025-12-29 15:51:15,586] ERROR - 상태 조회 중 오류 발생
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 88, in safe_read_text
+    return f.read()
+           ~~~~~~^^
+  File "<frozen codecs>", line 325, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe0 in position 394: invalid continuation byte
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 92, in safe_read_text
+    return f.read()
+           ~~~~~~^^
+UnicodeDecodeError: 'cp949' codec can't decode byte 0xbf in position 2: illegal multibyte sequence
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 141, in get_status
+    content = safe_read_text(log_file)
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 95, in safe_read_text
+    raise IOError(f"파일을 읽을 수 없습니다: {str(e)}")
+OSError: 파일을 읽을 수 없습니다: 'cp949' codec can't decode byte 0xbf in position 2: illegal multibyte sequence
+[2025-12-29 16:05:03,002] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-29 16:05:03,003] WARNING - UTF-8 디코딩 실패, CP949 재시도: logs\daily_20251229.log
+[2025-12-29 16:05:03,003] WARNING - CP949 디코딩 실패, UTF-16 재시도: logs\daily_20251229.log
+[2025-12-29 16:05:03,014] WARNING - 모든 인코딩 실패, 강제 로드 (손실 포함): logs\daily_20251229.log
+[2025-12-29 16:05:03,366] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-29 16:16:49,514] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-29 16:24:21,147] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-29 16:24:21,148] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-29 16:24:21,149] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-29 16:24:21,156] INFO - 원본 조회 요청: logs\daily_20251229.log
+[2025-12-29 17:00:28,155] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-29 17:00:28,156] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-29 17:00:28,156] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-29 17:00:28,166] INFO - 원본 조회 요청: logs\daily_20251229.log
+[2025-12-29 17:21:32,130] INFO - 상태 조회 요청 (GET /api/status)

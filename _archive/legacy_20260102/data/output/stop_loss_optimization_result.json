@@ -1,0 +1,25 @@
+{
+  "best_params": {
+    "stop_loss_pct": 7
+  },
+  "best_value": 0.4619387321237847,
+  "optimal_result": {
+    "portfolio_return": 7.920007230445999,
+    "portfolio_std": 17.14514648735645,
+    "sharpe_ratio": 0.4619387321237847,
+    "max_drawdown": -35.89743589743589,
+    "stop_loss_count": 3
+  },
+  "jason_result": {
+    "portfolio_return": 7.920007230445999,
+    "portfolio_std": 17.14514648735645,
+    "sharpe_ratio": 0.4619387321237847,
+    "max_drawdown": -35.89743589743589,
+    "stop_loss_count": 3
+  },
+  "improvement": {
+    "return_diff": 0.0,
+    "sharpe_diff": 0.0,
+    "mdd_diff": 0.0
+  }
+}

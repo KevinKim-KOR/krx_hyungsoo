@@ -1,0 +1,64 @@
+{
+  "contract_id": "CONTRACT_5",
+  "schema_version": "REPORT_HUMAN_V1",
+  "policy_id": "TRADE_COUNT_POLICY_V1",
+  "asof": "2026-01-01T22:35:05.374814Z",
+  "headline": {
+    "period": "2024-01-01~2025-12-31",
+    "status_badge": "GREEN",
+    "trade_count": {
+      "L1_actions": 579,
+      "L2_trades": 531,
+      "delta": 48
+    }
+  },
+  "integrity_summary": {
+    "critical_total": 0,
+    "warning_total": 0,
+    "info_total": 0,
+    "top_codes": []
+  },
+  "kpis": [
+    {
+      "key": "gate_open_days",
+      "label_ko": "시장 개장",
+      "value": 123,
+      "unit": "days",
+      "severity": "GREEN"
+    },
+    {
+      "key": "executed_days",
+      "label_ko": "체결 발생",
+      "value": 140,
+      "unit": "days",
+      "severity": "GREEN"
+    },
+    {
+      "key": "chop_blocked_days",
+      "label_ko": "횡보장 방어",
+      "value": 327,
+      "unit": "days",
+      "severity": "AMBER"
+    },
+    {
+      "key": "bear_blocked_days",
+      "label_ko": "하락장 방어",
+      "value": 52,
+      "unit": "days",
+      "severity": "RED"
+    },
+    {
+      "key": "no_data_days",
+      "label_ko": "데이터 누락",
+      "value": 21,
+      "unit": "days",
+      "severity": "CRITICAL"
+    }
+  ],
+  "top_issues": [],
+  "pointers": {
+    "recon_summary_path": "E:\\AI Study\\krx_alertor_modular\\reports\\phase_c\\recon_summary.json",
+    "recon_daily_path": "E:\\AI Study\\krx_alertor_modular\\reports\\phase_c\\recon_daily.jsonl",
+    "provenance_hash8": "82b9421c"
+  }
+}

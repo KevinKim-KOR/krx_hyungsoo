@@ -1,0 +1,15 @@
+{
+  "regime": "상승장",
+  "confidence": 1.0,
+  "timestamp": "2025-11-27T00:36:56.217246",
+  "details": {
+    "regime": "상승장",
+    "confidence": 1.0,
+    "ma_short": 50,
+    "ma_long": 200,
+    "current_price": 3960.8701171875,
+    "ma_short_value": 3778.9380224609376,
+    "ma_long_value": 3061.2178564453125,
+    "us_market_regime": "neutral"
+  }
+}

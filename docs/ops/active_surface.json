@@ -1,0 +1,32 @@
+{
+    "version": "1.0",
+    "asof": "2026-01-02",
+    "description": "Active Surface Registry - 운영에 사용하는 파일 화이트리스트",
+    "active_files": [
+        "app/reconcile.py",
+        "app/generate_reports.py",
+        "backend/main.py",
+        "dashboard/index.html",
+        "config/production_config.py",
+        "config/production_config_v2.py",
+        "docs/contracts/contract_5_reports.md",
+        "reports/phase_c/latest/recon_summary.json",
+        "reports/phase_c/latest/recon_daily.jsonl",
+        "reports/phase_c/latest/report_human.json",
+        "reports/phase_c/latest/report_ai.json"
+    ],
+    "active_endpoints": [
+        "/api/recon/summary",
+        "/api/recon/daily",
+        "/api/report/human",
+        "/api/report/ai"
+    ],
+    "forbidden_paths": [
+        "_archive/**"
+    ],
+    "rules": {
+        "import_from_archive": "FORBIDDEN",
+        "latest_only": "UI/Backend는 reports/phase_c/latest/ 경로만 읽음",
+        "contract_first": "새 파일 추가 시 계약 문서에 먼저 등록"
+    }
+}

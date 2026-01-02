@@ -1,0 +1,71 @@
+{
+    "test_date": "2026-01-02T22:40:00+09:00",
+    "branch": "archive-rebuild",
+    "env": {
+        "python_version": "3.x (conda base)",
+        "venv_path": ".venv",
+        "requirements_installed": [
+            "fastapi",
+            "uvicorn",
+            "pydantic",
+            "pyyaml"
+        ]
+    },
+    "api": {
+        "/api/recon/summary": {
+            "http_status": 200,
+            "status": "ready",
+            "schema": "RECON_SUMMARY_V1",
+            "asof": "2026-01-02"
+        },
+        "/api/recon/daily": {
+            "http_status": 200,
+            "status": "ready",
+            "schema": "RECON_DAILY_V1",
+            "row_count": 523
+        },
+        "/api/report/human": {
+            "http_status": 200,
+            "status": "data_returned",
+            "schema": "REPORT_HUMAN_V1",
+            "kpi_count": 5,
+            "kpi_keys": [
+                "gate_open_days",
+                "executed_days",
+                "chop_blocked_days",
+                "bear_blocked_days",
+                "no_data_days"
+            ]
+        },
+        "/api/report/ai": {
+            "http_status": 200,
+            "status": "data_returned",
+            "schema": "REPORT_AI_V1",
+            "has_kpi_vector": true,
+            "has_integrity_flags": true
+        }
+    },
+    "ui": {
+        "loaded": true,
+        "header": "KRX ALERTOR Phase 14.4 Observer",
+        "errors": [
+            "logs tab reports file not found (expected - logs moved to archive)",
+            "portfolio endpoint returns 500 (not in active surface)"
+        ]
+    },
+    "archive_reference_scan": {
+        "hits_count": 0,
+        "note": "All _archive references found are in _archive/ folder itself or governance docs, no import violations in active code",
+        "scan_scope": "backend/, app/, dashboard/, docs/, config/"
+    },
+    "acceptance_criteria": {
+        "AC1_recon_summary": "PASS",
+        "AC2_recon_daily": "PASS",
+        "AC3_report_human": "PASS",
+        "AC4_report_ai": "PASS",
+        "AC5_dashboard_renders": "PASS",
+        "AC6_archive_isolation": "PASS"
+    },
+    "overall": "PASS",
+    "fail_reasons": []
+}

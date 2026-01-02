@@ -1,0 +1,24 @@
+{
+  "backtest": {
+    "portfolio_return": 7.920007230445999,
+    "portfolio_std": 17.14514648735645,
+    "sharpe_ratio": 0.4619387321237847,
+    "max_drawdown": -35.89743589743589,
+    "stop_loss_count": 3
+  },
+  "real": {
+    "portfolio_return": -9.631349479288055,
+    "avg_return": 4.017861354251614,
+    "portfolio_std": 25.05243279821116,
+    "sharpe_ratio": 0.16037809128614863,
+    "max_drawdown": -66.57939319266902,
+    "total_cost": 9675695.0,
+    "total_value": 8743795.0,
+    "profit_loss": -931900.0
+  },
+  "diff": {
+    "return_diff": -3.9021458761943855,
+    "sharpe_diff": -0.3015606408376361,
+    "mdd_diff": -30.681957295233126
+  }
+}

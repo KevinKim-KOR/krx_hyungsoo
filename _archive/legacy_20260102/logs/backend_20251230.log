@@ -1,0 +1,187 @@
+[2025-12-30 08:48:48,122] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 08:48:48,128] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 08:48:48,128] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 08:48:48,139] ERROR - 원본 읽기 실패: logs\daily_20251230.log
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 302, in get_raw
+    content = safe_read_text(path)
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 129, in safe_read_text
+    raise IOError(f"파일 읽기 실패: {res.get('error')}")
+OSError: 파일 읽기 실패: None
+[2025-12-30 08:48:48,155] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 08:48:48,177] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 09:28:07,101] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 09:28:07,120] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 09:28:07,121] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 09:28:07,122] ERROR - 원본 읽기 실패: logs\daily_20251230.log
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 302, in get_raw
+    content = safe_read_text(path)
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 129, in safe_read_text
+    raise IOError(f"파일 읽기 실패: {res.get('error')}")
+OSError: 파일 읽기 실패: None
+[2025-12-30 09:28:07,141] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 09:28:07,147] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 09:28:07,160] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 10:05:27,512] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 10:05:27,530] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 10:05:27,532] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 10:05:27,533] ERROR - 원본 읽기 실패: logs\daily_20251230.log
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 302, in get_raw
+    content = safe_read_text(path)
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 129, in safe_read_text
+    raise IOError(f"파일 읽기 실패: {res.get('error')}")
+OSError: 파일 읽기 실패: None
+[2025-12-30 10:05:27,552] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 10:05:27,559] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 10:05:27,575] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 10:05:27,582] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 10:55:53,869] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 10:55:53,875] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 10:55:53,875] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 10:55:53,877] ERROR - 원본 읽기 실패: logs\daily_20251230.log
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 302, in get_raw
+    content = safe_read_text(path)
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 129, in safe_read_text
+    raise IOError(f"파일 읽기 실패: {res.get('error')}")
+OSError: 파일 읽기 실패: None
+[2025-12-30 10:55:53,927] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 10:55:54,009] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 10:55:54,046] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 10:55:54,050] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 10:59:53,750] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 11:00:09,992] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 11:00:24,670] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 11:00:24,671] ERROR - 원본 읽기 실패: logs\daily_20251230.log
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 339, in get_raw
+    content = safe_read_text(path)
+  File "E:\AI Study\krx_alertor_modular\backend\main.py", line 166, in safe_read_text
+    raise IOError(f"파일 읽기 실패: {res.get('error')}")
+OSError: 파일 읽기 실패: None
+[2025-12-30 11:02:09,150] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 11:02:59,680] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 11:02:59,689] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 11:02:59,694] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 11:02:59,728] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 11:02:59,827] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 11:02:59,830] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 11:02:59,835] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 12:50:54,847] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 12:50:54,851] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 12:50:54,852] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 12:50:54,863] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 12:50:54,878] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 12:50:54,882] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 12:50:54,885] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 12:50:56,777] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 12:50:56,788] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 12:50:56,788] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 12:50:56,799] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 12:50:56,819] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 12:50:56,823] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 12:50:56,826] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 12:53:02,731] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 12:53:02,749] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 12:53:02,750] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 12:53:02,773] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 12:53:02,788] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 12:53:02,833] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 12:53:02,836] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 12:53:13,096] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 12:53:13,113] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 12:53:13,113] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 12:53:13,135] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 12:53:13,141] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 12:53:13,147] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 12:53:13,160] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 12:53:19,923] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 12:53:19,945] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 12:53:19,945] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 12:53:19,972] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 12:53:20,041] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 12:53:20,045] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 12:53:20,048] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 12:54:45,669] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 12:54:45,687] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 12:54:45,687] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 12:54:45,701] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 12:54:45,726] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 12:54:45,784] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 12:54:45,787] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 13:41:18,170] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 13:41:18,175] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 13:41:18,175] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 13:41:18,187] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 13:41:18,196] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 13:41:18,200] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 13:41:18,203] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 13:59:55,647] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 13:59:55,667] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 13:59:55,668] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 13:59:55,683] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 13:59:55,711] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 13:59:55,722] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 13:59:55,776] INFO - 진단 리포트 조회 요청 (GET /api/diagnosis)
+[2025-12-30 14:42:05,066] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 14:42:05,093] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 14:42:05,094] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 14:42:05,112] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 14:42:05,132] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 14:42:05,235] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 14:44:29,137] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 14:44:29,167] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 14:44:29,167] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 14:44:29,189] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 14:44:29,201] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 14:44:29,289] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 14:49:03,117] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 14:49:03,139] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 14:49:03,139] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 14:49:03,157] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 14:49:03,167] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 14:49:03,271] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 14:49:47,523] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 14:49:47,553] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 14:49:47,553] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 14:49:47,568] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 14:49:47,587] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 14:49:47,702] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 14:49:58,801] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 14:49:58,822] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 14:49:58,824] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 14:49:58,834] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 14:49:58,843] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 14:49:58,946] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 15:12:16,138] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 15:12:16,156] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 15:12:16,156] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 15:12:16,171] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 15:12:16,185] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 15:12:16,297] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 15:49:06,940] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 15:49:06,970] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 15:49:06,971] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 15:49:06,988] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 15:49:07,008] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 15:49:07,106] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 16:09:54,129] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 16:09:54,142] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 16:09:54,143] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 16:09:54,153] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 16:09:54,166] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 16:09:54,241] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 16:36:10,905] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 16:36:10,924] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 16:36:10,925] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 16:36:10,938] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 16:36:10,949] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 16:36:11,034] INFO - 검증 리포트 조회 요청 (GET /api/validation)
+[2025-12-30 17:24:41,503] INFO - 상태 조회 요청 (GET /api/status)
+[2025-12-30 17:24:41,510] INFO - 원본 조회 요청: logs\daily_20251230.log
+[2025-12-30 17:24:41,510] INFO - 포트폴리오 조회 요청 (GET /api/portfolio)
+[2025-12-30 17:24:41,528] INFO - 신호 조회 요청 (GET /api/signals)
+[2025-12-30 17:24:41,552] INFO - 이력 조회 요청 (GET /api/history)
+[2025-12-30 17:24:41,646] INFO - 검증 리포트 조회 요청 (GET /api/validation)

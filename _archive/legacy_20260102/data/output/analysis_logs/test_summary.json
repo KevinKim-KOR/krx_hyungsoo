@@ -1,0 +1,32 @@
+{
+  "total_days": 7,
+  "total_trades": 4,
+  "regime_changes": 2,
+  "defense_events": 2,
+  "regime_distribution": {
+    "bull": {
+      "days": 3,
+      "pct": 42.857142857142854
+    },
+    "neutral": {
+      "days": 2,
+      "pct": 28.57142857142857
+    },
+    "bear": {
+      "days": 2,
+      "pct": 28.57142857142857
+    }
+  },
+  "trade_stats": {
+    "buy_count": 2,
+    "sell_count": 2,
+    "total_commission": 1552.4999999999998,
+    "total_tax": 8855.0,
+    "total_slippage": 10350.0,
+    "total_costs": 20757.5
+  },
+  "defense_event_types": {
+    "regime_reduce": 1,
+    "individual_stop": 1
+  }
+}
