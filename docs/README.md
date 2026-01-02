@@ -33,7 +33,7 @@
 ### 📊 히스토리 (archive/)
 | 문서 | 설명 |
 |------|------|
-| [project_summary_20260103.md](archive/project_summary_20260103.md) | Archive-First Rebuild 성과 요약 |
+| [phase_c_s0_artifact_governance.md](archive/phase_c_s0_artifact_governance.md) | Phase C-S.0 성과 요약 |
 
 ---
 
