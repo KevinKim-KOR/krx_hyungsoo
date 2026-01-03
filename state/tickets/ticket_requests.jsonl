@@ -1,0 +1,1 @@
+{"schema": "TICKET_REQUEST_V1", "request_id": "f41f8f31-d56b-48c4-9b94-a92b50738198", "requested_at": "2026-01-03T14:28:10.450846", "request_type": "REQUEST_RECONCILE", "payload": {"mode": "FULL", "reason": "Test ticket"}, "status": "OPEN", "trace_id": null}

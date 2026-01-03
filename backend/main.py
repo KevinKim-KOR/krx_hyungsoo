@@ -468,6 +468,117 @@ def get_recon_daily():
         return {"status": "error", "message": str(e), "rows": [], "row_count": 0, "error": str(e)}
 
 
+# --- Phase C-P.1: Push & Ticket APIs ---
+
+PUSH_DIR = REPORTS_DIR / "push" / "latest"
+TICKETS_DIR = STATE_DIR / "tickets"
+
+@app.get("/api/push/latest", summary="Push Messages (Latest)")
+def get_push_latest():
+    """최신 Push 메시지 목록 반환"""
+    path = PUSH_DIR / "push_messages.json"
+    if not path.exists():
+        return {
+            "status": "not_ready",
+            "schema": "PUSH_MESSAGE_V1",
+            "asof": datetime.now().isoformat(),
+            "row_count": 0,
+            "rows": [],
+            "error": "PUSH_FILE_NOT_FOUND"
+        }
+    try:
+        data = safe_read_json(path)
+        # Envelope 포맷 보장
+        if "rows" not in data:
+            data["rows"] = []
+        if "status" not in data:
+            data["status"] = "ready"
+        if "schema" not in data:
+            data["schema"] = "PUSH_MESSAGE_V1"
+        if "row_count" not in data:
+            data["row_count"] = len(data.get("rows", []))
+        if "asof" not in data:
+            data["asof"] = datetime.now().isoformat()
+        if "error" not in data:
+            data["error"] = None
+        return data
+    except Exception as e:
+        return {"status": "error", "message": str(e), "rows": [], "row_count": 0, "error": str(e)}
+
+
+from pydantic import BaseModel
+from typing import Optional
+import uuid
+
+class TicketPayload(BaseModel):
+    mode: Optional[str] = None
+    reason: Optional[str] = None
+    scope: Optional[str] = None
+    message_id: Optional[str] = None
+
+class TicketSubmit(BaseModel):
+    request_type: str  # REQUEST_RECONCILE, REQUEST_REPORTS, ACKNOWLEDGE
+    payload: dict
+    trace_id: Optional[str] = None
+
+@app.post("/api/tickets", summary="Ticket 생성 (Append-only)")
+def create_ticket(ticket: TicketSubmit):
+    """
+    티켓 생성 (TICKET_SUBMIT_V1 → TICKET_REQUEST_V1 변환 후 저장)
+    
+    규칙:
+    - request_id, requested_at, status는 서버가 강제 주입
+    - Append-only: 수정/삭제 금지
+    """
+    logger.info(f"티켓 생성 요청: {ticket.request_type}")
+    
+    # 유효성 검증
+    valid_types = ["REQUEST_RECONCILE", "REQUEST_REPORTS", "ACKNOWLEDGE"]
+    if ticket.request_type not in valid_types:
+        return JSONResponse(
+            status_code=400,
+            content={"result": "FAIL", "message": f"Invalid request_type. Must be one of {valid_types}"}
+        )
+    
+    # 서버 정보 강제 주입
+    request_id = str(uuid.uuid4())
+    requested_at = datetime.now().isoformat()
+    
+    ticket_request = {
+        "schema": "TICKET_REQUEST_V1",
+        "request_id": request_id,
+        "requested_at": requested_at,
+        "request_type": ticket.request_type,
+        "payload": ticket.payload,
+        "status": "OPEN",  # 최초 고정
+        "trace_id": ticket.trace_id
+    }
+    
+    # Append-only 저장
+    TICKETS_DIR.mkdir(parents=True, exist_ok=True)
+    tickets_file = TICKETS_DIR / "ticket_requests.jsonl"
+    
+    try:
+        with open(tickets_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(ticket_request, ensure_ascii=False) + "\n")
+        
+        logger.info(f"티켓 저장 완료: {request_id}")
+        return {
+            "result": "OK",
+            "request_id": request_id,
+            "requested_at": requested_at,
+            "status": "OPEN",
+            "appended": True
+        }
+    except Exception as e:
+        logger.error(f"티켓 저장 실패: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"result": "FAIL", "message": str(e), "appended": False}
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+

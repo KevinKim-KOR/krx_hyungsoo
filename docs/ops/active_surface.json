@@ -1,7 +1,7 @@
 {
-    "version": "1.1",
+    "version": "1.2",
     "asof": "2026-01-03",
-    "description": "Active Surface Registry",
+    "description": "Active Surface Registry (Phase C-P.1)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -10,7 +10,8 @@
     ],
     "allowed_reports_paths": [
         "reports/phase_c/latest/**",
-        "reports/phase_c/snapshots/**"
+        "reports/phase_c/snapshots/**",
+        "reports/push/latest/**"
     ],
     "forbidden_latest_version_suffix": true,
     "contracts_live_in_docs_only": true,
@@ -23,19 +24,28 @@
         "config/production_config.py",
         "config/production_config_v2.py",
         "docs/contracts/contract_5_reports.md",
+        "docs/contracts/contract_push_v1.md",
+        "docs/contracts/contract_ticket_v1.md",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",
+        "docs/ops/push_policy_v1.md",
+        "docs/ops/push_ui_requirements_v1.md",
+        "tools/generate_push_messages.py",
         "reports/phase_c/latest/recon_summary.json",
         "reports/phase_c/latest/recon_daily.jsonl",
         "reports/phase_c/latest/report_human.json",
-        "reports/phase_c/latest/report_ai.json"
+        "reports/phase_c/latest/report_ai.json",
+        "reports/push/latest/push_messages.json",
+        "state/tickets/ticket_requests.jsonl"
     ],
     "active_endpoints": [
         "/api/recon/summary",
         "/api/recon/daily",
         "/api/report/human",
-        "/api/report/ai"
+        "/api/report/ai",
+        "/api/push/latest",
+        "/api/tickets"
     ],
     "forbidden_paths": [
         "_archive/**"
@@ -43,6 +53,7 @@
     "rules": {
         "import_from_archive": "FORBIDDEN",
         "latest_only": "UI/Backend는 reports/phase_c/latest/ 경로만 읽음",
-        "no_version_suffix_in_latest": "reports/phase_c/latest/ 파일명에 버전 접미사 금지"
+        "no_version_suffix_in_latest": "reports/phase_c/latest/ 파일명에 버전 접미사 금지",
+        "ticket_append_only": "state/tickets/ticket_requests.jsonl은 Append-only (수정/삭제 금지)"
     }
 }

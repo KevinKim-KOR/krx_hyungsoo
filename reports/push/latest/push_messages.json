@@ -1,0 +1,31 @@
+{
+  "schema": "PUSH_MESSAGE_V1",
+  "status": "ready",
+  "asof": "2026-01-03T14:23:13.356351",
+  "row_count": 1,
+  "rows": [
+    {
+      "schema": "PUSH_MESSAGE_V1",
+      "message_id": "push_20260103_142313_356",
+      "type": "PUSH_MARKET_STATE_BRIEF",
+      "severity": "INFO",
+      "title_ko": "오늘의 시장 브리핑",
+      "body_ko": "오늘의 시장 상태 요약입니다.\n",
+      "asof": "2026-01-03T14:23:13.356113",
+      "sources": [
+        {
+          "file": "E:\\AI Study\\krx_alertor_modular\\reports\\phase_c\\latest\\report_human.json"
+        }
+      ],
+      "actions": [
+        {
+          "id": "OPEN_DASHBOARD",
+          "label_ko": "대시보드 열기",
+          "target": "/"
+        }
+      ],
+      "info_note": "Gatekeeper 결정 파일이 없습니다. (정상 운영 가능)"
+    }
+  ],
+  "error": null
+}
