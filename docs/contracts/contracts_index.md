@@ -1,6 +1,6 @@
 # Contracts Index
 
-**Version**: 1.0  
+**Version**: 2.0  
 **Date**: 2026-01-03
 
 ---
@@ -25,8 +25,40 @@
 
 ---
 
+## Ticket Contracts
+
+| 스키마명 | 문서 경로 | 설명 |
+|----------|-----------|------|
+| `TICKET_SUBMIT_V1` | [contract_ticket_v1.md](contract_ticket_v1.md) | 클라이언트 입력용 |
+| `TICKET_REQUEST_V1` | [contract_ticket_v1.md](contract_ticket_v1.md) | 서버 저장용 |
+| `TICKET_RESULT_V1` | [contract_ticket_result_v1.md](contract_ticket_result_v1.md) | 처리 결과 |
+| `TICKETS_BOARD_V1` | [contract_ticket_result_v1.md](contract_ticket_result_v1.md) | 상태 보드 View |
+
+---
+
+## Execution & Gate Contracts
+
+| 스키마명 | 문서 경로 | 설명 |
+|----------|-----------|------|
+| `EXECUTION_GATE_V1` | [contract_execution_gate_v1.md](contract_execution_gate_v1.md) | 실행 모드 제어 |
+| `EXECUTION_PLAN_V1` | [contract_execution_plan_v1.md](contract_execution_plan_v1.md) | 실행 계획 (JSON SoT: [execution_plan_v1.json](execution_plan_v1.json)) |
+| `DRYRUN_ARTIFACT_V1` | [contract_dryrun_artifact_v1.md](contract_dryrun_artifact_v1.md) | Dry-Run 결과물 |
+
+---
+
+## Push & Worker Contracts
+
+| 스키마명 | 문서 경로 | 설명 |
+|----------|-----------|------|
+| `PUSH_MESSAGE_V1` | [contract_push_v1.md](contract_push_v1.md) | Push 메시지 |
+| `TICKET_WORKER_V1` | [contract_ticket_worker_v1.md](contract_ticket_worker_v1.md) | 워커 정책 |
+| `TICKET_IDEMPOTENCY_V1` | [contract_ticket_idempotency_v1.md](contract_ticket_idempotency_v1.md) | 중복 방지 규칙 |
+
+---
+
 ## 버전 히스토리
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
 | 1.0 | 2026-01-03 | 초기 버전 (Phase C-S.0) |
+| 2.0 | 2026-01-03 | Ticket, Execution, Push, Worker 관련 계약 추가 (Phase C-P.6.0) |

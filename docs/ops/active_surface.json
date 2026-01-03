@@ -34,6 +34,7 @@
         "docs/contracts/contract_ticket_idempotency_v1.md",
         "docs/contracts/contract_dryrun_artifact_v1.md",
         "docs/contracts/execution_plan_v1.json",
+        "docs/contracts/contract_execution_plan_v1.md",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",
