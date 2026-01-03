@@ -1,7 +1,7 @@
 {
   "schema": "EXECUTION_GATE_V1",
   "mode": "REAL_ENABLED",
-  "updated_at": "2026-01-03T20:01:45.275925",
+  "updated_at": "2026-01-03T20:32:47.585834",
   "updated_by": "local_api",
-  "reason": "CP9 real test"
+  "reason": "CP9.1"
 }

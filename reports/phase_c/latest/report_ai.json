@@ -1,20 +1,17 @@
 {
   "contract_id": "CONTRACT_5",
   "schema_version": "REPORT_AI_V1",
-  "asof": "2026-01-01T22:35:05.374814Z",
+  "generated_at": "2026-01-03T20:35:38.318207Z",
+  "asof": "2026-01-03T20:35:38.318207Z",
   "kpi_vector": {
-    "gate_open_days": 123,
-    "executed_days": 140,
-    "L2_trades": 531,
-    "no_data_days": 21
+    "gate_open_days": 0,
+    "executed_days": 0,
+    "L2_trades": 0,
+    "no_data_days": 0
   },
   "integrity_flags": {
     "critical_total": 0,
     "critical_codes": []
   },
-  "constraints_hint": {
-    "policy_id": "TRADE_COUNT_POLICY_V1",
-    "gatekeeper_schema": "GATEKEEPER_DECISION_V3",
-    "tuning_allowed": false
-  }
+  "status": "BOOTSTRAP"
 }
