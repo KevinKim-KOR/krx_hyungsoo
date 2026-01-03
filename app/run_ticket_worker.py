@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 app/run_ticket_worker.py
-Ticket Worker (Phase C-P.9)
+Ticket Worker (Phase C-P.10)
 
 규칙:
-- REAL 실행은 REQUEST_REPORTS 1회만 허용
-- Preflight 4개 체크 필수
-- EXECUTION_RECEIPT_V2 작성
+- REAL 실행은 REQUEST_RECONCILE 또는 REQUEST_REPORTS
+- Preflight 체크 필수
+- 1회 제한 (Window)
 """
 import json
 import os
@@ -30,12 +30,11 @@ BASE_DIR = Path(__file__).parent.parent
 STATE_DIR = BASE_DIR / "state"
 TICKETS_DIR = STATE_DIR / "tickets"
 LOCK_FILE = STATE_DIR / "worker.lock"
-DRYRUN_DIR = BASE_DIR / "reports" / "tickets" / "dryrun"
-SHADOW_DIR = BASE_DIR / "reports" / "tickets" / "shadow"
 RECEIPTS_FILE = TICKETS_DIR / "ticket_receipts.jsonl"
 EXECUTION_PLAN_FILE = BASE_DIR / "docs" / "contracts" / "execution_plan_v1.json"
 ALLOWLIST_FILE = BASE_DIR / "docs" / "contracts" / "execution_allowlist_v1.json"
 WINDOWS_FILE = STATE_DIR / "real_enable_windows" / "real_enable_windows.jsonl"
+PREFLIGHT_DIR = BASE_DIR / "reports" / "tickets" / "preflight"
 
 API_BASE = "http://127.0.0.1:8000"
 STALE_THRESHOLD_SECONDS = 600
@@ -101,7 +100,7 @@ def release_lock():
         logger.info("Lock released")
 
 
-# === Preflight Checks ===
+# === Preflight & Safety Checks ===
 
 def check_emergency_stop() -> dict:
     try:
@@ -160,6 +159,21 @@ def get_gate_mode() -> str:
     except:
         pass
     return "MOCK_ONLY"
+
+
+def run_preflight(request_id: str, request_type: str) -> dict:
+    """Run Deep Preflight via API"""
+    try:
+        resp = requests.post(
+            f"{API_BASE}/api/deps/reconcile/check",
+            json={"request_id": request_id, "request_type": request_type, "payload": {}},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception as e:
+        logger.error(f"Preflight API failed: {e}")
+    return {"result": "FAIL", "decision": "PREFLIGHT_FAIL", "artifact_path": None}
 
 
 def load_execution_plan() -> dict:
@@ -238,7 +252,7 @@ def complete_ticket(request_id: str, status: str, message: str, artifacts: list 
 
 
 def consume_window(window_id: str):
-    """Mark window as consumed (Append CONSUME event)"""
+    """Mark window as consumed"""
     WINDOWS_DIR = STATE_DIR / "real_enable_windows"
     WINDOWS_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -257,7 +271,8 @@ def write_receipt_v2(
     request_id: str, mode: str, decision: str, 
     block_reasons: list, started_at: str, finished_at: str,
     command: list, exit_code: int, artifacts: list,
-    latest_files_changed: dict, safety_checks: dict
+    latest_files_changed: dict, safety_checks: dict,
+    preflight_artifact_path: str = None
 ):
     """Write EXECUTION_RECEIPT_V2"""
     TICKETS_DIR.mkdir(parents=True, exist_ok=True)
@@ -275,7 +290,8 @@ def write_receipt_v2(
         "exit_code": exit_code,
         "artifacts_written": artifacts,
         "latest_files_changed": latest_files_changed,
-        "safety_checks": safety_checks
+        "safety_checks": safety_checks,
+        "preflight_artifact_path": preflight_artifact_path
     }
     
     with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
@@ -285,8 +301,8 @@ def write_receipt_v2(
     return receipt
 
 
-def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_checks: dict) -> bool:
-    """Process ticket with REAL execution (REQUEST_REPORTS only)"""
+def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_checks: dict, preflight_path: str) -> bool:
+    """Process ticket with REAL execution"""
     request_id = ticket.get("request_id")
     request_type = ticket.get("request_type")
     
@@ -310,7 +326,7 @@ def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_che
             cwd=str(BASE_DIR),
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=300
         )
         exit_code = result.returncode
         logger.info(f"[REAL] Exit code: {exit_code}")
@@ -328,26 +344,25 @@ def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_che
     finished_at = datetime.now().isoformat()
     
     # Get after state of files
-    files_after = {}
     latest_files_changed = {}
     artifacts_written = []
     
     for output in outputs:
         path = BASE_DIR / output
-        files_after[output] = get_file_info(path)
+        after_info = get_file_info(path)
         
-        if files_after[output]["exists"]:
+        if after_info["exists"]:
             artifacts_written.append(output)
             if files_before[output]["exists"]:
-                if files_before[output]["mtime"] != files_after[output]["mtime"]:
+                if files_before[output]["mtime"] != after_info["mtime"]:
                     latest_files_changed[output] = {
                         "mtime_before": files_before[output]["mtime"],
-                        "mtime_after": files_after[output]["mtime"]
+                        "mtime_after": after_info["mtime"]
                     }
             else:
                 latest_files_changed[output] = {
                     "mtime_before": None,
-                    "mtime_after": files_after[output]["mtime"]
+                    "mtime_after": after_info["mtime"]
                 }
     
     # Consume window immediately
@@ -367,10 +382,10 @@ def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_che
         exit_code=exit_code,
         artifacts=artifacts_written,
         latest_files_changed=latest_files_changed,
-        safety_checks=safety_checks
+        safety_checks=safety_checks,
+        preflight_artifact_path=preflight_path
     )
     
-    # Complete ticket
     status = "DONE" if exit_code == 0 else "FAILED"
     message = f"[REAL] {decision}: exit_code={exit_code}, files_changed={len(latest_files_changed)}"
     return complete_ticket(request_id, status, message, artifacts_written)
@@ -390,26 +405,23 @@ def process_ticket(ticket: dict, mode: str) -> bool:
     plan = plans.get(request_type, {})
     cmd = plan.get("cmd", [])
     
-    # === PREFLIGHT CHECKS ===
     started_at = datetime.now().isoformat()
     block_reasons = []
+    preflight_path = None
     
-    # (A) Emergency Stop
+    # === PREFLIGHT CHECKS ===
     estop = check_emergency_stop()
     if not estop["passed"]:
         block_reasons.append("Emergency Stop is ON")
     
-    # (B) Two-Key Approval
     approval = check_approval()
     if not approval["passed"]:
         block_reasons.append(f"Approval not APPROVED (status: {approval['status']})")
     
-    # (C) Allowlist
     allowlist_check = validate_allowlist(request_type, cmd)
     if not allowlist_check["passed"]:
         block_reasons.extend(allowlist_check["violations"])
     
-    # (D) Window
     window_info = check_window(request_type)
     if not window_info["passed"]:
         block_reasons.append(f"Window not ACTIVE or type not allowed (status: {window_info['status']})")
@@ -433,20 +445,24 @@ def process_ticket(ticket: dict, mode: str) -> bool:
         return complete_ticket(request_id, "DONE", f"[DRY_RUN] Validated {request_type}")
     
     elif mode == "REAL_ENABLED":
-        # REAL mode requires all checks pass
+        # Safety checks first
         if block_reasons:
             logger.warning(f"[BLOCKED] {block_reasons}")
             write_receipt_v2(request_id, "REAL", "BLOCKED", block_reasons, started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks)
             return complete_ticket(request_id, "FAILED", f"[BLOCKED] {block_reasons}")
         
-        # C-P.9: Only REQUEST_REPORTS allowed
-        if request_type != "REQUEST_REPORTS":
-            block_reasons.append(f"C-P.9: Only REQUEST_REPORTS allowed, got {request_type}")
-            write_receipt_v2(request_id, "REAL", "BLOCKED", block_reasons, started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks)
-            return complete_ticket(request_id, "FAILED", f"[BLOCKED] {block_reasons}")
+        # Deep Preflight for RECONCILE
+        if request_type == "REQUEST_RECONCILE":
+            preflight_result = run_preflight(request_id, request_type)
+            preflight_path = preflight_result.get("artifact_path")
+            
+            if preflight_result.get("decision") != "PREFLIGHT_PASS":
+                block_reasons.append(f"Preflight failed: {preflight_result.get('decision')}")
+                write_receipt_v2(request_id, "REAL", "BLOCKED", block_reasons, started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks, preflight_path)
+                return complete_ticket(request_id, "FAILED", f"[PREFLIGHT_FAIL] {block_reasons}")
         
         # All checks passed - REAL EXECUTE
-        return process_ticket_real(ticket, plans, window_info, safety_checks)
+        return process_ticket_real(ticket, plans, window_info, safety_checks, preflight_path)
     
     else:
         return complete_ticket(request_id, "DONE", f"[UNKNOWN] Processed")
@@ -454,7 +470,7 @@ def process_ticket(ticket: dict, mode: str) -> bool:
 
 def run_worker():
     logger.info("=" * 50)
-    logger.info("Ticket Worker Starting (C-P.9)...")
+    logger.info("Ticket Worker Starting (C-P.10)...")
     
     mode = get_gate_mode()
     logger.info(f"Execution Gate Mode: {mode}")

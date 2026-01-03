@@ -1,0 +1,38 @@
+{
+  "schema": "RECONCILE_PREFLIGHT_V1",
+  "asof": "2026-01-03T20:53:05.353242",
+  "request_id": "test-scenario-a",
+  "request_type": "REQUEST_RECONCILE",
+  "checks": {
+    "import_check": {
+      "status": "FAIL",
+      "detail": "Missing: ['pandas', 'pyarrow']"
+    },
+    "input_ready_check": {
+      "status": "PASS",
+      "detail": "config exists"
+    },
+    "output_writable_check": {
+      "status": "PASS",
+      "detail": "reports\\phase_c\\latest"
+    },
+    "allowlist_check": {
+      "status": "PASS",
+      "detail": "REQUEST_RECONCILE allowed"
+    },
+    "gate_check": {
+      "status": "FAIL",
+      "detail": "gate=REAL_ENABLED, estop=False, window=False"
+    }
+  },
+  "effective_plan": [
+    "python",
+    "-m",
+    "app.reconcile"
+  ],
+  "decision": "PREFLIGHT_FAIL",
+  "fail_reasons": [
+    "import_check: ['pandas', 'pyarrow']",
+    "gate_check: conditions not met"
+  ]
+}

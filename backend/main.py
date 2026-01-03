@@ -1102,8 +1102,10 @@ def get_active_window() -> Dict:
             elif event.get("event") == "CONSUME":
                 windows[wid]["real_executions_used"] = windows[wid].get("real_executions_used", 0) + 1
     
-    # ACTIVE window 찾기
+    # ACTIVE window 찾기 (최신 우선)
     now = datetime.now()
+    active_windows = []
+    
     for wid, window in windows.items():
         # 만료 체크
         expires_at = datetime.fromisoformat(window.get("expires_at", "2000-01-01"))
@@ -1117,9 +1119,13 @@ def get_active_window() -> Dict:
             window["status"] = "CONSUMED"
         
         if window.get("status") == "ACTIVE":
-            return window
+            active_windows.append(window)
     
-    return None
+    if not active_windows:
+        return None
+    
+    # 최신 생성된 ACTIVE window 반환
+    return max(active_windows, key=lambda w: w.get("created_at", ""))
 
 
 class WindowRequest(BaseModel):
@@ -1143,7 +1149,7 @@ def create_real_window(data: WindowRequest):
         "expires_at": (now + timedelta(seconds=data.ttl_seconds)).isoformat(),
         "created_by": "api",
         "reason": data.reason,
-        "allowed_request_types": ["REQUEST_REPORTS"],  # C-P.9 고정
+        "allowed_request_types": ["REQUEST_RECONCILE", "REQUEST_REPORTS"],  # C-P.10
         "max_real_executions": 1,  # C-P.9 고정
         "real_executions_used": 0,
         "status": "ACTIVE"
@@ -1201,6 +1207,160 @@ def revoke_real_window(data: WindowRevoke):
         f.write(json.dumps(revoke_event, ensure_ascii=False) + "\n")
     
     return {"result": "OK", "window_id": data.window_id, "status": "REVOKED"}
+
+
+# --- Phase C-P.10: Reconcile Deps & Preflight APIs ---
+
+PREFLIGHT_DIR = BASE_DIR / "reports" / "tickets" / "preflight"
+
+
+def check_reconcile_deps() -> dict:
+    """Check reconcile dependencies"""
+    import sys
+    result = {
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "python_ok": sys.version_info >= (3, 10),
+        "pandas_installed": False,
+        "pyarrow_installed": False,
+        "required_missing": []
+    }
+    
+    try:
+        import pandas
+        result["pandas_installed"] = True
+        result["pandas_version"] = pandas.__version__
+    except ImportError:
+        result["required_missing"].append("pandas")
+    
+    try:
+        import pyarrow
+        result["pyarrow_installed"] = True
+        result["pyarrow_version"] = pyarrow.__version__
+    except ImportError:
+        result["required_missing"].append("pyarrow")
+    
+    result["all_deps_ok"] = len(result["required_missing"]) == 0 and result["python_ok"]
+    return result
+
+
+@app.get("/api/deps/reconcile", summary="Reconcile 의존성 상태 조회")
+def get_reconcile_deps():
+    """현재 reconcile REAL 실행 가능 여부 확인"""
+    deps = check_reconcile_deps()
+    return {
+        "status": "ready" if deps["all_deps_ok"] else "missing_deps",
+        "schema": "RECONCILE_DEPENDENCY_V1",
+        "asof": datetime.now().isoformat(),
+        "row_count": 1,
+        "rows": [deps],
+        "error": None if deps["all_deps_ok"] else f"Missing: {deps['required_missing']}"
+    }
+
+
+class PreflightRequest(BaseModel):
+    request_id: str
+    request_type: str
+    payload: dict = {}
+
+
+@app.post("/api/deps/reconcile/check", summary="Reconcile Deep Preflight 수행")
+def run_reconcile_preflight(data: PreflightRequest):
+    """Deep Preflight 체크 수행 및 Artifact 저장"""
+    logger.info(f"Preflight 체크: {data.request_id} ({data.request_type})")
+    
+    PREFLIGHT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    checks = {}
+    fail_reasons = []
+    
+    # 1. Import Check
+    deps = check_reconcile_deps()
+    if deps["all_deps_ok"]:
+        checks["import_check"] = {"status": "PASS", "detail": f"pandas={deps.get('pandas_version')}, pyarrow={deps.get('pyarrow_version')}"}
+    else:
+        checks["import_check"] = {"status": "FAIL", "detail": f"Missing: {deps['required_missing']}"}
+        fail_reasons.append(f"import_check: {deps['required_missing']}")
+    
+    # 2. Input Ready Check (minimal - check if config exists)
+    config_path = BASE_DIR / "config" / "production_config_v2.py"
+    if config_path.exists():
+        checks["input_ready_check"] = {"status": "PASS", "detail": "config exists"}
+    else:
+        checks["input_ready_check"] = {"status": "FAIL", "detail": "config not found"}
+        fail_reasons.append("input_ready_check: config not found")
+    
+    # 3. Output Writable Check
+    output_dir = BASE_DIR / "reports" / "phase_c" / "latest"
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        test_file = output_dir / ".write_test"
+        test_file.write_text("test")
+        test_file.unlink()
+        checks["output_writable_check"] = {"status": "PASS", "detail": str(output_dir)}
+    except Exception as e:
+        checks["output_writable_check"] = {"status": "FAIL", "detail": str(e)}
+        fail_reasons.append(f"output_writable_check: {e}")
+    
+    # 4. Allowlist Check
+    allowlist_file = BASE_DIR / "docs" / "contracts" / "execution_allowlist_v1.json"
+    if allowlist_file.exists():
+        allowlist = json.loads(allowlist_file.read_text(encoding="utf-8"))
+        if data.request_type in allowlist.get("allowed_request_types", []):
+            checks["allowlist_check"] = {"status": "PASS", "detail": f"{data.request_type} allowed"}
+        else:
+            checks["allowlist_check"] = {"status": "FAIL", "detail": f"{data.request_type} not in allowlist"}
+            fail_reasons.append(f"allowlist_check: {data.request_type} not allowed")
+    else:
+        checks["allowlist_check"] = {"status": "FAIL", "detail": "allowlist not found"}
+        fail_reasons.append("allowlist_check: file not found")
+    
+    # 5. Gate Check
+    gate_ok = False
+    try:
+        gate_data = json.loads(EXECUTION_GATE_FILE.read_text(encoding="utf-8")) if EXECUTION_GATE_FILE.exists() else {}
+        estop_data = json.loads(EMERGENCY_STOP_FILE.read_text(encoding="utf-8")) if EMERGENCY_STOP_FILE.exists() else {}
+        window = get_active_window()
+        
+        gate_mode = gate_data.get("mode", "MOCK_ONLY")
+        estop_enabled = estop_data.get("enabled", False)
+        window_active = window is not None and data.request_type in window.get("allowed_request_types", [])
+        
+        if gate_mode == "REAL_ENABLED" and not estop_enabled and window_active:
+            checks["gate_check"] = {"status": "PASS", "detail": f"gate={gate_mode}, estop=OFF, window=ACTIVE"}
+            gate_ok = True
+        else:
+            checks["gate_check"] = {"status": "FAIL", "detail": f"gate={gate_mode}, estop={estop_enabled}, window={window_active}"}
+            fail_reasons.append(f"gate_check: conditions not met")
+    except Exception as e:
+        checks["gate_check"] = {"status": "FAIL", "detail": str(e)}
+        fail_reasons.append(f"gate_check: {e}")
+    
+    # Decision
+    all_pass = all(c["status"] == "PASS" for c in checks.values())
+    decision = "PREFLIGHT_PASS" if all_pass else "PREFLIGHT_FAIL"
+    
+    # Save Artifact
+    artifact = {
+        "schema": "RECONCILE_PREFLIGHT_V1",
+        "asof": datetime.now().isoformat(),
+        "request_id": data.request_id,
+        "request_type": data.request_type,
+        "checks": checks,
+        "effective_plan": ["python", "-m", "app.reconcile"],
+        "decision": decision,
+        "fail_reasons": fail_reasons
+    }
+    
+    artifact_path = PREFLIGHT_DIR / f"{data.request_id}.json"
+    artifact_path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
+    
+    logger.info(f"Preflight 결과: {decision}")
+    return {
+        "result": "OK",
+        "request_id": data.request_id,
+        "decision": decision,
+        "artifact_path": str(artifact_path.relative_to(BASE_DIR))
+    }
 
 
 if __name__ == "__main__":

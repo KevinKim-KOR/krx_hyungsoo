@@ -1,0 +1,72 @@
+{
+  "schema": "RECON_SUMMARY_V1",
+  "generated_at": "2026-01-03T21:07:56.238879Z",
+  "period": {
+    "from": "2024-01-01",
+    "to": "2025-12-31"
+  },
+  "trade_count_policy_id": "TRADE_COUNT_POLICY_V1",
+  "counts": {
+    "L1_actions": 0,
+    "L2_trades": 0,
+    "L1_L2_delta": 0
+  },
+  "kpis": {
+    "gate_open": 0,
+    "chop_block": 0,
+    "bear_block": 0,
+    "executed": 0,
+    "no_data": 523
+  },
+  "integrity": {
+    "critical_days": 0,
+    "warning_days": 0,
+    "info_days": 0,
+    "top_codes": []
+  },
+  "coverage": {
+    "evidence_no_data_days": 523,
+    "regression": false,
+    "exec_within_evidence": true,
+    "baseline": {},
+    "current": {
+      "min_date": "N/A",
+      "max_date": "N/A"
+    },
+    "execution_range": {
+      "min_date": "N/A",
+      "max_date": "N/A"
+    }
+  },
+  "provenance": {
+    "generated_at": "2026-01-03T21:07:56.238976Z",
+    "reconciler_version": "C-R.5",
+    "policy_ids": [
+      "TRADE_COUNT_POLICY_V1",
+      "COVERAGE_BASELINE_V1",
+      "INTEGRITY_POLICY_V1"
+    ],
+    "sources": [
+      {
+        "name": "LEDGER",
+        "path": "E:\\AI Study\\krx_alertor_modular\\reports\\validation\\phase_c0_daily_ledger_2024_2025.jsonl",
+        "error": "File Not Found"
+      },
+      {
+        "name": "EVIDENCE",
+        "path": "E:\\AI Study\\krx_alertor_modular\\data\\price\\069500.parquet",
+        "error": "File Not Found"
+      },
+      {
+        "name": "VALIDATION",
+        "path": "E:\\AI Study\\krx_alertor_modular\\reports\\validation\\oos_2024_2025_monthly.json",
+        "error": "File Not Found"
+      },
+      {
+        "name": "BASELINE",
+        "path": "E:\\AI Study\\krx_alertor_modular\\reports\\recon\\coverage_baseline.json",
+        "error": "File Not Found"
+      }
+    ]
+  }
+}
