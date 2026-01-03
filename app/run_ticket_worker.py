@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 """
 app/run_ticket_worker.py
-Ticket Worker (Phase C-P.5)
+Ticket Worker (Phase C-P.6)
 
 규칙:
 - No Execution: 실제 엔진 실행 금지
-- Machine-Readable SoT: execution_plan_v1.json 기반 검증
-- Schema Enforcement: DRYRUN_ARTIFACT_V1 스키마 준수
+- Receipt Logging: 모든 실행 시도를 영수증으로 기록
+- Emergency Stop: 정지 상태면 SKIP
 """
 import json
 import os
 import time
 import requests
 import shutil
+import uuid
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -29,6 +30,7 @@ STATE_DIR = BASE_DIR / "state"
 TICKETS_DIR = STATE_DIR / "tickets"
 LOCK_FILE = STATE_DIR / "worker.lock"
 DRYRUN_DIR = BASE_DIR / "reports" / "tickets" / "dryrun"
+RECEIPTS_FILE = TICKETS_DIR / "ticket_receipts.jsonl"
 EXECUTION_PLAN_FILE = BASE_DIR / "docs" / "contracts" / "execution_plan_v1.json"
 
 API_BASE = "http://127.0.0.1:8000"
@@ -54,12 +56,9 @@ def get_open_tickets() -> list:
     open_tickets = []
     for req in reqs:
         rid = req.get("request_id")
-        
-        # 해당 request_id의 결과들
         req_results = [r for r in results if r.get("request_id") == rid]
         
         if req_results:
-            # 최신 상태
             latest = max(req_results, key=lambda x: x.get("processed_at", ""))
             current_status = latest.get("status", "OPEN")
         else:
@@ -85,16 +84,11 @@ def acquire_lock() -> bool:
                 logger.warning(f"Lock already held by PID {lock_data.get('pid')} (age: {age_seconds:.0f}s)")
                 return False
             else:
-                # Stale lock - Force acquire
-                logger.warning(f"Stale lock detected (age: {age_seconds:.0f}s > {STALE_THRESHOLD_SECONDS}s). Force acquiring...")
+                logger.warning(f"Stale lock detected (age: {age_seconds:.0f}s). Force acquiring...")
         except Exception as e:
             logger.warning(f"Invalid lock file, overwriting: {e}")
     
-    # Acquire lock
-    lock_data = {
-        "pid": os.getpid(),
-        "acquired_at": datetime.now().isoformat()
-    }
+    lock_data = {"pid": os.getpid(), "acquired_at": datetime.now().isoformat()}
     LOCK_FILE.write_text(json.dumps(lock_data, ensure_ascii=False), encoding="utf-8")
     logger.info(f"Lock acquired (PID: {os.getpid()})")
     return True
@@ -107,8 +101,20 @@ def release_lock():
         logger.info("Lock released")
 
 
+def check_emergency_stop() -> dict:
+    """Emergency Stop 상태 확인"""
+    try:
+        resp = requests.get(f"{API_BASE}/api/emergency_stop", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json().get("data", {})
+            return data
+    except Exception as e:
+        logger.warning(f"Emergency Stop API failed: {e}")
+    return {"enabled": False}
+
+
 def get_gate_mode() -> str:
-    """Gate 모드 조회 (API 우선, 실패 시 MOCK_ONLY)"""
+    """Gate 모드 조회"""
     try:
         resp = requests.get(f"{API_BASE}/api/execution_gate", timeout=5)
         if resp.status_code == 200:
@@ -134,14 +140,35 @@ def load_execution_plan() -> dict:
         return {}
 
 
+def write_receipt(request_id: str, mode: str, result: str, message: str, artifacts: list = None) -> str:
+    """실행 영수증 기록 (Append-only)"""
+    TICKETS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    receipt = {
+        "schema": "EXECUTION_RECEIPT_V1",
+        "receipt_id": str(uuid.uuid4()),
+        "request_id": request_id,
+        "issued_at": datetime.now().isoformat(),
+        "mode": mode,
+        "result": result,
+        "message": message,
+        "artifacts": artifacts or []
+    }
+    
+    with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(receipt, ensure_ascii=False) + "\n")
+    
+    logger.info(f"Receipt written: {receipt['receipt_id']} ({result})")
+    return receipt["receipt_id"]
+
+
 def consume_ticket(request_id: str) -> bool:
-    """티켓 소비 (OPEN → IN_PROGRESS) - Idempotency: 409면 SKIP"""
+    """티켓 소비 (OPEN → IN_PROGRESS)"""
     try:
         resp = requests.post(
             f"{API_BASE}/api/tickets/consume",
             json={"request_id": request_id, "processor_id": f"worker_{os.getpid()}"}
         )
-        
         if resp.status_code == 200:
             logger.info(f"Consumed ticket: {request_id}")
             return True
@@ -169,12 +196,11 @@ def complete_ticket(request_id: str, status: str, message: str, artifacts: list 
                 "artifacts": artifacts or []
             }
         )
-        
         if resp.status_code == 200:
             logger.info(f"Completed ticket: {request_id} - {message}")
             return True
         elif resp.status_code == 409:
-            logger.warning(f"Complete conflict (status mismatch): {request_id}")
+            logger.warning(f"Complete conflict: {request_id}")
             return False
         else:
             logger.error(f"Complete failed ({resp.status_code}): {resp.text}")
@@ -185,11 +211,10 @@ def complete_ticket(request_id: str, status: str, message: str, artifacts: list 
 
 
 def deep_validate_dryrun(request_id: str, request_type: str, plans: dict) -> dict:
-    """Deep Validation for DRY_RUN mode - returns DRYRUN_ARTIFACT_V1"""
+    """Deep Validation for DRY_RUN mode"""
     checks = {}
     errors = []
     
-    # Check 1: Plan exists
     plan = plans.get(request_type)
     checks["plan_exists"] = plan is not None
     if not plan:
@@ -198,13 +223,11 @@ def deep_validate_dryrun(request_id: str, request_type: str, plans: dict) -> dic
     cmd = plan.get("cmd", []) if plan else []
     module_path = plan.get("module", "") if plan else ""
     
-    # Check 2: Python available
     python_path = shutil.which("python")
     checks["python_available"] = python_path is not None
     if not python_path:
         errors.append("Python interpreter not found in PATH")
     
-    # Check 3: Module exists
     if module_path:
         full_module_path = BASE_DIR / module_path
         checks["module_exists"] = full_module_path.exists()
@@ -215,10 +238,9 @@ def deep_validate_dryrun(request_id: str, request_type: str, plans: dict) -> dic
         if plan:
             errors.append("Module path not specified in plan")
     
-    # Generate Artifact
     valid = all(checks.values()) and len(errors) == 0
     
-    artifact = {
+    return {
         "schema": "DRYRUN_ARTIFACT_V1",
         "asof": datetime.now().isoformat(),
         "request_id": request_id,
@@ -228,93 +250,96 @@ def deep_validate_dryrun(request_id: str, request_type: str, plans: dict) -> dic
         "checks": checks,
         "errors": errors
     }
-    
-    return artifact
 
 
 def save_dryrun_artifact(artifact: dict) -> str:
     """Dry-Run Artifact 저장"""
     DRYRUN_DIR.mkdir(parents=True, exist_ok=True)
-    
     request_id = artifact.get("request_id")
     filepath = DRYRUN_DIR / f"{request_id}.json"
-    
     filepath.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info(f"Artifact saved: {filepath}")
-    
     return str(filepath.relative_to(BASE_DIR))
 
 
 def process_ticket(ticket: dict, mode: str) -> bool:
-    """단일 티켓 처리 - Gate 모드에 따른 동작"""
+    """단일 티켓 처리"""
     request_id = ticket.get("request_id")
     request_type = ticket.get("request_type", "UNKNOWN")
     
     logger.info(f"Processing ticket: {request_id} ({request_type}) [Mode: {mode}]")
     
-    # Step A: Consume (Idempotency - 409면 SKIP)
+    # Consume (Idempotency)
     if not consume_ticket(request_id):
-        return False  # 409 or error - SKIP_AND_CONTINUE
+        return False
     
-    # Step B: Execute based on Gate Mode
+    # Mode-based processing
     if mode == "MOCK_ONLY":
         logger.info(f"[MOCK_ONLY] Simulating execution... (sleep 1s)")
         time.sleep(1)
         message = f"SUCCESS [MOCK_ONLY]: Simulated execution for {request_type}"
+        write_receipt(request_id, mode, "DONE", message)
         return complete_ticket(request_id, "DONE", message)
     
     elif mode == "DRY_RUN":
         logger.info(f"[DRY_RUN] Deep validation with execution plan...")
-        
-        # Load execution plan
         plans = load_execution_plan()
         if not plans:
             message = f"FAILED [DRY_RUN]: Execution plan not available"
+            write_receipt(request_id, mode, "FAILED", message)
             return complete_ticket(request_id, "FAILED", message)
         
-        # Deep Validation
         artifact = deep_validate_dryrun(request_id, request_type, plans)
-        
-        # Save Artifact
         artifact_path = save_dryrun_artifact(artifact)
         
-        # Log result
         if artifact["valid"]:
             logger.info(f"[DRY_RUN] Validation PASSED: {artifact['checks']}")
             message = f"SUCCESS [DRY_RUN]: Artifact saved. Plan: {artifact['plan_ref']}"
+            write_receipt(request_id, mode, "DONE", message, [artifact_path])
             return complete_ticket(request_id, "DONE", message, [artifact_path])
         else:
             logger.warning(f"[DRY_RUN] Validation FAILED: {artifact['errors']}")
             message = f"FAILED [DRY_RUN]: Validation errors: {artifact['errors']}"
+            write_receipt(request_id, mode, "FAILED", message, [artifact_path])
             return complete_ticket(request_id, "FAILED", message, [artifact_path])
     
     elif mode == "REAL_ENABLED":
-        # 이중 방어: API에서 막히지만, 도달 시 BLOCKED 처리
-        logger.error(f"[BLOCKED] REAL_ENABLED mode is not allowed in C-P.5!")
-        message = f"FAILED [BLOCKED]: REAL_ENABLED mode is not allowed"
+        # BLOCKED - Real execution not allowed in C-P.6
+        logger.error(f"[BLOCKED] REAL_ENABLED mode is not allowed in C-P.6!")
+        message = f"FAILED [BLOCKED]: Real execution blocked in C-P.6"
+        write_receipt(request_id, mode, "BLOCKED", message)
         return complete_ticket(request_id, "FAILED", message)
     
     else:
         message = f"SUCCESS [UNKNOWN_MODE]: Processed {request_type}"
+        write_receipt(request_id, mode, "DONE", message)
         return complete_ticket(request_id, "DONE", message)
 
 
 def run_worker():
     """워커 메인 실행"""
     logger.info("=" * 50)
-    logger.info("Ticket Worker Starting (C-P.5)...")
+    logger.info("Ticket Worker Starting (C-P.6)...")
     
-    # 0. Gate Check (매 실행 전 확인)
+    # 0. Emergency Stop Check
+    stop_status = check_emergency_stop()
+    if stop_status.get("enabled"):
+        logger.warning(f"Emergency Stop is ACTIVE: {stop_status.get('reason')}")
+        logger.info("Worker skipping all processing due to Emergency Stop.")
+        logger.info("=" * 50)
+        return True  # 정상 종료 (Skip)
+    
+    # 1. Gate Check
     mode = get_gate_mode()
     logger.info(f"Execution Gate Mode: {mode}")
     
-    # 1. Acquire Lock
+    # 2. Acquire Lock
     if not acquire_lock():
         logger.error("Failed to acquire lock. Another worker may be running.")
         return False
     
     try:
-        # 2. Scan OPEN tickets  
+        # 3. Scan OPEN tickets
         open_tickets = get_open_tickets()
         logger.info(f"Found {len(open_tickets)} OPEN ticket(s)")
         
@@ -322,7 +347,7 @@ def run_worker():
             logger.info("No OPEN tickets to process.")
             return True
         
-        # 3. Process one ticket (1회 실행 후 종료 정책)
+        # 4. Process one ticket
         ticket = open_tickets[0]
         success = process_ticket(ticket, mode)
         
@@ -334,7 +359,6 @@ def run_worker():
         return success
         
     finally:
-        # 4. Release Lock (finally 보장)
         release_lock()
         logger.info("Worker finished.")
         logger.info("=" * 50)

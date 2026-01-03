@@ -1,7 +1,7 @@
 {
-    "version": "1.5",
+    "version": "1.6",
     "asof": "2026-01-03",
-    "description": "Active Surface Registry (Phase C-P.5)",
+    "description": "Active Surface Registry (Phase C-P.6)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -35,6 +35,9 @@
         "docs/contracts/contract_dryrun_artifact_v1.md",
         "docs/contracts/execution_plan_v1.json",
         "docs/contracts/contract_execution_plan_v1.md",
+        "docs/contracts/contract_real_enable_approval_v1.md",
+        "docs/contracts/contract_execution_receipt_v1.md",
+        "docs/contracts/contract_emergency_stop_v1.md",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",
@@ -48,7 +51,10 @@
         "reports/push/latest/push_messages.json",
         "state/tickets/ticket_requests.jsonl",
         "state/tickets/ticket_results.jsonl",
-        "state/execution_gate.json"
+        "state/tickets/ticket_receipts.jsonl",
+        "state/execution_gate.json",
+        "state/emergency_stop.json",
+        "state/approvals/real_enable_approvals.jsonl"
     ],
     "active_endpoints": [
         "/api/recon/summary",
@@ -60,7 +66,11 @@
         "/api/tickets/consume",
         "/api/tickets/complete",
         "/api/tickets/latest",
-        "/api/execution_gate"
+        "/api/execution_gate",
+        "/api/emergency_stop",
+        "/api/approvals/real_enable/request",
+        "/api/approvals/real_enable/approve",
+        "/api/approvals/real_enable/latest"
     ],
     "forbidden_paths": [
         "_archive/**"
@@ -70,7 +80,9 @@
         "latest_only": "UI/Backend는 reports/phase_c/latest/ 경로만 읽음",
         "no_version_suffix_in_latest": "reports/phase_c/latest/ 파일명에 버전 접미사 금지",
         "ticket_append_only": "state/tickets/*.jsonl은 Append-only (수정/삭제 금지)",
-        "gate_real_blocked": "REAL_ENABLED 모드는 C-P.5에서 API 레벨 차단",
-        "dryrun_artifact_schema": "DRY_RUN 결과물은 DRYRUN_ARTIFACT_V1 스키마 준수"
+        "gate_real_blocked": "REAL_ENABLED 모드는 C-P.6에서 API 레벨 차단",
+        "dryrun_artifact_schema": "DRY_RUN 결과물은 DRYRUN_ARTIFACT_V1 스키마 준수",
+        "two_key_approval": "REAL_ENABLED 진입에 2개 Key 필요",
+        "emergency_stop_priority": "Emergency Stop 활성화 시 Gate 강제 MOCK_ONLY"
     }
 }

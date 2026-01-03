@@ -1,7 +1,7 @@
 {
   "schema": "EXECUTION_GATE_V1",
-  "mode": "DRY_RUN",
-  "updated_at": "2026-01-03T16:05:55.403591",
-  "updated_by": "local_api",
-  "reason": "Test dry run mode"
+  "mode": "MOCK_ONLY",
+  "updated_at": "2026-01-03T17:10:57.107159",
+  "updated_by": "emergency_stop_system",
+  "reason": "Emergency Stop activated: test stop"
 }

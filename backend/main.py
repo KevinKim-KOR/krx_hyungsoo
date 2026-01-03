@@ -10,7 +10,7 @@ import yaml
 import shutil
 import tempfile
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Union
 
 from fastapi import FastAPI, HTTPException, Query
@@ -831,9 +831,200 @@ def update_execution_gate(data: GateUpdate):
     }
 
 
+# --- Phase C-P.6: Two-Key Approval, Receipt & Emergency Stop APIs ---
+
+APPROVALS_DIR = STATE_DIR / "approvals"
+APPROVALS_FILE = APPROVALS_DIR / "real_enable_approvals.jsonl"
+RECEIPTS_FILE = TICKETS_DIR / "ticket_receipts.jsonl"
+EMERGENCY_STOP_FILE = STATE_DIR / "emergency_stop.json"
+
+def get_emergency_stop_status() -> Dict:
+    """Emergency Stop 상태 조회"""
+    if not EMERGENCY_STOP_FILE.exists():
+        return {"enabled": False, "updated_at": None, "updated_by": None, "reason": None}
+    try:
+        data = json.loads(EMERGENCY_STOP_FILE.read_text(encoding="utf-8"))
+        return data
+    except:
+        return {"enabled": False, "updated_at": None, "updated_by": None, "reason": None}
+
+def get_latest_approval() -> Dict:
+    """최신 Approval 조회"""
+    if not APPROVALS_FILE.exists():
+        return None
+    approvals = read_jsonl(APPROVALS_FILE)
+    if not approvals:
+        return None
+    # 최신 것 반환
+    return max(approvals, key=lambda x: x.get("requested_at", ""))
+
+
+@app.get("/api/emergency_stop", summary="Emergency Stop 상태 조회")
+def get_emergency_stop():
+    """현재 Emergency Stop 상태 반환"""
+    status = get_emergency_stop_status()
+    return {
+        "status": "ready",
+        "schema": "EMERGENCY_STOP_V1",
+        "asof": datetime.now().isoformat(),
+        "data": status,
+        "error": None
+    }
+
+
+class EmergencyStopUpdate(BaseModel):
+    enabled: bool
+    operator_id: str = "local_operator"
+    reason: str = ""
+
+@app.post("/api/emergency_stop", summary="Emergency Stop 설정")
+def set_emergency_stop(data: EmergencyStopUpdate):
+    """Emergency Stop 상태 변경 (enabled=true면 Gate를 MOCK_ONLY로 강제)"""
+    logger.info(f"Emergency Stop 변경 요청: enabled={data.enabled}")
+    
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    
+    stop_data = {
+        "schema": "EMERGENCY_STOP_V1",
+        "enabled": data.enabled,
+        "updated_at": datetime.now().isoformat(),
+        "updated_by": data.operator_id,
+        "reason": data.reason
+    }
+    
+    EMERGENCY_STOP_FILE.write_text(json.dumps(stop_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    
+    # enabled=true면 Gate를 MOCK_ONLY로 강제
+    if data.enabled:
+        gate_data = {
+            "schema": "EXECUTION_GATE_V1",
+            "mode": "MOCK_ONLY",
+            "updated_at": datetime.now().isoformat(),
+            "updated_by": "emergency_stop_system",
+            "reason": f"Emergency Stop activated: {data.reason}"
+        }
+        EXECUTION_GATE_FILE.write_text(json.dumps(gate_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.warning("Emergency Stop 활성화 - Gate를 MOCK_ONLY로 강제 전환")
+    
+    return {"result": "OK", "enabled": data.enabled, "updated_at": stop_data["updated_at"]}
+
+
+class ApprovalRequest(BaseModel):
+    requested_by: str
+    reason: str
+
+@app.post("/api/approvals/real_enable/request", summary="REAL 모드 승인 요청")
+def request_real_approval(data: ApprovalRequest):
+    """REAL_ENABLED 승인 요청 생성 (PENDING 상태, keys=[])"""
+    logger.info(f"REAL 승인 요청: by={data.requested_by}")
+    
+    APPROVALS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    approval = {
+        "schema": "REAL_ENABLE_APPROVAL_V1",
+        "approval_id": str(uuid.uuid4()),
+        "requested_at": datetime.now().isoformat(),
+        "requested_by": data.requested_by,
+        "mode_target": "REAL_ENABLED",
+        "reason": data.reason,
+        "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
+        "keys_required": 2,
+        "keys": [],
+        "status": "PENDING"
+    }
+    
+    with open(APPROVALS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(approval, ensure_ascii=False) + "\n")
+    
+    return {"result": "OK", "approval_id": approval["approval_id"], "status": "PENDING"}
+
+
+class KeyApproval(BaseModel):
+    approval_id: str
+    key_id: str
+    approver_id: str
+
+@app.post("/api/approvals/real_enable/approve", summary="REAL 모드 Key 제공")
+def approve_real_key(data: KeyApproval):
+    """승인에 Key 추가 (2개 충족 시 APPROVED)"""
+    logger.info(f"Key 제공: approval={data.approval_id}, key={data.key_id}")
+    
+    if not APPROVALS_FILE.exists():
+        return JSONResponse(status_code=404, content={"result": "FAIL", "message": "No approvals found"})
+    
+    approvals = read_jsonl(APPROVALS_FILE)
+    
+    # 같은 approval_id의 모든 버전 중 최신 것 찾기 (JSONL은 append-only)
+    matching = [a for a in approvals if a.get("approval_id") == data.approval_id]
+    if not matching:
+        return JSONResponse(status_code=404, content={"result": "FAIL", "message": "Approval not found"})
+    
+    # 최신 버전 (마지막에 추가된 것)
+    target = matching[-1]
+    
+    # 만료 체크
+    if datetime.fromisoformat(target["expires_at"]) < datetime.now():
+        return JSONResponse(status_code=409, content={"result": "EXPIRED", "message": "Approval has expired"})
+    
+    # 이미 승인/취소됨
+    if target["status"] in ["APPROVED", "REVOKED"]:
+        return JSONResponse(status_code=409, content={"result": "CONFLICT", "message": f"Status is already {target['status']}"})
+    
+    # 중복 Key 체크
+    existing_keys = [k["key_id"] for k in target.get("keys", [])]
+    if data.key_id in existing_keys:
+        return JSONResponse(status_code=409, content={"result": "DUPLICATE", "message": "Key already provided"})
+    
+    # 같은 approver가 이미 키 제공했는지 체크
+    existing_approvers = [k["provided_by"] for k in target.get("keys", [])]
+    if data.approver_id in existing_approvers:
+        return JSONResponse(status_code=409, content={"result": "DUPLICATE", "message": "Approver already provided a key"})
+    
+    # Key 추가
+    new_key = {
+        "key_id": data.key_id,
+        "provided_by": data.approver_id,
+        "provided_at": datetime.now().isoformat()
+    }
+    target["keys"].append(new_key)
+    
+    # 2개 충족 시 APPROVED
+    if len(target["keys"]) >= target["keys_required"]:
+        target["status"] = "APPROVED"
+        logger.info(f"Approval APPROVED: {data.approval_id}")
+    
+    # 새 로그 Append (Append-only)
+    with open(APPROVALS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(target, ensure_ascii=False) + "\n")
+    
+    return {"result": "OK", "approval_id": data.approval_id, "status": target["status"], "keys_count": len(target["keys"])}
+
+
+@app.get("/api/approvals/real_enable/latest", summary="최신 REAL 승인 상태 조회")
+def get_latest_real_approval():
+    """최신 REAL 승인 상태 반환"""
+    approval = get_latest_approval()
+    
+    if not approval:
+        return {"status": "not_ready", "schema": "REAL_ENABLE_APPROVAL_V1", "data": None}
+    
+    # 만료 체크
+    if approval["status"] == "PENDING" and datetime.fromisoformat(approval["expires_at"]) < datetime.now():
+        approval["status"] = "EXPIRED"
+    
+    return {
+        "status": "ready",
+        "schema": "REAL_ENABLE_APPROVAL_V1",
+        "asof": datetime.now().isoformat(),
+        "data": approval,
+        "error": None
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+
 
 
 

@@ -1,0 +1,1 @@
+{"schema": "EXECUTION_RECEIPT_V1", "receipt_id": "f0990d62-56e5-4f74-92f4-c19095ed53af", "request_id": "02f0aaed-905a-4536-897a-4e320756d208", "issued_at": "2026-01-03T18:51:50.802217", "mode": "MOCK_ONLY", "result": "DONE", "message": "SUCCESS [MOCK_ONLY]: Simulated execution for REQUEST_RECONCILE", "artifacts": []}

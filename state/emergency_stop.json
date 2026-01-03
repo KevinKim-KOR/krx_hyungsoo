@@ -1,0 +1,7 @@
+{
+  "schema": "EMERGENCY_STOP_V1",
+  "enabled": false,
+  "updated_at": "2026-01-03T18:51:16.844474",
+  "updated_by": "test",
+  "reason": "disable for receipt test"
+}
