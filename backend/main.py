@@ -1014,6 +1014,36 @@ def get_latest_real_approval():
     }
 
 
+# --- Phase C-P.8: Execution Allowlist API ---
+
+ALLOWLIST_FILE = BASE_DIR / "docs" / "contracts" / "execution_allowlist_v1.json"
+
+@app.get("/api/execution_allowlist", summary="Execution Allowlist 조회 (Read-Only)")
+def get_execution_allowlist():
+    """불변 Allowlist 반환 (docs/contracts/ 경로에서 읽기 전용)"""
+    if not ALLOWLIST_FILE.exists():
+        return JSONResponse(
+            status_code=404,
+            content={"status": "error", "message": "Allowlist not found"}
+        )
+    
+    try:
+        data = json.loads(ALLOWLIST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": data.get("schema", "REAL_EXECUTION_ALLOWLIST_V1"),
+            "asof": datetime.now().isoformat(),
+            "data": data,
+            "immutable_path": "docs/contracts/execution_allowlist_v1.json",
+            "error": None
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

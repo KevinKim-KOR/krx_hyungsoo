@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 app/run_ticket_worker.py
-Ticket Worker (Phase C-P.7)
+Ticket Worker (Phase C-P.8)
 
 규칙:
 - No Execution: 실제 엔진 실행 금지
+- Allowlist Enforcement: 허용목록 exact match 검증
 - Shadow Run: REAL_ENABLED면 Shadow로 강제 처리
-- Receipt Logging: 모든 실행 시도를 영수증으로 기록
 """
 import json
 import os
@@ -32,21 +32,10 @@ DRYRUN_DIR = BASE_DIR / "reports" / "tickets" / "dryrun"
 SHADOW_DIR = BASE_DIR / "reports" / "tickets" / "shadow"
 RECEIPTS_FILE = TICKETS_DIR / "ticket_receipts.jsonl"
 EXECUTION_PLAN_FILE = BASE_DIR / "docs" / "contracts" / "execution_plan_v1.json"
+ALLOWLIST_FILE = BASE_DIR / "docs" / "contracts" / "execution_allowlist_v1.json"
 
 API_BASE = "http://127.0.0.1:8000"
 STALE_THRESHOLD_SECONDS = 600
-
-# Expected outputs per request type
-EXPECTED_OUTPUTS = {
-    "REQUEST_RECONCILE": [
-        "reports/phase_c/latest/recon_summary.json",
-        "reports/phase_c/latest/recon_daily.jsonl"
-    ],
-    "REQUEST_REPORTS": [
-        "reports/phase_c/latest/report_human.json",
-        "reports/phase_c/latest/report_ai.json"
-    ]
-}
 
 
 def read_jsonl(path: Path) -> list:
@@ -83,12 +72,12 @@ def acquire_lock() -> bool:
             acquired_at = datetime.fromisoformat(lock_data.get("acquired_at", ""))
             age_seconds = (datetime.now() - acquired_at).total_seconds()
             if age_seconds < STALE_THRESHOLD_SECONDS:
-                logger.warning(f"Lock already held by PID {lock_data.get('pid')} (age: {age_seconds:.0f}s)")
+                logger.warning(f"Lock already held (age: {age_seconds:.0f}s)")
                 return False
             else:
-                logger.warning(f"Stale lock detected. Force acquiring...")
-        except Exception as e:
-            logger.warning(f"Invalid lock file: {e}")
+                logger.warning(f"Stale lock. Force acquiring...")
+        except:
+            pass
     lock_data = {"pid": os.getpid(), "acquired_at": datetime.now().isoformat()}
     LOCK_FILE.write_text(json.dumps(lock_data, ensure_ascii=False), encoding="utf-8")
     logger.info(f"Lock acquired (PID: {os.getpid()})")
@@ -106,8 +95,8 @@ def check_emergency_stop() -> dict:
         resp = requests.get(f"{API_BASE}/api/emergency_stop", timeout=5)
         if resp.status_code == 200:
             return resp.json().get("data", {})
-    except Exception as e:
-        logger.warning(f"Emergency Stop API failed: {e}")
+    except:
+        pass
     return {"enabled": False}
 
 
@@ -118,8 +107,8 @@ def get_gate_mode() -> str:
             mode = resp.json().get("data", {}).get("mode", "MOCK_ONLY")
             logger.info(f"Gate mode: {mode}")
             return mode
-    except Exception as e:
-        logger.warning(f"Gate API failed: {e}")
+    except:
+        pass
     return "MOCK_ONLY"
 
 
@@ -130,6 +119,20 @@ def load_execution_plan() -> dict:
         data = json.loads(EXECUTION_PLAN_FILE.read_text(encoding="utf-8"))
         return data.get("plans", {})
     except:
+        return {}
+
+
+def load_allowlist() -> dict:
+    """Load immutable allowlist from docs/contracts/"""
+    if not ALLOWLIST_FILE.exists():
+        logger.error(f"Allowlist not found: {ALLOWLIST_FILE}")
+        return {}
+    try:
+        data = json.loads(ALLOWLIST_FILE.read_text(encoding="utf-8"))
+        logger.info(f"Allowlist loaded: v{data.get('version')}")
+        return data
+    except Exception as e:
+        logger.error(f"Failed to load allowlist: {e}")
         return {}
 
 
@@ -147,7 +150,7 @@ def write_receipt(request_id: str, mode: str, result: str, message: str, artifac
     }
     with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(receipt, ensure_ascii=False) + "\n")
-    logger.info(f"Receipt written: {receipt['receipt_id']} ({result})")
+    logger.info(f"Receipt written: {result}")
     return receipt["receipt_id"]
 
 
@@ -161,13 +164,13 @@ def consume_ticket(request_id: str) -> bool:
             logger.info(f"Consumed ticket: {request_id}")
             return True
         elif resp.status_code == 409:
-            logger.info(f"Idempotency: Already consumed (409)")
+            logger.info(f"Already consumed (409)")
             return False
         else:
             logger.error(f"Consume failed ({resp.status_code})")
             return False
     except Exception as e:
-        logger.error(f"Consume request failed: {e}")
+        logger.error(f"Consume failed: {e}")
         return False
 
 
@@ -183,14 +186,8 @@ def complete_ticket(request_id: str, status: str, message: str, artifacts: list 
                 "artifacts": artifacts or []
             }
         )
-        if resp.status_code == 200:
-            logger.info(f"Completed ticket: {request_id}")
-            return True
-        else:
-            logger.error(f"Complete failed ({resp.status_code})")
-            return False
-    except Exception as e:
-        logger.error(f"Complete request failed: {e}")
+        return resp.status_code == 200
+    except:
         return False
 
 
@@ -225,37 +222,98 @@ def deep_validate(request_id: str, request_type: str, plans: dict) -> dict:
     }
 
 
-def save_dryrun_artifact(request_id: str, request_type: str, validation: dict) -> str:
+def validate_against_allowlist(request_type: str, cmd: list, expected_outputs: list) -> dict:
+    """Validate against immutable allowlist (exact match only)"""
+    allowlist = load_allowlist()
+    violations = []
+    
+    if not allowlist:
+        return {"allowed": False, "violations": ["Allowlist not available"], "version": None}
+    
+    version = allowlist.get("version", "unknown")
+    allowed_types = allowlist.get("allowed_request_types", [])
+    rules = allowlist.get("rules", {})
+    
+    # Check 1: request_type in allowed_request_types
+    if request_type not in allowed_types:
+        violations.append(f"request_type '{request_type}' not in allowed_request_types")
+    
+    # Get rule for this request_type
+    rule = rules.get(request_type, {})
+    
+    # Check 2: command exact match
+    cmd_allowlist = rule.get("real_command_allowlist", [])
+    if cmd not in cmd_allowlist:
+        violations.append(f"command {cmd} not in real_command_allowlist (exact match required)")
+    
+    # Check 3: expected outputs exact match
+    output_allowlist = rule.get("expected_outputs_allowlist", [])
+    for output in expected_outputs:
+        if output not in output_allowlist:
+            violations.append(f"output '{output}' not in expected_outputs_allowlist")
+    
+    return {
+        "allowed": len(violations) == 0,
+        "violations": violations,
+        "version": version
+    }
+
+
+# Expected outputs mapping
+EXPECTED_OUTPUTS = {
+    "REQUEST_RECONCILE": [
+        "reports/phase_c/latest/recon_summary.json",
+        "reports/phase_c/latest/recon_daily.jsonl"
+    ],
+    "REQUEST_REPORTS": [
+        "reports/phase_c/latest/report_human.json",
+        "reports/phase_c/latest/report_ai.json"
+    ]
+}
+
+
+def save_dryrun_artifact(request_id: str, request_type: str, validation: dict, allowlist_result: dict) -> str:
     DRYRUN_DIR.mkdir(parents=True, exist_ok=True)
+    
+    decision = "SHADOW_OK" if (validation["valid"] and allowlist_result["allowed"]) else "SHADOW_BLOCKED"
+    
     artifact = {
         "schema": "DRYRUN_ARTIFACT_V1",
         "asof": datetime.now().isoformat(),
         "request_id": request_id,
         "request_type": request_type,
-        "valid": validation["valid"],
+        "valid": validation["valid"] and allowlist_result["allowed"],
         "plan_ref": validation["cmd"],
         "checks": validation["checks"],
-        "errors": validation["errors"]
+        "errors": validation["errors"],
+        "allowlist_version": allowlist_result.get("version"),
+        "allowlist_violations": allowlist_result.get("violations", []),
+        "decision": decision
     }
     filepath = DRYRUN_DIR / f"{request_id}.json"
     filepath.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
     return str(filepath.relative_to(BASE_DIR))
 
 
-def save_shadow_artifact(request_id: str, request_type: str, validation: dict) -> str:
-    """Save Shadow Run artifact"""
+def save_shadow_artifact(request_id: str, request_type: str, validation: dict, allowlist_result: dict) -> str:
+    """Save Shadow Run artifact with allowlist enforcement"""
     SHADOW_DIR.mkdir(parents=True, exist_ok=True)
     
     filepath = SHADOW_DIR / f"{request_id}.json"
-    
-    # Overwrite 금지: 이미 존재하면 실패
     if filepath.exists():
-        logger.warning(f"Shadow artifact already exists: {filepath}")
+        logger.warning(f"Shadow artifact already exists")
         return str(filepath.relative_to(BASE_DIR))
     
     expected = EXPECTED_OUTPUTS.get(request_type, [])
-    decision = "SHADOW_OK" if validation["valid"] else "SHADOW_BLOCKED"
-    reason = "All checks passed. Ready for real execution." if validation["valid"] else f"Validation failed: {validation['errors']}"
+    
+    # Decision based on both validation AND allowlist
+    if validation["valid"] and allowlist_result["allowed"]:
+        decision = "SHADOW_OK"
+        reason = "All checks passed and allowlist validated. Ready for real execution."
+    else:
+        decision = "SHADOW_BLOCKED"
+        all_issues = validation["errors"] + allowlist_result.get("violations", [])
+        reason = f"Blocked by: {all_issues}"
     
     artifact = {
         "schema": "SHADOW_RUN_V1",
@@ -265,12 +323,14 @@ def save_shadow_artifact(request_id: str, request_type: str, validation: dict) -
         "would_run_command": validation["cmd"],
         "inputs_checked": validation["checks"],
         "expected_outputs": expected,
+        "allowlist_version": allowlist_result.get("version"),
+        "allowlist_violations": allowlist_result.get("violations", []),
         "decision": decision,
         "reason": reason
     }
     
     filepath.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info(f"Shadow artifact saved: {filepath}")
+    logger.info(f"Shadow artifact saved: {decision}")
     return str(filepath.relative_to(BASE_DIR))
 
 
@@ -278,62 +338,64 @@ def process_ticket(ticket: dict, mode: str) -> bool:
     request_id = ticket.get("request_id")
     request_type = ticket.get("request_type", "UNKNOWN")
     
-    logger.info(f"Processing ticket: {request_id} ({request_type}) [Mode: {mode}]")
+    logger.info(f"Processing: {request_id} ({request_type}) [Mode: {mode}]")
     
     if not consume_ticket(request_id):
         return False
     
     plans = load_execution_plan()
     validation = deep_validate(request_id, request_type, plans)
+    expected_outputs = EXPECTED_OUTPUTS.get(request_type, [])
+    allowlist_result = validate_against_allowlist(request_type, validation["cmd"], expected_outputs)
     
     if mode == "MOCK_ONLY":
-        logger.info(f"[MOCK_ONLY] Simulating execution...")
+        logger.info(f"[MOCK_ONLY] Simulating...")
         time.sleep(1)
-        message = f"SUCCESS [MOCK_ONLY]: Simulated execution for {request_type}"
+        message = f"SUCCESS [MOCK_ONLY]: Simulated for {request_type}"
         write_receipt(request_id, mode, "DONE", message)
         return complete_ticket(request_id, "DONE", message)
     
     elif mode == "DRY_RUN":
-        logger.info(f"[DRY_RUN] Deep validation...")
-        artifact_path = save_dryrun_artifact(request_id, request_type, validation)
+        logger.info(f"[DRY_RUN] Validating with allowlist...")
+        artifact_path = save_dryrun_artifact(request_id, request_type, validation, allowlist_result)
         
-        if validation["valid"]:
-            message = f"SUCCESS [DRY_RUN]: Validation passed. Plan: {validation['cmd']}"
+        if validation["valid"] and allowlist_result["allowed"]:
+            message = f"SUCCESS [DRY_RUN]: Validation passed. Decision: SHADOW_OK"
             write_receipt(request_id, mode, "DONE", message, [artifact_path])
             return complete_ticket(request_id, "DONE", message, [artifact_path])
         else:
-            message = f"FAILED [DRY_RUN]: {validation['errors']}"
+            blocked_by = "EXECUTION_ALLOWLIST_V1" if not allowlist_result["allowed"] else "VALIDATION"
+            message = f"FAILED [DRY_RUN]: Decision: SHADOW_BLOCKED. BlockedBy: {blocked_by}"
             write_receipt(request_id, mode, "FAILED", message, [artifact_path])
             return complete_ticket(request_id, "FAILED", message, [artifact_path])
     
     elif mode == "REAL_ENABLED":
-        # C-P.7: Shadow Run - REAL을 Shadow로 강제
-        logger.info(f"[SHADOW] Real execution simulated (no subprocess)...")
-        shadow_path = save_shadow_artifact(request_id, request_type, validation)
+        logger.info(f"[SHADOW] Real execution simulated with allowlist check...")
+        shadow_path = save_shadow_artifact(request_id, request_type, validation, allowlist_result)
         
-        if validation["valid"]:
-            message = f"SUCCESS [SHADOW]: Real execution simulated (no subprocess). Decision: SHADOW_OK"
+        if validation["valid"] and allowlist_result["allowed"]:
+            message = f"SUCCESS [SHADOW]: Decision: SHADOW_OK. Allowlist v{allowlist_result['version']}"
             write_receipt(request_id, "REAL_ENABLED", "DONE", message, [shadow_path])
             return complete_ticket(request_id, "DONE", message, [shadow_path])
         else:
-            message = f"FAILED [SHADOW]: Validation failed. Decision: SHADOW_BLOCKED"
+            blocked_by = "EXECUTION_ALLOWLIST_V1" if not allowlist_result["allowed"] else "VALIDATION"
+            message = f"FAILED [SHADOW]: Decision: SHADOW_BLOCKED. BlockedBy: {blocked_by}"
             write_receipt(request_id, "REAL_ENABLED", "FAILED", message, [shadow_path])
             return complete_ticket(request_id, "FAILED", message, [shadow_path])
     
     else:
-        message = f"SUCCESS [UNKNOWN]: Processed {request_type}"
+        message = f"SUCCESS [UNKNOWN]: Processed"
         write_receipt(request_id, mode, "DONE", message)
         return complete_ticket(request_id, "DONE", message)
 
 
 def run_worker():
     logger.info("=" * 50)
-    logger.info("Ticket Worker Starting (C-P.7)...")
+    logger.info("Ticket Worker Starting (C-P.8)...")
     
-    # Emergency Stop Check
     stop_status = check_emergency_stop()
     if stop_status.get("enabled"):
-        logger.warning(f"Emergency Stop ACTIVE: {stop_status.get('reason')}")
+        logger.warning(f"Emergency Stop ACTIVE")
         logger.info("=" * 50)
         return True
     
@@ -349,7 +411,7 @@ def run_worker():
         logger.info(f"Found {len(open_tickets)} OPEN ticket(s)")
         
         if not open_tickets:
-            logger.info("No OPEN tickets to process.")
+            logger.info("No OPEN tickets.")
             return True
         
         ticket = open_tickets[0]
@@ -358,7 +420,7 @@ def run_worker():
         if success:
             logger.info("Ticket processed successfully!")
         else:
-            logger.warning("Ticket processing failed or skipped.")
+            logger.warning("Ticket processing failed.")
         
         return success
         

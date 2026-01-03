@@ -1,7 +1,7 @@
 {
-    "version": "1.7",
+    "version": "1.8",
     "asof": "2026-01-03",
-    "description": "Active Surface Registry (Phase C-P.7)",
+    "description": "Active Surface Registry (Phase C-P.8)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -40,6 +40,8 @@
         "docs/contracts/contract_execution_receipt_v1.md",
         "docs/contracts/contract_emergency_stop_v1.md",
         "docs/contracts/contract_shadow_run_v1.md",
+        "docs/contracts/contract_real_execution_allowlist_v1.md",
+        "docs/contracts/execution_allowlist_v1.json",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",
@@ -72,7 +74,8 @@
         "/api/emergency_stop",
         "/api/approvals/real_enable/request",
         "/api/approvals/real_enable/approve",
-        "/api/approvals/real_enable/latest"
+        "/api/approvals/real_enable/latest",
+        "/api/execution_allowlist"
     ],
     "forbidden_paths": [
         "_archive/**"

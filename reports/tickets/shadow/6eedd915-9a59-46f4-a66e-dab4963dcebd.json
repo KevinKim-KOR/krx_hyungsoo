@@ -1,0 +1,24 @@
+{
+  "schema": "SHADOW_RUN_V1",
+  "request_id": "6eedd915-9a59-46f4-a66e-dab4963dcebd",
+  "shadowed_at": "2026-01-03T19:47:44.395749",
+  "request_type": "REQUEST_RECONCILE",
+  "would_run_command": [
+    "python",
+    "-m",
+    "app.reconcile"
+  ],
+  "inputs_checked": {
+    "plan_exists": true,
+    "python_available": true,
+    "module_exists": true
+  },
+  "expected_outputs": [
+    "reports/phase_c/latest/recon_summary.json",
+    "reports/phase_c/latest/recon_daily.jsonl"
+  ],
+  "allowlist_version": "1.0",
+  "allowlist_violations": [],
+  "decision": "SHADOW_OK",
+  "reason": "All checks passed and allowlist validated. Ready for real execution."
+}

@@ -1,0 +1,44 @@
+{
+    "schema": "REAL_EXECUTION_ALLOWLIST_V1",
+    "version": "1.0",
+    "asof": "2026-01-03",
+    "description": "Immutable allowlist for real execution (Phase C-P.8)",
+    "allowed_request_types": [
+        "REQUEST_RECONCILE",
+        "REQUEST_REPORTS"
+    ],
+    "rules": {
+        "REQUEST_RECONCILE": {
+            "real_command_allowlist": [
+                [
+                    "python",
+                    "-m",
+                    "app.reconcile"
+                ]
+            ],
+            "expected_outputs_allowlist": [
+                "reports/phase_c/latest/recon_summary.json",
+                "reports/phase_c/latest/recon_daily.jsonl"
+            ],
+            "required_inputs": [
+                "config/production_config_v2.py"
+            ]
+        },
+        "REQUEST_REPORTS": {
+            "real_command_allowlist": [
+                [
+                    "python",
+                    "-m",
+                    "app.generate_reports"
+                ]
+            ],
+            "expected_outputs_allowlist": [
+                "reports/phase_c/latest/report_human.json",
+                "reports/phase_c/latest/report_ai.json"
+            ],
+            "required_inputs": [
+                "reports/phase_c/latest/recon_summary.json"
+            ]
+        }
+    }
+}
