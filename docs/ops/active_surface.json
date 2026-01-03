@@ -1,7 +1,7 @@
 {
-    "version": "1.6",
+    "version": "1.7",
     "asof": "2026-01-03",
-    "description": "Active Surface Registry (Phase C-P.6)",
+    "description": "Active Surface Registry (Phase C-P.7)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -12,7 +12,8 @@
         "reports/phase_c/latest/**",
         "reports/phase_c/snapshots/**",
         "reports/push/latest/**",
-        "reports/tickets/dryrun/**"
+        "reports/tickets/dryrun/**",
+        "reports/tickets/shadow/**"
     ],
     "forbidden_latest_version_suffix": true,
     "contracts_live_in_docs_only": true,
@@ -38,6 +39,7 @@
         "docs/contracts/contract_real_enable_approval_v1.md",
         "docs/contracts/contract_execution_receipt_v1.md",
         "docs/contracts/contract_emergency_stop_v1.md",
+        "docs/contracts/contract_shadow_run_v1.md",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",

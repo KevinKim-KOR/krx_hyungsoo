@@ -799,17 +799,10 @@ def update_execution_gate(data: GateUpdate):
             content={"result": "FAIL", "message": f"Invalid mode. Must be one of {VALID_MODES}"}
         )
     
-    # C-P.4 Restriction: Block REAL_ENABLED
+    # C-P.7: REAL_ENABLED 허용 (Worker에서 Shadow로 강제 처리됨)
     if data.mode == "REAL_ENABLED":
-        logger.warning("REAL_ENABLED mode requested - BLOCKED by C-P.4 policy")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "result": "BLOCKED",
-                "message": "REAL_ENABLED mode is blocked in Phase C-P.4. Only MOCK_ONLY and DRY_RUN are allowed.",
-                "policy": "C-P.4_BLOCK_REAL_AT_API"
-            }
-        )
+        logger.warning("REAL_ENABLED mode requested - Allowed for SHADOW mode (C-P.7)")
+        # Note: Worker will force SHADOW processing, no real subprocess execution
     
     # Update Gate
     STATE_DIR.mkdir(parents=True, exist_ok=True)
