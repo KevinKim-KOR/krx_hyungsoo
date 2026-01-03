@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 app/run_ticket_worker.py
-Ticket Worker (Phase C-P.4)
+Ticket Worker (Phase C-P.5)
 
 규칙:
 - No Execution: 실제 엔진 실행 금지
-- Gate Priority: 티켓 처리 전 반드시 Gate 상태 확인
-- Idempotency: consume 409 시 SKIP_AND_CONTINUE
+- Machine-Readable SoT: execution_plan_v1.json 기반 검증
+- Schema Enforcement: DRYRUN_ARTIFACT_V1 스키마 준수
 """
 import json
 import os
 import time
 import requests
+import shutil
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 # 로깅 설정
@@ -27,6 +28,8 @@ BASE_DIR = Path(__file__).parent.parent
 STATE_DIR = BASE_DIR / "state"
 TICKETS_DIR = STATE_DIR / "tickets"
 LOCK_FILE = STATE_DIR / "worker.lock"
+DRYRUN_DIR = BASE_DIR / "reports" / "tickets" / "dryrun"
+EXECUTION_PLAN_FILE = BASE_DIR / "docs" / "contracts" / "execution_plan_v1.json"
 
 API_BASE = "http://127.0.0.1:8000"
 STALE_THRESHOLD_SECONDS = 600  # 10분
@@ -118,6 +121,19 @@ def get_gate_mode() -> str:
     return "MOCK_ONLY"
 
 
+def load_execution_plan() -> dict:
+    """실행 계획 로드"""
+    if not EXECUTION_PLAN_FILE.exists():
+        logger.error(f"Execution plan not found: {EXECUTION_PLAN_FILE}")
+        return {}
+    try:
+        data = json.loads(EXECUTION_PLAN_FILE.read_text(encoding="utf-8"))
+        return data.get("plans", {})
+    except Exception as e:
+        logger.error(f"Failed to load execution plan: {e}")
+        return {}
+
+
 def consume_ticket(request_id: str) -> bool:
     """티켓 소비 (OPEN → IN_PROGRESS) - Idempotency: 409면 SKIP"""
     try:
@@ -140,33 +156,17 @@ def consume_ticket(request_id: str) -> bool:
         return False
 
 
-def complete_ticket(request_id: str, request_type: str, mode: str) -> bool:
-    """티켓 완료 - Gate 모드에 따른 메시지 태그"""
+def complete_ticket(request_id: str, status: str, message: str, artifacts: list = None) -> bool:
+    """티켓 완료"""
     try:
-        if mode == "MOCK_ONLY":
-            message = f"SUCCESS [MOCK_ONLY]: Simulated execution for {request_type}"
-        elif mode == "DRY_RUN":
-            message = f"SUCCESS [DRY_RUN]: Payload validated for {request_type}"
-        elif mode == "REAL_ENABLED":
-            # C-P.4에서는 도달 불가, 만약 도달 시 BLOCKED 처리
-            message = f"FAILED [BLOCKED]: REAL_ENABLED mode is not allowed in C-P.4"
-            status = "FAILED"
-        else:
-            message = f"SUCCESS [UNKNOWN_MODE]: Processed {request_type}"
-        
-        # REAL_ENABLED인 경우 FAILED 처리
-        if mode == "REAL_ENABLED":
-            status = "FAILED"
-        else:
-            status = "DONE"
-        
         resp = requests.post(
             f"{API_BASE}/api/tickets/complete",
             json={
                 "request_id": request_id,
                 "status": status,
                 "message": message,
-                "processor_id": f"worker_{os.getpid()}"
+                "processor_id": f"worker_{os.getpid()}",
+                "artifacts": artifacts or []
             }
         )
         
@@ -184,11 +184,71 @@ def complete_ticket(request_id: str, request_type: str, mode: str) -> bool:
         return False
 
 
+def deep_validate_dryrun(request_id: str, request_type: str, plans: dict) -> dict:
+    """Deep Validation for DRY_RUN mode - returns DRYRUN_ARTIFACT_V1"""
+    checks = {}
+    errors = []
+    
+    # Check 1: Plan exists
+    plan = plans.get(request_type)
+    checks["plan_exists"] = plan is not None
+    if not plan:
+        errors.append(f"No execution plan for request_type: {request_type}")
+    
+    cmd = plan.get("cmd", []) if plan else []
+    module_path = plan.get("module", "") if plan else ""
+    
+    # Check 2: Python available
+    python_path = shutil.which("python")
+    checks["python_available"] = python_path is not None
+    if not python_path:
+        errors.append("Python interpreter not found in PATH")
+    
+    # Check 3: Module exists
+    if module_path:
+        full_module_path = BASE_DIR / module_path
+        checks["module_exists"] = full_module_path.exists()
+        if not full_module_path.exists():
+            errors.append(f"Module not found: {module_path}")
+    else:
+        checks["module_exists"] = False
+        if plan:
+            errors.append("Module path not specified in plan")
+    
+    # Generate Artifact
+    valid = all(checks.values()) and len(errors) == 0
+    
+    artifact = {
+        "schema": "DRYRUN_ARTIFACT_V1",
+        "asof": datetime.now().isoformat(),
+        "request_id": request_id,
+        "request_type": request_type,
+        "valid": valid,
+        "plan_ref": cmd,
+        "checks": checks,
+        "errors": errors
+    }
+    
+    return artifact
+
+
+def save_dryrun_artifact(artifact: dict) -> str:
+    """Dry-Run Artifact 저장"""
+    DRYRUN_DIR.mkdir(parents=True, exist_ok=True)
+    
+    request_id = artifact.get("request_id")
+    filepath = DRYRUN_DIR / f"{request_id}.json"
+    
+    filepath.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info(f"Artifact saved: {filepath}")
+    
+    return str(filepath.relative_to(BASE_DIR))
+
+
 def process_ticket(ticket: dict, mode: str) -> bool:
     """단일 티켓 처리 - Gate 모드에 따른 동작"""
     request_id = ticket.get("request_id")
     request_type = ticket.get("request_type", "UNKNOWN")
-    payload = ticket.get("payload", {})
     
     logger.info(f"Processing ticket: {request_id} ({request_type}) [Mode: {mode}]")
     
@@ -200,34 +260,49 @@ def process_ticket(ticket: dict, mode: str) -> bool:
     if mode == "MOCK_ONLY":
         logger.info(f"[MOCK_ONLY] Simulating execution... (sleep 1s)")
         time.sleep(1)
-    elif mode == "DRY_RUN":
-        logger.info(f"[DRY_RUN] Validating payload...")
-        # Payload 검증 (실행 X)
-        if request_type == "REQUEST_RECONCILE":
-            required = ["mode", "reason"]
-        elif request_type == "REQUEST_REPORTS":
-            required = ["mode", "scope", "reason"]
-        else:
-            required = []
-        
-        missing = [k for k in required if k not in payload]
-        if missing:
-            logger.warning(f"[DRY_RUN] Missing payload keys: {missing}")
-        else:
-            logger.info(f"[DRY_RUN] Payload validation PASSED")
-        time.sleep(0.5)  # 짧은 대기
-    elif mode == "REAL_ENABLED":
-        logger.error(f"[BLOCKED] REAL_ENABLED mode is not allowed in C-P.4!")
-        # FAILED 상태로 완료 처리
+        message = f"SUCCESS [MOCK_ONLY]: Simulated execution for {request_type}"
+        return complete_ticket(request_id, "DONE", message)
     
-    # Step C: Complete with mode-specific tag
-    return complete_ticket(request_id, request_type, mode)
+    elif mode == "DRY_RUN":
+        logger.info(f"[DRY_RUN] Deep validation with execution plan...")
+        
+        # Load execution plan
+        plans = load_execution_plan()
+        if not plans:
+            message = f"FAILED [DRY_RUN]: Execution plan not available"
+            return complete_ticket(request_id, "FAILED", message)
+        
+        # Deep Validation
+        artifact = deep_validate_dryrun(request_id, request_type, plans)
+        
+        # Save Artifact
+        artifact_path = save_dryrun_artifact(artifact)
+        
+        # Log result
+        if artifact["valid"]:
+            logger.info(f"[DRY_RUN] Validation PASSED: {artifact['checks']}")
+            message = f"SUCCESS [DRY_RUN]: Artifact saved. Plan: {artifact['plan_ref']}"
+            return complete_ticket(request_id, "DONE", message, [artifact_path])
+        else:
+            logger.warning(f"[DRY_RUN] Validation FAILED: {artifact['errors']}")
+            message = f"FAILED [DRY_RUN]: Validation errors: {artifact['errors']}"
+            return complete_ticket(request_id, "FAILED", message, [artifact_path])
+    
+    elif mode == "REAL_ENABLED":
+        # 이중 방어: API에서 막히지만, 도달 시 BLOCKED 처리
+        logger.error(f"[BLOCKED] REAL_ENABLED mode is not allowed in C-P.5!")
+        message = f"FAILED [BLOCKED]: REAL_ENABLED mode is not allowed"
+        return complete_ticket(request_id, "FAILED", message)
+    
+    else:
+        message = f"SUCCESS [UNKNOWN_MODE]: Processed {request_type}"
+        return complete_ticket(request_id, "DONE", message)
 
 
 def run_worker():
     """워커 메인 실행"""
     logger.info("=" * 50)
-    logger.info("Ticket Worker Starting (C-P.4)...")
+    logger.info("Ticket Worker Starting (C-P.5)...")
     
     # 0. Gate Check (매 실행 전 확인)
     mode = get_gate_mode()

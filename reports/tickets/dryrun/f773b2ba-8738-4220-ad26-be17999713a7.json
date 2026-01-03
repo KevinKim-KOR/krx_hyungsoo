@@ -1,0 +1,16 @@
+{
+  "schema": "DRYRUN_ARTIFACT_V1",
+  "asof": "2026-01-03T16:30:10.029473",
+  "request_id": "f773b2ba-8738-4220-ad26-be17999713a7",
+  "request_type": "ACKNOWLEDGE",
+  "valid": false,
+  "plan_ref": [],
+  "checks": {
+    "plan_exists": false,
+    "python_available": true,
+    "module_exists": false
+  },
+  "errors": [
+    "No execution plan for request_type: ACKNOWLEDGE"
+  ]
+}

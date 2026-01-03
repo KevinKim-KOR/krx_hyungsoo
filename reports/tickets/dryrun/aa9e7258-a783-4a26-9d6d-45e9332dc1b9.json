@@ -1,0 +1,18 @@
+{
+  "schema": "DRYRUN_ARTIFACT_V1",
+  "asof": "2026-01-03T16:31:25.376556",
+  "request_id": "aa9e7258-a783-4a26-9d6d-45e9332dc1b9",
+  "request_type": "REQUEST_RECONCILE",
+  "valid": true,
+  "plan_ref": [
+    "python",
+    "-m",
+    "app.reconcile"
+  ],
+  "checks": {
+    "plan_exists": true,
+    "python_available": true,
+    "module_exists": true
+  },
+  "errors": []
+}

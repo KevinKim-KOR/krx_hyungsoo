@@ -1,7 +1,7 @@
 {
-    "version": "1.4",
+    "version": "1.5",
     "asof": "2026-01-03",
-    "description": "Active Surface Registry (Phase C-P.4)",
+    "description": "Active Surface Registry (Phase C-P.5)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -11,7 +11,8 @@
     "allowed_reports_paths": [
         "reports/phase_c/latest/**",
         "reports/phase_c/snapshots/**",
-        "reports/push/latest/**"
+        "reports/push/latest/**",
+        "reports/tickets/dryrun/**"
     ],
     "forbidden_latest_version_suffix": true,
     "contracts_live_in_docs_only": true,
@@ -31,6 +32,8 @@
         "docs/contracts/contract_ticket_worker_v1.md",
         "docs/contracts/contract_execution_gate_v1.md",
         "docs/contracts/contract_ticket_idempotency_v1.md",
+        "docs/contracts/contract_dryrun_artifact_v1.md",
+        "docs/contracts/execution_plan_v1.json",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",
@@ -66,6 +69,7 @@
         "latest_only": "UI/Backend는 reports/phase_c/latest/ 경로만 읽음",
         "no_version_suffix_in_latest": "reports/phase_c/latest/ 파일명에 버전 접미사 금지",
         "ticket_append_only": "state/tickets/*.jsonl은 Append-only (수정/삭제 금지)",
-        "gate_real_blocked": "REAL_ENABLED 모드는 C-P.4에서 API 레벨 차단"
+        "gate_real_blocked": "REAL_ENABLED 모드는 C-P.5에서 API 레벨 차단",
+        "dryrun_artifact_schema": "DRY_RUN 결과물은 DRYRUN_ARTIFACT_V1 스키마 준수"
     }
 }
