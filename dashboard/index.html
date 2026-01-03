@@ -536,7 +536,7 @@
             )
         }
 
-        function TicketsView({ data }) {
+        function TicketsView({ data, gateMode }) {
             if (!data || data.status === 'not_ready') {
                 return (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
@@ -565,11 +565,18 @@
 
             const rows = data.rows || [];
 
+            const gateBadgeColor = gateMode === 'DRY_RUN' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                gateMode === 'REAL_ENABLED' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                    'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+
             return (
                 <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
                     <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                         <span className="w-1 h-5 bg-cyan-500 rounded"></span> Ticket Status Board
                         <span className="text-sm font-normal text-slate-500">({rows.length} tickets)</span>
+                        <span className={`ml-auto px-2 py-0.5 rounded text-xs font-bold border ${gateBadgeColor}`}>
+                            Gate: {gateMode || 'MOCK_ONLY'}
+                        </span>
                     </h2>
                     {rows.length === 0 ? (
                         <div className="text-center py-8 text-slate-500 bg-slate-900/50 rounded-lg border border-dashed border-slate-700">
@@ -621,6 +628,7 @@
 
             const [gatekeeperData, setGatekeeperData] = useState(null);
             const [ticketsData, setTicketsData] = useState(null);
+            const [gateMode, setGateMode] = useState("MOCK_ONLY");
             const [activeTab, setActiveTab] = useState("dashboard");
 
             // Integrity Check Logic
@@ -728,6 +736,13 @@
                     if (tRes.ok) {
                         const tData = await tRes.json();
                         setTicketsData(tData);
+                    }
+
+                    // Phase C-P.4: Execution Gate
+                    const gateRes = await fetch(`${API_BASE}/api/execution_gate`);
+                    if (gateRes.ok) {
+                        const gateData = await gateRes.json();
+                        setGateMode(gateData.data?.mode || "MOCK_ONLY");
                     }
 
                 } catch (e) {
@@ -859,7 +874,7 @@
                             )}
 
                             {activeTab === 'tickets' && (
-                                <TicketsView data={ticketsData} />
+                                <TicketsView data={ticketsData} gateMode={gateMode} />
                             )}
 
                             {activeTab === 'logs' && (

@@ -741,8 +741,99 @@ def get_tickets_board():
     }
 
 
+# --- Phase C-P.4: Execution Gate APIs ---
+
+EXECUTION_GATE_FILE = STATE_DIR / "execution_gate.json"
+VALID_MODES = ["MOCK_ONLY", "DRY_RUN", "REAL_ENABLED"]
+DEFAULT_GATE = {
+    "schema": "EXECUTION_GATE_V1",
+    "mode": "MOCK_ONLY",
+    "updated_at": None,
+    "updated_by": None,
+    "reason": "Default (no gate file)"
+}
+
+def get_current_gate() -> Dict:
+    """현재 Gate 상태 조회 (파일 없으면 Default)"""
+    if not EXECUTION_GATE_FILE.exists():
+        return DEFAULT_GATE.copy()
+    try:
+        data = json.loads(EXECUTION_GATE_FILE.read_text(encoding="utf-8"))
+        return data
+    except:
+        return DEFAULT_GATE.copy()
+
+@app.get("/api/execution_gate", summary="Execution Gate 상태 조회")
+def get_execution_gate():
+    """현재 Gate 상태 반환 (Envelope)"""
+    gate = get_current_gate()
+    return {
+        "status": "ready",
+        "schema": "EXECUTION_GATE_V1",
+        "asof": datetime.now().isoformat(),
+        "data": gate,
+        "error": None
+    }
+
+
+class GateUpdate(BaseModel):
+    mode: str
+    reason: str
+
+@app.post("/api/execution_gate", summary="Execution Gate 모드 변경")
+def update_execution_gate(data: GateUpdate):
+    """
+    Gate 모드 변경
+    
+    Transition Rule:
+    - MOCK_ONLY <-> DRY_RUN: 허용
+    - Any -> MOCK_ONLY: 즉시 허용 (Emergency Stop)
+    - Any -> REAL_ENABLED: 400 Bad Request (C-P.4에서 금지)
+    """
+    logger.info(f"Gate 변경 요청: {data.mode}")
+    
+    # Validation
+    if data.mode not in VALID_MODES:
+        return JSONResponse(
+            status_code=400,
+            content={"result": "FAIL", "message": f"Invalid mode. Must be one of {VALID_MODES}"}
+        )
+    
+    # C-P.4 Restriction: Block REAL_ENABLED
+    if data.mode == "REAL_ENABLED":
+        logger.warning("REAL_ENABLED mode requested - BLOCKED by C-P.4 policy")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "REAL_ENABLED mode is blocked in Phase C-P.4. Only MOCK_ONLY and DRY_RUN are allowed.",
+                "policy": "C-P.4_BLOCK_REAL_AT_API"
+            }
+        )
+    
+    # Update Gate
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    gate_data = {
+        "schema": "EXECUTION_GATE_V1",
+        "mode": data.mode,
+        "updated_at": datetime.now().isoformat(),
+        "updated_by": "local_api",
+        "reason": data.reason
+    }
+    
+    EXECUTION_GATE_FILE.write_text(json.dumps(gate_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    
+    logger.info(f"Gate 변경 완료: {data.mode}")
+    return {
+        "result": "OK",
+        "mode": data.mode,
+        "updated_at": gate_data["updated_at"]
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+
 
 

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 app/run_ticket_worker.py
-Mock Ticket Worker (Phase C-P.3)
+Ticket Worker (Phase C-P.4)
 
 규칙:
-- No Execution: 실제 엔진 실행 금지 (Mock only)
-- Robust Locking: Stale lock (10분+) 자동 복구
-- MOCK_ONLY: 완료 메시지에 반드시 [MOCK_ONLY] 태그 포함
+- No Execution: 실제 엔진 실행 금지
+- Gate Priority: 티켓 처리 전 반드시 Gate 상태 확인
+- Idempotency: consume 409 시 SKIP_AND_CONTINUE
 """
 import json
 import os
@@ -45,11 +45,11 @@ def get_open_tickets() -> list:
     requests_file = TICKETS_DIR / "ticket_requests.jsonl"
     results_file = TICKETS_DIR / "ticket_results.jsonl"
     
-    requests = read_jsonl(requests_file)
+    reqs = read_jsonl(requests_file)
     results = read_jsonl(results_file)
     
     open_tickets = []
-    for req in requests:
+    for req in reqs:
         rid = req.get("request_id")
         
         # 해당 request_id의 결과들
@@ -104,8 +104,22 @@ def release_lock():
         logger.info("Lock released")
 
 
+def get_gate_mode() -> str:
+    """Gate 모드 조회 (API 우선, 실패 시 MOCK_ONLY)"""
+    try:
+        resp = requests.get(f"{API_BASE}/api/execution_gate", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            mode = data.get("data", {}).get("mode", "MOCK_ONLY")
+            logger.info(f"Gate mode: {mode}")
+            return mode
+    except Exception as e:
+        logger.warning(f"Gate API failed, using default: {e}")
+    return "MOCK_ONLY"
+
+
 def consume_ticket(request_id: str) -> bool:
-    """티켓 소비 (OPEN → IN_PROGRESS)"""
+    """티켓 소비 (OPEN → IN_PROGRESS) - Idempotency: 409면 SKIP"""
     try:
         resp = requests.post(
             f"{API_BASE}/api/tickets/consume",
@@ -116,7 +130,7 @@ def consume_ticket(request_id: str) -> bool:
             logger.info(f"Consumed ticket: {request_id}")
             return True
         elif resp.status_code == 409:
-            logger.info(f"Ticket already consumed by another worker: {request_id}")
+            logger.info(f"Idempotency: Ticket already consumed (409): {request_id}")
             return False
         else:
             logger.error(f"Consume failed ({resp.status_code}): {resp.text}")
@@ -126,16 +140,31 @@ def consume_ticket(request_id: str) -> bool:
         return False
 
 
-def complete_ticket(request_id: str, request_type: str) -> bool:
-    """티켓 완료 (IN_PROGRESS → DONE) with MOCK_ONLY tag"""
+def complete_ticket(request_id: str, request_type: str, mode: str) -> bool:
+    """티켓 완료 - Gate 모드에 따른 메시지 태그"""
     try:
-        message = f"SUCCESS [MOCK_ONLY]: Simulated execution for {request_type}"
+        if mode == "MOCK_ONLY":
+            message = f"SUCCESS [MOCK_ONLY]: Simulated execution for {request_type}"
+        elif mode == "DRY_RUN":
+            message = f"SUCCESS [DRY_RUN]: Payload validated for {request_type}"
+        elif mode == "REAL_ENABLED":
+            # C-P.4에서는 도달 불가, 만약 도달 시 BLOCKED 처리
+            message = f"FAILED [BLOCKED]: REAL_ENABLED mode is not allowed in C-P.4"
+            status = "FAILED"
+        else:
+            message = f"SUCCESS [UNKNOWN_MODE]: Processed {request_type}"
+        
+        # REAL_ENABLED인 경우 FAILED 처리
+        if mode == "REAL_ENABLED":
+            status = "FAILED"
+        else:
+            status = "DONE"
         
         resp = requests.post(
             f"{API_BASE}/api/tickets/complete",
             json={
                 "request_id": request_id,
-                "status": "DONE",
+                "status": status,
                 "message": message,
                 "processor_id": f"worker_{os.getpid()}"
             }
@@ -155,29 +184,54 @@ def complete_ticket(request_id: str, request_type: str) -> bool:
         return False
 
 
-def process_ticket(ticket: dict) -> bool:
-    """단일 티켓 처리 (Mock)"""
+def process_ticket(ticket: dict, mode: str) -> bool:
+    """단일 티켓 처리 - Gate 모드에 따른 동작"""
     request_id = ticket.get("request_id")
     request_type = ticket.get("request_type", "UNKNOWN")
+    payload = ticket.get("payload", {})
     
-    logger.info(f"Processing ticket: {request_id} ({request_type})")
+    logger.info(f"Processing ticket: {request_id} ({request_type}) [Mode: {mode}]")
     
-    # Step A: Consume
+    # Step A: Consume (Idempotency - 409면 SKIP)
     if not consume_ticket(request_id):
-        return False  # 409 or error
+        return False  # 409 or error - SKIP_AND_CONTINUE
     
-    # Step B: Mock Execute
-    logger.info(f"Mock executing... (sleep 1s)")
-    time.sleep(1)
+    # Step B: Execute based on Gate Mode
+    if mode == "MOCK_ONLY":
+        logger.info(f"[MOCK_ONLY] Simulating execution... (sleep 1s)")
+        time.sleep(1)
+    elif mode == "DRY_RUN":
+        logger.info(f"[DRY_RUN] Validating payload...")
+        # Payload 검증 (실행 X)
+        if request_type == "REQUEST_RECONCILE":
+            required = ["mode", "reason"]
+        elif request_type == "REQUEST_REPORTS":
+            required = ["mode", "scope", "reason"]
+        else:
+            required = []
+        
+        missing = [k for k in required if k not in payload]
+        if missing:
+            logger.warning(f"[DRY_RUN] Missing payload keys: {missing}")
+        else:
+            logger.info(f"[DRY_RUN] Payload validation PASSED")
+        time.sleep(0.5)  # 짧은 대기
+    elif mode == "REAL_ENABLED":
+        logger.error(f"[BLOCKED] REAL_ENABLED mode is not allowed in C-P.4!")
+        # FAILED 상태로 완료 처리
     
-    # Step C: Complete with MOCK_ONLY tag
-    return complete_ticket(request_id, request_type)
+    # Step C: Complete with mode-specific tag
+    return complete_ticket(request_id, request_type, mode)
 
 
 def run_worker():
     """워커 메인 실행"""
     logger.info("=" * 50)
-    logger.info("Ticket Worker Starting...")
+    logger.info("Ticket Worker Starting (C-P.4)...")
+    
+    # 0. Gate Check (매 실행 전 확인)
+    mode = get_gate_mode()
+    logger.info(f"Execution Gate Mode: {mode}")
     
     # 1. Acquire Lock
     if not acquire_lock():
@@ -195,7 +249,7 @@ def run_worker():
         
         # 3. Process one ticket (1회 실행 후 종료 정책)
         ticket = open_tickets[0]
-        success = process_ticket(ticket)
+        success = process_ticket(ticket, mode)
         
         if success:
             logger.info("Ticket processed successfully!")
