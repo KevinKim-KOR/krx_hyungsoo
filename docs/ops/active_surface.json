@@ -1,7 +1,7 @@
 {
-    "version": "1.10",
+    "version": "1.11",
     "asof": "2026-01-03",
-    "description": "Active Surface Registry (Phase C-P.10)",
+    "description": "Active Surface Registry (Phase C-P.10.1)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -47,6 +47,7 @@
         "docs/contracts/contract_execution_receipt_v2.md",
         "docs/contracts/contract_reconcile_dependency_v1.md",
         "docs/contracts/contract_reconcile_preflight_v1.md",
+        "docs/contracts/contract_execution_receipt_v3.md",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",

@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 app/run_ticket_worker.py
-Ticket Worker (Phase C-P.10)
+Ticket Worker (Phase C-P.10.1)
 
 규칙:
-- REAL 실행은 REQUEST_RECONCILE 또는 REQUEST_REPORTS
-- Preflight 체크 필수
-- 1회 제한 (Window)
+- Receipt V3: sha256 기반 verified 완료 판정
+- 스냅샷 순서: before(직전) → REAL → after(직후)
 """
 import json
 import os
 import time
 import requests
-import shutil
 import uuid
 import subprocess
 import hashlib
@@ -39,16 +37,13 @@ PREFLIGHT_DIR = BASE_DIR / "reports" / "tickets" / "preflight"
 API_BASE = "http://127.0.0.1:8000"
 STALE_THRESHOLD_SECONDS = 600
 
-EXPECTED_OUTPUTS = {
-    "REQUEST_RECONCILE": [
-        "reports/phase_c/latest/recon_summary.json",
-        "reports/phase_c/latest/recon_daily.jsonl"
-    ],
-    "REQUEST_REPORTS": [
-        "reports/phase_c/latest/report_human.json",
-        "reports/phase_c/latest/report_ai.json"
-    ]
-}
+# Receipt V3: 고정된 4개 타겟 (순서 고정)
+PROOF_TARGETS = [
+    "reports/phase_c/latest/recon_summary.json",
+    "reports/phase_c/latest/recon_daily.jsonl",
+    "reports/phase_c/latest/report_human.json",
+    "reports/phase_c/latest/report_ai.json"
+]
 
 
 def read_jsonl(path: Path) -> list:
@@ -100,7 +95,80 @@ def release_lock():
         logger.info("Lock released")
 
 
-# === Preflight & Safety Checks ===
+# === Snapshot Function (Receipt V3) ===
+
+def snapshot_file(path: Path) -> dict:
+    """파일 스냅샷: sha256 + size_bytes + mtime_iso"""
+    if not path.exists():
+        return {"exists": False, "mtime_iso": None, "size_bytes": None, "sha256": None}
+    
+    try:
+        stat = path.stat()
+        mtime_iso = datetime.fromtimestamp(stat.st_mtime).isoformat()
+        size_bytes = stat.st_size
+        
+        # SHA256 계산 (스트리밍)
+        sha256_hash = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256_hash.update(chunk)
+        
+        return {
+            "exists": True,
+            "mtime_iso": mtime_iso,
+            "size_bytes": size_bytes,
+            "sha256": sha256_hash.hexdigest()
+        }
+    except Exception as e:
+        logger.error(f"Snapshot error for {path}: {e}")
+        return {"exists": False, "mtime_iso": None, "size_bytes": None, "sha256": None}
+
+
+def compute_target_proof(path: str, before: dict, after: dict) -> dict:
+    """단일 타겟의 changed/verified 계산"""
+    # changed: 3종 세트 중 하나라도 다르면 true
+    changed = (
+        before.get("mtime_iso") != after.get("mtime_iso") or
+        before.get("size_bytes") != after.get("size_bytes") or
+        before.get("sha256") != after.get("sha256")
+    )
+    
+    # verified 계산 (Contract 규칙)
+    if not after.get("exists") or after.get("sha256") is None:
+        verified = False
+    elif changed:
+        verified = True  # 실행으로 산출물 갱신이 증명됨
+    else:
+        # changed == false: 동일 해시로 재검증
+        verified = (before.get("sha256") == after.get("sha256") and before.get("sha256") is not None)
+    
+    return {
+        "path": path,
+        "before": before,
+        "after": after,
+        "changed": changed,
+        "verified": verified
+    }
+
+
+def compute_acceptance(exit_code: int, targets: list) -> dict:
+    """acceptance 계산"""
+    all_verified = all(t.get("verified", False) for t in targets)
+    any_changed = any(t.get("changed", False) for t in targets)
+    
+    if exit_code != 0:
+        return {"pass": False, "reason": "FAILED_EXIT_CODE"}
+    
+    if not all_verified:
+        return {"pass": False, "reason": "MISSING_OUTPUTS"}
+    
+    if any_changed:
+        return {"pass": True, "reason": "CHANGED_VERIFIED"}
+    else:
+        return {"pass": True, "reason": "UNCHANGED_BUT_HASH_MATCH_VERIFIED"}
+
+
+# === Safety Checks ===
 
 def check_emergency_stop() -> dict:
     try:
@@ -162,7 +230,6 @@ def get_gate_mode() -> str:
 
 
 def run_preflight(request_id: str, request_type: str) -> dict:
-    """Run Deep Preflight via API"""
     try:
         resp = requests.post(
             f"{API_BASE}/api/deps/reconcile/check",
@@ -212,17 +279,6 @@ def validate_allowlist(request_type: str, cmd: list) -> dict:
     return {"passed": len(violations) == 0, "violations": violations}
 
 
-def get_file_info(path: Path) -> dict:
-    if not path.exists():
-        return {"exists": False}
-    stat = path.stat()
-    return {
-        "exists": True,
-        "mtime": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-        "size": stat.st_size
-    }
-
-
 def consume_ticket(request_id: str) -> bool:
     try:
         resp = requests.post(
@@ -252,7 +308,6 @@ def complete_ticket(request_id: str, status: str, message: str, artifacts: list 
 
 
 def consume_window(window_id: str):
-    """Mark window as consumed"""
     WINDOWS_DIR = STATE_DIR / "real_enable_windows"
     WINDOWS_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -267,29 +322,25 @@ def consume_window(window_id: str):
     logger.info(f"Window consumed: {window_id}")
 
 
-def write_receipt_v2(
-    request_id: str, mode: str, decision: str, 
-    block_reasons: list, started_at: str, finished_at: str,
-    command: list, exit_code: int, artifacts: list,
-    latest_files_changed: dict, safety_checks: dict,
-    preflight_artifact_path: str = None
+def write_receipt_v3(
+    request_id: str, request_type: str, mode: str, decision: str,
+    exit_code: int, outputs_proof: dict, acceptance: dict,
+    safety_checks: dict, preflight_artifact_path: str = None
 ):
-    """Write EXECUTION_RECEIPT_V2"""
+    """Write EXECUTION_RECEIPT_V3"""
     TICKETS_DIR.mkdir(parents=True, exist_ok=True)
     
     receipt = {
-        "schema": "EXECUTION_RECEIPT_V2",
+        "schema": "EXECUTION_RECEIPT_V3",
+        "asof": datetime.now().isoformat(),
         "receipt_id": str(uuid.uuid4()),
         "request_id": request_id,
+        "request_type": request_type,
         "mode": mode,
         "decision": decision,
-        "block_reasons": block_reasons,
-        "started_at": started_at,
-        "finished_at": finished_at,
-        "command": command,
         "exit_code": exit_code,
-        "artifacts_written": artifacts,
-        "latest_files_changed": latest_files_changed,
+        "outputs_proof": outputs_proof,
+        "acceptance": acceptance,
         "safety_checks": safety_checks,
         "preflight_artifact_path": preflight_artifact_path
     }
@@ -297,28 +348,26 @@ def write_receipt_v2(
     with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(receipt, ensure_ascii=False) + "\n")
     
-    logger.info(f"Receipt V2 written: {decision}")
+    logger.info(f"Receipt V3 written: {decision}, acceptance.pass={acceptance.get('pass')}")
     return receipt
 
 
 def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_checks: dict, preflight_path: str) -> bool:
-    """Process ticket with REAL execution"""
+    """Process ticket with REAL execution (Receipt V3)"""
     request_id = ticket.get("request_id")
     request_type = ticket.get("request_type")
     
     plan = plans.get(request_type, {})
     cmd = plan.get("cmd", [])
     
-    started_at = datetime.now().isoformat()
+    # === STEP 1: BEFORE 스냅샷 (REAL 직전) ===
+    logger.info("[V3] Taking BEFORE snapshots...")
+    before_snapshots = {}
+    for target in PROOF_TARGETS:
+        path = BASE_DIR / target
+        before_snapshots[target] = snapshot_file(path)
     
-    # Get before state of files
-    outputs = EXPECTED_OUTPUTS.get(request_type, [])
-    files_before = {}
-    for output in outputs:
-        path = BASE_DIR / output
-        files_before[output] = get_file_info(path)
-    
-    # Execute!
+    # === STEP 2: REAL 실행 ===
     logger.info(f"[REAL] Executing: {cmd}")
     try:
         result = subprocess.run(
@@ -341,54 +390,50 @@ def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_che
         exit_code = -1
         logger.error(f"[REAL] Execution failed: {e}")
     
-    finished_at = datetime.now().isoformat()
+    # === STEP 3: AFTER 스냅샷 (REAL 직후) ===
+    logger.info("[V3] Taking AFTER snapshots...")
+    after_snapshots = {}
+    for target in PROOF_TARGETS:
+        path = BASE_DIR / target
+        after_snapshots[target] = snapshot_file(path)
     
-    # Get after state of files
-    latest_files_changed = {}
-    artifacts_written = []
+    # === STEP 4: changed/verified/acceptance 계산 ===
+    targets = []
+    for target in PROOF_TARGETS:
+        proof = compute_target_proof(target, before_snapshots[target], after_snapshots[target])
+        targets.append(proof)
     
-    for output in outputs:
-        path = BASE_DIR / output
-        after_info = get_file_info(path)
-        
-        if after_info["exists"]:
-            artifacts_written.append(output)
-            if files_before[output]["exists"]:
-                if files_before[output]["mtime"] != after_info["mtime"]:
-                    latest_files_changed[output] = {
-                        "mtime_before": files_before[output]["mtime"],
-                        "mtime_after": after_info["mtime"]
-                    }
-            else:
-                latest_files_changed[output] = {
-                    "mtime_before": None,
-                    "mtime_after": after_info["mtime"]
-                }
+    outputs_proof = {
+        "latest_dir": "reports/phase_c/latest/",
+        "targets": targets
+    }
+    
+    acceptance = compute_acceptance(exit_code, targets)
     
     # Consume window immediately
     if window_info.get("window_id"):
         consume_window(window_info["window_id"])
     
-    # Write receipt
+    # Decision
     decision = "EXECUTED" if exit_code == 0 else "FAILED"
-    write_receipt_v2(
+    
+    # Write Receipt V3
+    write_receipt_v3(
         request_id=request_id,
+        request_type=request_type,
         mode="REAL",
         decision=decision,
-        block_reasons=[],
-        started_at=started_at,
-        finished_at=finished_at,
-        command=cmd,
         exit_code=exit_code,
-        artifacts=artifacts_written,
-        latest_files_changed=latest_files_changed,
+        outputs_proof=outputs_proof,
+        acceptance=acceptance,
         safety_checks=safety_checks,
         preflight_artifact_path=preflight_path
     )
     
-    status = "DONE" if exit_code == 0 else "FAILED"
-    message = f"[REAL] {decision}: exit_code={exit_code}, files_changed={len(latest_files_changed)}"
-    return complete_ticket(request_id, status, message, artifacts_written)
+    status = "DONE" if acceptance.get("pass") else "FAILED"
+    message = f"[REAL] {decision}: exit_code={exit_code}, acceptance.pass={acceptance.get('pass')}"
+    artifacts = [t["path"] for t in targets if t["after"]["exists"]]
+    return complete_ticket(request_id, status, message, artifacts)
 
 
 def process_ticket(ticket: dict, mode: str) -> bool:
@@ -405,7 +450,6 @@ def process_ticket(ticket: dict, mode: str) -> bool:
     plan = plans.get(request_type, {})
     cmd = plan.get("cmd", [])
     
-    started_at = datetime.now().isoformat()
     block_reasons = []
     preflight_path = None
     
@@ -437,18 +481,24 @@ def process_ticket(ticket: dict, mode: str) -> bool:
     # === MODE ROUTING ===
     if mode == "MOCK_ONLY":
         time.sleep(1)
-        write_receipt_v2(request_id, "MOCK_ONLY", "EXECUTED", [], started_at, datetime.now().isoformat(), [], None, [], {}, safety_checks)
+        outputs_proof = {"latest_dir": "reports/phase_c/latest/", "targets": []}
+        acceptance = {"pass": True, "reason": "MOCK_MODE"}
+        write_receipt_v3(request_id, request_type, "MOCK_ONLY", "EXECUTED", 0, outputs_proof, acceptance, safety_checks)
         return complete_ticket(request_id, "DONE", f"[MOCK_ONLY] Simulated {request_type}")
     
     elif mode == "DRY_RUN":
-        write_receipt_v2(request_id, "DRY_RUN", "EXECUTED", [], started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks)
+        outputs_proof = {"latest_dir": "reports/phase_c/latest/", "targets": []}
+        acceptance = {"pass": True, "reason": "DRY_RUN_MODE"}
+        write_receipt_v3(request_id, request_type, "DRY_RUN", "EXECUTED", 0, outputs_proof, acceptance, safety_checks)
         return complete_ticket(request_id, "DONE", f"[DRY_RUN] Validated {request_type}")
     
     elif mode == "REAL_ENABLED":
         # Safety checks first
         if block_reasons:
             logger.warning(f"[BLOCKED] {block_reasons}")
-            write_receipt_v2(request_id, "REAL", "BLOCKED", block_reasons, started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks)
+            outputs_proof = {"latest_dir": "reports/phase_c/latest/", "targets": []}
+            acceptance = {"pass": False, "reason": "BLOCKED_BY_SAFETY_CHECK"}
+            write_receipt_v3(request_id, request_type, "REAL", "BLOCKED", None, outputs_proof, acceptance, safety_checks)
             return complete_ticket(request_id, "FAILED", f"[BLOCKED] {block_reasons}")
         
         # Deep Preflight for RECONCILE
@@ -458,10 +508,12 @@ def process_ticket(ticket: dict, mode: str) -> bool:
             
             if preflight_result.get("decision") != "PREFLIGHT_PASS":
                 block_reasons.append(f"Preflight failed: {preflight_result.get('decision')}")
-                write_receipt_v2(request_id, "REAL", "BLOCKED", block_reasons, started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks, preflight_path)
+                outputs_proof = {"latest_dir": "reports/phase_c/latest/", "targets": []}
+                acceptance = {"pass": False, "reason": "PREFLIGHT_FAIL"}
+                write_receipt_v3(request_id, request_type, "REAL", "BLOCKED", None, outputs_proof, acceptance, safety_checks, preflight_path)
                 return complete_ticket(request_id, "FAILED", f"[PREFLIGHT_FAIL] {block_reasons}")
         
-        # All checks passed - REAL EXECUTE
+        # All checks passed - REAL EXECUTE with V3 proof
         return process_ticket_real(ticket, plans, window_info, safety_checks, preflight_path)
     
     else:
@@ -470,7 +522,7 @@ def process_ticket(ticket: dict, mode: str) -> bool:
 
 def run_worker():
     logger.info("=" * 50)
-    logger.info("Ticket Worker Starting (C-P.10)...")
+    logger.info("Ticket Worker Starting (C-P.10.1 - Receipt V3)...")
     
     mode = get_gate_mode()
     logger.info(f"Execution Gate Mode: {mode}")
