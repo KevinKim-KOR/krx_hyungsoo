@@ -12,7 +12,9 @@ Push 시스템은 **알림, 브리핑, 운영 요청**을 생성하는 시스템
 
 > ⚠️ **범위 제한**: 매수 추천, 실거래 실행은 이 Contract의 범위 외입니다.
 
-> 🚫 **금지 규정**: Push 생성기가 subprocess를 호출하거나 엔진을 직접 실행하는 것을 금지합니다.
+> 🚫 **금지 규정 (CP-1)**: 
+> - Push 생성기가 subprocess를 호출하거나 엔진을 직접 실행하는 것을 **금지**합니다.
+> - **Holdings/종목추천/실매매 Push는 Phase C-P.2 이후에만 허용**됩니다. 이 Contract에서는 **브리핑/알림/운영요청**만 다룹니다.
 
 ---
 
@@ -104,6 +106,10 @@ Push 생성기는 **오직 아래 파일들만** 읽을 수 있습니다:
 | `CRITICAL` | `integrity.critical_total > 0` | 즉시 알림 + 상단 고정 |
 | `WARNING` | `warning_total > 0` | 일반 알림 |
 | `INFO` | 정상 상태 | 로그만 |
+
+> 🔴 **CP-2 규정**: CRITICAL은 **오직 `recon_summary.integrity.critical_total > 0`일 때만** 발생합니다.
+> - Trade mismatch, Gatekeeper missing 등은 CRITICAL이 **아닙니다** (WARNING 또는 INFO).
+> - CRITICAL 남용을 방지하기 위해 이 조건은 변경 금지입니다.
 
 ---
 
