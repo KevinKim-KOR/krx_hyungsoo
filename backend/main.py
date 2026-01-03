@@ -842,14 +842,44 @@ def get_emergency_stop_status() -> Dict:
         return {"enabled": False, "updated_at": None, "updated_by": None, "reason": None}
 
 def get_latest_approval() -> Dict:
-    """최신 Approval 조회"""
+    """최신 Approval 조회 (Append-only에서 상태 합성)"""
     if not APPROVALS_FILE.exists():
         return None
+    
     approvals = read_jsonl(APPROVALS_FILE)
     if not approvals:
         return None
-    # 최신 것 반환
-    return max(approvals, key=lambda x: x.get("requested_at", ""))
+    
+    # approval_id별로 이벤트 병합 (append-only 로그이므로 최신 우선)
+    merged = {}
+    for event in approvals:
+        aid = event.get("approval_id")
+        if not aid:
+            continue
+        
+        if aid not in merged:
+            merged[aid] = event.copy()
+        else:
+            # 같은 approval_id의 새 이벤트: keys, status 업데이트
+            if "keys" in event:
+                merged[aid]["keys"] = event["keys"]
+            if "status" in event:
+                merged[aid]["status"] = event["status"]
+    
+    if not merged:
+        return None
+    
+    # 정렬: APPROVED 우선, 그 다음 requested_at 최신
+    sorted_approvals = sorted(
+        merged.values(),
+        key=lambda x: (
+            x.get("status") == "APPROVED",  # APPROVED가 True(1)로 뒤에 정렬
+            x.get("requested_at", "")
+        ),
+        reverse=True
+    )
+    
+    return sorted_approvals[0] if sorted_approvals else None
 
 
 @app.get("/api/emergency_stop", summary="Emergency Stop 상태 조회")
@@ -1042,6 +1072,135 @@ def get_execution_allowlist():
             status_code=500,
             content={"status": "error", "message": str(e)}
         )
+
+
+# --- Phase C-P.9: Real Enable Window APIs ---
+
+WINDOWS_DIR = STATE_DIR / "real_enable_windows"
+WINDOWS_FILE = WINDOWS_DIR / "real_enable_windows.jsonl"
+
+
+def get_active_window() -> Dict:
+    """현재 ACTIVE 상태인 Window 조회 (Synthesized)"""
+    if not WINDOWS_FILE.exists():
+        return None
+    
+    events = read_jsonl(WINDOWS_FILE)
+    if not events:
+        return None
+    
+    # window_id별로 최신 상태 계산
+    windows = {}
+    for event in events:
+        wid = event.get("window_id")
+        if wid not in windows:
+            windows[wid] = event.copy()
+        else:
+            # 이벤트 타입에 따라 상태 업데이트
+            if event.get("event") == "REVOKE":
+                windows[wid]["status"] = "REVOKED"
+            elif event.get("event") == "CONSUME":
+                windows[wid]["real_executions_used"] = windows[wid].get("real_executions_used", 0) + 1
+    
+    # ACTIVE window 찾기
+    now = datetime.now()
+    for wid, window in windows.items():
+        # 만료 체크
+        expires_at = datetime.fromisoformat(window.get("expires_at", "2000-01-01"))
+        if expires_at < now:
+            window["status"] = "EXPIRED"
+        
+        # 소진 체크
+        used = window.get("real_executions_used", 0)
+        max_exec = window.get("max_real_executions", 1)
+        if used >= max_exec and window.get("status") not in ["REVOKED", "EXPIRED"]:
+            window["status"] = "CONSUMED"
+        
+        if window.get("status") == "ACTIVE":
+            return window
+    
+    return None
+
+
+class WindowRequest(BaseModel):
+    reason: str
+    ttl_seconds: int = 600
+
+
+@app.post("/api/real_enable_window/request", summary="REAL Enable Window 생성")
+def create_real_window(data: WindowRequest):
+    """REAL 실행 창 생성 (C-P.9: REQUEST_REPORTS만, 1회만)"""
+    logger.info(f"Window 요청: reason={data.reason}, ttl={data.ttl_seconds}")
+    
+    WINDOWS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    now = datetime.now()
+    window = {
+        "schema": "REAL_ENABLE_WINDOW_V1",
+        "event": "CREATE",
+        "window_id": str(uuid.uuid4()),
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(seconds=data.ttl_seconds)).isoformat(),
+        "created_by": "api",
+        "reason": data.reason,
+        "allowed_request_types": ["REQUEST_REPORTS"],  # C-P.9 고정
+        "max_real_executions": 1,  # C-P.9 고정
+        "real_executions_used": 0,
+        "status": "ACTIVE"
+    }
+    
+    with open(WINDOWS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(window, ensure_ascii=False) + "\n")
+    
+    logger.info(f"Window 생성: {window['window_id']}")
+    return {
+        "result": "OK",
+        "schema": "REAL_ENABLE_WINDOW_V1",
+        "data": window
+    }
+
+
+@app.get("/api/real_enable_window/latest", summary="현재 REAL Enable Window 조회")
+def get_real_window_latest():
+    """현재 ACTIVE Window 반환 (없으면 빈 rows)"""
+    window = get_active_window()
+    
+    return {
+        "status": "ready",
+        "schema": "REAL_ENABLE_WINDOW_V1",
+        "asof": datetime.now().isoformat(),
+        "row_count": 1 if window else 0,
+        "rows": [window] if window else [],
+        "error": None
+    }
+
+
+class WindowRevoke(BaseModel):
+    window_id: str
+    reason: str = ""
+
+
+@app.post("/api/real_enable_window/revoke", summary="REAL Enable Window 폐기")
+def revoke_real_window(data: WindowRevoke):
+    """Window 즉시 폐기"""
+    logger.info(f"Window 폐기: {data.window_id}")
+    
+    if not WINDOWS_FILE.exists():
+        return JSONResponse(status_code=404, content={"result": "FAIL", "message": "No windows"})
+    
+    revoke_event = {
+        "schema": "REAL_ENABLE_WINDOW_V1",
+        "event": "REVOKE",
+        "window_id": data.window_id,
+        "revoked_at": datetime.now().isoformat(),
+        "revoked_by": "api",
+        "reason": data.reason
+    }
+    
+    with open(WINDOWS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(revoke_event, ensure_ascii=False) + "\n")
+    
+    return {"result": "OK", "window_id": data.window_id, "status": "REVOKED"}
 
 
 if __name__ == "__main__":

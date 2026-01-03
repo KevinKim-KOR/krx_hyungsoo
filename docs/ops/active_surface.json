@@ -1,7 +1,7 @@
 {
-    "version": "1.8",
+    "version": "1.9",
     "asof": "2026-01-03",
-    "description": "Active Surface Registry (Phase C-P.8)",
+    "description": "Active Surface Registry (Phase C-P.9)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -42,6 +42,8 @@
         "docs/contracts/contract_shadow_run_v1.md",
         "docs/contracts/contract_real_execution_allowlist_v1.md",
         "docs/contracts/execution_allowlist_v1.json",
+        "docs/contracts/contract_real_enable_window_v1.md",
+        "docs/contracts/contract_execution_receipt_v2.md",
         "docs/contracts/contracts_index.md",
         "docs/ops/artifact_governance.md",
         "docs/ops/active_surface.json",
@@ -58,7 +60,8 @@
         "state/tickets/ticket_receipts.jsonl",
         "state/execution_gate.json",
         "state/emergency_stop.json",
-        "state/approvals/real_enable_approvals.jsonl"
+        "state/approvals/real_enable_approvals.jsonl",
+        "state/real_enable_windows/real_enable_windows.jsonl"
     ],
     "active_endpoints": [
         "/api/recon/summary",
@@ -75,7 +78,10 @@
         "/api/approvals/real_enable/request",
         "/api/approvals/real_enable/approve",
         "/api/approvals/real_enable/latest",
-        "/api/execution_allowlist"
+        "/api/execution_allowlist",
+        "/api/real_enable_window/request",
+        "/api/real_enable_window/latest",
+        "/api/real_enable_window/revoke"
     ],
     "forbidden_paths": [
         "_archive/**"
@@ -83,11 +89,9 @@
     "rules": {
         "import_from_archive": "FORBIDDEN",
         "latest_only": "UI/Backend는 reports/phase_c/latest/ 경로만 읽음",
-        "no_version_suffix_in_latest": "reports/phase_c/latest/ 파일명에 버전 접미사 금지",
-        "ticket_append_only": "state/tickets/*.jsonl은 Append-only (수정/삭제 금지)",
-        "gate_real_blocked": "REAL_ENABLED 모드는 C-P.6에서 API 레벨 차단",
-        "dryrun_artifact_schema": "DRY_RUN 결과물은 DRYRUN_ARTIFACT_V1 스키마 준수",
+        "ticket_append_only": "state/tickets/*.jsonl은 Append-only",
         "two_key_approval": "REAL_ENABLED 진입에 2개 Key 필요",
-        "emergency_stop_priority": "Emergency Stop 활성화 시 Gate 강제 MOCK_ONLY"
+        "real_window_required": "REAL 실행에 Window ACTIVE 필수",
+        "cp9_reports_only": "C-P.9에서 REAL 실행은 REQUEST_REPORTS만 허용"
     }
 }

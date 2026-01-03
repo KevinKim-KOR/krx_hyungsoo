@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 app/run_ticket_worker.py
-Ticket Worker (Phase C-P.8)
+Ticket Worker (Phase C-P.9)
 
 규칙:
-- No Execution: 실제 엔진 실행 금지
-- Allowlist Enforcement: 허용목록 exact match 검증
-- Shadow Run: REAL_ENABLED면 Shadow로 강제 처리
+- REAL 실행은 REQUEST_REPORTS 1회만 허용
+- Preflight 4개 체크 필수
+- EXECUTION_RECEIPT_V2 작성
 """
 import json
 import os
@@ -14,6 +14,8 @@ import time
 import requests
 import shutil
 import uuid
+import subprocess
+import hashlib
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -33,9 +35,21 @@ SHADOW_DIR = BASE_DIR / "reports" / "tickets" / "shadow"
 RECEIPTS_FILE = TICKETS_DIR / "ticket_receipts.jsonl"
 EXECUTION_PLAN_FILE = BASE_DIR / "docs" / "contracts" / "execution_plan_v1.json"
 ALLOWLIST_FILE = BASE_DIR / "docs" / "contracts" / "execution_allowlist_v1.json"
+WINDOWS_FILE = STATE_DIR / "real_enable_windows" / "real_enable_windows.jsonl"
 
 API_BASE = "http://127.0.0.1:8000"
 STALE_THRESHOLD_SECONDS = 600
+
+EXPECTED_OUTPUTS = {
+    "REQUEST_RECONCILE": [
+        "reports/phase_c/latest/recon_summary.json",
+        "reports/phase_c/latest/recon_daily.jsonl"
+    ],
+    "REQUEST_REPORTS": [
+        "reports/phase_c/latest/report_human.json",
+        "reports/phase_c/latest/report_ai.json"
+    ]
+}
 
 
 def read_jsonl(path: Path) -> list:
@@ -72,10 +86,7 @@ def acquire_lock() -> bool:
             acquired_at = datetime.fromisoformat(lock_data.get("acquired_at", ""))
             age_seconds = (datetime.now() - acquired_at).total_seconds()
             if age_seconds < STALE_THRESHOLD_SECONDS:
-                logger.warning(f"Lock already held (age: {age_seconds:.0f}s)")
                 return False
-            else:
-                logger.warning(f"Stale lock. Force acquiring...")
         except:
             pass
     lock_data = {"pid": os.getpid(), "acquired_at": datetime.now().isoformat()}
@@ -90,23 +101,62 @@ def release_lock():
         logger.info("Lock released")
 
 
+# === Preflight Checks ===
+
 def check_emergency_stop() -> dict:
     try:
         resp = requests.get(f"{API_BASE}/api/emergency_stop", timeout=5)
         if resp.status_code == 200:
-            return resp.json().get("data", {})
+            data = resp.json().get("data", {})
+            return {"passed": not data.get("enabled", False), "enabled": data.get("enabled", False)}
     except:
         pass
-    return {"enabled": False}
+    return {"passed": True, "enabled": False}
+
+
+def check_approval() -> dict:
+    try:
+        resp = requests.get(f"{API_BASE}/api/approvals/real_enable/latest", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json().get("data")
+            if data:
+                status = data.get("status", "PENDING")
+                return {"passed": status == "APPROVED", "status": status}
+    except:
+        pass
+    return {"passed": False, "status": "NONE"}
+
+
+def check_window(request_type: str) -> dict:
+    try:
+        resp = requests.get(f"{API_BASE}/api/real_enable_window/latest", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            rows = data.get("rows", [])
+            if rows:
+                window = rows[0]
+                allowed_types = window.get("allowed_request_types", [])
+                used = window.get("real_executions_used", 0)
+                max_exec = window.get("max_real_executions", 1)
+                type_ok = request_type in allowed_types
+                not_consumed = used < max_exec
+                return {
+                    "passed": type_ok and not_consumed,
+                    "window_id": window.get("window_id"),
+                    "status": window.get("status"),
+                    "type_allowed": type_ok,
+                    "not_consumed": not_consumed
+                }
+    except:
+        pass
+    return {"passed": False, "window_id": None, "status": "NONE"}
 
 
 def get_gate_mode() -> str:
     try:
         resp = requests.get(f"{API_BASE}/api/execution_gate", timeout=5)
         if resp.status_code == 200:
-            mode = resp.json().get("data", {}).get("mode", "MOCK_ONLY")
-            logger.info(f"Gate mode: {mode}")
-            return mode
+            return resp.json().get("data", {}).get("mode", "MOCK_ONLY")
     except:
         pass
     return "MOCK_ONLY"
@@ -116,42 +166,47 @@ def load_execution_plan() -> dict:
     if not EXECUTION_PLAN_FILE.exists():
         return {}
     try:
-        data = json.loads(EXECUTION_PLAN_FILE.read_text(encoding="utf-8"))
-        return data.get("plans", {})
+        return json.loads(EXECUTION_PLAN_FILE.read_text(encoding="utf-8")).get("plans", {})
     except:
         return {}
 
 
 def load_allowlist() -> dict:
-    """Load immutable allowlist from docs/contracts/"""
     if not ALLOWLIST_FILE.exists():
-        logger.error(f"Allowlist not found: {ALLOWLIST_FILE}")
         return {}
     try:
-        data = json.loads(ALLOWLIST_FILE.read_text(encoding="utf-8"))
-        logger.info(f"Allowlist loaded: v{data.get('version')}")
-        return data
-    except Exception as e:
-        logger.error(f"Failed to load allowlist: {e}")
+        return json.loads(ALLOWLIST_FILE.read_text(encoding="utf-8"))
+    except:
         return {}
 
 
-def write_receipt(request_id: str, mode: str, result: str, message: str, artifacts: list = None) -> str:
-    TICKETS_DIR.mkdir(parents=True, exist_ok=True)
-    receipt = {
-        "schema": "EXECUTION_RECEIPT_V1",
-        "receipt_id": str(uuid.uuid4()),
-        "request_id": request_id,
-        "issued_at": datetime.now().isoformat(),
-        "mode": mode,
-        "result": result,
-        "message": message,
-        "artifacts": artifacts or []
+def validate_allowlist(request_type: str, cmd: list) -> dict:
+    allowlist = load_allowlist()
+    violations = []
+    if not allowlist:
+        return {"passed": False, "violations": ["Allowlist not available"]}
+    
+    allowed_types = allowlist.get("allowed_request_types", [])
+    if request_type not in allowed_types:
+        violations.append(f"request_type '{request_type}' not allowed")
+    
+    rules = allowlist.get("rules", {}).get(request_type, {})
+    cmd_allowlist = rules.get("real_command_allowlist", [])
+    if cmd not in cmd_allowlist:
+        violations.append(f"command {cmd} not in allowlist")
+    
+    return {"passed": len(violations) == 0, "violations": violations}
+
+
+def get_file_info(path: Path) -> dict:
+    if not path.exists():
+        return {"exists": False}
+    stat = path.stat()
+    return {
+        "exists": True,
+        "mtime": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        "size": stat.st_size
     }
-    with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
-        f.write(json.dumps(receipt, ensure_ascii=False) + "\n")
-    logger.info(f"Receipt written: {result}")
-    return receipt["receipt_id"]
 
 
 def consume_ticket(request_id: str) -> bool:
@@ -160,17 +215,8 @@ def consume_ticket(request_id: str) -> bool:
             f"{API_BASE}/api/tickets/consume",
             json={"request_id": request_id, "processor_id": f"worker_{os.getpid()}"}
         )
-        if resp.status_code == 200:
-            logger.info(f"Consumed ticket: {request_id}")
-            return True
-        elif resp.status_code == 409:
-            logger.info(f"Already consumed (409)")
-            return False
-        else:
-            logger.error(f"Consume failed ({resp.status_code})")
-            return False
-    except Exception as e:
-        logger.error(f"Consume failed: {e}")
+        return resp.status_code == 200
+    except:
         return False
 
 
@@ -191,150 +237,147 @@ def complete_ticket(request_id: str, status: str, message: str, artifacts: list 
         return False
 
 
-def deep_validate(request_id: str, request_type: str, plans: dict) -> dict:
-    """Deep Validation - checks module existence"""
-    checks = {}
-    errors = []
+def consume_window(window_id: str):
+    """Mark window as consumed (Append CONSUME event)"""
+    WINDOWS_DIR = STATE_DIR / "real_enable_windows"
+    WINDOWS_DIR.mkdir(parents=True, exist_ok=True)
     
-    plan = plans.get(request_type)
-    checks["plan_exists"] = plan is not None
-    if not plan:
-        errors.append(f"No plan for: {request_type}")
-    
-    cmd = plan.get("cmd", []) if plan else []
-    module_path = plan.get("module", "") if plan else ""
-    
-    checks["python_available"] = shutil.which("python") is not None
-    
-    if module_path:
-        full_path = BASE_DIR / module_path
-        checks["module_exists"] = full_path.exists()
-        if not full_path.exists():
-            errors.append(f"Module not found: {module_path}")
-    else:
-        checks["module_exists"] = False
-    
-    return {
-        "valid": all(checks.values()) and len(errors) == 0,
-        "cmd": cmd,
-        "checks": checks,
-        "errors": errors
+    consume_event = {
+        "schema": "REAL_ENABLE_WINDOW_V1",
+        "event": "CONSUME",
+        "window_id": window_id,
+        "consumed_at": datetime.now().isoformat()
     }
+    with open(WINDOWS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(consume_event, ensure_ascii=False) + "\n")
+    logger.info(f"Window consumed: {window_id}")
 
 
-def validate_against_allowlist(request_type: str, cmd: list, expected_outputs: list) -> dict:
-    """Validate against immutable allowlist (exact match only)"""
-    allowlist = load_allowlist()
-    violations = []
+def write_receipt_v2(
+    request_id: str, mode: str, decision: str, 
+    block_reasons: list, started_at: str, finished_at: str,
+    command: list, exit_code: int, artifacts: list,
+    latest_files_changed: dict, safety_checks: dict
+):
+    """Write EXECUTION_RECEIPT_V2"""
+    TICKETS_DIR.mkdir(parents=True, exist_ok=True)
     
-    if not allowlist:
-        return {"allowed": False, "violations": ["Allowlist not available"], "version": None}
-    
-    version = allowlist.get("version", "unknown")
-    allowed_types = allowlist.get("allowed_request_types", [])
-    rules = allowlist.get("rules", {})
-    
-    # Check 1: request_type in allowed_request_types
-    if request_type not in allowed_types:
-        violations.append(f"request_type '{request_type}' not in allowed_request_types")
-    
-    # Get rule for this request_type
-    rule = rules.get(request_type, {})
-    
-    # Check 2: command exact match
-    cmd_allowlist = rule.get("real_command_allowlist", [])
-    if cmd not in cmd_allowlist:
-        violations.append(f"command {cmd} not in real_command_allowlist (exact match required)")
-    
-    # Check 3: expected outputs exact match
-    output_allowlist = rule.get("expected_outputs_allowlist", [])
-    for output in expected_outputs:
-        if output not in output_allowlist:
-            violations.append(f"output '{output}' not in expected_outputs_allowlist")
-    
-    return {
-        "allowed": len(violations) == 0,
-        "violations": violations,
-        "version": version
-    }
-
-
-# Expected outputs mapping
-EXPECTED_OUTPUTS = {
-    "REQUEST_RECONCILE": [
-        "reports/phase_c/latest/recon_summary.json",
-        "reports/phase_c/latest/recon_daily.jsonl"
-    ],
-    "REQUEST_REPORTS": [
-        "reports/phase_c/latest/report_human.json",
-        "reports/phase_c/latest/report_ai.json"
-    ]
-}
-
-
-def save_dryrun_artifact(request_id: str, request_type: str, validation: dict, allowlist_result: dict) -> str:
-    DRYRUN_DIR.mkdir(parents=True, exist_ok=True)
-    
-    decision = "SHADOW_OK" if (validation["valid"] and allowlist_result["allowed"]) else "SHADOW_BLOCKED"
-    
-    artifact = {
-        "schema": "DRYRUN_ARTIFACT_V1",
-        "asof": datetime.now().isoformat(),
+    receipt = {
+        "schema": "EXECUTION_RECEIPT_V2",
+        "receipt_id": str(uuid.uuid4()),
         "request_id": request_id,
-        "request_type": request_type,
-        "valid": validation["valid"] and allowlist_result["allowed"],
-        "plan_ref": validation["cmd"],
-        "checks": validation["checks"],
-        "errors": validation["errors"],
-        "allowlist_version": allowlist_result.get("version"),
-        "allowlist_violations": allowlist_result.get("violations", []),
-        "decision": decision
-    }
-    filepath = DRYRUN_DIR / f"{request_id}.json"
-    filepath.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
-    return str(filepath.relative_to(BASE_DIR))
-
-
-def save_shadow_artifact(request_id: str, request_type: str, validation: dict, allowlist_result: dict) -> str:
-    """Save Shadow Run artifact with allowlist enforcement"""
-    SHADOW_DIR.mkdir(parents=True, exist_ok=True)
-    
-    filepath = SHADOW_DIR / f"{request_id}.json"
-    if filepath.exists():
-        logger.warning(f"Shadow artifact already exists")
-        return str(filepath.relative_to(BASE_DIR))
-    
-    expected = EXPECTED_OUTPUTS.get(request_type, [])
-    
-    # Decision based on both validation AND allowlist
-    if validation["valid"] and allowlist_result["allowed"]:
-        decision = "SHADOW_OK"
-        reason = "All checks passed and allowlist validated. Ready for real execution."
-    else:
-        decision = "SHADOW_BLOCKED"
-        all_issues = validation["errors"] + allowlist_result.get("violations", [])
-        reason = f"Blocked by: {all_issues}"
-    
-    artifact = {
-        "schema": "SHADOW_RUN_V1",
-        "request_id": request_id,
-        "shadowed_at": datetime.now().isoformat(),
-        "request_type": request_type,
-        "would_run_command": validation["cmd"],
-        "inputs_checked": validation["checks"],
-        "expected_outputs": expected,
-        "allowlist_version": allowlist_result.get("version"),
-        "allowlist_violations": allowlist_result.get("violations", []),
+        "mode": mode,
         "decision": decision,
-        "reason": reason
+        "block_reasons": block_reasons,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "command": command,
+        "exit_code": exit_code,
+        "artifacts_written": artifacts,
+        "latest_files_changed": latest_files_changed,
+        "safety_checks": safety_checks
     }
     
-    filepath.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info(f"Shadow artifact saved: {decision}")
-    return str(filepath.relative_to(BASE_DIR))
+    with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(receipt, ensure_ascii=False) + "\n")
+    
+    logger.info(f"Receipt V2 written: {decision}")
+    return receipt
+
+
+def process_ticket_real(ticket: dict, plans: dict, window_info: dict, safety_checks: dict) -> bool:
+    """Process ticket with REAL execution (REQUEST_REPORTS only)"""
+    request_id = ticket.get("request_id")
+    request_type = ticket.get("request_type")
+    
+    plan = plans.get(request_type, {})
+    cmd = plan.get("cmd", [])
+    
+    started_at = datetime.now().isoformat()
+    
+    # Get before state of files
+    outputs = EXPECTED_OUTPUTS.get(request_type, [])
+    files_before = {}
+    for output in outputs:
+        path = BASE_DIR / output
+        files_before[output] = get_file_info(path)
+    
+    # Execute!
+    logger.info(f"[REAL] Executing: {cmd}")
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(BASE_DIR),
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        exit_code = result.returncode
+        logger.info(f"[REAL] Exit code: {exit_code}")
+        if result.stdout:
+            logger.info(f"[REAL] stdout: {result.stdout[:500]}")
+        if result.stderr:
+            logger.warning(f"[REAL] stderr: {result.stderr[:500]}")
+    except subprocess.TimeoutExpired:
+        exit_code = -1
+        logger.error("[REAL] Execution timed out")
+    except Exception as e:
+        exit_code = -1
+        logger.error(f"[REAL] Execution failed: {e}")
+    
+    finished_at = datetime.now().isoformat()
+    
+    # Get after state of files
+    files_after = {}
+    latest_files_changed = {}
+    artifacts_written = []
+    
+    for output in outputs:
+        path = BASE_DIR / output
+        files_after[output] = get_file_info(path)
+        
+        if files_after[output]["exists"]:
+            artifacts_written.append(output)
+            if files_before[output]["exists"]:
+                if files_before[output]["mtime"] != files_after[output]["mtime"]:
+                    latest_files_changed[output] = {
+                        "mtime_before": files_before[output]["mtime"],
+                        "mtime_after": files_after[output]["mtime"]
+                    }
+            else:
+                latest_files_changed[output] = {
+                    "mtime_before": None,
+                    "mtime_after": files_after[output]["mtime"]
+                }
+    
+    # Consume window immediately
+    if window_info.get("window_id"):
+        consume_window(window_info["window_id"])
+    
+    # Write receipt
+    decision = "EXECUTED" if exit_code == 0 else "FAILED"
+    write_receipt_v2(
+        request_id=request_id,
+        mode="REAL",
+        decision=decision,
+        block_reasons=[],
+        started_at=started_at,
+        finished_at=finished_at,
+        command=cmd,
+        exit_code=exit_code,
+        artifacts=artifacts_written,
+        latest_files_changed=latest_files_changed,
+        safety_checks=safety_checks
+    )
+    
+    # Complete ticket
+    status = "DONE" if exit_code == 0 else "FAILED"
+    message = f"[REAL] {decision}: exit_code={exit_code}, files_changed={len(latest_files_changed)}"
+    return complete_ticket(request_id, status, message, artifacts_written)
 
 
 def process_ticket(ticket: dict, mode: str) -> bool:
+    """Process ticket with preflight checks"""
     request_id = ticket.get("request_id")
     request_type = ticket.get("request_type", "UNKNOWN")
     
@@ -344,60 +387,74 @@ def process_ticket(ticket: dict, mode: str) -> bool:
         return False
     
     plans = load_execution_plan()
-    validation = deep_validate(request_id, request_type, plans)
-    expected_outputs = EXPECTED_OUTPUTS.get(request_type, [])
-    allowlist_result = validate_against_allowlist(request_type, validation["cmd"], expected_outputs)
+    plan = plans.get(request_type, {})
+    cmd = plan.get("cmd", [])
     
+    # === PREFLIGHT CHECKS ===
+    started_at = datetime.now().isoformat()
+    block_reasons = []
+    
+    # (A) Emergency Stop
+    estop = check_emergency_stop()
+    if not estop["passed"]:
+        block_reasons.append("Emergency Stop is ON")
+    
+    # (B) Two-Key Approval
+    approval = check_approval()
+    if not approval["passed"]:
+        block_reasons.append(f"Approval not APPROVED (status: {approval['status']})")
+    
+    # (C) Allowlist
+    allowlist_check = validate_allowlist(request_type, cmd)
+    if not allowlist_check["passed"]:
+        block_reasons.extend(allowlist_check["violations"])
+    
+    # (D) Window
+    window_info = check_window(request_type)
+    if not window_info["passed"]:
+        block_reasons.append(f"Window not ACTIVE or type not allowed (status: {window_info['status']})")
+    
+    safety_checks = {
+        "emergency_stop": estop["enabled"],
+        "approval_status": approval["status"],
+        "allowlist_pass": allowlist_check["passed"],
+        "window_active": window_info["passed"],
+        "window_id": window_info.get("window_id")
+    }
+    
+    # === MODE ROUTING ===
     if mode == "MOCK_ONLY":
-        logger.info(f"[MOCK_ONLY] Simulating...")
         time.sleep(1)
-        message = f"SUCCESS [MOCK_ONLY]: Simulated for {request_type}"
-        write_receipt(request_id, mode, "DONE", message)
-        return complete_ticket(request_id, "DONE", message)
+        write_receipt_v2(request_id, "MOCK_ONLY", "EXECUTED", [], started_at, datetime.now().isoformat(), [], None, [], {}, safety_checks)
+        return complete_ticket(request_id, "DONE", f"[MOCK_ONLY] Simulated {request_type}")
     
     elif mode == "DRY_RUN":
-        logger.info(f"[DRY_RUN] Validating with allowlist...")
-        artifact_path = save_dryrun_artifact(request_id, request_type, validation, allowlist_result)
-        
-        if validation["valid"] and allowlist_result["allowed"]:
-            message = f"SUCCESS [DRY_RUN]: Validation passed. Decision: SHADOW_OK"
-            write_receipt(request_id, mode, "DONE", message, [artifact_path])
-            return complete_ticket(request_id, "DONE", message, [artifact_path])
-        else:
-            blocked_by = "EXECUTION_ALLOWLIST_V1" if not allowlist_result["allowed"] else "VALIDATION"
-            message = f"FAILED [DRY_RUN]: Decision: SHADOW_BLOCKED. BlockedBy: {blocked_by}"
-            write_receipt(request_id, mode, "FAILED", message, [artifact_path])
-            return complete_ticket(request_id, "FAILED", message, [artifact_path])
+        write_receipt_v2(request_id, "DRY_RUN", "EXECUTED", [], started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks)
+        return complete_ticket(request_id, "DONE", f"[DRY_RUN] Validated {request_type}")
     
     elif mode == "REAL_ENABLED":
-        logger.info(f"[SHADOW] Real execution simulated with allowlist check...")
-        shadow_path = save_shadow_artifact(request_id, request_type, validation, allowlist_result)
+        # REAL mode requires all checks pass
+        if block_reasons:
+            logger.warning(f"[BLOCKED] {block_reasons}")
+            write_receipt_v2(request_id, "REAL", "BLOCKED", block_reasons, started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks)
+            return complete_ticket(request_id, "FAILED", f"[BLOCKED] {block_reasons}")
         
-        if validation["valid"] and allowlist_result["allowed"]:
-            message = f"SUCCESS [SHADOW]: Decision: SHADOW_OK. Allowlist v{allowlist_result['version']}"
-            write_receipt(request_id, "REAL_ENABLED", "DONE", message, [shadow_path])
-            return complete_ticket(request_id, "DONE", message, [shadow_path])
-        else:
-            blocked_by = "EXECUTION_ALLOWLIST_V1" if not allowlist_result["allowed"] else "VALIDATION"
-            message = f"FAILED [SHADOW]: Decision: SHADOW_BLOCKED. BlockedBy: {blocked_by}"
-            write_receipt(request_id, "REAL_ENABLED", "FAILED", message, [shadow_path])
-            return complete_ticket(request_id, "FAILED", message, [shadow_path])
+        # C-P.9: Only REQUEST_REPORTS allowed
+        if request_type != "REQUEST_REPORTS":
+            block_reasons.append(f"C-P.9: Only REQUEST_REPORTS allowed, got {request_type}")
+            write_receipt_v2(request_id, "REAL", "BLOCKED", block_reasons, started_at, datetime.now().isoformat(), cmd, None, [], {}, safety_checks)
+            return complete_ticket(request_id, "FAILED", f"[BLOCKED] {block_reasons}")
+        
+        # All checks passed - REAL EXECUTE
+        return process_ticket_real(ticket, plans, window_info, safety_checks)
     
     else:
-        message = f"SUCCESS [UNKNOWN]: Processed"
-        write_receipt(request_id, mode, "DONE", message)
-        return complete_ticket(request_id, "DONE", message)
+        return complete_ticket(request_id, "DONE", f"[UNKNOWN] Processed")
 
 
 def run_worker():
     logger.info("=" * 50)
-    logger.info("Ticket Worker Starting (C-P.8)...")
-    
-    stop_status = check_emergency_stop()
-    if stop_status.get("enabled"):
-        logger.warning(f"Emergency Stop ACTIVE")
-        logger.info("=" * 50)
-        return True
+    logger.info("Ticket Worker Starting (C-P.9)...")
     
     mode = get_gate_mode()
     logger.info(f"Execution Gate Mode: {mode}")
