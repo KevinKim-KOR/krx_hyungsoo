@@ -578,7 +578,171 @@ def create_ticket(ticket: TicketSubmit):
         )
 
 
+# --- Phase C-P.2: Ticket Status Board APIs ---
+
+TICKET_RESULTS_FILE = TICKETS_DIR / "ticket_results.jsonl"
+
+def read_jsonl(path: Path) -> List[Dict]:
+    """JSONL 파일 읽기"""
+    if not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8").strip().split("\n")
+    return [json.loads(line) for line in lines if line.strip()]
+
+def get_ticket_current_status(request_id: str) -> str:
+    """티켓의 현재 상태 조회 (State Machine)"""
+    requests = read_jsonl(TICKETS_DIR / "ticket_requests.jsonl")
+    results = read_jsonl(TICKET_RESULTS_FILE)
+    
+    # 해당 request_id의 요청 찾기
+    req = next((r for r in requests if r.get("request_id") == request_id), None)
+    if not req:
+        return "NOT_FOUND"
+    
+    # 해당 request_id의 결과들 중 최신 상태
+    req_results = [r for r in results if r.get("request_id") == request_id]
+    if not req_results:
+        return "OPEN"  # 결과 없으면 OPEN
+    
+    # processed_at 기준 최신
+    latest = max(req_results, key=lambda x: x.get("processed_at", ""))
+    return latest.get("status", "OPEN")
+
+def append_ticket_result(result: Dict):
+    """결과 Append (Append-only)"""
+    TICKETS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(TICKET_RESULTS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+
+class TicketConsume(BaseModel):
+    request_id: str
+    processor_id: str = "manual"
+
+@app.post("/api/tickets/consume", summary="티켓 소비 (OPEN → IN_PROGRESS)")
+def consume_ticket(data: TicketConsume):
+    """티켓을 IN_PROGRESS 상태로 전이 (State Machine)"""
+    logger.info(f"티켓 소비 요청: {data.request_id}")
+    
+    current = get_ticket_current_status(data.request_id)
+    
+    if current == "NOT_FOUND":
+        return JSONResponse(status_code=404, content={"result": "FAIL", "message": "Ticket not found"})
+    
+    if current != "OPEN":
+        return JSONResponse(
+            status_code=409,
+            content={"result": "CONFLICT", "message": f"Cannot consume. Current status: {current}", "current_status": current}
+        )
+    
+    result = {
+        "schema": "TICKET_RESULT_V1",
+        "result_id": str(uuid.uuid4()),
+        "request_id": data.request_id,
+        "processed_at": datetime.now().isoformat(),
+        "status": "IN_PROGRESS",
+        "processor_id": data.processor_id,
+        "message": "티켓 처리 시작",
+        "artifacts": []
+    }
+    
+    append_ticket_result(result)
+    logger.info(f"티켓 소비 완료: {data.request_id} → IN_PROGRESS")
+    
+    return {"result": "OK", "request_id": data.request_id, "new_status": "IN_PROGRESS", "result_id": result["result_id"]}
+
+
+class TicketComplete(BaseModel):
+    request_id: str
+    status: str  # DONE or FAILED
+    message: str = ""
+    processor_id: str = "manual"
+    artifacts: List[str] = []
+
+@app.post("/api/tickets/complete", summary="티켓 완료 (IN_PROGRESS → DONE/FAILED)")
+def complete_ticket(data: TicketComplete):
+    """티켓을 DONE 또는 FAILED 상태로 전이 (State Machine)"""
+    logger.info(f"티켓 완료 요청: {data.request_id} → {data.status}")
+    
+    if data.status not in ["DONE", "FAILED"]:
+        return JSONResponse(status_code=400, content={"result": "FAIL", "message": "status must be DONE or FAILED"})
+    
+    current = get_ticket_current_status(data.request_id)
+    
+    if current == "NOT_FOUND":
+        return JSONResponse(status_code=404, content={"result": "FAIL", "message": "Ticket not found"})
+    
+    if current != "IN_PROGRESS":
+        return JSONResponse(
+            status_code=409,
+            content={"result": "CONFLICT", "message": f"Cannot complete. Current status: {current}", "current_status": current}
+        )
+    
+    result = {
+        "schema": "TICKET_RESULT_V1",
+        "result_id": str(uuid.uuid4()),
+        "request_id": data.request_id,
+        "processed_at": datetime.now().isoformat(),
+        "status": data.status,
+        "processor_id": data.processor_id,
+        "message": data.message,
+        "artifacts": data.artifacts
+    }
+    
+    append_ticket_result(result)
+    logger.info(f"티켓 완료: {data.request_id} → {data.status}")
+    
+    return {"result": "OK", "request_id": data.request_id, "new_status": data.status, "result_id": result["result_id"]}
+
+
+@app.get("/api/tickets/latest", summary="티켓 상태 보드 (TICKETS_BOARD_V1)")
+def get_tickets_board():
+    """티켓 상태 보드 조회 (Synthesized View)"""
+    requests = read_jsonl(TICKETS_DIR / "ticket_requests.jsonl")
+    results = read_jsonl(TICKET_RESULTS_FILE)
+    
+    board = []
+    for req in requests:
+        rid = req.get("request_id")
+        
+        # 해당 request_id의 최신 결과
+        req_results = [r for r in results if r.get("request_id") == rid]
+        if req_results:
+            latest = max(req_results, key=lambda x: x.get("processed_at", ""))
+            current_status = latest.get("status", "OPEN")
+            last_message = latest.get("message", "")
+            last_processed_at = latest.get("processed_at", "")
+        else:
+            current_status = "OPEN"
+            last_message = ""
+            last_processed_at = None
+        
+        board.append({
+            "request_id": rid,
+            "requested_at": req.get("requested_at"),
+            "request_type": req.get("request_type"),
+            "payload": req.get("payload"),
+            "trace_id": req.get("trace_id"),
+            "current_status": current_status,
+            "last_message": last_message,
+            "last_processed_at": last_processed_at
+        })
+    
+    # 최신순 정렬
+    board.sort(key=lambda x: x.get("requested_at", ""), reverse=True)
+    
+    return {
+        "status": "ready",
+        "schema": "TICKETS_BOARD_V1",
+        "asof": datetime.now().isoformat(),
+        "row_count": len(board),
+        "rows": board,
+        "error": None
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+
 

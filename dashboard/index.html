@@ -536,6 +536,77 @@
             )
         }
 
+        function TicketsView({ data }) {
+            if (!data || data.status === 'not_ready') {
+                return (
+                    <div className="flex flex-col items-center justify-center py-20 border border-dashed border-slate-700 rounded-lg opacity-70">
+                        <div className="text-4xl mb-4">🎫</div>
+                        <h3 className="text-xl font-bold text-slate-400">티켓 데이터 없음</h3>
+                        <p className="text-sm text-slate-500 mt-2">아직 생성된 티켓이 없습니다.</p>
+                    </div>
+                );
+            }
+
+            const statusBadge = (status) => {
+                const colors = {
+                    'OPEN': 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+                    'IN_PROGRESS': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                    'DONE': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                    'FAILED': 'bg-red-500/20 text-red-400 border-red-500/30'
+                };
+                return `px-2 py-0.5 rounded text-xs font-bold border ${colors[status] || colors['OPEN']}`;
+            };
+
+            const formatTime = (isoStr) => {
+                if (!isoStr) return '-';
+                const d = new Date(isoStr);
+                return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            };
+
+            const rows = data.rows || [];
+
+            return (
+                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                    <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span className="w-1 h-5 bg-cyan-500 rounded"></span> Ticket Status Board
+                        <span className="text-sm font-normal text-slate-500">({rows.length} tickets)</span>
+                    </h2>
+                    {rows.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500 bg-slate-900/50 rounded-lg border border-dashed border-slate-700">
+                            No tickets yet
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-slate-400">
+                                <thead className="text-slate-500 uppercase bg-slate-900/50">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-l-lg">Requested At</th>
+                                        <th className="px-4 py-3">Type</th>
+                                        <th className="px-4 py-3">Trace ID</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 rounded-r-lg">Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((t, idx) => (
+                                        <tr key={t.request_id || idx} className="border-b border-slate-700 hover:bg-slate-700/30 transition-colors">
+                                            <td className="px-4 py-3 font-mono text-xs">{formatTime(t.requested_at)}</td>
+                                            <td className="px-4 py-3">{t.request_type}</td>
+                                            <td className="px-4 py-3 font-mono text-xs">{t.trace_id || '-'}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={statusBadge(t.current_status)}>{t.current_status}</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-500 truncate max-w-[200px]">{t.last_message || '-'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         function App() {
             const [status, setStatus] = useState(null);
             const [portfolio, setPortfolio] = useState(null);
@@ -549,6 +620,7 @@
             const [dailyRows, setDailyRows] = useState(null);
 
             const [gatekeeperData, setGatekeeperData] = useState(null);
+            const [ticketsData, setTicketsData] = useState(null);
             const [activeTab, setActiveTab] = useState("dashboard");
 
             // Integrity Check Logic
@@ -651,6 +723,13 @@
                     const vRes = await fetch(`${API_BASE}/api/validation`);
                     setValidationData(await vRes.json());
 
+                    // Phase C-P.2: Tickets Board
+                    const tRes = await fetch(`${API_BASE}/api/tickets/latest`);
+                    if (tRes.ok) {
+                        const tData = await tRes.json();
+                        setTicketsData(tData);
+                    }
+
                 } catch (e) {
                     console.error("Fetch Error", e);
                     setStatus({ badge: "ERROR", message: "Backend Disconnected", read_quality: "failed" });
@@ -695,8 +774,8 @@
                         <IntegrityBanner issues={integrityIssues} />
 
                         {/* Tab Nav */}
-                        <div className="flex gap-1 bg-slate-800 p-1 rounded-lg mb-8 mx-auto max-w-3xl">
-                            {['dashboard', 'signals', 'validation', 'diagnosis', 'gatekeeper', 'logs'].map(tab => (
+                        <div className="flex gap-1 bg-slate-800 p-1 rounded-lg mb-8 mx-auto max-w-4xl">
+                            {['dashboard', 'signals', 'validation', 'diagnosis', 'gatekeeper', 'tickets', 'logs'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -777,6 +856,10 @@
 
                             {activeTab === 'gatekeeper' && (
                                 <GatekeeperView data={gatekeeperData} />
+                            )}
+
+                            {activeTab === 'tickets' && (
+                                <TicketsView data={ticketsData} />
                             )}
 
                             {activeTab === 'logs' && (

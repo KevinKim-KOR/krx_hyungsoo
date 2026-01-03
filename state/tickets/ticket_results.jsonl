@@ -1,0 +1,2 @@
+{"schema": "TICKET_RESULT_V1", "result_id": "03e5c936-4fa1-4d83-a77b-2e1b801fd787", "request_id": "ad90c8b2-25fb-40b6-baf9-71d7f686431d", "processed_at": "2026-01-03T14:59:27.726772", "status": "IN_PROGRESS", "processor_id": "test_worker", "message": "티켓 처리 시작", "artifacts": []}
+{"schema": "TICKET_RESULT_V1", "result_id": "e519f01e-588f-4889-bd44-1d998b9cf378", "request_id": "ad90c8b2-25fb-40b6-baf9-71d7f686431d", "processed_at": "2026-01-03T14:59:43.462475", "status": "DONE", "processor_id": "manual", "message": "Test completed", "artifacts": []}
