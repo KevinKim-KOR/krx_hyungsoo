@@ -501,8 +501,8 @@ def process_ticket(ticket: dict, mode: str) -> bool:
             write_receipt_v3(request_id, request_type, "REAL", "BLOCKED", None, outputs_proof, acceptance, safety_checks)
             return complete_ticket(request_id, "FAILED", f"[BLOCKED] {block_reasons}")
         
-        # Deep Preflight for RECONCILE
-        if request_type == "REQUEST_RECONCILE":
+        # Deep Preflight for RECONCILE and REPORTS (C-P.12)
+        if request_type in ["REQUEST_RECONCILE", "REQUEST_REPORTS"]:
             preflight_result = run_preflight(request_id, request_type)
             preflight_path = preflight_result.get("artifact_path")
             

@@ -1,0 +1,35 @@
+{
+  "schema": "RECONCILE_PREFLIGHT_V1",
+  "asof": "2026-01-04T11:55:55.204274",
+  "request_id": "eecfcd84-eacd-4d5b-9d7c-6ff44c488f86",
+  "request_type": "REQUEST_REPORTS",
+  "checks": {
+    "import_check": {
+      "status": "PASS",
+      "detail": "pandas=2.3.3, pyarrow=22.0.0"
+    },
+    "input_ready_check": {
+      "status": "PASS",
+      "detail": "config exists"
+    },
+    "output_writable_check": {
+      "status": "PASS",
+      "detail": "reports\\phase_c\\latest"
+    },
+    "allowlist_check": {
+      "status": "PASS",
+      "detail": "REQUEST_REPORTS allowed"
+    },
+    "gate_check": {
+      "status": "PASS",
+      "detail": "gate=REAL_ENABLED, estop=OFF, window=ACTIVE"
+    }
+  },
+  "effective_plan": [
+    "python",
+    "-m",
+    "app.reconcile"
+  ],
+  "decision": "PREFLIGHT_PASS",
+  "fail_reasons": []
+}

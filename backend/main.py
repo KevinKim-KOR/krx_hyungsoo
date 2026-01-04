@@ -1149,7 +1149,7 @@ def create_real_window(data: WindowRequest):
         "expires_at": (now + timedelta(seconds=data.ttl_seconds)).isoformat(),
         "created_by": "api",
         "reason": data.reason,
-        "allowed_request_types": ["REQUEST_RECONCILE"],  # C-P.11: REQUEST_RECONCILE만
+        "allowed_request_types": ["REQUEST_RECONCILE", "REQUEST_REPORTS"],  # C-P.12
         "max_real_executions": 1,  # C-P.9 고정
         "real_executions_used": 0,
         "status": "ACTIVE"

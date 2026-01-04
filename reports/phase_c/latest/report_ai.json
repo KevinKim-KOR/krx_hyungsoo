@@ -1,8 +1,8 @@
 {
   "contract_id": "CONTRACT_5",
   "schema_version": "REPORT_AI_V1",
-  "generated_at": "2026-01-03T20:35:38.318207Z",
-  "asof": "2026-01-03T20:35:38.318207Z",
+  "generated_at": "2026-01-04T11:55:55.249544Z",
+  "asof": "2026-01-04T11:55:55.249544Z",
   "kpi_vector": {
     "gate_open_days": 0,
     "executed_days": 0,
