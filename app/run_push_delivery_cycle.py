@@ -1,14 +1,16 @@
 """
-Push Delivery Cycle Runner (C-P.18)
+Push Delivery Cycle Runner V2 (C-P.19)
 푸시 메시지 발송 결정 라우터
 
 주의:
-- 실제 외부 발송 절대 금지
+- 실제 외부 발송 절대 금지 (Hard Rule)
 - Console-First 정책
-- Secrets Fallback
+- delivery_actual은 항상 CONSOLE
+- Candidate 판정은 Gate 무관, 기술적 가능성만 평가
 """
 
 import json
+import os
 import uuid
 import logging
 from datetime import datetime
@@ -23,14 +25,33 @@ REPORTS_PUSH_DIR = BASE_DIR / "reports" / "ops" / "push"
 PUSH_MESSAGES_FILE = BASE_DIR / "reports" / "push" / "latest" / "push_messages.json"
 GATE_FILE = STATE_DIR / "execution_gate.json"
 EMERGENCY_STOP_FILE = STATE_DIR / "emergency_stop.json"
-SECRETS_FILE = BASE_DIR / "config" / "secrets.json"
 
 RECEIPTS_FILE = PUSH_STATE_DIR / "push_delivery_receipts.jsonl"
 LATEST_RECEIPT_FILE = REPORTS_PUSH_DIR / "push_delivery_latest.json"
 CONSOLE_OUT_FILE = REPORTS_PUSH_DIR / "console_out_latest.json"
 
-logging.basicConfig(level=logging.INFO, format="[PUSH_DELIVERY] %(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="[PUSH_DELIVERY_V2] %(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Channel Config from PUSH_CHANNELS_V1 Contract
+CHANNEL_CONFIG = {
+    "CONSOLE": {
+        "required_secrets": [],
+        "allowed_push_types": ["*"]
+    },
+    "TELEGRAM": {
+        "required_secrets": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
+        "allowed_push_types": ["ALERT", "DAILY_REPORT", "SIGNAL"]
+    },
+    "SLACK": {
+        "required_secrets": ["SLACK_WEBHOOK_URL"],
+        "allowed_push_types": ["ALERT", "DAILY_REPORT"]
+    },
+    "EMAIL": {
+        "required_secrets": ["SMTP_HOST", "SMTP_USER", "SMTP_PASS", "EMAIL_TO"],
+        "allowed_push_types": ["DAILY_REPORT"]
+    }
+}
 
 
 def load_push_messages() -> list:
@@ -39,14 +60,15 @@ def load_push_messages() -> list:
         return []
     try:
         data = json.loads(PUSH_MESSAGES_FILE.read_text(encoding="utf-8"))
-        return data.get("messages", [])
+        # Support both 'messages' and 'rows' fields
+        return data.get("messages", data.get("rows", []))
     except Exception as e:
         logger.error(f"푸시 메시지 로드 실패: {e}")
         return []
 
 
 def get_gate_mode() -> str:
-    """Gate 모드 조회"""
+    """Gate 모드 조회 (관측용)"""
     if not GATE_FILE.exists():
         return "MOCK_ONLY"
     try:
@@ -67,60 +89,87 @@ def check_emergency_stop() -> bool:
         return False
 
 
-def check_secrets_available() -> bool:
-    """외부 발송 시크릿 존재 확인"""
-    if not SECRETS_FILE.exists():
-        return False
+def get_secrets_status() -> dict:
+    """시크릿 존재 여부 확인 (값 노출 금지)"""
+    # Optional: try to load .env
     try:
-        data = json.loads(SECRETS_FILE.read_text(encoding="utf-8"))
-        # Telegram 봇 토큰과 채팅 ID 확인
-        telegram = data.get("telegram", {})
-        return bool(telegram.get("bot_token") and telegram.get("chat_id"))
-    except Exception:
-        return False
+        from dotenv import load_dotenv
+        env_file = BASE_DIR / ".env"
+        if env_file.exists():
+            load_dotenv(env_file)
+    except ImportError:
+        pass
+
+    all_secrets = set()
+    for config in CHANNEL_CONFIG.values():
+        all_secrets.update(config.get("required_secrets", []))
+    
+    secrets_map = {}
+    for secret_name in all_secrets:
+        # Only check presence, NEVER log or return values
+        secrets_map[secret_name] = {"present": bool(os.environ.get(secret_name))}
+    
+    return secrets_map
 
 
-def determine_channel_decision(gate_mode: str, emergency_stop: bool, secrets_available: bool) -> tuple:
+def evaluate_candidate(push_type: str, secrets_status: dict) -> tuple:
     """
-    채널 결정 정책 적용 (Console-First)
+    Candidate 판정 (Gate 무관, 기술적 가능성만)
     
     Returns:
-        (channel_decision, channel_target, reason_code)
+        (external_candidate: bool, candidate_channels: list, blocked_reason: str|None)
     """
-    # 1. Emergency Stop 최우선
-    if emergency_stop:
-        return ("CONSOLE", "console", "EMERGENCY_STOP_FORCED_CONSOLE")
+    candidate_channels = []
+    blocked_reasons = []
     
-    # 2. Gate 모드 확인
-    if gate_mode == "MOCK_ONLY":
-        return ("CONSOLE", "console", "GATE_MOCK_ONLY_CONSOLE")
-    
-    if gate_mode == "DRY_RUN":
-        return ("CONSOLE", "console", "GATE_DRY_RUN_CONSOLE_ONLY")
-    
-    # 3. REAL_ENABLED + Secrets 확인
-    if gate_mode == "REAL_ENABLED":
-        if secrets_available:
-            return ("EXTERNAL", "telegram", "EXTERNAL_ALLOWED")
+    for channel, config in CHANNEL_CONFIG.items():
+        if channel == "CONSOLE":
+            continue  # CONSOLE is always available
+        
+        required = config.get("required_secrets", [])
+        allowed_types = config.get("allowed_push_types", [])
+        
+        # Check push_type allowed
+        if "*" not in allowed_types and push_type not in allowed_types:
+            blocked_reasons.append(f"{channel}:PUSH_TYPE_NOT_ALLOWED")
+            continue
+        
+        # Check all required secrets present
+        all_present = all(
+            secrets_status.get(s, {}).get("present", False) 
+            for s in required
+        )
+        
+        if all_present:
+            candidate_channels.append(channel)
         else:
-            return ("CONSOLE", "console", "NO_SECRET_FALLBACK_CONSOLE")
+            blocked_reasons.append(f"{channel}:NO_SECRETS")
     
-    # 기본: CONSOLE
-    return ("CONSOLE", "console", "UNKNOWN_GATE_FALLBACK_CONSOLE")
+    if candidate_channels:
+        return (True, candidate_channels, None)
+    else:
+        # Determine primary blocked reason
+        if all("PUSH_TYPE_NOT_ALLOWED" in r for r in blocked_reasons):
+            return (False, [], "PUSH_TYPE_NOT_ALLOWED")
+        else:
+            return (False, [], "NO_SECRETS_FOR_ANY_CHANNEL")
 
 
 def run_push_delivery_cycle() -> dict:
-    """푸시 발송 결정 사이클 실행"""
+    """푸시 발송 결정 사이클 실행 (V2)"""
     delivery_run_id = str(uuid.uuid4())
     asof = datetime.now().isoformat()
     
-    # 컨텍스트 로드
+    # Context 로드
     messages = load_push_messages()
-    gate_mode = get_gate_mode()
+    gate_mode_observed = get_gate_mode()  # 관측용만
     emergency_stop = check_emergency_stop()
-    secrets_available = check_secrets_available()
+    secrets_status = get_secrets_status()
     
-    logger.info(f"Gate Mode: {gate_mode}, Emergency Stop: {emergency_stop}, Secrets: {secrets_available}")
+    # Check if any external secrets are available
+    has_any_secrets = any(s.get("present", False) for s in secrets_status.values())
+    
+    logger.info(f"Gate Mode (observed): {gate_mode_observed}, Emergency Stop: {emergency_stop}")
     logger.info(f"Messages to process: {len(messages)}")
     
     # 결정 수행
@@ -128,42 +177,75 @@ def run_push_delivery_cycle() -> dict:
     console_output = []
     summary = {"total_messages": len(messages), "console": 0, "external": 0, "skipped": 0}
     
+    # Candidate 판정 (전체 메시지에 대해 동일하게 적용)
+    # 기본 push_type은 ALERT로 간주 (메시지에 타입이 있으면 사용)
+    default_push_type = "ALERT"
+    
+    # 전체 Routing 결정 (V2)
+    if messages:
+        sample_push_type = messages[0].get("push_type", default_push_type)
+        external_candidate, candidate_channels, blocked_reason = evaluate_candidate(
+            sample_push_type, secrets_status
+        )
+    else:
+        external_candidate = False
+        candidate_channels = []
+        blocked_reason = "NO_MESSAGES"
+    
     for msg in messages:
         message_id = msg.get("id", str(uuid.uuid4()))
-        channel_decision, channel_target, reason_code = determine_channel_decision(
-            gate_mode, emergency_stop, secrets_available
-        )
+        push_type = msg.get("push_type", default_push_type)
+        
+        # 개별 메시지 candidate 판정
+        msg_candidate, msg_channels, msg_blocked = evaluate_candidate(push_type, secrets_status)
+        
+        # 🛑 Hard Rule: delivery_actual은 항상 CONSOLE
+        reason_code = msg_blocked if msg_blocked else "CONSOLE_ONLY_MODE"
         
         decisions.append({
             "message_id": message_id,
-            "channel_decision": channel_decision,
-            "channel_target": channel_target,
-            "reason_code": reason_code
+            "channel_decision": "CONSOLE",  # Always CONSOLE
+            "channel_target": "console",
+            "reason_code": reason_code,
+            "candidate_info": {
+                "external_candidate": msg_candidate,
+                "candidate_channels": msg_channels
+            }
         })
         
-        if channel_decision == "CONSOLE":
-            summary["console"] += 1
-            console_output.append({
-                "message_id": message_id,
-                "title": msg.get("title", ""),
-                "content": msg.get("content", msg.get("body", "")),
-                "reason_code": reason_code
-            })
-        elif channel_decision == "EXTERNAL":
-            summary["external"] += 1
-            # 실제 발송은 하지 않음 (시뮬레이션만)
-            logger.info(f"[SIMULATION] External delivery allowed for {message_id}")
+        summary["console"] += 1
+        console_output.append({
+            "message_id": message_id,
+            "title": msg.get("title", ""),
+            "content": msg.get("content", msg.get("body", "")),
+            "push_type": push_type,
+            "reason_code": reason_code
+        })
     
-    # Receipt 생성
+    # Receipt V2 생성
     receipt = {
-        "schema": "PUSH_DELIVERY_RECEIPT_V1",
+        "schema": "PUSH_DELIVERY_RECEIPT_V2",
         "delivery_run_id": delivery_run_id,
         "asof": asof,
-        "gate_mode": gate_mode,
+        
+        # V1 호환 필드
+        "gate_mode": gate_mode_observed,
         "emergency_stop_enabled": emergency_stop,
-        "secrets_available": secrets_available,
+        "secrets_available": has_any_secrets,
         "summary": summary,
-        "decisions": decisions
+        "decisions": decisions,
+        
+        # V2 신규 필드
+        "routing": {
+            "mode": "CONSOLE_ONLY",
+            "external_candidate": external_candidate,
+            "candidate_channels": candidate_channels,
+            "blocked_reason": blocked_reason
+        },
+        "secrets_status_ref": "api:/api/secrets/status",
+        "channel_matrix_version": "PUSH_CHANNELS_V1",
+        "gate_mode_observed": gate_mode_observed,
+        "delivery_actual": "CONSOLE"  # 🛑 Hard Rule: 항상 CONSOLE
     }
     
     # 저장
@@ -179,19 +261,22 @@ def run_push_delivery_cycle() -> dict:
     
     # Console output
     console_dump = {
-        "schema": "CONSOLE_OUT_V1",
+        "schema": "CONSOLE_OUT_V2",
         "delivery_run_id": delivery_run_id,
         "asof": asof,
         "messages": console_output
     }
     CONSOLE_OUT_FILE.write_text(json.dumps(console_dump, ensure_ascii=False, indent=2), encoding="utf-8")
     
-    logger.info(f"Delivery cycle complete: {summary}")
+    logger.info(f"Delivery cycle complete (V2): {summary}")
+    logger.info(f"Candidate: {external_candidate}, Channels: {candidate_channels}")
     
     return {
         "result": "OK",
         "delivery_run_id": delivery_run_id,
         "summary": summary,
+        "routing": receipt["routing"],
+        "delivery_actual": "CONSOLE",
         "receipt_path": str(LATEST_RECEIPT_FILE.relative_to(BASE_DIR)),
         "console_out_path": str(CONSOLE_OUT_FILE.relative_to(BASE_DIR))
     }

@@ -18,13 +18,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-# Load .env if available (Red Team 보완: 환경변수 로딩 보장)
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass  # python-dotenv not installed, use system env only
-
 # --- 1. 환경 설정 및 상수 ---
 BASE_DIR = Path(".")
 LOG_DIR = BASE_DIR / "logs"
@@ -1838,6 +1831,52 @@ def run_push_delivery_cycle_api():
     except Exception as e:
         logger.error(f"Push delivery error: {e}")
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+
+# === Secrets Status API (C-P.19) ===
+
+# Required secrets from PUSH_CHANNELS_V1 contract
+REQUIRED_SECRETS = [
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "SLACK_WEBHOOK_URL",
+    "SMTP_HOST",
+    "SMTP_USER",
+    "SMTP_PASS",
+    "EMAIL_TO"
+]
+
+
+@app.get("/api/secrets/status", summary="시크릿 존재 여부 조회")
+def get_secrets_status():
+    """Secrets Status API (C-P.19) - 값 노출 금지, present 여부만"""
+    import os
+    
+    # Optional: try to load .env if python-dotenv is available
+    try:
+        from dotenv import load_dotenv
+        env_file = BASE_DIR / ".env"
+        if env_file.exists():
+            load_dotenv(env_file)
+    except ImportError:
+        pass  # python-dotenv not installed, use system env only
+    
+    secrets_map = {}
+    for secret_name in REQUIRED_SECRETS:
+        # Only check presence, NEVER log or return values
+        secrets_map[secret_name] = {"present": bool(os.environ.get(secret_name))}
+    
+    return {
+        "status": "ready",
+        "schema": "SECRETS_STATUS_V1",
+        "asof": datetime.now().isoformat(),
+        "row_count": len(REQUIRED_SECRETS),
+        "rows": [{
+            "provider": "ENV_ONLY",
+            "secrets": secrets_map
+        }],
+        "error": None
+    }
 
 
 if __name__ == "__main__":

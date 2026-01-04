@@ -1,8 +1,12 @@
 # Contract: Push Delivery V1
 
+> ⚠️ **DEPRECATED**: superseded by [contract_push_delivery_receipt_v2.md](contract_push_delivery_receipt_v2.md)
+> 
+> 이 문서는 더 이상 활성 상태가 아닙니다. V2를 참조하세요.
+
 **Version**: 1.0
 **Date**: 2026-01-04
-**Status**: LOCKED
+**Status**: DEPRECATED
 
 ---
 

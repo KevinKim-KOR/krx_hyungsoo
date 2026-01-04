@@ -1,7 +1,7 @@
 {
-    "version": "1.19",
+    "version": "1.20",
     "asof": "2026-01-04",
-    "description": "Active Surface Registry (Phase C-P.18)",
+    "description": "Active Surface Registry (Phase C-P.19)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -95,7 +95,8 @@
         "/api/ops/cycle/run",
         "/api/ops/health",
         "/api/push/delivery/latest",
-        "/api/push/delivery/run"
+        "/api/push/delivery/run",
+        "/api/secrets/status"
     ],
     "forbidden_paths": [
         "_archive/**"
