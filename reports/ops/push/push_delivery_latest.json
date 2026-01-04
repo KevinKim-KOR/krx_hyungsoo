@@ -1,0 +1,15 @@
+{
+  "schema": "PUSH_DELIVERY_RECEIPT_V1",
+  "delivery_run_id": "56c28394-3fc5-4fdf-bd09-8d181219fe39",
+  "asof": "2026-01-04T17:42:08.518109",
+  "gate_mode": "MOCK_ONLY",
+  "emergency_stop_enabled": false,
+  "secrets_available": false,
+  "summary": {
+    "total_messages": 0,
+    "console": 0,
+    "external": 0,
+    "skipped": 0
+  },
+  "decisions": []
+}

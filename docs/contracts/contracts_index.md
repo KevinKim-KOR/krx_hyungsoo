@@ -71,6 +71,7 @@
 | `OPS_RUNNER_V1` | [contract_ops_runner_v1.md](contract_ops_runner_v1.md) | 운영 관측 루프 |
 | `OPS_CYCLE_V2` | [contract_ops_cycle_v2.md](contract_ops_cycle_v2.md) | Ops Cycle + 티켓 처리 |
 | `SCHEDULER_V1` | [contract_scheduler_v1.md](contract_scheduler_v1.md) | 일일 스케줄러 |
+| `PUSH_DELIVERY_V1` | [contract_push_delivery_v1.md](contract_push_delivery_v1.md) | 푸시 발송 결정 |
 
 ---
 

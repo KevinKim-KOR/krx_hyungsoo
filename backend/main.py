@@ -1784,6 +1784,55 @@ def get_ops_health():
         }
 
 
+# === Push Delivery API (C-P.18) ===
+
+PUSH_DELIVERY_LATEST = BASE_DIR / "reports" / "ops" / "push" / "push_delivery_latest.json"
+
+
+@app.get("/api/push/delivery/latest", summary="푸시 발송 결정 최신 조회")
+def get_push_delivery_latest():
+    """Push Delivery Latest Receipt (C-P.18)"""
+    if not PUSH_DELIVERY_LATEST.exists():
+        return {
+            "status": "empty",
+            "schema": "PUSH_DELIVERY_RECEIPT_V1",
+            "data": None,
+            "error": "No delivery receipt yet"
+        }
+    
+    try:
+        data = json.loads(PUSH_DELIVERY_LATEST.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "PUSH_DELIVERY_RECEIPT_V1",
+            "asof": data.get("asof"),
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/api/push/delivery/run", summary="푸시 발송 결정 사이클 실행")
+def run_push_delivery_cycle_api():
+    """Push Delivery Cycle Runner API (C-P.18)"""
+    try:
+        from app.run_push_delivery_cycle import run_push_delivery_cycle
+        result = run_push_delivery_cycle()
+        return {
+            "status": "ready",
+            "schema": "PUSH_DELIVERY_RECEIPT_V1",
+            "data": result,
+            "error": None
+        }
+    except ImportError as e:
+        logger.error(f"Import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
+    except Exception as e:
+        logger.error(f"Push delivery error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
