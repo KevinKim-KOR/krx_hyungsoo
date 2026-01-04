@@ -1,0 +1,31 @@
+{
+  "schema": "OPS_CYCLE_RUN_V2",
+  "run_id": "N/A",
+  "asof": "2026-01-04T17:12:40.168669",
+  "started_at": "2026-01-04T17:12:40.166243",
+  "finished_at": "2026-01-04T17:12:40.168672",
+  "overall_status": "STOPPED",
+  "ops_report_ref": "",
+  "ticket_step": {
+    "attempted": false,
+    "selected_request_id": null,
+    "selected_request_type": null,
+    "decision": "SKIPPED",
+    "reason": "EMERGENCY_STOP_ACTIVE",
+    "receipt_ref": null
+  },
+  "safety_snapshot": {
+    "emergency_stop_enabled": true,
+    "execution_gate_mode": "MOCK_ONLY",
+    "window_active": true,
+    "allowlist_version": "1.0"
+  },
+  "counters": {
+    "tickets_open": 0,
+    "tickets_in_progress": 1,
+    "tickets_done": 14,
+    "tickets_failed": 12,
+    "tickets_blocked": 8,
+    "skips_this_run": 1
+  }
+}

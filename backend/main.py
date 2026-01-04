@@ -1706,6 +1706,84 @@ def run_ops_cycle_api():
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
+@app.get("/api/ops/health", summary="운영 상태 헬스체크")
+def get_ops_health():
+    """Ops Health Check API (C-P.17)"""
+    try:
+        # Emergency Stop
+        emergency_stop = {"enabled": False, "reason": None}
+        stop_file = STATE_DIR / "emergency_stop.json"
+        if stop_file.exists():
+            data = json.loads(stop_file.read_text(encoding="utf-8"))
+            emergency_stop = {
+                "enabled": data.get("enabled", False),
+                "reason": data.get("reason")
+            }
+        
+        # Execution Gate
+        gate_mode = "MOCK_ONLY"
+        gate_file = STATE_DIR / "execution_gate.json"
+        if gate_file.exists():
+            data = json.loads(gate_file.read_text(encoding="utf-8"))
+            gate_mode = data.get("mode", "MOCK_ONLY")
+        
+        # Window Active
+        window_active = False
+        windows_file = STATE_DIR / "real_enable_windows" / "real_enable_windows.jsonl"
+        if windows_file.exists():
+            windows = read_jsonl(windows_file)
+            window_active = any(w.get("status") == "ACTIVE" for w in windows)
+        
+        # Allowlist
+        allowlist_version = "N/A"
+        allowlist_file = BASE_DIR / "docs" / "contracts" / "execution_allowlist_v1.json"
+        if allowlist_file.exists():
+            data = json.loads(allowlist_file.read_text(encoding="utf-8"))
+            allowlist_version = data.get("version", "v1")
+        
+        # Last Ops Report
+        ops_report = None
+        ops_file = BASE_DIR / "reports" / "ops" / "daily" / "ops_report_latest.json"
+        if ops_file.exists():
+            data = json.loads(ops_file.read_text(encoding="utf-8"))
+            ops_report = {
+                "asof": data.get("asof"),
+                "summary": data.get("summary"),
+                "last_done": data.get("last_done"),
+                "last_failed": data.get("last_failed"),
+                "last_blocked": data.get("last_blocked")
+            }
+        
+        # Overall health
+        health = "OK"
+        if emergency_stop.get("enabled"):
+            health = "STOPPED"
+        elif gate_mode == "REAL_ENABLED" and not window_active:
+            health = "WARNING"
+        
+        return {
+            "status": "ready",
+            "schema": "OPS_HEALTH_V1",
+            "asof": datetime.now().isoformat(),
+            "health": health,
+            "data": {
+                "emergency_stop": emergency_stop,
+                "execution_gate_mode": gate_mode,
+                "window_active": window_active,
+                "allowlist_version": allowlist_version,
+                "last_ops_report": ops_report
+            },
+            "error": None
+        }
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return {
+            "status": "error",
+            "health": "ERROR",
+            "error": str(e)
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

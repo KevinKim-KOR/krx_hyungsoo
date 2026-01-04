@@ -1,10 +1,10 @@
 {
   "schema": "DAILY_OPS_REPORT_V1",
-  "asof": "2026-01-04T16:53:16.343148",
+  "asof": "2026-01-04T17:06:55.279894",
   "period": "2026-01-04",
   "summary": {
-    "tickets_total": 8,
-    "done": 2,
+    "tickets_total": 10,
+    "done": 3,
     "failed": 2,
     "blocked": 2
   },
@@ -25,9 +25,9 @@
     "reports/phase_c/latest/report_ai.json"
   ],
   "last_done": {
-    "request_id": "eecfcd84-eacd-4d5b-9d7c-6ff44c488f86",
+    "request_id": "5913cc0b-68d7-4a7b-ac29-eda11e046555",
     "request_type": "REQUEST_REPORTS",
-    "at": "2026-01-04T11:55:55.256551"
+    "at": "2026-01-04T16:53:17.361937"
   },
   "last_failed": null,
   "last_blocked": {

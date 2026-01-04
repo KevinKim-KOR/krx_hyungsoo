@@ -1,7 +1,7 @@
 {
-    "version": "1.17",
+    "version": "1.18",
     "asof": "2026-01-04",
-    "description": "Active Surface Registry (Phase C-P.16)",
+    "description": "Active Surface Registry (Phase C-P.17)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -92,7 +92,8 @@
         "/api/deps/reconcile",
         "/api/deps/reconcile/check",
         "/api/ops/daily",
-        "/api/ops/cycle/run"
+        "/api/ops/cycle/run",
+        "/api/ops/health"
     ],
     "forbidden_paths": [
         "_archive/**"
