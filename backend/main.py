@@ -1149,7 +1149,7 @@ def create_real_window(data: WindowRequest):
         "expires_at": (now + timedelta(seconds=data.ttl_seconds)).isoformat(),
         "created_by": "api",
         "reason": data.reason,
-        "allowed_request_types": ["REQUEST_RECONCILE", "REQUEST_REPORTS"],  # C-P.10
+        "allowed_request_types": ["REQUEST_RECONCILE"],  # C-P.11: REQUEST_RECONCILE만
         "max_real_executions": 1,  # C-P.9 고정
         "real_executions_used": 0,
         "status": "ACTIVE"
@@ -1249,12 +1249,55 @@ def get_reconcile_deps():
     deps = check_reconcile_deps()
     return {
         "status": "ready" if deps["all_deps_ok"] else "missing_deps",
-        "schema": "RECONCILE_DEPENDENCY_V1",
+        "schema": "RECONCILE_DEPENDENCY_V2",
         "asof": datetime.now().isoformat(),
         "row_count": 1,
         "rows": [deps],
         "error": None if deps["all_deps_ok"] else f"Missing: {deps['required_missing']}"
     }
+
+
+DEPS_SNAPSHOT_DIR = BASE_DIR / "state" / "deps"
+DEPS_SNAPSHOT_FILE = DEPS_SNAPSHOT_DIR / "installed_deps_snapshot.json"
+
+
+@app.post("/api/deps/snapshot", summary="의존성 스냅샷 저장")
+def save_deps_snapshot():
+    """설치된 의존성을 스냅샷으로 저장"""
+    DEPS_SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    deps = check_reconcile_deps()
+    
+    snapshot = {
+        "schema": "DEPS_SNAPSHOT_V1",
+        "asof": datetime.now().isoformat(),
+        "python_version": deps.get("python_version"),
+        "packages": {
+            "pandas": deps.get("pandas_version"),
+            "pyarrow": deps.get("pyarrow_version")
+        },
+        "source": "importlib metadata",
+        "all_deps_ok": deps.get("all_deps_ok")
+    }
+    
+    DEPS_SNAPSHOT_FILE.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info(f"Deps snapshot saved: {DEPS_SNAPSHOT_FILE}")
+    
+    return {
+        "result": "OK",
+        "path": str(DEPS_SNAPSHOT_FILE.relative_to(BASE_DIR)),
+        "snapshot": snapshot
+    }
+
+
+@app.get("/api/deps/snapshot", summary="의존성 스냅샷 조회")
+def get_deps_snapshot():
+    """저장된 의존성 스냅샷 조회"""
+    if not DEPS_SNAPSHOT_FILE.exists():
+        return {"status": "not_found", "error": "Snapshot not found"}
+    
+    snapshot = json.loads(DEPS_SNAPSHOT_FILE.read_text(encoding="utf-8"))
+    return {"status": "ready", "snapshot": snapshot}
 
 
 class PreflightRequest(BaseModel):

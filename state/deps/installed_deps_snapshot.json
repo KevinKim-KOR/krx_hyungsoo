@@ -1,0 +1,11 @@
+{
+  "schema": "DEPS_SNAPSHOT_V1",
+  "asof": "2026-01-04T11:12:13.423749",
+  "python_version": "3.13.5",
+  "packages": {
+    "pandas": "2.3.3",
+    "pyarrow": "22.0.0"
+  },
+  "source": "importlib metadata",
+  "all_deps_ok": true
+}

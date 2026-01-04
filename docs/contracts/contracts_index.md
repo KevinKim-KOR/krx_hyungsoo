@@ -56,9 +56,22 @@
 
 ---
 
+## Safety & Receipt Contracts
+
+| 스키마명 | 문서 경로 | 설명 |
+|----------|-----------|------|
+| `EXECUTION_RECEIPT_V3` | [contract_execution_receipt_v3.md](contract_execution_receipt_v3.md) | sha256 기반 증거 |
+| `RECONCILE_DEPENDENCY_V2` | [contract_reconcile_dependency_v2.md](contract_reconcile_dependency_v2.md) | 의존성 정공법 |
+| `RECONCILE_PREFLIGHT_V1` | [contract_reconcile_preflight_v1.md](contract_reconcile_preflight_v1.md) | Preflight 체크 |
+| `REAL_ENABLE_WINDOW_V1` | [contract_real_enable_window_v1.md](contract_real_enable_window_v1.md) | REAL 윈도우 |
+| `EMERGENCY_STOP_V1` | [contract_emergency_stop_v1.md](contract_emergency_stop_v1.md) | 비상 정지 |
+
+---
+
 ## 버전 히스토리
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
 | 1.0 | 2026-01-03 | 초기 버전 (Phase C-S.0) |
 | 2.0 | 2026-01-03 | Ticket, Execution, Push, Worker 관련 계약 추가 (Phase C-P.6.0) |
+| 3.0 | 2026-01-03 | Safety & Receipt 계약 추가 (Phase C-P.11) |

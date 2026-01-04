@@ -1,6 +1,6 @@
 {
   "schema": "RECON_SUMMARY_V1",
-  "generated_at": "2026-01-03T21:22:10.574861Z",
+  "generated_at": "2026-01-04T11:17:22.967880Z",
   "period": {
     "from": "2024-01-01",
     "to": "2025-12-31"
@@ -39,7 +39,7 @@
     }
   },
   "provenance": {
-    "generated_at": "2026-01-03T21:22:10.574937Z",
+    "generated_at": "2026-01-04T11:17:22.967962Z",
     "reconciler_version": "C-R.5",
     "policy_ids": [
       "TRADE_COUNT_POLICY_V1",
