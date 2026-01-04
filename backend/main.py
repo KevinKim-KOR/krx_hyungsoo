@@ -1602,6 +1602,191 @@ def regenerate_daily_ops_report():
     }
 
 
+# === Ops Runner API (C-P.15) ===
+
+OPS_RUNNER_LOCK_FILE = STATE_DIR / "ops_runner.lock"
+OPS_SNAPSHOTS_DIR = OPS_REPORT_DIR / "snapshots"
+LOCK_TIMEOUT_SECONDS = 60
+
+
+def check_emergency_stop_status() -> bool:
+    """비상 정지 상태 확인"""
+    stop_file = STATE_DIR / "emergency_stop.json"
+    if not stop_file.exists():
+        return False
+    try:
+        data = json.loads(stop_file.read_text(encoding="utf-8"))
+        # Note: emergency_stop.json uses 'enabled' key (C-P.15 bugfix)
+        return data.get("enabled", data.get("active", False))
+    except Exception:
+        return False
+
+
+def acquire_ops_lock() -> tuple:
+    """Lock 확보 (중복 실행 방지)"""
+    if OPS_RUNNER_LOCK_FILE.exists():
+        try:
+            lock_data = json.loads(OPS_RUNNER_LOCK_FILE.read_text(encoding="utf-8"))
+            lock_time = datetime.fromisoformat(lock_data.get("locked_at", ""))
+            elapsed = (datetime.now() - lock_time).total_seconds()
+            
+            if elapsed < LOCK_TIMEOUT_SECONDS:
+                return False, f"Locked by {lock_data.get('run_id')} ({elapsed:.0f}s ago)"
+        except Exception:
+            pass
+    
+    run_id = str(uuid.uuid4())
+    lock_data = {
+        "run_id": run_id,
+        "locked_at": datetime.now().isoformat()
+    }
+    OPS_RUNNER_LOCK_FILE.write_text(json.dumps(lock_data, ensure_ascii=False), encoding="utf-8")
+    return True, run_id
+
+
+def release_ops_lock():
+    """Lock 해제"""
+    if OPS_RUNNER_LOCK_FILE.exists():
+        OPS_RUNNER_LOCK_FILE.unlink()
+
+
+def save_ops_run_snapshot(run_id: str, status: str, reason: str, ops_summary: dict, tickets_summary: dict, push_summary: dict, started_at: str) -> str:
+    """스냅샷 저장"""
+    OPS_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    snapshot_path = OPS_SNAPSHOTS_DIR / f"ops_run_{timestamp}.json"
+    
+    snapshot = {
+        "schema": "OPS_RUN_SNAPSHOT_V1",
+        "run_id": run_id,
+        "started_at": started_at,
+        "finished_at": datetime.now().isoformat(),
+        "status": status,
+        "reason": reason,
+        "ops_summary": ops_summary,
+        "tickets_summary": tickets_summary,
+        "push_summary": push_summary
+    }
+    
+    snapshot_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info(f"Ops run snapshot saved: {snapshot_path}")
+    return str(snapshot_path.relative_to(BASE_DIR))
+
+
+@app.post("/api/ops/cycle/run", summary="운영 관측 루프 1회 실행")
+def run_ops_cycle_api():
+    """Ops Cycle Runner API (C-P.15)"""
+    started_at = datetime.now().isoformat()
+    
+    # Step 1: Emergency Stop 확인
+    if check_emergency_stop_status():
+        logger.warning("Emergency Stop is ACTIVE. Aborting ops cycle.")
+        snapshot_path = save_ops_run_snapshot(
+            run_id="N/A",
+            status="STOPPED",
+            reason="EMERGENCY_STOP_ACTIVE",
+            ops_summary={},
+            tickets_summary={},
+            push_summary={},
+            started_at=started_at
+        )
+        return {
+            "result": "STOPPED",
+            "status": "STOPPED",
+            "reason": "EMERGENCY_STOP_ACTIVE",
+            "snapshot_path": snapshot_path
+        }
+    
+    # Step 2: Lock 확보
+    locked, lock_result = acquire_ops_lock()
+    if not locked:
+        logger.warning(f"Ops cycle lock failed: {lock_result}")
+        snapshot_path = save_ops_run_snapshot(
+            run_id="N/A",
+            status="SKIPPED",
+            reason=f"LOCK_FAILED: {lock_result}",
+            ops_summary={},
+            tickets_summary={},
+            push_summary={},
+            started_at=started_at
+        )
+        raise HTTPException(status_code=409, detail={"result": "SKIPPED", "reason": lock_result, "snapshot_path": snapshot_path})
+    
+    run_id = lock_result
+    logger.info(f"Ops cycle started. run_id={run_id}")
+    
+    try:
+        # Step 3: Ops Report regenerate
+        report = generate_daily_ops_report()
+        save_daily_ops_report(report, skip_if_snapshot_exists=True)
+        ops_summary = report.get("summary", {})
+        logger.info(f"Ops report regenerated: {ops_summary}")
+        
+        # Step 4: Tickets 최신 상태 조회
+        tickets_rows = read_jsonl(TICKETS_DIR / "ticket_requests.jsonl")
+        results_rows = read_jsonl(TICKETS_DIR / "ticket_results.jsonl")
+        tickets_summary = {
+            "total": len(tickets_rows),
+            "open": len([r for r in tickets_rows if r.get("request_id") not in [res.get("request_id") for res in results_rows]]),
+            "done": len([r for r in results_rows if r.get("status") == "DONE"])
+        }
+        logger.info(f"Tickets summary: {tickets_summary}")
+        
+        # Step 5: Push 최신 조회
+        push_file = BASE_DIR / "reports" / "push" / "latest" / "push_messages.json"
+        push_summary = {"last_push_at": None, "count": 0}
+        if push_file.exists():
+            try:
+                push_data = json.loads(push_file.read_text(encoding="utf-8"))
+                messages = push_data.get("messages", [])
+                push_summary["count"] = len(messages)
+                if messages:
+                    push_summary["last_push_at"] = push_data.get("generated_at")
+            except Exception:
+                pass
+        logger.info(f"Push summary: {push_summary}")
+        
+        # Step 6: Snapshot 기록
+        snapshot_path = save_ops_run_snapshot(
+            run_id=run_id,
+            status="DONE",
+            reason="CYCLE_COMPLETE",
+            ops_summary=ops_summary,
+            tickets_summary=tickets_summary,
+            push_summary=push_summary,
+            started_at=started_at
+        )
+        
+        return {
+            "result": "OK",
+            "status": "DONE",
+            "reason": "CYCLE_COMPLETE",
+            "run_id": run_id,
+            "snapshot_path": snapshot_path,
+            "ops_summary": ops_summary,
+            "tickets_summary": tickets_summary,
+            "push_summary": push_summary
+        }
+        
+    except Exception as e:
+        logger.error(f"Ops cycle failed: {e}")
+        snapshot_path = save_ops_run_snapshot(
+            run_id=run_id,
+            status="FAILED",
+            reason=str(e),
+            ops_summary={},
+            tickets_summary={},
+            push_summary={},
+            started_at=started_at
+        )
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e), "snapshot_path": snapshot_path})
+    
+    finally:
+        release_ops_lock()
+        logger.info("Ops cycle lock released.")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

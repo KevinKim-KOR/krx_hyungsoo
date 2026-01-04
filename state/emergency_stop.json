@@ -1,7 +1,7 @@
 {
   "schema": "EMERGENCY_STOP_V1",
   "enabled": false,
-  "updated_at": "2026-01-03T20:01:34.059036",
-  "updated_by": "cp9",
-  "reason": "CP9 test"
+  "updated_at": "2026-01-04T13:48:39.920035",
+  "updated_by": "local_operator",
+  "reason": "Verification complete"
 }

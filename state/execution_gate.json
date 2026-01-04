@@ -1,7 +1,7 @@
 {
   "schema": "EXECUTION_GATE_V1",
-  "mode": "REAL_ENABLED",
-  "updated_at": "2026-01-03T20:58:44.040558",
-  "updated_by": "local_api",
-  "reason": "CP10 B"
+  "mode": "MOCK_ONLY",
+  "updated_at": "2026-01-04T13:48:39.910943",
+  "updated_by": "emergency_stop_system",
+  "reason": "Emergency Stop activated: Verification Test"
 }

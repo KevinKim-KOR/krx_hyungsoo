@@ -1,0 +1,23 @@
+{
+  "schema": "OPS_RUN_SNAPSHOT_V1",
+  "run_id": "691daed5-eaf1-4ab5-8628-a98c2293dd28",
+  "started_at": "2026-01-04T13:24:38.062203",
+  "finished_at": "2026-01-04T13:24:38.069083",
+  "status": "DONE",
+  "reason": "CYCLE_COMPLETE",
+  "ops_summary": {
+    "tickets_total": 8,
+    "done": 2,
+    "failed": 2,
+    "blocked": 2
+  },
+  "tickets_summary": {
+    "total": 26,
+    "open": 0,
+    "done": 13
+  },
+  "push_summary": {
+    "last_push_at": null,
+    "count": 0
+  }
+}

@@ -68,6 +68,7 @@
 | `REAL_WINDOW_OPS_V1` | [contract_real_window_ops_v1.md](contract_real_window_ops_v1.md) | 윈도우 운영 정책 |
 | `DAILY_OPS_REPORT_V1` | [contract_daily_ops_report_v1.md](contract_daily_ops_report_v1.md) | 일일 운영 리포트 |
 | `REAL_EXECUTION_OPS_FLOW_V1` | [contract_real_execution_ops_flow_v1.md](contract_real_execution_ops_flow_v1.md) | REAL 실행 플로우 |
+| `OPS_RUNNER_V1` | [contract_ops_runner_v1.md](contract_ops_runner_v1.md) | 운영 관측 루프 |
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "schema": "DAILY_OPS_REPORT_V1",
-  "asof": "2026-01-04T12:45:58.147610",
+  "asof": "2026-01-04T13:44:00.517062",
   "period": "2026-01-04",
   "summary": {
     "tickets_total": 8,
