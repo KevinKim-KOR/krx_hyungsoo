@@ -83,6 +83,9 @@ Push Delivery Receipt의 V2 스키마입니다.
 | `channel_matrix_version` | string | 채널 매트릭스 버전 |
 | `gate_mode_observed` | string? | 관측된 Gate 모드 (참고용) |
 | `delivery_actual` | string | **항상 CONSOLE** |
+| `secrets_self_test_ref` | string | Self-Test API 참조 (C-P.20) |
+| `secrets_self_test_decision_observed` | enum? | `SELF_TEST_PASS` / `SELF_TEST_FAIL` / `null` |
+| `secrets_provider_observed` | string? | `ENV_ONLY` / `DOTENV_OPTIONAL` / `null` |
 
 ---
 
@@ -112,6 +115,11 @@ Push Delivery Receipt의 V2 스키마입니다.
 > 어떤 상황에서도 실제 발송(`delivery_actual`)은 항상 `CONSOLE`입니다.
 > 외부 발송은 절대 금지입니다.
 
+> 🚫 **값 노출 금지 (C-P.20 추가)**
+>
+> 시크릿 값/길이/부분 문자열/마스킹 값 등 유추 가능한 정보는 Receipt에 기록하지 않습니다.
+> 오직 `present: true/false` 및 decision 결과만 기록합니다.
+
 ---
 
 ## 7. 버전 히스토리
@@ -119,3 +127,4 @@ Push Delivery Receipt의 V2 스키마입니다.
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
 | 2.0 | 2026-01-04 | 초기 버전 (Phase C-P.19) - V1 Superset |
+| 2.1 | 2026-01-04 | Self-Test 관측 필드 추가 (Phase C-P.20) |

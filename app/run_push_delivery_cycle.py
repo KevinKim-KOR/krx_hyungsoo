@@ -53,6 +53,30 @@ CHANNEL_CONFIG = {
     }
 }
 
+SELF_TEST_LATEST_FILE = BASE_DIR / "reports" / "ops" / "secrets" / "self_test_latest.json"
+
+
+def get_self_test_decision() -> str:
+    """최근 Self-Test decision 조회 (값 노출 없음)"""
+    if not SELF_TEST_LATEST_FILE.exists():
+        return None
+    try:
+        data = json.loads(SELF_TEST_LATEST_FILE.read_text(encoding="utf-8"))
+        return data.get("decision")  # SELF_TEST_PASS or SELF_TEST_FAIL
+    except Exception:
+        return None
+
+
+def get_secrets_provider() -> str:
+    """최근 Self-Test provider 조회"""
+    if not SELF_TEST_LATEST_FILE.exists():
+        return "ENV_ONLY"
+    try:
+        data = json.loads(SELF_TEST_LATEST_FILE.read_text(encoding="utf-8"))
+        return data.get("provider", "ENV_ONLY")
+    except Exception:
+        return "ENV_ONLY"
+
 
 def load_push_messages() -> list:
     """푸시 메시지 로드"""
@@ -245,7 +269,12 @@ def run_push_delivery_cycle() -> dict:
         "secrets_status_ref": "api:/api/secrets/status",
         "channel_matrix_version": "PUSH_CHANNELS_V1",
         "gate_mode_observed": gate_mode_observed,
-        "delivery_actual": "CONSOLE"  # 🛑 Hard Rule: 항상 CONSOLE
+        "delivery_actual": "CONSOLE",  # 🛑 Hard Rule: 항상 CONSOLE
+        
+        # V2.1 Self-Test 관측 필드 (C-P.20)
+        "secrets_self_test_ref": "api:/api/secrets/self_test",
+        "secrets_self_test_decision_observed": get_self_test_decision(),
+        "secrets_provider_observed": get_secrets_provider()
     }
     
     # 저장

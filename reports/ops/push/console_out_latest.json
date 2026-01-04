@@ -1,6 +1,14 @@
 {
   "schema": "CONSOLE_OUT_V2",
-  "delivery_run_id": "5687ef6e-78d0-4dfd-85f7-ac4a9af60034",
-  "asof": "2026-01-04T18:17:03.928323",
-  "messages": []
+  "delivery_run_id": "3aac953a-2837-4558-bf53-53e3fdf7d1cb",
+  "asof": "2026-01-04T18:40:23.843317",
+  "messages": [
+    {
+      "message_id": "e062712d-3761-4034-bddd-0d9400e0331e",
+      "title": "",
+      "content": "",
+      "push_type": "ALERT",
+      "reason_code": "NO_SECRETS_FOR_ANY_CHANNEL"
+    }
+  ]
 }

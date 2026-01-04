@@ -75,6 +75,8 @@
 | `PUSH_DELIVERY_RECEIPT_V2` | [contract_push_delivery_receipt_v2.md](contract_push_delivery_receipt_v2.md) | 푸시 발송 결정 V2 |
 | `PUSH_CHANNELS_V1` | [contract_push_channels_v1.md](contract_push_channels_v1.md) | 푸시 채널 정의 |
 | `SECRETS_STATUS_V1` | [contract_secrets_status_v1.md](contract_secrets_status_v1.md) | 시크릿 상태 |
+| `SECRETS_PROVISIONING_V1` | [contract_secrets_provisioning_v1.md](contract_secrets_provisioning_v1.md) | 시크릿 프로비저닝 |
+| `SECRETS_SELF_TEST_V1` | [contract_secrets_self_test_v1.md](contract_secrets_self_test_v1.md) | 시크릿 Self-Test |
 
 ---
 
