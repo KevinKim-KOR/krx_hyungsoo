@@ -1,6 +1,6 @@
 {
   "schema": "DAILY_OPS_REPORT_V1",
-  "asof": "2026-01-04T12:33:27.249840",
+  "asof": "2026-01-04T12:45:58.147610",
   "period": "2026-01-04",
   "summary": {
     "tickets_total": 8,
@@ -23,5 +23,23 @@
   "artifacts_written": [
     "reports/phase_c/latest/report_human.json",
     "reports/phase_c/latest/report_ai.json"
-  ]
+  ],
+  "last_done": {
+    "request_id": "eecfcd84-eacd-4d5b-9d7c-6ff44c488f86",
+    "request_type": "REQUEST_REPORTS",
+    "at": "2026-01-04T11:55:55.256551"
+  },
+  "last_failed": null,
+  "last_blocked": {
+    "request_id": "8e9ef2f1-5138-4357-baaf-24baa329e22e",
+    "request_type": "REQUEST_REPORTS",
+    "reason": "BLOCKED_BY_SAFETY_CHECK",
+    "at": "2026-01-04T12:02:07.874564"
+  },
+  "safety_counters": {
+    "window_consumed_count": 0,
+    "emergency_stop_hits": 0,
+    "allowlist_violation_hits": 0,
+    "preflight_fail_hits": 0
+  }
 }

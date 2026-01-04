@@ -1485,26 +1485,89 @@ def generate_daily_ops_report() -> dict:
         },
         "blocked_reasons_top": blocked_reasons_top,
         "last_real_execution": last_real,
-        "artifacts_written": artifacts_written
+        "artifacts_written": artifacts_written,
+        # C-P.14: Extended fields
+        "last_done": None,
+        "last_failed": None,
+        "last_blocked": None,
+        "safety_counters": {
+            "window_consumed_count": 0,
+            "emergency_stop_hits": 0,
+            "allowlist_violation_hits": 0,
+            "preflight_fail_hits": 0
+        }
     }
+    
+    # C-P.14: Calculate last_done/failed/blocked
+    done_receipts = [r for r in today_receipts if r.get("decision") == "EXECUTED"]
+    failed_receipts = [r for r in today_receipts if r.get("decision") == "FAILED"]
+    
+    if done_receipts:
+        last = done_receipts[-1]
+        report["last_done"] = {
+            "request_id": last.get("request_id"),
+            "request_type": last.get("request_type"),
+            "at": last.get("asof", last.get("issued_at"))
+        }
+    
+    if failed_receipts:
+        last = failed_receipts[-1]
+        report["last_failed"] = {
+            "request_id": last.get("request_id"),
+            "request_type": last.get("request_type"),
+            "reason": last.get("acceptance", {}).get("reason", "UNKNOWN"),
+            "at": last.get("asof", last.get("issued_at"))
+        }
+    
+    if blocked_receipts:
+        last = blocked_receipts[-1]
+        reasons = last.get("block_reasons", [])
+        reason = reasons[0] if reasons else last.get("acceptance", {}).get("reason", "UNKNOWN")
+        report["last_blocked"] = {
+            "request_id": last.get("request_id"),
+            "request_type": last.get("request_type"),
+            "reason": reason[:50] if len(reason) > 50 else reason,
+            "at": last.get("asof", last.get("issued_at"))
+        }
+    
+    # C-P.14: Calculate safety_counters from blocked reasons
+    for r in blocked_receipts:
+        reasons = r.get("block_reasons", [])
+        reason_str = " ".join(reasons).lower() if reasons else r.get("acceptance", {}).get("reason", "").lower()
+        
+        if "window" in reason_str and ("consumed" in reason_str or "inactive" in reason_str or "active" in reason_str):
+            report["safety_counters"]["window_consumed_count"] += 1
+        if "emergency" in reason_str:
+            report["safety_counters"]["emergency_stop_hits"] += 1
+        if "allowlist" in reason_str:
+            report["safety_counters"]["allowlist_violation_hits"] += 1
+        if "preflight" in reason_str:
+            report["safety_counters"]["preflight_fail_hits"] += 1
     
     return report
 
 
-def save_daily_ops_report(report: dict):
-    """Save daily ops report to files"""
+def save_daily_ops_report(report: dict, skip_if_snapshot_exists: bool = False) -> dict:
+    """Save daily ops report to files (C-P.14: idempotent snapshot)"""
     OPS_REPORT_DIR.mkdir(parents=True, exist_ok=True)
     OPS_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Save latest
+    # Save latest (always overwrite)
     OPS_REPORT_LATEST.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     
-    # Save snapshot
+    # Save snapshot (C-P.14: idempotent - skip if exists)
     today = datetime.now().strftime("%Y%m%d")
     snapshot_path = OPS_SNAPSHOTS_DIR / f"ops_report_{today}.json"
-    snapshot_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    
+    snapshot_skipped = False
+    if snapshot_path.exists() and skip_if_snapshot_exists:
+        logger.info(f"Snapshot already exists, skipped: {snapshot_path}")
+        snapshot_skipped = True
+    else:
+        snapshot_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     
     logger.info(f"Ops report saved: {OPS_REPORT_LATEST}")
+    return {"snapshot_skipped": snapshot_skipped, "snapshot_path": str(snapshot_path)}
 
 
 @app.get("/api/ops/daily", summary="일일 운영 리포트 조회")
@@ -1529,10 +1592,14 @@ def get_daily_ops_report():
 
 @app.post("/api/ops/daily/regenerate", summary="일일 운영 리포트 재생성")
 def regenerate_daily_ops_report():
-    """Regenerate daily ops report"""
+    """Regenerate daily ops report (C-P.14: idempotent snapshot)"""
     report = generate_daily_ops_report()
-    save_daily_ops_report(report)
-    return {"result": "OK", "report": report}
+    save_result = save_daily_ops_report(report, skip_if_snapshot_exists=True)
+    return {
+        "result": "OK",
+        "report": report,
+        "snapshot_skipped": save_result.get("snapshot_skipped", False)
+    }
 
 
 if __name__ == "__main__":
