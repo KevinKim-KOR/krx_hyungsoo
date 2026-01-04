@@ -1674,117 +1674,36 @@ def save_ops_run_snapshot(run_id: str, status: str, reason: str, ops_summary: di
     return str(snapshot_path.relative_to(BASE_DIR))
 
 
-@app.post("/api/ops/cycle/run", summary="운영 관측 루프 1회 실행")
+@app.post("/api/ops/cycle/run", summary="운영 관측 루프 1회 실행 (V2)")
 def run_ops_cycle_api():
-    """Ops Cycle Runner API (C-P.15)"""
-    started_at = datetime.now().isoformat()
-    
-    # Step 1: Emergency Stop 확인
-    if check_emergency_stop_status():
-        logger.warning("Emergency Stop is ACTIVE. Aborting ops cycle.")
-        snapshot_path = save_ops_run_snapshot(
-            run_id="N/A",
-            status="STOPPED",
-            reason="EMERGENCY_STOP_ACTIVE",
-            ops_summary={},
-            tickets_summary={},
-            push_summary={},
-            started_at=started_at
-        )
-        return {
-            "result": "STOPPED",
-            "status": "STOPPED",
-            "reason": "EMERGENCY_STOP_ACTIVE",
-            "snapshot_path": snapshot_path
-        }
-    
-    # Step 2: Lock 확보
-    locked, lock_result = acquire_ops_lock()
-    if not locked:
-        logger.warning(f"Ops cycle lock failed: {lock_result}")
-        snapshot_path = save_ops_run_snapshot(
-            run_id="N/A",
-            status="SKIPPED",
-            reason=f"LOCK_FAILED: {lock_result}",
-            ops_summary={},
-            tickets_summary={},
-            push_summary={},
-            started_at=started_at
-        )
-        raise HTTPException(status_code=409, detail={"result": "SKIPPED", "reason": lock_result, "snapshot_path": snapshot_path})
-    
-    run_id = lock_result
-    logger.info(f"Ops cycle started. run_id={run_id}")
-    
+    """Ops Cycle Runner API V2 (C-P.16) - 티켓 0~1건 처리 포함"""
     try:
-        # Step 3: Ops Report regenerate
-        report = generate_daily_ops_report()
-        save_daily_ops_report(report, skip_if_snapshot_exists=True)
-        ops_summary = report.get("summary", {})
-        logger.info(f"Ops report regenerated: {ops_summary}")
+        from app.run_ops_cycle import run_ops_cycle_v2
+        result = run_ops_cycle_v2()
         
-        # Step 4: Tickets 최신 상태 조회
-        tickets_rows = read_jsonl(TICKETS_DIR / "ticket_requests.jsonl")
-        results_rows = read_jsonl(TICKETS_DIR / "ticket_results.jsonl")
-        tickets_summary = {
-            "total": len(tickets_rows),
-            "open": len([r for r in tickets_rows if r.get("request_id") not in [res.get("request_id") for res in results_rows]]),
-            "done": len([r for r in results_rows if r.get("status") == "DONE"])
-        }
-        logger.info(f"Tickets summary: {tickets_summary}")
-        
-        # Step 5: Push 최신 조회
-        push_file = BASE_DIR / "reports" / "push" / "latest" / "push_messages.json"
-        push_summary = {"last_push_at": None, "count": 0}
-        if push_file.exists():
-            try:
-                push_data = json.loads(push_file.read_text(encoding="utf-8"))
-                messages = push_data.get("messages", [])
-                push_summary["count"] = len(messages)
-                if messages:
-                    push_summary["last_push_at"] = push_data.get("generated_at")
-            except Exception:
-                pass
-        logger.info(f"Push summary: {push_summary}")
-        
-        # Step 6: Snapshot 기록
-        snapshot_path = save_ops_run_snapshot(
-            run_id=run_id,
-            status="DONE",
-            reason="CYCLE_COMPLETE",
-            ops_summary=ops_summary,
-            tickets_summary=tickets_summary,
-            push_summary=push_summary,
-            started_at=started_at
-        )
+        if result.get("overall_status") == "STOPPED":
+            return result
+        elif result.get("result") == "SKIPPED":
+            raise HTTPException(status_code=409, detail=result)
+        elif result.get("result") == "FAILED":
+            raise HTTPException(status_code=500, detail=result)
         
         return {
-            "result": "OK",
-            "status": "DONE",
-            "reason": "CYCLE_COMPLETE",
-            "run_id": run_id,
-            "snapshot_path": snapshot_path,
-            "ops_summary": ops_summary,
-            "tickets_summary": tickets_summary,
-            "push_summary": push_summary
+            "status": "ready",
+            "schema": "OPS_CYCLE_RUN_V2",
+            "asof": result.get("snapshot_path", ""),
+            "row_count": 1,
+            "data": result,
+            "error": None
         }
-        
+    except HTTPException:
+        raise
+    except ImportError as e:
+        logger.error(f"Import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
     except Exception as e:
-        logger.error(f"Ops cycle failed: {e}")
-        snapshot_path = save_ops_run_snapshot(
-            run_id=run_id,
-            status="FAILED",
-            reason=str(e),
-            ops_summary={},
-            tickets_summary={},
-            push_summary={},
-            started_at=started_at
-        )
-        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e), "snapshot_path": snapshot_path})
-    
-    finally:
-        release_ops_lock()
-        logger.info("Ops cycle lock released.")
+        logger.error(f"Ops cycle V2 error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
 if __name__ == "__main__":

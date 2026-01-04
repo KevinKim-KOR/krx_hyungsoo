@@ -537,6 +537,78 @@ def process_ticket(ticket: dict, mode: str) -> bool:
         return complete_ticket(request_id, "DONE", f"[UNKNOWN] Processed")
 
 
+def process_one_ticket(skip_lock: bool = False) -> dict:
+    """
+    Process exactly ONE open ticket (C-P.16)
+    
+    Returns:
+        dict with keys:
+        - attempted: bool (티켓 처리 시도 여부)
+        - selected_request_id: str or None
+        - selected_request_type: str or None
+        - decision: str (PROCESSED, SKIPPED, NONE)
+        - reason: str
+        - receipt_ref: str or None (e.g., "state/tickets/ticket_receipts.jsonl:lineN")
+    """
+    result = {
+        "attempted": False,
+        "selected_request_id": None,
+        "selected_request_type": None,
+        "decision": "NONE",
+        "reason": "NO_OPEN_TICKETS",
+        "receipt_ref": None
+    }
+    
+    # Get gate mode
+    mode = get_gate_mode()
+    
+    # Acquire lock (optional)
+    if not skip_lock:
+        if not acquire_lock():
+            result["decision"] = "SKIPPED"
+            result["reason"] = "LOCK_CONFLICT_409"
+            return result
+    
+    try:
+        # Get open tickets
+        open_tickets = get_open_tickets()
+        
+        if not open_tickets:
+            result["decision"] = "NONE"
+            result["reason"] = "NO_OPEN_TICKETS"
+            return result
+        
+        # Select one ticket (oldest)
+        ticket = open_tickets[0]
+        result["attempted"] = True
+        result["selected_request_id"] = ticket.get("request_id")
+        result["selected_request_type"] = ticket.get("request_type")
+        
+        # Count receipts before processing
+        receipts_before = len(read_jsonl(RECEIPTS_FILE))
+        
+        # Process the ticket
+        success = process_ticket(ticket, mode)
+        
+        # Count receipts after processing
+        receipts_after = len(read_jsonl(RECEIPTS_FILE))
+        
+        if success:
+            result["decision"] = "PROCESSED"
+            result["reason"] = "TICKET_PROCESSED_OK"
+            if receipts_after > receipts_before:
+                result["receipt_ref"] = f"state/tickets/ticket_receipts.jsonl:line{receipts_after}"
+        else:
+            result["decision"] = "SKIPPED"
+            result["reason"] = "TICKET_PROCESS_FAILED"
+        
+        return result
+        
+    finally:
+        if not skip_lock:
+            release_lock()
+
+
 def run_worker():
     logger.info("=" * 50)
     logger.info("Ticket Worker Starting (C-P.10.1 - Receipt V3)...")
@@ -577,3 +649,4 @@ def run_worker():
 
 if __name__ == "__main__":
     run_worker()
+
