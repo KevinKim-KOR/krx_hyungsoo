@@ -18,6 +18,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
+# Load .env if available (Red Team 보완: 환경변수 로딩 보장)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed, use system env only
+
 # --- 1. 환경 설정 및 상수 ---
 BASE_DIR = Path(".")
 LOG_DIR = BASE_DIR / "logs"
