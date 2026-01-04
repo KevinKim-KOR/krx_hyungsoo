@@ -1,0 +1,27 @@
+{
+  "schema": "DAILY_OPS_REPORT_V1",
+  "asof": "2026-01-04T12:33:27.249840",
+  "period": "2026-01-04",
+  "summary": {
+    "tickets_total": 8,
+    "done": 2,
+    "failed": 2,
+    "blocked": 2
+  },
+  "blocked_reasons_top": [
+    {
+      "reason": "BLOCKED_BY_SAFETY_CHECK",
+      "count": 2
+    }
+  ],
+  "last_real_execution": {
+    "request_id": "eecfcd84-eacd-4d5b-9d7c-6ff44c488f86",
+    "request_type": "REQUEST_REPORTS",
+    "exit_code": 0,
+    "acceptance_pass": true
+  },
+  "artifacts_written": [
+    "reports/phase_c/latest/report_human.json",
+    "reports/phase_c/latest/report_ai.json"
+  ]
+}

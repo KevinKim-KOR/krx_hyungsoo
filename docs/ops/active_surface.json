@@ -1,7 +1,7 @@
 {
-    "version": "1.13",
+    "version": "1.14",
     "asof": "2026-01-04",
-    "description": "Active Surface Registry (Phase C-P.12)",
+    "description": "Active Surface Registry (Phase C-P.13)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -14,7 +14,8 @@
         "reports/push/latest/**",
         "reports/tickets/dryrun/**",
         "reports/tickets/shadow/**",
-        "reports/tickets/preflight/**"
+        "reports/tickets/preflight/**",
+        "reports/ops/daily/**"
     ],
     "forbidden_latest_version_suffix": true,
     "contracts_live_in_docs_only": true,
@@ -66,7 +67,8 @@
         "state/emergency_stop.json",
         "state/approvals/real_enable_approvals.jsonl",
         "state/real_enable_windows/real_enable_windows.jsonl",
-        "state/deps/installed_deps_snapshot.json"
+        "state/deps/installed_deps_snapshot.json",
+        "reports/ops/daily/ops_report_latest.json"
     ],
     "active_endpoints": [
         "/api/recon/summary",
@@ -88,7 +90,8 @@
         "/api/real_enable_window/latest",
         "/api/real_enable_window/revoke",
         "/api/deps/reconcile",
-        "/api/deps/reconcile/check"
+        "/api/deps/reconcile/check",
+        "/api/ops/daily"
     ],
     "forbidden_paths": [
         "_archive/**"

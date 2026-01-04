@@ -45,6 +45,23 @@ PROOF_TARGETS = [
     "reports/phase_c/latest/report_ai.json"
 ]
 
+# Ops Report (C-P.13)
+OPS_REPORT_DIR = BASE_DIR / "reports" / "ops" / "daily"
+OPS_REPORT_LATEST = OPS_REPORT_DIR / "ops_report_latest.json"
+OPS_SNAPSHOTS_DIR = OPS_REPORT_DIR / "snapshots"
+
+
+def update_ops_report():
+    """Update daily ops report after ticket processing"""
+    try:
+        resp = requests.post(f"{API_BASE}/api/ops/daily/regenerate", timeout=10)
+        if resp.status_code == 200:
+            logger.info("[OPS] Daily ops report updated")
+        else:
+            logger.warning(f"[OPS] Failed to update ops report: {resp.status_code}")
+    except Exception as e:
+        logger.error(f"[OPS] Error updating ops report: {e}")
+
 
 def read_jsonl(path: Path) -> list:
     if not path.exists():
@@ -546,6 +563,9 @@ def run_worker():
             logger.info("Ticket processed successfully!")
         else:
             logger.warning("Ticket processing failed.")
+        
+        # Update ops report after processing (C-P.13)
+        update_ops_report()
         
         return success
         

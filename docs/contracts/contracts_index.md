@@ -65,6 +65,8 @@
 | `RECONCILE_PREFLIGHT_V1` | [contract_reconcile_preflight_v1.md](contract_reconcile_preflight_v1.md) | Preflight 체크 |
 | `REAL_ENABLE_WINDOW_V1` | [contract_real_enable_window_v1.md](contract_real_enable_window_v1.md) | REAL 윈도우 |
 | `EMERGENCY_STOP_V1` | [contract_emergency_stop_v1.md](contract_emergency_stop_v1.md) | 비상 정지 |
+| `REAL_WINDOW_OPS_V1` | [contract_real_window_ops_v1.md](contract_real_window_ops_v1.md) | 윈도우 운영 정책 |
+| `DAILY_OPS_REPORT_V1` | [contract_daily_ops_report_v1.md](contract_daily_ops_report_v1.md) | 일일 운영 리포트 |
 
 ---
 

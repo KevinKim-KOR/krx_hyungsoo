@@ -1406,6 +1406,135 @@ def run_reconcile_preflight(data: PreflightRequest):
     }
 
 
+# === Daily Ops Report API (C-P.13) ===
+
+OPS_REPORT_DIR = BASE_DIR / "reports" / "ops" / "daily"
+OPS_REPORT_LATEST = OPS_REPORT_DIR / "ops_report_latest.json"
+OPS_SNAPSHOTS_DIR = OPS_REPORT_DIR / "snapshots"
+
+
+def generate_daily_ops_report() -> dict:
+    """Generate daily ops report from ticket data"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # Read ticket data
+    requests_file = BASE_DIR / "state" / "tickets" / "ticket_requests.jsonl"
+    results_file = BASE_DIR / "state" / "tickets" / "ticket_results.jsonl"
+    receipts_file = BASE_DIR / "state" / "tickets" / "ticket_receipts.jsonl"
+    
+    requests = read_jsonl(requests_file) if requests_file.exists() else []
+    results = read_jsonl(results_file) if results_file.exists() else []
+    receipts = read_jsonl(receipts_file) if receipts_file.exists() else []
+    
+    # Filter today's data
+    today_results = [r for r in results if r.get("processed_at", "").startswith(today)]
+    today_receipts = [r for r in receipts if r.get("asof", r.get("issued_at", "")).startswith(today)]
+    
+    # Calculate summary
+    done = len([r for r in today_results if r.get("status") == "DONE"])
+    failed = len([r for r in today_results if r.get("status") == "FAILED"])
+    blocked_receipts = [r for r in today_receipts if r.get("decision") == "BLOCKED"]
+    
+    # Aggregate blocked reasons
+    blocked_reasons = {}
+    for r in blocked_receipts:
+        reasons = r.get("block_reasons", [])
+        if not reasons:
+            reason = r.get("acceptance", {}).get("reason", "UNKNOWN")
+            reasons = [reason]
+        for reason in reasons:
+            # Truncate long reason
+            short_reason = reason[:50] if len(reason) > 50 else reason
+            blocked_reasons[short_reason] = blocked_reasons.get(short_reason, 0) + 1
+    
+    blocked_reasons_top = sorted(
+        [{"reason": k, "count": v} for k, v in blocked_reasons.items()],
+        key=lambda x: x["count"],
+        reverse=True
+    )[:3]
+    
+    # Find last REAL execution
+    real_receipts = [r for r in today_receipts if r.get("mode") == "REAL" and r.get("decision") == "EXECUTED"]
+    last_real = None
+    if real_receipts:
+        last = real_receipts[-1]
+        last_real = {
+            "request_id": last.get("request_id"),
+            "request_type": last.get("request_type"),
+            "exit_code": last.get("exit_code"),
+            "acceptance_pass": last.get("acceptance", {}).get("pass", False)
+        }
+    
+    # Artifacts written today
+    artifacts_written = []
+    for r in real_receipts:
+        artifacts = r.get("outputs_proof", {}).get("targets", [])
+        for t in artifacts:
+            if t.get("changed") and t.get("path") not in artifacts_written:
+                artifacts_written.append(t.get("path"))
+    
+    report = {
+        "schema": "DAILY_OPS_REPORT_V1",
+        "asof": datetime.now().isoformat(),
+        "period": today,
+        "summary": {
+            "tickets_total": len(today_results),
+            "done": done,
+            "failed": failed,
+            "blocked": len(blocked_receipts)
+        },
+        "blocked_reasons_top": blocked_reasons_top,
+        "last_real_execution": last_real,
+        "artifacts_written": artifacts_written
+    }
+    
+    return report
+
+
+def save_daily_ops_report(report: dict):
+    """Save daily ops report to files"""
+    OPS_REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    OPS_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Save latest
+    OPS_REPORT_LATEST.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    
+    # Save snapshot
+    today = datetime.now().strftime("%Y%m%d")
+    snapshot_path = OPS_SNAPSHOTS_DIR / f"ops_report_{today}.json"
+    snapshot_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    
+    logger.info(f"Ops report saved: {OPS_REPORT_LATEST}")
+
+
+@app.get("/api/ops/daily", summary="일일 운영 리포트 조회")
+def get_daily_ops_report():
+    """Daily Ops Report API (C-P.13)"""
+    if not OPS_REPORT_LATEST.exists():
+        # Generate if not exists
+        report = generate_daily_ops_report()
+        save_daily_ops_report(report)
+    else:
+        report = json.loads(OPS_REPORT_LATEST.read_text(encoding="utf-8"))
+    
+    return {
+        "status": "ready",
+        "schema": "DAILY_OPS_REPORT_V1",
+        "asof": report.get("asof"),
+        "row_count": 1,
+        "rows": [report],
+        "error": None
+    }
+
+
+@app.post("/api/ops/daily/regenerate", summary="일일 운영 리포트 재생성")
+def regenerate_daily_ops_report():
+    """Regenerate daily ops report"""
+    report = generate_daily_ops_report()
+    save_daily_ops_report(report)
+    return {"result": "OK", "report": report}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
