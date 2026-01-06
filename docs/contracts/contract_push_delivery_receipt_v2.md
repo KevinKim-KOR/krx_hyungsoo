@@ -86,6 +86,9 @@ Push Delivery Receipt의 V2 스키마입니다.
 | `secrets_self_test_ref` | string | Self-Test API 참조 (C-P.20) |
 | `secrets_self_test_decision_observed` | enum? | `SELF_TEST_PASS` / `SELF_TEST_FAIL` / `null` |
 | `secrets_provider_observed` | string? | `ENV_ONLY` / `DOTENV_OPTIONAL` / `null` |
+| `outbox_latest_path` | string | Outbox 최신본 경로 (C-P.21) |
+| `outbox_snapshot_path` | string | Outbox 스냅샷 경로 (C-P.21) |
+| `outbox_schema_observed` | string | `PUSH_OUTBOX_V1` (C-P.21) |
 
 ---
 
@@ -128,3 +131,4 @@ Push Delivery Receipt의 V2 스키마입니다.
 |------|------|-----------|
 | 2.0 | 2026-01-04 | 초기 버전 (Phase C-P.19) - V1 Superset |
 | 2.1 | 2026-01-04 | Self-Test 관측 필드 추가 (Phase C-P.20) |
+| 2.2 | 2026-01-07 | Outbox 참조 필드 추가 (Phase C-P.21) |

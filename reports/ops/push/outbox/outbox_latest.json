@@ -1,0 +1,26 @@
+{
+  "schema": "PUSH_OUTBOX_V1",
+  "outbox_id": "d5b9e241-6c30-42ff-a01e-9a380a9cb840",
+  "asof": "2026-01-07T01:03:44.228270",
+  "delivery_run_id": "9c8127c4-5064-45c8-babb-1456bc9d6c90",
+  "gate_mode_observed": "MOCK_ONLY",
+  "delivery_policy": "CONSOLE_ONLY",
+  "self_test_decision_observed": "SELF_TEST_FAIL",
+  "messages": [
+    {
+      "message_id": "b3de4f67-71d2-44e5-9b3f-6664e1dab3c7",
+      "push_type": "ALERT",
+      "title": "",
+      "content": "",
+      "target_channels": [
+        "CONSOLE"
+      ],
+      "blocked_reason": "NO_SECRETS_FOR_ANY_CHANNEL"
+    }
+  ],
+  "summary": {
+    "total_messages": 1,
+    "console_bound": 1,
+    "external_candidate": 0
+  }
+}

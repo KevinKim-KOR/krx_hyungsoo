@@ -77,6 +77,7 @@
 | `SECRETS_STATUS_V1` | [contract_secrets_status_v1.md](contract_secrets_status_v1.md) | 시크릿 상태 |
 | `SECRETS_PROVISIONING_V1` | [contract_secrets_provisioning_v1.md](contract_secrets_provisioning_v1.md) | 시크릿 프로비저닝 |
 | `SECRETS_SELF_TEST_V1` | [contract_secrets_self_test_v1.md](contract_secrets_self_test_v1.md) | 시크릿 Self-Test |
+| `PUSH_OUTBOX_V1` | [contract_push_outbox_v1.md](contract_push_outbox_v1.md) | 푸시 Outbox |
 
 ---
 

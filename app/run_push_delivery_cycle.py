@@ -30,6 +30,11 @@ RECEIPTS_FILE = PUSH_STATE_DIR / "push_delivery_receipts.jsonl"
 LATEST_RECEIPT_FILE = REPORTS_PUSH_DIR / "push_delivery_latest.json"
 CONSOLE_OUT_FILE = REPORTS_PUSH_DIR / "console_out_latest.json"
 
+# Outbox paths (C-P.21)
+OUTBOX_DIR = REPORTS_PUSH_DIR / "outbox"
+OUTBOX_LATEST_FILE = OUTBOX_DIR / "outbox_latest.json"
+OUTBOX_SNAPSHOTS_DIR = OUTBOX_DIR / "snapshots"
+
 logging.basicConfig(level=logging.INFO, format="[PUSH_DELIVERY_V2] %(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -277,9 +282,56 @@ def run_push_delivery_cycle() -> dict:
         "secrets_provider_observed": get_secrets_provider()
     }
     
+    # Outbox 생성 (C-P.21)
+    outbox_id = str(uuid.uuid4())
+    outbox_snapshot_name = f"outbox_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    outbox_snapshot_path = OUTBOX_SNAPSHOTS_DIR / outbox_snapshot_name
+    
+    outbox = {
+        "schema": "PUSH_OUTBOX_V1",
+        "outbox_id": outbox_id,
+        "asof": asof,
+        "delivery_run_id": delivery_run_id,
+        "gate_mode_observed": gate_mode_observed,
+        "delivery_policy": "CONSOLE_ONLY",  # 🛑 Hard Rule: CONSOLE_ONLY 고정
+        "self_test_decision_observed": get_self_test_decision(),
+        "messages": [
+            {
+                "message_id": d.get("message_id"),
+                "push_type": "ALERT",  # Default
+                "title": "",
+                "content": "",
+                "target_channels": ["CONSOLE"],
+                "blocked_reason": d.get("reason_code")
+            }
+            for d in decisions
+        ],
+        "summary": {
+            "total_messages": len(messages),
+            "console_bound": summary["console"],
+            "external_candidate": 1 if external_candidate else 0
+        }
+    }
+    
+    # Receipt V2에 Outbox 참조 추가
+    receipt["outbox_latest_path"] = str(OUTBOX_LATEST_FILE.relative_to(BASE_DIR))
+    receipt["outbox_snapshot_path"] = str(outbox_snapshot_path.relative_to(BASE_DIR))
+    receipt["outbox_schema_observed"] = "PUSH_OUTBOX_V1"
+    
     # 저장
     PUSH_STATE_DIR.mkdir(parents=True, exist_ok=True)
     REPORTS_PUSH_DIR.mkdir(parents=True, exist_ok=True)
+    OUTBOX_DIR.mkdir(parents=True, exist_ok=True)
+    OUTBOX_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Outbox Atomic Write (C-P.21)
+    outbox_tmp_file = OUTBOX_DIR / "outbox_latest.json.tmp"
+    outbox_tmp_file.write_text(json.dumps(outbox, ensure_ascii=False, indent=2), encoding="utf-8")
+    import os as os_module
+    os_module.replace(str(outbox_tmp_file), str(OUTBOX_LATEST_FILE))
+    
+    # Outbox Snapshot
+    outbox_snapshot_path.write_text(json.dumps(outbox, ensure_ascii=False, indent=2), encoding="utf-8")
     
     # Append-only 로그
     with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
@@ -299,6 +351,7 @@ def run_push_delivery_cycle() -> dict:
     
     logger.info(f"Delivery cycle complete (V2): {summary}")
     logger.info(f"Candidate: {external_candidate}, Channels: {candidate_channels}")
+    logger.info(f"Outbox: {OUTBOX_LATEST_FILE}")
     
     return {
         "result": "OK",
@@ -306,6 +359,8 @@ def run_push_delivery_cycle() -> dict:
         "summary": summary,
         "routing": receipt["routing"],
         "delivery_actual": "CONSOLE",
+        "outbox_latest_path": str(OUTBOX_LATEST_FILE.relative_to(BASE_DIR)),
+        "outbox_snapshot_path": str(outbox_snapshot_path.relative_to(BASE_DIR)),
         "receipt_path": str(LATEST_RECEIPT_FILE.relative_to(BASE_DIR)),
         "console_out_path": str(CONSOLE_OUT_FILE.relative_to(BASE_DIR))
     }
