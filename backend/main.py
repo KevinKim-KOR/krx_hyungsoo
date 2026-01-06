@@ -2006,6 +2006,38 @@ def run_secrets_self_test_api():
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
+# === Push Preview API (C-P.22) ===
+
+PREVIEW_LATEST = BASE_DIR / "reports" / "ops" / "push" / "preview" / "preview_latest.json"
+
+
+@app.get("/api/push/preview/latest", summary="푸시 렌더 프리뷰 최신 조회")
+def get_push_preview_latest():
+    """Push Render Preview Latest (C-P.22)"""
+    if not PREVIEW_LATEST.exists():
+        return {
+            "status": "empty",
+            "schema": "PUSH_RENDER_PREVIEW_V1",
+            "row_count": 0,
+            "rows": [],
+            "error": "No preview generated yet. Generate via push delivery cycle."
+        }
+    
+    try:
+        data = json.loads(PREVIEW_LATEST.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "PUSH_RENDER_PREVIEW_V1",
+            "asof": data.get("asof"),
+            "row_count": len(data.get("rendered", [])),
+            "rows": data.get("rendered", []),
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
