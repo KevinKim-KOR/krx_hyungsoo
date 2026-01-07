@@ -1,0 +1,19 @@
+{
+  "schema": "PUSH_SEND_RECEIPT_V1",
+  "send_id": "214adeca-a668-4c1a-9133-c11fad5f85ca",
+  "asof": "2026-01-07T23:35:30.195423",
+  "channel": "TELEGRAM",
+  "message_id": null,
+  "request_type": null,
+  "decision": "SKIPPED",
+  "blocked_reason": "NOT_REAL_GATE",
+  "formatter_ref": "app/utils/push_formatter.py",
+  "preview_ref": "api:/api/push/preview/latest",
+  "secrets_status_observed": {
+    "TELEGRAM_BOT_TOKEN": false,
+    "TELEGRAM_CHAT_ID": false
+  },
+  "http_status": null,
+  "error_class": null,
+  "error_message_sanitized": null
+}

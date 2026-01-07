@@ -1,7 +1,7 @@
 {
   "schema": "EMERGENCY_STOP_V1",
   "enabled": false,
-  "updated_at": "2026-01-04T17:13:03.098330",
+  "updated_at": "2026-01-07T23:45:21.302035",
   "updated_by": "local_operator",
-  "reason": "Test done"
+  "reason": "restoring"
 }

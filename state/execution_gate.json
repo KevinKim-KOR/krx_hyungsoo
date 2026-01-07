@@ -1,7 +1,7 @@
 {
   "schema": "EXECUTION_GATE_V1",
   "mode": "MOCK_ONLY",
-  "updated_at": "2026-01-04T17:12:27.817515",
-  "updated_by": "emergency_stop_system",
-  "reason": "Emergency Stop activated: C-P.17 Test"
+  "updated_at": "2026-01-07T23:45:21.304453",
+  "updated_by": "local_api",
+  "reason": "restoring"
 }
