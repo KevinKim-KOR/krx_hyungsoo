@@ -23,7 +23,7 @@ import sys
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-from app.utils.push_formatter import format_telegram, check_secret_injection
+from app.utils.push_formatter import format_telegram, check_secret_injection, format_test_message
 
 STATE_DIR = BASE_DIR / "state"
 PUSH_STATE_DIR = STATE_DIR / "push"
@@ -88,12 +88,15 @@ def get_self_test_decision() -> str:
 
 
 def get_secrets_status() -> dict:
-    """시크릿 존재 여부 (값 아님)"""
-    telegram_token = bool(os.environ.get("TELEGRAM_BOT_TOKEN"))
-    telegram_chat = bool(os.environ.get("TELEGRAM_CHAT_ID"))
+    """시크릿 존재 여부 (값 아님, C-P.24 present 규칙)"""
+    # present 판정: None 또는 '' = false
+    def is_present(key: str) -> bool:
+        value = os.environ.get(key)
+        return value is not None and value != ""
+    
     return {
-        "TELEGRAM_BOT_TOKEN": telegram_token,
-        "TELEGRAM_CHAT_ID": telegram_chat
+        "TELEGRAM_BOT_TOKEN": is_present("TELEGRAM_BOT_TOKEN"),
+        "TELEGRAM_CHAT_ID": is_present("TELEGRAM_CHAT_ID")
     }
 
 
@@ -188,12 +191,12 @@ def run_push_send_cycle() -> dict:
     send_id = str(uuid.uuid4())
     asof = datetime.now().isoformat()
     
-    # Load .env if available
+    # Load .env if available (override=False: SYSTEM_ENV > DOTENV)
     try:
         from dotenv import load_dotenv
         env_file = BASE_DIR / ".env"
         if env_file.exists():
-            load_dotenv(env_file)
+            load_dotenv(env_file, override=False)  # C-P.24: SYSTEM_ENV > DOTENV
     except ImportError:
         pass
     
@@ -272,8 +275,9 @@ def run_push_send_cycle() -> dict:
     receipt["request_type"] = msg.get("push_type", "ALERT")
     
     # 7. Format with Formatter + Secret Injection Check
-    formatted = format_telegram(msg, asof)
-    text = formatted.get("text_preview", "")
+    # C-P.24: 테스트 메시지 포맷 사용
+    kst_timestamp = datetime.now().isoformat()
+    text = format_test_message(kst_timestamp)
     
     is_safe, reason = check_secret_injection(text)
     if not is_safe:

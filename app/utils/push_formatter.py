@@ -37,6 +37,19 @@ INJECTION_PATTERNS = [
 ]
 
 
+def format_test_message(kst_timestamp: str) -> str:
+    """
+    Live Fire 테스트 메시지 포맷 (C-P.24)
+    
+    Args:
+        kst_timestamp: KST ISO 타임스탬프
+        
+    Returns:
+        고정 포맷의 테스트 메시지
+    """
+    return f"[TEST] System Live Fire Check - {kst_timestamp}"
+
+
 def check_secret_injection(text: str, additional_secret_keys: Optional[List[str]] = None) -> Tuple[bool, Optional[str]]:
     """
     Secret Injection 검증

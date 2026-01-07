@@ -1,7 +1,7 @@
 {
   "schema": "PUSH_SEND_RECEIPT_V1",
-  "send_id": "8e041369-368c-4729-ae65-cc2766bdacca",
-  "asof": "2026-01-08T00:02:44.140056",
+  "send_id": "78516299-e42c-49d3-bfcc-28376f30b911",
+  "asof": "2026-01-08T00:01:17.761423",
   "channel": "TELEGRAM",
   "message_id": null,
   "request_type": null,

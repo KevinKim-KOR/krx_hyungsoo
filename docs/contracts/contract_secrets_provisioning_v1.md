@@ -30,26 +30,50 @@
 
 ## 3. Source Priority
 
+> 🔒 **SYSTEM_ENV > DOTENV**: 시스템 환경변수가 .env보다 우선
+
 | Priority | Source | 설명 |
 |----------|--------|------|
-| 1 | `ENV_ONLY` | OS 환경변수 (`os.environ`) - **기본** |
-| 2 | `.env` (Optional) | `python-dotenv` 설치 시 지원 가능 |
+| 1 | `SYSTEM_ENV` | OS 시스템 환경변수 - **최우선** |
+| 2 | `DOTENV` | `.env` 파일 (override=false) |
 
-### .env 지원 조건
+### .env 로딩 정책 (C-P.24)
 
 ```python
-# .env 지원은 선택적
+# override=false: 시스템 환경변수가 우선
 try:
     from dotenv import load_dotenv
     if Path(".env").exists():
-        load_dotenv()
+        load_dotenv(override=False)  # SYSTEM_ENV > DOTENV
 except ImportError:
     pass  # ENV_ONLY로 동작
 ```
 
+> ⚠️ **로딩 시점**: Backend 프로세스 시작 시 1회만 로드 (요청마다 로드 금지)
+
 ---
 
-## 4. Non-Leak 규칙
+## 4. Present 판정 규칙 (C-P.24)
+
+> 🔒 **present 판정**: `os.getenv(KEY)`가 None 또는 빈 문자열 ""이면 `false`, 그 외 `true`
+
+```python
+def is_present(key: str) -> bool:
+    value = os.getenv(key)
+    return value is not None and value != ""
+```
+
+### Self-Test 한계
+
+| 항목 | 설명 |
+|------|------|
+| 체크 대상 | present (존재 여부) |
+| 미체크 대상 | valid (유효성, 네트워크 호출 금지) |
+| 보증 범위 | **형상 완결성(Configuration completeness)** |
+
+---
+
+## 5. Non-Leak 규칙
 
 > 🚫 **값 노출 절대 금지**
 
@@ -71,7 +95,7 @@ except ImportError:
 
 ---
 
-## 5. 운영 책임
+## 6. 운영 책임
 
 | 책임 주체 | 역할 |
 |-----------|------|
@@ -80,8 +104,9 @@ except ImportError:
 
 ---
 
-## 6. 버전 히스토리
+## 7. 버전 히스토리
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
 | 1.0 | 2026-01-04 | 초기 버전 (Phase C-P.20) |
+| 1.1 | 2026-01-07 | SYSTEM_ENV > DOTENV 우선순위, present 판정 규칙 (Phase C-P.24) |
