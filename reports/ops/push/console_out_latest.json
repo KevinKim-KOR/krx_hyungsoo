@@ -1,14 +1,14 @@
 {
   "schema": "CONSOLE_OUT_V2",
-  "delivery_run_id": "9c8127c4-5064-45c8-babb-1456bc9d6c90",
-  "asof": "2026-01-07T01:03:44.228270",
+  "delivery_run_id": "a28071d6-12d0-4a7f-93b7-9a52c63ef1d3",
+  "asof": "2026-01-08T22:01:33.920109",
   "messages": [
     {
-      "message_id": "b3de4f67-71d2-44e5-9b3f-6664e1dab3c7",
+      "message_id": "0ba90fa8-7db3-4aa2-ac93-17df9443c583",
       "title": "",
       "content": "",
       "push_type": "ALERT",
-      "reason_code": "NO_SECRETS_FOR_ANY_CHANNEL"
+      "reason_code": "CONSOLE_ONLY_MODE"
     }
   ]
 }

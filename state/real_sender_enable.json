@@ -1,8 +1,8 @@
 {
   "schema": "REAL_SENDER_ENABLE_V1",
-  "enabled": true,
+  "enabled": false,
   "channel": "TELEGRAM_ONLY",
-  "updated_at": "2026-01-08T00:00:54.787821",
+  "updated_at": "2026-01-08T22:03:00.965914",
   "updated_by": "api",
-  "reason": "C-P.24 live fire test"
+  "reason": "Post-Fire Lockdown"
 }

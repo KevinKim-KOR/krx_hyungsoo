@@ -18,6 +18,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
+# --- .env 로딩 (시작 시 1회, override=False: SYSTEM_ENV > DOTENV) ---
+try:
+    from dotenv import load_dotenv
+    import os
+    # Try multiple paths to find .env
+    _possible_paths = [
+        Path(__file__).resolve().parent.parent / ".env",  # backend/../.env
+        Path.cwd() / ".env",  # Current working directory
+        Path(".env"),  # Relative
+    ]
+    for _env_file in _possible_paths:
+        if _env_file.exists():
+            load_dotenv(_env_file, override=False)
+            break
+except ImportError:
+    pass  # python-dotenv 미설치 시 ENV_ONLY로 동작
+
 # --- 1. 환경 설정 및 상수 ---
 BASE_DIR = Path(".")
 LOG_DIR = BASE_DIR / "logs"
