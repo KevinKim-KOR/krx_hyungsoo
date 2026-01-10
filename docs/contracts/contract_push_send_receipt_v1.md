@@ -48,6 +48,7 @@
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
+| `schema` | string | 스키마명 (PUSH_SEND_RECEIPT_V1) |
 | `send_id` | UUID | 발송 고유 ID (서버 생성) |
 | `asof` | ISO8601 | 발송 시각 |
 | `channel` | enum | `TELEGRAM` |
@@ -58,9 +59,34 @@
 | `formatter_ref` | string | 포맷터 경로 |
 | `preview_ref` | string | 프리뷰 API 참조 |
 | `secrets_status_observed` | object | 시크릿 존재 여부 (값 아님) |
+| `secrets_status_observed.TELEGRAM_BOT_TOKEN` | bool | 토큰 존재 여부 |
+| `secrets_status_observed.TELEGRAM_CHAT_ID` | bool | 채팅 ID 존재 여부 |
 | `http_status` | integer? | HTTP 응답 코드 |
 | `error_class` | string? | 에러 클래스명 |
 | `error_message_sanitized` | string? | Sanitized 에러 메시지 |
+
+---
+
+## Schema Fields
+
+> 🔒 **Dotted Path 표기 규칙**: nested는 `a.b.c`, 배열은 `items[].field`
+
+- schema
+- send_id
+- asof
+- channel
+- message_id
+- request_type
+- decision
+- blocked_reason
+- formatter_ref
+- preview_ref
+- secrets_status_observed
+- secrets_status_observed.TELEGRAM_BOT_TOKEN
+- secrets_status_observed.TELEGRAM_CHAT_ID
+- http_status
+- error_class
+- error_message_sanitized
 
 ---
 
@@ -118,4 +144,5 @@ if "bot" in error_msg.lower() and len(error_msg) > 50:
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
-| 1.0 | 2026-01-07 | 초기 버전 (Phase C-P.23) |
+| 1.0 | 2026-01-10 | 초기 버전 (Phase C-P.25) |
+| 1.1 | 2026-01-10 | Schema Fields 섹션 추가 (Phase C-P.25.1) |

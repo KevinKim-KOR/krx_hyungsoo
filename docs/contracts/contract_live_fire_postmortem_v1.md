@@ -62,9 +62,52 @@ Live Fire 실행 결과 분석 및 Kill-Switch 상태 검증을 위한 Postmorte
 | `asof` | ISO8601 | 생성 시각 |
 | `overall_safety_status` | enum | `SAFE` / `UNSAFE` / `UNKNOWN` |
 | `context_observed` | object | 관측된 시스템 상태 |
+| `context_observed.gate_mode` | string | Gate 모드 |
+| `context_observed.sender_enabled` | bool | Sender 활성화 여부 |
+| `context_observed.emergency_stop_enabled` | bool | Emergency Stop 활성화 |
+| `context_observed.self_test_decision` | string | Self-Test 결과 |
 | `send_attempt_observed` | object | 발송 시도 관측 결과 |
+| `send_attempt_observed.attempted` | bool | 발송 시도 여부 |
+| `send_attempt_observed.decision` | string | 발송 결정 |
+| `send_attempt_observed.http_status` | int? | HTTP 상태 코드 |
+| `send_attempt_observed.ref` | string? | 참조 경로 |
 | `safety_invariants` | object | 안전 불변식 검증 결과 |
+| `safety_invariants.sender_is_currently_disabled` | bool | Sender 비활성 상태 |
+| `safety_invariants.window_was_consumed` | bool | 윈도우 소진 여부 |
+| `safety_invariants.emergency_stop_is_off` | bool | Emergency Stop OFF 상태 |
 | `evidence_refs` | object | 증거 파일 경로 |
+| `evidence_refs.outbox_path` | string? | Outbox 경로 |
+| `evidence_refs.receipt_path` | string? | Receipt 경로 |
+| `evidence_refs.send_latest_path` | string? | Send Latest 경로 |
+
+---
+
+## Schema Fields
+
+> 🔒 **Dotted Path 표기 규칙**: nested는 `a.b.c`, 배열은 `items[].field`
+
+- schema
+- event_id
+- asof
+- overall_safety_status
+- context_observed
+- context_observed.gate_mode
+- context_observed.sender_enabled
+- context_observed.emergency_stop_enabled
+- context_observed.self_test_decision
+- send_attempt_observed
+- send_attempt_observed.attempted
+- send_attempt_observed.decision
+- send_attempt_observed.http_status
+- send_attempt_observed.ref
+- safety_invariants
+- safety_invariants.sender_is_currently_disabled
+- safety_invariants.window_was_consumed
+- safety_invariants.emergency_stop_is_off
+- evidence_refs
+- evidence_refs.outbox_path
+- evidence_refs.receipt_path
+- evidence_refs.send_latest_path
 
 ---
 

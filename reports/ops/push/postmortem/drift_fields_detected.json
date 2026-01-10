@@ -1,0 +1,26 @@
+{
+  "schema": "CONTRACT_DRIFT_RESULT_V1",
+  "asof": "2026-01-10T15:22:03.531046",
+  "targets": [
+    {
+      "artifact": "send_receipts.jsonl",
+      "artifact_schema": "PUSH_SEND_RECEIPT_V1",
+      "contract_path": "docs\\contracts\\contract_push_send_receipt_v1.md",
+      "contract_schema": "PUSH_SEND_RECEIPT_V1",
+      "missing_fields": [],
+      "extra_fields_in_contract": [],
+      "status": "PASS"
+    },
+    {
+      "artifact": "postmortem_latest.json",
+      "artifact_schema": "LIVE_FIRE_POSTMORTEM_V1",
+      "contract_path": "docs\\contracts\\contract_live_fire_postmortem_v1.md",
+      "contract_schema": "LIVE_FIRE_POSTMORTEM_V1",
+      "missing_fields": [],
+      "extra_fields_in_contract": [],
+      "status": "PASS"
+    }
+  ],
+  "result": "PASS",
+  "missing_total": 0
+}
