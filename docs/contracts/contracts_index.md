@@ -87,6 +87,7 @@
 | `OPS_SCHEDULER_V1` | [contract_ops_scheduler_v1.md](contract_ops_scheduler_v1.md) | Ops 스케줄러 정책 |
 | `OPS_RUN_RECEIPT_V1` | [contract_ops_run_receipt_v1.md](contract_ops_run_receipt_v1.md) | Ops 통합 영수증 |
 | `OPS_SCHEDULER_API_V1` | [contract_ops_scheduler_api_v1.md](contract_ops_scheduler_api_v1.md) | Ops Scheduler API |
+| `OPS_SNAPSHOT_VIEWER_V1` | [contract_ops_snapshot_viewer_v1.md](contract_ops_snapshot_viewer_v1.md) | Ops Snapshot Viewer |
 
 ---
 

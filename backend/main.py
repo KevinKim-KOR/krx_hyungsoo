@@ -2358,6 +2358,79 @@ def get_scheduler_snapshots():
         }
 
 
+@app.get("/api/ops/scheduler/snapshots/{snapshot_id}", summary="스냅샷 단건 조회")
+def get_scheduler_snapshot_by_id(snapshot_id: str):
+    """Ops Scheduler Snapshot Single View (C-P.29) - Path Traversal Prevention"""
+    from datetime import datetime
+    import re
+    
+    # Path Traversal 방지: 화이트리스트 정규식 검증
+    pattern = r'^[a-zA-Z0-9_\-\.]+\.json$'
+    if not re.match(pattern, snapshot_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "schema": "OPS_SNAPSHOT_VIEWER_V1",
+                "error": {
+                    "code": "INVALID_ID",
+                    "message": f"Invalid snapshot_id format: {snapshot_id}"
+                }
+            }
+        )
+    
+    # 추가 검증: 경로 구분자 포함 여부
+    if '/' in snapshot_id or '\\' in snapshot_id or '..' in snapshot_id:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "schema": "OPS_SNAPSHOT_VIEWER_V1",
+                "error": {
+                    "code": "INVALID_ID",
+                    "message": "Path traversal detected"
+                }
+            }
+        )
+    
+    # 하드코딩된 디렉토리에서만 조회
+    snapshot_path = SCHEDULER_SNAPSHOTS_DIR / snapshot_id
+    
+    if not snapshot_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "error",
+                "schema": "OPS_SNAPSHOT_VIEWER_V1",
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Snapshot not found: {snapshot_id}"
+                }
+            }
+        )
+    
+    try:
+        data = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": data.get("schema", "OPS_RUN_RECEIPT_V1"),
+            "snapshot_id": snapshot_id,
+            "data": data
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "schema": "OPS_SNAPSHOT_VIEWER_V1",
+                "error": {
+                    "code": "READ_ERROR",
+                    "message": str(e)
+                }
+            }
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
