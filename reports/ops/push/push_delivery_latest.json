@@ -1,7 +1,7 @@
 {
   "schema": "PUSH_DELIVERY_RECEIPT_V2",
-  "delivery_run_id": "a28071d6-12d0-4a7f-93b7-9a52c63ef1d3",
-  "asof": "2026-01-08T22:01:33.920109",
+  "delivery_run_id": "474d901a-ba1f-48a8-b5bf-52c44c9aff65",
+  "asof": "2026-01-10T16:04:54.225860",
   "gate_mode": "REAL_ENABLED",
   "emergency_stop_enabled": false,
   "secrets_available": true,
@@ -13,7 +13,7 @@
   },
   "decisions": [
     {
-      "message_id": "0ba90fa8-7db3-4aa2-ac93-17df9443c583",
+      "message_id": "9fdca4b4-95e1-4c7c-bace-1a8926fa87ac",
       "channel_decision": "CONSOLE",
       "channel_target": "console",
       "reason_code": "CONSOLE_ONLY_MODE",
@@ -41,6 +41,6 @@
   "secrets_self_test_decision_observed": "SELF_TEST_PASS",
   "secrets_provider_observed": "DOTENV_OPTIONAL",
   "outbox_latest_path": "reports\\ops\\push\\outbox\\outbox_latest.json",
-  "outbox_snapshot_path": "reports\\ops\\push\\outbox\\snapshots\\outbox_20260108_220133.json",
+  "outbox_snapshot_path": "reports\\ops\\push\\outbox\\snapshots\\outbox_20260110_160454.json",
   "outbox_schema_observed": "PUSH_OUTBOX_V1"
 }

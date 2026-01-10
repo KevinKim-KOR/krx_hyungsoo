@@ -1,0 +1,25 @@
+{
+  "schema": "LIVE_FIRE_OPS_RECEIPT_V1",
+  "run_id": "e8766b10-7d93-4f7f-872c-9db8d778a99c",
+  "asof": "2026-01-10T15:56:13.839067",
+  "precheck_summary": {
+    "gate_mode": "REAL_ENABLED",
+    "self_test": "SELF_TEST_PASS",
+    "emergency_stop": false,
+    "sender_enabled": true,
+    "window_active": false,
+    "outbox_row_count": 1
+  },
+  "attempted": false,
+  "blocked_reason": "WINDOW_INACTIVE",
+  "send_http_status": null,
+  "channel": "TELEGRAM",
+  "message_id": null,
+  "window_consumed": false,
+  "sender_disabled_after": false,
+  "refs": {
+    "outbox_snapshot_path": null,
+    "send_latest_path": null,
+    "postmortem_latest_path": null
+  }
+}

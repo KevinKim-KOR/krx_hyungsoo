@@ -2210,6 +2210,50 @@ def regenerate_postmortem():
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
+# === Live Fire Ops API (C-P.26) ===
+
+LIVE_FIRE_LATEST = BASE_DIR / "reports" / "ops" / "push" / "live_fire" / "live_fire_latest.json"
+
+
+@app.get("/api/ops/push/live_fire/latest", summary="Live Fire Ops 최신 조회")
+def get_live_fire_latest():
+    """Live Fire Ops Receipt Latest (C-P.26)"""
+    if not LIVE_FIRE_LATEST.exists():
+        return {
+            "status": "empty",
+            "schema": "LIVE_FIRE_OPS_RECEIPT_V1",
+            "data": None,
+            "error": "No live fire ops run yet."
+        }
+    
+    try:
+        data = json.loads(LIVE_FIRE_LATEST.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "LIVE_FIRE_OPS_RECEIPT_V1",
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/api/ops/push/live_fire/run", summary="Live Fire Ops 실행")
+def run_live_fire_ops_api():
+    """Run Live Fire Ops Cycle (C-P.26)"""
+    try:
+        from app.run_live_fire_ops import run_live_fire_ops
+        result = run_live_fire_ops()
+        logger.info(f"Live Fire Ops: attempted={result.get('attempted')}, blocked={result.get('blocked_reason')}")
+        return result
+    except ImportError as e:
+        logger.error(f"Live Fire Ops import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
+    except Exception as e:
+        logger.error(f"Live Fire Ops error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -82,6 +82,8 @@
 | `REAL_SENDER_ENABLE_V1` | [contract_real_sender_enable_v1.md](contract_real_sender_enable_v1.md) | Real Sender 활성화 |
 | `PUSH_SEND_RECEIPT_V1` | [contract_push_send_receipt_v1.md](contract_push_send_receipt_v1.md) | 푸시 발송 영수증 |
 | `LIVE_FIRE_POSTMORTEM_V1` | [contract_live_fire_postmortem_v1.md](contract_live_fire_postmortem_v1.md) | Live Fire Postmortem |
+| `WEEKLY_LIVE_FIRE_OPS_V1` | [contract_weekly_live_fire_ops_v1.md](contract_weekly_live_fire_ops_v1.md) | 주간 Live Fire 운영 정책 |
+| `LIVE_FIRE_OPS_RECEIPT_V1` | [contract_live_fire_ops_receipt_v1.md](contract_live_fire_ops_receipt_v1.md) | Live Fire 운영 영수증 |
 
 ---
 
