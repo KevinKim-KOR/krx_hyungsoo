@@ -2465,156 +2465,17 @@ JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/push/send_rec
 
 @app.get("/api/evidence/resolve", summary="Evidence Ref Resolver")
 def resolve_evidence_ref(ref: str):
-    """Evidence Ref Resolver (C-P.30) - Double Defense + Linecache"""
+    """Evidence Ref Resolver (C-P.30/33) - Uses shared ref_validator"""
     from datetime import datetime
-    import re
-    import os
-    import linecache
+    from app.utils.ref_validator import validate_and_resolve_ref
     
     asof = datetime.now().isoformat()
     
-    # === 1차 검증: 위험 토큰 즉시 거부 ===
-    dangerous_tokens = ['..', '\\', '://', '%2e', '%2f', '%2E', '%2F', '%00']
-    for token in dangerous_tokens:
-        if token in ref:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "status": "error",
-                    "schema": "EVIDENCE_VIEW_V1",
-                    "asof": asof,
-                    "error": {
-                        "code": "INVALID_REF",
-                        "message": f"Dangerous token detected: {token}"
-                    }
-                }
-            )
+    # 공용 Validator 호출 (C-P.33 단일화)
+    result = validate_and_resolve_ref(ref)
     
-    # === JSONL Line Ref 처리 ===
-    jsonl_match = re.match(JSONL_REF_PATTERN, ref)
-    if jsonl_match:
-        jsonl_path = jsonl_match.group(1)
-        line_no = int(jsonl_match.group(2))
-        
-        if line_no < 1:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "status": "error",
-                    "schema": "EVIDENCE_VIEW_V1",
-                    "asof": asof,
-                    "error": {
-                        "code": "INVALID_REF",
-                        "message": "Line number must be >= 1"
-                    }
-                }
-            )
-        
-        # Allowlist 검증
-        if jsonl_path not in ALLOWED_JSONL_FILES:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "status": "error",
-                    "schema": "EVIDENCE_VIEW_V1",
-                    "asof": asof,
-                    "error": {
-                        "code": "INVALID_REF",
-                        "message": "JSONL file not in allowlist"
-                    }
-                }
-            )
-        
-        # 2차 검증: Path Normalization
-        full_path = BASE_DIR / jsonl_path
-        abs_path = os.path.abspath(str(full_path))
-        allowed_root = os.path.abspath(str(BASE_DIR))
-        
-        if not abs_path.startswith(allowed_root + os.sep):
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "status": "error",
-                    "schema": "EVIDENCE_VIEW_V1",
-                    "asof": asof,
-                    "error": {
-                        "code": "INVALID_REF",
-                        "message": "Path escape attempt blocked"
-                    }
-                }
-            )
-        
-        if not full_path.exists():
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "status": "error",
-                    "schema": "EVIDENCE_VIEW_V1",
-                    "asof": asof,
-                    "error": {
-                        "code": "NOT_FOUND",
-                        "message": f"File not found: {jsonl_path}"
-                    }
-                }
-            )
-        
-        # Red Team 수용: linecache로 특정 라인만 읽기 (전체 읽기 금지)
-        linecache.checkcache(str(full_path))
-        line_content = linecache.getline(str(full_path), line_no)
-        
-        if not line_content.strip():
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "status": "error",
-                    "schema": "EVIDENCE_VIEW_V1",
-                    "asof": asof,
-                    "error": {
-                        "code": "NOT_FOUND",
-                        "message": f"Line {line_no} is empty or out of range"
-                    }
-                }
-            )
-        
-        try:
-            data = json.loads(line_content)
-            return {
-                "status": "ready",
-                "schema": "EVIDENCE_VIEW_V1",
-                "asof": asof,
-                "row_count": 1,
-                "rows": [{
-                    "ref": ref,
-                    "data": data,
-                    "source": {
-                        "kind": "JSONL_LINE",
-                        "path": jsonl_path,
-                        "line": line_no
-                    }
-                }],
-                "error": None
-            }
-        except json.JSONDecodeError as e:
-            return {
-                "status": "error",
-                "schema": "EVIDENCE_VIEW_V1",
-                "asof": asof,
-                "row_count": 0,
-                "rows": [],
-                "error": {
-                    "code": "PARSE_ERROR",
-                    "message": f"JSON parse error at line {line_no}: {str(e)}"
-                }
-            }
-    
-    # === JSON Ref 처리 ===
-    json_matched = False
-    for pattern in ALLOWED_JSON_PATTERNS:
-        if re.match(pattern, ref):
-            json_matched = True
-            break
-    
-    if not json_matched:
+    # HTTP 상태 코드로 변환
+    if result.http_status_equivalent == 400:
         raise HTTPException(
             status_code=400,
             detail={
@@ -2622,32 +2483,13 @@ def resolve_evidence_ref(ref: str):
                 "schema": "EVIDENCE_VIEW_V1",
                 "asof": asof,
                 "error": {
-                    "code": "INVALID_REF",
-                    "message": f"Ref does not match any allowed pattern: {ref}"
+                    "code": result.decision,
+                    "message": result.reason
                 }
             }
         )
     
-    # 2차 검증: Path Normalization
-    full_path = BASE_DIR / ref
-    abs_path = os.path.abspath(str(full_path))
-    allowed_root = os.path.abspath(str(BASE_DIR))
-    
-    if not abs_path.startswith(allowed_root + os.sep):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "schema": "EVIDENCE_VIEW_V1",
-                "asof": asof,
-                "error": {
-                    "code": "INVALID_REF",
-                    "message": "Path escape attempt blocked"
-                }
-            }
-        )
-    
-    if not full_path.exists():
+    if result.http_status_equivalent == 404:
         raise HTTPException(
             status_code=404,
             detail={
@@ -2655,31 +2497,14 @@ def resolve_evidence_ref(ref: str):
                 "schema": "EVIDENCE_VIEW_V1",
                 "asof": asof,
                 "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"File not found: {ref}"
+                    "code": result.decision,
+                    "message": result.reason
                 }
             }
         )
     
-    try:
-        data = json.loads(full_path.read_text(encoding="utf-8"))
-        return {
-            "status": "ready",
-            "schema": "EVIDENCE_VIEW_V1",
-            "asof": asof,
-            "row_count": 1,
-            "rows": [{
-                "ref": ref,
-                "data": data,
-                "source": {
-                    "kind": "JSON",
-                    "path": ref,
-                    "line": None
-                }
-            }],
-            "error": None
-        }
-    except json.JSONDecodeError as e:
+    # 200 OK
+    if result.decision == "PARSE_ERROR":
         return {
             "status": "error",
             "schema": "EVIDENCE_VIEW_V1",
@@ -2688,9 +2513,26 @@ def resolve_evidence_ref(ref: str):
             "rows": [],
             "error": {
                 "code": "PARSE_ERROR",
-                "message": f"JSON parse error: {str(e)}"
+                "message": result.reason
             }
         }
+    
+    return {
+        "status": "ready",
+        "schema": "EVIDENCE_VIEW_V1",
+        "asof": asof,
+        "row_count": 1,
+        "rows": [{
+            "ref": ref,
+            "data": result.data,
+            "source": {
+                "kind": result.source_kind,
+                "path": result.resolved_path,
+                "line": result.source_line
+            }
+        }],
+        "error": None
+    }
 
 
 # === Evidence Index API (C-P.31) ===
@@ -2747,6 +2589,78 @@ def regenerate_evidence_index():
     try:
         from app.generate_evidence_index import regenerate_index
         result = regenerate_index()
+        return result
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
+# === Evidence Health API (C-P.33) ===
+
+HEALTH_DIR = BASE_DIR / "reports" / "ops" / "evidence" / "health"
+HEALTH_LATEST_FILE = HEALTH_DIR / "health_latest.json"
+
+
+@app.get("/api/evidence/health/latest", summary="Evidence Health 최신 조회")
+def get_evidence_health_latest():
+    """Evidence Health Latest (C-P.33) - Graceful Empty State"""
+    from datetime import datetime
+    
+    if not HEALTH_LATEST_FILE.exists():
+        return {
+            "status": "ready",
+            "schema": "EVIDENCE_HEALTH_REPORT_V1",
+            "asof": None,
+            "summary": {
+                "total": 0,
+                "pass": 0,
+                "warn": 0,
+                "fail": 0,
+                "decision": "UNKNOWN"
+            },
+            "checks": [],
+            "top_fail_reasons": [],
+            "error": {
+                "code": "NO_REPORT_YET",
+                "message": "Health report not generated yet."
+            }
+        }
+    
+    try:
+        data = json.loads(HEALTH_LATEST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            **data,
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "schema": "EVIDENCE_HEALTH_REPORT_V1",
+            "asof": datetime.now().isoformat(),
+            "summary": {"total": 0, "pass": 0, "warn": 0, "fail": 0, "decision": "UNKNOWN"},
+            "checks": [],
+            "top_fail_reasons": [],
+            "error": {
+                "code": "READ_ERROR",
+                "message": str(e)
+            }
+        }
+
+
+@app.post("/api/evidence/health/regenerate", summary="Evidence Health 재생성")
+def regenerate_evidence_health():
+    """Evidence Health Regenerate (C-P.33) - No subprocess"""
+    try:
+        from app.run_evidence_health_check import regenerate_health_report
+        result = regenerate_health_report()
         return result
     except ImportError as e:
         raise HTTPException(status_code=500, detail={

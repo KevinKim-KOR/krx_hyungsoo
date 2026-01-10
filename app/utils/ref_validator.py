@@ -1,0 +1,256 @@
+"""
+Evidence Ref Validator (C-P.33)
+
+공용 모듈: /api/evidence/resolve와 Health Checker가 동일하게 사용
+- Validator Single Source 정책
+- 복제 금지, 분기 금지
+"""
+
+import json
+import os
+import re
+import linecache
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Optional, Any
+from datetime import datetime
+
+BASE_DIR = Path(__file__).parent.parent.parent
+
+# Allowlist + Patterns (동일 정책)
+ALLOWED_JSONL_FILES = [
+    "state/tickets/ticket_receipts.jsonl",
+    "state/push/send_receipts.jsonl"
+]
+
+ALLOWED_JSON_PATTERNS = [
+    r"^reports/ops/scheduler/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/postmortem/postmortem_latest\.json$",
+    r"^reports/ops/secrets/self_test_latest\.json$",
+    r"^reports/ops/push/outbox/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/outbox/outbox_latest\.json$",
+    r"^reports/ops/push/live_fire/live_fire_latest\.json$",
+    r"^reports/ops/push/live_fire/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/daily/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/evidence/index/evidence_index_latest\.json$",
+    r"^reports/ops/evidence/index/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/send/send_latest\.json$",
+    r"^reports/ops/push/send/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/preview/preview_latest\.json$",
+    r"^reports/phase_c/latest/recon_summary\.json$",
+    r"^reports/phase_c/latest/report_human\.json$"
+]
+
+JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
+
+DANGEROUS_TOKENS = ['..', '\\', '://', '%2e', '%2f', '%2E', '%2F', '%00']
+
+
+@dataclass
+class ResolvedEvidence:
+    """Ref 검증 결과"""
+    decision: str  # OK | INVALID_REF | NOT_FOUND | PARSE_ERROR
+    http_status_equivalent: int  # 200 | 400 | 404
+    content_type: str  # json | jsonl_line | text | none
+    resolved_path: Optional[str]
+    data: Optional[Any]
+    reason: Optional[str]
+    source_kind: Optional[str]
+    source_line: Optional[int]
+
+
+def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
+    """
+    Ref 검증 + 해석 (단일 정공 함수)
+    
+    - 1차: 위험 토큰 거부
+    - 2차: regex/allowlist 검증
+    - 3차: path normalization + allowed_root 검증
+    - 4차: 파일 존재 확인 + 내용 읽기
+    """
+    
+    # === 1차 검증: 위험 토큰 즉시 거부 ===
+    for token in DANGEROUS_TOKENS:
+        if token in ref:
+            return ResolvedEvidence(
+                decision="INVALID_REF",
+                http_status_equivalent=400,
+                content_type="none",
+                resolved_path=None,
+                data=None,
+                reason=f"Dangerous token detected: {token}",
+                source_kind=None,
+                source_line=None
+            )
+    
+    # === JSONL Line Ref 처리 ===
+    jsonl_match = re.match(JSONL_REF_PATTERN, ref)
+    if jsonl_match:
+        jsonl_path = jsonl_match.group(1)
+        line_no = int(jsonl_match.group(2))
+        
+        if line_no < 1:
+            return ResolvedEvidence(
+                decision="INVALID_REF",
+                http_status_equivalent=400,
+                content_type="none",
+                resolved_path=None,
+                data=None,
+                reason="Line number must be >= 1",
+                source_kind=None,
+                source_line=None
+            )
+        
+        # Allowlist 검증
+        if jsonl_path not in ALLOWED_JSONL_FILES:
+            return ResolvedEvidence(
+                decision="INVALID_REF",
+                http_status_equivalent=400,
+                content_type="none",
+                resolved_path=None,
+                data=None,
+                reason="JSONL file not in allowlist",
+                source_kind=None,
+                source_line=None
+            )
+        
+        # 2차 검증: Path Normalization
+        full_path = BASE_DIR / jsonl_path
+        abs_path = os.path.abspath(str(full_path))
+        allowed_root = os.path.abspath(str(BASE_DIR))
+        
+        if not abs_path.startswith(allowed_root + os.sep):
+            return ResolvedEvidence(
+                decision="INVALID_REF",
+                http_status_equivalent=400,
+                content_type="none",
+                resolved_path=None,
+                data=None,
+                reason="Path escape attempt blocked",
+                source_kind=None,
+                source_line=None
+            )
+        
+        if not full_path.exists():
+            return ResolvedEvidence(
+                decision="NOT_FOUND",
+                http_status_equivalent=404,
+                content_type="none",
+                resolved_path=jsonl_path,
+                data=None,
+                reason=f"File not found: {jsonl_path}",
+                source_kind="JSONL_LINE",
+                source_line=line_no
+            )
+        
+        # linecache로 특정 라인만 읽기 (전체 읽기 금지)
+        linecache.checkcache(str(full_path))
+        line_content = linecache.getline(str(full_path), line_no)
+        
+        if not line_content.strip():
+            return ResolvedEvidence(
+                decision="NOT_FOUND",
+                http_status_equivalent=404,
+                content_type="none",
+                resolved_path=jsonl_path,
+                data=None,
+                reason=f"Line {line_no} is empty or out of range",
+                source_kind="JSONL_LINE",
+                source_line=line_no
+            )
+        
+        try:
+            data = json.loads(line_content)
+            return ResolvedEvidence(
+                decision="OK",
+                http_status_equivalent=200,
+                content_type="jsonl_line",
+                resolved_path=jsonl_path,
+                data=data,
+                reason=None,
+                source_kind="JSONL_LINE",
+                source_line=line_no
+            )
+        except json.JSONDecodeError as e:
+            return ResolvedEvidence(
+                decision="PARSE_ERROR",
+                http_status_equivalent=200,
+                content_type="jsonl_line",
+                resolved_path=jsonl_path,
+                data=None,
+                reason=f"JSON parse error at line {line_no}: {str(e)}",
+                source_kind="JSONL_LINE",
+                source_line=line_no
+            )
+    
+    # === JSON Ref 처리 ===
+    json_matched = False
+    for pattern in ALLOWED_JSON_PATTERNS:
+        if re.match(pattern, ref):
+            json_matched = True
+            break
+    
+    if not json_matched:
+        return ResolvedEvidence(
+            decision="INVALID_REF",
+            http_status_equivalent=400,
+            content_type="none",
+            resolved_path=None,
+            data=None,
+            reason=f"Ref does not match any allowed pattern: {ref}",
+            source_kind=None,
+            source_line=None
+        )
+    
+    # 2차 검증: Path Normalization
+    full_path = BASE_DIR / ref
+    abs_path = os.path.abspath(str(full_path))
+    allowed_root = os.path.abspath(str(BASE_DIR))
+    
+    if not abs_path.startswith(allowed_root + os.sep):
+        return ResolvedEvidence(
+            decision="INVALID_REF",
+            http_status_equivalent=400,
+            content_type="none",
+            resolved_path=None,
+            data=None,
+            reason="Path escape attempt blocked",
+            source_kind=None,
+            source_line=None
+        )
+    
+    if not full_path.exists():
+        return ResolvedEvidence(
+            decision="NOT_FOUND",
+            http_status_equivalent=404,
+            content_type="none",
+            resolved_path=ref,
+            data=None,
+            reason=f"File not found: {ref}",
+            source_kind="JSON",
+            source_line=None
+        )
+    
+    try:
+        data = json.loads(full_path.read_text(encoding="utf-8"))
+        return ResolvedEvidence(
+            decision="OK",
+            http_status_equivalent=200,
+            content_type="json",
+            resolved_path=ref,
+            data=data,
+            reason=None,
+            source_kind="JSON",
+            source_line=None
+        )
+    except json.JSONDecodeError as e:
+        return ResolvedEvidence(
+            decision="PARSE_ERROR",
+            http_status_equivalent=200,
+            content_type="json",
+            resolved_path=ref,
+            data=None,
+            reason=f"JSON parse error: {str(e)}",
+            source_kind="JSON",
+            source_line=None
+        )
