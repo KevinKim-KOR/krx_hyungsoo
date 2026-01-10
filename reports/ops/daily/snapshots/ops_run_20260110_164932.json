@@ -1,0 +1,31 @@
+{
+  "schema": "OPS_CYCLE_RUN_V2",
+  "run_id": "c79677ae-6d06-4c70-99c2-005f68e5bb99",
+  "asof": "2026-01-10T16:49:32.787253",
+  "started_at": "2026-01-10T16:49:32.770112",
+  "finished_at": "2026-01-10T16:49:32.787257",
+  "overall_status": "DONE",
+  "ops_report_ref": "reports/ops/daily/ops_report_latest.json",
+  "ticket_step": {
+    "attempted": false,
+    "selected_request_id": null,
+    "selected_request_type": null,
+    "decision": "NONE",
+    "reason": "NO_OPEN_TICKETS",
+    "receipt_ref": null
+  },
+  "safety_snapshot": {
+    "emergency_stop_enabled": false,
+    "execution_gate_mode": "DRY_RUN",
+    "window_active": true,
+    "allowlist_version": "1.0"
+  },
+  "counters": {
+    "tickets_open": 0,
+    "tickets_in_progress": 1,
+    "tickets_done": 14,
+    "tickets_failed": 12,
+    "tickets_blocked": 8,
+    "skips_this_run": 0
+  }
+}

@@ -8,6 +8,8 @@
 **System Version**: 9.0 (Phase 11 Complete)
 **Last Update**: 2026-01-02
 
+> 📋 **운영 Runbook (Daily Ops & Live Fire)**: [runbook_scheduler_v1.md](docs/ops/runbook_scheduler_v1.md)
+
 ---
 
 ## 🎯 핵심 개념

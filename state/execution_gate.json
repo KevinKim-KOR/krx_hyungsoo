@@ -1,7 +1,7 @@
 {
   "schema": "EXECUTION_GATE_V1",
-  "mode": "REAL_ENABLED",
-  "updated_at": "2026-01-08T00:00:54.784174",
+  "mode": "DRY_RUN",
+  "updated_at": "2026-01-10T17:24:59.245075",
   "updated_by": "local_api",
-  "reason": "Verification C-P.24"
+  "reason": "Back to safety"
 }
