@@ -2396,25 +2396,6 @@ def get_scheduler_snapshot_by_id(snapshot_id: str):
     # 하드코딩된 디렉토리에서만 조회
     snapshot_path = SCHEDULER_SNAPSHOTS_DIR / snapshot_id
     
-    # Red Team 보완: Path Normalization으로 이중 차단
-    # os.path.abspath()로 정규화하여 교묘한 우회 공격 방지
-    import os
-    normalized_path = os.path.abspath(str(snapshot_path))
-    allowed_dir = os.path.abspath(str(SCHEDULER_SNAPSHOTS_DIR))
-    
-    if not normalized_path.startswith(allowed_dir):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "schema": "OPS_SNAPSHOT_VIEWER_V1",
-                "error": {
-                    "code": "INVALID_ID",
-                    "message": "Path escape attempt blocked"
-                }
-            }
-        )
-    
     if not snapshot_path.exists():
         raise HTTPException(
             status_code=404,
