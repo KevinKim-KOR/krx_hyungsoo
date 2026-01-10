@@ -1,0 +1,283 @@
+{
+  "schema": "EVIDENCE_INDEX_V1",
+  "asof": "2026-01-10T21:44:43.001140",
+  "row_count": 24,
+  "rows": [
+    {
+      "evidence_id": "e454c5da51f1",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #14: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line14",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line14"
+    },
+    {
+      "evidence_id": "81f536dafc0d",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #13: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line13",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line13"
+    },
+    {
+      "evidence_id": "d92fb23f85c0",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #12: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line12",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line12"
+    },
+    {
+      "evidence_id": "520f1d9cee55",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #11: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line11",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line11"
+    },
+    {
+      "evidence_id": "0e69155fc7d1",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #10: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line10",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line10"
+    },
+    {
+      "evidence_id": "b1e29a08966b",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #9: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line9",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line9"
+    },
+    {
+      "evidence_id": "48358977898f",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #8: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line8",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line8"
+    },
+    {
+      "evidence_id": "2d6679f572d6",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #7: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line7",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line7"
+    },
+    {
+      "evidence_id": "c1abfd8d7260",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #6: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line6",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line6"
+    },
+    {
+      "evidence_id": "d06119e4dc85",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #5: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line5",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line5"
+    },
+    {
+      "evidence_id": "9252ae5d9316",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #4: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line4",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line4"
+    },
+    {
+      "evidence_id": "4b2ac0704ad6",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #3: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line3",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line3"
+    },
+    {
+      "evidence_id": "3c4b5a9144b1",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #2: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line2",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line2"
+    },
+    {
+      "evidence_id": "2083146cf085",
+      "created_at": "2026-01-10T21:44:43.001140",
+      "title": "Ticket Receipt #1: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line1",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line1"
+    },
+    {
+      "evidence_id": "e23ce8786afc",
+      "created_at": "2026-01-10T16:06:17.170782",
+      "title": "Push Send: N/A",
+      "kind": "PUSH_SEND",
+      "severity": "INFO",
+      "ref": "reports/ops/push/send/send_latest.json",
+      "tags": []
+    },
+    {
+      "evidence_id": "b94f3aa31de0",
+      "created_at": "2026-01-10T14:54:34.150453",
+      "title": "Postmortem: SAFE",
+      "kind": "PUSH_POSTMORTEM",
+      "severity": "INFO",
+      "ref": "reports/ops/push/postmortem/postmortem_latest.json",
+      "tags": []
+    },
+    {
+      "evidence_id": "761e03484f4b",
+      "created_at": "2026-01-08T00:36:06.417595",
+      "title": "Secrets Self-Test: N/A",
+      "kind": "SECRETS_SELF_TEST",
+      "severity": "INFO",
+      "ref": "reports/ops/secrets/self_test_latest.json",
+      "tags": []
+    },
+    {
+      "evidence_id": "4779e343b32b",
+      "created_at": "2026-01-04T16:53:17.361937",
+      "title": "Ticket Receipt #20: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line20",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line20"
+    },
+    {
+      "evidence_id": "acc9a1d99622",
+      "created_at": "2026-01-04T12:02:07.874564",
+      "title": "Ticket Receipt #19: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line19",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line19"
+    },
+    {
+      "evidence_id": "31806cf37c0c",
+      "created_at": "2026-01-04T11:55:55.256551",
+      "title": "Ticket Receipt #18: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line18",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line18"
+    },
+    {
+      "evidence_id": "52d70d6444b8",
+      "created_at": "2026-01-04T11:20:31.641648",
+      "title": "Ticket Receipt #17: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line17",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line17"
+    },
+    {
+      "evidence_id": "445119305a76",
+      "created_at": "2026-01-04T11:17:23.015564",
+      "title": "Ticket Receipt #16: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line16",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line16"
+    },
+    {
+      "evidence_id": "64b46e23338f",
+      "created_at": "2026-01-03T21:22:10.624232",
+      "title": "Ticket Receipt #15: N/A",
+      "kind": "TICKET_RECEIPT",
+      "severity": "INFO",
+      "ref": "state/tickets/ticket_receipts.jsonl:line15",
+      "tags": [
+        "UNKNOWN"
+      ],
+      "ticket_line_ref": "state/tickets/ticket_receipts.jsonl:line15"
+    },
+    {
+      "evidence_id": "eb8a8b00dea4",
+      "created_at": "2026-01-03T20:00:00",
+      "title": "Phase C Recon Summary",
+      "kind": "PHASE_C_LATEST",
+      "severity": "INFO",
+      "ref": "reports/phase_c/latest/recon_summary.json",
+      "tags": []
+    }
+  ]
+}

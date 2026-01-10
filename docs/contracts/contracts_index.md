@@ -89,6 +89,7 @@
 | `OPS_SCHEDULER_API_V1` | [contract_ops_scheduler_api_v1.md](contract_ops_scheduler_api_v1.md) | Ops Scheduler API |
 | `OPS_SNAPSHOT_VIEWER_V1` | [contract_ops_snapshot_viewer_v1.md](contract_ops_snapshot_viewer_v1.md) | Ops Snapshot Viewer |
 | `EVIDENCE_REF_V1` | [contract_evidence_ref_v1.md](contract_evidence_ref_v1.md) | Evidence Ref Resolver |
+| `EVIDENCE_INDEX_V1` | [contract_evidence_index_v1.md](contract_evidence_index_v1.md) | Evidence Index |
 
 ---
 

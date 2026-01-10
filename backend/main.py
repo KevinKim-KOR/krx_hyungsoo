@@ -2684,6 +2684,73 @@ def resolve_evidence_ref(ref: str):
         }
 
 
+# === Evidence Index API (C-P.31) ===
+
+EVIDENCE_INDEX_DIR = BASE_DIR / "reports" / "ops" / "evidence" / "index"
+EVIDENCE_INDEX_LATEST = EVIDENCE_INDEX_DIR / "evidence_index_latest.json"
+
+
+@app.get("/api/evidence/index/latest", summary="Evidence Index 최신 조회")
+def get_evidence_index_latest():
+    """Evidence Index Latest (C-P.31) - Graceful Empty State"""
+    from datetime import datetime
+    
+    if not EVIDENCE_INDEX_LATEST.exists():
+        return {
+            "status": "ready",
+            "schema": "EVIDENCE_INDEX_V1",
+            "asof": None,
+            "row_count": 0,
+            "rows": [],
+            "error": {
+                "code": "NO_INDEX_YET",
+                "message": "Evidence index not generated yet."
+            }
+        }
+    
+    try:
+        data = json.loads(EVIDENCE_INDEX_LATEST.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "EVIDENCE_INDEX_V1",
+            "asof": data.get("asof"),
+            "row_count": data.get("row_count", 0),
+            "rows": data.get("rows", []),
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "schema": "EVIDENCE_INDEX_V1",
+            "asof": datetime.now().isoformat(),
+            "row_count": 0,
+            "rows": [],
+            "error": {
+                "code": "READ_ERROR",
+                "message": str(e)
+            }
+        }
+
+
+@app.post("/api/evidence/index/regenerate", summary="Evidence Index 재생성")
+def regenerate_evidence_index():
+    """Evidence Index Regenerate (C-P.31) - No path input"""
+    try:
+        from app.generate_evidence_index import regenerate_index
+        result = regenerate_index()
+        return result
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
