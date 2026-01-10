@@ -42,9 +42,18 @@ REAL 실행 완료 판정을 **mtime 기반(changed)**에서 **sha256 해시 기
   "acceptance": {
     "pass": true,
     "reason": "CHANGED_VERIFIED | UNCHANGED_BUT_HASH_MATCH_VERIFIED | FAILED_EXIT_CODE | MISSING_OUTPUTS"
-  }
+  },
+  "evidence_refs": [
+    "reports/ops/evidence/index/evidence_index_latest.json",
+    "reports/phase_c/latest/recon_summary.json"
+  ]
 }
 ```
+
+> 🔒 **evidence_refs 규칙**
+> - Raw Path Only (접두어 금지: `json:`, `file://` 등)
+> - `reports/ops/evidence/index/evidence_index_latest.json`는 항상 포함 (존재 시)
+> - 해당 실행과 직접 관련된 ref 1개 이상 포함 (존재 시)
 
 ---
 

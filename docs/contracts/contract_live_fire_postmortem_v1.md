@@ -43,13 +43,19 @@ Live Fire 실행 결과 분석 및 Kill-Switch 상태 검증을 위한 Postmorte
     "window_was_consumed": true,
     "emergency_stop_is_off": true
   },
-  "evidence_refs": {
-    "outbox_path": "reports/ops/push/outbox/outbox_latest.json",
-    "receipt_path": "state/push/send_receipts.jsonl",
-    "send_latest_path": "reports/ops/push/send/send_latest.json"
-  }
+  "evidence_refs": [
+    "reports/ops/evidence/index/evidence_index_latest.json",
+    "reports/ops/push/postmortem/postmortem_latest.json",
+    "reports/ops/push/send/send_latest.json",
+    "reports/ops/push/outbox/outbox_latest.json"
+  ]
 }
 ```
+
+> 🔒 **evidence_refs 규칙 (C-P.32 변경)**
+> - **배열 형식** (기존 객체 형식에서 변경)
+> - Raw Path Only (접두어 금지: `json:`, `file://` 등)
+> - 최소 포함 (존재 시): postmortem_latest, send_latest, ops_report_latest, evidence_index_latest
 
 ---
 

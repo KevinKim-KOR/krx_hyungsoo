@@ -38,9 +38,18 @@
   },
   "http_status": 200,
   "error_class": null,
-  "error_message_sanitized": null
+  "error_message_sanitized": null,
+  "evidence_refs": [
+    "reports/ops/evidence/index/evidence_index_latest.json",
+    "reports/ops/push/send/send_latest.json",
+    "reports/ops/push/outbox/outbox_latest.json"
+  ]
 }
 ```
+
+> 🔒 **evidence_refs 규칙**
+> - Raw Path Only (접두어 금지: `json:`, `file://` 등)
+> - 권장 포함 (존재 시): send_latest, outbox_latest, preview_latest, self_test_latest, evidence_index_latest
 
 ---
 
