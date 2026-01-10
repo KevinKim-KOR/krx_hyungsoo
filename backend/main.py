@@ -2254,6 +2254,110 @@ def run_live_fire_ops_api():
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
+# === Ops Scheduler API (C-P.28) ===
+
+SCHEDULER_LATEST_DIR = BASE_DIR / "reports" / "ops" / "scheduler" / "latest"
+SCHEDULER_SNAPSHOTS_DIR = BASE_DIR / "reports" / "ops" / "scheduler" / "snapshots"
+OPS_RUN_LATEST = SCHEDULER_LATEST_DIR / "ops_run_latest.json"
+
+
+@app.get("/api/ops/scheduler/latest", summary="Ops Run Receipt 최신 조회")
+def get_scheduler_latest():
+    """Ops Run Receipt Latest (C-P.28) - Graceful Empty State"""
+    from datetime import datetime
+    
+    if not OPS_RUN_LATEST.exists():
+        return {
+            "status": "not_ready",
+            "schema": "OPS_RUN_RECEIPT_V1",
+            "asof": datetime.now().isoformat(),
+            "row_count": 0,
+            "rows": [],
+            "error": {
+                "code": "NO_RUN_HISTORY",
+                "message": "No run history yet."
+            }
+        }
+    
+    try:
+        data = json.loads(OPS_RUN_LATEST.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "OPS_RUN_RECEIPT_V1",
+            "asof": data.get("asof"),
+            "row_count": 1,
+            "rows": [data],
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "schema": "OPS_RUN_RECEIPT_V1",
+            "asof": datetime.now().isoformat(),
+            "row_count": 0,
+            "rows": [],
+            "error": {
+                "code": "READ_ERROR",
+                "message": str(e)
+            }
+        }
+
+
+@app.get("/api/ops/scheduler/snapshots", summary="Ops Run Snapshots 목록")
+def get_scheduler_snapshots():
+    """Ops Scheduler Snapshots List (C-P.28) - No Path Traversal"""
+    from datetime import datetime
+    import os
+    
+    # 하드코딩된 경로만 사용 (Path Traversal 방지)
+    snapshots_dir = SCHEDULER_SNAPSHOTS_DIR
+    
+    if not snapshots_dir.exists():
+        return {
+            "status": "ready",
+            "schema": "OPS_SCHEDULER_SNAPSHOTS_V1",
+            "asof": datetime.now().isoformat(),
+            "directory": str(snapshots_dir.relative_to(BASE_DIR)),
+            "row_count": 0,
+            "rows": [],
+            "error": None
+        }
+    
+    try:
+        files = []
+        for f in sorted(snapshots_dir.iterdir(), reverse=True)[:20]:  # 최신 20개만
+            if f.is_file() and f.suffix == ".json":
+                stat = f.stat()
+                files.append({
+                    "filename": f.name,
+                    "mtime": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "size_bytes": stat.st_size
+                })
+        
+        return {
+            "status": "ready",
+            "schema": "OPS_SCHEDULER_SNAPSHOTS_V1",
+            "asof": datetime.now().isoformat(),
+            "directory": str(snapshots_dir.relative_to(BASE_DIR)),
+            "row_count": len(files),
+            "rows": files,
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "schema": "OPS_SCHEDULER_SNAPSHOTS_V1",
+            "asof": datetime.now().isoformat(),
+            "directory": str(snapshots_dir.relative_to(BASE_DIR)),
+            "row_count": 0,
+            "rows": [],
+            "error": {
+                "code": "READ_ERROR",
+                "message": str(e)
+            }
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

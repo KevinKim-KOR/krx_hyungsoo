@@ -536,6 +536,188 @@
             )
         }
 
+        // Phase C-P.28: Ops Run Receipt Card
+        function OpsReceiptCard() {
+            const [data, setData] = React.useState(null);
+            const [runStatus, setRunStatus] = React.useState(null);
+            const [isRunning, setIsRunning] = React.useState(false);
+
+            React.useEffect(() => {
+                fetchReceipt();
+            }, []);
+
+            const fetchReceipt = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/ops/scheduler/latest`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        setData(json);
+                    }
+                } catch (e) {
+                    console.error("Ops Receipt fetch error:", e);
+                }
+            };
+
+            const handleRunCycle = async () => {
+                // Clumsy Finger Protection
+                if (!confirm("정말 Ops Cycle을 실행하시겠습니까?\n(기본 모드: DRY_RUN)")) {
+                    return;
+                }
+
+                setIsRunning(true);
+                setRunStatus(null);
+                try {
+                    const res = await fetch(`${API_BASE}/api/ops/cycle/run`, { method: 'POST' });
+                    const json = await res.json();
+                    setRunStatus({
+                        ok: res.ok,
+                        status: json.overall_status || "UNKNOWN",
+                        message: json.message || json.reason || "실행 완료"
+                    });
+                    // Refresh receipt after run
+                    setTimeout(fetchReceipt, 1000);
+                } catch (e) {
+                    setRunStatus({
+                        ok: false,
+                        status: "ERROR",
+                        message: e.message || "실행 실패"
+                    });
+                } finally {
+                    setIsRunning(false);
+                }
+            };
+
+            // Empty State: No Run History
+            if (!data || data.status === 'not_ready') {
+                return (
+                    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900 border border-slate-700/50 rounded-2xl p-6">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <span className="w-1 h-5 bg-purple-500 rounded"></span> Ops Run Receipt
+                            <span className="ml-2 px-2 py-0.5 rounded text-xs font-bold bg-slate-600/50 text-slate-400 border border-slate-600/30">NO DATA</span>
+                        </h3>
+                        <div className="text-center py-8 text-slate-500 bg-slate-900/50 rounded-lg border border-dashed border-slate-700">
+                            <div className="text-3xl mb-2">📋</div>
+                            <div className="font-semibold">No Run History</div>
+                            <div className="text-sm mt-1">아직 Ops Cycle 실행 이력이 없습니다.</div>
+                        </div>
+                        <button
+                            onClick={handleRunCycle}
+                            disabled={isRunning}
+                            className="mt-4 w-full py-2 rounded-lg font-bold text-white bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 transition"
+                        >
+                            {isRunning ? '실행 중...' : '▶ Run Ops Cycle'}
+                        </button>
+                    </div>
+                );
+            }
+
+            const receipt = data.rows && data.rows[0];
+            if (!receipt) return null;
+
+            const statusColor = {
+                'DONE': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                'SKIPPED': 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+                'BLOCKED': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                'STOPPED': 'bg-red-500/20 text-red-400 border-red-500/30'
+            };
+
+            const reasonBadge = (reason) => {
+                if (!reason) return null;
+                const colors = {
+                    'NO_OPEN_TICKETS': 'bg-slate-600/30 text-slate-400',
+                    'NO_MESSAGES': 'bg-amber-600/30 text-amber-400',
+                    'NOT_REAL_GATE': 'bg-cyan-600/30 text-cyan-400',
+                    'SENDER_DISABLED': 'bg-slate-600/30 text-slate-400',
+                    'WINDOW_INACTIVE': 'bg-amber-600/30 text-amber-400'
+                };
+                return <span className={`ml-2 px-2 py-0.5 rounded text-xs ${colors[reason] || 'bg-slate-600/30 text-slate-400'}`}>{reason}</span>;
+            };
+
+            const liveFireStep = receipt.live_fire_step || {};
+            const ticketStep = receipt.ticket_step || {};
+            const pushStep = receipt.push_delivery_step || {};
+            const modes = receipt.observed_modes || {};
+
+            return (
+                <div className="bg-gradient-to-br from-purple-900/30 to-slate-900 border border-purple-700/50 rounded-2xl p-6">
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span className="w-1 h-5 bg-purple-500 rounded"></span> Ops Run Receipt
+                        <span className={`ml-2 px-2 py-0.5 rounded text-xs font-bold border ${statusColor[ticketStep.decision] || statusColor['SKIPPED']}`}>
+                            {ticketStep.decision || 'N/A'}
+                        </span>
+                        <span className="text-xs font-mono text-slate-500 ml-auto">{receipt.asof?.slice(0, 16)}</span>
+                    </h3>
+
+                    {/* Observed Modes */}
+                    <div className="grid grid-cols-5 gap-2 mb-4 text-xs">
+                        <div className={`p-2 rounded border ${modes.gate_mode === 'REAL_ENABLED' ? 'bg-red-900/30 border-red-700/50 text-red-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'}`}>
+                            <div className="font-bold">Gate</div>
+                            <div className="font-mono">{modes.gate_mode || 'N/A'}</div>
+                        </div>
+                        <div className={`p-2 rounded border ${modes.sender_enable ? 'bg-red-900/30 border-red-700/50 text-red-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'}`}>
+                            <div className="font-bold">Sender</div>
+                            <div className="font-mono">{modes.sender_enable ? 'ON' : 'OFF'}</div>
+                        </div>
+                        <div className={`p-2 rounded border ${modes.window_active ? 'bg-emerald-900/30 border-emerald-700/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'}`}>
+                            <div className="font-bold">Window</div>
+                            <div className="font-mono">{modes.window_active ? 'ACTIVE' : 'INACTIVE'}</div>
+                        </div>
+                        <div className={`p-2 rounded border ${modes.emergency_stop ? 'bg-red-900/30 border-red-700/50 text-red-400' : 'bg-emerald-900/30 border-emerald-700/50 text-emerald-400'}`}>
+                            <div className="font-bold">E-Stop</div>
+                            <div className="font-mono">{modes.emergency_stop ? 'ON' : 'OFF'}</div>
+                        </div>
+                        <div className="p-2 rounded border bg-slate-800/50 border-slate-700/50 text-slate-400">
+                            <div className="font-bold">Ext Send</div>
+                            <div className="font-mono">{receipt.external_send_count || 0}</div>
+                        </div>
+                    </div>
+
+                    {/* Steps Summary */}
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
+                            <div className="font-bold text-slate-300 mb-1">Ticket Step</div>
+                            <div className={`font-mono ${ticketStep.decision === 'DONE' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                {ticketStep.decision || 'N/A'}
+                                {ticketStep.reason === 'NO_OPEN_TICKETS' && <span className="ml-1 text-xs text-slate-500">(No Open Tickets)</span>}
+                            </div>
+                        </div>
+                        <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
+                            <div className="font-bold text-slate-300 mb-1">Push Delivery</div>
+                            <div className={`font-mono ${pushStep.decision === 'DONE' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                {pushStep.decision || 'N/A'}
+                            </div>
+                        </div>
+                        <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/30">
+                            <div className="font-bold text-slate-300 mb-1">Live Fire</div>
+                            <div className={`font-mono ${liveFireStep.decision === 'DONE' ? 'text-emerald-400' : liveFireStep.decision === 'BLOCKED' ? 'text-amber-400' : 'text-slate-400'}`}>
+                                {liveFireStep.decision || 'N/A'}
+                                {reasonBadge(liveFireStep.reason)}
+                            </div>
+                            {liveFireStep.live_fire_receipt_ref && (
+                                <div className="text-xs text-slate-500 mt-1 font-mono truncate">ref: {liveFireStep.live_fire_receipt_ref}</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Run Button + Status */}
+                    <div className="mt-4 flex items-center gap-3">
+                        <button
+                            onClick={handleRunCycle}
+                            disabled={isRunning}
+                            className="flex-1 py-2 rounded-lg font-bold text-white bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 transition"
+                        >
+                            {isRunning ? '실행 중...' : '▶ Run Ops Cycle'}
+                        </button>
+                        {runStatus && (
+                            <div className={`px-3 py-2 rounded-lg text-sm font-mono ${runStatus.ok ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>
+                                {runStatus.status}: {runStatus.message}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         function TicketsView({ data, gateMode, opsData, pushDeliveryData }) {
             if (!data || data.status === 'not_ready') {
                 return (
@@ -678,6 +860,9 @@
                         </div>
                     )}
 
+                    {/* Ops Run Receipt Card (C-P.28) */}
+                    <OpsReceiptCard />
+
                     {/* Ticket Status Board */}
                     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
                         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -741,6 +926,8 @@
             const [gateMode, setGateMode] = useState("MOCK_ONLY");
             const [opsData, setOpsData] = useState(null);  // C-P.13
             const [pushDeliveryData, setPushDeliveryData] = useState(null);  // C-P.18
+            const [opsReceiptData, setOpsReceiptData] = useState(null);  // C-P.28
+            const [opsRunStatus, setOpsRunStatus] = useState(null);  // C-P.28 Run Status
             const [activeTab, setActiveTab] = useState("dashboard");
 
             // Integrity Check Logic
@@ -873,6 +1060,13 @@
                         if (pushDelData.data) {
                             setPushDeliveryData(pushDelData.data);
                         }
+                    }
+
+                    // Phase C-P.28: Ops Scheduler Receipt
+                    const opsReceiptRes = await fetch(`${API_BASE}/api/ops/scheduler/latest`);
+                    if (opsReceiptRes.ok) {
+                        const opsReceiptData = await opsReceiptRes.json();
+                        setOpsReceiptData(opsReceiptData);
                     }
 
                 } catch (e) {
