@@ -200,6 +200,13 @@ def run_push_send_cycle() -> dict:
     except ImportError:
         pass
     
+    # C-P.32.1: Evidence refs
+    try:
+        from app.utils.evidence_refs import build_push_refs
+        evidence_refs = build_push_refs()
+    except Exception:
+        evidence_refs = []
+    
     # Default receipt structure
     receipt = {
         "schema": "PUSH_SEND_RECEIPT_V1",
@@ -215,7 +222,8 @@ def run_push_send_cycle() -> dict:
         "secrets_status_observed": get_secrets_status(),
         "http_status": None,
         "error_class": None,
-        "error_message_sanitized": None
+        "error_message_sanitized": None,
+        "evidence_refs": evidence_refs
     }
     
     # 1. Emergency Stop

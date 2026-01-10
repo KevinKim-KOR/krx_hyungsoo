@@ -19,6 +19,13 @@ import sys
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+# C-P.32.1: Evidence refs utility
+try:
+    from app.utils.evidence_refs import build_postmortem_refs
+except ImportError:
+    def build_postmortem_refs():
+        return []
+
 STATE_DIR = BASE_DIR / "state"
 REPORTS_PUSH_DIR = BASE_DIR / "reports" / "ops" / "push"
 POSTMORTEM_DIR = REPORTS_PUSH_DIR / "postmortem"
@@ -160,11 +167,7 @@ def generate_postmortem() -> dict:
             "window_was_consumed": window_consumed,
             "emergency_stop_is_off": not emergency_stop_enabled
         },
-        "evidence_refs": {
-            "outbox_path": str(OUTBOX_LATEST_FILE.relative_to(BASE_DIR)) if OUTBOX_LATEST_FILE.exists() else None,
-            "receipt_path": str(SEND_RECEIPTS_FILE.relative_to(BASE_DIR)) if SEND_RECEIPTS_FILE.exists() else None,
-            "send_latest_path": str(SEND_LATEST_FILE.relative_to(BASE_DIR)) if SEND_LATEST_FILE.exists() else None
-        }
+        "evidence_refs": build_postmortem_refs()
     }
     
     # 6. Atomic Save

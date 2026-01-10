@@ -2445,9 +2445,18 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/ops/push/postmortem/postmortem_latest\.json$",
     r"^reports/ops/secrets/self_test_latest\.json$",
     r"^reports/ops/push/outbox/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/outbox/outbox_latest\.json$",
     r"^reports/ops/push/live_fire/live_fire_latest\.json$",
     r"^reports/ops/push/live_fire/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    r"^reports/ops/daily/snapshots/[a-zA-Z0-9_\-\.]+\.json$"
+    r"^reports/ops/daily/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # C-P.32.1: evidence_refs 호환
+    r"^reports/ops/evidence/index/evidence_index_latest\.json$",
+    r"^reports/ops/evidence/index/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/send/send_latest\.json$",
+    r"^reports/ops/push/send/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/preview/preview_latest\.json$",
+    r"^reports/phase_c/latest/recon_summary\.json$",
+    r"^reports/phase_c/latest/report_human\.json$"
 ]
 
 # JSONL 패턴

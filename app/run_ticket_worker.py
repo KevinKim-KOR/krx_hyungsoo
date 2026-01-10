@@ -347,6 +347,13 @@ def write_receipt_v3(
     """Write EXECUTION_RECEIPT_V3"""
     TICKETS_DIR.mkdir(parents=True, exist_ok=True)
     
+    # C-P.32.1: Evidence refs
+    try:
+        from app.utils.evidence_refs import build_execution_receipt_refs
+        evidence_refs = build_execution_receipt_refs()
+    except Exception:
+        evidence_refs = []
+    
     receipt = {
         "schema": "EXECUTION_RECEIPT_V3",
         "asof": datetime.now().isoformat(),
@@ -359,7 +366,8 @@ def write_receipt_v3(
         "outputs_proof": outputs_proof,
         "acceptance": acceptance,
         "safety_checks": safety_checks,
-        "preflight_artifact_path": preflight_artifact_path
+        "preflight_artifact_path": preflight_artifact_path,
+        "evidence_refs": evidence_refs
     }
     
     with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
