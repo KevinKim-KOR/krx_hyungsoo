@@ -1,7 +1,7 @@
 {
-    "version": "1.30",
+    "version": "1.31",
     "asof": "2026-01-10",
-    "description": "Active Surface Registry (Phase C-P.29)",
+    "description": "Active Surface Registry (Phase C-P.30)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -109,7 +109,8 @@
         "/api/ops/push/live_fire/run",
         "/api/ops/scheduler/latest",
         "/api/ops/scheduler/snapshots",
-        "/api/ops/scheduler/snapshots/{snapshot_id}"
+        "/api/ops/scheduler/snapshots/{snapshot_id}",
+        "/api/evidence/resolve"
     ],
     "forbidden_paths": [
         "_archive/**"

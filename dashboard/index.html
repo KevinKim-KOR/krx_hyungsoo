@@ -595,6 +595,59 @@
                 }
             };
 
+            // C-P.30: Evidence Ref Resolver
+            const handleResolveRef = async (refValue) => {
+                setViewerLoading(true);
+                setViewerOpen(true);
+                try {
+                    const res = await fetch(`${API_BASE}/api/evidence/resolve?ref=${encodeURIComponent(refValue)}`);
+                    const json = await res.json();
+                    if (res.ok && json.status === 'ready' && json.rows && json.rows[0]) {
+                        setViewerData({
+                            snapshot_id: json.rows[0].ref,
+                            data: json.rows[0].data,
+                            source: json.rows[0].source
+                        });
+                    } else {
+                        setViewerData({ error: json.error || json.detail?.error || { message: 'Unknown error' } });
+                    }
+                } catch (e) {
+                    setViewerData({ error: { message: e.message } });
+                } finally {
+                    setViewerLoading(false);
+                }
+            };
+
+            // Ref 패턴 감지 및 클릭 가능하게 렌더링
+            const renderJsonWithRefLinks = (data) => {
+                const jsonStr = JSON.stringify(data, null, 2);
+                // ref 패턴: *.jsonl:line\d+ 또는 reports/ops/**/*.json
+                const refPattern = /(state\/[a-z\/]+\.jsonl:line\d+|reports\/ops\/[a-zA-Z0-9_\/\-\.]+\.json)/g;
+
+                const parts = jsonStr.split(refPattern);
+                const matches = jsonStr.match(refPattern) || [];
+
+                return parts.map((part, idx) => {
+                    if (idx < parts.length - 1) {
+                        const ref = matches[idx - Math.floor(idx / 2)] || matches[Math.floor(idx / 2)];
+                        if (ref && jsonStr.includes(ref)) {
+                            return (
+                                <React.Fragment key={idx}>
+                                    {part}
+                                    <span
+                                        className="text-cyan-400 underline cursor-pointer hover:text-cyan-300"
+                                        onClick={() => handleResolveRef(ref)}
+                                    >
+                                        {ref}
+                                    </span>
+                                </React.Fragment>
+                            );
+                        }
+                    }
+                    return <React.Fragment key={idx}>{part}</React.Fragment>;
+                });
+            };
+
             const handleRunCycle = async () => {
                 // Clumsy Finger Protection
                 if (!confirm("정말 Ops Cycle을 실행하시겠습니까?\n(기본 모드: DRY_RUN)")) {
@@ -799,7 +852,7 @@
                                         <div className="p-8 text-center text-red-400">{viewerData.error.message || viewerData.error}</div>
                                     ) : (
                                         <pre className="p-4 text-xs font-mono text-emerald-400 whitespace-pre-wrap">
-                                            {JSON.stringify(viewerData?.data, null, 2)}
+                                            {viewerData?.data ? renderJsonWithRefLinks(viewerData.data) : ''}
                                         </pre>
                                     )}
                                 </div>

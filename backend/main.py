@@ -2431,6 +2431,259 @@ def get_scheduler_snapshot_by_id(snapshot_id: str):
         )
 
 
+# === Evidence Ref Resolver API (C-P.30) ===
+
+# 허용된 JSONL 파일 (정확히 2개만)
+ALLOWED_JSONL_FILES = {
+    "state/tickets/ticket_receipts.jsonl",
+    "state/push/send_receipts.jsonl"
+}
+
+# 허용된 JSON 디렉토리 패턴
+ALLOWED_JSON_PATTERNS = [
+    r"^reports/ops/scheduler/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/postmortem/postmortem_latest\.json$",
+    r"^reports/ops/secrets/self_test_latest\.json$",
+    r"^reports/ops/push/outbox/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/live_fire/live_fire_latest\.json$",
+    r"^reports/ops/push/live_fire/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/daily/snapshots/[a-zA-Z0-9_\-\.]+\.json$"
+]
+
+# JSONL 패턴
+JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
+
+
+@app.get("/api/evidence/resolve", summary="Evidence Ref Resolver")
+def resolve_evidence_ref(ref: str):
+    """Evidence Ref Resolver (C-P.30) - Double Defense + Linecache"""
+    from datetime import datetime
+    import re
+    import os
+    import linecache
+    
+    asof = datetime.now().isoformat()
+    
+    # === 1차 검증: 위험 토큰 즉시 거부 ===
+    dangerous_tokens = ['..', '\\', '://', '%2e', '%2f', '%2E', '%2F', '%00']
+    for token in dangerous_tokens:
+        if token in ref:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "schema": "EVIDENCE_VIEW_V1",
+                    "asof": asof,
+                    "error": {
+                        "code": "INVALID_REF",
+                        "message": f"Dangerous token detected: {token}"
+                    }
+                }
+            )
+    
+    # === JSONL Line Ref 처리 ===
+    jsonl_match = re.match(JSONL_REF_PATTERN, ref)
+    if jsonl_match:
+        jsonl_path = jsonl_match.group(1)
+        line_no = int(jsonl_match.group(2))
+        
+        if line_no < 1:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "schema": "EVIDENCE_VIEW_V1",
+                    "asof": asof,
+                    "error": {
+                        "code": "INVALID_REF",
+                        "message": "Line number must be >= 1"
+                    }
+                }
+            )
+        
+        # Allowlist 검증
+        if jsonl_path not in ALLOWED_JSONL_FILES:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "schema": "EVIDENCE_VIEW_V1",
+                    "asof": asof,
+                    "error": {
+                        "code": "INVALID_REF",
+                        "message": "JSONL file not in allowlist"
+                    }
+                }
+            )
+        
+        # 2차 검증: Path Normalization
+        full_path = BASE_DIR / jsonl_path
+        abs_path = os.path.abspath(str(full_path))
+        allowed_root = os.path.abspath(str(BASE_DIR))
+        
+        if not abs_path.startswith(allowed_root + os.sep):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "schema": "EVIDENCE_VIEW_V1",
+                    "asof": asof,
+                    "error": {
+                        "code": "INVALID_REF",
+                        "message": "Path escape attempt blocked"
+                    }
+                }
+            )
+        
+        if not full_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "error",
+                    "schema": "EVIDENCE_VIEW_V1",
+                    "asof": asof,
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": f"File not found: {jsonl_path}"
+                    }
+                }
+            )
+        
+        # Red Team 수용: linecache로 특정 라인만 읽기 (전체 읽기 금지)
+        linecache.checkcache(str(full_path))
+        line_content = linecache.getline(str(full_path), line_no)
+        
+        if not line_content.strip():
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "error",
+                    "schema": "EVIDENCE_VIEW_V1",
+                    "asof": asof,
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": f"Line {line_no} is empty or out of range"
+                    }
+                }
+            )
+        
+        try:
+            data = json.loads(line_content)
+            return {
+                "status": "ready",
+                "schema": "EVIDENCE_VIEW_V1",
+                "asof": asof,
+                "row_count": 1,
+                "rows": [{
+                    "ref": ref,
+                    "data": data,
+                    "source": {
+                        "kind": "JSONL_LINE",
+                        "path": jsonl_path,
+                        "line": line_no
+                    }
+                }],
+                "error": None
+            }
+        except json.JSONDecodeError as e:
+            return {
+                "status": "error",
+                "schema": "EVIDENCE_VIEW_V1",
+                "asof": asof,
+                "row_count": 0,
+                "rows": [],
+                "error": {
+                    "code": "PARSE_ERROR",
+                    "message": f"JSON parse error at line {line_no}: {str(e)}"
+                }
+            }
+    
+    # === JSON Ref 처리 ===
+    json_matched = False
+    for pattern in ALLOWED_JSON_PATTERNS:
+        if re.match(pattern, ref):
+            json_matched = True
+            break
+    
+    if not json_matched:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "schema": "EVIDENCE_VIEW_V1",
+                "asof": asof,
+                "error": {
+                    "code": "INVALID_REF",
+                    "message": f"Ref does not match any allowed pattern: {ref}"
+                }
+            }
+        )
+    
+    # 2차 검증: Path Normalization
+    full_path = BASE_DIR / ref
+    abs_path = os.path.abspath(str(full_path))
+    allowed_root = os.path.abspath(str(BASE_DIR))
+    
+    if not abs_path.startswith(allowed_root + os.sep):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "schema": "EVIDENCE_VIEW_V1",
+                "asof": asof,
+                "error": {
+                    "code": "INVALID_REF",
+                    "message": "Path escape attempt blocked"
+                }
+            }
+        )
+    
+    if not full_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "error",
+                "schema": "EVIDENCE_VIEW_V1",
+                "asof": asof,
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"File not found: {ref}"
+                }
+            }
+        )
+    
+    try:
+        data = json.loads(full_path.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "EVIDENCE_VIEW_V1",
+            "asof": asof,
+            "row_count": 1,
+            "rows": [{
+                "ref": ref,
+                "data": data,
+                "source": {
+                    "kind": "JSON",
+                    "path": ref,
+                    "line": None
+                }
+            }],
+            "error": None
+        }
+    except json.JSONDecodeError as e:
+        return {
+            "status": "error",
+            "schema": "EVIDENCE_VIEW_V1",
+            "asof": asof,
+            "row_count": 0,
+            "rows": [],
+            "error": {
+                "code": "PARSE_ERROR",
+                "message": f"JSON parse error: {str(e)}"
+            }
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
