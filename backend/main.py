@@ -2166,6 +2166,50 @@ def run_push_send():
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
+# === Push Postmortem API (C-P.25) ===
+
+POSTMORTEM_LATEST = BASE_DIR / "reports" / "ops" / "push" / "postmortem" / "postmortem_latest.json"
+
+
+@app.get("/api/ops/push/postmortem/latest", summary="Postmortem 최신 조회")
+def get_postmortem_latest():
+    """Live Fire Postmortem Latest (C-P.25)"""
+    if not POSTMORTEM_LATEST.exists():
+        return {
+            "status": "empty",
+            "schema": "LIVE_FIRE_POSTMORTEM_V1",
+            "data": None,
+            "error": "No postmortem generated yet. Use regenerate endpoint."
+        }
+    
+    try:
+        data = json.loads(POSTMORTEM_LATEST.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "LIVE_FIRE_POSTMORTEM_V1",
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/api/ops/push/postmortem/regenerate", summary="Postmortem 재생성")
+def regenerate_postmortem():
+    """Regenerate Live Fire Postmortem (C-P.25)"""
+    try:
+        from app.generate_live_fire_postmortem import generate_postmortem
+        result = generate_postmortem()
+        logger.info(f"Postmortem regenerated: {result.get('overall_safety_status')}")
+        return result
+    except ImportError as e:
+        logger.error(f"Postmortem import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
+    except Exception as e:
+        logger.error(f"Postmortem error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

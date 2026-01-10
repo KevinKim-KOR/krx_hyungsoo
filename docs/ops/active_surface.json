@@ -1,7 +1,7 @@
 {
-    "version": "1.24",
-    "asof": "2026-01-07",
-    "description": "Active Surface Registry (Phase C-P.23)",
+    "version": "1.25",
+    "asof": "2026-01-10",
+    "description": "Active Surface Registry (Phase C-P.25)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -102,7 +102,9 @@
         "/api/push/preview/latest",
         "/api/real_sender_enable",
         "/api/push/send/latest",
-        "/api/push/send/run"
+        "/api/push/send/run",
+        "/api/ops/push/postmortem/latest",
+        "/api/ops/push/postmortem/regenerate"
     ],
     "forbidden_paths": [
         "_archive/**"
