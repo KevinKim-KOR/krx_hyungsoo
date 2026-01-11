@@ -863,6 +863,151 @@
             );
         }
 
+        // Phase C-P.35: Ops Summary Card (Single Pane of Glass)
+        function OpsSummaryCard() {
+            const [data, setData] = React.useState(null);
+            const [isRegenerating, setIsRegenerating] = React.useState(false);
+
+            React.useEffect(() => {
+                fetchSummary();
+            }, []);
+
+            const fetchSummary = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/ops/summary/latest`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        setData(json.rows?.[0] || null);
+                    }
+                } catch (e) {
+                    console.error("Ops summary fetch error:", e);
+                }
+            };
+
+            const handleRegenerate = async () => {
+                if (!confirm("정말 Ops Summary를 재생성하시겠습니까?")) return;
+                setIsRegenerating(true);
+                try {
+                    const res = await fetch(`${API_BASE}/api/ops/summary/regenerate`, { method: 'POST' });
+                    if (res.ok) fetchSummary();
+                } catch (e) {
+                    console.error("Regenerate error:", e);
+                } finally {
+                    setIsRegenerating(false);
+                }
+            };
+
+            const statusBadge = (status) => {
+                const colors = {
+                    OK: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                    WARN: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                    BLOCKED: 'bg-red-500/20 text-red-400 border-red-500/30',
+                    STOPPED: 'bg-red-700/30 text-red-300 border-red-500/50',
+                    NO_RUN_HISTORY: 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                };
+                return `px-3 py-1 rounded-full text-sm font-bold border ${colors[status] || colors.NO_RUN_HISTORY}`;
+            };
+
+            // Empty State
+            if (!data || data.overall_status === 'NO_RUN_HISTORY') {
+                return (
+                    <div className="bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-700/50 rounded-2xl p-6 col-span-2">
+                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <span className="w-1.5 h-6 bg-indigo-500 rounded"></span> Ops Summary
+                            <span className={statusBadge('NO_RUN_HISTORY')}>NO RUN HISTORY</span>
+                        </h3>
+                        <div className="text-center py-8 text-slate-500">
+                            <div className="text-4xl mb-3">📊</div>
+                            <div className="text-lg font-semibold">No Run History</div>
+                            <div className="text-sm mt-2">Generate summary to view system status</div>
+                        </div>
+                        <button onClick={handleRegenerate} disabled={isRegenerating}
+                            className="mt-4 w-full py-3 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 transition">
+                            {isRegenerating ? '생성 중...' : '🔄 Generate Summary'}
+                        </button>
+                    </div>
+                );
+            }
+
+            const guard = data.guard || {};
+            const tickets = data.tickets || {};
+            const push = data.push || {};
+            const triplet = data.last_run_triplet || {};
+            const risks = data.top_risks || [];
+
+            return (
+                <div className="bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-700/50 rounded-2xl p-6 col-span-2">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-indigo-500 rounded"></span> Ops Summary
+                        <span className={statusBadge(data.overall_status)}>{data.overall_status}</span>
+                        <span className="text-xs font-mono text-slate-500 ml-auto">{data.asof?.slice(0, 16)}</span>
+                    </h3>
+
+                    {/* Guard Section */}
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                            <div className="text-xs text-slate-500 mb-1">Emergency Stop</div>
+                            <div className={`font-bold ${guard.emergency_stop?.enabled ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {guard.emergency_stop?.enabled ? '🚨 ACTIVE' : '✅ OFF'}
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                            <div className="text-xs text-slate-500 mb-1">Gate Mode</div>
+                            <div className="font-bold text-cyan-400">{guard.execution_gate?.mode || 'N/A'}</div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                            <div className="text-xs text-slate-500 mb-1">Evidence Health</div>
+                            <div className={`font-bold ${guard.evidence_health?.decision === 'PASS' ? 'text-emerald-400' : guard.evidence_health?.decision === 'WARN' ? 'text-amber-400' : 'text-red-400'}`}>
+                                {guard.evidence_health?.decision || 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tickets & Push */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                            <div className="text-xs text-slate-500 mb-2">Tickets</div>
+                            <div className="flex gap-2 text-xs">
+                                <span className="px-2 py-1 bg-blue-900/30 rounded text-blue-400">Open: {tickets.open}</span>
+                                <span className="px-2 py-1 bg-emerald-900/30 rounded text-emerald-400">Done: {tickets.done}</span>
+                                <span className="px-2 py-1 bg-red-900/30 rounded text-red-400">Failed: {tickets.failed}</span>
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                            <div className="text-xs text-slate-500 mb-2">Push</div>
+                            <div className="flex gap-2 text-xs">
+                                <span className="px-2 py-1 bg-purple-900/30 rounded text-purple-400">Outbox: {push.outbox_row_count}</span>
+                                <span className={`px-2 py-1 rounded ${push.sender_enabled ? 'bg-emerald-900/30 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+                                    Sender: {push.sender_enabled ? 'ON' : 'OFF'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top Risks */}
+                    {risks.length > 0 && (
+                        <div className="mb-4">
+                            <div className="text-xs text-slate-500 mb-2 font-bold">⚠️ Top Risks</div>
+                            <div className="space-y-1">
+                                {risks.slice(0, 3).map((risk, i) => (
+                                    <div key={i} className={`px-3 py-2 rounded text-sm flex items-center gap-2 ${risk.severity === 'CRITICAL' ? 'bg-red-900/30 text-red-400' : 'bg-amber-900/30 text-amber-400'}`}>
+                                        <span className="font-mono text-xs">{risk.code}</span>
+                                        <span className="text-slate-400">—</span>
+                                        <span>{risk.message}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <button onClick={handleRegenerate} disabled={isRegenerating}
+                        className="w-full py-2 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 transition">
+                        {isRegenerating ? '생성 중...' : '🔄 Regenerate'}
+                    </button>
+                </div>
+            );
+        }
+
         // Phase C-P.31: Evidence Index Card
         function EvidenceCard() {
             const [data, setData] = React.useState(null);
@@ -1372,9 +1517,9 @@
                 // Note: Human Report is aggregate, need new logic for yearly mismatch if required.
                 /*
                 ['2024', '2025'].forEach(y => {
-                     // ... legacy logic removed for stability
-                });
-                */
+                        // ... legacy logic removed for stability
+                    });
+                    */
 
                 if (gatekeeperData && gatekeeperData.integrity) {
                     // IC2: Gatekeeper Baseline Mismatch

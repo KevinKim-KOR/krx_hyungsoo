@@ -1,7 +1,7 @@
 {
-    "version": "1.35",
+    "version": "1.36",
     "asof": "2026-01-11",
-    "description": "Active Surface Registry (Phase C-P.34)",
+    "description": "Active Surface Registry (Phase C-P.35)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -114,7 +114,9 @@
         "/api/evidence/index/latest",
         "/api/evidence/index/regenerate",
         "/api/evidence/health/latest",
-        "/api/evidence/health/regenerate"
+        "/api/evidence/health/regenerate",
+        "/api/ops/summary/latest",
+        "/api/ops/summary/regenerate"
     ],
     "forbidden_paths": [
         "_archive/**"

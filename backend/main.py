@@ -2674,6 +2674,81 @@ def regenerate_evidence_health():
         })
 
 
+# === Ops Summary API (C-P.35) ===
+
+SUMMARY_DIR = BASE_DIR / "reports" / "ops" / "summary"
+SUMMARY_LATEST_FILE = SUMMARY_DIR / "ops_summary_latest.json"
+
+
+@app.get("/api/ops/summary/latest", summary="Ops Summary 최신 조회")
+def get_ops_summary_latest():
+    """Ops Summary Latest (C-P.35) - Single Pane of Glass"""
+    from datetime import datetime
+    
+    if not SUMMARY_LATEST_FILE.exists():
+        return {
+            "status": "ready",
+            "schema": "OPS_SUMMARY_V1",
+            "asof": None,
+            "row_count": 1,
+            "rows": [{
+                "overall_status": "NO_RUN_HISTORY",
+                "guard": None,
+                "last_run_triplet": None,
+                "tickets": None,
+                "push": None,
+                "evidence": None,
+                "top_risks": []
+            }],
+            "error": {
+                "code": "NO_SUMMARY_YET",
+                "message": "Ops summary not generated yet."
+            }
+        }
+    
+    try:
+        data = json.loads(SUMMARY_LATEST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "OPS_SUMMARY_V1",
+            "asof": data.get("asof"),
+            "row_count": 1,
+            "rows": [data],
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "schema": "OPS_SUMMARY_V1",
+            "asof": datetime.now().isoformat(),
+            "row_count": 0,
+            "rows": [],
+            "error": {
+                "code": "READ_ERROR",
+                "message": str(e)
+            }
+        }
+
+
+@app.post("/api/ops/summary/regenerate", summary="Ops Summary 재생성")
+def regenerate_ops_summary():
+    """Ops Summary Regenerate (C-P.35) - No subprocess"""
+    try:
+        from app.generate_ops_summary import regenerate_ops_summary
+        result = regenerate_ops_summary()
+        return result
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
