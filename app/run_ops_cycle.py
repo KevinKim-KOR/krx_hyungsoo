@@ -159,8 +159,8 @@ def release_lock():
 
 def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str, 
                      ticket_step: dict, safety_snapshot: dict, counters: dict,
-                     started_at: str) -> str:
-    """OPS_CYCLE_RUN_V2 스냅샷 저장"""
+                     started_at: str, evidence_health: dict = None) -> str:
+    """OPS_CYCLE_RUN_V2 스냅샷 저장 (C-P.34: evidence_health 포함)"""
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -174,6 +174,7 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
         "finished_at": datetime.now().isoformat(),
         "overall_status": overall_status,
         "ops_report_ref": ops_report_ref,
+        "evidence_health": evidence_health or {"decision": "N/A"},
         "ticket_step": ticket_step,
         "safety_snapshot": safety_snapshot,
         "counters": {**counters, "skips_this_run": 1 if ticket_step.get("decision") == "SKIPPED" else 0}
@@ -220,7 +221,8 @@ def run_ops_cycle_v2() -> dict:
             ticket_step=ticket_step,
             safety_snapshot=safety_snapshot,
             counters=get_tickets_counters(),
-            started_at=started_at
+            started_at=started_at,
+            evidence_health={"decision": "N/A", "fail_closed_triggered": False, "reason": "EMERGENCY_STOP"}
         )
         return {
             "result": "STOPPED",
@@ -228,6 +230,63 @@ def run_ops_cycle_v2() -> dict:
             "reason": "EMERGENCY_STOP_ACTIVE",
             "snapshot_path": snapshot_path,
             "ticket_step": ticket_step
+        }
+    
+    # Step 1.5 (C-P.34): Evidence Health Gate - Fail-Closed
+    evidence_health = {
+        "decision": "UNKNOWN",
+        "generated_at": None,
+        "latest_ref": "reports/ops/evidence/health/health_latest.json",
+        "snapshot_ref": None,
+        "top_fail_reasons": [],
+        "fail_closed_triggered": False,
+        "error_summary": None
+    }
+    
+    try:
+        from app.run_evidence_health_check import regenerate_health_report
+        health_result = regenerate_health_report()
+        evidence_health["decision"] = health_result.get("decision", "UNKNOWN")
+        evidence_health["generated_at"] = datetime.now().isoformat()
+        evidence_health["snapshot_ref"] = health_result.get("snapshot_path")
+        
+        # Load health_latest for top_fail_reasons
+        health_latest_path = BASE_DIR / "reports" / "ops" / "evidence" / "health" / "health_latest.json"
+        if health_latest_path.exists():
+            health_data = json.loads(health_latest_path.read_text(encoding="utf-8"))
+            evidence_health["top_fail_reasons"] = [r["reason"] for r in health_data.get("top_fail_reasons", [])[:3]]
+        
+        logger.info(f"Evidence Health decision: {evidence_health['decision']}")
+    except Exception as e:
+        # Fail-Closed: 예외 발생 시 무조건 FAIL
+        logger.error(f"Evidence Health FAIL-CLOSED: {e}")
+        evidence_health["decision"] = "FAIL"
+        evidence_health["fail_closed_triggered"] = True
+        evidence_health["error_summary"] = str(e)[:100]  # 짧은 요약만
+    
+    # Guard 판정: FAIL이면 downstream SKIP
+    if evidence_health["decision"] == "FAIL":
+        logger.warning("Evidence Health FAIL. Blocking downstream.")
+        ticket_step["decision"] = "SKIPPED"
+        ticket_step["reason"] = "EVIDENCE_HEALTH_FAIL"
+        
+        snapshot_path = save_v2_snapshot(
+            run_id="N/A",
+            overall_status="BLOCKED",
+            ops_report_ref="",
+            ticket_step=ticket_step,
+            safety_snapshot=safety_snapshot,
+            counters=get_tickets_counters(),
+            started_at=started_at,
+            evidence_health=evidence_health
+        )
+        return {
+            "result": "BLOCKED",
+            "overall_status": "BLOCKED",
+            "reason": "EVIDENCE_HEALTH_FAIL",
+            "snapshot_path": snapshot_path,
+            "ticket_step": ticket_step,
+            "evidence_health": evidence_health
         }
     
     # Step 2: Lock 확보
@@ -244,7 +303,8 @@ def run_ops_cycle_v2() -> dict:
             ticket_step=ticket_step,
             safety_snapshot=safety_snapshot,
             counters=get_tickets_counters(),
-            started_at=started_at
+            started_at=started_at,
+            evidence_health=evidence_health
         )
         return {
             "result": "SKIPPED",
@@ -300,7 +360,8 @@ def run_ops_cycle_v2() -> dict:
             ticket_step=ticket_step,
             safety_snapshot=safety_snapshot,
             counters=counters,
-            started_at=started_at
+            started_at=started_at,
+            evidence_health=evidence_health
         )
         
         return {
@@ -310,7 +371,8 @@ def run_ops_cycle_v2() -> dict:
             "run_id": run_id,
             "snapshot_path": snapshot_path,
             "ticket_step": ticket_step,
-            "counters": counters
+            "counters": counters,
+            "evidence_health": evidence_health
         }
         
     except Exception as e:
@@ -325,14 +387,16 @@ def run_ops_cycle_v2() -> dict:
             ticket_step=ticket_step,
             safety_snapshot=safety_snapshot,
             counters=get_tickets_counters(),
-            started_at=started_at
+            started_at=started_at,
+            evidence_health=evidence_health
         )
         return {
             "result": "FAILED",
             "overall_status": "FAILED",
             "reason": str(e),
             "snapshot_path": snapshot_path,
-            "ticket_step": ticket_step
+            "ticket_step": ticket_step,
+            "evidence_health": evidence_health
         }
     
     finally:

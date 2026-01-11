@@ -90,6 +90,9 @@
 | `OPS_SNAPSHOT_VIEWER_V1` | [contract_ops_snapshot_viewer_v1.md](contract_ops_snapshot_viewer_v1.md) | Ops Snapshot Viewer |
 | `EVIDENCE_REF_V1` | [contract_evidence_ref_v1.md](contract_evidence_ref_v1.md) | Evidence Ref Resolver |
 | `EVIDENCE_INDEX_V1` | [contract_evidence_index_v1.md](contract_evidence_index_v1.md) | Evidence Index |
+| `EVIDENCE_SLO_V1` | [contract_evidence_slo_v1.md](contract_evidence_slo_v1.md) | Evidence SLO (C-P.33) |
+| `EVIDENCE_HEALTH_REPORT_V1` | [contract_evidence_health_report_v1.md](contract_evidence_health_report_v1.md) | Evidence Health Report (C-P.33) |
+| `OPS_GUARD_POLICY_V1` | [contract_ops_guard_policy_v1.md](contract_ops_guard_policy_v1.md) | Ops Guard Policy (C-P.34) |
 
 ---
 

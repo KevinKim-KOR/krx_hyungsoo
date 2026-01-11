@@ -23,6 +23,7 @@
   "schema": "OPS_RUN_RECEIPT_V1",
   "run_id": "uuid",
   "asof": "2026-01-10T09:05:00",
+  "overall_status": "DONE",
   "invocation": {
     "type": "API",
     "path": "/api/ops/cycle/run",
@@ -34,6 +35,15 @@
     "sender_enable": false,
     "window_active": false,
     "emergency_stop": false
+  },
+  "evidence_health": {
+    "decision": "PASS",
+    "generated_at": "2026-01-10T09:04:50",
+    "latest_ref": "reports/ops/evidence/health/health_latest.json",
+    "snapshot_ref": "reports/ops/evidence/health/snapshots/health_20260110_090450.json",
+    "top_fail_reasons": [],
+    "fail_closed_triggered": false,
+    "error_summary": null
   },
   "ticket_step": {
     "decision": "DONE",
@@ -55,6 +65,11 @@
   }
 }
 ```
+
+> 🔒 **C-P.34 Evidence Health Gate 규칙**
+> - `evidence_health.decision == FAIL` → downstream 단계 전부 SKIP
+> - `fail_closed_triggered == true` → 예외로 인한 FAIL 처리
+> - 시크릿/토큰 값 기록 금지 (키 이름만 OK)
 
 ---
 
