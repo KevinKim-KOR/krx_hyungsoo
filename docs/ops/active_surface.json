@@ -115,6 +115,7 @@
         "/api/evidence/index/regenerate",
         "/api/evidence/health/latest",
         "/api/evidence/health/regenerate",
+        "/api/evidence/resolve",
         "/api/ops/summary/latest",
         "/api/ops/summary/regenerate",
         "/api/ops/drill/latest",

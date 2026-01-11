@@ -38,7 +38,18 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/ops/push/send/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/ops/push/preview/preview_latest\.json$",
     r"^reports/phase_c/latest/recon_summary\.json$",
-    r"^reports/phase_c/latest/report_human\.json$"
+    r"^reports/phase_c/latest/report_human\.json$",
+    # C-P.33: Evidence Health
+    r"^reports/ops/evidence/health/health_latest\.json$",
+    r"^reports/ops/evidence/health/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # C-P.35: Ops Summary
+    r"^reports/ops/summary/ops_summary_latest\.json$",
+    r"^reports/ops/summary/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # C-P.37: Ops Drill
+    r"^reports/ops/drill/latest/drill_latest\.json$",
+    r"^reports/ops/drill/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # C-P.36: Scheduler Latest
+    r"^reports/ops/scheduler/latest/ops_run_latest\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"

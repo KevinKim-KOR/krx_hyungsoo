@@ -1,7 +1,7 @@
 {
   "schema": "OPS_DRILL_REPORT_V1",
-  "asof": "2026-01-11T18:13:00.584724",
-  "run_id": "42b8f41d-795c-45b3-ac64-2a73db29a6e2",
+  "asof": "2026-01-11T17:57:41.045925",
+  "run_id": "c43e5cc8-4a8d-4764-bce5-60886c4c2066",
   "inputs_observed": {
     "gate_mode": "DRY_RUN",
     "emergency_stop_enabled": false,
@@ -19,12 +19,12 @@
       "name": "ops_cycle",
       "result": "WARN",
       "overall_status": "UNKNOWN",
-      "elapsed_ms": 28
+      "elapsed_ms": 25
     },
     {
       "name": "ops_summary",
       "result": "PASS",
-      "snapshot_ref": "reports\\ops\\summary\\snapshots\\ops_summary_20260111_181300.json",
+      "snapshot_ref": "reports\\ops\\summary\\snapshots\\ops_summary_20260111_175741.json",
       "elapsed_ms": 4
     },
     {
@@ -38,22 +38,25 @@
       "result": "PASS",
       "delivery_actual": "CONSOLE_SIMULATED",
       "console_output_lines": 0,
-      "elapsed_ms": 3
+      "elapsed_ms": 1
     },
     {
       "name": "resolver_proof",
-      "result": "PASS",
+      "result": "FAIL",
       "method": "HTTP_GET",
-      "url": "/api/evidence/resolve?ref=reports/ops/summary/snapshots/ops_summary_20260111_181300.json",
-      "http_status": 200,
-      "ref_used": "reports/ops/summary/snapshots/ops_summary_20260111_181300.json",
+      "url": "/api/evidence/resolve?ref=reports/ops/summary/snapshots/ops_summary_20260111_175741.json",
+      "http_status": 400,
+      "ref_used": "reports/ops/summary/snapshots/ops_summary_20260111_175741.json",
+      "error": "HTTP 400",
       "elapsed_ms": 3
     }
   ],
-  "overall_result": "PASS",
-  "top_fail_reasons": [],
+  "overall_result": "FAIL",
+  "top_fail_reasons": [
+    "EVIDENCE_RESOLVE_FAILED"
+  ],
   "evidence_refs": [
-    "reports\\ops\\summary\\snapshots\\ops_summary_20260111_181300.json",
-    "reports\\ops\\drill\\snapshots\\drill_20260111_181300.json"
+    "reports\\ops\\summary\\snapshots\\ops_summary_20260111_175741.json",
+    "reports\\ops\\drill\\snapshots\\drill_20260111_175741.json"
   ]
 }

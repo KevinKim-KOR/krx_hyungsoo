@@ -239,34 +239,78 @@ def run_ops_drill() -> Dict[str, Any]:
             overall_result = "WARN"
     steps.append(step5)
     
-    # === Step 6: Resolver Proof (File Existence Check) ===
+    # === Step 6: Resolver Proof (HTTP GET) ===
     step6_start = time.time()
-    tested_ref = summary_snapshot_ref or "reports/ops/summary/ops_summary_latest.json"
-    # Normalize path to forward slashes
-    tested_ref = tested_ref.replace("\\", "/")
     
-    # File existence check instead of HTTP (API not yet available)
-    tested_path = BASE_DIR / tested_ref
-    if tested_path.exists():
-        step6 = {
-            "name": "resolver_proof",
-            "result": "PASS",
-            "tested_ref": tested_ref,
-            "method": "FILE_EXISTS",
-            "elapsed_ms": int((time.time() - step6_start) * 1000)
-        }
+    # 대상 ref 선택 (우선순위)
+    if summary_snapshot_ref:
+        tested_ref = summary_snapshot_ref.replace("\\", "/")
     else:
+        # fallback refs
+        fallback_refs = [
+            "reports/ops/summary/ops_summary_latest.json",
+            "reports/ops/evidence/index/evidence_index_latest.json"
+        ]
+        tested_ref = None
+        for ref in fallback_refs:
+            if (BASE_DIR / ref).exists():
+                tested_ref = ref
+                break
+    
+    if not tested_ref:
+        # NO_REF_AVAILABLE
         step6 = {
             "name": "resolver_proof",
-            "result": "FAIL",
-            "tested_ref": tested_ref,
-            "method": "FILE_EXISTS",
-            "reason": "File not found",
+            "result": "SKIPPED",
+            "reason": "NO_REF_AVAILABLE",
+            "method": "HTTP_GET",
             "elapsed_ms": int((time.time() - step6_start) * 1000)
         }
-        fail_reasons.append(f"resolver_proof: file not found")
         if overall_result == "PASS":
             overall_result = "WARN"
+    else:
+        # HTTP GET 호출
+        url = f"{API_BASE}/api/evidence/resolve"
+        try:
+            resp = requests.get(url, params={"ref": tested_ref}, timeout=10)
+            http_status = resp.status_code
+            
+            if http_status == 200:
+                step6 = {
+                    "name": "resolver_proof",
+                    "result": "PASS",
+                    "method": "HTTP_GET",
+                    "url": f"/api/evidence/resolve?ref={tested_ref}",
+                    "http_status": http_status,
+                    "ref_used": tested_ref,
+                    "elapsed_ms": int((time.time() - step6_start) * 1000)
+                }
+            else:
+                step6 = {
+                    "name": "resolver_proof",
+                    "result": "FAIL",
+                    "method": "HTTP_GET",
+                    "url": f"/api/evidence/resolve?ref={tested_ref}",
+                    "http_status": http_status,
+                    "ref_used": tested_ref,
+                    "error": f"HTTP {http_status}",
+                    "elapsed_ms": int((time.time() - step6_start) * 1000)
+                }
+                fail_reasons.append("EVIDENCE_RESOLVE_FAILED")
+                overall_result = "FAIL"  # Fail-Closed
+        except Exception as e:
+            step6 = {
+                "name": "resolver_proof",
+                "result": "FAIL",
+                "method": "HTTP_GET",
+                "url": f"/api/evidence/resolve?ref={tested_ref}",
+                "ref_used": tested_ref,
+                "error": str(e)[:100],
+                "elapsed_ms": int((time.time() - step6_start) * 1000)
+            }
+            fail_reasons.append("EVIDENCE_RESOLVE_FAILED")
+            overall_result = "FAIL"  # Fail-Closed
+    
     steps.append(step6)
     
     return _save_drill_report(run_id, asof, inputs_observed, steps, overall_result, fail_reasons, evidence_refs)
