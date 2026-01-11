@@ -14,6 +14,8 @@
 
 > 📊 **Ops Summary**: `GET /api/ops/summary/latest` | **Ops Drill**: `POST /api/ops/drill/run`
 
+> 🚀 **배포 Runbook**: [runbook_deploy_v1.md](docs/ops/runbook_deploy_v1.md) | **스케줄러**: [runbook_scheduler_v1.md](docs/ops/runbook_scheduler_v1.md)
+
 ---
 
 ## 🎯 핵심 개념
