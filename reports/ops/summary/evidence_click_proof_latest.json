@@ -1,0 +1,26 @@
+{
+  "schema": "EVIDENCE_CLICK_PROOF_V1",
+  "asof": "2026-01-11T16:44:06.391623",
+  "summary_source": "reports\\ops\\summary\\ops_summary_latest.json",
+  "tested_ref": "reports/ops/evidence/health/health_latest.json",
+  "total_refs_tested": 2,
+  "validation_result": "FAIL",
+  "simulated_http_status": 404,
+  "all_results": [
+    {
+      "ref": "reports/ops/evidence/health/health_latest.json",
+      "decision": "INVALID_REF",
+      "http_status_equivalent": 400,
+      "resolved_path": null,
+      "reason": "Ref does not match any allowed pattern: reports/ops/evidence/health/health_latest.json"
+    },
+    {
+      "ref": "state/tickets/ticket_results.jsonl",
+      "decision": "INVALID_REF",
+      "http_status_equivalent": 400,
+      "resolved_path": null,
+      "reason": "Ref does not match any allowed pattern: state/tickets/ticket_results.jsonl"
+    }
+  ],
+  "note": "Validated via app/verify_ops_summary_links.py using ref_validator"
+}

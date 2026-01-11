@@ -31,6 +31,38 @@ SUMMARY_DIR = BASE_DIR / "reports" / "ops" / "summary"
 SUMMARY_LATEST = SUMMARY_DIR / "ops_summary_latest.json"
 SUMMARY_SNAPSHOTS_DIR = SUMMARY_DIR / "snapshots"
 
+# Forbidden prefixes to strip
+FORBIDDEN_PREFIXES = ["json:", "file://", "file:", "http://", "https://"]
+
+
+def sanitize_evidence_ref(ref: str) -> str:
+    """
+    evidence_ref 정제 (C-P.35.1)
+    - 접두어 제거
+    - path traversal (..) 거부
+    - RAW_PATH_ONLY 보장
+    """
+    if not ref or not isinstance(ref, str):
+        return None
+    
+    cleaned = ref.strip()
+    
+    # 접두어 제거
+    for prefix in FORBIDDEN_PREFIXES:
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix):]
+            break
+    
+    # Path traversal 거부
+    if ".." in cleaned:
+        return None
+    
+    # 빈 문자열 거부
+    if not cleaned:
+        return None
+    
+    return cleaned
+
 
 def safe_load_json(path: Path) -> Optional[Dict]:
     """JSON 파일 안전 로드"""
