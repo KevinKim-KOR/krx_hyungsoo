@@ -1,0 +1,40 @@
+{
+  "schema": "OPS_CYCLE_RUN_V2",
+  "run_id": "1237577a-5b6f-499e-b57a-3a1ce277ca9d",
+  "asof": "2026-01-11T16:05:35.899873",
+  "started_at": "2026-01-11T16:05:31.784623",
+  "finished_at": "2026-01-11T16:05:35.899876",
+  "overall_status": "DONE",
+  "ops_report_ref": "reports/ops/daily/ops_report_latest.json",
+  "evidence_health": {
+    "decision": "WARN",
+    "generated_at": "2026-01-11T16:05:31.794539",
+    "latest_ref": "reports/ops/evidence/health/health_latest.json",
+    "snapshot_ref": "reports\\ops\\evidence\\health\\snapshots\\health_20260111_160531.json",
+    "top_fail_reasons": [],
+    "fail_closed_triggered": false,
+    "error_summary": null
+  },
+  "ticket_step": {
+    "attempted": false,
+    "selected_request_id": null,
+    "selected_request_type": null,
+    "decision": "NONE",
+    "reason": "NO_OPEN_TICKETS",
+    "receipt_ref": null
+  },
+  "safety_snapshot": {
+    "emergency_stop_enabled": false,
+    "execution_gate_mode": "DRY_RUN",
+    "window_active": true,
+    "allowlist_version": "1.0"
+  },
+  "counters": {
+    "tickets_open": 0,
+    "tickets_in_progress": 1,
+    "tickets_done": 14,
+    "tickets_failed": 12,
+    "tickets_blocked": 8,
+    "skips_this_run": 0
+  }
+}

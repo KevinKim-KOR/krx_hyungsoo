@@ -1,16 +1,16 @@
 {
   "schema": "EVIDENCE_HEALTH_REPORT_V1",
-  "asof": "2026-01-11T16:05:31.788390",
+  "asof": "2026-01-11T15:37:56.032760",
   "period": {
-    "from": "2026-01-04T16:05:31.788390",
-    "to": "2026-01-11T16:05:31.788390"
+    "from": "2026-01-04T15:37:56.032760",
+    "to": "2026-01-11T15:37:56.032760"
   },
   "summary": {
     "total": 4,
     "pass": 3,
     "warn": 1,
-    "fail": 0,
-    "decision": "WARN"
+    "fail": 1,
+    "decision": "FAIL"
   },
   "checks": [
     {

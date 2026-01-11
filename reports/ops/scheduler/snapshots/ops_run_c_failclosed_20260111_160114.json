@@ -1,0 +1,40 @@
+{
+  "schema": "OPS_CYCLE_RUN_V2",
+  "run_id": "N/A",
+  "asof": "2026-01-11T15:57:35.197835",
+  "started_at": "2026-01-11T15:57:35.194675",
+  "finished_at": "2026-01-11T15:57:35.197838",
+  "overall_status": "BLOCKED",
+  "ops_report_ref": "",
+  "evidence_health": {
+    "decision": "FAIL",
+    "generated_at": null,
+    "latest_ref": "reports/ops/evidence/health/health_latest.json",
+    "snapshot_ref": null,
+    "top_fail_reasons": [],
+    "fail_closed_triggered": true,
+    "error_summary": "Test exception for Fail-Closed verification"
+  },
+  "ticket_step": {
+    "attempted": false,
+    "selected_request_id": null,
+    "selected_request_type": null,
+    "decision": "SKIPPED",
+    "reason": "EVIDENCE_HEALTH_FAIL",
+    "receipt_ref": null
+  },
+  "safety_snapshot": {
+    "emergency_stop_enabled": false,
+    "execution_gate_mode": "DRY_RUN",
+    "window_active": true,
+    "allowlist_version": "1.0"
+  },
+  "counters": {
+    "tickets_open": 0,
+    "tickets_in_progress": 1,
+    "tickets_done": 14,
+    "tickets_failed": 12,
+    "tickets_blocked": 8,
+    "skips_this_run": 1
+  }
+}
