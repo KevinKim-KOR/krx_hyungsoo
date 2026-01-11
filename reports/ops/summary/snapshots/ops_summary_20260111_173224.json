@@ -1,6 +1,6 @@
 {
   "schema": "OPS_SUMMARY_V1",
-  "asof": "2026-01-11T17:38:41.096069",
+  "asof": "2026-01-11T17:32:24.349451",
   "overall_status": "WARN",
   "guard": {
     "evidence_health": {
@@ -16,7 +16,7 @@
     }
   },
   "last_run_triplet": {
-    "last_done": "2026-01-11T17:38:41.088601",
+    "last_done": "2026-01-11T17:32:24.342913",
     "last_failed": null,
     "last_blocked": null
   },

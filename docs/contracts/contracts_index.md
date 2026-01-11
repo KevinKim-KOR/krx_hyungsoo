@@ -93,6 +93,8 @@
 | `EVIDENCE_SLO_V1` | [contract_evidence_slo_v1.md](contract_evidence_slo_v1.md) | Evidence SLO (C-P.33) |
 | `EVIDENCE_HEALTH_REPORT_V1` | [contract_evidence_health_report_v1.md](contract_evidence_health_report_v1.md) | Evidence Health Report (C-P.33) |
 | `OPS_GUARD_POLICY_V1` | [contract_ops_guard_policy_v1.md](contract_ops_guard_policy_v1.md) | Ops Guard Policy (C-P.34) |
+| `OPS_SUMMARY_V1` | [contract_ops_summary_v1.md](contract_ops_summary_v1.md) | Ops Summary Single Pane (C-P.35) |
+| `OPS_DRILL_REPORT_V1` | [contract_ops_drill_report_v1.md](contract_ops_drill_report_v1.md) | Ops Drill Golden Build (C-P.37) |
 
 ---
 

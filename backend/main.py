@@ -2749,6 +2749,69 @@ def regenerate_ops_summary():
         })
 
 
+# === Ops Drill API (C-P.37) ===
+
+DRILL_LATEST_FILE = BASE_DIR / "reports" / "ops" / "drill" / "latest" / "drill_latest.json"
+
+
+@app.get("/api/ops/drill/latest", summary="Ops Drill 최신 조회")
+def get_ops_drill_latest():
+    """Ops Drill Latest (C-P.37) - Golden Build Proof"""
+    from datetime import datetime
+    
+    if not DRILL_LATEST_FILE.exists():
+        return {
+            "status": "not_ready",
+            "schema": "OPS_DRILL_REPORT_V1",
+            "asof": None,
+            "row": None,
+            "error": {
+                "code": "NO_DRILL_YET",
+                "message": "Drill report not generated yet."
+            }
+        }
+    
+    try:
+        data = json.loads(DRILL_LATEST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "OPS_DRILL_REPORT_V1",
+            "asof": data.get("asof"),
+            "row": data,
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "schema": "OPS_DRILL_REPORT_V1",
+            "asof": datetime.now().isoformat(),
+            "row": None,
+            "error": {
+                "code": "READ_ERROR",
+                "message": str(e)
+            }
+        }
+
+
+@app.post("/api/ops/drill/run", summary="Ops Drill 실행")
+def run_ops_drill_api():
+    """Ops Drill Run (C-P.37) - End-to-End Pipeline Test"""
+    try:
+        from app.run_ops_drill import run_ops_drill
+        result = run_ops_drill()
+        return result
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
