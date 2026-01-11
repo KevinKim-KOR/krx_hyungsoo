@@ -95,6 +95,7 @@
 | `OPS_GUARD_POLICY_V1` | [contract_ops_guard_policy_v1.md](contract_ops_guard_policy_v1.md) | Ops Guard Policy (C-P.34) |
 | `OPS_SUMMARY_V1` | [contract_ops_summary_v1.md](contract_ops_summary_v1.md) | Ops Summary Single Pane (C-P.35) |
 | `OPS_DRILL_REPORT_V1` | [contract_ops_drill_report_v1.md](contract_ops_drill_report_v1.md) | Ops Drill Golden Build (C-P.37) |
+| `GOLDEN_BUILD_FREEZE_V1` | [contract_golden_build_freeze_v1.md](contract_golden_build_freeze_v1.md) | Golden Build Freeze (C-P.38) |
 
 ---
 

@@ -1,0 +1,43 @@
+{
+    "schema": "RELEASE_MANIFEST_GOLDEN_V1",
+    "build_tag": "v1.0-golden",
+    "commit_sha": "6f6958bbd43e6f7799168bbc20c5484a41efbcbf1",
+    "asof": "2026-01-11T23:55:00+09:00",
+    "active_surface": {
+        "path": "docs/ops/active_surface.json",
+        "sha256": "32955A78EE4E7CF93406C7A221286D7C10DD451DC1D"
+    },
+    "primary_endpoints": [
+        "/api/ops/cycle/run",
+        "/api/ops/drill/run",
+        "/api/ops/summary/latest",
+        "/api/evidence/resolve",
+        "/api/evidence/health/latest",
+        "/api/evidence/index/latest"
+    ],
+    "runbooks": [
+        "docs/ops/runbook.md"
+    ],
+    "last_drill_evidence": {
+        "ref": "reports/ops/drill/latest/drill_latest.json",
+        "overall_result": "PASS",
+        "resolver_proof": {
+            "method": "HTTP_GET",
+            "http_status": 200
+        }
+    },
+    "safe_defaults": {
+        "sender_enable": false,
+        "emergency_stop_enabled": false,
+        "gate_mode": "MOCK_ONLY"
+    },
+    "sealed_phases": [
+        "C-P.33",
+        "C-P.34",
+        "C-P.35",
+        "C-P.35.1",
+        "C-P.36",
+        "C-P.37",
+        "C-P.37.1"
+    ]
+}

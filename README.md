@@ -10,6 +10,10 @@
 
 > 📋 **운영 Runbook (Daily Ops & Live Fire)**: [runbook_scheduler_v1.md](docs/ops/runbook_scheduler_v1.md)
 
+> 🏆 **Golden Build Manifest**: [release_manifest_golden_v1.json](docs/ops/release_manifest_golden_v1.json) | **Tag**: `v1.0-golden`
+
+> 📊 **Ops Summary**: `GET /api/ops/summary/latest` | **Ops Drill**: `POST /api/ops/drill/run`
+
 ---
 
 ## 🎯 핵심 개념
