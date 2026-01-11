@@ -1,7 +1,7 @@
 {
-    "version": "1.37",
+    "version": "1.38",
     "asof": "2026-01-11",
-    "description": "Active Surface Registry (Phase C-P.35.1)",
+    "description": "Active Surface Registry (Phase C-P.36)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",

@@ -45,6 +45,11 @@
     "fail_closed_triggered": false,
     "error_summary": null
   },
+  "ops_summary": {
+    "decision_observed": "OK",
+    "latest_ref": "reports/ops/summary/ops_summary_latest.json",
+    "snapshot_ref": "reports/ops/summary/snapshots/ops_summary_20260110_090500.json"
+  },
   "ticket_step": {
     "decision": "DONE",
     "reason": "1 ticket processed",
@@ -60,6 +65,10 @@
     "live_fire_receipt_ref": null
   },
   "external_send_count": 0,
+  "evidence_refs": [
+    "reports/ops/summary/snapshots/ops_summary_20260110_090500.json",
+    "reports/ops/evidence/health/health_latest.json"
+  ],
   "refs": {
     "ops_run_snapshot": "reports/ops/scheduler/snapshots/ops_run_20260110_090500.json"
   }

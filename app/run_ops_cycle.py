@@ -156,18 +156,31 @@ def release_lock():
     if LOCK_FILE.exists():
         LOCK_FILE.unlink()
 
-
 def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str, 
                      ticket_step: dict, safety_snapshot: dict, counters: dict,
                      started_at: str, evidence_health: dict = None) -> str:
-    """OPS_CYCLE_RUN_V2 스냅샷 저장 (C-P.34: evidence_health 포함)"""
+    """
+    OPS_CYCLE_RUN_V2 스냅샷 저장 (C-P.36: In-Memory Summary + One-Shot Write)
+    
+    순서:
+    1. 임시 receipt 생성 (ops_summary 없이)
+    2. generate_ops_summary_from_receipt 호출
+    3. receipt에 ops_summary ref 추가
+    4. 최종 1회만 기록 (스냅샷 재수정 금지)
+    """
+    import os as _os
+    
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+    OPS_LATEST_DIR = BASE_DIR / "reports" / "ops" / "scheduler" / "latest"
+    OPS_LATEST_DIR.mkdir(parents=True, exist_ok=True)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     snapshot_path = SNAPSHOTS_DIR / f"ops_run_{timestamp}.json"
+    latest_path = OPS_LATEST_DIR / "ops_run_latest.json"
     
-    snapshot = {
-        "schema": "OPS_CYCLE_RUN_V2",
+    # Step 1: 임시 receipt (ops_summary 아직 없음)
+    temp_receipt = {
+        "schema": "OPS_RUN_RECEIPT_V1",
         "run_id": run_id,
         "asof": datetime.now().isoformat(),
         "started_at": started_at,
@@ -180,8 +193,43 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
         "counters": {**counters, "skips_this_run": 1 if ticket_step.get("decision") == "SKIPPED" else 0}
     }
     
-    snapshot_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info(f"V2 Snapshot saved: {snapshot_path}")
+    # Step 2: Ops Summary 생성 (In-Memory Pattern)
+    ops_summary_result = {"snapshot_path": None, "summary_latest_path": None, "overall_status": "N/A"}
+    try:
+        from app.generate_ops_summary import generate_and_save_from_receipt
+        ops_summary_result = generate_and_save_from_receipt(temp_receipt)
+        logger.info(f"Ops Summary generated: {ops_summary_result.get('snapshot_path')}")
+    except Exception as e:
+        logger.error(f"Ops Summary generation failed: {e}")
+    
+    # Step 3: 최종 receipt 확정 (ops_summary ref 추가)
+    final_receipt = {
+        **temp_receipt,
+        "ops_summary": {
+            "decision_observed": ops_summary_result.get("overall_status", "N/A"),
+            "latest_ref": ops_summary_result.get("summary_latest_path"),
+            "snapshot_ref": ops_summary_result.get("snapshot_path")
+        },
+        "evidence_refs": [
+            ops_summary_result.get("snapshot_path"),
+            evidence_health.get("latest_ref") if evidence_health else None
+        ]
+    }
+    # 빈 ref 제거
+    final_receipt["evidence_refs"] = [r for r in final_receipt["evidence_refs"] if r]
+    
+    # Step 4: Atomic Write (최종 1회만 기록)
+    # Snapshot
+    tmp_snapshot = snapshot_path.with_suffix('.json.tmp')
+    tmp_snapshot.write_text(json.dumps(final_receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    _os.replace(str(tmp_snapshot), str(snapshot_path))
+    
+    # Latest
+    tmp_latest = latest_path.with_suffix('.json.tmp')
+    tmp_latest.write_text(json.dumps(final_receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    _os.replace(str(tmp_latest), str(latest_path))
+    
+    logger.info(f"Receipt saved: {snapshot_path} (One-Shot Write)")
     return str(snapshot_path.relative_to(BASE_DIR))
 
 

@@ -283,6 +283,140 @@ def generate_ops_summary() -> Dict[str, Any]:
     return summary
 
 
+def generate_ops_summary_from_receipt(run_receipt: Dict) -> Dict:
+    """
+    Ops Summary 생성 (In-Memory Pattern, C-P.36)
+    
+    순환 의존성 제거: run_receipt를 직접 받아서 Summary 생성
+    저장된 ops_run_latest.json을 읽지 않음
+    """
+    now = datetime.now()
+    asof = now.isoformat()
+    
+    # === Guard (from receipt) ===
+    evidence_health = run_receipt.get("evidence_health", {})
+    safety_snapshot = run_receipt.get("safety_snapshot", {})
+    
+    emergency_enabled = safety_snapshot.get("emergency_stop_enabled", False)
+    gate_mode = safety_snapshot.get("execution_gate_mode", "MOCK_ONLY")
+    health_decision = evidence_health.get("decision", "UNKNOWN")
+    
+    # === Last Run Triplet (from current run) ===
+    overall = run_receipt.get("overall_status", "UNKNOWN")
+    run_time = run_receipt.get("asof", asof)
+    last_run_triplet = {"last_done": None, "last_failed": None, "last_blocked": None}
+    
+    if overall == "DONE":
+        last_run_triplet["last_done"] = run_time
+    elif overall == "FAILED":
+        last_run_triplet["last_failed"] = run_time
+    elif overall in ("BLOCKED", "STOPPED"):
+        last_run_triplet["last_blocked"] = run_time
+    
+    # === Tickets (from receipt counters) ===
+    counters = run_receipt.get("counters", {})
+    tickets = {
+        "open": counters.get("tickets_open", 0),
+        "in_progress": counters.get("tickets_in_progress", 0),
+        "done": counters.get("tickets_done", 0),
+        "failed": counters.get("tickets_failed", 0),
+        "blocked": counters.get("tickets_blocked", 0)
+    }
+    
+    # === Push (from files, as they're not in receipt) ===
+    outbox = safe_load_json(OUTBOX_LATEST) or {}
+    outbox_rows = outbox.get("messages", [])
+    outbox_row_count = len(outbox_rows) if isinstance(outbox_rows, list) else 0
+    
+    send = safe_load_json(SEND_LATEST) or {}
+    last_send_decision = send.get("decision", "N/A")
+    
+    sender = safe_load_json(SENDER_ENABLE_FILE) or {}
+    sender_enabled = sender.get("enabled", False)
+    
+    # === Evidence ===
+    evidence_index = safe_load_json(EVIDENCE_INDEX_LATEST) or {}
+    evidence_entries = evidence_index.get("entries", [])
+    index_row_count = len(evidence_entries) if isinstance(evidence_entries, list) else 0
+    
+    # === Overall Status ===
+    if emergency_enabled:
+        summary_overall_status = "STOPPED"
+    elif health_decision == "FAIL":
+        summary_overall_status = "BLOCKED"
+    elif health_decision == "WARN":
+        summary_overall_status = "WARN"
+    elif overall == "NO_RUN_HISTORY":
+        summary_overall_status = "NO_RUN_HISTORY"
+    else:
+        summary_overall_status = "OK"
+    
+    # === Top Risks ===
+    top_risks = []
+    
+    if emergency_enabled:
+        top_risks.append({
+            "code": "EMERGENCY_STOP",
+            "severity": "CRITICAL",
+            "message": "Emergency stop is active",
+            "evidence_refs": ["state/emergency_stop.json"]
+        })
+    
+    if health_decision == "FAIL":
+        top_risks.append({
+            "code": "EVIDENCE_HEALTH_FAIL",
+            "severity": "CRITICAL",
+            "message": "Evidence health check failed",
+            "evidence_refs": ["reports/ops/evidence/health/health_latest.json"]
+        })
+    elif health_decision == "WARN":
+        top_risks.append({
+            "code": "EVIDENCE_HEALTH_WARN",
+            "severity": "WARN",
+            "message": "Evidence health check has warnings",
+            "evidence_refs": ["reports/ops/evidence/health/health_latest.json"]
+        })
+    
+    if tickets["failed"] > 0:
+        top_risks.append({
+            "code": "TICKETS_FAILED",
+            "severity": "WARN",
+            "message": f"{tickets['failed']} ticket(s) failed",
+            "evidence_refs": ["state/tickets/ticket_results.jsonl"]
+        })
+    
+    # === Build Summary ===
+    summary = {
+        "schema": "OPS_SUMMARY_V1",
+        "asof": asof,
+        "overall_status": summary_overall_status,
+        "guard": {
+            "evidence_health": {
+                "decision": health_decision,
+                "fail_closed_triggered": evidence_health.get("fail_closed_triggered", False),
+                "snapshot_ref": evidence_health.get("snapshot_ref")
+            },
+            "emergency_stop": {"enabled": emergency_enabled},
+            "execution_gate": {"mode": gate_mode}
+        },
+        "last_run_triplet": last_run_triplet,
+        "tickets": tickets,
+        "push": {
+            "outbox_row_count": outbox_row_count,
+            "last_send_decision": last_send_decision,
+            "sender_enabled": sender_enabled
+        },
+        "evidence": {
+            "index_row_count": index_row_count,
+            "health_decision": health_decision
+        },
+        "top_risks": top_risks[:5],
+        "source_run_id": run_receipt.get("run_id")
+    }
+    
+    return summary
+
+
 def save_ops_summary(summary: Dict) -> Dict:
     """Ops Summary 저장 (Atomic Write)"""
     SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
@@ -293,11 +427,13 @@ def save_ops_summary(summary: Dict) -> Dict:
     tmp_file.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding='utf-8')
     os.replace(str(tmp_file), str(SUMMARY_LATEST))
     
-    # Snapshot
+    # Snapshot (atomic write)
     now = datetime.now()
     snapshot_name = f"ops_summary_{now.strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = SUMMARY_SNAPSHOTS_DIR / snapshot_name
-    snapshot_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding='utf-8')
+    tmp_snapshot = snapshot_path.with_suffix('.json.tmp')
+    tmp_snapshot.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding='utf-8')
+    os.replace(str(tmp_snapshot), str(snapshot_path))
     
     return {
         "result": "OK",
@@ -307,8 +443,18 @@ def save_ops_summary(summary: Dict) -> Dict:
     }
 
 
+def generate_and_save_from_receipt(run_receipt: Dict) -> Dict:
+    """
+    In-Memory Generate → One-Shot Save (C-P.36)
+    
+    Returns paths for wiring into receipt
+    """
+    summary = generate_ops_summary_from_receipt(run_receipt)
+    return save_ops_summary(summary)
+
+
 def regenerate_ops_summary() -> Dict:
-    """Ops Summary 재생성"""
+    """Ops Summary 재생성 (standalone)"""
     summary = generate_ops_summary()
     return save_ops_summary(summary)
 
@@ -316,3 +462,4 @@ def regenerate_ops_summary() -> Dict:
 if __name__ == "__main__":
     result = regenerate_ops_summary()
     print(json.dumps(result, indent=2))
+
