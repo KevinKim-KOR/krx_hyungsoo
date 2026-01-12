@@ -1,8 +1,15 @@
 # Oracle Cloud Scheduler Runbook V1
 
-**Version**: 1.0
+**Version**: 1.1
 **Date**: 2026-01-12
-**Status**: DRAFT
+**Status**: PRINT-ONLY REHEARSAL
+
+---
+
+> ⚠️ **IMPORTANT: 이번 단계에서는 등록을 하지 않습니다!**
+>
+> 이 문서의 명령들은 **출력만 기록**하는 것이 목적입니다.
+> 실제 스케줄러 등록은 검증 완료 후 별도 승인 단계에서 진행합니다.
 
 ---
 
@@ -10,155 +17,174 @@
 
 Oracle Cloud (Compute Linux) 환경에서 KRX Alertor Modular의 Ops Cycle을 매일 09:05 KST에 자동 실행하기 위한 런북입니다.
 
-> ⚠️ **주의**: 스케줄러 등록 전 반드시 안전장치를 확인하세요.
-
 ---
 
-## 2. 실행 대상
+## 2. 목표 & 범위
 
 | 항목 | 값 |
 |------|-----|
-| **스크립트** | `deploy/run_ops_cycle.sh` |
-| **실행 시간** | 09:05 KST (매일) |
+| **실행 대상** | `deploy/run_ops_cycle.sh` |
+| **실행 시간** | 매일 09:05 KST |
 | **로그 위치** | `logs/ops_cycle.log` |
 | **결과 확인** | `reports/ops/scheduler/latest/ops_run_latest.json` |
 
 ---
 
-## 3. 타임존 주의사항
+## 3. Timezone 결정표
 
-### 3-A. 서버 TZ가 Asia/Seoul (KST)인 경우
+기준: **매일 09:05 KST** 실행
+
+| 서버 TZ | cron 시간 | 비고 |
+|---------|-----------|------|
+| `Asia/Seoul` (KST) | `5 9 * * *` | 서버 TZ가 KST인 경우 |
+| `UTC` | `5 0 * * *` | 09:05 KST = 00:05 UTC |
+| TZ 강제 지정 | `TZ=Asia/Seoul` + `5 9 * * *` | 권장 |
+
+---
+
+## 4. Preflight 체크리스트
+
+> 아래 명령들을 **출력용으로 기록**합니다. 실행은 별도 승인 후.
+
+### 4-A. OS/Timezone 확인
 
 ```bash
-# cron entry
-5 9 * * * cd /path/to/krx_hyungsoo && ./deploy/run_ops_cycle.sh >> logs/ops_cycle.log 2>&1
+# Timezone 확인
+timedatectl
+
+# 현재 시간 확인
+date
+date -u  # UTC
 ```
 
-### 3-B. 서버 TZ가 UTC인 경우
-
-09:05 KST = **00:05 UTC** (KST = UTC+9)
+### 4-B. Python/Venv 확인
 
 ```bash
-# cron entry (UTC 기준)
-5 0 * * * cd /path/to/krx_hyungsoo && ./deploy/run_ops_cycle.sh >> logs/ops_cycle.log 2>&1
+# Python 버전
+python3 --version
+
+# venv 존재 확인
+ls -la .venv/
+
+# 필수 패키지 확인
+.venv/bin/pip freeze | grep -E "(fastapi|uvicorn|requests)"
 ```
 
-### 3-C. TZ 강제 지정 방식 (권장)
+### 4-C. Backend Health 확인
 
 ```bash
-# crontab에서 TZ 강제
-TZ=Asia/Seoul
-5 9 * * * cd /path/to/krx_hyungsoo && ./deploy/run_ops_cycle.sh >> logs/ops_cycle.log 2>&1
+# Health API (backend 실행 중이어야 함)
+curl http://127.0.0.1:8000/api/ops/health
+```
+
+### 4-D. 안전장치 3종 확인
+
+```bash
+# 1. sender_enable = false
+cat state/real_sender_enable.json
+
+# 2. execution_gate != REAL_ENABLED
+cat state/execution_gate.json
+
+# 3. emergency_stop.enabled = false
+cat state/emergency_stop.json
+```
+
+### 4-E. 아티팩트 갱신 확인 (경로)
+
+```bash
+# 최신 파일 존재 확인
+ls -la reports/ops/scheduler/latest/ops_run_latest.json
+ls -la reports/ops/summary/ops_summary_latest.json
+ls -la reports/ops/drill/latest/drill_latest.json
 ```
 
 ---
 
-## 4. 안전장치 확인 체크리스트
+## 5. 등록(설치) 단계 — 명령 출력만
 
-**스케줄러 등록 전 반드시 확인:**
+> ⚠️ **아래 명령은 실행하지 마세요!** 
+> 출력된 내용을 운영 메모에 복붙해두고, 별도 승인 후 실행합니다.
 
-| # | 항목 | 기대값 | 확인 명령 |
-|---|------|--------|-----------|
-| 1 | `sender_enable` | `false` | `cat state/real_sender_enable.json` |
-| 2 | `execution_gate` | `≠ REAL_ENABLED` | `cat state/execution_gate.json` |
-| 3 | `emergency_stop` | `enabled: false` | `cat state/emergency_stop.json` |
-
-> ❌ **위 3개가 모두 확인되지 않으면 스케줄러 등록 금지**
-
----
-
-## 5. cron 등록 방법
-
-### 5-A. 등록용 cron entry 확인
+### 5-A. Cron 등록용 명령 출력
 
 ```bash
-# 화면에 출력만 (등록하지 않음)
+# 명령 출력 스크립트 실행 (출력만 함)
 ./deploy/oci/print_cron_install.sh
 ```
 
-### 5-B. 실제 등록 (수동)
+### 5-B. Systemd 등록용 명령 출력
 
 ```bash
-# crontab 편집
-crontab -e
-
-# 아래 줄 추가 (TZ=Asia/Seoul 방식)
-TZ=Asia/Seoul
-5 9 * * * cd /home/opc/krx_hyungsoo && ./deploy/run_ops_cycle.sh >> logs/ops_cycle.log 2>&1
-```
-
----
-
-## 6. systemd timer 등록 방법
-
-### 6-A. 유닛 파일 확인
-
-```bash
-# 화면에 출력만 (등록하지 않음)
+# 명령 출력 스크립트 실행 (출력만 함)
 ./deploy/oci/print_systemd_units.sh
 ```
 
-### 6-B. 실제 등록 (수동)
+---
+
+## 6. Rollback(되돌리기) 명령
+
+> 등록 후 문제 발생 시 사용할 명령들입니다. (역시 출력만)
+
+### 6-A. Cron 제거
 
 ```bash
-# 1. 유닛 파일 생성
-sudo nano /etc/systemd/system/krx-ops-cycle.service
-sudo nano /etc/systemd/system/krx-ops-cycle.timer
+# cron 확인
+crontab -l
 
-# 2. systemd 리로드
-sudo systemctl daemon-reload
+# cron 편집하여 해당 라인 삭제
+crontab -e
+```
 
-# 3. timer 활성화
-sudo systemctl enable krx-ops-cycle.timer
-sudo systemctl start krx-ops-cycle.timer
+### 6-B. Systemd 비활성화
 
-# 4. 상태 확인
+```bash
+# timer 중지
+sudo systemctl stop krx-ops-cycle.timer
+
+# timer 비활성화
+sudo systemctl disable krx-ops-cycle.timer
+
+# 상태 확인
 systemctl status krx-ops-cycle.timer
-systemctl list-timers | grep krx
+```
+
+### 6-C. Rollback 명령 출력 스크립트
+
+```bash
+./deploy/oci/print_rollback.sh
 ```
 
 ---
 
-## 7. 실행 확인
+## 7. 사후 안전 확인
+
+> 등록 직후 반드시 확인할 것 (명령 출력)
+
+### 7-A. Health 확인
 
 ```bash
-# 최신 실행 결과
-cat reports/ops/scheduler/latest/ops_run_latest.json | jq .overall_status
-
-# 최신 Ops Summary
-cat reports/ops/summary/ops_summary_latest.json | jq .schema
-
-# 로그 확인
-tail -50 logs/ops_cycle.log
+curl http://127.0.0.1:8000/api/ops/health
 ```
+
+### 7-B. Drill 확인 (Console Only)
+
+```bash
+curl http://127.0.0.1:8000/api/ops/drill/latest | jq '.steps[] | select(.name=="send_console") | .delivery_actual'
+# 기대값: "CONSOLE" 또는 "CONSOLE_SIMULATED"
+```
+
+### 7-C. 외부 발송 0 보장
+
+- 정책 문서: `docs/contracts/contract_golden_build_freeze_v1.md`
+- Safe Defaults: `sender_enable=false`, `gate=MOCK_ONLY`
 
 ---
 
-## 8. 트러블슈팅
-
-### 문제: cron이 실행되지 않음
-
-```bash
-# cron 로그 확인
-sudo cat /var/log/cron
-
-# 또는
-journalctl -u cron
-```
-
-### 문제: Python 경로 문제
-
-```bash
-# cron에서 전체 경로 사용
-5 9 * * * cd /home/opc/krx_hyungsoo && /home/opc/krx_hyungsoo/.venv/bin/python ...
-```
-
----
-
-## 9. 관련 문서
+## 8. 관련 문서
 
 | 문서 | 경로 |
 |------|------|
+| 리허설 체크리스트 | [checklist_oracle_cloud_scheduler_rehearsal_v1.md](checklist_oracle_cloud_scheduler_rehearsal_v1.md) |
 | 배포 Runbook | [runbook_deploy_v1.md](runbook_deploy_v1.md) |
-| 스케줄러 Runbook | [runbook_scheduler_v1.md](runbook_scheduler_v1.md) |
-| Deployment Contract | [contract_deployment_profile_v1.md](../contracts/contract_deployment_profile_v1.md) |
+| Golden Build Contract | [contract_golden_build_freeze_v1.md](../contracts/contract_golden_build_freeze_v1.md) |
