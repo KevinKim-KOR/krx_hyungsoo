@@ -1,12 +1,12 @@
 {
   "schema": "OPS_SUMMARY_V1",
-  "asof": "2026-01-12T21:19:59.160864",
+  "asof": "2026-01-12T21:18:17.007014",
   "overall_status": "WARN",
   "guard": {
     "evidence_health": {
       "decision": "WARN",
       "fail_closed_triggered": false,
-      "snapshot_ref": "reports\\ops\\evidence\\health\\snapshots\\health_20260112_211959.json"
+      "snapshot_ref": null
     },
     "emergency_stop": {
       "enabled": false
@@ -16,7 +16,7 @@
     }
   },
   "last_run_triplet": {
-    "last_done": "2026-01-12T21:19:59.160855",
+    "last_done": "2026-01-12T21:18:17.000021",
     "last_failed": null,
     "last_blocked": null
   },
@@ -25,7 +25,7 @@
     "in_progress": 1,
     "done": 14,
     "failed": 12,
-    "blocked": 8
+    "blocked": 0
   },
   "push": {
     "outbox_row_count": 1,
@@ -53,6 +53,5 @@
         "state/tickets/ticket_results.jsonl"
       ]
     }
-  ],
-  "source_run_id": "009b560a-56f7-47c7-a6e4-b1560b38085a"
+  ]
 }

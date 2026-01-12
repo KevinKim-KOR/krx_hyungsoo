@@ -1,16 +1,16 @@
 {
   "schema": "OPS_RUN_RECEIPT_V1",
-  "run_id": "009b560a-56f7-47c7-a6e4-b1560b38085a",
-  "asof": "2026-01-12T21:19:59.160855",
-  "started_at": "2026-01-12T21:19:59.145762",
-  "finished_at": "2026-01-12T21:19:59.160857",
+  "run_id": "b27bc475-e162-4b04-b111-37da2de4aac0",
+  "asof": "2026-01-12T21:18:17.000021",
+  "started_at": "2026-01-12T21:18:16.982688",
+  "finished_at": "2026-01-12T21:18:17.000023",
   "overall_status": "DONE",
   "ops_report_ref": "reports/ops/daily/ops_report_latest.json",
   "evidence_health": {
     "decision": "WARN",
-    "generated_at": "2026-01-12T21:19:59.150482",
+    "generated_at": "2026-01-12T21:18:16.986602",
     "latest_ref": "reports/ops/evidence/health/health_latest.json",
-    "snapshot_ref": "reports\\ops\\evidence\\health\\snapshots\\health_20260112_211959.json",
+    "snapshot_ref": "reports\\ops\\evidence\\health\\snapshots\\health_20260112_211816.json",
     "top_fail_reasons": [],
     "fail_closed_triggered": false,
     "error_summary": null
@@ -40,10 +40,10 @@
   "ops_summary": {
     "decision_observed": "WARN",
     "latest_ref": "reports\\ops\\summary\\ops_summary_latest.json",
-    "snapshot_ref": "reports\\ops\\summary\\snapshots\\ops_summary_20260112_211959.json"
+    "snapshot_ref": "reports\\ops\\summary\\snapshots\\ops_summary_20260112_211817.json"
   },
   "evidence_refs": [
-    "reports\\ops\\summary\\snapshots\\ops_summary_20260112_211959.json",
+    "reports\\ops\\summary\\snapshots\\ops_summary_20260112_211817.json",
     "reports/ops/evidence/health/health_latest.json"
   ]
 }
