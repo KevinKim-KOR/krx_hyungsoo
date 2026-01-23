@@ -98,6 +98,7 @@
 | `GOLDEN_BUILD_FREEZE_V1` | [contract_golden_build_freeze_v1.md](contract_golden_build_freeze_v1.md) | Golden Build Freeze (C-P.38) |
 | `DEPLOYMENT_PROFILE_V1` | [contract_deployment_profile_v1.md](contract_deployment_profile_v1.md) | Deployment Profile (C-P.39) |
 | `TICKET_REAPER_REPORT_V1` | [contract_ticket_reaper_v1.md](contract_ticket_reaper_v1.md) | Ticket Reaper (C-P.43) |
+| `PC_TO_OCI_HANDOFF_V1` | [contract_pc_to_oci_handoff_v1.md](contract_pc_to_oci_handoff_v1.md) | PC↔OCI 분리 (C-P.44) |
 
 ---
 

@@ -149,6 +149,55 @@ def get_tickets_summary() -> Dict:
     return summary
 
 
+def find_latest_status_line_refs() -> Dict[str, str]:
+    """
+    최근 FAILED/BLOCKED 티켓의 라인 번호 찾기 (C-P.44)
+    Returns: {"failed_line_ref": "...:lineN", "blocked_line_ref": "...:lineN"}
+    """
+    refs = {"failed_line_ref": None, "blocked_line_ref": None}
+    
+    # TICKET_RESULTS에서 최근 FAILED 찾기
+    if TICKET_RESULTS.exists():
+        try:
+            latest_failed_line = None
+            latest_failed_time = ""
+            with open(TICKET_RESULTS, 'r', encoding='utf-8') as f:
+                for line_no, line in enumerate(f, start=1):
+                    if line.strip():
+                        data = json.loads(line)
+                        if data.get("status") == "FAILED":
+                            processed_at = data.get("processed_at", "")
+                            if processed_at > latest_failed_time:
+                                latest_failed_time = processed_at
+                                latest_failed_line = line_no
+            if latest_failed_line:
+                refs["failed_line_ref"] = f"state/tickets/ticket_results.jsonl:line{latest_failed_line}"
+        except Exception:
+            pass
+    
+    # TICKET_RECEIPTS에서 최근 BLOCKED 찾기
+    receipts_file = BASE_DIR / "state" / "tickets" / "ticket_receipts.jsonl"
+    if receipts_file.exists():
+        try:
+            latest_blocked_line = None
+            latest_blocked_time = ""
+            with open(receipts_file, 'r', encoding='utf-8') as f:
+                for line_no, line in enumerate(f, start=1):
+                    if line.strip():
+                        data = json.loads(line)
+                        if data.get("decision") == "BLOCKED":
+                            processed_at = data.get("processed_at", "")
+                            if processed_at > latest_blocked_time:
+                                latest_blocked_time = processed_at
+                                latest_blocked_line = line_no
+            if latest_blocked_line:
+                refs["blocked_line_ref"] = f"state/tickets/ticket_receipts.jsonl:line{latest_blocked_line}"
+        except Exception:
+            pass
+    
+    return refs
+
+
 def generate_ops_summary() -> Dict[str, Any]:
     """Ops Summary 생성"""
     now = datetime.now()
@@ -236,20 +285,25 @@ def generate_ops_summary() -> Dict[str, Any]:
             "evidence_refs": ["reports/ops/evidence/health/health_latest.json"]
         })
     
+    # Get line-level refs for ticket risks (C-P.44)
+    line_refs = find_latest_status_line_refs()
+    
     if tickets["failed"] > 0:
+        failed_ref = line_refs.get("failed_line_ref") or "state/tickets/ticket_results.jsonl"
         top_risks.append({
             "code": "TICKETS_FAILED",
             "severity": "WARN",
             "message": f"{tickets['failed']} ticket(s) failed",
-            "evidence_refs": ["state/tickets/ticket_results.jsonl"]
+            "evidence_refs": [failed_ref]
         })
     
     if tickets["blocked"] > 0:
+        blocked_ref = line_refs.get("blocked_line_ref") or "state/tickets/ticket_receipts.jsonl"
         top_risks.append({
             "code": "TICKETS_BLOCKED",
             "severity": "WARN",
             "message": f"{tickets['blocked']} ticket(s) blocked",
-            "evidence_refs": ["state/tickets/ticket_receipts.jsonl"]
+            "evidence_refs": [blocked_ref]
         })
     
     # === Build Summary ===
