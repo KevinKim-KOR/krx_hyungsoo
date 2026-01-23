@@ -25,16 +25,17 @@
 | 타입 | 패턴 | 예시 |
 |------|------|------|
 | receipt_ref | `state/tickets/ticket_receipts.jsonl:line\d+` | `state/tickets/ticket_receipts.jsonl:line5` |
+| results_ref | `state/tickets/ticket_results.jsonl:line\d+` | `state/tickets/ticket_results.jsonl:line54` |
 | send_receipt_ref | `state/push/send_receipts.jsonl:line\d+` | `state/push/send_receipts.jsonl:line3` |
 
 **정규식:**
 ```regex
-^(state/tickets/ticket_receipts\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$
+^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$
 ```
 
 **규칙:**
-- `:lineN` 형식만 허용 (N >= 1)
-- 허용된 JSONL 파일 2개만 접근 가능
+- `:lineN` 형식만 허용 (N >= 1, 정수만)
+- 허용된 JSONL 파일 3개만 접근 가능
 
 ### 2-B. JSON Refs
 

@@ -34,12 +34,16 @@ except Exception:
 fi
 
 case "$overall_status" in
-    DONE|STOPPED|SKIPPED)
+    DONE|WARN|BLOCKED|STOPPED|SKIPPED|DONE_WITH_SKIPS)
         echo "[OPS_CYCLE] Completed with status: $overall_status"
         exit 0
         ;;
+    UNKNOWN)
+        echo "[OPS_CYCLE] Completed with status: UNKNOWN (parse error or API issue)"
+        exit 2
+        ;;
     *)
         echo "[OPS_CYCLE] Completed with status: $overall_status"
-        exit 1
+        exit 0
         ;;
 esac

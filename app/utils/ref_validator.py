@@ -20,6 +20,7 @@ BASE_DIR = Path(__file__).parent.parent.parent
 # Allowlist + Patterns (동일 정책)
 ALLOWED_JSONL_FILES = [
     "state/tickets/ticket_receipts.jsonl",
+    "state/tickets/ticket_results.jsonl",
     "state/push/send_receipts.jsonl"
 ]
 
@@ -52,7 +53,7 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/ops/scheduler/latest/ops_run_latest\.json$",
 ]
 
-JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
+JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
 
 DANGEROUS_TOKENS = ['..', '\\', '://', '%2e', '%2f', '%2E', '%2F', '%00']
 
