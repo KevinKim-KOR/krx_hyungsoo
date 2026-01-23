@@ -18,7 +18,20 @@ fi
 echo "[OPS_CYCLE] Response:"
 echo "$response" | python3 -m json.tool 2>/dev/null || echo "$response"
 
-overall_status=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('overall_status','UNKNOWN'))" 2>/dev/null)
+# Parse status: try data.overall_status first, then overall_status fallback
+if command -v jq >/dev/null 2>&1; then
+    overall_status="$(echo "$response" | jq -r '.data.overall_status // .overall_status // "UNKNOWN"')"
+else
+    overall_status="$(echo "$response" | python3 -c "
+import sys,json
+try:
+    obj=json.load(sys.stdin)
+    data=obj.get('data') or {}
+    print(data.get('overall_status') or obj.get('overall_status') or 'UNKNOWN')
+except Exception:
+    print('UNKNOWN')
+" 2>/dev/null)"
+fi
 
 case "$overall_status" in
     DONE|STOPPED|SKIPPED)
