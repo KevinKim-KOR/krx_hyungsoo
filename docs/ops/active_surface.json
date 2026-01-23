@@ -1,7 +1,7 @@
 {
-    "version": "1.41",
-    "asof": "2026-01-12",
-    "description": "Active Surface Registry (Phase C-P.42)",
+    "version": "1.42",
+    "asof": "2026-01-23",
+    "description": "Active Surface Registry (Phase C-P.43)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -73,7 +73,9 @@
         "docs/ops/checklist_oracle_cloud_scheduler_rehearsal_v1.md",
         "deploy/oci/print_cron_install.sh",
         "deploy/oci/print_systemd_units.sh",
-        "deploy/oci/print_rollback.sh"
+        "deploy/oci/print_rollback.sh",
+        "app/run_ticket_reaper.py",
+        "docs/contracts/contract_ticket_reaper_v1.md"
     ],
     "active_endpoints": [
         "/api/recon/summary",
@@ -124,7 +126,9 @@
         "/api/ops/summary/latest",
         "/api/ops/summary/regenerate",
         "/api/ops/drill/latest",
-        "/api/ops/drill/run"
+        "/api/ops/drill/run",
+        "/api/tickets/reaper/latest",
+        "/api/tickets/reaper/run"
     ],
     "forbidden_paths": [
         "_archive/**"

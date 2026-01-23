@@ -2813,6 +2813,61 @@ def run_ops_drill_api():
         })
 
 
+# === Ticket Reaper API (C-P.43) ===
+
+REAPER_LATEST_FILE = BASE_DIR / "reports" / "ops" / "tickets" / "reaper" / "latest" / "reaper_latest.json"
+
+
+@app.get("/api/tickets/reaper/latest", summary="Ticket Reaper 최신 조회")
+def get_ticket_reaper_latest():
+    """Ticket Reaper Latest (C-P.43) - Stale IN_PROGRESS Cleanup Report"""
+    if not REAPER_LATEST_FILE.exists():
+        return {
+            "schema": "TICKET_REAPER_REPORT_V1",
+            "asof": datetime.now().isoformat(),
+            "decision": "NONE",
+            "message": "No reaper report yet"
+        }
+    
+    try:
+        data = json.loads(REAPER_LATEST_FILE.read_text(encoding="utf-8"))
+        return data
+    except Exception as e:
+        return {
+            "schema": "TICKET_REAPER_REPORT_V1",
+            "asof": datetime.now().isoformat(),
+            "decision": "ERROR",
+            "error": str(e)
+        }
+
+
+class ReaperRunRequest(BaseModel):
+    threshold_seconds: int = 86400
+    max_clean: int = 50
+
+
+@app.post("/api/tickets/reaper/run", summary="Ticket Reaper 실행")
+def run_ticket_reaper_api(data: ReaperRunRequest = ReaperRunRequest()):
+    """Ticket Reaper Run (C-P.43) - Clean Stale IN_PROGRESS Tickets"""
+    try:
+        from app.run_ticket_reaper import run_ticket_reaper
+        result = run_ticket_reaper(
+            threshold_seconds=data.threshold_seconds,
+            max_clean=data.max_clean
+        )
+        return result
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -97,6 +97,7 @@
 | `OPS_DRILL_REPORT_V1` | [contract_ops_drill_report_v1.md](contract_ops_drill_report_v1.md) | Ops Drill Golden Build (C-P.37) |
 | `GOLDEN_BUILD_FREEZE_V1` | [contract_golden_build_freeze_v1.md](contract_golden_build_freeze_v1.md) | Golden Build Freeze (C-P.38) |
 | `DEPLOYMENT_PROFILE_V1` | [contract_deployment_profile_v1.md](contract_deployment_profile_v1.md) | Deployment Profile (C-P.39) |
+| `TICKET_REAPER_REPORT_V1` | [contract_ticket_reaper_v1.md](contract_ticket_reaper_v1.md) | Ticket Reaper (C-P.43) |
 
 ---
 

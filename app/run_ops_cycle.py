@@ -158,7 +158,7 @@ def release_lock():
 
 def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str, 
                      ticket_step: dict, safety_snapshot: dict, counters: dict,
-                     started_at: str, evidence_health: dict = None) -> str:
+                     started_at: str, evidence_health: dict = None, ticket_reaper: dict = None) -> str:
     """
     OPS_CYCLE_RUN_V2 스냅샷 저장 (C-P.36: In-Memory Summary + One-Shot Write)
     
@@ -188,6 +188,7 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
         "overall_status": overall_status,
         "ops_report_ref": ops_report_ref,
         "evidence_health": evidence_health or {"decision": "N/A"},
+        "ticket_reaper": ticket_reaper or {"decision_observed": "N/A", "cleaned_count": 0},
         "ticket_step": ticket_step,
         "safety_snapshot": safety_snapshot,
         "counters": {**counters, "skips_this_run": 1 if ticket_step.get("decision") == "SKIPPED" else 0}
@@ -212,7 +213,8 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
         },
         "evidence_refs": [
             ops_summary_result.get("snapshot_path"),
-            evidence_health.get("latest_ref") if evidence_health else None
+            evidence_health.get("latest_ref") if evidence_health else None,
+            ticket_reaper.get("snapshot_ref") if ticket_reaper else None
         ]
     }
     # 빈 ref 제거
@@ -280,6 +282,30 @@ def run_ops_cycle_v2() -> dict:
             "ticket_step": ticket_step
         }
     
+    # Step 0.25 (C-P.43): Ticket Reaper - Clean stale IN_PROGRESS
+    ticket_reaper = {
+        "decision_observed": "NONE",
+        "cleaned_count": 0,
+        "latest_ref": None,
+        "snapshot_ref": None
+    }
+    
+    try:
+        from app.run_ticket_reaper import run_ticket_reaper
+        reaper_result = run_ticket_reaper(threshold_seconds=86400, max_clean=50)
+        ticket_reaper["decision_observed"] = reaper_result.get("decision", "NONE")
+        ticket_reaper["cleaned_count"] = reaper_result.get("cleaned_count", 0)
+        ticket_reaper["latest_ref"] = reaper_result.get("latest_path")
+        ticket_reaper["snapshot_ref"] = reaper_result.get("snapshot_path")
+        
+        if ticket_reaper["cleaned_count"] > 0:
+            logger.info(f"Ticket Reaper: Cleaned {ticket_reaper['cleaned_count']} stale IN_PROGRESS tickets")
+        else:
+            logger.info("Ticket Reaper: No stale tickets")
+    except Exception as e:
+        logger.warning(f"Ticket Reaper failed: {e}")
+        ticket_reaper["decision_observed"] = "ERROR"
+    
     # Step 1.5 (C-P.34): Evidence Health Gate - Fail-Closed
     evidence_health = {
         "decision": "UNKNOWN",
@@ -326,7 +352,8 @@ def run_ops_cycle_v2() -> dict:
             safety_snapshot=safety_snapshot,
             counters=get_tickets_counters(),
             started_at=started_at,
-            evidence_health=evidence_health
+            evidence_health=evidence_health,
+            ticket_reaper=ticket_reaper
         )
         return {
             "result": "BLOCKED",
@@ -352,7 +379,8 @@ def run_ops_cycle_v2() -> dict:
             safety_snapshot=safety_snapshot,
             counters=get_tickets_counters(),
             started_at=started_at,
-            evidence_health=evidence_health
+            evidence_health=evidence_health,
+            ticket_reaper=ticket_reaper
         )
         return {
             "result": "SKIPPED",
@@ -409,7 +437,8 @@ def run_ops_cycle_v2() -> dict:
             safety_snapshot=safety_snapshot,
             counters=counters,
             started_at=started_at,
-            evidence_health=evidence_health
+            evidence_health=evidence_health,
+            ticket_reaper=ticket_reaper
         )
         
         return {
@@ -436,7 +465,8 @@ def run_ops_cycle_v2() -> dict:
             safety_snapshot=safety_snapshot,
             counters=get_tickets_counters(),
             started_at=started_at,
-            evidence_health=evidence_health
+            evidence_health=evidence_health,
+            ticket_reaper=ticket_reaper
         )
         return {
             "result": "FAILED",
