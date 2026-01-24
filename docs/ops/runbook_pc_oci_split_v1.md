@@ -73,6 +73,12 @@ git push origin archive-rebuild
 
 ## 4. OCI 작업
 
+> ⚠️ **OCI 백엔드 관리 규칙**:
+> - OCI 백엔드는 **systemd로만 관리**한다
+> - **nohup 금지** (프로세스 관리 불가)
+> - daily_ops 로그 확인: `logs/daily_ops.log`
+> - 백엔드 로그 확인: `journalctl -u krx-backend -f`
+
 ### 4-A. 수동 동기화 (필요 시)
 
 ```bash
