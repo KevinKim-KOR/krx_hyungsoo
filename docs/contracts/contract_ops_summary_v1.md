@@ -44,6 +44,18 @@
     "failed": 1,
     "blocked": 0
   },
+  "tickets_recent": {
+    "window_days": 3,
+    "max_events": 200,
+    "start_at": "2026-01-08T09:00:00",
+    "end_at": "2026-01-11T09:00:00",
+    "failed": 0,
+    "excluded_cleanup_failed": 1,
+    "blocked": 0,
+    "done": 5,
+    "in_progress": 0,
+    "failed_line_refs": []
+  },
   "push": {
     "outbox_row_count": 3,
     "last_send_decision": "READY",
@@ -106,7 +118,12 @@
 | `guard.emergency_stop` | object | Emergency Stop 상태 |
 | `guard.execution_gate` | object | Execution Gate 상태 |
 | `last_run_triplet` | object | 마지막 실행 정보 |
-| `tickets` | object | 티켓 요약 카운터 |
+| `tickets` | object | 티켓 요약 카운터 (누적) |
+| `tickets_recent` | object | Risk Window 내 티켓 요약 (D-P.52) |
+| `tickets_recent.window_days` | int | 적용된 윈도우 일수 (기본: 3) |
+| `tickets_recent.failed` | int | 위험 창 내 FAILED (cleanup 제외) |
+| `tickets_recent.excluded_cleanup_failed` | int | 제외된 cleanup FAILED |
+| `tickets_recent.failed_line_refs` | array | 최근 실패 라인 참조 (최대 5개) |
 | `push` | object | Push 요약 |
 | `evidence` | object | Evidence 요약 |
 | `top_risks` | array | 상위 위험 (max 5) |
@@ -139,3 +156,4 @@
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
 | 1.0 | 2026-01-11 | 초기 버전 (Phase C-P.35) |
+| 1.1 | 2026-01-24 | Risk Window 추가 (D-P.52): `tickets_recent` 섹션, cleanup 제외 |

@@ -34,6 +34,14 @@ SUMMARY_DIR = BASE_DIR / "reports" / "ops" / "summary"
 SUMMARY_LATEST = SUMMARY_DIR / "ops_summary_latest.json"
 SUMMARY_SNAPSHOTS_DIR = SUMMARY_DIR / "snapshots"
 
+# Risk Window Configuration (D-P.52)
+OPS_RISK_WINDOW_DAYS = int(os.environ.get("OPS_RISK_WINDOW_DAYS", "3"))
+OPS_RISK_MAX_EVENTS = int(os.environ.get("OPS_RISK_MAX_EVENTS", "200"))
+TICKET_FAIL_EXCLUDE_PREFIXES = os.environ.get(
+    "OPS_TICKET_FAIL_EXCLUDE_PREFIXES", 
+    "AUTO_CLEANUP_,MANUAL_CLEANUP,REAPER_"
+).split(",")
+
 # Forbidden prefixes to strip
 FORBIDDEN_PREFIXES = ["json:", "file://", "file:", "http://", "https://"]
 
@@ -150,6 +158,107 @@ def get_tickets_summary() -> Dict:
             summary["blocked"] += 1
     
     return summary
+
+
+def get_tickets_recent() -> Dict[str, Any]:
+    """
+    최근 Risk Window 내 티켓 요약 (D-P.52)
+    
+    - OPS_RISK_WINDOW_DAYS 이내 이벤트만 집계
+    - OPS_RISK_MAX_EVENTS 개수 상한
+    - TICKET_FAIL_EXCLUDE_PREFIXES로 시작하는 FAILED는 제외
+    
+    Returns:
+        - window_days: 적용된 윈도우 일수
+        - start_at: 윈도우 시작 시간
+        - end_at: 윈도우 끝 시간 (now)
+        - failed: Risk Window 내 FAILED (cleanup 제외)
+        - excluded_cleanup_failed: 제외된 cleanup FAILED 수
+        - blocked: Risk Window 내 BLOCKED
+        - done: Risk Window 내 DONE
+        - in_progress: Risk Window 내 IN_PROGRESS
+        - failed_line_refs: 최근 FAILED 라인 참조 목록 (최대 5개)
+    """
+    now = datetime.now()
+    window_start = now - timedelta(days=OPS_RISK_WINDOW_DAYS)
+    
+    result = {
+        "window_days": OPS_RISK_WINDOW_DAYS,
+        "max_events": OPS_RISK_MAX_EVENTS,
+        "start_at": window_start.isoformat(),
+        "end_at": now.isoformat(),
+        "failed": 0,
+        "excluded_cleanup_failed": 0,
+        "blocked": 0,
+        "done": 0,
+        "in_progress": 0,
+        "failed_line_refs": []
+    }
+    
+    if not TICKET_RESULTS.exists():
+        return result
+    
+    try:
+        # Read recent events (tail based on max_events)
+        all_events = []
+        with open(TICKET_RESULTS, 'r', encoding='utf-8') as f:
+            for line_no, line in enumerate(f, start=1):
+                if line.strip():
+                    try:
+                        data = json.loads(line)
+                        data["_line_no"] = line_no
+                        all_events.append(data)
+                    except json.JSONDecodeError:
+                        continue
+        
+        # Limit to most recent events
+        recent_events = all_events[-OPS_RISK_MAX_EVENTS:]
+        
+        # Filter by time window and count
+        for event in recent_events:
+            processed_at = event.get("processed_at", "")
+            if not processed_at:
+                continue
+            
+            try:
+                event_time = datetime.fromisoformat(processed_at.replace("Z", "+00:00").replace("+00:00", ""))
+            except (ValueError, TypeError):
+                continue
+            
+            # Check if within window
+            if event_time < window_start:
+                continue
+            
+            status = event.get("status", "")
+            message = event.get("message", "")
+            
+            if status == "FAILED":
+                # Check cleanup exclusion
+                excluded = False
+                for prefix in TICKET_FAIL_EXCLUDE_PREFIXES:
+                    if prefix and message.startswith(prefix):
+                        excluded = True
+                        break
+                
+                if excluded:
+                    result["excluded_cleanup_failed"] += 1
+                else:
+                    result["failed"] += 1
+                    # Add line ref (최대 5개)
+                    if len(result["failed_line_refs"]) < 5:
+                        line_ref = f"state/tickets/ticket_results.jsonl:line{event['_line_no']}"
+                        result["failed_line_refs"].append(line_ref)
+            elif status == "BLOCKED":
+                result["blocked"] += 1
+            elif status == "DONE":
+                result["done"] += 1
+            elif status == "IN_PROGRESS":
+                result["in_progress"] += 1
+        
+    except Exception:
+        pass
+    
+    return result
 
 
 def find_latest_status_line_refs() -> Dict[str, str]:
@@ -453,18 +562,23 @@ def generate_ops_summary() -> Dict[str, Any]:
             "evidence_refs": ["reports/ops/evidence/health/health_latest.json"]
         })
     
-    # Get line-level refs for ticket risks (C-P.44)
-    line_refs = find_latest_status_line_refs()
+    # === Ticket Risks (D-P.52: Risk Window) ===
+    # Use tickets_recent for risk calculation, not cumulative tickets
+    tickets_recent = get_tickets_recent()
     
-    if tickets["failed"] > 0:
-        failed_ref = line_refs.get("failed_line_ref") or "state/tickets/ticket_results.jsonl"
+    if tickets_recent["failed"] > 0:
+        # Use line refs from Risk Window analysis
+        failed_refs = tickets_recent["failed_line_refs"] or ["state/tickets/ticket_results.jsonl"]
         top_risks.append({
             "code": "TICKETS_FAILED",
             "severity": "WARN",
-            "message": f"{tickets['failed']} ticket(s) failed",
-            "evidence_refs": [failed_ref]
+            "message": f"{tickets_recent['failed']} ticket(s) failed in last {tickets_recent['window_days']} days",
+            "evidence_refs": failed_refs[:5]  # 최대 5개
         })
     
+    # Note: tickets_recent["blocked"] could be used here too
+    # But BLOCKED is often from receipts, keep legacy logic for now
+    line_refs = find_latest_status_line_refs()
     if tickets["blocked"] > 0:
         blocked_ref = line_refs.get("blocked_line_ref") or "state/tickets/ticket_receipts.jsonl"
         top_risks.append({
@@ -547,6 +661,7 @@ def generate_ops_summary() -> Dict[str, Any]:
         },
         "last_run_triplet": last_run_triplet,
         "tickets": tickets,
+        "tickets_recent": tickets_recent,
         "push": {
             "outbox_row_count": outbox_row_count,
             "last_send_decision": last_send_decision,
