@@ -65,7 +65,7 @@ def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None) -> Di
             "cash_pct": 1.0
         },
         "constraints_applied": None,
-        "evidence_refs": [],
+        "evidence_refs": ["reports/live/reco/latest/reco_latest.json"],
         "integrity": {
             "payload_sha256": compute_payload_sha256(recommendations)
         }
@@ -99,7 +99,7 @@ def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None) -> 
             "cash_pct": 1.0
         },
         "constraints_applied": None,
-        "evidence_refs": [],
+        "evidence_refs": ["reports/live/reco/latest/reco_latest.json"],
         "integrity": {
             "payload_sha256": compute_payload_sha256(recommendations)
         }
@@ -259,25 +259,40 @@ def generate_reco_report() -> Dict:
 
 
 def _save_and_return(report: Dict) -> Dict:
-    """Atomic Write로 리포트 저장"""
+    """Atomic Write로 리포트 저장 + 스냅샷 생성"""
+    import shutil
     ensure_dirs()
     
+    snapshot_ref = None
+    
     try:
-        # Atomic write
+        # 1. Atomic write to latest
         tmp_path = RECO_LATEST_FILE.with_suffix(".tmp")
         tmp_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp_path, RECO_LATEST_FILE)
         
+        # 2. Always create snapshot on regenerate
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        snapshot_filename = f"reco_{timestamp}.json"
+        snapshot_path = RECO_SNAPSHOTS_DIR / snapshot_filename
+        
+        tmp_snap = snapshot_path.with_suffix(".tmp")
+        shutil.copy2(RECO_LATEST_FILE, tmp_snap)
+        os.replace(tmp_snap, snapshot_path)
+        snapshot_ref = f"reports/live/reco/snapshots/{snapshot_filename}"
+        
         return {
             "success": True,
             "report": report,
-            "saved_to": "reports/live/reco/latest/reco_latest.json"
+            "saved_to": "reports/live/reco/latest/reco_latest.json",
+            "snapshot_ref": snapshot_ref
         }
     except Exception as e:
         return {
             "success": False,
             "report": report,
-            "error": str(e)
+            "error": str(e),
+            "snapshot_ref": snapshot_ref
         }
 
 

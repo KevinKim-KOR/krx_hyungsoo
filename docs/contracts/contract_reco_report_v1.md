@@ -1,6 +1,6 @@
 # Contract: Reco Report V1
 
-**Version**: 1.0
+**Version**: 1.1
 **Date**: 2026-01-24
 **Status**: LOCKED
 
@@ -10,15 +10,17 @@
 
 OCI에서 `STRATEGY_BUNDLE_V1`을 기반으로 생성되는 추천(Recommendation) 리포트 스키마를 정의합니다.
 
-> 🔒 **Fail-Closed**: 번들 무결성 실패 시 EMPTY_RECO 생성
+> 🔒 **Fail-Closed**: 번들 무결성 실패 시 BLOCKED 생성
 > 
 > 🔒 **Read-Only**: 추천은 읽기 전용, 실제 주문 연동 금지
 > 
-> 🔒 **RAW_PATH_ONLY**: evidence_refs는 raw 경로만 허용
+> 🔒 **RAW_PATH_ONLY**: evidence_refs는 raw 경로만 허용 (접두어 금지)
+> 
+> 🔒 **Snapshot 필수**: 매 생성마다 스냅샷 자동 생성
 
 ---
 
-## 2. Schema: RECO_REPORT_V1
+## 2. Schema: RECO_REPORT_V1 (Report 본문)
 
 ```json
 {
@@ -33,63 +35,66 @@ OCI에서 `STRATEGY_BUNDLE_V1`을 기반으로 생성되는 추천(Recommendatio
   },
   "decision": "GENERATED | EMPTY_RECO | BLOCKED",
   "reason": "SUCCESS | NO_BUNDLE | BUNDLE_FAIL | BUNDLE_STALE | SYSTEM_ERROR",
-  "recommendations": [
-    {
-      "ticker": "069500",
-      "name": "KODEX 200",
-      "action": "BUY | SELL | HOLD",
-      "weight_pct": 0.25,
-      "signal_score": 0.85,
-      "rationale": "20일 모멘텀 상위, ADX > 25"
-    }
-  ],
-  "summary": {
-    "total_positions": 3,
-    "buy_count": 2,
-    "sell_count": 1,
-    "hold_count": 0,
-    "cash_pct": 0.10
-  },
-  "constraints_applied": {
-    "max_position_pct": 0.25,
-    "max_positions": 4,
-    "min_cash_pct": 0.10
-  },
-  "evidence_refs": [
-    "state/strategy_bundle/latest/strategy_bundle_latest.json",
-    "reports/live/reco/latest/reco_latest.json"
-  ],
+  "recommendations": [...],
+  "summary": {...},
+  "constraints_applied": {...},
+  "evidence_refs": ["reports/live/reco/latest/reco_latest.json"],
   "integrity": {
     "payload_sha256": "sha256-of-recommendations-section"
   }
 }
 ```
 
+> **Note**: `source_bundle`은 `NO_BUNDLE` 상태일 때 `null` 가능
+
 ---
 
-## 3. 필드 정의
+## 3. API Envelope: GET /api/reco/latest
+
+```json
+{
+  "schema": "RECO_REPORT_V1",
+  "asof": "2026-01-24T10:00:00+09:00",
+  "status": "ready | no_reco_yet | error",
+  "report": { ...RECO_REPORT_V1... },
+  "summary": {
+    "present": true,
+    "decision": "GENERATED",
+    "reason": "SUCCESS",
+    "latest_ref": "reports/live/reco/latest/reco_latest.json",
+    "report_id": "uuid",
+    "created_at": "2026-01-24T10:00:00",
+    "source_bundle": {...},
+    "summary": {...}
+  },
+  "snapshots": [
+    {"filename": "reco_20260124_100000.json", "mtime": "...", "ref": "reports/live/reco/snapshots/reco_20260124_100000.json"}
+  ],
+  "error": null
+}
+```
+
+---
+
+## 4. 필드 정의
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | `schema` | string | ✓ | "RECO_REPORT_V1" |
 | `report_id` | UUID | ✓ | 고유 식별자 |
 | `created_at` | ISO8601 | ✓ | 생성 시각 (KST) |
-| `source_bundle` | object | ✓ | 소스 번들 정보 |
-| `source_bundle.bundle_id` | UUID | ✓ | 번들 ID |
-| `source_bundle.strategy_name` | string | ✓ | 전략 이름 |
-| `source_bundle.strategy_version` | string | ✓ | 전략 버전 |
-| `source_bundle.bundle_decision` | string | ✓ | 번들 검증 결과 |
-| `decision` | string | ✓ | GENERATED, EMPTY_RECO, BLOCKED |
-| `reason` | string | ✓ | 상태 사유 |
-| `recommendations` | array | ✓ | 추천 목록 (EMPTY_RECO 시 빈 배열) |
+| `source_bundle` | object/null | ✓ | 소스 번들 정보 (NO_BUNDLE 시 null) |
+| `decision` | enum | ✓ | GENERATED, EMPTY_RECO, BLOCKED |
+| `reason` | enum | ✓ | SUCCESS, NO_BUNDLE, BUNDLE_FAIL, BUNDLE_STALE, SYSTEM_ERROR |
+| `recommendations` | array | ✓ | 추천 목록 (EMPTY_RECO/BLOCKED 시 빈 배열) |
 | `summary` | object | ✓ | 추천 요약 |
-| `constraints_applied` | object | ✓ | 적용된 제약조건 |
-| `evidence_refs` | array | ✓ | 증거 참조 경로 (RAW_PATH_ONLY) |
+| `constraints_applied` | object/null | ✓ | 적용된 제약조건 |
+| `evidence_refs` | array | ✓ | 증거 참조 경로 (RAW_PATH_ONLY, **최소 1개 필수**) |
 | `integrity` | object | ✓ | 무결성 정보 |
 
 ---
 
-## 4. Decision 결정 규칙
+## 5. Decision 결정 규칙
 
 | 조건 | decision | reason |
 |------|----------|--------|
@@ -101,33 +106,28 @@ OCI에서 `STRATEGY_BUNDLE_V1`을 기반으로 생성되는 추천(Recommendatio
 
 ---
 
-## 5. 저장소 경로
+## 6. 저장소 경로
 
 | 경로 | 용도 | 방식 |
 |------|------|------|
 | `reports/live/reco/latest/reco_latest.json` | 최신 추천 리포트 | Atomic Write |
-| `reports/live/reco/snapshots/*.json` | 스냅샷 | Append-only |
+| `reports/live/reco/snapshots/reco_*.json` | 스냅샷 | 매 생성 시 자동 생성 |
 
 ---
 
-## 6. Recommendations 항목 스키마
+## 7. evidence_refs 규칙
 
-```json
-{
-  "ticker": "string (종목코드)",
-  "name": "string (종목명)",
-  "action": "BUY | SELL | HOLD",
-  "weight_pct": "number (0.0 ~ 1.0)",
-  "signal_score": "number (-1.0 ~ 1.0)",
-  "rationale": "string (추천 사유)"
-}
-```
+> ⚠️ **모든 상태에서 최소 1개의 evidence_ref 필수**
+
+| decision | evidence_refs |
+|----------|---------------|
+| GENERATED | `["reports/live/reco/latest/reco_latest.json", "state/strategy_bundle/latest/strategy_bundle_latest.json"]` |
+| EMPTY_RECO | `["reports/live/reco/latest/reco_latest.json"]` |
+| BLOCKED | `["reports/live/reco/latest/reco_latest.json"]` |
 
 ---
 
-## 7. EMPTY_RECO 상태 예시
-
-번들 없음 또는 STALE 시:
+## 8. EMPTY_RECO 상태 예시
 
 ```json
 {
@@ -146,7 +146,7 @@ OCI에서 `STRATEGY_BUNDLE_V1`을 기반으로 생성되는 추천(Recommendatio
     "cash_pct": 1.0
   },
   "constraints_applied": null,
-  "evidence_refs": [],
+  "evidence_refs": ["reports/live/reco/latest/reco_latest.json"],
   "integrity": {
     "payload_sha256": "e3b0c44..."
   }
@@ -155,18 +155,21 @@ OCI에서 `STRATEGY_BUNDLE_V1`을 기반으로 생성되는 추천(Recommendatio
 
 ---
 
-## 8. 금지사항
+## 9. 금지사항
 
 > ⚠️ **추천 리포트 절대 금지**
 
 - 실제 주문 연동
 - 외부 전송 (텔레그램, 슬랙, 이메일)
 - 실시간 가격 데이터 (추천은 전략 파라미터 기반)
+- `file://`, `http://`, `json:` 등 접두어 사용
 
 ---
 
-## 9. 버전 히스토리
+## 10. 버전 히스토리
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
 | 1.0 | 2026-01-24 | 초기 버전 (Phase D-P.48) |
+| 1.1 | 2026-01-24 | API Envelope 추가, evidence_refs 필수화 (Phase D-P.48.1-REV) |
+
