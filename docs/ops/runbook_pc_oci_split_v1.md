@@ -80,15 +80,29 @@ cd ~/krx_hyungsoo
 git pull origin archive-rebuild
 ```
 
-### 4-B. 자동 스케줄 (09:05 KST)
+### 4-B. 자동 스케줄 (09:05 KST) - D-P.54
 
-cron이 `deploy/run_ops_cycle.sh`를 실행합니다.
+> ✅ **통합 스크립트**: `deploy/oci/daily_ops.sh` 하나로 전체 운영
 
 ```bash
-# cron 확인
-crontab -l
-# 출력: 5 9 * * * cd /home/ubuntu/krx_hyungsoo && ./deploy/run_ops_cycle.sh ...
+# 수동 실행
+bash deploy/oci/daily_ops.sh
+echo "exit=$?"
+# exit 0: COMPLETED/WARN OK
+# exit 2: BLOCKED (정상 차단)
+# exit 3: 운영 장애
+
+# cron 설정 (09:05 KST)
+crontab -e
+# 추가: 5 9 * * * cd /home/ubuntu/krx_hyungsoo && bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
 ```
+
+**daily_ops.sh 5단계 흐름:**
+1. `git pull` (PC 번들 동기화)
+2. Backend health check
+3. Ops Summary regenerate + 검증
+4. Live Cycle run + 검증
+5. Snapshot resolver 확인
 
 ### 4-C. 실행 결과 확인
 
