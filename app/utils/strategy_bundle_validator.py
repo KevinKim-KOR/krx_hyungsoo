@@ -18,7 +18,12 @@ from datetime import datetime, timedelta
 # Import ref_validator for evidence_refs validation
 from app.utils.ref_validator import validate_and_resolve_ref, DANGEROUS_TOKENS
 
+import os
+
 BASE_DIR = Path(__file__).parent.parent.parent
+
+# Bundle max age in seconds (default 24h)
+BUNDLE_MAX_AGE_SECONDS = int(os.environ.get("BUNDLE_MAX_AGE_SECONDS", 86400))
 
 
 @dataclass
@@ -32,6 +37,9 @@ class BundleValidationResult:
     strategy_version: Optional[str]
     issues: List[str]
     warnings: List[str]
+    stale: bool = False  # True if bundle is older than BUNDLE_MAX_AGE_SECONDS
+    stale_reason: Optional[str] = None
+    age_seconds: Optional[int] = None
 
 
 # Required top-level keys
@@ -116,7 +124,9 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
             strategy_name=None,
             strategy_version=None,
             issues=issues,
-            warnings=warnings
+            warnings=warnings,
+            stale=True,  # Fail-Closed: treat as stale if validation fails
+            stale_reason="VALIDATION_FAIL"
         )
     
     # === 2. 스키마 버전 확인 ===
@@ -157,7 +167,9 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
             strategy_name=strategy.get("name"),
             strategy_version=strategy.get("version"),
             issues=issues,
-            warnings=warnings
+            warnings=warnings,
+            stale=True,  # Fail-Closed: treat as stale if validation fails
+            stale_reason="VALIDATION_FAIL"
         )
     
     # === 7. evidence_refs 검증 ===
@@ -176,19 +188,33 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
         issues.append(f"payload_sha256 mismatch: expected={expected_sha256[:16]}..., computed={computed_sha256[:16]}...")
     
     # === 9. Stale 체크 (24h+) ===
+    is_stale = False
+    stale_reason = None
+    age_seconds = None
+    
     try:
         created_at = bundle.get("created_at", "")
-        # ISO8601 파싱 (timezone 포함 가능)
         if created_at:
-            # 간단한 파싱 (타임존 무시)
+            # ISO8601 파싱 (타임존 무시)
             dt_str = created_at[:19]  # YYYY-MM-DDTHH:MM:SS
             created_dt = datetime.fromisoformat(dt_str)
             now = datetime.now()
             age = now - created_dt
-            if age > timedelta(hours=24):
-                warnings.append(f"Bundle is stale: created {age.days}d {age.seconds//3600}h ago")
+            age_seconds = int(age.total_seconds())
+            
+            if age_seconds > BUNDLE_MAX_AGE_SECONDS:
+                is_stale = True
+                stale_reason = f"Bundle is stale: created {age.days}d {age.seconds//3600}h ago"
+                warnings.append(stale_reason)
+        else:
+            # No created_at -> Fail-Closed: treat as stale
+            is_stale = True
+            stale_reason = "No created_at timestamp"
     except Exception as e:
-        warnings.append(f"Could not parse created_at: {e}")
+        # Parse error -> Fail-Closed: treat as stale
+        is_stale = True
+        stale_reason = f"Could not parse created_at: {e}"
+        warnings.append(stale_reason)
     
     # === 10. 결과 결정 ===
     if issues:
@@ -209,7 +235,10 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
         strategy_name=strategy.get("name"),
         strategy_version=strategy.get("version"),
         issues=issues,
-        warnings=warnings
+        warnings=warnings,
+        stale=is_stale,
+        stale_reason=stale_reason,
+        age_seconds=age_seconds
     )
 
 
@@ -226,7 +255,9 @@ def validate_bundle_file(path: Path) -> BundleValidationResult:
             strategy_name=None,
             strategy_version=None,
             issues=["Bundle file not found"],
-            warnings=[]
+            warnings=[],
+            stale=True,
+            stale_reason="FILE_NOT_FOUND"
         )
     
     try:
@@ -241,7 +272,9 @@ def validate_bundle_file(path: Path) -> BundleValidationResult:
             strategy_name=None,
             strategy_version=None,
             issues=[f"JSON parse error: {e}"],
-            warnings=[]
+            warnings=[],
+            stale=True,
+            stale_reason="JSON_PARSE_ERROR"
         )
 
 

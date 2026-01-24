@@ -154,46 +154,50 @@ def generate_reco_report() -> Dict:
     1. 번들 로드 및 검증
     2. 검증 결과에 따라 GENERATED/EMPTY_RECO/BLOCKED 결정
     3. 추천 생성 (GENERATED인 경우)
-    4. Atomic Write로 저장
+    4. Atomic Write + Snapshot 저장
+    
+    Fail-Closed: 모든 예외 상황에서 리포트 저장 + BLOCKED 응답
     
     Returns:
         생성된 리포트 또는 에러 정보
     """
     ensure_dirs()
     
-    # 1. 번들 로드 및 검증
-    bundle, validation = load_latest_bundle()
-    
-    # 2. 결정 로직
-    # Case 1: 번들 없음
-    if validation.decision == "NO_BUNDLE":
-        report = generate_empty_reco("NO_BUNDLE")
-        return _save_and_return(report)
-    
-    # Case 2: 번들 검증 실패 (Fail-Closed)
-    if not validation.valid:
-        source_bundle = {
-            "bundle_id": validation.bundle_id,
-            "strategy_name": validation.strategy_name,
-            "strategy_version": validation.strategy_version,
-            "bundle_decision": validation.decision
-        }
-        report = generate_blocked_reco("BUNDLE_FAIL", source_bundle)
-        return _save_and_return(report)
-    
-    # Case 3: 번들 STALE (24h+)
-    if validation.stale:
-        source_bundle = {
-            "bundle_id": validation.bundle_id,
-            "strategy_name": validation.strategy_name,
-            "strategy_version": validation.strategy_version,
-            "bundle_decision": "WARN"
-        }
-        report = generate_empty_reco("BUNDLE_STALE", source_bundle)
-        return _save_and_return(report)
-    
-    # Case 4: 번들 PASS/WARN - 추천 생성
     try:
+        # 1. 번들 로드 및 검증
+        bundle, validation = load_latest_bundle()
+        
+        # 2. 결정 로직
+        # Case 1: 번들 없음
+        if validation.decision == "NO_BUNDLE":
+            report = generate_empty_reco("NO_BUNDLE")
+            return _save_and_return(report)
+        
+        # Case 2: 번들 검증 실패 (Fail-Closed)
+        if not validation.valid:
+            source_bundle = {
+                "bundle_id": validation.bundle_id,
+                "strategy_name": validation.strategy_name,
+                "strategy_version": validation.strategy_version,
+                "bundle_decision": validation.decision
+            }
+            report = generate_blocked_reco("BUNDLE_FAIL", source_bundle)
+            return _save_and_return(report)
+        
+        # Case 3: 번들 STALE (24h+) - getattr for safety (Fail-Closed default)
+        is_stale = getattr(validation, "stale", True)  # Default to True if field missing
+        if is_stale:
+            source_bundle = {
+                "bundle_id": validation.bundle_id,
+                "strategy_name": validation.strategy_name,
+                "strategy_version": validation.strategy_version,
+                "bundle_decision": "WARN"
+            }
+            stale_reason = getattr(validation, "stale_reason", "STALE_CHECK_FAILED")
+            report = generate_empty_reco(f"BUNDLE_STALE: {stale_reason}", source_bundle)
+            return _save_and_return(report)
+        
+        # Case 4: 번들 PASS/WARN - 추천 생성
         source_bundle = {
             "bundle_id": validation.bundle_id,
             "strategy_name": validation.strategy_name,
@@ -216,13 +220,21 @@ def generate_reco_report() -> Dict:
         report_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
         
+        # 추천이 비어도 번들이 있으면 GENERATED (reason은 SUCCESS 또는 NO_SIGNAL)
+        if recommendations:
+            decision = "GENERATED"
+            reason = "SUCCESS"
+        else:
+            decision = "GENERATED"
+            reason = "NO_SIGNAL"  # Bundle exists but no actionable signals
+        
         report = {
             "schema": "RECO_REPORT_V1",
             "report_id": report_id,
             "created_at": now,
             "source_bundle": source_bundle,
-            "decision": "GENERATED",
-            "reason": "SUCCESS",
+            "decision": decision,
+            "reason": reason,
             "recommendations": recommendations,
             "summary": {
                 "total_positions": len(recommendations),
@@ -248,14 +260,20 @@ def generate_reco_report() -> Dict:
         return _save_and_return(report)
         
     except Exception as e:
-        source_bundle = {
-            "bundle_id": validation.bundle_id,
-            "strategy_name": validation.strategy_name,
-            "strategy_version": validation.strategy_version,
-            "bundle_decision": validation.decision
-        }
+        # Fail-Closed: 모든 예외에서 BLOCKED 리포트 저장
+        try:
+            source_bundle = {
+                "bundle_id": getattr(validation, "bundle_id", None) if 'validation' in dir() else None,
+                "strategy_name": getattr(validation, "strategy_name", None) if 'validation' in dir() else None,
+                "strategy_version": getattr(validation, "strategy_version", None) if 'validation' in dir() else None,
+                "bundle_decision": getattr(validation, "decision", "UNKNOWN") if 'validation' in dir() else "UNKNOWN"
+            }
+        except:
+            source_bundle = None
+        
         report = generate_blocked_reco(f"SYSTEM_ERROR: {str(e)}", source_bundle)
         return _save_and_return(report)
+
 
 
 def _save_and_return(report: Dict) -> Dict:
