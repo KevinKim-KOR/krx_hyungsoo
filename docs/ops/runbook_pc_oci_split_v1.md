@@ -125,11 +125,18 @@ curl -s http://127.0.0.1:8000/api/live/cycle/latest | python3 -c 'import json,sy
 
 # delivery_actual 확인
 curl -s http://127.0.0.1:8000/api/live/cycle/latest | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get("rows",[{}])[0]; print("delivery=",(r.get("push") or {}).get("delivery_actual"))'
-### 4-E. Ops Summary 1분 검증 (D-P.53)
+```
 
-> ⚠️ **금지 패턴**: `curl | python3 - <<'PY'` (heredoc이 stdin을 덮어씀)
+### 4-E. Ops Summary 1분 검증 (D-P.53.1)
+
+> ⚠️ **금지 패턴**:
+> - `curl | python3 - <<'PY'` (heredoc이 stdin을 덮어씀)
+> - `eval "$PYTHON_OUTPUT"` (Python 리스트 문법이 bash 명령으로 실행됨)
+> - 로컬 파일 직접 접근 (`cat`, `head -c`) -> **resolver API만 사용**
 > 
-> ✅ **권장 패턴**: `python3 -c '...'` 또는 `check_*.sh` 스크립트 사용
+> ✅ **권장 패턴**:
+> - `python3 -c '...'` 또는 `check_*.sh` 스크립트 사용
+> - ref 전달 시 **URL 인코딩**: `--data-urlencode "ref=${REF}"`
 
 ```bash
 # 1-minute check script (권장)

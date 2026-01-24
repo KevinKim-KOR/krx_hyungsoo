@@ -1,7 +1,7 @@
 {
-    "version": "1.56",
+    "version": "1.57",
     "asof": "2026-01-24",
-    "description": "Active Surface Registry (Phase D-P.53: Ops Summary Evidence Health Fix)",
+    "description": "Active Surface Registry (Phase D-P.53.1: Check Script Hardening)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",

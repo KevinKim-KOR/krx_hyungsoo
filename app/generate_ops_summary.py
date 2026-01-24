@@ -492,14 +492,23 @@ def generate_ops_summary() -> Dict[str, Any]:
     health_decision = health_summary.get("decision", "UNKNOWN")
     
     # D-P.53: Get evidence health snapshot_ref from health file or find latest snapshot
+    # D-P.53.1: Only include refs that exist (file check before adding)
     health_snapshot_ref = health.get("snapshot_ref")
+    if health_snapshot_ref:
+        # Validate file exists
+        full_path = BASE_DIR / health_snapshot_ref
+        if not full_path.exists():
+            health_snapshot_ref = None  # Clear invalid ref
+    
     if not health_snapshot_ref:
-        # Try to find the latest health snapshot
+        # Try to find the latest health snapshot that exists
         health_snapshots_dir = BASE_DIR / "reports" / "ops" / "evidence" / "health" / "snapshots"
         if health_snapshots_dir.exists():
             snapshots = sorted(health_snapshots_dir.glob("*.json"), reverse=True)
-            if snapshots:
-                health_snapshot_ref = f"reports/ops/evidence/health/snapshots/{snapshots[0].name}"
+            for snap in snapshots:
+                if snap.exists():
+                    health_snapshot_ref = f"reports/ops/evidence/health/snapshots/{snap.name}"
+                    break
     
     # === Last Run Triplet ===
     ops_run = get_latest_ops_run()
