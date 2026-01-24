@@ -8,7 +8,7 @@ Single Pane of Glass: 분산된 최신 산출물을 통합 요약
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -25,6 +25,8 @@ GATE_FILE = BASE_DIR / "state" / "execution_gate.json"
 SENDER_ENABLE_FILE = BASE_DIR / "state" / "real_sender_enable.json"
 TICKET_REQUESTS = BASE_DIR / "state" / "tickets" / "ticket_requests.jsonl"
 TICKET_RESULTS = BASE_DIR / "state" / "tickets" / "ticket_results.jsonl"
+STRATEGY_BUNDLE_LATEST = BASE_DIR / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
+RECO_LATEST = BASE_DIR / "reports" / "live" / "reco" / "latest" / "reco_latest.json"
 
 # Output paths
 SUMMARY_DIR = BASE_DIR / "reports" / "ops" / "summary"
@@ -198,6 +200,148 @@ def find_latest_status_line_refs() -> Dict[str, str]:
     return refs
 
 
+def get_strategy_bundle_status() -> Dict[str, Any]:
+    """
+    Strategy Bundle 상태 조회 (C-P.47)
+    
+    Returns:
+        - present: 번들 존재 여부
+        - decision: PASS/WARN/FAIL/NO_BUNDLE
+        - bundle_id, created_at, strategy_name, strategy_version
+        - stale: 24h 이상 경과 여부
+    """
+    if not STRATEGY_BUNDLE_LATEST.exists():
+        return {
+            "present": False,
+            "decision": "NO_BUNDLE",
+            "latest_ref": None,
+            "bundle_id": None,
+            "created_at": None,
+            "strategy_name": None,
+            "strategy_version": None,
+            "stale": False,
+            "issues": ["NO_BUNDLE_YET"]
+        }
+    
+    try:
+        bundle = json.loads(STRATEGY_BUNDLE_LATEST.read_text(encoding="utf-8"))
+        
+        # Basic validation
+        issues = []
+        strategy = bundle.get("strategy", {})
+        integrity = bundle.get("integrity", {})
+        
+        # Check required fields
+        if bundle.get("schema") != "STRATEGY_BUNDLE_V1":
+            issues.append("Invalid schema")
+        
+        # Check integrity (simplified - full validation in validator module)
+        if not integrity.get("payload_sha256"):
+            issues.append("Missing payload_sha256")
+        
+        # Check stale (24h+)
+        stale = False
+        created_at = bundle.get("created_at", "")
+        if created_at:
+            try:
+                dt_str = created_at[:19]
+                created_dt = datetime.fromisoformat(dt_str)
+                age = datetime.now() - created_dt
+                stale = age > timedelta(hours=24)
+            except Exception:
+                pass
+        
+        # Determine decision
+        if issues:
+            decision = "FAIL"
+        elif stale:
+            decision = "WARN"
+        else:
+            decision = "PASS"
+        
+        return {
+            "present": True,
+            "decision": decision,
+            "latest_ref": "state/strategy_bundle/latest/strategy_bundle_latest.json",
+            "bundle_id": bundle.get("bundle_id"),
+            "created_at": created_at,
+            "strategy_name": strategy.get("name"),
+            "strategy_version": strategy.get("version"),
+            "stale": stale,
+            "issues": issues
+        }
+    except Exception as e:
+        return {
+            "present": True,
+            "decision": "FAIL",
+            "latest_ref": "state/strategy_bundle/latest/strategy_bundle_latest.json",
+            "bundle_id": None,
+            "created_at": None,
+            "strategy_name": None,
+            "strategy_version": None,
+            "stale": False,
+            "issues": [str(e)]
+        }
+
+
+def get_reco_status() -> Dict[str, Any]:
+    """
+    Reco Report 상태 조회 (D-P.48)
+    
+    Returns:
+        - present: 리포트 존재 여부
+        - decision: GENERATED/EMPTY_RECO/BLOCKED/NO_RECO_YET
+        - reason, report_id, created_at, summary
+    """
+    if not RECO_LATEST.exists():
+        return {
+            "present": False,
+            "decision": "NO_RECO_YET",
+            "latest_ref": None,
+            "report_id": None,
+            "created_at": None,
+            "reason": None,
+            "source_bundle": None,
+            "summary": None
+        }
+    
+    try:
+        reco = safe_load_json(RECO_LATEST)
+        if not reco:
+            return {
+                "present": False,
+                "decision": "NO_RECO_YET",
+                "latest_ref": "reports/live/reco/latest/reco_latest.json",
+                "report_id": None,
+                "created_at": None,
+                "reason": "PARSE_ERROR",
+                "source_bundle": None,
+                "summary": None
+            }
+        
+        return {
+            "present": True,
+            "decision": reco.get("decision", "UNKNOWN"),
+            "latest_ref": "reports/live/reco/latest/reco_latest.json",
+            "report_id": reco.get("report_id"),
+            "created_at": reco.get("created_at"),
+            "reason": reco.get("reason"),
+            "source_bundle": reco.get("source_bundle"),
+            "summary": reco.get("summary")
+        }
+    except Exception as e:
+        return {
+            "present": True,
+            "decision": "UNKNOWN",
+            "latest_ref": "reports/live/reco/latest/reco_latest.json",
+            "report_id": None,
+            "created_at": None,
+            "reason": f"ERROR: {str(e)}",
+            "source_bundle": None,
+            "summary": None
+        }
+
+
 def generate_ops_summary() -> Dict[str, Any]:
     """Ops Summary 생성"""
     now = datetime.now()
@@ -306,6 +450,56 @@ def generate_ops_summary() -> Dict[str, Any]:
             "evidence_refs": [blocked_ref]
         })
     
+    # === Strategy Bundle Risks (C-P.47) ===
+    bundle_status = get_strategy_bundle_status()
+    
+    if not bundle_status["present"]:
+        top_risks.append({
+            "code": "NO_STRATEGY_BUNDLE",
+            "severity": "WARN",
+            "message": "No strategy bundle found",
+            "evidence_refs": []
+        })
+    elif bundle_status["decision"] == "FAIL":
+        top_risks.append({
+            "code": "BUNDLE_INTEGRITY_FAIL",
+            "severity": "CRITICAL",
+            "message": f"Strategy bundle integrity failed: {'; '.join(bundle_status.get('issues', []))}",
+            "evidence_refs": [bundle_status.get("latest_ref") or "state/strategy_bundle/latest/strategy_bundle_latest.json"]
+        })
+    elif bundle_status.get("stale"):
+        top_risks.append({
+            "code": "BUNDLE_STALE",
+            "severity": "WARN",
+            "message": f"Strategy bundle is stale (created: {bundle_status.get('created_at', 'unknown')})",
+            "evidence_refs": [bundle_status.get("latest_ref") or "state/strategy_bundle/latest/strategy_bundle_latest.json"]
+        })
+    
+    # === Reco Status (D-P.48) ===
+    reco_status = get_reco_status()
+    
+    if not reco_status["present"]:
+        top_risks.append({
+            "code": "NO_RECO_YET",
+            "severity": "INFO",
+            "message": "No recommendation report generated yet",
+            "evidence_refs": []
+        })
+    elif reco_status["decision"] == "BLOCKED":
+        top_risks.append({
+            "code": "RECO_BLOCKED",
+            "severity": "CRITICAL",
+            "message": f"Recommendation generation blocked: {reco_status.get('reason', 'unknown')}",
+            "evidence_refs": [reco_status.get("latest_ref") or "reports/live/reco/latest/reco_latest.json"]
+        })
+    elif reco_status["decision"] == "EMPTY_RECO":
+        top_risks.append({
+            "code": "STALE_BUNDLE_BLOCKS_RECO",
+            "severity": "WARN",
+            "message": f"Empty reco due to: {reco_status.get('reason', 'unknown')}",
+            "evidence_refs": [reco_status.get("latest_ref") or "reports/live/reco/latest/reco_latest.json"]
+        })
+    
     # === Build Summary ===
     summary = {
         "schema": "OPS_SUMMARY_V1",
@@ -331,6 +525,8 @@ def generate_ops_summary() -> Dict[str, Any]:
             "index_row_count": index_row_count,
             "health_decision": health_decision
         },
+        "strategy_bundle": bundle_status,
+        "reco": reco_status,
         "top_risks": top_risks[:5]
     }
     

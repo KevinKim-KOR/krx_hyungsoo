@@ -51,6 +51,12 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/ops/drill/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     # C-P.36: Scheduler Latest
     r"^reports/ops/scheduler/latest/ops_run_latest\.json$",
+    # C-P.47: Strategy Bundle
+    r"^state/strategy_bundle/latest/strategy_bundle_latest\.json$",
+    r"^state/strategy_bundle/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # D-P.48: Reco Reports
+    r"^reports/live/reco/latest/reco_latest\.json$",
+    r"^reports/live/reco/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"

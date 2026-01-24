@@ -53,6 +53,31 @@
     "index_row_count": 25,
     "health_decision": "PASS"
   },
+  "strategy_bundle": {
+    "present": true,
+    "decision": "PASS",
+    "latest_ref": "state/strategy_bundle/latest/strategy_bundle_latest.json",
+    "bundle_id": "uuid",
+    "created_at": "2026-01-24T10:00:00",
+    "strategy_name": "KRX_MOMENTUM_V1",
+    "strategy_version": "1.0.0",
+    "stale": false
+  },
+  "reco": {
+    "present": true,
+    "decision": "GENERATED",
+    "latest_ref": "reports/live/reco/latest/reco_latest.json",
+    "report_id": "uuid",
+    "created_at": "2026-01-24T11:00:00",
+    "reason": "SUCCESS",
+    "summary": {
+      "total_positions": 3,
+      "buy_count": 2,
+      "sell_count": 1,
+      "hold_count": 0,
+      "cash_pct": 0.25
+    }
+  },
   "top_risks": [
     {
       "code": "EVIDENCE_HEALTH_WARN",

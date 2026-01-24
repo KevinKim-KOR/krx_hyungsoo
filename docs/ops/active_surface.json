@@ -1,7 +1,7 @@
 {
-    "version": "1.44",
-    "asof": "2026-01-23",
-    "description": "Active Surface Registry (Phase C-P.45)",
+    "version": "1.47",
+    "asof": "2026-01-24",
+    "description": "Active Surface Registry (Phase D-P.48)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -78,7 +78,16 @@
         "docs/contracts/contract_ticket_reaper_v1.md",
         "deploy/oci/print_systemd_backend_service.sh",
         "docs/contracts/contract_pc_to_oci_handoff_v1.md",
-        "docs/ops/runbook_pc_oci_split_v1.md"
+        "docs/ops/runbook_pc_oci_split_v1.md",
+        "docs/contracts/contract_strategy_bundle_v1.md",
+        "app/utils/strategy_bundle_validator.py",
+        "app/load_strategy_bundle.py",
+        "deploy/pc/print_export_strategy_bundle_windows.ps1",
+        "deploy/pc/print_export_strategy_bundle_linux.sh",
+        "state/strategy_bundle/latest/strategy_bundle_latest.json",
+        "docs/contracts/contract_reco_report_v1.md",
+        "app/generate_reco_report.py",
+        "reports/live/reco/latest/reco_latest.json"
     ],
     "active_endpoints": [
         "/api/recon/summary",
@@ -131,7 +140,11 @@
         "/api/ops/drill/latest",
         "/api/ops/drill/run",
         "/api/tickets/reaper/latest",
-        "/api/tickets/reaper/run"
+        "/api/tickets/reaper/run",
+        "/api/strategy_bundle/latest",
+        "/api/strategy_bundle/regenerate_snapshot",
+        "/api/reco/latest",
+        "/api/reco/regenerate"
     ],
     "forbidden_paths": [
         "_archive/**"

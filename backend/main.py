@@ -2868,9 +2868,232 @@ def run_ticket_reaper_api(data: ReaperRunRequest = ReaperRunRequest()):
         })
 
 
+# === Strategy Bundle API (C-P.47) ===
+
+@app.get("/api/strategy_bundle/latest", summary="Strategy Bundle 최신 조회")
+def get_strategy_bundle_latest():
+    """
+    Strategy Bundle Latest (C-P.47)
+    
+    PC에서 생성된 전략 번들 조회 + 검증 결과 반환
+    Fail-Closed: 검증 실패 시 번들 미반환
+    """
+    try:
+        from app.load_strategy_bundle import load_latest_bundle, get_bundle_status, list_snapshots
+        
+        bundle, validation = load_latest_bundle()
+        status = get_bundle_status()
+        snapshots = list_snapshots()
+        
+        return {
+            "schema": "STRATEGY_BUNDLE_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "ready" if bundle else "not_ready",
+            "bundle": bundle,  # None if validation failed (Fail-Closed)
+            "validation": {
+                "decision": validation.decision,
+                "valid": validation.valid,
+                "bundle_id": validation.bundle_id,
+                "created_at": validation.created_at,
+                "strategy_name": validation.strategy_name,
+                "strategy_version": validation.strategy_version,
+                "issues": validation.issues,
+                "warnings": validation.warnings
+            },
+            "summary": status,
+            "snapshots": snapshots[:5],  # 최근 5개
+            "error": None if bundle else {"code": validation.decision, "message": "; ".join(validation.issues)}
+        }
+    except ImportError as e:
+        return {
+            "schema": "STRATEGY_BUNDLE_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "error",
+            "bundle": None,
+            "validation": None,
+            "error": {"code": "IMPORT_ERROR", "message": str(e)}
+        }
+    except Exception as e:
+        return {
+            "schema": "STRATEGY_BUNDLE_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "error",
+            "bundle": None,
+            "validation": None,
+            "error": {"code": "UNKNOWN_ERROR", "message": str(e)}
+        }
+
+
+class StrategyBundleSnapshotRequest(BaseModel):
+    confirm: bool = False
+
+
+@app.post("/api/strategy_bundle/regenerate_snapshot", summary="Strategy Bundle Snapshot 생성")
+def regenerate_strategy_bundle_snapshot(data: StrategyBundleSnapshotRequest):
+    """
+    Strategy Bundle Snapshot 생성 (C-P.47)
+    
+    latest를 snapshot으로 복제 (고정 경로만, 입력 경로 금지)
+    Confirm Guard: confirm=true 필수
+    """
+    # Confirm Guard
+    if not data.confirm:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "Confirm guard: set confirm=true to proceed",
+                "snapshot_ref": None
+            }
+        )
+    
+    try:
+        from app.load_strategy_bundle import regenerate_snapshot
+        
+        result = regenerate_snapshot()
+        
+        if result["success"]:
+            logger.info(f"Strategy bundle snapshot created: {result['snapshot_ref']}")
+            return {
+                "result": "OK",
+                "snapshot_ref": result["snapshot_ref"],
+                "bundle_id": result.get("bundle_id"),
+                "created_at": result.get("created_at")
+            }
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "result": "FAILED",
+                    "message": result.get("error", "Unknown error"),
+                    "snapshot_ref": None
+                }
+            )
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
+# === Reco API (D-P.48) ===
+
+@app.get("/api/reco/latest", summary="추천 리포트 최신 조회")
+def get_reco_latest():
+    """
+    Reco Report Latest (D-P.48)
+    
+    추천 리포트 조회 + 상태 반환
+    Graceful: 리포트 없으면 NO_RECO_YET
+    """
+    try:
+        from app.generate_reco_report import load_latest_reco, get_reco_status, list_snapshots
+        
+        report = load_latest_reco()
+        status = get_reco_status()
+        snapshots = list_snapshots()
+        
+        return {
+            "schema": "RECO_REPORT_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "ready" if report else "no_reco_yet",
+            "report": report,
+            "summary": status,
+            "snapshots": snapshots[:5],
+            "error": None if report else {"code": "NO_RECO_YET", "message": "No recommendation report found"}
+        }
+    except ImportError as e:
+        return {
+            "schema": "RECO_REPORT_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "error",
+            "report": None,
+            "error": {"code": "IMPORT_ERROR", "message": str(e)}
+        }
+    except Exception as e:
+        return {
+            "schema": "RECO_REPORT_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "error",
+            "report": None,
+            "error": {"code": "UNKNOWN_ERROR", "message": str(e)}
+        }
+
+
+class RecoRegenerateRequest(BaseModel):
+    confirm: bool = False
+
+
+@app.post("/api/reco/regenerate", summary="추천 리포트 재생성")
+def regenerate_reco(data: RecoRegenerateRequest):
+    """
+    Reco Report Regenerate (D-P.48)
+    
+    전략 번들 기반으로 추천 리포트 재생성
+    Confirm Guard: confirm=true 필수
+    Fail-Closed: 번들 무결성 실패 시 BLOCKED
+    """
+    # Confirm Guard
+    if not data.confirm:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "Confirm guard: set confirm=true to proceed",
+                "report_id": None
+            }
+        )
+    
+    try:
+        from app.generate_reco_report import generate_reco_report
+        
+        result = generate_reco_report()
+        
+        if result["success"]:
+            report = result["report"]
+            logger.info(f"Reco report generated: {report.get('report_id')} decision={report.get('decision')}")
+            return {
+                "result": "OK",
+                "report_id": report.get("report_id"),
+                "decision": report.get("decision"),
+                "reason": report.get("reason"),
+                "saved_to": result.get("saved_to"),
+                "summary": report.get("summary")
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "result": "FAILED",
+                    "message": result.get("error", "Unknown error"),
+                    "report_id": None
+                }
+            )
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+
+
+
 
 
 

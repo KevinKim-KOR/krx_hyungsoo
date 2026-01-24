@@ -99,6 +99,8 @@
 | `DEPLOYMENT_PROFILE_V1` | [contract_deployment_profile_v1.md](contract_deployment_profile_v1.md) | Deployment Profile (C-P.39) |
 | `TICKET_REAPER_REPORT_V1` | [contract_ticket_reaper_v1.md](contract_ticket_reaper_v1.md) | Ticket Reaper (C-P.43) |
 | `PC_TO_OCI_HANDOFF_V1` | [contract_pc_to_oci_handoff_v1.md](contract_pc_to_oci_handoff_v1.md) | PC↔OCI 분리 (C-P.44) |
+| `STRATEGY_BUNDLE_V1` | [contract_strategy_bundle_v1.md](contract_strategy_bundle_v1.md) | 전략 번들 핸드오프 (C-P.47) |
+| `RECO_REPORT_V1` | [contract_reco_report_v1.md](contract_reco_report_v1.md) | 추천 리포트 (D-P.48) |
 
 ---
 
