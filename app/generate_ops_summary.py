@@ -491,6 +491,16 @@ def generate_ops_summary() -> Dict[str, Any]:
     health_summary = health.get("summary", {})
     health_decision = health_summary.get("decision", "UNKNOWN")
     
+    # D-P.53: Get evidence health snapshot_ref from health file or find latest snapshot
+    health_snapshot_ref = health.get("snapshot_ref")
+    if not health_snapshot_ref:
+        # Try to find the latest health snapshot
+        health_snapshots_dir = BASE_DIR / "reports" / "ops" / "evidence" / "health" / "snapshots"
+        if health_snapshots_dir.exists():
+            snapshots = sorted(health_snapshots_dir.glob("*.json"), reverse=True)
+            if snapshots:
+                health_snapshot_ref = f"reports/ops/evidence/health/snapshots/{snapshots[0].name}"
+    
     # === Last Run Triplet ===
     ops_run = get_latest_ops_run()
     last_run_triplet = {"last_done": None, "last_failed": None, "last_blocked": None}
@@ -548,18 +558,26 @@ def generate_ops_summary() -> Dict[str, Any]:
         })
     
     if health_decision == "FAIL":
+        # D-P.53: Include both latest and snapshot in evidence_refs
+        health_evidence = ["reports/ops/evidence/health/health_latest.json"]
+        if health_snapshot_ref:
+            health_evidence.append(health_snapshot_ref)
         top_risks.append({
             "code": "EVIDENCE_HEALTH_FAIL",
             "severity": "CRITICAL",
             "message": "Evidence health check failed",
-            "evidence_refs": ["reports/ops/evidence/health/health_latest.json"]
+            "evidence_refs": health_evidence
         })
     elif health_decision == "WARN":
+        # D-P.53: Include both latest and snapshot in evidence_refs
+        health_evidence = ["reports/ops/evidence/health/health_latest.json"]
+        if health_snapshot_ref:
+            health_evidence.append(health_snapshot_ref)
         top_risks.append({
             "code": "EVIDENCE_HEALTH_WARN",
             "severity": "WARN",
             "message": "Evidence health check has warnings",
-            "evidence_refs": ["reports/ops/evidence/health/health_latest.json"]
+            "evidence_refs": health_evidence
         })
     
     # === Ticket Risks (D-P.52: Risk Window) ===
@@ -654,7 +672,7 @@ def generate_ops_summary() -> Dict[str, Any]:
             "evidence_health": {
                 "decision": health_decision,
                 "fail_closed_triggered": health.get("fail_closed_triggered", False),
-                "snapshot_ref": None
+                "snapshot_ref": health_snapshot_ref
             },
             "emergency_stop": {"enabled": emergency_enabled},
             "execution_gate": {"mode": gate_mode}

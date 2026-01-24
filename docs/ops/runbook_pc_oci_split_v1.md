@@ -125,6 +125,27 @@ curl -s http://127.0.0.1:8000/api/live/cycle/latest | python3 -c 'import json,sy
 
 # delivery_actual 확인
 curl -s http://127.0.0.1:8000/api/live/cycle/latest | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get("rows",[{}])[0]; print("delivery=",(r.get("push") or {}).get("delivery_actual"))'
+### 4-E. Ops Summary 1분 검증 (D-P.53)
+
+> ⚠️ **금지 패턴**: `curl | python3 - <<'PY'` (heredoc이 stdin을 덮어씀)
+> 
+> ✅ **권장 패턴**: `python3 -c '...'` 또는 `check_*.sh` 스크립트 사용
+
+```bash
+# 1-minute check script (권장)
+bash deploy/oci/check_ops_summary.sh
+echo "exit=$?"
+# 기대값: exit=0 (WARN도 OK)
+```
+
+수동 확인이 필요한 경우:
+
+```bash
+# Summary 재생성
+curl -X POST "http://127.0.0.1:8000/api/ops/summary/regenerate?confirm=true"
+
+# 최신 summary 확인
+curl -s http://127.0.0.1:8000/api/ops/summary/latest | python3 -c 'import json,sys; d=json.load(sys.stdin); row=(d.get("rows") or [d])[0]; print("overall_status=",row.get("overall_status")); print("top_risks=",[r.get("code") for r in row.get("top_risks",[])])'
 ```
 
 ---
