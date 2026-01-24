@@ -27,6 +27,7 @@ TICKET_REQUESTS = BASE_DIR / "state" / "tickets" / "ticket_requests.jsonl"
 TICKET_RESULTS = BASE_DIR / "state" / "tickets" / "ticket_results.jsonl"
 STRATEGY_BUNDLE_LATEST = BASE_DIR / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
 RECO_LATEST = BASE_DIR / "reports" / "live" / "reco" / "latest" / "reco_latest.json"
+CYCLE_LATEST = BASE_DIR / "reports" / "live" / "cycle" / "latest" / "live_cycle_latest.json"
 
 # Output paths
 SUMMARY_DIR = BASE_DIR / "reports" / "ops" / "summary"

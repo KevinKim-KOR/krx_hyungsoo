@@ -3086,6 +3086,120 @@ def regenerate_reco(data: RecoRegenerateRequest):
         })
 
 
+# === Live Cycle API (D-P.50) ===
+
+@app.get("/api/live/cycle/latest", summary="Live Cycle 최신 영수증 조회")
+def get_live_cycle_latest():
+    """
+    Live Cycle Latest (D-P.50)
+    
+    최신 Live Cycle 영수증 조회
+    Graceful: 영수증 없으면 NO_CYCLE_YET
+    """
+    try:
+        from app.run_live_cycle import load_latest_cycle, list_cycle_snapshots
+        
+        receipt = load_latest_cycle()
+        snapshots = list_cycle_snapshots()
+        
+        if receipt:
+            return {
+                "schema": "LIVE_CYCLE_RECEIPT_V1",
+                "asof": datetime.now().isoformat(),
+                "status": "ready",
+                "rows": [receipt],
+                "snapshots": snapshots[:10],
+                "error": None
+            }
+        else:
+            return {
+                "schema": "LIVE_CYCLE_RECEIPT_V1",
+                "asof": datetime.now().isoformat(),
+                "status": "no_cycle_yet",
+                "rows": [],
+                "snapshots": snapshots[:10],
+                "error": {"code": "NO_CYCLE_YET", "message": "No live cycle receipt found"}
+            }
+    except ImportError as e:
+        return {
+            "schema": "LIVE_CYCLE_RECEIPT_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "error",
+            "rows": [],
+            "error": {"code": "IMPORT_ERROR", "message": str(e)}
+        }
+    except Exception as e:
+        return {
+            "schema": "LIVE_CYCLE_RECEIPT_V1",
+            "asof": datetime.now().isoformat(),
+            "status": "error",
+            "rows": [],
+            "error": {"code": "UNKNOWN_ERROR", "message": str(e)}
+        }
+
+
+class LiveCycleRunRequest(BaseModel):
+    confirm: bool = False
+
+
+@app.post("/api/live/cycle/run", summary="Live Cycle 실행")
+def run_live_cycle_api(data: LiveCycleRunRequest):
+    """
+    Live Cycle Run (D-P.50)
+    
+    Bundle→Reco→Summary→(Console)Send 단일 실행
+    Confirm Guard: confirm=true 필수
+    Fail-Closed: 실패해도 영수증 저장
+    """
+    # Confirm Guard
+    if not data.confirm:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "Confirm guard: set confirm=true to proceed",
+                "cycle_id": None
+            }
+        )
+    
+    try:
+        from app.run_live_cycle import run_live_cycle
+        
+        result = run_live_cycle()
+        
+        if result.get("success"):
+            receipt = result.get("receipt", {})
+            logger.info(f"Live cycle completed: {receipt.get('cycle_id')} result={receipt.get('result')}")
+            return {
+                "result": receipt.get("result", "OK"),
+                "cycle_id": receipt.get("cycle_id"),
+                "decision": receipt.get("decision"),
+                "reason": receipt.get("reason"),
+                "saved_to": result.get("saved_to"),
+                "snapshot_ref": result.get("snapshot_ref"),
+                "delivery_actual": receipt.get("push", {}).get("delivery_actual", "CONSOLE_SIMULATED")
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "result": "FAILED",
+                    "message": result.get("error", "Unknown error"),
+                    "cycle_id": None
+                }
+            )
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": f"Import error: {e}"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

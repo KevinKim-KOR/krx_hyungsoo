@@ -1,7 +1,7 @@
 {
-    "version": "1.51",
+    "version": "1.52",
     "asof": "2026-01-24",
-    "description": "Active Surface Registry (Phase D-P.49.1)",
+    "description": "Active Surface Registry (Phase D-P.50)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",
@@ -88,7 +88,10 @@
         "state/strategy_bundle/latest/strategy_bundle_latest.json",
         "docs/contracts/contract_reco_report_v1.md",
         "app/generate_reco_report.py",
-        "reports/live/reco/latest/reco_latest.json"
+        "reports/live/reco/latest/reco_latest.json",
+        "docs/contracts/contract_live_cycle_receipt_v1.md",
+        "app/run_live_cycle.py",
+        "reports/live/cycle/latest/live_cycle_latest.json"
     ],
     "active_endpoints": [
         "/api/recon/summary",
@@ -145,7 +148,9 @@
         "/api/strategy_bundle/latest",
         "/api/strategy_bundle/regenerate_snapshot",
         "/api/reco/latest",
-        "/api/reco/regenerate"
+        "/api/reco/regenerate",
+        "/api/live/cycle/run",
+        "/api/live/cycle/latest"
     ],
     "forbidden_paths": [
         "_archive/**"
