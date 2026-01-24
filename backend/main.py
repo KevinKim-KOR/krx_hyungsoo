@@ -3200,6 +3200,73 @@ def run_live_cycle_api(confirm: bool = False):
         })
 
 
+# ============================================================================
+# Daily Status Push API (D-P.55)
+# ============================================================================
+
+@app.post("/api/push/daily_status/send")
+async def push_daily_status_send(confirm: bool = Query(False)):
+    """
+    Daily Status Push - 오늘 운영 상태 1줄 요약 발송
+    Confirm Guard: confirm=true 필수
+    Idempotency: 1일 1회만 발송
+    """
+    # Confirm Guard
+    if not confirm:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "Confirm guard: set confirm=true to proceed"
+            }
+        )
+    
+    try:
+        from app.generate_daily_status_push import generate_daily_status_push
+        
+        result = generate_daily_status_push()
+        
+        logger.info(f"Daily status push: {result.get('idempotency_key')} skipped={result.get('skipped')}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Daily status push failed: {e}")
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
+@app.get("/api/push/daily_status/latest")
+async def get_daily_status_latest():
+    """Daily Status Push 최신 조회"""
+    from pathlib import Path
+    import json
+    
+    latest_path = Path("reports/ops/push/daily_status/latest/daily_status_latest.json")
+    
+    if not latest_path.exists():
+        return {
+            "result": "NOT_FOUND",
+            "rows": [],
+            "row_count": 0
+        }
+    
+    try:
+        data = json.loads(latest_path.read_text(encoding="utf-8"))
+        return {
+            "result": "OK",
+            "rows": [data],
+            "row_count": 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -140,6 +140,29 @@ fi
 echo "$LOG_PREFIX ✓ Snapshot verification: $SNAPSHOT_OK"
 
 # ============================================================================
+# Step 6: Daily Status Push (D-P.55)
+# ============================================================================
+echo ""
+echo "$LOG_PREFIX [6/6] Sending Daily Status Push..."
+
+PUSH_RESP=$(curl -s -X POST "${BASE_URL}/api/push/daily_status/send?confirm=true")
+
+# Check for result OK
+if echo "$PUSH_RESP" | grep -q '"result":"OK"'; then
+    PUSH_SKIPPED=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("true" if d.get("skipped") else "false")' 2>/dev/null || echo "false")
+    PUSH_MESSAGE=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("message",""))' 2>/dev/null || echo "")
+    
+    if [ "$PUSH_SKIPPED" = "true" ]; then
+        echo "$LOG_PREFIX ✓ Daily PUSH: SKIPPED (already sent today)"
+    else
+        echo "$LOG_PREFIX ✓ Daily PUSH: SENT"
+        echo "$LOG_PREFIX   → $PUSH_MESSAGE"
+    fi
+else
+    echo "$LOG_PREFIX ⚠️ Daily PUSH failed: $PUSH_RESP (non-fatal)"
+fi
+
+# ============================================================================
 # Final Summary
 # ============================================================================
 echo ""
