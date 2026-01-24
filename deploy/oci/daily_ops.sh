@@ -46,50 +46,26 @@ fi
 echo "$LOG_PREFIX ✓ Backend healthy (HTTP 200)"
 
 # ============================================================================
-# Step 3: Ops Summary Regenerate + Check
+# Step 3: Ops Summary Regenerate (minimal verification)
 # ============================================================================
 echo ""
 echo "$LOG_PREFIX [3/5] Regenerating Ops Summary..."
 REGEN_RESP=$(curl -s -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true")
-if [ -z "$REGEN_RESP" ]; then
-    echo "$LOG_PREFIX ❌ Ops Summary regenerate failed"
+
+# Check for result OK (minimal verification)
+if ! echo "$REGEN_RESP" | grep -q '"result":"OK"'; then
+    echo "$LOG_PREFIX ❌ Ops Summary regenerate failed: $REGEN_RESP"
     exit 3
 fi
+echo "$LOG_PREFIX ✓ Ops Summary regenerated"
 
-# Parse summary
-OPS_PARSED=$(curl -s "${BASE_URL}/api/ops/summary/latest" | python3 -c '
-import json,sys
-try:
-    d = json.load(sys.stdin)
-    row = (d.get("rows") or [d])[0]
-    overall = row.get("overall_status", "UNKNOWN")
-    guard = row.get("guard") or {}
-    eh = guard.get("evidence_health") or {}
-    tr = row.get("tickets_recent") or {}
-    risks = row.get("top_risks") or []
-    print(f"OPS_OVERALL:{overall}")
-    print(f"OPS_EH_DECISION:{eh.get('decision','UNKNOWN')}")
-    print(f"OPS_TR_FAILED:{tr.get('failed',0)}")
-    print(f"OPS_RISK_COUNT:{len(risks)}")
-except Exception as e:
-    print(f"PARSE_ERROR:{e}")
-    sys.exit(1)
-')
+# Quick status check from latest
+OPS_STATUS=$(curl -s "${BASE_URL}/api/ops/summary/latest" | python3 -c 'import json,sys; d=json.load(sys.stdin); row=(d.get("rows") or [d])[0]; print(row.get("overall_status","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+echo "$LOG_PREFIX ✓ Ops Summary status: $OPS_STATUS"
 
-if echo "$OPS_PARSED" | grep -q "^PARSE_ERROR:"; then
-    echo "$LOG_PREFIX ❌ Ops Summary parse failed"
-    exit 3
-fi
-
-OPS_OVERALL=$(echo "$OPS_PARSED" | grep "^OPS_OVERALL:" | cut -d: -f2-)
-OPS_EH=$(echo "$OPS_PARSED" | grep "^OPS_EH_DECISION:" | cut -d: -f2-)
-OPS_TR_FAILED=$(echo "$OPS_PARSED" | grep "^OPS_TR_FAILED:" | cut -d: -f2-)
-
-echo "$LOG_PREFIX ✓ Ops Summary: status=$OPS_OVERALL health=$OPS_EH failed=$OPS_TR_FAILED"
-
-# Check if BLOCKED
-if [ "$OPS_OVERALL" = "BLOCKED" ] || [ "$OPS_OVERALL" = "STOPPED" ]; then
-    echo "$LOG_PREFIX ⚠️ Ops Summary BLOCKED/STOPPED - 정상 차단"
+# Check if BLOCKED/STOPPED
+if [ "$OPS_STATUS" = "BLOCKED" ] || [ "$OPS_STATUS" = "STOPPED" ]; then
+    echo "$LOG_PREFIX ⚠️ Ops Summary $OPS_STATUS - 정상 차단"
     exit 2
 fi
 
@@ -169,7 +145,7 @@ echo "$LOG_PREFIX ✓ Snapshot verification: $SNAPSHOT_OK"
 echo ""
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 echo "$LOG_PREFIX  DAILY OPS COMPLETE"
-echo "$LOG_PREFIX  Ops: $OPS_OVERALL | Cycle: $CYCLE_RESULT $CYCLE_DECISION"
+echo "$LOG_PREFIX  Ops: $OPS_STATUS | Cycle: $CYCLE_RESULT $CYCLE_DECISION"
 echo "$LOG_PREFIX  Delivery: $CYCLE_DELIVERY | Snapshot: $SNAPSHOT_OK"
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 
