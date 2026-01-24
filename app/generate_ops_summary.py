@@ -292,17 +292,34 @@ def get_reco_status() -> Dict[str, Any]:
         - present: 리포트 존재 여부
         - decision: GENERATED/EMPTY_RECO/BLOCKED/NO_RECO_YET
         - reason, report_id, created_at, summary
+        - snapshot_ref: 최신 스냅샷 경로
+        - evidence_refs: 증거 참조 경로 목록
     """
+    RECO_SNAPSHOTS_DIR = BASE_DIR / "reports" / "live" / "reco" / "snapshots"
+    
+    # Get latest snapshot
+    def get_latest_snapshot_ref():
+        try:
+            if RECO_SNAPSHOTS_DIR.exists():
+                snapshots = sorted(RECO_SNAPSHOTS_DIR.glob("*.json"), reverse=True)
+                if snapshots:
+                    return f"reports/live/reco/snapshots/{snapshots[0].name}"
+        except:
+            pass
+        return None
+    
     if not RECO_LATEST.exists():
         return {
             "present": False,
             "decision": "NO_RECO_YET",
+            "reason": "NO_RECO_YET",
             "latest_ref": None,
+            "snapshot_ref": None,
             "report_id": None,
             "created_at": None,
-            "reason": None,
             "source_bundle": None,
-            "summary": None
+            "summary": None,
+            "evidence_refs": []
         }
     
     try:
@@ -311,34 +328,40 @@ def get_reco_status() -> Dict[str, Any]:
             return {
                 "present": False,
                 "decision": "NO_RECO_YET",
+                "reason": "PARSE_ERROR",
                 "latest_ref": "reports/live/reco/latest/reco_latest.json",
+                "snapshot_ref": get_latest_snapshot_ref(),
                 "report_id": None,
                 "created_at": None,
-                "reason": "PARSE_ERROR",
                 "source_bundle": None,
-                "summary": None
+                "summary": None,
+                "evidence_refs": ["reports/live/reco/latest/reco_latest.json"]
             }
         
         return {
             "present": True,
             "decision": reco.get("decision", "UNKNOWN"),
+            "reason": reco.get("reason"),
             "latest_ref": "reports/live/reco/latest/reco_latest.json",
+            "snapshot_ref": get_latest_snapshot_ref(),
             "report_id": reco.get("report_id"),
             "created_at": reco.get("created_at"),
-            "reason": reco.get("reason"),
             "source_bundle": reco.get("source_bundle"),
-            "summary": reco.get("summary")
+            "summary": reco.get("summary"),
+            "evidence_refs": reco.get("evidence_refs", ["reports/live/reco/latest/reco_latest.json"])
         }
     except Exception as e:
         return {
             "present": True,
             "decision": "UNKNOWN",
+            "reason": f"ERROR: {str(e)}",
             "latest_ref": "reports/live/reco/latest/reco_latest.json",
+            "snapshot_ref": get_latest_snapshot_ref(),
             "report_id": None,
             "created_at": None,
-            "reason": f"ERROR: {str(e)}",
             "source_bundle": None,
-            "summary": None
+            "summary": None,
+            "evidence_refs": ["reports/live/reco/latest/reco_latest.json"]
         }
 
 
@@ -493,11 +516,18 @@ def generate_ops_summary() -> Dict[str, Any]:
             "evidence_refs": [reco_status.get("latest_ref") or "reports/live/reco/latest/reco_latest.json"]
         })
     elif reco_status["decision"] == "EMPTY_RECO":
+        reason = reco_status.get('reason', 'unknown')
+        if reason == "NO_BUNDLE":
+            msg = "Empty reco: NO_BUNDLE (PC→OCI bundle handoff required)"
+        elif reason == "BUNDLE_STALE":
+            msg = "Empty reco: BUNDLE_STALE (bundle >24h old, regenerate on PC)"
+        else:
+            msg = f"Empty reco due to: {reason}"
         top_risks.append({
-            "code": "STALE_BUNDLE_BLOCKS_RECO",
+            "code": "EMPTY_RECO",
             "severity": "WARN",
-            "message": f"Empty reco due to: {reco_status.get('reason', 'unknown')}",
-            "evidence_refs": [reco_status.get("latest_ref") or "reports/live/reco/latest/reco_latest.json"]
+            "message": msg,
+            "evidence_refs": reco_status.get("evidence_refs", [reco_status.get("latest_ref") or "reports/live/reco/latest/reco_latest.json"])
         })
     
     # === Build Summary ===

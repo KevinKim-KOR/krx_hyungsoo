@@ -65,18 +65,21 @@
   },
   "reco": {
     "present": true,
-    "decision": "GENERATED",
+    "decision": "GENERATED | EMPTY_RECO | BLOCKED | NO_RECO_YET",
+    "reason": "SUCCESS | NO_BUNDLE | BUNDLE_FAIL | BUNDLE_STALE | SYSTEM_ERROR",
     "latest_ref": "reports/live/reco/latest/reco_latest.json",
+    "snapshot_ref": "reports/live/reco/snapshots/reco_20260124_110000.json",
     "report_id": "uuid",
     "created_at": "2026-01-24T11:00:00",
-    "reason": "SUCCESS",
+    "source_bundle": { "bundle_id": "...", "strategy_name": "...", "strategy_version": "..." },
     "summary": {
       "total_positions": 3,
       "buy_count": 2,
       "sell_count": 1,
       "hold_count": 0,
       "cash_pct": 0.25
-    }
+    },
+    "evidence_refs": ["reports/live/reco/latest/reco_latest.json"]
   },
   "top_risks": [
     {
