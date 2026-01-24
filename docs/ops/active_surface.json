@@ -1,7 +1,7 @@
 {
-    "version": "1.52",
+    "version": "1.53",
     "asof": "2026-01-24",
-    "description": "Active Surface Registry (Phase D-P.50)",
+    "description": "Active Surface Registry (Phase D-P.50.1: Live Cycle Hardening)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",

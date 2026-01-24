@@ -279,22 +279,23 @@ def _save_receipt(receipt: Dict) -> Dict:
         tmp_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp_path, CYCLE_LATEST_FILE)
         
-        # 2. Create snapshot
+        # 2. Prepare snapshot path FIRST
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         snapshot_filename = f"live_cycle_{timestamp}.json"
         snapshot_path = CYCLE_SNAPSHOTS_DIR / snapshot_filename
+        snapshot_ref = f"reports/live/cycle/snapshots/{snapshot_filename}"
         
+        # 3. Set snapshot_ref in receipt BEFORE saving
+        receipt["snapshot_ref"] = snapshot_ref
+        
+        # 4. Re-save latest with snapshot_ref included
+        tmp_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp_path, CYCLE_LATEST_FILE)
+        
+        # 5. Create snapshot from the UPDATED latest file
         tmp_snap = snapshot_path.with_suffix(".tmp")
         shutil.copy2(CYCLE_LATEST_FILE, tmp_snap)
         os.replace(tmp_snap, snapshot_path)
-        snapshot_ref = f"reports/live/cycle/snapshots/{snapshot_filename}"
-        
-        # Update receipt with snapshot_ref
-        receipt["snapshot_ref"] = snapshot_ref
-        
-        # Re-save with snapshot_ref
-        tmp_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False), encoding="utf-8")
-        os.replace(tmp_path, CYCLE_LATEST_FILE)
         
         return {
             "success": True,

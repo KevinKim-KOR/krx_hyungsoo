@@ -103,6 +103,43 @@ curl -s http://127.0.0.1:8000/api/ops/summary/latest | head
 curl -s http://127.0.0.1:8000/api/ops/health
 ```
 
+### 4-D. Live Cycle 검증 (D-P.50)
+
+```bash
+# Live Cycle 실행
+curl -X POST "http://127.0.0.1:8000/api/live/cycle/run?confirm=true"
+
+# 최신 영수증 파싱 (권장 방식)
+curl -s http://127.0.0.1:8000/api/live/cycle/latest | python -c '
+import json,sys
+d=json.load(sys.stdin)
+r=d.get("rows",[{}])[0]
+print("result=", r.get("result"), "decision=", r.get("decision"), "reason=", r.get("reason"))
+print("delivery_actual=", ((r.get("push") or {}).get("delivery_actual")))
+print("bundle=", (r.get("bundle") or {}).get("decision"), "stale=", (r.get("bundle") or {}).get("stale"))
+print("reco=", (r.get("reco") or {}).get("decision"), (r.get("reco") or {}).get("reason"))
+print("snapshot_ref=", r.get("snapshot_ref"))
+'
+
+# snapshot_ref 검증 (null 아닌지 확인)
+REF="$(curl -s http://127.0.0.1:8000/api/live/cycle/latest \
+| python -c 'import json,sys; d=json.load(sys.stdin); r=d.get("rows",[{}])[0]; print(r.get("snapshot_ref") or "")')"
+echo "REF=$REF"
+curl -i "http://127.0.0.1:8000/api/evidence/resolve?ref=${REF}" | head -20
+
+# delivery_actual=CONSOLE_SIMULATED 확인 (외부발송 0)
+curl -s http://127.0.0.1:8000/api/live/cycle/latest | python -c '
+import json,sys
+d=json.load(sys.stdin)
+r=d.get("rows",[{}])[0]
+da = (r.get("push") or {}).get("delivery_actual")
+if da == "CONSOLE_SIMULATED":
+    print("✅ PASS: delivery_actual=CONSOLE_SIMULATED")
+else:
+    print("❌ FAIL: delivery_actual=", da)
+'
+```
+
 ---
 
 ## 5. 실패 시 롤백

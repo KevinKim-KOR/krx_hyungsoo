@@ -3107,6 +3107,7 @@ def get_live_cycle_latest():
                 "schema": "LIVE_CYCLE_RECEIPT_V1",
                 "asof": datetime.now().isoformat(),
                 "status": "ready",
+                "row_count": 1,
                 "rows": [receipt],
                 "snapshots": snapshots[:10],
                 "error": None
@@ -3116,6 +3117,7 @@ def get_live_cycle_latest():
                 "schema": "LIVE_CYCLE_RECEIPT_V1",
                 "asof": datetime.now().isoformat(),
                 "status": "no_cycle_yet",
+                "row_count": 0,
                 "rows": [],
                 "snapshots": snapshots[:10],
                 "error": {"code": "NO_CYCLE_YET", "message": "No live cycle receipt found"}
@@ -3125,6 +3127,7 @@ def get_live_cycle_latest():
             "schema": "LIVE_CYCLE_RECEIPT_V1",
             "asof": datetime.now().isoformat(),
             "status": "error",
+            "row_count": 0,
             "rows": [],
             "error": {"code": "IMPORT_ERROR", "message": str(e)}
         }
@@ -3133,6 +3136,7 @@ def get_live_cycle_latest():
             "schema": "LIVE_CYCLE_RECEIPT_V1",
             "asof": datetime.now().isoformat(),
             "status": "error",
+            "row_count": 0,
             "rows": [],
             "error": {"code": "UNKNOWN_ERROR", "message": str(e)}
         }
