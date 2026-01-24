@@ -3142,12 +3142,8 @@ def get_live_cycle_latest():
         }
 
 
-class LiveCycleRunRequest(BaseModel):
-    confirm: bool = False
-
-
 @app.post("/api/live/cycle/run", summary="Live Cycle 실행")
-def run_live_cycle_api(data: LiveCycleRunRequest):
+def run_live_cycle_api(confirm: bool = False):
     """
     Live Cycle Run (D-P.50)
     
@@ -3156,7 +3152,7 @@ def run_live_cycle_api(data: LiveCycleRunRequest):
     Fail-Closed: 실패해도 영수증 저장
     """
     # Confirm Guard
-    if not data.confirm:
+    if not confirm:
         return JSONResponse(
             status_code=400,
             content={
