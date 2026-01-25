@@ -1,10 +1,11 @@
 """
-Daily Status Push Generator (D-P.55 + D-P.56 Telegram)
+Daily Status Push Generator (D-P.55 + D-P.56 + D-P.57)
 
-OCI 크론 실행 후 당일 운영 상태를 1줄 요약으로 PUSH 발송
+OCI 크론 실행 후 당일 운영 상태 + 추천 상세를 PUSH 발송
 - Idempotency: 1일 1회만 발송 (mode=test로 우회 가능)
 - No Secret Leak: 요약만 발송
 - Fail-Closed: enabled=false 또는 토큰 누락 시 외부 전송 금지
+- D-P.57: reco_items 상세 포함 (최대 5개)
 """
 
 import json
@@ -12,19 +13,23 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 BASE_DIR = Path(__file__).parent.parent
 
 # Input paths
 OPS_SUMMARY_LATEST = BASE_DIR / "reports" / "ops" / "summary" / "ops_summary_latest.json"
 LIVE_CYCLE_LATEST = BASE_DIR / "reports" / "live" / "cycle" / "latest" / "live_cycle_latest.json"
+RECO_LATEST = BASE_DIR / "reports" / "live" / "reco" / "latest" / "reco_latest.json"
 SENDER_ENABLE_FILE = BASE_DIR / "state" / "real_sender_enable.json"
 
 # Output paths
 DAILY_STATUS_DIR = BASE_DIR / "reports" / "ops" / "push" / "daily_status"
 DAILY_STATUS_LATEST = DAILY_STATUS_DIR / "latest" / "daily_status_latest.json"
 DAILY_STATUS_SNAPSHOTS = DAILY_STATUS_DIR / "snapshots"
+
+# Config
+MAX_RECO_ITEMS = 5  # 메시지 길이 제한
 
 
 def safe_load_json(path: Path) -> Optional[Dict]:
@@ -61,6 +66,37 @@ def check_already_sent(idempotency_key: str) -> bool:
         return False
 
 
+def get_reco_items() -> tuple[List[Dict], str, str, int]:
+    """
+    Reco 상세 정보 추출
+    
+    Returns:
+        (reco_items, decision, reason, items_count)
+    """
+    reco = safe_load_json(RECO_LATEST)
+    
+    if not reco:
+        return [], "UNKNOWN", "NO_RECO_FILE", 0
+    
+    decision = reco.get("decision", "UNKNOWN")
+    reason = reco.get("reason", "")
+    recommendations = reco.get("recommendations", [])
+    
+    # 추천 상세 추출 (최대 N개)
+    reco_items = []
+    for r in recommendations[:MAX_RECO_ITEMS]:
+        item = {
+            "action": r.get("action", "HOLD"),
+            "ticker": r.get("ticker", ""),
+            "name": r.get("name", ""),
+            "weight_pct": round(r.get("weight_pct", 0), 1),
+            "signal_score": round(r.get("signal_score", 0), 4)
+        }
+        reco_items.append(item)
+    
+    return reco_items, decision, reason, len(recommendations)
+
+
 def generate_daily_status_message(
     ops_status: str,
     live_result: str,
@@ -68,25 +104,52 @@ def generate_daily_status_message(
     bundle_decision: str,
     bundle_stale: bool,
     reco_decision: str,
-    delivery: str,
+    reco_reason: str,
+    reco_items: List[Dict],
     top_risks: list
 ) -> str:
-    """1줄 요약 메시지 생성"""
+    """운영 상태 + 추천 상세 메시지 생성 (D-P.57)"""
     risks_str = ",".join(top_risks) if top_risks else "NONE"
     stale_str = "true" if bundle_stale else "false"
     
-    return (
-        f"📊 KRX OPS: {ops_status}\n"
-        f"🔄 LIVE: {live_result} {live_decision}\n"
-        f"📦 bundle={bundle_decision} stale={stale_str}\n"
-        f"📝 reco={reco_decision}\n"
-        f"⚠️ risks=[{risks_str}]"
-    )
+    # 기본 상태
+    lines = [
+        f"📊 KRX OPS: {ops_status}",
+        f"🔄 LIVE: {live_result} {live_decision}",
+        f"📦 bundle={bundle_decision} stale={stale_str}",
+        f"📝 reco={reco_decision}",
+    ]
+    
+    # 추천이 비어있는 경우 reason 표시
+    if reco_decision in ("EMPTY_RECO", "BLOCKED") or not reco_items:
+        if reco_reason:
+            lines.append(f"   └─ reason: {reco_reason}")
+    
+    # 추천 상세 (있는 경우)
+    if reco_items:
+        lines.append("")
+        lines.append("📈 추천:")
+        for item in reco_items:
+            action = item.get("action", "HOLD")
+            ticker = item.get("ticker", "")
+            name = item.get("name", "")[:12]  # 종목명 길이 제한
+            weight = item.get("weight_pct", 0)
+            score = item.get("signal_score", 0)
+            
+            # 이모지로 action 구분
+            emoji = "🟢" if action == "BUY" else ("🔴" if action == "SELL" else "⚪")
+            lines.append(f"  {emoji} {action} {ticker} {name} {weight}% ({score:+.2f})")
+    
+    # 리스크
+    lines.append("")
+    lines.append(f"⚠️ risks=[{risks_str}]")
+    
+    return "\n".join(lines)
 
 
 def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
     """
-    Daily Status Push 생성
+    Daily Status Push 생성 (D-P.57 Enhanced)
     
     Args:
         mode: "normal" (1일 1회 idempotency) 또는 "test" (우회)
@@ -120,20 +183,15 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
     bundle_decision = bundle_info.get("decision", "UNKNOWN")
     bundle_stale = bundle_info.get("stale", False)
     
-    # Reco info from live cycle
-    reco_info = live_cycle.get("reco", {}) or {}
-    reco_decision = reco_info.get("decision", "UNKNOWN")
-    
-    # Push info (from live cycle)
-    push_info = live_cycle.get("push", {}) or {}
-    live_delivery = push_info.get("delivery_actual", "CONSOLE_SIMULATED")
+    # D-P.57: Load reco details
+    reco_items, reco_decision, reco_reason, items_count = get_reco_items()
     
     # Check sender enabled
     sender_config = safe_load_json(SENDER_ENABLE_FILE) or {}
     sender_enabled = sender_config.get("enabled", False)
     sender_provider = sender_config.get("provider", "").lower()
     
-    # Generate message
+    # Generate message with reco details
     message = generate_daily_status_message(
         ops_status=ops_status,
         live_result=live_result,
@@ -141,7 +199,8 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
         bundle_decision=bundle_decision,
         bundle_stale=bundle_stale,
         reco_decision=reco_decision,
-        delivery=live_delivery,
+        reco_reason=reco_reason,
+        reco_items=reco_items,
         top_risks=top_risk_codes
     )
     
@@ -167,7 +226,6 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
                 }
                 print(f"[DAILY_STATUS_PUSH] Telegram sent: message_id={provider_message_id}")
             else:
-                # Telegram failed - Fail-Closed: 외부 전송 실패 기록
                 error_msg = telegram_result.get("error", "Unknown error")
                 final_delivery = "TELEGRAM_FAILED"
                 send_receipt = {
@@ -185,7 +243,6 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
             }
             print(f"[DAILY_STATUS_PUSH] Telegram error: {e}")
     else:
-        # Fail-Closed: enabled=false or provider not telegram
         print(f"[DAILY_STATUS_PUSH] {message}")
     
     # Build push record
@@ -207,8 +264,11 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
             "stale": bundle_stale
         },
         "reco": {
-            "decision": reco_decision
+            "decision": reco_decision,
+            "reason": reco_reason if reco_reason else None,
+            "items_count": items_count
         },
+        "reco_items": reco_items,
         "top_risks": top_risk_codes,
         "message": message,
         "delivery_actual": final_delivery,
@@ -236,7 +296,8 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
         "delivery_actual": final_delivery,
         "message": message,
         "snapshot_ref": snapshot_ref,
-        "provider_message_id": provider_message_id
+        "provider_message_id": provider_message_id,
+        "reco_items_count": len(reco_items)
     }
 
 
@@ -244,4 +305,4 @@ if __name__ == "__main__":
     import sys
     mode = "test" if "--test" in sys.argv else "normal"
     result = generate_daily_status_push(mode=mode)
-    print(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2, ensure_ascii=False))

@@ -1,5 +1,5 @@
 #!/bin/bash
-# daily_ops.sh - OCI Daily Operations Script (D-P.54)
+# daily_ops.sh - OCI Daily Operations Script (D-P.54 + D-P.57)
 # Usage: bash deploy/oci/daily_ops.sh
 # Cron: 5 9 * * * cd /home/ubuntu/krx_hyungsoo && bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
 #
@@ -7,6 +7,8 @@
 #   0 = COMPLETED or WARN (검증 OK)
 #   2 = BLOCKED (안전장치로 막힘 - 정상 차단)
 #   3 = 파싱 실패/백엔드 죽음/resolve 실패 (운영 장애)
+#
+# D-P.57: Incident push on failure + backend-down fallback
 
 set -euo pipefail
 
@@ -14,8 +16,59 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BASE_URL="${KRX_API_URL:-http://127.0.0.1:8000}"
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"
+SECRETS_FILE="$REPO_DIR/state/secrets/telegram.env"
 
 cd "$REPO_DIR"
+
+# ============================================================================
+# Helper: Telegram Fallback (backend down일 때 직발송)
+# ============================================================================
+send_telegram_fallback() {
+    local message="$1"
+    
+    # Load secrets if exists
+    if [ -f "$SECRETS_FILE" ]; then
+        source "$SECRETS_FILE"
+    fi
+    
+    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+        echo "$LOG_PREFIX [FALLBACK] No telegram credentials, skip"
+        return 1
+    fi
+    
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+        -d "text=${message}" > /dev/null 2>&1 || true
+    
+    echo "$LOG_PREFIX [FALLBACK] Telegram sent"
+    return 0
+}
+
+# ============================================================================
+# Helper: Incident Push (API or fallback)
+# ============================================================================
+send_incident() {
+    local kind="$1"
+    local step="$2"
+    local reason="$3"
+    
+    # Try API first
+    local resp=$(curl -s -X POST "${BASE_URL}/api/push/incident/send?confirm=true&kind=${kind}&step=${step}&reason=$(echo "$reason" | head -c 100 | sed 's/ /%20/g')" 2>/dev/null || echo "")
+    
+    if echo "$resp" | grep -q '"result":"OK"'; then
+        echo "$LOG_PREFIX ✓ Incident push sent via API: $kind"
+        return 0
+    fi
+    
+    # Fallback to direct telegram
+    echo "$LOG_PREFIX ⚠️ API incident failed, trying fallback..."
+    send_telegram_fallback "🚨 INCIDENT: $kind
+
+Step: $step
+Reason: $reason
+
+조치: OCI 접속하여 systemctl restart krx-backend.service"
+}
 
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 echo "$LOG_PREFIX  OCI Daily Operations - $(date '+%Y-%m-%d %H:%M:%S KST')"
@@ -25,22 +78,30 @@ echo "$LOG_PREFIX ════════════════════�
 # Step 1: Repo Update
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [1/5] Updating repository..."
+echo "$LOG_PREFIX [1/6] Updating repository..."
 if ! git pull origin archive-rebuild --quiet 2>/dev/null; then
     echo "$LOG_PREFIX ⚠️ git pull failed (will continue with current code)"
 fi
 echo "$LOG_PREFIX ✓ Repository updated"
 
 # ============================================================================
-# Step 2: Backend Health Check
+# Step 2: Backend Health Check (+ fallback on failure)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [2/5] Checking backend health..."
+echo "$LOG_PREFIX [2/6] Checking backend health..."
 HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/ops/health" 2>/dev/null || echo "000")
 
 if [ "$HEALTH_STATUS" != "200" ]; then
     echo "$LOG_PREFIX ❌ Backend not responding (HTTP $HEALTH_STATUS)"
-    echo "$LOG_PREFIX    → Try: nohup python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > logs/backend.log 2>&1 &"
+    
+    # D-P.57: Fallback - direct telegram when backend is down
+    send_telegram_fallback "🚨 INCIDENT: BACKEND_DOWN
+
+서버가 응답하지 않습니다.
+HTTP Status: $HEALTH_STATUS
+
+조치: OCI 접속하여 systemctl restart krx-backend.service"
+    
     exit 3
 fi
 echo "$LOG_PREFIX ✓ Backend healthy (HTTP 200)"
@@ -49,12 +110,12 @@ echo "$LOG_PREFIX ✓ Backend healthy (HTTP 200)"
 # Step 3: Ops Summary Regenerate (minimal verification)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [3/5] Regenerating Ops Summary..."
+echo "$LOG_PREFIX [3/6] Regenerating Ops Summary..."
 REGEN_RESP=$(curl -s -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true")
 
-# Check for result OK (minimal verification)
 if ! echo "$REGEN_RESP" | grep -q '"result":"OK"'; then
     echo "$LOG_PREFIX ❌ Ops Summary regenerate failed: $REGEN_RESP"
+    send_incident "OPS_FAILED" "Step3" "Regenerate API failed"
     exit 3
 fi
 echo "$LOG_PREFIX ✓ Ops Summary regenerated"
@@ -66,6 +127,7 @@ echo "$LOG_PREFIX ✓ Ops Summary status: $OPS_STATUS"
 # Check if BLOCKED/STOPPED
 if [ "$OPS_STATUS" = "BLOCKED" ] || [ "$OPS_STATUS" = "STOPPED" ]; then
     echo "$LOG_PREFIX ⚠️ Ops Summary $OPS_STATUS - 정상 차단"
+    send_incident "OPS_BLOCKED" "Step3" "Ops Summary $OPS_STATUS"
     exit 2
 fi
 
@@ -73,10 +135,11 @@ fi
 # Step 4: Live Cycle Run
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [4/5] Running Live Cycle..."
+echo "$LOG_PREFIX [4/6] Running Live Cycle..."
 CYCLE_RESP=$(curl -s -X POST "${BASE_URL}/api/live/cycle/run?confirm=true")
 if [ -z "$CYCLE_RESP" ]; then
     echo "$LOG_PREFIX ❌ Live Cycle run failed"
+    send_incident "LIVE_FAILED" "Step4" "Live Cycle API returned empty"
     exit 3
 fi
 
@@ -104,6 +167,7 @@ except Exception as e:
 
 if echo "$CYCLE_PARSED" | grep -q "^PARSE_ERROR:"; then
     echo "$LOG_PREFIX ❌ Live Cycle parse failed"
+    send_incident "LIVE_FAILED" "Step4" "Live Cycle parse error"
     exit 3
 fi
 
@@ -118,6 +182,7 @@ echo "$LOG_PREFIX ✓ Live Cycle: result=$CYCLE_RESULT decision=$CYCLE_DECISION 
 # Check if BLOCKED
 if [ "$CYCLE_DECISION" = "BLOCKED" ]; then
     echo "$LOG_PREFIX ⚠️ Live Cycle BLOCKED: $CYCLE_REASON - 정상 차단"
+    send_incident "LIVE_BLOCKED" "Step4" "$CYCLE_REASON"
     exit 2
 fi
 
@@ -125,7 +190,7 @@ fi
 # Step 5: Snapshot Verification
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [5/5] Verifying snapshot..."
+echo "$LOG_PREFIX [5/6] Verifying snapshot..."
 SNAPSHOT_OK="N/A"
 
 if [ -n "$CYCLE_SNAPSHOT" ]; then
@@ -140,26 +205,26 @@ fi
 echo "$LOG_PREFIX ✓ Snapshot verification: $SNAPSHOT_OK"
 
 # ============================================================================
-# Step 6: Daily Status Push (D-P.55)
+# Step 6: Daily Status Push (D-P.55 + D-P.57 enhanced)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [6/6] Sending Daily Status Push..."
+echo "$LOG_PREFIX [6/6] Sending Daily Status Push (with reco details)..."
 
 PUSH_RESP=$(curl -s -X POST "${BASE_URL}/api/push/daily_status/send?confirm=true")
 
-# Check for result OK
 if echo "$PUSH_RESP" | grep -q '"result":"OK"'; then
     PUSH_SKIPPED=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("true" if d.get("skipped") else "false")' 2>/dev/null || echo "false")
-    PUSH_MESSAGE=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("message",""))' 2>/dev/null || echo "")
+    PUSH_DELIVERY=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("delivery_actual","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+    PUSH_RECO_COUNT=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reco_items_count",0))' 2>/dev/null || echo "0")
     
     if [ "$PUSH_SKIPPED" = "true" ]; then
         echo "$LOG_PREFIX ✓ Daily PUSH: SKIPPED (already sent today)"
     else
-        echo "$LOG_PREFIX ✓ Daily PUSH: SENT"
-        echo "$LOG_PREFIX   → $PUSH_MESSAGE"
+        echo "$LOG_PREFIX ✓ Daily PUSH: SENT delivery=$PUSH_DELIVERY reco_items=$PUSH_RECO_COUNT"
     fi
 else
     echo "$LOG_PREFIX ⚠️ Daily PUSH failed: $PUSH_RESP (non-fatal)"
+    send_incident "PUSH_FAILED" "Step6" "Daily status push failed"
 fi
 
 # ============================================================================
@@ -171,11 +236,6 @@ echo "$LOG_PREFIX  DAILY OPS COMPLETE"
 echo "$LOG_PREFIX  Ops: $OPS_STATUS | Cycle: $CYCLE_RESULT $CYCLE_DECISION"
 echo "$LOG_PREFIX  Delivery: $CYCLE_DELIVERY | Snapshot: $SNAPSHOT_OK"
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
-
-# Verify delivery is CONSOLE_SIMULATED (safety check)
-if [ "$CYCLE_DELIVERY" != "CONSOLE_SIMULATED" ]; then
-    echo "$LOG_PREFIX ⚠️ WARNING: delivery_actual=$CYCLE_DELIVERY (expected CONSOLE_SIMULATED)"
-fi
 
 echo "$LOG_PREFIX ✅ All checks passed"
 exit 0

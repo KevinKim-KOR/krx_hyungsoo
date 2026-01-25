@@ -3280,6 +3280,92 @@ async def get_daily_status_latest():
         })
 
 
+# ============================================================================
+# Incident Push API (D-P.57)
+# ============================================================================
+
+@app.post("/api/push/incident/send")
+async def push_incident_send(
+    confirm: bool = Query(False),
+    mode: str = Query("normal", description="normal=하루1회, test=우회"),
+    kind: str = Query(..., description="BACKEND_DOWN, OPS_BLOCKED, OPS_FAILED, LIVE_BLOCKED, LIVE_FAILED, PUSH_FAILED"),
+    step: str = Query("Unknown"),
+    reason: str = Query("Unknown")
+):
+    """
+    Incident Push - 장애/차단 즉시 알림
+    Confirm Guard: confirm=true 필수
+    Idempotency: incident_<KIND>_YYYYMMDD (동일 타입 하루 1회)
+    """
+    if not confirm:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "Confirm guard: set confirm=true to proceed"
+            }
+        )
+    
+    if mode not in ("normal", "test"):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": f"Invalid mode: {mode}"
+            }
+        )
+    
+    try:
+        from app.generate_incident_push import generate_incident_push
+        
+        result = generate_incident_push(
+            kind=kind,
+            step=step,
+            reason=reason,
+            mode=mode
+        )
+        
+        logger.info(f"Incident push: {kind} mode={mode} skipped={result.get('skipped')} delivery={result.get('delivery_actual')}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Incident push failed: {e}")
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
+@app.get("/api/push/incident/latest")
+async def get_incident_latest():
+    """Incident Push 최신 조회"""
+    from pathlib import Path
+    import json
+    
+    latest_path = Path("reports/ops/push/incident/latest/incident_latest.json")
+    
+    if not latest_path.exists():
+        return {
+            "result": "NOT_FOUND",
+            "rows": [],
+            "row_count": 0
+        }
+    
+    try:
+        data = json.loads(latest_path.read_text(encoding="utf-8"))
+        return {
+            "result": "OK",
+            "rows": [data],
+            "row_count": 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,7 +1,7 @@
 {
-    "version": "1.60",
+    "version": "1.61",
     "asof": "2026-01-25",
-    "description": "Active Surface Registry (Phase D-P.56: Telegram Real Send)",
+    "description": "Active Surface Registry (Phase D-P.57: Enhanced Push + Incident)",
     "latest_artifacts_fixed": [
         "recon_summary.json",
         "recon_daily.jsonl",

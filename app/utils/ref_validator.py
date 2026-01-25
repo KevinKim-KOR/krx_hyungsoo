@@ -63,6 +63,9 @@ ALLOWED_JSON_PATTERNS = [
     # D-P.55: Daily Status Push
     r"^reports/ops/push/daily_status/latest/daily_status_latest\.json$",
     r"^reports/ops/push/daily_status/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # D-P.57: Incident Push
+    r"^reports/ops/push/incident/latest/incident_latest\.json$",
+    r"^reports/ops/push/incident/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
