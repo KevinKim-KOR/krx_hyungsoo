@@ -3201,15 +3201,18 @@ def run_live_cycle_api(confirm: bool = False):
 
 
 # ============================================================================
-# Daily Status Push API (D-P.55)
+# Daily Status Push API (D-P.55 + D-P.56)
 # ============================================================================
 
 @app.post("/api/push/daily_status/send")
-async def push_daily_status_send(confirm: bool = Query(False)):
+async def push_daily_status_send(
+    confirm: bool = Query(False),
+    mode: str = Query("normal", description="normal=1일1회, test=idempotency우회")
+):
     """
     Daily Status Push - 오늘 운영 상태 1줄 요약 발송
     Confirm Guard: confirm=true 필수
-    Idempotency: 1일 1회만 발송
+    Idempotency: mode=normal이면 1일 1회, mode=test면 우회
     """
     # Confirm Guard
     if not confirm:
@@ -3221,12 +3224,22 @@ async def push_daily_status_send(confirm: bool = Query(False)):
             }
         )
     
+    # Validate mode
+    if mode not in ("normal", "test"):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": f"Invalid mode: {mode}. Use 'normal' or 'test'"
+            }
+        )
+    
     try:
         from app.generate_daily_status_push import generate_daily_status_push
         
-        result = generate_daily_status_push()
+        result = generate_daily_status_push(mode=mode)
         
-        logger.info(f"Daily status push: {result.get('idempotency_key')} skipped={result.get('skipped')}")
+        logger.info(f"Daily status push: {result.get('idempotency_key')} mode={mode} skipped={result.get('skipped')} delivery={result.get('delivery_actual')}")
         
         return result
         

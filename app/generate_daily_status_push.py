@@ -1,10 +1,10 @@
 """
-Daily Status Push Generator (D-P.55)
+Daily Status Push Generator (D-P.55 + D-P.56 Telegram)
 
 OCI 크론 실행 후 당일 운영 상태를 1줄 요약으로 PUSH 발송
-- Idempotency: 1일 1회만 발송
+- Idempotency: 1일 1회만 발송 (mode=test로 우회 가능)
 - No Secret Leak: 요약만 발송
-- Fail-Closed: 발송 실패 시 운영 장애
+- Fail-Closed: enabled=false 또는 토큰 누락 시 외부 전송 금지
 """
 
 import json
@@ -37,20 +37,26 @@ def safe_load_json(path: Path) -> Optional[Dict]:
         return None
 
 
-def get_today_idempotency_key() -> str:
-    """오늘 날짜 기준 idempotency key"""
-    return f"daily_status_{datetime.now().strftime('%Y%m%d')}"
+def get_idempotency_key(mode: str = "normal") -> str:
+    """
+    Idempotency key 생성
+    - mode=normal: daily_status_YYYYMMDD (1일 1회)
+    - mode=test: test_daily_status_YYYYMMDD_HHMMSS (매번 새로)
+    """
+    now = datetime.now()
+    if mode == "test":
+        return f"test_daily_status_{now.strftime('%Y%m%d_%H%M%S')}"
+    return f"daily_status_{now.strftime('%Y%m%d')}"
 
 
-def check_already_sent_today() -> bool:
-    """오늘 이미 발송되었는지 확인"""
+def check_already_sent(idempotency_key: str) -> bool:
+    """해당 idempotency_key로 이미 발송되었는지 확인"""
     if not DAILY_STATUS_LATEST.exists():
         return False
     try:
         data = json.loads(DAILY_STATUS_LATEST.read_text(encoding="utf-8"))
         stored_key = data.get("idempotency_key", "")
-        today_key = get_today_idempotency_key()
-        return stored_key == today_key
+        return stored_key == idempotency_key
     except Exception:
         return False
 
@@ -70,23 +76,27 @@ def generate_daily_status_message(
     stale_str = "true" if bundle_stale else "false"
     
     return (
-        f"KRX OPS: {ops_status} | "
-        f"LIVE: {live_result} {live_decision} | "
-        f"bundle={bundle_decision} stale={stale_str} | "
-        f"reco={reco_decision} | "
-        f"delivery={delivery} | "
-        f"risks=[{risks_str}]"
+        f"📊 KRX OPS: {ops_status}\n"
+        f"🔄 LIVE: {live_result} {live_decision}\n"
+        f"📦 bundle={bundle_decision} stale={stale_str}\n"
+        f"📝 reco={reco_decision}\n"
+        f"⚠️ risks=[{risks_str}]"
     )
 
 
-def generate_daily_status_push() -> Dict[str, Any]:
-    """Daily Status Push 생성"""
+def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
+    """
+    Daily Status Push 생성
+    
+    Args:
+        mode: "normal" (1일 1회 idempotency) 또는 "test" (우회)
+    """
     now = datetime.now()
     asof = now.isoformat()
-    idempotency_key = get_today_idempotency_key()
+    idempotency_key = get_idempotency_key(mode)
     
-    # Check idempotency
-    if check_already_sent_today():
+    # Check idempotency (normal mode only)
+    if mode != "test" and check_already_sent(idempotency_key):
         return {
             "result": "OK",
             "skipped": True,
@@ -114,13 +124,14 @@ def generate_daily_status_push() -> Dict[str, Any]:
     reco_info = live_cycle.get("reco", {}) or {}
     reco_decision = reco_info.get("decision", "UNKNOWN")
     
-    # Push info
+    # Push info (from live cycle)
     push_info = live_cycle.get("push", {}) or {}
-    delivery_actual = push_info.get("delivery_actual", "CONSOLE_SIMULATED")
+    live_delivery = push_info.get("delivery_actual", "CONSOLE_SIMULATED")
     
     # Check sender enabled
     sender_config = safe_load_json(SENDER_ENABLE_FILE) or {}
     sender_enabled = sender_config.get("enabled", False)
+    sender_provider = sender_config.get("provider", "").lower()
     
     # Generate message
     message = generate_daily_status_message(
@@ -130,19 +141,52 @@ def generate_daily_status_push() -> Dict[str, Any]:
         bundle_decision=bundle_decision,
         bundle_stale=bundle_stale,
         reco_decision=reco_decision,
-        delivery=delivery_actual,
+        delivery=live_delivery,
         top_risks=top_risk_codes
     )
     
     # Determine actual delivery method
-    if sender_enabled:
-        # TODO: Implement actual provider sending (Telegram, Slack, etc.)
-        # For now, still CONSOLE_SIMULATED until provider is configured
-        final_delivery = "CONSOLE_SIMULATED"
-        send_receipt_ref = None
+    final_delivery = "CONSOLE_SIMULATED"
+    send_receipt = None
+    provider_message_id = None
+    
+    if sender_enabled and sender_provider == "telegram":
+        # D-P.56: Telegram real send
+        try:
+            from app.providers.telegram_sender import send_telegram_message
+            
+            telegram_result = send_telegram_message(message)
+            
+            if telegram_result.get("success"):
+                final_delivery = "TELEGRAM"
+                provider_message_id = telegram_result.get("message_id")
+                send_receipt = {
+                    "provider": "TELEGRAM",
+                    "message_id": provider_message_id,
+                    "sent_at": asof
+                }
+                print(f"[DAILY_STATUS_PUSH] Telegram sent: message_id={provider_message_id}")
+            else:
+                # Telegram failed - Fail-Closed: 외부 전송 실패 기록
+                error_msg = telegram_result.get("error", "Unknown error")
+                final_delivery = "TELEGRAM_FAILED"
+                send_receipt = {
+                    "provider": "TELEGRAM",
+                    "error": error_msg,
+                    "sent_at": asof
+                }
+                print(f"[DAILY_STATUS_PUSH] Telegram failed: {error_msg}")
+        except Exception as e:
+            final_delivery = "TELEGRAM_ERROR"
+            send_receipt = {
+                "provider": "TELEGRAM",
+                "error": str(e),
+                "sent_at": asof
+            }
+            print(f"[DAILY_STATUS_PUSH] Telegram error: {e}")
     else:
-        final_delivery = "CONSOLE_SIMULATED"
-        send_receipt_ref = None
+        # Fail-Closed: enabled=false or provider not telegram
+        print(f"[DAILY_STATUS_PUSH] {message}")
     
     # Build push record
     snapshot_filename = f"daily_status_{now.strftime('%Y%m%d_%H%M%S')}.json"
@@ -152,6 +196,7 @@ def generate_daily_status_push() -> Dict[str, Any]:
         "schema": "DAILY_STATUS_PUSH_V1",
         "asof": asof,
         "idempotency_key": idempotency_key,
+        "mode": mode,
         "ops_status": ops_status,
         "live_status": {
             "result": live_result,
@@ -167,7 +212,7 @@ def generate_daily_status_push() -> Dict[str, Any]:
         "top_risks": top_risk_codes,
         "message": message,
         "delivery_actual": final_delivery,
-        "send_receipt_ref": send_receipt_ref,
+        "send_receipt": send_receipt,
         "snapshot_ref": snapshot_ref,
         "evidence_refs": [
             "reports/ops/push/daily_status/latest/daily_status_latest.json"
@@ -183,19 +228,20 @@ def generate_daily_status_push() -> Dict[str, Any]:
     snapshot_path = DAILY_STATUS_SNAPSHOTS / snapshot_filename
     shutil.copy(DAILY_STATUS_LATEST, snapshot_path)
     
-    # Console output (simulated send)
-    print(f"[DAILY_STATUS_PUSH] {message}")
-    
     return {
         "result": "OK",
         "skipped": False,
+        "mode": mode,
         "idempotency_key": idempotency_key,
         "delivery_actual": final_delivery,
         "message": message,
-        "snapshot_ref": snapshot_ref
+        "snapshot_ref": snapshot_ref,
+        "provider_message_id": provider_message_id
     }
 
 
 if __name__ == "__main__":
-    result = generate_daily_status_push()
+    import sys
+    mode = "test" if "--test" in sys.argv else "normal"
+    result = generate_daily_status_push(mode=mode)
     print(json.dumps(result, indent=2))
