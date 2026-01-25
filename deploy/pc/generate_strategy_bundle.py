@@ -132,40 +132,32 @@ def generate_bundle() -> dict:
 
 
 def save_bundle(bundle: dict) -> Path:
-    """번들을 스냅샷 파일로 저장"""
+    """번들을 스냅샷 및 최신 파일로 저장"""
+    # 1. Snapshot
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"strategy_bundle_{timestamp}.json"
-    filepath = OUTPUT_DIR / filename
+    snapshot_path = OUTPUT_DIR / filename
     
-    # Atomic write
-    tmp_path = filepath.with_suffix(".tmp")
-    tmp_path.write_text(json.dumps(bundle, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp_path, filepath)
+    tmp_snap = snapshot_path.with_suffix(".tmp")
+    tmp_snap.write_text(json.dumps(bundle, indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp_snap, snapshot_path)
     
-    return filepath
-
-
-def validate_bundle_locally(bundle: dict) -> bool:
-    """로컬에서 번들 검증"""
-    try:
-        from app.utils.strategy_bundle_validator import validate_strategy_bundle
-        result = validate_strategy_bundle(bundle)
-        print(f"[Validation] decision={result.decision}, valid={result.valid}")
-        if result.issues:
-            print(f"[Validation] issues: {result.issues}")
-        if result.warnings:
-            print(f"[Validation] warnings: {result.warnings}")
-        return result.valid
-    except ImportError:
-        print("[WARNING] strategy_bundle_validator not found, skipping validation")
-        return True
+    # 2. Latest
+    LATEST_DIR = BASE_DIR / "state" / "strategy_bundle" / "latest"
+    LATEST_DIR.mkdir(parents=True, exist_ok=True)
+    latest_path = LATEST_DIR / "strategy_bundle_latest.json"
+    
+    tmp_latest = latest_path.with_suffix(".tmp")
+    tmp_latest.write_text(json.dumps(bundle, indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp_latest, latest_path)
+    
+    return snapshot_path
 
 
 def main():
     print("=" * 60)
-    print("Strategy Bundle Generator (D-P.49)")
+    print("Strategy Bundle Generator (D-P.49) - PC Mode")
     print("=" * 60)
     
     # 1. 번들 생성
@@ -174,7 +166,6 @@ def main():
     print(f"    bundle_id: {bundle['bundle_id']}")
     print(f"    created_at: {bundle['created_at']}")
     print(f"    strategy: {bundle['strategy']['name']} v{bundle['strategy']['version']}")
-    print(f"    payload_sha256: {bundle['integrity']['payload_sha256'][:16]}...")
     
     # 2. 로컬 검증
     print("\n[2] Validating bundle locally...")
@@ -184,30 +175,22 @@ def main():
         return 1
     
     # 3. 저장
-    print("\n[3] Saving bundle snapshot...")
-    filepath = save_bundle(bundle)
-    print(f"    Saved to: {filepath}")
-    print(f"    File size: {filepath.stat().st_size} bytes")
+    print("\n[3] Saving bundle...")
+    snapshot_path = save_bundle(bundle)
+    print(f"    Snapshot: {snapshot_path.name}")
+    print(f"    Latest:   state/strategy_bundle/latest/strategy_bundle_latest.json")
     
-    # 4. 다음 단계 안내
+    # 4. Git Push 안내
     print("\n" + "=" * 60)
-    print("NEXT STEPS (Transfer to OCI):")
+    print("NEXT STEPS (Git Workflow):")
     print("=" * 60)
-    print(f"""
-1. Copy to OCI via scp/rsync:
-   scp "{filepath}" ubuntu@<OCI_IP>:~/krx_hyungsoo/state/strategy_bundle/snapshots/
+    print("""
+1. Commit and Push to OCI:
+   git add state/strategy_bundle/
+   git commit -m "Update strategy bundle"
+   git push origin archive-rebuild
 
-2. On OCI, validate and apply:
-   cd ~/krx_hyungsoo
-   BUNDLE_PATH="state/strategy_bundle/snapshots/{filepath.name}"
-   python -c "from app.utils.strategy_bundle_validator import validate_bundle_file; r=validate_bundle_file('$BUNDLE_PATH'); print(r)"
-   
-   # If PASS, apply to latest:
-   cp "$BUNDLE_PATH" "state/strategy_bundle/latest/strategy_bundle_latest.json.tmp"
-   mv -f "state/strategy_bundle/latest/strategy_bundle_latest.json.tmp" "state/strategy_bundle/latest/strategy_bundle_latest.json"
-
-3. Regenerate reco and verify:
-   curl -X POST http://localhost:8000/api/reco/regenerate -H "Content-Type: application/json" -d '{{"confirm": true}}'
+2. OCI will pull and run daily ops automatically (cron).
 """)
     
     return 0
