@@ -113,7 +113,7 @@ echo ""
 echo "$LOG_PREFIX [3/7] Regenerating Ops Summary..."
 REGEN_RESP=$(curl -s -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true")
 
-if ! echo "$REGEN_RESP" | grep -q '"result":"OK"'; then
+if ! echo "$REGEN_RESP" | grep -q '"schema":"OPS_SUMMARY_V1"'; then
     echo "$LOG_PREFIX ❌ Ops Summary regenerate failed: $REGEN_RESP"
     send_incident "OPS_FAILED" "Step3" "Regenerate API failed"
     exit 3
