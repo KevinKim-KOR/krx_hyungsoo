@@ -193,7 +193,7 @@ def get_tickets_recent() -> Dict[str, Any]:
     return stats
 
 
-def generate_ops_summary():
+def regenerate_ops_summary():
     """Ops Summary 생성"""
     now = datetime.now()
     
@@ -401,5 +401,5 @@ def generate_ops_summary():
 
 
 if __name__ == "__main__":
-    result = generate_ops_summary()
+    result = regenerate_ops_summary()
     print(json.dumps(result, indent=2, ensure_ascii=False))
