@@ -1,16 +1,14 @@
 {
-  "schema": "WATCHLIST_V1",
-  "updated_at": "2026-01-25T23:12:11.896179",
-  "updated_by": "pc_ui",
   "items": [
     {
       "ticker": "005930",
-      "name": "Samsung Electronics",
+      "name": "Samsung",
+      "enabled": true
+    },
+    {
+      "ticker": "069500",
+      "name": "KODEX 200",
       "enabled": true
     }
-  ],
-  "item_count": 1,
-  "integrity": {
-    "payload_sha256": "d9aa371ee7d40ca3290831bef47c9d7f9260df11f2f675213c8645c362c2bdbd"
-  }
+  ]
 }

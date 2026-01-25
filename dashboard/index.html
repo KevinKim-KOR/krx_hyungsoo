@@ -2186,6 +2186,25 @@
                             </div>
                             <div className="mt-1 text-[10px] text-slate-500">평일(Mon-Fri) 위 시간대에만 동작합니다.</div>
                         </div>
+
+                        {/* Display Options */}
+                        <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
+                            <label className="block text-xs font-bold text-slate-400 mb-3">Alert Display Options</label>
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={settings.include_value_volume} onChange={e => setSettings({ ...settings, include_value_volume: e.target.checked })} />
+                                    <span className="text-sm text-slate-300">거래대금/거래량 포함</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={settings.include_deviation} onChange={e => setSettings({ ...settings, include_deviation: e.target.checked })} />
+                                    <span className="text-sm text-slate-300">괴리율 포함 (ETF)</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={settings.include_portfolio_context} onChange={e => setSettings({ ...settings, include_portfolio_context: e.target.checked })} />
+                                    <span className="text-sm text-slate-300">보유 정보 포함 (If holding)</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="mt-6">

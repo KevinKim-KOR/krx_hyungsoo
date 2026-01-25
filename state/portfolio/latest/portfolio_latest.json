@@ -1,99 +1,12 @@
 {
-  "schema": "PORTFOLIO_SNAPSHOT_V1",
-  "asof": "2026-01-25T20:55:59.075135",
-  "portfolio_id": "64d64700-cc10-4691-98b9-f7e07be92f7d",
-  "cash": 0.0,
-  "holdings": [
-    {
-      "ticker": "0015B0",
-      "name": "KoAct 미국나스닥성장기업액티브",
-      "quantity": 5.0,
-      "avg_price": 11063.0,
-      "current_price": 14880.0,
-      "market_value": 74400.0
+  "holdings": {
+    "005930": {
+      "qty": 10,
+      "avg_price": 50000
     },
-    {
-      "ticker": "0028X0",
-      "name": "KODEX 미국금융테크액티브",
-      "quantity": 15.0,
-      "avg_price": 11358.0,
-      "current_price": 12475.0,
-      "market_value": 187125.0
-    },
-    {
-      "ticker": "0035T0",
-      "name": "PLUS 글로벌휴머노이드로봇액티브",
-      "quantity": 5.0,
-      "avg_price": 14185.0,
-      "current_price": 15995.0,
-      "market_value": 79975.0
-    },
-    {
-      "ticker": "0052D0",
-      "name": "TIGER 코리아배당다우존스",
-      "quantity": 9.0,
-      "avg_price": 10657.0,
-      "current_price": 13275.0,
-      "market_value": 119475.0
-    },
-    {
-      "ticker": "005380",
-      "name": "현대차",
-      "quantity": 2.0,
-      "avg_price": 218500.0,
-      "current_price": 270500.0,
-      "market_value": 541000.0
-    },
-    {
-      "ticker": "0097L0",
-      "name": "KIWOOM 한국고배당&미국AI테크",
-      "quantity": 10.0,
-      "avg_price": 10235.0,
-      "current_price": 11010.0,
-      "market_value": 110100.0
-    },
-    {
-      "ticker": "0107F0",
-      "name": "KIWOOM 미국고배당&AI테크",
-      "quantity": 10.0,
-      "avg_price": 9990.0,
-      "current_price": 10110.0,
-      "market_value": 101100.0
-    },
-    {
-      "ticker": "064350",
-      "name": "현대로템",
-      "quantity": 1.0,
-      "avg_price": 196500.0,
-      "current_price": 208000.0,
-      "market_value": 208000.0
-    },
-    {
-      "ticker": "088980",
-      "name": "맥쿼리인프라",
-      "quantity": 13.0,
-      "avg_price": 12373.0,
-      "current_price": 11290.0,
-      "market_value": 146770.0
-    },
-    {
-      "ticker": "161510",
-      "name": "PLUS 고배당주",
-      "quantity": 5.0,
-      "avg_price": 20070.0,
-      "current_price": 21070.0,
-      "market_value": 105350.0
+    "069500": {
+      "qty": 100,
+      "avg_price": 30000
     }
-  ],
-  "total_value": 1673295.0,
-  "cash_ratio_pct": 0.0,
-  "updated_at": "2026-01-25T20:55:59.075135",
-  "updated_by": "ui",
-  "snapshot_ref": "state/portfolio/snapshots/portfolio_20260125_205559.json",
-  "evidence_refs": [
-    "state/portfolio/latest/portfolio_latest.json"
-  ],
-  "integrity": {
-    "payload_sha256": "4d373b250ce3a0236be1929d42b9e0542428ebd109362847832e6fe598781c8e"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schema": "SPIKE_SETTINGS_V1",
-  "updated_at": "2026-01-25T23:27:48.566393",
+  "updated_at": "2026-01-25T23:24:44.097204",
   "updated_by": "pc_ui",
   "enabled": true,
   "threshold_pct": 3.0,
@@ -13,9 +13,7 @@
       1,
       2,
       3,
-      4,
-      5,
-      6
+      4
     ]
   },
   "market_data": {
@@ -31,6 +29,6 @@
     "include_premium_fields": false
   },
   "integrity": {
-    "payload_sha256": "b835409210c083ead968923c4e00b7bed32d900838bc9a791c792edc8d7e76aa"
+    "payload_sha256": "3797730e8e5eeb0f417b7756774d4ec436595b533f401d6ef7160d7e52e4bb9d"
   }
 }

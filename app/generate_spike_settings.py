@@ -60,6 +60,15 @@ def upsert_spike_settings(params: Dict, updated_by: str = "pc_ui") -> Dict:
             "end": params.get("session_end", "15:20"),
             "days": params.get("session_days", [0, 1, 2, 3, 4]) # Mon=0, Fri=4
         },
+        "market_data": {
+            "provider": params.get("provider", "naver"),  # naver or mock
+            "fallback": params.get("fallback", True)
+        },
+        "display": {
+            "include_value_volume": params.get("include_value_volume", True),
+            "include_deviation": params.get("include_deviation", True),
+            "include_portfolio_context": params.get("include_portfolio_context", True)
+        },
         "options": {
             "include_premium_fields": params.get("include_premium_fields", False)
         }

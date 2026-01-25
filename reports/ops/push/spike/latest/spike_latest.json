@@ -1,19 +1,15 @@
 {
-  "schema": "SPIKE_PUSH_RECEIPT_V1",
-  "asof": "2026-01-25T22:57:17.788599",
+  "schema": "SPIKE_PUSH_RECEIPT_V1_1",
+  "asof": "2026-01-25T23:28:35.799677",
   "settings_used": {
-    "threshold_pct": 3.0,
-    "cooldown_minutes": 15
+    "include_value_volume": true,
+    "include_deviation": true,
+    "include_portfolio_context": true
   },
   "alerts_count": 1,
-  "sent_count": 1,
+  "sent_count": 0,
   "skipped_count": 0,
-  "alerts": [
-    {
-      "ticker": "069500",
-      "name": "KODEX 200",
-      "change_pct": -4.09,
-      "type": "DOWN"
-    }
+  "alerts_log": [
+    "🚀 UP KODEX 200 +3.25% (10,324) 💰 1.7억 \n📊 괴리: -0.98% (NAV 10,426) \n💼 보유: 100주 (-65.6%)"
   ]
 }
