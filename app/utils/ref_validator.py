@@ -66,6 +66,11 @@ ALLOWED_JSON_PATTERNS = [
     # D-P.57: Incident Push
     r"^reports/ops/push/incident/latest/incident_latest\.json$",
     r"^reports/ops/push/incident/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # D-P.58: Portfolio & Order Plan
+    r"^state/portfolio/latest/portfolio_latest\.json$",
+    r"^state/portfolio/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/live/order_plan/latest/order_plan_latest\.json$",
+    r"^reports/live/order_plan/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"

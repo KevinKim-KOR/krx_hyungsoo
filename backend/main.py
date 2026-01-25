@@ -13,7 +13,8 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Union
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Body
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -3364,6 +3365,131 @@ async def get_incident_latest():
             "result": "FAILED",
             "reason": str(e)
         })
+
+
+
+# ============================================================================
+# Portfolio & Order Plan API (D-P.58)
+# ============================================================================
+
+class PortfolioHolding(BaseModel):
+    ticker: str
+    name: str = ""
+    quantity: float
+    avg_price: float = 0
+    current_price: Optional[float] = None
+
+class PortfolioUpsertRequest(BaseModel):
+    cash: float
+    holdings: List[PortfolioHolding]
+
+@app.post("/api/portfolio/upsert")
+async def upsert_portfolio_api(
+    payload: PortfolioUpsertRequest,
+    confirm: bool = Query(False)
+):
+    """
+    Portfolio Upsert - 포트폴리오 저장
+    Confirm Guard: confirm=true 필수
+    """
+    if not confirm:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "Confirm guard: set confirm=true to proceed"
+            }
+        )
+    
+    try:
+        from app.generate_portfolio_snapshot import upsert_portfolio
+        
+        # Convert Pydantic models to dicts
+        holdings_dicts = [h.dict() for h in payload.holdings]
+        
+        result = upsert_portfolio(
+            cash=payload.cash,
+            holdings=holdings_dicts,
+            updated_by="ui"
+        )
+        
+        logger.info(f"Portfolio upsert: {result.get('portfolio_id')} items={result.get('holdings_count')}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Portfolio upsert failed: {e}")
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+@app.get("/api/portfolio/latest")
+async def get_portfolio_latest_api():
+    """Portfolio 최신 조회"""
+    from app.generate_portfolio_snapshot import get_portfolio_latest
+    
+    data = get_portfolio_latest()
+    if not data:
+         return {
+            "result": "NOT_FOUND",
+            "rows": [],
+            "row_count": 0
+        }
+    
+    return {
+        "result": "OK",
+        "rows": [data],
+        "row_count": 1
+    }
+
+@app.post("/api/order_plan/regenerate")
+async def regenerate_order_plan_api(confirm: bool = Query(False)):
+    """
+    Order Plan Regenerate - 주문안 재생성
+    Confirm Guard: confirm=true 필수
+    """
+    if not confirm:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "result": "BLOCKED",
+                "message": "Confirm guard: set confirm=true to proceed"
+            }
+        )
+        
+    try:
+        from app.generate_order_plan import generate_order_plan
+        
+        result = generate_order_plan()
+        
+        logger.info(f"Order plan regenerate: decision={result.get('decision')} plan_id={result.get('plan_id')}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Order plan regenerate failed: {e}")
+        raise HTTPException(status_code=500, detail={
+            "result": "FAILED",
+            "reason": str(e)
+        })
+
+@app.get("/api/order_plan/latest")
+async def get_order_plan_latest_api():
+    """Order Plan 최신 조회"""
+    from app.generate_order_plan import get_order_plan_latest
+    
+    data = get_order_plan_latest()
+    if not data:
+         return {
+            "result": "NOT_FOUND",
+            "rows": [],
+            "row_count": 0
+        }
+    
+    return {
+        "result": "OK",
+        "rows": [data],
+        "row_count": 1
+    }
 
 
 if __name__ == "__main__":

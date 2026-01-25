@@ -53,6 +53,8 @@
 | `PUSH_MESSAGE_V1` | [contract_push_v1.md](contract_push_v1.md) | Push 메시지 |
 | `DAILY_STATUS_PUSH_V1` | [contract_daily_status_push_v1.md](contract_daily_status_push_v1.md) | 일일 상태 PUSH (D-P.55/57) |
 | `INCIDENT_PUSH_V1` | [contract_incident_push_v1.md](contract_incident_push_v1.md) | 장애 즉시 알림 (D-P.57) |
+| `PORTFOLIO_SNAPSHOT_V1` | [contract_portfolio_snapshot_v1.md](contract_portfolio_snapshot_v1.md) | 포트폴리오 스냅샷 (D-P.58) |
+| `ORDER_PLAN_V1` | [contract_order_plan_v1.md](contract_order_plan_v1.md) | 주문안 (D-P.58) |
 | `TICKET_WORKER_V1` | [contract_ticket_worker_v1.md](contract_ticket_worker_v1.md) | 워커 정책 |
 | `TICKET_IDEMPOTENCY_V1` | [contract_ticket_idempotency_v1.md](contract_ticket_idempotency_v1.md) | 중복 방지 규칙 |
 

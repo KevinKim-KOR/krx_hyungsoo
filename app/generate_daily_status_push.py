@@ -1,11 +1,12 @@
 """
-Daily Status Push Generator (D-P.55 + D-P.56 + D-P.57)
+Daily Status Push Generator (D-P.55 + D-P.56 + D-P.57 + D-P.58)
 
-OCI 크론 실행 후 당일 운영 상태 + 추천 상세를 PUSH 발송
+OCI 크론 실행 후 당일 운영 상태 + 추천 상세 + 주문안 요약을 PUSH 발송
 - Idempotency: 1일 1회만 발송 (mode=test로 우회 가능)
 - No Secret Leak: 요약만 발송
 - Fail-Closed: enabled=false 또는 토큰 누락 시 외부 전송 금지
 - D-P.57: reco_items 상세 포함 (최대 5개)
+- D-P.58: Order Plan 요약 포함 (주문내역/예상현금비중)
 """
 
 import json
@@ -21,6 +22,7 @@ BASE_DIR = Path(__file__).parent.parent
 OPS_SUMMARY_LATEST = BASE_DIR / "reports" / "ops" / "summary" / "ops_summary_latest.json"
 LIVE_CYCLE_LATEST = BASE_DIR / "reports" / "live" / "cycle" / "latest" / "live_cycle_latest.json"
 RECO_LATEST = BASE_DIR / "reports" / "live" / "reco" / "latest" / "reco_latest.json"
+ORDER_PLAN_LATEST = BASE_DIR / "reports" / "live" / "order_plan" / "latest" / "order_plan_latest.json"
 SENDER_ENABLE_FILE = BASE_DIR / "state" / "real_sender_enable.json"
 
 # Output paths
@@ -97,6 +99,25 @@ def get_reco_items() -> tuple[List[Dict], str, str, int]:
     return reco_items, decision, reason, len(recommendations)
 
 
+def get_order_plan_info() -> tuple[List[Dict], str, str, Dict]:
+    """
+    Order Plan 정보 추출 (D-P.58)
+    
+    Returns:
+        (orders, decision, reason, summary)
+    """
+    plan = safe_load_json(ORDER_PLAN_LATEST)
+    if not plan:
+        return [], "UNKNOWN", "NO_PLAN_FILE", {}
+    
+    decision = plan.get("decision", "UNKNOWN")
+    reason = plan.get("reason", "")
+    orders = plan.get("orders", [])
+    summary = plan.get("summary", {})
+    
+    return orders, decision, reason, summary
+
+
 def generate_daily_status_message(
     ops_status: str,
     live_result: str,
@@ -106,9 +127,13 @@ def generate_daily_status_message(
     reco_decision: str,
     reco_reason: str,
     reco_items: List[Dict],
+    order_plan_orders: List[Dict],
+    order_plan_decision: str,
+    order_plan_reason: str,
+    order_plan_summary: Dict,
     top_risks: list
 ) -> str:
-    """운영 상태 + 추천 상세 메시지 생성 (D-P.57)"""
+    """운영 상태 + 추천 상세 + 주문안 요약 메시지 생성"""
     risks_str = ",".join(top_risks) if top_risks else "NONE"
     stale_str = "true" if bundle_stale else "false"
     
@@ -140,6 +165,35 @@ def generate_daily_status_message(
             emoji = "🟢" if action == "BUY" else ("🔴" if action == "SELL" else "⚪")
             lines.append(f"  {emoji} {action} {ticker} {name} {weight}% ({score:+.2f})")
     
+    # 주문안 (D-P.58)
+    lines.append("")
+    if order_plan_decision == "GENERATED" and order_plan_orders:
+        lines.append("🧾 주문안:")
+        for order in order_plan_orders:
+            action = order.get("action", "")
+            ticker = order.get("ticker", "")
+            qty = order.get("estimated_quantity", 0)
+            amt = order.get("order_amount", 0)
+            amt_str = f"{amt/10000:.0f}만원"  # 만원 단위
+            
+            # 🧾 BUY 069500 42주 (150만원)
+            lines.append(f"  {action} {ticker} {qty}주 ({amt_str})")
+            
+        cash_ratio = order_plan_summary.get("estimated_cash_ratio_pct", 0)
+        lines.append(f"  예상현금: {cash_ratio}%")
+    else:
+        # Blocked or Empty
+        if order_plan_decision == "BLOCKED":
+             # NO_PORTFOLIO special message
+             if order_plan_reason == "NO_PORTFOLIO":
+                 lines.append("🧾 주문안: BLOCKED (NO_PORTFOLIO - PC UI 확인)")
+             else:
+                 lines.append(f"🧾 주문안: BLOCKED ({order_plan_reason})")
+        elif order_plan_decision == "EMPTY":
+             lines.append("🧾 주문안: 없음 (NO_ORDERS)")
+        else:
+             lines.append(f"🧾 주문안: {order_plan_decision} ({order_plan_reason})")
+
     # 리스크
     lines.append("")
     lines.append(f"⚠️ risks=[{risks_str}]")
@@ -149,10 +203,7 @@ def generate_daily_status_message(
 
 def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
     """
-    Daily Status Push 생성 (D-P.57 Enhanced)
-    
-    Args:
-        mode: "normal" (1일 1회 idempotency) 또는 "test" (우회)
+    Daily Status Push 생성 (D-P.58 Enhanced)
     """
     now = datetime.now()
     asof = now.isoformat()
@@ -183,15 +234,18 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
     bundle_decision = bundle_info.get("decision", "UNKNOWN")
     bundle_stale = bundle_info.get("stale", False)
     
-    # D-P.57: Load reco details
+    # Reco details
     reco_items, reco_decision, reco_reason, items_count = get_reco_items()
+    
+    # Order Plan details (D-P.58)
+    op_orders, op_decision, op_reason, op_summary = get_order_plan_info()
     
     # Check sender enabled
     sender_config = safe_load_json(SENDER_ENABLE_FILE) or {}
     sender_enabled = sender_config.get("enabled", False)
     sender_provider = sender_config.get("provider", "").lower()
     
-    # Generate message with reco details
+    # Generate message
     message = generate_daily_status_message(
         ops_status=ops_status,
         live_result=live_result,
@@ -201,6 +255,10 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
         reco_decision=reco_decision,
         reco_reason=reco_reason,
         reco_items=reco_items,
+        order_plan_orders=op_orders,
+        order_plan_decision=op_decision,
+        order_plan_reason=op_reason,
+        order_plan_summary=op_summary,
         top_risks=top_risk_codes
     )
     
@@ -210,7 +268,6 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
     provider_message_id = None
     
     if sender_enabled and sender_provider == "telegram":
-        # D-P.56: Telegram real send
         try:
             from app.providers.telegram_sender import send_telegram_message
             
@@ -265,8 +322,13 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
         },
         "reco": {
             "decision": reco_decision,
-            "reason": reco_reason if reco_reason else None,
+            "reason": reco_reason,
             "items_count": items_count
+        },
+        "order_plan": {
+            "decision": op_decision,
+            "reason": op_reason,
+            "orders_count": len(op_orders)
         },
         "reco_items": reco_items,
         "top_risks": top_risk_codes,
@@ -275,7 +337,8 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
         "send_receipt": send_receipt,
         "snapshot_ref": snapshot_ref,
         "evidence_refs": [
-            "reports/ops/push/daily_status/latest/daily_status_latest.json"
+            "reports/ops/push/daily_status/latest/daily_status_latest.json",
+            "reports/live/order_plan/latest/order_plan_latest.json"
         ]
     }
     
@@ -297,7 +360,8 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
         "message": message,
         "snapshot_ref": snapshot_ref,
         "provider_message_id": provider_message_id,
-        "reco_items_count": len(reco_items)
+        "reco_items_count": len(reco_items),
+        "order_plan_decision": op_decision
     }
 
 
