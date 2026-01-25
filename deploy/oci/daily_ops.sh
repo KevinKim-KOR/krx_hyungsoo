@@ -177,15 +177,14 @@ CYCLE_DECISION=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DECISION:" | cut -d: -f2-)
 CYCLE_REASON=$(echo "$CYCLE_PARSED" | grep "^CYCLE_REASON:" | cut -d: -f2-)
 CYCLE_DELIVERY=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DELIVERY:" | cut -d: -f2-)
 CYCLE_SNAPSHOT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_SNAPSHOT:" | cut -d: -f2-)
-
-echo "$LOG_PREFIX ✓ Live Cycle: result=$CYCLE_RESULT decision=$CYCLE_DECISION delivery=$CYCLE_DELIVERY"
-
 # Check result
 if [ "$CYCLE_RESULT" = "FAILED" ]; then
     echo "$LOG_PREFIX ❌ Live Cycle FAILED: $CYCLE_REASON"
     send_incident "LIVE_FAILED" "Step4" "$CYCLE_REASON"
     exit 3
 fi
+
+echo "$LOG_PREFIX ✓ Live Cycle: result=$CYCLE_RESULT decision=$CYCLE_DECISION delivery=$CYCLE_DELIVERY"
 
 # Check if BLOCKED
 if [ "$CYCLE_DECISION" = "BLOCKED" ]; then

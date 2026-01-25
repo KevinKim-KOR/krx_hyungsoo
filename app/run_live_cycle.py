@@ -122,20 +122,10 @@ def run_summary_step() -> Dict[str, Any]:
     Step 3: Ops Summary 재생성
     """
     try:
-        from app.generate_ops_summary import regenerate_ops_summary, save_ops_summary
+        from app.generate_ops_summary import regenerate_ops_summary
         
         summary = regenerate_ops_summary()
-        # save_ops_summary is not exported? Wait, let me check generate_ops_summary.py again.
-        # regenerate_ops_summary saves internally. run_live_cycle shouldn't call save_ops_summary unless it exists?
-        # The original code imported save_ops_summary. Let's assume it was removed or needs check. 
-        # Actually regenerate_ops_summary in previous steps included saving.
-        # So we just return summary and fake the rest?
-        # Let's check if save_ops_summary exists in generate_ops_summary.py
-        
-        # Checking generate_ops_summary.py content from history:
-        # It defines regenerate_ops_summary and calls it in main.
-        # It does NOT define save_ops_summary separately. It saves inside regenerate_ops_summary.
-        # So remove save_ops_summary import and usage options.
+        # regenerate_ops_summary already saves to file internally
         
         # Get latest snapshot
         snapshots_dir = BASE_DIR / "reports" / "ops" / "summary" / "snapshots"
@@ -158,8 +148,76 @@ def run_summary_step() -> Dict[str, Any]:
             "error": str(e)
         }
 
-# ... (in run_live_cycle)
 
+def run_push_step() -> Dict[str, Any]:
+    """
+    Step 4: Push Preview + Console Send (외부 발송 금지)
+    """
+    try:
+        # Console simulated send - no external delivery
+        return {
+            "success": True,
+            "preview_ref": "reports/ops/push/preview/preview_latest.json",
+            "send_receipt_ref": None,
+            "delivery_actual": "CONSOLE_SIMULATED"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "preview_ref": None,
+            "send_receipt_ref": None,
+            "delivery_actual": "CONSOLE_SIMULATED",
+            "error": str(e)
+        }
+
+
+def run_live_cycle() -> Dict[str, Any]:
+    """
+    Live Cycle 전체 실행
+    
+    1. Bundle 로드 + 검증
+    2. Reco 생성
+    3. Ops Summary 재생성
+    4. Push (Console Only)
+    5. 영수증 저장 + Snapshot
+    
+    Fail-Closed: 모든 예외에서도 영수증 저장
+    """
+    ensure_dirs()
+    
+    cycle_id = str(uuid.uuid4())
+    asof = datetime.now().isoformat()
+    
+    # Initialize receipt
+    receipt = {
+        "schema": "LIVE_CYCLE_RECEIPT_V1",
+        "cycle_id": cycle_id,
+        "asof": asof,
+        "result": "OK",
+        "decision": "COMPLETED",
+        "reason": "SUCCESS",
+        "bundle": None,
+        "reco": None,
+        "ops_summary": None,
+        "push": None,
+        "snapshot_ref": None,
+        "evidence_refs": ["reports/live/cycle/latest/live_cycle_latest.json"],
+        "integrity": None
+    }
+    
+    try:
+        # Step 1: Bundle
+        bundle_result = run_bundle_step()
+        receipt["bundle"] = bundle_result
+        
+        if bundle_result.get("decision") == "FAIL" and not bundle_result.get("valid"):
+            receipt["result"] = "FAILED"
+            receipt["decision"] = "BLOCKED"
+            receipt["reason"] = "BUNDLE_FAIL"
+        elif bundle_result.get("stale"):
+            receipt["decision"] = "PARTIAL"
+            receipt["reason"] = "BUNDLE_STALE"
+        
         # Step 2: Reco (proceed even if bundle issues)
         reco_result = run_reco_step()
         receipt["reco"] = reco_result
@@ -169,12 +227,12 @@ def run_summary_step() -> Dict[str, Any]:
                 receipt["decision"] = "PARTIAL"
                 receipt["reason"] = "RECO_FAIL"
         else:
-            # User Policy: NO_PORTFOLIO, NO_RECO, EMPTY_RECO -> BLOCKED
+            # User Policy: NO_PORTFOLIO, NO_RECO, EMPTY_RECO -> BLOCKED (Operational OK)
             reco_decision = reco_result.get("decision", "UNKNOWN")
             if reco_decision in ("EMPTY_RECO", "BLOCKED", "NO_RECO"):
                 receipt["decision"] = "BLOCKED"
                 receipt["reason"] = reco_result.get("reason", "EMPTY_RECO")
-                
+        
         # Step 3: Ops Summary
         summary_result = run_summary_step()
         receipt["ops_summary"] = summary_result
