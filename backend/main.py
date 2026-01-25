@@ -3491,6 +3491,74 @@ async def get_order_plan_latest_api():
         "row_count": 1
     }
 
+# ============================================================================
+# Watchlist API (D-P.61)
+# ============================================================================
+
+class WatchlistItem(BaseModel):
+    ticker: str
+    name: str = ""
+    enabled: bool = True
+
+class WatchlistUpsertRequest(BaseModel):
+    items: List[WatchlistItem]
+
+@app.post("/api/watchlist/upsert")
+async def upsert_watchlist_api(
+    payload: WatchlistUpsertRequest,
+    confirm: bool = Query(False)
+):
+    """Watchlist 저장 (PC UI)"""
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
+    try:
+        from app.generate_watchlist import upsert_watchlist
+        items_dicts = [i.dict() for i in payload.items]
+        return upsert_watchlist(items_dicts)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+@app.get("/api/watchlist/latest")
+async def get_watchlist_latest_api():
+    """Watchlist 최신 조회"""
+    from app.generate_watchlist import load_watchlist
+    data = load_watchlist()
+    if not data:
+        return {"result": "NOT_FOUND"}
+    return {"result": "OK", "data": data}
+
+
+# ============================================================================
+# Spike Push API (D-P.61)
+# ============================================================================
+
+@app.post("/api/push/spike/run")
+async def run_spike_push_api(confirm: bool = Query(False)):
+    """Spike Push 실행 (OCI Cron)"""
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
+    try:
+        from app.run_spike_push import run_spike_push
+        return run_spike_push()
+    except Exception as e:
+        logger.error(f"Spike run failed: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+@app.get("/api/push/spike/latest")
+async def get_spike_latest_api():
+    """Spike Push 최신 조회"""
+    from pathlib import Path
+    import json
+    path = Path("reports/ops/push/spike/latest/spike_latest.json")
+    if not path.exists():
+        return {"result": "NOT_FOUND"}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {"result": "ERROR", "reason": str(e)}
+
 
 if __name__ == "__main__":
     import uvicorn

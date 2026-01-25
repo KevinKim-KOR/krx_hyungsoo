@@ -1,0 +1,8 @@
+{
+  "schema": "SPIKE_PUSH_RECEIPT_V1",
+  "asof": "2026-01-25T22:42:18.810567",
+  "alerts_count": 0,
+  "sent_count": 0,
+  "skipped_count": 0,
+  "alerts": []
+}

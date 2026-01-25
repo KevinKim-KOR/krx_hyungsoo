@@ -1,0 +1,16 @@
+{
+  "schema": "WATCHLIST_V1",
+  "updated_at": "2026-01-25T22:41:16.183392",
+  "updated_by": "pc_ui",
+  "items": [
+    {
+      "ticker": "069500",
+      "name": "KODEX 200",
+      "enabled": true
+    }
+  ],
+  "item_count": 1,
+  "integrity": {
+    "payload_sha256": "c9cdfe237e3d70e334956b65876efe47f9e4adaec3cd7faff935a0772360c49a"
+  }
+}

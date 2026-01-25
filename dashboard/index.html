@@ -2054,6 +2054,129 @@
             );
         }
 
+        // Watchlist Card (D-P.61)
+        function WatchlistCard() {
+            const [items, setItems] = useState([]);
+            const [newItem, setNewItem] = useState({ ticker: "", name: "" });
+            const [loading, setLoading] = useState(false);
+            const [status, setStatus] = useState(null);
+
+            useEffect(() => {
+                fetchWatchlist();
+            }, []);
+
+            const fetchWatchlist = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/watchlist/latest`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.data && json.data.items) {
+                            setItems(json.data.items);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Watchlist fetch error:", e);
+                }
+            };
+
+            const handleSave = async () => {
+                if (!confirm("Watchlist를 저장하시겠습니까? (PC -> Git Push 필요)")) return;
+
+                setLoading(true);
+                setStatus(null);
+                try {
+                    const res = await fetch(`${API_BASE}/api/watchlist/upsert?confirm=true`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ items })
+                    });
+                    const json = await res.json();
+                    if (res.ok) {
+                        setStatus({ type: "success", msg: "저장되었습니다." });
+                    } else {
+                        setStatus({ type: "error", msg: json.detail?.reason || "저장 실패" });
+                    }
+                } catch (e) {
+                    setStatus({ type: "error", msg: e.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const addItem = () => {
+                if (!newItem.ticker) return;
+                setItems([...items, { ...newItem, enabled: true }]);
+                setNewItem({ ticker: "", name: "" });
+            };
+
+            const removeItem = (idx) => {
+                const next = [...items];
+                next.splice(idx, 1);
+                setItems(next);
+            };
+
+            const toggleItem = (idx) => {
+                const next = [...items];
+                next[idx].enabled = !next[idx].enabled;
+                setItems(next);
+            };
+
+            return (
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center justify-between">
+                        <span>📋 Watchlist Management</span>
+                        <div className="flex gap-2">
+                            <button onClick={fetchWatchlist} className="px-3 py-1 text-xs bg-slate-700 rounded hover:bg-slate-600">Reload</button>
+                            <button onClick={handleSave} disabled={loading} className="px-3 py-1 text-xs bg-blue-600 rounded hover:bg-blue-500 font-bold text-white">
+                                {loading ? "Saving..." : "Save Watchlist"}
+                            </button>
+                        </div>
+                    </h3>
+
+                    {status && (
+                        <div className={`mb-4 p-2 rounded text-sm ${status.type === 'success' ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
+                            {status.msg}
+                        </div>
+                    )}
+
+                    <div className="mb-4 flex gap-2">
+                        <input
+                            type="text" placeholder="Ticker (e.g. 069500)"
+                            className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white flex-1"
+                            value={newItem.ticker}
+                            onChange={e => setNewItem({ ...newItem, ticker: e.target.value })}
+                        />
+                        <input
+                            type="text" placeholder="Name (e.g. KODEX 200)"
+                            className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white flex-1"
+                            value={newItem.name}
+                            onChange={e => setNewItem({ ...newItem, name: e.target.value })}
+                        />
+                        <button onClick={addItem} className="px-4 bg-slate-700 rounded hover:bg-slate-600 font-bold">+</button>
+                    </div>
+
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                        {items.length === 0 && <div className="text-slate-500 text-center py-4">목록이 비었습니다.</div>}
+                        {items.map((item, idx) => (
+                            <div key={idx} className={`flex items-center justify-between p-3 rounded border ${item.enabled ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-900/30 border-slate-800 opacity-50'}`}>
+                                <div className="flex items-center gap-3">
+                                    <input type="checkbox" checked={item.enabled} onChange={() => toggleItem(idx)} className="cursor-pointer" />
+                                    <span className="font-mono font-bold text-cyan-400">{item.ticker}</span>
+                                    <span className="text-white">{item.name}</span>
+                                </div>
+                                <button onClick={() => removeItem(idx)} className="text-red-400 hover:text-red-300 text-sm">Remove</button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-4 text-xs text-slate-500">
+                        * 변경 후 반드시 [Save Watchlist]를 눌러야 파일에 반영됩니다.<br />
+                        * PC 자동화가 실행되면 Git Push되어 OCI에 반영됩니다.
+                    </div>
+                </div>
+            )
+        }
+
         function App() {
             const [status, setStatus] = useState(null);
             const [portfolio, setPortfolio] = useState(null);
@@ -2090,14 +2213,6 @@
                         });
                     }
                 }
-
-                // IC1: Diagnosis Validation Mismatch (LEGACY PAUSED)
-                // Note: Human Report is aggregate, need new logic for yearly mismatch if required.
-                /*
-                ['2024', '2025'].forEach(y => {
-                        // ... legacy logic removed for stability
-                    });
-                    */
 
                 if (gatekeeperData && gatekeeperData.integrity) {
                     // IC2: Gatekeeper Baseline Mismatch
@@ -2263,7 +2378,7 @@
 
                         {/* Tab Nav */}
                         <div className="flex gap-1 bg-slate-800 p-1 rounded-lg mb-8 mx-auto max-w-4xl overflow-x-auto">
-                            {['dashboard', 'portfolio', 'order plan', 'signals', 'reco', 'validation', 'diagnosis', 'gatekeeper', 'tickets', 'logs'].map(tab => (
+                            {['dashboard', 'portfolio', 'order plan', 'watchlist', 'signals', 'reco', 'validation', 'diagnosis', 'gatekeeper', 'tickets', 'logs'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -2281,6 +2396,9 @@
                             )}
                             {activeTab === 'order plan' && (
                                 <OrderPlanView data={orderPlan} onRegenerate={fetchData} />
+                            )}
+                            {activeTab === 'watchlist' && (
+                                <WatchlistCard />
                             )}
                             {activeTab === 'dashboard' && (
                                 <div className="space-y-8">
