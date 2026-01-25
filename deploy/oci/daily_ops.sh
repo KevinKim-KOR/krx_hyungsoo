@@ -17,6 +17,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BASE_URL="${KRX_API_URL:-http://127.0.0.1:8000}"
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"
 SECRETS_FILE="$REPO_DIR/state/secrets/telegram.env"
+EXIT_CODE=0
 
 cd "$REPO_DIR"
 
@@ -179,11 +180,18 @@ CYCLE_SNAPSHOT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_SNAPSHOT:" | cut -d: -f2-)
 
 echo "$LOG_PREFIX ✓ Live Cycle: result=$CYCLE_RESULT decision=$CYCLE_DECISION delivery=$CYCLE_DELIVERY"
 
+# Check result
+if [ "$CYCLE_RESULT" = "FAILED" ]; then
+    echo "$LOG_PREFIX ❌ Live Cycle FAILED: $CYCLE_REASON"
+    send_incident "LIVE_FAILED" "Step4" "$CYCLE_REASON"
+    exit 3
+fi
+
 # Check if BLOCKED
 if [ "$CYCLE_DECISION" = "BLOCKED" ]; then
-    echo "$LOG_PREFIX ⚠️ Live Cycle BLOCKED: $CYCLE_REASON - 정상 차단"
-    send_incident "LIVE_BLOCKED" "Step4" "$CYCLE_REASON"
-    exit 2
+    echo "$LOG_PREFIX ⚠️ Live Cycle BLOCKED: $CYCLE_REASON (Continuing to push)"
+    # Don't exit here, just set flag to return 2 at the end
+    EXIT_CODE=2
 fi
 
 # ============================================================================
@@ -261,5 +269,5 @@ echo "$LOG_PREFIX  Ops: $OPS_STATUS | Cycle: $CYCLE_RESULT $CYCLE_DECISION"
 echo "$LOG_PREFIX  Delivery: $CYCLE_DELIVERY | Snapshot: $SNAPSHOT_OK"
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 
-echo "$LOG_PREFIX ✅ All checks passed"
-exit 0
+echo "$LOG_PREFIX ✅ All checks passed (Exit Code: $EXIT_CODE)"
+exit $EXIT_CODE
