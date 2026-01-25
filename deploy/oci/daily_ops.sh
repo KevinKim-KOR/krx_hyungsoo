@@ -268,5 +268,11 @@ echo "$LOG_PREFIX  Ops: $OPS_STATUS | Cycle: $CYCLE_RESULT $CYCLE_DECISION"
 echo "$LOG_PREFIX  Delivery: $CYCLE_DELIVERY | Snapshot: $SNAPSHOT_OK"
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 
-echo "$LOG_PREFIX ✅ All checks passed (Exit Code: $EXIT_CODE)"
+if [ "$EXIT_CODE" -eq 0 ]; then
+    echo "$LOG_PREFIX ✅ All checks passed"
+elif [ "$EXIT_CODE" -eq 2 ]; then
+    echo "$LOG_PREFIX ⚠️ Ops Completed with Warnings (BLOCKED)"
+else
+    echo "$LOG_PREFIX ❌ Ops Failed (Exit Code: $EXIT_CODE)"
+fi
 exit $EXIT_CODE

@@ -215,7 +215,7 @@ def run_live_cycle() -> Dict[str, Any]:
             receipt["decision"] = "BLOCKED"
             receipt["reason"] = "BUNDLE_FAIL"
         elif bundle_result.get("stale"):
-            receipt["decision"] = "PARTIAL"
+            receipt["decision"] = "BLOCKED"
             receipt["reason"] = "BUNDLE_STALE"
         
         # Step 2: Reco (proceed even if bundle issues)
