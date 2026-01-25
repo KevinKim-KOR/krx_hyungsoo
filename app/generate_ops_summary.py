@@ -1,14 +1,16 @@
 """
-Ops Summary Generator (C-P.35 + D-P.58)
+Ops Summary Generator (C-P.35 + D-P.58 + D-P.59)
 
 Single Pane of Glass: 분산된 최신 산출물을 통합 요약
 - 읽기/요약만 허용, 비즈니스 로직 실행 금지
 - Atomic Write 필수
 - D-P.58: Portfolio, Order Plan status & risk included
+- D-P.59: Portfolio Stale Risk (7 days inactive)
 """
 
 import json
 import os
+import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -45,6 +47,10 @@ TICKET_FAIL_EXCLUDE_PREFIXES = os.environ.get(
     "OPS_TICKET_FAIL_EXCLUDE_PREFIXES", 
     "AUTO_CLEANUP_,MANUAL_CLEANUP,REAPER_"
 ).split(",")
+
+# Risk Configuration (D-P.59)
+PORTFOLIO_STALE_DAYS = int(os.environ.get("PORTFOLIO_STALE_DAYS", "7"))
+
 
 # Forbidden prefixes to strip
 FORBIDDEN_PREFIXES = ["json:", "file://", "file:", "http://", "https://"]
@@ -101,17 +107,6 @@ def get_latest_ops_run() -> Optional[Dict]:
 
 def get_tickets_summary() -> Dict[str, int]:
     """티켓 상태별 카운트 (전체)"""
-    # ... (simplified for overwriting)
-    # Actually, reusing existing logic is better, but I'll implement minimally correct version
-    # Since I'm overwriting, I should copy the existing logic or use imports if possible.
-    # But generate_ops_summary is a script, not a module usually imported.
-    # I will replicate the risk window logic carefully.
-    
-    # Just counting lines for now as placeholder for full logic?
-    # No, I should implement the full logic or use replacement.
-    # Since I am rewriting the file, I must provide full implementation.
-    
-    # Use simple counts for overall
     stats = {"open": 0, "in_progress": 0, "done": 0, "failed": 0, "blocked": 0}
     if TICKET_RESULTS.exists():
         with open(TICKET_RESULTS, 'r', encoding='utf-8') as f:
@@ -122,13 +117,6 @@ def get_tickets_summary() -> Dict[str, int]:
                     if status in stats:
                         stats[status] += 1
                 except: pass
-    
-    # Calculate open = total requests - (done + failed + blocked)?
-    # Or just scan results. Results only have terminal states? No.
-    # To be precise, ticket integration logic is complex.
-    # I will approximate "tickets" field as per previous implementation logic if I can recall it.
-    # Actually, previous implementation used `get_tickets_summary` and `get_tickets_recent`.
-    # I'll rely on reading `ticket_results.jsonl` for status counts.
     return stats
 
 
@@ -165,8 +153,6 @@ def get_tickets_recent() -> Dict[str, Any]:
                 
                 # Simple ISO parsing (minimal)
                 dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                # Naive compare if timezone info missing, but usually it has it or not.
-                # Assuming local or consistent.
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=now.tzinfo)
                 
@@ -328,7 +314,7 @@ def generate_ops_summary():
             "evidence_refs": tickets_recent["failed_line_refs"]
         })
         
-    # 4. Portfolio (D-P.58)
+    # 4. Portfolio (D-P.59 Stale Check)
     if not portfolio:
         top_risks.append({
             "code": "NO_PORTFOLIO",
@@ -338,6 +324,28 @@ def generate_ops_summary():
         })
         if overall_status == "OK":
             overall_status = "WARN"
+    else:
+        # Check staleness
+        updated_at_str = portfolio.get("updated_at", "")
+        if updated_at_str:
+            try:
+                # Handle possible milliseconds
+                updated_dt = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                # Naively assume local time if no tz, or match now.tz
+                if updated_dt.tzinfo is None:
+                    updated_dt = updated_dt.replace(tzinfo=now.tzinfo)
+                
+                days_diff = (now - updated_dt).days
+                if days_diff >= PORTFOLIO_STALE_DAYS:
+                    top_risks.append({
+                        "code": "PORTFOLIO_STALE_WARN",
+                        "severity": "WARN",
+                        "message": f"Portfolio not updated for {days_diff} days (Limit: {PORTFOLIO_STALE_DAYS})",
+                        "evidence_refs": ["state/portfolio/latest/portfolio_latest.json"]
+                    })
+                    # Optional: downgrade status? No, user said warn.
+            except Exception:
+                pass # Parse error ignore
 
     # 5. Order Plan (D-P.58)
     if order_plan and order_plan.get("decision") == "BLOCKED":

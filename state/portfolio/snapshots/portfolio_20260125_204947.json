@@ -1,0 +1,18 @@
+{
+  "schema": "PORTFOLIO_SNAPSHOT_V1",
+  "asof": "2026-01-25T20:49:47.412444",
+  "portfolio_id": "f54b359c-1ac6-400c-9663-2666bc14b4ae",
+  "cash": 10000000.0,
+  "holdings": [],
+  "total_value": 10000000.0,
+  "cash_ratio_pct": 100.0,
+  "updated_at": "2026-01-25T20:49:47.412444",
+  "updated_by": "ui",
+  "snapshot_ref": "state/portfolio/snapshots/portfolio_20260125_204947.json",
+  "evidence_refs": [
+    "state/portfolio/latest/portfolio_latest.json"
+  ],
+  "integrity": {
+    "payload_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+}

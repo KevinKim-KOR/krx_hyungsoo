@@ -78,7 +78,7 @@ echo "$LOG_PREFIX ════════════════════�
 # Step 1: Repo Update
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [1/6] Updating repository..."
+echo "$LOG_PREFIX [1/7] Updating repository..."
 if ! git pull origin archive-rebuild --quiet 2>/dev/null; then
     echo "$LOG_PREFIX ⚠️ git pull failed (will continue with current code)"
 fi
@@ -88,7 +88,7 @@ echo "$LOG_PREFIX ✓ Repository updated"
 # Step 2: Backend Health Check (+ fallback on failure)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [2/6] Checking backend health..."
+echo "$LOG_PREFIX [2/7] Checking backend health..."
 HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/ops/health" 2>/dev/null || echo "000")
 
 if [ "$HEALTH_STATUS" != "200" ]; then
@@ -110,7 +110,7 @@ echo "$LOG_PREFIX ✓ Backend healthy (HTTP 200)"
 # Step 3: Ops Summary Regenerate (minimal verification)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [3/6] Regenerating Ops Summary..."
+echo "$LOG_PREFIX [3/7] Regenerating Ops Summary..."
 REGEN_RESP=$(curl -s -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true")
 
 if ! echo "$REGEN_RESP" | grep -q '"result":"OK"'; then
@@ -135,7 +135,7 @@ fi
 # Step 4: Live Cycle Run
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [4/6] Running Live Cycle..."
+echo "$LOG_PREFIX [4/7] Running Live Cycle..."
 CYCLE_RESP=$(curl -s -X POST "${BASE_URL}/api/live/cycle/run?confirm=true")
 if [ -z "$CYCLE_RESP" ]; then
     echo "$LOG_PREFIX ❌ Live Cycle run failed"
@@ -187,10 +187,34 @@ if [ "$CYCLE_DECISION" = "BLOCKED" ]; then
 fi
 
 # ============================================================================
-# Step 5: Snapshot Verification
+# Step 5: Order Plan Regenerate (D-P.58)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [5/6] Verifying snapshot..."
+echo "$LOG_PREFIX [5/7] Regenerating Order Plan..."
+ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true")
+
+if echo "$ORDER_RESP" | grep -q '"decision"'; then
+    ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+    ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
+    
+    echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
+    
+    if [ "$ORDER_DECISION" = "BLOCKED" ]; then
+        # Order Plan BLOCKED is not fatal, just warning (e.g. no portfolio)
+        echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
+        # We don't exit here, just log it. Stale risk is handled in Ops Summary.
+    fi
+else
+    echo "$LOG_PREFIX ❌ Order Plan regen failed: $ORDER_RESP"
+    send_incident "ORDER_PLAN_FAILED" "Step5" "Order plan API failed"
+    exit 3
+fi
+
+# ============================================================================
+# Step 6: Snapshot Verification
+# ============================================================================
+echo ""
+echo "$LOG_PREFIX [6/7] Verifying snapshot..."
 SNAPSHOT_OK="N/A"
 
 if [ -n "$CYCLE_SNAPSHOT" ]; then
@@ -208,7 +232,7 @@ echo "$LOG_PREFIX ✓ Snapshot verification: $SNAPSHOT_OK"
 # Step 6: Daily Status Push (D-P.55 + D-P.57 enhanced)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [6/6] Sending Daily Status Push (with reco details)..."
+echo "$LOG_PREFIX [7/7] Sending Daily Status Push (with reco details)..."
 
 PUSH_RESP=$(curl -s -X POST "${BASE_URL}/api/push/daily_status/send?confirm=true")
 
