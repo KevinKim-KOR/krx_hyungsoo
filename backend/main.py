@@ -3589,6 +3589,32 @@ async def get_spike_settings_latest_api():
     return {"result": "OK", "data": data}
 
 
+# ============================================================================
+# Watchlist Candidates API (D-P.63)
+# ============================================================================
+
+@app.post("/api/watchlist_candidates/regenerate")
+async def regenerate_candidates_api(confirm: bool = Query(False)):
+    """후보 리스트 생성 (Backtest/Reco 기반)"""
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
+    try:
+        from app.generate_watchlist_candidates import generate_candidates
+        return generate_candidates(confirm=True)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"result": "FAILED", "reason": str(e)})
+
+@app.get("/api/watchlist_candidates/latest")
+async def get_candidates_latest_api():
+    """후보 리스트 조회"""
+    from app.generate_watchlist_candidates import get_latest_candidates
+    data = get_latest_candidates()
+    if not data:
+        return {"result": "NOT_FOUND"}
+    return {"result": "OK", "data": data}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

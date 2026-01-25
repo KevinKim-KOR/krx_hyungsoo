@@ -1,0 +1,35 @@
+{
+  "schema": "WATCHLIST_CANDIDATES_V1",
+  "generated_at": "2026-01-25T23:11:56.793099",
+  "source_backtest": "backtest_result.json",
+  "source_reco": null,
+  "count": 2,
+  "candidates": [
+    {
+      "id": "c_0",
+      "ticker": "000660",
+      "name": "Unknown",
+      "source": "BACKTEST",
+      "score": 88,
+      "metrics": {
+        "cagr": 0.18,
+        "mdd": -0.12,
+        "win_rate": 0.55
+      },
+      "generated_at": "2026-01-25T23:11:56.793099"
+    },
+    {
+      "id": "c_1",
+      "ticker": "005930",
+      "name": "Unknown",
+      "source": "BACKTEST",
+      "score": 95,
+      "metrics": {
+        "cagr": 0.2,
+        "mdd": -0.1,
+        "win_rate": 0.6
+      },
+      "generated_at": "2026-01-25T23:11:56.793099"
+    }
+  ]
+}

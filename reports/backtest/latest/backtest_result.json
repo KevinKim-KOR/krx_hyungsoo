@@ -1,0 +1,36 @@
+{
+    "summary": {
+        "cagr": 0.25,
+        "mdd": -0.15
+    },
+    "tickers": {
+        "005930": {
+            "score": 95,
+            "cagr": 0.20,
+            "mdd": -0.10,
+            "win_rate": 0.6
+        },
+        "000660": {
+            "score": 88,
+            "cagr": 0.18,
+            "mdd": -0.12,
+            "win_rate": 0.55
+        },
+        "035420": {
+            "score": 82,
+            "cagr": 0.15,
+            "mdd": -0.20,
+            "win_rate": 0.5
+        }
+    },
+    "top_performers": [
+        {
+            "ticker": "005930",
+            "cagr": 0.20
+        },
+        {
+            "ticker": "000660",
+            "cagr": 0.18
+        }
+    ]
+}
