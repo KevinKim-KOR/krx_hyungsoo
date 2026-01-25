@@ -1,18 +1,32 @@
 """
-Market Data Provider (D-P.64)
+Market Data Provider (D-P.65)
 
 Provides Realtime Market Data via Naver Finance (Poller).
-Values: Price, Change%, Volume, Value, NAV Deviation (for ETF).
+Features:
+- File-based Caching (TTL 60s) to prevent naive rate limiting issues.
+- Batch fetching support.
+- Fail-safe (returns partial data on error).
 """
 import requests
 import json
 import random
+import os
+import time
 from typing import Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 
 # Naver Polling URL (Reverse Engineered commonly used endpoint)
 # mobile.financial.naver.com structure is often stable
 NAVER_POLLING_URL = "https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:{ticker}"
+
+# Paths
+BASE_DIR = Path(__file__).parent.parent.parent
+CACHE_DIR = BASE_DIR / "state" / "cache"
+CACHE_FILE = CACHE_DIR / "market_data_cache.json"
+
+# Config
+CACHE_TTL_SECONDS = 60
 
 class MarketDataProvider:
     def __init__(self, provider_type: str = "naver"):
@@ -21,74 +35,106 @@ class MarketDataProvider:
         self.session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
         })
+        self._ensure_cache_dir()
 
-    def fetch_realtime(self, tikcers: List[str]) -> Dict[str, Dict]:
-        """
-        Fetch realtime data for multiple tickers.
-        Returns: { "005930": { "price": 60000, "change_pct": 1.5, ... }, ... }
-        """
-        if self.provider_type == "mock":
-            return self._fetch_mock(tikcers)
-        
-        # Naver Implementation
-        results = {}
-        # Batching not easily supported in single polling query param structure for standard polling api?
-        # Actually polling api supports multiple: SERVICE_ITEM:005930,SERVICE_ITEM:000660
-        query_list = [f"SERVICE_ITEM:{t}" for t in tikcers]
-        query_str = ",".join(query_list)
-        
-        try:
-            url = f"https://polling.finance.naver.com/api/realtime?query={query_str}"
-            res = self.session.get(url, timeout=5)
-            if res.ok:
-                data = res.json()
-                if "result" in data and "areas" in data["result"]:
-                    for area in data["result"]["areas"]:
-                        for item in area.get("datas", []):
-                            # Parsing Naver JSON
-                            # Structure: { "cd": "005930", "nm": "삼성전자", "nv": 60000, "cr": 1.5, "cv": 900, "aq": 123456 (vol), "aa": 789000 (val) ... }
-                            # nv: now value, cr: change rate, aq: volume, aa: amount (value)
-                            ticker = item.get("cd")
-                            if ticker:
-                                results[ticker] = {
-                                    "provider": "naver",
-                                    "price": item.get("nv"), # Current Price
-                                    "change_pct": item.get("cr"), # Change Rate (Include sign)
-                                    "change_val": item.get("cv"), # Change Value
-                                    "volume": item.get("aq"), # Volume
-                                    "value_krw": (item.get("aa") or 0) * 1000000, # Naver often returns Million KRW unit for 'aa'? Check. usually 'aa' is trade amount in million or raw?
-                                    # Actually 'aa' in polling is usually accumulated trade value in million won.
-                                    # Let's assume million won for safety or verify.
-                                    "nav": item.get("nav"), # NAV (if ETF)
-                                    # nav diff?
-                                    "name": item.get("nm")
-                                }
-                                # Naver 'cr' is usually unsigned in some APIs, check 'rf' (rise/fall). 
-                                # But polling api usually gives signed 'cr' or logic needed.
-                                # Let's assume standard behavior: we might need to apply sign based on 'cv' diff.
-                                # Actually polling api: cr is usually percentage absolute. cv is absolute change.
-                                # nv (price), sv (start), hv (high), lv (low)
-                                # Let's look at 'cv' (Change Value). If nv > prev_close, up.
-                                # But we can calculate: prev_close = nv - cv (if up) or nv + cv (if down).
-                                # Simplest: Use signed calculated from nv - (nv / (1+cr/100))? No.
-                                # Let's rely on 'nv' and standard calculation if 'cr' is ambiguous.
-                                # But actually 'cr' might be just rate. 'cv' has sign? No, usually absolute.
-                                # Wait, user wants practical. I will trust 'nv' and calculate daily change if possible, 
-                                # Or just use Mock for absolute safety if I can't confirm API structure 100% now.
-                                # User said "1st: Naver". I will try. 
-                                # If naive parsing fails, fallback to Mock.
-            
-            # If empty or partial, fill missing with Mock if fallback enabled? 
-            # Or just return what we have.
-            return results
+    def _ensure_cache_dir(self):
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-        except Exception as e:
-            print(f"[MarketData] Error: {e}")
+    def _load_cache(self) -> Dict:
+        if not CACHE_FILE.exists():
             return {}
+        try:
+            return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+        except:
+            return {}
+
+    def _save_cache(self, data: Dict):
+        try:
+            CACHE_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:
+            print(f"[MarketData] Cache save failed: {e}")
+
+    def fetch_realtime(self, tickers: List[str]) -> Dict[str, Dict]:
+        """
+        Fetch realtime data with caching.
+        """
+        if not tickers:
+            return {}
+            
+        if self.provider_type == "mock":
+            return self._fetch_mock(tickers)
+            
+        # 1. Load Cache
+        cache = self._load_cache()
+        now_ts = time.time()
+        
+        results = {}
+        to_fetch = []
+        
+        # 2. Check Cache
+        for t in tickers:
+            cached_item = cache.get(t)
+            if cached_item and (now_ts - cached_item.get("_ts", 0) < CACHE_TTL_SECONDS):
+                results[t] = cached_item["data"]
+            else:
+                to_fetch.append(t)
+                
+        # 3. Fetch Misses
+        if to_fetch:
+            print(f"[MarketData] Fetching {len(to_fetch)} items from {self.provider_type}...")
+            fetched = self._fetch_naver_batch(to_fetch)
+            
+            # Update Cache
+            for t, data in fetched.items():
+                results[t] = data
+                cache[t] = {
+                    "_ts": now_ts,
+                    "data": data
+                }
+            
+            # Save Cache (even if partial)
+            self._save_cache(cache)
+            
+        return results
+
+    def _fetch_naver_batch(self, tickers: List[str]) -> Dict[str, Dict]:
+        results = {}
+        # Chunking if too many (Naver might limit query length)
+        # Let's chunk by 20
+        chunk_size = 20
+        for i in range(0, len(tickers), chunk_size):
+            chunk = tickers[i:i+chunk_size]
+            query_str = ",".join([f"SERVICE_ITEM:{t}" for t in chunk])
+            try:
+                url = f"https://polling.finance.naver.com/api/realtime?query={query_str}"
+                res = self.session.get(url, timeout=5)
+                if res.ok:
+                    data = res.json()
+                    if "result" in data and "areas" in data["result"]:
+                        for area in data["result"]["areas"]:
+                            for item in area.get("datas", []):
+                                t_code = item.get("cd")
+                                if t_code:
+                                    results[t_code] = {
+                                        "provider": "naver",
+                                        "price": item.get("nv"), 
+                                        "change_pct": item.get("cr"), 
+                                        "change_val": item.get("cv"),
+                                        "volume": item.get("aq"),
+                                        "value_krw": (item.get("aa") or 0) * 1000000,
+                                        "nav": item.get("nav"), 
+                                        "name": item.get("nm")
+                                    }
+            except Exception as e:
+                print(f"[MarketData] Batch fetch error: {e}")
+                # Partial failure is acceptable, we just don't return data for those.
+                
+        return results
 
     def _fetch_mock(self, tickers: List[str]) -> Dict[str, Dict]:
         results = {}
         for t in tickers:
+            # Mock fluctuation
             change = random.uniform(-4.0, 4.0)
             price = 10000 * (1 + change/100)
             results[t] = {
@@ -97,6 +143,7 @@ class MarketDataProvider:
                 "change_pct": round(change, 2),
                 "volume": random.randint(1000, 100000),
                 "value_krw": random.randint(100, 10000) * 1000000,
-                "nav": int(price * (1 + random.uniform(-0.01, 0.01))) if "069500" in t else None
+                "nav": int(price * (1 + random.uniform(-0.01, 0.01))) if "069500" in t else None,
+                "name": f"Mock_{t}"
             }
         return results

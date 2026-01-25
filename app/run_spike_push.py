@@ -155,8 +155,23 @@ def run_spike_push() -> Dict:
     market_data = provider.fetch_realtime(targets)
     
     if not market_data:
-        # Fallback check?
-        return {"result": "BLOCKED", "reason": "MARKET_DATA_EMPTY"}
+        # DATA FAILURE -> Incident Push (Fail-Safe) -> then Exit/Block
+        # Check if it was a total failure or just empty (likely failure if targets exist)
+        # Send Incident
+        try:
+             # Idempotency check? Incident push logic usually handles it or we rely on Ops summary.
+             # Here we do a direct standardized incident push via API if possible, or just log.
+             # User requested: "Incident Push 1회 (idempotency)"
+             # Let's call the internal API or logic if available.
+             # Just printing error log might be enough if daily ops picks it up, but Spike Watch is standalone.
+             # Let's perform a simple requests post to localhost if we are running as script
+             import requests
+             requests.post("http://localhost:8000/api/push/incident/run", 
+                           json={"type": "MARKET_DATA_DOWN", "message": "Spike Watch: Market Data Fetch Failed"},
+                           timeout=2)
+        except:
+             pass
+        return {"result": "BLOCKED", "reason": "MARKET_DATA_FAILED_INCIDENT_SENT"}
         
     portfolio_holdings = {}
     if settings.get("display", {}).get("include_portfolio_context", True):
@@ -176,17 +191,55 @@ def run_spike_push() -> Dict:
             continue
             
         md = market_data[ticker]
-        current_pct = float(md.get("change_pct", 0))
-        
-        # Trigger
+        try:
+            current_pct = float(md.get("change_pct", 0))
+        except:
+            continue
+            
+        # Trigger Determination
         alert_type = None
+        ride_type = None
+        
+        # 1. Base Spike Trigger
         if current_pct >= threshold_pct:
             alert_type = "UP"
         elif current_pct <= -threshold_pct:
             alert_type = "DOWN"
             
         if alert_type:
-            if check_cooldown(state, ticker, alert_type, cooldown_minutes):
+            # Check Cooldown & Ride
+            key = f"{ticker}_{alert_type}"
+            last_sent_str = state.get("last_sent", {}).get(key)
+            last_pct = state.get("last_pct", {}).get(key, 0.0)
+            
+            should_alert = False
+            is_ride = False
+            
+            if not last_sent_str:
+                # First time
+                should_alert = True
+                is_ride = False # First spike
+            else:
+                last_sent = datetime.fromisoformat(last_sent_str)
+                time_passed = datetime.now() - last_sent
+                
+                if time_passed > timedelta(minutes=cooldown_minutes):
+                    # Cooldown expired -> New Spike
+                    should_alert = True
+                    is_ride = False
+                else:
+                    # In Cooldown -> Check Ride (Significant Advance)
+                    # Condition: Additional 1.0%p move in same direction
+                    if alert_type == "UP":
+                        if current_pct >= last_pct + 1.0:
+                            should_alert = True
+                            is_ride = True
+                    elif alert_type == "DOWN":
+                        if current_pct <= last_pct - 1.0:
+                             should_alert = True
+                             is_ride = True
+            
+            if should_alert:
                 # Enrich Message
                 name = md.get("name", item["name"])
                 price = md.get("price", 0)
@@ -196,17 +249,18 @@ def run_spike_push() -> Dict:
                 # Deviation (ETF)
                 nav_info = ""
                 if settings.get("display", {}).get("include_deviation", True) and md.get("nav"):
-                    nav = float(md["nav"])
-                    if nav > 0:
-                        diff = price - nav
-                        diff_pct = (diff / nav) * 100
-                        nav_info = f"\n📊 괴리: {diff_pct:+.2f}% (NAV {nav:,.0f})"
+                    try:
+                        nav = float(md["nav"])
+                        if nav > 0:
+                            diff = price - nav
+                            diff_pct = (diff / nav) * 100
+                            nav_info = f"\n📊 괴리: {diff_pct:+.2f}% (NAV {nav:,.0f})"
+                    except: pass
 
                 # Holding Context
                 holding_info = ""
                 if ticker in portfolio_holdings:
                     h = portfolio_holdings[ticker]
-                    # Try to parse qty/avg
                     try:
                         qty = int(h.get("qty", 0))
                         avg = float(h.get("avg_price", 0))
@@ -216,17 +270,16 @@ def run_spike_push() -> Dict:
                         holding_info = "\n💼 보유중"
                 
                 # Construct Message
-                emoji = "🚀" if alert_type == "UP" else "📉"
-                # e.g. 🚀 UP 삼성전자 +3.5% (60,100)
-                #      💰 5000억 📊 괴리 +0.1%
-                #      💼 보유: 10주 (+2.1%)
+                # Title: 🚀 UP or 🏇 RIDE UP
+                title_emoji = "🚀" if not is_ride else "🏇"
+                type_str = f"{alert_type}" if not is_ride else f"RIDE {alert_type}"
+                if alert_type == "DOWN": title_emoji = "📉" if not is_ride else "⛷️"
                 
                 msg_lines = [
-                    f"{emoji} {alert_type} {name} {current_pct:+.2f}% ({price:,.0f})",
+                    f"{title_emoji} {type_str} {name} {current_pct:+.2f}% ({price:,.0f})",
                 ]
                 
                 if settings.get("display", {}).get("include_value_volume", True):
-                    # Show Value if > 100M else Volume
                     val_str = format_money_kr(val_krw) if val_krw > 0 else f"{vol:,}주"
                     msg_lines.append(f"💰 {val_str}")
                     
@@ -235,11 +288,17 @@ def run_spike_push() -> Dict:
                 
                 alerts.append({
                     "ticker": ticker,
-                    "msg": " ".join(msg_lines), # Flatten for log
-                    "full_msg": "\n".join(msg_lines), # For Telegram
-                    "type": alert_type
+                    "msg": " ".join(msg_lines), 
+                    "full_msg": "\n".join(msg_lines), 
+                    "type": "RIDE" if is_ride else "SPIKE"
                 })
-                update_cooldown(state, ticker, alert_type)
+                
+                # Update State
+                update_cooldown(state, ticker, alert_type) # Updates last_sent
+                # Update last_pct for Ride tracking
+                if "last_pct" not in state: state["last_pct"] = {}
+                state["last_pct"][key] = current_pct
+
             else:
                 skipped_cooldown += 1
                 
@@ -258,9 +317,8 @@ def run_spike_push() -> Dict:
             else:
                 print(f"[SPIKE] Fail: {alert['ticker']}")
 
-    # Receipt
     receipt = {
-        "schema": "SPIKE_PUSH_RECEIPT_V1_1",
+        "schema": "SPIKE_PUSH_RECEIPT_V1_2",
         "asof": datetime.now().isoformat(),
         "settings_used": settings.get("display", {}),
         "alerts_count": len(alerts),

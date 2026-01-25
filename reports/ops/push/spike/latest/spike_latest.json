@@ -1,6 +1,6 @@
 {
-  "schema": "SPIKE_PUSH_RECEIPT_V1_1",
-  "asof": "2026-01-25T23:28:35.799677",
+  "schema": "SPIKE_PUSH_RECEIPT_V1_2",
+  "asof": "2026-01-25T23:39:24.335984",
   "settings_used": {
     "include_value_volume": true,
     "include_deviation": true,
@@ -10,6 +10,6 @@
   "sent_count": 0,
   "skipped_count": 0,
   "alerts_log": [
-    "🚀 UP KODEX 200 +3.25% (10,324) 💰 1.7억 \n📊 괴리: -0.98% (NAV 10,426) \n💼 보유: 100주 (-65.6%)"
+    "🏇 RIDE UP Samsung +4.60% (61,000) 💰 100주 \n💼 보유: 10주 (+22.0%)"
   ]
 }
