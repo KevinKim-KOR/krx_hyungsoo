@@ -155,6 +155,22 @@ def save_bundle(bundle: dict) -> Path:
     return snapshot_path
 
 
+def validate_bundle_locally(bundle: dict) -> bool:
+    """로컬에서 번들 검증"""
+    try:
+        from app.utils.strategy_bundle_validator import validate_strategy_bundle
+        result = validate_strategy_bundle(bundle)
+        print(f"[Validation] decision={result.decision}, valid={result.valid}")
+        if result.issues:
+            print(f"[Validation] issues: {result.issues}")
+        if result.warnings:
+            print(f"[Validation] warnings: {result.warnings}")
+        return result.valid
+    except ImportError:
+        print("[WARNING] strategy_bundle_validator not found, skipping validation")
+        return True
+
+
 def main():
     print("=" * 60)
     print("Strategy Bundle Generator (D-P.49) - PC Mode")
