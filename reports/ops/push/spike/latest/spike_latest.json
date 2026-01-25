@@ -1,8 +1,19 @@
 {
   "schema": "SPIKE_PUSH_RECEIPT_V1",
-  "asof": "2026-01-25T22:42:18.810567",
-  "alerts_count": 0,
-  "sent_count": 0,
+  "asof": "2026-01-25T22:57:17.788599",
+  "settings_used": {
+    "threshold_pct": 3.0,
+    "cooldown_minutes": 15
+  },
+  "alerts_count": 1,
+  "sent_count": 1,
   "skipped_count": 0,
-  "alerts": []
+  "alerts": [
+    {
+      "ticker": "069500",
+      "name": "KODEX 200",
+      "change_pct": -4.09,
+      "type": "DOWN"
+    }
+  ]
 }

@@ -2054,6 +2054,153 @@
             );
         }
 
+        // Spike Settings Card (D-P.62)
+        function SpikeSettingsCard() {
+            const [settings, setSettings] = useState({
+                enabled: false,
+                threshold_pct: 3.0,
+                cooldown_minutes: 15,
+                session_start: "09:10",
+                session_end: "15:20",
+                include_premium_fields: false
+            });
+            const [loading, setLoading] = useState(false);
+            const [status, setStatus] = useState(null);
+
+            useEffect(() => {
+                fetchSettings();
+            }, []);
+
+            const fetchSettings = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/spike_settings/latest`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.data) {
+                            const d = json.data;
+                            setSettings({
+                                enabled: d.enabled,
+                                threshold_pct: d.threshold_pct,
+                                cooldown_minutes: d.cooldown_minutes,
+                                session_start: d.session_kst?.start || "09:10",
+                                session_end: d.session_kst?.end || "15:20",
+                                include_premium_fields: d.options?.include_premium_fields || false
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Settings fetch error:", e);
+                }
+            };
+
+            const handleSave = async () => {
+                if (!confirm("Spike 감시 설정을 저장하시겠습니까?")) return;
+
+                setLoading(true);
+                setStatus(null);
+                try {
+                    const res = await fetch(`${API_BASE}/api/spike_settings/upsert?confirm=true`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(settings)
+                    });
+                    const json = await res.json();
+                    if (res.ok) {
+                        setStatus({ type: "success", msg: "저장되었습니다." });
+                    } else {
+                        setStatus({ type: "error", msg: json.detail?.reason || "저장 실패" });
+                    }
+                } catch (e) {
+                    setStatus({ type: "error", msg: e.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-2xl mx-auto">
+                    <h3 className="text-lg font-bold text-white mb-6 flex items-center justify-between">
+                        <span>⚙️ Spike Watch Settings</span>
+                        <div className={`px-2 py-0.5 rounded text-xs font-bold ${settings.enabled ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                            {settings.enabled ? "ACTIVE" : "DISABLED"}
+                        </div>
+                    </h3>
+
+                    {status && (
+                        <div className={`mb-4 p-2 rounded text-sm ${status.type === 'success' ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
+                            {status.msg}
+                        </div>
+                    )}
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded border border-slate-700">
+                            <div>
+                                <div className="font-bold text-white">Enable Monitoring</div>
+                                <div className="text-xs text-slate-400">전체 감시 기능을 켜거나 끕니다.</div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer" checked={settings.enabled} onChange={e => setSettings({ ...settings, enabled: e.target.checked })} />
+                                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                            </label>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
+                                <label className="block text-xs font-bold text-slate-400 mb-2">Threshold (%)</label>
+                                <input
+                                    type="number" step="0.1"
+                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
+                                    value={settings.threshold_pct}
+                                    onChange={e => setSettings({ ...settings, threshold_pct: parseFloat(e.target.value) })}
+                                />
+                                <div className="mt-1 text-[10px] text-slate-500">±{settings.threshold_pct}% 변동 시 알림</div>
+                            </div>
+                            <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
+                                <label className="block text-xs font-bold text-slate-400 mb-2">Cooldown (min)</label>
+                                <input
+                                    type="number" step="1"
+                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
+                                    value={settings.cooldown_minutes}
+                                    onChange={e => setSettings({ ...settings, cooldown_minutes: parseInt(e.target.value) })}
+                                />
+                                <div className="mt-1 text-[10px] text-slate-500">재발송 금지 시간</div>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
+                            <label className="block text-xs font-bold text-slate-400 mb-2">Operational Session (KST)</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="time"
+                                    className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
+                                    value={settings.session_start}
+                                    onChange={e => setSettings({ ...settings, session_start: e.target.value })}
+                                />
+                                <span className="text-slate-500">~</span>
+                                <input
+                                    type="time"
+                                    className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
+                                    value={settings.session_end}
+                                    onChange={e => setSettings({ ...settings, session_end: e.target.value })}
+                                />
+                            </div>
+                            <div className="mt-1 text-[10px] text-slate-500">평일(Mon-Fri) 위 시간대에만 동작합니다.</div>
+                        </div>
+                    </div>
+
+                    <div className="mt-6">
+                        <button
+                            onClick={handleSave}
+                            disabled={loading}
+                            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2"
+                        >
+                            {loading ? "Saving..." : "Save Settings"}
+                        </button>
+                    </div>
+                </div>
+            )
+        }
+
         // Watchlist Card (D-P.61)
         function WatchlistCard() {
             const [items, setItems] = useState([]);
@@ -2378,7 +2525,7 @@
 
                         {/* Tab Nav */}
                         <div className="flex gap-1 bg-slate-800 p-1 rounded-lg mb-8 mx-auto max-w-4xl overflow-x-auto">
-                            {['dashboard', 'portfolio', 'order plan', 'watchlist', 'signals', 'reco', 'validation', 'diagnosis', 'gatekeeper', 'tickets', 'logs'].map(tab => (
+                            {['dashboard', 'portfolio', 'order plan', 'watchlist', 'settings', 'signals', 'reco', 'validation', 'diagnosis', 'gatekeeper', 'tickets', 'logs'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -2399,6 +2546,9 @@
                             )}
                             {activeTab === 'watchlist' && (
                                 <WatchlistCard />
+                            )}
+                            {activeTab === 'settings' && (
+                                <SpikeSettingsCard />
                             )}
                             {activeTab === 'dashboard' && (
                                 <div className="space-y-8">

@@ -3560,6 +3560,35 @@ async def get_spike_latest_api():
         return {"result": "ERROR", "reason": str(e)}
 
 
+# ============================================================================
+# Spike Settings API (D-P.62)
+# ============================================================================
+
+@app.post("/api/spike_settings/upsert")
+async def upsert_spike_settings_api(
+    payload: dict,
+    confirm: bool = Query(False)
+):
+    """Spike 감시 설정 저장"""
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
+    try:
+        from app.generate_spike_settings import upsert_spike_settings
+        return upsert_spike_settings(payload)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+@app.get("/api/spike_settings/latest")
+async def get_spike_settings_latest_api():
+    """Spike 감시 설정 조회"""
+    from app.generate_spike_settings import load_spike_settings
+    data = load_spike_settings()
+    if not data:
+        return {"result": "NOT_FOUND"}
+    return {"result": "OK", "data": data}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

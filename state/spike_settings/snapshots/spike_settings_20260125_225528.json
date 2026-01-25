@@ -1,0 +1,25 @@
+{
+  "schema": "SPIKE_SETTINGS_V1",
+  "updated_at": "2026-01-25T22:55:28.927865",
+  "updated_by": "pc_ui",
+  "enabled": true,
+  "threshold_pct": 3.0,
+  "cooldown_minutes": 15,
+  "session_kst": {
+    "start": "09:10",
+    "end": "15:20",
+    "days": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "options": {
+    "include_premium_fields": false
+  },
+  "integrity": {
+    "payload_sha256": "2406fd6a3dc18b6ca94a53cab2f32d0c95605dd4c0db33ee3bc31a7419cad501"
+  }
+}

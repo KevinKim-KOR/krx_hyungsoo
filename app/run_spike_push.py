@@ -28,10 +28,6 @@ SPIKE_STATE_FILE = STATE_DIR / "spike_state.json"  # Cooldown tracking
 SPIKE_LOG_DIR = BASE_DIR / "reports" / "ops" / "push" / "spike"
 SPIKE_LATEST_FILE = SPIKE_LOG_DIR / "latest" / "spike_latest.json"
 
-# Config
-COOLDOWN_MINUTES = 15
-THRESHOLD_PCT = 3.0  # ±3%
-
 
 def ensure_dirs():
     STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,25 +50,17 @@ def save_json(path: Path, data: Dict):
 
 
 def get_mock_price_change(ticker: str) -> float:
-    """
-    시세 변동률 조회 (Mock)
-    실제 환경에서는 pykrx 또는 API 사용
-    여기서는 테스트를 위해 랜덤 값 반환 (가끔 급등락 발생)
-    """
-    # Deterministic randomness based on time roughly
-    # But for demo, let's just random
-    val = random.uniform(-1.0, 1.0) # Normal range
-    
-    # Occasional spike
-    if random.random() < 0.05: # 5% chance
+    """Mock Price Change"""
+    val = random.uniform(-1.0, 1.0)
+    # Occasional spike (5%)
+    if random.random() < 0.05: 
         val = random.uniform(3.0, 5.0) * (1 if random.random() > 0.5 else -1)
         print(f"[DEBUG] Mock Spike for {ticker}: {val:.2f}%")
-    
     return val
 
 
-def check_cooldown(state: Dict, ticker: str, direction: str) -> bool:
-    """쿨다운 체크 (True면 발송 가능)"""
+def check_cooldown(state: Dict, ticker: str, direction: str, cooldown_mins: int) -> bool:
+    """쿨다운 체크"""
     key = f"{ticker}_{direction}"
     last_sent_str = state.get("last_sent", {}).get(key)
     
@@ -80,7 +68,7 @@ def check_cooldown(state: Dict, ticker: str, direction: str) -> bool:
         return True
         
     last_sent = datetime.fromisoformat(last_sent_str)
-    if datetime.now() - last_sent > timedelta(minutes=COOLDOWN_MINUTES):
+    if datetime.now() - last_sent > timedelta(minutes=cooldown_mins):
         return True
         
     return False
@@ -92,13 +80,43 @@ def update_cooldown(state: Dict, ticker: str, direction: str):
     if "last_sent" not in state:
         state["last_sent"] = {}
     state["last_sent"][key] = datetime.now().isoformat()
-    # Save is done by caller
+
+
+def is_in_session(session_config: Dict) -> bool:
+    """장중 여부 체크"""
+    now = datetime.now()
+    
+    # 1. Day check
+    if now.weekday() not in session_config.get("days", [0,1,2,3,4]):
+        return False
+        
+    # 2. Time check
+    current_time = now.strftime("%H:%M")
+    start = session_config.get("start", "09:00")
+    end = session_config.get("end", "15:30")
+    
+    return start <= current_time <= end
 
 
 def run_spike_push() -> Dict:
     """Spike Push 실행"""
     ensure_dirs()
     
+    # 1. Load Settings (Fail-Closed)
+    from app.generate_spike_settings import load_spike_settings
+    settings = load_spike_settings()
+    
+    if not settings:
+        return {"result": "BLOCKED", "reason": "NO_SPIKE_SETTINGS"}
+        
+    if not settings.get("enabled", False):
+        return {"result": "SKIPPED", "reason": "DISABLED_BY_SETTINGS"}
+        
+    # 2. Check Session
+    if not is_in_session(settings.get("session_kst", {})):
+        return {"result": "SKIPPED", "reason": "OUTSIDE_SESSION"}
+        
+    # 3. Load Watchlist
     watchlist_data = load_json(WATCHLIST_FILE)
     if not watchlist_data:
         return {"result": "BLOCKED", "reason": "NO_WATCHLIST"}
@@ -106,6 +124,10 @@ def run_spike_push() -> Dict:
     items = watchlist_data.get("items", [])
     if not items:
         return {"result": "BLOCKED", "reason": "EMPTY_WATCHLIST"}
+    
+    # 4. Config values
+    threshold_pct = settings.get("threshold_pct", 3.0)
+    cooldown_minutes = settings.get("cooldown_minutes", 15)
     
     state = load_json(SPIKE_STATE_FILE) or {}
     
@@ -122,16 +144,16 @@ def run_spike_push() -> Dict:
         # Check price (Mock)
         change_pct = get_mock_price_change(ticker)
         
-        # Check specific triggers
+        # Check triggers
         alert_type = None
-        if change_pct >= THRESHOLD_PCT:
+        if change_pct >= threshold_pct:
             alert_type = "UP"
-        elif change_pct <= -THRESHOLD_PCT:
+        elif change_pct <= -threshold_pct:
             alert_type = "DOWN"
             
         if alert_type:
             # Check cooldown
-            if check_cooldown(state, ticker, alert_type):
+            if check_cooldown(state, ticker, alert_type, cooldown_minutes):
                 alerts.append({
                     "ticker": ticker,
                     "name": name,
@@ -145,7 +167,7 @@ def run_spike_push() -> Dict:
     # Save state
     save_json(SPIKE_STATE_FILE, state)
     
-    # Send messages (Telegram)
+    # Send messages
     sent_count = 0
     if alerts:
         from app.providers.telegram_sender import send_telegram_message
@@ -154,7 +176,6 @@ def run_spike_push() -> Dict:
             emoji = "🚀" if alert["type"] == "UP" else "📉"
             msg = f"{emoji} {alert['type']} {alert['name']}({alert['ticker']}) {alert['change_pct']:+.2f}%"
             
-            # Send (Individual messages for spikes to grab attention)
             res = send_telegram_message(msg)
             if res.get("success"):
                 sent_count += 1
@@ -166,6 +187,10 @@ def run_spike_push() -> Dict:
     receipt = {
         "schema": "SPIKE_PUSH_RECEIPT_V1",
         "asof": datetime.now().isoformat(),
+        "settings_used": {
+            "threshold_pct": threshold_pct,
+            "cooldown_minutes": cooldown_minutes
+        },
         "alerts_count": len(alerts),
         "sent_count": sent_count,
         "skipped_count": skipped,
