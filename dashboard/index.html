@@ -2167,6 +2167,34 @@
                 }
             };
 
+            const handleSync = async () => {
+                if (!confirm("☁️ 변경된 State(설정, 포트폴리오 등)를 OCI로 전송하시겠습니까?\n(코드 변경사항이 있으면 차단됩니다)")) return;
+
+                setLoading(true);
+                setStatus(null);
+                try {
+                    const res = await fetch(`${API_BASE}/api/transport/sync?confirm=true`, { method: "POST" });
+                    const json = await res.json();
+
+                    if (json.result === "OK") {
+                        if (json.message.includes("Nothing")) setStatus({ type: "info", msg: "ℹ️ 변경사항이 없습니다 (Clean)" });
+                        else setStatus({ type: "success", msg: `✅ ${json.message}` });
+                    } else if (json.result === "BLOCKED") {
+                        if (json.blocked_files) {
+                            setStatus({ type: "error", msg: `🚨 차단됨: 코드 변경 감지! (${json.blocked_files.length} files). 터미널을 사용하세요.` });
+                        } else {
+                            setStatus({ type: "error", msg: `⛔ ${json.message}` });
+                        }
+                    } else {
+                        setStatus({ type: "error", msg: `❌ 실패: ${json.message}` });
+                    }
+                } catch (e) {
+                    setStatus({ type: "error", msg: `통신 오류: ${e.message}` });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
             const updateSpike = (field, val) => setSettings(prev => ({ ...prev, spike: { ...prev.spike, [field]: val } }));
             const updateHolding = (field, val) => setSettings(prev => ({ ...prev, holding: { ...prev.holding, [field]: val } }));
             const updateSpikeOpt = (field, val) => setSettings(prev => ({ ...prev, spike: { ...prev.spike, options: { ...prev.spike.options, [field]: val } } }));
@@ -2178,13 +2206,23 @@
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                             ⚙️ Unified Settings
                         </h2>
-                        <button
-                            onClick={handleSave}
-                            disabled={loading}
-                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
-                        >
-                            {loading ? "Saving..." : "Save All Settings"}
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleSync}
+                                disabled={loading}
+                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-lg transition-colors flex items-center gap-2 border border-slate-600"
+                                title="State 파일만 Git Push 수행"
+                            >
+                                ☁️ Sync to OCI
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={loading}
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                {loading ? "Processing..." : "Save All Settings"}
+                            </button>
+                        </div>
                     </div>
 
                     {status && (

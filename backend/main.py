@@ -3670,6 +3670,23 @@ async def get_candidates_latest_api():
     return {"result": "OK", "data": data}
 
 
+# ============================================================================
+# Git Transport API (D-P.6X)
+# ============================================================================
+
+@app.post("/api/transport/sync", summary="State 파일 OCI 동기화")
+async def sync_state_to_remote_api(confirm: bool = Query(True)):
+    """
+    Git Transport: State 파일만 Commit & Push
+    - Code 변경이 있으면 BLOCKED
+    """
+    try:
+        from app.run_git_transport import sync_state_to_remote
+        return sync_state_to_remote(confirm=confirm)
+    except Exception as e:
+         return JSONResponse(status_code=500, content={"result": "FAILED", "reason": str(e)})
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
