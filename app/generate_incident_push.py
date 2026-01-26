@@ -31,6 +31,7 @@ INCIDENT_KINDS = {
     "LIVE_BLOCKED": {"severity": "HIGH", "message": "⛔ Live Cycle BLOCKED"},
     "LIVE_FAILED": {"severity": "HIGH", "message": "❌ Live Cycle 실행 실패"},
     "PUSH_FAILED": {"severity": "MEDIUM", "message": "⚠️ PUSH 발송 실패"},
+    "MARKET_DATA_DOWN": {"severity": "HIGH", "message": "⚠️ Market Data Fetch Failed"},
 }
 
 

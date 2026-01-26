@@ -1,0 +1,15 @@
+{
+  "005930": {
+    "_ts": 1769431700.501247,
+    "data": {
+      "provider": "naver",
+      "price": 152100,
+      "change_pct": 0.0,
+      "change_val": 0,
+      "volume": 20285661,
+      "value_krw": 3106296000000000000,
+      "nav": null,
+      "name": "삼성전자"
+    }
+  }
+}

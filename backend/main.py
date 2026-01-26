@@ -88,7 +88,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # React 연동을 위해 전체 허용
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -284,16 +284,45 @@ def get_status():
 
 @app.get("/api/portfolio", summary="포트폴리오 조회")
 def get_portfolio():
-    """현재 포트폴리오 상태(paper_portfolio.json)를 반환합니다."""
+    """현재 포트폴리오 상태 반환 (Try portfolio_latest.json first, then paper_portfolio.json)"""
     logger.info("포트폴리오 조회 요청 (GET /api/portfolio)")
-    path = STATE_DIR / "paper_portfolio.json"
+    
+    # Priority 1: D-P.58 Standard
+    path_latest = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
+    if path_latest.exists():
+        return safe_read_json(path_latest)
+        
+    # Priority 2: Legacy
+    path_legacy = STATE_DIR / "paper_portfolio.json"
+    if path_legacy.exists():
+        return safe_read_json(path_legacy)
+        
+    return {"error": "포트폴리오 파일이 없습니다.", "cash": 0, "holdings": {}, "total_equity": 0}
+
+@app.post("/api/portfolio/upsert")
+async def upsert_portfolio_api(confirm: bool = Query(False), payload: Dict = Body(...)):
+    """포트폴리오 저장 (D-P.58)"""
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
     try:
-        return safe_read_json(path)
-    except FileNotFoundError:
-        return {"error": "포트폴리오 파일이 없습니다.", "cash": 0, "holdings": {}, "total_equity": 0}
+        # Save to Standard Location
+        path_latest = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
+        path_latest.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Add timestamp
+        if "updated_at" not in payload:
+            payload["updated_at"] = datetime.now().isoformat()
+            
+        with open(path_latest, "w", encoding="utf-8") as f:
+            f.write(json.dumps(payload, indent=2, ensure_ascii=False))
+            
+        logger.info(f"포트폴리오 저장 완료: {path_latest}")
+        return {"result": "OK", "path": str(path_latest), "data": payload}
+        
     except Exception as e:
-        logger.error("포트폴리오 조회 실패", exc_info=True)
-        raise HTTPException(status_code=500, detail="내부 서버 오류")
+        logger.error(f"포트폴리오 저장 실패: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"result": "FAILED", "reason": str(e)})
 
 @app.get("/api/signals", summary="당일 신호 조회")
 def get_signals():
@@ -3558,6 +3587,32 @@ async def get_spike_latest_api():
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception as e:
         return {"result": "ERROR", "reason": str(e)}
+
+
+# ============================================================================
+# Unified Settings API (D-P.66)
+# ============================================================================
+
+@app.get("/api/settings", summary="통합 설정 조회")
+def get_unified_settings():
+    """통합 설정(Spike + Holding) 최신 상태 반환"""
+    from app.generate_settings import load_settings
+    data = load_settings()
+    return {"result": "OK", "data": data}
+
+@app.post("/api/settings/upsert", summary="통합 설정 저장")
+async def upsert_unified_settings(confirm: bool = Query(False), payload: dict = Body(...)):
+    """
+    통합 설정 저장 (Spike/Holding 섹션 병합)
+    """
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+
+    from app.generate_settings import upsert_settings
+    res = upsert_settings(payload, confirm=confirm)
+    if res.get("result") != "OK":
+        return JSONResponse(status_code=500, content=res)
+    return res
 
 
 # ============================================================================

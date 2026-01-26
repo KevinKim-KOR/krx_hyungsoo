@@ -1782,11 +1782,30 @@
             const [showForm, setShowForm] = React.useState(false);
 
             // Init from data
+            // Init from data
             React.useEffect(() => {
-                if (data && data.rows && data.rows[0]) {
+                if (!data) return;
+
+                // Priority 1: Envelope (rows)
+                if (data.rows && data.rows[0]) {
                     const row = data.rows[0];
                     setCash(row.cash || 0);
-                    setHoldings(row.holdings || []);
+                    // Handle both Array and Object holdings
+                    const h = row.holdings || [];
+                    setHoldings(Array.isArray(h) ? h : Object.values(h));
+                }
+                // Priority 2: Flat (holdings at root)
+                else if (data.holdings || data.cash !== undefined) {
+                    setCash(data.cash || 0);
+                    const h = data.holdings || [];
+                    // If dict (legacy), convert to array for Editor state
+                    if (!Array.isArray(h)) {
+                        // Convert dict { "Ticker": { qty... } } to Array [ { ticker: "Ticker", ... } ]
+                        const arr = Object.entries(h).map(([k, v]) => ({ ...v, ticker: k }));
+                        setHoldings(arr);
+                    } else {
+                        setHoldings(h);
+                    }
                 }
             }, [data]);
 
@@ -1841,11 +1860,32 @@
                 }
             };
 
-            // Formatters
+            // Determine View Data
+            let row = null;
+            if (data) {
+                if (data.rows && data.rows[0]) row = data.rows[0];
+                else if (data.holdings || data.cash !== undefined) {
+                    // Normalize Flat
+                    row = {
+                        cash: data.cash || 0,
+                        holdings: Array.isArray(data.holdings) ? data.holdings : Object.values(data.holdings || {}),
+                        total_value: data.total_equity || data.total_value || 0, // Fallback
+                        cash_ratio_pct: data.cash_ratio_pct || 0,
+                        asof: data.updated_at || data.asof
+                    };
+                    // Calc totals if missing
+                    if (!row.total_value) {
+                        // Rough calc
+                        const holdingsVal = row.holdings.reduce((sum, h) => sum + (h.market_value || (h.quantity * h.avg_price) || 0), 0);
+                        row.total_value = row.cash + holdingsVal;
+                    }
+                }
+            }
+
             const fmt = (n) => new Intl.NumberFormat('ko-KR').format(n);
 
-            if (!showForm && data && data.rows && data.rows[0]) {
-                const row = data.rows[0];
+            if (!showForm && row) {
+                // const row = data.rows[0]; // Logic moved up
                 return (
                     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
                         <div className="flex justify-between items-center mb-6">
@@ -1884,7 +1924,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {row.holdings.map((h, i) => (
+                                {(row.holdings || []).map((h, i) => (
                                     <tr key={i} className="border-b border-slate-700 hover:bg-slate-700/30">
                                         <td className="px-4 py-3">
                                             <div className="font-bold text-white">{h.name}</div>
@@ -2054,15 +2094,11 @@
             );
         }
 
-        // Spike Settings Card (D-P.62)
-        function SpikeSettingsCard() {
+        // Unified Settings Card (D-P.66)
+        function SettingsCard() {
             const [settings, setSettings] = useState({
-                enabled: false,
-                threshold_pct: 3.0,
-                cooldown_minutes: 15,
-                session_start: "09:10",
-                session_end: "15:20",
-                include_premium_fields: false
+                spike: { enabled: false, threshold_pct: 3.0, cooldown_minutes: 15, options: {} },
+                holding: { enabled: false, pnl_up_pct: 5.0, pnl_down_pct: 3.0, use_trail_stop: false, trail_stop_pct: 2.0, cooldown_m: 15, realert_delta_pp: 1.0, options: {} }
             });
             const [loading, setLoading] = useState(false);
             const [status, setStatus] = useState(null);
@@ -2073,18 +2109,14 @@
 
             const fetchSettings = async () => {
                 try {
-                    const res = await fetch(`${API_BASE}/api/spike_settings/latest`);
+                    const res = await fetch(`${API_BASE}/api/settings`);
                     if (res.ok) {
                         const json = await res.json();
                         if (json.data) {
-                            const d = json.data;
+                            // Merge defaults
                             setSettings({
-                                enabled: d.enabled,
-                                threshold_pct: d.threshold_pct,
-                                cooldown_minutes: d.cooldown_minutes,
-                                session_start: d.session_kst?.start || "09:10",
-                                session_end: d.session_kst?.end || "15:20",
-                                include_premium_fields: d.options?.include_premium_fields || false
+                                spike: { ...settings.spike, ...json.data.spike },
+                                holding: { ...settings.holding, ...json.data.holding }
                             });
                         }
                     }
@@ -2094,12 +2126,12 @@
             };
 
             const handleSave = async () => {
-                if (!confirm("Spike 감시 설정을 저장하시겠습니까?")) return;
+                if (!confirm("설정을 저장하시겠습니까?")) return;
 
                 setLoading(true);
                 setStatus(null);
                 try {
-                    const res = await fetch(`${API_BASE}/api/spike_settings/upsert?confirm=true`, {
+                    const res = await fetch(`${API_BASE}/api/settings/upsert?confirm=true`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(settings)
@@ -2117,104 +2149,112 @@
                 }
             };
 
+            const updateSpike = (field, val) => setSettings(prev => ({ ...prev, spike: { ...prev.spike, [field]: val } }));
+            const updateHolding = (field, val) => setSettings(prev => ({ ...prev, holding: { ...prev.holding, [field]: val } }));
+            const updateSpikeOpt = (field, val) => setSettings(prev => ({ ...prev, spike: { ...prev.spike, options: { ...prev.spike.options, [field]: val } } }));
+            const updateHoldingOpt = (field, val) => setSettings(prev => ({ ...prev, holding: { ...prev.holding, options: { ...prev.holding.options, [field]: val } } }));
+
             return (
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-2xl mx-auto">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center justify-between">
-                        <span>⚙️ Spike Watch Settings</span>
-                        <div className={`px-2 py-0.5 rounded text-xs font-bold ${settings.enabled ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-                            {settings.enabled ? "ACTIVE" : "DISABLED"}
-                        </div>
-                    </h3>
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-4xl mx-auto space-y-8">
+                    <div className="flex justify-between items-center border-b border-slate-700 pb-4">
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                            ⚙️ Unified Settings
+                        </h2>
+                        <button
+                            onClick={handleSave}
+                            disabled={loading}
+                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                        >
+                            {loading ? "Saving..." : "Save All Settings"}
+                        </button>
+                    </div>
 
                     {status && (
-                        <div className={`mb-4 p-2 rounded text-sm ${status.type === 'success' ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
+                        <div className={`p-3 rounded text-sm ${status.type === 'success' ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
                             {status.msg}
                         </div>
                     )}
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded border border-slate-700">
-                            <div>
-                                <div className="font-bold text-white">Enable Monitoring</div>
-                                <div className="text-xs text-slate-400">전체 감시 기능을 켜거나 끕니다.</div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" className="sr-only peer" checked={settings.enabled} onChange={e => setSettings({ ...settings, enabled: e.target.checked })} />
-                                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
-                            </label>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-                                <label className="block text-xs font-bold text-slate-400 mb-2">Threshold (%)</label>
-                                <input
-                                    type="number" step="0.1"
-                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
-                                    value={settings.threshold_pct}
-                                    onChange={e => setSettings({ ...settings, threshold_pct: parseFloat(e.target.value) })}
-                                />
-                                <div className="mt-1 text-[10px] text-slate-500">±{settings.threshold_pct}% 변동 시 알림</div>
-                            </div>
-                            <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-                                <label className="block text-xs font-bold text-slate-400 mb-2">Cooldown (min)</label>
-                                <input
-                                    type="number" step="1"
-                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
-                                    value={settings.cooldown_minutes}
-                                    onChange={e => setSettings({ ...settings, cooldown_minutes: parseInt(e.target.value) })}
-                                />
-                                <div className="mt-1 text-[10px] text-slate-500">재발송 금지 시간</div>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-                            <label className="block text-xs font-bold text-slate-400 mb-2">Operational Session (KST)</label>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="time"
-                                    className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
-                                    value={settings.session_start}
-                                    onChange={e => setSettings({ ...settings, session_start: e.target.value })}
-                                />
-                                <span className="text-slate-500">~</span>
-                                <input
-                                    type="time"
-                                    className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"
-                                    value={settings.session_end}
-                                    onChange={e => setSettings({ ...settings, session_end: e.target.value })}
-                                />
-                            </div>
-                            <div className="mt-1 text-[10px] text-slate-500">평일(Mon-Fri) 위 시간대에만 동작합니다.</div>
-                        </div>
-
-                        {/* Display Options */}
-                        <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-                            <label className="block text-xs font-bold text-slate-400 mb-3">Alert Display Options</label>
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={settings.include_value_volume} onChange={e => setSettings({ ...settings, include_value_volume: e.target.checked })} />
-                                    <span className="text-sm text-slate-300">거래대금/거래량 포함</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Spike Settings */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white flex items-center justify-between">
+                                <span>⚡ Spike Watch</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" className="sr-only peer" checked={settings.spike.enabled} onChange={e => updateSpike('enabled', e.target.checked)} />
+                                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
                                 </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={settings.include_deviation} onChange={e => setSettings({ ...settings, include_deviation: e.target.checked })} />
-                                    <span className="text-sm text-slate-300">괴리율 포함 (ETF)</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={settings.include_portfolio_context} onChange={e => setSettings({ ...settings, include_portfolio_context: e.target.checked })} />
-                                    <span className="text-sm text-slate-300">보유 정보 포함 (If holding)</span>
-                                </label>
+                            </h3>
+                            <div className={`p-4 rounded-xl border ${settings.spike.enabled ? 'bg-slate-900/50 border-cyan-900/50' : 'bg-slate-900/30 border-slate-800 opacity-50'}`}>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-xs text-slate-400">Fluctuation Threshold (±%)</label>
+                                        <input type="number" step="0.1" value={settings.spike.threshold_pct} onChange={e => updateSpike('threshold_pct', parseFloat(e.target.value))} className="w-full bg-slate-800 border-none rounded px-3 py-1 text-white font-mono" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-400">Cooldown (min)</label>
+                                        <input type="number" value={settings.spike.cooldown_minutes} onChange={e => updateSpike('cooldown_minutes', parseInt(e.target.value))} className="w-full bg-slate-800 border-none rounded px-3 py-1 text-white font-mono" />
+                                    </div>
+                                    <div className="pt-2 border-t border-slate-700/50">
+                                        <label className="flex items-center gap-2 cursor-pointer mb-1">
+                                            <input type="checkbox" checked={settings.spike.options?.include_value_volume} onChange={e => updateSpikeOpt('include_value_volume', e.target.checked)} />
+                                            <span className="text-xs text-slate-300">Show Value/Vol</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={settings.spike.options?.include_deviation} onChange={e => updateSpikeOpt('include_deviation', e.target.checked)} />
+                                            <span className="text-xs text-slate-300">Show Deviation (ETF)</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="mt-6">
-                        <button
-                            onClick={handleSave}
-                            disabled={loading}
-                            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2"
-                        >
-                            {loading ? "Saving..." : "Save Settings"}
-                        </button>
+                        {/* Holding Watch Settings */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white flex items-center justify-between">
+                                <span>💼 Holding Watch</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" className="sr-only peer" checked={settings.holding.enabled} onChange={e => updateHolding('enabled', e.target.checked)} />
+                                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </h3>
+                            <div className={`p-4 rounded-xl border ${settings.holding.enabled ? 'bg-slate-900/50 border-indigo-900/50' : 'bg-slate-900/30 border-slate-800 opacity-50'}`}>
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label className="text-xs text-red-400 font-bold">PNL DOWN Limit (%)</label>
+                                        <input type="number" step="0.1" value={settings.holding.pnl_down_pct} onChange={e => updateHolding('pnl_down_pct', parseFloat(e.target.value))} className="w-full bg-slate-800 border-none rounded px-3 py-1 text-white font-mono" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-green-400 font-bold">PNL UP Limit (%)</label>
+                                        <input type="number" step="0.1" value={settings.holding.pnl_up_pct} onChange={e => updateHolding('pnl_up_pct', parseFloat(e.target.value))} className="w-full bg-slate-800 border-none rounded px-3 py-1 text-white font-mono" />
+                                    </div>
+                                </div>
+
+                                <div className="p-2 bg-slate-800/50 rounded lg:col-span-2 mb-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-xs font-bold text-slate-300">Trailing Stop</label>
+                                        <input type="checkbox" checked={settings.holding.use_trail_stop} onChange={e => updateHolding('use_trail_stop', e.target.checked)} />
+                                    </div>
+                                    <div className={settings.holding.use_trail_stop ? '' : 'opacity-30'}>
+                                        <label className="text-[10px] text-slate-400">Drop from High (%p)</label>
+                                        <input type="number" step="0.1" disabled={!settings.holding.use_trail_stop} value={settings.holding.trail_stop_pct} onChange={e => updateHolding('trail_stop_pct', parseFloat(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white font-mono text-sm" />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <label className="text-xs text-slate-400">Cooldown (min)</label>
+                                            <input type="number" value={settings.holding.cooldown_m} onChange={e => updateHolding('cooldown_m', parseInt(e.target.value))} className="w-full bg-slate-800 border-none rounded px-3 py-1 text-white font-mono" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-xs text-slate-400">Re-alert Delta (%p)</label>
+                                            <input type="number" step="0.1" value={settings.holding.realert_delta_pp} onChange={e => updateHolding('realert_delta_pp', parseFloat(e.target.value))} className="w-full bg-slate-800 border-none rounded px-3 py-1 text-white font-mono" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )
@@ -2733,7 +2773,7 @@
                                 <WatchlistCard />
                             )}
                             {activeTab === 'settings' && (
-                                <SpikeSettingsCard />
+                                <SettingsCard />
                             )}
                             {activeTab === 'dashboard' && (
                                 <div className="space-y-8">

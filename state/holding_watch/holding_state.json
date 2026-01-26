@@ -1,0 +1,9 @@
+{
+  "005930": {
+    "max_pnl_seen": 176.54545454545453,
+    "last_alert_ts": 1769431700.5515485,
+    "last_alert_pnl": 176.54545454545453,
+    "last_alert_type": "PNL_UP",
+    "last_alert_iso": "2026-01-26T21:48:20.551550"
+  }
+}

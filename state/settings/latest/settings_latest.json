@@ -1,0 +1,20 @@
+{
+    "schema": "SETTINGS_V1",
+    "updated_at": "2026-01-26T21:40:00",
+    "spike": {
+        "enabled": false
+    },
+    "holding": {
+        "enabled": true,
+        "pnl_up_pct": 5.0,
+        "pnl_down_pct": 3.0,
+        "use_trail_stop": true,
+        "trail_stop_pct": 2.0,
+        "cooldown_m": 0,
+        "realert_delta_pp": 1.0,
+        "session_kst": {
+            "start": "00:00",
+            "end": "23:59"
+        }
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "asof": "2026-01-26T21:48:20.551550",
+  "checked_count": 1,
+  "alerts_generated": 1,
+  "alerts": [
+    {
+      "ticker": "005930",
+      "name": "삼성전자",
+      "type": "PNL_UP",
+      "pnl_pct": 176.54545454545453,
+      "price": 152100.0,
+      "avg_price": 55000.0,
+      "qty": 10.0,
+      "market_value_krw": 1521000.0,
+      "reason": "Fresh/Cooldown/TypeChange",
+      "last_alert_pnl": null,
+      "formatted_msg": "💼 PNL_UP 005930 삼성전자 +176.55% (평단 55,000 / 현재 152,100)"
+    }
+  ],
+  "evidence_refs": [
+    "state/portfolio/latest/portfolio_latest.json",
+    "state/settings/latest/settings_latest.json"
+  ]
+}
