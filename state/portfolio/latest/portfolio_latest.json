@@ -1,5 +1,12 @@
 {
-  "updated_at": "2026-01-26T21:50:00",
   "cash": 0,
-  "holdings": []
+  "holdings": [
+    {
+      "ticker": "0013P0",
+      "name": "미국은행TOP10",
+      "quantity": 5,
+      "avg_price": 10050
+    }
+  ],
+  "updated_at": "2026-01-26T22:49:20.021731"
 }

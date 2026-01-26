@@ -1865,20 +1865,38 @@
             if (data) {
                 if (data.rows && data.rows[0]) row = data.rows[0];
                 else if (data.holdings || data.cash !== undefined) {
-                    // Normalize Flat
+                    // Normalize Flat & Ensure Numbers
+                    const cash = Number(data.cash || 0);
+                    const rawHoldings = Array.isArray(data.holdings) ? data.holdings : Object.values(data.holdings || {});
+
+                    const holdings = rawHoldings.map(h => {
+                        const qty = Number(h.quantity || 0);
+                        const avg = Number(h.avg_price || 0);
+                        const mv = h.market_value !== undefined ? Number(h.market_value) : (qty * avg);
+                        return {
+                            ...h,
+                            quantity: qty,
+                            avg_price: avg,
+                            market_value: mv,
+                            pnl_pct: h.pnl_pct !== undefined ? Number(h.pnl_pct) : 0,
+                            pnl: h.pnl !== undefined ? Number(h.pnl) : 0
+                        };
+                    });
+
+                    // Calc total if missing
+                    let totalVal = Number(data.total_equity || data.total_value || 0);
+                    if (!totalVal) {
+                        const holdingsVal = holdings.reduce((sum, h) => sum + h.market_value, 0);
+                        totalVal = cash + holdingsVal;
+                    }
+
                     row = {
-                        cash: data.cash || 0,
-                        holdings: Array.isArray(data.holdings) ? data.holdings : Object.values(data.holdings || {}),
-                        total_value: data.total_equity || data.total_value || 0, // Fallback
-                        cash_ratio_pct: data.cash_ratio_pct || 0,
+                        cash: cash,
+                        holdings: holdings,
+                        total_value: totalVal,
+                        cash_ratio_pct: Number(data.cash_ratio_pct || 0),
                         asof: data.updated_at || data.asof
                     };
-                    // Calc totals if missing
-                    if (!row.total_value) {
-                        // Rough calc
-                        const holdingsVal = row.holdings.reduce((sum, h) => sum + (h.market_value || (h.quantity * h.avg_price) || 0), 0);
-                        row.total_value = row.cash + holdingsVal;
-                    }
                 }
             }
 
