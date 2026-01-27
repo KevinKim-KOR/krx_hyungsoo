@@ -294,8 +294,29 @@ def main():
         full_msg = "\n\n".join(msgs)
         full_msg += f"\n\n🔍 Evidence: {snapshot_ref}"
         
-        send_telegram_message(full_msg)
-        logger.info(f"Sent {len(alerts)} alerts")
+        # Send and Capture Receipt
+        res = send_telegram_message(full_msg)
+        
+        # Update Snapshot with Receipt
+        if res.get("success"):
+            snapshot_data["delivery_actual"] = "TELEGRAM"
+            snapshot_data["send_receipt"] = {
+                "message_id": res.get("message_id"),
+                "sent_at": datetime.now().isoformat(),
+                "provider": "TELEGRAM"
+            }
+        else:
+            snapshot_data["delivery_actual"] = "FAILED"
+            snapshot_data["send_receipt"] = {
+                "error": res.get("error"),
+                "sent_at": datetime.now().isoformat()
+            }
+            logger.error(f"Telegram Failed: {res.get('error')}")
+
+        # Re-save snapshot with receipt
+        save_snapshot(snapshot_data, latest=True)
+
+        logger.info(f"Sent {len(alerts)} alerts (Success={res.get('success')})")
         print(f"ALERT: {len(alerts)} items")
     else:
         logger.info("No alerts triggered")
