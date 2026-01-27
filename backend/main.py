@@ -3580,7 +3580,7 @@ async def get_spike_latest_api():
     """Spike Push 최신 조회"""
     from pathlib import Path
     import json
-    path = Path("reports/ops/push/spike/latest/spike_latest.json")
+    path = Path("reports/ops/push/spike_watch/latest/spike_watch_latest.json")
     if not path.exists():
         return {"result": "NOT_FOUND"}
     try:
