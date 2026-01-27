@@ -3,10 +3,19 @@
 # Usage: bash deploy/oci/holding_watch.sh
 # Cron: */10 09-15 * * 1-5 ...
 
-cd "$(dirname "$0")/../../" || exit 1
+REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$REPO_DIR" || exit 1
 source .venv/bin/activate 2>/dev/null || true
 
 export PYTHONPATH=$PYTHONPATH:.
+
+# Secrets Load (Telegram)
+SECRETS_FILE="$REPO_DIR/state/secrets/telegram.env"
+if [ -f "$SECRETS_FILE" ]; then
+    source "$SECRETS_FILE"
+    export TELEGRAM_BOT_TOKEN
+    export TELEGRAM_CHAT_ID
+fi
 
 # Run Holding Watch
 # Exit codes:

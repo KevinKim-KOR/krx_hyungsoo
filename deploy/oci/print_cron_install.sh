@@ -9,7 +9,7 @@
 set -euo pipefail
 
 # 프로젝트 경로 (실제 경로로 수정 필요)
-PROJECT_PATH="/home/opc/krx_hyungsoo"
+PROJECT_PATH="/home/ubuntu/krx_hyungsoo"
 
 echo ""
 echo "###############################################"
