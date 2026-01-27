@@ -322,7 +322,7 @@ def main():
         save_snapshot(snapshot_data, latest=True)
 
         logger.info(f"Sent {len(alerts)} alerts (Success={res.get('success')})")
-        print(f"ALERT: {len(alerts)} items")
+        print(f"OK: Alerts={len(alerts)} Reason=ALERTS_GENERATED")
     else:
         logger.info("No alerts triggered")
         print("OK: Alerts=0 Reason=NO_ALERTS")
