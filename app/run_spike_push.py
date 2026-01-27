@@ -34,16 +34,6 @@ def ensure_dirs():
     SPIKE_LATEST_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
-# ... (Functions load_json, save_json, etc are unchanged, skipping to receipt logic) ...
-
-def run_spike_push() -> Dict:
-    # ... (Logic matches existing until receipt creation) ...
-    # Note: Using replace_file_content, I must map exact context. 
-    # Since I cannot see all lines in this tool call, I will target the variable definition at top and the receipt block at bottom separately? 
-    # No, I should do it in chunks. This simple tool call is for the top variable first.
-
-
-
 def load_json(path: Path) -> Optional[Dict]:
     if not path.exists():
         return None
@@ -107,16 +97,6 @@ def is_in_session(session_config: Dict) -> bool:
     
     # 1. Day check
     if now.weekday() not in session_config.get("days", [0,1,2,3,4]):
-        # Mock/Force testing might want to override this, but standard logic relies on config.
-        # But wait, my test script doesn't override logic inside here.
-        # Check config if session_days is present. 
-        # If testing on weekend (Today is Sat or Sun? 2026-01-25 is Sunday).
-        # Ah, datetime.now() is 2026-01-25 (Sun).
-        # My previous 'upsert_settings' included 'session_days': [0,1,2,3,4,5,6] (all days) ?
-        # Let's check my upsert command: "session_days": [0,1,2,3,4,5,6] was NOT in the LAST upsert. 
-        # The last upsert was: 'session_start': '00:00', 'session_end': '23:59', but defaults to [0-4] in `generate_spike_settings`.
-        # I need to update settings to include Sunday for verification.
-        # But first, I must restore the function code.
         return False
         
     # 2. Time check
@@ -220,11 +200,6 @@ def run_spike_push() -> Dict:
                 
             # Trigger Determination
             alert_type = None
-            ride_type = None
-            
-            # ... (Existing Logic Omitted for brevity, assuming loop logic is same) ...
-            # I cannot omit code in replace_file_content if I am replacing the whole function.
-            # I must reproduce the loop logic carefully.
             
             # 1. Base Spike Trigger
             if current_pct >= threshold_pct:
@@ -242,18 +217,25 @@ def run_spike_push() -> Dict:
                 is_ride = False
                 
                 if not last_sent_str:
+                    # First time
                     should_alert = True
                 else:
                     last_sent = datetime.fromisoformat(last_sent_str)
-                    if datetime.now() - last_sent > timedelta(minutes=cooldown_minutes):
+                    time_passed = datetime.now() - last_sent
+                    
+                    if time_passed > timedelta(minutes=cooldown_minutes):
+                        # Cooldown expired -> New Spike
                         should_alert = True
                     else:
-                        if alert_type == "UP" and current_pct >= last_pct + 1.0:
-                            should_alert = True
-                            is_ride = True
-                        elif alert_type == "DOWN" and current_pct <= last_pct - 1.0:
-                            should_alert = True
-                            is_ride = True
+                        # In Cooldown -> Check Ride (Significant Advance)
+                        if alert_type == "UP":
+                            if current_pct >= last_pct + 1.0:
+                                should_alert = True
+                                is_ride = True
+                        elif alert_type == "DOWN":
+                            if current_pct <= last_pct - 1.0:
+                                should_alert = True
+                                is_ride = True
                 
                 if should_alert:
                     # Enrich Message
@@ -262,39 +244,49 @@ def run_spike_push() -> Dict:
                     vol = md.get("volume", 0)
                     val_krw = md.get("value_krw", 0)
                     
+                    # Deviation (ETF)
                     nav_info = ""
                     if settings.get("display", {}).get("include_deviation", True) and md.get("nav"):
                         try:
                             nav = float(md["nav"])
                             if nav > 0:
-                                nav_info = f"\n📊 괴리: {((price-nav)/nav)*100:+.2f}% (NAV {nav:,.0f})"
+                                diff = price - nav
+                                diff_pct = (diff / nav) * 100
+                                nav_info = f"\\n📊 괴리: {diff_pct:+.2f}% (NAV {nav:,.0f})"
                         except: pass
 
+                    # Holding Context
                     holding_info = ""
                     if ticker in portfolio_holdings:
                         h = portfolio_holdings[ticker]
                         try:
+                            qty = int(h.get("qty", 0))
                             avg = float(h.get("avg_price", 0))
                             pnl_pct = ((price - avg) / avg * 100) if avg > 0 else 0
-                            holding_info = f"\n💼 보유: {int(h.get('qty',0))}주 ({pnl_pct:+.1f}%)"
+                            holding_info = f"\\n💼 보유: {qty}주 ({pnl_pct:+.1f}%)"
                         except:
-                            holding_info = "\n💼 보유중"
+                            holding_info = "\\n💼 보유중"
                     
+                    # Construct Message
                     title_emoji = "🚀" if not is_ride else "🏇"
                     if alert_type == "DOWN": title_emoji = "📉" if not is_ride else "⛷️"
                     type_str = f"{alert_type}" if not is_ride else f"RIDE {alert_type}"
                     
-                    msg_lines = [f"{title_emoji} {type_str} {name} {current_pct:+.2f}% ({price:,.0f})"]
+                    msg_lines = [
+                        f"{title_emoji} {type_str} {name} {current_pct:+.2f}% ({price:,.0f})",
+                    ]
+                    
                     if settings.get("display", {}).get("include_value_volume", True):
                         val_str = format_money_kr(val_krw) if val_krw > 0 else f"{vol:,}주"
                         msg_lines.append(f"💰 {val_str}")
+                        
                     if nav_info: msg_lines.append(nav_info)
                     if holding_info: msg_lines.append(holding_info)
                     
                     alerts.append({
                         "ticker": ticker,
                         "msg": " ".join(msg_lines), 
-                        "full_msg": "\n".join(msg_lines), 
+                        "full_msg": "\\n".join(msg_lines), 
                         "type": "RIDE" if is_ride else "SPIKE"
                     })
                     
