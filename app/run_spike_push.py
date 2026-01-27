@@ -25,13 +25,23 @@ STATE_DIR = BASE_DIR / "state" / "spike"
 SPIKE_STATE_FILE = STATE_DIR / "spike_state.json"  # Cooldown tracking
 
 # Output logs
-SPIKE_LOG_DIR = BASE_DIR / "reports" / "ops" / "push" / "spike"
-SPIKE_LATEST_FILE = SPIKE_LOG_DIR / "latest" / "spike_latest.json"
+SPIKE_LOG_DIR = BASE_DIR / "reports" / "ops" / "push" / "spike_watch"
+SPIKE_LATEST_FILE = SPIKE_LOG_DIR / "latest" / "spike_watch_latest.json"
 
 
 def ensure_dirs():
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     SPIKE_LATEST_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+
+# ... (Functions load_json, save_json, etc are unchanged, skipping to receipt logic) ...
+
+def run_spike_push() -> Dict:
+    # ... (Logic matches existing until receipt creation) ...
+    # Note: Using replace_file_content, I must map exact context. 
+    # Since I cannot see all lines in this tool call, I will target the variable definition at top and the receipt block at bottom separately? 
+    # No, I should do it in chunks. This simple tool call is for the top variable first.
+
 
 
 def load_json(path: Path) -> Optional[Dict]:
@@ -318,13 +328,19 @@ def run_spike_push() -> Dict:
                 print(f"[SPIKE] Fail: {alert['ticker']}")
 
     receipt = {
-        "schema": "SPIKE_PUSH_RECEIPT_V1_2",
+        "schema": "SPIKE_PUSH_RECEIPT_V1_3",
         "asof": datetime.now().isoformat(),
         "settings_used": settings.get("display", {}),
         "alerts_count": len(alerts),
         "sent_count": sent_count,
         "skipped_count": skipped_cooldown,
-        "alerts_log": [a["msg"] for a in alerts]
+        "alerts_log": [a["msg"] for a in alerts],
+        "delivery_actual": "TELEGRAM" if sent_count > 0 else ("NONE" if not alerts else "FAILED"),
+        "send_receipt": {
+             "sent_at": datetime.now().isoformat(),
+             "message_count": sent_count,
+             "provider": "TELEGRAM"
+        }
     }
     save_json(SPIKE_LATEST_FILE, receipt)
     

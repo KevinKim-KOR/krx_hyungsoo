@@ -69,8 +69,12 @@ ALLOWED_JSON_PATTERNS = [
     # D-P.58: Portfolio & Order Plan
     r"^state/portfolio/latest/portfolio_latest\.json$",
     r"^state/portfolio/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    r"^reports/live/order_plan/latest/order_plan_latest\.json$",
     r"^reports/live/order_plan/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # P67: Spike/Holding Watch Artifacts
+    r"^reports/ops/push/holding_watch/latest/holding_watch_latest\.json$",
+    r"^reports/ops/push/holding_watch/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/spike_watch/latest/spike_watch_latest\.json$",
+    r"^reports/ops/push/spike_watch/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
