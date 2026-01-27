@@ -9,12 +9,12 @@ source .venv/bin/activate 2>/dev/null || true
 
 export PYTHONPATH=$PYTHONPATH:.
 
-# Secrets Load (Telegram)
+# Secrets Load (Telegram) - use set -a to export vars automatically
 SECRETS_FILE="$REPO_DIR/state/secrets/telegram.env"
 if [ -f "$SECRETS_FILE" ]; then
+    set -a
     source "$SECRETS_FILE"
-    export TELEGRAM_BOT_TOKEN
-    export TELEGRAM_CHAT_ID
+    set +a
 fi
 
 # Run Holding Watch
