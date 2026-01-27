@@ -248,8 +248,13 @@ def main():
         logger.error(f"State save failed: {e}")
 
     # 5. Send Alerts
+    execution_result = "OK"
+    execution_reason = "ALERTS_GENERATED" if alerts else "NO_ALERTS"
+    
     snapshot_data = {
         "asof": now_iso,
+        "execution_result": execution_result,
+        "execution_reason": execution_reason,
         "checked_count": len(holdings),
         "alerts_generated": len(alerts),
         "alerts": alerts,
@@ -320,7 +325,7 @@ def main():
         print(f"ALERT: {len(alerts)} items")
     else:
         logger.info("No alerts triggered")
-        print("OK: NO_ALERTS")
+        print("OK: Alerts=0 Reason=NO_ALERTS")
 
 if __name__ == "__main__":
     main()

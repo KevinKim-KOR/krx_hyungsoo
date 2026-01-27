@@ -312,8 +312,17 @@ def run_spike_push() -> Dict:
                     print(f"[SPIKE] Fail: {alert['ticker']}")
                     
         receipt_status = "OK"
+        if not alerts:
+            if skipped_cooldown > 0:
+                receipt_reason = "COOLDOWN_ACTIVE"
+            else:
+                receipt_reason = "NO_ALERTS"
+        else:
+            receipt_reason = "ALERTS_GENERATED"
+
         return {
             "result": "OK", 
+            "reason": receipt_reason,
             "alerts": len(alerts), 
             "sent": sent_count, 
             "skipped": skipped_cooldown
@@ -321,6 +330,11 @@ def run_spike_push() -> Dict:
 
     finally:
         # ALWAYS Save Receipt
+        # Exception handling
+        if not receipt_status or receipt_status == "UNKNOWN":
+             receipt_status = "FAILED"
+             receipt_reason = "EXCEPTION"
+
         receipt = {
             "schema": "SPIKE_PUSH_RECEIPT_V1_3",
             "asof": datetime.now().isoformat(),

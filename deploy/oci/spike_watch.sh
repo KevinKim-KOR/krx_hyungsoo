@@ -42,7 +42,7 @@ REASON=$(echo "$RESPONSE" | grep -o '"reason": *"[^"]*"' | cut -d'"' -f4)
 
 if [ "$RESULT" == "OK" ]; then
     ALERTS=$(echo "$RESPONSE" | grep -o '"alerts": *[0-9]*' | cut -d':' -f2)
-    echo "[$DATE_STR] OK: Alerts=$ALERTS" >> "$LOG_FILE"
+    echo "[$DATE_STR] OK: Alerts=$ALERTS Reason=$REASON" >> "$LOG_FILE"
     exit 0
 
 elif [ "$RESULT" == "SKIPPED" ]; then
