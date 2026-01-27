@@ -6,8 +6,8 @@
 ---
 
 ## 0) 오늘 결론 (한 줄)
-- ✅ 현재 운영 상태: [WARN] (Holding Watch 기능 복구 완료 / Telegram 발송 재개)
-- 🧩 핵심 이슈: Holding Watch env 미로드 문제 해결됨. 쿨타임/장운영시간 체크 로직 정상 작동 확인 필요.
+- ✅ 현재 운영 상태: [OK] (P67: Spike/Holding Watch 완전 정상화)
+- 🧩 핵심 이슈: 없음. (Spike receipt artifact 경로 불일치 및 미생성 문제 해결됨)
 
 ---
 
@@ -22,8 +22,8 @@
 - Repo: `krx_hyungsoo`
 - Branch(운영 기준): `archive-rebuild`
 - PC 기준 커밋: `f04d81f` (OCI Synced)
-- OCI 기준 커밋: `f04d81f` (Assumed Synced)
-- 마지막 변경 요약(짧게): Fix holding_watch env loading & receipt capture logic
+- OCI 기준 커밋: `P67-FIX-FINAL` (Assumed Synced)
+- 마지막 변경 요약(짧게): Fix Spike Watch Artifacts & API Path Match
 
 ---
 
@@ -111,26 +111,19 @@
 curl -s http://localhost:8000/api/push/daily_status/latest | python3 -m json.tool | head -120
 ```
 
-### B) Holding Watch 최신
-- 파일: `reports/ops/push/holding_watch/latest/holding_watch_latest.json`
-- 확인:
+### B) Holding Watch 최신 (Evidence-based)
+- Evidence Ref: `reports/ops/push/holding_watch/latest/holding_watch_latest.json`
+- 검증 (Resolver):
 ```bash
-python3 - <<'PY'
-import json
-p="reports/ops/push/holding_watch/latest/holding_watch_latest.json"
-d=json.load(open(p))
-row = d if "message" in d else (d.get("rows") or [d])[0]
-sr = row.get("send_receipt") or {}
-print("DELIVERY =", row.get("delivery_actual"))
-print("MSG_ID   =", sr.get("message_id"))
-print("SENT_AT  =", sr.get("sent_at"))
-print("HEAD     =", (row.get("formatted_msg","")[:120]).replace("\n"," | "))
-PY
+curl "http://localhost:8000/api/evidence/resolve?ref=reports/ops/push/holding_watch/latest/holding_watch_latest.json"
 ```
 
-### C) Resolver-only 규칙
-- evidence는 항상: `/api/evidence/resolve?ref=...`
-- 직접 파일 파싱/grep은 “최소 검증” 용도로만 사용
+### C) Spike Watch 최신 (Evidence-based, P67 Completed)
+- Evidence Ref: `reports/ops/push/spike_watch/latest/spike_watch_latest.json`
+- 검증 (Resolver):
+```bash
+curl "http://localhost:8000/api/evidence/resolve?ref=reports/ops/push/spike_watch/latest/spike_watch_latest.json"
+```
 
 ---
 
@@ -145,21 +138,21 @@ PY
 ## 10) 오늘 장애/이슈 기록 (필수)
 - 날짜: 2026-01-27
 - 증상:
-  - Holding Watch 알림이 텔레그램으로 오지 않음.
-  - 로그에는 "Sent"라고 떴으나 실제 수신 안 됨.
-- 원인(확정):
-  - `holding_watch.sh`가 `telegram.env`를 source 할 때 `export` 되지 않아 Python 프로세스에 전달 안 됨.
-  - Python 코드(`run_holding_watch.py`)가 `send_telegram_message` 실패 여부를 체크하지 않고 로그만 찍음.
+  1. Holding Watch 알림 미수신 (Env 미로드) -> 해결
+  2. Spike Watch Artifact(JSON) 미생성 (Early Return 문제) -> 해결
+  3. API Path Mismatch (구형 spike 경로 참조) -> 해결
 - 조치:
-  - Shell: `holding_watch.sh`에 `set -a` 추가하여 env 자동 export 적용.
-  - Code: `run_holding_watch.py`에서 `send_telegram_message` 결과(Receipt)를 캡처하여 JSON에 저장하도록 수정.
+  - holding_watch.sh: `set -a` 추가.
+  - run_spike_push.py: `try-finally` 블록으로 Artifact 생성 보장, Indentation Fix.
+  - backend/main.py: API 경로를 `spike_watch`로 변경.
 - 검증:
-  - `rm state/holding_watch/holding_state.json` 후 재실행 → 알림 발송됨 → JSON에 `delivery_actual: TELEGRAM` 및 `message_id` 기록됨 확인.
+  - 모든 Watcher가 실행 후 JSON Artifact를 남기며, API(`api/push/spike/latest`, `api/evidence/resolve`)가 정상 응답함.
+  - `logs/spike_watch.log` 최근 구간 에러 없음(RECENT_OK).
 
 ---
 
 ## 11) 다음 단계(Phase)
-- 현재 완료: D-P.66 (Holding Watch)
+- 현재 완료: D-P.67 (Spike/Holding Artifact Consistency & Evidence System)
 - 다음 후보:
-  - P67: (Unknown/To Be Defined)
+  - P68: Spike Receipt Quality (execution_reason enum화 등, 잔여 개선)
 - 보류(나중에): 보유임계치 백테스트/평단 실시간 정교화/괴리율 고도화 등
