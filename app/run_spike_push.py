@@ -131,225 +131,222 @@ def run_spike_push() -> Dict:
     """Spike Push 실행 (Practical)"""
     ensure_dirs()
     
-    # 1. Load Settings
-    from app.generate_spike_settings import load_spike_settings
-    settings = load_spike_settings()
-    if not settings:
-        return {"result": "BLOCKED", "reason": "NO_SPIKE_SETTINGS"}
-        
-    if not settings.get("enabled", False):
-        return {"result": "SKIPPED", "reason": "DISABLED_BY_SETTINGS"}
-        
-    # 2. Check Session
-    if not is_in_session(settings.get("session_kst", {})):
-        return {"result": "SKIPPED", "reason": "OUTSIDE_SESSION"}
-        
-    # 3. Load Watchlist
-    watchlist_data = load_json(WATCHLIST_FILE)
-    if not watchlist_data:
-        return {"result": "BLOCKED", "reason": "NO_WATCHLIST"}
-    
-    items = watchlist_data.get("items", [])
-    if not items:
-        return {"result": "BLOCKED", "reason": "EMPTY_WATCHLIST"}
-
-    # 4. Filter Targets
-    targets = [i["ticker"] for i in items if i.get("enabled", True)]
-    if not targets:
-        return {"result": "SKIPPED", "reason": "NO_ENABLED_TARGETS"}
-    
-    # 5. Fetch Market Data & Portfolio
-    provider_type = settings.get("market_data", {}).get("provider", "naver")
-    from app.providers.market_data import MarketDataProvider
-    provider = MarketDataProvider(provider_type)
-    market_data = provider.fetch_realtime(targets)
-    
-    if not market_data:
-        # DATA FAILURE -> Incident Push (Fail-Safe) -> then Exit/Block
-        # Check if it was a total failure or just empty (likely failure if targets exist)
-        # Send Incident
-        try:
-             # Idempotency check? Incident push logic usually handles it or we rely on Ops summary.
-             # Here we do a direct standardized incident push via API if possible, or just log.
-             # User requested: "Incident Push 1회 (idempotency)"
-             # Let's call the internal API or logic if available.
-             # Just printing error log might be enough if daily ops picks it up, but Spike Watch is standalone.
-             # Let's perform a simple requests post to localhost if we are running as script
-             import requests
-             requests.post("http://localhost:8000/api/push/incident/run", 
-                           json={"type": "MARKET_DATA_DOWN", "message": "Spike Watch: Market Data Fetch Failed"},
-                           timeout=2)
-        except:
-             pass
-        return {"result": "BLOCKED", "reason": "MARKET_DATA_FAILED_INCIDENT_SENT"}
-        
-    portfolio_holdings = {}
-    if settings.get("display", {}).get("include_portfolio_context", True):
-        portfolio_holdings = get_portfolio_context()
-        
-    # 6. Check Logic
-    threshold_pct = settings.get("threshold_pct", 3.0)
-    cooldown_minutes = settings.get("cooldown_minutes", 15)
-    
-    state = load_json(SPIKE_STATE_FILE) or {}
+    # Init receipt fields
+    receipt_status = "UNKNOWN"
+    receipt_reason = ""
     alerts = []
+    sent_count = 0
     skipped_cooldown = 0
+    settings = {}
     
-    for item in items:
-        ticker = item["ticker"]
-        if ticker not in targets or ticker not in market_data:
-            continue
+    try:
+        # 1. Load Settings
+        from app.generate_spike_settings import load_spike_settings
+        settings = load_spike_settings() or {}
+        if not settings:
+            receipt_status = "BLOCKED"
+            receipt_reason = "NO_SPIKE_SETTINGS"
+            return {"result": receipt_status, "reason": receipt_reason}
             
-        md = market_data[ticker]
-        try:
-            current_pct = float(md.get("change_pct", 0))
-        except:
-            continue
+        if not settings.get("enabled", False):
+            receipt_status = "SKIPPED"
+            receipt_reason = "DISABLED_BY_SETTINGS"
+            return {"result": receipt_status, "reason": receipt_reason}
             
-        # Trigger Determination
-        alert_type = None
-        ride_type = None
+        # 2. Check Session
+        if not is_in_session(settings.get("session_kst", {})):
+            receipt_status = "SKIPPED"
+            receipt_reason = "OUTSIDE_SESSION"
+            return {"result": receipt_status, "reason": receipt_reason}
+            
+        # 3. Load Watchlist
+        watchlist_data = load_json(WATCHLIST_FILE)
+        if not watchlist_data:
+            receipt_status = "BLOCKED"
+            receipt_reason = "NO_WATCHLIST"
+            return {"result": receipt_status, "reason": receipt_reason}
         
-        # 1. Base Spike Trigger
-        if current_pct >= threshold_pct:
-            alert_type = "UP"
-        elif current_pct <= -threshold_pct:
-            alert_type = "DOWN"
+        items = watchlist_data.get("items", [])
+        if not items:
+            receipt_status = "BLOCKED"
+            receipt_reason = "EMPTY_WATCHLIST"
+            return {"result": receipt_status, "reason": receipt_reason}
+
+        # 4. Filter Targets
+        targets = [i["ticker"] for i in items if i.get("enabled", True)]
+        if not targets:
+            receipt_status = "SKIPPED"
+            receipt_reason = "NO_ENABLED_TARGETS"
+            return {"result": receipt_status, "reason": receipt_reason}
+        
+        # 5. Fetch Market Data & Portfolio
+        provider_type = settings.get("market_data", {}).get("provider", "naver")
+        from app.providers.market_data import MarketDataProvider
+        provider = MarketDataProvider(provider_type)
+        market_data = provider.fetch_realtime(targets)
+        
+        if not market_data:
+            receipt_status = "BLOCKED"
+            receipt_reason = "MARKET_DATA_FAILED"
+            # Incident Push Logic (Simplified)
+            try:
+                 import requests
+                 requests.post("http://localhost:8000/api/push/incident/run", 
+                               json={"type": "MARKET_DATA_DOWN", "message": "Spike Watch: Market Data Fetch Failed"},
+                               timeout=2)
+            except: pass
+            return {"result": receipt_status, "reason": receipt_reason}
             
-        if alert_type:
-            # Check Cooldown & Ride
-            key = f"{ticker}_{alert_type}"
-            last_sent_str = state.get("last_sent", {}).get(key)
-            last_pct = state.get("last_pct", {}).get(key, 0.0)
+        portfolio_holdings = {}
+        if settings.get("display", {}).get("include_portfolio_context", True):
+            portfolio_holdings = get_portfolio_context()
             
-            should_alert = False
-            is_ride = False
-            
-            if not last_sent_str:
-                # First time
-                should_alert = True
-                is_ride = False # First spike
-            else:
-                last_sent = datetime.fromisoformat(last_sent_str)
-                time_passed = datetime.now() - last_sent
+        # 6. Check Logic
+        threshold_pct = settings.get("threshold_pct", 3.0)
+        cooldown_minutes = settings.get("cooldown_minutes", 15)
+        
+        state = load_json(SPIKE_STATE_FILE) or {}
+        
+        for item in items:
+            ticker = item["ticker"]
+            if ticker not in targets or ticker not in market_data:
+                continue
                 
-                if time_passed > timedelta(minutes=cooldown_minutes):
-                    # Cooldown expired -> New Spike
+            md = market_data[ticker]
+            try:
+                current_pct = float(md.get("change_pct", 0))
+            except:
+                continue
+                
+            # Trigger Determination
+            alert_type = None
+            ride_type = None
+            
+            # ... (Existing Logic Omitted for brevity, assuming loop logic is same) ...
+            # I cannot omit code in replace_file_content if I am replacing the whole function.
+            # I must reproduce the loop logic carefully.
+            
+            # 1. Base Spike Trigger
+            if current_pct >= threshold_pct:
+                alert_type = "UP"
+            elif current_pct <= -threshold_pct:
+                alert_type = "DOWN"
+                
+            if alert_type:
+                # Check Cooldown & Ride
+                key = f"{ticker}_{alert_type}"
+                last_sent_str = state.get("last_sent", {}).get(key)
+                last_pct = state.get("last_pct", {}).get(key, 0.0)
+                
+                should_alert = False
+                is_ride = False
+                
+                if not last_sent_str:
                     should_alert = True
-                    is_ride = False
                 else:
-                    # In Cooldown -> Check Ride (Significant Advance)
-                    # Condition: Additional 1.0%p move in same direction
-                    if alert_type == "UP":
-                        if current_pct >= last_pct + 1.0:
+                    last_sent = datetime.fromisoformat(last_sent_str)
+                    if datetime.now() - last_sent > timedelta(minutes=cooldown_minutes):
+                        should_alert = True
+                    else:
+                        if alert_type == "UP" and current_pct >= last_pct + 1.0:
                             should_alert = True
                             is_ride = True
-                    elif alert_type == "DOWN":
-                        if current_pct <= last_pct - 1.0:
-                             should_alert = True
-                             is_ride = True
-            
-            if should_alert:
-                # Enrich Message
-                name = md.get("name", item["name"])
-                price = md.get("price", 0)
-                vol = md.get("volume", 0)
-                val_krw = md.get("value_krw", 0)
+                        elif alert_type == "DOWN" and current_pct <= last_pct - 1.0:
+                            should_alert = True
+                            is_ride = True
                 
-                # Deviation (ETF)
-                nav_info = ""
-                if settings.get("display", {}).get("include_deviation", True) and md.get("nav"):
-                    try:
-                        nav = float(md["nav"])
-                        if nav > 0:
-                            diff = price - nav
-                            diff_pct = (diff / nav) * 100
-                            nav_info = f"\n📊 괴리: {diff_pct:+.2f}% (NAV {nav:,.0f})"
-                    except: pass
-
-                # Holding Context
-                holding_info = ""
-                if ticker in portfolio_holdings:
-                    h = portfolio_holdings[ticker]
-                    try:
-                        qty = int(h.get("qty", 0))
-                        avg = float(h.get("avg_price", 0))
-                        pnl_pct = ((price - avg) / avg * 100) if avg > 0 else 0
-                        holding_info = f"\n💼 보유: {qty}주 ({pnl_pct:+.1f}%)"
-                    except:
-                        holding_info = "\n💼 보유중"
-                
-                # Construct Message
-                # Title: 🚀 UP or 🏇 RIDE UP
-                title_emoji = "🚀" if not is_ride else "🏇"
-                type_str = f"{alert_type}" if not is_ride else f"RIDE {alert_type}"
-                if alert_type == "DOWN": title_emoji = "📉" if not is_ride else "⛷️"
-                
-                msg_lines = [
-                    f"{title_emoji} {type_str} {name} {current_pct:+.2f}% ({price:,.0f})",
-                ]
-                
-                if settings.get("display", {}).get("include_value_volume", True):
-                    val_str = format_money_kr(val_krw) if val_krw > 0 else f"{vol:,}주"
-                    msg_lines.append(f"💰 {val_str}")
+                if should_alert:
+                    # Enrich Message
+                    name = md.get("name", item["name"])
+                    price = md.get("price", 0)
+                    vol = md.get("volume", 0)
+                    val_krw = md.get("value_krw", 0)
                     
-                if nav_info: msg_lines.append(nav_info)
-                if holding_info: msg_lines.append(holding_info)
-                
-                alerts.append({
-                    "ticker": ticker,
-                    "msg": " ".join(msg_lines), 
-                    "full_msg": "\n".join(msg_lines), 
-                    "type": "RIDE" if is_ride else "SPIKE"
-                })
-                
-                # Update State
-                update_cooldown(state, ticker, alert_type) # Updates last_sent
-                # Update last_pct for Ride tracking
-                if "last_pct" not in state: state["last_pct"] = {}
-                state["last_pct"][key] = current_pct
+                    nav_info = ""
+                    if settings.get("display", {}).get("include_deviation", True) and md.get("nav"):
+                        try:
+                            nav = float(md["nav"])
+                            if nav > 0:
+                                nav_info = f"\n📊 괴리: {((price-nav)/nav)*100:+.2f}% (NAV {nav:,.0f})"
+                        except: pass
 
-            else:
-                skipped_cooldown += 1
-                
-    # Save State
-    save_json(SPIKE_STATE_FILE, state)
+                    holding_info = ""
+                    if ticker in portfolio_holdings:
+                        h = portfolio_holdings[ticker]
+                        try:
+                            avg = float(h.get("avg_price", 0))
+                            pnl_pct = ((price - avg) / avg * 100) if avg > 0 else 0
+                            holding_info = f"\n💼 보유: {int(h.get('qty',0))}주 ({pnl_pct:+.1f}%)"
+                        except:
+                            holding_info = "\n💼 보유중"
+                    
+                    title_emoji = "🚀" if not is_ride else "🏇"
+                    if alert_type == "DOWN": title_emoji = "📉" if not is_ride else "⛷️"
+                    type_str = f"{alert_type}" if not is_ride else f"RIDE {alert_type}"
+                    
+                    msg_lines = [f"{title_emoji} {type_str} {name} {current_pct:+.2f}% ({price:,.0f})"]
+                    if settings.get("display", {}).get("include_value_volume", True):
+                        val_str = format_money_kr(val_krw) if val_krw > 0 else f"{vol:,}주"
+                        msg_lines.append(f"💰 {val_str}")
+                    if nav_info: msg_lines.append(nav_info)
+                    if holding_info: msg_lines.append(holding_info)
+                    
+                    alerts.append({
+                        "ticker": ticker,
+                        "msg": " ".join(msg_lines), 
+                        "full_msg": "\n".join(msg_lines), 
+                        "type": "RIDE" if is_ride else "SPIKE"
+                    })
+                    
+                    update_cooldown(state, ticker, alert_type)
+                    if "last_pct" not in state: state["last_pct"] = {}
+                    state["last_pct"][key] = current_pct
 
-    # Send
-    sent_count = 0
-    if alerts:
-        from app.providers.telegram_sender import send_telegram_message
-        for alert in alerts:
-            res = send_telegram_message(alert["full_msg"])
-            if res.get("success"):
-                sent_count += 1
-                print(f"[SPIKE] Sent: {alert['ticker']} {alert['type']}")
-            else:
-                print(f"[SPIKE] Fail: {alert['ticker']}")
+                else:
+                    skipped_cooldown += 1
+                    
+        # Save State
+        save_json(SPIKE_STATE_FILE, state)
 
-    receipt = {
-        "schema": "SPIKE_PUSH_RECEIPT_V1_3",
-        "asof": datetime.now().isoformat(),
-        "settings_used": settings.get("display", {}),
-        "alerts_count": len(alerts),
-        "sent_count": sent_count,
-        "skipped_count": skipped_cooldown,
-        "alerts_log": [a["msg"] for a in alerts],
-        "delivery_actual": "TELEGRAM" if sent_count > 0 else ("NONE" if not alerts else "FAILED"),
-        "send_receipt": {
-             "sent_at": datetime.now().isoformat(),
-             "message_count": sent_count,
-             "provider": "TELEGRAM"
+        # Send
+        if alerts:
+            from app.providers.telegram_sender import send_telegram_message
+            for alert in alerts:
+                res = send_telegram_message(alert["full_msg"])
+                if res.get("success"):
+                    sent_count += 1
+                    print(f"[SPIKE] Sent: {alert['ticker']} {alert['type']}")
+                else:
+                    print(f"[SPIKE] Fail: {alert['ticker']}")
+                    
+        receipt_status = "OK"
+        return {
+            "result": "OK", 
+            "alerts": len(alerts), 
+            "sent": sent_count, 
+            "skipped": skipped_cooldown
         }
-    }
-    save_json(SPIKE_LATEST_FILE, receipt)
-    
-    return {
-        "result": "OK", 
-        "alerts": len(alerts), 
-        "sent": sent_count, 
-        "skipped": skipped_cooldown
-    }
+
+    finally:
+        # ALWAYS Save Receipt
+        receipt = {
+            "schema": "SPIKE_PUSH_RECEIPT_V1_3",
+            "asof": datetime.now().isoformat(),
+            "settings_used": settings.get("display", {}) if settings else {},
+            "execution_result": receipt_status,
+            "execution_reason": receipt_reason,
+            "alerts_count": len(alerts),
+            "sent_count": sent_count,
+            "skipped_count": skipped_cooldown,
+            "alerts_log": [a["msg"] for a in alerts],
+            "delivery_actual": "TELEGRAM" if sent_count > 0 else ("NONE" if not alerts else "FAILED"),
+            "send_receipt": {
+                 "sent_at": datetime.now().isoformat(),
+                 "message_count": sent_count,
+                 "provider": "TELEGRAM"
+            }
+        }
+        save_json(SPIKE_LATEST_FILE, receipt)
 
 if __name__ == "__main__":
     print(json.dumps(run_spike_push(), indent=2, ensure_ascii=False))
