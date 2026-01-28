@@ -81,6 +81,12 @@ JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticke
 
 DANGEROUS_TOKENS = ['..', '\\', '://', '%2e', '%2f', '%2E', '%2F', '%00']
 
+# P70: Resolver Aliases (Guard)
+REF_ALIASES = {
+    "guard_spike_latest": "reports/ops/push/spike_watch/latest/spike_watch_latest.json",
+    "guard_holding_latest": "reports/ops/push/holding_watch/latest/holding_watch_latest.json"
+}
+
 
 @dataclass
 class ResolvedEvidence:
@@ -99,12 +105,17 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
     """
     Ref 검증 + 해석 (단일 정공 함수)
     
+    - 0차: Alias Resolution (P70)
     - 1차: 위험 토큰 거부
     - 2차: regex/allowlist 검증
     - 3차: path normalization + allowed_root 검증
     - 4차: 파일 존재 확인 + 내용 읽기
     """
     
+    # === 0차: Alias Resolution ===
+    if ref in REF_ALIASES:
+        ref = REF_ALIASES[ref]
+
     # === 1차 검증: 위험 토큰 즉시 거부 ===
     for token in DANGEROUS_TOKENS:
         if token in ref:
