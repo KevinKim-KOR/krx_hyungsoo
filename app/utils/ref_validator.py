@@ -57,7 +57,8 @@ REF_ALIASES = {
     "guard_spike_latest": "reports/ops/push/spike_watch/latest/spike_watch_latest.json",
     "guard_holding_latest": "reports/ops/push/holding_watch/latest/holding_watch_latest.json",
     "guard_report_human_latest": "reports/phase_c/latest/report_human.json",
-    "guard_report_ai_latest": "reports/phase_c/latest/report_ai.json"
+    "guard_report_ai_latest": "reports/phase_c/latest/report_ai.json",
+    "guard_daily_status_latest": "reports/ops/push/daily_status/latest/daily_status_latest.json"
 }
 
 
