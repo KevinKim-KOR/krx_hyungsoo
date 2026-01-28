@@ -117,17 +117,17 @@ curl -s http://localhost:8000/api/push/daily_status/latest | python3 -m json.too
 ```
 
 ### B) Holding Watch 최신 (Evidence-based)
-- Evidence Ref: `reports/ops/push/holding_watch/latest/holding_watch_latest.json`
+- Evidence Ref: `guard_holding_latest` (Alias)
 - 검증 (Resolver):
 ```bash
-curl "http://localhost:8000/api/evidence/resolve?ref=reports/ops/push/holding_watch/latest/holding_watch_latest.json"
+curl "http://localhost:8000/api/evidence/resolve?ref=guard_holding_latest"
 ```
 
 ### C) Spike Watch 최신 (Evidence-based, P67 Completed)
-- Evidence Ref: `reports/ops/push/spike_watch/latest/spike_watch_latest.json`
+- Evidence Ref: `guard_spike_latest` (Alias)
 - 검증 (Resolver):
 ```bash
-curl "http://localhost:8000/api/evidence/resolve?ref=reports/ops/push/spike_watch/latest/spike_watch_latest.json"
+curl "http://localhost:8000/api/evidence/resolve?ref=guard_spike_latest"
 ```
 
 ---
