@@ -24,17 +24,42 @@ fi
 # 3: FAILED (Market Data Down, etc)
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Holding Watch..."
-python3 app/run_holding_watch.py
+RESPONSE=$(python3 app/run_holding_watch.py)
 EXIT_CODE=$?
 
+# Parse Response (JSON)
+# Expected: {"result": "...", "reason": "...", "alerts": N} or empty/error text
+RESULT=$(echo "$RESPONSE" | grep -o '"result": *"[^"]*"' | cut -d'"' -f4)
+REASON=$(echo "$RESPONSE" | grep -o '"reason": *"[^"]*"' | cut -d'"' -f4)
+ALERTS=$(echo "$RESPONSE" | grep -o '"alerts": *[0-9]*' | cut -d':' -f2)
+
+DATE_STR=$(date '+%Y-%m-%d %H:%M:%S')
+
 if [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ Holding Watch Completed (OK/SKIP)"
+    # OK or SKIP
+    if [ "$RESULT" == "SKIPPED" ]; then
+        echo "[$DATE_STR] SKIP: $REASON"
+    else
+        # OK
+        ALERTS=${ALERTS:-0}
+        REASON=${REASON:-UNKNOWN}
+        echo "[$DATE_STR] OK: Alerts=$ALERTS Reason=$REASON"
+    fi
+
 elif [ $EXIT_CODE -eq 2 ]; then
-    echo "⛔ Holding Watch BLOCKED (Check Portfolio/Settings)"
+    # BLOCKED
+    REASON=${REASON:-UNKNOWN}
+    echo "[$DATE_STR] BLOCKED: $REASON"
+
 elif [ $EXIT_CODE -eq 3 ]; then
-    echo "❌ Holding Watch FAILED (Incident)"
+    # FAILED
+    echo "[$DATE_STR] FAILED: Incident (Exit 3)"
+    # Log raw output for debugging
+    echo "$RESPONSE"
+
 else
-    echo "⚠️ Holding Watch Unknown Exit: $EXIT_CODE"
+    echo "[$DATE_STR] ERROR: Unknown Exit $EXIT_CODE"
+    echo "$RESPONSE"
 fi
 
 exit $EXIT_CODE

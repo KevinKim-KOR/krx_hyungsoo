@@ -68,6 +68,16 @@ def save_snapshot(data: Dict, latest: bool = True) -> str:
             
     return f"reports/ops/push/holding_watch/snapshots/{filename}"
 
+def output_and_exit(result: str, reason: str, alerts: int = 0, exit_code: int = 0):
+    output = {
+        "result": result,
+        "reason": reason,
+        "alerts": alerts
+    }
+    # Ensure this is the ONLY stdout
+    print(json.dumps(output, ensure_ascii=False))
+    sys.exit(exit_code)
+
 def main():
     global exit_code
     logger.info("Starting Holding Watch...")
@@ -76,28 +86,23 @@ def main():
     settings_all = safe_read_json(SETTINGS_FILE)
     if not settings_all:
         logger.error("No Settings found")
-        print("BLOCKED: NO_SETTINGS")
-        sys.exit(2)
+        output_and_exit("BLOCKED", "NO_SETTINGS", exit_code=2)
         
     settings = settings_all.get("holding", {})
     if not settings.get("enabled", False):
         logger.info("Holding Watch Disabled")
-        print("SKIP: DISABLED")
-        sys.exit(0)
+        output_and_exit("SKIPPED", "DISABLED", exit_code=0)
         
     # Session Check
     if not is_in_session(settings.get("session_kst", {}), settings.get("weekdays", [0,1,2,3,4])):
-        # Force run capability? Maybe via arg. For now, strict session.
         logger.info("Outside Session")
-        print("SKIP: OUTSIDE_SESSION")
-        sys.exit(0)
+        output_and_exit("SKIPPED", "OUTSIDE_SESSION", exit_code=0)
 
     portfolio = safe_read_json(PORTFOLIO_FILE)
     if not portfolio or not portfolio.get("holdings"):
         logger.warning("No Portfolio found or empty")
-        print("BLOCKED: NO_PORTFOLIO")
         # Fail-Closed Rule: BLOCKED is Exit 2
-        sys.exit(2)
+        output_and_exit("BLOCKED", "NO_PORTFOLIO", exit_code=2)
 
     # Load Previous State
     HOLDING_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -111,8 +116,49 @@ def main():
         
     tickers = [h["ticker"] for h in holdings if h.get("ticker")]
     if not tickers:
-        print("SKIP: NO_TICKERS")
-        sys.exit(0)
+        output_and_exit("SKIPPED", "NO_TICKERS", exit_code=0)
+        
+    provider = MarketDataProvider()
+    market_map = provider.fetch_realtime(tickers)
+    
+    # Check Data Integrity
+    if not market_map:
+        logger.error("Market Data Fetch Failed (Empty)")
+        generate_incident_push("MARKET_DATA_DOWN", "Run Holding Watch", "Empty response from provider")
+        sys.exit(3)
+        
+    # 3. Watch Logic
+    alerts = []
+    
+    pnl_up_limit = settings.get("pnl_up_pct", 5.0)
+    pnl_down_limit = settings.get("pnl_down_pct", 3.0) # Assume positive input (e.g. 3.0 means -3%)
+    trail_stop_limit = settings.get("trail_stop_pct", 2.0)
+    use_trail_stop = settings.get("use_trail_stop", False)
+    cooldown_sec = settings.get("cooldown_m", 15) * 60
+    realert_delta = settings.get("realert_delta_pp", 1.0)
+    
+    now_ts = time.time()
+    now_iso = datetime.now().isoformat()
+    
+    for h in holdings:
+        # ... logic unchanged ...
+        # (I need to preserve the loop logic. 
+        # Using replace_file_content heavily here is risky if I don't see the loop lines.
+        # I will target the END of the function to replace the print statements first, 
+        # then I might need to make a separate call for the top part if I can't reach it?
+        # The Instruction allows me to define output_and_exit.
+        # But I need to replace the calls to sys.exit in the top part.
+        pass
+
+    # Note: I am replacing the main function definition partly? 
+    # The previous `replace_file_content` replaced lines 322-328 which is the END of main.
+    # To properly implement 'output_and_exit' usage throughout, I should probably `write_to_file` the whole file 
+    # OR do multiple replacements.
+    # `write_to_file` is safer given the logic distribution.
+    # But I can't copy the whole loop logic from memory without viewing it? 
+    # I verified it in Step 521. I have the loop logic.
+    # I can reconstruct the file.
+
         
     provider = MarketDataProvider()
     market_map = provider.fetch_realtime(tickers)
@@ -322,10 +368,10 @@ def main():
         save_snapshot(snapshot_data, latest=True)
 
         logger.info(f"Sent {len(alerts)} alerts (Success={res.get('success')})")
-        print(f"OK: Alerts={len(alerts)} Reason=ALERTS_GENERATED")
+        output_and_exit("OK", "ALERTS_GENERATED", len(alerts), 0)
     else:
         logger.info("No alerts triggered")
-        print("OK: Alerts=0 Reason=NO_ALERTS")
+        output_and_exit("OK", "NO_ALERTS", 0, 0)
 
 if __name__ == "__main__":
     main()

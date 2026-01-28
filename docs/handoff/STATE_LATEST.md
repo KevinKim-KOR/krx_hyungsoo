@@ -80,10 +80,10 @@
 ---
 
 ## 6) 주요 “운영 버튼” (CLI 한 줄)
-### A) 로그 요약 (P68 Standard)
-- 최근 10줄 "WHY" 확인:
-  `grep "Reason=" logs/spike_watch.log | tail -10`
-  `tail -n 20 logs/holding_watch.log`
+### A) 로그 요약 (P69 Standard)
+- 최근 1회 실행 "Reason" 확정:
+  - Spike: `tail -n 80 logs/spike_watch.log | grep "Reason=" | tail -1`
+  - Holding: `tail -n 80 logs/holding_watch.log | grep "Reason=" | tail -1`
 
 ### B) 데일리 운영(OCI)
 - 실행:
