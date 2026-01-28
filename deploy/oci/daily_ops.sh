@@ -287,30 +287,43 @@ if echo "$SUMMARY_JSON" | grep -q '"ops_status"'; then
 import json,sys
 try:
     d = json.load(sys.stdin)
-    ops = d.get("ops_status", "UNKNOWN")
+    
+    # Check for API error response
+    if "detail" in d:
+        print(f"DAILY_SUMMARY Reason=API_ERROR detail={d.get("detail")} keys={list(d.keys())}")
+        sys.exit(0)
+
+    # Extract fields with strict defaults
+    ops = d.get("ops_status", "MISSING_OPS")
     live = d.get("live_status", {})
-    live_res = f"""{live.get("result","?")}/{live.get("decision","?")}"""
-    bundle_stale = str(d.get("bundle", {}).get("stale", "unknown")).lower()
-    reco = d.get("reco", {}).get("decision", "UNKNOWN")
-    order = d.get("order_plan", {}).get("decision", "UNKNOWN")
+    live_res = f"""{live.get("result","MISSING")}/{live.get("decision","MISSING")}"""
     
-    # Reason
-    # Logic: if blocked -> blocked reason, if sent -> sent
-    # But usually just match P72 requirements
-    delivery = d.get("delivery_actual", "NONE")
+    bundle_info = d.get("bundle", {})
+    bundle_stale = str(bundle_info.get("stale", "missing")).lower()
     
-    # Risks
+    reco_info = d.get("reco", {})
+    reco_decision = reco_info.get("decision", "MISSING_RECO")
+    
+    op_info = d.get("order_plan", {})
+    op_decision = op_info.get("decision", "MISSING_OP")
+    
     risks = d.get("top_risks", [])
     risks_str = str(risks).replace(" ", "")
-    
-    # Reason Logic (Simple)
-    reason = "OK"
-    if ops != "OK": reason = ops
-    elif bundle_stale == "true": reason = "BUNDLE_STALE"
-    elif reco == "EMPTY_RECO": reason = "EMPTY_RECO"
-    elif order == "BLOCKED": reason = "ORDER_BLOCKED"
-    
-    print(f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco} order_plan={order} Reason={reason} risks={risks_str}")
+
+    # Reason Logic (Strict Enum Priority)
+    # 1. Blockers/Failures
+    if op_decision == "BLOCKED":
+        reason = "ORDER_PLAN_BLOCKED"
+    elif reco_decision == "EMPTY_RECO":
+        reason = "EMPTY_RECO"
+    elif bundle_stale == "true":
+        reason = "BUNDLE_STALE"
+    elif ops != "OK" and ops != "WARN": # WARN is tolerable?
+        reason = f"OPS_{ops}"
+    else:
+        reason = "OK"
+
+    print(f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco_decision} order_plan={op_decision} Reason={reason} risks={risks_str}")
 except Exception as e:
     print(f"DAILY_SUMMARY Reason=PARSE_ERROR error={e}")
 ')
