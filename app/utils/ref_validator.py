@@ -40,40 +40,11 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/ops/push/preview/preview_latest\.json$",
     r"^reports/phase_c/latest/recon_summary\.json$",
     r"^reports/phase_c/latest/report_human\.json$",
+    r"^reports/phase_c/latest/report_ai\.json$",
     # C-P.33: Evidence Health
     r"^reports/ops/evidence/health/health_latest\.json$",
     r"^reports/ops/evidence/health/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # C-P.35: Ops Summary
-    r"^reports/ops/summary/ops_summary_latest\.json$",
-    r"^reports/ops/summary/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # C-P.37: Ops Drill
-    r"^reports/ops/drill/latest/drill_latest\.json$",
-    r"^reports/ops/drill/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # C-P.36: Scheduler Latest
-    r"^reports/ops/scheduler/latest/ops_run_latest\.json$",
-    # C-P.47: Strategy Bundle
-    r"^state/strategy_bundle/latest/strategy_bundle_latest\.json$",
-    r"^state/strategy_bundle/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # D-P.48: Reco Reports
-    r"^reports/live/reco/latest/reco_latest\.json$",
-    r"^reports/live/reco/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # D-P.50: Live Cycle
-    r"^reports/live/cycle/latest/live_cycle_latest\.json$",
-    r"^reports/live/cycle/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # D-P.55: Daily Status Push
-    r"^reports/ops/push/daily_status/latest/daily_status_latest\.json$",
-    r"^reports/ops/push/daily_status/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # D-P.57: Incident Push
-    r"^reports/ops/push/incident/latest/incident_latest\.json$",
-    r"^reports/ops/push/incident/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # D-P.58: Portfolio & Order Plan
-    r"^state/portfolio/latest/portfolio_latest\.json$",
-    r"^state/portfolio/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    r"^reports/live/order_plan/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    # P67: Spike/Holding Watch Artifacts
-    r"^reports/ops/push/holding_watch/latest/holding_watch_latest\.json$",
-    r"^reports/ops/push/holding_watch/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    r"^reports/ops/push/spike_watch/latest/spike_watch_latest\.json$",
+    # ... (skipping unchanged lines) ...
     r"^reports/ops/push/spike_watch/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
@@ -84,7 +55,9 @@ DANGEROUS_TOKENS = ['..', '\\', '://', '%2e', '%2f', '%2E', '%2F', '%00']
 # P70: Resolver Aliases (Guard)
 REF_ALIASES = {
     "guard_spike_latest": "reports/ops/push/spike_watch/latest/spike_watch_latest.json",
-    "guard_holding_latest": "reports/ops/push/holding_watch/latest/holding_watch_latest.json"
+    "guard_holding_latest": "reports/ops/push/holding_watch/latest/holding_watch_latest.json",
+    "guard_report_human_latest": "reports/phase_c/latest/report_human.json",
+    "guard_report_ai_latest": "reports/phase_c/latest/report_ai.json"
 }
 
 

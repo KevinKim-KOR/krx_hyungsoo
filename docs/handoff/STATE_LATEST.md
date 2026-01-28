@@ -162,6 +162,16 @@ curl "http://localhost:8000/api/evidence/resolve?ref=guard_holding_latest"
 curl "http://localhost:8000/api/evidence/resolve?ref=guard_spike_latest"
 ```
 
+### D) Contract 5 Reports (P73 Freeze)
+- **Human Report** (`guard_report_human_latest`):
+  ```bash
+  curl "http://localhost:8000/api/evidence/resolve?ref=guard_report_human_latest"
+  ```
+- **AI Report** (`guard_report_ai_latest`):
+  ```bash
+  curl "http://localhost:8000/api/evidence/resolve?ref=guard_report_ai_latest"
+  ```
+
 ---
 
 ## 9) PC에서 입력되는 것 → OCI로 넘어오는 경로
