@@ -110,7 +110,14 @@ curl -s http://localhost:8000/api/push/daily_status/latest | python3 -m json.too
 > - `execution_reason`: **NO_ALERTS**(정상), **COOLDOWN_ACTIVE**(정상), **OUT_OF_TRADING**(장외), **ALERTS_GENERATED**(알림있음)
 > - `delivery_actual`: **NONE**(알림없음 정상스킵), **TELEGRAM**(발송됨), **FAILED**(발송실패)
 
-### C) 데일리 운영(OCI)
+### C) 데일리 운영 (P72 Summary)
+- 최근 요약 1줄 확인:
+  `grep "DAILY_SUMMARY" logs/daily_ops.log | tail -1`
+
+- **Reason별 조치**:
+  - `BUNDLE_STALE` → PC 전략번들 생성/Push 필요
+  - `EMPTY_RECO` → PC Watchlist/Bundle 점검
+  - `DAILY_STATUS_READ_ERROR` → Backend Health 확인 (`curl localhost:8000/api/ops/health`)
 - 실행:
   `bash deploy/oci/daily_ops.sh`
 - Exit code:

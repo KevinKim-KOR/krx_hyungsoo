@@ -262,6 +262,52 @@ else
 fi
 
 # ============================================================================
+# Step 7: Daily Summary Log (P72 Standard)
+# ============================================================================
+echo ""
+echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
+
+SUMMARY_JSON=$(curl -s "${BASE_URL}/api/push/daily_status/latest")
+
+if echo "$SUMMARY_JSON" | grep -q '"ops_status"'; then
+    # Parse fields
+    SUMMARY_LINE=$(echo "$SUMMARY_JSON" | python3 -c '
+import json,sys
+try:
+    d = json.load(sys.stdin)
+    ops = d.get("ops_status", "UNKNOWN")
+    live = d.get("live_status", {})
+    live_res = f"{live.get(\"result\",\"?\")}/{live.get(\"decision\",\"?\")}"
+    bundle_stale = str(d.get("bundle", {}).get("stale", "unknown")).lower()
+    reco = d.get("reco", {}).get("decision", "UNKNOWN")
+    order = d.get("order_plan", {}).get("decision", "UNKNOWN")
+    
+    # Reason
+    # Logic: if blocked -> blocked reason, if sent -> sent
+    # But usually just match P72 requirements
+    delivery = d.get("delivery_actual", "NONE")
+    
+    # Risks
+    risks = d.get("top_risks", [])
+    risks_str = str(risks).replace(" ", "")
+    
+    # Reason Logic (Simple)
+    reason = "OK"
+    if ops != "OK": reason = ops
+    elif bundle_stale == "true": reason = "BUNDLE_STALE"
+    elif reco == "EMPTY_RECO": reason = "EMPTY_RECO"
+    elif order == "BLOCKED": reason = "ORDER_BLOCKED"
+    
+    print(f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco} order_plan={order} Reason={reason} risks={risks_str}")
+except Exception as e:
+    print(f"DAILY_SUMMARY Reason=PARSE_ERROR error={e}")
+')
+    echo "$LOG_PREFIX $SUMMARY_LINE"
+else
+    echo "$LOG_PREFIX DAILY_SUMMARY Reason=DAILY_STATUS_READ_ERROR"
+fi
+
+# ============================================================================
 # Final Summary
 # ============================================================================
 echo ""
