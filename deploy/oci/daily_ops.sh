@@ -113,6 +113,9 @@ echo "$LOG_PREFIX ✓ Backend healthy (HTTP 200)"
 # ============================================================================
 # Step 3: Ops Summary Regenerate (minimal verification)
 # ============================================================================
+# ============================================================================
+# Step 3: Ops Summary Regenerate (minimal verification)
+# ============================================================================
 echo ""
 echo "$LOG_PREFIX [3/7] Regenerating Ops Summary..."
 REGEN_RESP=$(curl -s -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true")
@@ -132,23 +135,30 @@ echo "$LOG_PREFIX ✓ Ops Summary status: $OPS_STATUS"
 if [ "$OPS_STATUS" = "BLOCKED" ] || [ "$OPS_STATUS" = "STOPPED" ]; then
     echo "$LOG_PREFIX ⚠️ Ops Summary $OPS_STATUS - 정상 차단"
     send_incident "OPS_BLOCKED" "Step3" "Ops Summary $OPS_STATUS"
-    exit 2
+    EXIT_CODE=2
 fi
 
 # ============================================================================
-# Step 4: Live Cycle Run
+# Step 4: Live Cycle Run (Only if OK)
 # ============================================================================
-echo ""
-echo "$LOG_PREFIX [4/7] Running Live Cycle..."
-CYCLE_RESP=$(curl -s -X POST "${BASE_URL}/api/live/cycle/run?confirm=true")
-if [ -z "$CYCLE_RESP" ]; then
-    echo "$LOG_PREFIX ❌ Live Cycle run failed"
-    send_incident "LIVE_FAILED" "Step4" "Live Cycle API returned empty"
-    exit 3
-fi
+CYCLE_RESULT="SKIPPED"
+CYCLE_DECISION="SKIPPED"
+CYCLE_REASON="OPS_BLOCKED"
+CYCLE_DELIVERY="NONE"
+CYCLE_SNAPSHOT=""
 
-# Parse cycle result
-CYCLE_PARSED=$(curl -s "${BASE_URL}/api/live/cycle/latest" | python3 -c '
+if [ $EXIT_CODE -eq 0 ]; then
+    echo ""
+    echo "$LOG_PREFIX [4/7] Running Live Cycle..."
+    CYCLE_RESP=$(curl -s -X POST "${BASE_URL}/api/live/cycle/run?confirm=true")
+    if [ -z "$CYCLE_RESP" ]; then
+        echo "$LOG_PREFIX ❌ Live Cycle run failed"
+        send_incident "LIVE_FAILED" "Step4" "Live Cycle API returned empty"
+        exit 3
+    fi
+
+    # Parse cycle result
+    CYCLE_PARSED=$(curl -s "${BASE_URL}/api/live/cycle/latest" | python3 -c '
 import json,sys
 try:
     d = json.load(sys.stdin)
@@ -169,65 +179,67 @@ except Exception as e:
     sys.exit(1)
 ')
 
-if echo "$CYCLE_PARSED" | grep -q "^PARSE_ERROR:"; then
-    echo "$LOG_PREFIX ❌ Live Cycle parse failed"
-    send_incident "LIVE_FAILED" "Step4" "Live Cycle parse error"
-    exit 3
-fi
-
-CYCLE_RESULT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_RESULT:" | cut -d: -f2-)
-CYCLE_DECISION=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DECISION:" | cut -d: -f2-)
-CYCLE_REASON=$(echo "$CYCLE_PARSED" | grep "^CYCLE_REASON:" | cut -d: -f2-)
-CYCLE_DELIVERY=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DELIVERY:" | cut -d: -f2-)
-CYCLE_SNAPSHOT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_SNAPSHOT:" | cut -d: -f2-)
-# Check result
-if [ "$CYCLE_RESULT" = "FAILED" ]; then
-    echo "$LOG_PREFIX ❌ Live Cycle FAILED: $CYCLE_REASON"
-    send_incident "LIVE_FAILED" "Step4" "$CYCLE_REASON"
-    exit 3
-fi
-
-echo "$LOG_PREFIX ✓ Live Cycle: result=$CYCLE_RESULT decision=$CYCLE_DECISION delivery=$CYCLE_DELIVERY"
-
-# Check if BLOCKED
-if [ "$CYCLE_DECISION" = "BLOCKED" ]; then
-    echo "$LOG_PREFIX ⚠️ Live Cycle BLOCKED: $CYCLE_REASON (Continuing to push)"
-    # Don't exit here, just set flag to return 2 at the end
-    EXIT_CODE=2
-fi
-
-# ============================================================================
-# Step 5: Order Plan Regenerate (D-P.58)
-# ============================================================================
-echo ""
-echo "$LOG_PREFIX [5/7] Regenerating Order Plan..."
-ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true")
-
-if echo "$ORDER_RESP" | grep -q '"decision"'; then
-    ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
-    ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
-    
-    echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
-    
-    if [ "$ORDER_DECISION" = "BLOCKED" ]; then
-        # Order Plan BLOCKED is not fatal, just warning (e.g. no portfolio)
-        echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
-        # We don't exit here, just log it. Stale risk is handled in Ops Summary.
+    if echo "$CYCLE_PARSED" | grep -q "^PARSE_ERROR:"; then
+        echo "$LOG_PREFIX ❌ Live Cycle parse failed"
+        send_incident "LIVE_FAILED" "Step4" "Live Cycle parse error"
+        exit 3
     fi
-else
-    echo "$LOG_PREFIX ❌ Order Plan regen failed: $ORDER_RESP"
-    send_incident "ORDER_PLAN_FAILED" "Step5" "Order plan API failed"
-    exit 3
+
+    CYCLE_RESULT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_RESULT:" | cut -d: -f2-)
+    CYCLE_DECISION=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DECISION:" | cut -d: -f2-)
+    CYCLE_REASON=$(echo "$CYCLE_PARSED" | grep "^CYCLE_REASON:" | cut -d: -f2-)
+    CYCLE_DELIVERY=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DELIVERY:" | cut -d: -f2-)
+    CYCLE_SNAPSHOT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_SNAPSHOT:" | cut -d: -f2-)
+    # Check result
+    if [ "$CYCLE_RESULT" = "FAILED" ]; then
+        echo "$LOG_PREFIX ❌ Live Cycle FAILED: $CYCLE_REASON"
+        send_incident "LIVE_FAILED" "Step4" "$CYCLE_REASON"
+        exit 3
+    fi
+
+    echo "$LOG_PREFIX ✓ Live Cycle: result=$CYCLE_RESULT decision=$CYCLE_DECISION delivery=$CYCLE_DELIVERY"
+
+    # Check if BLOCKED
+    if [ "$CYCLE_DECISION" = "BLOCKED" ]; then
+        echo "$LOG_PREFIX ⚠️ Live Cycle BLOCKED: $CYCLE_REASON (Continuing to push)"
+        # Don't exit here, just set flag to return 2 at the end
+        EXIT_CODE=2
+    fi
 fi
 
 # ============================================================================
-# Step 6: Snapshot Verification
+# Step 5: Order Plan Regenerate (D-P.58) (Only if OK)
 # ============================================================================
-echo ""
-echo "$LOG_PREFIX [6/7] Verifying snapshot..."
-SNAPSHOT_OK="N/A"
+if [ $EXIT_CODE -eq 0 ]; then
+    echo ""
+    echo "$LOG_PREFIX [5/7] Regenerating Order Plan..."
+    ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true")
 
+    if echo "$ORDER_RESP" | grep -q '"decision"'; then
+        ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+        ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
+        
+        echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
+        
+        if [ "$ORDER_DECISION" = "BLOCKED" ]; then
+            # Order Plan BLOCKED is not fatal, just warning (e.g. no portfolio)
+            echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
+            # We don't exit here, just log it. Stale risk is handled in Ops Summary.
+        fi
+    else
+        echo "$LOG_PREFIX ❌ Order Plan regen failed: $ORDER_RESP"
+        send_incident "ORDER_PLAN_FAILED" "Step5" "Order plan API failed"
+        exit 3
+    fi
+fi
+
+# ============================================================================
+# Step 6: Snapshot Verification (Only if Cycle Ran)
+# ============================================================================
+SNAPSHOT_OK="N/A"
 if [ -n "$CYCLE_SNAPSHOT" ]; then
+    echo ""
+    echo "$LOG_PREFIX [6/7] Verifying snapshot..."
     RESOLVE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -G "${BASE_URL}/api/evidence/resolve" --data-urlencode "ref=${CYCLE_SNAPSHOT}")
     if [ "$RESOLVE_STATUS" = "200" ]; then
         SNAPSHOT_OK="OK"
@@ -235,11 +247,11 @@ if [ -n "$CYCLE_SNAPSHOT" ]; then
         echo "$LOG_PREFIX ⚠️ Snapshot resolve: HTTP $RESOLVE_STATUS (non-fatal)"
         SNAPSHOT_OK="SKIP"
     fi
+    echo "$LOG_PREFIX ✓ Snapshot verification: $SNAPSHOT_OK"
 fi
-echo "$LOG_PREFIX ✓ Snapshot verification: $SNAPSHOT_OK"
 
 # ============================================================================
-# Step 6: Daily Status Push (D-P.55 + D-P.57 enhanced)
+# Step 6b (Real Step 7): Daily Status Push (Always Run if not failed fatally)
 # ============================================================================
 echo ""
 echo "$LOG_PREFIX [7/7] Sending Daily Status Push (with reco details)..."
