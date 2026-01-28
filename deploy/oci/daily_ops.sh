@@ -289,7 +289,7 @@ try:
     d = json.load(sys.stdin)
     ops = d.get("ops_status", "UNKNOWN")
     live = d.get("live_status", {})
-    live_res = f"{live.get(\"result\",\"?\")}/{live.get(\"decision\",\"?\")}"
+    live_res = f"{live.get("result","?")}/{live.get("decision","?")}"
     bundle_stale = str(d.get("bundle", {}).get("stale", "unknown")).lower()
     reco = d.get("reco", {}).get("decision", "UNKNOWN")
     order = d.get("order_plan", {}).get("decision", "UNKNOWN")
