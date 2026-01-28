@@ -290,24 +290,24 @@ try:
     
     # Check for API error response
     if "detail" in d:
-        print(f"DAILY_SUMMARY Reason=API_ERROR detail={d.get("detail")} keys={list(d.keys())}")
+        print(f"DAILY_SUMMARY Reason=API_ERROR detail={d.get('detail')} keys={list(d.keys())}")
         sys.exit(0)
 
     # Extract fields with strict defaults
-    ops = d.get("ops_status", "MISSING_OPS")
-    live = d.get("live_status", {})
-    live_res = f"""{live.get("result","MISSING")}/{live.get("decision","MISSING")}"""
+    ops = d.get('ops_status', 'MISSING_OPS')
+    live = d.get('live_status', {})
+    live_res = f"""{live.get('result','MISSING')}/{live.get('decision','MISSING')}"""
     
-    bundle_info = d.get("bundle", {})
-    bundle_stale = str(bundle_info.get("stale", "missing")).lower()
+    bundle_info = d.get('bundle', {})
+    bundle_stale = str(bundle_info.get('stale', 'missing')).lower()
     
-    reco_info = d.get("reco", {})
-    reco_decision = reco_info.get("decision", "MISSING_RECO")
+    reco_info = d.get('reco', {})
+    reco_decision = reco_info.get('decision', 'MISSING_RECO')
     
-    op_info = d.get("order_plan", {})
-    op_decision = op_info.get("decision", "MISSING_OP")
+    op_info = d.get('order_plan', {})
+    op_decision = op_info.get('decision', 'MISSING_OP')
     
-    risks = d.get("top_risks", [])
+    risks = d.get('top_risks', [])
     risks_str = str(risks).replace(" ", "")
 
     # Reason Logic (Strict Enum Priority)
