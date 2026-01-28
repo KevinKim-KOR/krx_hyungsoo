@@ -282,51 +282,9 @@ echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
 SUMMARY_JSON=$(curl -s "${BASE_URL}/api/push/daily_status/latest")
 
 if echo "$SUMMARY_JSON" | grep -q '"ops_status"'; then
-    # Parse fields
-    SUMMARY_LINE=$(echo "$SUMMARY_JSON" | python3 -c '
-import json,sys
-try:
-    d = json.load(sys.stdin)
-    
-    # Check for API error response
-    if "detail" in d:
-        print(f"DAILY_SUMMARY Reason=API_ERROR detail={d.get('detail')} keys={list(d.keys())}")
-        sys.exit(0)
-
-    # Extract fields with strict defaults
-    ops = d.get('ops_status', 'MISSING_OPS')
-    live = d.get('live_status', {})
-    live_res = f"""{live.get('result','MISSING')}/{live.get('decision','MISSING')}"""
-    
-    bundle_info = d.get('bundle', {})
-    bundle_stale = str(bundle_info.get('stale', 'missing')).lower()
-    
-    reco_info = d.get('reco', {})
-    reco_decision = reco_info.get('decision', 'MISSING_RECO')
-    
-    op_info = d.get('order_plan', {})
-    op_decision = op_info.get('decision', 'MISSING_OP')
-    
-    risks = d.get('top_risks', [])
-    risks_str = str(risks).replace(" ", "")
-
-    # Reason Logic (Strict Enum Priority)
-    # 1. Blockers/Failures
-    if op_decision == "BLOCKED":
-        reason = "ORDER_PLAN_BLOCKED"
-    elif reco_decision == "EMPTY_RECO":
-        reason = "EMPTY_RECO"
-    elif bundle_stale == "true":
-        reason = "BUNDLE_STALE"
-    elif ops != "OK" and ops != "WARN": # WARN is tolerable?
-        reason = f"OPS_{ops}"
-    else:
-        reason = "OK"
-
-    print(f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco_decision} order_plan={op_decision} Reason={reason} risks={risks_str}")
-except Exception as e:
-    print(f"DAILY_SUMMARY Reason=PARSE_ERROR error={e}")
-')
+    # Parse fields using dedicated script
+    SUMMARY_LINE=$(echo "$SUMMARY_JSON" | python3 "${REPO_DIR}/app/utils/print_daily_summary.py")
+    echo "$LOG_PREFIX $SUMMARY_LINE"
     echo "$LOG_PREFIX $SUMMARY_LINE"
 else
     echo "$LOG_PREFIX DAILY_SUMMARY Reason=DAILY_STATUS_READ_ERROR"
