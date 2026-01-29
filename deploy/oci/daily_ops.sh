@@ -285,8 +285,13 @@ fi
 # ============================================================================
 echo ""
 echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
-# Parse fields using dedicated script (Handles errors internally)
-echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
+
+# Fetch Reco Status (SPoT) for Summary
+# P77-FIX2: Ensure Reco Enum is not UNKNOWN
+RECO_JSON=$(curl -s "${BASE_URL}/api/reco/latest" 2>/dev/null || echo "{}")
+RECO_DECISION=$(echo "$RECO_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("report") or {}).get("decision", "MISSING_RECO"))')
+RECO_REASON=$(echo "$RECO_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("report") or {}).get("reason", "MISSING_RECO"))')
+
 # P77-FIX: Use CURRENT run results for summary (Consistency)
 # Construct JSON manually from bash variables
 cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$LOG_PREFIX /"
@@ -300,7 +305,8 @@ cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$L
     "stale": "$BUNDLE_STALE"
   },
   "reco": {
-    "decision": "UNKNOWN" 
+    "decision": "$RECO_DECISION",
+    "reason": "$RECO_REASON"
   },
   "order_plan": {
     "decision": "$ORDER_DECISION",
