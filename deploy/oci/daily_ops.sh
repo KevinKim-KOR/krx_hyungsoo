@@ -287,10 +287,42 @@ echo ""
 echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
 
 # Fetch Reco Status (SPoT) for Summary
-# P77-FIX2: Ensure Reco Enum is not UNKNOWN
+# P77-FIX3: Strict Enum Mapping (No UNKNOWN, No GENERATED)
 RECO_JSON=$(curl -s "${BASE_URL}/api/reco/latest" 2>/dev/null || echo "{}")
-RECO_DECISION=$(echo "$RECO_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("report") or {}).get("decision", "MISSING_RECO"))')
-RECO_REASON=$(echo "$RECO_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("report") or {}).get("reason", "MISSING_RECO"))')
+
+# Decision Logic:
+# 1. GENERATED -> OK
+# 2. None/Empty -> MISSING_RECO
+# 3. Else -> Keep (BLOCKED, EMPTY_RECO etc)
+RECO_DECISION=$(echo "$RECO_JSON" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    # Handle wrappers if any (api/reco/latest returns unwrapped "report")
+    report = d.get("report") or d
+    dec = report.get("decision")
+    
+    if not dec:
+        print("MISSING_RECO")
+    elif dec == "GENERATED":
+        print("OK")
+    elif dec == "UNKNOWN":
+        print("MISSING_RECO")
+    else:
+        print(dec)
+except:
+    print("MISSING_RECO")
+')
+
+RECO_REASON=$(echo "$RECO_JSON" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    report = d.get("report") or d
+    print(report.get("reason", "MISSING_RECO"))
+except:
+    print("MISSING_RECO")
+')
 
 # P77-FIX: Use CURRENT run results for summary (Consistency)
 # Construct JSON manually from bash variables

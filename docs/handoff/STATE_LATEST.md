@@ -1,7 +1,7 @@
 # KRX Alertor Modular — STATE_LATEST (Handoff)
 
 > 목적: 새 세션/새 담당자/새 AI가 “추측 없이” 동일한 방식으로 운영을 이어가기 위한 1장 요약.
-> 원칙: Fail-Closed / Resolver-only / PC→OCI Pull / 운영 스크립트 파싱 단순 유지.
+> 원칙: Fail-Closed / Resolver-only / PC→OCI Pull / 운영 스크립트 파싱 단순 유지 / Daily Summary Enum화(UNKNOWN 금지).
 
 ---
 
