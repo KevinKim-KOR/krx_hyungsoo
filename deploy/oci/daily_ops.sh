@@ -138,6 +138,10 @@ if [ "$OPS_STATUS" = "BLOCKED" ] || [ "$OPS_STATUS" = "STOPPED" ]; then
     EXIT_CODE=2
 fi
 
+# Fetch Bundle Stale Status (SPoT)
+BUNDLE_STALE=$(curl -s "${BASE_URL}/api/strategy_bundle/latest" | python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("stale","false")).lower())' 2>/dev/null || echo "false")
+
+
 # ============================================================================
 # Step 4: Live Cycle Run (Only if OK)
 # ============================================================================
@@ -210,6 +214,9 @@ fi
 # ============================================================================
 # Step 5: Order Plan Regenerate (D-P.58) (Only if OK)
 # ============================================================================
+ORDER_DECISION="SKIPPED"
+ORDER_REASON="OPS_BLOCKED"
+
 if [ $EXIT_CODE -eq 0 ]; then
     echo ""
     echo "$LOG_PREFIX [5/7] Regenerating Order Plan..."
@@ -279,7 +286,33 @@ fi
 echo ""
 echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
 # Parse fields using dedicated script (Handles errors internally)
-curl -s "${BASE_URL}/api/push/daily_status/latest" | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$LOG_PREFIX /"
+echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
+# P77-FIX: Use CURRENT run results for summary (Consistency)
+# Construct JSON manually from bash variables
+cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$LOG_PREFIX /"
+{
+  "ops_status": "$OPS_STATUS",
+  "live_status": {
+    "result": "$CYCLE_RESULT",
+    "decision": "$CYCLE_DECISION"
+  },
+  "bundle": {
+    "stale": "$BUNDLE_STALE"
+  },
+  "reco": {
+    "decision": "UNKNOWN" 
+  },
+  "order_plan": {
+    "decision": "$ORDER_DECISION",
+    "reason": "$ORDER_REASON"
+  },
+  "top_risks": []
+}
+EOF
+# Note: Reco decision is technically inside Cycle or Order Plan context, usually implies EMPTY_RECO if BLOCKED.
+# However, print_daily_summary mainly cares about Order Plan and Bundle Stale.
+# We can fetch reco status if strictly needed, but Order Plan Reason now contains RECO_ reason.
+
 
 # ============================================================================
 # Final Summary
