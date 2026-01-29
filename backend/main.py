@@ -3060,7 +3060,7 @@ class RecoRegenerateRequest(BaseModel):
 
 
 @app.post("/api/reco/regenerate", summary="추천 리포트 재생성")
-def regenerate_reco(data: RecoRegenerateRequest):
+def regenerate_reco(data: RecoRegenerateRequest = RecoRegenerateRequest()):
     """
     Reco Report Regenerate (D-P.48)
     
