@@ -35,7 +35,7 @@ def get_json(url):
             if response.status == 200:
                 return json.loads(response.read().decode('utf-8'))
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"{type(e).__name__}: {e}"}
     return {"error": "Unknown Code"}
 
 def print_header():
