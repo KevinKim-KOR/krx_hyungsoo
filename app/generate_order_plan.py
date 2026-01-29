@@ -131,17 +131,18 @@ def generate_order_plan() -> Dict[str, Any]:
     reco_decision = reco.get("decision", "UNKNOWN")
     reco_reason = reco.get("reason", "")
     
-    if reco_decision in ("BLOCKED", "EMPTY_RECO"):
+    if reco_decision in ("BLOCKED", "EMPTY_RECO", "MISSING_RECO"):
         # Case 1: Reco itself is blocked or empty with a reason
         # Propagate reason for visibility (D-P.58 Enhanced)
         if reco_reason:
             # Avoid double prefix if already has it (unlikely but safe)
-            prefix = "RECO_" if not reco_reason.startswith("RECO_") else ""
+            prefix = "RECO_" if not reco_reason.startswith("RECO_") and not reco_reason.startswith("NO_") else ""
             return generate_blocked_plan(f"{prefix}{reco_reason}")
         return generate_blocked_plan("EMPTY_RECO")
     
     recommendations = reco.get("recommendations", [])
     if not recommendations:
+        # Reco decision was OK/GENERATED but list is empty -> EMPTY_RECO
         return generate_blocked_plan("EMPTY_RECO")
     
     # Build current holdings map
@@ -151,6 +152,10 @@ def generate_order_plan() -> Dict[str, Any]:
     
     if total_value <= 0:
         return generate_blocked_plan("INVALID_PORTFOLIO")
+    
+    # Check for NO_CASH case (Optional but helpful)
+    # If cash is 0 and we need to buy, it might be an issue, but let's stick to INVALID_PORTFOLIO for now if total_value is bad.
+    # If total_value > 0 but cash is 0, it's technically valid (fully invested), so don't block.
     
     holdings_map = {}
     for h in holdings:
