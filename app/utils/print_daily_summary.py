@@ -21,6 +21,11 @@ def main():
              print(f"DAILY_SUMMARY Reason=API_ERROR detail={msg}")
              return
 
+        # Unwrap "data" if present (FastAPI common wrapper)
+        if "data" in d and isinstance(d["data"], dict):
+            d = d["data"]
+
+
         # Parsing logic (Robust)
         ops = d.get("ops_status", "MISSING_OPS_STATUS")
         

@@ -129,7 +129,15 @@ def generate_order_plan() -> Dict[str, Any]:
         return generate_blocked_plan("NO_RECO")
     
     reco_decision = reco.get("decision", "UNKNOWN")
+    reco_reason = reco.get("reason", "")
+    
     if reco_decision in ("BLOCKED", "EMPTY_RECO"):
+        # Case 1: Reco itself is blocked or empty with a reason
+        # Propagate reason for visibility (D-P.58 Enhanced)
+        if reco_reason:
+            # Avoid double prefix if already has it (unlikely but safe)
+            prefix = "RECO_" if not reco_reason.startswith("RECO_") else ""
+            return generate_blocked_plan(f"{prefix}{reco_reason}")
         return generate_blocked_plan("EMPTY_RECO")
     
     recommendations = reco.get("recommendations", [])
