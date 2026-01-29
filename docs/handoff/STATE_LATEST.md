@@ -88,27 +88,14 @@
 ### B) 운영자 1커맨드 상태판 (P71, Dashboard)
 아래 블록을 통째로 복사해서 실행하면, **백엔드/Spike/Holding**의 상태와 **WHY(미발송 사유)**를 즉시 확인 가능합니다.
 
-```bash
-echo "=== (1) BACKEND HEALTH ==="
-curl -s http://localhost:8000/api/ops/health | python3 -m json.tool | head -60
-
-echo
-echo "=== (2) SPIKE LATEST (guard) ==="
-curl -sG "http://localhost:8000/api/evidence/resolve" --data-urlencode "ref=guard_spike_latest" \
- | python3 -m json.tool | egrep -n "status|asof|execution_result|execution_reason|alerts_count|sent_count|delivery_actual" | head -80
-
-echo
-echo "=== (3) HOLDING LATEST (guard) ==="
-curl -sG "http://localhost:8000/api/evidence/resolve" --data-urlencode "ref=guard_holding_latest" \
- | python3 -m json.tool | egrep -n "status|asof|execution_result|execution_reason|alerts_generated|delivery_actual|message_id" | head -120
-
-echo
-echo "=== (4) DAILY STATUS (if exists) ==="
-curl -s http://localhost:8000/api/push/daily_status/latest | python3 -m json.tool | head -80 2>/dev/null || true
+bash deploy/oci/ops_dashboard.sh
 ```
 > **판정 규칙 (WHY/DELIVERY)**
-> - `execution_reason`: **NO_ALERTS**(정상), **COOLDOWN_ACTIVE**(정상), **OUT_OF_TRADING**(장외), **ALERTS_GENERATED**(알림있음)
-> - `delivery_actual`: **NONE**(알림없음 정상스킵), **TELEGRAM**(발송됨), **FAILED**(발송실패)
+> - Backend: **ONLINE**(정상), **DOWN**(점검필요)
+> - Watchers: **Active**(정상), **SUCCESS**(정상), **FAIL**(장애)
+> - Contract 5: **Ready**(정상)
+> - Daily Status: **Generated**(정상), **TELEGRAM**(전송됨)
+
 
 ### C) 데일리 운영 (P72 Summary)
 - 최근 요약 1줄 확인:

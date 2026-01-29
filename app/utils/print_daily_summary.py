@@ -22,13 +22,13 @@ def main():
              return
 
         # Parsing logic (Robust)
-        ops = d.get("ops_status", "MISSING_OPS")
+        ops = d.get("ops_status", "MISSING_OPS_STATUS")
         
         live = d.get("live_status", {}) or {}
-        live_res = f"{live.get('result','MISSING')}/{live.get('decision','MISSING')}"
+        live_res = f"{live.get('result','MISSING_RESULT')}/{live.get('decision','MISSING_DECISION')}"
         
         bundle = d.get("bundle", {}) or {}
-        bundle_stale = str(bundle.get("stale", "missing")).lower()
+        bundle_stale = str(bundle.get("stale", "missing_stale")).lower()
         
         reco = d.get("reco", {}) or {}
         reco_decision = reco.get("decision", "MISSING_RECO")
@@ -40,6 +40,7 @@ def main():
         risks_str = str(risks).replace(" ", "")
 
         # Reason Logic (Strict Enum Priority)
+        # Prioritize BLOCKERS
         if op_decision == "BLOCKED":
             reason = "ORDER_PLAN_BLOCKED"
         elif reco_decision == "EMPTY_RECO":
@@ -47,6 +48,7 @@ def main():
         elif bundle_stale == "true":
             reason = "BUNDLE_STALE"
         elif ops != "OK" and ops != "WARN":
+            # If ops is MISSING, reason becomes OPS_MISSING_OPS_STATUS
             reason = f"OPS_{ops}"
         else:
             reason = "OK"

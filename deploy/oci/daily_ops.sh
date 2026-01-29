@@ -278,17 +278,8 @@ fi
 # ============================================================================
 echo ""
 echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
-
-SUMMARY_JSON=$(curl -s "${BASE_URL}/api/push/daily_status/latest")
-
-if echo "$SUMMARY_JSON" | grep -q '"ops_status"'; then
-    # Parse fields using dedicated script
-    SUMMARY_LINE=$(echo "$SUMMARY_JSON" | python3 "${REPO_DIR}/app/utils/print_daily_summary.py")
-    echo "$LOG_PREFIX $SUMMARY_LINE"
-    echo "$LOG_PREFIX $SUMMARY_LINE"
-else
-    echo "$LOG_PREFIX DAILY_SUMMARY Reason=DAILY_STATUS_READ_ERROR"
-fi
+# Parse fields using dedicated script (Handles errors internally)
+curl -s "${BASE_URL}/api/push/daily_status/latest" | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$LOG_PREFIX /"
 
 # ============================================================================
 # Final Summary

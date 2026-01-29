@@ -29,10 +29,7 @@ OPS_REFS = [
 ]
 
 # Phase C refs
-PHASE_C_REFS = [
-    "reports/phase_c/latest/recon_summary.json",
-    "reports/phase_c/latest/report_human.json",
-]
+
 
 
 def add_if_exists(paths: List[str]) -> List[str]:
