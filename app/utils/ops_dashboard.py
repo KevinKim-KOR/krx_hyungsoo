@@ -43,23 +43,28 @@ def print_header():
     print(f"{Colors.GRAY}Checked at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.RESET}\n")
 
 def check_backend():
-    url = f"{API_BASE}/api/ops/health"
+    # Use existing endpoint from main.py
+    url = f"{API_BASE}/api/status"
     data = get_json(url)
     
     print(f"{Colors.BOLD}[Backend System]{Colors.RESET}")
-    if "error" in data:
+    
+    # Check for connection error (dictionary with "error" key from get_json exception handler)
+    if "error" in data and data["error"]:
         print(f"  {Colors.RED}● DOWN{Colors.RESET} ({data['error']})")
         return False
     
-    status = data.get("status", "UNKNOWN")
-    version = data.get("version", "?")
-    uptime = data.get("uptime_seconds", 0)
+    # Parse /api/status response
+    # Schema: badge, message, date, version(maybe missing)
+    badge = data.get("badge", "UNKNOWN")
+    message = data.get("message", "")
+    date = data.get("date", "?")
     
-    if status == "ok":
-        print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (v{version}, up {uptime}s)")
+    if badge in ["OK", "RUNNING", "WAITING"]:
+        print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (Badge: {badge}, Date: {date})")
         return True
     else:
-        print(f"  {Colors.RED}● {status.upper()}{Colors.RESET}")
+        print(f"  {Colors.RED}● {badge}{Colors.RESET} ({message})")
         return True
 
 def check_evidence(name, alias):
