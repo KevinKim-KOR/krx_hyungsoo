@@ -139,7 +139,7 @@ if [ "$OPS_STATUS" = "BLOCKED" ] || [ "$OPS_STATUS" = "STOPPED" ]; then
 fi
 
 # Fetch Bundle Stale Status (SPoT)
-BUNDLE_STALE=$(curl -s "${BASE_URL}/api/strategy_bundle/latest" | python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("stale","false")).lower())' 2>/dev/null || echo "false")
+BUNDLE_STALE=$(curl -s "${BASE_URL}/api/strategy_bundle/latest" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(str(d.get("summary", d).get("stale", "false")).lower())' 2>/dev/null || echo "false")
 
 
 # ============================================================================

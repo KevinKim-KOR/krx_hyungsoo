@@ -209,9 +209,14 @@ def check_bundle_api(name):
         status_text = "API FAIL"
         details = str(data["error"])
     else:
+        # API returns wrapped response with 'summary' key
+        if "summary" in data:
+            data = data["summary"]
+
         # Expected: present, decision, created_at, stale, stale_reason
         present = data.get("present", False)
         decision = data.get("decision", "UNKNOWN")
+
         created_at = data.get("created_at", "?")
         stale = data.get("stale", False)
         stale_reason = data.get("stale_reason", "")
