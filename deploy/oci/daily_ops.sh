@@ -287,24 +287,21 @@ echo ""
 echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
 
 # Fetch Reco Status (SPoT) for Summary
-# P77-FIX3: Strict Enum Mapping (No UNKNOWN, No GENERATED)
+# P77-FIX3/4: Strict Enum Mapping (No UNKNOWN, No GENERATED)
 RECO_JSON=$(curl -s "${BASE_URL}/api/reco/latest" 2>/dev/null || echo "{}")
 
-# Decision Logic:
-# 1. GENERATED -> OK
-# 2. None/Empty -> MISSING_RECO
-# 3. Else -> Keep (BLOCKED, EMPTY_RECO etc)
+# Decision Logic: GENERATED -> OK, UNKNOWN -> MISSING_RECO
 RECO_DECISION=$(echo "$RECO_JSON" | python3 -c '
 import json, sys
 try:
     d = json.load(sys.stdin)
-    # Handle wrappers if any (api/reco/latest returns unwrapped "report")
+    # Handle wrappers if any
     report = d.get("report") or d
     dec = report.get("decision")
     
     if not dec:
         print("MISSING_RECO")
-    elif dec == "GENERATED":
+    elif dec == "GENERATED" or dec == "COMPLETED":
         print("OK")
     elif dec == "UNKNOWN":
         print("MISSING_RECO")
@@ -323,6 +320,28 @@ try:
 except:
     print("MISSING_RECO")
 ')
+
+# Fetch Risks from Ops Summary (P77-FIX4)
+RISKS_JSON="[]"
+OPS_SUMMARY_JSON=$(curl -s "${BASE_URL}/api/ops/summary/latest" 2>/dev/null)
+if [ -n "$OPS_SUMMARY_JSON" ]; then
+    RISKS_JSON=$(echo "$OPS_SUMMARY_JSON" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    # Unwrap rows if needed
+    row = (d.get("rows") or [d])[0]
+    risks = [r.get("code") for r in row.get("top_risks", [])]
+    print(json.dumps(risks))
+except:
+    print("[]")
+')
+fi
+
+# Fallback: If Risks empty but Order Plan Blocked, force add reason
+if [ "$RISKS_JSON" = "[]" ] && [ "$ORDER_DECISION" = "BLOCKED" ]; then
+    RISKS_JSON="[\"$ORDER_REASON\"]"
+fi
 
 # P77-FIX: Use CURRENT run results for summary (Consistency)
 # Construct JSON manually from bash variables
@@ -344,7 +363,7 @@ cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$L
     "decision": "$ORDER_DECISION",
     "reason": "$ORDER_REASON"
   },
-  "top_risks": []
+  "top_risks": $RISKS_JSON
 }
 EOF
 # Note: Reco decision is technically inside Cycle or Order Plan context, usually implies EMPTY_RECO if BLOCKED.
