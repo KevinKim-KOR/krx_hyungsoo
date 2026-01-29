@@ -216,29 +216,37 @@ def check_bundle_api(name):
         stale = data.get("stale", False)
         stale_reason = data.get("stale_reason", "")
         
-        if not present:
-            status_icon = f"{Colors.RED}X{Colors.RESET}"
-            status_text = "MISSING"
-            details = "No bundle present"
+        # SPoT Priority: FAIL > NO_BUNDLE > WARN > STALE > FRESH
+        if decision == "NO_BUNDLE":
+             status_icon = f"{Colors.RED}X{Colors.RESET}"
+             status_text = "MISSING"
+             details = "No bundle present"
+        elif decision == "FAIL":
+             status_icon = f"{Colors.RED}●{Colors.RESET}"
+             status_text = "FAIL"
+             issues = data.get("issues", [])
+             details = str(issues[0]) if issues else "Validation Failed"
+        elif not present:
+             # Fallback if present is False but decision isn't NO_BUNDLE or FAIL (unlikely)
+             status_icon = f"{Colors.RED}X{Colors.RESET}"
+             status_text = f"MISSING ({decision})"
+             details = "Bundle present=False"
         else:
-            # SPoT Priority: Stale > Warning > Pass
-            if stale:
+             # Bundle is present
+             if stale:
                 status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
                 status_text = "STALE"
                 details = stale_reason or "Bundle is stale"
-            elif decision == "WARN":
+             elif decision == "WARN":
                 status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
                 status_text = "WARN"
-                details = str(data.get("warnings", []))
-            elif decision == "FAIL":
-                status_icon = f"{Colors.RED}●{Colors.RESET}"
-                status_text = "FAIL"
-                details = str(data.get("issues", []))
-            else:
+                warnings = data.get("warnings", [])
+                details = str(warnings[0]) if warnings else "Warnings present"
+             else:
                 status_icon = f"{Colors.GREEN}●{Colors.RESET}"
                 status_text = "FRESH"
                 
-                # Calculate age just for display (optional, but good for UX)
+                # Calculate age just for display
                 age_str = ""
                 try:
                     dt_str = created_at.replace("Z", "+00:00")
@@ -255,6 +263,7 @@ def check_bundle_api(name):
                 except:
                     pass
                 details = f"age={age_str}"
+
 
     print(f"  {status_icon} {name:<15} | {status_text:<16} | {details}")
 
