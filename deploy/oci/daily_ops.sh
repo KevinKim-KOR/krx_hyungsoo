@@ -362,7 +362,7 @@ fi
 
 # P77-FIX: Use CURRENT run results for summary (Consistency)
 # Construct JSON manually from bash variables
-cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$LOG_PREFIX /"
+SUMMARY_OUTPUT=$(cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$LOG_PREFIX /"
 {
   "ops_status": "$OPS_STATUS",
   "live_status": {
@@ -383,6 +383,16 @@ cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$L
   "top_risks": $RISKS_JSON
 }
 EOF
+)
+
+# Output handling (P77-FIX6: Dedicated Logs)
+# 1. Stdout (for daily_ops.log)
+echo "$SUMMARY_OUTPUT"
+
+# 2. Dedicated Logs (Reliable Verification)
+mkdir -p logs
+echo "$SUMMARY_OUTPUT" >> logs/daily_summary.log
+echo "$SUMMARY_OUTPUT" > logs/daily_summary.latest
 # Note: Reco decision is technically inside Cycle or Order Plan context, usually implies EMPTY_RECO if BLOCKED.
 # However, print_daily_summary mainly cares about Order Plan and Bundle Stale.
 # We can fetch reco status if strictly needed, but Order Plan Reason now contains RECO_ reason.

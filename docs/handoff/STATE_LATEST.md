@@ -98,8 +98,8 @@ bash deploy/oci/ops_dashboard.sh
 
 
 ### C) 데일리 운영 (P72 Summary)
-- 최근 요약 1줄 확인:
-  `grep "DAILY_SUMMARY" logs/daily_ops.log | tail -1`
+- 최근 요약 1줄 확인 (P77 Standard):
+  `cat logs/daily_summary.latest`
 
 - **Reason별 조치**:
   - `BUNDLE_STALE` → PC 전략번들 생성/Push 필요
