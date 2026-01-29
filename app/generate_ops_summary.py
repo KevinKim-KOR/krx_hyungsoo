@@ -258,6 +258,9 @@ def regenerate_ops_summary():
     order_plan_summary = {
         "decision": order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN",
         "reason": order_plan.get("reason", "") if order_plan else "",
+        "orders_count": len(order_plan.get("orders", [])) if order_plan else 0
+    }
+    
     # === P78/P79: Strategy Bundle (SPoT) ===
     import sys
     # Add app path if not present (sometimes issue with relative imports if main script)
