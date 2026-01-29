@@ -258,15 +258,22 @@ def regenerate_ops_summary():
     order_plan_summary = {
         "decision": order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN",
         "reason": order_plan.get("reason", "") if order_plan else "",
-        "orders_count": len(order_plan.get("orders", [])) if order_plan else 0
-    }
+    # === P78/P79: Strategy Bundle (SPoT) ===
+    import sys
+    # Add app path if not present (sometimes issue with relative imports if main script)
+    if str(BASE_DIR) not in sys.path:
+        sys.path.append(str(BASE_DIR))
     
-    # === P78: Strategy Bundle ===
-    strategy_bundle = safe_load_json(STRATEGY_BUNDLE_LATEST)
+    from app.load_strategy_bundle import load_latest_bundle
+    
+    bundle, validation = load_latest_bundle()
+    
     bundle_summary = {
-        "present": bool(strategy_bundle),
-        "created_at": strategy_bundle.get("created_at") if strategy_bundle else None,
-        "strategy_name": strategy_bundle.get("strategy_name", "Unknown") if strategy_bundle else "None"
+        "present": bundle is not None,
+        "created_at": validation.created_at,
+        "strategy_name": validation.strategy_name or "Unknown",
+        "stale": validation.stale,
+        "stale_reason": validation.stale_reason
     }
     
     # === Overall Status ===
@@ -365,8 +372,8 @@ def regenerate_ops_summary():
         if overall_status == "OK":
             overall_status = "WARN"
 
-    # 6. Strategy Bundle (P78)
-    if not strategy_bundle:
+    # 6. Strategy Bundle (P78/P79)
+    if validation.decision == "NO_BUNDLE":
         top_risks.append({
             "code": "NO_BUNDLE",
             "severity": "WARN", 
@@ -376,25 +383,18 @@ def regenerate_ops_summary():
         if overall_status == "OK":
             overall_status = "WARN"
     else:
-        # Bundle Stale Check (24 hours)
-        created_at_str = strategy_bundle.get("created_at", "")
-        if created_at_str:
-            try:
-                created_dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                if created_dt.tzinfo is None:
-                    created_dt = created_dt.replace(tzinfo=now.tzinfo)
-                
-                # 24 hour threshold for bundle
-                hours_diff = (now - created_dt).total_seconds() / 3600
-                if hours_diff >= 24:
-                     top_risks.append({
-                        "code": "BUNDLE_STALE_WARN",
-                        "severity": "WARN",
-                        "message": f"Strategy Bundle not updated for {int(hours_diff)} hours (Limit: 24h)",
-                        "evidence_refs": ["state/strategy_bundle/latest/strategy_bundle_latest.json"]
-                    })
-            except Exception:
-                pass
+        # SPoT: validation.stale
+        if validation.stale:
+            top_risks.append({
+                "code": "BUNDLE_STALE_WARN",
+                "severity": "WARN",
+                "message": f"Strategy Bundle Stale: {validation.stale_reason}",
+                "evidence_refs": ["state/strategy_bundle/latest/strategy_bundle_latest.json"]
+            })
+            # Ops Summary does not mandate Fail-Closed for stale bundle, but Reco does.
+            # Here we just report risk.
+            if overall_status == "OK":
+                 overall_status = "WARN"
 
     # Construct Summary
     summary = {
