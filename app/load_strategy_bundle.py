@@ -103,7 +103,9 @@ def get_bundle_status() -> Dict[str, Any]:
         "strategy_name": validation.strategy_name,
         "strategy_version": validation.strategy_version,
         "issues": validation.issues,
-        "warnings": validation.warnings
+        "warnings": validation.warnings,
+        "stale": validation.stale,
+        "stale_reason": validation.stale_reason
     }
 
 
