@@ -286,27 +286,31 @@ fi
 echo ""
 echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
 
-# Fetch Reco Status (SPoT) for Summary
-# P77-FIX3/4: Strict Enum Mapping (No UNKNOWN, No GENERATED)
+# Fetch Reco Status (SPoT) - Single Source /api/reco/latest
+# P77-FIX5: Strict Normalization (No UNKNOWN, No GENERATED)
 RECO_JSON=$(curl -s "${BASE_URL}/api/reco/latest" 2>/dev/null || echo "{}")
 
-# Decision Logic: GENERATED -> OK, UNKNOWN -> MISSING_RECO
+# Reco Decision Normalization
+# Allow: OK, EMPTY_RECO, BLOCKED, MISSING_RECO
+# Map: GENERATED -> OK, UNKNOWN -> MISSING_RECO, anything else -> MISSING_RECO (safeguard)
 RECO_DECISION=$(echo "$RECO_JSON" | python3 -c '
 import json, sys
 try:
     d = json.load(sys.stdin)
-    # Handle wrappers if any
+    # 1. Unwrap
     report = d.get("report") or d
     dec = report.get("decision")
     
+    # 2. Normalize
     if not dec:
         print("MISSING_RECO")
-    elif dec == "GENERATED" or dec == "COMPLETED":
+    elif dec == "GENERATED" or dec == "OK" or dec == "COMPLETED":
         print("OK")
-    elif dec == "UNKNOWN":
-        print("MISSING_RECO")
-    else:
+    elif dec in ["EMPTY_RECO", "BLOCKED", "MISSING_RECO"]:
         print(dec)
+    else:
+        # Catch-all for UNKNOWN or unexpected values
+        print("MISSING_RECO")
 except:
     print("MISSING_RECO")
 ')
@@ -321,7 +325,8 @@ except:
     print("MISSING_RECO")
 ')
 
-# Fetch Risks from Ops Summary (P77-FIX4)
+# Fetch Risks from Ops Summary
+# P77-FIX5: Enforce Risk Consistency
 RISKS_JSON="[]"
 OPS_SUMMARY_JSON=$(curl -s "${BASE_URL}/api/ops/summary/latest" 2>/dev/null)
 if [ -n "$OPS_SUMMARY_JSON" ]; then
@@ -338,9 +343,21 @@ except:
 ')
 fi
 
-# Fallback: If Risks empty but Order Plan Blocked, force add reason
-if [ "$RISKS_JSON" = "[]" ] && [ "$ORDER_DECISION" = "BLOCKED" ]; then
-    RISKS_JSON="[\"$ORDER_REASON\"]"
+# Force Risk Consistency: If Order Plan is BLOCKED, Risks MUST NOT be empty
+if [ "$ORDER_DECISION" = "BLOCKED" ]; then
+    # Check if RISKS_JSON is truly empty array "[]"
+    if [ "$RISKS_JSON" = "[]" ]; then
+        # Force inject the reason or generic block code
+        RISKS_JSON="[\"ORDER_PLAN_BLOCKED\"]"
+    else
+        # If not empty, ensure it contains the block reason if possible? 
+        # But if it's not empty, it likely has the cause (e.g. NO_BUNDLE). 
+        # User requirement: "Reason=ORDER_PLAN_BLOCKED이면 risks에 반드시 ORDER_PLAN_BLOCKED 포함"
+        # We can append or checks. Easier to ensure strictly for this case.
+        if [ "$ORDER_REASON" = "ORDER_PLAN_BLOCKED" ]; then
+             RISKS_JSON=$(echo "$RISKS_JSON" | python3 -c "import json,sys; r=json.load(sys.stdin); r.append('ORDER_PLAN_BLOCKED') if 'ORDER_PLAN_BLOCKED' not in r else None; print(json.dumps(r))")
+        fi
+    fi
 fi
 
 # P77-FIX: Use CURRENT run results for summary (Consistency)
