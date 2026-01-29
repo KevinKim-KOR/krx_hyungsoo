@@ -60,12 +60,16 @@ def check_backend():
     message = data.get("message", "")
     date = data.get("date", "?")
     
-    if badge in ["OK", "RUNNING", "WAITING"]:
-        print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (Badge: {badge}, Date: {date})")
-        return True
-    else:
-        print(f"  {Colors.RED}● {badge}{Colors.RESET} ({message})")
-        return True
+    # Parse /api/status response
+    # Schema: badge, message, date, version(maybe missing)
+    badge = data.get("badge", "UNKNOWN")
+    message = data.get("message", "")
+    date = data.get("date", "?")
+    
+    # If we got this far, the Backend is ONLINE (HTTP 200).
+    # The 'badge' just reflects the Daily Ops status.
+    print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (OpsStatus: {badge}, Msg: {message})")
+    return True
 
 def check_evidence(name, alias):
     url = f"{API_BASE}/api/evidence/resolve?ref={alias}"
@@ -76,7 +80,8 @@ def check_evidence(name, alias):
     status_text = "UNKNOWN"
     details = ""
     
-    if "error" in data:
+    # Check for actual error (transport or API error)
+    if "error" in data and data["error"]:
         status_icon = f"{Colors.RED}X{Colors.RESET}"
         status_text = f"API FAIL ({data['error']})"
     else:
