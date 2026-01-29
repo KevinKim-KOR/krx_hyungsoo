@@ -27,8 +27,17 @@ def main():
 
 
         # Parsing logic (Robust)
-        ops = d.get("ops_status", "MISSING_OPS_STATUS")
-        
+        ops = d.get("ops_status")
+        if not ops:
+            ops = "MISSING_OPS"
+            # Debug: Print keys if ops_status is missing
+            # But we must output in DAILY_SUMMARY format for grep to work (partial)
+            # We'll rely on the default printing but add debug info if possible
+            # Actually, let's just use the defaults but maybe add a debug print to stderr?
+            # Script captures stdout. usage: ... | python script.py | sed ...
+            import sys
+            print(f"DEBUG: Available keys: {list(d.keys())}", file=sys.stderr)
+
         live = d.get("live_status", {}) or {}
         live_res = f"{live.get('result','MISSING_RESULT')}/{live.get('decision','MISSING_DECISION')}"
         
