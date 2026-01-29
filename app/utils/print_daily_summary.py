@@ -35,7 +35,6 @@ def main():
             # We'll rely on the default printing but add debug info if possible
             # Actually, let's just use the defaults but maybe add a debug print to stderr?
             # Script captures stdout. usage: ... | python script.py | sed ...
-            import sys
             print(f"DEBUG: Available keys: {list(d.keys())}", file=sys.stderr)
 
         live = d.get("live_status", {}) or {}
