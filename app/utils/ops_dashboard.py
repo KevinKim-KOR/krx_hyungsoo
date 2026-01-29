@@ -147,16 +147,49 @@ def check_evidence(name, alias):
 
                 # 3. Contract 5 (Human/AI)
                 elif "report" in alias:
-                    # Basic existence check
-                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                    status_text = "Ready"
-                    # Try to get some meta checks if possible
+                    # Parse status and asof
+                    c5_status = "UNKNOWN"
+                    c5_asof = "?"
+                    
                     if "human" in alias:
-                        author = content.get("author", "Unknown")
-                        details = f"Author={author}"
-                    if "ai" in alias:
-                        model = content.get("model", "Unknown")
-                        details = f"Model={model}"
+                        # Human Schema: headline.status_badge
+                        c5_status = content.get("headline", {}).get("status_badge", "MISSING_BADGE")
+                        c5_asof = content.get("asof", content.get("generated_at", "?"))
+                    elif "ai" in alias:
+                        # AI Schema: status
+                        c5_status = content.get("status", "MISSING_STATUS")
+                        c5_asof = content.get("asof", content.get("generated_at", "?"))
+
+                    # Stale Check (7 days)
+                    is_stale = False
+                    try:
+                        if c5_asof and c5_asof != "?" and len(c5_asof) > 10:
+                            # Handle Z for standard isoformat
+                            dt_str = c5_asof.replace("Z", "+00:00")
+                            dt = datetime.fromisoformat(dt_str)
+                            
+                            # Compare with aware now if dt is aware
+                            if dt.tzinfo:
+                                from datetime import timezone
+                                now = datetime.now(timezone.utc)
+                            else:
+                                now = datetime.now()
+                            
+                            delta = now - dt
+                            if delta.days >= 7:
+                                is_stale = True
+                    except Exception:
+                        pass # Ignore date parse errors
+
+                    # Display Logic
+                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                    status_text = c5_status
+                    
+                    if is_stale:
+                        status_text += "(STALE)"
+                        status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
+                    
+                    details = f"asof={c5_asof}"
         
         else:
             status_icon = f"{Colors.RED}X{Colors.RESET}"
