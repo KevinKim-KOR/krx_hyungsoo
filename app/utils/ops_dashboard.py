@@ -85,61 +85,75 @@ def check_evidence(name, alias):
         status_icon = f"{Colors.RED}X{Colors.RESET}"
         status_text = f"API FAIL ({data['error']})"
     else:
-        decision = data.get("decision", "UNKNOWN")
-        if decision == "OK":
-            content = data.get("data", {})
-            
-            # --- Specific Checks per Type ---
-            
-            # 1. Spike / Holding (Watchers)
-            if "spike" in alias or "holding" in alias:
-                exec_res = content.get("execution_result", "UNKNOWN")
-                exec_reason = content.get("execution_reason", "")
+    else:
+        # API returns Envelope (EVIDENCE_VIEW_V1)
+        # Structure: { "status": "ready", "rows": [ { "data": { ... } } ] }
+        api_status = data.get("status", "UNKNOWN")
+        
+        if api_status == "ready":
+            rows = data.get("rows", [])
+            if not rows:
+                status_icon = f"{Colors.GRAY}?{Colors.RESET}"
+                status_text = "EMPTY"
+                details = "No rows returned"
+            else:
+                # Success path
+                content = rows[0].get("data", {})
                 
-                if exec_res == "SUCCESS":
+                # --- Specific Checks per Type ---
+                
+                # 1. Spike / Holding (Watchers)
+                if "spike" in alias or "holding" in alias:
+                    exec_res = content.get("execution_result", "UNKNOWN")
+                    exec_reason = content.get("execution_reason", "")
+                    
+                    if exec_res == "SUCCESS":
+                        status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                        status_text = "Active"
+                    else:
+                        status_icon = f"{Colors.RED}●{Colors.RESET}"
+                        status_text = exec_res
+                    
+                    details = f"Reason={exec_reason}"
+                    if "spike" in alias:
+                        details += f", Alerts={content.get('alerts_count', 0)}"
+                    if "holding" in alias:
+                        details += f", Alerts={content.get('alerts_generated', 0)}"
+                    
+                    # Delivery check
+                    delivery = content.get("delivery_actual", "NONE")
+                    if delivery != "NONE":
+                         details += f", Sent={delivery}"
+    
+                # 2. Daily Status
+                elif "daily_status" in alias:
                     status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                    status_text = "Active"
-                else:
-                    status_icon = f"{Colors.RED}●{Colors.RESET}"
-                    status_text = exec_res
-                
-                details = f"Reason={exec_reason}"
-                if "spike" in alias:
-                    details += f", Alerts={content.get('alerts_count', 0)}"
-                if "holding" in alias:
-                    details += f", Alerts={content.get('alerts_generated', 0)}"
-                
-                # Delivery check
-                delivery = content.get("delivery_actual", "NONE")
-                if delivery != "NONE":
-                     details += f", Sent={delivery}"
-
-            # 2. Daily Status
-            elif "daily_status" in alias:
-                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                status_text = "Generated"
-                delivery = content.get("delivery_actual", "NONE")
-                details = f"Delivery={delivery}"
-                if delivery == "TELEGRAM":
-                    details = f"{Colors.CYAN}{details}{Colors.RESET}"
-
-            # 3. Contract 5 (Human/AI)
-            elif "report" in alias:
-                # Basic existence check
-                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                status_text = "Ready"
-                # Try to get some meta checks if possible, broadly just OK is enough for now
-                if "human" in alias:
-                    author = content.get("author", "Unknown")
-                    details = f"Author={author}"
-                if "ai" in alias:
-                    model = content.get("model", "Unknown")
-                    details = f"Model={model}"
+                    status_text = "Generated"
+                    delivery = content.get("delivery_actual", "NONE")
+                    details = f"Delivery={delivery}"
+                    if delivery == "TELEGRAM":
+                        details = f"{Colors.CYAN}{details}{Colors.RESET}"
+    
+                # 3. Contract 5 (Human/AI)
+                elif "report" in alias:
+                    # Basic existence check
+                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                    status_text = "Ready"
+                    # Try to get some meta checks if possible
+                    if "human" in alias:
+                        author = content.get("author", "Unknown")
+                        details = f"Author={author}"
+                    if "ai" in alias:
+                        model = content.get("model", "Unknown")
+                        details = f"Model={model}"
         
         else:
             status_icon = f"{Colors.RED}X{Colors.RESET}"
-            status_text = f"{decision}"
-            details = data.get('reason', '')
+            status_text = f"{api_status}"
+            if isinstance(data.get('error'), dict):
+                details = data['error'].get('message', '')
+            else:
+                details = str(data.get('error', ''))
 
     # Print Row
     # Format: [Icon] Name  | Status | Details
