@@ -24,6 +24,11 @@ def main():
         # Unwrap "data" if present (FastAPI common wrapper)
         if "data" in d and isinstance(d["data"], dict):
             d = d["data"]
+        
+        # Unwrap "rows" if present (Common list response wrapper)
+        if "rows" in d and isinstance(d["rows"], list) and len(d["rows"]) > 0:
+            d = d["rows"][0]
+
 
 
         # Parsing logic (Robust)
