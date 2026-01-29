@@ -191,6 +191,51 @@ def check_evidence(name, alias):
                     
                     details = f"asof={c5_asof}"
         
+                # 4. Strategy Bundle (P78)
+                elif "bundle" in alias:
+                    # Bundle uses "created_at"
+                    created_at = content.get("created_at", "?")
+                    
+                    status_text = "Fresh"
+                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                    
+                    if not created_at or created_at == "?":
+                         status_text = "MISSING"
+                         status_icon = f"{Colors.RED}X{Colors.RESET}"
+                         details = "No created_at field"
+                    else:
+                        # Stale Check (24h)
+                        is_stale = False
+                        age_str = ""
+                        try:
+                            # Handle Z
+                            dt_str = created_at.replace("Z", "+00:00")
+                            dt = datetime.fromisoformat(dt_str)
+                            
+                            if dt.tzinfo:
+                                from datetime import timezone
+                                now = datetime.now(timezone.utc)
+                            else:
+                                now = datetime.now()
+                            
+                            diff = now - dt
+                            hours = diff.total_seconds() / 3600
+                            days = diff.days
+                            
+                            age_str = f"{int(hours)}h" if days < 1 else f"{days}d"
+                            
+                            if hours >= 24:
+                                is_stale = True
+                        except Exception:
+                            pass 
+                        
+                        if is_stale:
+                            status_text = f"STALE"
+                            status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
+                            details = f"age={age_str}"
+                        else:
+                            details = f"age={age_str}"
+        
         else:
             status_icon = f"{Colors.RED}X{Colors.RESET}"
             status_text = f"{api_status}"
@@ -201,7 +246,7 @@ def check_evidence(name, alias):
 
     # Print Row
     # Format: [Icon] Name  | Status | Details
-    print(f"  {status_icon} {name:<15} | {status_text:<10} | {details}")
+    print(f"  {status_icon} {name:<15} | {status_text:<16} | {details}")
 
 def main():
     print_header()
@@ -209,6 +254,9 @@ def main():
     if not check_backend():
         print(f"\n{Colors.RED}CRITICAL: Backend is unreachable. Check 'sudo systemctl status krx-backend'.{Colors.RESET}")
         return
+
+    print(f"\n{Colors.BOLD}[Strategy Bundle]{Colors.RESET}")
+    check_evidence("Strategy Bundle", "guard_bundle_latest")
 
     print(f"\n{Colors.BOLD}[Watcher Status]{Colors.RESET}")
     check_evidence("Spike Watch", "guard_spike_latest")
