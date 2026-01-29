@@ -103,10 +103,13 @@ bash deploy/oci/ops_dashboard.sh
   2. **흐름 확인 (히스토리)**: `tail -n 20 logs/daily_summary.log`
   3. **데이터 오염 검사**: `egrep "reco=UNKNOWN|reco=GENERATED" logs/daily_summary.log && echo "❌ BAD" || echo "✅ CLEAN"`
 
-- **Reason별 조치**:
-  - `BUNDLE_STALE` → PC 전략번들 생성/Push 필요
-  - `EMPTY_RECO` → PC Watchlist/Bundle 점검
-  - `DAILY_STATUS_READ_ERROR` → Backend Health 확인 (`curl localhost:8000/api/ops/health`)
+- **Reason별 조치 (Actionable Troubleshooting)**:
+  - `INVALID_PORTFOLIO`: PC 포트폴리오(Total Val=0) 수정 후 Push.
+  - `NO_PORTFOLIO`: 포트폴리오 파일(`state/portfolio/latest`) 누락. PC에서 초기 입력 필요.
+  - `BUNDLE_STALE`: 전략 번들 24시간 경과. PC에서 전략 재생성 후 Push.
+  - `EMPTY_RECO`: 추천 종목 없음. (정상 or 번들 데이터 부족).
+  - `NO_CASH`: (Optional) 현금 부족으로 매수 불가 상태.
+
 - 실행:
   `bash deploy/oci/daily_ops.sh`
 - Exit code:
