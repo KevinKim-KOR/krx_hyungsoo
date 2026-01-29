@@ -58,9 +58,17 @@ def main():
         risks_str = str(risks).replace(" ", "")
 
         # Reason Logic (Strict Enum Priority)
+        # Reason Logic (Strict Enum Priority)
         # Prioritize BLOCKERS
         if op_decision == "BLOCKED":
-            reason = "ORDER_PLAN_BLOCKED"
+            op_reason = order.get("reason", "")
+            if op_reason and op_reason != "BLOCKED":
+                if op_reason.startswith("ORDER_PLAN_"):
+                    reason = op_reason
+                else:
+                    reason = f"ORDER_PLAN_{op_reason}"
+            else:
+                reason = "ORDER_PLAN_BLOCKED"
         elif reco_decision == "EMPTY_RECO":
             reason = "EMPTY_RECO"
         elif bundle_stale == "true":
