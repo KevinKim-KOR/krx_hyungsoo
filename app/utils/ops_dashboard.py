@@ -60,12 +60,6 @@ def check_backend():
     message = data.get("message", "")
     date = data.get("date", "?")
     
-    # Parse /api/status response
-    # Schema: badge, message, date, version(maybe missing)
-    badge = data.get("badge", "UNKNOWN")
-    message = data.get("message", "")
-    date = data.get("date", "?")
-    
     # If we got this far, the Backend is ONLINE (HTTP 200).
     # The 'badge' just reflects the Daily Ops status.
     print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (OpsStatus: {badge}, Msg: {message})")
@@ -84,7 +78,6 @@ def check_evidence(name, alias):
     if "error" in data and data["error"]:
         status_icon = f"{Colors.RED}X{Colors.RESET}"
         status_text = f"API FAIL ({data['error']})"
-    else:
     else:
         # API returns Envelope (EVIDENCE_VIEW_V1)
         # Structure: { "status": "ready", "rows": [ { "data": { ... } } ] }
@@ -124,28 +117,28 @@ def check_evidence(name, alias):
                     delivery = content.get("delivery_actual", "NONE")
                     if delivery != "NONE":
                          details += f", Sent={delivery}"
-    
-                # 2. Daily Status
-                elif "daily_status" in alias:
-                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                    status_text = "Generated"
-                    delivery = content.get("delivery_actual", "NONE")
-                    details = f"Delivery={delivery}"
-                    if delivery == "TELEGRAM":
-                        details = f"{Colors.CYAN}{details}{Colors.RESET}"
-    
-                # 3. Contract 5 (Human/AI)
-                elif "report" in alias:
-                    # Basic existence check
-                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                    status_text = "Ready"
-                    # Try to get some meta checks if possible
-                    if "human" in alias:
-                        author = content.get("author", "Unknown")
-                        details = f"Author={author}"
-                    if "ai" in alias:
-                        model = content.get("model", "Unknown")
-                        details = f"Model={model}"
+
+            # 2. Daily Status
+            elif "daily_status" in alias:
+                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                status_text = "Generated"
+                delivery = content.get("delivery_actual", "NONE")
+                details = f"Delivery={delivery}"
+                if delivery == "TELEGRAM":
+                    details = f"{Colors.CYAN}{details}{Colors.RESET}"
+
+            # 3. Contract 5 (Human/AI)
+            elif "report" in alias:
+                # Basic existence check
+                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                status_text = "Ready"
+                # Try to get some meta checks if possible
+                if "human" in alias:
+                    author = content.get("author", "Unknown")
+                    details = f"Author={author}"
+                if "ai" in alias:
+                    model = content.get("model", "Unknown")
+                    details = f"Model={model}"
         
         else:
             status_icon = f"{Colors.RED}X{Colors.RESET}"
