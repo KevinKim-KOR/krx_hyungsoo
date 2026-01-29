@@ -46,6 +46,11 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/ops/evidence/health/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     # ... (skipping unchanged lines) ...
     r"^reports/ops/push/spike_watch/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/spike_watch/latest/spike_watch_latest\.json$",
+    r"^reports/ops/push/holding_watch/latest/holding_watch_latest\.json$",
+    r"^reports/ops/push/holding_watch/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    r"^reports/ops/push/daily_status/latest/daily_status_latest\.json$",
+    r"^reports/ops/push/daily_status/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
