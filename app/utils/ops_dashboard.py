@@ -109,6 +109,7 @@ def check_evidence(name, alias):
                     
                     details = f"Reason={exec_reason}"
                     if "spike" in alias:
+                        # Safety: alerts_count might be missing or None
                         details += f", Alerts={content.get('alerts_count', 0)}"
                     if "holding" in alias:
                         details += f", Alerts={content.get('alerts_generated', 0)}"
@@ -118,27 +119,27 @@ def check_evidence(name, alias):
                     if delivery != "NONE":
                          details += f", Sent={delivery}"
 
-            # 2. Daily Status
-            elif "daily_status" in alias:
-                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                status_text = "Generated"
-                delivery = content.get("delivery_actual", "NONE")
-                details = f"Delivery={delivery}"
-                if delivery == "TELEGRAM":
-                    details = f"{Colors.CYAN}{details}{Colors.RESET}"
+                # 2. Daily Status
+                elif "daily_status" in alias:
+                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                    status_text = "Generated"
+                    delivery = content.get("delivery_actual", "NONE")
+                    details = f"Delivery={delivery}"
+                    if delivery == "TELEGRAM":
+                        details = f"{Colors.CYAN}{details}{Colors.RESET}"
 
-            # 3. Contract 5 (Human/AI)
-            elif "report" in alias:
-                # Basic existence check
-                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                status_text = "Ready"
-                # Try to get some meta checks if possible
-                if "human" in alias:
-                    author = content.get("author", "Unknown")
-                    details = f"Author={author}"
-                if "ai" in alias:
-                    model = content.get("model", "Unknown")
-                    details = f"Model={model}"
+                # 3. Contract 5 (Human/AI)
+                elif "report" in alias:
+                    # Basic existence check
+                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                    status_text = "Ready"
+                    # Try to get some meta checks if possible
+                    if "human" in alias:
+                        author = content.get("author", "Unknown")
+                        details = f"Author={author}"
+                    if "ai" in alias:
+                        model = content.get("model", "Unknown")
+                        details = f"Model={model}"
         
         else:
             status_icon = f"{Colors.RED}X{Colors.RESET}"
