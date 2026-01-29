@@ -98,8 +98,10 @@ bash deploy/oci/ops_dashboard.sh
 
 
 ### C) 데일리 운영 (P72 Summary)
-- 최근 요약 1줄 확인 (P77 Standard):
-  `cat logs/daily_summary.latest`
+- **표준 확인 커맨드 (Daily Standard)**:
+  1. **최신 요약 (1초 확인)**: `cat logs/daily_summary.latest`
+  2. **흐름 확인 (히스토리)**: `tail -n 20 logs/daily_summary.log`
+  3. **데이터 오염 검사**: `egrep "reco=UNKNOWN|reco=GENERATED" logs/daily_summary.log && echo "❌ BAD" || echo "✅ CLEAN"`
 
 - **Reason별 조치**:
   - `BUNDLE_STALE` → PC 전략번들 생성/Push 필요
