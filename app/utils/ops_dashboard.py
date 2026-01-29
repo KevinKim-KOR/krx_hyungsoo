@@ -43,26 +43,43 @@ def print_header():
     print(f"{Colors.GRAY}Checked at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.RESET}\n")
 
 def check_backend():
-    # Use existing endpoint from main.py
-    url = f"{API_BASE}/api/status"
-    data = get_json(url)
+    # 1. Connectivity Check
+    status_url = f"{API_BASE}/api/status"
+    status_data = get_json(status_url)
     
     print(f"{Colors.BOLD}[Backend System]{Colors.RESET}")
     
-    # Check for connection error (dictionary with "error" key from get_json exception handler)
-    if "error" in data and data["error"]:
-        print(f"  {Colors.RED}● DOWN{Colors.RESET} ({data['error']})")
+    # Check for connection error
+    if "error" in status_data and status_data["error"]:
+        print(f"  {Colors.RED}● DOWN{Colors.RESET} ({status_data['error']})")
         return False
+
+    # 2. Source of Truth: Ops Summary
+    # The user wants to rely on ops_summary/latest for the status text
+    summary_url = f"{API_BASE}/api/ops/summary/latest"
+    summary_data = get_json(summary_url)
     
-    # Parse /api/status response
-    # Schema: badge, message, date, version(maybe missing)
-    badge = data.get("badge", "UNKNOWN")
-    message = data.get("message", "")
-    date = data.get("date", "?")
+    ops_status = "UNKNOWN"
+    ops_asof = "?"
     
-    # If we got this far, the Backend is ONLINE (HTTP 200).
-    # The 'badge' just reflects the Daily Ops status.
-    print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (OpsStatus: {badge}, Msg: {message})")
+    # Check if summary fetch was successful (it might fail if file doesn't exist, but backend is up)
+    if "error" not in summary_data or not summary_data["error"]:
+        # Handle Envelope (rows) vs Flat
+        # Logic: row=(d.get("rows") or [d])[0]
+        rows = summary_data.get("rows")
+        if not rows:
+            # Fallback for flat structure or empty rows
+            rows = [summary_data]
+            
+        if rows:
+            first_row = rows[0]
+            # Verify it's a dict before accessing
+            if isinstance(first_row, dict):
+                ops_status = first_row.get("overall_status", "UNKNOWN")
+                ops_asof = first_row.get("asof", "?")
+
+    # If we got this far, the Backend is ONLINE.
+    print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (OpsStatus: {ops_status}, Msg: asof={ops_asof})")
     return True
 
 def check_evidence(name, alias):
