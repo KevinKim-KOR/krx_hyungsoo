@@ -261,6 +261,14 @@ def regenerate_ops_summary():
         "orders_count": len(order_plan.get("orders", [])) if order_plan else 0
     }
     
+    # === P78: Strategy Bundle ===
+    strategy_bundle = safe_load_json(STRATEGY_BUNDLE_LATEST)
+    bundle_summary = {
+        "present": bool(strategy_bundle),
+        "created_at": strategy_bundle.get("created_at") if strategy_bundle else None,
+        "strategy_name": strategy_bundle.get("strategy_name", "Unknown") if strategy_bundle else "None"
+    }
+    
     # === Overall Status ===
     if emergency_enabled:
         overall_status = "STOPPED"
@@ -343,7 +351,6 @@ def regenerate_ops_summary():
                         "message": f"Portfolio not updated for {days_diff} days (Limit: {PORTFOLIO_STALE_DAYS})",
                         "evidence_refs": ["state/portfolio/latest/portfolio_latest.json"]
                     })
-                    # Optional: downgrade status? No, user said warn.
             except Exception:
                 pass # Parse error ignore
 
@@ -357,6 +364,37 @@ def regenerate_ops_summary():
         })
         if overall_status == "OK":
             overall_status = "WARN"
+
+    # 6. Strategy Bundle (P78)
+    if not strategy_bundle:
+        top_risks.append({
+            "code": "NO_BUNDLE",
+            "severity": "WARN", 
+            "message": "Strategy Bundle missing",
+            "evidence_refs": []
+        })
+        if overall_status == "OK":
+            overall_status = "WARN"
+    else:
+        # Bundle Stale Check (24 hours)
+        created_at_str = strategy_bundle.get("created_at", "")
+        if created_at_str:
+            try:
+                created_dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                if created_dt.tzinfo is None:
+                    created_dt = created_dt.replace(tzinfo=now.tzinfo)
+                
+                # 24 hour threshold for bundle
+                hours_diff = (now - created_dt).total_seconds() / 3600
+                if hours_diff >= 24:
+                     top_risks.append({
+                        "code": "BUNDLE_STALE_WARN",
+                        "severity": "WARN",
+                        "message": f"Strategy Bundle not updated for {int(hours_diff)} hours (Limit: 24h)",
+                        "evidence_refs": ["state/strategy_bundle/latest/strategy_bundle_latest.json"]
+                    })
+            except Exception:
+                pass
 
     # Construct Summary
     summary = {
@@ -380,6 +418,7 @@ def regenerate_ops_summary():
         },
         "portfolio": portfolio_summary,
         "order_plan": order_plan_summary,
+        "strategy_bundle": bundle_summary,
         "top_risks": top_risks,
         "evidence_refs": [
             "reports/ops/daily/snapshots", # snapshot dir
