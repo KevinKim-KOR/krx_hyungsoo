@@ -366,12 +366,28 @@ def regenerate_ops_summary():
 
     # 5. Order Plan (D-P.58)
     if order_plan and order_plan.get("decision") == "BLOCKED":
+        reason = order_plan.get("reason", "UNKNOWN_REASON")
+        
+        # Umbrella Risk
         top_risks.append({
             "code": "ORDER_PLAN_BLOCKED",
             "severity": "WARN",
-            "message": f"Order plan blocked: {order_plan.get('reason')}",
+            "message": f"Order plan blocked: {reason}",
             "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
         })
+        
+        # P80: Specific Risk Code (Dual Risk)
+        # Ensure we don't duplicate if reason IS "BLOCKED" (unlikely with P79 fix but safe)
+        if reason and reason != "BLOCKED":
+            # Add prefix if missing
+            specific_code = reason if reason.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason}"
+            top_risks.append({
+                "code": specific_code,
+                "severity": "WARN",
+                "message": f"Specific block reason: {reason}",
+                "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
+            })
+            
         if overall_status == "OK":
             overall_status = "WARN"
 

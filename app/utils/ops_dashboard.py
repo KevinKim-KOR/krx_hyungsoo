@@ -52,7 +52,7 @@ def check_backend():
     # Check for connection error
     if "error" in status_data and status_data["error"]:
         print(f"  {Colors.RED}● DOWN{Colors.RESET} ({status_data['error']})")
-        return False
+        return False, {}
 
     # 2. Source of Truth: Ops Summary
     # The user wants to rely on ops_summary/latest for the status text
@@ -77,10 +77,17 @@ def check_backend():
             if isinstance(first_row, dict):
                 ops_status = first_row.get("overall_status", "UNKNOWN")
                 ops_asof = first_row.get("asof", "?")
+                # Return this row as the SSOT summary
+                summary_data = first_row
 
     # If we got this far, the Backend is ONLINE.
     print(f"  {Colors.GREEN}● ONLINE{Colors.RESET} (OpsStatus: {ops_status}, Msg: asof={ops_asof})")
-    return True
+    
+    # If summary_data is still the raw response with error, return empty dict for safety
+    if "error" in summary_data and summary_data["error"]:
+        return True, {}
+        
+    return True, summary_data
 
 def check_evidence(name, alias):
     url = f"{API_BASE}/api/evidence/resolve?ref={alias}"
@@ -195,80 +202,66 @@ def check_evidence(name, alias):
     # Format: [Icon] Name  | Status | Details
     print(f"  {status_icon} {name:<15} | {status_text:<16} | {details}")
 
-def check_bundle_api(name):
-    # SPoT: Check /api/strategy_bundle/latest
-    url = f"{API_BASE}/api/strategy_bundle/latest"
-    data = get_json(url)
+def check_bundle_ssot(name, summary_data):
+    # P80 SSOT: Use Ops Summary's strategy_bundle section if available
+    # structure: summary_data['strategy_bundle']
+    
+    bundle_data = summary_data.get("strategy_bundle", {})
     
     status_icon = f"{Colors.GRAY}?{Colors.RESET}"
     status_text = "UNKNOWN"
     details = ""
     
-    if "error" in data and data["error"]:
+    if not bundle_data:
+        # Fallback to direct API if summary didn't have it (unlikely but safe)
+        # But per P80 we prefer SSOT. If missing in summary, it's missing.
         status_icon = f"{Colors.RED}X{Colors.RESET}"
-        status_text = "API FAIL"
-        details = str(data["error"])
+        status_text = "MISSING DATA"
+        details = "Ops Summary missing bundle info"
     else:
-        # API returns wrapped response with 'summary' key
-        if "summary" in data:
-            data = data["summary"]
-
-        # Expected: present, decision, created_at, stale, stale_reason
-        present = data.get("present", False)
-        decision = data.get("decision", "UNKNOWN")
-
-        created_at = data.get("created_at", "?")
-        stale = data.get("stale", False)
-        stale_reason = data.get("stale_reason", "")
+        # Expected from ops_summary: present, created_at, stale, stale_reason... (No 'decision' directly mapped?)
+        # Verify generate_ops_summary.py structure:
+        # "strategy_bundle": { "present": ..., "created_at": ..., "strategy_name": ..., "stale": ..., "stale_reason": ... }
+        # Note: 'decision' is NOT in ops_summary bundle section in my previous view of generate_ops_summary.py?
+        # Let's re-read generate_ops_summary.py output structure.
+        # It has: present, created_at, strategy_name, stale, stale_reason.
+        # It DOES NOT have 'decision' (e.g. NO_BUNDLE, FRESH, WARN).
+        # We must infer status text from these fields to match Dashboard expectations.
         
-        # SPoT Priority: FAIL > NO_BUNDLE > WARN > STALE > FRESH
-        if decision == "NO_BUNDLE":
+        present = bundle_data.get("present", False)
+        stale = bundle_data.get("stale", False)
+        stale_reason = bundle_data.get("stale_reason", "")
+        created_at = bundle_data.get("created_at", "?")
+        
+        if not present:
              status_icon = f"{Colors.RED}X{Colors.RESET}"
              status_text = "MISSING"
              details = "No bundle present"
-        elif decision == "FAIL":
-             status_icon = f"{Colors.RED}●{Colors.RESET}"
-             status_text = "FAIL"
-             issues = data.get("issues", [])
-             details = str(issues[0]) if issues else "Validation Failed"
-        elif not present:
-             # Fallback if present is False but decision isn't NO_BUNDLE or FAIL (unlikely)
-             status_icon = f"{Colors.RED}X{Colors.RESET}"
-             status_text = f"MISSING ({decision})"
-             details = "Bundle present=False"
+        elif stale:
+             status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
+             status_text = "STALE"
+             details = stale_reason or "Bundle is stale"
         else:
-             # Bundle is present
-             if stale:
-                status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
-                status_text = "STALE"
-                details = stale_reason or "Bundle is stale"
-             elif decision == "WARN":
-                status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
-                status_text = "WARN"
-                warnings = data.get("warnings", [])
-                details = str(warnings[0]) if warnings else "Warnings present"
-             else:
-                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                status_text = "FRESH"
-                
-                # Calculate age just for display
-                age_str = ""
-                try:
-                    dt_str = created_at.replace("Z", "+00:00")
-                    dt = datetime.fromisoformat(dt_str)
-                    if dt.tzinfo:
-                         from datetime import timezone
-                         now = datetime.now(timezone.utc)
-                    else:
-                         now = datetime.now()
-                    diff = now - dt
-                    hours = diff.total_seconds() / 3600
-                    days = diff.days
-                    age_str = f"{int(hours)}h" if days < 1 else f"{days}d"
-                except:
-                    pass
-                details = f"age={age_str}"
-
+             status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+             status_text = "FRESH"
+             
+             # Calculate age
+             age_str = ""
+             try:
+                 dt_str = created_at.replace("Z", "+00:00")
+                 dt = datetime.fromisoformat(dt_str)
+                 if dt.tzinfo:
+                      from datetime import timezone
+                      now = datetime.now(timezone.utc)
+                 else:
+                      now = datetime.now()
+                 diff = now - dt
+                 hours = diff.total_seconds() / 3600
+                 days = diff.days
+                 age_str = f"{int(hours)}h" if days < 1 else f"{days}d"
+             except:
+                 pass
+             details = f"age={age_str}"
 
     print(f"  {status_icon} {name:<15} | {status_text:<16} | {details}")
 
@@ -276,13 +269,14 @@ def check_bundle_api(name):
 def main():
     print_header()
     
-    if not check_backend():
+    success, summary_data = check_backend()
+    if not success:
         print(f"\n{Colors.RED}CRITICAL: Backend is unreachable. Check 'sudo systemctl status krx-backend'.{Colors.RESET}")
         return
 
     print(f"\n{Colors.BOLD}[Strategy Bundle]{Colors.RESET}")
-    # SPoT: Use API status directly
-    check_bundle_api("Strategy Bundle")
+    # SPoT: Use SSOT data
+    check_bundle_ssot("Strategy Bundle", summary_data)
 
     print(f"\n{Colors.BOLD}[Watcher Status]{Colors.RESET}")
     check_evidence("Spike Watch", "guard_spike_latest")
