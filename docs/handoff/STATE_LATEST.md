@@ -95,13 +95,20 @@ bash deploy/oci/ops_dashboard.sh
 > - Watchers: **Active**(정상), **SUCCESS**(정상), **FAIL**(장애)
 > - Contract 5: **Ready**(정상)
 > - Daily Status: **Generated**(정상), **TELEGRAM**(전송됨)
-
+```
 
 ### C) 데일리 운영 (P72 Summary)
 - **표준 확인 커맨드 (Daily Standard)**:
-  1. **최신 요약 (1초 확인)**: `cat logs/daily_summary.latest`
-  2. **흐름 확인 (히스토리)**: `tail -n 20 logs/daily_summary.log`
-  3. **데이터 오염 검사**: `egrep "reco=UNKNOWN|reco=GENERATED" logs/daily_summary.log && echo "❌ BAD" || echo "✅ CLEAN"`
+ ### 10. 표준 운영 절차 (Runbook)
+**1. 최신 요약 (10초 확인): `python3 -m app.utils.ops_dashboard`**
+   - **Root Cause + Detail SSOT** 제공 (한눈에 원인 파악 가능)
+   - Order Plan 상태 및 주요 Watcher 상태 통합 표시
+   - 문제 발생 시 최상단 `Root Cause` 라인 확인
+
+**2. 백엔드 로그**: `tail -f logs/backend.log`
+**3. 긴급 복구 (Regen)**: `curl -X POST http://localhost:8000/api/ops/summary/regenerate?confirm=true` -> 대시보드 재확인
+**4. 흐름 확인 (히스토리)**: `tail -n 20 logs/daily_summary.log`
+**5. 데이터 오염 검사**: `egrep "reco=UNKNOWN|reco=GENERATED" logs/daily_summary.log && echo "❌ BAD" || echo "✅ CLEAN"`
 
 - **Reason별 조치 (Actionable Troubleshooting)**:
   - `ORDER_PLAN_PORTFOLIO_MISSING` / `PORTFOLIO_MISSING`: 포트폴리오 파일(`state/portfolio/latest`) 누락.
@@ -372,47 +379,37 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 | `ORDER_PLAN_PORTFOLIO_READ_ERROR` | **PC**: JSON 문법 오류 확인 (Trailing comma 등) -> 수정 -> Push |
 | `ORDER_PLAN_PORTFOLIO_CALC_ERROR` | **OCI**: `curl -s .../regenerate?confirm=true`로 상세 로그 확인<br>**PC**: 데이터 정합성(가격 0 등) 확인 |
 
-### Verification Plan (P88-FIX SSOT Hardening)
-
-**Case A: Regen -> Daily Ops (Fault Injection)**
+### Verification Plan (P89 Ops Dashboard Enhancements)
+**Case 1: Fault Injection (Schema Invalid)**
 ```bash
-# 1) Fault Injection (Schema Invalid)
+# 1) Fault Injection
 cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
 echo '{ "cash": "bad_type", "holdings": [] }' > state/portfolio/latest/portfolio_latest.json
 
-# 2) Regen으로 SSOT 최신화
+# 2) Regen (to ensure SSOT is updated)
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
-# Verify API response has detail
-curl -s http://localhost:8000/api/order_plan/latest | python3 -m json.tool | egrep -n '"reason"|"reason_detail"' | head -30
-cat logs/daily_summary.detail.latest
-# 기대 detail: "JSON Parse Error..."
 
-# 5) 원복
+# 3) Dashboard Check
+python3 -m app.utils.ops_dashboard
+# 기대:
+# Root Cause: ORDER_PLAN_PORTFOLIO_SCHEMA_INVALID detail="Invalid type for cash: str"
+# ● Order Plan ... | BLOCKED | Reason=PORTFOLIO_SCHEMA_INVALID | detail="Invalid type for cash: str"
+
+# 4) Clean Check
+python3 -m app.utils.ops_dashboard | egrep "UNMAPPED_CASE|UNKNOWN|Reason=.*:" && echo "❌ BAD" || echo "✅ CLEAN"
+
+# Restore
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 
-**3. Calc Error (Logic Fail)**
+**Case 2: Bundle Stale**
 ```bash
-# 1) Fault Injection (정상 스키마지만 가격이 0 (Zero Value Policy Test) -> SCHEMA_INVALID)
-cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
-python3 -c "import json; d=json.load(open('state/portfolio/latest/portfolio_latest.json')); d['cash']=0; d['holdings'][0]['market_value']=0; json.dump(d, open('state/portfolio/latest/portfolio_latest.json','w'))"
-
-# 2) Order Plan 재생성 (SSOT 기준점)
-curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
-
-# 2-1) 핵심: latest에 reason_detail이 실제로 들어있는지 확인(빈값 금지)
-curl -s http://localhost:8000/api/order_plan/latest | python3 -m json.tool | grep "reason_detail"
-# 기대: "reason_detail": "Total value is zero..." (빈 문자열 아니어야 함)
-
-# 3) daily_ops 실행 (fault 유지)
-DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
-
-# 4) 결과 확인
-cat logs/daily_summary.detail.latest
-# 기대 detail: "Total value is zero..."
-
-# 5) 원복
-cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
+# (Assuming Bundle Stale is hard to simulate without time wait, but we can verify dashboard handles Stale correctly if current state is OK)
+# If system is healthy, just check:
+python3 -m app.utils.ops_dashboard
+# 기대:
+# Root Cause: OK (or WARN if stale)
+# ● Order Plan ... | OK | ...
 ```
 
 **4. 오염 검사**

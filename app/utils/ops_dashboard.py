@@ -202,10 +202,19 @@ def check_evidence(name, alias):
     # Format: [Icon] Name  | Status | Details
     print(f"  {status_icon} {name:<15} | {status_text:<16} | {details}")
 
+def sanitize_detail(text):
+    """P89: Strict Sanitization for Dashboard (1 line, escape quotes, 120 chars)"""
+    if not text:
+        return ""
+    # Remove newlines/CR, escape quotes
+    safe = str(text).replace("\n", " ").replace("\r", "").replace('"', "'").strip()
+    # Truncate
+    if len(safe) > 120:
+        safe = safe[:117] + "..."
+    return safe
+
 def check_bundle_ssot(name, summary_data):
-    # P80 SSOT: Use Ops Summary's strategy_bundle section if available
-    # structure: summary_data['strategy_bundle']
-    
+    # P80 SSOT: Use Ops Summary's strategy_bundle section
     bundle_data = summary_data.get("strategy_bundle", {})
     
     status_icon = f"{Colors.GRAY}?{Colors.RESET}"
@@ -213,21 +222,10 @@ def check_bundle_ssot(name, summary_data):
     details = ""
     
     if not bundle_data:
-        # Fallback to direct API if summary didn't have it (unlikely but safe)
-        # But per P80 we prefer SSOT. If missing in summary, it's missing.
         status_icon = f"{Colors.RED}X{Colors.RESET}"
-        status_text = "MISSING DATA"
+        status_text = "MISSING"
         details = "Ops Summary missing bundle info"
     else:
-        # Expected from ops_summary: present, created_at, stale, stale_reason... (No 'decision' directly mapped?)
-        # Verify generate_ops_summary.py structure:
-        # "strategy_bundle": { "present": ..., "created_at": ..., "strategy_name": ..., "stale": ..., "stale_reason": ... }
-        # Note: 'decision' is NOT in ops_summary bundle section in my previous view of generate_ops_summary.py?
-        # Let's re-read generate_ops_summary.py output structure.
-        # It has: present, created_at, strategy_name, stale, stale_reason.
-        # It DOES NOT have 'decision' (e.g. NO_BUNDLE, FRESH, WARN).
-        # We must infer status text from these fields to match Dashboard expectations.
-        
         present = bundle_data.get("present", False)
         stale = bundle_data.get("stale", False)
         stale_reason = bundle_data.get("stale_reason", "")
@@ -244,105 +242,167 @@ def check_bundle_ssot(name, summary_data):
         else:
              status_icon = f"{Colors.GREEN}●{Colors.RESET}"
              status_text = "FRESH"
-             
-             # Calculate age
-             age_str = ""
-             try:
-                 dt_str = created_at.replace("Z", "+00:00")
-                 dt = datetime.fromisoformat(dt_str)
-                 if dt.tzinfo:
-                      from datetime import timezone
-                      now = datetime.now(timezone.utc)
-                 else:
-                      now = datetime.now()
-                 diff = now - dt
-                 hours = diff.total_seconds() / 3600
-                 days = diff.days
-                 age_str = f"{int(hours)}h" if days < 1 else f"{days}d"
-             except:
-                 pass
-             details = f"age={age_str}"
+             details = f"created={created_at}"
 
     print(f"  {status_icon} {name:<15} | {status_text:<16} | {details}")
 
 
-def check_order_plan():
-    # P81-FIX v2.2: Explicit Order Plan Status (Direct API, Never UNKNOWN)
+def fetch_order_plan_data():
+    """P89: Fetch Order Plan SSOT"""
     url = f"{API_BASE}/api/order_plan/latest"
-    data = get_json(url)
+    # P89: Short timeout for dashboard responsiveness
+    try:
+        with urllib.request.urlopen(url, timeout=1.0) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                # Unwrap rows if present
+                if "rows" in data:
+                    return data["rows"][0] if data["rows"] else {}
+                return data
+    except Exception:
+        return None
+    return None
+
+def print_order_plan_line(op_data):
+    """P89: Strict Format Order Plan Line"""
+    # Format: ● Order Plan | <STATUS> | Reason=<ENUM> | detail="<...>"
     
     status_icon = f"{Colors.RED}X{Colors.RESET}"
     status_text = "ERROR"
-    details = "API unreachable"
+    reason_enum = "DETAIL_SOURCE_UNAVAILABLE"
+    detail_raw = "API unreachable"
     
-    if "error" in data and data["error"]:
-        details = str(data["error"])
-    else:
-        # Structure: {result, rows: [...], ...}
-        # Unwrap rows envelope
-        rows = data.get("rows", [])
-        if not rows:
-             op_data = data # Fallback if flat
+    if op_data is not None:
+        if not op_data:
+            # Empty dict means file likely empty or parsing fail but no exception match
+            status_text = "ERROR"
+            reason_enum = "EMPTY_DATA"
+            detail_raw = "Empty response"
         else:
-             op_data = rows[0]
-        
-        if not op_data or not isinstance(op_data, dict):
-             status_text = "ERROR"
-             details = "Invalid API response"
-        else:
-             decision = op_data.get("decision", "")
-             raw_reason = op_data.get("reason", "")
-             # P81-FIX v2.3: Extract ENUM code only (strip message after colon)
-             reason = raw_reason.split(":")[0].strip() if raw_reason else ""
-             orders_count = len(op_data.get("orders", []))
-             
-             if not decision:
-                 status_text = "ERROR"
-                 details = "Missing decision field"
-             elif decision == "BLOCKED":
-                 status_icon = f"{Colors.RED}●{Colors.RESET}"
-                 status_text = "BLOCKED"
-                 details = f"Reason={reason}"
-             elif decision == "COMPLETED":
-                 if reason.startswith("NO_ACTION_"):
-                     status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                     status_text = "NO_ACTION"
-                     details = f"Reason={reason}"
-                 else:
-                     status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                     status_text = "OK"
-                     details = f"Reason={reason}, Orders={orders_count}"
-             elif decision == "GENERATED": 
-                 status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                 status_text = "OK"
-                 details = f"Reason={reason}, Orders={orders_count}"
-             elif decision == "EMPTY":
-                 status_icon = f"{Colors.GRAY}●{Colors.RESET}"
-                 status_text = "EMPTY"
-                 details = f"Reason={reason}"
-             else:
-                 # Fallback for unexpected decision
-                 status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
-                 status_text = decision
-                 details = f"Reason={reason}"
+            decision = op_data.get("decision", "")
+            raw_reason = op_data.get("reason", "")
+            # P81: Extract ENUM
+            reason_enum = raw_reason.split(":")[0].strip() if raw_reason else ""
+            detail_raw = op_data.get("reason_detail", "")
             
-    print(f"  {status_icon} {'Order Plan':<15} | {status_text:<16} | {details}")
+            if not decision:
+                status_text = "ERROR"
+                reason_enum = "MISSING_DECISION"
+                detail_raw = "Missing decision field"
+            elif decision == "BLOCKED":
+                status_icon = f"{Colors.RED}●{Colors.RESET}"
+                status_text = "BLOCKED"
+                if not detail_raw: detail_raw = "MISSING_DETAIL"
+            elif decision == "COMPLETED":
+                if reason_enum.startswith("NO_ACTION_"):
+                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                    status_text = "NO_ACTION"
+                else:
+                    status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                    status_text = "OK"
+            elif decision in ("GENERATED", "OK"):
+                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                status_text = "OK"
+            else:
+                status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
+                status_text = decision
+    
+    # Sanitize Detail
+    detail_safe = sanitize_detail(detail_raw)
+    
+    # Construct Line
+    line = f"  {status_icon} {'Order Plan':<15} | {status_text:<16} | Reason={reason_enum} detail=\"{detail_safe}\""
+    print(line)
+    
+    return status_text, reason_enum, detail_safe # Return for Root Cause if needed (though Root Cause calculated separately usually)
+
+def print_root_cause(summary_data, op_data):
+    """P89: Root Cause Display (Single Decision Tree)"""
+    # Priority: Bundle Stale > Order Plan BLOCKED > Ops != OK > OK
+    
+    rc_enum = "UNMAPPED_CASE"
+    rc_detail = ""
+    is_failure = False
+    
+    # 1. Bundle Stale
+    bundle = summary_data.get("strategy_bundle", {})
+    if bundle.get("stale") is True:
+        rc_enum = "BUNDLE_STALE_WARN"
+        rc_detail = bundle.get("stale_reason", "") or "Strategy bundle is stale"
+        is_failure = True
+        
+    # 2. Order Plan BLOCKED (if not stale)
+    elif not is_failure and op_data:
+        decision = op_data.get("decision", "")
+        if decision == "BLOCKED":
+            raw_reason = op_data.get("reason", "")
+            reason_code = raw_reason.split(":")[0].strip() if raw_reason else "UNKNOWN"
+            
+            # Check for stale wrapper
+            if reason_code in ("RECO_BUNDLE_STALE", "BUNDLE_STALE"):
+                rc_enum = "BUNDLE_STALE_WARN"
+                rc_detail = "Blocked due to stale bundle"
+            elif reason_code.startswith("ORDER_PLAN_"):
+                rc_enum = reason_code
+                rc_detail = op_data.get("reason_detail", "") or "MISSING_DETAIL"
+            else:
+                rc_enum = f"ORDER_PLAN_{reason_code}"
+                rc_detail = op_data.get("reason_detail", "") or "MISSING_DETAIL"
+            is_failure = True
+            
+    # 3. Reco / Cycle (Usually covered by Order Plan, but check Ops Summary Reco)
+    # Check "reco" block in summary
+    if not is_failure:
+        reco = summary_data.get("reco", {})
+        reco_dec = reco.get("decision", "")
+        if reco_dec == "EMPTY_RECO":
+             rc_enum = "EMPTY_RECO"
+             rc_detail = reco.get("reason_detail", "") or "MISSING_DETAIL"
+             is_failure = True
+
+    # 4. Ops Status
+    if not is_failure:
+        # Check overall status
+        ops_status = summary_data.get("overall_status", "UNKNOWN") # or ops?
+        # check_backend prints ops_status from first_row["overall_status"]
+        if ops_status not in ("OK", "WARN"): # WARN is usually acceptable or handled elsewhere? P89 says Ops != OK
+             # Wait, WARN might be Stale Bundle. If handled above, fine.
+             # If explicit error:
+             rc_enum = f"OPS_{ops_status}"
+             rc_detail = summary_data.get("ops_summary", {}).get("message", "")
+             is_failure = ops_status != "OK"
+
+    # 5. OK
+    if not is_failure:
+        rc_enum = "OK"
+        rc_detail = ""
+
+    # Print
+    detail_str = f' detail="{sanitize_detail(rc_detail)}"' if rc_detail else ""
+    color = Colors.RED if is_failure and rc_enum != "OK" else Colors.GREEN
+    print(f"{Colors.BOLD}Root Cause: {color}{rc_enum}{Colors.RESET}{detail_str}\n")
 
 
 def main():
     print_header()
     
+    # 1. Fetch Data
     success, summary_data = check_backend()
     if not success:
-        print(f"\n{Colors.RED}CRITICAL: Backend is unreachable. Check 'sudo systemctl status krx-backend'.{Colors.RESET}")
+        print(f"\n{Colors.RED}CRITICAL: Backend is unreachable.{Colors.RESET}")
         return
 
-    print(f"\n{Colors.BOLD}[Strategy Bundle]{Colors.RESET}")
-    # SPoT: Use SSOT data
+    op_data = fetch_order_plan_data()
+
+    # 2. Print Root Cause (P89 High Visibility)
+    print_root_cause(summary_data, op_data)
+
+    # 3. Print Sections
+    print(f"{Colors.BOLD}[Strategy Bundle]{Colors.RESET}")
     check_bundle_ssot("Strategy Bundle", summary_data)
     
-    # P81: Order Plan (Explicit)
-    check_order_plan()
+    # Order Plan Line (Always)
+    print_order_plan_line(op_data)
 
     print(f"\n{Colors.BOLD}[Watcher Status]{Colors.RESET}")
     check_evidence("Spike Watch", "guard_spike_latest")
