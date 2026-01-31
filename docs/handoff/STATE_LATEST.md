@@ -379,37 +379,38 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 | `ORDER_PLAN_PORTFOLIO_READ_ERROR` | **PC**: JSON 문법 오류 확인 (Trailing comma 등) -> 수정 -> Push |
 | `ORDER_PLAN_PORTFOLIO_CALC_ERROR` | **OCI**: `curl -s .../regenerate?confirm=true`로 상세 로그 확인<br>**PC**: 데이터 정합성(가격 0 등) 확인 |
 
-### Verification Plan (P89 Ops Dashboard Enhancements)
-**Case 1: Fault Injection (Schema Invalid)**
+### Verification Plan (P90 Dashboard Zero-UNKNOWN)
+
+**1. Clean Check (Standard)**
+```bash
+# Dashboard output must be free of UNKNOWN/UNMAPPED/Empty Detail
+python3 -m app.utils.ops_dashboard | egrep "UNMAPPED_CASE|UNKNOWN|Reason=.*:|Reason=$" && echo "❌ FAIL" || echo "✅ PASS"
+```
+
+**2. Watcher Logic (Alerts=1 Case)**
+```bash
+# If alerts exist but no sent info, expect WARN + ALERTS_GENERATED (Not UNKNOWN)
+python3 -m app.utils.ops_dashboard | grep "Holding Watch"
+# Expected: ... | WARN ... | Reason=ALERTS_GENERATED ...
+```
+
+**3. Fault Injection & Recovery (Regen Required)**
 ```bash
 # 1) Fault Injection
 cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
 echo '{ "cash": "bad_type", "holdings": [] }' > state/portfolio/latest/portfolio_latest.json
 
-# 2) Regen (to ensure SSOT is updated)
+# 2) Regen (Mandatory for SSOT Update)
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
 
-# 3) Dashboard Check
+# 3) Dashboard Check (Root Cause)
 python3 -m app.utils.ops_dashboard
-# 기대:
-# Root Cause: ORDER_PLAN_PORTFOLIO_SCHEMA_INVALID detail="Invalid type for cash: str"
-# ● Order Plan ... | BLOCKED | Reason=PORTFOLIO_SCHEMA_INVALID | detail="Invalid type for cash: str"
+# Root Cause: ORDER_PLAN_PORTFOLIO_SCHEMA_INVALID ...
 
-# 4) Clean Check
-python3 -m app.utils.ops_dashboard | egrep "UNMAPPED_CASE|UNKNOWN|Reason=.*:" && echo "❌ BAD" || echo "✅ CLEAN"
-
-# Restore
+# 4) Restore & Regen (Important)
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
-```
-
-**Case 2: Bundle Stale**
-```bash
-# (Assuming Bundle Stale is hard to simulate without time wait, but we can verify dashboard handles Stale correctly if current state is OK)
-# If system is healthy, just check:
-python3 -m app.utils.ops_dashboard
-# 기대:
-# Root Cause: OK (or WARN if stale)
-# ● Order Plan ... | OK | ...
+curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
+python3 -m app.utils.ops_dashboard | egrep "UNMAPPED_CASE|UNKNOWN" && echo "FAIL" || echo "CLEAN"
 ```
 
 **4. 오염 검사**
