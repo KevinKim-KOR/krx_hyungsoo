@@ -1,11 +1,11 @@
 {
   "schema": "STRATEGY_BUNDLE_V1",
-  "bundle_id": "9e2ea60b-509c-41b0-b95f-7e5f4ba685c7",
-  "created_at": "2026-01-29T23:06:41.391873",
+  "bundle_id": "bd784af2-50d4-402b-a30a-8109f7bddb05",
+  "created_at": "2026-01-31T18:57:34.654027",
   "source": {
     "pc_host": "DESKTOP-4MKPJGC",
     "git_commit": "425e5029",
-    "git_branch": "archive-rebuild",
+    "git_branch": "main",
     "active_surface_sha256": "fa58c4eb0cfdc2e81f43cfb750d1fee4c7e989c4d718a7df6fdb03ddc15fe336"
   },
   "strategy": {
