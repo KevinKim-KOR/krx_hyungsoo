@@ -191,13 +191,16 @@ try:
     row = (d.get("rows") or [{}])[0]
     result = row.get("result", "UNKNOWN")
     decision = row.get("decision", "UNKNOWN")
+    decision = row.get("decision", "UNKNOWN")
     reason = row.get("reason", "UNKNOWN")
+    detail = row.get("reason_detail", "")
     push = row.get("push") or {}
     delivery = push.get("delivery_actual", "UNKNOWN")
     snapshot_ref = row.get("snapshot_ref") or ""
     print(f"CYCLE_RESULT:{result}")
     print(f"CYCLE_DECISION:{decision}")
     print(f"CYCLE_REASON:{reason}")
+    print(f"CYCLE_DETAIL:{detail}")
     print(f"CYCLE_DELIVERY:{delivery}")
     print(f"CYCLE_SNAPSHOT:{snapshot_ref}")
 except Exception as e:
@@ -214,6 +217,7 @@ except Exception as e:
     CYCLE_RESULT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_RESULT:" | cut -d: -f2-)
     CYCLE_DECISION=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DECISION:" | cut -d: -f2-)
     CYCLE_REASON=$(echo "$CYCLE_PARSED" | grep "^CYCLE_REASON:" | cut -d: -f2-)
+    CYCLE_DETAIL=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DETAIL:" | cut -d: -f2-)
     CYCLE_DELIVERY=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DELIVERY:" | cut -d: -f2-)
     CYCLE_SNAPSHOT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_SNAPSHOT:" | cut -d: -f2-)
     # Check result
@@ -248,6 +252,7 @@ ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true
 if echo "$ORDER_RESP" | grep -q '"decision"'; then
     ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
     ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
+    ORDER_DETAIL=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason_detail",""))' 2>/dev/null || echo "")
     
     echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
     
@@ -395,12 +400,14 @@ SUMMARY_OUTPUT=$(cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.
     "stale": "$BUNDLE_STALE"
   },
   "reco": {
-    "decision": "$RECO_DECISION",
-    "reason": "$RECO_REASON"
+    "decision": "$CYCLE_DECISION",
+    "reason": "$CYCLE_REASON",
+    "reason_detail": "$CYCLE_DETAIL"
   },
   "order_plan": {
     "decision": "$ORDER_DECISION",
-    "reason": "$ORDER_REASON"
+    "reason": "$ORDER_REASON",
+    "reason_detail": "$ORDER_DETAIL"
   },
   "top_risks": $RISKS_JSON
 }
