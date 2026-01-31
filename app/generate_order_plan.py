@@ -111,10 +111,10 @@ def _save_plan(plan: Dict, snapshot_filename: str):
     shutil.copy(ORDER_PLAN_LATEST, ORDER_PLAN_SNAPSHOTS / snapshot_filename)
 
 
-def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict]]:
+def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict], str]:
     """
-    Portfolio Validation (P81-FIX v2.2 Compatibility Layer)
-    Returns: (Reason, PortfolioDict or None)
+    Portfolio Validation (P81-FIX v2.2 + P87 Detail)
+    Returns: (Reason, PortfolioDict or None, DetailString)
     Reason Enums:
       - PORTFOLIO_OK
       - PORTFOLIO_MISSING
@@ -126,27 +126,27 @@ def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict]]:
     Compatibility: Accepts either 'asof' or 'updated_at' for timestamp.
     """
     if not portfolio_path.exists():
-        return "PORTFOLIO_MISSING", None
+        return "PORTFOLIO_MISSING", None, "File not found"
 
     try:
         content = portfolio_path.read_text(encoding="utf-8")
         pf = json.loads(content)
-    except Exception:
-        return "PORTFOLIO_READ_ERROR", None
+    except Exception as e:
+        return "PORTFOLIO_READ_ERROR", None, f"JSON Parse Error: {str(e)}"
 
     # Schema Check (Compatibility Layer)
     # Required: cash (number), holdings (list)
     # Optional: asof OR updated_at (timestamp)
     
     if "cash" not in pf:
-        return "PORTFOLIO_SCHEMA_INVALID", None
+        return "PORTFOLIO_SCHEMA_INVALID", None, "Missing key: cash"
     if not isinstance(pf["cash"], (int, float)):
-        return "PORTFOLIO_SCHEMA_INVALID", None
+        return "PORTFOLIO_SCHEMA_INVALID", None, f"Invalid type for cash: {type(pf['cash']).__name__}"
         
     if "holdings" not in pf:
-        return "PORTFOLIO_SCHEMA_INVALID", None
+        return "PORTFOLIO_SCHEMA_INVALID", None, "Missing key: holdings"
     if not isinstance(pf["holdings"], list):
-        return "PORTFOLIO_SCHEMA_INVALID", None
+        return "PORTFOLIO_SCHEMA_INVALID", None, f"Invalid type for holdings: {type(pf['holdings']).__name__}"
             
     # Content Check (No Action Policy)
     cash = pf["cash"]
@@ -154,14 +154,14 @@ def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict]]:
     
     # Policy A: Holdings empty & cash <= 0 -> EMPTY (No Action)
     if len(holdings) == 0 and cash <= 0:
-        return "NO_ACTION_PORTFOLIO_EMPTY", pf
+        return "NO_ACTION_PORTFOLIO_EMPTY", pf, "Holdings empty and cash <= 0"
         
     # Policy A: Holdings empty & cash > 0 -> CASH_ONLY (No Action)
     if len(holdings) == 0 and cash > 0:
-        return "NO_ACTION_PORTFOLIO_CASH_ONLY", pf
+        return "NO_ACTION_PORTFOLIO_CASH_ONLY", pf, "Holdings empty and cash > 0"
         
     # OK
-    return "PORTFOLIO_OK", pf
+    return "PORTFOLIO_OK", pf, ""
 
 
 def generate_no_action_plan(reason: str, portfolio: Dict) -> Dict[str, Any]:
@@ -231,10 +231,10 @@ def generate_order_plan() -> Dict[str, Any]:
     now = datetime.now()
     
     # 1. Validate Portfolio (Strict)
-    pf_reason, portfolio = validate_portfolio(PORTFOLIO_LATEST)
+    pf_reason, portfolio, pf_detail = validate_portfolio(PORTFOLIO_LATEST)
     
     if pf_reason in ("PORTFOLIO_MISSING", "PORTFOLIO_READ_ERROR", "PORTFOLIO_SCHEMA_INVALID"):
-        return generate_blocked_plan(pf_reason)
+        return generate_blocked_plan(pf_reason, reason_detail=pf_detail)
         
     if pf_reason.startswith("NO_ACTION_"):
         return generate_no_action_plan(pf_reason, portfolio)

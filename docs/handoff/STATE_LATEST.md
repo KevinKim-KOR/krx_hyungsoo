@@ -351,3 +351,55 @@ cp /tmp/portfolio_latest.json.bak state/portfolio/latest/portfolio_latest.json
 tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco=GENERATED" && echo "❌ BAD" || echo "✅ CLEAN"
 ```
 
+---
+
+## 15) P87: Reason Detail Quality & Operator Recovery Loop
+
+### Operator Recovery Runbook
+**Action Required** when `Reason=ORDER_PLAN_*` occurs:
+
+1. **상세 원인 확인 (1-command)**:
+   ```bash
+   cat logs/daily_summary.detail.latest
+   # 예: Reason=ORDER_PLAN_PORTFOLIO_SCHEMA_INVALID detail="Invalid type for cash: str"
+   ```
+
+2. **Reason별 조치**:
+
+| Reason Enum | 조치 커맨드 / PC 액션 |
+|-------------|-------------------|
+| `ORDER_PLAN_PORTFOLIO_SCHEMA_INVALID` | **PC**: 포트폴리오 파일(JSON)의 필수 키(cash, holdings) 및 타입 확인 후 수정 -> Push |
+| `ORDER_PLAN_PORTFOLIO_READ_ERROR` | **PC**: JSON 문법 오류 확인 (Trailing comma 등) -> 수정 -> Push |
+| `ORDER_PLAN_PORTFOLIO_CALC_ERROR` | **OCI**: `curl -s .../regenerate?confirm=true`로 상세 로그 확인<br>**PC**: 데이터 정합성(가격 0 등) 확인 |
+
+### Verification Plan (Fault Injection 3-Set)
+**1. Schema Invalid (Type Mismatch)**
+```bash
+cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
+echo '{ "cash": "bad_type", "holdings": [] }' > state/portfolio/latest/portfolio_latest.json
+curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
+# 기대: reason="PORTFOLIO_SCHEMA_INVALID", detail="Invalid type for cash..."
+bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
+cat logs/daily_summary.detail.latest
+# 기대: detail에 위 에러 메시지 포함 확인
+cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
+```
+
+**2. Read Error (Broken JSON)**
+```bash
+echo '{ "cash": 100, "holdings": [BROKEN] }' > state/portfolio/latest/portfolio_latest.json
+curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
+# 기대: reason="PORTFOLIO_READ_ERROR", detail="JSON Parse Error..."
+cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
+```
+
+**3. Calc Error (Logic Fail)**
+```bash
+# 정상 스키마지만 가격이 문자열? (현재 파이썬 로직 테스트)
+# 또는 단순히 기존 P86 테스트 재수행하여 detail 로그 파일 생성 확인
+```
+
+**4. 오염 검사**
+```bash
+tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco=GENERATED" && echo "❌ BAD" || echo "✅ CLEAN"
+```

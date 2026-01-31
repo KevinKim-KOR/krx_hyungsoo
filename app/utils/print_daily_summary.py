@@ -105,12 +105,42 @@ def main():
             
         elif reco_decision == "EMPTY_RECO":
             reason = "EMPTY_RECO"
-        elif ops != "OK" and ops != "WARN":
+        if ops != "OK" and ops != "WARN":
             reason = f"OPS_{ops}"
         else:
             reason = "OK"
 
-        print(f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco_decision} order_plan={op_decision} Reason={reason} risks={risks_str}")
+        # P87: Detail Logic (Operator Recovery)
+        # Extract meaningful detail for the reason
+        detail_msg = ""
+        if "ORDER_PLAN" in reason:
+            # Check Order Plan detail
+             detail_msg = order.get("reason_detail", "")
+        elif "BUNDLE_STALE" in reason:
+             # Check Bundle Validation data
+             pass # Already clear from reason usually, but can look at bundle status? 
+             # Actually daily_ops.sh already prints age.
+             pass
+        
+        # Fallback to generic detail or empty
+        if not detail_msg:
+             detail_msg = d.get("reco", {}).get("reason_detail", "") or d.get("detail", "")
+
+        # Safe string for log
+        detail_safe = str(detail_msg).replace("\n", " ")
+
+        # Print Standard Summary to stdout (for daily_summary.latest)
+        summary_line = f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco_decision} order_plan={op_decision} Reason={reason} risks={risks_str}"
+        print(summary_line)
+
+        # P87: Write Detail Log to File (Side Effect)
+        # Reason=<ENUM> detail="<msg>"
+        try:
+             with open("logs/daily_summary.detail.latest", "w", encoding="utf-8") as f:
+                  f.write(f'Reason={reason} detail="{detail_safe}"\n')
+        except Exception:
+             pass # Fail silent on side-effect log gen
+
 
     except Exception as e:
         print(f"DAILY_SUMMARY Reason=PARSE_ERROR error={str(e)}")
