@@ -267,7 +267,7 @@ curl "http://localhost:8000/api/evidence/resolve?ref=guard_spike_latest"
 ### Reason별 조치
 | Reason | 조치 |
 |--------|------|
-| `BUNDLE_STALE_WARN` | PC에서 번들 생성/갱신 후 git push → OCI 다음 실행 시 자동 복구 |
+| `BUNDLE_STALE_WARN` | **1-Command**: `bash deploy/oci/bundle_recover_check.sh` 실행 후 PC에서 번들 갱신 |
 | `GIT_PULL_FAILED` | 네트워크/권한/디스크, OCI repo 상태 확인 |
 | `ORDER_PLAN_PORTFOLIO_*` | PC에서 포트폴리오 확인 후 git push |
 
@@ -285,3 +285,34 @@ grep "Repository" logs/daily_ops.log | tail -5
 - `GIT_PULL_UPDATED`: 변경 적용됨
 - `GIT_PULL_NO_CHANGES`: 이미 최신
 - `GIT_PULL_FAILED`: 실패 (exit 3 + incident)
+
+---
+
+## 13) P84: Bundle Stale Recovery Runbook
+
+### BUNDLE_STALE_WARN 발생 시 조치 절차
+
+**OCI에서 상태 확인**:
+```bash
+bash deploy/oci/bundle_recover_check.sh
+```
+
+이 명령은 다음을 수행합니다:
+1. `git pull origin main` (최신 번들 확인)
+2. `/api/ops/summary/regenerate` (Ops Summary 재생성)
+3. Strategy Bundle 상태 출력 (stale 여부, age)
+4. `logs/daily_summary.latest` 출력
+
+**PC에서 번들 갱신**:
+```powershell
+# 1. 전략 번들 생성/갱신 (UI 또는 스크립트)
+# 2. Git push
+git add . && git commit -m "update bundle" && git push
+```
+
+**OCI에서 복구 확인**:
+```bash
+bash deploy/oci/bundle_recover_check.sh
+# 기대: bundle_stale=false, Reason이 BUNDLE_STALE_WARN에서 내려감
+```
+
