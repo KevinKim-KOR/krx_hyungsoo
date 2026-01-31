@@ -382,7 +382,7 @@ echo '{ "cash": "bad_type", "holdings": [] }' > state/portfolio/latest/portfolio
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
 # 기대: reason="PORTFOLIO_SCHEMA_INVALID", detail="Invalid type for cash..."
 
-bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
+DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
 cat logs/daily_summary.detail.latest
 # 기대: detail에 위 에러 메시지 포함 확인
 
@@ -394,6 +394,11 @@ cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 echo '{ "cash": 100, "holdings": [BROKEN] }' > state/portfolio/latest/portfolio_latest.json
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
 # 기대: reason="PORTFOLIO_READ_ERROR", detail="JSON Parse Error..."
+
+DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
+cat logs/daily_summary.detail.latest
+# 기대: detail에 위 에러 메시지 포함 확인
+
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 
@@ -404,6 +409,11 @@ cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
 python3 -c "import json; d=json.load(open('state/portfolio/latest/portfolio_latest.json')); d['cash']=0; d['holdings'][0]['market_value']=0; json.dump(d, open('state/portfolio/latest/portfolio_latest.json','w'))"
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
 # 기대: reason="PORTFOLIO_SCHEMA_INVALID" detail="Total value is zero..."
+
+DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
+cat logs/daily_summary.detail.latest
+# 기대: detail에 "Total value is zero" 포함 확인
+
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 

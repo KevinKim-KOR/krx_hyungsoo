@@ -84,21 +84,30 @@ echo "$LOG_PREFIX ════════════════════�
 echo ""
 echo "$LOG_PREFIX [1/7] Updating repository..."
 
-GIT_PULL_OUTPUT=$(git pull origin main 2>&1)
-GIT_PULL_EXIT=$?
-
-if [ $GIT_PULL_EXIT -ne 0 ]; then
-    GIT_PULL_RESULT="GIT_PULL_FAILED"
-    echo "$LOG_PREFIX ❌ git pull failed: $GIT_PULL_OUTPUT"
-    send_incident "GIT_PULL_FAILED" "Step1" "git pull origin main failed"
-    # P83: Fail on git pull failure (critical for ops)
-    exit 3
-elif echo "$GIT_PULL_OUTPUT" | grep -q "Already up to date"; then
-    GIT_PULL_RESULT="GIT_PULL_NO_CHANGES"
-    echo "$LOG_PREFIX ✓ Repository: no changes (already up to date)"
+if [ "${DAILY_OPS_NO_GIT_PULL}" = "1" ]; then
+    echo "$LOG_PREFIX [1/7] Repository update SKIPPED (Verification Mode)"
+    GIT_PULL_RESULT="GIT_PULL_SKIPPED"
 else
-    GIT_PULL_RESULT="GIT_PULL_UPDATED"
-    echo "$LOG_PREFIX ✓ Repository: updated with new changes"
+    # Normal Operation
+    CURRENT_REV=$(git rev-parse --short HEAD)
+
+    if ! git pull origin main > /dev/null 2>&1; then
+        echo "$LOG_PREFIX ❌ Repository update failed"
+        # P81-FIX: Critical Failure -> Incident
+        GIT_PULL_RESULT="GIT_PULL_FAILED"
+        send_incident "OPS_FAILED" "Step1" "git pull failed"
+        exit 3
+    fi
+
+    # Check if changes were pulled
+    REVISION=$(git rev-parse --short HEAD)
+    if [ "$REVISION" = "$CURRENT_REV" ]; then
+        echo "$LOG_PREFIX ✓ Repository: Already up to date ($REVISION)"
+        GIT_PULL_RESULT="GIT_PULL_NO_CHANGES"
+    else
+        echo "$LOG_PREFIX ✓ Repository: Updated to $REVISION"
+        GIT_PULL_RESULT="GIT_PULL_UPDATED"
+    fi
 fi
 
 # ============================================================================
