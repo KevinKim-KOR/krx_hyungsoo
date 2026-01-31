@@ -212,32 +212,32 @@ except Exception as e:
 fi
 
 # ============================================================================
-# Step 5: Order Plan Regenerate (D-P.58) (Only if OK)
+# Step 5: Order Plan Regenerate (D-P.58) (P81-FIX: Always Run for fresh asof)
 # ============================================================================
 ORDER_DECISION="SKIPPED"
 ORDER_REASON="OPS_BLOCKED"
 
-if [ $EXIT_CODE -eq 0 ]; then
-    echo ""
-    echo "$LOG_PREFIX [5/7] Regenerating Order Plan..."
-    ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true")
+# P81-FIX v2.2: Run Order Plan even when EXIT_CODE=2 (BLOCKED)
+# This ensures order_plan.latest asof is always fresh (for SSOT)
+echo ""
+echo "$LOG_PREFIX [5/7] Regenerating Order Plan..."
+ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true")
 
-    if echo "$ORDER_RESP" | grep -q '"decision"'; then
-        ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
-        ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
-        
-        echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
-        
-        if [ "$ORDER_DECISION" = "BLOCKED" ]; then
-            # Order Plan BLOCKED is not fatal, just warning (e.g. no portfolio)
-            echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
-            # We don't exit here, just log it. Stale risk is handled in Ops Summary.
-        fi
-    else
-        echo "$LOG_PREFIX ❌ Order Plan regen failed: $ORDER_RESP"
-        send_incident "ORDER_PLAN_FAILED" "Step5" "Order plan API failed"
-        exit 3
+if echo "$ORDER_RESP" | grep -q '"decision"'; then
+    ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+    ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
+    
+    echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
+    
+    if [ "$ORDER_DECISION" = "BLOCKED" ]; then
+        # Order Plan BLOCKED is not fatal, just warning (e.g. no portfolio)
+        echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
+        # We don't exit here, just log it. Stale risk is handled in Ops Summary.
     fi
+else
+    echo "$LOG_PREFIX ❌ Order Plan regen failed: $ORDER_RESP"
+    send_incident "ORDER_PLAN_FAILED" "Step5" "Order plan API failed"
+    exit 3
 fi
 
 # ============================================================================

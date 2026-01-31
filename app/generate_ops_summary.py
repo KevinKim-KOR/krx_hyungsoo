@@ -364,7 +364,8 @@ def regenerate_ops_summary():
             except Exception:
                 pass # Parse error ignore
 
-    # 5. Order Plan (D-P.58)
+    # 5. Order Plan (D-P.58 + P81-FIX)
+    # Only generate risk if order_plan decision is BLOCKED
     if order_plan and order_plan.get("decision") == "BLOCKED":
         reason = order_plan.get("reason", "UNKNOWN_REASON")
         
@@ -376,10 +377,8 @@ def regenerate_ops_summary():
             "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
         })
         
-        # P80: Specific Risk Code (Dual Risk)
-        # Ensure we don't duplicate if reason IS "BLOCKED" (unlikely with P79 fix but safe)
+        # P80/P81: Specific Risk Code (Dual Risk)
         if reason and reason != "BLOCKED":
-            # Add prefix if missing
             specific_code = reason if reason.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason}"
             top_risks.append({
                 "code": specific_code,
@@ -415,6 +414,13 @@ def regenerate_ops_summary():
             if overall_status == "OK":
                  overall_status = "WARN"
 
+    # === Reco (For Daily Summary logic) ===
+    reco = safe_load_json(RECO_LATEST)
+    reco_summary = {
+        "decision": reco.get("decision", "UNKNOWN") if reco else "MISSING_RECO",
+        "reason": reco.get("reason", "") if reco else ""
+    }
+
     # Construct Summary
     summary = {
         "schema": "OPS_SUMMARY_V1",
@@ -437,6 +443,7 @@ def regenerate_ops_summary():
         },
         "portfolio": portfolio_summary,
         "order_plan": order_plan_summary,
+        "reco": reco_summary,
         "strategy_bundle": bundle_summary,
         "top_risks": top_risks,
         "evidence_refs": [

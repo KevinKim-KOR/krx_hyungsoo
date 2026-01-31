@@ -55,9 +55,16 @@ def main():
         op_decision = order.get("decision", "MISSING_OP")
         
         risks = d.get("top_risks", []) or []
+        
+        # P81-FIX v2.2: Filter ORDER_PLAN_* risks when order_plan=SKIPPED
+        if op_decision == "SKIPPED":
+            risks = [r for r in risks if not r.startswith("ORDER_PLAN_")]
+            
         risks_str = str(risks).replace(" ", "")
 
         # Reason Logic (Strict Enum Priority + P81 Namespace Rule)
+        reason = "UNMAPPED_CASE"  # Default fallback - never UNKNOWN
+        
         # Prioritize BLOCKERS
         if op_decision == "BLOCKED":
             op_reason = order.get("reason", "")

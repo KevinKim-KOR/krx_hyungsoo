@@ -111,7 +111,7 @@ def _save_plan(plan: Dict, snapshot_filename: str):
 
 def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict]]:
     """
-    Portfolio Validation (P81 Strict Enum)
+    Portfolio Validation (P81-FIX v2.2 Compatibility Layer)
     Returns: (Reason, PortfolioDict or None)
     Reason Enums:
       - PORTFOLIO_OK
@@ -120,6 +120,8 @@ def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict]]:
       - PORTFOLIO_SCHEMA_INVALID
       - NO_ACTION_PORTFOLIO_EMPTY
       - NO_ACTION_PORTFOLIO_CASH_ONLY
+    
+    Compatibility: Accepts either 'asof' or 'updated_at' for timestamp.
     """
     if not portfolio_path.exists():
         return "PORTFOLIO_MISSING", None
@@ -130,29 +132,29 @@ def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict]]:
     except Exception:
         return "PORTFOLIO_READ_ERROR", None
 
-    # Schema Check (Strict)
-    required_keys = {
-        "asof": str,
-        "cash": (int, float),
-        "holdings": list
-    }
+    # Schema Check (Compatibility Layer)
+    # Required: cash (number), holdings (list)
+    # Optional: asof OR updated_at (timestamp)
     
-    for key, expected_type in required_keys.items():
-        if key not in pf:
-            return "PORTFOLIO_SCHEMA_INVALID", None
-        if not isinstance(pf[key], expected_type):
-            return "PORTFOLIO_SCHEMA_INVALID", None
+    if "cash" not in pf:
+        return "PORTFOLIO_SCHEMA_INVALID", None
+    if not isinstance(pf["cash"], (int, float)):
+        return "PORTFOLIO_SCHEMA_INVALID", None
+        
+    if "holdings" not in pf:
+        return "PORTFOLIO_SCHEMA_INVALID", None
+    if not isinstance(pf["holdings"], list):
+        return "PORTFOLIO_SCHEMA_INVALID", None
             
     # Content Check (No Action Policy)
-    cash = pf["cash"] # Validated number
-    holdings = pf["holdings"] # Validated list
+    cash = pf["cash"]
+    holdings = pf["holdings"]
     
     # Policy A: Holdings empty & cash <= 0 -> EMPTY (No Action)
     if len(holdings) == 0 and cash <= 0:
         return "NO_ACTION_PORTFOLIO_EMPTY", pf
         
     # Policy A: Holdings empty & cash > 0 -> CASH_ONLY (No Action)
-    # The user mandated: "No Action" if cash only (Policy A fixed)
     if len(holdings) == 0 and cash > 0:
         return "NO_ACTION_PORTFOLIO_CASH_ONLY", pf
         

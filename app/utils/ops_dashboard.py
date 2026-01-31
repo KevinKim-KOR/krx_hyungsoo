@@ -267,49 +267,62 @@ def check_bundle_ssot(name, summary_data):
 
 
 def check_order_plan():
-    # P81: Explicit Order Plan Status (Direct API)
+    # P81-FIX v2.2: Explicit Order Plan Status (Direct API, Never UNKNOWN)
     url = f"{API_BASE}/api/order_plan/latest"
     data = get_json(url)
     
-    status_icon = f"{Colors.GRAY}?{Colors.RESET}"
-    status_text = "UNKNOWN"
-    details = ""
+    status_icon = f"{Colors.RED}X{Colors.RESET}"
+    status_text = "ERROR"
+    details = "API unreachable"
     
     if "error" in data and data["error"]:
-        status_icon = f"{Colors.RED}X{Colors.RESET}"
-        status_text = "API FAIL"
         details = str(data["error"])
     else:
-        # Structure: {result, decision, reason, snapshot_ref...}
-        decision = data.get("decision", "UNKNOWN")
-        reason = data.get("reason", "UNKNOWN_REASON")
+        # Structure: {result, rows: [...], ...}
+        # Unwrap rows envelope
+        rows = data.get("rows", [])
+        if not rows:
+             op_data = data # Fallback if flat
+        else:
+             op_data = rows[0]
         
-        if decision == "BLOCKED":
-            status_icon = f"{Colors.RED}●{Colors.RESET}"
-            status_text = "BLOCKED"
-            # Highlight Reason
-            details = f"Reason={Colors.RED}{reason}{Colors.RESET}"
-        elif decision == "COMPLETED":
-            if reason.startswith("NO_ACTION_"):
-                # NO_ACTION case (Green/Gray)
-                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                status_text = "NO_ACTION"
-                details = f"Reason={reason}"
-            else:
-                # OK / Normal Loaded
-                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                status_text = "OK"
-                details = f"Reason={reason}, Orders={data.get('orders_count', 0)}"
-        elif decision == "GENERATED": 
-            # Legacy/Fallback if COMPLETED not used for normal
-            status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-            status_text = "OK"
-            details = f"Reason={reason}, Orders={data.get('orders_count', 0)}"
-        elif decision == "EMPTY":
-             # Should be caught by NO_ACTION usually, but fallback
-            status_icon = f"{Colors.GRAY}●{Colors.RESET}"
-            status_text = "EMPTY"
-            details = f"Reason={reason}"
+        if not op_data or not isinstance(op_data, dict):
+             status_text = "ERROR"
+             details = "Invalid API response"
+        else:
+             decision = op_data.get("decision", "")
+             reason = op_data.get("reason", "")
+             orders_count = len(op_data.get("orders", [])) # Use orders array length for SSOT
+             
+             if not decision:
+                 status_text = "ERROR"
+                 details = "Missing decision field"
+             elif decision == "BLOCKED":
+                 status_icon = f"{Colors.RED}●{Colors.RESET}"
+                 status_text = "BLOCKED"
+                 details = f"Reason={Colors.RED}{reason}{Colors.RESET}"
+             elif decision == "COMPLETED":
+                 if reason.startswith("NO_ACTION_"):
+                     status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                     status_text = "NO_ACTION"
+                     details = f"Reason={reason}"
+                 else:
+                     status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                     status_text = "OK"
+                     details = f"Reason={reason}, Orders={orders_count}"
+             elif decision == "GENERATED": 
+                 status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                 status_text = "OK"
+                 details = f"Reason={reason}, Orders={orders_count}"
+             elif decision == "EMPTY":
+                 status_icon = f"{Colors.GRAY}●{Colors.RESET}"
+                 status_text = "EMPTY"
+                 details = f"Reason={reason}"
+             else:
+                 # Fallback for unexpected decision
+                 status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
+                 status_text = decision
+                 details = f"Reason={reason}"
             
     print(f"  {status_icon} {'Order Plan':<15} | {status_text:<16} | {details}")
 
