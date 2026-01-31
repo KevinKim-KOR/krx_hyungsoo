@@ -248,3 +248,36 @@ curl "http://localhost:8000/api/evidence/resolve?ref=guard_spike_latest"
 - 다음 후보:
   - P68: Spike Receipt Quality (execution_reason enum화 등, 잔여 개선)
 - 보류(나중에): 보유임계치 백테스트/평단 실시간 정교화/괴리율 고도화 등
+
+---
+
+## 12) P83: Bundle Stale 자동복구 + Reason 우선순위
+
+### Reason 우선순위 (P83 정책)
+1. `GIT_PULL_FAILED` / `BUNDLE_REFRESH_FAILED` (운영 장애급)
+2. `BUNDLE_STALE_WARN` (PC 작업 필요)
+3. `ORDER_PLAN_*` (portfolio/schema 등 구체 사유)
+4. `EMPTY_RECO` (번들이 fresh인데도 비었으면)
+5. `OK`
+
+### Reason별 조치
+| Reason | 조치 |
+|--------|------|
+| `BUNDLE_STALE_WARN` | PC에서 번들 생성/갱신 후 git push → OCI 다음 실행 시 자동 복구 |
+| `GIT_PULL_FAILED` | 네트워크/권한/디스크, OCI repo 상태 확인 |
+| `ORDER_PLAN_PORTFOLIO_*` | PC에서 포트폴리오 확인 후 git push |
+
+### 표준 확인 커맨드
+```bash
+# 현재 상태 확인
+cat logs/daily_summary.latest
+tail -n 20 logs/daily_summary.log
+
+# GIT_PULL 결과 확인
+grep "Repository" logs/daily_ops.log | tail -5
+```
+
+### git pull 결과 Enum
+- `GIT_PULL_UPDATED`: 변경 적용됨
+- `GIT_PULL_NO_CHANGES`: 이미 최신
+- `GIT_PULL_FAILED`: 실패 (exit 3 + incident)

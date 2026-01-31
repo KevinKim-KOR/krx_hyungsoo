@@ -59,18 +59,33 @@ def main():
         # P81-FIX v2.2: Filter ORDER_PLAN_* risks when order_plan=SKIPPED
         if op_decision == "SKIPPED":
             risks = [r for r in risks if not r.startswith("ORDER_PLAN_")]
+        
+        # P83: Deduplicate risks when bundle_stale (root cause)
+        # Remove ORDER_PLAN_*BUNDLE_STALE* since BUNDLE_STALE_WARN is the primary cause
+        if bundle_stale == "true":
+            risks = [r for r in risks if "BUNDLE_STALE" not in r or r == "BUNDLE_STALE_WARN"]
+            # Ensure BUNDLE_STALE_WARN is present
+            if "BUNDLE_STALE_WARN" not in risks:
+                risks = ["BUNDLE_STALE_WARN"] + risks
             
         risks_str = str(risks).replace(" ", "")
 
-        # Reason Logic (Strict Enum Priority + P81 Namespace Rule)
+        # Reason Logic (P83: Priority Reordering for Actionable WHY)
+        # Priority: GIT_PULL_FAILED > BUNDLE_STALE_WARN > ORDER_PLAN_* > EMPTY_RECO > OK
         reason = "UNMAPPED_CASE"  # Default fallback - never UNKNOWN
         
-        # Prioritize BLOCKERS
-        if op_decision == "BLOCKED":
+        # P83: Check bundle stale FIRST (root cause for downstream blocks)
+        if bundle_stale == "true":
+            reason = "BUNDLE_STALE_WARN"
+            
+        # Then check order_plan blockers (only if not stale-caused)
+        elif op_decision == "BLOCKED":
             op_reason = order.get("reason", "")
-            # P81-FIX v2.3: Extract ENUM code only (strip message after colon)
             op_reason_code = op_reason.split(":")[0].strip() if op_reason else ""
-            if op_reason_code and op_reason_code != "BLOCKED":
+            # If blocked due to RECO_BUNDLE_STALE, surface as BUNDLE_STALE_WARN
+            if op_reason_code in ("RECO_BUNDLE_STALE", "BUNDLE_STALE"):
+                reason = "BUNDLE_STALE_WARN"
+            elif op_reason_code and op_reason_code != "BLOCKED":
                 if op_reason_code.startswith("ORDER_PLAN_"):
                     reason = op_reason_code
                 else:
@@ -84,10 +99,7 @@ def main():
             
         elif reco_decision == "EMPTY_RECO":
             reason = "EMPTY_RECO"
-        elif bundle_stale == "true":
-            reason = "BUNDLE_STALE"
         elif ops != "OK" and ops != "WARN":
-            # If ops is MISSING, reason becomes OPS_MISSING_OPS_STATUS
             reason = f"OPS_{ops}"
         else:
             reason = "OK"

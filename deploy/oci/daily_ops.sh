@@ -79,14 +79,27 @@ echo "$LOG_PREFIX  OCI Daily Operations - $(date '+%Y-%m-%d %H:%M:%S KST')"
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 
 # ============================================================================
-# Step 1: Repo Update
+# Step 1: Repo Update (P83: GIT_PULL_* Enum)
 # ============================================================================
 echo ""
 echo "$LOG_PREFIX [1/7] Updating repository..."
-if ! git pull origin archive-rebuild --quiet 2>/dev/null; then
-    echo "$LOG_PREFIX ⚠️ git pull failed (will continue with current code)"
+
+GIT_PULL_OUTPUT=$(git pull origin main 2>&1)
+GIT_PULL_EXIT=$?
+
+if [ $GIT_PULL_EXIT -ne 0 ]; then
+    GIT_PULL_RESULT="GIT_PULL_FAILED"
+    echo "$LOG_PREFIX ❌ git pull failed: $GIT_PULL_OUTPUT"
+    send_incident "GIT_PULL_FAILED" "Step1" "git pull origin main failed"
+    # P83: Fail on git pull failure (critical for ops)
+    exit 3
+elif echo "$GIT_PULL_OUTPUT" | grep -q "Already up to date"; then
+    GIT_PULL_RESULT="GIT_PULL_NO_CHANGES"
+    echo "$LOG_PREFIX ✓ Repository: no changes (already up to date)"
+else
+    GIT_PULL_RESULT="GIT_PULL_UPDATED"
+    echo "$LOG_PREFIX ✓ Repository: updated with new changes"
 fi
-echo "$LOG_PREFIX ✓ Repository updated"
 
 # ============================================================================
 # Step 2: Backend Health Check (+ fallback on failure)
