@@ -266,6 +266,54 @@ def check_bundle_ssot(name, summary_data):
     print(f"  {status_icon} {name:<15} | {status_text:<16} | {details}")
 
 
+def check_order_plan():
+    # P81: Explicit Order Plan Status (Direct API)
+    url = f"{API_BASE}/api/order_plan/latest"
+    data = get_json(url)
+    
+    status_icon = f"{Colors.GRAY}?{Colors.RESET}"
+    status_text = "UNKNOWN"
+    details = ""
+    
+    if "error" in data and data["error"]:
+        status_icon = f"{Colors.RED}X{Colors.RESET}"
+        status_text = "API FAIL"
+        details = str(data["error"])
+    else:
+        # Structure: {result, decision, reason, snapshot_ref...}
+        decision = data.get("decision", "UNKNOWN")
+        reason = data.get("reason", "UNKNOWN_REASON")
+        
+        if decision == "BLOCKED":
+            status_icon = f"{Colors.RED}●{Colors.RESET}"
+            status_text = "BLOCKED"
+            # Highlight Reason
+            details = f"Reason={Colors.RED}{reason}{Colors.RESET}"
+        elif decision == "COMPLETED":
+            if reason.startswith("NO_ACTION_"):
+                # NO_ACTION case (Green/Gray)
+                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                status_text = "NO_ACTION"
+                details = f"Reason={reason}"
+            else:
+                # OK / Normal Loaded
+                status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                status_text = "OK"
+                details = f"Reason={reason}, Orders={data.get('orders_count', 0)}"
+        elif decision == "GENERATED": 
+            # Legacy/Fallback if COMPLETED not used for normal
+            status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+            status_text = "OK"
+            details = f"Reason={reason}, Orders={data.get('orders_count', 0)}"
+        elif decision == "EMPTY":
+             # Should be caught by NO_ACTION usually, but fallback
+            status_icon = f"{Colors.GRAY}●{Colors.RESET}"
+            status_text = "EMPTY"
+            details = f"Reason={reason}"
+            
+    print(f"  {status_icon} {'Order Plan':<15} | {status_text:<16} | {details}")
+
+
 def main():
     print_header()
     
@@ -277,6 +325,9 @@ def main():
     print(f"\n{Colors.BOLD}[Strategy Bundle]{Colors.RESET}")
     # SPoT: Use SSOT data
     check_bundle_ssot("Strategy Bundle", summary_data)
+    
+    # P81: Order Plan (Explicit)
+    check_order_plan()
 
     print(f"\n{Colors.BOLD}[Watcher Status]{Colors.RESET}")
     check_evidence("Spike Watch", "guard_spike_latest")

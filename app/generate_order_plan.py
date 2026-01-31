@@ -109,6 +109,114 @@ def _save_plan(plan: Dict, snapshot_filename: str):
     shutil.copy(ORDER_PLAN_LATEST, ORDER_PLAN_SNAPSHOTS / snapshot_filename)
 
 
+def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict]]:
+    """
+    Portfolio Validation (P81 Strict Enum)
+    Returns: (Reason, PortfolioDict or None)
+    Reason Enums:
+      - PORTFOLIO_OK
+      - PORTFOLIO_MISSING
+      - PORTFOLIO_READ_ERROR
+      - PORTFOLIO_SCHEMA_INVALID
+      - NO_ACTION_PORTFOLIO_EMPTY
+      - NO_ACTION_PORTFOLIO_CASH_ONLY
+    """
+    if not portfolio_path.exists():
+        return "PORTFOLIO_MISSING", None
+
+    try:
+        content = portfolio_path.read_text(encoding="utf-8")
+        pf = json.loads(content)
+    except Exception:
+        return "PORTFOLIO_READ_ERROR", None
+
+    # Schema Check (Strict)
+    required_keys = {
+        "asof": str,
+        "cash": (int, float),
+        "holdings": list
+    }
+    
+    for key, expected_type in required_keys.items():
+        if key not in pf:
+            return "PORTFOLIO_SCHEMA_INVALID", None
+        if not isinstance(pf[key], expected_type):
+            return "PORTFOLIO_SCHEMA_INVALID", None
+            
+    # Content Check (No Action Policy)
+    cash = pf["cash"] # Validated number
+    holdings = pf["holdings"] # Validated list
+    
+    # Policy A: Holdings empty & cash <= 0 -> EMPTY (No Action)
+    if len(holdings) == 0 and cash <= 0:
+        return "NO_ACTION_PORTFOLIO_EMPTY", pf
+        
+    # Policy A: Holdings empty & cash > 0 -> CASH_ONLY (No Action)
+    # The user mandated: "No Action" if cash only (Policy A fixed)
+    if len(holdings) == 0 and cash > 0:
+        return "NO_ACTION_PORTFOLIO_CASH_ONLY", pf
+        
+    # OK
+    return "PORTFOLIO_OK", pf
+
+
+def generate_no_action_plan(reason: str, portfolio: Dict) -> Dict[str, Any]:
+    """NO_ACTION (COMPLETED) 주문안 생성"""
+    now = datetime.now()
+    asof = now.isoformat()
+    plan_id = str(uuid.uuid4())
+    snapshot_filename = f"order_plan_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    snapshot_ref = f"reports/live/order_plan/snapshots/{snapshot_filename}"
+    
+    # Cash info from portfolio for summary
+    cash = portfolio.get("cash", 0)
+    total_value = portfolio.get("total_value", cash) # fallback to cash if missing (though strictly checked?)
+    # Note: total_value is not strictly required by schema validation above, but useful. 
+    # Let's assume cash is safe.
+    
+    plan = {
+        "schema": "ORDER_PLAN_V1",
+        "asof": asof,
+        "plan_id": plan_id,
+        "decision": "COMPLETED",
+        "reason": reason,
+        "source_refs": {
+            "reco_ref": "reports/live/reco/latest/reco_latest.json",
+            "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
+        },
+        "orders": [],
+        "summary": {
+            "total_buy_amount": 0,
+            "total_sell_amount": 0,
+            "net_cash_change": 0,
+            "estimated_cash_after": cash,
+            "estimated_cash_ratio_pct": 100.0 if total_value > 0 else 0, # If holdings empty, 100% cash
+            "buy_count": 0,
+            "sell_count": 0
+        },
+        "constraints_applied": {
+            "max_single_weight_pct": MAX_SINGLE_WEIGHT_PCT,
+            "min_order_amount": MIN_ORDER_AMOUNT
+        },
+        "snapshot_ref": snapshot_ref,
+        "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"],
+        "integrity": {
+            "payload_sha256": calculate_sha256([])
+        }
+    }
+    
+    _save_plan(plan, snapshot_filename)
+    
+    return {
+        "result": "OK",
+        "decision": "COMPLETED",
+        "reason": reason,
+        "plan_id": plan_id,
+        "orders_count": 0,
+        "snapshot_ref": snapshot_ref
+    }
+
+
 def generate_order_plan() -> Dict[str, Any]:
     """
     주문안 생성
@@ -118,10 +226,16 @@ def generate_order_plan() -> Dict[str, Any]:
     """
     now = datetime.now()
     
-    # Load portfolio
-    portfolio = safe_load_json(PORTFOLIO_LATEST)
-    if not portfolio:
-        return generate_blocked_plan("NO_PORTFOLIO")
+    # 1. Validate Portfolio (Strict)
+    pf_reason, portfolio = validate_portfolio(PORTFOLIO_LATEST)
+    
+    if pf_reason in ("PORTFOLIO_MISSING", "PORTFOLIO_READ_ERROR", "PORTFOLIO_SCHEMA_INVALID"):
+        return generate_blocked_plan(pf_reason)
+        
+    if pf_reason.startswith("NO_ACTION_"):
+        return generate_no_action_plan(pf_reason, portfolio)
+        
+    # pf_reason is PORTFOLIO_OK, proceed.
     
     # Load reco
     reco = safe_load_json(RECO_LATEST)
@@ -150,8 +264,31 @@ def generate_order_plan() -> Dict[str, Any]:
     holdings = portfolio.get("holdings", [])
     total_value = portfolio.get("total_value", 0)
     
+    # Double check total_value for calculation safety
     if total_value <= 0:
-        return generate_blocked_plan("INVALID_PORTFOLIO")
+        # This might happen if validation passed (cash>0, holdings>0) but total_value mismatch?
+        # Re-calc total value just in case? Or trust input?
+        # User said "Portfolio Validation Enum" should handle it.
+        # But if OK, we expect valid calculation.
+        # If total_value is 0 but we have holdings? That's weird.
+        # Let's fallback to calculating total value if 0?
+        # Simplest: if total_value <= 0 here, it's effectively schema-ish issue or data issue.
+        # But we passed validate_portfolio. 
+        # validate_portfolio checked cash and holdings.
+        # If total_value is missing, safe_load_json returns None -> 0.
+        # But validate_portfolio doesn't check total_value key strictly (only asof, cash, holdings).
+        # Let's trust total_value or calc it.
+        if total_value <= 0:
+             # Calculate from holdings + cash
+             est_val = cash
+             for h in holdings:
+                 est_val += h.get("market_value", 0)
+             total_value = est_val
+        
+        if total_value <= 0:
+             # Still 0?
+             return generate_blocked_plan("PORTFOLIO_CALC_ERROR")
+    
     
     # Check for NO_CASH case (Optional but helpful)
     # If cash is 0 and we need to buy, it might be an issue, but let's stick to INVALID_PORTFOLIO for now if total_value is bad.

@@ -57,8 +57,7 @@ def main():
         risks = d.get("top_risks", []) or []
         risks_str = str(risks).replace(" ", "")
 
-        # Reason Logic (Strict Enum Priority)
-        # Reason Logic (Strict Enum Priority)
+        # Reason Logic (Strict Enum Priority + P81 Namespace Rule)
         # Prioritize BLOCKERS
         if op_decision == "BLOCKED":
             op_reason = order.get("reason", "")
@@ -69,6 +68,11 @@ def main():
                     reason = f"ORDER_PLAN_{op_reason}"
             else:
                 reason = "ORDER_PLAN_BLOCKED"
+                
+        # P81: NO_ACTION flow (decision=COMPLETED but special reason)
+        elif op_decision == "COMPLETED" and order.get("reason", "").startswith("NO_ACTION_"):
+            reason = order.get("reason")
+            
         elif reco_decision == "EMPTY_RECO":
             reason = "EMPTY_RECO"
         elif bundle_stale == "true":
