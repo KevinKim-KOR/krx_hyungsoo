@@ -90,33 +90,51 @@ def check_backend():
     return True, summary_data
 
 def fetch_ssot_data(file_path, api_ref):
-    """P90: Fetch data from File SSOT (Priority) or API (Fallback)"""
+    """P92: Fetch data from File SSOT (Priority) or API (Fallback)"""
+    import os
+    
+    # Debug Mode
+    debug = os.environ.get("OPS_DASH_DEBUG") == "1"
+    
     # 1. Try File
     try:
-        if file_path and os.path.exists(file_path):
-             with open(file_path, "r", encoding="utf-8") as f:
-                 data = json.load(f)
-                 # Ensure it's not empty
-                 if data: 
-                     return data, "FILE"
-    except Exception:
-        pass
+        if file_path:
+             abs_path = os.path.abspath(file_path)
+             if debug: print(f"[DEBUG] Checking SSOT: {abs_path}")
+             
+             if os.path.exists(abs_path):
+                 with open(abs_path, "r", encoding="utf-8") as f:
+                     data = json.load(f)
+                     if data: 
+                         return data, "FILE"
+             elif debug:
+                 print(f"[DEBUG] File not found: {abs_path}")
+    except Exception as e:
+        if debug: print(f"[DEBUG] File Read Error: {e}")
+        # Return special marker for Clean Check
+        return {"error": str(e)}, "FILE_ERROR"
         
-    # 2. API Fallback
-    url = f"{API_BASE}/api/evidence/resolve?ref={api_ref}"
-    api_resp = get_json(url)
+    # 2. API Fallback (Only if file missing, not if file error)
+    # P92 Rule: If file missing, return None (MISSING). If file error, return error.
+    # But API fallback is legacy. P92 recommends SSOT.
+    # However, for robustness, if file missing, try API? User said "Source: NONE" if file missing.
+    # So we can keep API fallback or skip it.
+    # Let's keep API fallback for now but prioritize file existence.
     
-    # Unwrap Envelope (EVIDENCE_VIEW_V1) -> {row -> data}
-    # Structure: { "status": "ready", "rows": [ { "data": { ... } } ] }
-    if "error" not in api_resp and api_resp.get("status") == "ready":
-         rows = api_resp.get("rows", [])
-         if rows:
-              return rows[0].get("data", {}), "API"
+    url = f"{API_BASE}/api/evidence/resolve?ref={api_ref}"
+    try:
+        api_resp = get_json(url)
+        if "error" not in api_resp and api_resp.get("status") == "ready":
+             rows = api_resp.get("rows", [])
+             if rows:
+                  return rows[0].get("data", {}), "API"
+    except:
+        pass
               
     return None, "NONE"
 
 def check_watcher_p90(name, file_path, api_ref):
-    """P90: Strict Watcher Logic (Spike/Holding)"""
+    """P92: Strict Watcher Logic (V1 Schema)"""
     # SSOT Priority: File > API
     data, source = fetch_ssot_data(file_path, api_ref)
     
@@ -125,44 +143,69 @@ def check_watcher_p90(name, file_path, api_ref):
     reason_enum = "MISSING_DATA"
     detail_raw = f"Source: {source}"
     
-    if data:
-        # P90 Logic: Zero UNKNOWN, Strict Mapping
+    if source == "FILE_ERROR":
+        status_text = "ERROR"
+        reason_enum = "WATCHER_SCHEMA_INVALID"
+        detail_raw = f"File Read Failed ({data.get('error')})"
         
-        # Extract fields (Support both Spike and Holding schemas)
-        # Spike: alerts_count
-        # Holding: alerts_generated
-        alerts = data.get("alerts_count", data.get("alerts_generated", 0))
-        # Ensure int
-        try:
-            alerts = int(alerts)
-        except:
-            alerts = 0
-            
-        delivery = data.get("delivery_actual", "NONE")
-        exec_res = data.get("execution_result", "OK") # Default to OK if missing? No, MISSING if really missing. 
-        # Actually file data usually implies execution happened.
+    elif data:
+        # P92: V1 Schema Parsing
+        str_schema = data.get("schema", "LEGACY")
         
-        # Core Logic
-        if alerts == 0:
-             status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-             status_text = "OK"
-             reason_enum = "NO_ALERTS"
-             detail_raw = "No alerts generated"
-        else:
-             # Alerts exist
-             if delivery in ("TELEGRAM", "SLACK", "EMAIL") or data.get("sent", False):
+        if str_schema == "WATCHER_STATUS_V1":
+             # Strict Mapping
+             stats = data.get("status", "UNKNOWN")
+             reason_enum = data.get("reason", "MISSING_REASON")
+             alerts = data.get("alerts", 0)
+             
+             # Status Mapping
+             if stats == "OK":
                   status_icon = f"{Colors.GREEN}●{Colors.RESET}"
                   status_text = "OK"
-                  reason_enum = "ALERTS_SENT"
-                  detail_raw = f"Alerts: {alerts}, Sent: {delivery}"
-             else:
-                  # Generated but not sent (or delivery info missing)
-                  # Problematic case User identified
+             elif stats == "WARN":
                   status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
                   status_text = "WARN"
-                  reason_enum = "ALERTS_GENERATED"
-                  detail_raw = f"Alerts: {alerts} (Not Sent / No Info)"
+             elif stats == "SKIPPED":
+                  status_icon = f"{Colors.GRAY}●{Colors.RESET}"
+                  status_text = "SKIPPED"
+             elif stats == "ERROR":
+                  status_icon = f"{Colors.RED}●{Colors.RESET}"
+                  status_text = "ERROR"
+             else:
+                  status_text = stats # Fallback
                   
+             # Detail
+             detail_raw = f"Alerts: {alerts}"
+             if data.get("sent") not in ("NONE", ""):
+                  detail_raw += f", Sent: {data.get('sent')}"
+             if data.get("source") == "LOCAL_FALLBACK":
+                  detail_raw += " (Local)"
+
+        else:
+             # Legacy / Fallback Logic (P90)
+             alerts = data.get("alerts_count", data.get("alerts_generated", 0))
+             try: alerts = int(alerts)
+             except: alerts = 0
+             
+             delivery = data.get("delivery_actual", "NONE")
+             
+             if alerts == 0:
+                  status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                  status_text = "OK"
+                  reason_enum = "NO_ALERTS"
+                  detail_raw = "No alerts generated"
+             else:
+                  if delivery in ("TELEGRAM", "SLACK", "EMAIL") or data.get("sent", False):
+                       status_icon = f"{Colors.GREEN}●{Colors.RESET}"
+                       status_text = "OK"
+                       reason_enum = "ALERTS_SENT"
+                       detail_raw = f"Alerts: {alerts}, Sent: {delivery}"
+                  else:
+                       status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
+                       status_text = "WARN"
+                       reason_enum = "ALERTS_GENERATED"
+                       detail_raw = f"Alerts: {alerts} (Not Sent)"
+
     # Print strict line
     detail_safe = sanitize_detail(detail_raw)
     print(f"  {status_icon} {name:<15} | {status_text:<16} | Reason={reason_enum}, {detail_safe}")
