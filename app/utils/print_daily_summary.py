@@ -68,11 +68,13 @@ def main():
         # Prioritize BLOCKERS
         if op_decision == "BLOCKED":
             op_reason = order.get("reason", "")
-            if op_reason and op_reason != "BLOCKED":
-                if op_reason.startswith("ORDER_PLAN_"):
-                    reason = op_reason
+            # P81-FIX v2.3: Extract ENUM code only (strip message after colon)
+            op_reason_code = op_reason.split(":")[0].strip() if op_reason else ""
+            if op_reason_code and op_reason_code != "BLOCKED":
+                if op_reason_code.startswith("ORDER_PLAN_"):
+                    reason = op_reason_code
                 else:
-                    reason = f"ORDER_PLAN_{op_reason}"
+                    reason = f"ORDER_PLAN_{op_reason_code}"
             else:
                 reason = "ORDER_PLAN_BLOCKED"
                 

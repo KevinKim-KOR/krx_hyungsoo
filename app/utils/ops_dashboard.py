@@ -291,8 +291,10 @@ def check_order_plan():
              details = "Invalid API response"
         else:
              decision = op_data.get("decision", "")
-             reason = op_data.get("reason", "")
-             orders_count = len(op_data.get("orders", [])) # Use orders array length for SSOT
+             raw_reason = op_data.get("reason", "")
+             # P81-FIX v2.3: Extract ENUM code only (strip message after colon)
+             reason = raw_reason.split(":")[0].strip() if raw_reason else ""
+             orders_count = len(op_data.get("orders", []))
              
              if not decision:
                  status_text = "ERROR"
@@ -300,7 +302,7 @@ def check_order_plan():
              elif decision == "BLOCKED":
                  status_icon = f"{Colors.RED}●{Colors.RESET}"
                  status_text = "BLOCKED"
-                 details = f"Reason={Colors.RED}{reason}{Colors.RESET}"
+                 details = f"Reason={reason}"
              elif decision == "COMPLETED":
                  if reason.startswith("NO_ACTION_"):
                      status_icon = f"{Colors.GREEN}●{Colors.RESET}"

@@ -249,11 +249,13 @@ def generate_order_plan() -> Dict[str, Any]:
     
     if reco_decision in ("BLOCKED", "EMPTY_RECO", "MISSING_RECO"):
         # Case 1: Reco itself is blocked or empty with a reason
-        # Propagate reason for visibility (D-P.58 Enhanced)
+        # P81-FIX v2.3: Extract ENUM code only (strip any message after colon)
         if reco_reason:
-            # Avoid double prefix if already has it (unlikely but safe)
-            prefix = "RECO_" if not reco_reason.startswith("RECO_") and not reco_reason.startswith("NO_") else ""
-            return generate_blocked_plan(f"{prefix}{reco_reason}")
+            # Extract code before colon (e.g. "BUNDLE_STALE: message" -> "BUNDLE_STALE")
+            reason_code = reco_reason.split(":")[0].strip()
+            # Avoid double prefix if already has it
+            prefix = "RECO_" if not reason_code.startswith("RECO_") and not reason_code.startswith("NO_") else ""
+            return generate_blocked_plan(f"{prefix}{reason_code}")
         return generate_blocked_plan("EMPTY_RECO")
     
     recommendations = reco.get("recommendations", [])

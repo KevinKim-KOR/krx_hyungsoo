@@ -364,26 +364,28 @@ def regenerate_ops_summary():
             except Exception:
                 pass # Parse error ignore
 
-    # 5. Order Plan (D-P.58 + P81-FIX)
+    # 5. Order Plan (D-P.58 + P81-FIX v2.3)
     # Only generate risk if order_plan decision is BLOCKED
     if order_plan and order_plan.get("decision") == "BLOCKED":
-        reason = order_plan.get("reason", "UNKNOWN_REASON")
+        raw_reason = order_plan.get("reason", "UNKNOWN_REASON")
+        # P81-FIX v2.3: Extract ENUM code only (strip message after colon)
+        reason_code = raw_reason.split(":")[0].strip()
         
         # Umbrella Risk
         top_risks.append({
             "code": "ORDER_PLAN_BLOCKED",
             "severity": "WARN",
-            "message": f"Order plan blocked: {reason}",
+            "message": f"Order plan blocked: {reason_code}",
             "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
         })
         
-        # P80/P81: Specific Risk Code (Dual Risk)
-        if reason and reason != "BLOCKED":
-            specific_code = reason if reason.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason}"
+        # P80/P81: Specific Risk Code (Dual Risk) - ENUM only
+        if reason_code and reason_code != "BLOCKED":
+            specific_code = reason_code if reason_code.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason_code}"
             top_risks.append({
                 "code": specific_code,
                 "severity": "WARN",
-                "message": f"Specific block reason: {reason}",
+                "message": f"Specific block reason: {reason_code}",
                 "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
             })
             
