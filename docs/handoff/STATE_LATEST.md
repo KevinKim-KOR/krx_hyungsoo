@@ -379,12 +379,13 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 | `ORDER_PLAN_PORTFOLIO_READ_ERROR` | **PC**: JSON 문법 오류 확인 (Trailing comma 등) -> 수정 -> Push |
 | `ORDER_PLAN_PORTFOLIO_CALC_ERROR` | **OCI**: `curl -s .../regenerate?confirm=true`로 상세 로그 확인<br>**PC**: 데이터 정합성(가격 0 등) 확인 |
 
-### Verification Plan (P90 Dashboard Zero-UNKNOWN)
+### Verification Plan (P90-FIX Dashboard Zero-UNKNOWN)
 
 **1. Clean Check (Standard)**
 ```bash
-# Dashboard output must be free of UNKNOWN/UNMAPPED/Empty Detail
-python3 -m app.utils.ops_dashboard | egrep "UNMAPPED_CASE|UNKNOWN|Reason=.*:|Reason=$" && echo "❌ FAIL" || echo "✅ PASS"
+# Dashboard output must be free of UNKNOWN/UNMAPPED/Empty Reason
+# P90-FIX: Improved regex to avoid false positives with Source:
+python3 -m app.utils.ops_dashboard | egrep "UNMAPPED_CASE|UNKNOWN|Reason=[A-Z0-9_]+:|Reason=$" && echo "❌ FAIL" || echo "✅ PASS"
 ```
 
 **2. Watcher Logic (Alerts=1 Case)**
