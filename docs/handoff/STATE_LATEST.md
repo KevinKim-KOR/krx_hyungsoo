@@ -377,11 +377,15 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 ```bash
 cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
 echo '{ "cash": "bad_type", "holdings": [] }' > state/portfolio/latest/portfolio_latest.json
+
+# 재생성 (Explicit Regenerate)
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
 # 기대: reason="PORTFOLIO_SCHEMA_INVALID", detail="Invalid type for cash..."
+
 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
 cat logs/daily_summary.detail.latest
 # 기대: detail에 위 에러 메시지 포함 확인
+
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 
@@ -395,8 +399,12 @@ cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 
 **3. Calc Error (Logic Fail)**
 ```bash
-# 정상 스키마지만 가격이 문자열? (현재 파이썬 로직 테스트)
-# 또는 단순히 기존 P86 테스트 재수행하여 detail 로그 파일 생성 확인
+# 정상 스키마지만 가격이 0 (Zero Value Policy Test) -> SCHEMA_INVALID
+cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
+python3 -c "import json; d=json.load(open('state/portfolio/latest/portfolio_latest.json')); d['cash']=0; d['holdings'][0]['market_value']=0; json.dump(d, open('state/portfolio/latest/portfolio_latest.json','w'))"
+curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
+# 기대: reason="PORTFOLIO_SCHEMA_INVALID" detail="Total value is zero..."
+cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 
 **4. 오염 검사**
