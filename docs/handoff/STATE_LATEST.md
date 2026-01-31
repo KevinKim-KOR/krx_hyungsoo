@@ -372,47 +372,18 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 | `ORDER_PLAN_PORTFOLIO_READ_ERROR` | **PC**: JSON 문법 오류 확인 (Trailing comma 등) -> 수정 -> Push |
 | `ORDER_PLAN_PORTFOLIO_CALC_ERROR` | **OCI**: `curl -s .../regenerate?confirm=true`로 상세 로그 확인<br>**PC**: 데이터 정합성(가격 0 등) 확인 |
 
-### Verification Plan (Fault Injection 3-Set)
-**1. Schema Invalid (Type Mismatch)**
+### Verification Plan (P88-FIX SSOT Hardening)
+
+**Case A: Regen -> Daily Ops (Fault Injection)**
 ```bash
-# 1) Fault Injection
+# 1) Fault Injection (Schema Invalid)
 cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
 echo '{ "cash": "bad_type", "holdings": [] }' > state/portfolio/latest/portfolio_latest.json
 
-# 2) Order Plan 재생성 (SSOT 기준점)
+# 2) Regen으로 SSOT 최신화
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
-
-# 2-1) 핵심: latest에 reason_detail이 실제로 들어있는지 확인(빈값 금지)
+# Verify API response has detail
 curl -s http://localhost:8000/api/order_plan/latest | python3 -m json.tool | egrep -n '"reason"|"reason_detail"' | head -30
-# 기대: "reason_detail": "Invalid type for cash: str" (빈 문자열 아니어야 함)
-
-# 3) daily_ops 실행 (fault 유지)
-DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
-
-# 4) 결과 확인
-cat logs/daily_summary.detail.latest
-# 기대: Reason=ORDER_PLAN_PORTFOLIO_SCHEMA_INVALID detail="Invalid type for cash: str"
-
-# 5) 원복
-cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
-```
-
-**2. Read Error (Broken JSON)**
-```bash
-# 1) Fault Injection
-echo '{ "cash": 100, "holdings": [BROKEN] }' > state/portfolio/latest/portfolio_latest.json
-
-# 2) Order Plan 재생성 (SSOT 기준점)
-curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
-
-# 2-1) 핵심: latest에 reason_detail이 실제로 들어있는지 확인(빈값 금지)
-curl -s http://localhost:8000/api/order_plan/latest | python3 -m json.tool | grep "reason_detail"
-# 기대: "reason_detail": "JSON Parse Error..." (빈 문자열 아니어야 함)
-
-# 3) daily_ops 실행 (fault 유지)
-DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
-
-# 4) 결과 확인
 cat logs/daily_summary.detail.latest
 # 기대 detail: "JSON Parse Error..."
 
