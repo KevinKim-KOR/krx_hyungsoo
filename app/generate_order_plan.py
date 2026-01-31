@@ -293,15 +293,11 @@ def generate_order_plan() -> Dict[str, Any]:
                  est_val += h.get("market_value", 0)
              total_value = est_val
         
-        if total_value <= 0:
-             # Still 0?
-             return generate_blocked_plan("PORTFOLIO_CALC_ERROR")
-    
-    
-    # Check for NO_CASH case (Optional but helpful)
-    # If cash is 0 and we need to buy, it might be an issue, but let's stick to INVALID_PORTFOLIO for now if total_value is bad.
-    # If total_value > 0 but cash is 0, it's technically valid (fully invested), so don't block.
-    
+    # P86: Refined Zero Value Policy
+    # If total_value is still <= 0, it's invalid schema/data, not a calc error.
+    if total_value <= 0:
+         return generate_blocked_plan("PORTFOLIO_SCHEMA_INVALID", reason_detail="Total value is zero or negative")
+
     holdings_map = {}
     for h in holdings:
         ticker = h.get("ticker", "")
@@ -317,55 +313,62 @@ def generate_order_plan() -> Dict[str, Any]:
     total_buy_amount = 0
     total_sell_amount = 0
     
-    for r in recommendations:
-        action = r.get("action", "HOLD")
-        ticker = r.get("ticker", "")
-        name = r.get("name", "")
-        target_weight_pct = r.get("weight_pct", 0)
-        signal_score = r.get("signal_score", 0)
-        estimated_price = r.get("price", 0) or 35000  # fallback price
-        
-        # Get current holding
-        current = holdings_map.get(ticker, {"quantity": 0, "market_value": 0, "current_weight_pct": 0, "current_price": estimated_price})
-        current_weight_pct = current.get("current_weight_pct", 0)
-        current_price = current.get("current_price", estimated_price)
-        
-        if current_price <= 0:
-            current_price = estimated_price
-        
-        # Calculate delta
-        delta_weight_pct = target_weight_pct - current_weight_pct
-        order_amount = round(delta_weight_pct / 100 * total_value)
-        
-        # Skip small orders
-        if abs(order_amount) < MIN_ORDER_AMOUNT:
-            continue
-        
-        # Cap at max single weight
-        if target_weight_pct > MAX_SINGLE_WEIGHT_PCT:
-            target_weight_pct = MAX_SINGLE_WEIGHT_PCT
+    try:
+        # P86: Order Plan Calculation (Error Triage)
+        for r in recommendations:
+            action = r.get("action", "HOLD")
+            ticker = r.get("ticker", "")
+            name = r.get("name", "")
+            target_weight_pct = r.get("weight_pct", 0)
+            signal_score = r.get("signal_score", 0)
+            estimated_price = r.get("price", 0) or 35000  # fallback price
+            
+            # Get current holding
+            current = holdings_map.get(ticker, {"quantity": 0, "market_value": 0, "current_weight_pct": 0, "current_price": estimated_price})
+            current_weight_pct = current.get("current_weight_pct", 0)
+            current_price = current.get("current_price", estimated_price)
+            
+            if current_price <= 0:
+                current_price = estimated_price
+            
+            # Calculate delta
             delta_weight_pct = target_weight_pct - current_weight_pct
             order_amount = round(delta_weight_pct / 100 * total_value)
-        
-        estimated_quantity = int(order_amount / current_price) if current_price > 0 else 0
-        
-        order = {
-            "action": action,
-            "ticker": ticker,
-            "name": name,
-            "target_weight_pct": target_weight_pct,
-            "current_weight_pct": current_weight_pct,
-            "delta_weight_pct": round(delta_weight_pct, 2),
-            "order_amount": order_amount,
-            "estimated_quantity": estimated_quantity,
-            "signal_score": signal_score
-        }
-        orders.append(order)
-        
-        if action == "BUY":
-            total_buy_amount += abs(order_amount)
-        elif action == "SELL":
-            total_sell_amount += abs(order_amount)
+            
+            # Skip small orders
+            if abs(order_amount) < MIN_ORDER_AMOUNT:
+                continue
+            
+            # Cap at max single weight
+            if target_weight_pct > MAX_SINGLE_WEIGHT_PCT:
+                target_weight_pct = MAX_SINGLE_WEIGHT_PCT
+                delta_weight_pct = target_weight_pct - current_weight_pct
+                order_amount = round(delta_weight_pct / 100 * total_value)
+            
+            estimated_quantity = int(order_amount / current_price) if current_price > 0 else 0
+            
+            order = {
+                "action": action,
+                "ticker": ticker,
+                "name": name,
+                "target_weight_pct": target_weight_pct,
+                "current_weight_pct": current_weight_pct,
+                "delta_weight_pct": round(delta_weight_pct, 2),
+                "order_amount": order_amount,
+                "estimated_quantity": estimated_quantity,
+                "signal_score": signal_score
+            }
+            orders.append(order)
+            
+            if action == "BUY":
+                total_buy_amount += abs(order_amount)
+            elif action == "SELL":
+                total_sell_amount += abs(order_amount)
+                
+    except Exception as e:
+        # P86: Triaged Calc Error
+        error_class = type(e).__name__
+        return generate_blocked_plan("PORTFOLIO_CALC_ERROR", reason_detail=f"{error_class}: {str(e)}")
     
     # Calculate summary
     net_cash_change = total_sell_amount - total_buy_amount

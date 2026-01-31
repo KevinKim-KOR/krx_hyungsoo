@@ -79,14 +79,23 @@ def main():
         elif op_decision == "BLOCKED":
             op_reason = order.get("reason", "")
             op_reason_code = op_reason.split(":")[0].strip() if op_reason else ""
-            # If blocked due to RECO_BUNDLE_STALE, surface as BUNDLE_STALE_WARN
+            
+            # P86: SSOT Logic
+            # If blocked due to RECO_BUNDLE_STALE, surface as BUNDLE_STALE_WARN (handled by bundle_stale check above usually, but safe-guard)
             if op_reason_code in ("RECO_BUNDLE_STALE", "BUNDLE_STALE"):
                 reason = "BUNDLE_STALE_WARN"
             elif op_reason_code and op_reason_code != "BLOCKED":
+                # P86: Specific Reason Code (e.g. ORDER_PLAN_PORTFOLIO_CALC_ERROR)
                 if op_reason_code.startswith("ORDER_PLAN_"):
                     reason = op_reason_code
                 else:
                     reason = f"ORDER_PLAN_{op_reason_code}"
+                
+                # P86: Stack specific risk if not in top_risks (consistency check)
+                # Note: risks list comes from ops_summary basically, but if we are parsing daily_summary 
+                # (which is just a log line generator), we might need to be careful not to mutate raw input risks too much 
+                # unless we are essentially re-deriving.
+                # Here we just set the 'Reason' field of daily_summary log line.
             else:
                 reason = "ORDER_PLAN_BLOCKED"
                 

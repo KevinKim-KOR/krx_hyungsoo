@@ -316,3 +316,38 @@ bash deploy/oci/bundle_recover_check.sh
 # 기대: bundle_stale=false, Reason이 BUNDLE_STALE_WARN에서 내려감
 ```
 
+---
+
+## 14) P86: Order Plan Calc Error Triage + SSOT Risk Sync
+
+### Verification Plan (Fault Injection)
+이 검증은 **재현 가능**하도록 포트폴리오 파일을 임의로 손상시켜 테스트합니다.
+
+**1. 정상 상태 확인 (Base Case)**
+```bash
+bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
+cat logs/daily_summary.latest
+# 기대: Reason=OK 또는 ORDER_PLAN_... (Enum), Log Clean
+```
+
+**2. Fault Injection (Calc Error 유발)**
+```bash
+# 백업
+cp state/portfolio/latest/portfolio_latest.json /tmp/portfolio_latest.json.bak
+
+# 손상 주입 (Invalid Holdings)
+echo '{ "asof": "bad", "cash": 1000000, "holdings": "INVALID_LIST" }' > state/portfolio/latest/portfolio_latest.json
+
+# 재생성 및 확인
+curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
+# 기대: reason="PORTFOLIO_SCHEMA_INVALID" (또는 READ_ERROR), reason_detail에 상세
+
+# 원복
+cp /tmp/portfolio_latest.json.bak state/portfolio/latest/portfolio_latest.json
+```
+
+**3. 오염 검사 (ENUM-only)**
+```bash
+tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco=GENERATED" && echo "❌ BAD" || echo "✅ CLEAN"
+```
+

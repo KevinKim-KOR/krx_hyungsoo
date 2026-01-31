@@ -375,6 +375,7 @@ def regenerate_ops_summary():
         
         # Only add ORDER_PLAN risks if NOT caused by stale bundle
         if "BUNDLE_STALE" not in reason_code:
+            # P86: SSOT - Stack Umbrella + Specific Risk
             # Umbrella Risk
             top_risks.append({
                 "code": "ORDER_PLAN_BLOCKED",
@@ -383,7 +384,7 @@ def regenerate_ops_summary():
                 "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
             })
             
-            # P80/P81: Specific Risk Code (Dual Risk) - ENUM only
+            # P80/P81/P86: Specific Risk Code (Dual Risk) - ENUM only
             if reason_code and reason_code != "BLOCKED":
                 specific_code = reason_code if reason_code.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason_code}"
                 top_risks.append({
