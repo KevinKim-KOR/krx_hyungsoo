@@ -36,15 +36,31 @@ else
 fi
 echo ""
 
-# Step B: Ops Summary Regenerate
+# Step B: Ops Summary Regenerate (P84-FIX: HTTP code/body logging + fallback)
 echo -e "${YELLOW}[B] Ops Summary Regenerate${NC}"
 BASE_URL="${KRX_API_URL:-http://localhost:8000}"
-REGEN_RESULT=$(curl -s -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true" 2>/dev/null || echo '{"result":"ERROR"}')
-REGEN_STATUS=$(echo "$REGEN_RESULT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("result","ERROR"))' 2>/dev/null || echo "ERROR")
-if [ "$REGEN_STATUS" = "OK" ]; then
-    echo -e "   ${GREEN}✓${NC} Ops Summary regenerated"
+
+# Use temp file for body, capture HTTP code separately
+REGEN_TMP="/tmp/ops_regen_$$.json"
+HTTP_CODE=$(curl -sS -o "$REGEN_TMP" -w "%{http_code}" -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true" 2>/dev/null || echo "000")
+REGEN_BODY=$(cat "$REGEN_TMP" 2>/dev/null | head -c 500 || echo "")
+rm -f "$REGEN_TMP"
+
+REGEN_STATUS=$(echo "$REGEN_BODY" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("result","ERROR"))' 2>/dev/null || echo "PARSE_ERROR")
+
+if [ "$HTTP_CODE" = "200" ] && [ "$REGEN_STATUS" = "OK" ]; then
+    echo -e "   ${GREEN}✓${NC} Ops Summary regenerated (HTTP $HTTP_CODE)"
 else
-    echo -e "   ${RED}✗${NC} Ops Summary regenerate failed: $REGEN_STATUS"
+    echo -e "   ${RED}✗${NC} Ops Summary regenerate failed"
+    echo -e "   ${YELLOW}→${NC} HTTP_CODE=$HTTP_CODE"
+    echo -e "   ${YELLOW}→${NC} BODY=${REGEN_BODY:0:300}"
+    
+    # Fallback: Show current ops_summary/latest status
+    echo ""
+    echo -e "   ${CYAN}[Fallback] Current Ops Summary Latest:${NC}"
+    FALLBACK=$(curl -s "${BASE_URL}/api/ops/summary/latest" 2>/dev/null || echo '{"error":"unreachable"}')
+    FALLBACK_STATUS=$(echo "$FALLBACK" | python3 -c 'import json,sys; d=json.load(sys.stdin); r=(d.get("rows") or [d])[0]; print(f"status={r.get(\"overall_status\",\"?\")}, asof={r.get(\"asof\",\"?\")[:19] if r.get(\"asof\") else \"?\"}") ' 2>/dev/null || echo "parse_error")
+    echo -e "   ${CYAN}→${NC} $FALLBACK_STATUS"
 fi
 echo ""
 
