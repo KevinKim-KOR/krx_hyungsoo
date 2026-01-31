@@ -364,30 +364,34 @@ def regenerate_ops_summary():
             except Exception:
                 pass # Parse error ignore
 
-    # 5. Order Plan (D-P.58 + P81-FIX v2.3)
-    # Only generate risk if order_plan decision is BLOCKED
-    if order_plan and order_plan.get("decision") == "BLOCKED":
+    # 5. Order Plan (D-P.58 + P83-FIX)
+    # P83-FIX: Skip ORDER_PLAN_* risks if bundle is stale (stale is root cause)
+    bundle_is_stale = validation.stale if validation else False
+    
+    if order_plan and order_plan.get("decision") == "BLOCKED" and not bundle_is_stale:
         raw_reason = order_plan.get("reason", "UNKNOWN_REASON")
         # P81-FIX v2.3: Extract ENUM code only (strip message after colon)
         reason_code = raw_reason.split(":")[0].strip()
         
-        # Umbrella Risk
-        top_risks.append({
-            "code": "ORDER_PLAN_BLOCKED",
-            "severity": "WARN",
-            "message": f"Order plan blocked: {reason_code}",
-            "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
-        })
-        
-        # P80/P81: Specific Risk Code (Dual Risk) - ENUM only
-        if reason_code and reason_code != "BLOCKED":
-            specific_code = reason_code if reason_code.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason_code}"
+        # Only add ORDER_PLAN risks if NOT caused by stale bundle
+        if "BUNDLE_STALE" not in reason_code:
+            # Umbrella Risk
             top_risks.append({
-                "code": specific_code,
+                "code": "ORDER_PLAN_BLOCKED",
                 "severity": "WARN",
-                "message": f"Specific block reason: {reason_code}",
+                "message": f"Order plan blocked: {reason_code}",
                 "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
             })
+            
+            # P80/P81: Specific Risk Code (Dual Risk) - ENUM only
+            if reason_code and reason_code != "BLOCKED":
+                specific_code = reason_code if reason_code.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason_code}"
+                top_risks.append({
+                    "code": specific_code,
+                    "severity": "WARN",
+                    "message": f"Specific block reason: {reason_code}",
+                    "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
+                })
             
         if overall_status == "OK":
             overall_status = "WARN"

@@ -60,13 +60,10 @@ def main():
         if op_decision == "SKIPPED":
             risks = [r for r in risks if not r.startswith("ORDER_PLAN_")]
         
-        # P83: Deduplicate risks when bundle_stale (root cause)
-        # Remove ORDER_PLAN_*BUNDLE_STALE* since BUNDLE_STALE_WARN is the primary cause
+        # P83-FIX: Strict single risk when bundle_stale (root cause)
+        # When stale, ALL other risks are downstream effects - show only root cause
         if bundle_stale == "true":
-            risks = [r for r in risks if "BUNDLE_STALE" not in r or r == "BUNDLE_STALE_WARN"]
-            # Ensure BUNDLE_STALE_WARN is present
-            if "BUNDLE_STALE_WARN" not in risks:
-                risks = ["BUNDLE_STALE_WARN"] + risks
+            risks = ["BUNDLE_STALE_WARN"]
             
         risks_str = str(risks).replace(" ", "")
 

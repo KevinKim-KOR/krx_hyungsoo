@@ -260,6 +260,10 @@ curl "http://localhost:8000/api/evidence/resolve?ref=guard_spike_latest"
 4. `EMPTY_RECO` (번들이 fresh인데도 비었으면)
 5. `OK`
 
+### Risk 단일화 규칙 (P83-FIX)
+- **bundle_stale=true인 경우**: `risks=['BUNDLE_STALE_WARN']` 단일 (ORDER_PLAN_* 제거)
+- 이유: stale이 root cause이므로 downstream effects는 보여줄 필요 없음
+
 ### Reason별 조치
 | Reason | 조치 |
 |--------|------|
