@@ -168,16 +168,35 @@ curl "http://localhost:8000/api/evidence/resolve?ref=guard_spike_latest"
 
 ### E) P80/P81 최종 검증 표준 (Consistency & Validity)
 - **1. 안정성 검사 (No Flapping)**:
-  `for i in 1 2 3; do bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1; done`
-  `tail -3 logs/daily_summary.log`
+  ```bash
+  for i in 1 2 3; do bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1; done
+  tail -3 logs/daily_summary.log
+  ```
   *(기대: Reco/Reason 유지, reco=UNKNOWN/GENERATED 없음)*
 
 - **2. Order Plan / Dashboard 검사 (P81)**:
-  `python3 -m app.utils.ops_dashboard`
+  ```bash
+  python3 -m app.utils.ops_dashboard
+  ```
   *(기대: Order Plan 라인이 명시적으로 보이며, `BLOCKED`(Schema/Missing) 또는 `NO_ACTION`(Empty/Cash) 상태가 정확히 표시)*
 
 - **3. 리스크 동기화 검사**:
   Reason이 `ORDER_PLAN_*` (Blocked) 일 때만 `risks`에 `ORDER_PLAN_BLOCKED` + 구체 사유가 포함됨. `NO_ACTION`일 땐 리스크 없음.
+
+- **4. 데이터 오염 검사 (P81 Log Hygiene - 최근 200줄만 검사)**:
+  ```bash
+  tail -n 200 logs/daily_summary.log | egrep "reco=UNKNOWN|reco=GENERATED|Reason=[A-Z0-9_]+:|INVALID_PORTFOLIO|Bundleisstale|created" && echo "❌ BAD" || echo "✅ CLEAN"
+  ```
+  *(기대: ✅ CLEAN 출력)*
+
+- **5. 1회성 과거 로그 정리 (최초 P81 적용 시 필요)**:
+  ```bash
+  mkdir -p logs/archive
+  ts=$(date +%Y%m%d_%H%M%S)
+  test -f logs/daily_summary.log && mv logs/daily_summary.log logs/archive/daily_summary.log.preP81FIX_${ts} || true
+  : > logs/daily_summary.log
+  : > logs/daily_summary.latest
+  ```
 
 ---
 
