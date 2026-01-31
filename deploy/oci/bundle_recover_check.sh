@@ -46,9 +46,8 @@ HTTP_CODE=$(curl -sS -o "$REGEN_TMP" -w "%{http_code}" -X POST "${BASE_URL}/api/
 REGEN_BODY=$(cat "$REGEN_TMP" 2>/dev/null | head -c 500 || echo "")
 rm -f "$REGEN_TMP"
 
-REGEN_STATUS=$(echo "$REGEN_BODY" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("OK" if d.get("result")=="OK" or d.get("schema") else "ERROR")' 2>/dev/null || echo "PARSE_ERROR")
-
-if [ "$HTTP_CODE" = "200" ] && [ "$REGEN_STATUS" = "OK" ]; then
+# Simple success check: HTTP 200 + body contains "schema" or "result":"OK"
+if [ "$HTTP_CODE" = "200" ] && (echo "$REGEN_BODY" | grep -qE '"schema"|"result":\s*"OK"'); then
     echo -e "   ${GREEN}✓${NC} Ops Summary regenerated (HTTP $HTTP_CODE)"
 else
     echo -e "   ${RED}✗${NC} Ops Summary regenerate failed"
