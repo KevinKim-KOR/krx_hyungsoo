@@ -71,7 +71,22 @@ def main():
         # Priority: GIT_PULL_FAILED > BUNDLE_STALE_WARN > ORDER_PLAN_* > EMPTY_RECO > OK
         reason = "UNMAPPED_CASE"  # Default fallback - never UNKNOWN
         
-        # P87-FIX: SSOT Priority Logic
+        # P87-FIX: SSOT Logic (Re-verified)
+        if op_decision == "BLOCKED":
+            op_reason = order.get("reason", "")
+            op_reason_code = op_reason.split(":")[0].strip() if op_reason else "UNKNOWN"
+            
+            # P86: SSOT Logic (Stale check)
+            if op_reason_code in ("RECO_BUNDLE_STALE", "BUNDLE_STALE"):
+                # Usually caught by bundle_stale==true, but if not..
+                pass 
+            elif op_reason_code and op_reason_code != "BLOCKED":
+                if op_reason_code.startswith("ORDER_PLAN_"):
+                    pass # reason already set likely
+                else:
+                    pass
+        
+        # P87-FIX2: SSOT Priority & Detail Logic (Strict)
         # Priority: Bundle Stale > Order Plan Blocked > Reco Empty > Ops Warning > OK
         
         reason = "UNMAPPED_CASE"
@@ -81,7 +96,10 @@ def main():
         if bundle_stale == "true":
             reason = "BUNDLE_STALE_WARN"
             # Try to get stale reason if available, else standard msg
-            detail_msg = bundle.get("stale_reason", "Strategy bundle is stale")
+            # Check if bundle dict has 'stale_reason' or 'summary.stale_reason'
+            # Assuming flat dict or summary dict. Safe get.
+            detail_msg = bundle.get("stale_reason", "") or bundle.get("summary", {}).get("stale_reason", "")
+            if not detail_msg: detail_msg = "Strategy bundle is stale"
             
         # 2. Order Plan Blocked (if not caused by stale)
         elif op_decision == "BLOCKED":
@@ -100,6 +118,10 @@ def main():
                      reason = f"ORDER_PLAN_{op_reason_code}"
             else:
                  reason = "ORDER_PLAN_BLOCKED"
+            
+            # P87-FIX2: Fallback for missing detail in blocking case
+            if not detail_msg:
+                 detail_msg = "MISSING_DETAIL"
 
         # 3. NO_ACTION Special Case
         elif op_decision == "COMPLETED" and order.get("reason", "").startswith("NO_ACTION_"):
@@ -118,6 +140,7 @@ def main():
                  reason = "EMPTY_RECO" # Fallback to standard short enum
             
             detail_msg = reco.get("reason_detail", "")
+            if not detail_msg: detail_msg = "MISSING_DETAIL"
 
         # 5. Ops Warning/Error
         elif ops != "OK" and ops != "WARN":
@@ -130,7 +153,8 @@ def main():
             detail_msg = ""
 
         # Safe string for log (remove newlines, truncate if too long)
-        detail_safe = str(detail_msg).replace("\n", " ").replace('"', "'")[:200]
+        # P87-FIX2: Strict Sanitize
+        detail_safe = str(detail_msg).replace("\n", " ").replace("\r", "").replace('"', "'").strip()[:300]
 
         # Print Standard Summary to stdout (for daily_summary.latest)
         summary_line = f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco_decision} order_plan={op_decision} Reason={reason} risks={risks_str}"

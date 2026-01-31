@@ -375,45 +375,72 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 ### Verification Plan (Fault Injection 3-Set)
 **1. Schema Invalid (Type Mismatch)**
 ```bash
+# 1) Fault Injection
 cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
 echo '{ "cash": "bad_type", "holdings": [] }' > state/portfolio/latest/portfolio_latest.json
 
-# 재생성 (Explicit Regenerate)
+# 2) Order Plan 재생성 (SSOT 기준점)
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
-# 기대: reason="PORTFOLIO_SCHEMA_INVALID", detail="Invalid type for cash..."
 
+# 2-1) 핵심: latest에 reason_detail이 실제로 들어있는지 확인(빈값 금지)
+curl -s http://localhost:8000/api/order_plan/latest | python3 -m json.tool | egrep -n '"reason"|"reason_detail"' | head -30
+# 기대: "reason_detail": "Invalid type for cash: str" (빈 문자열 아니어야 함)
+
+# 3) daily_ops 실행 (fault 유지)
 DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
-cat logs/daily_summary.detail.latest
-# 기대: detail에 위 에러 메시지 포함 확인
 
+# 4) 결과 확인
+cat logs/daily_summary.detail.latest
+# 기대: Reason=ORDER_PLAN_PORTFOLIO_SCHEMA_INVALID detail="Invalid type for cash: str"
+
+# 5) 원복
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 
 **2. Read Error (Broken JSON)**
 ```bash
+# 1) Fault Injection
 echo '{ "cash": 100, "holdings": [BROKEN] }' > state/portfolio/latest/portfolio_latest.json
+
+# 2) Order Plan 재생성 (SSOT 기준점)
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
-# 기대: reason="PORTFOLIO_READ_ERROR", detail="JSON Parse Error..."
 
+# 2-1) 핵심: latest에 reason_detail이 실제로 들어있는지 확인(빈값 금지)
+curl -s http://localhost:8000/api/order_plan/latest | python3 -m json.tool | grep "reason_detail"
+# 기대: "reason_detail": "JSON Parse Error..." (빈 문자열 아니어야 함)
+
+# 3) daily_ops 실행 (fault 유지)
 DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
-cat logs/daily_summary.detail.latest
-# 기대: detail에 위 에러 메시지 포함 확인
 
+# 4) 결과 확인
+cat logs/daily_summary.detail.latest
+# 기대 detail: "JSON Parse Error..."
+
+# 5) 원복
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 
 **3. Calc Error (Logic Fail)**
 ```bash
-# 정상 스키마지만 가격이 0 (Zero Value Policy Test) -> SCHEMA_INVALID
+# 1) Fault Injection (정상 스키마지만 가격이 0 (Zero Value Policy Test) -> SCHEMA_INVALID)
 cp state/portfolio/latest/portfolio_latest.json /tmp/pf_bak
 python3 -c "import json; d=json.load(open('state/portfolio/latest/portfolio_latest.json')); d['cash']=0; d['holdings'][0]['market_value']=0; json.dump(d, open('state/portfolio/latest/portfolio_latest.json','w'))"
+
+# 2) Order Plan 재생성 (SSOT 기준점)
 curl -s -X POST "http://localhost:8000/api/order_plan/regenerate?confirm=true"
-# 기대: reason="PORTFOLIO_SCHEMA_INVALID" detail="Total value is zero..."
 
+# 2-1) 핵심: latest에 reason_detail이 실제로 들어있는지 확인(빈값 금지)
+curl -s http://localhost:8000/api/order_plan/latest | python3 -m json.tool | grep "reason_detail"
+# 기대: "reason_detail": "Total value is zero..." (빈 문자열 아니어야 함)
+
+# 3) daily_ops 실행 (fault 유지)
 DAILY_OPS_NO_GIT_PULL=1 bash deploy/oci/daily_ops.sh >> logs/daily_ops.log 2>&1
-cat logs/daily_summary.detail.latest
-# 기대: detail에 "Total value is zero" 포함 확인
 
+# 4) 결과 확인
+cat logs/daily_summary.detail.latest
+# 기대 detail: "Total value is zero..."
+
+# 5) 원복
 cp /tmp/pf_bak state/portfolio/latest/portfolio_latest.json
 ```
 

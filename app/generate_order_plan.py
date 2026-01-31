@@ -61,7 +61,7 @@ def generate_blocked_plan(reason: str, reason_detail: str = "") -> Dict[str, Any
         "plan_id": plan_id,
         "decision": "BLOCKED",
         "reason": reason,
-        "reason_detail": reason_detail,
+        "reason_detail": reason_detail, # P87-FIX2: Explicit persistence
         "source_refs": {
             "reco_ref": "reports/live/reco/latest/reco_latest.json",
             "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
@@ -164,7 +164,7 @@ def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict], str]:
     return "PORTFOLIO_OK", pf, ""
 
 
-def generate_no_action_plan(reason: str, portfolio: Dict) -> Dict[str, Any]:
+def generate_no_action_plan(reason: str, portfolio: Dict, reason_detail: str = "") -> Dict[str, Any]:
     """NO_ACTION (COMPLETED) 주문안 생성"""
     now = datetime.now()
     asof = now.isoformat()
@@ -184,6 +184,7 @@ def generate_no_action_plan(reason: str, portfolio: Dict) -> Dict[str, Any]:
         "plan_id": plan_id,
         "decision": "COMPLETED",
         "reason": reason,
+        "reason_detail": reason_detail, # P87-FIX2: Explicit persistence
         "source_refs": {
             "reco_ref": "reports/live/reco/latest/reco_latest.json",
             "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
@@ -215,6 +216,7 @@ def generate_no_action_plan(reason: str, portfolio: Dict) -> Dict[str, Any]:
         "result": "OK",
         "decision": "COMPLETED",
         "reason": reason,
+        "reason_detail": reason_detail,
         "plan_id": plan_id,
         "orders_count": 0,
         "snapshot_ref": snapshot_ref
