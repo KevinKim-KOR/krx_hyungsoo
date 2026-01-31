@@ -198,6 +198,25 @@ curl "http://localhost:8000/api/evidence/resolve?ref=guard_spike_latest"
   : > logs/daily_summary.latest
   ```
 
+### F) P82 API Reason Enum-only 검증 표준
+- **1. Order Plan API reason 콜론 금지**:
+  ```bash
+  curl -s http://localhost:8000/api/order_plan/latest | python3 -c 'import json,sys; d=json.load(sys.stdin); r=(d.get("rows") or [{}])[0]; print(r.get("reason",""))' | egrep "^[A-Z0-9_]+$" && echo "✅ REASON_ENUM" || echo "❌ REASON_DIRTY"
+  ```
+  *(기대: ✅ REASON_ENUM)*
+
+- **2. Reco API reason 콜론 금지**:
+  ```bash
+  curl -s http://localhost:8000/api/reco/latest | python3 -m json.tool | egrep -n '"reason"|"reason_detail"' | head -20
+  ```
+  *(기대: reason이 ENUM-only, reason_detail에 상세 메시지 분리)*
+
+- **3. Risk Code 오염 금지**:
+  ```bash
+  curl -s http://localhost:8000/api/ops/summary/latest | python3 -m json.tool | egrep -n '"code"' | head -50
+  ```
+  *(기대: code에 콜론/문장/공백 없음, ENUM-only)*
+
 ---
 
 ## 9) PC에서 입력되는 것 → OCI로 넘어오는 경로

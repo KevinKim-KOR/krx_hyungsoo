@@ -46,8 +46,8 @@ def calculate_sha256(data: Any) -> str:
     return hashlib.sha256(json_str.encode("utf-8")).hexdigest()
 
 
-def generate_blocked_plan(reason: str) -> Dict[str, Any]:
-    """BLOCKED 주문안 생성"""
+def generate_blocked_plan(reason: str, reason_detail: str = "") -> Dict[str, Any]:
+    """BLOCKED 주문안 생성 (P82: reason은 ENUM-only, detail은 분리)"""
     now = datetime.now()
     asof = now.isoformat()
     plan_id = str(uuid.uuid4())
@@ -61,6 +61,7 @@ def generate_blocked_plan(reason: str) -> Dict[str, Any]:
         "plan_id": plan_id,
         "decision": "BLOCKED",
         "reason": reason,
+        "reason_detail": reason_detail,
         "source_refs": {
             "reco_ref": "reports/live/reco/latest/reco_latest.json",
             "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
@@ -93,6 +94,7 @@ def generate_blocked_plan(reason: str) -> Dict[str, Any]:
         "result": "OK",
         "decision": "BLOCKED",
         "reason": reason,
+        "reason_detail": reason_detail,
         "plan_id": plan_id,
         "snapshot_ref": snapshot_ref
     }
@@ -249,13 +251,15 @@ def generate_order_plan() -> Dict[str, Any]:
     
     if reco_decision in ("BLOCKED", "EMPTY_RECO", "MISSING_RECO"):
         # Case 1: Reco itself is blocked or empty with a reason
-        # P81-FIX v2.3: Extract ENUM code only (strip any message after colon)
+        # P82: Extract ENUM code + detail separately
         if reco_reason:
             # Extract code before colon (e.g. "BUNDLE_STALE: message" -> "BUNDLE_STALE")
-            reason_code = reco_reason.split(":")[0].strip()
+            parts = reco_reason.split(":", 1)
+            reason_code = parts[0].strip()
+            reason_detail = parts[1].strip() if len(parts) > 1 else ""
             # Avoid double prefix if already has it
             prefix = "RECO_" if not reason_code.startswith("RECO_") and not reason_code.startswith("NO_") else ""
-            return generate_blocked_plan(f"{prefix}{reason_code}")
+            return generate_blocked_plan(f"{prefix}{reason_code}", reason_detail)
         return generate_blocked_plan("EMPTY_RECO")
     
     recommendations = reco.get("recommendations", [])

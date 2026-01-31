@@ -38,9 +38,9 @@ def compute_payload_sha256(recommendations: list) -> str:
     return hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
 
-def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None) -> Dict:
+def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None, reason_detail: str = "") -> Dict:
     """
-    EMPTY_RECO 리포트 생성
+    EMPTY_RECO 리포트 생성 (P82: reason은 ENUM-only)
     
     - 번들 없음, STALE, 또는 시스템 오류 시 사용
     """
@@ -56,6 +56,7 @@ def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None) -> Di
         "source_bundle": source_bundle,
         "decision": "EMPTY_RECO",
         "reason": reason,
+        "reason_detail": reason_detail,
         "recommendations": recommendations,
         "summary": {
             "total_positions": 0,
@@ -72,9 +73,9 @@ def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None) -> Di
     }
 
 
-def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None) -> Dict:
+def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None, reason_detail: str = "") -> Dict:
     """
-    BLOCKED 리포트 생성 (Fail-Closed)
+    BLOCKED 리포트 생성 (P82: reason은 ENUM-only)
     
     - 번들 무결성 실패 시 사용
     """
@@ -90,6 +91,7 @@ def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None) -> 
         "source_bundle": source_bundle,
         "decision": "BLOCKED",
         "reason": reason,
+        "reason_detail": reason_detail,
         "recommendations": recommendations,
         "summary": {
             "total_positions": 0,
@@ -194,7 +196,8 @@ def generate_reco_report() -> Dict:
                 "bundle_decision": "WARN"
             }
             stale_reason = getattr(validation, "stale_reason", "STALE_CHECK_FAILED")
-            report = generate_empty_reco(f"BUNDLE_STALE: {stale_reason}", source_bundle)
+            # P82: ENUM-only reason + detail separated
+            report = generate_empty_reco("BUNDLE_STALE", source_bundle, reason_detail=stale_reason)
             return _save_and_return(report)
         
         # Case 4: 번들 PASS/WARN - 추천 생성
