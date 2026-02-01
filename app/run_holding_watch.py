@@ -68,15 +68,38 @@ def save_snapshot(data: Dict, latest: bool = True) -> str:
             
     return f"reports/ops/push/holding_watch/snapshots/{filename}"
 
-def output_and_exit(result: str, reason: str, alerts: int = 0, exit_code: int = 0):
-    output = {
-        "result": result,
-        "reason": reason,
-        "alerts": alerts
-    }
-    # Ensure this is the ONLY stdout
-    print(json.dumps(output, ensure_ascii=False))
-    sys.exit(exit_code)
+def run_holding_watch() -> Dict:
+    """API-Callable Wrapper for Holding Watch.
+    Runs the CLI logic internally and returns result as dict.
+    """
+    import io
+    import contextlib
+    
+    # Capture stdout from main() 
+    f = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(f):
+            main()
+    except SystemExit as e:
+        pass  # main() uses sys.exit, catch it
+    
+    output = f.getvalue().strip()
+    
+    # Parse CLI output to dict
+    if output.startswith("SKIP:"):
+        reason = output.split(":", 1)[1].strip()
+        return {"result": "SKIPPED", "reason": reason, "alerts": 0}
+    elif output.startswith("BLOCKED:"):
+        reason = output.split(":", 1)[1].strip()
+        return {"result": "BLOCKED", "reason": reason, "alerts": 0}
+    elif output.startswith("ALERT:"):
+        count = int(output.split(":")[1].strip().split()[0])
+        return {"result": "OK", "reason": "ALERTS_GENERATED", "alerts": count}
+    elif output.startswith("OK:"):
+        reason = output.split(":", 1)[1].strip()
+        return {"result": "OK", "reason": reason, "alerts": 0}
+    else:
+        return {"result": "UNKNOWN", "reason": output, "alerts": 0}
 
 def main():
     global exit_code
@@ -86,23 +109,28 @@ def main():
     settings_all = safe_read_json(SETTINGS_FILE)
     if not settings_all:
         logger.error("No Settings found")
-        output_and_exit("BLOCKED", "NO_SETTINGS", exit_code=2)
+        print("BLOCKED: NO_SETTINGS")
+        sys.exit(2)
         
     settings = settings_all.get("holding", {})
     if not settings.get("enabled", False):
         logger.info("Holding Watch Disabled")
-        output_and_exit("SKIPPED", "DISABLED", exit_code=0)
+        print("SKIP: DISABLED")
+        sys.exit(0)
         
     # Session Check
     if not is_in_session(settings.get("session_kst", {}), settings.get("weekdays", [0,1,2,3,4])):
+        # Force run capability? Maybe via arg. For now, strict session.
         logger.info("Outside Session")
-        output_and_exit("SKIPPED", "OUTSIDE_SESSION", exit_code=0)
+        print("SKIP: OUTSIDE_SESSION")
+        sys.exit(0)
 
     portfolio = safe_read_json(PORTFOLIO_FILE)
     if not portfolio or not portfolio.get("holdings"):
         logger.warning("No Portfolio found or empty")
+        print("BLOCKED: NO_PORTFOLIO")
         # Fail-Closed Rule: BLOCKED is Exit 2
-        output_and_exit("BLOCKED", "NO_PORTFOLIO", exit_code=2)
+        sys.exit(2)
 
     # Load Previous State
     HOLDING_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -116,49 +144,8 @@ def main():
         
     tickers = [h["ticker"] for h in holdings if h.get("ticker")]
     if not tickers:
-        output_and_exit("SKIPPED", "NO_TICKERS", exit_code=0)
-        
-    provider = MarketDataProvider()
-    market_map = provider.fetch_realtime(tickers)
-    
-    # Check Data Integrity
-    if not market_map:
-        logger.error("Market Data Fetch Failed (Empty)")
-        generate_incident_push("MARKET_DATA_DOWN", "Run Holding Watch", "Empty response from provider")
-        sys.exit(3)
-        
-    # 3. Watch Logic
-    alerts = []
-    
-    pnl_up_limit = settings.get("pnl_up_pct", 5.0)
-    pnl_down_limit = settings.get("pnl_down_pct", 3.0) # Assume positive input (e.g. 3.0 means -3%)
-    trail_stop_limit = settings.get("trail_stop_pct", 2.0)
-    use_trail_stop = settings.get("use_trail_stop", False)
-    cooldown_sec = settings.get("cooldown_m", 15) * 60
-    realert_delta = settings.get("realert_delta_pp", 1.0)
-    
-    now_ts = time.time()
-    now_iso = datetime.now().isoformat()
-    
-    for h in holdings:
-        # ... logic unchanged ...
-        # (I need to preserve the loop logic. 
-        # Using replace_file_content heavily here is risky if I don't see the loop lines.
-        # I will target the END of the function to replace the print statements first, 
-        # then I might need to make a separate call for the top part if I can't reach it?
-        # The Instruction allows me to define output_and_exit.
-        # But I need to replace the calls to sys.exit in the top part.
-        pass
-
-    # Note: I am replacing the main function definition partly? 
-    # The previous `replace_file_content` replaced lines 322-328 which is the END of main.
-    # To properly implement 'output_and_exit' usage throughout, I should probably `write_to_file` the whole file 
-    # OR do multiple replacements.
-    # `write_to_file` is safer given the logic distribution.
-    # But I can't copy the whole loop logic from memory without viewing it? 
-    # I verified it in Step 521. I have the loop logic.
-    # I can reconstruct the file.
-
+        print("SKIP: NO_TICKERS")
+        sys.exit(0)
         
     provider = MarketDataProvider()
     market_map = provider.fetch_realtime(tickers)
@@ -294,13 +281,8 @@ def main():
         logger.error(f"State save failed: {e}")
 
     # 5. Send Alerts
-    execution_result = "OK"
-    execution_reason = "ALERTS_GENERATED" if alerts else "NO_ALERTS"
-    
     snapshot_data = {
         "asof": now_iso,
-        "execution_result": execution_result,
-        "execution_reason": execution_reason,
         "checked_count": len(holdings),
         "alerts_generated": len(alerts),
         "alerts": alerts,
@@ -345,33 +327,12 @@ def main():
         full_msg = "\n\n".join(msgs)
         full_msg += f"\n\n🔍 Evidence: {snapshot_ref}"
         
-        # Send and Capture Receipt
-        res = send_telegram_message(full_msg)
-        
-        # Update Snapshot with Receipt
-        if res.get("success"):
-            snapshot_data["delivery_actual"] = "TELEGRAM"
-            snapshot_data["send_receipt"] = {
-                "message_id": res.get("message_id"),
-                "sent_at": datetime.now().isoformat(),
-                "provider": "TELEGRAM"
-            }
-        else:
-            snapshot_data["delivery_actual"] = "FAILED"
-            snapshot_data["send_receipt"] = {
-                "error": res.get("error"),
-                "sent_at": datetime.now().isoformat()
-            }
-            logger.error(f"Telegram Failed: {res.get('error')}")
-
-        # Re-save snapshot with receipt
-        save_snapshot(snapshot_data, latest=True)
-
-        logger.info(f"Sent {len(alerts)} alerts (Success={res.get('success')})")
-        output_and_exit("OK", "ALERTS_GENERATED", len(alerts), 0)
+        send_telegram_message(full_msg)
+        logger.info(f"Sent {len(alerts)} alerts")
+        print(f"ALERT: {len(alerts)} items")
     else:
         logger.info("No alerts triggered")
-        output_and_exit("OK", "NO_ALERTS", 0, 0)
+        print("OK: NO_ALERTS")
 
 if __name__ == "__main__":
     main()
