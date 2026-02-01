@@ -53,7 +53,8 @@ write_ssot() {
     local reason="$2"
     local alerts="$3"
     local sent="$4"
-    local source="$5"
+    # Source is always API for this script
+    local source="API"
     
     # Minimal JSON writer
     echo "{" > "$TMP_FILE"
@@ -74,7 +75,7 @@ DATE_STR=$(date '+%Y-%m-%d %H:%M:%S')
 # Curl itself failed
 if [ $EXIT_CODE -ne 0 ]; then
     echo "[$DATE_STR] FAIL: API Unreachable" >> "$LOG_FILE"
-    write_ssot "ERROR" "API_FAIL" 0 "NONE" "LOCAL_FALLBACK"
+    write_ssot "ERROR" "API_FAIL" 0 "NONE"
     exit 3
 fi
 
@@ -97,21 +98,21 @@ if [ "$RESULT" == "OK" ]; then
     DELIV=$(echo "$RESPONSE" | grep -o '"delivery_actual": *"[^"]*"' | cut -d'"' -f4)
     if [ ! -z "$DELIV" ]; then SENT="$DELIV"; fi
 
-    write_ssot "OK" "$REASON" "$ALERTS" "$SENT" "API"
+    write_ssot "OK" "$REASON" "$ALERTS" "$SENT"
     exit 0
 
 elif [ "$RESULT" == "SKIPPED" ]; then
     echo "[$DATE_STR] SKIP: $REASON" >> "$LOG_FILE"
-    write_ssot "SKIPPED" "$REASON" 0 "NONE" "API"
+    write_ssot "SKIPPED" "$REASON" 0 "NONE"
     exit 0
 
 elif [ "$RESULT" == "BLOCKED" ]; then
     echo "[$DATE_STR] BLOCKED: $REASON" >> "$LOG_FILE"
-    write_ssot "WARN" "$REASON" 0 "NONE" "API"
+    write_ssot "WARN" "$REASON" 0 "NONE"
     exit 2
 
 else
     echo "[$DATE_STR] ERROR: $RESPONSE" >> "$LOG_FILE"
-    write_ssot "ERROR" "UNKNOWN_RESPONSE" 0 "NONE" "API"
+    write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE"
     exit 1
 fi

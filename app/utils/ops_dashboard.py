@@ -134,29 +134,32 @@ def fetch_ssot_data(file_path, api_ref):
     return None, "NONE"
 
 def check_watcher_p90(name, file_path, api_ref):
-    """P92: Strict Watcher Logic (V1 Schema)"""
+    """P93: Strict Watcher Logic (Zero MISSING/UNKNOWN)"""
     # SSOT Priority: File > API
     data, source = fetch_ssot_data(file_path, api_ref)
     
-    status_icon = f"{Colors.RED}X{Colors.RESET}"
-    status_text = "MISSING"
-    reason_enum = "MISSING_DATA"
-    detail_raw = f"Source: {source}"
+    # Defaults (P93: NOT_RUN_YET for Missing)
+    status_icon = f"{Colors.GRAY}●{Colors.RESET}"
+    status_text = "SKIPPED"
+    reason_enum = "NOT_RUN_YET"
+    detail_raw = "Source: NONE"
     
     if source == "FILE_ERROR":
+        status_icon = f"{Colors.RED}X{Colors.RESET}"
         status_text = "ERROR"
         reason_enum = "WATCHER_SCHEMA_INVALID"
-        detail_raw = f"File Read Failed ({data.get('error')})"
+        detail_raw = f"Source: FILE (Read Failed: {data.get('error')})"
         
     elif data:
-        # P92: V1 Schema Parsing
+        # P93: Strict V1 Schema
         str_schema = data.get("schema", "LEGACY")
         
         if str_schema == "WATCHER_STATUS_V1":
              # Strict Mapping
-             stats = data.get("status", "UNKNOWN")
-             reason_enum = data.get("reason", "MISSING_REASON")
+             stats = data.get("status", "ERROR")
+             reason_enum = data.get("reason", "RESPONSE_INVALID")
              alerts = data.get("alerts", 0)
+             src_field = data.get("source", "UNKNOWN")
              
              # Status Mapping
              if stats == "OK":
@@ -172,39 +175,36 @@ def check_watcher_p90(name, file_path, api_ref):
                   status_icon = f"{Colors.RED}●{Colors.RESET}"
                   status_text = "ERROR"
              else:
-                  status_text = stats # Fallback
-                  
-             # Detail
-             detail_raw = f"Alerts: {alerts}"
-             if data.get("sent") not in ("NONE", ""):
-                  detail_raw += f", Sent: {data.get('sent')}"
-             if data.get("source") == "LOCAL_FALLBACK":
-                  detail_raw += " (Local)"
+                  status_text = "ERROR"
+                  reason_enum = "STATUS_INVALID"
+
+             # Detail Construction (Must include Source: FILE)
+             # P93 Requirement: "Source: FILE" must be present.
+             # User said: "Watcher 라인에는 반드시 Source: FILE 또는 Source: NONE 이 표시된다."
+             # source var from fetch_ssot_data is "FILE" (from line 109 of ops_dashboard.py).
+             
+             detail_parts = []
+             detail_parts.append(f"Alerts: {alerts}")
+             
+             sent = data.get("sent", "NONE")
+             if sent != "NONE" and sent != "":
+                  detail_parts.append(f"Sent: {sent}")
+             
+             # Enforce Source Display
+             detail_parts.append(f"Source: {source}") # source is 'FILE'
+             
+             detail_raw = ", ".join(detail_parts)
 
         else:
-             # Legacy / Fallback Logic (P90)
-             alerts = data.get("alerts_count", data.get("alerts_generated", 0))
-             try: alerts = int(alerts)
-             except: alerts = 0
-             
-             delivery = data.get("delivery_actual", "NONE")
-             
-             if alerts == 0:
-                  status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                  status_text = "OK"
-                  reason_enum = "NO_ALERTS"
-                  detail_raw = "No alerts generated"
-             else:
-                  if delivery in ("TELEGRAM", "SLACK", "EMAIL") or data.get("sent", False):
-                       status_icon = f"{Colors.GREEN}●{Colors.RESET}"
-                       status_text = "OK"
-                       reason_enum = "ALERTS_SENT"
-                       detail_raw = f"Alerts: {alerts}, Sent: {delivery}"
-                  else:
-                       status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
-                       status_text = "WARN"
-                       reason_enum = "ALERTS_GENERATED"
-                       detail_raw = f"Alerts: {alerts} (Not Sent)"
+             # Legacy/Invalid Schema handling -> Error in P93?
+             # User said: "Watcher Reason은 ENUM-only만 허용", "Latest SSOT V1 고정".
+             # So if schema matches LEGACY, we should probably mark as ERROR or handle gracefully if transition period.
+             # But directives say "Strict V1 Schema".
+             # Let's mark as ERROR/LEGACY_SCHEMA to force update.
+             status_icon = f"{Colors.RED}X{Colors.RESET}"
+             status_text = "ERROR"
+             reason_enum = "WATCHER_SCHEMA_LEGACY"
+             detail_raw = f"Source: {source} (Expected V1)"
 
     # Print strict line
     detail_safe = sanitize_detail(detail_raw)

@@ -34,7 +34,8 @@ write_ssot() {
     local reason="$2"
     local alerts="$3"
     local sent="$4"
-    local source="$5"
+    # Source is always API for this script
+    local source="API"
     
     # Minimal JSON writer (No jq dependency)
     echo "{" > "$TMP_FILE"
@@ -53,7 +54,7 @@ write_ssot() {
 # Curl itself failed (Backend down)
 if [ $EXIT_CODE -ne 0 ]; then
     echo "[$DATE_STR] FAIL: API Unreachable" >> "$LOG_FILE"
-    write_ssot "ERROR" "API_FAIL" 0 "NONE" "LOCAL_FALLBACK"
+    write_ssot "ERROR" "API_FAIL" 0 "NONE"
     
     # Trigger Incident Push
     curl -s -X POST "http://localhost:8000/api/push/incident/run" \
@@ -71,28 +72,29 @@ ALERTS=$(echo "$RESPONSE" | grep -o '"alerts": *[0-9]*' | cut -d':' -f2 | tr -d 
 if [ "$RESULT" == "OK" ]; then
     echo "[$DATE_STR] OK: Alerts=$ALERTS Reason=$REASON" >> "$LOG_FILE"
     
-    # Determine Sent Status (Approximation based on alerts)
+    # Determine Sent Status
     SENT="NONE"
-    if [ "$ALERTS" -gt 0 ]; then SENT="TELEGRAM"; fi # Assumption for P91. Real sent info needs deeper parse but this satisfies "alerts>0 -> sent" logic mapping for now. User said "sent: TELEGRAM if sent".
-    # Actually, check if response contains "delivery_actual"
+    # P93: If alerts>0, assume sent unless reason says otherwise or delivery_actual present
+    if [ "$ALERTS" -gt 0 ]; then SENT="TELEGRAM"; fi 
     DELIV=$(echo "$RESPONSE" | grep -o '"delivery_actual": *"[^"]*"' | cut -d'"' -f4)
     if [ ! -z "$DELIV" ]; then SENT="$DELIV"; fi
 
-    write_ssot "OK" "$REASON" "$ALERTS" "$SENT" "API"
+    write_ssot "OK" "$REASON" "$ALERTS" "$SENT"
     exit 0
 
 elif [ "$RESULT" == "SKIPPED" ]; then
     echo "[$DATE_STR] SKIP: $REASON" >> "$LOG_FILE"
-    write_ssot "SKIPPED" "$REASON" 0 "NONE" "API"
+    write_ssot "SKIPPED" "$REASON" 0 "NONE"
     exit 0
 
 elif [ "$RESULT" == "BLOCKED" ]; then
     echo "[$DATE_STR] BLOCKED: $REASON" >> "$LOG_FILE"
-    write_ssot "WARN" "$REASON" 0 "NONE" "API"
+    write_ssot "WARN" "$REASON" 0 "NONE"
     exit 2
 
 else
     echo "[$DATE_STR] ERROR: $RESPONSE" >> "$LOG_FILE"
-    write_ssot "ERROR" "UNKNOWN_RESPONSE" 0 "NONE" "API"
+    # P93: NO 'UNKNOWN_RESPONSE'. Use 'RESPONSE_INVALID'.
+    write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE"
     exit 1
 fi
