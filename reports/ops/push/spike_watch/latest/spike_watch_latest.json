@@ -1,0 +1,10 @@
+{
+    "schema": "WATCHER_STATUS_V1",
+    "asof": "2026-02-01T06:40:00Z",
+    "status": "SKIPPED",
+    "reason": "OUTSIDE_SESSION",
+    "alerts": 0,
+    "sent": "NONE",
+    "reason_detail": "Raw signal",
+    "source": "API"
+}

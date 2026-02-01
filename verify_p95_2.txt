@@ -1,0 +1,8 @@
+
+[1m=== KRX ALERTOR OPS DASHBOARD ===[0m
+[90mChecked at: 2026-02-01 16:55:17[0m
+
+[1m[Backend System][0m
+  [91m¡Ü DOWN[0m (URLError: <urlopen error timed out>)
+
+[91mCRITICAL: Backend is unreachable.[0m

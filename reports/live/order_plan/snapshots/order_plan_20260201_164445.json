@@ -1,0 +1,33 @@
+{
+  "schema": "ORDER_PLAN_V1",
+  "asof": "2026-02-01T16:44:45.139000",
+  "plan_id": "36b67f49-7063-412d-a5cb-2cc35c26fec4",
+  "decision": "BLOCKED",
+  "reason": "NO_RECO",
+  "reason_detail": "",
+  "source_refs": {
+    "reco_ref": "reports/live/reco/latest/reco_latest.json",
+    "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
+  },
+  "orders": [],
+  "summary": {
+    "total_buy_amount": 0,
+    "total_sell_amount": 0,
+    "net_cash_change": 0,
+    "estimated_cash_after": 0,
+    "estimated_cash_ratio_pct": 0,
+    "buy_count": 0,
+    "sell_count": 0
+  },
+  "constraints_applied": {
+    "max_single_weight_pct": 30,
+    "min_order_amount": 100000
+  },
+  "snapshot_ref": "reports/live/order_plan/snapshots/order_plan_20260201_164445.json",
+  "evidence_refs": [
+    "reports/live/order_plan/latest/order_plan_latest.json"
+  ],
+  "integrity": {
+    "payload_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+}
