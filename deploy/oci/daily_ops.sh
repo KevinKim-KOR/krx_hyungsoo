@@ -84,7 +84,7 @@ echo "$LOG_PREFIX ════════════════════�
 echo ""
 echo "$LOG_PREFIX [1/7] Updating repository..."
 
-if [ "${DAILY_OPS_NO_GIT_PULL}" = "1" ]; then
+if [ "${DAILY_OPS_NO_GIT_PULL:-}" = "1" ]; then
     echo "$LOG_PREFIX [1/7] Repository update SKIPPED (Verification Mode)"
     GIT_PULL_RESULT="GIT_PULL_SKIPPED"
 else
