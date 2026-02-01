@@ -387,17 +387,17 @@ if [ "$ORDER_DECISION" = "BLOCKED" ]; then
     fi
 fi
 
-# P77-FIX: Use CURRENT run results for summary (Consistency)
+# P99-FIX2-FIX1: Use field names matching print_daily_summary.py
 # Construct JSON manually from bash variables
-SUMMARY_OUTPUT=$(cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py" | sed "s/^/$LOG_PREFIX /"
+SUMMARY_OUTPUT=$(cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py"
 {
-  "ops_status": "$OPS_STATUS",
-  "live_status": {
-    "result": "$CYCLE_RESULT",
-    "decision": "$CYCLE_DECISION"
+  "overall_status": "$OPS_STATUS",
+  "push": {
+    "last_send_decision": "$CYCLE_DECISION"
   },
-  "bundle": {
-    "stale": "$BUNDLE_STALE"
+  "strategy_bundle": {
+    "stale": $BUNDLE_STALE,
+    "stale_reason": "${BUNDLE_STALE_REASON:-}"
   },
   "reco": {
     "decision": "$CYCLE_DECISION",
@@ -415,16 +415,13 @@ EOF
 )
 
 # Output handling (P77-FIX6: Dedicated Logs)
-# 1. Stdout (for daily_ops.log)
-echo "$SUMMARY_OUTPUT"
+# 1. Stdout (for daily_ops.log) with LOG_PREFIX
+echo "$LOG_PREFIX $SUMMARY_OUTPUT"
 
-# 2. Dedicated Logs (Reliable Verification)
+# 2. Dedicated Logs (Reliable Verification) - with timestamp wrapper
 mkdir -p logs
-echo "$SUMMARY_OUTPUT" >> logs/daily_summary.log
-echo "$SUMMARY_OUTPUT" > logs/daily_summary.latest
-# Note: Reco decision is technically inside Cycle or Order Plan context, usually implies EMPTY_RECO if BLOCKED.
-# However, print_daily_summary mainly cares about Order Plan and Bundle Stale.
-# We can fetch reco status if strictly needed, but Order Plan Reason now contains RECO_ reason.
+printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$SUMMARY_OUTPUT" | tee logs/daily_summary.latest >> logs/daily_summary.log
+# Note: print_daily_summary.py also writes logs/daily_summary.detail.latest internally
 
 
 # ============================================================================
