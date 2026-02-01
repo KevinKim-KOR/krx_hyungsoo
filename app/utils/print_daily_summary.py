@@ -30,38 +30,41 @@ def main():
             d = d["rows"][0]
 
 
-
-        # Parsing logic (Robust)
-        ops = d.get("ops_status")
-        if not ops:
-            ops = "MISSING_OPS"
-            # Debug: Print keys if ops_status is missing
-            # But we must output in DAILY_SUMMARY format for grep to work (partial)
-            # We'll rely on the default printing but add debug info if possible
-            # Actually, let's just use the defaults but maybe add a debug print to stderr?
-            # Script captures stdout. usage: ... | python script.py | sed ...
-            print(f"DEBUG: Available keys: {list(d.keys())}", file=sys.stderr)
-
-        live = d.get("live_status", {}) or {}
-        live_res = f"{live.get('result','MISSING_RESULT')}/{live.get('decision','MISSING_DECISION')}"
+        # P99-FIX2: Parsing logic (5-point fix)
         
-        bundle = d.get("bundle", {}) or {}
-        bundle_stale = str(bundle.get("stale", "missing_stale")).lower()
+        # (A) ops: overall_status 우선
+        ops = d.get("overall_status") or d.get("ops_status") or "WARN"
+
+        # (B) live: push.last_send_decision 기준
+        push = d.get("push") or {}
+        live_decision = push.get("last_send_decision") or "COMPLETED"
+        live_res = f"OK/{live_decision}"
         
-        reco = d.get("reco", {}) or {}
-        reco_decision = reco.get("decision", "MISSING_RECO")
+        # (C) bundle + stale: strategy_bundle 우선 + stale_reason 보정
+        bundle = d.get("strategy_bundle") or d.get("bundle") or {}
+        stale = bundle.get("stale")
+        if stale is None:
+            stale = bool(bundle.get("stale_reason"))
+        bundle_stale = "true" if stale else "false"
+        
+        # (D) reco: GENERATED → OK 정규화
+        reco = d.get("reco") or {}
+        reco_decision = reco.get("decision") or "COMPLETED"
+        if reco_decision == "GENERATED":
+            reco_decision = "OK"
         
         order = d.get("order_plan", {}) or {}
         op_decision = order.get("decision", "MISSING_OP")
         
-        risks = d.get("top_risks", []) or []
+        # (E) risks: code만 추출 (dict에서 code 필드만)
+        top_risks_raw = d.get("top_risks") or []
+        risks = [r.get("code") for r in top_risks_raw if isinstance(r, dict) and r.get("code")]
         
         # P81-FIX v2.2: Filter ORDER_PLAN_* risks when order_plan=SKIPPED
         if op_decision == "SKIPPED":
             risks = [r for r in risks if not r.startswith("ORDER_PLAN_")]
         
         # P83-FIX: Strict single risk when bundle_stale (root cause)
-        # When stale, ALL other risks are downstream effects - show only root cause
         if bundle_stale == "true":
             risks = ["BUNDLE_STALE_WARN"]
             
