@@ -313,6 +313,9 @@ def generate_order_plan() -> Dict[str, Any]:
             parts = reco_reason.split(":", 1)
             reason_code = parts[0].strip()
             reason_detail = parts[1].strip() if len(parts) > 1 else ""
+            # P99-FIX2-FIX2: Fallback to reco.reason_detail if colon split is empty
+            if not reason_detail:
+                reason_detail = reco.get("reason_detail", "") or ""
             # Avoid double prefix if already has it
             prefix = "RECO_" if not reason_code.startswith("RECO_") and not reason_code.startswith("NO_") else ""
             return generate_blocked_plan(f"{prefix}{reason_code}", reason_detail)
