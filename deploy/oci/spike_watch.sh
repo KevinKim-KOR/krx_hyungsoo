@@ -25,8 +25,14 @@ TMP_FILE="${SSOT_FILE}.tmp"
 # Asof Timestamp for JSON
 ASOF_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-RESPONSE=$(curl -s -X POST "http://localhost:8000/api/push/spike/run?confirm=true")
+# P94-FIX: Capture HTTP Code
+# Use -w to append http code
+RESPONSE_RAW=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8000/api/push/spike/run?confirm=true")
 EXIT_CODE=$?
+
+# Extract Body and Code
+HTTP_CODE=$(echo "$RESPONSE_RAW" | tail -n1)
+BODY=$(echo "$RESPONSE_RAW" | sed '$d')
 
 # Function to write SSOT (Atomic)
 write_ssot() {
@@ -56,9 +62,9 @@ write_ssot() {
     mv -f "$TMP_FILE" "$SSOT_FILE"
 }
 
-# Curl itself failed (Backend down)
+# 1. Curl Internal Fail
 if [ $EXIT_CODE -ne 0 ]; then
-    echo "[$DATE_STR] FAIL: API Unreachable" >> "$LOG_FILE"
+    echo "[$DATE_STR] FAIL: API Unreachable (Curl Exit $EXIT_CODE)" >> "$LOG_FILE"
     write_ssot "ERROR" "API_FAIL" 0 "NONE" "ExitCode=$EXIT_CODE"
     
     # Trigger Incident Push
@@ -68,32 +74,43 @@ if [ $EXIT_CODE -ne 0 ]; then
     exit 3
 fi
 
-# 3. Raw Response Classifier (P94)
-# Check for known non-JSON signals first
-if echo "$RESPONSE" | grep -q "OUTSIDE_SESSION"; then
+# 2. HTTP Status Check
+if [ "$HTTP_CODE" -ne 200 ]; then
+    echo "[$DATE_STR] FAIL: HTTP $HTTP_CODE" >> "$LOG_FILE"
+    
+    if [ "$HTTP_CODE" -eq 404 ]; then
+         write_ssot "ERROR" "API_NOT_FOUND" 0 "NONE" "URL Not Found"
+    else
+         write_ssot "ERROR" "API_HTTP_$HTTP_CODE" 0 "NONE" "Body=$BODY"
+    fi
+    exit 1
+fi
+
+# 3. Check for known non-JSON signals (Body Check)
+if echo "$BODY" | grep -q "OUTSIDE_SESSION"; then
     echo "[$DATE_STR] SKIP: Outside Session (Raw)" >> "$LOG_FILE"
     write_ssot "SKIPPED" "OUTSIDE_SESSION" 0 "NONE" "Raw signal"
     exit 0
 fi
 
-if echo "$RESPONSE" | grep -q "^SKIP:"; then
+if echo "$BODY" | grep -q "^SKIP:"; then
     echo "[$DATE_STR] SKIP: Generic (Raw)" >> "$LOG_FILE"
     write_ssot "SKIPPED" "OUTSIDE_SESSION" 0 "NONE" "Raw signal"
     exit 0
 fi
 
 # 4. JSON Parsing
-RESULT=$(echo "$RESPONSE" | grep -o '"result": *"[^"]*"' | cut -d'"' -f4)
-REASON=$(echo "$RESPONSE" | grep -o '"reason": *"[^"]*"' | cut -d'"' -f4)
+RESULT=$(echo "$BODY" | grep -o '"result": *"[^"]*"' | cut -d'"' -f4)
+REASON=$(echo "$BODY" | grep -o '"reason": *"[^"]*"' | cut -d'"' -f4)
 
 # Validation: If RESULT is empty, parsing failed
 if [ -z "$RESULT" ]; then
-    echo "[$DATE_STR] ERROR: Parse Failed. Resp: $RESPONSE" >> "$LOG_FILE"
-    write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE" "$RESPONSE"
+    echo "[$DATE_STR] ERROR: Parse Failed. Details: $BODY" >> "$LOG_FILE"
+    write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE" "$BODY"
     exit 1
 fi
 
-ALERTS=$(echo "$RESPONSE" | grep -o '"alerts": *[0-9]*' | cut -d':' -f2 | tr -d ' ')
+ALERTS=$(echo "$BODY" | grep -o '"alerts": *[0-9]*' | cut -d':' -f2 | tr -d ' ')
 [ -z "$ALERTS" ] && ALERTS=0
 
 if [ "$RESULT" == "OK" ]; then
@@ -103,7 +120,7 @@ if [ "$RESULT" == "OK" ]; then
     SENT="NONE"
     # P93: If alerts>0, assume sent unless reason says otherwise or delivery_actual present
     if [ "$ALERTS" -gt 0 ]; then SENT="TELEGRAM"; fi 
-    DELIV=$(echo "$RESPONSE" | grep -o '"delivery_actual": *"[^"]*"' | cut -d'"' -f4)
+    DELIV=$(echo "$BODY" | grep -o '"delivery_actual": *"[^"]*"' | cut -d'"' -f4)
     if [ ! -z "$DELIV" ]; then SENT="$DELIV"; fi
 
     write_ssot "OK" "$REASON" "$ALERTS" "$SENT" ""
@@ -120,7 +137,7 @@ elif [ "$RESULT" == "BLOCKED" ]; then
     exit 2
 
 else
-    echo "[$DATE_STR] ERROR: $RESPONSE" >> "$LOG_FILE"
+    echo "[$DATE_STR] ERROR: $BODY" >> "$LOG_FILE"
     write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE" "Result=$RESULT"
     exit 1
 fi

@@ -381,16 +381,16 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 
 ### Verification Plan (P90-FIX Dashboard Zero-UNKNOWN)
 
-### Holding Watch: ERROR / RESPONSE_INVALID Handling (P94)
-- **Symptom**: Dashboard shows `ERROR` | `Reason=RESPONSE_INVALID` | `Source: FILE`.
-- **Cause**: The API returned a response that is not valid JSON and did not match the "OUTSIDE_SESSION" keywords.
-- **Investigation**:
-  1. Check `logs/holding_watch.log` for the raw response.
-  2. Read the SSOT file: `cat reports/ops/push/holding_watch/latest/holding_watch_latest.json`.
-  3. Look at `reason_detail` field for the snippet of the invalid response.
-- **Resolution**:
-  - If the response is actually "Outside Session" but phrased differently, update `deploy/oci/holding_watch.sh` classifier.
-  - If the response is a backend crash (HTML output), restart backend.
+### Holding Watch: ERROR / API_FAIL / RESPONSE_INVALID (P94-FIX)
+- **Symptom 1 (Parse Fail)**: Dashboard shows `ERROR` | `Reason=RESPONSE_INVALID`.
+  - **Cause**: HTTP 200 OK but body is not JSON and not "OUTSIDE_SESSION".
+  - **Fix**: Check `reason_detail` in SSOT. If text is valid skip signal, update script classifier.
+- **Symptom 2 (HTTP Error)**: Dashboard shows `ERROR` | `Reason=API_NOT_FOUND` / `API_HTTP_XXX`.
+  - **Cause**: Backend returned 404 or other error code.
+  - **Fix**: Verify URL in `deploy/oci/holding_watch.sh`. Check Backend Logs.
+- **Symptom 3 (Connection)**: Dashboard shows `ERROR` | `Reason=API_FAIL`.
+  - **Cause**: `curl` failed to connect (Connection refused, Timeout).
+  - **Fix**: Check if Backend is running (`systemctl status ops-backend`).
 
 ### Clean Check Command (Strict P94)
 The standard for a healthy system is **Zero UNKNOWN / Zero MISSING**.
