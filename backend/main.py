@@ -3589,6 +3589,38 @@ async def get_spike_latest_api():
         return {"result": "ERROR", "reason": str(e)}
 
 
+
+# ============================================================================
+# Holding Watch API (D-P.66)
+# ============================================================================
+
+@app.post("/api/push/holding/run")
+async def run_holding_watch_api(confirm: bool = Query(False)):
+    """Holding Watch 실행 (OCI Cron / Monitor)"""
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
+    try:
+        from app.run_holding_watch import run_holding_watch
+        return run_holding_watch()
+    except Exception as e:
+        logger.error(f"Holding run failed: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+@app.get("/api/push/holding/latest")
+async def get_holding_latest_api():
+    """Holding Watch 최신 조회"""
+    from pathlib import Path
+    import json
+    path = Path("reports/ops/push/holding_watch/latest/holding_watch_latest.json")
+    if not path.exists():
+        return {"result": "NOT_FOUND"}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {"result": "ERROR", "reason": str(e)}
+
+
 # ============================================================================
 # Unified Settings API (D-P.66)
 # ============================================================================
