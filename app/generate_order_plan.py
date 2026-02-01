@@ -100,6 +100,60 @@ def generate_blocked_plan(reason: str, reason_detail: str = "") -> Dict[str, Any
     }
 
 
+def generate_completed_plan(reason: str, reason_detail: str = "", cash: float = 0) -> Dict[str, Any]:
+    """P99: COMPLETED 주문안 생성 (NO_ACTION 케이스용)"""
+    now = datetime.now()
+    asof = now.isoformat()
+    plan_id = str(uuid.uuid4())
+    
+    snapshot_filename = f"order_plan_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    snapshot_ref = f"reports/live/order_plan/snapshots/{snapshot_filename}"
+    
+    plan = {
+        "schema": "ORDER_PLAN_V1",
+        "asof": asof,
+        "plan_id": plan_id,
+        "decision": "COMPLETED",
+        "reason": reason,
+        "reason_detail": reason_detail,
+        "source_refs": {
+            "reco_ref": "reports/live/reco/latest/reco_latest.json",
+            "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
+        },
+        "orders": [],
+        "summary": {
+            "total_buy_amount": 0,
+            "total_sell_amount": 0,
+            "net_cash_change": 0,
+            "estimated_cash_after": cash,
+            "estimated_cash_ratio_pct": 100.0 if cash > 0 else 0,
+            "buy_count": 0,
+            "sell_count": 0
+        },
+        "constraints_applied": {
+            "max_single_weight_pct": MAX_SINGLE_WEIGHT_PCT,
+            "min_order_amount": MIN_ORDER_AMOUNT
+        },
+        "snapshot_ref": snapshot_ref,
+        "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"],
+        "integrity": {
+            "payload_sha256": calculate_sha256([])
+        }
+    }
+    
+    # Save
+    _save_plan(plan, snapshot_filename)
+    
+    return {
+        "result": "OK",
+        "decision": "COMPLETED",
+        "reason": reason,
+        "reason_detail": reason_detail,
+        "plan_id": plan_id,
+        "snapshot_ref": snapshot_ref
+    }
+
+
 def _save_plan(plan: Dict, snapshot_filename: str):
     """주문안 저장"""
     ORDER_PLAN_LATEST.parent.mkdir(parents=True, exist_ok=True)
@@ -295,10 +349,16 @@ def generate_order_plan() -> Dict[str, Any]:
                  est_val += h.get("market_value", 0)
              total_value = est_val
         
-    # P86: Refined Zero Value Policy
-    # If total_value is still <= 0, it's invalid schema/data, not a calc error.
+    # P99: Refined Zero Value Policy (NO_ACTION instead of BLOCKED)
+    # If total_value is still <= 0, it's not a schema error but a "nothing to do" state
     if total_value <= 0:
-         return generate_blocked_plan("PORTFOLIO_SCHEMA_INVALID", reason_detail="Total value is zero or negative")
+        # Check if we have cash but no holdings value
+        if cash > 0:
+            return generate_completed_plan("NO_ACTION_CASH_ONLY", 
+                reason_detail="Portfolio has cash but no holdings value", cash=cash)
+        else:
+            return generate_completed_plan("NO_ACTION_PORTFOLIO_EMPTY", 
+                reason_detail="Portfolio total value is zero")
 
     holdings_map = {}
     for h in holdings:
