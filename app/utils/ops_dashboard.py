@@ -13,7 +13,7 @@ import sys
 import json
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Configuration
 API_BASE = "http://localhost:8000"
@@ -134,7 +134,7 @@ def fetch_ssot_data(file_path, api_ref):
     return None, "NONE"
 
 def check_watcher_p90(name, file_path, api_ref):
-    """P93: Strict Watcher Logic (Zero MISSING/UNKNOWN)"""
+    """P93: Strict Watcher Logic (Zero MISSING/UNKNOWN) + P96: Freshness"""
     # SSOT Priority: File > API
     data, source = fetch_ssot_data(file_path, api_ref)
     
@@ -143,6 +143,12 @@ def check_watcher_p90(name, file_path, api_ref):
     status_text = "SKIPPED"
     reason_enum = "NOT_RUN_YET"
     detail_raw = "Source: NONE"
+    asof_str = ""
+    age_str = "age=inf"
+    is_stale = False
+    
+    # P96: Stale threshold (2 hours)
+    STALE_THRESHOLD_SEC = 2 * 60 * 60
     
     if source == "FILE_ERROR":
         status_icon = f"{Colors.RED}X{Colors.RESET}"
@@ -162,6 +168,47 @@ def check_watcher_p90(name, file_path, api_ref):
              src_field = data.get("source", "UNKNOWN")
              reason_detail = data.get("reason_detail", "")
              
+             # P96: Parse asof and calculate age
+             asof_raw = data.get("asof", "")
+             if asof_raw:
+                  try:
+                       # Handle both ISO formats (with/without Z, with/without microseconds)
+                       asof_clean = asof_raw.replace("Z", "+00:00")
+                       if "+" not in asof_clean and "-" not in asof_clean[10:]:
+                            # No timezone - assume UTC
+                            asof_dt = datetime.fromisoformat(asof_clean)
+                       else:
+                            asof_dt = datetime.fromisoformat(asof_clean)
+                       
+                       now = datetime.now()
+                       # If asof has timezone, compare with UTC
+                       if asof_dt.tzinfo:
+                            from datetime import timezone
+                            now = datetime.now(timezone.utc)
+                       
+                       age_delta = now - asof_dt.replace(tzinfo=None) if not asof_dt.tzinfo else now - asof_dt
+                       age_sec = age_delta.total_seconds()
+                       
+                       # Format age string
+                       if age_sec < 60:
+                            age_str = f"age={int(age_sec)}s"
+                       elif age_sec < 3600:
+                            age_str = f"age={int(age_sec/60)}m"
+                       elif age_sec < 86400:
+                            age_str = f"age={int(age_sec/3600)}h"
+                       else:
+                            age_str = f"age={int(age_sec/86400)}d"
+                       
+                       # Format asof short (HH:MM only)
+                       asof_str = f"asof={asof_dt.strftime('%H:%M')}"
+                       
+                       # P96: STALE_DATA check
+                       if age_sec > STALE_THRESHOLD_SEC:
+                            is_stale = True
+                  except Exception:
+                       asof_str = "asof=?"
+                       age_str = "age=?"
+             
              # Status Mapping
              if stats == "OK":
                   status_icon = f"{Colors.GREEN}●{Colors.RESET}"
@@ -178,6 +225,12 @@ def check_watcher_p90(name, file_path, api_ref):
              else:
                   status_text = "ERROR"
                   reason_enum = "STATUS_INVALID"
+             
+             # P96: STALE_DATA overrides (upgrade to WARN, but keep original reason visible)
+             if is_stale and stats not in ["ERROR"]:
+                  status_icon = f"{Colors.YELLOW}●{Colors.RESET}"
+                  status_text = "WARN"
+                  reason_enum = f"STALE_DATA({reason_enum})"
 
              # Detail Construction (Must include Source: FILE)
              detail_parts = []
@@ -186,6 +239,11 @@ def check_watcher_p90(name, file_path, api_ref):
              sent = data.get("sent", "NONE")
              if sent != "NONE" and sent != "":
                   detail_parts.append(f"Sent: {sent}")
+             
+             # P96: Add asof and age
+             if asof_str:
+                  detail_parts.append(asof_str)
+             detail_parts.append(age_str)
              
              # P94: Include reason_detail if present
              if reason_detail:
