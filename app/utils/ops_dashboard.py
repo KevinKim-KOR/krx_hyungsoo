@@ -160,6 +160,7 @@ def check_watcher_p90(name, file_path, api_ref):
              reason_enum = data.get("reason", "RESPONSE_INVALID")
              alerts = data.get("alerts", 0)
              src_field = data.get("source", "UNKNOWN")
+             reason_detail = data.get("reason_detail", "")
              
              # Status Mapping
              if stats == "OK":
@@ -179,10 +180,6 @@ def check_watcher_p90(name, file_path, api_ref):
                   reason_enum = "STATUS_INVALID"
 
              # Detail Construction (Must include Source: FILE)
-             # P93 Requirement: "Source: FILE" must be present.
-             # User said: "Watcher 라인에는 반드시 Source: FILE 또는 Source: NONE 이 표시된다."
-             # source var from fetch_ssot_data is "FILE" (from line 109 of ops_dashboard.py).
-             
              detail_parts = []
              detail_parts.append(f"Alerts: {alerts}")
              
@@ -190,6 +187,10 @@ def check_watcher_p90(name, file_path, api_ref):
              if sent != "NONE" and sent != "":
                   detail_parts.append(f"Sent: {sent}")
              
+             # P94: Include reason_detail if present
+             if reason_detail:
+                  detail_parts.append(f"{reason_detail}")
+
              # Enforce Source Display
              detail_parts.append(f"Source: {source}") # source is 'FILE'
              
@@ -197,10 +198,6 @@ def check_watcher_p90(name, file_path, api_ref):
 
         else:
              # Legacy/Invalid Schema handling -> Error in P93?
-             # User said: "Watcher Reason은 ENUM-only만 허용", "Latest SSOT V1 고정".
-             # So if schema matches LEGACY, we should probably mark as ERROR or handle gracefully if transition period.
-             # But directives say "Strict V1 Schema".
-             # Let's mark as ERROR/LEGACY_SCHEMA to force update.
              status_icon = f"{Colors.RED}X{Colors.RESET}"
              status_text = "ERROR"
              reason_enum = "WATCHER_SCHEMA_LEGACY"

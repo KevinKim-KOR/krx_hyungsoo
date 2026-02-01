@@ -381,11 +381,30 @@ tail -n 200 logs/daily_summary.log | egrep "Reason=[A-Z0-9_]+:|reco=UNKNOWN|reco
 
 ### Verification Plan (P90-FIX Dashboard Zero-UNKNOWN)
 
+### Holding Watch: ERROR / RESPONSE_INVALID Handling (P94)
+- **Symptom**: Dashboard shows `ERROR` | `Reason=RESPONSE_INVALID` | `Source: FILE`.
+- **Cause**: The API returned a response that is not valid JSON and did not match the "OUTSIDE_SESSION" keywords.
+- **Investigation**:
+  1. Check `logs/holding_watch.log` for the raw response.
+  2. Read the SSOT file: `cat reports/ops/push/holding_watch/latest/holding_watch_latest.json`.
+  3. Look at `reason_detail` field for the snippet of the invalid response.
+- **Resolution**:
+  - If the response is actually "Outside Session" but phrased differently, update `deploy/oci/holding_watch.sh` classifier.
+  - If the response is a backend crash (HTML output), restart backend.
+
+### Clean Check Command (Strict P94)
+The standard for a healthy system is **Zero UNKNOWN / Zero MISSING**.
+Run this to verify:
+```bash
+python3 -m app.utils.ops_dashboard | egrep "MISSING|UNKNOWN|UNMAPPED_CASE|Reason=[A-Z0-9_]+:|Reason=$" && echo "❌ FAIL" || echo "✅ PASS"
+```
+*Note: A result of "PASS" (no output from grep) confirms strict adherence to V1 Schema and SSOT policy.*
+
 **1. Clean Check (Standard)**
 ```bash
 # Dashboard output must be free of UNKNOWN/UNMAPPED/Empty Reason
 # P90-FIX: Improved regex to avoid false positives with Source:
-python3 -m app.utils.ops_dashboard | egrep "UNMAPPED_CASE|UNKNOWN|Reason=[A-Z0-9_]+:|Reason=$" && echo "❌ FAIL" || echo "✅ PASS"
+python3 -m app.utils.ops_dashboard | egrep "reco=UNKNOWN|reco=GENERATED" && echo "❌ FAIL" || echo "✅ PASS"
 ```
 
 **2. Watcher Logic (Alerts=1 Case)**

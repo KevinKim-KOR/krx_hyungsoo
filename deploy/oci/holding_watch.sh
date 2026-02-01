@@ -53,9 +53,13 @@ write_ssot() {
     local reason="$2"
     local alerts="$3"
     local sent="$4"
+    local detail="$5"
     # Source is always API for this script
     local source="API"
     
+    # Sanitize detail (simple escape)
+    local detail_safe=$(echo "$detail" | tr -d '"\n\r' | cut -c 1-100)
+
     # Minimal JSON writer
     echo "{" > "$TMP_FILE"
     echo "  \"schema\": \"WATCHER_STATUS_V1\"," >> "$TMP_FILE"
@@ -64,6 +68,7 @@ write_ssot() {
     echo "  \"reason\": \"$reason\"," >> "$TMP_FILE"
     echo "  \"alerts\": $alerts," >> "$TMP_FILE"
     echo "  \"sent\": \"$sent\"," >> "$TMP_FILE"
+    echo "  \"reason_detail\": \"$detail_safe\"," >> "$TMP_FILE"
     echo "  \"source\": \"$source\"" >> "$TMP_FILE"
     echo "}" >> "$TMP_FILE"
     
@@ -75,13 +80,36 @@ DATE_STR=$(date '+%Y-%m-%d %H:%M:%S')
 # Curl itself failed
 if [ $EXIT_CODE -ne 0 ]; then
     echo "[$DATE_STR] FAIL: API Unreachable" >> "$LOG_FILE"
-    write_ssot "ERROR" "API_FAIL" 0 "NONE"
+    write_ssot "ERROR" "API_FAIL" 0 "NONE" "ExitCode=$EXIT_CODE"
     exit 3
 fi
 
-# 3. Analyze Response
+# 3. Raw Response Classifier (P94)
+# Check for known non-JSON signals first
+if echo "$RESPONSE" | grep -q "OUTSIDE_SESSION"; then
+    echo "[$DATE_STR] SKIP: Outside Session (Raw)" >> "$LOG_FILE"
+    write_ssot "SKIPPED" "OUTSIDE_SESSION" 0 "NONE" "Raw signal"
+    exit 0
+fi
+
+if echo "$RESPONSE" | grep -q "^SKIP:"; then
+    echo "[$DATE_STR] SKIP: Generic (Raw)" >> "$LOG_FILE"
+    write_ssot "SKIPPED" "OUTSIDE_SESSION" 0 "NONE" "Raw signal"
+    exit 0
+fi
+
+# 4. JSON Parsing
 RESULT=$(echo "$RESPONSE" | grep -o '"result": *"[^"]*"' | cut -d'"' -f4)
 REASON=$(echo "$RESPONSE" | grep -o '"reason": *"[^"]*"' | cut -d'"' -f4)
+
+# Validation: If RESULT is empty, parsing failed (not JSON or unexpected format)
+if [ -z "$RESULT" ]; then
+    echo "[$DATE_STR] ERROR: Parse Failed. Resp: $RESPONSE" >> "$LOG_FILE"
+    write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE" "$RESPONSE"
+    exit 1
+fi
+
+# Continue with parsed values
 # Holding uses alerts_generated usually
 ALERTS=$(echo "$RESPONSE" | grep -o '"alerts_generated": *[0-9]*' | cut -d':' -f2 | tr -d ' ')
 if [ -z "$ALERTS" ]; then
@@ -98,21 +126,22 @@ if [ "$RESULT" == "OK" ]; then
     DELIV=$(echo "$RESPONSE" | grep -o '"delivery_actual": *"[^"]*"' | cut -d'"' -f4)
     if [ ! -z "$DELIV" ]; then SENT="$DELIV"; fi
 
-    write_ssot "OK" "$REASON" "$ALERTS" "$SENT"
+    write_ssot "OK" "$REASON" "$ALERTS" "$SENT" ""
     exit 0
 
 elif [ "$RESULT" == "SKIPPED" ]; then
     echo "[$DATE_STR] SKIP: $REASON" >> "$LOG_FILE"
-    write_ssot "SKIPPED" "$REASON" 0 "NONE"
+    write_ssot "SKIPPED" "$REASON" 0 "NONE" ""
     exit 0
 
 elif [ "$RESULT" == "BLOCKED" ]; then
     echo "[$DATE_STR] BLOCKED: $REASON" >> "$LOG_FILE"
-    write_ssot "WARN" "$REASON" 0 "NONE"
+    write_ssot "WARN" "$REASON" 0 "NONE" ""
     exit 2
 
 else
+    # Explicit ERROR in JSON Result
     echo "[$DATE_STR] ERROR: $RESPONSE" >> "$LOG_FILE"
-    write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE"
+    write_ssot "ERROR" "RESPONSE_INVALID" 0 "NONE" "Result=$RESULT"
     exit 1
 fi
