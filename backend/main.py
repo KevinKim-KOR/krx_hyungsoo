@@ -5,6 +5,7 @@ KRX Alertor Modular - 읽기 전용 옵저버 백엔드
 """
 import logging
 import sys
+import subprocess
 import json
 import yaml
 import shutil
@@ -335,6 +336,74 @@ def get_signals():
     except Exception as e:
         logger.error("신호 조회 실패", exc_info=True)
         raise HTTPException(status_code=500, detail="내부 서버 오류")
+
+@app.get("/api/reco/latest", summary="최신 추천 리포트 조회 (P101)")
+def get_reco_latest():
+    """
+    최신 Reco Report V1을 반환합니다.
+    파일이 없으면 decision=NO_RECO_YET을 포함한 Graceful Response를 반환합니다.
+    """
+    path = REPORTS_DIR / "live" / "reco" / "latest" / "reco_latest.json"
+    if not path.exists():
+        return {
+            "schema": "RECO_REPORT_V1",
+            "decision": "NO_RECO_YET",
+            "reason": "FILE_NOT_FOUND",
+            "message": "아직 추천 리포트가 생성되지 않았습니다.",
+            "created_at": None,
+            "source_bundle": None
+        }
+    return safe_read_json(path)
+
+@app.post("/api/reco/regenerate", summary="추천 리포트 재생성 (P101)")
+def regenerate_reco(confirm: bool = Query(False)):
+    """
+    app/generate_reco_report.py를 실행하여 리포트를 재생성합니다.
+    - confirm=true 필수
+    - Fail-Closed 원칙에 따라 스크립트 실행 결과를 반환
+    """
+    if not confirm:
+        return JSONResponse(
+            status_code=400, 
+            content={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED", "message": "confirm=true parameter is required"}
+        )
+    
+    try:
+        logger.info("Reco Report 재생성 요청 (subprocess)")
+        # Run generator script relative to BASE_DIR
+        cmd = [sys.executable, "app/generate_reco_report.py"]
+        
+        # Capture output
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
+        
+        if result.returncode != 0:
+            logger.error(f"Reco Generation Failed (Exit {result.returncode}): {result.stderr}")
+            return JSONResponse(
+                status_code=500, 
+                content={
+                    "result": "FAIL", 
+                    "error": result.stderr, 
+                    "stdout": result.stdout,
+                    "exit_code": result.returncode
+                }
+            )
+            
+        # Parse script output (Expected JSON)
+        try:
+             output_json = json.loads(result.stdout)
+             logger.info("Reco Report 재생성 성공")
+             return output_json
+        except json.JSONDecodeError:
+             logger.warning("Reco script stdout is not valid JSON")
+             return {
+                 "result": "OK", 
+                 "message": "Script executed but output check failed", 
+                 "stdout": result.stdout
+             }
+             
+    except Exception as e:
+        logger.error(f"Reco Regeneration Error: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"result": "ERROR", "message": str(e)})
 
 @app.get("/api/history", summary="과거 이력 조회 (Equity Curve)")
 def get_history():

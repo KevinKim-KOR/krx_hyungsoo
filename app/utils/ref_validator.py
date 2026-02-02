@@ -57,6 +57,7 @@ ALLOWED_JSON_PATTERNS = [
     # P77: Live Cycle Snapshots
     r"^reports/live/cycle/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/live/reco/latest/reco_latest\.json$",
+    r"^reports/live/reco/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/live/order_plan/latest/order_plan_latest\.json$",
 ]
 

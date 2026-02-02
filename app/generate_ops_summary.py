@@ -423,10 +423,62 @@ def regenerate_ops_summary():
 
     # === Reco (For Daily Summary logic) ===
     reco = safe_load_json(RECO_LATEST)
+    
+    reco_decision = reco.get("decision", "MISSING_RECO") if reco else "MISSING_RECO"
+    reco_reason = reco.get("reason", "") if reco else ""
+    
+    source_bundle_id = None
+    if reco and reco.get("source_bundle"):
+        source_bundle_id = reco["source_bundle"].get("bundle_id")
+        
+    # Find latest reco snapshot
+    reco_snapshot_ref = None
+    reco_snap_dir = BASE_DIR / "reports" / "live" / "reco" / "snapshots"
+    if reco_snap_dir.exists():
+        snaps = sorted(reco_snap_dir.glob("reco_*.json"), reverse=True)
+        if snaps:
+            reco_snapshot_ref = f"reports/live/reco/snapshots/{snaps[0].name}"
+
     reco_summary = {
-        "decision": reco.get("decision", "UNKNOWN") if reco else "MISSING_RECO",
-        "reason": reco.get("reason", "") if reco else ""
+        "decision": reco_decision,
+        "reason": reco_reason,
+        "latest_ref": "reports/live/reco/latest/reco_latest.json",
+        "snapshot_ref": reco_snapshot_ref,
+        "source_bundle_id": source_bundle_id
     }
+    
+    # Reco Risks
+    if reco_decision == "MISSING_RECO":
+        top_risks.append({
+            "code": "NO_RECO_YET",
+            "severity": "WARN",
+            "message": "Reco report missing",
+            "evidence_refs": []
+        })
+        if overall_status == "OK":
+            overall_status = "WARN"
+            
+    elif reco_decision == "EMPTY_RECO":
+        top_risks.append({
+            "code": "RECO_EMPTY", 
+            "severity": "WARN",
+            "message": f"Reco Empty: {reco_reason}",
+            "evidence_refs": ["reports/live/reco/latest/reco_latest.json"]
+        })
+        if overall_status == "OK":
+            overall_status = "WARN"
+            
+    elif reco_decision == "BLOCKED":
+        # Check if bundle related
+        if "BUNDLE" in reco_reason:
+            top_risks.append({
+                "code": "STALE_BUNDLE_BLOCKS_RECO",
+                "severity": "WARN",
+                "message": f"Reco blocked by bundle: {reco_reason}",
+                "evidence_refs": ["reports/live/reco/latest/reco_latest.json"]
+            })
+            if overall_status == "OK":
+                overall_status = "WARN"
 
     # Construct Summary
     summary = {

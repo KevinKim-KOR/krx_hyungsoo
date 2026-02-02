@@ -5,6 +5,7 @@ STRATEGY_BUNDLE_V1을 기반으로 추천 리포트를 생성합니다.
 - Fail-Closed: 번들 무결성 실패 시 EMPTY_RECO 생성
 - Read-Only: 실제 주문 연동 금지
 - Atomic Write 지원
+- P101: OCI Reco Generator V1 (Bundle-driven, Read-only)
 """
 
 import json
@@ -13,7 +14,7 @@ import hashlib
 import uuid
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Tuple, List
 
 from app.load_strategy_bundle import load_latest_bundle, get_bundle_status
 
@@ -32,10 +33,16 @@ def ensure_dirs():
     RECO_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def compute_payload_sha256(recommendations: list) -> str:
-    """추천 목록의 SHA256 해시 계산"""
-    payload_str = json.dumps(recommendations, sort_keys=True, separators=(',', ':'))
-    return hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+def compute_payload_sha256(top_picks: list, holding_actions: list) -> str:
+    """
+    P101: top_picks + holding_actions의 SHA256 해시 계산
+    """
+    payload = {
+        "top_picks": top_picks,
+        "holding_actions": holding_actions
+    }
+    payload_json = json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    return hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
 
 
 def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None, reason_detail: str = "") -> Dict:
@@ -47,7 +54,8 @@ def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None, reaso
     report_id = str(uuid.uuid4())
     now = datetime.now().isoformat()
     
-    recommendations = []
+    top_picks = []
+    holding_actions = []
     
     return {
         "schema": "RECO_REPORT_V1",
@@ -57,7 +65,8 @@ def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None, reaso
         "decision": "EMPTY_RECO",
         "reason": reason,
         "reason_detail": reason_detail,
-        "recommendations": recommendations,
+        "top_picks": top_picks,
+        "holding_actions": holding_actions,
         "summary": {
             "total_positions": 0,
             "buy_count": 0,
@@ -68,7 +77,7 @@ def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None, reaso
         "constraints_applied": None,
         "evidence_refs": ["reports/live/reco/latest/reco_latest.json"],
         "integrity": {
-            "payload_sha256": compute_payload_sha256(recommendations)
+            "payload_sha256": compute_payload_sha256(top_picks, holding_actions)
         }
     }
 
@@ -82,7 +91,8 @@ def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None, rea
     report_id = str(uuid.uuid4())
     now = datetime.now().isoformat()
     
-    recommendations = []
+    top_picks = []
+    holding_actions = []
     
     return {
         "schema": "RECO_REPORT_V1",
@@ -92,7 +102,8 @@ def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None, rea
         "decision": "BLOCKED",
         "reason": reason,
         "reason_detail": reason_detail,
-        "recommendations": recommendations,
+        "top_picks": top_picks,
+        "holding_actions": holding_actions,
         "summary": {
             "total_positions": 0,
             "buy_count": 0,
@@ -103,50 +114,40 @@ def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None, rea
         "constraints_applied": None,
         "evidence_refs": ["reports/live/reco/latest/reco_latest.json"],
         "integrity": {
-            "payload_sha256": compute_payload_sha256(recommendations)
+            "payload_sha256": compute_payload_sha256(top_picks, holding_actions)
         }
     }
 
 
-def generate_recommendations_from_bundle(bundle: Dict) -> list:
+def extract_signals_from_bundle(bundle: Dict) -> Tuple[List, List]:
     """
-    번들 전략 파라미터를 기반으로 추천 생성
+    P101: 번들에서 top_picks와 holding_actions 추출 (Pass-through)
     
-    NOTE: 실제 구현에서는 시장 데이터와 전략 로직을 사용해야 합니다.
-    현재는 전략 파라미터 기반 Placeholder 추천을 생성합니다.
+    Returns:
+        Tuple[top_picks, holding_actions]
     """
+    # 1. Top Picks (Scorer)
+    # Check strict location: strategy.scorer (P100 standard)
     strategy = bundle.get("strategy", {})
-    universe = strategy.get("universe", [])
-    decision_params = strategy.get("decision_params", {})
+    scorer = strategy.get("scorer", {})
     
-    recommendations = []
-    
-    # Placeholder: 유니버스 종목에 대한 기본 추천 생성
-    ticker_names = {
-        "069500": "KODEX 200",
-        "229200": "KODEX 코스닥150",
-        "114800": "KODEX 인버스",
-        "122630": "KODEX 레버리지",
-        "252670": "KODEX 200선물인버스2X"
-    }
-    
-    for i, ticker in enumerate(universe[:4]):  # max 4 positions
-        # Placeholder logic: 간단한 순환 패턴
-        actions = ["BUY", "HOLD", "SELL"]
-        action = actions[i % 3] if i < 3 else "HOLD"
+    # Fallback to root if not found (Backward compat)
+    if not scorer:
+        scorer = bundle.get("scorer", {})
         
-        if action != "HOLD":
-            entry_threshold = decision_params.get("entry_threshold", 0.02)
-            recommendations.append({
-                "ticker": ticker,
-                "name": ticker_names.get(ticker, f"ETF {ticker}"),
-                "action": action,
-                "weight_pct": 0.25,
-                "signal_score": entry_threshold + 0.01 if action == "BUY" else -(entry_threshold + 0.01),
-                "rationale": f"전략 파라미터 기반 추천 ({strategy.get('name', 'N/A')})"
-            })
+    top_picks = scorer.get("top_picks", [])
     
-    return recommendations
+    # 2. Holding Actions
+    # Check strict location: strategy.holding_action
+    holding_action_section = strategy.get("holding_action", {})
+    
+    # Fallback
+    if not holding_action_section:
+        holding_action_section = bundle.get("holding_action", {})
+        
+    holding_actions = holding_action_section.get("items", [])
+    
+    return top_picks, holding_actions
 
 
 def generate_reco_report() -> Dict:
@@ -201,20 +202,34 @@ def generate_reco_report() -> Dict:
             return _save_and_return(report)
         
         # Case 4: 번들 PASS/WARN - 추천 생성
+        # P101: Source Bundle 확장
+        integrity_section = bundle.get("integrity", {})
         source_bundle = {
             "bundle_id": validation.bundle_id,
             "strategy_name": validation.strategy_name,
             "strategy_version": validation.strategy_version,
-            "bundle_decision": validation.decision
+            "latest_ref": "state/strategy_bundle/latest/strategy_bundle_latest.json",
+            "created_at": validation.created_at,
+            "bundle_decision": validation.decision,
+            "integrity": {
+                "payload_sha256": integrity_section.get("payload_sha256", "")
+            }
         }
         
-        recommendations = generate_recommendations_from_bundle(bundle)
+        # P101: Extract signals directly from bundle
+        top_picks, holding_actions = extract_signals_from_bundle(bundle)
         
-        # Summary 계산
-        buy_count = sum(1 for r in recommendations if r["action"] == "BUY")
-        sell_count = sum(1 for r in recommendations if r["action"] == "SELL")
-        hold_count = sum(1 for r in recommendations if r["action"] == "HOLD")
-        total_weight = sum(r["weight_pct"] for r in recommendations)
+        # Summary 계산 (Holding Actions 기반)
+        buy_count = sum(1 for r in holding_actions if r.get("action") == "BUY")
+        sell_count = sum(1 for r in holding_actions if r.get("action") == "SELL")
+        hold_count = sum(1 for r in holding_actions if r.get("action") == "HOLD") or \
+                     sum(1 for r in holding_actions if r.get("action") == "KEEP") # Handle KEEP/HOLD alias
+        
+        # Cash calc (Holding Actions don't have weight yet, assuming derived from Order Plan later)
+        # For Reco V1, cash_pct is placeholder or derived if weights exist
+        # P101 doesn't specify weight calculation in Reco, so default to 1.0 or 0.0?
+        # Using 1.0 as safe default if no weights
+        total_weight = sum(r.get("weight_pct", 0) for r in holding_actions)
         
         strategy = bundle.get("strategy", {})
         position_limits = strategy.get("position_limits", {})
@@ -223,13 +238,13 @@ def generate_reco_report() -> Dict:
         report_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
         
-        # 추천이 비어도 번들이 있으면 GENERATED (reason은 SUCCESS 또는 NO_SIGNAL)
-        if recommendations:
-            decision = "GENERATED"
-            reason = "SUCCESS"
+        # Decision Logic
+        if not top_picks and not holding_actions:
+            decision = "EMPTY_RECO" # Or WARN per P101
+            reason = "NO_SIGNAL"
         else:
             decision = "GENERATED"
-            reason = "NO_SIGNAL"  # Bundle exists but no actionable signals
+            reason = "SUCCESS"
         
         report = {
             "schema": "RECO_REPORT_V1",
@@ -238,9 +253,10 @@ def generate_reco_report() -> Dict:
             "source_bundle": source_bundle,
             "decision": decision,
             "reason": reason,
-            "recommendations": recommendations,
+            "top_picks": top_picks,
+            "holding_actions": holding_actions,
             "summary": {
-                "total_positions": len(recommendations),
+                "total_positions": len(holding_actions), # Using holding actions count or top picks? Usually holdings.
                 "buy_count": buy_count,
                 "sell_count": sell_count,
                 "hold_count": hold_count,
@@ -256,7 +272,7 @@ def generate_reco_report() -> Dict:
                 "reports/live/reco/latest/reco_latest.json"
             ],
             "integrity": {
-                "payload_sha256": compute_payload_sha256(recommendations)
+                "payload_sha256": compute_payload_sha256(top_picks, holding_actions)
             }
         }
         
@@ -276,7 +292,6 @@ def generate_reco_report() -> Dict:
         
         report = generate_blocked_reco(f"SYSTEM_ERROR: {str(e)}", source_bundle)
         return _save_and_return(report)
-
 
 
 def _save_and_return(report: Dict) -> Dict:

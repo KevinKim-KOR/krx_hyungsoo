@@ -31,11 +31,17 @@ OCI에서 `STRATEGY_BUNDLE_V1`을 기반으로 생성되는 추천(Recommendatio
     "bundle_id": "uuid-v4",
     "strategy_name": "KRX_MOMENTUM_V1",
     "strategy_version": "1.0.0",
-    "bundle_decision": "PASS"
+    "latest_ref": "state/strategy_bundle/latest/strategy_bundle_latest.json",
+    "created_at": "2026-01-24T09:50:00+09:00",
+    "bundle_decision": "PASS",
+    "integrity": {
+      "payload_sha256": "..."
+    }
   },
   "decision": "GENERATED | EMPTY_RECO | BLOCKED",
   "reason": "SUCCESS | NO_BUNDLE | BUNDLE_FAIL | BUNDLE_STALE | SYSTEM_ERROR",
-  "recommendations": [...],
+  "top_picks": [...],
+  "holding_actions": [...],
   "summary": {...},
   "constraints_applied": {...},
   "evidence_refs": ["reports/live/reco/latest/reco_latest.json"],
@@ -86,7 +92,8 @@ OCI에서 `STRATEGY_BUNDLE_V1`을 기반으로 생성되는 추천(Recommendatio
 | `source_bundle` | object/null | ✓ | 소스 번들 정보 (NO_BUNDLE 시 null) |
 | `decision` | enum | ✓ | GENERATED, EMPTY_RECO, BLOCKED |
 | `reason` | enum | ✓ | SUCCESS, NO_BUNDLE, BUNDLE_FAIL, BUNDLE_STALE, SYSTEM_ERROR |
-| `recommendations` | array | ✓ | 추천 목록 (EMPTY_RECO/BLOCKED 시 빈 배열) |
+| `top_picks` | array | ✓ | 추천 종목 (bundle.scorer.top_picks) |
+| `holding_actions` | array | ✓ | 보유 종목 액션 (bundle.holding_action.items) |
 | `summary` | object | ✓ | 추천 요약 |
 | `constraints_applied` | object/null | ✓ | 적용된 제약조건 |
 | `evidence_refs` | array | ✓ | 증거 참조 경로 (RAW_PATH_ONLY, **최소 1개 필수**) |
