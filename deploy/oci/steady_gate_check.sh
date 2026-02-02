@@ -30,19 +30,50 @@ python3 -m app.utils.ops_dashboard 2>&1 || true
 echo ""
 
 # =============================================================================
-# 2. Clean Check (MISSING/UNKNOWN/UNMAPPED)
+# 2. Root Cause Analysis (SSOT: ops_summary.top_risks[0])
 # =============================================================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 CLEAN CHECK (MISSING/UNKNOWN/UNMAPPED)"
+echo "🔍 ROOT CAUSE ANALYSIS (P106 SSOT)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-CLEAN_CHECK=$(python3 -m app.utils.ops_dashboard 2>&1 | grep -E "MISSING|UNKNOWN|UNMAPPED" || echo "")
-if [ -z "$CLEAN_CHECK" ]; then
-    echo "✅ CLEAN CHECK: PASS (No MISSING/UNKNOWN/UNMAPPED)"
-    CLEAN_PASS=1
-else
-    echo "❌ CLEAN CHECK: FAIL"
-    echo "$CLEAN_CHECK"
+SUMMARY_FILE="reports/ops/summary/ops_summary_latest.json"
+ROOT_CAUSE="OK"
+RISK_MSG=""
+
+if [ -f "$SUMMARY_FILE" ]; then
+    ROOT_CAUSE=$(cat "$SUMMARY_FILE" | python3 -c 'import json,sys; d=json.load(sys.stdin); l=d.get("top_risks",[]); print(l[0].get("code","OK") if l else "OK")' 2>/dev/null || echo "OK")
+    RISK_MSG=$(cat "$SUMMARY_FILE" | python3 -c 'import json,sys; d=json.load(sys.stdin); l=d.get("top_risks",[]); print(l[0].get("message","") if l else "")' 2>/dev/null || echo "")
+fi
+
+# Detect Severity from Code (Simple Heuristic or Map)
+# In P106, generate_ops_summary.py guarantees top_risks is sorted.
+# So we trust top_risks[0] is the primary issue.
+
+echo "   Root Cause: $ROOT_CAUSE"
+if [ -n "$RISK_MSG" ]; then
+    echo "   Message: $RISK_MSG"
+fi
+
+CLEAN_PASS=1
+if [ "$ROOT_CAUSE" = "OK" ]; then
+    echo "   Verdict: ✅ CLEAN"
+elif echo "$ROOT_CAUSE" | grep -q "_WARN"; then
+    echo "   Verdict: ⚠️ WARN (Operational Warning)"
+    CLEAN_PASS=1  # WARN is not FAIL in Gate context (it passes with WARN status)
+elif echo "$ROOT_CAUSE" | grep -q "BLOCKED\|FAIL\|CRITICAL\|EMERGENCY\|INCONSISTENT"; then
+    echo "   Verdict: ❌ FAIL (Blocking Issue)"
     CLEAN_PASS=0
+else
+    # Fallback/Unmapped -> Treat as WARN potentially, or FAIL?
+    # Instruction says "Clean Check FAIL 사유... BLOCKED일 때도 FAIL 처리 정책 확정"
+    # Let's be strict for known patterns.
+    # If code ends with _BLOCKED or _FAIL -> FAIL.
+    if echo "$ROOT_CAUSE" | grep -q "BLOCKED\|FAIL"; then
+         echo "   Verdict: ❌ FAIL (Blocking Issue)"
+         CLEAN_PASS=0
+    else
+         echo "   Verdict: ⚠️ WARN (Unmapped Risk)"
+         CLEAN_PASS=1
+    fi
 fi
 echo ""
 

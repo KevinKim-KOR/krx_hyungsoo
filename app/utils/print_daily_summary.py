@@ -67,51 +67,20 @@ def main():
         if op_decision == "SKIPPED":
             risks = [r for r in risks if not r.startswith("ORDER_PLAN_")]
         
-        # P83-FIX: Strict single risk when bundle_stale (root cause)
-        if bundle_stale == "true":
-            risks = ["BUNDLE_STALE_WARN"]
-            
-        risks_str = str(risks).replace(" ", "")
-
-        # Reason Logic (P83: Priority Reordering for Actionable WHY)
-        # Priority: GIT_PULL_FAILED > BUNDLE_STALE_WARN > ORDER_PLAN_* > EMPTY_RECO > OK
-        reason = "UNMAPPED_CASE"  # Default fallback - never UNKNOWN
-        
-        # P88-FIX: Single Decision Tree Logic
-        # Priority: Bundle Stale > Order Plan Blocked > Reco Empty > Ops Warning > OK
-        
-        reason = "UNMAPPED_CASE"
-        
-        # 1. Reason Determination
-        if bundle_stale == "true":
-            reason = "BUNDLE_STALE_WARN"
-        
-        elif op_decision == "BLOCKED":
-            op_reason = order.get("reason", "")
-            if not op_reason:
-                reason = "ORDER_PLAN_BLOCKED"
-            else:
-                op_reason_code = op_reason.split(":")[0].strip()
-                # Check for wrapped stale/reco errors in Order Plan
-                if op_reason_code in ("RECO_BUNDLE_STALE", "BUNDLE_STALE"):
-                    reason = "BUNDLE_STALE_WARN"
-                elif op_reason_code.startswith("ORDER_PLAN_"):
-                    reason = op_reason_code
-                else:
-                    reason = f"ORDER_PLAN_{op_reason_code}"
-
-        elif op_decision == "COMPLETED" and order.get("reason", "").startswith("NO_ACTION_"):
-            reason = order.get("reason")
-
-        elif reco_decision == "EMPTY_RECO":
-            reason = "EMPTY_RECO" # or RECO_EMPTY_RECO depending on ENUM policy. 
-            # User accepted "EMPTY_RECO" in previous P87 contexts. Using standard.
-
-        elif ops != "OK" and ops != "WARN":
-            reason = f"OPS_{ops}"
-            
+        # P106: SSOT Reason Logic (Use top_risks[0] as Root Cause)
+        # Priority is already handled by generate_ops_summary.py stable sort
+        if risks:
+            reason = risks[0]
         else:
             reason = "OK"
+
+        # P83-FIX: Strict single risk when bundle_stale (but P106 handles this via sort)
+        # P106: If Bundle Stale is top risk, it will be Reason.
+        # But we might want to ensure 'risks' list in output is consistent?
+        # generate_ops_summary.py already handles sorting.
+        # We just use it.
+        
+        risks_str = str(risks).replace(" ", "")
 
         # 2. Detail Extraction (SSOT based on Reason)
         detail_msg = ""

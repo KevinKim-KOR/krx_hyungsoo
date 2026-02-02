@@ -56,6 +56,35 @@ PORTFOLIO_STALE_DAYS = int(os.environ.get("PORTFOLIO_STALE_DAYS", "7"))
 # Forbidden prefixes to strip
 FORBIDDEN_PREFIXES = ["json:", "file://", "file:", "http://", "https://"]
 
+# Risk Severity Map (P106)
+# Lower value = Higher Priority (Stable Sort)
+SEVERITY_MAP = {
+    "CRITICAL": 0,
+    "BLOCKED": 0, 
+    "WARN": 1,
+    "INFO": 2,
+    "OK": 3
+}
+
+RISK_CODE_MAP = {
+    "EMERGENCY_STOP": "CRITICAL",
+    "EVIDENCE_HEALTH_FAIL": "CRITICAL",
+    "PORTFOLIO_INCONSISTENT": "CRITICAL",
+    "EVIDENCE_HEALTH_WARN": "WARN",
+    "TICKETS_FAILED": "WARN",
+    "NO_PORTFOLIO": "WARN",
+    "PORTFOLIO_STALE_WARN": "WARN",
+    "ORDER_PLAN_NO_RECO": "WARN",
+    "ORDER_PLAN_BLOCKED": "WARN",
+    "CONTRACT5_REPORT_BLOCKED": "WARN", 
+    "CONTRACT5_REPORT_EMPTY": "INFO", 
+    "NO_BUNDLE": "WARN",
+    "BUNDLE_STALE_WARN": "WARN",
+    "NO_RECO_YET": "WARN",
+    "RECO_EMPTY": "WARN",
+    "STALE_BUNDLE_BLOCKS_RECO": "WARN"
+}
+
 
 def sanitize_evidence_ref(ref: str) -> str:
     """evidence_ref 정제"""
@@ -319,234 +348,27 @@ def regenerate_ops_summary():
         "stale_reason": validation.stale_reason
     }
     
-    # === Overall Status ===
+    # Sort Risks (P106: Stable Sort)
+    # 1. Severity (Ascending: 0=Critical to 3=OK)
+    # 2. Code (Alphabetical)
+    def risk_sort_key(r):
+        sev_val = SEVERITY_MAP.get(r.get("severity", "INFO"), 2)
+        return (sev_val, r.get("code", ""))
+        
+    top_risks.sort(key=risk_sort_key)
+    
+    # Update Overall Status based on Top Risk (SSOT)
+    if top_risks:
+        top_sev_str = top_risks[0].get("severity", "INFO")
+        if top_sev_str in ("CRITICAL", "BLOCKED"):
+            overall_status = "BLOCKED"
+        elif top_sev_str == "WARN":
+            if overall_status != "BLOCKED":
+                 overall_status = "WARN"
+                 
+    # Force STOPPED if emergency
     if emergency_enabled:
         overall_status = "STOPPED"
-    elif health_decision == "FAIL":
-        overall_status = "BLOCKED"
-    elif not ops_run:
-        overall_status = "NO_RUN_HISTORY" # or WARN?
-    elif health_decision == "WARN":
-        overall_status = "WARN"
-    else:
-        overall_status = "OK" # Default
-        
-    # === Top Risks ===
-    top_risks = []
-    
-    # 1. Emergency
-    if emergency_enabled:
-        top_risks.append({
-            "code": "EMERGENCY_STOP",
-            "severity": "CRITICAL",
-            "message": "Emergency stop is active",
-            "evidence_refs": ["state/emergency_stop.json"]
-        })
-        
-    # 2. Health
-    health_evidence = ["reports/ops/evidence/health/health_latest.json"]
-    if health_snapshot_ref:
-        health_evidence.append(health_snapshot_ref)
-        
-    if health_decision == "FAIL":
-        top_risks.append({
-            "code": "EVIDENCE_HEALTH_FAIL", 
-            "severity": "CRITICAL", 
-            "message": "Evidence health check failed",
-            "evidence_refs": health_evidence
-        })
-    elif health_decision == "WARN":
-        top_risks.append({
-            "code": "EVIDENCE_HEALTH_WARN", 
-            "severity": "WARN", 
-            "message": "Evidence health check has warnings",
-            "evidence_refs": health_evidence
-        })
-
-    # 3. Tickets (Recent)
-    if tickets_recent["failed"] > 0:
-        top_risks.append({
-            "code": "TICKETS_FAILED",
-            "severity": "WARN",
-            "message": f"{tickets_recent['failed']} tickets failed in last {OPS_RISK_WINDOW_DAYS} days",
-            "evidence_refs": tickets_recent["failed_line_refs"]
-        })
-        
-    # 4. Portfolio (D-P.59 Stale Check)
-    if not portfolio:
-        top_risks.append({
-            "code": "NO_PORTFOLIO",
-            "severity": "WARN",
-            "message": "Portfolio data missing",
-            "evidence_refs": []
-        })
-        if overall_status == "OK":
-            overall_status = "WARN"
-    else:
-        # Check staleness
-        updated_at_str = portfolio.get("updated_at", "")
-        if updated_at_str:
-            try:
-                # Handle possible milliseconds
-                updated_dt = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
-                # Naively assume local time if no tz, or match now.tz
-                if updated_dt.tzinfo is None:
-                    updated_dt = updated_dt.replace(tzinfo=now.tzinfo)
-                
-                days_diff = (now - updated_dt).days
-                if days_diff >= PORTFOLIO_STALE_DAYS:
-                    top_risks.append({
-                        "code": "PORTFOLIO_STALE_WARN",
-                        "severity": "WARN",
-                        "message": f"Portfolio not updated for {days_diff} days (Limit: {PORTFOLIO_STALE_DAYS})",
-                        "evidence_refs": ["state/portfolio/latest/portfolio_latest.json"]
-                    })
-            except Exception:
-                pass # Parse error ignore
-
-    # 5. Order Plan (D-P.58 + P83-FIX + P102)
-    # P83-FIX: Skip ORDER_PLAN_* risks if bundle is stale (stale is root cause)
-    bundle_is_stale = validation.stale if validation else False
-    
-    op_decision = order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN"
-    op_reason = order_plan.get("reason", "") if order_plan else ""
-    
-    if op_decision == "BLOCKED" and not bundle_is_stale:
-        # P102 Risks
-        if op_reason == "NO_RECO":
-            top_risks.append({
-                "code": "ORDER_PLAN_NO_RECO",
-                "severity": "WARN", 
-                "message": "Order Plan blocked: Reco missing",
-                "evidence_refs": []
-            })
-            if overall_status == "OK": overall_status = "WARN" # or BLOCKED?
-            
-        elif op_reason == "PORTFOLIO_INCONSISTENT":
-            top_risks.append({
-                "code": "PORTFOLIO_INCONSISTENT",
-                "severity": "CRITICAL", 
-                "message": f"Portfolio Inconsistent: {order_plan.get('reason_detail')}",
-                "evidence_refs": ["state/portfolio/latest/portfolio_latest.json"]
-            })
-            overall_status = "BLOCKED" # Critical
-            
-        else:
-            # Generic Blocked
-            # P86: SSOT - Stack Umbrella + Specific Risk
-            reason_code = op_reason.split(":")[0].strip()
-            
-            # Umbrella Risk
-            top_risks.append({
-                "code": "ORDER_PLAN_BLOCKED",
-                "severity": "WARN",
-                "message": f"Order plan blocked: {reason_code}",
-                "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
-            })
-            
-            if overall_status == "OK": overall_status = "WARN"
-
-
-    # 6. Contract 5 Risks (P103)
-    if c5_decision == "BLOCKED":
-        top_risks.append({
-            "code": "CONTRACT5_REPORT_BLOCKED",
-            "severity": "WARN", # or BLOCKED? User says WARN/BLOCKED in instruction.
-            "message": f"Daily Report Blocked: {c5_report.get('reason_detail', '') if c5_report else 'Missing'}",
-            "evidence_refs": ["reports/ops/contract5/latest/ai_report_latest.json"]
-        })
-        if overall_status == "OK": overall_status = "WARN"
-        
-    elif c5_decision == "EMPTY":
-        top_risks.append({
-            "code": "CONTRACT5_REPORT_EMPTY",
-            "severity": "INFO",
-            "message": "Daily Report Empty",
-            "evidence_refs": ["reports/ops/contract5/latest/ai_report_latest.json"]
-        })
-
-    # 7. Strategy Bundle (P78/P79)
-    if validation.decision == "NO_BUNDLE":
-        top_risks.append({
-            "code": "NO_BUNDLE",
-            "severity": "WARN", 
-            "message": "Strategy Bundle missing",
-            "evidence_refs": []
-        })
-        if overall_status == "OK":
-            overall_status = "WARN"
-    else:
-        # SPoT: validation.stale
-        if validation.stale:
-            top_risks.append({
-                "code": "BUNDLE_STALE_WARN",
-                "severity": "WARN",
-                "message": f"Strategy Bundle Stale: {validation.stale_reason}",
-                "evidence_refs": ["state/strategy_bundle/latest/strategy_bundle_latest.json"]
-            })
-            # Ops Summary does not mandate Fail-Closed for stale bundle, but Reco does.
-            # Here we just report risk.
-            if overall_status == "OK":
-                 overall_status = "WARN"
-
-    # === Reco (For Daily Summary logic) ===
-    reco = safe_load_json(RECO_LATEST)
-    
-    reco_decision = reco.get("decision", "MISSING_RECO") if reco else "MISSING_RECO"
-    reco_reason = reco.get("reason", "") if reco else ""
-    
-    source_bundle_id = None
-    if reco and reco.get("source_bundle"):
-        source_bundle_id = reco["source_bundle"].get("bundle_id")
-        
-    # Find latest reco snapshot
-    reco_snapshot_ref = None
-    reco_snap_dir = BASE_DIR / "reports" / "live" / "reco" / "snapshots"
-    if reco_snap_dir.exists():
-        snaps = sorted(reco_snap_dir.glob("reco_*.json"), reverse=True)
-        if snaps:
-            reco_snapshot_ref = f"reports/live/reco/snapshots/{snaps[0].name}"
-
-    reco_summary = {
-        "decision": reco_decision,
-        "reason": reco_reason,
-        "latest_ref": "reports/live/reco/latest/reco_latest.json",
-        "snapshot_ref": reco_snapshot_ref,
-        "source_bundle_id": source_bundle_id
-    }
-    
-    # Reco Risks
-    if reco_decision == "MISSING_RECO":
-        top_risks.append({
-            "code": "NO_RECO_YET",
-            "severity": "WARN",
-            "message": "Reco report missing",
-            "evidence_refs": []
-        })
-        if overall_status == "OK":
-            overall_status = "WARN"
-            
-    elif reco_decision == "EMPTY_RECO":
-        top_risks.append({
-            "code": "RECO_EMPTY", 
-            "severity": "WARN",
-            "message": f"Reco Empty: {reco_reason}",
-            "evidence_refs": ["reports/live/reco/latest/reco_latest.json"]
-        })
-        if overall_status == "OK":
-            overall_status = "WARN"
-            
-    elif reco_decision == "BLOCKED":
-        # Check if bundle related
-        if "BUNDLE" in reco_reason:
-            top_risks.append({
-                "code": "STALE_BUNDLE_BLOCKS_RECO",
-                "severity": "WARN",
-                "message": f"Reco blocked by bundle: {reco_reason}",
-                "evidence_refs": ["reports/live/reco/latest/reco_latest.json"]
-            })
-            if overall_status == "OK":
-                overall_status = "WARN"
 
     # Construct Summary
     summary = {
