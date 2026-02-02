@@ -167,193 +167,90 @@ BUNDLE_STALE=$(curl -s "${BASE_URL}/api/strategy_bundle/latest" | python3 -c 'im
 # ============================================================================
 # Step 4: Live Cycle Run (Only if OK)
 # ============================================================================
-CYCLE_RESULT="SKIPPED"
-CYCLE_DECISION="SKIPPED"
-CYCLE_REASON="OPS_BLOCKED"
-CYCLE_DELIVERY="NONE"
-CYCLE_SNAPSHOT=""
-
-if [ $EXIT_CODE -eq 0 ]; then
-    echo ""
-    echo "$LOG_PREFIX [4/7] Running Live Cycle..."
-    CYCLE_RESP=$(curl -s -X POST "${BASE_URL}/api/live/cycle/run?confirm=true")
-    if [ -z "$CYCLE_RESP" ]; then
-        echo "$LOG_PREFIX ❌ Live Cycle run failed"
-        send_incident "LIVE_FAILED" "Step4" "Live Cycle API returned empty"
-        exit 3
-    fi
-
-    # Parse cycle result
-    CYCLE_PARSED=$(curl -s "${BASE_URL}/api/live/cycle/latest" | python3 -c '
-import json,sys
-try:
-    d = json.load(sys.stdin)
-    row = (d.get("rows") or [{}])[0]
-    result = row.get("result", "UNKNOWN")
-    decision = row.get("decision", "UNKNOWN")
-    decision = row.get("decision", "UNKNOWN")
-    reason = row.get("reason", "UNKNOWN")
-    detail = row.get("reason_detail", "")
-    push = row.get("push") or {}
-    delivery = push.get("delivery_actual", "UNKNOWN")
-    snapshot_ref = row.get("snapshot_ref") or ""
-    print(f"CYCLE_RESULT:{result}")
-    print(f"CYCLE_DECISION:{decision}")
-    print(f"CYCLE_REASON:{reason}")
-    print(f"CYCLE_DETAIL:{detail}")
-    print(f"CYCLE_DELIVERY:{delivery}")
-    print(f"CYCLE_SNAPSHOT:{snapshot_ref}")
-except Exception as e:
-    print(f"PARSE_ERROR:{e}")
-    sys.exit(1)
-')
-
-    if echo "$CYCLE_PARSED" | grep -q "^PARSE_ERROR:"; then
-        echo "$LOG_PREFIX ❌ Live Cycle parse failed"
-        send_incident "LIVE_FAILED" "Step4" "Live Cycle parse error"
-        exit 3
-    fi
-
-    CYCLE_RESULT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_RESULT:" | cut -d: -f2-)
-    CYCLE_DECISION=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DECISION:" | cut -d: -f2-)
-    CYCLE_REASON=$(echo "$CYCLE_PARSED" | grep "^CYCLE_REASON:" | cut -d: -f2-)
-    CYCLE_DETAIL=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DETAIL:" | cut -d: -f2-)
-    CYCLE_DELIVERY=$(echo "$CYCLE_PARSED" | grep "^CYCLE_DELIVERY:" | cut -d: -f2-)
-    CYCLE_SNAPSHOT=$(echo "$CYCLE_PARSED" | grep "^CYCLE_SNAPSHOT:" | cut -d: -f2-)
-    # Check result
-    if [ "$CYCLE_RESULT" = "FAILED" ]; then
-        echo "$LOG_PREFIX ❌ Live Cycle FAILED: $CYCLE_REASON"
-        send_incident "LIVE_FAILED" "Step4" "$CYCLE_REASON"
-        exit 3
-    fi
-
-    echo "$LOG_PREFIX ✓ Live Cycle: result=$CYCLE_RESULT decision=$CYCLE_DECISION delivery=$CYCLE_DELIVERY"
-
-    # Check if BLOCKED
-    if [ "$CYCLE_DECISION" = "BLOCKED" ]; then
-        echo "$LOG_PREFIX ⚠️ Live Cycle BLOCKED: $CYCLE_REASON (Continuing to push)"
-        # Don't exit here, just set flag to return 2 at the end
-        EXIT_CODE=2
-    fi
-fi
 
 # ============================================================================
-# Step 5: Order Plan Regenerate (D-P.58) (P81-FIX: Always Run for fresh asof)
+# Step 4: Reco Regenerate (P104)
 # ============================================================================
-ORDER_DECISION="SKIPPED"
-ORDER_REASON="OPS_BLOCKED"
-
-# P81-FIX v2.2: Run Order Plan even when EXIT_CODE=2 (BLOCKED)
-# This ensures order_plan.latest asof is always fresh (for SSOT)
 echo ""
-echo "$LOG_PREFIX [5/7] Regenerating Order Plan..."
-ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true")
+echo "$LOG_PREFIX [4/7] Regenerating Reco (RECO)..."
+RECO_RESP=$(curl -s -X POST "${BASE_URL}/api/reco/regenerate?confirm=true")
 
-if echo "$ORDER_RESP" | grep -q '"decision"'; then
-    ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
-    ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
-    ORDER_DETAIL=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason_detail",""))' 2>/dev/null || echo "")
-    
-    echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
-    
-    if [ "$ORDER_DECISION" = "BLOCKED" ]; then
-        # Order Plan BLOCKED is not fatal, just warning (e.g. no portfolio)
-        echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
-        # We don't exit here, just log it. Stale risk is handled in Ops Summary.
-    fi
-else
-    echo "$LOG_PREFIX ❌ Order Plan regen failed: $ORDER_RESP"
-    send_incident "ORDER_PLAN_FAILED" "Step5" "Order plan API failed"
+if ! echo "$RECO_RESP" | grep -q '"decision"'; then
+    echo "$LOG_PREFIX ❌ Reco regen failed: $RECO_RESP"
+    send_incident "OPS_FAILED" "Step4" "Reco API failed"
     exit 3
 fi
 
-# ============================================================================
-# Step 6: Snapshot Verification (Only if Cycle Ran)
-# ============================================================================
-SNAPSHOT_OK="N/A"
-if [ -n "$CYCLE_SNAPSHOT" ]; then
-    echo ""
-    echo "$LOG_PREFIX [6/7] Verifying snapshot..."
-    RESOLVE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -G "${BASE_URL}/api/evidence/resolve" --data-urlencode "ref=${CYCLE_SNAPSHOT}")
-    if [ "$RESOLVE_STATUS" = "200" ]; then
-        SNAPSHOT_OK="OK"
-    else
-        echo "$LOG_PREFIX ⚠️ Snapshot resolve: HTTP $RESOLVE_STATUS (non-fatal)"
-        SNAPSHOT_OK="SKIP"
-    fi
-    echo "$LOG_PREFIX ✓ Snapshot verification: $SNAPSHOT_OK"
+RECO_DECISION=$(echo "$RECO_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+RECO_REASON=$(echo "$RECO_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
+echo "$LOG_PREFIX ✓ Reco: $RECO_DECISION ($RECO_REASON)"
+
+# Fail-Closed Check for Reco
+if [ "$RECO_DECISION" = "BLOCKED" ] || [ "$RECO_DECISION" = "MISSING_RECO" ]; then
+    echo "$LOG_PREFIX ⚠️ Reco BLOCKED/MISSING"
+    # Proceed to Order Plan (it handles fail-closed)
+    EXIT_CODE=2
 fi
 
+
 # ============================================================================
-# Step 6b (Real Step 7): Daily Status Push (Always Run if not failed fatally)
+# Step 5: Order Plan Regenerate (P104)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [7/7] Sending Daily Status Push (with reco details)..."
+echo "$LOG_PREFIX [5/7] Regenerating Order Plan (ORDER_PLAN)..."
+ORDER_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan/regenerate?confirm=true")
 
-PUSH_RESP=$(curl -s -X POST "${BASE_URL}/api/push/daily_status/send?confirm=true")
-
-if echo "$PUSH_RESP" | grep -q '"result":"OK"'; then
-    PUSH_SKIPPED=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("true" if d.get("skipped") else "false")' 2>/dev/null || echo "false")
-    PUSH_DELIVERY=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("delivery_actual","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
-    PUSH_RECO_COUNT=$(echo "$PUSH_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reco_items_count",0))' 2>/dev/null || echo "0")
-    
-    if [ "$PUSH_SKIPPED" = "true" ]; then
-        echo "$LOG_PREFIX ✓ Daily PUSH: SKIPPED (already sent today)"
-    else
-        echo "$LOG_PREFIX ✓ Daily PUSH: SENT delivery=$PUSH_DELIVERY reco_items=$PUSH_RECO_COUNT"
-    fi
-else
-    echo "$LOG_PREFIX ⚠️ Daily PUSH failed: $PUSH_RESP (non-fatal)"
-    send_incident "PUSH_FAILED" "Step6" "Daily status push failed"
+if ! echo "$ORDER_RESP" | grep -q '"decision"'; then
+    echo "$LOG_PREFIX ❌ Order Plan regen failed: $ORDER_RESP"
+    send_incident "OPS_FAILED" "Step5" "Order Plan API failed"
+    exit 3
 fi
 
+ORDER_DECISION=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
+ORDER_DETAIL=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason_detail",""))' 2>/dev/null || echo "")
+
+echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
+
+if [ "$ORDER_DECISION" = "BLOCKED" ]; then
+    echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
+    EXIT_CODE=2
+fi
+
+
 # ============================================================================
-# Step 7: Daily Summary Log (P72 Standard)
+# Step 6: Contract 5 Regenerate (P104)
 # ============================================================================
 echo ""
-echo "$LOG_PREFIX [7/7] Generating Daily Summary..."
+echo "$LOG_PREFIX [6/7] Regenerating Contract 5 (CONTRACT5)..."
+C5_RESP=$(curl -s -X POST "${BASE_URL}/api/contract5/regenerate?confirm=true")
 
-# Fetch Reco Status (SPoT) - Single Source /api/reco/latest
-# P77-FIX5: Strict Normalization (No UNKNOWN, No GENERATED)
-RECO_JSON=$(curl -s "${BASE_URL}/api/reco/latest" 2>/dev/null || echo "{}")
+if ! echo "$C5_RESP" | grep -q '"decision"'; then
+    echo "$LOG_PREFIX ❌ Contract 5 regen failed: $C5_RESP"
+    send_incident "OPS_FAILED" "Step6" "Contract 5 API failed"
+    exit 3
+fi
 
-# Reco Decision Normalization
-# Allow: OK, EMPTY_RECO, BLOCKED, MISSING_RECO
-# Map: GENERATED -> OK, UNKNOWN -> MISSING_RECO, anything else -> MISSING_RECO (safeguard)
-RECO_DECISION=$(echo "$RECO_JSON" | python3 -c '
-import json, sys
-try:
-    d = json.load(sys.stdin)
-    # 1. Unwrap
-    report = d.get("report") or d
-    dec = report.get("decision")
-    
-    # 2. Normalize
-    if not dec:
-        print("MISSING_RECO")
-    elif dec == "GENERATED" or dec == "OK" or dec == "COMPLETED":
-        print("OK")
-    elif dec in ["EMPTY_RECO", "BLOCKED", "MISSING_RECO"]:
-        print(dec)
-    else:
-        # Catch-all for UNKNOWN or unexpected values
-        print("MISSING_RECO")
-except:
-    print("MISSING_RECO")
-')
+C5_DECISION=$(echo "$C5_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("decision","UNKNOWN"))' 2>/dev/null || echo "UNKNOWN")
+C5_REASON=$(echo "$C5_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null || echo "")
 
-RECO_REASON=$(echo "$RECO_JSON" | python3 -c '
-import json, sys
-try:
-    d = json.load(sys.stdin)
-    report = d.get("report") or d
-    print(report.get("reason", "MISSING_RECO"))
-except:
-    print("MISSING_RECO")
-')
+echo "$LOG_PREFIX ✓ Contract 5: $C5_DECISION ($C5_REASON)"
 
-# Fetch Risks from Ops Summary
-# P77-FIX5: Enforce Risk Consistency
+if [ "$C5_DECISION" = "BLOCKED" ]; then
+    echo "$LOG_PREFIX ⚠️ Contract 5 BLOCKED: $C5_REASON"
+    EXIT_CODE=2
+elif [ "$C5_DECISION" = "EMPTY" ]; then
+    echo "$LOG_PREFIX ℹ️ Contract 5 EMPTY: $C5_REASON"
+fi
+
+
+# ============================================================================
+# Step 7: Daily Summary Log (P72 Standard + P104 Sealing)
+# ============================================================================
+echo ""
+echo "$LOG_PREFIX [7/7] Generating Daily Summary (DAILY_SUMMARY)..."
+
+# Fetch Risks (Same Logic)
 RISKS_JSON="[]"
 OPS_SUMMARY_JSON=$(curl -s "${BASE_URL}/api/ops/summary/latest" 2>/dev/null)
 if [ -n "$OPS_SUMMARY_JSON" ]; then
@@ -361,7 +258,6 @@ if [ -n "$OPS_SUMMARY_JSON" ]; then
 import json, sys
 try:
     d = json.load(sys.stdin)
-    # Unwrap rows if needed
     row = (d.get("rows") or [d])[0]
     risks = [r.get("code") for r in row.get("top_risks", [])]
     print(json.dumps(risks))
@@ -370,75 +266,56 @@ except:
 ')
 fi
 
-# Force Risk Consistency: If Order Plan is BLOCKED, Risks MUST NOT be empty
-if [ "$ORDER_DECISION" = "BLOCKED" ]; then
-    # Check if RISKS_JSON is truly empty array "[]"
-    if [ "$RISKS_JSON" = "[]" ]; then
-        # Force inject the reason or generic block code
-        RISKS_JSON="[\"ORDER_PLAN_BLOCKED\"]"
-    else
-        # If not empty, ensure it contains the block reason if possible? 
-        # But if it's not empty, it likely has the cause (e.g. NO_BUNDLE). 
-        # User requirement: "Reason=ORDER_PLAN_BLOCKED이면 risks에 반드시 ORDER_PLAN_BLOCKED 포함"
-        # We can append or checks. Easier to ensure strictly for this case.
-        if [ "$ORDER_REASON" = "ORDER_PLAN_BLOCKED" ]; then
-             RISKS_JSON=$(echo "$RISKS_JSON" | python3 -c "import json,sys; r=json.load(sys.stdin); r.append('ORDER_PLAN_BLOCKED') if 'ORDER_PLAN_BLOCKED' not in r else None; print(json.dumps(r))")
-        fi
-    fi
-fi
-
-# P99-FIX2-FIX1: Use field names matching print_daily_summary.py
-# Construct JSON manually from bash variables
+# Construct JSON for Printer
 SUMMARY_OUTPUT=$(cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py"
 {
   "overall_status": "$OPS_STATUS",
-  "push": {
-    "last_send_decision": "$CYCLE_DECISION"
-  },
   "strategy_bundle": {
-    "stale": $BUNDLE_STALE,
-    "stale_reason": "${BUNDLE_STALE_REASON:-}"
+    "stale": $BUNDLE_STALE
   },
   "reco": {
-    "decision": "$CYCLE_DECISION",
-    "reason": "$CYCLE_REASON",
-    "reason_detail": "$CYCLE_DETAIL"
+    "decision": "$RECO_DECISION",
+    "reason": "$RECO_REASON"
   },
   "order_plan": {
     "decision": "$ORDER_DECISION",
     "reason": "$ORDER_REASON",
     "reason_detail": "$ORDER_DETAIL"
   },
-  "top_risks": $RISKS_JSON
+  "contract5": {
+    "decision": "$C5_DECISION",
+    "reason": "$C5_REASON"
+  },
+  "top_risks": $RISKS_JSON,
+  "push": { "last_send_decision": "SKIPPED_P104" }
 }
 EOF
 )
 
 # Output handling (P77-FIX6: Dedicated Logs)
-# 1. Stdout (for daily_ops.log) with LOG_PREFIX
 echo "$LOG_PREFIX $SUMMARY_OUTPUT"
 
-# 2. Dedicated Logs (Reliable Verification) - with timestamp wrapper
+# Logs (Ensure mtime update)
 mkdir -p logs
+# 'tee' updates file content and mtime
 printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$SUMMARY_OUTPUT" | tee logs/daily_summary.latest >> logs/daily_summary.log
-# Note: print_daily_summary.py also writes logs/daily_summary.detail.latest internally
-
 
 # ============================================================================
 # Final Summary
 # ============================================================================
 echo ""
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
-echo "$LOG_PREFIX  DAILY OPS COMPLETE"
-echo "$LOG_PREFIX  Ops: $OPS_STATUS | Cycle: $CYCLE_RESULT $CYCLE_DECISION"
-echo "$LOG_PREFIX  Delivery: $CYCLE_DELIVERY | Snapshot: $SNAPSHOT_OK"
+echo "$LOG_PREFIX  DAILY OPS COMPLETE (P104 Sealing)"
+echo "$LOG_PREFIX  Ops: $OPS_STATUS | Reco: $RECO_DECISION | Order: $ORDER_DECISION"
+echo "$LOG_PREFIX  Contract5: $C5_DECISION"
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 
 if [ "$EXIT_CODE" -eq 0 ]; then
     echo "$LOG_PREFIX ✅ All checks passed"
 elif [ "$EXIT_CODE" -eq 2 ]; then
-    echo "$LOG_PREFIX ⚠️ Ops Completed with Warnings (BLOCKED)"
+    echo "$LOG_PREFIX ⚠️ Ops Completed with Warnings (BLOCKED/EMPTY)"
 else
     echo "$LOG_PREFIX ❌ Ops Failed (Exit Code: $EXIT_CODE)"
 fi
 exit $EXIT_CODE
+

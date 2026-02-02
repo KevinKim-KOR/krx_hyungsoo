@@ -55,6 +55,9 @@ def main():
         
         order = d.get("order_plan", {}) or {}
         op_decision = order.get("decision", "MISSING_OP")
+
+        c5 = d.get("contract5", {}) or {}
+        c5_decision = c5.get("decision", "MISSING_C5")
         
         # (E) risks: code만 추출 (dict에서 code 필드만)
         top_risks_raw = d.get("top_risks") or []
@@ -150,7 +153,7 @@ def main():
         detail_safe = str(detail_msg).replace("\n", " ").replace("\r", "").replace('"', "'").strip()[:240]
 
         # 4. Output
-        summary_line = f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco_decision} order_plan={op_decision} Reason={reason} risks={risks_str}"
+        summary_line = f"DAILY_SUMMARY ops={ops} live={live_res} bundle_stale={bundle_stale} reco={reco_decision} order_plan={op_decision} c5={c5_decision} Reason={reason} risks={risks_str}"
         print(summary_line)
 
         # P87-FIX: Write Detail Log to File
