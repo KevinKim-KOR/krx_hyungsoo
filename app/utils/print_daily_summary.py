@@ -108,14 +108,28 @@ def main():
             except Exception:
                 detail_msg = "DETAIL_SOURCE_UNAVAILABLE"
 
-        elif reason == "BUNDLE_STALE_WARN":
-             detail_msg = bundle.get("stale_reason", "") or bundle.get("summary", {}).get("stale_reason", "") or "Strategy bundle is stale"
-
-        elif reason == "EMPTY_RECO" or reason.startswith("RECO_"):
-             detail_msg = reco.get("reason_detail", "") or "MISSING_DETAIL"
-
         elif reason.startswith("OPS_"):
              detail_msg = d.get("ops_summary", {}).get("message", "")
+
+        else:
+             # P106: All other cases (Bundle, Order, Reco) use the message logic already in generate_ops_summary
+             # We can try to extract from top_risks if available.
+             if risks and top_risks_raw:
+                  # top_risks_raw is a list of dicts. We find the one matching 'reason' code.
+                  # Since risks[0] is reason, top_risks_raw[0] should be it (sorted).
+                  # Let's verify code matches first.
+                  first_risk_dict = top_risks_raw[0]
+                  if first_risk_dict.get("code") == reason:
+                       detail_msg = first_risk_dict.get("message", "")
+                  else:
+                       # Fallback: find it
+                       for r in top_risks_raw:
+                            if r.get("code") == reason:
+                                 detail_msg = r.get("message", "")
+                                 break
+        
+        if not detail_msg:
+             detail_msg = "Detail not available"
         
         # 3. Sanitize
         # P88: Strict Sanitize (1 line, escape quotes, 240 chars)
