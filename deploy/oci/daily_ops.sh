@@ -311,11 +311,35 @@ echo "$LOG_PREFIX  Contract5: $C5_DECISION"
 echo "$LOG_PREFIX ═══════════════════════════════════════════════════════════════"
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-    echo "$LOG_PREFIX ✅ All checks passed"
+    echo "$LOG_PREFIX ✅ Ops Checks: PASS"
 elif [ "$EXIT_CODE" -eq 2 ]; then
-    echo "$LOG_PREFIX ⚠️ Ops Completed with Warnings (BLOCKED/EMPTY)"
+    echo "$LOG_PREFIX ⚠️ Ops Checks: WARN (BLOCKED/EMPTY)"
 else
-    echo "$LOG_PREFIX ❌ Ops Failed (Exit Code: $EXIT_CODE)"
+    echo "$LOG_PREFIX ❌ Ops Checks: FAILED (Internal Exit: $EXIT_CODE)"
 fi
-exit $EXIT_CODE
 
+# ============================================================================
+# Step 8: Final Gate Check & Exit Code Sealing (P104-FIX1)
+# ============================================================================
+echo ""
+echo "$LOG_PREFIX [8/8] Final Gate Check..."
+
+# Run gate check and capture output while showing it
+GATE_OUT_FILE=$(mktemp)
+bash deploy/oci/steady_gate_check.sh | tee "$GATE_OUT_FILE"
+
+# Determine Exit Code based on Gate (P104-FIX1 Rule)
+# PASS -> 0, WARN -> 2, FAIL/Other -> 1
+if grep -q "OCI STEADY-STATE: PASS" "$GATE_OUT_FILE"; then
+    FINAL_EXIT_CODE=0
+    echo "$LOG_PREFIX ✅ Gate PASS -> Exit 0"
+elif grep -q "OCI STEADY-STATE: WARN" "$GATE_OUT_FILE"; then
+    FINAL_EXIT_CODE=2
+    echo "$LOG_PREFIX ⚠️ Gate WARN -> Exit 2"
+else
+    FINAL_EXIT_CODE=1
+    echo "$LOG_PREFIX ❌ Gate FAIL/UNKNOWN -> Exit 1"
+fi
+
+rm -f "$GATE_OUT_FILE"
+exit $FINAL_EXIT_CODE
