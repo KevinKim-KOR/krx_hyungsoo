@@ -27,6 +27,14 @@ data/cache/
 data/output/
 data/state/
 
+# Reports (Runtime Generated)
+reports/live/**/*.json
+reports/live/**/*.jsonl
+reports/ops/**/*.json
+reports/ops/**/*.jsonl
+reports/phase_c/**/*.json
+reports/phase_c/**/*.jsonl
+
 # 런타임 락 파일
 .locks/
 
@@ -62,3 +70,4 @@ venv/
 .venv/
 
 state/cache/etf_history_cache.json
+state/portfolio/latest/portfolio_latest.json

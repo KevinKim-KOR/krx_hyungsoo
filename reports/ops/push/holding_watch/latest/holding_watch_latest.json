@@ -1,7 +1,0 @@
-{
-  "schema": "WATCHER_STATUS_V1",
-  "asof": "2026-02-01T17:47:57.155155",
-  "status": "SKIPPED",
-  "reason": "OUTSIDE_SESSION",
-  "alerts": 0
-}
