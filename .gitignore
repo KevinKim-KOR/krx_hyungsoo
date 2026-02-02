@@ -60,3 +60,5 @@ momentum-etf/
 # 가상 환경
 venv/
 .venv/
+
+state/cache/etf_history_cache.json

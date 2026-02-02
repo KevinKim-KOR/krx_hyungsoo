@@ -89,22 +89,157 @@ def _load_price_history_cache() -> Tuple[Optional[Dict], str]:
     return None, "NOT_FOUND"
 
 
-def _fetch_price_history(tickers: List[str]) -> Tuple[Optional[Dict], str]:
+def _fetch_naver_daily_chart(tickers: List[str]) -> Tuple[Optional[Dict], str]:
     """
-    Fetch price history via provider (NO MOCK DATA).
+    P100-FIX1: Fetch daily OHLCV from Naver siseJson.naver API.
+    Response is NOT valid JSON - needs special parsing.
     
     Returns:
         Tuple[data or None, data_source]
     """
-    try:
-        from app.providers.market_data import MarketDataProvider
-        provider = MarketDataProvider(provider_type="naver")  # NOT mock
-        result = provider.fetch_realtime(tickers)
+    import requests
+    from datetime import datetime, timedelta
+    
+    end_date = datetime.now().strftime("%Y%m%d")
+    start_date = (datetime.now() - timedelta(days=30)).strftime("%Y%m%d")
+    
+    results = {}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://finance.naver.com"
+    }
+    
+    for ticker in tickers:
+        try:
+            url = f"https://api.finance.naver.com/siseJson.naver?symbol={ticker}&requestType=1&startTime={start_date}&endTime={end_date}&timeframe=day"
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.ok and len(resp.text) > 100:
+                # Parse non-standard JSON response
+                # Format: [["날짜","시가","고가","저가","종가","거래량","외국인소진율"],["20260201",72000,73000,71500,72500,1234567,28.04],...]
+                text = resp.text.strip()
+                # Replace single quotes with double quotes for JSON compatibility
+                text = text.replace("'", '"')
+                try:
+                    import json
+                    data = json.loads(text)
+                    if isinstance(data, list) and len(data) > 1:
+                        # First row is header, rest are data rows
+                        # Format: [date, open, high, low, close, volume, foreign_ratio]
+                        prices = []
+                        for row in data[1:]:  # Skip header
+                            if isinstance(row, list) and len(row) >= 5:
+                                prices.append({
+                                    "date": str(row[0]),
+                                    "open": float(row[1]) if row[1] else 0,
+                                    "high": float(row[2]) if row[2] else 0,
+                                    "low": float(row[3]) if row[3] else 0,
+                                    "close": float(row[4]) if row[4] else 0,
+                                    "volume": int(row[5]) if len(row) > 5 and row[5] else 0
+                                })
+                        if prices:
+                            # Calculate change_pct from latest close vs previous
+                            latest_close = prices[-1]["close"] if prices else 0
+                            prev_close = prices[-2]["close"] if len(prices) > 1 else latest_close
+                            change_pct = ((latest_close / prev_close) - 1) * 100 if prev_close > 0 else 0
+                            
+                            results[ticker] = {
+                                "prices": prices,
+                                "price": latest_close,
+                                "change_pct": round(change_pct, 2),
+                                "data_source": "NAVER_DAILY"
+                            }
+                except Exception:
+                    pass  # Skip this ticker on parse error
+        except Exception:
+            pass  # Skip this ticker on fetch error
+    
+    if results:
+        # Save to etf_history_cache.json for future use
+        try:
+            cache_path = BASE_DIR / "state" / "cache" / "etf_history_cache.json"
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
+        return results, "NAVER_DAILY"
+    
+    return None, "NAVER_DAILY_FAILED"
+
+
+def _fetch_yahoo_chart(tickers: List[str]) -> Tuple[Optional[Dict], str]:
+    """
+    P100-FIX1: Fallback - Yahoo Finance v8/finance/chart (no yfinance dependency).
+    
+    Returns:
+        Tuple[data or None, data_source]
+    """
+    import requests
+    
+    results = {}
+    for ticker in tickers:
+        try:
+            # Yahoo uses .KS suffix for KRX stocks
+            yahoo_ticker = f"{ticker}.KS"
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_ticker}?range=1mo&interval=1d"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.ok:
+                data = resp.json()
+                result = data.get("chart", {}).get("result", [])
+                if result:
+                    quotes = result[0].get("indicators", {}).get("quote", [{}])[0]
+                    timestamps = result[0].get("timestamp", [])
+                    closes = quotes.get("close", [])
+                    if closes and len(closes) >= 2:
+                        valid_closes = [c for c in closes if c is not None]
+                        if len(valid_closes) >= 2:
+                            latest = valid_closes[-1]
+                            prev = valid_closes[-2]
+                            change_pct = ((latest / prev) - 1) * 100 if prev > 0 else 0
+                            results[ticker] = {
+                                "price": latest,
+                                "change_pct": round(change_pct, 2),
+                                "prices": [{"close": c} for c in valid_closes[-20:]],
+                                "data_source": "YAHOO"
+                            }
+        except Exception:
+            pass
+    
+    if results:
+        return results, "YAHOO"
+    return None, "YAHOO_FAILED"
+
+
+def _fetch_price_history(tickers: List[str]) -> Tuple[Optional[Dict], str]:
+    """
+    P100-FIX1: Fetch price history with priority chain:
+    1. Naver Daily Chart (siseJson.naver) - primary
+    2. Yahoo Finance Chart - fallback
+    
+    Returns:
+        Tuple[data or None, data_source]
+    """
+    # Try Naver first
+    result, source = _fetch_naver_daily_chart(tickers)
+    if result and len(result) >= len(tickers) * 0.5:  # At least 50% success
+        return result, source
+    
+    # Fallback to Yahoo
+    yahoo_result, yahoo_source = _fetch_yahoo_chart(tickers)
+    if yahoo_result:
         if result:
-            return result, "FETCH"
-        return None, "FETCH_FAILED"
-    except Exception as e:
-        return None, f"FETCH_ERROR"
+            # Merge: Naver data + Yahoo for missing tickers
+            for ticker, data in yahoo_result.items():
+                if ticker not in result:
+                    result[ticker] = data
+            return result, f"{source}_THEN_YAHOO"
+        return yahoo_result, yahoo_source
+    
+    # Return whatever we got from Naver (even if partial)
+    if result:
+        return result, source
+    
+    return None, "FETCH_FAILED"
 
 
 def _calculate_momentum_and_volatility(
@@ -114,44 +249,61 @@ def _calculate_momentum_and_volatility(
 ) -> Tuple[Optional[float], Optional[float], str]:
     """
     Calculate momentum (20d return) and volatility (14d stdev) for a ticker.
+    P100-FIX1: Updated to handle NAVER_DAILY and YAHOO sources with full price history.
     
     Returns:
         Tuple[momentum_pct, volatility_pct, status_detail]
     """
-    # If we have full history cache
-    if data_source == "CACHE":
-        ticker_data = data.get(ticker, {})
+    ticker_data = data.get(ticker, {})
+    
+    # P100-FIX1: Handle NAVER_DAILY and YAHOO sources (have prices array)
+    if "NAVER_DAILY" in data_source or "YAHOO" in data_source or data_source == "CACHE":
         prices = ticker_data.get("prices", [])
-        if len(prices) >= 20:
-            closes = [p.get("close", 0) for p in prices[-20:]]
-            if closes[0] > 0 and closes[-1] > 0:
+        if prices and len(prices) >= 2:
+            # Extract closes - handle both {"close": x} and {"close": x, "open": y, ...} formats
+            closes = []
+            for p in prices[-20:]:  # Use last 20 days
+                if isinstance(p, dict):
+                    close = p.get("close")
+                    if close and close > 0:
+                        closes.append(float(close))
+            
+            if len(closes) >= 2:
+                # Momentum: return over period
                 momentum = ((closes[-1] / closes[0]) - 1.0) * 100
+                
                 # Volatility: stdev of daily returns
                 returns = []
                 for i in range(1, len(closes)):
                     if closes[i-1] > 0:
                         returns.append((closes[i] / closes[i-1] - 1.0) * 100)
-                volatility = (sum((r - sum(returns)/len(returns))**2 for r in returns) / len(returns)) ** 0.5 if returns else 0
-                return momentum, volatility, "OK"
+                
+                if returns:
+                    mean_return = sum(returns) / len(returns)
+                    volatility = (sum((r - mean_return)**2 for r in returns) / len(returns)) ** 0.5
+                else:
+                    volatility = 0
+                
+                return momentum, volatility, "FULL_HISTORY"
+        
+        # Fallback: if prices array is empty but has change_pct
+        change_pct = ticker_data.get("change_pct")
+        if change_pct is not None:
+            mom = float(change_pct)
+            vol = abs(mom) * 0.5
+            return mom, vol, "PROXY_CHANGE_PCT"
+        
         return None, None, "INSUFFICIENT_HISTORY"
     
-    # If only realtime cache, use change_pct as proxy
-    if data_source == "CACHE_REALTIME_ONLY":
-        ticker_data = data.get(ticker, {})
+    # Handle realtime-only cache (legacy)
+    if data_source in ("CACHE_REALTIME_ONLY", "FETCH_NAVER") or "CACHE_THEN" in data_source:
         if isinstance(ticker_data, dict) and "data" in ticker_data:
             ticker_data = ticker_data["data"]
         change_pct = ticker_data.get("change_pct")
         if change_pct is not None:
-            # Use daily change as momentum proxy (not ideal but deterministic)
-            return float(change_pct), abs(float(change_pct)) * 0.5, "PROXY_CHANGE_PCT"
-        return None, None, "NO_CHANGE_PCT"
-    
-    # FETCH data
-    if data_source == "FETCH":
-        ticker_data = data.get(ticker, {})
-        change_pct = ticker_data.get("change_pct")
-        if change_pct is not None:
-            return float(change_pct), abs(float(change_pct)) * 0.5, "PROXY_CHANGE_PCT"
+            mom = float(change_pct)
+            vol = abs(mom) * 0.5
+            return mom, vol, "PROXY_CHANGE_PCT"
         return None, None, "NO_CHANGE_PCT"
     
     return None, None, "UNKNOWN_SOURCE"
@@ -188,14 +340,33 @@ def score_etfs(
         result["reason_detail"] = sanitize_reason_detail("No ETF tickers provided")
         return result
     
+    # P100-FIX1: Enhanced data source priority
     # 1. Try to load cache
     cache_data, data_source = _load_price_history_cache()
     
-    # 2. If no cache, try fetch (unless skip_fetch)
-    if cache_data is None and not skip_fetch:
-        cache_data, data_source = _fetch_price_history(universe)
+    # 2. Check if cache has enough universe coverage
+    cached_universe_count = 0
+    if cache_data:
+        for ticker in universe:
+            ticker_data = cache_data.get(ticker) or cache_data.get(ticker, {}).get("data")
+            if ticker_data:
+                cached_universe_count += 1
     
-    # 3. Still no data → SKIPPED
+    # 3. If cache doesn't cover universe sufficiently, try fetch
+    if cached_universe_count < len(universe) and not skip_fetch:
+        fetch_data, fetch_source = _fetch_price_history(universe)
+        if fetch_data:
+            # Merge fetch data with cache data (or use fetch if cache empty)
+            if cache_data:
+                # Merge: prefer fresh fetch data
+                for ticker, ticker_data in fetch_data.items():
+                    cache_data[ticker] = ticker_data
+                data_source = f"CACHE_THEN_{fetch_source}"
+            else:
+                cache_data = fetch_data
+                data_source = fetch_source
+    
+    # 4. Still no data → SKIPPED
     if cache_data is None:
         result["reason"] = "DATA_MISSING"
         result["data_source"] = data_source
@@ -203,7 +374,7 @@ def score_etfs(
         result["input_fingerprint"] = compute_input_fingerprint({"universe": universe, "source": data_source})
         return result
     
-    # 4. Calculate momentum and volatility for each ticker
+    # 5. Calculate momentum and volatility for each ticker
     scored_items = []
     for ticker in universe:
         momentum, volatility, calc_status = _calculate_momentum_and_volatility(ticker, cache_data, data_source)
@@ -219,10 +390,10 @@ def score_etfs(
     result["valid_count"] = valid_count
     result["data_source"] = data_source
     
-    # 5. If not enough valid data → SKIPPED
+    # 6. If not enough valid data → SKIPPED
     if valid_count == 0:
         result["reason"] = "DATA_MISSING"
-        result["reason_detail"] = sanitize_reason_detail(f"No valid ETF data in cache, tried {len(universe)} tickers")
+        result["reason_detail"] = sanitize_reason_detail(f"No valid ETF data, tried {len(universe)} tickers, source={data_source}")
         result["input_fingerprint"] = compute_input_fingerprint({"universe": universe, "source": data_source})
         return result
     
