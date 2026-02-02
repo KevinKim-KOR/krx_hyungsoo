@@ -9,8 +9,8 @@
 
 | 스키마명 | 파일 경로 | 소비 주체 |
 |----------|-----------|-----------|
-| `REPORT_HUMAN_V1` | `reports/phase_c/latest/report_human.json` | UI (Dashboard) |
-| `REPORT_AI_V1` | `reports/phase_c/latest/report_ai.json` | AI Agent |
+| `CONTRACT5_REPORT_V1` | `reports/phase_c/latest/report_human.json` | UI (Dashboard/P103+) |
+| `REPORT_AI_V1` | `reports/ops/contract5/latest/ai_report_latest.json` | AI Agent (P103+) |
 
 → 상세: [contract_5_reports.md](contract_5_reports.md)
 

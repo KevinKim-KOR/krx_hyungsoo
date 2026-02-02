@@ -34,6 +34,7 @@ CYCLE_LATEST = BASE_DIR / "reports" / "live" / "cycle" / "latest" / "live_cycle_
 # D-P.58
 PORTFOLIO_LATEST = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
 ORDER_PLAN_LATEST = BASE_DIR / "reports" / "live" / "order_plan" / "latest" / "order_plan_latest.json"
+CONTRACT5_LATEST = BASE_DIR / "reports" / "ops" / "contract5" / "latest" / "ai_report_latest.json"
 
 # Output paths
 SUMMARY_DIR = BASE_DIR / "reports" / "ops" / "summary"
@@ -274,6 +275,32 @@ def regenerate_ops_summary():
         "snapshot_ref": op_snapshot_ref
     }
     
+    # === Contract 5 (P103) ===
+    c5_report = safe_load_json(CONTRACT5_LATEST)
+    
+    # Find C5 Snapshot
+    c5_snapshot_ref = None
+    c5_snap_dir = BASE_DIR / "reports" / "ops" / "contract5" / "snapshots"
+    if c5_snap_dir.exists():
+        snaps = sorted(c5_snap_dir.glob("ai_report_*.json"), reverse=True)
+        if snaps:
+            c5_snapshot_ref = f"reports/ops/contract5/snapshots/{snaps[0].name}"
+            
+    c5_decision = c5_report.get("decision", "MISSING") if c5_report else "MISSING"
+    
+    contract5_summary = {
+        "human_report": {
+            "decision": c5_decision,
+            "latest_ref": "reports/phase_c/latest/report_human.json",
+            "snapshot_ref": c5_snapshot_ref.replace("ai_report", "human_report").replace(".json", ".md") if c5_snapshot_ref else None
+        },
+        "ai_report": {
+            "decision": c5_decision,
+            "latest_ref": "reports/ops/contract5/latest/ai_report_latest.json",
+            "snapshot_ref": c5_snapshot_ref
+        }
+    }
+    
     # === P78/P79: Strategy Bundle (SPoT) ===
     import sys
     # Add app path if not present (sometimes issue with relative imports if main script)
@@ -419,11 +446,26 @@ def regenerate_ops_summary():
             
             if overall_status == "OK": overall_status = "WARN"
 
-    if not order_plan:
-         # Missing Order Plan file
-         pass # Maybe warn? But P102 doesn't specify RISK for missing file specifically, but logic deals with it.
 
-    # 6. Strategy Bundle (P78/P79)
+    # 6. Contract 5 Risks (P103)
+    if c5_decision == "BLOCKED":
+        top_risks.append({
+            "code": "CONTRACT5_REPORT_BLOCKED",
+            "severity": "WARN", # or BLOCKED? User says WARN/BLOCKED in instruction.
+            "message": f"Daily Report Blocked: {c5_report.get('reason_detail', '') if c5_report else 'Missing'}",
+            "evidence_refs": ["reports/ops/contract5/latest/ai_report_latest.json"]
+        })
+        if overall_status == "OK": overall_status = "WARN"
+        
+    elif c5_decision == "EMPTY":
+        top_risks.append({
+            "code": "CONTRACT5_REPORT_EMPTY",
+            "severity": "INFO",
+            "message": "Daily Report Empty",
+            "evidence_refs": ["reports/ops/contract5/latest/ai_report_latest.json"]
+        })
+
+    # 7. Strategy Bundle (P78/P79)
     if validation.decision == "NO_BUNDLE":
         top_risks.append({
             "code": "NO_BUNDLE",
@@ -528,6 +570,7 @@ def regenerate_ops_summary():
         },
         "portfolio": portfolio_summary,
         "order_plan": order_plan_summary,
+        "contract5": contract5_summary,
         "reco": reco_summary,
         "strategy_bundle": bundle_summary,
         "top_risks": top_risks,

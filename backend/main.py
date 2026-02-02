@@ -517,6 +517,56 @@ def regenerate_order_plan(confirm: bool = Query(False)):
         return JSONResponse(status_code=500, content={"result": "ERROR", "message": str(e)})
 
 
+@app.get("/api/contract5/latest", summary="최신 Daily Report 조회 (P103)")
+def get_contract5_latest():
+    """
+    최신 Contract 5 Report (AI JSON) 반환
+    """
+    path = REPORTS_DIR / "ops" / "contract5" / "latest" / "ai_report_latest.json"
+    if not path.exists():
+        return {
+            "schema": "CONTRACT5_REPORT_V1",
+            "decision": "BLOCKED",
+            "reason": "FILE_NOT_FOUND"
+        }
+    return safe_read_json(path)
+
+
+@app.post("/api/contract5/regenerate", summary="Daily Report 재생성 (P103)")
+def regenerate_contract5(confirm: bool = Query(False)):
+    """
+    app/generate_contract5_report.py 실행 (Ops/Reco/OrderPlan 취합)
+    """
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
+        
+    try:
+        logger.info("Contract 5 Report 재생성 요청")
+        cmd = [sys.executable, "app/generate_contract5_report.py"]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
+        
+        if result.returncode != 0:
+            logger.error(f"Contract 5 Gen Failed: {result.stderr}")
+            return JSONResponse(status_code=500, content={
+                "result": "FAIL", 
+                "error": result.stderr,
+                "stdout": result.stdout
+            })
+            
+        try:
+             # Try to parse the last line as JSON
+             lines = result.stdout.strip().splitlines()
+             if lines:
+                 return json.loads(lines[-1])
+             return {"result": "OK", "message": "No output"}
+        except:
+             return {"result": "OK", "message": "Output generated", "stdout": result.stdout}
+             
+    except Exception as e:
+        logger.error(f"Contract 5 API Error: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"result": "ERROR", "message": str(e)})
+
+
 @app.get("/api/validation", summary="검증 리포트 조회")
 def get_validation_report():
     """OOS 월별 검증 리포트를 반환합니다."""

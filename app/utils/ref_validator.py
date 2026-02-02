@@ -61,6 +61,10 @@ ALLOWED_JSON_PATTERNS = [
     # P102 Order Plan
     r"^reports/live/order_plan/latest/order_plan_latest\.json$",
     r"^reports/live/order_plan/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # P103 Contract 5 Report
+    r"^reports/ops/contract5/latest/[a-zA-Z0-9_\-\.]+\.(json|md)$",
+    r"^reports/ops/contract5/snapshots/[a-zA-Z0-9_\-\.]+\.(json|md)$",
+    r"^reports/phase_c/latest/report_human\.json$", # Ensure this is explicit if not covered
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
