@@ -370,8 +370,8 @@ def regenerate_reco(confirm: bool = Query(False)):
     
     try:
         logger.info("Reco Report 재생성 요청 (subprocess)")
-        # Run generator script relative to BASE_DIR
-        cmd = [sys.executable, "app/generate_reco_report.py"]
+        # Run generator script relative to BASE_DIR using -m to support imports
+        cmd = [sys.executable, "-m", "app.generate_reco_report"]
         
         # Capture output
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
@@ -496,7 +496,7 @@ def regenerate_order_plan(confirm: bool = Query(False)):
         
     try:
         logger.info("Order Plan 재생성 요청")
-        cmd = [sys.executable, "app/generate_order_plan.py"]
+        cmd = [sys.executable, "-m", "app.generate_order_plan"]
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
         
         if result.returncode != 0:
@@ -542,7 +542,7 @@ def regenerate_contract5(confirm: bool = Query(False)):
         
     try:
         logger.info("Contract 5 Report 재생성 요청")
-        cmd = [sys.executable, "app/generate_contract5_report.py"]
+        cmd = [sys.executable, "-m", "app.generate_contract5_report"]
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
         
         if result.returncode != 0:
