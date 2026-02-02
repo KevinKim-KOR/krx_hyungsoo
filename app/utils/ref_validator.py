@@ -58,7 +58,9 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/live/cycle/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/live/reco/latest/reco_latest\.json$",
     r"^reports/live/reco/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # P102 Order Plan
     r"^reports/live/order_plan/latest/order_plan_latest\.json$",
+    r"^reports/live/order_plan/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"

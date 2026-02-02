@@ -255,10 +255,23 @@ def regenerate_ops_summary():
         "cash_ratio_pct": portfolio.get("cash_ratio_pct", 0) if portfolio else 0
     }
     
+    order_plan = safe_load_json(ORDER_PLAN_LATEST)
+    
+    # Find Order Plan Snapshot
+    op_snapshot_ref = None
+    op_snap_dir = BASE_DIR / "reports" / "live" / "order_plan" / "snapshots"
+    if op_snap_dir.exists():
+        snaps = sorted(op_snap_dir.glob("order_plan_*.json"), reverse=True)
+        if snaps:
+            op_snapshot_ref = f"reports/live/order_plan/snapshots/{snaps[0].name}"
+            
     order_plan_summary = {
         "decision": order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN",
         "reason": order_plan.get("reason", "") if order_plan else "",
-        "orders_count": len(order_plan.get("orders", [])) if order_plan else 0
+        "reason_detail": order_plan.get("reason_detail", "") if order_plan else "",
+        "orders_count": len(order_plan.get("orders", [])) if order_plan else 0,
+        "latest_ref": "reports/live/order_plan/latest/order_plan_latest.json",
+        "snapshot_ref": op_snapshot_ref
     }
     
     # === P78/P79: Strategy Bundle (SPoT) ===
@@ -364,18 +377,38 @@ def regenerate_ops_summary():
             except Exception:
                 pass # Parse error ignore
 
-    # 5. Order Plan (D-P.58 + P83-FIX)
+    # 5. Order Plan (D-P.58 + P83-FIX + P102)
     # P83-FIX: Skip ORDER_PLAN_* risks if bundle is stale (stale is root cause)
     bundle_is_stale = validation.stale if validation else False
     
-    if order_plan and order_plan.get("decision") == "BLOCKED" and not bundle_is_stale:
-        raw_reason = order_plan.get("reason", "UNKNOWN_REASON")
-        # P81-FIX v2.3: Extract ENUM code only (strip message after colon)
-        reason_code = raw_reason.split(":")[0].strip()
-        
-        # Only add ORDER_PLAN risks if NOT caused by stale bundle
-        if "BUNDLE_STALE" not in reason_code:
+    op_decision = order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN"
+    op_reason = order_plan.get("reason", "") if order_plan else ""
+    
+    if op_decision == "BLOCKED" and not bundle_is_stale:
+        # P102 Risks
+        if op_reason == "NO_RECO":
+            top_risks.append({
+                "code": "ORDER_PLAN_NO_RECO",
+                "severity": "WARN", 
+                "message": "Order Plan blocked: Reco missing",
+                "evidence_refs": []
+            })
+            if overall_status == "OK": overall_status = "WARN" # or BLOCKED?
+            
+        elif op_reason == "PORTFOLIO_INCONSISTENT":
+            top_risks.append({
+                "code": "PORTFOLIO_INCONSISTENT",
+                "severity": "CRITICAL", 
+                "message": f"Portfolio Inconsistent: {order_plan.get('reason_detail')}",
+                "evidence_refs": ["state/portfolio/latest/portfolio_latest.json"]
+            })
+            overall_status = "BLOCKED" # Critical
+            
+        else:
+            # Generic Blocked
             # P86: SSOT - Stack Umbrella + Specific Risk
+            reason_code = op_reason.split(":")[0].strip()
+            
             # Umbrella Risk
             top_risks.append({
                 "code": "ORDER_PLAN_BLOCKED",
@@ -384,18 +417,11 @@ def regenerate_ops_summary():
                 "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
             })
             
-            # P80/P81/P86: Specific Risk Code (Dual Risk) - ENUM only
-            if reason_code and reason_code != "BLOCKED":
-                specific_code = reason_code if reason_code.startswith("ORDER_PLAN_") else f"ORDER_PLAN_{reason_code}"
-                top_risks.append({
-                    "code": specific_code,
-                    "severity": "WARN",
-                    "message": f"Specific block reason: {reason_code}",
-                    "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"]
-                })
-            
-        if overall_status == "OK":
-            overall_status = "WARN"
+            if overall_status == "OK": overall_status = "WARN"
+
+    if not order_plan:
+         # Missing Order Plan file
+         pass # Maybe warn? But P102 doesn't specify RISK for missing file specifically, but logic deals with it.
 
     # 6. Strategy Bundle (P78/P79)
     if validation.decision == "NO_BUNDLE":

@@ -469,6 +469,54 @@ def get_raw(filename: str = Query(..., description="프로젝트 루트 기준 �
         raise HTTPException(status_code=500, detail="파일 읽기 실패")
 
 
+@app.get("/api/order_plan/latest", summary="최신 주문안 조회 (P102)")
+def get_order_plan_latest():
+    """
+    최신 Order Plan V1 (Intent-Only) 반환
+    없을 경우 graceful response
+    """
+    path = REPORTS_DIR / "live" / "order_plan" / "latest" / "order_plan_latest.json"
+    if not path.exists():
+        return {
+            "schema": "ORDER_PLAN_V1",
+            "decision": "BLOCKED",
+            "reason": "FILE_NOT_FOUND",
+            "message": "아직 주문안이 생성되지 않았습니다."
+        }
+    return safe_read_json(path)
+
+@app.post("/api/order_plan/regenerate", summary="주문안 재생성 (P102)")
+def regenerate_order_plan(confirm: bool = Query(False)):
+    """
+    app/generate_order_plan.py 실행
+    - Fail-Closed: Reco/Portfolio 문제 시 BLOCKED 반환
+    """
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
+        
+    try:
+        logger.info("Order Plan 재생성 요청")
+        cmd = [sys.executable, "app/generate_order_plan.py"]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
+        
+        if result.returncode != 0:
+            logger.error(f"Order Plan Gen Failed: {result.stderr}")
+            return JSONResponse(status_code=500, content={
+                "result": "FAIL", 
+                "error": result.stderr,
+                "stdout": result.stdout
+            })
+            
+        try:
+            return json.loads(result.stdout)
+        except:
+             return {"result": "OK", "message": "Parsed error", "stdout": result.stdout}
+             
+    except Exception as e:
+        logger.error(f"Order Plan API Error: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"result": "ERROR", "message": str(e)})
+
+
 @app.get("/api/validation", summary="검증 리포트 조회")
 def get_validation_report():
     """OOS 월별 검증 리포트를 반환합니다."""

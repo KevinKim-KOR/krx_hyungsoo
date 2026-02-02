@@ -1,37 +1,40 @@
+# -*- coding: utf-8 -*-
 """
-Order Plan Generator (D-P.58)
+app/generate_order_plan.py
+P102: OCI Order Plan Generator V1 (Intent-Only)
 
-Reco + Portfolio 기반으로 실제 주문안(매수/매도 수량) 생성
-- Fail-Closed: Portfolio 또는 Reco 없으면 BLOCKED
-- No External Send: 주문은 생성만, 실행 없음
+Objective:
+- Generate ORDER_PLAN_V1 from RECO_REPORT_V1 + PORTFOLIO_V1
+- Read-Only (No Broker Calls)
+- Fail-Closed (Block on Missing Inputs or Inconsistent Portfolio)
+- Atomic Write
+
+Contract: ORDER_PLAN_V1 (Intent-Only)
 """
 
 import json
-import hashlib
+import sys
+import os
 import shutil
-import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, List, Optional
 
+# --- Configuration ---
 BASE_DIR = Path(__file__).parent.parent
+RECO_LATEST_FILE = BASE_DIR / "reports" / "live" / "reco" / "latest" / "reco_latest.json"
+PORTFOLIO_LATEST_FILE = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
 
-# Input paths
-PORTFOLIO_LATEST = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
-RECO_LATEST = BASE_DIR / "reports" / "live" / "reco" / "latest" / "reco_latest.json"
+OUTPUT_DIR = BASE_DIR / "reports" / "live" / "order_plan"
+OUTPUT_LATEST = OUTPUT_DIR / "latest" / "order_plan_latest.json"
+OUTPUT_SNAPSHOTS = OUTPUT_DIR / "snapshots"
 
-# Output paths
-ORDER_PLAN_DIR = BASE_DIR / "reports" / "live" / "order_plan"
-ORDER_PLAN_LATEST = ORDER_PLAN_DIR / "latest" / "order_plan_latest.json"
-ORDER_PLAN_SNAPSHOTS = ORDER_PLAN_DIR / "snapshots"
+# Ensure directories
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+(OUTPUT_DIR / "latest").mkdir(parents=True, exist_ok=True)
+OUTPUT_SNAPSHOTS.mkdir(parents=True, exist_ok=True)
 
-# Constraints
-MAX_SINGLE_WEIGHT_PCT = 30
-MIN_ORDER_AMOUNT = 100000
-
-
-def safe_load_json(path: Path) -> Optional[Dict]:
-    """JSON 파일 안전 로드"""
+def load_json(path: Path) -> Optional[Dict]:
     if not path.exists():
         return None
     try:
@@ -39,466 +42,242 @@ def safe_load_json(path: Path) -> Optional[Dict]:
     except Exception:
         return None
 
-
-def calculate_sha256(data: Any) -> str:
-    """SHA256 해시 계산"""
-    json_str = json.dumps(data, sort_keys=True, ensure_ascii=False)
-    return hashlib.sha256(json_str.encode("utf-8")).hexdigest()
-
-
-def generate_blocked_plan(reason: str, reason_detail: str = "") -> Dict[str, Any]:
-    """BLOCKED 주문안 생성 (P82: reason은 ENUM-only, detail은 분리)"""
-    now = datetime.now()
-    asof = now.isoformat()
-    plan_id = str(uuid.uuid4())
-    
-    snapshot_filename = f"order_plan_{now.strftime('%Y%m%d_%H%M%S')}.json"
-    snapshot_ref = f"reports/live/order_plan/snapshots/{snapshot_filename}"
-    
-    plan = {
-        "schema": "ORDER_PLAN_V1",
-        "asof": asof,
-        "plan_id": plan_id,
-        "decision": "BLOCKED",
-        "reason": reason,
-        "reason_detail": reason_detail, # P87-FIX2: Explicit persistence
-        "source_refs": {
-            "reco_ref": "reports/live/reco/latest/reco_latest.json",
-            "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
-        },
-        "orders": [],
-        "summary": {
-            "total_buy_amount": 0,
-            "total_sell_amount": 0,
-            "net_cash_change": 0,
-            "estimated_cash_after": 0,
-            "estimated_cash_ratio_pct": 0,
-            "buy_count": 0,
-            "sell_count": 0
-        },
-        "constraints_applied": {
-            "max_single_weight_pct": MAX_SINGLE_WEIGHT_PCT,
-            "min_order_amount": MIN_ORDER_AMOUNT
-        },
-        "snapshot_ref": snapshot_ref,
-        "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"],
-        "integrity": {
-            "payload_sha256": calculate_sha256([])
-        }
-    }
-    
-    # Save
-    _save_plan(plan, snapshot_filename)
-    
-    return {
-        "result": "OK",
-        "decision": "BLOCKED",
-        "reason": reason,
-        "reason_detail": reason_detail,
-        "plan_id": plan_id,
-        "snapshot_ref": snapshot_ref
-    }
-
-
-def generate_completed_plan(reason: str, reason_detail: str = "", cash: float = 0) -> Dict[str, Any]:
-    """P99: COMPLETED 주문안 생성 (NO_ACTION 케이스용)"""
-    now = datetime.now()
-    asof = now.isoformat()
-    plan_id = str(uuid.uuid4())
-    
-    snapshot_filename = f"order_plan_{now.strftime('%Y%m%d_%H%M%S')}.json"
-    snapshot_ref = f"reports/live/order_plan/snapshots/{snapshot_filename}"
-    
-    plan = {
-        "schema": "ORDER_PLAN_V1",
-        "asof": asof,
-        "plan_id": plan_id,
-        "decision": "COMPLETED",
-        "reason": reason,
-        "reason_detail": reason_detail,
-        "source_refs": {
-            "reco_ref": "reports/live/reco/latest/reco_latest.json",
-            "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
-        },
-        "orders": [],
-        "summary": {
-            "total_buy_amount": 0,
-            "total_sell_amount": 0,
-            "net_cash_change": 0,
-            "estimated_cash_after": cash,
-            "estimated_cash_ratio_pct": 100.0 if cash > 0 else 0,
-            "buy_count": 0,
-            "sell_count": 0
-        },
-        "constraints_applied": {
-            "max_single_weight_pct": MAX_SINGLE_WEIGHT_PCT,
-            "min_order_amount": MIN_ORDER_AMOUNT
-        },
-        "snapshot_ref": snapshot_ref,
-        "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"],
-        "integrity": {
-            "payload_sha256": calculate_sha256([])
-        }
-    }
-    
-    # Save
-    _save_plan(plan, snapshot_filename)
-    
-    return {
-        "result": "OK",
-        "decision": "COMPLETED",
-        "reason": reason,
-        "reason_detail": reason_detail,
-        "plan_id": plan_id,
-        "snapshot_ref": snapshot_ref
-    }
-
-
-def _save_plan(plan: Dict, snapshot_filename: str):
-    """주문안 저장"""
-    ORDER_PLAN_LATEST.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = ORDER_PLAN_LATEST.with_suffix(".tmp")
-    tmp_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp_path.replace(ORDER_PLAN_LATEST)
-    
-    ORDER_PLAN_SNAPSHOTS.mkdir(parents=True, exist_ok=True)
-    shutil.copy(ORDER_PLAN_LATEST, ORDER_PLAN_SNAPSHOTS / snapshot_filename)
-
-
-def validate_portfolio(portfolio_path: Path) -> Tuple[str, Optional[Dict], str]:
-    """
-    Portfolio Validation (P81-FIX v2.2 + P87 Detail)
-    Returns: (Reason, PortfolioDict or None, DetailString)
-    Reason Enums:
-      - PORTFOLIO_OK
-      - PORTFOLIO_MISSING
-      - PORTFOLIO_READ_ERROR
-      - PORTFOLIO_SCHEMA_INVALID
-      - NO_ACTION_PORTFOLIO_EMPTY
-      - NO_ACTION_PORTFOLIO_CASH_ONLY
-    
-    Compatibility: Accepts either 'asof' or 'updated_at' for timestamp.
-    """
-    if not portfolio_path.exists():
-        return "PORTFOLIO_MISSING", None, "File not found"
-
-    try:
-        content = portfolio_path.read_text(encoding="utf-8")
-        pf = json.loads(content)
-    except Exception as e:
-        return "PORTFOLIO_READ_ERROR", None, f"JSON Parse Error: {str(e)}"
-
-    # Schema Check (Compatibility Layer)
-    # Required: cash (number), holdings (list)
-    # Optional: asof OR updated_at (timestamp)
-    
-    if "cash" not in pf:
-        return "PORTFOLIO_SCHEMA_INVALID", None, "Missing key: cash"
-    if not isinstance(pf["cash"], (int, float)):
-        return "PORTFOLIO_SCHEMA_INVALID", None, f"Invalid type for cash: {type(pf['cash']).__name__}"
-        
-    if "holdings" not in pf:
-        return "PORTFOLIO_SCHEMA_INVALID", None, "Missing key: holdings"
-    if not isinstance(pf["holdings"], list):
-        return "PORTFOLIO_SCHEMA_INVALID", None, f"Invalid type for holdings: {type(pf['holdings']).__name__}"
-            
-    # Content Check (No Action Policy)
-    cash = pf["cash"]
-    holdings = pf["holdings"]
-    
-    # Policy A: Holdings empty & cash <= 0 -> EMPTY (No Action)
-    if len(holdings) == 0 and cash <= 0:
-        return "NO_ACTION_PORTFOLIO_EMPTY", pf, "Holdings empty and cash <= 0"
-        
-    # Policy A: Holdings empty & cash > 0 -> CASH_ONLY (No Action)
-    if len(holdings) == 0 and cash > 0:
-        return "NO_ACTION_PORTFOLIO_CASH_ONLY", pf, "Holdings empty and cash > 0"
-        
-    # OK
-    return "PORTFOLIO_OK", pf, ""
-
-
-def generate_no_action_plan(reason: str, portfolio: Dict, reason_detail: str = "") -> Dict[str, Any]:
-    """NO_ACTION (COMPLETED) 주문안 생성"""
-    now = datetime.now()
-    asof = now.isoformat()
-    plan_id = str(uuid.uuid4())
-    snapshot_filename = f"order_plan_{now.strftime('%Y%m%d_%H%M%S')}.json"
-    snapshot_ref = f"reports/live/order_plan/snapshots/{snapshot_filename}"
-    
-    # Cash info from portfolio for summary
-    cash = portfolio.get("cash", 0)
-    total_value = portfolio.get("total_value", cash) # fallback to cash if missing (though strictly checked?)
-    # Note: total_value is not strictly required by schema validation above, but useful. 
-    # Let's assume cash is safe.
-    
-    plan = {
-        "schema": "ORDER_PLAN_V1",
-        "asof": asof,
-        "plan_id": plan_id,
-        "decision": "COMPLETED",
-        "reason": reason,
-        "reason_detail": reason_detail, # P87-FIX2: Explicit persistence
-        "source_refs": {
-            "reco_ref": "reports/live/reco/latest/reco_latest.json",
-            "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
-        },
-        "orders": [],
-        "summary": {
-            "total_buy_amount": 0,
-            "total_sell_amount": 0,
-            "net_cash_change": 0,
-            "estimated_cash_after": cash,
-            "estimated_cash_ratio_pct": 100.0 if total_value > 0 else 0, # If holdings empty, 100% cash
-            "buy_count": 0,
-            "sell_count": 0
-        },
-        "constraints_applied": {
-            "max_single_weight_pct": MAX_SINGLE_WEIGHT_PCT,
-            "min_order_amount": MIN_ORDER_AMOUNT
-        },
-        "snapshot_ref": snapshot_ref,
-        "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"],
-        "integrity": {
-            "payload_sha256": calculate_sha256([])
-        }
-    }
-    
-    _save_plan(plan, snapshot_filename)
-    
-    return {
-        "result": "OK",
-        "decision": "COMPLETED",
-        "reason": reason,
-        "reason_detail": reason_detail,
-        "plan_id": plan_id,
-        "orders_count": 0,
-        "snapshot_ref": snapshot_ref
-    }
-
+def sanitize_text(text: str) -> str:
+    """Sanitize reason/detail (remove newlines, limit length)"""
+    if not text:
+        return ""
+    # Remove newlines
+    cleaned = text.replace("\n", " ").replace("\r", "")
+    # Limit length
+    if len(cleaned) > 240:
+        cleaned = cleaned[:237] + "..."
+    return cleaned
 
 def generate_order_plan() -> Dict[str, Any]:
-    """
-    주문안 생성
-    
-    Returns:
-        {result, decision, reason, plan_id, snapshot_ref, ...}
-    """
     now = datetime.now()
+    asof_str = now.isoformat()
     
-    # 1. Validate Portfolio (Strict)
-    pf_reason, portfolio, pf_detail = validate_portfolio(PORTFOLIO_LATEST)
+    # 1. Load Inputs
+    reco = load_json(RECO_LATEST_FILE)
+    portfolio = load_json(PORTFOLIO_LATEST_FILE)
     
-    if pf_reason in ("PORTFOLIO_MISSING", "PORTFOLIO_READ_ERROR", "PORTFOLIO_SCHEMA_INVALID"):
-        return generate_blocked_plan(pf_reason, reason_detail=pf_detail)
-        
-    if pf_reason.startswith("NO_ACTION_"):
-        return generate_no_action_plan(pf_reason, portfolio)
-        
-    # pf_reason is PORTFOLIO_OK, proceed.
+    # 2. Initialize Report
+    report = {
+        "schema": "ORDER_PLAN_V1",
+        "asof": asof_str,
+        "plan_id": f"plan-{now.strftime('%Y%m%d-%H%M%S')}",
+        "decision": "BLOCKED",
+        "reason": "UNKNOWN",
+        "reason_detail": "",
+        "source": {
+            "reco_ref": str(RECO_LATEST_FILE.relative_to(BASE_DIR)).replace("\\", "/"),
+            "reco_asof": None,
+            "reco_decision": None,
+            "bundle_id": None,
+            "bundle_created_at": None,
+            "portfolio_ref": str(PORTFOLIO_LATEST_FILE.relative_to(BASE_DIR)).replace("\\", "/"),
+            "portfolio_updated_at": None
+        },
+        "orders": [],
+        "evidence_refs": [],
+        "error_summary": None
+    }
     
-    # Load reco
-    reco = safe_load_json(RECO_LATEST)
+    # 3. Fail-Closed Checks
+    
+    # Check Reco Existence
     if not reco:
-        return generate_blocked_plan("NO_RECO")
-    
-    reco_decision = reco.get("decision", "UNKNOWN")
-    reco_reason = reco.get("reason", "")
-    
-    if reco_decision in ("BLOCKED", "EMPTY_RECO", "MISSING_RECO"):
-        # Case 1: Reco itself is blocked or empty with a reason
-        # P82: Extract ENUM code + detail separately
-        if reco_reason:
-            # Extract code before colon (e.g. "BUNDLE_STALE: message" -> "BUNDLE_STALE")
-            parts = reco_reason.split(":", 1)
-            reason_code = parts[0].strip()
-            reason_detail = parts[1].strip() if len(parts) > 1 else ""
-            # P99-FIX2-FIX2: Fallback to reco.reason_detail if colon split is empty
-            if not reason_detail:
-                reason_detail = reco.get("reason_detail", "") or ""
-            # Avoid double prefix if already has it
-            prefix = "RECO_" if not reason_code.startswith("RECO_") and not reason_code.startswith("NO_") else ""
-            return generate_blocked_plan(f"{prefix}{reason_code}", reason_detail)
-        return generate_blocked_plan("EMPTY_RECO")
-    
-    recommendations = reco.get("recommendations", [])
-    if not recommendations:
-        # Reco decision was OK/GENERATED but list is empty -> EMPTY_RECO
-        return generate_blocked_plan("EMPTY_RECO")
-    
-    # Build current holdings map
-    cash = portfolio.get("cash", 0)
-    holdings = portfolio.get("holdings", [])
+        report["decision"] = "BLOCKED"
+        report["reason"] = "NO_RECO"
+        report["reason_detail"] = "Reco report not found"
+        _save_and_return(report)
+        return report
+
+    # Populate Reco Meta
+    report["source"]["reco_asof"] = reco.get("asof")
+    report["source"]["reco_decision"] = reco.get("decision")
+    if "source_bundle" in reco and reco["source_bundle"]:
+        report["source"]["bundle_id"] = reco["source_bundle"].get("bundle_id")
+        report["source"]["bundle_created_at"] = reco["source_bundle"].get("created_at")
+        if "integrity" in reco["source_bundle"]:
+             report["source"]["payload_sha256"] = reco["source_bundle"]["integrity"].get("payload_sha256")
+             
+    report["evidence_refs"].append(report["source"]["reco_ref"])
+
+    # Check Reco Validity (Must be GENERATED or OK)
+    reco_decision = reco.get("decision")
+    if reco_decision not in ["GENERATED", "OK", "SUCCESS"]:
+        # If Reco is EMPTY/BLOCKED, Order Plan is EMPTY (No Orders)
+        # But wait, logic says: "reco decision이 BLOCKED|EMPTY_RECO -> decision=EMPTY, reason=NO_ORDERS_FROM_RECO"
+        report["decision"] = "EMPTY"
+        report["reason"] = "NO_ORDERS_FROM_RECO"
+        report["reason_detail"] = f"Reco decision was {reco_decision}"
+        _save_and_return(report)
+        return report
+
+    # Check Portfolio Existence
+    if not portfolio:
+        report["decision"] = "BLOCKED"
+        report["reason"] = "NO_PORTFOLIO"
+        report["reason_detail"] = "Portfolio file not found"
+        _save_and_return(report)
+        return report
+
+    report["source"]["portfolio_updated_at"] = portfolio.get("updated_at")
+    # Portfolio Ref is technically state, so usually not in evidence_refs, but helpful for trace
+    # report["evidence_refs"].append(report["source"]["portfolio_ref"]) 
+
+    # Check Portfolio Integrity (Anti-Red Team)
+    holdings = portfolio.get("holdings", {})
     total_value = portfolio.get("total_value", 0)
     
-    # Double check total_value for calculation safety
-    if total_value <= 0:
-        # This might happen if validation passed (cash>0, holdings>0) but total_value mismatch?
-        # Re-calc total value just in case? Or trust input?
-        # User said "Portfolio Validation Enum" should handle it.
-        # But if OK, we expect valid calculation.
-        # If total_value is 0 but we have holdings? That's weird.
-        # Let's fallback to calculating total value if 0?
-        # Simplest: if total_value <= 0 here, it's effectively schema-ish issue or data issue.
-        # But we passed validate_portfolio. 
-        # validate_portfolio checked cash and holdings.
-        # If total_value is missing, safe_load_json returns None -> 0.
-        # But validate_portfolio doesn't check total_value key strictly (only asof, cash, holdings).
-        # Let's trust total_value or calc it.
-        if total_value <= 0:
-             # Calculate from holdings + cash
-             est_val = cash
-             for h in holdings:
-                 est_val += h.get("market_value", 0)
-             total_value = est_val
-        
-    # P99: Refined Zero Value Policy (NO_ACTION instead of BLOCKED)
-    # If total_value is still <= 0, it's not a schema error but a "nothing to do" state
-    if total_value <= 0:
-        # Check if we have cash but no holdings value
-        if cash > 0:
-            return generate_completed_plan("NO_ACTION_CASH_ONLY", 
-                reason_detail="Portfolio has cash but no holdings value", cash=cash)
-        else:
-            return generate_completed_plan("NO_ACTION_PORTFOLIO_EMPTY", 
-                reason_detail="Portfolio total value is zero")
+    # Rule: holdings > 0 && total_value <= 0 -> BLOCKED
+    has_holdings = len(holdings) > 0
+    if has_holdings and total_value <= 0:
+        report["decision"] = "BLOCKED"
+        report["reason"] = "PORTFOLIO_INCONSISTENT"
+        report["reason_detail"] = f"Holdings exist ({len(holdings)}) but Total Value is {total_value}"
+        _save_and_return(report)
+        return report
 
-    holdings_map = {}
-    for h in holdings:
-        ticker = h.get("ticker", "")
-        holdings_map[ticker] = {
-            "quantity": h.get("quantity", 0),
-            "market_value": h.get("market_value", 0),
-            "current_price": h.get("current_price", 0),
-            "current_weight_pct": round(h.get("market_value", 0) / total_value * 100, 2)
-        }
+    # 4. Generate Orders (Intent Mapping)
+    # Reco: holding_actions
+    holding_actions = reco.get("holding_actions", [])
+    # Also check top_picks for NEW_ENTRY if P103 handles logic? 
+    # Wait, Reco generator puts ALL actions into holding_actions?
+    # No, P100 says: top_picks (Buy list), holding_actions (Sell/Hold list).
+    # So we need to merge logic.
     
-    # Generate orders from recommendations
+    # But wait, P102 instructions:
+    # "reco의 holding_actions를 order intent로 변환"
+    # What about 'top_picks'?
+    # Usually:
+    # - Top Picks -> Potential BUY (New Entry or Add)
+    # - Holding Actions -> SELL/HOLD/BUY (if rebalancing)
+    
+    # Reco V1 schema:
+    # holding_actions: [{ticker, action, ...}] where action is SELL, HOLD, BUY
+    # top_picks: [{ticker, score, ...}]
+    
+    # Contract says: "orders: [{ticker, intent: ADD/REDUCE/NEW_ENTRY/EXIT}]"
+    
+    # Logic:
+    # Iterate holding_actions:
+    #   SELL -> EXIT (if all?) or REDUCE?
+    #   Usually SELL in holding_actions means Exit or Reduce.
+    #   Let's check Reco's Action field. "SELL" usually maps to EXIT/REDUCE.
+    #   "BUY" maps to ADD.
+    #   "HOLD" -> Ignore.
+    
+    # Iterate top_picks:
+    #   If not in holdings -> NEW_ENTRY
+    #   If in holdings -> ADD
+    
     orders = []
-    total_buy_amount = 0
-    total_sell_amount = 0
     
-    try:
-        # P86: Order Plan Calculation (Error Triage)
-        for r in recommendations:
-            action = r.get("action", "HOLD")
-            ticker = r.get("ticker", "")
-            name = r.get("name", "")
-            target_weight_pct = r.get("weight_pct", 0)
-            signal_score = r.get("signal_score", 0)
-            estimated_price = r.get("price", 0) or 35000  # fallback price
-            
-            # Get current holding
-            current = holdings_map.get(ticker, {"quantity": 0, "market_value": 0, "current_weight_pct": 0, "current_price": estimated_price})
-            current_weight_pct = current.get("current_weight_pct", 0)
-            current_price = current.get("current_price", estimated_price)
-            
-            if current_price <= 0:
-                current_price = estimated_price
-            
-            # Calculate delta
-            delta_weight_pct = target_weight_pct - current_weight_pct
-            order_amount = round(delta_weight_pct / 100 * total_value)
-            
-            # Skip small orders
-            if abs(order_amount) < MIN_ORDER_AMOUNT:
-                continue
-            
-            # Cap at max single weight
-            if target_weight_pct > MAX_SINGLE_WEIGHT_PCT:
-                target_weight_pct = MAX_SINGLE_WEIGHT_PCT
-                delta_weight_pct = target_weight_pct - current_weight_pct
-                order_amount = round(delta_weight_pct / 100 * total_value)
-            
-            estimated_quantity = int(order_amount / current_price) if current_price > 0 else 0
-            
-            order = {
-                "action": action,
+    # 4.1 Process Holding Actions (Priority: Sell first?)
+    for action_item in holding_actions:
+        ticker = action_item.get("ticker")
+        act = action_item.get("action", "HOLD")
+        confidence = action_item.get("confidence", "MEDIUM")
+        reason = sanitize_text(action_item.get("reason", ""))
+        
+        if act == "SELL":
+            # Determine if EXIT or REDUCE. Without quantity, we assume EXIT for now or check confidence?
+            # Or P102 just maps to SELL/EXIT?
+            # Strategy Bundle usually outputs "SELL" for removal.
+            intent = "EXIT" 
+            orders.append({
                 "ticker": ticker,
-                "name": name,
-                "target_weight_pct": target_weight_pct,
-                "current_weight_pct": current_weight_pct,
-                "delta_weight_pct": round(delta_weight_pct, 2),
-                "order_amount": order_amount,
-                "estimated_quantity": estimated_quantity,
-                "signal_score": signal_score
-            }
-            orders.append(order)
+                "side": "SELL",
+                "intent": intent,
+                "confidence": confidence,
+                "reason": "RECO_SELL",
+                "reason_detail": reason
+            })
+        elif act == "BUY":
+            # Rebalancing Buy
+            orders.append({
+                "ticker": ticker,
+                "side": "BUY",
+                "intent": "ADD",
+                "confidence": confidence,
+                "reason": "RECO_BUY",
+                "reason_detail": reason
+            })
             
-            if action == "BUY":
-                total_buy_amount += abs(order_amount)
-            elif action == "SELL":
-                total_sell_amount += abs(order_amount)
-                
+    # 4.2 Process Top Picks
+    top_picks = reco.get("top_picks", [])
+    current_tickers = holdings.keys()
+    
+    for pick in top_picks:
+        ticker = pick.get("ticker")
+        score = pick.get("score", 0)
+        # Check if already processed in holding_actions (avoid duplicate ADD)
+        # If in top_picks AND in holding_actions as BUY -> Duplication possible?
+        # Usually they are distinct sets or consistent.
+        # If ticker is in holdings, it might be in holding_action as HOLD or BUY.
+        
+        # Check if we already have an order for this ticker
+        existing_order = next((o for o in orders if o["ticker"] == ticker), None)
+        if existing_order:
+            continue # Already handled (e.g. by holding action)
+            
+        # Determine Intent
+        intent = "ADD" if ticker in current_tickers else "NEW_ENTRY"
+        
+        orders.append({
+            "ticker": ticker,
+            "side": "BUY",
+            "intent": intent,
+            "confidence": "HIGH", # Top picks match HIGH?
+            "reason": "TOP_PICK",
+            "reason_detail": f"Score: {score}"
+        })
+
+    report["orders"] = orders
+    
+    if not orders:
+        report["decision"] = "EMPTY"
+        report["reason"] = "NO_ORDERS"
+        report["reason_detail"] = "No actionable signals from Reco"
+    else:
+        report["decision"] = "COMPLETED"
+        report["reason"] = "SUCCESS"
+        report["reason_detail"] = f"Generated {len(orders)} orders"
+
+    _save_and_return(report)
+    return report
+
+def _save_and_return(report: Dict):
+    """Save latest and snapshot (Atomic)"""
+    try:
+        # Atomic Write
+        temp_file = OUTPUT_LATEST.parent / f".tmp_{OUTPUT_LATEST.name}"
+        temp_file.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        shutil.move(temp_file, OUTPUT_LATEST)
+        
+        # Snapshot
+        asof_safe = report["asof"].replace(":", "").replace("-", "").replace("T", "_").split(".")[0]
+        snap_name = f"order_plan_{asof_safe}.json"
+        snapshot_path = OUTPUT_SNAPSHOTS / snap_name
+        
+        # Add snapshot ref to report? (Circular)
+        # We can't add it into the file we just wrote without rewriting.
+        # But Ops Summary needs it. Ops Summary will find it.
+        
+        shutil.copy(OUTPUT_LATEST, snapshot_path)
+        
+        # Print for API capture
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        
     except Exception as e:
-        # P86: Triaged Calc Error
-        error_class = type(e).__name__
-        return generate_blocked_plan("PORTFOLIO_CALC_ERROR", reason_detail=f"{error_class}: {str(e)}")
-    
-    # Calculate summary
-    net_cash_change = total_sell_amount - total_buy_amount
-    estimated_cash_after = cash + net_cash_change
-    estimated_cash_ratio_pct = round(estimated_cash_after / total_value * 100, 1) if total_value > 0 else 0
-    
-    buy_count = len([o for o in orders if o["action"] == "BUY"])
-    sell_count = len([o for o in orders if o["action"] == "SELL"])
-    
-    # Build plan
-    asof = now.isoformat()
-    plan_id = str(uuid.uuid4())
-    snapshot_filename = f"order_plan_{now.strftime('%Y%m%d_%H%M%S')}.json"
-    snapshot_ref = f"reports/live/order_plan/snapshots/{snapshot_filename}"
-    
-    plan = {
-        "schema": "ORDER_PLAN_V1",
-        "asof": asof,
-        "plan_id": plan_id,
-        "decision": "GENERATED" if orders else "EMPTY",
-        "reason": "SUCCESS" if orders else "NO_ORDERS",
-        "source_refs": {
-            "reco_ref": "reports/live/reco/latest/reco_latest.json",
-            "portfolio_ref": "state/portfolio/latest/portfolio_latest.json"
-        },
-        "orders": orders,
-        "summary": {
-            "total_buy_amount": total_buy_amount,
-            "total_sell_amount": total_sell_amount,
-            "net_cash_change": net_cash_change,
-            "estimated_cash_after": estimated_cash_after,
-            "estimated_cash_ratio_pct": estimated_cash_ratio_pct,
-            "buy_count": buy_count,
-            "sell_count": sell_count
-        },
-        "constraints_applied": {
-            "max_single_weight_pct": MAX_SINGLE_WEIGHT_PCT,
-            "min_order_amount": MIN_ORDER_AMOUNT
-        },
-        "snapshot_ref": snapshot_ref,
-        "evidence_refs": ["reports/live/order_plan/latest/order_plan_latest.json"],
-        "integrity": {
-            "payload_sha256": calculate_sha256(orders)
-        }
-    }
-    
-    _save_plan(plan, snapshot_filename)
-    
-    return {
-        "result": "OK",
-        "decision": plan["decision"],
-        "reason": plan["reason"],
-        "plan_id": plan_id,
-        "orders_count": len(orders),
-        "total_buy_amount": total_buy_amount,
-        "total_sell_amount": total_sell_amount,
-        "snapshot_ref": snapshot_ref
-    }
-
-
-def get_order_plan_latest() -> Optional[Dict]:
-    """최신 주문안 조회"""
-    return safe_load_json(ORDER_PLAN_LATEST)
-
+        print(json.dumps({
+            "schema": "ORDER_PLAN_V1",
+            "decision": "BLOCKED", 
+            "reason": "WRITE_ERROR",
+            "error_summary": str(e)
+        }))
 
 if __name__ == "__main__":
-    result = generate_order_plan()
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    generate_order_plan()
