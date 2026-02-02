@@ -584,6 +584,32 @@ def regenerate_ops_summary():
             if overall_status == "OK":
                 overall_status = "WARN"
 
+    # Sort Risks (P106: Stable Sort)
+    # 1. Severity (Ascending: 0=Critical to 3=OK)
+    # 2. Stable Sort (Preserve original order for same severity)
+    def risk_sort_key(r):
+        return SEVERITY_MAP.get(r.get("severity", "INFO"), 2)
+        
+    top_risks.sort(key=risk_sort_key)
+    
+    # Update Overall Status based on Top Risk (SSOT)
+    if top_risks:
+        top_sev_str = top_risks[0].get("severity", "INFO")
+        if top_sev_str in ("CRITICAL", "BLOCKED"):
+            overall_status = "BLOCKED"
+        elif top_sev_str == "WARN":
+            if overall_status != "BLOCKED":
+                 overall_status = "WARN"
+    else:
+        # P106-FIX1: Fallback if status is bad but no risks
+        if overall_status != "OK" and overall_status != "NO_RUN_HISTORY":
+             top_risks.append({
+                 "code": f"OPS_{overall_status}",
+                 "severity": "WARN" if overall_status == "WARN" else "BLOCKED",
+                 "message": f"Operational status is {overall_status} but no specific risk identified.",
+                 "evidence_refs": []
+             })
+
     # Force STOPPED if emergency
     if emergency_enabled:
         overall_status = "STOPPED"

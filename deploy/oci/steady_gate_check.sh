@@ -40,8 +40,8 @@ ROOT_CAUSE="OK"
 RISK_MSG=""
 
 if [ -f "$SUMMARY_FILE" ]; then
-    ROOT_CAUSE=$(cat "$SUMMARY_FILE" | python3 -c 'import json,sys; d=json.load(sys.stdin); l=d.get("top_risks",[]); print(l[0].get("code","OK") if l else "OK")' 2>/dev/null || echo "OK")
-    RISK_MSG=$(cat "$SUMMARY_FILE" | python3 -c 'import json,sys; d=json.load(sys.stdin); l=d.get("top_risks",[]); print(l[0].get("message","") if l else "")' 2>/dev/null || echo "")
+    ROOT_CAUSE=$(cat "$SUMMARY_FILE" | python3 -c 'import json,sys; d=json.load(sys.stdin); l=(d.get("rows") or [d])[0].get("top_risks",[]); print(l[0].get("code","OK") if l else "OK")' 2>/dev/null || echo "OK")
+    RISK_MSG=$(cat "$SUMMARY_FILE" | python3 -c 'import json,sys; d=json.load(sys.stdin); l=(d.get("rows") or [d])[0].get("top_risks",[]); print(l[0].get("message","") if l else "")' 2>/dev/null || echo "")
 fi
 
 # Detect Severity from Code (Simple Heuristic or Map)
