@@ -554,13 +554,9 @@ def regenerate_contract5(confirm: bool = Query(False)):
             })
             
         try:
-             # Try to parse the last line as JSON
-             lines = result.stdout.strip().splitlines()
-             if lines:
-                 return json.loads(lines[-1])
-             return {"result": "OK", "message": "No output"}
-        except:
-             return {"result": "OK", "message": "Output generated", "stdout": result.stdout}
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+             return {"result": "OK", "message": "Parsed error", "stdout": result.stdout}
              
     except Exception as e:
         logger.error(f"Contract 5 API Error: {e}", exc_info=True)
