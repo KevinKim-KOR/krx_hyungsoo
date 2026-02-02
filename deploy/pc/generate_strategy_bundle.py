@@ -1,9 +1,10 @@
 """
-Strategy Bundle Generator (D-P.49)
+Strategy Bundle Generator (D-P.49 + P100-1)
 
 PC에서 백테스트/튜닝 결과를 STRATEGY_BUNDLE_V1 스냅샷으로 생성합니다.
 - PC에서만 실행 (OCI 아님)
 - integrity.payload_sha256 자동 계산
+- P100-1: Regime detection 통합
 - 출력: state/strategy_bundle/snapshots/strategy_bundle_YYYYMMDD_HHMMSS.json
 
 Usage:
@@ -14,16 +15,152 @@ import json
 import hashlib
 import uuid
 import os
+import re
 import socket
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, Tuple
 
 # 프로젝트 루트
 BASE_DIR = Path(__file__).parent.parent.parent
 
+# 프로젝트 루트를 sys.path에 추가 (app 모듈 임포트용)
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+
 # 출력 경로
 OUTPUT_DIR = BASE_DIR / "state" / "strategy_bundle" / "snapshots"
+
+# P100-1: Regime Enums
+REGIME_CODES = {"RISK_ON", "RISK_OFF", "NEUTRAL", "VOLATILE"}
+ENUM_ONLY_PATTERN = re.compile(r"^[A-Z0-9_]+$")
+
+
+# ============================================================================
+# P100-1: Regime Detection (Deterministic, No External Dependencies)
+# ============================================================================
+
+def sanitize_reason_detail(text: str, max_len: int = 240) -> str:
+    """reason_detail sanitize: 개행 제거, 특수문자 escape, 길이 제한"""
+    if not text:
+        return ""
+    # 개행/탭/캐리지리턴 제거
+    clean = text.replace("\n", " ").replace("\r", "").replace("\t", " ")
+    # 쌍따옴표 -> 작은따옴표
+    clean = clean.replace('"', "'")
+    # 연속 공백 제거
+    clean = " ".join(clean.split())
+    # 길이 제한
+    return clean[:max_len]
+
+
+def validate_enum_only(value: str) -> bool:
+    """ENUM-only 정규식 검증: ^[A-Z0-9_]+$"""
+    return bool(ENUM_ONLY_PATTERN.match(value))
+
+
+def compute_input_fingerprint(data_sources: Dict[str, str]) -> str:
+    """입력 데이터 소스들의 fingerprint 계산 (결정성 검증용)"""
+    fingerprint_data = json.dumps(data_sources, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:16]
+
+
+def detect_regime() -> Tuple[str, str, str, str]:
+    """
+    시장 레짐 판단 (결정적, 외부 의존성 없음)
+    
+    Returns:
+        Tuple[code, reason, reason_detail, input_fingerprint]
+        
+    P100-1 규칙:
+    - 데이터 없으면: NEUTRAL + DATA_MISSING
+    - 데이터 있으면: MA 기반 판단
+    - 결과는 항상 결정적 (동일 입력 → 동일 출력)
+    """
+    data_sources = {}
+    
+    # 1. KOSPI 데이터 찾기 (로컬 캐시 우선)
+    kospi_cache_path = BASE_DIR / "state" / "cache" / "kospi_daily.json"
+    market_cache_path = BASE_DIR / "state" / "cache" / "market_data_cache.json"
+    
+    kospi_data = None
+    
+    # Try kospi_daily.json
+    if kospi_cache_path.exists():
+        try:
+            content = kospi_cache_path.read_text(encoding="utf-8")
+            data_sources["kospi_daily"] = hashlib.sha256(content.encode()).hexdigest()[:16]
+            kospi_data = json.loads(content)
+        except Exception:
+            pass
+    
+    # 2. 데이터 없으면 DATA_MISSING
+    if kospi_data is None:
+        data_sources["kospi_daily"] = "NOT_FOUND"
+        data_sources["market_cache"] = "NOT_USED"
+        fingerprint = compute_input_fingerprint(data_sources)
+        return (
+            "NEUTRAL",
+            "DATA_MISSING",
+            sanitize_reason_detail("KOSPI daily cache not found at state/cache/kospi_daily.json"),
+            fingerprint
+        )
+    
+    # 3. KOSPI 데이터 있으면 MA 기반 판단
+    try:
+        prices = kospi_data.get("prices", [])
+        if len(prices) < 200:
+            fingerprint = compute_input_fingerprint(data_sources)
+            return (
+                "NEUTRAL",
+                "INSUFFICIENT_DATA",
+                sanitize_reason_detail(f"Need 200 days for MA calculation, got {len(prices)}"),
+                fingerprint
+            )
+        
+        # 최근 가격과 200일 이동평균 비교
+        recent_prices = [p.get("close", 0) for p in prices[-200:]]
+        current_price = recent_prices[-1]
+        ma_200 = sum(recent_prices) / len(recent_prices)
+        ma_50 = sum(recent_prices[-50:]) / 50 if len(recent_prices) >= 50 else ma_200
+        
+        # Regime 판단 (결정적)
+        price_vs_ma200_pct = (current_price / ma_200 - 1.0) * 100 if ma_200 > 0 else 0
+        ma50_vs_ma200_pct = (ma_50 / ma_200 - 1.0) * 100 if ma_200 > 0 else 0
+        
+        if price_vs_ma200_pct > 5 and ma50_vs_ma200_pct > 2:
+            code = "RISK_ON"
+            reason = "ABOVE_MA200_STRONG"
+            detail = f"Price {price_vs_ma200_pct:.1f}% above MA200, MA50 {ma50_vs_ma200_pct:.1f}% above MA200"
+        elif price_vs_ma200_pct > 0:
+            code = "NEUTRAL"
+            reason = "ABOVE_MA200_WEAK"
+            detail = f"Price {price_vs_ma200_pct:.1f}% above MA200, trend unclear"
+        elif price_vs_ma200_pct > -5:
+            code = "VOLATILE"
+            reason = "NEAR_MA200"
+            detail = f"Price {price_vs_ma200_pct:.1f}% vs MA200, high uncertainty zone"
+        else:
+            code = "RISK_OFF"
+            reason = "BELOW_MA200_STRONG"
+            detail = f"Price {price_vs_ma200_pct:.1f}% below MA200, defensive mode"
+        
+        fingerprint = compute_input_fingerprint(data_sources)
+        return (code, reason, sanitize_reason_detail(detail), fingerprint)
+        
+    except Exception as e:
+        data_sources["parse_error"] = str(e)[:50]
+        fingerprint = compute_input_fingerprint(data_sources)
+        return (
+            "NEUTRAL",
+            "PARSE_ERROR",
+            sanitize_reason_detail(f"Failed to parse KOSPI data: {str(e)}"),
+            fingerprint
+        )
+
 
 
 def get_git_info():
@@ -98,6 +235,90 @@ def generate_bundle() -> dict:
             "adx_filter_min": 20
         }
     }
+    
+    # P100-1: Regime Detection
+    regime_code, regime_reason, regime_detail, regime_fingerprint = detect_regime()
+    
+    # Validate ENUM-only for reason
+    if not validate_enum_only(regime_reason):
+        print(f"[WARNING] Regime reason '{regime_reason}' is not ENUM-only, fixing...")
+        regime_reason = "UNKNOWN_REASON"
+    
+    # Validate code is in allowed set
+    if regime_code not in REGIME_CODES:
+        print(f"[WARNING] Regime code '{regime_code}' is invalid, defaulting to NEUTRAL...")
+        regime_code = "NEUTRAL"
+    
+    # Add regime to strategy
+    strategy["regime"] = {
+        "code": regime_code,
+        "reason": regime_reason,
+        "reason_detail": regime_detail,
+        "input_fingerprint": regime_fingerprint
+    }
+    
+    # P100-2: ETF Scoring
+    try:
+        from app.scoring.etf_scorer import score_etfs
+        universe = strategy.get("universe", [])
+        scorer_result = score_etfs(universe, top_n=4)
+        
+        # Add scorer to strategy
+        strategy["scorer"] = {
+            "status": scorer_result.get("status", "SKIPPED"),
+            "reason": scorer_result.get("reason", "UNKNOWN_ERROR"),
+            "reason_detail": scorer_result.get("reason_detail", ""),
+            "data_source": scorer_result.get("data_source", "NONE"),
+            "top_picks": scorer_result.get("top_picks", []),
+            "input_fingerprint": scorer_result.get("input_fingerprint", "")
+        }
+    except Exception as e:
+        strategy["scorer"] = {
+            "status": "SKIPPED",
+            "reason": "IMPORT_ERROR",
+            "reason_detail": sanitize_reason_detail(f"Failed to import scorer: {str(e)}"),
+            "data_source": "NONE",
+            "top_picks": [],
+            "input_fingerprint": ""
+        }
+    
+    # P100-3: Holding Action Generator
+    try:
+        from app.scoring.holding_action import compute_actions
+        import json as json_module
+        
+        # Load portfolio
+        portfolio_path = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
+        portfolio = None
+        if portfolio_path.exists():
+            try:
+                portfolio = json_module.loads(portfolio_path.read_text(encoding="utf-8"))
+            except Exception:
+                portfolio = None
+        
+        # Get inputs from previous steps
+        top_picks = strategy.get("scorer", {}).get("top_picks", [])
+        regime_code = strategy.get("regime", {}).get("code", "NEUTRAL")
+        
+        # Compute actions
+        action_result = compute_actions(portfolio, top_picks, regime_code)
+        
+        # Add to strategy
+        strategy["holding_action"] = {
+            "status": action_result.get("status", "SKIPPED"),
+            "reason": action_result.get("reason", "UNKNOWN_ERROR"),
+            "reason_detail": action_result.get("reason_detail", ""),
+            "items": action_result.get("items", []),
+            "items_hash": action_result.get("items_hash", "")
+        }
+    except Exception as e:
+        strategy["holding_action"] = {
+            "status": "SKIPPED",
+            "reason": "IMPORT_ERROR",
+            "reason_detail": sanitize_reason_detail(f"Failed to import holding_action: {str(e)}"),
+            "items": [],
+            "items_hash": ""
+        }
     
     # payload SHA256 계산
     payload_sha256 = compute_payload_sha256(strategy)
@@ -182,6 +403,33 @@ def main():
     print(f"    bundle_id: {bundle['bundle_id']}")
     print(f"    created_at: {bundle['created_at']}")
     print(f"    strategy: {bundle['strategy']['name']} v{bundle['strategy']['version']}")
+    
+    # P100-1: Regime 정보 출력
+    regime = bundle['strategy'].get('regime', {})
+    print(f"    regime: {regime.get('code', 'N/A')} ({regime.get('reason', 'N/A')})")
+    print(f"    regime_detail: {regime.get('reason_detail', '')[:60]}...")
+    print(f"    input_fingerprint: {regime.get('input_fingerprint', 'N/A')}")
+    
+    # P100-2: Scorer 정보 출력
+    scorer = bundle['strategy'].get('scorer', {})
+    print(f"    scorer: {scorer.get('status', 'N/A')} ({scorer.get('reason', 'N/A')})")
+    print(f"    scorer_source: {scorer.get('data_source', 'N/A')}")
+    picks = scorer.get('top_picks', [])
+    if picks:
+        for p in picks[:4]:
+            print(f"      - {p.get('ticker')}: score={p.get('score')}, {p.get('reason')}")
+    else:
+        print(f"    scorer: no picks (status={scorer.get('status', 'N/A')})")
+    
+    # P100-3: Holding Action 정보 출력
+    action = bundle['strategy'].get('holding_action', {})
+    print(f"    holding_action: {action.get('status', 'N/A')} ({action.get('reason', 'N/A')})")
+    action_items = action.get('items', [])
+    if action_items:
+        for a in action_items[:5]:
+            print(f"      - {a.get('ticker')}: {a.get('action')}/{a.get('confidence')} ({a.get('reason')})")
+    else:
+        print(f"    holding_action: no items")
     
     # 2. 로컬 검증
     print("\n[2] Validating bundle locally...")
