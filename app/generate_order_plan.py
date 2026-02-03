@@ -208,7 +208,12 @@ def generate_order_plan() -> Dict[str, Any]:
             
     # 4.2 Process Top Picks
     top_picks = reco.get("top_picks", [])
-    current_tickers = holdings.keys()
+    
+    # Handle holdings (List per contract, but code assumed Dict previously)
+    if isinstance(holdings, list):
+        current_tickers = {h.get("ticker") for h in holdings if h.get("ticker")}
+    else:
+        current_tickers = set(holdings.keys())
     
     for pick in top_picks:
         ticker = pick.get("ticker")
