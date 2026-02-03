@@ -189,26 +189,18 @@ fi
 # ============================================================================
 # Step 7: Daily Summary Log
 # ============================================================================
-echo ""
-echo "$LOG_PREFIX [7/8] Generating Daily Summary..."
-RISKS_JSON="[]"
-OPS_SUMMARY_JSON=$(curl -s "${BASE_URL}/api/ops/summary/latest" 2>/dev/null)
-if [ -n "$OPS_SUMMARY_JSON" ]; then
-    RISKS_JSON=$(echo "$OPS_SUMMARY_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); row=(d.get("rows") or [d])[0]; print(json.dumps([r.get("code") for r in row.get("top_risks", [])]))' 2>/dev/null || echo "[]")
-fi
+# P106-FIX2: Daily Ops Summary SSOT Lock (Envelope-safe)
+# Force regenerate to ensure Ups Summary reflects the latest Reco/Order Plan/C5 status from previous steps
+echo "$LOG_PREFIX [7/8] Generating Daily Summary (Final SSOT Regen)..."
+OPS_REGEN_RESP=$(curl -s -X POST "${BASE_URL}/api/ops/summary/regenerate?confirm=true")
 
-SUMMARY_OUTPUT=$(cat <<EOF | python3 "${REPO_DIR}/app/utils/print_daily_summary.py"
-{
-  "overall_status": "$OPS_STATUS",
-  "strategy_bundle": { "stale": $BUNDLE_STALE },
-  "reco": { "decision": "$RECO_DECISION", "reason": "$RECO_REASON" },
-  "order_plan": { "decision": "$ORDER_DECISION", "reason": "$ORDER_REASON", "reason_detail": "$ORDER_DETAIL" },
-  "contract5": { "decision": "$C5_DECISION", "reason": "$C5_REASON" },
-  "top_risks": $RISKS_JSON,
-  "push": { "last_send_decision": "SKIPPED_P104" }
-}
-EOF
-)
+# Pipe directly to print_daily_summary.py (SSOT Lock)
+# This prevents discrepancies between variables/legacy paths and the actual Ops Summary
+if [ -n "$OPS_REGEN_RESP" ]; then
+    SUMMARY_OUTPUT=$(echo "$OPS_REGEN_RESP" | python3 "${REPO_DIR}/app/utils/print_daily_summary.py")
+else
+    SUMMARY_OUTPUT="DAILY_SUMMARY Reason=API_PUSH_FAILED detail=Ops_Summary_Regen_Empty"
+fi
 echo "$LOG_PREFIX $SUMMARY_OUTPUT"
 mkdir -p logs
 printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$SUMMARY_OUTPUT" | tee logs/daily_summary.latest >> logs/daily_summary.log
