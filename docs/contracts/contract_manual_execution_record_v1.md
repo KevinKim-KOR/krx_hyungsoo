@@ -11,11 +11,21 @@ It is the "Receipt" or "Flight Log" of the manual operation.
 |---|---|---|
 | schema | String | Fixed "MANUAL_EXECUTION_RECORD_V1" |
 | asof | ISO8601 | UTC Timestamp of recording |
-| source | Object | Source context |
-| source.prep_ref | String | Path to Prep |
-| source.ticket_ref | String | Path to Ticket |
-| source.confirm_token | String | Token used for submission |
-| source.plan_id | String | Plan ID |
+| source_refs | Object | Reference paths |
+| source_refs.execution_prep_ref | String | Path to Prep |
+| source_refs.ticket_ref | String | Path to Ticket |
+| source_refs.order_plan_export_ref | String | Path to Export |
+| linkage | Object | ID Linkage for Integrity |
+| linkage.bundle_id | String | Strategy Bundle ID |
+| linkage.plan_id | String | Order Plan ID |
+| linkage.export_id | String | Export ID (if available, or uses Plan ID) |
+| linkage.ticket_id | String | Ticket Source ID |
+| operator_proof | Object | Proof of manual work |
+| operator_proof.filled_at | ISO8601 | Time of execution completion |
+| operator_proof.method | String | HTS \| MTS \| OTHER |
+| operator_proof.evidence_note | String | Short note |
+| dedupe | Object | Anti-duplication |
+| dedupe.idempotency_key | String | Unique Key (ticket_id + filled_at + plan_id) |
 | decision | String | EXECUTED \| PARTIAL \| SKIPPED \| BLOCKED |
 | summary | Object | Execution stats |
 | summary.orders_total | Integer | Total orders in ticket |

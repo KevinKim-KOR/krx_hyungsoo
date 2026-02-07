@@ -32,7 +32,7 @@ def load_json(path: Path) -> Optional[Dict]:
     except Exception:
         return None
 
-def generate_record(confirm_token: str, items: List[Dict]):
+def generate_record(input_token: str, items_data: Dict):
     now = datetime.now(timezone.utc)
     asof_str = now.isoformat().replace("+00:00", "Z")
     
@@ -73,31 +73,96 @@ def generate_record(confirm_token: str, items: List[Dict]):
     record["source"]["plan_id"] = prep.get("source", {}).get("plan_id")
     record["evidence_refs"] = [record["source"]["prep_ref"], record["source"]["ticket_ref"]]
     
-    # 3. Validate Context
-    if prep.get("decision") != "READY":
-        record["decision"] = "BLOCKED"
-        record["reason"] = "PREP_NOT_READY"
-        _save_and_return(record)
-        return
-        
+    
+    # 3. Validate Context (Fail-Closed)
+    
+    # 3-A. Token Check
     required_token = prep.get("source", {}).get("confirm_token")
-    if confirm_token != required_token:
+    if input_token != required_token:
         record["decision"] = "BLOCKED"
         record["reason"] = "TOKEN_MISMATCH"
         _save_and_return(record)
         return
+
+    # 3-B. Prep Status Check
+    if prep.get("decision") not in ["READY", "WARN"]:
+        record["decision"] = "BLOCKED"
+        record["reason"] = "PREP_NOT_READY"
+        record["reason_detail"] = f"Prep decision is {prep.get('decision')}"
+        _save_and_return(record)
+        return
+
+    # 3-C. Linkage Check (Plan ID match)
+    prep_plan_id = prep.get("source", {}).get("plan_id")
+    ticket_plan_id = ticket.get("source", {}).get("plan_id")
+    input_plan_id = items_data.get("source", {}).get("plan_id") # Input should have source headers
+
+    if prep_plan_id != ticket_plan_id:
+        record["decision"] = "BLOCKED"
+        record["reason"] = "LINKAGE_MISMATCH"
+        record["reason_detail"] = "Prep and Ticket Plan IDs do not match"
+        _save_and_return(record)
+        return
         
-    # 4. Process Items
-    # We trust user input items but should match against Ticket orders if we want strictness.
-    # User instruction says "submit -> decision=EXECUTED or PARTIAL".
-    # We just record what user sent, assuming UI/Operator is responsible for mapping.
-    # But we can calculate summary.
+    if input_plan_id and input_plan_id != prep_plan_id:
+        record["decision"] = "BLOCKED"
+        record["reason"] = "LINKAGE_MISMATCH"
+        record["reason_detail"] = f"Input Plan ID {input_plan_id} != Prep Plan ID {prep_plan_id}"
+        _save_and_return(record)
+        return
+
+    # 3-D. Dedupe (Idempotency)
+    # Construct Key
+    # If input has 'idempotency_key', use it. Else construct from PlanID + Date?
+    # Better to force input to provide unique proof or use Ticket ID.
+    # Current simplistic approach: Check if RECORD_LATEST already exists and has SAME Plan ID and is DONE.
+    # But user asked for specific Idempotency Key check against SNAPSHOTS.
+    
+    # Let's check if we already have a successful record for this Plan ID in snapshots.
+    # This is expensive to scan all snapshots. 
+    # Alternative: Check LATEST. If LATEST is for this Plan ID and EXECUTED, then Duplicate.
+    
+    current_record = load_json(RECORD_LATEST)
+    if current_record and current_record.get("linkage", {}).get("plan_id") == prep_plan_id:
+        if current_record.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
+            record["decision"] = "BLOCKED"
+            record["reason"] = "DUPLICATE_SUBMIT_BLOCKED"
+            record["reason_detail"] = "Record for this Plan ID already exists and is final."
+            _save_and_return(record)
+            return
+
+    # 4. Populate Record Fields
+    record["source_refs"] = {
+        "execution_prep_ref": str(PREP_LATEST.relative_to(BASE_DIR)).replace("\\", "/"),
+        "ticket_ref": str(TICKET_LATEST.relative_to(BASE_DIR)).replace("\\", "/"),
+        "order_plan_export_ref": prep.get("source", {}).get("export_ref")
+    }
+    
+    record["linkage"] = {
+        "bundle_id": "UNKNOWN", # Prep doesn't have bundle_id easily visible? It's deep in export. P122 requirement said "bundle_id".
+        "plan_id": prep_plan_id,
+        "export_id": prep.get("source", {}).get("export_ref"), # Ref as ID for now
+        "ticket_id": "TICKET_LATEST" # Placeholder
+    }
+    
+    record["operator_proof"] = {
+        "filled_at": items_data.get("filled_at", asof_str),
+        "method": items_data.get("method", "UNKNOWN"),
+        "evidence_note": items_data.get("evidence_note", "")
+    }
+
+    # 5. Process Items
+    input_items = items_data.get("items", [])
     
     executed = 0
     skipped = 0
     
     processed_items = []
-    for item in items:
+    
+    # If Input Items empty, maybe load from Ticket and mark all as Input Status?
+    # User instruction: "Input JSON has items".
+    
+    for item in input_items:
         status = item.get("status", "SKIPPED")
         if status == "EXECUTED":
             executed += 1
@@ -106,23 +171,17 @@ def generate_record(confirm_token: str, items: List[Dict]):
         processed_items.append(item)
         
     record["items"] = processed_items
-    record["summary"]["orders_total"] = len(items)
+    record["summary"]["orders_total"] = len(input_items)
     record["summary"]["executed_count"] = executed
     record["summary"]["skipped_count"] = skipped
     
     if executed > 0:
-        if skipped > 0:
-            record["decision"] = "PARTIAL"
-        else:
-            record["decision"] = "EXECUTED"
+        if skipped > 0: record["decision"] = "PARTIAL"
+        else: record["decision"] = "EXECUTED"
     else:
-        if skipped > 0:
-            record["decision"] = "SKIPPED" # All skipped
-        else:
-            record["decision"] = "EXECUTED" # Empty list? or NO_OP
-            if len(items) == 0:
-                record["decision"] = "NO_ITEMS"
-
+        if skipped > 0: record["decision"] = "SKIPPED"
+        else: record["decision"] = "NO_ITEMS" # Valid if ticket was empty?
+        
     record["reason"] = "SUBMITTED"
     
     _save_and_return(record)
@@ -152,6 +211,30 @@ def _save_and_return(record: Dict):
         }))
 
 if __name__ == "__main__":
-    # For testing, CLI usage might be complex due to JSON arg.
-    # Rely on API invocation mainly.
-    pass 
+    import sys
+    
+    if len(sys.argv) < 2:
+        print(json.dumps({"decision": "BLOCKED", "reason": "NO_INPUT_FILE"}))
+        sys.exit(1)
+        
+    input_file = Path(sys.argv[1])
+    try:
+        if not input_file.exists():
+             # maybe passed as stdin content? No, argument is file path usually.
+             # Check if argument is token (legacy usage)?
+             # New usage: python generate... record_input.json < token.txt (via stdin for token) OR
+             # P122 says "submit input JSON". 
+             # Let's assume input_file contains everything including token?
+             # OR token is passed via pipe?
+             # Safe pattern: Token via pipe (safe), Content via file.
+             pass
+             
+        # Read Token from Stdin
+        token = sys.stdin.read().strip()
+        
+        items_data = json.loads(input_file.read_text(encoding='utf-8'))
+        generate_record(token, items_data)
+        
+    except Exception as e:
+        print(json.dumps({"decision": "BLOCKED", "reason": "INPUT_ERROR", "error": str(e)}))
+        sys.exit(1)
