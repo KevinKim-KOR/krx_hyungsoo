@@ -49,39 +49,39 @@ def run_submit(payload, outfile='res_p123.json'):
     with open('record_input.json', 'w') as f:
         json.dump(payload, f)
     
-    cmd = f'echo p123_token | python3 app/generate_manual_execution_record.py record_input.json > {outfile}'
-    os.system(cmd)
+    cmd = f'echo p123_token | python3 app/generate_manual_execution_record.py record_input.json > {outfile} 2>&1'
+    exit_code = os.system(cmd)
+    
+    if exit_code != 0:
+        print(f"Command failed (Exit {exit_code}): {cmd}")
+        os.system(f"cat {outfile}")
+        return {'decision': 'ERROR'}
     
     if os.path.exists(outfile):
         try:
             return json.load(open(outfile))
-        except: return {'decision': 'ERROR'}
+        except Exception as e:
+            print(f"JSON Load Failed: {e}")
+            os.system(f"cat {outfile}")
+            return {'decision': 'ERROR'}
     return {'decision': 'ERROR'}
 
 setup_mocks()
 
 print('--- Case A: Full Execution ---')
-payload_a = {
-    'source': {'plan_id': 'test_plan_p123'},
-    'filled_at': '2026-02-08T12:00:00Z',
-    'items': [{'ticker':'005930', 'side':'BUY', 'status':'EXECUTED', 'executed_qty':10}],
-    'dedupe': {'idempotency_key': 'key_a'}
-}
+# ... rest same ...
 res = run_submit(payload_a, 'res_a.json')
 print(f"Dec: {res.get('decision')}, Ver: {res.get('record_version')}")
-os.system('python3 app/generate_ops_summary.py > /dev/null')
+print("Generating Ops Summary...")
+os.system('python3 app/generate_ops_summary.py') # No dev/null
 os.system('grep "DONE_TODAY" reports/ops/summary/latest/ops_summary_latest.json') # Expect DONE_TODAY
 
 print('--- Case B: Partial Execution (New Version) ---')
-payload_b = {
-    'source': {'plan_id': 'test_plan_p123'},
-    'filled_at': '2026-02-08T12:05:00Z',
-    'items': [{'ticker':'005930', 'side':'BUY', 'status':'PARTIAL', 'executed_qty':5}],
-    'dedupe': {'idempotency_key': 'key_b'} # Diff key -> New Version
-}
+# ...
 res = run_submit(payload_b, 'res_b.json')
 print(f"Dec: {res.get('decision')}, Ver: {res.get('record_version')}")
-os.system('python3 app/generate_ops_summary.py > /dev/null')
+print("Generating Ops Summary...")
+os.system('python3 app/generate_ops_summary.py') # No dev/null
 os.system('grep "DONE_TODAY_PARTIAL" reports/ops/summary/latest/ops_summary_latest.json') # Expect DONE_TODAY_PARTIAL
 
 print('--- Case C: Duplicate Replay (Blocking) ---')
