@@ -5,6 +5,9 @@
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$BASE_DIR" || exit 1
 
+echo "DEBUG: PWD=$(pwd)"
+echo "DEBUG: BASE_DIR=$BASE_DIR"
+
 INPUT_FILE="$1"
 
 # 1. Validation
