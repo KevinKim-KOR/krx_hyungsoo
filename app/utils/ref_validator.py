@@ -70,6 +70,11 @@ ALLOWED_JSON_PATTERNS = [
     # P112 Execution Prep
     r"^reports/live/execution_prep/latest/execution_prep_latest\.json$",
     r"^reports/live/execution_prep/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # P113-A Manual Execution
+    r"^reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest\.(json|csv|md)$",
+    r"^reports/live/manual_execution_ticket/snapshots/[a-zA-Z0-9_\-\.]+\.(json|csv|md)$",
+    r"^reports/live/manual_execution_record/latest/manual_execution_record_latest\.json$",
+    r"^reports/live/manual_execution_record/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/phase_c/latest/report_human\.json$", # Ensure this is explicit if not covered
 ]
 

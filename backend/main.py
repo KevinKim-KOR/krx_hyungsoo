@@ -2731,6 +2731,115 @@ def prepare_execution(request: ExecutionPrepRequest, confirm: bool = Query(False
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
+# === Manual Execution API (P113-A) ===
+
+TICKET_LATEST_FILE = BASE_DIR / "reports" / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
+RECORD_LATEST_FILE = BASE_DIR / "reports" / "live" / "manual_execution_record" / "latest" / "manual_execution_record_latest.json"
+
+# Ticket
+@app.get("/api/manual_execution_ticket/latest", summary="Manual Execution Ticket 최신 조회")
+def get_manual_execution_ticket_latest():
+    """Manual Execution Ticket Latest (P113-A)"""
+    if not TICKET_LATEST_FILE.exists():
+        return {
+            "status": "empty",
+            "schema": "MANUAL_EXECUTION_TICKET_V1",
+            "data": None,
+            "error": "No ticket generated yet."
+        }
+    try:
+        data = json.loads(TICKET_LATEST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "MANUAL_EXECUTION_TICKET_V1",
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+@app.post("/api/manual_execution_ticket/regenerate", summary="Manual Execution Ticket 재생성")
+def regenerate_manual_execution_ticket(confirm: bool = Query(False)):
+    """Regenerate Manual Execution Ticket (P113-A) - Requires Confirm"""
+    if not confirm:
+        raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
+        
+    try:
+        from app.generate_manual_execution_ticket import generate_ticket
+        generate_ticket()
+        
+        if TICKET_LATEST_FILE.exists():
+            data = json.loads(TICKET_LATEST_FILE.read_text(encoding="utf-8"))
+            return data
+        else:
+            return {"result": "FAIL", "reason": "Generation failed (No file)"}
+            
+    except ImportError as e:
+        logger.error(f"Ticket import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
+    except Exception as e:
+        logger.error(f"Ticket error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+# Record
+@app.get("/api/manual_execution_record/latest", summary="Manual Execution Record 최신 조회")
+def get_manual_execution_record_latest():
+    """Manual Execution Record Latest (P113-A)"""
+    if not RECORD_LATEST_FILE.exists():
+        return {
+            "status": "empty",
+            "schema": "MANUAL_EXECUTION_RECORD_V1",
+            "data": None,
+            "error": "No record generated yet."
+        }
+    try:
+        data = json.loads(RECORD_LATEST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "MANUAL_EXECUTION_RECORD_V1",
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+class ManualExecutionItem(BaseModel):
+    ticker: str
+    side: str
+    status: str # EXECUTED | SKIPPED
+    executed_qty: Optional[int] = 0
+    note: Optional[str] = ""
+
+class ManualExecutionRecordRequest(BaseModel):
+    confirm_token: str
+    items: List[ManualExecutionItem]
+
+@app.post("/api/manual_execution_record/submit", summary="Manual Execution Record 제출")
+def submit_manual_execution_record(request: ManualExecutionRecordRequest, confirm: bool = Query(False)):
+    """Submit Manual Execution Record (P113-A) - Requires Confirm + Token"""
+    if not confirm:
+        raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
+    
+    if not request.confirm_token:
+         raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "TOKEN_REQUIRED"})
+
+    try:
+        from app.generate_manual_execution_record import generate_record
+        # Convert request items to dicts
+        items_dict = [item.dict() for item in request.items]
+        generate_record(request.confirm_token, items_dict)
+        
+        if RECORD_LATEST_FILE.exists():
+            data = json.loads(RECORD_LATEST_FILE.read_text(encoding="utf-8"))
+            return data
+        else:
+            return {"result": "FAIL", "reason": "Generation failed (No file)"}
+    except ImportError as e:
+        logger.error(f"Record import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
+    except Exception as e:
+        logger.error(f"Record error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 # === Evidence Ref Resolver API (C-P.30) ===
 
 

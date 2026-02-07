@@ -108,6 +108,8 @@
 | `LIVE_CYCLE_RECEIPT_V1` | [contract_live_cycle_receipt_v1.md](contract_live_cycle_receipt_v1.md) | Live Cycle 영수증 (D-P.50) |
 | `ORDER_PLAN_EXPORT_V1` | [contract_order_plan_export_v1.md](contract_order_plan_export_v1.md) | 주문안 수출 (P111) |
 | `EXECUTION_PREP_V1` | [contract_execution_prep_v1.md](contract_execution_prep_v1.md) | 실행 준비 (P112, Immutable Snapshot) |
+| `MANUAL_EXECUTION_TICKET_V1` | [contract_manual_execution_ticket_v1.md](contract_manual_execution_ticket_v1.md) | 수동 실행 티켓 (P113-A) |
+| `MANUAL_EXECUTION_RECORD_V1` | [contract_manual_execution_record_v1.md](contract_manual_execution_record_v1.md) | 수동 실행 기록 (P113-A) |
 
 ---
 
