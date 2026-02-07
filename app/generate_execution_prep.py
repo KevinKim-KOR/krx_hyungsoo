@@ -252,6 +252,9 @@ def generate_prep(confirm_token: str):
     else:
         prep["manual_next_step"] = "Ready for Execution (Next Phase)"
 
+    # DEBUG
+    print(f"DEBUG: PREP BEFORE SAVE: {json.dumps(prep)}")
+    
     _save_and_return(prep)
 
 def _save_and_return(prep: Dict):
