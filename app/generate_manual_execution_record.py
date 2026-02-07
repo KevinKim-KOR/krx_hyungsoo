@@ -43,7 +43,7 @@ def generate_record(input_token: str, items_data: Dict):
         "source": {
             "prep_ref": None,
             "ticket_ref": None,
-            "confirm_token": confirm_token,
+            "confirm_token": input_token,
             "plan_id": None
         },
         "decision": "BLOCKED",
