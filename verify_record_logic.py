@@ -61,9 +61,12 @@ def run_submit(plan_id, token, outfile='res.json'):
         
     try:
         with open(outfile) as f:
-            return json.load(f)
-    except:
-        return {'decision': 'ERROR', 'reason': 'Invalid JSON'}
+            res = json.load(f)
+            if res.get('decision') == 'BLOCKED' and res.get('error'):
+                 print(f"Error Detail: {res.get('error')}")
+            return res
+    except Exception as e:
+        return {'decision': 'ERROR', 'reason': 'Invalid JSON', 'error': str(e)}
 
 # --- Execution ---
 setup_mocks()
