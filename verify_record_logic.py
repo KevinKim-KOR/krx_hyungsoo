@@ -46,6 +46,12 @@ def setup_mocks():
 
     # DEBUG: Check Prep Plan ID
     try:
+        if os.path.exists('reports/live/execution_prep/latest/execution_prep_latest.json'):
+             stat = os.stat('reports/live/execution_prep/latest/execution_prep_latest.json')
+             print(f"DEBUG: Prep File Size: {stat.st_size}, Modified: {time.ctime(stat.st_mtime)}")
+        else:
+             print("DEBUG: Prep File Missing!")
+             
         with open('reports/live/order_plan/latest/order_plan_latest.json') as f:
             op = json.load(f)
             print(f"DEBUG: Order Plan ID: {op.get('plan_id')}")

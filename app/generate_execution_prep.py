@@ -102,8 +102,11 @@ def generate_prep(confirm_token: str):
 
     prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
     
-    # Direct access to force error if missing
-    prep["source"]["plan_id"] = plan_data["plan_id"]
+    val = plan_data["plan_id"]
+    print(f"DEBUG: plan_data['plan_id'] = '{val}'")
+    prep["source"]["plan_id"] = val
+    
+    print(f"DEBUG: Writing PREP to {PREP_LATEST}")
     
     prep["evidence_refs"].append(prep["source"]["order_plan_ref"])
 
