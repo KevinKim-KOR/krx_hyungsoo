@@ -10,9 +10,24 @@ def setup_mocks():
     (Path('state/portfolio/latest')).mkdir(parents=True, exist_ok=True)
     (Path('reports/live/execution_prep/latest')).mkdir(parents=True, exist_ok=True)
     (Path('reports/live/manual_execution_ticket/latest')).mkdir(parents=True, exist_ok=True)
+    (Path('reports/ops/evidence/health')).mkdir(parents=True, exist_ok=True)
+    (Path('reports/live/reco/latest')).mkdir(parents=True, exist_ok=True)
+    (Path('state/strategy_bundle/latest')).mkdir(parents=True, exist_ok=True)
 
     with open('reports/live/order_plan/latest/order_plan_latest.json', 'w') as f:
         json.dump({'schema': 'ORDER_PLAN_V1', 'plan_id': 'test_plan_p123', 'decision': 'READY'}, f)
+
+    # Health Mock
+    with open('reports/ops/evidence/health/health_latest.json', 'w') as f:
+        json.dump({'schema': 'EVIDENCE_HEALTH_V1', 'decision': 'PASS', 'overall_health': 'PASS'}, f)
+        
+    # Reco Mock
+    with open('reports/live/reco/latest/reco_latest.json', 'w') as f:
+        json.dump({'schema': 'OCI_RECO_V1', 'decision': 'PASS'}, f)
+        
+    # Bundle Mock
+    with open('state/strategy_bundle/latest/strategy_bundle_latest.json', 'w') as f:
+        json.dump({'schema': 'STRATEGY_BUNDLE_V1', 'bucket_url': 'test_bucket'}, f)
 
     # Export (Must match Plan ID for manual loop stage logic)
     with open('reports/live/order_plan_export/latest/order_plan_export_latest.json', 'w') as f:
