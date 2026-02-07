@@ -77,6 +77,11 @@ def generate_prep(confirm_token: str):
     export_data = load_json(EXPORT_LATEST)
     plan_data = load_json(ORDER_PLAN_LATEST)
     
+    # DEBUG
+    print(f"DEBUG: BASE_DIR: {BASE_DIR.absolute()}")
+    print(f"DEBUG: ORDER_PLAN_LATEST: {ORDER_PLAN_LATEST}")
+    print(f"DEBUG: plan_data: {json.dumps(plan_data)}")
+    
     if not export_data:
         prep["decision"] = "NO_EXPORT"
         prep["reason"] = "EXPORT_MISSING"
