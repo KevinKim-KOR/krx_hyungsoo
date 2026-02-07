@@ -55,6 +55,10 @@ def setup_mocks():
         with open('reports/live/order_plan/latest/order_plan_latest.json') as f:
             op = json.load(f)
             print(f"DEBUG: Order Plan ID: {op.get('plan_id')}")
+
+        with open('reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json') as f:
+            tick = json.load(f)
+            print(f"DEBUG: Ticket Plan ID: {tick.get('source', {}).get('plan_id')}")
             
         with open('reports/live/execution_prep/latest/execution_prep_latest.json') as f:
             ep = json.load(f)
