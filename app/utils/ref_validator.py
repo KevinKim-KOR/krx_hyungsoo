@@ -64,6 +64,9 @@ ALLOWED_JSON_PATTERNS = [
     # P103 Contract 5 Report
     r"^reports/ops/contract5/latest/[a-zA-Z0-9_\-\.]+\.(json|md)$",
     r"^reports/ops/contract5/snapshots/[a-zA-Z0-9_\-\.]+\.(json|md)$",
+    # P111 Order Plan Export
+    r"^reports/live/order_plan_export/latest/order_plan_export_latest\.json$",
+    r"^reports/live/order_plan_export/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/phase_c/latest/report_human\.json$", # Ensure this is explicit if not covered
 ]
 

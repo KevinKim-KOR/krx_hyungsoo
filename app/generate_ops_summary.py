@@ -452,6 +452,10 @@ def regenerate_ops_summary():
             })
             if overall_status == "OK": overall_status = "WARN" # or BLOCKED?
             
+    # 6. Order Plan Export (P111)
+    # Check if Order Plan is GENERATED but Export is missing or stale
+
+            
         elif op_reason == "PORTFOLIO_INCONSISTENT":
             top_risks.append({
                 "code": "PORTFOLIO_INCONSISTENT",
@@ -483,7 +487,36 @@ def regenerate_ops_summary():
             if overall_status == "OK": overall_status = "WARN"
 
 
-    # 6. Contract 5 Risks (P103)
+
+    # 6. Order Plan Export (P111)
+    # Check if Order Plan is GENERATED but Export is missing or stale
+    if op_decision == "GENERATED" or op_decision == "EMPTY":
+        export_path = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+        
+        has_export = False
+        if export_path.exists():
+            try:
+                export_data = json.loads(export_path.read_text(encoding="utf-8"))
+                # Check Plan ID match
+                export_plan_id = export_data.get("source", {}).get("plan_id")
+                plan_id = order_plan.get("plan_id")
+                
+                if export_plan_id == plan_id:
+                    has_export = True
+            except Exception:
+                pass
+        
+        if not has_export:
+            top_risks.append({
+                "code": "MISSING_EXPORT",
+                "severity": "WARN",
+                "message": "Order Plan generated but Export (Human Gate) missing",
+                "evidence_refs": []
+            })
+            if overall_status == "OK":
+                overall_status = "WARN"
+
+    # 7. Contract 5 Risks (P103)
     if c5_decision == "BLOCKED":
         top_risks.append({
             "code": "CONTRACT5_REPORT_BLOCKED",

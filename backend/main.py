@@ -2624,7 +2624,58 @@ def get_scheduler_snapshot_by_id(snapshot_id: str):
         )
 
 
+
+# === Order Plan Export API (P111) ===
+
+EXPORT_LATEST_FILE = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+
+@app.get("/api/order_plan_export/latest", summary="Order Plan Export 최신 조회")
+def get_order_plan_export_latest():
+    """Order Plan Export Latest (P111)"""
+    if not EXPORT_LATEST_FILE.exists():
+        return {
+            "status": "empty",
+            "schema": "ORDER_PLAN_EXPORT_V1",
+            "data": None,
+            "error": "No export generated yet."
+        }
+    
+    try:
+        data = json.loads(EXPORT_LATEST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "ORDER_PLAN_EXPORT_V1",
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+@app.post("/api/order_plan_export/regenerate", summary="Order Plan Export 재생성")
+def regenerate_order_plan_export(confirm: bool = Query(False)):
+    """Regenerate Order Plan Export (P111) - Requires Confirm"""
+    if not confirm:
+        raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
+        
+    try:
+        from app.generate_order_plan_export import generate_export
+        generate_export()
+        
+        if EXPORT_LATEST_FILE.exists():
+            data = json.loads(EXPORT_LATEST_FILE.read_text(encoding="utf-8"))
+            return data
+        else:
+            return {"result": "FAIL", "reason": "Generation failed (No file)"}
+            
+    except ImportError as e:
+        logger.error(f"Export import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
+    except Exception as e:
+        logger.error(f"Export error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
 # === Evidence Ref Resolver API (C-P.30) ===
+
 
 # 허용된 JSONL 파일 (정확히 2개만)
 ALLOWED_JSONL_FILES = {
