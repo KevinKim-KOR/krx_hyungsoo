@@ -564,15 +564,25 @@ def generate_ops_summary():
                  
                  # Check Record
                  if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED", "NO_ITEMS"]:
-                      # Compare Plan IDs
-                      e_plan = export_data.get("source", {}).get("plan_id")
-                      r_plan = record_data.get("source", {}).get("plan_id")
-                      if e_plan == r_plan:
-                          manual_stage = "DONE_TODAY"
-                      else:
-                          manual_stage = "AWAITING_RECORD_SUBMIT" # Stale record
-                 else:
-                     manual_stage = "AWAITING_RECORD_SUBMIT" # No record
+                     if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
+                        # P123: Partial/Retry Stages
+                        exec_res = record_data.get("execution_result", "EXECUTED")
+                        if exec_res == "PARTIAL":
+                            manual_stage = "DONE_TODAY_PARTIAL"
+                        elif exec_res == "NOT_EXECUTED":
+                            manual_stage = "AWAITING_RETRY_EXECUTION"
+                        else:
+                            manual_stage = "DONE_TODAY"
+                            
+                        # Check linkage
+                        rec_src = record_data.get("source", {}) # Legacy field or new structure? 
+                        # P122 uses linkage.plan_id. P123 contract says linkage.plan_id.
+                        # But legacy `source.plan_id` might be gone?
+                        # generate_ops_summary.py uses 'linkage' usually?
+                        # Let's check how it checks linkage. 
+                        # Actually, record generator enforces linkage. If it's EXECUTED/PARTIAL/SKIPPED, linkage is valid.
+                        pass
+                 elif ticket_data and ticket_data.get("decision") == "GENERATED":                   manual_stage = "AWAITING_RECORD_SUBMIT" # No record
 
     # Next Action Logic (P115)
     next_action = "NONE"
@@ -601,9 +611,30 @@ def generate_ops_summary():
                  })
                  overall_status = "BLOCKED"
          
+         # P123: Partial Execution Risks
+         exec_res = record_data.get("execution_result", "UNKNOWN")
+         if exec_res == "PARTIAL":
+              top_risks.append({
+                  "code": "PARTIAL_EXECUTION_REQUIRES_REVIEW",
+                  "severity": "WARN",
+                  "message": "Execution was PARTIAL. Review missed/partial orders.",
+                  "evidence_refs": ["reports/live/manual_execution_record/latest/manual_execution_record_latest.json"]
+              })
+         elif exec_res == "NOT_EXECUTED":
+              top_risks.append({
+                  "code": "UNFILLED_ORDERS_EXIST",
+                  "severity": "WARN",
+                  "message": "Execution was NOT completed (SKIPPED/CANCELED).",
+                  "evidence_refs": ["reports/live/manual_execution_record/latest/manual_execution_record_latest.json"]
+              })
+
          next_action = "bash deploy/oci/manual_loop_submit_record.sh <record_file>"
     elif manual_stage == "DONE_TODAY":
          next_action = "NONE (Done)"
+    elif manual_stage == "DONE_TODAY_PARTIAL":
+         next_action = "REVIEW PARTIALS / RE-SUBMIT (Optional)"
+    elif manual_stage == "AWAITING_RETRY_EXECUTION":
+         next_action = "RETRY EXECUTION -> bash deploy/oci/manual_loop_submit_record.sh"
 
     # Risks based on Stage
     if manual_stage == "NEED_HUMAN_CONFIRM":

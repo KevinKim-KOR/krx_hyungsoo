@@ -20,6 +20,8 @@ It is the "Receipt" or "Flight Log" of the manual operation.
 | linkage.plan_id | String | Order Plan ID |
 | linkage.export_id | String | Export ID (if available, or uses Plan ID) |
 | linkage.ticket_id | String | Ticket Source ID |
+| record_version | Integer | Record Version (1=First, >1=Correction) |
+| execution_result | String | EXECUTED \| PARTIAL \| NOT_EXECUTED \| CANCELED \| UNKNOWN |
 | operator_proof | Object | Proof of manual work |
 | operator_proof.filled_at | ISO8601 | Time of execution completion |
 | operator_proof.method | String | HTS \| MTS \| OTHER |
@@ -31,6 +33,15 @@ It is the "Receipt" or "Flight Log" of the manual operation.
 | summary.orders_total | Integer | Total orders in ticket |
 | summary.executed_count | Integer | Number of orders executed |
 | summary.skipped_count | Integer | Number of orders skipped |
+| note | String | Human readable note |
+| fills | Array | Fill Details (Optional) |
+| fills[].ticker | String | Ticker |
+| fills[].side | String | BUY/SELL |
+| fills[].qty_filled | Number | Filled Qty |
+| fills[].avg_price | Number | Average Price |
+| reconciliation | Object | Helper stats for diffs |
+| reconciliation.missing_orders_count | Integer | Orders in plan but not in input |
+| reconciliation.diff_summary | String | Summary of diffs |
 | items | Array | Execution details per order |
 | items[].ticker | String | Ticker symbol |
 | items[].side | String | BUY/SELL |

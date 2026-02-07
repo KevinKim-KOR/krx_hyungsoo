@@ -111,25 +111,43 @@ def generate_record(input_token: str, items_data: Dict):
         _save_and_return(record)
         return
 
-    # 3-D. Dedupe (Idempotency)
-    # Construct Key
-    # If input has 'idempotency_key', use it. Else construct from PlanID + Date?
-    # Better to force input to provide unique proof or use Ticket ID.
-    # Current simplistic approach: Check if RECORD_LATEST already exists and has SAME Plan ID and is DONE.
-    # But user asked for specific Idempotency Key check against SNAPSHOTS.
-    
-    # Let's check if we already have a successful record for this Plan ID in snapshots.
-    # This is expensive to scan all snapshots. 
-    # Alternative: Check LATEST. If LATEST is for this Plan ID and EXECUTED, then Duplicate.
-    
+    # 3-D. Dedupe & Versioning
+    # Check LATEST first.
     current_record = load_json(RECORD_LATEST)
+    record_version = 1
+    
+    # Idempotency Key Generation (if not provided in input, though contract says it's in 'dedupe' object usually?)
+    # Contract says dedupe.idempotency_key. Let's assume input has it or we form it.
+    # We formed it from ticket_id + filled_at + plan_id usually.
+    # Here we check if input `dedupe` exists.
+    input_dedupe = items_data.get("dedupe", {})
+    input_idem_key = input_dedupe.get("idempotency_key")
+    if not input_idem_key:
+        # Fallback gen
+        input_idem_key = f"{prep_plan_id}_{items_data.get('filled_at')}"
+    
     if current_record and current_record.get("linkage", {}).get("plan_id") == prep_plan_id:
-        if current_record.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
-            record["decision"] = "BLOCKED"
-            record["reason"] = "DUPLICATE_SUBMIT_BLOCKED"
-            record["reason_detail"] = "Record for this Plan ID already exists and is final."
-            _save_and_return(record)
-            return
+        # Same Plan ID exists.
+        last_idem_key = current_record.get("dedupe", {}).get("idempotency_key")
+        last_decision = current_record.get("decision")
+        
+        if last_idem_key == input_idem_key:
+             # Exact Duplicate
+            if last_decision != "BLOCKED":
+                record["decision"] = "BLOCKED"
+                record["reason"] = "DUPLICATE_SUBMIT_BLOCKED"
+                record["reason_detail"] = "Identical payload already processed."
+                _save_and_return(record)
+                return
+        else:
+            # Different Content -> New Version
+            record_version = current_record.get("record_version", 1) + 1
+            print(f"DEBUG: New Version Detected: v{record_version}")
+
+    record["record_version"] = record_version
+    record["dedupe"] = {
+        "idempotency_key": input_idem_key
+    }
 
     # 4. Populate Record Fields
     record["source_refs"] = {
@@ -139,50 +157,82 @@ def generate_record(input_token: str, items_data: Dict):
     }
     
     record["linkage"] = {
-        "bundle_id": "UNKNOWN", # Prep doesn't have bundle_id easily visible? It's deep in export. P122 requirement said "bundle_id".
+        "bundle_id": "UNKNOWN", 
         "plan_id": prep_plan_id,
-        "export_id": prep.get("source", {}).get("export_ref"), # Ref as ID for now
-        "ticket_id": "TICKET_LATEST" # Placeholder
+        "export_id": prep.get("source", {}).get("export_ref"), 
+        "ticket_id": "TICKET_LATEST" 
     }
     
+    # 5. Process Items & Calculate Result
+    input_items = items_data.get("items", [])
+    
+    executed = 0
+    skipped = 0
+    partial = 0
+    canceled = 0
+    
+    processed_items = []
+    fills = []
+    
+    for item in input_items:
+        status = item.get("status", "SKIPPED")
+        processed_items.append(item)
+        
+        if status == "EXECUTED":
+            executed += 1
+            fills.append({
+                "ticker": item.get("ticker"),
+                "side": item.get("side"),
+                "qty_filled": item.get("executed_qty"),
+                "avg_price": item.get("avg_price", 0),
+                "note": item.get("note", "")
+            })
+        elif status == "PARTIAL":
+            partial += 1
+            fills.append({
+                "ticker": item.get("ticker"),
+                "side": item.get("side"),
+                "qty_filled": item.get("executed_qty"),
+                "avg_price": item.get("avg_price", 0),
+                "note": item.get("note", "")
+            })
+        elif status == "CANCELED":
+            canceled += 1
+        else:
+            skipped += 1
+            
+    record["items"] = processed_items
+    record["fills"] = fills
+    
+    record["summary"]["orders_total"] = len(input_items)
+    record["summary"]["executed_count"] = executed
+    record["summary"]["skipped_count"] = skipped
+    
+    # Reconciliation Logic
+    # Compare with Prep Orders? 
+    # For now, just simplistic summaries.
+    record["reconciliation"] = {
+        "missing_orders_count": 0, # TODO: Implement if needed to compare with Prep
+        "diff_summary": f"Exec:{executed}, Part:{partial}, Skip:{skipped}, Cncl:{canceled}"
+    }
+
+    # Determine Execution Result
+    if executed == len(input_items) and len(input_items) > 0:
+        record["execution_result"] = "EXECUTED"
+        record["decision"] = "EXECUTED"
+    elif executed == 0 and partial == 0:
+        record["execution_result"] = "NOT_EXECUTED"
+        record["decision"] = "SKIPPED" # Legacy mapping
+    else:
+        record["execution_result"] = "PARTIAL"
+        record["decision"] = "PARTIAL"
+        
+    record["reason"] = "SUBMITTED"
     record["operator_proof"] = {
         "filled_at": items_data.get("filled_at", asof_str),
         "method": items_data.get("method", "UNKNOWN"),
         "evidence_note": items_data.get("evidence_note", "")
     }
-
-    # 5. Process Items
-    input_items = items_data.get("items", [])
-    
-    executed = 0
-    skipped = 0
-    
-    processed_items = []
-    
-    # If Input Items empty, maybe load from Ticket and mark all as Input Status?
-    # User instruction: "Input JSON has items".
-    
-    for item in input_items:
-        status = item.get("status", "SKIPPED")
-        if status == "EXECUTED":
-            executed += 1
-        else:
-            skipped += 1
-        processed_items.append(item)
-        
-    record["items"] = processed_items
-    record["summary"]["orders_total"] = len(input_items)
-    record["summary"]["executed_count"] = executed
-    record["summary"]["skipped_count"] = skipped
-    
-    if executed > 0:
-        if skipped > 0: record["decision"] = "PARTIAL"
-        else: record["decision"] = "EXECUTED"
-    else:
-        if skipped > 0: record["decision"] = "SKIPPED"
-        else: record["decision"] = "NO_ITEMS" # Valid if ticket was empty?
-        
-    record["reason"] = "SUBMITTED"
     
     _save_and_return(record)
 
