@@ -572,7 +572,6 @@ def generate_ops_summary():
                       else:
                           manual_stage = "AWAITING_RECORD_SUBMIT" # Stale record
                  else:
-                      manual_stage = "AWAITING_RECORD_SUBMIT" # No record
                      manual_stage = "AWAITING_RECORD_SUBMIT" # No record
 
     # Next Action Logic (P115)
