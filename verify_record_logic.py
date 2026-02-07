@@ -36,7 +36,7 @@ def setup_mocks():
         
     # 4. Prep (Manual gen to ensure it exists and matches)
     # Or just run generate_execution_prep.py
-    os.system('python3 app/generate_execution_prep.py test_token_123 > /dev/null')
+    os.system('python3 app/generate_execution_prep.py test_token_123')
     
     # 5. Ticket
     os.system('python3 app/generate_manual_execution_ticket.py > /dev/null')
