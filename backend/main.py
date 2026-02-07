@@ -3142,11 +3142,11 @@ def get_ops_summary_latest():
 
 
 @app.post("/api/ops/summary/regenerate", summary="Ops Summary 재생성")
-def regenerate_ops_summary():
+def regenerate_ops_summary_endpoint():
     """Ops Summary Regenerate (C-P.35) - No subprocess"""
     try:
-        from app.generate_ops_summary import regenerate_ops_summary
-        result = regenerate_ops_summary()
+        from app.generate_ops_summary import generate_ops_summary
+        result = generate_ops_summary()
         return result
     except ImportError as e:
         raise HTTPException(status_code=500, detail={
