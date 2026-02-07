@@ -102,18 +102,9 @@ def generate_prep(confirm_token: str):
 
     prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
     
-    # DEBUG
-    try:
-        pid = plan_data.get("plan_id")
-        print(f"DEBUG: plan_data.get('plan_id') -> '{pid}'")
-        if "plan_id" in plan_data:
-            print(f"DEBUG: 'plan_id' IS in plan_data. Value: '{plan_data['plan_id']}'")
-        else:
-            print(f"DEBUG: 'plan_id' NOT in plan_data. Keys: {list(plan_data.keys())}")
-    except Exception as e:
-        print(f"DEBUG ERROR accessing plan_id: {e}")
-        
-    prep["source"]["plan_id"] = plan_data.get("plan_id")
+    # Direct access to force error if missing
+    prep["source"]["plan_id"] = plan_data["plan_id"]
+    
     prep["evidence_refs"].append(prep["source"]["order_plan_ref"])
 
     # 3. Fail-Closed Checks
