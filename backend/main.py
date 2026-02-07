@@ -95,9 +95,6 @@ app.add_middleware(
 # Include Routers
 app.include_router(operator_dashboard.router)
 
-# Include Routers
-app.include_router(operator_dashboard.router)
-
 # Static Files (Dashboard)
 # 주의: dashboard 디렉토리가 없으면 에러 날 수 있으므로 체크
 if DASHBOARD_DIR.exists():
