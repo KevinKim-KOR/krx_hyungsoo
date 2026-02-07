@@ -86,7 +86,18 @@ echo "Updating Ops Summary..."
 python3 app/generate_ops_summary.py > /dev/null
 
 # 5. Check Stage
-STAGE=$(python3 -c "import json; print(json.load(open('reports/ops/summary/latest/ops_summary_latest.json'))['manual_loop']['stage'])")
+# Ensure file exists
+if [ ! -f "reports/ops/summary/latest/ops_summary_latest.json" ]; then
+    echo "Error: Ops Summary not found."
+    exit 1
+fi
+
+STAGE=$(python3 -c "import json, sys; 
+try:
+    print(json.load(open('reports/ops/summary/latest/ops_summary_latest.json'))['manual_loop']['stage'])
+except Exception as e:
+    print('ERROR')
+")
 echo "Migration Stage: $STAGE"
 
 if [[ "$STAGE" == "DONE_TODAY" || "$STAGE" == "DONE_TODAY_PARTIAL" ]]; then
