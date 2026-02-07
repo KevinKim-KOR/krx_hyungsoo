@@ -86,7 +86,7 @@ echo "Submission Success (Result: $(echo "$RESPONSE" | grep -o '"decision": "[^"
 
 # 4. Regenerate Ops Summary
 echo "Updating Ops Summary..."
-python3 app/generate_ops_summary.py > /dev/null
+python3 app/generate_ops_summary.py
 
 # 5. Check Stage
 # Ensure file exists
