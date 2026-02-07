@@ -86,3 +86,11 @@ print(f"Dec: {res.get('decision')}, Reason: {res.get('reason')}")
 print('--- Test Case C: Linkage Mismatch ---')
 res = run_submit('WRONG_PLAN_ID', 'test_token_123', 'res_c.json')
 print(f"Dec: {res.get('decision')}, Reason: {res.get('reason')}")
+
+print('--- Final Success Verification ---')
+# Re-submit valid record (same as A but ensures latest state)
+res = run_submit('test_plan_123', 'test_token_123', 'res_final.json')
+print(f"Final Submit Dec: {res.get('decision')}")
+
+print('--- Checking Ops Summary Status ---')
+os.system('python3 app/generate_ops_summary.py | grep DONE_TODAY')
