@@ -745,19 +745,21 @@ def generate_ops_summary():
     # Construct Contract 5 Summary (Late Binding)
 
 
+    # Construct Manual Loop Summary
+    manual_loop_summary = {
+        "stage": manual_stage,
+        "export": export_data,
+        "prep": prep_data,
+        "ticket": ticket_data,
+        "record": record_data
+    }
+
     # Construct Contract 5 Summary (Late Binding)
     contract5_summary = {
         "human_report": {
             "decision": c5_decision,
             "latest_ref": "reports/phase_c/latest/report_human.json",
             "snapshot_ref": c5_snapshot_ref.replace("ai_report", "human_report").replace(".json", ".md") if c5_snapshot_ref else None
-        },
-        "manual_loop": {
-            "stage": manual_stage,
-            "export": export_data,
-            "prep": prep_data,
-            "ticket": ticket_data,
-            "record": record_data
         },
         "daily_summary": {
             "decision": ds_decision,
@@ -793,6 +795,7 @@ def generate_ops_summary():
         },
         "portfolio": portfolio_summary,
         "order_plan": order_plan_summary,
+        "manual_loop": manual_loop_summary,
         "contract5": contract5_summary,
         "reco": reco_summary,
         "strategy_bundle": bundle_summary,
