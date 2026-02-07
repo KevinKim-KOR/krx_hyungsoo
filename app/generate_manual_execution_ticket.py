@@ -151,7 +151,7 @@ def generate_ticket():
     # Actually P120 Prep doesn't fully expose cash in top level.
     # Let's load Portfolio again? Or just use what we have. Contract says "cash_before".
     # Loading Portfolio is safer.
-    portfolio_path = BASE_DIR / "reports" / "live" / "portfolio" / "latest" / "portfolio_latest.json"
+    portfolio_path = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
     cash_before = 0
     if portfolio_path.exists():
          try:
