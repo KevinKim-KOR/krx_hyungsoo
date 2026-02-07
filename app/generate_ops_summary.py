@@ -539,42 +539,7 @@ def regenerate_ops_summary():
         except Exception:
              pass
              
-    # If Export exists (checked in step 6 as has_export), check prep
-    # Re-check has_export logic or reuse variable if scope allows. 
-    # Since scope is local to Step 6, let's re-verify quickly or just rely on Prep logic self-contained.
-    
-    # Logic: If Export is READY/GENERATED, Prep should ideally exist or it's a "Wait Action" state.
-    # User requirement: "export 있는데 prep 없으면 → MISSING_EXECUTION_PREP (WARN)"
-    
-    export_path_p112 = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
-    if export_path_p112.exists():
-        if not prep_data:
-            top_risks.append({
-                "code": "MISSING_EXECUTION_PREP",
-                "severity": "WARN",
-                "message": "Execution Prep (Human Gate) not completed yet",
-                "evidence_refs": []
-            })
-            if overall_status == "OK": overall_status = "WARN"
-        else:
-            # Check Prep Decision
-            p_decision = prep_data.get("decision")
-            if p_decision == "TOKEN_MISMATCH":
-                top_risks.append({
-                    "code": "EXECUTION_TOKEN_MISMATCH",
-                    "severity": "BLOCKED",
-                    "message": "Human confirmation token mismatch",
-                    "evidence_refs": ["reports/live/execution_prep/latest/execution_prep_latest.json"]
-                })
-                overall_status = "BLOCKED"
-            elif p_decision == "BLOCKED":
-                 top_risks.append({
-                    "code": "EXECUTION_PREP_BLOCKED",
-                    "severity": "BLOCKED",
-                    "message": f"Execution Prep Blocked: {prep_data.get('reason')}",
-                    "evidence_refs": ["reports/live/execution_prep/latest/execution_prep_latest.json"]
-                })
-                 overall_status = "BLOCKED"
+
 
 
 
