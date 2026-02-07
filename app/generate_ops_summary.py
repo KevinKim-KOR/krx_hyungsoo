@@ -888,7 +888,6 @@ def generate_ops_summary():
     
     # Save
     SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"DEBUG: Saving Summary to {SUMMARY_LATEST.absolute()}")
     SUMMARY_LATEST.write_text(json.dumps(summary, indent=2, ensure_ascii=False))
     
     # Snapshot

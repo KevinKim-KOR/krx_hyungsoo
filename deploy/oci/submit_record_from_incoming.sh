@@ -5,10 +5,9 @@
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$BASE_DIR" || exit 1
 
-echo "DEBUG: PWD=$(pwd)"
-echo "DEBUG: BASE_DIR=$BASE_DIR"
-
 INPUT_FILE="$1"
+
+# 1. Validation
 
 # 1. Validation
 if [ -z "$INPUT_FILE" ]; then
@@ -86,7 +85,7 @@ echo "Submission Success (Result: $(echo "$RESPONSE" | grep -o '"decision": "[^"
 
 # 4. Regenerate Ops Summary
 echo "Updating Ops Summary..."
-python3 app/generate_ops_summary.py
+python3 app/generate_ops_summary.py > /dev/null
 
 # 5. Check Stage
 # Ensure file exists
