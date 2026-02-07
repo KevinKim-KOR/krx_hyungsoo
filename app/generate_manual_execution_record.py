@@ -97,6 +97,11 @@ def generate_record(input_token: str, items_data: Dict):
     ticket_plan_id = ticket.get("source", {}).get("plan_id")
     input_plan_id = items_data.get("source", {}).get("plan_id") # Input should have source headers
 
+    # DEBUG
+    print(f"DEBUG: prep_plan_id='{prep_plan_id}'")
+    print(f"DEBUG: ticket_plan_id='{ticket_plan_id}'")
+    print(f"DEBUG: input_plan_id='{input_plan_id}'")
+
     if prep_plan_id != ticket_plan_id:
         record["decision"] = "BLOCKED"
         record["reason"] = "LINKAGE_MISMATCH"
