@@ -146,6 +146,13 @@ def main():
         except Exception:
              pass
 
+        # P115: Manual Loop Stage & Next Action
+        manual_loop = d.get("manual_loop", {})
+        ml_stage = manual_loop.get("stage", "UNKNOWN")
+        ml_action = manual_loop.get("next_action", "NONE")
+        
+        print(f"MANUAL_LOOP Stage={ml_stage} Next={ml_action}")
+
 
     except Exception as e:
         print(f"DAILY_SUMMARY Reason=PARSE_ERROR error={str(e)}")
