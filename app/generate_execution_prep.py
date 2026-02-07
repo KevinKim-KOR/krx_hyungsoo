@@ -101,7 +101,9 @@ def generate_prep(confirm_token: str):
         return
 
     prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
-    prep["source"]["plan_id"] = plan_data.get("plan_id")
+    # DEBUG FORCE
+    prep["source"]["plan_id"] = "DEBUG_FORCE_TEST" 
+    # prep["source"]["plan_id"] = plan_data.get("plan_id")
     prep["evidence_refs"].append(prep["source"]["order_plan_ref"])
 
     # 3. Fail-Closed Checks
