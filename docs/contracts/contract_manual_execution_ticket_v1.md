@@ -19,8 +19,23 @@ It serves as the "Job Order" for the human operator.
 | decision | String | GENERATED \| BLOCKED \| NO_PREP \| PREP_NOT_READY |
 | reason | String | Reason code |
 | reason_detail | String | Detailed explanation |
+| summary | Object | High-level summary of the ticket |
+| summary.total_orders | Integer | Total count of orders |
+| summary.total_notional | Number | Estimated total value (KRW) |
+| summary.cash_before | Number | Cash before execution (from Portfolio) |
+| summary.cash_after_est | Number | Estimated cash after execution |
+| guardrails | Object | Inherited Guardrail results |
+| guardrails.decision | String | READY \| WARN \| BLOCKED |
+| guardrails.violated | Array | List of violated rule codes |
 | orders | Array | List of orders tailored for checking |
-| orders[].display | String | Human readable string (e.g. "BUY 005930 10 EA") |
+| orders[].ticker | String | Ticker symbol |
+| orders[].side | String | BUY / SELL |
+| orders[].qty | Integer | Quantity |
+| orders[].limit_price | Number | Limit Price (Nullable) |
+| orders[].notional_est | Number | Estimated Value |
+| orders[].display | String | Human readable string |
+| orders[].checks | Object | Per-order validation (qty_ok, etc.) |
+| copy_paste | String | **Optimized string for HTS/MTS input** |
 | output_files | Object | paths to generated friendly formats |
 | output_files.csv_path | String | Path to CSV version |
 | output_files.md_path | String | Path to Markdown version |

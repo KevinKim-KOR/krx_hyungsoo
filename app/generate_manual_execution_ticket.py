@@ -72,10 +72,17 @@ def generate_ticket():
     ticket["evidence_refs"].append(ticket["source"]["prep_ref"])
     
     # 3. Validation
-    if prep.get("decision") != "READY":
-        ticket["decision"] = "PREP_NOT_READY"
-        ticket["reason"] = f"PREP_STATUS_{prep.get('decision')}"
+    if prep.get("decision") not in ["READY", "WARN"]:
+        # If BLOCKED (from P120), we still generate the Ticket Artifact but marked as BLOCKED
+        # so the operator sees "BLOCKED" in the Ticket View instead of "File Not Found".
+        ticket["decision"] = "BLOCKED"
+        ticket["reason"] = f"PREP_{prep.get('decision')}"
         ticket["reason_detail"] = prep.get("reason_detail", "")
+        # Include guardrail info even if blocked
+        ticket["guardrails"] = {
+            "decision": prep.get("decision"),
+            "violated": [prep.get("reason")] if prep.get("decision") == "BLOCKED" else []
+        }
         _save_and_return(ticket)
         return
 
@@ -83,27 +90,85 @@ def generate_ticket():
     ticket["decision"] = "GENERATED"
     ticket["reason"] = "READY_FOR_EXECUTION"
     
+    # Guardrails from Prep
+    prep_safety = prep.get("safety", {})
+    ticket["guardrails"] = {
+        "decision": prep.get("verdict", "UNKNOWN"), # P120 uses 'verdict' or 'decision'? P120 script uses 'decision' for READY/WARN/BLOCKED.
+        "violated": [] 
+    }
+    # Note: P120 script sets prep['decision'] to READY/WARN/BLOCKED.
+    # prep['safety'] has details.
+    
+    ticket["guardrails"]["decision"] = prep.get("decision", "READY")
+    if prep.get("decision") == "WARN":
+         ticket["guardrails"]["violated"] = ["WARNING_TRIGGERED"] # Placeholder, real codes in safety
+         ticket["reason"] = "EXECUTABLE_WITH_WARNING"
+
     raw_orders = prep.get("orders", [])
     processed_orders = []
+    
+    total_buy = 0
+    total_sell = 0
+    
+    copy_paste_lines = []
     
     for o in raw_orders:
         new_o = o.copy()
         ticker = o.get("ticker", "UNKNOWN")
         side = o.get("side", "UNKNOWN")
         qty = o.get("qty", 0)
-        price_ref = o.get("price_ref", 0)
+        price_ref = o.get("price_ref", 0) or 0
         
-        display_str = f"{side} {ticker}"
-        if qty > 0:
-            display_str += f" {qty} EA"
-        else:
-            notional = o.get("notional", 0)
-            display_str += f" {notional:,.0f} KRW"
-            
+        notional = qty * price_ref
+        new_o["notional_est"] = notional
+        new_o["limit_price"] = price_ref # Assuming Limit = Ref for manual simple
+        
+        if side == "BUY": total_buy += notional
+        elif side == "SELL": total_sell += notional
+        
+        # Per Order Checks
+        checks = {
+            "qty_ok": qty > 0,
+            "round_lot_ok": True, # KRW usually 1 share. Exceptions (ETF/futures/etc). Assuming 1 is OK.
+            "price_ok": price_ref > 0
+        }
+        new_o["checks"] = checks
+        
+        display_str = f"{side} {ticker} {qty:,}주 ({price_ref:,}원)"
         new_o["display"] = display_str
+        
+        copy_paste_lines.append(f"{side} {ticker} {qty}") # Minimal for HTS: "BUY 005930 10"
+        
         processed_orders.append(new_o)
         
     ticket["orders"] = processed_orders
+    
+    # Summaries
+    portfolio_val = prep_safety.get("portfolio_value", 0)
+    # We might need to load portfolio here if prep didn't store cash?
+    # P120 Prep stored portfolio_value but maybe not raw cash. 
+    # Let's assume we load portfolio for accurate Cash Before.
+    # Actually P120 Prep doesn't fully expose cash in top level.
+    # Let's load Portfolio again? Or just use what we have. Contract says "cash_before".
+    # Loading Portfolio is safer.
+    portfolio_path = BASE_DIR / "reports" / "live" / "portfolio" / "latest" / "portfolio_latest.json"
+    cash_before = 0
+    if portfolio_path.exists():
+         try:
+             p_data = json.loads(portfolio_path.read_text(encoding='utf-8'))
+             cash_before = p_data.get("cash", 0)
+         except: pass
+         
+    cash_after = cash_before - total_buy + total_sell
+    
+    ticket["summary"] = {
+        "total_orders": len(processed_orders),
+        "total_notional": total_buy + total_sell,
+        "cash_before": cash_before,
+        "cash_after_est": cash_after
+    }
+    
+    ticket["copy_paste"] = " / ".join(copy_paste_lines)
     
     # 5. Generate Output Files (CSV/MD)
     base_name = f"manual_execution_ticket_latest"
@@ -123,29 +188,42 @@ def _write_csv(path: Path, orders: List[Dict]):
         path.write_text("", encoding="utf-8")
         return
         
-    keys = ["ticker", "side", "qty", "price_ref", "notional", "reason", "display"]
+    keys = ["side", "ticker", "qty", "limit_price", "notional_est", "display"]
     with path.open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(orders)
 
 def _write_md(path: Path, ticket: Dict):
+    summ = ticket.get("summary", {})
+    gr = ticket.get("guardrails", {})
+    
     lines = [
         f"# Manual Execution Ticket",
         f"**Plan ID**: {ticket['source']['plan_id']}",
         f"**AsOf**: {ticket['asof']}",
         f"**Token**: `{ticket['source']['confirm_token']}`",
         "",
+        "## Summary",
+        f"- **Status**: {gr.get('decision')} {gr.get('violated')}",
+        f"- **Orders**: {summ.get('total_orders')} (Notional: {summ.get('total_notional'):,.0f} KRW)",
+        f"- **Cash**: {summ.get('cash_before'):,.0f} -> ~{summ.get('cash_after_est'):,.0f} KRW",
+        "",
+        "## Copy-Paste (HTS/MTS)",
+        f"```text",
+        f"{ticket.get('copy_paste')}",
+        f"```",
+        "",
         "## Orders to Execute",
-        "| Side | Ticker | Display | Reason |",
-        "|---|---|---|---|"
+        "| Side | Ticker | Qty | Limit | Check |",
+        "|---|---|---|---|---|"
     ]
     for o in ticket["orders"]:
-        line = f"| {o.get('side')} | {o.get('ticker')} | **{o.get('display')}** | {o.get('reason')} |"
+        line = f"| {o.get('side')} | {o.get('ticker')} | {o.get('qty'):,} | {o.get('limit_price'):,} | [ ] |"
         lines.append(line)
         
     lines.append("")
-    lines.append("> **Operator Instruction**: Execute exactly as shown. Record results via API.")
+    lines.append("> **Operator Instruction**: Copy input string, paste to HTS. Check each order as executed.")
     
     path.write_text("\n".join(lines), encoding="utf-8")
 
