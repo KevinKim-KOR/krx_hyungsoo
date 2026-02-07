@@ -223,7 +223,7 @@ def get_tickets_recent() -> Dict[str, Any]:
     return stats
 
 
-def regenerate_ops_summary():
+def generate_ops_summary():
     """Ops Summary 생성"""
     now = datetime.now()
     

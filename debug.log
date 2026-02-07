@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/ubuntu/krx_hyungsoo/debug_ops.py", line 5, in <module>
+    from app.generate_ops_summary import generate_ops_summary
+ImportError: cannot import name 'generate_ops_summary' from 'app.generate_ops_summary' (/home/ubuntu/krx_hyungsoo/app/generate_ops_summary.py)
