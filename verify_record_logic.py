@@ -36,7 +36,10 @@ def setup_mocks():
         
     # 4. Prep (Manual gen to ensure it exists and matches)
     # Or just run generate_execution_prep.py
-    os.system('python3 app/generate_execution_prep.py test_token_123')
+    print("DEBUG: Running generate_execution_prep.py...")
+    ret = os.system('python3 app/generate_execution_prep.py test_token_123 2>&1')
+    if ret != 0:
+        print(f"DEBUG: generate_execution_prep.py FAILED with code {ret}")
     
     # 5. Ticket
     os.system('python3 app/generate_manual_execution_ticket.py > /dev/null')
