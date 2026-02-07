@@ -90,14 +90,16 @@ python3 app/generate_ops_summary.py
 
 # 5. Check Stage
 # Ensure file exists
-if [ ! -f "reports/ops/summary/latest/ops_summary_latest.json" ]; then
-    echo "Error: Ops Summary not found."
+SUMMARY_PATH="reports/ops/summary/ops_summary_latest.json"
+
+if [ ! -f "$SUMMARY_PATH" ]; then
+    echo "Error: Ops Summary not found at $SUMMARY_PATH"
     exit 1
 fi
 
 STAGE=$(python3 -c "import json, sys; 
 try:
-    print(json.load(open('reports/ops/summary/latest/ops_summary_latest.json'))['manual_loop']['stage'])
+    print(json.load(open('$SUMMARY_PATH'))['manual_loop']['stage'])
 except Exception as e:
     print('ERROR')
 ")
