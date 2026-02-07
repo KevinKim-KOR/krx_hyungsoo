@@ -323,6 +323,18 @@ def regenerate_ops_summary():
             "latest_ref": "reports/phase_c/latest/report_human.json",
             "snapshot_ref": c5_snapshot_ref.replace("ai_report", "human_report").replace(".json", ".md") if c5_snapshot_ref else None
         },
+        "manual_loop": {
+            "stage": manual_stage,
+            "export": export_data,
+            "prep": prep_data,
+            "ticket": ticket_data,
+            "record": record_data
+        },
+        "daily_summary": {
+            "decision": ds_decision,
+            "sentiment": ds_sentiment,
+            "summary_text": ds_summary
+        },
         "ai_report": {
             "decision": c5_decision,
             "latest_ref": "reports/ops/contract5/latest/ai_report_latest.json",
@@ -565,7 +577,94 @@ def regenerate_ops_summary():
                  overall_status = "BLOCKED"
 
 
-    # 8. Contract 5 Risks (P103)
+
+
+    # 8. Manual Loop (P114)
+    # Check Export -> Prep -> Ticket -> Record sequence
+    # Paths
+    export_path = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+    prep_path = BASE_DIR / "reports" / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
+    ticket_path = BASE_DIR / "reports" / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
+    record_path = BASE_DIR / "reports" / "live" / "manual_execution_record" / "latest" / "manual_execution_record_latest.json"
+    
+    # Load Data
+    export_data = safe_load_json(export_path) if export_path.exists() else None
+    prep_data = safe_load_json(prep_path) if prep_path.exists() else None
+    ticket_data = safe_load_json(ticket_path) if ticket_path.exists() else None
+    record_data = safe_load_json(record_path) if record_path.exists() else None
+    
+    manual_stage = "UNKNOWN"
+    
+    # Logic
+    if not export_data or export_data.get("decision") == "BLOCKED":
+        manual_stage = "BLOCKED" # Or UPSTREAM_BLOCKED
+    else:
+        # Export is Ready
+        if not prep_data or prep_data.get("decision") != "READY":
+             manual_stage = "NEED_HUMAN_CONFIRM"
+        else:
+             # Prep is Ready
+             if not ticket_data or ticket_data.get("decision") != "GENERATED":
+                 manual_stage = "PREP_READY" # Could be TICKET_READY if Ticket gen is auto after Prep? No, user says "Ticket Regenerate" is manual step.
+                 # Wait, user said "TICKET_READY" stage exists.
+                 # If Prep is Ready, next step is Generate Ticket.
+                 # Once Ticket Generated, stage is AWAITING_HUMAN_EXECUTION.
+                 # So "PREP_READY" means Prep done, Ticket not yet.
+                 pass
+             else:
+                 # Ticket is Ready
+                 manual_stage = "AWAITING_HUMAN_EXECUTION"
+                 
+                 # Check Record
+                 if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED", "NO_ITEMS"]:
+                      # Compare Plan IDs
+                      e_plan = export_data.get("source", {}).get("plan_id")
+                      r_plan = record_data.get("source", {}).get("plan_id")
+                      if e_plan == r_plan:
+                          manual_stage = "DONE_TODAY"
+                      else:
+                          manual_stage = "AWAITING_RECORD_SUBMIT" # Stale record
+                 else:
+                      manual_stage = "AWAITING_RECORD_SUBMIT" # No record
+
+    # Risks based on Stage
+    if manual_stage == "NEED_HUMAN_CONFIRM":
+        top_risks.append({
+            "code": "NEED_HUMAN_CONFIRM",
+            "severity": "WARN", 
+            "message": "Order Plan Export Ready. Human Confirmation Required.",
+            "evidence_refs": ["reports/live/order_plan_export/latest/order_plan_export_latest.json"]
+        })
+        if overall_status == "OK": overall_status = "WARN"
+        
+    elif manual_stage == "PREP_READY":
+         # Info: Prep Ready, Generate Ticket
+         pass 
+
+    elif manual_stage == "AWAITING_HUMAN_EXECUTION":
+         # Maybe INFO or WARN if late?
+         pass
+         
+    elif manual_stage == "AWAITING_RECORD_SUBMIT":
+         top_risks.append({
+            "code": "MANUAL_RECORD_MISSING",
+            "severity": "INFO",
+            "message": "Execution Ticket Generated. Waiting for Record.",
+            "evidence_refs": ["reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json"]
+        })
+
+    # P111 Export Logic (Legacy Step 6 removed or merged?)
+    # Previous Step 6 logic (Lines 455-483 in previous edits) checked for Export missing.
+    # Now that we rely on "manual_stage", do we still need that?
+    # Yes, if Order Plan GENERATED but Export Missing -> That is effectively manual_stage="BLOCKED" or "EXPORT_MISSING"?
+    # If order plan generated, daily_ops should have generated Export.
+    # If Export missing, manual_stage will be "BLOCKED" (first branch).
+    # But we might want specific warning "MISSING_EXPORT".
+    
+    # 7. Execution Prep (Step 7 logic from previous edit) -> Merged into Manual Loop.
+    # We should remove the old Step 6/7 blocks if they duplicate.
+
+    # 9. Contract 5 Risks (P103)
     if c5_decision == "BLOCKED":
         top_risks.append({
             "code": "CONTRACT5_REPORT_BLOCKED",

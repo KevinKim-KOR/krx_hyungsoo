@@ -92,7 +92,9 @@ REF_ALIASES = {
     "guard_bundle_latest": "state/strategy_bundle/latest/strategy_bundle_latest.json",
     "guard_strategy_bundle_latest": "state/strategy_bundle/latest/strategy_bundle_latest.json",
     "guard_order_plan_export_latest": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
-    "guard_execution_prep_latest": "reports/live/execution_prep/latest/execution_prep_latest.json"
+    "guard_execution_prep_latest": "reports/live/execution_prep/latest/execution_prep_latest.json",
+    "guard_execution_ticket_latest": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
+    "guard_execution_record_latest": "reports/live/manual_execution_record/latest/manual_execution_record_latest.json"
 }
 
 

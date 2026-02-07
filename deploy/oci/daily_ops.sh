@@ -162,10 +162,26 @@ ORDER_REASON=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys
 ORDER_DETAIL=$(echo "$ORDER_RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason_detail",""))' 2>/dev/null || echo "")
 echo "$LOG_PREFIX ✓ Order Plan: $ORDER_DECISION ($ORDER_REASON)"
 
+
+
 if [ "$ORDER_DECISION" = "BLOCKED" ]; then
     echo "$LOG_PREFIX ⚠️ Order Plan BLOCKED: $ORDER_REASON"
     EXIT_CODE=2
 fi
+
+# ============================================================================
+# Step 5-A: Order Plan Export (P111) - The Receipt
+# ============================================================================
+echo ""
+echo "$LOG_PREFIX [5-A] Generating Order Plan Export (Receipt)..."
+EXPORT_RESP=$(curl -s -X POST "${BASE_URL}/api/order_plan_export/regenerate?confirm=true")
+if ! echo "$EXPORT_RESP" | grep -q '"decision"'; then
+     echo "$LOG_PREFIX ⚠️ Export API failed (Non-fatal)"
+fi
+# Note: We do NOT proceed to Execution Prep (P112) automatically.
+# P112 requires Human Token. P113 Ticket follows P112.
+echo "$LOG_PREFIX ✓ Order Plan Export triggered"
+
 
 # ============================================================================
 # Step 6: Contract 5 Regenerate
