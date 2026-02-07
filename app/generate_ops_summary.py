@@ -597,7 +597,23 @@ def generate_ops_summary():
         
     elif manual_stage == "PREP_READY":
          # Info: Prep Ready, Generate Ticket
-         pass 
+         prep_dec = prep_data.get("decision", "UNKNOWN")
+         if prep_dec == "BLOCKED":
+             top_risks.append({
+                 "code": "EXECUTION_GUARDRAILS_BLOCKED",
+                 "severity": "BLOCK",
+                 "message": f"Execution Prep BLOCKED: {prep_data.get('reason_detail')}",
+                 "evidence_refs": ["reports/live/execution_prep/latest/execution_prep_latest.json"]
+             })
+             overall_status = "BLOCKED"
+         elif prep_dec == "WARN":
+             top_risks.append({
+                 "code": "EXECUTION_GUARDRAILS_WARN",
+                 "severity": "WARN",
+                 "message": f"Execution Prep WARNING: {prep_data.get('reason_detail')}",
+                 "evidence_refs": ["reports/live/execution_prep/latest/execution_prep_latest.json"]
+             })
+             if overall_status == "OK": overall_status = "WARN" 
 
     elif manual_stage == "AWAITING_HUMAN_EXECUTION":
          # Maybe INFO or WARN if late?

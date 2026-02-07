@@ -26,8 +26,15 @@ PREP_DIR.mkdir(parents=True, exist_ok=True)
 PREP_SNAPSHOTS.mkdir(parents=True, exist_ok=True)
 
 # Safety Limits
+# Safety Limits (Guardrails V1)
 MAX_ORDERS_ALLOWED = 20
-MAX_SINGLE_ORDER_RATIO = 0.35
+MAX_TOTAL_NOTIONAL_RATIO = 0.3
+MAX_SINGLE_ORDER_RATIO = 0.1
+MIN_CASH_RESERVE_RATIO = 0.05
+ALLOW_BUY = True
+
+PORTFOLIO_VAR_DIR = BASE_DIR / "state" / "portfolio" / "latest"
+PORTFOLIO_LATEST = PORTFOLIO_VAR_DIR / "portfolio_latest.json"
 
 def load_json(path: Path) -> Optional[Dict]:
     if not path.exists():
@@ -118,25 +125,126 @@ def generate_prep(confirm_token: str):
         _save_and_return(prep)
         return
 
-    # 4. Create Snapshot (READY)
-    prep["decision"] = "READY"
-    prep["reason"] = "CONFIRMED"
-    prep["reason_detail"] = "Human confirmation token matched"
+    # Load Portfolio
+    portfolio_data = load_json(PORTFOLIO_LATEST)
     
-    # Copy Orders
-    # We copy from Export because Export is what human saw.
+    # 5. Safety Checks (Guardrails V1)
     orders = export_data.get("orders", [])
     prep["orders"] = orders
     
-    # 5. Safety Checks
-    count = len(orders)
-    prep["safety"]["orders_count"] = count
+    # Calculate Metrics
+    orders_count = len(orders)
     
-    if count > MAX_ORDERS_ALLOWED:
-        prep["verdict"] = "BLOCKED"
-        prep["manual_next_step"] = "Reduce order count (exceeds safety limit)"
+    # Notional Calculation (Requires Portfolio)
+    total_buy_notional = 0
+    total_sell_notional = 0
+    
+    for o in orders:
+        side = o.get("side", "BUY")
+        price = o.get("price_ref", 0) or 0 # Use price_ref from Export
+        qty = o.get("qty", 0) or 0
+        notional = price * qty
+        
+        if side == "BUY":
+            total_buy_notional += notional
+        elif side == "SELL":
+             total_sell_notional += notional
+             
+    total_notional = total_buy_notional + total_sell_notional
+    max_single_notional = max([o.get("price_ref", 0) * o.get("qty", 0) for o in orders]) if orders else 0
+
+    # Initialize Safety Block
+    prep["safety"] = {
+        "orders_count": orders_count,
+        "max_orders_allowed": MAX_ORDERS_ALLOWED,
+        "total_notional": total_notional,
+        "max_single_notional": max_single_notional,
+        "portfolio_value": 0, # Placeholder
+        "cash_reserve_after": 0, # Placeholder
+        "checks": {}
+    }
+
+    # Guardrail Logic
+    decision = "READY"
+    reason = "CONFIRMED"
+    detail = "Human confirmation token matched. Safety checks passed."
+    verdict = "PASS"
+    
+    # 1. Order Count Check
+    if orders_count > MAX_ORDERS_ALLOWED:
+        decision = "BLOCKED"
+        reason = "LIMIT_EXCEEDED"
+        detail = f"Order count {orders_count} exceeds limit {MAX_ORDERS_ALLOWED}"
+        verdict = "BLOCKED"
+    
+    # 2. Portfolio Checks (If available)
+    if portfolio_data:
+        p_val = portfolio_data.get("total_value", 0)
+        p_cash = portfolio_data.get("cash", 0)
+        prep["safety"]["portfolio_value"] = p_val
+        
+        if p_val > 0:
+            # Ratios
+            total_ratio = total_notional / p_val
+            single_ratio = max_single_notional / p_val
+            cash_after = p_cash - total_buy_notional + total_sell_notional # Estimation
+            cash_reserve_ratio = cash_after / p_val
+            
+            prep["safety"]["checks"] = {
+                "total_notional_ratio": round(total_ratio, 4),
+                "single_order_ratio": round(single_ratio, 4),
+                "cash_reserve_ratio": round(cash_reserve_ratio, 4)
+            }
+            
+            if total_ratio > MAX_TOTAL_NOTIONAL_RATIO:
+                 decision = "BLOCKED"
+                 reason = "LIMIT_EXCEEDED"
+                 detail = f"Total Notional Ratio {total_ratio:.2f} exceeds {MAX_TOTAL_NOTIONAL_RATIO}"
+                 verdict = "BLOCKED"
+            
+            elif single_ratio > MAX_SINGLE_ORDER_RATIO:
+                 decision = "BLOCKED"
+                 reason = "LIMIT_EXCEEDED"
+                 detail = f"Single Order Ratio {single_ratio:.2f} exceeds {MAX_SINGLE_ORDER_RATIO}"
+                 verdict = "BLOCKED"
+                 
+            elif cash_reserve_ratio < MIN_CASH_RESERVE_RATIO:
+                 decision = "BLOCKED" # Or WARN?
+                 reason = "CASH_LOW"
+                 detail = f"Est. Cash Reserve {cash_reserve_ratio:.2f} below {MIN_CASH_RESERVE_RATIO}"
+                 verdict = "BLOCKED"
+        else:
+            # Portfolio value 0? suspicious
+            decision = "BLOCKED"
+            reason = "PORTFOLIO_ZERO"
+            detail = "Portfolio Value is 0. Cannot calculate safety ratios."
+            verdict = "BLOCKED"
+            
     else:
-        prep["verdict"] = "PASS" # Simple pass for now, ratio check requires Portfolio value which we might not have handy in this scope without loading Portfolio. User didn't mandate ratio check logic implementation, just "safety fields".
+        # Portfolio Missing -> Fail Closed per P120
+        decision = "BLOCKED"
+        reason = "NO_PORTFOLIO"
+        detail = "Portfolio Snapshot missing. Cannot verify safety limits."
+        verdict = "BLOCKED"
+
+    # 3. Allow Buy Check
+    if not ALLOW_BUY and total_buy_notional > 0:
+        decision = "BLOCKED"
+        reason = "SELL_ONLY_MODE"
+        detail = "Buy orders detected in SELL_ONLY mode."
+        verdict = "BLOCKED"
+
+    # Finalize
+    prep["decision"] = decision
+    prep["reason"] = reason
+    prep["reason_detail"] = detail
+    prep["verdict"] = verdict
+    
+    if decision == "BLOCKED":
+        prep["manual_next_step"] = f"CRITICAL: {detail}"
+    elif decision == "WARN":
+        prep["manual_next_step"] = f"WARNING: {detail}"
+    else:
         prep["manual_next_step"] = "Ready for Execution (Next Phase)"
 
     _save_and_return(prep)
