@@ -2674,6 +2674,63 @@ def regenerate_order_plan_export(confirm: bool = Query(False)):
         logger.error(f"Export error: {e}")
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
+
+# === Execution Prep API (P112) ===
+
+EXECUTION_PREP_LATEST_FILE = BASE_DIR / "reports" / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
+
+@app.get("/api/execution_prep/latest", summary="Execution Prep 최신 조회")
+def get_execution_prep_latest():
+    """Execution Prep Latest (P112)"""
+    if not EXECUTION_PREP_LATEST_FILE.exists():
+        return {
+            "status": "empty",
+            "schema": "EXECUTION_PREP_V1",
+            "data": None,
+            "error": "No execution prep generated yet."
+        }
+    
+    try:
+        data = json.loads(EXECUTION_PREP_LATEST_FILE.read_text(encoding="utf-8"))
+        return {
+            "status": "ready",
+            "schema": "EXECUTION_PREP_V1",
+            "data": data,
+            "error": None
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+class ExecutionPrepRequest(BaseModel):
+    confirm_token: str
+
+@app.post("/api/execution_prep/prepare", summary="Execution Prep 생성 (Human Gate)")
+def prepare_execution(request: ExecutionPrepRequest, confirm: bool = Query(False)):
+    """Prepare Execution (P112) - Requires Confirm + Token"""
+    if not confirm:
+        raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
+        
+    if not request.confirm_token:
+         raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "TOKEN_REQUIRED"})
+
+    try:
+        from app.generate_execution_prep import generate_prep
+        generate_prep(request.confirm_token)
+        
+        if EXECUTION_PREP_LATEST_FILE.exists():
+            data = json.loads(EXECUTION_PREP_LATEST_FILE.read_text(encoding="utf-8"))
+            return data
+        else:
+            return {"result": "FAIL", "reason": "Generation failed (No file)"}
+            
+    except ImportError as e:
+        logger.error(f"Prep import error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": f"Import error: {e}"})
+    except Exception as e:
+        logger.error(f"Prep error: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+
 # === Evidence Ref Resolver API (C-P.30) ===
 
 

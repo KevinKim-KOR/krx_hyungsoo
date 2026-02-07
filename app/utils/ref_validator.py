@@ -67,6 +67,9 @@ ALLOWED_JSON_PATTERNS = [
     # P111 Order Plan Export
     r"^reports/live/order_plan_export/latest/order_plan_export_latest\.json$",
     r"^reports/live/order_plan_export/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # P112 Execution Prep
+    r"^reports/live/execution_prep/latest/execution_prep_latest\.json$",
+    r"^reports/live/execution_prep/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/phase_c/latest/report_human\.json$", # Ensure this is explicit if not covered
 ]
 
@@ -82,7 +85,9 @@ REF_ALIASES = {
     "guard_report_ai_latest": "reports/ops/contract5/latest/ai_report_latest.json",
     "guard_daily_status_latest": "reports/ops/push/daily_status/latest/daily_status_latest.json",
     "guard_bundle_latest": "state/strategy_bundle/latest/strategy_bundle_latest.json",
-    "guard_strategy_bundle_latest": "state/strategy_bundle/latest/strategy_bundle_latest.json"
+    "guard_strategy_bundle_latest": "state/strategy_bundle/latest/strategy_bundle_latest.json",
+    "guard_order_plan_export_latest": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+    "guard_execution_prep_latest": "reports/live/execution_prep/latest/execution_prep_latest.json"
 }
 
 

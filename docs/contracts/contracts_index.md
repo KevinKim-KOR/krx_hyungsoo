@@ -106,6 +106,8 @@
 | `STRATEGY_BUNDLE_V1` | [contract_strategy_bundle_v1.md](contract_strategy_bundle_v1.md) | 전략 번들 핸드오프 (C-P.47) |
 | `RECO_REPORT_V1` | [contract_reco_report_v1.md](contract_reco_report_v1.md) | 추천 리포트 (D-P.48) |
 | `LIVE_CYCLE_RECEIPT_V1` | [contract_live_cycle_receipt_v1.md](contract_live_cycle_receipt_v1.md) | Live Cycle 영수증 (D-P.50) |
+| `ORDER_PLAN_EXPORT_V1` | [contract_order_plan_export_v1.md](contract_order_plan_export_v1.md) | 주문안 수출 (P111) |
+| `EXECUTION_PREP_V1` | [contract_execution_prep_v1.md](contract_execution_prep_v1.md) | 실행 준비 (P112, Immutable Snapshot) |
 
 ---
 
