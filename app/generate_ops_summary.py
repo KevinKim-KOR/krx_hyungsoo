@@ -243,6 +243,11 @@ def generate_ops_summary():
             if snaps:
                 health_snapshot_ref = f"reports/ops/evidence/health/snapshots/{snaps[0].name}"
 
+    # Default Daily Summary placeholders (calculated externally or below if logic exists)
+    ds_decision = "PENDING"
+    ds_sentiment = "NEUTRAL"
+    ds_summary = "Pending calculation"
+
     # === Gate & Emergency ===
     emergency = safe_load_json(EMERGENCY_STOP_FILE) or {"enabled": False}
     emergency_enabled = emergency.get("enabled", False)
@@ -317,30 +322,7 @@ def generate_ops_summary():
             
     c5_decision = c5_report.get("decision", "MISSING") if c5_report else "MISSING"
     
-    contract5_summary = {
-        "human_report": {
-            "decision": c5_decision,
-            "latest_ref": "reports/phase_c/latest/report_human.json",
-            "snapshot_ref": c5_snapshot_ref.replace("ai_report", "human_report").replace(".json", ".md") if c5_snapshot_ref else None
-        },
-        "manual_loop": {
-            "stage": manual_stage,
-            "export": export_data,
-            "prep": prep_data,
-            "ticket": ticket_data,
-            "record": record_data
-        },
-        "daily_summary": {
-            "decision": ds_decision,
-            "sentiment": ds_sentiment,
-            "summary_text": ds_summary
-        },
-        "ai_report": {
-            "decision": c5_decision,
-            "latest_ref": "reports/ops/contract5/latest/ai_report_latest.json",
-            "snapshot_ref": c5_snapshot_ref
-        }
-    }
+
     
     # === P78/P79: Strategy Bundle (SPoT) ===
     import sys
@@ -760,6 +742,32 @@ def generate_ops_summary():
     if emergency_enabled:
         overall_status = "STOPPED"
 
+    # Construct Contract 5 Summary (Late Binding)
+    contract5_summary = {
+        "human_report": {
+            "decision": c5_decision,
+            "latest_ref": "reports/phase_c/latest/report_human.json",
+            "snapshot_ref": c5_snapshot_ref.replace("ai_report", "human_report").replace(".json", ".md") if c5_snapshot_ref else None
+        },
+        "manual_loop": {
+            "stage": manual_stage,
+            "export": export_data,
+            "prep": prep_data,
+            "ticket": ticket_data,
+            "record": record_data
+        },
+        "daily_summary": {
+            "decision": ds_decision,
+            "sentiment": ds_sentiment,
+            "summary_text": ds_summary
+        },
+        "ai_report": {
+            "decision": c5_decision,
+            "latest_ref": "reports/ops/contract5/latest/ai_report_latest.json",
+            "snapshot_ref": c5_snapshot_ref
+        }
+    }
+
     # Construct Summary
     summary = {
         "schema": "OPS_SUMMARY_V1",
@@ -806,5 +814,5 @@ def generate_ops_summary():
 
 
 if __name__ == "__main__":
-    result = regenerate_ops_summary()
+    result = generate_ops_summary()
     print(json.dumps(result, indent=2, ensure_ascii=False))
