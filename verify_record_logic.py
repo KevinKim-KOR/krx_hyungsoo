@@ -62,6 +62,7 @@ def run_submit(plan_id, token, outfile='res.json'):
     try:
         with open(outfile) as f:
             res = json.load(f)
+            print(f"Dec: {res.get('decision')}, Reason: {res.get('reason')}, Detail: {res.get('reason_detail')}")
             if res.get('decision') == 'BLOCKED' and res.get('error'):
                  print(f"Error Detail: {res.get('error')}")
             return res
