@@ -69,7 +69,12 @@ def run_submit(payload, outfile='res_p123.json'):
 setup_mocks()
 
 print('--- Case A: Full Execution ---')
-# ... rest same ...
+payload_a = {
+    'source': {'plan_id': 'test_plan_p123'},
+    'filled_at': '2026-02-08T12:00:00Z',
+    'items': [{'ticker':'005930', 'side':'BUY', 'status':'EXECUTED', 'executed_qty':10}],
+    'dedupe': {'idempotency_key': 'key_a'}
+}
 res = run_submit(payload_a, 'res_a.json')
 print(f"Dec: {res.get('decision')}, Ver: {res.get('record_version')}")
 print("Generating Ops Summary...")
@@ -77,7 +82,12 @@ os.system('python3 app/generate_ops_summary.py') # No dev/null
 os.system('grep "DONE_TODAY" reports/ops/summary/latest/ops_summary_latest.json') # Expect DONE_TODAY
 
 print('--- Case B: Partial Execution (New Version) ---')
-# ...
+payload_b = {
+    'source': {'plan_id': 'test_plan_p123'},
+    'filled_at': '2026-02-08T12:05:00Z',
+    'items': [{'ticker':'005930', 'side':'BUY', 'status':'PARTIAL', 'executed_qty':5}],
+    'dedupe': {'idempotency_key': 'key_b'} # Diff key -> New Version
+}
 res = run_submit(payload_b, 'res_b.json')
 print(f"Dec: {res.get('decision')}, Ver: {res.get('record_version')}")
 print("Generating Ops Summary...")
