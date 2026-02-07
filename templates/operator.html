@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRX Operator Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .status-box {
+            background: #252526;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .stage-label {
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        .stage-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #4ec9b0;
+        }
+
+        .action-box {
+            background: #333333;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .action-title {
+            font-size: 1.2em;
+            color: #569cd6;
+            margin-bottom: 10px;
+        }
+
+        .command-block {
+            background: #000;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #ce9178;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: #444;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .copy-btn:hover {
+            background: #555;
+        }
+
+        .artifacts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .artifact-card {
+            background: #252526;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+
+        .artifact-link {
+            color: #9cdcfe;
+            text-decoration: none;
+            font-size: 1.1em;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .artifact-link:hover {
+            text-decoration: underline;
+        }
+
+        .refresh-btn {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .error {
+            color: #f48771;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>KRX Operator Dashboard</h1>
+            <button class="refresh-btn" onclick="fetchData()">Refresh</button>
+        </div>
+
+        <div id="status-container" class="status-box">
+            <span class="stage-label">Current Stage (SSOT)</span>
+            <div id="stage-value" class="stage-value">LOADING...</div>
+            <div id="asof-value" class="stage-label"></div>
+        </div>
+
+        <div id="action-container" class="action-box" style="display:none;">
+            <div class="action-title" id="action-title">Next Action</div>
+            <div class="command-block">
+                <span id="action-command"></span>
+                <button class="copy-btn" onclick="copyCommand()">Copy</button>
+            </div>
+            <div id="action-notes" style="margin-top: 10px; color: #888; font-size: 0.9em;"></div>
+        </div>
+
+        <h3>Latest Artifacts (Evidence Resolver)</h3>
+        <div id="artifacts-grid" class="artifacts-grid">
+            <!-- Artifacts injected here -->
+        </div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/operator/dashboard');
+                const data = await res.json();
+
+                // Stage
+                const stageEl = document.getElementById('stage-value');
+                stageEl.textContent = data.stage;
+                stageEl.style.color = data.stage === 'DONE_TODAY' ? '#4ec9b0' :
+                    data.stage === 'CHECK_BACKEND' ? '#f48771' : '#dcdcaa';
+
+                document.getElementById('asof-value').textContent = "As Of: " + data.asof;
+
+                // Action
+                const actionContainer = document.getElementById('action-container');
+                if (data.next_action && data.next_action.command) {
+                    actionContainer.style.display = 'block';
+                    document.getElementById('action-title').textContent = "NEXT ACTION: " + data.next_action.title;
+                    document.getElementById('action-command').textContent = data.next_action.command;
+                    document.getElementById('action-notes').textContent = data.next_action.notes;
+                } else {
+                    actionContainer.style.display = 'none';
+                }
+
+                // Artifacts
+                const grid = document.getElementById('artifacts-grid');
+                grid.innerHTML = '';
+                if (data.artifacts) {
+                    for (const [key, path] of Object.entries(data.artifacts)) {
+                        const card = document.createElement('div');
+                        card.className = 'artifact-card';
+
+                        const link = document.createElement('a');
+                        link.className = 'artifact-link';
+                        link.href = `/api/evidence/resolve?ref=${encodeURIComponent(path)}`;
+                        link.textContent = key.toUpperCase().replace(/_/g, ' ');
+                        link.target = "_blank";
+
+                        const pathSpan = document.createElement('div');
+                        pathSpan.style.fontSize = '0.8em';
+                        pathSpan.style.color = '#666';
+                        pathSpan.textContent = path.split('/').pop();
+
+                        card.appendChild(link);
+                        card.appendChild(pathSpan);
+                        grid.appendChild(card);
+                    }
+                }
+
+            } catch (e) {
+                document.getElementById('stage-value').textContent = "CONNECTION ERROR";
+                document.getElementById('stage-value').classList.add('error');
+            }
+        }
+
+        function copyCommand() {
+            const cmd = document.getElementById('action-command').textContent;
+            navigator.clipboard.writeText(cmd).then(() => {
+                alert("Command Copied!");
+            });
+        }
+
+        // Init
+        fetchData();
+        setInterval(fetchData, 10000); // Poll every 10s
+    </script>
+</body>
+
+</html>

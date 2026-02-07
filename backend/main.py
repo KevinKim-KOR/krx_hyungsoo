@@ -75,23 +75,28 @@ def setup_backend_logger():
 logger = setup_backend_logger()
 
 # --- 3. FastAPI 앱 설정 ---
+from backend import operator_dashboard
+
 app = FastAPI(
-    title="KRX Alertor Modular API",
-    description="파일 시스템 기반의 읽기 전용 옵저버 백엔드 (Phase 14)",
-    version="14.3",
-    contact={
-        "name": "Phase 14 Maintainer",
-    }
+    title="KRX Alertor Modular Backend",
+    description="Read-only Observer Backend + Operator Dashboard",
+    version="1.0.0"
 )
 
-# CORS 설정
+# CORS (P99)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # React 연동을 위해 전체 허용
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Routers
+app.include_router(operator_dashboard.router)
+
+# Include Routers
+app.include_router(operator_dashboard.router)
 
 # Static Files (Dashboard)
 # 주의: dashboard 디렉토리가 없으면 에러 날 수 있으므로 체크
