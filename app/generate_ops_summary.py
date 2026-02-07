@@ -580,13 +580,14 @@ def generate_ops_summary():
     if manual_stage == "NEED_HUMAN_CONFIRM":
         next_action = "RUN: deploy/oci/manual_loop_prepare.sh"
     elif manual_stage == "PREP_READY":
-         next_action = "RUN: deploy/oci/manual_loop_prepare.sh" # Prep done but Ticket not? prepare.sh handles both.
+         next_action = "RUN: deploy/oci/manual_loop_prepare.sh"
     elif manual_stage == "AWAITING_HUMAN_EXECUTION":
          next_action = "EXECUTE TRADES -> RUN: deploy/oci/manual_loop_submit_record.sh"
     elif manual_stage == "AWAITING_RECORD_SUBMIT":
          next_action = "RUN: deploy/oci/manual_loop_submit_record.sh"
     elif manual_stage == "DONE_TODAY":
          next_action = "NONE (Done)"
+
     # Risks based on Stage
     if manual_stage == "NEED_HUMAN_CONFIRM":
         top_risks.append({
