@@ -44,29 +44,6 @@ def setup_mocks():
     # 5. Ticket
     os.system('python3 app/generate_manual_execution_ticket.py > /dev/null')
 
-    # DEBUG: Check Prep Plan ID
-    try:
-        if os.path.exists('reports/live/execution_prep/latest/execution_prep_latest.json'):
-             stat = os.stat('reports/live/execution_prep/latest/execution_prep_latest.json')
-             print(f"DEBUG: Prep File Size: {stat.st_size}, Modified: {time.ctime(stat.st_mtime)}")
-        else:
-             print("DEBUG: Prep File Missing!")
-             
-        with open('reports/live/order_plan/latest/order_plan_latest.json') as f:
-            op = json.load(f)
-            print(f"DEBUG: Order Plan ID: {op.get('plan_id')}")
-
-        with open('reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json') as f:
-            tick = json.load(f)
-            print(f"DEBUG: Ticket Plan ID: {tick.get('source', {}).get('plan_id')}")
-            
-        with open('reports/live/execution_prep/latest/execution_prep_latest.json') as f:
-            ep = json.load(f)
-            print(f"DEBUG: Prep Plan ID: {ep.get('source', {}).get('plan_id')}")
-            
-    except Exception as e:
-        print(f"DEBUG ERROR: {e}")
-
 def run_submit(plan_id, token, outfile='res.json'):
     # Create Input JSON
     input_data = {

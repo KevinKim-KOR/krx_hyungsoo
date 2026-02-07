@@ -102,11 +102,10 @@ def generate_prep(confirm_token: str):
 
     prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
     
-    val = plan_data["plan_id"]
-    print(f"DEBUG: plan_data['plan_id'] = '{val}'")
-    prep["source"]["plan_id"] = val
+    prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
     
-    print(f"DEBUG: Writing PREP to {PREP_LATEST}")
+    # Direct access to ensure we get the ID (Fail-closed)
+    prep["source"]["plan_id"] = plan_data["plan_id"]
     
     prep["evidence_refs"].append(prep["source"]["order_plan_ref"])
 
@@ -258,9 +257,6 @@ def generate_prep(confirm_token: str):
     else:
         prep["manual_next_step"] = "Ready for Execution (Next Phase)"
 
-    # DEBUG
-    print(f"DEBUG: PREP BEFORE SAVE: {json.dumps(prep)}")
-    
     _save_and_return(prep)
 
 def _save_and_return(prep: Dict):
