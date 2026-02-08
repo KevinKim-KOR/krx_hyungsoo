@@ -548,20 +548,20 @@ def generate_ops_summary():
     else:
         # Export is Ready
         if not prep_data or prep_data.get("decision") != "READY":
-             manual_stage = "NEED_HUMAN_CONFIRM"
+            manual_stage = "NEED_HUMAN_CONFIRM"
         else:
-             # Prep is Ready
-             if not ticket_data or ticket_data.get("decision") != "GENERATED":
-                 manual_stage = "PREP_READY" # Could be TICKET_READY if Ticket gen is auto after Prep? No, user says "Ticket Regenerate" is manual step.
-                 # Wait, user said "TICKET_READY" stage exists.
-                 # If Prep is Ready, next step is Generate Ticket.
-                 # Once Ticket Generated, stage is AWAITING_HUMAN_EXECUTION.
-                 # So "PREP_READY" means Prep done, Ticket not yet.
-                 pass
-             else:
-                 # Ticket is Ready
-                 manual_stage = "AWAITING_HUMAN_EXECUTION"
-                 
+            # Prep is Ready
+            if not ticket_data or ticket_data.get("decision") != "GENERATED":
+                manual_stage = "PREP_READY" # Could be TICKET_READY if Ticket gen is auto after Prep? No, user says "Ticket Regenerate" is manual step.
+                # Wait, user said "TICKET_READY" stage exists.
+                # If Prep is Ready, next step is Generate Ticket.
+                # Once Ticket Generated, stage is AWAITING_HUMAN_EXECUTION.
+                # So "PREP_READY" means Prep done, Ticket not yet.
+                pass
+            else:
+                # Ticket is Ready
+                manual_stage = "AWAITING_HUMAN_EXECUTION"
+                
                 # Check Record
                 if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED", "NO_ITEMS"]:
                     if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
@@ -575,7 +575,7 @@ def generate_ops_summary():
                             manual_stage = "DONE_TODAY"
                             
                         # Check linkage
-                        rec_src = record_data.get("source", {}) # Legacy field or new structure? 
+                        # rec_src = record_data.get("source", {}) # Legacy field or new structure? 
                         # P122 uses linkage.plan_id. P123 contract says linkage.plan_id.
                         # But legacy `source.plan_id` might be gone?
                         # generate_ops_summary.py uses 'linkage' usually?
