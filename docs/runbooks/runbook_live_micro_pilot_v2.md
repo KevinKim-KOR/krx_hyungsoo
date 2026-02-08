@@ -29,14 +29,15 @@ bash deploy/oci/manual_loop_prepare.sh
 - **Expect**: `AWAITING_HUMAN_EXECUTION`.
 
 ### 4. Human Execution (HTS/MTS)
-- **Action**: Execute **1 Trade ONLY**.
+- **Action**: Ticket에 있는 주문 중 **1개 주문만** 실행(체결).
 - **Constraint**: Do not touch other items.
 
 ### 5. Draft Record (PC)
 ```powershell
 .\deploy\pc\generate_record_template.ps1
-# Edit draft: Set 1 item to EXECUTED, others to SKIPPED/PENDING.
-# Set top-level execution_result to "PARTIAL".
+# Edit draft: Ticket/Export의 주문 목록/plan_id/linkage는 절대 수정하지 말 것.
+# 실행한 1개 주문만 EXECUTED로 표기(스키마가 요구하는 최소 필드만 수정).
+# 나머지 주문은 드래프트 기본값(또는 스키마 enum 허용값) 그대로 유지.
 ```
 
 ### 6. Push Draft (PC -> OCI)
@@ -49,7 +50,7 @@ bash deploy/oci/manual_loop_prepare.sh
 bash deploy/oci/submit_record_from_incoming.sh
 # Enter Token
 ```
-- **Expect**: `DONE_TODAY_PARTIAL` (or `DONE_TODAY`).
+- **Expect**: `PARTIAL` (or `DONE_TODAY`).
 
 ### 8. Final Gate Check (OCI)
 ```bash
