@@ -609,15 +609,15 @@ def generate_ops_summary():
     elif manual_stage == "AWAITING_HUMAN_EXECUTION":
         next_action = "EXECUTE TRADES -> bash deploy/oci/manual_loop_submit_record.sh <record_file>"
     elif manual_stage == "AWAITING_RECORD_SUBMIT":
-         # Check if latest record is blocked
-         rec_dec = record_data.get("decision", "UNKNOWN")
-         if rec_dec == "BLOCKED":
-             reason = record_data.get("reason", "UNKNOWN")
-             if reason == "DUPLICATE_SUBMIT_BLOCKED":
-                 top_risks.append({
-                     "code": "DUPLICATE_RECORD_BLOCKED",
-                     "severity": "WARN",
-                     "message": "Duplicate record submission attempted.",
+        # Check if latest record is blocked
+        rec_dec = record_data.get("decision", "UNKNOWN")
+        if rec_dec == "BLOCKED":
+            reason = record_data.get("reason", "UNKNOWN")
+            if reason == "DUPLICATE_SUBMIT_BLOCKED":
+                top_risks.append({
+                    "code": "DUPLICATE_RECORD_BLOCKED",
+                    "severity": "WARN",
+                    "message": "Duplicate record submission attempted.",
                      "evidence_refs": ["reports/live/manual_execution_record/latest/manual_execution_record_latest.json"]
                  })
              elif reason == "LINKAGE_MISMATCH":
