@@ -33,5 +33,9 @@ if ($IsDone) {
 }
 else {
     Write-Host "`n⚠️  STATUS: ACTIVE / INCOMPLETE" -ForegroundColor Yellow
+    
+    # P128 Suggestion
+    Write-Host "💡 TIP: Download Artifacts -> .\deploy\pc\pull_operator_pack.ps1" -ForegroundColor Gray
+    
     exit 2
 }

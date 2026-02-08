@@ -1,0 +1,1 @@
+{"status":"ready","schema":"EVIDENCE_VIEW_V1","asof":"2026-02-08T01:51:05.664837","row_count":1,"rows":[{"ref":"reports/live/reco/latest/reco_latest.json","data":{"schema":"OCI_RECO_V1","decision":"PASS"},"source":{"kind":"JSON","path":"reports/live/reco/latest/reco_latest.json","line":null}}],"error":null}

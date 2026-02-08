@@ -93,7 +93,12 @@ app.add_middleware(
 )
 
 # Include Routers
+# Include Routers
 app.include_router(operator_dashboard.router)
+
+from backend import dry_run
+app.include_router(dry_run.router)
+
 
 # Static Files (Dashboard)
 # 주의: dashboard 디렉토리가 없으면 에러 날 수 있으므로 체크

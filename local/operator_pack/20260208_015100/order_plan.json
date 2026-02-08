@@ -1,0 +1,1 @@
+{"status":"ready","schema":"EVIDENCE_VIEW_V1","asof":"2026-02-08T01:51:05.520846","row_count":1,"rows":[{"ref":"reports/live/order_plan/latest/order_plan_latest.json","data":{"schema":"ORDER_PLAN_V1","plan_id":"test_plan_p126","decision":"READY"},"source":{"kind":"JSON","path":"reports/live/order_plan/latest/order_plan_latest.json","line":null}}],"error":null}

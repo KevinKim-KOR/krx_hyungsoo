@@ -1,0 +1,30 @@
+{
+    "schema": "MANUAL_EXECUTION_RECORD_V1",
+    "asof": "2026-02-08T12:00:00Z",
+    "source_refs": {
+        "prep_ref": "reports/live/execution_prep/latest/execution_prep_latest.json",
+        "ticket_ref": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
+        "order_plan_export_ref": "reports/live/order_plan_export/latest/order_plan_export_latest.json"
+    },
+    "linkage": {
+        "prep_plan_id": "test_plan_p123",
+        "ticket_plan_id": "test_plan_p123",
+        "export_plan_id": "test_plan_p123",
+        "ticket_id": "ticket_123"
+    },
+    "filled_at": "2026-02-08T12:10:00Z",
+    "items": [
+        {
+            "ticker": "005930",
+            "side": "BUY",
+            "status": "EXECUTED",
+            "qty_planned": 10,
+            "executed_qty": 10,
+            "avg_price": 50000,
+            "note": "P125 Test"
+        }
+    ],
+    "dedupe": {
+        "idempotency_key": "p125_test_key_v9"
+    }
+}

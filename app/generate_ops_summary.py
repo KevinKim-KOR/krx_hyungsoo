@@ -582,7 +582,25 @@ def generate_ops_summary():
                         # Let's check how it checks linkage. 
                         # Actually, record generator enforces linkage. If it's EXECUTED/PARTIAL/SKIPPED, linkage is valid.
                         pass
-                 elif ticket_data and ticket_data.get("decision") == "GENERATED":                   manual_stage = "AWAITING_RECORD_SUBMIT" # No record
+                elif ticket_data and ticket_data.get("decision") == "GENERATED":
+                    manual_stage = "AWAITING_RECORD_SUBMIT"
+
+                    # P131: Check for Dry Run Record
+                    dry_run_path = BASE_DIR / "reports" / "live" / "dry_run_record" / "latest" / "dry_run_record_latest.json"
+                    if dry_run_path.exists():
+                        try:
+                            dry_run_data = json.loads(dry_run_path.read_text(encoding="utf-8"))
+                            # Verify Linkage (Dry Run must be for CURRENT ticket)
+                            dr_ticket_id = dry_run_data.get("linkage", {}).get("ticket_id")
+                            current_ticket_id = ticket_data.get("id")
+                            
+                            if dr_ticket_id == current_ticket_id:
+                                manual_stage = "DONE_TODAY"
+                                # We need to inject 'mode' into manual_loop dict later
+                                # For now, let's use a temporary var or modify the structure below
+                                # summary root is created at the end. We'll handle 'mode' insertion there.
+                        except Exception:
+                            pass
 
     # Next Action Logic (P115)
     next_action = "NONE"

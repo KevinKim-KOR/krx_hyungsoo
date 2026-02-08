@@ -1,0 +1,1 @@
+{"status":"ready","schema":"EVIDENCE_VIEW_V1","asof":"2026-02-08T01:51:05.733084","row_count":1,"rows":[{"ref":"reports/ops/evidence/health/health_latest.json","data":{"schema":"EVIDENCE_HEALTH_V1","decision":"PASS","overall_health":"PASS"},"source":{"kind":"JSON","path":"reports/ops/evidence/health/health_latest.json","line":null}}],"error":null}

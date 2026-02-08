@@ -75,7 +75,10 @@ ALLOWED_JSON_PATTERNS = [
     r"^reports/live/manual_execution_ticket/snapshots/[a-zA-Z0-9_\-\.]+\.(json|csv|md)$",
     r"^reports/live/manual_execution_record/latest/manual_execution_record_latest\.json$",
     r"^reports/live/manual_execution_record/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
-    r"^reports/phase_c/latest/report_human\.json$", # Ensure this is explicit if not covered
+    r"^reports/phase_c/latest/report_human\.json$",
+    # P131: Dry Run Record
+    r"^reports/live/dry_run_record/latest/dry_run_record_latest\.json$",
+    r"^reports/live/dry_run_record/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
@@ -94,7 +97,8 @@ REF_ALIASES = {
     "guard_order_plan_export_latest": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
     "guard_execution_prep_latest": "reports/live/execution_prep/latest/execution_prep_latest.json",
     "guard_execution_ticket_latest": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
-    "guard_execution_record_latest": "reports/live/manual_execution_record/latest/manual_execution_record_latest.json"
+    "guard_execution_record_latest": "reports/live/manual_execution_record/latest/manual_execution_record_latest.json",
+    "guard_dry_run_record_latest": "reports/live/dry_run_record/latest/dry_run_record_latest.json"
 }
 
 
