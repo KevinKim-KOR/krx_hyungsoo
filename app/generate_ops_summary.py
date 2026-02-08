@@ -633,7 +633,22 @@ def generate_ops_summary():
         next_action = "REVIEW PARTIALS / RE-SUBMIT (Optional)"
     elif manual_stage == "AWAITING_RETRY_EXECUTION":
          next_action = "RETRY EXECUTION -> bash deploy/oci/manual_loop_submit_record.sh"
+    elif manual_stage == "AWAITING_RETRY_EXECUTION":
+         next_action = "RETRY EXECUTION -> bash deploy/oci/manual_loop_submit_record.sh"
 
+    # P131/P132: Determine Execution Mode
+    mode = "LIVE"
+    try:
+        # Check if we are in Dry Run mode (only if Done/Partial)
+        if manual_stage in ["DONE_TODAY", "DONE_TODAY_PARTIAL"]:
+            dry_run_path = BASE_DIR / "reports" / "live" / "dry_run_record" / "latest" / "dry_run_record_latest.json"
+            if dry_run_path.exists():
+                 dr_data = json.loads(dry_run_path.read_text(encoding="utf-8"))
+                 # Verify linkage
+                 if ticket_data and dr_data.get("linkage", {}).get("ticket_id") == ticket_data.get("id"):
+                     mode = "DRY_RUN"
+    except Exception:
+        pass
     # Risks based on Stage
     if manual_stage == "NEED_HUMAN_CONFIRM":
         top_risks.append({
@@ -824,6 +839,7 @@ def generate_ops_summary():
     # Construct Manual Loop Summary
     manual_loop_summary = {
         "stage": manual_stage,
+        "mode": mode,
         "next_action": next_action,
         "export": export_data,
         "prep": prep_data,
