@@ -562,9 +562,9 @@ def generate_ops_summary():
                  # Ticket is Ready
                  manual_stage = "AWAITING_HUMAN_EXECUTION"
                  
-                 # Check Record
-                 if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED", "NO_ITEMS"]:
-                     if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
+                # Check Record
+                if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED", "NO_ITEMS"]:
+                    if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
                         # P123: Partial/Retry Stages
                         exec_res = record_data.get("execution_result", "EXECUTED")
                         if exec_res == "PARTIAL":
