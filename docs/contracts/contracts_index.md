@@ -42,7 +42,7 @@
 |----------|-----------|------|
 | `EXECUTION_GATE_V1` | [contract_execution_gate_v1.md](contract_execution_gate_v1.md) | 실행 모드 제어 |
 | `EXECUTION_PLAN_V1` | [contract_execution_plan_v1.md](contract_execution_plan_v1.md) | 실행 계획 (JSON SoT: [execution_plan_v1.json](execution_plan_v1.json)) |
-| `DRYRUN_ARTIFACT_V1` | [contract_dryrun_artifact_v1.md](contract_dryrun_artifact_v1.md) | Dry-Run 결과물 |
+| `DRY_RUN_RECORD_V1` | [contract_dry_run_record_v1.md](contract_dry_run_record_v1.md) | Dry-Run 결과물 |
 
 ---
 
