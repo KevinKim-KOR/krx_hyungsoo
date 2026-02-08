@@ -618,31 +618,6 @@ def generate_ops_summary():
                     "code": "DUPLICATE_RECORD_BLOCKED",
                     "severity": "WARN",
                     "message": "Duplicate record submission attempted.",
-                     "evidence_refs": ["reports/live/manual_execution_record/latest/manual_execution_record_latest.json"]
-                 })
-             elif reason == "LINKAGE_MISMATCH":
-                 top_risks.append({
-                     "code": "RECORD_LINKAGE_MISMATCH",
-                     "severity": "BLOCK",
-                     "message": f"Record Linkage ID Mismatch: {record_data.get('reason_detail')}",
-                     "evidence_refs": ["reports/live/manual_execution_record/latest/manual_execution_record_latest.json"]
-                 })
-                 overall_status = "BLOCKED"
-         
-         # P123: Partial Execution Risks
-         exec_res = record_data.get("execution_result", "UNKNOWN")
-         if exec_res == "PARTIAL":
-              top_risks.append({
-                  "code": "PARTIAL_EXECUTION_REQUIRES_REVIEW",
-                  "severity": "WARN",
-                  "message": "Execution was PARTIAL. Review missed/partial orders.",
-                  "evidence_refs": ["reports/live/manual_execution_record/latest/manual_execution_record_latest.json"]
-              })
-         elif exec_res == "NOT_EXECUTED":
-              top_risks.append({
-                  "code": "UNFILLED_ORDERS_EXIST",
-                  "severity": "WARN",
-                  "message": "Execution was NOT completed (SKIPPED/CANCELED).",
                   "evidence_refs": ["reports/live/manual_execution_record/latest/manual_execution_record_latest.json"]
               })
 
