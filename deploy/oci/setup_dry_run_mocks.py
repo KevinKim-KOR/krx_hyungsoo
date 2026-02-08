@@ -46,5 +46,11 @@ def setup():
         dry_run.unlink()
         print("Removed existing dry run record")
 
+    # 5. Remove existing Manual Record if any (so we aren't DONE_TODAY)
+    manual_rec = REPORTS_LIVE / "manual_execution_record" / "latest" / "manual_execution_record_latest.json"
+    if manual_rec.exists():
+        manual_rec.unlink()
+        print("Removed existing manual record")
+
 if __name__ == "__main__":
     setup()
