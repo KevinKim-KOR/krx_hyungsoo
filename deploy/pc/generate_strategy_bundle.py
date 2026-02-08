@@ -209,7 +209,13 @@ def generate_bundle() -> dict:
     git_commit, git_branch = get_git_info()
     
     # 전략 파라미터 (실제 환경에서는 백테스트 결과에서 로드)
-    strategy = {
+    # P134: Load Strategy Params (SSOT)
+    params_path = BASE_DIR / "state" / "strategy_params" / "latest" / "strategy_params_latest.json"
+    params_fingerprint = "DEFAULT"
+    params_ref = "hardcoded_defaults"
+    
+    # Defaults
+    strategy_defaults = {
         "name": "KRX_MOMENTUM_V1",
         "version": "1.0.0",
         "universe": ["069500", "229200", "114800", "122630"],
@@ -235,6 +241,38 @@ def generate_bundle() -> dict:
             "adx_filter_min": 20
         }
     }
+    
+    if params_path.exists():
+        try:
+            content = params_path.read_text(encoding="utf-8")
+            params_data = json.loads(content)
+            
+            # Compute Fingerprint (P134 Requirement)
+            params_fingerprint = hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
+            params_ref = "strategy_params_latest"
+            
+            # Override Strategy Config
+            # Note: We keep "name" and "version" from loaded file if present, else defaults
+            strategy_defaults["name"] = params_data.get("strategy", strategy_defaults["name"])
+            strategy_defaults["version"] = params_data.get("version", strategy_defaults["version"])
+            
+            # Mapping SSOT 'params' to Bundle structure
+            # The schema in 'strategy_params_latest.json' groups everything under 'params'.
+            # We map them back to the root of 'strategy' dict for compilation.
+            loaded_params = params_data.get("params", {})
+            for k, v in loaded_params.items():
+                strategy_defaults[k] = v
+                
+            print(f"[INFO] Loaded Strategy Params from SSOT (fp={params_fingerprint})")
+            
+        except Exception as e:
+            print(f"[WARNING] Failed to load strategy params: {e}. Using defaults.")
+            
+    strategy = strategy_defaults
+    
+    # Inject P134 Fingerprint Info
+    strategy["params_ref"] = params_ref
+    strategy["params_fingerprint"] = params_fingerprint
     
     # P100-1: Regime Detection
     regime_code, regime_reason, regime_detail, regime_fingerprint = detect_regime()

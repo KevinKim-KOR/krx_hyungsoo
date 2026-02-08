@@ -79,6 +79,9 @@ ALLOWED_JSON_PATTERNS = [
     # P131: Dry Run Record
     r"^reports/live/dry_run_record/latest/dry_run_record_latest\.json$",
     r"^reports/live/dry_run_record/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # P134: Strategy Params
+    r"^state/strategy_params/latest/strategy_params_latest\.json$",
+    r"^state/strategy_params/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
 ]
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
@@ -98,6 +101,7 @@ REF_ALIASES = {
     "guard_execution_prep_latest": "reports/live/execution_prep/latest/execution_prep_latest.json",
     "guard_execution_ticket_latest": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
     "guard_execution_record_latest": "reports/live/manual_execution_record/latest/manual_execution_record_latest.json",
+    "guard_strategy_params_latest": "state/strategy_params/latest/strategy_params_latest.json",
     "guard_dry_run_record_latest": "reports/live/dry_run_record/latest/dry_run_record_latest.json"
 }
 
