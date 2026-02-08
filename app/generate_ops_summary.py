@@ -610,7 +610,7 @@ def generate_ops_summary():
         next_action = "EXECUTE TRADES -> bash deploy/oci/manual_loop_submit_record.sh <record_file>"
     elif manual_stage == "AWAITING_RECORD_SUBMIT":
         # Check if latest record is blocked
-        rec_dec = record_data.get("decision", "UNKNOWN")
+        rec_dec = record_data.get("decision", "UNKNOWN") if record_data else "UNKNOWN"
         if rec_dec == "BLOCKED":
             reason = record_data.get("reason", "UNKNOWN")
             if reason == "DUPLICATE_SUBMIT_BLOCKED":
