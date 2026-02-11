@@ -57,8 +57,10 @@ if echo "$TICKET_RESP" | grep -q "\"result\": \"FAIL\""; then
 fi
 
 # 5. Final Status
-# Regenerate Summary to get fresh state
+# Regenerate Summary to get fresh state (P140: Ensure strict stage update)
+echo ">> Regenerating Ops Summary..."
 curl -s -X POST "http://localhost:8000/api/ops/summary/regenerate?confirm=true" > /dev/null
+
 SUMMARY_JSON=$(curl -s http://localhost:8000/api/ops/summary/latest)
 NEW_STAGE=$(echo "$SUMMARY_JSON" | python3 -c "import sys, json; print((json.load(sys.stdin).get('rows') or [{}])[0].get('manual_loop', {}).get('stage', 'UNKNOWN'))")
 

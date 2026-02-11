@@ -80,7 +80,12 @@ def generate_export():
         _save_and_return(export)
         return
 
-    export["source"]["plan_id"] = plan.get("plan_id")
+    plan_id = plan.get("plan_id")
+    if not plan_id:
+        # P140: Fallback ID generation if missing in plan
+        plan_id = f"plan-{now.strftime('%Y%m%d-%H%M%S')}-fallback"
+    
+    export["source"]["plan_id"] = plan_id
     export["source"]["decision"] = plan.get("decision")
     export["human_confirm"]["evidence_refs"].append(export["source"]["order_plan_ref"])
 

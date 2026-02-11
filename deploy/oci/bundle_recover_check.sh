@@ -34,6 +34,12 @@ if echo "$GIT_OUTPUT" | grep -q "Already up to date"; then
 else
     echo -e "   ${GREEN}✓${NC} Updated: $GIT_OUTPUT"
 fi
+fi
+echo ""
+
+# Step A-1: Apply Portfolio Override (P137)
+echo -e "${YELLOW}[A-1] Checking Portfolio Override${NC}"
+python3 app/oci/apply_portfolio_override.py || echo -e "${RED}✗ Override script failed${NC}"
 echo ""
 
 # Step B: Ops Summary Regenerate (P84-FIX: HTTP code/body logging + fallback)

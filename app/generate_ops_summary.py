@@ -287,7 +287,11 @@ def generate_ops_summary():
         "present": bool(portfolio),
         "updated_at": portfolio.get("updated_at") if portfolio else None,
         "total_value": portfolio.get("total_value", 0) if portfolio else 0,
-        "cash_ratio_pct": portfolio.get("cash_ratio_pct", 0) if portfolio else 0
+        "cash_ratio_pct": portfolio.get("cash_ratio_pct", 0) if portfolio else 0,
+        # P137: Source Visibility
+        "source": portfolio.get("source", "LOCAL_STATE") if portfolio else "MISSING",
+        "bundle_id": portfolio.get("bundle_id") if portfolio else None,
+        "integrity_prefix": portfolio.get("integrity", {}).get("payload_sha256", "")[:8] if portfolio and portfolio.get("integrity") else None
     }
     
     order_plan = safe_load_json(ORDER_PLAN_LATEST)
@@ -552,27 +556,23 @@ def generate_ops_summary():
         else:
             # Prep is Ready
             if not ticket_data or ticket_data.get("decision") != "GENERATED":
-                manual_stage = "PREP_READY" # Could be TICKET_READY if Ticket gen is auto after Prep? No, user says "Ticket Regenerate" is manual step.
-                # Wait, user said "TICKET_READY" stage exists.
-                # If Prep is Ready, next step is Generate Ticket.
-                # Once Ticket Generated, stage is AWAITING_HUMAN_EXECUTION.
-                # So "PREP_READY" means Prep done, Ticket not yet.
-                pass
+                # P140: If Prep is READY, we are effectively PREP_READY or AWAITING_HUMAN_EXECUTION
+                # If Ticket is missing/blocked but Prep is READY, the next auto-step (Ticket Gen) should happen.
+                manual_stage = "PREP_READY"
             else:
                 # Ticket is Ready
                 manual_stage = "AWAITING_HUMAN_EXECUTION"
                 
                 # Check Record
-                if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED", "NO_ITEMS"]:
-                    if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
-                        # P123: Partial/Retry Stages
-                        exec_res = record_data.get("execution_result", "EXECUTED")
-                        if exec_res == "PARTIAL":
-                            manual_stage = "DONE_TODAY_PARTIAL"
-                        elif exec_res == "NOT_EXECUTED":
-                            manual_stage = "AWAITING_RETRY_EXECUTION"
-                        else:
-                            manual_stage = "DONE_TODAY"
+                if record_data and record_data.get("decision") in ["EXECUTED", "PARTIAL", "SKIPPED"]:
+                    # P123: Partial/Retry Stages
+                    exec_res = record_data.get("execution_result", "EXECUTED")
+                    if exec_res == "PARTIAL":
+                        manual_stage = "DONE_TODAY_PARTIAL"
+                    elif exec_res == "NOT_EXECUTED":
+                        manual_stage = "AWAITING_RETRY_EXECUTION"
+                    else:
+                        manual_stage = "DONE_TODAY"
                             
                         # Check linkage
                         # rec_src = record_data.get("source", {}) # Legacy field or new structure? 

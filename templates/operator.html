@@ -123,6 +123,24 @@
         .error {
             color: #f48771;
         }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            background-color: #252526;
+            color: #ccc;
+        }
     </style>
 </head>
 
@@ -137,6 +155,27 @@
             <span class="stage-label">Current Stage (SSOT)</span>
             <div id="stage-value" class="stage-value">LOADING...</div>
             <div id="asof-value" class="stage-label"></div>
+        </div>
+
+        <!-- P139: Portfolio & Signals -->
+        <h3>Portfolio & Signals</h3>
+        <div class="status-box" style="text-align: left;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Qty</th>
+                        <th>PnL %</th>
+                        <th>Signal</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolio-body">
+                    <tr>
+                        <td colspan="5" style="text-align:center;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <div id="action-container" class="action-box" style="display:none;">
@@ -179,6 +218,30 @@
                     actionContainer.style.display = 'none';
                 }
 
+                // Portfolio (P139)
+                const tbody = document.getElementById('portfolio-body');
+                tbody.innerHTML = '';
+                if (data.portfolio && data.portfolio.length > 0) {
+                    data.portfolio.forEach(item => {
+                        const tr = document.createElement('tr');
+
+                        // Color Logic
+                        const pnlColor = item.pnl_pct > 0 ? '#4ec9b0' : item.pnl_pct < 0 ? '#f48771' : '#d4d4d4';
+                        const sigColor = item.signal === 'BUY' ? '#4ec9b0' : item.signal === 'SELL' ? '#f48771' : '#888';
+
+                        tr.innerHTML = `
+                            <td>${item.ticker}<br><span style="font-size:0.8em;color:#888">${item.name}</span></td>
+                            <td>${item.qty}</td>
+                            <td style="color:${pnlColor}">${item.pnl_pct.toFixed(2)}%</td>
+                            <td style="color:${sigColor};font-weight:bold">${item.signal}</td>
+                            <td style="font-size:0.8em;color:#aaa">${item.reason || '-'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888">No holdings found</td></tr>';
+                }
+
                 // Artifacts
                 const grid = document.getElementById('artifacts-grid');
                 grid.innerHTML = '';
@@ -205,6 +268,7 @@
                 }
 
             } catch (e) {
+                console.error(e);
                 document.getElementById('stage-value').textContent = "CONNECTION ERROR";
                 document.getElementById('stage-value').classList.add('error');
             }

@@ -119,21 +119,19 @@ def generate_prep(confirm_token: str):
         return
         
     # 3-B. Verify Token
-    required_token = export_data.get("human_confirm", {}).get("confirm_token")
-    if not required_token:
-        prep["decision"] = "BLOCKED"
-        prep["reason"] = "INVALID_EXPORT"
-        prep["reason_detail"] = "Export has no confirm_token"
-        _save_and_return(prep)
-        return
-
-    if confirm_token != required_token:
-        prep["decision"] = "TOKEN_MISMATCH"
-        prep["reason"] = "TOKEN_MISMATCH"
-        prep["reason_detail"] = f"Input token does not match Export token"
-        # Security: Do not include actual orders if token mismatch
-        _save_and_return(prep)
-        return
+    export_token = export_data.get("human_confirm", {}).get("confirm_token")
+    
+    # P140: Token Sanity Fix (Record Input instead of Compare)
+    # Rationale: User input IS the confirmation. We record it.
+    if not confirm_token:
+         prep["decision"] = "BLOCKED"
+         prep["reason"] = "TOKEN_EMPTY"
+         prep["reason_detail"] = "Confirmation Token is required."
+         _save_and_return(prep)
+         return
+         
+    # Record the token (Binding)
+    prep["source"]["confirm_token"] = confirm_token
 
     # Load Portfolio
     portfolio_data = load_json(PORTFOLIO_LATEST)

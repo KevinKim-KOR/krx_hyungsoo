@@ -1,0 +1,193 @@
+{
+  "schema": "PARAM_REVIEW_V1",
+  "asof": "2026-02-08T14:03:03.930695Z",
+  "baseline": {
+    "params": {
+      "universe": [
+        "069500",
+        "229200",
+        "114800",
+        "122630"
+      ],
+      "lookbacks": {
+        "momentum_period": 20,
+        "volatility_period": 14
+      },
+      "rebalance_rule": {
+        "frequency": "DAILY",
+        "time_kst": "09:05"
+      },
+      "risk_limits": {
+        "max_position_pct": 0.25,
+        "max_drawdown_pct": 0.15
+      },
+      "position_limits": {
+        "max_positions": 4,
+        "min_cash_pct": 0.1
+      },
+      "decision_params": {
+        "entry_threshold": 0.02,
+        "exit_threshold": -0.03,
+        "adx_filter_min": 20
+      }
+    },
+    "fingerprint": "0f95d037238bc900",
+    "metrics": {}
+  },
+  "candidates": [
+    {
+      "rank": 1,
+      "score": 83,
+      "params": {
+        "lookback_days": 120,
+        "momentum_window": 20,
+        "vol_window": 14,
+        "top_k": 4,
+        "weights": {
+          "mom": 1.0,
+          "vol": 0.0
+        }
+      },
+      "metrics": {
+        "avg_forward_return": 0.014752779636225169,
+        "hit_rate": 0.7142857142857143,
+        "sample_count": 35,
+        "score_0_100": 83
+      },
+      "analysis": {
+        "why_good": "Strong hit rate (71%).",
+        "risk_factor": "Standard market risk.",
+        "regime_hint": "NEUTRAL"
+      },
+      "tags": [
+        "CONSISTENT"
+      ]
+    },
+    {
+      "rank": 2,
+      "score": 83,
+      "params": {
+        "lookback_days": 120,
+        "momentum_window": 20,
+        "vol_window": 14,
+        "top_k": 4,
+        "weights": {
+          "mom": 0.7,
+          "vol": 0.3
+        }
+      },
+      "metrics": {
+        "avg_forward_return": 0.014752779636225169,
+        "hit_rate": 0.7142857142857143,
+        "sample_count": 35,
+        "score_0_100": 83
+      },
+      "analysis": {
+        "why_good": "Higher volatility penalty (defensive). Strong hit rate (71%).",
+        "risk_factor": "Standard market risk.",
+        "regime_hint": "DEFENSIVE"
+      },
+      "tags": [
+        "DEFENSIVE",
+        "CONSISTENT"
+      ]
+    },
+    {
+      "rank": 3,
+      "score": 83,
+      "params": {
+        "lookback_days": 120,
+        "momentum_window": 20,
+        "vol_window": 14,
+        "top_k": 4,
+        "weights": {
+          "mom": 0.5,
+          "vol": 0.5
+        }
+      },
+      "metrics": {
+        "avg_forward_return": 0.014752779636225169,
+        "hit_rate": 0.7142857142857143,
+        "sample_count": 35,
+        "score_0_100": 83
+      },
+      "analysis": {
+        "why_good": "Higher volatility penalty (defensive). Strong hit rate (71%).",
+        "risk_factor": "Standard market risk.",
+        "regime_hint": "DEFENSIVE"
+      },
+      "tags": [
+        "DEFENSIVE",
+        "CONSISTENT"
+      ]
+    },
+    {
+      "rank": 4,
+      "score": 83,
+      "params": {
+        "lookback_days": 120,
+        "momentum_window": 20,
+        "vol_window": 20,
+        "top_k": 4,
+        "weights": {
+          "mom": 1.0,
+          "vol": 0.0
+        }
+      },
+      "metrics": {
+        "avg_forward_return": 0.014752779636225169,
+        "hit_rate": 0.7142857142857143,
+        "sample_count": 35,
+        "score_0_100": 83
+      },
+      "analysis": {
+        "why_good": "Strong hit rate (71%).",
+        "risk_factor": "Standard market risk.",
+        "regime_hint": "NEUTRAL"
+      },
+      "tags": [
+        "CONSISTENT"
+      ]
+    },
+    {
+      "rank": 5,
+      "score": 83,
+      "params": {
+        "lookback_days": 120,
+        "momentum_window": 20,
+        "vol_window": 20,
+        "top_k": 4,
+        "weights": {
+          "mom": 0.7,
+          "vol": 0.3
+        }
+      },
+      "metrics": {
+        "avg_forward_return": 0.014752779636225169,
+        "hit_rate": 0.7142857142857143,
+        "sample_count": 35,
+        "score_0_100": 83
+      },
+      "analysis": {
+        "why_good": "Higher volatility penalty (defensive). Strong hit rate (71%).",
+        "risk_factor": "Standard market risk.",
+        "regime_hint": "DEFENSIVE"
+      },
+      "tags": [
+        "DEFENSIVE",
+        "CONSISTENT"
+      ]
+    }
+  ],
+  "recommendation": {
+    "candidate_rank": 1,
+    "level": "SOFT",
+    "reason": "Top scoring candidate based on P135 simulation."
+  },
+  "questions": [
+    "How does the top candidate's volatility weight compare to the baseline?",
+    "Is the hit rate of the top candidate sustainable?",
+    "What market regime favors the aggressive candidate?",
+    "Why did the baseline score lower (if applicable)?"
+  ]
+}

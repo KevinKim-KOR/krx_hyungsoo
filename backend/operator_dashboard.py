@@ -97,9 +97,80 @@ async def get_operator_dashboard():
         "health": "reports/ops/evidence/health/health_latest.json"
     }
 
+    # 4. P139: Portfolio & Timing Data
+    portfolio_path = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
+    timing_path = BASE_DIR / "reports" / "oci" / "holding_timing" / "latest" / "holding_timing_latest.json"
+    
+    portfolio_view = []
+    
+    # Ticker Map (Simple Fallback) - Ideally this should be shared or loaded from params
+    TICKER_MAP = {
+        "069500": "KODEX 200",
+        "229200": "KODEX KONEX",
+        "114800": "KODEX INVERSE",
+        "122630": "KODEX LEVERAGE"
+    }
+    
+    if portfolio_path.exists():
+        try:
+            pf_data = json.loads(portfolio_path.read_text(encoding="utf-8"))
+            holdings = pf_data.get("holdings", {})
+            
+            # Load timing for signals/prices
+            timing_map = {}
+            if timing_path.exists():
+                try:
+                    t_data = json.loads(timing_path.read_text(encoding="utf-8"))
+                    for h in t_data.get("holdings", []):
+                        timing_map[h["ticker"]] = h
+                except: pass
+            
+            # Normalize holdings (Handle list vs dict)
+            if isinstance(holdings, list):
+                iter_holdings = holdings
+            else:
+                iter_holdings = [{"ticker": k, **v} for k, v in holdings.items()]
+                
+            for h in iter_holdings:
+                t = h.get("ticker", "UNKNOWN")
+                qty = h.get("quantity", 0)
+                avg = h.get("avg_price", 0)
+                
+                # Get Market Data from Timing (Best effort)
+                t_info = timing_map.get(t, {})
+                curr = t_info.get("current_price", 0) # Could be 0 if unknown
+                
+                # Calculate PnL
+                pnl_pct = 0.0
+                if avg > 0 and curr > 0:
+                    pnl_pct = ((curr / avg) - 1) * 100
+                elif avg > 0:
+                    # If current price unknown, PnL is unknown (or 0)
+                    pnl_pct = 0.0
+                    
+                # Signal
+                sig = t_info.get("current_signal", "WAIT")
+                reason = t_info.get("signal_reason", "-")
+                
+                portfolio_view.append({
+                    "ticker": t,
+                    "name": TICKER_MAP.get(t, t),
+                    "qty": qty,
+                    "avg_price": avg,
+                    "current_price": curr,
+                    "pnl_pct": pnl_pct,
+                    "signal": sig,
+                    "reason": reason
+                })
+                
+        except Exception as e:
+            # Fallback if port parse fails
+            portfolio_view = [{"ticker": "ERROR", "name": str(e)}]
+            
     return {
         "asof": asof,
         "stage": stage,
         "next_action": next_action,
-        "artifacts": artifacts
+        "artifacts": artifacts,
+        "portfolio": portfolio_view
     }

@@ -1,0 +1,92 @@
+{
+  "schema": "HOLDING_TIMING_V1",
+  "asof": "2026-02-08T08:41:53.970758Z",
+  "portfolio_ref": "portfolio_latest.json",
+  "params_ref": "strategy_params_latest.json",
+  "holdings": [
+    {
+      "ticker": "069500",
+      "qty": 100,
+      "avg_price": 30000,
+      "data_source": "CACHE",
+      "current_price": 75195.0,
+      "current_signal": "BUY",
+      "signal_reason": "Mom(12.0%) > 2.0% & Price > MA",
+      "lookback_events": [
+        {
+          "date": "2025-11-12",
+          "signal": "BUY",
+          "reason": "Entry Signal",
+          "price": 58738.0
+        },
+        {
+          "date": "2025-11-24",
+          "signal": "SELL",
+          "reason": "Exit Signal (Mom)",
+          "price": 54153.0
+        },
+        {
+          "date": "2025-12-05",
+          "signal": "BUY",
+          "reason": "Entry Signal",
+          "price": 58178.0
+        }
+      ],
+      "metrics": {
+        "momentum_val": 0.12049054523238323,
+        "volatility_val": 0.5104439730880436,
+        "price": 75195.0,
+        "ma": 73207.9
+      },
+      "next_trigger_hint": "Sell if Price < 65096 (Mom < -3.0%)"
+    },
+    {
+      "ticker": "229200",
+      "qty": 50,
+      "avg_price": 10000,
+      "data_source": "CACHE",
+      "current_price": 18530.0,
+      "current_signal": "BUY",
+      "signal_reason": "Mom(16.4%) > 2.0% & Price > MA",
+      "lookback_events": [
+        {
+          "date": "2025-11-12",
+          "signal": "BUY",
+          "reason": "Entry Signal",
+          "price": 15775.0
+        },
+        {
+          "date": "2025-11-24",
+          "signal": "SELL",
+          "reason": "Exit Signal (Mom)",
+          "price": 14840.0
+        },
+        {
+          "date": "2025-11-28",
+          "signal": "BUY",
+          "reason": "Entry Signal",
+          "price": 15900.0
+        },
+        {
+          "date": "2025-12-18",
+          "signal": "SELL",
+          "reason": "Exit Signal (Mom)",
+          "price": 15050.0
+        },
+        {
+          "date": "2026-01-16",
+          "signal": "BUY",
+          "reason": "Entry Signal",
+          "price": 15970.0
+        }
+      ],
+      "metrics": {
+        "momentum_val": 0.16431039899465905,
+        "volatility_val": 0.7865611923007044,
+        "price": 18530.0,
+        "ma": 17786.75
+      },
+      "next_trigger_hint": "Sell if Price < 15438 (Mom < -3.0%)"
+    }
+  ]
+}

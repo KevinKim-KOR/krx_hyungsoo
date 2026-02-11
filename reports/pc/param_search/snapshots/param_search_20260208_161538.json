@@ -1,0 +1,55 @@
+{
+  "schema": "PARAM_SEARCH_V1",
+  "asof": "2026-02-08T07:15:38.819620Z",
+  "universe": [
+    "069500",
+    "229200",
+    "114800",
+    "122630"
+  ],
+  "data_source_chain": [
+    "CACHE",
+    "NAVER_FETCH"
+  ],
+  "search_space": {
+    "lookback_days": [
+      60,
+      90,
+      120,
+      150
+    ],
+    "momentum_window": [
+      20,
+      40,
+      60
+    ],
+    "vol_window": [
+      14,
+      20,
+      30
+    ],
+    "top_k": [
+      4
+    ],
+    "weights": [
+      {
+        "mom": 1.0,
+        "vol": 0.0
+      },
+      {
+        "mom": 0.7,
+        "vol": 0.3
+      },
+      {
+        "mom": 0.5,
+        "vol": 0.5
+      }
+    ]
+  },
+  "results": [],
+  "winner": {
+    "rank": 1,
+    "params": {},
+    "reason": "N/A"
+  }
+}

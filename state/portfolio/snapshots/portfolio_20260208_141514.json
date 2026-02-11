@@ -1,0 +1,26 @@
+{
+  "updated_at": "2026-02-08T09:05:35.553251",
+  "total_value": 10000000,
+  "cash": 3000100,
+  "cash_ratio_pct": 30.0,
+  "holdings": {
+    "069500": {
+      "quantity": 100,
+      "avg_price": 30000,
+      "current_price": 31000,
+      "weight_pct": 31.0
+    },
+    "229200": {
+      "quantity": 50,
+      "avg_price": 10000,
+      "current_price": 11000,
+      "weight_pct": 5.5
+    }
+  },
+  "source": "BUNDLE_OVERRIDE",
+  "applied_at": "2026-02-08T14:15:14.650503Z",
+  "bundle_id": "6d4077f3-4c1b-4b8d-97b1-8a7d6d53920c",
+  "integrity": {
+    "payload_sha256": "3af21ebcdd7979aac4443a4c5bf236295382235ca02f70f48f8cec0139c303d4"
+  }
+}

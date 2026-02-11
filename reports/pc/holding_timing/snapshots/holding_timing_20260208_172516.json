@@ -1,0 +1,7 @@
+{
+  "schema": "HOLDING_TIMING_V1",
+  "asof": "2026-02-08T08:25:16.584034Z",
+  "portfolio_ref": "portfolio_latest.json",
+  "params_ref": "strategy_params_latest.json",
+  "holdings": []
+}

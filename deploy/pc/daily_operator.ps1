@@ -28,8 +28,8 @@ if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
 Write-Host "===================================================" -ForegroundColor Cyan
 Write-Host "   🚀 DAILY OPERATOR ORCHESTRATOR" -ForegroundColor Cyan
 Write-Host "   Backend: $BaseUrl" -ForegroundColor Gray
-Write-Host "   [PHASE: P133 LIVE MICRO-PILOT V2]" -ForegroundColor Magenta
-Write-Host "   * Rule: Max 1 Trade per Day" -ForegroundColor Magenta
+Write-Host "   [PHASE: P132 LIVE MICRO-PILOT V1]" -ForegroundColor Magenta
+Write-Host "   * Rule: Execute ONLY 1 Trade (Test)" -ForegroundColor Magenta
 Write-Host "   * Mode: LIVE" -ForegroundColor Magenta
 Write-Host "==================================================="
 

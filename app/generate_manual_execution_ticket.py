@@ -83,6 +83,9 @@ def generate_ticket():
             "decision": prep.get("decision"),
             "violated": [prep.get("reason")] if prep.get("decision") == "BLOCKED" else []
         }
+        # P140: Force Overwrite Artifacts even if BLOCKED (To prevent stale files)
+        # We need to render a "BLOCKED TICKET" so the operator sees the error.
+        _generate_blocked_ticket_content(ticket)
         _save_and_return(ticket)
         return
 
@@ -226,6 +229,42 @@ def _write_md(path: Path, ticket: Dict):
     lines.append("> **Operator Instruction**: Copy input string, paste to HTS. Check each order as executed.")
     
     path.write_text("\n".join(lines), encoding="utf-8")
+
+def _generate_blocked_ticket_content(ticket: Dict):
+    # P140: Generate minimal artifacts even if blocked
+    ticket["decision"] = "BLOCKED" # Reinforced
+    
+    # Minimal Summary
+    ticket["summary"] = {
+        "total_orders": 0,
+        "total_notional": 0,
+        "cash_before": 0,
+        "cash_after_est": 0
+    }
+    ticket["copy_paste"] = "BLOCKED: See Reason"
+    
+    base_name = f"manual_execution_ticket_latest"
+    csv_path = TICKET_DIR / "latest" / f"{base_name}.csv"
+    md_path = TICKET_DIR / "latest" / f"{base_name}.md"
+    
+    # Clear CSV
+    csv_path.write_text("", encoding="utf-8")
+    
+    # MD with Error
+    lines = [
+        f"# Manual Execution Ticket (BLOCKED)",
+        f"**Plan ID**: {ticket['source'].get('plan_id', 'UNKNOWN')}",
+        f"**AsOf**: {ticket['asof']}",
+        f"**Status**: ❌ BLOCKED",
+        f"**Reason**: {ticket.get('reason')}",
+        f"**Detail**: {ticket.get('reason_detail')}",
+        "",
+        "> Please resolve the blocking issue in Execution Prep."
+    ]
+    md_path.write_text("\n".join(lines), encoding="utf-8")
+    
+    ticket["output_files"]["csv_path"] = str(csv_path.relative_to(BASE_DIR)).replace("\\", "/")
+    ticket["output_files"]["md_path"] = str(md_path.relative_to(BASE_DIR)).replace("\\", "/")
 
 def _save_and_return(ticket: Dict):
     try:

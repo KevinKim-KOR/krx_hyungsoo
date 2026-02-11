@@ -358,6 +358,45 @@ def generate_bundle() -> dict:
             "items_hash": ""
         }
     
+    # P136.6 / P137: State Override (Portfolio Sync)
+    # PC State -> OCI Sync via Bundle
+    if portfolio:
+        # Compute integrity of portfolio itself
+        port_json = json.dumps(portfolio, sort_keys=True, separators=(',', ':'))
+        port_sha = hashlib.sha256(port_json.encode("utf-8")).hexdigest()
+        
+        strategy["state_override"] = {
+            "portfolio": {
+                "enabled": True,
+                "schema": "PORTFOLIO_SNAPSHOT_V1",
+                "asof": datetime.utcnow().isoformat() + "Z",
+                "payload": portfolio,
+                "integrity": {
+                    "payload_sha256": port_sha
+                },
+                "source": "PC_LOCAL_LATEST"
+            }
+        }
+        print(f"[INFO] Included PC Portfolio in Bundle for Sync (sha={port_sha[:8]})")
+    else:
+        strategy["state_override"] = None
+        
+    # Auxiliary Data (P139: Holding Timing)
+    # Try to load holding_timing_latest.json
+    timing_data = None
+    timing_path = BASE_DIR / "reports" / "pc" / "holding_timing" / "latest" / "holding_timing_latest.json"
+    if timing_path.exists():
+        try:
+            with open(timing_path, "r", encoding="utf-8") as f:
+                timing_data = json.load(f)
+            print(f"[INFO] Included holding_timing_latest.json in bundle.")
+        except Exception as e:
+            print(f"[WARN] Failed to load holding timing: {e}")
+
+    strategy["auxiliary"] = {
+        "holding_timing": timing_data
+    }
+    
     # payload SHA256 계산
     payload_sha256 = compute_payload_sha256(strategy)
     
