@@ -86,6 +86,8 @@ def generate_export():
         plan_id = f"plan-{now.strftime('%Y%m%d-%H%M%S')}-fallback"
     
     export["source"]["plan_id"] = plan_id
+    # P140-HOTFIX2: Back-fill root plan_id for compatibility
+    export["plan_id"] = plan_id
     export["source"]["decision"] = plan.get("decision")
     export["human_confirm"]["evidence_refs"].append(export["source"]["order_plan_ref"])
 

@@ -60,8 +60,10 @@ def generate_ticket():
     # 2. Load Prep
     prep = load_json(PREP_LATEST)
     if not prep:
-        ticket["decision"] = "NO_PREP"
+        ticket["decision"] = "BLOCKED" # Changed from NO_PREP to BLOCKED for consistency
         ticket["reason"] = "EXECUTION_PREP_MISSING"
+        # P140-HOTFIX2: Force overwrite artifacts to prevent stale View
+        _generate_blocked_ticket_content(ticket)
         _save_and_return(ticket)
         return
         
@@ -262,6 +264,11 @@ def _generate_blocked_ticket_content(ticket: Dict):
         "> Please resolve the blocking issue in Execution Prep."
     ]
     md_path.write_text("\n".join(lines), encoding="utf-8")
+    
+    # Also overwrite the Latest Snapshot files to be sure (since snapshot logic only runs on GENERATED)
+    # But wait, _save_and_return handles snapshots. 
+    # The requirement is that "latest" files are overwritten. 
+    # This function writes to TICKET_DIR/latest/*.csv|md. So it is correct.
     
     ticket["output_files"]["csv_path"] = str(csv_path.relative_to(BASE_DIR)).replace("\\", "/")
     ticket["output_files"]["md_path"] = str(md_path.relative_to(BASE_DIR)).replace("\\", "/")

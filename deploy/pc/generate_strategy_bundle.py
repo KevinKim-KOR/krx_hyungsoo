@@ -19,7 +19,7 @@ import re
 import socket
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -369,7 +369,7 @@ def generate_bundle() -> dict:
             "portfolio": {
                 "enabled": True,
                 "schema": "PORTFOLIO_SNAPSHOT_V1",
-                "asof": datetime.utcnow().isoformat() + "Z",
+                "asof": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "payload": portfolio,
                 "integrity": {
                     "payload_sha256": port_sha

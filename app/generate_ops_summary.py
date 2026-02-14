@@ -547,7 +547,13 @@ def generate_ops_summary():
     manual_stage = "UNKNOWN"
     
     # Logic
-    if not export_data or export_data.get("decision") == "BLOCKED":
+    # P140-HOTFIX2: Handle EMPTY day (No Action) explicitly
+    op_dec = order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN"
+    exp_dec = export_data.get("decision", "UNKNOWN") if export_data else "UNKNOWN"
+
+    if op_dec == "EMPTY" or exp_dec == "EMPTY":
+        manual_stage = "NO_ACTION_TODAY"
+    elif not export_data or exp_dec == "BLOCKED":
         manual_stage = "BLOCKED" # Or UPSTREAM_BLOCKED
     else:
         # Export is Ready
