@@ -11,6 +11,7 @@ BASE_DIR = Path(__file__).parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
 from app.pc.param_search import load_data, fetch_history
+from app.utils.admin_utils import load_asof_override
 
 # Config
 OUTPUT_DIR = BASE_DIR / "reports" / "pc" / "holding_timing" / "latest"
@@ -187,6 +188,19 @@ def main():
         # fallback is tricky without params.
         return
 
+    # 1.5 Check Replay Override (P143)
+    override = load_asof_override()
+    replay_asof = None
+    if override.get("enabled"):
+        try:
+            # Parse KST to Datetime (EndOfDay)
+            # Format: YYYY-MM-DD
+            dt_str = override.get("asof_kst")
+            replay_asof = pd.Timestamp(dt_str)
+            print(f"[P143] Replay Mode Active: Filter <= {dt_str}")
+        except:
+             print("[WARN] Invalid replay date format.")
+
     # 2. Fetch Data
     # Parse Holdings (Support Dict or List structure for robustness)
     raw_holdings = portfolio.get("holdings", {})
@@ -236,6 +250,19 @@ def main():
         
         if t in data_map:
             rows = data_map[t]
+            
+            # P143 Filter
+            if replay_asof and rows:
+                # Convert list of dicts to DF for easier filtering or iterate
+                # rows is list of {'date': 'YYYYMMDD', ...} sorted asc
+                # Let's filter list locally
+                filtered_rows = []
+                for r in rows:
+                    rdt = pd.Timestamp(str(r['date']))
+                    if rdt <= replay_asof:
+                        filtered_rows.append(r)
+                rows = filtered_rows
+                
             if rows:
                 current_price = rows[-1]["close"]
                 entry["current_price"] = current_price

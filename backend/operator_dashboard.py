@@ -3,6 +3,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 import json
 from datetime import datetime
+import sys
+
+# Add project root
+BASE_DIR = Path(__file__).parent.parent
+sys.path.append(str(BASE_DIR))
+
+from app.utils.admin_utils import load_asof_override
 
 router = APIRouter()
 
@@ -167,10 +174,19 @@ async def get_operator_dashboard():
             # Fallback if port parse fails
             portfolio_view = [{"ticker": "ERROR", "name": str(e)}]
             
+    # P143: Replay/Override Info
+    override = load_asof_override()
+    replay_info = {
+        "enabled": override.get("enabled", False),
+        "asof": override.get("asof_kst", "N/A"),
+        "mode": override.get("mode", "LIVE")
+    }
+            
     return {
         "asof": asof,
         "stage": stage,
         "next_action": next_action,
         "artifacts": artifacts,
-        "portfolio": portfolio_view
+        "portfolio": portfolio_view,
+        "replay_info": replay_info
     }

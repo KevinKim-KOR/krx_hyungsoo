@@ -5,6 +5,13 @@ import sys
 import shutil
 from pathlib import Path
 from datetime import datetime
+import sys
+
+# Add project root to path
+BASE_DIR = Path(__file__).parent.parent.parent
+sys.path.append(str(BASE_DIR))
+
+from app.utils.admin_utils import normalize_portfolio
 
 # Config
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -105,6 +112,9 @@ def main():
     final_portfolio["applied_at"] = datetime.utcnow().isoformat() + "Z"
     final_portfolio["bundle_id"] = bundle.get("bundle_id")
     final_portfolio["integrity"] = {"payload_sha256": actual_sha}
+    
+    # P143: Normalize SSOT
+    final_portfolio = normalize_portfolio(final_portfolio)
     
     # Backup
     if PORTFOLIO_PATH.exists():

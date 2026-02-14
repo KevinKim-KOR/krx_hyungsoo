@@ -14,7 +14,13 @@ import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, Optional
+import sys
 
+# Add project root for utils
+BASE_DIR = Path(__file__).parent.parent
+sys.path.append(str(BASE_DIR))
+
+from app.utils.admin_utils import load_asof_override, is_holiday_today
 BASE_DIR = Path(__file__).parent.parent
 
 # Input paths
@@ -551,7 +557,20 @@ def generate_ops_summary():
     op_dec = order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN"
     exp_dec = export_data.get("decision", "UNKNOWN") if export_data else "UNKNOWN"
 
-    if op_dec == "EMPTY" or exp_dec == "EMPTY":
+    op_dec = order_plan.get("decision", "UNKNOWN") if order_plan else "UNKNOWN"
+    exp_dec = export_data.get("decision", "UNKNOWN") if export_data else "UNKNOWN"
+
+    # P143: Holiday / Replay Logic
+    override_cfg = load_asof_override()
+    is_holiday_mode = False
+    if override_cfg.get("enabled"):
+        # If today is holiday (or forced), and override is active
+        if is_holiday_today(override_cfg.get("asof_kst")):
+             is_holiday_mode = True
+
+    if is_holiday_mode:
+        manual_stage = "NO_ACTION_TODAY"
+    elif op_dec == "EMPTY" or exp_dec == "EMPTY":
         manual_stage = "NO_ACTION_TODAY"
     elif not export_data or exp_dec == "BLOCKED":
         manual_stage = "BLOCKED" # Or UPSTREAM_BLOCKED
@@ -607,7 +626,13 @@ def generate_ops_summary():
 
     # Next Action Logic (P115)
     next_action = "NONE"
-    if manual_stage == "NEED_HUMAN_CONFIRM":
+    
+    if manual_stage == "NO_ACTION_TODAY":
+        if is_holiday_mode:
+             next_action = "REPLAY / HOLIDAY CHECK ONLY (No Trade)"
+        else:
+             next_action = "NONE (Empty Plan)"
+    elif manual_stage == "NEED_HUMAN_CONFIRM":
         next_action = "bash deploy/oci/manual_loop_prepare.sh"
     elif manual_stage == "AWAITING_HUMAN_EXECUTION":
         next_action = "EXECUTE TRADES -> bash deploy/oci/manual_loop_submit_record.sh <record_file>"

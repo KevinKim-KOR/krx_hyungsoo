@@ -7,6 +7,13 @@ from pathlib import Path
 import pandas as pd
 import altair as alt
 import subprocess
+import sys
+
+# Add project root to path for util imports
+BASE_DIR = Path(__file__).parent.parent
+sys.path.append(str(BASE_DIR))
+
+from app.utils.admin_utils import normalize_portfolio, load_asof_override
 
 # Config
 st.set_page_config(page_title="KRX Strategy Cockpit", layout="wide")
@@ -94,6 +101,12 @@ def run_script(script_path):
 
 # UI
 st.title("🚀 KRX Strategy Cockpit V1.7")
+
+# REPLAY MODE CHECK (P143)
+override_cfg = load_asof_override()
+if override_cfg.get("enabled"):
+    st.error(f"🔴 REPLAY MODE ACTIVE (Data Basis: {override_cfg.get('asof_kst')})")
+    st.caption("System outputs will be generated based on this snapshot date.")
 
 params_data = load_json(LATEST_PATH)
 portfolio_data = load_json(PORTFOLIO_PATH)
@@ -380,6 +393,9 @@ with tab_port_edit:
                 portfolio_data["cash"] = cash
                 portfolio_data["holdings"] = new_holdings
                 portfolio_data["updated_at"] = datetime.utcnow().isoformat()
+                
+                # P143: Normalize SSOT
+                portfolio_data = normalize_portfolio(portfolio_data)
                 
                 save_json(PORTFOLIO_PATH, portfolio_data)
                 st.success("Portfolio Saved!")
