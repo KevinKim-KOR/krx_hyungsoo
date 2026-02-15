@@ -632,7 +632,15 @@
 
                         setTimeout(fetchData, 1000);
                     } else {
-                        statusDiv.textContent = "❌ Submit Failed: " + (data.reason || data.message);
+                        let errMsg = data.reason || data.message || "Unknown Error";
+                        if (data.detail) {
+                            if (typeof data.detail === 'object') {
+                                errMsg += " Details: " + JSON.stringify(data.detail);
+                            } else {
+                                errMsg += " Details: " + data.detail;
+                            }
+                        }
+                        statusDiv.textContent = "❌ Submit Failed: " + errMsg;
                         statusDiv.style.color = "#f48771";
                     }
 
