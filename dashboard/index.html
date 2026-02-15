@@ -80,7 +80,8 @@
         const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell } = window.Recharts;
 
         // API Configuration
-        const API_BASE = "http://localhost:8000";
+        // P146: Use relative path for OCI compatibility
+        const API_BASE = ""; // Was "http://localhost:8000"
 
         // Utils
         const formatMoney = (val) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(val);
