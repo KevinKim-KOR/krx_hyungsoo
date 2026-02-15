@@ -2874,14 +2874,22 @@ def generate_draft_record():
     try:
         # 1. Check Pre-requisites (Artifacts First)
         # P146.3: Relaxed Stage Check. If Ticket & Export exist, we allow Draft Generation.
-        ticket = _load_json(TICKET_LATEST_FILE)
-        export = _load_json(ORDER_PLAN_EXPORT_LATEST_FILE)
+    try:
+        # 1. Check Pre-requisites (Artifacts First)
+        # P146.3: Relaxed Stage Check. Use specific paths to avoid NameError if globals missing
+        ticket_path = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
+        export_path = REPORTS_DIR / "live" / "order_plan" / "export" / "latest" / "order_plan_export_latest.json"
+        
+        ticket = _load_json(ticket_path)
+        export = _load_json(export_path)
         
         if not ticket or not export:
              return {"result": "BLOCKED", "reason": "Missing Ticket or Order Plan Export. Cannot generate draft."}
 
-        # Optional: Check Stage via Summary (Log warning but don't block if artifacts exist)
-        summary = _load_json(OPS_SUMMARY_PATH)
+        # Optional: Check Stage via Summary
+        summary_path = REPORTS_DIR / "ops" / "summary" / "latest" / "ops_summary_latest.json"
+        summary = _load_json(summary_path)
+        
         if summary:
             stage = summary.get("manual_loop", {}).get("stage", "UNKNOWN")
             # If stage is completely wrong (e.g. PREP_NOT_STARTED), maybe block? 
@@ -2889,7 +2897,8 @@ def generate_draft_record():
             # Let's trust artifacts existence more.
         
         # 2. Load Prep (Optional but good for linkage)
-        prep = _load_json(PREP_LATEST_FILE)
+        prep_path = REPORTS_DIR / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
+        prep = _load_json(prep_path)
 
 
         # 3. Validate Linkage
