@@ -48,7 +48,7 @@ DASHBOARD_DIR = BASE_DIR / "dashboard"
 # P146.3: Draft Generation Constants
 PREP_LATEST_FILE = REPORTS_DIR / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
 TICKET_LATEST_FILE = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
-ORDER_PLAN_EXPORT_LATEST_FILE = REPORTS_DIR / "live" / "order_plan" / "export" / "latest" / "order_plan_export_latest.json"
+ORDER_PLAN_EXPORT_LATEST_FILE = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
 OPS_SUMMARY_PATH = REPORTS_DIR / "ops" / "summary" / "latest" / "ops_summary_latest.json"
 DRAFT_LATEST_FILE = REPORTS_DIR / "live" / "manual_execution_record" / "draft" / "latest" / "manual_execution_record_draft_latest.json"
 
@@ -2874,7 +2874,7 @@ def generate_draft_record():
     try:
         # 1. Paths (local to avoid NameError)
         _ticket_path = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
-        _export_path = REPORTS_DIR / "live" / "order_plan" / "export" / "latest" / "order_plan_export_latest.json"
+        _export_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
         _prep_path = REPORTS_DIR / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
         _summary_path = REPORTS_DIR / "ops" / "summary" / "latest" / "ops_summary_latest.json"
         _draft_path = REPORTS_DIR / "live" / "manual_execution_record" / "draft" / "latest" / "manual_execution_record_draft_latest.json"
