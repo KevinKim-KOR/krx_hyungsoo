@@ -2840,6 +2840,14 @@ ORDER_PLAN_EXPORT_LATEST_FILE = BASE_DIR / "reports" / "live" / "order_plan_expo
 # Ensure Draft Dir
 (DRAFT_DIR / "latest").mkdir(parents=True, exist_ok=True)
 
+def _load_json(path: Path) -> dict:
+    if path.exists():
+        try:
+           return json.loads(path.read_text(encoding="utf-8"))
+        except:
+           return None
+    return None
+
 @app.post("/api/manual_execution_record/draft", summary="Draft Record 생성 (Server-Side)")
 def generate_draft_record():
     """Generate Manual Execution Record Draft (Server-Side) - P146.2"""
