@@ -3072,7 +3072,7 @@ def resolve_evidence_ref(ref: str):
                 "code": "PARSE_ERROR",
                 "message": result.reason
             },
-            "raw_preview": result.raw_preview,
+            "raw_preview": result.raw_content,
             "guidance": "⚠️ FILE CORRUPTED. This file is not valid JSON. If this is a Draft, please use the 'Draft Manager' to Regenerate it." # P146.3 Guidance
         }
     
