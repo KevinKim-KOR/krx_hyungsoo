@@ -2872,57 +2872,50 @@ def _load_json(path: Path) -> dict:
 def generate_draft_record():
     """Generate Manual Execution Record Draft (Server-Side) - P146.2"""
     try:
-        # 1. Check Pre-requisites (Artifacts First)
-        # P146.3: Relaxed Stage Check. If Ticket & Export exist, we allow Draft Generation.
-    try:
-        # 1. Check Pre-requisites (Artifacts First)
-        # P146.3: Relaxed Stage Check. Use specific paths to avoid NameError if globals missing
-        ticket_path = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
-        export_path = REPORTS_DIR / "live" / "order_plan" / "export" / "latest" / "order_plan_export_latest.json"
-        
-        ticket = _load_json(ticket_path)
-        export = _load_json(export_path)
-        
+        # 1. Paths (local to avoid NameError)
+        _ticket_path = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
+        _export_path = REPORTS_DIR / "live" / "order_plan" / "export" / "latest" / "order_plan_export_latest.json"
+        _prep_path = REPORTS_DIR / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
+        _summary_path = REPORTS_DIR / "ops" / "summary" / "latest" / "ops_summary_latest.json"
+        _draft_path = REPORTS_DIR / "live" / "manual_execution_record" / "draft" / "latest" / "manual_execution_record_draft_latest.json"
+        _draft_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # 2. Load artifacts
+        ticket = _load_json(_ticket_path)
+        export = _load_json(_export_path)
+
         if not ticket or not export:
-             return {"result": "BLOCKED", "reason": "Missing Ticket or Order Plan Export. Cannot generate draft."}
+            return {"result": "BLOCKED", "reason": "Missing Ticket or Order Plan Export. Cannot generate draft."}
 
-        # Optional: Check Stage via Summary
-        summary_path = REPORTS_DIR / "ops" / "summary" / "latest" / "ops_summary_latest.json"
-        summary = _load_json(summary_path)
-        
-        if summary:
-            stage = summary.get("manual_loop", {}).get("stage", "UNKNOWN")
-            # If stage is completely wrong (e.g. PREP_NOT_STARTED), maybe block? 
-            # But "AWAITING_RECORD_SUBMIT" is the target. 
-            # Let's trust artifacts existence more.
-        
-        # 2. Load Prep (Optional but good for linkage)
-        prep_path = REPORTS_DIR / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
-        prep = _load_json(prep_path)
+        # Optional summary check (non-blocking)
+        summary = _load_json(_summary_path)
 
+        # 3. Load Prep (optional for linkage)
+        prep = _load_json(_prep_path)
+        if not prep:
+            prep = {}
 
-        # 3. Validate Linkage
+        # 4. Validate Linkage
         prep_plan_id = prep.get("source", {}).get("plan_id")
         ticket_plan_id = ticket.get("source", {}).get("plan_id")
-        export_plan_id = export.get("source", {}).get("plan_id") # Note: Export structure might differ slightly, check generating code
-        # app/generate_order_plan_export.py: export["source"]["plan_id"]
-        
-        if prep_plan_id != ticket_plan_id:
-             return {"result": "BLOCKED", "reason": "Linkage Mismatch (Prep != Ticket)"}
-        
-        # 4. Construct Draft
+        export_plan_id = export.get("source", {}).get("plan_id")
+
+        if prep_plan_id and ticket_plan_id and prep_plan_id != ticket_plan_id:
+            return {"result": "BLOCKED", "reason": "Linkage Mismatch (Prep != Ticket)"}
+
+        # 5. Construct Draft
         items = []
         for order in export.get("orders", []):
             items.append({
                 "ticker": order.get("ticker"),
                 "side": order.get("side"),
-                "status": "EXECUTED", # Default
+                "status": "EXECUTED",
                 "qty_planned": order.get("qty", 0),
-                "executed_qty": order.get("qty", 0), # Default Full Fill
+                "executed_qty": order.get("qty", 0),
                 "avg_price": None,
                 "note": ""
             })
-            
+
         draft = {
             "schema": "MANUAL_EXECUTION_RECORD_DRAFT_V1",
             "asof": datetime.now().isoformat(),
@@ -2930,33 +2923,32 @@ def generate_draft_record():
                 "prep_ref": prep.get("source", {}).get("order_plan_ref")
             },
             "linkage": {
-                 "prep_plan_id": prep_plan_id,
-                 "ticket_plan_id": ticket_plan_id,
-                 "export_plan_id": export_plan_id,
-                 "ticket_id": ticket.get("ticket_id")
+                "prep_plan_id": prep_plan_id,
+                "ticket_plan_id": ticket_plan_id,
+                "export_plan_id": export_plan_id,
+                "ticket_id": ticket.get("ticket_id")
             },
             "items": items,
             "dedupe": {
-                "idempotency_key": "" # User can fill or auto-gen on submit
+                "idempotency_key": ""
             }
         }
-        
-        # 5. Sanitize & Save Draft
+
+        # 6. Sanitize & Save
         def recursive_sanitize(obj):
             if isinstance(obj, dict):
                 return {k: recursive_sanitize(v) for k, v in obj.items()}
             elif isinstance(obj, list):
                 return [recursive_sanitize(v) for v in obj]
             elif isinstance(obj, str):
-                return obj.replace("\\", "/") # Force forward slashes to avoid JSON escape issues
+                return obj.replace("\\", "/")
             else:
                 return obj
-                
+
         sanitized_draft = recursive_sanitize(draft)
-        
-        DRAFT_LATEST_FILE.write_text(json.dumps(sanitized_draft, indent=2, ensure_ascii=False), encoding="utf-8")
-        
-        return {"result": "OK", "path": str(DRAFT_LATEST_FILE), "count": len(items)}
+        _draft_path.write_text(json.dumps(sanitized_draft, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        return {"result": "OK", "path": str(_draft_path), "count": len(items)}
 
     except Exception as e:
         logger.error(f"Draft Gen Error: {e}")
