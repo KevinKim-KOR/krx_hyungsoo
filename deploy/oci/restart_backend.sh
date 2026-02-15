@@ -28,17 +28,28 @@ fi
 
 echo "== 4) Restart via systemd =="
 sudo systemctl restart "${SERVICE}"
-sleep 1
+sleep 2
 sudo systemctl --no-pager -l status "${SERVICE}"
 
-echo "== 5) Verify :${PORT} owner == systemd MainPID =="
+echo "== 5) Verify :${PORT} owner == systemd process tree =="
 MAINPID="$(systemctl show -p MainPID --value "${SERVICE}")"
 echo "Service MainPID=${MAINPID}"
 sudo ss -lntp | grep -E "[:.]${PORT}\b" || true
 
-if ! sudo ss -lntp | grep -E "[:.]${PORT}\b" | grep -q "pid=${MAINPID},"; then
-  echo "WARN: :${PORT} is not owned by systemd MainPID. Orphan may still exist."
+# Extract PID that owns the port
+LISTENER_PID="$(sudo ss -lntp | grep -E "[:.]${PORT}\b" | grep -oP 'pid=\K[0-9]+' | head -1)" || true
+
+if [ -z "${LISTENER_PID}" ]; then
+  echo "WARN: No listener found on :${PORT} yet. Service may need more startup time."
   exit 2
 fi
 
-echo "OK: backend is running under systemd and owns :${PORT}"
+# Check: listener is MainPID itself, OR listener's parent (PPID) is MainPID (uvicorn worker)
+LISTENER_PPID="$(ps -o ppid= -p "${LISTENER_PID}" 2>/dev/null | tr -d ' ')" || true
+
+if [ "${LISTENER_PID}" = "${MAINPID}" ] || [ "${LISTENER_PPID}" = "${MAINPID}" ]; then
+  echo "OK: backend is running under systemd and owns :${PORT} (listener=${LISTENER_PID}, parent=${LISTENER_PPID})"
+else
+  echo "WARN: :${PORT} is owned by PID=${LISTENER_PID} (PPID=${LISTENER_PPID}), not related to systemd MainPID=${MAINPID}. Orphan may exist."
+  exit 2
+fi
