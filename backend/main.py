@@ -2852,27 +2852,25 @@ def _load_json(path: Path) -> dict:
 def generate_draft_record():
     """Generate Manual Execution Record Draft (Server-Side) - P146.2"""
     try:
-        # 1. Check Stage
-        summary = _load_json(OPS_SUMMARY_PATH)
-        if not summary:
-            return {"result": "BLOCKED", "reason": "No Ops Summary"}
-            
-        stage = summary.get("manual_loop", {}).get("stage", "UNKNOWN")
-        override = load_asof_override()
-        is_replay = override.get("enabled", False)
-        
-        allowed_stages = ["AWAITING_HUMAN_EXECUTION", "AWAITING_RECORD_SUBMIT", "AWAITING_RETRY_EXECUTION", "DONE_TODAY", "DONE_TODAY_PARTIAL"]
-        
-        if stage not in allowed_stages and not is_replay:
-             return {"result": "BLOCKED", "reason": f"Stage '{stage}' not allowed for draft generation (unless Replay)"}
-
-        # 2. Load Artifacts
-        prep = _load_json(PREP_LATEST_FILE)
+        # 1. Check Pre-requisites (Artifacts First)
+        # P146.3: Relaxed Stage Check. If Ticket & Export exist, we allow Draft Generation.
         ticket = _load_json(TICKET_LATEST_FILE)
         export = _load_json(ORDER_PLAN_EXPORT_LATEST_FILE)
         
-        if not prep or not ticket or not export:
-            return {"result": "BLOCKED", "reason": "Missing Artifacts (Prep, Ticket, or Export)"}
+        if not ticket or not export:
+             return {"result": "BLOCKED", "reason": "Missing Ticket or Order Plan Export. Cannot generate draft."}
+
+        # Optional: Check Stage via Summary (Log warning but don't block if artifacts exist)
+        summary = _load_json(OPS_SUMMARY_PATH)
+        if summary:
+            stage = summary.get("manual_loop", {}).get("stage", "UNKNOWN")
+            # If stage is completely wrong (e.g. PREP_NOT_STARTED), maybe block? 
+            # But "AWAITING_RECORD_SUBMIT" is the target. 
+            # Let's trust artifacts existence more.
+        
+        # 2. Load Prep (Optional but good for linkage)
+        prep = _load_json(PREP_LATEST_FILE)
+
 
         # 3. Validate Linkage
         prep_plan_id = prep.get("source", {}).get("plan_id")
@@ -3053,7 +3051,8 @@ def resolve_evidence_ref(ref: str):
                 "code": "PARSE_ERROR",
                 "message": result.reason
             },
-            "raw_preview": result.raw_content # P146.2 Fail-Soft
+            "raw_preview": result.raw_preview,
+            "guidance": "⚠️ FILE CORRUPTED. This file is not valid JSON. If this is a Draft, please use the 'Draft Manager' to Regenerate it." # P146.3 Guidance
         }
     
     return {
