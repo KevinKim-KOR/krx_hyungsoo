@@ -1,0 +1,25 @@
+python : DEBUG:asyncio:Usi
+ng proactor: IocpProactor
+위치 줄:1 문자:1
++ python tests/repro_crash
+_client.py 2> error.log
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (D  
+  EBUG:asyncio:U...r: I   
+ ocpProactor:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+ERROR:backend:Record error
+: 'list' object has no att
+ribute 'get'
+INFO:httpx:HTTP Request: P
+OST http://testserver/api/
+manual_execution_record/su
+bmit?confirm=true "HTTP/1.
+1 500 Internal Server Erro
+r"

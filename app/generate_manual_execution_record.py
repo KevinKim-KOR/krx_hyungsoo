@@ -6,6 +6,7 @@ P113-A: Manual Execution Record V1
 
 import json
 import shutil
+
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -62,22 +63,43 @@ def generate_record(input_token: str, items_data: Dict):
     prep = load_json(PREP_LATEST)
     ticket = load_json(TICKET_LATEST)
     
+    # DEBUG
+    print(f"DEBUG: PREP_LATEST={PREP_LATEST}, Exists={PREP_LATEST.exists()}")
+    print(f"DEBUG: TICKET_LATEST={TICKET_LATEST}, Exists={TICKET_LATEST.exists()}")
+    print(f"DEBUG: prep type: {type(prep)}")
+    print(f"DEBUG: ticket type: {type(ticket)}")
+    
     if not prep or not ticket:
         record["decision"] = "BLOCKED"
         record["reason"] = "DEPENDENCY_MISSING"
+        print("DEBUG: Dependencies missing. Returning BLOCKED.")
         _save_and_return(record)
         return
         
-    record["source"]["prep_ref"] = str(PREP_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
-    record["source"]["ticket_ref"] = str(TICKET_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
-    record["source"]["plan_id"] = prep.get("source", {}).get("plan_id")
-    record["evidence_refs"] = [record["source"]["prep_ref"], record["source"]["ticket_ref"]]
+
+    
+    # Sanitize prep["source"] which might be a list in some contexts
+    source = prep.get("source", {})
+    if isinstance(source, list):
+        source = source[0] if source else {}
+    if not isinstance(source, dict):
+        source = {}
+    
+    try:
+        record["source"]["prep_ref"] = str(PREP_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
+        record["source"]["ticket_ref"] = str(TICKET_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
+        record["source"]["plan_id"] = source.get("plan_id")
+        record["evidence_refs"] = [record["source"]["prep_ref"], record["source"]["ticket_ref"]]
+    except Exception as e:
+        print(f"DEBUG: Error in linkage construction: {e}")
+        raise e
     
     
     # 3. Validate Context (Fail-Closed)
-    
+    # source is already sanitized above
+
     # 3-A. Token Check
-    required_token = prep.get("source", {}).get("confirm_token")
+    required_token = source.get("confirm_token")
     if input_token != required_token:
         record["decision"] = "BLOCKED"
         record["reason"] = "TOKEN_MISMATCH"

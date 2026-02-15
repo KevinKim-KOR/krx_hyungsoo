@@ -1,0 +1,52 @@
+DEBUG:asyncio:Using proactor: IocpProactor
+Submitting via Client...
+DEBUG: PREP_LATEST=E:\AI Study\krx_alertor_modular\reports\live\execution_prep\latest\execution_prep_latest.json, Exists=True
+DEBUG: TICKET_LATEST=E:\AI Study\krx_alertor_modular\reports\live\manual_execution_ticket\latest\manual_execution_ticket_latest.json, Exists=True
+DEBUG: prep type: <class 'dict'>
+DEBUG: ticket type: <class 'dict'>
+DEBUG_DUMP: PREP = {
+  "schema": "EXECUTION_PREP_V1",
+  "asof": "2026-02-14T16:12:08.598938Z",
+  "source": {
+    "export_ref": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+    "export_asof": "2026-02-13T00:00:00Z",
+    "order_plan_ref": "reports/live/order_plan/latest/order_plan_latest.json",
+    "plan_id": "TEST_PLAN_001",
+    "confirm_token": "TEST_TOKEN_123"
+  },
+  "decision": "READY",
+  "reason": "CONFIRMED",
+  "reason_detail": "Human confirmation token matched. Safety checks passed.",
+  "orders": [
+    {
+      "ticker": "069500",
+      "side": "BUY",
+      "qty": 10,
+      "price_ref": 30000
+    }
+  ],
+  "safety": {
+    "orders_count": 1,
+    "max_orders_allowed": 20,
+    "total_notional": 300000,
+    "max_single_notional": 300000,
+    "portfolio_value": 10000000,
+    "cash_reserve_after": 0,
+    "checks": {
+      "total_notional_ratio": 0.03,
+      "single_order_ratio": 0.03,
+      "cash_reserve_ratio": 0.47
+    }
+  },
+  "verdict": "PASS",
+  "manual_next_step": "Ready for Execution (Next Phase)",
+  "evidence_refs": [
+    "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+    "reports/live/order_plan/latest/order_plan_latest.json"
+  ]
+}
+[BACKEND] Record error: 'list' object has no attribute 'get'
+ERROR:backend:Record error: 'list' object has no attribute 'get'
+INFO:httpx:HTTP Request: POST http://testserver/api/manual_execution_record/submit?confirm=true "HTTP/1.1 500 Internal Server Error"
+Response Status: 500
+Response Body: {'detail': {'result': 'FAILED', 'reason': "'list' object has no attribute 'get'"}}

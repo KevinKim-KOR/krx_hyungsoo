@@ -99,6 +99,17 @@ app.include_router(operator_dashboard.router)
 from backend import dry_run
 app.include_router(dry_run.router)
 
+# P146: SSOT & Sync Routers
+from app.routers import ssot
+app.include_router(ssot.router)
+
+# Import sync router only if dependencies (requests) are available or try/except
+try:
+    from app.routers import sync
+    app.include_router(sync.router)
+except ImportError:
+    pass # Requests might not be installed on strict server env, but needed for PC
+
 
 # Static Files (Dashboard)
 # 주의: dashboard 디렉토리가 없으면 에러 날 수 있으므로 체크
@@ -214,13 +225,12 @@ def safe_read_yaml(path: Path) -> Any:
 
 # --- 5. API Endpoints ---
 
+from fastapi.responses import RedirectResponse
+
 @app.get("/")
 def read_root():
-    """Dashboard 진입점"""
-    index_path = DASHBOARD_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    return {"message": "KRX Alertor Modular API Backend Running. Dashboard not found."}
+    """Root Redirect to Operator Dashboard (P146)"""
+    return RedirectResponse(url="/operator", status_code=307)
 
 @app.get("/api/status", summary="시스템 상태 조회 (Enhanced)")
 def get_status():
@@ -2832,9 +2842,8 @@ def submit_manual_execution_record(request: ManualExecutionRecordRequest, confir
 
     try:
         from app.generate_manual_execution_record import generate_record
-        # Convert request items to dicts
-        items_dict = [item.dict() for item in request.items]
-        generate_record(request.confirm_token, items_dict)
+        # Pass full items_data dict as expected by generate_record
+        generate_record(request.confirm_token, request.dict())
         
         if RECORD_LATEST_FILE.exists():
             data = json.loads(RECORD_LATEST_FILE.read_text(encoding="utf-8"))
@@ -4104,6 +4113,122 @@ async def sync_state_to_remote_api(confirm: bool = Query(True)):
         return sync_state_to_remote(confirm=confirm)
     except Exception as e:
          return JSONResponse(status_code=500, content={"result": "FAILED", "reason": str(e)})
+
+
+
+# ============================================================================
+# Manual Execution API (P144: UI-First Daily Ops)
+# ============================================================================
+
+class ExecutionPrepRequest(BaseModel):
+    confirm_token: str
+
+@app.post("/api/execution_prep/prepare")
+async def prepare_execution_api(
+    payload: ExecutionPrepRequest,
+    confirm: bool = Query(False)
+):
+    """
+    Execution Prep - 실행 준비 (Human Token)
+    Confirm Guard: confirm=true 필수
+    """
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
+    try:
+        from app.generate_execution_prep import generate_prep
+        generate_prep(payload.confirm_token)
+        
+        # Read result to return
+        from app.generate_execution_prep import PREP_LATEST
+        if PREP_LATEST.exists():
+             return json.loads(PREP_LATEST.read_text(encoding="utf-8"))
+        return {"result": "OK", "message": "Prep generated (file checks recommended)"}
+        
+    except Exception as e:
+        logger.error(f"Execution Prep failed: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+
+class RecordSubmitRequest(BaseModel):
+    confirm_token: str
+    items: List[Dict[str, Any]]
+    filled_at: Optional[str] = None
+    method: Optional[str] = "UI_MANUAL"
+    evidence_note: Optional[str] = ""
+
+@app.post("/api/manual_execution_record/submit")
+async def submit_execution_record_api(
+    payload: Dict[str, Any] = Body(...),
+    confirm: bool = Query(False)
+):
+    """
+    Submit Execution Record - 실행 기록 제출 (Human Token)
+    Accepts arbitrary dict to support flexible schema, but requires confirm_token.
+    """
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+        
+    token = payload.get("confirm_token")
+    if not token:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "confirm_token is missing in payload"})
+
+    if not token:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "confirm_token is missing in payload"})
+
+    try:
+        from app.generate_manual_execution_record import generate_record
+        print(f"DEBUG: Submitting Record Payload Keys: {list(payload.keys())}")
+        if "items" in payload:
+             print(f"DEBUG: Items Type: {type(payload['items'])}")
+             if isinstance(payload['items'], list) and len(payload['items']) > 0:
+                 print(f"DEBUG: First Item Type: {type(payload['items'][0])}")
+        
+        generate_record(token, payload)
+        
+        # Read result
+        from app.generate_manual_execution_record import RECORD_LATEST
+        if RECORD_LATEST.exists():
+             return json.loads(RECORD_LATEST.read_text(encoding="utf-8"))
+        return {"result": "OK", "message": "Record submitted"}
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"DEBUG: EXCEPTION IN BACKEND: {e}")
+        logger.error(f"Record Submit failed: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+
+
+@app.post("/api/manual_execution_ticket/regenerate")
+async def regenerate_execution_ticket_api(confirm: bool = Query(False)):
+    """
+    Regenerate Manual Execution Ticket
+    """
+    if not confirm:
+        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+
+    try:
+        from app.generate_manual_execution_ticket import generate_ticket
+        generate_ticket()
+        
+        # Read result
+        path = BASE_DIR / "reports" / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+        return {"result": "OK", "message": "Ticket generated"}
+        
+    except ImportError:
+         # Fallback if function not importable (maybe run as script)
+         cmd = [sys.executable, "-m", "app.generate_manual_execution_ticket"]
+         res = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
+         if res.returncode != 0:
+             return {"result": "FAIL", "error": res.stderr}
+         return {"result": "OK", "stdout": res.stdout}
+         
+    except Exception as e:
+        logger.error(f"Ticket Gen failed: {e}")
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
 if __name__ == "__main__":

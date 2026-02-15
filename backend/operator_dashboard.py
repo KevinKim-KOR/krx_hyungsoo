@@ -9,7 +9,7 @@ import sys
 BASE_DIR = Path(__file__).parent.parent
 sys.path.append(str(BASE_DIR))
 
-from app.utils.admin_utils import load_asof_override
+from app.utils.portfolio_normalize import load_asof_override
 
 router = APIRouter()
 
@@ -174,12 +174,22 @@ async def get_operator_dashboard():
             # Fallback if port parse fails
             portfolio_view = [{"ticker": "ERROR", "name": str(e)}]
             
-    # P143: Replay/Override Info
+    # P143/P145: Replay/Override Info
     override = load_asof_override()
     replay_info = {
         "enabled": override.get("enabled", False),
         "asof": override.get("asof_kst", "N/A"),
-        "mode": override.get("mode", "LIVE")
+        "mode": override.get("mode", "LIVE"),
+        "simulate_trade_day": override.get("simulate_trade_day", False)
+    }
+    
+    # P145: Execution mode + trace info from manual_loop
+    exec_mode = manual_loop.get("mode", "LIVE")
+    export_info = manual_loop.get("export", {})
+    trace_info = {
+        "plan_id": export_info.get("plan_id", "N/A") if export_info else "N/A",
+        "asof": export_info.get("asof", "N/A") if export_info else "N/A",
+        "exec_mode": exec_mode
     }
             
     return {
@@ -188,5 +198,8 @@ async def get_operator_dashboard():
         "next_action": next_action,
         "artifacts": artifacts,
         "portfolio": portfolio_view,
-        "replay_info": replay_info
+        "replay_info": replay_info,
+        "exec_mode": exec_mode,
+        "trace": trace_info
     }
+

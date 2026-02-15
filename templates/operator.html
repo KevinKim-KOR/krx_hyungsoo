@@ -28,6 +28,45 @@
             margin-bottom: 20px;
         }
 
+        /* P145: Mode Banner */
+        .mode-banner {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mode-banner.live {
+            background: #1a3a1a;
+            border: 1px solid #4ec9b0;
+            color: #4ec9b0;
+        }
+
+        .mode-banner.replay {
+            background: #3a1a1a;
+            border: 1px solid #f48771;
+            color: #f48771;
+        }
+
+        .mode-banner.dry-run {
+            background: #1a2a3a;
+            border: 1px solid #569cd6;
+            color: #569cd6;
+        }
+
+        .mode-badge {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .mode-detail {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+
         .status-box {
             background: #252526;
             padding: 20px;
@@ -141,6 +180,63 @@
             background-color: #252526;
             color: #ccc;
         }
+
+        /* P145: Trace Info */
+        .trace-box {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+
+        .trace-box .trace-item {
+            display: inline-block;
+            margin-right: 20px;
+            color: #888;
+        }
+
+        .trace-box .trace-item span {
+            color: #dcdcaa;
+        }
+
+        /* P145: DRY_RUN button */
+        .dry-run-btn {
+            background: #569cd6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .dry-run-btn:hover {
+            background: #4a8bc2;
+        }
+
+        /* P145: No Action Notice */
+        .no-action-notice {
+            background: #252526;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .no-action-notice .emoji {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .no-action-notice .text {
+            color: #888;
+            font-size: 1.1em;
+        }
     </style>
 </head>
 
@@ -151,10 +247,34 @@
             <button class="refresh-btn" onclick="fetchData()">Refresh</button>
         </div>
 
+        <!-- P145: Mode Banner -->
+        <div id="mode-banner" class="mode-banner live" style="display:none;">
+            <div>
+                <span class="mode-badge" id="mode-badge-text">🟢 LIVE</span>
+                <span class="mode-detail" id="mode-detail-text"></span>
+            </div>
+            <div class="mode-detail" id="mode-exec-text"></div>
+        </div>
+
         <div id="status-container" class="status-box">
             <span class="stage-label">Current Stage (SSOT)</span>
             <div id="stage-value" class="stage-value">LOADING...</div>
             <div id="asof-value" class="stage-label"></div>
+        </div>
+
+        <!-- P145: No Action Notice (shown for NO_ACTION_TODAY) -->
+        <div id="no-action-notice" class="no-action-notice" style="display:none;">
+            <div class="emoji">🗓️</div>
+            <div class="text">오늘은 액션 없음 (Holiday/Weekend)</div>
+            <div style="color:#555; margin-top:10px; font-size:0.85em;" id="no-action-hint"></div>
+        </div>
+
+        <!-- P145: Trace Box -->
+        <div id="trace-box" class="trace-box" style="display:none;">
+            📋 Trace:
+            <span class="trace-item">plan_id: <span id="trace-plan-id">N/A</span></span>
+            <span class="trace-item">asof: <span id="trace-asof">N/A</span></span>
+            <span class="trace-item">mode: <span id="trace-mode">LIVE</span></span>
         </div>
 
         <!-- P139: Portfolio & Signals -->
@@ -191,6 +311,43 @@
         <div id="artifacts-grid" class="artifacts-grid">
             <!-- Artifacts injected here -->
         </div>
+
+        <!-- Token Forms (P144) -->
+        <div id="prep-container" class="action-box" style="display:none; border: 1px solid #ce9178;">
+            <div class="action-title" style="color: #ce9178;">⚠️ EXECUTION PREPARATION REQUIRED</div>
+            <p style="color: #ccc; font-size: 0.9em;">Enter your Ops Token to authorize Execution Prep.</p>
+            <input type="password" id="prep-token" placeholder="Enter Token"
+                style="padding: 8px; width: 200px; background: #252526; border: 1px solid #555; color: white;">
+            <button class="refresh-btn" style="background: #ce9178;" onclick="runPrep()">RUN PREP</button>
+            <div id="prep-status" style="margin-top: 10px; font-size: 0.9em;"></div>
+        </div>
+
+        <!-- P145: DRY_RUN 1-Click Submit (shown in REPLAY + AWAITING_RECORD_SUBMIT) -->
+        <div id="dryrun-container" class="action-box" style="display:none; border: 1px solid #569cd6;">
+            <div class="action-title" style="color: #569cd6;">🧪 DRY_RUN RECORD SUBMIT</div>
+            <p style="color: #ccc; font-size: 0.9em;">Replay 모드: 실거래 없이 DRY_RUN으로 루프를 완주합니다.</p>
+            <button class="dry-run-btn" onclick="submitDryRun()">🧪 DRY_RUN 1-Click Submit</button>
+            <div id="dryrun-status" style="margin-top: 10px; font-size: 0.9em;"></div>
+        </div>
+
+        <!-- Standard Record Submit (LIVE mode only) -->
+        <div id="submit-container" class="action-box" style="display:none; border: 1px solid #4ec9b0;">
+            <div class="action-title" style="color: #4ec9b0;">🚀 SUBMIT EXECUTION RECORD</div>
+            <p style="color: #ccc; font-size: 0.9em;">Upload the Manual Record JSON (Draft) and enter Token.</p>
+
+            <div style="margin-bottom: 10px;">
+                <label style="display:block; color: #888; margin-bottom: 5px;">1. Upload Draft JSON</label>
+                <input type="file" id="record-file" accept=".json" style="color: #ccc;">
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="display:block; color: #888; margin-bottom: 5px;">2. Enter Token</label>
+                <input type="password" id="submit-token" placeholder="Enter Token"
+                    style="padding: 8px; width: 200px; background: #252526; border: 1px solid #555; color: white;">
+                <button class="refresh-btn" style="background: #4ec9b0;" onclick="submitRecord()">SUBMIT RECORD</button>
+            </div>
+            <div id="submit-status" style="margin-top: 10px; font-size: 0.9em;"></div>
+        </div>
     </div>
 
     <script>
@@ -207,6 +364,60 @@
 
                 document.getElementById('asof-value').textContent = "As Of: " + data.asof;
 
+                // P145: Mode Banner
+                const modeBanner = document.getElementById('mode-banner');
+                const modeBadge = document.getElementById('mode-badge-text');
+                const modeDetail = document.getElementById('mode-detail-text');
+                const modeExec = document.getElementById('mode-exec-text');
+                modeBanner.style.display = 'flex';
+
+                const isReplay = data.replay_info && data.replay_info.enabled;
+                const isDryRun = data.exec_mode === 'DRY_RUN';
+                const simTrade = data.replay_info && data.replay_info.simulate_trade_day;
+
+                if (isReplay) {
+                    modeBanner.className = 'mode-banner replay';
+                    modeBadge.textContent = '🔴 REPLAY MODE';
+                    let detail = `Data Basis: ${data.replay_info.asof}`;
+                    if (simTrade) detail += ' [SIM-TRADE ✓]';
+                    modeDetail.textContent = detail;
+                } else {
+                    modeBanner.className = 'mode-banner live';
+                    modeBadge.textContent = '🟢 LIVE MODE';
+                    modeDetail.textContent = '';
+                }
+                if (isDryRun) {
+                    modeBanner.className = 'mode-banner dry-run';
+                    modeExec.textContent = '🧪 Execution: DRY_RUN';
+                } else {
+                    modeExec.textContent = isReplay ? '' : '🔵 Execution: LIVE';
+                }
+
+                // P145: No Action Notice
+                const noActionNotice = document.getElementById('no-action-notice');
+                const noActionHint = document.getElementById('no-action-hint');
+                if (data.stage === 'NO_ACTION_TODAY') {
+                    noActionNotice.style.display = 'block';
+                    if (isReplay && !simTrade) {
+                        noActionHint.textContent = '💡 리허설 모드로 전환: simulate_trade_day: true 설정 후 Summary 재생성';
+                    } else {
+                        noActionHint.textContent = '';
+                    }
+                } else {
+                    noActionNotice.style.display = 'none';
+                }
+
+                // P145: Trace Box
+                const traceBox = document.getElementById('trace-box');
+                if (data.trace && data.trace.plan_id !== 'N/A') {
+                    traceBox.style.display = 'block';
+                    document.getElementById('trace-plan-id').textContent = data.trace.plan_id;
+                    document.getElementById('trace-asof').textContent = data.trace.asof;
+                    document.getElementById('trace-mode').textContent = data.trace.exec_mode;
+                } else {
+                    traceBox.style.display = 'none';
+                }
+
                 // Action
                 const actionContainer = document.getElementById('action-container');
                 if (data.next_action && data.next_action.command) {
@@ -216,6 +427,29 @@
                     document.getElementById('action-notes').textContent = data.next_action.notes;
                 } else {
                     actionContainer.style.display = 'none';
+                }
+
+                // Toggle Forms (P144/P145)
+                const prepContainer = document.getElementById('prep-container');
+                const submitContainer = document.getElementById('submit-container');
+                const dryrunContainer = document.getElementById('dryrun-container');
+
+                // Hide all first
+                prepContainer.style.display = 'none';
+                submitContainer.style.display = 'none';
+                dryrunContainer.style.display = 'none';
+
+                if (data.stage === 'NO_ACTION_TODAY') {
+                    // P145: All forms hidden for NO_ACTION_TODAY
+                } else if (data.stage === 'NEED_HUMAN_CONFIRM') {
+                    prepContainer.style.display = 'block';
+                } else if (data.stage === 'AWAITING_RECORD_SUBMIT') {
+                    if (isDryRun) {
+                        // P145: DRY_RUN 1-click submit
+                        dryrunContainer.style.display = 'block';
+                    } else {
+                        submitContainer.style.display = 'block';
+                    }
                 }
 
                 // Portfolio (P139)
@@ -272,6 +506,143 @@
                 document.getElementById('stage-value').textContent = "CONNECTION ERROR";
                 document.getElementById('stage-value').classList.add('error');
             }
+        }
+
+        async function runPrep() {
+            const token = document.getElementById('prep-token').value;
+            const statusDiv = document.getElementById('prep-status');
+
+            if (!token) {
+                statusDiv.textContent = "❌ Token is required";
+                statusDiv.style.color = "#f48771";
+                return;
+            }
+
+            statusDiv.textContent = "⏳ Running Prep...";
+            statusDiv.style.color = "#ccc";
+
+            try {
+                const res = await fetch('/api/execution_prep/prepare?confirm=true', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirm_token: token })
+                });
+                const data = await res.json();
+
+                if (data.decision === 'READY' || data.result === 'OK' || data.decision === 'WARN') {
+                    statusDiv.textContent = "✅ Prep Success! Generating Ticket...";
+                    statusDiv.style.color = "#4ec9b0";
+
+                    // Auto generate ticket
+                    await fetch('/api/manual_execution_ticket/regenerate?confirm=true', { method: 'POST' });
+
+                    // Update Summary
+                    await fetch('/api/ops/summary/regenerate?confirm=true', { method: 'POST' });
+
+                    setTimeout(fetchData, 1000); // Refresh UI
+                } else {
+                    statusDiv.textContent = "❌ Prep Failed: " + (data.reason || data.message || "Unknown");
+                    statusDiv.style.color = "#f48771";
+                }
+            } catch (e) {
+                statusDiv.textContent = "❌ Error: " + e.message;
+                statusDiv.style.color = "#f48771";
+            }
+        }
+
+        // P145: DRY_RUN 1-Click Submit
+        async function submitDryRun() {
+            const statusDiv = document.getElementById('dryrun-status');
+            statusDiv.textContent = "⏳ Submitting DRY_RUN Record...";
+            statusDiv.style.color = "#ccc";
+
+            try {
+                const res = await fetch('/api/dry_run_record/submit?confirm=true', {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                if (data.result === 'OK' || data.decision === 'EXECUTED') {
+                    statusDiv.textContent = "✅ DRY_RUN Complete!";
+                    statusDiv.style.color = "#4ec9b0";
+
+                    // Update Summary
+                    await fetch('/api/ops/summary/regenerate?confirm=true', { method: 'POST' });
+
+                    setTimeout(fetchData, 1000);
+                } else {
+                    statusDiv.textContent = "❌ DRY_RUN Failed: " + (data.detail || data.reason || "Unknown");
+                    statusDiv.style.color = "#f48771";
+                }
+            } catch (e) {
+                statusDiv.textContent = "❌ Error: " + e.message;
+                statusDiv.style.color = "#f48771";
+            }
+        }
+
+        async function submitRecord() {
+            const token = document.getElementById('submit-token').value;
+            const fileInput = document.getElementById('record-file');
+            const statusDiv = document.getElementById('submit-status');
+
+            if (!token) {
+                statusDiv.textContent = "❌ Token is required";
+                statusDiv.style.color = "#f48771";
+                return;
+            }
+            if (fileInput.files.length === 0) {
+                statusDiv.textContent = "❌ JSON File is required";
+                statusDiv.style.color = "#f48771";
+                return;
+            }
+
+            statusDiv.textContent = "⏳ Reading File...";
+            statusDiv.style.color = "#ccc";
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function (e) {
+                try {
+                    const jsonContent = JSON.parse(e.target.result);
+
+                    // Inject Token - Robustness for List or Dict inputs
+                    let payload = {};
+                    if (Array.isArray(jsonContent)) {
+                        payload = { confirm_token: token, items: jsonContent };
+                    } else {
+                        payload = { ...jsonContent, confirm_token: token };
+                    }
+
+                    statusDiv.textContent = "⏳ Submitting...";
+
+                    const res = await fetch('/api/manual_execution_record/submit?confirm=true', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+
+                    if (data.decision === 'EXECUTED' || data.decision === 'SKIPPED' || data.result === 'OK') {
+                        statusDiv.textContent = "✅ Submit Success!";
+                        statusDiv.style.color = "#4ec9b0";
+
+                        // Update Summary
+                        await fetch('/api/ops/summary/regenerate?confirm=true', { method: 'POST' });
+
+                        setTimeout(fetchData, 1000);
+                    } else {
+                        statusDiv.textContent = "❌ Submit Failed: " + (data.reason || data.message);
+                        statusDiv.style.color = "#f48771";
+                    }
+
+                } catch (err) {
+                    statusDiv.textContent = "❌ JSON Parse/Upload Error: " + err.message;
+                    statusDiv.style.color = "#f48771";
+                }
+            };
+
+            reader.readAsText(file);
         }
 
         function copyCommand() {

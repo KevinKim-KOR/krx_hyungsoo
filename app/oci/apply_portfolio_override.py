@@ -11,7 +11,7 @@ import sys
 BASE_DIR = Path(__file__).parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
-from app.utils.admin_utils import normalize_portfolio
+from app.utils.portfolio_normalize import normalize_portfolio
 
 # Config
 BASE_DIR = Path(__file__).parent.parent.parent

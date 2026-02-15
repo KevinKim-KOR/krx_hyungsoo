@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 import subprocess
 import json
+import sys
 from pathlib import Path
 from backend.main import BASE_DIR
 
@@ -16,14 +17,14 @@ async def submit_dry_run(confirm: bool = Query(..., description="Must be true to
         raise HTTPException(status_code=400, detail="Confirmation required")
         
     try:
-        # Run generator
+        # Run generator (P145: use sys.executable for Windows compat)
         result = subprocess.run(
-            ["python3", str(DRY_RUN_generator), "--confirm"],
+            [sys.executable, str(DRY_RUN_generator), "--confirm"],
             capture_output=True, text=True, check=True
         )
         # Trigger Ops Summary Regeneration
         subprocess.run(
-            ["python3", str(BASE_DIR / "app" / "generate_ops_summary.py")],
+            [sys.executable, str(BASE_DIR / "app" / "generate_ops_summary.py")],
             capture_output=True, text=True
         )
         

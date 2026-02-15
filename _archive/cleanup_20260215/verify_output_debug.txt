@@ -1,0 +1,218 @@
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: POST http://testserver/api/execution_prep/prepare?confirm=true "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: POST http://testserver/api/manual_execution_ticket/regenerate?confirm=true "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: POST http://testserver/api/ops/summary/regenerate?confirm=true "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: GET http://testserver/api/ops/summary/latest "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: POST http://testserver/api/manual_execution_record/submit?confirm=true "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: POST http://testserver/api/ops/summary/regenerate?confirm=true "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: GET http://testserver/api/ops/summary/latest "HTTP/1.1 200 OK"
+>>> Setting up MOCK state for UI Flow Test
+
+1. [OCI UI] Running Prep with Token...
+DEBUG: BASE_DIR: E:\AI Study\krx_alertor_modular
+DEBUG: ORDER_PLAN_LATEST: E:\AI Study\krx_alertor_modular\reports\live\order_plan\latest\order_plan_latest.json
+DEBUG: plan_data: {"asof": "2026-02-13T00:00:00Z", "plan_id": "TEST_PLAN_001", "decision": "READY", "orders": [{"ticker": "069500", "side": "BUY", "qty": 10, "price_ref": 30000}]}
+{
+  "schema": "EXECUTION_PREP_V1",
+  "asof": "2026-02-14T16:24:57.758388Z",
+  "source": {
+    "export_ref": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+    "export_asof": "2026-02-13T00:00:00Z",
+    "order_plan_ref": "reports/live/order_plan/latest/order_plan_latest.json",
+    "plan_id": "TEST_PLAN_001",
+    "confirm_token": "TEST_TOKEN_123"
+  },
+  "decision": "READY",
+  "reason": "CONFIRMED",
+  "reason_detail": "Human confirmation token matched. Safety checks passed.",
+  "orders": [
+    {
+      "ticker": "069500",
+      "side": "BUY",
+      "qty": 10,
+      "price_ref": 30000
+    }
+  ],
+  "safety": {
+    "orders_count": 1,
+    "max_orders_allowed": 20,
+    "total_notional": 300000,
+    "max_single_notional": 300000,
+    "portfolio_value": 10000000,
+    "cash_reserve_after": 0,
+    "checks": {
+      "total_notional_ratio": 0.03,
+      "single_order_ratio": 0.03,
+      "cash_reserve_ratio": 0.47
+    }
+  },
+  "verdict": "PASS",
+  "manual_next_step": "Ready for Execution (Next Phase)",
+  "evidence_refs": [
+    "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+    "reports/live/order_plan/latest/order_plan_latest.json"
+  ]
+}
+   Prep Result: READY
+
+2. [OCI UI] Generating Ticket...
+{
+  "schema": "MANUAL_EXECUTION_TICKET_V1",
+  "asof": "2026-02-14T16:24:57.768156Z",
+  "source": {
+    "prep_ref": "reports/live/execution_prep/latest/execution_prep_latest.json",
+    "prep_asof": "2026-02-14T16:24:57.758388Z",
+    "confirm_token": "TEST_TOKEN_123",
+    "plan_id": "TEST_PLAN_001"
+  },
+  "decision": "GENERATED",
+  "reason": "READY_FOR_EXECUTION",
+  "reason_detail": "",
+  "orders": [
+    {
+      "ticker": "069500",
+      "side": "BUY",
+      "qty": 10,
+      "price_ref": 30000,
+      "notional_est": 300000,
+      "limit_price": 30000,
+      "checks": {
+        "qty_ok": true,
+        "round_lot_ok": true,
+        "price_ok": true
+      },
+      "display": "BUY 069500 10аж (30,000©Ь)"
+    }
+  ],
+  "output_files": {
+    "csv_path": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.csv",
+    "md_path": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.md"
+  },
+  "evidence_refs": [
+    "reports/live/execution_prep/latest/execution_prep_latest.json"
+  ],
+  "guardrails": {
+    "decision": "READY",
+    "violated": []
+  },
+  "summary": {
+    "total_orders": 1,
+    "total_notional": 300000,
+    "cash_before": 5000000,
+    "cash_after_est": 4700000
+  },
+  "copy_paste": "BUY 069500 10"
+}
+
+3. [Auto] Updating Summary...
+   Stage after Ticket: None
+
+4. [OCI UI] Submitting Record...
+DEBUG: Reading PREP_LATEST from E:\AI Study\krx_alertor_modular\reports\live\execution_prep\latest\execution_prep_latest.json
+DEBUG: PREP Content: {
+  "schema": "EXECUTION_PREP_V1",
+  "asof": "2026-02-14T16:24:57.758388Z",
+  "source": {
+    "export_ref": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+    "export_asof": "2026-02-13T00:00:00Z",
+    "order_plan_ref": "reports/live/order_plan/latest/order_plan_latest.json",
+    "plan_id": "TEST_PLAN_001",
+    "confirm_token": "TEST_TOKEN_123"
+  },
+  "decision": "READY",
+  "reason": "CONFIRMED",
+  "reason_detail": "Human confirmation token matched. Safety checks passed."...
+DEBUG: PREP Parsed Type: <class 'dict'>
+DEBUG: PREP Source: {'export_ref': 'reports/live/order_plan_export/latest/order_plan_export_latest.json', 'export_asof': '2026-02-13T00:00:00Z', 'order_plan_ref': 'reports/live/order_plan/latest/order_plan_latest.json', 'plan_id': 'TEST_PLAN_001', 'confirm_token': 'TEST_TOKEN_123'}
+DEBUG: PREP_LATEST=E:\AI Study\krx_alertor_modular\reports\live\execution_prep\latest\execution_prep_latest.json, Exists=True
+DEBUG: TICKET_LATEST=E:\AI Study\krx_alertor_modular\reports\live\manual_execution_ticket\latest\manual_execution_ticket_latest.json, Exists=True
+DEBUG: prep type: <class 'dict'>
+DEBUG: ticket type: <class 'dict'>
+{
+  "schema": "MANUAL_EXECUTION_RECORD_V1",
+  "asof": "2026-02-14T16:24:57.792464Z",
+  "source": {
+    "prep_ref": "reports/live/execution_prep/latest/execution_prep_latest.json",
+    "ticket_ref": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
+    "confirm_token": "TEST_TOKEN_123",
+    "plan_id": "TEST_PLAN_001"
+  },
+  "decision": "EXECUTED",
+  "summary": {
+    "orders_total": 1,
+    "executed_count": 1,
+    "skipped_count": 0
+  },
+  "items": [
+    {
+      "ticker": "069500",
+      "side": "BUY",
+      "status": "EXECUTED",
+      "executed_qty": 10,
+      "note": ""
+    }
+  ],
+  "reason": "SUBMITTED",
+  "reason_detail": "",
+  "evidence_refs": [
+    "reports/live/execution_prep/latest/execution_prep_latest.json",
+    "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json"
+  ],
+  "record_version": 1,
+  "dedupe": {
+    "idempotency_key": "TEST_PLAN_001_None"
+  },
+  "source_refs": {
+    "execution_prep_ref": "reports/live/execution_prep/latest/execution_prep_latest.json",
+    "ticket_ref": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
+    "order_plan_export_ref": "reports/live/order_plan_export/latest/order_plan_export_latest.json"
+  },
+  "linkage": {
+    "bundle_id": "UNKNOWN",
+    "plan_id": "TEST_PLAN_001",
+    "export_id": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+    "ticket_id": "TICKET_LATEST"
+  },
+  "fills": [
+    {
+      "ticker": "069500",
+      "side": "BUY",
+      "qty_filled": 10,
+      "avg_price": 0,
+      "note": ""
+    }
+  ],
+  "reconciliation": {
+    "missing_orders_count": 0,
+    "diff_summary": "Exec:1, Part:0, Skip:0, Cncl:0"
+  },
+  "execution_result": "EXECUTED",
+  "operator_proof": {
+    "filled_at": "2026-02-14T16:24:57.792464Z",
+    "method": "UNKNOWN",
+    "evidence_note": ""
+  }
+}
+   Submit Result: EXECUTED
+
+5. [Auto] Final Summary Update...
+   Final Stage: None
+DEBUG: Summary JSON: {
+  "status": "error",
+  "schema": "OPS_SUMMARY_V1",
+  "asof": "2026-02-15T01:24:57.806273",
+  "row_count": 0,
+  "rows": [],
+  "error": {
+    "code": "READ_ERROR",
+    "message": "'utf-8' codec can't decode byte 0xc1 in position 4610: invalid start byte"
+  }
+}
+
+ERROR: name 'RECORD_LATEST' is not defined

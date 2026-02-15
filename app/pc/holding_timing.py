@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
 from app.pc.param_search import load_data, fetch_history
-from app.utils.admin_utils import load_asof_override
+from app.utils.portfolio_normalize import load_asof_override
 
 # Config
 OUTPUT_DIR = BASE_DIR / "reports" / "pc" / "holding_timing" / "latest"

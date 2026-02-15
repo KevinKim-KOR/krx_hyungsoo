@@ -20,7 +20,7 @@ import sys
 BASE_DIR = Path(__file__).parent.parent
 sys.path.append(str(BASE_DIR))
 
-from app.utils.admin_utils import load_asof_override, is_holiday_today
+from app.utils.portfolio_normalize import load_asof_override, is_holiday_today
 BASE_DIR = Path(__file__).parent.parent
 
 # Input paths
@@ -561,11 +561,13 @@ def generate_ops_summary():
     exp_dec = export_data.get("decision", "UNKNOWN") if export_data else "UNKNOWN"
 
     # P143: Holiday / Replay Logic
+    # P145: simulate_trade_day bypass
     override_cfg = load_asof_override()
     is_holiday_mode = False
+    simulate_trade = override_cfg.get("simulate_trade_day", False)
     if override_cfg.get("enabled"):
         # If today is holiday (or forced), and override is active
-        if is_holiday_today(override_cfg.get("asof_kst")):
+        if is_holiday_today(override_cfg.get("asof_kst"), simulate_trade_day=simulate_trade):
              is_holiday_mode = True
 
     if is_holiday_mode:
@@ -668,18 +670,22 @@ def generate_ops_summary():
          next_action = "RETRY EXECUTION -> bash deploy/oci/manual_loop_submit_record.sh"
 
     # P131/P132: Determine Execution Mode
+    # P145: REPLAY mode → DRY_RUN forced
     mode = "LIVE"
-    try:
-        # Check if we are in Dry Run mode (only if Done/Partial)
-        if manual_stage in ["DONE_TODAY", "DONE_TODAY_PARTIAL"]:
-            dry_run_path = BASE_DIR / "reports" / "live" / "dry_run_record" / "latest" / "dry_run_record_latest.json"
-            if dry_run_path.exists():
-                 dr_data = json.loads(dry_run_path.read_text(encoding="utf-8"))
-                 # Verify linkage
-                 if ticket_data and dr_data.get("linkage", {}).get("ticket_id") == ticket_data.get("id"):
-                     mode = "DRY_RUN"
-    except Exception:
-        pass
+    if override_cfg.get("enabled") and override_cfg.get("mode") == "REPLAY":
+        mode = "DRY_RUN"
+    else:
+        try:
+            # Check if we are in Dry Run mode (only if Done/Partial)
+            if manual_stage in ["DONE_TODAY", "DONE_TODAY_PARTIAL"]:
+                dry_run_path = BASE_DIR / "reports" / "live" / "dry_run_record" / "latest" / "dry_run_record_latest.json"
+                if dry_run_path.exists():
+                     dr_data = json.loads(dry_run_path.read_text(encoding="utf-8"))
+                     # Verify linkage
+                     if ticket_data and dr_data.get("linkage", {}).get("ticket_id") == ticket_data.get("id"):
+                         mode = "DRY_RUN"
+        except Exception:
+            pass
     # Risks based on Stage
     if manual_stage == "NEED_HUMAN_CONFIRM":
         top_risks.append({
@@ -933,7 +939,7 @@ def generate_ops_summary():
     
     # Save
     SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
-    SUMMARY_LATEST.write_text(json.dumps(summary, indent=2, ensure_ascii=False))
+    SUMMARY_LATEST.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     
     # Snapshot
     SUMMARY_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
