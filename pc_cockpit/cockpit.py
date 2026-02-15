@@ -10,6 +10,7 @@ import subprocess
 import sys
 import requests
 import time
+import os
 import json
 
 # Add project root to path for util imports
