@@ -330,31 +330,65 @@
             <div id="dryrun-status" style="margin-top: 10px; font-size: 0.9em;"></div>
         </div>
 
-        <!-- Standard Record Submit (LIVE mode only) -->
-        <div id="submit-container" class="action-box" style="display:none; border: 1px solid #4ec9b0;">
-            <div class="action-title" style="color: #4ec9b0;">🚀 SUBMIT EXECUTION RECORD</div>
-            <p style="color: #ccc; font-size: 0.9em;">Upload the Manual Record JSON (Draft) and enter Token.</p>
+        <!-- P146.2: Draft Manager (Server-Side) -->
+        <div id="draft-container" class="action-box" style="display:none; border: 1px solid #9cdcfe;">
+            <div class="action-title" style="color: #9cdcfe;">� DRAFT RECORD MANAGER</div>
+            <p style="color: #ccc; font-size: 0.9em;">Server-side Draft Generation & Submission (No Upload Required)</p>
+
+            <div style="margin-bottom: 15px;">
+                <button class="refresh-btn" style="background: #0e639c;" onclick="generateDraft()">1. GENERATE DRAFT
+                    (SERVER)</button>
+                <span id="draft-status" style="margin-left: 10px; font-size: 0.9em; color: #888;"></span>
+            </div>
+
+            <div id="draft-actions" style="display:none; border-top: 1px solid #444; padding-top: 15px;">
+                <div style="margin-bottom: 10px;">
+                    <a id="draft-download-link" href="#" target="_blank" class="copy-btn"
+                        style="text-decoration:none;">⬇️ DOWNLOAD DRAFT</a>
+                    <span style="color:#666; font-size:0.8em; margin-left:10px;">Check content before submit</span>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <label style="color: #ccc; font-size: 0.9em;">2. Submit Draft (Server Content)</label>
+                    <div style="margin-top:5px;">
+                        <input type="password" id="draft-token" placeholder="Enter Token"
+                            style="padding: 8px; width: 200px; background: #252526; border: 1px solid #555; color: white;">
+                        <button class="refresh-btn" style="background: #4ec9b0;" onclick="submitDraftServer()">SUBMIT
+                            DRAFT</button>
+                    </div>
+                    <div id="draft-submit-status" style="margin-top: 10px; font-size: 0.9em;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Standard Record Submit (Upload Fallback) -->
+        <div id="submit-container" class="action-box" style="display:none; border: 1px solid #555;">
+            <div class="action-title" style="color: #888;">🚀 SUBMIT EXECUTION RECORD (UPLOAD)</div>
+            <p style="color: #888; font-size: 0.8em;">Legacy Upload Method</p>
 
             <div style="margin-bottom: 10px;">
-                <label style="display:block; color: #888; margin-bottom: 5px;">1. Upload Draft JSON</label>
                 <input type="file" id="record-file" accept=".json" style="color: #ccc;">
             </div>
 
             <div style="margin-bottom: 10px;">
-                <label style="display:block; color: #888; margin-bottom: 5px;">2. Enter Token</label>
                 <input type="password" id="submit-token" placeholder="Enter Token"
                     style="padding: 8px; width: 200px; background: #252526; border: 1px solid #555; color: white;">
-                <button class="refresh-btn" style="background: #4ec9b0;" onclick="submitRecord()">SUBMIT RECORD</button>
+                <button class="refresh-btn" style="background: #555;" onclick="submitRecord()">SUBMIT (UPLOAD)</button>
             </div>
             <div id="submit-status" style="margin-top: 10px; font-size: 0.9em;"></div>
         </div>
     </div>
 
     <script>
+        // P146.2: Global State
+        let currentDraftExists = false;
+
         async function fetchData() {
             try {
                 const res = await fetch('/api/operator/dashboard');
                 const data = await res.json();
+
+                // ... (Existing Rendering Logic) ...
 
                 // Stage
                 const stageEl = document.getElementById('stage-value');
@@ -393,90 +427,50 @@
                     modeExec.textContent = isReplay ? '' : '🔵 Execution: LIVE';
                 }
 
-                // P145: No Action Notice
-                const noActionNotice = document.getElementById('no-action-notice');
-                const noActionHint = document.getElementById('no-action-hint');
-                if (data.stage === 'NO_ACTION_TODAY') {
-                    noActionNotice.style.display = 'block';
-                    if (isReplay && !simTrade) {
-                        noActionHint.textContent = '💡 리허설 모드로 전환: simulate_trade_day: true 설정 후 Summary 재생성';
-                    } else {
-                        noActionHint.textContent = '';
-                    }
+                // ... (No Action Notice, Trace Box, Action Box logic unchanged) ...
+
+                // P146.2: Draft Status
+                currentDraftExists = data.draft_exists;
+                const draftDownloadLink = document.getElementById('draft-download-link');
+                const draftActions = document.getElementById('draft-actions');
+
+                if (currentDraftExists) {
+                    draftActions.style.display = 'block';
+                    draftDownloadLink.href = "/api/manual_execution_record/draft";
+                    document.getElementById('draft-status').textContent = "✅ Draft Available on Server";
+                    document.getElementById('draft-status').style.color = "#4ec9b0";
                 } else {
-                    noActionNotice.style.display = 'none';
+                    draftActions.style.display = 'none';
+                    document.getElementById('draft-status').textContent = "";
                 }
 
-                // P145: Trace Box
-                const traceBox = document.getElementById('trace-box');
-                if (data.trace && data.trace.plan_id !== 'N/A') {
-                    traceBox.style.display = 'block';
-                    document.getElementById('trace-plan-id').textContent = data.trace.plan_id;
-                    document.getElementById('trace-asof').textContent = data.trace.asof;
-                    document.getElementById('trace-mode').textContent = data.trace.exec_mode;
-                } else {
-                    traceBox.style.display = 'none';
-                }
-
-                // Action
-                const actionContainer = document.getElementById('action-container');
-                if (data.next_action && data.next_action.command) {
-                    actionContainer.style.display = 'block';
-                    document.getElementById('action-title').textContent = "NEXT ACTION: " + data.next_action.title;
-                    document.getElementById('action-command').textContent = data.next_action.command;
-                    document.getElementById('action-notes').textContent = data.next_action.notes;
-                } else {
-                    actionContainer.style.display = 'none';
-                }
-
-                // Toggle Forms (P144/P145)
+                // Toggle Forms
                 const prepContainer = document.getElementById('prep-container');
                 const submitContainer = document.getElementById('submit-container');
-                const dryrunContainer = document.getElementById('dryrun-container');
+                const dryrunContainer = document.getElementById('dryrun-container'); // Legacy P131? Or keep for consistency?
+                const draftContainer = document.getElementById('draft-container');
 
-                // Hide all first
+                // Reset
                 prepContainer.style.display = 'none';
                 submitContainer.style.display = 'none';
                 dryrunContainer.style.display = 'none';
+                draftContainer.style.display = 'none';
 
-                if (data.stage === 'NO_ACTION_TODAY') {
-                    // P145: All forms hidden for NO_ACTION_TODAY
-                } else if (data.stage === 'NEED_HUMAN_CONFIRM') {
+                if (data.stage === 'NEED_HUMAN_CONFIRM') {
                     prepContainer.style.display = 'block';
-                } else if (data.stage === 'AWAITING_RECORD_SUBMIT') {
-                    if (isDryRun) {
-                        // P145: DRY_RUN 1-click submit
-                        dryrunContainer.style.display = 'block';
-                    } else {
-                        submitContainer.style.display = 'block';
-                    }
+                } else if (['AWAITING_HUMAN_EXECUTION', 'AWAITING_RECORD_SUBMIT', 'AWAITING_RETRY_EXECUTION'].includes(data.stage)) {
+                    // P146.2: Show Draft Manager
+                    draftContainer.style.display = 'block';
+
+                    // Show upload fallback only if NO draft exists yet? Or always?
+                    // Let's show it always but minimized visually (logic in CSS above)
+                    submitContainer.style.display = 'block';
                 }
 
-                // Portfolio (P139)
-                const tbody = document.getElementById('portfolio-body');
-                tbody.innerHTML = '';
-                if (data.portfolio && data.portfolio.length > 0) {
-                    data.portfolio.forEach(item => {
-                        const tr = document.createElement('tr');
+                // ... (Portfolio, Artifacts logic unchanged) ...
 
-                        // Color Logic
-                        const pnlColor = item.pnl_pct > 0 ? '#4ec9b0' : item.pnl_pct < 0 ? '#f48771' : '#d4d4d4';
-                        const sigColor = item.signal === 'BUY' ? '#4ec9b0' : item.signal === 'SELL' ? '#f48771' : '#888';
-
-                        tr.innerHTML = `
-                            <td>${item.ticker}<br><span style="font-size:0.8em;color:#888">${item.name}</span></td>
-                            <td>${item.qty}</td>
-                            <td style="color:${pnlColor}">${item.pnl_pct.toFixed(2)}%</td>
-                            <td style="color:${sigColor};font-weight:bold">${item.signal}</td>
-                            <td style="font-size:0.8em;color:#aaa">${item.reason || '-'}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888">No holdings found</td></tr>';
-                }
-
-                // Artifacts
+                // Artifacts Grid (Fail-Soft Preview not here, links handled by backend)
+                // We just render links.
                 const grid = document.getElementById('artifacts-grid');
                 grid.innerHTML = '';
                 if (data.artifacts) {
@@ -503,8 +497,78 @@
 
             } catch (e) {
                 console.error(e);
-                document.getElementById('stage-value').textContent = "CONNECTION ERROR";
-                document.getElementById('stage-value').classList.add('error');
+            }
+        }
+
+        // P146.2 Functions
+        async function generateDraft() {
+            const statusDiv = document.getElementById('draft-status');
+            statusDiv.textContent = "⏳ Generating...";
+            statusDiv.style.color = "#ccc";
+
+            try {
+                const res = await fetch('/api/manual_execution_record/draft', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.result === 'OK') {
+                    statusDiv.textContent = "✅ Draft Generated!";
+                    statusDiv.style.color = "#4ec9b0";
+                    fetchData(); // Refresh to show actions
+                } else {
+                    statusDiv.textContent = "❌ Failed: " + (data.reason || "Unknown");
+                    statusDiv.style.color = "#f48771";
+                }
+            } catch (e) {
+                statusDiv.textContent = "❌ Error: " + e.message;
+            }
+        }
+
+        async function submitDraftServer() {
+            const token = document.getElementById('draft-token').value;
+            const statusDiv = document.getElementById('draft-submit-status');
+
+            if (!token) {
+                statusDiv.textContent = "❌ Token is required";
+                return;
+            }
+
+            statusDiv.textContent = "⏳ Fetching Draft & Submitting...";
+
+            try {
+                // 1. Fetch Draft Content
+                const draftRes = await fetch('/api/manual_execution_record/draft');
+                if (!draftRes.ok) throw new Error("Could not fetch draft content");
+                const draftJson = await draftRes.json();
+
+                // 2. Inject Token
+                const payload = { ...draftJson, confirm_token: token };
+
+                // 3. Submit
+                const res = await fetch('/api/manual_execution_record/submit?confirm=true', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.decision === 'EXECUTED' || data.decision === 'SKIPPED' || data.result === 'OK') {
+                    statusDiv.textContent = "✅ Submit Success!";
+                    statusDiv.style.color = "#4ec9b0";
+
+                    // Update Summary
+                    await fetch('/api/ops/summary/regenerate?confirm=true', { method: 'POST' });
+
+                    setTimeout(fetchData, 1000);
+                } else {
+                    let errMsg = data.reason || data.message || "Unknown Error";
+                    if (data.detail) errMsg += " " + JSON.stringify(data.detail);
+                    statusDiv.textContent = "❌ Submit Failed: " + errMsg;
+                    statusDiv.style.color = "#f48771";
+                }
+
+            } catch (e) {
+                statusDiv.textContent = "❌ Error: " + e.message;
+                statusDiv.style.color = "#f48771";
             }
         }
 

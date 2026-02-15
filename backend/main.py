@@ -2831,7 +2831,111 @@ class ManualExecutionRecordRequest(BaseModel):
     confirm_token: str
     items: List[ManualExecutionItem]
 
-@app.post("/api/manual_execution_record/submit", summary="Manual Execution Record 제출")
+
+# Draft Record (P146.2)
+DRAFT_DIR = BASE_DIR / "reports" / "live" / "manual_execution_record" / "draft"
+DRAFT_LATEST_FILE = DRAFT_DIR / "latest" / "manual_execution_record_draft_latest.json"
+ORDER_PLAN_EXPORT_LATEST_FILE = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+
+# Ensure Draft Dir
+(DRAFT_DIR / "latest").mkdir(parents=True, exist_ok=True)
+
+@app.post("/api/manual_execution_record/draft", summary="Draft Record 생성 (Server-Side)")
+def generate_draft_record():
+    """Generate Manual Execution Record Draft (Server-Side) - P146.2"""
+    try:
+        # 1. Check Stage
+        summary = _load_json(OPS_SUMMARY_PATH)
+        if not summary:
+            return {"result": "BLOCKED", "reason": "No Ops Summary"}
+            
+        stage = summary.get("manual_loop", {}).get("stage", "UNKNOWN")
+        override = load_asof_override()
+        is_replay = override.get("enabled", False)
+        
+        allowed_stages = ["AWAITING_HUMAN_EXECUTION", "AWAITING_RECORD_SUBMIT", "AWAITING_RETRY_EXECUTION", "DONE_TODAY", "DONE_TODAY_PARTIAL"]
+        
+        if stage not in allowed_stages and not is_replay:
+             return {"result": "BLOCKED", "reason": f"Stage '{stage}' not allowed for draft generation (unless Replay)"}
+
+        # 2. Load Artifacts
+        prep = _load_json(PREP_LATEST_FILE)
+        ticket = _load_json(TICKET_LATEST_FILE)
+        export = _load_json(ORDER_PLAN_EXPORT_LATEST_FILE)
+        
+        if not prep or not ticket or not export:
+            return {"result": "BLOCKED", "reason": "Missing Artifacts (Prep, Ticket, or Export)"}
+
+        # 3. Validate Linkage
+        prep_plan_id = prep.get("source", {}).get("plan_id")
+        ticket_plan_id = ticket.get("source", {}).get("plan_id")
+        export_plan_id = export.get("source", {}).get("plan_id") # Note: Export structure might differ slightly, check generating code
+        # app/generate_order_plan_export.py: export["source"]["plan_id"]
+        
+        if prep_plan_id != ticket_plan_id:
+             return {"result": "BLOCKED", "reason": "Linkage Mismatch (Prep != Ticket)"}
+        
+        # 4. Construct Draft
+        items = []
+        for order in export.get("orders", []):
+            items.append({
+                "ticker": order.get("ticker"),
+                "side": order.get("side"),
+                "status": "EXECUTED", # Default
+                "qty_planned": order.get("qty", 0),
+                "executed_qty": order.get("qty", 0), # Default Full Fill
+                "avg_price": None,
+                "note": ""
+            })
+            
+        draft = {
+            "schema": "MANUAL_EXECUTION_RECORD_DRAFT_V1",
+            "asof": datetime.now().isoformat(),
+            "source_refs": {
+                "prep_ref": prep.get("source", {}).get("order_plan_ref")
+            },
+            "linkage": {
+                 "prep_plan_id": prep_plan_id,
+                 "ticket_plan_id": ticket_plan_id,
+                 "export_plan_id": export_plan_id,
+                 "ticket_id": ticket.get("ticket_id")
+            },
+            "items": items,
+            "dedupe": {
+                "idempotency_key": "" # User can fill or auto-gen on submit
+            }
+        }
+        
+        # 5. Sanitize & Save Draft
+        def recursive_sanitize(obj):
+            if isinstance(obj, dict):
+                return {k: recursive_sanitize(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [recursive_sanitize(v) for v in obj]
+            elif isinstance(obj, str):
+                return obj.replace("\\", "/") # Force forward slashes to avoid JSON escape issues
+            else:
+                return obj
+                
+        sanitized_draft = recursive_sanitize(draft)
+        
+        DRAFT_LATEST_FILE.write_text(json.dumps(sanitized_draft, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+        return {"result": "OK", "path": str(DRAFT_LATEST_FILE), "count": len(items)}
+
+    except Exception as e:
+        logger.error(f"Draft Gen Error: {e}")
+        return {"result": "ERROR", "reason": str(e)}
+
+@app.get("/api/manual_execution_record/draft", summary="Draft Record 다운로드")
+def get_draft_record():
+    """Get Latest Draft Record JSON"""
+    if not DRAFT_LATEST_FILE.exists():
+        raise HTTPException(status_code=404, detail="No Draft Found")
+        
+    return FileResponse(path=DRAFT_LATEST_FILE, media_type='application/json', filename="manual_execution_record_draft.json")
+
+
 def submit_manual_execution_record(request: ManualExecutionRecordRequest, confirm: bool = Query(False)):
     """Submit Manual Execution Record (P113-A) - Requires Confirm + Token"""
     if not confirm:
@@ -2940,7 +3044,8 @@ def resolve_evidence_ref(ref: str):
             "error": {
                 "code": "PARSE_ERROR",
                 "message": result.reason
-            }
+            },
+            "raw_preview": result.raw_content # P146.2 Fail-Soft
         }
     
     return {

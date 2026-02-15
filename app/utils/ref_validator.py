@@ -117,6 +117,7 @@ class ResolvedEvidence:
     reason: Optional[str]
     source_kind: Optional[str]
     source_line: Optional[int]
+    raw_content: Optional[str] = None  # P146.2 Fail-Soft Preview
 
 
 def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
@@ -245,7 +246,8 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=None,
                 reason=f"JSON parse error at line {line_no}: {str(e)}",
                 source_kind="JSONL_LINE",
-                source_line=line_no
+                source_line=line_no,
+                raw_content=line_content[:4096] # P146.2 Fail-Soft
             )
     
     # === JSON Ref 처리 ===
@@ -297,7 +299,8 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
         )
     
     try:
-        data = json.loads(full_path.read_text(encoding="utf-8"))
+        content = full_path.read_text(encoding="utf-8")
+        data = json.loads(content)
         return ResolvedEvidence(
             decision="OK",
             http_status_equivalent=200,
@@ -317,5 +320,6 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
             data=None,
             reason=f"JSON parse error: {str(e)}",
             source_kind="JSON",
-            source_line=None
+            source_line=None,
+            raw_content=content[:4096] if 'content' in locals() else "Read Fail"
         )

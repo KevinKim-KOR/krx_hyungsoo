@@ -221,11 +221,17 @@ with tab_ops:
         env_color = "🟢" if env_info.get("type") == "PC" else "🟠"
         stage_color = "🔴" if "ERROR" in stage or "FAIL" in stage else "🔵"
         
+        # Exec Mode Logic (P146.2)
+        exec_mode = "LIVE"
+        if is_replay:
+             exec_mode = "DRY_RUN"
+        
         # Display Bar
         st.info(f"""
         **ENV**: {env_color} {env_info.get("type", "PC")} ({env_info.get("hostname","localhost")}) | 
         **Target**: 🔗 {os.getenv("OCI_BACKEND_URL", "http://localhost:8000")} | 
         **Stage**: {stage_color} {stage} | 
+        **Exec**: 🧪 {exec_mode} |
         **Replay**: {'🔴 ON (' + replay_asof + ')' if is_replay else '⚪ OFF'} 
         """)
     else:

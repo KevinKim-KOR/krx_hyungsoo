@@ -192,6 +192,14 @@ async def get_operator_dashboard():
         "exec_mode": exec_mode
     }
             
+    # P146.2: Replay Trace Consistency & Draft Status
+    if replay_info["enabled"]:
+        exec_mode = "DRY_RUN"
+        trace_info["exec_mode"] = "DRY_RUN"
+        
+    DRAFT_PATH = BASE_DIR / "reports" / "live" / "manual_execution_record" / "draft" / "latest" / "manual_execution_record_draft_latest.json"
+    draft_exists = DRAFT_PATH.exists()
+
     return {
         "asof": asof,
         "stage": stage,
@@ -200,6 +208,7 @@ async def get_operator_dashboard():
         "portfolio": portfolio_view,
         "replay_info": replay_info,
         "exec_mode": exec_mode,
-        "trace": trace_info
+        "trace": trace_info,
+        "draft_exists": draft_exists # P146.2
     }
 
