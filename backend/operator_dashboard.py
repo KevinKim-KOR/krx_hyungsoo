@@ -227,22 +227,22 @@ async def get_operator_dashboard():
         ["source", "plan_id"]
     )
 
-    # Determine match: all non-None values must be identical
-    present_ids = {k: v for k, v in {
+    # Determine match: ticket + export must agree (prep is informational, not a blocker)
+    # Draft uses ticket + export directly; prep is upstream and may have stale plan_id
+    gate_ids = {k: v for k, v in {
         "export": export_plan_id,
-        "ticket": ticket_plan_id,
-        "prep": prep_plan_id
+        "ticket": ticket_plan_id
     }.items() if v is not None}
     
-    unique_ids = set(present_ids.values())
-    plan_id_match = len(unique_ids) <= 1 and len(present_ids) > 0
+    gate_unique = set(gate_ids.values())
+    plan_id_match = len(gate_unique) == 1 and len(gate_ids) == 2  # both present and equal
     
     plan_id_check = {
         "match": plan_id_match,
         "export_plan_id": export_plan_id,
         "ticket_plan_id": ticket_plan_id,
         "prep_plan_id": prep_plan_id,
-        "detail": "OK" if plan_id_match else f"MISMATCH: {present_ids}"
+        "detail": "OK" if plan_id_match else f"MISMATCH: ticket={ticket_plan_id}, export={export_plan_id}"
     }
 
     return {

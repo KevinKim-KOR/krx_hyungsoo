@@ -2916,22 +2916,17 @@ def generate_draft_record():
         if not prep:
             prep = {}
 
-        # 4. Validate Linkage — P146.5 Fail-Closed
-        prep_plan_id = prep.get("source", {}).get("plan_id")
+        # 4. Validate Linkage — P146.5/P146.6 Fail-Closed (ticket+export gate)
         ticket_plan_id = ticket.get("source", {}).get("plan_id")
         export_plan_id = export.get("source", {}).get("plan_id")
 
-        present_ids = {k: v for k, v in {
-            "prep": prep_plan_id, "ticket": ticket_plan_id, "export": export_plan_id
-        }.items() if v is not None}
-        unique_ids = set(present_ids.values())
-        
-        if len(unique_ids) > 1:
+        # Gate: ticket and export must agree. Prep is upstream/informational.
+        if ticket_plan_id and export_plan_id and ticket_plan_id != export_plan_id:
             return {
                 "result": "BLOCKED",
                 "reason": "PLAN_ID_MISMATCH",
-                "detail": present_ids,
-                "guidance": "plan_id가 일치하지 않습니다. PC에서 Auto Ops를 재실행하여 한 회전으로 맞춰주세요."
+                "detail": {"ticket": ticket_plan_id, "export": export_plan_id},
+                "guidance": "plan_id가 일치하지 않습니다. TICKET 재생성 버튼을 눌러 Export에 맞춰주세요."
             }
 
         # 5. Construct Draft
