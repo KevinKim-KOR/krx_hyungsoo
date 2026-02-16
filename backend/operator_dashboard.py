@@ -33,7 +33,7 @@ async def get_operator_dashboard():
         })
     
     try:
-        with open(SUMMARY_FILE, 'r') as f:
+        with open(SUMMARY_FILE, 'r', encoding='utf-8') as f:
             summary = json.load(f)
             # Handle both V1 schema (direct dict) and older row-based schema if any
             if "rows" in summary:
