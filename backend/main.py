@@ -2868,6 +2868,30 @@ def _load_json(path: Path) -> dict:
            return None
     return None
 
+# === P146.6: Ticket Regeneration Endpoint ===
+
+@app.post("/api/manual_execution_ticket/regenerate", summary="Ticket 재생성")
+def regenerate_ticket():
+    """Regenerate Ticket from current Prep/Export — P146.6"""
+    try:
+        from app.generate_manual_execution_ticket import generate_ticket as _gen_ticket
+        _gen_ticket()
+        
+        # Read the generated ticket to return
+        ticket_path = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
+        if ticket_path.exists():
+            ticket = json.loads(ticket_path.read_text(encoding="utf-8"))
+            return {
+                "result": "OK",
+                "decision": ticket.get("decision"),
+                "plan_id": ticket.get("source", {}).get("plan_id"),
+                "asof": ticket.get("asof")
+            }
+        return {"result": "ERROR", "reason": "Ticket file not created"}
+    except Exception as e:
+        logger.error(f"Ticket Regenerate Error: {e}")
+        return {"result": "ERROR", "reason": str(e)}
+
 @app.post("/api/manual_execution_record/draft", summary="Draft Record 생성 (Server-Side)")
 def generate_draft_record():
     """Generate Manual Execution Record Draft (Server-Side) - P146.2"""

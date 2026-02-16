@@ -491,11 +491,16 @@
                         planBar.style.background = '#3a1a1a';
                         planBar.style.border = '1px solid #f48771';
                         planBar.style.color = '#f48771';
+                        const isLive = data.exec_mode !== 'DRY_RUN';
                         planBar.innerHTML = `❌ plan_id 불일치 — ` +
                             `prep: <b>${chk.prep_plan_id || '없음'}</b> | ` +
                             `ticket: <b>${chk.ticket_plan_id || '없음'}</b> | ` +
                             `export: <b>${chk.export_plan_id || '없음'}</b>` +
-                            `<br><span style="color:#ccc; font-size:0.9em;">PC에서 Auto Ops 재실행 → OCI Ticket 재생성으로 맞춰주세요.</span>`;
+                            `<br><span style="color:#ccc; font-size:0.9em;">Ticket을 Export에 맞춰 재생성하세요.</span>` +
+                            `<br><button id="btn-regen-ticket" onclick="regenTicket(${isLive})" ` +
+                            `style="margin-top:8px; padding:6px 16px; background:#b5854b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">` +
+                            `🔄 TICKET 재생성 (Export에 맞춤)</button>` +
+                            `<span id="regen-status" style="margin-left:10px; font-size:0.85em;"></span>`;
                         btnGenerate.disabled = true;
                         btnGenerate.style.opacity = '0.4';
                     }
@@ -562,6 +567,32 @@
 
             } catch (e) {
                 console.error(e);
+            }
+        }
+        // P146.6: Ticket Regeneration
+        async function regenTicket(isLive) {
+            if (isLive) {
+                if (!confirm('⚠️ LIVE 모드입니다. Ticket을 재생성하시겠습니까?')) return;
+            }
+            const statusSpan = document.getElementById('regen-status');
+            statusSpan.textContent = '⏳ 재생성 중...';
+            statusSpan.style.color = '#ccc';
+
+            try {
+                const res = await fetch('/api/manual_execution_ticket/regenerate', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.result === 'OK') {
+                    statusSpan.textContent = `✅ 완료 (plan_id: ${data.plan_id})`;
+                    statusSpan.style.color = '#4ec9b0';
+                    setTimeout(fetchData, 500);
+                } else {
+                    statusSpan.textContent = `❌ ${data.reason || 'Unknown'}`;
+                    statusSpan.style.color = '#f48771';
+                }
+            } catch (e) {
+                statusSpan.textContent = `❌ Error: ${e.message}`;
+                statusSpan.style.color = '#f48771';
             }
         }
 
