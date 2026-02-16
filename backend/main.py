@@ -2949,7 +2949,7 @@ def generate_draft_record():
                 "prep_ref": prep.get("source", {}).get("order_plan_ref")
             },
             "linkage": {
-                "prep_plan_id": prep_plan_id,
+                "prep_plan_id": prep.get("source", {}).get("plan_id"),
                 "ticket_plan_id": ticket_plan_id,
                 "export_plan_id": export_plan_id,
                 "ticket_id": ticket.get("ticket_id")
