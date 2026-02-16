@@ -579,15 +579,16 @@
             statusSpan.style.color = '#ccc';
 
             try {
-                const res = await fetch('/api/manual_execution_ticket/regenerate', { method: 'POST' });
+                const res = await fetch('/api/manual_execution_ticket/regenerate?confirm=true', { method: 'POST' });
                 const data = await res.json();
 
-                if (data.result === 'OK') {
-                    statusSpan.textContent = `✅ 완료 (plan_id: ${data.plan_id})`;
+                if (res.ok && data.source) {
+                    const newPlanId = data.source.plan_id || 'N/A';
+                    statusSpan.textContent = `✅ 완료 (plan_id: ${newPlanId})`;
                     statusSpan.style.color = '#4ec9b0';
                     setTimeout(fetchData, 500);
                 } else {
-                    statusSpan.textContent = `❌ ${data.reason || 'Unknown'}`;
+                    statusSpan.textContent = `❌ ${data.reason || data.detail?.reason || 'Unknown'}`;
                     statusSpan.style.color = '#f48771';
                 }
             } catch (e) {
