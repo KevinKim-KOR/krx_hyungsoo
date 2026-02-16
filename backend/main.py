@@ -2797,7 +2797,7 @@ def get_manual_execution_ticket_latest():
 
 @app.post("/api/manual_execution_ticket/regenerate", summary="Manual Execution Ticket 재생성")
 def regenerate_manual_execution_ticket(confirm: bool = Query(False)):
-    """Regenerate Manual Execution Ticket (P113-A) - Requires Confirm"""
+    """Regenerate Manual Execution Ticket (P113-A / P146.6) - Aligns to Export plan_id"""
     if not confirm:
         raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
         
@@ -2805,11 +2805,32 @@ def regenerate_manual_execution_ticket(confirm: bool = Query(False)):
         from app.generate_manual_execution_ticket import generate_ticket
         generate_ticket()
         
-        if TICKET_LATEST_FILE.exists():
-            data = json.loads(TICKET_LATEST_FILE.read_text(encoding="utf-8"))
-            return data
-        else:
+        if not TICKET_LATEST_FILE.exists():
             return {"result": "FAIL", "reason": "Generation failed (No file)"}
+        
+        data = json.loads(TICKET_LATEST_FILE.read_text(encoding="utf-8"))
+        
+        # P146.6: Patch plan_id to match Export (SSOT alignment)
+        export_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+        if export_path.exists():
+            try:
+                export_data = json.loads(export_path.read_text(encoding="utf-8"))
+                export_plan_id = export_data.get("source", {}).get("plan_id")
+                if export_plan_id:
+                    old_plan_id = data.get("source", {}).get("plan_id")
+                    data["source"]["plan_id"] = export_plan_id
+                    data["source"]["_aligned_from"] = "export"
+                    data["source"]["_original_prep_plan_id"] = old_plan_id
+                    # Save patched ticket back
+                    TICKET_LATEST_FILE.write_text(
+                        json.dumps(data, indent=2, ensure_ascii=False),
+                        encoding="utf-8"
+                    )
+                    logger.info(f"P146.6: Ticket plan_id patched {old_plan_id} -> {export_plan_id}")
+            except Exception as e:
+                logger.warning(f"P146.6: Export read failed, keeping prep plan_id: {e}")
+        
+        return data
             
     except ImportError as e:
         logger.error(f"Ticket import error: {e}")
