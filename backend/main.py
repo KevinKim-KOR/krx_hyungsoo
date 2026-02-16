@@ -2795,6 +2795,129 @@ def get_manual_execution_ticket_latest():
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
+# === P146.7: Sync Cycle ===
+
+class SyncCycleRequest(BaseModel):
+    token: Optional[str] = None
+    prep_only: Optional[bool] = False
+
+@app.post("/api/operator/sync_cycle", summary="이번 회차 정리 (Sync Cycle)")
+def sync_cycle(req: SyncCycleRequest):
+    """P146.7: Align ticket/prep plan_ids to export in one click."""
+    try:
+        # 1. Determine exec_mode
+        exec_mode = "LIVE"
+        if OPS_SUMMARY_PATH.exists():
+            try:
+                summ = json.loads(OPS_SUMMARY_PATH.read_text(encoding="utf-8"))
+                ml = summ.get("manual_loop", {})
+                exec_mode = ml.get("mode", "LIVE")
+            except Exception:
+                pass
+        # Replay override
+        try:
+            from app.utils.portfolio_normalize import load_asof_override
+            override = load_asof_override()
+            if override.get("enabled", False):
+                exec_mode = "DRY_RUN"
+        except Exception:
+            pass
+
+        # 2. Token gate (LIVE requires token)
+        if exec_mode == "LIVE":
+            if not req.token:
+                raise HTTPException(status_code=403, detail={
+                    "ok": False, "reason": "TOKEN_MISMATCH",
+                    "message": "LIVE 모드에서는 token이 필요합니다."
+                })
+
+        # 3. Read export plan_id (SSOT 기준)
+        if not ORDER_PLAN_EXPORT_LATEST_FILE.exists():
+            raise HTTPException(status_code=409, detail={
+                "ok": False, "reason": "EXPORT_NOT_FOUND",
+                "message": "Export 파일이 없습니다."
+            })
+        export_data = json.loads(ORDER_PLAN_EXPORT_LATEST_FILE.read_text(encoding="utf-8"))
+        export_plan_id = export_data.get("source", {}).get("plan_id")
+        if not export_plan_id:
+            raise HTTPException(status_code=409, detail={
+                "ok": False, "reason": "EXPORT_NO_PLAN_ID",
+                "message": "Export에 plan_id가 없습니다."
+            })
+
+        actions = {"ticket_regenerated": False, "prep_regenerated": False}
+        plan_ids = {"export": export_plan_id}
+
+        # 4. Ticket alignment (skip if prep_only)
+        if not req.prep_only:
+            ticket_plan_id = None
+            if TICKET_LATEST_FILE.exists():
+                try:
+                    td = json.loads(TICKET_LATEST_FILE.read_text(encoding="utf-8"))
+                    ticket_plan_id = td.get("source", {}).get("plan_id")
+                except Exception:
+                    pass
+
+            if ticket_plan_id != export_plan_id:
+                # Regenerate ticket + patch
+                from app.generate_manual_execution_ticket import generate_ticket
+                generate_ticket()
+                if TICKET_LATEST_FILE.exists():
+                    td = json.loads(TICKET_LATEST_FILE.read_text(encoding="utf-8"))
+                    old_id = td.get("source", {}).get("plan_id")
+                    td["source"]["plan_id"] = export_plan_id
+                    td["source"]["_aligned_from"] = "export"
+                    td["source"]["_original_prep_plan_id"] = old_id
+                    TICKET_LATEST_FILE.write_text(
+                        json.dumps(td, indent=2, ensure_ascii=False), encoding="utf-8"
+                    )
+                    actions["ticket_regenerated"] = True
+                    logger.info(f"P146.7 Sync: ticket plan_id {old_id} -> {export_plan_id}")
+
+            plan_ids["ticket"] = export_plan_id if actions["ticket_regenerated"] else ticket_plan_id
+
+        # 5. Prep alignment
+        prep_plan_id = None
+        if PREP_LATEST_FILE.exists():
+            try:
+                pd = json.loads(PREP_LATEST_FILE.read_text(encoding="utf-8"))
+                prep_plan_id = pd.get("source", {}).get("plan_id")
+            except Exception:
+                pass
+
+        if prep_plan_id != export_plan_id:
+            # Regenerate prep
+            token_for_prep = req.token or ("SYNC_CYCLE_DRY" if exec_mode == "DRY_RUN" else "")
+            from app.generate_execution_prep import generate_prep
+            generate_prep(token_for_prep)
+            # Patch plan_id to export
+            if PREP_LATEST_FILE.exists():
+                pd = json.loads(PREP_LATEST_FILE.read_text(encoding="utf-8"))
+                old_id = pd.get("source", {}).get("plan_id")
+                pd["source"]["plan_id"] = export_plan_id
+                pd["source"]["_aligned_from"] = "export"
+                pd["source"]["_original_plan_id"] = old_id
+                PREP_LATEST_FILE.write_text(
+                    json.dumps(pd, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                actions["prep_regenerated"] = True
+                logger.info(f"P146.7 Sync: prep plan_id {old_id} -> {export_plan_id}")
+
+        plan_ids["prep"] = export_plan_id if actions["prep_regenerated"] else prep_plan_id
+
+        return {
+            "ok": True,
+            "exec_mode": exec_mode,
+            "plan_ids": plan_ids,
+            "actions": actions
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sync Cycle Error: {e}")
+        raise HTTPException(status_code=500, detail={"ok": False, "reason": str(e)})
+
 @app.post("/api/manual_execution_ticket/regenerate", summary="Manual Execution Ticket 재생성")
 def regenerate_manual_execution_ticket(confirm: bool = Query(False)):
     """Regenerate Manual Execution Ticket (P113-A / P146.6) - Aligns to Export plan_id"""

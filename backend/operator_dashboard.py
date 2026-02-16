@@ -242,6 +242,7 @@ async def get_operator_dashboard():
         "export_plan_id": export_plan_id,
         "ticket_plan_id": ticket_plan_id,
         "prep_plan_id": prep_plan_id,
+        "prep_stale": prep_plan_id is not None and export_plan_id is not None and prep_plan_id != export_plan_id,
         "detail": "OK" if plan_id_match else f"MISMATCH: ticket={ticket_plan_id}, export={export_plan_id}"
     }
 

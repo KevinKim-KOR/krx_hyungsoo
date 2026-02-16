@@ -479,28 +479,48 @@
                 const chk = data.plan_id_check;
 
                 if (chk) {
-                    if (chk.match) {
-                        const id = chk.export_plan_id || chk.ticket_plan_id || chk.prep_plan_id || 'N/A';
+                    const isLive = data.exec_mode !== 'DRY_RUN';
+                    const eid = chk.export_plan_id || '없음';
+                    const tid = chk.ticket_plan_id || '없음';
+                    const pid = chk.prep_plan_id || '없음';
+
+                    // Build status table
+                    let tableHtml = `<table style="width:100%; border-collapse:collapse; font-size:0.85em; margin-bottom:8px;">
+                        <tr><td style="padding:2px 6px; color:#9cdcfe;">📦 Export (기준)</td><td style="padding:2px 6px;"><b>${eid}</b></td></tr>
+                        <tr><td style="padding:2px 6px; color:#9cdcfe;">🎫 Ticket</td><td style="padding:2px 6px;"><b>${tid}</b> ${chk.match ? '✅' : '❌ 불일치'}</td></tr>
+                        <tr><td style="padding:2px 6px; color:#9cdcfe;">📋 Prep</td><td style="padding:2px 6px;"><b>${pid}</b> ${chk.prep_stale ? '⚠️ 오래됨' : (pid !== '없음' ? '✅' : '')}</td></tr>
+                    </table>`;
+
+                    if (chk.match && !chk.prep_stale) {
+                        // All aligned
                         planBar.style.background = '#1a3a1a';
                         planBar.style.border = '1px solid #4ec9b0';
                         planBar.style.color = '#4ec9b0';
-                        planBar.innerHTML = `✅ plan_id 일치: <b>${id}</b>`;
+                        planBar.innerHTML = tableHtml + `<span style="color:#4ec9b0;">✅ 전체 정합 완료</span>`;
+                        btnGenerate.disabled = false;
+                        btnGenerate.style.opacity = '1';
+                    } else if (chk.match && chk.prep_stale) {
+                        // Ticket OK but prep stale (warning, not blocking)
+                        planBar.style.background = '#2a2a0a';
+                        planBar.style.border = '1px solid #d7ba7d';
+                        planBar.style.color = '#d7ba7d';
+                        planBar.innerHTML = tableHtml +
+                            `<span style="color:#4ec9b0;">✅ ticket+export 일치 → Draft 가능</span><br>` +
+                            `<span style="color:#d7ba7d;">⚠️ Prep이 오래됨 (정보 일관성을 위해 재생성 가능)</span><br>` +
+                            `<button onclick="regenPrep(${isLive})" style="margin-top:6px; padding:5px 14px; background:#6b5b3a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🧰 PREP 재생성</button>` +
+                            `<span id="sync-status" style="margin-left:10px; font-size:0.85em;"></span>`;
                         btnGenerate.disabled = false;
                         btnGenerate.style.opacity = '1';
                     } else {
+                        // Ticket mismatch (blocking)
                         planBar.style.background = '#3a1a1a';
                         planBar.style.border = '1px solid #f48771';
                         planBar.style.color = '#f48771';
-                        const isLive = data.exec_mode !== 'DRY_RUN';
-                        planBar.innerHTML = `❌ plan_id 불일치 — ` +
-                            `prep: <b>${chk.prep_plan_id || '없음'}</b> | ` +
-                            `ticket: <b>${chk.ticket_plan_id || '없음'}</b> | ` +
-                            `export: <b>${chk.export_plan_id || '없음'}</b>` +
-                            `<br><span style="color:#ccc; font-size:0.9em;">Ticket을 Export에 맞춰 재생성하세요.</span>` +
-                            `<br><button id="btn-regen-ticket" onclick="regenTicket(${isLive})" ` +
-                            `style="margin-top:8px; padding:6px 16px; background:#b5854b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">` +
-                            `🔄 TICKET 재생성 (Export에 맞춤)</button>` +
-                            `<span id="regen-status" style="margin-left:10px; font-size:0.85em;"></span>`;
+                        planBar.innerHTML = tableHtml +
+                            `<span style="color:#f48771;">❌ ticket ≠ export → Draft 차단</span><br>` +
+                            `<button onclick="syncCycle(${isLive})" style="margin-top:8px; padding:6px 16px; background:#0e639c; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🔄 이번 회차 정리 (Sync Cycle)</button>` +
+                            `  <button onclick="regenPrep(${isLive})" style="margin-top:8px; padding:6px 16px; background:#6b5b3a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🧰 PREP 재생성</button>` +
+                            `<br><span id="sync-status" style="margin-top:6px; display:inline-block; font-size:0.85em;"></span>`;
                         btnGenerate.disabled = true;
                         btnGenerate.style.opacity = '0.4';
                     }
@@ -569,31 +589,67 @@
                 console.error(e);
             }
         }
-        // P146.6: Ticket Regeneration
-        async function regenTicket(isLive) {
+        // P146.7: Sync Cycle + Prep Regen
+        async function syncCycle(isLive) {
             if (isLive) {
-                if (!confirm('⚠️ LIVE 모드입니다. Ticket을 재생성하시겠습니까?')) return;
+                const token = prompt('⚠️ LIVE 모드입니다. Confirm Token을 입력하세요:');
+                if (!token) return;
+                return _callSyncCycle(false, token);
             }
-            const statusSpan = document.getElementById('regen-status');
-            statusSpan.textContent = '⏳ 재생성 중...';
-            statusSpan.style.color = '#ccc';
+            return _callSyncCycle(false, null);
+        }
+
+        async function regenPrep(isLive) {
+            if (isLive) {
+                const token = prompt('⚠️ LIVE 모드입니다. Confirm Token을 입력하세요:');
+                if (!token) return;
+                return _callSyncCycle(true, token);
+            }
+            return _callSyncCycle(true, null);
+        }
+
+        async function _callSyncCycle(prepOnly, token) {
+            const statusSpan = document.getElementById('sync-status');
+            if (statusSpan) {
+                statusSpan.textContent = '⏳ 정리 중...';
+                statusSpan.style.color = '#ccc';
+            }
 
             try {
-                const res = await fetch('/api/manual_execution_ticket/regenerate?confirm=true', { method: 'POST' });
+                const body = { prep_only: prepOnly };
+                if (token) body.token = token;
+
+                const res = await fetch('/api/operator/sync_cycle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
                 const data = await res.json();
 
-                if (res.ok && data.source) {
-                    const newPlanId = data.source.plan_id || 'N/A';
-                    statusSpan.textContent = `✅ 완료 (plan_id: ${newPlanId})`;
-                    statusSpan.style.color = '#4ec9b0';
+                if (res.ok && data.ok) {
+                    const acts = data.actions || {};
+                    let msg = '✅ 완료:';
+                    if (acts.ticket_regenerated) msg += ' Ticket 재생성';
+                    if (acts.prep_regenerated) msg += ' Prep 재생성';
+                    if (!acts.ticket_regenerated && !acts.prep_regenerated) msg += ' 변경 없음 (이미 정합)';
+                    if (statusSpan) {
+                        statusSpan.textContent = msg;
+                        statusSpan.style.color = '#4ec9b0';
+                    }
                     setTimeout(fetchData, 500);
                 } else {
-                    statusSpan.textContent = `❌ ${data.reason || data.detail?.reason || 'Unknown'}`;
-                    statusSpan.style.color = '#f48771';
+                    const reason = data.detail?.reason || data.reason || 'Unknown';
+                    const message = data.detail?.message || '';
+                    if (statusSpan) {
+                        statusSpan.textContent = `❌ ${reason} ${message}`;
+                        statusSpan.style.color = '#f48771';
+                    }
                 }
             } catch (e) {
-                statusSpan.textContent = `❌ Error: ${e.message}`;
-                statusSpan.style.color = '#f48771';
+                if (statusSpan) {
+                    statusSpan.textContent = `❌ Error: ${e.message}`;
+                    statusSpan.style.color = '#f48771';
+                }
             }
         }
 
