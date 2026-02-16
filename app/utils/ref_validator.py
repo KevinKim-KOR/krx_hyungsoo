@@ -298,6 +298,35 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
             source_line=None
         )
     
+    # P146.5: Extension-based branching — non-JSON files returned as raw text
+    ext = full_path.suffix.lower()
+    if ext in ('.md', '.txt', '.csv'):
+        try:
+            content = full_path.read_text(encoding="utf-8")
+            return ResolvedEvidence(
+                decision="OK",
+                http_status_equivalent=200,
+                content_type="text",
+                resolved_path=ref,
+                data={"raw_text": content[:8192], "file_type": ext.lstrip('.')},
+                reason=None,
+                source_kind="TEXT",
+                source_line=None
+            )
+        except Exception as e:
+            return ResolvedEvidence(
+                decision="PARSE_ERROR",
+                http_status_equivalent=200,
+                content_type="text",
+                resolved_path=ref,
+                data=None,
+                reason=f"File read error: {str(e)}",
+                source_kind="TEXT",
+                source_line=None,
+                raw_content="Read Fail"
+            )
+
+    # JSON files: standard parse path
     try:
         content = full_path.read_text(encoding="utf-8")
         data = json.loads(content)

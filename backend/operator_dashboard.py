@@ -200,6 +200,51 @@ async def get_operator_dashboard():
     DRAFT_PATH = BASE_DIR / "reports" / "live" / "manual_execution_record" / "draft" / "latest" / "manual_execution_record_draft_latest.json"
     draft_exists = DRAFT_PATH.exists()
 
+    # P146.5: SSOT Consistency Check — Read plan_id from actual artifact files
+    def _read_plan_id(rel_path: str, key_path: list) -> str:
+        """Read plan_id from a JSON artifact file."""
+        p = BASE_DIR / rel_path
+        if not p.exists():
+            return None
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+            for k in key_path:
+                d = d.get(k, {}) if isinstance(d, dict) else {}
+            return d if isinstance(d, str) else None
+        except:
+            return None
+
+    export_plan_id = _read_plan_id(
+        "reports/live/order_plan_export/latest/order_plan_export_latest.json",
+        ["source", "plan_id"]
+    )
+    ticket_plan_id = _read_plan_id(
+        "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
+        ["source", "plan_id"]
+    )
+    prep_plan_id = _read_plan_id(
+        "reports/live/execution_prep/latest/execution_prep_latest.json",
+        ["source", "plan_id"]
+    )
+
+    # Determine match: all non-None values must be identical
+    present_ids = {k: v for k, v in {
+        "export": export_plan_id,
+        "ticket": ticket_plan_id,
+        "prep": prep_plan_id
+    }.items() if v is not None}
+    
+    unique_ids = set(present_ids.values())
+    plan_id_match = len(unique_ids) <= 1 and len(present_ids) > 0
+    
+    plan_id_check = {
+        "match": plan_id_match,
+        "export_plan_id": export_plan_id,
+        "ticket_plan_id": ticket_plan_id,
+        "prep_plan_id": prep_plan_id,
+        "detail": "OK" if plan_id_match else f"MISMATCH: {present_ids}"
+    }
+
     return {
         "asof": asof,
         "stage": stage,
@@ -209,6 +254,7 @@ async def get_operator_dashboard():
         "replay_info": replay_info,
         "exec_mode": exec_mode,
         "trace": trace_info,
-        "draft_exists": draft_exists # P146.2
+        "draft_exists": draft_exists, # P146.2
+        "plan_id_check": plan_id_check  # P146.5
     }
 

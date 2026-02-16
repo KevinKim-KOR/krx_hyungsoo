@@ -2895,13 +2895,23 @@ def generate_draft_record():
         if not prep:
             prep = {}
 
-        # 4. Validate Linkage
+        # 4. Validate Linkage — P146.5 Fail-Closed
         prep_plan_id = prep.get("source", {}).get("plan_id")
         ticket_plan_id = ticket.get("source", {}).get("plan_id")
         export_plan_id = export.get("source", {}).get("plan_id")
 
-        if prep_plan_id and ticket_plan_id and prep_plan_id != ticket_plan_id:
-            return {"result": "BLOCKED", "reason": "Linkage Mismatch (Prep != Ticket)"}
+        present_ids = {k: v for k, v in {
+            "prep": prep_plan_id, "ticket": ticket_plan_id, "export": export_plan_id
+        }.items() if v is not None}
+        unique_ids = set(present_ids.values())
+        
+        if len(unique_ids) > 1:
+            return {
+                "result": "BLOCKED",
+                "reason": "PLAN_ID_MISMATCH",
+                "detail": present_ids,
+                "guidance": "plan_id가 일치하지 않습니다. PC에서 Auto Ops를 재실행하여 한 회전으로 맞춰주세요."
+            }
 
         # 5. Construct Draft
         items = []
@@ -3073,7 +3083,7 @@ def resolve_evidence_ref(ref: str):
                 "message": result.reason
             },
             "raw_preview": result.raw_content,
-            "guidance": "⚠️ FILE CORRUPTED. This file is not valid JSON. If this is a Draft, please use the 'Draft Manager' to Regenerate it." # P146.3 Guidance
+            "guidance": "이 파일은 유효한 JSON이 아닙니다. Draft라면 Draft Manager에서 재생성해주세요."
         }
     
     return {

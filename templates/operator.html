@@ -330,14 +330,20 @@
             <div id="dryrun-status" style="margin-top: 10px; font-size: 0.9em;"></div>
         </div>
 
-        <!-- P146.3: Draft Manager (Server-Side) -->
+        <!-- P146.5: Draft Manager (Server-Side) -->
         <div id="draft-container" class="action-box" style="display:none; border: 1px solid #9cdcfe;">
             <div class="action-title" style="color: #9cdcfe;">💾 DRAFT RECORD MANAGER</div>
             <p style="color: #ccc; font-size: 0.9em;">Server-side Draft Generation & Submission (No Upload Required)</p>
 
+            <!-- P146.5: Plan ID Consistency Bar -->
+            <div id="plan-id-bar"
+                style="padding: 8px 12px; border-radius: 4px; margin-bottom: 15px; font-size: 0.85em; font-family: monospace;">
+            </div>
+
             <!-- 1. Generate -->
             <div style="margin-bottom: 20px;">
-                <button class="refresh-btn" style="background: #0e639c;" onclick="generateDraft()">1. GENERATE DRAFT
+                <button id="btn-generate-draft" class="refresh-btn" style="background: #0e639c;"
+                    onclick="generateDraft()">1. GENERATE DRAFT
                     (SERVER)</button>
                 <span id="draft-status" style="margin-left: 10px; font-size: 0.9em; color: #888;"></span>
             </div>
@@ -467,10 +473,38 @@
                     document.getElementById('draft-status').textContent = "";
                 }
 
+                // P146.5: Plan ID Consistency Bar + Button Gating
+                const planBar = document.getElementById('plan-id-bar');
+                const btnGenerate = document.getElementById('btn-generate-draft');
+                const chk = data.plan_id_check;
+
+                if (chk) {
+                    if (chk.match) {
+                        const id = chk.export_plan_id || chk.ticket_plan_id || chk.prep_plan_id || 'N/A';
+                        planBar.style.background = '#1a3a1a';
+                        planBar.style.border = '1px solid #4ec9b0';
+                        planBar.style.color = '#4ec9b0';
+                        planBar.innerHTML = `✅ plan_id 일치: <b>${id}</b>`;
+                        btnGenerate.disabled = false;
+                        btnGenerate.style.opacity = '1';
+                    } else {
+                        planBar.style.background = '#3a1a1a';
+                        planBar.style.border = '1px solid #f48771';
+                        planBar.style.color = '#f48771';
+                        planBar.innerHTML = `❌ plan_id 불일치 — ` +
+                            `prep: <b>${chk.prep_plan_id || '없음'}</b> | ` +
+                            `ticket: <b>${chk.ticket_plan_id || '없음'}</b> | ` +
+                            `export: <b>${chk.export_plan_id || '없음'}</b>` +
+                            `<br><span style="color:#ccc; font-size:0.9em;">PC에서 Auto Ops 재실행 → OCI Ticket 재생성으로 맞춰주세요.</span>`;
+                        btnGenerate.disabled = true;
+                        btnGenerate.style.opacity = '0.4';
+                    }
+                }
+
                 // Toggle Forms
                 const prepContainer = document.getElementById('prep-container');
                 const submitContainer = document.getElementById('submit-container');
-                const dryrunContainer = document.getElementById('dryrun-container'); // Legacy P131? Or keep for consistency?
+                const dryrunContainer = document.getElementById('dryrun-container');
                 const draftContainer = document.getElementById('draft-container');
 
                 // Reset
@@ -550,8 +584,12 @@
 
                     fetchData(); // Refresh UI state
                 } else {
-                    statusDiv.textContent = "❌ Failed: " + (data.reason || "Unknown");
+                    let msg = "❌ " + (data.reason || "Unknown");
+                    if (data.guidance) msg += "\n" + data.guidance;
+                    if (data.detail) msg += "\n" + JSON.stringify(data.detail);
+                    statusDiv.textContent = msg;
                     statusDiv.style.color = "#f48771";
+                    statusDiv.style.whiteSpace = "pre-wrap";
                 }
             } catch (e) {
                 statusDiv.textContent = "❌ Error: " + e.message;
