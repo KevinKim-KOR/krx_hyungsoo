@@ -4,6 +4,9 @@ from pathlib import Path
 import json
 from datetime import datetime
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Add project root
 BASE_DIR = Path(__file__).parent.parent
