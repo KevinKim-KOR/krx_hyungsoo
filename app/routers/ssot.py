@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/ssot", tags=["SSOT"])
 BASE_DIR = Path(__file__).parent.parent.parent
 PORTFOLIO_PATH = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
 ASOF_OVERRIDE_PATH = BASE_DIR / "state" / "runtime" / "asof_override_latest.json"
-OPS_SUMMARY_PATH = BASE_DIR / "reports" / "ops" / "summary" / "ops_summary_latest.json"
+OPS_SUMMARY_PATH = BASE_DIR / "reports" / "ops" / "summary" / "latest" / "ops_summary_latest.json"
 
 def get_build_id():
     """Returns simple build identifier (e.g. git sha or timestamp)"""
