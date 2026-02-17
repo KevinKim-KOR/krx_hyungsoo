@@ -129,7 +129,10 @@ with st.expander("⚙️ System Mode Settings", expanded=is_replay):
     new_replay = col_mode.toggle("Enable Replay Mode", value=is_replay, key="replay_toggle")
     
     # 2. Date Picker (Only if Replay)
-    current_asof = override_cfg.get("asof_kst", datetime.now().strftime("%Y-%m-%d"))
+    current_asof = override_cfg.get("asof_kst")
+    if not current_asof:
+        current_asof = datetime.now().strftime("%Y-%m-%d")
+        
     new_date = col_date.date_input("Replay Date", value=datetime.strptime(current_asof, "%Y-%m-%d"), disabled=not new_replay)
     
     # 3. Simulate Trade Day (P145)
@@ -246,7 +249,7 @@ with tab_ops:
         **Target**: 🔗 {os.getenv("OCI_BACKEND_URL", "http://localhost:8000")} | 
         **Stage**: {stage_color} {stage} | 
         **Exec**: 🧪 {exec_mode} |
-        **Replay**: {'🔴 ON (' + replay_asof + ')' if is_replay else '⚪ OFF'} 
+        **Replay**: {'🔴 ON (' + (replay_asof or 'Unknown') + ')' if is_replay else '⚪ OFF'} 
         """)
     else:
         st.error(f"🛑 Backend Connection Failed: {error_msg}")

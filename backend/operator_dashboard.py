@@ -199,6 +199,7 @@ async def get_operator_dashboard():
         
     DRAFT_PATH = BASE_DIR / "reports" / "live" / "manual_execution_record" / "draft" / "latest" / "manual_execution_record_draft_latest.json"
     draft_exists = DRAFT_PATH.exists()
+    logger.info(f"Dashboard: checking draft at {DRAFT_PATH} -> {draft_exists}")
 
     # P146.5: SSOT Consistency Check — Read plan_id from actual artifact files
     def _read_plan_id(rel_path: str, key_path: list) -> str:
