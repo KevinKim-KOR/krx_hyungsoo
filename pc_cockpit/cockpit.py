@@ -202,6 +202,7 @@ with st.expander("⚙️ System Mode Settings", expanded=is_replay):
                 ])
              except Exception as e:
                 st.error(f"Sync Failed: {e}")
+
         
         
 
@@ -282,53 +283,54 @@ with tab_ops:
     st.divider()
     st.markdown("#### 🔄 SSOT Synchronization")
     
-    # UI Layout: Configure First, Then Action
-    c_set, c_act = st.columns([1, 2])
+    # UI Layout: Horizontal Alignment
+    # [Timeout 1] [Token 2] [Pull 1.5] [Push 1.5]
+    c1, c2, c3, c4 = st.columns([1, 2, 1.5, 1.5])
     
-    with c_set:
-        st.caption("Settings")
-        sync_timeout = st.number_input("Timeout (sec)", value=60, min_value=30, step=30, key="sync_timeout_input")
-        push_token = st.text_input("Push Token", type="password", key="push_token_input", label_visibility="visible", placeholder="Required for PUSH")
+    with c1:
+        sync_timeout = st.number_input("Timeout (sec)", value=60, step=30, key="sync_timeout")
         
-    with c_act:
-        st.caption(f"Status: {ssot_snapshot.get('synced_at', 'N/A')} (Rev: {ssot_snapshot.get('revision', 'N/A')})")
+    with c2:
+        push_token = st.text_input("Push Token", type="password", key="push_token", placeholder="Required for PUSH")
         
-        col_pull, col_push = st.columns(2)
-        
-        with col_pull:
-             if st.button("📥 PULL from OCI", use_container_width=True):
-                with st.spinner(f"Pulling (Timeout: {sync_timeout}s)..."):
+    with c3:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
+        if st.button("📥 PULL (OCI)", use_container_width=True):
+            with st.spinner(f"Pulling..."):
+                try:
+                    r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
+                    if r.status_code == 200:
+                        st.success("OK")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Fail: {r.text}")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+    with c4:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
+        if st.button("📤 PUSH (OCI)", use_container_width=True):
+            if not push_token:
+                st.warning("Token!")
+            else:
+                with st.spinner(f"Pushing..."):
                     try:
-                        r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
+                        r = requests.post("http://localhost:8000/api/sync/push", 
+                                          json={"token": push_token}, 
+                                          params={"timeout_seconds": sync_timeout},
+                                          timeout=sync_timeout + 5)
                         if r.status_code == 200:
-                            st.success("PULL OK")
+                            st.success("OK")
                             time.sleep(1)
                             st.rerun()
                         else:
                             st.error(f"Fail: {r.text}")
                     except Exception as e:
                         st.error(f"Error: {e}")
-
-        with col_push:
-             if st.button("📤 PUSH to OCI", use_container_width=True):
-                if not push_token:
-                    st.warning("Token Required!")
-                else:
-                    with st.spinner(f"Pushing (Timeout: {sync_timeout}s)..."):
-                        try:
-                            # Apply Timeout to PUSH too
-                            r = requests.post("http://localhost:8000/api/sync/push", 
-                                              json={"token": push_token}, 
-                                              params={"timeout_seconds": sync_timeout},
-                                              timeout=sync_timeout + 5)
-                            if r.status_code == 200:
-                                st.success("PUSH OK")
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error(f"Fail: {r.text}")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+    
+    # Status Line
+    st.caption(f"Status: {ssot_snapshot.get('synced_at', 'N/A')} (Rev: {ssot_snapshot.get('revision', 'N/A')})")
 
     st.divider()
 
@@ -817,16 +819,17 @@ with tab_review:
         q_text = "\n".join([f"- {q}" for q in review_data.get("questions", [])])
         st.text_area("Questions", q_text, height=150)
 
-# Sidebar Footer: Connectivity (Moved to Bottom)
-st.sidebar.divider()
+# Sidebar Footer: Connectivity (Always Visible at Bottom)
+st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔌 System Connectivity")
-if st.sidebar.button("Check Connectivity 💓"):
+if st.sidebar.button("Check Connectivity 💓", key="conn_check_sidebar"):
     h = check_backend_health()
     status_icon = "🟢" if h["status"] == "OK" else "🔴"
-    st.sidebar.metric("Local API Latency", f"{h['latency_ms']} ms", delta=status_icon)
+    st.sidebar.metric("Backend Latency", f"{h['latency_ms']} ms", delta=status_icon)
     if h["status"] != "OK":
         st.sidebar.error(f"Status: {h['status']}")
-        if "error" in h: st.sidebar.caption(h["error"])
-        
-    current_timeout = st.session_state.get("sync_timeout_input", 60)
-    st.sidebar.caption(f"Timeouts: {FAST_TIMEOUT}s / {current_timeout}s")
+    
+    # Use session state or default for timeout display
+    disp_timeout = st.session_state.get("sync_timeout", 60)
+    st.sidebar.caption(f"Timeouts: {FAST_TIMEOUT}s / {disp_timeout}s")
+
