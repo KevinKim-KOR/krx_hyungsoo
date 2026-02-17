@@ -340,9 +340,10 @@ with tab_ops:
     # ... (Keep existing Auto Ops logic, minimal changes)
     if st.button("▶️ Run Auto Ops Cycle"):
          try:
-             # Trigger Ops
-             requests.post("http://localhost:8000/api/ops/summary/regenerate?confirm=true", timeout=FAST_TIMEOUT)
-             st.toast("Auto Ops Triggered")
+             # Trigger Ops on OCI (Execution Plane)
+             oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
+             requests.post(f"{oci_url}/api/ops/summary/regenerate?confirm=true", timeout=FAST_TIMEOUT)
+             st.toast("Auto Ops Triggered on OCI")
              time.sleep(1)
              st.rerun()
          except Exception as e:

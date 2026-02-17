@@ -92,32 +92,17 @@ async def push_to_oci(
         # Load Override
         override = load_asof_override()
 
-        # Load Stage (from Ops Summary)
-        stage = "UNKNOWN"
-        updated_at = datetime.datetime.utcnow().isoformat()
-        if OPS_SUMMARY_PATH.exists():
-            try:
-                summary = json.loads(OPS_SUMMARY_PATH.read_text(encoding="utf-8"))
-                # Handle V1 schema (rows vs direct)
-                row = summary.get("rows", [summary])[0]
-                stage = row.get("manual_loop", {}).get("stage", "UNKNOWN")
-                updated_at = summary.get("updated_at", updated_at)
-            except:
-                pass
-
-        # 4. Construct Snapshot
-        # No local imports needed as we use globals
+        # 4. Construct Snapshot (SSOT Only)
+        # P146 Architectural Fix: OCI Generates Ops Summary. PC Pushes SSOT only.
         snapshot = {
             "env_info": {
                 "hostname": platform.node(),
                 "type": "PC",
                 "url": "http://localhost:8000"
             },
-            "stage": stage,
             "portfolio": portfolio,
             "asof_override": override,
-            "revision": updated_at, 
-            "build_id": "PC_PUSH",
+            "build_id": "PC_PUSH_SSOT",
             "synced_at": datetime.datetime.utcnow().isoformat()
         }
         

@@ -4576,11 +4576,15 @@ async def submit_execution_record_api(
             _exec_mode = _summ.get("manual_loop", {}).get("mode", "LIVE")
         except Exception:
             pass
+
     try:
         from app.utils.portfolio_normalize import load_asof_override
-        if load_asof_override().get("enabled", False):
+        override_data = load_asof_override()
+        if override_data.get("enabled", False):
             _exec_mode = "DRY_RUN"
-    except Exception:
+        logger.info(f"[DEBUG] Submit Record: exec_mode={_exec_mode} override={override_data} summary_mode={_summ.get('manual_loop', {}).get('mode') if '_summ' in locals() else 'N/A'}")
+    except Exception as e:
+        logger.error(f"[DEBUG] Submit Record Logic Error: {e}")
         pass
 
     token = payload.get("confirm_token", "")
