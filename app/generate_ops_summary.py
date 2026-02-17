@@ -44,7 +44,7 @@ CONTRACT5_LATEST = BASE_DIR / "reports" / "ops" / "contract5" / "latest" / "ai_r
 
 # Output paths
 SUMMARY_DIR = BASE_DIR / "reports" / "ops" / "summary"
-SUMMARY_LATEST = SUMMARY_DIR / "ops_summary_latest.json"
+SUMMARY_LATEST = SUMMARY_DIR / "latest" / "ops_summary_latest.json"
 SUMMARY_SNAPSHOTS_DIR = SUMMARY_DIR / "snapshots"
 
 # Risk Window Configuration (D-P.52)

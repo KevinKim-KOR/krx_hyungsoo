@@ -26,6 +26,9 @@ ALLOWED_JSONL_FILES = [
 
 ALLOWED_JSON_PATTERNS = [
     r"^reports/ops/scheduler/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
+    # P146 Ops Summary
+    r"^reports/ops/summary/latest/ops_summary_latest\.json$",
+    r"^reports/ops/summary/snapshots/[a-zA-Z0-9_\-\.]+\.json$",
     r"^reports/ops/push/postmortem/postmortem_latest\.json$",
     r"^reports/ops/secrets/self_test_latest\.json$",
     r"^reports/ops/push/outbox/snapshots/[a-zA-Z0-9_\-\.]+\.json$",

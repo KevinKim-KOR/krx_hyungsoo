@@ -17,7 +17,7 @@ from app.utils.portfolio_normalize import load_asof_override
 router = APIRouter()
 
 BASE_DIR = Path(__file__).parent.parent
-SUMMARY_FILE = BASE_DIR / "reports" / "ops" / "summary" / "ops_summary_latest.json"
+SUMMARY_FILE = BASE_DIR / "reports" / "ops" / "summary" / "latest" / "ops_summary_latest.json"
 
 @router.get("/operator")
 async def get_operator_ui():
@@ -96,7 +96,7 @@ async def get_operator_dashboard():
     # We construct these based on known latest paths which are standard.
     # Ref Validator needs to allow these.
     artifacts = {
-        "summary": "reports/ops/summary/ops_summary_latest.json",
+        "summary": "reports/ops/summary/latest/ops_summary_latest.json",
         "order_plan": "reports/live/order_plan/latest/order_plan_latest.json",
         "export": "reports/live/order_plan_export/latest/order_plan_export_latest.json",
         "prep": "reports/live/execution_prep/latest/execution_prep_latest.json",
