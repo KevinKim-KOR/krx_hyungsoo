@@ -68,6 +68,7 @@ async def get_ssot_snapshot():
         "portfolio": portfolio,
         "asof_override": override,
         "revision": updated_at, # Use updated_at as revision for now
+        "ops_summary": summary if "summary" in locals() else {}, # P146 Only: Full Ops Summary Sync
         "build_id": get_build_id(),
         "synced_at": datetime.utcnow().isoformat()
     }

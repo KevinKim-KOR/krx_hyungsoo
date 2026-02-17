@@ -58,7 +58,13 @@ async def pull_from_oci(timeout_seconds: int = Query(120, description="OCI Timeo
             if new_override:
                 ASOF_OVERRIDE_PATH.parent.mkdir(parents=True, exist_ok=True)
                 ASOF_OVERRIDE_PATH.write_text(json.dumps(new_override, indent=2, ensure_ascii=False), encoding="utf-8")
-        
+
+            # Update Ops Summary (P146 fix for PC Visibility)
+            new_summary = snapshot.get("ops_summary")
+            if new_summary and new_summary.get("rows"): # Basic validation
+                OPS_SUMMARY_PATH.parent.mkdir(parents=True, exist_ok=True)
+                OPS_SUMMARY_PATH.write_text(json.dumps(new_summary, indent=2, ensure_ascii=False), encoding="utf-8")
+         
         except Exception as e:
              raise HTTPException(status_code=500, detail=f"Local Write Failed: {e}")
              
