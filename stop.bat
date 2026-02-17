@@ -7,18 +7,20 @@ echo KRX Alertor (Observer) 종료 - Phase C
 echo ========================================
 echo.
 
-echo [1/2] 포트 8000 (백엔드) 프로세스 종료 중...
+echo [1/2] 서비스 종료 (Backend:8000, Bridge:8001, Cockpit:8501)...
 set "found=0"
 
-:: 1. Uvicorn/Python 프로세스 강제 종료 (포트 8000 사용 중인 것)
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') do (
-    echo    - PID %%a 종료...
-    taskkill /F /PID %%a >nul 2>&1
-    set "found=1"
+:: Listen Port 찾아서 종료 (8000, 8001, 8501)
+for %%p in (8000 8001 8501) do (
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%%p ^| findstr LISTENING') do (
+        echo    - Port %%p PID %%a 종료...
+        taskkill /F /PID %%a >nul 2>&1
+        set "found=1"
+    )
 )
 
 if %found%==0 (
-    echo    - 실행 중인 서버(Port 8000)가 없거나 이미 종료되었습니다.
+    echo    - 실행 중인 서버가 이미 정리되었습니다.
 ) else (
     echo    - 종료 완료.
 )

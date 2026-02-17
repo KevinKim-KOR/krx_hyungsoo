@@ -10,6 +10,13 @@
 ## Daily Routine (Mon-Fri)
 
 ### 1. Check Status (PC)
+#### 1-A. System Health (Cockpit)
+- Open Cockpit (`http://localhost:8501`).
+- Check Sidebar **"System Health"**:
+  - Latency: Green (<100ms).
+  - Sync Timeout: Check constraint (default 120s).
+
+#### 1-B. Flight Status (CLI)
 ```powershell
 .\deploy\pc\flight_status.ps1
 ```
@@ -45,18 +52,28 @@ bash deploy/oci/manual_loop_prepare.sh
 - **Constraint**: Do not touch other items.
 
 ### 6. Draft Record (PC) - *Only if Trade Day*
+
+**Option A: Dashboard (Recommended)**
+1. Open `http://localhost:8000/dashboard`.
+2. Click **"Generate Draft (Server)"**.
+3. Review Preview.
+4. **Submit via Dashboard**:
+   - Enter `Token`.
+   - Click "Submit Draft".
+
+**Option B: CLI (Legacy)**
 ```powershell
 .\deploy\pc\generate_record_template.ps1
 # Edit draft: Ticket/Export의 주문 목록/plan_id/linkage는 절대 수정하지 말 것.
 # 실행한 1개 주문만 EXECUTED로 표기.
 ```
 
-### 7. Push Draft (PC -> OCI) - *Only if Trade Day*
+### 7. Push Draft (PC -> OCI) - *Only if Option B used*
 ```powershell
 .\deploy\pc\push_record_draft.ps1
 ```
 
-### 8. Submit Record (OCI) - *Only if Trade Day*
+### 8. Submit Record (OCI) - *Only if Option B used*
 ```bash
 bash deploy/oci/submit_record_from_incoming.sh
 # Enter Token

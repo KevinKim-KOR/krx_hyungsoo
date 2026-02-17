@@ -10,6 +10,25 @@ import subprocess
 import sys
 import requests
 import time
+
+# P146.9 Configuration
+FAST_TIMEOUT = 10     # Status checks
+SLOW_TIMEOUT = 150    # Sync/Push/Pull
+
+def check_backend_health():
+    """Check connectivity and latency to Local Backend."""
+    t0 = time.time()
+    health = {"status": "UNKNOWN", "latency_ms": -1}
+    try:
+        # Use SSOT endpoint for health check
+        r = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
+        latency = int((time.time() - t0) * 1000)
+        status = "OK" if r.status_code == 200 else f"ERR_{r.status_code}"
+        health = {"status": status, "latency_ms": latency}
+    except Exception as e:
+        health = {"status": "FAIL", "latency_ms": -1, "error": str(e)}
+    return health
+
 import os
 import json
 
@@ -115,6 +134,19 @@ def run_script(script_path):
         return "", str(e), -1
 
 # UI
+
+# Sidebar: Health Check (P146.9)
+st.sidebar.title("🛡️ System Health")
+if st.sidebar.button("Check Connectivity 💓"):
+    h = check_backend_health()
+    status_icon = "🟢" if h["status"] == "OK" else "🔴"
+    st.sidebar.metric("Local API Latency", f"{h['latency_ms']} ms", delta=status_icon)
+    if h["status"] != "OK":
+        st.sidebar.error(f"Status: {h['status']}")
+        if "error" in h: st.sidebar.caption(h["error"])
+        
+    st.sidebar.caption(f"Timeouts: {FAST_TIMEOUT}s / {SLOW_TIMEOUT}s")
+
 st.title("🚀 KRX Strategy Cockpit V1.7")
 
 # REPLAY MODE CONTROLLER
@@ -163,10 +195,10 @@ with st.expander("⚙️ System Mode Settings", expanded=is_replay):
                     "asof_kst": override_cfg.get("asof_kst"),
                     "simulate_trade_day": override_cfg.get("simulate_trade_day", False)
                 }
-                requests.post("http://localhost:8000/api/settings/mode", json=payload, timeout=5)
+                requests.post("http://localhost:8000/api/settings/mode", json=payload, timeout=FAST_TIMEOUT)
                 
                 # 2. READ-BACK
-                res = requests.get("http://localhost:8000/api/settings/mode", timeout=5)
+                res = requests.get("http://localhost:8000/api/settings/mode", timeout=FAST_TIMEOUT)
                 oci_cfg = res.json()
                 
                 # 3. VERIFY
@@ -214,7 +246,7 @@ with tab_ops:
     error_msg = ""
     
     try:
-        res = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=2)
+        res = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
         if res.status_code == 200:
             ssot_snapshot = res.json()
             backend_ok = True
@@ -265,12 +297,13 @@ with tab_ops:
         st.caption(f"Revision: {ssot_snapshot.get('revision', 'N/A')}")
         
     with sc2:
+        pull_timeout = st.number_input("Timeout (sec)", value=120, min_value=30, step=30, key="pull_timeout_input")
         if st.button("📥 PULL from OCI"):
-            with st.spinner("Pulling from OCI..."):
+            with st.spinner(f"Pulling from OCI (Timeout: {pull_timeout}s)..."):
                 try:
                     # Call PC Proxy API
                     # Note: OCI_BACKEND_URL is used by backend, not frontend directly usually, but proxy handles it.
-                    r = requests.post("http://localhost:8000/api/sync/pull", timeout=10)
+                    r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": pull_timeout}, timeout=pull_timeout + 10)
                     if r.status_code == 200:
                         st.success("PULL Success! Local updated.")
                         time.sleep(1)
@@ -290,7 +323,7 @@ with tab_ops:
                 with st.spinner("Pushing to OCI..."):
                     try:
                         # Push local snapshot to OCI
-                        r = requests.post("http://localhost:8000/api/sync/push", json={"token": push_token}, timeout=10)
+                        r = requests.post("http://localhost:8000/api/sync/push", json={"token": push_token}, timeout=SLOW_TIMEOUT)
                         if r.status_code == 200:
                             st.success("PUSH Success! OCI updated.")
                             time.sleep(1)
@@ -308,7 +341,7 @@ with tab_ops:
     if st.button("▶️ Run Auto Ops Cycle"):
          try:
              # Trigger Ops
-             requests.post("http://localhost:8000/api/ops/summary/regenerate?confirm=true", timeout=5)
+             requests.post("http://localhost:8000/api/ops/summary/regenerate?confirm=true", timeout=FAST_TIMEOUT)
              st.toast("Auto Ops Triggered")
              time.sleep(1)
              st.rerun()
@@ -692,7 +725,7 @@ with tab_port_edit:
                  cached_token = st.session_state.get("push_token_input")
                  if cached_token:
                      try:
-                        requests.post("http://localhost:8000/api/sync/push", json={"token": cached_token}, timeout=5)
+                        requests.post("http://localhost:8000/api/sync/push", json={"token": cached_token}, timeout=SLOW_TIMEOUT)
                         st.success("✅ Portfolio Pushed to OCI!")
                      except Exception as e:
                         st.error(f"Push Failed: {e}")

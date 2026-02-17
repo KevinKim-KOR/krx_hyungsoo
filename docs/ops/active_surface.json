@@ -96,7 +96,9 @@
         "reports/live/reco/latest/reco_latest.json",
         "docs/contracts/contract_live_cycle_receipt_v1.md",
         "app/run_live_cycle.py",
-        "reports/live/cycle/latest/live_cycle_latest.json"
+        "reports/live/cycle/latest/live_cycle_latest.json",
+        "docs/contracts/contract_sync_v1.md",
+        "docs/contracts/contract_dashboard_api_v1.md"
     ],
     "active_endpoints": [
         "/api/recon/summary",
@@ -155,7 +157,14 @@
         "/api/reco/latest",
         "/api/reco/regenerate",
         "/api/live/cycle/run",
-        "/api/live/cycle/latest"
+        "/api/live/cycle/latest",
+        "/api/sync/pull",
+        "/api/sync/push",
+        "/api/ssot/snapshot",
+        "/api/settings/mode",
+        "/api/operator/dashboard/draft",
+        "/api/operator/dashboard/draft/submit",
+        "/api/operator/ticket/regenerate"
     ],
     "forbidden_paths": [
         "_archive/**"

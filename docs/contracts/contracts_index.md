@@ -120,3 +120,14 @@
 | 1.0 | 2026-01-03 | 초기 버전 (Phase C-S.0) |
 | 2.0 | 2026-01-03 | Ticket, Execution, Push, Worker 관련 계약 추가 (Phase C-P.6.0) |
 | 3.0 | 2026-01-03 | Safety & Receipt 계약 추가 (Phase C-P.11) |
+| 4.0 | 2026-02-17 | Interface Contracts (Sync/Dashboard) 추가 (P146.8/9) |
+
+---
+
+## Interface Contracts (P146.8/9)
+
+| 스키마명 | 문서 경로 | 설명 |
+|----------|-----------|------|
+| `SSOT_SYNC_V1` | [contract_sync_v1.md](contract_sync_v1.md) | PC↔OCI 동기화 API |
+| `DASHBOARD_API_V1` | [contract_dashboard_api_v1.md](contract_dashboard_api_v1.md) | Operator Dashboard API |
+

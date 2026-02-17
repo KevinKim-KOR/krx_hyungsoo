@@ -92,3 +92,12 @@ UI와 백엔드는 이 단일 파일을 통해 모든 감시/알림 설정을 �
 ## 5. Migration Guide
 - 기존 `SPIKE_SETTINGS_V1` (`state/spike_settings/latest/*`)은 Deprecated 되며, `SETTINGS_V1`으로 마이그레이션 됩니다.
 - 백엔드는 기존 API 요청이 들어올 경우 `SETTINGS_V1`의 `spike` 섹션과 매핑하여 처리 가능해야 합니다.
+
+---
+
+## 6. Related API Endpoints (P146.8)
+
+### 6.1 Execution Mode Control
+- **GET /api/settings/mode**: 현재 실행 모드 조회 (Live/Replay, AsOf, SimDay)
+- **POST /api/settings/mode**: 실행 모드 변경 및 OCI 동기화 (Push via `api/sync`).
+
