@@ -4563,6 +4563,7 @@ async def submit_execution_record_api(
     """
     Submit Execution Record - P146.8B: exec_mode-aware token validation.
     DRY_RUN: token optional. LIVE: requires export confirm_token match.
+    (P146.9: Verified DRY_RUN bypass logic availability)
     """
     if not confirm:
         return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
