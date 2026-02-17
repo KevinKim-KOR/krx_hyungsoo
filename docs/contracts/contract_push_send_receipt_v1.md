@@ -40,9 +40,9 @@
   "error_class": null,
   "error_message_sanitized": null,
   "evidence_refs": [
-    "reports/ops/evidence/index/evidence_index_latest.json",
-    "reports/ops/push/send/send_latest.json",
-    "reports/ops/push/outbox/outbox_latest.json"
+    "reports/ops/evidence/index/latest/evidence_index_latest.json",
+    "reports/ops/push/send/latest/send_latest.json",
+    "reports/ops/push/outbox/latest/outbox_latest.json"
   ]
 }
 ```
@@ -144,7 +144,7 @@ if "bot" in error_msg.lower() and len(error_msg) > 50:
 | 경로 | 용도 | 방식 |
 |------|------|------|
 | `state/push/send_receipts.jsonl` | 발송 로그 | Append-only |
-| `reports/ops/push/send/send_latest.json` | 최신 발송 | Atomic Write |
+| `reports/ops/push/send/latest/send_latest.json` | 최신 발송 | Atomic Write |
 | `reports/ops/push/send/snapshots/*.json` | 스냅샷 | Append-only |
 
 ---

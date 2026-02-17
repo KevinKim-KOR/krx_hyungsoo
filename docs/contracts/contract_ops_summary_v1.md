@@ -98,7 +98,7 @@
       "code": "EVIDENCE_HEALTH_WARN",
       "severity": "WARN",
       "message": "1 check has warning",
-      "evidence_refs": ["reports/ops/evidence/health/health_latest.json"]
+      "evidence_refs": ["reports/ops/evidence/health/latest/health_latest.json"]
     }
   ]
 }
@@ -146,7 +146,7 @@
 
 | 경로 | 용도 | 방식 |
 |------|------|------|
-| `reports/ops/summary/ops_summary_latest.json` | 최신 요약 | Atomic Write |
+| `reports/ops/summary/latest/ops_summary_latest.json` | 최신 요약 | Atomic Write |
 | `reports/ops/summary/snapshots/*.json` | 스냅샷 | Append-only |
 
 ---

@@ -83,7 +83,7 @@
 
 | 경로 | 용도 |
 |------|------|
-| `reports/ops/secrets/self_test_latest.json` | 최신 결과 (overwrite) |
+| `reports/ops/secrets/latest/self_test_latest.json` | 최신 결과 (overwrite) |
 | `reports/ops/secrets/snapshots/self_test_*.json` | 스냅샷 (append-only) |
 
 ---

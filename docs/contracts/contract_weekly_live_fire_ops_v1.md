@@ -45,9 +45,9 @@
     "sender_enable_after": false
   },
   "evidence_refs": {
-    "send_latest": "reports/ops/push/send/send_latest.json",
+    "send_latest": "reports/ops/push/send/latest/send_latest.json",
     "send_receipts": "state/push/send_receipts.jsonl",
-    "postmortem_latest": "reports/ops/push/postmortem/postmortem_latest.json"
+    "postmortem_latest": "reports/ops/push/postmortem/latest/postmortem_latest.json"
   }
 }
 ```

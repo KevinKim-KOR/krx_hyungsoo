@@ -25,7 +25,7 @@ Push 메시지 렌더링 프리뷰 스키마를 정의합니다.
   "schema": "PUSH_RENDER_PREVIEW_V1",
   "preview_id": "uuid",
   "asof": "2026-01-07T01:00:00",
-  "source_outbox_ref": "reports/ops/push/outbox/outbox_latest.json",
+  "source_outbox_ref": "reports/ops/push/outbox/latest/outbox_latest.json",
   "formatter_ref": "app/utils/push_formatter.py",
   "channels_evaluated": ["CONSOLE", "TELEGRAM", "SLACK", "EMAIL"],
   "observed_gate_mode": "MOCK_ONLY",
@@ -110,7 +110,7 @@ Push 메시지 렌더링 프리뷰 스키마를 정의합니다.
 
 | 경로 | 용도 | 방식 |
 |------|------|------|
-| `reports/ops/push/preview/preview_latest.json` | 최신 프리뷰 | Atomic Overwrite |
+| `reports/ops/push/preview/latest/preview_latest.json` | 최신 프리뷰 | Atomic Overwrite |
 | `reports/ops/push/preview/snapshots/preview_*.json` | 스냅샷 | Append-only |
 
 ---

@@ -80,8 +80,8 @@
 | 경로 | 용도 |
 |------|------|
 | `state/push/push_delivery_receipts.jsonl` | Append-only 결정 로그 |
-| `reports/ops/push/push_delivery_latest.json` | 최신 결정 스냅샷 |
-| `reports/ops/push/console_out_latest.json` | 콘솔 출력 내용 |
+| `reports/ops/push/latest/push_delivery_latest.json` | 최신 결정 스냅샷 |
+| `reports/ops/push/latest/console_out_latest.json` | 콘솔 출력 내용 |
 
 ---
 

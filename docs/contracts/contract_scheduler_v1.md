@@ -26,7 +26,7 @@
   "cwd": "/path/to/krx_alertor_modular",
   "failure_policy": "LOG_AND_EXIT",
   "artifacts_written": [
-    "reports/ops/daily/ops_report_latest.json",
+    "reports/ops/daily/latest/ops_report_latest.json",
     "reports/ops/daily/snapshots/ops_run_*.json"
   ],
   "depends_on": [

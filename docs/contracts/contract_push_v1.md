@@ -28,7 +28,7 @@ Push 생성기는 **오직 아래 파일들만** 읽을 수 있습니다:
 | `reports/phase_c/latest/recon_daily.jsonl` | 일별 상세 | ✅ |
 | `reports/phase_c/latest/report_human.json` | Human Report | ✅ |
 | `reports/phase_c/latest/report_ai.json` | AI Report | ✅ |
-| `reports/tuning/gatekeeper_decision_latest.json` | Gatekeeper 결정 | ⚠️ Optional |
+| `reports/tuning/latest/gatekeeper_decision_latest.json` | Gatekeeper 결정 | ⚠️ Optional |
 
 ---
 

@@ -81,7 +81,7 @@ Push 발송 예정본(Outbox)의 스키마를 정의합니다.
 
 | 경로 | 용도 | 방식 |
 |------|------|------|
-| `reports/ops/push/outbox/outbox_latest.json` | 최신 Outbox | Atomic Overwrite |
+| `reports/ops/push/outbox/latest/outbox_latest.json` | 최신 Outbox | Atomic Overwrite |
 | `reports/ops/push/outbox/snapshots/outbox_*.json` | 스냅샷 | Append-only |
 
 ### Atomic Write 절차
