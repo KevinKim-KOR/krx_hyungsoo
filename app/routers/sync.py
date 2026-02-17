@@ -61,7 +61,7 @@ async def pull_from_oci(timeout_seconds: int = Query(120, description="OCI Timeo
 
             # Update Ops Summary (P146 fix for PC Visibility)
             new_summary = snapshot.get("ops_summary")
-            if new_summary and new_summary.get("rows"): # Basic validation
+            if new_summary and (new_summary.get("rows") or new_summary.get("schema")): # Basic validation
                 OPS_SUMMARY_PATH.parent.mkdir(parents=True, exist_ok=True)
                 OPS_SUMMARY_PATH.write_text(json.dumps(new_summary, indent=2, ensure_ascii=False), encoding="utf-8")
          

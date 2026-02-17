@@ -13,6 +13,7 @@ cmd /c "%~dp0stop.bat" >nul 2>&1
 timeout /t 2 >nul
 
 echo [1/4] 백엔드 서버 시작 (Port 8000)...
+set "OCI_BACKEND_URL=http://localhost:8001"
 echo.
 
 :: 프로젝트 루트로 이동

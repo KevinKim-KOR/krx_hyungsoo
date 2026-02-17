@@ -348,8 +348,25 @@ with tab_ops:
          except Exception as e:
              st.error(f"Trigger Failed: {e}")
              
-    # 3. Next Actions & Artifacts (Keep existing)
-    # ...
+    # 3. System Connectivity (Main Block Bottom)
+    st.divider()
+    st.markdown("#### 🔌 System Connectivity")
+    if st.button("Check Connectivity 💓", key="conn_check_main"):
+        h = check_backend_health()
+        status_icon = "🟢" if h["status"] == "OK" else "🔴"
+        
+        c_lat, c_tout = st.columns(2)
+        c_lat.metric("Backend Latency", f"{h['latency_ms']} ms", delta=status_icon)
+        
+        # Timeout Info
+        disp_timeout = st.session_state.get("sync_timeout", 60)
+        c_tout.caption(f"Settings: [Status {FAST_TIMEOUT}s] [Sync {disp_timeout}s]")
+        
+        if h["status"] != "OK":
+            st.error(f"Status: {h['status']}")
+
+    # End of Ops Tab
+
 
 # TAB 1: Parameters
 with tab_main:
@@ -819,17 +836,5 @@ with tab_review:
         q_text = "\n".join([f"- {q}" for q in review_data.get("questions", [])])
         st.text_area("Questions", q_text, height=150)
 
-# Sidebar Footer: Connectivity (Always Visible at Bottom)
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔌 System Connectivity")
-if st.sidebar.button("Check Connectivity 💓", key="conn_check_sidebar"):
-    h = check_backend_health()
-    status_icon = "🟢" if h["status"] == "OK" else "🔴"
-    st.sidebar.metric("Backend Latency", f"{h['latency_ms']} ms", delta=status_icon)
-    if h["status"] != "OK":
-        st.sidebar.error(f"Status: {h['status']}")
-    
-    # Use session state or default for timeout display
-    disp_timeout = st.session_state.get("sync_timeout", 60)
-    st.sidebar.caption(f"Timeouts: {FAST_TIMEOUT}s / {disp_timeout}s")
+
 
