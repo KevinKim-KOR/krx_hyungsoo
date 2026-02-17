@@ -98,4 +98,31 @@ async def update_ssot_snapshot(
         ASOF_OVERRIDE_PATH.parent.mkdir(parents=True, exist_ok=True)
         ASOF_OVERRIDE_PATH.write_text(json.dumps(new_override, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    # 3. Update Ops Summary (Stage) - P146.9 Fix
+    # This allows OCI Dash to reflect PC Stage (e.g. AWAITING_RECORD_SUBMIT)
+    new_stage = snapshot.get("stage")
+    new_revision = snapshot.get("revision")
+    
+    if new_stage and OPS_SUMMARY_PATH.exists():
+        try:
+            summary = json.loads(OPS_SUMMARY_PATH.read_text(encoding="utf-8"))
+            # Handle V1 schema (rows vs direct dict)
+            is_rows = "rows" in summary
+            row = summary["rows"][0] if is_rows else summary
+            
+            # Update Stage
+            if "manual_loop" not in row:
+                row["manual_loop"] = {}
+            row["manual_loop"]["stage"] = new_stage
+            
+            # Update Revision
+            if new_revision:
+                summary["updated_at"] = new_revision
+                
+            # Save
+            OPS_SUMMARY_PATH.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:
+            print(f"[WARN] Failed to update Ops Summary Stage: {e}")
+            pass
+
     return {"status": "OK", "message": "SSOT updated successfully", "revision": snapshot.get("revision")}
