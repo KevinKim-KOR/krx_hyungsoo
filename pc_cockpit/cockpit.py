@@ -340,9 +340,9 @@ with tab_ops:
     # ... (Keep existing Auto Ops logic, minimal changes)
     if st.button("▶️ Run Auto Ops Cycle"):
          try:
-             # Trigger Ops on OCI (Execution Plane)
+             # Trigger Ops on OCI (Execution Plane) - Live Cycle (Reco -> Plan -> Summary)
              oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
-             requests.post(f"{oci_url}/api/ops/summary/regenerate?confirm=true", timeout=FAST_TIMEOUT)
+             requests.post(f"{oci_url}/api/live/cycle/run?confirm=true", timeout=SLOW_TIMEOUT)
              st.toast("Auto Ops Triggered on OCI")
              time.sleep(1)
              st.rerun()
