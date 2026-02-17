@@ -135,17 +135,8 @@ def run_script(script_path):
 
 # UI
 
-# Sidebar: Health Check (P146.9)
-st.sidebar.title("🛡️ System Health")
-if st.sidebar.button("Check Connectivity 💓"):
-    h = check_backend_health()
-    status_icon = "🟢" if h["status"] == "OK" else "🔴"
-    st.sidebar.metric("Local API Latency", f"{h['latency_ms']} ms", delta=status_icon)
-    if h["status"] != "OK":
-        st.sidebar.error(f"Status: {h['status']}")
-        if "error" in h: st.sidebar.caption(h["error"])
-        
-    st.sidebar.caption(f"Timeouts: {FAST_TIMEOUT}s / {SLOW_TIMEOUT}s")
+# Sidebar: Health Check moved to bottom
+
 
 st.title("🚀 KRX Strategy Cockpit V1.7")
 
@@ -291,47 +282,53 @@ with tab_ops:
     st.divider()
     st.markdown("#### 🔄 SSOT Synchronization")
     
-    sc1, sc2, sc3 = st.columns([1, 1, 2])
-    with sc1:
-        st.caption(f"Last Sync: {ssot_snapshot.get('synced_at', 'N/A')}")
-        st.caption(f"Revision: {ssot_snapshot.get('revision', 'N/A')}")
+    # UI Layout: Configure First, Then Action
+    c_set, c_act = st.columns([1, 2])
+    
+    with c_set:
+        st.caption("Settings")
+        sync_timeout = st.number_input("Timeout (sec)", value=60, min_value=30, step=30, key="sync_timeout_input")
+        push_token = st.text_input("Push Token", type="password", key="push_token_input", label_visibility="visible", placeholder="Required for PUSH")
         
-    with sc2:
-        pull_timeout = st.number_input("Timeout (sec)", value=120, min_value=30, step=30, key="pull_timeout_input")
-        if st.button("📥 PULL from OCI"):
-            with st.spinner(f"Pulling from OCI (Timeout: {pull_timeout}s)..."):
-                try:
-                    # Call PC Proxy API
-                    # Note: OCI_BACKEND_URL is used by backend, not frontend directly usually, but proxy handles it.
-                    r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": pull_timeout}, timeout=pull_timeout + 10)
-                    if r.status_code == 200:
-                        st.success("PULL Success! Local updated.")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error(f"PULL Failed: {r.text}")
-                except Exception as e:
-                    st.error(f"PULL Error: {e}")
-
-    with sc3:
-        # Token for PUSH
-        push_token = st.text_input("Token", type="password", key="push_token_input", label_visibility="collapsed", placeholder="Token for PUSH")
-        if st.button("📤 PUSH to OCI (Force Overlay)"):
-            if not push_token:
-                st.warning("Token required for PUSH")
-            else:
-                with st.spinner("Pushing to OCI..."):
+    with c_act:
+        st.caption(f"Status: {ssot_snapshot.get('synced_at', 'N/A')} (Rev: {ssot_snapshot.get('revision', 'N/A')})")
+        
+        col_pull, col_push = st.columns(2)
+        
+        with col_pull:
+             if st.button("📥 PULL from OCI", use_container_width=True):
+                with st.spinner(f"Pulling (Timeout: {sync_timeout}s)..."):
                     try:
-                        # Push local snapshot to OCI
-                        r = requests.post("http://localhost:8000/api/sync/push", json={"token": push_token}, timeout=SLOW_TIMEOUT)
+                        r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
                         if r.status_code == 200:
-                            st.success("PUSH Success! OCI updated.")
+                            st.success("PULL OK")
                             time.sleep(1)
                             st.rerun()
                         else:
-                            st.error(f"PUSH Failed: {r.text}")
+                            st.error(f"Fail: {r.text}")
                     except Exception as e:
-                        st.error(f"PUSH Error: {e}")
+                        st.error(f"Error: {e}")
+
+        with col_push:
+             if st.button("📤 PUSH to OCI", use_container_width=True):
+                if not push_token:
+                    st.warning("Token Required!")
+                else:
+                    with st.spinner(f"Pushing (Timeout: {sync_timeout}s)..."):
+                        try:
+                            # Apply Timeout to PUSH too
+                            r = requests.post("http://localhost:8000/api/sync/push", 
+                                              json={"token": push_token}, 
+                                              params={"timeout_seconds": sync_timeout},
+                                              timeout=sync_timeout + 5)
+                            if r.status_code == 200:
+                                st.success("PUSH OK")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(f"Fail: {r.text}")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
 
     st.divider()
 
@@ -819,3 +816,17 @@ with tab_review:
         st.markdown("### ❓ Ask AI (Copy & Paste)")
         q_text = "\n".join([f"- {q}" for q in review_data.get("questions", [])])
         st.text_area("Questions", q_text, height=150)
+
+# Sidebar Footer: Connectivity (Moved to Bottom)
+st.sidebar.divider()
+st.sidebar.markdown("### 🔌 System Connectivity")
+if st.sidebar.button("Check Connectivity 💓"):
+    h = check_backend_health()
+    status_icon = "🟢" if h["status"] == "OK" else "🔴"
+    st.sidebar.metric("Local API Latency", f"{h['latency_ms']} ms", delta=status_icon)
+    if h["status"] != "OK":
+        st.sidebar.error(f"Status: {h['status']}")
+        if "error" in h: st.sidebar.caption(h["error"])
+        
+    current_timeout = st.session_state.get("sync_timeout_input", 60)
+    st.sidebar.caption(f"Timeouts: {FAST_TIMEOUT}s / {current_timeout}s")
