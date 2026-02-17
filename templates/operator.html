@@ -364,12 +364,12 @@
                 <!-- 3. Token & Submit -->
                 <div style="background: #252526; padding: 15px; border-radius: 6px; border: 1px solid #444;">
                     <label style="color: #4ec9b0; font-size: 0.9em; font-weight: bold;">3. SUBMIT DRAFT</label>
-                    <p style="font-size: 0.8em; color: #888; margin: 5px 0 10px 0;">
+                    <p id="draft-token-hint" style="font-size: 0.8em; color: #888; margin: 5px 0 10px 0;">
                         ℹ️ Token is the <code>confirm_token</code> found in the <b>TICKET</b> or <b>EXPORT</b> artifact.
                     </p>
 
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="position: relative;">
+                        <div style="position: relative;" id="draft-token-container">
                             <input type="password" id="draft-token" placeholder="Enter Token"
                                 style="padding: 8px 30px 8px 10px; width: 220px; background: #1e1e1e; border: 1px solid #555; color: white;">
                             <span onclick="toggleDraftToken()"
@@ -471,6 +471,11 @@
                 } else {
                     draftActions.style.display = 'none';
                     document.getElementById('draft-status').textContent = "";
+                }
+
+                // P146.8: Update Token UI
+                if (data.required_actions && data.required_actions.submit_draft) {
+                    updateDraftTokenUI(data.required_actions.submit_draft);
                 }
 
                 // P146.5: Plan ID Consistency Bar + Button Gating
@@ -702,13 +707,35 @@
             input.type = input.type === "password" ? "text" : "password";
         }
 
+        // P146.8: Global Token State
+        let draftTokenRequired = true;
+
+        function updateDraftTokenUI(req) {
+            draftTokenRequired = req.token_required;
+            const container = document.getElementById('draft-token-container');
+            const hint = document.getElementById('draft-token-hint');
+            const tokenInput = document.getElementById('draft-token');
+
+            if (draftTokenRequired) {
+                container.style.display = 'flex';
+                tokenInput.placeholder = 'Enter Token';
+                hint.innerHTML = `ℹ️ Required: <b>${req.token_source}</b> (Hint: ${req.token_hint_masked})`;
+                hint.style.color = '#f48771'; // Warning color for attention
+            } else {
+                container.style.display = 'none';
+                tokenInput.value = ''; // Clear
+                hint.innerHTML = `ℹ️ <b>DRY RUN Mode</b>: No token required. (Auto-filled by server)`;
+                hint.style.color = '#4ec9b0'; // Safe color
+            }
+        }
+
         async function submitDraftServer() {
             const token = document.getElementById('draft-token').value;
             const statusDiv = document.getElementById('draft-submit-status');
             const previewContent = document.getElementById('draft-preview').value;
 
-            if (!token) {
-                statusDiv.textContent = "❌ Token is required";
+            if (draftTokenRequired && !token) {
+                statusDiv.textContent = "❌ Token is required (LIVE Mode)";
                 return;
             }
 

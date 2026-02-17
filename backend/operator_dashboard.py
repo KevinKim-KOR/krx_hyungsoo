@@ -246,6 +246,31 @@ async def get_operator_dashboard():
         "detail": "OK" if plan_id_match else f"MISMATCH: ticket={ticket_plan_id}, export={export_plan_id}"
     }
 
+    # P146.8A: Submit Draft token requirements
+    def _mask_token(t: str) -> str:
+        if not t or len(t) < 8:
+            return t or ""
+        return t[:4] + "..." + t[-4:]
+
+    _token_required = exec_mode != "DRY_RUN"
+    _export_token = None
+    try:
+        ep = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+        if ep.exists():
+            ed = json.loads(ep.read_text(encoding="utf-8"))
+            _export_token = ed.get("human_confirm", {}).get("confirm_token") or ed.get("source", {}).get("confirm_token")
+    except:
+        pass
+
+    required_actions = {
+        "submit_draft": {
+            "token_required": _token_required,
+            "token_source": "NONE_DRY_RUN" if not _token_required else "EXPORT_CONFIRM_TOKEN",
+            "token_hint_masked": _mask_token(_export_token) if _token_required else "",
+            "plan_id": export_plan_id
+        }
+    }
+
     return {
         "asof": asof,
         "stage": stage,
@@ -256,6 +281,7 @@ async def get_operator_dashboard():
         "exec_mode": exec_mode,
         "trace": trace_info,
         "draft_exists": draft_exists, # P146.2
-        "plan_id_check": plan_id_check  # P146.5
+        "plan_id_check": plan_id_check,  # P146.5
+        "required_actions": required_actions  # P146.8
     }
 

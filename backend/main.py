@@ -2795,6 +2795,106 @@ def get_manual_execution_ticket_latest():
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
+# === P146.8C: Ticket MD Regenerator ===
+
+def _regen_ticket_md(ticket: dict):
+    """Regenerate the ticket .md file from patched ticket JSON data."""
+    try:
+        md_path = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.md"
+        src = ticket.get("source", {})
+        summ = ticket.get("summary", {})
+        gr = ticket.get("guardrails", {})
+        
+        if ticket.get("decision") == "BLOCKED":
+            lines = [
+                f"# Manual Execution Ticket (BLOCKED)",
+                f"**Plan ID**: {src.get('plan_id', 'UNKNOWN')}",
+                f"**AsOf**: {ticket.get('asof', '')}",
+                f"**Status**: ❌ BLOCKED",
+                f"**Reason**: {ticket.get('reason', '')}",
+            ]
+        else:
+            lines = [
+                f"# Manual Execution Ticket",
+                f"**Plan ID**: {src.get('plan_id', 'UNKNOWN')}",
+                f"**AsOf**: {ticket.get('asof', '')}",
+                f"**Token**: `{src.get('confirm_token', '')}`",
+                "",
+                "## Summary",
+                f"- **Status**: {gr.get('decision', '')} {gr.get('violated', '')}",
+                f"- **Orders**: {summ.get('total_orders', 0)} (Notional: {summ.get('total_notional', 0):,.0f} KRW)",
+                f"- **Cash**: {summ.get('cash_before', 0):,.0f} -> ~{summ.get('cash_after_est', 0):,.0f} KRW",
+                "",
+                "## Copy-Paste (HTS/MTS)",
+                "```text",
+                f"{ticket.get('copy_paste', '')}",
+                "```",
+                "",
+                "## Orders to Execute",
+                "| Side | Ticker | Qty | Limit | Check |",
+                "|---|---|---|---|---|",
+            ]
+            for o in ticket.get("orders", []):
+                qty = o.get("qty", 0)
+                limit = o.get("limit_price", 0)
+                lines.append(f"| {o.get('side', '')} | {o.get('ticker', '')} | {qty:,} | {limit:,} | [ ] |")
+            lines.append("")
+            lines.append("> **Operator Instruction**: Copy input string, paste to HTS. Check each order as executed.")
+
+        md_path.write_text("\n".join(lines), encoding="utf-8")
+        logger.info(f"P146.8C: Ticket MD regenerated with plan_id={src.get('plan_id')}")
+    except Exception as e:
+        logger.warning(f"P146.8C: Ticket MD regen failed: {e}")
+
+
+# === P146.8D: System Mode Settings Sync ===
+
+class SystemModeRequest(BaseModel):
+    enabled: bool  # Replay Enabled
+    mode: Optional[str] = "LIVE"
+    asof_kst: Optional[str] = None
+    simulate_trade_day: Optional[bool] = False
+    token: Optional[str] = None
+
+@app.post("/api/settings/mode", summary="Set System Mode (Replay/Live)")
+def set_system_mode(req: SystemModeRequest):
+    """Update asof_override_latest.json from PC Cockpit."""
+    # Token check for LIVE enable? 
+    # For now, we allow overwrite if it's just setting replay mode.
+    # If disabling replay (going to LIVE), maybe we should be careful, 
+    # but the requirement says PUSH + read-back.
+    
+    try:
+        path = BASE_DIR / "state" / "runtime" / "asof_override_latest.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        data = {
+            "enabled": req.enabled,
+            "mode": req.mode or ("REPLAY" if req.enabled else "LIVE"),
+            "asof_kst": req.asof_kst,
+            "simulate_trade_day": req.simulate_trade_day,
+            "updated_at": datetime.now().isoformat()
+        }
+        
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        logger.info(f"System Mode Updated: {data}")
+        return {"result": "OK", "data": data}
+        
+    except Exception as e:
+        logger.error(f"Failed to set system mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/settings/mode", summary="Get System Mode")
+def get_system_mode():
+    """Read current asof_override_latest.json"""
+    path = BASE_DIR / "state" / "runtime" / "asof_override_latest.json"
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except:
+            pass
+    return {"enabled": False, "mode": "LIVE"}
+
 # === P146.7: Sync Cycle ===
 
 class SyncCycleRequest(BaseModel):
@@ -2868,9 +2968,15 @@ def sync_cycle(req: SyncCycleRequest):
                     td["source"]["plan_id"] = export_plan_id
                     td["source"]["_aligned_from"] = "export"
                     td["source"]["_original_prep_plan_id"] = old_id
+                    # P146.8C: Also align confirm_token from export
+                    export_token = export_data.get("human_confirm", {}).get("confirm_token") or export_data.get("source", {}).get("confirm_token")
+                    if export_token:
+                        td["source"]["confirm_token"] = export_token
                     TICKET_LATEST_FILE.write_text(
                         json.dumps(td, indent=2, ensure_ascii=False), encoding="utf-8"
                     )
+                    # P146.8C: Regenerate MD with patched values
+                    _regen_ticket_md(td)
                     actions["ticket_regenerated"] = True
                     logger.info(f"P146.7 Sync: ticket plan_id {old_id} -> {export_plan_id}")
 
@@ -2920,7 +3026,7 @@ def sync_cycle(req: SyncCycleRequest):
 
 @app.post("/api/manual_execution_ticket/regenerate", summary="Manual Execution Ticket 재생성")
 def regenerate_manual_execution_ticket(confirm: bool = Query(False)):
-    """Regenerate Manual Execution Ticket (P113-A / P146.6) - Aligns to Export plan_id"""
+    """Regenerate Manual Execution Ticket (P113-A / P146.6/8) - Aligns to Export"""
     if not confirm:
         raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
         
@@ -2933,7 +3039,7 @@ def regenerate_manual_execution_ticket(confirm: bool = Query(False)):
         
         data = json.loads(TICKET_LATEST_FILE.read_text(encoding="utf-8"))
         
-        # P146.6: Patch plan_id to match Export (SSOT alignment)
+        # P146.6/8: Patch plan_id & token to match Export (SSOT alignment)
         export_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
         if export_path.exists():
             try:
@@ -2944,14 +3050,24 @@ def regenerate_manual_execution_ticket(confirm: bool = Query(False)):
                     data["source"]["plan_id"] = export_plan_id
                     data["source"]["_aligned_from"] = "export"
                     data["source"]["_original_prep_plan_id"] = old_plan_id
+                    
+                    # P146.8C: Copy confirm_token
+                    export_token = export_data.get("human_confirm", {}).get("confirm_token") or export_data.get("source", {}).get("confirm_token")
+                    if export_token:
+                        data["source"]["confirm_token"] = export_token
+
                     # Save patched ticket back
                     TICKET_LATEST_FILE.write_text(
                         json.dumps(data, indent=2, ensure_ascii=False),
                         encoding="utf-8"
                     )
-                    logger.info(f"P146.6: Ticket plan_id patched {old_plan_id} -> {export_plan_id}")
+                    
+                    # P146.8C: Regenerate MD
+                    _regen_ticket_md(data)
+                    
+                    logger.info(f"P146.8: Ticket regen patched {old_plan_id} -> {export_plan_id}")
             except Exception as e:
-                logger.warning(f"P146.6: Export read failed, keeping prep plan_id: {e}")
+                logger.warning(f"P146.8: Export read failed, keeping prep plan_id: {e}")
         
         return data
             
@@ -4445,27 +4561,63 @@ async def submit_execution_record_api(
     confirm: bool = Query(False)
 ):
     """
-    Submit Execution Record - 실행 기록 제출 (Human Token)
-    Accepts arbitrary dict to support flexible schema, but requires confirm_token.
+    Submit Execution Record - P146.8B: exec_mode-aware token validation.
+    DRY_RUN: token optional. LIVE: requires export confirm_token match.
     """
     if not confirm:
         return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
-        
-    token = payload.get("confirm_token")
-    if not token:
-        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "confirm_token is missing in payload"})
 
-    if not token:
-        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "confirm_token is missing in payload"})
+    # P146.8B: Determine exec_mode
+    _exec_mode = "LIVE"
+    if OPS_SUMMARY_PATH.exists():
+        try:
+            _summ = json.loads(OPS_SUMMARY_PATH.read_text(encoding="utf-8"))
+            _exec_mode = _summ.get("manual_loop", {}).get("mode", "LIVE")
+        except Exception:
+            pass
+    try:
+        from app.utils.portfolio_normalize import load_asof_override
+        if load_asof_override().get("enabled", False):
+            _exec_mode = "DRY_RUN"
+    except Exception:
+        pass
+
+    token = payload.get("confirm_token", "")
+
+    if _exec_mode == "DRY_RUN":
+        # DRY_RUN: accept any token (including empty)
+        if not token:
+            token = "DRY_RUN_AUTO"
+            payload["confirm_token"] = token
+    else:
+        # LIVE: require token and validate against export confirm_token
+        if not token:
+            return JSONResponse(status_code=403, content={
+                "result": "BLOCKED",
+                "reason": "TOKEN_MISMATCH",
+                "expected_source": "EXPORT_CONFIRM_TOKEN",
+                "plan_id": payload.get("linkage", {}).get("export_plan_id"),
+                "message": "LIVE 모드에서는 confirm_token이 필요합니다."
+            })
+        # Validate against export's token
+        try:
+            _exp_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+            if _exp_path.exists():
+                _exp = json.loads(_exp_path.read_text(encoding="utf-8"))
+                _expected = _exp.get("human_confirm", {}).get("confirm_token") or _exp.get("source", {}).get("confirm_token")
+                if _expected and token != _expected:
+                    return JSONResponse(status_code=403, content={
+                        "result": "BLOCKED",
+                        "reason": "TOKEN_MISMATCH",
+                        "expected_source": "EXPORT_CONFIRM_TOKEN",
+                        "plan_id": _exp.get("source", {}).get("plan_id"),
+                        "message": "토큰이 Export의 confirm_token과 일치하지 않습니다."
+                    })
+        except Exception:
+            pass
 
     try:
         from app.generate_manual_execution_record import generate_record
-        print(f"DEBUG: Submitting Record Payload Keys: {list(payload.keys())}")
-        if "items" in payload:
-             print(f"DEBUG: Items Type: {type(payload['items'])}")
-             if isinstance(payload['items'], list) and len(payload['items']) > 0:
-                 print(f"DEBUG: First Item Type: {type(payload['items'][0])}")
-        
         generate_record(token, payload)
         
         # Read result
@@ -4475,9 +4627,6 @@ async def submit_execution_record_api(
         return {"result": "OK", "message": "Record submitted"}
         
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"DEBUG: EXCEPTION IN BACKEND: {e}")
         logger.error(f"Record Submit failed: {e}")
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 

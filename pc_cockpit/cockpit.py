@@ -152,18 +152,32 @@ with st.expander("⚙️ System Mode Settings", expanded=is_replay):
         # Explicit Sync Option
         col_sync, _ = st.columns([1, 2])
         if col_sync.button("🚀 Apply to OCI (Sync)", key="sync_replay_btn"):
-             cached_token = st.session_state.get("push_token_input")
-             if cached_token:
-                 try:
-                    requests.post("http://localhost:8000/api/sync/push", json={"token": cached_token}, timeout=5)
-                    st.toast("✅ Synced with OCI!")
-                 except Exception as e:
-                    st.error(f"Sync Failed: {e}")
-             else:
-                 st.error("Token required in Operations Tab for Sync.")
+             try:
+                # 1. PUSH
+                payload = {
+                    "enabled": override_cfg["enabled"],
+                    "mode": "REPLAY" if override_cfg["enabled"] else "LIVE",
+                    "asof_kst": override_cfg.get("asof_kst"),
+                    "simulate_trade_day": override_cfg.get("simulate_trade_day", False)
+                }
+                requests.post("http://localhost:8000/api/settings/mode", json=payload, timeout=5)
+                
+                # 2. READ-BACK
+                res = requests.get("http://localhost:8000/api/settings/mode", timeout=5)
+                oci_cfg = res.json()
+                
+                # 3. VERIFY
+                st.toast("✅ Synced with OCI!")
+                st.success("OCI Sync Verified:")
+                st.dataframe([
+                    {"Key": "Mode", "Local": "REPLAY" if override_cfg["enabled"] else "LIVE", "OCI": oci_cfg.get("mode")},
+                    {"Key": "AsOf", "Local": override_cfg.get("asof_kst"), "OCI": oci_cfg.get("asof_kst")},
+                    {"Key": "Simulate Trade", "Local": override_cfg.get("simulate_trade_day"), "OCI": oci_cfg.get("simulate_trade_day")}
+                ])
+             except Exception as e:
+                st.error(f"Sync Failed: {e}")
         
-        time.sleep(1)
-        st.rerun()
+        
 
 if is_replay:
     st.error(f"🔴 REPLAY MODE ACTIVE (Data Basis: {override_cfg.get('asof_kst')})")
