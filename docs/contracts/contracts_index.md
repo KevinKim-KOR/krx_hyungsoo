@@ -12,7 +12,7 @@
 
 | 순위 | 문서 | 설명 |
 |:---:|---|---|
-| **1** | **[STATE_LATEST.md](../handoff/STATE_LATEST.md)** | 시스템 현재 상태 및 운영 구조 (Handoff) |
+| **1** | **[STATE_LATEST.md](../SSOT/STATE_LATEST.md)** | 시스템 현재 상태 및 운영 구조 (Handoff) |
 | **2** | **[contract_sync_v1.md](contract_sync_v1.md)** | PC↔OCI 동기화 (SSOT, Status, Artifact) |
 | **3** | **[contract_operator_api_v1.md](contract_operator_api_v1.md)** | OCI Operator Dashboard API (Draft/Submit) |
 | **4** | **[contract_ops_summary_v1.md](contract_ops_summary_v1.md)** | 운영 상태 요약 (Single Pane of Glass) |

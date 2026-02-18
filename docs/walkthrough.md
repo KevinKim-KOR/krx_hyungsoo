@@ -81,3 +81,10 @@ A major documentation refactoring was performed to align with the "PC Control / 
 ### 4. Operational Docs
 - **Active Surface**: Updated `active_surface.json` with new paths and endpoints.
 - **Smoke Test**: Rewrote `smoke_test.md` with 6 UI-First scenarios.
+
+## SSOT Consolidation (Final Cleanup)
+
+- **Structure**: Removed `docs/handoff/` directory. All definitive documentation is now under `docs/SSOT/`.
+- **New Protocol**: strict "Documentation Update Protocol" added to `PROJECT_CONSTITUTION.md`.
+    - Every session must update `SSOT`, `walkthrough.md`, and `task.md`.
+- **References**: Updated `contracts_index.md` to point to `docs/SSOT/STATE_LATEST.md`.

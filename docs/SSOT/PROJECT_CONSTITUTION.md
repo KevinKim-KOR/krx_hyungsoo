@@ -47,6 +47,13 @@
 
 ---
 
-## 6. 검증 원칙
-“JSON PASS”만으로 끝내지 않는다.
-→ **UI에서 실제 버튼/화면 플로우로 재현 가능한 확인 절차**가 포함되어야 “PASS”다.
+## 6. ---
+
+## 7. Documentation Update Protocol (Mandatory)
+작업(Session)이 종료될 때마다 반드시 아래 3가지 문서를 최신화하여 커밋한다.
+
+1. **SSOT (`docs/SSOT/`)**: 변경된 팩트/결정사항 반영 (`STATE_LATEST`, `DECISIONS`).
+2. **Walkthrough (`docs/walkthrough.md`)**: 해당 세션의 작업 로그 및 변경사항 요약.
+3. **Task (`docs/task.md`)**: 진행률 및 Next Step 업데이트.
+
+> **Commit Rule**: 소스 코드뿐만 아니라, 위 문서들이 함께 업데이트되어야 "작업 완료"로 간주한다.

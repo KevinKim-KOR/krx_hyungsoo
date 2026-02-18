@@ -42,3 +42,18 @@
         - [x] P1 Contracts: Settings, Order Plan Export, Execution Gate
         - [x] Index: `contracts_index.md` Update
         - [x] Deprecation: Mark legacy runbooks as DEPRECATED
+
+## Future Roadmap (Master Plan)
+
+- [ ] **P147: Operational Stability**
+    - [ ] `stop.bat` clean shutdown verification.
+    - [ ] `connect_oci.bat` auto-reconnect logic.
+    - [ ] Goal: 5 consecutive days without CLI intervention.
+
+- [ ] **P148: Governance & Parameters**
+    - [ ] UI-based Parameter Governance (LLM Tuning Loop).
+    - [ ] Audit trail for parameter changes.
+
+- [ ] **P149: UI Refinement**
+    - [ ] Archive legacy `dashboard/` (React).
+    - [ ] Full transition to Streamlit Cockpit.
