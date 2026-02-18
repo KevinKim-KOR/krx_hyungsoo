@@ -1,4 +1,6 @@
-# Runbook: Live Micro-Pilot V2 (2026-02-09 ~ 02-13)
+# Runbook: Live Micro Pilot V2 (DEPRECATED)
+
+> ⚠️ **DEPRECATED**: superseded by [runbook_ui_daily_ops_v1.md](runbook_ui_daily_ops_v1.md) (2026-02-09 ~ 02-13)
 
 ## Goal
 **5-Day Live Execution** with strict constraints.

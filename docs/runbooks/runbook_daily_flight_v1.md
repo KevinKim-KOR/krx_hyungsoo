@@ -1,4 +1,6 @@
-# Daily Flight Checklist V1 (P116)
+# Runbook: Daily Flight V1 (DEPRECATED)
+
+> ⚠️ **DEPRECATED**: superseded by [runbook_ui_daily_ops_v1.md](runbook_ui_daily_ops_v1.md)Checklist V1 (P116)
 
 **목표**: 10~15분 내 "정석 루틴" 완료 (PC → OCI → Manual Loop → Done)
 **원칙**: Token Lock 준수 (파일 저장 금지), Fail-Closed (에러 시 중단)

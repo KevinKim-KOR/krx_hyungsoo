@@ -1,65 +1,80 @@
-# MANUAL_EXECUTION_RECORD_V1 Contract
+# Contract: Manual Execution Record V1
 
-## Overview
-This contract defines the schema for the **Manual Execution Record**.
-It documents the *result* of the manual execution performed by the human operator.
-It is the "Receipt" or "Flight Log" of the manual operation.
+**Version**: 1.1 (Added Draft Concept)
+**Date**: 2026-02-18
+**Status**: ACTIVE
 
-## Schema: MANUAL_EXECUTION_RECORD_V1
+---
 
-| Field | Type | Description |
-|---|---|---|
-| schema | String | Fixed "MANUAL_EXECUTION_RECORD_V1" |
-| asof | ISO8601 | UTC Timestamp of recording |
-| source_refs | Object | Reference paths |
-| source_refs.execution_prep_ref | String | Path to Prep |
-| source_refs.ticket_ref | String | Path to Ticket |
-| source_refs.order_plan_export_ref | String | Path to Export |
-| linkage | Object | ID Linkage for Integrity |
-| linkage.bundle_id | String | Strategy Bundle ID |
-| linkage.plan_id | String | Order Plan ID |
-| linkage.export_id | String | Export ID (if available, or uses Plan ID) |
-| linkage.ticket_id | String | Ticket Source ID |
-| record_version | Integer | Record Version (1=First, >1=Correction) |
-| execution_result | String | EXECUTED \| PARTIAL \| NOT_EXECUTED \| CANCELED \| UNKNOWN |
-| operator_proof | Object | Proof of manual work |
-| operator_proof.filled_at | ISO8601 | Time of execution completion |
-| operator_proof.method | String | HTS \| MTS \| OTHER |
-| operator_proof.evidence_note | String | Short note |
-| dedupe | Object | Anti-duplication |
-| dedupe.idempotency_key | String | Unique Key (ticket_id + filled_at + plan_id) |
-| decision | String | EXECUTED \| PARTIAL \| SKIPPED \| BLOCKED |
-| summary | Object | Execution stats |
-| summary.orders_total | Integer | Total orders in ticket |
-| summary.executed_count | Integer | Number of orders executed |
-| summary.skipped_count | Integer | Number of orders skipped |
-| note | String | Human readable note |
-| fills | Array | Fill Details (Optional) |
-| fills[].ticker | String | Ticker |
-| fills[].side | String | BUY/SELL |
-| fills[].qty_filled | Number | Filled Qty |
-| fills[].avg_price | Number | Average Price |
-| reconciliation | Object | Helper stats for diffs |
-| reconciliation.missing_orders_count | Integer | Orders in plan but not in input |
-| reconciliation.diff_summary | String | Summary of diffs |
-| items | Array | Execution details per order |
-| items[].ticker | String | Ticker symbol |
-| items[].side | String | BUY/SELL |
-| items[].requested_qty | Number | Original Qty |
-| items[].status | String | EXECUTED \| SKIPPED |
-| items[].executed_qty | Number | Actual executed Qty |
-| items[].note | String | Human note (optional) |
-| reason | String | Overall reason |
-| reason_detail | String | Detail |
-| evidence_refs | Array | Supporting docs |
+## 1. 개요
 
-## Logic
-- **Input**: User Submission (JSON Body), `MANUAL_EXECUTION_TICKET_V1` (Latest), `EXECUTION_PREP_V1` (Latest).
-- **Validation**:
-    - Verify Token matches Prep/Ticket.
-    - Check Ticket consistency.
-- **Output**: Immutable JSON Record.
+사람(Operator)의 매매 실행 결과를 기록하는 최종 영수증입니다.
+P146부터 **Draft(초안) -> Submit(제출) -> Record(기록)**의 3단계 워크플로우를 따릅니다.
 
-## File Paths
-- **Latest**: `reports/live/manual_execution_record/latest/manual_execution_record_latest.json`
-- **Snapshots**: `reports/live/manual_execution_record/snapshots/manual_execution_record_YYYYMMDD_HHMMSS.json`
+---
+
+## 2. Workflow & Schema
+
+### Phase 1: Draft (Preview)
+UI에서 "매매 승인" 버튼을 누르기 전, 서버가 생성하는 미리보기 객체입니다.
+
+- **Schema**: `MANUAL_EXECUTION_DRAFT_V1`
+- **Fields**:
+  - `plan_id`: 대상 Order Plan ID
+  - `ticket_ref`: 참조 Ticket 경로
+  - `action`: `EXECUTE` / `CANCEL`
+  - `reason`: `MANUAL_CONFIRM` (기본값)
+  - `token_required`: `true` (LIVE) / `false` (DRY_RUN)
+
+### Phase 2: Submit (Action)
+Operator가 Draft를 확인하고 토큰과 함께 제출합니다.
+
+- **Payload**:
+  ```json
+  {
+      "draft": { ...Draft Object... },
+      "token": "safe-token-123"
+  }
+  ```
+
+### Phase 3: Record (Immutable Result)
+서버가 검증 후 생성하는 영구 불변 기록입니다.
+
+- **Schema**: `MANUAL_EXECUTION_RECORD_V1`
+- **Path**: `reports/live/manual_execution_record/latest/manual_execution_record_latest.json`
+
+---
+
+## 3. Schema: MANUAL_EXECUTION_RECORD_V1
+
+```json
+{
+  "schema": "MANUAL_EXECUTION_RECORD_V1",
+  "asof": "2026-02-18T09:10:00",
+  "record_id": "REC-20260218-001",
+  "linkage": {
+    "plan_id": "PLAN-20260218-XYZ",
+    "ticket_ref": "reports/live/ticket/latest/ticket_latest.md",
+    "export_ref": "reports/live/order_plan_export/latest/order_plan_export_latest.json"
+  },
+  "execution_result": "EXECUTED",
+  "operator_proof": {
+    "token_hash": "sha256:...",
+    "mode": "LIVE"
+  },
+  "summary": {
+    "total_orders": 5,
+    "executed": 5,
+    "skipped": 0
+  }
+}
+```
+
+---
+
+## 4. Token & Blocking Rules
+
+1. **Ticket == Export**: `Draft.plan_id`와 `Export.plan_id`가 일치해야 합니다.
+2. **Token Match**:
+   - **LIVE**: 제출된 `token`이 `Export.confirm_token`과 일치해야 합니다. (불일치 시 403)
+   - **DRY_RUN**: 토큰이 없으면 서버가 `MOCK_TOKEN`을 자동 주입합니다.

@@ -1,4 +1,6 @@
-# Runbook: Live Micro-Pilot V1 (1-Trade Test)
+# Runbook: Live Micro Pilot V1 (DEPRECATED)
+
+> ⚠️ **DEPRECATED**: superseded by [runbook_ui_daily_ops_v1.md](runbook_ui_daily_ops_v1.md) (1-Trade Test)
 
 ## Goal
 Verify the end-to-end Manual Execution Pipeline with **Real Brokerage Interaction** by executing **exactly one trade** (buying 1 unit of a low-cost ETF) while keeping the rest of the portfolio unchanged.

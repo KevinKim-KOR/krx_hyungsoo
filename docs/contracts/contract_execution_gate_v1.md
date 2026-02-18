@@ -1,84 +1,58 @@
 # Contract: Execution Gate V1
 
-**Version**: 1.0
-**Date**: 2026-01-03
-**Status**: LOCKED
+**Version**: 1.1 (Replay vs Dry Run)
+**Date**: 2026-02-18
+**Status**: ACTIVE
 
 ---
 
 ## 1. 개요
 
 Execution Gate는 **워커의 실행 모드를 제어**하는 게이트웨이입니다.
-
-> 🚫 **C-P.4 Restriction**: `REAL_ENABLED` 모드로의 진입은 API 레벨에서 차단됩니다.
+P146부터 **Data Mode (Replay)**와 **Execution Mode (Gate)**의 개념이 명확히 분리되었습니다.
 
 ---
 
-## 2. 스키마 정의
+## 2. Mode 개념 분리 (Orthogonal)
 
-### EXECUTION_GATE_V1
+### 2.1 Data Mode (Source)
+- **LIVE**: 현재 시점의 데이터를 사용. (오늘)
+- **REPLAY**: 과거 특정 시점의 데이터를 사용. (Backtest)
+
+### 2.2 Execution Mode (Action)
+- **MOCK_ONLY**: 아무것도 하지 않음 (Sleep 1s).
+- **DRY_RUN**: 로직 검증만 수행. (실제 주문 전송 차단)
+- **REAL_ENABLED**: 실제 주문 전송 허용. (C-P.4 제약 준수)
+
+### 2.3 조합 예시
+- **Shadow Mode**: `LIVE` + `DRY_RUN` (실시간 데이터로 로직 검증)
+- **Simulation**: `REPLAY` + `DRY_RUN` (과거 데이터로 백테스트)
+- **Real Trading**: `LIVE` + `REAL_ENABLED` (실전 매매)
+
+> ⚠️ **REPLAY + REAL_ENABLED** 조합은 논리적으로 불가능하며 차단됩니다.
+
+---
+
+## 3. Schema: EXECUTION_GATE_V1
 
 ```json
 {
   "schema": "EXECUTION_GATE_V1",
-  "mode": "MOCK_ONLY | DRY_RUN | REAL_ENABLED",
-  "updated_at": "2026-01-03T16:00:00+09:00",
+  "mode": "MOCK_ONLY", 
+  "updated_at": "2026-02-18T10:00:00+09:00",
   "updated_by": "local_api",
-  "reason": "Gate 변경 사유"
+  "reason": "Initial Boot"
 }
 ```
 
-| Key | Type | 필수 | 생성 주체 | 설명 |
-|-----|------|------|-----------|------|
-| `mode` | enum | ✅ | Client | 실행 모드 |
-| `updated_at` | ISO8601 | ✅ | **Server** | 변경 시각 |
-| `updated_by` | string | ✅ | **Server** | 변경 주체 (고정: "local_api") |
-| `reason` | string | ✅ | Client | 변경 사유 |
-
 ---
 
-## 3. Mode 정의
-
-| Mode | 설명 | 동작 |
-|------|------|------|
-| `MOCK_ONLY` | 모의 실행 (Default) | `time.sleep` + `[MOCK_ONLY]` 메시지 |
-| `DRY_RUN` | 검증 실행 | Payload 검증 + `[DRY_RUN]` 메시지 |
-| `REAL_ENABLED` | 실제 실행 | **C-P.4에서 금지됨** |
-
----
-
-## 4. 저장소 경로
-
-| 경로 | 용도 |
-|------|------|
-| `state/execution_gate.json` | Gate 상태 저장 |
-
-**Default Policy**: 파일 부재 시 `MOCK_ONLY`로 간주
-
----
-
-## 5. Transition Rules
+## 4. Transition Rules
 
 | From | To | 허용 |
-|------|----|------|
+|---|---|---|
 | `MOCK_ONLY` | `DRY_RUN` | ✅ |
-| `DRY_RUN` | `MOCK_ONLY` | ✅ |
+| `DRY_RUN` | `REAL_ENABLED` | ❌ **API Blocked** (Manual Approval via File Only) |
 | Any | `MOCK_ONLY` | ✅ (Emergency Stop) |
-| Any | `REAL_ENABLED` | ❌ **400 Bad Request** |
 
----
-
-## 6. API Endpoints
-
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/api/execution_gate` | 현재 Gate 상태 조회 |
-| POST | `/api/execution_gate` | Gate 모드 변경 |
-
----
-
-## 7. 버전 히스토리
-
-| 버전 | 날짜 | 변경 내용 |
-|------|------|-----------|
-| 1.0 | 2026-01-03 | 초기 버전 (Phase C-P.4) |
+> **Real Enable**: `REAL_ENABLED` 모드는 API로 설정할 수 없으며, **파일 기반 2단계 인증**(Two-Key Approval)을 통해서만 진입 가능합니다.

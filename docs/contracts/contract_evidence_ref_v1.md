@@ -1,138 +1,85 @@
 # Contract: Evidence Ref V1
 
-**Version**: 1.0
-**Date**: 2026-01-10
-**Status**: LOCKED
+**Version**: 1.1 (Expanded Allowlist & Viewer Rules)
+**Date**: 2026-02-18
+**Status**: ACTIVE
 
 ---
 
 ## 1. 개요
 
-스냅샷/영수증의 `*_ref` 필드를 안전하게 해석하고 증거를 반환하는 Resolver 규칙을 정의합니다.
-
-> 🔒 **Read-Only**: 상태 변경 금지
-> 
-> 🔒 **Allowlist Resolver**: 규칙 밖 ref는 400 INVALID_REF
-> 
-> 🔒 **이중 방어**: Regex 검증 + Path Normalization
+증거(Evidence) 파일의 경로 검증 및 읽기 규칙을 정의합니다.
+P146에서 `latest/` 디렉토리 지원 및 비-JSON 파일(MD/TXT) 처리가 강화되었습니다.
 
 ---
 
-## 2. Ref 타입 정의
+## 2. Ref 타입 및 패턴 (Allowlist)
 
-### 2-A. JSONL Line Refs
+### 2.1 JSONL Line Refs
+- **Pattern**: `state/{kind}/{filename}.jsonl:line{N}`
+- **Allowlist**:
+  - `state/tickets/ticket_receipts.jsonl`
+  - `state/tickets/ticket_results.jsonl`
+  - `state/push/send_receipts.jsonl`
 
-| 타입 | 패턴 | 예시 |
-|------|------|------|
-| receipt_ref | `state/tickets/ticket_receipts.jsonl:line\d+` | `state/tickets/ticket_receipts.jsonl:line5` |
-| results_ref | `state/tickets/ticket_results.jsonl:line\d+` | `state/tickets/ticket_results.jsonl:line54` |
-| send_receipt_ref | `state/push/send_receipts.jsonl:line\d+` | `state/push/send_receipts.jsonl:line3` |
+### 2.2 Artifact Latest Refs (JSON)
+- **Pattern**: `reports/{category}/{module}/latest/{filename}_latest.json`
+- **Allowlist**:
+  - `reports/live/**/latest/*_latest.json` (Reco, OrderPlan, Export, Ticket)
+  - `reports/ops/summary/latest/ops_summary_latest.json`
+  - `reports/ops/evidence/**/latest/*_latest.json`
+  - `reports/tuning/latest/*_latest.json`
 
-**정규식:**
-```regex
-^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$
-```
-
-**규칙:**
-- `:lineN` 형식만 허용 (N >= 1, 정수만)
-- 허용된 JSONL 파일 3개만 접근 가능
-
-### 2-B. JSON Refs
-
-| 타입 | 패턴 | 예시 |
-|------|------|------|
-| ops_run_snapshot_ref | `reports/ops/scheduler/snapshots/<id>.json` | `reports/ops/scheduler/snapshots/ops_run_20260110_090500.json` |
-| postmortem_latest_ref | `reports/ops/push/postmortem/postmortem_latest.json` | - |
-| self_test_latest_ref | `reports/ops/secrets/self_test_latest.json` | - |
-| outbox_snapshot_ref | `reports/ops/push/outbox/snapshots/<id>.json` | - |
-| live_fire_ref | `reports/ops/push/live_fire/live_fire_latest.json` | - |
-
-**정규식:**
-```regex
-^reports/ops/(scheduler/snapshots/[a-zA-Z0-9_\-\.]+\.json|push/postmortem/postmortem_latest\.json|secrets/self_test_latest\.json|push/outbox/snapshots/[a-zA-Z0-9_\-\.]+\.json|push/live_fire/live_fire_latest\.json)$
-```
+### 2.3 Raw Text Refs (MD/KV/CSV)
+- **Pattern**: `reports/**/latest/*.{md,txt,csv,kv}`
+- **Allowlist**:
+  - `reports/live/ticket/latest/ticket_latest.md` (Human Readable Ticket)
+  - `reports/live/export/latest/export_latest.kv`
 
 ---
 
-## 3. Resolver 규칙
+## 3. Viewer Rules (Resolver Logic)
 
-### 3-A. 1차 검증 (문자열 레벨)
+파일 확장자에 따라 읽기 방식이 달라집니다.
 
-> ⚠️ **위험 토큰 즉시 거부**
-
-- `..` 포함 → 400
-- `\` 포함 → 400
-- `://` 포함 → 400
-- `%2e`, `%2f` 등 URL 인코딩 → 400
-- 정규식 미매칭 → 400
-
-### 3-B. 2차 검증 (Path Normalization)
-
-```python
-abs_path = os.path.abspath(candidate_path)
-allowed_root = os.path.abspath(BASE_DIR)
-if not abs_path.startswith(allowed_root + os.sep):
-    # 400 INVALID_REF
-```
-
-### 3-C. JSONL Line Reading
-
-> 🔒 **전체 읽기 금지**
-
-```python
-import linecache
-line_content = linecache.getline(str(path), line_no)
-```
-
-또는:
-```python
-with open(path) as f:
-    for idx, line in enumerate(f, start=1):
-        if idx == line_no:
-            return json.loads(line)
-```
+| 확장자 | 처리 방식 | 에러 처리 (Fail-Soft) |
+|---|---|---|
+| `.json` | `json.loads()` 수행 | 파싱 실패 시 `raw_preview` (텍스트 앞부분) 반환. **500 에러 아님.** |
+| `.jsonl` | 특정 라인만 `json.loads()` | 라인 없음(404) |
+| `.md` / `.txt` | 전체 텍스트 읽기 (`read_text`) | - |
+| `.csv` / `.kv` | 전체 텍스트 읽기 | - |
 
 ---
 
-## 4. API Specification
+## 4. API Response (Unified)
 
 ### GET /api/evidence/resolve
 
-**Parameters:**
-- `ref` (query): ref 문자열
-
-**Response (Success):**
 ```json
 {
   "status": "ready",
-  "schema": "EVIDENCE_VIEW_V1",
-  "asof": "2026-01-10T09:05:00",
-  "row_count": 1,
-  "rows": [{
-    "ref": "state/tickets/ticket_receipts.jsonl:line5",
-    "data": { ... },
-    "source": {
-      "kind": "JSONL_LINE",
-      "path": "state/tickets/ticket_receipts.jsonl",
-      "line": 5
-    }
-  }],
+  "ref": "reports/live/ticket/latest/ticket_latest.md",
+  "mime_type": "text/markdown",
+  "content": "# Ticket Target ...", 
   "error": null
 }
 ```
 
-**Error Codes:**
-
-| HTTP | Code | 설명 |
-|------|------|------|
-| 400 | INVALID_REF | ref 형식 오류, 위험 토큰, 경로 탈출 |
-| 404 | NOT_FOUND | 파일/라인 없음 |
-| 500 | PARSE_ERROR | JSON 파싱 실패 (UI 깨짐 방지) |
+**JSON Parse Error (Fail-Soft) 예시**:
+```json
+{
+  "status": "partial_error",
+  "mime_type": "application/json",
+  "content": null,
+  "raw_preview": "{ \"broken_json\": ... (truncated)",
+  "error": "JSON_PARSE_ERROR"
+}
+```
 
 ---
 
-## 5. 버전 히스토리
+## 5. Security (Path Traversal)
 
-| 버전 | 날짜 | 변경 내용 |
-|------|------|-----------|
-| 1.0 | 2026-01-10 | 초기 버전 (Phase C-P.30) |
+1. **Root Jail**: 모든 경로는 프로젝트 루트 내부여야 함.
+2. **No Traversal**: `..` 포함 시 즉시 400.
+3. **Canonical Path**: `os.path.abspath`로 정규화 후 검증.
