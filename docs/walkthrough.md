@@ -88,3 +88,13 @@ A major documentation refactoring was performed to align with the "PC Control / 
 - **New Protocol**: strict "Documentation Update Protocol" added to `PROJECT_CONSTITUTION.md`.
     - Every session must update `SSOT`, `walkthrough.md`, and `task.md`.
 - **References**: Updated `contracts_index.md` to point to `docs/SSOT/STATE_LATEST.md`.
+
+## SSOT Fact Update (Pre-Handoff)
+
+- **Updated**: `docs/SSOT/STATE_LATEST.md` with 6 explicit facts:
+    1.  **Environment**: Full URLs for PC/OCI types.
+    2.  **Artifacts**: Canonical paths for `ops_summary` and `export`.
+    3.  **Token**: Explicit actions requiring `EXPORT_CONFIRM_TOKEN`.
+    4.  **Payload**: Validated `api/sync/push` payload (Portfolio, Override).
+    5.  **Stages**: 6-step transition table.
+    6.  **Restart**: `restart_backend.sh` mandate.

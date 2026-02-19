@@ -42,6 +42,10 @@
         - [x] P1 Contracts: Settings, Order Plan Export, Execution Gate
         - [x] Index: `contracts_index.md` Update
         - [x] Deprecation: Mark legacy runbooks as DEPRECATED
+    - [x] **Phase 6: SSOT Finalization (Handover)**
+        - [x] Consolidation: `docs/handoff` -> `docs/SSOT`
+        - [x] Protocol: `PROJECT_CONSTITUTION.md` Update
+        - [x] Facts: `STATE_LATEST.md` 6-point Fact Check
 
 ## Future Roadmap (Master Plan)
 
