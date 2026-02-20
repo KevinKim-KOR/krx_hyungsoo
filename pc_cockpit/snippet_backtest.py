@@ -11,7 +11,7 @@ with tab_timing:
                 out, err, code = run_script(SCRIPT_HOLDING_TIMING)
                 if code == 0:
                     st.success("Analysis Complete!")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error(f"Analysis Failed: {err}")
 

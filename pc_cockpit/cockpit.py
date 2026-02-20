@@ -503,7 +503,7 @@ with tab_reco:
                             snap_path = save_params(new_p)
                             new_fp = compute_fingerprint(new_p)
                             st.success(f"Applied & Saved! New Fingerprint: `{new_fp}`")
-                            st.experimental_rerun()
+                            st.rerun()
 
 # TAB 3: Holdings Timing
 with tab_timing:
@@ -516,7 +516,7 @@ with tab_timing:
                 out, err, code = run_script(SCRIPT_HOLDING_TIMING)
                 if code == 0:
                     st.success("Analysis Complete!")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error(f"Analysis Failed: {err}")
 
@@ -641,7 +641,7 @@ with tab_port_edit:
              KST = timezone(timedelta(hours=9))
              portfolio_data = {"updated_at": datetime.now(KST).isoformat(), "total_value": 0, "cash": 0, "holdings": {}}
              save_json(PORTFOLIO_PATH, portfolio_data)
-             st.experimental_rerun()
+             st.rerun()
     else:
         with st.form("portfolio_edit_form"):
             # Cash & Total
@@ -777,7 +777,7 @@ with tab_review:
                 out, err, code = run_script(SCRIPT_PARAM_REVIEW)
                 if code == 0:
                     st.success("Report Generated!")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error(f"Generation Failed: {err}")
     
@@ -834,7 +834,7 @@ with tab_review:
                                 st.success(f"Applied! New Fingerprint: `{new_fp}`")
                                 st.info("This change is LOCAL. Run 'Publish Bundle' (P100) when ready to deploy.")
                                 st.session_state[f"confirm_promo_{rank}"] = False
-                                st.experimental_rerun()
+                                st.rerun()
 
         # Questions
         st.markdown("### ❓ Ask AI (Copy & Paste)")
