@@ -3,6 +3,7 @@ import streamlit as st
 import json
 import hashlib
 from datetime import datetime, timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import pandas as pd
 import altair as alt
