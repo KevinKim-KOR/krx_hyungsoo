@@ -11,6 +11,8 @@ Push Message Generator (Phase C-P.1)
 import json
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Optional, Dict, Any, List
 
 BASE_DIR = Path(__file__).parent.parent
@@ -45,7 +47,7 @@ def safe_read_json(path: Path) -> Optional[Dict]:
 
 def generate_message_id() -> str:
     """Push Message ID 생성"""
-    now = datetime.now()
+    now = datetime.now(KST)
     return f"push_{now.strftime('%Y%m%d_%H%M%S')}_{now.microsecond // 1000:03d}"
 
 
@@ -66,7 +68,7 @@ def create_push_message(
         "severity": severity,
         "title_ko": title_ko,
         "body_ko": body_ko,
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "sources": sources,
         "actions": actions
     }
@@ -202,7 +204,7 @@ def run_generator():
     output = {
         "schema": "PUSH_MESSAGE_V1",
         "status": "ready",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "row_count": len(messages),
         "rows": messages,
         "error": None

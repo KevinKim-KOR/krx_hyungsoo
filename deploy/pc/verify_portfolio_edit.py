@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 PORTFOLIO_PATH = Path("state/portfolio/latest/portfolio_latest.json")
 
@@ -17,7 +19,7 @@ def verify_edit():
     # Simulate Edit
     new_cash = data.get("cash", 0) + 100
     data["cash"] = new_cash
-    data["updated_at"] = datetime.datetime.utcnow().isoformat()
+    data["updated_at"] = datetime.datetime.now(KST).isoformat()
     
     print(f"Saving New Cash: {new_cash}")
     json.dumps(data, indent=2) # Check serialization

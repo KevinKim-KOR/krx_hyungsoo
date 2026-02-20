@@ -1,6 +1,8 @@
 import argparse, json, hashlib, os
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 def sha256_file(p: Path) -> str:
     h = hashlib.sha256()
@@ -35,7 +37,7 @@ def main():
             "CAGR_like": metrics["CAGR_like"],
             "MDD": metrics["MDD"],
         },
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "generated_at": datetime.now(KST).isoformat(timespec="seconds"),
     }
 
     (run_dir / "manifest.json").write_text(

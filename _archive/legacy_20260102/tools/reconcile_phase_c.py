@@ -8,6 +8,8 @@ from pathlib import Path
 import hashlib
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # --- CONFIGURATION (Contract C-R) ---
 BASE_DIR = Path(__file__).parent.parent
@@ -187,7 +189,7 @@ def main():
             error_summary = {
                 "status": "error",
                 "schema": "RECON_SUMMARY_V1",
-                "generated_at": datetime.now().isoformat() + "Z",
+                "generated_at": datetime.now(KST).isoformat(),
                 "error": {
                     "code": "EVIDENCE_COVERAGE_REGRESSION",
                     "message_ko": f"심각: 증거 데이터 범위가 축소되었습니다. (기준: {b_min}~{b_max}, 현재: {cur_min}~{cur_max})"
@@ -223,7 +225,7 @@ def main():
             error_summary = {
                 "status": "error",
                 "schema": "RECON_SUMMARY_V1",
-                "generated_at": datetime.now().isoformat() + "Z",
+                "generated_at": datetime.now(KST).isoformat(),
                 "error": {
                     "code": "EXECUTION_OUTSIDE_EVIDENCE_COVERAGE",
                     "message_ko": f"심각: 거래 발생일이 시장 데이터 범위를 벗어났습니다. (거래: {exec_min}~{exec_max}, 시장: {ev_min}~{ev_max})"
@@ -389,7 +391,7 @@ def main():
     
     summary = {
         "schema": "RECON_SUMMARY_V1",
-        "generated_at": datetime.now().isoformat() + "Z",
+        "generated_at": datetime.now(KST).isoformat(),
         "period": { "from": "2024-01-01", "to": "2025-12-31" },
         "trade_count_policy_id": "TRADE_COUNT_POLICY_V1",
         "counts": {
@@ -421,7 +423,7 @@ def main():
             }
         },
         "provenance": {
-            "generated_at": datetime.now().isoformat() + "Z",
+            "generated_at": datetime.now(KST).isoformat(),
             "reconciler_version": "C-R.5",
             "policy_ids": ["TRADE_COUNT_POLICY_V1", "COVERAGE_BASELINE_V1", "INTEGRITY_POLICY_V1"],
             "sources": [
@@ -432,7 +434,7 @@ def main():
             ]
         },
         "provenance": {
-            "generated_at": datetime.now().isoformat() + "Z",
+            "generated_at": datetime.now(KST).isoformat(),
             "reconciler_version": "C-R.5",
             "policy_ids": ["TRADE_COUNT_POLICY_V1", "COVERAGE_BASELINE_V1", "INTEGRITY_POLICY_V1"],
             "sources": [

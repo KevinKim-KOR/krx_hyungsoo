@@ -169,7 +169,9 @@ def test_s2_replay_no_simulate():
     
     # On weekend: NO_ACTION_TODAY; on weekday: depends on state
     import datetime
-    today = datetime.datetime.now()
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
+    today = datetime.datetime.now(KST)
     if today.weekday() >= 5:  # Sat/Sun
         assert stage == "NO_ACTION_TODAY", f"Expected NO_ACTION_TODAY on weekend but got {stage}"
         print("  ✅ S2 PASS: NO_ACTION_TODAY (weekend)")

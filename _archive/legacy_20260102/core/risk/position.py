@@ -5,6 +5,8 @@ core/risk/position.py
 """
 from dataclasses import dataclass
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Optional, Dict, List
 
 @dataclass
@@ -63,7 +65,7 @@ class PositionManager:
                 code=code,
                 quantity=quantity,
                 avg_price=price,
-                last_update=datetime.now()
+                last_update=datetime.now(KST)
             )
         else:
             pos = self.positions[code]
@@ -72,7 +74,7 @@ class PositionManager:
             if new_quantity > 0:
                 pos.avg_price = total_value / new_quantity
             pos.quantity = new_quantity
-            pos.last_update = datetime.now()
+            pos.last_update = datetime.now(KST)
     
     def get_total_exposure(self) -> float:
         """총 익스포저"""

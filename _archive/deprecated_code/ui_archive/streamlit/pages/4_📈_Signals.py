@@ -8,6 +8,8 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
 import json
@@ -31,7 +33,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("현재 시간", datetime.now().strftime("%Y-%m-%d %H:%M"))
+        st.metric("현재 시간", datetime.now(KST).strftime("%Y-%m-%d %H:%M"))
     with col2:
         st.metric("현재 레짐", "상승장 📈", delta="신뢰도 95%")
     with col3:

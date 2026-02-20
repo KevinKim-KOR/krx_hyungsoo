@@ -8,6 +8,8 @@ import json
 import logging
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, Any
 
 # Root setup
@@ -62,7 +64,7 @@ def load_settings() -> Dict[str, Any]:
     # Return Default
     return {
         "schema": "SETTINGS_V1",
-        "updated_at": datetime.now().isoformat(),
+        "updated_at": datetime.now(KST).isoformat(),
         "spike": DEFAULT_SPIKE.copy(),
         "holding": DEFAULT_HOLDING.copy()
     }
@@ -85,7 +87,7 @@ def upsert_settings(new_data: Dict[str, Any], confirm: bool = False) -> Dict[str
     if "holding" in new_data:
         current["holding"].update(new_data["holding"])
         
-    current["updated_at"] = datetime.now().isoformat()
+    current["updated_at"] = datetime.now(KST).isoformat()
     current["schema"] = "SETTINGS_V1" # Enforce schema
     
     # Validation (Basic)

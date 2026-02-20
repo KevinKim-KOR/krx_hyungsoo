@@ -12,6 +12,8 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # Paths
 BASE_DIR = Path(__file__).parent.parent
@@ -26,7 +28,7 @@ def get_default_summary() -> dict:
     """Get default summary when recon_summary.json is missing"""
     return {
         "schema": "RECON_SUMMARY_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "status": "bootstrap",
         "period": {"from": "2024-01-01", "to": "2025-12-31"},
         "counts": {"L1_actions": 0, "L2_trades": 0, "L1_L2_delta": 0},
@@ -53,7 +55,7 @@ def main():
         summary = get_default_summary()
     
     # Current timestamp for asof (ensures file change evidence)
-    current_asof = datetime.now().isoformat() + "Z"
+    current_asof = datetime.now(KST).isoformat()
     
     # Extract data with defaults
     provenance = summary.get("provenance", {})

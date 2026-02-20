@@ -13,6 +13,8 @@ ui/portfolio_manager.py
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import json
 import sys
@@ -111,7 +113,7 @@ class PortfolioManager:
                 return json.load(f)
         else:
             return {
-                'last_updated': datetime.now().isoformat(),
+                'last_updated': datetime.now(KST).isoformat(),
                 'holdings': [],
                 'cash': 0,
                 'initial_capital': 10000000
@@ -119,7 +121,7 @@ class PortfolioManager:
     
     def save_portfolio(self, portfolio: dict):
         """포트폴리오 저장"""
-        portfolio['last_updated'] = datetime.now().isoformat()
+        portfolio['last_updated'] = datetime.now(KST).isoformat()
         with open(self.data_file, 'w', encoding='utf-8') as f:
             json.dump(portfolio, f, ensure_ascii=False, indent=2)
     
@@ -225,7 +227,7 @@ class PortfolioManager:
             'current_value': current_value,
             'return_amount': return_amount,
             'return_pct': return_pct,
-            'last_updated': datetime.now().isoformat()
+            'last_updated': datetime.now(KST).isoformat()
         }
         
         portfolio['holdings'].append(holding)
@@ -255,7 +257,7 @@ class PortfolioManager:
         holding['current_value'] = current_value
         holding['return_amount'] = return_amount
         holding['return_pct'] = return_pct
-        holding['last_updated'] = datetime.now().isoformat()
+        holding['last_updated'] = datetime.now(KST).isoformat()
     
     def add_purchase(self, portfolio: dict, index: int, add_quantity: float, add_price: float):
         """추가 매수 (평균 단가 자동 계산)"""
@@ -306,7 +308,7 @@ class PortfolioManager:
                 holding['current_value'] = holding['quantity'] * current_price
                 holding['return_amount'] = holding['current_value'] - holding['total_cost']
                 holding['return_pct'] = (holding['return_amount'] / holding['total_cost'] * 100) if holding['total_cost'] > 0 else 0
-                holding['last_updated'] = datetime.now().isoformat()
+                holding['last_updated'] = datetime.now(KST).isoformat()
 
 
 def main():

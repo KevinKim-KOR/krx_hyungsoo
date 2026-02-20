@@ -13,6 +13,8 @@ import tempfile
 import shutil
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, Optional, Tuple, Any
 
 from app.utils.strategy_bundle_validator import (
@@ -159,7 +161,7 @@ def regenerate_snapshot() -> Dict[str, Any]:
         }
     
     # Generate snapshot filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_filename = f"strategy_bundle_{timestamp}.json"
     snapshot_path = BUNDLE_SNAPSHOTS_DIR / snapshot_filename
     

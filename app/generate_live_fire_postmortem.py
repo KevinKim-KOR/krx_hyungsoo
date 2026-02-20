@@ -12,6 +12,8 @@ import json
 import os
 import uuid
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
 
@@ -127,7 +129,7 @@ def calculate_overall_safety_status(sender_enabled: bool, emergency_stop: bool) 
 def generate_postmortem() -> dict:
     """Live Fire Postmortem 생성"""
     event_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # 1. Gather Context
     gate_mode = get_gate_mode()
@@ -180,7 +182,7 @@ def generate_postmortem() -> dict:
     os.replace(str(tmp_file), str(POSTMORTEM_LATEST))
     
     # Snapshot
-    snapshot_name = f"postmortem_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    snapshot_name = f"postmortem_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = POSTMORTEM_SNAPSHOTS_DIR / snapshot_name
     snapshot_path.write_text(json.dumps(postmortem, ensure_ascii=False, indent=2), encoding="utf-8")
     

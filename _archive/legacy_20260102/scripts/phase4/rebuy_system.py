@@ -14,6 +14,8 @@ import sys
 import json
 import logging
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -123,7 +125,7 @@ class RebuySystem:
                 'loss_amount': loss_amount,
                 'rebuy_eligible_date': self._calculate_rebuy_eligible_date(sell_date),
                 'rebuy_status': 'waiting',  # waiting, eligible, rebuyed
-                'created_at': datetime.now().isoformat()
+                'created_at': datetime.now(KST).isoformat()
             }
             
             history.append(record)
@@ -290,7 +292,7 @@ class RebuySystem:
             return ""
         
         message = "*🔄 재매수 후보 알림*\n\n"
-        message += f"📅 {datetime.now().strftime('%Y년 %m월 %d일 %H:%M')}\n\n"
+        message += f"📅 {datetime.now(KST).strftime('%Y년 %m월 %d일 %H:%M')}\n\n"
         
         message += f"*재매수 후보 ({len(candidates)}개)*\n"
         message += "_손절 후 재진입 조건 충족_\n\n"

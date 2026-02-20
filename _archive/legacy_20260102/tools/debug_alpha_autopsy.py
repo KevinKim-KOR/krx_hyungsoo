@@ -6,6 +6,8 @@ import os
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, Any, List
 
 # Setup Utils
@@ -187,5 +189,5 @@ if __name__ == "__main__":
     start_dt = datetime.strptime(args.start, "%Y-%m-%d")
     end_dt = datetime.strptime(args.end, "%Y-%m-%d")
     
-    autopsy = AlphaAutopsy(f"debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    autopsy = AlphaAutopsy(f"debug_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}")
     autopsy.run(args.code, start_dt, end_dt, params)

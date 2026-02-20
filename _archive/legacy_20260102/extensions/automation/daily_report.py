@@ -11,6 +11,8 @@ extensions/automation/daily_report.py
 """
 
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Optional, Dict
 import logging
 import pandas as pd
@@ -390,7 +392,7 @@ class DailyReport:
 
             message_lines.append("")
             message_lines.append("=" * 40)
-            message_lines.append(f"🕒 생성 시간: {datetime.now().strftime('%H:%M:%S')}")
+            message_lines.append(f"🕒 생성 시간: {datetime.now(KST).strftime('%H:%M:%S')}")
             message_lines.append("=" * 40)
 
             message = "\n".join(message_lines)

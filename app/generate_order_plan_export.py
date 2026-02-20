@@ -9,6 +9,8 @@ import os
 import shutil
 import hashlib
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -34,11 +36,11 @@ def load_json(path: Path) -> Optional[Dict]:
 
 def generate_confirm_token(plan_id: str, count: int) -> str:
     """Generate a short hash token for human confirmation"""
-    raw = f"{plan_id}:{count}:{datetime.now().isoformat()}"
+    raw = f"{plan_id}:{count}:{datetime.now(KST).isoformat()}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 def generate_export():
-    now = datetime.now()
+    now = datetime.now(KST)
     asof_str = now.isoformat()
     
     # 1. Load Input (Order Plan)

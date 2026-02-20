@@ -17,6 +17,8 @@ import sys
 import os
 import shutil
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -54,7 +56,7 @@ def sanitize_text(text: str) -> str:
     return cleaned
 
 def generate_order_plan() -> Dict[str, Any]:
-    now = datetime.now()
+    now = datetime.now(KST)
     asof_str = now.isoformat()
     
     # 1. Load Inputs

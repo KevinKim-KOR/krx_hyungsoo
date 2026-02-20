@@ -2,6 +2,8 @@
 import json
 import requests
 import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import pandas as pd
@@ -309,7 +311,7 @@ def main():
     # 4. Save
     output_data = {
         "schema": "PARAM_SEARCH_V1",
-        "asof": datetime.datetime.utcnow().isoformat() + "Z",
+        "asof": datetime.datetime.now(KST).isoformat(),
         "universe": UNIVERSE,
         "data_source_chain": ["CACHE", "NAVER_FETCH"],
         "search_space": SEARCH_SPACE,
@@ -327,7 +329,7 @@ def main():
     (OUTPUT_DIR / "param_search_latest.json").write_text(json_str, encoding="utf-8")
     
     # Snapshot
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     (SNAPSHOT_DIR / f"param_search_{ts}.json").write_text(json_str, encoding="utf-8")
     
     print(f"Search Complete. Best Score: {best['score_0_100'] if best else 0}")

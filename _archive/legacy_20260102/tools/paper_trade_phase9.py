@@ -9,6 +9,8 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -50,7 +52,7 @@ def _load_state(path: Path, initial_capital: int) -> Dict[str, Any]:
             "last_equity": int(initial_capital),
             "meta": {
                 "initial_capital": int(initial_capital),
-                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "created_at": datetime.now(KST).isoformat(timespec="seconds"),
             },
         }
         _save_json(path, state)

@@ -7,6 +7,8 @@ Phase 2 재테스트 - 2단계: 데이터 준비
 import sys
 from pathlib import Path
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import pandas as pd
 from tqdm import tqdm
 
@@ -27,7 +29,7 @@ try:
     from pykrx import stock
     
     # 전체 ETF 목록
-    today = datetime.now().strftime('%Y%m%d')
+    today = datetime.now(KST).strftime('%Y%m%d')
     etf_list = stock.get_etf_ticker_list(today)
     
     print(f"전체 ETF 수: {len(etf_list)}개")

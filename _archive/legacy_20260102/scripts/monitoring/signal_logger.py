@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import json
 from datetime import datetime, date
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import logging
 
 # 로깅 설정
@@ -60,7 +62,7 @@ class SignalLogger:
             
             # 새 신호 추가
             signal_entry = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'type': signal_type,
                 'count': len(signals),
                 'signals': signals,

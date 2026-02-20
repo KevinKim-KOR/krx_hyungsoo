@@ -34,8 +34,9 @@ def load_json(path: Path) -> Optional[Dict]:
         return None
 
 def generate_record(input_token: str, items_data: Dict):
-    now = datetime.now(timezone.utc)
-    asof_str = now.isoformat().replace("+00:00", "Z")
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST)
+    asof_str = now.isoformat()
     
     # 1. Initialize Record
     record = {

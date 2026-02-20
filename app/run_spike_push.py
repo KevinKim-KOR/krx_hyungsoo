@@ -11,6 +11,8 @@ import json
 import os
 import random
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, List, Optional
 import hashlib
@@ -69,7 +71,7 @@ def check_cooldown(state: Dict, ticker: str, direction: str, cooldown_mins: int)
         
     last_sent = datetime.fromisoformat(last_sent_str)
     # Strict check: Must be greater than cooldown mins
-    if datetime.now() - last_sent > timedelta(minutes=cooldown_mins):
+    if datetime.now(KST) - last_sent > timedelta(minutes=cooldown_mins):
         return True
         
     return False
@@ -88,12 +90,12 @@ def update_cooldown(state: Dict, ticker: str, direction: str):
     key = f"{ticker}_{direction}"
     if "last_sent" not in state:
         state["last_sent"] = {}
-    state["last_sent"][key] = datetime.now().isoformat()
+    state["last_sent"][key] = datetime.now(KST).isoformat()
 
 
 def is_in_session(session_config: Dict) -> bool:
     """장중 여부 체크"""
-    now = datetime.now()
+    now = datetime.now(KST)
     
     # 1. Day check
     if now.weekday() not in session_config.get("days", [0,1,2,3,4]):
@@ -221,7 +223,7 @@ def run_spike_push() -> Dict:
                     should_alert = True
                 else:
                     last_sent = datetime.fromisoformat(last_sent_str)
-                    time_passed = datetime.now() - last_sent
+                    time_passed = datetime.now(KST) - last_sent
                     
                     if time_passed > timedelta(minutes=cooldown_minutes):
                         # Cooldown expired -> New Spike
@@ -337,7 +339,7 @@ def run_spike_push() -> Dict:
 
         receipt = {
             "schema": "SPIKE_PUSH_RECEIPT_V1_3",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "settings_used": settings.get("display", {}) if settings else {},
             "execution_result": receipt_status,
             "execution_reason": receipt_reason,
@@ -347,7 +349,7 @@ def run_spike_push() -> Dict:
             "alerts_log": [a["msg"] for a in alerts],
             "delivery_actual": "TELEGRAM" if sent_count > 0 else ("NONE" if not alerts else "FAILED"),
             "send_receipt": {
-                 "sent_at": datetime.now().isoformat(),
+                 "sent_at": datetime.now(KST).isoformat(),
                  "message_count": sent_count,
                  "provider": "TELEGRAM"
             }

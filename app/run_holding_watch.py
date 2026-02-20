@@ -9,6 +9,8 @@ import time
 import socket
 from pathlib import Path
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, List, Any, Optional
 
 # Root path setup
@@ -44,7 +46,7 @@ def safe_read_json(path: Path) -> Optional[Dict]:
 
 def is_in_session(session_cfg: Dict[str, str], weekdays: List[int]) -> bool:
     """Check if current time is within session (KST)"""
-    now = datetime.now()
+    now = datetime.now(KST)
     if now.weekday() not in weekdays:
         return False
         
@@ -56,7 +58,7 @@ def is_in_session(session_cfg: Dict[str, str], weekdays: List[int]) -> bool:
 
 def save_snapshot(data: Dict, latest: bool = True) -> str:
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
-    filename = f"holding_watch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    filename = f"holding_watch_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     path = SNAPSHOT_DIR / filename
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -167,7 +169,7 @@ def main():
     realert_delta = settings.get("realert_delta_pp", 1.0)
     
     now_ts = time.time()
-    now_iso = datetime.now().isoformat()
+    now_iso = datetime.now(KST).isoformat()
     
     for h in holdings:
         ticker = h["ticker"]

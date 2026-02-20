@@ -2,6 +2,8 @@
 import json
 import hashlib
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import shutil
 
@@ -155,7 +157,7 @@ def main():
     # 6. Assembly
     final_output = {
         "schema": "PARAM_REVIEW_V1",
-        "asof": datetime.utcnow().isoformat() + "Z",
+        "asof": datetime.now(KST).isoformat(),
         "baseline": baseline_info,
         "candidates": candidates,
         "recommendation": rec,
@@ -175,7 +177,7 @@ def main():
     OUTPUT_MD.write_text(md_str, encoding="utf-8")
     
     # Snapshot
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snap_path = SNAPSHOT_DIR / f"param_review_{ts}.json"
     snap_path.write_text(json_str, encoding="utf-8")
     

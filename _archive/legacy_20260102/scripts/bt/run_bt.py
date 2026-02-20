@@ -1,5 +1,7 @@
 import argparse, json, sys
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -75,7 +77,7 @@ def main():
         "benchmarks": { b: float(summary[b]) for b in loaded_bench if b in summary.index },
     }
 
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     run_dir = OUT_ROOT / f"{ts}_{strategy}"
     run_dir.mkdir(parents=True, exist_ok=True)
 

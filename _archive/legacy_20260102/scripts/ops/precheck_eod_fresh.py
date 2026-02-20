@@ -2,13 +2,15 @@
 from __future__ import annotations
 import argparse, glob, os, sys
 from datetime import datetime, timedelta, date
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
 import pandas as pd
 
 def _now_kr():
     # NAS는 Asia/Seoul이 기본일 가능성이 높지만, 안전하게 로컬 날짜 사용
-    return pd.Timestamp(datetime.now()).tz_localize(None)
+    return pd.Timestamp(datetime.now(KST)).tz_localize(None)
 
 def _load_trading_days_cache(cache_path: str) -> pd.DatetimeIndex | None:
     try:

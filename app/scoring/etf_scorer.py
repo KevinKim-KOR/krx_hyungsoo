@@ -19,6 +19,8 @@ import re
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # Project Root
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -100,8 +102,8 @@ def _fetch_naver_daily_chart(tickers: List[str]) -> Tuple[Optional[Dict], str]:
     import requests
     from datetime import datetime, timedelta
     
-    end_date = datetime.now().strftime("%Y%m%d")
-    start_date = (datetime.now() - timedelta(days=30)).strftime("%Y%m%d")
+    end_date = datetime.now(KST).strftime("%Y%m%d")
+    start_date = (datetime.now(KST) - timedelta(days=30)).strftime("%Y%m%d")
     
     results = {}
     headers = {

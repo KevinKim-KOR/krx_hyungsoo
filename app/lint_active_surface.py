@@ -7,6 +7,8 @@ import json
 import re
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 BASE_DIR = Path(__file__).parent.parent
 REPORTS_DIR = BASE_DIR / "reports"
@@ -98,7 +100,7 @@ def run_lint():
         overall = "FAIL"
     
     result = {
-        "lint_date": datetime.now().isoformat(),
+        "lint_date": datetime.now(KST).isoformat(),
         "phase": "C-S.0",
         "checks": {
             "archive_dependency": {

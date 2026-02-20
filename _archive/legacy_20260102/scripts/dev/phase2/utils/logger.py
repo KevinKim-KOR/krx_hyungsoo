@@ -6,6 +6,8 @@ Phase 2 재테스트 - 로깅 유틸리티
 import sys
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import logging
 
 
@@ -48,7 +50,7 @@ class DualLogger:
         # 시작 로그
         self.logger.info("=" * 70)
         self.logger.info(f"로그 파일: {log_file}")
-        self.logger.info(f"시작 시간: {datetime.now():%Y-%m-%d %H:%M:%S}")
+        self.logger.info(f"시작 시간: {datetime.now(KST):%Y-%m-%d %H:%M:%S}")
         self.logger.info("=" * 70)
     
     def info(self, message):
@@ -85,7 +87,7 @@ class DualLogger:
         """종료 로그"""
         self.logger.info("")
         self.logger.info("=" * 70)
-        self.logger.info(f"종료 시간: {datetime.now():%Y-%m-%d %H:%M:%S}")
+        self.logger.info(f"종료 시간: {datetime.now(KST):%Y-%m-%d %H:%M:%S}")
         self.logger.info("=" * 70)
 
 
@@ -100,7 +102,7 @@ def create_logger(step_name: str, project_root: Path) -> DualLogger:
     Returns:
         DualLogger 인스턴스
     """
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(KST).strftime('%Y%m%d_%H%M%S')
     log_file = project_root / 'logs' / 'backtest' / f"{step_name}_{timestamp}.log"
     
     return DualLogger(log_file)

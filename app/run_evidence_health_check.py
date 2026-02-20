@@ -8,6 +8,8 @@ No Execution: 검사 + 리포트 생성만 허용
 import json
 import os
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -107,7 +109,7 @@ def calculate_decision(rate: float) -> str:
 
 def run_evidence_health_check() -> Dict[str, Any]:
     """Evidence Health Check 실행"""
-    now = datetime.now()
+    now = datetime.now(KST)
     asof = now.isoformat()
     period_from = (now - timedelta(days=SLO["window_days"])).isoformat()
     
@@ -284,7 +286,7 @@ def save_health_report(report: Dict) -> Dict:
     os.replace(str(tmp_file), str(HEALTH_LATEST_FILE))
     
     # Snapshot
-    now = datetime.now()
+    now = datetime.now(KST)
     snapshot_name = f"health_{now.strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = HEALTH_SNAPSHOTS_DIR / snapshot_name
     snapshot_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')

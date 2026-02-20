@@ -5,6 +5,8 @@ backend/app/services/asset_service.py
 자산 관리 서비스
 """
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.asset import Asset, Trade, Portfolio
@@ -48,7 +50,7 @@ class AssetService:
             sharpe_ratio=0.0,  # TODO: 계산
             volatility=0.0,    # TODO: 계산
             expected_return=0.0,  # TODO: 계산
-            last_updated=datetime.now().isoformat()
+            last_updated=datetime.now(KST).isoformat()
         )
     
     async def get_current_holdings(self) -> list[AssetResponse]:

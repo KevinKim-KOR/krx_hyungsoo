@@ -5,6 +5,8 @@ import hashlib
 import shutil
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 BASE_DIR = Path(__file__).parent.parent
 RECON_TOOL = BASE_DIR / "tools" / "reconcile_phase_c.py"
@@ -92,7 +94,7 @@ def main():
     
     report = {
         "phase": "C-R.5",
-        "generated_at": datetime.now().isoformat() + "Z",
+        "generated_at": datetime.now(KST).isoformat(),
         "determinism": {
             "run1_hash_clean": h1_clean,
             "run2_hash_clean": h2_clean,
@@ -112,7 +114,7 @@ def main():
         error_summary = {
             "status": "error",
             "schema": "RECON_SUMMARY_V1",
-            "generated_at": datetime.now().isoformat() + "Z",
+            "generated_at": datetime.now(KST).isoformat(),
             "error": {
                 "code": "IC_RECON_NON_DETERMINISTIC",
                 "message_ko": "심각: Reconciler 결과가 매 실행마다 다릅니다. (Determinism Check Failed)"
@@ -130,7 +132,7 @@ def main():
         error_summary = {
             "status": "error",
             "schema": "RECON_SUMMARY_V1",
-            "generated_at": datetime.now().isoformat() + "Z",
+            "generated_at": datetime.now(KST).isoformat(),
             "error": {
                 "code": "IC_PROVENANCE_MISSING",
                 "message_ko": "심각: 리포트의 원본 출처(Provenance) 정보가 누락되었습니다."

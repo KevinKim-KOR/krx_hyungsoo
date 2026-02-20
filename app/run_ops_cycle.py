@@ -11,6 +11,8 @@ import json
 import uuid
 import logging
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
 import requests
@@ -135,7 +137,7 @@ def acquire_lock() -> tuple:
         try:
             lock_data = json.loads(LOCK_FILE.read_text(encoding="utf-8"))
             lock_time = datetime.fromisoformat(lock_data.get("locked_at", ""))
-            elapsed = (datetime.now() - lock_time).total_seconds()
+            elapsed = (datetime.now(KST) - lock_time).total_seconds()
             
             if elapsed < LOCK_TIMEOUT_SECONDS:
                 return False, f"Locked by {lock_data.get('run_id')} ({elapsed:.0f}s ago)"
@@ -145,7 +147,7 @@ def acquire_lock() -> tuple:
     run_id = str(uuid.uuid4())
     lock_data = {
         "run_id": run_id,
-        "locked_at": datetime.now().isoformat()
+        "locked_at": datetime.now(KST).isoformat()
     }
     LOCK_FILE.write_text(json.dumps(lock_data, ensure_ascii=False), encoding="utf-8")
     return True, run_id
@@ -174,7 +176,7 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
     OPS_LATEST_DIR = BASE_DIR / "reports" / "ops" / "scheduler" / "latest"
     OPS_LATEST_DIR.mkdir(parents=True, exist_ok=True)
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_path = SNAPSHOTS_DIR / f"ops_run_{timestamp}.json"
     latest_path = OPS_LATEST_DIR / "ops_run_latest.json"
     
@@ -182,9 +184,9 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
     temp_receipt = {
         "schema": "OPS_RUN_RECEIPT_V1",
         "run_id": run_id,
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "started_at": started_at,
-        "finished_at": datetime.now().isoformat(),
+        "finished_at": datetime.now(KST).isoformat(),
         "overall_status": overall_status,
         "ops_report_ref": ops_report_ref,
         "evidence_health": evidence_health or {"decision": "N/A"},
@@ -237,7 +239,7 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
 
 def run_ops_cycle_v2() -> dict:
     """운영 루프 1회 + 티켓 0~1건 처리 (C-P.16)"""
-    started_at = datetime.now().isoformat()
+    started_at = datetime.now(KST).isoformat()
     run_id = None
     
     # Safety snapshot 준비
@@ -321,7 +323,7 @@ def run_ops_cycle_v2() -> dict:
         from app.run_evidence_health_check import regenerate_health_report
         health_result = regenerate_health_report()
         evidence_health["decision"] = health_result.get("decision", "UNKNOWN")
-        evidence_health["generated_at"] = datetime.now().isoformat()
+        evidence_health["generated_at"] = datetime.now(KST).isoformat()
         evidence_health["snapshot_ref"] = health_result.get("snapshot_path")
         
         # Load health_latest for top_fail_reasons

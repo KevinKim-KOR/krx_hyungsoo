@@ -21,6 +21,8 @@ from __future__ import annotations
 import os, glob, sqlite3, sys
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import pandas as pd
 
 DB_PATH = Path("data/db/prices.sqlite")
@@ -71,7 +73,7 @@ def _detect_src_from_meta(p: Path) -> str:
 
 def upsert_symbol(conn: sqlite3.Connection, symbol: str, df: pd.DataFrame, src: str):
     # DataFrame -> records
-    now = datetime.utcnow().isoformat(timespec="seconds")
+    now = datetime.now(KST).isoformat(timespec="seconds")
     recs = []
     for dt, row in df.iterrows():
         recs.append((

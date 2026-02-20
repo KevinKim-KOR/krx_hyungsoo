@@ -10,6 +10,8 @@ import json
 import os
 import shutil
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import hashlib
@@ -41,7 +43,7 @@ def upsert_watchlist(items: List[Dict], updated_by: str = "pc_ui") -> Dict:
     """Watchlist 저장 (Upsert)"""
     ensure_dirs()
     
-    now = datetime.now()
+    now = datetime.now(KST)
     updated_at = now.isoformat()
     
     # 1. Build Watchlist

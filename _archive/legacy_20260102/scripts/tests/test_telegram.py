@@ -7,6 +7,8 @@ scripts/nas/test_telegram.py
 import sys
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # 프로젝트 루트 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -92,7 +94,7 @@ print("-" * 60)
 test_message = f"""
 🧪 *텔레그램 연결 테스트*
 
-📅 시간: {datetime.now():%Y-%m-%d %H:%M:%S}
+📅 시간: {datetime.now(KST):%Y-%m-%d %H:%M:%S}
 🖥️ 호스트: NAS
 📍 위치: {PROJECT_ROOT}
 

@@ -9,6 +9,8 @@ scripts/nas/weekly_report_alert.py
 """
 import sys
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any
 import pandas as pd
@@ -49,7 +51,7 @@ class WeeklyReport:
         """시장 레짐 조회"""
         try:
             today_str = self.today.strftime("%Y%m%d")
-            from_date = (datetime.now() - pd.DateOffset(years=1)).strftime("%Y%m%d")
+            from_date = (datetime.now(KST) - pd.DateOffset(years=1)).strftime("%Y%m%d")
             kospi = stock.get_index_ohlcv_by_date(from_date, today_str, "1001")
 
             if kospi.empty:
@@ -291,13 +293,13 @@ class WeeklyReport:
 @handle_script_errors("주간 리포트")
 def main():
     """메인 실행 함수"""
-    print(f"[{datetime.now()}] 주간 리포트 스크립트 시작")
+    print(f"[{datetime.now(KST)}] 주간 리포트 스크립트 시작")
     sys.stdout.flush()
 
     report = WeeklyReport()
     success = report.send_report()
 
-    print(f"[{datetime.now()}] 주간 리포트 완료: {'성공' if success else '실패'}")
+    print(f"[{datetime.now(KST)}] 주간 리포트 완료: {'성공' if success else '실패'}")
     sys.stdout.flush()
 
     return 0 if success else 1

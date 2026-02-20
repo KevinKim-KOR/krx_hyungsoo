@@ -10,6 +10,8 @@ extensions/automation/weekly_report.py
 """
 
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Optional, Dict, List
 import logging
 
@@ -226,7 +228,7 @@ class WeeklyReport:
         
         report_lines.append("")
         report_lines.append("=" * 50)
-        report_lines.append(f"생성 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        report_lines.append(f"생성 시간: {datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')}")
         report_lines.append("=" * 50)
         
         report_text = "\n".join(report_lines)

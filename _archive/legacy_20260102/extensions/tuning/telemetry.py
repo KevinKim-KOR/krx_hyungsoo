@@ -10,6 +10,8 @@ import json
 import logging
 from dataclasses import dataclass, asdict
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -98,7 +100,7 @@ class TelemetryLogger:
         if self._initialized and run_id is None:
             return
 
-        self.run_id = run_id or f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.run_id = run_id or f"run_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}"
         self.base_dir = base_dir or Path("data/telemetry")
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.filepath = self.base_dir / f"{self.run_id}.jsonl"
@@ -134,7 +136,7 @@ class TelemetryLogger:
             생성된 TelemetryEvent
         """
         telemetry_event = TelemetryEvent(
-            ts=datetime.now().isoformat(),
+            ts=datetime.now(KST).isoformat(),
             run_id=self.run_id,
             stage=stage,
             event=event,

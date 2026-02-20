@@ -8,6 +8,8 @@ import sys
 import json
 import pandas as pd
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -171,14 +173,14 @@ class HoldingsBacktest:
         entry_date = self.entry_dates.get(code)
         
         # 가격 히스토리 조회 (매입일부터 또는 최근 5년)
-        end_date = datetime.now().strftime('%Y%m%d')
+        end_date = datetime.now(KST).strftime('%Y%m%d')
         if entry_date:
             # 매입일부터 조회
             start_date = pd.to_datetime(entry_date).strftime('%Y%m%d')
             print(f"  📅 매입일: {entry_date}")
         else:
             # 매입일 정보 없으면 5년 전부터 조회
-            start_date = (datetime.now() - timedelta(days=1825)).strftime('%Y%m%d')
+            start_date = (datetime.now(KST) - timedelta(days=1825)).strftime('%Y%m%d')
             print(f"  ⚠️ 매입일 정보 없음 (5년 전부터 조회)")
         
         df = self.get_price_history(code, start_date, end_date)

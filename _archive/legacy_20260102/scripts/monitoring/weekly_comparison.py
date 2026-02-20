@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import json
 from datetime import datetime, date, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import logging
 from typing import List, Dict
 
@@ -162,7 +164,7 @@ class WeeklyComparison:
         analysis = self.analyze_week()
         
         # JSON 저장
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now(KST).strftime('%Y%m%d_%H%M%S')
         json_file = self.output_dir / f"weekly_report_{timestamp}.json"
         
         with open(json_file, 'w', encoding='utf-8') as f:

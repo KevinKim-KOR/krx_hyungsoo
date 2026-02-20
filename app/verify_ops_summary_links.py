@@ -8,6 +8,8 @@ evidence_click_proof_latest.json 증거 파일 생성
 import json
 import os
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, List
 
@@ -84,7 +86,7 @@ def validate_ref_with_validator(ref: str) -> Dict:
 
 def verify_ops_summary_links() -> Dict:
     """Ops Summary의 evidence refs 검증"""
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     refs = extract_refs_from_summary()
     results = []

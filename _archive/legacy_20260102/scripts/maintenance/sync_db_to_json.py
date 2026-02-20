@@ -8,6 +8,8 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # 프로젝트 루트
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -19,7 +21,7 @@ import pandas as pd
 
 def get_latest_price(code: str) -> float:
     """최신 가격 조회 (최대 7일 전까지)"""
-    today = datetime.now()
+    today = datetime.now(KST)
     for i in range(7):
         check_date = (today - pd.Timedelta(days=i)).strftime("%Y%m%d")
         try:
@@ -90,7 +92,7 @@ def sync():
     
     # JSON 파일 저장
     output = {
-        "last_updated": datetime.now().isoformat(),
+        "last_updated": datetime.now(KST).isoformat(),
         "holdings": holdings_list
     }
     

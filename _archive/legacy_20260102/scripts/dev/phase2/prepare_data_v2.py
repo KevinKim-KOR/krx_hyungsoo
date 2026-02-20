@@ -7,6 +7,8 @@ Phase 2 재테스트 - 2단계: 데이터 준비 (개선 버전)
 import sys
 from pathlib import Path
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import pandas as pd
 from tqdm import tqdm
 
@@ -28,7 +30,7 @@ try:
     from pykrx import stock
     
     # 전체 ETF 목록
-    today = datetime.now().strftime('%Y%m%d')
+    today = datetime.now(KST).strftime('%Y%m%d')
     etf_list = stock.get_etf_ticker_list(today)
     
     logger.info(f"전체 ETF 수: {len(etf_list)}개")
@@ -38,7 +40,7 @@ try:
     logger.info("ETF 정보 수집 중... (시간이 걸립니다)")
     
     # 최근 1개월 데이터로 거래량 확인
-    one_month_ago = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
+    one_month_ago = (datetime.now(KST) - timedelta(days=30)).strftime('%Y%m%d')
     
     for ticker in tqdm(etf_list, desc="ETF 정보"):
         try:
@@ -248,7 +250,7 @@ try:
         'data_shape': price_data.shape,
         'cache_files': len(stock_files),
         'cache_size_mb': total_size / (1024**2),
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now(KST).isoformat()
     }
     
     import json

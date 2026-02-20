@@ -10,6 +10,8 @@ import json
 import os
 import shutil
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -51,7 +53,7 @@ def get_idempotency_key(kind: str, mode: str = "normal") -> str:
     - mode=normal: incident_<KIND>_YYYYMMDD (동일 타입 하루 1회)
     - mode=test: test_incident_<KIND>_YYYYMMDD_HHMMSS (우회)
     """
-    now = datetime.now()
+    now = datetime.now(KST)
     if mode == "test":
         return f"test_incident_{kind}_{now.strftime('%Y%m%d_%H%M%S')}"
     return f"incident_{kind}_{now.strftime('%Y%m%d')}"
@@ -64,7 +66,7 @@ def check_already_sent(idempotency_key: str) -> bool:
         return False
     
     # 오늘 날짜의 스냅샷들 확인
-    today = datetime.now().strftime('%Y%m%d')
+    today = datetime.now(KST).strftime('%Y%m%d')
     for f in INCIDENT_SNAPSHOTS.glob(f"incident_*_{today}_*.json"):
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
@@ -112,7 +114,7 @@ def generate_incident_push(
         reason: 상세 사유
         mode: "normal" (하루 1회) 또는 "test" (우회)
     """
-    now = datetime.now()
+    now = datetime.now(KST)
     asof = now.isoformat()
     idempotency_key = get_idempotency_key(kind, mode)
     

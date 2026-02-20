@@ -2,7 +2,7 @@
 import streamlit as st
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import pandas as pd
 import altair as alt
@@ -88,7 +88,8 @@ def save_json(path, data):
 
 def save_params(data):
     save_json(LATEST_PATH, data)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    KST = timezone(timedelta(hours=9))
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_path = SNAPSHOT_DIR / f"strategy_params_{timestamp}.json"
     save_json(snapshot_path, data)
     return snapshot_path
@@ -106,7 +107,8 @@ def load_portfolio():
 
 def apply_reco(current_params, candidate):
     new_data = current_params.copy()
-    new_data["asof"] = datetime.utcnow().isoformat() + "Z"
+    KST = timezone(timedelta(hours=9))
+    new_data["asof"] = datetime.now(KST).isoformat()
     
     cp = candidate["params"]
     target_p = new_data["params"]
@@ -154,7 +156,7 @@ with st.expander("⚙️ System Mode Settings", expanded=is_replay):
     # 2. Date Picker (Only if Replay)
     current_asof = override_cfg.get("asof_kst")
     if not current_asof:
-        current_asof = datetime.now().strftime("%Y-%m-%d")
+        current_asof = datetime.now(KST).strftime("%Y-%m-%d")
         
     new_date = col_date.date_input("Replay Date", value=datetime.strptime(current_asof, "%Y-%m-%d"), disabled=not new_replay)
     
@@ -428,7 +430,8 @@ with tab_main:
             if submitted:
                 # Update Data
                 new_data = params_data.copy()
-                new_data["asof"] = datetime.utcnow().isoformat() + "Z"
+                KST = timezone(timedelta(hours=9))
+                new_data["asof"] = datetime.now(KST).isoformat()
                 new_params = p.copy()
                 
                 new_params["universe"] = [t.strip() for t in universe_str.split(",") if t.strip()]
@@ -634,7 +637,8 @@ with tab_port_edit:
     if not portfolio_data:
         st.error("Portfolio data not found.")
         if st.button("Initialize Empty Portfolio"):
-             portfolio_data = {"updated_at": datetime.utcnow().isoformat(), "total_value": 0, "cash": 0, "holdings": {}}
+             KST = timezone(timedelta(hours=9))
+             portfolio_data = {"updated_at": datetime.now(KST).isoformat(), "total_value": 0, "cash": 0, "holdings": {}}
              save_json(PORTFOLIO_PATH, portfolio_data)
              st.experimental_rerun()
     else:

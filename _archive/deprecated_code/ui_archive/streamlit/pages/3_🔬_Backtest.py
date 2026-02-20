@@ -8,6 +8,8 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
 import json
@@ -337,7 +339,7 @@ with tab1:
                 
                 result_data = {
                     'timestamp': timestamp,
-                    'datetime': datetime.now().isoformat(),
+                    'datetime': datetime.now(KST).isoformat(),
                     'period': {
                         'start': start_date.isoformat(),
                         'end': end_date.isoformat()

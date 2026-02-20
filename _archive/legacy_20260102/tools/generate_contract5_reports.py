@@ -2,6 +2,8 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # Paths
 BASE_DIR = Path(__file__).parent.parent
@@ -51,7 +53,7 @@ def main():
 
     # --- Common Header Construction ---
     common_header = {
-        "asof": datetime.now().isoformat() + "Z",
+        "asof": datetime.now(KST).isoformat(),
         "period": summary.get("period", { "from": "2024-01-01", "to": "2025-12-31" }),
         "source_of_truth": {
             "recon_summary_path": str(SUMMARY_PATH),

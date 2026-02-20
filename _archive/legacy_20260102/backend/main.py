@@ -11,6 +11,8 @@ import shutil
 import tempfile
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import List, Dict, Optional, Any, Union
 
 from fastapi import FastAPI, HTTPException, Query
@@ -31,7 +33,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- 2. 로깅 설정 (Backend 전용) ---
 def setup_backend_logger():
-    today_str = datetime.now().strftime("%Y%m%d")
+    today_str = datetime.now(KST).strftime("%Y%m%d")
     log_file = LOG_DIR / f"backend_{today_str}.log"
     
     logger = logging.getLogger("backend")
@@ -82,7 +84,7 @@ if DASHBOARD_DIR.exists():
 # --- 4. 유틸리티 함수 (Robust File Reading) ---
 
 def get_today_str() -> str:
-    return datetime.now().strftime("%Y%m%d")
+    return datetime.now(KST).strftime("%Y%m%d")
 
 def safe_read_text_advanced(path: Path) -> Dict[str, Any]:
     """
@@ -438,7 +440,7 @@ def get_recon_summary():
         return {
             "status": "ready",
             "schema": "RECON_SUMMARY_V1",
-            "asof": data.get("asof", datetime.now().strftime("%Y-%m-%d")), 
+            "asof": data.get("asof", datetime.now(KST).strftime("%Y-%m-%d")), 
             # Merge file content into Envelope top-level or keep separate?
             # User wants "status" field etc. 
             # Usually Summary file *is* the data. Let's merge standard envelope fields with data.
@@ -459,7 +461,7 @@ def get_recon_daily():
         return {
             "status": "ready",
             "schema": "RECON_DAILY_V1",
-            "asof": datetime.now().strftime("%Y-%m-%d"),
+            "asof": datetime.now(KST).strftime("%Y-%m-%d"),
             "row_count": len(rows),
             "rows": rows,
             "error": None

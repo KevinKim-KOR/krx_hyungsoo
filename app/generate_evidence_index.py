@@ -12,6 +12,8 @@ import hashlib
 import os
 import linecache
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -102,7 +104,7 @@ def read_json_file(path: Path) -> Optional[Dict]:
 
 def generate_evidence_index() -> Dict[str, Any]:
     """Generate the evidence index"""
-    now = datetime.now()
+    now = datetime.now(KST)
     asof = now.isoformat()
     items: List[Dict] = []
     seen_refs = set()
@@ -230,7 +232,7 @@ def save_evidence_index(index: Dict[str, Any]) -> Dict[str, Any]:
     os.replace(str(tmp_path), str(EVIDENCE_INDEX_LATEST))
     
     # Save snapshot
-    now = datetime.now()
+    now = datetime.now(KST)
     snapshot_name = f"evidence_index_{now.strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = EVIDENCE_SNAPSHOTS_DIR / snapshot_name
     snapshot_path.write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding='utf-8')

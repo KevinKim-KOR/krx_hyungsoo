@@ -14,6 +14,8 @@ import hashlib
 import uuid
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, Optional, Any, Tuple, List
 
 from app.load_strategy_bundle import load_latest_bundle, get_bundle_status
@@ -52,7 +54,7 @@ def generate_empty_reco(reason: str, source_bundle: Optional[Dict] = None, reaso
     - 번들 없음, STALE, 또는 시스템 오류 시 사용
     """
     report_id = str(uuid.uuid4())
-    now = datetime.now().isoformat()
+    now = datetime.now(KST).isoformat()
     
     top_picks = []
     holding_actions = []
@@ -89,7 +91,7 @@ def generate_blocked_reco(reason: str, source_bundle: Optional[Dict] = None, rea
     - 번들 무결성 실패 시 사용
     """
     report_id = str(uuid.uuid4())
-    now = datetime.now().isoformat()
+    now = datetime.now(KST).isoformat()
     
     top_picks = []
     holding_actions = []
@@ -236,7 +238,7 @@ def generate_reco_report() -> Dict:
         risk_limits = strategy.get("risk_limits", {})
         
         report_id = str(uuid.uuid4())
-        now = datetime.now().isoformat()
+        now = datetime.now(KST).isoformat()
         
         # Decision Logic
         if not top_picks and not holding_actions:
@@ -308,7 +310,7 @@ def _save_and_return(report: Dict) -> Dict:
         os.replace(tmp_path, RECO_LATEST_FILE)
         
         # 2. Always create snapshot on regenerate
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
         snapshot_filename = f"reco_{timestamp}.json"
         snapshot_path = RECO_SNAPSHOTS_DIR / snapshot_filename
         
@@ -412,7 +414,7 @@ def regenerate_snapshot() -> Dict[str, Any]:
         }
     
     # Generate snapshot filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_filename = f"reco_{timestamp}.json"
     snapshot_path = RECO_SNAPSHOTS_DIR / snapshot_filename
     

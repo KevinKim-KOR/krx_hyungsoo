@@ -20,6 +20,8 @@ import socket
 import subprocess
 import sys
 from datetime import datetime, timezone
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -201,7 +203,7 @@ def generate_bundle() -> dict:
     NOTE: 실제 환경에서는 백테스트/튜닝 결과에서 파라미터를 가져와야 합니다.
     현재는 기본 전략 파라미터를 사용합니다.
     """
-    now = datetime.now()
+    now = datetime.now(KST)
     bundle_id = str(uuid.uuid4())
     created_at = now.isoformat()
     
@@ -369,7 +371,7 @@ def generate_bundle() -> dict:
             "portfolio": {
                 "enabled": True,
                 "schema": "PORTFOLIO_SNAPSHOT_V1",
-                "asof": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z",
+                "asof": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
                 "payload": portfolio,
                 "integrity": {
                     "payload_sha256": port_sha
@@ -433,7 +435,7 @@ def save_bundle(bundle: dict) -> Path:
     """번들을 스냅샷 및 최신 파일로 저장"""
     # 1. Snapshot
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     filename = f"strategy_bundle_{timestamp}.json"
     snapshot_path = OUTPUT_DIR / filename
     

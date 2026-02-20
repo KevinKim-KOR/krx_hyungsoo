@@ -4,6 +4,8 @@ import sys
 import argparse
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # Setup Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,13 +37,13 @@ def generate_dry_run_record(confirm: bool = False):
     ticket_id = ticket.get("id", "UNKNOWN")
     
     # 3. Create Record
-    record_id = f"dry_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    record_id = f"dry_run_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}"
     
     record = {
         "spec_version": "1.0",
         "id": record_id,
         "type": "DRY_RUN",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(KST).isoformat(),
         "linkage": {
             "plan_id": plan_id,
             "ticket_id": ticket_id

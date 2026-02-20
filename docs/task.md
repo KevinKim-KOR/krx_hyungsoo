@@ -61,3 +61,7 @@
 - [ ] **P149: UI Refinement**
     - [ ] Archive legacy `dashboard/` (React).
     - [ ] Full transition to Streamlit Cockpit.
+
+- [x] **P150: Global KST Synchronization**
+    - [x] Applied explicit `datetime.now(KST)` timezone replacements across all backend and app logic files.
+    - [x] Replaced explicit UTC and naive usages to stabilize subtraction logic and timestamp formatting.

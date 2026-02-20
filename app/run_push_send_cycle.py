@@ -16,6 +16,8 @@ import uuid
 import urllib.request
 import urllib.error
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
 
@@ -115,7 +117,7 @@ def consume_window():
     """One-Shot 윈도우 소진 처리"""
     data = {
         "consumed": True,
-        "consumed_at": datetime.now().isoformat(),
+        "consumed_at": datetime.now(KST).isoformat(),
         "schema": "WINDOW_CONSUMED_V1"
     }
     WINDOW_CONSUMED_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -189,7 +191,7 @@ def run_push_send_cycle() -> dict:
     8. Telegram 발송
     """
     send_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # Load .env if available (override=False: SYSTEM_ENV > DOTENV)
     try:
@@ -284,7 +286,7 @@ def run_push_send_cycle() -> dict:
     
     # 7. Format with Formatter + Secret Injection Check
     # C-P.24: 테스트 메시지 포맷 사용
-    kst_timestamp = datetime.now().isoformat()
+    kst_timestamp = datetime.now(KST).isoformat()
     text = format_test_message(kst_timestamp)
     
     is_safe, reason = check_secret_injection(text)
@@ -328,7 +330,7 @@ def save_receipt(receipt: dict, log_msg: str) -> dict:
     os.replace(str(tmp_file), str(SEND_LATEST_FILE))
     
     # Snapshot
-    snapshot_name = f"send_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    snapshot_name = f"send_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = SEND_SNAPSHOTS_DIR / snapshot_name
     snapshot_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
     

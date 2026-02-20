@@ -1,6 +1,8 @@
 
 import json
 import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -285,7 +287,7 @@ def main():
     # 4. Save
     output_data = {
         "schema": "HOLDING_TIMING_V1",
-        "asof": datetime.datetime.utcnow().isoformat() + "Z",
+        "asof": datetime.datetime.now(KST).isoformat(),
         "portfolio_ref": "portfolio_latest.json",
         "params_ref": "strategy_params_latest.json",
         "holdings": results
@@ -295,7 +297,7 @@ def main():
     (OUTPUT_DIR / "holding_timing_latest.json").write_text(json_str, encoding="utf-8")
     
     # Snapshot
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     (SNAPSHOT_DIR / f"holding_timing_{ts}.json").write_text(json_str, encoding="utf-8")
     
     print(f"Analysis saved. {len(results)} holdings processed.")

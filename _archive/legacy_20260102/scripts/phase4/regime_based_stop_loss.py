@@ -12,6 +12,8 @@ scripts/phase4/regime_based_stop_loss.py
 import sys
 import logging
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
@@ -238,7 +240,7 @@ class RegimeBasedStopLoss:
         }.get(regime, '중립장')
         
         message = "*🎯 레짐별 손절 모니터링*\n\n"
-        message += f"📅 {datetime.now().strftime('%Y년 %m월 %d일 %H:%M')}\n\n"
+        message += f"📅 {datetime.now(KST).strftime('%Y년 %m월 %d일 %H:%M')}\n\n"
         
         # 레짐 정보
         message += f"*📊 시장 레짐*\n"

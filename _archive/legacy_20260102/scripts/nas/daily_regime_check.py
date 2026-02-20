@@ -17,6 +17,8 @@ import logging
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, List, Optional
 
 # 프로젝트 루트 추가
@@ -100,7 +102,7 @@ class RegimeMonitor:
         state = {
             "regime": regime,
             "confidence": confidence,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(KST).isoformat(),
             "details": details
         }
         
@@ -115,7 +117,7 @@ class RegimeMonitor:
         """현재 레짐 감지"""
         try:
             # KOSPI 데이터 가져오기
-            end_date = datetime.now()
+            end_date = datetime.now(KST)
             start_date = end_date - timedelta(days=365)
             
             logger.info(f"KOSPI 데이터 조회 중... ({start_date.date()} ~ {end_date.date()})")
@@ -138,7 +140,7 @@ class RegimeMonitor:
             
             # 레짐 감지
             logger.info("레짐 감지 시작...")
-            current_date = datetime.now().date()
+            current_date = datetime.now(KST).date()
             regime, confidence = self.detector.detect_regime(kospi_data, current_date)
             
             if regime is None:
@@ -307,7 +309,7 @@ class RegimeMonitor:
 """
         
         message += f"""
-📅 감지 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+📅 감지 시간: {datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')}
 """
         
         return message.strip()
@@ -327,7 +329,7 @@ class RegimeMonitor:
         us_emoji = emoji_map.get(self.us_market_regime, "❓")
         
         message = f"""
-📅 {datetime.now().strftime('%Y년 %m월 %d일')}
+📅 {datetime.now(KST).strftime('%Y년 %m월 %d일')}
 
 ✅ 레짐 유지
 
@@ -577,7 +579,7 @@ def send_telegram_alert(message: str) -> bool:
 
 def main():
     """메인 함수"""
-    start_time = datetime.now()
+    start_time = datetime.now(KST)
     
     logger.info("=" * 80)
     logger.info(f"일일 레짐 감지 시작 - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -596,7 +598,7 @@ def main():
         monitor = RegimeMonitor()
         
         # 1. 레짐 변화 확인
-        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] 레짐 변화 확인 시작")
+        logger.info(f"[{datetime.now(KST).strftime('%H:%M:%S')}] 레짐 변화 확인 시작")
         regime_changed = monitor.check_regime_change()
         
         if regime_changed:
@@ -615,7 +617,7 @@ def main():
             telegram_results.append(("레짐 유지 알림", result))
         
         # 3. 보유 종목 매도 신호 확인 (레짐 변화 여부와 무관하게 항상 체크)
-        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] 보유 종목 매도 신호 확인 중...")
+        logger.info(f"[{datetime.now(KST).strftime('%H:%M:%S')}] 보유 종목 매도 신호 확인 중...")
         sell_signals = monitor.check_holdings_sell_signals()
         
         if sell_signals:
@@ -632,7 +634,7 @@ def main():
         logger.error(traceback.format_exc())
     
     finally:
-        end_time = datetime.now()
+        end_time = datetime.now(KST)
         elapsed = (end_time - start_time).total_seconds()
         
         logger.info("=" * 80)

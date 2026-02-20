@@ -21,6 +21,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import json
 from datetime import datetime, date
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, List, Optional
 import logging
 
@@ -76,7 +78,7 @@ class SyncDataGenerator:
                 })
             
             data = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'total_assets': int(summary['total_value']),
                 'cash': 0,  # TODO: 실제 현금 잔고
                 'stocks_value': int(summary['total_value']),
@@ -93,7 +95,7 @@ class SyncDataGenerator:
             logger.error(f"포트폴리오 스냅샷 생성 실패: {e}")
             # 에러 시 기본 데이터 반환
             return {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'total_assets': 0,
                 'cash': 0,
                 'stocks_value': 0,
@@ -143,7 +145,7 @@ class SyncDataGenerator:
                     }
             
             data = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'jason_strategy': jason_data if jason_data else {
                     'cagr': 39.02,
                     'sharpe': 1.71,
@@ -165,7 +167,7 @@ class SyncDataGenerator:
             logger.error(f"백테스트 결과 생성 실패: {e}")
             # 에러 시 기본 데이터 반환
             return {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'jason_strategy': {
                     'cagr': 39.02,
                     'sharpe': 1.71,
@@ -221,7 +223,7 @@ class SyncDataGenerator:
                 })
             
             data = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'date': date.today().isoformat(),
                 'buy_signals': buy_signals,
                 'sell_signals': sell_signals,
@@ -234,7 +236,7 @@ class SyncDataGenerator:
         except Exception as e:
             logger.error(f"매매 신호 생성 실패: {e}")
             return {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'date': date.today().isoformat(),
                 'buy_signals': [],
                 'sell_signals': [],
@@ -271,7 +273,7 @@ class SyncDataGenerator:
                     })
             
             data = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'strategy': 'hybrid',
                 'threshold': stop_loss_threshold,
                 'targets_count': len(targets),
@@ -284,7 +286,7 @@ class SyncDataGenerator:
         except Exception as e:
             logger.error(f"손절 대상 생성 실패: {e}")
             return {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'strategy': 'hybrid',
                 'threshold': -5.0,
                 'targets_count': 0,
@@ -310,14 +312,14 @@ class SyncDataGenerator:
             stop_loss_data = self.generate_stop_loss_targets()
             if stop_loss_data['targets_count'] > 0:
                 alerts.append({
-                    'timestamp': datetime.now().isoformat(),
+                    'timestamp': datetime.now(KST).isoformat(),
                     'type': 'stop_loss',
                     'message': f"손절 대상 {stop_loss_data['targets_count']}개 종목 발견",
                     'level': 'warning'
                 })
             
             data = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'alerts': alerts
             }
             
@@ -327,7 +329,7 @@ class SyncDataGenerator:
         except Exception as e:
             logger.error(f"알림 히스토리 생성 실패: {e}")
             return {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'alerts': [],
                 'error': str(e)
             }
@@ -347,7 +349,7 @@ class SyncDataGenerator:
             
             if regime_info:
                 data = {
-                    'timestamp': datetime.now().isoformat(),
+                    'timestamp': datetime.now(KST).isoformat(),
                     'date': regime_info['date'],
                     'current_regime': regime_info['regime'],
                     'confidence': round(float(regime_info['confidence']) * 100, 1),
@@ -360,7 +362,7 @@ class SyncDataGenerator:
                 }
             else:
                 data = {
-                    'timestamp': datetime.now().isoformat(),
+                    'timestamp': datetime.now(KST).isoformat(),
                     'date': date.today().isoformat(),
                     'current_regime': 'neutral',
                     'confidence': 0.0,
@@ -378,7 +380,7 @@ class SyncDataGenerator:
         except Exception as e:
             logger.error(f"시장 레짐 생성 실패: {e}")
             return {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'date': date.today().isoformat(),
                 'current_regime': 'unknown',
                 'confidence': 0.0,

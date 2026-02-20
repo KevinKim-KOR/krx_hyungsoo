@@ -14,6 +14,8 @@ import json
 import os
 import shutil
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, List, Optional
 import hashlib
@@ -97,7 +99,7 @@ def generate_candidates(confirm: bool = False) -> Dict:
              return {"result": "BLOCKED", "reason": "NO_TICKERS_FOUND"}
     
     # Build Candidate List
-    now = datetime.now()
+    now = datetime.now(KST)
     idx = 0
     for t in sorted(list(source_tickers)):
         # Enrich with meta (Mock meta here since we don't have master file loaded)

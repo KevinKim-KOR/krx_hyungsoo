@@ -12,6 +12,8 @@ import os
 import time
 import uuid
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -45,7 +47,7 @@ def run_ops_drill() -> Dict[str, Any]:
     Send는 반드시 Console-Only로 강제
     """
     run_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     steps = []
     fail_reasons = []
@@ -323,7 +325,7 @@ def _save_drill_report(run_id: str, asof: str, inputs_observed: Dict,
     DRILL_LATEST_DIR.mkdir(parents=True, exist_ok=True)
     DRILL_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_path = DRILL_SNAPSHOTS_DIR / f"drill_{timestamp}.json"
     
     report = {

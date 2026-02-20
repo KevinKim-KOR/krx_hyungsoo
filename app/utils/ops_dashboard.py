@@ -14,6 +14,8 @@ import json
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # Configuration
 API_BASE = "http://localhost:8000"
@@ -40,7 +42,7 @@ def get_json(url):
 
 def print_header():
     print(f"\n{Colors.BOLD}=== KRX ALERTOR OPS DASHBOARD ==={Colors.RESET}")
-    print(f"{Colors.GRAY}Checked at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.RESET}\n")
+    print(f"{Colors.GRAY}Checked at: {datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')}{Colors.RESET}\n")
 
 def check_backend():
     # 1. Connectivity Check
@@ -180,13 +182,14 @@ def check_watcher_p90(name, file_path, api_ref):
                        else:
                             asof_dt = datetime.fromisoformat(asof_clean)
                        
-                       now = datetime.now()
-                       # If asof has timezone, compare with UTC
+                       # If asof has timezone, compare directly
                        if asof_dt.tzinfo:
-                            from datetime import timezone
-                            now = datetime.now(timezone.utc)
+                            now = datetime.now(KST)
+                            age_delta = now - asof_dt
+                       else:
+                            now = datetime.now(KST).replace(tzinfo=None)
+                            age_delta = now - asof_dt
                        
-                       age_delta = now - asof_dt.replace(tzinfo=None) if not asof_dt.tzinfo else now - asof_dt
                        age_sec = age_delta.total_seconds()
                        
                        # Format age string

@@ -12,6 +12,8 @@ import json
 import os
 import uuid
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
 
@@ -88,7 +90,7 @@ def disable_sender():
         "schema": "REAL_SENDER_ENABLE_V1",
         "enabled": False,
         "channel": "TELEGRAM_ONLY",
-        "updated_at": datetime.now().isoformat(),
+        "updated_at": datetime.now(KST).isoformat(),
         "updated_by": "live_fire_ops_runner",
         "reason": "Post-Fire Lockdown"
     }
@@ -100,7 +102,7 @@ def consume_window():
     """윈도우 소진 처리"""
     data = {
         "consumed": True,
-        "consumed_at": datetime.now().isoformat(),
+        "consumed_at": datetime.now(KST).isoformat(),
         "schema": "WINDOW_CONSUMED_V1"
     }
     WINDOW_CONSUMED_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -110,7 +112,7 @@ def consume_window():
 def run_live_fire_ops() -> dict:
     """Live Fire Ops 실행"""
     run_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # 1. Precheck 정보 수집
     gate_mode = get_gate_mode()
@@ -214,7 +216,7 @@ def save_receipt(receipt: dict, log_msg: str) -> dict:
     os.replace(str(tmp_file), str(LIVE_FIRE_LATEST))
     
     # Snapshot
-    snapshot_name = f"live_fire_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    snapshot_name = f"live_fire_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = LIVE_FIRE_SNAPSHOTS_DIR / snapshot_name
     snapshot_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
     

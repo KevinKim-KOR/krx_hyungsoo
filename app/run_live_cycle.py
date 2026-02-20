@@ -18,6 +18,8 @@ import uuid
 import shutil
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, Any, Optional
 
 BASE_DIR = Path(__file__).parent.parent
@@ -186,7 +188,7 @@ def run_live_cycle() -> Dict[str, Any]:
     ensure_dirs()
     
     cycle_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # Initialize receipt
     receipt = {
@@ -286,7 +288,7 @@ def _save_receipt(receipt: Dict) -> Dict:
         os.replace(tmp_path, CYCLE_LATEST_FILE)
         
         # 2. Prepare snapshot path FIRST
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
         snapshot_filename = f"live_cycle_{timestamp}.json"
         snapshot_path = CYCLE_SNAPSHOTS_DIR / snapshot_filename
         snapshot_ref = f"reports/live/cycle/snapshots/{snapshot_filename}"

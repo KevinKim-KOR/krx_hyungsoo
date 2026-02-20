@@ -11,6 +11,8 @@ import sys
 import json
 import logging
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -85,7 +87,7 @@ class BacktestRealComparison:
                 'return_amount': summary['return_amount'],
                 'return_pct': summary['return_pct'],
                 'holdings_count': holdings_count,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(KST).isoformat()
             }
         
         except Exception as e:
@@ -203,7 +205,7 @@ class BacktestRealComparison:
             
             # 4. 종합 리포트
             report = {
-                'analysis_date': datetime.now().isoformat(),
+                'analysis_date': datetime.now(KST).isoformat(),
                 'backtest_prediction': self.backtest_prediction,
                 'real_performance': real_performance,
                 'differences': differences,

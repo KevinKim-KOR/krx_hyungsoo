@@ -5,6 +5,8 @@ import sys
 import shutil
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import sys
 
 # Add project root to path
@@ -109,7 +111,7 @@ def main():
     # Inject Source Info into Payload before saving
     final_portfolio = payload.copy()
     final_portfolio["source"] = "BUNDLE_OVERRIDE"
-    final_portfolio["applied_at"] = datetime.utcnow().isoformat() + "Z"
+    final_portfolio["applied_at"] = datetime.now(KST).isoformat()
     final_portfolio["bundle_id"] = bundle.get("bundle_id")
     final_portfolio["integrity"] = {"payload_sha256": actual_sha}
     
@@ -118,7 +120,7 @@ def main():
     
     # Backup
     if PORTFOLIO_PATH.exists():
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
         backup_path = SNAPSHOT_DIR / f"portfolio_backup_{ts}.json"
         shutil.copy(PORTFOLIO_PATH, backup_path)
         
@@ -128,7 +130,7 @@ def main():
     
     # Save Snapshot (as per requirement)
     # "state/portfolio/snapshots/portfolio_YYYYMMDD_HHMMSS.json"
-    ts_now = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts_now = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snap_path = SNAPSHOT_DIR / f"portfolio_{ts_now}.json"
     snap_path.write_text(json_str, encoding="utf-8")
     

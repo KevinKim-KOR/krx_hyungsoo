@@ -12,6 +12,8 @@ import json
 import os
 import shutil
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, Optional
 import sys
@@ -158,7 +160,7 @@ def get_tickets_summary() -> Dict[str, int]:
 
 def get_tickets_recent() -> Dict[str, Any]:
     """최근 N일간 티켓 통계 (Risk Window)"""
-    now = datetime.now()
+    now = datetime.now(KST)
     start_dt = now - timedelta(days=OPS_RISK_WINDOW_DAYS)
     
     stats = {
@@ -231,7 +233,7 @@ def get_tickets_recent() -> Dict[str, Any]:
 
 def generate_ops_summary():
     """Ops Summary 생성"""
-    now = datetime.now()
+    now = datetime.now(KST)
     
     # === Health ===
     health = safe_load_json(HEALTH_LATEST) or {}

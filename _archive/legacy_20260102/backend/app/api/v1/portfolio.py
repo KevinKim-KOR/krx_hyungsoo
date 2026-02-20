@@ -10,6 +10,8 @@ import json
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +114,7 @@ def load_ticker_names() -> Dict[str, str]:
         import pykrx.stock as stock
         from datetime import datetime
         
-        today = datetime.now().strftime('%Y%m%d')
+        today = datetime.now(KST).strftime('%Y%m%d')
         
         # ETF 전체 조회
         etf_codes = stock.get_etf_ticker_list(today)

@@ -20,6 +20,8 @@ import sys
 import argparse
 from pathlib import Path
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import json
 
 # 프로젝트 루트 추가
@@ -339,8 +341,8 @@ if history_file.exists():
         pass
 
 new_history_entry = {
-    'id': str(int(datetime.now().timestamp() * 1000)),
-    'timestamp': datetime.now().isoformat(),
+    'id': str(int(datetime.now(KST).timestamp() * 1000)),
+    'timestamp': datetime.now(KST).isoformat(),
     'parameters': {
         'start_date': str(periods.train.start_date),
         'end_date': str(periods.test.end_date),

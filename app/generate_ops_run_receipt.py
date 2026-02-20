@@ -11,6 +11,8 @@ import json
 import os
 import uuid
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
 
@@ -96,7 +98,7 @@ def generate_ops_run_receipt(
 ) -> dict:
     """OPS_RUN_RECEIPT_V1 생성"""
     run_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     observed_modes = get_observed_modes()
     
@@ -147,7 +149,7 @@ def generate_ops_run_receipt(
         external_send_count = 1
     
     # Snapshot path
-    snapshot_name = f"ops_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    snapshot_name = f"ops_run_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = SCHEDULER_SNAPSHOTS_DIR / snapshot_name
     
     receipt = {

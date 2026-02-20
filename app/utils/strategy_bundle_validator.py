@@ -14,6 +14,8 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # Import ref_validator for evidence_refs validation
 from app.utils.ref_validator import validate_and_resolve_ref, DANGEROUS_TOKENS
@@ -198,7 +200,7 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
             # ISO8601 파싱 (타임존 무시)
             dt_str = created_at[:19]  # YYYY-MM-DDTHH:MM:SS
             created_dt = datetime.fromisoformat(dt_str)
-            now = datetime.now()
+            now = datetime.now(KST)
             age = now - created_dt
             age_seconds = int(age.total_seconds())
             

@@ -12,6 +12,8 @@ import json
 import logging
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, Optional, List
 
 logger = logging.getLogger(__name__)
@@ -53,7 +55,7 @@ class OptimalParamsService:
                     current = data["current"]
                     new_data["live"] = {
                         "params": current.get("params", {}),
-                        "promoted_at": current.get("timestamp", datetime.now().isoformat()),
+                        "promoted_at": current.get("timestamp", datetime.now(KST).isoformat()),
                         "source_trial_id": current.get("id"),
                         "result": current.get("result", {}),
                         "notes": current.get("notes", "마이그레이션됨"),
@@ -105,7 +107,7 @@ class OptimalParamsService:
             # 기존 Live를 live_history로 이동
             if data.get("live"):
                 old_live = data["live"].copy()
-                old_live["demoted_at"] = datetime.now().isoformat()
+                old_live["demoted_at"] = datetime.now(KST).isoformat()
                 old_live["reason"] = "새 파라미터로 교체"
 
                 if "live_history" not in data:
@@ -122,7 +124,7 @@ class OptimalParamsService:
 
             data["live"] = {
                 "params": live_params,
-                "promoted_at": datetime.now().isoformat(),
+                "promoted_at": datetime.now(KST).isoformat(),
                 "source_trial_id": source_trial_id,
                 "result": result,
                 "notes": notes,
@@ -155,7 +157,7 @@ class OptimalParamsService:
             # 현재 Live를 히스토리로
             if data.get("live"):
                 old_live = data["live"].copy()
-                old_live["demoted_at"] = datetime.now().isoformat()
+                old_live["demoted_at"] = datetime.now(KST).isoformat()
                 old_live["reason"] = reason
                 live_history.insert(0, old_live)
 
@@ -163,7 +165,7 @@ class OptimalParamsService:
             restored = live_history.pop(history_index + 1)  # +1: 방금 추가한 것 다음
             restored.pop("demoted_at", None)
             restored.pop("reason", None)
-            restored["promoted_at"] = datetime.now().isoformat()
+            restored["promoted_at"] = datetime.now(KST).isoformat()
             restored["notes"] = f"롤백 복원 (원본: {restored.get('notes', '')})"
 
             data["live"] = restored
@@ -213,7 +215,7 @@ class OptimalParamsService:
             # 새 항목 추가
             entry = {
                 "id": len(data["research"]) + 1,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(KST).isoformat(),
                 "source": source,
                 "params": params,
                 "result": result,

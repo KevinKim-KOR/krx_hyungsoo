@@ -7,6 +7,8 @@ Phase 2 재테스트 - 3단계: 기본 백테스트
 import sys
 from pathlib import Path
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import pandas as pd
 import numpy as np
 import json
@@ -191,7 +193,7 @@ try:
     output_dir = PROJECT_ROOT / 'backtests' / 'phase2_retest'
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(KST).strftime('%Y%m%d_%H%M%S')
     
     # 거래 내역 저장
     if 'trades' in results and len(results['trades']) > 0:

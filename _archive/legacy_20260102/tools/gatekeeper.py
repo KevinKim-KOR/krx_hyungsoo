@@ -2,13 +2,15 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import pandas as pd
 
 # --- CONFIGURATION ---
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_PATH = BASE_DIR / "reports" / "tuning" / "gatekeeper_decision_latest.json"
 REPORTS_DIR = BASE_DIR / "reports"
-OUTPUT_DATE_PATH = REPORTS_DIR / "tuning" / f"gatekeeper_decision_{datetime.now().strftime('%Y%m%d')}.json"
+OUTPUT_DATE_PATH = REPORTS_DIR / "tuning" / f"gatekeeper_decision_{datetime.now(KST).strftime('%Y%m%d')}.json"
 
 sys.path.append(str(BASE_DIR))
 
@@ -141,7 +143,7 @@ def run_gatekeeper_v3():
         "schema_id": SCHEMA_ID,
         "schema_version": SCHEMA_VERSION,
         "meta": {
-            "asof": datetime.now().strftime("%Y-%m-%d"),
+            "asof": datetime.now(KST).strftime("%Y-%m-%d"),
             "baseline_config_hash8": "current",
             "candidate_id": "mock_candidate_v3",
             "candidate_source": "internal_mock",

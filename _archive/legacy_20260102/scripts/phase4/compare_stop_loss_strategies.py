@@ -14,6 +14,8 @@ import sys
 import json
 import logging
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any
 import pandas as pd
@@ -237,7 +239,7 @@ class StopLossStrategyComparator:
             )
             
             comparison = {
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(KST).isoformat(),
                 'total_holdings': len(holdings),
                 'strategies': results,
                 'best_strategy': {

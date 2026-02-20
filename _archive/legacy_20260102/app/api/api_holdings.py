@@ -81,6 +81,8 @@ def get_current_regime():
     """현재 시장 레짐 조회"""
     import json
     from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
     
     state_file = Path("data/state/current_regime.json")
     
@@ -88,7 +90,7 @@ def get_current_regime():
         return RegimeResponse(
             regime="중립장",
             confidence=0.5,
-            date=datetime.now().strftime("%Y-%m-%d"),
+            date=datetime.now(KST).strftime("%Y-%m-%d"),
             us_market_regime="neutral"
         )
     
@@ -98,7 +100,7 @@ def get_current_regime():
     return RegimeResponse(
         regime=data.get("regime", "중립장"),
         confidence=data.get("confidence", 0.5),
-        date=data.get("date", datetime.now().strftime("%Y-%m-%d")),
+        date=data.get("date", datetime.now(KST).strftime("%Y-%m-%d")),
         us_market_regime=data.get("us_market_regime")
     )
 

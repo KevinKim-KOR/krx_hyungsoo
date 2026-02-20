@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, Any, Tuple
 
 # Paths
@@ -42,7 +44,7 @@ def normalize_portfolio(data: Dict[str, Any]) -> Dict[str, Any]:
     # 1. Asof
     if not normalized.get("asof"):
         # Try updated_at
-        normalized["asof"] = normalized.get("updated_at") or (datetime.utcnow().isoformat() + "Z")
+        normalized["asof"] = normalized.get("updated_at") or (datetime.now(KST).isoformat())
         
     # 2. Holdings & Total Value
     cash = float(normalized.get("cash", 0))
@@ -97,7 +99,7 @@ def is_holiday_today(override_date_str: str = None, simulate_trade_day: bool = F
     if simulate_trade_day:
         return False
     
-    dt = datetime.now()
+    dt = datetime.now(KST)
     if dt.weekday() >= 5: # Sat, Sun
         return True
     return False

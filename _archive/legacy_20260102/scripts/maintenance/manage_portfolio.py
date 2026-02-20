@@ -20,6 +20,8 @@ import json
 import argparse
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # 프로젝트 루트 추가
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -39,12 +41,12 @@ def load_json():
 
 def save_json(data):
     # 백업 생성
-    backup_path = HOLDINGS_FILE.with_suffix(f".json.bak.{datetime.now().strftime('%Y%m%d%H%M%S')}")
+    backup_path = HOLDINGS_FILE.with_suffix(f".json.bak.{datetime.now(KST).strftime('%Y%m%d%H%M%S')}")
     import shutil
     shutil.copy2(HOLDINGS_FILE, backup_path)
     print(f"📦 백업 생성됨: {backup_path.name}")
     
-    data['last_updated'] = datetime.now().isoformat()
+    data['last_updated'] = datetime.now(KST).isoformat()
     
     with open(HOLDINGS_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)

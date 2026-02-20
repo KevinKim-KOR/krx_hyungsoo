@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 import pandas as pd
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 
 class PortfolioLoader:
@@ -100,7 +102,7 @@ class PortfolioLoader:
                     last_updated = h_updated
             
         return {
-            'last_updated': last_updated or datetime.now().isoformat(),
+            'last_updated': last_updated or datetime.now(KST).isoformat(),
             'holdings': holdings_list
         }
 

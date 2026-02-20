@@ -18,6 +18,8 @@ import atexit
 import subprocess
 import platform
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any, Union
@@ -39,7 +41,7 @@ class ResultPackager:
         # Context recording
         self.context = {
             "run_id": self.run_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(KST).isoformat(),
             "python_version": sys.version,
             "platform": platform.platform(),
             "command_line": " ".join(sys.argv),
@@ -48,7 +50,7 @@ class ResultPackager:
         
     def _generate_run_id(self) -> str:
         import hashlib
-        now = datetime.now()
+        now = datetime.now(KST)
         ts = now.strftime("%Y%m%d_%H%M%S")
         h = hashlib.md5(f"{ts}_{now.microsecond}".encode()).hexdigest()[:6]
         return f"real_{ts}_{h}" # Prefix 'real_' helps identification, though strictly run mode matters

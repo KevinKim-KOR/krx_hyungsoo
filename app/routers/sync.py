@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import json
 from app.utils.portfolio_normalize import normalize_portfolio, load_asof_override
 import datetime
+from datetime import timezone, timedelta
 import platform
 
 router = APIRouter(prefix="/api/sync", tags=["Sync"])
@@ -109,7 +110,7 @@ async def push_to_oci(
             "portfolio": portfolio,
             "asof_override": override,
             "build_id": "PC_PUSH_SSOT",
-            "synced_at": datetime.datetime.utcnow().isoformat()
+            "synced_at": datetime.datetime.now(timezone(timedelta(hours=9))).isoformat()
         }
         
         # 2. Push to OCI

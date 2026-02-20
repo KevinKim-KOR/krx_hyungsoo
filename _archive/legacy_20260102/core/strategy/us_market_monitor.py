@@ -15,6 +15,8 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 from core.data_loader import get_ohlcv
 
@@ -72,7 +74,7 @@ class USMarketMonitor:
         try:
             # 데이터 가져오기
             symbol = indicator_config['symbol']
-            end_date = datetime.now()
+            end_date = datetime.now(KST)
             start_date = end_date - timedelta(days=365)
             
             logger.info(f"📊 {indicator_name} 조회 시작: {symbol}")

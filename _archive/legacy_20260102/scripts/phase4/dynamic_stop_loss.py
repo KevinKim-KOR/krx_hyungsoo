@@ -12,6 +12,8 @@ scripts/phase4/dynamic_stop_loss.py
 import sys
 import logging
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import pandas as pd
@@ -268,7 +270,7 @@ class DynamicStopLoss:
         near_stop_loss = result.get('near_stop_loss', [])
         
         message = "*📊 동적 손절 모니터링*\n\n"
-        message += f"📅 {datetime.now().strftime('%Y년 %m월 %d일 %H:%M')}\n"
+        message += f"📅 {datetime.now(KST).strftime('%Y년 %m월 %d일 %H:%M')}\n"
         message += f"_변동성 기반 맞춤 손절 기준_\n\n"
         
         # 변동성 기준 설명

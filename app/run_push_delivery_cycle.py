@@ -14,6 +14,8 @@ import os
 import uuid
 import logging
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
 # Setup
@@ -187,7 +189,7 @@ def evaluate_candidate(push_type: str, secrets_status: dict) -> tuple:
 def run_push_delivery_cycle() -> dict:
     """푸시 발송 결정 사이클 실행 (V2)"""
     delivery_run_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # Context 로드
     messages = load_push_messages()
@@ -284,7 +286,7 @@ def run_push_delivery_cycle() -> dict:
     
     # Outbox 생성 (C-P.21)
     outbox_id = str(uuid.uuid4())
-    outbox_snapshot_name = f"outbox_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    outbox_snapshot_name = f"outbox_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     outbox_snapshot_path = OUTBOX_SNAPSHOTS_DIR / outbox_snapshot_name
     
     outbox = {

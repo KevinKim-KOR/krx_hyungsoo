@@ -9,6 +9,8 @@ import json
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import optuna
@@ -152,7 +154,7 @@ class StopLossOptimizer:
                 continue
             
             # 가격 히스토리 조회
-            end_date = datetime.now().strftime('%Y%m%d')
+            end_date = datetime.now(KST).strftime('%Y%m%d')
             start_date = pd.to_datetime(entry_date).strftime('%Y%m%d')
             
             df = self.get_price_history(code, start_date, end_date)

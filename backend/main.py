@@ -12,6 +12,8 @@ import shutil
 import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import List, Dict, Optional, Any, Union
 
 from fastapi import FastAPI, HTTPException, Query, Body
@@ -60,7 +62,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- 2. 로깅 설정 (Backend 전용) ---
 def setup_backend_logger():
-    today_str = datetime.now().strftime("%Y%m%d")
+    today_str = datetime.now(KST).strftime("%Y%m%d")
     log_file = LOG_DIR / f"backend_{today_str}.log"
     
     logger = logging.getLogger("backend")
@@ -129,7 +131,7 @@ if DASHBOARD_DIR.exists():
 # --- 4. 유틸리티 함수 (Robust File Reading) ---
 
 def get_today_str() -> str:
-    return datetime.now().strftime("%Y%m%d")
+    return datetime.now(KST).strftime("%Y%m%d")
 
 def safe_read_text_advanced(path: Path) -> Dict[str, Any]:
     """
@@ -350,7 +352,7 @@ async def upsert_portfolio_api(confirm: bool = Query(False), payload: Dict = Bod
         
         # Add timestamp
         if "updated_at" not in payload:
-            payload["updated_at"] = datetime.now().isoformat()
+            payload["updated_at"] = datetime.now(KST).isoformat()
             
         with open(path_latest, "w", encoding="utf-8") as f:
             f.write(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -685,7 +687,7 @@ def get_recon_summary():
         return {
             "status": "ready",
             "schema": "RECON_SUMMARY_V1",
-            "asof": data.get("asof", datetime.now().strftime("%Y-%m-%d")), 
+            "asof": data.get("asof", datetime.now(KST).strftime("%Y-%m-%d")), 
             # Merge file content into Envelope top-level or keep separate?
             # User wants "status" field etc. 
             # Usually Summary file *is* the data. Let's merge standard envelope fields with data.
@@ -706,7 +708,7 @@ def get_recon_daily():
         return {
             "status": "ready",
             "schema": "RECON_DAILY_V1",
-            "asof": datetime.now().strftime("%Y-%m-%d"),
+            "asof": datetime.now(KST).strftime("%Y-%m-%d"),
             "row_count": len(rows),
             "rows": rows,
             "error": None
@@ -728,7 +730,7 @@ def get_push_latest():
         return {
             "status": "not_ready",
             "schema": "PUSH_MESSAGE_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "row_count": 0,
             "rows": [],
             "error": "PUSH_FILE_NOT_FOUND"
@@ -745,7 +747,7 @@ def get_push_latest():
         if "row_count" not in data:
             data["row_count"] = len(data.get("rows", []))
         if "asof" not in data:
-            data["asof"] = datetime.now().isoformat()
+            data["asof"] = datetime.now(KST).isoformat()
         if "error" not in data:
             data["error"] = None
         return data
@@ -789,7 +791,7 @@ def create_ticket(ticket: TicketSubmit):
     
     # 서버 정보 강제 주입
     request_id = str(uuid.uuid4())
-    requested_at = datetime.now().isoformat()
+    requested_at = datetime.now(KST).isoformat()
     
     ticket_request = {
         "schema": "TICKET_REQUEST_V1",
@@ -886,7 +888,7 @@ def consume_ticket(data: TicketConsume):
         "schema": "TICKET_RESULT_V1",
         "result_id": str(uuid.uuid4()),
         "request_id": data.request_id,
-        "processed_at": datetime.now().isoformat(),
+        "processed_at": datetime.now(KST).isoformat(),
         "status": "IN_PROGRESS",
         "processor_id": data.processor_id,
         "message": "티켓 처리 시작",
@@ -929,7 +931,7 @@ def complete_ticket(data: TicketComplete):
         "schema": "TICKET_RESULT_V1",
         "result_id": str(uuid.uuid4()),
         "request_id": data.request_id,
-        "processed_at": datetime.now().isoformat(),
+        "processed_at": datetime.now(KST).isoformat(),
         "status": data.status,
         "processor_id": data.processor_id,
         "message": data.message,
@@ -981,7 +983,7 @@ def get_tickets_board():
     return {
         "status": "ready",
         "schema": "TICKETS_BOARD_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "row_count": len(board),
         "rows": board,
         "error": None
@@ -1017,7 +1019,7 @@ def get_execution_gate():
     return {
         "status": "ready",
         "schema": "EXECUTION_GATE_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "data": gate,
         "error": None
     }
@@ -1056,7 +1058,7 @@ def update_execution_gate(data: GateUpdate):
     gate_data = {
         "schema": "EXECUTION_GATE_V1",
         "mode": data.mode,
-        "updated_at": datetime.now().isoformat(),
+        "updated_at": datetime.now(KST).isoformat(),
         "updated_by": "local_api",
         "reason": data.reason
     }
@@ -1136,7 +1138,7 @@ def get_emergency_stop():
     return {
         "status": "ready",
         "schema": "EMERGENCY_STOP_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "data": status,
         "error": None
     }
@@ -1157,7 +1159,7 @@ def set_emergency_stop(data: EmergencyStopUpdate):
     stop_data = {
         "schema": "EMERGENCY_STOP_V1",
         "enabled": data.enabled,
-        "updated_at": datetime.now().isoformat(),
+        "updated_at": datetime.now(KST).isoformat(),
         "updated_by": data.operator_id,
         "reason": data.reason
     }
@@ -1169,7 +1171,7 @@ def set_emergency_stop(data: EmergencyStopUpdate):
         gate_data = {
             "schema": "EXECUTION_GATE_V1",
             "mode": "MOCK_ONLY",
-            "updated_at": datetime.now().isoformat(),
+            "updated_at": datetime.now(KST).isoformat(),
             "updated_by": "emergency_stop_system",
             "reason": f"Emergency Stop activated: {data.reason}"
         }
@@ -1193,11 +1195,11 @@ def request_real_approval(data: ApprovalRequest):
     approval = {
         "schema": "REAL_ENABLE_APPROVAL_V1",
         "approval_id": str(uuid.uuid4()),
-        "requested_at": datetime.now().isoformat(),
+        "requested_at": datetime.now(KST).isoformat(),
         "requested_by": data.requested_by,
         "mode_target": "REAL_ENABLED",
         "reason": data.reason,
-        "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
+        "expires_at": (datetime.now(KST) + timedelta(hours=24)).isoformat(),
         "keys_required": 2,
         "keys": [],
         "status": "PENDING"
@@ -1233,7 +1235,7 @@ def approve_real_key(data: KeyApproval):
     target = matching[-1]
     
     # 만료 체크
-    if datetime.fromisoformat(target["expires_at"]) < datetime.now():
+    if datetime.fromisoformat(target["expires_at"]) < datetime.now(KST):
         return JSONResponse(status_code=409, content={"result": "EXPIRED", "message": "Approval has expired"})
     
     # 이미 승인/취소됨
@@ -1254,7 +1256,7 @@ def approve_real_key(data: KeyApproval):
     new_key = {
         "key_id": data.key_id,
         "provided_by": data.approver_id,
-        "provided_at": datetime.now().isoformat()
+        "provided_at": datetime.now(KST).isoformat()
     }
     target["keys"].append(new_key)
     
@@ -1279,13 +1281,13 @@ def get_latest_real_approval():
         return {"status": "not_ready", "schema": "REAL_ENABLE_APPROVAL_V1", "data": None}
     
     # 만료 체크
-    if approval["status"] == "PENDING" and datetime.fromisoformat(approval["expires_at"]) < datetime.now():
+    if approval["status"] == "PENDING" and datetime.fromisoformat(approval["expires_at"]) < datetime.now(KST):
         approval["status"] = "EXPIRED"
     
     return {
         "status": "ready",
         "schema": "REAL_ENABLE_APPROVAL_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "data": approval,
         "error": None
     }
@@ -1309,7 +1311,7 @@ def get_execution_allowlist():
         return {
             "status": "ready",
             "schema": data.get("schema", "REAL_EXECUTION_ALLOWLIST_V1"),
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "data": data,
             "immutable_path": "docs/contracts/execution_allowlist_v1.json",
             "error": None
@@ -1350,7 +1352,7 @@ def get_active_window() -> Dict:
                 windows[wid]["real_executions_used"] = windows[wid].get("real_executions_used", 0) + 1
     
     # ACTIVE window 찾기 (최신 우선)
-    now = datetime.now()
+    now = datetime.now(KST)
     active_windows = []
     
     for wid, window in windows.items():
@@ -1387,7 +1389,7 @@ def create_real_window(data: WindowRequest):
     
     WINDOWS_DIR.mkdir(parents=True, exist_ok=True)
     
-    now = datetime.now()
+    now = datetime.now(KST)
     window = {
         "schema": "REAL_ENABLE_WINDOW_V1",
         "event": "CREATE",
@@ -1421,7 +1423,7 @@ def get_real_window_latest():
     return {
         "status": "ready",
         "schema": "REAL_ENABLE_WINDOW_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "row_count": 1 if window else 0,
         "rows": [window] if window else [],
         "error": None
@@ -1445,7 +1447,7 @@ def revoke_real_window(data: WindowRevoke):
         "schema": "REAL_ENABLE_WINDOW_V1",
         "event": "REVOKE",
         "window_id": data.window_id,
-        "revoked_at": datetime.now().isoformat(),
+        "revoked_at": datetime.now(KST).isoformat(),
         "revoked_by": "api",
         "reason": data.reason
     }
@@ -1497,7 +1499,7 @@ def get_reconcile_deps():
     return {
         "status": "ready" if deps["all_deps_ok"] else "missing_deps",
         "schema": "RECONCILE_DEPENDENCY_V2",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "row_count": 1,
         "rows": [deps],
         "error": None if deps["all_deps_ok"] else f"Missing: {deps['required_missing']}"
@@ -1517,7 +1519,7 @@ def save_deps_snapshot():
     
     snapshot = {
         "schema": "DEPS_SNAPSHOT_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "python_version": deps.get("python_version"),
         "packages": {
             "pandas": deps.get("pandas_version"),
@@ -1632,7 +1634,7 @@ def run_reconcile_preflight(data: PreflightRequest):
     # Save Artifact
     artifact = {
         "schema": "RECONCILE_PREFLIGHT_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "request_id": data.request_id,
         "request_type": data.request_type,
         "checks": checks,
@@ -1662,7 +1664,7 @@ OPS_SNAPSHOTS_DIR = OPS_REPORT_DIR / "snapshots"
 
 def generate_daily_ops_report() -> dict:
     """Generate daily ops report from ticket data"""
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(KST).strftime("%Y-%m-%d")
     
     # Read ticket data
     requests_file = BASE_DIR / "state" / "tickets" / "ticket_requests.jsonl"
@@ -1722,7 +1724,7 @@ def generate_daily_ops_report() -> dict:
     
     report = {
         "schema": "DAILY_OPS_REPORT_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "period": today,
         "summary": {
             "tickets_total": len(today_results),
@@ -1803,7 +1805,7 @@ def save_daily_ops_report(report: dict, skip_if_snapshot_exists: bool = False) -
     OPS_REPORT_LATEST.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     
     # Save snapshot (C-P.14: idempotent - skip if exists)
-    today = datetime.now().strftime("%Y%m%d")
+    today = datetime.now(KST).strftime("%Y%m%d")
     snapshot_path = OPS_SNAPSHOTS_DIR / f"ops_report_{today}.json"
     
     snapshot_skipped = False
@@ -1875,7 +1877,7 @@ def acquire_ops_lock() -> tuple:
         try:
             lock_data = json.loads(OPS_RUNNER_LOCK_FILE.read_text(encoding="utf-8"))
             lock_time = datetime.fromisoformat(lock_data.get("locked_at", ""))
-            elapsed = (datetime.now() - lock_time).total_seconds()
+            elapsed = (datetime.now(KST) - lock_time).total_seconds()
             
             if elapsed < LOCK_TIMEOUT_SECONDS:
                 return False, f"Locked by {lock_data.get('run_id')} ({elapsed:.0f}s ago)"
@@ -1885,7 +1887,7 @@ def acquire_ops_lock() -> tuple:
     run_id = str(uuid.uuid4())
     lock_data = {
         "run_id": run_id,
-        "locked_at": datetime.now().isoformat()
+        "locked_at": datetime.now(KST).isoformat()
     }
     OPS_RUNNER_LOCK_FILE.write_text(json.dumps(lock_data, ensure_ascii=False), encoding="utf-8")
     return True, run_id
@@ -1901,14 +1903,14 @@ def save_ops_run_snapshot(run_id: str, status: str, reason: str, ops_summary: di
     """스냅샷 저장"""
     OPS_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_path = OPS_SNAPSHOTS_DIR / f"ops_run_{timestamp}.json"
     
     snapshot = {
         "schema": "OPS_RUN_SNAPSHOT_V1",
         "run_id": run_id,
         "started_at": started_at,
-        "finished_at": datetime.now().isoformat(),
+        "finished_at": datetime.now(KST).isoformat(),
         "status": status,
         "reason": reason,
         "ops_summary": ops_summary,
@@ -2011,7 +2013,7 @@ def get_ops_health():
         return {
             "status": "ready",
             "schema": "OPS_HEALTH_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "health": health,
             "data": {
                 "emergency_stop": emergency_stop,
@@ -2116,7 +2118,7 @@ def get_secrets_status():
     return {
         "status": "ready",
         "schema": "SECRETS_STATUS_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "row_count": len(REQUIRED_SECRETS),
         "rows": [{
             "provider": "ENV_ONLY",
@@ -2186,7 +2188,7 @@ def run_secrets_self_test() -> dict:
     
     result = {
         "schema": "SECRETS_SELF_TEST_V1",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "provider": provider,
         "secrets_checked_count": len(all_secrets),
         "present_count": present_count,
@@ -2236,7 +2238,7 @@ def run_secrets_self_test_api():
         
         # Save snapshot
         SELF_TEST_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-        snapshot_name = f"self_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        snapshot_name = f"self_test_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
         snapshot_path = SELF_TEST_SNAPSHOTS_DIR / snapshot_name
         snapshot_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         
@@ -2335,7 +2337,7 @@ def set_real_sender_enable(request: SenderEnableRequest):
         "schema": "REAL_SENDER_ENABLE_V1",
         "enabled": request.enabled,
         "channel": "TELEGRAM_ONLY",
-        "updated_at": datetime.now().isoformat(),
+        "updated_at": datetime.now(KST).isoformat(),
         "updated_by": "api",
         "reason": request.reason or "Disabled"
     }
@@ -2500,7 +2502,7 @@ def get_scheduler_latest():
         return {
             "status": "not_ready",
             "schema": "OPS_RUN_RECEIPT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "row_count": 0,
             "rows": [],
             "error": {
@@ -2523,7 +2525,7 @@ def get_scheduler_latest():
         return {
             "status": "error",
             "schema": "OPS_RUN_RECEIPT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "row_count": 0,
             "rows": [],
             "error": {
@@ -2546,7 +2548,7 @@ def get_scheduler_snapshots():
         return {
             "status": "ready",
             "schema": "OPS_SCHEDULER_SNAPSHOTS_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "directory": str(snapshots_dir.relative_to(BASE_DIR)),
             "row_count": 0,
             "rows": [],
@@ -2567,7 +2569,7 @@ def get_scheduler_snapshots():
         return {
             "status": "ready",
             "schema": "OPS_SCHEDULER_SNAPSHOTS_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "directory": str(snapshots_dir.relative_to(BASE_DIR)),
             "row_count": len(files),
             "rows": files,
@@ -2577,7 +2579,7 @@ def get_scheduler_snapshots():
         return {
             "status": "error",
             "schema": "OPS_SCHEDULER_SNAPSHOTS_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "directory": str(snapshots_dir.relative_to(BASE_DIR)),
             "row_count": 0,
             "rows": [],
@@ -2873,7 +2875,7 @@ def set_system_mode(req: SystemModeRequest):
             "mode": req.mode or ("REPLAY" if req.enabled else "LIVE"),
             "asof_kst": req.asof_kst,
             "simulate_trade_day": req.simulate_trade_day,
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now(KST).isoformat()
         }
         
         path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -3183,7 +3185,7 @@ def generate_draft_record():
 
         draft = {
             "schema": "MANUAL_EXECUTION_RECORD_DRAFT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "source_refs": {
                 "prep_ref": prep.get("source", {}).get("order_plan_ref")
             },
@@ -3291,7 +3293,7 @@ def resolve_evidence_ref(ref: str):
     from datetime import datetime
     from app.utils.ref_validator import validate_and_resolve_ref
     
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # 공용 Validator 호출 (C-P.33 단일화)
     result = validate_and_resolve_ref(ref)
@@ -3397,7 +3399,7 @@ def get_evidence_index_latest():
         return {
             "status": "error",
             "schema": "EVIDENCE_INDEX_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "row_count": 0,
             "rows": [],
             "error": {
@@ -3468,7 +3470,7 @@ def get_evidence_health_latest():
         return {
             "status": "error",
             "schema": "EVIDENCE_HEALTH_REPORT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "summary": {"total": 0, "pass": 0, "warn": 0, "fail": 0, "decision": "UNKNOWN"},
             "checks": [],
             "top_fail_reasons": [],
@@ -3545,7 +3547,7 @@ def get_ops_summary_latest():
         return {
             "status": "error",
             "schema": "OPS_SUMMARY_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "row_count": 0,
             "rows": [],
             "error": {
@@ -3609,7 +3611,7 @@ def get_ops_drill_latest():
         return {
             "status": "error",
             "schema": "OPS_DRILL_REPORT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "row": None,
             "error": {
                 "code": "READ_ERROR",
@@ -3648,7 +3650,7 @@ def get_ticket_reaper_latest():
     if not REAPER_LATEST_FILE.exists():
         return {
             "schema": "TICKET_REAPER_REPORT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "decision": "NONE",
             "message": "No reaper report yet"
         }
@@ -3659,7 +3661,7 @@ def get_ticket_reaper_latest():
     except Exception as e:
         return {
             "schema": "TICKET_REAPER_REPORT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "decision": "ERROR",
             "error": str(e)
         }
@@ -3711,7 +3713,7 @@ def get_strategy_bundle_latest():
         
         return {
             "schema": "STRATEGY_BUNDLE_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "ready" if bundle else "not_ready",
             "bundle": bundle,  # None if validation failed (Fail-Closed)
             "validation": {
@@ -3731,7 +3733,7 @@ def get_strategy_bundle_latest():
     except ImportError as e:
         return {
             "schema": "STRATEGY_BUNDLE_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "error",
             "bundle": None,
             "validation": None,
@@ -3740,7 +3742,7 @@ def get_strategy_bundle_latest():
     except Exception as e:
         return {
             "schema": "STRATEGY_BUNDLE_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "error",
             "bundle": None,
             "validation": None,
@@ -3824,7 +3826,7 @@ def get_reco_latest():
         
         return {
             "schema": "RECO_REPORT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "ready" if report else "no_reco_yet",
             "report": report,
             "summary": status,
@@ -3834,7 +3836,7 @@ def get_reco_latest():
     except ImportError as e:
         return {
             "schema": "RECO_REPORT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "error",
             "report": None,
             "error": {"code": "IMPORT_ERROR", "message": str(e)}
@@ -3842,7 +3844,7 @@ def get_reco_latest():
     except Exception as e:
         return {
             "schema": "RECO_REPORT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "error",
             "report": None,
             "error": {"code": "UNKNOWN_ERROR", "message": str(e)}
@@ -3929,7 +3931,7 @@ def get_live_cycle_latest():
         if receipt:
             return {
                 "schema": "LIVE_CYCLE_RECEIPT_V1",
-                "asof": datetime.now().isoformat(),
+                "asof": datetime.now(KST).isoformat(),
                 "status": "ready",
                 "row_count": 1,
                 "rows": [receipt],
@@ -3939,7 +3941,7 @@ def get_live_cycle_latest():
         else:
             return {
                 "schema": "LIVE_CYCLE_RECEIPT_V1",
-                "asof": datetime.now().isoformat(),
+                "asof": datetime.now(KST).isoformat(),
                 "status": "no_cycle_yet",
                 "row_count": 0,
                 "rows": [],
@@ -3949,7 +3951,7 @@ def get_live_cycle_latest():
     except ImportError as e:
         return {
             "schema": "LIVE_CYCLE_RECEIPT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "error",
             "row_count": 0,
             "rows": [],
@@ -3958,7 +3960,7 @@ def get_live_cycle_latest():
     except Exception as e:
         return {
             "schema": "LIVE_CYCLE_RECEIPT_V1",
-            "asof": datetime.now().isoformat(),
+            "asof": datetime.now(KST).isoformat(),
             "status": "error",
             "row_count": 0,
             "rows": [],

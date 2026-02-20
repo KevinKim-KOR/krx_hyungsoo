@@ -11,6 +11,8 @@ extensions/automation/telegram_notifier.py
 """
 
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Optional, List, Dict
 import logging
 import os
@@ -96,7 +98,7 @@ class TelegramNotifier:
         
         message_lines = [
             "🟢 *매수 신호*",
-            f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            f"📅 {datetime.now(KST).strftime('%Y-%m-%d %H:%M')}",
             ""
         ]
         
@@ -124,7 +126,7 @@ class TelegramNotifier:
         
         message_lines = [
             "🔴 *매도 신호*",
-            f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            f"📅 {datetime.now(KST).strftime('%Y-%m-%d %H:%M')}",
             ""
         ]
         

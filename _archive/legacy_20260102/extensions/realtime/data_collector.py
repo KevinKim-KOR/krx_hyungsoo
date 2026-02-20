@@ -5,6 +5,8 @@ extensions/realtime/data_collector.py
 """
 import logging
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Optional
 import pandas as pd
@@ -35,7 +37,7 @@ class RealtimeDataCollector:
             성공 여부
         """
         if target_date is None:
-            target_date = datetime.now().date()
+            target_date = datetime.now(KST).date()
         
         logger.info(f"데이터 수집 시작: {target_date}")
         
@@ -190,7 +192,7 @@ class RealtimeDataCollector:
             검증 결과 딕셔너리
         """
         if target_date is None:
-            target_date = datetime.now().date()
+            target_date = datetime.now(KST).date()
         
         universe = self._get_universe()
         

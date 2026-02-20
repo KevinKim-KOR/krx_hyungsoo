@@ -15,6 +15,8 @@ import sys
 import shutil
 import subprocess
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -113,7 +115,7 @@ def generate_ai_content(c5_report: Dict) -> Dict:
     }
 
 def generate_contract5_report() -> Dict[str, Any]:
-    now = datetime.now()
+    now = datetime.now(KST)
     asof_str = now.isoformat()
     
     # 1. Gather Inputs

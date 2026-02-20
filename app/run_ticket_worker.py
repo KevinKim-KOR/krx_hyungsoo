@@ -16,6 +16,8 @@ import subprocess
 import hashlib
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import logging
 
 logging.basicConfig(
@@ -95,12 +97,12 @@ def acquire_lock() -> bool:
         try:
             lock_data = json.loads(LOCK_FILE.read_text(encoding="utf-8"))
             acquired_at = datetime.fromisoformat(lock_data.get("acquired_at", ""))
-            age_seconds = (datetime.now() - acquired_at).total_seconds()
+            age_seconds = (datetime.now(KST) - acquired_at).total_seconds()
             if age_seconds < STALE_THRESHOLD_SECONDS:
                 return False
         except:
             pass
-    lock_data = {"pid": os.getpid(), "acquired_at": datetime.now().isoformat()}
+    lock_data = {"pid": os.getpid(), "acquired_at": datetime.now(KST).isoformat()}
     LOCK_FILE.write_text(json.dumps(lock_data, ensure_ascii=False), encoding="utf-8")
     logger.info(f"Lock acquired (PID: {os.getpid()})")
     return True
@@ -332,7 +334,7 @@ def consume_window(window_id: str):
         "schema": "REAL_ENABLE_WINDOW_V1",
         "event": "CONSUME",
         "window_id": window_id,
-        "consumed_at": datetime.now().isoformat()
+        "consumed_at": datetime.now(KST).isoformat()
     }
     with open(WINDOWS_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(consume_event, ensure_ascii=False) + "\n")
@@ -356,7 +358,7 @@ def write_receipt_v3(
     
     receipt = {
         "schema": "EXECUTION_RECEIPT_V3",
-        "asof": datetime.now().isoformat(),
+        "asof": datetime.now(KST).isoformat(),
         "receipt_id": str(uuid.uuid4()),
         "request_id": request_id,
         "request_type": request_type,

@@ -9,6 +9,8 @@ Stale IN_PROGRESS 티켓 자동 정리
 import json
 import os
 from datetime import datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -76,7 +78,7 @@ def find_stale_in_progress(threshold_seconds: int = DEFAULT_THRESHOLD_SECONDS) -
     Stale IN_PROGRESS 티켓 찾기
     """
     board = get_ticket_board()
-    now = datetime.now()
+    now = datetime.now(KST)
     threshold = timedelta(seconds=threshold_seconds)
     
     stale = []
@@ -124,7 +126,7 @@ def clean_stale_tickets(
     """
     Stale IN_PROGRESS 티켓 정리
     """
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     stale = find_stale_in_progress(threshold_seconds)
     
     cleaned_items = []
@@ -175,7 +177,7 @@ def run_ticket_reaper(
     REAPER_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     
     # 스냅샷 경로
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_path = REAPER_SNAPSHOTS_DIR / f"reaper_{timestamp}.json"
     
     # evidence_refs 추가

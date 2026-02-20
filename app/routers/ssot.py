@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
 
@@ -43,7 +43,8 @@ async def get_ssot_snapshot():
 
     # 3. Load Stage (from Ops Summary)
     stage = "UNKNOWN"
-    updated_at = datetime.utcnow().isoformat()
+    KST = timezone(timedelta(hours=9))
+    updated_at = datetime.now(KST).isoformat()
     if OPS_SUMMARY_PATH.exists():
         try:
             summary = json.loads(OPS_SUMMARY_PATH.read_text(encoding="utf-8"))
@@ -70,7 +71,7 @@ async def get_ssot_snapshot():
         "revision": updated_at, # Use updated_at as revision for now
         "ops_summary": summary if "summary" in locals() else {}, # P146 Only: Full Ops Summary Sync
         "build_id": get_build_id(),
-        "synced_at": datetime.utcnow().isoformat()
+        "synced_at": datetime.now(KST).isoformat()
     }
     
     return snapshot

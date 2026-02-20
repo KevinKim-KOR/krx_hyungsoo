@@ -12,6 +12,8 @@ scripts/phase4/hybrid_stop_loss.py
 import sys
 import logging
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import pandas as pd
@@ -87,7 +89,7 @@ class HybridStopLoss:
         try:
             # KOSPI 데이터 가져오기 (최근 1년)
             today = date.today().strftime('%Y%m%d')
-            from_date = (datetime.now() - pd.DateOffset(years=1)).strftime('%Y%m%d')
+            from_date = (datetime.now(KST) - pd.DateOffset(years=1)).strftime('%Y%m%d')
             
             # KOSPI 지수 (1001)
             kospi = stock.get_index_ohlcv_by_date(from_date, today, "1001")
@@ -116,7 +118,7 @@ class HybridStopLoss:
         try:
             today = date.today().strftime('%Y%m%d')
             # ATR 계산을 위해 충분한 데이터 가져오기 (기간 + 10일 여유)
-            from_date = (datetime.now() - pd.DateOffset(days=self.atr_period * 2 + 30)).strftime('%Y%m%d')
+            from_date = (datetime.now(KST) - pd.DateOffset(days=self.atr_period * 2 + 30)).strftime('%Y%m%d')
             
             df = stock.get_market_ohlcv_by_date(from_date, today, code)
             
@@ -344,7 +346,7 @@ class HybridStopLoss:
         }.get(regime, '중립장')
         
         message = "*🎯 하이브리드 손절 모니터링*\n\n"
-        message += f"📅 {datetime.now().strftime('%Y년 %m월 %d일 %H:%M')}\n"
+        message += f"📅 {datetime.now(KST).strftime('%Y년 %m월 %d일 %H:%M')}\n"
         message += f"_레짐 + 변동성 기반 최적화 손절_\n\n"
         
         # 레짐 정보

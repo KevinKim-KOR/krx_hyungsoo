@@ -13,6 +13,8 @@ import json
 import os
 import shutil
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
@@ -50,7 +52,7 @@ def get_idempotency_key(mode: str = "normal") -> str:
     - mode=normal: daily_status_YYYYMMDD (1일 1회)
     - mode=test: test_daily_status_YYYYMMDD_HHMMSS (매번 새로)
     """
-    now = datetime.now()
+    now = datetime.now(KST)
     if mode == "test":
         return f"test_daily_status_{now.strftime('%Y%m%d_%H%M%S')}"
     return f"daily_status_{now.strftime('%Y%m%d')}"
@@ -205,7 +207,7 @@ def generate_daily_status_push(mode: str = "normal") -> Dict[str, Any]:
     """
     Daily Status Push 생성 (D-P.58 Enhanced)
     """
-    now = datetime.now()
+    now = datetime.now(KST)
     asof = now.isoformat()
     idempotency_key = get_idempotency_key(mode)
     

@@ -12,6 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import itertools
 import json
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import logging
 import pandas as pd
 
@@ -157,7 +159,7 @@ class ParameterOptimizer:
         df = pd.DataFrame(results)
         
         # 결과 저장
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now(KST).strftime('%Y%m%d_%H%M%S')
         output_file = self.output_dir / f"optimization_results_{timestamp}.csv"
         df.to_csv(output_file, index=False, encoding='utf-8-sig')
         

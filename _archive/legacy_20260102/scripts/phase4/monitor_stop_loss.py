@@ -10,6 +10,8 @@ scripts/phase4/monitor_stop_loss.py
 import sys
 import logging
 from datetime import date, datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -163,7 +165,7 @@ class StopLossMonitor:
             포맷된 메시지
         """
         message = "*🚨 손절 모니터링 알림*\n\n"
-        message += f"📅 {datetime.now().strftime('%Y년 %m월 %d일 %H:%M')}\n"
+        message += f"📅 {datetime.now(KST).strftime('%Y년 %m월 %d일 %H:%M')}\n"
         message += f"⏰ 장 마감 30분 전\n\n"
         
         # 손절 대상

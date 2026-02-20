@@ -11,6 +11,8 @@ import hashlib
 import shutil
 import uuid
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
@@ -59,7 +61,7 @@ def upsert_portfolio(
     Returns:
         저장 결과
     """
-    now = datetime.now()
+    now = datetime.now(KST)
     asof = now.isoformat()
     portfolio_id = str(uuid.uuid4())
     

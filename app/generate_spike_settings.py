@@ -10,6 +10,8 @@ import json
 import os
 import shutil
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, Optional
 import hashlib
@@ -44,7 +46,7 @@ def upsert_spike_settings(params: Dict, updated_by: str = "pc_ui") -> Dict:
     """Settings 저장 (Upsert)"""
     ensure_dirs()
     
-    now = datetime.now()
+    now = datetime.now(KST)
     updated_at = now.isoformat()
     
     # Defaults

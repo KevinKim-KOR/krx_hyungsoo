@@ -4,6 +4,8 @@ import json
 import logging
 import pandas as pd
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
 # Add project root to sys.path
@@ -179,7 +181,7 @@ def run_verification():
     
     final_output = {
         "schema_version": "OOS-MONTHLY-1.0",
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": datetime.now(KST).isoformat(),
         "years": {}
     }
 

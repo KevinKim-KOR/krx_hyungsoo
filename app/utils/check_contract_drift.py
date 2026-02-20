@@ -12,6 +12,8 @@ import json
 import os
 import re
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Set, Dict, List, Any
 
@@ -215,7 +217,7 @@ def check_drift_for_artifact(artifact: Dict, artifact_name: str) -> Dict:
 
 def run_drift_check() -> Dict:
     """전체 Drift 검사 실행"""
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # 1. Receipt 검사
     receipt = get_latest_receipt()

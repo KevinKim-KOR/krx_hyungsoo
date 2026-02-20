@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 import sys
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import pandas as pd
 
 # 프로젝트 루트 경로 추가
@@ -132,12 +134,12 @@ def load_parameter_history():
 
 def save_parameter_history(params, note=""):
     """파라미터 히스토리 저장"""
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(KST).strftime('%Y%m%d_%H%M%S')
     history_file = history_dir / f"params_{timestamp}.json"
     
     history_data = {
         'timestamp': timestamp,
-        'datetime': datetime.now().isoformat(),
+        'datetime': datetime.now(KST).isoformat(),
         'note': note,
         'params': params,
         'backtest_result': None  # 나중에 백테스트 결과 연동

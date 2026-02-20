@@ -7,6 +7,8 @@ import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Dict, List, Optional
 
 import optuna
@@ -303,7 +305,7 @@ class TuningService:
                         # 엔진 헬스체크
                         "engine_health": ext_result.engine_health,
                         "warnings": ext_result.warnings,
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.now(KST).isoformat(),
                     }
 
                     # DB에 trial 저장 (Train/Val/Test 포함)

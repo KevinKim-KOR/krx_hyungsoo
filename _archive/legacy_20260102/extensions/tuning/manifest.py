@@ -10,6 +10,8 @@ import logging
 import hashlib
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, date
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -142,7 +144,7 @@ def generate_run_id(stage: str = "tuning") -> str:
     형식: {stage}_{날짜}_{시간}_{해시}
     예: tuning_20251216_143052_abc123
     """
-    now = datetime.now()
+    now = datetime.now(KST)
     timestamp = now.strftime("%Y%m%d_%H%M%S")
     hash_input = f"{timestamp}_{now.microsecond}"
     hash_suffix = hashlib.md5(hash_input.encode()).hexdigest()[:6]
@@ -440,7 +442,7 @@ def create_manifest(
 
     return RunManifest(
         run_id=run_id,
-        created_at=datetime.now().isoformat(),
+        created_at=datetime.now(KST).isoformat(),
         stage=stage,
         config=config,
         data=data,

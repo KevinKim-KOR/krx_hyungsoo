@@ -11,6 +11,8 @@ extensions/automation/regime_monitor.py
 """
 
 from datetime import date, datetime, timedelta
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from typing import Optional, Dict, Tuple
 import pandas as pd
 import logging
@@ -101,7 +103,7 @@ class RegimeMonitor:
                 'confidence': float(confidence),
                 'position_ratio': float(position_ratio),
                 'defense_mode': defense_mode,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(KST).isoformat()
             }
             
             logger.info(f"✅ 레짐 분석 완료: {regime} (신뢰도: {confidence:.2%})")
@@ -136,7 +138,7 @@ class RegimeMonitor:
                 "confidence": result['confidence'],
                 "date": result['date'],
                 "us_market_regime": result.get('us_market_regime', 'neutral'), # US 정보가 없다면 기본값
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now(KST).isoformat()
             }
             
             with open(state_file, 'w', encoding='utf-8') as f:

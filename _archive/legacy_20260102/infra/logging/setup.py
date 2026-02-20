@@ -7,6 +7,8 @@ import logging
 import logging.handlers
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 import sys
 
 
@@ -58,7 +60,7 @@ def setup_logging(
         log_dir.mkdir(parents=True, exist_ok=True)
         
         # 일별 로그 파일
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now(KST).strftime('%Y-%m-%d')
         log_file = log_dir / f'{name}_{today}.log'
         
         file_handler = logging.handlers.RotatingFileHandler(
@@ -96,13 +98,13 @@ class LogContext:
     
     def __enter__(self):
         """컨텍스트 시작"""
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(KST)
         self.logger.log(self.level, f"{self.message} 시작")
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         """컨텍스트 종료"""
-        elapsed = (datetime.now() - self.start_time).total_seconds()
+        elapsed = (datetime.now(KST) - self.start_time).total_seconds()
         
         if exc_type is None:
             self.logger.log(self.level, f"{self.message} 완료 (소요: {elapsed:.2f}초)")

@@ -2,6 +2,8 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 
 # --- CONFIGURATION (Contract C-R) ---
 BASE_DIR = Path(__file__).parent.parent
@@ -89,7 +91,7 @@ def generate_human_report(summary, daily_list):
     report = {
         "schema": "PHASE_C_REPORT_HUMAN_V1",
         "version": "1.1.0",
-        "generated_at": datetime.now().isoformat() + "Z",
+        "generated_at": datetime.now(KST).isoformat(),
         "headline": {
             "kpis_5": {
                 "gate_open_days": kpis.get("gate_open", 0),
@@ -145,7 +147,7 @@ def generate_ai_report(summary, daily_list):
     report = {
         "schema": "PHASE_C_REPORT_AI_V1",
         "version": "1.0.0",
-        "generated_at": datetime.now().isoformat() + "Z",
+        "generated_at": datetime.now(KST).isoformat(),
         "summary": summary,
         "dataset": {
             "count": len(vectors),

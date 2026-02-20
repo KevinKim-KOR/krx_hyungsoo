@@ -11,6 +11,8 @@ Push Preview Generator (C-P.22)
 import json
 import uuid
 from datetime import datetime
+from datetime import timezone, timedelta
+KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
 
@@ -47,7 +49,7 @@ def generate_push_preview() -> dict:
     출력: preview_latest.json (Atomic Write)
     """
     preview_id = str(uuid.uuid4())
-    asof = datetime.now().isoformat()
+    asof = datetime.now(KST).isoformat()
     
     # Load Outbox
     if not OUTBOX_LATEST.exists():
@@ -111,7 +113,7 @@ def generate_push_preview() -> dict:
     os.replace(str(preview_tmp), str(PREVIEW_LATEST))
     
     # Snapshot
-    snapshot_name = f"preview_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    snapshot_name = f"preview_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = PREVIEW_SNAPSHOTS_DIR / snapshot_name
     snapshot_path.write_text(json.dumps(preview, ensure_ascii=False, indent=2), encoding="utf-8")
     
