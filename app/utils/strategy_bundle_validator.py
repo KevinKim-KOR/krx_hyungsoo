@@ -197,11 +197,18 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
     try:
         created_at = bundle.get("created_at", "")
         if created_at:
-            # ISO8601 파싱 (타임존 무시)
+            # ISO8601 파싱
             dt_str = created_at[:19]  # YYYY-MM-DDTHH:MM:SS
             created_dt = datetime.fromisoformat(dt_str)
-            now = datetime.now(KST)
-            age = now - created_dt
+            
+            # If asof has timezone, compare directly
+            if created_dt.tzinfo:
+                 now = datetime.now(KST)
+                 age = now - created_dt
+            else:
+                 now = datetime.now(KST).replace(tzinfo=None)
+                 age = now - created_dt
+                 
             age_seconds = int(age.total_seconds())
             
             if age_seconds > BUNDLE_MAX_AGE_SECONDS:
