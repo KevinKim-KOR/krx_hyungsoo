@@ -642,13 +642,48 @@ with tab_port_edit:
              portfolio_data = {"updated_at": datetime.now(KST).isoformat(), "total_value": 0, "cash": 0, "holdings": {}}
              save_json(PORTFOLIO_PATH, portfolio_data)
              st.rerun()
-    else:
-        with st.form("portfolio_edit_form"):
-            # Cash & Total
-            c1, c2 = st.columns(2)
-            total_val = c1.number_input("Total Value (KRW)", value=int(portfolio_data.get("total_value", 0)))
+    # === 0. Sync Status & Push UI (P146.9 HOTFIX) ===
+    if "port_sync_state" not in st.session_state:
+        st.session_state["port_sync_state"] = "SYNCED"
+        
+    is_synced = st.session_state["port_sync_state"] == "SYNCED"
+    
+    st.markdown("#### 🔄 OCI 동기화 상태")
+    c_stat, c_push = st.columns([3, 1])
+    with c_stat:
+        if is_synced:
+            st.success("🟢 **SYNCED** (로컬 저장본과 OCI 반영본이 일치합니다)")
+        else:
+            st.error("🔴 **OUT_OF_SYNC** (로컬에만 저장됨! 우측 버튼을 눌러 OCI에 확정 반영해주세요)")
+            
+    with c_push:
+        if st.button("📤 Push to OCI", disabled=is_synced, use_container_width=True):
+            # Token Check
+            is_live = not is_replay
+            cached_token = st.session_state.get("push_token_input", "")
+            
+            if is_live and not cached_token:
+                st.error("LIVE 모드: Operations 탭에서 Push Token을 먼저 입력해야 합니다.")
+            else:
+                with st.spinner("Pushing to OCI..."):
+                    try:
+                        r = requests.post("http://localhost:8000/api/sync/push", 
+                                          json={"token": cached_token}, 
+                                          timeout=SLOW_TIMEOUT)
+                        if r.status_code == 200:
+                            st.session_state["port_sync_state"] = "SYNCED"
+                            st.success("✅ OCI 체인에 포트폴리오가 정상 반영되었습니다!")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"Push Failed: {r.text}")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                        
+    st.divider()
+
     # --- Portfolio Editor (P136.5) ---
-    st.markdown("### 💼 포트폴리오 관리 (Portfolio Editor)")
+    st.markdown("### 💼 포트폴리오 편집 (Local)")
     
     # Load Current
     port_data = load_portfolio()
@@ -739,22 +774,12 @@ with tab_port_edit:
             with open(PORTFOLIO_PATH, "w", encoding="utf-8") as f:
                 json.dump(final_payload, f, indent=2)
                 
+            # Update Sync State
+            st.session_state["port_sync_state"] = "OUT_OF_SYNC"
             st.success(f"✅ 포트폴리오 저장 완료 (Local)! (Asset: {final_payload['total_value']:,.0f})")
+            st.toast("로컬에 임시저장 되었습니다! 위쪽의 'Push to OCI' 버튼을 눌러 OCI에 반영해주세요.")
             
-            # P146.1: Explicit Push Option
-            col_push, _ = st.columns([1, 2])
-            if col_push.button("📤 Push to OCI (Now)", key="push_port_btn"):
-                 cached_token = st.session_state.get("push_token_input")
-                 if cached_token:
-                     try:
-                        requests.post("http://localhost:8000/api/sync/push", json={"token": cached_token}, timeout=SLOW_TIMEOUT)
-                        st.success("✅ Portfolio Pushed to OCI!")
-                     except Exception as e:
-                        st.error(f"Push Failed: {e}")
-                 else:
-                     st.error("Token required in Operations Tab for Push.")
-            
-            time.sleep(2) # Give time to read before rerun if user doesn't push immediately
+            time.sleep(1)
             st.rerun()
             
         except Exception as e:
