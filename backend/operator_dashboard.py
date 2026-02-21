@@ -107,11 +107,17 @@ async def get_operator_dashboard():
         "health": "reports/ops/evidence/health/health_latest.json"
     }
 
-    # 4. P139: Portfolio & Timing Data
+    # 4. P139/P147: Portfolio & Timing Data (with Metadata)
     portfolio_path = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
     timing_path = BASE_DIR / "reports" / "oci" / "holding_timing" / "latest" / "holding_timing_latest.json"
     
     portfolio_view = []
+    portfolio_meta = {
+        "source_path": "state/portfolio/latest/portfolio_latest.json",
+        "mtime_kst": "N/A",
+        "positions_cnt": 0,
+        "error": "Portfolio file not found"
+    }
     
     # Ticker Map (Simple Fallback) - Ideally this should be shared or loaded from params
     TICKER_MAP = {
@@ -123,8 +129,25 @@ async def get_operator_dashboard():
     
     if portfolio_path.exists():
         try:
+            import os
+            from datetime import timezone, timedelta
+            KST = timezone(timedelta(hours=9))
+            mtime = os.path.getmtime(portfolio_path)
+            portfolio_meta["mtime_kst"] = datetime.fromtimestamp(mtime, KST).strftime('%Y-%m-%d %H:%M:%S')
+            portfolio_meta["error"] = None
+            
             pf_data = json.loads(portfolio_path.read_text(encoding="utf-8"))
-            holdings = pf_data.get("holdings", {})
+            
+            # Record base
+            positions = pf_data.get("positions", [])
+            if not positions and "holdings" in pf_data:
+                holdings = pf_data["holdings"]
+                if isinstance(holdings, list):
+                    positions = holdings
+                else:
+                    positions = [{"ticker": k, **v} for k, v in holdings.items()]
+            
+            portfolio_meta["positions_cnt"] = len(positions)
             
             # Load timing for signals/prices
             timing_map = {}
@@ -135,16 +158,10 @@ async def get_operator_dashboard():
                         timing_map[h["ticker"]] = h
                 except: pass
             
-            # Normalize holdings (Handle list vs dict)
-            if isinstance(holdings, list):
-                iter_holdings = holdings
-            else:
-                iter_holdings = [{"ticker": k, **v} for k, v in holdings.items()]
-                
-            for h in iter_holdings:
+            for h in positions:
                 t = h.get("ticker", "UNKNOWN")
                 qty = h.get("quantity", 0)
-                avg = h.get("avg_price", 0)
+                avg = h.get("average_price", h.get("avg_price", 0))
                 
                 # Get Market Data from Timing (Best effort)
                 t_info = timing_map.get(t, {})
@@ -175,7 +192,7 @@ async def get_operator_dashboard():
                 
         except Exception as e:
             # Fallback if port parse fails
-            portfolio_view = [{"ticker": "ERROR", "name": str(e)}]
+            portfolio_meta["error"] = f"Failed to parse portfolio: {str(e)}"
             
     # P143/P145: Replay/Override Info
     override = load_asof_override()
@@ -281,6 +298,7 @@ async def get_operator_dashboard():
         "next_action": next_action,
         "artifacts": artifacts,
         "portfolio": portfolio_view,
+        "portfolio_meta": portfolio_meta,
         "replay_info": replay_info,
         "exec_mode": exec_mode,
         "trace": trace_info,

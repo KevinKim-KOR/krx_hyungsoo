@@ -692,7 +692,7 @@ with tab_port_edit:
     c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
         current_asof = port_data.get("asof", "N/A")
-        new_asof = st.text_input("기준일 (ASOF KST, YYYY-MM-DD)", value=current_asof)
+        new_asof = st.text_input("기준일 (ASOF KST, YYYY-MM-DD)", value=current_asof, disabled=True)
     with c2:
         current_cash = port_data.get("cash", 0.0)
         new_cash = st.number_input("현금 (Cash)", value=float(current_cash), step=10000.0, format="%.0f")

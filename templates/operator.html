@@ -554,7 +554,40 @@
                     submitContainer.style.display = 'block';
                 }
 
-                // ... (Portfolio, Artifacts logic unchanged) ...
+                // P139/P147: Portfolio & Signals Rendering
+                const tbody = document.getElementById('portfolio-body');
+                tbody.innerHTML = '';
+                
+                if (data.portfolio_meta && data.portfolio_meta.error) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#f48771; padding: 15px;">❌ ${data.portfolio_meta.error}</td></tr>`;
+                } else if (!data.portfolio || data.portfolio.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888; padding: 15px;">보유 종목 없음 (SSOT 기준)</td></tr>`;
+                } else {
+                    data.portfolio.forEach(item => {
+                        const tr = document.createElement('tr');
+                        
+                        // Formatting
+                        const isPos = item.pnl_pct > 0;
+                        const isNeg = item.pnl_pct < 0;
+                        const color = isPos ? '#f48771' : (isNeg ? '#569cd6' : '#ccc'); // Red for + KRW, Blue for - KRW
+                        
+                        const sigPos = item.signal === 'BUY';
+                        const sigNeg = item.signal === 'SELL';
+                        const sigColor = sigPos ? '#f48771' : (sigNeg ? '#569cd6' : '#dcdcaa');
+                        
+                        tr.innerHTML = `
+                            <td>
+                                <b>${item.ticker}</b><br>
+                                <span style="font-size:0.8em; color:#888;">${item.name}</span>
+                            </td>
+                            <td>${item.qty.toLocaleString()}</td>
+                            <td style="color:${color}; font-weight:bold;">${item.pnl_pct.toFixed(2)}%</td>
+                            <td style="color:${sigColor}; font-weight:bold;">${item.signal}</td>
+                            <td style="font-size:0.9em; color:#aaa;">${item.reason}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
 
                 // Artifacts Grid (Fail-Soft Preview not here, links handled by backend)
                 // We just render links.
