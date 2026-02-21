@@ -29,21 +29,20 @@
 ---
 
 ## 3) Latest Stage & Transition
-- **Current Stage**: `EXECUTION_COMPLETED` (Expected)
-- **Stage Transition Table**:
-  1. `NO_ACTION_TODAY` (Start)
-  2. `EXECUTION_PREP` (Auto Ops Run)
-  3. `AWAITING_CONFIRM` (Draft Generated)
-  4. `EXECUTING` (Ticket Submitted)
-  5. `EXECUTION_COMPLETED` (Done)
-  6. `BLOCKED` / `ERROR` (Exception)
+- **Current Stage**: `DONE_TODAY` (Expected when finished)
+- **Stage Transition Table** (Based on `generate_ops_summary.py`):
+  1. `NO_ACTION_TODAY` (Start/No Trades)
+  2. `NEED_HUMAN_CONFIRM` (Prep Output, Waiting for Export Token)
+  3. `AWAITING_HUMAN_EXECUTION` / `AWAITING_RECORD_SUBMIT` (Ticket Issued, Waiting for Submit)
+  4. `DONE_TODAY` (Record Submitted & Validated)
+  5. `BLOCKED` / `ERROR` (Exception/Validation Fail)
 
 ---
 
 ## 4) Latest Artifacts (Canonical "latest" pointers)
 - `ops_summary_latest`: `reports/ops/summary/latest/ops_summary_latest.json`
 - `export_latest`: `reports/live/order_plan_export/latest/order_plan_export_latest.json`
-- `ticket_latest`: `reports/live/ticket/latest/ticket_latest.md`
+- `ticket_latest`: `reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.md` (and `.json`, `.csv`)
 - `record_latest`: `reports/live/manual_execution_record/latest/manual_execution_record_latest.json`
 - `portfolio_latest`: `state/portfolio/latest/portfolio_latest.json`
 
@@ -60,12 +59,10 @@
 ---
 
 ## 6) PC -> OCI Sync Payload (Push)
-- **Files Transferred** (via `api/sync/push`):
+- **Files Transferred** (via `api/sync/push` in P146):
   1. `state/portfolio/latest/portfolio_latest.json` (Normalized)
   2. `state/runtime/asof_override_latest.json` (Mode/Date)
-  3. `env_info` (Hostname/Type)
-  4. `build_id` (Sync Marker)
-  - *Warning*: `strategy_params` are currently local-only or synced via Bundle (Check P146 impl).
+  - *Note*: Strategy Bundle (which includes params) is generated separately and must be present on OCI, but the `Push` button primarily overwrites the two files above.
 
 ---
 
