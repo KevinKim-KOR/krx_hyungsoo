@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-02-22T13:48:42.777535+09:00",
+  "asof": "2026-02-21T01:59:08.943736+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -11,15 +11,15 @@
       "122630"
     ],
     "lookbacks": {
-      "momentum_period": 24,
-      "volatility_period": 17
+      "momentum_period": 21,
+      "volatility_period": 16
     },
     "rebalance_rule": {
       "frequency": "DAILY",
       "time_kst": "09:05"
     },
     "risk_limits": {
-      "max_position_pct": 0.29,
+      "max_position_pct": 0.26,
       "max_drawdown_pct": 0.16
     },
     "position_limits": {

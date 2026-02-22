@@ -152,7 +152,7 @@ def extract_signals_from_bundle(bundle: Dict) -> Tuple[List, List]:
     return top_picks, holding_actions
 
 
-def generate_reco_report() -> Dict:
+def generate_reco_report(force: bool = False) -> Dict:
     """
     추천 리포트 생성 (메인 함수)
     
@@ -171,6 +171,28 @@ def generate_reco_report() -> Dict:
     try:
         # 1. 번들 로드 및 검증
         bundle, validation = load_latest_bundle()
+        
+        # 1.5 SKIP 검증 로직 (P152)
+        latest_reco = load_latest_reco()
+        if latest_reco and not force:
+            created_str = latest_reco.get("created_at", "")
+            if created_str:
+                try:
+                    reco_date = datetime.fromisoformat(created_str).astimezone(KST).date()
+                    today = datetime.now(KST).date()
+                    if reco_date == today:
+                        prev_bundle_id = latest_reco.get("source_bundle", {}).get("bundle_id")
+                        curr_bundle_id = getattr(validation, "bundle_id", None)
+                        if prev_bundle_id == curr_bundle_id:
+                            return {
+                                "success": True, 
+                                "action": "SKIP", 
+                                "report": latest_reco, 
+                                "saved_to": "reports/live/reco/latest/reco_latest.json",
+                                "decision": latest_reco.get("decision", "UNKNOWN")
+                            }
+                except Exception as e:
+                    pass
         
         # 2. 결정 로직
         # Case 1: 번들 없음
@@ -321,6 +343,7 @@ def _save_and_return(report: Dict) -> Dict:
         
         return {
             "success": True,
+            "action": "REGEN",
             "report": report,
             "saved_to": "reports/live/reco/latest/reco_latest.json",
             "snapshot_ref": snapshot_ref
@@ -328,6 +351,7 @@ def _save_and_return(report: Dict) -> Dict:
     except Exception as e:
         return {
             "success": False,
+            "action": "ERROR",
             "report": report,
             "error": str(e),
             "snapshot_ref": snapshot_ref
@@ -440,5 +464,13 @@ def regenerate_snapshot() -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    result = generate_reco_report()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--force", action="store_true", help="Force regenerate ignoring SKIP logic")
+    args = parser.parse_args()
+    
+    result = generate_reco_report(force=args.force)
     print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
+    
+    action = result.get("action", "REGEN")
+    print(f"[RESULT: {action}]")

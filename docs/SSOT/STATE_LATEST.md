@@ -68,12 +68,20 @@
 
 ---
 
-## 7) What’s Next (Top 3)
+## 7) P152 Auto Ops Idempotency & Force Recompute
+- **Idempotency (SKIP)**: `reco`, `order_plan`, `order_plan_export` automatically skip generation if already generated today (KST) to prevent unintended overwrites.
+- **Auto-Trigger**: If `bundle_id` or `plan_id` changes downstream, regeneration is automatically triggered despite idempotency rules.
+- **Force Recompute**: PC Cockpit provides a `☑ Force Recompute (Overwrite)` checkbox that bypasses idempotency.
+  - *Fail-Closed*: `force=True` is only respected in `DRY_RUN` or `REPLAY` modes. In `LIVE` mode, the system forces `force=False` to protect production state.
+
+---
+
+## 8) What’s Next (Top 3)
 1.  **Pilot V3 Verification**: Execute 5-day UI-only trading (1 trade/day limit).
 2.  **LLM Tuning Loop**: Parameter optimization based on `daily_flight` results.
 3.  **Backtest Engine**: Re-enable backtest with new `contract_execution_gate` rules.
 
 ---
 
-## 8) Open Issues (Blockers)
+## 9) Open Issues (Blockers)
 - None (Documentation Overhaul Complete).

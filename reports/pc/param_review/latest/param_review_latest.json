@@ -1,6 +1,6 @@
 {
   "schema": "PARAM_REVIEW_V1",
-  "asof": "2026-02-08T14:03:03.930695Z",
+  "asof": "2026-02-21T02:06:03.391615+09:00",
   "baseline": {
     "params": {
       "universe": [
@@ -10,16 +10,16 @@
         "122630"
       ],
       "lookbacks": {
-        "momentum_period": 20,
-        "volatility_period": 14
+        "momentum_period": 21,
+        "volatility_period": 16
       },
       "rebalance_rule": {
         "frequency": "DAILY",
         "time_kst": "09:05"
       },
       "risk_limits": {
-        "max_position_pct": 0.25,
-        "max_drawdown_pct": 0.15
+        "max_position_pct": 0.26,
+        "max_drawdown_pct": 0.16
       },
       "position_limits": {
         "max_positions": 4,
@@ -28,10 +28,12 @@
       "decision_params": {
         "entry_threshold": 0.02,
         "exit_threshold": -0.03,
-        "adx_filter_min": 20
+        "adx_filter_min": 20,
+        "weight_momentum": 1.0,
+        "weight_volatility": 0.0
       }
     },
-    "fingerprint": "0f95d037238bc900",
+    "fingerprint": "0298f9b2452804c2",
     "metrics": {}
   },
   "candidates": [

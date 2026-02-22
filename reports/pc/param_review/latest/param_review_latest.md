@@ -1,7 +1,7 @@
-# Param Review Report (As of 2026-02-08T14:03:03.930695Z)
+# Param Review Report (As of 2026-02-21T02:06:03.391615+09:00)
 
 ## 1. Baseline (Current)
-- **Fingerprint**: `0f95d037238bc900`
+- **Fingerprint**: `0298f9b2452804c2`
 - **Description**: Current strategy parameters.
 
 ## 2. Top Candidates (Comparisons)

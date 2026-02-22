@@ -340,17 +340,35 @@ with tab_ops:
 
     # 2. Controls (Auto Ops)
     st.subheader("🤖 Auto Operations (Token-Free)")
-    # ... (Keep existing Auto Ops logic, minimal changes)
-    if st.button("▶️ Run Auto Ops Cycle"):
-         try:
-             # Trigger Ops on OCI (Execution Plane) - Live Cycle (Reco -> Plan -> Summary)
-             oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
-             requests.post(f"{oci_url}/api/live/cycle/run?confirm=true", timeout=SLOW_TIMEOUT)
-             st.toast("Auto Ops Triggered on OCI")
-             time.sleep(1)
-             st.rerun()
-         except Exception as e:
-             st.error(f"Trigger Failed: {e}")
+    
+    col_run, col_force = st.columns([1, 1])
+    with col_force:
+        force_recompute = st.checkbox("☑ Force Recompute (Overwrite)", value=False, help="강제 재생성 (LIVE 모드에서는 무시됨)")
+        
+    with col_run:
+        if st.button("▶️ Run Auto Ops Cycle", use_container_width=True):
+             try:
+                 oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
+                 # P152: Send force query param
+                 resp = requests.post(f"{oci_url}/api/live/cycle/run?confirm=true&force={str(force_recompute).lower()}", timeout=SLOW_TIMEOUT)
+                 if resp.status_code == 200:
+                     data = resp.json()
+                     results = data.get("results", {})
+                     
+                     # Format summary
+                     summary_str = " | ".join([f"{k.upper()}: {v}" for k, v in results.items() if k != "ops_summary"])
+                     if not summary_str:
+                         summary_str = "Auto Ops Completed via Orchestrator"
+                         
+                     st.info(f"✅ {summary_str}")
+                     st.toast("Auto Ops Cycle Completed")
+                 else:
+                     st.error(f"Trigger Failed: {resp.status_code} - {resp.text}")
+                     
+                 time.sleep(1.5)
+                 st.rerun()
+             except Exception as e:
+                 st.error(f"Trigger Failed: {e}")
              
     # 3. System Connectivity (Main Block Bottom)
     st.divider()

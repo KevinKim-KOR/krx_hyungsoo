@@ -55,13 +55,29 @@ def sanitize_text(text: str) -> str:
         cleaned = cleaned[:237] + "..."
     return cleaned
 
-def generate_order_plan() -> Dict[str, Any]:
+def generate_order_plan(force: bool = False) -> Dict[str, Any]:
     now = datetime.now(KST)
     asof_str = now.isoformat()
     
     # 1. Load Inputs
     reco = load_json(RECO_LATEST_FILE)
     portfolio = load_json(PORTFOLIO_LATEST_FILE)
+    
+    # 1.5 SKIP 검증 로직 (P152)
+    latest_op = load_json(OUTPUT_LATEST)
+    if latest_op and reco and not force:
+        created_str = latest_op.get("asof", "")
+        if created_str:
+            try:
+                op_date = datetime.fromisoformat(created_str).astimezone(KST).date()
+                if op_date == now.date():
+                    prev_bundle_id = latest_op.get("source", {}).get("bundle_id")
+                    curr_bundle_id = reco.get("source_bundle", {}).get("bundle_id")
+                    if prev_bundle_id == curr_bundle_id:
+                        latest_op["action"] = "SKIP"
+                        return latest_op
+            except Exception:
+                pass
     
     # 2. Initialize Report
     report = {
@@ -253,6 +269,7 @@ def generate_order_plan() -> Dict[str, Any]:
         report["reason"] = "SUCCESS"
         report["reason_detail"] = f"Generated {len(orders)} orders"
 
+    report["action"] = "REGEN"
     _save_and_return(report)
     return report
 
@@ -287,4 +304,15 @@ def _save_and_return(report: Dict):
         }))
 
 if __name__ == "__main__":
-    generate_order_plan()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--force", action="store_true", help="Force regenerate ignoring SKIP logic")
+    args = parser.parse_args()
+    
+    result = generate_order_plan(force=args.force)
+    # Output is handled by _save_and_return for REGEN, but if SKIP, nothing was printed.
+    if result.get("action") == "SKIP":
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        
+    action = result.get("action", "REGEN")
+    print(f"[RESULT: {action}]")

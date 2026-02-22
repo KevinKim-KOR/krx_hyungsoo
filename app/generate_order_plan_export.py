@@ -39,12 +39,28 @@ def generate_confirm_token(plan_id: str, count: int) -> str:
     raw = f"{plan_id}:{count}:{datetime.now(KST).isoformat()}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
-def generate_export():
+def generate_export(force: bool = False) -> Optional[Dict]:
     now = datetime.now(KST)
     asof_str = now.isoformat()
     
     # 1. Load Input (Order Plan)
     plan = load_json(ORDER_PLAN_LATEST)
+    
+    # 1.5 SKIP 검증 로직 (P152)
+    latest_exp = load_json(EXPORT_LATEST)
+    if latest_exp and plan and not force:
+        created_str = latest_exp.get("asof", "")
+        if created_str:
+            try:
+                exp_date = datetime.fromisoformat(created_str).astimezone(KST).date()
+                if exp_date == now.date():
+                    prev_plan_id = latest_exp.get("source", {}).get("plan_id")
+                    curr_plan_id = plan.get("plan_id")
+                    if prev_plan_id == curr_plan_id:
+                        latest_exp["action"] = "SKIP"
+                        return latest_exp
+            except Exception:
+                pass
     
     # 2. Initialize Export
     export = {
@@ -79,8 +95,9 @@ def generate_export():
     if not plan:
         export["decision"] = "BLOCKED"
         export["summary"]["notes"] = "Order Plan not found"
+        export["action"] = "REGEN"
         _save_and_return(export)
-        return
+        return export
 
     plan_id = plan.get("plan_id")
     if not plan_id:
@@ -97,8 +114,9 @@ def generate_export():
     if plan.get("decision") == "BLOCKED":
         export["decision"] = "BLOCKED"
         export["summary"]["notes"] = f"Order Plan is BLOCKED: {plan.get('reason')}"
+        export["action"] = "REGEN"
         _save_and_return(export)
-        return
+        return export
 
     # 4. Map Orders
     orders_in = plan.get("orders", [])
@@ -154,7 +172,9 @@ def generate_export():
     # Confirm Token
     export["human_confirm"]["confirm_token"] = generate_confirm_token(export["source"]["plan_id"], len(orders_out))
 
+    export["action"] = "REGEN"
     _save_and_return(export)
+    return export
 
 def _save_and_return(export: Dict):
     try:
@@ -180,4 +200,15 @@ def _save_and_return(export: Dict):
         }))
 
 if __name__ == "__main__":
-    generate_export()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--force", action="store_true", help="Force regenerate ignoring SKIP logic")
+    args = parser.parse_args()
+    
+    result = generate_export(force=args.force)
+    
+    if result and result.get("action") == "SKIP":
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        
+    action = result.get("action", "REGEN") if result else "ERROR"
+    print(f"[RESULT: {action}]")

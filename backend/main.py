@@ -3975,15 +3975,13 @@ def get_live_cycle_latest():
 
 
 @app.post("/api/live/cycle/run", summary="Live Cycle 실행")
-def run_live_cycle_api(confirm: bool = False):
+def run_live_cycle_api(confirm: bool = False, force: bool = Query(False)):
     """
-    Live Cycle Run (D-P.50)
+    Live Cycle Run (P152 Subprocess Orchestration)
     
-    Bundle→Reco→Summary→(Console)Send 단일 실행
+    Bundle->Reco->Plan->Export->Summary 단일 실행
     Confirm Guard: confirm=true 필수
-    Fail-Closed: 실패해도 영수증 저장
     """
-    # Confirm Guard
     if not confirm:
         return JSONResponse(
             status_code=400,
@@ -3994,32 +3992,51 @@ def run_live_cycle_api(confirm: bool = False):
             }
         )
     
+    # [Fail-Closed] force=True는 REPLAY/DRY_RUN에서만 유효, LIVE에서는 무시
+    _exec_mode = "LIVE"
     try:
-        from app.run_live_cycle import run_live_cycle
-        
-        result = run_live_cycle()
-        
-        if result.get("success"):
-            receipt = result.get("receipt", {})
-            logger.info(f"Live cycle completed: {receipt.get('cycle_id')} result={receipt.get('result')}")
-            return {
-                "result": receipt.get("result", "OK"),
-                "cycle_id": receipt.get("cycle_id"),
-                "decision": receipt.get("decision"),
-                "reason": receipt.get("reason"),
-                "saved_to": result.get("saved_to"),
-                "snapshot_ref": result.get("snapshot_ref"),
-                "delivery_actual": receipt.get("push", {}).get("delivery_actual", "CONSOLE_SIMULATED")
-            }
-        else:
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "result": "FAILED",
-                    "message": result.get("error", "Unknown error"),
-                    "cycle_id": None
-                }
-            )
+        from app.utils.portfolio_normalize import load_asof_override
+        override_data = load_asof_override()
+        if override_data.get("enabled", False):
+            _exec_mode = "DRY_RUN"
+    except Exception:
+        pass
+
+    if force and _exec_mode == "LIVE":
+        logger.warning("[P152] force=True rejected in LIVE mode. Forcing False.")
+        force = False
+
+    try:
+        import subprocess
+        def run_script(module: str) -> str:
+            cmd = [sys.executable, "-m", module]
+            if force:
+                cmd.append("--force")
+            res = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
+            import re
+            m = re.search(r"\[RESULT:\s*([A-Z_]+)\]", res.stdout)
+            if m:
+                return m.group(1)
+            # fallback string match
+            if "REGEN" in res.stdout: return "REGEN"
+            if "SKIP" in res.stdout: return "SKIP"
+            return "UNKNOWN"
+
+        results = {}
+        # 1. Reco
+        results["reco"] = run_script("app.generate_reco_report")
+        # 2. Order Plan
+        results["order_plan"] = run_script("app.generate_order_plan")
+        # 3. Order Plan Export
+        results["order_plan_export"] = run_script("app.generate_order_plan_export")
+        # 4. Ops Summary (no [RESULT:] output natively, just runs)
+        run_script("app.generate_ops_summary")
+
+        return {
+            "result": "OK",
+            "status": "success",
+            "results": results
+        }
     except ImportError as e:
         raise HTTPException(status_code=500, detail={
             "result": "FAILED",

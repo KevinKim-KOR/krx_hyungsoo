@@ -32,9 +32,11 @@ PC의 최신 전략 설정을 OCI에 동기화합니다.
 매매 사이클을 실행합니다. (PC는 명령만 내리고, 실행은 OCI가 담당합니다.)
 
 1. **Cockpit > Ops 탭** 이동.
-2. **`▶️ Run Auto Ops Cycle` 버튼 클릭**.
-3. **Toast 메시지 확인**: "Auto Ops Triggered on OCI".
-4. **대기**: 약 1~5분 소요 (OCI 내부 연산).
+2. (선택사항) 필요 시 **`☑ Force Recompute (Overwrite)`** 체크.
+   - *주의*: 당일 이미 생성된 플랜이 있더라도 무조건 새로 생성합니다 (`LIVE` 모드에선 보호됨).
+3. **`▶️ Run Auto Ops Cycle` 버튼 클릭**.
+4. **Toast 메시지 확인**: "Auto Ops Cycle Completed" 및 Info 박스 요약 확인 (예: `RECO: REGEN | ORDER_PLAN: SKIP`).
+5. **대기**: 약 1~5분 소요 (OCI 내부 연산).
 
 ---
 
