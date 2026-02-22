@@ -371,7 +371,8 @@ with tab_ops:
              except Exception as e:
                  st.error(f"Trigger Failed: {e}")
                  
-    # P154: Display persistent cycle result
+             
+    # P154: Display persistent cycle result (Outside columns so it doesn't get squished)
     if "last_cycle_result" in st.session_state:
         st.info(st.session_state["last_cycle_result"])
              
