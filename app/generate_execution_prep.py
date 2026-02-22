@@ -26,15 +26,13 @@ PREP_DIR.mkdir(parents=True, exist_ok=True)
 PREP_SNAPSHOTS.mkdir(parents=True, exist_ok=True)
 
 # Safety Limits
-# Safety Limits (Guardrails V1)
-MAX_ORDERS_ALLOWED = 20
-MAX_TOTAL_NOTIONAL_RATIO = 0.3
-MAX_SINGLE_ORDER_RATIO = 0.1
-MIN_CASH_RESERVE_RATIO = 0.05
 ALLOW_BUY = True
 
 PORTFOLIO_VAR_DIR = BASE_DIR / "state" / "portfolio" / "latest"
 PORTFOLIO_LATEST = PORTFOLIO_VAR_DIR / "portfolio_latest.json"
+
+GUARDRAILS_DIR = BASE_DIR / "state" / "guardrails" / "latest"
+GUARDRAILS_LATEST = GUARDRAILS_DIR / "guardrails_latest.json"
 
 def load_json(path: Path) -> Optional[Dict]:
     if not path.exists():
@@ -65,8 +63,8 @@ def generate_prep(confirm_token: str):
         "orders": [],
         "safety": {
             "orders_count": 0,
-            "max_orders_allowed": MAX_ORDERS_ALLOWED,
-            "max_single_order_ratio": MAX_SINGLE_ORDER_RATIO
+            "max_orders_allowed": 20,
+            "max_single_order_ratio": 0.0
         },
         "verdict": "BLOCKED",
         "manual_next_step": "Resolve Blocking Issues",
@@ -136,6 +134,54 @@ def generate_prep(confirm_token: str):
     # Load Portfolio
     portfolio_data = load_json(PORTFOLIO_LATEST)
     
+    # 4. Load SSOT Guardrails
+    guardrails_cfg = load_json(GUARDRAILS_LATEST) or {}
+    
+    # Defaults in case missing
+    live_profile = guardrails_cfg.get("live", {"max_total_notional_ratio": 0.3, "max_single_order_ratio": 0.1, "min_cash_reserve_ratio": 0.05})
+    dry_run_profile = guardrails_cfg.get("dry_run", {"max_total_notional_ratio": 1.0, "max_single_order_ratio": 1.0, "min_cash_reserve_ratio": 0.0})
+    replay_profile = guardrails_cfg.get("replay", {"max_total_notional_ratio": 1.0, "max_single_order_ratio": 1.0, "min_cash_reserve_ratio": 0.0})
+    caps = guardrails_cfg.get("caps", {"max_total_notional_ratio": 1.0, "max_single_order_ratio": 1.0, "min_cash_reserve_ratio": 0.0})
+    
+    # Determine Execution Mode (Similar to P146.9)
+    # Check Replay/Override
+    from app.utils.portfolio_normalize import load_asof_override
+    override_cfg = load_asof_override()
+    exec_mode = "LIVE"
+    
+    if override_cfg.get("enabled", False):
+        exec_mode = "REPLAY" # If it's replay. We can strictly use DRY_RUN or REPLAY.
+        
+    # Also check Ops Summary stage or mode if available
+    OPS_SUMMARY = BASE_DIR / "reports" / "live" / "ops_summary" / "latest" / "ops_summary_latest.json"
+    if OPS_SUMMARY.exists():
+        try:
+             summ = json.loads(OPS_SUMMARY.read_text(encoding="utf-8"))
+             if "manual_loop" in summ:
+                 exec_mode = summ["manual_loop"].get("mode", exec_mode)
+             # Handle rows vs dict
+             elif "rows" in summ and summ["rows"]:
+                 exec_mode = summ["rows"][0].get("manual_loop", {}).get("mode", exec_mode)
+        except Exception:
+             pass
+             
+    # Map exec_mode to profile
+    if exec_mode == "REPLAY":
+        active_limits = replay_profile
+    elif exec_mode == "DRY_RUN":
+        active_limits = dry_run_profile
+    else:
+        active_limits = live_profile
+        
+    # Clamp to Caps (Fail-Closed)
+    max_total_notional_ratio = min(active_limits.get("max_total_notional_ratio", 0.3), caps.get("max_total_notional_ratio", 1.0))
+    max_single_order_ratio = min(active_limits.get("max_single_order_ratio", 0.1), caps.get("max_single_order_ratio", 1.0))
+    
+    # min reserve is a minimum floor we must adhere to. So we take MAX of requested vs caps min floor (if defined).
+    # If cap is 0.0, we just use requested.
+    min_cash_reserve_ratio = max(active_limits.get("min_cash_reserve_ratio", 0.05), caps.get("min_cash_reserve_ratio", 0.0))
+    MAX_ORDERS_ALLOWED = 20 # Keep this max count hardcoded or add to SSOT later
+
     # 5. Safety Checks (Guardrails V1)
     orders = export_data.get("orders", [])
     prep["orders"] = orders
@@ -169,7 +215,15 @@ def generate_prep(confirm_token: str):
         "max_single_notional": max_single_notional,
         "portfolio_value": 0, # Placeholder
         "cash_reserve_after": 0, # Placeholder
-        "checks": {}
+        "checks": {},
+        "limits": {
+            "applied": {
+                "max_total_notional_ratio": max_total_notional_ratio,
+                "max_single_order_ratio": max_single_order_ratio,
+                "min_cash_reserve_ratio": min_cash_reserve_ratio,
+                "exec_mode": exec_mode
+            }
+        }
     }
 
     # Guardrail Logic
@@ -204,23 +258,24 @@ def generate_prep(confirm_token: str):
                 "cash_reserve_ratio": round(cash_reserve_ratio, 4)
             }
             
-            if total_ratio > MAX_TOTAL_NOTIONAL_RATIO:
-                 decision = "BLOCKED"
-                 reason = "LIMIT_EXCEEDED"
-                 detail = f"Total Notional Ratio {total_ratio:.2f} exceeds {MAX_TOTAL_NOTIONAL_RATIO}"
-                 verdict = "BLOCKED"
+        
+            if total_ratio > max_total_notional_ratio:
+                decision = "BLOCKED"
+                reason = "LIMIT_EXCEEDED"
+                detail = f"Total notional ratio {total_ratio:.4f} > {max_total_notional_ratio:.4f}"
+                verdict = "BLOCKED"
             
-            elif single_ratio > MAX_SINGLE_ORDER_RATIO:
-                 decision = "BLOCKED"
-                 reason = "LIMIT_EXCEEDED"
-                 detail = f"Single Order Ratio {single_ratio:.2f} exceeds {MAX_SINGLE_ORDER_RATIO}"
-                 verdict = "BLOCKED"
+            elif single_ratio > max_single_order_ratio:
+                decision = "BLOCKED"
+                reason = "LIMIT_EXCEEDED"
+                detail = f"Single order notional ratio {single_ratio:.4f} > {max_single_order_ratio:.4f}"
+                verdict = "BLOCKED"
                  
-            elif cash_reserve_ratio < MIN_CASH_RESERVE_RATIO:
-                 decision = "BLOCKED" # Or WARN?
-                 reason = "CASH_LOW"
-                 detail = f"Est. Cash Reserve {cash_reserve_ratio:.2f} below {MIN_CASH_RESERVE_RATIO}"
-                 verdict = "BLOCKED"
+            elif cash_reserve_ratio < min_cash_reserve_ratio:
+                decision = "BLOCKED" # Or WARN?
+                reason = "CASH_LOW"
+                detail = f"Est. Cash Reserve {cash_reserve_ratio:.4f} below {min_cash_reserve_ratio:.4f}"
+                verdict = "BLOCKED"
         else:
             # Portfolio value 0? suspicious
             decision = "BLOCKED"

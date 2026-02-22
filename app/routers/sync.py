@@ -171,8 +171,19 @@ async def push_bundle_to_oci(
             except Exception as e:
                 print(f"[WARN] Could not parse strategy params: {e}")
                 
+        # 3.5 Load Guardrails (P160)
+        GUARDRAILS_PATH = BASE_DIR / "state" / "guardrails" / "latest" / "guardrails_latest.json"
+        guardrails_payload = None
+        if GUARDRAILS_PATH.exists():
+            try:
+                guardrails_payload = json.loads(GUARDRAILS_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
         # 4. Construct SSOT partial snapshot payload
         import platform
+        import datetime
+        from datetime import timezone, timedelta
         snapshot = {
             "env_info": {
                 "hostname": platform.node(),
@@ -181,6 +192,7 @@ async def push_bundle_to_oci(
             },
             "strategy_bundle": bundle_payload,
             "strategy_params": params_payload,
+            "guardrails": guardrails_payload,
             "build_id": "PC_PUSH_BUNDLE",
             "synced_at": datetime.datetime.now(timezone(timedelta(hours=9))).isoformat()
         }

@@ -49,6 +49,9 @@ SNAPSHOT_DIR = PARAMS_DIR / "snapshots"
 # Portfolio Paths (P136.5)
 PORTFOLIO_PATH = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
 
+# Guardrails Paths (P160)
+GUARDRAILS_PATH = BASE_DIR / "state" / "guardrails" / "latest" / "guardrails_latest.json"
+
 # Param Search Paths
 SEARCH_DIR = BASE_DIR / "reports" / "pc" / "param_search" / "latest"
 SEARCH_LATEST_PATH = SEARCH_DIR / "param_search_latest.json"
@@ -220,15 +223,17 @@ else:
 
 params_data = load_json(LATEST_PATH)
 portfolio_data = load_json(PORTFOLIO_PATH)
+guardrails_data = load_json(GUARDRAILS_PATH) or {}
 
 # Create Tabs
-tab_ops, tab_main, tab_reco, tab_timing, tab_port_edit, tab_review = st.tabs([
+tab_ops, tab_main, tab_reco, tab_timing, tab_port_edit, tab_review, tab_guardrails = st.tabs([
     "🚀 Operations (P144)",
     "🔩 Current Parameters", 
     "🔎 Recommendations (P135)", 
     "⏱️ Holdings Timing (P136)",
     "💼 Portfolio Editor (P136.5)",
-    "🧐 Param Review (P138)"
+    "🧐 Param Review (P138)",
+    "🛡️ Guardrails (P160)"
 ])
 
 # TAB 0: Operations (P144/P146.1)
@@ -956,4 +961,58 @@ with tab_review:
         st.text_area("Questions", q_text, height=150)
 
 
-
+# TAB 6: Guardrails (P160)
+with tab_guardrails:
+    st.header("🛡️ Execution Guardrails (P160 SSOT)")
+    st.markdown("Manage safety limits for `LIVE`, `DRY_RUN`, and `REPLAY` execution modes. Note: LIVE mode limits are read-only for safety.")
+    
+    caps = guardrails_data.get("caps", {"max_total_notional_ratio": 1.0, "max_single_order_ratio": 1.0, "min_cash_reserve_ratio": 0.0})
+    st.caption(f"**Hard Caps (Fail-Closed Boundaries):** Max Notional = {caps.get('max_total_notional_ratio')}, Max Single = {caps.get('max_single_order_ratio')}, Min Reserve = {caps.get('min_cash_reserve_ratio')}")
+    
+    with st.form("guardrails_form"):
+        c_live, c_dry, c_rep = st.columns(3)
+        
+        # LIVE (Readonly visually)
+        with c_live:
+            st.subheader("🔴 LIVE Mode")
+            live = guardrails_data.get("live", {"max_total_notional_ratio": 0.3, "max_single_order_ratio": 0.1, "min_cash_reserve_ratio": 0.05})
+            l_tot = st.number_input("Max Total Notional Ratio", value=float(live.get("max_total_notional_ratio", 0.3)), key="l_tot", help="Read-only", disabled=True)
+            l_sgl = st.number_input("Max Single Order Ratio", value=float(live.get("max_single_order_ratio", 0.1)), key="l_sgl", disabled=True)
+            l_csh = st.number_input("Min Cash Reserve Ratio", value=float(live.get("min_cash_reserve_ratio", 0.05)), key="l_csh", disabled=True)
+            
+        with c_dry:
+            st.subheader("🧪 DRY_RUN Mode")
+            dry = guardrails_data.get("dry_run", {"max_total_notional_ratio": 1.0, "max_single_order_ratio": 1.0, "min_cash_reserve_ratio": 0.0})
+            d_tot = st.number_input("Max Total Notional Ratio", value=float(dry.get("max_total_notional_ratio", 1.0)), key="d_tot")
+            d_sgl = st.number_input("Max Single Order Ratio", value=float(dry.get("max_single_order_ratio", 1.0)), key="d_sgl")
+            d_csh = st.number_input("Min Cash Reserve Ratio", value=float(dry.get("min_cash_reserve_ratio", 0.0)), key="d_csh")
+            
+        with c_rep:
+            st.subheader("⏪ REPLAY Mode")
+            rep = guardrails_data.get("replay", {"max_total_notional_ratio": 1.0, "max_single_order_ratio": 1.0, "min_cash_reserve_ratio": 0.0})
+            r_tot = st.number_input("Max Total Notional Ratio", value=float(rep.get("max_total_notional_ratio", 1.0)), key="r_tot")
+            r_sgl = st.number_input("Max Single Order Ratio", value=float(rep.get("max_single_order_ratio", 1.0)), key="r_sgl")
+            r_csh = st.number_input("Min Cash Reserve Ratio", value=float(rep.get("min_cash_reserve_ratio", 0.0)), key="r_csh")
+            
+        st.markdown("---")
+        submit_guard = st.form_submit_button("💾 Save Guardrails (Local)")
+        
+        if submit_guard:
+            new_guardrails = {
+                "schema": "GUARDRAILS_V1",
+                "live": live, # Unchanged from UI due to disabled
+                "dry_run": {
+                    "max_total_notional_ratio": float(d_tot),
+                    "max_single_order_ratio": float(d_sgl),
+                    "min_cash_reserve_ratio": float(d_csh)
+                },
+                "replay": {
+                    "max_total_notional_ratio": float(r_tot),
+                    "max_single_order_ratio": float(r_sgl),
+                    "min_cash_reserve_ratio": float(r_csh)
+                },
+                "caps": caps
+            }
+            # Save
+            save_json(GUARDRAILS_PATH, new_guardrails)
+            st.success("Guardrails saved locally! Go to 'Current Parameters' to push everything to OCI (1-Click Sync).")

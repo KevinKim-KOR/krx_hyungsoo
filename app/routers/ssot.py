@@ -60,6 +60,15 @@ async def get_ssot_snapshot():
     import platform
     import os
     
+    # Include Guardrails (P160)
+    guardrails_path = BASE_DIR / "state" / "guardrails" / "latest" / "guardrails_latest.json"
+    guardrails = {}
+    if guardrails_path.exists():
+        try:
+            guardrails = json.loads(guardrails_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    
     # 4. Construct Snapshot
     snapshot = {
         "env_info": {
@@ -73,7 +82,8 @@ async def get_ssot_snapshot():
         "revision": updated_at, # Use updated_at as revision for now
         "ops_summary": summary if "summary" in locals() else {}, # P146 Only: Full Ops Summary Sync
         "build_id": get_build_id(),
-        "synced_at": datetime.now(KST).isoformat()
+        "synced_at": datetime.now(KST).isoformat(),
+        "guardrails": guardrails, # P160: Include guardrails in snapshot
     }
     
     return snapshot
@@ -189,5 +199,12 @@ async def update_ssot_snapshot(
         PARAMS_PATH = BASE_DIR / "state" / "strategy_params" / "latest" / "strategy_params_latest.json"
         PARAMS_PATH.parent.mkdir(parents=True, exist_ok=True)
         PARAMS_PATH.write_text(json.dumps(new_params, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+    # 6. Update Execution Guardrails (P160)
+    new_guardrails = snapshot.get("guardrails")
+    if new_guardrails:
+        GUARDRAILS_PATH = BASE_DIR / "state" / "guardrails" / "latest" / "guardrails_latest.json"
+        GUARDRAILS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        GUARDRAILS_PATH.write_text(json.dumps(new_guardrails, indent=2, ensure_ascii=False), encoding="utf-8")
 
     return {"status": "OK", "message": "SSOT updated successfully", "revision": snapshot.get("revision")}
