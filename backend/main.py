@@ -3138,8 +3138,9 @@ def _load_json(path: Path) -> dict:
 
 @app.post("/api/manual_execution_record/draft", summary="Draft Record 생성 (Server-Side)")
 def generate_draft_record():
-    """Generate Manual Execution Record Draft (Server-Side) - P146.2"""
+    """Generate Manual Execution Record Draft (Server-Side) - P146.2 / P161"""
     try:
+        import hashlib
         # 1. Paths (local to avoid NameError)
         _ticket_path = REPORTS_DIR / "live" / "manual_execution_ticket" / "latest" / "manual_execution_ticket_latest.json"
         _export_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
@@ -3176,7 +3177,42 @@ def generate_draft_record():
                 "guidance": "plan_id가 일치하지 않습니다. TICKET 재생성 버튼을 눌러 Export에 맞춰주세요."
             }
 
-        # 5. Construct Draft
+        # P161: Determine exec_mode
+        _exec_mode = "LIVE"
+        if OPS_SUMMARY_PATH.exists():
+            try:
+                _summ = json.loads(OPS_SUMMARY_PATH.read_text(encoding="utf-8"))
+                _exec_mode = _summ.get("manual_loop", {}).get("mode", "LIVE")
+            except Exception:
+                pass
+        try:
+            from app.utils.portfolio_normalize import load_asof_override
+            _override = load_asof_override()
+            if _override.get("enabled", False):
+                _exec_mode = "DRY_RUN"
+            _replay_date = _override.get("asof_kst", "")
+        except Exception:
+            _replay_date = ""
+
+        # P161: Compute ticket_id (never null)
+        _ticket_id = ticket.get("ticket_id") or ticket.get("source", {}).get("plan_id")
+        if not _ticket_id:
+            _ticket_id = f"ticket-{export_plan_id or 'UNKNOWN'}"
+
+        # P161: Compute idempotency_key (never empty)
+        _order_plan_key = export.get("source", {}).get("order_plan_key", "")
+        if not _order_plan_key:
+            # Fallback: construct from plan_id:decision:payload_sha256
+            _op_plan_id = export.get("source", {}).get("plan_id", "")
+            _op_decision = export.get("decision", "")
+            _op_sha = export.get("integrity", {}).get("payload_sha256", "")
+            _order_plan_key = f"{_op_plan_id}:{_op_decision}:{_op_sha}"
+        _idemp_raw = f"{export_plan_id or ''}:{_order_plan_key}:{_exec_mode}:{_replay_date}"
+        _idempotency_key = hashlib.sha256(_idemp_raw.encode("utf-8")).hexdigest()
+        if not _idempotency_key:
+            raise ValueError("Failed to compute idempotency_key — cannot be empty")
+
+        # 5. Construct Draft (P161: Always overwrite)
         items = []
         for order in export.get("orders", []):
             items.append({
@@ -3199,15 +3235,16 @@ def generate_draft_record():
                 "prep_plan_id": prep.get("source", {}).get("plan_id"),
                 "ticket_plan_id": ticket_plan_id,
                 "export_plan_id": export_plan_id,
-                "ticket_id": ticket.get("ticket_id")
+                "ticket_id": _ticket_id
             },
             "items": items,
             "dedupe": {
-                "idempotency_key": ""
-            }
+                "idempotency_key": _idempotency_key
+            },
+            "exec_mode": _exec_mode
         }
 
-        # 6. Sanitize & Save
+        # 6. Sanitize & Save (Always overwrite)
         def recursive_sanitize(obj):
             if isinstance(obj, dict):
                 return {k: recursive_sanitize(v) for k, v in obj.items()}
@@ -3221,7 +3258,7 @@ def generate_draft_record():
         sanitized_draft = recursive_sanitize(draft)
         _draft_path.write_text(json.dumps(sanitized_draft, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        return {"result": "OK", "path": str(_draft_path), "count": len(items)}
+        return {"result": "OK", "path": str(_draft_path), "count": len(items), "ticket_id": _ticket_id, "idempotency_key": _idempotency_key}
 
     except Exception as e:
         logger.error(f"Draft Gen Error: {e}")
@@ -4719,17 +4756,31 @@ async def submit_execution_record_api(
 
     try:
         from app.generate_manual_execution_record import generate_record
-        generate_record(token, payload)
+        generate_record(token, payload, _exec_mode)
         
         # Read result
         from app.generate_manual_execution_record import RECORD_LATEST
         if RECORD_LATEST.exists():
-             return json.loads(RECORD_LATEST.read_text(encoding="utf-8"))
+             result_data = json.loads(RECORD_LATEST.read_text(encoding="utf-8"))
+             # P161: In DRY_RUN/REPLAY, never return TOKEN_MISMATCH
+             if _exec_mode in ["DRY_RUN", "REPLAY"]:
+                 if result_data.get("reason") == "TOKEN_MISMATCH":
+                     result_data["reason"] = "DRY_RUN_AUTO_BYPASS"
+                     result_data["decision"] = "EXECUTED"
+             return result_data
         return {"result": "OK", "message": "Record submitted"}
         
     except Exception as e:
         logger.error(f"Record Submit failed: {e}")
-        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
+        # P161: Return cause-specific error codes
+        err_str = str(e)
+        if "plan_id" in err_str.lower() or "mismatch" in err_str.lower():
+            reason = "PLAN_MISMATCH"
+        elif "draft" in err_str.lower() or "incomplete" in err_str.lower():
+            reason = "DRAFT_INCOMPLETE"
+        else:
+            reason = str(e)
+        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": reason})
 
 
 @app.post("/api/manual_execution_ticket/regenerate")
