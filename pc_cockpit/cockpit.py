@@ -360,7 +360,8 @@ with tab_ops:
                      if not summary_str:
                          summary_str = "Auto Ops Completed via Orchestrator"
                          
-                     st.info(f"✅ {summary_str}")
+                     # P154: Store result in session state to persist after rerun
+                     st.session_state["last_cycle_result"] = f"✅ {summary_str}"
                      st.toast("Auto Ops Cycle Completed")
                  else:
                      st.error(f"Trigger Failed: {resp.status_code} - {resp.text}")
@@ -369,6 +370,10 @@ with tab_ops:
                  st.rerun()
              except Exception as e:
                  st.error(f"Trigger Failed: {e}")
+                 
+    # P154: Display persistent cycle result
+    if "last_cycle_result" in st.session_state:
+        st.info(st.session_state["last_cycle_result"])
              
     # 3. System Connectivity (Main Block Bottom)
     st.divider()

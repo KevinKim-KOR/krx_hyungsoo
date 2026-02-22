@@ -100,7 +100,8 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
         "source": {
             "reco_ref": str(RECO_LATEST_FILE.relative_to(BASE_DIR)).replace("\\", "/"),
             "reco_key": reco_key,
-            "reco_asof": None,
+            "reco_report_id": None,
+            "reco_created_at": None,
             "reco_decision": None,
             "bundle_id": None,
             "bundle_created_at": None,
@@ -123,7 +124,8 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
         return report
 
     # Populate Reco Meta
-    report["source"]["reco_asof"] = reco.get("asof")
+    report["source"]["reco_report_id"] = reco.get("report_id")
+    report["source"]["reco_created_at"] = reco.get("created_at")
     report["source"]["reco_decision"] = reco.get("decision")
     if "source_bundle" in reco and reco["source_bundle"]:
         report["source"]["bundle_id"] = reco["source_bundle"].get("bundle_id")

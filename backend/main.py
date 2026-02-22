@@ -4035,12 +4035,17 @@ def run_live_cycle_api(confirm: bool = False, force: bool = Query(False)):
         # 1. Reco
         reco_res = run_script("app.generate_reco_report")
         results["reco"] = f"{reco_res['action']}" + (f" ({reco_res['reason']})" if reco_res['reason'] else "")
-        cascade = (reco_res['action'] == "REGEN")
+        
+        # P154: Force Cascade only in DRY_RUN / REPLAY
+        cascade = False
+        if _exec_mode != "LIVE" and reco_res['action'] == "REGEN":
+            cascade = True
 
         # 2. Order Plan
         op_res = run_script("app.generate_order_plan", cascade_force=cascade)
         results["order_plan"] = f"{op_res['action']}" + (f" ({op_res['reason']})" if op_res['reason'] else "")
-        if op_res['action'] == "REGEN":
+        
+        if _exec_mode != "LIVE" and op_res['action'] == "REGEN":
             cascade = True
 
         # 3. Order Plan Export

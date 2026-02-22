@@ -46,12 +46,14 @@ def generate_export(force: bool = False) -> Optional[Dict]:
     # 1. Load Input (Order Plan)
     plan = load_json(ORDER_PLAN_LATEST)
     
-    # P153: Create order_plan_key
+    # P153/P154: Create order_plan_key with strict orders hash
     order_plan_key = "NONE"
     if plan:
         p_id = plan.get("plan_id", "")
         p_dec = plan.get("decision", "")
-        p_sha = plan.get("integrity", {}).get("payload_sha256", "")
+        # Compute sha256 of orders array to guarantee drift detection
+        orders_dump = json.dumps(plan.get("orders", []), sort_keys=True, ensure_ascii=False)
+        p_sha = hashlib.sha256(orders_dump.encode("utf-8")).hexdigest()
         order_plan_key = f"{p_id}:{p_dec}:{p_sha}"
 
     # 1.5 SKIP 검증 로직 (P152 & P153)
