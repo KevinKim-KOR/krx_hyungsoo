@@ -363,6 +363,25 @@ with tab_ops:
                      # P154: Store result in session state to persist after rerun
                      st.session_state["last_cycle_result"] = f"✅ {summary_str}"
                      st.toast("Auto Ops Cycle Completed")
+                 elif resp.status_code == 500:
+                     data = resp.json()
+                     detail = data.get("detail", {})
+                     
+                     if isinstance(detail, dict) and "ops_run" in detail:
+                         results_dict = detail["ops_run"].get("results", {})
+                         summary_parts = []
+                         for k, v in results_dict.items():
+                             if k == "ops_summary": continue
+                             action = v.get("result", "UNKNOWN")
+                             reason = v.get("reason", "")
+                             desc = f"{action}" + (f" ({reason})" if reason else "")
+                             summary_parts.append(f"{k.upper()}: {desc}")
+                             
+                         summary_str = " | ".join(summary_parts)
+                         st.session_state["last_cycle_result"] = f"❌ {summary_str}"
+                         st.error(f"Auto Ops Failed: {detail.get('reason')}")
+                     else:
+                         st.error(f"Trigger Failed: 500 - {detail}")
                  else:
                      st.error(f"Trigger Failed: {resp.status_code} - {resp.text}")
                      

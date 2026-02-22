@@ -114,10 +114,18 @@ def generate_export(force: bool = False) -> Optional[Dict]:
     export["source"]["decision"] = plan.get("decision")
     export["human_confirm"]["evidence_refs"].append(export["source"]["order_plan_ref"])
 
-    # If Order Plan is BLOCKED, Export is BLOCKED
-    if plan.get("decision") == "BLOCKED":
-        export["decision"] = "BLOCKED"
-        export["summary"]["notes"] = f"Order Plan is BLOCKED: {plan.get('reason')}"
+    # If Order Plan is BLOCKED or ERROR, Export follows that state
+    plan_decision = plan.get("decision")
+    if plan_decision in ["BLOCKED", "ERROR"]:
+        export["decision"] = plan_decision
+        
+        reason = plan.get("reason", "")
+        err_msg = plan.get("error_summary", "")
+        notes = f"Order Plan is {plan_decision}: {reason}"
+        if err_msg:
+            notes += f" ({err_msg})"
+            
+        export["summary"]["notes"] = notes
         export["action"] = "REGEN"
         _save_and_return(export)
         return export

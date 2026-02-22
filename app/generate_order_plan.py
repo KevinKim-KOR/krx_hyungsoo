@@ -206,103 +206,114 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
     
     orders = []
     
-    # 4.1 Process Holding Actions (Priority: Sell first?)
-    for action_item in holding_actions:
-        ticker = action_item.get("ticker")
-        act = action_item.get("action", "HOLD")
-        confidence = action_item.get("confidence", "MEDIUM")
-        reason = sanitize_text(action_item.get("reason", ""))
-        
-        if act == "SELL":
-            # Determine if EXIT or REDUCE. Without quantity, we assume EXIT for now or check confidence?
-            # Or P102 just maps to SELL/EXIT?
-            # Strategy Bundle usually outputs "SELL" for removal.
-            intent = "EXIT" 
-            orders.append({
-                "ticker": ticker,
-                "side": "SELL",
-                "intent": intent,
-                "confidence": confidence,
-                "reason": "RECO_SELL",
-                "reason_detail": reason
-            })
-        elif act == "BUY":
-            # Rebalancing Buy
-            orders.append({
-                "ticker": ticker,
-                "side": "BUY",
-                "intent": "ADD",
-                "confidence": confidence,
-                "reason": "RECO_BUY",
-                "reason_detail": reason
-            })
-            
-    # 4.2 Process Top Picks
-    top_picks = reco.get("top_picks", [])
-    
-    # Handle holdings (List per contract, but code assumed Dict previously)
-    if isinstance(holdings, list):
-        current_tickers = {h.get("ticker") for h in holdings if h.get("ticker")}
-    else:
-        current_tickers = set(holdings.keys())
-    
-    for pick in top_picks:
-        ticker = pick.get("ticker")
-        score = pick.get("score", 0)
-        # Check if already processed in holding_actions (avoid duplicate ADD)
-        # If in top_picks AND in holding_actions as BUY -> Duplication possible?
-        # Usually they are distinct sets or consistent.
-        # If ticker is in holdings, it might be in holding_action as HOLD or BUY.
-        
-        # Check if we already have an order for this ticker
-        existing_order = next((o for o in orders if o["ticker"] == ticker), None)
-        if existing_order:
-            continue # Already handled (e.g. by holding action)
-            
-        # Determine Intent
-        intent = "ADD" if ticker in current_tickers else "NEW_ENTRY"
-        
-        orders.append({
-            "ticker": ticker,
-            "side": "BUY",
-            "intent": intent,
-            "confidence": "HIGH", # Top picks match HIGH?
-            "reason": "TOP_PICK",
-            "reason_detail": f"Score: {score}"
-        })
+    try:
+            # 4.1 Process Holding Actions (Priority: Sell first?)
+            for action_item in holding_actions:
+                ticker = action_item.get("ticker")
+                act = action_item.get("action", "HOLD")
+                confidence = action_item.get("confidence", "MEDIUM")
+                reason = sanitize_text(action_item.get("reason", ""))
 
-    # P153: Cash Allocation for ADD / NEW_ENTRY
-    cash = portfolio.get("cash", 0)
-    adds = [o for o in orders if o["intent"] in ["ADD", "NEW_ENTRY"]]
-    if adds and cash > 0:
-        alloc_per_ticker = cash / len(adds)
-        for o in adds:
-            ticker = o["ticker"]
-            price = price_map.get(ticker, 0)
-            if price > 0:
-                qty = int(alloc_per_ticker // price)
-                o["quantity"] = qty
-                o["price"] = price
-                o["value"] = qty * price
+                if act == "SELL":
+                    # Determine if EXIT or REDUCE. Without quantity, we assume EXIT for now or check confidence?
+                    # Or P102 just maps to SELL/EXIT?
+                    # Strategy Bundle usually outputs "SELL" for removal.
+                    intent = "EXIT" 
+                    orders.append({
+                        "ticker": ticker,
+                        "side": "SELL",
+                        "intent": intent,
+                        "confidence": confidence,
+                        "reason": "RECO_SELL",
+                        "reason_detail": reason
+                    })
+                elif act == "BUY":
+                    # Rebalancing Buy
+                    orders.append({
+                        "ticker": ticker,
+                        "side": "BUY",
+                        "intent": "ADD",
+                        "confidence": confidence,
+                        "reason": "RECO_BUY",
+                        "reason_detail": reason
+                    })
+
+            # 4.2 Process Top Picks
+            top_picks = reco.get("top_picks", [])
+
+            # Handle holdings (List per contract, but code assumed Dict previously)
+            if isinstance(holdings, list):
+                current_tickers = {h.get("ticker") for h in holdings if h.get("ticker")}
             else:
-                o["quantity"] = 0
-                o["price"] = 0
-                o["value"] = 0
+                current_tickers = set(holdings.keys())
 
-    report["orders"] = orders
-    
-    if not orders:
-        report["decision"] = "EMPTY"
-        report["reason"] = "NO_ORDERS"
-        report["reason_detail"] = "No actionable signals from Reco"
-    else:
-        report["decision"] = "COMPLETED"
-        report["reason"] = "SUCCESS"
-        report["reason_detail"] = f"Generated {len(orders)} orders"
+            for pick in top_picks:
+                ticker = pick.get("ticker")
+                score = pick.get("score", 0)
+                # Check if already processed in holding_actions (avoid duplicate ADD)
+                # If in top_picks AND in holding_actions as BUY -> Duplication possible?
+                # Usually they are distinct sets or consistent.
+                # If ticker is in holdings, it might be in holding_action as HOLD or BUY.
 
-    report["action"] = "REGEN"
-    _save_and_return(report)
-    return report
+                # Check if we already have an order for this ticker
+                existing_order = next((o for o in orders if o["ticker"] == ticker), None)
+                if existing_order:
+                    continue # Already handled (e.g. by holding action)
+
+                # Determine Intent
+                intent = "ADD" if ticker in current_tickers else "NEW_ENTRY"
+
+                orders.append({
+                    "ticker": ticker,
+                    "side": "BUY",
+                    "intent": intent,
+                    "confidence": "HIGH", # Top picks match HIGH?
+                    "reason": "TOP_PICK",
+                    "reason_detail": f"Score: {score}"
+                })
+
+            # P153: Cash Allocation for ADD / NEW_ENTRY
+            cash = portfolio.get("cash", 0)
+            adds = [o for o in orders if o["intent"] in ["ADD", "NEW_ENTRY"]]
+            if adds and cash > 0:
+                alloc_per_ticker = cash / len(adds)
+                for o in adds:
+                    ticker = o["ticker"]
+                    price = price_map.get(ticker, 0)
+                    if price > 0:
+                        qty = int(alloc_per_ticker // price)
+                        o["quantity"] = qty
+                        o["price"] = price
+                        o["value"] = qty * price
+                    else:
+                        o["quantity"] = 0
+                        o["price"] = 0
+                        o["value"] = 0
+
+            report["orders"] = orders
+
+            if not orders:
+                report["decision"] = "EMPTY"
+                report["reason"] = "NO_ORDERS"
+                report["reason_detail"] = "No actionable signals from Reco"
+            else:
+                report["decision"] = "COMPLETED"
+                report["reason"] = "SUCCESS"
+                report["reason_detail"] = f"Generated {len(orders)} orders"
+
+            report["action"] = "REGEN"
+            _save_and_return(report)
+            return report
+
+    except Exception as e:
+        report["decision"] = "ERROR"
+        report["reason"] = "PRICE_MISSING_OR_ALLOC_FAIL"
+        report["error_summary"] = str(e)
+        report["action"] = "REGEN"
+        _save_and_return(report)
+        print(f"ERROR: {e}", file=sys.stderr)
+        import sys as _sys
+        _sys.exit(1)
 
 def _save_and_return(report: Dict):
     """Save latest and snapshot (Atomic)"""

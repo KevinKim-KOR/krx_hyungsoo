@@ -4008,7 +4008,17 @@ def run_live_cycle_api(confirm: bool = False, force: bool = Query(False)):
 
     try:
         import subprocess
-        def run_script(module: str, cascade_force: bool = False) -> dict:
+        import json
+        from datetime import datetime
+        
+        ops_run = {
+            "schema": "OPS_RUN_V1",
+            "asof": datetime.now(KST).isoformat(),
+            "status": "RUNNING",
+            "results": {}
+        }
+        
+        def run_script(module: str, step_name: str, cascade_force: bool = False) -> dict:
             cmd = [sys.executable, "-m", module]
             if force or cascade_force:
                 cmd.append("--force")
@@ -4018,7 +4028,10 @@ def run_live_cycle_api(confirm: bool = False, force: bool = Query(False)):
             
             action = "UNKNOWN"
             reason = ""
-            if m:
+            if res.returncode != 0:
+                action = "FAIL"
+                reason = "SCRIPT_ERROR"
+            elif m:
                 raw_res = m.group(1).strip()
                 if raw_res.startswith("SKIP reason="):
                     action = "SKIP"
@@ -4029,31 +4042,53 @@ def run_live_cycle_api(confirm: bool = False, force: bool = Query(False)):
                 if "REGEN" in res.stdout: action = "REGEN"
                 elif "SKIP" in res.stdout: action = "SKIP"
             
-            return {"action": action, "reason": reason}
+            step_result = {
+                "rc": res.returncode,
+                "result": action,
+                "reason": reason,
+                "stdout_tail": res.stdout[-1000:] if res.stdout else "",
+                "stderr_tail": res.stderr[-1000:] if res.stderr else ""
+            }
+            ops_run["results"][step_name] = step_result
+            return step_result
 
         results = {}
         # 1. Reco
-        reco_res = run_script("app.generate_reco_report")
-        results["reco"] = f"{reco_res['action']}" + (f" ({reco_res['reason']})" if reco_res['reason'] else "")
+        reco_res = run_script("app.generate_reco_report", "reco")
+        if reco_res["rc"] != 0: raise Exception("RECO Failed")
+        
+        results["reco"] = f"{reco_res['result']}" + (f" ({reco_res['reason']})" if reco_res['reason'] else "")
         
         # P154: Force Cascade only in DRY_RUN / REPLAY
         cascade = False
-        if _exec_mode != "LIVE" and reco_res['action'] == "REGEN":
+        if _exec_mode != "LIVE" and reco_res['result'] == "REGEN":
             cascade = True
 
         # 2. Order Plan
-        op_res = run_script("app.generate_order_plan", cascade_force=cascade)
-        results["order_plan"] = f"{op_res['action']}" + (f" ({op_res['reason']})" if op_res['reason'] else "")
+        op_res = run_script("app.generate_order_plan", "order_plan", cascade_force=cascade)
+        if op_res["rc"] != 0: raise Exception("ORDER_PLAN Failed")
         
-        if _exec_mode != "LIVE" and op_res['action'] == "REGEN":
+        results["order_plan"] = f"{op_res['result']}" + (f" ({op_res['reason']})" if op_res['reason'] else "")
+        
+        if _exec_mode != "LIVE" and op_res['result'] == "REGEN":
             cascade = True
 
         # 3. Order Plan Export
-        exp_res = run_script("app.generate_order_plan_export", cascade_force=cascade)
-        results["order_plan_export"] = f"{exp_res['action']}" + (f" ({exp_res['reason']})" if exp_res['reason'] else "")
+        exp_res = run_script("app.generate_order_plan_export", "order_plan_export", cascade_force=cascade)
+        if exp_res["rc"] != 0: raise Exception("EXPORT Failed")
+        
+        results["order_plan_export"] = f"{exp_res['result']}" + (f" ({exp_res['reason']})" if exp_res['reason'] else "")
 
         # 4. Ops Summary (no [RESULT:] output natively, just runs)
-        run_script("app.generate_ops_summary", cascade_force=cascade)
+        os_res = run_script("app.generate_ops_summary", "ops_summary", cascade_force=cascade)
+        if os_res["rc"] != 0: raise Exception("OPS_SUMMARY Failed")
+        
+        ops_run["status"] = "SUCCESS"
+        
+        # Save ops_run
+        run_file = BASE_DIR / "state" / "reports" / "ops" / "run" / "latest" / "ops_run_latest.json"
+        run_file.parent.mkdir(parents=True, exist_ok=True)
+        run_file.write_text(json.dumps(ops_run, indent=2, ensure_ascii=False))
 
         return {
             "result": "OK",
@@ -4061,15 +4096,29 @@ def run_live_cycle_api(confirm: bool = False, force: bool = Query(False)):
             "results": results
         }
     except ImportError as e:
-        raise HTTPException(status_code=500, detail={
-            "result": "FAILED",
-            "reason": f"Import error: {e}"
-        })
+        detail = {"result": "FAILED", "reason": f"Import error: {e}"}
+        try:
+            if 'ops_run' in locals():
+                ops_run["status"] = "FAILED"
+                run_file = BASE_DIR / "state" / "reports" / "ops" / "run" / "latest" / "ops_run_latest.json"
+                run_file.parent.mkdir(parents=True, exist_ok=True)
+                run_file.write_text(json.dumps(ops_run, indent=2, ensure_ascii=False))
+                detail["ops_run"] = ops_run
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=detail)
     except Exception as e:
-        raise HTTPException(status_code=500, detail={
-            "result": "FAILED",
-            "reason": str(e)
-        })
+        detail = {"result": "FAILED", "reason": str(e)}
+        try:
+            if 'ops_run' in locals():
+                ops_run["status"] = "FAILED"
+                run_file = BASE_DIR / "state" / "reports" / "ops" / "run" / "latest" / "ops_run_latest.json"
+                run_file.parent.mkdir(parents=True, exist_ok=True)
+                run_file.write_text(json.dumps(ops_run, indent=2, ensure_ascii=False))
+                detail["ops_run"] = ops_run
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=detail)
 
 
 # ============================================================================
