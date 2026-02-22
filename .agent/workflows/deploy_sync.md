@@ -24,5 +24,12 @@ description: "Deploy code changes to OCI: Commit -> Push -> Pull"
    ssh -i "oracle_cloud_key" ubuntu@168.107.51.68 "git -C krx_hyungsoo pull"
    ```
 
-4. **Verify**:
+4. **Restart Backend on OCI**:
+   ```bash
+   // turbo
+   ssh -i "oracle_cloud_key" ubuntu@168.107.51.68 "sudo systemctl restart krx-backend"
+   ```
+
+5. **Verify**:
    - Check `git log -1` on OCI.
+   - Check `sudo journalctl -u krx-backend -n 10` if needed.
