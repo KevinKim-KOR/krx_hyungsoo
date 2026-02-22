@@ -101,7 +101,7 @@ async def update_ssot_snapshot(
     if override_payload and override_payload.get("enabled", False):
         _exec_mode = "DRY_RUN"
         
-    allow_tokenless_replay = os.getenv("ALLOW_TOKENLESS_PUSH_IN_REPLAY", "false").lower() == "true"
+    allow_tokenless_replay = os.getenv("ALLOW_TOKENLESS_PUSH_IN_REPLAY", "true").lower() == "true"
     
     if _exec_mode == "DRY_RUN":
         if not token and not allow_tokenless_replay:
