@@ -58,11 +58,13 @@
 
 ---
 
-## 6) PC -> OCI Sync Payload (Push)
-- **Files Transferred** (via `api/sync/push` in P146):
-  1. `state/portfolio/latest/portfolio_latest.json` (Normalized)
-  2. `state/runtime/asof_override_latest.json` (Mode/Date)
-  - *Note*: Strategy Bundle (which includes params) is generated separately and must be present on OCI, but the `Push` button primarily overwrites the two files above.
+## 6) PC -> OCI Sync Payload (Push/Push Bundle)
+- **Files Transferred** (via `api/sync/push` and `api/sync/push_bundle` in P146/P150):
+  1. `state/portfolio/latest/portfolio_latest.json` (Normalized, `push` only)
+  2. `state/runtime/asof_override_latest.json` (Mode/Date, `push` only)
+  3. `state/strategy_bundle/latest/strategy_bundle_latest.json` (Bundle, `push_bundle` only)
+  4. `state/strategy_params/latest/strategy_params_latest.json` (Params, `push_bundle` only)
+  - *Note*: Strategy Bundle (which includes params) is now dynamically generated on the PC via 1-Click Sync ("Save & Push Bundle") and pushed to OCI directly alongside the pure parameters, preventing BUNDLE_STALE disconnects.
 
 ---
 

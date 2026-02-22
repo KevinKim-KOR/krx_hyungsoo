@@ -21,14 +21,21 @@ PC(Control)와 OCI(Execution) 간의 데이터 동기화 프로토콜을 정의�
 
 ## 2. Type 1: SSOT Sync (PUSH)
 
-PC의 설정을 OCI로 전송하여 실행 환경을 구성합니다.
+PC의 설정을 OCI로 전송하여 실행 환경을 구성합니다. 
+전송 목적형에 따라 엔드포인트가 이원화되어 있습니다.
 
+### 2.1 Standard Push (Portfolio & Mode)
 - **Endpoint**: `POST /api/sync/push`
 - **Payload**:
-  - `strategy_params`: 전략 파라미터 전체
-  - `universe`: 투자 유니버스
-  - `portfolio` (Optional): 수동 포트폴리오 조정 시
-- **Behavior**: OCI의 `state/` 디렉토리에 **Atomic Overwrite** 합니다.
+  - `portfolio`: (Optional) 수동 포트폴리오 조정 시
+  - `asof_override` (Optional): 시뮬레이션 환경 모드 값
+
+### 2.2 Bundle Push (1-Click Sync / P150)
+- **Endpoint**: `POST /api/sync/push_bundle`
+- **Payload**:
+  - `strategy_params`: 전략 파라미터 JSON 원본
+  - `strategy_bundle`: PC에서 1-Click으로 즉시 통합 생성된 `STRATEGY_BUNDLE_V1` 파일
+- **Behavior**: OCI의 `state/` 디렉토리에 **Atomic Overwrite** 하여 BUNDLE_STALE 연쇄 오류를 원천 차단합니다.
 
 ---
 
