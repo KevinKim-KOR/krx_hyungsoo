@@ -5,6 +5,7 @@ description: "Deploy code changes to OCI: Commit -> Push -> Pull"
 1. **Update Documentation**:
    - Update `task.md` (Checklist)
    - Update `walkthrough.md` (Technical Details)
+   - Update `docs/` markdown files if needed (Contracts, Runbooks, SSOT)
 
 2. **Commit Local Changes**:
    ```bash
