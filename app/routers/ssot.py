@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi.responses import JSONResponse
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 import json
@@ -79,12 +81,59 @@ async def get_ssot_snapshot():
 @router.post("/snapshot")
 async def update_ssot_snapshot(
     snapshot: Dict[str, Any] = Body(...), 
-    force: bool = Query(False)
+    force: bool = Query(False),
+    token: str = Query("")
 ):
     """
     Updates the local SSOT state from a snapshot.
-    Protected by token check in main dependency (if applied) or internal network restrictions.
+    Protected by strict token validation (P151 Token Unification).
     """
+    # 0. Token Validation (P151)
+    _exec_mode = "LIVE"
+    if OPS_SUMMARY_PATH.exists():
+        try:
+            _summ = json.loads(OPS_SUMMARY_PATH.read_text(encoding="utf-8"))
+            _exec_mode = _summ.get("manual_loop", {}).get("mode", "LIVE")
+        except:
+            pass
+            
+    override_payload = snapshot.get("asof_override", {})
+    if override_payload and override_payload.get("enabled", False):
+        _exec_mode = "DRY_RUN"
+        
+    allow_tokenless_replay = os.getenv("ALLOW_TOKENLESS_PUSH_IN_REPLAY", "false").lower() == "true"
+    
+    if _exec_mode == "DRY_RUN":
+        if not token and not allow_tokenless_replay:
+            return JSONResponse(status_code=403, content={
+                "result": "BLOCKED",
+                "reason": "REPLAY_TOKENLESS_DISABLED",
+                "message": "REPLAY 모드라도 환경변수(ALLOW_TOKENLESS_PUSH_IN_REPLAY)가 활성화되어 있지 않으면 토큰이 필요합니다."
+            })
+    else:
+        # LIVE Mode
+        if not token:
+            return JSONResponse(status_code=403, content={
+                "result": "BLOCKED",
+                "reason": "TOKEN_MISSING",
+                "message": "LIVE 모드에서는 SSOT 덮어쓰기 권한(Token)이 필수입니다."
+            })
+        
+        try:
+            REPORTS_DIR = BASE_DIR / "reports"
+            _exp_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+            if _exp_path.exists():
+                _exp = json.loads(_exp_path.read_text(encoding="utf-8"))
+                _expected = _exp.get("human_confirm", {}).get("confirm_token") or _exp.get("source", {}).get("confirm_token")
+                if _expected and token != _expected:
+                    return JSONResponse(status_code=403, content={
+                        "result": "BLOCKED",
+                        "reason": "TOKEN_INVALID",
+                        "message": "제공된 토큰이 현재 LIVE Export의 confirm_token과 일치하지 않습니다."
+                    })
+        except Exception:
+            pass
+
     # 1. Update Portfolio (If provided and different)
     new_portfolio = snapshot.get("portfolio")
     if new_portfolio:

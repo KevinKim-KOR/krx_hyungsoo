@@ -294,7 +294,7 @@ with tab_ops:
         sync_timeout = st.number_input("Timeout (sec)", value=60, step=30, key="sync_timeout")
         
     with c2:
-        push_token = st.text_input("Push Token", type="password", key="push_token", placeholder="Required for PUSH")
+        st.text_input("Confirm Token", type="password", key="confirm_token", placeholder="Required for PUSH")
         
     with c3:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
@@ -314,13 +314,14 @@ with tab_ops:
     with c4:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
         if st.button("📤 PUSH (OCI)", use_container_width=True):
-            if not push_token:
-                st.warning("Token!")
+            token = st.session_state.get("confirm_token", "")
+            if not token:
+                st.warning("Token Required!")
             else:
                 with st.spinner(f"Pushing..."):
                     try:
                         r = requests.post("http://localhost:8000/api/sync/push", 
-                                          json={"token": push_token}, 
+                                          json={"token": token}, 
                                           params={"timeout_seconds": sync_timeout},
                                           timeout=sync_timeout + 5)
                         if r.status_code == 200:
@@ -460,6 +461,9 @@ with tab_main:
                 snap_path = save_params(new_data)
                 new_fp = compute_fingerprint(new_data)
                 
+                # Fingerprint 즉시 갱신
+                st.session_state["current_fingerprint"] = new_fp
+                
                 st.success(f"Saved (Local)! New Fingerprint: `{new_fp}`")
                 
                 if submit_push:
@@ -470,14 +474,16 @@ with tab_main:
                     require_token = not (is_dry_run or is_replay)
                     
                     push_allowed = False
-                    token = ""
+                    token = st.session_state.get("confirm_token", "")
+                    
                     if require_token:
-                        token = st.session_state.get("export_token", "")
                         if not token:
                             st.warning("⚠️ 로컬 저장은 됐지만 OCI Push 실패 → Drift 지속: LIVE Mode requires Confirm Token. Please enter it in the top tab first.")
                         else:
                             push_allowed = True
                     else:
+                        # REPLAY or DRY_RUN mode handling for tokenless push
+                        # Will be evaluated by Backend server flag, but UI passes empty string if token is empty
                         push_allowed = True
                         
                     if push_allowed:
@@ -487,10 +493,15 @@ with tab_main:
                             if resp.status_code == 200:
                                 res_data = resp.json()
                                 st.success(f"✅ 저장 + OCI 장착 완료( created_at={res_data.get('created_at')} )")
+                                time.sleep(1)
+                                st.rerun()
                             else:
                                 st.warning(f"⚠️ 로컬 저장은 됐지만 OCI Push 실패 → Drift 지속: {resp.text}")
                         except Exception as e:
                             st.warning(f"⚠️ 로컬 저장은 됐지만 OCI Push 실패 → Drift 지속: {str(e)}")
+                else:
+                    time.sleep(1)
+                    st.rerun()
 
 # TAB 2: Recommendations
 with tab_reco:
