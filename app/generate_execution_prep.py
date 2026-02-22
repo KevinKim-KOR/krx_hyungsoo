@@ -7,7 +7,7 @@ P112: Execution Prep V1 (Human Token Lock + Immutable Snapshot)
 import json
 import shutil
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
