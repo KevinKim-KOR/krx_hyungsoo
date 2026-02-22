@@ -127,4 +127,18 @@ async def update_ssot_snapshot(
             print(f"[WARN] Failed to update Ops Summary Stage: {e}")
             pass
 
+    # 4. Update Strategy Bundle (P150 1-Click Sync)
+    new_bundle = snapshot.get("strategy_bundle")
+    if new_bundle:
+        BUNDLE_PATH = BASE_DIR / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
+        BUNDLE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        BUNDLE_PATH.write_text(json.dumps(new_bundle, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+    # 5. Update Strategy Params (P150 Optional Payload)
+    new_params = snapshot.get("strategy_params")
+    if new_params:
+        PARAMS_PATH = BASE_DIR / "state" / "strategy_params" / "latest" / "strategy_params_latest.json"
+        PARAMS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        PARAMS_PATH.write_text(json.dumps(new_params, indent=2, ensure_ascii=False), encoding="utf-8")
+
     return {"status": "OK", "message": "SSOT updated successfully", "revision": snapshot.get("revision")}

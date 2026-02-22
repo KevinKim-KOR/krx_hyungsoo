@@ -140,3 +140,79 @@ async def push_to_oci(
         traceback.print_exc()
         print(f"[ERROR] Exception in push_to_oci: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/push_bundle")
+async def push_bundle_to_oci(
+    token: str = Body(..., embed=True),
+    timeout_seconds: int = Query(120, description="OCI Timeout")
+):
+    """
+    P150: 1-Click Sync (Bundle Push).
+    Generates Strategy Bundle dynamically from Current Params, saves it locally,
+    and pushes the new Strategy Bundle + Params to OCI.
+    """
+    try:
+        # 1. Import dynamic bundle generator (PC side only script)
+        try:
+            from deploy.pc.generate_strategy_bundle import generate_bundle, save_bundle
+        except ImportError as e:
+            raise HTTPException(status_code=500, detail=f"Failed to load bundle generator: {e}")
+            
+        # 2. Generate and Save Bundle locally
+        bundle_payload = generate_bundle()
+        save_bundle(bundle_payload)
+        
+        # 3. Load Strategy Params
+        PARAMS_PATH = BASE_DIR / "state" / "strategy_params" / "latest" / "strategy_params_latest.json"
+        params_payload = None
+        if PARAMS_PATH.exists():
+            try:
+                params_payload = json.loads(PARAMS_PATH.read_text(encoding="utf-8"))
+            except Exception as e:
+                print(f"[WARN] Could not parse strategy params: {e}")
+                
+        # 4. Construct SSOT partial snapshot payload
+        import platform
+        snapshot = {
+            "env_info": {
+                "hostname": platform.node(),
+                "type": "PC",
+                "url": "http://localhost:8000"
+            },
+            "strategy_bundle": bundle_payload,
+            "strategy_params": params_payload,
+            "build_id": "PC_PUSH_BUNDLE",
+            "synced_at": datetime.datetime.now(timezone(timedelta(hours=9))).isoformat()
+        }
+        
+        # 5. Push to OCI's SSOT Snapshot endpoint
+        print(f"[DEBUG] Pushing Bundle to OCI: URL={OCI_BACKEND_URL}")
+        try:
+            oci_resp = requests.post(
+                f"{OCI_BACKEND_URL}/api/ssot/snapshot?force=true&token={token}",
+                json=snapshot,
+                timeout=timeout_seconds
+            )
+            
+            if oci_resp.status_code != 200:
+                print(f"[ERROR] OCI Bundle Push Failed: {oci_resp.status_code} - {oci_resp.text}")
+                raise HTTPException(status_code=502, detail=f"OCI Bundle Push Failed: {oci_resp.text}")
+                
+            return {
+                "status": "OK", 
+                "message": "Bundle Pushed to OCI", 
+                "bundle_id": bundle_payload.get("bundle_id"),
+                "created_at": bundle_payload.get("created_at")
+            }
+
+        except requests.exceptions.Timeout:
+            raise HTTPException(status_code=504, detail=f"OCI Timeout ({timeout_seconds}s)")
+        except requests.exceptions.ConnectionError:
+            raise HTTPException(status_code=502, detail="OCI Connection Failed")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[ERROR] Exception in push_bundle_to_oci: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

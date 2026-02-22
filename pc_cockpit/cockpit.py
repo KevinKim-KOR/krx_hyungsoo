@@ -426,7 +426,13 @@ with tab_main:
             w_mom = c1.number_input("Weight Mom", value=p.get("decision_params", {}).get("weight_momentum", 1.0))
             w_vol = c2.number_input("Weight Vol", value=p.get("decision_params", {}).get("weight_volatility", 0.0))
             
-            submitted = st.form_submit_button("💾 Save Parameters")
+            c_btn1, c_btn2 = st.columns(2)
+            with c_btn1:
+                submit_local = st.form_submit_button("💾 Save Parameters (Local)")
+            with c_btn2:
+                submit_push = st.form_submit_button("🚀 Save & Push Bundle to OCI (1-Click Sync)")
+            
+            submitted = submit_local or submit_push
             
             if submitted:
                 # Update Data
@@ -454,8 +460,37 @@ with tab_main:
                 snap_path = save_params(new_data)
                 new_fp = compute_fingerprint(new_data)
                 
-                st.success(f"Saved! New Fingerprint: `{new_fp}`")
-                st.info(f"Snapshot created at: `{snap_path}`")
+                st.success(f"Saved (Local)! New Fingerprint: `{new_fp}`")
+                
+                if submit_push:
+                    st.info("📦 Generating Bundle and Pushing to OCI...")
+                    
+                    is_dry_run = st.session_state.get("is_dry_run", False)
+                    is_replay = st.session_state.get("is_replay", False)
+                    require_token = not (is_dry_run or is_replay)
+                    
+                    push_allowed = False
+                    token = ""
+                    if require_token:
+                        token = st.session_state.get("export_token", "")
+                        if not token:
+                            st.warning("⚠️ 로컬 저장은 됐지만 OCI Push 실패 → Drift 지속: LIVE Mode requires Confirm Token. Please enter it in the top tab first.")
+                        else:
+                            push_allowed = True
+                    else:
+                        push_allowed = True
+                        
+                    if push_allowed:
+                        try:
+                            # Must use SLOW_TIMEOUT as bundle generation might take a bit
+                            resp = requests.post("http://localhost:8000/api/sync/push_bundle", json={"token": token}, timeout=SLOW_TIMEOUT)
+                            if resp.status_code == 200:
+                                res_data = resp.json()
+                                st.success(f"✅ 저장 + OCI 장착 완료( created_at={res_data.get('created_at')} )")
+                            else:
+                                st.warning(f"⚠️ 로컬 저장은 됐지만 OCI Push 실패 → Drift 지속: {resp.text}")
+                        except Exception as e:
+                            st.warning(f"⚠️ 로컬 저장은 됐지만 OCI Push 실패 → Drift 지속: {str(e)}")
 
 # TAB 2: Recommendations
 with tab_reco:
