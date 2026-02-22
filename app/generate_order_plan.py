@@ -63,21 +63,31 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
     reco = load_json(RECO_LATEST_FILE)
     portfolio = load_json(PORTFOLIO_LATEST_FILE)
     
-    # 1.5 SKIP 검증 로직 (P152)
+    # 1.1 Load Bundle for Prices (P153)
+    BUNDLE_LATEST_FILE = BASE_DIR / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
+    bundle = load_json(BUNDLE_LATEST_FILE) or {}
+    price_map = {}
+    holdings_timing = bundle.get("strategy", {}).get("auxiliary", {}).get("holding_timing", {}).get("holdings", [])
+    for h in holdings_timing:
+        if "ticker" in h and "current_price" in h:
+            price_map[h["ticker"]] = h["current_price"]
+    
+    # P153: Create reco_key
+    reco_key = "NONE"
+    if reco:
+        r_id = reco.get("report_id", "")
+        b_id = reco.get("source_bundle", {}).get("bundle_id", "")
+        r_sha = reco.get("integrity", {}).get("payload_sha256", "")
+        reco_key = f"{r_id}:{b_id}:{r_sha}"
+        
+    # 1.5 SKIP 검증 로직 (P152 & P153)
     latest_op = load_json(OUTPUT_LATEST)
     if latest_op and reco and not force:
-        created_str = latest_op.get("asof", "")
-        if created_str:
-            try:
-                op_date = datetime.fromisoformat(created_str).astimezone(KST).date()
-                if op_date == now.date():
-                    prev_bundle_id = latest_op.get("source", {}).get("bundle_id")
-                    curr_bundle_id = reco.get("source_bundle", {}).get("bundle_id")
-                    if prev_bundle_id == curr_bundle_id:
-                        latest_op["action"] = "SKIP"
-                        return latest_op
-            except Exception:
-                pass
+        prev_reco_key = latest_op.get("source", {}).get("reco_key")
+        if prev_reco_key == reco_key and reco_key != "NONE":
+            latest_op["action"] = "SKIP"
+            latest_op["skip_reason"] = "same_reco_key"
+            return latest_op
     
     # 2. Initialize Report
     report = {
@@ -89,6 +99,7 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
         "reason_detail": "",
         "source": {
             "reco_ref": str(RECO_LATEST_FILE.relative_to(BASE_DIR)).replace("\\", "/"),
+            "reco_key": reco_key,
             "reco_asof": None,
             "reco_decision": None,
             "bundle_id": None,
@@ -258,6 +269,24 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
             "reason_detail": f"Score: {score}"
         })
 
+    # P153: Cash Allocation for ADD / NEW_ENTRY
+    cash = portfolio.get("cash", 0)
+    adds = [o for o in orders if o["intent"] in ["ADD", "NEW_ENTRY"]]
+    if adds and cash > 0:
+        alloc_per_ticker = cash / len(adds)
+        for o in adds:
+            ticker = o["ticker"]
+            price = price_map.get(ticker, 0)
+            if price > 0:
+                qty = int(alloc_per_ticker // price)
+                o["quantity"] = qty
+                o["price"] = price
+                o["value"] = qty * price
+            else:
+                o["quantity"] = 0
+                o["price"] = 0
+                o["value"] = 0
+
     report["orders"] = orders
     
     if not orders:
@@ -315,4 +344,9 @@ if __name__ == "__main__":
         print(json.dumps(result, indent=2, ensure_ascii=False))
         
     action = result.get("action", "REGEN")
-    print(f"[RESULT: {action}]")
+    skip_reason = result.get("skip_reason", "")
+    if action == "SKIP" and skip_reason:
+        print(f"[RESULT: SKIP reason={skip_reason}]")
+    else:
+        print(f"[RESULT: {action}]")
+

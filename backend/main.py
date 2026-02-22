@@ -4008,29 +4008,47 @@ def run_live_cycle_api(confirm: bool = False, force: bool = Query(False)):
 
     try:
         import subprocess
-        def run_script(module: str) -> str:
+        def run_script(module: str, cascade_force: bool = False) -> dict:
             cmd = [sys.executable, "-m", module]
-            if force:
+            if force or cascade_force:
                 cmd.append("--force")
             res = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
             import re
-            m = re.search(r"\[RESULT:\s*([A-Z_]+)\]", res.stdout)
+            m = re.search(r"\[RESULT:\s*([^\]]+)\]", res.stdout)
+            
+            action = "UNKNOWN"
+            reason = ""
             if m:
-                return m.group(1)
-            # fallback string match
-            if "REGEN" in res.stdout: return "REGEN"
-            if "SKIP" in res.stdout: return "SKIP"
-            return "UNKNOWN"
+                raw_res = m.group(1).strip()
+                if raw_res.startswith("SKIP reason="):
+                    action = "SKIP"
+                    reason = raw_res.split("reason=")[1].strip()
+                else:
+                    action = raw_res
+            else:
+                if "REGEN" in res.stdout: action = "REGEN"
+                elif "SKIP" in res.stdout: action = "SKIP"
+            
+            return {"action": action, "reason": reason}
 
         results = {}
         # 1. Reco
-        results["reco"] = run_script("app.generate_reco_report")
+        reco_res = run_script("app.generate_reco_report")
+        results["reco"] = f"{reco_res['action']}" + (f" ({reco_res['reason']})" if reco_res['reason'] else "")
+        cascade = (reco_res['action'] == "REGEN")
+
         # 2. Order Plan
-        results["order_plan"] = run_script("app.generate_order_plan")
+        op_res = run_script("app.generate_order_plan", cascade_force=cascade)
+        results["order_plan"] = f"{op_res['action']}" + (f" ({op_res['reason']})" if op_res['reason'] else "")
+        if op_res['action'] == "REGEN":
+            cascade = True
+
         # 3. Order Plan Export
-        results["order_plan_export"] = run_script("app.generate_order_plan_export")
+        exp_res = run_script("app.generate_order_plan_export", cascade_force=cascade)
+        results["order_plan_export"] = f"{exp_res['action']}" + (f" ({exp_res['reason']})" if exp_res['reason'] else "")
+
         # 4. Ops Summary (no [RESULT:] output natively, just runs)
-        run_script("app.generate_ops_summary")
+        run_script("app.generate_ops_summary", cascade_force=cascade)
 
         return {
             "result": "OK",

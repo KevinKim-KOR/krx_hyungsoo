@@ -244,7 +244,7 @@ def generate_reco_report(force: bool = False) -> Dict:
         top_picks, holding_actions = extract_signals_from_bundle(bundle)
         
         # Summary 계산 (Holding Actions 기반)
-        buy_count = sum(1 for r in holding_actions if r.get("action") == "BUY")
+        buy_count = sum(1 for r in holding_actions if r.get("action") in ["BUY", "ADD"])
         sell_count = sum(1 for r in holding_actions if r.get("action") == "SELL")
         hold_count = sum(1 for r in holding_actions if r.get("action") == "HOLD") or \
                      sum(1 for r in holding_actions if r.get("action") == "KEEP") # Handle KEEP/HOLD alias

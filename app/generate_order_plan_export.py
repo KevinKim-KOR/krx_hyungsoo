@@ -46,21 +46,22 @@ def generate_export(force: bool = False) -> Optional[Dict]:
     # 1. Load Input (Order Plan)
     plan = load_json(ORDER_PLAN_LATEST)
     
-    # 1.5 SKIP 검증 로직 (P152)
+    # P153: Create order_plan_key
+    order_plan_key = "NONE"
+    if plan:
+        p_id = plan.get("plan_id", "")
+        p_dec = plan.get("decision", "")
+        p_sha = plan.get("integrity", {}).get("payload_sha256", "")
+        order_plan_key = f"{p_id}:{p_dec}:{p_sha}"
+
+    # 1.5 SKIP 검증 로직 (P152 & P153)
     latest_exp = load_json(EXPORT_LATEST)
     if latest_exp and plan and not force:
-        created_str = latest_exp.get("asof", "")
-        if created_str:
-            try:
-                exp_date = datetime.fromisoformat(created_str).astimezone(KST).date()
-                if exp_date == now.date():
-                    prev_plan_id = latest_exp.get("source", {}).get("plan_id")
-                    curr_plan_id = plan.get("plan_id")
-                    if prev_plan_id == curr_plan_id:
-                        latest_exp["action"] = "SKIP"
-                        return latest_exp
-            except Exception:
-                pass
+        prev_plan_key = latest_exp.get("source", {}).get("order_plan_key")
+        if prev_plan_key == order_plan_key and order_plan_key != "NONE":
+            latest_exp["action"] = "SKIP"
+            latest_exp["skip_reason"] = "same_order_plan_key"
+            return latest_exp
     
     # 2. Initialize Export
     export = {
@@ -69,6 +70,7 @@ def generate_export(force: bool = False) -> Optional[Dict]:
         "created_at": asof_str,
         "source": {
             "order_plan_ref": str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/"),
+            "order_plan_key": order_plan_key,
             "plan_id": None,
             "decision": None
         },
@@ -211,4 +213,8 @@ if __name__ == "__main__":
         print(json.dumps(result, indent=2, ensure_ascii=False))
         
     action = result.get("action", "REGEN") if result else "ERROR"
-    print(f"[RESULT: {action}]")
+    skip_reason = result.get("skip_reason", "") if result else ""
+    if action == "SKIP" and skip_reason:
+        print(f"[RESULT: SKIP reason={skip_reason}]")
+    else:
+        print(f"[RESULT: {action}]")
