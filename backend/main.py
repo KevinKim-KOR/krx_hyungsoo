@@ -4686,11 +4686,10 @@ async def submit_execution_record_api(
 
     token = payload.get("confirm_token", "")
 
-    if _exec_mode == "DRY_RUN":
-        # DRY_RUN: accept any token (including empty)
-        if not token:
-            token = "DRY_RUN_AUTO"
-            payload["confirm_token"] = token
+    if _exec_mode in ["DRY_RUN", "REPLAY"]:
+        # DRY_RUN: bypass token validation entirely and auto-fill
+        token = "DRY_RUN_AUTO"
+        payload["confirm_token"] = token
     else:
         # LIVE: require token and validate against export confirm_token
         if not token:

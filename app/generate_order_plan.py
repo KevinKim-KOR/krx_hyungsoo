@@ -44,6 +44,41 @@ def load_json(path: Path) -> Optional[Dict]:
     except Exception:
         return None
 
+def _fetch_price_fallback(ticker: str, portfolio: Dict) -> float:
+    import requests
+    # 1. Try Yahoo Finance (.KS then .KQ) for Korean stocks assuming 6-digit tickers
+    if len(ticker) == 6 and ticker.isdigit():
+        headers = {"User-Agent": "Mozilla/5.0"}
+        for suffix in [".KS", ".KQ"]:
+            try:
+                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}{suffix}?range=1d&interval=1d"
+                resp = requests.get(url, headers=headers, timeout=5)
+                if resp.ok:
+                    data = resp.json()
+                    res = data.get("chart", {}).get("result", [])
+                    if res:
+                        meta = res[0].get("meta", {})
+                        price = meta.get("regularMarketPrice", 0)
+                        if price > 0:
+                            return float(price)
+            except Exception:
+                pass
+                
+    # 2. Fallback to Portfolio
+    positions = portfolio.get("positions", [])
+    if not positions and "holdings" in portfolio:
+        holdings = portfolio["holdings"]
+        if isinstance(holdings, list):
+            positions = holdings
+        else:
+            positions = [{"ticker": k, **v} for k, v in holdings.items()]
+            
+    for p in positions:
+        if p.get("ticker") == ticker:
+            return float(p.get("current_price", p.get("average_price", 0)))
+            
+    return 0.0
+
 def sanitize_text(text: str) -> str:
     """Sanitize reason/detail (remove newlines, limit length)"""
     if not text:
@@ -280,15 +315,16 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
                 for o in adds:
                     ticker = o["ticker"]
                     price = price_map.get(ticker, 0)
+                    if price <= 0:
+                        price = _fetch_price_fallback(ticker, portfolio)
+                        
                     if price > 0:
                         qty = int(alloc_per_ticker // price)
                         o["quantity"] = qty
                         o["price"] = price
                         o["value"] = qty * price
                     else:
-                        o["quantity"] = 0
-                        o["price"] = 0
-                        o["value"] = 0
+                        raise ValueError(f"Price for {ticker} is 0 or failed to fetch. Halting generation to prevent zero-value allocation.")
 
             report["orders"] = orders
 

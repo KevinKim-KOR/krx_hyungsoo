@@ -33,7 +33,8 @@ def load_json(path: Path) -> Optional[Dict]:
     except Exception:
         return None
 
-def generate_record(input_token: str, items_data: Dict):
+def generate_record(input_token: str, items_data: Dict, exec_mode: str = "LIVE"):
+    import hashlib
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
     asof_str = now.isoformat()
@@ -94,7 +95,16 @@ def generate_record(input_token: str, items_data: Dict):
     except Exception as e:
         print(f"DEBUG: Error in linkage construction: {e}")
         raise e
+        
+    # Check ticket_id
+    ticket_id = ticket.get("ticket_id") or ticket.get("source", {}).get("plan_id", "UNKNOWN")
+    record["ticket_id"] = ticket_id
     
+    # 2.5 Generate idempotency_key
+    plan_id = record["source"].get("plan_id", "UNKNOWN")
+    order_plan_key = prep.get("source", {}).get("order_plan_ref", "UNKNOWN")
+    raw_str = f"{plan_id}:{order_plan_key}:{exec_mode}"
+    record["idempotency_key"] = hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
     
     # 3. Validate Context (Fail-Closed)
     # source is already sanitized above
