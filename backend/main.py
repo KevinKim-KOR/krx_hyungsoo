@@ -4695,14 +4695,17 @@ async def submit_execution_record_api(
     confirm: bool = Query(False)
 ):
     """
-    Submit Execution Record - P146.8B: exec_mode-aware token validation.
-    DRY_RUN: token optional. LIVE: requires export confirm_token match.
-    (P146.9: Verified DRY_RUN bypass logic availability)
+    P162: Submit Execution Record — Draft-as-SSOT.
+    Loads the server-side draft file, copies ticket_id/idempotency_key/items
+    directly, and writes the final record. DRY_RUN/REPLAY structurally cannot
+    produce TOKEN_MISMATCH. If BLOCKED, returns HTTP 409 (not 200).
     """
-    if not confirm:
-        return JSONResponse(status_code=400, content={"result": "BLOCKED", "message": "Confirm required"})
+    import shutil
 
-    # P146.8B: Determine exec_mode
+    if not confirm:
+        return JSONResponse(status_code=400, content={"ok": False, "result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
+
+    # --- 1. Determine exec_mode (SSOT) ---
     _exec_mode = "LIVE"
     if OPS_SUMMARY_PATH.exists():
         try:
@@ -4710,34 +4713,27 @@ async def submit_execution_record_api(
             _exec_mode = _summ.get("manual_loop", {}).get("mode", "LIVE")
         except Exception:
             pass
-
     try:
         from app.utils.portfolio_normalize import load_asof_override
         override_data = load_asof_override()
         if override_data.get("enabled", False):
             _exec_mode = "DRY_RUN"
-        logger.info(f"[DEBUG] Submit Record: exec_mode={_exec_mode} override={override_data} summary_mode={_summ.get('manual_loop', {}).get('mode') if '_summ' in locals() else 'N/A'}")
-    except Exception as e:
-        logger.error(f"[DEBUG] Submit Record Logic Error: {e}")
+    except Exception:
         pass
 
+    # --- 2. Token validation (LIVE only) ---
     token = payload.get("confirm_token", "")
 
     if _exec_mode in ["DRY_RUN", "REPLAY"]:
-        # DRY_RUN: bypass token validation entirely and auto-fill
+        # Structurally bypass: no token comparison ever runs
         token = "DRY_RUN_AUTO"
-        payload["confirm_token"] = token
     else:
-        # LIVE: require token and validate against export confirm_token
+        # LIVE: Fail-Closed token validation
         if not token:
             return JSONResponse(status_code=403, content={
-                "result": "BLOCKED",
-                "reason": "TOKEN_MISMATCH",
-                "expected_source": "EXPORT_CONFIRM_TOKEN",
-                "plan_id": payload.get("linkage", {}).get("export_plan_id"),
+                "ok": False, "result": "BLOCKED", "reason": "TOKEN_MISSING",
                 "message": "LIVE 모드에서는 confirm_token이 필요합니다."
             })
-        # Validate against export's token
         try:
             _exp_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
             if _exp_path.exists():
@@ -4745,42 +4741,107 @@ async def submit_execution_record_api(
                 _expected = _exp.get("human_confirm", {}).get("confirm_token") or _exp.get("source", {}).get("confirm_token")
                 if _expected and token != _expected:
                     return JSONResponse(status_code=403, content={
-                        "result": "BLOCKED",
-                        "reason": "TOKEN_MISMATCH",
-                        "expected_source": "EXPORT_CONFIRM_TOKEN",
+                        "ok": False, "result": "BLOCKED", "reason": "TOKEN_MISMATCH",
                         "plan_id": _exp.get("source", {}).get("plan_id"),
                         "message": "토큰이 Export의 confirm_token과 일치하지 않습니다."
                     })
         except Exception:
             pass
 
+    # --- 3. Load server-side Draft as SSOT ---
     try:
-        from app.generate_manual_execution_record import generate_record
-        generate_record(token, payload, _exec_mode)
-        
-        # Read result
-        from app.generate_manual_execution_record import RECORD_LATEST
-        if RECORD_LATEST.exists():
-             result_data = json.loads(RECORD_LATEST.read_text(encoding="utf-8"))
-             # P161: In DRY_RUN/REPLAY, never return TOKEN_MISMATCH
-             if _exec_mode in ["DRY_RUN", "REPLAY"]:
-                 if result_data.get("reason") == "TOKEN_MISMATCH":
-                     result_data["reason"] = "DRY_RUN_AUTO_BYPASS"
-                     result_data["decision"] = "EXECUTED"
-             return result_data
-        return {"result": "OK", "message": "Record submitted"}
-        
+        _draft_path = REPORTS_DIR / "live" / "manual_execution_record" / "draft" / "latest" / "manual_execution_record_draft_latest.json"
+        if not _draft_path.exists():
+            return JSONResponse(status_code=400, content={
+                "ok": False, "result": "BLOCKED", "reason": "DRAFT_MISSING",
+                "message": "Draft 파일이 없습니다. 먼저 GENERATE DRAFT를 실행하세요."
+            })
+
+        draft = json.loads(_draft_path.read_text(encoding="utf-8"))
+
+        # Extract from draft (never re-compute)
+        draft_ticket_id = draft.get("linkage", {}).get("ticket_id")
+        draft_idempotency_key = draft.get("dedupe", {}).get("idempotency_key", "")
+        draft_items = draft.get("items", [])
+        draft_plan_id = draft.get("linkage", {}).get("export_plan_id") or draft.get("linkage", {}).get("prep_plan_id")
+
+        # Validate: items must not be empty
+        if not draft_items:
+            return JSONResponse(status_code=400, content={
+                "ok": False, "result": "BLOCKED", "reason": "DRAFT_INCOMPLETE",
+                "message": "Draft의 items가 비어있습니다."
+            })
+
+        # Validate: idempotency_key must not be empty
+        if not draft_idempotency_key:
+            return JSONResponse(status_code=400, content={
+                "ok": False, "result": "BLOCKED", "reason": "DRAFT_INCOMPLETE",
+                "message": "Draft의 idempotency_key가 비어있습니다."
+            })
+
+        # --- 4. Build final Record from draft ---
+        record = {
+            "schema": "MANUAL_EXECUTION_RECORD_V1",
+            "asof": datetime.now(KST).isoformat(),
+            "source": {
+                "prep_ref": draft.get("source_refs", {}).get("prep_ref"),
+                "ticket_ref": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
+                "confirm_token": token,
+                "plan_id": draft_plan_id
+            },
+            "ticket_id": draft_ticket_id,
+            "idempotency_key": draft_idempotency_key,
+            "exec_mode": _exec_mode,
+            "decision": "EXECUTED",
+            "reason": "SUBMITTED_VIA_DRAFT",
+            "reason_detail": f"exec_mode={_exec_mode}, items={len(draft_items)}",
+            "summary": {
+                "orders_total": len(draft_items),
+                "executed_count": sum(1 for i in draft_items if i.get("status") == "EXECUTED"),
+                "skipped_count": sum(1 for i in draft_items if i.get("status") == "SKIPPED")
+            },
+            "items": draft_items,
+            "evidence_refs": [
+                "reports/live/execution_prep/latest/execution_prep_latest.json",
+                "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json"
+            ]
+        }
+
+        # --- 5. Save Record (atomic write) ---
+        _record_dir = REPORTS_DIR / "live" / "manual_execution_record" / "latest"
+        _record_dir.mkdir(parents=True, exist_ok=True)
+        _record_path = _record_dir / "manual_execution_record_latest.json"
+
+        _temp = _record_path.parent / f".tmp_{_record_path.name}"
+        _temp.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
+        shutil.move(str(_temp), str(_record_path))
+
+        # Snapshot
+        _snap_dir = REPORTS_DIR / "live" / "manual_execution_record" / "snapshots"
+        _snap_dir.mkdir(parents=True, exist_ok=True)
+        _snap_name = f"record_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
+        shutil.copy(str(_record_path), str(_snap_dir / _snap_name))
+
+        logger.info(f"[P162] Record saved: decision={record['decision']}, exec_mode={_exec_mode}, idempotency_key={draft_idempotency_key[:16]}...")
+
+        # --- 6. Return (success = 200, blocked = 409) ---
+        if record["decision"] == "BLOCKED":
+            return JSONResponse(status_code=409, content=record)
+
+        return {"ok": True, "record_decision": record["decision"], **record}
+
     except Exception as e:
         logger.error(f"Record Submit failed: {e}")
-        # P161: Return cause-specific error codes
+        import traceback
+        traceback.print_exc()
         err_str = str(e)
         if "plan_id" in err_str.lower() or "mismatch" in err_str.lower():
             reason = "PLAN_MISMATCH"
         elif "draft" in err_str.lower() or "incomplete" in err_str.lower():
             reason = "DRAFT_INCOMPLETE"
         else:
-            reason = str(e)
-        raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": reason})
+            reason = err_str
+        return JSONResponse(status_code=500, content={"ok": False, "result": "FAILED", "reason": reason})
 
 
 @app.post("/api/manual_execution_ticket/regenerate")
