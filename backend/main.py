@@ -95,6 +95,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 404 방지용 favicon 라우터 (브라우저 경고 로그 제거)
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
 # CORS (P99)
 app.add_middleware(
     CORSMiddleware,
