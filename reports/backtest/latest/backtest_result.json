@@ -1,36 +1,67 @@
 {
-    "summary": {
-        "cagr": 0.25,
-        "mdd": -0.15
+  "summary": {
+    "cagr": 48.81478597791782,
+    "mdd": 0.0,
+    "sharpe": 0.0,
+    "total_return": 21.245107091551564
+  },
+  "tickers": {
+    "069500": {
+      "cagr": 48.81478597791782,
+      "mdd": 0.0,
+      "win_rate": null,
+      "score": null
     },
-    "tickers": {
-        "005930": {
-            "score": 95,
-            "cagr": 0.20,
-            "mdd": -0.10,
-            "win_rate": 0.6
-        },
-        "000660": {
-            "score": 88,
-            "cagr": 0.18,
-            "mdd": -0.12,
-            "win_rate": 0.55
-        },
-        "035420": {
-            "score": 82,
-            "cagr": 0.15,
-            "mdd": -0.20,
-            "win_rate": 0.5
-        }
+    "229200": {
+      "cagr": 48.81478597791782,
+      "mdd": 0.0,
+      "win_rate": null,
+      "score": null
     },
-    "top_performers": [
-        {
-            "ticker": "005930",
-            "cagr": 0.20
-        },
-        {
-            "ticker": "000660",
-            "cagr": 0.18
-        }
-    ]
+    "114800": {
+      "cagr": 48.81478597791782,
+      "mdd": 0.0,
+      "win_rate": null,
+      "score": null
+    },
+    "122630": {
+      "cagr": 48.81478597791782,
+      "mdd": 0.0,
+      "win_rate": null,
+      "score": null
+    }
+  },
+  "top_performers": [
+    {
+      "ticker": "069500",
+      "cagr": 48.81478597791782
+    },
+    {
+      "ticker": "229200",
+      "cagr": 48.81478597791782
+    },
+    {
+      "ticker": "114800",
+      "cagr": 48.81478597791782
+    },
+    {
+      "ticker": "122630",
+      "cagr": 48.81478597791782
+    }
+  ],
+  "meta": {
+    "asof": "2026-02-23T23:13:45+09:00",
+    "start_date": "2025-08-27",
+    "end_date": "2026-02-22",
+    "mode": "P164_CLI",
+    "universe": [
+      "069500",
+      "229200",
+      "114800",
+      "122630"
+    ],
+    "engine_version": "app.backtest.v1",
+    "total_trades": 127,
+    "signal_days": 19
+  }
 }

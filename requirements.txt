@@ -11,3 +11,5 @@ pyarrow>=10.0.0
 optuna>=3.0.0
 scikit-learn>=1.0.0
 plotly>=5.0.0
+yfinance>=0.2.0
+joblib>=1.0.0
