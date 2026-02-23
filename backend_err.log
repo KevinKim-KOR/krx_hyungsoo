@@ -1,0 +1,200 @@
+Feb 16 23:00:36 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 16 23:00:36 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3min 2.425s CPU time.
+Feb 16 23:00:36 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 16 23:00:36 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3min 2.425s CPU time.
+Feb 16 23:00:36 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 16 23:06:51 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 16 23:06:51 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 16 23:06:51 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.711s CPU time.
+Feb 16 23:06:51 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 16 23:06:51 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.711s CPU time.
+Feb 16 23:06:51 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:03:24 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 00:03:24 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 00:03:24 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 8.073s CPU time.
+Feb 17 00:03:24 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:03:24 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 8.073s CPU time.
+Feb 17 00:03:24 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:09:01 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 00:09:01 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 00:09:01 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.921s CPU time.
+Feb 17 00:09:01 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:09:01 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.921s CPU time.
+Feb 17 00:09:01 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:14:38 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 00:14:38 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 00:14:38 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.650s CPU time.
+Feb 17 00:14:38 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:14:38 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.650s CPU time.
+Feb 17 00:14:38 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:32:52 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 00:32:52 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 00:32:52 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.914s CPU time.
+Feb 17 00:32:52 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:32:52 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.914s CPU time.
+Feb 17 00:32:52 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:39:12 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 00:39:12 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 00:39:12 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.466s CPU time.
+Feb 17 00:39:12 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 00:39:12 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.466s CPU time.
+Feb 17 00:39:12 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 01:04:46 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 01:04:46 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 01:04:46 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 4.792s CPU time.
+Feb 17 01:04:46 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 01:04:46 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 4.792s CPU time.
+Feb 17 01:04:46 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 18:35:36 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 18:35:36 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 18:35:36 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2min 38.639s CPU time.
+Feb 17 18:35:36 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 18:35:36 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2min 38.639s CPU time.
+Feb 17 18:35:36 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 20:24:42 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 20:24:42 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 20:24:42 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 14.644s CPU time.
+Feb 17 20:24:42 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 20:24:42 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 14.644s CPU time.
+Feb 17 20:24:42 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 20:32:59 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 20:32:59 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 20:32:59 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.892s CPU time.
+Feb 17 20:32:59 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 20:32:59 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.892s CPU time.
+Feb 17 20:32:59 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 20:51:37 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 20:51:37 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 20:51:37 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 4.101s CPU time.
+Feb 17 20:51:37 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 20:51:37 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 4.101s CPU time.
+Feb 17 20:51:37 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 23:37:21 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 23:37:21 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 23:37:21 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 20.724s CPU time.
+Feb 17 23:37:21 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 23:37:21 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 20.724s CPU time.
+Feb 17 23:37:21 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 23:44:58 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 23:44:58 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 23:44:58 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.548s CPU time.
+Feb 17 23:44:58 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 23:44:58 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.548s CPU time.
+Feb 17 23:44:59 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 17 23:55:44 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 17 23:55:44 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 17 23:55:44 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.093s CPU time.
+Feb 17 23:55:44 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 17 23:55:44 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.093s CPU time.
+Feb 17 23:55:44 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:01:57 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:01:57 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:01:57 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.680s CPU time.
+Feb 18 00:01:57 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:01:57 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.680s CPU time.
+Feb 18 00:01:57 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:09:15 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:09:15 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:09:15 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.789s CPU time.
+Feb 18 00:09:15 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:09:15 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.789s CPU time.
+Feb 18 00:09:15 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:13:39 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:13:39 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:13:39 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.383s CPU time.
+Feb 18 00:13:39 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:13:39 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.383s CPU time.
+Feb 18 00:13:39 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:21:47 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:21:47 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:21:47 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.807s CPU time.
+Feb 18 00:21:47 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:21:47 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.807s CPU time.
+Feb 18 00:21:47 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:34:29 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:34:29 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:34:29 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.095s CPU time.
+Feb 18 00:34:29 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:34:29 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.095s CPU time.
+Feb 18 00:34:29 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:37:27 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:37:27 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:37:27 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 1.970s CPU time.
+Feb 18 00:37:27 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:37:27 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 1.970s CPU time.
+Feb 18 00:37:27 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:46:46 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:46:46 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:46:46 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.791s CPU time.
+Feb 18 00:46:46 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:46:46 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.791s CPU time.
+Feb 18 00:46:46 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:50:35 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:50:35 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:50:35 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.186s CPU time.
+Feb 18 00:50:35 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:50:35 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.186s CPU time.
+Feb 18 00:50:35 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:54:26 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 18 00:54:26 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 18 00:54:26 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.213s CPU time.
+Feb 18 00:54:26 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 00:54:26 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.213s CPU time.
+Feb 18 00:54:27 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:04:21 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 18 01:04:22 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 18 01:04:22 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:04:22 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.053s CPU time.
+Feb 18 01:04:22 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:20:52 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 18 01:20:52 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 18 01:20:52 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:20:52 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 3.955s CPU time.
+Feb 18 01:20:52 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:26:10 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 18 01:26:10 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.387s CPU time.
+Feb 18 01:26:15 krx-alertor-vm systemd[1]: krx-backend.service: Scheduled restart job, restart counter is at 1.
+Feb 18 01:26:15 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:26:15 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.387s CPU time.
+Feb 18 01:26:15 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:26:58 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 18 01:26:59 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 18 01:26:59 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 18 01:26:59 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 1.701s CPU time.
+Feb 18 01:26:59 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 21 00:22:50 krx-alertor-vm systemd[1]: krx-backend.service: Main process exited, code=killed, status=9/KILL
+Feb 21 00:22:50 krx-alertor-vm systemd[1]: krx-backend.service: Failed with result 'signal'.
+Feb 21 00:22:50 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 9min 54.333s CPU time.
+Feb 21 00:22:50 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 21 00:22:50 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 9min 54.333s CPU time.
+Feb 21 00:22:50 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 22 02:08:12 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 22 02:08:12 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 22 02:08:12 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 22 02:08:12 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2min 43.889s CPU time.
+Feb 22 02:08:12 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 22 12:07:41 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 22 12:07:41 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 22 12:07:41 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 22 12:07:41 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 1min 4.975s CPU time.
+Feb 22 12:07:41 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 22 13:46:12 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 22 13:46:12 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 22 13:46:12 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 22 13:46:12 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 12.495s CPU time.
+Feb 22 13:46:12 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 22 18:26:48 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 22 18:26:48 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 22 18:26:48 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 22 18:26:48 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 34.275s CPU time.
+Feb 22 18:26:48 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 22 18:49:47 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 22 18:49:47 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 22 18:49:47 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 22 18:49:47 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 6.759s CPU time.
+Feb 22 18:49:47 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.
+Feb 22 18:54:25 krx-alertor-vm systemd[1]: Stopping KRX Alertor Modular - FastAPI Backend...
+Feb 22 18:54:25 krx-alertor-vm systemd[1]: krx-backend.service: Deactivated successfully.
+Feb 22 18:54:25 krx-alertor-vm systemd[1]: Stopped KRX Alertor Modular - FastAPI Backend.
+Feb 22 18:54:25 krx-alertor-vm systemd[1]: krx-backend.service: Consumed 2.332s CPU time.
+Feb 22 18:54:25 krx-alertor-vm systemd[1]: Started KRX Alertor Modular - FastAPI Backend.

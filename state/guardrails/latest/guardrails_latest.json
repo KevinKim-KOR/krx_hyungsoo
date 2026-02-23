@@ -1,23 +1,23 @@
 {
-    "schema": "GUARDRAILS_V1",
-    "live": {
-        "max_total_notional_ratio": 0.30,
-        "max_single_order_ratio": 0.10,
-        "min_cash_reserve_ratio": 0.05
-    },
-    "dry_run": {
-        "max_total_notional_ratio": 1.00,
-        "max_single_order_ratio": 1.00,
-        "min_cash_reserve_ratio": 0.00
-    },
-    "replay": {
-        "max_total_notional_ratio": 1.00,
-        "max_single_order_ratio": 1.00,
-        "min_cash_reserve_ratio": 0.00
-    },
-    "caps": {
-        "max_total_notional_ratio": 1.00,
-        "max_single_order_ratio": 1.00,
-        "min_cash_reserve_ratio": 0.00
-    }
+  "schema": "GUARDRAILS_V1",
+  "live": {
+    "max_total_notional_ratio": 0.3,
+    "max_single_order_ratio": 0.1,
+    "min_cash_reserve_ratio": 0.05
+  },
+  "dry_run": {
+    "max_total_notional_ratio": 1.0,
+    "max_single_order_ratio": 1.0,
+    "min_cash_reserve_ratio": 0.0
+  },
+  "replay": {
+    "max_total_notional_ratio": 1.0,
+    "max_single_order_ratio": 1.0,
+    "min_cash_reserve_ratio": 0.0
+  },
+  "caps": {
+    "max_total_notional_ratio": 1.0,
+    "max_single_order_ratio": 1.0,
+    "min_cash_reserve_ratio": 0.0
+  }
 }

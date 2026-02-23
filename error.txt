@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "E:\AI Study\krx_alertor_modular\app\generate_execution_prep.py", line 344, in <module>
+    generate_prep(token)
+    ~~~~~~~~~~~~~^^^^^^^
+  File "E:\AI Study\krx_alertor_modular\app\generate_execution_prep.py", line 66, in generate_prep
+    "max_orders_allowed": MAX_ORDERS_ALLOWED,
+                          ^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'MAX_ORDERS_ALLOWED' where it is not associated with a value

@@ -1,0 +1,9 @@
+{
+  "result": "FAILED",
+  "cycle_id": "05f5d989-4ada-41af-aed9-3922d613e6e5",
+  "decision": "PARTIAL",
+  "reason": "SUMMARY_FAIL",
+  "saved_to": "reports/live/cycle/latest/live_cycle_latest.json",
+  "snapshot_ref": "reports/live/cycle/snapshots/live_cycle_20260222_182349.json",
+  "delivery_actual": "CONSOLE_SIMULATED"
+}

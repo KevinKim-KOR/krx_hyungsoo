@@ -32,7 +32,8 @@
         "docs/contracts/contract_manual_execution_record_draft_v1.md",
         "docs/runbooks/runbook_ui_daily_ops_v1.md",
         "deploy/oci/daily_ops.sh",
-        "deploy/oci/restart_backend.sh"
+        "deploy/oci/restart_backend.sh",
+        "docs/archive/legacy_backtest_engine_analysis.md"
     ],
     "active_endpoints": [
         "/api/ops/summary/latest",

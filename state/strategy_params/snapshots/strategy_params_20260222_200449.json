@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-02-22T20:32:12.741139+09:00",
+  "asof": "2026-02-22T20:04:49.476681+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {

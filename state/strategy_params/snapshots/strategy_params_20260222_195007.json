@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-02-22T20:32:12.741139+09:00",
+  "asof": "2026-02-22T19:50:07.758614+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -24,7 +24,7 @@
     },
     "position_limits": {
       "max_positions": 4,
-      "min_cash_pct": 0.75
+      "min_cash_pct": 0.1
     },
     "decision_params": {
       "entry_threshold": 0.03,

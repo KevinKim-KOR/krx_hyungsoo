@@ -1,10 +1,10 @@
 {
   "schema": "STRATEGY_BUNDLE_V1",
-  "bundle_id": "5991bd61-5d70-41bf-8a44-e5e7dba487bb",
-  "created_at": "2026-02-22T20:32:14.791209+09:00",
+  "bundle_id": "19a7c70a-a8a1-424d-9cbe-5d75c05f8c91",
+  "created_at": "2026-02-22T19:50:09.814172+09:00",
   "source": {
     "pc_host": "DESKTOP-4MKPJGC",
-    "git_commit": "fd798d25",
+    "git_commit": "c1dbb2ea",
     "git_branch": "main",
     "active_surface_sha256": "e25a362966e69ec9c159e3cb3afe5e3ab8ad705d3bdca4561e072987e84b7b01"
   },
@@ -31,7 +31,7 @@
     },
     "position_limits": {
       "max_positions": 4,
-      "min_cash_pct": 0.75
+      "min_cash_pct": 0.1
     },
     "decision_params": {
       "entry_threshold": 0.03,
@@ -41,7 +41,7 @@
       "weight_volatility": 0.0
     },
     "params_ref": "strategy_params_latest",
-    "params_fingerprint": "56d18936bcb266d9",
+    "params_fingerprint": "7ab7d6f739b4c9e5",
     "regime": {
       "code": "NEUTRAL",
       "reason": "DATA_MISSING",
@@ -121,7 +121,7 @@
       "portfolio": {
         "enabled": true,
         "schema": "PORTFOLIO_SNAPSHOT_V1",
-        "asof": "2026-02-22T11:32:14.896260",
+        "asof": "2026-02-22T10:50:09.920445",
         "payload": {
           "asof": "2026-02-13T00:00:00Z",
           "cash": 900000.0,
@@ -248,9 +248,9 @@
     "reports/backtest/latest/backtest_result.json"
   ],
   "integrity": {
-    "payload_sha256": "36b17f0b034c593e27295b5ecba2c24e8b09fbd255db785a977f799b3a6d4314",
+    "payload_sha256": "409bb786a17cd47a60e8ba7bddd84786c9cd093e763b5b47b4a5d919b0073172",
     "signed_by": "PC_LOCAL",
-    "signature": "auto-36b17f0b034c593e",
+    "signature": "auto-409bb786a17cd47a",
     "algorithm": "HMAC-SHA256"
   }
 }
