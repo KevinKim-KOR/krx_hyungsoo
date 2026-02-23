@@ -82,19 +82,77 @@ A major documentation refactoring was performed to align with the "PC Control / 
 - **Active Surface**: Updated `active_surface.json` with new paths and endpoints.
 - **Smoke Test**: Rewrote `smoke_test.md` with 6 UI-First scenarios.
 
-## SSOT Consolidation (Final Cleanup)
+## P150: Global KST Synchronization (Feb 20, 2026)
 
-- **Structure**: Removed `docs/handoff/` directory. All definitive documentation is now under `docs/SSOT/`.
-- **New Protocol**: strict "Documentation Update Protocol" added to `PROJECT_CONSTITUTION.md`.
-    - Every session must update `SSOT`, `walkthrough.md`, and `task.md`.
-- **References**: Updated `contracts_index.md` to point to `docs/SSOT/STATE_LATEST.md`.
+### Functional Changes
+- **Date Formatting**: Ensured all generated JSON and MD artifacts (`ops_summary_latest.json`, `manual_execution_ticket_latest.json`, etc.) consistently output timestamps in Korean Standard 시(+09:00).
+- **Timezone Safety**: Replaced naive and explicit `timezone.utc` objects with robust KST generation logic, standardizing dashboard logic to avoid naive vs timezone-aware Python collisions.
 
-## SSOT Fact Update (Pre-Handoff)
+## P152: Auto Ops Force Recompute & Idempotency (Feb 22, 2026)
 
-- **Updated**: `docs/SSOT/STATE_LATEST.md` with 6 explicit facts:
-    1.  **Environment**: Full URLs for PC/OCI types.
-    2.  **Artifacts**: Canonical paths for `ops_summary` and `export`.
-    3.  **Token**: Explicit actions requiring `EXPORT_CONFIRM_TOKEN`.
-    4.  **Payload**: Validated `api/sync/push` payload (Portfolio, Override).
-    5.  **Stages**: 6-step transition table.
-    6.  **Restart**: `restart_backend.sh` mandate.
+### Functional Changes
+- **Backend Generator Scripts**: Idempotency checks were added. The generator scripts now check if an artifact was already created today to avoid accidental overwrites. They output `[RESULT: SKIP_OR_REGEN]` natively to `stdout` which is parsed by the orchestrator.
+- **Backend Orchestration**: `backend/main.py` replaced standard imports with `subprocess.run` to orchestrate generator scripts independently and parse their `[RESULT:]` codes cleanly.
+- **PC Cockpit**: Added a `☑ Force Recompute (Overwrite)` checkbox for operators. Output toasts were improved to display status such as `RECO: REGEN | ORDER_PLAN: SKIP`.
+
+## P153: RECO Math Bug Fix & Force Cascade Architecture
+
+### Functional Changes
+- **RECO Math Bug Fix**: Corrected a bug in `app/generate_reco_report.py` where `buy_count` ignored `ADD` actions and only accounted for `BUY`.
+- **Key-Based Idempotency**: `app/generate_order_plan.py` and `app/generate_order_plan_export.py` now utilize unique keys (`reco_key` and `order_plan_key`) instead of relying solely on the date to decide whether to SKIP or REGEN.
+- **Force Cascade**: If an upstream script (like RECO) is regenerated, the backend orchestrator now automatically propagates a `--force` flag (Force Cascade) down to sub-components (PLAN and EXPORT) to guarantee full propagation of the new state.
+- **Cash Allocation Logic**: If the RECO report intends to `ADD` or `NEW_ENTRY` tickers, the generator now pulls their prices from `strategy_bundle_latest.json`'s auxiliary timing metadata to compute accurate quantities and allocate the available `cash` evenly among them.
+- **Improved UI Tracing**: The orchestrator parses the `SKIP reason=same_reco_key` values and feeds them back into the Cockpit frontend to provide greater visibility into exactly why a phase was skipped.
+
+## P154: Force Cascade Architecture & UI Result Persistence (Feb 22, 2026)
+
+### Functional Changes
+- **Strict Fail-Closed Cascade**: The Force Cascade logic (`--force` propagation to downstream stages) was restricted to only activate when the execution mode (`_exec_mode`) is `DRY_RUN` or `REPLAY`. This prevents dangerous cascading overwrites in `LIVE` production mode while allowing flexible recalculation during testing.
+- **Robust Key Detection**:
+  - `generate_order_plan.py` now explicitly records `reco_report_id`, `reco_created_at`, `bundle_id`, and `reco_key` within the `source` block to provide absolute traceability of the upstream RECO report it is based on.
+  - `generate_order_plan_export.py` now generates its `order_plan_key` by directly hashing the stringified, sorted `orders` array. This ensures that any change in the actual order contents will trigger an export regeneration, rendering it immune to metadata drifts.
+- **UI Result Persistence**: The PC Cockpit (`pc_cockpit/cockpit.py`) now stores the Auto Ops execution result (e.g. `✅ RECO: REGEN | ORDER_PLAN: SKIP`) into `st.session_state["last_cycle_result"]`. This prevents the status message from instantly disappearing when the page invokes `st.rerun()`.
+
+## P155: ORDER_PLAN Always-Write & Fail-Fast Orchestrator (Feb 22, 2026)
+
+### Functional Changes
+- **Fail-Fast Orchestrator**: The backend `live/cycle/run` API now aggressively halts execution (`fail-fast`) if any subprocess script returns a non-zero exit code. Instead of silently ignoring it, the API records the stdout and stderr tails alongside the return code into `reports/ops/run/latest/ops_run_latest.json`.
+- **Always-Write Latest Order Plan**: The `generate_order_plan.py` generator was wrapped in an overarching try-except block to ensure that even if data processing (like price fetching or cash allocation) structurally fails, the `order_plan_latest.json` file is explicitly written out with a status of `ERROR` and `PRICE_MISSING_OR_ALLOC_FAIL`.
+  - This solves the issue where previously failed operations would retain 'stale' Order Plans with old `bundle_id` versions, creating synchronization mismatch downstream.
+- **UI Error Presentation**: The Cockpit UI (`pc_cockpit/cockpit.py`) gracefully catches HTTP 500 responses containing partial `ops_run` dumps within the detail payload. This ensures that when the backend fails fast, operators immediately see exactly which generator crashed and the accompanying reason on screen (e.g., `❌ RECO: REGEN | ORDER_PLAN: FAIL (SCRIPT_ERROR)`).
+
+## P163: Legacy Backtest Engine Audit & Handoff (Feb 23, 2026)
+
+### Findings
+- Conducted a full codebase audit for the backtest engine.
+- Revealed that the active `app/` architecture contains **0** actual backtest engine files and relies entirely on a 36-line mock JSON file (`reports/backtest/latest/backtest_result.json`).
+- Discovered the complete, production-grade backtest engine still preserved intact within `_archive/legacy_20260102/`.
+
+### Actions Taken
+- **Deep Analysis**: Analyzed all 33 legacy files (~5,600 lines) across 5 subsystem layers (Core Engine, Strategy, Execution Runner, Tuning & Promotion, Data Infra, and Config).
+- **Handoff Document Generation**: Created `docs/archive/legacy_backtest_engine_analysis.md` encompassing architectural breakdowns, mermaid diagrams, API signatures, metric formulas, pipeline routing, and a migration gap analysis.
+- **Active Surface Registry**: Protected the newly generated analysis document by explicitly registering it within `docs/ops/active_surface.json` to prevent accidental deletion during automated cleanups.
+
+## P164: Backtest Engine Active Migration — Phase 1 (Feb 23, 2026)
+
+### What Changed
+- **New Package**: Created `app/backtest/` with 5 subpackages (`engine/`, `strategy/`, `infra/`, `runners/`, `utils/`), 10 migrated source files, 6 `__init__.py` files.
+- **Import Remapping**: All `from core.*` imports replaced with `from app.backtest.*`. Removed `FORCE_ENTRY_ONCE` debug artifact from runner.
+- **Simplified `calendar_kr.py`**: Removed `core.utils.datasources` dependency, uses yfinance directly.
+- **yfinance 0.2.x Fix**: Added MultiIndex column flattening to `data_loader._normalize_df()`.
+- **CLI Entry Point**: `app/run_backtest.py` — reads strategy bundle, downloads OHLCV, runs engine, writes atomic result + snapshot.
+- **Dependencies**: Added `yfinance>=0.2.0` and `joblib>=1.0.0` to `requirements.txt`.
+
+### Verification Results
+
+| Check | Result |
+|---|---|
+| (A) `_archive` references in `app/backtest/` | **0** ✅ |
+| (B) `python -m app.run_backtest --mode quick` | **OK** — 4 tickers, 468 rows, 127 trades ✅ |
+| (C) `backtest_result.json` real metrics | **CAGR=48.81, total_return=21.25** ✅ |
+
+### Known Limitations (P165 scope)
+- `mdd=0.0` and `sharpe=0.0` — engine metric calculation may need review for the 6-month quick period.
+- Ticker-level metrics duplicate portfolio-level values (runner returns portfolio-level only).
+- UI buttons not connected (deferred to P165).
+
