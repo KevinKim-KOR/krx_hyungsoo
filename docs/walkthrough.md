@@ -156,3 +156,19 @@ A major documentation refactoring was performed to align with the "PC Control / 
 - Ticker-level metrics duplicate portfolio-level values (runner returns portfolio-level only).
 - UI buttons not connected (deferred to P165).
 
+## P165: Backtest 결과 품질 보정 + PC Cockpit 탭 (Feb 24, 2026)
+
+### What Changed
+- **MDD/Sharpe 재계산**: `format_result()`에서 `nav_history`로부터 equity_curve/daily_returns를 추출하여 MDD=7.58%, Sharpe=2.22 산출 (기존 0.0 → 실값)
+- **Ticker별 Buy&Hold 독립 계산**: 포트폴리오 복붙 제거, 각 종목의 OHLCV 종가로 CAGR/MDD/Win Rate 독립 산출 (4종목 모두 다른 값)
+- **PC Cockpit 🧪 백테스트 탭**: 고정 탭 신설, Mode 선택(Quick/Full), ▶️ CLI 실행 버튼, summary/tickers/top_performers 표시, LLM 복붙용 JSON 블록
+
+### Verification Results
+
+| Check | Result |
+|---|---|
+| `summary.mdd != 0` | **7.5813** ✅ |
+| `summary.sharpe != 0` | **2.2239** ✅ |
+| Ticker CAGRs not all equal | **4 unique values** ✅ |
+| `meta.equity_curve` exists | **117 pts** ✅ |
+| `meta.daily_returns` exists | **116 pts** ✅ |
