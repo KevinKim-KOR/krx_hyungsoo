@@ -226,14 +226,15 @@ portfolio_data = load_json(PORTFOLIO_PATH)
 guardrails_data = load_json(GUARDRAILS_PATH) or {}
 
 # Create Tabs
-tab_ops, tab_main, tab_reco, tab_timing, tab_port_edit, tab_review, tab_guardrails = st.tabs([
+tab_ops, tab_main, tab_reco, tab_timing, tab_port_edit, tab_review, tab_guardrails, tab_backtest = st.tabs([
     "🚀 Operations (P144)",
     "🔩 Current Parameters", 
     "🔎 Recommendations (P135)", 
     "⏱️ Holdings Timing (P136)",
     "💼 Portfolio Editor (P136.5)",
     "🧐 Param Review (P138)",
-    "🛡️ Guardrails (P160)"
+    "🛡️ Guardrails (P160)",
+    "🧪 백테스트 (P165)"
 ])
 
 # TAB 0: Operations (P144/P146.1)
@@ -1016,3 +1017,112 @@ with tab_guardrails:
             # Save
             save_json(GUARDRAILS_PATH, new_guardrails)
             st.success("Guardrails saved locally! Go to 'Current Parameters' to push everything to OCI (1-Click Sync).")
+
+# ─── TAB 7: 🧪 백테스트 (P165) ─────────────────────────────────────────
+with tab_backtest:
+    st.header("🧪 백테스트 실행 (P165)")
+    st.caption("Strategy Bundle 기반으로 백테스트를 실행하고 결과를 확인합니다.")
+
+    col_mode, col_run = st.columns([2, 1])
+    with col_mode:
+        bt_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="bt_mode")
+    mode_arg = "quick" if "quick" in bt_mode else "full"
+
+    with col_run:
+        st.write("")  # spacer
+        run_bt = st.button("▶️ 백테스트 실행", key="run_backtest_btn", type="primary")
+
+    if run_bt:
+        with st.spinner(f"백테스트 실행 중 (mode={mode_arg})..."):
+            try:
+                bt_result = subprocess.run(
+                    [sys.executable, "-m", "app.run_backtest", "--mode", mode_arg],
+                    capture_output=True, text=True, timeout=300,
+                    cwd=str(BASE_DIR)
+                )
+                if bt_result.returncode == 0 or "[RESULT: OK]" in (bt_result.stdout or ""):
+                    st.success("✅ 백테스트 완료!")
+                    st.session_state["bt_ran"] = True
+                else:
+                    st.error("❌ 백테스트 실패")
+                    stderr_lines = (bt_result.stderr or "").strip().split("\n")
+                    st.code("\n".join(stderr_lines[-20:]), language="text")
+                    st.session_state["bt_ran"] = False
+            except subprocess.TimeoutExpired:
+                st.error("❌ 타임아웃 (5분 초과)")
+                st.session_state["bt_ran"] = False
+            except Exception as e:
+                st.error(f"❌ 실행 오류: {e}")
+                st.session_state["bt_ran"] = False
+
+    # ── 결과 표시 (항상 최신 파일 기준) ──
+    bt_result_path = BASE_DIR / "reports" / "backtest" / "latest" / "backtest_result.json"
+    if bt_result_path.exists():
+        bt_data = load_json(bt_result_path)
+        if bt_data:
+            st.divider()
+            st.subheader("📊 최신 백테스트 결과")
+
+            # Summary metrics
+            bt_summary = bt_data.get("summary", {})
+            bt_meta = bt_data.get("meta", {})
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("CAGR", f"{bt_summary.get('cagr', 0):.2f}%")
+            c2.metric("MDD", f"{bt_summary.get('mdd', 0):.2f}%")
+            c3.metric("Sharpe", f"{bt_summary.get('sharpe', 0):.4f}")
+            c4.metric("Total Return", f"{bt_summary.get('total_return', 0):.2f}%")
+
+            # Meta info
+            mc1, mc2, mc3, mc4 = st.columns(4)
+            mc1.caption(f"기간: {bt_meta.get('start_date', '?')} ~ {bt_meta.get('end_date', '?')}")
+            mc2.caption(f"거래: {bt_meta.get('total_trades', 0)}건")
+            ec_len = len(bt_meta.get('equity_curve', []))
+            dr_len = len(bt_meta.get('daily_returns', []))
+            mc3.caption(f"Equity Curve: {ec_len} pts")
+            mc4.caption(f"Daily Returns: {dr_len} pts")
+
+            if bt_meta.get("sharpe_reason"):
+                st.caption(f"⚠️ Sharpe 비고: {bt_meta['sharpe_reason']}")
+            if bt_meta.get("mdd_reason"):
+                st.caption(f"⚠️ MDD 비고: {bt_meta['mdd_reason']}")
+
+            # Ticker-level table
+            st.subheader("📈 종목별 Buy&Hold 성과")
+            bt_tickers = bt_data.get("tickers", {})
+            if bt_tickers:
+                rows = []
+                for code, vals in bt_tickers.items():
+                    rows.append({
+                        "종목": f"{get_ticker_name(code)} ({code})",
+                        "CAGR (%)": vals.get("cagr", 0),
+                        "MDD (%)": vals.get("mdd", 0),
+                        "Win Rate (%)": vals.get("win_rate", 0),
+                    })
+                df_tickers = pd.DataFrame(rows).sort_values("CAGR (%)", ascending=False)
+                st.dataframe(df_tickers, use_container_width=True, hide_index=True)
+
+            # Top Performers
+            st.subheader("🏆 Top Performers")
+            top_p = bt_data.get("top_performers", [])
+            for i, tp in enumerate(top_p[:5]):
+                st.write(f"{i+1}. **{get_ticker_name(tp['ticker'])}** ({tp['ticker']}) — CAGR {tp['cagr']:.2f}%")
+
+            # LLM Copy Block
+            st.divider()
+            st.subheader("📋 LLM 복붙용 요약")
+            llm_block = {
+                "summary": bt_summary,
+                "period": f"{bt_meta.get('start_date', '?')} ~ {bt_meta.get('end_date', '?')}",
+                "universe": bt_meta.get("universe", []),
+                "params": {
+                    "momentum_period": bt_meta.get("momentum_period"),
+                    "stop_loss": bt_meta.get("stop_loss"),
+                    "max_positions": bt_meta.get("max_positions"),
+                },
+                "top_performers": top_p[:5],
+                "total_trades": bt_meta.get("total_trades", 0),
+                "equity_curve_length": ec_len,
+            }
+            st.code(json.dumps(llm_block, indent=2, ensure_ascii=False), language="json")
+    else:
+        st.info("아직 백테스트 결과가 없습니다. 위의 ▶️ 버튼을 클릭하여 실행하세요.")

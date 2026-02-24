@@ -215,63 +215,191 @@ def run_backtest(
     return result
 
 
-# ─── 4. Format Output ─────────────────────────────────────────────────────
+# ─── 4. Per-Ticker Buy&Hold Metrics ────────────────────────────────────────
+def compute_buyhold_metrics(
+    closes: pd.Series, start: date, end: date
+) -> Dict[str, Any]:
+    """
+    단일 종목 Buy&Hold 기준 cagr, mdd, win_rate 계산.
+    closes: DatetimeIndex 종가 시리즈
+    """
+    if closes is None or len(closes) < 2:
+        return {"cagr": 0.0, "mdd": 0.0, "win_rate": 0.0}
+
+    closes = closes.sort_index().dropna()
+    if len(closes) < 2:
+        return {"cagr": 0.0, "mdd": 0.0, "win_rate": 0.0}
+
+    first_val = float(closes.iloc[0])
+    last_val = float(closes.iloc[-1])
+
+    # CAGR
+    total_days = (closes.index[-1] - closes.index[0]).days
+    years = total_days / 365.25 if total_days > 0 else 1.0
+    if first_val > 0 and years > 0:
+        cagr = ((last_val / first_val) ** (1.0 / years) - 1.0) * 100
+    else:
+        cagr = 0.0
+
+    # MDD
+    cummax = closes.cummax()
+    drawdown = (closes / cummax - 1.0)
+    mdd = abs(float(drawdown.min())) * 100  # 양수 %
+
+    # Win Rate (일별 양의 수익률 비율)
+    daily_ret = closes.pct_change().dropna()
+    if len(daily_ret) > 0:
+        win_rate = float((daily_ret > 0).sum()) / len(daily_ret) * 100
+    else:
+        win_rate = 0.0
+
+    return {"cagr": round(cagr, 4), "mdd": round(mdd, 4), "win_rate": round(win_rate, 2)}
+
+
+# ─── 5. Format Output ─────────────────────────────────────────────────────
 def format_result(
     result: Dict[str, Any],
     params: Dict[str, Any],
     start: date,
     end: date,
+    price_data: pd.DataFrame = None,
 ) -> Dict[str, Any]:
     """
     결과를 현행 소비자 스키마로 포맷팅.
+    P165: equity_curve/daily_returns 포함, ticker별 Buy&Hold 독립 계산.
 
-    필수 최상위 키: summary, tickers, top_performers
+    필수 최상위 키: summary, tickers, top_performers, meta
     """
     metrics = result.get("metrics", {})
 
-    # summary
+    # ── Portfolio Equity Curve from nav_history ──
+    nav_history = result.get("nav_history", [])
+    equity_curve = []
+    daily_returns = []
+
+    if nav_history and len(nav_history) >= 2:
+        for d, nav in nav_history:
+            equity_curve.append({
+                "date": str(d),
+                "equity": round(float(nav), 2),
+            })
+
+        # daily returns from equity curve
+        for i in range(1, len(nav_history)):
+            prev_nav = nav_history[i - 1][1]
+            curr_nav = nav_history[i][1]
+            ret = (curr_nav / prev_nav - 1.0) if prev_nav > 0 else 0.0
+            daily_returns.append({
+                "date": str(nav_history[i][0]),
+                "ret": round(float(ret), 6),
+            })
+
+    # ── Recompute MDD/Sharpe from equity curve ──
+    sharpe_reason = None
+    mdd_reason = None
+
+    if len(equity_curve) >= 2:
+        import numpy as np
+        navs = pd.Series([e["equity"] for e in equity_curve])
+
+        # MDD
+        cummax = navs.cummax()
+        drawdown = (navs / cummax - 1.0)
+        mdd_val = abs(float(drawdown.min())) * 100
+        if mdd_val == 0.0:
+            mdd_reason = "no_drawdown_from_peak"
+
+        # Sharpe
+        rets = navs.pct_change().dropna()
+        if len(rets) > 1 and float(rets.std()) > 0:
+            sharpe_val = float(rets.mean() / rets.std()) * (252 ** 0.5)
+        else:
+            sharpe_val = 0.0
+            sharpe_reason = "std_zero" if len(rets) > 1 else "insufficient_data"
+    else:
+        mdd_val = 0.0
+        sharpe_val = 0.0
+        mdd_reason = "no_nav_history"
+        sharpe_reason = "no_nav_history"
+
+    # summary (override engine metrics with recomputed values)
     summary = {
         "cagr": metrics.get("cagr", 0.0),
-        "mdd": metrics.get("mdd", 0.0),
-        "sharpe": metrics.get("sharpe", 0.0),
+        "mdd": round(mdd_val, 4),
+        "sharpe": round(sharpe_val, 4),
         "total_return": metrics.get("total_return", 0.0),
     }
 
-    # tickers — 종목별 성과 (메인 엔진은 포트폴리오 레벨만 제공하므로 동일값 배분)
+    # ── Ticker-Level Buy&Hold Metrics ──
     tickers_out = {}
-    for t in params["universe"]:
-        tickers_out[t] = {
-            "cagr": metrics.get("cagr", 0.0),
-            "mdd": metrics.get("mdd", 0.0),
-            "win_rate": metrics.get("win_rate_daily", None),
-            "score": None,
-        }
+    if price_data is not None and isinstance(price_data.index, pd.MultiIndex):
+        for t in params["universe"]:
+            try:
+                code_data = price_data.xs(t, level="code")
+                if "close" in code_data.columns:
+                    closes = code_data["close"]
+                elif "Close" in code_data.columns:
+                    closes = code_data["Close"]
+                else:
+                    closes = pd.Series(dtype=float)
+                bh = compute_buyhold_metrics(closes, start, end)
+                tickers_out[t] = {
+                    "cagr": bh["cagr"],
+                    "mdd": bh["mdd"],
+                    "win_rate": bh["win_rate"],
+                    "score": None,
+                }
+            except (KeyError, Exception) as e:
+                logger.warning(f"[TICKER] {t} Buy&Hold calc failed: {e}")
+                tickers_out[t] = {"cagr": 0.0, "mdd": 0.0, "win_rate": 0.0, "score": None}
+    else:
+        # fallback: portfolio-level copy (should not happen)
+        for t in params["universe"]:
+            tickers_out[t] = {
+                "cagr": metrics.get("cagr", 0.0),
+                "mdd": round(mdd_val, 4),
+                "win_rate": None,
+                "score": None,
+            }
 
-    # top_performers (cagr 내림차순)
+    # top_performers (ticker cagr 내림차순, top 5)
     sorted_tickers = sorted(tickers_out.items(), key=lambda x: x[1]["cagr"], reverse=True)
-    top_performers = [{"ticker": t, "cagr": v["cagr"]} for t, v in sorted_tickers]
+    top_performers = [{"ticker": t, "cagr": v["cagr"]} for t, v in sorted_tickers[:5]]
 
-    # meta (추가 정보)
+    # meta
     now_kst = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
+
+    meta = {
+        "asof": now_kst,
+        "start_date": str(start),
+        "end_date": str(end),
+        "mode": "P165_CLI",
+        "universe": params["universe"],
+        "engine_version": "app.backtest.v2",
+        "total_trades": metrics.get("order_count", 0),
+        "signal_days": metrics.get("signal_days", 0),
+        "momentum_period": params.get("momentum_period"),
+        "stop_loss": params.get("stop_loss"),
+        "max_positions": params.get("max_positions"),
+        "equity_curve": equity_curve,
+        "daily_returns": daily_returns,
+    }
+
+    # conditional reason fields
+    if sharpe_reason:
+        meta["sharpe_reason"] = sharpe_reason
+    if mdd_reason:
+        meta["mdd_reason"] = mdd_reason
 
     return {
         "summary": summary,
         "tickers": tickers_out,
         "top_performers": top_performers,
-        "meta": {
-            "asof": now_kst,
-            "start_date": str(start),
-            "end_date": str(end),
-            "mode": "P164_CLI",
-            "universe": params["universe"],
-            "engine_version": "app.backtest.v1",
-            "total_trades": metrics.get("order_count", 0),
-            "signal_days": metrics.get("signal_days", 0),
-        },
+        "meta": meta,
     }
 
 
-# ─── 5. Atomic Write ──────────────────────────────────────────────────────
+# ─── 6. Atomic Write ──────────────────────────────────────────────────────
 def atomic_write_result(data: Dict[str, Any]) -> None:
     """Atomic write: tmp → rename → snapshot copy"""
     RESULT_LATEST.parent.mkdir(parents=True, exist_ok=True)
@@ -307,9 +435,9 @@ def atomic_write_result(data: Dict[str, Any]) -> None:
     logger.info(f"[WRITE] snapshot → {snap_path}")
 
 
-# ─── 6. Main ──────────────────────────────────────────────────────────────
+# ─── 7. Main ──────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="P164 Backtest CLI")
+    parser = argparse.ArgumentParser(description="P165 Backtest CLI")
     parser.add_argument(
         "--mode",
         choices=["quick", "full"],
@@ -321,7 +449,7 @@ def main():
     args = parser.parse_args()
 
     logger.info("=" * 60)
-    logger.info("P164 Backtest Engine — CLI")
+    logger.info("P165 Backtest Engine — CLI")
     logger.info("=" * 60)
 
     # 1. Load strategy bundle
@@ -368,8 +496,8 @@ def main():
         print(f"[RESULT: FAIL] Backtest error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # 5. Format and write
-    formatted = format_result(result, params, start, end)
+    # 5. Format and write (P165: pass price_data for ticker-level metrics)
+    formatted = format_result(result, params, start, end, price_data=price_data)
 
     try:
         atomic_write_result(formatted)
@@ -380,12 +508,20 @@ def main():
 
     # 6. Summary
     s = formatted["summary"]
+    meta = formatted["meta"]
     logger.info("=" * 60)
     logger.info(f"[RESULT: OK] CAGR={s['cagr']:.4f}  MDD={s['mdd']:.4f}  "
-                f"Sharpe={s.get('sharpe', 0):.4f}  Trades={formatted['meta']['total_trades']}")
+                f"Sharpe={s.get('sharpe', 0):.4f}  Trades={meta['total_trades']}")
+    logger.info(f"  equity_curve: {len(meta.get('equity_curve', []))} pts  "
+                f"daily_returns: {len(meta.get('daily_returns', []))} pts")
+    if meta.get("sharpe_reason"):
+        logger.info(f"  sharpe_reason: {meta['sharpe_reason']}")
+    if meta.get("mdd_reason"):
+        logger.info(f"  mdd_reason: {meta['mdd_reason']}")
     logger.info("=" * 60)
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")
 
 
 if __name__ == "__main__":
     main()
+
