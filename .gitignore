@@ -138,6 +138,9 @@ venv/
 
 state/cache/etf_history_cache.json
 state/portfolio/latest/portfolio_latest.json
+state/params/**/*.json
+state/strategy_bundle/**/*.json
+
 # Runtime State (Replay, etc.)
 state/runtime/asof_override_latest.json
 state/runtime/*.json
@@ -151,7 +154,3 @@ reports/**/*.yaml
 !reports/README.md
 
 # Specific Conflict Resolutions
-reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.csv
-reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.md
-local/manual_execution_record_drafts/
-incoming/manual_execution_record_drafts/
