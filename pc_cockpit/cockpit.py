@@ -42,7 +42,7 @@ from app.utils.portfolio_normalize import normalize_portfolio, load_asof_overrid
 # Config
 st.set_page_config(page_title="KRX Strategy Cockpit", layout="wide")
 BASE_DIR = Path(__file__).parent.parent
-PARAMS_DIR = BASE_DIR / "state" / "strategy_params"
+PARAMS_DIR = BASE_DIR / "state" / "params"
 LATEST_PATH = PARAMS_DIR / "latest" / "strategy_params_latest.json"
 SNAPSHOT_DIR = PARAMS_DIR / "snapshots"
 
@@ -226,7 +226,7 @@ portfolio_data = load_json(PORTFOLIO_PATH)
 guardrails_data = load_json(GUARDRAILS_PATH) or {}
 
 # Create Tabs
-tab_ops, tab_main, tab_reco, tab_timing, tab_port_edit, tab_review, tab_guardrails, tab_backtest = st.tabs([
+tab_ops, tab_main, tab_reco, tab_timing, tab_port_edit, tab_review, tab_guardrails, tab_backtest, tab_tune = st.tabs([
     "🚀 Operations (P144)",
     "🔩 Current Parameters", 
     "🔎 Recommendations (P135)", 
@@ -234,7 +234,8 @@ tab_ops, tab_main, tab_reco, tab_timing, tab_port_edit, tab_review, tab_guardrai
     "💼 Portfolio Editor (P136.5)",
     "🧐 Param Review (P138)",
     "🛡️ Guardrails (P160)",
-    "🧪 백테스트 (P165)"
+    "🧪 백테스트 (P165)",
+    "🎛️ 튜닝 (P167)"
 ])
 
 # TAB 0: Operations (P144/P146.1)
@@ -448,27 +449,36 @@ with tab_main:
             # Lookbacks
             st.subheader("Lookbacks")
             c1, c2 = st.columns(2)
-            mom_period = c1.number_input("Momentum Period", value=p.get("lookbacks", {}).get("momentum_period", 20))
-            vol_period = c2.number_input("Volatility Period", value=p.get("lookbacks", {}).get("volatility_period", 14))
+            mom_period = c1.number_input("모멘텀 기간 (Momentum Period)", value=p.get("lookbacks", {}).get("momentum_period", 20))
+            c1.caption("`SSOT Key: momentum_period`")
+            vol_period = c2.number_input("변동성 기간 (Volatility Period)", value=p.get("lookbacks", {}).get("volatility_period", 14))
+            c2.caption("`SSOT Key: volatility_period`")
             
             # Risk Limits
             st.subheader("Risk Limits")
             c1, c2 = st.columns(2)
-            max_pos_pct = c1.number_input("Max Position %", value=p.get("risk_limits", {}).get("max_position_pct", 0.25))
-            max_dd_pct = c2.number_input("Max Drawdown %", value=p.get("risk_limits", {}).get("max_drawdown_pct", 0.15))
+            max_pos_pct = c1.number_input("최대 포지션 비중 (Max Position %)", value=p.get("risk_limits", {}).get("max_position_pct", 0.25))
+            c1.caption("`SSOT Key: max_position_pct`")
+            max_dd_pct = c2.number_input("최대 낙폭 (Max Drawdown %)", value=p.get("risk_limits", {}).get("max_drawdown_pct", 0.15))
+            c2.caption("`SSOT Key: max_drawdown_pct`")
             
             # Position Limits
             st.subheader("Position Limits")
             c1, c2 = st.columns(2)
-            max_pos = c1.number_input("Max Positions (Count)", value=p.get("position_limits", {}).get("max_positions", 4))
-            min_cash = c2.number_input("Min Cash %", value=p.get("position_limits", {}).get("min_cash_pct", 0.10))
+            max_pos = c1.number_input("최대 보유종목 수 (Max Positions)", value=p.get("position_limits", {}).get("max_positions", 4))
+            c1.caption("`SSOT Key: max_positions`")
+            min_cash = c2.number_input("최소 현금비율 (Min Cash %)", value=p.get("position_limits", {}).get("min_cash_pct", 0.10))
+            c2.caption("`SSOT Key: min_cash_pct`")
             
             # Decision Params
             st.subheader("Decision Thresholds")
             c1, c2, c3 = st.columns(3)
-            entry_th = c1.number_input("Entry Threshold", value=p.get("decision_params", {}).get("entry_threshold", 0.02))
-            exit_th = c2.number_input("Exit Threshold", value=p.get("decision_params", {}).get("exit_threshold", -0.03))
-            adx_min = c3.number_input("ADX Min", value=p.get("decision_params", {}).get("adx_filter_min", 20))
+            entry_th = c1.number_input("진입 임계값 (Entry Threshold)", value=p.get("decision_params", {}).get("entry_threshold", 0.02))
+            c1.caption("`SSOT Key: entry_threshold`")
+            exit_th = c2.number_input("손절/청산 임계값 (Stop Loss)", value=p.get("decision_params", {}).get("exit_threshold", -0.03))
+            c2.caption("`SSOT Key: exit_threshold (= stop_loss)`")
+            adx_min = c3.number_input("ADX 최소값 (ADX Min)", value=p.get("decision_params", {}).get("adx_filter_min", 20))
+            c3.caption("`SSOT Key: adx_filter_min`")
             
             # Weights (New in P135)
             st.subheader("Weights")
@@ -1035,22 +1045,14 @@ with tab_backtest:
     if run_bt:
         with st.spinner(f"백테스트 실행 중 (mode={mode_arg})..."):
             try:
-                bt_result = subprocess.run(
-                    [sys.executable, "-m", "app.run_backtest", "--mode", mode_arg],
-                    capture_output=True, text=True, timeout=300,
-                    cwd=str(BASE_DIR)
-                )
-                if bt_result.returncode == 0 or "[RESULT: OK]" in (bt_result.stdout or ""):
+                from app.run_backtest import run_cli_backtest
+                success = run_cli_backtest(mode=mode_arg)
+                if success:
                     st.success("✅ 백테스트 완료!")
                     st.session_state["bt_ran"] = True
                 else:
-                    st.error("❌ 백테스트 실패")
-                    stderr_lines = (bt_result.stderr or "").strip().split("\n")
-                    st.code("\n".join(stderr_lines[-20:]), language="text")
+                    st.error("❌ 백테스트 실패 (로그 확인 필요)")
                     st.session_state["bt_ran"] = False
-            except subprocess.TimeoutExpired:
-                st.error("❌ 타임아웃 (5분 초과)")
-                st.session_state["bt_ran"] = False
             except Exception as e:
                 st.error(f"❌ 실행 오류: {e}")
                 st.session_state["bt_ran"] = False
@@ -1071,6 +1073,17 @@ with tab_backtest:
             c2.metric("MDD", f"{bt_summary.get('mdd', 0):.2f}%")
             c3.metric("Sharpe", f"{bt_summary.get('sharpe', 0):.4f}")
             c4.metric("Total Return", f"{bt_summary.get('total_return', 0):.2f}%")
+
+            # Backtest params (unified names with Tuning tab)
+            st.markdown("**사용된 파라미터:**")
+            p_used = bt_meta.get('params_used', {})
+            bpc1, bpc2, bpc3 = st.columns(3)
+            bpc1.metric("모멘텀 기간", p_used.get('momentum_period', '?'))
+            bpc1.caption("`SSOT Key: momentum_period`")
+            bpc2.metric("손절/청산 임계값", f"{p_used.get('stop_loss', 0)}")
+            bpc2.caption("`SSOT Key: stop_loss`")
+            bpc3.metric("최대 보유종목 수", p_used.get('max_positions', '?'))
+            bpc3.caption("`SSOT Key: max_positions`")
 
             # Meta info
             mc1, mc2, mc3, mc4 = st.columns(4)
@@ -1115,9 +1128,9 @@ with tab_backtest:
                 "period": f"{bt_meta.get('start_date', '?')} ~ {bt_meta.get('end_date', '?')}",
                 "universe": bt_meta.get("universe", []),
                 "params": {
-                    "momentum_period": bt_meta.get("momentum_period"),
-                    "stop_loss": bt_meta.get("stop_loss"),
-                    "max_positions": bt_meta.get("max_positions"),
+                    "momentum_period": bt_meta.get("params_used", {}).get("momentum_period"),
+                    "stop_loss": bt_meta.get("params_used", {}).get("stop_loss"),
+                    "max_positions": bt_meta.get("params_used", {}).get("max_positions"),
                 },
                 "top_performers": top_p[:5],
                 "total_trades": bt_meta.get("total_trades", 0),
@@ -1126,3 +1139,163 @@ with tab_backtest:
             st.code(json.dumps(llm_block, indent=2, ensure_ascii=False), language="json")
     else:
         st.info("아직 백테스트 결과가 없습니다. 위의 ▶️ 버튼을 클릭하여 실행하세요.")
+
+# ─── TAB 8: 🎛️ 튜닝 (P167/P168) ──────────────────────────────────────────
+with tab_tune:
+    st.header("🎛️ Optuna 하이퍼파라미터 튜닝 (P167)")
+    st.caption("Strategy Bundle 기반으로 Optuna TPE를 실행하여 최적 파라미터를 탐색합니다.")
+
+    # Controls — P168: n_trials는 number_input(step=1)으로 변경
+    tc1, tc2, tc3 = st.columns([1, 1, 1])
+    with tc1:
+        tune_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="tune_mode")
+    with tc2:
+        tune_trials = st.number_input("Trials 수", min_value=5, max_value=500, value=30, step=1, key="tune_trials")
+    with tc3:
+        tune_seed = st.number_input("Seed (재현성)", value=42, step=1, key="tune_seed")
+
+    tune_mode_arg = "quick" if "quick" in tune_mode else "full"
+
+    run_tune_btn = st.button("▶️ Run Tune", key="run_tune_btn", type="primary")
+
+    if run_tune_btn:
+        with st.spinner(f"튜닝 실행 중 (mode={tune_mode_arg}, trials={tune_trials})... 수 분 소요될 수 있습니다."):
+            try:
+                from app.run_tune import run_cli_tune
+                success = run_cli_tune(mode=tune_mode_arg, n_trials=tune_trials, seed=int(tune_seed))
+                if success:
+                    st.success("✅ 튜닝 완료!")
+                    st.session_state["tune_ran"] = True
+                else:
+                    st.error("❌ 튜닝 실패 (로그 확인 필요)")
+                    st.session_state["tune_ran"] = False
+            except Exception as e:
+                st.error(f"❌ 실행 오류: {e}")
+                st.session_state["tune_ran"] = False
+
+    # ── 결과 표시 ──
+    tune_result_path = BASE_DIR / "reports" / "tune" / "latest" / "tune_result.json"
+    if tune_result_path.exists():
+        tune_data = load_json(tune_result_path)
+        if tune_data:
+            st.divider()
+            st.subheader("🏆 최적 파라미터")
+
+            # Best params
+            bp = tune_data.get("best_params", {})
+            bs = tune_data.get("best_summary", {})
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Best Score", f"{tune_data.get('best_score', 0):.4f}")
+            c2.metric("Sharpe", f"{bs.get('sharpe', 0):.4f}")
+            c3.metric("MDD", f"{bs.get('mdd_pct', 0):.2f}%")
+            c4.metric("CAGR", f"{bs.get('cagr', 0):.4f}%")
+
+            # Best params detail — P168: 통일된 한글 명칭 + SSOT 키
+            st.markdown("**Best Parameters:**")
+            pc1, pc2, pc3 = st.columns(3)
+            pc1.metric("모멘텀 기간", bp.get("momentum_period", "?"))
+            pc1.caption("`SSOT Key: momentum_period`")
+            pc2.metric("손절/청산 임계값", f"{bp.get('stop_loss', 0):.2f}")
+            pc2.caption("`SSOT Key: stop_loss (= exit_threshold)`")
+            pc3.metric("최대 보유종목 수", bp.get("max_positions", "?"))
+            pc3.caption("`SSOT Key: max_positions`")
+
+            # Meta
+            tune_meta = tune_data.get("meta", {})
+            mc1, mc2, mc3, mc4 = st.columns(4)
+            mc1.caption(f"기간: {tune_meta.get('start_date', '?')} ~ {tune_meta.get('end_date', '?')}")
+            mc2.caption(f"Trials: {tune_meta.get('completed_trials', 0)}/{tune_meta.get('n_trials', 0)} (pruned: {tune_meta.get('pruned_trials', 0)})")
+            mc3.caption(f"Runtime: {tune_meta.get('runtime_sec', 0):.1f}s")
+            mc4.caption(f"Trades: {tune_data.get('best_total_trades', 0)}")
+
+            # ─── P168: Best Params 적용 + Apply+Backtest ────────────────
+            st.divider()
+            st.subheader("⚡ Best Params 적용")
+
+            abc1, abc2 = st.columns(2)
+            apply_btn = abc1.button("✅ Best Params → Current Parameters 적용 (로컬 저장)", key="apply_best_params")
+            apply_bt_btn = abc2.button("🚀 적용 + Backtest Full(3Y) 실행", key="apply_and_backtest")
+
+            if apply_btn or apply_bt_btn:
+                # (1) Apply best_params to Current Parameters
+                try:
+                    _p_data = load_json(LATEST_PATH)
+                    if _p_data:
+                        _p = _p_data.get("params", {})
+                        _p.setdefault("lookbacks", {})["momentum_period"] = bp.get("momentum_period")
+                        _p.setdefault("decision_params", {})["exit_threshold"] = bp.get("stop_loss")
+                        _p.setdefault("position_limits", {})["max_positions"] = bp.get("max_positions")
+                        _p_data["params"] = _p
+                        _p_data["asof"] = datetime.now(KST).isoformat()
+                        save_params(_p_data)
+                        st.success(
+                            f"✅ Current Parameters 업데이트 완료!\n\n"
+                            f"- 모멘텀 기간: **{bp.get('momentum_period')}**\n"
+                            f"- 손절/청산 임계값: **{bp.get('stop_loss')}**\n"
+                            f"- 최대 보유종목 수: **{bp.get('max_positions')}**"
+                        )
+                    else:
+                        st.error("Current Parameters 파일을 찾을 수 없습니다.")
+                except Exception as e:
+                    st.error(f"파라미터 적용 실패: {e}")
+
+                # (2) If Apply+Backtest, run backtest
+                if apply_bt_btn:
+                    with st.spinner("백테스트 실행 중 (Full 3Y)..."):
+                        try:
+                            from app.run_backtest import run_cli_backtest
+                            success = run_cli_backtest(mode="full")
+                            if success:
+                                st.success("✅ 백테스트 완료! (🧪 백테스트 탭에서도 확인 가능)")
+                                # Show inline summary
+                                _bt_data = load_json(BASE_DIR / "reports" / "backtest" / "latest" / "backtest_result.json")
+                                if _bt_data:
+                                    _bs = _bt_data.get("summary", {})
+                                    _bm = _bt_data.get("meta", {})
+                                    rc1, rc2, rc3, rc4 = st.columns(4)
+                                    rc1.metric("CAGR", f"{_bs.get('cagr', 0):.2f}%")
+                                    rc2.metric("MDD", f"{_bs.get('mdd', 0):.2f}%")
+                                    rc3.metric("Sharpe", f"{_bs.get('sharpe', 0):.4f}")
+                                    rc4.metric("Trades", _bm.get('total_trades', 0))
+                            else:
+                                st.error("❌ 백테스트 실패 (로그 확인 필요)")
+                        except Exception as e:
+                            st.error(f"❌ 백테스트 오류: {e}")
+
+            # Top 10 trials table
+            st.divider()
+            st.subheader("📊 Top 10 Trials")
+            top10 = tune_data.get("trials_top10", [])
+            if top10:
+                rows = []
+                for t in top10:
+                    rows.append({
+                        "#": t.get("trial", ""),
+                        "Score": t.get("score", 0),
+                        "Sharpe": t.get("sharpe", 0),
+                        "MDD %": t.get("mdd_pct", 0),
+                        "CAGR": t.get("cagr", 0),
+                        "Trades": t.get("total_trades", 0),
+                        "모멘텀 기간": t.get("params", {}).get("momentum_period", ""),
+                        "손절 임계값": t.get("params", {}).get("stop_loss", ""),
+                        "최대 종목수": t.get("params", {}).get("max_positions", ""),
+                    })
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+            # LLM Copy Block
+            st.divider()
+            st.subheader("📋 LLM 복붙용 요약")
+            llm_tune = {
+                "best_params": bp,
+                "best_score": tune_data.get("best_score"),
+                "best_summary": bs,
+                "best_total_trades": tune_data.get("best_total_trades"),
+                "period": f"{tune_meta.get('start_date', '?')} ~ {tune_meta.get('end_date', '?')}",
+                "universe": tune_meta.get("universe", []),
+                "trials": f"{tune_meta.get('completed_trials', 0)}/{tune_meta.get('n_trials', 0)}",
+                "runtime_sec": tune_meta.get("runtime_sec"),
+                "scoring": "sharpe - 2.0*(mdd_pct/100) - 0.0002*total_trades",
+            }
+            st.code(json.dumps(llm_tune, indent=2, ensure_ascii=False), language="json")
+    else:
+        st.info("아직 튜닝 결과가 없습니다. 위의 ▶️ 버튼을 클릭하여 실행하세요.")

@@ -1,10 +1,10 @@
 {
   "schema": "STRATEGY_BUNDLE_V1",
-  "bundle_id": "0e2a4c82-202a-4cfa-95e5-6e344081caff",
-  "created_at": "2026-02-24T23:04:40.349453+09:00",
+  "bundle_id": "9de60edb-239b-42f8-9f79-003cfd4807d6",
+  "created_at": "2026-02-23T23:31:10.091281+09:00",
   "source": {
     "pc_host": "DESKTOP-4MKPJGC",
-    "git_commit": "56fc00d8",
+    "git_commit": "4881455f",
     "git_branch": "main",
     "active_surface_sha256": "bb82174343625d975181fba0c0e7f5da43215459c784db6cca16a6c9be25cc79"
   },
@@ -41,7 +41,7 @@
       "weight_volatility": 0.0
     },
     "params_ref": "strategy_params_latest",
-    "params_fingerprint": "e5df315f44c76939",
+    "params_fingerprint": "308d368f7e28b0e1",
     "regime": {
       "code": "NEUTRAL",
       "reason": "DATA_MISSING",
@@ -121,7 +121,7 @@
       "portfolio": {
         "enabled": true,
         "schema": "PORTFOLIO_SNAPSHOT_V1",
-        "asof": "2026-02-24T14:04:40.450168",
+        "asof": "2026-02-23T14:31:10.208111",
         "payload": {
           "asof": "2026-02-13T00:00:00Z",
           "cash": 900000.0,
@@ -248,9 +248,9 @@
     "reports/backtest/latest/backtest_result.json"
   ],
   "integrity": {
-    "payload_sha256": "d145013ec4eddfe48d577f46081ca71ffdbb2ae0515eda1b99c9f1984b964040",
+    "payload_sha256": "3892fe84a230e5240b99873da78d3b6eec604ce9fbcc32fbbb07bdb662b609ce",
     "signed_by": "PC_LOCAL",
-    "signature": "auto-d145013ec4eddfe4",
+    "signature": "auto-3892fe84a230e524",
     "algorithm": "HMAC-SHA256"
   }
 }

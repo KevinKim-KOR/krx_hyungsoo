@@ -38,6 +38,7 @@ logger = logging.getLogger("app.run_backtest")
 # ─── Paths ────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_PATH = PROJECT_ROOT / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
+PARAMS_SSOT_PATH = PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
 RESULT_LATEST = PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
 RESULT_SNAPSHOTS = PROJECT_ROOT / "reports" / "backtest" / "snapshots"
 
@@ -70,6 +71,48 @@ def extract_params(bundle: Dict[str, Any]) -> Dict[str, Any]:
         "adx_filter_min": decision.get("adx_filter_min", 20),
     }
 
+def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
+    """Load params from SSOT, fallback to bundle. Returns (params, param_source_meta)"""
+    import hashlib
+    
+    def get_sha256(path: Path) -> str:
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+            
+    if PARAMS_SSOT_PATH.exists():
+        try:
+            with open(PARAMS_SSOT_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            p = data.get("params", {})
+            params = {
+                "universe": p.get("universe", []),
+                "momentum_period": p.get("lookbacks", {}).get("momentum_period", 60),
+                "max_positions": p.get("position_limits", {}).get("max_positions", 4),
+                "max_position_pct": p.get("risk_limits", {}).get("max_position_pct", 0.25),
+                "min_cash_pct": p.get("position_limits", {}).get("min_cash_pct", 0.05),
+                "stop_loss": p.get("decision_params", {}).get("exit_threshold", -0.10),
+                "adx_filter_min": p.get("decision_params", {}).get("adx_filter_min", 20),
+            }
+            if params["universe"]: # Only accept if universe is non-empty
+                source = {
+                    "path": "state/params/latest/strategy_params_latest.json",
+                    "sha256": get_sha256(PARAMS_SSOT_PATH)
+                }
+                return params, source
+        except Exception as e:
+            logger.warning(f"Failed to load params SSOT: {e}")
+            
+    # Fallback to bundle
+    if not BUNDLE_PATH.exists():
+        raise FileNotFoundError(f"Nor SSOT nor Strategy bundle found.")
+    with open(BUNDLE_PATH, "r", encoding="utf-8") as f:
+        bundle = json.load(f)
+    params = extract_params(bundle)
+    source = {
+        "path": "state/strategy_bundle/latest/strategy_bundle_latest.json",
+        "sha256": get_sha256(BUNDLE_PATH)
+    }
+    return params, source
 
 # ─── 2. Data Loading ──────────────────────────────────────────────────────
 def load_price_data(
@@ -263,6 +306,7 @@ def format_result(
     start: date,
     end: date,
     price_data: pd.DataFrame = None,
+    param_source: Dict[str, str] = None,
 ) -> Dict[str, Any]:
     """
     결과를 현행 소비자 스키마로 포맷팅.
@@ -378,9 +422,12 @@ def format_result(
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "signal_days": metrics.get("signal_days", 0),
-        "momentum_period": params.get("momentum_period"),
-        "stop_loss": params.get("stop_loss"),
-        "max_positions": params.get("max_positions"),
+        "param_source": param_source,
+        "params_used": {
+            "momentum_period": params.get("momentum_period"),
+            "stop_loss": params.get("stop_loss"),
+            "max_positions": params.get("max_positions"),
+        },
         "equity_curve": equity_curve,
         "daily_returns": daily_returns,
     }
@@ -436,75 +483,60 @@ def atomic_write_result(data: Dict[str, Any]) -> None:
 
 
 # ─── 7. Main ──────────────────────────────────────────────────────────────
-def main():
-    parser = argparse.ArgumentParser(description="P165 Backtest CLI")
-    parser.add_argument(
-        "--mode",
-        choices=["quick", "full"],
-        default="quick",
-        help="quick: 6개월, full: 3년",
-    )
-    parser.add_argument("--start", type=str, default=None, help="시작일 (YYYY-MM-DD)")
-    parser.add_argument("--end", type=str, default=None, help="종료일 (YYYY-MM-DD)")
-    args = parser.parse_args()
-
+def run_cli_backtest(mode: str = "quick", start_str: str = None, end_str: str = None) -> bool:
+    """Run backtest programmatically. Returns True if successful."""
     logger.info("=" * 60)
     logger.info("P165 Backtest Engine — CLI")
     logger.info("=" * 60)
 
-    # 1. Load strategy bundle
+    # 1. Load strategy params via SSOT > Bundle
     try:
-        bundle = load_strategy_bundle()
-        params = extract_params(bundle)
+        params, param_source = load_params_with_fallback()
     except Exception as e:
-        logger.error(f"Strategy bundle load failed: {e}")
-        print(f"[RESULT: FAIL] Strategy bundle error: {e}", file=sys.stderr)
-        sys.exit(1)
+        logger.error(f"Strategy params load failed: {e}")
+        return False
 
+    logger.info(f"[PARAMS] src={param_source['path']}")
     logger.info(f"[PARAMS] universe={params['universe']}, ma={params['momentum_period']}, "
                 f"max_pos={params['max_positions']}, stop_loss={params['stop_loss']}")
 
     # 2. Determine date range
     today = date.today()
-    if args.start and args.end:
-        start = date.fromisoformat(args.start)
-        end = date.fromisoformat(args.end)
-    elif args.mode == "quick":
+    if start_str and end_str:
+        start = date.fromisoformat(start_str)
+        end = date.fromisoformat(end_str)
+    elif mode == "quick":
         start = today - timedelta(days=180)
         end = today - timedelta(days=1)
     else:  # full
         start = today - timedelta(days=365 * 3)
         end = today - timedelta(days=1)
 
-    logger.info(f"[DATE] {start} → {end} (mode={args.mode})")
+    logger.info(f"[DATE] {start} → {end} (mode={mode})")
 
     # 3. Load price data
     try:
         price_data = load_price_data(params["universe"], start, end)
     except Exception as e:
         logger.error(f"Data loading failed: {e}")
-        print(f"[RESULT: FAIL] Data loading error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return False
 
     # 4. Run backtest
-    enable_regime = args.mode == "full"
+    enable_regime = (mode == "full")
     try:
         result = run_backtest(price_data, params, start, end, enable_regime=enable_regime)
     except Exception as e:
         logger.error(f"Backtest execution failed: {e}")
         traceback.print_exc()
-        print(f"[RESULT: FAIL] Backtest error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return False
 
-    # 5. Format and write (P165: pass price_data for ticker-level metrics)
-    formatted = format_result(result, params, start, end, price_data=price_data)
-
+    # 5. Format and write (pass param_source)
+    formatted = format_result(result, params, start, end, price_data=price_data, param_source=param_source)
     try:
         atomic_write_result(formatted)
     except Exception as e:
         logger.error(f"Result write failed: {e}")
-        print(f"[RESULT: FAIL] Write error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return False
 
     # 6. Summary
     s = formatted["summary"]
@@ -520,6 +552,23 @@ def main():
         logger.info(f"  mdd_reason: {meta['mdd_reason']}")
     logger.info("=" * 60)
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")
+    return True
+
+def main():
+    parser = argparse.ArgumentParser(description="P165 Backtest CLI")
+    parser.add_argument(
+        "--mode",
+        choices=["quick", "full"],
+        default="quick",
+        help="quick: 6개월, full: 3년",
+    )
+    parser.add_argument("--start", type=str, default=None, help="시작일 (YYYY-MM-DD)")
+    parser.add_argument("--end", type=str, default=None, help="종료일 (YYYY-MM-DD)")
+    args = parser.parse_args()
+
+    success = run_cli_backtest(mode=args.mode, start_str=args.start, end_str=args.end)
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

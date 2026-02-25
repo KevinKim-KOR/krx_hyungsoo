@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-02-22T20:32:12.741139+09:00",
+  "asof": "2026-02-24T23:04:38.305045+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -11,7 +11,7 @@
       "122630"
     ],
     "lookbacks": {
-      "momentum_period": 24,
+      "momentum_period": 12,
       "volatility_period": 17
     },
     "rebalance_rule": {

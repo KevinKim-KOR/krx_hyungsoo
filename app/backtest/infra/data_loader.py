@@ -380,3 +380,129 @@ def get_ohlcv_naver_fallback(symbol: str, start, end) -> pd.DataFrame:
     
     log.error(f"모든 폴백 실패: {symbol}")
     return pd.DataFrame()
+
+
+# ─── P167-R: 튜닝용 캐시 + 프리페치 ─────────────────────────────────────
+
+# In-memory cache to avoid redundant disk reads within single process
+_OHLCV_MEM_CACHE: dict = {}
+
+TUNE_CACHE_DIR = Path("data/cache/ohlcv/tune")
+TUNE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _tune_cache_path(ticker: str, start, end) -> Path:
+    """튜닝용 캐시 파일 경로 (ticker + date range)"""
+    s = pd.Timestamp(start).strftime("%Y%m%d")
+    e = pd.Timestamp(end).strftime("%Y%m%d")
+    return TUNE_CACHE_DIR / f"{ticker}_{s}_{e}.parquet"
+
+
+def load_ohlcv_cached(
+    ticker: str, start, end
+) -> Optional[pd.DataFrame]:
+    """
+    P167-R: 튜닝용 OHLCV 로드 (캐시 우선)
+
+    반환: MultiIndex(code, date) DataFrame — BacktestRunner 입력 형식과 동일
+
+    1. 인메모리 캐시 HIT → 즉시 반환
+    2. 디스크 캐시 HIT → 로드 후 인메모리에 저장
+    3. MISS → 다운로드 후 디스크+인메모리 저장
+    """
+    cache_key = f"{ticker}_{start}_{end}"
+
+    # 1. In-memory
+    if cache_key in _OHLCV_MEM_CACHE:
+        return _OHLCV_MEM_CACHE[cache_key]
+
+    # 2. Disk
+    disk_path = _tune_cache_path(ticker, start, end)
+    if disk_path.exists():
+        try:
+            df = pd.read_parquet(disk_path)
+            if not df.empty:
+                _OHLCV_MEM_CACHE[cache_key] = df
+                log.info(f"[TUNE_CACHE] HIT (disk): {ticker}")
+                return df
+        except Exception as e:
+            log.warning(f"[TUNE_CACHE] Disk read failed {ticker}: {e}")
+
+    # 3. Download (via existing get_ohlcv which has its own cache layer)
+    log.info(f"[TUNE_CACHE] MISS → downloading: {ticker}")
+
+    # yfinance symbol conversion: 6-digit code → .KS/.KQ
+    if ticker.isdigit() and len(ticker) == 6:
+        suffixes = [".KS", ".KQ"]
+    elif ticker.isdigit():
+        suffixes = [".KS"]
+    else:
+        suffixes = [""]
+
+    raw_df = None
+    for suffix in suffixes:
+        symbol = f"{ticker}{suffix}"
+        try:
+            df = get_ohlcv(symbol, start, end, use_cache=True)
+            if df is not None and not df.empty:
+                raw_df = df
+                break
+        except Exception as e:
+            log.warning(f"[TUNE_CACHE] {symbol} failed: {e}")
+
+    if raw_df is None or raw_df.empty:
+        log.warning(f"[TUNE_CACHE] No data for {ticker}")
+        return None
+
+    # Normalize to MultiIndex(code, date)
+    raw_df.columns = [c.lower() if isinstance(c, str) else c for c in raw_df.columns]
+    if "close" not in raw_df.columns:
+        log.warning(f"[TUNE_CACHE] {ticker}: 'close' column missing")
+        return None
+
+    raw_df["code"] = ticker
+    raw_df.index.name = "date"
+    result = raw_df.reset_index().set_index(["code", "date"]).sort_index()
+
+    # Save to disk + memory
+    try:
+        result.to_parquet(disk_path)
+    except Exception as e:
+        log.warning(f"[TUNE_CACHE] Disk write failed {ticker}: {e}")
+
+    _OHLCV_MEM_CACHE[cache_key] = result
+    log.info(f"[TUNE_CACHE] Cached {ticker}: {len(result)} rows")
+    return result
+
+
+def prefetch_ohlcv(
+    tickers: list, start, end
+) -> pd.DataFrame:
+    """
+    P167-R: 유니버스 전체 OHLCV 프리페치 (1회)
+
+    모든 종목을 미리 다운로드+캐시 → 튜닝 trial에서는 다운로드 없음.
+    반환: 전체 종목 합친 MultiIndex DataFrame
+    """
+    log.info(f"[PREFETCH] Starting prefetch for {len(tickers)} tickers...")
+    frames = []
+    for i, ticker in enumerate(tickers, 1):
+        df = load_ohlcv_cached(ticker, start, end)
+        if df is not None and not df.empty:
+            frames.append(df)
+            log.info(f"[PREFETCH] ({i}/{len(tickers)}) {ticker}: OK ({len(df)} rows)")
+        else:
+            log.warning(f"[PREFETCH] ({i}/{len(tickers)}) {ticker}: FAILED")
+
+    if not frames:
+        raise RuntimeError(
+            f"프리페치 완전 실패. tickers={tickers}, "
+            f"start={start}, end={end}. 네트워크 확인 필요."
+        )
+
+    combined = pd.concat(frames).sort_index()
+    log.info(
+        f"[PREFETCH] Complete: {len(combined)} rows, "
+        f"{len(frames)}/{len(tickers)} tickers OK"
+    )
+    return combined
