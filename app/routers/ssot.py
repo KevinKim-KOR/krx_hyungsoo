@@ -196,7 +196,7 @@ async def update_ssot_snapshot(
     # 5. Update Strategy Params (P150 Optional Payload)
     new_params = snapshot.get("strategy_params")
     if new_params:
-        PARAMS_PATH = BASE_DIR / "state" / "strategy_params" / "latest" / "strategy_params_latest.json"
+        PARAMS_PATH = BASE_DIR / "state" / "params" / "latest" / "strategy_params_latest.json"
         PARAMS_PATH.parent.mkdir(parents=True, exist_ok=True)
         PARAMS_PATH.write_text(json.dumps(new_params, indent=2, ensure_ascii=False), encoding="utf-8")
         

@@ -163,7 +163,7 @@ async def push_bundle_to_oci(
         save_bundle(bundle_payload)
         
         # 3. Load Strategy Params
-        PARAMS_PATH = BASE_DIR / "state" / "strategy_params" / "latest" / "strategy_params_latest.json"
+        PARAMS_PATH = BASE_DIR / "state" / "params" / "latest" / "strategy_params_latest.json"
         params_payload = None
         if PARAMS_PATH.exists():
             try:
