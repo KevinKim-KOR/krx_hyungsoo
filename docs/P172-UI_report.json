@@ -1,0 +1,18 @@
+{
+    "phase": "P172-UI",
+    "result": "OK",
+    "summary": "정비창(Advanced) 내부의 중첩 탭(st.tabs)을 제거하고 모듈 선택(selectbox/radio) 방식으로 전환해 좁은 화면 클릭 불가 문제 해결. 상단 탭 최소화 및 P170/P144에서 토큰/OCI 동기화 재사용 구조로 UX 정리. subprocess 0 유지.",
+    "files": {
+        "modified": [
+            "pc_cockpit/cockpit.py"
+        ]
+    },
+    "verification": {
+        "no_nested_tabs_in_advanced": "PASS",
+        "works_on_narrow_window": "PASS",
+        "top_tabs_minimized": "PASS",
+        "p170_has_token_and_push_pull": "PASS",
+        "no_subprocess_in_backtest_tune_paths": "PASS",
+        "token_not_persisted_or_logged": "PASS"
+    }
+}
