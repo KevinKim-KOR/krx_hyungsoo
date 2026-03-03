@@ -354,13 +354,16 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
         apply_btn = ac1.button("✅ Best Params 적용 (로컬)", key="wf_apply_best", use_container_width=True)
         apply_bt_btn = ac2.button("🚀 적용 + Full 백테스트", key="wf_apply_bt", type="primary", use_container_width=True)
         
+        # Token Input for Workflow Hub (P170)
+        st.text_input("OCI Access Token (운영 토큰)", type="password", key="ops_token")
+        
         # Push Push Logic
         sync_timeout = st.session_state.get("sync_timeout", 60)
-        token = st.session_state.get("confirm_token", "")
+        token = st.session_state.get("ops_token", "")
         
         if ac3.button("📤 OCI 반영 (1-Click Sync)", key="wf_push_oci", use_container_width=True):
             if not token:
-                st.error("Operations 탭에서 Token을 먼저 입력해주세요!")
+                st.warning("OCI 토큰이 필요합니다. 위 입력란에 토큰을 넣고 다시 시도하세요.")
             else:
                 with st.spinner(f"Pushing to OCI..."):
                     try:
@@ -481,7 +484,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
         sync_timeout = st.number_input("Timeout (sec)", value=60, step=30, key="sync_timeout")
         
     with c2:
-        st.text_input("Confirm Token", type="password", key="confirm_token", placeholder="Required for PUSH")
+        st.text_input("Confirm Token", type="password", key="ops_token", placeholder="Required for PUSH")
         
     with c3:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
@@ -501,7 +504,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
     with c4:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
         if st.button("📤 PUSH (OCI)", use_container_width=True):
-            token = st.session_state.get("confirm_token", "")
+            token = st.session_state.get("ops_token", "")
             if not token:
                 st.warning("Token Required!")
             else:
@@ -713,7 +716,7 @@ def render_params(params_data, portfolio_data, guardrails_data):
                     require_token = not (is_dry_run or is_replay)
                     
                     push_allowed = False
-                    token = st.session_state.get("confirm_token", "")
+                    token = st.session_state.get("ops_token", "")
                     
                     if require_token:
                         if not token:

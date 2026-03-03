@@ -1,0 +1,17 @@
+{
+    "phase": "P172-Fix",
+    "result": "OK",
+    "summary": "워크플로우(P170) 탭 4번 섹션에 OCI 토큰 입력을 직접 제공하고, st.session_state['ops_token'] 단일 키로 통합하여 탭 이동 없이 OCI 1-Click Sync를 완성. 'Operations에서 Token 입력' 강제 UX 제거. 토큰 로그/저장 금지, subprocess 0 유지.",
+    "files": {
+        "modified": [
+            "pc_cockpit/cockpit.py"
+        ]
+    },
+    "verification": {
+        "p170_has_ops_token_input": "PASS",
+        "oci_sync_works_without_tab_switch": "PASS",
+        "p170_p144_share_same_token_key_ops_token": "PASS",
+        "no_token_logged_or_persisted": "PASS",
+        "no_subprocess_in_backtest_tune_paths": "PASS"
+    }
+}
