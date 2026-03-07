@@ -1,0 +1,23 @@
+{
+    "phase": "P174-Final",
+    "result": "OK",
+    "summary": "UI 통합 단계 종료 및 UI 동결 규칙 확정. 다음 단계(신뢰성→확장→탭점검)로 전환. 신뢰성 검증 스크립트 check_backtest_reliability.py 및 결과 JSON 산출 추가.",
+    "files": {
+        "modified": [
+            "pc_cockpit/cockpit.py",
+            "app/run_backtest.py",
+            "app/run_tune.py",
+            "app/tuning/runner.py"
+        ],
+        "added": [
+            "tools/check_backtest_reliability.py",
+            "docs/state/ui_tabs_audit.md"
+        ]
+    },
+    "verification": {
+        "no_subprocess_in_backtest_tune_paths": "PASS",
+        "reliability_script_runs": "PASS",
+        "reliability_json_written": "PASS",
+        "ui_change_freeze_rule_documented": "PASS"
+    }
+}
