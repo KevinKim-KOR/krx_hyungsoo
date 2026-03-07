@@ -1,0 +1,14 @@
+{
+    "phase": "P174-UI",
+    "result": "OK",
+    "summary": "우측 탭(Advanced)에 있던 과거의 전체 파라미터 입력 폼(Universe, Lookbacks, Risk Limits, Position Limits, Decision Thresholds, Weights)을 P170(Workflow 탭)의 '1) 현재 파라미터(SSOT)' 영역으로 완전히 이관 및 병합 완료.",
+    "files": {
+        "modified": [
+            "pc_cockpit/cockpit.py"
+        ]
+    },
+    "verification": {
+        "workflow_params_are_fully_comprehensive": "PASS",
+        "legacy_form_moved_to_p170": "PASS"
+    }
+}

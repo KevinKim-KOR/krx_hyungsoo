@@ -253,45 +253,80 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
         # A. 1) 파라미터 (SSOT)
         st.subheader("1) 현재 파라미터 (SSOT)")
         if params_data:
-            universe_list = params_data.get("universe", [])
-            universe_str = ", ".join(universe_list)
-            new_universe_str = st.text_input("Universe (comma separated)", value=universe_str)
-            
-            p_used = params_data.get("params", {})
-            lb = p_used.get("lookbacks", {})
-            dp = p_used.get("decision_params", {})
-            pl = p_used.get("position_limits", {})
-            
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                new_mom = st.number_input("모멘텀 기간 (momentum_period)", value=int(lb.get("momentum_period", 20)), step=1)
-            with c2:
-                new_exit = st.number_input("손절/청산 임계값 (exit_threshold)", value=float(dp.get("exit_threshold", 0.05)), step=0.01)
-            with c3:
-                new_max = st.number_input("최대 보유종목 수 (max_positions)", value=int(pl.get("max_positions", 5)), step=1)
+            p = params_data.get("params", {})
+            with st.form("wf_params_form"):
+                # Universe
+                st.subheader("Universe")
+                universe_str = st.text_input("Tickers (comma separated)", ", ".join(params_data.get("universe", [])))
                 
-            new_universe_list = [x.strip() for x in new_universe_str.split(",") if x.strip()]
-            
-            changed = False
-            if set(new_universe_list) != set(universe_list):
-                params_data["universe"] = new_universe_list
-                changed = True
-            if new_mom != lb.get("momentum_period"):
-                params_data["params"].setdefault("lookbacks", {})["momentum_period"] = new_mom
-                changed = True
-            if new_exit != dp.get("exit_threshold"):
-                params_data["params"].setdefault("decision_params", {})["exit_threshold"] = new_exit
-                changed = True
-            if new_max != pl.get("max_positions"):
-                params_data["params"].setdefault("position_limits", {})["max_positions"] = new_max
-                changed = True
+                # Lookbacks
+                st.subheader("Lookbacks")
+                c1, c2 = st.columns(2)
+                mom_period = c1.number_input("모멘텀 기간 (Momentum Period)", value=p.get("lookbacks", {}).get("momentum_period", 20))
+                c1.caption("`SSOT Key: momentum_period`")
+                vol_period = c2.number_input("변동성 기간 (Volatility Period)", value=p.get("lookbacks", {}).get("volatility_period", 14))
+                c2.caption("`SSOT Key: volatility_period`")
                 
-            if changed:
-                params_data["asof"] = datetime.now(KST).isoformat()
-                save_params(params_data)
-                st.success("✅ 파라미터가 실시간으로 로컬 저장되었습니다.")
-                time.sleep(0.5)
-                st.rerun()
+                # Risk Limits
+                st.subheader("Risk Limits")
+                c1, c2 = st.columns(2)
+                max_pos_pct = c1.number_input("최대 포지션 비중 (Max Position %)", value=float(p.get("risk_limits", {}).get("max_position_pct", 0.25)), step=0.01)
+                c1.caption("`SSOT Key: max_position_pct`")
+                max_dd_pct = c2.number_input("최대 낙폭 (Max Drawdown %)", value=float(p.get("risk_limits", {}).get("max_drawdown_pct", 0.15)), step=0.01)
+                c2.caption("`SSOT Key: max_drawdown_pct`")
+                
+                # Position Limits
+                st.subheader("Position Limits")
+                c1, c2 = st.columns(2)
+                max_pos = c1.number_input("최대 보유종목 수 (Max Positions)", value=p.get("position_limits", {}).get("max_positions", 4))
+                c1.caption("`SSOT Key: max_positions`")
+                min_cash = c2.number_input("최소 현금비율 (Min Cash %)", value=float(p.get("position_limits", {}).get("min_cash_pct", 0.10)), step=0.01)
+                c2.caption("`SSOT Key: min_cash_pct`")
+                
+                # Decision Params
+                st.subheader("Decision Thresholds")
+                c1, c2, c3 = st.columns(3)
+                entry_th = c1.number_input("진입 임계값 (Entry Threshold)", value=float(p.get("decision_params", {}).get("entry_threshold", 0.02)), step=0.01)
+                c1.caption("`SSOT Key: entry_threshold`")
+                exit_th = c2.number_input("손절/청산 임계값 (Stop Loss)", value=float(p.get("decision_params", {}).get("exit_threshold", -0.03)), step=0.01)
+                c2.caption("`SSOT Key: exit_threshold (= stop_loss)`")
+                adx_min = c3.number_input("ADX 최소값 (ADX Min)", value=p.get("decision_params", {}).get("adx_filter_min", 20))
+                c3.caption("`SSOT Key: adx_filter_min`")
+                
+                # Weights
+                st.subheader("Weights")
+                c1, c2 = st.columns(2)
+                w_mom = c1.number_input("Weight Mom", value=float(p.get("decision_params", {}).get("weight_momentum", 1.0)), step=0.1)
+                w_vol = c2.number_input("Weight Vol", value=float(p.get("decision_params", {}).get("weight_volatility", 0.0)), step=0.1)
+                
+                submit_local = st.form_submit_button("💾 Save Parameters (Local)")
+                
+                if submit_local:
+                    new_data = params_data.copy()
+                    new_data["asof"] = datetime.now(KST).isoformat()
+                    new_params = p.copy()
+                    
+                    new_params["universe"] = [t.strip() for t in universe_str.split(",") if t.strip()]
+                    new_params["lookbacks"]["momentum_period"] = int(mom_period)
+                    new_params["lookbacks"]["volatility_period"] = int(vol_period)
+                    new_params["risk_limits"]["max_position_pct"] = float(max_pos_pct)
+                    new_params["risk_limits"]["max_drawdown_pct"] = float(max_dd_pct)
+                    new_params["position_limits"]["max_positions"] = int(max_pos)
+                    new_params["position_limits"]["min_cash_pct"] = float(min_cash)
+                    new_params["decision_params"]["entry_threshold"] = float(entry_th)
+                    new_params["decision_params"]["exit_threshold"] = float(exit_th)
+                    new_params["decision_params"]["adx_filter_min"] = int(adx_min)
+                    new_params["decision_params"]["weight_momentum"] = float(w_mom)
+                    new_params["decision_params"]["weight_volatility"] = float(w_vol)
+                    
+                    new_data["params"] = new_params
+                    
+                    save_params(new_data)
+                    new_fp = compute_fingerprint(new_data)
+                    st.session_state["current_fingerprint"] = new_fp
+                    st.success(f"✅ 파라미터가 저장되었습니다. (Fingerprint: `{new_fp}`)\\n\\n(OCI 반영은 하단 4번 섹션에서 진행해주세요)")
+                    time.sleep(1)
+                    st.rerun()
         else:
             st.warning("Current Parameters 파일을 찾을 수 없습니다.")
     
