@@ -372,6 +372,7 @@ def format_result(
         "data_source_used": params.get("data_source", "fdr"),
         "download_count": telemetry.get("download_count", 0),
         "cache_hit_count": telemetry.get("cache_hit_count", 0),
+        "fallback_count": telemetry.get("fallback_count", 0),
         "params_used": {
             "momentum_period": params.get("momentum_period"),
             "stop_loss": params.get("stop_loss"),

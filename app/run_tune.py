@@ -256,6 +256,7 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
             "data_source_used": params.get("data_source", "fdr"),
             "download_count": telemetry_data.get("download_count", 0),
             "cache_hit_count": telemetry_data.get("cache_hit_count", 0),
+            "fallback_count": telemetry_data.get("fallback_count", 0),
         },
     }
 

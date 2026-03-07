@@ -99,6 +99,7 @@ def _extract_key_fields(r: Dict[str, Any]) -> Dict[str, Any]:
         "sharpe": summary.get("sharpe", 0.0),
         "download_count": meta.get("download_count", 0),
         "cache_hit_count": meta.get("cache_hit_count", 0),
+        "fallback_count": meta.get("fallback_count", 0),
     }
 
 
@@ -307,14 +308,27 @@ def run_verification(
         log.info(f"{'=' * 60}")
         log.info("[CROSS-PROVIDER] Comparing fdr vs yfinance")
         log.info(f"{'=' * 60}")
-        cross = check_cross_provider(
-            provider_snapshots["fdr"],
-            provider_snapshots["yfinance"],
-        )
-        report["cross_provider"] = cross
-        if cross["verdict"] == "FAIL":
-            report["overall"] = "FAIL"
-        log.info(f"  Cross-provider verdict: {cross['verdict']}")
+
+        # Detect if fdr actually fell back to yfinance
+        fdr_fallback = provider_snapshots["fdr"].get("fallback_count", 0)
+        if fdr_fallback > 0:
+            log.warning(
+                f"  [SKIP] fdr provider had {fdr_fallback} fallback(s) to yfinance. "
+                f"Cross-provider comparison is meaningless (both used yfinance)."
+            )
+            report["cross_provider"] = {
+                "verdict": "SKIP",
+                "reason": f"fdr had {fdr_fallback} fallback(s) to yfinance — comparison meaningless",
+            }
+        else:
+            cross = check_cross_provider(
+                provider_snapshots["fdr"],
+                provider_snapshots["yfinance"],
+            )
+            report["cross_provider"] = cross
+            if cross["verdict"] == "FAIL":
+                report["overall"] = "FAIL"
+            log.info(f"  Cross-provider verdict: {cross['verdict']}")
 
     # Write report
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)

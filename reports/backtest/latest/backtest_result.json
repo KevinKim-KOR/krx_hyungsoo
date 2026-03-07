@@ -50,7 +50,7 @@
     }
   ],
   "meta": {
-    "asof": "2026-03-07T17:50:47+09:00",
+    "asof": "2026-03-07T23:36:40+09:00",
     "start_date": "2025-09-08",
     "end_date": "2026-03-06",
     "mode": "P165_CLI",
@@ -65,11 +65,12 @@
     "signal_days": 5,
     "param_source": {
       "path": "state/params/latest/strategy_params_latest.json",
-      "sha256": "ede7cbeaf2b2221c72ac2f075f5000319e8c24ef124494f3a4e3f637742d216d"
+      "sha256": "ae0edffd33d3bc97ddfb7bd71748af7a9e853ff12f800c93dc0fc418b738c662"
     },
     "data_source_used": "yfinance",
     "download_count": 0,
     "cache_hit_count": 4,
+    "fallback_count": 0,
     "params_used": {
       "momentum_period": 24,
       "stop_loss": -0.060000000000000005,

@@ -22,7 +22,8 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 # P180 Telemetry
 CACHE_TELEMETRY = {
     "download_count": 0,
-    "cache_hit_count": 0
+    "cache_hit_count": 0,
+    "fallback_count": 0
 }
 
 def get_telemetry() -> Dict[str, Any]:
@@ -117,6 +118,7 @@ def load_ohlcv_cached(
             fallback_provider = YFinanceProvider()
             raw_df = fallback_provider.fetch_ohlcv(ticker, start, end)
             provider_name = fallback_provider.name
+            CACHE_TELEMETRY["fallback_count"] += 1
             
     if raw_df is None or raw_df.empty:
         log.error(f"[FAIL] Could not fetch data for {ticker}")
