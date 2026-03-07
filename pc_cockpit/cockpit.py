@@ -253,18 +253,45 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
         # A. 1) 파라미터 (SSOT)
         st.subheader("1) 현재 파라미터 (SSOT)")
         if params_data:
+            universe_list = params_data.get("universe", [])
+            universe_str = ", ".join(universe_list)
+            new_universe_str = st.text_input("Universe (comma separated)", value=universe_str)
+            
             p_used = params_data.get("params", {})
             lb = p_used.get("lookbacks", {})
             dp = p_used.get("decision_params", {})
             pl = p_used.get("position_limits", {})
             
             c1, c2, c3 = st.columns(3)
-            c1.metric("모멘텀 기간", lb.get("momentum_period", "?"))
-            c1.caption("`SSOT Key: momentum_period`")
-            c2.metric("손절/청산 임계값", dp.get("exit_threshold", "?"))
-            c2.caption("`SSOT Key: stop_loss`")
-            c3.metric("최대 보유종목 수", pl.get("max_positions", "?"))
-            c3.caption("`SSOT Key: max_positions`")
+            with c1:
+                new_mom = st.number_input("모멘텀 기간 (momentum_period)", value=int(lb.get("momentum_period", 20)), step=1)
+            with c2:
+                new_exit = st.number_input("손절/청산 임계값 (exit_threshold)", value=float(dp.get("exit_threshold", 0.05)), step=0.01)
+            with c3:
+                new_max = st.number_input("최대 보유종목 수 (max_positions)", value=int(pl.get("max_positions", 5)), step=1)
+                
+            new_universe_list = [x.strip() for x in new_universe_str.split(",") if x.strip()]
+            
+            changed = False
+            if set(new_universe_list) != set(universe_list):
+                params_data["universe"] = new_universe_list
+                changed = True
+            if new_mom != lb.get("momentum_period"):
+                params_data["params"].setdefault("lookbacks", {})["momentum_period"] = new_mom
+                changed = True
+            if new_exit != dp.get("exit_threshold"):
+                params_data["params"].setdefault("decision_params", {})["exit_threshold"] = new_exit
+                changed = True
+            if new_max != pl.get("max_positions"):
+                params_data["params"].setdefault("position_limits", {})["max_positions"] = new_max
+                changed = True
+                
+            if changed:
+                params_data["asof"] = datetime.now(KST).isoformat()
+                save_params(params_data)
+                st.success("✅ 파라미터가 실시간으로 로컬 저장되었습니다.")
+                time.sleep(0.5)
+                st.rerun()
         else:
             st.warning("Current Parameters 파일을 찾을 수 없습니다.")
     
@@ -306,13 +333,32 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     # Show params used and sha256
                     used_p = bt_meta.get("params_used", {})
                     st.markdown(f"**실행 지문 (SHA256):** `{bt_meta.get('param_source', {}).get('sha256', 'N/A')}`")
-                    st.markdown(f"**사용한 파라미터:** 모멘텀 기간=`{used_p.get('momentum_period')}`, 손절=`{used_p.get('stop_loss')}`, 최대종목=`{used_p.get('max_positions')}`")
+                    st.markdown(f"**사용한 파라미터:** 모멘텀 기간=`{used_p.get('momentum_period')}`, 손절=`{used_p.get('stop_loss', used_p.get('exit_threshold'))}`, 최대종목=`{used_p.get('max_positions')}`")
+                    st.markdown(f"**실행 메타:** 기간=`{bt_meta.get('start_date')} ~ {bt_meta.get('end_date')}`, Mode=`{bt_meta.get('mode', 'N/A')}`, 총 매매=`{bt_meta.get('total_trades', 0)}`회, 커브 길이=`{len(bt_meta.get('equity_curve', []))}`")
     
                     bc1, bc2, bc3, bc4 = st.columns(4)
                     bc1.metric("CAGR", f"{bt_summary.get('cagr', 0):.2f}%")
                     bc2.metric("MDD", f"{bt_summary.get('mdd', 0):.2f}%")
                     bc3.metric("Sharpe", f"{bt_summary.get('sharpe', 0):.4f}")
                     bc4.metric("Total Return", f"{bt_summary.get('total_return', 0):.2f}%")
+                    
+                    with st.expander("📋 LLM 분석용 요약 데이터 (Click to copy)", expanded=True):
+                        llm_summary = {
+                            "summary": {
+                                "cagr": bt_summary.get("cagr"),
+                                "mdd": bt_summary.get("mdd"),
+                                "sharpe": bt_summary.get("sharpe"),
+                                "total_return": bt_summary.get("total_return")
+                            },
+                            "period": f"{bt_meta.get('start_date')} ~ {bt_meta.get('end_date')}",
+                            "universe": bt_meta.get("universe", []),
+                            "params_used": used_p,
+                            "total_trades": bt_meta.get("total_trades", 0),
+                            "equity_curve_length": len(bt_meta.get("equity_curve", [])),
+                            "mode": bt_meta.get("mode", "N/A"),
+                            "sha256": bt_meta.get("param_source", {}).get("sha256", "N/A")
+                        }
+                        st.code(json.dumps(llm_summary, indent=2, ensure_ascii=False), language="json")
             except:
                 pass
     
