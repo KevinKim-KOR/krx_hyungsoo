@@ -154,3 +154,5 @@ reports/**/*.yaml
 !reports/README.md
 
 # Specific Conflict Resolutions
+test_scripts/
+test_dump/
