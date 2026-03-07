@@ -387,6 +387,11 @@ def format_result(
         },
         "equity_curve": equity_curve,
         "daily_returns": daily_returns,
+        # P183 Trade Evidence
+        "trade_histogram_by_date": result.get("trade_histogram_by_date", {}),
+        "trade_reason_counts": result.get("trade_reason_counts", {}),
+        "trade_dates_top10": result.get("trade_dates_top10", []),
+        "rebalance_cluster_check": result.get("rebalance_cluster_check", {}),
     }
 
     # conditional reason fields

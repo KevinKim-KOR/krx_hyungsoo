@@ -364,6 +364,9 @@ class BacktestRunner:
         prev_month = None
         prev_week = None
 
+        # P183 Trade Evidence Counters (telemetry only, no logic change)
+        stop_loss_sell_count = 0
+
         for i, current_date in enumerate(dates):
             d = current_date.date()
             day_count += 1
@@ -487,6 +490,7 @@ class BacktestRunner:
                 # 손절 매도 실행
                 for symbol, qty, price in positions_to_sell:
                     engine.execute_sell(symbol, qty, price, d)
+                    stop_loss_sell_count += 1
                     if symbol in current_top_n:
                         current_top_n.remove(symbol)
 
@@ -661,12 +665,45 @@ class BacktestRunner:
         metrics['regime_switch_count'] = regime_switch_count
         metrics['regime_locked_count'] = regime_locked_count
 
+        # P183 Trade Evidence: build histogram from confirmed trades
+        from collections import Counter
+        trade_dates = [str(t.date) for t in engine.portfolio.trades]
+        trade_histogram = dict(Counter(trade_dates))
+        total_rebalance_trades = len(engine.portfolio.trades) - stop_loss_sell_count
+        trade_reason_counts = {
+            "rebalance": max(total_rebalance_trades, 0),
+            "stop_loss": stop_loss_sell_count,
+        }
+
+        # Top 10 trade dates by volume
+        sorted_dates = sorted(trade_histogram.items(), key=lambda x: x[1], reverse=True)
+        trade_dates_top10 = [{"date": d, "count": c} for d, c in sorted_dates[:10]]
+
+        # Cluster check: are trades concentrated on day 1~3 of month?
+        trade_days_of_month = [int(d.split("-")[2]) for d in trade_dates if d]
+        early_month_count = sum(1 for day in trade_days_of_month if day <= 3)
+        total_trade_events = len(trade_days_of_month)
+        cluster_ratio = early_month_count / total_trade_events if total_trade_events > 0 else 0
+        rebal_freq = (rebalance_rule or {}).get("frequency", "M")
+        rebal_dom = (rebalance_rule or {}).get("day_of_month", 1)
+        rebalance_cluster_check = {
+            "expected_frequency": rebal_freq,
+            "day_of_month": rebal_dom,
+            "cluster_ok": cluster_ratio >= 0.8,
+            "cluster_ratio": round(cluster_ratio, 4),
+            "note": f"{early_month_count}/{total_trade_events} trades on day 1~3"
+        }
+
         return {
             "metrics": metrics,
             "nav_history": engine.nav_history,
             "trades": engine.portfolio.trades,
             "final_positions": engine.portfolio.positions,
             "daily_logs": daily_logs,  # 일별 비중 스케일링 로그
+            "trade_histogram_by_date": trade_histogram,
+            "trade_reason_counts": trade_reason_counts,
+            "trade_dates_top10": trade_dates_top10,
+            "rebalance_cluster_check": rebalance_cluster_check,
         }
 
     def run_batch(

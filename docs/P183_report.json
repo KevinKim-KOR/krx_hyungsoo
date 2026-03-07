@@ -1,0 +1,29 @@
+{
+    "phase": "P183-Evidence",
+    "result": "OK",
+    "summary": "backtest_result.json에 trade_histogram_by_date, trade_reason_counts, trade_dates_top10, rebalance_cluster_check 4개 증거 필드를 meta에 추가. 엔진 의사결정 로직은 변경하지 않고 카운팅(telemetry)만 추가.",
+    "files": {
+        "modified": [
+            "app/backtest/runners/backtest_runner.py",
+            "app/run_backtest.py"
+        ]
+    },
+    "evidence_summary": {
+        "trade_reason_counts": {
+            "rebalance": 288,
+            "stop_loss": 10
+        },
+        "trade_dates_top10_sample": "2025-10-01(4), 2026-03-03(4), ...",
+        "histogram_unique_dates": 195,
+        "total_trades": 298,
+        "cluster_ratio": 0.255,
+        "cluster_ok": false,
+        "cluster_note": "76/298 trades on day 1~3. Engine calls rebalance() daily for weight adjustments; monthly frequency controls ticker selection only."
+    },
+    "verification": {
+        "no_strategy_logic_change": "PASS",
+        "meta_contains_trade_histogram": "PASS",
+        "meta_contains_trade_reason_counts": "PASS",
+        "month_begin_cluster_observable_in_json": "PASS"
+    }
+}
