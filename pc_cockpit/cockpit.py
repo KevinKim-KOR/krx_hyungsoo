@@ -227,6 +227,22 @@ guardrails_data = load_json(GUARDRAILS_PATH) or {}
 
 # Create Tabs
 
+if "ops_token" not in st.session_state:
+    st.session_state["ops_token"] = ""
+if "wf_token_input" not in st.session_state:
+    st.session_state["wf_token_input"] = ""
+if "ops_token_input" not in st.session_state:
+    st.session_state["ops_token_input"] = ""
+
+def sync_wf_to_ops():
+    val = st.session_state["wf_token_input"]
+    st.session_state["ops_token"] = val
+    st.session_state["ops_token_input"] = val
+
+def sync_ops_to_wf():
+    val = st.session_state["ops_token_input"]
+    st.session_state["ops_token"] = val
+    st.session_state["wf_token_input"] = val
 
 def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     
@@ -355,7 +371,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
         apply_bt_btn = ac2.button("🚀 적용 + Full 백테스트", key="wf_apply_bt", type="primary", use_container_width=True)
         
         # Token Input for Workflow Hub (P170)
-        st.text_input("OCI Access Token (운영 토큰)", type="password", key="ops_token")
+        st.text_input("OCI Access Token (운영 토큰)", type="password", key="wf_token_input", on_change=sync_wf_to_ops)
         
         # Push Push Logic
         sync_timeout = st.session_state.get("sync_timeout", 60)
@@ -484,7 +500,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
         sync_timeout = st.number_input("Timeout (sec)", value=60, step=30, key="sync_timeout")
         
     with c2:
-        st.text_input("Confirm Token", type="password", key="ops_token", placeholder="Required for PUSH")
+        st.text_input("Confirm Token", type="password", key="ops_token_input", placeholder="Required for PUSH", on_change=sync_ops_to_wf)
         
     with c3:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
