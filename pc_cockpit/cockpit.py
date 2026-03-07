@@ -254,10 +254,11 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
         st.subheader("1) 현재 파라미터 (SSOT)")
         if params_data:
             p = params_data.get("params", {})
-            with st.form("wf_params_form"):
-                # Universe
-                st.subheader("Universe")
-                universe_str = st.text_input("Tickers (comma separated)", ", ".join(params_data.get("universe", [])))
+            with st.expander("⚙️ 파라미터 수정 (Click to expand)", expanded=False):
+                with st.form("wf_params_form"):
+                    # Universe
+                    st.subheader("Universe")
+                    universe_str = st.text_input("Tickers (comma separated)", ", ".join(params_data.get("universe", [])))
                 
                 # Lookbacks
                 st.subheader("Lookbacks")
@@ -306,7 +307,12 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     new_data["asof"] = datetime.now(KST).isoformat()
                     new_params = p.copy()
                     
-                    new_params["universe"] = [t.strip() for t in universe_str.split(",") if t.strip()]
+                    parsed_universe = [t.strip() for t in universe_str.split(",") if t.strip()]
+                    if not parsed_universe:
+                        st.warning("Universe cannot be empty! Defaulting to 069500.")
+                        parsed_universe = ["069500"]
+                    
+                    new_params["universe"] = parsed_universe
                     new_params["lookbacks"]["momentum_period"] = int(mom_period)
                     new_params["lookbacks"]["volatility_period"] = int(vol_period)
                     new_params["risk_limits"]["max_position_pct"] = float(max_pos_pct)
@@ -377,7 +383,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     bc3.metric("Sharpe", f"{bt_summary.get('sharpe', 0):.4f}")
                     bc4.metric("Total Return", f"{bt_summary.get('total_return', 0):.2f}%")
                     
-                    with st.expander("📋 LLM 분석용 요약 데이터 (Click to copy)", expanded=True):
+                    with st.expander("📋 LLM 분석용 요약 데이터 (Click to copy)", expanded=False):
                         llm_summary = {
                             "summary": {
                                 "cagr": bt_summary.get("cagr"),

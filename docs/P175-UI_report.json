@@ -1,0 +1,15 @@
+{
+    "phase": "P175-UI",
+    "result": "OK",
+    "summary": "1) 현재 파라미터 영역 전체를 기본적으로 닫힌 st.expander로 감싸 화면을 정리함. 우측 하단의 LLM 요약 블록도 닫힌 상태로 변경함. 사용자가 빈 문자열로 Universe를 모두 지우고 저장 버튼을 눌렀을 경우, KODEX 200 (069500)을 기본값으로 강제 주입하는 방어 로직 추가 완료.",
+    "files": {
+        "modified": [
+            "pc_cockpit/cockpit.py"
+        ]
+    },
+    "verification": {
+        "params_form_is_collapsible_by_default": "PASS",
+        "llm_summary_is_collapsible_by_default": "PASS",
+        "universe_empty_fallback_to_069500_exists": "PASS"
+    }
+}
