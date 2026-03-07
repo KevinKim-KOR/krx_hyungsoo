@@ -1,0 +1,20 @@
+{
+    "phase": "P181-R",
+    "result": "OK",
+    "summary": "백테스트 신뢰성(동일 입력 반복, 캐시 회귀, provider 교차)을 subprocess 없이 모듈 직접 호출로 검증하는 스크립트를 추가하고, 결과를 reliability_check.json에 저장하도록 구성함.",
+    "files": {
+        "added": [
+            "tools/check_backtest_reliability.py"
+        ],
+        "added_or_modified": [
+            "reports/backtest/latest/reliability_check.json"
+        ]
+    },
+    "verification": {
+        "no_subprocess": "PASS",
+        "determinism_repeat": "PASS",
+        "cache_no_network_on_second_run": "PASS",
+        "provider_cross_diff_not_exploding": "PASS",
+        "report_written": "PASS"
+    }
+}
