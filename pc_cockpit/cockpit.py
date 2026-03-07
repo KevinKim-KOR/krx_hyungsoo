@@ -258,7 +258,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                 with st.form("wf_params_form"):
                     # Universe
                     st.subheader("Universe")
-                    universe_str = st.text_input("Tickers (comma separated)", ", ".join(params_data.get("universe", [])))
+                    universe_str = st.text_input("Tickers (comma separated)", ", ".join(p.get("universe", [])))
                 
                     # Lookbacks
                     st.subheader("Lookbacks")
@@ -309,8 +309,8 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         
                         parsed_universe = [t.strip() for t in universe_str.split(",") if t.strip()]
                         if not parsed_universe:
-                            st.warning("Universe cannot be empty! Defaulting to 069500.")
-                            parsed_universe = ["069500"]
+                            st.warning("Universe cannot be empty! Defaulting to 4 base ETFs.")
+                            parsed_universe = ["069500", "229200", "114800", "122630"]
                         
                         new_params["universe"] = parsed_universe
                         new_params["lookbacks"]["momentum_period"] = int(mom_period)
