@@ -69,6 +69,10 @@ def extract_params(bundle: Dict[str, Any]) -> Dict[str, Any]:
         "min_cash_pct": pos_limits.get("min_cash_pct", 0.05),
         "stop_loss": decision.get("exit_threshold", -0.10),
         "adx_filter_min": decision.get("adx_filter_min", 20),
+        "portfolio_mode": bundle.get("portfolio_mode", "single_universe"),
+        "sell_mode": bundle.get("sell_mode", "stop_loss"),
+        "rebalance": bundle.get("rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}),
+        "buckets": bundle.get("buckets", []),
     }
 
 def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
@@ -92,7 +96,20 @@ def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
                 "min_cash_pct": p.get("position_limits", {}).get("min_cash_pct", 0.05),
                 "stop_loss": p.get("decision_params", {}).get("exit_threshold", -0.10),
                 "adx_filter_min": p.get("decision_params", {}).get("adx_filter_min", 20),
+                "portfolio_mode": p.get("portfolio_mode", "single_universe"),
+                "sell_mode": p.get("sell_mode", "stop_loss"),
+                "rebalance": p.get("rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}),
+                "buckets": p.get("buckets", []),
             }
+            if params["portfolio_mode"] == "bucket_portfolio":
+                all_tickers = []
+                for b in params["buckets"]:
+                    all_tickers.extend(b.get("universe", []))
+                # Keep original order, remove duplicates
+                all_tickers = list(dict.fromkeys(all_tickers))
+                if all_tickers:
+                    params["universe"] = all_tickers
+
             if params["universe"]: # Only accept if universe is non-empty
                 source = {
                     "path": "state/params/latest/strategy_params_latest.json",
@@ -253,6 +270,10 @@ def run_backtest(
         rsi_period=14,
         stop_loss=params["stop_loss"],
         adx_threshold=params["adx_filter_min"],
+        portfolio_mode=params.get("portfolio_mode", "single_universe"),
+        sell_mode=params.get("sell_mode", "stop_loss"),
+        rebalance_rule=params.get("rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}),
+        buckets=params.get("buckets", []),
     )
 
     return result
@@ -427,6 +448,13 @@ def format_result(
             "momentum_period": params.get("momentum_period"),
             "stop_loss": params.get("stop_loss"),
             "max_positions": params.get("max_positions"),
+            "portfolio_mode": params.get("portfolio_mode", "single_universe"),
+            "sell_mode": params.get("sell_mode", "stop_loss"),
+            "rebalance": params.get("rebalance", {}),
+            "buckets_used": [
+                {"name": b.get("name"), "weight": b.get("weight"), "universe_size": len(b.get("universe", []))}
+                for b in params.get("buckets", [])
+            ],
         },
         "equity_curve": equity_curve,
         "daily_returns": daily_returns,

@@ -247,6 +247,10 @@ class BacktestRunner:
         regime_ma_long: int = 200, # Phase 8: Long Term MA for Regime
         adx_period: int = 14, # Phase 9: ADX Period
         adx_threshold: float = 20.0, # Phase 9: ADX Threshold (Chop Filter)
+        portfolio_mode: str = "single_universe",
+        sell_mode: str = "stop_loss",
+        rebalance_rule: Optional[Dict[str, Any]] = None,
+        buckets: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -339,6 +343,7 @@ class BacktestRunner:
         position_ratio = 1.0
         day_count = 0
         current_top_n = []  # 현재 보유 종목
+        current_base_weights = None # 버킷별 명시적 보유 비중
         current_rsi_values = {}  # 현재 RSI 값 (비중 스케일링용)
         daily_logs = []  # 일별 비중 스케일링 로그
         signal_days = 0  # 신호 발생 일수 (v2.2 추가)
@@ -354,6 +359,10 @@ class BacktestRunner:
         # Phase 7.2 Diagnostics
         regime_switch_count = 0
         regime_locked_count = 0
+
+        # Phase 2 Rebalance Trackers
+        prev_month = None
+        prev_week = None
 
         for i, current_date in enumerate(dates):
             d = current_date.date()
@@ -445,26 +454,43 @@ class BacktestRunner:
             # NAV 업데이트
             engine.update_nav(d, current_prices)
 
-            # 3. 손절 체크 (매일 실행)
-            positions_to_sell = []
-            for symbol, position in engine.portfolio.positions.items():
-                if symbol in current_prices and position.quantity > 0:
-                    current_price = current_prices[symbol]
-                    entry_price = position.entry_price
-                    if entry_price > 0:
-                        drawdown = (current_price / entry_price) - 1.0
-                        if drawdown <= stop_loss:
-                            positions_to_sell.append((symbol, position.quantity, current_price))
-                            logger.debug(f"{d}: 손절 - {symbol}, 손실률: {drawdown*100:.2f}%")
+            # 2.5 리밸런싱 주기 계산
+            if rebalance_rule:
+                freq = rebalance_rule.get("frequency", "M")
+                if freq == "M":
+                    should_rebalance = (day_count == 1) or (prev_month is not None and d.month != prev_month)
+                elif freq == "W":
+                    cur_week = d.isocalendar()[1]
+                    should_rebalance = (day_count == 1) or (prev_week is not None and cur_week != prev_week)
+                else:
+                    should_rebalance = True
+            else:
+                should_rebalance = (day_count == 1) or (day_count % rebalance_period == 0)
 
-            # 손절 매도 실행
-            for symbol, qty, price in positions_to_sell:
-                engine.execute_sell(symbol, qty, price, d)
-                if symbol in current_top_n:
-                    current_top_n.remove(symbol)
+            # 3. 손절 체크 (sell_mode에 따라 제한)
+            can_sell_today = True
+            if sell_mode == "rebalance_only" and not should_rebalance:
+                can_sell_today = False
+
+            positions_to_sell = []
+            if can_sell_today:
+                for symbol, position in engine.portfolio.positions.items():
+                    if symbol in current_prices and position.quantity > 0:
+                        current_price = current_prices[symbol]
+                        entry_price = position.entry_price
+                        if entry_price > 0:
+                            drawdown = (current_price / entry_price) - 1.0
+                            if drawdown <= stop_loss:
+                                positions_to_sell.append((symbol, position.quantity, current_price))
+                                logger.debug(f"{d}: 손절 - {symbol}, 손실률: {drawdown*100:.2f}%")
+    
+                # 손절 매도 실행
+                for symbol, qty, price in positions_to_sell:
+                    engine.execute_sell(symbol, qty, price, d)
+                    if symbol in current_top_n:
+                        current_top_n.remove(symbol)
 
             # 4. 리밸런싱 (주기적으로 Top N 재선정)
-            should_rebalance = (day_count == 1) or (day_count % rebalance_period == 0)
 
             if should_rebalance:
                 # 모멘텀 스코어 + RSI 계산
@@ -472,63 +498,118 @@ class BacktestRunner:
                     price_data, d, lookback_days=ma_period, rsi_period=rsi_period
                 )
 
-                # 유니버스 내 종목만 필터링
-                universe_scores = {k: v for k, v in scores.items() if k in universe}
-                
-                # Raw Signal: 이번 리밸런싱 시점에 조건 만족한 종목 수 누적
-                raw_signal_count += len(universe_scores)
-
-                if universe_scores:
-                    # 신호 발생 일수 증가 (유효한 점수가 산출됨)
-                    signal_days += 1
+                if portfolio_mode == "bucket_portfolio" and buckets:
+                    # 버킷별 할당 로직 (Phase 2)
+                    new_top_n = []
+                    new_base_weights = {}
                     
-                    # Top N 선정: 모멘텀 스코어 기준 (RSI 필터링은 비중 스케일링에서 처리)
-                    sorted_scores = sorted(
-                        universe_scores.items(),
-                        key=lambda x: x[1][0],  # 모멘텀 스코어만으로 정렬
-                        reverse=True
-                    )
-                    new_top_n = [code for code, _ in sorted_scores[: self.max_positions]]
-                    
-                    # Filtered Signal: Top N에 선정된 종목 수 누적 (이번 리밸런싱에 '새로' 혹은 '유지'된 슬롯)
-                    filtered_signal_count += len(new_top_n)
+                    for b in buckets:
+                        b_univ = b.get("universe", [])
+                        b_weight = b.get("weight", 0.0)
+                        
+                        b_scores = {k: v for k, v in scores.items() if k in b_univ}
+                        raw_signal_count += len(b_scores)
+                        
+                        if b_scores:
+                            b_sorted = sorted(b_scores.items(), key=lambda x: x[1][0], reverse=True)
+                            best_code = b_sorted[0][0] # N=1 per bucket
+                            new_top_n.append(best_code)
+                            new_base_weights[best_code] = new_base_weights.get(best_code, 0.0) + b_weight
+                            
+                    if new_top_n:
+                        signal_days += 1
+                        # Remove duplicates but keep order
+                        new_top_n = list(dict.fromkeys(new_top_n))
+                        filtered_signal_count += len(new_top_n)
 
-                    # 종목 변경 로깅
-                    if current_top_n and set(new_top_n) != set(current_top_n):
-                        removed = set(current_top_n) - set(new_top_n)
-                        added = set(new_top_n) - set(current_top_n)
-                        if removed or added:
-                            logger.debug(f"{d}: 종목 변경 - 제외: {removed}, 추가: {added}")
+                        if current_top_n and set(new_top_n) != set(current_top_n):
+                            removed = set(current_top_n) - set(new_top_n)
+                            added = set(new_top_n) - set(current_top_n)
+                            if removed or added:
+                                logger.debug(f"{d}: 종목 변경 - 제외: {removed}, 추가: {added}")
 
-                    current_top_n = new_top_n
+                        current_top_n = new_top_n
+                        current_base_weights = new_base_weights
 
-                    # RSI 값 저장 (비중 스케일링용)
-                    current_rsi_values = {
-                        code: universe_scores[code][1] for code in current_top_n
-                        if code in universe_scores
-                    }
+                        current_rsi_values = {
+                            code: scores[code][1] for code in current_top_n if code in scores
+                        }
 
-                    # WeightScaler를 통한 비중 계산 파이프라인
-                    # ① base weight → ② RSI scaling → ③ Soft Normalize → ④ Regime scaling
-                    scaling_result = self.weight_scaler.compute_final_weights(
-                        top_n_codes=current_top_n,
-                        rsi_values=current_rsi_values,
-                        regime=current_regime,
-                        regime_confidence=regime_confidence,
-                        regime_scale=position_ratio,
-                        current_date=d,
+                        scaling_result = self.weight_scaler.compute_final_weights(
+                            top_n_codes=current_top_n,
+                            rsi_values=current_rsi_values,
+                            regime=current_regime,
+                            regime_confidence=regime_confidence,
+                            regime_scale=position_ratio,
+                            current_date=d,
+                            log_details=(day_count == 1),
+                            base_weights=current_base_weights,
+                        )
 
-
-                        log_details=(day_count == 1),  # 첫날만 상세 로깅
-                    )
-
-                    adjusted_weights = scaling_result.w_final
-
-                    # 일별 로그 저장
-                    daily_logs.append(self.weight_scaler.result_to_dict(scaling_result))
+                        adjusted_weights = scaling_result.w_final
+                        daily_logs.append(self.weight_scaler.result_to_dict(scaling_result))
+                    else:
+                        adjusted_weights = {}
+                        current_rsi_values = {}
                 else:
-                    adjusted_weights = {}
-                    current_rsi_values = {}
+                    # 기존 Single Universe 로직
+                    universe_scores = {k: v for k, v in scores.items() if k in universe}
+                    
+                    # Raw Signal: 이번 리밸런싱 시점에 조건 만족한 종목 수 누적
+                    raw_signal_count += len(universe_scores)
+    
+                    if universe_scores:
+                        # 신호 발생 일수 증가 (유효한 점수가 산출됨)
+                        signal_days += 1
+                        
+                        # Top N 선정: 모멘텀 스코어 기준 (RSI 필터링은 비중 스케일링에서 처리)
+                        sorted_scores = sorted(
+                            universe_scores.items(),
+                            key=lambda x: x[1][0],  # 모멘텀 스코어만으로 정렬
+                            reverse=True
+                        )
+                        new_top_n = [code for code, _ in sorted_scores[: self.max_positions]]
+                        
+                        # Filtered Signal: Top N에 선정된 종목 수 누적 (이번 리밸런싱에 '새로' 혹은 '유지'된 슬롯)
+                        filtered_signal_count += len(new_top_n)
+    
+                        # 종목 변경 로깅
+                        if current_top_n and set(new_top_n) != set(current_top_n):
+                            removed = set(current_top_n) - set(new_top_n)
+                            added = set(new_top_n) - set(current_top_n)
+                            if removed or added:
+                                logger.debug(f"{d}: 종목 변경 - 제외: {removed}, 추가: {added}")
+    
+                        current_top_n = new_top_n
+                        
+                        # Set to None for equal weights logic in weight_scaler
+                        current_base_weights = None
+    
+                        # RSI 값 저장 (비중 스케일링용)
+                        current_rsi_values = {
+                            code: universe_scores[code][1] for code in current_top_n
+                            if code in universe_scores
+                        }
+    
+                        # WeightScaler를 통한 비중 계산 파이프라인
+                        # ① base weight → ② RSI scaling → ③ Soft Normalize → ④ Regime scaling
+                        scaling_result = self.weight_scaler.compute_final_weights(
+                            top_n_codes=current_top_n,
+                            rsi_values=current_rsi_values,
+                            regime=current_regime,
+                            regime_confidence=regime_confidence,
+                            regime_scale=position_ratio,
+                            current_date=d,
+                            log_details=(day_count == 1),
+                        )
+    
+                        adjusted_weights = scaling_result.w_final
+    
+                        # 일별 로그 저장
+                        daily_logs.append(self.weight_scaler.result_to_dict(scaling_result))
+                    else:
+                        adjusted_weights = {}
+                        current_rsi_values = {}
             else:
                 # 리밸런싱 주기가 아니면 기존 종목 유지 (비중 재계산)
                 if current_top_n:
@@ -540,9 +621,8 @@ class BacktestRunner:
                         regime_confidence=regime_confidence,
                         regime_scale=position_ratio,
                         current_date=d,
-
-
                         log_details=False,
+                        base_weights=current_base_weights,
                     )
 
                     adjusted_weights = scaling_result.w_final
@@ -555,6 +635,9 @@ class BacktestRunner:
                     engine.rebalance(adjusted_weights, current_prices, d)
             except Exception as e:
                 logger.error(f"리밸런싱 실패: {e}", exc_info=True)
+
+            prev_month = d.month
+            prev_week = d.isocalendar()[1]
 
         # 성과 지표
         metrics = engine.get_performance_metrics()

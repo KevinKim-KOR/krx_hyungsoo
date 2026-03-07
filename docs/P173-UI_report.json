@@ -1,0 +1,16 @@
+{
+    "phase": "P173-UI",
+    "result": "OK",
+    "summary": "워크플로우 탭의 파라미터 '읽기 전용' 버그 및 유니버스 입력 누락을 수정함. 결과 영역에 기간/커브길이 등을 추가하고, LLM 분석을 위한 전용 요약 JSON 블록을 st.code로 자동 출력되도록 UI를 대폭 보강함.",
+    "files": {
+        "modified": [
+            "pc_cockpit/cockpit.py"
+        ]
+    },
+    "verification": {
+        "workflow_params_are_editable_inputs": "PASS",
+        "universe_input_exists": "PASS",
+        "p170_shows_period_and_curve_length": "PASS",
+        "llm_summary_block_generated_in_expander": "PASS"
+    }
+}

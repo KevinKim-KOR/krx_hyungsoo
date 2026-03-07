@@ -254,12 +254,13 @@ class WeightScaler:
         regime_scale: float,
         current_date: date,
         log_details: bool = False,
+        base_weights: Optional[Dict[str, float]] = None,
     ) -> WeightScalingResult:
         """
         최종 비중 계산 (전체 파이프라인)
         
         파이프라인:
-        1. base_weight (equal weight)
+        1. base_weight (equal weight 혹은 명시적 bucket weights)
         2. RSI scaling (종목 레벨)
         3. Soft normalize (초과 시만 압축)
         4. Regime scaling (포트폴리오 레벨)
@@ -272,6 +273,7 @@ class WeightScaler:
             regime_scale: 레짐 스케일 (position_ratio)
             current_date: 현재 날짜
             log_details: 상세 로깅 여부
+            base_weights: 명시적 base weight (bucket 등)
             
         Returns:
             WeightScalingResult
@@ -294,9 +296,12 @@ class WeightScaler:
         # 레짐에 맞는 RSI 프로파일 선택
         profile = self.get_profile_for_regime(regime)
         
-        # ① 모멘텀 기반 base weight (equal weight)
-        base_weight = 1.0 / len(top_n_codes)
-        w_base = {code: base_weight for code in top_n_codes}
+        # ① 모멘텀 기반 base weight (equal weight or provided base_weights)
+        if base_weights:
+            w_base = base_weights.copy()
+        else:
+            base_weight = 1.0 / len(top_n_codes)
+            w_base = {code: base_weight for code in top_n_codes}
         
         # ② RSI 스케일링 (종목 레벨)
         w_rsi_scaled = self.apply_rsi_scaling(w_base, rsi_values, profile)
