@@ -100,6 +100,7 @@ def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
                 "sell_mode": p.get("sell_mode", "stop_loss"),
                 "rebalance": p.get("rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}),
                 "buckets": p.get("buckets", []),
+                "data_source": p.get("data_source", "fdr"),
             }
             if params["portfolio_mode"] == "bucket_portfolio":
                 all_tickers = []
@@ -133,106 +134,25 @@ def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
 
 # ─── 2. Data Loading ──────────────────────────────────────────────────────
 def load_price_data(
-    tickers: List[str], start: date, end: date
+    tickers: List[str], start: date, end: date, data_source: str = "fdr"
 ) -> pd.DataFrame:
     """
     종목별 OHLCV 다운로드 → MultiIndex(code, date) DataFrame.
-
-    Fallback: yfinance (.KS 우선, 실패 시 .KQ)
     """
     try:
-        from app.backtest.infra.data_loader import get_ohlcv
-    except ImportError:
-        get_ohlcv = None
+        from app.backtest.infra.data_loader import prefetch_ohlcv
+    except ImportError as e:
+        logger.error(f"data_loader import failed: {e}")
+        raise
 
-    frames = []
-    for ticker in tickers:
-        df = _fetch_single(ticker, start, end, get_ohlcv)
-        if df is not None and not df.empty:
-            frames.append(df)
-        else:
-            logger.warning(f"[DATA] No data for {ticker} — skipping")
-
-    if not frames:
-        raise RuntimeError(
-            f"데이터 로딩 완전 실패. tickers={tickers}, "
-            f"start={start}, end={end}. 네트워크 또는 yfinance 문제 확인 필요."
-        )
-
-    combined = pd.concat(frames).sort_index()
+    combined = prefetch_ohlcv(tickers, start, end, data_source=data_source)
     logger.info(
-        f"[DATA] Loaded {len(combined)} rows for {len(frames)} tickers "
+        f"[DATA] Loaded {len(combined)} rows "
         f"({combined.index.get_level_values('date').min().date()} ~ "
         f"{combined.index.get_level_values('date').max().date()})"
     )
     return combined
 
-
-def _fetch_single(
-    ticker: str, start: date, end: date, get_ohlcv_fn
-) -> Optional[pd.DataFrame]:
-    """단일 종목 OHLCV → MultiIndex(code, date) rows."""
-
-    # yfinance 심볼 변환: 6자리 숫자 → .KS (실패 시 .KQ)
-    if ticker.isdigit() and len(ticker) == 6:
-        suffixes = [".KS", ".KQ"]
-    elif ticker.isdigit():
-        suffixes = [".KS"]
-    else:
-        suffixes = [""]  # 이미 완성된 심볼
-
-    for suffix in suffixes:
-        symbol = f"{ticker}{suffix}"
-        try:
-            if get_ohlcv_fn is not None:
-                df = get_ohlcv_fn(symbol, start, end, use_cache=True)
-            else:
-                df = _yfinance_fallback(symbol, start, end)
-
-            if df is not None and not df.empty:
-                # 컬럼 소문자화
-                df.columns = [c.lower() for c in df.columns]
-                # 필수 컬럼 확인
-                if "close" not in df.columns:
-                    logger.warning(f"[DATA] {symbol}: 'close' column missing")
-                    continue
-                # MultiIndex 생성
-                df["code"] = ticker  # 원본 6자리 코드 유지
-                df.index.name = "date"
-                df = df.reset_index().set_index(["code", "date"]).sort_index()
-                logger.info(f"[DATA] {symbol}: {len(df)} rows loaded")
-                return df
-        except Exception as e:
-            logger.warning(f"[DATA] {symbol} failed: {e}")
-            continue
-
-    return None
-
-
-def _yfinance_fallback(symbol: str, start: date, end: date) -> Optional[pd.DataFrame]:
-    """yfinance 직접 다운로드 (data_loader import 실패 시)."""
-    try:
-        import yfinance as yf
-    except ImportError:
-        raise ImportError(
-            "yfinance 패키지 미설치. pip install yfinance 필요."
-        )
-    logger.info(f"[DATA] yfinance fallback: {symbol}")
-    df = yf.download(
-        symbol,
-        start=str(start),
-        end=str(end + timedelta(days=1)),
-        progress=False,
-        auto_adjust=False,
-    )
-    if df is not None and not df.empty:
-        # yfinance 0.2.x returns MultiIndex columns with (Price, Ticker)
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        # 타임존 제거
-        if hasattr(df.index, 'tz') and df.index.tz is not None:
-            df.index = df.index.tz_localize(None)
-    return df
 
 
 # ─── 3. Run Backtest ──────────────────────────────────────────────────────
@@ -431,7 +351,12 @@ def format_result(
     sorted_tickers = sorted(tickers_out.items(), key=lambda x: x[1]["cagr"], reverse=True)
     top_performers = [{"ticker": t, "cagr": v["cagr"]} for t, v in sorted_tickers[:5]]
 
-    # meta
+    try:
+        from app.backtest.infra.data_loader import get_telemetry
+        telemetry = get_telemetry()
+    except ImportError:
+        telemetry = {}
+
     now_kst = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
     meta = {
@@ -444,6 +369,9 @@ def format_result(
         "total_trades": metrics.get("order_count", 0),
         "signal_days": metrics.get("signal_days", 0),
         "param_source": param_source,
+        "data_source_used": params.get("data_source", "fdr"),
+        "download_count": telemetry.get("download_count", 0),
+        "cache_hit_count": telemetry.get("cache_hit_count", 0),
         "params_used": {
             "momentum_period": params.get("momentum_period"),
             "stop_loss": params.get("stop_loss"),
@@ -544,7 +472,7 @@ def run_cli_backtest(mode: str = "quick", start_str: str = None, end_str: str = 
 
     # 3. Load price data
     try:
-        price_data = load_price_data(params["universe"], start, end)
+        price_data = load_price_data(params["universe"], start, end, data_source=params.get("data_source", "fdr"))
     except Exception as e:
         logger.error(f"Data loading failed: {e}")
         return False

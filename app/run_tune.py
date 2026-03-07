@@ -132,7 +132,7 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
 
     try:
         from app.backtest.infra.data_loader import prefetch_ohlcv
-        price_data = prefetch_ohlcv(universe, start, end)
+        price_data = prefetch_ohlcv(universe, start, end, data_source=params.get("data_source", "fdr"))
     except Exception as e:
         logger.error(f"Prefetch failed: {e}")
         traceback.print_exc()
@@ -223,6 +223,12 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
 
     now_kst = datetime.now(KST).strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
+    try:
+        from app.backtest.infra.data_loader import get_telemetry
+        telemetry_data = get_telemetry()
+    except ImportError:
+        telemetry_data = {}
+
     tune_result = {
         "best_params": best_params,
         "best_score": round(best_score, 4),
@@ -247,6 +253,9 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
             "seed": seed,
             "runtime_sec": round(runtime_sec, 1),
             "param_source": param_source,
+            "data_source_used": params.get("data_source", "fdr"),
+            "download_count": telemetry_data.get("download_count", 0),
+            "cache_hit_count": telemetry_data.get("cache_hit_count", 0),
         },
     }
 
