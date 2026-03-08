@@ -1,0 +1,116 @@
+{
+  "schema": "STRATEGY_PARAMS_V1",
+  "asof": "2026-03-07T16:12:34.519417+09:00",
+  "strategy": "KRX_MOMENTUM_V1",
+  "version": "1.0.0",
+  "params": {
+    "data_source": "fdr",
+    "portfolio_mode": "bucket_portfolio",
+    "sell_mode": "rebalance_only",
+    "rebalance": {
+      "frequency": "M",
+      "day_of_month": 1
+    },
+    "lookbacks": {
+      "momentum_period": 24,
+      "volatility_period": 17
+    },
+    "risk_limits": {
+      "max_position_pct": 0.15,
+      "max_drawdown_pct": 0.16
+    },
+    "position_limits": {
+      "max_positions": 5,
+      "min_cash_pct": 0.50
+    },
+    "decision_params": {
+      "entry_threshold": 0.03,
+      "exit_threshold": -0.06,
+      "adx_filter_min": 20,
+      "weight_momentum": 1.0,
+      "weight_volatility": 0.0
+    },
+    "universe": [
+      "069500",
+      "229200",
+      "360750",
+      "379810",
+      "314250",
+      "381170",
+      "458730",
+      "441680",
+      "148070",
+      "305080",
+      "411060",
+      "138230",
+      "130730"
+    ],
+    "buckets": [
+      {
+        "name": "core_beta",
+        "weight": 0.20,
+        "universe": [
+          "069500",
+          "229200",
+          "360750",
+          "379810"
+        ],
+        "strategy": "momentum"
+      },
+      {
+        "name": "growth_satellite",
+        "weight": 0.10,
+        "universe": [
+          "314250",
+          "381170"
+        ],
+        "strategy": "momentum"
+      },
+      {
+        "name": "quality_income",
+        "weight": 0.15,
+        "universe": [
+          "458730",
+          "441680"
+        ],
+        "strategy": "momentum"
+      },
+      {
+        "name": "crisis_hedge",
+        "weight": 0.25,
+        "universe": [
+          "411060",
+          "138230",
+          "305080"
+        ],
+        "strategy": "momentum"
+      },
+      {
+        "name": "cash_bond_wait",
+        "weight": 0.30,
+        "universe": [
+          "130730",
+          "148070",
+          "305080"
+        ],
+        "strategy": "momentum"
+      }
+    ],
+    "notes": {
+      "profile": "LIVE",
+      "cash_policy": {
+        "normal_min_cash_pct": 0.30,
+        "caution_min_cash_pct": 0.50,
+        "crisis_min_cash_pct": 0.65,
+        "current_regime": "caution_or_crisis",
+        "applied_min_cash_pct": 0.50
+      },
+      "universe_policy": {
+        "no_leverage": true,
+        "no_single_stock": true,
+        "test_universe_separate": true
+      },
+      "rebalance_policy": "M + rebalance_only"
+    }
+  }
+}
