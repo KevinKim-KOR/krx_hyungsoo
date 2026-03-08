@@ -1,0 +1,13 @@
+{
+    "phase": "P185-Expand-Verify",
+    "result": "OK",
+    "raw_artifacts": {
+        "log_path": "bt_full_expand.log",
+        "result_json_path": "reports/backtest/latest/backtest_result.json"
+    },
+    "must_check": {
+        "param_source_sha_matches_ssot": true,
+        "rebalance_trigger_source_is_params_rebalance": true,
+        "cluster_ok_true": true
+    }
+}

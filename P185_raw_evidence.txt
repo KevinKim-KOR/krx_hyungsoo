@@ -1,0 +1,43 @@
+﻿=== param_source ===
+
+path                      
+----                      
+state/params/latest/str...
+
+
+
+=== rebalance_trigger_source ===
+params.rebalance
+
+=== cluster_check ===
+
+
+expected_frequency : M
+day_of_month       : 1
+cluster_ok         : True
+cluster_ratio      : 0.908
+note               : 79/87
+                      trad
+                     es on
+                      day 
+                     1~3
+
+
+
+
+=== trade_reason_counts ===
+
+rebalance stop_loss
+--------- ---------
+       78         9
+
+
+
+=== ssot_sha256 ===
+
+Algorithm       Hash      
+---------       ----      
+SHA256          9F402EF...
+
+
+
