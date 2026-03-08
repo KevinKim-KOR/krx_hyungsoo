@@ -139,6 +139,7 @@ venv/
 state/cache/etf_history_cache.json
 state/portfolio/latest/portfolio_latest.json
 state/params/**/*.json
+!state/params/latest/strategy_params_latest.json
 state/strategy_bundle/**/*.json
 
 # Runtime State (Replay, etc.)
