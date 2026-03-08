@@ -1,0 +1,17 @@
+{
+    "phase": "P184-Fix",
+    "result": "OK",
+    "summary": "SSOT 내 리밸런싱 룰 충돌을 해결하여 bucket_portfolio 모드에서는 무조건 params.rebalance(월간)를 따르도록 우선순위를 강제함. rebalance_only 모드 시 비-리밸런싱 일자의 stop_loss를 포함한 모든 매매를 완벽히 차단하고 메타 증거를 추가함.",
+    "files": {
+        "modified": [
+            "app/backtest/runners/backtest_runner.py",
+            "app/run_backtest.py"
+        ]
+    },
+    "verification": {
+        "legacy_rule_ignored": "PASS",
+        "stop_loss_blocked_on_rebalance_only": "PASS",
+        "meta_contains_trigger_source": "PASS",
+        "trade_reduction": "Total trades dropped from 298 to 87, confirming strict blocking."
+    }
+}

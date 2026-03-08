@@ -636,7 +636,13 @@ class BacktestRunner:
             # 리밸런싱 실행
             try:
                 if adjusted_weights:
-                    engine.rebalance(adjusted_weights, current_prices, d)
+                    # P184-Fix: Strict rebalance_only guardrail
+                    can_rebalance_execute = True
+                    if sell_mode == "rebalance_only" and not should_rebalance:
+                        can_rebalance_execute = False
+                        
+                    if can_rebalance_execute:
+                        engine.rebalance(adjusted_weights, current_prices, d)
             except Exception as e:
                 logger.error(f"리밸런싱 실패: {e}", exc_info=True)
 

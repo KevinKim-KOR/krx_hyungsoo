@@ -181,6 +181,15 @@ def run_backtest(
     universe = params["universe"]
     target_weights = {t: 1.0 / len(universe) for t in universe}
 
+    # P184-Fix: Priority Enforcement
+    portfolio_mode = params.get("portfolio_mode", "single_universe")
+    if portfolio_mode == "bucket_portfolio":
+        effective_rebalance = params.get("rebalance", {"frequency": "M", "day_of_month": 1})
+        trigger_source = "params.rebalance"
+    else:
+        effective_rebalance = params.get("rebalance_rule", {"frequency": "daily"})
+        trigger_source = "params.rebalance_rule"
+
     result = runner.run(
         price_data=price_data,
         target_weights=target_weights,
@@ -190,11 +199,15 @@ def run_backtest(
         rsi_period=14,
         stop_loss=params["stop_loss"],
         adx_threshold=params["adx_filter_min"],
-        portfolio_mode=params.get("portfolio_mode", "single_universe"),
+        portfolio_mode=portfolio_mode,
         sell_mode=params.get("sell_mode", "stop_loss"),
-        rebalance_rule=params.get("rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}),
+        rebalance_rule=effective_rebalance,
         buckets=params.get("buckets", []),
     )
+
+    # Attach trigger evidence
+    result["_trigger_source"] = trigger_source
+    result["_effective_rebalance"] = effective_rebalance
 
     return result
 
@@ -392,6 +405,9 @@ def format_result(
         "trade_reason_counts": result.get("trade_reason_counts", {}),
         "trade_dates_top10": result.get("trade_dates_top10", []),
         "rebalance_cluster_check": result.get("rebalance_cluster_check", {}),
+        # P184-Fix Evidence
+        "rebalance_trigger_source": result.get("_trigger_source", "unknown"),
+        "rebalance_effective": result.get("_effective_rebalance", {}),
     }
 
     # conditional reason fields
