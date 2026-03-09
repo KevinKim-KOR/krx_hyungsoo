@@ -70,7 +70,6 @@
         "name": "quality_income",
         "weight": 0.15,
         "universe": [
-          "458730",
           "441680"
         ],
         "strategy": "momentum"
@@ -90,8 +89,7 @@
         "weight": 0.30,
         "universe": [
           "130730",
-          "148070",
-          "305080"
+          "148070"
         ],
         "strategy": "momentum"
       }
