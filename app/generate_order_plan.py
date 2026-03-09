@@ -111,8 +111,8 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
     reco_key = "NONE"
     if reco:
         r_id = reco.get("report_id", "")
-        b_id = reco.get("source_bundle", {}).get("bundle_id", "")
-        r_sha = reco.get("integrity", {}).get("payload_sha256", "")
+        b_id = (reco.get("source_bundle") or {}).get("bundle_id", "")
+        r_sha = (reco.get("integrity") or {}).get("payload_sha256", "")
         reco_key = f"{r_id}:{b_id}:{r_sha}"
         
     # 1.5 SKIP 검증 로직 (P152 & P153)
