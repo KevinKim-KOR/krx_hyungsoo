@@ -40,23 +40,25 @@
 | P167-R | Optuna 튜닝 엔진 + prefetch/cache + tune_result 산출물 | n-trials 완료, 다운로드 0(프리페치), 결과 저장 |
 | P168 | UI 용어 통일/한글 보강 + Best Params 적용 원클릭 | “적용→저장→백테스트” 한 호흡 |
 | P169 | Backtest/Tuning 파라미터 SSOT 통합(state/params) + Git Trap 제거 | param_source.path+sha256 / git ls-files 빈값 |
+| P184 | 다중 버킷 리밸런싱 트리거 충돌 해결 및 매도 정책 엄격화 | rebalance_only 모드 강제 적용 완료 |
+| P185 | 유니버스 확장(5-Bucket, 13종목) SSOT 반영 및 라이브 연동 | Live/Backtest 엔진 5-bucket 정상 동작 |
 
 ## 6) 현재 남은 문제/리스크 TOP5
-1) 데이터 소스 병목: yfinance 의존 시 유니버스 확장/튜닝에서 속도·차단 리스크
-2) 유니버스가 아직 4종목 중심: 친구의 “5버킷 분산” 구조와 직접 비교가 어려움
-3) 전략 옵션 부족: MA 타입 다양화(EMA/HMA), 리밸런싱 주기/모드(손절 vs 리밸런싱) 미구현
-4) UI 일관성/한 호흡 UX는 아직 미완: 탭 이동/저장/푸시 흐름 복잡도 잔존
-5) Git Trap 재발 가능성: state/latest 계열(특히 params/guardrails/cache)의 추적/동기화 정책 상시 점검 필요
+1) 데이터 소스 병목: yfinance 통신 시 13종목 확장으로 인한 속도/차단 리스크 (FDR 캐싱 강화 필요)
+2) 전략 옵션 부족: MA 타입 다양화(EMA/HMA) 아직 미적용 (현재 MAPS 기반 SMA 중심)
+3) UI 일관성/한 호흡 UX는 아직 미완: 탭 이동/저장/푸시 흐름 복잡도 잔존
+4) 리밸런싱 주기 검증: 월말(Monthly)만 테스트됨, 주간/분기 등 다양한 주기 검증 필요
+5) Git Trap 재발 가능성: OCI/로컬 간 `ignore` 예외 처리 나 권한 충돌 가능성 상시 점검 필요
 
 ## 7) 다음 액션
 ### 소스 수정 없이 가능한 3개
-- (1) P169 SSOT 우선권/sha256가 PC↔OCI 모두 일치하는지 교차 확인
-- (2) Full(3Y) 기준 universe 확장 후보 리스트(예: ETF 20~40개) 확정 및 backtest로 baseline 산출
-- (3) 친구 프로젝트 비교 문서 기반 “우선 흡수 3개” 선정(버킷/리밸런싱/MA 타입)
+- (1) 5-Bucket (13종목) 체제에서의 Optuna Full Tuning 파라미터 찾기
+- (2) 친구 프로젝트 문서/ZIP 리뷰를 통해 전략 수식 세부 조정
+- (3) P169 SSOT 우선권/sha256가 PC↔OCI 모두 일치하는지 상시 교차 확인
 
 ### 소스 수정 필요한 3개
 - (1) 데이터 소스 추상화 + 네이버/FDR 기반 캐시 강화(유니버스 확장 대비)
-- (2) 5버킷 자산배분 + 리밸런싱 모드 도입(친구 핵심 흡수)
+- (2) MA 타입 다양화(EMA/HMA 등) 옵션 도입
 - (3) UI 정리 스프린트: 한글/용어/한 호흡 UX/SSOT Key 표준화
 
 ## 8) 현재 SSOT 파일 목록(경로)
