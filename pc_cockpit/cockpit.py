@@ -613,7 +613,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
     with c4:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
         if st.button("📤 PUSH (OCI)", use_container_width=True):
-            token = st.session_state.get("ops_token", "")
+            token = st.session_state.get("ops_token_input", "") or st.session_state.get("ops_token", "")
             if not token:
                 st.warning("Token Required!")
             else:
