@@ -593,7 +593,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
         sync_timeout = st.number_input("Timeout (sec)", value=60, step=30, key="sync_timeout")
         
     with c2:
-        st.text_input("Confirm Token", type="password", key="ops_token_input", placeholder="Required for PUSH", on_change=sync_ops_to_wf)
+        st.text_input("Confirm Token", type="password", key="ops_token_input", placeholder="Required for PUSH")
         
     with c3:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
@@ -613,7 +613,11 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
     with c4:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
         if st.button("📤 PUSH (OCI)", use_container_width=True):
-            token = st.session_state.get("ops_token_input", "") or st.session_state.get("ops_token", "")
+            token = st.session_state.get("ops_token_input", "")
+            # Sync to shared token key for other consumers
+            if token:
+                st.session_state["ops_token"] = token
+                st.session_state["wf_token_input"] = token
             if not token:
                 st.warning("Token Required!")
             else:
