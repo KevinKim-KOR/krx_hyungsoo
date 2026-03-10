@@ -246,289 +246,222 @@ def sync_ops_to_wf():
 
 def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     
-        st.header("🧭 운영 워크플로우 허브 (P170-UI)")
-        st.caption("파라미터 조회, 백테스트, 튜닝, 오퍼레이션 동기화를 탭 이동 없이 한 화면에서 수행합니다.")
-        
-        # [Phase 2] Operation Mode Info
-        p_mode = params_data.get("params", {}).get("portfolio_mode", "single_universe") if params_data else "single_universe"
-        s_mode = params_data.get("params", {}).get("sell_mode", "stop_loss") if params_data else "stop_loss"
-        r_freq = params_data.get("params", {}).get("rebalance", {}).get("frequency", "M") if params_data else "M"
-        st.info(f"🚀 **운영 모드**: `{p_mode}` | **매도 룰**: `{s_mode}` | **리밸런싱**: `{r_freq}`")
+    st.header("🧭 운영 워크플로우 허브 (P170-UI)")
+    st.caption("파라미터 조회, 백테스트, 튜닝, 오퍼레이션 동기화를 탭 이동 없이 한 화면에서 수행합니다.")
+    
+    # [Phase 2] Operation Mode Info
+    p_mode = params_data.get("params", {}).get("portfolio_mode", "single_universe") if params_data else "single_universe"
+    s_mode = params_data.get("params", {}).get("sell_mode", "stop_loss") if params_data else "stop_loss"
+    r_freq = params_data.get("params", {}).get("rebalance", {}).get("frequency", "M") if params_data else "M"
+    st.info(f"🚀 **운영 모드**: `{p_mode}` | **매도 룰**: `{s_mode}` | **리밸런싱**: `{r_freq}`")
 
-        st.divider()
-        # A. 1) 파라미터 (SSOT)
-        st.subheader("1) 현재 파라미터 (SSOT)")
-        if params_data:
-            p = params_data.get("params", {})
-            with st.expander("⚙️ 파라미터 수정 (Click to expand)", expanded=False):
-                with st.form("wf_params_form"):
-                    # Universe
-                    st.subheader("Universe")
-                    universe_str = st.text_input("Tickers (comma separated)", ", ".join(p.get("universe", [])))
+    st.divider()
+    # A. 1) 파라미터 (SSOT)
+    st.subheader("1) 현재 파라미터 (SSOT)")
+    if params_data:
+        p = params_data.get("params", {})
+        with st.expander("⚙️ 파라미터 수정 (Click to expand)", expanded=False):
+            with st.form("wf_params_form"):
+                # Universe
+                st.subheader("Universe")
+                universe_str = st.text_input("Tickers (comma separated)", ", ".join(p.get("universe", [])))
+            
+                # Lookbacks
+                st.subheader("Lookbacks")
+                c1, c2 = st.columns(2)
+                mom_period = c1.number_input("모멘텀 기간 (Momentum Period)", value=p.get("lookbacks", {}).get("momentum_period", 20))
+                c1.caption("`SSOT Key: momentum_period`")
+                vol_period = c2.number_input("변동성 기간 (Volatility Period)", value=p.get("lookbacks", {}).get("volatility_period", 14))
+                c2.caption("`SSOT Key: volatility_period`")
                 
-                    # Lookbacks
-                    st.subheader("Lookbacks")
-                    c1, c2 = st.columns(2)
-                    mom_period = c1.number_input("모멘텀 기간 (Momentum Period)", value=p.get("lookbacks", {}).get("momentum_period", 20))
-                    c1.caption("`SSOT Key: momentum_period`")
-                    vol_period = c2.number_input("변동성 기간 (Volatility Period)", value=p.get("lookbacks", {}).get("volatility_period", 14))
-                    c2.caption("`SSOT Key: volatility_period`")
-                    
-                    # Risk Limits
-                    st.subheader("Risk Limits")
-                    c1, c2 = st.columns(2)
-                    max_pos_pct = c1.number_input("최대 포지션 비중 (Max Position %)", value=float(p.get("risk_limits", {}).get("max_position_pct", 0.25)), step=0.01)
-                    c1.caption("`SSOT Key: max_position_pct`")
-                    max_dd_pct = c2.number_input("최대 낙폭 (Max Drawdown %)", value=float(p.get("risk_limits", {}).get("max_drawdown_pct", 0.15)), step=0.01)
-                    c2.caption("`SSOT Key: max_drawdown_pct`")
-                    
-                    # Position Limits
-                    st.subheader("Position Limits")
-                    c1, c2 = st.columns(2)
-                    max_pos = c1.number_input("최대 보유종목 수 (Max Positions)", value=p.get("position_limits", {}).get("max_positions", 4))
-                    c1.caption("`SSOT Key: max_positions`")
-                    min_cash = c2.number_input("최소 현금비율 (Min Cash %)", value=float(p.get("position_limits", {}).get("min_cash_pct", 0.10)), step=0.01)
-                    c2.caption("`SSOT Key: min_cash_pct`")
-                    
-                    # Decision Params
-                    st.subheader("Decision Thresholds")
-                    c1, c2, c3 = st.columns(3)
-                    entry_th = c1.number_input("진입 임계값 (Entry Threshold)", value=float(p.get("decision_params", {}).get("entry_threshold", 0.02)), step=0.01)
-                    c1.caption("`SSOT Key: entry_threshold`")
-                    exit_th = c2.number_input("손절/청산 임계값 (Stop Loss)", value=float(p.get("decision_params", {}).get("exit_threshold", -0.03)), step=0.01)
-                    c2.caption("`SSOT Key: exit_threshold (= stop_loss)`")
-                    adx_min = c3.number_input("ADX 최소값 (ADX Min)", value=p.get("decision_params", {}).get("adx_filter_min", 20))
-                    c3.caption("`SSOT Key: adx_filter_min`")
-                    
-                    # Weights
-                    st.subheader("Weights")
-                    c1, c2 = st.columns(2)
-                    w_mom = c1.number_input("Weight Mom", value=float(p.get("decision_params", {}).get("weight_momentum", 1.0)), step=0.1)
-                    w_vol = c2.number_input("Weight Vol", value=float(p.get("decision_params", {}).get("weight_volatility", 0.0)), step=0.1)
+                # Risk Limits
+                st.subheader("Risk Limits")
+                c1, c2 = st.columns(2)
+                max_pos_pct = c1.number_input("최대 포지션 비중 (Max Position %)", value=float(p.get("risk_limits", {}).get("max_position_pct", 0.25)), step=0.01)
+                c1.caption("`SSOT Key: max_position_pct`")
+                c2.markdown(f"**현재 설정**: 전체 자본의 **{max_pos_pct*100:.1f}%**를 단일 종목에 최대 투자.")
                 
-                    submit_local = st.form_submit_button("💾 Save Parameters (Local)")
-                    
-                    if submit_local:
-                        new_data = params_data.copy()
-                        new_data["asof"] = datetime.now(KST).isoformat()
-                        new_params = p.copy()
+                # Position Limits
+                st.subheader("Position Limits")
+                c1, c2 = st.columns(2)
+                max_pos = c1.number_input("최대 편입 종목 수 (Max Positions)", value=int(p.get("position_limits", {}).get("max_positions", 5)), min_value=1)
+                c1.caption("`SSOT Key: max_positions`")
+                min_cash_pct = c2.number_input("최소 현금 비중 (Min Cash %)", value=float(p.get("position_limits", {}).get("min_cash_pct", 0.05)), step=0.01)
+                c2.caption("`SSOT Key: min_cash_pct`")
+                
+                # Decision Params
+                st.subheader("Decision Params")
+                c1, c2 = st.columns(2)
+                entry = c1.number_input("진입 임계치 (Entry Threshold)", value=float(p.get("decision_params", {}).get("entry_threshold", 0.02)), step=0.01)
+                c1.caption("`SSOT Key: entry_threshold`")
+                exit_th = c2.number_input("청산 임계치 (Exit Threshold)", value=float(p.get("decision_params", {}).get("exit_threshold", -0.05)), step=0.01)
+                c2.caption("`SSOT Key: exit_threshold`")
+                
+                # Rebalance Rule
+                st.subheader("Rebalance Rule")
+                c1, c2 = st.columns(2)
+                freq_opts = ["DAILY", "WEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]
+                cur_freq = p.get("rebalance_rule", {}).get("frequency", "MONTHLY")
+                freq_idx = freq_opts.index(cur_freq) if cur_freq in freq_opts else 2
+                freq = c1.selectbox("리밸런싱 주기", freq_opts, index=freq_idx)
+                c1.caption("`SSOT Key: rebalance_rule.frequency`")
+                
+                st.divider()
+                if st.form_submit_button("💾 Save Parameters to SSOT"):
+                    try:
+                        new_params = params_data.copy()
+                        target_p = new_params.setdefault("params", {})
                         
-                        parsed_universe = [t.strip() for t in universe_str.split(",") if t.strip()]
-                        if not parsed_universe:
-                            st.warning("Universe cannot be empty! Defaulting to 4 base ETFs.")
-                            parsed_universe = ["069500", "229200", "114800", "122630"]
+                        # Update values
+                        target_p["universe"] = [t.strip() for t in universe_str.split(",") if t.strip()]
+                        target_p.setdefault("lookbacks", {})["momentum_period"] = int(mom_period)
+                        target_p.setdefault("lookbacks", {})["volatility_period"] = int(vol_period)
+                        target_p.setdefault("risk_limits", {})["max_position_pct"] = float(max_pos_pct)
+                        target_p.setdefault("position_limits", {})["max_positions"] = int(max_pos)
+                        target_p.setdefault("position_limits", {})["min_cash_pct"] = float(min_cash_pct)
+                        target_p.setdefault("decision_params", {})["entry_threshold"] = float(entry)
+                        target_p.setdefault("decision_params", {})["exit_threshold"] = float(exit_th)
+                        target_p.setdefault("rebalance_rule", {})["frequency"] = freq
                         
-                        new_params["universe"] = parsed_universe
-                        new_params["lookbacks"]["momentum_period"] = int(mom_period)
-                        new_params["lookbacks"]["volatility_period"] = int(vol_period)
-                        new_params["risk_limits"]["max_position_pct"] = float(max_pos_pct)
-                        new_params["risk_limits"]["max_drawdown_pct"] = float(max_dd_pct)
-                        new_params["position_limits"]["max_positions"] = int(max_pos)
-                        new_params["position_limits"]["min_cash_pct"] = float(min_cash)
-                        new_params["decision_params"]["entry_threshold"] = float(entry_th)
-                        new_params["decision_params"]["exit_threshold"] = float(exit_th)
-                        new_params["decision_params"]["adx_filter_min"] = int(adx_min)
-                        new_params["decision_params"]["weight_momentum"] = float(w_mom)
-                        new_params["decision_params"]["weight_volatility"] = float(w_vol)
-                        
-                        new_data["params"] = new_params
-                        
-                        save_params(new_data)
-                        new_fp = compute_fingerprint(new_data)
-                        st.session_state["current_fingerprint"] = new_fp
-                        st.success(f"✅ 파라미터가 저장되었습니다. (Fingerprint: `{new_fp}`)\\n\\n(OCI 반영은 하단 4번 섹션에서 진행해주세요)")
-                        time.sleep(1)
+                        new_params["asof"] = datetime.now(KST).isoformat()
+                        save_params(new_params)
+                        st.success(f"✅ 파라미터가 저장되었습니다 (Fingerprint: {compute_fingerprint(new_params)})")
+                        time.sleep(1.5)
                         st.rerun()
-        else:
-            st.warning("Current Parameters 파일을 찾을 수 없습니다.")
+                    except Exception as e:
+                        st.error(f"저장 실패: {e}")
+    else:
+        st.warning("Current Parameters를 불러올 수 없습니다.")
+
+    st.divider()
     
-        st.divider()
-        # B. 2) 백테스트 (P165)
-        st.subheader("2) 백테스트 실행")
-        col_mode, col_run = st.columns([2, 1])
-        with col_mode:
-            bt_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="wf_bt_mode")
-        mode_arg = "quick" if "quick" in bt_mode else "full"
-        
-        with col_run:
-            st.write("")
-            run_bt = st.button("▶️ 백테스트 실행", key="wf_run_backtest_btn", type="primary", use_container_width=True)
+    # B. 2) 백테스트 및 튜닝
+    st.subheader("2) 백테스트 및 튜닝 시뮬레이션")
+    colA, colB = st.columns(2)
     
-        if run_bt:
-            with st.spinner(f"백테스트 실행 중 (mode={mode_arg})..."):
+    with colA:
+        st.markdown("**🧪 Full 백테스트 실행 (P165)**")
+        st.caption("현재 SSOT 파라미터 기준으로 전체 기간 백테스트를 실행합니다.")
+        st.markdown("- **결과 리포트**: 2번 섹션에서 확인 가능\n- **소요 시간**: 약 1~3분")
+        if st.button("▶️ Run Full Backtest", use_container_width=True):
+            with st.spinner("백테스트 실행 중... (엔진 로그를 확인하세요)"):
                 try:
                     from app.run_backtest import run_cli_backtest
-                    success = run_cli_backtest(mode=mode_arg)
+                    success = run_cli_backtest(mode="full")
                     if success:
-                        st.success("✅ 백테스트 완료!")
+                        st.success("✅ 백테스트 완료! (2번 섹션 리포트 확인)")
+                        time.sleep(1.5)
+                        st.rerun()
                     else:
-                        st.error("❌ 백테스트 실패 (로그 확인/콘솔 출력 필요)")
+                        st.error("❌ 백테스트 실패 (서버 로그 확인)")
                 except Exception as e:
-                    st.error(f"❌ 실행 오류: {e}")
-    
-        # Show BT Summary inline
-        bt_result_path = BASE_DIR / "reports" / "backtest" / "latest" / "backtest_result.json"
-        st.caption(f"📂 결과 경로: `{bt_result_path.relative_to(BASE_DIR)}`")
-        
-        if bt_result_path.exists():
-            try:
-                bt_data = load_json(bt_result_path)
-                if bt_data:
-                    bt_summary = bt_data.get("summary", {})
-                    bt_meta = bt_data.get("meta", {})
+                    st.error(f"❌ 백테스트 오류: {e}")
                     
-                    # Show params used and sha256
-                    used_p = bt_meta.get("params_used", {})
-                    st.markdown(f"**실행 지문 (SHA256):** `{bt_meta.get('param_source', {}).get('sha256', 'N/A')}`")
-                    st.markdown(f"**사용한 파라미터:** 모멘텀 기간=`{used_p.get('momentum_period')}`, 손절=`{used_p.get('stop_loss', used_p.get('exit_threshold'))}`, 최대종목=`{used_p.get('max_positions')}`")
-                    st.markdown(f"**실행 메타:** 기간=`{bt_meta.get('start_date')} ~ {bt_meta.get('end_date')}`, Mode=`{bt_meta.get('mode', 'N/A')}`, 총 매매=`{bt_meta.get('total_trades', 0)}`회, 커브 길이=`{len(bt_meta.get('equity_curve', []))}`")
-    
-                    bc1, bc2, bc3, bc4 = st.columns(4)
-                    bc1.metric("CAGR", f"{bt_summary.get('cagr', 0):.2f}%")
-                    bc2.metric("MDD", f"{bt_summary.get('mdd', 0):.2f}%")
-                    bc3.metric("Sharpe", f"{bt_summary.get('sharpe', 0):.4f}")
-                    bc4.metric("Total Return", f"{bt_summary.get('total_return', 0):.2f}%")
-                    
-                    with st.expander("📋 LLM 분석용 요약 데이터 (Click to copy)", expanded=False):
-                        llm_summary = {
-                            "summary": {
-                                "cagr": bt_summary.get("cagr"),
-                                "mdd": bt_summary.get("mdd"),
-                                "sharpe": bt_summary.get("sharpe"),
-                                "total_return": bt_summary.get("total_return")
-                            },
-                            "period": f"{bt_meta.get('start_date')} ~ {bt_meta.get('end_date')}",
-                            "universe": bt_meta.get("universe", []),
-                            "params_used": used_p,
-                            "total_trades": bt_meta.get("total_trades", 0),
-                            "equity_curve_length": len(bt_meta.get("equity_curve", [])),
-                            "mode": bt_meta.get("mode", "N/A"),
-                            "sha256": bt_meta.get("param_source", {}).get("sha256", "N/A")
-                        }
-                        st.code(json.dumps(llm_summary, indent=2, ensure_ascii=False), language="json")
-            except:
-                pass
-    
-        st.divider()
-        # C. 3) 튜닝 (Optuna)
-        st.subheader("3) 파라미터 튜닝")
-        tc1, tc2, tc3 = st.columns(3)
-        with tc1:
-            tune_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="wf_tune_mode")
-        with tc2:
-            tune_trials = st.number_input("Trials 수", min_value=5, max_value=500, value=5, step=1, key="wf_tune_trials")
-        with tc3:
-            tune_seed = st.number_input("Seed (재현성)", value=42, step=1, key="wf_tune_seed")
-    
-        tune_mode_arg = "quick" if "quick" in tune_mode else "full"
-        
-        if st.button("▶️ 튜닝 실행", key="wf_run_tune_btn", type="primary"):
-            with st.spinner(f"튜닝 실행 중 (mode={tune_mode_arg}, trials={tune_trials})..."):
+    with colB:
+        st.markdown("**⚙️ 하이퍼파라미터 튜닝 (P167)**")
+        st.caption("다양한 파라미터 조합을 탐색하여 최적의 모멘텀/손절 라인을 찾습니다.")
+        st.markdown("- **알고리즘**: Random Search / Grid Search\n- **소요 시간**: 약 5~10분")
+        if st.button("▶️ Run Optimizer", use_container_width=True):
+            with st.spinner("파라미터 튜닝 중... (엔진 로그를 확인하세요)"):
                 try:
-                    from app.run_tune import run_cli_tune
-                    success = run_cli_tune(mode=tune_mode_arg, n_trials=tune_trials, seed=int(tune_seed))
-                    if success:
-                        st.success("✅ 튜닝 완료!")
+                    import subprocess
+                    import sys
+                    script_path = str(BASE_DIR / "app" / "run_optimize.py")
+                    result = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        st.success("✅ 튜닝 완료! (아래 결과 섹션 확인)")
+                        time.sleep(1.5)
+                        st.rerun()
                     else:
-                        st.error("❌ 튜닝 실패 (로그 확인/콘솔 출력 필요)")
+                        st.error(f"❌ 튜닝 스크립트 실패:\n{result.stderr[-500:]}")
                 except Exception as e:
-                    st.error(f"❌ 실행 오류: {e}")
+                    st.error(f"❌ 튜닝 실행 오류: {e}")
+
+    # B-1. 튜닝 결과 보기
+    st.markdown("##### 🏆 최신 튜닝 결과")
+    OPT_LATEST_PATH = BASE_DIR / "reports" / "pc" / "param_search" / "latest" / "param_search_latest.json"
     
-        tune_result_path = BASE_DIR / "reports" / "tune" / "latest" / "tune_result.json"
-        st.caption(f"📂 결과 경로: `{tune_result_path.relative_to(BASE_DIR)}`")
-        if tune_result_path.exists():
-            try:
-                tune_data = load_json(tune_result_path)
-                if tune_data:
-                    bp = tune_data.get("best_params", {})
-                    bs = tune_data.get("best_summary", {})
-                    tm = tune_data.get("meta", {})
-                    
-                    st.markdown(f"**실행 지문 (SHA256):** `{tm.get('param_source', {}).get('sha256', 'N/A')}`")
-                    st.markdown(f"**Best 파라미터 (권장):** 모멘텀 기간=`{bp.get('momentum_period')}`, 손절=`{bp.get('stop_loss')}`, 최대종목=`{bp.get('max_positions')}`")
-    
-                    bc1, bc2, bc3, bc4 = st.columns(4)
-                    bc1.metric("Best Score", f"{tune_data.get('best_score', 0):.4f}")
-                    bc2.metric("Best Sharpe", f"{bs.get('sharpe', 0):.4f}")
-                    bc3.metric("Best MDD", f"{bs.get('mdd_pct', 0):.2f}%")
-                    bc4.metric("Best CAGR", f"{bs.get('cagr', 0):.4f}%")
-            except:
-                pass
-    
-        st.divider()
-        # D. 4) 적용 / 반영
-        st.subheader("4) 파라미터 적용 및 운영 (OCI 반영)")
-        
-        ac1, ac2, ac3 = st.columns(3)
-        apply_btn = ac1.button("✅ Best Params 적용 (로컬)", key="wf_apply_best", use_container_width=True)
-        apply_bt_btn = ac2.button("🚀 적용 + Full 백테스트", key="wf_apply_bt", type="primary", use_container_width=True)
-        
-        # Token Input for Workflow Hub (P170)
-        st.text_input("OCI Access Token (운영 토큰)", type="password", key="wf_token_input", on_change=sync_wf_to_ops)
-        
-        # Push Push Logic
-        sync_timeout = st.session_state.get("sync_timeout", 60)
-        token = st.session_state.get("ops_token", "")
-        
-        if ac3.button("📤 OCI 반영 (1-Click Sync)", key="wf_push_oci", use_container_width=True):
-            if not token:
-                st.warning("OCI 토큰이 필요합니다. 위 입력란에 토큰을 넣고 다시 시도하세요.")
-            else:
-                with st.spinner(f"Pushing to OCI..."):
+    try:
+        if OPT_LATEST_PATH.exists():
+            opt_data = load_json(OPT_LATEST_PATH)
+            if opt_data and "best_params" in opt_data:
+                bp = opt_data["best_params"]
+                bm = opt_data.get("best_metrics", {})
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("최적 모멘텀", bp.get("momentum_period", "N/A"))
+                c2.metric("최적 손절매", f"{bp.get('stop_loss', 0)*100:.1f}%")
+                c3.metric("최대 종목수", bp.get("max_positions", "N/A"))
+                c4.metric("적합도(Score)", f"{bm.get('score_0_100', 0):.1f}점")
+                
+                col_btn1, col_btn2 = st.columns(2)
+                apply_p_btn = col_btn1.button("💡 최적 파라미터 SSOT에 바로 적용", use_container_width=True)
+                apply_bt_btn = col_btn2.button("💡 최적 파라미터 적용 후 백테스트", use_container_width=True)
+                
+                if apply_p_btn or apply_bt_btn:
                     try:
-                        r = requests.post("http://localhost:8000/api/sync/push_bundle", 
-                                          json={"token": token}, 
-                                          params={"timeout_seconds": sync_timeout},
-                                          timeout=sync_timeout + 5)
-                        if r.status_code == 200:
-                            st.success("✅ OCI(운영석)에 새 파라미터(SSOT)가 성공적으로 반영되었습니다!")
-                            time.sleep(1)
-                            st.rerun()
+                        _p_data = load_json(LATEST_PATH)
+                        if _p_data:
+                            _p = _p_data.get("params", {})
+                            _p.setdefault("lookbacks", {})["momentum_period"] = bp.get("momentum_period")
+                            _p.setdefault("decision_params", {})["exit_threshold"] = bp.get("stop_loss")
+                            _p.setdefault("position_limits", {})["max_positions"] = bp.get("max_positions")
+                            _p_data["params"] = _p
+                            _p_data["asof"] = datetime.now(KST).isoformat()
+                            save_params(_p_data)
+                            st.success(f"✅ 파라미터가 저장되었습니다 (Fingerprint: {compute_fingerprint(_p_data)})")
                         else:
-                            st.error(f"Push 실패: {r.text}")
+                            st.error("Current Parameters 파일을 찾을 수 없습니다.")
                     except Exception as e:
-                        st.error(f"Push 실패 (통신/토큰 오류 등): {e}")
-    
-        if apply_btn or apply_bt_btn:
-            bp = None
-            if tune_result_path.exists():
-                tune_data = load_json(tune_result_path)
-                if tune_data:
-                    bp = tune_data.get("best_params", {})
-                    
-            if bp:
-                try:
-                    _p_data = load_json(LATEST_PATH)
-                    if _p_data:
-                        _p = _p_data.get("params", {})
-                        _p.setdefault("lookbacks", {})["momentum_period"] = bp.get("momentum_period")
-                        _p.setdefault("decision_params", {})["exit_threshold"] = bp.get("stop_loss")
-                        _p.setdefault("position_limits", {})["max_positions"] = bp.get("max_positions")
-                        _p_data["params"] = _p
-                        _p_data["asof"] = datetime.now(KST).isoformat()
-                        save_params(_p_data)
-                        st.success(f"✅ 파라미터가 저장되었습니다 (Fingerprint: {compute_fingerprint(_p_data)})")
-                    else:
-                        st.error("Current Parameters 파일을 찾을 수 없습니다.")
-                except Exception as e:
-                    st.error(f"파라미터 적용 실패: {e}")
-                    
-                if apply_bt_btn:
-                    with st.spinner("적용된 파라미터로 Full 백테스트 실행 중..."):
-                        try:
-                            from app.run_backtest import run_cli_backtest
-                            success = run_cli_backtest(mode="full")
-                            if success:
-                                st.success("✅ 백테스트 완료! (위의 2번 섹션에서 결과를 확인하세요)")
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error("❌ 백테스트 실패 (로그 확인/콘솔 출력 필요)")
-                        except Exception as e:
-                            st.error(f"❌ 백테스트 오류: {e}")
+                        st.error(f"파라미터 적용 실패: {e}")
+                        
+                    if apply_bt_btn:
+                        with st.spinner("적용된 파라미터로 Full 백테스트 실행 중..."):
+                            try:
+                                from app.run_backtest import run_cli_backtest
+                                success = run_cli_backtest(mode="full")
+                                if success:
+                                    st.success("✅ 백테스트 완료! (위의 2번 섹션에서 결과를 확인하세요)")
+                                    time.sleep(1)
+                                    st.rerun()
+                                else:
+                                    st.error("❌ 백테스트 실패 (로그 확인/콘솔 출력 필요)")
+                            except Exception as e:
+                                st.error(f"❌ 백테스트 오류: {e}")
             else:
                 st.warning("먼저 튜닝을 실행하여 최적의 파라미터(Best Params)를 생성해주세요.")
+    except:
+        pass
+
+    st.divider()
+    # C. 3) 운영 동기화 (OCI 반영)
+    st.subheader("3) 운영 동기화 (OCI 반영)")
     
+    # Token Input for Workflow Hub (P170)
+    st.text_input("OCI Access Token (운영 토큰)", type="password", key="wf_token_input", on_change=sync_wf_to_ops)
+    
+    # Push Push Logic
+    sync_timeout = st.session_state.get("sync_timeout", 60)
+    token = st.session_state.get("ops_token", "")
+    
+    if st.button("📤 OCI 반영 (1-Click Sync)", key="wf_push_oci", use_container_width=True):
+        if not token:
+            st.warning("OCI 토큰이 필요합니다. 위 입력란에 토큰을 넣고 다시 시도하세요.")
+        else:
+            with st.spinner(f"Pushing to OCI..."):
+                try:
+                    r = requests.post("http://localhost:8000/api/sync/push_bundle", 
+                                      json={"token": token}, 
+                                      params={"timeout_seconds": sync_timeout},
+                                      timeout=sync_timeout + 5)
+                    if r.status_code == 200:
+                        st.success("✅ OCI(운영석)에 새 파라미터(SSOT)가 성공적으로 반영되었습니다!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Push 실패: {r.text}")
+                except Exception as e:
+                    st.error(f"Push 실패 (통신/토큰 오류 등): {e}")
     
 
 def render_ops_p144(params_data, portfolio_data, guardrails_data):
@@ -652,6 +585,45 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
         if st.button("▶️ Run Auto Ops Cycle", use_container_width=True):
              try:
                  oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
+                 
+                 # === Step 1: Local Bundle Generation ===
+                 st.info("Step 1/3: 로컬 번들 생성 중...")
+                 bundle_cmd = [sys.executable, str(BASE_DIR / "deploy" / "pc" / "generate_strategy_bundle.py")]
+                 result = subprocess.run(bundle_cmd, capture_output=True, text=True)
+                 if result.returncode != 0:
+                     st.error(f"Step 1 실패: 번들 생성에 실패했습니다.\n{result.stderr}")
+                     st.stop()
+                 st.success("Step 1 완료: 번들 생성 성공")
+                 
+                 # === Step 2: Push to OCI ===
+                 st.info("Step 2/3: OCI로 번들 동기화 중 (토큰 자동 추출)...")
+                 
+                 # Auto-fetch token from export
+                 export_path = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+                 ops_token = ""
+                 if export_path.exists():
+                     try:
+                         export_data = json.loads(export_path.read_text(encoding="utf-8"))
+                         ops_token = export_data.get("confirm_token", "")
+                     except Exception as e:
+                         pass
+                         
+                 if not ops_token:
+                     st.error("Step 2 실패: 최신 Export 파일에서 confirm_token을 찾을 수 없습니다. Order Plan Export를 먼저 생성해주세요.")
+                     st.stop()
+                     
+                 sync_timeout = st.session_state.get("sync_timeout", 60)
+                 sync_resp = requests.post("http://localhost:8000/api/sync/push_bundle", 
+                                          json={"token": ops_token}, 
+                                          params={"timeout_seconds": sync_timeout},
+                                          timeout=sync_timeout + 5)
+                 if sync_resp.status_code != 200:
+                     st.error(f"Step 2 실패: OCI 동기화에 실패했습니다.\n{sync_resp.text}")
+                     st.stop()
+                 st.success("Step 2 완료: OCI 동기화 성공")
+                 
+                 # === Step 3: Trigger OCI Auto Ops Cycle ===
+                 st.info("Step 3/3: OCI Auto Ops Cycle 실행 중...")
                  # P152: Send force query param
                  resp = requests.post(f"{oci_url}/api/live/cycle/run?confirm=true&force={str(force_recompute).lower()}", timeout=SLOW_TIMEOUT)
                  if resp.status_code == 200:
@@ -664,7 +636,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                          summary_str = "Auto Ops Completed via Orchestrator"
                          
                      # P154: Store result in session state to persist after rerun
-                     st.session_state["last_cycle_result"] = f"✅ {summary_str}"
+                     st.session_state["last_cycle_result"] = f"✅ 3-Step Chain 성공 | {summary_str}"
                      st.toast("Auto Ops Cycle Completed")
                  elif resp.status_code == 500:
                      data = resp.json()

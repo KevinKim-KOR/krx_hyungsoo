@@ -194,6 +194,12 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
     stale_reason = None
     age_seconds = None
     
+    # P190: Dynamic TTL based on rebalance frequency
+    rebalance_freq = strategy.get("rebalance_rule", {}).get("frequency", "DAILY").upper()
+    ttl_seconds = BUNDLE_MAX_AGE_SECONDS # default 86400 (24h)
+    if rebalance_freq == "MONTHLY":
+        ttl_seconds = 35 * 24 * 60 * 60 # 35 days for MONTHLY strategies
+    
     try:
         created_at = bundle.get("created_at", "")
         if created_at:
@@ -211,9 +217,9 @@ def validate_strategy_bundle(bundle: Dict) -> BundleValidationResult:
                  
             age_seconds = int(age.total_seconds())
             
-            if age_seconds > BUNDLE_MAX_AGE_SECONDS:
+            if age_seconds > ttl_seconds:
                 is_stale = True
-                stale_reason = f"Bundle is stale: created {age.days}d {age.seconds//3600}h ago"
+                stale_reason = f"Bundle is stale: created {age.days}d {age.seconds//3600}h ago (Limit: {ttl_seconds//86400}d)"
                 warnings.append(stale_reason)
         else:
             # No created_at -> Fail-Closed: treat as stale
