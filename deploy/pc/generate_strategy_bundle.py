@@ -304,7 +304,13 @@ def generate_bundle() -> dict:
     try:
         from app.scoring.etf_scorer import score_etfs
         universe = strategy.get("universe", [])
-        scorer_result = score_etfs(universe, top_n=4)
+        
+        # P155: auto-scale max_positions for bucket_portfolio
+        max_positions = strategy.get("position_limits", {}).get("max_positions", 4)
+        if strategy.get("portfolio_mode") == "bucket_portfolio":
+            max_positions = max(max_positions, len(strategy.get("buckets", [])))
+            
+        scorer_result = score_etfs(universe, top_n=max_positions)
         
         # Add scorer to strategy
         strategy["scorer"] = {

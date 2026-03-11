@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-03-07T16:12:34.519417+09:00",
+  "asof": "2026-03-09T20:32:08.640925+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -12,7 +12,7 @@
       "day_of_month": 1
     },
     "lookbacks": {
-      "momentum_period": 24,
+      "momentum_period": 56,
       "volatility_period": 17
     },
     "risk_limits": {
@@ -20,12 +20,12 @@
       "max_drawdown_pct": 0.16
     },
     "position_limits": {
-      "max_positions": 5,
-      "min_cash_pct": 0.50
+      "max_positions": 4,
+      "min_cash_pct": 0.5
     },
     "decision_params": {
       "entry_threshold": 0.03,
-      "exit_threshold": -0.06,
+      "exit_threshold": -0.09000000000000001,
       "adx_filter_min": 20,
       "weight_momentum": 1.0,
       "weight_volatility": 0.0
@@ -48,7 +48,7 @@
     "buckets": [
       {
         "name": "core_beta",
-        "weight": 0.20,
+        "weight": 0.2,
         "universe": [
           "069500",
           "229200",
@@ -59,7 +59,7 @@
       },
       {
         "name": "growth_satellite",
-        "weight": 0.10,
+        "weight": 0.1,
         "universe": [
           "314250",
           "381170"
@@ -86,7 +86,7 @@
       },
       {
         "name": "cash_bond_wait",
-        "weight": 0.30,
+        "weight": 0.3,
         "universe": [
           "130730",
           "148070"
@@ -97,11 +97,11 @@
     "notes": {
       "profile": "LIVE",
       "cash_policy": {
-        "normal_min_cash_pct": 0.30,
-        "caution_min_cash_pct": 0.50,
+        "normal_min_cash_pct": 0.3,
+        "caution_min_cash_pct": 0.5,
         "crisis_min_cash_pct": 0.65,
         "current_regime": "caution_or_crisis",
-        "applied_min_cash_pct": 0.50
+        "applied_min_cash_pct": 0.5
       },
       "universe_policy": {
         "no_leverage": true,

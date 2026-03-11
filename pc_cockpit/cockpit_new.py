@@ -376,7 +376,46 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             st.error(f"Push 실패: {r.text}")
                     except Exception as e:
                         st.error(f"Push 실패 (통신/토큰 오류 등): {e}")
-    
+                        
+        st.markdown("---")
+        st.markdown("**수동 운영 생성 (Manual Execution Generation)**")
+        oc1, oc2, oc3 = st.columns(3)
+        if oc1.button("📄 Order Plan Export REGEN", use_container_width=True):
+            with st.spinner("Generating Export..."):
+                try:
+                    r = requests.post("http://localhost:8000/api/order_plan_export/regenerate?confirm=true")
+                    if r.status_code == 200:
+                        st.success("Export Regenerated!")
+                    else:
+                        st.error(f"Error: {r.text}")
+                except Exception as e:
+                    st.error(str(e))
+                    
+        if oc2.button("🛠️ Execution Prep REGEN", use_container_width=True):
+            if not token:
+                st.error("Token Required!")
+            else:
+                with st.spinner("Generating Prep..."):
+                    try:
+                        r = requests.post("http://localhost:8000/api/execution_prep/prepare?confirm=true", json={"confirm_token": token})
+                        if r.status_code == 200:
+                            st.success("Prep Regenerated!")
+                        else:
+                            st.error(f"Error: {r.text}")
+                    except Exception as e:
+                        st.error(str(e))
+                        
+        if oc3.button("🎫 Execution Ticket REGEN", use_container_width=True):
+            with st.spinner("Generating Ticket..."):
+                try:
+                    r = requests.post("http://localhost:8000/api/manual_execution_ticket/regenerate?confirm=true")
+                    if r.status_code == 200:
+                        st.success("Ticket Regenerated!")
+                    else:
+                        st.error(f"Error: {r.text}")
+                except Exception as e:
+                    st.error(str(e))
+
         if apply_btn or apply_bt_btn:
             bp = None
             if tune_result_path.exists():

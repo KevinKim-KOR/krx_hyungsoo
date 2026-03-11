@@ -3896,7 +3896,7 @@ class RecoRegenerateRequest(BaseModel):
 
 
 @app.post("/api/reco/regenerate", summary="추천 리포트 재생성")
-def regenerate_reco(data: Optional[RecoRegenerateRequest] = None):
+def regenerate_reco_v2(confirm: bool = Query(False), force: bool = Query(False)):
     """
     Reco Report Regenerate (D-P.48)
     
@@ -3905,7 +3905,7 @@ def regenerate_reco(data: Optional[RecoRegenerateRequest] = None):
     Fail-Closed: 번들 무결성 실패 시 BLOCKED
     """
     # Confirm Guard
-    if not data or not data.confirm:
+    if not confirm:
         return JSONResponse(
             status_code=400,
             content={
@@ -3918,7 +3918,7 @@ def regenerate_reco(data: Optional[RecoRegenerateRequest] = None):
     try:
         from app.generate_reco_report import generate_reco_report
         
-        result = generate_reco_report()
+        result = generate_reco_report(force=force)
         
         if result["success"]:
             report = result["report"]

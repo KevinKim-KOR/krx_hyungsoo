@@ -309,9 +309,15 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
 
             # P153: Cash Allocation for ADD / NEW_ENTRY
             cash = portfolio.get("cash", 0)
+            
+            # P155: Enforce min_cash_pct (calculate investable_cash)
+            min_cash_pct = bundle.get("strategy", {}).get("position_limits", {}).get("min_cash_pct", 0)
+            target_minimum_cash = total_value * min_cash_pct
+            investable_cash = max(0, cash - target_minimum_cash)
+            
             adds = [o for o in orders if o["intent"] in ["ADD", "NEW_ENTRY"]]
-            if adds and cash > 0:
-                alloc_per_ticker = cash / len(adds)
+            if adds and investable_cash > 0:
+                alloc_per_ticker = investable_cash / len(adds)
                 for o in adds:
                     ticker = o["ticker"]
                     price = price_map.get(ticker, 0)
@@ -320,11 +326,22 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
                         
                     if price > 0:
                         qty = int(alloc_per_ticker // price)
-                        o["quantity"] = qty
-                        o["price"] = price
-                        o["value"] = qty * price
+                        if qty > 0:
+                            o["quantity"] = qty
+                            o["price"] = price
+                            o["value"] = qty * price
                     else:
                         raise ValueError(f"Price for {ticker} is 0 or failed to fetch. Halting generation to prevent zero-value allocation.")
+
+            # Filter out BUY orders that received 0 quantity due to min_cash_pct constraint
+            filtered_orders = []
+            for o in orders:
+                if o["intent"] in ["ADD", "NEW_ENTRY"]:
+                    if o.get("quantity", 0) > 0:
+                        filtered_orders.append(o)
+                else:
+                    filtered_orders.append(o)
+            orders = filtered_orders
 
             report["orders"] = orders
 
