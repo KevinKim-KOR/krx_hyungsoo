@@ -42,7 +42,7 @@ def load_json(path: Path) -> Optional[Dict]:
     except Exception:
         return None
 
-def generate_prep(confirm_token: str):
+def generate_prep(confirm_token: str = None, force: bool = False):
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
     asof_str = now.isoformat()
@@ -55,7 +55,7 @@ def generate_prep(confirm_token: str):
             "export_asof": None,
             "order_plan_ref": None,
             "plan_id": None,
-            "confirm_token": confirm_token
+            "confirm_token": None
         },
         "decision": "BLOCKED",
         "reason": "UNKNOWN",
@@ -102,8 +102,20 @@ def generate_prep(confirm_token: str):
     
     prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
     
+    # Check plan_id match (P191 Phase 1)
+    latest_plan_id = plan_data.get("plan_id")
+    export_plan_id = export_data.get("source", {}).get("plan_id")
+    
+    if latest_plan_id != export_plan_id:
+        prep["source"]["plan_id"] = export_plan_id
+        prep["decision"] = "BLOCKED"
+        prep["reason"] = "CHAIN_MISMATCH"
+        prep["reason_detail"] = f"Export based on plan_id {export_plan_id} but latest Order Plan is {latest_plan_id}"
+        _save_and_return(prep)
+        return
+
     # Direct access to ensure we get the ID (Fail-closed)
-    prep["source"]["plan_id"] = plan_data["plan_id"]
+    prep["source"]["plan_id"] = latest_plan_id
     
     prep["evidence_refs"].append(prep["source"]["order_plan_ref"])
 
@@ -119,9 +131,12 @@ def generate_prep(confirm_token: str):
     # 3-B. Verify Token
     export_token = export_data.get("human_confirm", {}).get("confirm_token")
     
+    # Use provided token, else fallback to export token
+    actual_token = confirm_token if confirm_token else export_token
+    
     # P140: Token Sanity Fix (Record Input instead of Compare)
     # Rationale: User input IS the confirmation. We record it.
-    if not confirm_token:
+    if not actual_token:
          prep["decision"] = "BLOCKED"
          prep["reason"] = "TOKEN_EMPTY"
          prep["reason_detail"] = "Confirmation Token is required."
@@ -129,7 +144,7 @@ def generate_prep(confirm_token: str):
          return
          
     # Record the token (Binding)
-    prep["source"]["confirm_token"] = confirm_token
+    prep["source"]["confirm_token"] = actual_token
 
     # Load Portfolio
     portfolio_data = load_json(PORTFOLIO_LATEST)
@@ -336,9 +351,10 @@ def _save_and_return(prep: Dict):
         }))
 
 if __name__ == "__main__":
-    import sys
-    # Expect token as arg 1? Or just allow module import usage.
-    # User requirement: API POST body.
-    # The script can be run standalone for testing.
-    token = sys.argv[1] if len(sys.argv) > 1 else "TEST_TOKEN"
-    generate_prep(token)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--token", type=str, default=None, help="Optional confirm token")
+    parser.add_argument("--force", action="store_true", help="Force regenerate ignoring SKIP logic")
+    args = parser.parse_args()
+    
+    generate_prep(confirm_token=args.token, force=args.force)

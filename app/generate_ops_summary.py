@@ -688,6 +688,27 @@ def generate_ops_summary():
                          mode = "DRY_RUN"
         except Exception:
             pass
+            
+    # P191 Phase 1: CHAIN_MISMATCH Check
+    has_chain_mismatch = False
+    for doc, name, path in [
+        (export_data, "Export", "reports/live/order_plan_export/latest/order_plan_export_latest.json"),
+        (prep_data, "Prep", "reports/live/execution_prep/latest/execution_prep_latest.json"),
+        (ticket_data, "Ticket", "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json")
+    ]:
+        if doc and doc.get("decision") == "BLOCKED" and doc.get("reason") == "CHAIN_MISMATCH":
+            top_risks.append({
+                "code": "CHAIN_MISMATCH",
+                "severity": "CRITICAL",
+                "message": f"{name} Chain Mismatch: {doc.get('reason_detail', '')}",
+                "evidence_refs": [path]
+            })
+            overall_status = "BLOCKED"
+            has_chain_mismatch = True
+
+    if has_chain_mismatch:
+        manual_stage = "BLOCKED"
+
     # Risks based on Stage
     if manual_stage == "NEED_HUMAN_CONFIRM":
         top_risks.append({

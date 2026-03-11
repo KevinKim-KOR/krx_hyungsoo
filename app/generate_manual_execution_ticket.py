@@ -32,7 +32,7 @@ def load_json(path: Path) -> Optional[Dict]:
     except Exception:
         return None
 
-def generate_ticket():
+def generate_ticket(force: bool = False):
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
     asof_str = now.isoformat()
@@ -73,6 +73,20 @@ def generate_ticket():
     ticket["source"]["plan_id"] = prep.get("source", {}).get("plan_id")
     ticket["source"]["confirm_token"] = prep.get("source", {}).get("confirm_token")
     ticket["evidence_refs"].append(ticket["source"]["prep_ref"])
+    
+    # Check plan_id match (P191 Phase 1)
+    ORDER_PLAN_LATEST = BASE_DIR / "reports" / "live" / "order_plan" / "latest" / "order_plan_latest.json"
+    plan_data = load_json(ORDER_PLAN_LATEST)
+    latest_plan_id = plan_data.get("plan_id") if plan_data else None
+    prep_plan_id = ticket["source"]["plan_id"]
+    
+    if latest_plan_id and latest_plan_id != prep_plan_id:
+        ticket["decision"] = "BLOCKED"
+        ticket["reason"] = "CHAIN_MISMATCH"
+        ticket["reason_detail"] = f"Prep based on plan_id {prep_plan_id} but latest Order Plan is {latest_plan_id}"
+        _generate_blocked_ticket_content(ticket)
+        _save_and_return(ticket)
+        return
     
     # 3. Validation
     if prep.get("decision") not in ["READY", "WARN"]:
@@ -306,4 +320,9 @@ def _save_and_return(ticket: Dict):
         }))
 
 if __name__ == "__main__":
-    generate_ticket()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--force", action="store_true", help="Force regenerate")
+    args = parser.parse_args()
+    
+    generate_ticket(force=args.force)

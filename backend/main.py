@@ -2697,14 +2697,14 @@ def get_order_plan_export_latest():
         return {"status": "error", "error": str(e)}
 
 @app.post("/api/order_plan_export/regenerate", summary="Order Plan Export 재생성")
-def regenerate_order_plan_export(confirm: bool = Query(False)):
+def regenerate_order_plan_export(confirm: bool = Query(False), force: bool = Query(False)):
     """Regenerate Order Plan Export (P111) - Requires Confirm"""
     if not confirm:
         raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
         
     try:
         from app.generate_order_plan_export import generate_export
-        generate_export()
+        generate_export(force=force)
         
         if EXPORT_LATEST_FILE.exists():
             data = json.loads(EXPORT_LATEST_FILE.read_text(encoding="utf-8"))
@@ -2747,20 +2747,17 @@ def get_execution_prep_latest():
         return {"status": "error", "error": str(e)}
 
 class ExecutionPrepRequest(BaseModel):
-    confirm_token: str
+    confirm_token: Optional[str] = None
 
 @app.post("/api/execution_prep/prepare", summary="Execution Prep 생성 (Human Gate)")
-def prepare_execution(request: ExecutionPrepRequest, confirm: bool = Query(False)):
+def prepare_execution(request: ExecutionPrepRequest, confirm: bool = Query(False), force: bool = Query(False)):
     """Prepare Execution (P112) - Requires Confirm + Token"""
     if not confirm:
         raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED"})
         
-    if not request.confirm_token:
-         raise HTTPException(status_code=400, detail={"result": "BLOCKED", "reason": "TOKEN_REQUIRED"})
-
     try:
         from app.generate_execution_prep import generate_prep
-        generate_prep(request.confirm_token)
+        generate_prep(confirm_token=request.confirm_token, force=force)
         
         if EXECUTION_PREP_LATEST_FILE.exists():
             data = json.loads(EXECUTION_PREP_LATEST_FILE.read_text(encoding="utf-8"))
