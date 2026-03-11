@@ -75,8 +75,8 @@ def get_ops_summary() -> Dict:
     # Then updating Ops Summary happens later or via Dashboard calls?
     # We will just fetch the function result.
     
-    from app.generate_ops_summary import regenerate_ops_summary
-    return regenerate_ops_summary()
+    from app.generate_ops_summary import generate_ops_summary
+    return generate_ops_summary()
 
 def generate_markdown(c5_report: Dict) -> str:
     """Generate Markdown content for Human"""
