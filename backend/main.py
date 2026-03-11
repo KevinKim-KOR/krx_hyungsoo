@@ -400,56 +400,6 @@ def get_reco_latest():
         }
     return safe_read_json(path)
 
-@app.post("/api/reco/regenerate", summary="추천 리포트 재생성 (P101)")
-def regenerate_reco(confirm: bool = Query(False)):
-    """
-    app/generate_reco_report.py를 실행하여 리포트를 재생성합니다.
-    - confirm=true 필수
-    - Fail-Closed 원칙에 따라 스크립트 실행 결과를 반환
-    """
-    if not confirm:
-        return JSONResponse(
-            status_code=400, 
-            content={"result": "BLOCKED", "reason": "CONFIRM_REQUIRED", "message": "confirm=true parameter is required"}
-        )
-    
-    try:
-        logger.info("Reco Report 재생성 요청 (subprocess)")
-        # Run generator script relative to BASE_DIR using -m to support imports
-        cmd = [sys.executable, "-m", "app.generate_reco_report"]
-        
-        # Capture output
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
-        
-        if result.returncode != 0:
-            logger.error(f"Reco Generation Failed (Exit {result.returncode}): {result.stderr}")
-            return JSONResponse(
-                status_code=500, 
-                content={
-                    "result": "FAIL", 
-                    "error": result.stderr, 
-                    "stdout": result.stdout,
-                    "exit_code": result.returncode
-                }
-            )
-            
-        # Parse script output (Expected JSON)
-        try:
-             output_json = json.loads(result.stdout)
-             logger.info("Reco Report 재생성 성공")
-             return output_json
-        except json.JSONDecodeError:
-             logger.warning("Reco script stdout is not valid JSON")
-             return {
-                 "result": "OK", 
-                 "message": "Script executed but output check failed", 
-                 "stdout": result.stdout
-             }
-             
-    except Exception as e:
-        logger.error(f"Reco Regeneration Error: {e}", exc_info=True)
-        return JSONResponse(status_code=500, content={"result": "ERROR", "message": str(e)})
-
 @app.get("/api/history", summary="과거 이력 조회 (Equity Curve)")
 def get_history():
     """일별 리포트 파일들을 취합하여 자산 추이(Equity Curve) 데이터를 반환합니다."""
