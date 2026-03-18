@@ -400,6 +400,23 @@ def get_reco_latest():
         }
     return safe_read_json(path)
 
+@app.post("/api/reco/regenerate", summary="추천 리포트 최신화 (P101)")
+def regenerate_reco(force: bool = Query(False)):
+    try:
+        from app.generate_reco_report import generate_reco_report
+        return generate_reco_report(force=force)
+    except Exception as e:
+        logger.error(f"Reco API Error: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"result": "ERROR", "message": str(e)})
+
+@app.post("/api/order_plan/regenerate", summary="주문안 최신화 (P102)")
+def regenerate_order_plan(force: bool = Query(False)):
+    try:
+        from app.generate_order_plan import generate_order_plan
+        return generate_order_plan(force=force)
+    except Exception as e:
+        logger.error(f"Order Plan API Error: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"result": "ERROR", "message": str(e)})
 @app.get("/api/history", summary="과거 이력 조회 (Equity Curve)")
 def get_history():
     """일별 리포트 파일들을 취합하여 자산 추이(Equity Curve) 데이터를 반환합니다."""
