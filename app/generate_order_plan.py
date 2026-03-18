@@ -307,13 +307,18 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
                     "reason_detail": f"Score: {score}"
                 })
 
-            # P153: Cash Allocation for ADD / NEW_ENTRY
+            # Phase 2: Cash Allocation & min_cash_pct Mathematical Floor
             cash = portfolio.get("cash", 0)
-            
-            # P155: Enforce min_cash_pct (calculate investable_cash)
+            total_value = portfolio.get("total_value")
+            if not total_value or total_value <= 0:
+                total_value = cash # cash fallback
+                
             min_cash_pct = bundle.get("strategy", {}).get("position_limits", {}).get("min_cash_pct", 0)
-            target_minimum_cash = total_value * min_cash_pct
-            investable_cash = max(0, cash - target_minimum_cash)
+            required_cash_floor = total_value * min_cash_pct
+            max_buy_budget = total_value - required_cash_floor
+            
+            # For incremental buys, our practical limit constraint:
+            investable_cash = max(0, min(max_buy_budget, cash - required_cash_floor))
             
             adds = [o for o in orders if o["intent"] in ["ADD", "NEW_ENTRY"]]
             if adds and investable_cash > 0:
@@ -333,17 +338,45 @@ def generate_order_plan(force: bool = False) -> Dict[str, Any]:
                     else:
                         raise ValueError(f"Price for {ticker} is 0 or failed to fetch. Halting generation to prevent zero-value allocation.")
 
-            # Filter out BUY orders that received 0 quantity due to min_cash_pct constraint
-            filtered_orders = []
-            for o in orders:
-                if o["intent"] in ["ADD", "NEW_ENTRY"]:
+            # Hard Limit Enforcement (Phase 2 requirement)
+            planned_buy_notional = sum(o.get("value", 0) for o in adds if "value" in o)
+            breached = planned_buy_notional > max_buy_budget
+            
+            if breached:
+                import math
+                # Reduce qty from lowest priority (end of list) to satisfy max_buy_budget
+                for o in reversed(adds):
+                    if planned_buy_notional <= max_buy_budget:
+                        break
                     if o.get("quantity", 0) > 0:
-                        filtered_orders.append(o)
-                else:
-                    filtered_orders.append(o)
-            orders = filtered_orders
-
+                        overage = planned_buy_notional - max_buy_budget
+                        price = o.get("price", 1)
+                        reduce_qty = min(o["quantity"], int(math.ceil(overage / price)))
+                        o["quantity"] -= reduce_qty
+                        reduction_val = reduce_qty * price
+                        o["value"] -= reduction_val
+                        planned_buy_notional -= reduction_val
+                        
+                breached = planned_buy_notional > max_buy_budget
+                
+            if breached:
+                report["decision"] = "BLOCKED"
+                report["reason"] = "CASH_FLOOR_BREACH"
+                report["reason_detail"] = f"Unable to satisfy min_cash_pct floor. Planned: {planned_buy_notional}, Max Budget: {max_buy_budget}"
+                
+            # Filter out BUY orders that received 0 quantity
+            orders = [o for o in orders if not (o["intent"] in ["ADD", "NEW_ENTRY"] and o.get("quantity", 0) <= 0)]
             report["orders"] = orders
+            
+            # Phase 2: Add cash_debug evidence meta
+            report["cash_debug"] = {
+                "total_value": total_value,
+                "min_cash_pct": min_cash_pct,
+                "required_cash_floor": required_cash_floor,
+                "max_buy_budget": max_buy_budget,
+                "planned_buy_notional": planned_buy_notional,
+                "breached": breached
+            }
 
             if not orders:
                 report["decision"] = "EMPTY"

@@ -45,6 +45,7 @@ def generate_ticket(force: bool = False):
             "prep_ref": None,
             "prep_asof": None,
             "confirm_token": None,
+            "bundle_id": None,
             "plan_id": None
         },
         "decision": "BLOCKED",
@@ -70,6 +71,8 @@ def generate_ticket(force: bool = False):
         
     ticket["source"]["prep_ref"] = str(PREP_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
     ticket["source"]["prep_asof"] = prep.get("asof")
+    # P191 Phase 2: Extract bundle_id
+    ticket["source"]["bundle_id"] = prep.get("source", {}).get("bundle_id")
     ticket["source"]["plan_id"] = prep.get("source", {}).get("plan_id")
     ticket["source"]["confirm_token"] = prep.get("source", {}).get("confirm_token")
     ticket["evidence_refs"].append(ticket["source"]["prep_ref"])

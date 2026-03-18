@@ -54,6 +54,7 @@ def generate_prep(confirm_token: str = None, force: bool = False):
             "export_ref": None,
             "export_asof": None,
             "order_plan_ref": None,
+            "bundle_id": None,
             "plan_id": None,
             "confirm_token": None
         },
@@ -100,7 +101,11 @@ def generate_prep(confirm_token: str = None, force: bool = False):
 
     prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
     
-    prep["source"]["order_plan_ref"] = str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/")
+    # P191 Phase 2: Extract bundle_id
+    bundle_id = export_data.get("source", {}).get("bundle_id")
+    if not bundle_id and plan_data:
+        bundle_id = plan_data.get("source", {}).get("bundle_id")
+    prep["source"]["bundle_id"] = bundle_id
     
     # Check plan_id match (P191 Phase 1)
     latest_plan_id = plan_data.get("plan_id")

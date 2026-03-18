@@ -48,9 +48,12 @@ def generate_export(force: bool = False) -> Optional[Dict]:
     
     # P153/P154: Create order_plan_key with strict orders hash
     order_plan_key = "NONE"
+    bundle_id = None
     if plan:
         p_id = plan.get("plan_id", "")
         p_dec = plan.get("decision", "")
+        # P191 Phase 2: Extract bundle_id
+        bundle_id = plan.get("source", {}).get("bundle_id")
         # Compute sha256 of orders array to guarantee drift detection
         orders_dump = json.dumps(plan.get("orders", []), sort_keys=True, ensure_ascii=False)
         p_sha = hashlib.sha256(orders_dump.encode("utf-8")).hexdigest()
@@ -73,6 +76,7 @@ def generate_export(force: bool = False) -> Optional[Dict]:
         "source": {
             "order_plan_ref": str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/"),
             "order_plan_key": order_plan_key,
+            "bundle_id": bundle_id,
             "plan_id": None,
             "decision": None
         },

@@ -97,7 +97,7 @@ def generate_record(input_token: str, items_data: Dict, exec_mode: str = "LIVE")
         raise e
         
     # Check ticket_id
-    ticket_id = ticket.get("ticket_id") or ticket.get("source", {}).get("plan_id", "UNKNOWN")
+    ticket_id = ticket.get("id") or ticket.get("ticket_id") or "UNKNOWN"
     record["ticket_id"] = ticket_id
     
     # 2.5 Generate idempotency_key
@@ -190,10 +190,10 @@ def generate_record(input_token: str, items_data: Dict, exec_mode: str = "LIVE")
     }
     
     record["linkage"] = {
-        "bundle_id": "UNKNOWN", 
+        "bundle_id": ticket.get("source", {}).get("bundle_id") or prep.get("source", {}).get("bundle_id") or "UNKNOWN", 
         "plan_id": prep_plan_id,
         "export_id": prep.get("source", {}).get("export_ref"), 
-        "ticket_id": "TICKET_LATEST" 
+        "ticket_id": ticket_id 
     }
     
     # 5. Process Items & Calculate Result

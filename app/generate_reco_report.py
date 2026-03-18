@@ -262,10 +262,22 @@ def generate_reco_report(force: bool = False) -> Dict:
         report_id = str(uuid.uuid4())
         now = datetime.now(KST).isoformat()
         
+        # Cache metrics
+        total_positions = len(holding_actions)
+        
+        # Phase-2 Constraints: max_positions 1-source of truth
+        base_max_positions = position_limits.get("max_positions", 4)
+        buckets = strategy.get("buckets", [])
+        bucket_count = len(buckets)
+        effective_max_positions = max(base_max_positions, bucket_count)
+        
         # Decision Logic
         if not top_picks and not holding_actions:
             decision = "EMPTY_RECO" # Or WARN per P101
             reason = "NO_SIGNAL"
+        elif total_positions > effective_max_positions:
+            decision = "BLOCKED"
+            reason = "MAX_POSITIONS_CONFLICT"
         else:
             decision = "GENERATED"
             reason = "SUCCESS"
@@ -280,7 +292,7 @@ def generate_reco_report(force: bool = False) -> Dict:
             "top_picks": top_picks,
             "holding_actions": holding_actions,
             "summary": {
-                "total_positions": len(holding_actions), # Using holding actions count or top picks? Usually holdings.
+                "total_positions": total_positions,
                 "buy_count": buy_count,
                 "sell_count": sell_count,
                 "hold_count": hold_count,
@@ -288,8 +300,13 @@ def generate_reco_report(force: bool = False) -> Dict:
             },
             "constraints_applied": {
                 "max_position_pct": risk_limits.get("max_position_pct", 0.25),
-                "max_positions": position_limits.get("max_positions", 4),
+                "max_positions": effective_max_positions,
                 "min_cash_pct": position_limits.get("min_cash_pct", 0.10)
+            },
+            "constraints_debug": {
+                "base_max_positions": base_max_positions,
+                "bucket_count": bucket_count,
+                "effective_max_positions": effective_max_positions
             },
             "evidence_refs": [
                 "state/strategy_bundle/latest/strategy_bundle_latest.json",
