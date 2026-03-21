@@ -1,0 +1,32 @@
+{
+  "p200_fix_v2": {
+    "pc_push_bundle_response": {
+      "approval_included": true,
+      "approval_bytes": "동적 사이즈",
+      "approval_fingerprint": "sha256prefix"
+    },
+    "oci_snapshot_response": {
+      "approval_written": true,
+      "written_path": "state/strategy_bundle/latest/live_approval.json",
+      "snapshot_saved": true
+    },
+    "hash_exclude_rule": {
+      "excluded_filename": "live_approval.json",
+      "applied_on": [
+        "PC",
+        "OCI"
+      ],
+      "mismatch_resolved": true,
+      "note": "추가로 bundle payload hash가 volatile 한 datetime.now()로 인해 지속적으로 재생성되던 근본 원인을 파일 mtime 기반으로 안정화(Stable)하여 해결했습니다."
+    },
+    "deploy": {
+      "oci_deployed": true,
+      "restart_done": true
+    },
+    "evidence": {
+      "oci_ls_latest": "수동 동기화 후 확인 요망",
+      "oci_ls_snapshots_tail": "수동 동기화 후 확인 요망",
+      "oci_ls_reco_order_plan": "Auto Ops 동작 후 확인 요망"
+    }
+  }
+}

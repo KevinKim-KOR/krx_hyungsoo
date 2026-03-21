@@ -708,21 +708,12 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                  st.success("Step 1 완료: 번들 생성 성공")
                  
                  # === Step 2: Push to OCI ===
-                 st.info("Step 2/3: OCI로 번들 동기화 중 (토큰 자동 추출)...")
+                 st.info("Step 2/3: OCI로 번들 동기화 중 (워크플로우에서 입력한 운영 토큰(ops_token) 사용)...")
                  
-                 # Auto-fetch token from export
-                 export_path = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
-                 ops_token = ""
-                 if export_path.exists():
-                     try:
-                         export_data = json.loads(export_path.read_text(encoding="utf-8"))
-                         ops_token = export_data.get("confirm_token", "")
-                     except Exception as e:
-                         pass
-                         
+                 ops_token = st.session_state.get("ops_token", "")
                  if not ops_token:
-                     st.error("Step 2 실패: 최신 Export 파일에서 confirm_token을 찾을 수 없습니다. Order Plan Export를 먼저 생성해주세요.")
-                     st.session_state["last_block_reason"] = "Auto Ops 차단: Step 2 Token 추출 실패"
+                     st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
+                     st.session_state["last_block_reason"] = "Auto Ops 차단: Token 없음 (Step 2)"
                      return
                      
                  sync_timeout = st.session_state.get("sync_timeout", 60)
@@ -734,7 +725,15 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                      st.error(f"Step 2 실패: OCI 동기화에 실패했습니다.\n{sync_resp.text}")
                      st.session_state["last_block_reason"] = f"Auto Ops 차단: Step 2 Push 실패"
                      return
-                 st.success("Step 2 완료: OCI 동기화 성공")
+                     
+                 try:
+                     sync_data = sync_resp.json()
+                     if sync_data.get("approval_included", False):
+                         st.success(f"Step 2 완료: OCI 동기화 성공 (Approval 팩 포함: {sync_data.get('approval_bytes', 0)}B, FP={sync_data.get('approval_fingerprint', '')})")
+                     else:
+                         st.success("Step 2 완료: OCI 동기화 성공")
+                 except Exception:
+                     st.success("Step 2 완료: OCI 동기화 성공")
                  
                  # === Step 3: Trigger OCI Auto Ops Cycle ===
                  st.info("Step 3/3: OCI Auto Ops Cycle 실행 중...")

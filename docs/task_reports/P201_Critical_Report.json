@@ -1,0 +1,17 @@
+{
+  "p201": {
+    "fix": "step2_sync_uses_ops_token_only",
+    "removed": [
+      "confirm_token_lookup_from_export",
+      "export_required_gate_in_step2"
+    ],
+    "kept_fail_closed": [
+      "ops_token_empty_warn_and_return"
+    ],
+    "verification": {
+      "step2_runs_without_export": true,
+      "push_bundle_called": true,
+      "oci_reco_order_plan_updated": true
+    }
+  }
+}
