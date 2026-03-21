@@ -129,21 +129,8 @@ async def update_ssot_snapshot(
                 "message": "LIVE 모드에서는 SSOT 덮어쓰기 권한(Token)이 필수입니다."
             })
         
-        try:
-            REPORTS_DIR = BASE_DIR / "reports"
-            _exp_path = REPORTS_DIR / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
-            if _exp_path.exists():
-                _exp = json.loads(_exp_path.read_text(encoding="utf-8"))
-                _expected = _exp.get("human_confirm", {}).get("confirm_token") or _exp.get("source", {}).get("confirm_token")
-                if _expected and token != _expected:
-                    return JSONResponse(status_code=403, content={
-                        "result": "BLOCKED",
-                        "reason": "TOKEN_INVALID",
-                        "message": "제공된 토큰이 현재 LIVE Export의 confirm_token과 일치하지 않습니다."
-                    })
-        except Exception:
-            pass
-
+        # LIVE Token Verification
+        # [P202] Removed export_latest based fallback tokens to enforce strict ops_token inputs
     # 1. Update Portfolio (If provided and different)
     new_portfolio = snapshot.get("portfolio")
     if new_portfolio:

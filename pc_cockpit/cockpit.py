@@ -581,6 +581,55 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
 
 def render_ops_p144(params_data, portfolio_data, guardrails_data):
     st.header("Daily Operations Cockpit (UI-First)")
+    
+    # 🗺️ P202: 5-Step Flow Guide
+    st.markdown("### 🗺️ 운영 흐름 가이드 (Flow Guide)")
+    with st.expander("📍 현재 단계 파악하기 (클릭하여 열기)", expanded=True):
+        # Step 0: Approval
+        st.markdown("**[Step 0] 승인 (Approval)**")
+        app_data = load_json(LIVE_APPROVAL_LATEST_PATH)
+        app_status = "✅ APPROVED" if app_data and app_data.get("status") == "APPROVED" else "❌ 미승인/철회됨"
+        st.markdown(f"- **상태**: {app_status} (live_approval.json)\n- **다음 버튼**: 워크플로우 탭 → 'Approve LIVE'")
+        
+        # Step 1: Sync
+        st.markdown("**[Step 1] 동기화 (Sync)**")
+        bundle_data = load_json(BUNDLE_LATEST_PATH)
+        sync_time = bundle_data.get("created_at", "N/A") if bundle_data else "N/A"
+        st.markdown(f"- **상태**: 마지막 로컬 번들 생성/Sync 시도: {sync_time}\n- **다음 버튼**: 워크플로우 탭 → '1-Click Sync'")
+
+        # Step 2: Ops
+        st.markdown("**[Step 2] 운영 (Ops: RECO/ORDER_PLAN)**")
+        reco_path = BASE_DIR / "reports" / "live" / "reco" / "latest" / "reco_latest.json"
+        op_path = BASE_DIR / "reports" / "live" / "order_plan" / "latest" / "order_plan_latest.json"
+        
+        reco_time = load_json(reco_path).get("asof", "N/A") if reco_path.exists() else "N/A"
+        op_data = load_json(op_path) if op_path.exists() else {}
+        op_id = op_data.get("plan_id", "N/A")
+        
+        st.markdown(f"- **상태**: RECO({reco_time}), ORDER_PLAN({op_id})\n- **다음 버튼**: 데일리운영 탭 → 'Run Auto Ops Cycle'")
+
+        # Step 3: Exec
+        st.markdown("**[Step 3] 실행 (Execution: Export/Prep/Ticket)**")
+        exp_path = BASE_DIR / "reports" / "live" / "order_plan_export" / "latest" / "order_plan_export_latest.json"
+        prep_path = BASE_DIR / "reports" / "live" / "execution_prep" / "latest" / "execution_prep_latest.json"
+        ticket_path = BASE_DIR / "reports" / "live" / "execution_ticket" / "latest" / "execution_ticket_latest.json"
+        
+        exp_id = load_json(exp_path).get("source", {}).get("plan_id", "N/A") if exp_path.exists() else "없음"
+        prep_id = load_json(prep_path).get("plan_id", "N/A") if prep_path.exists() else "없음"
+        ticket_id = load_json(ticket_path).get("plan_id", "N/A") if ticket_path.exists() else "없음"
+        
+        match_str = "✅ 정렬됨" if (op_id != "N/A" and exp_id == op_id and prep_id == op_id and ticket_id == op_id) else "⚠️ 불일치(진행중/미생성)"
+        st.markdown(f"- **상태**: Export({exp_id}) / Prep({prep_id}) / Ticket({ticket_id}) → {match_str}\n- **다음 버튼**: 데일리운영 탭 → 'Execution 관련 버튼(향후 UI)'")
+        
+        # Step 4: Record
+        st.markdown("**[Step 4] 기록 (Record - 선택적 필수사항 아님)**")
+        rec_path = BASE_DIR / "reports" / "live" / "manual_execution_record" / "latest" / "manual_execution_record_latest.json"
+        rec_id = load_json(rec_path).get("plan_id", "N/A") if rec_path.exists() else "없음"
+        rec_warn = "⚠️ (오래된 plan_id)" if (op_id != "N/A" and rec_id != "없음" and rec_id != op_id) else ""
+        st.markdown(f"- **상태**: Record({rec_id}) {rec_warn}\n- **안내**: Record는 매매 체결이 실제로 이루어진 '실행 후' 선택적으로 생성하는 산출물입니다.")
+    
+    st.divider()
+
     st.info("💡 운영 순서: PULL → Run Auto Ops (승인/Sync 완료 상태에서만)")
     st.caption("토큰 입력은 워크플로우 탭에서 1회만. 이 탭은 Token-Free UI.")
     
