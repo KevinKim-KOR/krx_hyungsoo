@@ -1069,7 +1069,7 @@
 
         // Init
         fetchData();
-        setInterval(fetchData, 10000); // Poll every 10s
+        // [P202] Removed setInterval auto-polling to prevent async badge flashing. User can use manual Refresh button.
     </script>
 </body>
 
