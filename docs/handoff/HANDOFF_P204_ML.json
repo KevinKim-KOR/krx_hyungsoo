@@ -1,0 +1,41 @@
+{
+  "asof_kst": "2026-03-22",
+  "live_mode": true,
+  "token_policy": {
+    "env_key": "OCI_OPS_TOKEN",
+    "ui_override": true
+  },
+  "approval_gate": {
+    "path": "state/strategy_bundle/latest/live_approval.json",
+    "required": true
+  },
+  "hash_rule": {
+    "exclude_files": [
+      "live_approval.json"
+    ]
+  },
+  "ui_tabs": [
+    "데일리운영",
+    "워크플로우",
+    "정비창"
+  ],
+  "ops_flow": [
+    "HEALTH",
+    "RECO",
+    "ORDER_PLAN",
+    "SUMMARY"
+  ],
+  "execution_flow": [
+    "EXPORT",
+    "PREP",
+    "TICKET"
+  ],
+  "record_flow": [
+    "RECORD (optional)"
+  ],
+  "known_pitfalls": [
+    "confirm_token은 '실행/수동체결' 쪽 문서용이며 Sync 토큰이 아님",
+    "operator 카드 asof 불일치 시 OUTDATED는 경고(시각화)일 뿐, 자동 삭제/수정하지 않음"
+  ],
+  "next_phase": "P204-ML-Tuning"
+}
