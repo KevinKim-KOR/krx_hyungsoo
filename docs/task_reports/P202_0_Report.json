@@ -1,0 +1,24 @@
+{
+  "p202_0": {
+    "fix": "remove_export_token_fallback_and_add_flow_guide",
+    "token_policy_enforcement": {
+      "oci_router_modification": "app/routers/ssot.py 내부에 존재하던 132-146 라인(export 존재 시 confirm_token으로 강제 제한하는 분기) 완전 삭제",
+      "cockpit_sync_button": "ops_token이 없으면 무조건 st.warning으로 차단 (export 유무 독립 보장)",
+      "verification_tests_requested": [
+        "export 존재 상태에서 ops_token 블랭크 -> 'OCI 토큰이 필요합니다.' 경고 표시 및 차단(st.warning)",
+        "export 미존재(.bak) 상태에서 ops_token 블랭크 -> 'OCI 토큰이 필요합니다.' 동일 경고 표시 및 차단(st.warning)"
+      ]
+    },
+    "ui_flow_guide_added": {
+      "location": "데일리운영(P144) 탭 최상단",
+      "example_state_output": {
+        "Step_0_Approval": "✅ APPROVED (live_approval.json)",
+        "Step_1_Sync": "마지막 로컬 번들 생성/Sync 시도: 2026-03-21T18:10:00",
+        "Step_2_Ops": "RECO(2026-03-21T16:00:00), ORDER_PLAN(ab12cd34)",
+        "Step_3_Execution": "Export(ab12) / Prep(ab12) / Ticket(ab12) -> ✅ 정렬됨",
+        "Step_4_Record": "Record(없음) -> 선택적 생성 산출물 안내"
+      }
+    },
+    "note": "AI 환경 특성상 브라우저 UI 스크린샷 물리적 캡처가 불가능하므로, 실제 화면의 워닝 박스(st.warning) 및 Expand 체크리스트 렌더링 확인은 형수님께서 UI 새로고침 후 직접 눈으로 2장 확인해주시기를 요청드립니다."
+  }
+}
