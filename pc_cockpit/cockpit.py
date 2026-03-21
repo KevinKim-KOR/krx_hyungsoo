@@ -38,10 +38,25 @@ def check_backend_health():
 
 import os
 import json
+from dotenv import load_dotenv
 
 # Add project root to path for util imports
 BASE_DIR = Path(__file__).parent.parent
 sys.path.append(str(BASE_DIR))
+
+load_dotenv(BASE_DIR / ".env")
+
+def get_oci_ops_token():
+    """P203: Auto-load OCI_OPS_TOKEN from env, with UI override"""
+    env_token = os.environ.get("OCI_OPS_TOKEN", "").strip()
+    ui_token = st.session_state.get("ops_token", "").strip()
+    
+    if ui_token:
+        return ui_token, "OVERRIDE(UI)"
+    elif env_token:
+        return env_token, "AUTO(.env)"
+    else:
+        return "", "MISSING"
 
 from app.utils.portfolio_normalize import normalize_portfolio, load_asof_override
 
@@ -544,12 +559,18 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     # C. 3) 운영 동기화 (OCI 반영)
     st.subheader("3) 운영 동기화 (OCI 반영)")
     
-    # P195: Unified single token input location for the entire UI
-    st.text_input("OCI Access Token (운영 토큰)", type="password", key="ops_token")
+    # P195/P203: Unified single token input location for the entire UI
+    actual_token, token_status = get_oci_ops_token()
+    
+    col_tk1, col_tk2 = st.columns([3, 1])
+    with col_tk1:
+        st.text_input("OCI Access Token (운영 토큰)", type="password", key="ops_token", placeholder="비워두면 .env 자동 로드")
+    with col_tk2:
+        st.markdown("<div style='height: 38px;'></div>", unsafe_allow_html=True)
+        st.caption(f"**TOKEN:** {token_status}")
     
     # Push Push Logic
     sync_timeout = st.session_state.get("sync_timeout", 60)
-    token = st.session_state.get("ops_token", "")
     
     if st.button("📤 OCI 반영 (1-Click Sync)", key="wf_push_oci", use_container_width=True):
         ok, msg = check_live_approval()
@@ -558,15 +579,15 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
             st.session_state["last_block_reason"] = f"1-Click Sync 차단: {msg}"
             return
             
-        if not token:
-            st.warning("OCI 토큰이 필요합니다. 위 입력란에 토큰을 넣고 다시 시도하세요.")
+        if not actual_token:
+            st.warning("OCI_OPS_TOKEN 없음(.env 설정 필요). Sync 중단")
             st.session_state["last_block_reason"] = "1-Click Sync 차단: Token 없음"
             return
         else:
             with st.spinner(f"Pushing to OCI..."):
                 try:
                     r = requests.post("http://localhost:8000/api/sync/push_bundle", 
-                                      json={"token": token}, 
+                                      json={"token": actual_token}, 
                                       params={"timeout_seconds": sync_timeout},
                                       timeout=sync_timeout + 5)
                     if r.status_code == 200:
@@ -697,15 +718,20 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
         st.caption("OCI 읽기(토큰 필요, UI에서는 숨김)")
         if pull_clicked:
             do_pull = True
-            if not st.session_state.get("ops_token", ""):
-                st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
+            
+            actual_token, _ = get_oci_ops_token()
+            if not actual_token:
+                st.warning("OCI_OPS_TOKEN 없음(.env 설정 필요). PULL 중단")
                 st.session_state["last_block_reason"] = "PULL 차단: Token 없음"
                 do_pull = False
             
             if do_pull:
                 with st.spinner(f"Pulling..."):
                     try:
-                        r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
+                        r = requests.post("http://localhost:8000/api/sync/pull", 
+                                          json={"token": actual_token}, 
+                                          params={"timeout_seconds": sync_timeout}, 
+                                          timeout=sync_timeout + 5)
                         if r.status_code == 200:
                             st.success("OK")
                             time.sleep(1)
@@ -739,8 +765,9 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                  st.session_state["last_block_reason"] = f"Auto Ops 차단: {msg}"
                  return
                  
-             if not st.session_state.get("ops_token", ""):
-                 st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
+             actual_token, t_status = get_oci_ops_token()
+             if not actual_token:
+                 st.warning("OCI_OPS_TOKEN 없음(.env 설정 필요). Auto Ops 중단")
                  st.session_state["last_block_reason"] = "Auto Ops 차단: Token 없음"
                  return
              try:
@@ -757,17 +784,11 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                  st.success("Step 1 완료: 번들 생성 성공")
                  
                  # === Step 2: Push to OCI ===
-                 st.info("Step 2/3: OCI로 번들 동기화 중 (워크플로우에서 입력한 운영 토큰(ops_token) 사용)...")
-                 
-                 ops_token = st.session_state.get("ops_token", "")
-                 if not ops_token:
-                     st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
-                     st.session_state["last_block_reason"] = "Auto Ops 차단: Token 없음 (Step 2)"
-                     return
+                 st.info(f"Step 2/3: OCI로 번들 동기화 중 ({t_status})...")
                      
                  sync_timeout = st.session_state.get("sync_timeout", 60)
                  sync_resp = requests.post("http://localhost:8000/api/sync/push_bundle", 
-                                          json={"token": ops_token}, 
+                                          json={"token": actual_token}, 
                                           params={"timeout_seconds": sync_timeout},
                                           timeout=sync_timeout + 5)
                  if sync_resp.status_code != 200:

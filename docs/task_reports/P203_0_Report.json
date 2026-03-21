@@ -1,0 +1,10 @@
+{
+  "p203": {
+    "token_key": "OCI_OPS_TOKEN",
+    "token_autoload": true,
+    "ui_override_optional": true,
+    "sync_depends_on_export_confirm_token": false,
+    "no_local_only_ops_when_token_missing": true,
+    "st_stop_not_used": true
+  }
+}
