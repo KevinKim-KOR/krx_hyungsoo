@@ -619,14 +619,16 @@
                 gridRec.innerHTML = '';
                 
                 const CARD_CONF = {
-                    "guardrails": { sec: gridOps, title: "HEALTH", desc: "시스템/가드레일 PASS 여부.", ord: 1 },
+                    "health": { sec: gridOps, title: "HEALTH", desc: "시스템/가드레일 PASS 여부.", ord: 1 },
                     "reco": { sec: gridOps, title: "RECO", desc: "이번 사이클 추천(top_picks) 및 제약 적용 결과.", ord: 2 },
                     "order_plan": { sec: gridOps, title: "ORDER PLAN", desc: "실제 주문 수량/금액이 계산된 주문안(plan_id 포함).", ord: 3 },
-                    "ops_summary": { sec: gridOps, title: "SUMMARY", desc: "운영 전체 요약(최신 refs, stage, last run).", ord: 4 },
-                    "order_plan_export": { sec: gridExec, title: "EXPORT", desc: "주문서 발급 + confirm_token(실행 승인 토큰).", ord: 5 },
-                    "execution_prep": { sec: gridExec, title: "PREP", desc: "실행 전 안전검사/모드 확인(READY/PASS 등).", ord: 6 },
-                    "execution_ticket": { sec: gridExec, title: "TICKET", desc: "사람이 복붙해서 체결할 수 있는 티켓.", ord: 7 },
-                    "manual_execution_record": { sec: gridRec, title: "RECORD", desc: "체결 후 영수증/기록(없어도 정상).", ord: 9 }
+                    "summary": { sec: gridOps, title: "SUMMARY", desc: "운영 전체 요약(최신 refs, stage, last run).", ord: 4 },
+                    "export": { sec: gridExec, title: "EXPORT", desc: "주문서 발급 + confirm_token(실행 승인 토큰).", ord: 5 },
+                    "prep": { sec: gridExec, title: "PREP", desc: "실행 전 안전검사/모드 확인(READY/PASS 등).", ord: 6 },
+                    "ticket": { sec: gridExec, title: "TICKET", desc: "사람이 복붙해서 체결할 수 있는 티켓.", ord: 7 },
+                    "ticket_md": { sec: gridExec, title: "TICKET MD", desc: "마크다운 문서형. (복붙/스크린샷용)", ord: 8 },
+                    "record": { sec: gridRec, title: "RECORD", desc: "체결 후 영수증/기록(없어도 정상).", ord: 9 },
+                    "manual_execution_record": { sec: gridRec, title: "RECORD (Legacy)", desc: "구형 수동 체결 영수증", ord: 10 }
                 };
 
                 let op_plan_id_baseline = "UNKNOWN";
