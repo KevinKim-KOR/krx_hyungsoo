@@ -6,7 +6,7 @@
 
 ## B. 현재 운영 구조 (Architecture)
 1. **PC 조종석 (`http://localhost:8501`)**: `cockpit.py` 스트림릿 기반. 전략 파라미터를 설정하고 OCI 서버로 1-Click Sync 하거나, OCI 서버의 산출물을 PULL 하여 확인하는 **Master Control** 역할.
-2. **OCI 운영석 (`http://<OCI_IP>:8000`)**: FastAPI / 백엔드 데몬 기반. PC로부터 전달받은 파라미터를 토대로 무거운 연산을 돌리고, 매일 아침 `reco` ➜ `order_plan` ➜ `export` ➜ `prep` ➜ `ticket` ➜ `record` 증명서(Evidence)들을 발행하는 **Execution Engine** 역할.
+2. **OCI 운영석 (`http://<OCI_IP>:8000`)**: FastAPI / 백엔드 데몬 기반. PC로부터 전달받은 파라미터를 토대로 무거운 연산을 돌리며, OCI는 **매 사이클에서 OPS 산출물(HEALTH/RECO/ORDER_PLAN/SUMMARY)을 갱신한다. EXPORT는 운영 정책에 따라 자동 발행될 수 있다. PREP/TICKET/RECORD는 ‘실행(수동 체결)’ 단계에서 필요 시 생성된다.**
 
 ## C. 최종 확정된 3대 핵심 정책 (절대 규칙)
 1. **Token 정책 (Auto-Load & Fail-Closed)**
@@ -49,7 +49,7 @@
 다음 세션은 오직 **백테스트(Backtest) 지표 향상과 ML/통계 기반 최적화**에만 집중합니다. 코드 구조나 배선 개조는 엄격히 금지됩니다. (P204-HANDOFF 의거)
 - **튜닝 목표**: (예) 일간 변동성(Vol) 및 벡테스트 기간 내 MDD 축소
 - **평가 지표**: MDD < 10%, CAGR > 15%, Sharpe Ratio 등
-- **실험 범위**: `app/optuna_tuner.py` 혹은 파라미터 구조의 `momentum_window`, `vol_window`, `weights` 교정 및 강화.
+- **진입점 및 범위**: **튜닝 엔진 진입점은 ‘현재 레포에서 `run_tune.py`가 호출하는 모듈’이다(실존 기준).** 여기서 전략 파라미터의 `momentum_window`, `vol_window`, `weights` 등을 교정하고 강화한다.
 - **실패 기준**: 모델 과적합(Overfitting) 현상 발생, 혹은 연산 소요시간이 1주일을 초과할 경우 전략 기각.
 - **결과 저장 위치**: `reports/tuning/` 내부 산출물로 기록.
 
