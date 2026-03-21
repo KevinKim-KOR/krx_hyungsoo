@@ -11,6 +11,12 @@ import subprocess
 import sys
 import requests
 import time
+import uuid
+import socket
+
+# P195: Initialize token in session state to prevent KeyError crash
+if "ops_token" not in st.session_state:
+    st.session_state["ops_token"] = ""
 
 # P146.9 Configuration
 FAST_TIMEOUT = 10     # Status checks
@@ -56,6 +62,12 @@ GUARDRAILS_PATH = BASE_DIR / "state" / "guardrails" / "latest" / "guardrails_lat
 SEARCH_DIR = BASE_DIR / "reports" / "pc" / "param_search" / "latest"
 SEARCH_LATEST_PATH = SEARCH_DIR / "param_search_latest.json"
 
+# Approval Paths
+LIVE_APPROVAL_LATEST_PATH = BASE_DIR / "state" / "strategy_bundle" / "latest" / "live_approval.json"
+LIVE_APPROVAL_SNAPSHOT_DIR = BASE_DIR / "state" / "strategy_bundle" / "snapshots"
+LIVE_APPROVAL_SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+BUNDLE_LATEST_PATH = BASE_DIR / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
+
 # Holdings Timing Paths
 TIMING_DIR = BASE_DIR / "reports" / "pc" / "holding_timing" / "latest"
 TIMING_LATEST_PATH = TIMING_DIR / "holding_timing_latest.json"
@@ -100,6 +112,74 @@ def save_params(data):
 
 def compute_fingerprint(data):
     return hashlib.sha256(json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
+
+def check_live_approval():
+    approval = load_json(LIVE_APPROVAL_LATEST_PATH)
+    if not approval:
+        return False, "live_approval.json 없음"
+    if approval.get("status") != "APPROVED":
+        return False, f"현재 상태: {approval.get('status')}"
+        
+    curr_params_sha256 = hashlib.sha256(LATEST_PATH.read_bytes()).hexdigest() if LATEST_PATH.exists() else ""
+    
+    bundle_data = load_json(BUNDLE_LATEST_PATH)
+    if not bundle_data:
+        return False, "strategy_bundle_latest.json 누락"
+    curr_bundle_payload_sha256 = bundle_data.get("integrity", {}).get("payload_sha256", "")
+    
+    inputs = approval.get("inputs", {})
+    if inputs.get("params_sha256") != curr_params_sha256:
+        return False, "파라미터 해시 불일치 (파라미터가 변경됨)"
+    if inputs.get("bundle_payload_sha256") != curr_bundle_payload_sha256:
+        return False, "번들 페이로드 해시 불일치"
+        
+    return True, "APPROVED"
+
+def handle_approve_live():
+    curr_params_sha256 = hashlib.sha256(LATEST_PATH.read_bytes()).hexdigest() if LATEST_PATH.exists() else ""
+    bundle_data = load_json(BUNDLE_LATEST_PATH)
+    bundle_id = bundle_data.get("bundle_id", "") if bundle_data else ""
+    payload_sha256 = bundle_data.get("integrity", {}).get("payload_sha256", "") if bundle_data else ""
+    
+    if not curr_params_sha256 or not payload_sha256:
+        st.error("파라미터 또는 번들 파일 누락으로 승인 불가.")
+        return
+        
+    approval_payload = {
+        "schema": "LIVE_APPROVAL_V1",
+        "approval_id": str(uuid.uuid4()),
+        "status": "APPROVED",
+        "approved_at": datetime.now(KST).isoformat(),
+        "approved_by": os.environ.get("COMPUTERNAME", socket.gethostname() or "UNKNOWN"),
+        "intent": "ALLOW_SYNC_AND_RUN",
+        "inputs": {
+            "params_sha256": curr_params_sha256,
+            "bundle_payload_sha256": payload_sha256,
+            "bundle_id": bundle_id,
+            "mode": "LIVE"
+        }
+    }
+    
+    LIVE_APPROVAL_LATEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    save_json(LIVE_APPROVAL_LATEST_PATH, approval_payload)
+    snap_name = f"live_approval_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
+    save_json(LIVE_APPROVAL_SNAPSHOT_DIR / snap_name, approval_payload)
+    st.success("✅ LIVE 승인(APPROVED) 완료! OCI 반영 및 워크플로우 진행이 허용됩니다.")
+
+def handle_revoke_live():
+    approval = load_json(LIVE_APPROVAL_LATEST_PATH)
+    if not approval:
+        st.warning("승인 파일이 없습니다.")
+        return
+        
+    approval["status"] = "REVOKED"
+    approval["approved_at"] = datetime.now(KST).isoformat()
+    approval["approved_by"] = os.environ.get("COMPUTERNAME", socket.gethostname() or "UNKNOWN")
+    
+    save_json(LIVE_APPROVAL_LATEST_PATH, approval)
+    snap_name = f"live_approval_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
+    save_json(LIVE_APPROVAL_SNAPSHOT_DIR / snap_name, approval)
+    st.success("🚫 LIVE 승인 철회(REVOKED) 완료. OCI 반영 및 운영이 즉시 차단됩니다.")
 
 def load_portfolio():
     if PORTFOLIO_PATH.exists():
@@ -247,6 +327,8 @@ def sync_ops_to_wf():
 def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     
     st.header("🧭 운영 워크플로우 허브 (P170-UI)")
+    st.info("💡 LIVE 반영 순서: 승인 → 1-Click Sync (승인 없으면 동작 안 함)")
+    st.caption("운영 토큰은 여기서만 입력(단일화).")
     st.caption("파라미터 조회, 백테스트, 튜닝, 오퍼레이션 동기화를 탭 이동 없이 한 화면에서 수행합니다.")
     
     # [Phase 2] Operation Mode Info
@@ -434,19 +516,48 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
         pass
 
     st.divider()
+    # LIVE 승인 패널 추가
+    st.markdown("### 🔐 LIVE 승인 패널 (Approval Gate)")
+    
+    app_status = "❌ 미승인/없음"
+    app_data = load_json(LIVE_APPROVAL_LATEST_PATH)
+    if app_data:
+        app_status = "✅ 승인됨 (APPROVED)" if app_data.get("status") == "APPROVED" else "🚫 철회됨 (REVOKED)"
+        
+    st.info(f"현재 LIVE 승인 상태: **{app_status}**")
+    
+    c_app, c_rev = st.columns(2)
+    with c_app:
+        if st.button("✅ Approve LIVE", use_container_width=True):
+            handle_approve_live()
+            time.sleep(1)
+            st.rerun()
+    with c_rev:
+        if st.button("🚫 Revoke LIVE", use_container_width=True):
+            handle_revoke_live()
+            time.sleep(1)
+            st.rerun()
+
+    st.divider()
     # C. 3) 운영 동기화 (OCI 반영)
     st.subheader("3) 운영 동기화 (OCI 반영)")
     
-    # Token Input for Workflow Hub (P170)
-    st.text_input("OCI Access Token (운영 토큰)", type="password", key="wf_token_input", on_change=sync_wf_to_ops)
+    # P195: Unified single token input location for the entire UI
+    st.text_input("OCI Access Token (운영 토큰)", type="password", key="ops_token")
     
     # Push Push Logic
     sync_timeout = st.session_state.get("sync_timeout", 60)
     token = st.session_state.get("ops_token", "")
     
     if st.button("📤 OCI 반영 (1-Click Sync)", key="wf_push_oci", use_container_width=True):
+        ok, msg = check_live_approval()
+        if not ok:
+            st.error(f"LIVE 승인 없음(또는 REVOKED) → Approve LIVE 후 Sync 하세요. ({msg})")
+            st.stop()
+            
         if not token:
             st.warning("OCI 토큰이 필요합니다. 위 입력란에 토큰을 넣고 다시 시도하세요.")
+            st.stop()
         else:
             with st.spinner(f"Pushing to OCI..."):
                 try:
@@ -466,6 +577,8 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
 
 def render_ops_p144(params_data, portfolio_data, guardrails_data):
     st.header("Daily Operations Cockpit (UI-First)")
+    st.info("💡 운영 순서: PULL → Run Auto Ops (승인/Sync 완료 상태에서만)")
+    st.caption("토큰 입력은 워크플로우 탭에서 1회만. 이 탭은 Token-Free UI.")
     
     # 1. Fetch Status (SSOT from Backend)
     ssot_snapshot = {}
@@ -518,19 +631,20 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
     st.divider()
     st.markdown("#### 🔄 SSOT Synchronization")
     
-    # UI Layout: Horizontal Alignment
-    # [Timeout 1] [Token 2] [Pull 1.5] [Push 1.5]
-    c1, c2, c3, c4 = st.columns([1, 2, 1.5, 1.5])
+    # P195: Streamlined UI Layout (Token input removed, Push removed from 데일리운영 (P144))
+    c1, c_pull = st.columns([1, 3])
     
     with c1:
         sync_timeout = st.number_input("Timeout (sec)", value=60, step=30, key="sync_timeout")
         
-    with c2:
-        st.text_input("Confirm Token", type="password", key="ops_token_input", placeholder="Required for PUSH")
-        
-    with c3:
+    with c_pull:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
-        if st.button("📥 PULL (OCI)", use_container_width=True):
+        pull_clicked = st.button("📥 PULL (OCI)", use_container_width=True)
+        st.caption("OCI 읽기(토큰 필요, UI에서는 숨김)")
+        if pull_clicked:
+            if not st.session_state.get("ops_token", ""):
+                st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
+                st.stop()
             with st.spinner(f"Pulling..."):
                 try:
                     r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
@@ -543,31 +657,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    with c4:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer for label
-        if st.button("📤 PUSH (OCI)", use_container_width=True):
-            token = st.session_state.get("ops_token_input", "")
-            # Sync to shared token key for other consumers
-            if token:
-                st.session_state["ops_token"] = token
-                st.session_state["wf_token_input"] = token
-            if not token:
-                st.warning("Token Required!")
-            else:
-                with st.spinner(f"Pushing..."):
-                    try:
-                        r = requests.post("http://localhost:8000/api/sync/push", 
-                                          json={"token": token}, 
-                                          params={"timeout_seconds": sync_timeout},
-                                          timeout=sync_timeout + 5)
-                        if r.status_code == 200:
-                            st.success("OK")
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error(f"Fail: {r.text}")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+    # P195: PUSH (OCI) moved to 정비창 (Advanced) Lab
     
     # Status Line
     st.caption(f"Status: {ssot_snapshot.get('synced_at', 'N/A')} (Rev: {ssot_snapshot.get('revision', 'N/A')})")
@@ -575,14 +665,24 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
     st.divider()
 
     # 2. Controls (Auto Ops)
-    st.subheader("🤖 Auto Operations (Token-Free)")
+    st.subheader("🤖 Auto Operations (Token-Free UI)")
+    st.caption("(내부적으로는 워크플로우(P170)에서 입력한 세션 토큰(ops_token)을 사용합니다. 화면에 입력창만 없습니다.)")
     
     col_run, col_force = st.columns([1, 1])
     with col_force:
         force_recompute = st.checkbox("☑ Force Recompute (Overwrite)", value=False, help="강제 재생성 (LIVE 모드에서는 무시됨)")
+        st.caption("권장: Force는 ‘리포트 재생성 강제’(필요할 때만)")
         
     with col_run:
         if st.button("▶️ Run Auto Ops Cycle", use_container_width=True):
+             ok, msg = check_live_approval()
+             if not ok:
+                 st.error(f"워크플로우에서 승인 → 1-Click Sync 완료 후 실행 ({msg})")
+                 st.stop()
+                 
+             if not st.session_state.get("ops_token", ""):
+                 st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
+                 st.stop()
              try:
                  oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
                  
@@ -748,7 +848,7 @@ def render_params(params_data, portfolio_data, guardrails_data):
             adx_min = c3.number_input("ADX 최소값 (ADX Min)", value=p.get("decision_params", {}).get("adx_filter_min", 20))
             c3.caption("`SSOT Key: adx_filter_min`")
             
-            # Weights (New in P135)
+            # Weights (New in Recommendations/Review)
             st.subheader("Weights")
             c1, c2 = st.columns(2)
             w_mom = c1.number_input("Weight Mom", value=p.get("decision_params", {}).get("weight_momentum", 1.0))
@@ -836,7 +936,7 @@ def render_reco(params_data, portfolio_data, guardrails_data):
     SCRIPT_PARAM_SEARCH = BASE_DIR / 'deploy' / 'pc' / 'run_param_search.ps1'
     col1, col2 = st.columns([3, 1])
     with col1:
-        st.subheader("P135 Param Recommendations")
+        st.subheader("Recommendations/Review Param Recommendations")
     with col2:
         if st.button("🔄 Run Analysis (Param Search)"):
             with st.spinner("Running Param Search Simulation..."):
@@ -1025,36 +1125,10 @@ def render_port_edit(params_data, portfolio_data, guardrails_data):
     is_synced = st.session_state["port_sync_state"] == "SYNCED"
     
     st.markdown("#### 🔄 OCI 동기화 상태")
-    c_stat, c_push = st.columns([3, 1])
-    with c_stat:
-        if is_synced:
-            st.success("🟢 **SYNCED** (로컬 저장본과 OCI 반영본이 일치합니다)")
-        else:
-            st.error("🔴 **OUT_OF_SYNC** (로컬에만 저장됨! 우측 버튼을 눌러 OCI에 확정 반영해주세요)")
-            
-    with c_push:
-        if st.button("📤 Push to OCI", disabled=is_synced, use_container_width=True):
-            # Token Check
-            is_live = not is_replay
-            cached_token = st.session_state.get("push_token_input", "")
-            
-            if is_live and not cached_token:
-                st.error("LIVE 모드: Operations 탭에서 Push Token을 먼저 입력해야 합니다.")
-            else:
-                with st.spinner("Pushing to OCI..."):
-                    try:
-                        r = requests.post("http://localhost:8000/api/sync/push", 
-                                          json={"token": cached_token}, 
-                                          timeout=SLOW_TIMEOUT)
-                        if r.status_code == 200:
-                            st.session_state["port_sync_state"] = "SYNCED"
-                            st.success("✅ OCI 체인에 포트폴리오가 정상 반영되었습니다!")
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error(f"Push Failed: {r.text}")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+    if is_synced:
+        st.success("🟢 **SYNCED** (로컬 저장본과 OCI 반영본이 일치합니다. OCI 동기화: 워크플로우 탭 1-Click Sync 사용)")
+    else:
+        st.error("🔴 **OUT_OF_SYNC** (로컬에만 저장됨! OCI 동기화는 워크플로우 탭의 '1-Click Sync'를 이용하세요.)")
                         
     st.divider()
 
@@ -1165,7 +1239,7 @@ def render_review(params_data, portfolio_data, guardrails_data):
     REVIEW_JSON_PATH = REVIEW_DIR / 'param_review_latest.json'
     REVIEW_MD_PATH = REVIEW_DIR / 'param_review_latest.md'
     SCRIPT_PARAM_REVIEW = BASE_DIR / 'deploy' / 'pc' / 'run_param_review.ps1'
-    st.subheader("🧐 Strategy Parameter Review (P138)")
+    st.subheader("🧐 Strategy Parameter Review (Recommendations/Review)")
     
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -1227,7 +1301,7 @@ def render_review(params_data, portfolio_data, guardrails_data):
                             if not params_data:
                                 st.error("Baseline params not loaded.")
                             else:
-                                new_p = apply_reco(params_data, cand) # Re-use apply_reco from P135 logic
+                                new_p = apply_reco(params_data, cand) # Re-use apply_reco from Recommendations/Review logic
                                 snap_path = save_params(new_p)
                                 new_fp = compute_fingerprint(new_p)
                                 st.success(f"Applied! New Fingerprint: `{new_fp}`")
@@ -1572,38 +1646,23 @@ def render_tune_legacy(params_data, portfolio_data, guardrails_data):
 
 def render_advanced_panel(params_data, portfolio_data, guardrails_data):
     st.header('🛠️ 정비창 (Advanced)')
-    st.caption('레거시 모듈 및 개별 기능 테스트를 위한 공간입니다.')
+    st.warning("⚠️ 실험/복구용 창고. 운영 기본 동선 아님.")
+    st.caption('운영에 의미 있는 LAB 2종 및 개별 기능 테스트를 공간입니다.')
     
     module_options = [
         '선택 안함',
-        'Current Parameters',
-        'Recommendations (P135)',
         'Holdings Timing (P136)',
-        'Portfolio Editor (P136.5)',
-        'Param Review (P138)',
-        'Guardrails (P160)',
-        '백테스트 (P165)',
-        '튜닝 (P167)'
+        'Portfolio Editor (P136.5)'
     ]
     selected_module = st.selectbox('모듈 선택', module_options)
     st.divider()
     
-    if selected_module == 'Current Parameters':
-        render_params(params_data, portfolio_data, guardrails_data)
-    elif selected_module == 'Recommendations (P135)':
-        render_reco(params_data, portfolio_data, guardrails_data)
-    elif selected_module == 'Holdings Timing (P136)':
+    if selected_module == 'Holdings Timing (P136)':
+        st.info("💡 보유 종목의 타이밍 상황판(운영 보조) 목적입니다.")
         render_timing(params_data, portfolio_data, guardrails_data)
     elif selected_module == 'Portfolio Editor (P136.5)':
+        st.warning("⚠️ SSOT/현실 잔고 보정 목적입니다.")
         render_port_edit(params_data, portfolio_data, guardrails_data)
-    elif selected_module == 'Param Review (P138)':
-        render_review(params_data, portfolio_data, guardrails_data)
-    elif selected_module == 'Guardrails (P160)':
-        render_guardrails_legacy(params_data, portfolio_data, guardrails_data)
-    elif selected_module == '백테스트 (P165)':
-        render_backtest_legacy(params_data, portfolio_data, guardrails_data)
-    elif selected_module == '튜닝 (P167)':
-        render_tune_legacy(params_data, portfolio_data, guardrails_data)
 
 # Main App Routing
 top_tab_ops, top_tab_wf, top_tab_adv = st.tabs([

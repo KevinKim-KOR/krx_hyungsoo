@@ -1,0 +1,50 @@
+{
+  "keep_candidates": [
+    "데일리운영 (P144)::Operations::📥 PULL (OCI)",
+    "데일리운영 (P144)::Operations::▶️ Run Auto Ops Cycle",
+    "워크플로우 (P170)::Connectivity::Check Connectivity 💓",
+    "워크플로우 (P170)::Management::Initialize Empty Portfolio",
+    "워크플로우 (P170)::Management::💾 포트폴리오 저장 (Save & Normalize)",
+    "워크플로우 (P170)::Reporting::📝 Generate Review Report",
+    "정비창 (Advanced)::Analysis::🔄 Run Analysis (Param Search)",
+    "정비창 (Advanced)::Analysis::Apply Rank N",
+    "정비창 (Advanced)::Analysis::🔄 Run Analysis (Timing)",
+    "정비창 (Advanced)::Run::▶️ Run Backtest",
+    "정비창 (Advanced)::Run::▶️ Run Tune"
+  ],
+  "hide_to_advanced_candidates": [
+    "데일리운영 (P144)::Operations::📤 PUSH (OCI)",
+    "워크플로우 (P170)::Management::📤 Push to OCI"
+  ],
+  "merge_candidates": [],
+  "confusable_pairs": [
+    {
+      "a": "데일리운영 (P144)::Operations::📤 PUSH (OCI)",
+      "b": "워크플로우 (P170)::Management::📤 Push to OCI",
+      "why_confusable": "Name visually almost identical and hits identical `/api/sync/push` endpoint.",
+      "critical_diff": "Inputs differ (a requires Confirm Token, b has no input). Read files differ (a reads strategy_bundle, b reads portfolio_latest)."
+    },
+    {
+      "a": "워크플로우 (P170)::Sync Actions::📤 OCI 반영 (1-Click Sync)",
+      "b": "데일리운영 (P144)::Operations::📤 PUSH (OCI)",
+      "why_confusable": "Both are OCI 'push' operations with a token requirement in the UI.",
+      "critical_diff": "Different endpoints (`/api/sync/push_bundle` vs `/api/sync/push`) and different token variable names (`OCI Access Token` vs `Confirm Token`)."
+    }
+  ],
+  "token_policy_fixed": {
+    "rule": "WRITE(OCI)=token required, READ(OCI)=no token if possible",
+    "token_input_single_place": true
+  },
+  "decision_required_by_hyungsoo": [
+    {
+      "topic": "Token input location",
+      "options": ["데일리운영 (P144) Daily Ops", "워크플로우 (P170) Workflow Hub"],
+      "notes": "현재 UI는 `Workflow Sync` 탭과 `Live Ops` 탭 등 다수 위치에서 token 필드가 분산 노출 중입니다. 'token_input_single_place' 정책을 위해 단일 위치 지정이 필요합니다."
+    },
+    {
+      "topic": "Push to OCI deduplication",
+      "options": ["워크플로우 (P170) 1-Click Sync로 통합", "개별 유지"],
+      "notes": "현재 `push_bundle`, `push(strategy)`, `push(portfolio)` 형태로 나뉘어져 있으며, 4조건 불일치로 자동 Merge가 불가능해 결정이 필요합니다."
+    }
+  ]
+}

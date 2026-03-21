@@ -1,0 +1,24 @@
+{
+  "p195_ux_polish": {
+    "s1_heading_updated": "Auto Operations (Token-Free UI)",
+    "s1_caption_added": "(내부적으로는 S2에서 입력한 세션 토큰(ops_token)을 사용합니다. 화면에 입력창만 없습니다.)",
+    "legacy_push_guards": [
+      {
+        "module": "정비창 (Advanced)::Portfolio Editor",
+        "warning_text": "⚠️ 운영 비권장 / 강제 덮어쓰기 위험 / 잘못 누르면 OCI 상태를 원치 않게 변경할 수 있음",
+        "checkbox_key": "ack_legacy_push_port",
+        "checkbox_label": "I UNDERSTAND: 위험성을 인지했고 강제로 덮어씁니다",
+        "fail_closed_logic": "if not ack: st.warning... st.stop()",
+        "button_label": "⚠️ [위험/운영 비권장] 강제 PUSH (Legacy)"
+      },
+      {
+        "module": "정비창 (Advanced)::수동 PUSH (Legacy - 구버전)",
+        "warning_text": "⚠️ 운영 비권장 / 강제 덮어쓰기 위험 / 잘못 누르면 OCI 상태를 원치 않게 변경할 수 있음",
+        "checkbox_key": "ack_legacy_push_s1",
+        "checkbox_label": "I UNDERSTAND: 위험성을 인지했고 강제로 덮어씁니다",
+        "fail_closed_logic": "if not ack: st.warning... st.stop()",
+        "button_label": "⚠️ [위험/운영 비권장] 강제 PUSH (Legacy)"
+      }
+    ]
+  }
+}

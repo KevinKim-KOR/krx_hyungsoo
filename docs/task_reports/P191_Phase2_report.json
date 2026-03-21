@@ -1,0 +1,20 @@
+{
+  "phase": "P191-PHASE2",
+  "result": "OK",
+  "max_positions_check": {
+    "total_positions": 5,
+    "base_max_positions": 4,
+    "bucket_count": 5,
+    "effective_max_positions": 5,
+    "constraints_applied_max_positions": 5,
+    "ok": true
+  },
+  "cash_floor_check": {
+    "total_value": 1390850.0,
+    "min_cash_pct": 0.5,
+    "required_cash_floor": 695425.0,
+    "max_buy_budget": 695425.0,
+    "planned_buy_notional": 107730.0,
+    "breached": false
+  }
+}

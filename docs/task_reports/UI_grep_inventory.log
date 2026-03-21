@@ -1,0 +1,131 @@
+=== cockpit.py ===
+cockpit.py:10:import subprocess
+cockpit.py:25:        r = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
+cockpit.py:137:        result = subprocess.run(["powershell", "-File", str(script_path)], capture_output=True, text=True)
+cockpit.py:195:                requests.post("http://localhost:8000/api/settings/mode", json=payload, timeout=FAST_TIMEOUT)
+cockpit.py:198:                res = requests.get("http://localhost:8000/api/settings/mode", timeout=FAST_TIMEOUT)
+cockpit.py:267:                universe_str = st.text_input("Tickers (comma separated)", ", ".join(p.get("universe", [])))
+cockpit.py:346:        if st.button("▶️ Run Full Backtest", use_container_width=True):
+cockpit.py:364:        if st.button("▶️ Run Optimizer", use_container_width=True):
+cockpit.py:367:                    import subprocess
+cockpit.py:370:                    result = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
+cockpit.py:441:    st.text_input("OCI Access Token (운영 토큰)", type="password", key="wf_token_input", on_change=sync_wf_to_ops)
+cockpit.py:447:    if st.button("📤 OCI 반영 (1-Click Sync)", key="wf_push_oci", use_container_width=True):
+cockpit.py:453:                    r = requests.post("http://localhost:8000/api/sync/push_bundle",
+cockpit.py:476:        res = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
+cockpit.py:529:        st.text_input("Confirm Token", type="password", key="ops_token_input", placeholder="Required for PUSH")
+cockpit.py:533:        if st.button("📥 PULL (OCI)", use_container_width=True):
+cockpit.py:536:                    r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
+cockpit.py:548:        if st.button("📤 PUSH (OCI)", use_container_width=True):
+cockpit.py:559:                        r = requests.post("http://localhost:8000/api/sync/push",
+cockpit.py:582:        force_recompute = st.checkbox("☑ Force Recompute (Overwrite)", value=False, help="강제 재생성 (LIVE 모드에서는 무시됨)")
+cockpit.py:585:        if st.button("▶️ Run Auto Ops Cycle", use_container_width=True):
+cockpit.py:592:                 result = subprocess.run(bundle_cmd, capture_output=True, text=True)
+cockpit.py:616:                 sync_resp = requests.post("http://localhost:8000/api/sync/push_bundle",
+cockpit.py:628:                 resp = requests.post(f"{oci_url}/api/live/cycle/run?confirm=true&force={str(force_recompute).lower()}", timeout=SLOW_TIMEOUT)
+cockpit.py:676:    if st.button("Check Connectivity 💓", key="conn_check_main"):
+cockpit.py:819:                            resp = requests.post("http://localhost:8000/api/sync/push_bundle", json={"token": token}, timeout=SLOW_TIMEOUT)
+cockpit.py:841:        if st.button("🔄 Run Analysis (Param Search)"):
+cockpit.py:873:                    if st.button(f"Apply Rank {res['rank']}", key=f"apply_{idx}"):
+cockpit.py:891:        if st.button("🔄 Run Analysis (Timing)"):
+cockpit.py:907:         bt_mode = st.selectbox("Backtest Mode", ["Quick (Last 1 Year)", "Full (3 Years)"])
+cockpit.py:909:         if st.button("▶️ Run Backtest"):
+cockpit.py:977:            selected_ticker = st.selectbox("Select Ticker for Details", ticker_opts, format_func=get_ticker_name)
+cockpit.py:1016:        if st.button("Initialize Empty Portfolio"):
+cockpit.py:1036:        if st.button("📤 Push to OCI", disabled=is_synced, use_container_width=True):
+cockpit.py:1046:                        r = requests.post("http://localhost:8000/api/sync/push",
+cockpit.py:1071:        new_asof = st.text_input("기준일 (ASOF KST, YYYY-MM-DD)", value=current_asof, disabled=True)
+cockpit.py:1115:    if st.button("💾 포트폴리오 저장 (Save & Normalize)"):
+cockpit.py:1174:        if st.button("📝 Generate Review Report"):
+cockpit.py:1220:                    if st.button(f"Apply Candidate {rank}", key=f"promo_{rank}"):
+cockpit.py:1225:                        if st.button("Yes, Confirm Apply", key=f"confirm_btn_{rank}"):
+cockpit.py:1306:        bt_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="bt_mode")
+cockpit.py:1311:        run_bt = st.button("▶️ 백테스트 실행", key="run_backtest_btn", type="primary")
+cockpit.py:1419:        tune_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="tune_mode")
+cockpit.py:1427:    run_tune_btn = st.button("▶️ Run Tune", key="run_tune_btn", type="primary")
+cockpit.py:1588:    selected_module = st.selectbox('모듈 선택', module_options)
+
+=== cockpit_new.py ===
+cockpit_new.py:10:import subprocess
+cockpit_new.py:25:        r = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
+cockpit_new.py:137:        result = subprocess.run(["powershell", "-File", str(script_path)], capture_output=True, text=True)
+cockpit_new.py:195:                requests.post("http://localhost:8000/api/settings/mode", json=payload, timeout=FAST_TIMEOUT)
+cockpit_new.py:198:                res = requests.get("http://localhost:8000/api/settings/mode", timeout=FAST_TIMEOUT)
+cockpit_new.py:260:            bt_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="wf_bt_mode")
+cockpit_new.py:265:            run_bt = st.button("▶️ 백테스트 실행", key="wf_run_backtest_btn", type="primary", use_container_width=True)
+cockpit_new.py:308:            tune_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="wf_tune_mode")
+cockpit_new.py:316:        if st.button("▶️ 튜닝 실행", key="wf_run_tune_btn", type="primary"):
+cockpit_new.py:367:                        r = requests.post("http://localhost:8000/api/sync/push_bundle",
+cockpit_new.py:386:                    r = requests.post("http://localhost:8000/api/order_plan_export/regenerate?confirm=true")
+cockpit_new.py:400:                        r = requests.post("http://localhost:8000/api/execution_prep/prepare?confirm=true", json={"confirm_token": token})
+cockpit_new.py:411:                    r = requests.post("http://localhost:8000/api/manual_execution_ticket/regenerate?confirm=true")
+cockpit_new.py:484:            res = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
+cockpit_new.py:537:            st.text_input("Confirm Token", type="password", key="confirm_token", placeholder="Required for PUSH")
+cockpit_new.py:541:            if st.button("📥 PULL (OCI)", use_container_width=True):
+cockpit_new.py:544:                        r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
+cockpit_new.py:556:            if st.button("📤 PUSH (OCI)", use_container_width=True):
+cockpit_new.py:563:                            r = requests.post("http://localhost:8000/api/sync/push",
+cockpit_new.py:586:            force_recompute = st.checkbox("☑ Force Recompute (Overwrite)", value=False, help="강제 재생성 (LIVE 모드에서는 무시됨)")
+cockpit_new.py:589:            if st.button("▶️ Run Auto Ops Cycle", use_container_width=True):
+cockpit_new.py:593:                     resp = requests.post(f"{oci_url}/api/live/cycle/run?confirm=true&force={str(force_recompute).lower()}", timeout=SLOW_TIMEOUT)
+cockpit_new.py:641:        if st.button("Check Connectivity 💓", key="conn_check_main"):
+cockpit_new.py:785:                                resp = requests.post("http://localhost:8000/api/sync/push_bundle", json={"token": token}, timeout=SLOW_TIMEOUT)
+cockpit_new.py:805:            if st.button("🔄 Run Analysis (Param Search)"):
+cockpit_new.py:837:                        if st.button(f"Apply Rank {res['rank']}", key=f"apply_{idx}"):
+cockpit_new.py:853:            if st.button("🔄 Run Analysis (Timing)"):
+cockpit_new.py:869:             bt_mode = st.selectbox("Backtest Mode", ["Quick (Last 1 Year)", "Full (3 Years)"])
+cockpit_new.py:871:             if st.button("▶️ Run Backtest"):
+cockpit_new.py:939:                selected_ticker = st.selectbox("Select Ticker for Details", ticker_opts, format_func=get_ticker_name)
+cockpit_new.py:979:            if st.button("Initialize Empty Portfolio"):
+cockpit_new.py:999:            if st.button("📤 Push to OCI", disabled=is_synced, use_container_width=True):
+cockpit_new.py:1009:                            r = requests.post("http://localhost:8000/api/sync/push",
+cockpit_new.py:1034:            new_asof = st.text_input("기준일 (ASOF KST, YYYY-MM-DD)", value=current_asof, disabled=True)
+cockpit_new.py:1078:        if st.button("💾 포트폴리오 저장 (Save & Normalize)"):
+cockpit_new.py:1139:            if st.button("📝 Generate Review Report"):
+cockpit_new.py:1185:                        if st.button(f"Apply Candidate {rank}", key=f"promo_{rank}"):
+cockpit_new.py:1190:                            if st.button("Yes, Confirm Apply", key=f"confirm_btn_{rank}"):
+cockpit_new.py:1273:            bt_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="bt_mode")
+cockpit_new.py:1278:            run_bt = st.button("▶️ 백테스트 실행", key="run_backtest_btn", type="primary")
+cockpit_new.py:1387:            tune_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="tune_mode")
+cockpit_new.py:1395:        run_tune_btn = st.button("▶️ Run Tune", key="run_tune_btn", type="primary")
+
+=== cockpit_fixed.py ===
+cockpit_fixed.py:10:import subprocess
+cockpit_fixed.py:25:        r = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
+cockpit_fixed.py:137:        result = subprocess.run(["powershell", "-File", str(script_path)], capture_output=True, text=True)
+cockpit_fixed.py:195:                requests.post("http://localhost:8000/api/settings/mode", json=payload, timeout=FAST_TIMEOUT)
+cockpit_fixed.py:198:                res = requests.get("http://localhost:8000/api/settings/mode", timeout=FAST_TIMEOUT)
+cockpit_fixed.py:260:            bt_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="wf_bt_mode")
+cockpit_fixed.py:265:            run_bt = st.button("▶️ 백테스트 실행", key="wf_run_backtest_btn", type="primary", use_container_width=True)
+cockpit_fixed.py:308:            tune_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="wf_tune_mode")
+cockpit_fixed.py:316:        if st.button("▶️ 튜닝 실행", key="wf_run_tune_btn", type="primary"):
+cockpit_fixed.py:367:                        r = requests.post("http://localhost:8000/api/sync/push_bundle",
+cockpit_fixed.py:445:                res = requests.get("http://localhost:8000/api/ssot/snapshot", timeout=FAST_TIMEOUT)
+cockpit_fixed.py:498:                st.text_input("Confirm Token", type="password", key="confirm_token", placeholder="Required for PUSH")
+cockpit_fixed.py:502:                if st.button("📥 PULL (OCI)", use_container_width=True):
+cockpit_fixed.py:505:                            r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
+cockpit_fixed.py:517:                if st.button("📤 PUSH (OCI)", use_container_width=True):
+cockpit_fixed.py:524:                                r = requests.post("http://localhost:8000/api/sync/push",
+cockpit_fixed.py:547:                force_recompute = st.checkbox("☑ Force Recompute (Overwrite)", value=False, help="강제 재생성 (LIVE 모드에서는 무시됨)")
+cockpit_fixed.py:550:                if st.button("▶️ Run Auto Ops Cycle", use_container_width=True):
+cockpit_fixed.py:554:                         resp = requests.post(f"{oci_url}/api/live/cycle/run?confirm=true&force={str(force_recompute).lower()}", timeout=SLOW_TIMEOUT)
+cockpit_fixed.py:602:            if st.button("Check Connectivity 💓", key="conn_check_main"):
+cockpit_fixed.py:746:                                    resp = requests.post("http://localhost:8000/api/sync/push_bundle", json={"token": token}, timeout=SLOW_TIMEOUT)
+cockpit_fixed.py:766:                if st.button("🔄 Run Analysis (Param Search)"):
+cockpit_fixed.py:798:                            if st.button(f"Apply Rank {res['rank']}", key=f"apply_{idx}"):
+cockpit_fixed.py:814:                if st.button("🔄 Run Analysis (Timing)"):
+cockpit_fixed.py:830:                 bt_mode = st.selectbox("Backtest Mode", ["Quick (Last 1 Year)", "Full (3 Years)"])
+cockpit_fixed.py:832:                 if st.button("▶️ Run Backtest"):
+cockpit_fixed.py:900:                    selected_ticker = st.selectbox("Select Ticker for Details", ticker_opts, format_func=get_ticker_name)
+cockpit_fixed.py:940:                if st.button("Initialize Empty Portfolio"):
+cockpit_fixed.py:960:                if st.button("📤 Push to OCI", disabled=is_synced, use_container_width=True):
+cockpit_fixed.py:970:                                r = requests.post("http://localhost:8000/api/sync/push",
+cockpit_fixed.py:995:                new_asof = st.text_input("기준일 (ASOF KST, YYYY-MM-DD)", value=current_asof, disabled=True)
+cockpit_fixed.py:1039:            if st.button("💾 포트폴리오 저장 (Save & Normalize)"):
+cockpit_fixed.py:1100:                if st.button("📝 Generate Review Report"):
+cockpit_fixed.py:1146:                            if st.button(f"Apply Candidate {rank}", key=f"promo_{rank}"):
+cockpit_fixed.py:1151:                                if st.button("Yes, Confirm Apply", key=f"confirm_btn_{rank}"):
+cockpit_fixed.py:1234:                bt_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="bt_mode")
+cockpit_fixed.py:1239:                run_bt = st.button("▶️ 백테스트 실행", key="run_backtest_btn", type="primary")
+cockpit_fixed.py:1348:                tune_mode = st.radio("Mode", ["quick (6M)", "full (3Y)"], horizontal=True, key="tune_mode")
+cockpit_fixed.py:1356:            run_tune_btn = st.button("▶️ Run Tune", key="run_tune_btn", type="primary")

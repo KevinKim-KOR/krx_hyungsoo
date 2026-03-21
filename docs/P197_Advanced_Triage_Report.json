@@ -1,0 +1,28 @@
+{
+  "phase": "P197-Advanced-Triage",
+  "result": "SUCCESS",
+  "removed_modules": [
+    "수동 PUSH (Legacy - 구버전)",
+    "Portfolio Push (from Portfolio Editor UI)",
+    "Current Parameters",
+    "Recommendations (P135)",
+    "Param Review (P138)",
+    "Guardrails (P160)",
+    "백테스트 (P165)",
+    "튜닝 (P167)"
+  ],
+  "kept_modules": [
+    "Portfolio Editor (P136.5)",
+    "Holdings Timing (P136)"
+  ],
+  "advanced_dropdown_options_after": [
+    "선택 안함",
+    "Holdings Timing (P136)",
+    "Portfolio Editor (P136.5)"
+  ],
+  "verification": {
+    "A_dropdown_clean": "pass",
+    "B_core_tabs_unchanged": "pass",
+    "C_kept_modules_render": "pass"
+  }
+}

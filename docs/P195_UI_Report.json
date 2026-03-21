@@ -1,0 +1,31 @@
+{
+  "p195": {
+    "token_input": {
+      "single_place": true,
+      "location": "워크플로우 (P170)::Workflow Hub::Top",
+      "session_key": "ops_token"
+    },
+    "s1_daily_ops": {
+      "visible_buttons": [
+        "PULL(OCI)",
+        "Run Auto Ops Cycle"
+      ],
+      "push_removed": true,
+      "token_free_ux": true,
+      "empty_token_guard": "warn_and_stop"
+    },
+    "push_policy": {
+      "primary": "워크플로우 (P170)::/api/sync/push_bundle",
+      "legacy_hidden": [
+        "정비창 (Advanced)::/api/sync/push"
+      ]
+    },
+    "evidence": {
+      "screenshots": [
+        "데일리운영 (P144) 탭(토큰칸 없음, 버튼 2개만)",
+        "워크플로우 (P170) 탭(토큰칸 1개 + 1-Click Sync)",
+        "정비창 (Advanced) 탭(Legacy Push 위치)"
+      ]
+    }
+  }
+}
