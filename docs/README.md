@@ -1,7 +1,7 @@
 # 📚 KRX Alertor Modular - Documentation
 
-**System Version**: 9.0 (Phase C-S.0 Complete)
-**Last Update**: 2026-01-03
+**System Version**: 10.0 (Phase C-S.0 + V1.7 Cockpit)
+**Last Update**: 2026-03-22
 
 ---
 
@@ -17,12 +17,14 @@
 
 ## 🔗 주요 문서
 
-### 📋 운영 (ops/)
+### 📋 운영 (ops/ & runbooks/)
 | 문서 | 설명 |
 |------|------|
 | [artifact_governance.md](ops/artifact_governance.md) | 파일/버전 거버넌스 규칙 |
 | [active_surface.json](ops/active_surface.json) | 운영 파일 화이트리스트 |
 | [smoke_test.md](ops/smoke_test.md) | 시스템 검증 체크리스트 |
+| [OCI_EVIDENCE_RESOLVER_GUIDE_V1.md](OCI_EVIDENCE_RESOLVER_GUIDE_V1.md) | OCI 운영자 대시보드(Evidence Resolver) 공식 가이드 |
+| [runbook_ui_daily_ops_v1.md](runbooks/runbook_ui_daily_ops_v1.md) | PC Cockpit UI V1.7 (5-Step) 데일리 운영 가이드 |
 
 ### 📝 계약 (contracts/)
 | 문서 | 설명 |

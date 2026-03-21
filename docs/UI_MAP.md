@@ -4,12 +4,12 @@
 ### Sections
 - Operations (`cockpit.py` line 520+)
 ### Cards/Buttons
-- [Button] `📥 PULL (OCI)` | Inputs: Confirm Token | Calls: `POST /api/sync/pull` | Reads/Writes: `state/strategy_bundle/latest/strategy_bundle_latest.json` | Success check: file mtime changes
-- [Button] `📤 PUSH (OCI)` | Inputs: Confirm Token | Calls: `POST /api/sync/push` | Reads/Writes: (upload current state folder) | Success check: Backend sync logs
-- [Button] `▶️ Run Auto Ops Cycle` | Inputs: Force Recompute (Checkbox) | Calls: `POST /api/live/cycle/run?confirm=true&force={bool}` | Reads/Writes: `reports/live/reco/latest/reco_latest.json` & `reports/live/order_plan/latest/order_plan_latest.json` | Success check: reports asof increases
+- [Button] `📥 PULL (OCI)` | Inputs: OCI_OPS_TOKEN (Auto Load) | Calls: `POST /api/sync/pull` | Reads/Writes: `state/strategy_bundle/latest/strategy_bundle_latest.json` | Success check: file mtime changes
+- [Button] `▶️ Run Auto Ops Cycle` | Inputs: OCI_OPS_TOKEN (Auto Load), Force Recompute (Checkbox) | Calls: `POST /api/live/cycle/run?confirm=true&force={bool}` | Reads/Writes: `reports/live/reco/...` & `reports/live/order_plan/...` | Success check: UI Success, reports asof increases
 
 ### Notes
-- `Confirm Token` is required for production synchronization via OCI. 
+- `OCI_OPS_TOKEN` (.env) is required for production synchronization via OCI (Fail-Closed).
+- `Confirm Token` is now strictly used only for manual execution in `Operator Dashboard`, not for PC Sync.
 
 ---
 
@@ -17,7 +17,7 @@
 ### Sections
 - Sync Actions
 ### Cards/Buttons
-- [Button] `📤 OCI 반영 (1-Click Sync)` | Inputs: OCI Access Token | Calls: `POST /api/sync/push_bundle` | Reads/Writes: push bundle configuration | Success check: UI success message
+- [Button] `📤 OCI 반영 (1-Click Sync)` | Inputs: OCI_OPS_TOKEN (Auto Load) | Calls: `POST /api/sync/push_bundle` | Reads/Writes: push bundle configuration | Success check: UI success message
 
 ---
 

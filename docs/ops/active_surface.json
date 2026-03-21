@@ -31,6 +31,7 @@
         "docs/contracts/contract_sync_v1.md",
         "docs/contracts/contract_manual_execution_record_draft_v1.md",
         "docs/runbooks/runbook_ui_daily_ops_v1.md",
+        "docs/OCI_EVIDENCE_RESOLVER_GUIDE_V1.md",
         "deploy/oci/daily_ops.sh",
         "deploy/oci/restart_backend.sh",
         "docs/archive/legacy_backtest_engine_analysis.md",
