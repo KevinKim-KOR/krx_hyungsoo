@@ -308,8 +308,29 @@
         </div>
 
         <h3>Latest Artifacts (Evidence Resolver)</h3>
-        <div id="artifacts-grid" class="artifacts-grid">
-            <!-- Artifacts injected here -->
+        
+        <div style="margin-bottom: 20px;">
+            <div style="background: #2d2d2d; padding: 10px; border-radius: 6px; cursor: pointer; border-left: 4px solid #569cd6;" onclick="document.getElementById('sec-ops').style.display = document.getElementById('sec-ops').style.display === 'none' ? 'grid' : 'none'">
+                <h4 style="margin: 0; color: #569cd6;">⚙️ Section 1: OPS (추천 → 주문안) ▼</h4>
+                <div style="font-size: 0.85em; color: #888; margin-top: 4px;">매일 돌리는 자동 계산 단계(추천/주문안).</div>
+            </div>
+            <div id="sec-ops" class="artifacts-grid" style="padding: 15px 0;"></div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <div style="background: #2d2d2d; padding: 10px; border-radius: 6px; cursor: pointer; border-left: 4px solid #ce9178;" onclick="document.getElementById('sec-exec').style.display = document.getElementById('sec-exec').style.display === 'none' ? 'grid' : 'none'">
+                <h4 style="margin: 0; color: #ce9178;">🛠️ Section 2: EXECUTION (실행) ▼</h4>
+                <div style="font-size: 0.85em; color: #888; margin-top: 4px;">사람이 HTS/MTS로 체결할 때만 쓰는 단계.</div>
+            </div>
+            <div id="sec-exec" class="artifacts-grid" style="padding: 15px 0; display: none;"></div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <div style="background: #2d2d2d; padding: 10px; border-radius: 6px; cursor: pointer; border-left: 4px solid #4ec9b0;" onclick="document.getElementById('sec-rec').style.display = document.getElementById('sec-rec').style.display === 'none' ? 'grid' : 'none'">
+                <h4 style="margin: 0; color: #4ec9b0;">📝 Section 3: RECORD (체결 후 기록) ▼</h4>
+                <div style="font-size: 0.85em; color: #888; margin-top: 4px;">체결 후 기록 제출/보관(선택).</div>
+            </div>
+            <div id="sec-rec" class="artifacts-grid" style="padding: 15px 0; display: none;"></div>
         </div>
 
         <!-- Token Forms (P144) -->
@@ -589,37 +610,106 @@
                     });
                 }
 
-                // Artifacts Grid (Fail-Soft Preview not here, links handled by backend)
-                // We just render links.
-                const grid = document.getElementById('artifacts-grid');
-                grid.innerHTML = '';
+                // Artifacts Grid Enhancement (P202)
+                const gridOps = document.getElementById('sec-ops');
+                const gridExec = document.getElementById('sec-exec');
+                const gridRec = document.getElementById('sec-rec');
+                gridOps.innerHTML = '';
+                gridExec.innerHTML = '';
+                gridRec.innerHTML = '';
+                
+                const CARD_CONF = {
+                    "guardrails": { sec: gridOps, title: "HEALTH", desc: "시스템/가드레일 PASS 여부.", ord: 1 },
+                    "reco": { sec: gridOps, title: "RECO", desc: "이번 사이클 추천(top_picks) 및 제약 적용 결과.", ord: 2 },
+                    "order_plan": { sec: gridOps, title: "ORDER PLAN", desc: "실제 주문 수량/금액이 계산된 주문안(plan_id 포함).", ord: 3 },
+                    "ops_summary": { sec: gridOps, title: "SUMMARY", desc: "운영 전체 요약(최신 refs, stage, last run).", ord: 4 },
+                    "order_plan_export": { sec: gridExec, title: "EXPORT", desc: "주문서 발급 + confirm_token(실행 승인 토큰).", ord: 5 },
+                    "execution_prep": { sec: gridExec, title: "PREP", desc: "실행 전 안전검사/모드 확인(READY/PASS 등).", ord: 6 },
+                    "execution_ticket": { sec: gridExec, title: "TICKET", desc: "사람이 복붙해서 체결할 수 있는 티켓.", ord: 7 },
+                    "manual_execution_record": { sec: gridRec, title: "RECORD", desc: "체결 후 영수증/기록(없어도 정상).", ord: 9 }
+                };
+
+                let op_plan_id_baseline = "UNKNOWN";
+
                 if (data.artifacts) {
-                    for (const [key, path] of Object.entries(data.artifacts)) {
+                    // Sort artifacts by ord
+                    const entries = Object.entries(data.artifacts).map(([k, p]) => ({ key: k, path: p, conf: CARD_CONF[k] || { sec: gridOps, title: k, desc: "", ord: 99 } }));
+                    entries.sort((a, b) => a.conf.ord - b.conf.ord);
+
+                    for (const {key, path, conf} of entries) {
                         const card = document.createElement('div');
                         card.className = 'artifact-card';
 
                         const link = document.createElement('a');
                         link.className = 'artifact-link';
                         link.href = `/api/evidence/resolve?ref=${encodeURIComponent(path)}`;
-                        let label = key.toUpperCase().replace(/_/g, ' ');
+                        let label = conf.title;
 
-                        // P146.3: Rename Record to avoid confusion
                         if (key === 'manual_execution_record') {
-                            label = "RECORD (VIEW ONLY)";
                             card.style.border = "1px solid #4ec9b0";
                         }
 
                         link.textContent = label;
                         link.target = "_blank";
 
-                        const pathSpan = document.createElement('div');
-                        pathSpan.style.fontSize = '0.8em';
-                        pathSpan.style.color = '#666';
-                        pathSpan.textContent = path.split('/').pop();
+                        const descSpan = document.createElement('div');
+                        descSpan.style.fontSize = '0.75em';
+                        descSpan.style.color = '#888';
+                        descSpan.style.marginBottom = '8px';
+                        descSpan.textContent = conf.desc;
+
+                        const badgeBox = document.createElement('div');
+                        badgeBox.style.fontSize = '0.75em';
+                        badgeBox.style.padding = '4px';
+                        badgeBox.style.background = '#1a1a1a';
+                        badgeBox.style.color = '#dcdcaa';
+                        badgeBox.style.borderRadius = '4px';
+                        badgeBox.style.marginTop = '4px';
+                        badgeBox.innerHTML = '<i>Fetching metadata...</i>';
 
                         card.appendChild(link);
-                        card.appendChild(pathSpan);
-                        grid.appendChild(card);
+                        card.appendChild(descSpan);
+                        card.appendChild(badgeBox);
+                        conf.sec.appendChild(card);
+
+                        // Async fetch for badges
+                        fetch(`/api/evidence/resolve?ref=${encodeURIComponent(path)}`)
+                            .then(r => r.json())
+                            .then(j => {
+                                let badges = [];
+                                
+                                if (key === 'order_plan') {
+                                    op_plan_id_baseline = j.plan_id || j.id || "N/A";
+                                }
+
+                                if(j.plan_id) {
+                                    let badgeHtml = `<b>plan_id:</b> ${j.plan_id}`;
+                                    // ⚠️ OUTDATED Check
+                                    if(conf.sec === gridExec && op_plan_id_baseline !== "UNKNOWN" && j.plan_id !== op_plan_id_baseline) {
+                                        badgeHtml += ` <span style="background:#f48771; color:#000; padding:1px 3px; border-radius:3px;">⚠️ OUTDATED</span>`;
+                                    }
+                                    badges.push(badgeHtml);
+                                } else if (j.source && j.source.plan_id) {
+                                    let p = j.source.plan_id;
+                                    let badgeHtml = `<b>plan_id:</b> ${p}`;
+                                    if(conf.sec === gridExec && op_plan_id_baseline !== "UNKNOWN" && p !== op_plan_id_baseline) {
+                                        badgeHtml += ` <span style="background:#f48771; color:#000; padding:1px 3px; border-radius:3px;">⚠️ OUTDATED</span>`;
+                                    }
+                                    badges.push(badgeHtml);
+                                }
+                                
+                                if(j.decision) badges.push(`<b>decision:</b> ${j.decision}`);
+                                else if(j.status) badges.push(`<b>status:</b> ${j.status}`);
+                                else if(j.overall_status) badges.push(`<b>status:</b> ${j.overall_status}`);
+                                
+                                if(j.asof) badges.push(`<b>asof:</b> ${j.asof.split('T')[0]}`);
+                                else if(j.created_at) badges.push(`<b>time:</b> ${j.created_at.replace('T', ' ').substring(0, 16)}`);
+                                
+                                badgeBox.innerHTML = badges.join(' | ') || '<i>No metadata</i>';
+                            })
+                            .catch(e => {
+                                badgeBox.innerHTML = '<i>Metadata err</i>';
+                            });
                     }
                 }
 
