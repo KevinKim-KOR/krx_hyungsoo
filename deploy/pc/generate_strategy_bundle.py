@@ -191,8 +191,14 @@ def get_active_surface_sha256():
 
 
 def compute_payload_sha256(strategy: dict) -> str:
-    """strategy 섹션의 SHA256 계산"""
-    strategy_json = json.dumps(strategy, sort_keys=True, separators=(',', ':'))
+    """strategy 섹션의 SHA256 계산 (live_approval 명시적 제외)"""
+    strategy_copy = strategy.copy()
+    keys_to_ignore = ["live_approval.json", "live_approval"]
+    for k in keys_to_ignore:
+        if k in strategy_copy:
+            strategy_copy.pop(k)
+            
+    strategy_json = json.dumps(strategy_copy, sort_keys=True, separators=(',', ':'))
     return hashlib.sha256(strategy_json.encode("utf-8")).hexdigest()
 
 
@@ -376,11 +382,19 @@ def generate_bundle() -> dict:
         port_json = json.dumps(portfolio, sort_keys=True, separators=(',', ':'))
         port_sha = hashlib.sha256(port_json.encode("utf-8")).hexdigest()
         
+        # Use stable portfolio timestamp instead of volatile datetime.now() to fix bundle payload hash mismatch
+        import os
+        portfolio_path = BASE_DIR / "state" / "portfolio" / "latest" / "portfolio_latest.json"
+        
+        stable_asof = "2026-01-01T00:00:00"
+        if portfolio_path.exists():
+            stable_asof = datetime.fromtimestamp(portfolio_path.stat().st_mtime, timezone.utc).replace(tzinfo=None).isoformat()
+
         strategy["state_override"] = {
             "portfolio": {
                 "enabled": True,
                 "schema": "PORTFOLIO_SNAPSHOT_V1",
-                "asof": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                "asof": stable_asof,
                 "payload": portfolio,
                 "integrity": {
                     "payload_sha256": port_sha

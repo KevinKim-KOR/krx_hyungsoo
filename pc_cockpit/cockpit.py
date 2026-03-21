@@ -327,6 +327,8 @@ def sync_ops_to_wf():
 def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     
     st.header("🧭 운영 워크플로우 허브 (P170-UI)")
+    if "last_block_reason" in st.session_state and st.session_state["last_block_reason"]:
+        st.warning(f"⚠️ 최근 차단 사유: {st.session_state['last_block_reason']}")
     st.info("💡 LIVE 반영 순서: 승인 → 1-Click Sync (승인 없으면 동작 안 함)")
     st.caption("운영 토큰은 여기서만 입력(단일화).")
     st.caption("파라미터 조회, 백테스트, 튜닝, 오퍼레이션 동기화를 탭 이동 없이 한 화면에서 수행합니다.")
@@ -553,11 +555,13 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
         ok, msg = check_live_approval()
         if not ok:
             st.error(f"LIVE 승인 없음(또는 REVOKED) → Approve LIVE 후 Sync 하세요. ({msg})")
-            st.stop()
+            st.session_state["last_block_reason"] = f"1-Click Sync 차단: {msg}"
+            return
             
         if not token:
             st.warning("OCI 토큰이 필요합니다. 위 입력란에 토큰을 넣고 다시 시도하세요.")
-            st.stop()
+            st.session_state["last_block_reason"] = "1-Click Sync 차단: Token 없음"
+            return
         else:
             with st.spinner(f"Pushing to OCI..."):
                 try:
@@ -625,7 +629,8 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
         """)
     else:
         st.error(f"🛑 Backend Connection Failed: {error_msg}")
-        st.stop() # Stop rendering if backend is dead
+        st.session_state["last_block_reason"] = f"Backend 죽음: {error_msg}"
+        return
 
     # P146.1: Explicit Sync Control
     st.divider()
@@ -642,20 +647,24 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
         pull_clicked = st.button("📥 PULL (OCI)", use_container_width=True)
         st.caption("OCI 읽기(토큰 필요, UI에서는 숨김)")
         if pull_clicked:
+            do_pull = True
             if not st.session_state.get("ops_token", ""):
                 st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
-                st.stop()
-            with st.spinner(f"Pulling..."):
-                try:
-                    r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
-                    if r.status_code == 200:
-                        st.success("OK")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error(f"Fail: {r.text}")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                st.session_state["last_block_reason"] = "PULL 차단: Token 없음"
+                do_pull = False
+            
+            if do_pull:
+                with st.spinner(f"Pulling..."):
+                    try:
+                        r = requests.post("http://localhost:8000/api/sync/pull", params={"timeout_seconds": sync_timeout}, timeout=sync_timeout + 5)
+                        if r.status_code == 200:
+                            st.success("OK")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"Fail: {r.text}")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
     # P195: PUSH (OCI) moved to 정비창 (Advanced) Lab
     
@@ -678,11 +687,13 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
              ok, msg = check_live_approval()
              if not ok:
                  st.error(f"워크플로우에서 승인 → 1-Click Sync 완료 후 실행 ({msg})")
-                 st.stop()
+                 st.session_state["last_block_reason"] = f"Auto Ops 차단: {msg}"
+                 return
                  
              if not st.session_state.get("ops_token", ""):
                  st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
-                 st.stop()
+                 st.session_state["last_block_reason"] = "Auto Ops 차단: Token 없음"
+                 return
              try:
                  oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
                  
@@ -692,7 +703,8 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                  result = subprocess.run(bundle_cmd, capture_output=True, text=True)
                  if result.returncode != 0:
                      st.error(f"Step 1 실패: 번들 생성에 실패했습니다.\n{result.stderr}")
-                     st.stop()
+                     st.session_state["last_block_reason"] = "Auto Ops 차단: Step 1 Bundle 생성 실패"
+                     return
                  st.success("Step 1 완료: 번들 생성 성공")
                  
                  # === Step 2: Push to OCI ===
@@ -710,7 +722,8 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                          
                  if not ops_token:
                      st.error("Step 2 실패: 최신 Export 파일에서 confirm_token을 찾을 수 없습니다. Order Plan Export를 먼저 생성해주세요.")
-                     st.stop()
+                     st.session_state["last_block_reason"] = "Auto Ops 차단: Step 2 Token 추출 실패"
+                     return
                      
                  sync_timeout = st.session_state.get("sync_timeout", 60)
                  sync_resp = requests.post("http://localhost:8000/api/sync/push_bundle", 
@@ -719,7 +732,8 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                                           timeout=sync_timeout + 5)
                  if sync_resp.status_code != 200:
                      st.error(f"Step 2 실패: OCI 동기화에 실패했습니다.\n{sync_resp.text}")
-                     st.stop()
+                     st.session_state["last_block_reason"] = f"Auto Ops 차단: Step 2 Push 실패"
+                     return
                  st.success("Step 2 완료: OCI 동기화 성공")
                  
                  # === Step 3: Trigger OCI Auto Ops Cycle ===

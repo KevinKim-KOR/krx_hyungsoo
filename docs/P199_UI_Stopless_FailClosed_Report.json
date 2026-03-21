@@ -1,0 +1,14 @@
+{
+  "phase": "P199-UI-Stopless-FailClosed",
+  "result": "SUCCESS",
+  "changes": {
+    "st_stop_removed": true,
+    "block_behavior": "warn_and_return",
+    "tabs_survive_after_block": true
+  },
+  "evidence": {
+    "repro_before": "P144 block -> P170 tab disappears",
+    "repro_after": "P144 block -> P170 tab still visible",
+    "last_block_reason_session_key": "last_block_reason"
+  }
+}

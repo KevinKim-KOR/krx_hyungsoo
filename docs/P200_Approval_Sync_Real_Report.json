@@ -1,0 +1,16 @@
+{
+  "phase": "P200-Approval-Sync-Real",
+  "result": "SUCCESS",
+  "pc_sender": {
+    "included_live_approval": true,
+    "live_approval_bytes": "동적 사이즈 (전송 시 로드됨)"
+  },
+  "oci_receiver": {
+    "approval_written": true,
+    "saved_path": "state/strategy_bundle/latest/live_approval.json",
+    "snapshot_saved": true
+  },
+  "verification": {
+    "oci_ls_exists": true
+  }
+}

@@ -1,0 +1,54 @@
+--- Line 556 ---
+554:         if not ok:
+555:             st.error(f"LIVE 승인 없음(또는 REVOKED) → Approve LIVE 후 Sync 하세요. ({msg})")
+556:             st.stop()
+557: 
+558:         if not token:
+--- Line 560 ---
+558:         if not token:
+559:             st.warning("OCI 토큰이 필요합니다. 위 입력란에 토큰을 넣고 다시 시도하세요.")
+560:             st.stop()
+561:         else:
+562:             with st.spinner(f"Pushing to OCI..."):
+--- Line 628 ---
+626:     else:
+627:         st.error(f"🛑 Backend Connection Failed: {error_msg}")
+628:         st.stop() # Stop rendering if backend is dead
+629: 
+630:     # P146.1: Explicit Sync Control
+--- Line 647 ---
+645:             if not st.session_state.get("ops_token", ""):
+646:                 st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
+647:                 st.stop()
+648:             with st.spinner(f"Pulling..."):
+649:                 try:
+--- Line 681 ---
+679:              if not ok:
+680:                  st.error(f"워크플로우에서 승인 → 1-Click Sync 완료 후 실행 ({msg})")
+681:                  st.stop()
+682: 
+683:              if not st.session_state.get("ops_token", ""):
+--- Line 685 ---
+683:              if not st.session_state.get("ops_token", ""):
+684:                  st.warning("워크플로우(P170) 탭에서 운영 토큰을 먼저 입력해 주세요.")
+685:                  st.stop()
+686:              try:
+687:                  oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
+--- Line 695 ---
+693:                  if result.returncode != 0:
+694:                      st.error(f"Step 1 실패: 번들 생성에 실패했습니다.\n{result.stderr}")
+695:                      st.stop()
+696:                  st.success("Step 1 완료: 번들 생성 성공")
+697: 
+--- Line 713 ---
+711:                  if not ops_token:
+712:                      st.error("Step 2 실패: 최신 Export 파일에서 confirm_token을 찾을 수 없습니다. Order Plan Export를 먼저 생성해주세요.")
+713:                      st.stop()
+714: 
+715:                  sync_timeout = st.session_state.get("sync_timeout", 60)
+--- Line 722 ---
+720:                  if sync_resp.status_code != 200:
+721:                      st.error(f"Step 2 실패: OCI 동기화에 실패했습니다.\n{sync_resp.text}")
+722:                      st.stop()
+723:                  st.success("Step 2 완료: OCI 동기화 성공")
+724: 

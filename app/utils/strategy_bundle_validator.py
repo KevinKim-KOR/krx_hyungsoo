@@ -67,8 +67,15 @@ def compute_payload_sha256(strategy: Dict) -> str:
     strategy 섹션의 SHA256 계산
     
     정렬 + 컴팩트 JSON으로 결정론적 해시
+    (live_approval 명시적 해시 대상 제외 - P200-FIX-V2)
     """
-    strategy_json = json.dumps(strategy, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    strategy_copy = strategy.copy()
+    keys_to_ignore = ["live_approval.json", "live_approval"]
+    for k in keys_to_ignore:
+        if k in strategy_copy:
+            strategy_copy.pop(k)
+            
+    strategy_json = json.dumps(strategy_copy, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
     return hashlib.sha256(strategy_json.encode("utf-8")).hexdigest()
 
 

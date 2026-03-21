@@ -180,6 +180,15 @@ async def push_bundle_to_oci(
             except Exception:
                 pass
 
+        # 3.6 Load Live Approval (P200)
+        APPROVAL_PATH = BASE_DIR / "state" / "strategy_bundle" / "latest" / "live_approval.json"
+        approval_payload = None
+        if APPROVAL_PATH.exists():
+            try:
+                approval_payload = json.loads(APPROVAL_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
         # 4. Construct SSOT partial snapshot payload
         import platform
         import datetime
@@ -193,6 +202,7 @@ async def push_bundle_to_oci(
             "strategy_bundle": bundle_payload,
             "strategy_params": params_payload,
             "guardrails": guardrails_payload,
+            "live_approval": approval_payload,
             "build_id": "PC_PUSH_BUNDLE",
             "synced_at": datetime.datetime.now(timezone(timedelta(hours=9))).isoformat()
         }
@@ -210,11 +220,22 @@ async def push_bundle_to_oci(
                 print(f"[ERROR] OCI Bundle Push Failed: {oci_resp.status_code} - {oci_resp.text}")
                 raise HTTPException(status_code=502, detail=f"OCI Bundle Push Failed: {oci_resp.text}")
                 
+            approval_included = bool(approval_payload)
+            approval_bytes = len(json.dumps(approval_payload)) if approval_payload else 0
+            
+            import hashlib
+            app_fingerprint = ""
+            if approval_payload:
+                app_fingerprint = hashlib.sha256(json.dumps(approval_payload, sort_keys=True).encode()).hexdigest()[:12]
+
             return {
                 "status": "OK", 
                 "message": "Bundle Pushed to OCI", 
                 "bundle_id": bundle_payload.get("bundle_id"),
-                "created_at": bundle_payload.get("created_at")
+                "created_at": bundle_payload.get("created_at"),
+                "approval_included": approval_included,
+                "approval_bytes": approval_bytes,
+                "approval_fingerprint": app_fingerprint
             }
 
         except requests.exceptions.Timeout:

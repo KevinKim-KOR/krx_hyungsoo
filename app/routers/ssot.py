@@ -207,4 +207,27 @@ async def update_ssot_snapshot(
         GUARDRAILS_PATH.parent.mkdir(parents=True, exist_ok=True)
         GUARDRAILS_PATH.write_text(json.dumps(new_guardrails, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    return {"status": "OK", "message": "SSOT updated successfully", "revision": snapshot.get("revision")}
+    # 7. Update Live Approval (P200)
+    new_approval = snapshot.get("live_approval")
+    approval_written = False
+    if new_approval:
+        KST = timezone(timedelta(hours=9))
+        APPROVAL_LATEST = BASE_DIR / "state" / "strategy_bundle" / "latest" / "live_approval.json"
+        APPROVAL_SNAPSHOT = BASE_DIR / "state" / "strategy_bundle" / "snapshots" / f"live_approval_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
+        try:
+            APPROVAL_LATEST.parent.mkdir(parents=True, exist_ok=True)
+            APPROVAL_LATEST.write_text(json.dumps(new_approval, indent=2, ensure_ascii=False), encoding="utf-8")
+            APPROVAL_SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
+            APPROVAL_SNAPSHOT.write_text(json.dumps(new_approval, indent=2, ensure_ascii=False), encoding="utf-8")
+            approval_written = True
+        except Exception as e:
+            print(f"[ERROR] Failed to write live_approval: {e}")
+
+    return {
+        "status": "OK", 
+        "message": "SSOT updated successfully", 
+        "revision": snapshot.get("revision"),
+        "approval_written": approval_written,
+        "written_path": "state/strategy_bundle/latest/live_approval.json" if approval_written else None,
+        "snapshot_saved": approval_written
+    }
