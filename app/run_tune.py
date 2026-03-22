@@ -102,6 +102,16 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
     logger.info("P167-R Optuna Tuning Engine — CLI")
     logger.info("=" * 60)
 
+    # ── 0. Cleanup stale tmp files from previous runs ──
+    tuning_dir = PROJECT_ROOT / "reports" / "tuning"
+    tuning_dir.mkdir(parents=True, exist_ok=True)
+    for tmp_file in tuning_dir.glob("*.tmp"):
+        try:
+            tmp_file.unlink()
+            logger.info(f"[CLEANUP] Removed stale tmp: {tmp_file.name}")
+        except Exception:
+            pass
+
     # ── 1. Load config ──
     try:
         params, param_source = load_params_with_fallback()
@@ -227,10 +237,14 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
             
         # 2. last_completed_trial
         status_str = "COMPLETE" if trial_obj.state == optuna.trial.TrialState.COMPLETE else "FAIL"
-        reason = "NO_RESULT"
+        reason = None
         if trial_obj.state == optuna.trial.TrialState.FAIL:
             reason = "EXCEPTION"
+        elif trial_obj.state == optuna.trial.TrialState.PRUNED:
+            status_str = "FAIL"
+            reason = "NO_RESULT"
         elif trial_obj.state == optuna.trial.TrialState.WAITING or trial_obj.state == optuna.trial.TrialState.RUNNING:
+            status_str = "FAIL"
             reason = "INTERRUPTED"
             
         last_comp_data = {
@@ -307,8 +321,8 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
             "n_trials_total": len(study.trials),
             "n_trials_complete": len(completed_trials),
             "n_trials_failed": len([t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]),
-            "best_trial_number": study.best_trial.number if completed_trials else -1,
-            "best_score": round(best_score, 4) if completed_trials else 0.0,
+            "best_trial_number": best.number,
+            "best_score": round(best_score, 4),
             "checkpoint_files": ["best_params_latest.json", "best_score_latest.json", "last_completed_trial.json"],
             "started_at": started_at_str,
             "finished_at": now_kst,

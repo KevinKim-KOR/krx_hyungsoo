@@ -457,22 +457,22 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     st.error(f"❌ 백테스트 오류: {e}")
                     
     with colB:
-        st.markdown("**⚙️ 하이퍼파라미터 튜닝 (P167)**")
-        st.caption("다양한 파라미터 조합을 탐색하여 최적의 모멘텀/손절 라인을 찾습니다.")
-        st.markdown("- **알고리즘**: Random Search / Grid Search\n- **소요 시간**: 약 5~10분")
-        if st.button("▶️ Run Optimizer", use_container_width=True):
-            with st.spinner("파라미터 튜닝 중... (엔진 로그를 확인하세요)"):
+        st.markdown("**⚙️ Optuna 튜닝 (P204)**")
+        st.caption("Optuna TPE Sampler로 최적 파라미터를 탐색합니다. (SQLite 영속화/Resume 지원)")
+        st.markdown("- **알고리즘**: Optuna TPE\n- **성공 파일**: `reports/tuning/tuning_results.json`")
+        tune_mode = st.selectbox("튜닝 모드", ["quick", "full"], index=0, key="tune_mode_select")
+        tune_trials = st.number_input("Trials 수", min_value=1, max_value=500, value=20, key="tune_trials_input")
+        if st.button("▶️ Run Tune", use_container_width=True):
+            with st.spinner(f"Optuna 튜닝 중 (mode={tune_mode}, trials={tune_trials})..."):
                 try:
-                    import subprocess
-                    import sys
-                    script_path = str(BASE_DIR / "app" / "run_optimize.py")
-                    result = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
-                    if result.returncode == 0:
-                        st.success("✅ 튜닝 완료! (아래 결과 섹션 확인)")
+                    from app.run_tune import run_cli_tune
+                    success = run_cli_tune(mode=tune_mode, n_trials=tune_trials)
+                    if success:
+                        st.success("✅ 튜닝 완료! (reports/tuning/tuning_results.json 갱신)")
                         time.sleep(1.5)
                         st.rerun()
                     else:
-                        st.error(f"❌ 튜닝 스크립트 실패:\n{result.stderr[-500:]}")
+                        st.error("❌ 튜닝 실패 (서버 로그 확인)")
                 except Exception as e:
                     st.error(f"❌ 튜닝 실행 오류: {e}")
 
