@@ -476,61 +476,63 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                 except Exception as e:
                     st.error(f"❌ 튜닝 실행 오류: {e}")
 
-    # B-1. 튜닝 결과 보기
-    st.markdown("##### 🏆 최신 튜닝 결과")
-    OPT_LATEST_PATH = BASE_DIR / "reports" / "pc" / "param_search" / "latest" / "param_search_latest.json"
-    
-    try:
-        if OPT_LATEST_PATH.exists():
-            opt_data = load_json(OPT_LATEST_PATH)
-            if opt_data and "best_params" in opt_data:
-                bp = opt_data["best_params"]
-                bm = opt_data.get("best_metrics", {})
-                
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("최적 모멘텀", bp.get("momentum_period", "N/A"))
-                c2.metric("최적 손절매", f"{bp.get('stop_loss', 0)*100:.1f}%")
-                c3.metric("최대 종목수", bp.get("max_positions", "N/A"))
-                c4.metric("적합도(Score)", f"{bm.get('score_0_100', 0):.1f}점")
-                
-                col_btn1, col_btn2 = st.columns(2)
-                apply_p_btn = col_btn1.button("💡 최적 파라미터 SSOT에 바로 적용", use_container_width=True)
-                apply_bt_btn = col_btn2.button("💡 최적 파라미터 적용 후 백테스트", use_container_width=True)
-                
-                if apply_p_btn or apply_bt_btn:
-                    try:
-                        _p_data = load_json(LATEST_PATH)
-                        if _p_data:
-                            _p = _p_data.get("params", {})
-                            _p.setdefault("lookbacks", {})["momentum_period"] = bp.get("momentum_period")
-                            _p.setdefault("decision_params", {})["exit_threshold"] = bp.get("stop_loss")
-                            _p.setdefault("position_limits", {})["max_positions"] = bp.get("max_positions")
-                            _p_data["params"] = _p
-                            _p_data["asof"] = datetime.now(KST).isoformat()
-                            save_params(_p_data)
-                            st.success(f"✅ 파라미터가 저장되었습니다 (Fingerprint: {compute_fingerprint(_p_data)})")
-                        else:
-                            st.error("Current Parameters 파일을 찾을 수 없습니다.")
-                    except Exception as e:
-                        st.error(f"파라미터 적용 실패: {e}")
-                        
-                    if apply_bt_btn:
-                        with st.spinner("적용된 파라미터로 Full 백테스트 실행 중..."):
-                            try:
-                                from app.run_backtest import run_cli_backtest
-                                success = run_cli_backtest(mode="full")
-                                if success:
-                                    st.success("✅ 백테스트 완료! (위의 2번 섹션에서 결과를 확인하세요)")
-                                    time.sleep(1)
-                                    st.rerun()
-                                else:
-                                    st.error("❌ 백테스트 실패 (로그 확인/콘솔 출력 필요)")
-                            except Exception as e:
-                                st.error(f"❌ 백테스트 오류: {e}")
+    # ── B-1. 튜닝 결과 카드 ──
+    st.markdown("---")
+    res_colA, res_colB = st.columns(2)
+
+    with res_colA:
+        st.markdown("##### 📊 최신 백테스트 결과")
+        BT_RESULT_PATH = BASE_DIR / "reports" / "backtest" / "latest" / "backtest_result.json"
+        try:
+            if not BT_RESULT_PATH.exists():
+                st.info("ℹ️ 아직 백테스트 결과 없음 — 먼저 ▶️ Run Full Backtest를 실행하세요.")
             else:
-                st.warning("먼저 튜닝을 실행하여 최적의 파라미터(Best Params)를 생성해주세요.")
-    except:
-        pass
+                bt_data = load_json(BT_RESULT_PATH)
+                if not bt_data:
+                    st.warning("⚠️ 백테스트 결과 파일 파싱 실패")
+                else:
+                    bt_summary = bt_data.get("summary", {})
+                    bt_meta = bt_data.get("meta", {})
+                    st.success("✅ 최근 실행 성공")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("CAGR", f"{bt_summary.get('cagr', 0):.2f}%")
+                    c2.metric("MDD", f"{bt_summary.get('mdd_pct', 0):.2f}%")
+                    c3.metric("Sharpe", f"{bt_summary.get('sharpe', 0):.4f}")
+                    c4, c5 = st.columns(2)
+                    c4.metric("총 수익률", f"{bt_summary.get('total_return', 0):.2f}%")
+                    c5.metric("총 거래수", bt_summary.get("order_count", bt_summary.get("total_trades", "N/A")))
+                    st.caption(f"기간: {bt_meta.get('start_date', '?')} → {bt_meta.get('end_date', '?')} | 모드: {bt_meta.get('mode', '?')} | asof: {bt_meta.get('asof', '?')}")
+        except Exception as e:
+            st.error(f"⚠️ 백테스트 결과 파싱 실패: {e}")
+
+    with res_colB:
+        st.markdown("##### 🏆 최신 Optuna 튜닝 결과")
+        TUNE_RESULT_PATH = BASE_DIR / "reports" / "tuning" / "tuning_results.json"
+        try:
+            if not TUNE_RESULT_PATH.exists():
+                st.info("ℹ️ 아직 튜닝 결과 없음 — 먼저 ▶️ Run Tune을 실행하세요.")
+            else:
+                tune_data = load_json(TUNE_RESULT_PATH)
+                if not tune_data:
+                    st.warning("⚠️ 튜닝 결과 파일 파싱 실패")
+                else:
+                    tune_meta = tune_data.get("meta", {})
+                    bp = tune_data.get("best_params", {})
+                    bs = tune_data.get("best_summary", {})
+                    st.success("✅ 최근 실행 성공")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Best Score", f"{tune_data.get('best_score', 0):.4f}")
+                    c2.metric("Best Trial", f"#{tune_meta.get('best_trial_number', '?')}")
+                    c3.metric("총 Trials", tune_meta.get("n_trials_total", "?"))
+                    c4, c5, c6 = st.columns(3)
+                    c4.metric("Sharpe", f"{bs.get('sharpe', 0):.4f}")
+                    c5.metric("MDD", f"{bs.get('mdd_pct', 0):.2f}%")
+                    c6.metric("CAGR", f"{bs.get('cagr', 0):.4f}")
+                    st.caption(f"Study: {tune_meta.get('study_name', '?')} | Resume: {'✅' if tune_meta.get('resume_enabled') else '❌'} | asof: {tune_meta.get('asof', '?')}")
+                    with st.expander("🔍 Best Params 상세", expanded=False):
+                        st.json(bp)
+        except Exception as e:
+            st.error(f"⚠️ 튜닝 결과 파싱 실패: {e}")
 
     st.divider()
     # LIVE 승인 패널 추가
