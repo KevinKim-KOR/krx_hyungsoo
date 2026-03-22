@@ -26,6 +26,7 @@ def run_single_trial(
     universe: List[str],
     start: date,
     end: date,
+    include_nav_history: bool = False,
 ) -> Dict[str, Any]:
     """
     단일 trial 백테스트 실행 (Option A: 직접 호출).
@@ -36,6 +37,7 @@ def run_single_trial(
         universe: 종목 코드 리스트
         start: 시작일
         end: 종료일
+        include_nav_history: True이면 nav_history 원본도 반환 (segment eval용)
 
     Returns:
         메트릭 딕셔너리: sharpe, mdd_pct, cagr, total_return, total_trades, ...
@@ -88,7 +90,7 @@ def run_single_trial(
         if len(rets) > 1 and float(rets.std()) > 0:
             sharpe = float(rets.mean() / rets.std()) * (252 ** 0.5)
 
-    return {
+    metrics = {
         "sharpe": round(sharpe, 4),
         "mdd_pct": round(mdd_pct, 4),
         "cagr": round(cagr, 4),
@@ -96,3 +98,9 @@ def run_single_trial(
         "total_trades": total_trades,
         "signal_days": engine_metrics.get("signal_days", 0),
     }
+
+    if include_nav_history:
+        metrics["_nav_history"] = nav_history
+
+    return metrics
+

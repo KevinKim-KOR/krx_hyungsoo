@@ -531,6 +531,24 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     st.caption(f"Study: {tune_meta.get('study_name', '?')} | Resume: {'✅' if tune_meta.get('resume_enabled') else '❌'} | asof: {tune_meta.get('asof', '?')}")
                     with st.expander("🔍 Best Params 상세", expanded=False):
                         st.json(bp)
+                    # ── Segment evaluation display (P204-STEP2) ──
+                    seg_ready = tune_data.get("segment_eval_ready", False)
+                    seg_status = tune_data.get("segment_status", "")
+                    seg_enabled = tune_data.get("segment_evaluation_enabled", False)
+                    if not seg_enabled:
+                        st.info("ℹ️ 세그먼트 평가 없음 (Step2 이전 결과)")
+                    elif not seg_ready:
+                        st.warning(f"⚠️ 세그먼트 평가 불가 ({seg_status})")
+                    else:
+                        seg_scheme = tune_data.get("segment_scheme", "?")
+                        full_m = tune_data.get("full_period_metrics", {})
+                        seg_m = tune_data.get("segment_metrics", {})
+                        rows = [{"구간": "Full", "CAGR": f"{full_m.get('cagr', 0):.2f}%", "MDD": f"{full_m.get('mdd', 0):.2f}%", "Sharpe": f"{full_m.get('sharpe', 0):.4f}", "Days": full_m.get("days", "?")}]
+                        for key in ["SEG_1", "SEG_2", "SEG_3"]:
+                            sm = seg_m.get(key, {})
+                            rows.append({"구간": key, "CAGR": f"{sm.get('cagr', 0):.2f}%", "MDD": f"{sm.get('mdd', 0):.2f}%", "Sharpe": f"{sm.get('sharpe', 0):.4f}", "Days": sm.get("days", "?")})
+                        st.markdown(f"**📐 구간 평가** (`{seg_scheme}`)")
+                        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         except Exception as e:
             st.error(f"⚠️ 튜닝 결과 파싱 실패: {e}")
 

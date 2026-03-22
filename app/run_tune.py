@@ -301,6 +301,38 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
     except ImportError:
         telemetry_data = {}
 
+    # ── 5b. Segment evaluation (P204-STEP2) ──
+    from app.tuning.segment_eval import compute_segment_metrics
+    from app.tuning.runner import run_single_trial
+    segment_data = {"segment_evaluation_enabled": False, "segment_status": "SKIPPED"}
+    try:
+        logger.info("[SEGMENT] Re-running best params to extract nav_history...")
+        best_with_nav = run_single_trial(
+            params=best_params,
+            price_data=price_data,
+            universe=universe,
+            start=start,
+            end=end,
+            include_nav_history=True,
+        )
+        raw_nav = best_with_nav.get("_nav_history", [])
+        segment_data = compute_segment_metrics(raw_nav, n_segments=3)
+        logger.info(f"[SEGMENT] {segment_data.get('segment_status', '?')} — "
+                     f"segments={segment_data.get('segment_count', 0)}, "
+                     f"ready={segment_data.get('segment_eval_ready', False)}")
+    except Exception as e:
+        logger.warning(f"[SEGMENT] Segment evaluation failed: {e}")
+        segment_data = {
+            "segment_evaluation_enabled": True,
+            "segment_scheme": "equal_3way",
+            "segment_count": 3,
+            "segment_eval_ready": False,
+            "segment_status": f"ERROR: {e}",
+            "full_period_metrics": {},
+            "segment_metrics": {},
+            "segment_lengths": [],
+        }
+
     tune_result = {
         "best_params": best_params,
         "best_score": round(best_score, 4),
@@ -312,6 +344,7 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
         },
         "best_total_trades": best_attrs.get("total_trades", 0),
         "trials_top10": trials_top10,
+        **segment_data,
         "meta": {
             "asof": now_kst,
             "run_id": run_id,
