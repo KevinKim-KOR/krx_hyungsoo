@@ -605,7 +605,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
     
     # 🗺️ P202: 5-Step Flow Guide
     st.markdown("### 🗺️ 운영 흐름 가이드 (Flow Guide)")
-    with st.expander("📍 현재 단계 파악하기 (클릭하여 열기)", expanded=True):
+    with st.expander("📍 현재 단계 파악하기 (클릭하여 열기)", expanded=False):
         # Step 0: Approval
         st.markdown("**[Step 0] 승인 (Approval)**")
         app_data = load_json(LIVE_APPROVAL_LATEST_PATH)
