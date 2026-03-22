@@ -1,6 +1,6 @@
 # 📚 KRX Alertor Modular - Documentation
 
-**System Version**: 10.1 (P204-STEP1-INFRA-V1)
+**System Version**: 10.2 (P204-STEP2-MULTI-SLICE)
 **Last Update**: 2026-03-22
 
 ---
