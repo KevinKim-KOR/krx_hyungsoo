@@ -38,8 +38,8 @@ logger = logging.getLogger("app.run_tune")
 # ─── Paths ────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_PATH = PROJECT_ROOT / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
-RESULT_LATEST = PROJECT_ROOT / "reports" / "tune" / "latest" / "tune_result.json"
-RESULT_SNAPSHOTS = PROJECT_ROOT / "reports" / "tune" / "snapshots"
+RESULT_LATEST = PROJECT_ROOT / "reports" / "tuning" / "tuning_results.json"
+RESULT_SNAPSHOTS = PROJECT_ROOT / "reports" / "tuning" / "snapshots"
 
 from app.run_backtest import load_params_with_fallback
 
@@ -171,10 +171,16 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
     # Suppress Optuna's verbose logging
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
+    storage_path = PROJECT_ROOT / "reports" / "tuning" / "study.sqlite3"
+    storage_path.parent.mkdir(parents=True, exist_ok=True)
+    study_name = f"tune_{mode}_{universe[0] if universe else 'ALL'}"
+    
     study = optuna.create_study(
         direction="maximize",
         sampler=sampler,
-        study_name=run_id,
+        storage=f"sqlite:///{storage_path}",
+        load_if_exists=True,
+        study_name=study_name,
     )
 
     objective = TuneObjective(
@@ -185,11 +191,63 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
         telemetry=telemetry,
     )
 
+    def _checkpoint_callback(study_obj, trial_obj):
+        base_dir = storage_path.parent
+        now_str = datetime.now(KST).strftime("%Y-%m-%dT%H:%M:%S+09:00")
+        
+        def _atomic_write_custom(filepath: Path, data: dict) -> None:
+            import os, json
+            tmp_path = filepath.parent / f"{filepath.name}.tmp"
+            try:
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                os.replace(str(tmp_path), str(filepath))
+            except Exception:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+                
+        # 1. best_params / best_score
+        try:
+            best_t = study_obj.best_trial
+            best_params_data = {
+                "best_trial_number": best_t.number,
+                "best_score": best_t.value,
+                "params": best_t.params,
+                "asof": now_str
+            }
+            best_score_data = {
+                "best_score": best_t.value,
+                "best_trial_number": best_t.number,
+                "asof": now_str
+            }
+            _atomic_write_custom(base_dir / "best_params_latest.json", best_params_data)
+            _atomic_write_custom(base_dir / "best_score_latest.json", best_score_data)
+        except ValueError:
+            pass # No completed trials yet
+            
+        # 2. last_completed_trial
+        status_str = "COMPLETE" if trial_obj.state == optuna.trial.TrialState.COMPLETE else "FAIL"
+        reason = "NO_RESULT"
+        if trial_obj.state == optuna.trial.TrialState.FAIL:
+            reason = "EXCEPTION"
+        elif trial_obj.state == optuna.trial.TrialState.WAITING or trial_obj.state == optuna.trial.TrialState.RUNNING:
+            reason = "INTERRUPTED"
+            
+        last_comp_data = {
+            "trial_number": trial_obj.number,
+            "status": status_str,
+            "reason": reason,
+            "asof": now_str
+        }
+        _atomic_write_custom(base_dir / "last_completed_trial.json", last_comp_data)
+
     t0 = time.time()
+    started_at_str = datetime.now(KST).strftime("%Y-%m-%dT%H:%M:%S+09:00")
     study.optimize(
         objective,
         n_trials=n_trials,
         timeout=timeout_sec,
+        callbacks=[_checkpoint_callback],
         catch=(Exception,),
     )
     runtime_sec = time.time() - t0
@@ -243,13 +301,24 @@ def run_cli_tune(mode: str = "full", n_trials: int = 50, seed: int = 42, timeout
         "meta": {
             "asof": now_kst,
             "run_id": run_id,
+            "study_name": study_name,
+            "storage_path": str(storage_path),
+            "resume_enabled": True,
+            "n_trials_total": len(study.trials),
+            "n_trials_complete": len(completed_trials),
+            "n_trials_failed": len([t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]),
+            "best_trial_number": study.best_trial.number if completed_trials else -1,
+            "best_score": round(best_score, 4) if completed_trials else 0.0,
+            "checkpoint_files": ["best_params_latest.json", "best_score_latest.json", "last_completed_trial.json"],
+            "started_at": started_at_str,
+            "finished_at": now_kst,
             "mode": mode,
             "start_date": str(start),
             "end_date": str(end),
             "universe": universe,
-            "n_trials": n_trials,
-            "completed_trials": len(completed_trials),
-            "pruned_trials": len(study.trials) - len(completed_trials),
+            "n_trials_session": n_trials,
+            "completed_trials_session": len(completed_trials),
+            "pruned_trials_session": len(study.trials) - len(completed_trials),
             "seed": seed,
             "runtime_sec": round(runtime_sec, 1),
             "param_source": param_source,
