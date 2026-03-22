@@ -1,6 +1,6 @@
 # 📚 KRX Alertor Modular - Documentation
 
-**System Version**: 10.0 (Phase C-S.0 + V1.7 Cockpit)
+**System Version**: 10.1 (P204-STEP1-INFRA-V1)
 **Last Update**: 2026-03-22
 
 ---
