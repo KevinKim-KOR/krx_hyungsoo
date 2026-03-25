@@ -151,6 +151,28 @@ def save_params(data):
     return snapshot_path
 
 
+def apply_tune_best_params_to_ssot(best_params):
+    params_data = load_json(LATEST_PATH)
+    if not params_data:
+        raise ValueError("현재 SSOT 파라미터를 읽을 수 없습니다.")
+    if not best_params:
+        raise ValueError("튜닝 1등 파라미터가 없습니다.")
+
+    target_params = params_data.setdefault("params", {})
+    target_params.setdefault("lookbacks", {})["momentum_period"] = int(
+        best_params["momentum_period"]
+    )
+    target_params.setdefault("decision_params", {})["exit_threshold"] = float(
+        best_params["stop_loss"]
+    )
+    target_params.setdefault("position_limits", {})["max_positions"] = int(
+        best_params["max_positions"]
+    )
+    params_data["asof"] = datetime.now(KST).isoformat()
+    save_params(params_data)
+    return params_data
+
+
 def compute_fingerprint(data):
     return hashlib.sha256(
         json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
@@ -725,6 +747,32 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     with st.expander("최적 파라미터", expanded=False):
                         st.json(bp)
 
+                    apply_col1, apply_col2 = st.columns([2, 3])
+                    if apply_col1.button(
+                        "🚀 1등 파라미터 SSOT 자동 적용",
+                        key="auto_apply_tune_best_params",
+                        use_container_width=True,
+                    ):
+                        try:
+                            applied_params = apply_tune_best_params_to_ssot(bp)
+                            st.success(
+                                "1등 후보 3축을 현재 파라미터(SSOT)에 자동 적용했습니다."
+                            )
+                            st.caption(
+                                "적용 값: "
+                                f"momentum_period={applied_params['params']['lookbacks']['momentum_period']}, "
+                                f"exit_threshold={applied_params['params']['decision_params']['exit_threshold']}, "
+                                f"max_positions={applied_params['params']['position_limits']['max_positions']}"
+                            )
+                            time.sleep(1.0)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"SSOT 자동 적용 실패: {e}")
+                    apply_col2.caption(
+                        "튜닝 1등 후보의 momentum_period / stop_loss(exit_threshold) / "
+                        "max_positions만 현재 SSOT에 덮어씁니다."
+                    )
+
                     objective_version = tune_data.get(
                         "objective_version", tune_meta.get("objective_version", "N/A")
                     )
@@ -814,6 +862,9 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     else:
                         st.info("ℹ️ 세그먼트 평가 없음 — Run Tune을 다시 실행하세요.")
 
+                    from app.run_tune import refresh_promotion_verdict
+
+                    promotion_verdict = refresh_promotion_verdict()
                     validation_pack = tune_data.get("validation_pack", {})
                     validation_files = validation_pack.get("files", {})
                     validation_file_rows = []
@@ -821,6 +872,8 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         "trials_top20.csv",
                         "best_trial_segments.csv",
                         "tuning_summary.md",
+                        "promotion_verdict.json",
+                        "promotion_verdict.md",
                     ]:
                         file_meta = validation_files.get(filename, {})
                         file_path = BASE_DIR / "reports" / "tuning" / filename
@@ -842,6 +895,60 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         use_container_width=True,
                         hide_index=True,
                     )
+
+                    verdict_color = {
+                        "PROMOTE_CANDIDATE": "success",
+                        "REVIEW_REQUIRED": "warning",
+                        "REJECT": "error",
+                    }.get(promotion_verdict.get("verdict"), "warning")
+                    verdict_label = {
+                        "PROMOTE_CANDIDATE": "승격 후보",
+                        "REVIEW_REQUIRED": "재검토 필요",
+                        "REJECT": "기각",
+                    }.get(promotion_verdict.get("verdict"), "기각")
+                    verdict_text = (
+                        f"현재 판정: {verdict_label} | "
+                        f"SSOT 반영: {'예' if promotion_verdict.get('candidate_applied_to_ssot') else '아니오'} | "
+                        f"CAGR > 15: {'예' if promotion_verdict.get('criteria_check', {}).get('cagr_gt_15') else '아니오'} | "
+                        f"MDD < 10: {'예' if promotion_verdict.get('criteria_check', {}).get('mdd_lt_10') else '아니오'}"
+                    )
+                    st.markdown("**승격 판정**")
+                    if verdict_color == "success":
+                        st.success(verdict_text)
+                    elif verdict_color == "warning":
+                        st.warning(verdict_text)
+                    else:
+                        st.error(verdict_text)
+
+                    verdict_reason_rows = [
+                        {"판정 사유": reason}
+                        for reason in promotion_verdict.get("reasons", [])
+                    ]
+                    if verdict_reason_rows:
+                        st.dataframe(
+                            pd.DataFrame(verdict_reason_rows),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    ssot_compare = promotion_verdict.get("ssot_vs_best_params", {})
+                    if ssot_compare:
+                        compare_rows = []
+                        for key in ["momentum_period", "stop_loss", "max_positions"]:
+                            item = ssot_compare.get(key, {})
+                            compare_rows.append(
+                                {
+                                    "항목": key,
+                                    "튜닝 1등": item.get("best", "-"),
+                                    "현재 SSOT": item.get("current", "-"),
+                                    "일치": "예" if item.get("match") else "아니오",
+                                }
+                            )
+                        st.dataframe(
+                            pd.DataFrame(compare_rows),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    st.info(f"다음 행동: {promotion_verdict.get('next_action', '-')}")
 
                     top5_rows = (
                         validation_pack.get("top5_comparison")
