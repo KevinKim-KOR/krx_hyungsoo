@@ -81,6 +81,10 @@ def extract_tune_config(bundle: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "universe": strategy.get("universe", []),
         "momentum_period": strategy.get("lookbacks", {}).get("momentum_period", 20),
+        "volatility_period": strategy.get("lookbacks", {}).get("volatility_period", 14),
+        "entry_threshold": strategy.get("decision_params", {}).get(
+            "entry_threshold", 0.02
+        ),
         "stop_loss": strategy.get("decision_params", {}).get("exit_threshold", -0.05),
         "max_positions": strategy.get("position_limits", {}).get("max_positions", 4),
     }
@@ -161,6 +165,8 @@ def _build_top_trial_rows(
                 "trial": trial.number,
                 "score": round(_to_float(trial.value), 6),
                 "momentum_period": trial.params.get("momentum_period"),
+                "volatility_period": trial.params.get("volatility_period"),
+                "entry_threshold": _to_float(trial.params.get("entry_threshold")),
                 "stop_loss": _to_float(trial.params.get("stop_loss")),
                 "max_positions": trial.params.get("max_positions"),
                 "cagr_full": round(_to_float(attrs.get("cagr")), 6),
@@ -241,6 +247,8 @@ def _build_validation_summary_md(
         (
             "- best params: "
             f"momentum_period={best_params.get('momentum_period')}, "
+            f"volatility_period={best_params.get('volatility_period')}, "
+            f"entry_threshold={best_params.get('entry_threshold')}, "
             f"stop_loss={best_params.get('stop_loss')}, "
             f"max_positions={best_params.get('max_positions')}"
         ),
@@ -255,13 +263,14 @@ def _build_validation_summary_md(
         f"- 과최적화 벌점: {overfit_penalty:.4f}",
         "",
         "## 상위 5개 후보 비교 요약",
-        "| 순위 | Trial | Score | momentum_period | stop_loss | max_positions | worst_segment |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| 순위 | Trial | Score | momentum_period | volatility_period | entry_threshold | stop_loss | max_positions | worst_segment |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row in top5_rows:
         lines.append(
             f"| {row['rank']} | {row['trial']} | {row['score']:.6f} | "
-            f"{row['momentum_period']} | {row['stop_loss']:.4f} | "
+            f"{row['momentum_period']} | {row['volatility_period']} | "
+            f"{row['entry_threshold']:.2f} | {row['stop_loss']:.4f} | "
             f"{row['max_positions']} | {row['worst_segment']} |"
         )
     lines.extend(
@@ -309,6 +318,8 @@ def _extract_ssot_candidate_axes(params_data: Dict[str, Any]) -> Dict[str, Any]:
     params = params_data.get("params", {})
     return {
         "momentum_period": params.get("lookbacks", {}).get("momentum_period"),
+        "volatility_period": params.get("lookbacks", {}).get("volatility_period"),
+        "entry_threshold": params.get("decision_params", {}).get("entry_threshold"),
         "stop_loss": params.get("decision_params", {}).get("exit_threshold"),
         "max_positions": params.get("position_limits", {}).get("max_positions"),
     }
@@ -318,6 +329,8 @@ def _extract_backtest_candidate_axes(backtest_data: Dict[str, Any]) -> Dict[str,
     params_used = backtest_data.get("meta", {}).get("params_used", {})
     return {
         "momentum_period": params_used.get("momentum_period"),
+        "volatility_period": params_used.get("volatility_period"),
+        "entry_threshold": params_used.get("entry_threshold"),
         "stop_loss": params_used.get("stop_loss"),
         "max_positions": params_used.get("max_positions"),
     }
@@ -334,6 +347,20 @@ def _build_axis_comparison(
             "current": current_params.get("momentum_period"),
             "match": current_params.get("momentum_period")
             == best_params.get("momentum_period"),
+        },
+        "volatility_period": {
+            "best": best_params.get("volatility_period"),
+            "current": current_params.get("volatility_period"),
+            "match": current_params.get("volatility_period")
+            == best_params.get("volatility_period"),
+        },
+        "entry_threshold": {
+            "best": _to_float(best_params.get("entry_threshold")),
+            "current": _to_float(current_params.get("entry_threshold")),
+            "match": _is_same_number(
+                current_params.get("entry_threshold"),
+                best_params.get("entry_threshold"),
+            ),
         },
         "stop_loss": {
             "best": _to_float(best_params.get("stop_loss")),
@@ -485,7 +512,7 @@ def refresh_promotion_verdict(
     }
 
     if not candidate_applied_to_ssot:
-        reasons.append("현재 SSOT 3축 값이 튜닝 1등 후보와 일치하지 않습니다.")
+        reasons.append("현재 SSOT 5축 값이 튜닝 1등 후보와 일치하지 않습니다.")
 
     if tune_data and backtest_data:
         if not criteria_check["cagr_gt_15"]:
@@ -889,6 +916,8 @@ def run_cli_tune(
                 "trial",
                 "score",
                 "momentum_period",
+                "volatility_period",
+                "entry_threshold",
                 "stop_loss",
                 "max_positions",
                 "cagr_full",

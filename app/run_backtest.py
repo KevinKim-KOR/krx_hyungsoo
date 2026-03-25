@@ -37,9 +37,19 @@ logger = logging.getLogger("app.run_backtest")
 
 # ─── Paths ────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-BUNDLE_PATH = PROJECT_ROOT / "state" / "strategy_bundle" / "latest" / "strategy_bundle_latest.json"
-PARAMS_SSOT_PATH = PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
-RESULT_LATEST = PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
+BUNDLE_PATH = (
+    PROJECT_ROOT
+    / "state"
+    / "strategy_bundle"
+    / "latest"
+    / "strategy_bundle_latest.json"
+)
+PARAMS_SSOT_PATH = (
+    PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
+)
+RESULT_LATEST = (
+    PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
+)
 RESULT_SNAPSHOTS = PROJECT_ROOT / "reports" / "backtest" / "snapshots"
 
 
@@ -64,25 +74,30 @@ def extract_params(bundle: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "universe": universe,
         "momentum_period": lookbacks.get("momentum_period", 60),
+        "volatility_period": lookbacks.get("volatility_period", 14),
         "max_positions": pos_limits.get("max_positions", 4),
         "max_position_pct": risk.get("max_position_pct", 0.25),
         "min_cash_pct": pos_limits.get("min_cash_pct", 0.05),
+        "entry_threshold": decision.get("entry_threshold", 0.02),
         "stop_loss": decision.get("exit_threshold", -0.10),
         "adx_filter_min": decision.get("adx_filter_min", 20),
         "portfolio_mode": bundle.get("portfolio_mode", "single_universe"),
         "sell_mode": bundle.get("sell_mode", "stop_loss"),
-        "rebalance": bundle.get("rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}),
+        "rebalance": bundle.get(
+            "rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}
+        ),
         "buckets": bundle.get("buckets", []),
     }
+
 
 def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
     """Load params from SSOT, fallback to bundle. Returns (params, param_source_meta)"""
     import hashlib
-    
+
     def get_sha256(path: Path) -> str:
         with open(path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()
-            
+
     if PARAMS_SSOT_PATH.exists():
         try:
             with open(PARAMS_SSOT_PATH, "r", encoding="utf-8") as f:
@@ -91,14 +106,26 @@ def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
             params = {
                 "universe": p.get("universe", []),
                 "momentum_period": p.get("lookbacks", {}).get("momentum_period", 60),
+                "volatility_period": p.get("lookbacks", {}).get(
+                    "volatility_period", 14
+                ),
                 "max_positions": p.get("position_limits", {}).get("max_positions", 4),
-                "max_position_pct": p.get("risk_limits", {}).get("max_position_pct", 0.25),
+                "max_position_pct": p.get("risk_limits", {}).get(
+                    "max_position_pct", 0.25
+                ),
                 "min_cash_pct": p.get("position_limits", {}).get("min_cash_pct", 0.05),
+                "entry_threshold": p.get("decision_params", {}).get(
+                    "entry_threshold", 0.02
+                ),
                 "stop_loss": p.get("decision_params", {}).get("exit_threshold", -0.10),
-                "adx_filter_min": p.get("decision_params", {}).get("adx_filter_min", 20),
+                "adx_filter_min": p.get("decision_params", {}).get(
+                    "adx_filter_min", 20
+                ),
                 "portfolio_mode": p.get("portfolio_mode", "single_universe"),
                 "sell_mode": p.get("sell_mode", "stop_loss"),
-                "rebalance": p.get("rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}),
+                "rebalance": p.get(
+                    "rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}
+                ),
                 "buckets": p.get("buckets", []),
                 "data_source": p.get("data_source", "fdr"),
             }
@@ -111,15 +138,15 @@ def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
                 if all_tickers:
                     params["universe"] = all_tickers
 
-            if params["universe"]: # Only accept if universe is non-empty
+            if params["universe"]:  # Only accept if universe is non-empty
                 source = {
                     "path": "state/params/latest/strategy_params_latest.json",
-                    "sha256": get_sha256(PARAMS_SSOT_PATH)
+                    "sha256": get_sha256(PARAMS_SSOT_PATH),
                 }
                 return params, source
         except Exception as e:
             logger.warning(f"Failed to load params SSOT: {e}")
-            
+
     # Fallback to bundle
     if not BUNDLE_PATH.exists():
         raise FileNotFoundError(f"Nor SSOT nor Strategy bundle found.")
@@ -128,9 +155,10 @@ def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
     params = extract_params(bundle)
     source = {
         "path": "state/strategy_bundle/latest/strategy_bundle_latest.json",
-        "sha256": get_sha256(BUNDLE_PATH)
+        "sha256": get_sha256(BUNDLE_PATH),
     }
     return params, source
+
 
 # ─── 2. Data Loading ──────────────────────────────────────────────────────
 def load_price_data(
@@ -152,7 +180,6 @@ def load_price_data(
         f"{combined.index.get_level_values('date').max().date()})"
     )
     return combined
-
 
 
 # ─── 3. Run Backtest ──────────────────────────────────────────────────────
@@ -184,7 +211,9 @@ def run_backtest(
     # P184-Fix: Priority Enforcement
     portfolio_mode = params.get("portfolio_mode", "single_universe")
     if portfolio_mode == "bucket_portfolio":
-        effective_rebalance = params.get("rebalance", {"frequency": "M", "day_of_month": 1})
+        effective_rebalance = params.get(
+            "rebalance", {"frequency": "M", "day_of_month": 1}
+        )
         trigger_source = "params.rebalance"
     else:
         effective_rebalance = params.get("rebalance_rule", {"frequency": "daily"})
@@ -196,6 +225,8 @@ def run_backtest(
         start_date=start,
         end_date=end,
         ma_period=params["momentum_period"],
+        volatility_period=params["volatility_period"],
+        entry_threshold=params["entry_threshold"],
         rsi_period=14,
         stop_loss=params["stop_loss"],
         adx_threshold=params["adx_filter_min"],
@@ -240,7 +271,7 @@ def compute_buyhold_metrics(
 
     # MDD
     cummax = closes.cummax()
-    drawdown = (closes / cummax - 1.0)
+    drawdown = closes / cummax - 1.0
     mdd = abs(float(drawdown.min())) * 100  # 양수 %
 
     # Win Rate (일별 양의 수익률 비율)
@@ -250,7 +281,11 @@ def compute_buyhold_metrics(
     else:
         win_rate = 0.0
 
-    return {"cagr": round(cagr, 4), "mdd": round(mdd, 4), "win_rate": round(win_rate, 2)}
+    return {
+        "cagr": round(cagr, 4),
+        "mdd": round(mdd, 4),
+        "win_rate": round(win_rate, 2),
+    }
 
 
 # ─── 5. Format Output ─────────────────────────────────────────────────────
@@ -277,20 +312,24 @@ def format_result(
 
     if nav_history and len(nav_history) >= 2:
         for d, nav in nav_history:
-            equity_curve.append({
-                "date": str(d),
-                "equity": round(float(nav), 2),
-            })
+            equity_curve.append(
+                {
+                    "date": str(d),
+                    "equity": round(float(nav), 2),
+                }
+            )
 
         # daily returns from equity curve
         for i in range(1, len(nav_history)):
             prev_nav = nav_history[i - 1][1]
             curr_nav = nav_history[i][1]
             ret = (curr_nav / prev_nav - 1.0) if prev_nav > 0 else 0.0
-            daily_returns.append({
-                "date": str(nav_history[i][0]),
-                "ret": round(float(ret), 6),
-            })
+            daily_returns.append(
+                {
+                    "date": str(nav_history[i][0]),
+                    "ret": round(float(ret), 6),
+                }
+            )
 
     # ── Recompute MDD/Sharpe from equity curve ──
     sharpe_reason = None
@@ -298,11 +337,12 @@ def format_result(
 
     if len(equity_curve) >= 2:
         import numpy as np
+
         navs = pd.Series([e["equity"] for e in equity_curve])
 
         # MDD
         cummax = navs.cummax()
-        drawdown = (navs / cummax - 1.0)
+        drawdown = navs / cummax - 1.0
         mdd_val = abs(float(drawdown.min())) * 100
         if mdd_val == 0.0:
             mdd_reason = "no_drawdown_from_peak"
@@ -310,7 +350,7 @@ def format_result(
         # Sharpe
         rets = navs.pct_change().dropna()
         if len(rets) > 1 and float(rets.std()) > 0:
-            sharpe_val = float(rets.mean() / rets.std()) * (252 ** 0.5)
+            sharpe_val = float(rets.mean() / rets.std()) * (252**0.5)
         else:
             sharpe_val = 0.0
             sharpe_reason = "std_zero" if len(rets) > 1 else "insufficient_data"
@@ -349,7 +389,12 @@ def format_result(
                 }
             except (KeyError, Exception) as e:
                 logger.warning(f"[TICKER] {t} Buy&Hold calc failed: {e}")
-                tickers_out[t] = {"cagr": 0.0, "mdd": 0.0, "win_rate": 0.0, "score": None}
+                tickers_out[t] = {
+                    "cagr": 0.0,
+                    "mdd": 0.0,
+                    "win_rate": 0.0,
+                    "score": None,
+                }
     else:
         # fallback: portfolio-level copy (should not happen)
         for t in params["universe"]:
@@ -361,11 +406,14 @@ def format_result(
             }
 
     # top_performers (ticker cagr 내림차순, top 5)
-    sorted_tickers = sorted(tickers_out.items(), key=lambda x: x[1]["cagr"], reverse=True)
+    sorted_tickers = sorted(
+        tickers_out.items(), key=lambda x: x[1]["cagr"], reverse=True
+    )
     top_performers = [{"ticker": t, "cagr": v["cagr"]} for t, v in sorted_tickers[:5]]
 
     try:
         from app.backtest.infra.data_loader import get_telemetry
+
         telemetry = get_telemetry()
     except ImportError:
         telemetry = {}
@@ -388,13 +436,19 @@ def format_result(
         "fallback_count": telemetry.get("fallback_count", 0),
         "params_used": {
             "momentum_period": params.get("momentum_period"),
+            "volatility_period": params.get("volatility_period"),
+            "entry_threshold": params.get("entry_threshold"),
             "stop_loss": params.get("stop_loss"),
             "max_positions": params.get("max_positions"),
             "portfolio_mode": params.get("portfolio_mode", "single_universe"),
             "sell_mode": params.get("sell_mode", "stop_loss"),
             "rebalance": params.get("rebalance", {}),
             "buckets_used": [
-                {"name": b.get("name"), "weight": b.get("weight"), "universe_size": len(b.get("universe", []))}
+                {
+                    "name": b.get("name"),
+                    "weight": b.get("weight"),
+                    "universe_size": len(b.get("universe", [])),
+                }
                 for b in params.get("buckets", [])
             ],
         },
@@ -461,7 +515,9 @@ def atomic_write_result(data: Dict[str, Any]) -> None:
 
 
 # ─── 7. Main ──────────────────────────────────────────────────────────────
-def run_cli_backtest(mode: str = "quick", start_str: str = None, end_str: str = None) -> bool:
+def run_cli_backtest(
+    mode: str = "quick", start_str: str = None, end_str: str = None
+) -> bool:
     """Run backtest programmatically. Returns True if successful."""
     logger.info("=" * 60)
     logger.info("P165 Backtest Engine — CLI")
@@ -475,8 +531,11 @@ def run_cli_backtest(mode: str = "quick", start_str: str = None, end_str: str = 
         return False
 
     logger.info(f"[PARAMS] src={param_source['path']}")
-    logger.info(f"[PARAMS] universe={params['universe']}, ma={params['momentum_period']}, "
-                f"max_pos={params['max_positions']}, stop_loss={params['stop_loss']}")
+    logger.info(
+        f"[PARAMS] universe={params['universe']}, ma={params['momentum_period']}, "
+        f"vol={params['volatility_period']}, entry={params['entry_threshold']}, "
+        f"max_pos={params['max_positions']}, stop_loss={params['stop_loss']}"
+    )
 
     # 2. Determine date range
     today = date.today()
@@ -494,22 +553,28 @@ def run_cli_backtest(mode: str = "quick", start_str: str = None, end_str: str = 
 
     # 3. Load price data
     try:
-        price_data = load_price_data(params["universe"], start, end, data_source=params.get("data_source", "fdr"))
+        price_data = load_price_data(
+            params["universe"], start, end, data_source=params.get("data_source", "fdr")
+        )
     except Exception as e:
         logger.error(f"Data loading failed: {e}")
         return False
 
     # 4. Run backtest
-    enable_regime = (mode == "full")
+    enable_regime = mode == "full"
     try:
-        result = run_backtest(price_data, params, start, end, enable_regime=enable_regime)
+        result = run_backtest(
+            price_data, params, start, end, enable_regime=enable_regime
+        )
     except Exception as e:
         logger.error(f"Backtest execution failed: {e}")
         traceback.print_exc()
         return False
 
     # 5. Format and write (pass param_source)
-    formatted = format_result(result, params, start, end, price_data=price_data, param_source=param_source)
+    formatted = format_result(
+        result, params, start, end, price_data=price_data, param_source=param_source
+    )
     try:
         atomic_write_result(formatted)
     except Exception as e:
@@ -520,10 +585,14 @@ def run_cli_backtest(mode: str = "quick", start_str: str = None, end_str: str = 
     s = formatted["summary"]
     meta = formatted["meta"]
     logger.info("=" * 60)
-    logger.info(f"[RESULT: OK] CAGR={s['cagr']:.4f}  MDD={s['mdd']:.4f}  "
-                f"Sharpe={s.get('sharpe', 0):.4f}  Trades={meta['total_trades']}")
-    logger.info(f"  equity_curve: {len(meta.get('equity_curve', []))} pts  "
-                f"daily_returns: {len(meta.get('daily_returns', []))} pts")
+    logger.info(
+        f"[RESULT: OK] CAGR={s['cagr']:.4f}  MDD={s['mdd']:.4f}  "
+        f"Sharpe={s.get('sharpe', 0):.4f}  Trades={meta['total_trades']}"
+    )
+    logger.info(
+        f"  equity_curve: {len(meta.get('equity_curve', []))} pts  "
+        f"daily_returns: {len(meta.get('daily_returns', []))} pts"
+    )
     if meta.get("sharpe_reason"):
         logger.info(f"  sharpe_reason: {meta['sharpe_reason']}")
     if meta.get("mdd_reason"):
@@ -531,6 +600,7 @@ def run_cli_backtest(mode: str = "quick", start_str: str = None, end_str: str = 
     logger.info("=" * 60)
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")
     return True
+
 
 def main():
     parser = argparse.ArgumentParser(description="P165 Backtest CLI")
@@ -551,4 +621,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

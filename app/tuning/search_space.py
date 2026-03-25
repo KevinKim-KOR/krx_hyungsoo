@@ -16,7 +16,11 @@ except ImportError:
 def suggest_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Optuna trial에서 하이퍼파라미터 제안"""
     return {
-        "momentum_period": trial.suggest_int("momentum_period", 8, 60),
-        "stop_loss": trial.suggest_float("stop_loss", -0.10, -0.01, step=0.01),
-        "max_positions": trial.suggest_int("max_positions", 2, 6),
+        "momentum_period": trial.suggest_int("momentum_period", 45, 65, step=1),
+        "volatility_period": trial.suggest_int("volatility_period", 12, 24, step=1),
+        "entry_threshold": trial.suggest_float(
+            "entry_threshold", 0.01, 0.05, step=0.01
+        ),
+        "stop_loss": trial.suggest_float("stop_loss", -0.10, -0.03, step=0.01),
+        "max_positions": trial.suggest_int("max_positions", 2, 5, step=1),
     }

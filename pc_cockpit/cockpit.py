@@ -162,6 +162,12 @@ def apply_tune_best_params_to_ssot(best_params):
     target_params.setdefault("lookbacks", {})["momentum_period"] = int(
         best_params["momentum_period"]
     )
+    target_params.setdefault("lookbacks", {})["volatility_period"] = int(
+        best_params["volatility_period"]
+    )
+    target_params.setdefault("decision_params", {})["entry_threshold"] = float(
+        best_params["entry_threshold"]
+    )
     target_params.setdefault("decision_params", {})["exit_threshold"] = float(
         best_params["stop_loss"]
     )
@@ -201,6 +207,8 @@ def _extract_ssot_axes(params_data):
     params = (params_data or {}).get("params", {})
     return {
         "momentum_period": params.get("lookbacks", {}).get("momentum_period"),
+        "volatility_period": params.get("lookbacks", {}).get("volatility_period"),
+        "entry_threshold": params.get("decision_params", {}).get("entry_threshold"),
         "stop_loss": params.get("decision_params", {}).get("exit_threshold"),
         "max_positions": params.get("position_limits", {}).get("max_positions"),
     }
@@ -210,6 +218,8 @@ def _extract_backtest_axes(backtest_data):
     params_used = (backtest_data or {}).get("meta", {}).get("params_used", {})
     return {
         "momentum_period": params_used.get("momentum_period"),
+        "volatility_period": params_used.get("volatility_period"),
+        "entry_threshold": params_used.get("entry_threshold"),
         "stop_loss": params_used.get("stop_loss"),
         "max_positions": params_used.get("max_positions"),
     }
@@ -222,6 +232,20 @@ def _build_axis_compare(best_params, current_axes):
             "current": current_axes.get("momentum_period"),
             "match": current_axes.get("momentum_period")
             == best_params.get("momentum_period"),
+        },
+        "volatility_period": {
+            "best": best_params.get("volatility_period"),
+            "current": current_axes.get("volatility_period"),
+            "match": current_axes.get("volatility_period")
+            == best_params.get("volatility_period"),
+        },
+        "entry_threshold": {
+            "best": _safe_float(best_params.get("entry_threshold")),
+            "current": _safe_float(current_axes.get("entry_threshold")),
+            "match": _same_number(
+                current_axes.get("entry_threshold"),
+                best_params.get("entry_threshold"),
+            ),
         },
         "stop_loss": {
             "best": _safe_float(best_params.get("stop_loss")),
@@ -319,7 +343,7 @@ def refresh_promotion_verdict_local(tune_data):
     }
     reasons = []
     if not candidate_applied_to_ssot:
-        reasons.append("현재 SSOT 3축 값이 튜닝 1등 후보와 일치하지 않습니다.")
+        reasons.append("?? SSOT 5? ?? ?? 1? ??? ???? ????.")
     if not criteria_check["cagr_gt_15"]:
         reasons.append("Full Backtest CAGR이 15% 초과 기준을 만족하지 못합니다.")
     if not criteria_check["mdd_lt_10"]:
@@ -962,23 +986,24 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         try:
                             applied_params = apply_tune_best_params_to_ssot(bp)
                             st.success(
-                                "1등 후보 3축을 현재 파라미터(SSOT)에 자동 적용했습니다."
+                                "1등 후보 5축을 현재 파라미터(SSOT)에 자동 적용했습니다."
                             )
                             st.caption(
                                 "적용 값: "
                                 f"momentum_period={applied_params['params']['lookbacks']['momentum_period']}, "
+                                f"volatility_period={applied_params['params']['lookbacks']['volatility_period']}, "
+                                f"entry_threshold={applied_params['params']['decision_params']['entry_threshold']}, "
                                 f"exit_threshold={applied_params['params']['decision_params']['exit_threshold']}, "
                                 f"max_positions={applied_params['params']['position_limits']['max_positions']}"
                             )
                             time.sleep(1.0)
                             st.rerun()
                         except Exception as e:
-                            st.error(f"SSOT 자동 적용 실패: {e}")
+                            st.error(f"SSOT ?? ?? ??: {e}")
                     apply_col2.caption(
-                        "튜닝 1등 후보의 momentum_period / stop_loss(exit_threshold) / "
-                        "max_positions만 현재 SSOT에 덮어씁니다."
+                        "?? 1? ??? momentum_period / volatility_period / "
+                        "entry_threshold / stop_loss(exit_threshold) / max_positions? ?? SSOT? ?????."
                     )
-
                     objective_version = tune_data.get(
                         "objective_version", tune_meta.get("objective_version", "N/A")
                     )
@@ -1137,11 +1162,24 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     ssot_compare = promotion_verdict.get("ssot_vs_best_params", {})
                     if ssot_compare:
                         compare_rows = []
-                        for key in ["momentum_period", "stop_loss", "max_positions"]:
+                        axis_labels = {
+                            "momentum_period": "모멘텀 기간",
+                            "volatility_period": "변동성 기간",
+                            "entry_threshold": "진입 임계치",
+                            "stop_loss": "손절값",
+                            "max_positions": "최대 보유수",
+                        }
+                        for key in [
+                            "momentum_period",
+                            "volatility_period",
+                            "entry_threshold",
+                            "stop_loss",
+                            "max_positions",
+                        ]:
                             item = ssot_compare.get(key, {})
                             compare_rows.append(
                                 {
-                                    "항목": key,
+                                    "항목": axis_labels.get(key, key),
                                     "튜닝 1등": item.get("best", "-"),
                                     "현재 SSOT": item.get("current", "-"),
                                     "일치": "예" if item.get("match") else "아니오",
@@ -1152,8 +1190,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             use_container_width=True,
                             hide_index=True,
                         )
-                    st.info(f"다음 행동: {promotion_verdict.get('next_action', '-')}")
-
+                    st.info(f"?? ??: {promotion_verdict.get('next_action', '-')}")
                     top5_rows = (
                         validation_pack.get("top5_comparison")
                         or tune_data.get("trials_top20", [])[:5]
@@ -1166,6 +1203,8 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                                     "Trial": row.get("trial", "?"),
                                     "점수": f"{float(row.get('score', 0.0)):.4f}",
                                     "모멘텀 기간": row.get("momentum_period", "?"),
+                                    "변동성 기간": row.get("volatility_period", "?"),
+                                    "진입 임계치": row.get("entry_threshold", "?"),
                                     "손절값": row.get("stop_loss", "?"),
                                     "최대 보유수": row.get("max_positions", "?"),
                                     "최악 구간": row.get("worst_segment", "N/A"),
@@ -1178,12 +1217,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             top5_display, use_container_width=True, hide_index=True
                         )
         except Exception as e:
-            st.error(f"⚠️ 튜닝 결과 파싱 실패: {e}")
-
-    st.divider()
-    # LIVE 승인 패널 추가
-    st.markdown("### 🔐 LIVE 승인 패널 (Approval Gate)")
-
+            st.error(f"?? ?? ?? ?? ??: {e}")
     app_status = "❌ 미승인/없음"
     app_data = load_json(LIVE_APPROVAL_LATEST_PATH)
     if app_data:

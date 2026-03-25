@@ -61,6 +61,8 @@ def run_single_trial(
         start_date=start,
         end_date=end,
         ma_period=params["momentum_period"],
+        volatility_period=params["volatility_period"],
+        entry_threshold=params["entry_threshold"],
         rsi_period=14,
         stop_loss=params["stop_loss"],
         adx_threshold=20,
@@ -88,7 +90,7 @@ def run_single_trial(
         # Sharpe
         rets = navs.pct_change().dropna()
         if len(rets) > 1 and float(rets.std()) > 0:
-            sharpe = float(rets.mean() / rets.std()) * (252 ** 0.5)
+            sharpe = float(rets.mean() / rets.std()) * (252**0.5)
 
     metrics = {
         "sharpe": round(sharpe, 4),
@@ -103,4 +105,3 @@ def run_single_trial(
         metrics["_nav_history"] = nav_history
 
     return metrics
-
