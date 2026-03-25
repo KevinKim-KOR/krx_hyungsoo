@@ -1,0 +1,61 @@
+{
+  "project_phase": "P204",
+  "status": "CLOSED_WITH_HANDOFF",
+  "p204_complete": true,
+  "completed_steps": [
+    "Step 1: SQLite persistence / resume / checkpoint",
+    "Step 2: equal_3way segment evaluation",
+    "Step 3: multi-segment objective with Safe Math",
+    "Step 4A: validation exports and top-5 comparison",
+    "Step 4B: promotion verdict gate"
+  ],
+  "current_operator_loop": [
+    "Run Tune",
+    "Review Top 5 and validation files",
+    "Apply Best Params to SSOT manually",
+    "Run Full Backtest",
+    "Check promotion verdict"
+  ],
+  "current_search_space": [
+    "momentum_period",
+    "stop_loss",
+    "max_positions"
+  ],
+  "current_scope_exclusions": [
+    "universe expansion",
+    "news or fear-index external variables",
+    "next-open execution model",
+    "auto promotion",
+    "auto OCI apply",
+    "search space expansion beyond 3 axes"
+  ],
+  "latest_tune_snapshot": {
+    "asof": "2026-03-25T23:11:00+09:00",
+    "best_trial": 63,
+    "best_params": {
+      "momentum_period": 55,
+      "stop_loss": -0.09000000000000001,
+      "max_positions": 4
+    },
+    "best_score": -4.2637,
+    "worst_segment": "SEG_1",
+    "overfit_penalty": 5.0
+  },
+  "latest_full_backtest_snapshot": {
+    "asof": "2026-03-25T22:29:57+09:00",
+    "cagr": 9.293698765332303,
+    "mdd": 9.1062,
+    "sharpe": 1.4367
+  },
+  "latest_promotion_verdict": {
+    "asof": "2026-03-25T23:11:04+09:00",
+    "verdict": "REJECT",
+    "candidate_applied_to_ssot": true
+  },
+  "manual_notes": [
+    "The SSOT auto-apply button is a local convenience change and is outside official P204 acceptance scope.",
+    "stop_loss is treated as the same concept as SSOT exit_threshold.",
+    "Tune results and Full Backtest results have different roles and should be interpreted together."
+  ],
+  "p205_ready": true
+}
