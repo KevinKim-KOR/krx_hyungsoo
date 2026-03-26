@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-03-25T22:28:29.343361+09:00",
+  "asof": "2026-03-26T19:23:17.768116+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -12,8 +12,8 @@
       "day_of_month": 1
     },
     "lookbacks": {
-      "momentum_period": 55,
-      "volatility_period": 17
+      "momentum_period": 54,
+      "volatility_period": 13
     },
     "risk_limits": {
       "max_position_pct": 0.15,
@@ -24,8 +24,8 @@
       "min_cash_pct": 0.5
     },
     "decision_params": {
-      "entry_threshold": 0.03,
-      "exit_threshold": -0.09000000000000001,
+      "entry_threshold": 0.05,
+      "exit_threshold": -0.07,
       "adx_filter_min": 20,
       "weight_momentum": 1.0,
       "weight_volatility": 0.0
