@@ -362,7 +362,7 @@ def refresh_promotion_verdict_local(tune_data):
     }
     reasons = []
     if not candidate_applied_to_ssot:
-        reasons.append("?? SSOT 5? ?? ?? 1? ??? ???? ????.")
+        reasons.append("현재 SSOT 5축이 튜닝 1등 후보와 일치하지 않습니다.")
     if not criteria_check["cagr_gt_15"]:
         reasons.append("Full Backtest CAGR이 15% 초과 기준을 만족하지 못합니다.")
     if not criteria_check["mdd_lt_10"]:
@@ -1012,10 +1012,10 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             time.sleep(1.0)
                             st.rerun()
                         except Exception as e:
-                            st.error(f"SSOT ?? ?? ??: {e}")
+                            st.error(f"SSOT 자동 적용 실패: {e}")
                     apply_col2.caption(
-                        "?? 1? ??? momentum_period / volatility_period / "
-                        "entry_threshold / stop_loss(exit_threshold) / max_positions? ?? SSOT? ?????."
+                        "튜닝 1등 후보의 momentum_period / volatility_period / "
+                        "entry_threshold / stop_loss(exit_threshold) / max_positions을 현재 SSOT에 덮어씁니다."
                     )
                     objective_version = tune_data.get(
                         "objective_version", tune_meta.get("objective_version", "N/A")
@@ -1203,7 +1203,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             use_container_width=True,
                             hide_index=True,
                         )
-                    st.info(f"?? ??: {promotion_verdict.get('next_action', '-')}")
+                    st.info(f"다음 조치: {promotion_verdict.get('next_action', '-')}")
                     top5_rows = (
                         validation_pack.get("top5_comparison")
                         or tune_data.get("trials_top20", [])[:5]
@@ -1230,7 +1230,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             top5_display, use_container_width=True, hide_index=True
                         )
         except Exception as e:
-            st.error(f"?? ?? ?? ?? ??: {e}")
+            st.error(f"튜닝 결과 표시 중 오류: {e}")
     app_status = "❌ 미승인/없음"
     app_data = load_json(LIVE_APPROVAL_LATEST_PATH)
     if app_data:
