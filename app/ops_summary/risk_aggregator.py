@@ -6,12 +6,11 @@ from typing import Any, Dict, List, Optional
 
 from app.ops_summary.paths import (
     BASE_DIR,
-    KST,
     OPS_RISK_WINDOW_DAYS,
     PORTFOLIO_STALE_DAYS,
     SEVERITY_MAP,
 )
-from app.ops_summary.helpers import safe_load_json, sanitize_evidence_ref
+from app.ops_summary.helpers import safe_load_json
 from app.utils.portfolio_normalize import load_asof_override, is_holiday_today
 
 

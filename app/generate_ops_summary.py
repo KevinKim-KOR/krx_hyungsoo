@@ -10,7 +10,14 @@ Single Pane of Glass: 분산된 최신 산출물을 통합 요약
 
 import json
 import shutil
+import sys
 from datetime import datetime
+from pathlib import Path
+
+# 파일 직접 실행 지원 (python app/generate_ops_summary.py)
+_BASE_DIR = Path(__file__).resolve().parent.parent
+if str(_BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(_BASE_DIR))
 
 from app.ops_summary.paths import (
     KST,
@@ -266,6 +273,31 @@ def generate_ops_summary():
     shutil.copy(SUMMARY_LATEST, SUMMARY_SNAPSHOTS_DIR / snap_name)
 
     return summary
+
+
+# ── 호환 alias (활성 소비자 계약 유지) ──
+
+
+def regenerate_ops_summary():
+    """generate_ops_summary 호환 alias.
+
+    소비자: run_ops_drill.py, run_live_cycle.py
+    """
+    return generate_ops_summary()
+
+
+def generate_and_save_from_receipt(receipt):
+    """receipt 기반 ops summary 생성 호환 alias.
+
+    소비자: run_ops_cycle.py
+    receipt 인자는 현재 사용하지 않으나 시그니처를 유지한다.
+    """
+    summary = generate_ops_summary()
+    return {
+        "snapshot_path": str(SUMMARY_SNAPSHOTS_DIR),
+        "summary_latest_path": str(SUMMARY_LATEST),
+        "overall_status": summary.get("overall_status", "N/A"),
+    }
 
 
 if __name__ == "__main__":
