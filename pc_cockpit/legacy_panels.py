@@ -744,16 +744,10 @@ def render_tune_legacy(params_data, portfolio_data, guardrails_data):
                 try:
                     _p_data = load_json(LATEST_PATH)
                     if _p_data:
-                        _p = _p_data.get("params", {})
-                        _p.setdefault("lookbacks", {})["momentum_period"] = bp.get(
-                            "momentum_period"
-                        )
-                        _p.setdefault("decision_params", {})["exit_threshold"] = bp.get(
-                            "stop_loss"
-                        )
-                        _p.setdefault("position_limits", {})["max_positions"] = bp.get(
-                            "max_positions"
-                        )
+                        _p = _p_data["params"]
+                        _p["lookbacks"]["momentum_period"] = bp.get("momentum_period")
+                        _p["decision_params"]["exit_threshold"] = bp.get("stop_loss")
+                        _p["position_limits"]["max_positions"] = bp.get("max_positions")
                         _p_data["params"] = _p
                         _p_data["asof"] = datetime.now(KST).isoformat()
                         save_params(_p_data)
