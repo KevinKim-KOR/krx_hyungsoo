@@ -47,16 +47,18 @@ asof: 2026-03-27
 | `app/run_holding_watch_restored.py` | 376 | null bytes 포함, SyntaxError |
 | `temp_replace.py` | 67 | 프로젝트 루트 일회성 스크립트 |
 
-## cockpit.py 내 데드 함수 (정의만 있고 호출 없음)
+## cockpit.py 데드 함수 격리 (S1-B, 2026-03-27)
 
-| 함수 | 줄 범위 | 줄수 |
-|---|---|---|
-| `render_params` | 822-1021 | 200 |
-| `render_reco` | 1022-1078 | 57 |
-| `render_review` | 1384-1473 | 90 |
-| `render_guardrails_legacy` | 1475-1603 | 129 |
-| `render_backtest_legacy` | 1605-1735 | 131 |
-| `render_tune_legacy` | 1737-1939 | 203 |
+아래 6개 함수를 `pc_cockpit/legacy_panels.py`로 이동 완료 (cockpit.py에서 삭제, 815줄 제거):
+
+| 함수 | 원래 줄 범위 | 줄수 | 격리 위치 |
+|---|---|---|---|
+| `render_params` | 822-1021 | 200 | legacy_panels.py |
+| `render_reco` | 1022-1078 | 57 | legacy_panels.py |
+| `render_review` | 1384-1473 | 90 | legacy_panels.py |
+| `render_guardrails_legacy` | 1475-1603 | 129 | legacy_panels.py |
+| `render_backtest_legacy` | 1605-1735 | 131 | legacy_panels.py |
+| `render_tune_legacy` | 1737-1939 | 203 | legacy_panels.py |
 
 ## 분리 완료 모듈 (P205-STEP1A)
 
