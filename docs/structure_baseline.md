@@ -65,7 +65,7 @@ asof: 2026-03-27
 ### pc_cockpit/services/
 - `config.py` — 상수, 경로, 유틸리티
 - `json_io.py` — JSON I/O, 파라미터 저장
-- `promotion_verdict.py` — 승격 판정 (cockpit 로컬)
+- `promotion_verdict.py` — 승격 판정 I/O wrapper (cockpit 로컬, core 사용) (S3)
 - `live_approval.py` — LIVE 승인/철회
 - `backend.py` — 백엔드 연결
 
@@ -82,4 +82,5 @@ asof: 2026-03-27
 - `results_io.py` — 원자적 파일 쓰기
 - `exports.py` — CSV/메타데이터 내보내기
 - `summary_render.py` — 검산 요약 MD 렌더러
-- `promotion_gate.py` — 승격 판정 (튜닝 파이프라인)
+- `promotion_gate.py` — 승격 판정 I/O wrapper (튜닝 파이프라인)
+- `promotion_verdict_core.py` — 승격 판정 공유 코어 (순수 로직, I/O 없음) (S3)
