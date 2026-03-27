@@ -11,9 +11,10 @@ app/run_tune.py — P167-R Optuna 튜닝 CLI 진입점
   state/strategy_bundle/latest/strategy_bundle_latest.json → universe, 기간
 
 출력:
-  reports/tune/latest/tune_result.json
-  reports/tune/snapshots/tune_result_YYYYMMDD_HHMMSS.json
-  reports/tune/telemetry/tune_YYYYMMDD_HHMMSS.jsonl
+  reports/tuning/tuning_results.json
+  reports/tuning/snapshots/tuning_results_YYYYMMDD_HHMMSS.json
+  reports/tuning/tuning_summary.md
+  reports/tuning/promotion_verdict.json
 """
 
 from __future__ import annotations
