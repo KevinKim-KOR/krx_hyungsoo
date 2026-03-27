@@ -84,3 +84,8 @@ asof: 2026-03-27
 - `summary_render.py` — 검산 요약 MD 렌더러
 - `promotion_gate.py` — 승격 판정 I/O wrapper (튜닝 파이프라인)
 - `promotion_verdict_core.py` — 승격 판정 공유 코어 (순수 로직, I/O 없음) (S3)
+
+### app/ops_summary/ (S4)
+- `paths.py` — 경로 상수, 환경변수, severity 맵
+- `helpers.py` — 유틸리티 (sanitize, safe_load, tickets)
+- `risk_aggregator.py` — 리스크 계산, 수동 루프 스테이지 결정
