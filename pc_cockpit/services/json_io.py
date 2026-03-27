@@ -40,20 +40,16 @@ def apply_tune_best_params_to_ssot(best_params):
     if not best_params:
         raise ValueError("튜닝 1등 파라미터가 없습니다.")
 
-    target_params = params_data.setdefault("params", {})
-    target_params.setdefault("lookbacks", {})["momentum_period"] = int(
-        best_params["momentum_period"]
-    )
-    target_params.setdefault("lookbacks", {})["volatility_period"] = int(
+    target_params = params_data["params"]
+    target_params["lookbacks"]["momentum_period"] = int(best_params["momentum_period"])
+    target_params["lookbacks"]["volatility_period"] = int(
         best_params["volatility_period"]
     )
-    target_params.setdefault("decision_params", {})["entry_threshold"] = float(
+    target_params["decision_params"]["entry_threshold"] = float(
         best_params["entry_threshold"]
     )
-    target_params.setdefault("decision_params", {})["exit_threshold"] = float(
-        best_params["stop_loss"]
-    )
-    target_params.setdefault("position_limits", {})["max_positions"] = int(
+    target_params["decision_params"]["exit_threshold"] = float(best_params["stop_loss"])
+    target_params["position_limits"]["max_positions"] = int(
         best_params["max_positions"]
     )
     params_data["asof"] = datetime.now(KST).isoformat()

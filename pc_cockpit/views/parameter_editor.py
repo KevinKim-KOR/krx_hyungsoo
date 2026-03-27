@@ -95,7 +95,7 @@ def render_ssot_parameter_form(params_data):
                     "QUARTERLY",
                     "YEARLY",
                 ]
-                cur_freq = p.get("rebalance_rule", {}).get("frequency", "MONTHLY")
+                cur_freq = _ssot_require(p, "rebalance_rule", "frequency")
                 freq_idx = freq_opts.index(cur_freq) if cur_freq in freq_opts else 2
                 freq = c1.selectbox("리밸런싱 주기", freq_opts, index=freq_idx)
                 c1.caption("`SSOT Key: rebalance_rule.frequency`")
@@ -104,33 +104,21 @@ def render_ssot_parameter_form(params_data):
                 if st.form_submit_button("💾 Save Parameters to SSOT"):
                     try:
                         new_params = params_data.copy()
-                        target_p = new_params.setdefault("params", {})
+                        target_p = new_params["params"]
 
                         target_p["universe"] = [
                             t.strip() for t in universe_str.split(",") if t.strip()
                         ]
-                        target_p.setdefault("lookbacks", {})["momentum_period"] = int(
-                            mom_period
+                        target_p["lookbacks"]["momentum_period"] = int(mom_period)
+                        target_p["lookbacks"]["volatility_period"] = int(vol_period)
+                        target_p["risk_limits"]["max_position_pct"] = float(max_pos_pct)
+                        target_p["position_limits"]["max_positions"] = int(max_pos)
+                        target_p["position_limits"]["min_cash_pct"] = float(
+                            min_cash_pct
                         )
-                        target_p.setdefault("lookbacks", {})["volatility_period"] = int(
-                            vol_period
-                        )
-                        target_p.setdefault("risk_limits", {})["max_position_pct"] = (
-                            float(max_pos_pct)
-                        )
-                        target_p.setdefault("position_limits", {})["max_positions"] = (
-                            int(max_pos)
-                        )
-                        target_p.setdefault("position_limits", {})["min_cash_pct"] = (
-                            float(min_cash_pct)
-                        )
-                        target_p.setdefault("decision_params", {})[
-                            "entry_threshold"
-                        ] = float(entry)
-                        target_p.setdefault("decision_params", {})["exit_threshold"] = (
-                            float(exit_th)
-                        )
-                        target_p.setdefault("rebalance_rule", {})["frequency"] = freq
+                        target_p["decision_params"]["entry_threshold"] = float(entry)
+                        target_p["decision_params"]["exit_threshold"] = float(exit_th)
+                        target_p["rebalance_rule"]["frequency"] = freq
 
                         new_params["asof"] = datetime.now(KST).isoformat()
                         save_params(new_params)
