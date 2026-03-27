@@ -13,6 +13,7 @@ import os
 import uuid
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
@@ -25,8 +26,10 @@ sys.path.insert(0, str(BASE_DIR))
 try:
     from app.utils.evidence_refs import build_postmortem_refs
 except ImportError:
+
     def build_postmortem_refs():
         return []
+
 
 STATE_DIR = BASE_DIR / "state"
 REPORTS_PUSH_DIR = BASE_DIR / "reports" / "ops" / "push"
@@ -99,21 +102,20 @@ def get_send_attempt_info() -> dict:
     """Send 시도 정보"""
     data = safe_load_json(SEND_LATEST_FILE)
     if data is None:
-        return {
-            "attempted": False,
-            "decision": None,
-            "http_status": None,
-            "ref": None
-        }
-    
+        return {"attempted": False, "decision": None, "http_status": None, "ref": None}
+
     decision = data.get("decision")
     attempted = decision in ["SENT", "FAILED"]
-    
+
     return {
         "attempted": attempted,
         "decision": decision,
         "http_status": data.get("http_status"),
-        "ref": str(SEND_LATEST_FILE.relative_to(BASE_DIR)) if SEND_LATEST_FILE.exists() else None
+        "ref": (
+            str(SEND_LATEST_FILE.relative_to(BASE_DIR))
+            if SEND_LATEST_FILE.exists()
+            else None
+        ),
     }
 
 
@@ -130,27 +132,29 @@ def generate_postmortem() -> dict:
     """Live Fire Postmortem 생성"""
     event_id = str(uuid.uuid4())
     asof = datetime.now(KST).isoformat()
-    
+
     # 1. Gather Context
     gate_mode = get_gate_mode()
     sender_enabled = is_sender_enabled()
     emergency_stop_enabled = is_emergency_stop_enabled()
     self_test_decision = get_self_test_decision()
-    
+
     # 2. Gather Evidence
     send_attempt = get_send_attempt_info()
     window_consumed = is_window_consumed()
-    
+
     # 3. Verify Invariants (Kill-Switch Check)
     sender_is_disabled = not sender_enabled
-    
+
     # CRITICAL WARNING if sender still enabled
     if sender_enabled:
         print("[CRITICAL WARNING] Kill-Switch (Sender Enable) is still ON!")
-    
+
     # 4. Calculate overall safety
-    overall_status = calculate_overall_safety_status(sender_enabled, emergency_stop_enabled)
-    
+    overall_status = calculate_overall_safety_status(
+        sender_enabled, emergency_stop_enabled
+    )
+
     # 5. Construct Postmortem JSON
     postmortem = {
         "schema": "LIVE_FIRE_POSTMORTEM_V1",
@@ -161,38 +165,42 @@ def generate_postmortem() -> dict:
             "gate_mode": gate_mode,
             "sender_enabled": sender_enabled,
             "emergency_stop_enabled": emergency_stop_enabled,
-            "self_test_decision": self_test_decision
+            "self_test_decision": self_test_decision,
         },
         "send_attempt_observed": send_attempt,
         "safety_invariants": {
             "sender_is_currently_disabled": sender_is_disabled,
             "window_was_consumed": window_consumed,
-            "emergency_stop_is_off": not emergency_stop_enabled
+            "emergency_stop_is_off": not emergency_stop_enabled,
         },
-        "evidence_refs": build_postmortem_refs()
+        "evidence_refs": build_postmortem_refs(),
     }
-    
+
     # 6. Atomic Save
     POSTMORTEM_DIR.mkdir(parents=True, exist_ok=True)
     POSTMORTEM_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Atomic write latest
     tmp_file = POSTMORTEM_DIR / "postmortem_latest.json.tmp"
-    tmp_file.write_text(json.dumps(postmortem, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_file.write_text(
+        json.dumps(postmortem, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     os.replace(str(tmp_file), str(POSTMORTEM_LATEST))
-    
+
     # Snapshot
     snapshot_name = f"postmortem_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = POSTMORTEM_SNAPSHOTS_DIR / snapshot_name
-    snapshot_path.write_text(json.dumps(postmortem, ensure_ascii=False, indent=2), encoding="utf-8")
-    
+    snapshot_path.write_text(
+        json.dumps(postmortem, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     return {
         "result": "OK",
         "event_id": event_id,
         "overall_safety_status": overall_status,
         "kill_switch_verified": sender_is_disabled,
         "postmortem_latest_path": str(POSTMORTEM_LATEST.relative_to(BASE_DIR)),
-        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR))
+        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR)),
     }
 
 

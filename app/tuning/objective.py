@@ -2,6 +2,7 @@
 """
 app/tuning/objective.py - Optuna objective for tuning
 """
+
 from __future__ import annotations
 
 import logging
@@ -84,10 +85,14 @@ class TuneObjective:
                 )
             raise optuna.TrialPruned(f"error: {error}")
 
-        metrics_core = {key: value for key, value in metrics.items() if key != "_nav_history"}
+        metrics_core = {
+            key: value for key, value in metrics.items() if key != "_nav_history"
+        }
 
         # 4. Hard constraint check
-        prune_reason = should_prune(metrics_core["mdd_pct"], metrics_core["total_trades"])
+        prune_reason = should_prune(
+            metrics_core["mdd_pct"], metrics_core["total_trades"]
+        )
         if prune_reason:
             logger.info(f"[TUNE] Trial {trial.number}: pruned - {prune_reason}")
             if self.telemetry:
@@ -102,7 +107,9 @@ class TuneObjective:
             raise optuna.TrialPruned(prune_reason)
 
         # 5. Segment metrics + Step3 objective score
-        segment_data = compute_segment_metrics(metrics.get("_nav_history", []), n_segments=3)
+        segment_data = compute_segment_metrics(
+            metrics.get("_nav_history", []), n_segments=3
+        )
         score_payload = compute_score(metrics=metrics_core, segment_data=segment_data)
         score = float(score_payload["score"])
 
@@ -122,9 +129,13 @@ class TuneObjective:
         trial.set_user_attr("mdd_agg", score_payload["mdd_agg"])
         trial.set_user_attr("sharpe_agg", score_payload["sharpe_agg"])
         trial.set_user_attr("overfit_penalty", score_payload["overfit_penalty"])
-        trial.set_user_attr("hard_penalty_triggered", score_payload["hard_penalty_triggered"])
+        trial.set_user_attr(
+            "hard_penalty_triggered", score_payload["hard_penalty_triggered"]
+        )
         trial.set_user_attr("worst_segment", score_payload["worst_segment"])
-        trial.set_user_attr("metric_scale_normalized", score_payload["metric_scale_normalized"])
+        trial.set_user_attr(
+            "metric_scale_normalized", score_payload["metric_scale_normalized"]
+        )
         trial.set_user_attr("metric_scale_source", score_payload["metric_scale_source"])
 
         reason_code = score_payload.get("score_reason_code", "")
@@ -152,6 +163,8 @@ class TuneObjective:
                 "metric_scale_normalized": score_payload.get("metric_scale_normalized"),
                 "metric_scale_source": score_payload.get("metric_scale_source"),
             }
-            self.telemetry.emit_trial_end(trial.number, params, score, metrics=telemetry_metrics)
+            self.telemetry.emit_trial_end(
+                trial.number, params, score, metrics=telemetry_metrics
+            )
 
         return score

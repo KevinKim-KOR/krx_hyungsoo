@@ -15,6 +15,7 @@ app/run_tune.py — P167-R Optuna 튜닝 CLI 진입점
   reports/tune/snapshots/tune_result_YYYYMMDD_HHMMSS.json
   reports/tune/telemetry/tune_YYYYMMDD_HHMMSS.jsonl
 """
+
 from __future__ import annotations
 import argparse
 import csv
@@ -62,7 +63,7 @@ TUNING_SUMMARY_MD = PROJECT_ROOT / "reports" / "tuning" / "tuning_summary.md"
 PROMOTION_VERDICT_JSON = PROJECT_ROOT / "reports" / "tuning" / "promotion_verdict.json"
 PROMOTION_VERDICT_MD = PROJECT_ROOT / "reports" / "tuning" / "promotion_verdict.md"
 
-from app.run_backtest import load_params_with_fallback
+from app.utils.param_loader import load_params_strict
 
 KST = timezone(timedelta(hours=9))
 
@@ -76,18 +77,11 @@ def load_strategy_bundle() -> Dict[str, Any]:
 
 
 def extract_tune_config(bundle: Dict[str, Any]) -> Dict[str, Any]:
-    """번들에서 튜닝에 필요한 설정 추출"""
-    strategy = bundle.get("strategy", {})
-    return {
-        "universe": strategy.get("universe", []),
-        "momentum_period": strategy.get("lookbacks", {}).get("momentum_period", 20),
-        "volatility_period": strategy.get("lookbacks", {}).get("volatility_period", 14),
-        "entry_threshold": strategy.get("decision_params", {}).get(
-            "entry_threshold", 0.02
-        ),
-        "stop_loss": strategy.get("decision_params", {}).get("exit_threshold", -0.05),
-        "max_positions": strategy.get("position_limits", {}).get("max_positions", 4),
-    }
+    """번들에서 튜닝에 필요한 설정 추출 (레거시 호환용, 직접 사용 금지)"""
+    raise NotImplementedError(
+        "extract_tune_config()은 폐기되었습니다. "
+        "app.utils.param_loader.load_params_strict()를 사용하세요."
+    )
 
 
 # ─── 2. Atomic Write ─────────────────────────────────────────────────────
@@ -290,7 +284,7 @@ def _format_file_timestamp(path: Path) -> str:
 
 
 def _build_validation_pack_metadata(
-    paths: Dict[str, Path]
+    paths: Dict[str, Path],
 ) -> Dict[str, Dict[str, Any]]:
     file_meta: Dict[str, Dict[str, Any]] = {}
     for key, path in paths.items():
@@ -611,7 +605,7 @@ def run_cli_tune(
 
     # ── 1. Load config ──
     try:
-        params, param_source = load_params_with_fallback()
+        params, param_source = load_params_strict()
     except Exception as e:
         logger.error(f"Strategy params load failed: {e}")
         return False
@@ -641,7 +635,7 @@ def run_cli_tune(
         from app.backtest.infra.data_loader import prefetch_ohlcv
 
         price_data = prefetch_ohlcv(
-            universe, start, end, data_source=params.get("data_source", "fdr")
+            universe, start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Prefetch failed: {e}")
@@ -1018,7 +1012,7 @@ def run_cli_tune(
             "seed": seed,
             "runtime_sec": round(runtime_sec, 1),
             "param_source": param_source,
-            "data_source_used": params.get("data_source", "fdr"),
+            "data_source_used": params["data_source"],
             "download_count": telemetry_data.get("download_count", 0),
             "cache_hit_count": telemetry_data.get("cache_hit_count", 0),
             "fallback_count": telemetry_data.get("fallback_count", 0),

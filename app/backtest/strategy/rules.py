@@ -8,17 +8,20 @@ core/strategy/rules.py
 - SignalType: 신호 유형 (BUY/SELL/HOLD)
 - HOLD_CORE 처리 로직
 """
+
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Optional
 import pandas as pd
 
+
 class SignalType(str, Enum):
     BUY = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
     HOLD_CORE = "HOLD_CORE"  # 핵심보유 특별상태
+
 
 @dataclass
 class Signal:
@@ -28,23 +31,24 @@ class Signal:
     reason: str
     timestamp: pd.Timestamp
 
+
 class StrategyRules:
     """전략 규칙 정의 클래스"""
-    
+
     def __init__(
         self,
         core_holdings: List[str],
         lookbacks: List[int] = [21, 63, 126],
         weights: List[float] = [0.5, 0.3, 0.2],
         top_n: int = 5,
-        regime_filter: bool = True
+        regime_filter: bool = True,
     ):
         self.core_holdings = set(core_holdings)  # O(1) 조회를 위해 set 사용
         self.lookbacks = lookbacks
         self.weights = weights
         self.top_n = top_n
         self.regime_filter = regime_filter
-        
+
         # 검증
         if len(lookbacks) != len(weights):
             raise ValueError("lookbacks와 weights의 길이가 일치해야 합니다")
@@ -75,33 +79,42 @@ class StrategyRules:
             result.append(signal)
         return result
 
-    def get_buy_candidates(self, scores: Dict[str, float], current_holdings: List[str]) -> List[Signal]:
+    def get_buy_candidates(
+        self, scores: Dict[str, float], current_holdings: List[str]
+    ) -> List[Signal]:
         """매수 후보 선정 (HOLD_CORE 보유 확인 포함)"""
         signals = []
-        
+
         # 1. HOLD_CORE 중 미보유 종목 먼저 처리
         for code in self.core_holdings:
             if code not in current_holdings:
-                signals.append(Signal(
-                    code=code,
-                    signal_type=SignalType.BUY,
-                    score=scores.get(code, 0.0),
-                    reason="HOLD_CORE 자동 매수",
-                    timestamp=pd.Timestamp.now()
-                ))
+                signals.append(
+                    Signal(
+                        code=code,
+                        signal_type=SignalType.BUY,
+                        score=scores.get(code, 0.0),
+                        reason="HOLD_CORE 자동 매수",
+                        timestamp=pd.Timestamp.now(),
+                    )
+                )
 
         # 2. 일반 종목 중 TOP N
-        non_core_codes = [c for c, s in sorted(scores.items(), key=lambda x: x[1], reverse=True)
-                         if c not in self.core_holdings][:self.top_n]
-        
+        non_core_codes = [
+            c
+            for c, s in sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            if c not in self.core_holdings
+        ][: self.top_n]
+
         for code in non_core_codes:
             if code not in current_holdings:
-                signals.append(Signal(
-                    code=code,
-                    signal_type=SignalType.BUY,
-                    score=scores[code],
-                    reason=f"일반 TOP {self.top_n}",
-                    timestamp=pd.Timestamp.now()
-                ))
+                signals.append(
+                    Signal(
+                        code=code,
+                        signal_type=SignalType.BUY,
+                        score=scores[code],
+                        reason=f"일반 TOP {self.top_n}",
+                        timestamp=pd.Timestamp.now(),
+                    )
+                )
 
         return signals

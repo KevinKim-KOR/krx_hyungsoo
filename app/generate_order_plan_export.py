@@ -10,13 +10,16 @@ import shutil
 import hashlib
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 # --- Configuration ---
 BASE_DIR = Path(__file__).parent.parent
-ORDER_PLAN_LATEST = BASE_DIR / "reports" / "live" / "order_plan" / "latest" / "order_plan_latest.json"
+ORDER_PLAN_LATEST = (
+    BASE_DIR / "reports" / "live" / "order_plan" / "latest" / "order_plan_latest.json"
+)
 EXPORT_DIR = BASE_DIR / "reports" / "live" / "order_plan_export"
 EXPORT_LATEST = EXPORT_DIR / "latest" / "order_plan_export_latest.json"
 EXPORT_SNAPSHOTS = EXPORT_DIR / "snapshots"
@@ -26,6 +29,7 @@ EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 (EXPORT_DIR / "latest").mkdir(parents=True, exist_ok=True)
 EXPORT_SNAPSHOTS.mkdir(parents=True, exist_ok=True)
 
+
 def load_json(path: Path) -> Optional[Dict]:
     if not path.exists():
         return None
@@ -34,18 +38,20 @@ def load_json(path: Path) -> Optional[Dict]:
     except Exception:
         return None
 
+
 def generate_confirm_token(plan_id: str, count: int) -> str:
     """Generate a short hash token for human confirmation"""
     raw = f"{plan_id}:{count}:{datetime.now(KST).isoformat()}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
+
 def generate_export(force: bool = False) -> Optional[Dict]:
     now = datetime.now(KST)
     asof_str = now.isoformat()
-    
+
     # 1. Load Input (Order Plan)
     plan = load_json(ORDER_PLAN_LATEST)
-    
+
     # P153/P154: Create order_plan_key with strict orders hash
     order_plan_key = "NONE"
     bundle_id = None
@@ -55,7 +61,9 @@ def generate_export(force: bool = False) -> Optional[Dict]:
         # P191 Phase 2: Extract bundle_id
         bundle_id = plan.get("source", {}).get("bundle_id")
         # Compute sha256 of orders array to guarantee drift detection
-        orders_dump = json.dumps(plan.get("orders", []), sort_keys=True, ensure_ascii=False)
+        orders_dump = json.dumps(
+            plan.get("orders", []), sort_keys=True, ensure_ascii=False
+        )
         p_sha = hashlib.sha256(orders_dump.encode("utf-8")).hexdigest()
         order_plan_key = f"{p_id}:{p_dec}:{p_sha}"
 
@@ -67,36 +75,38 @@ def generate_export(force: bool = False) -> Optional[Dict]:
             latest_exp["action"] = "SKIP"
             latest_exp["skip_reason"] = "same_order_plan_key"
             return latest_exp
-    
+
     # 2. Initialize Export
     export = {
         "schema": "ORDER_PLAN_EXPORT_V1",
         "asof": asof_str,
         "created_at": asof_str,
         "source": {
-            "order_plan_ref": str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace("\\", "/"),
+            "order_plan_ref": str(ORDER_PLAN_LATEST.relative_to(BASE_DIR)).replace(
+                "\\", "/"
+            ),
             "order_plan_key": order_plan_key,
             "bundle_id": bundle_id,
             "plan_id": None,
-            "decision": None
+            "decision": None,
         },
         "summary": {
             "orders_count": 0,
             "buys_count": 0,
             "sells_count": 0,
-            "cash_before": 0, # Placeholder, needs Portfolio input if we want accurate est
+            "cash_before": 0,  # Placeholder, needs Portfolio input if we want accurate est
             "cash_after_est": 0,
-            "notes": ""
+            "notes": "",
         },
         "orders": [],
         "human_confirm": {
             "required": True,
             "confirm_token": None,
             "how_to_confirm": "POST /api/order/execute with token",
-            "evidence_refs": []
+            "evidence_refs": [],
         },
-        "decision": "BLOCKED", # Default
-        "integrity": {}
+        "decision": "BLOCKED",  # Default
+        "integrity": {},
     }
 
     # 3. Fail-Closed Check
@@ -111,7 +121,7 @@ def generate_export(force: bool = False) -> Optional[Dict]:
     if not plan_id:
         # P140: Fallback ID generation if missing in plan
         plan_id = f"plan-{now.strftime('%Y%m%d-%H%M%S')}-fallback"
-    
+
     export["source"]["plan_id"] = plan_id
     # P140-HOTFIX2: Back-fill root plan_id for compatibility
     export["plan_id"] = plan_id
@@ -122,13 +132,13 @@ def generate_export(force: bool = False) -> Optional[Dict]:
     plan_decision = plan.get("decision")
     if plan_decision in ["BLOCKED", "ERROR"]:
         export["decision"] = plan_decision
-        
+
         reason = plan.get("reason", "")
         err_msg = plan.get("error_summary", "")
         notes = f"Order Plan is {plan_decision}: {reason}"
         if err_msg:
             notes += f" ({err_msg})"
-            
+
         export["summary"]["notes"] = notes
         export["action"] = "REGEN"
         _save_and_return(export)
@@ -142,7 +152,7 @@ def generate_export(force: bool = False) -> Optional[Dict]:
 
     for o in orders_in:
         side = o.get("side", "BUY")
-        qty = o.get("quantity", 0) # Order Plan might not have calc qty yet? 
+        qty = o.get("quantity", 0)  # Order Plan might not have calc qty yet?
         # Wait, P102 Order Plan usually has Intent (ADD/NEW_ENTRY) but maybe not specific Qty if Scorer didn't provide perfectly?
         # Actually P102 doesn't calculate Qty? P102 Code: "orders": [{ticker, side, intent, ...}]
         # Let's check P102 output. It DOES NOT have Qty/Price logic yet?
@@ -151,81 +161,102 @@ def generate_export(force: bool = False) -> Optional[Dict]:
         # The export should show what IS in the plan.
         # If Plan has no Qty, Export implies 0 or "TBD".
         # But User says "orders (배열): ticker, side, qty, price_ref, notional".
-        # If P102 doesn't have Qty, we can't export it? 
-        # Or maybe P102 DOES have it? 
-        # Let's assume P102 output structure from previous steps. 
-        # I recall P102 just output intents. 
+        # If P102 doesn't have Qty, we can't export it?
+        # Or maybe P102 DOES have it?
+        # Let's assume P102 output structure from previous steps.
+        # I recall P102 just output intents.
         # If so, this Export is the place where we might need to *see* what's missing, but we shouldn't *calculate* it if constraint says "Order Plan logic itself don't touch".
         # BUT, "expression/export only add".
         # If Plan lacks data, Export shows null/0.
-        
+
         # Mapping
         out_item = {
             "ticker": o.get("ticker"),
             "side": side,
-            "qty": o.get("quantity", 0), # Optional in Plan?
-            "price_ref": o.get("price", 0), # Optional?
-            "notional": o.get("value", 0), # Optional?
-            "reason": o.get("intent", "UNKNOWN"), # Map Intent to Reason
-            "reason_detail": o.get("reason_detail", "") or o.get("reason", "")
+            "qty": o.get("quantity", 0),  # Optional in Plan?
+            "price_ref": o.get("price", 0),  # Optional?
+            "notional": o.get("value", 0),  # Optional?
+            "reason": o.get("intent", "UNKNOWN"),  # Map Intent to Reason
+            "reason_detail": o.get("reason_detail", "") or o.get("reason", ""),
         }
         orders_out.append(out_item)
-        
-        if side == "BUY": buys += 1
-        elif side == "SELL": sells += 1
+
+        if side == "BUY":
+            buys += 1
+        elif side == "SELL":
+            sells += 1
 
     export["orders"] = orders_out
     export["summary"]["orders_count"] = len(orders_out)
     export["summary"]["buys_count"] = buys
     export["summary"]["sells_count"] = sells
-    
+
     # 5. Final Decision
     if not orders_out and plan.get("decision") == "EMPTY":
-         export["decision"] = "EMPTY"
+        export["decision"] = "EMPTY"
     else:
-         export["decision"] = "GENERATED"
-         
+        export["decision"] = "GENERATED"
+
     # Confirm Token
-    export["human_confirm"]["confirm_token"] = generate_confirm_token(export["source"]["plan_id"], len(orders_out))
+    export["human_confirm"]["confirm_token"] = generate_confirm_token(
+        export["source"]["plan_id"], len(orders_out)
+    )
 
     export["action"] = "REGEN"
     _save_and_return(export)
     return export
 
+
 def _save_and_return(export: Dict):
     try:
         # Atomic Write
         temp_file = EXPORT_LATEST.parent / f".tmp_{EXPORT_LATEST.name}"
-        temp_file.write_text(json.dumps(export, indent=2, ensure_ascii=False), encoding="utf-8")
+        temp_file.write_text(
+            json.dumps(export, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         shutil.move(str(temp_file), str(EXPORT_LATEST))
-        
+
         # Snapshot
-        asof_safe = export["asof"].replace(":", "").replace("-", "").replace("T", "_").split(".")[0]
+        asof_safe = (
+            export["asof"]
+            .replace(":", "")
+            .replace("-", "")
+            .replace("T", "_")
+            .split(".")[0]
+        )
         snap_name = f"order_plan_export_{asof_safe}.json"
         snapshot_path = EXPORT_SNAPSHOTS / snap_name
         shutil.copy(str(EXPORT_LATEST), str(snapshot_path))
-        
+
         print(json.dumps(export, indent=2, ensure_ascii=False))
-        
+
     except Exception as e:
-        print(json.dumps({
-            "schema": "ORDER_PLAN_EXPORT_V1",
-            "decision": "BLOCKED",
-            "reason": "WRITE_ERROR",
-            "error": str(e)
-        }))
+        print(
+            json.dumps(
+                {
+                    "schema": "ORDER_PLAN_EXPORT_V1",
+                    "decision": "BLOCKED",
+                    "reason": "WRITE_ERROR",
+                    "error": str(e),
+                }
+            )
+        )
+
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--force", action="store_true", help="Force regenerate ignoring SKIP logic")
+    parser.add_argument(
+        "--force", action="store_true", help="Force regenerate ignoring SKIP logic"
+    )
     args = parser.parse_args()
-    
+
     result = generate_export(force=args.force)
-    
+
     if result and result.get("action") == "SKIP":
         print(json.dumps(result, indent=2, ensure_ascii=False))
-        
+
     action = result.get("action", "REGEN") if result else "ERROR"
     skip_reason = result.get("skip_reason", "") if result else ""
     if action == "SKIP" and skip_reason:

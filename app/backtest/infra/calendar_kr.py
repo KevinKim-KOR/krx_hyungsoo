@@ -19,6 +19,7 @@ def _ensure_cache_dir():
 def _first_available_ohlcv(start, end):
     """yfinance로 일봉 조회. 성공하면 (df, symbol), 실패면 (빈DF, None)."""
     from app.backtest.infra.data_loader import get_ohlcv_safe
+
     sd = pd.to_datetime(start).date() if not isinstance(start, date) else start
     ed = pd.to_datetime(end).date() if not isinstance(end, date) else end
 
@@ -73,7 +74,13 @@ def load_trading_days(asof=None, start=None, end=None):
 
     _CACHE.parent.mkdir(parents=True, exist_ok=True)
     pd.to_pickle(idx, _CACHE)
-    log.info("[CAL] wrote %s (n=%d, %s~%s)", _CACHE, len(idx), idx.min().date(), idx.max().date())
+    log.info(
+        "[CAL] wrote %s (n=%d, %s~%s)",
+        _CACHE,
+        len(idx),
+        idx.min().date(),
+        idx.max().date(),
+    )
     return idx
 
 
@@ -91,11 +98,11 @@ def next_trading_day(d):
     d = pd.to_datetime(d).normalize()
     idx = load_trading_days(asof=d + pd.Timedelta(days=10))
     pos = idx.searchsorted(d + pd.Timedelta(days=1))
-    return (idx[pos] if pos < len(idx) else d)
+    return idx[pos] if pos < len(idx) else d
 
 
 def prev_trading_day(d):
     d = pd.to_datetime(d).normalize()
     idx = load_trading_days(asof=d)
     pos = idx.searchsorted(d)
-    return (idx[pos-1] if pos > 0 else d)
+    return idx[pos - 1] if pos > 0 else d

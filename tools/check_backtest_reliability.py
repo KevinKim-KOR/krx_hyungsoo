@@ -12,6 +12,7 @@ Usage:
   B) Cache/Network: 2회차에 download_count==0
   C) Provider 교차: fdr vs yfinance 결과 폭발 여부
 """
+
 from __future__ import annotations
 import argparse
 import json
@@ -30,13 +31,16 @@ log = logging.getLogger("check_reliability")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SSOT_PATH = PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
 RESULT_PATH = PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
-REPORT_PATH = PROJECT_ROOT / "reports" / "backtest" / "latest" / "reliability_check.json"
+REPORT_PATH = (
+    PROJECT_ROOT / "reports" / "backtest" / "latest" / "reliability_check.json"
+)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────
 def _reset_telemetry():
     """Reset the module-level download/cache counters between runs."""
     from app.backtest.infra import data_loader
+
     data_loader.CACHE_TELEMETRY["download_count"] = 0
     data_loader.CACHE_TELEMETRY["cache_hit_count"] = 0
 
@@ -50,8 +54,8 @@ def _run_one_backtest(mode: str, data_source: str) -> Dict[str, Any]:
     Run a single backtest by directly calling internal functions (Option A).
     Override data_source in-memory without touching SSOT on disk.
     """
+    from app.utils.param_loader import load_params_strict
     from app.run_backtest import (
-        load_params_with_fallback,
         load_price_data,
         run_backtest,
         format_result,
@@ -60,7 +64,7 @@ def _run_one_backtest(mode: str, data_source: str) -> Dict[str, Any]:
 
     _reset_telemetry()
 
-    params, param_source = load_params_with_fallback()
+    params, param_source = load_params_strict()
     params["data_source"] = data_source  # in-memory override only
 
     today = date.today()
@@ -73,7 +77,9 @@ def _run_one_backtest(mode: str, data_source: str) -> Dict[str, Any]:
     price_data = load_price_data(
         params["universe"], start, end, data_source=data_source
     )
-    result = run_backtest(price_data, params, start, end, enable_regime=(mode == "full"))
+    result = run_backtest(
+        price_data, params, start, end, enable_regime=(mode == "full")
+    )
     formatted = format_result(
         result, params, start, end, price_data=price_data, param_source=param_source
     )
@@ -118,8 +124,13 @@ def check_determinism(
     mismatches = []
 
     exact_keys = [
-        "sha256", "universe", "start_date", "end_date", "mode",
-        "total_trades", "equity_curve_len",
+        "sha256",
+        "universe",
+        "start_date",
+        "end_date",
+        "mode",
+        "total_trades",
+        "equity_curve_len",
     ]
     float_keys = {
         "total_return": tol_cagr,
@@ -131,18 +142,27 @@ def check_determinism(
     for i, cur in enumerate(results[1:], start=2):
         for k in exact_keys:
             if ref[k] != cur[k]:
-                mismatches.append({
-                    "run": i, "key": k,
-                    "ref": ref[k], "cur": cur[k],
-                })
+                mismatches.append(
+                    {
+                        "run": i,
+                        "key": k,
+                        "ref": ref[k],
+                        "cur": cur[k],
+                    }
+                )
         for k, tol in float_keys.items():
             diff = abs(float(ref[k]) - float(cur[k]))
             if diff > tol:
-                mismatches.append({
-                    "run": i, "key": k,
-                    "ref": ref[k], "cur": cur[k],
-                    "diff": round(diff, 8), "tol": tol,
-                })
+                mismatches.append(
+                    {
+                        "run": i,
+                        "key": k,
+                        "ref": ref[k],
+                        "cur": cur[k],
+                        "diff": round(diff, 8),
+                        "tol": tol,
+                    }
+                )
 
     verdict = "PASS" if not mismatches else "FAIL"
     out: Dict[str, Any] = {"verdict": verdict}
@@ -161,7 +181,11 @@ def check_cache(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {"verdict": "PASS", "note": "only 1 run"}
 
     counts = [
-        {"run": i + 1, "download": r["download_count"], "cache_hit": r["cache_hit_count"]}
+        {
+            "run": i + 1,
+            "download": r["download_count"],
+            "cache_hit": r["cache_hit_count"],
+        }
         for i, r in enumerate(results)
     ]
     # The 2nd run onward must have download_count == 0
@@ -195,9 +219,13 @@ def check_cross_provider(
 
     # date range
     if fdr_fields["start_date"] != yf_fields["start_date"]:
-        warnings.append(f"start_date mismatch: fdr={fdr_fields['start_date']} vs yf={yf_fields['start_date']}")
+        warnings.append(
+            f"start_date mismatch: fdr={fdr_fields['start_date']} vs yf={yf_fields['start_date']}"
+        )
     if fdr_fields["end_date"] != yf_fields["end_date"]:
-        warnings.append(f"end_date mismatch: fdr={fdr_fields['end_date']} vs yf={yf_fields['end_date']}")
+        warnings.append(
+            f"end_date mismatch: fdr={fdr_fields['end_date']} vs yf={yf_fields['end_date']}"
+        )
 
     # numeric diffs with dynamic scale detection
     def _threshold(key: str, fdr_val: float, yf_val: float):
@@ -215,7 +243,12 @@ def check_cross_provider(
         yv = float(yf_fields[key])
         diff = abs(fv - yv)
         thresh = _threshold(key, fv, yv)
-        diffs[key] = {"fdr": round(fv, 6), "yfinance": round(yv, 6), "diff": round(diff, 6), "threshold": thresh}
+        diffs[key] = {
+            "fdr": round(fv, 6),
+            "yfinance": round(yv, 6),
+            "diff": round(diff, 6),
+            "threshold": thresh,
+        }
         if diff > thresh:
             fail = True
             warnings.append(f"{key} diff {diff:.6f} exceeds threshold {thresh}")
@@ -351,7 +384,9 @@ def main():
     parser.add_argument("--mode", choices=["quick", "full"], default="full")
     parser.add_argument("--repeat", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--provider", choices=["fdr", "yfinance", "both"], default="both")
+    parser.add_argument(
+        "--provider", choices=["fdr", "yfinance", "both"], default="both"
+    )
     parser.add_argument("--tolerance-cagr", type=float, default=0.0001)
     parser.add_argument("--tolerance-mdd", type=float, default=0.0001)
     parser.add_argument("--tolerance-sharpe", type=float, default=0.0001)

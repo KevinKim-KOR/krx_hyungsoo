@@ -6,6 +6,7 @@ app/tuning/segment_eval.py — P204-STEP2 구간 평가 유틸리티
 각 구간의 CAGR/MDD/Sharpe를 계산한다.
 코어 백테스트 엔진은 건드리지 않는다.
 """
+
 from __future__ import annotations
 import math
 from typing import Any, Dict, List, Tuple
@@ -119,7 +120,9 @@ def _calc_metrics(nav_history: List[Tuple[str, float]]) -> Dict[str, Any]:
     # Sharpe
     sharpe = 0.0
     if days >= 3:
-        rets = [(navs[i] / navs[i - 1]) - 1.0 for i in range(1, days) if navs[i - 1] > 0]
+        rets = [
+            (navs[i] / navs[i - 1]) - 1.0 for i in range(1, days) if navs[i - 1] > 0
+        ]
         if len(rets) > 1:
             mean_r = sum(rets) / len(rets)
             var_r = sum((r - mean_r) ** 2 for r in rets) / (len(rets) - 1)

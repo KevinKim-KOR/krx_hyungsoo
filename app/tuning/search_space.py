@@ -4,6 +4,7 @@ app/tuning/search_space.py — P167-R 하이퍼파라미터 검색 공간
 
 레거시 참조: _archive/legacy_20260102/extensions/optuna/space.py
 """
+
 from __future__ import annotations
 from typing import Any, Dict
 

@@ -15,6 +15,7 @@ app/run_backtest.py — P164 CLI 백테스트 진입점
   reports/backtest/latest/backtest_result.json (atomic write)
   reports/backtest/snapshots/backtest_result_YYYYMMDD_HHMMSS.json
 """
+
 from __future__ import annotations
 import argparse
 import json
@@ -44,9 +45,6 @@ BUNDLE_PATH = (
     / "latest"
     / "strategy_bundle_latest.json"
 )
-PARAMS_SSOT_PATH = (
-    PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
-)
 RESULT_LATEST = (
     PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
 )
@@ -62,102 +60,7 @@ def load_strategy_bundle() -> Dict[str, Any]:
         return json.load(f)
 
 
-def extract_params(bundle: Dict[str, Any]) -> Dict[str, Any]:
-    """번들에서 백테스트 파라미터 추출"""
-    strategy = bundle.get("strategy", {})
-    universe = strategy.get("universe", [])
-    lookbacks = strategy.get("lookbacks", {})
-    risk = strategy.get("risk_limits", {})
-    pos_limits = strategy.get("position_limits", {})
-    decision = strategy.get("decision_params", {})
-
-    return {
-        "universe": universe,
-        "momentum_period": lookbacks.get("momentum_period", 60),
-        "volatility_period": lookbacks.get("volatility_period", 14),
-        "max_positions": pos_limits.get("max_positions", 4),
-        "max_position_pct": risk.get("max_position_pct", 0.25),
-        "min_cash_pct": pos_limits.get("min_cash_pct", 0.05),
-        "entry_threshold": decision.get("entry_threshold", 0.02),
-        "stop_loss": decision.get("exit_threshold", -0.10),
-        "adx_filter_min": decision.get("adx_filter_min", 20),
-        "portfolio_mode": bundle.get("portfolio_mode", "single_universe"),
-        "sell_mode": bundle.get("sell_mode", "stop_loss"),
-        "rebalance": bundle.get(
-            "rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}
-        ),
-        "buckets": bundle.get("buckets", []),
-    }
-
-
-def load_params_with_fallback() -> tuple[Dict[str, Any], Dict[str, str]]:
-    """Load params from SSOT, fallback to bundle. Returns (params, param_source_meta)"""
-    import hashlib
-
-    def get_sha256(path: Path) -> str:
-        with open(path, "rb") as f:
-            return hashlib.sha256(f.read()).hexdigest()
-
-    if PARAMS_SSOT_PATH.exists():
-        try:
-            with open(PARAMS_SSOT_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            p = data.get("params", {})
-            params = {
-                "universe": p.get("universe", []),
-                "momentum_period": p.get("lookbacks", {}).get("momentum_period", 60),
-                "volatility_period": p.get("lookbacks", {}).get(
-                    "volatility_period", 14
-                ),
-                "max_positions": p.get("position_limits", {}).get("max_positions", 4),
-                "max_position_pct": p.get("risk_limits", {}).get(
-                    "max_position_pct", 0.25
-                ),
-                "min_cash_pct": p.get("position_limits", {}).get("min_cash_pct", 0.05),
-                "entry_threshold": p.get("decision_params", {}).get(
-                    "entry_threshold", 0.02
-                ),
-                "stop_loss": p.get("decision_params", {}).get("exit_threshold", -0.10),
-                "adx_filter_min": p.get("decision_params", {}).get(
-                    "adx_filter_min", 20
-                ),
-                "portfolio_mode": p.get("portfolio_mode", "single_universe"),
-                "sell_mode": p.get("sell_mode", "stop_loss"),
-                "rebalance": p.get(
-                    "rebalance", {"frequency": "M", "day_of_week": 0, "day_of_month": 1}
-                ),
-                "buckets": p.get("buckets", []),
-                "data_source": p.get("data_source", "fdr"),
-            }
-            if params["portfolio_mode"] == "bucket_portfolio":
-                all_tickers = []
-                for b in params["buckets"]:
-                    all_tickers.extend(b.get("universe", []))
-                # Keep original order, remove duplicates
-                all_tickers = list(dict.fromkeys(all_tickers))
-                if all_tickers:
-                    params["universe"] = all_tickers
-
-            if params["universe"]:  # Only accept if universe is non-empty
-                source = {
-                    "path": "state/params/latest/strategy_params_latest.json",
-                    "sha256": get_sha256(PARAMS_SSOT_PATH),
-                }
-                return params, source
-        except Exception as e:
-            logger.warning(f"Failed to load params SSOT: {e}")
-
-    # Fallback to bundle
-    if not BUNDLE_PATH.exists():
-        raise FileNotFoundError(f"Nor SSOT nor Strategy bundle found.")
-    with open(BUNDLE_PATH, "r", encoding="utf-8") as f:
-        bundle = json.load(f)
-    params = extract_params(bundle)
-    source = {
-        "path": "state/strategy_bundle/latest/strategy_bundle_latest.json",
-        "sha256": get_sha256(BUNDLE_PATH),
-    }
-    return params, source
+from app.utils.param_loader import load_params_strict
 
 
 # ─── 2. Data Loading ──────────────────────────────────────────────────────
@@ -209,14 +112,12 @@ def run_backtest(
     target_weights = {t: 1.0 / len(universe) for t in universe}
 
     # P184-Fix: Priority Enforcement
-    portfolio_mode = params.get("portfolio_mode", "single_universe")
+    portfolio_mode = params["portfolio_mode"]
     if portfolio_mode == "bucket_portfolio":
-        effective_rebalance = params.get(
-            "rebalance", {"frequency": "M", "day_of_month": 1}
-        )
+        effective_rebalance = params["rebalance"]
         trigger_source = "params.rebalance"
     else:
-        effective_rebalance = params.get("rebalance_rule", {"frequency": "daily"})
+        effective_rebalance = params.get("rebalance_rule", params["rebalance"])
         trigger_source = "params.rebalance_rule"
 
     result = runner.run(
@@ -231,9 +132,9 @@ def run_backtest(
         stop_loss=params["stop_loss"],
         adx_threshold=params["adx_filter_min"],
         portfolio_mode=portfolio_mode,
-        sell_mode=params.get("sell_mode", "stop_loss"),
+        sell_mode=params["sell_mode"],
         rebalance_rule=effective_rebalance,
-        buckets=params.get("buckets", []),
+        buckets=params["buckets"],
     )
 
     # Attach trigger evidence
@@ -430,26 +331,26 @@ def format_result(
         "total_trades": metrics.get("order_count", 0),
         "signal_days": metrics.get("signal_days", 0),
         "param_source": param_source,
-        "data_source_used": params.get("data_source", "fdr"),
+        "data_source_used": params["data_source"],
         "download_count": telemetry.get("download_count", 0),
         "cache_hit_count": telemetry.get("cache_hit_count", 0),
         "fallback_count": telemetry.get("fallback_count", 0),
         "params_used": {
-            "momentum_period": params.get("momentum_period"),
-            "volatility_period": params.get("volatility_period"),
-            "entry_threshold": params.get("entry_threshold"),
-            "stop_loss": params.get("stop_loss"),
-            "max_positions": params.get("max_positions"),
-            "portfolio_mode": params.get("portfolio_mode", "single_universe"),
-            "sell_mode": params.get("sell_mode", "stop_loss"),
-            "rebalance": params.get("rebalance", {}),
+            "momentum_period": params["momentum_period"],
+            "volatility_period": params["volatility_period"],
+            "entry_threshold": params["entry_threshold"],
+            "stop_loss": params["stop_loss"],
+            "max_positions": params["max_positions"],
+            "portfolio_mode": params["portfolio_mode"],
+            "sell_mode": params["sell_mode"],
+            "rebalance": params["rebalance"],
             "buckets_used": [
                 {
-                    "name": b.get("name"),
-                    "weight": b.get("weight"),
-                    "universe_size": len(b.get("universe", [])),
+                    "name": b["name"],
+                    "weight": b["weight"],
+                    "universe_size": len(b["universe"]),
                 }
-                for b in params.get("buckets", [])
+                for b in params["buckets"]
             ],
         },
         "equity_curve": equity_curve,
@@ -525,7 +426,7 @@ def run_cli_backtest(
 
     # 1. Load strategy params via SSOT > Bundle
     try:
-        params, param_source = load_params_with_fallback()
+        params, param_source = load_params_strict()
     except Exception as e:
         logger.error(f"Strategy params load failed: {e}")
         return False
@@ -554,7 +455,7 @@ def run_cli_backtest(
     # 3. Load price data
     try:
         price_data = load_price_data(
-            params["universe"], start, end, data_source=params.get("data_source", "fdr")
+            params["universe"], start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Data loading failed: {e}")

@@ -3,6 +3,7 @@
 core/engine/backtest.py
 백테스트 엔진 (친구 코드 참고)
 """
+
 from typing import Dict, List, Tuple
 from dataclasses import dataclass, field
 from datetime import date
@@ -124,7 +125,7 @@ class BacktestEngine:
         rebalance_frequency: str = "daily",  # 리밸런싱 주기
         rebalance_threshold: float = 0.01,  # 리밸런싱 임계값 (1%)
         instrument_type: str = "etf",  # 상품 유형 (etf, stock, leveraged_etf, reit)
-        min_holding_days: int = 0,   # 최소 보유일 (0이면 제한 없음)
+        min_holding_days: int = 0,  # 최소 보유일 (0이면 제한 없음)
     ):
         """
         Args:
@@ -164,7 +165,7 @@ class BacktestEngine:
         self.total_commission: float = 0.0
         self.total_tax: float = 0.0
         self.total_slippage: float = 0.0
-        
+
         # Exposure Metric (Phase 3 Fix)
         self.market_exposure_days: int = 0
 
@@ -405,29 +406,31 @@ class BacktestEngine:
                         # 예상 비용(1주당) = 가격 * (1+슬리피지) * (1+수수료율)
                         est_price = price * (1 + self.slippage_rate)
                         est_cost_per_share = est_price * (1 + self.commission_rate)
-                        
+
                         max_qty_by_cash = int(self.portfolio.cash / est_cost_per_share)
-                        
+
                         if quantity > max_qty_by_cash:
-                             logger.debug(f"{symbol} 수량 조정 (자금 부족): {quantity} -> {max_qty_by_cash}")
-                             quantity = max_qty_by_cash
-                        
+                            logger.debug(
+                                f"{symbol} 수량 조정 (자금 부족): {quantity} -> {max_qty_by_cash}"
+                            )
+                            quantity = max_qty_by_cash
+
                         if quantity > 0:
                             self.execute_buy(symbol, quantity, price, trade_date)
                     else:
                         # 매도 (최소 보유일 체크)
                         can_sell = True
                         if self.min_holding_days > 0:
-                             pos = self.portfolio.positions.get(symbol)
-                             if pos:
-                                  # 영업일 기준 단순 날짜 차이 사용 (휴일 고려X, 근사치)
-                                  held_days = (trade_date - pos.entry_date).days
-                                  if held_days < self.min_holding_days:
-                                       can_sell = False
-                                       # logger.debug(f"{symbol} 매도 유예 (보유 {held_days}일 < {self.min_holding_days}일)")
-                        
+                            pos = self.portfolio.positions.get(symbol)
+                            if pos:
+                                # 영업일 기준 단순 날짜 차이 사용 (휴일 고려X, 근사치)
+                                held_days = (trade_date - pos.entry_date).days
+                                if held_days < self.min_holding_days:
+                                    can_sell = False
+                                    # logger.debug(f"{symbol} 매도 유예 (보유 {held_days}일 < {self.min_holding_days}일)")
+
                         if can_sell:
-                             self.execute_sell(symbol, quantity, price, trade_date)
+                            self.execute_sell(symbol, quantity, price, trade_date)
 
         # 목표 비중에 없는 종목 청산
         for symbol in list(self.portfolio.positions.keys()):
@@ -462,7 +465,7 @@ class BacktestEngine:
                     (nav_gross / prev_nav_gross - 1.0) if prev_nav_gross > 0 else 0.0
                 )
                 self.daily_returns_gross.append(daily_return_gross)
-        
+
         # 3. Exposure Tracking (Phase 3 Fix)
         # 포지션 평가액이 0보다 크면 노출된 것으로 간주
         if self.portfolio.market_value > 0:
@@ -598,7 +601,11 @@ class BacktestEngine:
             "calendar_days": calendar_days,
             "trading_days": len(nav_series),
             "years": years,
-            "exposure_ratio": self.market_exposure_days / len(nav_series) if len(nav_series) > 0 else 0.0,
+            "exposure_ratio": (
+                self.market_exposure_days / len(nav_series)
+                if len(nav_series) > 0
+                else 0.0
+            ),
         }
 
         # Gross 성과 추가
@@ -613,9 +620,11 @@ class BacktestEngine:
                 ) * 100
             else:
                 cagr_gross = 0.0
-            
+
             metrics["total_return_gross"] = total_return_gross
-            metrics["annual_return_gross"] = cagr_gross # Keep for backward compatibility
+            metrics["annual_return_gross"] = (
+                cagr_gross  # Keep for backward compatibility
+            )
             metrics["cagr_gross"] = cagr_gross
             metrics["cost_drag"] = total_return_gross - total_return
 
@@ -623,27 +632,28 @@ class BacktestEngine:
         # nav_history: [(date, nav), ...]
         yearly_stats = {}
         if self.nav_history:
-            df_nav = pd.DataFrame(self.nav_history, columns=['date', 'nav'])
+            df_nav = pd.DataFrame(self.nav_history, columns=["date", "nav"])
             # Ensure datetime
-            df_nav['date'] = pd.to_datetime(df_nav['date'])
-            df_nav.set_index('date', inplace=True)
-            df_nav['year'] = df_nav.index.year
-            
-            for year, group in df_nav.groupby('year'):
-                if group.empty: continue
-                
+            df_nav["date"] = pd.to_datetime(df_nav["date"])
+            df_nav.set_index("date", inplace=True)
+            df_nav["year"] = df_nav.index.year
+
+            for year, group in df_nav.groupby("year"):
+                if group.empty:
+                    continue
+
                 # Filter daily returns for this year
                 # Note: self.daily_returns matches nav_history[1:], so we need to be careful aligning
                 # Instead, simpler approach: Calculate stats from NAV curve of the year
-                start_val = group['nav'].iloc[0]
-                end_val = group['nav'].iloc[-1]
+                start_val = group["nav"].iloc[0]
+                end_val = group["nav"].iloc[-1]
                 year_return = (end_val / start_val - 1.0) * 100
-                
+
                 # MDD for the year
-                cummax_y = group['nav'].cummax()
-                dd_y = (group['nav'] / cummax_y - 1.0) * 100
+                cummax_y = group["nav"].cummax()
+                dd_y = (group["nav"] / cummax_y - 1.0) * 100
                 mdd_y = abs(dd_y.min())
-                
+
                 yearly_stats[int(year)] = {
                     "return": year_return,
                     "mdd": mdd_y,
@@ -651,9 +661,9 @@ class BacktestEngine:
                     # This is complex to align with daily_returns list efficiently without date map
                     # skipping sharpe for now unless critical
                 }
-        
+
         metrics["yearly_stats"] = yearly_stats
-        
+
         # 엔진 헬스체크
         engine_health = self._check_engine_health(metrics)
         metrics["engine_health"] = engine_health
@@ -663,7 +673,7 @@ class BacktestEngine:
     def _check_engine_health(self, metrics: Dict[str, float]) -> Dict:
         """
         엔진 헬스체크 - 백테스트 결과의 물리적 정합성 검증
-        
+
         Returns:
             {
                 "is_valid": bool,
@@ -671,39 +681,39 @@ class BacktestEngine:
             }
         """
         warnings_list = []
-        
+
         # 1. 변동성이 0인지 확인
         if metrics.get("volatility", 0) == 0:
             warnings_list.append("volatility_is_zero")
-        
+
         # 2. 거래가 있는데 매도가 없는지 확인
         total_trades = metrics.get("total_trades", 0)
         sell_trades = metrics.get("sell_trades", 0)
         if total_trades > 0 and sell_trades == 0:
             warnings_list.append("no_sell_trades_detected")
-        
+
         # 3. 비용이 전혀 없는지 확인 (거래가 있는 경우)
         total_costs = metrics.get("total_costs", 0)
         if total_trades > 0 and total_costs == 0:
             warnings_list.append("no_costs_applied")
-        
+
         # 4. 일간 수익률이 없는지 확인
         if len(self.daily_returns) == 0:
             warnings_list.append("no_daily_returns")
-        
+
         # 5. 모든 realized_pnl이 0인지 확인 (매도가 있는 경우)
         if sell_trades > 0:
             sell_trade_list = [t for t in self.portfolio.trades if t.action == "SELL"]
             all_zero_pnl = all(t.realized_pnl == 0 for t in sell_trade_list)
             if all_zero_pnl:
                 warnings_list.append("all_realized_pnl_zero")
-        
+
         # 6. NAV 히스토리가 비어있는지 확인
         if len(self.nav_history) == 0:
             warnings_list.append("no_nav_history")
-        
+
         is_valid = len(warnings_list) == 0
-        
+
         return {
             "is_valid": is_valid,
             "warnings": warnings_list,
@@ -718,5 +728,5 @@ def create_default_backtest_engine() -> BacktestEngine:
         slippage_rate=0.001,
         max_positions=10,
         rebalance_frequency="daily",
-        min_holding_days=0
+        min_holding_days=0,
     )

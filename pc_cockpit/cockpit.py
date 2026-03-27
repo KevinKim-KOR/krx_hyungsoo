@@ -50,6 +50,14 @@ sys.path.append(str(BASE_DIR))
 
 load_dotenv(BASE_DIR / ".env")
 
+OCI_BACKEND_URL = os.environ.get("OCI_BACKEND_URL")
+if not OCI_BACKEND_URL or not OCI_BACKEND_URL.strip():
+    st.error(
+        "환경변수 OCI_BACKEND_URL이 설정되지 않았습니다. "
+        ".env 파일 또는 start.bat에서 설정하세요."
+    )
+    st.stop()
+
 
 def get_oci_ops_token():
     """P203: Auto-load OCI_OPS_TOKEN from env, with UI override"""
@@ -118,7 +126,18 @@ TICKER_MAP = {
 }
 
 
-# Fallback function
+def _ssot_require(params_obj: dict, *keys: str):
+    """SSOT params에서 중첩 키를 꺼낸다. 키가 없으면 KeyError."""
+    current = params_obj
+    path = []
+    for k in keys:
+        path.append(k)
+        if not isinstance(current, dict) or k not in current:
+            raise KeyError(f"SSOT 필수 키 누락: {'.'.join(path)}")
+        current = current[k]
+    return current
+
+
 def get_ticker_name(code):
     return f"{code} ({TICKER_MAP.get(code, 'Unknown')})"
 
@@ -697,21 +716,15 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     )
 
     # [Phase 2] Operation Mode Info
-    p_mode = (
-        params_data.get("params", {}).get("portfolio_mode", "single_universe")
-        if params_data
-        else "single_universe"
-    )
-    s_mode = (
-        params_data.get("params", {}).get("sell_mode", "stop_loss")
-        if params_data
-        else "stop_loss"
-    )
-    r_freq = (
-        params_data.get("params", {}).get("rebalance", {}).get("frequency", "M")
-        if params_data
-        else "M"
-    )
+    if params_data and "params" in params_data:
+        _p = params_data["params"]
+        p_mode = _ssot_require(_p, "portfolio_mode")
+        s_mode = _ssot_require(_p, "sell_mode")
+        r_freq = _ssot_require(_p, "rebalance", "frequency")
+    else:
+        p_mode = "N/A"
+        s_mode = "N/A"
+        r_freq = "N/A"
     st.info(
         f"🚀 **운영 모드**: `{p_mode}` | **매도 룰**: `{s_mode}` | **리밸런싱**: `{r_freq}`"
     )
@@ -720,13 +733,17 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     # A. 1) 파라미터 (SSOT)
     st.subheader("1) 현재 파라미터 (SSOT)")
     if params_data:
-        p = params_data.get("params", {})
+        if "params" not in params_data:
+            st.error("SSOT 파일에 'params' 키가 없습니다. 파일 구조를 확인하세요.")
+            return
+        p = params_data["params"]
         with st.expander("⚙️ 파라미터 수정 (Click to expand)", expanded=False):
             with st.form("wf_params_form"):
                 # Universe
                 st.subheader("Universe")
                 universe_str = st.text_input(
-                    "Tickers (comma separated)", ", ".join(p.get("universe", []))
+                    "Tickers (comma separated)",
+                    ", ".join(_ssot_require(p, "universe")),
                 )
 
                 # Lookbacks
@@ -734,12 +751,12 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                 c1, c2 = st.columns(2)
                 mom_period = c1.number_input(
                     "모멘텀 기간 (Momentum Period)",
-                    value=p.get("lookbacks", {}).get("momentum_period", 20),
+                    value=_ssot_require(p, "lookbacks", "momentum_period"),
                 )
                 c1.caption("`SSOT Key: momentum_period`")
                 vol_period = c2.number_input(
                     "변동성 기간 (Volatility Period)",
-                    value=p.get("lookbacks", {}).get("volatility_period", 14),
+                    value=_ssot_require(p, "lookbacks", "volatility_period"),
                 )
                 c2.caption("`SSOT Key: volatility_period`")
 
@@ -748,7 +765,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                 c1, c2 = st.columns(2)
                 max_pos_pct = c1.number_input(
                     "최대 포지션 비중 (Max Position %)",
-                    value=float(p.get("risk_limits", {}).get("max_position_pct", 0.25)),
+                    value=float(_ssot_require(p, "risk_limits", "max_position_pct")),
                     step=0.01,
                 )
                 c1.caption("`SSOT Key: max_position_pct`")
@@ -761,13 +778,13 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                 c1, c2 = st.columns(2)
                 max_pos = c1.number_input(
                     "최대 편입 종목 수 (Max Positions)",
-                    value=int(p.get("position_limits", {}).get("max_positions", 5)),
+                    value=int(_ssot_require(p, "position_limits", "max_positions")),
                     min_value=1,
                 )
                 c1.caption("`SSOT Key: max_positions`")
                 min_cash_pct = c2.number_input(
                     "최소 현금 비중 (Min Cash %)",
-                    value=float(p.get("position_limits", {}).get("min_cash_pct", 0.05)),
+                    value=float(_ssot_require(p, "position_limits", "min_cash_pct")),
                     step=0.01,
                 )
                 c2.caption("`SSOT Key: min_cash_pct`")
@@ -777,17 +794,13 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                 c1, c2 = st.columns(2)
                 entry = c1.number_input(
                     "진입 임계치 (Entry Threshold)",
-                    value=float(
-                        p.get("decision_params", {}).get("entry_threshold", 0.02)
-                    ),
+                    value=float(_ssot_require(p, "decision_params", "entry_threshold")),
                     step=0.01,
                 )
                 c1.caption("`SSOT Key: entry_threshold`")
                 exit_th = c2.number_input(
                     "청산 임계치 (Exit Threshold)",
-                    value=float(
-                        p.get("decision_params", {}).get("exit_threshold", -0.05)
-                    ),
+                    value=float(_ssot_require(p, "decision_params", "exit_threshold")),
                     step=0.01,
                 )
                 c2.caption("`SSOT Key: exit_threshold`")
@@ -1469,15 +1482,13 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
             exec_mode = "DRY_RUN"
 
         # Display Bar
-        st.info(
-            f"""
+        st.info(f"""
         **ENV**: {env_color} {env_info.get("type", "PC")} ({env_info.get("hostname","localhost")}) | 
-        **Target**: 🔗 {os.getenv("OCI_BACKEND_URL", "http://localhost:8000")} | 
+        **Target**: 🔗 {OCI_BACKEND_URL} |
         **Stage**: {stage_color} {stage} | 
         **Exec**: 🧪 {exec_mode} |
         **Replay**: {'🔴 ON (' + (replay_asof or 'Unknown') + ')' if is_replay else '⚪ OFF'} 
-        """
-        )
+        """)
     else:
         st.error(f"🛑 Backend Connection Failed: {error_msg}")
         st.session_state["last_block_reason"] = f"Backend 죽음: {error_msg}"
@@ -1566,7 +1577,7 @@ def render_ops_p144(params_data, portfolio_data, guardrails_data):
                 st.session_state["last_block_reason"] = "Auto Ops 차단: Token 없음"
                 return
             try:
-                oci_url = os.getenv("OCI_BACKEND_URL", "http://localhost:8001")
+                oci_url = OCI_BACKEND_URL
 
                 # === Step 1: Local Bundle Generation ===
                 st.info("Step 1/3: 로컬 번들 생성 중...")
@@ -1714,12 +1725,16 @@ def render_params(params_data, portfolio_data, guardrails_data):
 
         # Form
         with st.form("params_form"):
-            p = params_data.get("params", {})
+            if "params" not in params_data:
+                st.error("SSOT 파일에 'params' 키가 없습니다.")
+                st.stop()
+            p = params_data["params"]
 
             # Universe
             st.subheader("Universe")
             universe_str = st.text_area(
-                "Tickers (comma separated)", ", ".join(p.get("universe", []))
+                "Tickers (comma separated)",
+                ", ".join(_ssot_require(p, "universe")),
             )
 
             # Lookbacks
@@ -1727,12 +1742,12 @@ def render_params(params_data, portfolio_data, guardrails_data):
             c1, c2 = st.columns(2)
             mom_period = c1.number_input(
                 "모멘텀 기간 (Momentum Period)",
-                value=p.get("lookbacks", {}).get("momentum_period", 20),
+                value=_ssot_require(p, "lookbacks", "momentum_period"),
             )
             c1.caption("`SSOT Key: momentum_period`")
             vol_period = c2.number_input(
                 "변동성 기간 (Volatility Period)",
-                value=p.get("lookbacks", {}).get("volatility_period", 14),
+                value=_ssot_require(p, "lookbacks", "volatility_period"),
             )
             c2.caption("`SSOT Key: volatility_period`")
 
@@ -1741,12 +1756,12 @@ def render_params(params_data, portfolio_data, guardrails_data):
             c1, c2 = st.columns(2)
             max_pos_pct = c1.number_input(
                 "최대 포지션 비중 (Max Position %)",
-                value=p.get("risk_limits", {}).get("max_position_pct", 0.25),
+                value=float(_ssot_require(p, "risk_limits", "max_position_pct")),
             )
             c1.caption("`SSOT Key: max_position_pct`")
             max_dd_pct = c2.number_input(
                 "최대 낙폭 (Max Drawdown %)",
-                value=p.get("risk_limits", {}).get("max_drawdown_pct", 0.15),
+                value=float(_ssot_require(p, "risk_limits", "max_drawdown_pct")),
             )
             c2.caption("`SSOT Key: max_drawdown_pct`")
 
@@ -1755,12 +1770,12 @@ def render_params(params_data, portfolio_data, guardrails_data):
             c1, c2 = st.columns(2)
             max_pos = c1.number_input(
                 "최대 보유종목 수 (Max Positions)",
-                value=p.get("position_limits", {}).get("max_positions", 4),
+                value=int(_ssot_require(p, "position_limits", "max_positions")),
             )
             c1.caption("`SSOT Key: max_positions`")
             min_cash = c2.number_input(
                 "최소 현금비율 (Min Cash %)",
-                value=p.get("position_limits", {}).get("min_cash_pct", 0.10),
+                value=float(_ssot_require(p, "position_limits", "min_cash_pct")),
             )
             c2.caption("`SSOT Key: min_cash_pct`")
 
@@ -1769,17 +1784,17 @@ def render_params(params_data, portfolio_data, guardrails_data):
             c1, c2, c3 = st.columns(3)
             entry_th = c1.number_input(
                 "진입 임계값 (Entry Threshold)",
-                value=p.get("decision_params", {}).get("entry_threshold", 0.02),
+                value=float(_ssot_require(p, "decision_params", "entry_threshold")),
             )
             c1.caption("`SSOT Key: entry_threshold`")
             exit_th = c2.number_input(
                 "손절/청산 임계값 (Stop Loss)",
-                value=p.get("decision_params", {}).get("exit_threshold", -0.03),
+                value=float(_ssot_require(p, "decision_params", "exit_threshold")),
             )
             c2.caption("`SSOT Key: exit_threshold (= stop_loss)`")
             adx_min = c3.number_input(
                 "ADX 최소값 (ADX Min)",
-                value=p.get("decision_params", {}).get("adx_filter_min", 20),
+                value=int(_ssot_require(p, "decision_params", "adx_filter_min")),
             )
             c3.caption("`SSOT Key: adx_filter_min`")
 
@@ -1788,11 +1803,11 @@ def render_params(params_data, portfolio_data, guardrails_data):
             c1, c2 = st.columns(2)
             w_mom = c1.number_input(
                 "Weight Mom",
-                value=p.get("decision_params", {}).get("weight_momentum", 1.0),
+                value=float(_ssot_require(p, "decision_params", "weight_momentum")),
             )
             w_vol = c2.number_input(
                 "Weight Vol",
-                value=p.get("decision_params", {}).get("weight_volatility", 0.0),
+                value=float(_ssot_require(p, "decision_params", "weight_volatility")),
             )
 
             c_btn1, c_btn2 = st.columns(2)

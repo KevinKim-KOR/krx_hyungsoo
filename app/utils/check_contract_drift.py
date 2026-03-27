@@ -13,6 +13,7 @@ import os
 import re
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Set, Dict, List, Any
@@ -44,7 +45,7 @@ def flatten_json_keys(obj: Any, prefix: str = "") -> Set[str]:
     배열은 items[].field 형태로 표현
     """
     keys = set()
-    
+
     if isinstance(obj, dict):
         for key, value in obj.items():
             path = f"{prefix}.{key}" if prefix else key
@@ -59,7 +60,7 @@ def flatten_json_keys(obj: Any, prefix: str = "") -> Set[str]:
                     path = f"{prefix}[].{key}"
                     keys.add(path)
                     keys.update(flatten_json_keys(value, path))
-    
+
     return keys
 
 
@@ -69,43 +70,51 @@ def parse_schema_fields_from_contract(contract_path: Path) -> Set[str]:
     """
     if not contract_path.exists():
         return set()
-    
+
     content = contract_path.read_text(encoding="utf-8")
     fields = set()
-    
+
     # ## Schema Fields 또는 ## 3. 필드 정의 섹션 찾기
     patterns = [
         r"##\s*Schema Fields\s*\n(.*?)(?=\n##|\Z)",
         r"##\s*\d+\.\s*필드 정의\s*\n(.*?)(?=\n##|\Z)",
         r"##\s*\d+\.\s*스키마 정의\s*\n(.*?)(?=\n##|\Z)",
     ]
-    
+
     section_content = None
     for pattern in patterns:
         match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
         if match:
             section_content = match.group(1)
             break
-    
+
     if not section_content:
         # 테이블 형태에서 필드 추출 시도
         # | `field_name` | 형태 찾기
-        table_matches = re.findall(r"\|\s*`([a-z_\.]+(?:\[\])?[a-z_\.]*)`\s*\|", content, re.IGNORECASE)
+        table_matches = re.findall(
+            r"\|\s*`([a-z_\.]+(?:\[\])?[a-z_\.]*)`\s*\|", content, re.IGNORECASE
+        )
         for match in table_matches:
             if match and not match.startswith("schema"):
                 fields.add(match)
         return fields
-    
+
     # - field_name 형태 추출
-    list_matches = re.findall(r"^-\s+([a-z_\.]+(?:\[\])?[a-z_\.]*)", section_content, re.MULTILINE | re.IGNORECASE)
+    list_matches = re.findall(
+        r"^-\s+([a-z_\.]+(?:\[\])?[a-z_\.]*)",
+        section_content,
+        re.MULTILINE | re.IGNORECASE,
+    )
     for match in list_matches:
         fields.add(match)
-    
+
     # 테이블에서도 추출
-    table_matches = re.findall(r"\|\s*`([a-z_\.]+(?:\[\])?[a-z_\.]*)`\s*\|", section_content, re.IGNORECASE)
+    table_matches = re.findall(
+        r"\|\s*`([a-z_\.]+(?:\[\])?[a-z_\.]*)`\s*\|", section_content, re.IGNORECASE
+    )
     for match in table_matches:
         fields.add(match)
-    
+
     return fields
 
 
@@ -113,13 +122,13 @@ def get_latest_receipt() -> Dict[str, Any]:
     """send_receipts.jsonl에서 최신 라인 로드"""
     if not SEND_RECEIPTS_FILE.exists():
         return None
-    
+
     lines = SEND_RECEIPTS_FILE.read_text(encoding="utf-8").strip().split("\n")
     lines = [l for l in lines if l.strip()]
-    
+
     if not lines:
         return None
-    
+
     try:
         return json.loads(lines[-1])
     except Exception:
@@ -130,7 +139,7 @@ def get_postmortem() -> Dict[str, Any]:
     """postmortem_latest.json 로드"""
     if not POSTMORTEM_LATEST.exists():
         return None
-    
+
     try:
         return json.loads(POSTMORTEM_LATEST.read_text(encoding="utf-8"))
     except Exception:
@@ -148,9 +157,9 @@ def check_drift_for_artifact(artifact: Dict, artifact_name: str) -> Dict:
             "missing_fields": [],
             "extra_fields_in_contract": [],
             "status": "SKIP",
-            "reason": "Artifact not found"
+            "reason": "Artifact not found",
         }
-    
+
     schema = artifact.get("schema")
     if not schema:
         return {
@@ -161,9 +170,9 @@ def check_drift_for_artifact(artifact: Dict, artifact_name: str) -> Dict:
             "missing_fields": [],
             "extra_fields_in_contract": [],
             "status": "FAIL",
-            "reason": "No schema field in artifact"
+            "reason": "No schema field in artifact",
         }
-    
+
     contract_path = CONTRACT_MAPPING.get(schema)
     if not contract_path:
         return {
@@ -174,15 +183,15 @@ def check_drift_for_artifact(artifact: Dict, artifact_name: str) -> Dict:
             "missing_fields": [],
             "extra_fields_in_contract": [],
             "status": "FAIL",
-            "reason": f"No contract found for schema {schema}"
+            "reason": f"No contract found for schema {schema}",
         }
-    
+
     # 아티팩트 필드 수집
     artifact_fields = flatten_json_keys(artifact)
-    
+
     # 계약 필드 수집
     contract_fields = parse_schema_fields_from_contract(contract_path)
-    
+
     # Drift 검사: 아티팩트에 있지만 계약에 없는 필드
     missing_in_contract = []
     for field in artifact_fields:
@@ -192,18 +201,23 @@ def check_drift_for_artifact(artifact: Dict, artifact_name: str) -> Dict:
             found = False
             parts = field.split(".")
             for i in range(len(parts)):
-                partial = ".".join(parts[:i+1])
+                partial = ".".join(parts[: i + 1])
                 if partial in contract_fields:
                     found = True
                     break
             if not found:
                 missing_in_contract.append(field)
-    
+
     # 계약에 있지만 아티팩트에 없는 필드 (Extra)
-    extra_in_contract = [f for f in contract_fields if f not in artifact_fields and not any(f.startswith(af.split(".")[0]) for af in artifact_fields)]
-    
+    extra_in_contract = [
+        f
+        for f in contract_fields
+        if f not in artifact_fields
+        and not any(f.startswith(af.split(".")[0]) for af in artifact_fields)
+    ]
+
     status = "PASS" if len(missing_in_contract) == 0 else "FAIL"
-    
+
     return {
         "artifact": artifact_name,
         "artifact_schema": schema,
@@ -211,42 +225,44 @@ def check_drift_for_artifact(artifact: Dict, artifact_name: str) -> Dict:
         "contract_schema": schema,
         "missing_fields": sorted(missing_in_contract),
         "extra_fields_in_contract": sorted(extra_in_contract),
-        "status": status
+        "status": status,
     }
 
 
 def run_drift_check() -> Dict:
     """전체 Drift 검사 실행"""
     asof = datetime.now(KST).isoformat()
-    
+
     # 1. Receipt 검사
     receipt = get_latest_receipt()
     receipt_result = check_drift_for_artifact(receipt, "send_receipts.jsonl")
-    
+
     # 2. Postmortem 검사
     postmortem = get_postmortem()
     postmortem_result = check_drift_for_artifact(postmortem, "postmortem_latest.json")
-    
+
     targets = [receipt_result, postmortem_result]
-    
+
     # 전체 결과 계산
     all_pass = all(t["status"] == "PASS" for t in targets if t["status"] != "SKIP")
     missing_total = sum(len(t["missing_fields"]) for t in targets)
-    
+
     result = {
         "schema": "CONTRACT_DRIFT_RESULT_V1",
         "asof": asof,
         "targets": targets,
         "result": "PASS" if all_pass and missing_total == 0 else "FAIL",
-        "missing_total": missing_total
+        "missing_total": missing_total,
     }
-    
+
     # Atomic write
     DRIFT_RESULT_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp_file = DRIFT_RESULT_FILE.parent / "drift_fields_detected.json.tmp"
-    tmp_file.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_file.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     os.replace(str(tmp_file), str(DRIFT_RESULT_FILE))
-    
+
     return result
 
 

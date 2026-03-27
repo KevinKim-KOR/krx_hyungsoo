@@ -10,6 +10,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -43,16 +44,16 @@ def get_ticket_board() -> Dict[str, Dict]:
     """
     requests = read_jsonl(TICKET_REQUESTS_FILE)
     results = read_jsonl(TICKET_RESULTS_FILE)
-    
+
     board = {}
     for req in requests:
         request_id = req.get("request_id")
         if not request_id:
             continue
-        
+
         # 해당 티켓의 결과들 수집
         req_results = [r for r in results if r.get("request_id") == request_id]
-        
+
         if not req_results:
             status = "OPEN"
             last_processed_at = req.get("requested_at")
@@ -61,35 +62,37 @@ def get_ticket_board() -> Dict[str, Dict]:
             latest = max(req_results, key=lambda x: x.get("processed_at", ""))
             status = latest.get("status", "OPEN")
             last_processed_at = latest.get("processed_at")
-        
+
         board[request_id] = {
             "request_id": request_id,
             "request_type": req.get("request_type", "UNKNOWN"),
             "current_status": status,
             "last_processed_at": last_processed_at,
-            "requested_at": req.get("requested_at")
+            "requested_at": req.get("requested_at"),
         }
-    
+
     return board
 
 
-def find_stale_in_progress(threshold_seconds: int = DEFAULT_THRESHOLD_SECONDS) -> List[Dict]:
+def find_stale_in_progress(
+    threshold_seconds: int = DEFAULT_THRESHOLD_SECONDS,
+) -> List[Dict]:
     """
     Stale IN_PROGRESS 티켓 찾기
     """
     board = get_ticket_board()
     now = datetime.now(KST)
     threshold = timedelta(seconds=threshold_seconds)
-    
+
     stale = []
     for request_id, ticket in board.items():
         if ticket["current_status"] != "IN_PROGRESS":
             continue
-        
+
         last_processed = ticket.get("last_processed_at")
         if not last_processed:
             continue
-        
+
         try:
             # ISO datetime 파싱
             if "T" in last_processed:
@@ -99,16 +102,13 @@ def find_stale_in_progress(threshold_seconds: int = DEFAULT_THRESHOLD_SECONDS) -
                     dt = dt.replace(tzinfo=None)
             else:
                 dt = datetime.strptime(last_processed, "%Y-%m-%d %H:%M:%S")
-            
+
             age = now - dt
             if age > threshold:
-                stale.append({
-                    **ticket,
-                    "age_seconds": int(age.total_seconds())
-                })
+                stale.append({**ticket, "age_seconds": int(age.total_seconds())})
         except Exception:
             continue
-    
+
     return stale
 
 
@@ -121,37 +121,39 @@ def append_ticket_result(result: Dict):
 
 def clean_stale_tickets(
     threshold_seconds: int = DEFAULT_THRESHOLD_SECONDS,
-    max_clean: int = DEFAULT_MAX_CLEAN
+    max_clean: int = DEFAULT_MAX_CLEAN,
 ) -> Dict[str, Any]:
     """
     Stale IN_PROGRESS 티켓 정리
     """
     asof = datetime.now(KST).isoformat()
     stale = find_stale_in_progress(threshold_seconds)
-    
+
     cleaned_items = []
     for i, ticket in enumerate(stale[:max_clean]):
         request_id = ticket["request_id"]
-        
+
         # FAILED 상태로 전이
         result = {
             "request_id": request_id,
             "processor_id": "TICKET_REAPER",
             "status": "FAILED",
             "processed_at": asof,
-            "message": f"AUTO_CLEANUP_STALE_IN_PROGRESS: exceeded {threshold_seconds}s threshold (age: {ticket.get('age_seconds', 0)}s)"
+            "message": f"AUTO_CLEANUP_STALE_IN_PROGRESS: exceeded {threshold_seconds}s threshold (age: {ticket.get('age_seconds', 0)}s)",
         }
         append_ticket_result(result)
-        
-        cleaned_items.append({
-            "request_id": request_id,
-            "request_type": ticket.get("request_type", "UNKNOWN"),
-            "last_processed_at": ticket.get("last_processed_at"),
-            "reason": "AUTO_CLEANUP_STALE_IN_PROGRESS"
-        })
-    
+
+        cleaned_items.append(
+            {
+                "request_id": request_id,
+                "request_type": ticket.get("request_type", "UNKNOWN"),
+                "last_processed_at": ticket.get("last_processed_at"),
+                "reason": "AUTO_CLEANUP_STALE_IN_PROGRESS",
+            }
+        )
+
     decision = "CLEANED" if cleaned_items else "NONE"
-    
+
     return {
         "schema": "TICKET_REAPER_REPORT_V1",
         "asof": asof,
@@ -159,49 +161,53 @@ def clean_stale_tickets(
         "threshold_seconds": threshold_seconds,
         "stale_count": len(stale),
         "cleaned_count": len(cleaned_items),
-        "cleaned_items": cleaned_items
+        "cleaned_items": cleaned_items,
     }
 
 
 def run_ticket_reaper(
     threshold_seconds: int = DEFAULT_THRESHOLD_SECONDS,
-    max_clean: int = DEFAULT_MAX_CLEAN
+    max_clean: int = DEFAULT_MAX_CLEAN,
 ) -> Dict[str, Any]:
     """
     Ticket Reaper 실행 및 리포트 저장
     """
     report = clean_stale_tickets(threshold_seconds, max_clean)
-    
+
     # 디렉토리 생성
     REAPER_LATEST_DIR.mkdir(parents=True, exist_ok=True)
     REAPER_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # 스냅샷 경로
     timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_path = REAPER_SNAPSHOTS_DIR / f"reaper_{timestamp}.json"
-    
+
     # evidence_refs 추가
     report["evidence_refs"] = [
         str(snapshot_path.relative_to(BASE_DIR)).replace("\\", "/")
     ]
-    
+
     # Atomic write - snapshot
     tmp_snapshot = snapshot_path.with_suffix(".json.tmp")
-    tmp_snapshot.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp_snapshot.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     os.replace(str(tmp_snapshot), str(snapshot_path))
-    
+
     # Atomic write - latest
     tmp_latest = REAPER_LATEST.with_suffix(".json.tmp")
-    tmp_latest.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp_latest.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     os.replace(str(tmp_latest), str(REAPER_LATEST))
-    
+
     return {
         "result": "OK",
         "decision": report["decision"],
         "cleaned_count": report["cleaned_count"],
         "stale_count": report["stale_count"],
         "latest_path": str(REAPER_LATEST.relative_to(BASE_DIR)).replace("\\", "/"),
-        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR)).replace("\\", "/")
+        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR)).replace("\\", "/"),
     }
 
 

@@ -2,6 +2,7 @@
 """
 app/tuning/scoring.py - P204 Step3 objective and safe-math scoring
 """
+
 from __future__ import annotations
 
 import math
@@ -14,7 +15,9 @@ MAX_TOTAL_TRADES = 900
 
 # Step3 objective constants
 OBJECTIVE_VERSION = "P204_STEP3_V2"
-OBJECTIVE_FORMULA = "Score=(0.45*CAGR_agg)-(0.35*MDD_agg)+(0.20*Sharpe_agg)-(1.00*OverfitPenalty)"
+OBJECTIVE_FORMULA = (
+    "Score=(0.45*CAGR_agg)-(0.35*MDD_agg)+(0.20*Sharpe_agg)-(1.00*OverfitPenalty)"
+)
 OBJECTIVE_WEIGHTS = {
     "w1": 0.45,
     "w2": 0.35,
@@ -41,7 +44,9 @@ def _safe_float(value: Any) -> float | None:
     return result
 
 
-def _infer_scale_source(cagr_values: Iterable[float], mdd_values: Iterable[float]) -> str:
+def _infer_scale_source(
+    cagr_values: Iterable[float], mdd_values: Iterable[float]
+) -> str:
     # MDD decimal should be <= 1.0 in normal cases.
     if any(abs(value) > 1.0 for value in mdd_values):
         return "percent_to_decimal"
@@ -97,13 +102,25 @@ def compute_score(
     """
     Step3 objective score with safe-math, metric normalization, and hard caps.
     """
-    full_metrics = segment_data.get("full_period_metrics", {}) if isinstance(segment_data, dict) else {}
-    seg_metrics = segment_data.get("segment_metrics", {}) if isinstance(segment_data, dict) else {}
+    full_metrics = (
+        segment_data.get("full_period_metrics", {})
+        if isinstance(segment_data, dict)
+        else {}
+    )
+    seg_metrics = (
+        segment_data.get("segment_metrics", {})
+        if isinstance(segment_data, dict)
+        else {}
+    )
 
     seg_keys = ["SEG_1", "SEG_2", "SEG_3"]
-    raw_seg_cagr = [_safe_float(seg_metrics.get(key, {}).get("cagr")) for key in seg_keys]
+    raw_seg_cagr = [
+        _safe_float(seg_metrics.get(key, {}).get("cagr")) for key in seg_keys
+    ]
     raw_seg_mdd = [_safe_float(seg_metrics.get(key, {}).get("mdd")) for key in seg_keys]
-    raw_seg_sharpe = [_safe_float(seg_metrics.get(key, {}).get("sharpe")) for key in seg_keys]
+    raw_seg_sharpe = [
+        _safe_float(seg_metrics.get(key, {}).get("sharpe")) for key in seg_keys
+    ]
 
     full_cagr = _safe_float(full_metrics.get("cagr"))
     full_mdd = _safe_float(full_metrics.get("mdd"))
@@ -117,7 +134,14 @@ def compute_score(
     if full_sharpe is None:
         full_sharpe = _safe_float(metrics.get("sharpe"))
 
-    required_values = [full_cagr, full_mdd, full_sharpe, *raw_seg_cagr, *raw_seg_mdd, *raw_seg_sharpe]
+    required_values = [
+        full_cagr,
+        full_mdd,
+        full_sharpe,
+        *raw_seg_cagr,
+        *raw_seg_mdd,
+        *raw_seg_sharpe,
+    ]
     if any(value is None for value in required_values):
         return _invalid_result(metric_scale_source="decimal_native")
 
@@ -144,7 +168,9 @@ def compute_score(
     safe_math_clipped = False
 
     # Dispersion penalty
-    dispersion = 1.5 * pstdev(cagr_seg) + 1.2 * pstdev(mdd_seg) + 1.0 * pstdev(sharpe_seg)
+    dispersion = (
+        1.5 * pstdev(cagr_seg) + 1.2 * pstdev(mdd_seg) + 1.0 * pstdev(sharpe_seg)
+    )
     exp_input_var, was_clipped = _clip(3.0 * dispersion, 0.0, 4.0)
     safe_math_clipped = safe_math_clipped or was_clipped
     penalty_var_raw = _safe_exp(exp_input_var) - 1.0

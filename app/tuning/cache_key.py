@@ -4,6 +4,7 @@ app/tuning/cache_key.py — P167-R 파라미터 해시 (중복 trial 감지)
 
 레거시 참조: _archive/legacy_20260102/extensions/tuning/types.py compute_params_hash
 """
+
 from __future__ import annotations
 import hashlib
 import json

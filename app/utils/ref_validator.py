@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).parent.parent.parent
 ALLOWED_JSONL_FILES = [
     "state/tickets/ticket_receipts.jsonl",
     "state/tickets/ticket_results.jsonl",
-    "state/push/send_receipts.jsonl"
+    "state/push/send_receipts.jsonl",
 ]
 
 ALLOWED_JSON_PATTERNS = [
@@ -89,7 +89,7 @@ ALLOWED_JSON_PATTERNS = [
 
 JSONL_REF_PATTERN = r"^(state/tickets/ticket_receipts\.jsonl|state/tickets/ticket_results\.jsonl|state/push/send_receipts\.jsonl):line(\d+)$"
 
-DANGEROUS_TOKENS = ['..', '\\', '://', '%2e', '%2f', '%2E', '%2F', '%00']
+DANGEROUS_TOKENS = ["..", "\\", "://", "%2e", "%2f", "%2E", "%2F", "%00"]
 
 # P70: Resolver Aliases (Guard)
 REF_ALIASES = {
@@ -105,13 +105,14 @@ REF_ALIASES = {
     "guard_execution_ticket_latest": "reports/live/manual_execution_ticket/latest/manual_execution_ticket_latest.json",
     "guard_execution_record_latest": "reports/live/manual_execution_record/latest/manual_execution_record_latest.json",
     "guard_strategy_params_latest": "state/strategy_params/latest/strategy_params_latest.json",
-    "guard_dry_run_record_latest": "reports/live/dry_run_record/latest/dry_run_record_latest.json"
+    "guard_dry_run_record_latest": "reports/live/dry_run_record/latest/dry_run_record_latest.json",
 }
 
 
 @dataclass
 class ResolvedEvidence:
     """Ref 검증 결과"""
+
     decision: str  # OK | INVALID_REF | NOT_FOUND | PARSE_ERROR
     http_status_equivalent: int  # 200 | 400 | 404
     content_type: str  # json | jsonl_line | text | none
@@ -126,14 +127,14 @@ class ResolvedEvidence:
 def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
     """
     Ref 검증 + 해석 (단일 정공 함수)
-    
+
     - 0차: Alias Resolution (P70)
     - 1차: 위험 토큰 거부
     - 2차: regex/allowlist 검증
     - 3차: path normalization + allowed_root 검증
     - 4차: 파일 존재 확인 + 내용 읽기
     """
-    
+
     # === 0차: Alias Resolution ===
     if ref in REF_ALIASES:
         ref = REF_ALIASES[ref]
@@ -149,15 +150,15 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=None,
                 reason=f"Dangerous token detected: {token}",
                 source_kind=None,
-                source_line=None
+                source_line=None,
             )
-    
+
     # === JSONL Line Ref 처리 ===
     jsonl_match = re.match(JSONL_REF_PATTERN, ref)
     if jsonl_match:
         jsonl_path = jsonl_match.group(1)
         line_no = int(jsonl_match.group(2))
-        
+
         if line_no < 1:
             return ResolvedEvidence(
                 decision="INVALID_REF",
@@ -167,9 +168,9 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=None,
                 reason="Line number must be >= 1",
                 source_kind=None,
-                source_line=None
+                source_line=None,
             )
-        
+
         # Allowlist 검증
         if jsonl_path not in ALLOWED_JSONL_FILES:
             return ResolvedEvidence(
@@ -180,14 +181,14 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=None,
                 reason="JSONL file not in allowlist",
                 source_kind=None,
-                source_line=None
+                source_line=None,
             )
-        
+
         # 2차 검증: Path Normalization
         full_path = BASE_DIR / jsonl_path
         abs_path = os.path.abspath(str(full_path))
         allowed_root = os.path.abspath(str(BASE_DIR))
-        
+
         if not abs_path.startswith(allowed_root + os.sep):
             return ResolvedEvidence(
                 decision="INVALID_REF",
@@ -197,9 +198,9 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=None,
                 reason="Path escape attempt blocked",
                 source_kind=None,
-                source_line=None
+                source_line=None,
             )
-        
+
         if not full_path.exists():
             return ResolvedEvidence(
                 decision="NOT_FOUND",
@@ -209,13 +210,13 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=None,
                 reason=f"File not found: {jsonl_path}",
                 source_kind="JSONL_LINE",
-                source_line=line_no
+                source_line=line_no,
             )
-        
+
         # linecache로 특정 라인만 읽기 (전체 읽기 금지)
         linecache.checkcache(str(full_path))
         line_content = linecache.getline(str(full_path), line_no)
-        
+
         if not line_content.strip():
             return ResolvedEvidence(
                 decision="NOT_FOUND",
@@ -225,9 +226,9 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=None,
                 reason=f"Line {line_no} is empty or out of range",
                 source_kind="JSONL_LINE",
-                source_line=line_no
+                source_line=line_no,
             )
-        
+
         try:
             data = json.loads(line_content)
             return ResolvedEvidence(
@@ -238,7 +239,7 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 data=data,
                 reason=None,
                 source_kind="JSONL_LINE",
-                source_line=line_no
+                source_line=line_no,
             )
         except json.JSONDecodeError as e:
             return ResolvedEvidence(
@@ -250,16 +251,16 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 reason=f"JSON parse error at line {line_no}: {str(e)}",
                 source_kind="JSONL_LINE",
                 source_line=line_no,
-                raw_content=line_content[:4096] # P146.2 Fail-Soft
+                raw_content=line_content[:4096],  # P146.2 Fail-Soft
             )
-    
+
     # === JSON Ref 처리 ===
     json_matched = False
     for pattern in ALLOWED_JSON_PATTERNS:
         if re.match(pattern, ref):
             json_matched = True
             break
-    
+
     if not json_matched:
         return ResolvedEvidence(
             decision="INVALID_REF",
@@ -269,14 +270,14 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
             data=None,
             reason=f"Ref does not match any allowed pattern: {ref}",
             source_kind=None,
-            source_line=None
+            source_line=None,
         )
-    
+
     # 2차 검증: Path Normalization
     full_path = BASE_DIR / ref
     abs_path = os.path.abspath(str(full_path))
     allowed_root = os.path.abspath(str(BASE_DIR))
-    
+
     if not abs_path.startswith(allowed_root + os.sep):
         return ResolvedEvidence(
             decision="INVALID_REF",
@@ -286,9 +287,9 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
             data=None,
             reason="Path escape attempt blocked",
             source_kind=None,
-            source_line=None
+            source_line=None,
         )
-    
+
     if not full_path.exists():
         return ResolvedEvidence(
             decision="NOT_FOUND",
@@ -298,12 +299,12 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
             data=None,
             reason=f"File not found: {ref}",
             source_kind="JSON",
-            source_line=None
+            source_line=None,
         )
-    
+
     # P146.5: Extension-based branching — non-JSON files returned as raw text
     ext = full_path.suffix.lower()
-    if ext in ('.md', '.txt', '.csv'):
+    if ext in (".md", ".txt", ".csv"):
         try:
             content = full_path.read_text(encoding="utf-8")
             return ResolvedEvidence(
@@ -311,10 +312,10 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 http_status_equivalent=200,
                 content_type="text",
                 resolved_path=ref,
-                data={"raw_text": content[:8192], "file_type": ext.lstrip('.')},
+                data={"raw_text": content[:8192], "file_type": ext.lstrip(".")},
                 reason=None,
                 source_kind="TEXT",
-                source_line=None
+                source_line=None,
             )
         except Exception as e:
             return ResolvedEvidence(
@@ -326,7 +327,7 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
                 reason=f"File read error: {str(e)}",
                 source_kind="TEXT",
                 source_line=None,
-                raw_content="Read Fail"
+                raw_content="Read Fail",
             )
 
     # JSON files: standard parse path
@@ -341,7 +342,7 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
             data=data,
             reason=None,
             source_kind="JSON",
-            source_line=None
+            source_line=None,
         )
     except json.JSONDecodeError as e:
         return ResolvedEvidence(
@@ -353,5 +354,5 @@ def validate_and_resolve_ref(ref: str) -> ResolvedEvidence:
             reason=f"JSON parse error: {str(e)}",
             source_kind="JSON",
             source_line=None,
-            raw_content=content[:4096] if 'content' in locals() else "Read Fail"
+            raw_content=content[:4096] if "content" in locals() else "Read Fail",
         )

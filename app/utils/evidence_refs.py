@@ -29,7 +29,10 @@ OPS_REFS = [
 ]
 
 # Phase C refs
-
+PHASE_C_REFS = [
+    "reports/phase_c/latest/recon_summary.json",
+    "reports/phase_c/latest/recon_daily.jsonl",
+]
 
 
 def add_if_exists(paths: List[str]) -> List[str]:
@@ -59,7 +62,9 @@ def build_push_refs() -> List[str]:
 
 def build_postmortem_refs() -> List[str]:
     """Build postmortem-related refs + core."""
-    paths = [EVIDENCE_INDEX_LATEST] + OPS_REFS + PUSH_REFS[:2]  # send_latest, outbox_latest
+    paths = (
+        [EVIDENCE_INDEX_LATEST] + OPS_REFS + PUSH_REFS[:2]
+    )  # send_latest, outbox_latest
     return add_if_exists(paths)
 
 

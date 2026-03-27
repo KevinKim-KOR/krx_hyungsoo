@@ -17,6 +17,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
@@ -25,7 +26,11 @@ import sys
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-from app.utils.push_formatter import format_telegram, check_secret_injection, format_test_message
+from app.utils.push_formatter import (
+    format_telegram,
+    check_secret_injection,
+    format_test_message,
+)
 
 STATE_DIR = BASE_DIR / "state"
 PUSH_STATE_DIR = STATE_DIR / "push"
@@ -91,14 +96,15 @@ def get_self_test_decision() -> str:
 
 def get_secrets_status() -> dict:
     """시크릿 존재 여부 (값 아님, C-P.24 present 규칙)"""
+
     # present 판정: None 또는 '' = false
     def is_present(key: str) -> bool:
         value = os.environ.get(key)
         return value is not None and value != ""
-    
+
     return {
         "TELEGRAM_BOT_TOKEN": is_present("TELEGRAM_BOT_TOKEN"),
-        "TELEGRAM_CHAT_ID": is_present("TELEGRAM_CHAT_ID")
+        "TELEGRAM_CHAT_ID": is_present("TELEGRAM_CHAT_ID"),
     }
 
 
@@ -118,10 +124,12 @@ def consume_window():
     data = {
         "consumed": True,
         "consumed_at": datetime.now(KST).isoformat(),
-        "schema": "WINDOW_CONSUMED_V1"
+        "schema": "WINDOW_CONSUMED_V1",
     }
     WINDOW_CONSUMED_FILE.parent.mkdir(parents=True, exist_ok=True)
-    WINDOW_CONSUMED_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    WINDOW_CONSUMED_FILE.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def sanitize_error(error_msg: str) -> str:
@@ -142,29 +150,27 @@ def sanitize_error(error_msg: str) -> str:
 def send_telegram_message(text: str) -> tuple:
     """
     Telegram 메시지 발송 (실제 HTTP 호출)
-    
+
     Returns:
         (success: bool, http_status: int?, error_class: str?, error_msg: str?)
     """
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-    
+
     if not bot_token or not chat_id:
         return (False, None, "ConfigError", "Missing credentials")
-    
+
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = json.dumps({
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown"
-    }).encode("utf-8")
-    
+    payload = json.dumps(
+        {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    ).encode("utf-8")
+
     try:
         req = urllib.request.Request(
             url,
             data=payload,
             headers={"Content-Type": "application/json"},
-            method="POST"
+            method="POST",
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
             return (True, resp.status, None, None)
@@ -179,7 +185,7 @@ def send_telegram_message(text: str) -> tuple:
 def run_push_send_cycle() -> dict:
     """
     Push 발송 사이클 실행
-    
+
     조건 검사 순서:
     1. Emergency Stop
     2. Gate Mode (REAL_ENABLED)
@@ -192,23 +198,25 @@ def run_push_send_cycle() -> dict:
     """
     send_id = str(uuid.uuid4())
     asof = datetime.now(KST).isoformat()
-    
+
     # Load .env if available (override=False: SYSTEM_ENV > DOTENV)
     try:
         from dotenv import load_dotenv
+
         env_file = BASE_DIR / ".env"
         if env_file.exists():
             load_dotenv(env_file, override=False)  # C-P.24: SYSTEM_ENV > DOTENV
     except ImportError:
         pass
-    
+
     # C-P.32.1: Evidence refs
     try:
         from app.utils.evidence_refs import build_push_refs
+
         evidence_refs = build_push_refs()
     except Exception:
         evidence_refs = []
-    
+
     # Default receipt structure
     receipt = {
         "schema": "PUSH_SEND_RECEIPT_V1",
@@ -225,41 +233,41 @@ def run_push_send_cycle() -> dict:
         "http_status": None,
         "error_class": None,
         "error_message_sanitized": None,
-        "evidence_refs": evidence_refs
+        "evidence_refs": evidence_refs,
     }
-    
+
     # 1. Emergency Stop
     if is_emergency_stop():
         receipt["decision"] = "BLOCKED"
         receipt["blocked_reason"] = "EMERGENCY_STOP"
         return save_receipt(receipt, "BLOCKED by Emergency Stop")
-    
+
     # 2. Gate Mode
     gate_mode = get_gate_mode()
     if gate_mode != "REAL_ENABLED":
         receipt["decision"] = "SKIPPED"
         receipt["blocked_reason"] = "NOT_REAL_GATE"
         return save_receipt(receipt, f"SKIPPED: Gate is {gate_mode}")
-    
+
     # 3. Sender Enabled
     if not is_sender_enabled():
         receipt["decision"] = "SKIPPED"
         receipt["blocked_reason"] = "SENDER_DISABLED"
         return save_receipt(receipt, "SKIPPED: Sender not enabled")
-    
+
     # 4. Self-Test Decision
     self_test = get_self_test_decision()
     if self_test != "SELF_TEST_PASS":
         receipt["decision"] = "BLOCKED"
         receipt["blocked_reason"] = "SELF_TEST_FAIL"
         return save_receipt(receipt, "BLOCKED: Self-test failed")
-    
+
     # 5. Outbox Messages
     if not OUTBOX_LATEST.exists():
         receipt["decision"] = "SKIPPED"
         receipt["blocked_reason"] = "NO_MESSAGES"
         return save_receipt(receipt, "SKIPPED: No outbox")
-    
+
     try:
         outbox = json.loads(OUTBOX_LATEST.read_text(encoding="utf-8"))
         messages = outbox.get("messages", [])
@@ -267,44 +275,44 @@ def run_push_send_cycle() -> dict:
         receipt["decision"] = "SKIPPED"
         receipt["blocked_reason"] = "NO_MESSAGES"
         return save_receipt(receipt, "SKIPPED: Outbox read error")
-    
+
     if not messages:
         receipt["decision"] = "SKIPPED"
         receipt["blocked_reason"] = "NO_MESSAGES"
         return save_receipt(receipt, "SKIPPED: No messages in outbox")
-    
+
     # 6. Window Consumed
     if is_window_consumed():
         receipt["decision"] = "BLOCKED"
         receipt["blocked_reason"] = "WINDOW_CONSUMED"
         return save_receipt(receipt, "BLOCKED: One-shot window consumed")
-    
+
     # Get first message (우선순위 1개)
     msg = messages[0]
     receipt["message_id"] = msg.get("message_id", msg.get("id", "unknown"))
     receipt["request_type"] = msg.get("push_type", "ALERT")
-    
+
     # 7. Format with Formatter + Secret Injection Check
     # C-P.24: 테스트 메시지 포맷 사용
     kst_timestamp = datetime.now(KST).isoformat()
     text = format_test_message(kst_timestamp)
-    
+
     is_safe, reason = check_secret_injection(text)
     if not is_safe:
         receipt["decision"] = "BLOCKED"
         receipt["blocked_reason"] = "SECRET_INJECTION_SUSPECTED"
         return save_receipt(receipt, f"BLOCKED: {reason}")
-    
+
     # 8. Send Telegram (One-Shot)
     success, http_status, error_class, error_msg = send_telegram_message(text)
-    
+
     # Consume window regardless of success/failure
     consume_window()
-    
+
     receipt["http_status"] = http_status
     receipt["error_class"] = error_class
     receipt["error_message_sanitized"] = error_msg
-    
+
     if success:
         receipt["decision"] = "SENT"
         return save_receipt(receipt, "SENT: Telegram message delivered")
@@ -319,21 +327,25 @@ def save_receipt(receipt: dict, log_msg: str) -> dict:
     PUSH_STATE_DIR.mkdir(parents=True, exist_ok=True)
     SEND_DIR.mkdir(parents=True, exist_ok=True)
     SEND_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Append-only log
     with open(SEND_RECEIPTS_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(receipt, ensure_ascii=False) + "\n")
-    
+
     # Atomic write latest
     tmp_file = SEND_DIR / "send_latest.json.tmp"
-    tmp_file.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_file.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     os.replace(str(tmp_file), str(SEND_LATEST_FILE))
-    
+
     # Snapshot
     snapshot_name = f"send_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = SEND_SNAPSHOTS_DIR / snapshot_name
-    snapshot_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
-    
+    snapshot_path.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     return {
         "result": receipt["decision"],
         "send_id": receipt["send_id"],
@@ -341,7 +353,7 @@ def save_receipt(receipt: dict, log_msg: str) -> dict:
         "blocked_reason": receipt["blocked_reason"],
         "message": log_msg,
         "send_latest_path": str(SEND_LATEST_FILE.relative_to(BASE_DIR)),
-        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR))
+        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR)),
     }
 
 

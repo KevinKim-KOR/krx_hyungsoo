@@ -15,6 +15,7 @@ import uuid
 import logging
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
@@ -37,30 +38,32 @@ OUTBOX_DIR = REPORTS_PUSH_DIR / "outbox"
 OUTBOX_LATEST_FILE = OUTBOX_DIR / "outbox_latest.json"
 OUTBOX_SNAPSHOTS_DIR = OUTBOX_DIR / "snapshots"
 
-logging.basicConfig(level=logging.INFO, format="[PUSH_DELIVERY_V2] %(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="[PUSH_DELIVERY_V2] %(asctime)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 # Channel Config from PUSH_CHANNELS_V1 Contract
 CHANNEL_CONFIG = {
-    "CONSOLE": {
-        "required_secrets": [],
-        "allowed_push_types": ["*"]
-    },
+    "CONSOLE": {"required_secrets": [], "allowed_push_types": ["*"]},
     "TELEGRAM": {
         "required_secrets": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
-        "allowed_push_types": ["ALERT", "DAILY_REPORT", "SIGNAL"]
+        "allowed_push_types": ["ALERT", "DAILY_REPORT", "SIGNAL"],
     },
     "SLACK": {
         "required_secrets": ["SLACK_WEBHOOK_URL"],
-        "allowed_push_types": ["ALERT", "DAILY_REPORT"]
+        "allowed_push_types": ["ALERT", "DAILY_REPORT"],
     },
     "EMAIL": {
         "required_secrets": ["SMTP_HOST", "SMTP_USER", "SMTP_PASS", "EMAIL_TO"],
-        "allowed_push_types": ["DAILY_REPORT"]
-    }
+        "allowed_push_types": ["DAILY_REPORT"],
+    },
 }
 
-SELF_TEST_LATEST_FILE = BASE_DIR / "reports" / "ops" / "secrets" / "self_test_latest.json"
+SELF_TEST_LATEST_FILE = (
+    BASE_DIR / "reports" / "ops" / "secrets" / "self_test_latest.json"
+)
 
 
 def get_self_test_decision() -> str:
@@ -125,6 +128,7 @@ def get_secrets_status() -> dict:
     # Optional: try to load .env
     try:
         from dotenv import load_dotenv
+
         env_file = BASE_DIR / ".env"
         if env_file.exists():
             load_dotenv(env_file)
@@ -134,48 +138,47 @@ def get_secrets_status() -> dict:
     all_secrets = set()
     for config in CHANNEL_CONFIG.values():
         all_secrets.update(config.get("required_secrets", []))
-    
+
     secrets_map = {}
     for secret_name in all_secrets:
         # Only check presence, NEVER log or return values
         secrets_map[secret_name] = {"present": bool(os.environ.get(secret_name))}
-    
+
     return secrets_map
 
 
 def evaluate_candidate(push_type: str, secrets_status: dict) -> tuple:
     """
     Candidate 판정 (Gate 무관, 기술적 가능성만)
-    
+
     Returns:
         (external_candidate: bool, candidate_channels: list, blocked_reason: str|None)
     """
     candidate_channels = []
     blocked_reasons = []
-    
+
     for channel, config in CHANNEL_CONFIG.items():
         if channel == "CONSOLE":
             continue  # CONSOLE is always available
-        
+
         required = config.get("required_secrets", [])
         allowed_types = config.get("allowed_push_types", [])
-        
+
         # Check push_type allowed
         if "*" not in allowed_types and push_type not in allowed_types:
             blocked_reasons.append(f"{channel}:PUSH_TYPE_NOT_ALLOWED")
             continue
-        
+
         # Check all required secrets present
         all_present = all(
-            secrets_status.get(s, {}).get("present", False) 
-            for s in required
+            secrets_status.get(s, {}).get("present", False) for s in required
         )
-        
+
         if all_present:
             candidate_channels.append(channel)
         else:
             blocked_reasons.append(f"{channel}:NO_SECRETS")
-    
+
     if candidate_channels:
         return (True, candidate_channels, None)
     else:
@@ -190,28 +193,35 @@ def run_push_delivery_cycle() -> dict:
     """푸시 발송 결정 사이클 실행 (V2)"""
     delivery_run_id = str(uuid.uuid4())
     asof = datetime.now(KST).isoformat()
-    
+
     # Context 로드
     messages = load_push_messages()
     gate_mode_observed = get_gate_mode()  # 관측용만
     emergency_stop = check_emergency_stop()
     secrets_status = get_secrets_status()
-    
+
     # Check if any external secrets are available
     has_any_secrets = any(s.get("present", False) for s in secrets_status.values())
-    
-    logger.info(f"Gate Mode (observed): {gate_mode_observed}, Emergency Stop: {emergency_stop}")
+
+    logger.info(
+        f"Gate Mode (observed): {gate_mode_observed}, Emergency Stop: {emergency_stop}"
+    )
     logger.info(f"Messages to process: {len(messages)}")
-    
+
     # 결정 수행
     decisions = []
     console_output = []
-    summary = {"total_messages": len(messages), "console": 0, "external": 0, "skipped": 0}
-    
+    summary = {
+        "total_messages": len(messages),
+        "console": 0,
+        "external": 0,
+        "skipped": 0,
+    }
+
     # Candidate 판정 (전체 메시지에 대해 동일하게 적용)
     # 기본 push_type은 ALERT로 간주 (메시지에 타입이 있으면 사용)
     default_push_type = "ALERT"
-    
+
     # 전체 Routing 결정 (V2)
     if messages:
         sample_push_type = messages[0].get("push_type", default_push_type)
@@ -222,73 +232,76 @@ def run_push_delivery_cycle() -> dict:
         external_candidate = False
         candidate_channels = []
         blocked_reason = "NO_MESSAGES"
-    
+
     for msg in messages:
         message_id = msg.get("id", str(uuid.uuid4()))
         push_type = msg.get("push_type", default_push_type)
-        
+
         # 개별 메시지 candidate 판정
-        msg_candidate, msg_channels, msg_blocked = evaluate_candidate(push_type, secrets_status)
-        
+        msg_candidate, msg_channels, msg_blocked = evaluate_candidate(
+            push_type, secrets_status
+        )
+
         # 🛑 Hard Rule: delivery_actual은 항상 CONSOLE
         reason_code = msg_blocked if msg_blocked else "CONSOLE_ONLY_MODE"
-        
-        decisions.append({
-            "message_id": message_id,
-            "channel_decision": "CONSOLE",  # Always CONSOLE
-            "channel_target": "console",
-            "reason_code": reason_code,
-            "candidate_info": {
-                "external_candidate": msg_candidate,
-                "candidate_channels": msg_channels
+
+        decisions.append(
+            {
+                "message_id": message_id,
+                "channel_decision": "CONSOLE",  # Always CONSOLE
+                "channel_target": "console",
+                "reason_code": reason_code,
+                "candidate_info": {
+                    "external_candidate": msg_candidate,
+                    "candidate_channels": msg_channels,
+                },
             }
-        })
-        
+        )
+
         summary["console"] += 1
-        console_output.append({
-            "message_id": message_id,
-            "title": msg.get("title", ""),
-            "content": msg.get("content", msg.get("body", "")),
-            "push_type": push_type,
-            "reason_code": reason_code
-        })
-    
+        console_output.append(
+            {
+                "message_id": message_id,
+                "title": msg.get("title", ""),
+                "content": msg.get("content", msg.get("body", "")),
+                "push_type": push_type,
+                "reason_code": reason_code,
+            }
+        )
+
     # Receipt V2 생성
     receipt = {
         "schema": "PUSH_DELIVERY_RECEIPT_V2",
         "delivery_run_id": delivery_run_id,
         "asof": asof,
-        
         # V1 호환 필드
         "gate_mode": gate_mode_observed,
         "emergency_stop_enabled": emergency_stop,
         "secrets_available": has_any_secrets,
         "summary": summary,
         "decisions": decisions,
-        
         # V2 신규 필드
         "routing": {
             "mode": "CONSOLE_ONLY",
             "external_candidate": external_candidate,
             "candidate_channels": candidate_channels,
-            "blocked_reason": blocked_reason
+            "blocked_reason": blocked_reason,
         },
         "secrets_status_ref": "api:/api/secrets/status",
         "channel_matrix_version": "PUSH_CHANNELS_V1",
         "gate_mode_observed": gate_mode_observed,
         "delivery_actual": "CONSOLE",  # 🛑 Hard Rule: 항상 CONSOLE
-        
         # V2.1 Self-Test 관측 필드 (C-P.20)
         "secrets_self_test_ref": "api:/api/secrets/self_test",
         "secrets_self_test_decision_observed": get_self_test_decision(),
-        "secrets_provider_observed": get_secrets_provider()
+        "secrets_provider_observed": get_secrets_provider(),
     }
-    
+
     # Outbox 생성 (C-P.21)
     outbox_id = str(uuid.uuid4())
     outbox_snapshot_name = f"outbox_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     outbox_snapshot_path = OUTBOX_SNAPSHOTS_DIR / outbox_snapshot_name
-    
+
     outbox = {
         "schema": "PUSH_OUTBOX_V1",
         "outbox_id": outbox_id,
@@ -304,57 +317,66 @@ def run_push_delivery_cycle() -> dict:
                 "title": "",
                 "content": "",
                 "target_channels": ["CONSOLE"],
-                "blocked_reason": d.get("reason_code")
+                "blocked_reason": d.get("reason_code"),
             }
             for d in decisions
         ],
         "summary": {
             "total_messages": len(messages),
             "console_bound": summary["console"],
-            "external_candidate": 1 if external_candidate else 0
-        }
+            "external_candidate": 1 if external_candidate else 0,
+        },
     }
-    
+
     # Receipt V2에 Outbox 참조 추가
     receipt["outbox_latest_path"] = str(OUTBOX_LATEST_FILE.relative_to(BASE_DIR))
     receipt["outbox_snapshot_path"] = str(outbox_snapshot_path.relative_to(BASE_DIR))
     receipt["outbox_schema_observed"] = "PUSH_OUTBOX_V1"
-    
+
     # 저장
     PUSH_STATE_DIR.mkdir(parents=True, exist_ok=True)
     REPORTS_PUSH_DIR.mkdir(parents=True, exist_ok=True)
     OUTBOX_DIR.mkdir(parents=True, exist_ok=True)
     OUTBOX_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Outbox Atomic Write (C-P.21)
     outbox_tmp_file = OUTBOX_DIR / "outbox_latest.json.tmp"
-    outbox_tmp_file.write_text(json.dumps(outbox, ensure_ascii=False, indent=2), encoding="utf-8")
+    outbox_tmp_file.write_text(
+        json.dumps(outbox, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     import os as os_module
+
     os_module.replace(str(outbox_tmp_file), str(OUTBOX_LATEST_FILE))
-    
+
     # Outbox Snapshot
-    outbox_snapshot_path.write_text(json.dumps(outbox, ensure_ascii=False, indent=2), encoding="utf-8")
-    
+    outbox_snapshot_path.write_text(
+        json.dumps(outbox, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     # Append-only 로그
     with open(RECEIPTS_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(receipt, ensure_ascii=False) + "\n")
-    
+
     # Latest snapshot
-    LATEST_RECEIPT_FILE.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
-    
+    LATEST_RECEIPT_FILE.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     # Console output
     console_dump = {
         "schema": "CONSOLE_OUT_V2",
         "delivery_run_id": delivery_run_id,
         "asof": asof,
-        "messages": console_output
+        "messages": console_output,
     }
-    CONSOLE_OUT_FILE.write_text(json.dumps(console_dump, ensure_ascii=False, indent=2), encoding="utf-8")
-    
+    CONSOLE_OUT_FILE.write_text(
+        json.dumps(console_dump, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     logger.info(f"Delivery cycle complete (V2): {summary}")
     logger.info(f"Candidate: {external_candidate}, Channels: {candidate_channels}")
     logger.info(f"Outbox: {OUTBOX_LATEST_FILE}")
-    
+
     return {
         "result": "OK",
         "delivery_run_id": delivery_run_id,
@@ -364,7 +386,7 @@ def run_push_delivery_cycle() -> dict:
         "outbox_latest_path": str(OUTBOX_LATEST_FILE.relative_to(BASE_DIR)),
         "outbox_snapshot_path": str(outbox_snapshot_path.relative_to(BASE_DIR)),
         "receipt_path": str(LATEST_RECEIPT_FILE.relative_to(BASE_DIR)),
-        "console_out_path": str(CONSOLE_OUT_FILE.relative_to(BASE_DIR))
+        "console_out_path": str(CONSOLE_OUT_FILE.relative_to(BASE_DIR)),
     }
 
 

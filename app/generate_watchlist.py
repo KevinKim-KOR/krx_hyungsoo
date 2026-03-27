@@ -11,6 +11,7 @@ import os
 import shutil
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -42,40 +43,42 @@ def load_watchlist() -> Optional[Dict]:
 def upsert_watchlist(items: List[Dict], updated_by: str = "pc_ui") -> Dict:
     """Watchlist 저장 (Upsert)"""
     ensure_dirs()
-    
+
     now = datetime.now(KST)
     updated_at = now.isoformat()
-    
+
     # 1. Build Watchlist
     watchlist = {
         "schema": "WATCHLIST_V1",
         "updated_at": updated_at,
         "updated_by": updated_by,
         "items": items,
-        "item_count": len(items)
+        "item_count": len(items),
     }
-    
+
     # Update hash
     payload_str = json.dumps(items, sort_keys=True)
     watchlist["integrity"] = {
-         "payload_sha256": hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+        "payload_sha256": hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
     }
-    
+
     # 2. Save Latest (Atomic)
     tmp_path = WATCHLIST_LATEST_FILE.with_suffix(".tmp")
-    tmp_path.write_text(json.dumps(watchlist, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp_path.write_text(
+        json.dumps(watchlist, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     os.replace(tmp_path, WATCHLIST_LATEST_FILE)
-    
+
     # 3. Save Snapshot
     snapshot_filename = f"watchlist_{now.strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = WATCHLIST_SNAPSHOTS_DIR / snapshot_filename
     shutil.copy2(WATCHLIST_LATEST_FILE, snapshot_path)
-    
+
     return {
         "result": "OK",
         "updated_at": updated_at,
         "item_count": len(items),
-        "snapshot_ref": f"state/watchlist/snapshots/{snapshot_filename}"
+        "snapshot_ref": f"state/watchlist/snapshots/{snapshot_filename}",
     }
 
 
@@ -83,6 +86,6 @@ if __name__ == "__main__":
     # Test
     test_items = [
         {"ticker": "069500", "name": "KODEX 200", "enabled": True},
-        {"ticker": "229200", "name": "KODEX 코스닥150", "enabled": True}
+        {"ticker": "229200", "name": "KODEX 코스닥150", "enabled": True},
     ]
     print(json.dumps(upsert_watchlist(test_items), indent=2, ensure_ascii=False))

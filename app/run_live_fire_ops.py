@@ -13,6 +13,7 @@ import os
 import uuid
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
@@ -92,10 +93,12 @@ def disable_sender():
         "channel": "TELEGRAM_ONLY",
         "updated_at": datetime.now(KST).isoformat(),
         "updated_by": "live_fire_ops_runner",
-        "reason": "Post-Fire Lockdown"
+        "reason": "Post-Fire Lockdown",
     }
     SENDER_ENABLE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SENDER_ENABLE_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    SENDER_ENABLE_FILE.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def consume_window():
@@ -103,17 +106,19 @@ def consume_window():
     data = {
         "consumed": True,
         "consumed_at": datetime.now(KST).isoformat(),
-        "schema": "WINDOW_CONSUMED_V1"
+        "schema": "WINDOW_CONSUMED_V1",
     }
     WINDOW_CONSUMED_FILE.parent.mkdir(parents=True, exist_ok=True)
-    WINDOW_CONSUMED_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    WINDOW_CONSUMED_FILE.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def run_live_fire_ops() -> dict:
     """Live Fire Ops 실행"""
     run_id = str(uuid.uuid4())
     asof = datetime.now(KST).isoformat()
-    
+
     # 1. Precheck 정보 수집
     gate_mode = get_gate_mode()
     emergency_stop = is_emergency_stop()
@@ -121,16 +126,16 @@ def run_live_fire_ops() -> dict:
     self_test = get_self_test()
     window_active = is_window_active()
     outbox_count = get_outbox_row_count()
-    
+
     precheck_summary = {
         "gate_mode": gate_mode,
         "self_test": self_test,
         "emergency_stop": emergency_stop,
         "sender_enabled": sender_enabled,
         "window_active": window_active,
-        "outbox_row_count": outbox_count
+        "outbox_row_count": outbox_count,
     }
-    
+
     # 2. 기본 Receipt 구조
     receipt = {
         "schema": "LIVE_FIRE_OPS_RECEIPT_V1",
@@ -147,79 +152,91 @@ def run_live_fire_ops() -> dict:
         "refs": {
             "outbox_snapshot_path": None,
             "send_latest_path": None,
-            "postmortem_latest_path": None
-        }
+            "postmortem_latest_path": None,
+        },
     }
-    
+
     # 3. Preconditions 체크
     if outbox_count < 1:
         receipt["blocked_reason"] = "NO_MESSAGES"
         return save_receipt(receipt, "SKIPPED: No messages in outbox")
-    
+
     if emergency_stop:
         receipt["blocked_reason"] = "EMERGENCY_STOP"
         return save_receipt(receipt, "BLOCKED: Emergency stop active")
-    
+
     if gate_mode != "REAL_ENABLED":
         receipt["blocked_reason"] = "NOT_REAL_GATE"
         return save_receipt(receipt, f"SKIPPED: Gate is {gate_mode}")
-    
+
     if self_test != "SELF_TEST_PASS":
         receipt["blocked_reason"] = "SELF_TEST_FAIL"
         return save_receipt(receipt, "BLOCKED: Self-test failed")
-    
+
     if not sender_enabled:
         receipt["blocked_reason"] = "SENDER_DISABLED"
         return save_receipt(receipt, "SKIPPED: Sender not enabled")
-    
+
     if not window_active:
         receipt["blocked_reason"] = "WINDOW_INACTIVE"
         return save_receipt(receipt, "BLOCKED: Window already consumed")
-    
+
     # 4. All preconditions passed - 발송 시도
     try:
         from app.run_push_send_cycle import run_push_send_cycle
+
         send_result = run_push_send_cycle()
-        
+
         receipt["attempted"] = True
         receipt["send_http_status"] = send_result.get("http_status")
         receipt["message_id"] = send_result.get("message_id")
-        
+
     except Exception as e:
         receipt["attempted"] = True
         receipt["blocked_reason"] = f"SEND_ERROR: {type(e).__name__}"
-    
+
     # 5. Post-Fire Lockdown (성공/실패 무관)
     consume_window()
     receipt["window_consumed"] = True
-    
+
     disable_sender()
     receipt["sender_disabled_after"] = True
-    
+
     # 6. Evidence refs 업데이트
     if SEND_LATEST_FILE.exists():
-        receipt["refs"]["send_latest_path"] = str(SEND_LATEST_FILE.relative_to(BASE_DIR))
+        receipt["refs"]["send_latest_path"] = str(
+            SEND_LATEST_FILE.relative_to(BASE_DIR)
+        )
     if POSTMORTEM_LATEST.exists():
-        receipt["refs"]["postmortem_latest_path"] = str(POSTMORTEM_LATEST.relative_to(BASE_DIR))
-    
-    return save_receipt(receipt, f"COMPLETED: attempted={receipt['attempted']}, http={receipt['send_http_status']}")
+        receipt["refs"]["postmortem_latest_path"] = str(
+            POSTMORTEM_LATEST.relative_to(BASE_DIR)
+        )
+
+    return save_receipt(
+        receipt,
+        f"COMPLETED: attempted={receipt['attempted']}, http={receipt['send_http_status']}",
+    )
 
 
 def save_receipt(receipt: dict, log_msg: str) -> dict:
     """Receipt 저장 (Atomic Write)"""
     LIVE_FIRE_DIR.mkdir(parents=True, exist_ok=True)
     LIVE_FIRE_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Atomic write latest
     tmp_file = LIVE_FIRE_DIR / "live_fire_latest.json.tmp"
-    tmp_file.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_file.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     os.replace(str(tmp_file), str(LIVE_FIRE_LATEST))
-    
+
     # Snapshot
     snapshot_name = f"live_fire_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = LIVE_FIRE_SNAPSHOTS_DIR / snapshot_name
-    snapshot_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
-    
+    snapshot_path.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     return {
         "result": "OK",
         "run_id": receipt["run_id"],
@@ -229,7 +246,7 @@ def save_receipt(receipt: dict, log_msg: str) -> dict:
         "sender_disabled_after": receipt["sender_disabled_after"],
         "message": log_msg,
         "live_fire_latest_path": str(LIVE_FIRE_LATEST.relative_to(BASE_DIR)),
-        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR))
+        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR)),
     }
 
 

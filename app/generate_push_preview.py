@@ -12,6 +12,7 @@ import json
 import uuid
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 import sys
@@ -44,48 +45,42 @@ def get_gate_mode() -> str:
 def generate_push_preview() -> dict:
     """
     Push 렌더링 프리뷰 생성
-    
+
     입력: outbox_latest.json
     출력: preview_latest.json (Atomic Write)
     """
     preview_id = str(uuid.uuid4())
     asof = datetime.now(KST).isoformat()
-    
+
     # Load Outbox
     if not OUTBOX_LATEST.exists():
-        return {
-            "result": "SKIPPED",
-            "reason": "No outbox_latest.json"
-        }
-    
+        return {"result": "SKIPPED", "reason": "No outbox_latest.json"}
+
     try:
         outbox = json.loads(OUTBOX_LATEST.read_text(encoding="utf-8"))
     except Exception as e:
-        return {
-            "result": "ERROR",
-            "reason": f"Failed to load outbox: {e}"
-        }
-    
+        return {"result": "ERROR", "reason": f"Failed to load outbox: {e}"}
+
     messages = outbox.get("messages", [])
     observed_gate_mode = get_gate_mode()
-    
+
     # Render all channels for all messages
     all_renders = []
     channels_evaluated = ["CONSOLE", "TELEGRAM", "SLACK", "EMAIL"]
-    
+
     for msg in messages:
         renders = render_all_channels(msg, asof, channels_evaluated)
         all_renders.extend(renders)
-    
+
     # If no messages, render empty preview
     if not messages:
         # Create placeholder render for demonstration
         pass
-    
+
     # Summary
     total_render = len(all_renders)
     blocked_count = sum(1 for r in all_renders if r.get("blocked"))
-    
+
     preview = {
         "schema": "PUSH_RENDER_PREVIEW_V1",
         "preview_id": preview_id,
@@ -98,31 +93,36 @@ def generate_push_preview() -> dict:
         "summary": {
             "total_render": total_render,
             "pass": total_render - blocked_count,
-            "blocked": blocked_count
-        }
+            "blocked": blocked_count,
+        },
     }
-    
+
     # Ensure directories
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
     PREVIEW_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Atomic Write
     import os
+
     preview_tmp = PREVIEW_DIR / "preview_latest.json.tmp"
-    preview_tmp.write_text(json.dumps(preview, ensure_ascii=False, indent=2), encoding="utf-8")
+    preview_tmp.write_text(
+        json.dumps(preview, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     os.replace(str(preview_tmp), str(PREVIEW_LATEST))
-    
+
     # Snapshot
     snapshot_name = f"preview_{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.json"
     snapshot_path = PREVIEW_SNAPSHOTS_DIR / snapshot_name
-    snapshot_path.write_text(json.dumps(preview, ensure_ascii=False, indent=2), encoding="utf-8")
-    
+    snapshot_path.write_text(
+        json.dumps(preview, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     return {
         "result": "OK",
         "preview_id": preview_id,
         "summary": preview["summary"],
         "preview_latest_path": str(PREVIEW_LATEST.relative_to(BASE_DIR)),
-        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR))
+        "snapshot_path": str(snapshot_path.relative_to(BASE_DIR)),
     }
 
 

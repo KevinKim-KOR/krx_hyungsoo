@@ -2,7 +2,7 @@
 Ops Cycle Runner V2 (C-P.16)
 운영 관측 루프 1회 + 티켓 0~1건 처리
 
-주의: 
+주의:
 - 티켓 처리는 최대 1건 (Bounded Processing)
 - 모든 안전장치 우회 금지
 """
@@ -12,6 +12,7 @@ import uuid
 import logging
 from datetime import datetime
 from datetime import timezone, timedelta
+
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
@@ -32,7 +33,10 @@ ALLOWLIST_FILE = BASE_DIR / "docs" / "contracts" / "execution_allowlist_v1.json"
 API_BASE = "http://127.0.0.1:8000"
 LOCK_TIMEOUT_SECONDS = 60
 
-logging.basicConfig(level=logging.INFO, format="[OPS_RUNNER_V2] %(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="[OPS_RUNNER_V2] %(asctime)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -90,19 +94,19 @@ def get_tickets_counters() -> dict:
     requests_file = TICKETS_DIR / "ticket_requests.jsonl"
     results_file = TICKETS_DIR / "ticket_results.jsonl"
     receipts_file = TICKETS_DIR / "ticket_receipts.jsonl"
-    
+
     reqs = read_jsonl(requests_file)
     results = read_jsonl(results_file)
     receipts = read_jsonl(receipts_file)
-    
+
     counters = {
         "tickets_open": 0,
         "tickets_in_progress": 0,
         "tickets_done": 0,
         "tickets_failed": 0,
-        "tickets_blocked": 0
+        "tickets_blocked": 0,
     }
-    
+
     for req in reqs:
         rid = req.get("request_id")
         req_results = [r for r in results if r.get("request_id") == rid]
@@ -111,7 +115,7 @@ def get_tickets_counters() -> dict:
             status = latest.get("status", "OPEN")
         else:
             status = "OPEN"
-        
+
         if status == "OPEN":
             counters["tickets_open"] += 1
         elif status == "IN_PROGRESS":
@@ -120,35 +124,35 @@ def get_tickets_counters() -> dict:
             counters["tickets_done"] += 1
         elif status == "FAILED":
             counters["tickets_failed"] += 1
-    
+
     # Count blocked from receipts
     for r in receipts:
         if r.get("decision") == "BLOCKED":
             counters["tickets_blocked"] += 1
-    
+
     return counters
 
 
 def acquire_lock() -> tuple:
     """Lock 확보"""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     if LOCK_FILE.exists():
         try:
             lock_data = json.loads(LOCK_FILE.read_text(encoding="utf-8"))
             lock_time = datetime.fromisoformat(lock_data.get("locked_at", ""))
             elapsed = (datetime.now(KST) - lock_time).total_seconds()
-            
+
             if elapsed < LOCK_TIMEOUT_SECONDS:
-                return False, f"Locked by {lock_data.get('run_id')} ({elapsed:.0f}s ago)"
+                return (
+                    False,
+                    f"Locked by {lock_data.get('run_id')} ({elapsed:.0f}s ago)",
+                )
         except Exception:
             pass
-    
+
     run_id = str(uuid.uuid4())
-    lock_data = {
-        "run_id": run_id,
-        "locked_at": datetime.now(KST).isoformat()
-    }
+    lock_data = {"run_id": run_id, "locked_at": datetime.now(KST).isoformat()}
     LOCK_FILE.write_text(json.dumps(lock_data, ensure_ascii=False), encoding="utf-8")
     return True, run_id
 
@@ -158,12 +162,21 @@ def release_lock():
     if LOCK_FILE.exists():
         LOCK_FILE.unlink()
 
-def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str, 
-                     ticket_step: dict, safety_snapshot: dict, counters: dict,
-                     started_at: str, evidence_health: dict = None, ticket_reaper: dict = None) -> str:
+
+def save_v2_snapshot(
+    run_id: str,
+    overall_status: str,
+    ops_report_ref: str,
+    ticket_step: dict,
+    safety_snapshot: dict,
+    counters: dict,
+    started_at: str,
+    evidence_health: dict = None,
+    ticket_reaper: dict = None,
+) -> str:
     """
     OPS_CYCLE_RUN_V2 스냅샷 저장 (C-P.36: In-Memory Summary + One-Shot Write)
-    
+
     순서:
     1. 임시 receipt 생성 (ops_summary 없이)
     2. generate_ops_summary_from_receipt 호출
@@ -171,15 +184,15 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
     4. 최종 1회만 기록 (스냅샷 재수정 금지)
     """
     import os as _os
-    
+
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     OPS_LATEST_DIR = BASE_DIR / "reports" / "ops" / "scheduler" / "latest"
     OPS_LATEST_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     timestamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     snapshot_path = SNAPSHOTS_DIR / f"ops_run_{timestamp}.json"
     latest_path = OPS_LATEST_DIR / "ops_run_latest.json"
-    
+
     # Step 1: 임시 receipt (ops_summary 아직 없음)
     temp_receipt = {
         "schema": "OPS_RUN_RECEIPT_V1",
@@ -190,49 +203,62 @@ def save_v2_snapshot(run_id: str, overall_status: str, ops_report_ref: str,
         "overall_status": overall_status,
         "ops_report_ref": ops_report_ref,
         "evidence_health": evidence_health or {"decision": "N/A"},
-        "ticket_reaper": ticket_reaper or {"decision_observed": "N/A", "cleaned_count": 0},
+        "ticket_reaper": ticket_reaper
+        or {"decision_observed": "N/A", "cleaned_count": 0},
         "ticket_step": ticket_step,
         "safety_snapshot": safety_snapshot,
-        "counters": {**counters, "skips_this_run": 1 if ticket_step.get("decision") == "SKIPPED" else 0}
+        "counters": {
+            **counters,
+            "skips_this_run": 1 if ticket_step.get("decision") == "SKIPPED" else 0,
+        },
     }
-    
+
     # Step 2: Ops Summary 생성 (In-Memory Pattern)
-    ops_summary_result = {"snapshot_path": None, "summary_latest_path": None, "overall_status": "N/A"}
+    ops_summary_result = {
+        "snapshot_path": None,
+        "summary_latest_path": None,
+        "overall_status": "N/A",
+    }
     try:
         from app.generate_ops_summary import generate_and_save_from_receipt
+
         ops_summary_result = generate_and_save_from_receipt(temp_receipt)
         logger.info(f"Ops Summary generated: {ops_summary_result.get('snapshot_path')}")
     except Exception as e:
         logger.error(f"Ops Summary generation failed: {e}")
-    
+
     # Step 3: 최종 receipt 확정 (ops_summary ref 추가)
     final_receipt = {
         **temp_receipt,
         "ops_summary": {
             "decision_observed": ops_summary_result.get("overall_status", "N/A"),
             "latest_ref": ops_summary_result.get("summary_latest_path"),
-            "snapshot_ref": ops_summary_result.get("snapshot_path")
+            "snapshot_ref": ops_summary_result.get("snapshot_path"),
         },
         "evidence_refs": [
             ops_summary_result.get("snapshot_path"),
             evidence_health.get("latest_ref") if evidence_health else None,
-            ticket_reaper.get("snapshot_ref") if ticket_reaper else None
-        ]
+            ticket_reaper.get("snapshot_ref") if ticket_reaper else None,
+        ],
     }
     # 빈 ref 제거
     final_receipt["evidence_refs"] = [r for r in final_receipt["evidence_refs"] if r]
-    
+
     # Step 4: Atomic Write (최종 1회만 기록)
     # Snapshot
-    tmp_snapshot = snapshot_path.with_suffix('.json.tmp')
-    tmp_snapshot.write_text(json.dumps(final_receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_snapshot = snapshot_path.with_suffix(".json.tmp")
+    tmp_snapshot.write_text(
+        json.dumps(final_receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     _os.replace(str(tmp_snapshot), str(snapshot_path))
-    
+
     # Latest
-    tmp_latest = latest_path.with_suffix('.json.tmp')
-    tmp_latest.write_text(json.dumps(final_receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_latest = latest_path.with_suffix(".json.tmp")
+    tmp_latest.write_text(
+        json.dumps(final_receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     _os.replace(str(tmp_latest), str(latest_path))
-    
+
     logger.info(f"Receipt saved: {snapshot_path} (One-Shot Write)")
     return str(snapshot_path.relative_to(BASE_DIR))
 
@@ -241,15 +267,15 @@ def run_ops_cycle_v2() -> dict:
     """운영 루프 1회 + 티켓 0~1건 처리 (C-P.16)"""
     started_at = datetime.now(KST).isoformat()
     run_id = None
-    
+
     # Safety snapshot 준비
     safety_snapshot = {
         "emergency_stop_enabled": check_emergency_stop(),
         "execution_gate_mode": get_execution_gate_mode(),
         "window_active": check_window_active(),
-        "allowlist_version": get_allowlist_version()
+        "allowlist_version": get_allowlist_version(),
     }
-    
+
     # Default ticket_step
     ticket_step = {
         "attempted": False,
@@ -257,15 +283,15 @@ def run_ops_cycle_v2() -> dict:
         "selected_request_type": None,
         "decision": "NONE",
         "reason": "NO_OPEN_TICKETS",
-        "receipt_ref": None
+        "receipt_ref": None,
     }
-    
+
     # Step 1: Emergency Stop 확인
     if safety_snapshot["emergency_stop_enabled"]:
         logger.warning("Emergency Stop is ACTIVE. Aborting.")
         ticket_step["decision"] = "SKIPPED"
         ticket_step["reason"] = "EMERGENCY_STOP_ACTIVE"
-        
+
         snapshot_path = save_v2_snapshot(
             run_id="N/A",
             overall_status="STOPPED",
@@ -274,40 +300,47 @@ def run_ops_cycle_v2() -> dict:
             safety_snapshot=safety_snapshot,
             counters=get_tickets_counters(),
             started_at=started_at,
-            evidence_health={"decision": "N/A", "fail_closed_triggered": False, "reason": "EMERGENCY_STOP"}
+            evidence_health={
+                "decision": "N/A",
+                "fail_closed_triggered": False,
+                "reason": "EMERGENCY_STOP",
+            },
         )
         return {
             "result": "STOPPED",
             "overall_status": "STOPPED",
             "reason": "EMERGENCY_STOP_ACTIVE",
             "snapshot_path": snapshot_path,
-            "ticket_step": ticket_step
+            "ticket_step": ticket_step,
         }
-    
+
     # Step 0.25 (C-P.43): Ticket Reaper - Clean stale IN_PROGRESS
     ticket_reaper = {
         "decision_observed": "NONE",
         "cleaned_count": 0,
         "latest_ref": None,
-        "snapshot_ref": None
+        "snapshot_ref": None,
     }
-    
+
     try:
         from app.run_ticket_reaper import run_ticket_reaper
+
         reaper_result = run_ticket_reaper(threshold_seconds=86400, max_clean=50)
         ticket_reaper["decision_observed"] = reaper_result.get("decision", "NONE")
         ticket_reaper["cleaned_count"] = reaper_result.get("cleaned_count", 0)
         ticket_reaper["latest_ref"] = reaper_result.get("latest_path")
         ticket_reaper["snapshot_ref"] = reaper_result.get("snapshot_path")
-        
+
         if ticket_reaper["cleaned_count"] > 0:
-            logger.info(f"Ticket Reaper: Cleaned {ticket_reaper['cleaned_count']} stale IN_PROGRESS tickets")
+            logger.info(
+                f"Ticket Reaper: Cleaned {ticket_reaper['cleaned_count']} stale IN_PROGRESS tickets"
+            )
         else:
             logger.info("Ticket Reaper: No stale tickets")
     except Exception as e:
         logger.warning(f"Ticket Reaper failed: {e}")
         ticket_reaper["decision_observed"] = "ERROR"
-    
+
     # Step 1.5 (C-P.34): Evidence Health Gate - Fail-Closed
     evidence_health = {
         "decision": "UNKNOWN",
@@ -316,22 +349,27 @@ def run_ops_cycle_v2() -> dict:
         "snapshot_ref": None,
         "top_fail_reasons": [],
         "fail_closed_triggered": False,
-        "error_summary": None
+        "error_summary": None,
     }
-    
+
     try:
         from app.run_evidence_health_check import regenerate_health_report
+
         health_result = regenerate_health_report()
         evidence_health["decision"] = health_result.get("decision", "UNKNOWN")
         evidence_health["generated_at"] = datetime.now(KST).isoformat()
         evidence_health["snapshot_ref"] = health_result.get("snapshot_path")
-        
+
         # Load health_latest for top_fail_reasons
-        health_latest_path = BASE_DIR / "reports" / "ops" / "evidence" / "health" / "health_latest.json"
+        health_latest_path = (
+            BASE_DIR / "reports" / "ops" / "evidence" / "health" / "health_latest.json"
+        )
         if health_latest_path.exists():
             health_data = json.loads(health_latest_path.read_text(encoding="utf-8"))
-            evidence_health["top_fail_reasons"] = [r["reason"] for r in health_data.get("top_fail_reasons", [])[:3]]
-        
+            evidence_health["top_fail_reasons"] = [
+                r["reason"] for r in health_data.get("top_fail_reasons", [])[:3]
+            ]
+
         logger.info(f"Evidence Health decision: {evidence_health['decision']}")
     except Exception as e:
         # Fail-Closed: 예외 발생 시 무조건 FAIL
@@ -339,13 +377,13 @@ def run_ops_cycle_v2() -> dict:
         evidence_health["decision"] = "FAIL"
         evidence_health["fail_closed_triggered"] = True
         evidence_health["error_summary"] = str(e)[:100]  # 짧은 요약만
-    
+
     # Guard 판정: FAIL이면 downstream SKIP
     if evidence_health["decision"] == "FAIL":
         logger.warning("Evidence Health FAIL. Blocking downstream.")
         ticket_step["decision"] = "SKIPPED"
         ticket_step["reason"] = "EVIDENCE_HEALTH_FAIL"
-        
+
         snapshot_path = save_v2_snapshot(
             run_id="N/A",
             overall_status="BLOCKED",
@@ -355,7 +393,7 @@ def run_ops_cycle_v2() -> dict:
             counters=get_tickets_counters(),
             started_at=started_at,
             evidence_health=evidence_health,
-            ticket_reaper=ticket_reaper
+            ticket_reaper=ticket_reaper,
         )
         return {
             "result": "BLOCKED",
@@ -363,16 +401,16 @@ def run_ops_cycle_v2() -> dict:
             "reason": "EVIDENCE_HEALTH_FAIL",
             "snapshot_path": snapshot_path,
             "ticket_step": ticket_step,
-            "evidence_health": evidence_health
+            "evidence_health": evidence_health,
         }
-    
+
     # Step 2: Lock 확보
     locked, lock_result = acquire_lock()
     if not locked:
         logger.warning(f"Lock failed: {lock_result}")
         ticket_step["decision"] = "SKIPPED"
         ticket_step["reason"] = "LOCK_CONFLICT_409"
-        
+
         snapshot_path = save_v2_snapshot(
             run_id="N/A",
             overall_status="DONE_WITH_SKIPS",
@@ -382,19 +420,19 @@ def run_ops_cycle_v2() -> dict:
             counters=get_tickets_counters(),
             started_at=started_at,
             evidence_health=evidence_health,
-            ticket_reaper=ticket_reaper
+            ticket_reaper=ticket_reaper,
         )
         return {
             "result": "SKIPPED",
             "overall_status": "DONE_WITH_SKIPS",
             "reason": lock_result,
             "snapshot_path": snapshot_path,
-            "ticket_step": ticket_step
+            "ticket_step": ticket_step,
         }
-    
+
     run_id = lock_result
     logger.info(f"Lock acquired. run_id={run_id}")
-    
+
     try:
         # Step 3: Ops Report regenerate
         ops_report_ref = "reports/ops/daily/ops_report_latest.json"
@@ -406,10 +444,11 @@ def run_ops_cycle_v2() -> dict:
                 logger.error(f"Ops regenerate failed: {resp.status_code}")
         except Exception as e:
             logger.error(f"Ops regenerate error: {e}")
-        
+
         # Step 4: Ticket 1건 처리 (Worker import)
         try:
             from app.run_ticket_worker import process_one_ticket
+
             ticket_step = process_one_ticket(skip_lock=True)  # Lock은 이미 확보됨
             logger.info(f"Ticket step result: {ticket_step}")
         except ImportError as e:
@@ -420,7 +459,7 @@ def run_ops_cycle_v2() -> dict:
             logger.error(f"Ticket processing error: {e}")
             ticket_step["decision"] = "SKIPPED"
             ticket_step["reason"] = f"TICKET_PROCESS_ERROR: {e}"
-        
+
         # Step 5: 최종 상태 결정
         if ticket_step.get("decision") == "PROCESSED":
             overall_status = "DONE"
@@ -428,7 +467,7 @@ def run_ops_cycle_v2() -> dict:
             overall_status = "DONE_WITH_SKIPS"
         else:  # NONE
             overall_status = "DONE"
-        
+
         # Step 6: V2 Snapshot 저장
         counters = get_tickets_counters()
         snapshot_path = save_v2_snapshot(
@@ -440,9 +479,9 @@ def run_ops_cycle_v2() -> dict:
             counters=counters,
             started_at=started_at,
             evidence_health=evidence_health,
-            ticket_reaper=ticket_reaper
+            ticket_reaper=ticket_reaper,
         )
-        
+
         return {
             "result": "OK",
             "overall_status": overall_status,
@@ -451,14 +490,14 @@ def run_ops_cycle_v2() -> dict:
             "snapshot_path": snapshot_path,
             "ticket_step": ticket_step,
             "counters": counters,
-            "evidence_health": evidence_health
+            "evidence_health": evidence_health,
         }
-        
+
     except Exception as e:
         logger.error(f"Cycle failed: {e}")
         ticket_step["decision"] = "SKIPPED"
         ticket_step["reason"] = str(e)
-        
+
         snapshot_path = save_v2_snapshot(
             run_id=run_id or "N/A",
             overall_status="FAILED",
@@ -468,7 +507,7 @@ def run_ops_cycle_v2() -> dict:
             counters=get_tickets_counters(),
             started_at=started_at,
             evidence_health=evidence_health,
-            ticket_reaper=ticket_reaper
+            ticket_reaper=ticket_reaper,
         )
         return {
             "result": "FAILED",
@@ -476,9 +515,9 @@ def run_ops_cycle_v2() -> dict:
             "reason": str(e),
             "snapshot_path": snapshot_path,
             "ticket_step": ticket_step,
-            "evidence_health": evidence_health
+            "evidence_health": evidence_health,
         }
-    
+
     finally:
         release_lock()
         logger.info("Lock released.")

@@ -7,6 +7,7 @@ app/tuning/telemetry.py — P167-R 구조화 이벤트 로그 (JSONL)
 
 레거시 참조: _archive/legacy_20260102/extensions/tuning/telemetry.py
 """
+
 from __future__ import annotations
 import json
 import logging
@@ -62,14 +63,17 @@ class TuneLogger:
         prune_reason: str = "",
         metrics: Optional[Dict[str, Any]] = None,
     ) -> None:
-        self.emit("TRIAL_END", {
-            "trial": trial_number,
-            "params": params,
-            "score": round(score, 6),
-            "pruned": pruned,
-            "prune_reason": prune_reason,
-            "metrics": metrics or {},
-        })
+        self.emit(
+            "TRIAL_END",
+            {
+                "trial": trial_number,
+                "params": params,
+                "score": round(score, 6),
+                "pruned": pruned,
+                "prune_reason": prune_reason,
+                "metrics": metrics or {},
+            },
+        )
 
     def emit_tune_end(self, summary: Dict[str, Any]) -> None:
         self.emit("TUNE_END", summary)
