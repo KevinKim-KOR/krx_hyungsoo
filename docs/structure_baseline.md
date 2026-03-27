@@ -69,9 +69,14 @@ asof: 2026-03-27
 - `live_approval.py` — LIVE 승인/철회
 - `backend.py` — 백엔드 연결
 
-### pc_cockpit/views/
+### pc_cockpit/views/ (S2 추가)
 - `tune_card.py` — 튜닝 결과 카드
 - `parameter_editor.py` — SSOT 파라미터 편집 폼
+- `ops_daily.py` — 데일리 운영 탭 (P144) 렌더러
+- `workflow.py` — 워크플로우 허브 (P170-UI) 렌더러
+- `replay_controller.py` — Replay 모드 컨트롤러
+- `timing.py` — 보유 타이밍 분석 (P136) 렌더러
+- `portfolio_editor.py` — 포트폴리오 편집기 (P136.5) 렌더러
 
 ### app/tuning/
 - `results_io.py` — 원자적 파일 쓰기
