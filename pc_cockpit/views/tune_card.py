@@ -282,5 +282,54 @@ def render_tune_results_card(params_data):
                         use_container_width=True,
                         hide_index=True,
                     )
+            # --- 감도 보정 결과 섹션 ---
+            sensitivity_md_path = (
+                BASE_DIR / "reports" / "tuning" / "sensitivity_summary.md"
+            )
+            if sensitivity_md_path.exists():
+                with st.expander("감도 보정 결과", expanded=False):
+                    try:
+                        md_text = sensitivity_md_path.read_text(
+                            encoding="utf-8"
+                        )
+                        # 범위 추출
+                        vol_range = "—"
+                        et_range = "—"
+                        vol_low = False
+                        et_low = False
+                        for line in md_text.split("\n"):
+                            if "최종 범위: 기존 유지 (12~24)" in line:
+                                vol_range = "12~24 (기존 유지)"
+                                vol_low = True
+                            elif "최종 채택 범위:" in line and "volatility" not in line.lower():
+                                pass
+                            if "최종 범위: 기존 유지 (0.01~0.05)" in line:
+                                et_range = "0.01~0.05 (기존 유지)"
+                                et_low = True
+                            if "최종 채택 범위:" in line:
+                                if vol_range == "—":
+                                    vol_range = line.split(":")[-1].strip()
+                                elif et_range == "—":
+                                    et_range = line.split(":")[-1].strip()
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("변동성 기간 범위", vol_range)
+                            if vol_low:
+                                st.caption("⚠️ LOW_SENSITIVITY")
+                        with col2:
+                            st.metric("진입 임계치 범위", et_range)
+                            if et_low:
+                                st.caption("⚠️ LOW_SENSITIVITY")
+
+                        st.markdown("**검산 파일**")
+                        st.caption(
+                            "sensitivity_volatility_period.csv / "
+                            "sensitivity_entry_threshold.csv / "
+                            "sensitivity_summary.md"
+                        )
+                    except Exception as se:
+                        st.warning(f"감도 보정 결과 로드 실패: {se}")
+
     except Exception as e:
         st.error(f"튜닝 결과 표시 중 오류: {e}")
