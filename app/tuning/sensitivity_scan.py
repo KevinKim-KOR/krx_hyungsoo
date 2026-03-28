@@ -12,13 +12,7 @@ from pathlib import Path
 
 KST = timezone(timedelta(hours=9))
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-SSOT_PATH = (
-    PROJECT_ROOT
-    / "state"
-    / "params"
-    / "latest"
-    / "strategy_params_latest.json"
-)
+SSOT_PATH = PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
 REPORTS_DIR = PROJECT_ROOT / "reports" / "tuning"
 
 # 감도 판정 기준 (A3)
@@ -46,11 +40,7 @@ def _run_backtest():
 
     backtest_main()
     result_path = (
-        PROJECT_ROOT
-        / "reports"
-        / "backtest"
-        / "latest"
-        / "backtest_result.json"
+        PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
     )
     return json.loads(result_path.read_text(encoding="utf-8"))
 
@@ -118,9 +108,7 @@ def scan_axis(axis_name, ssot_key_path, test_values, baseline_ssot):
             "cagr": metrics["cagr"] - baseline_metrics["cagr"],
             "mdd": metrics["mdd"] - baseline_metrics["mdd"],
             "sharpe": metrics["sharpe"] - baseline_metrics["sharpe"],
-            "trades": (
-                metrics["total_trades"] - baseline_metrics["total_trades"]
-            ),
+            "trades": (metrics["total_trades"] - baseline_metrics["total_trades"]),
         }
 
         sensitive = _is_sensitive(delta)
@@ -251,9 +239,7 @@ def write_summary(
     lines.append("")
     lines.append("## volatility_period 감도 결과")
     lines.append("")
-    vol_sensitive = [
-        r for r in vol_rows if r["sensitive"] and not r["dead_zone"]
-    ]
+    vol_sensitive = [r for r in vol_rows if r["sensitive"] and not r["dead_zone"]]
     vol_dead = [r for r in vol_rows if r["dead_zone"]]
     vol_scan = [r["test_value"] for r in vol_rows]
     vol_sens = [r["test_value"] for r in vol_sensitive]
@@ -272,9 +258,7 @@ def write_summary(
     lines.append("")
     lines.append("## entry_threshold 감도 결과")
     lines.append("")
-    et_sensitive = [
-        r for r in et_rows if r["sensitive"] and not r["dead_zone"]
-    ]
+    et_sensitive = [r for r in et_rows if r["sensitive"] and not r["dead_zone"]]
     et_dead = [r for r in et_rows if r["dead_zone"]]
     et_scan = [r["test_value"] for r in et_rows]
     et_sens = [r["test_value"] for r in et_sensitive]
@@ -308,9 +292,7 @@ def write_summary(
             "volatility_period만 재설정합니다."
         )
     else:
-        lines.append(
-            "두 축 모두 유효 감도 구간이 확인되어 범위를 재설정합니다."
-        )
+        lines.append("두 축 모두 유효 감도 구간이 확인되어 범위를 재설정합니다.")
 
     path = REPORTS_DIR / "sensitivity_summary.md"
     path.write_text("\n".join(lines), encoding="utf-8")

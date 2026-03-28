@@ -125,9 +125,7 @@ def render_tune_results_card(params_data):
                 )
 
                 # Segment evaluation display
-                seg_enabled = tune_data.get(
-                    "segment_evaluation_enabled", False
-                )
+                seg_enabled = tune_data.get("segment_evaluation_enabled", False)
                 seg_ready = tune_data.get("segment_eval_ready", False)
                 seg_status = tune_data.get("segment_status", "")
                 seg_m = tune_data.get("segment_metrics", {})
@@ -170,9 +168,7 @@ def render_tune_results_card(params_data):
                 elif seg_enabled and not seg_ready:
                     st.warning(f"⚠️ 세그먼트 평가 불가 ({seg_status})")
                 else:
-                    st.info(
-                        "ℹ️ 세그먼트 평가 없음 — Run Tune을 다시 실행하세요."
-                    )
+                    st.info("ℹ️ 세그먼트 평가 없음 — Run Tune을 다시 실행하세요.")
 
                 promotion_verdict = refresh_promotion_verdict_local(tune_data)
                 validation_pack = tune_data.get("validation_pack", {})
@@ -218,9 +214,7 @@ def render_tune_results_card(params_data):
                 }.get(promotion_verdict.get("verdict"), "기각")
                 pv = promotion_verdict
                 cc = pv.get("criteria_check", {})
-                ssot_yn = (
-                    "예" if pv.get("candidate_applied_to_ssot") else "아니오"
-                )
+                ssot_yn = "예" if pv.get("candidate_applied_to_ssot") else "아니오"
                 cagr_yn = "예" if cc.get("cagr_gt_15") else "아니오"
                 mdd_yn = "예" if cc.get("mdd_lt_10") else "아니오"
                 verdict_text = (
@@ -270,9 +264,7 @@ def render_tune_results_card(params_data):
                                 "항목": axis_labels.get(key, key),
                                 "튜닝 1등": item.get("best", "-"),
                                 "현재 SSOT": item.get("current", "-"),
-                                "일치": (
-                                    "예" if item.get("match") else "아니오"
-                                ),
+                                "일치": ("예" if item.get("match") else "아니오"),
                             }
                         )
                     st.dataframe(
@@ -280,9 +272,7 @@ def render_tune_results_card(params_data):
                         use_container_width=True,
                         hide_index=True,
                     )
-                st.info(
-                    f"다음 조치: {promotion_verdict.get('next_action', '-')}"
-                )
+                st.info(f"다음 조치: {promotion_verdict.get('next_action', '-')}")
                 top5_rows = (
                     validation_pack.get("top5_comparison")
                     or tune_data.get("trials_top20", [])[:5]
@@ -295,9 +285,7 @@ def render_tune_results_card(params_data):
                                 "Trial": row.get("trial", "?"),
                                 "점수": f"{float(row.get('score', 0.0)):.4f}",
                                 "모멘텀 기간": row.get("momentum_period", "?"),
-                                "변동성 기간": row.get(
-                                    "volatility_period", "?"
-                                ),
+                                "변동성 기간": row.get("volatility_period", "?"),
                                 "진입 임계치": row.get("entry_threshold", "?"),
                                 "손절값": row.get("stop_loss", "?"),
                                 "최대 보유수": row.get("max_positions", "?"),
@@ -319,9 +307,7 @@ def render_tune_results_card(params_data):
             if sensitivity_md_path.exists():
                 with st.expander("감도 보정 결과", expanded=False):
                     try:
-                        md_text = sensitivity_md_path.read_text(
-                            encoding="utf-8"
-                        )
+                        md_text = sensitivity_md_path.read_text(encoding="utf-8")
                         # 범위 추출
                         vol_range = "—"
                         et_range = "—"
