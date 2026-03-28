@@ -4802,6 +4802,8 @@ from backend.routers import tickets as _tickets_router
 from backend.routers import deps as _deps_router
 from backend.routers import ops as _ops_router
 from backend.routers import portfolio as _portfolio_router
+from backend.routers import execution_gate as _execution_gate_router
+from backend.routers import manual_execution as _manual_execution_router
 
 app.include_router(_core_router.router)
 app.include_router(_reporting_router.router)
@@ -4810,6 +4812,8 @@ app.include_router(_tickets_router.router)
 app.include_router(_deps_router.router)
 app.include_router(_ops_router.router)
 app.include_router(_portfolio_router.router)
+app.include_router(_execution_gate_router.router)
+app.include_router(_manual_execution_router.router)
 
 
 if __name__ == "__main__":
