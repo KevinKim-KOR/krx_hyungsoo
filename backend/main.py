@@ -4798,10 +4798,14 @@ async def regenerate_execution_ticket_api(confirm: bool = Query(False)):
 from backend.routers import core as _core_router
 from backend.routers import reporting as _reporting_router
 from backend.routers import evidence as _evidence_router
+from backend.routers import tickets as _tickets_router
+from backend.routers import deps as _deps_router
 
 app.include_router(_core_router.router)
 app.include_router(_reporting_router.router)
 app.include_router(_evidence_router.router)
+app.include_router(_tickets_router.router)
+app.include_router(_deps_router.router)
 
 
 if __name__ == "__main__":
