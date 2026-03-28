@@ -4,7 +4,7 @@ import subprocess
 import json
 import sys
 from pathlib import Path
-from backend.main import BASE_DIR
+from backend.utils import BASE_DIR
 
 router = APIRouter()
 
