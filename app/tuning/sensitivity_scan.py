@@ -12,7 +12,13 @@ from pathlib import Path
 
 KST = timezone(timedelta(hours=9))
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-SSOT_PATH = PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
+SSOT_PATH = (
+    PROJECT_ROOT
+    / "state"
+    / "params"
+    / "latest"
+    / "strategy_params_latest.json"
+)
 REPORTS_DIR = PROJECT_ROOT / "reports" / "tuning"
 
 # 감도 판정 기준 (A3)
@@ -40,7 +46,11 @@ def _run_backtest():
 
     backtest_main()
     result_path = (
-        PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
+        PROJECT_ROOT
+        / "reports"
+        / "backtest"
+        / "latest"
+        / "backtest_result.json"
     )
     return json.loads(result_path.read_text(encoding="utf-8"))
 
@@ -108,7 +118,9 @@ def scan_axis(axis_name, ssot_key_path, test_values, baseline_ssot):
             "cagr": metrics["cagr"] - baseline_metrics["cagr"],
             "mdd": metrics["mdd"] - baseline_metrics["mdd"],
             "sharpe": metrics["sharpe"] - baseline_metrics["sharpe"],
-            "trades": metrics["total_trades"] - baseline_metrics["total_trades"],
+            "trades": (
+                metrics["total_trades"] - baseline_metrics["total_trades"]
+            ),
         }
 
         sensitive = _is_sensitive(delta)
@@ -206,14 +218,15 @@ def write_summary(
     baseline_ssot,
 ):
     """sensitivity_summary.md 생성."""
+    lkb = baseline_ssot["params"]["lookbacks"]
+    dp = baseline_ssot["params"]["decision_params"]
+    pl = baseline_ssot["params"]["position_limits"]
     bp = {
-        "momentum_period": baseline_ssot["params"]["lookbacks"]["momentum_period"],
-        "volatility_period": baseline_ssot["params"]["lookbacks"]["volatility_period"],
-        "entry_threshold": baseline_ssot["params"]["decision_params"][
-            "entry_threshold"
-        ],
-        "stop_loss": baseline_ssot["params"]["decision_params"]["exit_threshold"],
-        "max_positions": baseline_ssot["params"]["position_limits"]["max_positions"],
+        "momentum_period": lkb["momentum_period"],
+        "volatility_period": lkb["volatility_period"],
+        "entry_threshold": dp["entry_threshold"],
+        "stop_loss": dp["exit_threshold"],
+        "max_positions": pl["max_positions"],
     }
 
     lines = [
@@ -238,11 +251,16 @@ def write_summary(
     lines.append("")
     lines.append("## volatility_period 감도 결과")
     lines.append("")
-    vol_sensitive = [r for r in vol_rows if r["sensitive"] and not r["dead_zone"]]
+    vol_sensitive = [
+        r for r in vol_rows if r["sensitive"] and not r["dead_zone"]
+    ]
     vol_dead = [r for r in vol_rows if r["dead_zone"]]
-    lines.append(f"- 스캔 값: {[r['test_value'] for r in vol_rows]}")
-    lines.append(f"- 감도 있음: {[r['test_value'] for r in vol_sensitive]}")
-    lines.append(f"- Dead Zone: {[r['test_value'] for r in vol_dead]}")
+    vol_scan = [r["test_value"] for r in vol_rows]
+    vol_sens = [r["test_value"] for r in vol_sensitive]
+    vol_dz = [r["test_value"] for r in vol_dead]
+    lines.append(f"- 스캔 값: {vol_scan}")
+    lines.append(f"- 감도 있음: {vol_sens}")
+    lines.append(f"- Dead Zone: {vol_dz}")
     if vol_low:
         lines.append("- **LOW_SENSITIVITY**: 예")
         lines.append("- 최종 범위: 기존 유지 (12~24)")
@@ -254,10 +272,14 @@ def write_summary(
     lines.append("")
     lines.append("## entry_threshold 감도 결과")
     lines.append("")
-    et_sensitive = [r for r in et_rows if r["sensitive"] and not r["dead_zone"]]
+    et_sensitive = [
+        r for r in et_rows if r["sensitive"] and not r["dead_zone"]
+    ]
     et_dead = [r for r in et_rows if r["dead_zone"]]
-    lines.append(f"- 스캔 값: {[r['test_value'] for r in et_rows]}")
-    lines.append(f"- 감도 있음: {[r['test_value'] for r in et_sensitive]}")
+    et_scan = [r["test_value"] for r in et_rows]
+    et_sens = [r["test_value"] for r in et_sensitive]
+    lines.append(f"- 스캔 값: {et_scan}")
+    lines.append(f"- 감도 있음: {et_sens}")
     lines.append(f"- Dead Zone: {[r['test_value'] for r in et_dead]}")
     if et_low:
         lines.append("- **LOW_SENSITIVITY**: 예")
@@ -286,7 +308,9 @@ def write_summary(
             "volatility_period만 재설정합니다."
         )
     else:
-        lines.append("두 축 모두 유효 감도 구간이 확인되어 범위를 재설정합니다.")
+        lines.append(
+            "두 축 모두 유효 감도 구간이 확인되어 범위를 재설정합니다."
+        )
 
     path = REPORTS_DIR / "sensitivity_summary.md"
     path.write_text("\n".join(lines), encoding="utf-8")

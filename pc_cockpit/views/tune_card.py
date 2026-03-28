@@ -6,8 +6,13 @@ import pandas as pd
 import streamlit as st
 
 from pc_cockpit.services.config import BASE_DIR, format_file_mtime
-from pc_cockpit.services.json_io import load_json, apply_tune_best_params_to_ssot
-from pc_cockpit.services.promotion_verdict import refresh_promotion_verdict_local
+from pc_cockpit.services.json_io import (
+    load_json,
+    apply_tune_best_params_to_ssot,
+)
+from pc_cockpit.services.promotion_verdict import (
+    refresh_promotion_verdict_local,
+)
 
 
 def render_tune_results_card(params_data):
@@ -27,16 +32,19 @@ def render_tune_results_card(params_data):
                 bs = tune_data.get("best_summary", {})
                 st.success("✅ 최근 실행 성공")
                 c1, c2, c3 = st.columns(3)
-                c1.metric("Best Score", f"{tune_data.get('best_score', 0):.4f}")
-                c2.metric("Best Trial", f"#{tune_meta.get('best_trial_number', '?')}")
+                best_s = tune_data.get("best_score", 0)
+                best_t = tune_meta.get("best_trial_number", "?")
+                c1.metric("Best Score", f"{best_s:.4f}")
+                c2.metric("Best Trial", f"#{best_t}")
                 c3.metric("총 Trials", tune_meta.get("n_trials_total", "?"))
                 c4, c5, c6 = st.columns(3)
                 c4.metric("Sharpe", f"{bs.get('sharpe', 0):.4f}")
                 c5.metric("MDD", f"{bs.get('mdd_pct', 0):.2f}%")
                 c6.metric("CAGR", f"{bs.get('cagr', 0):.4f}")
-                st.caption(
-                    f"Study: {tune_meta.get('study_name', '?')} | Resume: {'✅' if tune_meta.get('resume_enabled') else '❌'} | asof: {tune_meta.get('asof', '?')}"
-                )
+                sn = tune_meta.get("study_name", "?")
+                re_icon = "✅" if tune_meta.get("resume_enabled") else "❌"
+                asof = tune_meta.get("asof", "?")
+                st.caption(f"Study: {sn} | Resume: {re_icon} | asof: {asof}")
                 with st.expander("최적 파라미터", expanded=False):
                     st.json(bp)
 
@@ -51,21 +59,25 @@ def render_tune_results_card(params_data):
                         st.success(
                             "1등 후보 5축을 현재 파라미터(SSOT)에 자동 적용했습니다."
                         )
+                        ap = applied_params["params"]
+                        lk = ap["lookbacks"]
+                        dp = ap["decision_params"]
+                        pl = ap["position_limits"]
                         st.caption(
-                            "적용 값: "
-                            f"momentum_period={applied_params['params']['lookbacks']['momentum_period']}, "
-                            f"volatility_period={applied_params['params']['lookbacks']['volatility_period']}, "
-                            f"entry_threshold={applied_params['params']['decision_params']['entry_threshold']}, "
-                            f"exit_threshold={applied_params['params']['decision_params']['exit_threshold']}, "
-                            f"max_positions={applied_params['params']['position_limits']['max_positions']}"
+                            f"적용: mom={lk['momentum_period']}"
+                            f", vol={lk['volatility_period']}"
+                            f", entry={dp['entry_threshold']}"
+                            f", exit={dp['exit_threshold']}"
+                            f", max={pl['max_positions']}"
                         )
                         time.sleep(1.0)
                         st.rerun()
                     except Exception as e:
                         st.error(f"SSOT 자동 적용 실패: {e}")
                 apply_col2.caption(
-                    "튜닝 1등 후보의 momentum_period / volatility_period / "
-                    "entry_threshold / stop_loss(exit_threshold) / max_positions을 현재 SSOT에 덮어씁니다."
+                    "튜닝 1등 후보의 5축(momentum/volatility/"
+                    "entry/stop_loss/max_positions)을 "
+                    "현재 SSOT에 덮어씁니다."
                 )
                 objective_version = tune_data.get(
                     "objective_version",
@@ -106,13 +118,16 @@ def render_tune_results_card(params_data):
                 o4.write(f"{metric_scale_norm} ({metric_scale_source})")
 
                 st.caption(
-                    "최종 점수 분해: "
-                    f"CAGR_agg={cagr_agg:.4f} / MDD_agg={mdd_agg:.4f} / "
-                    f"Sharpe_agg={sharpe_agg:.4f} / Penalty={overfit_penalty:.4f}"
+                    f"최종 점수 분해: CAGR={cagr_agg:.4f}"
+                    f" / MDD={mdd_agg:.4f}"
+                    f" / Sharpe={sharpe_agg:.4f}"
+                    f" / Penalty={overfit_penalty:.4f}"
                 )
 
                 # Segment evaluation display
-                seg_enabled = tune_data.get("segment_evaluation_enabled", False)
+                seg_enabled = tune_data.get(
+                    "segment_evaluation_enabled", False
+                )
                 seg_ready = tune_data.get("segment_eval_ready", False)
                 seg_status = tune_data.get("segment_status", "")
                 seg_m = tune_data.get("segment_metrics", {})
@@ -155,7 +170,9 @@ def render_tune_results_card(params_data):
                 elif seg_enabled and not seg_ready:
                     st.warning(f"⚠️ 세그먼트 평가 불가 ({seg_status})")
                 else:
-                    st.info("ℹ️ 세그먼트 평가 없음 — Run Tune을 다시 실행하세요.")
+                    st.info(
+                        "ℹ️ 세그먼트 평가 없음 — Run Tune을 다시 실행하세요."
+                    )
 
                 promotion_verdict = refresh_promotion_verdict_local(tune_data)
                 validation_pack = tune_data.get("validation_pack", {})
@@ -199,11 +216,18 @@ def render_tune_results_card(params_data):
                     "REVIEW_REQUIRED": "재검토 필요",
                     "REJECT": "기각",
                 }.get(promotion_verdict.get("verdict"), "기각")
+                pv = promotion_verdict
+                cc = pv.get("criteria_check", {})
+                ssot_yn = (
+                    "예" if pv.get("candidate_applied_to_ssot") else "아니오"
+                )
+                cagr_yn = "예" if cc.get("cagr_gt_15") else "아니오"
+                mdd_yn = "예" if cc.get("mdd_lt_10") else "아니오"
                 verdict_text = (
-                    f"현재 판정: {verdict_label} | "
-                    f"SSOT 반영: {'예' if promotion_verdict.get('candidate_applied_to_ssot') else '아니오'} | "
-                    f"CAGR > 15: {'예' if promotion_verdict.get('criteria_check', {}).get('cagr_gt_15') else '아니오'} | "
-                    f"MDD < 10: {'예' if promotion_verdict.get('criteria_check', {}).get('mdd_lt_10') else '아니오'}"
+                    f"현재 판정: {verdict_label}"
+                    f" | SSOT 반영: {ssot_yn}"
+                    f" | CAGR > 15: {cagr_yn}"
+                    f" | MDD < 10: {mdd_yn}"
                 )
                 st.markdown("**승격 판정**")
                 if verdict_color == "success":
@@ -246,7 +270,9 @@ def render_tune_results_card(params_data):
                                 "항목": axis_labels.get(key, key),
                                 "튜닝 1등": item.get("best", "-"),
                                 "현재 SSOT": item.get("current", "-"),
-                                "일치": "예" if item.get("match") else "아니오",
+                                "일치": (
+                                    "예" if item.get("match") else "아니오"
+                                ),
                             }
                         )
                     st.dataframe(
@@ -254,7 +280,9 @@ def render_tune_results_card(params_data):
                         use_container_width=True,
                         hide_index=True,
                     )
-                st.info(f"다음 조치: {promotion_verdict.get('next_action', '-')}")
+                st.info(
+                    f"다음 조치: {promotion_verdict.get('next_action', '-')}"
+                )
                 top5_rows = (
                     validation_pack.get("top5_comparison")
                     or tune_data.get("trials_top20", [])[:5]
@@ -267,7 +295,9 @@ def render_tune_results_card(params_data):
                                 "Trial": row.get("trial", "?"),
                                 "점수": f"{float(row.get('score', 0.0)):.4f}",
                                 "모멘텀 기간": row.get("momentum_period", "?"),
-                                "변동성 기간": row.get("volatility_period", "?"),
+                                "변동성 기간": row.get(
+                                    "volatility_period", "?"
+                                ),
                                 "진입 임계치": row.get("entry_threshold", "?"),
                                 "손절값": row.get("stop_loss", "?"),
                                 "최대 보유수": row.get("max_positions", "?"),
@@ -289,7 +319,9 @@ def render_tune_results_card(params_data):
             if sensitivity_md_path.exists():
                 with st.expander("감도 보정 결과", expanded=False):
                     try:
-                        md_text = sensitivity_md_path.read_text(encoding="utf-8")
+                        md_text = sensitivity_md_path.read_text(
+                            encoding="utf-8"
+                        )
                         # 범위 추출
                         vol_range = "—"
                         et_range = "—"
