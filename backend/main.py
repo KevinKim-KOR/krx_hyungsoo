@@ -4794,6 +4794,16 @@ async def regenerate_execution_ticket_api(confirm: bool = Query(False)):
         raise HTTPException(status_code=500, detail={"result": "FAILED", "reason": str(e)})
 
 
+# --- S5: New Routers (include AFTER existing inline routes for safe migration) ---
+from backend.routers import core as _core_router
+from backend.routers import reporting as _reporting_router
+from backend.routers import evidence as _evidence_router
+
+app.include_router(_core_router.router)
+app.include_router(_reporting_router.router)
+app.include_router(_evidence_router.router)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
