@@ -7,19 +7,12 @@ SSOT를 임시로 변경하면서 Full Backtest를 반복 실행하고
 
 import csv
 import json
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 KST = timezone(timedelta(hours=9))
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-SSOT_PATH = (
-    PROJECT_ROOT
-    / "state"
-    / "params"
-    / "latest"
-    / "strategy_params_latest.json"
-)
+SSOT_PATH = PROJECT_ROOT / "state" / "params" / "latest" / "strategy_params_latest.json"
 REPORTS_DIR = PROJECT_ROOT / "reports" / "tuning"
 
 # 감도 판정 기준 (A3)
@@ -47,11 +40,7 @@ def _run_backtest():
 
     backtest_main()
     result_path = (
-        PROJECT_ROOT
-        / "reports"
-        / "backtest"
-        / "latest"
-        / "backtest_result.json"
+        PROJECT_ROOT / "reports" / "backtest" / "latest" / "backtest_result.json"
     )
     return json.loads(result_path.read_text(encoding="utf-8"))
 
@@ -63,9 +52,7 @@ def _extract_metrics(result):
         "cagr": float(s.get("cagr", 0)),
         "mdd": float(s.get("mdd", 0)),
         "sharpe": float(s.get("sharpe", 0)),
-        "total_trades": int(
-            m.get("total_trades", s.get("total_trades", 0))
-        ),
+        "total_trades": int(m.get("total_trades", s.get("total_trades", 0))),
     }
 
 
@@ -121,8 +108,7 @@ def scan_axis(axis_name, ssot_key_path, test_values, baseline_ssot):
             "cagr": metrics["cagr"] - baseline_metrics["cagr"],
             "mdd": metrics["mdd"] - baseline_metrics["mdd"],
             "sharpe": metrics["sharpe"] - baseline_metrics["sharpe"],
-            "trades": metrics["total_trades"]
-            - baseline_metrics["total_trades"],
+            "trades": metrics["total_trades"] - baseline_metrics["total_trades"],
         }
 
         sensitive = _is_sensitive(delta)
@@ -194,9 +180,7 @@ def write_csv(rows, filename):
 def determine_range(rows, baseline_value):
     """감도 있는 값 + baseline 기반으로 최종 범위 결정."""
     sensitive_vals = [
-        r["test_value"]
-        for r in rows
-        if r["sensitive"] and not r["dead_zone"]
+        r["test_value"] for r in rows if r["sensitive"] and not r["dead_zone"]
     ]
     # baseline도 유효 범위에 포함
     all_valid = sorted(set(sensitive_vals + [baseline_value]))
@@ -223,21 +207,13 @@ def write_summary(
 ):
     """sensitivity_summary.md 생성."""
     bp = {
-        "momentum_period": baseline_ssot["params"]["lookbacks"][
-            "momentum_period"
-        ],
-        "volatility_period": baseline_ssot["params"]["lookbacks"][
-            "volatility_period"
-        ],
+        "momentum_period": baseline_ssot["params"]["lookbacks"]["momentum_period"],
+        "volatility_period": baseline_ssot["params"]["lookbacks"]["volatility_period"],
         "entry_threshold": baseline_ssot["params"]["decision_params"][
             "entry_threshold"
         ],
-        "stop_loss": baseline_ssot["params"]["decision_params"][
-            "exit_threshold"
-        ],
-        "max_positions": baseline_ssot["params"]["position_limits"][
-            "max_positions"
-        ],
+        "stop_loss": baseline_ssot["params"]["decision_params"]["exit_threshold"],
+        "max_positions": baseline_ssot["params"]["position_limits"]["max_positions"],
     }
 
     lines = [
@@ -262,19 +238,11 @@ def write_summary(
     lines.append("")
     lines.append("## volatility_period 감도 결과")
     lines.append("")
-    vol_sensitive = [
-        r for r in vol_rows if r["sensitive"] and not r["dead_zone"]
-    ]
+    vol_sensitive = [r for r in vol_rows if r["sensitive"] and not r["dead_zone"]]
     vol_dead = [r for r in vol_rows if r["dead_zone"]]
-    lines.append(
-        f"- 스캔 값: {[r['test_value'] for r in vol_rows]}"
-    )
-    lines.append(
-        f"- 감도 있음: {[r['test_value'] for r in vol_sensitive]}"
-    )
-    lines.append(
-        f"- Dead Zone: {[r['test_value'] for r in vol_dead]}"
-    )
+    lines.append(f"- 스캔 값: {[r['test_value'] for r in vol_rows]}")
+    lines.append(f"- 감도 있음: {[r['test_value'] for r in vol_sensitive]}")
+    lines.append(f"- Dead Zone: {[r['test_value'] for r in vol_dead]}")
     if vol_low:
         lines.append("- **LOW_SENSITIVITY**: 예")
         lines.append("- 최종 범위: 기존 유지 (12~24)")
@@ -286,19 +254,11 @@ def write_summary(
     lines.append("")
     lines.append("## entry_threshold 감도 결과")
     lines.append("")
-    et_sensitive = [
-        r for r in et_rows if r["sensitive"] and not r["dead_zone"]
-    ]
+    et_sensitive = [r for r in et_rows if r["sensitive"] and not r["dead_zone"]]
     et_dead = [r for r in et_rows if r["dead_zone"]]
-    lines.append(
-        f"- 스캔 값: {[r['test_value'] for r in et_rows]}"
-    )
-    lines.append(
-        f"- 감도 있음: {[r['test_value'] for r in et_sensitive]}"
-    )
-    lines.append(
-        f"- Dead Zone: {[r['test_value'] for r in et_dead]}"
-    )
+    lines.append(f"- 스캔 값: {[r['test_value'] for r in et_rows]}")
+    lines.append(f"- 감도 있음: {[r['test_value'] for r in et_sensitive]}")
+    lines.append(f"- Dead Zone: {[r['test_value'] for r in et_dead]}")
     if et_low:
         lines.append("- **LOW_SENSITIVITY**: 예")
         lines.append("- 최종 범위: 기존 유지 (0.01~0.05)")
@@ -326,9 +286,7 @@ def write_summary(
             "volatility_period만 재설정합니다."
         )
     else:
-        lines.append(
-            "두 축 모두 유효 감도 구간이 확인되어 범위를 재설정합니다."
-        )
+        lines.append("두 축 모두 유효 감도 구간이 확인되어 범위를 재설정합니다.")
 
     path = REPORTS_DIR / "sensitivity_summary.md"
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -379,10 +337,7 @@ def main():
 
     # 최종 SSOT 복원 확인
     restored = _load_ssot()
-    assert (
-        restored["params"]["lookbacks"]["volatility_period"]
-        == vol_baseline
-    )
+    assert restored["params"]["lookbacks"]["volatility_period"] == vol_baseline
     print("\nSSOT restored to baseline. Scan complete.")
 
     return {

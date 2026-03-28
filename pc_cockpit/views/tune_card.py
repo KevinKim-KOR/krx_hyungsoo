@@ -289,9 +289,7 @@ def render_tune_results_card(params_data):
             if sensitivity_md_path.exists():
                 with st.expander("감도 보정 결과", expanded=False):
                     try:
-                        md_text = sensitivity_md_path.read_text(
-                            encoding="utf-8"
-                        )
+                        md_text = sensitivity_md_path.read_text(encoding="utf-8")
                         # 범위 추출
                         vol_range = "—"
                         et_range = "—"
@@ -301,7 +299,10 @@ def render_tune_results_card(params_data):
                             if "최종 범위: 기존 유지 (12~24)" in line:
                                 vol_range = "12~24 (기존 유지)"
                                 vol_low = True
-                            elif "최종 채택 범위:" in line and "volatility" not in line.lower():
+                            elif (
+                                "최종 채택 범위:" in line
+                                and "volatility" not in line.lower()
+                            ):
                                 pass
                             if "최종 범위: 기존 유지 (0.01~0.05)" in line:
                                 et_range = "0.01~0.05 (기존 유지)"
