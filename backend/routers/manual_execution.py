@@ -1,12 +1,6 @@
-"""manual_execution 라우터 — execution_prep + ticket + record.
-
-중복 라우트 포함: 1차 정의(실동작) + 2차 정의(shadowed) 모두 이동.
-삭제 판단은 S5-6에서 수행.
-"""
+"""manual_execution 라우터 — execution_prep + ticket + record."""
 
 import json
-import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
