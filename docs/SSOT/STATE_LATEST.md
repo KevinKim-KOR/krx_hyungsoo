@@ -1,3 +1,6 @@
+> **DEPRECATED** (2026-03-28): 이 문서는 2026-02-25 시점 기준이며 P204 완료/P205 구조 정리가 반영되지 않았습니다.
+> 현재 상태는 `docs/handoff/P205_structure_closeout.md`와 `docs/structure_baseline.md`를 참고하세요.
+
 # STATE_LATEST — KRX Alertor Modular (as of 2026-02-25)
 
 ## 1) 목표 (3줄)

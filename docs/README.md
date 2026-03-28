@@ -1,4 +1,7 @@
-# 📚 KRX Alertor Modular - Documentation
+> **DEPRECATED** (2026-03-28): 이 문서는 P204-STEP2 시점 기준이며 P205 구조 정리가 반영되지 않았습니다.
+> 현재 구조 기준선은 `docs/structure_baseline.md`를 참고하세요.
+
+# KRX Alertor Modular - Documentation
 
 **System Version**: 10.2 (P204-STEP2-MULTI-SLICE)
 **Last Update**: 2026-03-22

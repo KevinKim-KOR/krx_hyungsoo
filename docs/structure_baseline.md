@@ -1,5 +1,7 @@
 # 구조 정리 기준선 (Structure Baseline)
 
+> **Current Truth** — 코드 구조가 변경되면 이 문서를 함께 갱신해야 합니다.
+
 asof: 2026-03-28
 
 ## 진입점 계약
@@ -37,15 +39,9 @@ asof: 2026-03-28
 | `app/run_git_transport.py` | `python -m app.run_git_transport` | Git 전송 |
 | `app/run_ticket_reaper.py` | `python -m app.run_ticket_reaper` | 티켓 정리 |
 
-## 비활성 코드 (삭제 대상)
+## 비활성 코드 (S0에서 삭제 완료)
 
-| 파일 | 줄수 | 사유 |
-|---|---|---|
-| `pc_cockpit/cockpit_new.py` | 1,541 | cockpit.py 구버전, import/호출 없음 |
-| `pc_cockpit/cockpit_fixed.py` | 1,502 | cockpit.py 구버전, import/호출 없음 |
-| `pc_cockpit/snippet_backtest.py` | 65 | 코드 조각, import/호출 없음 |
-| `app/run_holding_watch_restored.py` | 376 | null bytes 포함, SyntaxError |
-| `temp_replace.py` | 67 | 프로젝트 루트 일회성 스크립트 |
+아래 5개 파일은 S0 단계(커밋 `2bcdf8dc`)에서 삭제 완료됨.
 
 ## cockpit.py 데드 함수 격리 (S1-B, 2026-03-27)
 

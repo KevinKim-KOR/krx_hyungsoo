@@ -1,5 +1,7 @@
 # P205 구조 정리 종료 문서 (Structure Cleanup Closeout)
 
+> **Closeout** — 이 문서는 P205 종료 시점의 스냅샷입니다. 현재 상태 기준선은 `docs/structure_baseline.md`를 참고하세요.
+
 asof: 2026-03-28
 
 ## 구조 정리 범위 요약

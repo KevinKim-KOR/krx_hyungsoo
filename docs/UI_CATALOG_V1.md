@@ -1,3 +1,6 @@
+> **DEPRECATED** (2026-03-28): 이 문서는 S2(cockpit.py 분해) 이전 기준입니다.
+> 기능 매핑은 대체로 유효하나, cockpit.py 라인 참조가 현재 views/ 구조와 일치하지 않습니다.
+
 # P194 UI Catalog V1
 
 This catalog strictly maps all discovered Cockpit UI footprints into 3 operational surfaces (데일리운영 (P144), 워크플로우 (P170), 정비창 (Advanced)) without modifying any application code.

@@ -1,3 +1,6 @@
+> **DEPRECATED** (2026-03-28): 이 문서는 P146~P150 시대 체크리스트입니다.
+> 현재 프로젝트는 P205 단계이며, 이 문서는 역사 기록으로만 보존합니다.
+
 - [x] **P146.8 Dashboard & Sync (Token/Ticket MD/PC Sync)**
     - [x] A: Dashboard API Update (Token Hint/Required Flag) `backend/operator_dashboard.py`
     - [x] B: Submit Draft Logic Update (DRY_RUN vs LIVE) `backend/main.py`

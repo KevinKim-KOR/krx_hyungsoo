@@ -1,3 +1,6 @@
+> **DEPRECATED** (2026-03-28): 이 문서는 S2(cockpit.py 분해) 이전 기준이며, 라인 번호가 현재 코드와 일치하지 않습니다.
+> 현재 UI 구조는 `pc_cockpit/views/` 모듈 구조를 참고하세요.
+
 # P193 Cockpit UI Inventory Map
 
 ## Live Ops
