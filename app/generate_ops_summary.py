@@ -270,7 +270,11 @@ def generate_ops_summary():
 
     SUMMARY_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     snap_name = f"ops_summary_{now.strftime('%Y%m%d_%H%M%S')}.json"
-    shutil.copy(SUMMARY_LATEST, SUMMARY_SNAPSHOTS_DIR / snap_name)
+    snap_path = SUMMARY_SNAPSHOTS_DIR / snap_name
+    shutil.copy(SUMMARY_LATEST, snap_path)
+
+    summary["snapshot_path"] = str(snap_path)
+    summary["summary_latest_path"] = str(SUMMARY_LATEST)
 
     return summary
 
@@ -292,12 +296,7 @@ def generate_and_save_from_receipt(receipt):
     소비자: run_ops_cycle.py
     receipt 인자는 현재 사용하지 않으나 시그니처를 유지한다.
     """
-    summary = generate_ops_summary()
-    return {
-        "snapshot_path": str(SUMMARY_SNAPSHOTS_DIR),
-        "summary_latest_path": str(SUMMARY_LATEST),
-        "overall_status": summary.get("overall_status", "N/A"),
-    }
+    return generate_ops_summary()
 
 
 if __name__ == "__main__":
