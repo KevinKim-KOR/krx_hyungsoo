@@ -4801,6 +4801,7 @@ from backend.routers import evidence as _evidence_router
 from backend.routers import tickets as _tickets_router
 from backend.routers import deps as _deps_router
 from backend.routers import ops as _ops_router
+from backend.routers import portfolio as _portfolio_router
 
 app.include_router(_core_router.router)
 app.include_router(_reporting_router.router)
@@ -4808,6 +4809,7 @@ app.include_router(_evidence_router.router)
 app.include_router(_tickets_router.router)
 app.include_router(_deps_router.router)
 app.include_router(_ops_router.router)
+app.include_router(_portfolio_router.router)
 
 
 if __name__ == "__main__":
