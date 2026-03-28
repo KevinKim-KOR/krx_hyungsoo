@@ -1,6 +1,6 @@
 # 구조 정리 기준선 (Structure Baseline)
 
-asof: 2026-03-27
+asof: 2026-03-28
 
 ## 진입점 계약
 
@@ -89,3 +89,28 @@ asof: 2026-03-27
 - `paths.py` — 경로 상수, 환경변수, severity 맵
 - `helpers.py` — 유틸리티 (sanitize, safe_load, tickets)
 - `risk_aggregator.py` — 리스크 계산, 수동 루프 스테이지 결정
+
+### backend/ (S5)
+- `main.py` — 앱 팩토리 + 라우터 등록만 (108줄)
+- `utils.py` — 공유 유틸 (logger, safe_read_*, 경로 상수)
+- `dry_run.py` — Dry Run 라우터
+- `operator_dashboard.py` — Operator Dashboard 라우터
+
+### backend/routers/ (S5, 16개 모듈)
+- `core.py` — /, status, signals, history, raw, validation
+- `reporting.py` — contract5, diagnosis, gatekeeper, report, recon
+- `evidence.py` — evidence resolve, index, health
+- `tickets.py` — ticket CRUD, board, reaper
+- `deps.py` — dependency status, snapshot
+- `ops.py` — daily, health, scheduler, summary, drill, postmortem, live_fire, cycle
+- `push.py` — push 전체
+- `portfolio.py` — portfolio, reco, order_plan, export
+- `execution_gate.py` — gate, emergency_stop, approvals, window, allowlist, preflight
+- `manual_execution.py` — execution_prep, ticket, record, draft, submit
+- `secrets.py` — secrets status, self_test
+- `real_sender.py` — real sender enable
+- `settings.py` — mode, settings, spike, watchlist, transport
+- `operator.py` — sync_cycle
+- `strategy_bundle.py` — bundle latest, snapshot
+- `live_cycle.py` — live cycle latest, run
+- `_shadowed_archive.py` — 비활성 보존 (import 금지)
