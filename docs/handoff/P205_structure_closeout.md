@@ -20,14 +20,14 @@ asof: 2026-03-28
 
 ## 핵심 파일 변화
 
-| 파일 | 이전 줄수 | 이후 줄수 | 감소율 |
+| 파일 | 이전 줄수 | 최종 줄수 | 감소율 |
 |---|---|---|---|
 | `pc_cockpit/cockpit.py` | 1,974 | 78 | -96% |
-| `app/run_tune.py` | (주석 경로 수정만) | — | — |
-| `app/generate_ops_summary.py` | 1,150 | 305 | -73% |
-| `backend/main.py` | 4,844 | 108 | -98% |
+| `app/generate_ops_summary.py` | 1,150 | 304 | -74% |
+| `backend/main.py` | 4,844 | 134 | -97% |
 | `app/tuning/promotion_gate.py` | 314 | 95 | -70% |
 | `pc_cockpit/services/promotion_verdict.py` | 231 | 41 | -82% |
+| `app/run_tune.py` | 611 | 611 | 주석 경로 수정만, 로직 불변 |
 
 ## 최종 구조 상태
 

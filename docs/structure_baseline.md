@@ -87,7 +87,7 @@ asof: 2026-03-28
 - `risk_aggregator.py` — 리스크 계산, 수동 루프 스테이지 결정
 
 ### backend/ (S5)
-- `main.py` — 앱 팩토리 + 라우터 등록만 (108줄)
+- `main.py` — 앱 팩토리 + 라우터 등록만 (134줄)
 - `utils.py` — 공유 유틸 (logger, safe_read_*, 경로 상수)
 - `dry_run.py` — Dry Run 라우터
 - `operator_dashboard.py` — Operator Dashboard 라우터

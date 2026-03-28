@@ -90,3 +90,24 @@ docs/ 내 모든 문서는 아래 4종 중 하나로 분류한다.
 - `KEEP_CLOSEOUT` — 기록 문서로 유지
 - `KEEP_REFERENCE` — 참고/계약 문서로 유지
 - `ARCHIVE_OR_DEPRECATE` — 비활성 처리
+
+---
+
+## Deprecated 처리 기준
+
+### Deprecated 완료
+
+- 문서 상단에 `> **DEPRECATED**` 배너가 실제로 추가된 문서만 해당
+- inventory에서 "DEPRECATED 완료"로 집계 가능
+
+### Deprecated 후보 (review later)
+
+- 현재 구조와 불일치 가능성이 있으나 상단 배너가 아직 없는 문서
+- inventory에서 "추가 검토 후보"로 별도 분리
+- JSON/보조 파일은 상단 배너 추가가 불가능하므로, deprecated 완료로 간주하지 않는다
+
+### 처리 규칙
+
+- deprecated 후보와 deprecated 완료는 반드시 구분한다
+- 상단 배너가 없는 문서를 inventory에서 deprecated 완료로 표기하지 않는다
+- 후보 확인 후 deprecated로 확정하려면 해당 문서에 배너를 추가한 뒤 inventory를 갱신한다
