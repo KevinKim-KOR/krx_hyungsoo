@@ -4804,6 +4804,13 @@ from backend.routers import ops as _ops_router
 from backend.routers import portfolio as _portfolio_router
 from backend.routers import execution_gate as _execution_gate_router
 from backend.routers import manual_execution as _manual_execution_router
+from backend.routers import push as _push_router
+from backend.routers import secrets as _secrets_router
+from backend.routers import real_sender as _real_sender_router
+from backend.routers import settings as _settings_router
+from backend.routers import operator as _operator_router
+from backend.routers import strategy_bundle as _strategy_bundle_router
+from backend.routers import live_cycle as _live_cycle_router
 
 app.include_router(_core_router.router)
 app.include_router(_reporting_router.router)
@@ -4814,6 +4821,13 @@ app.include_router(_ops_router.router)
 app.include_router(_portfolio_router.router)
 app.include_router(_execution_gate_router.router)
 app.include_router(_manual_execution_router.router)
+app.include_router(_push_router.router)
+app.include_router(_secrets_router.router)
+app.include_router(_real_sender_router.router)
+app.include_router(_settings_router.router)
+app.include_router(_operator_router.router)
+app.include_router(_strategy_bundle_router.router)
+app.include_router(_live_cycle_router.router)
 
 
 if __name__ == "__main__":
