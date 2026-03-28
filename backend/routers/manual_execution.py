@@ -558,47 +558,7 @@ def get_draft_record():
     )
 
 
-# ===========================================================================
-# 2차 정의 (shadowed)
-# ===========================================================================
-
-
-@router.post("/api/execution_prep/prepare")
-async def prepare_execution_api(
-    payload: ExecutionPrepRequest,
-    confirm: bool = Query(False),
-):
-    """
-    Execution Prep - 실행 준비 (Human Token)
-    Confirm Guard: confirm=true 필수
-    """
-    if not confirm:
-        return JSONResponse(
-            status_code=400,
-            content={"result": "BLOCKED", "message": "Confirm required"},
-        )
-
-    try:
-        from app.generate_execution_prep import generate_prep
-
-        generate_prep(payload.confirm_token)
-
-        # Read result to return
-        from app.generate_execution_prep import PREP_LATEST
-
-        if PREP_LATEST.exists():
-            return json.loads(PREP_LATEST.read_text(encoding="utf-8"))
-        return {
-            "result": "OK",
-            "message": "Prep generated (file checks recommended)",
-        }
-
-    except Exception as e:
-        logger.error(f"Execution Prep failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail={"result": "FAILED", "reason": str(e)},
-        )
+# --- /api/manual_execution_record/submit (유일한 정의) ---
 
 
 @router.post("/api/manual_execution_record/submit")
@@ -815,49 +775,4 @@ async def submit_execution_record_api(
         return JSONResponse(
             status_code=500,
             content={"ok": False, "result": "FAILED", "reason": reason},
-        )
-
-
-@router.post("/api/manual_execution_ticket/regenerate")
-async def regenerate_execution_ticket_api(confirm: bool = Query(False)):
-    """
-    Regenerate Manual Execution Ticket
-    """
-    if not confirm:
-        return JSONResponse(
-            status_code=400,
-            content={"result": "BLOCKED", "message": "Confirm required"},
-        )
-
-    try:
-        from app.generate_manual_execution_ticket import generate_ticket
-
-        generate_ticket()
-
-        # Read result
-        path = (
-            BASE_DIR
-            / "reports"
-            / "live"
-            / "manual_execution_ticket"
-            / "latest"
-            / "manual_execution_ticket_latest.json"
-        )
-        if path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
-        return {"result": "OK", "message": "Ticket generated"}
-
-    except ImportError:
-        # Fallback if function not importable (maybe run as script)
-        cmd = [sys.executable, "-m", "app.generate_manual_execution_ticket"]
-        res = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR)
-        if res.returncode != 0:
-            return {"result": "FAIL", "error": res.stderr}
-        return {"result": "OK", "stdout": res.stdout}
-
-    except Exception as e:
-        logger.error(f"Ticket Gen failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail={"result": "FAILED", "reason": str(e)},
         )
