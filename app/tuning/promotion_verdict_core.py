@@ -306,6 +306,8 @@ def render_promotion_verdict_md(verdict_payload: Dict[str, Any]) -> str:
             "- SSOT 반영 여부: "
             f"{'예' if verdict_payload.get('candidate_applied_to_ssot') else '아니오'}"
         ),
+        f"- 유니버스 일치: "
+        f"{'예' if verdict_payload.get('used_universe_match') else '아니오' if verdict_payload.get('used_universe_match') is False else 'N/A'}",
         "",
         "## Full Backtest 핵심 수치",
         f"- CAGR: {to_float(metrics.get('cagr')):.4f}%",

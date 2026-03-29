@@ -44,7 +44,13 @@ def render_tune_results_card(params_data):
                 sn = tune_meta.get("study_name", "?")
                 re_icon = "✅" if tune_meta.get("resume_enabled") else "❌"
                 asof = tune_meta.get("asof", "?")
-                st.caption(f"Study: {sn} | Resume: {re_icon} | asof: {asof}")
+                t_um = tune_meta.get("universe_mode", "?")
+                t_us = tune_meta.get("universe_size", "?")
+                st.caption(
+                    f"Study: {sn} | Resume: {re_icon}"
+                    f" | asof: {asof}"
+                    f" | universe: {t_um}({t_us})"
+                )
                 with st.expander("최적 파라미터", expanded=False):
                     st.json(bp)
 
@@ -55,7 +61,12 @@ def render_tune_results_card(params_data):
                     use_container_width=True,
                 ):
                     try:
-                        applied_params = apply_tune_best_params_to_ssot(bp)
+                        # P205-STEP4: universe_mode를 bp에 병합
+                        bp_with_meta = dict(bp)
+                        um = tune_meta.get("universe_mode")
+                        if um:
+                            bp_with_meta["universe_mode"] = um
+                        applied_params = apply_tune_best_params_to_ssot(bp_with_meta)
                         st.success(
                             "1등 후보 5축을 현재 파라미터(SSOT)에 자동 적용했습니다."
                         )

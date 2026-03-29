@@ -202,8 +202,14 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             "order_count", bt_summary.get("total_trades", "N/A")
                         ),
                     )
+                    b_um = bt_meta.get("universe_mode", "?")
+                    b_us = bt_meta.get("universe_size", "?")
                     st.caption(
-                        f"기간: {bt_meta.get('start_date', '?')} → {bt_meta.get('end_date', '?')} | 모드: {bt_meta.get('mode', '?')} | asof: {bt_meta.get('asof', '?')}"
+                        f"기간: {bt_meta.get('start_date', '?')}"
+                        f" → {bt_meta.get('end_date', '?')}"
+                        f" | 모드: {bt_meta.get('mode', '?')}"
+                        f" | universe: {b_um}({b_us})"
+                        f" | asof: {bt_meta.get('asof', '?')}"
                     )
         except Exception as e:
             st.error(f"⚠️ 백테스트 결과 파싱 실패: {e}")
