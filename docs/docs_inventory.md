@@ -25,6 +25,7 @@ asof: 2026-03-28
 | `docs/handoff/HANDOFF_P204_ML.md` | KEEP_CLOSEOUT | 정확 | P204 ML 핸드오프 | 유지 |
 | `docs/handoff/HANDOFF_P204_ML.json` | KEEP_CLOSEOUT | 정확 | P204 ML 핸드오프 메타 | 유지 |
 | `docs/handoff/HANDOFF_P204_ML_CHECKLIST.md` | KEEP_CLOSEOUT | 정확 | P204 ML 체크리스트 | 유지 |
+| `docs/handoff/P205_step3_closeout.md` | KEEP_CLOSEOUT | 신규 | P205-STEP3 메타데이터 가드 종료 | 유지 |
 
 ## Reference / Contract
 

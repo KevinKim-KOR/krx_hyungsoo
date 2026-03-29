@@ -230,6 +230,10 @@ def render_tune_results_card(params_data):
                     st.warning(verdict_text)
                 else:
                     st.error(verdict_text)
+                upm = pv.get("used_params_match_ssot")
+                if upm is not None:
+                    upm_label = "예" if upm else "아니오"
+                    st.caption(f"Backtest 파라미터 일치 여부: {upm_label}")
 
                 verdict_reason_rows = [
                     {"판정 사유": reason}

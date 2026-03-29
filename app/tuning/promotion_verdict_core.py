@@ -172,6 +172,29 @@ def compute_promotion_verdict(
         if tune_snapshot["best_score"] < 0:
             reasons.append("튜닝 점수가 음수이므로 해석 경고가 필요합니다.")
 
+    # ── Backtest 5축 vs SSOT 일치 검사 (P205-STEP3) ──
+    bt_meta = (backtest_data or {}).get("meta", {})
+    bt_5axes = bt_meta.get("used_params_5axes", {})
+    if bt_5axes:
+        used_params_match_ssot = (
+            bt_5axes.get("momentum_period") == ssot_axes.get("momentum_period")
+            and is_same_number(
+                bt_5axes.get("exit_threshold"),
+                ssot_axes.get("stop_loss"),
+            )
+            and is_same_number(
+                bt_5axes.get("entry_threshold"),
+                ssot_axes.get("entry_threshold"),
+            )
+            and bt_5axes.get("volatility_period") == ssot_axes.get("volatility_period")
+            and bt_5axes.get("max_positions") == ssot_axes.get("max_positions")
+        )
+    else:
+        used_params_match_ssot = None
+
+    if used_params_match_ssot is False:
+        reasons.append("Backtest에 사용된 5축이 현재 SSOT와 일치하지 않습니다.")
+
     # ── 판정 결정 ──
     if (
         tune_data
@@ -198,9 +221,14 @@ def compute_promotion_verdict(
     else:
         verdict = "REJECT"
 
+    # P205-STEP3 강등: Backtest 5축 불일치 시 PROMOTE 금지
+    if used_params_match_ssot is False and verdict == "PROMOTE_CANDIDATE":
+        verdict = "REVIEW_REQUIRED"
+
     return {
         "verdict": verdict,
         "candidate_applied_to_ssot": candidate_applied_to_ssot,
+        "used_params_match_ssot": used_params_match_ssot,
         "ssot_vs_best_params": ssot_vs_best,
         "full_backtest_metrics": full_backtest_metrics,
         "tune_snapshot": tune_snapshot,

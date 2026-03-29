@@ -335,6 +335,13 @@ def format_result(
         "download_count": telemetry.get("download_count", 0),
         "cache_hit_count": telemetry.get("cache_hit_count", 0),
         "fallback_count": telemetry.get("fallback_count", 0),
+        "used_params_5axes": {
+            "momentum_period": params["momentum_period"],
+            "volatility_period": params["volatility_period"],
+            "entry_threshold": params["entry_threshold"],
+            "exit_threshold": params["stop_loss"],
+            "max_positions": params["max_positions"],
+        },
         "params_used": {
             "momentum_period": params["momentum_period"],
             "volatility_period": params["volatility_period"],
