@@ -41,18 +41,25 @@ asof: 2026-03-28
 | `docs/archive/*` (13개) | KEEP_REFERENCE | 이미 보관됨 | phase_c 시리즈 히스토리 | 유지 |
 | `docs/task_reports/*` (26개) | KEEP_REFERENCE | 이미 보관됨 | 작업 보고서 히스토리 | 유지 |
 
-## Deprecated 처리 완료
+## Deprecated → Archive 이동 완료
 
-아래 6개는 문서 상단에 실제 `DEPRECATED` 배너가 추가된 문서입니다.
+아래 4개는 DEPRECATED 배너가 있던 문서로, `docs/archive/`로 이동 완료.
+
+| 이전 경로 | 이동 후 | 사유 |
+|---|---|---|
+| `docs/README.md` | `docs/archive/README_legacy.md` | P204-STEP2 기준, P205 미반영 |
+| `docs/UI_MAP.md` | `docs/archive/UI_MAP_legacy.md` | S2 분해 후 불일치 |
+| `docs/UI_CATALOG_V1.md` | `docs/archive/UI_CATALOG_V1_legacy.md` | S2 분해 후 불일치 |
+| `docs/task.md` | `docs/archive/task_legacy.md` | P146~P150 시대 |
+
+아래 2개는 DEPRECATED 배너가 있지만 원위치 유지 (archive 이동 대상 아님).
 
 | 경로 | 상태 | 사유 |
 |---|---|---|
-| `docs/README.md` | DEPRECATED 완료 | P204-STEP2 기준, P205 미반영 |
-| `docs/SSOT/STATE_LATEST.md` | DEPRECATED 완료 | asof 2026-02-25, P204/P205 미반영 |
-| `docs/UI_MAP.md` | DEPRECATED 완료 | cockpit.py 라인 번호 기준, S2 분해 후 불일치 |
-| `docs/UI_CATALOG_V1.md` | DEPRECATED 완료 | cockpit.py 기반, S2 분해 후 views/ 구조와 불일치 |
-| `docs/handoff/P205_handoff_draft.md` | DEPRECATED 완료 | P205 closeout 완료로 draft 역할 종료 |
-| `docs/task.md` | DEPRECATED 완료 | P146~P150 시대 체크리스트, P204/P205 없음 |
+| `docs/SSOT/STATE_LATEST.md` | DEPRECATED (원위치) | SSOT 폴더 내 기록으로 보존 |
+| `docs/handoff/P205_handoff_draft.md` | DEPRECATED (원위치) | handoff 폴더 내 기록으로 보존 |
+
+`docs/README.md`는 새 현재 인덱스로 교체됨.
 
 ## 추가 검토 후보
 
