@@ -197,6 +197,7 @@ def format_result(
     end: date,
     price_data: pd.DataFrame = None,
     param_source: Dict[str, str] = None,
+    run_mode: str = "quick",
 ) -> Dict[str, Any]:
     """
     결과를 현행 소비자 스키마로 포맷팅.
@@ -325,7 +326,7 @@ def format_result(
         "asof": now_kst,
         "start_date": str(start),
         "end_date": str(end),
-        "mode": "P165_CLI",
+        "mode": run_mode,
         "universe": params["universe"],
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
@@ -481,7 +482,13 @@ def run_cli_backtest(
 
     # 5. Format and write (pass param_source)
     formatted = format_result(
-        result, params, start, end, price_data=price_data, param_source=param_source
+        result,
+        params,
+        start,
+        end,
+        price_data=price_data,
+        param_source=param_source,
+        run_mode=mode,
     )
     try:
         atomic_write_result(formatted)
