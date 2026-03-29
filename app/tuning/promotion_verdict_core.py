@@ -92,17 +92,41 @@ def all_axes_match(comparison: Dict[str, Dict[str, Any]]) -> bool:
 
 # ── 판정 계산 ──
 
-NEXT_ACTION_MAP = {
-    "PROMOTE_CANDIDATE": (
-        "현재 후보를 승격 후보로 유지하고 OCI 반영 전 마지막 검토를 수행합니다."
-    ),
-    "REVIEW_REQUIRED": (
-        "현재 후보는 재검토 필요 상태이므로 다음 Tune 후보와 비교 검증합니다."
-    ),
-    "REJECT": (
-        "현재 후보는 기각 상태이므로 SSOT와 Full Backtest를 다시 맞춘 뒤 재평가합니다."
-    ),
-}
+
+def _resolve_next_action(
+    verdict: str,
+    candidate_applied_to_ssot: bool,
+    used_params_match_ssot,
+    criteria_check: Dict[str, Any],
+) -> str:
+    """사유별 next_action 문구 분기 (P205-STEP3B)."""
+    # Case 4: PROMOTE
+    if verdict == "PROMOTE_CANDIDATE":
+        return "현재 후보는 승격 후보입니다. " "OCI 반영 전 최종 점검만 수행합니다."
+
+    # Case 1: SSOT / Backtest 불일치
+    if not candidate_applied_to_ssot or used_params_match_ssot is False:
+        return (
+            "현재 후보는 SSOT 또는 Backtest 기준이 "
+            "일치하지 않으므로, 파라미터를 다시 맞춘 뒤 "
+            "재평가합니다."
+        )
+
+    # Case 3: REVIEW_REQUIRED + 정합성 충족
+    if verdict == "REVIEW_REQUIRED":
+        return (
+            "현재 후보는 기준 정합성은 충족했지만 "
+            "추가 검토가 필요합니다. "
+            "상위 후보와 비교 후 재평가합니다."
+        )
+
+    # Case 2: REJECT + 정합성 충족 + 성능 미달
+    return (
+        "현재 후보는 기준 정합성은 충족했지만 "
+        "Full Backtest 성능 기준을 만족하지 못해 "
+        "기각합니다. 다음 후보를 검토하거나 "
+        "유니버스/탐색범위를 재검토합니다."
+    )
 
 
 def compute_promotion_verdict(
@@ -234,7 +258,12 @@ def compute_promotion_verdict(
         "tune_snapshot": tune_snapshot,
         "criteria_check": criteria_check,
         "reasons": reasons[:6],
-        "next_action": NEXT_ACTION_MAP[verdict],
+        "next_action": _resolve_next_action(
+            verdict,
+            candidate_applied_to_ssot,
+            used_params_match_ssot,
+            criteria_check,
+        ),
     }
 
 
