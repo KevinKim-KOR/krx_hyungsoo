@@ -328,6 +328,8 @@ def format_result(
         "end_date": str(end),
         "mode": run_mode,
         "universe": params["universe"],
+        "universe_mode": params.get("universe_mode", "fixed_current"),
+        "universe_size": len(params["universe"]),
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "signal_days": metrics.get("signal_days", 0),

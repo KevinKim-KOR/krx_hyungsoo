@@ -249,10 +249,27 @@ def compute_promotion_verdict(
     if used_params_match_ssot is False and verdict == "PROMOTE_CANDIDATE":
         verdict = "REVIEW_REQUIRED"
 
+    # P205-STEP4: 유니버스 일치 검사
+    tune_meta = (tune_data or {}).get("meta", {})
+    tune_universe_mode = tune_meta.get("universe_mode")
+    bt_universe_mode = bt_meta.get("universe_mode")
+    ssot_universe_mode = (params_data or {}).get("universe_mode")
+
+    if tune_universe_mode and bt_universe_mode:
+        used_universe_match = tune_universe_mode == bt_universe_mode
+    else:
+        used_universe_match = None
+
+    if used_universe_match is False:
+        reasons.append("Tune과 Backtest의 유니버스 모드가 다릅니다.")
+        if verdict == "PROMOTE_CANDIDATE":
+            verdict = "REVIEW_REQUIRED"
+
     return {
         "verdict": verdict,
         "candidate_applied_to_ssot": candidate_applied_to_ssot,
         "used_params_match_ssot": used_params_match_ssot,
+        "used_universe_match": used_universe_match,
         "ssot_vs_best_params": ssot_vs_best,
         "full_backtest_metrics": full_backtest_metrics,
         "tune_snapshot": tune_snapshot,

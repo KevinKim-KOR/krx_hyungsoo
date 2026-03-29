@@ -22,6 +22,20 @@ from pc_cockpit.views.tune_card import render_tune_results_card
 from pc_cockpit.views.parameter_editor import render_ssot_parameter_form
 
 
+def _update_ssot_universe_mode(mode: str):
+    """SSOT에 universe_mode를 저장한다."""
+    import json
+
+    path = BASE_DIR / "state" / "params" / "latest" / "strategy_params_latest.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("universe_mode") != mode:
+        data["universe_mode"] = mode
+        path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+
 def init_workflow_session_state():
     """워크플로우 탭에서 사용하는 session state 초기화."""
     if "ops_token" not in st.session_state:
@@ -79,6 +93,21 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
 
     # B. 2) 백테스트 및 튜닝
     st.subheader("2) 백테스트 및 튜닝 시뮬레이션")
+
+    # P205-STEP4: 유니버스 모드 선택
+    universe_mode = st.radio(
+        "유니버스 모드",
+        ["fixed_current", "expanded_candidates"],
+        index=0,
+        key="universe_mode_radio",
+        horizontal=True,
+    )
+    if universe_mode == "expanded_candidates":
+        from app.tuning.universe_config import get_universe_list
+
+        exp_list = get_universe_list("expanded_candidates")
+        st.caption(f"확장 후보군: {len(exp_list)}종목")
+
     colA, colB = st.columns(2)
 
     with colA:
@@ -88,6 +117,8 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
             "- **결과 리포트**: 2번 섹션에서 확인 가능\n- **소요 시간**: 약 1~3분"
         )
         if st.button("▶️ Run Full Backtest", use_container_width=True):
+            # SSOT에 universe_mode 반영
+            _update_ssot_universe_mode(universe_mode)
             with st.spinner("백테스트 실행 중... (엔진 로그를 확인하세요)"):
                 try:
                     from app.run_backtest import run_cli_backtest
@@ -117,6 +148,8 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
             "Trials 수", min_value=1, max_value=500, value=20, key="tune_trials_input"
         )
         if st.button("▶️ Run Tune", use_container_width=True):
+            # SSOT에 universe_mode 반영
+            _update_ssot_universe_mode(universe_mode)
             with st.spinner(
                 f"Optuna 튜닝 중 (mode={tune_mode}, trials={tune_trials})..."
             ):

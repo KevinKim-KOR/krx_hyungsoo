@@ -405,6 +405,8 @@ def run_cli_tune(
         worst_segment=objective_payload.get("worst_segment", "N/A"),
         overfit_penalty=_to_float(objective_payload.get("overfit_penalty")),
         top_rows=trials_top20,
+        universe_mode=params.get("universe_mode", "fixed_current"),
+        universe_size=len(universe),
     )
 
     validation_paths = {
@@ -516,6 +518,8 @@ def run_cli_tune(
             "start_date": str(start),
             "end_date": str(end),
             "universe": universe,
+            "universe_mode": params.get("universe_mode", "fixed_current"),
+            "universe_size": len(universe),
             "n_trials_session": n_trials,
             "completed_trials_session": len(completed_trials),
             "pruned_trials_session": len(study.trials) - len(completed_trials),

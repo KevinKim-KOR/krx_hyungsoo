@@ -52,6 +52,11 @@ def apply_tune_best_params_to_ssot(best_params):
     target_params["position_limits"]["max_positions"] = int(
         best_params["max_positions"]
     )
+    # P205-STEP4: universe_mode도 함께 반영
+    tune_universe_mode = best_params.get("universe_mode")
+    if tune_universe_mode:
+        params_data["universe_mode"] = tune_universe_mode
+
     params_data["asof"] = datetime.now(KST).isoformat()
     save_params(params_data)
     return params_data
