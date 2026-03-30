@@ -1,0 +1,465 @@
+{
+  "asof": "2026-03-30T23:37:01+09:00",
+  "scanner_mode": "dynamic_etf_market",
+  "scanner_version": "v1",
+  "candidate_pool_source": "krx_etf_list",
+  "candidate_pool_size": 1077,
+  "pre_filter_passed": 173,
+  "hard_exclusion_removed": 165,
+  "scoring_eligible": 173,
+  "eligible_tickers": [
+    "0007F0",
+    "0023A0",
+    "0025N0",
+    "0040Y0",
+    "0043B0",
+    "0046A0",
+    "0048J0",
+    "0052D0",
+    "0053L0",
+    "0060H0",
+    "0072R0",
+    "0080G0",
+    "0091P0",
+    "0098F0",
+    "0105E0",
+    "0117V0",
+    "0127P0",
+    "0131V0",
+    "0144L0",
+    "0148J0",
+    "0162Y0",
+    "0162Z0",
+    "0163Y0",
+    "069500",
+    "069660",
+    "091160",
+    "091170",
+    "091180",
+    "091230",
+    "102110",
+    "102780",
+    "102970",
+    "105190",
+    "114260",
+    "132030",
+    "133690",
+    "138540",
+    "139230",
+    "139260",
+    "144600",
+    "148020",
+    "148070",
+    "152100",
+    "157500",
+    "161510",
+    "214980",
+    "226490",
+    "228790",
+    "229200",
+    "232080",
+    "237350",
+    "241180",
+    "251350",
+    "251600",
+    "270810",
+    "273130",
+    "277630",
+    "278530",
+    "278540",
+    "279530",
+    "284430",
+    "290130",
+    "292150",
+    "293180",
+    "294400",
+    "295040",
+    "302450",
+    "305540",
+    "305720",
+    "307520",
+    "314250",
+    "315930",
+    "315960",
+    "329200",
+    "329750",
+    "360200",
+    "360750",
+    "361580",
+    "364980",
+    "367380",
+    "368590",
+    "371160",
+    "371460",
+    "379780",
+    "379800",
+    "379810",
+    "381170",
+    "381180",
+    "385560",
+    "390390",
+    "395160",
+    "395270",
+    "396500",
+    "402970",
+    "411060",
+    "421320",
+    "426030",
+    "433500",
+    "434060",
+    "434730",
+    "435420",
+    "438080",
+    "438100",
+    "441640",
+    "441800",
+    "442320",
+    "442580",
+    "444200",
+    "445290",
+    "446720",
+    "446770",
+    "447770",
+    "448290",
+    "448330",
+    "449180",
+    "449190",
+    "449450",
+    "453810",
+    "453850",
+    "453870",
+    "455850",
+    "455890",
+    "456600",
+    "457480",
+    "458730",
+    "458760",
+    "461490",
+    "462010",
+    "462900",
+    "463050",
+    "463250",
+    "465580",
+    "466920",
+    "466940",
+    "466950",
+    "469070",
+    "469150",
+    "469830",
+    "471990",
+    "472150",
+    "472170",
+    "473290",
+    "474220",
+    "475080",
+    "475720",
+    "476550",
+    "476760",
+    "476800",
+    "477050",
+    "478150",
+    "479080",
+    "482730",
+    "483280",
+    "484790",
+    "484880",
+    "486290",
+    "487230",
+    "487240",
+    "488770",
+    "489250",
+    "490490",
+    "490590",
+    "491010",
+    "491620",
+    "494300",
+    "494670",
+    "494890",
+    "495050",
+    "495850",
+    "496080",
+    "497570",
+    "498400",
+    "498410"
+  ],
+  "excluded_tickers_with_reasons": [
+    {
+      "ticker": "459580",
+      "name": "KODEX CD금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "122630",
+      "name": "KODEX 레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "357870",
+      "name": "TIGER CD금리투자KIS(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "423160",
+      "name": "KODEX KOFR금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "233740",
+      "name": "KODEX 코스닥150레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "481050",
+      "name": "KODEX CD1년금리플러스액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "449170",
+      "name": "TIGER KOFR금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "475630",
+      "name": "TIGER CD1년금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "477080",
+      "name": "RISE CD금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "252670",
+      "name": "KODEX 200선물인버스2X",
+      "reason": "is_inverse"
+    },
+    {
+      "ticker": "488080",
+      "name": "TIGER 반도체TOP10레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "114800",
+      "name": "KODEX 인버스",
+      "reason": "is_inverse"
+    },
+    {
+      "ticker": "494310",
+      "name": "KODEX 반도체레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "481060",
+      "name": "KODEX 미국30년국채타겟커버드콜(합성 H)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "479520",
+      "name": "RISE KOFR금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "462330",
+      "name": "KODEX 2차전지산업레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "456610",
+      "name": "TIGER 미국달러SOFR금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "455030",
+      "name": "KODEX 미국달러SOFR금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "458250",
+      "name": "TIGER 미국30년국채스트립액티브(합성 H)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "499660",
+      "name": "TIGER CD금리플러스액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "473330",
+      "name": "SOL 미국30년국채커버드콜(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "456880",
+      "name": "ACE 미국달러SOFR금리(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "423920",
+      "name": "TIGER 미국필라델피아반도체레버리지(합성)",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "441680",
+      "name": "TIGER 미국나스닥100커버드콜(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "472870",
+      "name": "RISE 미국30년국채엔화노출(합성 H)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "245710",
+      "name": "ACE 베트남VN30(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "394670",
+      "name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "233160",
+      "name": "TIGER 코스닥150 레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "418660",
+      "name": "TIGER 미국나스닥100레버리지(합성)",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "261260",
+      "name": "KODEX 미국달러선물인버스2X",
+      "reason": "is_inverse"
+    },
+    {
+      "ticker": "491610",
+      "name": "1Q CD금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "123320",
+      "name": "TIGER 레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "251340",
+      "name": "KODEX 코스닥150선물인버스",
+      "reason": "is_inverse"
+    },
+    {
+      "ticker": "200250",
+      "name": "KIWOOM 인도Nifty50(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "414780",
+      "name": "TIGER 차이나과창판STAR50(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "458210",
+      "name": "KIWOOM CD금리액티브(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "409820",
+      "name": "KODEX 미국나스닥100레버리지(합성 H)",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "480020",
+      "name": "ACE 미국빅테크7+데일리타겟커버드콜(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "412570",
+      "name": "TIGER 2차전지TOP10레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "182480",
+      "name": "TIGER 미국MSCI리츠(합성 H)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "267770",
+      "name": "TIGER 200선물레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "480030",
+      "name": "ACE 미국500데일리타겟커버드콜(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "0080Y0",
+      "name": "SOL 조선TOP3플러스레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "278240",
+      "name": "RISE 코스닥150선물레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "271050",
+      "name": "KODEX WTI원유선물인버스(H)",
+      "reason": "is_inverse"
+    },
+    {
+      "ticker": "204480",
+      "name": "TIGER 차이나CSI300레버리지(합성)",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "243880",
+      "name": "TIGER 200IT레버리지",
+      "reason": "is_leveraged"
+    },
+    {
+      "ticker": "295020",
+      "name": "RISE 국채선물10년인버스",
+      "reason": "is_inverse"
+    },
+    {
+      "ticker": "480040",
+      "name": "ACE 미국반도체데일리타겟커버드콜(합성)",
+      "reason": "is_synthetic"
+    },
+    {
+      "ticker": "465610",
+      "name": "ACE 미국빅테크TOP7 Plus레버리지(합성)",
+      "reason": "is_leveraged"
+    }
+  ],
+  "feature_weights_used": {
+    "price_momentum_3m": 0.3,
+    "price_momentum_6m": 0.2,
+    "volatility_20d": 0.15,
+    "liquidity_20d": 0.15,
+    "turnover_rate": 0.1,
+    "drawdown_from_high": 0.1
+  },
+  "disabled_features": [
+    "news_sentiment",
+    "fear_index",
+    "market_breadth",
+    "macro_regime"
+  ],
+  "snapshot_id": "snap_20260330_233701_16c319be",
+  "snapshot_sha256": "16c319be7675a90051fac042ac40dbe02ac6c6691cdd44d67da62d5683141239",
+  "previous_snapshot_exists": true,
+  "previous_snapshot_id": "snap_20260330_231608_717d30eb",
+  "overlap_ratio": 0.865,
+  "new_entries_count": 0,
+  "removed_entries_count": 27,
+  "min_overlap_ratio": 0.6,
+  "max_new_entries_per_refresh": 5,
+  "refresh_frequency": "weekly",
+  "churn_check_status": "pass",
+  "exclude_inverse": true,
+  "exclude_leveraged": true,
+  "exclude_synthetic": true
+}

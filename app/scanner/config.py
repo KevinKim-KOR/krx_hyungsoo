@@ -4,6 +4,7 @@ app/scanner/config.py — 스캐너 설정 (P205-STEP5B)
 
 V1 확정 정책 및 Feature Registry 정의.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
