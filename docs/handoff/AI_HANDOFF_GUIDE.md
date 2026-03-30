@@ -63,6 +63,8 @@
 | P205-STEP2 | 감도 보정 (두 축 모두 LOW_SENSITIVITY, 기존 범위 유지) |
 | P205-STEP3 | Backtest 5축 메타 가드 + 승격 판정 정합성 |
 | P205-STEP4 | 유니버스 확장 후보군 도입 (fixed_current + expanded_candidates) |
+| P205-STEP5A | 다이나믹 유니버스 스캐너 아키텍처 설계 (3계층 모델, Feature Registry) |
+| P205-STEP5B | `dynamic_etf_market` 후보군 생성 및 V1 Feature 엔진 구현 (P205-STEP5B) |
 
 ### P205-STEP4 잔여 이슈 (Codex 리뷰 기준)
 - 자동 적용 버튼 universe_mode 복사: **코드 수정 완료, 재실행 필요**
@@ -98,6 +100,12 @@ app/
     promotion_verdict_core.py — 승격 판정 순수 로직
     sensitivity_scan.py — 감도 스캔
   ops_summary/ — ops summary 패키지
+  scanner/
+    config.py — 스캐너 대상 풀, Feature Registry 및 Churn 룰
+    candidate_pool.py — ETF 1차 필터 풀 생성
+    feature_provider.py — 지표 계산(Registry 기반) 코어
+    snapshot.py — 결정식(deterministic) 스냅샷 생성 / Churn Metrics
+    run_scanner.py — 실행 진입점
   utils/param_loader.py — SSOT 파라미터 로더
 ```
 

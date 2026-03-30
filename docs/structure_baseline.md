@@ -38,6 +38,7 @@ asof: 2026-03-28
 | `app/run_evidence_health_check.py` | `python -m app.run_evidence_health_check` | 증빙 헬스체크 |
 | `app/run_git_transport.py` | `python -m app.run_git_transport` | Git 전송 |
 | `app/run_ticket_reaper.py` | `python -m app.run_ticket_reaper` | 티켓 정리 |
+| `app/scanner/run_scanner.py` | `python -m app.scanner.run_scanner` | 다이나믹 유니버스 스캐너 |
 
 ## 비활성 코드 (S0에서 삭제 완료)
 
@@ -85,6 +86,13 @@ asof: 2026-03-28
 - `paths.py` — 경로 상수, 환경변수, severity 맵
 - `helpers.py` — 유틸리티 (sanitize, safe_load, tickets)
 - `risk_aggregator.py` — 리스크 계산, 수동 루프 스테이지 결정
+
+### app/scanner/ (P205-STEP5B)
+- `config.py` — V1/V2 Feature Registry 슬롯 정책 및 Churn 설정값
+- `candidate_pool.py` — KRX ETF 시장 필터풀 (인버스/레버리지 배제)
+- `feature_provider.py` — Registry 구조 기반 Feature 계산 함수 맵
+- `snapshot.py` — Identity (SHA-256) 생성, 이전 스냅샷과 교체율 비교 계산
+- `run_scanner.py` — 스캐너 파이프라인 단독 구동 모듈
 
 ### backend/ (S5)
 - `main.py` — 앱 팩토리 + 라우터 등록만 (134줄)
