@@ -173,6 +173,19 @@ V2_DISABLED_SLOTS: List[Dict[str, Any]] = [
     },
 ]
 
+# ── Selector/Ranking 설정 (P205-STEP5C) ─────────────────
+SELECTOR_CONFIG: Dict[str, Any] = {
+    "ranking_formula": "weighted_sum",
+    "top_n": 15,
+    "tie_breaker_1": "liquidity_20d",
+    "tie_breaker_2": "ticker",
+    "min_candidates": 5,
+    "fallback_relaxation": [
+        {"field": "min_avg_volume_20d", "relaxed_value": 30000},
+        {"field": "min_listing_days", "relaxed_value": 120},
+    ],
+}
+
 ALL_FEATURES: List[Dict[str, Any]] = V1_ACTIVE_FEATURES + V2_DISABLED_SLOTS
 
 

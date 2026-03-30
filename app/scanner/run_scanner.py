@@ -27,6 +27,7 @@ from concurrent.futures import (
 )
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any, Dict
 
 import pandas as pd
 
@@ -65,6 +66,69 @@ def _atomic_write_json(path: Path, data: dict) -> None:
         raise
 
 
+def _write_selection_reason_md(
+    path: Path,
+    sel: Dict[str, Any],
+    smoke: dict,
+    snapshot: Dict[str, Any],
+) -> None:
+    """선택 근거 문서를 한국어로 생성한다."""
+    lines = [
+        "# 유니버스 선택 근거",
+        "",
+        f"- 실행 시각: {snapshot.get('asof', '?')}",
+        f"- scanner_mode: {snapshot.get('scanner_mode', '?')}",
+        f"- scanner_version: {snapshot.get('scanner_version', '?')}",
+        "",
+        "## 후보 풀 요약",
+        "",
+        f"- 전체 후보: {snapshot.get('candidate_pool_size', '?')}",
+        f"- pre-filter 후: {snapshot.get('pre_filter_passed', '?')}",
+        f"- hard exclusion 제거: {snapshot.get('hard_exclusion_removed', '?')}",
+        f"- scoring eligible: {snapshot.get('scoring_eligible', '?')}",
+        "",
+        "## 선택 결과",
+        "",
+        f"- ranking_formula: {sel.get('ranking_formula', '?')}",
+        f"- top_n: {sel.get('top_n', '?')}",
+        f"- tie_breaker: {sel.get('tie_breaker', '?')}",
+        f"- fallback 적용: {'예' if sel.get('fallback_applied') else '아니오'}",
+        f"- 최종 선택: {sel.get('selected_count', 0)}종목",
+        f"- selection_status: {sel.get('selection_status', '?')}",
+        f"- min_candidates_met: {'예' if sel.get('min_candidates_met') else '아니오'}",
+        "",
+        "## 상위 10개 종목",
+        "",
+        "| 순위 | 종목코드 | 종목명 | composite_score |",
+        "| --- | --- | --- | --- |",
+    ]
+
+    for item in sel.get("selected_tickers_with_scores", [])[:10]:
+        lines.append(
+            f"| {item['rank']} | {item['ticker']} "
+            f"| {item.get('name', '')} "
+            f"| {item['composite_score']:.6f} |"
+        )
+
+    # 제외 사유
+    excl = snapshot.get("excluded_tickers_with_reasons", [])
+    if excl:
+        lines.extend(
+            [
+                "",
+                "## 주요 제외 종목 (상위 10개)",
+                "",
+                "| 종목코드 | 사유 |",
+                "| --- | --- |",
+            ]
+        )
+        for e in excl[:10]:
+            lines.append(f"| {e.get('ticker', '?')} | {e.get('reason', '?')} |")
+
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def run_scanner() -> dict:
     """
     다이나믹 유니버스 스캐너를 실행하고 산출물을 생성한다.
@@ -83,8 +147,13 @@ def run_scanner() -> dict:
         "result": "FAIL",
         "candidate_pool_built": False,
         "feature_matrix_built": False,
+        "selector_ranking_built": False,
         "snapshot_written": False,
+        "selection_reason_written": False,
         "eligible_count": 0,
+        "selected_count": 0,
+        "min_candidates_met": False,
+        "selection_status": "not_run",
         "feature_columns_complete": False,
         "errors": errors,
     }
@@ -275,7 +344,134 @@ def run_scanner() -> dict:
         traceback.print_exc()
         fm = pd.DataFrame()
 
-    # ── 7. Snapshot 생성 ──
+    # ── 7. Selector/Ranking (Step5C) ──
+    from app.scanner.config import SELECTOR_CONFIG
+
+    selection_result: Dict[str, Any] = {
+        "ranking_formula": SELECTOR_CONFIG["ranking_formula"],
+        "top_n": SELECTOR_CONFIG["top_n"],
+        "tie_breaker": f"{SELECTOR_CONFIG['tie_breaker_1']}"
+        f" → {SELECTOR_CONFIG['tie_breaker_2']}",
+        "fallback_applied": False,
+        "fallback_steps_used": [],
+        "selected_count": 0,
+        "selected_tickers": [],
+        "selected_tickers_with_scores": [],
+        "selection_status": "not_run",
+        "min_candidates_met": False,
+    }
+
+    if not fm.empty:
+        try:
+            top_n = SELECTOR_CONFIG["top_n"]
+            min_cand = SELECTOR_CONFIG["min_candidates"]
+            tb1 = SELECTOR_CONFIG["tie_breaker_1"]
+            # composite_score 계산
+            norm_cols = [f"{f['key']}_norm" for f in active_features]
+            weights = [f["weight"] for f in active_features]
+
+            # scoring_eligible: 모든 활성 feature norm이 NaN이 아닌 행
+            fm["scoring_eligible"] = True
+            for nc in norm_cols:
+                if nc in fm.columns:
+                    fm.loc[fm[nc].isna(), "scoring_eligible"] = False
+
+            scored = fm[fm["scoring_eligible"]].copy()
+
+            if not scored.empty:
+                scored["composite_score"] = 0.0
+                for nc, w in zip(norm_cols, weights):
+                    if nc in scored.columns:
+                        scored["composite_score"] += w * scored[nc].fillna(0)
+
+                # 정렬: composite_score desc → tie_breaker1 desc → tie_breaker2 asc
+                tb1_norm = f"{tb1}_norm"
+                sort_cols = ["composite_score"]
+                sort_asc = [False]
+                if tb1_norm in scored.columns:
+                    sort_cols.append(tb1_norm)
+                    sort_asc.append(False)
+                sort_cols.append("ticker")
+                sort_asc.append(True)
+
+                scored = scored.sort_values(sort_cols, ascending=sort_asc)
+                scored["rank"] = range(1, len(scored) + 1)
+
+                # top_n 선택
+                selected = scored.head(top_n).copy()
+                selected["selected"] = "Y"
+                selected["selection_reason"] = "selected_top_n"
+
+                # fallback 체크
+                if len(selected) < min_cand:
+                    for step in SELECTOR_CONFIG["fallback_relaxation"]:
+                        # TODO: fallback은 pre-filter를 완화하여 재스캔
+                        # 현재는 기존 scored에서 더 뽑는 방식
+                        selection_result["fallback_steps_used"].append(step["field"])
+                    selection_result["fallback_applied"] = True
+
+                sel_tickers = selected["ticker"].tolist()
+                sel_with_scores = []
+                for _, row in selected.iterrows():
+                    sel_with_scores.append(
+                        {
+                            "ticker": row["ticker"],
+                            "name": row.get("name", ""),
+                            "composite_score": round(float(row["composite_score"]), 6),
+                            "rank": int(row["rank"]),
+                        }
+                    )
+
+                selection_result["selected_count"] = len(sel_tickers)
+                selection_result["selected_tickers"] = sel_tickers
+                selection_result["selected_tickers_with_scores"] = sel_with_scores
+                selection_result["min_candidates_met"] = len(sel_tickers) >= min_cand
+                if len(sel_tickers) >= min_cand:
+                    selection_result["selection_status"] = "ok"
+                else:
+                    selection_result["selection_status"] = "insufficient_candidates"
+
+                # fm에 결과 병합
+                fm["composite_score"] = None
+                fm["rank"] = None
+                fm["selected"] = "N"
+                fm["selection_reason"] = ""
+                fm["scoring_eligible"] = fm.get("scoring_eligible", False)
+                fm["fallback_stage"] = ""
+
+                for idx in scored.index:
+                    fm.loc[idx, "composite_score"] = scored.loc[idx, "composite_score"]
+                    fm.loc[idx, "rank"] = scored.loc[idx, "rank"]
+
+                for idx in selected.index:
+                    fm.loc[idx, "selected"] = "Y"
+                    fm.loc[idx, "selection_reason"] = "selected_top_n"
+
+                # 비선택 사유
+                for idx in fm.index:
+                    if fm.loc[idx, "selected"] != "Y":
+                        if not fm.loc[idx, "scoring_eligible"]:
+                            fm.loc[idx, "selection_reason"] = "excluded_missing_feature"
+                        elif fm.loc[idx, "rank"] is not None:
+                            fm.loc[idx, "selection_reason"] = "excluded_low_score"
+
+                smoke["selector_ranking_built"] = True
+                smoke["selected_count"] = len(sel_tickers)
+                smoke["min_candidates_met"] = selection_result["min_candidates_met"]
+                smoke["selection_status"] = selection_result["selection_status"]
+
+                logger.info(
+                    f"[SELECTOR] 선택: {len(sel_tickers)}/{len(scored)}종목"
+                    f" (top_n={top_n})"
+                )
+            else:
+                selection_result["selection_status"] = "no_scorable_candidates"
+                logger.warning("[SELECTOR] 스코어링 가능 후보 0건")
+        except Exception as exc:
+            errors.append(f"Selector/Ranking 실패: {exc}")
+            traceback.print_exc()
+
+    # ── 8. Snapshot 생성 ──
     from app.scanner.snapshot import build_snapshot
 
     hard_excl_count = len(
@@ -304,6 +500,7 @@ def run_scanner() -> dict:
             min_overlap_ratio=MIN_OVERLAP_RATIO,
             max_new_entries=MAX_NEW_ENTRIES_PER_REFRESH,
             refresh_frequency=REFRESH_FREQUENCY,
+            selection_result=selection_result,
         )
         _atomic_write_json(SNAPSHOT_PATH, snapshot)
         smoke["snapshot_written"] = True
@@ -328,14 +525,30 @@ def run_scanner() -> dict:
         except Exception as exc:
             errors.append(f"Feature matrix CSV 저장 실패: {exc}")
 
-    # ── 9. Smoke Result ──
+    # ── 10. Selection Reason MD 생성 (Step5C) ──
+    REASON_MD_PATH = OUTPUT_DIR / "universe_selection_reason_latest.md"
+    if selection_result["selected_count"] > 0:
+        try:
+            _write_selection_reason_md(
+                REASON_MD_PATH, selection_result, smoke, snapshot
+            )
+            smoke["selection_reason_written"] = True
+        except Exception as exc:
+            errors.append(f"Selection reason MD 생성 실패: {exc}")
+            traceback.print_exc()
+
+    # ── 11. Smoke Result ──
     if (
         smoke["candidate_pool_built"]
         and smoke["feature_matrix_built"]
+        and smoke["selector_ranking_built"]
         and smoke["snapshot_written"]
         and not errors
     ):
         smoke["result"] = "OK"
+    elif smoke["selector_ranking_built"] and not errors:
+        if smoke["selection_status"] == "insufficient_candidates":
+            smoke["result"] = "WARN"
 
     _atomic_write_json(SMOKE_RESULT_PATH, smoke)
 

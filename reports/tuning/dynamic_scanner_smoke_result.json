@@ -2,8 +2,13 @@
   "result": "OK",
   "candidate_pool_built": true,
   "feature_matrix_built": true,
+  "selector_ranking_built": true,
   "snapshot_written": true,
+  "selection_reason_written": true,
   "eligible_count": 173,
+  "selected_count": 15,
+  "min_candidates_met": true,
+  "selection_status": "ok",
   "feature_columns_complete": true,
   "errors": []
 }

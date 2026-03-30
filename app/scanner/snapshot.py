@@ -146,6 +146,8 @@ def build_snapshot(
     min_overlap_ratio: float = 0.60,
     max_new_entries: int = 5,
     refresh_frequency: str = "weekly",
+    # Step5C selection 결과
+    selection_result: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     완전한 snapshot 딕셔너리를 생성한다.
@@ -157,6 +159,10 @@ def build_snapshot(
     now = datetime.now(KST)
 
     pool_source = config.get("source", "krx_etf_list")
+
+    # selection 결과를 hash에 포함 (Step5C)
+    sel = selection_result or {}
+    selected_tickers = sorted(sel.get("selected_tickers", []))
 
     snapshot_sha = compute_snapshot_sha256(
         scanner_mode=scanner_mode,
@@ -173,7 +179,7 @@ def build_snapshot(
             "exclude_leveraged": config.get("exclude_leveraged", True),
             "exclude_synthetic": config.get("exclude_synthetic", True),
         },
-        eligible_tickers=eligible_tickers,
+        eligible_tickers=(selected_tickers if selected_tickers else eligible_tickers),
     )
 
     snapshot_id = f"snap_{now.strftime('%Y%m%d_%H%M%S')}_" f"{snapshot_sha[:8]}"
@@ -216,4 +222,15 @@ def build_snapshot(
         "exclude_inverse": config.get("exclude_inverse", True),
         "exclude_leveraged": config.get("exclude_leveraged", True),
         "exclude_synthetic": config.get("exclude_synthetic", True),
+        # Step5C: Selection 결과
+        "ranking_formula": sel.get("ranking_formula", "weighted_sum"),
+        "top_n": sel.get("top_n"),
+        "tie_breaker": sel.get("tie_breaker"),
+        "fallback_applied": sel.get("fallback_applied", False),
+        "fallback_steps_used": sel.get("fallback_steps_used", []),
+        "selected_count": sel.get("selected_count", 0),
+        "selected_tickers": selected_tickers,
+        "selected_tickers_with_scores": sel.get("selected_tickers_with_scores", []),
+        "selection_status": sel.get("selection_status", "not_run"),
+        "min_candidates_met": sel.get("min_candidates_met"),
     }
