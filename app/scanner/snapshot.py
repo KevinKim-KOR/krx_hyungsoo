@@ -201,7 +201,7 @@ def build_snapshot(
         "candidate_pool_size": candidate_pool_size,
         "pre_filter_passed": pre_filter_passed,
         "hard_exclusion_removed": hard_exclusion_removed,
-        "scoring_eligible": len(eligible_tickers),
+        "scoring_eligible": sel.get("scoring_eligible_count", len(eligible_tickers)),
         "eligible_tickers": sorted(eligible_tickers),
         "excluded_tickers_with_reasons": (excluded_with_reasons[:50]),
         "feature_weights_used": feature_weights,

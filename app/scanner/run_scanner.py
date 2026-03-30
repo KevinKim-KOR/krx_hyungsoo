@@ -99,15 +99,17 @@ def _write_selection_reason_md(
         "",
         "## 상위 10개 종목",
         "",
-        "| 순위 | 종목코드 | 종목명 | composite_score |",
-        "| --- | --- | --- | --- |",
+        "| 순위 | 종목코드 | 종목명 | composite_score | 주요 기여 feature |",
+        "| --- | --- | --- | --- | --- |",
     ]
 
     for item in sel.get("selected_tickers_with_scores", [])[:10]:
+        top_feats = item.get("top_features", "")
         lines.append(
             f"| {item['rank']} | {item['ticker']} "
             f"| {item.get('name', '')} "
-            f"| {item['composite_score']:.6f} |"
+            f"| {item['composite_score']:.6f} "
+            f"| {top_feats} |"
         )
 
     # 제외 사유
@@ -377,6 +379,7 @@ def run_scanner() -> dict:
                     fm.loc[fm[nc].isna(), "scoring_eligible"] = False
 
             scored = fm[fm["scoring_eligible"]].copy()
+            selection_result["scoring_eligible_count"] = len(scored)
 
             if not scored.empty:
                 scored["composite_score"] = 0.0
@@ -402,23 +405,106 @@ def run_scanner() -> dict:
                 selected["selected"] = "Y"
                 selected["selection_reason"] = "selected_top_n"
 
-                # fallback 체크
+                # fallback: 선택 수가 min_candidates 미만이면 완화
                 if len(selected) < min_cand:
-                    for step in SELECTOR_CONFIG["fallback_relaxation"]:
-                        # TODO: fallback은 pre-filter를 완화하여 재스캔
-                        # 현재는 기존 scored에서 더 뽑는 방식
-                        selection_result["fallback_steps_used"].append(step["field"])
+                    fallback_steps = SELECTOR_CONFIG["fallback_relaxation"]
+                    # pre-filter에서 제외된 종목 중 완화 기준 적용
+                    vol_excluded = [
+                        e for e in excluded if "avg_volume_20d" in e.get("reason", "")
+                    ]
+                    listing_excluded = [
+                        e for e in excluded if "listing_days" in e.get("reason", "")
+                    ]
+
+                    for step_cfg in fallback_steps:
+                        if len(selected) >= min_cand:
+                            break
+                        field = step_cfg["field"]
+                        relaxed = step_cfg["relaxed_value"]
+                        selection_result["fallback_steps_used"].append(
+                            f"{field}→{relaxed}"
+                        )
+
+                        # 완화 대상 종목 찾기
+                        if field == "min_avg_volume_20d":
+                            for e in vol_excluded:
+                                t = e["ticker"]
+                                if t in ohlcv_cache:
+                                    v = ohlcv_cache[t]["volume"].tail(20).mean()
+                                    if v >= relaxed:
+                                        eligible_filtered.append(t)
+                        elif field == "min_listing_days":
+                            for e in listing_excluded:
+                                eligible_filtered.append(e["ticker"])
+
+                        # 완화 후보로 feature 재계산
+                        if len(eligible_filtered) > len(fm):
+                            new_tickers = [
+                                t
+                                for t in eligible_filtered
+                                if t not in fm["ticker"].values
+                            ]
+                            if new_tickers:
+                                from app.scanner.feature_provider import (
+                                    compute_feature_matrix,
+                                )
+
+                                fm_extra = compute_feature_matrix(
+                                    tickers=new_tickers,
+                                    ohlcv_cache=ohlcv_cache,
+                                    active_features=active_features,
+                                    ticker_name_map=ticker_name_map,
+                                )
+                                if not fm_extra.empty:
+                                    fm = pd.concat(
+                                        [fm, fm_extra],
+                                        ignore_index=True,
+                                    )
+                                    fm["scoring_eligible"] = True
+                                    for nc in norm_cols:
+                                        if nc in fm.columns:
+                                            fm.loc[
+                                                fm[nc].isna(),
+                                                "scoring_eligible",
+                                            ] = False
+                                    scored = fm[fm["scoring_eligible"]].copy()
+                                    scored["composite_score"] = 0.0
+                                    for nc, w in zip(norm_cols, weights):
+                                        if nc in scored.columns:
+                                            scored["composite_score"] += w * scored[
+                                                nc
+                                            ].fillna(0)
+                                    scored = scored.sort_values(
+                                        sort_cols,
+                                        ascending=sort_asc,
+                                    )
+                                    scored["rank"] = range(1, len(scored) + 1)
+                                    selected = scored.head(top_n).copy()
+                                    selected["selected"] = "Y"
+                                    selected["selection_reason"] = (
+                                        "selected_after_fallback"
+                                    )
+
                     selection_result["fallback_applied"] = True
 
                 sel_tickers = selected["ticker"].tolist()
                 sel_with_scores = []
                 for _, row in selected.iterrows():
+                    # 주요 기여 feature 상위 3개
+                    contrib = []
+                    for nc, w, feat in zip(norm_cols, weights, active_features):
+                        if nc in row.index and pd.notna(row[nc]):
+                            contrib.append((feat["key"], w * float(row[nc])))
+                    contrib.sort(key=lambda x: x[1], reverse=True)
+                    top_feat_str = ", ".join(f"{k}({v:.3f})" for k, v in contrib[:3])
+
                     sel_with_scores.append(
                         {
                             "ticker": row["ticker"],
                             "name": row.get("name", ""),
                             "composite_score": round(float(row["composite_score"]), 6),
                             "rank": int(row["rank"]),
+                            "top_features": top_feat_str,
                         }
                     )
 
