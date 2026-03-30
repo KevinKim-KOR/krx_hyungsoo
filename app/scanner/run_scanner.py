@@ -406,9 +406,9 @@ def run_scanner() -> dict:
                 selected["selection_reason"] = "selected_top_n"
 
                 # fallback: 선택 수가 min_candidates 미만이면 완화
+                fallback_stage_idx = 0
                 if len(selected) < min_cand:
                     fallback_steps = SELECTOR_CONFIG["fallback_relaxation"]
-                    # pre-filter에서 제외된 종목 중 완화 기준 적용
                     vol_excluded = [
                         e for e in excluded if "avg_volume_20d" in e.get("reason", "")
                     ]
@@ -416,74 +416,66 @@ def run_scanner() -> dict:
                         e for e in excluded if "listing_days" in e.get("reason", "")
                     ]
 
+                    from app.scanner.feature_provider import (
+                        compute_feature_matrix as _compute_fm,
+                    )
+
                     for step_cfg in fallback_steps:
                         if len(selected) >= min_cand:
                             break
+                        fallback_stage_idx += 1
                         field = step_cfg["field"]
                         relaxed = step_cfg["relaxed_value"]
                         selection_result["fallback_steps_used"].append(
                             f"{field}→{relaxed}"
                         )
 
-                        # 완화 대상 종목 찾기
+                        recovered = []
                         if field == "min_avg_volume_20d":
                             for e in vol_excluded:
                                 t = e["ticker"]
                                 if t in ohlcv_cache:
                                     v = ohlcv_cache[t]["volume"].tail(20).mean()
                                     if v >= relaxed:
-                                        eligible_filtered.append(t)
+                                        recovered.append(t)
                         elif field == "min_listing_days":
                             for e in listing_excluded:
-                                eligible_filtered.append(e["ticker"])
+                                t = e["ticker"]
+                                if t in ohlcv_cache:
+                                    recovered.append(t)
 
-                        # 완화 후보로 feature 재계산
-                        if len(eligible_filtered) > len(fm):
-                            new_tickers = [
-                                t
-                                for t in eligible_filtered
-                                if t not in fm["ticker"].values
-                            ]
-                            if new_tickers:
-                                from app.scanner.feature_provider import (
-                                    compute_feature_matrix,
-                                )
+                        new_tickers = [
+                            t for t in recovered if t not in fm["ticker"].values
+                        ]
+                        if not new_tickers:
+                            continue
 
-                                fm_extra = compute_feature_matrix(
-                                    tickers=new_tickers,
-                                    ohlcv_cache=ohlcv_cache,
-                                    active_features=active_features,
-                                    ticker_name_map=ticker_name_map,
-                                )
-                                if not fm_extra.empty:
-                                    fm = pd.concat(
-                                        [fm, fm_extra],
-                                        ignore_index=True,
-                                    )
-                                    fm["scoring_eligible"] = True
-                                    for nc in norm_cols:
-                                        if nc in fm.columns:
-                                            fm.loc[
-                                                fm[nc].isna(),
-                                                "scoring_eligible",
-                                            ] = False
-                                    scored = fm[fm["scoring_eligible"]].copy()
-                                    scored["composite_score"] = 0.0
-                                    for nc, w in zip(norm_cols, weights):
-                                        if nc in scored.columns:
-                                            scored["composite_score"] += w * scored[
-                                                nc
-                                            ].fillna(0)
-                                    scored = scored.sort_values(
-                                        sort_cols,
-                                        ascending=sort_asc,
-                                    )
-                                    scored["rank"] = range(1, len(scored) + 1)
-                                    selected = scored.head(top_n).copy()
-                                    selected["selected"] = "Y"
-                                    selected["selection_reason"] = (
-                                        "selected_after_fallback"
-                                    )
+                        fm_extra = _compute_fm(
+                            tickers=new_tickers,
+                            ohlcv_cache=ohlcv_cache,
+                            features=active_features,
+                            ticker_name_map=ticker_name_map,
+                        )
+                        if fm_extra.empty:
+                            continue
+
+                        fm_extra["fallback_stage"] = f"stage_{fallback_stage_idx}"
+                        fm = pd.concat([fm, fm_extra], ignore_index=True)
+                        fm["scoring_eligible"] = True
+                        for nc in norm_cols:
+                            if nc in fm.columns:
+                                fm.loc[
+                                    fm[nc].isna(),
+                                    "scoring_eligible",
+                                ] = False
+                        scored = fm[fm["scoring_eligible"]].copy()
+                        scored["composite_score"] = 0.0
+                        for nc, w in zip(norm_cols, weights):
+                            if nc in scored.columns:
+                                scored["composite_score"] += w * scored[nc].fillna(0)
+                        scored = scored.sort_values(sort_cols, ascending=sort_asc)
+                        scored["rank"] = range(1, len(scored) + 1)
+                        selected = scored.head(top_n).copy()
 
                     selection_result["fallback_applied"] = True
 
@@ -518,20 +510,32 @@ def run_scanner() -> dict:
                     selection_result["selection_status"] = "insufficient_candidates"
 
                 # fm에 결과 병합
-                fm["composite_score"] = None
-                fm["rank"] = None
+                if "composite_score" not in fm.columns:
+                    fm["composite_score"] = None
+                if "rank" not in fm.columns:
+                    fm["rank"] = None
                 fm["selected"] = "N"
                 fm["selection_reason"] = ""
-                fm["scoring_eligible"] = fm.get("scoring_eligible", False)
-                fm["fallback_stage"] = ""
+                if "fallback_stage" not in fm.columns:
+                    fm["fallback_stage"] = ""
 
                 for idx in scored.index:
-                    fm.loc[idx, "composite_score"] = scored.loc[idx, "composite_score"]
-                    fm.loc[idx, "rank"] = scored.loc[idx, "rank"]
+                    if idx in fm.index:
+                        fm.loc[idx, "composite_score"] = scored.loc[
+                            idx, "composite_score"
+                        ]
+                        fm.loc[idx, "rank"] = scored.loc[idx, "rank"]
 
+                fb_applied = selection_result.get("fallback_applied", False)
                 for idx in selected.index:
-                    fm.loc[idx, "selected"] = "Y"
-                    fm.loc[idx, "selection_reason"] = "selected_top_n"
+                    if idx in fm.index:
+                        fm.loc[idx, "selected"] = "Y"
+                        # fallback 종목인지 판별
+                        fs = fm.loc[idx, "fallback_stage"]
+                        if fb_applied and fs and str(fs).startswith("stage_"):
+                            fm.loc[idx, "selection_reason"] = "selected_after_fallback"
+                        else:
+                            fm.loc[idx, "selection_reason"] = "selected_top_n"
 
                 # 비선택 사유
                 for idx in fm.index:

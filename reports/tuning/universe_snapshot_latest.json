@@ -1,5 +1,5 @@
 {
-  "asof": "2026-03-31T00:18:22+09:00",
+  "asof": "2026-03-31T00:25:51+09:00",
   "scanner_mode": "dynamic_etf_market",
   "scanner_version": "v1",
   "candidate_pool_source": "krx_etf_list",
@@ -448,10 +448,10 @@
     "market_breadth",
     "macro_regime"
   ],
-  "snapshot_id": "snap_20260331_001822_43a647a8",
+  "snapshot_id": "snap_20260331_002551_43a647a8",
   "snapshot_sha256": "43a647a8f6eba90fea9fc610edaf51f74809a6927a089fb0d0515b99bbe882b5",
   "previous_snapshot_exists": true,
-  "previous_snapshot_id": "snap_20260331_001259_43a647a8",
+  "previous_snapshot_id": "snap_20260331_001822_43a647a8",
   "overlap_ratio": 1.0,
   "new_entries_count": 0,
   "removed_entries_count": 0,

@@ -1,6 +1,6 @@
 # 유니버스 선택 근거
 
-- 실행 시각: 2026-03-31T00:18:22+09:00
+- 실행 시각: 2026-03-31T00:25:51+09:00
 - scanner_mode: dynamic_etf_market
 - scanner_version: v1
 
