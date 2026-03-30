@@ -495,6 +495,8 @@ def run_scanner() -> dict:
                         selected = scored.head(top_n).copy()
 
                     selection_result["fallback_applied"] = True
+                    # fallback 후 scoring_eligible_count 갱신
+                    selection_result["scoring_eligible_count"] = len(scored)
 
                 sel_tickers = selected["ticker"].tolist()
                 sel_with_scores = []
