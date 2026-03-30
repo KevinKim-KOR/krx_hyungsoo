@@ -245,6 +245,9 @@ def run_scanner() -> dict:
         f"(제거: {len(eligible) - len(eligible_filtered) - len(data_failed)})"
     )
 
+    # smoke eligible_count를 최종 필터 후 값으로 갱신
+    smoke["eligible_count"] = len(eligible_filtered)
+
     # ── 6. Feature Matrix 계산 ──
     from app.scanner.feature_provider import (
         compute_feature_matrix,
