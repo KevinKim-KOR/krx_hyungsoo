@@ -441,6 +441,23 @@ def run_scanner() -> dict:
                         elif field == "min_listing_days":
                             for e in listing_excluded:
                                 t = e["ticker"]
+                                if t not in ohlcv_cache:
+                                    # OHLCV 미로드 종목 → 즉시 로드
+                                    try:
+                                        df = _fetch_one(t)
+                                        if df is not None and not df.empty:
+                                            if isinstance(
+                                                df.index,
+                                                pd.MultiIndex,
+                                            ):
+                                                df = df.xs(
+                                                    t,
+                                                    level="code",
+                                                    drop_level=True,
+                                                )
+                                            ohlcv_cache[t] = df
+                                    except Exception:
+                                        pass
                                 if t in ohlcv_cache:
                                     recovered.append(t)
 
