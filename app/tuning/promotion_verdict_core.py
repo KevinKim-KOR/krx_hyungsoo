@@ -306,13 +306,21 @@ def compute_promotion_verdict(
         tune_dynamic = tune_meta.get("dynamic_execution", False)
 
         if bt_um == "dynamic_etf_market":
+            # schedule 파일 존재 + snapshot sequence 검증
+            bt_sched = bt_meta.get("dynamic_schedule_path")
+            bt_first = bt_meta.get("first_rebalance_snapshot_id")
+            schedule_valid = bool(bt_sched) and bool(bt_first)
+
             used_universe_match = (
                 mode_match
                 and ssot_mode_match
                 and bt_dynamic
                 and tune_dynamic
                 and snap_match
+                and schedule_valid
             )
+            if not schedule_valid:
+                reasons.append("Backtest dynamic schedule 증거가 " "불완전합니다.")
         else:
             used_universe_match = (
                 mode_match

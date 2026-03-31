@@ -331,7 +331,24 @@ def build_dynamic_schedule(
                 row["selected_tickers"] = "|".join(e["selected_tickers"])
                 writer.writerow(row)
 
-    logger.info(f"[SCHEDULE] 완료: {len(entries)}개 rebalance snapshot")
+    # 실행별 고유 스냅샷 저장 (덮어쓰기 방지)
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from datetime import timezone as _tz
+
+    _kst = _tz(_td(hours=9))
+    _ts = _dt.now(_kst).strftime("%Y%m%d_%H%M%S")
+    snap_json = SCHEDULE_JSON.parent / f"dynamic_universe_schedule_{_ts}.json"
+    snap_json.write_text(
+        json.dumps(schedule, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    schedule["schedule_snapshot_path"] = str(snap_json.relative_to(PROJECT_ROOT))
+
+    logger.info(
+        f"[SCHEDULE] 완료: {len(entries)}개 rebalance snapshot"
+        f" (snapshot: {snap_json.name})"
+    )
 
     return schedule
 

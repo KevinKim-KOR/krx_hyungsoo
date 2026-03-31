@@ -26,7 +26,7 @@ import tempfile
 import traceback
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: F401
 
 import pandas as pd
 
@@ -60,7 +60,7 @@ def load_strategy_bundle() -> Dict[str, Any]:
         return json.load(f)
 
 
-from app.utils.param_loader import load_params_strict
+from app.utils.param_loader import load_params_strict  # noqa: E402
 
 
 # ─── 2. Data Loading ──────────────────────────────────────────────────────
@@ -150,8 +150,9 @@ def run_backtest(
                 "schedule_precalculated": True,
                 "schedule_cache_hit": schedule.get("cache_hit", False),
                 "schedule_cache_key": schedule.get("cache_key"),
-                "dynamic_schedule_path": str(
-                    Path("reports/tuning") / "dynamic_universe_schedule_latest.json"
+                "dynamic_schedule_path": schedule.get(
+                    "schedule_snapshot_path",
+                    "reports/tuning/dynamic_universe_schedule_latest.json",
                 ),
             }
             if schedule.get("entries"):
@@ -288,8 +289,6 @@ def format_result(
     mdd_reason = None
 
     if len(equity_curve) >= 2:
-        import numpy as np
-
         navs = pd.Series([e["equity"] for e in equity_curve])
 
         # MDD

@@ -60,17 +60,22 @@ TUNING_SUMMARY_MD = PROJECT_ROOT / "reports" / "tuning" / "tuning_summary.md"
 PROMOTION_VERDICT_JSON = PROJECT_ROOT / "reports" / "tuning" / "promotion_verdict.json"
 PROMOTION_VERDICT_MD = PROJECT_ROOT / "reports" / "tuning" / "promotion_verdict.md"
 
-from app.utils.param_loader import load_params_strict
-from app.tuning.results_io import atomic_write_result, atomic_write_text
-from app.tuning.exports import (
+from app.utils.param_loader import load_params_strict  # noqa: E402
+from app.tuning.results_io import (  # noqa: E402
+    atomic_write_result,
+    atomic_write_text,
+)
+from app.tuning.exports import (  # noqa: E402
     _to_float,
     _build_top_trial_rows,
     _rows_to_csv,
     _build_best_segment_rows,
     _build_validation_pack_metadata,
 )
-from app.tuning.summary_render import _build_validation_summary_md
-from app.tuning.promotion_gate import (
+from app.tuning.summary_render import (  # noqa: E402
+    _build_validation_summary_md,
+)
+from app.tuning.promotion_gate import (  # noqa: E402
     _load_json_or_none,
     refresh_promotion_verdict,
 )
@@ -237,8 +242,9 @@ def run_cli_tune(
                 "schedule_precalculated": True,
                 "schedule_cache_hit": schedule.get("cache_hit", False),
                 "schedule_cache_key": schedule.get("cache_key"),
-                "dynamic_schedule_path": (
-                    "reports/tuning/" "dynamic_universe_schedule_latest.json"
+                "dynamic_schedule_path": schedule.get(
+                    "schedule_snapshot_path",
+                    "reports/tuning/" "dynamic_universe_schedule_latest.json",
                 ),
             }
             if schedule.get("entries"):
@@ -269,7 +275,8 @@ def run_cli_tune(
         now_str = datetime.now(KST).strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
         def _atomic_write_custom(filepath: Path, data: dict) -> None:
-            import os, json
+            import json
+            import os
 
             tmp_path = filepath.parent / f"{filepath.name}.tmp"
             try:
