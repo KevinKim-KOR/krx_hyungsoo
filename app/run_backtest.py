@@ -330,6 +330,8 @@ def format_result(
         "universe": params["universe"],
         "universe_mode": params.get("universe_mode", "fixed_current"),
         "universe_size": len(params["universe"]),
+        "used_universe_snapshot_id": params.get("universe_snapshot_id"),
+        "used_universe_snapshot_sha256": params.get("universe_snapshot_sha256"),
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "signal_days": metrics.get("signal_days", 0),

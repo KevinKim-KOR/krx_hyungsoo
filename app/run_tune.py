@@ -192,7 +192,10 @@ def run_cli_tune(
 
     storage_path = PROJECT_ROOT / "reports" / "tuning" / "study.sqlite3"
     storage_path.parent.mkdir(parents=True, exist_ok=True)
-    study_name = f"tune_{mode}_{universe[0] if universe else 'ALL'}_{OBJECTIVE_VERSION}"
+
+    universe_mode = params.get("universe_mode", "fixed_current")
+    SEARCH_SPACE_VERSION = "5axis_v1"
+    study_name = f"tune_{mode}_{universe_mode}_{SEARCH_SPACE_VERSION}"
 
     study = optuna.create_study(
         direction="maximize",
@@ -284,9 +287,28 @@ def run_cli_tune(
     runtime_sec = time.time() - t0
 
     # ── 5. Collect results ──
-    completed_trials = [
+    raw_completed_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
     ]
+
+    REQUIRED_AXES = {
+        "momentum_period",
+        "volatility_period",
+        "entry_threshold",
+        "stop_loss",
+        "max_positions",
+    }
+    completed_trials = []
+    legacy_filtered_count = 0
+    for t in raw_completed_trials:
+        if (
+            REQUIRED_AXES.issubset(t.params.keys())
+            and t.params.get("volatility_period") is not None
+            and t.params.get("entry_threshold") is not None
+        ):
+            completed_trials.append(t)
+        else:
+            legacy_filtered_count += 1
 
     if not completed_trials:
         logger.error("[TUNE] No completed trials! All pruned or failed.")
@@ -407,6 +429,7 @@ def run_cli_tune(
         top_rows=trials_top20,
         universe_mode=params.get("universe_mode", "fixed_current"),
         universe_size=len(universe),
+        universe_snapshot_id=params.get("universe_snapshot_id"),
     )
 
     validation_paths = {
@@ -459,6 +482,104 @@ def run_cli_tune(
         "top5_comparison": trials_top20[:5],
     }
 
+    # ── A/B Comparison Pack ──
+    tuning_dir = PROJECT_ROOT / "reports" / "tuning"
+    ab_json_path = tuning_dir / "universe_ab_summary.json"
+    ab_md_path = tuning_dir / "universe_ab_summary.md"
+
+    fixed_name = f"tune_{mode}_fixed_current_{SEARCH_SPACE_VERSION}"
+    expanded_name = f"tune_{mode}_expanded_candidates_{SEARCH_SPACE_VERSION}"
+
+    ab_data = {
+        "comparison_ready": False,
+        "conclusion": "fixed_current 와 expanded_candidates 비교 가능 상태 아님",
+    }
+    try:
+        fixed_study = optuna.load_study(
+            study_name=fixed_name, storage=f"sqlite:///{storage_path}"
+        )
+        exp_study = optuna.load_study(
+            study_name=expanded_name, storage=f"sqlite:///{storage_path}"
+        )
+
+        f_best = fixed_study.best_trial
+        e_best = exp_study.best_trial
+        if (
+            f_best
+            and e_best
+            and f_best.state == optuna.trial.TrialState.COMPLETE
+            and e_best.state == optuna.trial.TrialState.COMPLETE
+        ):
+            f_asof = (
+                f_best.datetime_complete.strftime("%Y-%m-%dT%H:%M:%S+09:00")
+                if f_best.datetime_complete
+                else "N/A"
+            )
+            e_asof = (
+                e_best.datetime_complete.strftime("%Y-%m-%dT%H:%M:%S+09:00")
+                if e_best.datetime_complete
+                else "N/A"
+            )
+
+            ab_data["comparison_ready"] = True
+            ab_data["fixed_current"] = {
+                "asof": f_asof,
+                "study_name": fixed_name,
+                "universe_size": (
+                    len(universe) if universe_mode == "fixed_current" else "N/A"
+                ),
+                "best_trial": f_best.number,
+                "best_score": round(f_best.value, 4),
+                "best_params": f_best.params,
+                "cagr_full": f_best.user_attrs.get("cagr", 0.0),
+                "mdd_full": f_best.user_attrs.get("mdd_pct", 0.0),
+                "sharpe_full": f_best.user_attrs.get("sharpe", 0.0),
+            }
+            ab_data["expanded_candidates"] = {
+                "asof": e_asof,
+                "study_name": expanded_name,
+                "universe_size": (
+                    len(universe) if universe_mode == "expanded_candidates" else "N/A"
+                ),
+                "best_trial": e_best.number,
+                "best_score": round(e_best.value, 4),
+                "best_params": e_best.params,
+                "cagr_full": e_best.user_attrs.get("cagr", 0.0),
+                "mdd_full": e_best.user_attrs.get("mdd_pct", 0.0),
+                "sharpe_full": e_best.user_attrs.get("sharpe", 0.0),
+            }
+            if e_best.value > f_best.value:
+                ab_data["conclusion"] = (
+                    "expanded_candidates 가 현재 tune 기준 점수는 높지만 Full 검증 전 승격 판단은 보류"
+                )
+            else:
+                ab_data["conclusion"] = (
+                    "fixed_current 가 expanded_candidates 보다 점수가 높거나 같습니다."
+                )
+    except Exception as e:
+        logger.warning(f"A/B summary gen skipped (not enough data): {e}")
+        pass
+
+    with open(ab_json_path, "w", encoding="utf-8") as f:
+        json.dump(ab_data, f, indent=2, ensure_ascii=False)
+
+    md = "## 📊 유니버스 모드 A/B 비교\n\n"
+    if not ab_data["comparison_ready"]:
+        md += f"**결론**: {ab_data['conclusion']}\n"
+    else:
+        md += f"**결론**: {ab_data['conclusion']}\n\n"
+        md += "| 항목 | fixed_current | expanded_candidates |\n"
+        md += "|---|---|---|\n"
+        fc = ab_data["fixed_current"]
+        ec = ab_data["expanded_candidates"]
+        md += f"| Best Score | {fc['best_score']:.4f} | {ec['best_score']:.4f} |\n"
+        md += f"| CAGR | {fc['cagr_full']:.2f}% | {ec['cagr_full']:.2f}% |\n"
+        md += f"| MDD | {fc['mdd_full']:.2f}% | {ec['mdd_full']:.2f}% |\n"
+        md += f"| Sharpe | {fc['sharpe_full']:.4f} | {ec['sharpe_full']:.4f} |\n"
+
+    with open(ab_md_path, "w", encoding="utf-8") as f:
+        f.write(md)
+
     tune_result = {
         "best_params": best_params,
         "best_score": round(best_score, 4),
@@ -497,11 +618,24 @@ def run_cli_tune(
             "asof": now_kst,
             "run_id": run_id,
             "study_name": study_name,
+            "search_space_version": SEARCH_SPACE_VERSION,
             "storage_path": str(storage_path),
             "resume_enabled": True,
             "n_trials_total": len(study.trials),
             "n_trials_complete": len(completed_trials),
             "n_trials_complete_v2": len(completed_v2_trials),
+            "legacy_filtered_count": legacy_filtered_count,
+            "ab_comparison_ready": ab_data["comparison_ready"],
+            "ab_fixed_score": (
+                ab_data.get("fixed_current", {}).get("best_score")
+                if ab_data["comparison_ready"]
+                else None
+            ),
+            "ab_expanded_score": (
+                ab_data.get("expanded_candidates", {}).get("best_score")
+                if ab_data["comparison_ready"]
+                else None
+            ),
             "n_trials_failed": len(
                 [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
             ),
@@ -520,6 +654,8 @@ def run_cli_tune(
             "universe": universe,
             "universe_mode": params.get("universe_mode", "fixed_current"),
             "universe_size": len(universe),
+            "used_universe_snapshot_id": params.get("universe_snapshot_id"),
+            "used_universe_snapshot_sha256": params.get("universe_snapshot_sha256"),
             "n_trials_session": n_trials,
             "completed_trials_session": len(completed_trials),
             "pruned_trials_session": len(study.trials) - len(completed_trials),

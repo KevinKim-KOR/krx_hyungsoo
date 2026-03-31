@@ -249,19 +249,25 @@ def compute_promotion_verdict(
     if used_params_match_ssot is False and verdict == "PROMOTE_CANDIDATE":
         verdict = "REVIEW_REQUIRED"
 
-    # P205-STEP4: 유니버스 일치 검사
+    # P205-STEP4/5D: 유니버스 일치 검사 (mode + snapshot identity)
     tune_meta = (tune_data or {}).get("meta", {})
     tune_universe_mode = tune_meta.get("universe_mode")
     bt_universe_mode = bt_meta.get("universe_mode")
-    ssot_universe_mode = (params_data or {}).get("universe_mode")
 
     if tune_universe_mode and bt_universe_mode:
-        used_universe_match = tune_universe_mode == bt_universe_mode
+        mode_match = tune_universe_mode == bt_universe_mode
+        # snapshot identity 비교 (있으면)
+        tune_snap = tune_meta.get("used_universe_snapshot_id")
+        bt_snap = bt_meta.get("used_universe_snapshot_id")
+        if tune_snap and bt_snap:
+            used_universe_match = mode_match and (tune_snap == bt_snap)
+        else:
+            used_universe_match = mode_match
     else:
         used_universe_match = None
 
     if used_universe_match is False:
-        reasons.append("Tune과 Backtest의 유니버스 모드가 다릅니다.")
+        reasons.append("Tune과 Backtest의 유니버스가 다릅니다.")
         if verdict == "PROMOTE_CANDIDATE":
             verdict = "REVIEW_REQUIRED"
 
@@ -270,6 +276,7 @@ def compute_promotion_verdict(
         "candidate_applied_to_ssot": candidate_applied_to_ssot,
         "used_params_match_ssot": used_params_match_ssot,
         "used_universe_match": used_universe_match,
+        "used_universe_snapshot_id": bt_meta.get("used_universe_snapshot_id"),
         "ssot_vs_best_params": ssot_vs_best,
         "full_backtest_metrics": full_backtest_metrics,
         "tune_snapshot": tune_snapshot,
@@ -306,8 +313,18 @@ def render_promotion_verdict_md(verdict_payload: Dict[str, Any]) -> str:
             "- SSOT 반영 여부: "
             f"{'예' if verdict_payload.get('candidate_applied_to_ssot') else '아니오'}"
         ),
-        f"- 유니버스 일치: "
-        f"{'예' if verdict_payload.get('used_universe_match') else '아니오' if verdict_payload.get('used_universe_match') is False else 'N/A'}",
+        "- 유니버스 일치: "
+        + (
+            "예"
+            if verdict_payload.get("used_universe_match")
+            else (
+                "아니오"
+                if verdict_payload.get("used_universe_match") is False
+                else "N/A"
+            )
+        ),
+        f"- universe_snapshot_id: "
+        f"{verdict_payload.get('used_universe_snapshot_id', 'N/A')}",
         "",
         "## Full Backtest 핵심 수치",
         f"- CAGR: {to_float(metrics.get('cagr')):.4f}%",

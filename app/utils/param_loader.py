@@ -146,14 +146,27 @@ def load_params_strict() -> Tuple[Dict[str, Any], Dict[str, str]]:
     params_raw = _require_key(data, "params", "strategy_params_latest.json")
     params = _extract_params_strict(params_raw)
 
-    # P205-STEP4: universe_mode 처리
+    # P205-STEP4/5D: universe_mode 처리
     universe_mode = data.get("universe_mode", "fixed_current")
     params["universe_mode"] = universe_mode
+    params["universe_snapshot_id"] = data.get("universe_snapshot_id")
+    params["universe_snapshot_sha256"] = data.get("universe_snapshot_sha256")
 
     if universe_mode == "expanded_candidates":
         from app.tuning.universe_config import get_universe_list
 
         params["universe"] = get_universe_list(universe_mode)
+    elif universe_mode == "dynamic_etf_market":
+        # SSOT에 저장된 dynamic tickers 사용
+        dyn_tickers = data.get("universe_tickers")
+        if dyn_tickers and isinstance(dyn_tickers, list):
+            params["universe"] = dyn_tickers
+        else:
+            raise ValueError(
+                "universe_mode=dynamic_etf_market이나 "
+                "universe_tickers가 SSOT에 없습니다. "
+                "먼저 스캐너 결과를 SSOT에 적용하세요."
+            )
 
     source = {
         "path": "state/params/latest/strategy_params_latest.json",

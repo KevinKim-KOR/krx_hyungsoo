@@ -22,15 +22,20 @@ def _build_validation_summary_md(
     top_rows: List[Dict[str, Any]],
     universe_mode: str = "fixed_current",
     universe_size: int = 0,
+    universe_snapshot_id: str = None,
 ) -> str:
     top5_rows = top_rows[:5]
+    snap_suffix = ""
+    if universe_snapshot_id:
+        snap_suffix = f" [snapshot: {universe_snapshot_id}]"
+    um_line = f"- universe_mode: {universe_mode}" f" ({universe_size}종목){snap_suffix}"
     lines = [
         "# 튜닝 검산 요약",
         "",
         f"- 실행 시각(asof): {asof}",
         f"- study_name: {study_name}",
         f"- mode: {mode}",
-        f"- universe_mode: {universe_mode} ({universe_size}종목)",
+        um_line,
         f"- 기간: {start_date} ~ {end_date}",
         f"- best trial 번호: {best_trial_number}",
         (

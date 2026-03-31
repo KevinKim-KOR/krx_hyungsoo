@@ -36,6 +36,102 @@ def _update_ssot_universe_mode(mode: str):
         )
 
 
+def _apply_scanner_snapshot_to_ssot():
+    """최신 scanner snapshot의 selected_tickers를 SSOT에 반영."""
+    import json
+
+    snap_path = BASE_DIR / "reports" / "tuning" / "universe_snapshot_latest.json"
+    ssot_path = BASE_DIR / "state" / "params" / "latest" / "strategy_params_latest.json"
+
+    if not snap_path.exists():
+        st.error("스냅샷 파일이 없습니다. 먼저 스캐너를 실행하세요.")
+        return False
+
+    snap = json.loads(snap_path.read_text(encoding="utf-8"))
+    sel_tickers = snap.get("selected_tickers", [])
+    if not sel_tickers:
+        st.error("선택된 종목이 없습니다.")
+        return False
+
+    ssot = json.loads(ssot_path.read_text(encoding="utf-8"))
+    ssot["universe_mode"] = "dynamic_etf_market"
+    ssot["universe_tickers"] = sel_tickers
+    ssot["universe_snapshot_id"] = snap.get("snapshot_id")
+    ssot["universe_snapshot_sha256"] = snap.get("snapshot_sha256")
+
+    ssot_path.write_text(
+        json.dumps(ssot, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return True
+
+
+def _render_dynamic_scanner_section():
+    """Dynamic Scanner UI 섹션 (Step5D)."""
+    import json
+
+    snap_path = BASE_DIR / "reports" / "tuning" / "universe_snapshot_latest.json"
+
+    with st.expander("Dynamic Scanner", expanded=False):
+        # 현재 스냅샷 상태 표시
+        if snap_path.exists():
+            snap = json.loads(snap_path.read_text(encoding="utf-8"))
+            c1, c2, c3 = st.columns(3)
+            c1.metric("selected", snap.get("selected_count", 0))
+            c2.metric("eligible", snap.get("scoring_eligible", 0))
+            c3.metric("pool", snap.get("candidate_pool_size", 0))
+
+            sha_short = (snap.get("snapshot_sha256") or "")[:12]
+            st.caption(
+                f"snapshot_id: {snap.get('snapshot_id', '?')}"
+                f" | sha: {sha_short}..."
+                f" | churn: {snap.get('churn_check_status', '?')}"
+                f" | overlap: {snap.get('min_overlap_ratio', '?')}"
+                f" | max_new: {snap.get('max_new_entries_per_refresh', '?')}"
+            )
+        else:
+            st.info("아직 스캐너를 실행하지 않았습니다.")
+
+        # 버튼 2개
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            if st.button(
+                "Dynamic Scanner 실행",
+                key="run_dynamic_scanner",
+                use_container_width=True,
+            ):
+                with st.spinner("스캐너 실행 중..."):
+                    try:
+                        from app.scanner.run_scanner import run_scanner
+
+                        result = run_scanner()
+                        if result.get("result") == "OK":
+                            st.success(
+                                f"스캐너 완료: {result.get('selected_count', 0)}종목 선택"
+                            )
+                        else:
+                            st.warning(f"스캐너: {result.get('result')}")
+                        import time
+
+                        time.sleep(1.0)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"스캐너 실행 실패: {e}")
+
+        with btn_col2:
+            if st.button(
+                "스캐너 결과 SSOT 적용",
+                key="apply_scanner_to_ssot",
+                use_container_width=True,
+            ):
+                if _apply_scanner_snapshot_to_ssot():
+                    st.success("SSOT에 dynamic universe 적용 완료")
+                    import time
+
+                    time.sleep(1.0)
+                    st.rerun()
+
+
 def init_workflow_session_state():
     """워크플로우 탭에서 사용하는 session state 초기화."""
     if "ops_token" not in st.session_state:
@@ -97,7 +193,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
     # P205-STEP4: 유니버스 모드 선택
     universe_mode = st.radio(
         "유니버스 모드",
-        ["fixed_current", "expanded_candidates"],
+        ["fixed_current", "expanded_candidates", "dynamic_etf_market"],
         index=0,
         key="universe_mode_radio",
         horizontal=True,
@@ -107,6 +203,8 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
 
         exp_list = get_universe_list("expanded_candidates")
         st.caption(f"확장 후보군: {len(exp_list)}종목")
+    elif universe_mode == "dynamic_etf_market":
+        _render_dynamic_scanner_section()
 
     colA, colB = st.columns(2)
 
