@@ -250,23 +250,40 @@ def compute_promotion_verdict(
         verdict = "REVIEW_REQUIRED"
 
     # P205-STEP5D: 유니버스 일치 검사
-    # (mode + ticker list + snapshot identity)
+    # (mode + ticker list + snapshot identity + SSOT)
     tune_meta = (tune_data or {}).get("meta", {})
     tune_um = tune_meta.get("universe_mode")
     bt_um = bt_meta.get("universe_mode")
     ssot_um = (params_data or {}).get("universe_mode")
+
+    bt_universe = sorted(bt_meta.get("universe", []))
+    tune_universe = sorted(tune_meta.get("universe", []))
+    ssot_universe = sorted((params_data or {}).get("params", {}).get("universe", []))
 
     bt_universe_size = bt_meta.get("universe_size")
     tune_universe_size = tune_meta.get("universe_size")
 
     if tune_um and bt_um:
         mode_match = tune_um == bt_um
-        # ticker list 크기 비교
-        size_match = (
-            tune_universe_size == bt_universe_size
-            if tune_universe_size and bt_universe_size
-            else True
-        )
+        # SSOT mode 일치
+        ssot_mode_match = ssot_um == bt_um if ssot_um else True
+
+        # ticker list 직접 비교
+        if bt_universe and tune_universe:
+            ticker_match = bt_universe == tune_universe
+        else:
+            ticker_match = (
+                bt_universe_size == tune_universe_size
+                if bt_universe_size and tune_universe_size
+                else True
+            )
+
+        # SSOT ticker list 일치
+        if bt_universe and ssot_universe:
+            ssot_ticker_match = bt_universe == ssot_universe
+        else:
+            ssot_ticker_match = True
+
         # snapshot identity
         tune_snap = tune_meta.get("used_universe_snapshot_id")
         bt_snap = bt_meta.get("used_universe_snapshot_id")
@@ -279,7 +296,13 @@ def compute_promotion_verdict(
         if tune_sha and bt_sha:
             snap_match = snap_match and (tune_sha == bt_sha)
 
-        used_universe_match = mode_match and size_match and snap_match
+        used_universe_match = (
+            mode_match
+            and ssot_mode_match
+            and ticker_match
+            and ssot_ticker_match
+            and snap_match
+        )
     else:
         used_universe_match = None
 
