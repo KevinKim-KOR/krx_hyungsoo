@@ -6,6 +6,11 @@ requests>=2.25.0
 beautifulsoup4>=4.9.0
 pykrx>=1.0.51
 pyarrow>=10.0.0
+uvicorn>=0.20.0
+streamlit>=1.20.0
+python-dotenv>=0.20.0
+fastapi>=0.100.0
+pytest>=7.0.0
 
 # Optional dependencies (PC only)
 optuna>=3.0.0
