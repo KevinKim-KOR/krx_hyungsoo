@@ -7,7 +7,6 @@ import streamlit as st
 
 from pc_cockpit.services.config import (
     BASE_DIR,
-    OCI_BACKEND_URL,
     LIVE_APPROVAL_LATEST_PATH,
     _ssot_require,
 )
@@ -82,12 +81,20 @@ def _render_dynamic_scanner_section():
             c3.metric("pool", snap.get("candidate_pool_size", 0))
 
             sha_short = (snap.get("snapshot_sha256") or "")[:12]
+            sm = snap.get("scanner_mode", "?")
+            ps = snap.get("previous_snapshot_exists", "?")
+            ss = snap.get("selection_status", "?")
             st.caption(
-                f"snapshot_id: {snap.get('snapshot_id', '?')}"
+                f"mode: {sm}"
+                f" | snapshot: {snap.get('snapshot_id', '?')}"
                 f" | sha: {sha_short}..."
-                f" | churn: {snap.get('churn_check_status', '?')}"
+            )
+            st.caption(
+                f"churn: {snap.get('churn_check_status', '?')}"
+                f" | prev_snap: {ps}"
                 f" | overlap: {snap.get('min_overlap_ratio', '?')}"
                 f" | max_new: {snap.get('max_new_entries_per_refresh', '?')}"
+                f" | status: {ss}"
             )
         else:
             st.info("아직 스캐너를 실행하지 않았습니다.")

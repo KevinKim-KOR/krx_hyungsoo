@@ -249,20 +249,37 @@ def compute_promotion_verdict(
     if used_params_match_ssot is False and verdict == "PROMOTE_CANDIDATE":
         verdict = "REVIEW_REQUIRED"
 
-    # P205-STEP4/5D: 유니버스 일치 검사 (mode + snapshot identity)
+    # P205-STEP5D: 유니버스 일치 검사
+    # (mode + ticker list + snapshot identity)
     tune_meta = (tune_data or {}).get("meta", {})
-    tune_universe_mode = tune_meta.get("universe_mode")
-    bt_universe_mode = bt_meta.get("universe_mode")
+    tune_um = tune_meta.get("universe_mode")
+    bt_um = bt_meta.get("universe_mode")
+    ssot_um = (params_data or {}).get("universe_mode")
 
-    if tune_universe_mode and bt_universe_mode:
-        mode_match = tune_universe_mode == bt_universe_mode
-        # snapshot identity 비교 (있으면)
+    bt_universe_size = bt_meta.get("universe_size")
+    tune_universe_size = tune_meta.get("universe_size")
+
+    if tune_um and bt_um:
+        mode_match = tune_um == bt_um
+        # ticker list 크기 비교
+        size_match = (
+            tune_universe_size == bt_universe_size
+            if tune_universe_size and bt_universe_size
+            else True
+        )
+        # snapshot identity
         tune_snap = tune_meta.get("used_universe_snapshot_id")
         bt_snap = bt_meta.get("used_universe_snapshot_id")
+        tune_sha = tune_meta.get("used_universe_snapshot_sha256")
+        bt_sha = bt_meta.get("used_universe_snapshot_sha256")
+
+        snap_match = True
         if tune_snap and bt_snap:
-            used_universe_match = mode_match and (tune_snap == bt_snap)
-        else:
-            used_universe_match = mode_match
+            snap_match = tune_snap == bt_snap
+        if tune_sha and bt_sha:
+            snap_match = snap_match and (tune_sha == bt_sha)
+
+        used_universe_match = mode_match and size_match and snap_match
     else:
         used_universe_match = None
 
@@ -276,7 +293,10 @@ def compute_promotion_verdict(
         "candidate_applied_to_ssot": candidate_applied_to_ssot,
         "used_params_match_ssot": used_params_match_ssot,
         "used_universe_match": used_universe_match,
+        "universe_mode": bt_um or tune_um,
+        "universe_size": bt_universe_size or tune_universe_size,
         "used_universe_snapshot_id": bt_meta.get("used_universe_snapshot_id"),
+        "used_universe_snapshot_sha256": bt_meta.get("used_universe_snapshot_sha256"),
         "ssot_vs_best_params": ssot_vs_best,
         "full_backtest_metrics": full_backtest_metrics,
         "tune_snapshot": tune_snapshot,
@@ -325,6 +345,8 @@ def render_promotion_verdict_md(verdict_payload: Dict[str, Any]) -> str:
         ),
         f"- universe_snapshot_id: "
         f"{verdict_payload.get('used_universe_snapshot_id', 'N/A')}",
+        f"- universe_mode: " f"{verdict_payload.get('universe_mode', 'N/A')}",
+        f"- universe_size: " f"{verdict_payload.get('universe_size', 'N/A')}",
         "",
         "## Full Backtest 핵심 수치",
         f"- CAGR: {to_float(metrics.get('cagr')):.4f}%",
