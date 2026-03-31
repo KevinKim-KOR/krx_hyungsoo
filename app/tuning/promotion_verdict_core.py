@@ -258,7 +258,12 @@ def compute_promotion_verdict(
 
     bt_universe = sorted(bt_meta.get("universe", []))
     tune_universe = sorted(tune_meta.get("universe", []))
-    ssot_universe = sorted((params_data or {}).get("params", {}).get("universe", []))
+    # SSOT universe: dynamic_etf_market은 루트 universe_tickers
+    _pd = params_data or {}
+    if ssot_um == "dynamic_etf_market":
+        ssot_universe = sorted(_pd.get("universe_tickers", []))
+    else:
+        ssot_universe = sorted(_pd.get("params", {}).get("universe", []))
 
     bt_universe_size = bt_meta.get("universe_size")
     tune_universe_size = tune_meta.get("universe_size")
