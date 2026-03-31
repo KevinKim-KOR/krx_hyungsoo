@@ -729,6 +729,7 @@ def run_cli_tune(
             "last_rebalance_snapshot_id": _tune_schedule_meta.get(
                 "last_rebalance_snapshot_id"
             ),
+            "resolver_mode": _tune_schedule_meta.get("resolver_mode"),
             "n_trials_session": n_trials,
             "completed_trials_session": len(completed_trials),
             "pruned_trials_session": len(study.trials) - len(completed_trials),

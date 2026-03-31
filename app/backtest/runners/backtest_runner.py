@@ -16,7 +16,7 @@ import pandas as pd
 import logging
 
 from app.backtest.engine.backtest import BacktestEngine
-from app.backtest.strategy.weight_scaler import WeightScaler, WeightScalingResult
+from app.backtest.strategy.weight_scaler import WeightScaler
 
 logger = logging.getLogger(__name__)
 
@@ -626,7 +626,9 @@ class BacktestRunner:
 
                 # trade count before rebalance (for delta)
                 _trades_before = len(engine.portfolio.trades)
-                _buy_before = sum(1 for t in engine.portfolio.trades if t.side == "BUY")
+                _buy_before = sum(
+                    1 for t in engine.portfolio.trades if t.action == "BUY"
+                )
                 _hold_before = sum(
                     1 for p in engine.portfolio.positions.values() if p.quantity > 0
                 )
@@ -773,50 +775,72 @@ class BacktestRunner:
 
                 # ── rebalance trace 수집 (Step5E2) ──
                 _trades_after = len(engine.portfolio.trades)
-                _buy_after = sum(1 for t in engine.portfolio.trades if t.side == "BUY")
+                _buy_after = sum(
+                    1 for t in engine.portfolio.trades if t.action == "BUY"
+                )
                 _hold_after = sum(
                     1 for p in engine.portfolio.positions.values() if p.quantity > 0
                 )
                 _orders_delta = _trades_after - _trades_before
                 _buy_delta = _buy_after - _buy_before
                 _sel_count = len(_dyn_selected) if _dyn_selected else len(universe)
+                # tradable: universe 중 당일 가격 있는 것
                 _tradable = len({k for k in current_prices if k in universe})
-                _entry_pass = len(scores)
+                # scores: entry 조건 통과한 후보 수
+                _candidates = len(scores)
+                # new_top_n: 실제 선정된 수
                 _new_top = len(current_top_n) if current_top_n else 0
 
                 _total_selected_seen += _sel_count
-                _total_entry_pass += _entry_pass
+                _total_entry_pass += _candidates
                 _total_orders_created += _orders_delta
                 _total_buy_filled += _buy_delta
 
-                if _orders_delta > 0:
-                    _reason = "ORDERS_CREATED"
-                elif _entry_pass > 0:
-                    _reason = "ENTRY_FILTER_BLOCKED"
-                elif _tradable > 0:
-                    _reason = "NO_TRADABLE_TICKERS"
-                elif _sel_count > 0:
-                    _reason = "NO_TRADABLE_TICKERS"
-                else:
+                # reason 판정 (상호 배타적 우선순위)
+                _reason = "SCHEDULE_OK"
+                _detail = ""
+                if _sel_count == 0:
                     _reason = "NO_SELECTED_TICKERS"
-
-                if _buy_delta > 0:
+                    _detail = "schedule에서 선택된 종목 0"
+                elif _tradable == 0:
+                    _reason = "NO_TRADABLE_TICKERS"
+                    _detail = f"selected={_sel_count}" f" but tradable=0"
+                elif _candidates == 0:
+                    _reason = "ENTRY_FILTER_BLOCKED"
+                    _detail = f"tradable={_tradable}" f" but entry_pass=0"
+                elif _orders_delta == 0:
+                    _reason = "NO_ORDERS_CREATED"
+                    _detail = (
+                        f"entry_pass={_candidates}"
+                        f" top_n={_new_top}"
+                        f" but orders=0"
+                    )
+                elif _buy_delta > 0:
                     _reason = "BUY_FILLED"
-                elif _orders_delta > 0:
+                    _detail = f"bought={_buy_delta}"
+                else:
                     _reason = "ORDERS_CREATED"
+                    _detail = f"orders={_orders_delta}"
+
+                # snapshot_id from resolver
+                _snap_id = None
+                if _dyn_selected and _universe_resolver:
+                    _snap_id = getattr(_universe_resolver, "_last_snap", None)
 
                 _rebalance_trace.append(
                     {
                         "rebalance_date": str(d),
+                        "snapshot_id": _snap_id,
                         "selected_count": _sel_count,
                         "tradable_count": _tradable,
-                        "candidate_count_after_filters": _entry_pass,
+                        "candidate_count_after_filters": (_candidates),
                         "entry_pass_count": _new_top,
                         "orders_created_count": _orders_delta,
                         "buy_filled_count": _buy_delta,
                         "hold_count_before": _hold_before,
                         "hold_count_after": _hold_after,
                         "reason_code": _reason,
+                        "reason_detail": _detail,
                     }
                 )
 
