@@ -326,6 +326,7 @@ class BacktestRunner:
         sell_mode: str = "stop_loss",
         rebalance_rule: Optional[Dict[str, Any]] = None,
         buckets: Optional[List[Dict[str, Any]]] = None,
+        universe_resolver: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -419,6 +420,8 @@ class BacktestRunner:
 
         # 유니버스 (target_weights의 키들)
         universe = list(target_weights.keys())
+        _universe_resolver = universe_resolver
+        _rebalance_universe_changes = 0
 
         # 날짜 범위 생성
         dates = pd.date_range(start_date, end_date, freq="B")
@@ -605,6 +608,13 @@ class BacktestRunner:
             # 4. 리밸런싱 (주기적으로 Top N 재선정)
 
             if should_rebalance:
+                # P205-STEP5E: dynamic universe resolver
+                if _universe_resolver:
+                    new_univ = _universe_resolver(d)
+                    if new_univ and set(new_univ) != set(universe):
+                        universe = new_univ
+                        _rebalance_universe_changes += 1
+
                 # 모멘텀 스코어 + RSI 계산
                 scores = self._calculate_candidate_scores(
                     price_data,
@@ -838,11 +848,12 @@ class BacktestRunner:
             "nav_history": engine.nav_history,
             "trades": engine.portfolio.trades,
             "final_positions": engine.portfolio.positions,
-            "daily_logs": daily_logs,  # 일별 비중 스케일링 로그
+            "daily_logs": daily_logs,
             "trade_histogram_by_date": trade_histogram,
             "trade_reason_counts": trade_reason_counts,
             "trade_dates_top10": trade_dates_top10,
             "rebalance_cluster_check": rebalance_cluster_check,
+            "rebalance_universe_changes": _rebalance_universe_changes,
         }
 
     def run_batch(

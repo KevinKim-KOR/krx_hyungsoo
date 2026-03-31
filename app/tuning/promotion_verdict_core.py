@@ -301,13 +301,22 @@ def compute_promotion_verdict(
         if tune_sha and bt_sha:
             snap_match = snap_match and (tune_sha == bt_sha)
 
-        used_universe_match = (
-            mode_match
-            and ssot_mode_match
-            and ticker_match
-            and ssot_ticker_match
-            and snap_match
-        )
+        # dynamic 모드에서는 dynamic_execution 메타로 정합성 판단
+        bt_dynamic = bt_meta.get("dynamic_execution", False)
+        tune_dynamic = tune_meta.get("dynamic_execution", False)
+
+        if bt_um == "dynamic_etf_market":
+            used_universe_match = (
+                mode_match and ssot_mode_match and bt_dynamic and snap_match
+            )
+        else:
+            used_universe_match = (
+                mode_match
+                and ssot_mode_match
+                and ticker_match
+                and ssot_ticker_match
+                and snap_match
+            )
     else:
         used_universe_match = None
 

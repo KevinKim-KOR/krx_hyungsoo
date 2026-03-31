@@ -120,6 +120,54 @@ def run_backtest(
         effective_rebalance = params.get("rebalance_rule", params["rebalance"])
         trigger_source = "params.rebalance_rule"
 
+    # P205-STEP5E: dynamic schedule resolver
+    _universe_resolver = None
+    _schedule_meta = {}
+    if params.get("universe_mode") == "dynamic_etf_market":
+        try:
+            from app.scanner.schedule_builder import (
+                build_dynamic_schedule,
+                make_universe_resolver,
+            )
+
+            # OHLCV를 ticker별 DataFrame으로 변환
+            ohlcv_by_ticker = {}
+            if isinstance(price_data.index, pd.MultiIndex):
+                for code in price_data.index.get_level_values("code").unique():
+                    ohlcv_by_ticker[code] = price_data.xs(code, level="code")
+
+            schedule = build_dynamic_schedule(
+                start=start,
+                end=end,
+                rebalance_rule=effective_rebalance,
+                ohlcv_full=ohlcv_by_ticker,
+                ticker_name_map={},
+            )
+            _universe_resolver = make_universe_resolver(schedule)
+            _schedule_meta = {
+                "dynamic_execution": True,
+                "rebalance_universe_count": schedule.get("rebalance_count", 0),
+                "schedule_precalculated": True,
+                "schedule_cache_hit": schedule.get("cache_hit", False),
+                "schedule_cache_key": schedule.get("cache_key"),
+                "dynamic_schedule_path": str(
+                    Path("reports/tuning") / "dynamic_universe_schedule_latest.json"
+                ),
+            }
+            if schedule.get("entries"):
+                _schedule_meta["first_rebalance_snapshot_id"] = schedule["entries"][
+                    0
+                ].get("snapshot_id")
+                _schedule_meta["last_rebalance_snapshot_id"] = schedule["entries"][
+                    -1
+                ].get("snapshot_id")
+            logger.info(
+                f"[DYNAMIC] schedule 준비 완료: "
+                f"{schedule.get('rebalance_count', 0)}개 rebalance"
+            )
+        except Exception as exc:
+            logger.warning(f"[DYNAMIC] schedule 실패, 고정 모드: {exc}")
+
     result = runner.run(
         price_data=price_data,
         target_weights=target_weights,
@@ -135,11 +183,13 @@ def run_backtest(
         sell_mode=params["sell_mode"],
         rebalance_rule=effective_rebalance,
         buckets=params["buckets"],
+        universe_resolver=_universe_resolver,
     )
 
     # Attach trigger evidence
     result["_trigger_source"] = trigger_source
     result["_effective_rebalance"] = effective_rebalance
+    result.update(_schedule_meta)
 
     return result
 
@@ -332,6 +382,15 @@ def format_result(
         "universe_size": len(params["universe"]),
         "used_universe_snapshot_id": params.get("universe_snapshot_id"),
         "used_universe_snapshot_sha256": params.get("universe_snapshot_sha256"),
+        "dynamic_execution": result.get("dynamic_execution", False),
+        "rebalance_universe_count": result.get("rebalance_universe_count", 0),
+        "schedule_precalculated": result.get("schedule_precalculated", False),
+        "schedule_cache_hit": result.get("schedule_cache_hit"),
+        "schedule_cache_key": result.get("schedule_cache_key"),
+        "dynamic_schedule_path": result.get("dynamic_schedule_path"),
+        "first_rebalance_snapshot_id": result.get("first_rebalance_snapshot_id"),
+        "last_rebalance_snapshot_id": result.get("last_rebalance_snapshot_id"),
+        "rebalance_universe_changes": result.get("rebalance_universe_changes", 0),
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "signal_days": metrics.get("signal_days", 0),
