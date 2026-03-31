@@ -316,6 +316,23 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         f" | universe: {b_um}({b_us})"
                         f" | asof: {bt_meta.get('asof', '?')}"
                     )
+                    # Step5E2: dynamic 진단
+                    if bt_meta.get("dynamic_execution"):
+                        _rp = bt_meta.get("total_rebalance_points", 0)
+                        _ep = bt_meta.get("total_entry_pass_count", 0)
+                        _oc = bt_meta.get("total_orders_created", 0)
+                        _bf = bt_meta.get("total_buy_filled", 0)
+                        st.caption(
+                            f"Dynamic 실행: 예"
+                            f" | 리밸런스: {_rp}"
+                            f" | 진입통과: {_ep}"
+                            f" | 주문: {_oc}"
+                            f" | 매수체결: {_bf}"
+                        )
+                        if bt_meta.get("zero_trade_diagnostic"):
+                            st.caption(
+                                f"원인: {bt_meta.get('zero_trade_root_cause', '?')}"
+                            )
         except Exception as e:
             st.error(f"⚠️ 백테스트 결과 파싱 실패: {e}")
 

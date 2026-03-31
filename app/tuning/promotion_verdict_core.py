@@ -306,16 +306,29 @@ def compute_promotion_verdict(
         tune_dynamic = tune_meta.get("dynamic_execution", False)
 
         if bt_um == "dynamic_etf_market":
-            # Backtest + Tune 양쪽 schedule evidence 검증
+            # Backtest schedule evidence
             bt_sched = bt_meta.get("dynamic_schedule_path")
             bt_first = bt_meta.get("first_rebalance_snapshot_id")
-            bt_sched_valid = bool(bt_sched) and bool(bt_first)
+            bt_last = bt_meta.get("last_rebalance_snapshot_id")
+            bt_rebal_cnt = bt_meta.get("rebalance_universe_count", 0)
+            bt_dyn_valid = bt_meta.get("dynamic_execution_valid")
+            bt_sched_valid = (
+                bool(bt_sched)
+                and bool(bt_first)
+                and bool(bt_last)
+                and bt_rebal_cnt >= 2
+            )
 
+            # Tune schedule evidence
             tune_sched = tune_meta.get("dynamic_schedule_path")
             tune_first = tune_meta.get("first_rebalance_snapshot_id")
             tune_sched_valid = bool(tune_sched) and bool(tune_first)
 
             schedule_valid = bt_sched_valid and tune_sched_valid
+
+            # dynamic_execution_valid 검증
+            if bt_dyn_valid is False:
+                schedule_valid = False
 
             used_universe_match = (
                 mode_match
@@ -329,6 +342,8 @@ def compute_promotion_verdict(
                 reasons.append("Backtest dynamic schedule 증거가 " "불완전합니다.")
             if not tune_sched_valid:
                 reasons.append("Tune dynamic schedule 증거가 " "불완전합니다.")
+            if bt_dyn_valid is False:
+                reasons.append("Backtest dynamic_execution_valid=false")
         else:
             used_universe_match = (
                 mode_match

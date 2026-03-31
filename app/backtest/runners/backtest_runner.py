@@ -422,6 +422,12 @@ class BacktestRunner:
         universe = list(target_weights.keys())
         _universe_resolver = universe_resolver
         _rebalance_universe_changes = 0
+        _rebalance_trace: List[Dict[str, Any]] = []
+        _total_selected_seen = 0
+        _total_entry_pass = 0
+        _total_orders_created = 0
+        _total_buy_filled = 0
+        _total_sell_filled = 0
 
         # 날짜 범위 생성
         dates = pd.date_range(start_date, end_date, freq="B")
@@ -609,11 +615,21 @@ class BacktestRunner:
 
             if should_rebalance:
                 # P205-STEP5E: dynamic universe resolver
+                _dyn_selected = []
                 if _universe_resolver:
                     new_univ = _universe_resolver(d)
-                    if new_univ and set(new_univ) != set(universe):
-                        universe = new_univ
-                        _rebalance_universe_changes += 1
+                    if new_univ:
+                        _dyn_selected = new_univ
+                        if set(new_univ) != set(universe):
+                            universe = new_univ
+                            _rebalance_universe_changes += 1
+
+                # trade count before rebalance (for delta)
+                _trades_before = len(engine.portfolio.trades)
+                _buy_before = sum(1 for t in engine.portfolio.trades if t.side == "BUY")
+                _hold_before = sum(
+                    1 for p in engine.portfolio.positions.values() if p.quantity > 0
+                )
 
                 # 모멘텀 스코어 + RSI 계산
                 scores = self._calculate_candidate_scores(
@@ -754,6 +770,56 @@ class BacktestRunner:
                     else:
                         adjusted_weights = {}
                         current_rsi_values = {}
+
+                # ── rebalance trace 수집 (Step5E2) ──
+                _trades_after = len(engine.portfolio.trades)
+                _buy_after = sum(1 for t in engine.portfolio.trades if t.side == "BUY")
+                _hold_after = sum(
+                    1 for p in engine.portfolio.positions.values() if p.quantity > 0
+                )
+                _orders_delta = _trades_after - _trades_before
+                _buy_delta = _buy_after - _buy_before
+                _sel_count = len(_dyn_selected) if _dyn_selected else len(universe)
+                _tradable = len({k for k in current_prices if k in universe})
+                _entry_pass = len(scores)
+                _new_top = len(current_top_n) if current_top_n else 0
+
+                _total_selected_seen += _sel_count
+                _total_entry_pass += _entry_pass
+                _total_orders_created += _orders_delta
+                _total_buy_filled += _buy_delta
+
+                if _orders_delta > 0:
+                    _reason = "ORDERS_CREATED"
+                elif _entry_pass > 0:
+                    _reason = "ENTRY_FILTER_BLOCKED"
+                elif _tradable > 0:
+                    _reason = "NO_TRADABLE_TICKERS"
+                elif _sel_count > 0:
+                    _reason = "NO_TRADABLE_TICKERS"
+                else:
+                    _reason = "NO_SELECTED_TICKERS"
+
+                if _buy_delta > 0:
+                    _reason = "BUY_FILLED"
+                elif _orders_delta > 0:
+                    _reason = "ORDERS_CREATED"
+
+                _rebalance_trace.append(
+                    {
+                        "rebalance_date": str(d),
+                        "selected_count": _sel_count,
+                        "tradable_count": _tradable,
+                        "candidate_count_after_filters": _entry_pass,
+                        "entry_pass_count": _new_top,
+                        "orders_created_count": _orders_delta,
+                        "buy_filled_count": _buy_delta,
+                        "hold_count_before": _hold_before,
+                        "hold_count_after": _hold_after,
+                        "reason_code": _reason,
+                    }
+                )
+
             else:
                 # 리밸런싱 주기가 아니면 기존 종목 유지 (비중 재계산)
                 if current_top_n:
@@ -854,6 +920,16 @@ class BacktestRunner:
             "trade_dates_top10": trade_dates_top10,
             "rebalance_cluster_check": rebalance_cluster_check,
             "rebalance_universe_changes": _rebalance_universe_changes,
+            "_rebalance_trace": _rebalance_trace,
+            "total_rebalance_points": len(_rebalance_trace),
+            "total_selected_tickers_seen": _total_selected_seen,
+            "total_tradable_tickers_seen": sum(
+                t.get("tradable_count", 0) for t in _rebalance_trace
+            ),
+            "total_entry_pass_count": _total_entry_pass,
+            "total_orders_created": _total_orders_created,
+            "total_buy_filled": _total_buy_filled,
+            "total_sell_filled": _total_sell_filled,
         }
 
     def run_batch(

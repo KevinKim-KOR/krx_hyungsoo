@@ -246,6 +246,7 @@ def run_cli_tune(
                     "schedule_snapshot_path",
                     "reports/tuning/" "dynamic_universe_schedule_latest.json",
                 ),
+                "resolver_mode": "schedule_lookup",
             }
             if schedule.get("entries"):
                 _tune_schedule_meta["first_rebalance_snapshot_id"] = schedule[

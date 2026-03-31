@@ -552,6 +552,62 @@ def run_cli_backtest(
         param_source=param_source,
         run_mode=mode,
     )
+    # 5b. Dynamic execution trace + zero-trade diagnostic
+    _trace = result.get("_rebalance_trace", [])
+    if _trace and params.get("universe_mode") == "dynamic_etf_market":
+        import csv as _csv
+
+        trace_dir = RESULT_LATEST.parent
+        trace_json = trace_dir / "dynamic_execution_trace_latest.json"
+        trace_csv = trace_dir / "dynamic_execution_trace_latest.csv"
+        trace_json.write_text(
+            json.dumps(_trace, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        if _trace:
+            with open(trace_csv, "w", encoding="utf-8", newline="") as f:
+                w = _csv.DictWriter(f, fieldnames=_trace[0].keys())
+                w.writeheader()
+                w.writerows(_trace)
+
+        # 집계 메타
+        _totals = {
+            "total_rebalance_points": result.get("total_rebalance_points", 0),
+            "total_selected_tickers_seen": result.get("total_selected_tickers_seen", 0),
+            "total_tradable_tickers_seen": result.get("total_tradable_tickers_seen", 0),
+            "total_entry_pass_count": result.get("total_entry_pass_count", 0),
+            "total_orders_created": result.get("total_orders_created", 0),
+            "total_buy_filled": result.get("total_buy_filled", 0),
+            "total_sell_filled": result.get("total_sell_filled", 0),
+        }
+        formatted["meta"].update(_totals)
+
+        # zero-trade 진단
+        if _totals["total_buy_filled"] == 0 and _totals["total_orders_created"] == 0:
+            if _totals["total_entry_pass_count"] == 0:
+                root = "entry_filter_blocked_all"
+            elif _totals["total_tradable_tickers_seen"] == 0:
+                root = "all_selected_nontradable"
+            elif _totals["total_selected_tickers_seen"] == 0:
+                root = "schedule_not_applied"
+            else:
+                root = "order_generation_blocked"
+            formatted["meta"]["zero_trade_diagnostic"] = True
+            formatted["meta"]["zero_trade_root_cause"] = root
+        else:
+            formatted["meta"]["zero_trade_diagnostic"] = False
+
+        # dynamic_execution_valid 검증
+        dyn_valid = (
+            formatted["meta"].get("dynamic_execution") is True
+            and formatted["meta"].get("rebalance_universe_count", 0) >= 2
+            and formatted["meta"].get("dynamic_schedule_path")
+            and formatted["meta"].get("first_rebalance_snapshot_id")
+            and formatted["meta"].get("last_rebalance_snapshot_id")
+        )
+        formatted["meta"]["dynamic_execution_valid"] = bool(dyn_valid)
+        formatted["meta"]["resolver_mode"] = "schedule_lookup"
+
     try:
         atomic_write_result(formatted)
     except Exception as e:
