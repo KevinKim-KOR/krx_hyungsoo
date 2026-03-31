@@ -824,8 +824,8 @@ class BacktestRunner:
 
                 # snapshot_id from resolver
                 _snap_id = None
-                if _dyn_selected and _universe_resolver:
-                    _snap_id = getattr(_universe_resolver, "_last_snap", None)
+                if _universe_resolver:
+                    _snap_id = getattr(_universe_resolver, "_last_snap_id", None)
 
                 _rebalance_trace.append(
                     {
@@ -833,8 +833,9 @@ class BacktestRunner:
                         "snapshot_id": _snap_id,
                         "selected_count": _sel_count,
                         "tradable_count": _tradable,
-                        "candidate_count_after_filters": (_candidates),
-                        "entry_pass_count": _new_top,
+                        "candidate_count_after_filters": _tradable,
+                        "entry_pass_count": _candidates,
+                        "top_n_selected": _new_top,
                         "orders_created_count": _orders_delta,
                         "buy_filled_count": _buy_delta,
                         "hold_count_before": _hold_before,

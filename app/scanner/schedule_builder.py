@@ -368,25 +368,38 @@ def build_dynamic_schedule(
 def make_universe_resolver(
     schedule: Dict[str, Any],
 ) -> "callable":
-    """schedule에서 date → selected_tickers lookup 함수를 생성."""
+    """schedule에서 date → selected_tickers lookup 함수를 생성.
+
+    resolver._last_snap_id: 마지막 lookup의 snapshot_id
+    """
     lookup: Dict[str, List[str]] = {}
+    snap_lookup: Dict[str, str] = {}
     last_tickers: List[str] = []
 
     for e in schedule.get("entries", []):
         tickers = e.get("selected_tickers", [])
         if tickers:
             last_tickers = tickers
-        lookup[e["rebalance_date"]] = tickers
+        rd = e["rebalance_date"]
+        lookup[rd] = tickers
+        snap_lookup[rd] = e.get("snapshot_id")
 
     def resolver(d: date) -> Optional[List[str]]:
         key = str(d)
+        matched_key = None
         if key in lookup:
-            return lookup[key]
-        # 가장 가까운 이전 날짜 찾기
-        sorted_dates = sorted(lookup.keys())
-        for sd in reversed(sorted_dates):
-            if sd <= key:
-                return lookup[sd]
+            matched_key = key
+        else:
+            sorted_dates = sorted(lookup.keys())
+            for sd in reversed(sorted_dates):
+                if sd <= key:
+                    matched_key = sd
+                    break
+
+        if matched_key:
+            resolver._last_snap_id = snap_lookup.get(matched_key)
+            return lookup[matched_key]
         return last_tickers or None
 
+    resolver._last_snap_id = None
     return resolver
