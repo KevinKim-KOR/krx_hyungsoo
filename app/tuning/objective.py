@@ -36,12 +36,14 @@ class TuneObjective:
         start: date,
         end: date,
         telemetry: Optional[TuneLogger] = None,
+        universe_resolver=None,
     ):
         self.price_data = price_data
         self.universe = universe
         self.start = start
         self.end = end
         self.telemetry = telemetry
+        self.universe_resolver = universe_resolver
         self._seen_hashes: Set[str] = set()
 
     def __call__(self, trial: optuna.Trial) -> float:
@@ -71,6 +73,7 @@ class TuneObjective:
                 universe=self.universe,
                 start=self.start,
                 end=self.end,
+                universe_resolver=self.universe_resolver,
                 include_nav_history=True,
             )
         except Exception as error:

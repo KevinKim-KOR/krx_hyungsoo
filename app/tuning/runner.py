@@ -13,7 +13,6 @@ import logging
 from datetime import date
 from typing import Any, Dict, List
 
-import numpy as np
 import pandas as pd
 
 from app.backtest.runners.backtest_runner import BacktestRunner

@@ -205,12 +205,63 @@ def run_cli_tune(
         study_name=study_name,
     )
 
+    # P205-STEP5E: dynamic schedule for tune
+    _tune_resolver = None
+    _tune_schedule_meta = {}
+    if params.get("universe_mode") == "dynamic_etf_market":
+        try:
+            from app.scanner.schedule_builder import (
+                build_dynamic_schedule,
+                make_universe_resolver,
+            )
+
+            import pandas as _pd
+
+            ohlcv_by_ticker = {}
+            if isinstance(price_data.index, _pd.MultiIndex):
+                for code in price_data.index.get_level_values("code").unique():
+                    ohlcv_by_ticker[code] = price_data.xs(code, level="code")
+
+            _rebal_rule = params.get("rebalance", {"frequency": "M"})
+            schedule = build_dynamic_schedule(
+                start=start,
+                end=end,
+                rebalance_rule=_rebal_rule,
+                ohlcv_full=ohlcv_by_ticker,
+                ticker_name_map={},
+            )
+            _tune_resolver = make_universe_resolver(schedule)
+            _tune_schedule_meta = {
+                "dynamic_execution": True,
+                "rebalance_universe_count": schedule.get("rebalance_count", 0),
+                "schedule_precalculated": True,
+                "schedule_cache_hit": schedule.get("cache_hit", False),
+                "schedule_cache_key": schedule.get("cache_key"),
+                "dynamic_schedule_path": (
+                    "reports/tuning/" "dynamic_universe_schedule_latest.json"
+                ),
+            }
+            if schedule.get("entries"):
+                _tune_schedule_meta["first_rebalance_snapshot_id"] = schedule[
+                    "entries"
+                ][0].get("snapshot_id")
+                _tune_schedule_meta["last_rebalance_snapshot_id"] = schedule["entries"][
+                    -1
+                ].get("snapshot_id")
+            logger.info(
+                f"[TUNE-DYNAMIC] schedule 준비: "
+                f"{schedule.get('rebalance_count', 0)}개 rebalance"
+            )
+        except Exception as exc:
+            logger.warning(f"[TUNE-DYNAMIC] schedule 실패: {exc}")
+
     objective = TuneObjective(
         price_data=price_data,
         universe=universe,
         start=start,
         end=end,
         telemetry=telemetry,
+        universe_resolver=_tune_resolver,
     )
 
     def _checkpoint_callback(study_obj, trial_obj):
@@ -656,6 +707,20 @@ def run_cli_tune(
             "universe_size": len(universe),
             "used_universe_snapshot_id": params.get("universe_snapshot_id"),
             "used_universe_snapshot_sha256": params.get("universe_snapshot_sha256"),
+            "dynamic_execution": _tune_schedule_meta.get("dynamic_execution"),
+            "rebalance_universe_count": _tune_schedule_meta.get(
+                "rebalance_universe_count"
+            ),
+            "schedule_precalculated": _tune_schedule_meta.get("schedule_precalculated"),
+            "schedule_cache_hit": _tune_schedule_meta.get("schedule_cache_hit"),
+            "schedule_cache_key": _tune_schedule_meta.get("schedule_cache_key"),
+            "dynamic_schedule_path": _tune_schedule_meta.get("dynamic_schedule_path"),
+            "first_rebalance_snapshot_id": _tune_schedule_meta.get(
+                "first_rebalance_snapshot_id"
+            ),
+            "last_rebalance_snapshot_id": _tune_schedule_meta.get(
+                "last_rebalance_snapshot_id"
+            ),
             "n_trials_session": n_trials,
             "completed_trials_session": len(completed_trials),
             "pruned_trials_session": len(study.trials) - len(completed_trials),

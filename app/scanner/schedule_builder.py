@@ -11,7 +11,7 @@ import csv
 import hashlib
 import json
 import logging
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,7 +22,6 @@ from app.scanner.config import (
     SCANNER_MODE,
     SCANNER_VERSION,
     SELECTOR_CONFIG,
-    V1_ACTIVE_FEATURES,
     get_active_features,
 )
 
@@ -149,6 +148,8 @@ def _run_scanner_for_date(
             "rebalance_date": str(as_of),
             "selected_count": 0,
             "selected_tickers": [],
+            "snapshot_id": f"sched_{as_of}_empty",
+            "snapshot_sha256": "",
             "selection_status": "no_eligible",
             "scoring_eligible": 0,
             "candidate_pool_size": len(ohlcv_cut),
@@ -168,6 +169,8 @@ def _run_scanner_for_date(
             "rebalance_date": str(as_of),
             "selected_count": 0,
             "selected_tickers": [],
+            "snapshot_id": f"sched_{as_of}_empty",
+            "snapshot_sha256": "",
             "selection_status": "no_features",
             "scoring_eligible": 0,
             "candidate_pool_size": len(ohlcv_cut),
@@ -189,6 +192,8 @@ def _run_scanner_for_date(
             "rebalance_date": str(as_of),
             "selected_count": 0,
             "selected_tickers": [],
+            "snapshot_id": f"sched_{as_of}_empty",
+            "snapshot_sha256": "",
             "selection_status": "no_scorable",
             "scoring_eligible": 0,
             "candidate_pool_size": len(ohlcv_cut),
