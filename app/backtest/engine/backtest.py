@@ -172,7 +172,8 @@ class BacktestEngine:
         self.market_exposure_days: int = 0
 
         logger.info(
-            f"BacktestEngine 초기화: instrument_type={instrument_type}, tax_rate={self.tax_rate*100:.2f}%"
+            f"BacktestEngine 초기화: instrument_type={instrument_type},"
+            f" tax_rate={self.tax_rate*100:.2f}%"
         )
 
     def calculate_commission(self, amount: float) -> float:
@@ -362,7 +363,8 @@ class BacktestEngine:
         self.portfolio.trades.append(trade)
 
         logger.debug(
-            f"매도 실행: {symbol} {quantity}주 @ {adjusted_price:,.0f} (수수료: {commission:,.0f}, 세금: {tax:,.0f})"
+            f"매도 실행: {symbol} {quantity}주 @ {adjusted_price:,.0f}"
+            f" (수수료: {commission:,.0f}, 세금: {tax:,.0f})"
         )
         return True
 
@@ -429,7 +431,7 @@ class BacktestEngine:
                                 held_days = (trade_date - pos.entry_date).days
                                 if held_days < self.min_holding_days:
                                     can_sell = False
-                                    # logger.debug(f"{symbol} 매도 유예 (보유 {held_days}일 < {self.min_holding_days}일)")
+                                    pass  # 매도 유예
 
                         if can_sell:
                             self.execute_sell(symbol, quantity, price, trade_date)
@@ -644,8 +646,7 @@ class BacktestEngine:
                 if group.empty:
                     continue
 
-                # Filter daily returns for this year
-                # Note: self.daily_returns matches nav_history[1:], so we need to be careful aligning
+                # daily_returns matches nav_history[1:], align carefully
                 # Instead, simpler approach: Calculate stats from NAV curve of the year
                 start_val = group["nav"].iloc[0]
                 end_val = group["nav"].iloc[-1]

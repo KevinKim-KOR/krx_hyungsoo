@@ -337,19 +337,25 @@ def format_result(
             else:
                 cagr_val = 0.0
 
-    # NaN 최종 방어
+    # fail-closed: NaN/inf 시 None으로 표기 (0.0으로 위장 금지)
     import math
 
+    cagr_reason = None
+    total_return_reason = None
     if math.isnan(cagr_val) or math.isinf(cagr_val):
-        cagr_val = 0.0
+        cagr_reason = "cagr_not_computable"
+        cagr_val = None
     if math.isnan(total_return_val) or math.isinf(total_return_val):
-        total_return_val = 0.0
+        total_return_reason = "total_return_not_computable"
+        total_return_val = None
 
     summary = {
-        "cagr": round(cagr_val, 4),
+        "cagr": round(cagr_val, 4) if cagr_val is not None else None,
         "mdd": round(mdd_val, 4),
         "sharpe": round(sharpe_val, 4),
-        "total_return": round(total_return_val, 4),
+        "total_return": (
+            round(total_return_val, 4) if total_return_val is not None else None
+        ),
     }
 
     # ── Ticker-Level Buy&Hold Metrics ──
@@ -475,6 +481,10 @@ def format_result(
         meta["sharpe_reason"] = sharpe_reason
     if mdd_reason:
         meta["mdd_reason"] = mdd_reason
+    if cagr_reason:
+        meta["cagr_reason"] = cagr_reason
+    if total_return_reason:
+        meta["total_return_reason"] = total_return_reason
 
     return {
         "summary": summary,
@@ -757,8 +767,9 @@ def run_cli_backtest(
     s = formatted["summary"]
     meta = formatted["meta"]
     logger.info("=" * 60)
+    _cagr_str = f"{s['cagr']:.4f}" if s["cagr"] is not None else "N/A"
     logger.info(
-        f"[RESULT: OK] CAGR={s['cagr']:.4f}  MDD={s['mdd']:.4f}  "
+        f"[RESULT: OK] CAGR={_cagr_str}  MDD={s['mdd']:.4f}  "
         f"Sharpe={s.get('sharpe', 0):.4f}  Trades={meta['total_trades']}"
     )
     logger.info(
