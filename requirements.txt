@@ -6,6 +6,7 @@ requests>=2.25.0
 beautifulsoup4>=4.9.0
 pykrx>=1.0.51
 pyarrow>=10.0.0
+finance-datareader>=0.9.50
 uvicorn>=0.20.0
 streamlit>=1.20.0
 python-dotenv>=0.20.0

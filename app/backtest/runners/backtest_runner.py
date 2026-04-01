@@ -327,6 +327,7 @@ class BacktestRunner:
         rebalance_rule: Optional[Dict[str, Any]] = None,
         buckets: Optional[List[Dict[str, Any]]] = None,
         universe_resolver: Optional[Any] = None,
+        universe_mode: str = "fixed_current",
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -422,12 +423,26 @@ class BacktestRunner:
         universe = list(target_weights.keys())
         _universe_resolver = universe_resolver
         _rebalance_universe_changes = 0
+
+        # P205-STEP5F: dynamic allocation path
+        _is_dynamic = universe_mode == "dynamic_etf_market"
+        _allocation_mode = "dynamic_equal_weight" if _is_dynamic else "bucket_portfolio"
         _rebalance_trace: List[Dict[str, Any]] = []
         _total_selected_seen = 0
         _total_entry_pass = 0
         _total_orders_created = 0
         _total_buy_filled = 0
         _total_sell_filled = 0
+
+        # P205-STEP5E3: order generation pipeline stage counters
+        _total_candidate_after_dedup = 0
+        _total_candidate_after_hold_filter = 0
+        _total_candidate_after_budget_filter = 0
+        _total_candidate_after_position_limit = 0
+        from collections import Counter as _Counter
+
+        _total_blocked_reasons = _Counter()
+        _pending_trace = None
 
         # 날짜 범위 생성
         dates = pd.date_range(start_date, end_date, freq="B")
@@ -643,8 +658,62 @@ class BacktestRunner:
                     entry_threshold=entry_threshold,
                 )
 
-                if portfolio_mode == "bucket_portfolio" and buckets:
-                    # 버킷별 할당 로직 (Phase 2)
+                if _is_dynamic:
+                    # P205-STEP5F: dynamic_etf_market 전용 allocation
+                    # bucket_portfolio 고정 바구니 우회, dynamic selected pool 직접 사용
+                    universe_scores = {k: v for k, v in scores.items() if k in universe}
+                    raw_signal_count += len(universe_scores)
+
+                    if universe_scores:
+                        signal_days += 1
+                        sorted_scores = sorted(
+                            universe_scores.items(),
+                            key=lambda x: x[1][0],
+                            reverse=True,
+                        )
+                        new_top_n = [
+                            code for code, _ in sorted_scores[: self.max_positions]
+                        ]
+                        filtered_signal_count += len(new_top_n)
+
+                        if current_top_n and set(new_top_n) != set(current_top_n):
+                            removed = set(current_top_n) - set(new_top_n)
+                            added = set(new_top_n) - set(current_top_n)
+                            if removed or added:
+                                logger.debug(
+                                    f"{d}: 종목 변경 - 제외: {removed},"
+                                    f" 추가: {added}"
+                                )
+
+                        current_top_n = new_top_n
+                        current_base_weights = None  # equal weight
+
+                        current_rsi_values = {
+                            code: universe_scores[code][1]
+                            for code in current_top_n
+                            if code in universe_scores
+                        }
+
+                        scaling_result = self.weight_scaler.compute_final_weights(
+                            top_n_codes=current_top_n,
+                            rsi_values=current_rsi_values,
+                            regime=current_regime,
+                            regime_confidence=regime_confidence,
+                            regime_scale=position_ratio,
+                            current_date=d,
+                            log_details=(day_count == 1),
+                        )
+
+                        adjusted_weights = scaling_result.w_final
+                        daily_logs.append(
+                            self.weight_scaler.result_to_dict(scaling_result)
+                        )
+                    else:
+                        adjusted_weights = {}
+                        current_rsi_values = {}
+
+                elif portfolio_mode == "bucket_portfolio" and buckets:
+                    # 버킷별 할당 로직 (Phase 2) — 기존 고정 유니버스 전용
                     new_top_n = []
                     new_base_weights = {}
 
@@ -773,77 +842,137 @@ class BacktestRunner:
                         adjusted_weights = {}
                         current_rsi_values = {}
 
-                # ── rebalance trace 수집 (Step5E2) ──
-                _trades_after = len(engine.portfolio.trades)
-                _buy_after = sum(
-                    1 for t in engine.portfolio.trades if t.action == "BUY"
-                )
-                _hold_after = sum(
-                    1 for p in engine.portfolio.positions.values() if p.quantity > 0
-                )
-                _orders_delta = _trades_after - _trades_before
-                _buy_delta = _buy_after - _buy_before
+                # ── rebalance trace: pre-rebalance 데이터 저장 ──
                 _sel_count = len(_dyn_selected) if _dyn_selected else len(universe)
-                # tradable: universe 중 당일 가격 있는 것
                 _tradable = len({k for k in current_prices if k in universe})
-                # scores: entry 조건 통과한 후보 수
                 _candidates = len(scores)
-                # new_top_n: 실제 선정된 수
                 _new_top = len(current_top_n) if current_top_n else 0
 
-                _total_selected_seen += _sel_count
-                _total_entry_pass += _candidates
-                _total_orders_created += _orders_delta
-                _total_buy_filled += _buy_delta
+                # ── P205-STEP5E3: order pipeline stage 추적 ──
+                _blocked_reasons: Dict[str, int] = {}
+                _after_dedup = _new_top
+                _after_hold = _new_top
+                _after_budget = 0
+                _after_pos_limit = 0
 
-                # reason 판정 (상호 배타적 우선순위)
-                _reason = "SCHEDULE_OK"
-                _detail = ""
-                if _sel_count == 0:
-                    _reason = "NO_SELECTED_TICKERS"
-                    _detail = "schedule에서 선택된 종목 0"
-                elif _tradable == 0:
-                    _reason = "NO_TRADABLE_TICKERS"
-                    _detail = f"selected={_sel_count}" f" but tradable=0"
-                elif _candidates == 0:
-                    _reason = "ENTRY_FILTER_BLOCKED"
-                    _detail = f"tradable={_tradable}" f" but entry_pass=0"
-                elif _orders_delta == 0:
-                    _reason = "NO_ORDERS_CREATED"
-                    _detail = (
-                        f"entry_pass={_candidates}"
-                        f" top_n={_new_top}"
-                        f" but orders=0"
+                if _candidates > 0 and _new_top == 0:
+                    _universe_match = sum(1 for c in scores if c in universe)
+                    _blocked_reasons["BLOCKED_UNIVERSE_FILTER"] = (
+                        _candidates - _universe_match
                     )
-                elif _buy_delta > 0:
-                    _reason = "BUY_FILLED"
-                    _detail = f"bought={_buy_delta}"
-                else:
-                    _reason = "ORDERS_CREATED"
-                    _detail = f"orders={_orders_delta}"
+                    if _universe_match > 0:
+                        _blocked_reasons["BLOCKED_BUCKET_SELECTION"] = _universe_match
 
-                # snapshot_id from resolver
-                _snap_id = None
-                if _universe_resolver:
-                    _snap_id = getattr(_universe_resolver, "_last_snap_id", None)
+                if _candidates > 0 and _new_top > 0:
+                    _after_dedup = _new_top
+                    _already_held = sum(
+                        1
+                        for c in current_top_n
+                        if c in engine.portfolio.positions
+                        and engine.portfolio.positions[c].quantity > 0
+                    )
+                    _after_hold = _new_top
 
-                _rebalance_trace.append(
-                    {
-                        "rebalance_date": str(d),
-                        "snapshot_id": _snap_id,
-                        "selected_count": _sel_count,
-                        "tradable_count": _tradable,
-                        "candidate_count_after_filters": _tradable,
-                        "entry_pass_count": _candidates,
-                        "top_n_selected": _new_top,
-                        "orders_created_count": _orders_delta,
-                        "buy_filled_count": _buy_delta,
-                        "hold_count_before": _hold_before,
-                        "hold_count_after": _hold_after,
-                        "reason_code": _reason,
-                        "reason_detail": _detail,
-                    }
-                )
+                    _w_all_zero = not adjusted_weights or all(
+                        v == 0.0 for v in adjusted_weights.values()
+                    )
+
+                    if _w_all_zero:
+                        if position_ratio == 0.0:
+                            _blocked_reasons["BLOCKED_REGIME_CASH_MODE"] = _new_top
+                        else:
+                            _blocked_reasons["BLOCKED_ZERO_WEIGHT"] = _new_top
+                        _after_budget = 0
+                        _after_pos_limit = 0
+                    else:
+                        _price_missing = 0
+                        _max_pos_blocked = 0
+                        _zero_qty = 0
+                        _cash_blocked = 0
+                        _passed = 0
+
+                        for code, w in adjusted_weights.items():
+                            if w <= 0.0:
+                                continue
+                            if code not in current_prices:
+                                _price_missing += 1
+                                continue
+                            price = current_prices[code]
+                            target_val = engine.portfolio.total_value * w
+                            cur_val = 0.0
+                            pos = engine.portfolio.positions.get(code)
+                            if pos:
+                                cur_val = pos.market_value
+                            diff = target_val - cur_val
+                            if diff <= 0:
+                                _passed += 1
+                                continue
+                            qty = int(diff / price)
+                            if qty == 0:
+                                _zero_qty += 1
+                                continue
+                            if (
+                                code not in engine.portfolio.positions
+                                and len(engine.portfolio.positions)
+                                >= engine.max_positions
+                            ):
+                                _max_pos_blocked += 1
+                                continue
+                            est_cost = (
+                                qty
+                                * price
+                                * (1 + engine.slippage_rate)
+                                * (1 + engine.commission_rate)
+                            )
+                            if engine.portfolio.cash < est_cost:
+                                _cash_blocked += 1
+                                continue
+                            _passed += 1
+
+                        if _price_missing > 0:
+                            _blocked_reasons["BLOCKED_PRICE_MISSING"] = _price_missing
+                        if _max_pos_blocked > 0:
+                            _blocked_reasons["BLOCKED_MAX_POSITIONS"] = _max_pos_blocked
+                        if _zero_qty > 0:
+                            _blocked_reasons["BLOCKED_ZERO_QTY"] = _zero_qty
+                        if _cash_blocked > 0:
+                            _blocked_reasons["BLOCKED_CASH_FLOOR"] = _cash_blocked
+
+                        _after_budget = _passed + _cash_blocked
+                        _after_pos_limit = _passed
+
+                    if _already_held > 0:
+                        _blocked_reasons["BLOCKED_ALREADY_HELD"] = _already_held
+
+                _total_candidate_after_dedup += _after_dedup
+                _total_candidate_after_hold_filter += _after_hold
+                _total_candidate_after_budget_filter += _after_budget
+                _total_candidate_after_position_limit += _after_pos_limit
+                _total_blocked_reasons.update(_blocked_reasons)
+
+                _dominant_block = ""
+                _dominant_detail = ""
+                if _blocked_reasons:
+                    _dominant_block = max(_blocked_reasons, key=_blocked_reasons.get)
+                    _dominant_detail = (
+                        f"{_dominant_block}={_blocked_reasons[_dominant_block]}"
+                        f" of {_new_top} candidates"
+                    )
+
+                # pre-rebalance 데이터를 저장 (trace append는 rebalance 후)
+                _pending_trace = {
+                    "_sel_count": _sel_count,
+                    "_tradable": _tradable,
+                    "_candidates": _candidates,
+                    "_new_top": _new_top,
+                    "_after_dedup": _after_dedup,
+                    "_after_hold": _after_hold,
+                    "_after_budget": _after_budget,
+                    "_after_pos_limit": _after_pos_limit,
+                    "_blocked_reasons": _blocked_reasons,
+                    "_dominant_block": _dominant_block,
+                    "_dominant_detail": _dominant_detail,
+                }
 
             else:
                 # 리밸런싱 주기가 아니면 기존 종목 유지 (비중 재계산)
@@ -876,6 +1005,86 @@ class BacktestRunner:
                         engine.rebalance(adjusted_weights, current_prices, d)
             except Exception as e:
                 logger.error(f"리밸런싱 실패: {e}", exc_info=True)
+
+            # ── rebalance trace: rebalance 실행 후 trade delta 수집 ──
+            if should_rebalance and _pending_trace:
+                _trades_after = len(engine.portfolio.trades)
+                _buy_after = sum(
+                    1 for t in engine.portfolio.trades if t.action == "BUY"
+                )
+                _hold_after = sum(
+                    1 for p in engine.portfolio.positions.values() if p.quantity > 0
+                )
+                _orders_delta = _trades_after - _trades_before
+                _buy_delta = _buy_after - _buy_before
+
+                _pt = _pending_trace
+                _total_selected_seen += _pt["_sel_count"]
+                _total_entry_pass += _pt["_candidates"]
+                _total_orders_created += _orders_delta
+                _total_buy_filled += _buy_delta
+
+                # reason 판정
+                _reason = "SCHEDULE_OK"
+                _detail = ""
+                if _pt["_sel_count"] == 0:
+                    _reason = "NO_SELECTED_TICKERS"
+                    _detail = "schedule에서 선택된 종목 0"
+                elif _pt["_tradable"] == 0:
+                    _reason = "NO_TRADABLE_TICKERS"
+                    _detail = f"selected={_pt['_sel_count']}" f" but tradable=0"
+                elif _pt["_candidates"] == 0:
+                    _reason = "ENTRY_FILTER_BLOCKED"
+                    _detail = f"tradable={_pt['_tradable']}" f" but entry_pass=0"
+                elif _orders_delta == 0:
+                    _reason = "NO_ORDERS_CREATED"
+                    _detail = (
+                        f"entry_pass={_pt['_candidates']}"
+                        f" top_n={_pt['_new_top']}"
+                        f" but orders=0"
+                        f" dominant={_pt['_dominant_block']}"
+                    )
+                elif _buy_delta > 0:
+                    _reason = "BUY_FILLED"
+                    _detail = f"bought={_buy_delta}"
+                else:
+                    _reason = "ORDERS_CREATED"
+                    _detail = f"orders={_orders_delta}"
+
+                _snap_id = None
+                if _universe_resolver:
+                    _snap_id = getattr(_universe_resolver, "_last_snap_id", None)
+
+                _rebalance_trace.append(
+                    {
+                        "rebalance_date": str(d),
+                        "snapshot_id": _snap_id,
+                        "allocation_mode": _allocation_mode,
+                        "bucket_bypass_applied": _is_dynamic,
+                        "selected_count": _pt["_sel_count"],
+                        "tradable_count": _pt["_tradable"],
+                        "entry_pass_count": _pt["_candidates"],
+                        "candidate_after_dedup_count": _pt["_after_dedup"],
+                        "candidate_after_hold_filter_count": _pt["_after_hold"],
+                        "candidate_after_budget_filter_count": _pt["_after_budget"],
+                        "candidate_after_position_limit_count": _pt["_after_pos_limit"],
+                        "selected_pool_size_before_allocation": _pt["_sel_count"],
+                        "candidate_after_allocation_filter_count": _pt["_new_top"],
+                        "top_n_selected": _pt["_new_top"],
+                        "orders_created_count": _orders_delta,
+                        "buy_filled_count": _buy_delta,
+                        "hold_count_before": _hold_before,
+                        "hold_count_after": _hold_after,
+                        "blocked_reason_counts": _pt["_blocked_reasons"],
+                        "dominant_block_reason": _pt["_dominant_block"],
+                        "dominant_block_detail": _pt["_dominant_detail"],
+                        "regime": current_regime,
+                        "position_ratio": round(position_ratio, 4),
+                        "reason_code": _reason,
+                        "reason_detail": _detail,
+                    }
+                )
+                _pending_trace = None
 
             prev_month = d.month
             prev_week = d.isocalendar()[1]
@@ -945,6 +1154,8 @@ class BacktestRunner:
             "trade_dates_top10": trade_dates_top10,
             "rebalance_cluster_check": rebalance_cluster_check,
             "rebalance_universe_changes": _rebalance_universe_changes,
+            "allocation_mode": _allocation_mode,
+            "bucket_bypass_applied": _is_dynamic,
             "_rebalance_trace": _rebalance_trace,
             "total_rebalance_points": len(_rebalance_trace),
             "total_selected_tickers_seen": _total_selected_seen,
@@ -952,9 +1163,14 @@ class BacktestRunner:
                 t.get("tradable_count", 0) for t in _rebalance_trace
             ),
             "total_entry_pass_count": _total_entry_pass,
+            "total_candidate_after_dedup": _total_candidate_after_dedup,
+            "total_candidate_after_hold_filter": _total_candidate_after_hold_filter,
+            "total_candidate_after_budget_filter": _total_candidate_after_budget_filter,
+            "total_candidate_after_position_limit": _total_candidate_after_position_limit,
             "total_orders_created": _total_orders_created,
             "total_buy_filled": _total_buy_filled,
             "total_sell_filled": _total_sell_filled,
+            "blocked_reason_totals": dict(_total_blocked_reasons),
         }
 
     def run_batch(

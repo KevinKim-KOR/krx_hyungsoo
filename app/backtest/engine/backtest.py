@@ -100,7 +100,9 @@ class Portfolio:
         """포지션 가격 업데이트"""
         for symbol, position in self.positions.items():
             if symbol in prices:
-                position.current_price = prices[symbol]
+                p = prices[symbol]
+                if p is not None and p == p:  # NaN guard
+                    position.current_price = p
 
 
 # 상품별 거래세율 (한국 시장)

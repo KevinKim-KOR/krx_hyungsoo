@@ -1,7 +1,7 @@
 # AI 핸드오프 가이드
 
 > 이 문서는 Claude Code에서 다른 AI 도구로 작업을 이관할 때 참고하는 가이드입니다.
-> asof: 2026-03-29
+> asof: 2026-04-01
 
 ---
 
@@ -48,7 +48,7 @@
 - `params.decision_params.entry_threshold`
 - `params.decision_params.exit_threshold` (= stop_loss)
 - `params.position_limits.max_positions`
-- `universe_mode` (최상위, fixed_current 또는 expanded_candidates)
+- `universe_mode` (최상위, fixed_current / expanded_candidates / dynamic_etf_market)
 
 ---
 
@@ -64,16 +64,21 @@
 | P205-STEP3 | Backtest 5축 메타 가드 + 승격 판정 정합성 |
 | P205-STEP4 | 유니버스 확장 후보군 도입 (fixed_current + expanded_candidates) |
 | P205-STEP5A | 다이나믹 유니버스 스캐너 아키텍처 설계 (3계층 모델, Feature Registry) |
-| P205-STEP5B | `dynamic_etf_market` 후보군 생성 및 V1 Feature 엔진 구현 (P205-STEP5B) |
+| P205-STEP5B | `dynamic_etf_market` 후보군 생성 및 V1 Feature 엔진 구현 |
+| P205-STEP5E | dynamic schedule resolver + time-aware 실행 |
+| P205-STEP5E2 | dynamic resolver parity trace + zero-trade 진단 |
+| P205-STEP5E3 | order generation block trace 세분화 (blocked_reason_counts) |
+| P205-STEP5F | dynamic allocation path 도입 (bucket bypass) — **주문 0건→82건 해소** |
+| P205-HOTFIX-CAGR | CAGR NaN 핫픽스 (NaN 가격 방어 + equity curve 기반 재계산) |
 
-### P205-STEP4 잔여 이슈 (Codex 리뷰 기준)
-- 자동 적용 버튼 universe_mode 복사: **코드 수정 완료, 재실행 필요**
-- 최신 산출물에 universe_mode 메타: **다음 Run Tune 실행 시 자동 기록**
-- 검산 파일(trials_top20.csv) 유니버스 컬럼: **미완료**
+### 현재 상태 (2026-04-01)
+- `dynamic_etf_market` Full Backtest 정상 동작: **CAGR 34.08%, Sharpe 1.61, MDD 16.58%, Trades 82**
+- `allocation_mode = dynamic_equal_weight`, `bucket_bypass_applied = true`
+- 기존 `fixed_current`, `expanded_candidates`, `bucket_portfolio` 흐름 유지
 
 ### 다음에 할 수 있는 작업
-- P205-STEP4 산출물 재생성 (Run Tune + Run Backtest 실행)
-- P205-STEP5 이후 (마스터플랜에 따라)
+- dynamic_etf_market 성과 평가 및 파라미터 튜닝
+- 승격 판정 재실행 (dynamic 모드 포함)
 - 일반 lint sweep (backend/routers/ 전체)
 
 ---
@@ -105,7 +110,13 @@ app/
     candidate_pool.py — ETF 1차 필터 풀 생성
     feature_provider.py — 지표 계산(Registry 기반) 코어
     snapshot.py — 결정식(deterministic) 스냅샷 생성 / Churn Metrics
+    schedule_builder.py — dynamic schedule 생성 + universe resolver
     run_scanner.py — 실행 진입점
+  backtest/
+    engine/backtest.py — BacktestEngine (NAV, rebalance, trade 실행)
+    runners/backtest_runner.py — 백테스트 오케스트레이터 (dynamic allocation path 포함)
+    strategy/weight_scaler.py — 비중 파이프라인 (base→RSI→normalize→regime)
+    strategy/market_regime_detector.py — 레짐 감지 (ADX, hysteresis)
   utils/param_loader.py — SSOT 파라미터 로더
 ```
 
