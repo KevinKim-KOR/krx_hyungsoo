@@ -288,7 +288,8 @@ class BacktestEngine:
         self.portfolio.trades.append(trade)
 
         logger.debug(
-            f"매수 실행: {symbol} {quantity}주 @ {adjusted_price:,.0f} (수수료: {commission:,.0f})"
+            f"매수 실행: {symbol} {quantity}주"
+            f" @ {adjusted_price:,.0f} (수수료: {commission:,.0f})"
         )
         return True
 
@@ -415,7 +416,8 @@ class BacktestEngine:
 
                         if quantity > max_qty_by_cash:
                             logger.debug(
-                                f"{symbol} 수량 조정 (자금 부족): {quantity} -> {max_qty_by_cash}"
+                                f"{symbol} 수량 조정 (자금 부족):"
+                                f" {quantity} -> {max_qty_by_cash}"
                             )
                             quantity = max_qty_by_cash
 
@@ -660,8 +662,8 @@ class BacktestEngine:
                 yearly_stats[int(year)] = {
                     "return": year_return,
                     "mdd": mdd_y,
-                    # Sharpe approximation for the year (need daily returns for this year)
-                    # This is complex to align with daily_returns list efficiently without date map
+                    # Sharpe approximation for the year
+                    # (complex to align without date map)
                     # skipping sharpe for now unless critical
                 }
 

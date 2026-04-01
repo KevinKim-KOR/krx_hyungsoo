@@ -314,8 +314,12 @@ def format_result(
 
     # summary (override engine metrics with recomputed values)
     # CAGR/total_return: equity_curve 기반 재계산 (NaN-safe)
+    import math
+
     cagr_val = metrics.get("cagr", 0.0)
     total_return_val = metrics.get("total_return", 0.0)
+    cagr_reason = None
+    total_return_reason = None
     if len(equity_curve) >= 2:
         nav_start = equity_curve[0]["equity"]
         # 마지막 유효 NAV 사용 (NaN 방어)
@@ -335,17 +339,16 @@ def format_result(
             if yrs > 0:
                 cagr_val = ((nav_end / nav_start) ** (1.0 / yrs) - 1.0) * 100
             else:
-                cagr_val = 0.0
+                cagr_val = None
+                cagr_reason = "period_too_short"
 
     # fail-closed: NaN/inf 시 None으로 표기 (0.0으로 위장 금지)
-    import math
-
-    cagr_reason = None
-    total_return_reason = None
-    if math.isnan(cagr_val) or math.isinf(cagr_val):
+    if cagr_val is not None and (math.isnan(cagr_val) or math.isinf(cagr_val)):
         cagr_reason = "cagr_not_computable"
         cagr_val = None
-    if math.isnan(total_return_val) or math.isinf(total_return_val):
+    if total_return_val is not None and (
+        math.isnan(total_return_val) or math.isinf(total_return_val)
+    ):
         total_return_reason = "total_return_not_computable"
         total_return_val = None
 
