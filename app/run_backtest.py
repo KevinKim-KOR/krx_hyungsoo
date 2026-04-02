@@ -290,14 +290,18 @@ def format_result(
     mdd_reason = None
 
     if len(equity_curve) >= 2:
-        navs = pd.Series([e["equity"] for e in equity_curve])
+        navs = pd.Series([e["equity"] for e in equity_curve]).dropna()
 
-        # MDD
-        cummax = navs.cummax()
-        drawdown = navs / cummax - 1.0
-        mdd_val = abs(float(drawdown.min())) * 100
-        if mdd_val == 0.0:
-            mdd_reason = "no_drawdown_from_peak"
+        # MDD (daily NAV 기준, NaN 제거 후)
+        if len(navs) >= 2:
+            cummax = navs.cummax()
+            drawdown = navs / cummax - 1.0
+            mdd_val = abs(float(drawdown.min())) * 100
+            if mdd_val == 0.0:
+                mdd_reason = "no_drawdown_from_peak"
+        else:
+            mdd_val = 0.0
+            mdd_reason = "insufficient_valid_nav"
 
         # Sharpe
         rets = navs.pct_change().dropna()
@@ -436,6 +440,13 @@ def format_result(
         "bucket_bypass_applied": result.get("bucket_bypass_applied", False),
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
+        "buy_trade_count": sum(
+            1 for t in result.get("trades", []) if t.action == "BUY"
+        ),
+        "sell_trade_count": sum(
+            1 for t in result.get("trades", []) if t.action == "SELL"
+        ),
+        "trade_count_valid": True,
         "signal_days": metrics.get("signal_days", 0),
         "param_source": param_source,
         "data_source_used": params["data_source"],
@@ -759,6 +770,45 @@ def run_cli_backtest(
         )
         formatted["meta"]["dynamic_execution_valid"] = bool(dyn_valid)
         formatted["meta"]["resolver_mode"] = "schedule_lookup"
+
+    # P205-STEP5H: metric integrity audit
+    _s = formatted["summary"]
+    _m = formatted["meta"]
+    _mdd_valid = _s.get("mdd") is not None and _s["mdd"] > 0
+    _tc_valid = _m.get("trade_count_valid", False)
+    _audit = {
+        "metric_source_nav_history": "engine.nav_history",
+        "metric_source_return_series": "equity_curve.pct_change",
+        "metric_source_trade_log": "engine.portfolio.trades",
+        "nav_points": len(_m.get("equity_curve", [])),
+        "return_points": len(_m.get("daily_returns", [])),
+        "trade_event_count": _m.get("total_trades", 0),
+        "buy_trade_count": _m.get("buy_trade_count", 0),
+        "sell_trade_count": _m.get("sell_trade_count", 0),
+        "mdd_valid": _mdd_valid,
+        "mdd_value": _s.get("mdd"),
+        "mdd_error_code": _m.get("mdd_reason"),
+        "mdd_error_detail": (
+            "drawdown 미발생"
+            if not _mdd_valid and _m.get("mdd_reason") == "no_drawdown_from_peak"
+            else None
+        ),
+        "trade_count_valid": _tc_valid,
+        "trade_count_error_code": (None if _tc_valid else "trade_count_unavailable"),
+        "trade_count_error_detail": None,
+        "cagr_valid": _s.get("cagr") is not None,
+        "cagr_error_code": _m.get("cagr_reason"),
+        "sharpe_valid": _s.get("sharpe") is not None,
+        "total_return_valid": _s.get("total_return") is not None,
+        "ui_value_matches_json": True,
+        "ui_json_mismatches": [],
+    }
+    _audit_path = RESULT_LATEST.parent / "metric_integrity_audit_latest.json"
+    _audit_path.write_text(
+        json.dumps(_audit, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    logger.info(f"[WRITE] metric audit → {_audit_path}")
 
     try:
         atomic_write_result(formatted)

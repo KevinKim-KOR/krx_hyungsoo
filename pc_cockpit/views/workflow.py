@@ -296,16 +296,27 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                     bt_meta = bt_data.get("meta", {})
                     st.success("✅ 최근 실행 성공")
                     c1, c2, c3 = st.columns(3)
-                    c1.metric("CAGR", f"{bt_summary.get('cagr', 0):.2f}%")
-                    c2.metric("MDD", f"{bt_summary.get('mdd_pct', 0):.2f}%")
+                    _cagr = bt_summary.get("cagr")
+                    _mdd = bt_summary.get("mdd")
+                    _tr = bt_summary.get("total_return")
+                    c1.metric(
+                        "CAGR",
+                        f"{_cagr:.2f}%" if _cagr is not None else "계산 실패",
+                    )
+                    c2.metric(
+                        "MDD",
+                        f"{_mdd:.2f}%" if _mdd is not None else "계산 실패",
+                    )
                     c3.metric("Sharpe", f"{bt_summary.get('sharpe', 0):.4f}")
                     c4, c5 = st.columns(2)
-                    c4.metric("총 수익률", f"{bt_summary.get('total_return', 0):.2f}%")
+                    c4.metric(
+                        "총 수익률",
+                        f"{_tr:.2f}%" if _tr is not None else "계산 실패",
+                    )
+                    _trades = bt_meta.get("total_trades")
                     c5.metric(
                         "총 거래수",
-                        bt_summary.get(
-                            "order_count", bt_summary.get("total_trades", "N/A")
-                        ),
+                        _trades if _trades is not None else "계산 실패",
                     )
                     b_um = bt_meta.get("universe_mode", "?")
                     b_us = bt_meta.get("universe_size", "?")

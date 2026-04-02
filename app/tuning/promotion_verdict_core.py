@@ -149,9 +149,15 @@ def compute_promotion_verdict(
     backtest_matches_candidate = bool(best_params) and all_axes_match(backtest_vs_best)
 
     summary = (backtest_data or {}).get("summary", {})
+    _bt_meta = (backtest_data or {}).get("meta", {})
     mdd_value = to_float(summary.get("mdd", summary.get("mdd_pct", 0.0)))
     cagr_value = to_float(summary.get("cagr", 0.0))
     sharpe_value = to_float(summary.get("sharpe", 0.0))
+
+    # P205-STEP5H: metric validity guard
+    _mdd_invalid = summary.get("mdd") is None
+    _cagr_invalid = summary.get("cagr") is None
+    _tc_invalid = not _bt_meta.get("trade_count_valid", True)
 
     criteria_check = {
         "cagr_gt_15": cagr_value > 15.0,
@@ -176,6 +182,9 @@ def compute_promotion_verdict(
     # ── 사유 수집 ──
     if not candidate_applied_to_ssot:
         reasons.append("현재 SSOT 5축 값이 튜닝 1등 후보와 일치하지 않습니다.")
+
+    if _mdd_invalid or _cagr_invalid or _tc_invalid:
+        reasons.append("성능지표 감사 실패: metric 계산 불가 항목 존재")
 
     if tune_data and backtest_data:
         if not criteria_check["cagr_gt_15"]:
