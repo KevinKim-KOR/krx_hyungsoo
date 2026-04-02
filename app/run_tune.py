@@ -786,12 +786,12 @@ def run_cli_tune(
         _prev_meta = (_prev_bt or {}).get("meta", {})
         _prev_mode = _prev_meta.get("universe_mode", "")
         if _prev_mode == "dynamic_etf_market":
-            _prev_mdd = (_prev_bt or {}).get("summary", {}).get("mdd", 99.0)
+            _prev_mdd = (_prev_bt or {}).get("summary", {}).get("mdd")
         else:
-            _prev_mdd = 99.0  # baseline 없음 → 비교 불가
+            _prev_mdd = None  # baseline 없음
         if _mdd_met and _cagr_met:
             _conclusion = "PROMOTION_READY"
-        elif _cal_mdd < _prev_mdd:
+        elif _prev_mdd is not None and _cal_mdd < _prev_mdd:
             _conclusion = "RISK_IMPROVED_BUT_STILL_REJECT"
         else:
             _conclusion = "NO_MEANINGFUL_IMPROVEMENT"
