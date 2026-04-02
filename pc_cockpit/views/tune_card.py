@@ -52,11 +52,17 @@ def render_tune_results_card(params_data):
 
                 _rcm = tune_meta.get("risk_calibration_mode", "")
                 _rcm_tag = f" | 리스크 보정: {_rcm}" if _rcm else ""
+                _mdd_target = ""
+                if _rcm:
+                    _mdd_val = bs.get("mdd_pct", 0)
+                    _met = "예" if _mdd_val < 10.0 else "아니오"
+                    _mdd_target = f" | 목표 MDD<10: {_met}"
                 st.caption(
                     f"Study: {sn} | 검색공간: {ss_ver}"
-                    f"{_rcm_tag}"
+                    f"{_rcm_tag}{_mdd_target}"
                     f" | Resume: {re_icon}\n"
-                    f"| asof: {asof} | universe: {t_um}({t_us})\n"
+                    f"| asof: {asof}"
+                    f" | universe: {t_um}({t_us})\n"
                     f"| legacy 제외: {legacy_cnt}건"
                     f" | A/B 비교: {ab_ready}"
                 )

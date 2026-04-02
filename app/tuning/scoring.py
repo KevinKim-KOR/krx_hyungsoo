@@ -248,11 +248,17 @@ def compute_score(
     reason_code = "SAFE_MATH_CLIPPED" if safe_math_clipped else ""
     final_score = max(score, INVALID_SCORE_FLOOR)
 
+    _actual_weights = {"w1": w1, "w2": w2, "w3": w3, "w4": OBJECTIVE_WEIGHTS["w4"]}
+    _actual_formula = (
+        f"Score=({w1}*CAGR_agg)-({w2}*MDD_agg)"
+        f"+({w3}*Sharpe_agg)-(1.00*OverfitPenalty)"
+    )
+
     return {
         "score": round(final_score, 6),
         "objective_version": OBJECTIVE_VERSION,
-        "objective_formula": OBJECTIVE_FORMULA,
-        "objective_weights": dict(OBJECTIVE_WEIGHTS),
+        "objective_formula": _actual_formula,
+        "objective_weights": _actual_weights,
         "objective_breakdown": {
             "cagr_full": round(cagr_full, 6),
             "cagr_seg_mean": round(cagr_seg_mean, 6),
