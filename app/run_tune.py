@@ -781,9 +781,14 @@ def run_cli_tune(
         _cal_sharpe = best_attrs.get("sharpe", 0)
         _mdd_met = _cal_mdd < 10.0
         _cagr_met = _cal_cagr > 15.0
-        # 이전 백테스트 MDD와 비교 (개선 여부 판정)
+        # 이전 dynamic 백테스트 MDD와 비교 (mode-safe)
         _prev_bt = _load_json_or_none(BACKTEST_RESULT_LATEST)
-        _prev_mdd = (_prev_bt or {}).get("summary", {}).get("mdd", 99.0)
+        _prev_meta = (_prev_bt or {}).get("meta", {})
+        _prev_mode = _prev_meta.get("universe_mode", "")
+        if _prev_mode == "dynamic_etf_market":
+            _prev_mdd = (_prev_bt or {}).get("summary", {}).get("mdd", 99.0)
+        else:
+            _prev_mdd = 99.0  # baseline 없음 → 비교 불가
         if _mdd_met and _cagr_met:
             _conclusion = "PROMOTION_READY"
         elif _cal_mdd < _prev_mdd:
