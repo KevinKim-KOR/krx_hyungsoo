@@ -98,6 +98,7 @@ def compute_score(
     *,
     metrics: Dict[str, Any],
     segment_data: Dict[str, Any],
+    risk_calibration_mode: str = "",
 ) -> Dict[str, Any]:
     """
     Step3 objective score with safe-math, metric normalization, and hard caps.
@@ -152,7 +153,9 @@ def compute_score(
 
     cagr_full = full_cagr * scale_factor  # type: ignore[operator]
     mdd_full = full_mdd * scale_factor  # type: ignore[operator]
-    cagr_seg = [value * scale_factor for value in raw_seg_cagr]  # type: ignore[operator]
+    cagr_seg = [  # type: ignore[operator]
+        value * scale_factor for value in raw_seg_cagr
+    ]
     mdd_seg = [value * scale_factor for value in raw_seg_mdd]  # type: ignore[operator]
     sharpe_seg = [float(value) for value in raw_seg_sharpe]  # type: ignore[arg-type]
     sharpe_full = float(full_sharpe)  # type: ignore[arg-type]
@@ -164,6 +167,16 @@ def compute_score(
     cagr_agg = 0.40 * cagr_full + 0.60 * cagr_seg_mean
     mdd_agg = 0.50 * mdd_full + 0.50 * mdd_seg_mean
     sharpe_agg = 0.40 * sharpe_full + 0.60 * sharpe_seg_mean
+
+    # P205-STEP5I: dynamic risk calibration 가중치 조정
+    if risk_calibration_mode == "dynamic_risk_v1":
+        w1 = 0.25  # CAGR 비중 축소
+        w2 = 0.40  # MDD 비중 강화
+        w3 = 0.35  # Sharpe 비중 강화
+    else:
+        w1 = OBJECTIVE_WEIGHTS["w1"]
+        w2 = OBJECTIVE_WEIGHTS["w2"]
+        w3 = OBJECTIVE_WEIGHTS["w3"]
 
     safe_math_clipped = False
 
@@ -193,9 +206,14 @@ def compute_score(
             worst_segment_quality = quality
             worst_segment = key
 
-        if mdd_value > 0.18:
+        # MDD penalty threshold/strength 분리
+        _mdd_thresh = 0.10 if risk_calibration_mode == "dynamic_risk_v1" else 0.18
+        _mdd_mult = 35.0 if risk_calibration_mode == "dynamic_risk_v1" else 25.0
+        if mdd_value > _mdd_thresh:
             hard_penalty_triggered = True
-            exp_input, was_clipped = _clip(25.0 * (mdd_value - 0.18), 0.0, 4.0)
+            exp_input, was_clipped = _clip(
+                _mdd_mult * (mdd_value - _mdd_thresh), 0.0, 4.0
+            )
             safe_math_clipped = safe_math_clipped or was_clipped
             penalty_tail += _safe_exp(exp_input)
 
@@ -218,9 +236,9 @@ def compute_score(
     safe_math_clipped = safe_math_clipped or was_clipped
 
     score = (
-        OBJECTIVE_WEIGHTS["w1"] * cagr_agg
-        - OBJECTIVE_WEIGHTS["w2"] * mdd_agg
-        + OBJECTIVE_WEIGHTS["w3"] * sharpe_agg
+        w1 * cagr_agg
+        - w2 * mdd_agg
+        + w3 * sharpe_agg
         - OBJECTIVE_WEIGHTS["w4"] * overfit_penalty
     )
 
@@ -258,12 +276,21 @@ def compute_score(
     }
 
 
-def should_prune(mdd_pct: float, total_trades: int) -> str | None:
+def should_prune(
+    mdd_pct: float,
+    total_trades: int,
+    risk_calibration_mode: str = "",
+) -> str | None:
     """
-    Return prune reason if hard constraints are violated, otherwise None.
+    Return prune reason if hard constraints are violated.
     """
-    if mdd_pct > MAX_MDD_PCT:
-        return f"MDD {mdd_pct:.1f}% > {MAX_MDD_PCT}%"
+    # dynamic: hard prune 완화 (soft penalty로 MDD 억제)
+    if risk_calibration_mode == "dynamic_risk_v1":
+        max_mdd = 50.0
+    else:
+        max_mdd = MAX_MDD_PCT
+    if mdd_pct > max_mdd:
+        return f"MDD {mdd_pct:.1f}% > {max_mdd}%"
     if total_trades > MAX_TOTAL_TRADES:
         return f"trades {total_trades} > {MAX_TOTAL_TRADES}"
     return None

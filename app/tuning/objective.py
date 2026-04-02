@@ -16,7 +16,7 @@ try:
 except ImportError:
     raise ImportError("optuna package missing. Please install optuna.")
 
-from app.tuning.search_space import suggest_params
+from app.tuning.search_space import suggest_params, suggest_params_dynamic_risk
 from app.tuning.scoring import compute_score, should_prune
 from app.tuning.runner import run_single_trial
 from app.tuning.segment_eval import compute_segment_metrics
@@ -37,6 +37,7 @@ class TuneObjective:
         end: date,
         telemetry: Optional[TuneLogger] = None,
         universe_resolver=None,
+        risk_calibration_mode: str = "",
     ):
         self.price_data = price_data
         self.universe = universe
@@ -44,11 +45,15 @@ class TuneObjective:
         self.end = end
         self.telemetry = telemetry
         self.universe_resolver = universe_resolver
+        self.risk_calibration_mode = risk_calibration_mode
         self._seen_hashes: Set[str] = set()
 
     def __call__(self, trial: optuna.Trial) -> float:
-        # 1. Suggest params
-        params = suggest_params(trial)
+        # 1. Suggest params (dynamic vs fixed search space)
+        if self.risk_calibration_mode == "dynamic_risk_v1":
+            params = suggest_params_dynamic_risk(trial)
+        else:
+            params = suggest_params(trial)
 
         # 2. Duplicate check
         p_hash = compute_params_hash(params)
@@ -94,7 +99,9 @@ class TuneObjective:
 
         # 4. Hard constraint check
         prune_reason = should_prune(
-            metrics_core["mdd_pct"], metrics_core["total_trades"]
+            metrics_core["mdd_pct"],
+            metrics_core["total_trades"],
+            risk_calibration_mode=self.risk_calibration_mode,
         )
         if prune_reason:
             logger.info(f"[TUNE] Trial {trial.number}: pruned - {prune_reason}")
@@ -113,7 +120,11 @@ class TuneObjective:
         segment_data = compute_segment_metrics(
             metrics.get("_nav_history", []), n_segments=3
         )
-        score_payload = compute_score(metrics=metrics_core, segment_data=segment_data)
+        score_payload = compute_score(
+            metrics=metrics_core,
+            segment_data=segment_data,
+            risk_calibration_mode=self.risk_calibration_mode,
+        )
         score = float(score_payload["score"])
 
         # 6. Log trial attrs for downstream summary and UI

@@ -46,11 +46,25 @@ def render_tune_results_card(params_data):
                 asof = tune_meta.get("asof", "?")
                 t_um = tune_meta.get("universe_mode", "?")
                 t_us = tune_meta.get("universe_size", "?")
+                ss_ver = tune_meta.get("search_space_version", "N/A")
+                legacy_cnt = tune_meta.get("legacy_filtered_count", 0)
+                ab_ready = "가능" if tune_meta.get("ab_comparison_ready") else "불가능"
+
+                _rcm = tune_meta.get("risk_calibration_mode", "")
+                _rcm_tag = f" | 리스크 보정: {_rcm}" if _rcm else ""
                 st.caption(
-                    f"Study: {sn} | Resume: {re_icon}"
-                    f" | asof: {asof}"
-                    f" | universe: {t_um}({t_us})"
+                    f"Study: {sn} | 검색공간: {ss_ver}"
+                    f"{_rcm_tag}"
+                    f" | Resume: {re_icon}\n"
+                    f"| asof: {asof} | universe: {t_um}({t_us})\n"
+                    f"| legacy 제외: {legacy_cnt}건"
+                    f" | A/B 비교: {ab_ready}"
                 )
+
+                if tune_meta.get("ab_comparison_ready"):
+                    _ab_f = tune_meta.get("ab_fixed_score", "N/A")
+                    _ab_e = tune_meta.get("ab_expanded_score", "N/A")
+                    st.info(f"**A/B 비교** — fixed: {_ab_f}" f" vs expanded: {_ab_e}")
                 with st.expander("최적 파라미터", expanded=False):
                     st.json(bp)
 

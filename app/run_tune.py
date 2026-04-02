@@ -199,7 +199,9 @@ def run_cli_tune(
     storage_path.parent.mkdir(parents=True, exist_ok=True)
 
     universe_mode = params.get("universe_mode", "fixed_current")
-    SEARCH_SPACE_VERSION = "5axis_v1"
+    _is_dynamic_risk = universe_mode == "dynamic_etf_market"
+    SEARCH_SPACE_VERSION = "5axis_dynamic_risk_v1" if _is_dynamic_risk else "5axis_v1"
+    _risk_cal_mode = "dynamic_risk_v1" if _is_dynamic_risk else ""
     study_name = f"tune_{mode}_{universe_mode}_{SEARCH_SPACE_VERSION}"
 
     study = optuna.create_study(
@@ -269,6 +271,7 @@ def run_cli_tune(
         end=end,
         telemetry=telemetry,
         universe_resolver=_tune_resolver,
+        risk_calibration_mode=_risk_cal_mode,
     )
 
     def _checkpoint_callback(study_obj, trial_obj):
@@ -678,6 +681,7 @@ def run_cli_tune(
             "run_id": run_id,
             "study_name": study_name,
             "search_space_version": SEARCH_SPACE_VERSION,
+            "risk_calibration_mode": _risk_cal_mode,
             "storage_path": str(storage_path),
             "resume_enabled": True,
             "n_trials_total": len(study.trials),
@@ -769,6 +773,78 @@ def run_cli_tune(
     except Exception as e:
         logger.error(f"Result write failed: {e}")
         return False
+
+    # P205-STEP5I: dynamic risk calibration summary
+    if _is_dynamic_risk:
+        _cal_mdd = best_attrs.get("mdd_pct", 0)
+        _cal_cagr = best_attrs.get("cagr", 0)
+        _cal_sharpe = best_attrs.get("sharpe", 0)
+        _mdd_met = _cal_mdd < 10.0
+        _cagr_met = _cal_cagr > 15.0
+        if _mdd_met and _cagr_met:
+            _conclusion = "PROMOTION_READY"
+        elif _cal_mdd < best_attrs.get("mdd_pct", 99):
+            _conclusion = "RISK_IMPROVED_BUT_STILL_REJECT"
+        else:
+            _conclusion = "NO_MEANINGFUL_IMPROVEMENT"
+        _cal_summary = {
+            "asof": now_kst,
+            "universe_mode": universe_mode,
+            "study_name": study_name,
+            "search_space_version": SEARCH_SPACE_VERSION,
+            "risk_calibration_mode": _risk_cal_mode,
+            "seed": seed,
+            "best_params": best_params,
+            "best_score": round(best_score, 4),
+            "full_cagr": round(_cal_cagr, 4),
+            "full_mdd": round(_cal_mdd, 4),
+            "full_sharpe": round(_cal_sharpe, 4),
+            "full_total_return": round(best_attrs.get("total_return", 0), 4),
+            "segment_summary": {
+                k: v for k, v in (segment_data or {}).get("segment_metrics", {}).items()
+            },
+            "target_mdd_under_10_met": _mdd_met,
+            "target_cagr_above_15_met": _cagr_met,
+            "conclusion": _conclusion,
+        }
+        _cal_dir = PROJECT_ROOT / "reports" / "tuning"
+        _cal_json = _cal_dir / "dynamic_risk_calibration_summary.json"
+        _cal_md = _cal_dir / "dynamic_risk_calibration_summary.md"
+        _cal_json.write_text(
+            json.dumps(_cal_summary, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        _mdd_yn = "예" if _mdd_met else "아니오"
+        _cagr_yn = "예" if _cagr_met else "아니오"
+        _md_lines = [
+            "# Dynamic Risk Calibration Summary",
+            "",
+            f"- asof: {now_kst}",
+            f"- universe_mode: {universe_mode}",
+            f"- study: {study_name}",
+            f"- search_space: {SEARCH_SPACE_VERSION}",
+            f"- seed: {seed}",
+            "",
+            "## Best Params",
+            "```json",
+            json.dumps(best_params, indent=2),
+            "```",
+            "",
+            "## Performance",
+            "| Metric | Value |",
+            "|---|---|",
+            f"| CAGR | {_cal_cagr:.2f}% |",
+            f"| MDD | {_cal_mdd:.2f}% |",
+            f"| Sharpe | {_cal_sharpe:.4f} |",
+            "",
+            "## Targets",
+            f"- MDD < 10%: {_mdd_yn}",
+            f"- CAGR > 15%: {_cagr_yn}",
+            "",
+            f"## Conclusion: **{_conclusion}**",
+        ]
+        _cal_md.write_text("\n".join(_md_lines), encoding="utf-8")
+        logger.info(f"[WRITE] risk calibration summary → {_cal_json}")
 
     telemetry.emit_tune_end(
         {
