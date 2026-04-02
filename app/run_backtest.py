@@ -446,7 +446,7 @@ def format_result(
         "sell_trade_count": sum(
             1 for t in result.get("trades", []) if t.action == "SELL"
         ),
-        "trade_count_valid": True,
+        "trade_count_valid": result.get("trades") is not None,
         "signal_days": metrics.get("signal_days", 0),
         "param_source": param_source,
         "data_source_used": params["data_source"],
@@ -774,7 +774,8 @@ def run_cli_backtest(
     # P205-STEP5H: metric integrity audit
     _s = formatted["summary"]
     _m = formatted["meta"]
-    _mdd_valid = _s.get("mdd") is not None and _s["mdd"] > 0
+    # mdd_valid = 계산 자체가 성공했는지 (값이 0.0이어도 valid)
+    _mdd_valid = _s.get("mdd") is not None and _m.get("mdd_reason") is None
     _tc_valid = _m.get("trade_count_valid", False)
     _audit = {
         "metric_source_nav_history": "engine.nav_history",
@@ -800,8 +801,22 @@ def run_cli_backtest(
         "cagr_error_code": _m.get("cagr_reason"),
         "sharpe_valid": _s.get("sharpe") is not None,
         "total_return_valid": _s.get("total_return") is not None,
-        "ui_value_matches_json": True,
-        "ui_json_mismatches": [],
+        "ui_value_matches_json": (
+            _s.get("mdd") is not None
+            and _s.get("cagr") is not None
+            and _s.get("total_return") is not None
+            and _m.get("total_trades") is not None
+        ),
+        "ui_json_mismatches": [
+            k
+            for k, v in {
+                "mdd": _s.get("mdd"),
+                "cagr": _s.get("cagr"),
+                "total_return": _s.get("total_return"),
+                "total_trades": _m.get("total_trades"),
+            }.items()
+            if v is None
+        ],
     }
     _audit_path = RESULT_LATEST.parent / "metric_integrity_audit_latest.json"
     _audit_path.write_text(
