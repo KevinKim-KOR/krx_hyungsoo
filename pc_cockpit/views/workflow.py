@@ -345,6 +345,10 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         _bypass = bt_meta.get("bucket_bypass_applied", False)
                         _bypass_tag = " (bucket bypass)" if _bypass else ""
                         st.caption(f"배분 경로: {_alloc}{_bypass_tag}")
+                        # P206-STEP6B: Regime Filter 상태
+                        if bt_meta.get("exo_regime_applied"):
+                            _ro_cnt = bt_meta.get("exo_regime_risk_off_count", 0)
+                            st.caption(f"Regime: hard_gate" f" | risk_off: {_ro_cnt}회")
                         if bt_meta.get("zero_trade_diagnostic"):
                             _root = bt_meta.get("zero_trade_root_cause", "?")
                             _stage = bt_meta.get("zero_trade_block_stage", "?")

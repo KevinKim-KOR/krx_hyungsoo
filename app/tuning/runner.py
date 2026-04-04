@@ -28,6 +28,8 @@ def run_single_trial(
     end: date,
     include_nav_history: bool = False,
     universe_resolver: Any = None,
+    universe_mode: str = "fixed_current",
+    exo_regime_schedule: Any = None,
 ) -> Dict[str, Any]:
     """
     단일 trial 백테스트 실행 (Option A: 직접 호출).
@@ -68,6 +70,8 @@ def run_single_trial(
         stop_loss=params["stop_loss"],
         adx_threshold=20,
         universe_resolver=universe_resolver,
+        universe_mode=universe_mode,
+        exo_regime_schedule=exo_regime_schedule,
     )
 
     # ── Extract metrics from engine result ──

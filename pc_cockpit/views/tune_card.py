@@ -70,7 +70,14 @@ def render_tune_results_card(params_data):
                 if tune_meta.get("ab_comparison_ready"):
                     _ab_f = tune_meta.get("ab_fixed_score", "N/A")
                     _ab_e = tune_meta.get("ab_expanded_score", "N/A")
-                    st.info(f"**A/B 비교** — fixed: {_ab_f}" f" vs expanded: {_ab_e}")
+                    if t_um == "dynamic_etf_market":
+                        st.info(
+                            f"**A/B 비교** — dynamic: {_ab_f}" f" (regime 적용 전후)"
+                        )
+                    else:
+                        st.info(
+                            f"**A/B 비교** — fixed: {_ab_f}" f" vs expanded: {_ab_e}"
+                        )
                 with st.expander("최적 파라미터", expanded=False):
                     st.json(bp)
 

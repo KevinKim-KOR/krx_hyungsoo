@@ -46,6 +46,8 @@ class TuneObjective:
         self.telemetry = telemetry
         self.universe_resolver = universe_resolver
         self.risk_calibration_mode = risk_calibration_mode
+        self.exo_regime_schedule = None
+        self.universe_mode = "fixed_current"
         self._seen_hashes: Set[str] = set()
 
     def __call__(self, trial: optuna.Trial) -> float:
@@ -80,6 +82,8 @@ class TuneObjective:
                 end=self.end,
                 universe_resolver=self.universe_resolver,
                 include_nav_history=True,
+                universe_mode=self.universe_mode,
+                exo_regime_schedule=self.exo_regime_schedule,
             )
         except Exception as error:
             logger.warning(f"[TUNE] Trial {trial.number}: backtest failed: {error}")

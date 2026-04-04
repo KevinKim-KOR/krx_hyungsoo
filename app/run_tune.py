@@ -149,8 +149,17 @@ def run_cli_tune(
     try:
         from app.backtest.infra.data_loader import prefetch_ohlcv
 
+        _fetch_tickers = list(universe)
+        if params.get("universe_mode") == "dynamic_etf_market":
+            from app.backtest.strategy.exo_regime_filter import (
+                get_required_proxy_symbols as _get_proxy,
+            )
+
+            for _ps in _get_proxy():
+                if _ps not in _fetch_tickers:
+                    _fetch_tickers.append(_ps)
         price_data = prefetch_ohlcv(
-            universe, start, end, data_source=params["data_source"]
+            _fetch_tickers, start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Prefetch failed: {e}")
@@ -264,6 +273,35 @@ def run_cli_tune(
         except Exception as exc:
             logger.warning(f"[TUNE-DYNAMIC] schedule 실패: {exc}")
 
+    # P206-STEP6B: exogenous regime schedule for tune
+    _tune_exo_regime = None
+    if _is_dynamic_risk:
+        try:
+            from app.backtest.strategy.exo_regime_filter import (
+                build_exo_regime_schedule as _build_exo,
+            )
+            import pandas as _pd2
+
+            _proxy_ohlcv = None
+            if isinstance(price_data.index, _pd2.MultiIndex):
+                _codes = price_data.index.get_level_values("code")
+                if "069500" in _codes:
+                    _proxy_ohlcv = price_data.xs("069500", level="code")
+
+            _tune_rebal_dates = [
+                d.date() for d in _pd2.date_range(start, end, freq="MS")
+            ]
+            _tune_exo_regime = _build_exo(
+                proxy_ohlcv=_proxy_ohlcv,
+                rebalance_dates=_tune_rebal_dates,
+            )
+            logger.info(
+                f"[TUNE-EXO] regime schedule:"
+                f" risk_off={_tune_exo_regime.get('risk_off_count', 0)}"
+            )
+        except Exception as exc:
+            logger.warning(f"[TUNE-EXO] regime schedule 실패: {exc}")
+
     objective = TuneObjective(
         price_data=price_data,
         universe=universe,
@@ -273,6 +311,8 @@ def run_cli_tune(
         universe_resolver=_tune_resolver,
         risk_calibration_mode=_risk_cal_mode,
     )
+    objective.exo_regime_schedule = _tune_exo_regime
+    objective.universe_mode = universe_mode
 
     def _checkpoint_callback(study_obj, trial_obj):
         base_dir = storage_path.parent

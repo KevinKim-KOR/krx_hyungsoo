@@ -328,6 +328,7 @@ class BacktestRunner:
         buckets: Optional[List[Dict[str, Any]]] = None,
         universe_resolver: Optional[Any] = None,
         universe_mode: str = "fixed_current",
+        exo_regime_schedule: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -427,6 +428,13 @@ class BacktestRunner:
         # P205-STEP5F: dynamic allocation path
         _is_dynamic = universe_mode == "dynamic_etf_market"
         _allocation_mode = "dynamic_equal_weight" if _is_dynamic else "bucket_portfolio"
+
+        # P206-STEP6B: exogenous regime hard gate
+        _exo_sched = (
+            (exo_regime_schedule or {}).get("schedule", {}) if _is_dynamic else {}
+        )
+        _exo_risk_off_count = 0
+
         _rebalance_trace: List[Dict[str, Any]] = []
         _total_selected_seen = 0
         _total_entry_pass = 0
@@ -711,6 +719,12 @@ class BacktestRunner:
                     else:
                         adjusted_weights = {}
                         current_rsi_values = {}
+
+                    # P206-STEP6B: exo regime hard gate
+                    _exo_state = _exo_sched.get(str(d), "risk_on")
+                    if _exo_state == "risk_off":
+                        adjusted_weights = {}
+                        _exo_risk_off_count += 1
 
                 elif portfolio_mode == "bucket_portfolio" and buckets:
                     # 버킷별 할당 로직 (Phase 2) — 기존 고정 유니버스 전용
@@ -1079,6 +1093,9 @@ class BacktestRunner:
                         "dominant_block_reason": _pt["_dominant_block"],
                         "dominant_block_detail": _pt["_dominant_detail"],
                         "regime": current_regime,
+                        "exo_regime": (
+                            _exo_sched.get(str(d), "N/A") if _exo_sched else "N/A"
+                        ),
                         "position_ratio": round(position_ratio, 4),
                         "reason_code": _reason,
                         "reason_detail": _detail,
@@ -1156,6 +1173,8 @@ class BacktestRunner:
             "rebalance_universe_changes": _rebalance_universe_changes,
             "allocation_mode": _allocation_mode,
             "bucket_bypass_applied": _is_dynamic,
+            "exo_regime_applied": bool(_exo_sched),
+            "exo_regime_risk_off_count": _exo_risk_off_count,
             "_rebalance_trace": _rebalance_trace,
             "total_rebalance_points": len(_rebalance_trace),
             "total_selected_tickers_seen": _total_selected_seen,

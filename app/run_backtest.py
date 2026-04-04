@@ -169,6 +169,43 @@ def run_backtest(
         except Exception as exc:
             logger.warning(f"[DYNAMIC] schedule 실패, 고정 모드: {exc}")
 
+    # P206-STEP6B: exogenous regime schedule
+    _exo_regime_result = None
+    if params.get("universe_mode") == "dynamic_etf_market":
+        try:
+            from app.backtest.strategy.exo_regime_filter import (
+                build_exo_regime_schedule,
+            )
+
+            _proxy_sym = "069500"
+            _proxy_ohlcv = None
+            if isinstance(price_data.index, pd.MultiIndex):
+                codes = price_data.index.get_level_values("code")
+                if _proxy_sym in codes:
+                    _proxy_ohlcv = price_data.xs(_proxy_sym, level="code")
+
+            _rebal_dates = []
+            if _universe_resolver and hasattr(_universe_resolver, "_schedule"):
+                _sched_entries = _universe_resolver._schedule.get("entries", [])
+                _rebal_dates = [
+                    date.fromisoformat(e["rebalance_date"])
+                    for e in _sched_entries
+                    if "rebalance_date" in e
+                ]
+            if not _rebal_dates:
+                _rebal_dates = [d.date() for d in pd.date_range(start, end, freq="MS")]
+
+            _exo_regime_result = build_exo_regime_schedule(
+                proxy_ohlcv=_proxy_ohlcv,
+                rebalance_dates=_rebal_dates,
+            )
+            _schedule_meta["exo_regime_applied"] = True
+            _schedule_meta["exo_regime_risk_off_count"] = _exo_regime_result.get(
+                "risk_off_count", 0
+            )
+        except Exception as exc:
+            logger.warning(f"[EXO-REGIME] schedule 실패: {exc}")
+
     result = runner.run(
         price_data=price_data,
         target_weights=target_weights,
@@ -186,12 +223,14 @@ def run_backtest(
         buckets=params["buckets"],
         universe_resolver=_universe_resolver,
         universe_mode=params.get("universe_mode", "fixed_current"),
+        exo_regime_schedule=_exo_regime_result,
     )
 
     # Attach trigger evidence
     result["_trigger_source"] = trigger_source
     result["_effective_rebalance"] = effective_rebalance
     result.update(_schedule_meta)
+    result["_exo_regime_result"] = _exo_regime_result
 
     return result
 
@@ -438,6 +477,8 @@ def format_result(
         "rebalance_universe_changes": result.get("rebalance_universe_changes", 0),
         "allocation_mode": result.get("allocation_mode", "bucket_portfolio"),
         "bucket_bypass_applied": result.get("bucket_bypass_applied", False),
+        "exo_regime_applied": result.get("exo_regime_applied", False),
+        "exo_regime_risk_off_count": result.get("exo_regime_risk_off_count", 0),
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "buy_trade_count": sum(
@@ -581,10 +622,20 @@ def run_cli_backtest(
 
     logger.info(f"[DATE] {start} → {end} (mode={mode})")
 
-    # 3. Load price data
+    # 3. Load price data (+ proxy symbols for regime filter)
+    _fetch_tickers = list(params["universe"])
+    _is_dyn = params.get("universe_mode") == "dynamic_etf_market"
+    if _is_dyn:
+        from app.backtest.strategy.exo_regime_filter import (
+            get_required_proxy_symbols,
+        )
+
+        for ps in get_required_proxy_symbols():
+            if ps not in _fetch_tickers:
+                _fetch_tickers.append(ps)
     try:
         price_data = load_price_data(
-            params["universe"], start, end, data_source=params["data_source"]
+            _fetch_tickers, start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Data loading failed: {e}")
@@ -770,6 +821,101 @@ def run_cli_backtest(
         )
         formatted["meta"]["dynamic_execution_valid"] = bool(dyn_valid)
         formatted["meta"]["resolver_mode"] = "schedule_lookup"
+
+    # P206-STEP6B: regime 산출물 생성
+    _exo_regime_result = result.get("_exo_regime_result")
+    if _exo_regime_result and params.get("universe_mode") == "dynamic_etf_market":
+        import csv as _csv2
+
+        _regime_dir = PROJECT_ROOT / "reports" / "tuning"
+        _regime_dir.mkdir(parents=True, exist_ok=True)
+
+        # regime_verdict_latest.json
+        from app.backtest.strategy.exo_regime_filter import (
+            get_active_providers,
+            get_required_proxy_symbols,
+        )
+
+        _active_p = get_active_providers()
+        _proxy_syms = get_required_proxy_symbols()
+        _verdict = {
+            "asof": datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00"),
+            "regime_state": (
+                "risk_off"
+                if _exo_regime_result.get("risk_off_count", 0) > 0
+                else "risk_on"
+            ),
+            "active_providers": [p["key"] for p in _active_p],
+            "active_provider_count": len(_active_p),
+            "provider_values": {
+                "market_trend_ma_regime": {
+                    "ma_period": _exo_regime_result.get("ma_period", 200),
+                    "risk_on_count": _exo_regime_result.get("risk_on_count", 0),
+                    "risk_off_count": _exo_regime_result.get("risk_off_count", 0),
+                }
+            },
+            "provider_thresholds": {"market_trend_ma_regime": {"ma_period": 200}},
+            "policy_applied": "hard_gate",
+            "regime_valid": _exo_regime_result.get("regime_valid", False),
+            "regime_error_code": _exo_regime_result.get("regime_error_code"),
+            "required_proxy_symbols": _proxy_syms,
+            "proxy_fetch_status": (
+                "OK" if _exo_regime_result.get("regime_valid") else "FAILED"
+            ),
+        }
+        (_regime_dir / "regime_verdict_latest.json").write_text(
+            json.dumps(_verdict, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        # regime_schedule_latest.json/csv
+        _sched_data = _exo_regime_result.get("schedule", {})
+        _sched_rows = [
+            {
+                "rebalance_date": rd,
+                "regime_state": rs,
+                "gate_applied": rs == "risk_off",
+                "target_cash_pct": 1.0 if rs == "risk_off" else 0.0,
+                "provider": "market_trend_ma_regime",
+            }
+            for rd, rs in _sched_data.items()
+        ]
+        (_regime_dir / "regime_schedule_latest.json").write_text(
+            json.dumps(_sched_rows, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        if _sched_rows:
+            _csv_path = _regime_dir / "regime_schedule_latest.csv"
+            with open(_csv_path, "w", encoding="utf-8", newline="") as f:
+                w = _csv2.DictWriter(f, fieldnames=_sched_rows[0].keys())
+                w.writeheader()
+                w.writerows(_sched_rows)
+
+        # regime_reason_latest.md
+        _ro = _exo_regime_result.get("risk_off_count", 0)
+        _ri = _exo_regime_result.get("risk_on_count", 0)
+        _reason_md = [
+            "# Regime Filter 판정 사유",
+            "",
+            "- Provider: market_trend_ma_regime",
+            "- Proxy: 069500 (KODEX 200)",
+            "- MA Period: 200일",
+            f"- Risk-Off 횟수: {_ro}",
+            f"- Risk-On 횟수: {_ri}",
+            "",
+            "## 판정 기준",
+            "- 종가 >= 200일 이평선 → risk_on (정상 투자)",
+            "- 종가 < 200일 이평선 → risk_off (100% 현금)",
+            "",
+            "## risk_off 시 동작",
+            "- 해당 리밸런스 시점에 위험자산 목표 비중 0%",
+            "- 기존 보유 포지션도 전량 청산 대상",
+            "- dynamic scanner 결과는 해당 시점 미적용",
+        ]
+        (_regime_dir / "regime_reason_latest.md").write_text(
+            "\n".join(_reason_md), encoding="utf-8"
+        )
+        logger.info(f"[WRITE] regime outputs → {_regime_dir}")
 
     # P205-STEP5H: metric integrity audit
     _s = formatted["summary"]
