@@ -139,23 +139,29 @@ def _compute_ma_regime_for_date(
     close_series: pd.Series,
     target_date: date,
     ma_period: int = 200,
-) -> str:
+) -> Dict[str, Any]:
     """주어진 날짜의 MA regime 판정.
 
-    Returns: "risk_on" | "risk_off"
+    Returns:
+        {"state": "risk_on"|"risk_off", "close": float, "ma": float}
     """
     ts = pd.Timestamp(target_date)
     hist = close_series[close_series.index <= ts]
     if len(hist) < ma_period:
-        return "risk_off"  # fail-closed
+        return {"state": "risk_off", "close": None, "ma": None}
 
     ma_val = float(hist.tail(ma_period).mean())
     current = float(hist.iloc[-1])
 
     if pd.isna(ma_val) or pd.isna(current):
-        return "risk_off"  # fail-closed
+        return {"state": "risk_off", "close": None, "ma": None}
 
-    return "risk_on" if current >= ma_val else "risk_off"
+    state = "risk_on" if current >= ma_val else "risk_off"
+    return {
+        "state": state,
+        "close": round(current, 2),
+        "ma": round(ma_val, 2),
+    }
 
 
 # ── Schedule Builder ───────────────────────────────────────
@@ -214,13 +220,20 @@ def build_exo_regime_schedule(
 
     risk_on = 0
     risk_off = 0
+    provider_values: Dict[str, Dict[str, Any]] = {}
     for d in rebalance_dates:
-        state = _compute_ma_regime_for_date(close, d, ma_period)
+        verdict = _compute_ma_regime_for_date(close, d, ma_period)
+        state = verdict["state"]
         result["schedule"][str(d)] = state
+        provider_values[str(d)] = {
+            "close": verdict["close"],
+            "ma200": verdict["ma"],
+        }
         if state == "risk_on":
             risk_on += 1
         else:
             risk_off += 1
+    result["provider_values"] = provider_values
 
     result["regime_valid"] = True
     result["risk_on_count"] = risk_on

@@ -838,13 +838,16 @@ def run_cli_backtest(
 
         _active_p = get_active_providers()
         _proxy_syms = get_required_proxy_symbols()
+        # 최근 verdict = 마지막 리밸런스 날짜의 regime state
+        _sched_data = _exo_regime_result.get("schedule", {})
+        _last_date = max(_sched_data.keys()) if _sched_data else None
+        _latest_state = (
+            _sched_data.get(_last_date, "risk_on") if _last_date else "risk_on"
+        )
+        _verdict_asof = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
         _verdict = {
-            "asof": datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00"),
-            "regime_state": (
-                "risk_off"
-                if _exo_regime_result.get("risk_off_count", 0) > 0
-                else "risk_on"
-            ),
+            "asof": _verdict_asof,
+            "regime_state": _latest_state,
             "active_providers": [p["key"] for p in _active_p],
             "active_provider_count": len(_active_p),
             "provider_values": {
@@ -870,16 +873,21 @@ def run_cli_backtest(
 
         # regime_schedule_latest.json/csv
         _sched_data = _exo_regime_result.get("schedule", {})
-        _sched_rows = [
-            {
-                "rebalance_date": rd,
-                "regime_state": rs,
-                "gate_applied": rs == "risk_off",
-                "target_cash_pct": 1.0 if rs == "risk_off" else 0.0,
-                "provider": "market_trend_ma_regime",
-            }
-            for rd, rs in _sched_data.items()
-        ]
+        _prov_vals = _exo_regime_result.get("provider_values", {})
+        _sched_rows = []
+        for rd, rs in _sched_data.items():
+            _pv = _prov_vals.get(rd, {})
+            _sched_rows.append(
+                {
+                    "rebalance_date": rd,
+                    "regime_state": rs,
+                    "gate_applied": rs == "risk_off",
+                    "target_cash_pct": 1.0 if rs == "risk_off" else 0.0,
+                    "provider": "market_trend_ma_regime",
+                    "proxy_close": _pv.get("close"),
+                    "proxy_ma200": _pv.get("ma200"),
+                }
+            )
         (_regime_dir / "regime_schedule_latest.json").write_text(
             json.dumps(_sched_rows, indent=2, ensure_ascii=False),
             encoding="utf-8",

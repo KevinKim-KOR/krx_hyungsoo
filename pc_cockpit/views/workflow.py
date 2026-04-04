@@ -347,8 +347,24 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         st.caption(f"배분 경로: {_alloc}{_bypass_tag}")
                         # P206-STEP6B: Regime Filter 상태
                         if bt_meta.get("exo_regime_applied"):
+                            _rv_path = (
+                                BASE_DIR
+                                / "reports"
+                                / "tuning"
+                                / "regime_verdict_latest.json"
+                            )
+                            _rv = load_json(_rv_path) if _rv_path.exists() else {}
+                            _rv_state = _rv.get("regime_state", "?")
+                            _rv_prov = _rv.get("active_provider_count", 0)
+                            _rv_asof = _rv.get("asof", "?")
                             _ro_cnt = bt_meta.get("exo_regime_risk_off_count", 0)
-                            st.caption(f"Regime: hard_gate" f" | risk_off: {_ro_cnt}회")
+                            st.caption(
+                                f"Regime 상태: {_rv_state}"
+                                f" | provider: {_rv_prov}개"
+                                f" | 정책: hard_gate"
+                                f" | risk_off: {_ro_cnt}회"
+                                f" | verdict: {_rv_asof}"
+                            )
                         if bt_meta.get("zero_trade_diagnostic"):
                             _root = bt_meta.get("zero_trade_root_cause", "?")
                             _stage = bt_meta.get("zero_trade_block_stage", "?")
