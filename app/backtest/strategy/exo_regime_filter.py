@@ -127,6 +127,46 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
 
 FRESHNESS_TTL_DAYS = 5  # 캘린더 일수 기준
 
+_VIX_CACHE_DIR = "data/cache/ohlcv/vix"
+
+
+def fetch_vix_cached(start: date, end: date) -> Optional[pd.DataFrame]:
+    """VIX 데이터를 캐시 우선으로 fetch. 기존 OHLCV 캐시 패턴 재사용."""
+    from pathlib import Path
+
+    cache_dir = Path(_VIX_CACHE_DIR)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_key = f"VIX_{start}_{end}"
+    cache_path = cache_dir / f"{cache_key}.parquet"
+
+    if cache_path.exists():
+        try:
+            df = pd.read_parquet(cache_path)
+            logger.info(f"[VIX] cache hit: {cache_path}")
+            return df
+        except Exception:
+            pass
+
+    try:
+        import yfinance as yf
+
+        fetch_start = start - pd.Timedelta(days=400)
+        ticker = yf.Ticker("^VIX")
+        df = ticker.history(
+            start=str(fetch_start),
+            end=str(end + pd.Timedelta(days=1)),
+        )
+        if df is not None and not df.empty:
+            df.columns = [c.lower() for c in df.columns]
+            if hasattr(df.index, "tz") and df.index.tz is not None:
+                df.index = df.index.tz_localize(None)
+            df.to_parquet(cache_path)
+            logger.info(f"[VIX] fetched {len(df)} rows → {cache_path}")
+            return df
+    except Exception as exc:
+        logger.warning(f"[VIX] fetch 실패: {exc}")
+    return None
+
 
 def get_active_providers() -> List[Dict[str, Any]]:
     """활성화된 provider 목록 반환."""

@@ -175,24 +175,10 @@ def run_backtest(
         try:
             from app.backtest.strategy.exo_regime_filter import (
                 build_fear_regime_schedule,
+                fetch_vix_cached,
             )
 
-            # VIX fetch via yfinance (별도, 투자 universe와 분리)
-            _vix_ohlcv = None
-            try:
-                import yfinance as _yf
-
-                _vix_start = start - timedelta(days=400)
-                _vix_ticker = _yf.Ticker("^VIX")
-                _vix_df = _vix_ticker.history(
-                    start=str(_vix_start), end=str(end + timedelta(days=1))
-                )
-                if _vix_df is not None and not _vix_df.empty:
-                    _vix_df.columns = [c.lower() for c in _vix_df.columns]
-                    _vix_ohlcv = _vix_df
-                    logger.info(f"[VIX] fetched {len(_vix_df)} rows")
-            except Exception as vix_exc:
-                logger.warning(f"[VIX] fetch 실패: {vix_exc}")
+            _vix_ohlcv = fetch_vix_cached(start, end)
 
             _rebal_dates = []
             if _universe_resolver and hasattr(_universe_resolver, "_schedule"):

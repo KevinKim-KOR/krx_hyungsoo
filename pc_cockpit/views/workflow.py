@@ -360,6 +360,18 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             _fv_us = _fv.get("fear_value_timestamp", "?")
                             _n_cnt = bt_meta.get("exo_regime_neutral_count", 0)
                             _ro_cnt = bt_meta.get("exo_regime_risk_off_count", 0)
+                            # fear schedule에서 마지막 한국 적용일
+                            _fv_kr = "?"
+                            _fs_path = (
+                                BASE_DIR
+                                / "reports"
+                                / "tuning"
+                                / "fear_regime_schedule_latest.json"
+                            )
+                            if _fs_path.exists():
+                                _fs = load_json(_fs_path)
+                                if _fs:
+                                    _fv_kr = _fs[-1].get("applied_trade_date_kr", "?")
                             st.caption(
                                 f"Fear Regime: {_fv_state}"
                                 f" | VIX: {_fv_vix}"
@@ -367,6 +379,7 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                                 f" | neutral: {_n_cnt}회"
                                 f" | risk_off: {_ro_cnt}회"
                                 f" | 미국: {_fv_us}"
+                                f" | 적용: {_fv_kr}"
                             )
                         if bt_meta.get("zero_trade_diagnostic"):
                             _root = bt_meta.get("zero_trade_root_cause", "?")

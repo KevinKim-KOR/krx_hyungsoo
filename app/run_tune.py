@@ -270,29 +270,26 @@ def run_cli_tune(
         try:
             from app.backtest.strategy.exo_regime_filter import (
                 build_fear_regime_schedule as _build_fear,
+                fetch_vix_cached as _fetch_vix,
             )
-            import pandas as _pd2
 
-            # VIX fetch (tune용)
-            _tune_vix_ohlcv = None
-            try:
-                import yfinance as _yf2
+            _tune_vix_ohlcv = _fetch_vix(start, end)
 
-                _vix_start2 = start - timedelta(days=400)
-                _vix_t2 = _yf2.Ticker("^VIX")
-                _vix_df2 = _vix_t2.history(
-                    start=str(_vix_start2),
-                    end=str(end + timedelta(days=1)),
-                )
-                if _vix_df2 is not None and not _vix_df2.empty:
-                    _vix_df2.columns = [c.lower() for c in _vix_df2.columns]
-                    _tune_vix_ohlcv = _vix_df2
-            except Exception as _ve:
-                logger.warning(f"[TUNE-VIX] fetch 실패: {_ve}")
+            # Full과 동일한 rebalance 날짜 사용
+            _tune_rebal_dates = []
+            if _tune_resolver and hasattr(_tune_resolver, "_schedule"):
+                _sched_ent = _tune_resolver._schedule.get("entries", [])
+                _tune_rebal_dates = [
+                    date.fromisoformat(e["rebalance_date"])
+                    for e in _sched_ent
+                    if "rebalance_date" in e
+                ]
+            if not _tune_rebal_dates:
+                import pandas as _pd2
 
-            _tune_rebal_dates = [
-                d.date() for d in _pd2.date_range(start, end, freq="MS")
-            ]
+                _tune_rebal_dates = [
+                    d.date() for d in _pd2.date_range(start, end, freq="MS")
+                ]
             _tune_exo_regime = _build_fear(
                 vix_ohlcv=_tune_vix_ohlcv,
                 rebalance_dates=_tune_rebal_dates,
