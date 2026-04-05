@@ -198,10 +198,15 @@ def run_backtest(
             _exo_regime_result = build_exo_regime_schedule(
                 proxy_ohlcv=_proxy_ohlcv,
                 rebalance_dates=_rebal_dates,
+                price_data=price_data,
+                universe=params["universe"],
             )
             _schedule_meta["exo_regime_applied"] = True
             _schedule_meta["exo_regime_risk_off_count"] = _exo_regime_result.get(
                 "risk_off_count", 0
+            )
+            _schedule_meta["exo_regime_neutral_count"] = _exo_regime_result.get(
+                "neutral_count", 0
             )
         except Exception as exc:
             logger.warning(f"[EXO-REGIME] schedule 실패: {exc}")
@@ -479,6 +484,7 @@ def format_result(
         "bucket_bypass_applied": result.get("bucket_bypass_applied", False),
         "exo_regime_applied": result.get("exo_regime_applied", False),
         "exo_regime_risk_off_count": result.get("exo_regime_risk_off_count", 0),
+        "exo_regime_neutral_count": result.get("exo_regime_neutral_count", 0),
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "buy_trade_count": sum(
@@ -838,27 +844,31 @@ def run_cli_backtest(
 
         _active_p = get_active_providers()
         _proxy_syms = get_required_proxy_symbols()
-        # 최근 verdict = 마지막 리밸런스 날짜의 regime state
         _sched_data = _exo_regime_result.get("schedule", {})
+        _prov_states = _exo_regime_result.get("provider_states", {})
+        _prov_vals = _exo_regime_result.get("provider_values", {})
         _last_date = max(_sched_data.keys()) if _sched_data else None
         _latest_state = (
             _sched_data.get(_last_date, "risk_on") if _last_date else "risk_on"
         )
         _verdict_asof = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
+        _n_count = _exo_regime_result.get("neutral_count", 0)
+        _ro_count = _exo_regime_result.get("risk_off_count", 0)
         _verdict = {
             "asof": _verdict_asof,
-            "regime_state": _latest_state,
+            "aggregate_regime_state": _latest_state,
+            "provider_states": (_prov_states.get(_last_date, {}) if _last_date else {}),
             "active_providers": [p["key"] for p in _active_p],
             "active_provider_count": len(_active_p),
-            "provider_values": {
-                "market_trend_ma_regime": {
-                    "ma_period": _exo_regime_result.get("ma_period", 200),
-                    "risk_on_count": _exo_regime_result.get("risk_on_count", 0),
-                    "risk_off_count": _exo_regime_result.get("risk_off_count", 0),
-                }
-            },
-            "provider_thresholds": {"market_trend_ma_regime": {"ma_period": 200}},
-            "policy_applied": "hard_gate",
+            "confirmation_mode": "dual_confirm",
+            "policy_applied": "dual_confirm_soft_hard",
+            "target_cash_pct": (
+                1.0
+                if _latest_state == "risk_off"
+                else 0.5 if _latest_state == "neutral" else 0.0
+            ),
+            "neutral_count": _n_count,
+            "risk_off_count": _ro_count,
             "regime_valid": _exo_regime_result.get("regime_valid", False),
             "regime_error_code": _exo_regime_result.get("regime_error_code"),
             "required_proxy_symbols": _proxy_syms,
@@ -872,20 +882,22 @@ def run_cli_backtest(
         )
 
         # regime_schedule_latest.json/csv
-        _sched_data = _exo_regime_result.get("schedule", {})
-        _prov_vals = _exo_regime_result.get("provider_values", {})
         _sched_rows = []
         for rd, rs in _sched_data.items():
+            _ps = _prov_states.get(rd, {})
             _pv = _prov_vals.get(rd, {})
+            _tcp = 1.0 if rs == "risk_off" else 0.5 if rs == "neutral" else 0.0
             _sched_rows.append(
                 {
                     "rebalance_date": rd,
-                    "regime_state": rs,
-                    "gate_applied": rs == "risk_off",
-                    "target_cash_pct": 1.0 if rs == "risk_off" else 0.0,
-                    "provider": "market_trend_ma_regime",
-                    "proxy_close": _pv.get("close"),
-                    "proxy_ma200": _pv.get("ma200"),
+                    "ma_state": _ps.get("ma", ""),
+                    "breadth_state": _ps.get("breadth", ""),
+                    "aggregate_state": rs,
+                    "gate_applied": rs in ("risk_off", "neutral"),
+                    "target_cash_pct": _tcp,
+                    "proxy_close": _pv.get("proxy_close"),
+                    "proxy_ma200": _pv.get("proxy_ma200"),
+                    "breadth_pct": _pv.get("breadth_pct"),
                 }
             )
         (_regime_dir / "regime_schedule_latest.json").write_text(
@@ -900,25 +912,28 @@ def run_cli_backtest(
                 w.writerows(_sched_rows)
 
         # regime_reason_latest.md
-        _ro = _exo_regime_result.get("risk_off_count", 0)
         _ri = _exo_regime_result.get("risk_on_count", 0)
         _reason_md = [
-            "# Regime Filter 판정 사유",
+            "# Regime Filter 판정 사유 (PATCH1: dual-confirm)",
             "",
-            "- Provider: market_trend_ma_regime",
-            "- Proxy: 069500 (KODEX 200)",
-            "- MA Period: 200일",
-            f"- Risk-Off 횟수: {_ro}",
-            f"- Risk-On 횟수: {_ri}",
+            "## Provider 구성",
+            "1. market_trend_ma_regime: KODEX 200 종가 vs 200일 MA",
+            "2. market_breadth_regime: 후보 universe 60일 모멘텀 양수 비율",
             "",
-            "## 판정 기준",
-            "- 종가 >= 200일 이평선 → risk_on (정상 투자)",
-            "- 종가 < 200일 이평선 → risk_off (100% 현금)",
+            "## 집계 규칙 (진리표)",
+            "- 둘 다 risk_on → risk_on (정상 투자)",
+            "- 둘 다 risk_off → risk_off (100% 현금, hard gate)",
+            "- 그 외 → neutral (50% 현금, soft gate)",
             "",
-            "## risk_off 시 동작",
-            "- 해당 리밸런스 시점에 위험자산 목표 비중 0%",
-            "- 기존 보유 포지션도 전량 청산 대상",
-            "- dynamic scanner 결과는 해당 시점 미적용",
+            "## 결과 요약",
+            f"- Risk-On: {_ri}회",
+            f"- Neutral (soft gate): {_n_count}회",
+            f"- Risk-Off (hard gate): {_ro_count}회",
+            "",
+            "## 정책 동작",
+            "- risk_on: 기존 dynamic_equal_weight 정상 실행",
+            "- neutral: 비중 50% 축소 (나머지 현금 보유)",
+            "- risk_off: 위험자산 목표 0%, 100% 현금 (이중확인)",
         ]
         (_regime_dir / "regime_reason_latest.md").write_text(
             "\n".join(_reason_md), encoding="utf-8"

@@ -720,11 +720,17 @@ class BacktestRunner:
                         adjusted_weights = {}
                         current_rsi_values = {}
 
-                    # P206-STEP6B: exo regime hard gate
+                    # P206-STEP6B-PATCH1: dual-confirm regime gate
                     _exo_state = _exo_sched.get(str(d), "risk_on")
                     if _exo_state == "risk_off":
+                        # hard gate: 100% cash
                         adjusted_weights = {}
                         _exo_risk_off_count += 1
+                    elif _exo_state == "neutral" and adjusted_weights:
+                        # soft gate: 50% cash (비중 절반 축소)
+                        adjusted_weights = {
+                            k: v * 0.5 for k, v in adjusted_weights.items()
+                        }
 
                 elif portfolio_mode == "bucket_portfolio" and buckets:
                     # 버킷별 할당 로직 (Phase 2) — 기존 고정 유니버스 전용

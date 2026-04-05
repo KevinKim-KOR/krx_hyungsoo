@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 app/backtest/strategy/exo_regime_filter.py
-P206-STEP6B: Exogenous Regime Filter V1
+P206-STEP6B-PATCH1: Exogenous Regime Filter (dual-confirm)
 
 dynamic_etf_market 전용 외생 레짐 필터.
-risk_off 시 해당 리밸런스에서 위험자산 목표 0%, 현금 100%.
+- market_trend_ma_regime + market_breadth_regime 2개 활성
+- risk_off = 이중확인(둘 다 risk_off)일 때만 100% cash
+- neutral = soft gate (50% cash)
 """
 
 from __future__ import annotations
@@ -29,25 +31,29 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "freshness_ttl": 1,
         "thresholds": {"ma_period": 200},
         "missing_policy": "risk_off",
-        "regime_map": {
-            "above_ma": "risk_on",
-            "below_ma": "risk_off",
-        },
+        "regime_map": {"above_ma": "risk_on", "below_ma": "risk_off"},
         "required_symbols": ["069500"],
         "notes": "KODEX 200 종가 vs 200일 이평선",
     },
     {
         "key": "market_breadth_regime",
-        "enabled": False,
-        "source": "시장 breadth 지표 (V2 예정)",
-        "lookback": 20,
+        "enabled": True,
+        "source": "후보 universe 중기 모멘텀 양수 비율",
+        "lookback": 60,
         "lag_days": 0,
         "freshness_ttl": 1,
-        "thresholds": {},
+        "thresholds": {
+            "risk_on_pct": 0.60,
+            "risk_off_pct": 0.30,
+        },
         "missing_policy": "risk_off",
-        "regime_map": {},
+        "regime_map": {
+            "breadth_high": "risk_on",
+            "breadth_mid": "neutral",
+            "breadth_low": "risk_off",
+        },
         "required_symbols": [],
-        "notes": "V1에서는 비활성",
+        "notes": "universe 중 60일 모멘텀 양수 비율",
     },
     {
         "key": "news_sentiment_regime",
@@ -60,12 +66,12 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "missing_policy": "risk_off",
         "regime_map": {},
         "required_symbols": [],
-        "notes": "V1에서는 비활성",
+        "notes": "비활성",
     },
     {
         "key": "fear_index_regime",
         "enabled": False,
-        "source": "공포지수 (VIX 등)",
+        "source": "공포지수",
         "lookback": 14,
         "lag_days": 1,
         "freshness_ttl": 1,
@@ -73,7 +79,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "missing_policy": "risk_off",
         "regime_map": {},
         "required_symbols": [],
-        "notes": "V1에서는 비활성",
+        "notes": "비활성",
     },
     {
         "key": "fx_regime",
@@ -86,7 +92,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "missing_policy": "neutral",
         "regime_map": {},
         "required_symbols": [],
-        "notes": "V1에서는 비활성",
+        "notes": "비활성",
     },
     {
         "key": "rate_regime",
@@ -99,7 +105,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "missing_policy": "neutral",
         "regime_map": {},
         "required_symbols": [],
-        "notes": "V1에서는 비활성",
+        "notes": "비활성",
     },
     {
         "key": "macro_composite_regime",
@@ -112,7 +118,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "missing_policy": "neutral",
         "regime_map": {},
         "required_symbols": [],
-        "notes": "V1에서는 비활성",
+        "notes": "비활성",
     },
 ]
 
@@ -132,7 +138,20 @@ def get_required_proxy_symbols() -> List[str]:
     return symbols
 
 
-# ── V1 Provider: market_trend_ma_regime ────────────────────
+# ── Aggregate Truth Table ──────────────────────────────────
+
+
+def compute_aggregate_regime(ma_state: str, breadth_state: str) -> str:
+    """A4 진리표: 둘 다 risk_on→risk_on, 둘 다 risk_off→risk_off,
+    그 외→neutral."""
+    if ma_state == "risk_on" and breadth_state == "risk_on":
+        return "risk_on"
+    if ma_state == "risk_off" and breadth_state == "risk_off":
+        return "risk_off"
+    return "neutral"
+
+
+# ── Provider 1: market_trend_ma_regime ─────────────────────
 
 
 def _compute_ma_regime_for_date(
@@ -140,11 +159,7 @@ def _compute_ma_regime_for_date(
     target_date: date,
     ma_period: int = 200,
 ) -> Dict[str, Any]:
-    """주어진 날짜의 MA regime 판정.
-
-    Returns:
-        {"state": "risk_on"|"risk_off", "close": float, "ma": float}
-    """
+    """MA regime 판정."""
     ts = pd.Timestamp(target_date)
     hist = close_series[close_series.index <= ts]
     if len(hist) < ma_period:
@@ -164,81 +179,171 @@ def _compute_ma_regime_for_date(
     }
 
 
-# ── Schedule Builder ───────────────────────────────────────
+# ── Provider 2: market_breadth_regime ──────────────────────
+
+
+def _compute_breadth_for_date(
+    price_data: pd.DataFrame,
+    universe: List[str],
+    target_date: date,
+    momentum_period: int = 60,
+    risk_on_pct: float = 0.60,
+    risk_off_pct: float = 0.30,
+) -> Dict[str, Any]:
+    """후보 universe 중 momentum_period일 모멘텀 양수 비율로 breadth 판정.
+
+    - >= risk_on_pct → risk_on
+    - <= risk_off_pct → risk_off
+    - 그 사이 → neutral
+    """
+    ts = pd.Timestamp(target_date)
+    positive = 0
+    total = 0
+
+    if not isinstance(price_data.index, pd.MultiIndex):
+        return {
+            "state": "risk_off",
+            "breadth_pct": None,
+            "positive": 0,
+            "total": 0,
+        }
+
+    for code in universe:
+        try:
+            code_data = price_data.xs(code, level="code")
+            hist = code_data[code_data.index <= ts]
+            if len(hist) < momentum_period + 1:
+                continue
+            close = hist["close"].astype(float)
+            mom = float(close.iloc[-1]) / float(close.iloc[-momentum_period]) - 1.0
+            if pd.isna(mom):
+                continue
+            total += 1
+            if mom > 0:
+                positive += 1
+        except (KeyError, IndexError):
+            continue
+
+    if total == 0:
+        return {
+            "state": "risk_off",
+            "breadth_pct": None,
+            "positive": 0,
+            "total": 0,
+        }
+
+    pct = positive / total
+    if pct >= risk_on_pct:
+        state = "risk_on"
+    elif pct <= risk_off_pct:
+        state = "risk_off"
+    else:
+        state = "neutral"
+
+    return {
+        "state": state,
+        "breadth_pct": round(pct, 4),
+        "positive": positive,
+        "total": total,
+    }
+
+
+# ── Schedule Builder (PATCH1: dual-confirm) ────────────────
 
 
 def build_exo_regime_schedule(
     proxy_ohlcv: Optional[pd.DataFrame],
     rebalance_dates: List[date],
     ma_period: int = 200,
+    price_data: Optional[pd.DataFrame] = None,
+    universe: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """리밸런스 날짜별 exogenous regime schedule 생성.
-
-    Returns:
-        {
-            "schedule": {date_str: regime_state, ...},
-            "provider": "market_trend_ma_regime",
-            "proxy_symbol": "069500",
-            "ma_period": 200,
-            "regime_valid": bool,
-            "regime_error_code": str or None,
-            "risk_off_count": int,
-            "risk_on_count": int,
-        }
-    """
+    """리밸런스 날짜별 dual-confirm regime schedule 생성."""
     result: Dict[str, Any] = {
         "schedule": {},
-        "provider": "market_trend_ma_regime",
+        "provider_states": {},
+        "provider_values": {},
+        "confirmation_mode": "dual_confirm",
         "proxy_symbol": "069500",
         "ma_period": ma_period,
         "regime_valid": False,
         "regime_error_code": None,
-        "risk_off_count": 0,
         "risk_on_count": 0,
+        "neutral_count": 0,
+        "risk_off_count": 0,
     }
 
-    if proxy_ohlcv is None or proxy_ohlcv.empty:
+    # MA close series
+    ma_close = None
+    if proxy_ohlcv is not None and not proxy_ohlcv.empty:
+        if "close" in proxy_ohlcv.columns:
+            ma_close = proxy_ohlcv["close"].astype(float)
+        elif "Close" in proxy_ohlcv.columns:
+            ma_close = proxy_ohlcv["Close"].astype(float)
+
+    if ma_close is None:
         result["regime_error_code"] = "proxy_data_missing"
         logger.warning("[EXO-REGIME] proxy OHLCV 없음 → fail-closed")
-        # fail-closed: 모든 날짜를 risk_off
         for d in rebalance_dates:
             result["schedule"][str(d)] = "risk_off"
+            result["provider_states"][str(d)] = {
+                "ma": "risk_off",
+                "breadth": "risk_off",
+            }
         result["risk_off_count"] = len(rebalance_dates)
         return result
 
-    # close 시리즈 추출
-    if "close" in proxy_ohlcv.columns:
-        close = proxy_ohlcv["close"].astype(float)
-    elif "Close" in proxy_ohlcv.columns:
-        close = proxy_ohlcv["Close"].astype(float)
-    else:
-        result["regime_error_code"] = "no_close_column"
-        for d in rebalance_dates:
-            result["schedule"][str(d)] = "risk_off"
-        result["risk_off_count"] = len(rebalance_dates)
-        return result
-
+    _univ = universe or []
     risk_on = 0
+    neutral = 0
     risk_off = 0
-    provider_values: Dict[str, Dict[str, Any]] = {}
+
     for d in rebalance_dates:
-        verdict = _compute_ma_regime_for_date(close, d, ma_period)
-        state = verdict["state"]
-        result["schedule"][str(d)] = state
-        provider_values[str(d)] = {
-            "close": verdict["close"],
-            "ma200": verdict["ma"],
-        }
-        if state == "risk_on":
-            risk_on += 1
+        # Provider 1: MA
+        ma_v = _compute_ma_regime_for_date(ma_close, d, ma_period)
+        ma_state = ma_v["state"]
+
+        # Provider 2: Breadth
+        if price_data is not None and _univ:
+            br_v = _compute_breadth_for_date(price_data, _univ, d)
         else:
+            br_v = {
+                "state": "risk_off",
+                "breadth_pct": None,
+                "positive": 0,
+                "total": 0,
+            }
+        breadth_state = br_v["state"]
+
+        # Aggregate (A4 truth table)
+        agg = compute_aggregate_regime(ma_state, breadth_state)
+        result["schedule"][str(d)] = agg
+        result["provider_states"][str(d)] = {
+            "ma": ma_state,
+            "breadth": breadth_state,
+        }
+        result["provider_values"][str(d)] = {
+            "proxy_close": ma_v["close"],
+            "proxy_ma200": ma_v["ma"],
+            "breadth_pct": br_v["breadth_pct"],
+            "breadth_positive": br_v["positive"],
+            "breadth_total": br_v["total"],
+        }
+
+        if agg == "risk_on":
+            risk_on += 1
+        elif agg == "risk_off":
             risk_off += 1
-    result["provider_values"] = provider_values
+        else:
+            neutral += 1
 
     result["regime_valid"] = True
     result["risk_on_count"] = risk_on
+    result["neutral_count"] = neutral
     result["risk_off_count"] = risk_off
     logger.info(
-        f"[EXO-REGIME] schedule 완료:" f" risk_on={risk_on}, risk_off={risk_off}"
+        f"[EXO-REGIME] dual-confirm schedule:"
+        f" risk_on={risk_on}, neutral={neutral},"
+        f" risk_off={risk_off}"
     )
     return result

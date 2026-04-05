@@ -294,6 +294,8 @@ def run_cli_tune(
             _tune_exo_regime = _build_exo(
                 proxy_ohlcv=_proxy_ohlcv,
                 rebalance_dates=_tune_rebal_dates,
+                price_data=price_data,
+                universe=universe,
             )
             logger.info(
                 f"[TUNE-EXO] regime schedule:"
