@@ -92,6 +92,7 @@ def run_backtest(
     start: date,
     end: date,
     enable_regime: bool = False,
+    fear_threshold_override: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
     """BacktestRunner 실행"""
     from app.backtest.runners.backtest_runner import BacktestRunner
@@ -200,6 +201,8 @@ def run_backtest(
                 {},
             )
             _ft = _fp.get("thresholds", {})
+            if fear_threshold_override:
+                _ft = {**_ft, **fear_threshold_override}
             _exo_regime_result = build_fear_regime_schedule(
                 vix_ohlcv=_vix_ohlcv,
                 rebalance_dates=_rebal_dates,
@@ -207,6 +210,13 @@ def run_backtest(
                 risk_off_min=_ft.get("risk_off_min", 30.0),
                 spike_threshold=_ft.get("spike_threshold", 0.20),
             )
+            if (
+                fear_threshold_override
+                and "neutral_cash_pct" in fear_threshold_override
+            ):
+                _exo_regime_result["neutral_cash_pct"] = fear_threshold_override[
+                    "neutral_cash_pct"
+                ]
             _schedule_meta["exo_regime_applied"] = True
             _schedule_meta["exo_regime_risk_off_count"] = _exo_regime_result.get(
                 "risk_off_count", 0

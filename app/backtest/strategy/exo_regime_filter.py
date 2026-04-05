@@ -30,9 +30,9 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "lag_days": 1,
         "freshness_ttl": 5,
         "thresholds": {
-            "risk_on_max": 14.0,
+            "risk_on_max": 20.0,
             "risk_off_min": 26.0,
-            "spike_threshold": 0.10,
+            "spike_threshold": 0.05,
             "spike_window": 5,
         },
         "missing_policy": "neutral_fallback",
@@ -43,7 +43,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
             "high_fear": "risk_off",
         },
         "required_symbols": ["^VIX"],
-        "notes": "혼합: 절대 임계치(20/30) + trailing 5DMA 급등률(20%)",
+        "notes": "혼합: 절대 임계치(20/26) + trailing 5DMA 급등률(5%)",
     },
     {
         "key": "market_trend_ma_regime",
