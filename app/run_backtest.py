@@ -1016,6 +1016,100 @@ def run_cli_backtest(
     except Exception as exc:
         logger.warning(f"promotion_verdict 동기화 실패: {exc}")
 
+    # P206-STEP6D-PATCH1: dynamic_evidence_latest.md 생성
+    if params.get("universe_mode") == "dynamic_etf_market":
+        try:
+            _ev_dir = PROJECT_ROOT / "reports" / "tuning"
+            _ev_path = _ev_dir / "dynamic_evidence_latest.md"
+
+            # 소스 로드
+            _bt = formatted
+            _bt_s = _bt.get("summary", {})
+            _bt_m = _bt.get("meta", {})
+
+            _fv_p = _ev_dir / "fear_regime_verdict_latest.json"
+            _fv = {}
+            if _fv_p.exists():
+                with open(_fv_p, encoding="utf-8") as _f:
+                    _fv = json.load(_f)
+
+            _pv_p = _ev_dir / "promotion_verdict.json"
+            _pv = {}
+            if _pv_p.exists():
+                with open(_pv_p, encoding="utf-8") as _f:
+                    _pv = json.load(_f)
+
+            _gen_at = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
+
+            # verdict 판정
+            _cagr_v = _bt_s.get("cagr")
+            _mdd_v = _bt_s.get("mdd")
+            _cagr_ok = "YES" if _cagr_v is not None and _cagr_v > 15 else "NO"
+            _mdd_ok = "YES" if _mdd_v is not None and _mdd_v < 10 else "NO"
+            _verdict_str = _pv.get("verdict", "N/A")
+
+            # 한줄 결론
+            if _cagr_ok == "YES" and _mdd_ok == "YES":
+                _conclusion = "승격 가능. 정책 효과 확인됨."
+            elif _cagr_ok == "YES":
+                _conclusion = (
+                    "구현 통과. MDD 미달로 정책 효과 실패." " 정책 재설계 필요."
+                )
+            else:
+                _conclusion = "CAGR/MDD 모두 미달. 전략 재검토 필요."
+
+            _cagr_s = f"{_cagr_v:.2f}%" if _cagr_v is not None else "N/A"
+            _mdd_s = f"{_mdd_v:.2f}%" if _mdd_v is not None else "N/A"
+            _sharpe_s = f"{_bt_s.get('sharpe', 0):.4f}"
+            _tr_s = (
+                f"{_bt_s.get('total_return', 0):.2f}%"
+                if _bt_s.get("total_return") is not None
+                else "N/A"
+            )
+
+            _lines = [
+                "# Dynamic Evidence Latest",
+                "",
+                f"- generated_at: {_gen_at}",
+                f"- universe_mode: {_bt_m.get('universe_mode', '?')}",
+                f"- backtest_asof: {_bt_m.get('asof', '?')}",
+                "",
+                "## Performance",
+                "| Metric | Value |",
+                "|---|---:|",
+                f"| CAGR | {_cagr_s} |",
+                f"| MDD | {_mdd_s} |",
+                f"| Sharpe | {_sharpe_s} |",
+                f"| Total Return | {_tr_s} |",
+                f"| Total Trades | {_bt_m.get('total_trades', 'N/A')} |",
+                "",
+                "## Fear Regime",
+                "| Field | Value |",
+                "|---|---|",
+                f"| State | {_fv.get('regime_state', 'N/A')} |",
+                f"| Policy | {_fv.get('policy_applied', 'N/A')} |",
+                f"| VIX | {_fv.get('fear_value', 'N/A')} |",
+                f"| Neutral Count | {_fv.get('neutral_count', 0)} |",
+                f"| Risk-off Count | {_fv.get('risk_off_count', 0)} |",
+                f"| US Source | {_fv.get('fear_value_timestamp', 'N/A')} |",
+                f"| KR Applied | {_bt_m.get('end_date', 'N/A')} |",
+                f"| Alignment | {_fv.get('alignment_mode', 'N/A')} |",
+                "",
+                "## Promotion Verdict",
+                "| Field | Value |",
+                "|---|---|",
+                f"| Verdict | {_verdict_str} |",
+                f"| CAGR > 15 | {_cagr_ok} |",
+                f"| MDD < 10 | {_mdd_ok} |",
+                "",
+                "## Conclusion",
+                _conclusion,
+            ]
+            _ev_path.write_text("\n".join(_lines), encoding="utf-8")
+            logger.info(f"[WRITE] dynamic_evidence → {_ev_path}")
+        except Exception as ev_exc:
+            logger.warning(f"dynamic_evidence 생성 실패: {ev_exc}")
+
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")
     return True
 
