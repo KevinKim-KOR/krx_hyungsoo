@@ -191,9 +191,21 @@ def run_backtest(
             if not _rebal_dates:
                 _rebal_dates = [d.date() for d in pd.date_range(start, end, freq="MS")]
 
+            from app.backtest.strategy.exo_regime_filter import (
+                get_active_providers as _gap,
+            )
+
+            _fp = next(
+                (p for p in _gap() if p["key"] == "fear_index_regime"),
+                {},
+            )
+            _ft = _fp.get("thresholds", {})
             _exo_regime_result = build_fear_regime_schedule(
                 vix_ohlcv=_vix_ohlcv,
                 rebalance_dates=_rebal_dates,
+                risk_on_max=_ft.get("risk_on_max", 20.0),
+                risk_off_min=_ft.get("risk_off_min", 30.0),
+                spike_threshold=_ft.get("spike_threshold", 0.20),
             )
             _schedule_meta["exo_regime_applied"] = True
             _schedule_meta["exo_regime_risk_off_count"] = _exo_regime_result.get(
@@ -1116,6 +1128,9 @@ def run_cli_backtest(
                 "",
                 "## Conclusion",
                 _conclusion,
+                "",
+                "## Notes",
+                "- 직장인형 EOD/개장 전 방어 모델 (장중 대응 미포함)",
             ]
             _ev_path.write_text("\n".join(_lines), encoding="utf-8")
             logger.info(f"[WRITE] dynamic_evidence → {_ev_path}")

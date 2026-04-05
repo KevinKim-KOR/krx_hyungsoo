@@ -30,9 +30,9 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "lag_days": 1,
         "freshness_ttl": 5,
         "thresholds": {
-            "risk_on_max": 20.0,
-            "risk_off_min": 30.0,
-            "spike_threshold": 0.20,
+            "risk_on_max": 14.0,
+            "risk_off_min": 26.0,
+            "spike_threshold": 0.10,
             "spike_window": 5,
         },
         "missing_policy": "neutral_fallback",
@@ -244,22 +244,24 @@ def _compute_5dma(
 def _compute_fear_state(
     vix_close: float,
     vix_5dma: Optional[float],
+    risk_on_max: float = 20.0,
+    risk_off_min: float = 30.0,
+    spike_threshold: float = 0.20,
 ) -> str:
-    """설계서 판별표 그대로 구현.
+    """VIX 기반 fear state 판별.
 
-    vix_close < 20 → risk_on
-    20 <= vix_close < 30 and spike < 0.20 → neutral
-    20 <= vix_close < 30 and spike >= 0.20 → risk_off
-    vix_close >= 30 → risk_off
+    vix_close < risk_on_max → risk_on
+    risk_on_max <= vix_close < risk_off_min and spike < spike_threshold → neutral
+    risk_on_max <= vix_close < risk_off_min and spike >= spike_threshold → risk_off
+    vix_close >= risk_off_min → risk_off
     """
-    if vix_close < 20.0:
+    if vix_close < risk_on_max:
         return "risk_on"
-    if vix_close >= 30.0:
+    if vix_close >= risk_off_min:
         return "risk_off"
-    # 20 ~ 30 구간: spike 확인
     if vix_5dma is not None and vix_5dma > 0:
         spike = vix_close / vix_5dma - 1.0
-        if spike >= 0.20:
+        if spike >= spike_threshold:
             return "risk_off"
     return "neutral"
 
@@ -270,6 +272,9 @@ def _compute_fear_state(
 def build_fear_regime_schedule(
     vix_ohlcv: Optional[pd.DataFrame],
     rebalance_dates: List[date],
+    risk_on_max: float = 20.0,
+    risk_off_min: float = 30.0,
+    spike_threshold: float = 0.20,
 ) -> Dict[str, Any]:
     """한국 리밸런스 날짜별 VIX fear regime schedule 생성."""
     result: Dict[str, Any] = {
@@ -351,7 +356,9 @@ def build_fear_regime_schedule(
             spike = (
                 round(vix_val / dma - 1.0, 4) if dma is not None and dma > 0 else None
             )
-            state = _compute_fear_state(vix_val, dma)
+            state = _compute_fear_state(
+                vix_val, dma, risk_on_max, risk_off_min, spike_threshold
+            )
             pv = {
                 "fear_value": vix_val,
                 "vix_5dma": dma,

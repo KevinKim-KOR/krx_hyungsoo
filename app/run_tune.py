@@ -290,9 +290,21 @@ def run_cli_tune(
                 _tune_rebal_dates = [
                     d.date() for d in _pd2.date_range(start, end, freq="MS")
                 ]
+            from app.backtest.strategy.exo_regime_filter import (
+                get_active_providers as _gap2,
+            )
+
+            _fp2 = next(
+                (p for p in _gap2() if p["key"] == "fear_index_regime"),
+                {},
+            )
+            _ft2 = _fp2.get("thresholds", {})
             _tune_exo_regime = _build_fear(
                 vix_ohlcv=_tune_vix_ohlcv,
                 rebalance_dates=_tune_rebal_dates,
+                risk_on_max=_ft2.get("risk_on_max", 20.0),
+                risk_off_min=_ft2.get("risk_off_min", 30.0),
+                spike_threshold=_ft2.get("spike_threshold", 0.20),
             )
             logger.info(
                 f"[TUNE-FEAR] regime schedule:"
