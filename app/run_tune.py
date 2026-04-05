@@ -296,6 +296,7 @@ def run_cli_tune(
                 rebalance_dates=_tune_rebal_dates,
                 price_data=price_data,
                 universe=universe,
+                universe_resolver=_tune_resolver,
             )
             logger.info(
                 f"[TUNE-EXO] regime schedule:"

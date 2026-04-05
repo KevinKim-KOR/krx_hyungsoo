@@ -257,8 +257,13 @@ def build_exo_regime_schedule(
     ma_period: int = 200,
     price_data: Optional[pd.DataFrame] = None,
     universe: Optional[List[str]] = None,
+    universe_resolver: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """리밸런스 날짜별 dual-confirm regime schedule 생성."""
+    """리밸런스 날짜별 dual-confirm regime schedule 생성.
+
+    universe_resolver가 있으면 rebalance date별 동적 후보군을
+    breadth 계산에 사용. 없으면 고정 universe 사용.
+    """
     result: Dict[str, Any] = {
         "schedule": {},
         "provider_states": {},
@@ -293,7 +298,7 @@ def build_exo_regime_schedule(
         result["risk_off_count"] = len(rebalance_dates)
         return result
 
-    _univ = universe or []
+    _fallback_univ = universe or []
     risk_on = 0
     neutral = 0
     risk_off = 0
@@ -303,9 +308,14 @@ def build_exo_regime_schedule(
         ma_v = _compute_ma_regime_for_date(ma_close, d, ma_period)
         ma_state = ma_v["state"]
 
-        # Provider 2: Breadth
-        if price_data is not None and _univ:
-            br_v = _compute_breadth_for_date(price_data, _univ, d)
+        # Provider 2: Breadth (dynamic universe 우선)
+        _date_univ = _fallback_univ
+        if universe_resolver is not None:
+            _resolved = universe_resolver(d)
+            if _resolved:
+                _date_univ = _resolved
+        if price_data is not None and _date_univ:
+            br_v = _compute_breadth_for_date(price_data, _date_univ, d)
         else:
             br_v = {
                 "state": "risk_off",

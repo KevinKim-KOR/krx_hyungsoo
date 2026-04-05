@@ -200,6 +200,7 @@ def run_backtest(
                 rebalance_dates=_rebal_dates,
                 price_data=price_data,
                 universe=params["universe"],
+                universe_resolver=_universe_resolver,
             )
             _schedule_meta["exo_regime_applied"] = True
             _schedule_meta["exo_regime_risk_off_count"] = _exo_regime_result.get(
@@ -1018,6 +1019,16 @@ def run_cli_backtest(
     if meta.get("mdd_reason"):
         logger.info(f"  mdd_reason: {meta['mdd_reason']}")
     logger.info("=" * 60)
+
+    # P206-STEP6B-PATCH1: Full Backtest 후 promotion_verdict 동기화
+    try:
+        from app.tuning.promotion_gate import refresh_promotion_verdict
+
+        refresh_promotion_verdict(backtest_data_override=formatted)
+        logger.info("[WRITE] promotion_verdict 동기화 완료")
+    except Exception as exc:
+        logger.warning(f"promotion_verdict 동기화 실패: {exc}")
+
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")
     return True
 
