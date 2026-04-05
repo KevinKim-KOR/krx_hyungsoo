@@ -70,15 +70,26 @@
 | P205-STEP5E3 | order generation block trace 세분화 (blocked_reason_counts) |
 | P205-STEP5F | dynamic allocation path 도입 (bucket bypass) — **주문 0건→82건 해소** |
 | P205-HOTFIX-CAGR | CAGR NaN 핫픽스 (NaN 가격 방어 + equity curve 기반 재계산) |
+| P205-STEP5H | 성능지표 무결성 감사 (MDD 0.00% 해소, 총 거래수 N/A 제거) |
+| P205-STEP5I | dynamic risk calibration 전용 튜닝 (Sharpe 우선 + MDD 억제) |
+| P206-STEP6B | Exogenous Regime Filter V1 (MA hard gate → dual-confirm) |
+| P206-STEP6B-PATCH1 | MA+Breadth dual-confirm + neutral soft gate |
+| P206-STEP6C | Fear Index Regime 설계서 (VIX 기반 선행 공포 센서) |
+| P206-STEP6D | **VIX Fear Index Regime 구현** (미국 VIX → 한국 T+1 정렬) |
 
-### 현재 상태 (2026-04-01)
-- `dynamic_etf_market` Full Backtest 정상 동작: **CAGR 34.08%, Sharpe 1.61, MDD 16.58%, Trades 82**
+### 현재 상태 (2026-04-05)
+- `dynamic_etf_market` + VIX fear regime: **CAGR 18.73%, MDD 19.30%, Sharpe 0.95, Trades 53**
+- Fear Regime: risk_on=32, neutral=4, risk_off=0 (VIX < 20 구간 다수)
 - `allocation_mode = dynamic_equal_weight`, `bucket_bypass_applied = true`
-- 기존 `fixed_current`, `expanded_candidates`, `bucket_portfolio` 흐름 유지
+- 산출물: fear_regime_verdict/schedule/reason 4종 생성
+- VIX fetch 캐시 (`data/cache/ohlcv/vix/`) 재사용
+- MA/Breadth: `enabled=false` (비교군/백업 슬롯 유지)
+- 기존 `fixed_current`, `expanded_candidates` 흐름 유지
 
 ### 다음에 할 수 있는 작업
-- dynamic_etf_market 성과 평가 및 파라미터 튜닝
-- 승격 판정 재실행 (dynamic 모드 포함)
+- Step6E: 비교군 4종 검증 (no regime / MA / MA+Breadth / VIX)
+- 2020~2022 위기 기간 데이터로 VIX risk_off 효과 검증
+- VIX 임계치 미세조정 (20/30 기준)
 - 일반 lint sweep (backend/routers/ 전체)
 
 ---
