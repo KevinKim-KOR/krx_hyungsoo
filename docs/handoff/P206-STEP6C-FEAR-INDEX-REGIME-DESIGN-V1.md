@@ -69,10 +69,12 @@ for each 한국 리밸런스일 kr_date:
 | 미국 개장 + 한국 휴장 | 한국 다음 개장일에 해당 VIX 종가 적용 |
 | 양국 동시 휴장 | 가장 최근 미국 유효 종가 carry-forward |
 
-### 3.4 Carry-Forward 한도
+### 3.4 Carry-Forward 한도 및 Staleness 정의
 
-- **최대 3 영업일**까지 carry-forward 허용
-- 3 영업일 초과 시 → `staleness_exceeded` → fallback 정책 적용
+- **staleness_days**: `(kr_date - us_source_date).days` — **캘린더 일수** 기준 (영업일 아님)
+- **TTL**: 캘린더 일수 기준 **5일** (주말 2일 + 미국 휴장 1일 + 여유 2일)
+- staleness_days > 5 → `staleness_exceeded` → fallback 정책 적용
+- 캘린더 일수를 쓰는 이유: 미국/한국 영업일 캘린더를 별도 관리하지 않고도 결정론적 판정 가능
 
 ---
 
@@ -92,7 +94,8 @@ for each 한국 리밸런스일 kr_date:
 
 ```
 vix_close = 미국 VIX 직전 유효 종가
-vix_5dma  = VIX 최근 5거래일 이동평균
+vix_5dma  = vix_close 직전 5거래일 종가 평균 (현재 종가 미포함, trailing 5-day)
+           즉 vix_close 당일 제외, 그 이전 5개 미국 거래일 종가의 산술평균
 vix_spike = (vix_close / vix_5dma - 1.0)  # 급등률
 ```
 
@@ -164,8 +167,9 @@ vix_spike = (vix_close / vix_5dma - 1.0)  # 급등률
 | 우선순위 | Source | 심볼 | 비고 |
 |---|---|---|---|
 | 1 | yfinance | `^VIX` | 무료, 일봉, 15분 지연 |
-| 2 | 기존 FDR fallback | — | FDR이 VIX 미지원 시 skip |
+| 2 | — | — | 실질 fallback source 없음 |
 
+- **실질 대체 소스 없음** — yfinance 실패 시 즉시 fail-closed
 - 장애 시: `regime_valid=false` + `error_code=fetch_failed`
 
 ### 7.2 캘린더 정렬
@@ -176,13 +180,13 @@ vix_spike = (vix_close / vix_5dma - 1.0)  # 급등률
 2. 한국 리밸런스 날짜 목록 확보
 3. 각 한국 리밸런스일에 대해:
    - kr_date - 1 이하인 미국 거래일 중 최신 VIX 종가 매핑
-   - staleness_days = (kr_date - us_source_date).days
-   - staleness_days > 3 → fallback 적용
+   - staleness_days = (kr_date - us_source_date).days  # 캘린더 일수
+   - staleness_days > 5 → fallback 적용
 ```
 
 ### 7.3 Freshness TTL
 
-- **기본 TTL: 3 영업일**
+- **기본 TTL: 캘린더 5일** (staleness_days 기준과 동일)
 - TTL 초과 시: `neutral_fallback`
 - TTL 초과 + VIX >= 30 마지막 기록: `risk_off_fallback`
 
