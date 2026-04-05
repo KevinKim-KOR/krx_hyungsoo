@@ -1058,6 +1058,18 @@ def run_cli_backtest(
             else:
                 _conclusion = "CAGR/MDD 모두 미달. 전략 재검토 필요."
 
+            # KR Applied: fear schedule 마지막 행에서 추출
+            _kr_applied = "N/A"
+            _fs_p = _ev_dir / "fear_regime_schedule_latest.json"
+            if _fs_p.exists():
+                try:
+                    with open(_fs_p, encoding="utf-8") as _fsf:
+                        _fs_data = json.load(_fsf)
+                    if _fs_data:
+                        _kr_applied = _fs_data[-1].get("applied_trade_date_kr", "N/A")
+                except Exception:
+                    pass
+
             _cagr_s = f"{_cagr_v:.2f}%" if _cagr_v is not None else "N/A"
             _mdd_s = f"{_mdd_v:.2f}%" if _mdd_v is not None else "N/A"
             _sharpe_s = f"{_bt_s.get('sharpe', 0):.4f}"
@@ -1092,7 +1104,7 @@ def run_cli_backtest(
                 f"| Neutral Count | {_fv.get('neutral_count', 0)} |",
                 f"| Risk-off Count | {_fv.get('risk_off_count', 0)} |",
                 f"| US Source | {_fv.get('fear_value_timestamp', 'N/A')} |",
-                f"| KR Applied | {_bt_m.get('end_date', 'N/A')} |",
+                f"| KR Applied | {_kr_applied} |",
                 f"| Alignment | {_fv.get('alignment_mode', 'N/A')} |",
                 "",
                 "## Promotion Verdict",
