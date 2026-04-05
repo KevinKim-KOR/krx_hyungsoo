@@ -149,17 +149,8 @@ def run_cli_tune(
     try:
         from app.backtest.infra.data_loader import prefetch_ohlcv
 
-        _fetch_tickers = list(universe)
-        if params.get("universe_mode") == "dynamic_etf_market":
-            from app.backtest.strategy.exo_regime_filter import (
-                get_required_proxy_symbols as _get_proxy,
-            )
-
-            for _ps in _get_proxy():
-                if _ps not in _fetch_tickers:
-                    _fetch_tickers.append(_ps)
         price_data = prefetch_ohlcv(
-            _fetch_tickers, start, end, data_source=params["data_source"]
+            universe, start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Prefetch failed: {e}")
@@ -278,32 +269,40 @@ def run_cli_tune(
     if _is_dynamic_risk:
         try:
             from app.backtest.strategy.exo_regime_filter import (
-                build_exo_regime_schedule as _build_exo,
+                build_fear_regime_schedule as _build_fear,
             )
             import pandas as _pd2
 
-            _proxy_ohlcv = None
-            if isinstance(price_data.index, _pd2.MultiIndex):
-                _codes = price_data.index.get_level_values("code")
-                if "069500" in _codes:
-                    _proxy_ohlcv = price_data.xs("069500", level="code")
+            # VIX fetch (tune용)
+            _tune_vix_ohlcv = None
+            try:
+                import yfinance as _yf2
+
+                _vix_start2 = start - timedelta(days=400)
+                _vix_t2 = _yf2.Ticker("^VIX")
+                _vix_df2 = _vix_t2.history(
+                    start=str(_vix_start2),
+                    end=str(end + timedelta(days=1)),
+                )
+                if _vix_df2 is not None and not _vix_df2.empty:
+                    _vix_df2.columns = [c.lower() for c in _vix_df2.columns]
+                    _tune_vix_ohlcv = _vix_df2
+            except Exception as _ve:
+                logger.warning(f"[TUNE-VIX] fetch 실패: {_ve}")
 
             _tune_rebal_dates = [
                 d.date() for d in _pd2.date_range(start, end, freq="MS")
             ]
-            _tune_exo_regime = _build_exo(
-                proxy_ohlcv=_proxy_ohlcv,
+            _tune_exo_regime = _build_fear(
+                vix_ohlcv=_tune_vix_ohlcv,
                 rebalance_dates=_tune_rebal_dates,
-                price_data=price_data,
-                universe=universe,
-                universe_resolver=_tune_resolver,
             )
             logger.info(
-                f"[TUNE-EXO] regime schedule:"
+                f"[TUNE-FEAR] regime schedule:"
                 f" risk_off={_tune_exo_regime.get('risk_off_count', 0)}"
             )
         except Exception as exc:
-            logger.warning(f"[TUNE-EXO] regime schedule 실패: {exc}")
+            logger.warning(f"[TUNE-FEAR] regime schedule 실패: {exc}")
 
     objective = TuneObjective(
         price_data=price_data,

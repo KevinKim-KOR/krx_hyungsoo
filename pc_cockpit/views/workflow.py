@@ -345,31 +345,28 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         _bypass = bt_meta.get("bucket_bypass_applied", False)
                         _bypass_tag = " (bucket bypass)" if _bypass else ""
                         st.caption(f"배분 경로: {_alloc}{_bypass_tag}")
-                        # P206-STEP6B-PATCH1: Regime Filter 상태
+                        # P206-STEP6D: Fear Regime 상태
                         if bt_meta.get("exo_regime_applied"):
-                            _rv_path = (
+                            _fv_path = (
                                 BASE_DIR
                                 / "reports"
                                 / "tuning"
-                                / "regime_verdict_latest.json"
+                                / "fear_regime_verdict_latest.json"
                             )
-                            _rv = load_json(_rv_path) if _rv_path.exists() else {}
-                            _rv_state = _rv.get("aggregate_regime_state", "?")
-                            _rv_prov = _rv.get("active_provider_count", 0)
-                            _rv_asof = _rv.get("asof", "?")
-                            _rv_pol = _rv.get(
-                                "policy_applied",
-                                "dual_confirm_soft_hard",
-                            )
+                            _fv = load_json(_fv_path) if _fv_path.exists() else {}
+                            _fv_state = _fv.get("regime_state", "?")
+                            _fv_vix = _fv.get("fear_value", "?")
+                            _fv_pol = _fv.get("policy_applied", "?")
+                            _fv_us = _fv.get("fear_value_timestamp", "?")
                             _n_cnt = bt_meta.get("exo_regime_neutral_count", 0)
                             _ro_cnt = bt_meta.get("exo_regime_risk_off_count", 0)
                             st.caption(
-                                f"Regime: {_rv_state}"
-                                f" | provider: {_rv_prov}개"
-                                f" | 정책: {_rv_pol}"
+                                f"Fear Regime: {_fv_state}"
+                                f" | VIX: {_fv_vix}"
+                                f" | 정책: {_fv_pol}"
                                 f" | neutral: {_n_cnt}회"
                                 f" | risk_off: {_ro_cnt}회"
-                                f" | verdict: {_rv_asof}"
+                                f" | 미국: {_fv_us}"
                             )
                         if bt_meta.get("zero_trade_diagnostic"):
                             _root = bt_meta.get("zero_trade_root_cause", "?")

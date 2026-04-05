@@ -316,7 +316,7 @@ Step6D 구현 후 아래 4개를 비교:
     "source": "US CBOE VIX via yfinance",
     "lookback": 250,  # 5DMA + carry-forward 여유
     "lag_days": 1,     # 미국 T → 한국 T+1
-    "freshness_ttl": 3,
+    "freshness_ttl": 5,
     "thresholds": {
         "risk_on_max": 20.0,
         "risk_off_min": 30.0,

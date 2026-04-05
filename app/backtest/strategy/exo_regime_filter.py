@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
 app/backtest/strategy/exo_regime_filter.py
-P206-STEP6B-PATCH1: Exogenous Regime Filter (dual-confirm)
+P206-STEP6D: Exogenous Regime Filter (VIX fear index)
 
 dynamic_etf_market 전용 외생 레짐 필터.
-- market_trend_ma_regime + market_breadth_regime 2개 활성
-- risk_off = 이중확인(둘 다 risk_off)일 때만 100% cash
-- neutral = soft gate (50% cash)
+- 주력: fear_index_regime (미국 VIX, 선행 공포 센서)
+- MA/Breadth: enabled=false (비교군/백업 슬롯)
+- 정렬: 미국 T종가 → 한국 T+1 개장 입력
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -23,37 +23,53 @@ logger = logging.getLogger(__name__)
 
 PROVIDER_REGISTRY: List[Dict[str, Any]] = [
     {
-        "key": "market_trend_ma_regime",
+        "key": "fear_index_regime",
         "enabled": True,
+        "source": "US CBOE VIX via yfinance",
+        "lookback": 250,
+        "lag_days": 1,
+        "freshness_ttl": 5,
+        "thresholds": {
+            "risk_on_max": 20.0,
+            "risk_off_min": 30.0,
+            "spike_threshold": 0.20,
+            "spike_window": 5,
+        },
+        "missing_policy": "neutral_fallback",
+        "regime_map": {
+            "low_fear": "risk_on",
+            "mid_fear_no_spike": "neutral",
+            "mid_fear_spike": "risk_off",
+            "high_fear": "risk_off",
+        },
+        "required_symbols": ["^VIX"],
+        "notes": "혼합: 절대 임계치(20/30) + trailing 5DMA 급등률(20%)",
+    },
+    {
+        "key": "market_trend_ma_regime",
+        "enabled": False,
         "source": "OHLCV proxy symbol MA crossover",
         "lookback": 200,
         "lag_days": 0,
-        "freshness_ttl": 1,
+        "freshness_ttl": 5,
         "thresholds": {"ma_period": 200},
         "missing_policy": "risk_off",
         "regime_map": {"above_ma": "risk_on", "below_ma": "risk_off"},
         "required_symbols": ["069500"],
-        "notes": "KODEX 200 종가 vs 200일 이평선",
+        "notes": "비활성 — 비교군/백업",
     },
     {
         "key": "market_breadth_regime",
-        "enabled": True,
+        "enabled": False,
         "source": "후보 universe 중기 모멘텀 양수 비율",
         "lookback": 60,
         "lag_days": 0,
-        "freshness_ttl": 1,
-        "thresholds": {
-            "risk_on_pct": 0.60,
-            "risk_off_pct": 0.30,
-        },
+        "freshness_ttl": 5,
+        "thresholds": {"risk_on_pct": 0.60, "risk_off_pct": 0.30},
         "missing_policy": "risk_off",
-        "regime_map": {
-            "breadth_high": "risk_on",
-            "breadth_mid": "neutral",
-            "breadth_low": "risk_off",
-        },
+        "regime_map": {},
         "required_symbols": [],
-        "notes": "universe 중 60일 모멘텀 양수 비율",
+        "notes": "비활성 — 비교군/백업",
     },
     {
         "key": "news_sentiment_regime",
@@ -61,20 +77,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "source": "뉴스 감성 지표",
         "lookback": 7,
         "lag_days": 1,
-        "freshness_ttl": 1,
-        "thresholds": {},
-        "missing_policy": "risk_off",
-        "regime_map": {},
-        "required_symbols": [],
-        "notes": "비활성",
-    },
-    {
-        "key": "fear_index_regime",
-        "enabled": False,
-        "source": "공포지수",
-        "lookback": 14,
-        "lag_days": 1,
-        "freshness_ttl": 1,
+        "freshness_ttl": 5,
         "thresholds": {},
         "missing_policy": "risk_off",
         "regime_map": {},
@@ -87,7 +90,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "source": "환율 레짐",
         "lookback": 20,
         "lag_days": 0,
-        "freshness_ttl": 1,
+        "freshness_ttl": 5,
         "thresholds": {},
         "missing_policy": "neutral",
         "regime_map": {},
@@ -100,7 +103,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "source": "금리 레짐",
         "lookback": 60,
         "lag_days": 0,
-        "freshness_ttl": 1,
+        "freshness_ttl": 5,
         "thresholds": {},
         "missing_policy": "neutral",
         "regime_map": {},
@@ -113,7 +116,7 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "source": "매크로 복합 지표",
         "lookback": 60,
         "lag_days": 0,
-        "freshness_ttl": 1,
+        "freshness_ttl": 5,
         "thresholds": {},
         "missing_policy": "neutral",
         "regime_map": {},
@@ -121,6 +124,8 @@ PROVIDER_REGISTRY: List[Dict[str, Any]] = [
         "notes": "비활성",
     },
 ]
+
+FRESHNESS_TTL_DAYS = 5  # 캘린더 일수 기준
 
 
 def get_active_providers() -> List[Dict[str, Any]]:
@@ -138,139 +143,102 @@ def get_required_proxy_symbols() -> List[str]:
     return symbols
 
 
-# ── Aggregate Truth Table ──────────────────────────────────
+# ── VIX Fear Regime Provider ───────────────────────────────
 
 
-def compute_aggregate_regime(ma_state: str, breadth_state: str) -> str:
-    """A4 진리표: 둘 다 risk_on→risk_on, 둘 다 risk_off→risk_off,
-    그 외→neutral."""
-    if ma_state == "risk_on" and breadth_state == "risk_on":
+def _align_vix_to_kr_date(
+    vix_close_series: pd.Series,
+    kr_date: date,
+) -> Dict[str, Any]:
+    """한국 리밸런스일에 대해 미국 VIX 직전 유효 종가를 매핑.
+
+    규칙: kr_date - 1 이하인 미국 거래일 중 최신 종가.
+    미국 T종가 → 한국 T+1 입력. same-day 사용 금지.
+    """
+    cutoff = pd.Timestamp(kr_date - timedelta(days=1))
+    valid = vix_close_series[vix_close_series.index <= cutoff]
+
+    if valid.empty:
+        return {
+            "vix_close": None,
+            "source_date_us": None,
+            "staleness_days": None,
+            "error": "no_valid_vix_before_kr_date",
+        }
+
+    last_valid_idx = valid.index[-1]
+    vix_val = float(valid.iloc[-1])
+
+    if pd.isna(vix_val):
+        return {
+            "vix_close": None,
+            "source_date_us": str(last_valid_idx.date()),
+            "staleness_days": None,
+            "error": "vix_value_nan",
+        }
+
+    staleness = (kr_date - last_valid_idx.date()).days
+    return {
+        "vix_close": round(vix_val, 2),
+        "source_date_us": str(last_valid_idx.date()),
+        "staleness_days": staleness,
+        "error": None,
+    }
+
+
+def _compute_5dma(
+    vix_close_series: pd.Series,
+    source_date_us: str,
+) -> Optional[float]:
+    """source_date_us 직전 5거래일 종가의 산술평균 (trailing, 당일 미포함)."""
+    ts = pd.Timestamp(source_date_us)
+    before = vix_close_series[vix_close_series.index < ts]
+    if len(before) < 5:
+        return None
+    vals = before.tail(5).astype(float)
+    if vals.isna().any():
+        return None
+    return round(float(vals.mean()), 4)
+
+
+def _compute_fear_state(
+    vix_close: float,
+    vix_5dma: Optional[float],
+) -> str:
+    """설계서 판별표 그대로 구현.
+
+    vix_close < 20 → risk_on
+    20 <= vix_close < 30 and spike < 0.20 → neutral
+    20 <= vix_close < 30 and spike >= 0.20 → risk_off
+    vix_close >= 30 → risk_off
+    """
+    if vix_close < 20.0:
         return "risk_on"
-    if ma_state == "risk_off" and breadth_state == "risk_off":
+    if vix_close >= 30.0:
         return "risk_off"
+    # 20 ~ 30 구간: spike 확인
+    if vix_5dma is not None and vix_5dma > 0:
+        spike = vix_close / vix_5dma - 1.0
+        if spike >= 0.20:
+            return "risk_off"
     return "neutral"
 
 
-# ── Provider 1: market_trend_ma_regime ─────────────────────
+# ── Fear Regime Schedule Builder ───────────────────────────
 
 
-def _compute_ma_regime_for_date(
-    close_series: pd.Series,
-    target_date: date,
-    ma_period: int = 200,
-) -> Dict[str, Any]:
-    """MA regime 판정."""
-    ts = pd.Timestamp(target_date)
-    hist = close_series[close_series.index <= ts]
-    if len(hist) < ma_period:
-        return {"state": "risk_off", "close": None, "ma": None}
-
-    ma_val = float(hist.tail(ma_period).mean())
-    current = float(hist.iloc[-1])
-
-    if pd.isna(ma_val) or pd.isna(current):
-        return {"state": "risk_off", "close": None, "ma": None}
-
-    state = "risk_on" if current >= ma_val else "risk_off"
-    return {
-        "state": state,
-        "close": round(current, 2),
-        "ma": round(ma_val, 2),
-    }
-
-
-# ── Provider 2: market_breadth_regime ──────────────────────
-
-
-def _compute_breadth_for_date(
-    price_data: pd.DataFrame,
-    universe: List[str],
-    target_date: date,
-    momentum_period: int = 60,
-    risk_on_pct: float = 0.60,
-    risk_off_pct: float = 0.30,
-) -> Dict[str, Any]:
-    """후보 universe 중 momentum_period일 모멘텀 양수 비율로 breadth 판정.
-
-    - >= risk_on_pct → risk_on
-    - <= risk_off_pct → risk_off
-    - 그 사이 → neutral
-    """
-    ts = pd.Timestamp(target_date)
-    positive = 0
-    total = 0
-
-    if not isinstance(price_data.index, pd.MultiIndex):
-        return {
-            "state": "risk_off",
-            "breadth_pct": None,
-            "positive": 0,
-            "total": 0,
-        }
-
-    for code in universe:
-        try:
-            code_data = price_data.xs(code, level="code")
-            hist = code_data[code_data.index <= ts]
-            if len(hist) < momentum_period + 1:
-                continue
-            close = hist["close"].astype(float)
-            mom = float(close.iloc[-1]) / float(close.iloc[-momentum_period]) - 1.0
-            if pd.isna(mom):
-                continue
-            total += 1
-            if mom > 0:
-                positive += 1
-        except (KeyError, IndexError):
-            continue
-
-    if total == 0:
-        return {
-            "state": "risk_off",
-            "breadth_pct": None,
-            "positive": 0,
-            "total": 0,
-        }
-
-    pct = positive / total
-    if pct >= risk_on_pct:
-        state = "risk_on"
-    elif pct <= risk_off_pct:
-        state = "risk_off"
-    else:
-        state = "neutral"
-
-    return {
-        "state": state,
-        "breadth_pct": round(pct, 4),
-        "positive": positive,
-        "total": total,
-    }
-
-
-# ── Schedule Builder (PATCH1: dual-confirm) ────────────────
-
-
-def build_exo_regime_schedule(
-    proxy_ohlcv: Optional[pd.DataFrame],
+def build_fear_regime_schedule(
+    vix_ohlcv: Optional[pd.DataFrame],
     rebalance_dates: List[date],
-    ma_period: int = 200,
-    price_data: Optional[pd.DataFrame] = None,
-    universe: Optional[List[str]] = None,
-    universe_resolver: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """리밸런스 날짜별 dual-confirm regime schedule 생성.
-
-    universe_resolver가 있으면 rebalance date별 동적 후보군을
-    breadth 계산에 사용. 없으면 고정 universe 사용.
-    """
+    """한국 리밸런스 날짜별 VIX fear regime schedule 생성."""
     result: Dict[str, Any] = {
         "schedule": {},
-        "provider_states": {},
         "provider_values": {},
-        "confirmation_mode": "dual_confirm",
-        "proxy_symbol": "069500",
-        "ma_period": ma_period,
+        "provider": "fear_index_regime",
+        "fear_index_symbol": "^VIX",
+        "alignment_mode": "us_close_to_kr_next_open",
+        "freshness_ttl": FRESHNESS_TTL_DAYS,
         "regime_valid": False,
         "regime_error_code": None,
         "risk_on_count": 0,
@@ -278,71 +246,88 @@ def build_exo_regime_schedule(
         "risk_off_count": 0,
     }
 
-    # MA close series
-    ma_close = None
-    if proxy_ohlcv is not None and not proxy_ohlcv.empty:
-        if "close" in proxy_ohlcv.columns:
-            ma_close = proxy_ohlcv["close"].astype(float)
-        elif "Close" in proxy_ohlcv.columns:
-            ma_close = proxy_ohlcv["Close"].astype(float)
+    # VIX close series 추출
+    vix_close = None
+    if vix_ohlcv is not None and not vix_ohlcv.empty:
+        _vix_df = vix_ohlcv.copy()
+        # tz-aware index → tz-naive (yfinance VIX는 America/Chicago)
+        if hasattr(_vix_df.index, "tz") and _vix_df.index.tz is not None:
+            _vix_df.index = _vix_df.index.tz_localize(None)
+        for col in ["close", "Close"]:
+            if col in _vix_df.columns:
+                vix_close = _vix_df[col].dropna().astype(float)
+                break
 
-    if ma_close is None:
-        result["regime_error_code"] = "proxy_data_missing"
-        logger.warning("[EXO-REGIME] proxy OHLCV 없음 → fail-closed")
+    if vix_close is None or vix_close.empty:
+        result["regime_error_code"] = "vix_fetch_failed"
+        logger.warning("[FEAR-REGIME] VIX 데이터 없음 → fail-closed")
         for d in rebalance_dates:
             result["schedule"][str(d)] = "risk_off"
-            result["provider_states"][str(d)] = {
-                "ma": "risk_off",
-                "breadth": "risk_off",
+            result["provider_values"][str(d)] = {
+                "fear_value": None,
+                "error_code": "vix_fetch_failed",
             }
         result["risk_off_count"] = len(rebalance_dates)
         return result
 
-    _fallback_univ = universe or []
     risk_on = 0
     neutral = 0
     risk_off = 0
 
     for d in rebalance_dates:
-        # Provider 1: MA
-        ma_v = _compute_ma_regime_for_date(ma_close, d, ma_period)
-        ma_state = ma_v["state"]
+        aligned = _align_vix_to_kr_date(vix_close, d)
 
-        # Provider 2: Breadth (dynamic universe 우선)
-        _date_univ = _fallback_univ
-        if universe_resolver is not None:
-            _resolved = universe_resolver(d)
-            if _resolved:
-                _date_univ = _resolved
-        if price_data is not None and _date_univ:
-            br_v = _compute_breadth_for_date(price_data, _date_univ, d)
-        else:
-            br_v = {
-                "state": "risk_off",
-                "breadth_pct": None,
-                "positive": 0,
-                "total": 0,
+        if aligned["error"] is not None:
+            # fail-closed: neutral fallback
+            state = "neutral"
+            pv = {
+                "fear_value": None,
+                "vix_5dma": None,
+                "vix_spike": None,
+                "source_trade_date_us": aligned["source_date_us"],
+                "applied_trade_date_kr": str(d),
+                "staleness_days": aligned["staleness_days"],
+                "error_code": aligned["error"],
             }
-        breadth_state = br_v["state"]
+        elif (
+            aligned["staleness_days"] is not None
+            and aligned["staleness_days"] > FRESHNESS_TTL_DAYS
+        ):
+            # stale → neutral fallback
+            state = "neutral"
+            pv = {
+                "fear_value": aligned["vix_close"],
+                "vix_5dma": None,
+                "vix_spike": None,
+                "source_trade_date_us": aligned["source_date_us"],
+                "applied_trade_date_kr": str(d),
+                "staleness_days": aligned["staleness_days"],
+                "error_code": "staleness_exceeded",
+            }
+        else:
+            vix_val = aligned["vix_close"]
+            src_date = aligned["source_date_us"]
+            dma = _compute_5dma(vix_close, src_date)
+            spike = (
+                round(vix_val / dma - 1.0, 4) if dma is not None and dma > 0 else None
+            )
+            state = _compute_fear_state(vix_val, dma)
+            pv = {
+                "fear_value": vix_val,
+                "vix_5dma": dma,
+                "vix_spike": spike,
+                "source_trade_date_us": src_date,
+                "applied_trade_date_kr": str(d),
+                "staleness_days": aligned["staleness_days"],
+                "error_code": None,
+            }
 
-        # Aggregate (A4 truth table)
-        agg = compute_aggregate_regime(ma_state, breadth_state)
-        result["schedule"][str(d)] = agg
-        result["provider_states"][str(d)] = {
-            "ma": ma_state,
-            "breadth": breadth_state,
-        }
-        result["provider_values"][str(d)] = {
-            "proxy_close": ma_v["close"],
-            "proxy_ma200": ma_v["ma"],
-            "breadth_pct": br_v["breadth_pct"],
-            "breadth_positive": br_v["positive"],
-            "breadth_total": br_v["total"],
-        }
+        result["schedule"][str(d)] = state
+        result["provider_values"][str(d)] = pv
 
-        if agg == "risk_on":
+        if state == "risk_on":
             risk_on += 1
-        elif agg == "risk_off":
+        elif state == "risk_off":
             risk_off += 1
         else:
             neutral += 1
@@ -352,7 +337,7 @@ def build_exo_regime_schedule(
     result["neutral_count"] = neutral
     result["risk_off_count"] = risk_off
     logger.info(
-        f"[EXO-REGIME] dual-confirm schedule:"
+        f"[FEAR-REGIME] schedule 완료:"
         f" risk_on={risk_on}, neutral={neutral},"
         f" risk_off={risk_off}"
     )

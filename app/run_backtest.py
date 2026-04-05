@@ -169,20 +169,30 @@ def run_backtest(
         except Exception as exc:
             logger.warning(f"[DYNAMIC] schedule 실패, 고정 모드: {exc}")
 
-    # P206-STEP6B: exogenous regime schedule
+    # P206-STEP6D: VIX fear regime schedule
     _exo_regime_result = None
     if params.get("universe_mode") == "dynamic_etf_market":
         try:
             from app.backtest.strategy.exo_regime_filter import (
-                build_exo_regime_schedule,
+                build_fear_regime_schedule,
             )
 
-            _proxy_sym = "069500"
-            _proxy_ohlcv = None
-            if isinstance(price_data.index, pd.MultiIndex):
-                codes = price_data.index.get_level_values("code")
-                if _proxy_sym in codes:
-                    _proxy_ohlcv = price_data.xs(_proxy_sym, level="code")
+            # VIX fetch via yfinance (별도, 투자 universe와 분리)
+            _vix_ohlcv = None
+            try:
+                import yfinance as _yf
+
+                _vix_start = start - timedelta(days=400)
+                _vix_ticker = _yf.Ticker("^VIX")
+                _vix_df = _vix_ticker.history(
+                    start=str(_vix_start), end=str(end + timedelta(days=1))
+                )
+                if _vix_df is not None and not _vix_df.empty:
+                    _vix_df.columns = [c.lower() for c in _vix_df.columns]
+                    _vix_ohlcv = _vix_df
+                    logger.info(f"[VIX] fetched {len(_vix_df)} rows")
+            except Exception as vix_exc:
+                logger.warning(f"[VIX] fetch 실패: {vix_exc}")
 
             _rebal_dates = []
             if _universe_resolver and hasattr(_universe_resolver, "_schedule"):
@@ -195,12 +205,9 @@ def run_backtest(
             if not _rebal_dates:
                 _rebal_dates = [d.date() for d in pd.date_range(start, end, freq="MS")]
 
-            _exo_regime_result = build_exo_regime_schedule(
-                proxy_ohlcv=_proxy_ohlcv,
+            _exo_regime_result = build_fear_regime_schedule(
+                vix_ohlcv=_vix_ohlcv,
                 rebalance_dates=_rebal_dates,
-                price_data=price_data,
-                universe=params["universe"],
-                universe_resolver=_universe_resolver,
             )
             _schedule_meta["exo_regime_applied"] = True
             _schedule_meta["exo_regime_risk_off_count"] = _exo_regime_result.get(
@@ -210,7 +217,7 @@ def run_backtest(
                 "neutral_count", 0
             )
         except Exception as exc:
-            logger.warning(f"[EXO-REGIME] schedule 실패: {exc}")
+            logger.warning(f"[FEAR-REGIME] schedule 실패: {exc}")
 
     result = runner.run(
         price_data=price_data,
@@ -629,20 +636,10 @@ def run_cli_backtest(
 
     logger.info(f"[DATE] {start} → {end} (mode={mode})")
 
-    # 3. Load price data (+ proxy symbols for regime filter)
-    _fetch_tickers = list(params["universe"])
-    _is_dyn = params.get("universe_mode") == "dynamic_etf_market"
-    if _is_dyn:
-        from app.backtest.strategy.exo_regime_filter import (
-            get_required_proxy_symbols,
-        )
-
-        for ps in get_required_proxy_symbols():
-            if ps not in _fetch_tickers:
-                _fetch_tickers.append(ps)
+    # 3. Load price data (VIX는 별도 fetch, 투자 universe만 여기서)
     try:
         price_data = load_price_data(
-            _fetch_tickers, start, end, data_source=params["data_source"]
+            params["universe"], start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Data loading failed: {e}")
@@ -829,7 +826,7 @@ def run_cli_backtest(
         formatted["meta"]["dynamic_execution_valid"] = bool(dyn_valid)
         formatted["meta"]["resolver_mode"] = "schedule_lookup"
 
-    # P206-STEP6B: regime 산출물 생성
+    # P206-STEP6D: fear regime 산출물 생성
     _exo_regime_result = result.get("_exo_regime_result")
     if _exo_regime_result and params.get("universe_mode") == "dynamic_etf_market":
         import csv as _csv2
@@ -837,109 +834,113 @@ def run_cli_backtest(
         _regime_dir = PROJECT_ROOT / "reports" / "tuning"
         _regime_dir.mkdir(parents=True, exist_ok=True)
 
-        # regime_verdict_latest.json
-        from app.backtest.strategy.exo_regime_filter import (
-            get_active_providers,
-            get_required_proxy_symbols,
-        )
-
-        _active_p = get_active_providers()
-        _proxy_syms = get_required_proxy_symbols()
         _sched_data = _exo_regime_result.get("schedule", {})
-        _prov_states = _exo_regime_result.get("provider_states", {})
         _prov_vals = _exo_regime_result.get("provider_values", {})
         _last_date = max(_sched_data.keys()) if _sched_data else None
         _latest_state = (
             _sched_data.get(_last_date, "risk_on") if _last_date else "risk_on"
         )
+        _last_pv = _prov_vals.get(_last_date, {}) if _last_date else {}
         _verdict_asof = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
         _n_count = _exo_regime_result.get("neutral_count", 0)
         _ro_count = _exo_regime_result.get("risk_off_count", 0)
+        _ri_count = _exo_regime_result.get("risk_on_count", 0)
+
+        # fear_regime_verdict_latest.json
         _verdict = {
             "asof": _verdict_asof,
-            "aggregate_regime_state": _latest_state,
-            "provider_states": (_prov_states.get(_last_date, {}) if _last_date else {}),
-            "active_providers": [p["key"] for p in _active_p],
-            "active_provider_count": len(_active_p),
-            "confirmation_mode": "dual_confirm",
-            "policy_applied": "dual_confirm_soft_hard",
+            "provider_key": "fear_index_regime",
+            "fear_index_symbol": "^VIX",
+            "fear_value": _last_pv.get("fear_value"),
+            "fear_value_timestamp": _last_pv.get("source_trade_date_us"),
+            "alignment_mode": "us_close_to_kr_next_open",
+            "regime_state": _latest_state,
+            "policy_applied": (
+                "hard_gate"
+                if _latest_state == "risk_off"
+                else "soft_gate" if _latest_state == "neutral" else "none"
+            ),
             "target_cash_pct": (
                 1.0
                 if _latest_state == "risk_off"
                 else 0.5 if _latest_state == "neutral" else 0.0
             ),
+            "regime_valid": _exo_regime_result.get("regime_valid", False),
+            "staleness_days": _last_pv.get("staleness_days"),
+            "error_code": _last_pv.get("error_code"),
+            "vix_5dma": _last_pv.get("vix_5dma"),
+            "vix_spike": _last_pv.get("vix_spike"),
+            "risk_on_count": _ri_count,
             "neutral_count": _n_count,
             "risk_off_count": _ro_count,
-            "regime_valid": _exo_regime_result.get("regime_valid", False),
-            "regime_error_code": _exo_regime_result.get("regime_error_code"),
-            "required_proxy_symbols": _proxy_syms,
+            "required_proxy_symbols": ["^VIX"],
             "proxy_fetch_status": (
                 "OK" if _exo_regime_result.get("regime_valid") else "FAILED"
             ),
         }
-        (_regime_dir / "regime_verdict_latest.json").write_text(
+        (_regime_dir / "fear_regime_verdict_latest.json").write_text(
             json.dumps(_verdict, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
 
-        # regime_schedule_latest.json/csv
+        # fear_regime_schedule_latest.json/csv
         _sched_rows = []
         for rd, rs in _sched_data.items():
-            _ps = _prov_states.get(rd, {})
             _pv = _prov_vals.get(rd, {})
             _tcp = 1.0 if rs == "risk_off" else 0.5 if rs == "neutral" else 0.0
             _sched_rows.append(
                 {
                     "rebalance_date": rd,
-                    "ma_state": _ps.get("ma", ""),
-                    "breadth_state": _ps.get("breadth", ""),
-                    "aggregate_state": rs,
+                    "fear_value": _pv.get("fear_value"),
+                    "vix_5dma": _pv.get("vix_5dma"),
+                    "vix_spike": _pv.get("vix_spike"),
+                    "fear_state": rs,
                     "gate_applied": rs in ("risk_off", "neutral"),
                     "target_cash_pct": _tcp,
-                    "proxy_close": _pv.get("proxy_close"),
-                    "proxy_ma200": _pv.get("proxy_ma200"),
-                    "breadth_pct": _pv.get("breadth_pct"),
+                    "source_trade_date_us": _pv.get("source_trade_date_us"),
+                    "applied_trade_date_kr": _pv.get("applied_trade_date_kr"),
+                    "staleness_days": _pv.get("staleness_days"),
                 }
             )
-        (_regime_dir / "regime_schedule_latest.json").write_text(
+        (_regime_dir / "fear_regime_schedule_latest.json").write_text(
             json.dumps(_sched_rows, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         if _sched_rows:
-            _csv_path = _regime_dir / "regime_schedule_latest.csv"
-            with open(_csv_path, "w", encoding="utf-8", newline="") as f:
+            _csv_p = _regime_dir / "fear_regime_schedule_latest.csv"
+            with open(_csv_p, "w", encoding="utf-8", newline="") as f:
                 w = _csv2.DictWriter(f, fieldnames=_sched_rows[0].keys())
                 w.writeheader()
                 w.writerows(_sched_rows)
 
-        # regime_reason_latest.md
-        _ri = _exo_regime_result.get("risk_on_count", 0)
+        # fear_regime_reason_latest.md
         _reason_md = [
-            "# Regime Filter 판정 사유 (PATCH1: dual-confirm)",
+            "# Fear Regime 판정 사유 (VIX 기반)",
             "",
-            "## Provider 구성",
-            "1. market_trend_ma_regime: KODEX 200 종가 vs 200일 MA",
-            "2. market_breadth_regime: 후보 universe 60일 모멘텀 양수 비율",
+            "## Provider",
+            "- fear_index_regime: 미국 CBOE VIX (^VIX)",
+            "- 정렬: 미국 T종가 → 한국 T+1 개장 입력",
             "",
-            "## 집계 규칙 (진리표)",
-            "- 둘 다 risk_on → risk_on (정상 투자)",
-            "- 둘 다 risk_off → risk_off (100% 현금, hard gate)",
-            "- 그 외 → neutral (50% 현금, soft gate)",
+            "## 판별 기준",
+            "- VIX < 20 → risk_on (정상 투자)",
+            "- 20~30 + 급등률 < 20% → neutral (50% 현금)",
+            "- 20~30 + 급등률 >= 20% → risk_off (100% 현금)",
+            "- VIX >= 30 → risk_off (100% 현금)",
             "",
             "## 결과 요약",
-            f"- Risk-On: {_ri}회",
+            f"- Risk-On: {_ri_count}회",
             f"- Neutral (soft gate): {_n_count}회",
             f"- Risk-Off (hard gate): {_ro_count}회",
             "",
             "## 정책 동작",
-            "- risk_on: 기존 dynamic_equal_weight 정상 실행",
-            "- neutral: 비중 50% 축소 (나머지 현금 보유)",
-            "- risk_off: 위험자산 목표 0%, 100% 현금 (이중확인)",
+            "- risk_on: dynamic_equal_weight 정상 실행",
+            "- neutral: 비중 50% 축소",
+            "- risk_off: 100% 현금, 기존 보유 청산",
         ]
-        (_regime_dir / "regime_reason_latest.md").write_text(
+        (_regime_dir / "fear_regime_reason_latest.md").write_text(
             "\n".join(_reason_md), encoding="utf-8"
         )
-        logger.info(f"[WRITE] regime outputs → {_regime_dir}")
+        logger.info(f"[WRITE] fear regime outputs → {_regime_dir}")
 
     # P205-STEP5H: metric integrity audit
     _s = formatted["summary"]
