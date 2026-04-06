@@ -518,11 +518,20 @@ def build_hybrid_regime_schedule(
             "global": g_state,
             "domestic": dom_state,
         }
+        # domestic_eval_mode 결정
+        if intraday_ret is not None:
+            _eval_mode = "daily_close_proxy"
+        elif preopen_ret is not None:
+            _eval_mode = "preopen_only"
+        else:
+            _eval_mode = "fallback"
+
         result["provider_values"][d_str] = {
             "vix_value": g_vals.get("fear_value"),
             "vix_5dma": g_vals.get("vix_5dma"),
             "preopen_return": preopen_ret,
             "intraday_return": intraday_ret,
+            "domestic_eval_mode": _eval_mode,
             "domestic_source_date": dom_src_date,
             "global_source_date": g_vals.get("source_trade_date_us"),
         }

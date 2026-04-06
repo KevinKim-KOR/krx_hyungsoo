@@ -924,6 +924,7 @@ def run_cli_backtest(
                     "vix_value": _pv.get("vix_value"),
                     "preopen_return": _pv.get("preopen_return"),
                     "intraday_return": _pv.get("intraday_return"),
+                    "domestic_eval_mode": _pv.get("domestic_eval_mode", ""),
                     "global_source_ts": _pv.get("global_source_date"),
                     "domestic_source_ts": _pv.get("domestic_source_date"),
                 }
