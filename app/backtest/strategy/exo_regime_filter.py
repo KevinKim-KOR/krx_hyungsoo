@@ -389,3 +389,138 @@ def build_fear_regime_schedule(
         f" risk_off={risk_off}"
     )
     return result
+
+
+# ── Domestic Shock Regime ──────────────────────────────────
+
+DOMESTIC_CARRY_FORWARD_MAX = 3  # 캘린더 일수
+DOMESTIC_FRESHNESS_TTL = 5  # 캘린더 일수
+
+
+def _compute_domestic_state(
+    preopen_return: float,
+    risk_on_max: float = -0.01,
+    risk_off_min: float = -0.03,
+) -> str:
+    """069500 전일 수익률 기반 국내 쇼크 판정."""
+    if preopen_return >= risk_on_max:
+        return "risk_on"
+    if preopen_return <= risk_off_min:
+        return "risk_off"
+    return "neutral"
+
+
+def compute_hybrid_aggregate(global_state: str, domestic_state: str) -> str:
+    """PATCH 반영 진리표.
+
+    - 둘 중 하나라도 risk_off → risk_off
+    - 한쪽만 neutral → neutral
+    - neutral + neutral → neutral (NOT risk_off)
+    - 둘 다 risk_on → risk_on
+    """
+    if global_state == "risk_off" or domestic_state == "risk_off":
+        return "risk_off"
+    if global_state == "neutral" or domestic_state == "neutral":
+        return "neutral"
+    return "risk_on"
+
+
+def build_hybrid_regime_schedule(
+    fear_schedule: Dict[str, Any],
+    domestic_ohlcv: Optional[pd.DataFrame],
+    rebalance_dates: List[date],
+) -> Dict[str, Any]:
+    """VIX + 국내 하이브리드 regime schedule 생성."""
+    result: Dict[str, Any] = {
+        "schedule": {},
+        "provider_states": {},
+        "provider_values": {},
+        "confirmation_mode": "hybrid_global_domestic",
+        "regime_valid": False,
+        "regime_error_code": None,
+        "risk_on_count": 0,
+        "neutral_count": 0,
+        "risk_off_count": 0,
+    }
+
+    fear_sched = fear_schedule.get("schedule", {})
+    fear_vals = fear_schedule.get("provider_values", {})
+
+    # 국내 close series
+    dom_close = None
+    if domestic_ohlcv is not None and not domestic_ohlcv.empty:
+        for col in ["close", "Close"]:
+            if col in domestic_ohlcv.columns:
+                dom_close = domestic_ohlcv[col].dropna().astype(float)
+                break
+
+    risk_on = 0
+    neutral = 0
+    risk_off = 0
+
+    for d in rebalance_dates:
+        d_str = str(d)
+
+        # Global state (from fear schedule)
+        g_state = fear_sched.get(d_str, "neutral")
+        g_vals = fear_vals.get(d_str, {})
+
+        # Domestic state
+        dom_state = "neutral"  # default fallback
+        preopen_ret = None
+        dom_src_date = None
+
+        if dom_close is not None:
+            ts = pd.Timestamp(d)
+            hist = dom_close[dom_close.index <= ts]
+            if len(hist) >= 2:
+                latest = float(hist.iloc[-1])
+                prev = float(hist.iloc[-2])
+                dom_src_date = str(hist.index[-1].date())
+                stale = (d - hist.index[-1].date()).days
+
+                if stale > DOMESTIC_FRESHNESS_TTL:
+                    dom_state = "risk_off"
+                    preopen_ret = None
+                elif stale > DOMESTIC_CARRY_FORWARD_MAX:
+                    dom_state = "neutral"
+                    preopen_ret = None
+                elif prev > 0:
+                    preopen_ret = round(latest / prev - 1.0, 6)
+                    dom_state = _compute_domestic_state(preopen_ret)
+        else:
+            dom_state = "risk_off"  # fail-closed
+
+        # Hybrid aggregate
+        agg = compute_hybrid_aggregate(g_state, dom_state)
+        result["schedule"][d_str] = agg
+        result["provider_states"][d_str] = {
+            "global": g_state,
+            "domestic": dom_state,
+        }
+        result["provider_values"][d_str] = {
+            "vix_value": g_vals.get("fear_value"),
+            "vix_5dma": g_vals.get("vix_5dma"),
+            "preopen_return": preopen_ret,
+            "domestic_source_date": dom_src_date,
+            "global_source_date": g_vals.get("source_trade_date_us"),
+        }
+
+        if agg == "risk_on":
+            risk_on += 1
+        elif agg == "risk_off":
+            risk_off += 1
+        else:
+            neutral += 1
+
+    result["regime_valid"] = fear_schedule.get("regime_valid", False)
+    result["regime_error_code"] = fear_schedule.get("regime_error_code")
+    result["risk_on_count"] = risk_on
+    result["neutral_count"] = neutral
+    result["risk_off_count"] = risk_off
+    logger.info(
+        f"[HYBRID-REGIME] schedule:"
+        f" risk_on={risk_on}, neutral={neutral},"
+        f" risk_off={risk_off}"
+    )
+    return result

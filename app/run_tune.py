@@ -149,8 +149,12 @@ def run_cli_tune(
     try:
         from app.backtest.infra.data_loader import prefetch_ohlcv
 
+        _tune_fetch = list(universe)
+        if params.get("universe_mode") == "dynamic_etf_market":
+            if "069500" not in _tune_fetch:
+                _tune_fetch.append("069500")
         price_data = prefetch_ohlcv(
-            universe, start, end, data_source=params["data_source"]
+            _tune_fetch, start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Prefetch failed: {e}")
@@ -299,16 +303,34 @@ def run_cli_tune(
                 {},
             )
             _ft2 = _fp2.get("thresholds", {})
-            _tune_exo_regime = _build_fear(
+            _tune_fear = _build_fear(
                 vix_ohlcv=_tune_vix_ohlcv,
                 rebalance_dates=_tune_rebal_dates,
                 risk_on_max=_ft2.get("risk_on_max", 20.0),
                 risk_off_min=_ft2.get("risk_off_min", 30.0),
                 spike_threshold=_ft2.get("spike_threshold", 0.20),
             )
+
+            # Hybrid: VIX + domestic 069500
+            from app.backtest.strategy.exo_regime_filter import (
+                build_hybrid_regime_schedule as _build_hybrid,
+            )
+            import pandas as _pd3
+
+            _tune_dom = None
+            if isinstance(price_data.index, _pd3.MultiIndex):
+                _codes3 = price_data.index.get_level_values("code")
+                if "069500" in _codes3:
+                    _tune_dom = price_data.xs("069500", level="code")
+            _tune_exo_regime = _build_hybrid(
+                fear_schedule=_tune_fear,
+                domestic_ohlcv=_tune_dom,
+                rebalance_dates=_tune_rebal_dates,
+            )
             logger.info(
-                f"[TUNE-FEAR] regime schedule:"
+                f"[TUNE-HYBRID] regime schedule:"
                 f" risk_off={_tune_exo_regime.get('risk_off_count', 0)}"
+                f" neutral={_tune_exo_regime.get('neutral_count', 0)}"
             )
         except Exception as exc:
             logger.warning(f"[TUNE-FEAR] regime schedule 실패: {exc}")

@@ -217,15 +217,31 @@ def run_backtest(
                 _exo_regime_result["neutral_cash_pct"] = fear_threshold_override[
                     "neutral_cash_pct"
                 ]
+            # P206-STEP6G: hybrid (VIX + domestic 069500)
+            from app.backtest.strategy.exo_regime_filter import (
+                build_hybrid_regime_schedule,
+            )
+
+            _dom_ohlcv = None
+            if isinstance(price_data.index, pd.MultiIndex):
+                _codes = price_data.index.get_level_values("code")
+                if "069500" in _codes:
+                    _dom_ohlcv = price_data.xs("069500", level="code")
+
+            _hybrid = build_hybrid_regime_schedule(
+                fear_schedule=_exo_regime_result,
+                domestic_ohlcv=_dom_ohlcv,
+                rebalance_dates=_rebal_dates,
+            )
+            # hybrid가 있으면 이것을 exo_regime으로 사용
+            _exo_regime_result = _hybrid
             _schedule_meta["exo_regime_applied"] = True
-            _schedule_meta["exo_regime_risk_off_count"] = _exo_regime_result.get(
+            _schedule_meta["exo_regime_risk_off_count"] = _hybrid.get(
                 "risk_off_count", 0
             )
-            _schedule_meta["exo_regime_neutral_count"] = _exo_regime_result.get(
-                "neutral_count", 0
-            )
+            _schedule_meta["exo_regime_neutral_count"] = _hybrid.get("neutral_count", 0)
         except Exception as exc:
-            logger.warning(f"[FEAR-REGIME] schedule 실패: {exc}")
+            logger.warning(f"[HYBRID-REGIME] schedule 실패: {exc}")
 
     result = runner.run(
         price_data=price_data,
@@ -644,10 +660,14 @@ def run_cli_backtest(
 
     logger.info(f"[DATE] {start} → {end} (mode={mode})")
 
-    # 3. Load price data (VIX는 별도 fetch, 투자 universe만 여기서)
+    # 3. Load price data (+ 069500 for domestic shock sensor)
+    _fetch_tickers = list(params["universe"])
+    if params.get("universe_mode") == "dynamic_etf_market":
+        if "069500" not in _fetch_tickers:
+            _fetch_tickers.append("069500")
     try:
         price_data = load_price_data(
-            params["universe"], start, end, data_source=params["data_source"]
+            _fetch_tickers, start, end, data_source=params["data_source"]
         )
     except Exception as e:
         logger.error(f"Data loading failed: {e}")
@@ -834,7 +854,7 @@ def run_cli_backtest(
         formatted["meta"]["dynamic_execution_valid"] = bool(dyn_valid)
         formatted["meta"]["resolver_mode"] = "schedule_lookup"
 
-    # P206-STEP6D: fear regime 산출물 생성
+    # P206-STEP6G: hybrid regime 산출물 생성
     _exo_regime_result = result.get("_exo_regime_result")
     if _exo_regime_result and params.get("universe_mode") == "dynamic_etf_market":
         import csv as _csv2
@@ -843,26 +863,25 @@ def run_cli_backtest(
         _regime_dir.mkdir(parents=True, exist_ok=True)
 
         _sched_data = _exo_regime_result.get("schedule", {})
+        _prov_states = _exo_regime_result.get("provider_states", {})
         _prov_vals = _exo_regime_result.get("provider_values", {})
         _last_date = max(_sched_data.keys()) if _sched_data else None
         _latest_state = (
             _sched_data.get(_last_date, "risk_on") if _last_date else "risk_on"
         )
+        _last_ps = _prov_states.get(_last_date, {}) if _last_date else {}
         _last_pv = _prov_vals.get(_last_date, {}) if _last_date else {}
         _verdict_asof = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
         _n_count = _exo_regime_result.get("neutral_count", 0)
         _ro_count = _exo_regime_result.get("risk_off_count", 0)
         _ri_count = _exo_regime_result.get("risk_on_count", 0)
 
-        # fear_regime_verdict_latest.json
+        # hybrid_regime_verdict_latest.json
         _verdict = {
             "asof": _verdict_asof,
-            "provider_key": "fear_index_regime",
-            "fear_index_symbol": "^VIX",
-            "fear_value": _last_pv.get("fear_value"),
-            "fear_value_timestamp": _last_pv.get("source_trade_date_us"),
-            "alignment_mode": "us_close_to_kr_next_open",
-            "regime_state": _latest_state,
+            "global_state": _last_ps.get("global", "N/A"),
+            "domestic_state": _last_ps.get("domestic", "N/A"),
+            "aggregate_state": _latest_state,
             "policy_applied": (
                 "hard_gate"
                 if _latest_state == "risk_off"
@@ -873,82 +892,80 @@ def run_cli_backtest(
                 if _latest_state == "risk_off"
                 else 0.5 if _latest_state == "neutral" else 0.0
             ),
+            "global_source_timestamp": _last_pv.get("global_source_date"),
+            "domestic_source_timestamp": _last_pv.get("domestic_source_date"),
+            "checkpoint_id": "K6",
             "regime_valid": _exo_regime_result.get("regime_valid", False),
-            "staleness_days": _last_pv.get("staleness_days"),
-            "error_code": _last_pv.get("error_code"),
-            "vix_5dma": _last_pv.get("vix_5dma"),
-            "vix_spike": _last_pv.get("vix_spike"),
+            "error_code": _exo_regime_result.get("regime_error_code"),
             "risk_on_count": _ri_count,
             "neutral_count": _n_count,
             "risk_off_count": _ro_count,
-            "required_proxy_symbols": ["^VIX"],
-            "proxy_fetch_status": (
-                "OK" if _exo_regime_result.get("regime_valid") else "FAILED"
-            ),
         }
-        (_regime_dir / "fear_regime_verdict_latest.json").write_text(
+        (_regime_dir / "hybrid_regime_verdict_latest.json").write_text(
             json.dumps(_verdict, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
 
-        # fear_regime_schedule_latest.json/csv
+        # hybrid_regime_schedule_latest.json/csv
         _sched_rows = []
         for rd, rs in _sched_data.items():
+            _ps = _prov_states.get(rd, {})
             _pv = _prov_vals.get(rd, {})
             _tcp = 1.0 if rs == "risk_off" else 0.5 if rs == "neutral" else 0.0
             _sched_rows.append(
                 {
-                    "rebalance_date": rd,
-                    "fear_value": _pv.get("fear_value"),
-                    "vix_5dma": _pv.get("vix_5dma"),
-                    "vix_spike": _pv.get("vix_spike"),
-                    "fear_state": rs,
+                    "date": rd,
+                    "checkpoint_id": "K6",
+                    "global_state": _ps.get("global", ""),
+                    "domestic_state": _ps.get("domestic", ""),
+                    "aggregate_state": rs,
                     "gate_applied": rs in ("risk_off", "neutral"),
                     "target_cash_pct": _tcp,
-                    "source_trade_date_us": _pv.get("source_trade_date_us"),
-                    "applied_trade_date_kr": _pv.get("applied_trade_date_kr"),
-                    "staleness_days": _pv.get("staleness_days"),
+                    "vix_value": _pv.get("vix_value"),
+                    "preopen_return": _pv.get("preopen_return"),
+                    "global_source_ts": _pv.get("global_source_date"),
+                    "domestic_source_ts": _pv.get("domestic_source_date"),
                 }
             )
-        (_regime_dir / "fear_regime_schedule_latest.json").write_text(
+        (_regime_dir / "hybrid_regime_schedule_latest.json").write_text(
             json.dumps(_sched_rows, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         if _sched_rows:
-            _csv_p = _regime_dir / "fear_regime_schedule_latest.csv"
+            _csv_p = _regime_dir / "hybrid_regime_schedule_latest.csv"
             with open(_csv_p, "w", encoding="utf-8", newline="") as f:
                 w = _csv2.DictWriter(f, fieldnames=_sched_rows[0].keys())
                 w.writeheader()
                 w.writerows(_sched_rows)
 
-        # fear_regime_reason_latest.md
+        # hybrid_regime_reason_latest.md
         _reason_md = [
-            "# Fear Regime 판정 사유 (VIX 기반)",
+            "# Hybrid Regime 판정 사유",
             "",
-            "## Provider",
-            "- fear_index_regime: 미국 CBOE VIX (^VIX)",
-            "- 정렬: 미국 T종가 → 한국 T+1 개장 입력",
+            "## Sensor 구성",
+            "1. Global: 미국 VIX (^VIX)",
+            "2. Domestic: 069500 전일 수익률",
             "",
-            "## 판별 기준",
-            "- VIX < 20 → risk_on (정상 투자)",
-            "- 20~30 + 급등률 < 20% → neutral (50% 현금)",
-            "- 20~30 + 급등률 >= 20% → risk_off (100% 현금)",
-            "- VIX >= 30 → risk_off (100% 현금)",
+            "## 통합 규칙",
+            "- 한쪽이라도 risk_off → risk_off",
+            "- 한쪽만 neutral → neutral",
+            "- neutral+neutral → neutral (과도한 승격 금지)",
+            "- 둘 다 risk_on → risk_on",
             "",
             "## 결과 요약",
             f"- Risk-On: {_ri_count}회",
-            f"- Neutral (soft gate): {_n_count}회",
-            f"- Risk-Off (hard gate): {_ro_count}회",
+            f"- Neutral: {_n_count}회",
+            f"- Risk-Off: {_ro_count}회",
             "",
-            "## 정책 동작",
-            "- risk_on: dynamic_equal_weight 정상 실행",
-            "- neutral: 비중 50% 축소",
-            "- risk_off: 100% 현금, 기존 보유 청산",
+            "## 한계",
+            "- 백테스트: 일봉 근사 (장중 K1~K6 미구분)",
+            "- 장중 대응: 하루 4~6회 체크포인트형 모델",
+            "- 실시간 상시 추적 아님",
         ]
-        (_regime_dir / "fear_regime_reason_latest.md").write_text(
+        (_regime_dir / "hybrid_regime_reason_latest.md").write_text(
             "\n".join(_reason_md), encoding="utf-8"
         )
-        logger.info(f"[WRITE] fear regime outputs → {_regime_dir}")
+        logger.info(f"[WRITE] hybrid regime outputs → {_regime_dir}")
 
     # P205-STEP5H: metric integrity audit
     _s = formatted["summary"]
@@ -1049,7 +1066,7 @@ def run_cli_backtest(
             _bt_s = _bt.get("summary", {})
             _bt_m = _bt.get("meta", {})
 
-            _fv_p = _ev_dir / "fear_regime_verdict_latest.json"
+            _fv_p = _ev_dir / "hybrid_regime_verdict_latest.json"
             _fv = {}
             if _fv_p.exists():
                 with open(_fv_p, encoding="utf-8") as _f:
@@ -1080,18 +1097,6 @@ def run_cli_backtest(
             else:
                 _conclusion = "CAGR/MDD 모두 미달. 전략 재검토 필요."
 
-            # KR Applied: fear schedule 마지막 행에서 추출
-            _kr_applied = "N/A"
-            _fs_p = _ev_dir / "fear_regime_schedule_latest.json"
-            if _fs_p.exists():
-                try:
-                    with open(_fs_p, encoding="utf-8") as _fsf:
-                        _fs_data = json.load(_fsf)
-                    if _fs_data:
-                        _kr_applied = _fs_data[-1].get("applied_trade_date_kr", "N/A")
-                except Exception:
-                    pass
-
             _cagr_s = f"{_cagr_v:.2f}%" if _cagr_v is not None else "N/A"
             _mdd_s = f"{_mdd_v:.2f}%" if _mdd_v is not None else "N/A"
             _sharpe_s = f"{_bt_s.get('sharpe', 0):.4f}"
@@ -1117,17 +1122,16 @@ def run_cli_backtest(
                 f"| Total Return | {_tr_s} |",
                 f"| Total Trades | {_bt_m.get('total_trades', 'N/A')} |",
                 "",
-                "## Fear Regime",
+                "## Hybrid Regime",
                 "| Field | Value |",
                 "|---|---|",
-                f"| State | {_fv.get('regime_state', 'N/A')} |",
+                f"| Global State | {_fv.get('global_state', 'N/A')} |",
+                f"| Domestic State | {_fv.get('domestic_state', 'N/A')} |",
+                f"| Aggregate | {_fv.get('aggregate_state', 'N/A')} |",
                 f"| Policy | {_fv.get('policy_applied', 'N/A')} |",
-                f"| VIX | {_fv.get('fear_value', 'N/A')} |",
                 f"| Neutral Count | {_fv.get('neutral_count', 0)} |",
                 f"| Risk-off Count | {_fv.get('risk_off_count', 0)} |",
-                f"| US Source | {_fv.get('fear_value_timestamp', 'N/A')} |",
-                f"| KR Applied | {_kr_applied} |",
-                f"| Alignment | {_fv.get('alignment_mode', 'N/A')} |",
+                f"| Checkpoint | {_fv.get('checkpoint_id', 'K6')} |",
                 "",
                 "## Promotion Verdict",
                 "| Field | Value |",
