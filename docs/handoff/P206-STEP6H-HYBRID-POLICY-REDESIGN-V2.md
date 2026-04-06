@@ -228,7 +228,9 @@ Step6I 구현 후 아래로 비교:
 | Neutral Count | neutral 발동 횟수 |
 | Risk-off Count | risk_off 발동 횟수 |
 | Verdict | CAGR>15 + MDD<10 |
-| Cash Drag | neutral/risk_off 기간 동안 유휴 현금 비율 |
+| Cash Drag Proxy | neutral/risk_off 기간 동안 유휴 현금 비율 |
+| Safe Asset Switch Count | 안전자산 스위칭이 발동된 리밸런스 횟수 |
+| Safe Asset 적용률 | 전체 리밸런스 중 안전자산 배분 비율 |
 | Safe Asset Return | 안전자산 구간 수익률 |
 
 ---
@@ -244,6 +246,7 @@ Step6I 구현 후 아래로 비교:
 - `Domestic Handling: neutral_only (no domestic hard gate)`
 - `Safe Asset Mode: dollar_etf_20pct_neutral / 50pct_risk_off`
 - `Checkpoint Summary: K1~K6`
+- `One-line Conclusion: 정책 효과 요약 (예: "B+D 적용, CAGR 회복 중, MDD 미달")`
 
 ---
 
