@@ -471,11 +471,12 @@ def build_hybrid_regime_schedule(
         dom_src_date = None
 
         if dom_close is not None:
+            # preopen: kr_date 전일까지만 사용 (lookahead 방지)
             ts = pd.Timestamp(d)
-            hist = dom_close[dom_close.index <= ts]
+            hist = dom_close[dom_close.index < ts]
             if len(hist) >= 2:
-                latest = float(hist.iloc[-1])
-                prev = float(hist.iloc[-2])
+                latest = float(hist.iloc[-1])  # 최근 확정 종가
+                prev = float(hist.iloc[-2])  # 직전 확정 종가
                 dom_src_date = str(hist.index[-1].date())
                 stale = (d - hist.index[-1].date()).days
 
@@ -488,6 +489,22 @@ def build_hybrid_regime_schedule(
                 elif prev > 0:
                     preopen_ret = round(latest / prev - 1.0, 6)
                     dom_state = _compute_domestic_state(preopen_ret)
+
+                    # 백테스트 근사: 당일 종가로 intraday 재판정
+                    # (격상만 허용)
+                    _today = dom_close.get(ts)
+                    if _today is not None and not pd.isna(_today):
+                        _intra_ret = round(float(_today) / prev - 1.0, 6)
+                        _intra_state = _compute_domestic_state(
+                            _intra_ret,
+                            risk_on_max=-0.015,
+                            risk_off_min=-0.03,
+                        )
+                        # 격상만: risk_on→neutral, neutral→risk_off
+                        _rank = {"risk_on": 0, "neutral": 1, "risk_off": 2}
+                        if _rank.get(_intra_state, 0) > _rank.get(dom_state, 0):
+                            dom_state = _intra_state
+                            preopen_ret = _intra_ret
         else:
             dom_state = "risk_off"  # fail-closed
 
