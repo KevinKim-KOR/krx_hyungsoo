@@ -940,12 +940,34 @@ def run_cli_backtest(
                 w.writerows(_sched_rows)
 
         # hybrid_regime_reason_latest.md
+        _g_state_last = _last_ps.get("global", "N/A")
+        _d_state_last = _last_ps.get("domestic", "N/A")
+        _trigger = "없음"
+        if _latest_state == "risk_off":
+            if _g_state_last == "risk_off" and _d_state_last == "risk_off":
+                _trigger = "글로벌+국내 동시 risk_off"
+            elif _g_state_last == "risk_off":
+                _trigger = "글로벌(VIX) 단독 트리거"
+            else:
+                _trigger = "국내(069500) 단독 트리거"
+        elif _latest_state == "neutral":
+            if _g_state_last == "neutral":
+                _trigger = "글로벌(VIX) neutral"
+            else:
+                _trigger = "국내(069500) neutral"
         _reason_md = [
             "# Hybrid Regime 판정 사유",
             "",
+            "## 최신 판정",
+            f"- 글로벌 상태: {_g_state_last}",
+            f"- 국내 상태: {_d_state_last}",
+            f"- 통합 상태: {_latest_state}",
+            f"- 트리거 센서: {_trigger}",
+            "- 판정 유형: 장전 기본 + 장중 일봉 근사",
+            "",
             "## Sensor 구성",
-            "1. Global: 미국 VIX (^VIX)",
-            "2. Domestic: 069500 전일 수익률",
+            "1. Global: 미국 VIX (^VIX) — 미국 T종가 → 한국 T+1",
+            "2. Domestic: 069500 전일 수익률 — 전일 확정 종가 기준",
             "",
             "## 통합 규칙",
             "- 한쪽이라도 risk_off → risk_off",
@@ -959,7 +981,7 @@ def run_cli_backtest(
             f"- Risk-Off: {_ro_count}회",
             "",
             "## 한계",
-            "- 백테스트: 일봉 근사 (장중 K1~K6 미구분)",
+            "- 백테스트: 일봉 근사 (장중 체크포인트는 당일 종가로 근사)",
             "- 장중 대응: 하루 4~6회 체크포인트형 모델",
             "- 실시간 상시 추적 아님",
         ]
