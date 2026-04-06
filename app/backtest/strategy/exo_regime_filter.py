@@ -468,6 +468,7 @@ def build_hybrid_regime_schedule(
         # Domestic state
         dom_state = "neutral"  # default fallback
         preopen_ret = None
+        intraday_ret = None
         dom_src_date = None
 
         if dom_close is not None:
@@ -491,20 +492,22 @@ def build_hybrid_regime_schedule(
                     dom_state = _compute_domestic_state(preopen_ret)
 
                     # 백테스트 근사: 당일 종가로 intraday 재판정
-                    # (격상만 허용)
                     _today = dom_close.get(ts)
                     if _today is not None and not pd.isna(_today):
-                        _intra_ret = round(float(_today) / prev - 1.0, 6)
+                        intraday_ret = round(float(_today) / prev - 1.0, 6)
                         _intra_state = _compute_domestic_state(
-                            _intra_ret,
+                            intraday_ret,
                             risk_on_max=-0.015,
                             risk_off_min=-0.03,
                         )
-                        # 격상만: risk_on→neutral, neutral→risk_off
-                        _rank = {"risk_on": 0, "neutral": 1, "risk_off": 2}
+                        # 격상만 허용
+                        _rank = {
+                            "risk_on": 0,
+                            "neutral": 1,
+                            "risk_off": 2,
+                        }
                         if _rank.get(_intra_state, 0) > _rank.get(dom_state, 0):
                             dom_state = _intra_state
-                            preopen_ret = _intra_ret
         else:
             dom_state = "risk_off"  # fail-closed
 
@@ -519,6 +522,7 @@ def build_hybrid_regime_schedule(
             "vix_value": g_vals.get("fear_value"),
             "vix_5dma": g_vals.get("vix_5dma"),
             "preopen_return": preopen_ret,
+            "intraday_return": intraday_ret,
             "domestic_source_date": dom_src_date,
             "global_source_date": g_vals.get("source_trade_date_us"),
         }

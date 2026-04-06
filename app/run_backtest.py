@@ -923,6 +923,7 @@ def run_cli_backtest(
                     "target_cash_pct": _tcp,
                     "vix_value": _pv.get("vix_value"),
                     "preopen_return": _pv.get("preopen_return"),
+                    "intraday_return": _pv.get("intraday_return"),
                     "global_source_ts": _pv.get("global_source_date"),
                     "domestic_source_ts": _pv.get("domestic_source_date"),
                 }
@@ -1147,7 +1148,8 @@ def run_cli_backtest(
                 _conclusion,
                 "",
                 "## Notes",
-                "- 직장인형 EOD/개장 전 방어 모델 (장중 대응 미포함)",
+                "- 백테스트: 일봉 근사 (장중 K1~K6 체크포인트는 당일 종가로 근사)",
+                "- 직장인형 저빈도 체크포인트 대응 모델 (상시 실시간 아님)",
             ]
             _ev_path.write_text("\n".join(_lines), encoding="utf-8")
             logger.info(f"[WRITE] dynamic_evidence → {_ev_path}")

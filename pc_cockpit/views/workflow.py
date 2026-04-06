@@ -360,11 +360,13 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             _fv_pol = _fv.get("policy_applied", "?")
                             _n_cnt = bt_meta.get("exo_regime_neutral_count", 0)
                             _ro_cnt = bt_meta.get("exo_regime_risk_off_count", 0)
+                            _fv_cp = _fv.get("checkpoint_id", "K6")
                             st.caption(
                                 f"Hybrid: {_fv_agg}"
                                 f" | Global: {_fv_g}"
                                 f" | Domestic: {_fv_d}"
                                 f" | 정책: {_fv_pol}"
+                                f" | Checkpoint: {_fv_cp}"
                                 f" | neutral: {_n_cnt}회"
                                 f" | risk_off: {_ro_cnt}회"
                             )
