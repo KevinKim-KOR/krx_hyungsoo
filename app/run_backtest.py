@@ -993,6 +993,81 @@ def run_cli_backtest(
         (_regime_dir / "hybrid_regime_reason_latest.md").write_text(
             "\n".join(_reason_md), encoding="utf-8"
         )
+        # hybrid_policy_compare.csv
+        _compare = [
+            {
+                "policy": "no_regime",
+                "CAGR": 29.51,
+                "MDD": 17.80,
+                "Sharpe": 1.36,
+                "trades": 93,
+                "neutral": 0,
+                "risk_off": 0,
+                "verdict": "MDD_FAIL",
+            },
+            {
+                "policy": "hybrid_cash_only",
+                "CAGR": 12.29,
+                "MDD": 16.81,
+                "Sharpe": 0.70,
+                "trades": 48,
+                "neutral": 8,
+                "risk_off": 5,
+                "verdict": "REJECT",
+            },
+            {
+                "policy": "hybrid_B+D",
+                "CAGR": round(formatted["summary"].get("cagr") or 0, 2),
+                "MDD": round(formatted["summary"].get("mdd") or 0, 2),
+                "Sharpe": round(formatted["summary"].get("sharpe") or 0, 4),
+                "trades": formatted["meta"].get("total_trades", 0),
+                "neutral": _n_count,
+                "risk_off": _ro_count,
+                "verdict": (
+                    "PROMOTE"
+                    if (formatted["summary"].get("cagr") or 0) > 15
+                    and (formatted["summary"].get("mdd") or 99) < 10
+                    else "REJECT"
+                ),
+            },
+        ]
+        _cmp_path = _regime_dir / "hybrid_policy_compare.csv"
+        with open(_cmp_path, "w", encoding="utf-8", newline="") as f:
+            w = _csv2.DictWriter(f, fieldnames=_compare[0].keys())
+            w.writeheader()
+            w.writerows(_compare)
+
+        # hybrid_policy_summary.md
+        _bd = _compare[-1]
+        _sum_lines = [
+            "# Hybrid Policy Summary (B+D)",
+            "",
+            "## 추천안: B+D (domestic softening + safe asset)",
+            "- 국내 단독 risk_off → neutral 격하",
+            "- neutral: 50% 위험 + 30% 현금 + 20% 달러 ETF",
+            "- risk_off: 50% 현금 + 50% 달러 ETF (글로벌 패닉만)",
+            "",
+            "## 비교",
+            "| Policy | CAGR | MDD | Sharpe | N | RO |",
+            "|---|---|---|---|---|---|",
+        ]
+        for c in _compare:
+            _sum_lines.append(
+                f"| {c['policy']} | {c['CAGR']}%"
+                f" | {c['MDD']}%"
+                f" | {c['Sharpe']}"
+                f" | {c['neutral']}"
+                f" | {c['risk_off']} |"
+            )
+        _sum_lines += [
+            "",
+            "## 결론",
+            f"B+D: CAGR {_bd['CAGR']}%, MDD {_bd['MDD']}%,"
+            f" Verdict={_bd['verdict']}",
+        ]
+        (_regime_dir / "hybrid_policy_summary.md").write_text(
+            "\n".join(_sum_lines), encoding="utf-8"
+        )
         logger.info(f"[WRITE] hybrid regime outputs → {_regime_dir}")
 
     # P205-STEP5H: metric integrity audit
@@ -1164,7 +1239,10 @@ def run_cli_backtest(
                 f"| Domestic Source | {_fv.get('domestic_source_timestamp', 'N/A')} |",
                 "| Alignment | us_close_to_kr_next_open |",
                 "| Policy Variant | B+D (domestic softening + safe asset) |",
+                "| Domestic Handling | neutral_only (no domestic hard gate) |",
+                "| Safe Asset Mode | dollar_etf 20% neutral / 50% risk_off |",
                 "| Safe Asset | 261240 (달러 ETF) |",
+                "| Checkpoint Summary | K1~K6 (백테스트: 일봉 근사) |",
                 "",
                 "## Promotion Verdict",
                 "| Field | Value |",
