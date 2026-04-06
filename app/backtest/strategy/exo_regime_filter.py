@@ -410,17 +410,20 @@ def _compute_domestic_state(
     return "neutral"
 
 
-def compute_hybrid_aggregate(global_state: str, domestic_state: str) -> str:
-    """PATCH 반영 진리표.
+SAFE_ASSET_TICKER = "261240"  # KOSEF 미국달러선물
 
-    - 둘 중 하나라도 risk_off → risk_off
+
+def compute_hybrid_aggregate(global_state: str, domestic_state: str) -> str:
+    """Step6H B+D 진리표.
+
+    - global risk_off → risk_off (글로벌 패닉만 hard gate)
+    - domestic 단독 risk_off → neutral (격하)
     - 한쪽만 neutral → neutral
-    - neutral + neutral → neutral (NOT risk_off)
     - 둘 다 risk_on → risk_on
     """
-    if global_state == "risk_off" or domestic_state == "risk_off":
+    if global_state == "risk_off":
         return "risk_off"
-    if global_state == "neutral" or domestic_state == "neutral":
+    if global_state == "neutral" or domestic_state != "risk_on":
         return "neutral"
     return "risk_on"
 

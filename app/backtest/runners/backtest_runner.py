@@ -720,18 +720,26 @@ class BacktestRunner:
                         adjusted_weights = {}
                         current_rsi_values = {}
 
-                    # P206-STEP6B-PATCH1: regime gate
+                    # P206-STEP6I: hybrid regime gate + safe asset
                     _exo_state = _exo_sched.get(str(d), "risk_on")
-                    _neutral_mult = 1.0 - (exo_regime_schedule or {}).get(
-                        "neutral_cash_pct", 0.5
+                    _safe_ticker = (exo_regime_schedule or {}).get(
+                        "safe_asset_ticker", ""
                     )
                     if _exo_state == "risk_off":
+                        # 50% cash + 50% safe asset
                         adjusted_weights = {}
+                        if _safe_ticker and _safe_ticker in current_prices:
+                            adjusted_weights[_safe_ticker] = 0.50
                         _exo_risk_off_count += 1
                     elif _exo_state == "neutral" and adjusted_weights:
+                        # 50% risky + 30% cash + 20% safe asset
                         adjusted_weights = {
-                            k: v * _neutral_mult for k, v in adjusted_weights.items()
+                            k: v * 0.50 for k, v in adjusted_weights.items()
                         }
+                        if _safe_ticker and _safe_ticker in current_prices:
+                            adjusted_weights[_safe_ticker] = (
+                                adjusted_weights.get(_safe_ticker, 0) + 0.20
+                            )
 
                 elif portfolio_mode == "bucket_portfolio" and buckets:
                     # 버킷별 할당 로직 (Phase 2) — 기존 고정 유니버스 전용

@@ -153,6 +153,8 @@ def run_cli_tune(
         if params.get("universe_mode") == "dynamic_etf_market":
             if "069500" not in _tune_fetch:
                 _tune_fetch.append("069500")
+            if "261240" not in _tune_fetch:
+                _tune_fetch.append("261240")
         price_data = prefetch_ohlcv(
             _tune_fetch, start, end, data_source=params["data_source"]
         )
@@ -327,6 +329,7 @@ def run_cli_tune(
                 domestic_ohlcv=_tune_dom,
                 rebalance_dates=_tune_rebal_dates,
             )
+            _tune_exo_regime["safe_asset_ticker"] = "261240"
             logger.info(
                 f"[TUNE-HYBRID] regime schedule:"
                 f" risk_off={_tune_exo_regime.get('risk_off_count', 0)}"

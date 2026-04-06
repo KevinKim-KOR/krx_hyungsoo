@@ -235,6 +235,7 @@ def run_backtest(
             )
             # hybrid가 있으면 이것을 exo_regime으로 사용
             _exo_regime_result = _hybrid
+            _hybrid["safe_asset_ticker"] = "261240"
             _schedule_meta["exo_regime_applied"] = True
             _schedule_meta["exo_regime_risk_off_count"] = _hybrid.get(
                 "risk_off_count", 0
@@ -665,6 +666,9 @@ def run_cli_backtest(
     if params.get("universe_mode") == "dynamic_etf_market":
         if "069500" not in _fetch_tickers:
             _fetch_tickers.append("069500")
+        # 달러 ETF (안전자산)
+        if "261240" not in _fetch_tickers:
+            _fetch_tickers.append("261240")
     try:
         price_data = load_price_data(
             _fetch_tickers, start, end, data_source=params["data_source"]
@@ -1159,6 +1163,8 @@ def run_cli_backtest(
                 f"| Global Source | {_fv.get('global_source_timestamp', 'N/A')} |",
                 f"| Domestic Source | {_fv.get('domestic_source_timestamp', 'N/A')} |",
                 "| Alignment | us_close_to_kr_next_open |",
+                "| Policy Variant | B+D (domestic softening + safe asset) |",
+                "| Safe Asset | 261240 (달러 ETF) |",
                 "",
                 "## Promotion Verdict",
                 "| Field | Value |",
