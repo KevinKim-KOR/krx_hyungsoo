@@ -993,42 +993,60 @@ def run_cli_backtest(
         (_regime_dir / "hybrid_regime_reason_latest.md").write_text(
             "\n".join(_reason_md), encoding="utf-8"
         )
-        # hybrid_policy_compare.csv
+        # hybrid_policy_compare.csv (A9 스펙)
+        _bd_cagr = round(formatted["summary"].get("cagr") or 0, 2)
+        _bd_mdd = round(formatted["summary"].get("mdd") or 0, 2)
+        _bd_sharpe = round(formatted["summary"].get("sharpe") or 0, 4)
+        _bd_trades = formatted["meta"].get("total_trades", 0)
+        _bd_safe_cnt = _n_count + _ro_count
+        _bd_verdict = "PROMOTE" if _bd_cagr > 15 and _bd_mdd < 10 else "REJECT"
         _compare = [
             {
-                "policy": "no_regime",
+                "policy_variant": "no_regime",
+                "domestic_handling_mode": "N/A",
+                "safe_asset_mode": "none",
                 "CAGR": 29.51,
                 "MDD": 17.80,
                 "Sharpe": 1.36,
-                "trades": 93,
-                "neutral": 0,
-                "risk_off": 0,
+                "total_trades": 93,
+                "neutral_count": 0,
+                "risk_off_count": 0,
+                "cash_drag_proxy": 0.0,
+                "safe_asset_switch_count": 0,
                 "verdict": "MDD_FAIL",
+                "rank": 3,
             },
             {
-                "policy": "hybrid_cash_only",
+                "policy_variant": "hybrid_cash_only",
+                "domestic_handling_mode": "hard_gate",
+                "safe_asset_mode": "none",
                 "CAGR": 12.29,
                 "MDD": 16.81,
                 "Sharpe": 0.70,
-                "trades": 48,
-                "neutral": 8,
-                "risk_off": 5,
+                "total_trades": 48,
+                "neutral_count": 8,
+                "risk_off_count": 5,
+                "cash_drag_proxy": round((8 + 5) / 36, 4),
+                "safe_asset_switch_count": 0,
                 "verdict": "REJECT",
+                "rank": 2,
             },
             {
-                "policy": "hybrid_B+D",
-                "CAGR": round(formatted["summary"].get("cagr") or 0, 2),
-                "MDD": round(formatted["summary"].get("mdd") or 0, 2),
-                "Sharpe": round(formatted["summary"].get("sharpe") or 0, 4),
-                "trades": formatted["meta"].get("total_trades", 0),
-                "neutral": _n_count,
-                "risk_off": _ro_count,
-                "verdict": (
-                    "PROMOTE"
-                    if (formatted["summary"].get("cagr") or 0) > 15
-                    and (formatted["summary"].get("mdd") or 99) < 10
-                    else "REJECT"
+                "policy_variant": "hybrid_B+D",
+                "domestic_handling_mode": "neutral_only",
+                "safe_asset_mode": "dollar_etf_20n_50r",
+                "CAGR": _bd_cagr,
+                "MDD": _bd_mdd,
+                "Sharpe": _bd_sharpe,
+                "total_trades": _bd_trades,
+                "neutral_count": _n_count,
+                "risk_off_count": _ro_count,
+                "cash_drag_proxy": round(
+                    (_n_count + _ro_count) / max(len(_sched_data), 1), 4
                 ),
+                "safe_asset_switch_count": _bd_safe_cnt,
+                "verdict": _bd_verdict,
+                "rank": 1,
             },
         ]
         _cmp_path = _regime_dir / "hybrid_policy_compare.csv"
@@ -1045,25 +1063,33 @@ def run_cli_backtest(
             "## 추천안: B+D (domestic softening + safe asset)",
             "- 국내 단독 risk_off → neutral 격하",
             "- neutral: 50% 위험 + 30% 현금 + 20% 달러 ETF",
-            "- risk_off: 50% 현금 + 50% 달러 ETF (글로벌 패닉만)",
+            "- risk_off: 50% 현금 + 50% 달러 ETF (글로벌만)",
             "",
             "## 비교",
-            "| Policy | CAGR | MDD | Sharpe | N | RO |",
-            "|---|---|---|---|---|---|",
+            "| Variant | Dom | Safe | CAGR | MDD"
+            " | Sharpe | N | RO | SafeCnt | Verdict |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
         for c in _compare:
             _sum_lines.append(
-                f"| {c['policy']} | {c['CAGR']}%"
+                f"| {c['policy_variant']}"
+                f" | {c['domestic_handling_mode']}"
+                f" | {c['safe_asset_mode']}"
+                f" | {c['CAGR']}%"
                 f" | {c['MDD']}%"
                 f" | {c['Sharpe']}"
-                f" | {c['neutral']}"
-                f" | {c['risk_off']} |"
+                f" | {c['neutral_count']}"
+                f" | {c['risk_off_count']}"
+                f" | {c['safe_asset_switch_count']}"
+                f" | {c['verdict']} |"
             )
         _sum_lines += [
             "",
             "## 결론",
-            f"B+D: CAGR {_bd['CAGR']}%, MDD {_bd['MDD']}%,"
+            f"B+D: CAGR {_bd['CAGR']}%,"
+            f" MDD {_bd['MDD']}%,"
             f" Verdict={_bd['verdict']}",
+            f"Safe Asset Switch: {_bd['safe_asset_switch_count']}회",
         ]
         (_regime_dir / "hybrid_policy_summary.md").write_text(
             "\n".join(_sum_lines), encoding="utf-8"
@@ -1251,7 +1277,7 @@ def run_cli_backtest(
                 f"| CAGR > 15 | {_cagr_ok} |",
                 f"| MDD < 10 | {_mdd_ok} |",
                 "",
-                "## Conclusion",
+                "## One-line Conclusion",
                 _conclusion,
                 "",
                 "## Notes",
