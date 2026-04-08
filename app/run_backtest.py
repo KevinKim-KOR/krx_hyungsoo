@@ -1222,7 +1222,10 @@ def run_cli_backtest(
             w.writerows(_compare)
 
         # hybrid_policy_summary.md
-        _bd = _compare[-1]
+        _bd = next(
+            (c for c in _compare if c["policy_variant"] == "hybrid_B+D"),
+            _compare[-1],
+        )
         _sum_lines = [
             "# Hybrid Policy Summary (B+D)",
             "",
