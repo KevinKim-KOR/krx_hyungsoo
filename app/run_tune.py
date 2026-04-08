@@ -296,6 +296,28 @@ def run_cli_tune(
                 _tune_rebal_dates = [
                     d.date() for d in _pd2.date_range(start, end, freq="MS")
                 ]
+
+            # P206-STEP6J-FIX: 캘린더 날짜 → 실제 거래일 보정
+            # run_backtest.py와 동일한 snap 로직 적용
+            import pandas as _pd_snap
+
+            if isinstance(price_data.index, _pd_snap.MultiIndex):
+                _trading_dates = sorted(
+                    set(
+                        d.date() if hasattr(d, "date") else d
+                        for d in price_data.index.get_level_values("date").unique()
+                    )
+                )
+                _snapped = []
+                for _rd in _tune_rebal_dates:
+                    _found = None
+                    for _td in _trading_dates:
+                        if _td >= _rd:
+                            _found = _td
+                            break
+                    _snapped.append(_found if _found is not None else _rd)
+                _tune_rebal_dates = _snapped
+
             from app.backtest.strategy.exo_regime_filter import (
                 get_active_providers as _gap2,
             )
