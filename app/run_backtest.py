@@ -270,6 +270,158 @@ def run_backtest(
     result.update(_schedule_meta)
     result["_exo_regime_result"] = _exo_regime_result
 
+    # 비교군 동적 계산 (동일 기간)
+    if params.get("universe_mode") == "dynamic_etf_market":
+        _baselines = []
+
+        def _run_var(sched):
+            _tw = {t: 1.0 / len(params["universe"]) for t in params["universe"]}
+            from app.backtest.runners.backtest_runner import (
+                BacktestRunner as _BR2,
+            )
+
+            _r2 = _BR2(
+                initial_capital=10_000_000,
+                commission_rate=0.00015,
+                slippage_rate=0.001,
+                max_positions=params["max_positions"],
+                rebalance_frequency="daily",
+                instrument_type="etf",
+                enable_defense=enable_regime,
+                min_holding_days=0,
+            )
+            return _r2.run(
+                price_data=price_data,
+                target_weights=_tw,
+                start_date=start,
+                end_date=end,
+                ma_period=params["momentum_period"],
+                volatility_period=params["volatility_period"],
+                entry_threshold=params["entry_threshold"],
+                rsi_period=14,
+                stop_loss=params["stop_loss"],
+                adx_threshold=params["adx_filter_min"],
+                portfolio_mode=portfolio_mode,
+                sell_mode=params["sell_mode"],
+                rebalance_rule=effective_rebalance,
+                buckets=params["buckets"],
+                universe_resolver=_universe_resolver,
+                universe_mode=params.get("universe_mode", "fixed_current"),
+                exo_regime_schedule=sched,
+            )
+
+        try:
+            # no regime
+            _nr = _run_var(None)
+            _nrf = format_result(
+                _nr,
+                params,
+                start,
+                end,
+                price_data=price_data,
+                run_mode="compare",
+            )
+            _baselines.append(
+                {
+                    "variant": "no_regime",
+                    "cagr": _nrf["summary"].get("cagr"),
+                    "mdd": _nrf["summary"].get("mdd"),
+                    "sharpe": _nrf["summary"].get("sharpe"),
+                    "trades": _nrf["meta"].get("total_trades", 0),
+                }
+            )
+        except Exception:
+            pass
+        try:
+            # VIX baseline
+            from app.backtest.strategy.exo_regime_filter import (
+                build_fear_regime_schedule as _bfs2,
+            )
+
+            _vb = _bfs2(
+                vix_ohlcv=_vix_ohlcv,
+                rebalance_dates=_rebal_dates,
+                risk_on_max=20.0,
+                risk_off_min=30.0,
+                spike_threshold=0.20,
+            )
+            _vr = _run_var(_vb)
+            _vrf = format_result(
+                _vr,
+                params,
+                start,
+                end,
+                price_data=price_data,
+                run_mode="compare",
+            )
+            _baselines.append(
+                {
+                    "variant": "vix_baseline",
+                    "cagr": _vrf["summary"].get("cagr"),
+                    "mdd": _vrf["summary"].get("mdd"),
+                    "sharpe": _vrf["summary"].get("sharpe"),
+                    "trades": _vrf["meta"].get("total_trades", 0),
+                    "n": _vb.get("neutral_count", 0),
+                    "ro": _vb.get("risk_off_count", 0),
+                }
+            )
+        except Exception:
+            pass
+        try:
+            # hybrid cash-only
+            from app.backtest.strategy.exo_regime_filter import (
+                build_hybrid_regime_schedule as _bh2,
+                build_fear_regime_schedule as _bfs3,
+                get_active_providers as _gap3,
+            )
+
+            _fp3 = next(
+                (p for p in _gap3() if p["key"] == "fear_index_regime"),
+                {},
+            )
+            _ft3 = _fp3.get("thresholds", {})
+            _vf3 = _bfs3(
+                vix_ohlcv=_vix_ohlcv,
+                rebalance_dates=_rebal_dates,
+                risk_on_max=_ft3.get("risk_on_max", 20.0),
+                risk_off_min=_ft3.get("risk_off_min", 30.0),
+                spike_threshold=_ft3.get("spike_threshold", 0.20),
+            )
+            _dom3 = None
+            if isinstance(price_data.index, pd.MultiIndex):
+                _c3 = price_data.index.get_level_values("code")
+                if "069500" in _c3:
+                    _dom3 = price_data.xs("069500", level="code")
+            _co = _bh2(
+                fear_schedule=_vf3,
+                domestic_ohlcv=_dom3,
+                rebalance_dates=_rebal_dates,
+            )
+            # no safe asset ticker
+            _cor = _run_var(_co)
+            _corf = format_result(
+                _cor,
+                params,
+                start,
+                end,
+                price_data=price_data,
+                run_mode="compare",
+            )
+            _baselines.append(
+                {
+                    "variant": "hybrid_cash_only",
+                    "cagr": _corf["summary"].get("cagr"),
+                    "mdd": _corf["summary"].get("mdd"),
+                    "sharpe": _corf["summary"].get("sharpe"),
+                    "trades": _corf["meta"].get("total_trades", 0),
+                    "n": _co.get("neutral_count", 0),
+                    "ro": _co.get("risk_off_count", 0),
+                }
+            )
+        except Exception:
+            pass
+        result["_compare_baselines"] = _baselines
+
     return result
 
 
@@ -993,44 +1145,56 @@ def run_cli_backtest(
         (_regime_dir / "hybrid_regime_reason_latest.md").write_text(
             "\n".join(_reason_md), encoding="utf-8"
         )
-        # hybrid_policy_compare.csv (A9 스펙)
+        # hybrid_policy_compare.csv — 동일 기간 동적 비교
         _bd_cagr = round(formatted["summary"].get("cagr") or 0, 2)
         _bd_mdd = round(formatted["summary"].get("mdd") or 0, 2)
         _bd_sharpe = round(formatted["summary"].get("sharpe") or 0, 4)
         _bd_trades = formatted["meta"].get("total_trades", 0)
         _bd_safe_cnt = _n_count + _ro_count
         _bd_verdict = "PROMOTE" if _bd_cagr > 15 and _bd_mdd < 10 else "REJECT"
-        _compare = [
-            {
-                "policy_variant": "no_regime",
-                "domestic_handling_mode": "N/A",
-                "safe_asset_mode": "none",
-                "CAGR": 29.51,
-                "MDD": 17.80,
-                "Sharpe": 1.36,
-                "total_trades": 93,
-                "neutral_count": 0,
-                "risk_off_count": 0,
-                "cash_drag_proxy": 0.0,
-                "safe_asset_switch_count": 0,
-                "verdict": "MDD_FAIL",
-                "rank": 3,
-            },
-            {
-                "policy_variant": "hybrid_cash_only",
-                "domestic_handling_mode": "hard_gate",
-                "safe_asset_mode": "none",
-                "CAGR": 12.29,
-                "MDD": 16.81,
-                "Sharpe": 0.70,
-                "total_trades": 48,
-                "neutral_count": 8,
-                "risk_off_count": 5,
-                "cash_drag_proxy": round((8 + 5) / 36, 4),
-                "safe_asset_switch_count": 0,
-                "verdict": "REJECT",
-                "rank": 2,
-            },
+        _total_rebal = max(len(_sched_data), 1)
+
+        # 비교군: run_backtest에서 동적 계산된 baselines 사용
+        _baselines = result.get("_compare_baselines", [])
+
+        _compare = []
+        _dom_map = {
+            "no_regime": "N/A",
+            "vix_baseline": "N/A",
+            "hybrid_cash_only": "hard_gate",
+        }
+        _safe_map = {
+            "no_regime": "none",
+            "vix_baseline": "none",
+            "hybrid_cash_only": "none",
+        }
+        for _bl in _baselines:
+            _v = _bl.get("variant", "?")
+            _bc = round(_bl.get("cagr") or 0, 2)
+            _bm = round(_bl.get("mdd") or 0, 2)
+            _bs = round(_bl.get("sharpe") or 0, 4)
+            _bn = _bl.get("n", 0)
+            _bro = _bl.get("ro", 0)
+            _compare.append(
+                {
+                    "policy_variant": _v,
+                    "domestic_handling_mode": _dom_map.get(_v, "N/A"),
+                    "safe_asset_mode": _safe_map.get(_v, "none"),
+                    "CAGR": _bc,
+                    "MDD": _bm,
+                    "Sharpe": _bs,
+                    "total_trades": _bl.get("trades", 0),
+                    "neutral_count": _bn,
+                    "risk_off_count": _bro,
+                    "cash_drag_proxy": round((_bn + _bro) / _total_rebal, 4),
+                    "safe_asset_switch_count": 0,
+                    "verdict": ("PROMOTE" if _bc > 15 and _bm < 10 else "REJECT"),
+                    "rank": 0,
+                }
+            )
+
+        # B+D (current)
+        _compare.append(
             {
                 "policy_variant": "hybrid_B+D",
                 "domestic_handling_mode": "neutral_only",
@@ -1041,14 +1205,16 @@ def run_cli_backtest(
                 "total_trades": _bd_trades,
                 "neutral_count": _n_count,
                 "risk_off_count": _ro_count,
-                "cash_drag_proxy": round(
-                    (_n_count + _ro_count) / max(len(_sched_data), 1), 4
-                ),
+                "cash_drag_proxy": round((_n_count + _ro_count) / _total_rebal, 4),
                 "safe_asset_switch_count": _bd_safe_cnt,
                 "verdict": _bd_verdict,
-                "rank": 1,
-            },
-        ]
+                "rank": 0,
+            }
+        )
+        # rank by MDD ascending
+        _compare.sort(key=lambda x: x["MDD"])
+        for _i, _c in enumerate(_compare):
+            _c["rank"] = _i + 1
         _cmp_path = _regime_dir / "hybrid_policy_compare.csv"
         with open(_cmp_path, "w", encoding="utf-8", newline="") as f:
             w = _csv2.DictWriter(f, fieldnames=_compare[0].keys())
