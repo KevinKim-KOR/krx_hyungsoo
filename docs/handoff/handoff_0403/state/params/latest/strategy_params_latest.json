@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-04-09T00:29:27.123476+09:00",
+  "asof": "2026-04-02T23:33:39.482585+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -117,11 +117,12 @@
   "universe_mode": "dynamic_etf_market",
   "universe_tickers": [
     "0091P0",
-    "0098F0",
     "091160",
     "102970",
+    "138540",
     "139260",
     "157500",
+    "292150",
     "315960",
     "395160",
     "395270",
@@ -129,9 +130,8 @@
     "433500",
     "442580",
     "469150",
-    "487240",
-    "495050"
+    "471990"
   ],
-  "universe_snapshot_id": "snap_20260409_002846_df90ab7e",
-  "universe_snapshot_sha256": "df90ab7e61b65ea9f79a7f3ec9b51c1c58f4b911017b1b98768a3f7711f58261"
+  "universe_snapshot_id": "snap_20260402_233304_503b929d",
+  "universe_snapshot_sha256": "503b929de719f2cac6544f67e98c28fe57ff7631d0122385ad02512e8cdd6837"
 }

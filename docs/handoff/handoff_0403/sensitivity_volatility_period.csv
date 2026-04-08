@@ -1,0 +1,11 @@
+axis,test_value,baseline_value,cagr,mdd,sharpe,total_trades,delta_cagr,delta_mdd,delta_sharpe,delta_total_trades,sensitive,dead_zone
+volatility_period,2,13,2.99421513114142,4.3709,0.3922,9,-5.138046407205344,-0.3695000000000004,-0.5486,2,True,False
+volatility_period,4,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,6,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,8,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,10,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,12,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,14,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,16,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,18,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False
+volatility_period,20,13,8.132261538346764,4.7404,0.9408,7,0.0,0.0,0.0,0,False,False

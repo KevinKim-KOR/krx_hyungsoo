@@ -1,12 +1,12 @@
 {
-  "asof": "2026-04-08T22:20:26+09:00",
+  "asof": "2026-04-09T00:28:46+09:00",
   "scanner_mode": "dynamic_etf_market",
   "scanner_version": "v1",
   "candidate_pool_source": "krx_etf_list",
   "candidate_pool_size": 1088,
-  "pre_filter_passed": 168,
+  "pre_filter_passed": 169,
   "hard_exclusion_removed": 165,
-  "scoring_eligible": 159,
+  "scoring_eligible": 160,
   "eligible_tickers": [
     "0023A0",
     "0025N0",
@@ -72,6 +72,7 @@
     "293180",
     "294400",
     "295040",
+    "302450",
     "305540",
     "305720",
     "307520",
@@ -443,13 +444,13 @@
     "market_breadth",
     "macro_regime"
   ],
-  "snapshot_id": "snap_20260408_222026_2de08b6a",
-  "snapshot_sha256": "2de08b6a44b16ce6f772a6e3fb025d39f701b4a32529ea1fad0df884dc3412ea",
+  "snapshot_id": "snap_20260409_002846_df90ab7e",
+  "snapshot_sha256": "df90ab7e61b65ea9f79a7f3ec9b51c1c58f4b911017b1b98768a3f7711f58261",
   "previous_snapshot_exists": true,
-  "previous_snapshot_id": "snap_20260407_001556_09210fb8",
-  "overlap_ratio": 0.9824,
+  "previous_snapshot_id": "snap_20260408_222026_2de08b6a",
+  "overlap_ratio": 1.0,
   "new_entries_count": 1,
-  "removed_entries_count": 3,
+  "removed_entries_count": 0,
   "min_overlap_ratio": 0.6,
   "max_new_entries_per_refresh": 5,
   "refresh_frequency": "weekly",
@@ -474,117 +475,117 @@
     "395160",
     "395270",
     "396500",
-    "421320",
     "433500",
+    "442580",
     "469150",
-    "471990",
-    "487240"
+    "487240",
+    "495050"
   ],
   "selected_tickers_with_scores": [
     {
-      "ticker": "0091P0",
-      "name": "TIGER 코리아원자력",
-      "composite_score": 0.787499,
-      "rank": 1,
-      "top_features": "price_momentum_3m(0.300), price_momentum_6m(0.200), liquidity_20d(0.141)"
-    },
-    {
       "ticker": "396500",
       "name": "TIGER 반도체TOP10",
-      "composite_score": 0.786508,
-      "rank": 2,
-      "top_features": "price_momentum_3m(0.276), price_momentum_6m(0.194), liquidity_20d(0.149)"
-    },
-    {
-      "ticker": "0098F0",
-      "name": "KODEX 원자력SMR",
-      "composite_score": 0.784358,
-      "rank": 3,
-      "top_features": "price_momentum_3m(0.298), price_momentum_6m(0.187), liquidity_20d(0.133)"
+      "composite_score": 0.771687,
+      "rank": 1,
+      "top_features": "price_momentum_3m(0.280), price_momentum_6m(0.195), liquidity_20d(0.149)"
     },
     {
       "ticker": "091160",
       "name": "KODEX 반도체",
-      "composite_score": 0.778849,
+      "composite_score": 0.758729,
+      "rank": 2,
+      "top_features": "price_momentum_3m(0.284), price_momentum_6m(0.189), liquidity_20d(0.147)"
+    },
+    {
+      "ticker": "0098F0",
+      "name": "KODEX 원자력SMR",
+      "composite_score": 0.753666,
+      "rank": 3,
+      "top_features": "price_momentum_3m(0.298), price_momentum_6m(0.194), liquidity_20d(0.134)"
+    },
+    {
+      "ticker": "0091P0",
+      "name": "TIGER 코리아원자력",
+      "composite_score": 0.748742,
       "rank": 4,
-      "top_features": "price_momentum_3m(0.282), price_momentum_6m(0.186), liquidity_20d(0.147)"
+      "top_features": "price_momentum_3m(0.300), price_momentum_6m(0.200), liquidity_20d(0.143)"
     },
     {
       "ticker": "469150",
       "name": "ACE AI반도체TOP3+",
-      "composite_score": 0.758121,
+      "composite_score": 0.739517,
       "rank": 5,
-      "top_features": "price_momentum_3m(0.284), price_momentum_6m(0.196), liquidity_20d(0.120)"
-    },
-    {
-      "ticker": "157500",
-      "name": "TIGER 증권",
-      "composite_score": 0.747435,
-      "rank": 6,
-      "top_features": "price_momentum_3m(0.296), price_momentum_6m(0.190), liquidity_20d(0.105)"
+      "top_features": "price_momentum_3m(0.287), price_momentum_6m(0.198), liquidity_20d(0.121)"
     },
     {
       "ticker": "315960",
       "name": "RISE 대형고배당10TR",
-      "composite_score": 0.743367,
+      "composite_score": 0.723572,
+      "rank": 6,
+      "top_features": "price_momentum_3m(0.269), price_momentum_6m(0.191), liquidity_20d(0.103)"
+    },
+    {
+      "ticker": "157500",
+      "name": "TIGER 증권",
+      "composite_score": 0.720193,
       "rank": 7,
-      "top_features": "price_momentum_3m(0.263), price_momentum_6m(0.195), liquidity_20d(0.106)"
-    },
-    {
-      "ticker": "433500",
-      "name": "ACE 원자력TOP10",
-      "composite_score": 0.734619,
-      "rank": 8,
-      "top_features": "price_momentum_3m(0.293), price_momentum_6m(0.189), turnover_rate(0.094)"
-    },
-    {
-      "ticker": "102970",
-      "name": "KODEX 증권",
-      "composite_score": 0.733642,
-      "rank": 9,
-      "top_features": "price_momentum_3m(0.295), price_momentum_6m(0.182), liquidity_20d(0.129)"
+      "top_features": "price_momentum_3m(0.295), price_momentum_6m(0.190), liquidity_20d(0.104)"
     },
     {
       "ticker": "395270",
       "name": "HANARO Fn K-반도체",
-      "composite_score": 0.728188,
+      "composite_score": 0.718326,
+      "rank": 8,
+      "top_features": "price_momentum_3m(0.289), price_momentum_6m(0.199), liquidity_20d(0.137)"
+    },
+    {
+      "ticker": "102970",
+      "name": "KODEX 증권",
+      "composite_score": 0.710299,
+      "rank": 9,
+      "top_features": "price_momentum_3m(0.296), price_momentum_6m(0.186), liquidity_20d(0.129)"
+    },
+    {
+      "ticker": "442580",
+      "name": "PLUS 글로벌HBM반도체",
+      "composite_score": 0.707253,
       "rank": 10,
-      "top_features": "price_momentum_3m(0.287), price_momentum_6m(0.199), liquidity_20d(0.135)"
-    },
-    {
-      "ticker": "471990",
-      "name": "KODEX AI반도체핵심장비",
-      "composite_score": 0.71395,
-      "rank": 11,
-      "top_features": "price_momentum_3m(0.289), price_momentum_6m(0.179), liquidity_20d(0.111)"
-    },
-    {
-      "ticker": "421320",
-      "name": "PLUS 우주항공&UAM",
-      "composite_score": 0.711445,
-      "rank": 12,
-      "top_features": "price_momentum_3m(0.280), price_momentum_6m(0.191), turnover_rate(0.092)"
-    },
-    {
-      "ticker": "395160",
-      "name": "KODEX AI반도체",
-      "composite_score": 0.710915,
-      "rank": 13,
-      "top_features": "price_momentum_3m(0.271), price_momentum_6m(0.181), liquidity_20d(0.127)"
+      "top_features": "price_momentum_3m(0.262), price_momentum_6m(0.196), turnover_rate(0.099)"
     },
     {
       "ticker": "487240",
       "name": "KODEX AI전력핵심설비",
-      "composite_score": 0.7108,
-      "rank": 14,
-      "top_features": "price_momentum_3m(0.258), price_momentum_6m(0.176), liquidity_20d(0.140)"
+      "composite_score": 0.703877,
+      "rank": 11,
+      "top_features": "price_momentum_3m(0.267), price_momentum_6m(0.175), liquidity_20d(0.141)"
+    },
+    {
+      "ticker": "495050",
+      "name": "RISE 코리아밸류업",
+      "composite_score": 0.70378,
+      "rank": 12,
+      "top_features": "price_momentum_3m(0.264), price_momentum_6m(0.176), liquidity_20d(0.115)"
+    },
+    {
+      "ticker": "433500",
+      "name": "ACE 원자력TOP10",
+      "composite_score": 0.702143,
+      "rank": 13,
+      "top_features": "price_momentum_3m(0.293), price_momentum_6m(0.185), turnover_rate(0.093)"
     },
     {
       "ticker": "139260",
       "name": "TIGER 200 IT",
-      "composite_score": 0.707151,
+      "composite_score": 0.700322,
+      "rank": 14,
+      "top_features": "price_momentum_3m(0.275), price_momentum_6m(0.193), liquidity_20d(0.106)"
+    },
+    {
+      "ticker": "395160",
+      "name": "KODEX AI반도체",
+      "composite_score": 0.699519,
       "rank": 15,
-      "top_features": "price_momentum_3m(0.265), price_momentum_6m(0.192), liquidity_20d(0.102)"
+      "top_features": "price_momentum_3m(0.276), price_momentum_6m(0.182), liquidity_20d(0.127)"
     }
   ],
   "selection_status": "ok",
