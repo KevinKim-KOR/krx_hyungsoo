@@ -330,6 +330,9 @@ def run_cli_tune(
                 rebalance_dates=_tune_rebal_dates,
             )
             _tune_exo_regime["safe_asset_ticker"] = "261240"
+            _tune_exo_regime.setdefault("neutral_risky_pct", 0.35)
+            _tune_exo_regime.setdefault("neutral_dollar_pct", 0.20)
+            _tune_exo_regime.setdefault("riskoff_dollar_pct", 0.50)
             logger.info(
                 f"[TUNE-HYBRID] regime schedule:"
                 f" risk_off={_tune_exo_regime.get('risk_off_count', 0)}"

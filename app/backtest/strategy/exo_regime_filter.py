@@ -432,6 +432,8 @@ def build_hybrid_regime_schedule(
     fear_schedule: Dict[str, Any],
     domestic_ohlcv: Optional[pd.DataFrame],
     rebalance_dates: List[date],
+    domestic_neutral_threshold: float = -0.01,
+    domestic_riskoff_threshold: float = -0.03,
 ) -> Dict[str, Any]:
     """VIX + 국내 하이브리드 regime schedule 생성."""
     result: Dict[str, Any] = {
@@ -492,7 +494,11 @@ def build_hybrid_regime_schedule(
                     preopen_ret = None
                 elif prev > 0:
                     preopen_ret = round(latest / prev - 1.0, 6)
-                    dom_state = _compute_domestic_state(preopen_ret)
+                    dom_state = _compute_domestic_state(
+                        preopen_ret,
+                        risk_on_max=domestic_neutral_threshold,
+                        risk_off_min=domestic_riskoff_threshold,
+                    )
 
                     # 백테스트 근사: 당일 종가로 intraday 재판정
                     _today = dom_close.get(ts)

@@ -228,14 +228,37 @@ def run_backtest(
                 if "069500" in _codes:
                     _dom_ohlcv = price_data.xs("069500", level="code")
 
+            _dom_nt = -0.01
+            _dom_rt = -0.03
+            if fear_threshold_override:
+                _dom_nt = fear_threshold_override.get(
+                    "domestic_neutral_threshold", _dom_nt
+                )
+                _dom_rt = fear_threshold_override.get(
+                    "domestic_riskoff_threshold", _dom_rt
+                )
             _hybrid = build_hybrid_regime_schedule(
                 fear_schedule=_exo_regime_result,
                 domestic_ohlcv=_dom_ohlcv,
                 rebalance_dates=_rebal_dates,
+                domestic_neutral_threshold=_dom_nt,
+                domestic_riskoff_threshold=_dom_rt,
             )
             # hybrid가 있으면 이것을 exo_regime으로 사용
             _exo_regime_result = _hybrid
             _hybrid["safe_asset_ticker"] = "261240"
+            _hybrid.setdefault("neutral_risky_pct", 0.35)
+            _hybrid.setdefault("neutral_dollar_pct", 0.20)
+            _hybrid.setdefault("riskoff_dollar_pct", 0.50)
+            # fear_threshold_override로 비중 주입된 경우
+            if fear_threshold_override:
+                for _k in [
+                    "neutral_risky_pct",
+                    "neutral_dollar_pct",
+                    "riskoff_dollar_pct",
+                ]:
+                    if _k in fear_threshold_override:
+                        _hybrid[_k] = fear_threshold_override[_k]
             _schedule_meta["exo_regime_applied"] = True
             _schedule_meta["exo_regime_risk_off_count"] = _hybrid.get(
                 "risk_off_count", 0
@@ -1435,8 +1458,10 @@ def run_cli_backtest(
                 "| Alignment | us_close_to_kr_next_open |",
                 "| Policy Variant | B+D (domestic softening + safe asset) |",
                 "| Domestic Handling | neutral_only (no domestic hard gate) |",
-                "| Safe Asset Mode | dollar_etf 20% neutral / 50% risk_off |",
+                "| Safe Asset Mode | dollar_etf neutral/risk_off |",
                 "| Safe Asset | 261240 (달러 ETF) |",
+                "| Neutral Alloc | risky 35% / cash 45% / dollar 20% |",
+                "| Risk-off Alloc | cash 50% / dollar 50% |",
                 "| Checkpoint Summary | K1~K6 (백테스트: 일봉 근사) |",
                 "",
                 "## Promotion Verdict",
