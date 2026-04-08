@@ -93,6 +93,7 @@ def run_backtest(
     end: date,
     enable_regime: bool = False,
     fear_threshold_override: Optional[Dict[str, float]] = None,
+    skip_baselines: bool = False,
 ) -> Dict[str, Any]:
     """BacktestRunner 실행"""
     from app.backtest.runners.backtest_runner import BacktestRunner
@@ -191,6 +192,27 @@ def run_backtest(
                 ]
             if not _rebal_dates:
                 _rebal_dates = [d.date() for d in pd.date_range(start, end, freq="MS")]
+
+            # P206-STEP6J-FIX: 캘린더 날짜 → 실제 거래일 보정
+            # 스케줄 날짜가 휴일/주말이면 runner의 rebalance 날짜와 불일치하여
+            # regime state가 risk_on 기본값으로 무시됨. 실제 거래일로 snap.
+            if isinstance(price_data.index, pd.MultiIndex):
+                _trading_dates = sorted(
+                    set(
+                        d.date() if hasattr(d, "date") else d
+                        for d in price_data.index.get_level_values("date").unique()
+                    )
+                )
+                _snapped = []
+                for rd in _rebal_dates:
+                    # rd 이후 가장 가까운 거래일로 snap
+                    _found = None
+                    for td in _trading_dates:
+                        if td >= rd:
+                            _found = td
+                            break
+                    _snapped.append(_found if _found is not None else rd)
+                _rebal_dates = _snapped
 
             from app.backtest.strategy.exo_regime_filter import (
                 get_active_providers as _gap,
@@ -294,7 +316,7 @@ def run_backtest(
     result["_exo_regime_result"] = _exo_regime_result
 
     # 비교군 동적 계산 (동일 기간)
-    if params.get("universe_mode") == "dynamic_etf_market":
+    if params.get("universe_mode") == "dynamic_etf_market" and not skip_baselines:
         _baselines = []
 
         def _run_var(sched):

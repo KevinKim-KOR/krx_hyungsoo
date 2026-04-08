@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-03-26T19:23:17.768116+09:00",
+  "asof": "2026-04-08T22:21:50.950829+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -12,20 +12,20 @@
       "day_of_month": 1
     },
     "lookbacks": {
-      "momentum_period": 54,
-      "volatility_period": 13
+      "momentum_period": 44,
+      "volatility_period": 19
     },
     "risk_limits": {
       "max_position_pct": 0.15,
       "max_drawdown_pct": 0.16
     },
     "position_limits": {
-      "max_positions": 4,
+      "max_positions": 2,
       "min_cash_pct": 0.5
     },
     "decision_params": {
-      "entry_threshold": 0.05,
-      "exit_threshold": -0.07,
+      "entry_threshold": 0.04,
+      "exit_threshold": -0.04000000000000001,
       "adx_filter_min": 20,
       "weight_momentum": 1.0,
       "weight_volatility": 0.0
@@ -113,5 +113,25 @@
     "rebalance_rule": {
       "frequency": "MONTHLY"
     }
-  }
+  },
+  "universe_mode": "dynamic_etf_market",
+  "universe_tickers": [
+    "0091P0",
+    "0098F0",
+    "091160",
+    "102970",
+    "139260",
+    "157500",
+    "315960",
+    "395160",
+    "395270",
+    "396500",
+    "421320",
+    "433500",
+    "469150",
+    "471990",
+    "487240"
+  ],
+  "universe_snapshot_id": "snap_20260408_222026_2de08b6a",
+  "universe_snapshot_sha256": "2de08b6a44b16ce6f772a6e3fb025d39f701b4a32529ea1fad0df884dc3412ea"
 }
