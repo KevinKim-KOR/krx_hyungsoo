@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-04-09T00:29:27.123476+09:00",
+  "asof": "2026-04-09T23:15:25.558256+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -118,11 +118,19 @@
       "risky_sleeve_only": true,
       "volatility_lookback": 20,
       "volatility_floor": 0.05,
-      "volatility_cap": 0.60,
+      "volatility_cap": 0.6,
       "weight_floor": 0.35,
       "weight_cap": 0.65,
       "fallback_mode": "dynamic_equal_weight"
-    }
+    },
+    "allocation_experiments": [
+      {"experiment_id": "G1_equal_weight", "allocation": {"mode": "dynamic_equal_weight", "fallback_mode": "dynamic_equal_weight"}},
+      {"experiment_id": "G2A_raew_35_65", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.35, "weight_cap": 0.65, "fallback_mode": "dynamic_equal_weight"}},
+      {"experiment_id": "G2B_raew_20_80", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.20, "weight_cap": 0.80, "fallback_mode": "dynamic_equal_weight"}},
+      {"experiment_id": "G2C_raew_10_90", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.10, "weight_cap": 0.90, "fallback_mode": "dynamic_equal_weight"}},
+      {"experiment_id": "G2D_raew_00_100", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.00, "weight_cap": 1.00, "fallback_mode": "dynamic_equal_weight"}},
+      {"experiment_id": "G3_invvol_v1", "allocation": {"mode": "inverse_volatility_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.00, "weight_cap": 1.00, "fallback_mode": "dynamic_equal_weight"}}
+    ]
   },
   "universe_mode": "dynamic_etf_market",
   "universe_tickers": [
@@ -142,6 +150,6 @@
     "487240",
     "495050"
   ],
-  "universe_snapshot_id": "snap_20260409_002846_df90ab7e",
+  "universe_snapshot_id": "snap_20260409_230954_df90ab7e",
   "universe_snapshot_sha256": "df90ab7e61b65ea9f79a7f3ec9b51c1c58f4b911017b1b98768a3f7711f58261"
 }

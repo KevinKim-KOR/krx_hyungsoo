@@ -121,6 +121,7 @@ def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
         "buckets": buckets,
         "data_source": params_raw.get("data_source", "fdr"),
         "allocation": params_raw.get("allocation"),
+        "allocation_experiments": params_raw.get("allocation_experiments"),
     }
 
 

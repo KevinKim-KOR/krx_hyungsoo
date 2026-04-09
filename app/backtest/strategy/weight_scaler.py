@@ -54,6 +54,7 @@ class WeightScalingResult:
     w_final: Dict[str, float]
     cash: float
     rsi_profile_name: str
+    allocation_detail: Optional[Dict[str, Any]] = None
 
 
 class WeightScaler:
@@ -309,21 +310,24 @@ class WeightScaler:
         profile = self.get_profile_for_regime(regime)
 
         # ① base weight (allocation mode에 따라 결정)
+        _alloc_detail = None
         if base_weights:
             # bucket_portfolio 등 명시적 base weight
             w_base = base_weights.copy()
-        elif allocation_mode and allocation_mode != "dynamic_equal_weight":
-            # P207: risk-aware allocation
+        elif allocation_mode:
+            # P207: allocator 호출 (equal 포함 전 mode)
             from app.backtest.strategy.risk_aware_allocator import (
                 compute_base_weights,
             )
 
-            w_base = compute_base_weights(
+            _alloc_result = compute_base_weights(
                 codes=top_n_codes,
                 volatilities=volatilities or {},
                 allocation_mode=allocation_mode,
                 allocation_params=allocation_params or {},
             )
+            w_base = _alloc_result.final_weights
+            _alloc_detail = _alloc_result.to_dict()
         else:
             # 기본: equal weight
             base_weight = 1.0 / len(top_n_codes)
@@ -383,6 +387,7 @@ class WeightScaler:
             w_final=w_final,
             cash=cash,
             rsi_profile_name=profile.name,
+            allocation_detail=_alloc_detail,
         )
 
     def result_to_dict(self, result: WeightScalingResult) -> Dict[str, Any]:

@@ -460,6 +460,7 @@ class BacktestRunner:
         _exo_risk_off_count = 0
 
         _rebalance_trace: List[Dict[str, Any]] = []
+        _allocation_rebal_trace: List[Dict[str, Any]] = []
         _total_selected_seen = 0
         _total_entry_pass = 0
         _total_orders_created = 0
@@ -792,6 +793,14 @@ class BacktestRunner:
                         daily_logs.append(
                             self.weight_scaler.result_to_dict(scaling_result)
                         )
+                        # P207-7C: allocation trace 수집
+                        if scaling_result.allocation_detail:
+                            _allocation_rebal_trace.append(
+                                {
+                                    "date": str(d),
+                                    **scaling_result.allocation_detail,
+                                }
+                            )
                     else:
                         adjusted_weights = {}
                         current_rsi_values = {}
@@ -1268,6 +1277,7 @@ class BacktestRunner:
             "bucket_bypass_applied": _is_dynamic,
             "exo_regime_applied": bool(_exo_sched),
             "exo_regime_risk_off_count": _exo_risk_off_count,
+            "_allocation_rebalance_trace": _allocation_rebal_trace,
             "_rebalance_trace": _rebalance_trace,
             "total_rebalance_points": len(_rebalance_trace),
             "total_selected_tickers_seen": _total_selected_seen,

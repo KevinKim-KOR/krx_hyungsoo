@@ -717,6 +717,9 @@ def format_result(
         "allocation_mode": result.get("allocation_mode", "bucket_portfolio"),
         "allocation_fallback_used": result.get("allocation_fallback_used", False),
         "allocation_params": result.get("allocation_params"),
+        "allocation_rebalance_trace_count": len(
+            result.get("_allocation_rebalance_trace", [])
+        ),
         "bucket_bypass_applied": result.get("bucket_bypass_applied", False),
         "exo_regime_applied": result.get("exo_regime_applied", False),
         "exo_regime_risk_off_count": result.get("exo_regime_risk_off_count", 0),
@@ -1462,6 +1465,7 @@ def run_cli_backtest(
             _ev_ncp = 100 - _ev_nrp - _ev_ndp
             _ev_rdp = int(_exo_ev.get("riskoff_dollar_pct", 0.50) * 100)
             _ev_rcp = 100 - _ev_rdp
+            _ev_ap = _bt_m.get("allocation_params") or {}
 
             _lines = [
                 "# Dynamic Evidence Latest",
@@ -1507,7 +1511,11 @@ def run_cli_backtest(
                 "|---|---|",
                 f"| Mode | {_bt_m.get('allocation_mode', 'dynamic_equal_weight')} |",
                 f"| Fallback Used | {_bt_m.get('allocation_fallback_used', False)} |",
-                f"| Params | {_bt_m.get('allocation_params', 'N/A')} |",
+                f"| Weight Floor | {_ev_ap.get('weight_floor', 'N/A')} |",
+                f"| Weight Cap | {_ev_ap.get('weight_cap', 'N/A')} |",
+                f"| Vol Lookback | {_ev_ap.get('volatility_lookback', 'N/A')} |",
+                f"| Rebalances w/ Trace |"
+                f" {len(result.get('_allocation_rebalance_trace', []))} |",
                 "",
                 "## Promotion Verdict",
                 "| Field | Value |",
@@ -1527,6 +1535,124 @@ def run_cli_backtest(
             logger.info(f"[WRITE] dynamic_evidence → {_ev_path}")
         except Exception as ev_exc:
             logger.warning(f"dynamic_evidence 생성 실패: {ev_exc}")
+
+    # P207-STEP7C: allocation experiment sweep
+    _experiments = params.get("allocation_experiments")
+    if _experiments and isinstance(_experiments, list) and enable_regime:
+        _exp_results = []
+        logger.info(f"[P207-SWEEP] 실험군 {len(_experiments)}개 실행")
+        for _exp in _experiments:
+            _eid = _exp.get("experiment_id", "unknown")
+            _ea = _exp.get("allocation")
+            if not _ea:
+                continue
+            try:
+                _ep = dict(params)
+                _ep["allocation"] = _ea
+                _er = run_backtest(
+                    price_data,
+                    _ep,
+                    start,
+                    end,
+                    enable_regime=True,
+                    skip_baselines=True,
+                )
+                _ef = format_result(
+                    _er,
+                    _ep,
+                    start,
+                    end,
+                    price_data=price_data,
+                    run_mode="experiment",
+                )
+                _es = _ef["summary"]
+                _ec = _es.get("cagr")
+                _em = _es.get("mdd")
+                _exp_results.append(
+                    {
+                        "experiment_id": _eid,
+                        "mode": _ea.get("mode"),
+                        "weight_floor": _ea.get("weight_floor"),
+                        "weight_cap": _ea.get("weight_cap"),
+                        "CAGR": round(_ec, 4) if _ec else None,
+                        "MDD": round(_em, 4) if _em else None,
+                        "Sharpe": round(_es.get("sharpe", 0), 4),
+                        "trades": _ef["meta"].get("total_trades", 0),
+                        "fallback_used": _er.get("allocation_fallback_used", False),
+                        "verdict": (
+                            "PROMOTE"
+                            if (_ec and _ec > 15 and _em and _em < 10)
+                            else "REJECT"
+                        ),
+                    }
+                )
+                logger.info(f"[P207-SWEEP] {_eid}:" f" CAGR={_ec:.2f} MDD={_em:.2f}")
+            except Exception as _eexc:
+                logger.warning(f"[P207-SWEEP] {_eid} 실패: {_eexc}")
+                _exp_results.append(
+                    {
+                        "experiment_id": _eid,
+                        "mode": _ea.get("mode") if _ea else "?",
+                        "error": str(_eexc),
+                    }
+                )
+
+        # 비교 산출물 생성
+        if _exp_results:
+            _cmp_dir = PROJECT_ROOT / "reports" / "tuning"
+            _cmp_dir.mkdir(parents=True, exist_ok=True)
+            import csv as _csv_cmp
+
+            # CSV
+            _valid = [r for r in _exp_results if "error" not in r]
+            _valid.sort(
+                key=lambda x: x.get("Sharpe") or -999,
+                reverse=True,
+            )
+            for _i, _r in enumerate(_valid):
+                _r["rank"] = _i + 1
+
+            if _valid:
+                _cp = _cmp_dir / "allocation_constraint_compare.csv"
+                with open(_cp, "w", encoding="utf-8", newline="") as _f:
+                    _w = _csv_cmp.DictWriter(_f, fieldnames=_valid[0].keys())
+                    _w.writeheader()
+                    _w.writerows(_valid)
+
+            # Markdown
+            _md_lines = [
+                "# Allocation Constraint Compare (P207-STEP7C)",
+                "",
+                f"- generated_at: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S+09:00')}",
+                f"- experiments: {len(_exp_results)}",
+                "",
+                "## 비교표",
+                "",
+                "| Rank | Variant | Mode | Floor/Cap"
+                " | CAGR | MDD | Sharpe | Verdict |",
+                "|---|---|---|---|---|---|---|---|",
+            ]
+            for _r in _valid:
+                _fc = f"{_r.get('weight_floor', '-')}" f"/{_r.get('weight_cap', '-')}"
+                _md_lines.append(
+                    f"| {_r.get('rank', '-')}"
+                    f" | {_r['experiment_id']}"
+                    f" | {_r.get('mode', '?')}"
+                    f" | {_fc}"
+                    f" | {_r.get('CAGR', 'ERR')}%"
+                    f" | {_r.get('MDD', 'ERR')}%"
+                    f" | {_r.get('Sharpe', '-')}"
+                    f" | {_r.get('verdict', '-')} |"
+                )
+            # 에러 실험군
+            _errs = [r for r in _exp_results if "error" in r]
+            if _errs:
+                _md_lines += ["", "## 오류"]
+                for _e in _errs:
+                    _md_lines.append(f"- {_e['experiment_id']}: {_e['error']}")
+            _md_p = _cmp_dir / "allocation_constraint_compare.md"
+            _md_p.write_text("\n".join(_md_lines), encoding="utf-8")
+            logger.info(f"[P207-SWEEP] 비교 산출물 생성:" f" {len(_valid)} 실험군")
 
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")
     return True
