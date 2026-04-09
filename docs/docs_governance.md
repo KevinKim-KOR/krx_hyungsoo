@@ -1,6 +1,6 @@
 # 문서 거버넌스 (Documentation Governance)
 
-asof: 2026-03-28
+asof: 2026-04-09
 
 ## 문서 분류 체계
 
@@ -61,7 +61,8 @@ docs/ 내 모든 문서는 아래 4종 중 하나로 분류한다.
 ### 단계(Phase/Step) 완료 시
 
 반드시 생성:
-- `docs/handoff/` 에 closeout 문서 1개
+- `docs/analysis/` 에 설계/성과문서 (P2XX-STEPXA-*.md)
+- `docs/handoff/` 에 closeout/인계 문서 (필요 시)
 
 ### UI 구조/화면 흐름 변경 시
 
@@ -111,3 +112,26 @@ docs/ 내 모든 문서는 아래 4종 중 하나로 분류한다.
 - deprecated 후보와 deprecated 완료는 반드시 구분한다
 - 상단 배너가 없는 문서를 inventory에서 deprecated 완료로 표기하지 않는다
 - 후보 확인 후 deprecated로 확정하려면 해당 문서에 배너를 추가한 뒤 inventory를 갱신한다
+
+---
+
+## 폴더 구조 기준
+
+| 폴더 | 용도 | 예시 |
+|---|---|---|
+| `docs/SSOT/` | 불변 원칙, 결정 기록, 프로젝트 헌법 | INVARIANTS.md, DECISIONS.md |
+| `docs/analysis/` | 설계, 분석, 성과문서 (Phase/Step별) | P206-STEP6I-*.md, P207-STEP7A-*.md |
+| `docs/archive/` | 폐기/레거시 문서 | legacy_*.md, phase_c_*.md |
+| `docs/contracts/` | API/인터페이스 스펙, 계약 문서 | contract_*.md |
+| `docs/handoff/` | 인계 스냅샷, closeout 문서, ZIP 아카이브 | HANDOFF_P204_ML.md, handoff_0403.zip |
+| `docs/ops/` | 운영 정책, 매니페스트, 체크리스트 | push_policy_v1.md, artifact_governance.md |
+| `docs/runbooks/` | 실행 절차서 (배포, 데일리, 라이브) | runbook_deploy_v1.md |
+| `docs/state/` | 현재 상태 기록 | ui_tabs_audit.md |
+| `docs/task_reports/` | 업무 완료 리포트 (JSON) | P172-Fix_report.json |
+
+### 폴더 배치 규칙
+
+- 설계/성과문서는 `analysis/`에 둔다. `handoff/`에 두지 않는다.
+- runbook은 `runbooks/`에 통합한다. `ops/`에 두지 않는다.
+- 인계용 스냅샷 ZIP은 `handoff/`에 둔다. 전개(unzip)하지 않는다.
+- 스크립트, 로그 파일은 `task_reports/`에 두지 않는다.
