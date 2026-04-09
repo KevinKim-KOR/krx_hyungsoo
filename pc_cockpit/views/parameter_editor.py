@@ -118,11 +118,11 @@ def render_ssot_parameter_form(params_data):
                     disabled=True,
                     key="_alloc_mode_display",
                 )
-                c2.caption(
-                    f"floor/cap:"
-                    f" {_cur_alloc.get('weight_floor', '-')}"
-                    f" / {_cur_alloc.get('weight_cap', '-')}"
-                )
+                _wfl = _cur_alloc.get("weight_floor", "-")
+                _wcp = _cur_alloc.get("weight_cap", "-")
+                _exp_name = f"{_cur_mode}_{_wfl}_{_wcp}" if _cur_alloc else "N/A"
+                c2.caption(f"floor/cap: {_wfl}/{_wcp}")
+                st.caption(f"Experiment Name: {_exp_name}")
 
                 st.divider()
                 if st.form_submit_button("💾 Save Parameters to SSOT"):
@@ -147,10 +147,7 @@ def render_ssot_parameter_form(params_data):
                         new_params["asof"] = datetime.now(KST).isoformat()
                         save_params(new_params)
                         _fp = compute_fingerprint(new_params)
-                        st.success(
-                            f"파라미터 저장 완료"
-                            f" (Fingerprint: {_fp})"
-                        )
+                        st.success(f"파라미터 저장 완료" f" (Fingerprint: {_fp})")
                         time.sleep(1.5)
                         st.rerun()
                     except Exception as e:
