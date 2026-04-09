@@ -346,20 +346,27 @@ class WeightScaler:
         if log_details:
             logger.info(f"[{current_date}] 비중 스케일링 파이프라인:")
             logger.info(
-                f"  레짐: {regime} (confidence={regime_confidence:.2f}, scale={regime_scale:.2f})"
+                f"  레짐: {regime}"
+                f" (confidence={regime_confidence:.2f},"
+                f" scale={regime_scale:.2f})"
             )
             logger.info(
-                f"  RSI 프로파일: {profile.name} (boost_enabled={profile.rsi_boost_enabled})"
+                f"  RSI 프로파일: {profile.name}"
+                f" (boost={profile.rsi_boost_enabled})"
             )
 
-            for code in top_n_codes[:5]:  # 상위 5개만
+            for code in top_n_codes[:5]:
                 rsi = rsi_values.get(code, 50.0)
                 rsi_scale = self.scale_from_rsi(rsi, profile)
+                _w_rsi = w_rsi_scaled.get(code, 0)
+                _w_sn = w_soft_normalized.get(code, 0)
+                _w_f = w_final.get(code, 0)
                 logger.info(
-                    f"  {code}: base={w_base[code]:.3f} "
-                    f"→ RSI({rsi:.0f}, scale={rsi_scale:.1f}) → {w_rsi_scaled.get(code, 0):.3f} "
-                    f"→ soft_norm → {w_soft_normalized.get(code, 0):.3f} "
-                    f"→ regime({regime_scale:.2f}) → {w_final.get(code, 0):.3f}"
+                    f"  {code}: base={w_base[code]:.3f}"
+                    f" → RSI({rsi:.0f},{rsi_scale:.1f})"
+                    f" → {_w_rsi:.3f} → {_w_sn:.3f}"
+                    f" → regime({regime_scale:.2f})"
+                    f" → {_w_f:.3f}"
                 )
 
             logger.info(f"  Cash: {cash:.3f}")

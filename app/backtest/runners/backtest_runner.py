@@ -428,10 +428,25 @@ class BacktestRunner:
 
         # P205-STEP5F: dynamic allocation path
         _is_dynamic = universe_mode == "dynamic_etf_market"
-        # P207: allocation mode
+        # P207: allocation mode — 명시적 설정 필수
+        # allocation 블록이 없으면 dynamic_equal_weight (레거시 호환)
+        # allocation 블록이 있으면 mode 필수, fallback_mode 필수
         _alloc_params = allocation_params or {}
-        if _is_dynamic and _alloc_params.get("mode"):
+        if _is_dynamic and _alloc_params:
+            if "mode" not in _alloc_params:
+                raise ValueError(
+                    "allocation 블록에 mode가 없습니다. " "명시적으로 설정하세요."
+                )
+            if "fallback_mode" not in _alloc_params:
+                raise ValueError(
+                    "allocation 블록에 fallback_mode가 없습니다. "
+                    "명시적으로 설정하세요."
+                )
             _allocation_mode = _alloc_params["mode"]
+            logger.info(
+                f"[P207] allocation_mode={_allocation_mode}"
+                f" (fallback={_alloc_params['fallback_mode']})"
+            )
         else:
             _allocation_mode = (
                 "dynamic_equal_weight" if _is_dynamic else "bucket_portfolio"
@@ -1249,6 +1264,7 @@ class BacktestRunner:
             "rebalance_universe_changes": _rebalance_universe_changes,
             "allocation_mode": _allocation_mode,
             "allocation_fallback_used": _allocation_fallback_used,
+            "allocation_params": _alloc_params if _alloc_params else None,
             "bucket_bypass_applied": _is_dynamic,
             "exo_regime_applied": bool(_exo_sched),
             "exo_regime_risk_off_count": _exo_risk_off_count,
