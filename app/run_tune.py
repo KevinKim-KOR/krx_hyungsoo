@@ -373,6 +373,7 @@ def run_cli_tune(
         risk_calibration_mode=_risk_cal_mode,
     )
     objective.exo_regime_schedule = _tune_exo_regime
+    objective.allocation_params = params.get("allocation")
     objective.universe_mode = universe_mode
 
     def _checkpoint_callback(study_obj, trial_obj):

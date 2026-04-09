@@ -1455,6 +1455,14 @@ def run_cli_backtest(
                 else "N/A"
             )
 
+            # 배분 비율 (evidence 문구용)
+            _exo_ev = result.get("_exo_regime_result") or {}
+            _ev_nrp = int(_exo_ev.get("neutral_risky_pct", 0.35) * 100)
+            _ev_ndp = int(_exo_ev.get("neutral_dollar_pct", 0.20) * 100)
+            _ev_ncp = 100 - _ev_nrp - _ev_ndp
+            _ev_rdp = int(_exo_ev.get("riskoff_dollar_pct", 0.50) * 100)
+            _ev_rcp = 100 - _ev_rdp
+
             _lines = [
                 "# Dynamic Evidence Latest",
                 "",
@@ -1488,10 +1496,10 @@ def run_cli_backtest(
                 "| Domestic Handling | neutral_only (no domestic hard gate) |",
                 "| Safe Asset Mode | dollar_etf neutral/risk_off |",
                 "| Safe Asset | 261240 (달러 ETF) |",
-                f"| Neutral Alloc | risky {_bt_m.get('neutral_risky_pct', 35)}%"
-                f" / cash / dollar {_bt_m.get('neutral_dollar_pct', 20)}% |",
-                f"| Risk-off Alloc | cash / dollar"
-                f" {_bt_m.get('riskoff_dollar_pct', 50)}% |",
+                f"| Neutral Alloc | risky {_ev_nrp}%"
+                f" / cash {_ev_ncp}%"
+                f" / dollar {_ev_ndp}% |",
+                f"| Risk-off Alloc | cash {_ev_rcp}%" f" / dollar {_ev_rdp}% |",
                 "| Checkpoint Summary | K1~K6 (백테스트: 일봉 근사) |",
                 "",
                 "## Allocation",

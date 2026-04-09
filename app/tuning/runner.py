@@ -30,6 +30,7 @@ def run_single_trial(
     universe_resolver: Any = None,
     universe_mode: str = "fixed_current",
     exo_regime_schedule: Any = None,
+    allocation_params: Any = None,
 ) -> Dict[str, Any]:
     """
     단일 trial 백테스트 실행 (Option A: 직접 호출).
@@ -72,6 +73,7 @@ def run_single_trial(
         universe_resolver=universe_resolver,
         universe_mode=universe_mode,
         exo_regime_schedule=exo_regime_schedule,
+        allocation_params=allocation_params,
     )
 
     # ── Extract metrics from engine result ──

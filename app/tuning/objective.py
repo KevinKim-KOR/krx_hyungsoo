@@ -47,6 +47,7 @@ class TuneObjective:
         self.universe_resolver = universe_resolver
         self.risk_calibration_mode = risk_calibration_mode
         self.exo_regime_schedule = None
+        self.allocation_params = None
         self.universe_mode = "fixed_current"
         self._seen_hashes: Set[str] = set()
 
@@ -84,6 +85,7 @@ class TuneObjective:
                 include_nav_history=True,
                 universe_mode=self.universe_mode,
                 exo_regime_schedule=self.exo_regime_schedule,
+                allocation_params=self.allocation_params,
             )
         except Exception as error:
             logger.warning(f"[TUNE] Trial {trial.number}: backtest failed: {error}")
