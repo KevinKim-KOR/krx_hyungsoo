@@ -715,6 +715,17 @@ def format_result(
         "last_rebalance_snapshot_id": result.get("last_rebalance_snapshot_id"),
         "rebalance_universe_changes": result.get("rebalance_universe_changes", 0),
         "allocation_mode": result.get("allocation_mode", "bucket_portfolio"),
+        "allocation_experiment_name": (
+            (
+                (result.get("allocation_params") or {}).get("mode", "default")
+                + "_"
+                + str((result.get("allocation_params") or {}).get("weight_floor", ""))
+                + "_"
+                + str((result.get("allocation_params") or {}).get("weight_cap", ""))
+            )
+            if result.get("allocation_params")
+            else None
+        ),
         "allocation_fallback_used": result.get("allocation_fallback_used", False),
         "allocation_params": result.get("allocation_params"),
         "allocation_weight_floor": (
@@ -1519,6 +1530,8 @@ def run_cli_backtest(
                 "| Field | Value |",
                 "|---|---|",
                 f"| Mode | {_bt_m.get('allocation_mode', 'dynamic_equal_weight')} |",
+                f"| Experiment Name |"
+                f" {_bt_m.get('allocation_experiment_name', 'N/A')} |",
                 f"| Fallback Used | {_bt_m.get('allocation_fallback_used', False)} |",
                 f"| Weight Floor | {_ev_ap.get('weight_floor', 'N/A')} |",
                 f"| Weight Cap | {_ev_ap.get('weight_cap', 'N/A')} |",

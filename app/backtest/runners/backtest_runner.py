@@ -795,9 +795,15 @@ class BacktestRunner:
                         )
                         # P207-7C: allocation trace 수집
                         if scaling_result.allocation_detail:
+                            _raw_scores = {
+                                c: round(universe_scores[c][0], 4)
+                                for c in current_top_n
+                                if c in universe_scores
+                            }
                             _allocation_rebal_trace.append(
                                 {
                                     "date": str(d),
+                                    "raw_scores": _raw_scores,
                                     **scaling_result.allocation_detail,
                                 }
                             )
