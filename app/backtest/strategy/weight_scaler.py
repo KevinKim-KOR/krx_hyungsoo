@@ -264,6 +264,9 @@ class WeightScaler:
         current_date: date,
         log_details: bool = False,
         base_weights: Optional[Dict[str, float]] = None,
+        allocation_mode: Optional[str] = None,
+        allocation_params: Optional[Dict[str, Any]] = None,
+        volatilities: Optional[Dict[str, float]] = None,
     ) -> WeightScalingResult:
         """
         최종 비중 계산 (전체 파이프라인)
@@ -305,10 +308,24 @@ class WeightScaler:
         # 레짐에 맞는 RSI 프로파일 선택
         profile = self.get_profile_for_regime(regime)
 
-        # ① 모멘텀 기반 base weight (equal weight or provided base_weights)
+        # ① base weight (allocation mode에 따라 결정)
         if base_weights:
+            # bucket_portfolio 등 명시적 base weight
             w_base = base_weights.copy()
+        elif allocation_mode and allocation_mode != "dynamic_equal_weight":
+            # P207: risk-aware allocation
+            from app.backtest.strategy.risk_aware_allocator import (
+                compute_base_weights,
+            )
+
+            w_base = compute_base_weights(
+                codes=top_n_codes,
+                volatilities=volatilities or {},
+                allocation_mode=allocation_mode,
+                allocation_params=allocation_params or {},
+            )
         else:
+            # 기본: equal weight
             base_weight = 1.0 / len(top_n_codes)
             w_base = {code: base_weight for code in top_n_codes}
 

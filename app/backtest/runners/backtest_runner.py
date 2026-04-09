@@ -329,6 +329,7 @@ class BacktestRunner:
         universe_resolver: Optional[Any] = None,
         universe_mode: str = "fixed_current",
         exo_regime_schedule: Optional[Dict[str, Any]] = None,
+        allocation_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -427,7 +428,15 @@ class BacktestRunner:
 
         # P205-STEP5F: dynamic allocation path
         _is_dynamic = universe_mode == "dynamic_etf_market"
-        _allocation_mode = "dynamic_equal_weight" if _is_dynamic else "bucket_portfolio"
+        # P207: allocation mode
+        _alloc_params = allocation_params or {}
+        if _is_dynamic and _alloc_params.get("mode"):
+            _allocation_mode = _alloc_params["mode"]
+        else:
+            _allocation_mode = (
+                "dynamic_equal_weight" if _is_dynamic else "bucket_portfolio"
+            )
+        _allocation_fallback_used = False
 
         # P206-STEP6B: exogenous regime hard gate
         _exo_sched = (
@@ -702,15 +711,67 @@ class BacktestRunner:
                             if code in universe_scores
                         }
 
-                        scaling_result = self.weight_scaler.compute_final_weights(
-                            top_n_codes=current_top_n,
-                            rsi_values=current_rsi_values,
-                            regime=current_regime,
-                            regime_confidence=regime_confidence,
-                            regime_scale=position_ratio,
-                            current_date=d,
-                            log_details=(day_count == 1),
-                        )
+                        # P207: 종목별 realized volatility 계산
+                        _current_vols = {}
+                        if _allocation_mode != "dynamic_equal_weight":
+                            _vol_lb = _alloc_params.get("volatility_lookback", 20)
+                            _ts = pd.Timestamp(d)
+                            for _vc in current_top_n:
+                                try:
+                                    _cd = price_data.xs(_vc, level="code")
+                                    _ch = _cd[_cd.index <= _ts]["close"]
+                                    if len(_ch) >= _vol_lb:
+                                        _ret = (
+                                            _ch.astype(float).pct_change().tail(_vol_lb)
+                                        )
+                                        _current_vols[_vc] = float(
+                                            _ret.std() * (252**0.5)
+                                        )
+                                except (KeyError, IndexError):
+                                    pass
+
+                        # P207: allocation mode로 base weight 결정
+                        _use_alloc = _allocation_mode != "dynamic_equal_weight"
+                        try:
+                            scaling_result = self.weight_scaler.compute_final_weights(
+                                top_n_codes=current_top_n,
+                                rsi_values=current_rsi_values,
+                                regime=current_regime,
+                                regime_confidence=regime_confidence,
+                                regime_scale=position_ratio,
+                                current_date=d,
+                                log_details=(day_count == 1),
+                                allocation_mode=(
+                                    _allocation_mode if _use_alloc else None
+                                ),
+                                allocation_params=(
+                                    _alloc_params if _use_alloc else None
+                                ),
+                                volatilities=(_current_vols if _use_alloc else None),
+                            )
+                        except Exception as _alloc_exc:
+                            # P207 fallback
+                            _fb = _alloc_params.get("fallback_mode")
+                            if not _fb:
+                                raise ValueError(
+                                    f"allocation 계산 실패, "
+                                    f"fallback_mode 미설정: "
+                                    f"{_alloc_exc}"
+                                ) from _alloc_exc
+                            logger.warning(
+                                f"[P207] allocation 실패,"
+                                f" fallback → {_fb}: {_alloc_exc}"
+                            )
+                            _allocation_fallback_used = True
+                            scaling_result = self.weight_scaler.compute_final_weights(
+                                top_n_codes=current_top_n,
+                                rsi_values=current_rsi_values,
+                                regime=current_regime,
+                                regime_confidence=regime_confidence,
+                                regime_scale=position_ratio,
+                                current_date=d,
+                                log_details=False,
+                            )
 
                         adjusted_weights = scaling_result.w_final
                         daily_logs.append(
@@ -1187,6 +1248,7 @@ class BacktestRunner:
             "rebalance_cluster_check": rebalance_cluster_check,
             "rebalance_universe_changes": _rebalance_universe_changes,
             "allocation_mode": _allocation_mode,
+            "allocation_fallback_used": _allocation_fallback_used,
             "bucket_bypass_applied": _is_dynamic,
             "exo_regime_applied": bool(_exo_sched),
             "exo_regime_risk_off_count": _exo_risk_off_count,

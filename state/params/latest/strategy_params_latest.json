@@ -112,6 +112,16 @@
     },
     "rebalance_rule": {
       "frequency": "MONTHLY"
+    },
+    "allocation": {
+      "mode": "risk_aware_equal_weight_v1",
+      "risky_sleeve_only": true,
+      "volatility_lookback": 20,
+      "volatility_floor": 0.05,
+      "volatility_cap": 0.60,
+      "weight_floor": 0.35,
+      "weight_cap": 0.65,
+      "fallback_mode": "dynamic_equal_weight"
     }
   },
   "universe_mode": "dynamic_etf_market",

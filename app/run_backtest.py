@@ -289,6 +289,9 @@ def run_backtest(
         except Exception as exc:
             logger.warning(f"[HYBRID-REGIME] schedule 실패: {exc}")
 
+    # P207: allocation params 추출
+    _allocation_params = params.get("allocation")
+
     result = runner.run(
         price_data=price_data,
         target_weights=target_weights,
@@ -307,6 +310,7 @@ def run_backtest(
         universe_resolver=_universe_resolver,
         universe_mode=params.get("universe_mode", "fixed_current"),
         exo_regime_schedule=_exo_regime_result,
+        allocation_params=_allocation_params,
     )
 
     # Attach trigger evidence
