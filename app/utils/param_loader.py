@@ -62,6 +62,43 @@ def _require_key(data: dict, key: str, context: str) -> Any:
     return data[key]
 
 
+_ALLOWED_ALLOC_MODES = {
+    "dynamic_equal_weight",
+    "risk_aware_equal_weight_v1",
+    "inverse_volatility_v1",
+}
+
+
+def _validate_experiments(experiments):
+    """allocation_experiments 스키마 검증.
+
+    None이면 None 반환. 리스트이면 각 항목의 필수 키를 검증.
+    """
+    if experiments is None:
+        return None
+    if not isinstance(experiments, list):
+        raise TypeError(
+            f"allocation_experiments는 리스트여야 합니다:" f" {type(experiments)}"
+        )
+    for i, exp in enumerate(experiments):
+        ctx = f"allocation_experiments[{i}]"
+        if "experiment_id" not in exp:
+            raise KeyError(f"{ctx}: experiment_id 누락")
+        alloc = exp.get("allocation")
+        if not alloc or not isinstance(alloc, dict):
+            raise KeyError(f"{ctx}: allocation 블록 누락")
+        if "mode" not in alloc:
+            raise KeyError(f"{ctx}.allocation: mode 누락")
+        if alloc["mode"] not in _ALLOWED_ALLOC_MODES:
+            raise ValueError(
+                f"{ctx}.allocation.mode={alloc['mode']!r}"
+                f" 허용: {_ALLOWED_ALLOC_MODES}"
+            )
+        if "fallback_mode" not in alloc:
+            raise KeyError(f"{ctx}.allocation: fallback_mode 누락")
+    return experiments
+
+
 def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
     """
     params 딕셔너리에서 전략 파라미터를 추출한다.
@@ -121,7 +158,9 @@ def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
         "buckets": buckets,
         "data_source": params_raw.get("data_source", "fdr"),
         "allocation": params_raw.get("allocation"),
-        "allocation_experiments": params_raw.get("allocation_experiments"),
+        "allocation_experiments": _validate_experiments(
+            params_raw.get("allocation_experiments")
+        ),
     }
 
 

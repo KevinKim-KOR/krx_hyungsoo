@@ -340,11 +340,18 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             f" | 주문: {_oc}"
                             f" | 매수체결: {_bf}"
                         )
-                        # P205-STEP5F: allocation path 표시
+                        # P207: allocation 상세 표시
                         _alloc = bt_meta.get("allocation_mode", "?")
                         _bypass = bt_meta.get("bucket_bypass_applied", False)
                         _bypass_tag = " (bucket bypass)" if _bypass else ""
-                        st.caption(f"배분 경로: {_alloc}{_bypass_tag}")
+                        _wf = bt_meta.get("allocation_weight_floor")
+                        _wc = bt_meta.get("allocation_weight_cap")
+                        _fc_tag = (
+                            f" | floor/cap: {_wf}/{_wc}" if _wf is not None else ""
+                        )
+                        _fb = bt_meta.get("allocation_fallback_used", False)
+                        _fb_tag = " | fallback!" if _fb else ""
+                        st.caption(f"배분: {_alloc}{_bypass_tag}" f"{_fc_tag}{_fb_tag}")
                         # P206-STEP6G: Hybrid Regime 상태
                         if bt_meta.get("exo_regime_applied"):
                             _hv_path = (
@@ -376,8 +383,29 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                             st.caption(
                                 f"주요 차단 원인: {_root}" f" | 차단 단계: {_stage}"
                             )
+
+                        # P207-7C: allocation 비교표
+                        _cmp_path = (
+                            BASE_DIR
+                            / "reports"
+                            / "tuning"
+                            / "allocation_constraint_compare.csv"
+                        )
+                        if _cmp_path.exists():
+                            import pandas as _pd_cmp
+
+                            with st.expander("Allocation 실험군 비교"):
+                                _cdf = _pd_cmp.read_csv(_cmp_path)
+                                st.dataframe(_cdf, use_container_width=True)
+
+                        # P207-7C: 마지막 리밸런스 trace
+                        _atrace = bt_meta.get("allocation_trace_by_rebalance_date", [])
+                        if _atrace:
+                            _last = _atrace[-1]
+                            with st.expander("Allocation Trace (마지막 리밸런스)"):
+                                st.json(_last)
         except Exception as e:
-            st.error(f"⚠️ 백테스트 결과 파싱 실패: {e}")
+            st.error(f"백테스트 결과 파싱 실패: {e}")
 
     with res_colB:
         render_tune_results_card(params_data)

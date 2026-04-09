@@ -717,8 +717,17 @@ def format_result(
         "allocation_mode": result.get("allocation_mode", "bucket_portfolio"),
         "allocation_fallback_used": result.get("allocation_fallback_used", False),
         "allocation_params": result.get("allocation_params"),
+        "allocation_weight_floor": (
+            (result.get("allocation_params") or {}).get("weight_floor")
+        ),
+        "allocation_weight_cap": (
+            (result.get("allocation_params") or {}).get("weight_cap")
+        ),
         "allocation_rebalance_trace_count": len(
             result.get("_allocation_rebalance_trace", [])
+        ),
+        "allocation_trace_by_rebalance_date": result.get(
+            "_allocation_rebalance_trace", []
         ),
         "bucket_bypass_applied": result.get("bucket_bypass_applied", False),
         "exo_regime_applied": result.get("exo_regime_applied", False),
@@ -1516,6 +1525,41 @@ def run_cli_backtest(
                 f"| Vol Lookback | {_ev_ap.get('volatility_lookback', 'N/A')} |",
                 f"| Rebalances w/ Trace |"
                 f" {len(result.get('_allocation_rebalance_trace', []))} |",
+            ]
+
+            # 마지막 리밸런스 allocation trace
+            _art = result.get("_allocation_rebalance_trace", [])
+            if _art:
+                _last_t = _art[-1]
+                _lines += [
+                    "",
+                    "### Last Rebalance Trace",
+                    f"- date: {_last_t.get('date', 'N/A')}",
+                    f"- mode: {_last_t.get('mode', 'N/A')}",
+                    f"- fallback: {_last_t.get('fallback_used', False)}",
+                ]
+                _lrv = _last_t.get("raw_vols", {})
+                _lpre = _last_t.get("pre_cap_weights", {})
+                _lpost = _last_t.get("post_cap_weights", {})
+                _lfin = _last_t.get("final_weights", {})
+                if _lrv or _lfin:
+                    _lines += [
+                        "",
+                        "| Code | Raw Vol | Pre-Cap W" " | Post-Cap W | Final W |",
+                        "|---|---|---|---|---|",
+                    ]
+                    for _tc in _lfin:
+                        _rv = _lrv.get(_tc)
+                        _rv_s = f"{_rv:.4f}" if _rv is not None else "N/A"
+                        _lines.append(
+                            f"| {_tc}"
+                            f" | {_rv_s}"
+                            f" | {_lpre.get(_tc, 0):.4f}"
+                            f" | {_lpost.get(_tc, 0):.4f}"
+                            f" | {_lfin.get(_tc, 0):.4f} |"
+                        )
+
+            _lines += [
                 "",
                 "## Promotion Verdict",
                 "| Field | Value |",
@@ -1651,7 +1695,7 @@ def run_cli_backtest(
                 for _e in _errs:
                     _md_lines.append(f"- {_e['experiment_id']}: {_e['error']}")
             _md_p = _cmp_dir / "allocation_constraint_compare.md"
-            _md_p.write_text("\n".join(_md_lines), encoding="utf-8")
+            _md_p.write_text("\n".join(_md_lines), encoding="utf-8-sig")
             logger.info(f"[P207-SWEEP] 비교 산출물 생성:" f" {len(_valid)} 실험군")
 
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")

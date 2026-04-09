@@ -100,6 +100,30 @@ def render_ssot_parameter_form(params_data):
                 freq = c1.selectbox("리밸런싱 주기", freq_opts, index=freq_idx)
                 c1.caption("`SSOT Key: rebalance_rule.frequency`")
 
+                # P207: Allocation
+                st.subheader("Allocation (P207)")
+                _cur_alloc = p.get("allocation", {})
+                c1, c2 = st.columns(2)
+                _alloc_modes = [
+                    "dynamic_equal_weight",
+                    "risk_aware_equal_weight_v1",
+                    "inverse_volatility_v1",
+                ]
+                _cur_mode = _cur_alloc.get("mode", "dynamic_equal_weight")
+                _mi = _alloc_modes.index(_cur_mode) if _cur_mode in _alloc_modes else 0
+                c1.selectbox(
+                    "Allocation Mode",
+                    _alloc_modes,
+                    index=_mi,
+                    disabled=True,
+                    key="_alloc_mode_display",
+                )
+                c2.caption(
+                    f"floor/cap:"
+                    f" {_cur_alloc.get('weight_floor', '-')}"
+                    f" / {_cur_alloc.get('weight_cap', '-')}"
+                )
+
                 st.divider()
                 if st.form_submit_button("💾 Save Parameters to SSOT"):
                     try:
@@ -122,8 +146,10 @@ def render_ssot_parameter_form(params_data):
 
                         new_params["asof"] = datetime.now(KST).isoformat()
                         save_params(new_params)
+                        _fp = compute_fingerprint(new_params)
                         st.success(
-                            f"✅ 파라미터가 저장되었습니다 (Fingerprint: {compute_fingerprint(new_params)})"
+                            f"파라미터 저장 완료"
+                            f" (Fingerprint: {_fp})"
                         )
                         time.sleep(1.5)
                         st.rerun()
