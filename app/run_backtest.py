@@ -1558,14 +1558,20 @@ def run_cli_backtest(
                 if _lrv or _lfin:
                     _lines += [
                         "",
-                        "| Code | Raw Vol | Pre-Cap W" " | Post-Cap W | Final W |",
-                        "|---|---|---|---|---|",
+                        "| Code | Raw Score | Raw Vol"
+                        " | Pre-Cap W | Post-Cap W"
+                        " | Final W |",
+                        "|---|---|---|---|---|---|",
                     ]
+                    _lrs = _last_t.get("raw_scores", {})
                     for _tc in _lfin:
                         _rv = _lrv.get(_tc)
                         _rv_s = f"{_rv:.4f}" if _rv is not None else "N/A"
+                        _rs = _lrs.get(_tc)
+                        _rs_s = f"{_rs:.4f}" if _rs is not None else "N/A"
                         _lines.append(
                             f"| {_tc}"
+                            f" | {_rs_s}"
                             f" | {_rv_s}"
                             f" | {_lpre.get(_tc, 0):.4f}"
                             f" | {_lpost.get(_tc, 0):.4f}"
