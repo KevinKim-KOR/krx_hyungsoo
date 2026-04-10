@@ -1387,6 +1387,34 @@ def run_cli_backtest(
         )
         logger.info(f"[WRITE] hybrid regime outputs → {_regime_dir}")
 
+    # P209-STEP9A: drawdown contribution analysis (A=운영기준, B=연구기준)
+    # Step9A는 분석 전용. 실제 매매 로직 변경 금지. 필터/ML 적용 금지.
+    if params.get("universe_mode") == "dynamic_etf_market" and enable_regime:
+        try:
+            from app.backtest.reporting.drawdown_contribution import (
+                run_analysis_pipeline as _run_dd_analysis,
+            )
+
+            _dd_result = _run_dd_analysis(
+                main_params=params,
+                main_raw_result=result,
+                price_data=price_data,
+                start=start,
+                end=end,
+                run_backtest_fn=run_backtest,
+                project_root=PROJECT_ROOT,
+            )
+            # Main formatted meta에 A 분석 요약 주입
+            formatted["meta"].update(_dd_result.get("main_meta_injection", {}))
+            # 후속 evidence md 생성에서 참조할 수 있도록 result에도 첨부
+            result["_drawdown_contribution_analyses"] = _dd_result.get("analyses", [])
+            logger.info(
+                f"[P209-STEP9A] drawdown 분석 완료:"
+                f" {len(_dd_result.get('analyses', []))} variants"
+            )
+        except Exception as _dd_exc:
+            logger.warning(f"[P209-STEP9A] drawdown 분석 실패: {_dd_exc}")
+
     # P205-STEP5H: metric integrity audit
     _s = formatted["summary"]
     _m = formatted["meta"]
@@ -1605,6 +1633,93 @@ def run_cli_backtest(
                 f"| Turnover Proxy |" f" {_bt_m.get('turnover_proxy', 0.0)} |",
                 f"| Verdict | {_verdict_str} |",
             ]
+
+            # P209-STEP9A: Drawdown Contribution 섹션 (A vs B side-by-side)
+            _dd_analyses = result.get("_drawdown_contribution_analyses") or []
+            if _dd_analyses:
+                _a_an = _dd_analyses[0] if len(_dd_analyses) > 0 else {}
+                _b_an = _dd_analyses[1] if len(_dd_analyses) > 1 else {}
+                _a_w = _a_an.get("mdd_window") or {}
+                _b_w = _b_an.get("mdd_window") or {}
+                _a_qs = _a_an.get("selection_quality_summary") or {}
+                _b_qs = _b_an.get("selection_quality_summary") or {}
+                _a_top = _a_an.get("top_ticker_contributors_to_mdd") or []
+                _b_top = _b_an.get("top_ticker_contributors_to_mdd") or []
+                _a_worst = _a_an.get("worst_selection_events") or []
+                _b_worst = _b_an.get("worst_selection_events") or []
+
+                def _fmt_top(top_list):
+                    if not top_list:
+                        return "N/A"
+                    return ", ".join(
+                        f"{r.get('ticker')}" f"({r.get('contribution_to_nav_pct')}%)"
+                        for r in top_list[:3]
+                    )
+
+                def _fmt_worst(evts):
+                    if not evts:
+                        return "N/A"
+                    e = evts[0]
+                    _g = e.get("selection_gap_pct")
+                    _g_str = f" gap={_g}%p" if _g is not None else ""
+                    return (
+                        f"{e.get('rebalance_date', 'N/A')}"
+                        f" worst={e.get('worst_ticker', 'N/A')}"
+                        f" ret={e.get('worst_return_pct', 'N/A')}%"
+                        f"{_g_str}"
+                    )
+
+                _a_toxic_set = {r.get("ticker") for r in _a_top[:5]}
+                _b_toxic_set = {r.get("ticker") for r in _b_top[:5]}
+                _common = sorted(t for t in (_a_toxic_set & _b_toxic_set) if t)
+                _common_str = ", ".join(_common) if _common else "(no common)"
+
+                _a_gap = _a_qs.get("avg_selection_gap_pct")
+                _b_gap = _b_qs.get("avg_selection_gap_pct")
+
+                _lines += [
+                    "",
+                    "## Drawdown Contribution (P209-STEP9A)",
+                    "| Field | A (Operational) | B (Compared) |",
+                    "|---|---|---|",
+                    f"| Baseline Label"
+                    f" | {_a_an.get('label', 'N/A')}"
+                    f" | {_b_an.get('label', 'N/A')} |",
+                    f"| Role"
+                    f" | {_a_an.get('role', '-')}"
+                    f" | {_b_an.get('role', '-')} |",
+                    f"| MDD %"
+                    f" | {_a_w.get('mdd_pct', 'N/A')}%"
+                    f" | {_b_w.get('mdd_pct', 'N/A')}% |",
+                    f"| MDD Peak Date"
+                    f" | {_a_w.get('peak_date', 'N/A')}"
+                    f" | {_b_w.get('peak_date', 'N/A')} |",
+                    f"| MDD Trough Date"
+                    f" | {_a_w.get('trough_date', 'N/A')}"
+                    f" | {_b_w.get('trough_date', 'N/A')} |",
+                    f"| Top Toxic (top 3)"
+                    f" | {_fmt_top(_a_top)}"
+                    f" | {_fmt_top(_b_top)} |",
+                    f"| Worst Selection Event"
+                    f" | {_fmt_worst(_a_worst)}"
+                    f" | {_fmt_worst(_b_worst)} |",
+                    f"| Positive Forward Ratio"
+                    f" | {_a_qs.get('positive_forward_ratio', 0)}"
+                    f" | {_b_qs.get('positive_forward_ratio', 0)} |",
+                    f"| Avg Forward Return"
+                    f" | {_a_qs.get('avg_forward_return_pct', 0)}%"
+                    f" | {_b_qs.get('avg_forward_return_pct', 0)}% |",
+                    f"| Avg Selection Gap (Unsel−Sel)"
+                    f" | {_a_gap if _a_gap is not None else 'N/A'}%p"
+                    f" | {_b_gap if _b_gap is not None else 'N/A'}%p |",
+                    f"| Selection Quality Verdict"
+                    f" | **{_a_an.get('selection_quality_verdict', 'N/A')}**"
+                    f" | **{_b_an.get('selection_quality_verdict', 'N/A')}** |",
+                    "",
+                    f"**A ∩ B 공통 Toxic Tickers**: {_common_str}",
+                    "",
+                    "_Step9A = 분석 챕터. 필터/ML 실제 적용 없음._",
+                ]
 
             # 마지막 리밸런스 allocation trace
             _art = result.get("_allocation_rebalance_trace", [])

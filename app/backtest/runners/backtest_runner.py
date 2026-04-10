@@ -697,6 +697,10 @@ class BacktestRunner:
 
                 # P208-STEP8A: max_positions cap 이전 후보 풀 크기 초기화
                 _pre_cap_candidate_count = 0
+                # P209-STEP9A: sorted_scores 상위 15개(code, score, rank) 캡처
+                # Step9A 선택 품질 분석이 "선택하지 않은 상위 후보"와의 성과 차이를
+                # 계산할 수 있도록 cap 이전 후보 풀을 trace에 남긴다.
+                _sorted_candidates_meta: List[Dict[str, Any]] = []
 
                 if _is_dynamic:
                     # P205-STEP5F: dynamic_etf_market 전용 allocation
@@ -714,6 +718,15 @@ class BacktestRunner:
                             key=lambda x: x[1][0],
                             reverse=True,
                         )
+                        # P209-STEP9A: 상위 15 후보 (momentum rank + score) 기록
+                        _sorted_candidates_meta = [
+                            {
+                                "rank": _i + 1,
+                                "code": _c,
+                                "score": round(float(_sc[0]), 6),
+                            }
+                            for _i, (_c, _sc) in enumerate(sorted_scores[:15])
+                        ]
                         new_top_n = [
                             code for code, _ in sorted_scores[: self.max_positions]
                         ]
@@ -1096,6 +1109,7 @@ class BacktestRunner:
                     "_candidates": _candidates,
                     "_new_top": _new_top,
                     "_pre_cap_candidates": _pre_cap_candidate_count,
+                    "_sorted_candidates_meta": _sorted_candidates_meta,
                     "_after_dedup": _after_dedup,
                     "_after_hold": _after_hold,
                     "_after_budget": _after_budget,
@@ -1222,6 +1236,9 @@ class BacktestRunner:
                         "selected_pool_size_before_allocation": _pt["_sel_count"],
                         "candidate_after_allocation_filter_count": _pt["_new_top"],
                         "top_n_selected": _pt["_new_top"],
+                        # P209-STEP9A: max_positions cap 이전 상위 15 후보
+                        # (Step9A selection_gap 계산용 — 매매 로직과 무관)
+                        "top_candidates_ranked": _pt.get("_sorted_candidates_meta", []),
                         "orders_created_count": _orders_delta,
                         "buy_filled_count": _buy_delta,
                         "hold_count_before": _hold_before,
