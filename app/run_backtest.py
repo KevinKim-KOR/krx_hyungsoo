@@ -519,6 +519,29 @@ def compute_buyhold_metrics(
     }
 
 
+def _resolve_holding_structure_experiment_name(
+    experiments: List[Dict[str, Any]],
+    max_positions: int,
+    allocation_mode: Optional[str],
+) -> Optional[str]:
+    """P208-STEP8A: (max_positions, allocation_mode) 조합에 매칭되는
+    holding_structure_experiments 항목의 name을 반환.
+
+    sweep 모드가 아닌 일반 실행에서도 현재 SSOT 조합이 어떤 실험군 이름에
+    해당하는지 evidence/result/UI에 표시하기 위해 사용한다.
+    매칭 실패 시 None을 반환하여 fallback 없이 명시적 미매칭을 드러낸다.
+    """
+    if not experiments or allocation_mode is None:
+        return None
+    for exp in experiments:
+        if (
+            exp.get("max_positions") == max_positions
+            and exp.get("allocation_mode") == allocation_mode
+        ):
+            return exp.get("name")
+    return None
+
+
 # ─── 5. Format Output ─────────────────────────────────────────────────────
 def format_result(
     result: Dict[str, Any],
@@ -740,6 +763,31 @@ def format_result(
         "allocation_trace_by_rebalance_date": result.get(
             "_allocation_rebalance_trace", []
         ),
+        # P208-STEP8A: holding structure meta
+        # 실험군 이름이 명시적으로 주입되지 않은 경우 SSOT의
+        # holding_structure_experiments 목록에서 (max_positions, allocation_mode)
+        # 조합으로 매칭하여 도출. 매칭이 없으면 None.
+        "holding_structure_experiment_name": (
+            params.get("holding_structure_experiment_name")
+            or _resolve_holding_structure_experiment_name(
+                params.get("holding_structure_experiments") or [],
+                params["max_positions"],
+                result.get("allocation_mode"),
+            )
+        ),
+        "holding_structure_max_positions": result.get(
+            "holding_structure_max_positions", params["max_positions"]
+        ),
+        "avg_held_positions": result.get("avg_held_positions", 0.0),
+        "max_held_positions_observed": result.get("max_held_positions_observed", 0),
+        "actual_held_positions_by_rebalance_date": result.get(
+            "actual_held_positions_by_rebalance_date", []
+        ),
+        "rebalances_with_more_than_2_candidates": result.get(
+            "rebalances_with_more_than_2_candidates", 0
+        ),
+        "turnover_proxy": result.get("turnover_proxy", 0.0),
+        "blocked_reason_totals": result.get("blocked_reason_totals", {}),
         "bucket_bypass_applied": result.get("bucket_bypass_applied", False),
         "exo_regime_applied": result.get("exo_regime_applied", False),
         "exo_regime_risk_off_count": result.get("exo_regime_risk_off_count", 0),
@@ -1538,6 +1586,24 @@ def run_cli_backtest(
                 f"| Vol Lookback | {_ev_ap.get('volatility_lookback', 'N/A')} |",
                 f"| Rebalances w/ Trace |"
                 f" {len(result.get('_allocation_rebalance_trace', []))} |",
+                "",
+                "## Holding Structure (P208-STEP8A)",
+                "| Field | Value |",
+                "|---|---|",
+                f"| Holding Structure Experiment |"
+                f" {_bt_m.get('holding_structure_experiment_name') or 'N/A'} |",
+                f"| Max Positions |"
+                f" {_bt_m.get('holding_structure_max_positions', 'N/A')} |",
+                f"| Allocation Mode |" f" {_bt_m.get('allocation_mode', 'N/A')} |",
+                f"| Avg Held Positions |" f" {_bt_m.get('avg_held_positions', 0.0)} |",
+                f"| Max Held Positions Observed |"
+                f" {_bt_m.get('max_held_positions_observed', 0)} |",
+                f"| Rebalances With >2 Candidates |"
+                f" {_bt_m.get('rebalances_with_more_than_2_candidates', 0)} |",
+                f"| Blocked By Max Positions |"
+                f" {(_bt_m.get('blocked_reason_totals') or {}).get('BLOCKED_MAX_POSITIONS', 0)} |",  # noqa: E501
+                f"| Turnover Proxy |" f" {_bt_m.get('turnover_proxy', 0.0)} |",
+                f"| Verdict | {_verdict_str} |",
             ]
 
             # 마지막 리밸런스 allocation trace
@@ -1598,6 +1664,24 @@ def run_cli_backtest(
             logger.info(f"[WRITE] dynamic_evidence → {_ev_path}")
         except Exception as ev_exc:
             logger.warning(f"dynamic_evidence 생성 실패: {ev_exc}")
+
+    # P208-STEP8A: holding_structure_experiments sweep
+    _hs_experiments = params.get("holding_structure_experiments")
+    if _hs_experiments and isinstance(_hs_experiments, list) and enable_regime:
+        from app.backtest.reporting.holding_structure_compare import (
+            run_holding_structure_sweep,
+        )
+
+        run_holding_structure_sweep(
+            experiments=_hs_experiments,
+            base_params=params,
+            price_data=price_data,
+            start=start,
+            end=end,
+            run_backtest_fn=run_backtest,
+            format_result_fn=format_result,
+            project_root=PROJECT_ROOT,
+        )
 
     # P207-STEP7C: allocation experiment sweep
     _experiments = params.get("allocation_experiments")

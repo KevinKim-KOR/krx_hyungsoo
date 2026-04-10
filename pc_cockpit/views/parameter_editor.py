@@ -124,6 +124,31 @@ def render_ssot_parameter_form(params_data):
                 c2.caption(f"floor/cap: {_wfl}/{_wcp}")
                 st.caption(f"Experiment Name: {_exp_name}")
 
+                # P208-STEP8A: Holding Structure
+                st.subheader("Holding Structure (P208)")
+                _cur_max_pos = int(_ssot_require(p, "position_limits", "max_positions"))
+                _hs_exps = p.get("holding_structure_experiments") or []
+                _current_hs_name = None
+                for _hse in _hs_exps:
+                    if (
+                        _hse.get("max_positions") == _cur_max_pos
+                        and _hse.get("allocation_mode") == _cur_mode
+                    ):
+                        _current_hs_name = _hse.get("name")
+                        break
+                _hs_display = (
+                    _current_hs_name or "N/A (현재 SSOT 조합에 매칭 실험군 없음)"
+                )
+                c1h, c2h, c3h = st.columns(3)
+                c1h.metric("Current Experiment", _hs_display)
+                c2h.metric("max_positions", _cur_max_pos)
+                c3h.metric("allocation_mode", _cur_mode)
+                st.caption(
+                    f"등록된 실험군: {len(_hs_exps)}개"
+                    f" (G1~G8 = pos[2,3,4,5] ×"
+                    f" [dynamic_equal_weight, risk_aware_equal_weight_v1])"
+                )
+
                 st.divider()
                 if st.form_submit_button("💾 Save Parameters to SSOT"):
                     try:

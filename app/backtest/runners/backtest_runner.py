@@ -461,6 +461,10 @@ class BacktestRunner:
 
         _rebalance_trace: List[Dict[str, Any]] = []
         _allocation_rebal_trace: List[Dict[str, Any]] = []
+        # P208-STEP8A: 보유 종목 수 구조 추적
+        _actual_held_by_rebal: List[Dict[str, Any]] = []
+        _max_held_observed = 0
+        _rebal_more_than_2_candidates = 0
         _total_selected_seen = 0
         _total_entry_pass = 0
         _total_orders_created = 0
@@ -691,11 +695,17 @@ class BacktestRunner:
                     entry_threshold=entry_threshold,
                 )
 
+                # P208-STEP8A: max_positions cap 이전 후보 풀 크기 초기화
+                _pre_cap_candidate_count = 0
+
                 if _is_dynamic:
                     # P205-STEP5F: dynamic_etf_market 전용 allocation
                     # bucket_portfolio 고정 바구니 우회, dynamic selected pool 직접 사용
                     universe_scores = {k: v for k, v in scores.items() if k in universe}
                     raw_signal_count += len(universe_scores)
+                    # P208-STEP8A: entry filter + universe 통과 종목 수
+                    # = cap 직전 pool. max_positions와 독립적.
+                    _pre_cap_candidate_count = len(universe_scores)
 
                     if universe_scores:
                         signal_days += 1
@@ -1085,6 +1095,7 @@ class BacktestRunner:
                     "_tradable": _tradable,
                     "_candidates": _candidates,
                     "_new_top": _new_top,
+                    "_pre_cap_candidates": _pre_cap_candidate_count,
                     "_after_dedup": _after_dedup,
                     "_after_hold": _after_hold,
                     "_after_budget": _after_budget,
@@ -1137,6 +1148,26 @@ class BacktestRunner:
                 )
                 _orders_delta = _trades_after - _trades_before
                 _buy_delta = _buy_after - _buy_before
+
+                # P208-STEP8A: 실제 보유 종목 수 기록
+                # candidates_count는 max_positions cap 이전의 raw 후보 풀 크기
+                _pre_cap = _pending_trace.get("_pre_cap_candidates", 0)
+                _actual_held_by_rebal.append(
+                    {
+                        "rebalance_date": str(d),
+                        "held_positions": _hold_after,
+                        "candidates_count": _pre_cap,
+                        "top_n_after_cap": _pending_trace.get("_new_top", 0),
+                        "buy_filled": _buy_delta,
+                        "orders_created": _orders_delta,
+                    }
+                )
+                if _hold_after > _max_held_observed:
+                    _max_held_observed = _hold_after
+                # "리밸런스 시 pre-cap 후보가 2개 초과였는가"
+                # → max_positions와 독립적으로 '진짜 후보가 많았는지' 측정
+                if _pre_cap > 2:
+                    _rebal_more_than_2_candidates += 1
 
                 _pt = _pending_trace
                 _total_selected_seen += _pt["_sel_count"]
@@ -1266,6 +1297,19 @@ class BacktestRunner:
             "note": f"{early_month_count}/{total_trade_events} trades on day 1~3",
         }
 
+        # P208-STEP8A: 보유 구조 메타 계산
+        _held_values = [r["held_positions"] for r in _actual_held_by_rebal]
+        _avg_held = (
+            round(sum(_held_values) / len(_held_values), 4) if _held_values else 0.0
+        )
+        # turnover_proxy: 리밸런스별 buy_filled 총합 / 리밸런스 횟수
+        _buy_sum = sum(r.get("buy_filled", 0) for r in _actual_held_by_rebal)
+        _turnover_proxy = (
+            round(_buy_sum / len(_actual_held_by_rebal), 4)
+            if _actual_held_by_rebal
+            else 0.0
+        )
+
         return {
             "metrics": metrics,
             "nav_history": engine.nav_history,
@@ -1281,6 +1325,13 @@ class BacktestRunner:
             "allocation_fallback_used": _allocation_fallback_used,
             "allocation_params": _alloc_params if _alloc_params else None,
             "bucket_bypass_applied": _is_dynamic,
+            # P208-STEP8A: holding structure meta
+            "holding_structure_max_positions": self.max_positions,
+            "avg_held_positions": _avg_held,
+            "max_held_positions_observed": _max_held_observed,
+            "actual_held_positions_by_rebalance_date": _actual_held_by_rebal,
+            "rebalances_with_more_than_2_candidates": _rebal_more_than_2_candidates,
+            "turnover_proxy": _turnover_proxy,
             "exo_regime_applied": bool(_exo_sched),
             "exo_regime_risk_off_count": _exo_risk_off_count,
             "_allocation_rebalance_trace": _allocation_rebal_trace,

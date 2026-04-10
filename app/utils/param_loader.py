@@ -68,6 +68,13 @@ _ALLOWED_ALLOC_MODES = {
     "inverse_volatility_v1",
 }
 
+# P208-STEP8A: holding_structure_experiments 에서 허용되는 allocation mode
+# (inverse_volatility_v1 재도입 금지 — 대표 2개만 사용)
+_ALLOWED_HOLDING_ALLOC_MODES = {
+    "dynamic_equal_weight",
+    "risk_aware_equal_weight_v1",
+}
+
 
 def _validate_experiments(experiments):
     """allocation_experiments 스키마 검증.
@@ -96,6 +103,50 @@ def _validate_experiments(experiments):
             )
         if "fallback_mode" not in alloc:
             raise KeyError(f"{ctx}.allocation: fallback_mode 누락")
+    return experiments
+
+
+def _validate_holding_structure_experiments(experiments):
+    """holding_structure_experiments 스키마 검증 (P208-STEP8A).
+
+    None이면 None 반환. 리스트이면 각 항목의 필수 키(name, max_positions,
+    allocation_mode)를 검증하고 중복 name 금지.
+    """
+    if experiments is None:
+        return None
+    if not isinstance(experiments, list):
+        raise TypeError(
+            "holding_structure_experiments는 리스트여야 합니다:" f" {type(experiments)}"
+        )
+    _seen_names = set()
+    for i, exp in enumerate(experiments):
+        ctx = f"holding_structure_experiments[{i}]"
+        if not isinstance(exp, dict):
+            raise TypeError(f"{ctx}: dict 형태여야 합니다: {type(exp)}")
+        if "name" not in exp:
+            raise KeyError(f"{ctx}: name 누락")
+        if "max_positions" not in exp:
+            raise KeyError(f"{ctx}: max_positions 누락")
+        if "allocation_mode" not in exp:
+            raise KeyError(f"{ctx}: allocation_mode 누락")
+
+        _nm = exp["name"]
+        if not isinstance(_nm, str) or not _nm:
+            raise ValueError(f"{ctx}.name은 비어있지 않은 문자열이어야 합니다")
+        if _nm in _seen_names:
+            raise ValueError(f"{ctx}.name={_nm!r} 중복")
+        _seen_names.add(_nm)
+
+        _mp = exp["max_positions"]
+        if not isinstance(_mp, int) or isinstance(_mp, bool) or _mp <= 0:
+            raise ValueError(f"{ctx}.max_positions는 양의 정수여야 합니다: {_mp!r}")
+
+        _am = exp["allocation_mode"]
+        if _am not in _ALLOWED_HOLDING_ALLOC_MODES:
+            raise ValueError(
+                f"{ctx}.allocation_mode={_am!r}"
+                f" 허용: {_ALLOWED_HOLDING_ALLOC_MODES}"
+            )
     return experiments
 
 
@@ -160,6 +211,9 @@ def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
         "allocation": params_raw.get("allocation"),
         "allocation_experiments": _validate_experiments(
             params_raw.get("allocation_experiments")
+        ),
+        "holding_structure_experiments": _validate_holding_structure_experiments(
+            params_raw.get("holding_structure_experiments")
         ),
     }
 

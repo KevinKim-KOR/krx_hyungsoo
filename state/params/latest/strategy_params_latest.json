@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-04-09T23:15:25.558256+09:00",
+  "asof": "2026-04-10T23:24:01.226557+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -124,12 +124,115 @@
       "fallback_mode": "dynamic_equal_weight"
     },
     "allocation_experiments": [
-      {"experiment_id": "G1_equal_weight", "allocation": {"mode": "dynamic_equal_weight", "fallback_mode": "dynamic_equal_weight"}},
-      {"experiment_id": "G2A_raew_35_65", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.35, "weight_cap": 0.65, "fallback_mode": "dynamic_equal_weight"}},
-      {"experiment_id": "G2B_raew_20_80", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.20, "weight_cap": 0.80, "fallback_mode": "dynamic_equal_weight"}},
-      {"experiment_id": "G2C_raew_10_90", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.10, "weight_cap": 0.90, "fallback_mode": "dynamic_equal_weight"}},
-      {"experiment_id": "G2D_raew_00_100", "allocation": {"mode": "risk_aware_equal_weight_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.00, "weight_cap": 1.00, "fallback_mode": "dynamic_equal_weight"}},
-      {"experiment_id": "G3_invvol_v1", "allocation": {"mode": "inverse_volatility_v1", "volatility_lookback": 20, "volatility_floor": 0.05, "volatility_cap": 0.60, "weight_floor": 0.00, "weight_cap": 1.00, "fallback_mode": "dynamic_equal_weight"}}
+      {
+        "experiment_id": "G1_equal_weight",
+        "allocation": {
+          "mode": "dynamic_equal_weight",
+          "fallback_mode": "dynamic_equal_weight"
+        }
+      },
+      {
+        "experiment_id": "G2A_raew_35_65",
+        "allocation": {
+          "mode": "risk_aware_equal_weight_v1",
+          "volatility_lookback": 20,
+          "volatility_floor": 0.05,
+          "volatility_cap": 0.6,
+          "weight_floor": 0.35,
+          "weight_cap": 0.65,
+          "fallback_mode": "dynamic_equal_weight"
+        }
+      },
+      {
+        "experiment_id": "G2B_raew_20_80",
+        "allocation": {
+          "mode": "risk_aware_equal_weight_v1",
+          "volatility_lookback": 20,
+          "volatility_floor": 0.05,
+          "volatility_cap": 0.6,
+          "weight_floor": 0.2,
+          "weight_cap": 0.8,
+          "fallback_mode": "dynamic_equal_weight"
+        }
+      },
+      {
+        "experiment_id": "G2C_raew_10_90",
+        "allocation": {
+          "mode": "risk_aware_equal_weight_v1",
+          "volatility_lookback": 20,
+          "volatility_floor": 0.05,
+          "volatility_cap": 0.6,
+          "weight_floor": 0.1,
+          "weight_cap": 0.9,
+          "fallback_mode": "dynamic_equal_weight"
+        }
+      },
+      {
+        "experiment_id": "G2D_raew_00_100",
+        "allocation": {
+          "mode": "risk_aware_equal_weight_v1",
+          "volatility_lookback": 20,
+          "volatility_floor": 0.05,
+          "volatility_cap": 0.6,
+          "weight_floor": 0.0,
+          "weight_cap": 1.0,
+          "fallback_mode": "dynamic_equal_weight"
+        }
+      },
+      {
+        "experiment_id": "G3_invvol_v1",
+        "allocation": {
+          "mode": "inverse_volatility_v1",
+          "volatility_lookback": 20,
+          "volatility_floor": 0.05,
+          "volatility_cap": 0.6,
+          "weight_floor": 0.0,
+          "weight_cap": 1.0,
+          "fallback_mode": "dynamic_equal_weight"
+        }
+      }
+    ],
+    "holding_structure_experiments": [
+      {
+        "name": "g1_pos2_eq",
+        "max_positions": 2,
+        "allocation_mode": "dynamic_equal_weight"
+      },
+      {
+        "name": "g2_pos2_raew",
+        "max_positions": 2,
+        "allocation_mode": "risk_aware_equal_weight_v1"
+      },
+      {
+        "name": "g3_pos3_eq",
+        "max_positions": 3,
+        "allocation_mode": "dynamic_equal_weight"
+      },
+      {
+        "name": "g4_pos3_raew",
+        "max_positions": 3,
+        "allocation_mode": "risk_aware_equal_weight_v1"
+      },
+      {
+        "name": "g5_pos4_eq",
+        "max_positions": 4,
+        "allocation_mode": "dynamic_equal_weight"
+      },
+      {
+        "name": "g6_pos4_raew",
+        "max_positions": 4,
+        "allocation_mode": "risk_aware_equal_weight_v1"
+      },
+      {
+        "name": "g7_pos5_eq",
+        "max_positions": 5,
+        "allocation_mode": "dynamic_equal_weight"
+      },
+      {
+        "name": "g8_pos5_raew",
+        "max_positions": 5,
+        "allocation_mode": "risk_aware_equal_weight_v1"
+      }
     ]
   },
   "universe_mode": "dynamic_etf_market",
@@ -137,19 +240,19 @@
     "0091P0",
     "0098F0",
     "091160",
+    "091230",
+    "102110",
     "102970",
     "139260",
     "157500",
+    "292150",
     "315960",
-    "395160",
     "395270",
     "396500",
-    "433500",
     "442580",
     "469150",
-    "487240",
-    "495050"
+    "487240"
   ],
-  "universe_snapshot_id": "snap_20260409_230954_df90ab7e",
-  "universe_snapshot_sha256": "df90ab7e61b65ea9f79a7f3ec9b51c1c58f4b911017b1b98768a3f7711f58261"
+  "universe_snapshot_id": "snap_20260411_002122_700c57e6",
+  "universe_snapshot_sha256": "700c57e6a901558efeb8c69b48f346338108fc0952fb2ebd59654d7d5e711e33"
 }

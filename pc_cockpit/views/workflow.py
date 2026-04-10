@@ -398,6 +398,40 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                                 _cdf = _pd_cmp.read_csv(_cmp_path)
                                 st.dataframe(_cdf, use_container_width=True)
 
+                        # P208-STEP8A: holding structure 비교표 (G1~G8)
+                        _hs_cmp_path = (
+                            BASE_DIR
+                            / "reports"
+                            / "tuning"
+                            / "holding_structure_compare.csv"
+                        )
+                        if _hs_cmp_path.exists():
+                            import pandas as _pd_hs
+
+                            with st.expander(
+                                "Holding Structure 비교 (G1~G8, P208)",
+                                expanded=True,
+                            ):
+                                _hdf = _pd_hs.read_csv(_hs_cmp_path)
+                                st.dataframe(_hdf, use_container_width=True)
+
+                        # P208-STEP8A: 현재 실행의 holding structure 요약
+                        _hs_name = bt_meta.get("holding_structure_experiment_name")
+                        _hs_maxp = bt_meta.get("holding_structure_max_positions")
+                        _hs_avg = bt_meta.get("avg_held_positions")
+                        _hs_max_obs = bt_meta.get("max_held_positions_observed")
+                        _hs_blocked = (bt_meta.get("blocked_reason_totals") or {}).get(
+                            "BLOCKED_MAX_POSITIONS", 0
+                        )
+                        st.caption(
+                            f"Holding Structure:"
+                            f" experiment={_hs_name or 'N/A'}"
+                            f" | max_positions={_hs_maxp}"
+                            f" | avg_held={_hs_avg}"
+                            f" | max_held_obs={_hs_max_obs}"
+                            f" | blocked_max_pos={_hs_blocked}"
+                        )
+
                         # P207-7C: 마지막 리밸런스 trace
                         _atrace = bt_meta.get("allocation_trace_by_rebalance_date", [])
                         if _atrace:
