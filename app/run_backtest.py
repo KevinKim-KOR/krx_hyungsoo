@@ -780,28 +780,28 @@ def format_result(
         "exo_regime_risk_off_count": result.get("exo_regime_risk_off_count", 0),
         "exo_regime_neutral_count": result.get("exo_regime_neutral_count", 0),
         # P209-STEP9B Track A toxic filter meta (지시문 요구 필드 전체).
-        # rule 6/7: runner 는 toxic filter 사용 여부와 무관하게 이 필드들을
-        # 항상 설정한다 (사용 안 함 = 0/None/빈 리스트). 따라서 None 기본값
-        # 허용은 "필터 미실행" 이라는 명시적 의미만 전달.
-        "tracka_filter_experiment_name": result.get("tracka_filter_experiment_name"),
-        "tracka_baseline_label": result.get("tracka_baseline_label"),
-        "tracka_drop_mode": result.get("tracka_drop_mode"),
-        "tracka_drop_list_used": result.get("tracka_drop_list_used", []),
-        "tracka_filter_hits_total": result.get("tracka_filter_hits_total", 0),
-        "tracka_filter_exhausted_count": result.get("tracka_filter_exhausted_count", 0),
-        "tracka_promoted_total": result.get("tracka_promoted_total", 0),
-        "tracka_avg_candidates_before_filter": result.get(
+        # rule 6/7 (FIX 2026-04-12): BacktestRunner.run 은 toxic filter 사용
+        # 여부와 무관하게 11개 tracka_* 필드를 항상 설정한다 (REQUIRED contract).
+        # 필드 자체 누락 = runner 계약 위반이므로 silent fallback (.get) 대신
+        # 직접 subscript 로 KeyError 유도. 필드 존재 시 값이 None/0/빈 리스트인
+        # 것은 "필터 미실행" 이라는 명시적 의미이며 정상 경로.
+        "tracka_filter_experiment_name": result["tracka_filter_experiment_name"],
+        "tracka_baseline_label": result["tracka_baseline_label"],
+        "tracka_drop_mode": result["tracka_drop_mode"],
+        "tracka_drop_list_used": result["tracka_drop_list_used"],
+        "tracka_filter_hits_total": result["tracka_filter_hits_total"],
+        "tracka_filter_exhausted_count": result["tracka_filter_exhausted_count"],
+        "tracka_promoted_total": result["tracka_promoted_total"],
+        "tracka_avg_candidates_before_filter": result[
             "tracka_avg_candidates_before_filter"
-        ),
-        "tracka_avg_candidates_after_filter": result.get(
+        ],
+        "tracka_avg_candidates_after_filter": result[
             "tracka_avg_candidates_after_filter"
-        ),
-        "tracka_dropped_by_rebalance_date": result.get(
-            "tracka_dropped_by_rebalance_date", []
-        ),
-        "tracka_promoted_by_rebalance_date": result.get(
-            "tracka_promoted_by_rebalance_date", []
-        ),
+        ],
+        "tracka_dropped_by_rebalance_date": result["tracka_dropped_by_rebalance_date"],
+        "tracka_promoted_by_rebalance_date": result[
+            "tracka_promoted_by_rebalance_date"
+        ],
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "buy_trade_count": sum(
