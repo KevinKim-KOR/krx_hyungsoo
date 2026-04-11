@@ -6,7 +6,7 @@
 
 ## P208/P209 cleanup 완료 (2026-04-11, R1~R7)
 
-P209-CLEAN refactor plan (`docs/P207_P208_P209_CLEAN_REFACTOR_PLAN.md`) 에
+P209-CLEAN refactor plan (`docs/analysis/P207_P208_P209_CLEAN_REFACTOR_PLAN.md`) 에
 따라 R1~R7 총 7단계로 P207/P208/P209 통합 layer cleanup 완료.
 
 ### R1~R6 commit 이력 (총 8 commits)

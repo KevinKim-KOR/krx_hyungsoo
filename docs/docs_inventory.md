@@ -1,6 +1,6 @@
 # 문서 분류표 (Documentation Inventory)
 
-asof: 2026-03-28
+asof: 2026-04-11
 
 분류 기준: [docs_governance.md](docs_governance.md)
 
@@ -31,6 +31,7 @@ asof: 2026-03-28
 | 경로 | 분류 | 상태 | 사유 | 조치 |
 |---|---|---|---|---|
 | `docs/analysis/P204_MASTER_PLAN_vFinal.md` | KEEP_REFERENCE | 정확 | P204 설계 원칙 참고용 | 유지 |
+| `docs/analysis/P207_P208_P209_CLEAN_REFACTOR_PLAN.md` | KEEP_REFERENCE | 정확 | P207~P209 clean refactor plan (R1~R7 완료, 2026-04-11 top-level→analysis/ 이동) | 유지 |
 | `docs/analysis/friend_project_comparison.md` | KEEP_REFERENCE | 정확 | 친구 프로젝트 비교 분석 | 유지 |
 | `docs/contracts/*` (78개) | KEEP_REFERENCE | 미전수검증 | 색인 기준 경로 일치 확인 | 유지 |
 | `docs/ops/artifact_governance.md` | KEEP_REFERENCE | 정확 | 아티팩트 거버넌스 규칙 | 유지 |
