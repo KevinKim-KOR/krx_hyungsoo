@@ -8,6 +8,10 @@ asof: 2026-04-11
 
 | 경로 | 분류 | 상태 | 사유 | 조치 |
 |---|---|---|---|---|
+| `docs/README.md` | KEEP_CURRENT | 갱신 | docs 진입 허브 (3축 핵심 문서 중심, 2026-04-11 D4 재구성) | 유지 |
+| `docs/MASTER_PLAN_CURRENT.md` | KEEP_CURRENT | 신규 (2026-04-11 D3) | 현재 챕터 / Step / baseline / 최신 수치 / 다음 Step / 금지사항 단일 진실원 (3축 #1 전체 플랜) | 유지 |
+| `docs/analysis/STEP_RESULTS_INDEX.md` | KEEP_CURRENT | 신규 (2026-04-11 D3) | P204~현재 단계별 결과 인덱스 (3축 #2 단계별 성과) | 유지 |
+| `docs/handoff/HANDOFF_REQUIRED_FILES.md` | KEEP_CURRENT | 신규 (2026-04-11 D3) | 새 세션 진입 필수 읽기 목록 (3축 #3 인계 읽기) | 유지 |
 | `docs/structure_baseline.md` | KEEP_CURRENT | 정확 | 코드 구조 기준선, asof 2026-03-28 | 유지 |
 | `docs/SSOT/INVARIANTS.md` | KEEP_CURRENT | 정확 | 불변 원칙 6개 모두 유효 | 유지 |
 | `docs/SSOT/DECISIONS.md` | KEEP_CURRENT | 정확 | 아키텍처 결정 6개 코드 반영됨 | 유지 |

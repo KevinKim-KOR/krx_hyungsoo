@@ -1,6 +1,6 @@
 # 문서 거버넌스 (Documentation Governance)
 
-asof: 2026-04-09
+asof: 2026-04-11
 
 ## 문서 분류 체계
 
@@ -42,12 +42,34 @@ docs/ 내 모든 문서는 아래 4종 중 하나로 분류한다.
 
 | 문서 | 역할 |
 |---|---|
+| `docs/README.md` | docs 진입 허브 (3축 핵심 문서로 유도) |
+| `docs/MASTER_PLAN_CURRENT.md` | 3축 #1 — 현재 챕터 / 운영 baseline / 금지사항 / 다음 Step |
+| `docs/analysis/STEP_RESULTS_INDEX.md` | 3축 #2 — P204~현재 단계별 결과 인덱스 |
+| `docs/handoff/HANDOFF_REQUIRED_FILES.md` | 3축 #3 — 새 세션 진입 필수 읽기 목록 |
 | `docs/structure_baseline.md` | 코드 구조 기준선 |
 | `docs/SSOT/INVARIANTS.md` | 시스템 불변 원칙 6개 |
 | `docs/SSOT/DECISIONS.md` | 아키텍처 결정 기록 |
 | `docs/contracts/contracts_index.md` | 계약 문서 색인 |
 | `docs/docs_governance.md` | 문서 거버넌스 (이 문서) |
 | `docs/docs_inventory.md` | 문서 분류표 |
+
+---
+
+## 3축 핵심 문서 관리 규칙 (2026-04-11 신설)
+
+새 세션 진입용 핵심 문서는 아래 3축으로만 관리한다. 이 외 문서는 top-level `docs/` 에 추가하지 않는다.
+
+| 축 | 문서 | 갱신 시점 |
+|---|---|---|
+| 1. 전체 플랜 | `docs/MASTER_PLAN_CURRENT.md` | 현재 챕터 / Step 변경 시, 매 Step 종료 시 |
+| 2. 단계별 성과 | `docs/analysis/STEP_RESULTS_INDEX.md` | 모든 Step 종료 시 (1행 추가/갱신) |
+| 3. 인계 읽기 | `docs/handoff/HANDOFF_REQUIRED_FILES.md` | 챕터 변경 시 (Current Chapter Read 섹션 갱신) |
+
+필수 원칙:
+
+- top-level `docs/` 는 최소 집합만 유지 — 설계/성과 문서는 `analysis/`, closeout/인계는 `handoff/` 로 보낸다
+- Current Truth 와 audit memo (`readme_claude.md`, `readme_gpt.md` 등 세션 감사 메모) 를 구분한다 — audit memo 는 장기 운영 기준 문서로 승격하지 않는다
+- closeout 문서를 current truth 로 읽지 않는다 — 3축 문서가 우선
 
 ---
 
