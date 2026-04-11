@@ -7,6 +7,23 @@ P209-STEP9A drawdown 분석 결과를 markdown / json / csv 로 출력한다.
 
 단일 책임: analyses (List[Dict]) → drawdown_contribution_report.md/.json/.csv
 R2 단계에서 drawdown_contribution.py god module 에서 분리된 모듈.
+
+## R5v2 fallback 정책 — 모듈 레벨 whitelist
+
+이 모듈은 **display rendering 전담** 이다. 모든 `.get(k, default)` 호출은
+아래 2가지 카테고리 중 하나로 whitelist 된다:
+
+1. **CSV row 구성**: analyses 의 필드 (role, ticker, contribution_to_nav_pct,
+   days_in_portfolio 등) 는 analyze_variant 에서 대부분 설정되지만, optional
+   하위 필드는 display 용 `'N/A'`/`'-'`/`0` 기본값 허용.
+
+2. **Markdown 렌더링**: `| {w.get('mdd_pct', 'N/A')}%` 등은 NO_DATA 경로
+   (mdd_window=None → {}) 에서 'N/A' 로 표시하기 위한 display fallback.
+   이는 silent bug 은닉이 아니라 "데이터 없음" 의 시각적 표현.
+
+필수 필드 (analyses 리스트의 각 분석 dict 에서 `label`, `max_positions`,
+`allocation_mode` 등 핵심 식별자) 는 직접 subscript 로 접근한다. 누락 시
+KeyError 로 즉시 실패.
 """
 
 from __future__ import annotations

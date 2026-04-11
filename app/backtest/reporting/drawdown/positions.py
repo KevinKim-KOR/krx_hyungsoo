@@ -64,6 +64,16 @@ def reconstruct_daily_positions(
         (양수=순매수 cost, 음수=순매도 proceeds).
         return attribution 시 이 값을 P&L에서 차감해야 순수 mark-to-market
         수익 기여만 남는다.
+
+    R5v2 whitelist (fallback 정책):
+    - 내부 mark-to-market 루프에는 `continue` skip 이 여러 곳에 있다. 모두
+      "ticker 가격 데이터가 없음 (delisted / not yet listed)" 이라는
+      legitimate 누락 케이스이며, 해당 ticker 의 당일 value 만 0 으로 집계
+      (전체 분석 중단하지 않음). 이는 silent bug 은닉이 아니라 "거래되지
+      않은 종목은 market value 가 0" 이라는 수학적 정의에 해당한다.
+    - `close_by_code.get(code)` None 반환: `_build_close_series` 가 가격
+      파일이 없는 ticker 를 반환하지 않으므로 정상. Explicit None check
+      으로 처리.
     """
     if not nav_history:
         return []

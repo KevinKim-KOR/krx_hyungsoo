@@ -7,6 +7,15 @@ P208-STEP8A holding_structure_compare.md / .csv / .json 생성 전담.
 
 단일 책임: sorted rows + errors → md/csv/json 3종 산출물
 R3 단계에서 holding_structure_compare.py god module 에서 분리된 모듈.
+
+## R5v2 fallback 정책 — 모듈 레벨 whitelist
+
+이 모듈은 **display rendering 전담** 이다. `r.get('rank', '-')`, `r.get(
+'sharpe', None)` 등의 모든 `.get(k, default)` 호출은 sweep.py 에서 구성된
+row dict 의 필드를 읽어 markdown 테이블 셀로 렌더링하기 위한 display fallback
+이다. 각 row 는 sweep.py 의 직접 dict literal 로 만들어지므로 필드 누락이
+현실적으로 발생하지 않지만, 방어적으로 `'-'` / `'ERR'` 같은 display placeholder
+를 사용한다.
 """
 
 from __future__ import annotations

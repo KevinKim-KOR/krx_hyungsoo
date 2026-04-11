@@ -4,23 +4,27 @@
 app/backtest/reporting/evidence_writer.py — dynamic_evidence_latest.md 렌더러
 
 P206/P207/P208/P209 챕터의 evidence md 섹션을 통합 생성한다. 각 섹션은 순수
-함수로 분리되어 있으며 입력 데이터만 받아 문자열 리스트를 반환한다. 최종
-출력은 `\\n` 으로 join 하여 단일 markdown 파일로 저장된다.
+함수로 분리되어 있으며 입력 데이터만 받아 문자열 리스트를 반환한다.
 
-R1 단계 원칙:
-- run_backtest.py 의 inline f-string blob 을 순수 추출한다
-- **byte-level 보존**: 생성 markdown 의 내용/순서/공백이 refactor 이전과 완전 일치
-  (유일한 허용 차이는 `generated_at:` 타임스탬프)
-- R1 은 fallback / 구조 개선이 아니라 '추출' 만 한다. 기존 silent fallback
-  (`_fv = {}` 등) 동작은 그대로 유지. R5 에서 감사 예정.
+## R5v2 fallback 정책 (rule 6/7 전수 적용)
 
-호출:
-    from app.backtest.reporting.evidence_writer import write_dynamic_evidence
-    write_dynamic_evidence(
-        formatted=formatted,
-        raw_result=result,
-        project_root=PROJECT_ROOT,
-    )
+이 모듈의 모든 `.get(k, default)` 와 `or {}`/`or []` 는 다음 4개 카테고리
+중 하나로 분류된다. 각 호출 위치에 카테고리 주석이 명시되어 있다.
+
+1. **REQUIRED**: BacktestRunner.run / format_result / meta_builder 가 반드시
+   설정하는 필드. 누락 = 데이터 손상. `bt_meta["key"]` 직접 subscript,
+   누락 시 KeyError raise.
+
+2. **OPTIONAL**: legitimate 하게 None/empty 일 수 있는 필드. 예: hybrid regime
+   이 disabled 면 `_exo_regime_result` 는 None. 명시적 `if x is None: ...`
+   분기로 처리. `or {}`/`or []` 금지.
+
+3. **DISPLAY (whitelist)**: 사용자에게 보여주는 markdown 출력에서 optional
+   파일/필드가 누락된 경우 `'N/A'`/`0` 등으로 표시. 이는 파일 로드 실패 등
+   정상 케이스를 포함하며 silent bug 가 아니다. 각 호출에
+   `# R5 whitelist: display fallback` 주석 명시.
+
+4. **ACCUMULATOR**: `lines: List = []` 등 초기화 패턴. fallback 이 아님.
 """
 
 from __future__ import annotations
@@ -45,9 +49,11 @@ def write_dynamic_evidence(
     """dynamic_evidence_latest.md 를 생성하고 저장한다.
 
     Args:
-        formatted: format_result 반환값 (summary, meta)
-        raw_result: run_backtest 원본 반환값 (_exo_regime_result,
-            _allocation_rebalance_trace, _drawdown_contribution_analyses)
+        formatted: format_result 반환값 (summary, meta 필수)
+        raw_result: run_backtest 원본 반환값. 아래 optional 필드들을 포함:
+            - `_exo_regime_result`: Optional[Dict] (regime 미적용 시 None)
+            - `_allocation_rebalance_trace`: Optional[List] (P207 미적용 시 None)
+            - `_drawdown_contribution_analyses`: Optional[List] (P209 미실행 시 None)
         project_root: 프로젝트 루트 — reports/tuning 경로 해석용
         output_path: 미지정 시 project_root/reports/tuning/dynamic_evidence_latest.md
 
@@ -58,8 +64,7 @@ def write_dynamic_evidence(
     if output_path is None:
         output_path = ev_dir / "dynamic_evidence_latest.md"
 
-    # R5 (fallback 제거): summary/meta 는 format_result 가 반드시 설정하는
-    # 필수 필드이므로 누락 시 KeyError raise.
+    # ── REQUIRED: format_result 가 반드시 설정하는 필드 ──
     if "summary" not in formatted:
         raise KeyError(
             "write_dynamic_evidence: formatted 에 'summary' 누락"
@@ -70,33 +75,78 @@ def write_dynamic_evidence(
     bt_summary = formatted["summary"]
     bt_meta = formatted["meta"]
 
-    # R5 whitelist: hybrid_regime_verdict / promotion_verdict 는 별도 파이프라인이
-    # 생성하는 optional 파일이다. 파일이 없거나 비어있으면 {} 를 반환하고
-    # 하위 섹션 렌더러가 'N/A' 문자열로 표시한다. 이는 silent fallback 이
-    # 아니라 "display 용 optional 데이터 로드" 이므로 R5 에서 유지한다.
+    # ── OPTIONAL: 별도 파이프라인 생성 산출물 (누락 가능) ──
+    # hybrid_regime_verdict_latest.json: hybrid regime 엔진이 생성
+    # promotion_verdict.json: tuning/promotion 엔진이 생성
+    # 둘 다 optional — 파일 없으면 section renderer 가 'N/A' 로 표시
     hybrid_verdict = _load_json_if_exists(ev_dir / "hybrid_regime_verdict_latest.json")
     promotion_verdict = _load_json_if_exists(ev_dir / "promotion_verdict.json")
 
     generated_at = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
-    cagr_v = bt_summary.get("cagr")
-    mdd_v = bt_summary.get("mdd")
+    # ── REQUIRED: summary 의 숫자 필드 ──
+    # format_result 가 반드시 설정 (None 일 수 있지만 키는 존재)
+    if "cagr" not in bt_summary:
+        raise KeyError("write_dynamic_evidence: summary 에 'cagr' 누락")
+    if "mdd" not in bt_summary:
+        raise KeyError("write_dynamic_evidence: summary 에 'mdd' 누락")
+    cagr_v = bt_summary["cagr"]
+    mdd_v = bt_summary["mdd"]
     cagr_ok = "YES" if cagr_v is not None and cagr_v > 15 else "NO"
     mdd_ok = "YES" if mdd_v is not None and mdd_v < 10 else "NO"
+
+    # promotion_verdict 는 OPTIONAL 파일 — 파일 없거나 verdict 키 없으면 'N/A'
+    # R5 whitelist: display fallback (optional 파일 미존재 / 부분 데이터)
     verdict_str = promotion_verdict.get("verdict", "N/A")
     conclusion = _build_conclusion(cagr_ok, mdd_ok)
 
-    exo_regime_result = raw_result.get("_exo_regime_result") or {}
-    allocation_trace = raw_result.get("_allocation_rebalance_trace", [])
-    dd_analyses = raw_result.get("_drawdown_contribution_analyses") or []
+    # ── OPTIONAL: raw_result 의 챕터별 optional 데이터 ──
+    # 명시적 None 체크. `or {}` / `or []` 사용 금지.
+    exo_raw = raw_result.get("_exo_regime_result")
+    exo_regime_result: Dict[str, Any] = exo_raw if exo_raw is not None else {}
+
+    allocation_trace_raw = raw_result.get("_allocation_rebalance_trace")
+    allocation_trace: List[Dict[str, Any]] = (
+        allocation_trace_raw if allocation_trace_raw is not None else []
+    )
+
+    dd_analyses_raw = raw_result.get("_drawdown_contribution_analyses")
+    dd_analyses: List[Dict[str, Any]] = (
+        dd_analyses_raw if dd_analyses_raw is not None else []
+    )
+
+    # ── REQUIRED: summary 의 optional-value 필드 (키는 필수) ──
+    if "sharpe" not in bt_summary:
+        raise KeyError("write_dynamic_evidence: summary 에 'sharpe' 누락")
+    if "total_return" not in bt_summary:
+        raise KeyError("write_dynamic_evidence: summary 에 'total_return' 누락")
+    sharpe_v = bt_summary["sharpe"]
+    total_return_v = bt_summary["total_return"]
 
     cagr_str = f"{cagr_v:.2f}%" if cagr_v is not None else "N/A"
     mdd_str = f"{mdd_v:.2f}%" if mdd_v is not None else "N/A"
-    sharpe_str = f"{bt_summary.get('sharpe', 0):.4f}"
-    total_return_v = bt_summary.get("total_return")
+    sharpe_str = f"{sharpe_v:.4f}" if sharpe_v is not None else "N/A"
     total_return_str = f"{total_return_v:.2f}%" if total_return_v is not None else "N/A"
 
-    # 섹션 조립 — 각 renderer 가 빈 리스트를 반환하면 해당 섹션은 skip
+    # ── REQUIRED: format_result 가 반드시 설정하는 meta 필드 ──
+    if "total_trades" not in bt_meta:
+        raise KeyError("write_dynamic_evidence: meta 에 'total_trades' 누락")
+    if "allocation_mode" not in bt_meta:
+        raise KeyError(
+            "write_dynamic_evidence: meta 에 'allocation_mode' 누락"
+            " (build_allocation_meta 가 반드시 설정)"
+        )
+    if "allocation_fallback_used" not in bt_meta:
+        raise KeyError(
+            "write_dynamic_evidence: meta 에 'allocation_fallback_used' 누락"
+        )
+    if "blocked_reason_totals" not in bt_meta:
+        raise KeyError(
+            "write_dynamic_evidence: meta 에 'blocked_reason_totals' 누락"
+            " (format_result 가 반드시 설정)"
+        )
+
+    # 섹션 조립 (ACCUMULATOR)
     sections: List[List[str]] = [
         _render_header(generated_at, bt_meta),
         _render_performance_section(
@@ -104,7 +154,7 @@ def write_dynamic_evidence(
             mdd_str=mdd_str,
             sharpe_str=sharpe_str,
             total_return_str=total_return_str,
-            total_trades=bt_meta.get("total_trades", "N/A"),
+            total_trades=bt_meta["total_trades"],
         ),
         _render_hybrid_regime_section(hybrid_verdict, exo_regime_result),
         _render_allocation_section(bt_meta, allocation_trace),
@@ -123,7 +173,7 @@ def write_dynamic_evidence(
     sections.append(_render_conclusion_section(conclusion))
     sections.append(_render_notes_section())
 
-    lines: List[str] = []
+    lines: List[str] = []  # ACCUMULATOR
     for i, section in enumerate(sections):
         if i > 0:
             lines.append("")
@@ -138,8 +188,9 @@ def write_dynamic_evidence(
 def _load_json_if_exists(path: Path) -> Dict[str, Any]:
     """JSON 파일 로드. 없으면 빈 dict 반환.
 
-    R1: 기존 run_backtest.py 의 silent fallback 패턴을 그대로 유지.
-    R5 의 fallback 감사에서 재검토 예정.
+    R5 whitelist: hybrid_regime_verdict / promotion_verdict 는 별도 파이프라인
+    생성물이다. 파일 없음은 "파이프라인 미실행" 정상 케이스이며, 이 경우
+    renderer 가 'N/A' 로 표시한다. 빈 dict 반환은 "파일 없음" 의 명시적 시그널.
     """
     if not path.exists():
         return {}
@@ -157,6 +208,9 @@ def _build_conclusion(cagr_ok: str, mdd_ok: str) -> str:
 
 # ─── 섹션 렌더러 ──────────────────────────────────────────────────────
 def _render_header(generated_at: str, bt_meta: Dict[str, Any]) -> List[str]:
+    # R5 whitelist: display fallback — universe_mode/asof 는 format_result 가
+    # 보통 설정하지만 일부 경로 (tuning 내부 호출 등) 에서 누락 가능.
+    # 사용자 display 용이므로 '?' 표시 허용.
     return [
         "# Dynamic Evidence Latest",
         "",
@@ -190,11 +244,19 @@ def _render_hybrid_regime_section(
     hybrid_verdict: Dict[str, Any],
     exo_regime_result: Dict[str, Any],
 ) -> List[str]:
+    # R5 whitelist: display fallback
+    # exo_regime_result 가 {} 인 경우 hybrid regime 이 미적용된 것이며,
+    # 이 섹션의 숫자들은 정책 기본값 으로 표시된다. `_exo_regime_result` 필드가
+    # 존재하지 않는 run 에서는 어차피 이 섹션을 렌더링할 이유가 없지만,
+    # legacy / 일부 경로 호환을 위해 기본값 허용.
     ev_nrp = int(exo_regime_result.get("neutral_risky_pct", 0.35) * 100)
     ev_ndp = int(exo_regime_result.get("neutral_dollar_pct", 0.20) * 100)
     ev_ncp = 100 - ev_nrp - ev_ndp
     ev_rdp = int(exo_regime_result.get("riskoff_dollar_pct", 0.50) * 100)
     ev_rcp = 100 - ev_rdp
+
+    # R5 whitelist: display fallback — hybrid_verdict 는 optional 파일이라
+    # 필드 누락 시 'N/A' 표시. _load_json_if_exists 의 빈 dict 도 포함.
     return [
         "## Hybrid Regime",
         "| Field | Value |",
@@ -227,14 +289,30 @@ def _render_allocation_section(
     bt_meta: Dict[str, Any],
     allocation_trace: List[Dict[str, Any]],
 ) -> List[str]:
-    alloc_params = bt_meta.get("allocation_params") or {}
+    # REQUIRED: build_allocation_meta 가 항상 설정 (R5 에서 raise 처리됨)
+    allocation_mode = bt_meta["allocation_mode"]
+    allocation_fallback_used = bt_meta["allocation_fallback_used"]
+
+    # OPTIONAL: allocation_experiment_name/params 는 non-dynamic 모드에서 None
+    # 명시적 None 체크로 display 변환
+    exp_name = bt_meta.get("allocation_experiment_name")
+    exp_name_display = exp_name if exp_name is not None else "N/A"
+
+    alloc_params_raw = bt_meta.get("allocation_params")
+    alloc_params: Dict[str, Any] = (
+        alloc_params_raw if alloc_params_raw is not None else {}
+    )
+
+    # R5 whitelist: display fallback — alloc_params 가 {} (non-dynamic) 이거나
+    # 일부 mode (equal_weight) 에서 weight_floor/cap/vol_lookback 이 없음.
+    # 'N/A' 표시는 "해당 mode 에서 사용되지 않음" 의미.
     return [
         "## Allocation",
         "| Field | Value |",
         "|---|---|",
-        f"| Mode | {bt_meta.get('allocation_mode', 'dynamic_equal_weight')} |",
-        f"| Experiment Name |" f" {bt_meta.get('allocation_experiment_name', 'N/A')} |",
-        f"| Fallback Used | {bt_meta.get('allocation_fallback_used', False)} |",
+        f"| Mode | {allocation_mode} |",
+        f"| Experiment Name | {exp_name_display} |",
+        f"| Fallback Used | {allocation_fallback_used} |",
         f"| Weight Floor | {alloc_params.get('weight_floor', 'N/A')} |",
         f"| Weight Cap | {alloc_params.get('weight_cap', 'N/A')} |",
         f"| Vol Lookback | {alloc_params.get('volatility_lookback', 'N/A')} |",
@@ -246,24 +324,54 @@ def _render_holding_structure_section(
     bt_meta: Dict[str, Any],
     verdict_str: str,
 ) -> List[str]:
-    blocked_totals = bt_meta.get("blocked_reason_totals") or {}
+    # REQUIRED: format_result 가 항상 설정
+    if "holding_structure_max_positions" not in bt_meta:
+        raise KeyError(
+            "_render_holding_structure_section: meta 에"
+            " 'holding_structure_max_positions' 누락"
+        )
+    if "avg_held_positions" not in bt_meta:
+        raise KeyError(
+            "_render_holding_structure_section: meta 에 'avg_held_positions' 누락"
+        )
+    if "max_held_positions_observed" not in bt_meta:
+        raise KeyError(
+            "_render_holding_structure_section: meta 에"
+            " 'max_held_positions_observed' 누락"
+        )
+    if "rebalances_with_more_than_2_candidates" not in bt_meta:
+        raise KeyError(
+            "_render_holding_structure_section: meta 에"
+            " 'rebalances_with_more_than_2_candidates' 누락"
+        )
+    if "turnover_proxy" not in bt_meta:
+        raise KeyError(
+            "_render_holding_structure_section: meta 에 'turnover_proxy' 누락"
+        )
+
+    blocked_totals = bt_meta["blocked_reason_totals"]
+    # R5 whitelist: display fallback — blocked_reason_totals 는 항상 dict 이지만
+    # BLOCKED_MAX_POSITIONS 는 0번 발생한 경우 키가 없을 수 있다 (정상).
     blocked_max_pos = blocked_totals.get("BLOCKED_MAX_POSITIONS", 0)
-    hs_name = bt_meta.get("holding_structure_experiment_name") or "N/A"
+
+    # OPTIONAL: holding_structure_experiment_name 은 SSOT 매칭 실패 시 None
+    hs_name = bt_meta.get("holding_structure_experiment_name")
+    hs_name_display = hs_name if hs_name is not None else "N/A"
+
     return [
         "## Holding Structure (P208-STEP8A)",
         "| Field | Value |",
         "|---|---|",
-        f"| Holding Structure Experiment | {hs_name} |",
-        f"| Max Positions |"
-        f" {bt_meta.get('holding_structure_max_positions', 'N/A')} |",
-        f"| Allocation Mode | {bt_meta.get('allocation_mode', 'N/A')} |",
-        f"| Avg Held Positions | {bt_meta.get('avg_held_positions', 0.0)} |",
+        f"| Holding Structure Experiment | {hs_name_display} |",
+        f"| Max Positions |" f" {bt_meta['holding_structure_max_positions']} |",
+        f"| Allocation Mode | {bt_meta['allocation_mode']} |",
+        f"| Avg Held Positions | {bt_meta['avg_held_positions']} |",
         f"| Max Held Positions Observed |"
-        f" {bt_meta.get('max_held_positions_observed', 0)} |",
+        f" {bt_meta['max_held_positions_observed']} |",
         f"| Rebalances With >2 Candidates |"
-        f" {bt_meta.get('rebalances_with_more_than_2_candidates', 0)} |",
+        f" {bt_meta['rebalances_with_more_than_2_candidates']} |",
         f"| Blocked By Max Positions | {blocked_max_pos} |",
-        f"| Turnover Proxy | {bt_meta.get('turnover_proxy', 0.0)} |",
+        f"| Turnover Proxy | {bt_meta['turnover_proxy']} |",
         f"| Verdict | {verdict_str} |",
     ]
 
@@ -274,25 +382,40 @@ def _render_drawdown_contribution_section(
     if not dd_analyses:
         return []
 
+    # dd_analyses 는 항상 [A, B] 두 variant. analyze_variant 가 반환하는
+    # 구조이며, 필수 필드는 pipeline.analyze_variant 에서 보장된다.
     a_an = dd_analyses[0] if len(dd_analyses) > 0 else {}
     b_an = dd_analyses[1] if len(dd_analyses) > 1 else {}
-    a_w = a_an.get("mdd_window") or {}
-    b_w = b_an.get("mdd_window") or {}
-    a_qs = a_an.get("selection_quality_summary") or {}
-    b_qs = b_an.get("selection_quality_summary") or {}
-    a_top = a_an.get("top_ticker_contributors_to_mdd") or []
-    b_top = b_an.get("top_ticker_contributors_to_mdd") or []
-    a_worst = a_an.get("worst_selection_events") or []
-    b_worst = b_an.get("worst_selection_events") or []
 
-    a_toxic_set = {r.get("ticker") for r in a_top[:5]}
-    b_toxic_set = {r.get("ticker") for r in b_top[:5]}
+    # OPTIONAL: mdd_window/selection_quality_summary 는 NO_DATA 경로에서 None
+    # 명시적 None → {} 치환 (display 용)
+    a_mdd_window = a_an.get("mdd_window")
+    b_mdd_window = b_an.get("mdd_window")
+    a_w: Dict[str, Any] = a_mdd_window if a_mdd_window is not None else {}
+    b_w: Dict[str, Any] = b_mdd_window if b_mdd_window is not None else {}
+
+    a_sqs = a_an.get("selection_quality_summary")
+    b_sqs = b_an.get("selection_quality_summary")
+    a_qs: Dict[str, Any] = a_sqs if a_sqs is not None else {}
+    b_qs: Dict[str, Any] = b_sqs if b_sqs is not None else {}
+
+    # OPTIONAL (default []): top_ticker_contributors_to_mdd / worst_selection_events
+    # analyze_variant 가 항상 list 를 반환 (빈 [] 포함) → 직접 subscript
+    a_top = a_an["top_ticker_contributors_to_mdd"]
+    b_top = b_an["top_ticker_contributors_to_mdd"]
+    a_worst = a_an["worst_selection_events"]
+    b_worst = b_an["worst_selection_events"]
+
+    a_toxic_set = {r["ticker"] for r in a_top[:5] if "ticker" in r}
+    b_toxic_set = {r["ticker"] for r in b_top[:5] if "ticker" in r}
     common = sorted(t for t in (a_toxic_set & b_toxic_set) if t)
     common_str = ", ".join(common) if common else "(no common)"
 
-    a_gap = a_qs.get("avg_selection_gap_pct")
+    a_gap = a_qs.get("avg_selection_gap_pct")  # may be None
     b_gap = b_qs.get("avg_selection_gap_pct")
 
+    # R5 whitelist: display fallback — a_w/a_qs 가 빈 dict 인 NO_DATA 경로에서
+    # 각 필드는 'N/A'/0 으로 표시. 이는 NO_DATA 의 명시적 표현.
     return [
         "## Drawdown Contribution (P209-STEP9A)",
         "| Field | A (Operational) | B (Compared) |",
@@ -338,6 +461,8 @@ def _render_drawdown_contribution_section(
 def _fmt_top_toxic(top_list: List[Dict[str, Any]]) -> str:
     if not top_list:
         return "N/A"
+    # R5 whitelist: display fallback — ticker/contribution 필드는 analyze_variant
+    # 에서 항상 설정되지만 방어적으로 .get 사용 (display 용)
     return ", ".join(
         f"{r.get('ticker')}({r.get('contribution_to_nav_pct')}%)" for r in top_list[:3]
     )
@@ -347,6 +472,7 @@ def _fmt_worst_event(evts: List[Dict[str, Any]]) -> str:
     if not evts:
         return "N/A"
     e = evts[0]
+    # R5 whitelist: display fallback
     g = e.get("selection_gap_pct")
     g_str = f" gap={g}%p" if g is not None else ""
     return (
@@ -364,6 +490,8 @@ def _render_last_rebalance_trace_section(
         return []
 
     last_t = allocation_trace[-1]
+    # R5 whitelist: display fallback — trace 내부 필드는 P207 이 항상 설정
+    # 하지만 일부 optional (raw_vols 는 risk_aware mode 만) 이므로 .get 사용.
     lines = [
         "### Last Rebalance Trace",
         f"- date: {last_t.get('date', 'N/A')}",
@@ -371,10 +499,17 @@ def _render_last_rebalance_trace_section(
         f"- fallback: {last_t.get('fallback_used', False)}",
     ]
 
-    raw_vols = last_t.get("raw_vols", {})
-    pre_cap = last_t.get("pre_cap_weights", {})
-    post_cap = last_t.get("post_cap_weights", {})
-    final_w = last_t.get("final_weights", {})
+    # OPTIONAL: raw_vols 는 risk_aware_equal_weight_v1 모드에서만 설정됨
+    # pre_cap_weights / post_cap_weights / final_weights 도 동일
+    raw_vols_raw = last_t.get("raw_vols")
+    pre_cap_raw = last_t.get("pre_cap_weights")
+    post_cap_raw = last_t.get("post_cap_weights")
+    final_w_raw = last_t.get("final_weights")
+    raw_vols: Dict[str, float] = raw_vols_raw if raw_vols_raw is not None else {}
+    pre_cap: Dict[str, float] = pre_cap_raw if pre_cap_raw is not None else {}
+    post_cap: Dict[str, float] = post_cap_raw if post_cap_raw is not None else {}
+    final_w: Dict[str, float] = final_w_raw if final_w_raw is not None else {}
+
     if not (raw_vols or final_w):
         return lines
 
@@ -383,19 +518,27 @@ def _render_last_rebalance_trace_section(
         "| Code | Raw Score | Raw Vol | Pre-Cap W | Post-Cap W | Final W |",
         "|---|---|---|---|---|---|",
     ]
-    raw_scores = last_t.get("raw_scores", {})
+    raw_scores_raw = last_t.get("raw_scores")
+    raw_scores: Dict[str, float] = raw_scores_raw if raw_scores_raw is not None else {}
     for tc in final_w:
         rv = raw_vols.get(tc)
         rv_s = f"{rv:.4f}" if rv is not None else "N/A"
         rs = raw_scores.get(tc)
         rs_s = f"{rs:.4f}" if rs is not None else "N/A"
+        # R5 whitelist: display fallback — weight 는 "해당 ticker 가 cap
+        # 스테이지에 포함되지 않았을 때 0" 이라는 정확한 semantic 이다.
+        # 즉 `pre_cap.get(tc, 0)` 의 0 은 "값이 없어서 default" 가 아니라
+        # "그 스테이지에서 weight=0 이었음" 의 정확한 수학적 표현.
+        pre_cap_val = pre_cap.get(tc, 0)
+        post_cap_val = post_cap.get(tc, 0)
+        final_w_val = final_w.get(tc, 0)
         lines.append(
             f"| {tc}"
             f" | {rs_s}"
             f" | {rv_s}"
-            f" | {pre_cap.get(tc, 0):.4f}"
-            f" | {post_cap.get(tc, 0):.4f}"
-            f" | {final_w.get(tc, 0):.4f} |"
+            f" | {pre_cap_val:.4f}"
+            f" | {post_cap_val:.4f}"
+            f" | {final_w_val:.4f} |"
         )
     return lines
 

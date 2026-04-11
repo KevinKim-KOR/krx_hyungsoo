@@ -97,29 +97,53 @@ def run_allocation_constraint_sweep(
                 run_mode="experiment",
             )
             es = ef["summary"]
-            ec = es.get("cagr")
-            em = es.get("mdd")
+            # R5v2: summary 의 cagr/mdd/sharpe 는 format_result 가 항상 키를
+            # 설정하지만 값은 None 일 수 있음 (계산 실패). explicit None check.
+            ec = es["cagr"]  # Optional[float]
+            em = es["mdd"]  # Optional[float]
+            sharpe_v = es["sharpe"]  # Optional[float]
+            # REQUIRED: allocation_fallback_used 는 build_allocation_meta 에서
+            # 보장. ef["meta"] 는 format_result 결과이므로 total_trades 도 필수.
+            if "allocation_fallback_used" not in ef["meta"]:
+                raise KeyError(
+                    f"run_allocation_constraint_sweep: {eid} meta 에"
+                    " 'allocation_fallback_used' 누락"
+                )
+            if "total_trades" not in ef["meta"]:
+                raise KeyError(
+                    f"run_allocation_constraint_sweep: {eid} meta 에"
+                    " 'total_trades' 누락"
+                )
+            # R5 whitelist: display dict 구성 — ea 는 allocation 블록이며
+            # mode/weight_floor/weight_cap 는 experiment 별로 있을 수도/없을 수도
+            # (equal_weight 는 weight_floor/cap 없음). explicit None 허용.
             exp_results.append(
                 {
                     "experiment_id": eid,
-                    "mode": ea.get("mode"),
-                    "weight_floor": ea.get("weight_floor"),
-                    "weight_cap": ea.get("weight_cap"),
-                    "CAGR": round(ec, 4) if ec else None,
-                    "MDD": round(em, 4) if em else None,
-                    "Sharpe": round(es.get("sharpe", 0), 4),
-                    "trades": ef["meta"].get("total_trades", 0),
-                    "fallback_used": er.get("allocation_fallback_used", False),
+                    "mode": ea.get("mode"),  # explicit None if missing
+                    "weight_floor": ea.get("weight_floor"),  # explicit None
+                    "weight_cap": ea.get("weight_cap"),  # explicit None
+                    "CAGR": round(ec, 4) if ec is not None else None,
+                    "MDD": round(em, 4) if em is not None else None,
+                    "Sharpe": (round(sharpe_v, 4) if sharpe_v is not None else None),
+                    "trades": ef["meta"]["total_trades"],
+                    "fallback_used": ef["meta"]["allocation_fallback_used"],
                     "verdict": allocation_experiment_verdict(ec, em),
                 }
             )
-            logger.info(f"[P207-SWEEP] {eid}:" f" CAGR={ec:.2f} MDD={em:.2f}")
+            logger.info(
+                f"[P207-SWEEP] {eid}:"
+                f" CAGR={'N/A' if ec is None else f'{ec:.2f}'}"
+                f" MDD={'N/A' if em is None else f'{em:.2f}'}"
+            )
         except Exception as eexc:
             logger.warning(f"[P207-SWEEP] {eid} 실패: {eexc}")
+            # R5 whitelist: error row 에는 mode 를 display 목적으로 기록
+            # (ea 가 None 인 예외 경로 포함 → explicit None check)
             exp_results.append(
                 {
                     "experiment_id": eid,
-                    "mode": ea.get("mode") if ea else "?",
+                    "mode": ea["mode"] if ea is not None and "mode" in ea else "?",
                     "error": str(eexc),
                 }
             )
@@ -129,7 +153,12 @@ def run_allocation_constraint_sweep(
 
     # 정렬 + rank 부여 (원본 inline 과 동일 로직)
     sorted_valid = [r for r in exp_results if "error" not in r]
-    sorted_valid.sort(key=lambda x: x.get("Sharpe") or -999, reverse=True)
+    # R5 whitelist: Sharpe 가 None 인 행은 정렬 우선순위 최하로 보낸다
+    # (`or -999` 는 None → -999 sentinel 로 변환하는 명시적 정렬 키)
+    sorted_valid.sort(
+        key=lambda x: x["Sharpe"] if x["Sharpe"] is not None else -999,
+        reverse=True,
+    )
     for i, r in enumerate(sorted_valid):
         r["rank"] = i + 1
     errors = [r for r in exp_results if "error" in r]

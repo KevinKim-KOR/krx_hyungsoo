@@ -105,7 +105,8 @@ def analyze_variant(
     # 상위 toxic = 기여도가 가장 음수인 5개
     top_toxic = [c for c in contribs if c["contribution_to_nav_pct"] < 0][:5]
     # 최악 선택 이벤트 top 5 (worst ticker 기준 가장 큰 손실)
-    worst_events = sorted(sel_events, key=lambda e: e.get("worst_return_pct", 0.0))[:5]
+    # R5v2: compute_selection_quality 는 worst_return_pct 를 항상 설정
+    worst_events = sorted(sel_events, key=lambda e: e["worst_return_pct"])[:5]
 
     return {
         "label": label,
@@ -271,31 +272,41 @@ def _build_main_meta_injection(
 ) -> Dict[str, Any]:
     """A 분석의 핵심 필드 + A/B 비교 요약을 main result meta에 주입할 형태로 반환.
 
-    R5 (fallback 정책): mdd_window 와 selection_quality_summary 는 analyze_variant
-    에서 None 일 수 있다 (window 없음 / events 없음 = NO_DATA 경로). 이 함수는
-    "display 용 meta injection" 이므로 None → `{}` 치환은 silent fallback 이
-    아니라 **명시적 NO_DATA 처리**다 (`.get()` 호출이 AttributeError 없이
-    자연스럽게 None 을 전파하도록 하는 가드). 이 한 곳은 R5 whitelist 로 유지.
+    R5v2 fallback 정책:
+    - `mdd_window` 와 `selection_quality_summary` 는 analyze_variant 가
+      NO_DATA 경로 (window 없음 / events 없음) 에서 None 으로 설정한다.
+    - 여기서는 하위 `.get(k)` 호출이 AttributeError 를 일으키지 않도록
+      명시적 if-else 로 `None → {}` 변환 (R5 whitelist: display meta).
+    - `or {}` 패턴 대신 명시 분기로 "None 이 legitimate NO_DATA 시그널" 임을
+      독자가 즉시 알 수 있게 한다.
     """
-    # R5 whitelist: None → {} 는 NO_DATA 경로의 명시적 처리 (display meta)
-    a_w = a_analysis.get("mdd_window") or {}
-    b_w = b_analysis.get("mdd_window") or {}
-    a_qs = a_analysis.get("selection_quality_summary") or {}
-    b_qs = b_analysis.get("selection_quality_summary") or {}
+    # R5v2: 명시적 None 분기 (or {} 금지)
+    a_mdd_window = a_analysis["mdd_window"]  # Optional[Dict]
+    b_mdd_window = b_analysis["mdd_window"]
+    a_w: Dict[str, Any] = a_mdd_window if a_mdd_window is not None else {}
+    b_w: Dict[str, Any] = b_mdd_window if b_mdd_window is not None else {}
+
+    a_sqs = a_analysis["selection_quality_summary"]  # Optional[Dict]
+    b_sqs = b_analysis["selection_quality_summary"]
+    a_qs: Dict[str, Any] = a_sqs if a_sqs is not None else {}
+    b_qs: Dict[str, Any] = b_sqs if b_sqs is not None else {}
     return {
         "drawdown_peak_date": a_w.get("peak_date"),
         "drawdown_trough_date": a_w.get("trough_date"),
-        "mdd_window_length": a_w.get("window_length_days"),
-        "top_ticker_contributors_to_mdd": a_analysis.get(
-            "top_ticker_contributors_to_mdd", []
-        ),
+        # analyze_variant 는 이들 필드를 항상 설정한다 (빈 list/dict 포함).
+        # 따라서 직접 subscript. 누락 시 KeyError = 데이터 손상.
+        "mdd_window_length": a_w.get(
+            "window_length_days"
+        ),  # R5 whitelist: a_w 가 {} 인 NO_DATA 경로에서 None
+        "top_ticker_contributors_to_mdd": a_analysis["top_ticker_contributors_to_mdd"],
         "selection_quality_summary": a_qs,
-        "selection_quality_verdict": a_analysis.get("selection_quality_verdict", "N/A"),
-        "worst_selection_events": a_analysis.get("worst_selection_events", []),
-        "bucket_risk_summary": a_analysis.get("bucket_risk_summary", {}),
+        "selection_quality_verdict": a_analysis["selection_quality_verdict"],
+        "worst_selection_events": a_analysis["worst_selection_events"],
+        "bucket_risk_summary": a_analysis["bucket_risk_summary"],
         "drawdown_analysis_comparison": {
-            "operational_baseline_label": a_analysis.get("label"),
-            "operational_baseline_verdict": a_analysis.get("selection_quality_verdict"),
+            "operational_baseline_label": a_analysis["label"],
+            "operational_baseline_verdict": a_analysis["selection_quality_verdict"],
+            # R5 whitelist: a_qs 가 {} 인 NO_EVENTS 경로에서 None 반환 (display)
             "operational_avg_selection_gap_pct": a_qs.get("avg_selection_gap_pct"),
             "operational_mdd_pct": a_w.get("mdd_pct"),
             "operational_positive_forward_ratio": a_qs.get("positive_forward_ratio"),
@@ -303,8 +314,8 @@ def _build_main_meta_injection(
             "operational_events_with_better_unselected": a_qs.get(
                 "events_with_better_unselected"
             ),
-            "research_baseline_label": b_analysis.get("label"),
-            "research_baseline_verdict": b_analysis.get("selection_quality_verdict"),
+            "research_baseline_label": b_analysis["label"],
+            "research_baseline_verdict": b_analysis["selection_quality_verdict"],
             "research_avg_selection_gap_pct": b_qs.get("avg_selection_gap_pct"),
             "research_mdd_pct": b_w.get("mdd_pct"),
             "research_positive_forward_ratio": b_qs.get("positive_forward_ratio"),
@@ -312,13 +323,9 @@ def _build_main_meta_injection(
             "research_events_with_better_unselected": b_qs.get(
                 "events_with_better_unselected"
             ),
-            # B군 요약 — UI side-by-side 표시용
-            "research_top_toxic_tickers": b_analysis.get(
-                "top_ticker_contributors_to_mdd", []
-            ),
-            "research_worst_selection_events": b_analysis.get(
-                "worst_selection_events", []
-            ),
-            "research_bucket_risk_summary": b_analysis.get("bucket_risk_summary", {}),
+            # B군 요약 — UI side-by-side 표시용 (analyze_variant 항상 설정)
+            "research_top_toxic_tickers": b_analysis["top_ticker_contributors_to_mdd"],
+            "research_worst_selection_events": b_analysis["worst_selection_events"],
+            "research_bucket_risk_summary": b_analysis["bucket_risk_summary"],
         },
     }

@@ -24,12 +24,30 @@ def compute_bucket_risk(
 
     dynamic_etf_market 모드에서는 실제 거래 종목이 buckets universe에 없을 수
     있으므로, 매칭 안 되는 종목은 'dynamic_pool'로 분류한다.
+
+    R5v2 fallback 정책:
+    - buckets: None 이거나 빈 리스트 가능 (legitimate, dynamic_etf_market 모드)
+    - bucket dict 의 name/universe: param_loader 에서 검증된 SSOT → 직접 subscript
+    - ticker_contribs row 의 필드: compute_ticker_contributions 가 항상 설정
+      → 직접 subscript
+    - tk_to_bucket.get(code, "dynamic_pool"): 매칭 없으면 'dynamic_pool' 로
+      분류 (R5 whitelist: 의도된 기본 분류 bucket, silent bug 아님)
     """
+    # buckets 는 None 이나 빈 리스트일 수 있음 (명시적 None check)
     tk_to_bucket: Dict[str, str] = {}
-    for b in buckets or []:
-        name = b.get("name", "unknown")
-        for tk in b.get("universe", []) or []:
-            tk_to_bucket[tk] = name
+    if buckets is not None:
+        for b in buckets:
+            # bucket 스키마는 param_loader 가 검증 → name/universe 필수
+            if "name" not in b:
+                raise KeyError(
+                    "compute_bucket_risk: bucket 에 'name' 누락"
+                    " (param_loader 가 검증했어야 함)"
+                )
+            if "universe" not in b:
+                raise KeyError("compute_bucket_risk: bucket 에 'universe' 누락")
+            name = b["name"]
+            for tk in b["universe"]:
+                tk_to_bucket[tk] = name
 
     agg: Dict[str, Dict[str, float]] = defaultdict(
         lambda: {
@@ -41,13 +59,16 @@ def compute_bucket_risk(
     )
 
     for row in ticker_contribs:
-        code = row.get("ticker")
+        # ticker_contribs 는 compute_ticker_contributions 의 산출물
+        # → ticker/contribution_to_nav_pct/avg_weight/days_in_portfolio 항상 설정
+        code = row["ticker"]
+        # R5 whitelist: dynamic_pool 은 "bucket 매칭 없음" 의 의도된 기본 분류
         bucket = tk_to_bucket.get(code, "dynamic_pool")
         a = agg[bucket]
         a["ticker_count"] += 1
-        a["total_contribution_pct"] += float(row.get("contribution_to_nav_pct", 0.0))
-        a["avg_weight_sum"] += float(row.get("avg_weight", 0.0))
-        a["days_held_sum"] += int(row.get("days_in_portfolio", 0))
+        a["total_contribution_pct"] += float(row["contribution_to_nav_pct"])
+        a["avg_weight_sum"] += float(row["avg_weight"])
+        a["days_held_sum"] += int(row["days_in_portfolio"])
 
     out: Dict[str, Dict[str, Any]] = {}
     for bucket, a in agg.items():

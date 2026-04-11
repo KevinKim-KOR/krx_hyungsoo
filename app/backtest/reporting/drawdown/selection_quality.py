@@ -63,6 +63,13 @@ def compute_selection_quality(
          (entry = 해당 리밸런스일 close, exit = 다음 리밸런스 close)
       3. selection_gap_pct = avg_unselected - avg_selected
          (양수 = 비선택이 더 좋았다 = selection miss)
+
+    R5v2 fallback 정책:
+    - REQUIRED: r_trace 의 `rebalance_date`, `top_candidates_ranked` 는
+      backtest_runner.py 가 P209-STEP9A 이후 항상 설정 → 누락 시 KeyError raise
+    - WHITELIST: 내부 `continue` 문들은 "특정 ticker 의 가격 데이터 없음 /
+      매매가 없음 / 후보 없음" 같은 legitimate skip 패턴. 전체 분석을
+      중단시키지 않고 해당 ticker/event 만 건너뛴다.
     """
     if not rebalance_trace:
         return []
@@ -72,19 +79,21 @@ def compute_selection_quality(
         if t.action == "BUY":
             buys_by_date[str(t.date)].append(t)
 
-    # 다음 리밸런스 날짜 룩업용
-    rebal_dates_list = [
-        r.get("rebalance_date") for r in rebalance_trace if r.get("rebalance_date")
-    ]
+    # REQUIRED: rebalance_date 는 모든 trace entry 에 반드시 존재
+    for r_trace in rebalance_trace:
+        if "rebalance_date" not in r_trace:
+            raise KeyError(
+                "compute_selection_quality: rebalance_trace entry 에"
+                " 'rebalance_date' 누락"
+            )
+    rebal_dates_list = [r["rebalance_date"] for r in rebalance_trace]
 
     events: List[Dict[str, Any]] = []
     for r_trace in rebalance_trace:
-        rd = r_trace.get("rebalance_date")
-        if not rd:
-            continue
-        bought_here = buys_by_date.get(rd, [])
+        rd = r_trace["rebalance_date"]
+        bought_here = buys_by_date.get(rd, [])  # R5 whitelist: 매수 없는 리밸런스
         if not bought_here:
-            continue
+            continue  # R5 whitelist: 매수 없음 → skip (legitimate)
 
         # next rebalance date
         try:
@@ -106,8 +115,8 @@ def compute_selection_quality(
             code = t.symbol
             entry_price = float(t.price)
             if entry_price <= 0:
-                continue
-            s = close_by_code.get(code)
+                continue  # R5 whitelist: 비정상 entry price skip
+            s = close_by_code.get(code)  # R5 whitelist: 가격 없는 ticker 는 None
             if exit_ts is not None:
                 exit_price = _price_at(s, exit_ts)
             else:
@@ -115,7 +124,7 @@ def compute_selection_quality(
                     float(s.iloc[-1]) if s is not None and not s.empty else None
                 )
             if exit_price is None or exit_price <= 0:
-                continue
+                continue  # R5 whitelist: exit price 없음 → skip (lookup miss)
             ret = (exit_price / entry_price - 1.0) * 100
             per_ticker_sel.append(
                 {
@@ -127,7 +136,7 @@ def compute_selection_quality(
             )
 
         if not per_ticker_sel:
-            continue
+            continue  # R5 whitelist: 계산 가능한 선택 종목 없음 → skip
 
         selected_codes = {r["ticker"] for r in per_ticker_sel}
         avg_sel = sum(r["return_pct"] for r in per_ticker_sel) / len(per_ticker_sel)
@@ -135,18 +144,29 @@ def compute_selection_quality(
         best_sel = max(per_ticker_sel, key=lambda x: x["return_pct"])
 
         # ── 선택되지 않은 상위 후보 forward return ──
-        # entry = 해당 리밸런스일 close (trade price가 아님 — 실제 매매가
-        # 없었으므로 close로 근사)
-        candidates_ranked = r_trace.get("top_candidates_ranked") or []
+        # REQUIRED: top_candidates_ranked 는 P209-STEP9A 이후 backtest_runner 가
+        # 항상 설정 (빈 list 도 legitimate, 단 키는 존재해야 함).
+        if "top_candidates_ranked" not in r_trace:
+            raise KeyError(
+                "compute_selection_quality: rebalance_trace entry 에"
+                f" 'top_candidates_ranked' 누락 (rd={rd})"
+            )
+        candidates_ranked = r_trace["top_candidates_ranked"]
         per_ticker_unsel: List[Dict[str, Any]] = []
         for c in candidates_ranked:
-            code = c.get("code")
-            if not code or code in selected_codes:
-                continue
-            s = close_by_code.get(code)
+            # REQUIRED: candidate dict 는 code/rank/score 를 backtest_runner 가
+            # 항상 설정 (P209-STEP9A)
+            if "code" not in c:
+                raise KeyError(
+                    "compute_selection_quality: candidate 에 'code' 누락" f" (rd={rd})"
+                )
+            code = c["code"]
+            if code in selected_codes:
+                continue  # R5 whitelist: 이미 선택된 종목 제외
+            s = close_by_code.get(code)  # R5 whitelist: 가격 없는 ticker → None
             entry_price = _price_at(s, entry_ts)
             if entry_price is None:
-                continue
+                continue  # R5 whitelist: entry price 없음 → skip
             if exit_ts is not None:
                 exit_price = _price_at(s, exit_ts)
             else:
@@ -154,13 +174,14 @@ def compute_selection_quality(
                     float(s.iloc[-1]) if s is not None and not s.empty else None
                 )
             if exit_price is None or exit_price <= 0:
-                continue
+                continue  # R5 whitelist: exit price 없음 → skip
             ret = (exit_price / entry_price - 1.0) * 100
             per_ticker_unsel.append(
                 {
                     "ticker": code,
-                    "rank": c.get("rank"),
-                    "score": c.get("score"),
+                    # rank/score 는 backtest_runner 가 항상 설정 (P209-STEP9A)
+                    "rank": c["rank"],
+                    "score": c["score"],
                     "entry_price": round(entry_price, 4),
                     "exit_price": round(exit_price, 4),
                     "return_pct": round(ret, 4),

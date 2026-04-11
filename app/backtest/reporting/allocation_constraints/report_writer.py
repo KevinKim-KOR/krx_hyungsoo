@@ -7,6 +7,15 @@ P207-STEP7C allocation_constraint_compare.md / .csv 생성 전담.
 
 단일 책임: experiment results list → md/csv 2종 산출물
 R4 단계에서 run_backtest.py inline 블록에서 분리된 모듈.
+
+## R5v2 fallback 정책 — 모듈 레벨 whitelist
+
+이 모듈은 **display rendering 전담** 이다. sweep.py 가 구성한 row dict 를
+markdown 테이블 / CSV 로 출력하며, 각 실험군별로 optional 필드
+(weight_floor, weight_cap 등 — equal_weight 모드에선 없음) 가 존재한다.
+모든 `.get(k, '-')` / `.get(k, 'ERR')` 등의 호출은 display placeholder 이며,
+silent bug 은닉이 아니라 "해당 실험군에서는 이 필드가 의미 없음" 의 시각적
+표현이다.
 """
 
 from __future__ import annotations
@@ -64,6 +73,10 @@ def write_allocation_constraint_compare(
         "| Rank | Variant | Mode | Floor/Cap | CAGR | MDD | Sharpe | Verdict |",
         "|---|---|---|---|---|---|---|---|",
     ]
+    # R5 whitelist: display fallback — sweep.py 에서 구성된 row 는 experiment
+    # 별로 mode/weight_floor/weight_cap 가 있을 수도/없을 수도 있으며 (equal_weight
+    # 는 floor/cap 없음), CAGR/MDD/Sharpe 가 None 일 수 있다 (계산 실패).
+    # '-' / '?' / 'ERR' 기호는 사용자 display 를 위한 명시적 placeholder.
     for r in sorted_valid:
         fc = f"{r.get('weight_floor', '-')}" f"/{r.get('weight_cap', '-')}"
         md_lines.append(

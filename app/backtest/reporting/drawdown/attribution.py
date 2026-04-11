@@ -61,13 +61,23 @@ def compute_ticker_contributions(
                 f"compute_ticker_contributions: prev_nav <= 0"
                 f" (date={prev['date']}, nav={prev_nav}) — NAV 이상"
             )
+        # R5v2: cash_flow 는 reconstruct_daily_positions 가 항상 설정 (빈 dict 가능)
+        if "cash_flow" not in cur:
+            raise KeyError(
+                "compute_ticker_contributions: daily position entry 에"
+                f" 'cash_flow' 누락 (date={cur['date']!r})"
+            )
+        cash_flow = cur["cash_flow"]
         all_codes = (
-            set(prev["value"].keys())
-            | set(cur["value"].keys())
-            | set(cur.get("cash_flow", {}).keys())
+            set(prev["value"].keys()) | set(cur["value"].keys()) | set(cash_flow.keys())
         )
-        cash_flow = cur.get("cash_flow", {}) or {}
         for code in all_codes:
+            # R5 whitelist: 수학적 semantic fallback
+            # ─ code 가 prev["value"] 에 없음 = 전날 보유하지 않음 = pv 0.0 (정확)
+            # ─ code 가 cur["value"] 에 없음 = 당일 보유하지 않음 = cv 0.0 (정확)
+            # ─ code 가 cash_flow 에 없음 = 당일 매매 없음 = cf 0.0 (정확)
+            # 이 0.0 은 "값을 모름" 이 아니라 "값이 정확히 0 이다" 이므로 silent
+            # fallback 이 아닌 수학적 정의. `.get(k, 0.0)` 유지.
             pv = prev["value"].get(code, 0.0)
             cv = cur["value"].get(code, 0.0)
             cf = cash_flow.get(code, 0.0)
@@ -75,16 +85,39 @@ def compute_ticker_contributions(
             pnl = (cv - pv) - cf
             contribs[code] += pnl / prev_nav
 
-        cur_nav = nav_map.get(cur["date"], 0.0)
+        # R5v2: cur["date"] 는 window 내 날짜 → nav_map 에 반드시 존재
+        if cur["date"] not in nav_map:
+            raise ValueError(
+                f"compute_ticker_contributions: nav_map 에"
+                f" cur date={cur['date']!r} 누락 (데이터 정합성 오류)"
+            )
+        cur_nav = nav_map[cur["date"]]
         for code, cv in cur["value"].items():
             if cv > 0:
                 days_held[code] += 1
                 if cur_nav > 0:
                     weight_sum[code] += cv / cur_nav
 
-    peak_nav = nav_map.get(peak_date, 0.0)
-    trough_nav = nav_map.get(trough_date, 0.0)
-    total_return = (trough_nav - peak_nav) / peak_nav if peak_nav > 0 else 0.0
+    # R5v2: peak_date/trough_date 는 find_mdd_window 가 nav_history 에서 추출한
+    # 날짜이므로 nav_map 에 반드시 존재. 누락 = 데이터 정합성 오류.
+    if peak_date not in nav_map:
+        raise ValueError(
+            f"compute_ticker_contributions: nav_map 에 peak_date={peak_date!r}"
+            " 누락 (find_mdd_window 와 nav_history 불일치)"
+        )
+    if trough_date not in nav_map:
+        raise ValueError(
+            f"compute_ticker_contributions: nav_map 에 trough_date={trough_date!r}"
+            " 누락 (find_mdd_window 와 nav_history 불일치)"
+        )
+    peak_nav = nav_map[peak_date]
+    trough_nav = nav_map[trough_date]
+    if peak_nav <= 0:
+        raise ValueError(
+            f"compute_ticker_contributions: peak_nav <= 0"
+            f" (peak_date={peak_date}, nav={peak_nav})"
+        )
+    total_return = (trough_nav - peak_nav) / peak_nav
 
     out: List[Dict[str, Any]] = []
     for code, c in contribs.items():
