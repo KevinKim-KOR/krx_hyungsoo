@@ -97,6 +97,10 @@ def run_backtest(
     enable_regime: bool = False,
     fear_threshold_override: Optional[Dict[str, float]] = None,
     skip_baselines: bool = False,
+    toxic_drop_list: Optional[List[str]] = None,
+    tracka_filter_experiment_name: Optional[str] = None,
+    tracka_baseline_label: Optional[str] = None,
+    tracka_drop_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """BacktestRunner 실행"""
     from app.backtest.runners.backtest_runner import BacktestRunner
@@ -314,6 +318,10 @@ def run_backtest(
         universe_mode=params.get("universe_mode", "fixed_current"),
         exo_regime_schedule=_exo_regime_result,
         allocation_params=_allocation_params,
+        toxic_drop_list=toxic_drop_list,
+        tracka_filter_experiment_name=tracka_filter_experiment_name,
+        tracka_baseline_label=tracka_baseline_label,
+        tracka_drop_mode=tracka_drop_mode,
     )
 
     # Attach trigger evidence
@@ -771,6 +779,29 @@ def format_result(
         "exo_regime_applied": result.get("exo_regime_applied", False),
         "exo_regime_risk_off_count": result.get("exo_regime_risk_off_count", 0),
         "exo_regime_neutral_count": result.get("exo_regime_neutral_count", 0),
+        # P209-STEP9B Track A toxic filter meta (지시문 요구 필드 전체).
+        # rule 6/7: runner 는 toxic filter 사용 여부와 무관하게 이 필드들을
+        # 항상 설정한다 (사용 안 함 = 0/None/빈 리스트). 따라서 None 기본값
+        # 허용은 "필터 미실행" 이라는 명시적 의미만 전달.
+        "tracka_filter_experiment_name": result.get("tracka_filter_experiment_name"),
+        "tracka_baseline_label": result.get("tracka_baseline_label"),
+        "tracka_drop_mode": result.get("tracka_drop_mode"),
+        "tracka_drop_list_used": result.get("tracka_drop_list_used", []),
+        "tracka_filter_hits_total": result.get("tracka_filter_hits_total", 0),
+        "tracka_filter_exhausted_count": result.get("tracka_filter_exhausted_count", 0),
+        "tracka_promoted_total": result.get("tracka_promoted_total", 0),
+        "tracka_avg_candidates_before_filter": result.get(
+            "tracka_avg_candidates_before_filter"
+        ),
+        "tracka_avg_candidates_after_filter": result.get(
+            "tracka_avg_candidates_after_filter"
+        ),
+        "tracka_dropped_by_rebalance_date": result.get(
+            "tracka_dropped_by_rebalance_date", []
+        ),
+        "tracka_promoted_by_rebalance_date": result.get(
+            "tracka_promoted_by_rebalance_date", []
+        ),
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "buy_trade_count": sum(
@@ -1523,8 +1554,38 @@ def run_cli_backtest(
     except Exception as exc:
         logger.warning(f"promotion_verdict 동기화 실패: {exc}")
 
+    # P209-STEP9B FIX: toxic_filter sweep 을 evidence 생성 이전에 실행.
+    # 이유: evidence_writer 는 toxic_filter_compare.json 을 읽어서 Track A
+    # 섹션을 렌더링하므로, sweep 가 먼저 끝나야 evidence 에 반영된다.
+    # analysis_only 모드에서도 반드시 실행 — Step9B 가 현재 챕터이기 때문.
+    # (legacy P207/P208 sweep 만 analysis_only 로 차단 대상)
+    _tracka_experiments = params.get("tracka_toxic_filter_experiments")
+    _hs_experiments_for_tracka = params.get("holding_structure_experiments")
+    if (
+        _tracka_experiments
+        and isinstance(_tracka_experiments, list)
+        and _hs_experiments_for_tracka
+        and enable_regime
+    ):
+        from app.backtest.reporting.toxic_filter_compare import (
+            run_toxic_filter_sweep,
+        )
+
+        run_toxic_filter_sweep(
+            experiments=_tracka_experiments,
+            base_params=params,
+            holding_experiments=_hs_experiments_for_tracka,
+            price_data=price_data,
+            start=start,
+            end=end,
+            run_backtest_fn=run_backtest,
+            format_result_fn=format_result,
+            project_root=PROJECT_ROOT,
+        )
+
     # P206-STEP6D-PATCH1: dynamic_evidence_latest.md 생성
     # P209-CLEAN-R1: inline blob 을 evidence_writer 모듈로 추출 (byte-level 보존)
+    # P209-STEP9B FIX: toxic_filter sweep 이후에 실행되어 Track A 섹션 반영됨
     if params.get("universe_mode") == "dynamic_etf_market":
         try:
             from app.backtest.reporting.evidence_writer import (
@@ -1540,7 +1601,7 @@ def run_cli_backtest(
             logger.warning(f"dynamic_evidence 생성 실패: {ev_exc}")
 
     # P208-STEP8A: holding_structure_experiments sweep
-    # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵
+    # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵 (legacy chapter)
     _hs_experiments = params.get("holding_structure_experiments")
     if (
         _hs_experiments
@@ -1567,7 +1628,7 @@ def run_cli_backtest(
 
     # P207-STEP7C: allocation experiment sweep
     # P209-CLEAN-R4: inline 블록을 allocation_constraints 패키지로 추출
-    # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵
+    # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵 (legacy chapter)
     _experiments = params.get("allocation_experiments")
     if (
         _experiments

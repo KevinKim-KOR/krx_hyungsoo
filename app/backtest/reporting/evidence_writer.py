@@ -165,6 +165,11 @@ def write_dynamic_evidence(
     if dd_section:
         sections.append(dd_section)
 
+    # P209-STEP9B: Track A Toxic Filter 섹션
+    tracka_section = _render_tracka_toxic_filter_section(bt_meta, project_root)
+    if tracka_section:
+        sections.append(tracka_section)
+
     trace_section = _render_last_rebalance_trace_section(allocation_trace)
     if trace_section:
         sections.append(trace_section)
@@ -614,3 +619,94 @@ def _render_notes_section() -> List[str]:
         "- 백테스트: 일봉 근사 (장중 K1~K6 체크포인트는 당일 종가로 근사)",
         "- 직장인형 저빈도 체크포인트 대응 모델 (상시 실시간 아님)",
     ]
+
+
+def _render_tracka_toxic_filter_section(
+    bt_meta: Dict[str, Any],
+    project_root: Path,
+) -> List[str]:
+    """P209-STEP9B Track A Toxic Filter 섹션 렌더러.
+
+    toxic_filter_compare.json 이 존재하면 로드하여 비교표를 렌더링한다.
+    파일이 없으면 빈 리스트 반환 (섹션 미생성).
+
+    지시문 요구 필드 (전체):
+    - Baseline Label / Drop Mode / Drop List / Drop List Size
+    - Filter Hits / Filter Exhausted Count / Promoted Replacement Count
+    - Avg Candidates Before / After
+    - CAGR / MDD / Verdict
+    """
+    compare_path = project_root / "reports" / "tuning" / "toxic_filter_compare.json"
+    if not compare_path.exists():
+        return []
+
+    compare_data = _load_json_if_exists(compare_path)
+    rows = compare_data.get("rows")
+    if not rows:
+        return []
+
+    lines = [
+        "## Track A Toxic Filter (P209-STEP9B)",
+        "",
+        "| Rank | Variant | Baseline Label | Drop Mode | Drop List"
+        " | Drop List Size | Max Pos | CAGR | MDD"
+        " | Filter Hits | Filter Exhausted | Promoted Replacement"
+        " | Avg Before | Avg After | Verdict |",
+        "|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+    ]
+    for r in rows:
+        # R5 whitelist: display fallback — rows 는 sweep 이 생성한 dict.
+        # sweep 이 모든 필드를 설정하므로 .get(k, default) 는 display 용.
+        cagr_v = r.get("cagr")
+        mdd_v = r.get("mdd")
+        cagr_s = f"{cagr_v:.2f}%" if cagr_v is not None else "N/A"
+        mdd_s = f"{mdd_v:.2f}%" if mdd_v is not None else "N/A"
+        drop_list_str = r.get("drop_list") or "-"
+        lines.append(
+            f"| {r.get('rank', '-')}"
+            f" | {r.get('variant', 'N/A')}"
+            f" | {r.get('baseline_label', 'N/A')}"
+            f" | {r.get('drop_mode', 'N/A')}"
+            f" | {drop_list_str}"
+            f" | {r.get('drop_list_size', 0)}"
+            f" | {r.get('max_positions', 'N/A')}"
+            f" | {cagr_s}"
+            f" | {mdd_s}"
+            f" | {r.get('filter_hits_total', 0)}"
+            f" | {r.get('filter_exhausted_count', 0)}"
+            f" | {r.get('promoted_total', 0)}"
+            f" | {r.get('avg_candidates_before_filter', 'N/A')}"
+            f" | {r.get('avg_candidates_after_filter', 'N/A')}"
+            f" | {r.get('verdict', 'N/A')} |"
+        )
+
+    # 현재 실행의 filter meta (main run 에서 추출) — 전체 필수 필드 표시
+    # R5 whitelist: bt_meta 는 format_result 가 Track A 메타를 모두 주입할 때만
+    # 유효. toxic_filter 미실행 (drop_list 없음) main run 에서는 None 가능.
+    hits = bt_meta.get("tracka_filter_hits_total")
+    exhausted = bt_meta.get("tracka_filter_exhausted_count")
+    promoted = bt_meta.get("tracka_promoted_total")
+    avg_before = bt_meta.get("tracka_avg_candidates_before_filter")
+    avg_after = bt_meta.get("tracka_avg_candidates_after_filter")
+    baseline = bt_meta.get("tracka_baseline_label")
+    drop_mode = bt_meta.get("tracka_drop_mode")
+    drop_list_used = bt_meta.get("tracka_drop_list_used")
+    drop_list_str = ",".join(drop_list_used) if drop_list_used else "-"
+
+    lines += [
+        "",
+        "### Main Run Filter State",
+        "| Field | Value |",
+        "|---|---|",
+        f"| Baseline Label | {baseline if baseline is not None else '-'} |",
+        f"| Drop Mode | {drop_mode if drop_mode is not None else 'none'} |",
+        f"| Drop List | {drop_list_str} |",
+        f"| Filter Hits | {hits if hits is not None else 0} |",
+        f"| Filter Exhausted Count | {exhausted if exhausted is not None else 0} |",
+        f"| Promoted Replacement Count | {promoted if promoted is not None else 0} |",
+        f"| Avg Candidates Before | {avg_before if avg_before is not None else '-'} |",
+        f"| Avg Candidates After | {avg_after if avg_after is not None else '-'} |",
+        "",
+        "_Track A = 규칙기반 blacklist 필터. ML/확률 예측 없음._",
+    ]
+    return lines

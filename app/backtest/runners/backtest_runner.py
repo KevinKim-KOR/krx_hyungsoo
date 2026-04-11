@@ -304,6 +304,42 @@ class BacktestRunner:
 
         return scores
 
+    @staticmethod
+    def _apply_toxic_filter(
+        sorted_scores: list,
+        drop_list: List[str],
+        max_positions: int,
+    ) -> dict:
+        """Toxic filter 적용 (P209-STEP9B).
+
+        sorted_scores: [(code, score_tuple), ...] — 이미 정렬된 상태
+        drop_list: 제거할 ticker 코드 리스트
+        max_positions: cap 값
+
+        Returns:
+            {
+                "filtered_scores": 필터링된 sorted_scores,
+                "new_top_n": 최종 선택 종목 리스트,
+                "dropped": 이번 리밸런스에서 실제 drop 된 코드 리스트,
+                "promoted": drop 으로 인해 승격된 코드 리스트,
+                "exhausted": bool — 후보 부족 발생 여부,
+            }
+        """
+        drop_set = set(drop_list)
+        before_codes = [c for c, _ in sorted_scores[:max_positions]]
+        filtered = [(c, s) for c, s in sorted_scores if c not in drop_set]
+        dropped = [c for c in before_codes if c in drop_set]
+        new_top_n = [c for c, _ in filtered[:max_positions]]
+        promoted = [c for c in new_top_n if c not in before_codes]
+        exhausted = len(filtered) < max_positions
+        return {
+            "filtered_scores": filtered,
+            "new_top_n": new_top_n,
+            "dropped": dropped,
+            "promoted": promoted,
+            "exhausted": exhausted,
+        }
+
     def run(
         self,
         price_data: pd.DataFrame,
@@ -330,6 +366,10 @@ class BacktestRunner:
         universe_mode: str = "fixed_current",
         exo_regime_schedule: Optional[Dict[str, Any]] = None,
         allocation_params: Optional[Dict[str, Any]] = None,
+        toxic_drop_list: Optional[List[str]] = None,
+        tracka_filter_experiment_name: Optional[str] = None,
+        tracka_baseline_label: Optional[str] = None,
+        tracka_drop_mode: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -480,6 +520,15 @@ class BacktestRunner:
 
         _total_blocked_reasons = _Counter()
         _pending_trace = None
+
+        # P209-STEP9B: toxic filter 메타 카운터 (ACCUMULATOR)
+        _toxic_filter_hits_total = 0
+        _toxic_filter_exhausted_count = 0
+        _toxic_dropped_by_rebal: List[Dict[str, Any]] = []
+        _toxic_promoted_by_rebal: List[Dict[str, Any]] = []
+        _toxic_candidates_before_sum = 0
+        _toxic_candidates_after_sum = 0
+        _toxic_filter_rebal_count = 0
 
         # 날짜 범위 생성
         dates = pd.date_range(start_date, end_date, freq="B")
@@ -727,9 +776,39 @@ class BacktestRunner:
                             }
                             for _i, (_c, _sc) in enumerate(sorted_scores[:15])
                         ]
-                        new_top_n = [
-                            code for code, _ in sorted_scores[: self.max_positions]
-                        ]
+                        # P209-STEP9B: toxic filter 적용
+                        # apply_stage = selector_after_ranking_before_final_selection
+                        if toxic_drop_list:
+                            _tf_result = self._apply_toxic_filter(
+                                sorted_scores, toxic_drop_list, self.max_positions
+                            )
+                            new_top_n = _tf_result["new_top_n"]
+                            _toxic_filter_hits_total += len(_tf_result["dropped"])
+                            if _tf_result["exhausted"]:
+                                _toxic_filter_exhausted_count += 1
+                            _toxic_candidates_before_sum += len(sorted_scores)
+                            _toxic_candidates_after_sum += len(
+                                _tf_result["filtered_scores"]
+                            )
+                            _toxic_filter_rebal_count += 1
+                            if _tf_result["dropped"]:
+                                _toxic_dropped_by_rebal.append(
+                                    {
+                                        "rebalance_date": str(d),
+                                        "dropped": _tf_result["dropped"],
+                                    }
+                                )
+                            if _tf_result["promoted"]:
+                                _toxic_promoted_by_rebal.append(
+                                    {
+                                        "rebalance_date": str(d),
+                                        "promoted": _tf_result["promoted"],
+                                    }
+                                )
+                        else:
+                            new_top_n = [
+                                code for code, _ in sorted_scores[: self.max_positions]
+                            ]
                         filtered_signal_count += len(new_top_n)
 
                         if current_top_n and set(new_top_n) != set(current_top_n):
@@ -1367,6 +1446,36 @@ class BacktestRunner:
             "total_buy_filled": _total_buy_filled,
             "total_sell_filled": _total_sell_filled,
             "blocked_reason_totals": dict(_total_blocked_reasons),
+            # P209-STEP9B: Track A toxic filter meta (지시문 요구 필드 전체)
+            # Identity (실험군 식별)
+            "tracka_filter_experiment_name": tracka_filter_experiment_name,
+            "tracka_baseline_label": tracka_baseline_label,
+            "tracka_drop_mode": (
+                tracka_drop_mode
+                if tracka_drop_mode is not None
+                else ("none" if not toxic_drop_list else "unknown")
+            ),
+            "tracka_drop_list_used": (list(toxic_drop_list) if toxic_drop_list else []),
+            # Counters
+            "tracka_filter_hits_total": _toxic_filter_hits_total,
+            "tracka_filter_exhausted_count": _toxic_filter_exhausted_count,
+            "tracka_promoted_total": sum(
+                len(r["promoted"]) for r in _toxic_promoted_by_rebal
+            ),
+            # Time series
+            "tracka_dropped_by_rebalance_date": _toxic_dropped_by_rebal,
+            "tracka_promoted_by_rebalance_date": _toxic_promoted_by_rebal,
+            # Candidate counts
+            "tracka_avg_candidates_before_filter": (
+                round(_toxic_candidates_before_sum / _toxic_filter_rebal_count, 2)
+                if _toxic_filter_rebal_count > 0
+                else None
+            ),
+            "tracka_avg_candidates_after_filter": (
+                round(_toxic_candidates_after_sum / _toxic_filter_rebal_count, 2)
+                if _toxic_filter_rebal_count > 0
+                else None
+            ),
         }
 
     def run_batch(

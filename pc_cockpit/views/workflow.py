@@ -28,6 +28,10 @@ from pc_cockpit.views.helpers.holding_structure_panel import (
     render_holding_structure_caption,
     render_holding_structure_compare_expander,
 )
+from pc_cockpit.views.helpers.toxic_filter_panel import (
+    render_toxic_filter_compare_expander,
+    render_toxic_filter_evidence_caption,
+)
 from pc_cockpit.views.helpers.drawdown_contribution_panel import (
     render_drawdown_contribution_panel,
 )
@@ -392,6 +396,10 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         # P208-STEP8A: holding structure 비교표 + 요약 (R6: helpers)
                         render_holding_structure_compare_expander(BASE_DIR)
                         render_holding_structure_caption(bt_meta)
+
+                        # P209-STEP9B: Track A Toxic Filter 비교표 + 요약 (R6: helpers)
+                        render_toxic_filter_compare_expander(BASE_DIR)
+                        render_toxic_filter_evidence_caption(bt_meta)
 
                         # P209-STEP9A: Drawdown Contribution Summary (R6: helper)
                         render_drawdown_contribution_panel(bt_meta, BASE_DIR)

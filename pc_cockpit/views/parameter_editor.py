@@ -13,6 +13,9 @@ from pc_cockpit.views.helpers.allocation_panel import (
 from pc_cockpit.views.helpers.holding_structure_panel import (
     render_holding_structure_panel_for_parameters,
 )
+from pc_cockpit.views.helpers.toxic_filter_panel import (
+    render_toxic_filter_panel_for_parameters,
+)
 
 
 def render_ssot_parameter_form(params_data):
@@ -111,6 +114,9 @@ def render_ssot_parameter_form(params_data):
 
                 # P208-STEP8A: Holding Structure (R6: helper)
                 render_holding_structure_panel_for_parameters(p, _cur_mode)
+
+                # P209-STEP9B: Track A Toxic Filter (R6: helper)
+                render_toxic_filter_panel_for_parameters(p)
 
                 st.divider()
                 if st.form_submit_button("💾 Save Parameters to SSOT"):

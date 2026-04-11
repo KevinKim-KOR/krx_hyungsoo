@@ -75,6 +75,184 @@ _ALLOWED_HOLDING_ALLOC_MODES = {
     "risk_aware_equal_weight_v1",
 }
 
+# P209-STEP9B: Track A toxic filter 에서 허용되는 drop_mode
+_ALLOWED_DROP_MODES = {
+    "none",
+    "primary_drop",
+    "extended_drop",
+}
+
+# P209-STEP9B FIX: baseline_label 은 지시문에 의해 2개로 고정.
+# operational baseline (g2_pos2_raew) + research baseline (g4_pos3_raew) 만 허용.
+# shadow (g3_pos3_eq) 는 Step9A 참고용이며 Step9B 실험 대상 아님.
+_ALLOWED_TRACKA_BASELINE_LABELS = {
+    "g2_pos2_raew",
+    "g4_pos3_raew",
+}
+
+# P209-STEP9B FIX: 지시문 고정 6개 실험군 name 집합.
+# 추가 실험군 금지 — 무필터 / primary / extended 의 3단계만 A/B baseline 에 적용.
+_REQUIRED_TRACKA_EXPERIMENT_NAMES = {
+    "A0_pos2_raew_no_filter",
+    "A1_pos2_raew_primary_drop",
+    "A2_pos2_raew_extended_drop",
+    "B0_pos3_raew_no_filter",
+    "B1_pos3_raew_primary_drop",
+    "B2_pos3_raew_extended_drop",
+}
+
+
+def _validate_tracka_toxic_filter(config):
+    """tracka_toxic_filter 최상위 블록 검증 (P209-STEP9B).
+
+    None 이면 None 반환 (OPTIONAL — dynamic_etf_market 아닌 모드에서 불필요).
+    dict 이면 필수 키 5개를 검증한다.
+    """
+    if config is None:
+        return None
+    if not isinstance(config, dict):
+        raise TypeError(f"tracka_toxic_filter 는 dict 여야 합니다: {type(config)}")
+    _required = [
+        "primary_drop_list",
+        "extended_drop_list",
+        "apply_stage",
+        "reseat_next_ranked",
+        "on_exhausted_candidates",
+    ]
+    for k in _required:
+        if k not in config:
+            raise KeyError(f"tracka_toxic_filter: '{k}' 누락")
+
+    if config["apply_stage"] != "selector_after_ranking_before_final_selection":
+        raise ValueError(
+            f"tracka_toxic_filter.apply_stage="
+            f"{config['apply_stage']!r} 허용:"
+            f" 'selector_after_ranking_before_final_selection'"
+        )
+    if config["on_exhausted_candidates"] != "leave_unfilled_risky_sleeve_as_cash":
+        raise ValueError(
+            f"tracka_toxic_filter.on_exhausted_candidates="
+            f"{config['on_exhausted_candidates']!r} 허용:"
+            f" 'leave_unfilled_risky_sleeve_as_cash'"
+        )
+    for list_key in ("primary_drop_list", "extended_drop_list"):
+        val = config[list_key]
+        if not isinstance(val, list):
+            raise TypeError(
+                f"tracka_toxic_filter.{list_key} 는 리스트여야 합니다:" f" {type(val)}"
+            )
+        if not val:
+            raise ValueError(
+                f"tracka_toxic_filter.{list_key} 가 비어있습니다."
+                f" 최소 1개 ticker 코드 필요"
+            )
+    if not isinstance(config["reseat_next_ranked"], bool):
+        raise TypeError(
+            f"tracka_toxic_filter.reseat_next_ranked 는 bool 이어야 합니다:"
+            f" {type(config['reseat_next_ranked'])}"
+        )
+    return config
+
+
+def _validate_tracka_toxic_filter_experiments(experiments, holding_experiments):
+    """tracka_toxic_filter_experiments 스키마 검증 (P209-STEP9B).
+
+    None 이면 None 반환. 리스트이면 각 항목의 필수 키(name, baseline_label,
+    drop_mode, drop_list)를 검증하고 중복 name 금지.
+
+    P209-STEP9B FIX:
+    - baseline_label 은 _ALLOWED_TRACKA_BASELINE_LABELS (g2/g4 only) 로 고정.
+      holding_structure_experiments 내 다른 이름은 허용하지 않음 (지시문 준수).
+    - 실험군 name 집합은 _REQUIRED_TRACKA_EXPERIMENT_NAMES (6개) 와 정확히 일치.
+      추가/누락/중복 금지 (지시문 "선택 실험군 추가 금지").
+    - baseline_label 은 여전히 holding_structure_experiments 에 존재해야 함
+      (sweep 에서 max_positions / allocation_mode 조회 필요).
+    """
+    if experiments is None:
+        return None
+    if not isinstance(experiments, list):
+        raise TypeError(
+            "tracka_toxic_filter_experiments 는 리스트여야 합니다:"
+            f" {type(experiments)}"
+        )
+
+    known_hs_names = set()
+    if holding_experiments:
+        known_hs_names = {e["name"] for e in holding_experiments}
+
+    _seen_names = set()
+    for i, exp in enumerate(experiments):
+        ctx = f"tracka_toxic_filter_experiments[{i}]"
+        if not isinstance(exp, dict):
+            raise TypeError(f"{ctx}: dict 형태여야 합니다: {type(exp)}")
+
+        for req_key in ("name", "baseline_label", "drop_mode", "drop_list"):
+            if req_key not in exp:
+                raise KeyError(f"{ctx}: {req_key} 누락")
+
+        _nm = exp["name"]
+        if not isinstance(_nm, str) or not _nm:
+            raise ValueError(
+                f"{ctx}.name 은 비어있지 않은 문자열이어야 합니다: {_nm!r}"
+            )
+        if _nm in _seen_names:
+            raise ValueError(f"{ctx}.name={_nm!r} 중복")
+        _seen_names.add(_nm)
+
+        _bl = exp["baseline_label"]
+        if not isinstance(_bl, str) or not _bl:
+            raise ValueError(
+                f"{ctx}.baseline_label 은 비어있지 않은 문자열이어야 합니다:"
+                f" {_bl!r}"
+            )
+        # P209-STEP9B FIX: 지시문 고정 — g2/g4 외 허용 금지
+        if _bl not in _ALLOWED_TRACKA_BASELINE_LABELS:
+            raise ValueError(
+                f"{ctx}.baseline_label={_bl!r}"
+                f" 는 지시문에서 허용되지 않습니다."
+                f" 허용: {sorted(_ALLOWED_TRACKA_BASELINE_LABELS)}"
+            )
+        # baseline_label 은 holding_structure_experiments 에도 반드시 존재
+        # (sweep 에서 max_positions / allocation_mode 조회)
+        if known_hs_names and _bl not in known_hs_names:
+            raise ValueError(
+                f"{ctx}.baseline_label={_bl!r}"
+                f" 가 holding_structure_experiments 에 없음."
+                f" 등록된 holding_structure_experiments: {sorted(known_hs_names)}"
+            )
+
+        _dm = exp["drop_mode"]
+        if _dm not in _ALLOWED_DROP_MODES:
+            raise ValueError(f"{ctx}.drop_mode={_dm!r} 허용: {_ALLOWED_DROP_MODES}")
+
+        _dl = exp["drop_list"]
+        if not isinstance(_dl, list):
+            raise TypeError(f"{ctx}.drop_list 는 리스트여야 합니다: {type(_dl)}")
+        if _dm == "none" and _dl:
+            raise ValueError(
+                f"{ctx}: drop_mode='none' 일 때 drop_list 는"
+                f" 비어있어야 합니다: {_dl}"
+            )
+        if _dm != "none" and not _dl:
+            raise ValueError(
+                f"{ctx}: drop_mode={_dm!r} 일 때 drop_list 가" f" 비어있으면 안 됩니다"
+            )
+
+    # P209-STEP9B FIX: 6개 고정 실험군 정확 일치 검증
+    # (추가 금지 + 누락 금지 — 지시문 "선택 실험군 추가 금지")
+    if _seen_names != _REQUIRED_TRACKA_EXPERIMENT_NAMES:
+        missing = _REQUIRED_TRACKA_EXPERIMENT_NAMES - _seen_names
+        extra = _seen_names - _REQUIRED_TRACKA_EXPERIMENT_NAMES
+        msg_parts = ["tracka_toxic_filter_experiments 6개 고정 실험군과 불일치."]
+        if missing:
+            msg_parts.append(f"누락: {sorted(missing)}")
+        if extra:
+            msg_parts.append(f"초과: {sorted(extra)}")
+        msg_parts.append(f"요구: {sorted(_REQUIRED_TRACKA_EXPERIMENT_NAMES)}")
+        raise ValueError(" ".join(msg_parts))
+
+    return experiments
+
 
 def _validate_experiments(experiments):
     """allocation_experiments 스키마 검증.
@@ -261,6 +439,13 @@ def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
         ),
         "drawdown_analysis_baselines": _validate_drawdown_analysis_baselines(
             params_raw.get("drawdown_analysis_baselines"),
+            params_raw.get("holding_structure_experiments"),
+        ),
+        "tracka_toxic_filter": _validate_tracka_toxic_filter(
+            params_raw.get("tracka_toxic_filter")
+        ),
+        "tracka_toxic_filter_experiments": _validate_tracka_toxic_filter_experiments(
+            params_raw.get("tracka_toxic_filter_experiments"),
             params_raw.get("holding_structure_experiments"),
         ),
     }
