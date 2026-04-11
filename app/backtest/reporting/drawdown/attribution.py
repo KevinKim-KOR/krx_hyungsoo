@@ -47,9 +47,20 @@ def compute_ticker_contributions(
     for i in range(1, len(window)):
         prev = window[i - 1]
         cur = window[i]
-        prev_nav = nav_map.get(prev["date"], 0.0)
+        # R5: nav_map 에 date 가 없으면 데이터 손상 → raise
+        # (daily_positions 와 nav_history 가 동일 nav_history 에서 파생되므로
+        #  정상 케이스에서 miss 가 발생할 수 없다)
+        if prev["date"] not in nav_map:
+            raise ValueError(
+                f"compute_ticker_contributions: nav_map 에"
+                f" prev date={prev['date']!r} 누락 (데이터 정합성 오류)"
+            )
+        prev_nav = nav_map[prev["date"]]
         if prev_nav <= 0:
-            continue
+            raise ValueError(
+                f"compute_ticker_contributions: prev_nav <= 0"
+                f" (date={prev['date']}, nav={prev_nav}) — NAV 이상"
+            )
         all_codes = (
             set(prev["value"].keys())
             | set(cur["value"].keys())

@@ -58,11 +58,22 @@ def write_dynamic_evidence(
     if output_path is None:
         output_path = ev_dir / "dynamic_evidence_latest.md"
 
-    bt_summary = formatted.get("summary", {})
-    bt_meta = formatted.get("meta", {})
+    # R5 (fallback 제거): summary/meta 는 format_result 가 반드시 설정하는
+    # 필수 필드이므로 누락 시 KeyError raise.
+    if "summary" not in formatted:
+        raise KeyError(
+            "write_dynamic_evidence: formatted 에 'summary' 누락"
+            " (format_result 가 반드시 설정해야 함)"
+        )
+    if "meta" not in formatted:
+        raise KeyError("write_dynamic_evidence: formatted 에 'meta' 누락")
+    bt_summary = formatted["summary"]
+    bt_meta = formatted["meta"]
 
-    # R1: byte-level 보존을 위해 기존 파일 로드 패턴 유지.
-    # 이 silent fallback 들은 R5 fallback 감사 STEP 에서 재검토 대상.
+    # R5 whitelist: hybrid_regime_verdict / promotion_verdict 는 별도 파이프라인이
+    # 생성하는 optional 파일이다. 파일이 없거나 비어있으면 {} 를 반환하고
+    # 하위 섹션 렌더러가 'N/A' 문자열로 표시한다. 이는 silent fallback 이
+    # 아니라 "display 용 optional 데이터 로드" 이므로 R5 에서 유지한다.
     hybrid_verdict = _load_json_if_exists(ev_dir / "hybrid_regime_verdict_latest.json")
     promotion_verdict = _load_json_if_exists(ev_dir / "promotion_verdict.json")
 

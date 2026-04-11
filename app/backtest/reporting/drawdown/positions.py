@@ -19,10 +19,22 @@ import pandas as pd
 
 
 def _build_close_series(price_data) -> Dict[str, pd.Series]:
-    """MultiIndex(code, date) price_data에서 ticker별 close 시리즈 추출."""
-    out: Dict[str, pd.Series] = {}
+    """MultiIndex(code, date) price_data에서 ticker별 close 시리즈 추출.
+
+    R5 (fallback 제거): price_data 가 MultiIndex 가 아니면 ValueError raise.
+    이전에는 silent `return {}` 로 빈 dict 반환 → 하위 로직이 모든 ticker 를
+    skip 하면서 silent 실패를 유발했음.
+
+    close/Close 컬럼이 없는 개별 ticker 는 price 가 없는 것이므로 skip 하고
+    계속 진행한다 (정상적인 데이터 누락 케이스).
+    """
     if not isinstance(price_data.index, pd.MultiIndex):
-        return out
+        raise ValueError(
+            "_build_close_series: price_data.index 가 MultiIndex 가 아님"
+            f" (type={type(price_data.index).__name__})"
+        )
+
+    out: Dict[str, pd.Series] = {}
     for code in price_data.index.get_level_values("code").unique():
         df = price_data.xs(code, level="code")
         col = None

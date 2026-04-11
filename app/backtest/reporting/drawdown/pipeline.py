@@ -48,15 +48,35 @@ def analyze_variant(
     price_data,
     buckets: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    """단일 백테스트 결과에 대한 전체 drawdown 기여 분석."""
-    nav_history = raw_result.get("nav_history", []) or []
-    trades = raw_result.get("trades", []) or []
-    rebalance_trace = raw_result.get("_rebalance_trace", []) or []
+    """단일 백테스트 결과에 대한 전체 drawdown 기여 분석.
+
+    R5 (fallback 제거): raw_result 는 BacktestRunner.run 반환값이어야 하며
+    nav_history / trades / _rebalance_trace 가 반드시 존재한다고 가정한다.
+    누락 시 KeyError raise (silent fallback 금지).
+    """
+    # R5: 필수 키는 raise. 이전 `raw_result.get("nav_history", []) or []`
+    # 이중 fallback 패턴 제거.
+    if "nav_history" not in raw_result:
+        raise KeyError(
+            f"analyze_variant: raw_result 에 'nav_history' 누락 (label={label})"
+        )
+    if "trades" not in raw_result:
+        raise KeyError(f"analyze_variant: raw_result 에 'trades' 누락 (label={label})")
+    if "_rebalance_trace" not in raw_result:
+        raise KeyError(
+            f"analyze_variant: raw_result 에 '_rebalance_trace' 누락"
+            f" (label={label})"
+        )
+    nav_history = raw_result["nav_history"] or []
+    trades = raw_result["trades"] or []
+    rebalance_trace = raw_result["_rebalance_trace"] or []
 
     close_by_code = _build_close_series(price_data)
     window = find_mdd_window(nav_history)
 
     if window is None:
+        # 드로우다운 미발생 or nav_history 부족 — 명시적 NO_DATA 경로
+        # _summarize_selection_quality([]) 를 호출하지 않고 직접 구성
         return {
             "label": label,
             "role": role,
@@ -65,7 +85,7 @@ def analyze_variant(
             "mdd_window": None,
             "top_ticker_contributors_to_mdd": [],
             "all_ticker_contributions": [],
-            "selection_quality_summary": _summarize_selection_quality([]),
+            "selection_quality_summary": None,
             "selection_quality_verdict": "NO_DATA",
             "worst_selection_events": [],
             "bucket_risk_summary": {},
@@ -77,6 +97,8 @@ def analyze_variant(
     )
     sel_events = compute_selection_quality(trades, rebalance_trace, close_by_code)
     bucket_risk = compute_bucket_risk(contribs, buckets)
+    # R5: _summarize_selection_quality 가 빈 events 에서 None 을 반환하면
+    # verdict 는 "NO_EVENTS" 로 명시 분기됨. 0.0 silent fallback 금지.
     summary = _summarize_selection_quality(sel_events)
     verdict = _selection_quality_verdict(summary)
 
@@ -247,7 +269,15 @@ def _build_main_meta_injection(
     a_analysis: Dict[str, Any],
     b_analysis: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """A 분석의 핵심 필드 + A/B 비교 요약을 main result meta에 주입할 형태로 반환."""
+    """A 분석의 핵심 필드 + A/B 비교 요약을 main result meta에 주입할 형태로 반환.
+
+    R5 (fallback 정책): mdd_window 와 selection_quality_summary 는 analyze_variant
+    에서 None 일 수 있다 (window 없음 / events 없음 = NO_DATA 경로). 이 함수는
+    "display 용 meta injection" 이므로 None → `{}` 치환은 silent fallback 이
+    아니라 **명시적 NO_DATA 처리**다 (`.get()` 호출이 AttributeError 없이
+    자연스럽게 None 을 전파하도록 하는 가드). 이 한 곳은 R5 whitelist 로 유지.
+    """
+    # R5 whitelist: None → {} 는 NO_DATA 경로의 명시적 처리 (display meta)
     a_w = a_analysis.get("mdd_window") or {}
     b_w = b_analysis.get("mdd_window") or {}
     a_qs = a_analysis.get("selection_quality_summary") or {}

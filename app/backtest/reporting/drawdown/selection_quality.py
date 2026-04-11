@@ -20,7 +20,20 @@ import pandas as pd
 
 
 def _price_at(s: pd.Series, ts: pd.Timestamp) -> Optional[float]:
-    """close series에서 ts 시점 이하의 가장 가까운 종가를 반환."""
+    """close series에서 ts 시점 이하의 가장 가까운 종가를 반환.
+
+    R5 (fallback 정책): 이 함수는 lookup helper 이므로 None 반환은 허용된
+    explicit 시그널이다 ('해당 시점에 가격이 없음'). 호출자는 반드시 명시적
+    으로 None 을 분기 처리해야 하며, 0.0 fallback 으로 처리하면 안 된다.
+
+    None 반환 케이스:
+    - s 가 None 또는 empty (ticker 가격 데이터 자체가 없음)
+    - asof 가 NaT 반환 (ts 이전에 거래된 적 없음)
+    - loc 으로 가격 조회 실패 (인덱스 불일치)
+    - 가격이 <= 0 (비정상 가격)
+
+    모든 호출자는 `if price is None: continue` 형태로 명시 분기한다.
+    """
     if s is None or s.empty:
         return None
     try:
@@ -197,18 +210,17 @@ def compute_selection_quality(
 
 def _summarize_selection_quality(
     events: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+) -> Optional[Dict[str, Any]]:
+    """선택 품질 이벤트 리스트 → 요약 dict.
+
+    R5 (fallback 제거): 이전에는 events 가 비어있으면 numeric 필드를 0.0 으로
+    채운 dict 를 반환했음. 이 silent 0 fallback 은 "0 건" 과 "데이터 없음" 을
+    구분하지 못해 금지. 대신 events 가 비면 `None` 반환. 호출자는 반드시
+    명시적으로 None 을 분기 처리한다 (analyze_variant 가 verdict='NO_EVENTS'
+    로 처리).
+    """
     if not events:
-        return {
-            "rebalance_count": 0,
-            "positive_forward_ratio": 0.0,
-            "avg_forward_return_pct": 0.0,
-            "best_forward_return_pct": 0.0,
-            "worst_forward_return_pct": 0.0,
-            "avg_selection_gap_pct": None,
-            "events_with_unselected_data": 0,
-            "events_with_better_unselected": 0,
-        }
+        return None
     rets = [e["avg_forward_return_pct"] for e in events]
     positive = sum(1 for r in rets if r > 0)
     total = len(rets)
@@ -235,18 +247,26 @@ def _summarize_selection_quality(
     }
 
 
-def _selection_quality_verdict(summary: Dict[str, Any]) -> str:
+def _selection_quality_verdict(summary: Optional[Dict[str, Any]]) -> str:
     """P209-STEP9A verdict:
 
+    - NO_EVENTS: summary 가 None (events 가 비어있음, _summarize 가 None 반환)
     - HEALTHY: positive_ratio > 0.5 AND avg > 0 AND gap <= +1%p
       (선택이 비선택보다 크게 뒤지지 않음)
     - MIXED: positive_ratio > 0.3 또는 gap이 0~+2%p 범위
     - DEGRADED: positive_ratio < 0.3 또는 gap이 +2%p 초과
       (비선택이 일관되게 더 나은 구조적 선택 오류)
+
+    R5 (fallback 제거): summary 가 None 인 경우 명시적 NO_EVENTS 반환.
+    이전에는 `.get(k, 0.0)` 로 silent 0 fallback 했음.
     """
-    pr = summary.get("positive_forward_ratio", 0.0)
-    ar = summary.get("avg_forward_return_pct", 0.0)
-    gap = summary.get("avg_selection_gap_pct")
+    if summary is None:
+        return "NO_EVENTS"
+    # summary 는 _summarize_selection_quality 가 반환한 dict 이며
+    # 필수 필드가 모두 존재함을 보장한다 (None 은 위에서 처리).
+    pr = summary["positive_forward_ratio"]
+    ar = summary["avg_forward_return_pct"]
+    gap = summary["avg_selection_gap_pct"]
 
     # gap이 유의미하게 나쁘면 DEGRADED 우선
     if gap is not None and gap > 2.0:

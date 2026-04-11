@@ -61,10 +61,22 @@ def run_allocation_constraint_sweep(
 
     exp_results: List[Dict[str, Any]] = []
     for exp in experiments:
-        eid = exp.get("experiment_id", "unknown")
+        # R5: experiment_id 는 param_loader._validate_experiments 에서 필수로
+        # 검증되므로 여기서 silent 'unknown' fallback 금지.
+        if "experiment_id" not in exp:
+            raise KeyError(
+                "run_allocation_constraint_sweep: 실험군에 experiment_id 누락"
+                f" (exp={exp!r})"
+            )
+        eid = exp["experiment_id"]
         ea = exp.get("allocation")
         if not ea:
-            continue
+            # R5: allocation 블록이 없으면 param_loader 가 이미 reject 했어야
+            # 한다. 여기 도달하면 스키마 불일치이므로 raise.
+            raise KeyError(
+                f"run_allocation_constraint_sweep: experiment_id={eid}"
+                f" 에 'allocation' 블록 누락"
+            )
         try:
             ep = dict(base_params)
             ep["allocation"] = ea
