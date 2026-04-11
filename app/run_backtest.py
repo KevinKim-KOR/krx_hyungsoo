@@ -1522,7 +1522,7 @@ def run_cli_backtest(
     # P208-STEP8A: holding_structure_experiments sweep
     _hs_experiments = params.get("holding_structure_experiments")
     if _hs_experiments and isinstance(_hs_experiments, list) and enable_regime:
-        from app.backtest.reporting.holding_structure_compare import (
+        from app.backtest.reporting.holding_structure import (
             run_holding_structure_sweep,
         )
 
