@@ -50,26 +50,31 @@ def analyze_variant(
 ) -> Dict[str, Any]:
     """단일 백테스트 결과에 대한 전체 drawdown 기여 분석.
 
-    R5 (fallback 제거): raw_result 는 BacktestRunner.run 반환값이어야 하며
-    nav_history / trades / _rebalance_trace 가 반드시 존재한다고 가정한다.
-    누락 시 KeyError raise (silent fallback 금지).
+    R5v3 (fallback 전수 제거): raw_result 는 BacktestRunner.run 반환값이어야
+    하며 nav_history / trades / _rebalance_trace 가 반드시 존재하고 값이 None
+    이 아니어야 한다. 키 누락 또는 값 None 시 raise.
+
+    - 키 누락 → KeyError (데이터 손상)
+    - 값이 None → ValueError (BacktestRunner 가 반드시 list 를 설정해야 함)
+    - 빈 list → 정상 (backtest 가 실행됐지만 trade 가 없는 케이스 등 legitimate)
+
+    이전 `raw_result["nav_history"] or []` 패턴은 None 을 silent 하게 빈
+    리스트로 fallback 하여 NO_DATA 경로로 흘려보냈음. R5v3 에서 제거.
     """
-    # R5: 필수 키는 raise. 이전 `raw_result.get("nav_history", []) or []`
-    # 이중 fallback 패턴 제거.
-    if "nav_history" not in raw_result:
-        raise KeyError(
-            f"analyze_variant: raw_result 에 'nav_history' 누락 (label={label})"
-        )
-    if "trades" not in raw_result:
-        raise KeyError(f"analyze_variant: raw_result 에 'trades' 누락 (label={label})")
-    if "_rebalance_trace" not in raw_result:
-        raise KeyError(
-            f"analyze_variant: raw_result 에 '_rebalance_trace' 누락"
-            f" (label={label})"
-        )
-    nav_history = raw_result["nav_history"] or []
-    trades = raw_result["trades"] or []
-    rebalance_trace = raw_result["_rebalance_trace"] or []
+    # R5v3: 키 존재 + 값 None 아님 이중 검증
+    for key in ("nav_history", "trades", "_rebalance_trace"):
+        if key not in raw_result:
+            raise KeyError(
+                f"analyze_variant: raw_result 에 {key!r} 누락 (label={label})"
+            )
+        if raw_result[key] is None:
+            raise ValueError(
+                f"analyze_variant: raw_result[{key!r}] 값이 None"
+                f" (label={label}) — BacktestRunner.run 은 반드시 list 를 설정"
+            )
+    nav_history = raw_result["nav_history"]
+    trades = raw_result["trades"]
+    rebalance_trace = raw_result["_rebalance_trace"]
 
     close_by_code = _build_close_series(price_data)
     window = find_mdd_window(nav_history)
@@ -151,10 +156,31 @@ def _build_allocation_block(mode: str) -> Dict[str, Any]:
 def _matches_main(
     main_params: Dict[str, Any], max_positions: int, allocation_mode: str
 ) -> bool:
-    if main_params.get("max_positions") != max_positions:
+    """main_params 가 주어진 (max_positions, allocation_mode) 조합과 일치하는지 판단.
+
+    R5v3 fallback 정책:
+    - `main_params["max_positions"]` 는 REQUIRED (param_loader 에서 검증).
+      누락 시 KeyError.
+    - `main_params["allocation"]` 는 OPTIONAL (non-dynamic 모드에선 None).
+      None 이면 allocation_mode 매칭 불가 → False 반환 (explicit 분기).
+    - `alloc["mode"]` 는 allocation 블록이 존재하면 param_loader 가 검증.
+      누락 시 KeyError.
+    """
+    if "max_positions" not in main_params:
+        raise KeyError("_matches_main: main_params 에 'max_positions' 누락")
+    if main_params["max_positions"] != max_positions:
         return False
-    alloc = main_params.get("allocation") or {}
-    return alloc.get("mode") == allocation_mode
+
+    alloc = main_params.get("allocation")
+    if alloc is None:
+        # non-dynamic 모드: allocation 블록 자체가 없음 → 매칭 불가
+        return False
+    if "mode" not in alloc:
+        raise KeyError(
+            "_matches_main: allocation 블록에 'mode' 누락"
+            " (param_loader 가 검증했어야 함)"
+        )
+    return alloc["mode"] == allocation_mode
 
 
 def run_analysis_pipeline(
@@ -186,7 +212,15 @@ def run_analysis_pipeline(
     """
     a_label, a_pos, a_mode = a_spec
     b_label, b_pos, b_mode = b_spec
-    buckets = main_params.get("buckets") or []
+    # R5v3: buckets 는 OPTIONAL (dynamic_etf_market 모드에서 빈 리스트가
+    # legitimate). None 은 param_loader 스키마 위반 → raise.
+    buckets_raw = main_params.get("buckets")
+    if buckets_raw is None:
+        raise KeyError(
+            "run_analysis_pipeline: main_params 에 'buckets' 누락"
+            " (param_loader 가 빈 리스트라도 설정해야 함)"
+        )
+    buckets: List[Dict[str, Any]] = buckets_raw
 
     logger.info(
         f"[P209-STEP9A] drawdown 기여 분석 파이프라인 시작"
