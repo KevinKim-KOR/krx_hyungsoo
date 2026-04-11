@@ -7,6 +7,12 @@ import streamlit as st
 
 from pc_cockpit.services.config import KST, _ssot_require, compute_fingerprint
 from pc_cockpit.services.json_io import save_params
+from pc_cockpit.views.helpers.allocation_panel import (
+    render_allocation_panel_for_parameters,
+)
+from pc_cockpit.views.helpers.holding_structure_panel import (
+    render_holding_structure_panel_for_parameters,
+)
 
 
 def render_ssot_parameter_form(params_data):
@@ -100,54 +106,11 @@ def render_ssot_parameter_form(params_data):
                 freq = c1.selectbox("리밸런싱 주기", freq_opts, index=freq_idx)
                 c1.caption("`SSOT Key: rebalance_rule.frequency`")
 
-                # P207: Allocation
-                st.subheader("Allocation (P207)")
-                _cur_alloc = p.get("allocation", {})
-                c1, c2 = st.columns(2)
-                _alloc_modes = [
-                    "dynamic_equal_weight",
-                    "risk_aware_equal_weight_v1",
-                    "inverse_volatility_v1",
-                ]
-                _cur_mode = _cur_alloc.get("mode", "dynamic_equal_weight")
-                _mi = _alloc_modes.index(_cur_mode) if _cur_mode in _alloc_modes else 0
-                c1.selectbox(
-                    "Allocation Mode",
-                    _alloc_modes,
-                    index=_mi,
-                    disabled=True,
-                    key="_alloc_mode_display",
-                )
-                _wfl = _cur_alloc.get("weight_floor", "-")
-                _wcp = _cur_alloc.get("weight_cap", "-")
-                _exp_name = f"{_cur_mode}_{_wfl}_{_wcp}" if _cur_alloc else "N/A"
-                c2.caption(f"floor/cap: {_wfl}/{_wcp}")
-                st.caption(f"Experiment Name: {_exp_name}")
+                # P207: Allocation (R6: helper)
+                _cur_mode = render_allocation_panel_for_parameters(p)
 
-                # P208-STEP8A: Holding Structure
-                st.subheader("Holding Structure (P208)")
-                _cur_max_pos = int(_ssot_require(p, "position_limits", "max_positions"))
-                _hs_exps = p.get("holding_structure_experiments") or []
-                _current_hs_name = None
-                for _hse in _hs_exps:
-                    if (
-                        _hse.get("max_positions") == _cur_max_pos
-                        and _hse.get("allocation_mode") == _cur_mode
-                    ):
-                        _current_hs_name = _hse.get("name")
-                        break
-                _hs_display = (
-                    _current_hs_name or "N/A (현재 SSOT 조합에 매칭 실험군 없음)"
-                )
-                c1h, c2h, c3h = st.columns(3)
-                c1h.metric("Current Experiment", _hs_display)
-                c2h.metric("max_positions", _cur_max_pos)
-                c3h.metric("allocation_mode", _cur_mode)
-                st.caption(
-                    f"등록된 실험군: {len(_hs_exps)}개"
-                    f" (G1~G8 = pos[2,3,4,5] ×"
-                    f" [dynamic_equal_weight, risk_aware_equal_weight_v1])"
-                )
+                # P208-STEP8A: Holding Structure (R6: helper)
+                render_holding_structure_panel_for_parameters(p, _cur_mode)
 
                 st.divider()
                 if st.form_submit_button("💾 Save Parameters to SSOT"):
