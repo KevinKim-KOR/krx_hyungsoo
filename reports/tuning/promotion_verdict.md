@@ -3,14 +3,14 @@
 - 현재 판정: 기각
 - SSOT 반영 여부: 예
 - 유니버스 일치: 예
-- universe_snapshot_id: snap_20260409_002846_df90ab7e
+- universe_snapshot_id: snap_20260411_002122_700c57e6
 - universe_mode: dynamic_etf_market
 - universe_size: 15
 
 ## Full Backtest 핵심 수치
-- CAGR: 12.5796%
-- MDD: 12.2599%
-- Sharpe: 1.1536
+- CAGR: 12.3870%
+- MDD: 12.7446%
+- Sharpe: 1.1019
 
 ## Tune 핵심 수치
 - Best Trial: 15

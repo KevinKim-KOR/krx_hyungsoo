@@ -1,17 +1,17 @@
 # 튜닝 검산 요약
 
-- 실행 시각(asof): 2026-04-09T00:29:18+09:00
+- 실행 시각(asof): 2026-04-11T00:22:12+09:00
 - study_name: tune_quick_dynamic_etf_market_5axis_dynamic_risk_v1
 - mode: quick
-- universe_mode: dynamic_etf_market (15종목) [snapshot: snap_20260409_002846_df90ab7e]
-- 기간: 2025-10-11 ~ 2026-04-08
+- universe_mode: dynamic_etf_market (15종목) [snapshot: snap_20260411_002122_700c57e6]
+- 기간: 2025-10-13 ~ 2026-04-10
 - best trial 번호: 15
 - best params: momentum_period=44, volatility_period=19, entry_threshold=0.04, stop_loss=-0.04000000000000001, max_positions=2
 
 ## Full Period 요약
-- CAGR: 104.5362%
-- MDD: 12.3128%
-- Sharpe: 2.1889
+- CAGR: 104.5374%
+- MDD: 12.3052%
+- Sharpe: 2.1964
 
 ## 구간 리스크 요약
 - 최악 구간: SEG_1

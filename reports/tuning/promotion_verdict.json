@@ -5,8 +5,8 @@
   "used_universe_match": true,
   "universe_mode": "dynamic_etf_market",
   "universe_size": 15,
-  "used_universe_snapshot_id": "snap_20260409_002846_df90ab7e",
-  "used_universe_snapshot_sha256": "df90ab7e61b65ea9f79a7f3ec9b51c1c58f4b911017b1b98768a3f7711f58261",
+  "used_universe_snapshot_id": "snap_20260411_002122_700c57e6",
+  "used_universe_snapshot_sha256": "700c57e6a901558efeb8c69b48f346338108fc0952fb2ebd59654d7d5e711e33",
   "ssot_vs_best_params": {
     "momentum_period": {
       "best": 44,
@@ -35,9 +35,9 @@
     }
   },
   "full_backtest_metrics": {
-    "cagr": 12.5796,
-    "mdd": 12.2599,
-    "sharpe": 1.1536
+    "cagr": 12.387,
+    "mdd": 12.7446,
+    "sharpe": 1.1019
   },
   "tune_snapshot": {
     "best_trial": 15,
@@ -48,7 +48,7 @@
   "criteria_check": {
     "cagr_gt_15": false,
     "mdd_lt_10": false,
-    "sharpe_reference": 1.1536,
+    "sharpe_reference": 1.1019,
     "backtest_matches_candidate": true
   },
   "reasons": [
@@ -59,5 +59,5 @@
     "튜닝 점수가 음수이므로 해석 경고가 필요합니다."
   ],
   "next_action": "현재 후보는 기준 정합성은 충족했지만 Full Backtest 성능 기준을 만족하지 못해 기각합니다. 다음 후보를 검토하거나 유니버스/탐색범위를 재검토합니다.",
-  "asof": "2026-04-09T00:29:43+09:00"
+  "asof": "2026-04-11T13:32:05+09:00"
 }
