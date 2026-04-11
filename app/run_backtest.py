@@ -1391,7 +1391,7 @@ def run_cli_backtest(
     # Step9A는 분석 전용. 실제 매매 로직 변경 금지. 필터/ML 적용 금지.
     if params.get("universe_mode") == "dynamic_etf_market" and enable_regime:
         try:
-            from app.backtest.reporting.drawdown_contribution import (
+            from app.backtest.reporting.drawdown import (
                 run_analysis_pipeline as _run_dd_analysis,
             )
 
