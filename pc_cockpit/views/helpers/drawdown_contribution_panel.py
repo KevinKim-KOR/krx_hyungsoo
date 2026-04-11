@@ -66,6 +66,14 @@ def render_drawdown_contribution_panel(bt_meta: Dict[str, Any], base_dir: Path) 
         _b_verdict = _dd_cmp.get("research_baseline_verdict", "N/A")
         _b_mdd = _dd_cmp.get("research_mdd_pct")
         _b_gap = _dd_cmp.get("research_avg_selection_gap_pct")
+        # Shadow reference (optional, P209-STEP9A realignment)
+        _c_label = _dd_cmp.get("shadow_baseline_label")
+        _c_verdict = _dd_cmp.get("shadow_baseline_verdict")
+        _c_mdd = _dd_cmp.get("shadow_mdd_pct")
+        _c_gap = _dd_cmp.get("shadow_avg_selection_gap_pct")
+        _c_pr = _dd_cmp.get("shadow_positive_forward_ratio")
+        _c_avg = _dd_cmp.get("shadow_avg_forward_return_pct")
+        _c_miss = _dd_cmp.get("shadow_events_with_better_unselected")
         # A군: main meta의 selection_quality_summary 사용
         # B군: drawdown_analysis_comparison에 주입된 B 필드 사용
         _a_pr = _dd_cmp.get(
@@ -81,8 +89,11 @@ def render_drawdown_contribution_panel(bt_meta: Dict[str, Any], base_dir: Path) 
         _b_avg = _dd_cmp.get("research_avg_forward_return_pct")
         _b_miss = _dd_cmp.get("research_events_with_better_unselected")
 
-        # A vs B 요약 테이블
-        st.markdown("**A vs B 비교 요약**")
+        # A vs B 비교 요약 (+ optional shadow)
+        st.markdown(
+            "**A vs B 비교 요약**"
+            " _(Baseline realignment 2026-04-11: B = 최신 UI 기준 연구 baseline)_"
+        )
         _cmp_rows = [
             {
                 "group": "A (operational)",
@@ -105,10 +116,28 @@ def render_drawdown_contribution_panel(bt_meta: Dict[str, Any], base_dir: Path) 
                 "events_miss_better_unsel": _b_miss,
             },
         ]
+        if _c_label:
+            _cmp_rows.append(
+                {
+                    "group": "C (shadow)",
+                    "label": _c_label,
+                    "mdd_pct": _c_mdd,
+                    "verdict": _c_verdict,
+                    "positive_ratio": _c_pr,
+                    "avg_fwd_pct": _c_avg,
+                    "avg_selection_gap_pct": _c_gap,
+                    "events_miss_better_unsel": _c_miss,
+                }
+            )
         st.dataframe(
             _pd_dd.DataFrame(_cmp_rows),
             use_container_width=True,
         )
+        if _c_label:
+            st.caption(
+                "C (shadow) 는 정식 baseline 이 아니라 보조 참고용이며,"
+                " 공통 Toxic 교집합 계산에서 제외된다."
+            )
 
         # Top Toxic side-by-side
         _b_top = _dd_cmp.get("research_top_toxic_tickers") or []

@@ -150,6 +150,50 @@ def _validate_holding_structure_experiments(experiments):
     return experiments
 
 
+def _validate_drawdown_analysis_baselines(baselines, holding_experiments):
+    """drawdown_analysis_baselines 스키마 검증 (P209-STEP9A realignment FIX).
+
+    - None 이면 None 반환. 단 universe_mode == dynamic_etf_market 인 경우
+      run_backtest 에서 REQUIRED 로 취급하여 별도 raise 한다 (_require_dd_baselines).
+    - dict 이면 operational/research 는 필수, shadow 는 optional
+    - 각 값은 문자열이며, holding_structure_experiments 의 name 과 일치해야 함
+    - rule 6/7 (암묵 fallback 금지): 기본값 없음. SSOT 에 명시 요구.
+    """
+    if baselines is None:
+        return None
+    if not isinstance(baselines, dict):
+        raise TypeError(
+            "drawdown_analysis_baselines 는 dict 여야 합니다:" f" {type(baselines)}"
+        )
+    if "operational" not in baselines:
+        raise KeyError("drawdown_analysis_baselines: operational 누락")
+    if "research" not in baselines:
+        raise KeyError("drawdown_analysis_baselines: research 누락")
+
+    known_names = set()
+    if holding_experiments:
+        known_names = {e["name"] for e in holding_experiments}
+
+    result = {}
+    for role in ("operational", "research", "shadow"):
+        if role not in baselines:
+            continue
+        val = baselines[role]
+        if not isinstance(val, str) or not val:
+            raise ValueError(
+                f"drawdown_analysis_baselines.{role}"
+                f" 는 비어있지 않은 문자열이어야 합니다: {val!r}"
+            )
+        if known_names and val not in known_names:
+            raise ValueError(
+                f"drawdown_analysis_baselines.{role}={val!r}"
+                f" 가 holding_structure_experiments 에 없음."
+                f" 허용: {sorted(known_names)}"
+            )
+        result[role] = val
+    return result
+
+
 def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
     """
     params 딕셔너리에서 전략 파라미터를 추출한다.
@@ -215,6 +259,10 @@ def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
         "holding_structure_experiments": _validate_holding_structure_experiments(
             params_raw.get("holding_structure_experiments")
         ),
+        "drawdown_analysis_baselines": _validate_drawdown_analysis_baselines(
+            params_raw.get("drawdown_analysis_baselines"),
+            params_raw.get("holding_structure_experiments"),
+        ),
     }
 
 
@@ -261,6 +309,19 @@ def load_params_strict() -> Tuple[Dict[str, Any], Dict[str, str]]:
                 "universe_mode=dynamic_etf_market이나 "
                 "universe_tickers가 SSOT에 없습니다. "
                 "먼저 스캐너 결과를 SSOT에 적용하세요."
+            )
+
+        # P209-STEP9A realignment FIX: dynamic_etf_market 모드에서는
+        # drawdown_analysis_baselines 가 REQUIRED. 누락 시 즉시 raise.
+        # rule 6/7 (암묵 fallback 금지) — 운영 SSOT 에 baseline 을 명시 요구.
+        if params.get("drawdown_analysis_baselines") is None:
+            raise KeyError(
+                "universe_mode=dynamic_etf_market 에서는"
+                " params.drawdown_analysis_baselines 가 필수입니다."
+                " SSOT 에 operational/research/(optional shadow) 라벨을 명시하세요."
+                ' 예: {"operational": "g2_pos2_raew",'
+                ' "research": "g4_pos3_raew",'
+                ' "shadow": "g3_pos3_eq"}'
             )
 
     source = {

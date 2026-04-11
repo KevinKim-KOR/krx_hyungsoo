@@ -233,7 +233,12 @@
         "max_positions": 5,
         "allocation_mode": "risk_aware_equal_weight_v1"
       }
-    ]
+    ],
+    "drawdown_analysis_baselines": {
+      "operational": "g2_pos2_raew",
+      "research": "g4_pos3_raew",
+      "shadow": "g3_pos3_eq"
+    }
   },
   "universe_mode": "dynamic_etf_market",
   "universe_tickers": [

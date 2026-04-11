@@ -20,8 +20,14 @@ from app.backtest.reporting.drawdown.pipeline import (
     analyze_variant,
     run_analysis_pipeline,
 )
+from app.backtest.reporting.drawdown.toxic_summary import (
+    DEFAULT_COMMON_TOXIC_TOP_N,
+    compute_common_toxic_primary,
+)
 
 __all__ = [
     "analyze_variant",
     "run_analysis_pipeline",
+    "compute_common_toxic_primary",
+    "DEFAULT_COMMON_TOXIC_TOP_N",
 ]

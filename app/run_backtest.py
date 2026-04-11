@@ -879,9 +879,20 @@ def atomic_write_result(data: Dict[str, Any]) -> None:
 
 # ─── 7. Main ──────────────────────────────────────────────────────────────
 def run_cli_backtest(
-    mode: str = "quick", start_str: str = None, end_str: str = None
+    mode: str = "quick",
+    start_str: str = None,
+    end_str: str = None,
+    analysis_only: bool = False,
 ) -> bool:
-    """Run backtest programmatically. Returns True if successful."""
+    """Run backtest programmatically. Returns True if successful.
+
+    P209-STEP9A realignment FIX — analysis_only=True:
+    - main backtest + drawdown 분석 + dynamic_evidence_latest.md 재생성은 수행
+    - holding_structure sweep / allocation_experiments sweep 은 스킵
+    - 목적: Step9A baseline realignment 처럼 분석 산출물만 재생성할 때,
+      holding_structure_compare.md / allocation_constraint_compare.md 가
+      부수적으로 갱신되지 않도록 명시적으로 차단.
+    """
     logger.info("=" * 60)
     logger.info("P165 Backtest Engine — CLI")
     logger.info("=" * 60)
@@ -1368,31 +1379,61 @@ def run_cli_backtest(
 
     # P209-STEP9A: drawdown contribution analysis (A=운영기준, B=연구기준)
     # Step9A는 분석 전용. 실제 매매 로직 변경 금지. 필터/ML 적용 금지.
+    # Baseline realignment FIX (2026-04-11):
+    # - SSOT 의 drawdown_analysis_baselines 블록은 dynamic_etf_market 모드에서
+    #   REQUIRED (param_loader 가 이미 검증했음).
+    # - 하드코딩 기본값 없음. SSOT 값만 사용.
+    # - 과거 except Exception 로 감싸던 fallback 은 rule 7 (필수 설정 누락 시
+    #   즉시 실패) 위반이라 제거. 실패는 그대로 propagate.
     if params.get("universe_mode") == "dynamic_etf_market" and enable_regime:
-        try:
-            from app.backtest.reporting.drawdown import (
-                run_analysis_pipeline as _run_dd_analysis,
-            )
+        from app.backtest.reporting.drawdown import (
+            run_analysis_pipeline as _run_dd_analysis,
+        )
 
-            _dd_result = _run_dd_analysis(
-                main_params=params,
-                main_raw_result=result,
-                price_data=price_data,
-                start=start,
-                end=end,
-                run_backtest_fn=run_backtest,
-                project_root=PROJECT_ROOT,
+        _dd_baselines = params["drawdown_analysis_baselines"]
+        if _dd_baselines is None:
+            raise KeyError(
+                "params.drawdown_analysis_baselines 가 None."
+                " param_loader 가 dynamic_etf_market 에서 REQUIRED 로 검증했어야 함."
             )
-            # Main formatted meta에 A 분석 요약 주입
-            formatted["meta"].update(_dd_result.get("main_meta_injection", {}))
-            # 후속 evidence md 생성에서 참조할 수 있도록 result에도 첨부
-            result["_drawdown_contribution_analyses"] = _dd_result.get("analyses", [])
-            logger.info(
-                f"[P209-STEP9A] drawdown 분석 완료:"
-                f" {len(_dd_result.get('analyses', []))} variants"
-            )
-        except Exception as _dd_exc:
-            logger.warning(f"[P209-STEP9A] drawdown 분석 실패: {_dd_exc}")
+        _hs_exps = params.get("holding_structure_experiments") or []
+        _hs_by_name = {e["name"]: e for e in _hs_exps}
+
+        def _resolve_spec(_label):
+            if _label not in _hs_by_name:
+                raise KeyError(
+                    f"drawdown_analysis_baselines: label={_label!r}"
+                    f" 가 holding_structure_experiments 에 없음."
+                    f" 허용: {sorted(_hs_by_name.keys())}"
+                )
+            _e = _hs_by_name[_label]
+            return (_label, _e["max_positions"], _e["allocation_mode"])
+
+        _dd_kwargs = {
+            "main_params": params,
+            "main_raw_result": result,
+            "price_data": price_data,
+            "start": start,
+            "end": end,
+            "run_backtest_fn": run_backtest,
+            "project_root": PROJECT_ROOT,
+            "a_spec": _resolve_spec(_dd_baselines["operational"]),
+            "b_spec": _resolve_spec(_dd_baselines["research"]),
+        }
+        if _dd_baselines.get("shadow"):
+            _dd_kwargs["c_spec"] = _resolve_spec(_dd_baselines["shadow"])
+
+        _dd_result = _run_dd_analysis(**_dd_kwargs)
+        # rule 6/7: run_analysis_pipeline 은 "main_meta_injection" / "analyses"
+        # 를 REQUIRED key 로 항상 반환한다. .get(k, default) 는 silent fallback
+        # 이므로 금지. 누락 시 KeyError 로 즉시 실패.
+        formatted["meta"].update(_dd_result["main_meta_injection"])
+        # 후속 evidence md 생성에서 참조할 수 있도록 result에도 첨부
+        result["_drawdown_contribution_analyses"] = _dd_result["analyses"]
+        logger.info(
+            f"[P209-STEP9A] drawdown 분석 완료:"
+            f" {len(_dd_result['analyses'])} variants"
+        )
 
     # P205-STEP5H: metric integrity audit
     _s = formatted["summary"]
@@ -1499,8 +1540,14 @@ def run_cli_backtest(
             logger.warning(f"dynamic_evidence 생성 실패: {ev_exc}")
 
     # P208-STEP8A: holding_structure_experiments sweep
+    # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵
     _hs_experiments = params.get("holding_structure_experiments")
-    if _hs_experiments and isinstance(_hs_experiments, list) and enable_regime:
+    if (
+        _hs_experiments
+        and isinstance(_hs_experiments, list)
+        and enable_regime
+        and not analysis_only
+    ):
         from app.backtest.reporting.holding_structure import (
             run_holding_structure_sweep,
         )
@@ -1515,11 +1562,19 @@ def run_cli_backtest(
             format_result_fn=format_result,
             project_root=PROJECT_ROOT,
         )
+    elif analysis_only and _hs_experiments:
+        logger.info("[P209-STEP9A] analysis_only=True — holding_structure sweep 스킵")
 
     # P207-STEP7C: allocation experiment sweep
     # P209-CLEAN-R4: inline 블록을 allocation_constraints 패키지로 추출
+    # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵
     _experiments = params.get("allocation_experiments")
-    if _experiments and isinstance(_experiments, list) and enable_regime:
+    if (
+        _experiments
+        and isinstance(_experiments, list)
+        and enable_regime
+        and not analysis_only
+    ):
         from app.backtest.reporting.allocation_constraints import (
             run_allocation_constraint_sweep,
         )
@@ -1533,6 +1588,10 @@ def run_cli_backtest(
             run_backtest_fn=run_backtest,
             format_result_fn=format_result,
             project_root=PROJECT_ROOT,
+        )
+    elif analysis_only and _experiments:
+        logger.info(
+            "[P209-STEP9A] analysis_only=True — allocation_experiments sweep 스킵"
         )
 
     print(f"[RESULT: OK] backtest completed → {RESULT_LATEST}")
@@ -1549,9 +1608,23 @@ def main():
     )
     parser.add_argument("--start", type=str, default=None, help="시작일 (YYYY-MM-DD)")
     parser.add_argument("--end", type=str, default=None, help="종료일 (YYYY-MM-DD)")
+    parser.add_argument(
+        "--analysis-only",
+        action="store_true",
+        help=(
+            "P209-STEP9A realignment FIX: main backtest + drawdown 분석 +"
+            " dynamic_evidence_latest.md 만 재생성하고"
+            " holding_structure / allocation_experiments sweep 은 스킵"
+        ),
+    )
     args = parser.parse_args()
 
-    success = run_cli_backtest(mode=args.mode, start_str=args.start, end_str=args.end)
+    success = run_cli_backtest(
+        mode=args.mode,
+        start_str=args.start,
+        end_str=args.end,
+        analysis_only=args.analysis_only,
+    )
     if not success:
         sys.exit(1)
 

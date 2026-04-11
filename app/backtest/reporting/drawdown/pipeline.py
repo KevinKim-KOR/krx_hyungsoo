@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.backtest.reporting.drawdown.attribution import compute_ticker_contributions
 from app.backtest.reporting.drawdown.bucket_risk import compute_bucket_risk
@@ -192,22 +192,21 @@ def run_analysis_pipeline(
     end,
     run_backtest_fn: Callable,
     project_root: Path,
-    a_spec: Tuple[str, int, str] = (
-        "g2_pos2_raew",
-        2,
-        "risk_aware_equal_weight_v1",
-    ),
-    b_spec: Tuple[str, int, str] = (
-        "g5_pos4_eq",
-        4,
-        "dynamic_equal_weight",
-    ),
+    a_spec: Tuple[str, int, str],
+    b_spec: Tuple[str, int, str],
+    c_spec: Optional[Tuple[str, int, str]] = None,
 ) -> Dict[str, Any]:
-    """A (operational) + B (research) 2-variant 분석 파이프라인.
+    """A (operational) + B (research) + C (shadow, optional) 분석 파이프라인.
+
+    P209-STEP9A baseline realignment FIX (2026-04-11):
+    - a_spec / b_spec 는 REQUIRED. 하드코딩된 기본값 없음 (rule 6/7).
+    - 호출자 (run_backtest.py) 가 SSOT 의 drawdown_analysis_baselines 블록을
+      읽어 (label, max_positions, allocation_mode) tuple 로 변환 후 전달해야 함.
+    - c_spec 는 optional — SSOT 에 shadow 라벨이 있을 때만 활성화.
 
     - A가 현재 main SSOT와 일치하면 main_raw_result를 재사용
     - 그렇지 않으면 A를 별도 실행
-    - B는 항상 별도 실행 (pos4 + eq)
+    - B/C는 spec 이 main 과 일치하지 않으면 별도 실행
     - 결과를 joint report로 저장하고 A 요약 dict을 main meta에 주입할 수 있게 반환
     """
     a_label, a_pos, a_mode = a_spec
@@ -268,6 +267,38 @@ def run_analysis_pipeline(
             skip_baselines=True,
         )
 
+    # ── C (shadow) 결과 확보 — optional ──
+    c_analysis: Optional[Dict[str, Any]] = None
+    if c_spec is not None:
+        c_label, c_pos, c_mode = c_spec
+        if _matches_main(main_params, c_pos, c_mode):
+            c_raw = main_raw_result
+            logger.info(f"[P209-STEP9A] C={c_label} main 결과 재사용 (shadow)")
+        else:
+            c_params = dict(main_params)
+            c_params["max_positions"] = c_pos
+            c_params["allocation"] = _build_allocation_block(c_mode)
+            c_params["holding_structure_experiments"] = None
+            c_params["allocation_experiments"] = None
+            c_params["holding_structure_experiment_name"] = c_label
+            c_raw = run_backtest_fn(
+                price_data,
+                c_params,
+                start,
+                end,
+                enable_regime=True,
+                skip_baselines=True,
+            )
+        c_analysis = analyze_variant(
+            label=c_label,
+            role="shadow_reference",
+            max_positions=c_pos,
+            allocation_mode=c_mode,
+            raw_result=c_raw,
+            price_data=price_data,
+            buckets=buckets,
+        )
+
     a_analysis = analyze_variant(
         label=a_label,
         role="operational_baseline",
@@ -288,10 +319,12 @@ def run_analysis_pipeline(
     )
 
     analyses = [a_analysis, b_analysis]
+    if c_analysis is not None:
+        analyses.append(c_analysis)
     out_dir = project_root / "reports" / "tuning"
     paths = write_drawdown_contribution_report(analyses, out_dir)
 
-    main_inject = _build_main_meta_injection(a_analysis, b_analysis)
+    main_inject = _build_main_meta_injection(a_analysis, b_analysis, c_analysis)
     return {
         "analyses": analyses,
         "report_paths": {k: str(v) for k, v in paths.items()},
@@ -303,6 +336,7 @@ def run_analysis_pipeline(
 def _build_main_meta_injection(
     a_analysis: Dict[str, Any],
     b_analysis: Dict[str, Any],
+    c_analysis: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """A 분석의 핵심 필드 + A/B 비교 요약을 main result meta에 주입할 형태로 반환.
 
@@ -324,6 +358,56 @@ def _build_main_meta_injection(
     b_sqs = b_analysis["selection_quality_summary"]
     a_qs: Dict[str, Any] = a_sqs if a_sqs is not None else {}
     b_qs: Dict[str, Any] = b_sqs if b_sqs is not None else {}
+    comparison: Dict[str, Any] = {
+        "operational_baseline_label": a_analysis["label"],
+        "operational_baseline_verdict": a_analysis["selection_quality_verdict"],
+        # R5 whitelist: a_qs 가 {} 인 NO_EVENTS 경로에서 None 반환 (display)
+        "operational_avg_selection_gap_pct": a_qs.get("avg_selection_gap_pct"),
+        "operational_mdd_pct": a_w.get("mdd_pct"),
+        "operational_positive_forward_ratio": a_qs.get("positive_forward_ratio"),
+        "operational_avg_forward_return_pct": a_qs.get("avg_forward_return_pct"),
+        "operational_events_with_better_unselected": a_qs.get(
+            "events_with_better_unselected"
+        ),
+        "research_baseline_label": b_analysis["label"],
+        "research_baseline_verdict": b_analysis["selection_quality_verdict"],
+        "research_avg_selection_gap_pct": b_qs.get("avg_selection_gap_pct"),
+        "research_mdd_pct": b_w.get("mdd_pct"),
+        "research_positive_forward_ratio": b_qs.get("positive_forward_ratio"),
+        "research_avg_forward_return_pct": b_qs.get("avg_forward_return_pct"),
+        "research_events_with_better_unselected": b_qs.get(
+            "events_with_better_unselected"
+        ),
+        # B군 요약 — UI side-by-side 표시용 (analyze_variant 항상 설정)
+        "research_top_toxic_tickers": b_analysis["top_ticker_contributors_to_mdd"],
+        "research_worst_selection_events": b_analysis["worst_selection_events"],
+        "research_bucket_risk_summary": b_analysis["bucket_risk_summary"],
+    }
+
+    if c_analysis is not None:
+        c_mdd_window = c_analysis["mdd_window"]
+        c_w: Dict[str, Any] = c_mdd_window if c_mdd_window is not None else {}
+        c_sqs = c_analysis["selection_quality_summary"]
+        c_qs: Dict[str, Any] = c_sqs if c_sqs is not None else {}
+        comparison.update(
+            {
+                "shadow_baseline_label": c_analysis["label"],
+                "shadow_baseline_verdict": c_analysis["selection_quality_verdict"],
+                "shadow_mdd_pct": c_w.get("mdd_pct"),
+                "shadow_avg_selection_gap_pct": c_qs.get("avg_selection_gap_pct"),
+                "shadow_positive_forward_ratio": c_qs.get("positive_forward_ratio"),
+                "shadow_avg_forward_return_pct": c_qs.get("avg_forward_return_pct"),
+                "shadow_events_with_better_unselected": c_qs.get(
+                    "events_with_better_unselected"
+                ),
+                "shadow_top_toxic_tickers": c_analysis[
+                    "top_ticker_contributors_to_mdd"
+                ],
+                "shadow_worst_selection_events": c_analysis["worst_selection_events"],
+                "shadow_bucket_risk_summary": c_analysis["bucket_risk_summary"],
+            }
+        )
+
     return {
         "drawdown_peak_date": a_w.get("peak_date"),
         "drawdown_trough_date": a_w.get("trough_date"),
@@ -337,29 +421,5 @@ def _build_main_meta_injection(
         "selection_quality_verdict": a_analysis["selection_quality_verdict"],
         "worst_selection_events": a_analysis["worst_selection_events"],
         "bucket_risk_summary": a_analysis["bucket_risk_summary"],
-        "drawdown_analysis_comparison": {
-            "operational_baseline_label": a_analysis["label"],
-            "operational_baseline_verdict": a_analysis["selection_quality_verdict"],
-            # R5 whitelist: a_qs 가 {} 인 NO_EVENTS 경로에서 None 반환 (display)
-            "operational_avg_selection_gap_pct": a_qs.get("avg_selection_gap_pct"),
-            "operational_mdd_pct": a_w.get("mdd_pct"),
-            "operational_positive_forward_ratio": a_qs.get("positive_forward_ratio"),
-            "operational_avg_forward_return_pct": a_qs.get("avg_forward_return_pct"),
-            "operational_events_with_better_unselected": a_qs.get(
-                "events_with_better_unselected"
-            ),
-            "research_baseline_label": b_analysis["label"],
-            "research_baseline_verdict": b_analysis["selection_quality_verdict"],
-            "research_avg_selection_gap_pct": b_qs.get("avg_selection_gap_pct"),
-            "research_mdd_pct": b_w.get("mdd_pct"),
-            "research_positive_forward_ratio": b_qs.get("positive_forward_ratio"),
-            "research_avg_forward_return_pct": b_qs.get("avg_forward_return_pct"),
-            "research_events_with_better_unselected": b_qs.get(
-                "events_with_better_unselected"
-            ),
-            # B군 요약 — UI side-by-side 표시용 (analyze_variant 항상 설정)
-            "research_top_toxic_tickers": b_analysis["top_ticker_contributors_to_mdd"],
-            "research_worst_selection_events": b_analysis["worst_selection_events"],
-            "research_bucket_risk_summary": b_analysis["bucket_risk_summary"],
-        },
+        "drawdown_analysis_comparison": comparison,
     }

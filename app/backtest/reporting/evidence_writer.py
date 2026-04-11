@@ -382,10 +382,17 @@ def _render_drawdown_contribution_section(
     if not dd_analyses:
         return []
 
-    # dd_analyses 는 항상 [A, B] 두 variant. analyze_variant 가 반환하는
-    # 구조이며, 필수 필드는 pipeline.analyze_variant 에서 보장된다.
+    # dd_analyses 는 [A, B] 또는 [A, B, C(shadow)]. analyze_variant 가
+    # 반환하는 구조이며, 필수 필드는 pipeline.analyze_variant 에서 보장된다.
+    # P209-STEP9A baseline realignment: B = g4_pos3_raew (research),
+    # C = g3_pos3_eq (shadow reference, 정식 baseline 아님).
     a_an = dd_analyses[0] if len(dd_analyses) > 0 else {}
     b_an = dd_analyses[1] if len(dd_analyses) > 1 else {}
+    c_an: Dict[str, Any] = {}
+    for _an in dd_analyses[2:]:
+        if _an.get("role") == "shadow_reference":
+            c_an = _an
+            break
 
     # OPTIONAL: mdd_window/selection_quality_summary 는 NO_DATA 경로에서 None
     # 명시적 None → {} 치환 (display 용)
@@ -406,9 +413,14 @@ def _render_drawdown_contribution_section(
     a_worst = a_an["worst_selection_events"]
     b_worst = b_an["worst_selection_events"]
 
-    a_toxic_set = {r["ticker"] for r in a_top[:5] if "ticker" in r}
-    b_toxic_set = {r["ticker"] for r in b_top[:5] if "ticker" in r}
-    common = sorted(t for t in (a_toxic_set & b_toxic_set) if t)
+    # P209-STEP9A FIX: 공통 toxic 계산 로직을 drawdown.toxic_summary 로 통일.
+    # report_writer.py 와 동일한 기준 (top 3, shadow 제외) 을 사용하여
+    # 산출물 간 Step9B 근거가 일관되도록 한다.
+    from app.backtest.reporting.drawdown.toxic_summary import (
+        compute_common_toxic_primary,
+    )
+
+    common = compute_common_toxic_primary(dd_analyses)
     common_str = ", ".join(common) if common else "(no common)"
 
     a_gap = a_qs.get("avg_selection_gap_pct")  # may be None
@@ -416,9 +428,10 @@ def _render_drawdown_contribution_section(
 
     # R5 whitelist: display fallback — a_w/a_qs 가 빈 dict 인 NO_DATA 경로에서
     # 각 필드는 'N/A'/0 으로 표시. 이는 NO_DATA 의 명시적 표현.
-    return [
+    lines = [
         "## Drawdown Contribution (P209-STEP9A)",
-        "| Field | A (Operational) | B (Compared) |",
+        "_Baseline realignment (2026-04-11): B = 최신 UI 기준 연구 baseline_",
+        "| Field | A (Operational) | B (Research) |",
         "|---|---|---|",
         f"| Baseline Label"
         f" | {a_an.get('label', 'N/A')}"
@@ -453,9 +466,39 @@ def _render_drawdown_contribution_section(
         f" | **{b_an.get('selection_quality_verdict', 'N/A')}** |",
         "",
         f"**A ∩ B 공통 Toxic Tickers**: {common_str}",
+    ]
+
+    if c_an:
+        c_mdd_window = c_an.get("mdd_window")
+        c_w: Dict[str, Any] = c_mdd_window if c_mdd_window is not None else {}
+        c_sqs = c_an.get("selection_quality_summary")
+        c_qs: Dict[str, Any] = c_sqs if c_sqs is not None else {}
+        c_top = c_an["top_ticker_contributors_to_mdd"]
+        c_worst = c_an["worst_selection_events"]
+        c_gap = c_qs.get("avg_selection_gap_pct")
+        lines += [
+            "",
+            "### Shadow Reference (C, 보조 참고용)",
+            "| Field | C (Shadow) |",
+            "|---|---|",
+            f"| Baseline Label | {c_an.get('label', 'N/A')} |",
+            f"| Role | {c_an.get('role', '-')} |",
+            f"| MDD % | {c_w.get('mdd_pct', 'N/A')}% |",
+            f"| Top Toxic (top 3) | {_fmt_top_toxic(c_top)} |",
+            f"| Worst Selection Event | {_fmt_worst_event(c_worst)} |",
+            f"| Avg Selection Gap (Unsel−Sel)"
+            f" | {c_gap if c_gap is not None else 'N/A'}%p |",
+            f"| Selection Quality Verdict"
+            f" | **{c_an.get('selection_quality_verdict', 'N/A')}** |",
+            "",
+            "_Shadow = 정식 baseline 아님. Step9B 필터 근거 교집합에서 제외._",
+        ]
+
+    lines += [
         "",
         "_Step9A = 분석 챕터. 필터/ML 실제 적용 없음._",
     ]
+    return lines
 
 
 def _fmt_top_toxic(top_list: List[Dict[str, Any]]) -> str:

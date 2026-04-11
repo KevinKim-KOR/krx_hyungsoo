@@ -98,6 +98,17 @@ def _render_markdown(
     analyses: List[Dict[str, Any]],
     generated_at: str,
 ) -> str:
+    # Baseline realignment (P209-STEP9A, 2026-04-11):
+    # 연구 baseline 은 최신 UI 기준으로 재고정 (기존 g5_pos4_eq → g4_pos3_raew).
+    # Step9A 는 분석 챕터이며 SSOT 승격 아님.
+    a_label = analyses[0]["label"] if len(analyses) > 0 else "-"
+    b_label = analyses[1]["label"] if len(analyses) > 1 else "-"
+    shadow_label = None
+    for _a in analyses[2:]:
+        if _a.get("role") == "shadow_reference":
+            shadow_label = _a["label"]
+            break
+
     lines: List[str] = [
         "# Drawdown Contribution Analysis (P209-STEP9A)",
         "",
@@ -106,6 +117,20 @@ def _render_markdown(
         "- verdict 기준 유지: `CAGR > 15` AND `MDD < 10`",
         "- 기여 계산: daily return attribution"
         " (prev-day position value × day return) / prev NAV",
+        "",
+        "## Baseline Realignment (P209-STEP9A, 2026-04-11)",
+        "",
+        "최신 UI 기준 연구 baseline 을 `g4_pos3_raew` 로 재고정한다."
+        " Step9A 는 분석 챕터이며 SSOT 승격 아님.",
+        "",
+        f"- **A (operational baseline)**: `{a_label}` — 운영 SSOT 유지",
+        f"- **B (research baseline)**: `{b_label}` — 최신 UI 기준 연구 baseline",
+    ]
+    if shadow_label:
+        lines.append(
+            f"- **C (shadow reference)**: `{shadow_label}` — 보조 참고용 (정식 baseline 아님)"
+        )
+    lines += [
         "",
         "## 분석 대상 비교군",
         "",
@@ -265,25 +290,37 @@ def _render_filter_proposal(analyses: List[Dict[str, Any]]) -> List[str]:
         "",
     ]
 
-    # Collect toxic across all variants
-    toxic_sets: Dict[str, set] = {}
-    for a in analyses:
-        top3 = [
-            r.get("ticker")
-            for r in (a.get("top_ticker_contributors_to_mdd") or [])[:3]
-            if r.get("ticker")
-        ]
-        toxic_sets[a["label"]] = set(top3)
+    # P209-STEP9A FIX: 공통 toxic 계산은 공유 함수 compute_common_toxic_primary
+    # 로 통일 (evidence_writer 와 동일한 결과 보장). shadow 는 교집합에서 제외.
+    from app.backtest.reporting.drawdown.toxic_summary import (
+        DEFAULT_COMMON_TOXIC_TOP_N,
+        compute_common_toxic_primary,
+    )
 
     all_toxic = set()
-    for s in toxic_sets.values():
-        all_toxic |= s
-    common_toxic = set.intersection(*toxic_sets.values()) if toxic_sets else set()
+    for a in analyses:
+        top3 = [
+            r["ticker"]
+            for r in (a.get("top_ticker_contributors_to_mdd") or [])[
+                :DEFAULT_COMMON_TOXIC_TOP_N
+            ]
+            if "ticker" in r
+        ]
+        all_toxic |= set(top3)
+
+    common_toxic = compute_common_toxic_primary(analyses)
 
     if all_toxic:
-        lines.append(f"- 모든 실험군 상위 3 Toxic 후보 합집합: {sorted(all_toxic)}")
+        lines.append(
+            f"- 모든 실험군 상위 {DEFAULT_COMMON_TOXIC_TOP_N}"
+            f" Toxic 후보 합집합 (shadow 포함): {sorted(all_toxic)}"
+        )
     if common_toxic:
-        lines.append(f"- 비교군 공통 Toxic 후보: {sorted(common_toxic)}")
+        lines.append(
+            f"- 정식 baseline 공통 Toxic 후보"
+            f" (top {DEFAULT_COMMON_TOXIC_TOP_N} 교집합, shadow 제외):"
+            f" {common_toxic}"
+        )
 
     for a in analyses:
         qs = a.get("selection_quality_summary") or {}
