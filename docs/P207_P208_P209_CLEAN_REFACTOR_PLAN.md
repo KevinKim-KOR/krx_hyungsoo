@@ -1,9 +1,44 @@
 # P207 / P208 / P209 Clean Refactor Plan
 > asof: 2026-04-11
-> 상태: **APPROVED** — 사용자 승인 완료, STEP R1 진입 대기
-> 다음 단계: 매 STEP 승인 방식으로 R1 → R2 → ... → R7 순차 진행 → 완료 후 `P209-STEP9A-BASELINE-REALIGNMENT-TO-LATEST-UI-V1` 진입
-> 총 STEP / commit 수: 7 (R1~R7)
-> 변경 이력: v1 (P208/P209 한정) → v2 P207 통합 layer 본 범위 편입 → **v3 사용자 확정 (A / 가 / R1~R4·R6 byte-level + R5 의미적 / c / I / 1)**
+> 상태: **COMPLETED** — R1~R7 모두 완료, cleanup 종결
+> 다음 단계: `P209-STEP9A-BASELINE-REALIGNMENT-TO-LATEST-UI-V1` 또는 `P209-STEP9B-TRACKA-TOXIC-ASSET-DROP-RULES-V1` 진입 가능
+> 총 STEP / commit 수: 7 (R1~R7) + R5 보강 2회 (v2/v3) = 9 commits
+> 변경 이력: v1 (P208/P209 한정) → v2 P207 통합 layer 본 범위 편입 → v3 사용자 확정 (A / 가 / R1~R4·R6 byte-level + R5 의미적 / c / I / 1) → **COMPLETED**
+
+## 실행 결과 요약
+
+| STEP | Commit | 내용 | Behavior |
+|---|---|---|---|
+| R1 | 324e14d0 | evidence_writer.py 추출 (P207+P208+P209) | byte-level 보존 |
+| R2 | 83aef3b4 | drawdown_contribution.py 1064줄 → drawdown/ 7 모듈 | byte-level 보존 |
+| R3 | 9b1a5be3 | holding_structure_compare.py 378줄 → holding_structure/ 4 모듈 | byte-level 보존 |
+| R4 | 45c8461b | allocation_constraints/ 패키지 (P207 cleanup) | byte-level 보존 |
+| R5 | 975771a5 | 초기 fallback 제거 | 의미적 동등 |
+| R5v2 | 43d4d65c | 포괄 fallback 감사 + 보강 | 의미적 동등 |
+| R5v3 | dd7bd62b | drawdown/pipeline.py 잔존 3건 제거 | 의미적 동등 |
+| R6 | ce44fc6b | view helpers 추출 (workflow/parameter_editor) | Python 레벨 동등 |
+| R7 | (이번) | 최종 검증 + handoff 갱신 | - |
+
+## 완료 판정 기준 달성 여부
+
+- ✅ R1~R6 commit 8개 git log 존재 (R5 보강 포함)
+- ✅ main summary CAGR/MDD/Sharpe refactor 이전과 동일
+- ✅ P207 allocation_constraint_compare.md/.csv byte-level 동등
+- ✅ P208 holding_structure_compare.md/.csv/.json byte-level 동등
+- ✅ P209 drawdown_contribution_report.md/.json/.csv byte-level 동등
+- ✅ dynamic_evidence_latest.md byte-level 동등 (timestamp 제외)
+- ✅ backtest_result.json 전체 meta diff 0건 (asof/dynamic_schedule_path 제외)
+- ⚠️ `app/backtest/reporting/` 500줄 초과 1건: `evidence_writer.py` 573줄
+  (10 섹션 렌더러 + R5v2 fallback 정책 docstring 의 단일 책임 응집. whitelist
+  예외로 수락 — 각 함수 자체는 작고 독립적)
+- ✅ `run_cli_backtest` / `format_result` 함수 300줄 이하
+- ✅ pc_cockpit/views/workflow.py / parameter_editor.py 의 P207/P208/P209 inline 블록 0개
+- ✅ R5 fallback 검출: critical path 0건, display/math/accumulator whitelist 범위 내
+- ✅ docs/handoff/P207_close_and_P208_handoff.md cleanup 완료 섹션 추가
+- ✅ docs/handoff/P208_close_and_P209_handoff.md cleanup 완료 섹션 추가
+- ✅ 다음 챕터 진입 가능
+
+---
 
 ---
 

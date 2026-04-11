@@ -1,6 +1,100 @@
 # P208 종료 결론 + P209 Hand-off 문서
-> asof: 2026-04-11
-> 상태: P208 종료 / P209-STEP9A 진입 완료 / Step9A baseline realignment 대기
+> asof: 2026-04-11 (최초) / 2026-04-11 (P208/P209 cleanup 완료 갱신)
+> 상태: P208 종료 / P209-STEP9A 진입 완료 / **P209-CLEAN R1~R7 완료 (cleanup 종결)** / Step9A baseline realignment 대기
+
+---
+
+## P208/P209 cleanup 완료 (2026-04-11, R1~R7)
+
+P209-CLEAN refactor plan (`docs/P207_P208_P209_CLEAN_REFACTOR_PLAN.md`) 에
+따라 R1~R7 총 7단계로 P207/P208/P209 통합 layer cleanup 완료.
+
+### R1~R6 commit 이력 (총 8 commits)
+
+1. `324e14d0` R1: evidence_writer.py 추출
+2. `83aef3b4` R2: drawdown/ 패키지 분할 (1064줄 god module → 7 모듈)
+3. `9b1a5be3` R3: holding_structure/ 패키지 분할 (378줄 → 4 모듈)
+4. `45c8461b` R4: allocation_constraints/ 패키지 추출 (P207 cleanup)
+5. `975771a5` R5: 암묵 fallback 초기 제거
+6. `43d4d65c` R5v2: comprehensive fallback audit + remediation
+7. `dd7bd62b` R5v3: drawdown/pipeline.py 잔존 silent fallback 3건 제거
+8. `ce44fc6b` R6: view helpers 추출 (workflow/parameter_editor)
+
+### 최종 구조 (app/backtest/reporting/)
+
+```
+app/backtest/reporting/
+├── __init__.py
+├── evidence_writer.py                (573줄, dynamic_evidence_latest.md)
+├── allocation_constraints/           (P207 cleanup 신규)
+│   ├── __init__.py
+│   ├── sweep.py
+│   ├── report_writer.py
+│   ├── diagnostic.py
+│   └── meta_builder.py
+├── holding_structure/                (P208, R3 분할)
+│   ├── __init__.py
+│   ├── sweep.py
+│   ├── verdict.py
+│   ├── report_writer.py
+│   └── diagnostic.py
+└── drawdown/                         (P209, R2 분할)
+    ├── __init__.py
+    ├── window.py
+    ├── positions.py
+    ├── attribution.py
+    ├── selection_quality.py
+    ├── bucket_risk.py
+    ├── pipeline.py
+    └── report_writer.py
+```
+
+### 최종 구조 (pc_cockpit/views/)
+
+```
+pc_cockpit/views/
+├── workflow.py                       (740줄 → 484줄, R6)
+├── parameter_editor.py               (181줄 → 144줄, R6)
+└── helpers/                          (R6 신규)
+    ├── __init__.py
+    ├── allocation_panel.py           (P207 렌더러)
+    ├── holding_structure_panel.py    (P208 렌더러)
+    └── drawdown_contribution_panel.py (P209 렌더러)
+```
+
+### Behavior 보존 (R7 최종 검증)
+
+- `backtest_result.json` summary: CAGR=12.387 / MDD=12.7446 / Sharpe=1.1019 / total_return=41.8749
+- 6개 산출물 모두 정상 생성 (byte-level identical, generated_at timestamp 만 차이)
+- P207 allocation meta 8 필드 / P208 holding_structure meta 5+ 필드 / P209 drawdown meta 10+ 필드 모두 동일
+- Full Backtest: G1~G8 (P208) + G1/G2A~D/G3 (P207) + A/B (P209) 전체 실행 정상
+
+### R5 fallback 정책 (4 카테고리)
+
+rule 6/7 (암묵 fallback 금지) 를 4개 카테고리로 분류하여 전수 적용:
+
+1. **REQUIRED**: 필수 필드 → 누락 시 `KeyError`/`ValueError` raise
+2. **OPTIONAL**: legitimate None → explicit `if x is None` 분기
+3. **WHITELIST (display)**: 사용자 표시용 `'N/A'`/`'-'` → 모듈 level 주석
+4. **WHITELIST (math)**: 수학적 정의 (미보유=0 등) → 인라인 주석
+
+Critical path (meta_builder, analyze_variant, compute_ticker_contributions,
+compute_selection_quality, compute_bucket_risk, _build_main_meta_injection,
+_matches_main, write_dynamic_evidence, allocation_constraints.sweep): silent
+fallback 0건. Display rendering 은 R6 에서 view helpers 로 추출된 후 whitelist
+범위 내 유지.
+
+### 다음 챕터 진입 조건
+
+P209-CLEAN cleanup 이 완료되어 `P209-STEP9A-BASELINE-REALIGNMENT-TO-LATEST-UI-V1`
+또는 `P209-STEP9B-TRACKA-TOXIC-ASSET-DROP-RULES-V1` 로 바로 진입 가능.
+
+- **Baseline realignment**: `drawdown/pipeline.py` 의 `a_spec`/`b_spec` tuple
+  (현재 g2_pos2_raew / g5_pos4_eq) 만 수정하면 됨. god module 전체를 건드릴
+  필요 없음.
+- **Track A toxic asset filter**: `drawdown/attribution.py` 와
+  `drawdown/selection_quality.py` 만 import 해서 재사용 가능. 필터 로직은
+  BacktestRunner.run 에 별도 훅으로 주입 (운영/실험 경계 유지).
 
 ---
 

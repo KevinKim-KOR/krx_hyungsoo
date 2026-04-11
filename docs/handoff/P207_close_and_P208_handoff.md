@@ -1,6 +1,46 @@
 # P207 종료 결론 + P208 Hand-off 문서
-> asof: 2026-04-10
-> 상태: P207 종료 / P208 진입 완료
+> asof: 2026-04-10 (최초) / 2026-04-11 (P207 통합 layer cleanup 완료 갱신)
+> 상태: P207 종료 / P208 진입 완료 / **P209-CLEAN R4 에서 P207 통합 layer cleanup 완료**
+
+---
+
+## P207 통합 layer cleanup 완료 (2026-04-11, R4/R5v3 적용)
+
+P207-STEP7C 에서 `run_backtest.py` 에 처음 도입된 inline sweep 블록 및
+`format_result` meta fallback 패턴이 P208/P209 까지 누적되어, rule 9 (1 파일
+1 기능) 와 rule 6/7 (암묵 fallback 금지) 를 위반하는 god file 이 되었다.
+
+P209-CLEAN-R4 에서 이 P207 통합 layer 를 `app/backtest/reporting/allocation_constraints/`
+신규 패키지로 완전 추출:
+
+- `sweep.py`: allocation_experiments 실행 로직 (run_backtest.py 에 inline 으로 약 115줄 있던 블록 이전)
+- `report_writer.py`: `allocation_constraint_compare.md/.csv` 생성
+- `diagnostic.py`: PROMOTE/REJECT 판정 (`allocation_experiment_verdict`)
+- `meta_builder.py`: `format_result` 의 P207 meta 필드 8개 빌더 (`build_allocation_meta`)
+
+`run_backtest.py` 의 `run_cli_backtest` 에서 P207 sweep 블록 제거 → 패키지
+호출 1줄로 축소. `format_result` 의 P207 meta inline 제거 → `**build_allocation_meta(result)` 주입.
+
+R5v3 에서 `meta_builder.build_allocation_meta` 의 silent fallback (`result.get("allocation_mode", "bucket_portfolio")` 등) 을 모두 제거하고
+필수 필드는 KeyError raise, optional 필드는 explicit None 처리로 변경.
+
+Behavior 는 완전 보존 (byte-level): `allocation_constraint_compare.csv` MD5 일치,
+`backtest_result.json` 의 P207 allocation meta 필드 8개 모두 완전 일치.
+
+## P207+P208+P209 전체 cleanup 완료 (2026-04-11)
+
+R1~R6 완료 + R7 최종 검증 통과.
+
+- R1: `evidence_writer.py` 추출 (P207+P208+P209 evidence 통합)
+- R2: `drawdown_contribution.py` 1064줄 → `drawdown/` 패키지 7모듈
+- R3: `holding_structure_compare.py` 378줄 → `holding_structure/` 패키지 4모듈
+- R4: `allocation_constraints/` 신규 패키지 (P207 cleanup 본 항목)
+- R5 (v1→v2→v3): reporting 전체 fallback 전수 정리, critical path silent fallback 0
+- R6: `workflow.py` / `parameter_editor.py` 의 P207/P208/P209 inline 렌더링 ~290줄 → `views/helpers/` 3 helper
+
+다음 챕터 (`P209-STEP9A-BASELINE-REALIGNMENT-TO-LATEST-UI-V1` 또는
+`P209-STEP9B-TRACKA-TOXIC-ASSET-DROP-RULES-V1`) 진입 시 이 정리된 구조 위에서
+시작한다.
 
 ---
 
