@@ -69,7 +69,10 @@
       "Bash(python -m flake8 pc_cockpit/views/helpers/)",
       "Bash(find app/backtest/reporting -name \"*.py\" -not -path \"*__pycache__*\" -exec wc -l {} \\\\;)",
       "Bash(awk '/^def run_cli_backtest/,/^def [a-z]/{print NR\": \"$0}' app/run_backtest.py)",
-      "Bash(awk '/^def format_result/,/^def [a-z]/{print NR\": \"$0}' app/run_backtest.py)"
+      "Bash(awk '/^def format_result/,/^def [a-z]/{print NR\": \"$0}' app/run_backtest.py)",
+      "Bash(mv docs/readme_claude.md docs/archive/readme_claude_20260411.md)",
+      "Bash(mv docs/readme_gpt.md docs/archive/readme_gpt_20260411.md)",
+      "Bash(ls docs/archive/readme_*.md)"
     ]
   }
 }
