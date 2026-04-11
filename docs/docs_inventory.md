@@ -66,6 +66,15 @@ asof: 2026-04-11
 
 `docs/README.md`는 새 현재 인덱스로 교체됨.
 
+## Archive 보관 (Audit Memo)
+
+아래 2건은 DEPRECATED 배너 대상이 아니라, 특정 세션의 **감사/읽기 기록** (audit memo) 이다. governance §"3축 핵심 문서 관리 규칙" 의 "audit memo 는 장기 운영 기준으로 승격하지 않는다" 원칙에 따라 top-level 에서 `docs/archive/` 로 이동 보관한다. 삭제가 아닌 보존 목적.
+
+| 이전 경로 | 이동 후 | 성격 | 사유 |
+|---|---|---|---|
+| `docs/readme_claude.md` | `docs/archive/readme_claude_20260411.md` | Claude 의 docs/ 감사 노트 (2026-04-11) | D2 에서 "실행 대기" 제안이 이미 실행되어 원 역할 종료. 감사 과정 자체는 참고 가치 있어 삭제 대신 archive 보존 |
+| `docs/readme_gpt.md` | `docs/archive/readme_gpt_20260411.md` | GPT 의 docs/ 읽기 로그 (2026-04-11) | 세션 시점의 읽기 범위 기록. D2 이전 경로 (`docs/P207_P208_P209_CLEAN_REFACTOR_PLAN.md`) 를 읽은 기록이라 current 오독 위험. archive 보존 |
+
 ## 추가 검토 후보
 
 아래 3개는 현재 구조와 불일치 가능성이 있으나, 상단 DEPRECATED 배너가 없으므로 별도 확인이 필요합니다.
