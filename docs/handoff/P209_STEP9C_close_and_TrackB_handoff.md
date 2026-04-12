@@ -57,18 +57,16 @@ P209-STEP9C Track A Contextual Guard 챕터를 정식으로 종료하고, 규칙
 
 ---
 
-## 2. P209-STEP9C 코드 품질 성과 (Rule 6/7)
+## 2. P209-STEP9C 코드 품질 현황 (Rule 6/7)
 
-본 단계에서는 기능 구현보다 "구조적 무결성" 확보에 중점을 두었음.
-
-- **Fail-loud 구체화**: 
-  - `backtest_runner.py` 내 모든 가드 파라미터 접근을 `KeyError` 발생 경로(subscript)로 통일.
-  - 가드 연산 예외 발생 시 `pass` 대신 `RuntimeError` 전파.
-- **Zero-residue Cleanup**:
-  - `evidence_writer.py` (Legacy 섹션 포함) 및 `contextual_guard_panel.py` 내의 모든 `.get()` 호출에 대해 `OPTIONAL` 또는 `WHITELIST (display)` 분류 주석 완비.
-  - UI 렌더링 시의 `except Exception: pass` (Silent catch) 완전 제거.
-- **Static Check 완결**: 
-  - `black`, `flake8`, `py_compile` 전수 통과 상태에서 종료.
+- **Fail-loud 적용 범위**:
+  - `contextual_guard_compare.py`: `_require_raw()` 헬퍼로 REQUIRED 필드 직접 subscript. `except Exception` swallow 없음.
+  - `backtest_runner.py`: Step9C 가드 파라미터 (threshold) 는 직접 subscript.
+    단 P206/P207 legacy 경로의 OPTIONAL 파라미터 (`allocation_params`, `exo_regime_schedule`, `rebalance_rule`) 는 `if x is not None else {}` 명시 분기로 변환 (마감 정리 커밋에서 `or {}` 제거).
+- **evidence_writer.py / contextual_guard_panel.py**:
+  - Step9C 관련 `.get()` 호출은 OPTIONAL (None 분기 명시) 또는 WHITELIST (display, 주석 기재) 로 분류 완료.
+  - `except Exception: pass` (silent catch) 없음. panel 의 exception 은 `st.caption(f"에러: {e}")` 로 표시.
+- **Static Check**: `black --check`, `flake8`, `py_compile` 통과 (마감 정리 커밋 기준).
 
 ---
 

@@ -754,10 +754,17 @@ def format_result(
         # 실험군 이름이 명시적으로 주입되지 않은 경우 SSOT의
         # holding_structure_experiments 목록에서 (max_positions, allocation_mode)
         # 조합으로 매칭하여 도출. 매칭이 없으면 None.
+        # OPTIONAL: holding_structure_experiment_name 이 명시 주입되지 않은
+        # 경우 holding_structure_experiments 에서 (max_pos, alloc_mode) 매칭
+        # 시도. experiments 자체가 None 이면 빈 리스트로 전달 (sweep 미설정).
         "holding_structure_experiment_name": (
             params.get("holding_structure_experiment_name")
             or _resolve_holding_structure_experiment_name(
-                params.get("holding_structure_experiments") or [],
+                (
+                    params.get("holding_structure_experiments")
+                    if params.get("holding_structure_experiments") is not None
+                    else []
+                ),
                 params["max_positions"],
                 result.get("allocation_mode"),
             )
@@ -1427,7 +1434,10 @@ def run_cli_backtest(
                 "params.drawdown_analysis_baselines 가 None."
                 " param_loader 가 dynamic_etf_market 에서 REQUIRED 로 검증했어야 함."
             )
-        _hs_exps = params.get("holding_structure_experiments") or []
+        # OPTIONAL: holding_structure_experiments 는 dynamic_etf_market 에서
+        # 반드시 존재하지만 None 일 수는 없음 (param_loader 검증). 명시적 분기.
+        _hs_exps_raw = params.get("holding_structure_experiments")
+        _hs_exps = _hs_exps_raw if _hs_exps_raw is not None else []
         _hs_by_name = {e["name"]: e for e in _hs_exps}
 
         def _resolve_spec(_label):

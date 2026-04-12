@@ -501,9 +501,9 @@ class BacktestRunner:
         # P205-STEP5F: dynamic allocation path
         _is_dynamic = universe_mode == "dynamic_etf_market"
         # P207: allocation mode — 명시적 설정 필수
-        # allocation 블록이 없으면 dynamic_equal_weight (레거시 호환)
-        # allocation 블록이 있으면 mode 필수, fallback_mode 필수
-        _alloc_params = allocation_params or {}
+        # OPTIONAL: allocation 블록이 None 이면 dynamic_equal_weight (레거시 호환).
+        # allocation 블록이 dict 이면 mode 필수, fallback_mode 필수.
+        _alloc_params = allocation_params if allocation_params is not None else {}
         if _is_dynamic and _alloc_params:
             if "mode" not in _alloc_params:
                 raise ValueError(
@@ -526,8 +526,15 @@ class BacktestRunner:
         _allocation_fallback_used = False
 
         # P206-STEP6B: exogenous regime hard gate
+        # OPTIONAL: exo_regime_schedule 이 None 이면 empty dict (regime 미사용).
         _exo_sched = (
-            (exo_regime_schedule or {}).get("schedule", {}) if _is_dynamic else {}
+            (
+                exo_regime_schedule.get("schedule", {})
+                if exo_regime_schedule is not None
+                else {}
+            )
+            if _is_dynamic
+            else {}
         )
         _exo_risk_off_count = 0
 
@@ -1016,7 +1023,10 @@ class BacktestRunner:
 
                     # P206-STEP6J: 파라미터화된 배분
                     _exo_state = _exo_sched.get(str(d), "risk_on")
-                    _esc = exo_regime_schedule or {}
+                    # OPTIONAL: exo_regime_schedule 이 None 이면 safe asset 미사용
+                    _esc = (
+                        exo_regime_schedule if exo_regime_schedule is not None else {}
+                    )
                     _safe_ticker = _esc.get("safe_asset_ticker", "")
                     _n_risky = _esc.get("neutral_risky_pct", 0.50)
                     _n_dollar = _esc.get("neutral_dollar_pct", 0.20)
@@ -1484,8 +1494,11 @@ class BacktestRunner:
         cluster_ratio = (
             early_month_count / total_trade_events if total_trade_events > 0 else 0
         )
-        rebal_freq = (rebalance_rule or {}).get("frequency", "M")
-        rebal_dom = (rebalance_rule or {}).get("day_of_month", 1)
+        # OPTIONAL: rebalance_rule 이 None 이면 legacy 기본값 (M / 1)
+        _rr = rebalance_rule if rebalance_rule is not None else {}
+        rebal_freq = _rr.get("frequency", "M")
+        # ACCUMULATOR: day_of_month 기본 1 은 "매월 1일" 이라는 수학적 기본값
+        rebal_dom = _rr.get("day_of_month", 1)
         rebalance_cluster_check = {
             "expected_frequency": rebal_freq,
             "day_of_month": rebal_dom,
