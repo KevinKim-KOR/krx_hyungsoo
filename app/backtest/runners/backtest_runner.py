@@ -526,16 +526,20 @@ class BacktestRunner:
         _allocation_fallback_used = False
 
         # P206-STEP6B: exogenous regime hard gate
-        # OPTIONAL: exo_regime_schedule 이 None 이면 empty dict (regime 미사용).
-        _exo_sched = (
-            (
-                exo_regime_schedule.get("schedule", {})
-                if exo_regime_schedule is not None
-                else {}
-            )
-            if _is_dynamic
-            else {}
-        )
+        # OPTIONAL: exo_regime_schedule 이 None = regime 미사용 (non-dynamic /
+        # regime 비활성). None 이면 _exo_sched = {} (날짜별 상태 없음 = 모든
+        # 날짜가 risk_on 으로 처리됨).
+        # REQUIRED: exo_regime_schedule 이 dict 이면 "schedule" 키 필수
+        # (run_backtest.py 가 VIX+hybrid 파이프라인을 거쳐 항상 설정).
+        if _is_dynamic and exo_regime_schedule is not None:
+            if "schedule" not in exo_regime_schedule:
+                raise KeyError(
+                    "exo_regime_schedule 에 'schedule' 키 누락."
+                    " run_backtest.py 의 VIX+hybrid 파이프라인이 설정해야 함."
+                )
+            _exo_sched = exo_regime_schedule["schedule"]
+        else:
+            _exo_sched = {}
         _exo_risk_off_count = 0
 
         _rebalance_trace: List[Dict[str, Any]] = []
@@ -940,7 +944,15 @@ class BacktestRunner:
                         # P207: 종목별 realized volatility 계산
                         _current_vols = {}
                         if _allocation_mode != "dynamic_equal_weight":
-                            _vol_lb = _alloc_params.get("volatility_lookback", 20)
+                            # REQUIRED: risk_aware / inverse_vol 모드에서
+                            # volatility_lookback 은 param_loader 가 allocation
+                            # 블록 검증 시 항상 설정한다. 누락 = 설정 오류.
+                            if "volatility_lookback" not in _alloc_params:
+                                raise KeyError(
+                                    "allocation 블록에 volatility_lookback 이 없습니다."
+                                    f" allocation_mode={_allocation_mode!r}"
+                                )
+                            _vol_lb = _alloc_params["volatility_lookback"]
                             _ts = pd.Timestamp(d)
                             for _vc in current_top_n:
                                 try:
@@ -1022,15 +1034,31 @@ class BacktestRunner:
                         current_rsi_values = {}
 
                     # P206-STEP6J: 파라미터화된 배분
-                    _exo_state = _exo_sched.get(str(d), "risk_on")
-                    # OPTIONAL: exo_regime_schedule 이 None 이면 safe asset 미사용
-                    _esc = (
-                        exo_regime_schedule if exo_regime_schedule is not None else {}
+                    # OPTIONAL: _exo_sched 가 {} (regime 미사용) 이면 해당
+                    # 날짜 key 부재 → "risk_on" 은 "방어 없음" 의 명시 의미.
+                    _d_str = str(d)
+                    _exo_state = (
+                        _exo_sched[_d_str]
+                        if _d_str in _exo_sched
+                        else "risk_on"  # regime 미사용 시 기본 상태
                     )
-                    _safe_ticker = _esc.get("safe_asset_ticker", "")
-                    _n_risky = _esc.get("neutral_risky_pct", 0.50)
-                    _n_dollar = _esc.get("neutral_dollar_pct", 0.20)
-                    _ro_dollar = _esc.get("riskoff_dollar_pct", 0.50)
+                    # OPTIONAL: exo_regime_schedule 이 None 이면 safe asset
+                    # / 배분비 참조 불필요 (risk_on 경로만 진행). 존재 시
+                    # 아래 4개 키는 run_backtest.py 가 항상 설정 (REQUIRED).
+                    if exo_regime_schedule is not None:
+                        _safe_ticker = exo_regime_schedule["safe_asset_ticker"]
+                        _n_risky = exo_regime_schedule["neutral_risky_pct"]
+                        _n_dollar = exo_regime_schedule["neutral_dollar_pct"]
+                        _ro_dollar = exo_regime_schedule["riskoff_dollar_pct"]
+                    else:
+                        # regime 미사용: 아래 값은 risk_on 경로에서 참조 안 됨.
+                        # None 이 아니라 sentinel 기본값으로 설정하여 의도 명시.
+                        _safe_ticker = (
+                            ""  # WHITELIST (math): 빈 문자열 = safe asset 없음
+                        )
+                        _n_risky = 1.0  # WHITELIST (math): 전액 risky = 방어 미적용
+                        _n_dollar = 0.0  # WHITELIST (math): 달러 0 = safe asset 없음
+                        _ro_dollar = 0.0  # WHITELIST (math): risk_off 달러 0
                     if _exo_state == "risk_off":
                         adjusted_weights = {}
                         if _safe_ticker and _safe_ticker in current_prices:
