@@ -239,49 +239,57 @@
       "research": "g4_pos3_raew",
       "shadow": "g3_pos3_eq"
     },
-    "tracka_toxic_filter": {
-      "primary_drop_list": ["102110", "102970"],
-      "extended_drop_list": ["102110", "102970", "395270", "396500"],
-      "apply_stage": "selector_after_ranking_before_final_selection",
-      "reseat_next_ranked": true,
-      "on_exhausted_candidates": "leave_unfilled_risky_sleeve_as_cash"
+    "tracka_contextual_guard": {
+      "pre_entry_recent_return_days": 5,
+      "pre_entry_recent_return_min": -0.08,
+      "pre_entry_drawdown_days": 10,
+      "pre_entry_drawdown_min": -0.10,
+      "pre_entry_vol_spike_ratio_max": 1.8,
+      "early_stop_days_from_entry": 10,
+      "early_stop_drawdown_from_entry": -0.06,
+      "early_stop_exit_to_cash_until_next_rebalance": true,
+      "guard_apply_stage": "selector_and_initial_holding_window"
     },
-    "tracka_toxic_filter_experiments": [
+    "tracka_contextual_guard_experiments": [
       {
-        "name": "A0_pos2_raew_no_filter",
+        "name": "A0_pos2_raew_no_guard",
         "baseline_label": "g2_pos2_raew",
-        "drop_mode": "none",
-        "drop_list": []
+        "guard_mode": "none"
       },
       {
-        "name": "A1_pos2_raew_primary_drop",
+        "name": "A1_pos2_raew_pre_entry_guard",
         "baseline_label": "g2_pos2_raew",
-        "drop_mode": "primary_drop",
-        "drop_list": ["102110", "102970"]
+        "guard_mode": "pre_entry_guard"
       },
       {
-        "name": "A2_pos2_raew_extended_drop",
+        "name": "A2_pos2_raew_early_stop_guard",
         "baseline_label": "g2_pos2_raew",
-        "drop_mode": "extended_drop",
-        "drop_list": ["102110", "102970", "395270", "396500"]
+        "guard_mode": "early_stop_guard"
       },
       {
-        "name": "B0_pos3_raew_no_filter",
-        "baseline_label": "g4_pos3_raew",
-        "drop_mode": "none",
-        "drop_list": []
+        "name": "A3_pos2_raew_combined_guard",
+        "baseline_label": "g2_pos2_raew",
+        "guard_mode": "combined_guard"
       },
       {
-        "name": "B1_pos3_raew_primary_drop",
+        "name": "B0_pos3_raew_no_guard",
         "baseline_label": "g4_pos3_raew",
-        "drop_mode": "primary_drop",
-        "drop_list": ["102110", "102970"]
+        "guard_mode": "none"
       },
       {
-        "name": "B2_pos3_raew_extended_drop",
+        "name": "B1_pos3_raew_pre_entry_guard",
         "baseline_label": "g4_pos3_raew",
-        "drop_mode": "extended_drop",
-        "drop_list": ["102110", "102970", "395270", "396500"]
+        "guard_mode": "pre_entry_guard"
+      },
+      {
+        "name": "B2_pos3_raew_early_stop_guard",
+        "baseline_label": "g4_pos3_raew",
+        "guard_mode": "early_stop_guard"
+      },
+      {
+        "name": "B3_pos3_raew_combined_guard",
+        "baseline_label": "g4_pos3_raew",
+        "guard_mode": "combined_guard"
       }
     ]
   },
@@ -303,6 +311,6 @@
     "469150",
     "487240"
   ],
-  "universe_snapshot_id": "snap_20260411_190236_700c57e6",
+  "universe_snapshot_id": "snap_20260412_151746_700c57e6",
   "universe_snapshot_sha256": "700c57e6a901558efeb8c69b48f346338108fc0952fb2ebd59654d7d5e711e33"
 }

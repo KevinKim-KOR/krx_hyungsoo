@@ -75,104 +75,86 @@ _ALLOWED_HOLDING_ALLOC_MODES = {
     "risk_aware_equal_weight_v1",
 }
 
-# P209-STEP9B: Track A toxic filter 에서 허용되는 drop_mode
-_ALLOWED_DROP_MODES = {
+# P209-STEP9C: Track A Contextual Guard 에서 허용되는 guard_mode
+_ALLOWED_GUARD_MODES = {
     "none",
-    "primary_drop",
-    "extended_drop",
+    "pre_entry_guard",
+    "early_stop_guard",
+    "combined_guard",
 }
 
 # P209-STEP9B FIX: baseline_label 은 지시문에 의해 2개로 고정.
 # operational baseline (g2_pos2_raew) + research baseline (g4_pos3_raew) 만 허용.
-# shadow (g3_pos3_eq) 는 Step9A 참고용이며 Step9B 실험 대상 아님.
+# shadow (g3_pos3_eq) 는 Step9A 참고용이며 Step9B/Step9C 실험 대상 아님.
 _ALLOWED_TRACKA_BASELINE_LABELS = {
     "g2_pos2_raew",
     "g4_pos3_raew",
 }
 
-# P209-STEP9B FIX: 지시문 고정 6개 실험군 name 집합.
-# 추가 실험군 금지 — 무필터 / primary / extended 의 3단계만 A/B baseline 에 적용.
+# P209-STEP9C: 지시문 고정 8개 실험군 name 집합.
+# 추가/누락/중복 금지.
 _REQUIRED_TRACKA_EXPERIMENT_NAMES = {
-    "A0_pos2_raew_no_filter",
-    "A1_pos2_raew_primary_drop",
-    "A2_pos2_raew_extended_drop",
-    "B0_pos3_raew_no_filter",
-    "B1_pos3_raew_primary_drop",
-    "B2_pos3_raew_extended_drop",
+    "A0_pos2_raew_no_guard",
+    "A1_pos2_raew_pre_entry_guard",
+    "A2_pos2_raew_early_stop_guard",
+    "A3_pos2_raew_combined_guard",
+    "B0_pos3_raew_no_guard",
+    "B1_pos3_raew_pre_entry_guard",
+    "B2_pos3_raew_early_stop_guard",
+    "B3_pos3_raew_combined_guard",
 }
 
 
-def _validate_tracka_toxic_filter(config):
-    """tracka_toxic_filter 최상위 블록 검증 (P209-STEP9B).
-
-    None 이면 None 반환 (OPTIONAL — dynamic_etf_market 아닌 모드에서 불필요).
-    dict 이면 필수 키 5개를 검증한다.
-    """
+def _validate_tracka_contextual_guard(config):
+    """tracka_contextual_guard 최상위 블록 검증 (P209-STEP9C)."""
     if config is None:
         return None
     if not isinstance(config, dict):
-        raise TypeError(f"tracka_toxic_filter 는 dict 여야 합니다: {type(config)}")
-    _required = [
-        "primary_drop_list",
-        "extended_drop_list",
-        "apply_stage",
-        "reseat_next_ranked",
-        "on_exhausted_candidates",
-    ]
-    for k in _required:
-        if k not in config:
-            raise KeyError(f"tracka_toxic_filter: '{k}' 누락")
+        raise TypeError(f"tracka_contextual_guard 는 dict 여야 합니다: {type(config)}")
 
-    if config["apply_stage"] != "selector_after_ranking_before_final_selection":
-        raise ValueError(
-            f"tracka_toxic_filter.apply_stage="
-            f"{config['apply_stage']!r} 허용:"
-            f" 'selector_after_ranking_before_final_selection'"
+    _required_numeric = [
+        "pre_entry_recent_return_days",
+        "pre_entry_recent_return_min",
+        "pre_entry_drawdown_days",
+        "pre_entry_drawdown_min",
+        "pre_entry_vol_spike_ratio_max",
+        "early_stop_days_from_entry",
+        "early_stop_drawdown_from_entry",
+    ]
+    for k in _required_numeric:
+        if k not in config:
+            raise KeyError(f"tracka_contextual_guard: '{k}' 누락")
+        if not isinstance(config[k], (int, float)):
+            raise TypeError(f"tracka_contextual_guard.{k} 는 숫자형이어야 합니다.")
+
+    if "early_stop_exit_to_cash_until_next_rebalance" not in config:
+        raise KeyError(
+            "tracka_contextual_guard: 'early_stop_exit_to_cash_until_next_rebalance' 누락"
         )
-    if config["on_exhausted_candidates"] != "leave_unfilled_risky_sleeve_as_cash":
-        raise ValueError(
-            f"tracka_toxic_filter.on_exhausted_candidates="
-            f"{config['on_exhausted_candidates']!r} 허용:"
-            f" 'leave_unfilled_risky_sleeve_as_cash'"
-        )
-    for list_key in ("primary_drop_list", "extended_drop_list"):
-        val = config[list_key]
-        if not isinstance(val, list):
-            raise TypeError(
-                f"tracka_toxic_filter.{list_key} 는 리스트여야 합니다:" f" {type(val)}"
-            )
-        if not val:
-            raise ValueError(
-                f"tracka_toxic_filter.{list_key} 가 비어있습니다."
-                f" 최소 1개 ticker 코드 필요"
-            )
-    if not isinstance(config["reseat_next_ranked"], bool):
+    if not isinstance(config["early_stop_exit_to_cash_until_next_rebalance"], bool):
         raise TypeError(
-            f"tracka_toxic_filter.reseat_next_ranked 는 bool 이어야 합니다:"
-            f" {type(config['reseat_next_ranked'])}"
+            "tracka_contextual_guard.early_stop_exit_to_cash_until_next_rebalance"
+            " 는 bool 이어야 합니다."
         )
+
+    if "guard_apply_stage" not in config:
+        raise KeyError("tracka_contextual_guard: 'guard_apply_stage' 누락")
+    if config["guard_apply_stage"] != "selector_and_initial_holding_window":
+        raise ValueError(
+            "tracka_contextual_guard.guard_apply_stage 는"
+            " 'selector_and_initial_holding_window' 이어야 합니다."
+        )
+
     return config
 
 
-def _validate_tracka_toxic_filter_experiments(experiments, holding_experiments):
-    """tracka_toxic_filter_experiments 스키마 검증 (P209-STEP9B).
-
-    None 이면 None 반환. 리스트이면 각 항목의 필수 키(name, baseline_label,
-    drop_mode, drop_list)를 검증하고 중복 name 금지.
-
-    P209-STEP9B FIX:
-    - baseline_label 은 _ALLOWED_TRACKA_BASELINE_LABELS (g2/g4 only) 로 고정.
-      holding_structure_experiments 내 다른 이름은 허용하지 않음 (지시문 준수).
-    - 실험군 name 집합은 _REQUIRED_TRACKA_EXPERIMENT_NAMES (6개) 와 정확히 일치.
-      추가/누락/중복 금지 (지시문 "선택 실험군 추가 금지").
-    - baseline_label 은 여전히 holding_structure_experiments 에 존재해야 함
-      (sweep 에서 max_positions / allocation_mode 조회 필요).
-    """
+def _validate_tracka_contextual_guard_experiments(experiments, holding_experiments):
+    """tracka_contextual_guard_experiments 스키마 검증 (P209-STEP9C)."""
     if experiments is None:
         return None
     if not isinstance(experiments, list):
         raise TypeError(
-            "tracka_toxic_filter_experiments 는 리스트여야 합니다:"
+            "tracka_contextual_guard_experiments 는 리스트여야 합니다:"
             f" {type(experiments)}"
         )
 
@@ -182,11 +164,11 @@ def _validate_tracka_toxic_filter_experiments(experiments, holding_experiments):
 
     _seen_names = set()
     for i, exp in enumerate(experiments):
-        ctx = f"tracka_toxic_filter_experiments[{i}]"
+        ctx = f"tracka_contextual_guard_experiments[{i}]"
         if not isinstance(exp, dict):
             raise TypeError(f"{ctx}: dict 형태여야 합니다: {type(exp)}")
 
-        for req_key in ("name", "baseline_label", "drop_mode", "drop_list"):
+        for req_key in ("name", "baseline_label", "guard_mode"):
             if req_key not in exp:
                 raise KeyError(f"{ctx}: {req_key} 누락")
 
@@ -221,34 +203,19 @@ def _validate_tracka_toxic_filter_experiments(experiments, holding_experiments):
                 f" 등록된 holding_structure_experiments: {sorted(known_hs_names)}"
             )
 
-        _dm = exp["drop_mode"]
-        if _dm not in _ALLOWED_DROP_MODES:
-            raise ValueError(f"{ctx}.drop_mode={_dm!r} 허용: {_ALLOWED_DROP_MODES}")
+        _gm = exp["guard_mode"]
+        if _gm not in _ALLOWED_GUARD_MODES:
+            raise ValueError(f"{ctx}.guard_mode={_gm!r} 허용: {_ALLOWED_GUARD_MODES}")
 
-        _dl = exp["drop_list"]
-        if not isinstance(_dl, list):
-            raise TypeError(f"{ctx}.drop_list 는 리스트여야 합니다: {type(_dl)}")
-        if _dm == "none" and _dl:
-            raise ValueError(
-                f"{ctx}: drop_mode='none' 일 때 drop_list 는"
-                f" 비어있어야 합니다: {_dl}"
-            )
-        if _dm != "none" and not _dl:
-            raise ValueError(
-                f"{ctx}: drop_mode={_dm!r} 일 때 drop_list 가" f" 비어있으면 안 됩니다"
-            )
-
-    # P209-STEP9B FIX: 6개 고정 실험군 정확 일치 검증
-    # (추가 금지 + 누락 금지 — 지시문 "선택 실험군 추가 금지")
+    # P209-STEP9C FIX: 8개 고정 실험군 정확 일치 검증
     if _seen_names != _REQUIRED_TRACKA_EXPERIMENT_NAMES:
         missing = _REQUIRED_TRACKA_EXPERIMENT_NAMES - _seen_names
         extra = _seen_names - _REQUIRED_TRACKA_EXPERIMENT_NAMES
-        msg_parts = ["tracka_toxic_filter_experiments 6개 고정 실험군과 불일치."]
+        msg_parts = ["tracka_contextual_guard_experiments 8개 고정 실험군과 불일치."]
         if missing:
             msg_parts.append(f"누락: {sorted(missing)}")
         if extra:
             msg_parts.append(f"초과: {sorted(extra)}")
-        msg_parts.append(f"요구: {sorted(_REQUIRED_TRACKA_EXPERIMENT_NAMES)}")
         raise ValueError(" ".join(msg_parts))
 
     return experiments
@@ -441,12 +408,14 @@ def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
             params_raw.get("drawdown_analysis_baselines"),
             params_raw.get("holding_structure_experiments"),
         ),
-        "tracka_toxic_filter": _validate_tracka_toxic_filter(
-            params_raw.get("tracka_toxic_filter")
+        "tracka_contextual_guard": _validate_tracka_contextual_guard(
+            params_raw.get("tracka_contextual_guard")
         ),
-        "tracka_toxic_filter_experiments": _validate_tracka_toxic_filter_experiments(
-            params_raw.get("tracka_toxic_filter_experiments"),
-            params_raw.get("holding_structure_experiments"),
+        "tracka_contextual_guard_experiments": (
+            _validate_tracka_contextual_guard_experiments(
+                params_raw.get("tracka_contextual_guard_experiments"),
+                params_raw.get("holding_structure_experiments"),
+            )
         ),
     }
 

@@ -1,5 +1,5 @@
 {
-  "asof": "2026-04-11T00:21:22+09:00",
+  "asof": "2026-04-12T15:17:46+09:00",
   "scanner_mode": "dynamic_etf_market",
   "scanner_version": "v1",
   "candidate_pool_source": "krx_etf_list",
@@ -446,10 +446,10 @@
     "market_breadth",
     "macro_regime"
   ],
-  "snapshot_id": "snap_20260411_002122_700c57e6",
+  "snapshot_id": "snap_20260412_151746_700c57e6",
   "snapshot_sha256": "700c57e6a901558efeb8c69b48f346338108fc0952fb2ebd59654d7d5e711e33",
   "previous_snapshot_exists": true,
-  "previous_snapshot_id": "snap_20260410_232156_2d7205e2",
+  "previous_snapshot_id": "snap_20260411_190236_700c57e6",
   "overlap_ratio": 1.0,
   "new_entries_count": 0,
   "removed_entries_count": 0,
@@ -508,14 +508,14 @@
     {
       "ticker": "0091P0",
       "name": "TIGER 코리아원자력",
-      "composite_score": 0.750024,
+      "composite_score": 0.749439,
       "rank": 4,
       "top_features": "price_momentum_3m(0.300), price_momentum_6m(0.200), liquidity_20d(0.142)"
     },
     {
       "ticker": "469150",
       "name": "ACE AI반도체TOP3+",
-      "composite_score": 0.736565,
+      "composite_score": 0.735981,
       "rank": 5,
       "top_features": "price_momentum_3m(0.287), price_momentum_6m(0.196), liquidity_20d(0.121)"
     },
@@ -536,7 +536,7 @@
     {
       "ticker": "157500",
       "name": "TIGER 증권",
-      "composite_score": 0.714564,
+      "composite_score": 0.71398,
       "rank": 8,
       "top_features": "price_momentum_3m(0.295), price_momentum_6m(0.188), liquidity_20d(0.102)"
     },

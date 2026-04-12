@@ -3,7 +3,7 @@
 - 현재 판정: 기각
 - SSOT 반영 여부: 예
 - 유니버스 일치: 예
-- universe_snapshot_id: snap_20260411_190236_700c57e6
+- universe_snapshot_id: snap_20260412_151746_700c57e6
 - universe_mode: dynamic_etf_market
 - universe_size: 15
 

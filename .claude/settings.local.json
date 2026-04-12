@@ -72,7 +72,16 @@
       "Bash(awk '/^def format_result/,/^def [a-z]/{print NR\": \"$0}' app/run_backtest.py)",
       "Bash(mv docs/readme_claude.md docs/archive/readme_claude_20260411.md)",
       "Bash(mv docs/readme_gpt.md docs/archive/readme_gpt_20260411.md)",
-      "Bash(ls docs/archive/readme_*.md)"
+      "Bash(ls docs/archive/readme_*.md)",
+      "Bash(.venv/Scripts/python -m black app/run_backtest.py)",
+      "Bash(.venv/Scripts/python -m flake8 app/run_backtest.py)",
+      "Bash(.venv/Scripts/python -m py_compile app/run_backtest.py)",
+      "Read(//e/AI Study/krx_alertor_modular/**)",
+      "Bash(.venv/Scripts/python -m black app/utils/param_loader.py app/backtest/runners/backtest_runner.py app/run_backtest.py app/backtest/reporting/evidence_writer.py app/backtest/reporting/toxic_filter_compare.py pc_cockpit/views/helpers/toxic_filter_panel.py)",
+      "Bash(.venv/Scripts/python -m flake8 app/utils/param_loader.py app/backtest/runners/backtest_runner.py app/run_backtest.py app/backtest/reporting/evidence_writer.py app/backtest/reporting/toxic_filter_compare.py pc_cockpit/views/helpers/toxic_filter_panel.py)",
+      "Bash(.venv/Scripts/python -m py_compile app/utils/param_loader.py app/backtest/runners/backtest_runner.py app/run_backtest.py app/backtest/reporting/evidence_writer.py app/backtest/reporting/toxic_filter_compare.py pc_cockpit/views/helpers/toxic_filter_panel.py)",
+      "Bash(.venv/Scripts/python -m black --check app/utils/param_loader.py app/backtest/runners/backtest_runner.py app/run_backtest.py app/backtest/reporting/evidence_writer.py app/backtest/reporting/toxic_filter_compare.py pc_cockpit/views/helpers/toxic_filter_panel.py)",
+      "Bash(.venv/Scripts/python -c ':*)"
     ]
   }
 }
