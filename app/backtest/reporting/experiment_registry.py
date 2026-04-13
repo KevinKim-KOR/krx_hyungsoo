@@ -169,6 +169,20 @@ def _build_registry_rows() -> List[Dict[str, Any]]:
         },
         {
             "chapter": "P210A-2",
+            "variant_or_profile": "B2_research_soft_gate_lr_mts75",
+            "purpose": "ML soft_gate (mts=75, 과도한 개입)",
+            "run_type": "Compare Run",
+            "status_tag": "REJECTED",
+            "cagr": 10.37,
+            "mdd": 11.028,
+            "sharpe": 1.0248,
+            "verdict": "REJECT",
+            "decision": "CAGR −6.31%p 과도한 훼손. 기각.",
+            "source_artifact": "predictive_risk_compare.md",
+            "last_validated_at": "2026-04-13",
+        },
+        {
+            "chapter": "P210A-2",
             "variant_or_profile": "B1_research_soft_gate_lr_mts50",
             "purpose": "ML soft_gate (mts=50, 과도한 개입)",
             "run_type": "Compare Run",
@@ -246,12 +260,14 @@ def _render_registry_md(rows: List[Dict[str, Any]], generated_at: str) -> List[s
         "## 실험 분류표",
         "",
         "| Chapter | Variant/Profile | Purpose | Run Type"
-        " | Status | CAGR | MDD | Verdict | Decision |",
-        "|---|---|---|---|---|---:|---:|---|---|",
+        " | Status | CAGR | MDD | Sharpe"
+        " | Verdict | Decision | Source Artifact | Validated |",
+        "|---|---|---|---|---|---:|---:|---:|---|---|---|---|",
     ]
     for r in rows:
         cagr_s = f"{r['cagr']:.2f}%" if r["cagr"] is not None else "-"
         mdd_s = f"{r['mdd']:.2f}%" if r["mdd"] is not None else "-"
+        sharpe_s = f"{r['sharpe']:.4f}" if r["sharpe"] is not None else "-"
         lines.append(
             f"| {r['chapter']}"
             f" | {r['variant_or_profile']}"
@@ -260,8 +276,11 @@ def _render_registry_md(rows: List[Dict[str, Any]], generated_at: str) -> List[s
             f" | **{r['status_tag']}**"
             f" | {cagr_s}"
             f" | {mdd_s}"
+            f" | {sharpe_s}"
             f" | {r['verdict']}"
-            f" | {r['decision']} |"
+            f" | {r['decision']}"
+            f" | {r['source_artifact']}"
+            f" | {r['last_validated_at']} |"
         )
 
     lines += [

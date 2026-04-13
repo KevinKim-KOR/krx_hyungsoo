@@ -1698,6 +1698,7 @@ def run_cli_backtest(
             logger.warning(f"dynamic_evidence 생성 실패: {ev_exc}")
 
     # P210-STEP10Z: experiment registry + strategy state + decision ledger
+    # 핵심 산출물이므로 fail-loud (rule 7).
     if params.get("universe_mode") == "dynamic_etf_market":
         try:
             from app.backtest.reporting.experiment_registry import (
@@ -1706,7 +1707,10 @@ def run_cli_backtest(
 
             generate_experiment_registry(project_root=PROJECT_ROOT)
         except Exception as reg_exc:
-            logger.warning(f"experiment_registry 생성 실패: {reg_exc}")
+            raise RuntimeError(
+                f"P210-STEP10Z: experiment_registry 생성 실패 (fail-loud):"
+                f" {reg_exc}"
+            ) from reg_exc
 
     # P208-STEP8A: holding_structure_experiments sweep
     # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵 (legacy chapter)
