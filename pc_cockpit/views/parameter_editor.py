@@ -16,6 +16,9 @@ from pc_cockpit.views.helpers.holding_structure_panel import (
 from pc_cockpit.views.helpers.contextual_guard_panel import (
     render_contextual_guard_panel_for_parameters,
 )
+from pc_cockpit.views.helpers.predictive_risk_panel import (
+    render_predictive_risk_panel_for_parameters,
+)
 
 
 def render_ssot_parameter_form(params_data):
@@ -117,6 +120,9 @@ def render_ssot_parameter_form(params_data):
 
                 # P209-STEP9C: Track A Contextual Guard (R6: helper)
                 render_contextual_guard_panel_for_parameters(p)
+
+                # P210-STEP10A: Track B Predictive Risk Classifier (R6: helper)
+                render_predictive_risk_panel_for_parameters(p)
 
                 st.divider()
                 if st.form_submit_button("💾 Save Parameters to SSOT"):

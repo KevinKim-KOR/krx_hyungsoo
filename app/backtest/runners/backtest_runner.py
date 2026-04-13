@@ -402,6 +402,17 @@ class BacktestRunner:
         tracka_guard_experiment_name: Optional[str] = None,
         tracka_baseline_label: Optional[str] = None,
         tracka_guard_mode: Optional[str] = None,
+        # P210-STEP10A: Track B ML prediction 수신
+        ml_crash_predictions: Optional[Dict[str, Dict[str, float]]] = None,
+        ml_mode: Optional[str] = None,
+        ml_probability_threshold_soft: float = 0.55,
+        ml_probability_threshold_hard: float = 0.70,
+        ml_top_k_block_limit: int = 1,
+        trackb_ml_experiment_name: Optional[str] = None,
+        trackb_baseline_profile: Optional[str] = None,
+        trackb_model_family: Optional[str] = None,
+        trackb_label_horizon_days: Optional[int] = None,
+        trackb_label_crash_drawdown_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         백테스트 실행 (모멘텀 기반 동적 종목 선정)
@@ -575,6 +586,17 @@ class BacktestRunner:
 
         _early_stop_hits_total = 0
         _early_stop_events_by_date: List[Dict[str, Any]] = []
+
+        # P210-STEP10A: Track B ML 카운터
+        _ml_predicted_positive_count = 0
+        _ml_soft_gate_hits = 0
+        _ml_hard_gate_hits = 0
+        _ml_rerank_changes = 0
+        _ml_promoted_by_rebal: List[Dict[str, Any]] = []
+        _ml_candidates_before_sum = 0
+        _ml_candidates_after_sum = 0
+        _ml_rebal_count = 0
+        _ml_burnin_count = 0
 
         # 날짜 범위 생성
         dates = pd.date_range(start_date, end_date, freq="B")
@@ -921,6 +943,147 @@ class BacktestRunner:
                             new_top_n = [
                                 code for code, _ in sorted_scores[: self.max_positions]
                             ]
+
+                        # P210-STEP10A: Track B ML crash prediction overlay
+                        # 핵심 원칙: ML 은 guard 이후 결과 (new_top_n) 위에서만
+                        # 동작한다. guard 에서 탈락한 후보를 ML 단계에서 부활시키지
+                        # 않는다 (Step9C baseline 계약 보존).
+                        # 승격 소스도 guard 이후 남은 후보 풀 (sorted_scores 중
+                        # guard 가 제거하지 않은 것들) 에서만 뽑는다.
+                        _d_str = str(d)
+                        if ml_mode and ml_mode != "none":
+                            if (
+                                ml_crash_predictions is not None
+                                and _d_str in ml_crash_predictions
+                            ):
+                                _date_preds = ml_crash_predictions[_d_str]
+                                _ml_candidates_before_sum += len(new_top_n)
+                                _ml_rebal_count += 1
+
+                                # guard 이후 남은 전체 후보 풀 구축
+                                # (new_top_n 에 포함 안 됐지만 guard 에서 탈락하지
+                                # 않은 후보 = 승격 후보 소스)
+                                if contextual_guard_params and tracka_guard_mode in (
+                                    "pre_entry_guard",
+                                    "combined_guard",
+                                ):
+                                    # guard 가 적용됐으면 guard 탈락 후보 제외
+                                    _guarded_out = set()
+                                    for (
+                                        _g_entry
+                                    ) in (
+                                        _pre_entry_guarded_candidates_by_rebalance_date
+                                    ):
+                                        if _g_entry["rebalance_date"] == _d_str:
+                                            _guarded_out.update(_g_entry["guarded"])
+                                    _guard_survived_pool = [
+                                        (c, s)
+                                        for c, s in sorted_scores
+                                        if c not in _guarded_out
+                                    ]
+                                else:
+                                    _guard_survived_pool = list(sorted_scores)
+
+                                # 양성 예측 카운트 (new_top_n 내에서만)
+                                for _t in new_top_n:
+                                    if (
+                                        _t in _date_preds
+                                        and _date_preds[_t]
+                                        >= ml_probability_threshold_soft
+                                    ):
+                                        _ml_predicted_positive_count += 1
+
+                                if ml_mode == "soft_gate":
+                                    _blocked = []
+                                    _remaining = list(new_top_n)
+                                    for _t in list(new_top_n):
+                                        if len(_blocked) >= ml_top_k_block_limit:
+                                            break
+                                        if (
+                                            _t in _date_preds
+                                            and _date_preds[_t]
+                                            >= ml_probability_threshold_soft
+                                        ):
+                                            _blocked.append(_t)
+                                            _remaining.remove(_t)
+                                    if _blocked:
+                                        _ml_soft_gate_hits += len(_blocked)
+                                        # guard survived pool 에서만 승격
+                                        _promoted = []
+                                        for _nc, _ in _guard_survived_pool:
+                                            if (
+                                                _nc not in _remaining
+                                                and _nc not in _blocked
+                                            ):
+                                                _remaining.append(_nc)
+                                                _promoted.append(_nc)
+                                                if (
+                                                    len(_remaining)
+                                                    >= self.max_positions
+                                                ):
+                                                    break
+                                        new_top_n = _remaining[: self.max_positions]
+                                        if _promoted:
+                                            _ml_promoted_by_rebal.append(
+                                                {
+                                                    "rebalance_date": _d_str,
+                                                    "promoted": _promoted,
+                                                    "blocked": _blocked,
+                                                }
+                                            )
+
+                                elif ml_mode == "rerank":
+                                    # guard survived pool 전체를 crash risk
+                                    # penalty 적용 후 재정렬하여 top N 재선택.
+                                    # guard 탈락 후보는 pool 에 없으므로 부활 불가.
+                                    # new_top_n 밖에 있던 후보도 penalty 반영 후
+                                    # 상위로 올라올 수 있음 = rerank 의 핵심 의미.
+                                    _reranked = []
+                                    for _c, _s in _guard_survived_pool:
+                                        # WHITELIST (math): 예측 미포함 후보는
+                                        # 0 penalty (중립). "ML 모델이 이 후보를
+                                        # 예측 대상에 포함하지 않았음" 의 명시적 의미.
+                                        _prob = (
+                                            _date_preds[_c]
+                                            if _c in _date_preds
+                                            else 0.0
+                                        )
+                                        _raw_score = (
+                                            _s[0]
+                                            if isinstance(_s, tuple)
+                                            else float(_s)
+                                        )
+                                        _reranked.append((_c, _raw_score - _prob))
+                                    _reranked.sort(key=lambda x: x[1], reverse=True)
+                                    _new_reranked = [
+                                        c for c, _ in _reranked[: self.max_positions]
+                                    ]
+                                    if set(_new_reranked) != set(new_top_n):
+                                        _ml_rerank_changes += 1
+                                    new_top_n = _new_reranked
+
+                                elif ml_mode == "hard_gate":
+                                    _before = list(new_top_n)
+                                    new_top_n = [
+                                        _t
+                                        for _t in new_top_n
+                                        if _t not in _date_preds
+                                        or _date_preds[_t]
+                                        < ml_probability_threshold_hard
+                                    ]
+                                    _hard_blocked = [
+                                        _t for _t in _before if _t not in new_top_n
+                                    ]
+                                    _ml_hard_gate_hits += len(_hard_blocked)
+
+                                _ml_candidates_after_sum += len(new_top_n)
+                            else:
+                                # EXPLICIT BURN-IN FALLBACK:
+                                # ML 예측 불가 구간 (데이터 부족 또는 해당 날짜 미포함).
+                                # silent fallback 이 아니라 "ML 데이터 부족 →
+                                # 기존 규칙 유지" 명시 분기.
+                                _ml_burnin_count += 1
+
                         filtered_signal_count += len(new_top_n)
 
                         if current_top_n and set(new_top_n) != set(current_top_n):
@@ -1619,6 +1782,31 @@ class BacktestRunner:
                 if _guard_rebal_count > 0
                 else None
             ),
+            # P210-STEP10A: Track B ML meta (지시문 요구 필드 전체)
+            "trackb_ml_experiment_name": trackb_ml_experiment_name,
+            "trackb_baseline_profile": trackb_baseline_profile,
+            "trackb_ml_mode": ml_mode if ml_mode is not None else "none",
+            "trackb_model_family": trackb_model_family,
+            "trackb_label_horizon_days": trackb_label_horizon_days,
+            "trackb_label_crash_drawdown_threshold": (
+                trackb_label_crash_drawdown_threshold
+            ),
+            "trackb_predicted_positive_count": _ml_predicted_positive_count,
+            "trackb_soft_gate_hits_total": _ml_soft_gate_hits,
+            "trackb_hard_gate_hits_total": _ml_hard_gate_hits,
+            "trackb_rerank_changes_total": _ml_rerank_changes,
+            "trackb_promoted_candidates_by_rebalance_date": _ml_promoted_by_rebal,
+            "trackb_avg_candidates_before_ml": (
+                round(_ml_candidates_before_sum / _ml_rebal_count, 2)
+                if _ml_rebal_count > 0
+                else None
+            ),
+            "trackb_avg_candidates_after_ml": (
+                round(_ml_candidates_after_sum / _ml_rebal_count, 2)
+                if _ml_rebal_count > 0
+                else None
+            ),
+            "trackb_ml_burnin_rebalance_count": _ml_burnin_count,
         }
 
     def run_batch(

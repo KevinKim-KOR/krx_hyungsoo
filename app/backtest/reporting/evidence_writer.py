@@ -175,6 +175,11 @@ def write_dynamic_evidence(
     if tracka_section:
         sections.append(tracka_section)
 
+    # P210-STEP10A: Track B Predictive Risk Classifier 섹션
+    trackb_section = _render_trackb_predictive_risk_section(bt_meta, project_root)
+    if trackb_section:
+        sections.append(trackb_section)
+
     trace_section = _render_last_rebalance_trace_section(allocation_trace)
     if trace_section:
         sections.append(trace_section)
@@ -770,4 +775,82 @@ def _render_tracka_toxic_filter_section(project_root: Path) -> List[str]:
             f" | {r.get('avg_candidates_after_filter', 'N/A')}"  # WHITELIST (display)
             f" | {r.get('verdict', 'N/A')} |"  # WHITELIST (display)
         )
+    return lines
+
+
+def _render_trackb_predictive_risk_section(
+    bt_meta: Dict[str, Any],
+    project_root: Path,
+) -> List[str]:
+    """P210-STEP10A Track B Predictive Risk Classifier 섹션 렌더러.
+
+    predictive_risk_compare.json 이 존재하면 비교표를 렌더링한다.
+    파일이 없으면 빈 리스트 반환 (섹션 미생성).
+
+    지시문 요구 필드:
+    - Baseline Profile / ML Mode / Model Family
+    - Predicted Positive Count / Soft Gate Hits / Rerank Changes
+    - Avg Candidates Before/After
+    - CAGR / MDD / Verdict
+    """
+    compare_path = project_root / "reports" / "tuning" / "predictive_risk_compare.json"
+    if not compare_path.exists():
+        return []
+
+    compare_data = _load_json_if_exists(compare_path)
+    rows = compare_data.get("rows")
+    if not rows:
+        return []
+
+    lines = [
+        "## Track B Predictive Risk Classifier (P210-STEP10A)",
+        "",
+        "| Rank | Variant | Baseline Profile | ML Mode | Model Family"
+        " | CAGR | MDD"
+        " | Predicted Positive | SoftGate Hits | Rerank Changes"
+        " | Burnin | Avg Before | Avg After | Verdict |",
+        "|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+    ]
+    for r in rows:
+        # WHITELIST (display): sweep JSON 산출물 필드.
+        cagr_v = r.get("cagr")  # WHITELIST (display)
+        mdd_v = r.get("mdd")  # WHITELIST (display)
+        cagr_s = f"{cagr_v:.2f}%" if cagr_v is not None else "N/A"
+        mdd_s = f"{mdd_v:.2f}%" if mdd_v is not None else "N/A"
+        lines.append(
+            f"| {r.get('rank', '-')}"  # WHITELIST (display)
+            f" | {r.get('variant', 'N/A')}"  # WHITELIST (display)
+            f" | {r.get('baseline_profile', 'N/A')}"  # WHITELIST (display)
+            f" | {r.get('ml_mode', 'N/A')}"  # WHITELIST (display)
+            f" | {r.get('model_family', 'N/A')}"  # WHITELIST (display)
+            f" | {cagr_s}"
+            f" | {mdd_s}"
+            f" | {r.get('predicted_positive_count', 0)}"  # WHITELIST (display)
+            f" | {r.get('soft_gate_hits_total', 0)}"  # WHITELIST (display)
+            f" | {r.get('rerank_changes_total', 0)}"  # WHITELIST (display)
+            f" | {r.get('ml_burnin_count', 0)}"  # WHITELIST (display)
+            f" | {r.get('avg_candidates_before_ml', 'N/A')}"  # WHITELIST (display)
+            f" | {r.get('avg_candidates_after_ml', 'N/A')}"  # WHITELIST (display)
+            f" | {r.get('verdict', 'N/A')} |"  # WHITELIST (display)
+        )
+
+    # Main Run ML 상태 요약
+    ml_mode = bt_meta.get("trackb_ml_mode")
+    ml_profile = bt_meta.get("trackb_baseline_profile")
+    ml_model = bt_meta.get("trackb_model_family")
+    ml_burnin = bt_meta.get("trackb_ml_burnin_rebalance_count")
+
+    lines += [
+        "",
+        "### Main Run ML State",
+        "| Field | Value |",
+        "|---|---|",
+        f"| Baseline Profile" f" | {ml_profile if ml_profile is not None else '-'} |",
+        f"| ML Mode | {ml_mode if ml_mode is not None else 'none'} |",
+        f"| Model Family" f" | {ml_model if ml_model is not None else '-'} |",
+        f"| Burnin Rebalances | {ml_burnin if ml_burnin is not None else 0} |",
+        "",
+        "_Track B = ML classifier 기반 연구/검증 전용."
+        " 운영 SSOT 에 자동 승격 금지._",
+    ]
     return lines

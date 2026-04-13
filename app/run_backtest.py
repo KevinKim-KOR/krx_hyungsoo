@@ -101,6 +101,17 @@ def run_backtest(
     tracka_guard_experiment_name: Optional[str] = None,
     tracka_baseline_label: Optional[str] = None,
     tracka_guard_mode: Optional[str] = None,
+    # P210-STEP10A: Track B ML prediction 파라미터
+    ml_crash_predictions: Optional[Dict[str, Dict[str, float]]] = None,
+    ml_mode: Optional[str] = None,
+    ml_probability_threshold_soft: float = 0.55,
+    ml_probability_threshold_hard: float = 0.70,
+    ml_top_k_block_limit: int = 1,
+    trackb_ml_experiment_name: Optional[str] = None,
+    trackb_baseline_profile: Optional[str] = None,
+    trackb_model_family: Optional[str] = None,
+    trackb_label_horizon_days: Optional[int] = None,
+    trackb_label_crash_drawdown_threshold: Optional[float] = None,
 ) -> Dict[str, Any]:
     """BacktestRunner 실행"""
     from app.backtest.runners.backtest_runner import BacktestRunner
@@ -322,6 +333,17 @@ def run_backtest(
         tracka_guard_experiment_name=tracka_guard_experiment_name,
         tracka_baseline_label=tracka_baseline_label,
         tracka_guard_mode=tracka_guard_mode,
+        # P210-STEP10A: Track B ML prediction 전달
+        ml_crash_predictions=ml_crash_predictions,
+        ml_mode=ml_mode,
+        ml_probability_threshold_soft=ml_probability_threshold_soft,
+        ml_probability_threshold_hard=ml_probability_threshold_hard,
+        ml_top_k_block_limit=ml_top_k_block_limit,
+        trackb_ml_experiment_name=trackb_ml_experiment_name,
+        trackb_baseline_profile=trackb_baseline_profile,
+        trackb_model_family=trackb_model_family,
+        trackb_label_horizon_days=trackb_label_horizon_days,
+        trackb_label_crash_drawdown_threshold=trackb_label_crash_drawdown_threshold,
     )
 
     # Attach trigger evidence
@@ -812,6 +834,26 @@ def format_result(
         "tracka_promoted_by_rebalance_date": result[
             "tracka_promoted_by_rebalance_date"
         ],
+        # P210-STEP10A Track B ML meta (지시문 요구 필드 전체).
+        # BacktestRunner.run 이 항상 설정 (ML 미사용 = None/0/빈 리스트).
+        "trackb_ml_experiment_name": result["trackb_ml_experiment_name"],
+        "trackb_baseline_profile": result["trackb_baseline_profile"],
+        "trackb_ml_mode": result["trackb_ml_mode"],
+        "trackb_model_family": result["trackb_model_family"],
+        "trackb_label_horizon_days": result["trackb_label_horizon_days"],
+        "trackb_label_crash_drawdown_threshold": result[
+            "trackb_label_crash_drawdown_threshold"
+        ],
+        "trackb_predicted_positive_count": result["trackb_predicted_positive_count"],
+        "trackb_soft_gate_hits_total": result["trackb_soft_gate_hits_total"],
+        "trackb_hard_gate_hits_total": result["trackb_hard_gate_hits_total"],
+        "trackb_rerank_changes_total": result["trackb_rerank_changes_total"],
+        "trackb_promoted_candidates_by_rebalance_date": result[
+            "trackb_promoted_candidates_by_rebalance_date"
+        ],
+        "trackb_avg_candidates_before_ml": result["trackb_avg_candidates_before_ml"],
+        "trackb_avg_candidates_after_ml": result["trackb_avg_candidates_after_ml"],
+        "trackb_ml_burnin_rebalance_count": result["trackb_ml_burnin_rebalance_count"],
         "engine_version": "app.backtest.v2",
         "total_trades": metrics.get("order_count", 0),
         "buy_trade_count": sum(
@@ -1597,9 +1639,45 @@ def run_cli_backtest(
                 f"P209-STEP9C: contextual_guard_compare 실행 실패 (fail-loud): {e}"
             ) from e
 
-    # OPTIONAL: Step9C 실험군 존재 여부 체크 (legitimate None).
-    # WHITELIST (math): 가드 실험 중일 때 legacy sweep 을 스킵하기 위한 불리언 연산.
-    _skip_legacy_sweeps = params.get("tracka_contextual_guard_experiments") is not None
+    # P210-STEP10A: Track B predictive risk sweep
+    # evidence 생성 이전에 실행 (compare.json 이 evidence 에 반영되기 위함).
+    # analysis_only 모드에서도 실행 (Step10A 가 현재 챕터).
+    _trackb_experiments = params.get("trackb_predictive_risk_classifier_experiments")
+    _hs_experiments_for_trackb = params.get("holding_structure_experiments")
+    if (
+        _trackb_experiments
+        and isinstance(_trackb_experiments, list)
+        and _hs_experiments_for_trackb
+        and enable_regime
+    ):
+        try:
+            from app.backtest.reporting.predictive_risk_compare import (
+                run_predictive_risk_sweep,
+            )
+
+            run_predictive_risk_sweep(
+                experiments=_trackb_experiments,
+                base_params=params,
+                holding_experiments=_hs_experiments_for_trackb,
+                price_data=price_data,
+                start=start,
+                end=end,
+                run_backtest_fn=run_backtest,
+                format_result_fn=format_result,
+                project_root=PROJECT_ROOT,
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"P210-STEP10A: predictive_risk_compare 실행 실패 (fail-loud): {e}"
+            ) from e
+
+    # OPTIONAL: 현재 챕터 실험군 존재 여부로 legacy sweep skip 결정.
+    # Step9C 또는 Step10A 실험군이 존재하면 P207/P208 legacy sweep 스킵.
+    # Plan 보정 (2026-04-13): full run 에서도 legacy sweep 을 실행하지 않음.
+    _skip_legacy_sweeps = (
+        params.get("tracka_contextual_guard_experiments") is not None
+        or _trackb_experiments is not None
+    )
 
     # P206-STEP6D-PATCH1: dynamic_evidence_latest.md 생성
     # P209-CLEAN-R1: inline blob 을 evidence_writer 모듈로 추출 (byte-level 보존)

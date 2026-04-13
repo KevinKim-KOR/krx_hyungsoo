@@ -75,6 +75,31 @@ _ALLOWED_HOLDING_ALLOC_MODES = {
     "risk_aware_equal_weight_v1",
 }
 
+# P210-STEP10A: Track B Predictive Risk Classifier 에서 허용되는 값
+_ALLOWED_TRACKB_BASELINE_PROFILES = {
+    "operational_control_a0",
+    "research_candidate_b1",
+}
+_ALLOWED_TRACKB_ML_MODES = {
+    "none",
+    "soft_gate",
+    "hard_gate",
+    "rerank",
+}
+_ALLOWED_TRACKB_MODEL_FAMILIES = {
+    "logistic_regression",
+    "random_forest",
+}
+# 본선 6개 실험군 name 고정. 추가/누락/중복 금지.
+_REQUIRED_TRACKB_EXPERIMENT_NAMES = {
+    "A0_operational_no_ml",
+    "A1_operational_soft_gate_lr",
+    "A2_operational_rerank_lr",
+    "B0_research_no_ml",
+    "B1_research_soft_gate_lr",
+    "B2_research_rerank_lr",
+}
+
 # P209-STEP9C: Track A Contextual Guard 에서 허용되는 guard_mode
 _ALLOWED_GUARD_MODES = {
     "none",
@@ -216,6 +241,138 @@ def _validate_tracka_contextual_guard_experiments(experiments, holding_experimen
             msg_parts.append(f"누락: {sorted(missing)}")
         if extra:
             msg_parts.append(f"초과: {sorted(extra)}")
+        raise ValueError(" ".join(msg_parts))
+
+    return experiments
+
+
+def _validate_trackb_predictive_risk_classifier(config):
+    """trackb_predictive_risk_classifier 최상위 블록 검증 (P210-STEP10A).
+
+    None 이면 None 반환 (OPTIONAL — dynamic_etf_market 아닌 모드에서 불필요).
+    dict 이면 필수 숫자 키 + enum 키를 검증한다.
+    """
+    if config is None:
+        return None
+    if not isinstance(config, dict):
+        raise TypeError(
+            f"trackb_predictive_risk_classifier 는 dict 여야 합니다: {type(config)}"
+        )
+
+    _required_numeric = [
+        "label_horizon_days",
+        "label_crash_drawdown_threshold",
+        "label_crash_return_threshold",
+        "min_train_samples",
+        "probability_threshold_soft",
+        "probability_threshold_hard",
+        "top_k_block_limit",
+    ]
+    for k in _required_numeric:
+        if k not in config:
+            raise KeyError(f"trackb_predictive_risk_classifier: '{k}' 누락")
+        if not isinstance(config[k], (int, float)):
+            raise TypeError(
+                f"trackb_predictive_risk_classifier.{k} 는 숫자형이어야 합니다:"
+                f" {type(config[k])}"
+            )
+
+    for str_key in ("decision_policy", "training_scheme", "feature_set_version"):
+        if str_key not in config:
+            raise KeyError(f"trackb_predictive_risk_classifier: '{str_key}' 누락")
+        if not isinstance(config[str_key], str) or not config[str_key]:
+            raise ValueError(
+                f"trackb_predictive_risk_classifier.{str_key}"
+                f" 는 비어있지 않은 문자열이어야 합니다: {config[str_key]!r}"
+            )
+
+    if config["decision_policy"] != "soft_gate_or_rerank":
+        raise ValueError(
+            f"trackb_predictive_risk_classifier.decision_policy="
+            f"{config['decision_policy']!r}"
+            f" 허용: 'soft_gate_or_rerank'"
+        )
+
+    if config["training_scheme"] != "walk_forward_expanding":
+        raise ValueError(
+            f"trackb_predictive_risk_classifier.training_scheme="
+            f"{config['training_scheme']!r}"
+            f" 허용: 'walk_forward_expanding'"
+        )
+
+    return config
+
+
+def _validate_trackb_predictive_risk_experiments(experiments):
+    """trackb_predictive_risk_classifier_experiments 스키마 검증 (P210-STEP10A).
+
+    None 이면 None 반환. 리스트이면 각 항목의 필수 키(name, baseline_profile,
+    ml_mode, model_family) 를 검증하고 중복 name 금지.
+
+    - baseline_profile 은 _ALLOWED_TRACKB_BASELINE_PROFILES 로 고정.
+    - ml_mode 는 _ALLOWED_TRACKB_ML_MODES 로 고정.
+    - model_family 는 _ALLOWED_TRACKB_MODEL_FAMILIES 로 고정.
+    - 실험군 name 집합은 _REQUIRED_TRACKB_EXPERIMENT_NAMES (6개) 와 정확히 일치.
+    """
+    if experiments is None:
+        return None
+    if not isinstance(experiments, list):
+        raise TypeError(
+            "trackb_predictive_risk_classifier_experiments 는 리스트여야 합니다:"
+            f" {type(experiments)}"
+        )
+
+    _seen_names = set()
+    for i, exp in enumerate(experiments):
+        ctx = f"trackb_predictive_risk_classifier_experiments[{i}]"
+        if not isinstance(exp, dict):
+            raise TypeError(f"{ctx}: dict 형태여야 합니다: {type(exp)}")
+
+        for req_key in ("name", "baseline_profile", "ml_mode", "model_family"):
+            if req_key not in exp:
+                raise KeyError(f"{ctx}: {req_key} 누락")
+
+        _nm = exp["name"]
+        if not isinstance(_nm, str) or not _nm:
+            raise ValueError(
+                f"{ctx}.name 은 비어있지 않은 문자열이어야 합니다: {_nm!r}"
+            )
+        if _nm in _seen_names:
+            raise ValueError(f"{ctx}.name={_nm!r} 중복")
+        _seen_names.add(_nm)
+
+        _bp = exp["baseline_profile"]
+        if _bp not in _ALLOWED_TRACKB_BASELINE_PROFILES:
+            raise ValueError(
+                f"{ctx}.baseline_profile={_bp!r}"
+                f" 허용: {sorted(_ALLOWED_TRACKB_BASELINE_PROFILES)}"
+            )
+
+        _mm = exp["ml_mode"]
+        if _mm not in _ALLOWED_TRACKB_ML_MODES:
+            raise ValueError(
+                f"{ctx}.ml_mode={_mm!r} 허용: {sorted(_ALLOWED_TRACKB_ML_MODES)}"
+            )
+
+        _mf = exp["model_family"]
+        if _mf not in _ALLOWED_TRACKB_MODEL_FAMILIES:
+            raise ValueError(
+                f"{ctx}.model_family={_mf!r}"
+                f" 허용: {sorted(_ALLOWED_TRACKB_MODEL_FAMILIES)}"
+            )
+
+    # 6개 고정 실험군 정확 일치 검증
+    if _seen_names != _REQUIRED_TRACKB_EXPERIMENT_NAMES:
+        missing = _REQUIRED_TRACKB_EXPERIMENT_NAMES - _seen_names
+        extra = _seen_names - _REQUIRED_TRACKB_EXPERIMENT_NAMES
+        msg_parts = [
+            "trackb_predictive_risk_classifier_experiments" " 6개 고정 실험군과 불일치."
+        ]
+        if missing:
+            msg_parts.append(f"누락: {sorted(missing)}")
+        if extra:
+            msg_parts.append(f"초과: {sorted(extra)}")
+        msg_parts.append(f"요구: {sorted(_REQUIRED_TRACKB_EXPERIMENT_NAMES)}")
         raise ValueError(" ".join(msg_parts))
 
     return experiments
@@ -415,6 +572,16 @@ def _extract_params_strict(params_raw: dict) -> Dict[str, Any]:
             _validate_tracka_contextual_guard_experiments(
                 params_raw.get("tracka_contextual_guard_experiments"),
                 params_raw.get("holding_structure_experiments"),
+            )
+        ),
+        "trackb_predictive_risk_classifier": (
+            _validate_trackb_predictive_risk_classifier(
+                params_raw.get("trackb_predictive_risk_classifier")
+            )
+        ),
+        "trackb_predictive_risk_classifier_experiments": (
+            _validate_trackb_predictive_risk_experiments(
+                params_raw.get("trackb_predictive_risk_classifier_experiments")
             )
         ),
     }

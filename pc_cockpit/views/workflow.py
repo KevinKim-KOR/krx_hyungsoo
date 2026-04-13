@@ -32,6 +32,11 @@ from pc_cockpit.views.helpers.contextual_guard_panel import (
     render_contextual_guard_compare_expander,
     render_contextual_guard_evidence_caption,
 )
+from pc_cockpit.views.helpers.predictive_risk_panel import (
+    render_predictive_risk_compare_expander,
+    render_predictive_risk_training_expander,
+    render_predictive_risk_evidence_caption,
+)
 from pc_cockpit.views.helpers.drawdown_contribution_panel import (
     render_drawdown_contribution_panel,
 )
@@ -400,6 +405,11 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         # P209-STEP9C: Track A Contextual Guard 비교표 + 요약 (R6: helpers)
                         render_contextual_guard_compare_expander(BASE_DIR)
                         render_contextual_guard_evidence_caption(bt_meta, BASE_DIR)
+
+                        # P210-STEP10A: Track B Predictive Risk (R6: helpers)
+                        render_predictive_risk_compare_expander(BASE_DIR)
+                        render_predictive_risk_training_expander(BASE_DIR)
+                        render_predictive_risk_evidence_caption(bt_meta)
 
                         # P209-STEP9A: Drawdown Contribution Summary (R6: helper)
                         render_drawdown_contribution_panel(bt_meta, BASE_DIR)
