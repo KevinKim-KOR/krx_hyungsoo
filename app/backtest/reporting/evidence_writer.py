@@ -806,9 +806,9 @@ def _render_trackb_predictive_risk_section(
         "## Track B Predictive Risk Classifier (P210-STEP10A)",
         "",
         "| Rank | Variant | Baseline Profile | ML Mode | Model Family"
-        " | CAGR | MDD"
-        " | Predicted Positive | SoftGate Hits | Rerank Changes"
-        " | Burnin | Avg Before | Avg After | Verdict |",
+        " | Min Train Samples | Total Labeled | Predicted Dates | Burnin Dates"
+        " | Predicted Positive | SoftGate Hits"
+        " | CAGR | MDD | Verdict |",
         "|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for r in rows:
@@ -823,14 +823,14 @@ def _render_trackb_predictive_risk_section(
             f" | {r.get('baseline_profile', 'N/A')}"  # WHITELIST (display)
             f" | {r.get('ml_mode', 'N/A')}"  # WHITELIST (display)
             f" | {r.get('model_family', 'N/A')}"  # WHITELIST (display)
-            f" | {cagr_s}"
-            f" | {mdd_s}"
+            f" | {r.get('min_train_samples', '-')}"  # WHITELIST (display)
+            f" | {r.get('total_labeled_samples', '-')}"  # WHITELIST (display)
+            f" | {r.get('predicted_dates', 0)}"  # WHITELIST (display)
+            f" | {r.get('burnin_dates', 0)}"  # WHITELIST (display)
             f" | {r.get('predicted_positive_count', 0)}"  # WHITELIST (display)
             f" | {r.get('soft_gate_hits_total', 0)}"  # WHITELIST (display)
-            f" | {r.get('rerank_changes_total', 0)}"  # WHITELIST (display)
-            f" | {r.get('ml_burnin_count', 0)}"  # WHITELIST (display)
-            f" | {r.get('avg_candidates_before_ml', 'N/A')}"  # WHITELIST (display)
-            f" | {r.get('avg_candidates_after_ml', 'N/A')}"  # WHITELIST (display)
+            f" | {cagr_s}"
+            f" | {mdd_s}"
             f" | {r.get('verdict', 'N/A')} |"  # WHITELIST (display)
         )
 

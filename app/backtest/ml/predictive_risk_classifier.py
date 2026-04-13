@@ -461,10 +461,13 @@ def build_predictions_for_sweep(
     rebalance_trace: List[Dict[str, Any]],
     config: Dict[str, Any],
     model_family: str,
+    min_train_samples_override: Optional[int] = None,
 ) -> Tuple[Dict[str, Dict[str, float]], List[Dict[str, Any]], pd.DataFrame]:
     """sweep 모듈에서 호출. dataset 구축 → walk-forward → predictions 반환.
 
     config: trackb_predictive_risk_classifier SSOT 블록.
+    min_train_samples_override: P210-STEP10A-2 에서 실험군별 override.
+        None 이면 config["min_train_samples"] 사용.
 
     Returns:
         predictions: {date_str: {ticker: prob}}
@@ -489,10 +492,17 @@ def build_predictions_for_sweep(
         label_horizon_days=config["label_horizon_days"],
     )
 
+    # P210-STEP10A-2: per-experiment min_train_samples override
+    effective_mts = (
+        min_train_samples_override
+        if min_train_samples_override is not None
+        else config["min_train_samples"]
+    )
+
     predictions, training_log = walk_forward_train(
         dataset=dataset,
         model_family=model_family,
-        min_train_samples=config["min_train_samples"],
+        min_train_samples=effective_mts,
     )
 
     return predictions, training_log, dataset

@@ -91,14 +91,18 @@ _ALLOWED_TRACKB_MODEL_FAMILIES = {
     "random_forest",
 }
 # 본선 6개 실험군 name 고정. 추가/누락/중복 금지.
+# P210-STEP10A-2: 8개 고정 실험군 (min_train_samples 단일 변수 실험)
 _REQUIRED_TRACKB_EXPERIMENT_NAMES = {
     "A0_operational_no_ml",
-    "A1_operational_soft_gate_lr",
-    "A2_operational_rerank_lr",
+    "A1_operational_soft_gate_lr_mts50",
+    "A2_operational_soft_gate_lr_mts75",
+    "A3_operational_soft_gate_lr_mts100",
     "B0_research_no_ml",
-    "B1_research_soft_gate_lr",
-    "B2_research_rerank_lr",
+    "B1_research_soft_gate_lr_mts50",
+    "B2_research_soft_gate_lr_mts75",
+    "B3_research_soft_gate_lr_mts100",
 }
+_ALLOWED_MTS_OVERRIDE_VALUES = {50, 75, 100}
 
 # P209-STEP9C: Track A Contextual Guard 에서 허용되는 guard_mode
 _ALLOWED_GUARD_MODES = {
@@ -361,12 +365,36 @@ def _validate_trackb_predictive_risk_experiments(experiments):
                 f" 허용: {sorted(_ALLOWED_TRACKB_MODEL_FAMILIES)}"
             )
 
-    # 6개 고정 실험군 정확 일치 검증
+        # P210-STEP10A-2: min_train_samples_override 검증
+        if "min_train_samples_override" not in exp:
+            raise KeyError(f"{ctx}: min_train_samples_override 누락")
+        _mts = exp["min_train_samples_override"]
+        if _mm == "none":
+            # no_ml 실험군: null 만 허용
+            if _mts is not None:
+                raise ValueError(
+                    f"{ctx}: ml_mode='none' 일 때"
+                    f" min_train_samples_override 는 null 이어야 합니다:"
+                    f" {_mts!r}"
+                )
+        else:
+            # soft_gate 실험군: 정수 필수, 50/75/100 만 허용
+            if not isinstance(_mts, int) or isinstance(_mts, bool):
+                raise TypeError(
+                    f"{ctx}.min_train_samples_override 는" f" 정수여야 합니다: {_mts!r}"
+                )
+            if _mts not in _ALLOWED_MTS_OVERRIDE_VALUES:
+                raise ValueError(
+                    f"{ctx}.min_train_samples_override={_mts!r}"
+                    f" 허용: {sorted(_ALLOWED_MTS_OVERRIDE_VALUES)}"
+                )
+
+    # 8개 고정 실험군 정확 일치 검증
     if _seen_names != _REQUIRED_TRACKB_EXPERIMENT_NAMES:
         missing = _REQUIRED_TRACKB_EXPERIMENT_NAMES - _seen_names
         extra = _seen_names - _REQUIRED_TRACKB_EXPERIMENT_NAMES
         msg_parts = [
-            "trackb_predictive_risk_classifier_experiments" " 6개 고정 실험군과 불일치."
+            "trackb_predictive_risk_classifier_experiments" " 8개 고정 실험군과 불일치."
         ]
         if missing:
             msg_parts.append(f"누락: {sorted(missing)}")

@@ -136,6 +136,8 @@ def run_predictive_risk_sweep(
         profile = exp["baseline_profile"]
         ml_mode = exp["ml_mode"]
         model_family = exp["model_family"]
+        # P210-STEP10A-2: per-experiment min_train_samples override
+        mts_override = exp.get("min_train_samples_override")  # OPTIONAL: None for no_ml
 
         if profile not in _PROFILE_MAP:
             raise ValueError(
@@ -155,8 +157,8 @@ def run_predictive_risk_sweep(
         max_pos = hs_spec["max_positions"]
         alloc_mode = hs_spec["allocation_mode"]
 
-        # ML predictions 구축 (profile + model_family 단위 캐시)
-        cache_key = f"{profile}__{model_family}"
+        # ML predictions 구축 (profile + model_family + mts_override 단위 캐시)
+        cache_key = f"{profile}__{model_family}__{mts_override}"
         if ml_mode != "none" and cache_key not in _pred_cache:
             # baseline 으로 한번 backtest 실행하여 rebalance_trace 확보
             _base_params = dict(base_params)
@@ -184,6 +186,7 @@ def run_predictive_risk_sweep(
                 rebalance_trace=_trace,
                 config=ml_config,
                 model_family=model_family,
+                min_train_samples_override=mts_override,
             )
             _pred_cache[cache_key] = (predictions, training_log, dataset)
 
@@ -194,7 +197,12 @@ def run_predictive_risk_sweep(
                 model_family=model_family,
             )
             all_training_reports.append(
-                {"profile": profile, "model_family": model_family, "report": report}
+                {
+                    "profile": profile,
+                    "model_family": model_family,
+                    "min_train_samples_override": mts_override,
+                    "report": report,
+                }
             )
             all_training_logs.extend(training_log)
 
@@ -252,12 +260,29 @@ def run_predictive_risk_sweep(
         mdd = summary["mdd"]
         sharpe = summary["sharpe"]
 
+        # P210-STEP10A-2: training log 에서 predicted/burnin dates 추출
+        _cached_log = _pred_cache[cache_key][1] if cache_key in _pred_cache else []
+        _predicted_dates = len(
+            [e for e in _cached_log if e.get("status") == "PREDICTED"]
+        )
+        _burnin_dates = len([e for e in _cached_log if e.get("status") == "BURN_IN"])
+        _total_labeled = 0
+        if cache_key in _pred_cache:
+            _ds = _pred_cache[cache_key][2]
+            _total_labeled = int(_ds[_ds["label"].notna()].shape[0])
+
         rows.append(
             {
                 "variant": name,
                 "baseline_profile": profile,
                 "ml_mode": ml_mode,
                 "model_family": model_family,
+                "min_train_samples": (
+                    mts_override if mts_override is not None else "-"
+                ),
+                "total_labeled_samples": _total_labeled,
+                "predicted_dates": _predicted_dates,
+                "burnin_dates": _burnin_dates,
                 "cagr": round(cagr, 4) if cagr is not None else None,
                 "mdd": round(mdd, 4) if mdd is not None else None,
                 "sharpe": round(sharpe, 4) if sharpe is not None else None,
@@ -281,21 +306,25 @@ def run_predictive_risk_sweep(
                 "verdict": _verdict(cagr, mdd),
             }
         )
-        # logging: _require_raw 로 이미 검증된 필드를 직접 subscript
         logger.info(
             f"[P210-STEP10A] {name}: profile={profile}"
-            f" ml_mode={ml_mode} model={model_family}"
+            f" ml_mode={ml_mode} mts={mts_override}"
             f" CAGR={cagr} MDD={mdd}"
+            f" predicted_dates={_predicted_dates}"
             f" soft_gate={raw['trackb_soft_gate_hits_total']}"
-            f" rerank={raw['trackb_rerank_changes_total']}"
             f" burnin={raw['trackb_ml_burnin_rebalance_count']}"
         )
 
-    # 정렬: 1차 MDD 오름차순, 2차 CAGR 내림차순
+    # P210-STEP10A-2 정렬:
+    # 1차 Predicted Dates 내림차순 (ML 개입 여부가 1차 관심)
+    # 2차 MDD 오름차순
+    # 3차 CAGR 내림차순
     def _sort_key(r: Dict[str, Any]):
+        pd_v = r.get("predicted_dates", 0)
         mdd_v = r["mdd"]
         cagr_v = r["cagr"]
         return (
+            -(pd_v if isinstance(pd_v, int) else 0),
             mdd_v if mdd_v is not None else 9999.0,
             -(cagr_v if cagr_v is not None else -9999.0),
         )
@@ -342,19 +371,20 @@ def _fmt_pct(v: Optional[float]) -> str:
 
 def _render_compare_md(rows: List[Dict[str, Any]], generated_at: str) -> List[str]:
     lines = [
-        "# P210-STEP10A Track B Predictive Risk Classifier Compare",
+        "# P210-STEP10A-2 Track B Predictive Risk Classifier Compare",
         "",
         f"- generated_at: {generated_at}",
         f"- experiments: {len(rows)}",
         "- verdict 기준 유지: `CAGR > 15` AND `MDD < 10`",
-        "- 정렬: 1차 MDD 오름차순, 2차 CAGR 내림차순",
+        "- 정렬: 1차 Predicted Dates 내림차순," " 2차 MDD 오름차순, 3차 CAGR 내림차순",
+        "- 변경축: `min_train_samples` only (50/75/100)",
         "",
         "## 비교표",
         "",
         "| Rank | Variant | Baseline Profile | ML Mode | Model Family"
-        " | CAGR | MDD | Sharpe | Avg Held"
-        " | Predicted Positive | SoftGate Hits | Rerank Changes"
-        " | Burnin | Trades | Verdict |",
+        " | Min Train Samples | Total Labeled | Predicted Dates | Burnin Dates"
+        " | Predicted Positive | SoftGate Hits"
+        " | CAGR | MDD | Sharpe | Verdict |",
         "|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for r in rows:
@@ -365,90 +395,86 @@ def _render_compare_md(rows: List[Dict[str, Any]], generated_at: str) -> List[st
             f" | {r['baseline_profile']}"
             f" | {r['ml_mode']}"
             f" | {r['model_family']}"
+            f" | {r['min_train_samples']}"
+            f" | {r['total_labeled_samples']}"
+            f" | {r['predicted_dates']}"
+            f" | {r['burnin_dates']}"
+            f" | {r['predicted_positive_count']}"
+            f" | {r['soft_gate_hits_total']}"
             f" | {_fmt_pct(r['cagr'])}"
             f" | {_fmt_pct(r['mdd'])}"
             f" | {_sharpe_s}"
-            f" | {r['avg_held_positions']}"  # REQUIRED: _require_raw 로 추출됨
-            f" | {r['predicted_positive_count']}"
-            f" | {r['soft_gate_hits_total']}"
-            f" | {r['rerank_changes_total']}"
-            f" | {r['ml_burnin_count']}"
-            f" | {r['total_trades']}"
             f" | {r['verdict']} |"
         )
 
-    # Q1~Q4 진단
+    # Q1~Q4 진단 (Step10A-2 기준)
     by_variant = {r["variant"]: r for r in rows}
     lines += ["", "## 진단 요약"]
 
-    # Q1: soft_gate 가 B1 baseline MDD 낮추는가
-    b0 = by_variant.get("B0_research_no_ml")
-    b1 = by_variant.get("B1_research_soft_gate_lr")
+    # Q1: 어떤 min_train_samples 부터 predicted_dates > 0 처음 발생하는가
     lines.append("")
-    lines.append("### Q1. soft_gate 가 B1 baseline 의 MDD 를 낮추는가")
-    if b0 and b1 and b0["mdd"] is not None and b1["mdd"] is not None:
-        delta = round(b0["mdd"] - b1["mdd"], 4)
+    lines.append(
+        "### Q1. 어떤 min_train_samples 부터 predicted_dates > 0 이 발생하는가"
+    )
+    _ml_rows = [r for r in rows if r["ml_mode"] != "none"]
+    _activated = [r for r in _ml_rows if r["predicted_dates"] > 0]
+    if _activated:
+        _first = min(_activated, key=lambda r: r["min_train_samples"])
+        lines.append(
+            f"- **최초 활성화**: min_train_samples={_first['min_train_samples']}"
+            f" ({_first['variant']})"
+            f" → predicted_dates={_first['predicted_dates']}"
+        )
+    else:
+        lines.append("- **활성화 없음**: 50/75/100 전 구간에서 predicted_dates=0")
+
+    # Q2: 연구 baseline 에서 soft_gate 가 MDD 를 줄이는가
+    b0 = by_variant.get("B0_research_no_ml")
+    lines.append("")
+    lines.append("### Q2. 연구 baseline 에서 soft_gate 가 MDD 를 실제로 줄이는가")
+    # mts50/75/100 중 best vs B0 비교
+    _b_sg = [
+        r
+        for r in rows
+        if r["baseline_profile"] == "research_candidate_b1"
+        and r["ml_mode"] == "soft_gate"
+        and r["predicted_dates"] > 0
+    ]
+    if b0 and _b_sg:
+        _best_b = min(_b_sg, key=lambda r: r["mdd"] if r["mdd"] is not None else 9999)
+        _delta = (
+            round(b0["mdd"] - _best_b["mdd"], 4) if _best_b["mdd"] is not None else None
+        )
         lines.append(
             f"- B0 (no_ml): MDD {b0['mdd']:.2f}%"
-            f" → B1 (soft_gate_lr): MDD {b1['mdd']:.2f}%"
-            f" (Δ={delta:+.2f}%p)"
+            f" → {_best_b['variant']}: MDD {_best_b['mdd']:.2f}%"
+            f" (Δ={_delta:+.2f}%p)"
+            if _delta is not None
+            else f"- B0 vs {_best_b['variant']}: 데이터 부족"
         )
+    elif b0 and not _b_sg:
+        lines.append("- soft_gate 실험군 중 predicted_dates > 0 인 것이 없음")
     else:
         lines.append("- 데이터 부족")
 
-    # Q2: rerank 가 hard exclusion 보다 수익 훼손이 적은가
-    # Step10A 에는 hard_gate 실험군이 본선에 없으므로 (soft_gate + rerank 우선),
-    # 직접 비교 대상은 Step9B 의 정적 hard drop 결과 (참고) + B0 vs B2 rerank.
-    b2 = by_variant.get("B2_research_rerank_lr")
+    # Q3: CAGR 훼손폭은 허용 가능한가
     lines.append("")
-    lines.append("### Q2. rerank 가 hard exclusion 보다 수익 훼손이 적은가")
-    lines.append(
-        "- **참고**: Step10A 본선에 hard_gate 실험군 없음"
-        " (지시문: soft_gate / rerank 우선)."
-        " Step9B 에서 정적 hard drop (B1_pos3_raew_primary_drop)"
-        " 은 MDD 11.03% → 13.02% 악화 + CAGR 15.95% → 15.26% 훼손이었음."
-    )
-    if b0 and b2 and b0["cagr"] is not None and b2["cagr"] is not None:
-        cagr_delta = round(b0["cagr"] - b2["cagr"], 4)
-        mdd_delta = round(b0["mdd"] - b2["mdd"], 4) if b2["mdd"] is not None else None
-        lines.append(
-            f"- B0 (no_ml) → B2 (rerank_lr):"
-            f" CAGR {b0['cagr']:.2f}% → {b2['cagr']:.2f}%"
-            f" (ΔCAGR={-cagr_delta:+.2f}%p)"
-        )
-        if mdd_delta is not None:
-            lines.append(
-                f"  MDD {b0['mdd']:.2f}% → {b2['mdd']:.2f}%"
-                f" (ΔMDD={mdd_delta:+.2f}%p)"
-            )
-        if cagr_delta > 0:
-            lines.append(
-                "- rerank 이 CAGR 을 훼손했으나, Step9B hard drop 대비"
-                " 훼손폭이 작은지는 위 수치로 판단"
-            )
-        else:
-            lines.append("- rerank 이 CAGR 을 훼손하지 않음")
+    lines.append("### Q3. CAGR 훼손폭은 허용 가능한가")
+    if b0 and _b_sg:
+        for _r in sorted(_b_sg, key=lambda x: x["min_train_samples"]):
+            _cd = round(b0["cagr"] - _r["cagr"], 4) if _r["cagr"] is not None else None
+            if _cd is not None:
+                lines.append(
+                    f"- {_r['variant']} (mts={_r['min_train_samples']}):"
+                    f" CAGR {_r['cagr']:.2f}% (ΔCAGR={-_cd:+.2f}%p vs B0)"
+                    f" | soft_gate_hits={_r['soft_gate_hits_total']}"
+                )
     else:
-        lines.append("- 데이터 부족")
+        lines.append("- soft_gate 활성 실험군 없음")
 
-    # Q3: LR 만으로 의미 있는 개선 있는가
+    # Q4: Step10B 로 넘길 ML 설정이 존재하는가
     lines.append("")
-    lines.append("### Q3. logistic regression 만으로 의미 있는 개선이 있는가")
-    if b0 and b1:
-        if b1["mdd"] is not None and b0["mdd"] is not None:
-            improved = b1["mdd"] < b0["mdd"]
-            lines.append(
-                f"- MDD 개선 여부: {'개선' if improved else '악화 또는 동일'}"
-                f" ({b0['mdd']:.2f}% → {b1['mdd']:.2f}%)"
-            )
-        if b1["soft_gate_hits_total"] > 0:
-            lines.append(f"- soft_gate 가 실제 발동: {b1['soft_gate_hits_total']}회")
-        else:
-            lines.append("- soft_gate 미발동 (crash probability 가 threshold 미만)")
-
-    # Q4: Step10B 승격 후보 존재하는가
-    lines.append("")
-    lines.append("### Q4. Step10B 승격 검토 후보가 존재하는가")
+    lines.append("### Q4. Step10B 로 넘길 ML 설정이 존재하는가")
     promoted = [r["variant"] for r in rows if r["verdict"] == "PROMOTE"]
     if promoted:
         top = rows[0]
@@ -458,17 +484,33 @@ def _render_compare_md(rows: List[Dict[str, Any]], generated_at: str) -> List[st
             f" (MDD {_fmt_pct(top['mdd'])}, CAGR {_fmt_pct(top['cagr'])})"
         )
     else:
-        if rows:
-            best = rows[0]
-            lines.append("- **승격 후보 없음**: CAGR>15 AND MDD<10 동시 충족 없음")
+        # Step10A-2 실패 판정 기준 체크
+        any_predicted = any(r["predicted_dates"] > 0 for r in _ml_rows)
+        any_hits = any(r["soft_gate_hits_total"] > 0 for r in _ml_rows)
+        if not any_predicted:
             lines.append(
-                f"- **차선**: `{best['variant']}`"
-                f" (MDD {_fmt_pct(best['mdd'])}, CAGR {_fmt_pct(best['cagr'])})"
+                "- **Track B 데이터 규모 한계 확인**:"
+                " 50/75/100 전 구간에서 predicted_dates=0."
+                " Track B 는 현재 universe/기간에서 한계."
             )
-        lines.append(
-            "- **다음 단계**: Step10B 에서 threshold 조정 / RF 보조군 검토"
-            " / 또는 Track B 한계 판정"
-        )
+        elif not any_hits:
+            lines.append(
+                "- **예측은 생겼지만 soft_gate 미발동**:"
+                " crash probability 가 threshold 미만."
+                " threshold 하향 또는 모델 보강 필요."
+            )
+        else:
+            if rows:
+                best = rows[0]
+                lines.append("- **승격 후보 없음**: CAGR>15 AND MDD<10 동시 충족 없음")
+                lines.append(
+                    f"- **차선**: `{best['variant']}`"
+                    f" (MDD {_fmt_pct(best['mdd'])},"
+                    f" CAGR {_fmt_pct(best['cagr'])})"
+                )
+            lines.append(
+                "- **다음 단계**: Step10B threshold 튜닝" " 또는 Track B 한계 판정"
+            )
 
     lines += [
         "",

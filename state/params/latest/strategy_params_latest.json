@@ -301,7 +301,7 @@
       "min_train_samples": 200,
       "feature_set_version": "v1",
       "probability_threshold_soft": 0.55,
-      "probability_threshold_hard": 0.70,
+      "probability_threshold_hard": 0.7,
       "top_k_block_limit": 1
     },
     "trackb_predictive_risk_classifier_experiments": [
@@ -309,37 +309,57 @@
         "name": "A0_operational_no_ml",
         "baseline_profile": "operational_control_a0",
         "ml_mode": "none",
-        "model_family": "logistic_regression"
+        "model_family": "logistic_regression",
+        "min_train_samples_override": null
       },
       {
-        "name": "A1_operational_soft_gate_lr",
+        "name": "A1_operational_soft_gate_lr_mts50",
         "baseline_profile": "operational_control_a0",
         "ml_mode": "soft_gate",
-        "model_family": "logistic_regression"
+        "model_family": "logistic_regression",
+        "min_train_samples_override": 50
       },
       {
-        "name": "A2_operational_rerank_lr",
+        "name": "A2_operational_soft_gate_lr_mts75",
         "baseline_profile": "operational_control_a0",
-        "ml_mode": "rerank",
-        "model_family": "logistic_regression"
+        "ml_mode": "soft_gate",
+        "model_family": "logistic_regression",
+        "min_train_samples_override": 75
+      },
+      {
+        "name": "A3_operational_soft_gate_lr_mts100",
+        "baseline_profile": "operational_control_a0",
+        "ml_mode": "soft_gate",
+        "model_family": "logistic_regression",
+        "min_train_samples_override": 100
       },
       {
         "name": "B0_research_no_ml",
         "baseline_profile": "research_candidate_b1",
         "ml_mode": "none",
-        "model_family": "logistic_regression"
+        "model_family": "logistic_regression",
+        "min_train_samples_override": null
       },
       {
-        "name": "B1_research_soft_gate_lr",
+        "name": "B1_research_soft_gate_lr_mts50",
         "baseline_profile": "research_candidate_b1",
         "ml_mode": "soft_gate",
-        "model_family": "logistic_regression"
+        "model_family": "logistic_regression",
+        "min_train_samples_override": 50
       },
       {
-        "name": "B2_research_rerank_lr",
+        "name": "B2_research_soft_gate_lr_mts75",
         "baseline_profile": "research_candidate_b1",
-        "ml_mode": "rerank",
-        "model_family": "logistic_regression"
+        "ml_mode": "soft_gate",
+        "model_family": "logistic_regression",
+        "min_train_samples_override": 75
+      },
+      {
+        "name": "B3_research_soft_gate_lr_mts100",
+        "baseline_profile": "research_candidate_b1",
+        "ml_mode": "soft_gate",
+        "model_family": "logistic_regression",
+        "min_train_samples_override": 100
       }
     ]
   },
@@ -361,6 +381,6 @@
     "469150",
     "487240"
   ],
-  "universe_snapshot_id": "snap_20260412_183129_700c57e6",
+  "universe_snapshot_id": "snap_20260413_174635_700c57e6",
   "universe_snapshot_sha256": "700c57e6a901558efeb8c69b48f346338108fc0952fb2ebd59654d7d5e711e33"
 }
