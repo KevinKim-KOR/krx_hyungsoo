@@ -411,6 +411,10 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         render_predictive_risk_training_expander(BASE_DIR)
                         render_predictive_risk_evidence_caption(bt_meta)
 
+                        # P210-STEP10Z: Strategy State + Registry
+                        _render_strategy_state_expander(BASE_DIR)
+                        _render_registry_expander(BASE_DIR)
+
                         # P209-STEP9A: Drawdown Contribution Summary (R6: helper)
                         render_drawdown_contribution_panel(bt_meta, BASE_DIR)
 
@@ -500,3 +504,35 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
                         st.error(f"Push 실패: {r.text}")
                 except Exception as e:
                     st.error(f"Push 실패 (통신/토큰 오류 등): {e}")
+
+
+def _render_strategy_state_expander(base_dir) -> None:
+    """P210-STEP10Z: Current Strategy State expander."""
+    from pathlib import Path as _Path
+
+    _path = _Path(base_dir) / "reports" / "tuning" / "current_strategy_state.md"
+    if not _path.exists():
+        return
+    with st.expander("Current Strategy State (P210-STEP10Z)", expanded=False):
+        st.markdown(_path.read_text(encoding="utf-8"))
+
+
+def _render_registry_expander(base_dir) -> None:
+    """P210-STEP10Z: Experiment Registry Summary expander."""
+    from pathlib import Path as _Path
+
+    _json_path = _Path(base_dir) / "reports" / "tuning" / "experiment_registry.json"
+
+    if _json_path.exists():
+        import json as _json
+
+        with st.expander("Experiment Registry Summary (P210-STEP10Z)", expanded=False):
+            with open(_json_path, encoding="utf-8") as f:
+                data = _json.load(f)
+            rows = data.get("rows")
+            if rows:
+                import pandas as _pd
+
+                st.dataframe(_pd.DataFrame(rows), use_container_width=True)
+            else:
+                st.caption("Registry 데이터 없음")

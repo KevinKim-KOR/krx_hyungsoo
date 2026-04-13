@@ -146,9 +146,24 @@ def write_dynamic_evidence(
             " (format_result 가 반드시 설정)"
         )
 
+    # P210-STEP10Z: 상단 요약 블록
+    from app.backtest.reporting.experiment_registry import get_strategy_summary
+
+    _strat_summary = get_strategy_summary()
+
     # 섹션 조립 (ACCUMULATOR)
     sections: List[List[str]] = [
         _render_header(generated_at, bt_meta),
+        [
+            "## Current Strategy Position",
+            f"- **Current Main Run**: `{_strat_summary['current_main_run']}`",
+            f"- **Current Research Candidate**:"
+            f" `{_strat_summary['current_research_candidate']}`",
+            f"- **Last Completed Chapter**:"
+            f" `{_strat_summary['last_completed_chapter']}`",
+            f"- **Last Rejected Axis**:" f" {_strat_summary['last_rejected_axis']}",
+            f"- **Next Planned Chapter**:" f" {_strat_summary['next_planned_chapter']}",
+        ],
         _render_performance_section(
             cagr_str=cagr_str,
             mdd_str=mdd_str,
