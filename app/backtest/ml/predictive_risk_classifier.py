@@ -606,6 +606,19 @@ def format_training_report(
         predicted_entries[-1]["predict_date"] if predicted_entries else None
     )
 
+    # P210-STEP10B: predicted 평균 확률 + top feature summary 계산
+    _avg_probs = [
+        e["avg_crash_prob"] for e in predicted_entries if "avg_crash_prob" in e
+    ]
+    avg_predicted_probability = (
+        round(sum(_avg_probs) / len(_avg_probs), 6) if _avg_probs else None
+    )
+    # top feature summary: name/coefficient/abs_value
+    top_feature_summary = [
+        {"feature": fname, "coefficient": fval, "abs_value": abs(fval)}
+        for fname, fval in top_features.items()
+    ]
+
     # P210-STEP10B: label_profile override 반영
     if label_profile is not None:
         lp = _resolve_label_profile(label_profile)
@@ -626,6 +639,11 @@ def format_training_report(
     return {
         "label_profile": label_profile,
         "action_policy": action_policy,
+        # P210-STEP10B: 지시문 요구 top-level 필드 4종
+        "label_positive_ratio": positive_ratio,
+        "predicted_dates_count": len(predicted_entries),
+        "avg_predicted_probability": avg_predicted_probability,
+        "top_feature_summary": top_feature_summary,
         "label_definition": {
             "profile": label_profile,
             "horizon_days": _horizon,

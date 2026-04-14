@@ -298,7 +298,7 @@
       "label_crash_return_threshold": -0.07,
       "decision_policy": "soft_gate_or_rerank",
       "training_scheme": "walk_forward_expanding",
-      "min_train_samples": 200,
+      "min_train_samples": 100,
       "feature_set_version": "v1",
       "probability_threshold_soft": 0.55,
       "probability_threshold_hard": 0.7,

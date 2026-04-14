@@ -99,7 +99,7 @@ def run_predictive_risk_sweep(
     from app.backtest.ml import build_predictions_for_sweep, format_training_report
 
     logger.info(
-        f"[P210-STEP10A] predictive_risk_compare" f" 실험군 {len(experiments)}개 실행"
+        f"[P210-STEP10B] predictive_risk_compare" f" 실험군 {len(experiments)}개 실행"
     )
 
     hs_by_name = {e["name"]: e for e in holding_experiments}
@@ -336,7 +336,7 @@ def run_predictive_risk_sweep(
             }
         )
         logger.info(
-            f"[P210-STEP10A] {name}: profile={profile}"
+            f"[P210-STEP10B] {name}: profile={profile}"
             f" ml_mode={ml_mode} mts={mts_override}"
             f" CAGR={cagr} MDD={mdd}"
             f" predicted_dates={_predicted_dates}"
@@ -391,7 +391,7 @@ def _write_compare_outputs(rows: List[Dict[str, Any]], out_dir: Path) -> None:
     md_path.write_text(
         "\n".join(_render_compare_md(rows, generated_at)), encoding="utf-8"
     )
-    logger.info("[P210-STEP10A] predictive_risk_compare 산출물 생성 완료")
+    logger.info("[P210-STEP10B] predictive_risk_compare 산출물 생성 완료")
 
 
 def _fmt_pct(v: Optional[float]) -> str:
@@ -400,7 +400,7 @@ def _fmt_pct(v: Optional[float]) -> str:
 
 def _render_compare_md(rows: List[Dict[str, Any]], generated_at: str) -> List[str]:
     lines = [
-        "# P210-STEP10A-2 Track B Predictive Risk Classifier Compare",
+        "# P210-STEP10B Track B Predictive Risk Classifier Compare",
         "",
         f"- generated_at: {generated_at}",
         f"- experiments: {len(rows)}",
@@ -440,7 +440,7 @@ def _render_compare_md(rows: List[Dict[str, Any]], generated_at: str) -> List[st
             f" | {r['verdict']} |"
         )
 
-    # Q1~Q4 진단 (Step10A-2 기준)
+    # Q1~Q4 진단 (Step10B 기준: label profile + action policy)
     by_variant = {r["variant"]: r for r in rows}
     lines += ["", "## 진단 요약"]
 
@@ -586,13 +586,13 @@ def _render_compare_md(rows: List[Dict[str, Any]], generated_at: str) -> List[st
                     f" soft_gate={best['soft_gate_hits_total']})"
                 )
             lines.append(
-                "- **다음 단계**: Step10B threshold 튜닝" " 또는 Track B 한계 판정"
+                "- **다음 단계**: Step10C 승격 검토 또는 Track B label/action 한계 판정"
             )
 
     lines += [
         "",
         "## Notes",
-        "- Step10A 는 연구/검증 전용. 운영 SSOT 에 자동 승격 금지.",
+        "- Step10B 는 연구/검증 전용. 운영 SSOT 에 자동 승격 금지.",
         "- ML 은 walk_forward_expanding 학습. 초기 burn-in 구간 존재.",
         "- soft_gate / rerank 은 guard 이후 결과 위에서만 동작"
         " (guard 탈락 후보 부활 금지).",
@@ -612,10 +612,11 @@ def _write_training_report(reports: List[Dict[str, Any]], out_dir: Path) -> None
 
     # Markdown
     md_lines = [
-        "# P210-STEP10A Track B Training Report",
+        "# P210-STEP10B Track B Training Report",
         "",
         f"- generated_at: {generated_at}",
         f"- profiles: {len(reports)}",
+        "- 변경축: label_profile + action_policy (mts=100, LR 고정)",
         "",
     ]
     for entry in reports:
@@ -627,15 +628,26 @@ def _write_training_report(reports: List[Dict[str, Any]], out_dir: Path) -> None
         wf = report["walk_forward_summary"]
         # REQUIRED: format_training_report 가 항상 설정 (빈 dict 포함)
         fi = report["top_feature_importance"]
+        # P210-STEP10B: 신규 top-level 필드
+        _label_profile = report.get("label_profile")
+        _action_policy = report.get("action_policy")
+        _label_pos_ratio = report.get("label_positive_ratio")
+        _pred_dates_count = report.get("predicted_dates_count")
+        _avg_pred_prob = report.get("avg_predicted_probability")
 
         md_lines += [
-            f"## {profile} / {mf}",
+            f"## {profile} / label={_label_profile} / action={_action_policy}"
+            f" / model={mf}",
             "",
             "### Label 정의",
+            f"- label_profile: `{_label_profile}`",
+            f"- rule: {ld.get('rule_description', ld['positive_meaning'])}",
             f"- horizon: {ld['horizon_days']}영업일",
             f"- crash_drawdown_threshold: {ld['crash_drawdown_threshold']}",
             f"- crash_return_threshold: {ld['crash_return_threshold']}",
-            f"- 양성 의미: {ld['positive_meaning']}",
+            "",
+            "### Action Policy",
+            f"- action_policy: `{_action_policy}`",
             "",
             "### Feature Set",
             f"- version: {report['feature_set']['version']}",
@@ -650,13 +662,23 @@ def _write_training_report(reports: List[Dict[str, Any]], out_dir: Path) -> None
             f"- total_labeled_samples: {ci['total_labeled_samples']}",
             f"- positive: {ci['positive_count']}" f" ({ci['positive_ratio']:.1%})",
             f"- negative: {ci['negative_count']}",
+            (
+                f"- **label_positive_ratio: {_label_pos_ratio:.1%}**"
+                if _label_pos_ratio is not None
+                else "- label_positive_ratio: -"
+            ),
             "",
             "### Walk-Forward Summary",
             f"- total rebalance dates: {wf['total_rebalance_dates']}",
-            f"- predicted dates: {wf['predicted_dates']}",
+            f"- **predicted_dates_count: {_pred_dates_count}**",
             f"- burn-in dates: {wf['burnin_dates']}",
             f"- first predict: {wf['first_predict_date']}",
             f"- last predict: {wf['last_predict_date']}",
+            (
+                f"- avg_predicted_probability:" f" {_avg_pred_prob:.4f}"
+                if _avg_pred_prob is not None
+                else "- avg_predicted_probability: -"
+            ),
             "",
             "### Top Feature Importance",
         ]
@@ -680,4 +702,4 @@ def _write_training_report(reports: List[Dict[str, Any]], out_dir: Path) -> None
 
     md_path = out_dir / "predictive_risk_training_report.md"
     md_path.write_text("\n".join(md_lines), encoding="utf-8")
-    logger.info("[P210-STEP10A] predictive_risk_training_report 생성 완료")
+    logger.info("[P210-STEP10B] predictive_risk_training_report 생성 완료")

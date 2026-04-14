@@ -166,6 +166,7 @@ def render_predictive_risk_evidence_caption(bt_meta: Dict[str, Any]) -> None:
     model = bt_meta["trackb_model_family"]
     predicted_pos = bt_meta["trackb_predicted_positive_count"]
     soft_hits = bt_meta["trackb_soft_gate_hits_total"]
+    rerank_changes = bt_meta["trackb_rerank_changes_total"]
     burnin = bt_meta["trackb_ml_burnin_rebalance_count"]
 
     # WHITELIST (display): None baseline/model = main run (ML 미사용)
@@ -186,8 +187,9 @@ def render_predictive_risk_evidence_caption(bt_meta: Dict[str, Any]) -> None:
     else:
         verdict_str = "실험군별 Compare 표 참조"
 
-    # Main run 은 ML 미적용이므로 predicted_dates=0, min_train_samples=N/A.
-    # 실험군별 상세는 Compare 표 + Training Summary 에서 확인.
+    # Main run 은 ML 미적용이므로 predicted_dates=0, label_positive_ratio 는
+    # compare 표에서 실험군별로 확인.
+    # P210-STEP10B: Label Positive Ratio / Rerank Changes 추가 표시.
     st.caption(
         f"Track B ML:"
         f" profile=`{profile_str}`"
@@ -196,7 +198,9 @@ def render_predictive_risk_evidence_caption(bt_meta: Dict[str, Any]) -> None:
         f" | min_train_samples=N/A (Main Run)"
         f" | predicted_dates=0 (Main Run)"
         f" | predicted_pos={predicted_pos}"
+        f" | label_positive_ratio=실험군별 Compare 표 참조"
         f" | soft_gate={soft_hits}"
+        f" | rerank_changes={rerank_changes}"
         f" | burnin={burnin}"
         f" | verdict={verdict_str}"
     )
