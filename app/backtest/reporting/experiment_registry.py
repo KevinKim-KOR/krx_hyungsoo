@@ -409,7 +409,10 @@ def get_strategy_summary() -> Dict[str, str]:
         "current_main_run": CURRENT_MAIN_RUN,
         "current_research_candidate": CURRENT_RESEARCH_CANDIDATE,
         "last_completed_chapter": LAST_COMPLETED_CHAPTER,
-        "last_rejected_axis": "Track B ML soft_gate (MDD 미개선)",
+        "last_rejected_axis": (
+            "Track B label/action 재설계로도 MDD 개선 실패"
+            " (L0/L1/L2 × softgate/rerank 전 구간 MDD 11.03% 불변)"
+        ),
         "next_planned_chapter": NEXT_PLANNED_CHAPTER,
     }
 
