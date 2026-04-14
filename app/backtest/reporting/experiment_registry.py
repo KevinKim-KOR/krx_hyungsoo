@@ -24,9 +24,12 @@ logger = logging.getLogger(__name__)
 CURRENT_MAIN_RUN = "g2_pos2_raew"
 CURRENT_OPERATIONAL_CONTROL = "A0_operational_no_ml"
 CURRENT_RESEARCH_CANDIDATE = "B1_pos3_raew_pre_entry_guard"
-LATEST_TRACKB_RESULT = "ML activated (mts=100: soft_gate 5회) but MDD 미개선"
-LAST_COMPLETED_CHAPTER = "P210-STEP10A-2"
-NEXT_PLANNED_CHAPTER = "P210-STEP10B 또는 Track B 한계 판정 후 종료"
+LATEST_TRACKB_RESULT = (
+    "Step10B label/action 재설계: L1 severe label 이 CAGR 훼손 최소"
+    " (−0.49%p) / MDD 전 구간 11.03% 불변. Track B 구조적 한계 확인"
+)
+LAST_COMPLETED_CHAPTER = "P210-STEP10B"
+NEXT_PLANNED_CHAPTER = "Step10C 승격 검토 또는 Track B label/action 한계 판정"
 
 
 # ─── Registry 데이터 ─────────────────────────────────────────────────
@@ -228,17 +231,29 @@ def _build_strategy_state_payload(generated_at: str) -> Dict[str, Any]:
             "note": "CAGR>15 통과, MDD<10 미달 (1.03%p).",
         },
         "track_b_latest": {
-            "identifier": "B3_research_soft_gate_lr_mts100",
-            "cagr_pct": 15.932,
+            "identifier": "B2_research_L1_softgate",
+            "label_profile": "L1_severe_crash20",
+            "action_policy": "soft_gate_top1_skip",
+            "min_train_samples": 100,
+            "label_positive_ratio_pct": 45.9,
+            "predicted_dates": 7,
+            "soft_gate_hits": 5,
+            "cagr_pct": 16.24,
             "mdd_pct": 11.028,
-            "sharpe": 1.4358,
+            "sharpe": 1.4508,
             "verdict": "REJECT",
-            "note": "ML 활성화 OK / 성과 NG. Track B 데이터 규모 한계.",
+            "note": (
+                "Step10B 최상위 활성 실험군."
+                " L1 severe label 로 positive_ratio 71% → 45.9% 축소,"
+                " CAGR 훼손 −0.49%p (최소)."
+                " MDD 11.03% 전 구간 불변 → Track B 구조적 한계 재확인."
+            ),
         },
         "rejected_axes": [
             "P209B 정적 blacklist drop → MDD 악화",
             "P209C early_stop / combined guard → CAGR 과도 훼손",
             "P210A-2 ML soft_gate mts=50/75 → CAGR 5~6%p 훼손",
+            "P210B L0 broad label → CAGR 훼손 최대 (−0.79%p), 차선 아님",
         ],
         "last_completed_chapter": LAST_COMPLETED_CHAPTER,
         "next_planned_chapter": NEXT_PLANNED_CHAPTER,
@@ -307,6 +322,24 @@ def _build_decision_ledger_payload(generated_at: str) -> Dict[str, Any]:
                 " CAGR −0.75%p 허용 가능하나 MDD 미개선 (11.03% 유지)"
             ),
             "handoff": "Track B 한계 확인. Step10B 재설계 또는 종료 판정",
+        },
+        {
+            "chapter": "P210B",
+            "title": "Label + Action Redesign",
+            "validated": (
+                "label_profile (L0 broad / L1 severe / L2 fast) ×"
+                " action_policy (softgate / rerank), mts=100 / LR 고정"
+            ),
+            "conclusion": (
+                "label_positive_ratio 71% → 45.9% → 32.8% 로 축소 성공."
+                " L1 severe softgate 가 CAGR 훼손 최소 (−0.49%p)."
+                " 그러나 MDD 전 구간 11.03% 불변"
+                " → Track B label/action 재설계로도 MDD<10 달성 불가."
+            ),
+            "handoff": (
+                "Step10C 승격 검토 (threshold 튜닝 등 별도 축) 또는"
+                " Track B 구조적 한계 확정 후 P210 종료 선언"
+            ),
         },
     ]
     return {"generated_at": generated_at, "chapters": chapters}
@@ -444,14 +477,15 @@ def _render_strategy_state(generated_at: str) -> List[str]:
         " | = Main Run | ML 미적용 control |",
         f"| **Research Candidate** | `{CURRENT_RESEARCH_CANDIDATE}`"
         " | CAGR 16.68% / MDD 11.03% | REJECT (MDD<10 미달) |",
-        "| **Track B Latest** | `B3_soft_gate_lr_mts100`"
-        " | CAGR 15.93% / MDD 11.03% | ML 활성화 OK / 성과 NG |",
+        "| **Track B Latest** | `B2_research_L1_softgate`"
+        " | CAGR 16.24% / MDD 11.03% | Step10B 최상위 활성 실험군 |",
         "",
         "## 기각된 축 (Do Not Promote)",
         "",
         "- P209B 정적 blacklist drop → MDD 악화",
         "- P209C early_stop / combined guard → CAGR 과도 훼손",
         "- P210A-2 ML soft_gate mts=50/75 → CAGR 5~6%p 훼손",
+        "- P210B L0 broad label → CAGR 훼손 최대, 차선 아님",
         "",
         "## 다음 단계",
         "",
@@ -510,4 +544,17 @@ def _render_decision_ledger(generated_at: str) -> List[str]:
         " CAGR −0.75%p 허용 가능하나 MDD 미개선 (11.03% 유지)",
         "- 다음 단계로 무엇이 넘어왔는가:"
         " Track B 한계 확인. Step10B label/action 재설계 또는 종료 판정",
+        "",
+        "## P210B: Label + Action Redesign",
+        "- 무엇을 검증했는가:"
+        " label_profile (L0 broad / L1 severe / L2 fast) ×"
+        " action_policy (softgate / rerank),"
+        " mts=100 / LR 고정",
+        "- 무슨 결론이 났는가:"
+        " label_positive_ratio 71% → 45.9% → 32.8% 로 축소 성공."
+        " L1 severe softgate 가 CAGR 훼손 최소 (−0.49%p)."
+        " MDD 전 구간 11.03% 불변 → Track B label/action 재설계로도 MDD<10 불가",
+        "- 다음 단계로 무엇이 넘어왔는가:"
+        " Step10C 승격 검토 (threshold 튜닝 등 별도 축) 또는"
+        " Track B 구조적 한계 확정 후 P210 종료 선언",
     ]
