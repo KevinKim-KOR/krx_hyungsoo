@@ -1698,6 +1698,7 @@ def run_cli_backtest(
             logger.warning(f"dynamic_evidence 생성 실패: {ev_exc}")
 
     # P210-STEP10Z: experiment registry + strategy state + decision ledger
+    # + canonical JSON siblings (current_strategy_state.json / decision_ledger.json)
     # 핵심 산출물이므로 fail-loud (rule 7).
     if params.get("universe_mode") == "dynamic_etf_market":
         try:
@@ -1711,6 +1712,21 @@ def run_cli_backtest(
                 f"P210-STEP10Z: experiment_registry 생성 실패 (fail-loud):"
                 f" {reg_exc}"
             ) from reg_exc
+
+        # P210-STEP10Z-2: curated handoff pack.
+        # canonical 산출물 모두 생성된 뒤 마지막에 mirror + manifest + index.
+        # fail-loud: 실패 시 전체 step 실패로 본다 ("정리 실패가 감춰지는
+        # 상태" 방지).
+        try:
+            from app.backtest.reporting.handoff_pack import (
+                generate_handoff_pack,
+            )
+
+            generate_handoff_pack(project_root=PROJECT_ROOT)
+        except Exception as hp_exc:
+            raise RuntimeError(
+                f"P210-STEP10Z-2: handoff_pack 생성 실패 (fail-loud):" f" {hp_exc}"
+            ) from hp_exc
 
     # P208-STEP8A: holding_structure_experiments sweep
     # P209-STEP9A FIX: analysis_only 모드에서는 sweep 스킵 (legacy chapter)

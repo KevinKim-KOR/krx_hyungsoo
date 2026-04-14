@@ -199,36 +199,168 @@ def _build_registry_rows() -> List[Dict[str, Any]]:
 
 
 # ─── 산출물 생성 ─────────────────────────────────────────────────────
+def _build_strategy_state_payload(generated_at: str) -> Dict[str, Any]:
+    """current_strategy_state canonical JSON payload.
+
+    P210-STEP10Z-2: handoff 단계에서 md 를 재파싱하지 않고 이 JSON 을 바로
+    mirror 하도록 generator 가 직접 생성.
+    """
+    return {
+        "generated_at": generated_at,
+        "current_main_run": {
+            "identifier": CURRENT_MAIN_RUN,
+            "cagr_pct": 12.4111,
+            "mdd_pct": 12.7446,
+            "sharpe": 1.1035,
+            "verdict": "REJECT",
+            "note": "운영 기준선 유지. CAGR>15 AND MDD<10 미달.",
+        },
+        "current_operational_control": {
+            "identifier": CURRENT_OPERATIONAL_CONTROL,
+            "note": "ML 미적용 control. = Main Run.",
+        },
+        "current_research_candidate": {
+            "identifier": CURRENT_RESEARCH_CANDIDATE,
+            "cagr_pct": 16.682,
+            "mdd_pct": 11.028,
+            "sharpe": 1.4817,
+            "verdict": "REJECT",
+            "note": "CAGR>15 통과, MDD<10 미달 (1.03%p).",
+        },
+        "track_b_latest": {
+            "identifier": "B3_research_soft_gate_lr_mts100",
+            "cagr_pct": 15.932,
+            "mdd_pct": 11.028,
+            "sharpe": 1.4358,
+            "verdict": "REJECT",
+            "note": "ML 활성화 OK / 성과 NG. Track B 데이터 규모 한계.",
+        },
+        "rejected_axes": [
+            "P209B 정적 blacklist drop → MDD 악화",
+            "P209C early_stop / combined guard → CAGR 과도 훼손",
+            "P210A-2 ML soft_gate mts=50/75 → CAGR 5~6%p 훼손",
+        ],
+        "last_completed_chapter": LAST_COMPLETED_CHAPTER,
+        "next_planned_chapter": NEXT_PLANNED_CHAPTER,
+        "latest_trackb_result_summary": LATEST_TRACKB_RESULT,
+    }
+
+
+def _build_decision_ledger_payload(generated_at: str) -> Dict[str, Any]:
+    """decision_ledger canonical JSON payload."""
+    chapters = [
+        {
+            "chapter": "P206",
+            "title": "Timing / Hybrid 방어 엔진",
+            "validated": "VIX + domestic shock + hybrid regime + safe asset",
+            "conclusion": "엔지니어링 완성, 정책 성능 실패 (MDD<10 미달)",
+            "handoff": "타이밍 미세조정 포기 → 포트폴리오 구성으로",
+        },
+        {
+            "chapter": "P207",
+            "title": "Allocation 엔지니어링",
+            "validated": "risk_aware_equal_weight, inverse_vol",
+            "conclusion": "배분만으로 두 기준 동시 충족 불가",
+            "handoff": "보유 구조 검증 (P208)",
+        },
+        {
+            "chapter": "P208",
+            "title": "Holding Structure",
+            "validated": "max_positions 2/3/4/5 × allocation 2종",
+            "conclusion": "보유 확장만으로 MDD<10 불가. pos4 CAGR 최고",
+            "handoff": "종목 선정 품질 분석 (P209A)",
+        },
+        {
+            "chapter": "P209A",
+            "title": "Drawdown Attribution 분석",
+            "validated": "MDD window 내 종목별 기여, 선택 품질",
+            "conclusion": "102110/102970 반복 toxic. 선택 품질만으로 부족",
+            "handoff": "toxic 필터 설계 (P209B)",
+        },
+        {
+            "chapter": "P209B",
+            "title": "Static Blacklist (Track A)",
+            "validated": "정적 ticker drop (primary 2개 / extended 4개)",
+            "conclusion": "drop 은 MDD 악화 + CAGR 훼손. 가설 기각",
+            "handoff": "문맥형 가드 (P209C)",
+        },
+        {
+            "chapter": "P209C",
+            "title": "Contextual Crash Guard (Track A)",
+            "validated": "pre-entry guard / early-stop / combined",
+            "conclusion": "pre-entry 만 부분 유효. early_stop/combined 기각",
+            "handoff": "ML classifier (P210A)",
+        },
+        {
+            "chapter": "P210A",
+            "title": "ML Pipeline 구축",
+            "validated": "walk-forward LR classifier + soft_gate",
+            "conclusion": "구현 PASS / mts=200 > labeled=183 → no-op",
+            "handoff": "mts 하향 실험 (P210A-2)",
+        },
+        {
+            "chapter": "P210A-2",
+            "title": "min_train_samples Relaxation",
+            "validated": "mts=50/75/100 으로 ML 활성화 여부",
+            "conclusion": (
+                "ML 활성화 성공 (mts=100: soft_gate 5회)."
+                " CAGR −0.75%p 허용 가능하나 MDD 미개선 (11.03% 유지)"
+            ),
+            "handoff": "Track B 한계 확인. Step10B 재설계 또는 종료 판정",
+        },
+    ]
+    return {"generated_at": generated_at, "chapters": chapters}
+
+
 def generate_experiment_registry(project_root: Path) -> None:
-    """experiment_registry.md/.json + current_strategy_state.md +
-    decision_ledger.md 를 생성한다."""
+    """experiment_registry.md/.json + current_strategy_state.md/.json +
+    decision_ledger.md/.json 를 생성한다.
+
+    P210-STEP10Z-2: current_strategy_state.json 과 decision_ledger.json
+    canonical sibling 을 함께 생성하여 handoff 단계가 md 를 재파싱하지
+    않도록 한다.
+    """
     out_dir = project_root / "reports" / "tuning"
     out_dir.mkdir(parents=True, exist_ok=True)
     generated_at = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
     rows = _build_registry_rows()
 
-    # JSON
+    # registry JSON + MD
     payload = {"generated_at": generated_at, "rows": rows}
     (out_dir / "experiment_registry.json").write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-
-    # Markdown — registry
     (out_dir / "experiment_registry.md").write_text(
         "\n".join(_render_registry_md(rows, generated_at)),
         encoding="utf-8",
     )
 
-    # current_strategy_state.md
+    # current_strategy_state MD + canonical JSON sibling
     (out_dir / "current_strategy_state.md").write_text(
         "\n".join(_render_strategy_state(generated_at)),
         encoding="utf-8",
     )
+    (out_dir / "current_strategy_state.json").write_text(
+        json.dumps(
+            _build_strategy_state_payload(generated_at),
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
-    # decision_ledger.md
+    # decision_ledger MD + canonical JSON sibling
     (out_dir / "decision_ledger.md").write_text(
         "\n".join(_render_decision_ledger(generated_at)),
+        encoding="utf-8",
+    )
+    (out_dir / "decision_ledger.json").write_text(
+        json.dumps(
+            _build_decision_ledger_payload(generated_at),
+            indent=2,
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
 
