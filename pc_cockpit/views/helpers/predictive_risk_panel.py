@@ -55,14 +55,17 @@ def render_predictive_risk_panel_for_parameters(p: Dict[str, Any]) -> None:
             {
                 "variant": e["name"],
                 "baseline_profile": e["baseline_profile"],
+                "label_profile": e.get("label_profile", "-"),
+                "action_policy": e.get("action_policy", "-"),
                 "ml_mode": e["ml_mode"],
                 "model_family": e["model_family"],
+                "min_train_samples_override": e.get("min_train_samples_override"),
             }
             for e in experiments
         ]
         st.caption(
             f"등록된 실험군: {len(experiments)}개"
-            f" (A0~A2 = operational, B0~B2 = research)"
+            f" (A0~A3 = operational, B0~B3 = research)"
         )
         st.dataframe(_pd.DataFrame(exp_rows), use_container_width=True)
     else:
@@ -163,7 +166,6 @@ def render_predictive_risk_evidence_caption(bt_meta: Dict[str, Any]) -> None:
     model = bt_meta["trackb_model_family"]
     predicted_pos = bt_meta["trackb_predicted_positive_count"]
     soft_hits = bt_meta["trackb_soft_gate_hits_total"]
-    rerank_changes = bt_meta["trackb_rerank_changes_total"]
     burnin = bt_meta["trackb_ml_burnin_rebalance_count"]
 
     # WHITELIST (display): None baseline/model = main run (ML 미사용)
@@ -184,14 +186,17 @@ def render_predictive_risk_evidence_caption(bt_meta: Dict[str, Any]) -> None:
     else:
         verdict_str = "실험군별 Compare 표 참조"
 
+    # Main run 은 ML 미적용이므로 predicted_dates=0, min_train_samples=N/A.
+    # 실험군별 상세는 Compare 표 + Training Summary 에서 확인.
     st.caption(
         f"Track B ML:"
         f" profile=`{profile_str}`"
         f" | mode=`{ml_mode}`"
         f" | model=`{model_str}`"
+        f" | min_train_samples=N/A (Main Run)"
+        f" | predicted_dates=0 (Main Run)"
         f" | predicted_pos={predicted_pos}"
         f" | soft_gate={soft_hits}"
-        f" | rerank={rerank_changes}"
         f" | burnin={burnin}"
         f" | verdict={verdict_str}"
     )

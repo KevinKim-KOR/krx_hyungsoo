@@ -818,13 +818,13 @@ def _render_trackb_predictive_risk_section(
         return []
 
     lines = [
-        "## Track B Predictive Risk Classifier (P210-STEP10A)",
+        "## Track B Predictive Risk Classifier (P210-STEP10A/B)",
         "",
-        "| Rank | Variant | Baseline Profile | ML Mode | Model Family"
-        " | Min Train Samples | Total Labeled | Predicted Dates | Burnin Dates"
-        " | Predicted Positive | SoftGate Hits"
+        "| Rank | Variant | Baseline | Label Profile | Action Policy"
+        " | Model | MTS | Label +Ratio | Predicted Dates"
+        " | Predicted Positive | SoftGate Hits | Rerank Changes"
         " | CAGR | MDD | Verdict |",
-        "|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "|---:|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for r in rows:
         # WHITELIST (display): sweep JSON 산출물 필드.
@@ -832,18 +832,21 @@ def _render_trackb_predictive_risk_section(
         mdd_v = r.get("mdd")  # WHITELIST (display)
         cagr_s = f"{cagr_v:.2f}%" if cagr_v is not None else "N/A"
         mdd_s = f"{mdd_v:.2f}%" if mdd_v is not None else "N/A"
+        _lpr = r.get("label_positive_ratio")
+        _lpr_s = f"{_lpr:.1%}" if _lpr is not None else "-"
         lines.append(
             f"| {r.get('rank', '-')}"  # WHITELIST (display)
             f" | {r.get('variant', 'N/A')}"  # WHITELIST (display)
             f" | {r.get('baseline_profile', 'N/A')}"  # WHITELIST (display)
-            f" | {r.get('ml_mode', 'N/A')}"  # WHITELIST (display)
+            f" | {r.get('label_profile', 'N/A')}"  # WHITELIST (display)
+            f" | {r.get('action_policy', 'N/A')}"  # WHITELIST (display)
             f" | {r.get('model_family', 'N/A')}"  # WHITELIST (display)
             f" | {r.get('min_train_samples', '-')}"  # WHITELIST (display)
-            f" | {r.get('total_labeled_samples', '-')}"  # WHITELIST (display)
+            f" | {_lpr_s}"  # WHITELIST (display)
             f" | {r.get('predicted_dates', 0)}"  # WHITELIST (display)
-            f" | {r.get('burnin_dates', 0)}"  # WHITELIST (display)
             f" | {r.get('predicted_positive_count', 0)}"  # WHITELIST (display)
             f" | {r.get('soft_gate_hits_total', 0)}"  # WHITELIST (display)
+            f" | {r.get('rerank_changes_total', 0)}"  # WHITELIST (display)
             f" | {cagr_s}"
             f" | {mdd_s}"
             f" | {r.get('verdict', 'N/A')} |"  # WHITELIST (display)

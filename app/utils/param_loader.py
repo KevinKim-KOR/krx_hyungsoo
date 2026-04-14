@@ -80,29 +80,40 @@ _ALLOWED_TRACKB_BASELINE_PROFILES = {
     "operational_control_a0",
     "research_candidate_b1",
 }
+# P210-STEP10A-2: 본선에서 rerank / random_forest 제외.
+# 지시문 "이번 단계에서는 rerank 과 random_forest 를 본선에서 제외한다".
 _ALLOWED_TRACKB_ML_MODES = {
     "none",
     "soft_gate",
-    "hard_gate",
-    "rerank",
 }
 _ALLOWED_TRACKB_MODEL_FAMILIES = {
     "logistic_regression",
-    "random_forest",
 }
-# 본선 6개 실험군 name 고정. 추가/누락/중복 금지.
-# P210-STEP10A-2: 8개 고정 실험군 (min_train_samples 단일 변수 실험)
+# P210-STEP10B: 8개 고정 실험군 (label_profile + action_policy 재설계)
 _REQUIRED_TRACKB_EXPERIMENT_NAMES = {
     "A0_operational_no_ml",
-    "A1_operational_soft_gate_lr_mts50",
-    "A2_operational_soft_gate_lr_mts75",
-    "A3_operational_soft_gate_lr_mts100",
+    "A1_operational_L0_softgate",
+    "A2_operational_L1_softgate",
+    "A3_operational_L2_rerank",
     "B0_research_no_ml",
-    "B1_research_soft_gate_lr_mts50",
-    "B2_research_soft_gate_lr_mts75",
-    "B3_research_soft_gate_lr_mts100",
+    "B1_research_L0_softgate",
+    "B2_research_L1_softgate",
+    "B3_research_L2_rerank",
 }
-_ALLOWED_MTS_OVERRIDE_VALUES = {50, 75, 100}
+# min_train_samples 는 Step10B 에서 100 으로 고정 (실험축 아님)
+_ALLOWED_MTS_OVERRIDE_VALUES = {100}
+
+# P210-STEP10B: label profile + action policy 허용값
+_ALLOWED_LABEL_PROFILES = {
+    "L0_current_crash20",
+    "L1_severe_crash20",
+    "L2_fast_crash10",
+}
+_ALLOWED_ACTION_POLICIES = {
+    "none",
+    "soft_gate_top1_skip",
+    "risk_penalty_rerank",
+}
 
 # P209-STEP9C: Track A Contextual Guard 에서 허용되는 guard_mode
 _ALLOWED_GUARD_MODES = {
@@ -271,6 +282,8 @@ def _validate_trackb_predictive_risk_classifier(config):
         "probability_threshold_soft",
         "probability_threshold_hard",
         "top_k_block_limit",
+        # P210-STEP10B: risk_penalty_rerank 의 penalty 계수
+        "penalty_weight",
     ]
     for k in _required_numeric:
         if k not in config:
@@ -332,7 +345,14 @@ def _validate_trackb_predictive_risk_experiments(experiments):
         if not isinstance(exp, dict):
             raise TypeError(f"{ctx}: dict 형태여야 합니다: {type(exp)}")
 
-        for req_key in ("name", "baseline_profile", "ml_mode", "model_family"):
+        for req_key in (
+            "name",
+            "baseline_profile",
+            "ml_mode",
+            "model_family",
+            "label_profile",
+            "action_policy",
+        ):
             if req_key not in exp:
                 raise KeyError(f"{ctx}: {req_key} 누락")
 
@@ -365,29 +385,45 @@ def _validate_trackb_predictive_risk_experiments(experiments):
                 f" 허용: {sorted(_ALLOWED_TRACKB_MODEL_FAMILIES)}"
             )
 
-        # P210-STEP10A-2: min_train_samples_override 검증
+        # P210-STEP10B: min_train_samples_override 검증 (전 실험군 100 고정)
         if "min_train_samples_override" not in exp:
             raise KeyError(f"{ctx}: min_train_samples_override 누락")
         _mts = exp["min_train_samples_override"]
-        if _mm == "none":
-            # no_ml 실험군: null 만 허용
-            if _mts is not None:
-                raise ValueError(
-                    f"{ctx}: ml_mode='none' 일 때"
-                    f" min_train_samples_override 는 null 이어야 합니다:"
-                    f" {_mts!r}"
-                )
-        else:
-            # soft_gate 실험군: 정수 필수, 50/75/100 만 허용
-            if not isinstance(_mts, int) or isinstance(_mts, bool):
-                raise TypeError(
-                    f"{ctx}.min_train_samples_override 는" f" 정수여야 합니다: {_mts!r}"
-                )
-            if _mts not in _ALLOWED_MTS_OVERRIDE_VALUES:
-                raise ValueError(
-                    f"{ctx}.min_train_samples_override={_mts!r}"
-                    f" 허용: {sorted(_ALLOWED_MTS_OVERRIDE_VALUES)}"
-                )
+        if not isinstance(_mts, int) or isinstance(_mts, bool):
+            raise TypeError(
+                f"{ctx}.min_train_samples_override 는" f" 정수여야 합니다: {_mts!r}"
+            )
+        if _mts not in _ALLOWED_MTS_OVERRIDE_VALUES:
+            raise ValueError(
+                f"{ctx}.min_train_samples_override={_mts!r}"
+                f" 허용: {sorted(_ALLOWED_MTS_OVERRIDE_VALUES)}"
+            )
+
+        # P210-STEP10B: label_profile + action_policy 검증
+        _lp = exp["label_profile"]
+        if _lp not in _ALLOWED_LABEL_PROFILES:
+            raise ValueError(
+                f"{ctx}.label_profile={_lp!r}"
+                f" 허용: {sorted(_ALLOWED_LABEL_PROFILES)}"
+            )
+
+        _ap = exp["action_policy"]
+        if _ap not in _ALLOWED_ACTION_POLICIES:
+            raise ValueError(
+                f"{ctx}.action_policy={_ap!r}"
+                f" 허용: {sorted(_ALLOWED_ACTION_POLICIES)}"
+            )
+
+        # 조합 검증: ml_mode='none' 이면 action_policy='none'
+        if _mm == "none" and _ap != "none":
+            raise ValueError(
+                f"{ctx}: ml_mode='none' 일 때 action_policy 는 'none' 이어야 합니다:"
+                f" {_ap!r}"
+            )
+        if _mm != "none" and _ap == "none":
+            raise ValueError(
+                f"{ctx}: ml_mode={_mm!r} 일 때 action_policy 는 'none' 이 아니어야 합니다"
+            )
 
     # 8개 고정 실험군 정확 일치 검증
     if _seen_names != _REQUIRED_TRACKB_EXPERIMENT_NAMES:

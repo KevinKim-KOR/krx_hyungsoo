@@ -1,6 +1,6 @@
 {
   "schema": "STRATEGY_PARAMS_V1",
-  "asof": "2026-04-12T18:32:02.524593+09:00",
+  "asof": "2026-04-13T23:51:50.220004+09:00",
   "strategy": "KRX_MOMENTUM_V1",
   "version": "1.0.0",
   "params": {
@@ -302,7 +302,8 @@
       "feature_set_version": "v1",
       "probability_threshold_soft": 0.55,
       "probability_threshold_hard": 0.7,
-      "top_k_block_limit": 1
+      "top_k_block_limit": 1,
+      "penalty_weight": 0.15
     },
     "trackb_predictive_risk_classifier_experiments": [
       {
@@ -310,56 +311,72 @@
         "baseline_profile": "operational_control_a0",
         "ml_mode": "none",
         "model_family": "logistic_regression",
-        "min_train_samples_override": null
+        "min_train_samples_override": 100,
+        "label_profile": "L0_current_crash20",
+        "action_policy": "none"
       },
       {
-        "name": "A1_operational_soft_gate_lr_mts50",
+        "name": "A1_operational_L0_softgate",
         "baseline_profile": "operational_control_a0",
         "ml_mode": "soft_gate",
         "model_family": "logistic_regression",
-        "min_train_samples_override": 50
+        "min_train_samples_override": 100,
+        "label_profile": "L0_current_crash20",
+        "action_policy": "soft_gate_top1_skip"
       },
       {
-        "name": "A2_operational_soft_gate_lr_mts75",
+        "name": "A2_operational_L1_softgate",
         "baseline_profile": "operational_control_a0",
         "ml_mode": "soft_gate",
         "model_family": "logistic_regression",
-        "min_train_samples_override": 75
+        "min_train_samples_override": 100,
+        "label_profile": "L1_severe_crash20",
+        "action_policy": "soft_gate_top1_skip"
       },
       {
-        "name": "A3_operational_soft_gate_lr_mts100",
+        "name": "A3_operational_L2_rerank",
         "baseline_profile": "operational_control_a0",
         "ml_mode": "soft_gate",
         "model_family": "logistic_regression",
-        "min_train_samples_override": 100
+        "min_train_samples_override": 100,
+        "label_profile": "L2_fast_crash10",
+        "action_policy": "risk_penalty_rerank"
       },
       {
         "name": "B0_research_no_ml",
         "baseline_profile": "research_candidate_b1",
         "ml_mode": "none",
         "model_family": "logistic_regression",
-        "min_train_samples_override": null
+        "min_train_samples_override": 100,
+        "label_profile": "L0_current_crash20",
+        "action_policy": "none"
       },
       {
-        "name": "B1_research_soft_gate_lr_mts50",
+        "name": "B1_research_L0_softgate",
         "baseline_profile": "research_candidate_b1",
         "ml_mode": "soft_gate",
         "model_family": "logistic_regression",
-        "min_train_samples_override": 50
+        "min_train_samples_override": 100,
+        "label_profile": "L0_current_crash20",
+        "action_policy": "soft_gate_top1_skip"
       },
       {
-        "name": "B2_research_soft_gate_lr_mts75",
+        "name": "B2_research_L1_softgate",
         "baseline_profile": "research_candidate_b1",
         "ml_mode": "soft_gate",
         "model_family": "logistic_regression",
-        "min_train_samples_override": 75
+        "min_train_samples_override": 100,
+        "label_profile": "L1_severe_crash20",
+        "action_policy": "soft_gate_top1_skip"
       },
       {
-        "name": "B3_research_soft_gate_lr_mts100",
+        "name": "B3_research_L2_rerank",
         "baseline_profile": "research_candidate_b1",
         "ml_mode": "soft_gate",
         "model_family": "logistic_regression",
-        "min_train_samples_override": 100
+        "min_train_samples_override": 100,
+        "label_profile": "L2_fast_crash10",
+        "action_policy": "risk_penalty_rerank"
       }
     ]
   },
@@ -381,6 +398,6 @@
     "469150",
     "487240"
   ],
-  "universe_snapshot_id": "snap_20260413_174635_700c57e6",
+  "universe_snapshot_id": "snap_20260413_235111_700c57e6",
   "universe_snapshot_sha256": "700c57e6a901558efeb8c69b48f346338108fc0952fb2ebd59654d7d5e711e33"
 }

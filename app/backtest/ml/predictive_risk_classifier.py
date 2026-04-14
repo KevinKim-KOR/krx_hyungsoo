@@ -51,6 +51,49 @@ FEATURE_COLUMNS_V1 = [
 BENCHMARK_TICKER = "069500"
 
 
+# ─── P210-STEP10B: Label Profile 매핑 ───────────────────────────────
+# 각 profile = (horizon_days, drawdown_threshold, return_threshold, rule_desc)
+LABEL_PROFILES: Dict[str, Dict[str, Any]] = {
+    "L0_current_crash20": {
+        "horizon_days": 20,
+        "drawdown_threshold": -0.05,
+        "return_threshold": -0.07,
+        "rule_desc": (
+            "다음 20영업일 내 max_drawdown <= -5% OR cum_return <= -7%"
+            " (broad baseline)"
+        ),
+    },
+    "L1_severe_crash20": {
+        "horizon_days": 20,
+        "drawdown_threshold": -0.08,
+        "return_threshold": -0.10,
+        "rule_desc": (
+            "다음 20영업일 내 max_drawdown <= -8% OR cum_return <= -10%"
+            " (severe only)"
+        ),
+    },
+    "L2_fast_crash10": {
+        "horizon_days": 10,
+        "drawdown_threshold": -0.06,
+        "return_threshold": -0.07,
+        "rule_desc": (
+            "다음 10영업일 내 max_drawdown <= -6% OR cum_return <= -7%"
+            " (fast entry-shock)"
+        ),
+    },
+}
+
+
+def _resolve_label_profile(label_profile: str) -> Dict[str, Any]:
+    """label_profile name → 파라미터 dict. 잘못된 값은 즉시 ValueError."""
+    if label_profile not in LABEL_PROFILES:
+        raise ValueError(
+            f"P210-STEP10B: 허용되지 않은 label_profile={label_profile!r}."
+            f" 허용: {sorted(LABEL_PROFILES.keys())}"
+        )
+    return LABEL_PROFILES[label_profile]
+
+
 # ─── Label 생성 ──────────────────────────────────────────────────────
 def _generate_label_for_sample(
     close_series: pd.Series,
@@ -462,34 +505,46 @@ def build_predictions_for_sweep(
     config: Dict[str, Any],
     model_family: str,
     min_train_samples_override: Optional[int] = None,
+    label_profile: Optional[str] = None,
 ) -> Tuple[Dict[str, Dict[str, float]], List[Dict[str, Any]], pd.DataFrame]:
     """sweep 모듈에서 호출. dataset 구축 → walk-forward → predictions 반환.
 
     config: trackb_predictive_risk_classifier SSOT 블록.
-    min_train_samples_override: P210-STEP10A-2 에서 실험군별 override.
-        None 이면 config["min_train_samples"] 사용.
+    min_train_samples_override: 실험군별 override (Step10A-2).
+    label_profile: 실험군별 label 재정의 (Step10B). None 이면 config 기본값.
 
     Returns:
         predictions: {date_str: {ticker: prob}}
         training_log: walk-forward 로그
         dataset: 구축된 DataFrame (training report 용)
     """
+    # P210-STEP10B: label_profile override 적용
+    if label_profile is not None:
+        lp = _resolve_label_profile(label_profile)
+        label_horizon_days = lp["horizon_days"]
+        crash_drawdown_threshold = lp["drawdown_threshold"]
+        crash_return_threshold = lp["return_threshold"]
+    else:
+        label_horizon_days = config["label_horizon_days"]
+        crash_drawdown_threshold = config["label_crash_drawdown_threshold"]
+        crash_return_threshold = config["label_crash_return_threshold"]
+
     dataset = build_dataset(
         price_data=price_data,
         rebalance_trace=rebalance_trace,
-        label_horizon_days=config["label_horizon_days"],
-        crash_drawdown_threshold=config["label_crash_drawdown_threshold"],
-        crash_return_threshold=config["label_crash_return_threshold"],
+        label_horizon_days=label_horizon_days,
+        crash_drawdown_threshold=crash_drawdown_threshold,
+        crash_return_threshold=crash_return_threshold,
     )
 
     if dataset.empty:
-        logger.warning("[P210-STEP10A] dataset 이 비어있음 → predictions 없음")
+        logger.warning("[P210-STEP10B] dataset 이 비어있음 → predictions 없음")
         return {}, [], dataset
 
     check_leakage(
         dataset=dataset,
         price_data=price_data,
-        label_horizon_days=config["label_horizon_days"],
+        label_horizon_days=label_horizon_days,
     )
 
     # P210-STEP10A-2: per-experiment min_train_samples override
@@ -514,6 +569,9 @@ def format_training_report(
     dataset: pd.DataFrame,
     config: Dict[str, Any],
     model_family: str,
+    min_train_samples_used: Optional[int] = None,
+    label_profile: Optional[str] = None,
+    action_policy: Optional[str] = None,
 ) -> Dict[str, Any]:
     """training report 구조화 데이터 반환 (md/json 생성은 compare 모듈에서).
 
@@ -548,16 +606,33 @@ def format_training_report(
         predicted_entries[-1]["predict_date"] if predicted_entries else None
     )
 
+    # P210-STEP10B: label_profile override 반영
+    if label_profile is not None:
+        lp = _resolve_label_profile(label_profile)
+        _horizon = lp["horizon_days"]
+        _dd_thresh = lp["drawdown_threshold"]
+        _ret_thresh = lp["return_threshold"]
+        _rule_desc = lp["rule_desc"]
+    else:
+        _horizon = config["label_horizon_days"]
+        _dd_thresh = config["label_crash_drawdown_threshold"]
+        _ret_thresh = config["label_crash_return_threshold"]
+        _rule_desc = (
+            f"다음 {_horizon}영업일 내"
+            f" max_drawdown <= {_dd_thresh}"
+            f" OR cum_return <= {_ret_thresh}"
+        )
+
     return {
+        "label_profile": label_profile,
+        "action_policy": action_policy,
         "label_definition": {
-            "horizon_days": config["label_horizon_days"],
-            "crash_drawdown_threshold": config["label_crash_drawdown_threshold"],
-            "crash_return_threshold": config["label_crash_return_threshold"],
-            "positive_meaning": (
-                f"다음 {config['label_horizon_days']}영업일 내"
-                f" max_drawdown <= {config['label_crash_drawdown_threshold']}"
-                f" OR cum_return <= {config['label_crash_return_threshold']}"
-            ),
+            "profile": label_profile,
+            "horizon_days": _horizon,
+            "crash_drawdown_threshold": _dd_thresh,
+            "crash_return_threshold": _ret_thresh,
+            "rule_description": _rule_desc,
+            "positive_meaning": _rule_desc,
         },
         "feature_set": {
             "version": config["feature_set_version"],
@@ -579,7 +654,11 @@ def format_training_report(
             "burnin_dates": len(burnin_entries),
             "first_predict_date": first_predict_date,
             "last_predict_date": last_predict_date,
-            "min_train_samples": config["min_train_samples"],
+            "min_train_samples": (
+                min_train_samples_used
+                if min_train_samples_used is not None
+                else config["min_train_samples"]
+            ),
         },
         "top_feature_importance": top_features,
         "leakage_check_passed": True,

@@ -408,6 +408,7 @@ class BacktestRunner:
         ml_probability_threshold_soft: float = 0.55,
         ml_probability_threshold_hard: float = 0.70,
         ml_top_k_block_limit: int = 1,
+        ml_penalty_weight: float = 0.15,
         trackb_ml_experiment_name: Optional[str] = None,
         trackb_baseline_profile: Optional[str] = None,
         trackb_model_family: Optional[str] = None,
@@ -1033,8 +1034,10 @@ class BacktestRunner:
                                             )
 
                                 elif ml_mode == "rerank":
+                                    # P210-STEP10B: risk_penalty_rerank.
                                     # guard survived pool 전체를 crash risk
                                     # penalty 적용 후 재정렬하여 top N 재선택.
+                                    # adj_score = raw_score - crash_prob * penalty_weight
                                     # guard 탈락 후보는 pool 에 없으므로 부활 불가.
                                     # new_top_n 밖에 있던 후보도 penalty 반영 후
                                     # 상위로 올라올 수 있음 = rerank 의 핵심 의미.
@@ -1053,7 +1056,9 @@ class BacktestRunner:
                                             if isinstance(_s, tuple)
                                             else float(_s)
                                         )
-                                        _reranked.append((_c, _raw_score - _prob))
+                                        _reranked.append(
+                                            (_c, _raw_score - _prob * ml_penalty_weight)
+                                        )
                                     _reranked.sort(key=lambda x: x[1], reverse=True)
                                     _new_reranked = [
                                         c for c, _ in _reranked[: self.max_positions]
