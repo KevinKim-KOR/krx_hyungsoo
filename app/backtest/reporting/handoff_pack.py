@@ -62,15 +62,15 @@ def _sha256_of_file(path: Path) -> str:
 
 
 def _read_source_timestamps(path: Path) -> Tuple[Optional[str], Optional[str]]:
-    """JSON/md 파일에서 generated_at / asof 추출 시도.
+    """JSON/md 파일에서 generated_at / asof 추출.
 
-    JSON: top-level 의 generated_at / asof 필드.
-    MD: 첫 20줄 내 "- generated_at:" / "- asof:" 패턴 파싱.
+    JSON: top-level 또는 meta.* 에서 generated_at / asof 필드 검색.
+    MD: 첫 30줄 내 "- generated_at:" / "- asof:" / "> asof:" 패턴 파싱.
 
-    둘 다 실패해도 None 반환 (mtime 은 별도 기록).
+    둘 다 None 일 수 있음 — fail-loud 책임은 _validate_source 가 진다.
     """
-    generated_at = None
-    asof = None
+    generated_at: Optional[str] = None
+    asof: Optional[str] = None
     if not path.exists():
         return None, None
 
@@ -81,6 +81,13 @@ def _read_source_timestamps(path: Path) -> Tuple[Optional[str], Optional[str]]:
             if isinstance(data, dict):
                 generated_at = data.get("generated_at")
                 asof = data.get("asof")
+                # nested meta.* 도 검색 (e.g. backtest_result.json)
+                meta = data.get("meta")
+                if isinstance(meta, dict):
+                    if generated_at is None:
+                        generated_at = meta.get("generated_at")
+                    if asof is None:
+                        asof = meta.get("asof")
         except Exception:
             pass
     elif path.suffix == ".md":
@@ -93,13 +100,19 @@ def _read_source_timestamps(path: Path) -> Tuple[Optional[str], Optional[str]]:
                     generated_at = s.split(":", 1)[1].strip()
                 elif s.startswith("- asof:"):
                     asof = s.split(":", 1)[1].strip()
+                elif s.startswith("> asof:"):
+                    asof = s.split(":", 1)[1].strip()
         except Exception:
             pass
     return generated_at, asof
 
 
-def _validate_source(source_path: Path, logical_name: str) -> None:
-    """source 파일 존재 + SHA256 계산 가능성 검증. 실패 시 fail-loud."""
+def _validate_source(source_path: Path, logical_name: str) -> Tuple[str, str]:
+    """source 파일 존재 + SHA256 + timestamp(generated_at OR asof) 검증.
+
+    실패 시 fail-loud (RuntimeError). 통과 시 (generated_at, asof) 반환.
+    둘 중 적어도 하나는 반드시 채워져 있어야 한다.
+    """
     if not source_path.exists():
         raise RuntimeError(
             f"P210-STEP10Z-2: handoff canonical source 누락:"
@@ -112,6 +125,16 @@ def _validate_source(source_path: Path, logical_name: str) -> None:
             f"P210-STEP10Z-2: handoff canonical source SHA256 계산 실패:"
             f" {logical_name} = {source_path}: {e}"
         ) from e
+
+    generated_at, asof = _read_source_timestamps(source_path)
+    if generated_at is None and asof is None:
+        raise RuntimeError(
+            f"P210-STEP10Z-2: handoff canonical source 에"
+            f" generated_at / asof 둘 다 없음:"
+            f" {logical_name} = {source_path}."
+            f" provenance 추적 불가."
+        )
+    return generated_at, asof
 
 
 def _detect_active_chapter(project_root: Path) -> str:
@@ -129,17 +152,26 @@ def _detect_active_chapter(project_root: Path) -> str:
 
 
 # ─── mirror 실행 ────────────────────────────────────────────────────
+def _rel_to_root(path: Path, project_root: Path) -> str:
+    """모든 provenance 경로를 repo-root 기준 POSIX 상대경로로 정규화."""
+    return path.resolve().relative_to(project_root.resolve()).as_posix()
+
+
 def _mirror_file(
     source_path: Path,
     handoff_path: Path,
     logical_name: str,
     chapter_tag: str,
     copied_at: str,
+    project_root: Path,
 ) -> Dict[str, Any]:
-    """source 파일을 handoff 경로로 byte_copy + provenance entry 반환."""
-    _validate_source(source_path, logical_name)
+    """source 파일을 handoff 경로로 byte_copy + provenance entry 반환.
+
+    경로 정규화: handoff_path / source_path 모두 repo-root 기준 POSIX 표기.
+    timestamp fail-loud: _validate_source 가 generated_at/asof 둘 다 없으면 raise.
+    """
+    generated_at, asof = _validate_source(source_path, logical_name)
     source_sha = _sha256_of_file(source_path)
-    generated_at, asof = _read_source_timestamps(source_path)
 
     handoff_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_path, handoff_path)
@@ -154,8 +186,8 @@ def _mirror_file(
         )
 
     return {
-        "handoff_path": str(handoff_path.relative_to(handoff_path.parents[2])),
-        "source_path": str(source_path.relative_to(source_path.parents[2])),
+        "handoff_path": _rel_to_root(handoff_path, project_root),
+        "source_path": _rel_to_root(source_path, project_root),
         "source_generated_at": generated_at,
         "source_asof": asof,
         "source_sha256": source_sha,
@@ -235,7 +267,9 @@ def generate_handoff_pack(project_root: Path) -> None:
     for logical_name, rel_path in _CANONICAL_PATHS.items():
         src = project_root / rel_path
         dst = handoff_dir / logical_name
-        entry = _mirror_file(src, dst, logical_name, chapter_tag, copied_at)
+        entry = _mirror_file(
+            src, dst, logical_name, chapter_tag, copied_at, project_root
+        )
         provenance_entries.append(entry)
 
     # 2b. chapter_focus_compare
@@ -248,6 +282,7 @@ def generate_handoff_pack(project_root: Path) -> None:
         "chapter_focus_compare.json",
         chapter_tag,
         copied_at,
+        project_root,
     )
     provenance_entries.append(entry)
 
@@ -262,6 +297,7 @@ def generate_handoff_pack(project_root: Path) -> None:
             "chapter_focus_training_report.json",
             chapter_tag,
             copied_at,
+            project_root,
         )
         provenance_entries.append(entry)
 
