@@ -507,13 +507,42 @@ def render_workflow_p170(params_data, portfolio_data, guardrails_data):
 
 
 def _render_strategy_state_expander(base_dir) -> None:
-    """P210-STEP10Z: Current Strategy State expander."""
+    """P210-STEP10Z / 10C: Current Strategy State expander.
+
+    P210-STEP10C: Track B closeout 요약 (status / do_not_promote / phase note)
+    를 expander 상단에 caption 으로 노출한다. state JSON 에 필드가 있으면
+    표시, 없으면 skip (구버전 호환).
+    """
     from pathlib import Path as _Path
+    import json as _json
 
     _path = _Path(base_dir) / "reports" / "tuning" / "current_strategy_state.md"
     if not _path.exists():
         return
-    with st.expander("Current Strategy State (P210-STEP10Z)", expanded=False):
+    _json_path = _Path(base_dir) / "reports" / "tuning" / "current_strategy_state.json"
+
+    with st.expander("Current Strategy State (P210-STEP10C)", expanded=False):
+        # Track B closeout 상단 요약
+        if _json_path.exists():
+            try:
+                with open(_json_path, encoding="utf-8") as f:
+                    _state = _json.load(f)
+            except Exception:
+                _state = None
+            if _state and _state.get("track_b_status"):
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Track B Status", _state["track_b_status"])
+                _dnp = _state.get("do_not_promote", []) or []
+                c2.metric("Do Not Promote", f"{len(_dnp)} variants")
+                c3.metric(
+                    "Last Chapter",
+                    _state.get("last_completed_chapter", "-"),
+                )
+                if _state.get("phase_transition_note"):
+                    st.info(f"Phase Transition: {_state['phase_transition_note']}")
+                if _dnp:
+                    st.caption("Do Not Promote: " + ", ".join(f"`{v}`" for v in _dnp))
+
         st.markdown(_path.read_text(encoding="utf-8"))
 
 

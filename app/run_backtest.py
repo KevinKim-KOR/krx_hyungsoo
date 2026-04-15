@@ -1819,6 +1819,7 @@ def regenerate_canonical_only(project_root: Path) -> None:
     from app.backtest.reporting.experiment_registry import (
         generate_experiment_registry,
         patch_evidence_summary_block,
+        patch_evidence_trackb_closeout,
     )
 
     try:
@@ -1835,6 +1836,14 @@ def regenerate_canonical_only(project_root: Path) -> None:
             f"P210-STEP10Z-3: evidence summary block patch 실패 (fail-loud):"
             f" {ev_exc}"
         ) from ev_exc
+
+    try:
+        patch_evidence_trackb_closeout(project_root=project_root)
+    except Exception as tb_exc:
+        raise RuntimeError(
+            f"P210-STEP10C: evidence Track B closeout patch 실패 (fail-loud):"
+            f" {tb_exc}"
+        ) from tb_exc
 
     from app.backtest.reporting.handoff_pack import generate_handoff_pack
 

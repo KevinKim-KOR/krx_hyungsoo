@@ -27,8 +27,25 @@ CURRENT_MAIN_RUN = "g2_pos2_raew"
 CURRENT_OPERATIONAL_CONTROL = "A0_operational_no_ml"
 CURRENT_RESEARCH_CANDIDATE = "B1_pos3_raew_pre_entry_guard"
 TRACK_B_LATEST_VARIANT = "B2_research_L1_softgate"
-LAST_COMPLETED_CHAPTER = "P210-STEP10B"
-NEXT_PLANNED_CHAPTER = "Step10C 승격 검토 또는 Track B label/action 한계 판정"
+LAST_COMPLETED_CHAPTER = "P210-STEP10C"
+NEXT_PLANNED_CHAPTER = (
+    "Phase 2 진입 준비 — P211-STEP11A friend-source rule extraction"
+    " 또는 P211-STEP11B operator UX redesign"
+)
+
+# ─── P210-STEP10C Track B closeout 판정 고정 ─────────────────────────
+TRACK_B_STATUS = "CLOSED_REJECTED"
+TRACK_B_CLOSEOUT_VERDICT = "Activated but did not improve MDD"
+TRACK_B_LIMIT_REASON = "MDD not improved across activated variants"
+TRACK_B_DO_NOT_PROMOTE = [
+    "B1_research_L0_softgate",
+    "B2_research_L1_softgate",
+    "B3_research_L2_rerank",
+]
+PHASE_TRANSITION_NOTE = (
+    "Phase 1 current-engine validation complete; move to Phase 2"
+    " source-overlay / operator-UX design"
+)
 
 # ─── canonical source paths (project_root 기준 상대) ─────────────────
 _EVIDENCE_MD_REL = Path("reports/tuning/dynamic_evidence_latest.md")
@@ -186,10 +203,16 @@ def _format_latest_trackb_summary(metrics: Dict[str, Any]) -> str:
 
 
 def _format_last_rejected_axis(metrics: Dict[str, Any]) -> str:
-    tb_mdd = metrics["track_b_latest"]["mdd_pct"]
+    return "Track B closeout (activated ML variants failed to improve MDD)"
+
+
+def _format_trackb_closeout_summary(metrics: Dict[str, Any]) -> str:
+    """P210-STEP10C closeout 요약 (state/registry/ledger 공용)."""
+    tb = metrics["track_b_latest"]
     return (
-        "Track B label/action 재설계로도 MDD 개선 실패"
-        f" (L0/L1/L2 × softgate/rerank 전 구간 MDD {tb_mdd:.2f}% 불변)"
+        f"Track B CLOSED_REJECTED — best failed candidate {tb['variant']}"
+        f" (CAGR {tb['cagr_pct']:.2f}% / MDD {tb['mdd_pct']:.2f}% /"
+        f" Sharpe {tb['sharpe']:.4f}). {TRACK_B_LIMIT_REASON}."
     )
 
 
@@ -232,7 +255,7 @@ def _build_registry_rows(metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
             "mdd": g4["mdd_pct"],
             "sharpe": g4["sharpe"],
             "verdict": "REJECT",
-            "decision": "no-guard 기준 연구 baseline. CAGR>15 미달.",
+            "decision": "no-guard pos3 연구 baseline. CAGR>15 통과, MDD<10 미달.",
             "source_artifact": "contextual_guard_compare.json",
             "last_validated_at": ev_date,
         },
@@ -274,7 +297,10 @@ def _build_registry_rows(metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
             "mdd": research["mdd_pct"],
             "sharpe": research["sharpe"],
             "verdict": "REJECT",
-            "decision": "pre-entry guard 만 부분 유효. CAGR<15 미달.",
+            "decision": (
+                "pre-entry guard 로 CAGR>15 통과."
+                " MDD<10 미달 → 두 기준 동시 충족 실패."
+            ),
             "source_artifact": "contextual_guard_compare.json",
             "last_validated_at": ev_date,
         },
@@ -366,7 +392,7 @@ def _build_registry_rows(metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
             "last_validated_at": "2026-04-13",
         },
         {
-            "chapter": "P210B",
+            "chapter": "P210B/P210C",
             "variant_or_profile": TRACK_B_LATEST_VARIANT,
             "purpose": (
                 "Track B label/action 재설계 최상위 활성 실험군"
@@ -374,14 +400,13 @@ def _build_registry_rows(metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
             ),
             "run_type": "Compare Run",
             "status_tag": "CURRENT_TRACK_B_LATEST",
+            "closeout_tag": "TRACK_B_CLOSED",
+            "promotion_eligibility": False,
             "cagr": tb["cagr_pct"],
             "mdd": tb["mdd_pct"],
             "sharpe": tb["sharpe"],
             "verdict": "REJECT",
-            "decision": (
-                "L1 severe label 로 positive_ratio 축소,"
-                " CAGR 훼손 최소. MDD 미개선 → Track B 구조적 한계."
-            ),
+            "decision": "Best failed Track B candidate; do not promote",
             "source_artifact": "predictive_risk_compare.json",
             "last_validated_at": ev_date,
         },
@@ -426,7 +451,10 @@ def _build_strategy_state_payload(
             "mdd_pct": research["mdd_pct"],
             "sharpe": research["sharpe"],
             "verdict": "REJECT",
-            "note": "pre-entry guard 만 부분 유효. 두 기준 동시 충족 미달.",
+            "note": (
+                "pre-entry guard 로 CAGR>15 통과."
+                " MDD<10 미달 → 두 기준 동시 충족 실패."
+            ),
         },
         "track_b_latest": {
             "identifier": tb["variant"],
@@ -440,18 +468,27 @@ def _build_strategy_state_payload(
             "mdd_pct": tb["mdd_pct"],
             "sharpe": tb["sharpe"],
             "verdict": "REJECT",
-            "note": _format_latest_trackb_summary(metrics),
+            "note": (
+                "Best failed Track B candidate; do not promote."
+                " Activation + redesign 검증 완료, MDD 개선 실패."
+            ),
         },
+        "track_b_status": TRACK_B_STATUS,
+        "track_b_closeout_verdict": TRACK_B_CLOSEOUT_VERDICT,
+        "track_b_limit_reason": TRACK_B_LIMIT_REASON,
+        "do_not_promote": TRACK_B_DO_NOT_PROMOTE,
+        "phase_transition_note": PHASE_TRANSITION_NOTE,
         "rejected_axes": [
             "P209B 정적 blacklist drop → MDD 악화",
             "P209C early_stop / combined guard → CAGR 과도 훼손",
             "P210A-2 ML soft_gate mts=50/75 → CAGR 과도 훼손",
             "P210B L0 broad / L2 fast — softgate/rerank 전 구간 MDD 불변",
+            "P210C Track B 전체 — activated but did not improve MDD → CLOSED_REJECTED",
         ],
         "last_completed_chapter": LAST_COMPLETED_CHAPTER,
         "last_rejected_axis": _format_last_rejected_axis(metrics),
         "next_planned_chapter": NEXT_PLANNED_CHAPTER,
-        "latest_trackb_result_summary": _format_latest_trackb_summary(metrics),
+        "latest_trackb_result_summary": _format_trackb_closeout_summary(metrics),
     }
 
 
@@ -553,6 +590,25 @@ def _build_decision_ledger_payload(
                 " handoff mirror 가 모두 최신 canonical evidence 기준으로 sync"
             ),
             "handoff": ("P210-STEP10C-TRACKB-LIMIT-VERDICT-AND-CLOSEOUT 로 진입 가능"),
+        },
+        {
+            "chapter": "P210C",
+            "title": "Track B Limit Verdict & Closeout",
+            "validated": (
+                "Track B activated ML 전 변종 (B0/B1/B2/B3) + label/action redesign"
+                " 전체 closeout. Step10A no-op → Step10A-2 activation → Step10B"
+                " label/action 재설계의 누적 증거"
+            ),
+            "conclusion": (
+                f"연구군 MDD {tb['mdd_pct']:.2f}% 불변. {TRACK_B_LIMIT_REASON}."
+                f" {TRACK_B_STATUS}. Best failed candidate = {tb['variant']}."
+                " 승격 불가 (DO_NOT_PROMOTE)"
+            ),
+            "handoff": (
+                "Phase 2 진입 — P211-STEP11A friend-source rule extraction"
+                " 또는 P211-STEP11B operator UX redesign."
+                " Track B 동일 축 micro-tuning 금지."
+            ),
         },
     ]
     return {"generated_at": generated_at, "chapters": chapters}
@@ -678,6 +734,59 @@ def patch_evidence_summary_block(project_root: Path) -> None:
     logger.info("[P210-STEP10Z-3] evidence summary 블록 patch 완료")
 
 
+# ─── P210-STEP10C Track B closeout 주석 patch ────────────────────────
+_TRACKB_CLOSEOUT_MARKER = "_Step10C closeout:"
+_TRACKB_CLOSEOUT_BLOCK = (
+    "_Step10C closeout: Track B activated and validated,"
+    " but not promotable. No further same-axis micro-tuning._"
+)
+
+
+def patch_evidence_trackb_closeout(project_root: Path) -> None:
+    """dynamic_evidence_latest.md 의 Track B Predictive Risk Classifier 섹션
+    하단에 P210-STEP10C closeout 주석을 추가한다 (idempotent).
+
+    sync-only mode 에서는 evidence_writer 를 재호출하지 않으므로 Track B 섹션
+    자체는 직전 backtest 시점 그대로이지만, closeout 판정만 명시적으로 노출한다.
+
+    구현:
+    - Track B 섹션 끝의 `_Track B = ML classifier 기반 연구/검증 전용.`
+      caption 바로 뒤에 closeout 줄을 삽입
+    - 이미 closeout 주석이 있으면 no-op
+    - Track B 섹션이 evidence 에 없으면 경고만 하고 진행 (섹션 미생성 가능)
+    """
+    md_path = project_root / _EVIDENCE_MD_REL
+    if not md_path.exists():
+        raise RuntimeError(
+            f"[P210-STEP10C] evidence missing for trackb patch: {md_path}"
+        )
+
+    text = md_path.read_text(encoding="utf-8")
+
+    if _TRACKB_CLOSEOUT_MARKER in text:
+        logger.info("[P210-STEP10C] evidence Track B closeout 주석 이미 존재 (no-op)")
+        return
+
+    # Track B 섹션의 마지막 caption 라인을 anchor 로 사용
+    # (evidence_writer 가 문자열 concat 으로 한 줄에 출력)
+    anchor_pattern = re.compile(
+        r"(_Track B = ML classifier 기반 연구/검증 전용\."
+        r" 운영 SSOT 에 자동 승격 금지\._\n)",
+        re.MULTILINE,
+    )
+    if not anchor_pattern.search(text):
+        logger.warning(
+            "[P210-STEP10C] evidence Track B 섹션 anchor 미발견 —"
+            " 섹션 자체가 없을 수 있음. closeout 주석 skip"
+        )
+        return
+
+    replacement = r"\1\n" + _TRACKB_CLOSEOUT_BLOCK + "\n"
+    patched = anchor_pattern.sub(replacement, text, count=1)
+    md_path.write_text(patched, encoding="utf-8")
+    logger.info("[P210-STEP10C] evidence Track B closeout 주석 추가 완료")
+
+
 # ─── Registry Markdown ───────────────────────────────────────────────
 def _render_registry_md(rows: List[Dict[str, Any]], generated_at: str) -> List[str]:
     lines = [
@@ -718,10 +827,18 @@ def _render_registry_md(rows: List[Dict[str, Any]], generated_at: str) -> List[s
         "- `CURRENT_MAIN`: 현재 운영 기준선",
         "- `CURRENT_RESEARCH_BASELINE`: pos3 raw baseline (no guard)",
         "- `CURRENT_RESEARCH_CANDIDATE`: 승격 검토 중인 연구 후보",
-        "- `CURRENT_TRACK_B_LATEST`: Step10B 최상위 활성 ML 실험군",
+        (
+            "- `CURRENT_TRACK_B_LATEST`: Best failed Track B candidate"
+            " (P210C closeout, DO_NOT_PROMOTE)"
+        ),
         "- `REJECTED`: 검증 후 기각된 실험",
         "- `ANALYSIS_ONLY`: 분석/참고용 (정식 실험 아님)",
         "- `HISTORICAL_REFERENCE`: 과거 비교 참조용 (현재 활성 아님)",
+        "",
+        "## Closeout Tag 범례 (P210-STEP10C)",
+        f"- `TRACK_B_CLOSED`: Track B 승격 불가 판정 (`{TRACK_B_STATUS}`)",
+        f"  - 이유: {TRACK_B_LIMIT_REASON}",
+        f"  - Do Not Promote: {', '.join(TRACK_B_DO_NOT_PROMOTE)}",
     ]
     return lines
 
@@ -761,13 +878,22 @@ def _render_strategy_state(generated_at: str, metrics: Dict[str, Any]) -> List[s
         (
             f"| **Research Candidate** | `{CURRENT_RESEARCH_CANDIDATE}` |"
             f" CAGR {research['cagr_pct']:.2f}% / MDD {research['mdd_pct']:.2f}% /"
-            f" Sharpe {research['sharpe']:.4f} | REJECT (CAGR<15) |"
+            f" Sharpe {research['sharpe']:.4f} | REJECT (MDD<10 미달) |"
         ),
         (
             f"| **Track B Latest** | `{tb['variant']}` |"
             f" CAGR {tb['cagr_pct']:.2f}% / MDD {tb['mdd_pct']:.2f}% /"
-            f" Sharpe {tb['sharpe']:.4f} | Step10B 최상위 활성 실험군 |"
+            f" Sharpe {tb['sharpe']:.4f} | Best failed candidate (DO_NOT_PROMOTE) |"
         ),
+        "",
+        "## Track B Closeout (P210-STEP10C)",
+        "",
+        f"- **Track B Status**: `{TRACK_B_STATUS}`",
+        f"- **Closeout Verdict**: {TRACK_B_CLOSEOUT_VERDICT}",
+        f"- **Limit Reason**: {TRACK_B_LIMIT_REASON}",
+        "- **Do Not Promote**:",
+        *[f"  - `{v}`" for v in TRACK_B_DO_NOT_PROMOTE],
+        f"- **Phase Transition Note**: {PHASE_TRANSITION_NOTE}",
         "",
         "## 기각된 축 (Do Not Promote)",
         "",
@@ -775,13 +901,17 @@ def _render_strategy_state(generated_at: str, metrics: Dict[str, Any]) -> List[s
         "- P209C early_stop / combined guard → CAGR 과도 훼손",
         "- P210A-2 ML soft_gate mts=50/75 → CAGR 과도 훼손",
         "- P210B L0 broad / L2 fast — softgate/rerank 전 구간 MDD 불변",
+        (
+            "- P210C Track B 전체 — activated ML variants failed to improve MDD"
+            " → CLOSED_REJECTED"
+        ),
         "",
         "## 다음 단계",
         "",
         f"- 마지막 완료 챕터: `{LAST_COMPLETED_CHAPTER}`",
         f"- 다음 예정: `{NEXT_PLANNED_CHAPTER}`",
         f"- 최근 기각 축: {_format_last_rejected_axis(metrics)}",
-        "- 전제: closeout 이후에만 새 실험 진입 허용",
+        "- 전제: Track B 동일 축 micro-tuning 금지. Phase 2 준비로 이동",
     ]
 
 
@@ -860,4 +990,18 @@ def _render_decision_ledger(generated_at: str, metrics: Dict[str, Any]) -> List[
         " handoff mirror 가 모두 최신 canonical evidence 기준으로 sync",
         "- 다음 단계로 무엇이 넘어왔는가:"
         " P210-STEP10C-TRACKB-LIMIT-VERDICT-AND-CLOSEOUT 진입 가능",
+        "",
+        "## P210C: Track B Limit Verdict & Closeout",
+        "- 무엇을 검증했는가:"
+        " Track B activated ML 전 변종 (B0/B1/B2/B3) + label/action redesign"
+        " 전체 closeout. Step10A no-op → Step10A-2 activation → Step10B"
+        " label/action 재설계의 누적 증거",
+        "- 무슨 결론이 났는가:"
+        f" 연구군 MDD {tb['mdd_pct']:.2f}% 불변. {TRACK_B_LIMIT_REASON}."
+        f" {TRACK_B_STATUS}. Best failed candidate = {tb['variant']}."
+        " 승격 불가 (DO_NOT_PROMOTE)",
+        "- 다음 단계로 무엇이 넘어왔는가:"
+        " Phase 2 진입 — P211-STEP11A friend-source rule extraction"
+        " 또는 P211-STEP11B operator UX redesign."
+        " Track B 동일 축 micro-tuning 금지.",
     ]

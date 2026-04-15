@@ -279,6 +279,12 @@ def _build_manifest(
         "chapter_tag": chapter_tag,
         "main_run_summary": state["current_main_run"],
         "research_candidate_summary": state["current_research_candidate"],
+        "track_b_closeout_status": state.get("track_b_status"),
+        "track_b_closeout_verdict": state.get("track_b_closeout_verdict"),
+        "track_b_limit_reason": state.get("track_b_limit_reason"),
+        "do_not_promote_variants": state.get("do_not_promote", []),
+        "phase_transition_note": state.get("phase_transition_note"),
+        "last_completed_chapter": state.get("last_completed_chapter"),
         "next_planned_chapter": state["next_planned_chapter"],
         "required_attachments": required,
         "optional_attachments": optional,
@@ -287,6 +293,10 @@ def _build_manifest(
             "모든 값은 reports/tuning/* 및 reports/backtest/latest/* 에서 유도.",
             "provenance 는 source_index.json 참조.",
             "새 truth source 생성 금지.",
+            (
+                "P210-STEP10C: Track B CLOSED_REJECTED — 동일 축 micro-tuning 금지."
+                " 다음 진입은 Phase 2 (friend-source / operator UX)."
+            ),
         ],
         "provenance_entry_count": len(provenance_entries),
     }

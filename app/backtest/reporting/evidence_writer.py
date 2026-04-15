@@ -870,5 +870,8 @@ def _render_trackb_predictive_risk_section(
         "",
         "_Track B = ML classifier 기반 연구/검증 전용."
         " 운영 SSOT 에 자동 승격 금지._",
+        "",
+        "_Step10C closeout: Track B activated and validated,"
+        " but not promotable. No further same-axis micro-tuning._",
     ]
     return lines
