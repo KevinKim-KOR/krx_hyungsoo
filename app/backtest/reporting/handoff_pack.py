@@ -137,6 +137,53 @@ def _validate_source(source_path: Path, logical_name: str) -> Tuple[str, str]:
     return generated_at, asof
 
 
+def _check_canonical_freshness(project_root: Path) -> None:
+    """current_strategy_state / experiment_registry 의 generated_at 이
+    dynamic_evidence_latest.md 의 generated_at 보다 오래되면 RuntimeError.
+
+    P210-STEP10Z-3: stale canonical 을 handoff 가 포장하지 못하게 막는다.
+    timestamp 형식이 모두 ISO-8601 with +09:00 으로 동일하므로 문자열 비교 OK.
+    """
+    evidence_path = project_root / _CANONICAL_PATHS["dynamic_evidence_latest.md"]
+    state_path = project_root / _CANONICAL_PATHS["current_strategy_state.json"]
+    registry_path = project_root / _CANONICAL_PATHS["experiment_registry.json"]
+
+    evidence_gen, _ = _read_source_timestamps(evidence_path)
+    state_gen, _ = _read_source_timestamps(state_path)
+    registry_gen, _ = _read_source_timestamps(registry_path)
+
+    if evidence_gen is None:
+        raise RuntimeError(
+            "P210-STEP10Z-3: dynamic_evidence_latest.md generated_at 누락 —"
+            " freshness 비교 불가"
+        )
+    if state_gen is None:
+        raise RuntimeError(
+            "P210-STEP10Z-3: current_strategy_state.json generated_at 누락 —"
+            " experiment_registry generator 미실행"
+        )
+    if registry_gen is None:
+        raise RuntimeError(
+            "P210-STEP10Z-3: experiment_registry.json generated_at 누락 —"
+            " experiment_registry generator 미실행"
+        )
+
+    if state_gen < evidence_gen:
+        raise RuntimeError(
+            "P210-STEP10Z-3: stale canonical state — "
+            f"current_strategy_state.json.generated_at={state_gen} <"
+            f" evidence.generated_at={evidence_gen}."
+            " experiment_registry generator 를 먼저 다시 실행해야 함."
+        )
+    if registry_gen < evidence_gen:
+        raise RuntimeError(
+            "P210-STEP10Z-3: stale canonical registry — "
+            f"experiment_registry.json.generated_at={registry_gen} <"
+            f" evidence.generated_at={evidence_gen}."
+            " experiment_registry generator 를 먼저 다시 실행해야 함."
+        )
+
+
 def _detect_active_chapter(project_root: Path) -> str:
     """현재 활성 챕터 감지. predictive_risk_compare.json 이 있으면 P210.
 
@@ -255,6 +302,9 @@ def generate_handoff_pack(project_root: Path) -> None:
     handoff_dir = project_root / "reports" / "handoff" / "latest"
     handoff_dir.mkdir(parents=True, exist_ok=True)
     copied_at = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+09:00")
+
+    # 0. freshness 검증 (P210-STEP10Z-3): stale canonical 포장 금지
+    _check_canonical_freshness(project_root)
 
     # 1. 활성 챕터 감지
     chapter_tag = _detect_active_chapter(project_root)

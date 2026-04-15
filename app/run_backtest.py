@@ -1791,6 +1791,63 @@ def run_cli_backtest(
     return True
 
 
+def regenerate_canonical_only(project_root: Path) -> None:
+    """P210-STEP10Z-3: 기존 canonical 산출물만 읽어 state/registry/ledger/handoff
+    를 재정렬하는 sync-only 진입점.
+
+    Backtest / Tune / sweep 일체 호출 없음. canonical source 누락 시 RuntimeError.
+    실행 순서:
+      1. canonical evidence + compare json 존재 확인 (loader 가 fail-loud)
+      2. experiment_registry generator 호출 → state/registry/ledger 재생성
+      3. dynamic_evidence_latest.md 의 Current Strategy Position 블록 patch
+      4. handoff_pack generator 호출 → mirror + manifest + index 재생성
+         (freshness 검증 포함)
+    """
+    required = [
+        project_root / "reports" / "tuning" / "dynamic_evidence_latest.md",
+        project_root / "reports" / "tuning" / "predictive_risk_compare.json",
+        project_root / "reports" / "tuning" / "contextual_guard_compare.json",
+        project_root / "reports" / "backtest" / "latest" / "backtest_result.json",
+    ]
+    missing = [str(p) for p in required if not p.exists()]
+    if missing:
+        raise RuntimeError(
+            "P210-STEP10Z-3: regenerate-canonical-only 진입 실패 — "
+            f"필수 canonical source 누락: {missing}"
+        )
+
+    from app.backtest.reporting.experiment_registry import (
+        generate_experiment_registry,
+        patch_evidence_summary_block,
+    )
+
+    try:
+        generate_experiment_registry(project_root=project_root)
+    except Exception as reg_exc:
+        raise RuntimeError(
+            f"P210-STEP10Z-3: experiment_registry 재생성 실패 (fail-loud): {reg_exc}"
+        ) from reg_exc
+
+    try:
+        patch_evidence_summary_block(project_root=project_root)
+    except Exception as ev_exc:
+        raise RuntimeError(
+            f"P210-STEP10Z-3: evidence summary block patch 실패 (fail-loud):"
+            f" {ev_exc}"
+        ) from ev_exc
+
+    from app.backtest.reporting.handoff_pack import generate_handoff_pack
+
+    try:
+        generate_handoff_pack(project_root=project_root)
+    except Exception as hp_exc:
+        raise RuntimeError(
+            f"P210-STEP10Z-3: handoff_pack 재생성 실패 (fail-loud): {hp_exc}"
+        ) from hp_exc
+
+    logger.info("[P210-STEP10Z-3] canonical sync 완료 — backtest/tune/sweep 호출 없음")
+
+
 def main():
     parser = argparse.ArgumentParser(description="P165 Backtest CLI")
     parser.add_argument(
@@ -1810,7 +1867,25 @@ def main():
             " holding_structure / allocation_experiments sweep 은 스킵"
         ),
     )
+    parser.add_argument(
+        "--regenerate-canonical-only",
+        action="store_true",
+        help=(
+            "P210-STEP10Z-3: backtest/sweep 일체 호출 없이"
+            " 기존 canonical 산출물만 읽어 state/registry/ledger/handoff 재정렬."
+            " --mode/--start/--end/--analysis-only 무시."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.regenerate_canonical_only:
+        try:
+            regenerate_canonical_only(project_root=PROJECT_ROOT)
+        except Exception as e:
+            logger.error(f"[P210-STEP10Z-3] sync 실패: {e}")
+            sys.exit(1)
+        print("[RESULT: OK] canonical regenerate completed")
+        return
 
     success = run_cli_backtest(
         mode=args.mode,
