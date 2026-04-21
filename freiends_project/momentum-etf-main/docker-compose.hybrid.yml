@@ -1,0 +1,36 @@
+services:
+  fastapi_app:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    env_file:
+      - .env
+    volumes:
+      - ./zaccounts:/app/zaccounts:ro
+    expose:
+      - "8000"
+    restart: always
+
+  node_app:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    depends_on:
+      - fastapi_app
+    env_file:
+      - .env
+    environment:
+      - FASTAPI_INTERNAL_URL=http://fastapi_app:8000
+    volumes:
+      - ./zaccounts:/app/zaccounts:ro
+    restart: unless-stopped
+
+  hybrid_proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      - node_app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./infra/hybrid/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped

@@ -1,0 +1,18 @@
+{
+    "icon": "🇰🇷",
+    "name": "국내상장 국내",
+    "country_code": "kor",
+    "currency": "KRW",
+    "MA_RULES": [
+        {
+            "order": 1,
+            "MA_TYPE": "SMA",
+            "MA_MONTHS": 12
+        },
+        {
+            "order": 2,
+            "MA_TYPE": "ALMA",
+            "MA_MONTHS": 6
+        }
+    ]
+}

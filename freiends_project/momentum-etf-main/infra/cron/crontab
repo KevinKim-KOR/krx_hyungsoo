@@ -1,0 +1,30 @@
+# momentum-etf VM 배치 스케줄 (타임존: Asia/Seoul)
+#
+# 설치:
+#   crontab /home/ubuntu/apps/momentum-etf/infra/cron/crontab
+# 확인:
+#   crontab -l
+#
+# 동작 원리:
+#   호스트 cron 이 docker compose exec 로 fastapi_app 컨테이너 안의
+#   infra/cron/run_batch.py 를 호출합니다. 래퍼가 스크립트를 실행하고
+#   결과(성공/실패)를 Slack 으로 전송합니다.
+#
+# 로그:
+#   logs/cron/<job>.log 에 append 됩니다.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+APP_DIR=/home/ubuntu/apps/momentum-etf
+
+# 매시간 정각 - 주가 캐시 갱신 (KST = UTC 동일)
+0 * * * * cd $APP_DIR && mkdir -p logs/cron && docker compose exec -T fastapi_app python infra/cron/run_batch.py cache_refresh python scripts/stock_price_cache_updater.py >> logs/cron/cache_refresh.log 2>&1
+
+# 매일 09:00 KST - 종목 메타데이터 업데이트 (기존 UTC 00:00)
+0 9 * * * cd $APP_DIR && mkdir -p logs/cron && docker compose exec -T fastapi_app python infra/cron/run_batch.py metadata_updater python scripts/stock_meta_cache_updater.py >> logs/cron/metadata_updater.log 2>&1
+
+# 매일 09:30, 16:30 KST - 자산 요약 (기존 UTC 00:30, 07:30)
+30 9,16 * * * cd $APP_DIR && mkdir -p logs/cron && docker compose exec -T fastapi_app python infra/cron/run_batch.py asset_summary python scripts/slack_asset_summary.py >> logs/cron/asset_summary.log 2>&1
+
+# 매일 07:00 KST - 장 시간 분석 (기존 UTC 22:00)
+0 7 * * * cd $APP_DIR && mkdir -p logs/cron && docker compose exec -T fastapi_app python infra/cron/run_batch.py market_hours_analysis python scripts/analyze_market_hours.py >> logs/cron/market_hours_analysis.log 2>&1

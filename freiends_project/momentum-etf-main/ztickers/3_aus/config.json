@@ -1,0 +1,18 @@
+{
+    "icon": "🇦🇺",
+    "name": "호주 계좌",
+    "country_code": "au",
+    "currency": "AUD",
+    "MA_RULES": [
+        {
+            "order": 1,
+            "MA_TYPE": "SMA",
+            "MA_MONTHS": 12
+        },
+        {
+            "order": 2,
+            "MA_TYPE": "ALMA",
+            "MA_MONTHS": 6
+        }
+    ]
+}

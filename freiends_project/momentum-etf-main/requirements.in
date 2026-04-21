@@ -1,0 +1,12 @@
+pandas
+numpy
+pykrx>=1.2.0
+pymongo
+python-dotenv
+requests
+beautifulsoup4
+yfinance
+# pandas_market_calendars  # 거래일 캘린더 생성은 수동 작업으로만 사용
+slack-sdk
+fastapi
+uvicorn

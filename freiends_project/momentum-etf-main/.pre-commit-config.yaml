@@ -1,0 +1,29 @@
+repos:
+  - repo: local
+    hooks:
+      - id: update-app-datetime
+        name: Update APP_VERSION
+        entry: ./scripts/update_app_datetime.sh
+        language: system
+        stages: [pre-commit, pre-push]
+      - id: next-build
+        name: Next build
+        entry: /bin/zsh -lc "cd web && npm run build"
+        language: system
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        exclude: ^(venv|\.venv|__pycache__|\.git|znotes)/
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+        exclude: ^(venv|\.venv|__pycache__|\.git|znotes)/
+      - id: ruff-format
+        exclude: ^(venv|\.venv|__pycache__|\.git|znotes)/

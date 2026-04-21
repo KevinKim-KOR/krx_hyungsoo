@@ -1,0 +1,6 @@
+# Development dependencies (개발 도구)
+# 프로덕션 서버에는 필요하지 않음
+
+pre-commit  # Git pre-commit hooks 관리
+flake8      # 린터 (코드 품질 검사)
+ruff        # 빠른 올인원 린터 및 포맷터 (black 대체)
