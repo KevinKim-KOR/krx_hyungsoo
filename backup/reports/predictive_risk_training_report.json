@@ -1,0 +1,563 @@
+{
+  "generated_at": "2026-04-15T21:51:14+09:00",
+  "reports": [
+    {
+      "profile": "operational_control_a0",
+      "model_family": "logistic_regression",
+      "min_train_samples_override": 100,
+      "report": {
+        "label_profile": "L0_current_crash20",
+        "action_policy": "soft_gate_top1_skip",
+        "label_positive_ratio": 0.7006,
+        "predicted_dates_count": 6,
+        "avg_predicted_probability": 0.700317,
+        "top_feature_summary": [
+          {
+            "feature": "scanner_score",
+            "coefficient": 1.527564,
+            "abs_value": 1.527564
+          },
+          {
+            "feature": "vol_5d",
+            "coefficient": 1.414404,
+            "abs_value": 1.414404
+          },
+          {
+            "feature": "vol_10d",
+            "coefficient": 1.137065,
+            "abs_value": 1.137065
+          },
+          {
+            "feature": "vol_20d",
+            "coefficient": 0.96877,
+            "abs_value": 0.96877
+          },
+          {
+            "feature": "ret_3d",
+            "coefficient": -0.666662,
+            "abs_value": 0.666662
+          }
+        ],
+        "label_definition": {
+          "profile": "L0_current_crash20",
+          "horizon_days": 20,
+          "crash_drawdown_threshold": -0.05,
+          "crash_return_threshold": -0.07,
+          "rule_description": "다음 20영업일 내 max_drawdown <= -5% OR cum_return <= -7% (broad baseline)",
+          "positive_meaning": "다음 20영업일 내 max_drawdown <= -5% OR cum_return <= -7% (broad baseline)"
+        },
+        "feature_set": {
+          "version": "v1",
+          "columns": [
+            "ret_1d",
+            "ret_3d",
+            "ret_5d",
+            "ret_10d",
+            "ret_20d",
+            "vol_5d",
+            "vol_10d",
+            "vol_20d",
+            "drawdown_from_peak_20d",
+            "vol_spike_5d_20d",
+            "relative_return_vs_benchmark_5d",
+            "relative_return_vs_benchmark_20d",
+            "scanner_score",
+            "selection_rank"
+          ],
+          "count": 14,
+          "benchmark_ticker": "069500"
+        },
+        "training_scheme": "walk_forward_expanding",
+        "model_family": "logistic_regression",
+        "class_imbalance": {
+          "total_labeled_samples": 177,
+          "positive_count": 124,
+          "negative_count": 53,
+          "positive_ratio": 0.7006
+        },
+        "walk_forward_summary": {
+          "total_rebalance_dates": 24,
+          "predicted_dates": 6,
+          "burnin_dates": 18,
+          "first_predict_date": "2025-11-03",
+          "last_predict_date": "2026-04-01",
+          "min_train_samples": 100
+        },
+        "top_feature_importance": {
+          "scanner_score": 1.527564,
+          "vol_5d": 1.414404,
+          "vol_10d": 1.137065,
+          "vol_20d": 0.96877,
+          "ret_3d": -0.666662
+        },
+        "leakage_check_passed": true,
+        "interpretation_warning": "이 ML 은 연구/검증 전용이며 운영 SSOT 에 자동 승격되지 않는다. burn-in 구간이 길어 유효 예측 구간이 짧을 수 있고, 통계적 유의성을 주장하지 않는다."
+      }
+    },
+    {
+      "profile": "operational_control_a0",
+      "model_family": "logistic_regression",
+      "min_train_samples_override": 100,
+      "report": {
+        "label_profile": "L1_severe_crash20",
+        "action_policy": "soft_gate_top1_skip",
+        "label_positive_ratio": 0.4576,
+        "predicted_dates_count": 6,
+        "avg_predicted_probability": 0.639633,
+        "top_feature_summary": [
+          {
+            "feature": "vol_5d",
+            "coefficient": 2.058275,
+            "abs_value": 2.058275
+          },
+          {
+            "feature": "scanner_score",
+            "coefficient": 1.729782,
+            "abs_value": 1.729782
+          },
+          {
+            "feature": "vol_20d",
+            "coefficient": 0.85678,
+            "abs_value": 0.85678
+          },
+          {
+            "feature": "vol_10d",
+            "coefficient": 0.82244,
+            "abs_value": 0.82244
+          },
+          {
+            "feature": "ret_1d",
+            "coefficient": -0.519308,
+            "abs_value": 0.519308
+          }
+        ],
+        "label_definition": {
+          "profile": "L1_severe_crash20",
+          "horizon_days": 20,
+          "crash_drawdown_threshold": -0.08,
+          "crash_return_threshold": -0.1,
+          "rule_description": "다음 20영업일 내 max_drawdown <= -8% OR cum_return <= -10% (severe only)",
+          "positive_meaning": "다음 20영업일 내 max_drawdown <= -8% OR cum_return <= -10% (severe only)"
+        },
+        "feature_set": {
+          "version": "v1",
+          "columns": [
+            "ret_1d",
+            "ret_3d",
+            "ret_5d",
+            "ret_10d",
+            "ret_20d",
+            "vol_5d",
+            "vol_10d",
+            "vol_20d",
+            "drawdown_from_peak_20d",
+            "vol_spike_5d_20d",
+            "relative_return_vs_benchmark_5d",
+            "relative_return_vs_benchmark_20d",
+            "scanner_score",
+            "selection_rank"
+          ],
+          "count": 14,
+          "benchmark_ticker": "069500"
+        },
+        "training_scheme": "walk_forward_expanding",
+        "model_family": "logistic_regression",
+        "class_imbalance": {
+          "total_labeled_samples": 177,
+          "positive_count": 81,
+          "negative_count": 96,
+          "positive_ratio": 0.4576
+        },
+        "walk_forward_summary": {
+          "total_rebalance_dates": 24,
+          "predicted_dates": 6,
+          "burnin_dates": 18,
+          "first_predict_date": "2025-11-03",
+          "last_predict_date": "2026-04-01",
+          "min_train_samples": 100
+        },
+        "top_feature_importance": {
+          "vol_5d": 2.058275,
+          "scanner_score": 1.729782,
+          "vol_20d": 0.85678,
+          "vol_10d": 0.82244,
+          "ret_1d": -0.519308
+        },
+        "leakage_check_passed": true,
+        "interpretation_warning": "이 ML 은 연구/검증 전용이며 운영 SSOT 에 자동 승격되지 않는다. burn-in 구간이 길어 유효 예측 구간이 짧을 수 있고, 통계적 유의성을 주장하지 않는다."
+      }
+    },
+    {
+      "profile": "operational_control_a0",
+      "model_family": "logistic_regression",
+      "min_train_samples_override": 100,
+      "report": {
+        "label_profile": "L2_fast_crash10",
+        "action_policy": "risk_penalty_rerank",
+        "label_positive_ratio": 0.3051,
+        "predicted_dates_count": 6,
+        "avg_predicted_probability": 0.515,
+        "top_feature_summary": [
+          {
+            "feature": "scanner_score",
+            "coefficient": 2.088311,
+            "abs_value": 2.088311
+          },
+          {
+            "feature": "vol_5d",
+            "coefficient": 1.718388,
+            "abs_value": 1.718388
+          },
+          {
+            "feature": "vol_20d",
+            "coefficient": 1.073811,
+            "abs_value": 1.073811
+          },
+          {
+            "feature": "vol_spike_5d_20d",
+            "coefficient": -0.61405,
+            "abs_value": 0.61405
+          },
+          {
+            "feature": "relative_return_vs_benchmark_20d",
+            "coefficient": -0.292758,
+            "abs_value": 0.292758
+          }
+        ],
+        "label_definition": {
+          "profile": "L2_fast_crash10",
+          "horizon_days": 10,
+          "crash_drawdown_threshold": -0.06,
+          "crash_return_threshold": -0.07,
+          "rule_description": "다음 10영업일 내 max_drawdown <= -6% OR cum_return <= -7% (fast entry-shock)",
+          "positive_meaning": "다음 10영업일 내 max_drawdown <= -6% OR cum_return <= -7% (fast entry-shock)"
+        },
+        "feature_set": {
+          "version": "v1",
+          "columns": [
+            "ret_1d",
+            "ret_3d",
+            "ret_5d",
+            "ret_10d",
+            "ret_20d",
+            "vol_5d",
+            "vol_10d",
+            "vol_20d",
+            "drawdown_from_peak_20d",
+            "vol_spike_5d_20d",
+            "relative_return_vs_benchmark_5d",
+            "relative_return_vs_benchmark_20d",
+            "scanner_score",
+            "selection_rank"
+          ],
+          "count": 14,
+          "benchmark_ticker": "069500"
+        },
+        "training_scheme": "walk_forward_expanding",
+        "model_family": "logistic_regression",
+        "class_imbalance": {
+          "total_labeled_samples": 177,
+          "positive_count": 54,
+          "negative_count": 123,
+          "positive_ratio": 0.3051
+        },
+        "walk_forward_summary": {
+          "total_rebalance_dates": 24,
+          "predicted_dates": 6,
+          "burnin_dates": 18,
+          "first_predict_date": "2025-11-03",
+          "last_predict_date": "2026-04-01",
+          "min_train_samples": 100
+        },
+        "top_feature_importance": {
+          "scanner_score": 2.088311,
+          "vol_5d": 1.718388,
+          "vol_20d": 1.073811,
+          "vol_spike_5d_20d": -0.61405,
+          "relative_return_vs_benchmark_20d": -0.292758
+        },
+        "leakage_check_passed": true,
+        "interpretation_warning": "이 ML 은 연구/검증 전용이며 운영 SSOT 에 자동 승격되지 않는다. burn-in 구간이 길어 유효 예측 구간이 짧을 수 있고, 통계적 유의성을 주장하지 않는다."
+      }
+    },
+    {
+      "profile": "research_candidate_b1",
+      "model_family": "logistic_regression",
+      "min_train_samples_override": 100,
+      "report": {
+        "label_profile": "L0_current_crash20",
+        "action_policy": "soft_gate_top1_skip",
+        "label_positive_ratio": 0.7006,
+        "predicted_dates_count": 6,
+        "avg_predicted_probability": 0.700317,
+        "top_feature_summary": [
+          {
+            "feature": "scanner_score",
+            "coefficient": 1.527564,
+            "abs_value": 1.527564
+          },
+          {
+            "feature": "vol_5d",
+            "coefficient": 1.414404,
+            "abs_value": 1.414404
+          },
+          {
+            "feature": "vol_10d",
+            "coefficient": 1.137065,
+            "abs_value": 1.137065
+          },
+          {
+            "feature": "vol_20d",
+            "coefficient": 0.96877,
+            "abs_value": 0.96877
+          },
+          {
+            "feature": "ret_3d",
+            "coefficient": -0.666662,
+            "abs_value": 0.666662
+          }
+        ],
+        "label_definition": {
+          "profile": "L0_current_crash20",
+          "horizon_days": 20,
+          "crash_drawdown_threshold": -0.05,
+          "crash_return_threshold": -0.07,
+          "rule_description": "다음 20영업일 내 max_drawdown <= -5% OR cum_return <= -7% (broad baseline)",
+          "positive_meaning": "다음 20영업일 내 max_drawdown <= -5% OR cum_return <= -7% (broad baseline)"
+        },
+        "feature_set": {
+          "version": "v1",
+          "columns": [
+            "ret_1d",
+            "ret_3d",
+            "ret_5d",
+            "ret_10d",
+            "ret_20d",
+            "vol_5d",
+            "vol_10d",
+            "vol_20d",
+            "drawdown_from_peak_20d",
+            "vol_spike_5d_20d",
+            "relative_return_vs_benchmark_5d",
+            "relative_return_vs_benchmark_20d",
+            "scanner_score",
+            "selection_rank"
+          ],
+          "count": 14,
+          "benchmark_ticker": "069500"
+        },
+        "training_scheme": "walk_forward_expanding",
+        "model_family": "logistic_regression",
+        "class_imbalance": {
+          "total_labeled_samples": 177,
+          "positive_count": 124,
+          "negative_count": 53,
+          "positive_ratio": 0.7006
+        },
+        "walk_forward_summary": {
+          "total_rebalance_dates": 24,
+          "predicted_dates": 6,
+          "burnin_dates": 18,
+          "first_predict_date": "2025-11-03",
+          "last_predict_date": "2026-04-01",
+          "min_train_samples": 100
+        },
+        "top_feature_importance": {
+          "scanner_score": 1.527564,
+          "vol_5d": 1.414404,
+          "vol_10d": 1.137065,
+          "vol_20d": 0.96877,
+          "ret_3d": -0.666662
+        },
+        "leakage_check_passed": true,
+        "interpretation_warning": "이 ML 은 연구/검증 전용이며 운영 SSOT 에 자동 승격되지 않는다. burn-in 구간이 길어 유효 예측 구간이 짧을 수 있고, 통계적 유의성을 주장하지 않는다."
+      }
+    },
+    {
+      "profile": "research_candidate_b1",
+      "model_family": "logistic_regression",
+      "min_train_samples_override": 100,
+      "report": {
+        "label_profile": "L1_severe_crash20",
+        "action_policy": "soft_gate_top1_skip",
+        "label_positive_ratio": 0.4576,
+        "predicted_dates_count": 6,
+        "avg_predicted_probability": 0.639633,
+        "top_feature_summary": [
+          {
+            "feature": "vol_5d",
+            "coefficient": 2.058275,
+            "abs_value": 2.058275
+          },
+          {
+            "feature": "scanner_score",
+            "coefficient": 1.729782,
+            "abs_value": 1.729782
+          },
+          {
+            "feature": "vol_20d",
+            "coefficient": 0.85678,
+            "abs_value": 0.85678
+          },
+          {
+            "feature": "vol_10d",
+            "coefficient": 0.82244,
+            "abs_value": 0.82244
+          },
+          {
+            "feature": "ret_1d",
+            "coefficient": -0.519308,
+            "abs_value": 0.519308
+          }
+        ],
+        "label_definition": {
+          "profile": "L1_severe_crash20",
+          "horizon_days": 20,
+          "crash_drawdown_threshold": -0.08,
+          "crash_return_threshold": -0.1,
+          "rule_description": "다음 20영업일 내 max_drawdown <= -8% OR cum_return <= -10% (severe only)",
+          "positive_meaning": "다음 20영업일 내 max_drawdown <= -8% OR cum_return <= -10% (severe only)"
+        },
+        "feature_set": {
+          "version": "v1",
+          "columns": [
+            "ret_1d",
+            "ret_3d",
+            "ret_5d",
+            "ret_10d",
+            "ret_20d",
+            "vol_5d",
+            "vol_10d",
+            "vol_20d",
+            "drawdown_from_peak_20d",
+            "vol_spike_5d_20d",
+            "relative_return_vs_benchmark_5d",
+            "relative_return_vs_benchmark_20d",
+            "scanner_score",
+            "selection_rank"
+          ],
+          "count": 14,
+          "benchmark_ticker": "069500"
+        },
+        "training_scheme": "walk_forward_expanding",
+        "model_family": "logistic_regression",
+        "class_imbalance": {
+          "total_labeled_samples": 177,
+          "positive_count": 81,
+          "negative_count": 96,
+          "positive_ratio": 0.4576
+        },
+        "walk_forward_summary": {
+          "total_rebalance_dates": 24,
+          "predicted_dates": 6,
+          "burnin_dates": 18,
+          "first_predict_date": "2025-11-03",
+          "last_predict_date": "2026-04-01",
+          "min_train_samples": 100
+        },
+        "top_feature_importance": {
+          "vol_5d": 2.058275,
+          "scanner_score": 1.729782,
+          "vol_20d": 0.85678,
+          "vol_10d": 0.82244,
+          "ret_1d": -0.519308
+        },
+        "leakage_check_passed": true,
+        "interpretation_warning": "이 ML 은 연구/검증 전용이며 운영 SSOT 에 자동 승격되지 않는다. burn-in 구간이 길어 유효 예측 구간이 짧을 수 있고, 통계적 유의성을 주장하지 않는다."
+      }
+    },
+    {
+      "profile": "research_candidate_b1",
+      "model_family": "logistic_regression",
+      "min_train_samples_override": 100,
+      "report": {
+        "label_profile": "L2_fast_crash10",
+        "action_policy": "risk_penalty_rerank",
+        "label_positive_ratio": 0.3051,
+        "predicted_dates_count": 6,
+        "avg_predicted_probability": 0.515,
+        "top_feature_summary": [
+          {
+            "feature": "scanner_score",
+            "coefficient": 2.088311,
+            "abs_value": 2.088311
+          },
+          {
+            "feature": "vol_5d",
+            "coefficient": 1.718388,
+            "abs_value": 1.718388
+          },
+          {
+            "feature": "vol_20d",
+            "coefficient": 1.073811,
+            "abs_value": 1.073811
+          },
+          {
+            "feature": "vol_spike_5d_20d",
+            "coefficient": -0.61405,
+            "abs_value": 0.61405
+          },
+          {
+            "feature": "relative_return_vs_benchmark_20d",
+            "coefficient": -0.292758,
+            "abs_value": 0.292758
+          }
+        ],
+        "label_definition": {
+          "profile": "L2_fast_crash10",
+          "horizon_days": 10,
+          "crash_drawdown_threshold": -0.06,
+          "crash_return_threshold": -0.07,
+          "rule_description": "다음 10영업일 내 max_drawdown <= -6% OR cum_return <= -7% (fast entry-shock)",
+          "positive_meaning": "다음 10영업일 내 max_drawdown <= -6% OR cum_return <= -7% (fast entry-shock)"
+        },
+        "feature_set": {
+          "version": "v1",
+          "columns": [
+            "ret_1d",
+            "ret_3d",
+            "ret_5d",
+            "ret_10d",
+            "ret_20d",
+            "vol_5d",
+            "vol_10d",
+            "vol_20d",
+            "drawdown_from_peak_20d",
+            "vol_spike_5d_20d",
+            "relative_return_vs_benchmark_5d",
+            "relative_return_vs_benchmark_20d",
+            "scanner_score",
+            "selection_rank"
+          ],
+          "count": 14,
+          "benchmark_ticker": "069500"
+        },
+        "training_scheme": "walk_forward_expanding",
+        "model_family": "logistic_regression",
+        "class_imbalance": {
+          "total_labeled_samples": 177,
+          "positive_count": 54,
+          "negative_count": 123,
+          "positive_ratio": 0.3051
+        },
+        "walk_forward_summary": {
+          "total_rebalance_dates": 24,
+          "predicted_dates": 6,
+          "burnin_dates": 18,
+          "first_predict_date": "2025-11-03",
+          "last_predict_date": "2026-04-01",
+          "min_train_samples": 100
+        },
+        "top_feature_importance": {
+          "scanner_score": 2.088311,
+          "vol_5d": 1.718388,
+          "vol_20d": 1.073811,
+          "vol_spike_5d_20d": -0.61405,
+          "relative_return_vs_benchmark_20d": -0.292758
+        },
+        "leakage_check_passed": true,
+        "interpretation_warning": "이 ML 은 연구/검증 전용이며 운영 SSOT 에 자동 승격되지 않는다. burn-in 구간이 길어 유효 예측 구간이 짧을 수 있고, 통계적 유의성을 주장하지 않는다."
+      }
+    }
+  ]
+}

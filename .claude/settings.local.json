@@ -81,7 +81,10 @@
       "Bash(.venv/Scripts/python -m flake8 app/utils/param_loader.py app/backtest/runners/backtest_runner.py app/run_backtest.py app/backtest/reporting/evidence_writer.py app/backtest/reporting/toxic_filter_compare.py pc_cockpit/views/helpers/toxic_filter_panel.py)",
       "Bash(.venv/Scripts/python -m py_compile app/utils/param_loader.py app/backtest/runners/backtest_runner.py app/run_backtest.py app/backtest/reporting/evidence_writer.py app/backtest/reporting/toxic_filter_compare.py pc_cockpit/views/helpers/toxic_filter_panel.py)",
       "Bash(.venv/Scripts/python -m black --check app/utils/param_loader.py app/backtest/runners/backtest_runner.py app/run_backtest.py app/backtest/reporting/evidence_writer.py app/backtest/reporting/toxic_filter_compare.py pc_cockpit/views/helpers/toxic_filter_panel.py)",
-      "Bash(.venv/Scripts/python -c ':*)"
+      "Bash(.venv/Scripts/python -c ':*)",
+      "Bash(awk '$4 >= 512000 {print $4, $5}')",
+      "Bash(git commit -m ' *)",
+      "Bash(awk '{print substr\\($0,1,2\\)}')"
     ]
   }
 }

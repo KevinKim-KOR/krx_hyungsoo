@@ -74,7 +74,11 @@
       "Bash(cp reports/tuning/holding_structure_compare.md __TRACKED_VAR__/hs_md_before_R5v2.md)",
       "Bash(cp reports/tuning/holding_structure_compare.json __TRACKED_VAR__/hs_json_before_R5v2.json)",
       "Bash(echo \"evidence md diff exit: $?\")",
-      "Bash(echo \"dd md diff exit: $?\")"
+      "Bash(echo \"dd md diff exit: $?\")",
+      "Bash(git ls-tree *)",
+      "Bash(sort -k4 -n -r)",
+      "Bash(git tag *)",
+      "Bash(git branch *)"
     ]
   }
 }

@@ -1,8 +1,0 @@
-{
-  "schema": "REAL_SENDER_ENABLE_V1",
-  "enabled": false,
-  "channel": "TELEGRAM_ONLY",
-  "updated_at": "2026-01-10T17:24:27.763749",
-  "updated_by": "api",
-  "reason": "Phase C-P.27 Verification"
-}
