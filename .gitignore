@@ -145,6 +145,7 @@ state/strategy_bundle/**/*.json
 # Runtime State (Replay, etc.)
 state/runtime/asof_override_latest.json
 state/runtime/*.json
+state/runs/*.json
 
 # Reports (All Runtime Generated)
 reports/**/*.json
