@@ -81,16 +81,29 @@ def test_ac4_reject_blocks_delivery(client):
     assert r2.status_code == 409
 
 
-def test_ac5_ac6_approve_delivers_and_completes(client):
+def test_ac5_approve_response_is_delivering(client):
+    # Approve 응답은 즉시 DELIVERING 을 반환해야 한다 (AC 7).
+    # 실제 전달은 BackgroundTasks 로 비동기 실행되며 응답 이후 완료.
     _, body = _generate(client, _VALID_INPUT)
     run_id = body["run_id"]
     r = client.post(f"/runs/{run_id}/approve")
     assert r.status_code == 200
-    # APPROVED 상태 없이 DELIVERING->COMPLETED 동일 요청 안에서 종료
-    assert r.json()["status"] == "COMPLETED"
+    assert r.json()["status"] == "DELIVERING"
+
+
+def test_ac6_final_status_is_completed_after_background(client):
+    # BackgroundTasks 완료 후 GET 조회 시 COMPLETED (AC 8, 9).
+    # starlette TestClient 는 요청 종료 직전에 background task 를 실행하므로
+    # 후속 GET 시점에서는 최종 상태가 관측 가능하다.
+    _, body = _generate(client, _VALID_INPUT)
+    run_id = body["run_id"]
+    client.post(f"/runs/{run_id}/approve")
+    final = client.get(f"/runs/{run_id}").json()
+    assert final["status"] == "COMPLETED"
 
 
 def test_ac7_delivery_failure_yields_failed(client, monkeypatch):
+    # BackgroundTasks 에서 deliver 호출. monkeypatch 로 실패 주입.
     def _boom(run):
         raise delivery.DeliveryError("injected for test")
 
@@ -100,13 +113,19 @@ def test_ac7_delivery_failure_yields_failed(client, monkeypatch):
     run_id = body["run_id"]
     r = client.post(f"/runs/{run_id}/approve")
     assert r.status_code == 200
-    assert r.json()["status"] == "FAILED"
+    # 응답 시점은 DELIVERING. 최종 상태는 background 이후 FAILED.
+    assert r.json()["status"] == "DELIVERING"
+
+    final = client.get(f"/runs/{run_id}").json()
+    assert final["status"] == "FAILED"
 
 
 def test_ac8_terminal_states_block_reuse(client, monkeypatch):
-    # COMPLETED 는 approve 재요청 차단
+    # COMPLETED 는 approve 재요청 차단 (background 완료 후 terminal 도달)
     _, b1 = _generate(client, _VALID_INPUT)
     client.post(f"/runs/{b1['run_id']}/approve")
+    # background 완료 확인 (terminal 도달 보장)
+    assert client.get(f"/runs/{b1['run_id']}").json()["status"] == "COMPLETED"
     r = client.post(f"/runs/{b1['run_id']}/approve")
     assert r.status_code == 409
     r = client.post(f"/runs/{b1['run_id']}/reject")
@@ -125,6 +144,8 @@ def test_ac8_terminal_states_block_reuse(client, monkeypatch):
     monkeypatch.setattr(delivery, "deliver", _boom)
     _, b3 = _generate(client, _VALID_INPUT)
     client.post(f"/runs/{b3['run_id']}/approve")
+    # background 에서 FAILED 로 전이됐는지 확인
+    assert client.get(f"/runs/{b3['run_id']}").json()["status"] == "FAILED"
     r = client.post(f"/runs/{b3['run_id']}/approve")
     assert r.status_code == 409
     monkeypatch.undo()
@@ -147,6 +168,8 @@ def test_ac10_status_values_are_from_fixed_set(client):
     assert b1["status"] in allowed
     r = client.post(f"/runs/{b1['run_id']}/approve")
     assert r.json()["status"] in allowed
+    final = client.get(f"/runs/{b1['run_id']}").json()
+    assert final["status"] in allowed
 
 
 def test_generate_empty_input_yields_failed(client):

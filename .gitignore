@@ -136,6 +136,14 @@ momentum-etf/
 venv/
 .venv/
 
+# Next.js / npm
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
+
 state/cache/etf_history_cache.json
 state/portfolio/latest/portfolio_latest.json
 state/params/**/*.json
