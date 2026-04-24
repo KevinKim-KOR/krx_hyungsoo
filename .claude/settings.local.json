@@ -84,7 +84,24 @@
       "Bash(.venv/Scripts/python -c ':*)",
       "Bash(awk '$4 >= 512000 {print $4, $5}')",
       "Bash(git commit -m ' *)",
-      "Bash(awk '{print substr\\($0,1,2\\)}')"
+      "Bash(awk '{print substr\\($0,1,2\\)}')",
+      "Bash(pip list *)",
+      "Bash(.venv/Scripts/python.exe --version)",
+      "Bash(.venv/Scripts/pip.exe list *)",
+      "Bash(grep -n \"^state/\" .gitignore)",
+      "Bash(grep -c \"^state/runs\" .gitignore)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_poc1_loop.py -v)",
+      "Bash(.venv/Scripts/black.exe app/ tests/ ui_app.py)",
+      "Bash(.venv/Scripts/flake8.exe app/ tests/ ui_app.py --max-line-length=100)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_poc1_loop.py -q)",
+      "Bash(npm --version)",
+      "Bash(npx --version)",
+      "Bash(git mv *)",
+      "Bash(.venv/Scripts/black.exe --check app/ tests/ ui_app.py)",
+      "Bash(echo \"black_exit=$?\")",
+      "Bash(.venv/Scripts/flake8.exe app/ tests/ ui_app.py)",
+      "Bash(echo \"flake8_exit=$?\")"
     ]
   }
 }
