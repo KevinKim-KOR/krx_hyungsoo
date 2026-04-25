@@ -1,18 +1,26 @@
-"""POC 1단계 FastAPI.
+"""POC 1단계 FastAPI (Step 3 OCI 실연결 구조).
 
 엔드포인트:
 - POST /runs/generate        : 새 run_id 로 초안 생성
 - GET  /runs                 : 모든 run 조회
-- GET  /runs/{run_id}        : 단일 run 조회
+- GET  /runs/{run_id}        : 단일 run 조회 + DELIVERING 인 경우
+                               OCI outbox 1회 reconciliation 시도
 - POST /runs/{run_id}/reject : PENDING_APPROVAL -> REJECTED
 - POST /runs/{run_id}/approve: PENDING_APPROVAL -> DELIVERING 즉시 진입 후
-                               실제 외부 전달은 BackgroundTasks 로 위임.
-                               최종 상태(COMPLETED / FAILED) 는 후속
-                               GET /runs/{run_id} 에서 확인한다.
+                               BackgroundTasks 가 SCP 로 OCI inbox 에 큐잉
 
-APPROVED 상태는 없다. Approve 응답은 DELIVERING 스냅샷을 반환하며,
-백그라운드 워커(_execute_delivery) 가 delivery.deliver() 를 실행한 뒤
-결과에 따라 run.status 를 COMPLETED 또는 FAILED 로 저장한다.
+상태 결정 책임 분리:
+- _execute_delivery (BackgroundTasks):
+  · SCP 성공 → status 그대로 DELIVERING 유지 (큐잉만 완료)
+  · SCP 실패 / DeliveryConfigError → FAILED 즉시 종결
+- _try_reconcile_with_oci_outbox (GET /runs/{run_id} 시점):
+  · OCI consumer (poc1_consume_inbox.sh) 가 outbox 에 쓴 결과 파일을
+    SSH cat 으로 1회 조회. status 가 COMPLETED / FAILED 이면 store 갱신
+  · DeliveryConfigError → FAILED 마킹 (DELIVERING 영구 고정 차단)
+
+즉 동기 응답으로 COMPLETED 까지 가지 않는다. 최종 상태는 OCI 측 처리 +
+프론트의 느린 polling(12s) 또는 수동 새로고침을 통해 도달한다.
+APPROVED 상태는 존재하지 않는다.
 """
 
 from __future__ import annotations
@@ -86,12 +94,65 @@ def get_runs() -> list[RunResponse]:
     return [RunResponse.from_run(r) for r in store.list_runs()]
 
 
+def _try_reconcile_with_oci_outbox(run: Run) -> Run:
+    """DELIVERING 상태인 run 에 한해 OCI outbox 결과를 1회 조회하여 갱신.
+
+    설계자 결정: 별도 worker/scheduler 를 만들지 않고, 프론트의 느린 polling
+    이 GET /runs/{run_id} 를 호출할 때마다 동기적으로 SSH cat 1회 시도.
+    outbox 파일이 있으면 store 갱신, 없으면 DELIVERING 유지.
+
+    outbox 파일 규약(소비자 poc1_consume_inbox.sh 가 작성):
+    {
+      "run_id": "...",
+      "status": "COMPLETED" | "FAILED",
+      "processed_at": "ISO-8601",
+      "telegram_message_id": "...optional..."
+    }
+    """
+    if run.status != "DELIVERING":
+        return run
+    try:
+        outbox = delivery.fetch_outbox_result(run.run_id)
+    except delivery.DeliveryConfigError as e:
+        # 환경변수 누락은 silent swallow 금지 (Codex B-1).
+        # DELIVERING 영구 고정을 막기 위해 즉시 FAILED 로 종결한다.
+        # 사용자가 .env 를 설정하지 않은 상태라면 동일한 누락으로 _execute_delivery
+        # 단계에서도 FAILED 가 됐어야 정상이며, 여기 도달했다는 것은 SCP 시점에는
+        # 환경변수가 있었으나 이후 사라진 비정상 상태이므로 명시적 실패 처리.
+        logger.error(
+            f"[reconcile] OCI 환경변수 누락으로 outbox 조회 불가 → FAILED "
+            f"run_id={run.run_id}: {e}"
+        )
+        run.status = "FAILED"
+        store.save(run)
+        return run
+    if not outbox:
+        return run
+    new_status = outbox.get("status")
+    if new_status not in ("COMPLETED", "FAILED"):
+        logger.warning(
+            f"outbox status 가 비정상: run_id={run.run_id} status={new_status!r}. "
+            "DELIVERING 유지."
+        )
+        return run
+    try:
+        validate_transition(run.status, new_status)
+    except InvalidTransition as e:
+        logger.warning(f"outbox 결과 무시 (전이 위반): {e}")
+        return run
+    run.status = new_status
+    store.save(run)
+    logger.info(f"[reconcile] OCI outbox 결과 반영 run_id={run.run_id} → {new_status}")
+    return run
+
+
 @app.get("/runs/{run_id}", response_model=RunResponse)
 def get_run(run_id: str) -> RunResponse:
     try:
         run = store.load(run_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"run_id not found: {run_id}")
+    run = _try_reconcile_with_oci_outbox(run)
     return RunResponse.from_run(run)
 
 
@@ -111,10 +172,17 @@ def post_reject(run_id: str) -> RunResponse:
 
 
 def _execute_delivery(run_id: str) -> None:
-    """BackgroundTasks 에서 실행되는 전달 워커.
+    """BackgroundTasks 에서 실행되는 전달 워커 (POC1 Step 3 OCI 연결 구조).
 
-    응답은 이미 클라이언트에 전송된 뒤이므로 이 함수는 반환값을 쓰지 않는다.
-    실패/성공은 store 에 기록해 다음 GET /runs/{run_id} 에서 노출된다.
+    deliver() 의 책임은 'OCI inbox 에 SCP 로 artifact 를 큐잉' 까지이며,
+    그것만으로는 최종 COMPLETED 가 아니다. 실제 처리(Telegram 발송) 는 OCI
+    측 daily_ops.sh → poc1_consume_inbox.sh 가 수행하고 그 결과를 outbox 에
+    파일로 남긴다. 로컬 GET /runs/{run_id} 가 그 outbox 를 조회해
+    COMPLETED 또는 FAILED 로 reconciliation 한다.
+
+    따라서 이 함수의 분기는:
+    - SCP 성공 → status 그대로(DELIVERING). store.save 만 (asof 는 변경 없음)
+    - SCP 실패(또는 환경 설정 누락) → status FAILED 로 즉시 종결
     """
     try:
         run = store.load(run_id)
@@ -122,7 +190,6 @@ def _execute_delivery(run_id: str) -> None:
         logger.error(f"background delivery: run_id 조회 실패 {run_id}")
         return
     if run.status != "DELIVERING":
-        # 외부 개입이나 드리프트로 DELIVERING 이 아닌 경우 안전하게 종료
         logger.warning(
             f"background delivery: 상태가 DELIVERING 이 아님 "
             f"(run_id={run_id}, status={run.status}). 전달 건너뜀."
@@ -130,11 +197,20 @@ def _execute_delivery(run_id: str) -> None:
         return
     try:
         delivery.deliver(run)
-        run.status = "COMPLETED"
+        # SCP 성공 = OCI inbox 에 큐잉 완료. 최종 결과는 outbox reconciliation 에서.
+        logger.info(
+            f"background delivery: SCP 큐잉 완료 (run_id={run_id}). DELIVERING 유지."
+        )
     except delivery.DeliveryError as e:
         logger.error(f"delivery 실패 run_id={run.run_id}: {e}")
         run.status = "FAILED"
-    store.save(run)
+        store.save(run)
+    except delivery.DeliveryConfigError as e:
+        # 환경변수 미설정 — 검증 환경에서는 stub 으로 우회되지만,
+        # 실 운영에서 누락되면 즉시 FAILED 로 마킹해야 사용자가 알 수 있음.
+        logger.error(f"delivery 환경 설정 누락 run_id={run.run_id}: {e}")
+        run.status = "FAILED"
+        store.save(run)
 
 
 @app.post("/runs/{run_id}/approve", response_model=RunResponse)

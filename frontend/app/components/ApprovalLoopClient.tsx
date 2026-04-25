@@ -18,8 +18,10 @@ import {
   type RunStatus,
 } from "@/lib/api";
 
-const POLL_INTERVAL_MS = 1500;
-const MAX_POLL_TICKS = 30; // 약 45초. 넘으면 polling 중단 (BACKLOG 로 추적)
+// Step3: OCI crontab 비동기 소비 구조에 맞춘 느린 polling.
+// 권고 주기 10~15초. 12초 + 최대 30회 ≈ 6분 감시 후 자동 중단(수동 새로고침 안내).
+const POLL_INTERVAL_MS = 12000;
+const MAX_POLL_TICKS = 30;
 
 // 사용자가 직접 입력한 draft 본문을 서버로 넘기기 위한 가벼운 파싱 도우미.
 // sample_draft 레이어에서 필수 키 검증이 이뤄지므로 이곳은 단순 JSON 파싱만 담당.
