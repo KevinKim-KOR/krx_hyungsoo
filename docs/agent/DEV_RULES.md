@@ -47,6 +47,11 @@
 4. (필요 시) Full Backtest 재실행 (산출물 재생성)
 5. 재생성된 산출물에서 변경 필드 실존 여부 grep/읽기 확인
 6. 지시문 모든 항목 1:1 대조
+7. **git 상태 확인** (필수)
+   - `git status --short --untracked-files=all` 실행
+   - 보고서의 "변경 파일 목록"이 git 상태와 일치 확인
+   - 신규 파일이 untracked 상태면 보고서에 명시
+   - 배포 경로(deploy/, OCI 동기화 경로 등)에 만든 파일이 git-tracked 상태인지 확인
 
 원칙:
 - 코드 수정만으로 "완료" 보고 금지
