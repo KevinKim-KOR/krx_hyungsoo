@@ -32,6 +32,9 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+# `app.config` import 자체가 .env 자동 로드를 트리거한다.
+# 환경변수에 의존하는 어떤 모듈보다 먼저 import 되어야 한다.
+from app import config  # noqa: F401  # side-effect import (load_dotenv)
 from app import delivery, draft, store
 from app.models import Run
 from app.state import InvalidTransition, validate_transition

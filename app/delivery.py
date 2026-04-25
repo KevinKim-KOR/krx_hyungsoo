@@ -14,7 +14,14 @@
 환경변수 (필수):
 - OCI_SSH_TARGET   : ubuntu@<host> 또는 ~/.ssh/config 의 alias
 - OCI_REMOTE_INBOX : OCI 측 inbox 경로 (예: /home/ubuntu/krx_hyungsoo/state/poc1_inbox)
-누락 시 즉시 명확한 에러 (DEV_RULES 암묵 fallback 금지).
+- OCI_REMOTE_OUTBOX: OCI 측 outbox 경로
+
+환경변수 (선택):
+- OCI_SSH_KEY_PATH : SSH 개인키 절대경로. 미설정 시 OpenSSH 기본 키 검색
+                     (~/.ssh/id_rsa, id_ed25519 등) 사용
+
+환경변수는 app.config 의 require_env / optional_env 표준 진입점을 통해
+조회한다 (.env 자동 로드 + 누락 시 fail-loud).
 
 테스트는 이 모듈의 deliver / scp_upload / fetch_outbox_result 를
 monkeypatch 하여 실 SSH 호출을 차단한다.
@@ -24,7 +31,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import shlex
 import subprocess
@@ -32,6 +38,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app import store
+from app.config import EnvConfigError, optional_env, require_env
 from app.models import Run
 
 logger = logging.getLogger(__name__)
@@ -41,34 +48,36 @@ class DeliveryError(Exception):
     pass
 
 
-class DeliveryConfigError(Exception):
-    pass
+# 표준 환경변수 누락 예외와 별칭. 기존 import 호환을 위해 유지.
+DeliveryConfigError = EnvConfigError
 
 
 SCP_TIMEOUT_SEC = 15
 SSH_TIMEOUT_SEC = 10
 
 
-def _require_env(key: str) -> str:
-    value = os.environ.get(key)
-    if not value:
-        raise DeliveryConfigError(
-            f"환경변수 {key} 가 설정되어야 합니다 (.env 확인). "
-            "암묵 fallback 금지 — 누락은 즉시 실패 처리합니다."
-        )
-    return value
-
-
 def _ssh_target() -> str:
-    return _require_env("OCI_SSH_TARGET")
+    return require_env("OCI_SSH_TARGET")
 
 
 def _remote_inbox() -> str:
-    return _require_env("OCI_REMOTE_INBOX")
+    return require_env("OCI_REMOTE_INBOX")
 
 
 def _remote_outbox() -> str:
-    return _require_env("OCI_REMOTE_OUTBOX")
+    return require_env("OCI_REMOTE_OUTBOX")
+
+
+def _ssh_key_opts() -> list[str]:
+    """OCI_SSH_KEY_PATH 가 설정된 경우 ssh/scp 의 -i 옵션을 구성.
+
+    미설정이면 빈 리스트 → OpenSSH 가 기본 키를 자동 검색.
+    """
+    key_path = optional_env("OCI_SSH_KEY_PATH", default=None)
+    if not key_path:
+        return []
+    # IdentitiesOnly=yes: 지정한 키만 사용하여 인증 시도. 다른 키로의 fallback 차단.
+    return ["-i", key_path, "-o", "IdentitiesOnly=yes"]
 
 
 def _scp_upload(local_path: str, remote_uri: str) -> None:
@@ -79,6 +88,7 @@ def _scp_upload(local_path: str, remote_uri: str) -> None:
         "BatchMode=yes",
         "-o",
         f"ConnectTimeout={SCP_TIMEOUT_SEC}",
+        *_ssh_key_opts(),
         local_path,
         remote_uri,
     ]
@@ -162,6 +172,7 @@ def fetch_outbox_result(run_id: str) -> Optional[dict]:
         "BatchMode=yes",
         "-o",
         f"ConnectTimeout={SSH_TIMEOUT_SEC}",
+        *_ssh_key_opts(),
         target,
         f"test -f {quoted_path} && cat {quoted_path} || echo __NOFILE__",
     ]
