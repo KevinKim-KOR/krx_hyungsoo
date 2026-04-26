@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app import api, delivery, store
+from app import api, delivery, holdings as holdings_module, store
 from app.models import TERMINAL_STATES
 from app.state import InvalidTransition, validate_transition
 
@@ -32,6 +32,13 @@ def _isolated_store(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "HANDOFF_STAGING_DIR", Path(tmp_path) / "handoff")
     monkeypatch.setattr(
         store, "HANDOFF_PROCESSED_DIR", Path(tmp_path) / "handoff_processed"
+    )
+    # POC2 Step 1: holdings 저장 경로도 격리
+    monkeypatch.setattr(holdings_module, "HOLDINGS_DIR", Path(tmp_path) / "holdings")
+    monkeypatch.setattr(
+        holdings_module,
+        "HOLDINGS_FILE",
+        Path(tmp_path) / "holdings" / "holdings_latest.json",
     )
 
 
@@ -295,3 +302,158 @@ def test_handoff_artifact_writes_minimal_contract(tmp_path, monkeypatch):
     assert set(data.keys()) == {"run_id", "asof", "approved_at", "draft_payload"}
     assert data["run_id"] == "run_test_001"
     assert data["draft_payload"]["title"] == "T"
+
+
+# ─── POC2 Step 1: holdings 기반 draft 생성 ─────────────────────────────
+
+_VALID_HOLDINGS = [
+    {"ticker": "069500", "name": "KODEX 200", "quantity": 10, "avg_buy_price": 38500},
+    {"ticker": "091160", "quantity": 5, "avg_buy_price": 22000},  # name 생략
+]
+
+
+def test_holdings_put_get_roundtrip(client):
+    """PUT /holdings 후 GET /holdings 가 동일 데이터 반환 + 서버 재시작 후에도 유지."""
+    r = client.put("/holdings", json={"holdings": _VALID_HOLDINGS})
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["holdings"]) == 2
+    assert body["holdings"][0]["ticker"] == "069500"
+    assert body["holdings"][1]["name"] is None  # 미입력은 None 으로 정규화
+
+    # 별도 GET 으로도 동일하게 조회 (= 서버 재시작 시뮬레이션: 메모리 의존 없음)
+    r2 = client.get("/holdings")
+    assert r2.status_code == 200
+    body2 = r2.json()
+    assert len(body2["holdings"]) == 2
+    assert body2["holdings"][0]["quantity"] == 10
+    assert body2["holdings"][0]["avg_buy_price"] == 38500
+
+
+def test_holdings_persists_across_new_client(client):
+    """동일 tmp_path 에서 새 TestClient 를 만들어도 파일에서 다시 로드됨."""
+    client.put("/holdings", json={"holdings": _VALID_HOLDINGS})
+    fresh = TestClient(api.app)
+    r = fresh.get("/holdings")
+    assert r.status_code == 200
+    assert len(r.json()["holdings"]) == 2
+
+
+def test_holdings_empty_get_returns_empty(client):
+    r = client.get("/holdings")
+    assert r.status_code == 200
+    assert r.json() == {"holdings": []}
+
+
+def test_holdings_validation_blocks_run_creation_422(client):
+    """E항: 단순 입력 오류는 422 로 차단되고 run_id 가 만들어지지 않는다."""
+    # 빈 리스트
+    r = client.put("/holdings", json={"holdings": []})
+    assert r.status_code == 422
+
+    # quantity 음수
+    r = client.put(
+        "/holdings",
+        json={"holdings": [{"ticker": "069500", "quantity": -1, "avg_buy_price": 100}]},
+    )
+    assert r.status_code == 422
+
+    # ticker 빈 문자열
+    r = client.put(
+        "/holdings",
+        json={"holdings": [{"ticker": "  ", "quantity": 1, "avg_buy_price": 100}]},
+    )
+    assert r.status_code == 422
+
+    # ticker 중복
+    r = client.put(
+        "/holdings",
+        json={
+            "holdings": [
+                {"ticker": "069500", "quantity": 1, "avg_buy_price": 100},
+                {"ticker": "069500", "quantity": 2, "avg_buy_price": 200},
+            ]
+        },
+    )
+    assert r.status_code == 422
+
+    # 422 응답 후에도 runs 가 생성되지 않았는지 확인
+    runs = client.get("/runs").json()
+    assert runs == []
+
+
+def test_generate_from_empty_holdings_blocks_run_creation_422(client):
+    """holdings 가 비어있을 때 generate-from-holdings 는 422. FAILED run 만들지 않음."""
+    # 빈 상태에서 호출
+    r = client.post("/runs/generate-from-holdings")
+    assert r.status_code == 422
+    runs = client.get("/runs").json()
+    assert runs == []
+
+
+def test_generate_from_holdings_creates_pending_approval(client):
+    """holdings 기반 draft 가 PENDING_APPROVAL 로 생성되고 payload 가 운영 계약을 만족."""
+    client.put("/holdings", json={"holdings": _VALID_HOLDINGS})
+    r = client.post("/runs/generate-from-holdings")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "PENDING_APPROVAL"
+    assert body["run_id"].startswith("run_")
+
+    payload = body["draft_payload"]
+    assert payload is not None
+    assert "title" in payload and "보유 종목 기반" in payload["title"]
+    assert "asof" in payload
+    assert "note" in payload
+    recs = payload["recommendations"]
+    assert isinstance(recs, list) and len(recs) == 2
+
+    # 항목 필드 6종 확인 (score 는 없어야 함, action 은 모두 HOLD)
+    for r_item in recs:
+        assert set(r_item.keys()) == {
+            "ticker",
+            "name",
+            "quantity",
+            "avg_buy_price",
+            "invested_amount",
+            "buy_weight_pct",
+            "action",
+            "reason",
+        }
+        assert r_item["action"] == "HOLD"
+        assert "score" not in r_item
+
+    # 매입금액 / 비중 자동 계산 검증
+    expected_invested_0 = 10 * 38500  # 385000
+    expected_invested_1 = 5 * 22000  # 110000
+    expected_total = expected_invested_0 + expected_invested_1  # 495000
+    assert recs[0]["invested_amount"] == expected_invested_0
+    assert recs[1]["invested_amount"] == expected_invested_1
+    assert recs[0]["buy_weight_pct"] == round(
+        expected_invested_0 / expected_total * 100, 2
+    )
+
+    # 종목명 미입력은 ticker 로 표시
+    assert recs[0]["name"] == "KODEX 200"
+    assert recs[1]["name"] == "091160"
+
+
+def test_generate_from_holdings_then_approval_loop_works(client):
+    """holdings 기반 draft 가 기존 승인 루프를 그대로 통과한다 (Approve 기존 경로 재사용)."""
+    client.put("/holdings", json={"holdings": _VALID_HOLDINGS})
+    r = client.post("/runs/generate-from-holdings")
+    run_id = r.json()["run_id"]
+
+    # Approve → DELIVERING (기존 Step 3 BackgroundTasks 흐름 재사용)
+    r2 = client.post(f"/runs/{run_id}/approve")
+    assert r2.status_code == 200
+    assert r2.json()["status"] == "DELIVERING"
+
+
+def test_holdings_validation_does_not_create_failed_run(client):
+    """잘못된 holdings 로 generate 시도해도 FAILED run 이 만들어지지 않는다."""
+    # 검증 통과하는 holdings 저장 안 한 상태에서 generate 호출 → 422
+    r = client.post("/runs/generate-from-holdings")
+    assert r.status_code == 422
+    # store 에 어떤 run 도 만들어지지 않음
+    assert client.get("/runs").json() == []

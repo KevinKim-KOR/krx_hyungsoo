@@ -156,6 +156,7 @@ state/runtime/*.json
 state/runs/*.json
 state/poc1_handoff/*.json
 state/poc1_handoff_processed/*.json
+state/holdings/holdings_latest.json
 
 # Reports (All Runtime Generated)
 reports/**/*.json

@@ -35,7 +35,8 @@ from pydantic import BaseModel, Field
 # `app.config` import 자체가 .env 자동 로드를 트리거한다.
 # 환경변수에 의존하는 어떤 모듈보다 먼저 import 되어야 한다.
 from app import config  # noqa: F401  # side-effect import (load_dotenv)
-from app import delivery, draft, store
+from app import delivery, draft, holdings as holdings_module, store
+from app.holdings import HoldingsValidationError
 from app.models import Run
 from app.state import InvalidTransition, validate_transition
 
@@ -85,10 +86,93 @@ class RunResponse(BaseModel):
 
 @app.post("/runs/generate", response_model=RunResponse)
 def post_generate(req: GenerateDraftRequest) -> RunResponse:
-    # 원 지시: GenerateDraft 실패 → FAILED 단일 규칙.
+    # 원 지시(POC1): GenerateDraft 실패 → FAILED 단일 규칙.
     # 빈 dict / 필수 키 누락 등 모든 draft 생성 실패는 draft.generate_draft
     # 내부에서 FAILED run 으로 저장되며 200 응답으로 돌려준다.
+    # POC2 Step 1 부터 이 엔드포인트는 샘플 입력(개발/테스트용) 전용.
+    # 운영 흐름은 POST /runs/generate-from-holdings 사용.
     run = draft.generate_draft(req.input_data)
+    return RunResponse.from_run(run)
+
+
+# ─── POC2 Step 1: holdings ─────────────────────────────────────────────
+
+
+class HoldingItem(BaseModel):
+    ticker: str
+    quantity: float
+    avg_buy_price: float
+    name: Optional[str] = None
+
+
+class HoldingsPayload(BaseModel):
+    holdings: list[HoldingItem]
+
+
+@app.get("/holdings", response_model=HoldingsPayload)
+def get_holdings() -> HoldingsPayload:
+    """저장된 holdings 조회. 파일 없으면 빈 리스트 반환."""
+    try:
+        loaded = holdings_module.load()
+    except HoldingsValidationError as e:
+        # 저장된 파일이 손상된 경우. 사용자에게 명시적으로 알림.
+        raise HTTPException(status_code=500, detail=f"holdings 저장 파일 손상: {e}")
+    return HoldingsPayload(
+        holdings=[
+            HoldingItem(
+                ticker=h.ticker,
+                quantity=h.quantity,
+                avg_buy_price=h.avg_buy_price,
+                name=h.name,
+            )
+            for h in loaded
+        ]
+    )
+
+
+@app.put("/holdings", response_model=HoldingsPayload)
+def put_holdings(payload: HoldingsPayload) -> HoldingsPayload:
+    """holdings 저장. 검증 실패 시 422 (run 생성 안 함).
+
+    POC2 Step 1 E항: 단순 입력 오류로 run_id 를 만들거나 FAILED run 을
+    저장하지 않는다. validation error 는 422 로 즉시 반환.
+    """
+    raw = [item.model_dump() for item in payload.holdings]
+    try:
+        validated = holdings_module.validate_holdings(raw)
+    except HoldingsValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    holdings_module.save(validated)
+    return HoldingsPayload(
+        holdings=[
+            HoldingItem(
+                ticker=h.ticker,
+                quantity=h.quantity,
+                avg_buy_price=h.avg_buy_price,
+                name=h.name,
+            )
+            for h in validated
+        ]
+    )
+
+
+@app.post("/runs/generate-from-holdings", response_model=RunResponse)
+def post_generate_from_holdings() -> RunResponse:
+    """저장된 holdings 기반 draft 생성 (POC2 Step 1 운영 진입점).
+
+    holdings 가 비어있거나 손상되면 422 — run 생성 차단 (FAILED run 만들지 않음).
+    이후는 기존 승인 루프(PENDING_APPROVAL / Approve / Reject) 가 동일하게 처리.
+    """
+    try:
+        loaded = holdings_module.load()
+    except HoldingsValidationError as e:
+        raise HTTPException(status_code=500, detail=f"holdings 저장 파일 손상: {e}")
+    if not loaded:
+        raise HTTPException(
+            status_code=422,
+            detail="holdings 가 비어 있습니다. 먼저 보유 종목을 입력 후 저장해 주세요.",
+        )
+    run = draft.generate_draft_from_holdings(loaded)
     return RunResponse.from_run(run)
 
 

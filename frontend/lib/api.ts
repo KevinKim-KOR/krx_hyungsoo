@@ -47,7 +47,7 @@ function apiBase(): string {
 const DEFAULT_TIMEOUT_MS = 10000;
 
 async function request<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PUT",
   path: string,
   body?: unknown,
   timeoutMs: number = DEFAULT_TIMEOUT_MS
@@ -117,4 +117,29 @@ export function fetchRun(run_id: string): Promise<Run> {
 
 export function isTerminal(status: RunStatus): boolean {
   return TERMINAL_STATES.includes(status);
+}
+
+// ─── POC2 Step 1: holdings ───────────────────────────────────────────
+
+export interface HoldingItem {
+  ticker: string;
+  quantity: number;
+  avg_buy_price: number;
+  name?: string | null;
+}
+
+export interface HoldingsPayload {
+  holdings: HoldingItem[];
+}
+
+export function fetchHoldings(): Promise<HoldingsPayload> {
+  return request<HoldingsPayload>("GET", "/holdings");
+}
+
+export function saveHoldings(payload: HoldingsPayload): Promise<HoldingsPayload> {
+  return request<HoldingsPayload>("PUT", "/holdings", payload);
+}
+
+export function generateDraftFromHoldings(): Promise<Run> {
+  return request<Run>("POST", "/runs/generate-from-holdings");
 }

@@ -233,3 +233,60 @@ ul.reco-list li {
   font-size: 12px;
   margin-top: 6px;
 }
+
+table.holdings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+table.holdings-table th,
+table.holdings-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+table.holdings-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+table.holdings-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+table.holdings-table tfoot td {
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+  padding-top: 8px;
+}
+
+table.holdings-table input[type="text"],
+table.holdings-table input[type="number"] {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+table.holdings-table button {
+  padding: 4px 10px;
+  font-size: 14px;
+}
+
+details.card > summary {
+  list-style: none;
+}
+
+details.card > summary::before {
+  content: "▶ ";
+  display: inline-block;
+  margin-right: 4px;
+}
+
+details.card[open] > summary::before {
+  content: "▼ ";
+}
