@@ -1,7 +1,7 @@
 # Phase 2 POC — 승인 루프
 
 AI와 함께 투자 방향을 찾기 위한 최소 승인 루프 구현.
-POC1(승인 루프) → POC1 Step 3(실 OCI 전달 + Telegram) → POC2 Step 1(holdings 진입점 전환) 까지 완료.
+POC1(승인 루프) → POC1 Step 3(실 OCI 전달 + Telegram) → POC2 Step 1(holdings 진입점 전환) → POC2 Step 1A(raw JSON 표시 제거 + 사람이 읽는 렌더링) 까지 완료.
 
 ## 범위
 
@@ -68,11 +68,12 @@ npm run dev   # http://localhost:3000
 ### 백엔드 (`app/`)
 - `models.py` — 데이터 계약 (run_id / asof / status / draft_payload)
 - `state.py` — 상태 전이 규칙
-- `store.py` — JSON 파일 저장소 (`state/runs/*.json`, `state/poc1_handoff/*`)
+- `store.py` — JSON 파일 저장소 (`state/runs/*.json`, `state/poc1_handoff/*`). handoff artifact 5필드 (run_id / asof / approved_at / draft_payload / message_text)
 - `holdings.py` — **POC2 Step 1**. 보유 종목 SSOT (`state/holdings/holdings_latest.json`)
 - `draft.py` — `generate_draft_from_holdings` (운영) / `generate_draft` (샘플)
 - `sample_draft.py` — 샘플용 stub payload 빌더
-- `delivery.py` — SCP/SSH 기반 OCI 전달 + outbox 조회
+- `draft_message.py` — **POC2 Step 1A**. holdings draft → 사람이 읽는 message_text 빌더 (Telegram 본문)
+- `delivery.py` — SCP/SSH 기반 OCI 전달 + outbox 조회 + holdings 식별 시 message_text 자동 첨부
 - `config.py` — `.env` 자동 로드 + `require_env`/`optional_env` 표준 진입점
 - `api.py` — FastAPI 엔드포인트 + CORS (localhost:3000) + holdings 엔드포인트
 
@@ -120,6 +121,32 @@ PENDING_APPROVAL ── Reject  ──▶ REJECTED   (terminal)
 APPROVED 상태는 존재하지 않는다. Approve 이벤트는 즉시 DELIVERING 으로 전이한다.
 holdings 입력 검증 실패는 422 로 차단되며 run 자체가 만들어지지 않는다 (FAILED 와 구분).
 
+## Telegram 메시지 (POC2 Step 1A)
+
+- 메시지 문자열 생성 책임 = **로컬 백엔드** (`app/draft_message.py`)
+- handoff artifact 의 top-level `message_text` 키로 OCI 에 전달
+- OCI consumer (`deploy/oci/poc1_consume_inbox.sh`) 는 message_text 를 그대로 발송 (JSON 직접 파싱 안 함)
+- holdings run 에서 message_text 누락 = `CONTRACT_ERROR` → FAILED outbox (raw JSON 대체 발송 금지)
+- 평문 / 한국어 라벨 / 콤마·% 포맷 / payload 에 없는 필드는 줄 자체 생략
+
+예시 메시지:
+```
+✅ POC2 holdings 승인 처리
+run_id: run_20260426T134657_0d09feec
+title: 보유 종목 기반 초안 (2026-04-26)
+
+holdings 항목 2건 기준 자동 생성. ...
+
+보유 종목:
+1. RISE 미국은행TOP10 (0013P0)
+   - 수량: 5
+   - 평균 매입단가: 10,050원
+   - 매입금액: 50,250원
+   - 매입비중: 47.6%
+   - 판단: HOLD
+   - 사유: 보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)
+```
+
 ## 상태 갱신 정책 (POC1 Step 3 + POC2 Step 1)
 
 - DELIVERING 상태에서만 제한적 polling (12초 간격, 최대 약 6분)
@@ -146,6 +173,7 @@ holdings 입력 검증 실패는 422 로 차단되며 run 자체가 만들어지
 - [PROJECT_ORIGIN_INTENT.md](./PROJECT_ORIGIN_INTENT.md) — 불변 앵커
 - [ASSUMPTIONS.md](./ASSUMPTIONS.md) — open questions
 - [KILL_SWITCHES.md](./KILL_SWITCHES.md) — 중단 조건
-- [backlog/BACKLOG.md](./backlog/BACKLOG.md) — deferred 항목 (현재 23건 누적)
+- [backlog/BACKLOG.md](./backlog/BACKLOG.md) — deferred 항목 (현재 30건 누적)
 - [MASTER_PLAN.md](./MASTER_PLAN.md) — 전체 계획
-- [handoff/POC1_Step3_close_and_POC2_Step1_handoff.md](./handoff/POC1_Step3_close_and_POC2_Step1_handoff.md) — 가장 최근 handoff
+- [handoff/POC1_Step3_close_and_POC2_Step1_handoff.md](./handoff/POC1_Step3_close_and_POC2_Step1_handoff.md) — POC1 Step 3 ~ POC2 Step 1 통합 handoff
+- [handoff/POC2_Step1A_close.md](./handoff/POC2_Step1A_close.md) — POC2 Step 1A 종결 (가장 최근)
