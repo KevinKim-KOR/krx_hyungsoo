@@ -217,6 +217,14 @@ ul.reco-list li {
   border-radius: 6px;
   margin-bottom: 6px;
   font-size: 13px;
+  /* 긴 JSON 한 줄이 카드 폭을 넘어가지 않게 wrap. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+ul.reco-list li code {
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .summary-text {
