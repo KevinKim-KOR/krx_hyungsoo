@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from app.models import Run
 
@@ -51,13 +51,22 @@ def list_runs() -> list[Run]:
     return runs
 
 
-def write_handoff_artifact(run: Run, approved_at: str) -> Path:
+def write_handoff_artifact(
+    run: Run,
+    approved_at: str,
+    message_text: Optional[str] = None,
+) -> Path:
     """SCP 전송 전 로컬 staging artifact 를 작성하고 경로를 돌려준다.
 
     설계자 결정 handoff 규약:
     - 필수: run_id / asof / draft_payload
     - 보조: approved_at
     - 1 run = 1 file. JSON 포맷.
+
+    POC2 Step 1A 추가:
+    - top-level `message_text` (선택). holdings 기반 draft 일 때 호출자가
+      사람이 읽는 문자열을 넘긴다. OCI consumer 가 이 값을 우선 사용해 발송.
+    - 비-holdings(샘플 등) 또는 호출자가 None 을 넘기면 키 자체를 생략.
     """
     HANDOFF_STAGING_DIR.mkdir(parents=True, exist_ok=True)
     artifact: dict[str, Any] = {
@@ -66,6 +75,8 @@ def write_handoff_artifact(run: Run, approved_at: str) -> Path:
         "approved_at": approved_at,
         "draft_payload": run.draft_payload,
     }
+    if message_text is not None:
+        artifact["message_text"] = message_text
     path = HANDOFF_STAGING_DIR / f"{run.run_id}.json"
     path.write_text(
         json.dumps(artifact, indent=2, ensure_ascii=False),

@@ -49,7 +49,13 @@ for artifact in "$INBOX_DIR"/*.json; do
 
     echo "$LOG_PREFIX [poc1] processing run_id=$run_id"
 
-    # JSON 파싱 (python3) — title/note/recommendations 추출
+    # POC2 Step 1A 책임 분리:
+    # - 사람이 읽는 메시지 본문(message_text)는 로컬 백엔드(FastAPI) 가 만든다.
+    # - OCI bash 는 message_text 를 그대로 사용해 발송만 담당한다.
+    # - holdings 기반 run 에서 message_text 가 누락되면 FAILED 로 처리한다
+    #   (raw JSON 으로 대체 발송 금지).
+    # - 비-holdings(샘플) run 등 message_text 가 없는 경우는 호환을 위해
+    #   기존 형식의 raw recommendations 메시지를 fallback 으로 사용한다.
     parsed=$(python3 - "$artifact" <<'PY'
 import json, sys
 path = sys.argv[1]
@@ -70,23 +76,51 @@ if missing:
     print("CONTRACT_ERROR")
     print("missing_keys=" + ",".join(missing))
     sys.exit(2)
-title = str(payload["title"])
-note = str(payload["note"])
+
+# Step 1A: holdings 식별 (recommendations 첫 항목에 quantity/avg_buy_price 가 있으면 holdings).
 recs = payload["recommendations"]
-try:
-    recs_str = json.dumps(recs, ensure_ascii=False)
-except Exception:
-    recs_str = str(recs)
-print("OK")
-print(title)
-print(note)
-print(recs_str)
+is_holdings = (
+    isinstance(recs, list)
+    and len(recs) > 0
+    and isinstance(recs[0], dict)
+    and ("quantity" in recs[0] or "avg_buy_price" in recs[0])
+)
+
+message_text = data.get("message_text")
+if is_holdings:
+    # holdings run 은 message_text 가 반드시 존재해야 한다.
+    if not isinstance(message_text, str) or not message_text.strip():
+        print("CONTRACT_ERROR")
+        print("holdings_run_missing_message_text")
+        sys.exit(2)
+    print("OK_MSG")
+    print(message_text)
+else:
+    # 비-holdings(샘플 등). message_text 있으면 그대로, 없으면 raw fallback.
+    if isinstance(message_text, str) and message_text.strip():
+        print("OK_MSG")
+        print(message_text)
+    else:
+        title = str(payload["title"])
+        note = str(payload["note"])
+        try:
+            recs_str = json.dumps(recs, ensure_ascii=False)
+        except Exception:
+            recs_str = str(recs)
+        fallback = (
+            "✅ POC1 승인 처리\n"
+            f"run_id: {data.get('run_id', '')}\n"
+            f"title: {title}\n"
+            f"note: {note}\n"
+            f"recommendations: {recs_str}"
+        )
+        print("OK_MSG")
+        print(fallback)
 PY
 )
     parse_status=$(echo "$parsed" | head -n 1)
-    if [ "$parse_status" != "OK" ]; then
-        # PARSE_ERROR (JSON 자체 깨짐) 또는 CONTRACT_ERROR (필수 키 누락)
-        # 어느 쪽이든 Telegram 발송 시도하지 않고 즉시 FAILED 로 종결.
+    if [ "$parse_status" != "OK_MSG" ]; then
+        # PARSE_ERROR / CONTRACT_ERROR — Telegram 발송 시도 없이 FAILED.
         reason_detail=$(echo "$parsed" | sed -n '2p')
         echo "$LOG_PREFIX [poc1] artifact 검증 실패 run_id=$run_id status=$parse_status detail=$reason_detail"
         cat > "$OUTBOX_DIR/$run_id.json" <<EOF
@@ -102,13 +136,8 @@ EOF
         continue
     fi
 
-    title=$(echo "$parsed" | sed -n '2p')
-    note=$(echo "$parsed" | sed -n '3p')
-    recs_str=$(echo "$parsed" | sed -n '4p')
-
-    # Telegram 메시지 작성
-    msg=$(printf "✅ POC1 승인 처리\nrun_id: %s\ntitle: %s\nnote: %s\nrecommendations: %s" \
-        "$run_id" "$title" "$note" "$recs_str")
+    # parsed 의 첫 줄(OK_MSG) 제외, 나머지 전체가 message_text.
+    msg=$(echo "$parsed" | tail -n +2)
 
     tg_message_id=""
     delivery_status="FAILED"

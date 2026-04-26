@@ -37,7 +37,7 @@ import subprocess
 from datetime import datetime, timezone
 from typing import Optional
 
-from app import store
+from app import draft_message, store
 from app.config import EnvConfigError, optional_env, require_env
 from app.models import Run
 
@@ -127,8 +127,18 @@ def deliver(run: Run) -> None:
     remote_dir = _remote_inbox()
     approved_at = datetime.now(timezone.utc).isoformat()
 
+    # POC2 Step 1A: holdings 기반 draft 라면 사람이 읽는 message_text 를
+    # 로컬에서 미리 생성하여 handoff artifact 에 포함한다. OCI consumer 는
+    # 이 값을 우선 사용해 발송하므로 OCI bash 가 recommendations JSON 을
+    # 파싱해 메시지를 조립하지 않는다.
+    message_text: Optional[str] = None
+    if draft_message.is_holdings_draft(run.draft_payload):
+        message_text = draft_message.build_message_text(
+            run.run_id, run.draft_payload or {}
+        )
+
     # 1) staging artifact 작성
-    local_path = store.write_handoff_artifact(run, approved_at)
+    local_path = store.write_handoff_artifact(run, approved_at, message_text)
     remote_uri = f"{target}:{remote_dir}/{run.run_id}.json"
 
     # 2) SCP 업로드

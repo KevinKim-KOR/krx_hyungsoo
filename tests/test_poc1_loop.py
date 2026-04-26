@@ -299,9 +299,193 @@ def test_handoff_artifact_writes_minimal_contract(tmp_path, monkeypatch):
     import json
 
     data = json.loads(path.read_text(encoding="utf-8"))
+    # POC2 Step 1A: message_text 가 None 일 때는 키 자체가 생략됨 (4 키 그대로)
     assert set(data.keys()) == {"run_id", "asof", "approved_at", "draft_payload"}
     assert data["run_id"] == "run_test_001"
     assert data["draft_payload"]["title"] == "T"
+
+
+def test_handoff_artifact_with_message_text_top_level(tmp_path, monkeypatch):
+    # POC2 Step 1A: message_text 를 넘기면 top-level 5번째 키로 들어간다.
+    monkeypatch.setattr(store, "HANDOFF_STAGING_DIR", tmp_path / "stg")
+    from app.models import Run
+
+    run = Run(
+        run_id="run_test_002",
+        asof="2026-04-25T00:00:00+00:00",
+        status="DELIVERING",
+        draft_payload={"title": "T", "note": "N", "recommendations": []},
+    )
+    msg = "✅ POC2 holdings 승인 처리\nrun_id: run_test_002"
+    path = store.write_handoff_artifact(run, "2026-04-25T00:00:01+00:00", msg)
+    import json
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert set(data.keys()) == {
+        "run_id",
+        "asof",
+        "approved_at",
+        "draft_payload",
+        "message_text",
+    }
+    assert data["message_text"] == msg
+
+
+# ─── POC2 Step 1A: draft_message ───────────────────────────────────────
+
+
+def test_draft_message_is_holdings_draft_detection():
+    from app import draft_message
+
+    # holdings 식별 (quantity 또는 avg_buy_price 가 첫 항목에 있으면 True)
+    assert draft_message.is_holdings_draft(
+        {"recommendations": [{"ticker": "069500", "quantity": 10}]}
+    )
+    assert draft_message.is_holdings_draft(
+        {"recommendations": [{"ticker": "069500", "avg_buy_price": 38500}]}
+    )
+    # 샘플 형태 (score 만)
+    assert not draft_message.is_holdings_draft(
+        {"recommendations": [{"ticker": "069500", "score": 0.5, "action": "HOLD"}]}
+    )
+    assert not draft_message.is_holdings_draft({"recommendations": []})
+    assert not draft_message.is_holdings_draft(None)
+    assert not draft_message.is_holdings_draft({})
+
+
+def test_draft_message_build_renders_readable_lines():
+    from app import draft_message
+
+    payload = {
+        "title": "보유 종목 기반 초안 (2026-04-25)",
+        "asof": "2026-04-25T00:00:00+00:00",
+        "note": "holdings 항목 2건 기준 자동 생성. 추천 판단 없이 보유 현황 기준입니다.",
+        "recommendations": [
+            {
+                "ticker": "0013P0",
+                "name": "RISE 미국은행TOP10",
+                "quantity": 5,
+                "avg_buy_price": 10050,
+                "invested_amount": 50250,
+                "buy_weight_pct": 47.6,
+                "action": "HOLD",
+                "reason": "보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)",
+            },
+            {
+                "ticker": "0015B0",
+                "quantity": 5,
+                "avg_buy_price": 11063,
+                "invested_amount": 55315,
+                "buy_weight_pct": 52.4,
+                "action": "HOLD",
+            },
+        ],
+    }
+    msg = draft_message.build_message_text("run_xxx", payload)
+
+    # raw JSON 노출 금지
+    assert "[{" not in msg
+    assert '"ticker"' not in msg
+    assert "recommendations:" not in msg
+
+    # 헤더 / run_id / 제목 / 보유 종목 섹션
+    assert "POC2 holdings 승인 처리" in msg
+    assert "run_id: run_xxx" in msg
+    assert "보유 종목 기반 초안" in msg
+    assert "보유 종목:" in msg
+
+    # 항목 헤더 + 한국어 라벨 + 콤마 / % 포맷
+    assert "1. RISE 미국은행TOP10 (0013P0)" in msg
+    assert "2. 0015B0" in msg  # name 없으면 ticker 단독
+    assert "수량: 5" in msg
+    assert "평균 매입단가: 10,050원" in msg
+    assert "매입금액: 50,250원" in msg
+    assert "매입비중: 47.6%" in msg
+    assert "판단: HOLD" in msg
+
+    # 두번째 항목은 reason 누락 — 해당 줄 자체가 생략되어야 함
+    assert msg.count("사유:") == 1
+
+
+def test_draft_message_omits_missing_fields():
+    from app import draft_message
+
+    # quantity 만 있는 최소 항목 — 다른 줄은 모두 생략
+    payload = {
+        "title": "최소",
+        "asof": "x",
+        "note": "",
+        "recommendations": [{"ticker": "069500", "quantity": 10}],
+    }
+    msg = draft_message.build_message_text("run_min", payload)
+    assert "수량: 10" in msg
+    # 미존재 필드는 'undefined' / 'None' 으로 나오지 않음
+    assert "undefined" not in msg
+    assert "None" not in msg
+    assert "평균 매입단가:" not in msg
+    assert "매입금액:" not in msg
+    assert "매입비중:" not in msg
+
+
+def test_draft_message_returns_empty_for_non_holdings():
+    from app import draft_message
+
+    # 샘플 형태(score) 는 빈 문자열 반환 (호출자가 raw fallback 결정)
+    payload = {
+        "title": "샘플",
+        "note": "",
+        "recommendations": [{"ticker": "069500", "score": 0.5, "action": "HOLD"}],
+    }
+    msg = draft_message.build_message_text("run_sample", payload)
+    assert msg == ""
+
+
+def test_handoff_artifact_message_text_for_holdings_payload(tmp_path, monkeypatch):
+    # delivery.deliver 가 holdings draft 를 보낼 때 사용하는 빌더 + 저장 흐름을
+    # 단위 단위로 검증. autouse 의 deliver-stub 영향을 받지 않도록 직접 호출.
+    from app import draft_message
+    from app.models import Run
+    import json as _json
+
+    monkeypatch.setattr(store, "HANDOFF_STAGING_DIR", tmp_path / "stg")
+
+    holdings_payload = {
+        "title": "보유 종목 기반 초안 (test)",
+        "asof": "2026-04-25T00:00:00+00:00",
+        "note": "test note",
+        "recommendations": [
+            {
+                "ticker": "069500",
+                "name": "KODEX 200",
+                "quantity": 10,
+                "avg_buy_price": 38500,
+                "invested_amount": 385000,
+                "buy_weight_pct": 100.0,
+                "action": "HOLD",
+                "reason": "보유 종목 현황",
+            }
+        ],
+    }
+    run = Run(
+        run_id="run_step1a_test",
+        asof="2026-04-25T00:00:00+00:00",
+        status="DELIVERING",
+        draft_payload=holdings_payload,
+    )
+    # delivery.deliver 의 핵심 분기 재현:
+    assert draft_message.is_holdings_draft(run.draft_payload)
+    msg = draft_message.build_message_text(run.run_id, run.draft_payload or {})
+    path = store.write_handoff_artifact(run, "2026-04-25T00:00:01+00:00", msg)
+
+    body = _json.loads(path.read_text(encoding="utf-8"))
+    assert "message_text" in body
+    assert "POC2 holdings 승인 처리" in body["message_text"]
+    assert "KODEX 200 (069500)" in body["message_text"]
+    # draft_payload 는 그대로 유지
+    assert body["draft_payload"] == holdings_payload
+    # raw recommendations JSON 이 message_text 에 포함되지 않음
+    assert "[{" not in body["message_text"]
+    assert '"ticker"' not in body["message_text"]
 
 
 # ─── POC2 Step 1: holdings 기반 draft 생성 ─────────────────────────────

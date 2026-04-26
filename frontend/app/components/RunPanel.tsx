@@ -49,6 +49,81 @@ function describeApiError(e: unknown): string {
   return `알 수 없는 오류: ${(e as Error).message}`;
 }
 
+// POC2 Step 1A — 사람이 읽는 형식으로 표시.
+// holdings 식별 기준은 백엔드 draft_message.is_holdings_draft 와 동일 규약:
+// recommendations 첫 항목에 quantity 또는 avg_buy_price 가 있으면 holdings.
+// 그 외(샘플 등)는 기존 raw JSON 한 줄 표시 유지.
+
+function isHoldingsRec(r: Record<string, unknown>): boolean {
+  return "quantity" in r || "avg_buy_price" in r;
+}
+
+function fmtMoney(v: unknown): string | null {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return null;
+  return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`;
+}
+
+function fmtQty(v: unknown): string | null {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return null;
+  return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 });
+}
+
+function fmtPct(v: unknown): string | null {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return null;
+  return `${n}%`;
+}
+
+function HoldingsCard({
+  idx,
+  item,
+}: {
+  idx: number;
+  item: Record<string, unknown>;
+}) {
+  // 헤더: "1. RISE 미국은행TOP10 (0013P0)" 또는 "1. 0013P0"
+  const ticker = typeof item.ticker === "string" ? item.ticker : "";
+  const name = typeof item.name === "string" && item.name ? item.name : "";
+  let header: string;
+  if (name && ticker && name !== ticker) header = `${idx}. ${name} (${ticker})`;
+  else if (ticker) header = `${idx}. ${ticker}`;
+  else if (name) header = `${idx}. ${name}`;
+  else header = `${idx}. (종목 미상)`;
+
+  // 존재하는 필드만 줄로 표시. payload 에 없으면 생략.
+  const lines: Array<[string, string]> = [];
+  const qty = fmtQty(item.quantity);
+  if (qty !== null) lines.push(["수량", qty]);
+  const avg = fmtMoney(item.avg_buy_price);
+  if (avg !== null) lines.push(["평균 매입단가", avg]);
+  const inv = fmtMoney(item.invested_amount);
+  if (inv !== null) lines.push(["매입금액", inv]);
+  const w = fmtPct(item.buy_weight_pct);
+  if (w !== null) lines.push(["매입비중", w]);
+  if (typeof item.action === "string" && item.action) {
+    lines.push(["판단", item.action]);
+  }
+  if (typeof item.reason === "string" && item.reason) {
+    lines.push(["사유", item.reason]);
+  }
+
+  return (
+    <li className="holdings-item">
+      <div className="holdings-item-header">{header}</div>
+      <ul className="holdings-item-fields">
+        {lines.map(([k, v]) => (
+          <li key={k}>
+            <span className="k">{k}</span>
+            <span className="v">{v}</span>
+          </li>
+        ))}
+      </ul>
+    </li>
+  );
+}
+
 function Recommendations({ run }: { run: Run }) {
   const payload = run.draft_payload ?? {};
   const summary = (payload as Record<string, unknown>).summary_text;
@@ -63,6 +138,16 @@ function Recommendations({ run }: { run: Run }) {
     return <div className="message info">초안 본문이 없습니다.</div>;
   }
 
+  // recs 첫 항목이 holdings 형태이면 사람이 읽는 카드 리스트로 렌더.
+  const recsList = hasRecs
+    ? (recs as Array<Record<string, unknown>>)
+    : ([] as Array<Record<string, unknown>>);
+  const isHoldings =
+    recsList.length > 0 &&
+    typeof recsList[0] === "object" &&
+    recsList[0] !== null &&
+    isHoldingsRec(recsList[0]);
+
   return (
     <div>
       {hasSummary ? (
@@ -73,12 +158,22 @@ function Recommendations({ run }: { run: Run }) {
           {note as string}
         </div>
       ) : null}
-      {hasRecs ? (
+      {hasRecs && isHoldings ? (
+        <ul
+          className="holdings-list"
+          style={{ marginTop: hasSummary || hasNote ? 10 : 0 }}
+        >
+          {recsList.map((r, idx) => (
+            <HoldingsCard key={idx} idx={idx + 1} item={r} />
+          ))}
+        </ul>
+      ) : null}
+      {hasRecs && !isHoldings ? (
         <ul
           className="reco-list"
           style={{ marginTop: hasSummary || hasNote ? 10 : 0 }}
         >
-          {(recs as Array<Record<string, unknown>>).map((r, idx) => (
+          {recsList.map((r, idx) => (
             <li key={idx}>
               <code>{JSON.stringify(r)}</code>
             </li>

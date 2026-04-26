@@ -227,6 +227,52 @@ ul.reco-list li code {
   word-break: break-all;
 }
 
+/* POC2 Step 1A — holdings 카드 리스트 */
+ul.holdings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+ul.holdings-list li.holdings-item {
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.holdings-item-header {
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+ul.holdings-item-fields {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+ul.holdings-item-fields li {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+ul.holdings-item-fields .k {
+  color: var(--muted);
+  min-width: 90px;
+  font-size: 12px;
+}
+
+ul.holdings-item-fields .v {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
 .summary-text {
   padding: 10px 14px;
   background: var(--bg);
