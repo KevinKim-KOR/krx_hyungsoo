@@ -132,6 +132,9 @@ Thumbs.db
 # 외부 프로젝트 (Jason의 momentum-etf)
 momentum-etf/
 
+# Phase 1 자산 / 외부 참고 자산 — 로컬 보존, 원격에는 push 하지 않음
+backup/
+
 # 가상 환경
 venv/
 .venv/
