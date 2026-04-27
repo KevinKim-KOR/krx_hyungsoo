@@ -14,9 +14,12 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
+  fetchEnrichedHoldings,
   fetchHoldings,
   generateDraftFromHoldings,
+  refreshMarket,
   saveHoldings,
+  type EnrichedHolding,
   type HoldingItem,
   type Run,
 } from "@/lib/api";
@@ -80,11 +83,24 @@ interface Props {
   onDraftCreated: (run: Run) => void;
 }
 
+function formatMoney(value: number | null | undefined): string | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return `${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`;
+}
+
+function formatPct(value: number | null | undefined): string | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return `${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%`;
+}
+
 export default function HoldingsClient({ onDraftCreated }: Props) {
   const [rows, setRows] = useState<RowDraft[]>([{ ...EMPTY_ROW }]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [enriched, setEnriched] = useState<EnrichedHolding[]>([]);
+  const [refreshSummary, setRefreshSummary] = useState<string | null>(null);
 
   const handleApiError = useCallback((e: unknown) => {
     if (e instanceof ApiConfigError) {
@@ -104,7 +120,18 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
     setErrorMsg(`알 수 없는 오류: ${(e as Error).message}`);
   }, []);
 
-  // 최초 로드: 저장된 holdings 조회
+  // 캐시에서 enriched 조회 (외부 fetch 트리거 안 함 — 로드/저장 후 표시 갱신용)
+  const loadEnriched = useCallback(async () => {
+    try {
+      const data = await fetchEnrichedHoldings();
+      setEnriched(data.items);
+    } catch (e) {
+      // enriched 조회 실패는 비치명적 (입력 화면은 동작 가능). 에러 표시만.
+      handleApiError(e);
+    }
+  }, [handleApiError]);
+
+  // 최초 로드: 저장된 holdings 조회 + enriched (캐시) 조회
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -112,6 +139,7 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
         const data = await fetchHoldings();
         if (data.holdings.length > 0) {
           setRows(data.holdings.map(holdingToRow));
+          await loadEnriched();
         }
       } catch (e) {
         handleApiError(e);
@@ -119,7 +147,7 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
         setLoading(false);
       }
     })();
-  }, [handleApiError]);
+  }, [handleApiError, loadEnriched]);
 
   const updateRow = (idx: number, key: keyof RowDraft, value: string) => {
     setRows((prev) =>
@@ -140,12 +168,14 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
       const saved = await saveHoldings(payload);
       setRows(saved.holdings.map(holdingToRow));
       setSavedAt(new Date().toLocaleTimeString("ko-KR"));
+      // 저장 후 enriched 표시도 갱신 (시세는 캐시에 있을 때만 반영, fetch 트리거 X).
+      await loadEnriched();
     } catch (e) {
       handleApiError(e);
     } finally {
       setLoading(false);
     }
-  }, [rows, handleApiError]);
+  }, [rows, handleApiError, loadEnriched]);
 
   const onGenerate = useCallback(async () => {
     setLoading(true);
@@ -159,6 +189,32 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
       setLoading(false);
     }
   }, [handleApiError, onDraftCreated]);
+
+  // POC2 Step 2 — 사용자 명시적 액션. page load / polling 에서 호출 금지.
+  const onRefreshMarket = useCallback(async () => {
+    setRefreshing(true);
+    setErrorMsg(null);
+    setRefreshSummary(null);
+    try {
+      const result = await refreshMarket();
+      const failNote =
+        result.fail_count > 0
+          ? ` / 실패 ${result.fail_count}건: ${result.failures
+              .map((f) => `${f.ticker}(${f.reason})`)
+              .join(", ")}`
+          : "";
+      setRefreshSummary(
+        `Naver 시세 갱신 완료 — 성공 ${result.ok_count}건${failNote} (${new Date().toLocaleTimeString(
+          "ko-KR"
+        )})`
+      );
+      await loadEnriched();
+    } catch (e) {
+      handleApiError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [handleApiError, loadEnriched]);
 
   const investedList = computeInvested(rows);
   const totalInvested = investedList.reduce((a, b) => a + b, 0);
@@ -268,14 +324,22 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
       </table>
 
       <div className="btn-row" style={{ marginTop: 12 }}>
-        <button className="reject" onClick={addRow} disabled={loading}>
+        <button className="reject" onClick={addRow} disabled={loading || refreshing}>
           행 추가
         </button>
-        <button onClick={onSave} disabled={loading}>
+        <button onClick={onSave} disabled={loading || refreshing}>
           {loading ? "처리 중..." : "보유 종목 저장"}
         </button>
-        <button onClick={onGenerate} disabled={loading} type="button">
+        <button onClick={onGenerate} disabled={loading || refreshing} type="button">
           저장된 보유 종목으로 초안 만들기
+        </button>
+        <button
+          onClick={onRefreshMarket}
+          disabled={loading || refreshing}
+          type="button"
+          title="저장된 보유 종목의 현재가를 Naver 에서 1회 조회하여 캐시에 반영"
+        >
+          {refreshing ? "시세 조회 중..." : "시세 갱신 (Naver)"}
         </button>
       </div>
 
@@ -284,6 +348,78 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
           저장 완료 ({savedAt})
         </div>
       ) : null}
+      {refreshSummary ? (
+        <div className="helper" style={{ marginTop: 4 }}>
+          {refreshSummary}
+        </div>
+      ) : null}
+
+      {enriched.length > 0 ? <EnrichedSection items={enriched} /> : null}
     </div>
+  );
+}
+
+// ─── POC2 Step 2 — 시세/평가 표시 섹션 ────────────────────────────────
+
+interface EnrichedSectionProps {
+  items: EnrichedHolding[];
+}
+
+function EnrichedSection({ items }: EnrichedSectionProps) {
+  const hasAnyPrice = items.some((it) => it.current_price !== null);
+  return (
+    <div style={{ marginTop: 20 }}>
+      <h3 style={{ fontSize: 14, margin: "0 0 8px 0" }}>
+        보유 종목 시세 평가
+      </h3>
+      <p className="helper" style={{ marginTop: 0 }}>
+        {hasAnyPrice
+          ? "캐시된 Naver 시세 기준 평가. 갱신은 위의 [시세 갱신] 버튼."
+          : "아직 시세가 캐시되지 않았습니다. [시세 갱신] 버튼으로 1회 조회하세요."}
+      </p>
+      <ul className="holdings-list">
+        {items.map((it, idx) => (
+          <li className="holdings-item" key={`${it.ticker}-${idx}`}>
+            <div className="holdings-item-header">
+              {it.name && it.name !== it.ticker
+                ? `${idx + 1}. ${it.name} (${it.ticker})`
+                : `${idx + 1}. ${it.ticker}`}
+            </div>
+            <ul className="holdings-item-fields">
+              <KV k="수량" v={it.quantity.toLocaleString("ko-KR")} />
+              <KV k="평균 매입단가" v={formatMoney(it.avg_buy_price)} />
+              <KV k="매입금액" v={formatMoney(it.invested_amount)} />
+              <KV k="매입비중" v={formatPct(it.buy_weight_pct)} />
+              <KV k="현재가" v={formatMoney(it.current_price)} />
+              <KV k="평가금액" v={formatMoney(it.eval_amount)} />
+              <KV k="평가손익" v={formatMoney(it.pnl_amount)} />
+              <KV k="평가수익률" v={formatPct(it.pnl_rate_pct)} />
+              <KV k="시장비중" v={formatPct(it.market_weight_pct)} />
+              {it.price_missing ? (
+                <li>
+                  <span className="k">상태</span>
+                  <span className="v" style={{ color: "var(--warn)" }}>
+                    [시세 미확인]
+                  </span>
+                </li>
+              ) : null}
+              {it.price_asof ? (
+                <KV k="시세 기준" v={it.price_asof} />
+              ) : null}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function KV({ k, v }: { k: string; v: string | null }) {
+  if (v === null) return null;
+  return (
+    <li>
+      <span className="k">{k}</span>
+      <span className="v">{v}</span>
+    </li>
   );
 }

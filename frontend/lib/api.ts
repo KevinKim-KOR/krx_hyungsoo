@@ -143,3 +143,52 @@ export function saveHoldings(payload: HoldingsPayload): Promise<HoldingsPayload>
 export function generateDraftFromHoldings(): Promise<Run> {
   return request<Run>("POST", "/runs/generate-from-holdings");
 }
+
+// ─── POC2 Step 2: market data ────────────────────────────────────────
+
+export interface MarketQuoteItem {
+  ticker: string;
+  name: string | null;
+  current_price: number | null;
+  price_asof: string | null;
+  price_source: string | null;
+}
+
+export interface MarketRefreshResult {
+  ok_count: number;
+  fail_count: number;
+  items: MarketQuoteItem[];
+  failures: Array<{ ticker: string; reason: string }>;
+}
+
+export interface EnrichedHolding {
+  ticker: string;
+  name: string | null;
+  quantity: number;
+  avg_buy_price: number;
+  invested_amount: number;
+  current_price: number | null;
+  price_asof: string | null;
+  price_source: string | null;
+  eval_amount: number | null;
+  pnl_amount: number | null;
+  pnl_rate_pct: number | null;
+  buy_weight_pct: number | null;
+  market_weight_pct: number | null;
+  price_missing: boolean;
+  calc_missing: boolean;
+}
+
+export interface EnrichedHoldingsResult {
+  items: EnrichedHolding[];
+}
+
+// 명시적 사용자 액션에서만 호출 (page load / polling / 새로고침에서 호출 금지).
+export function refreshMarket(): Promise<MarketRefreshResult> {
+  // Naver 시세 조회는 종목당 최대 5초 + 직렬 호출이라 기본 timeout 보다 여유 필요.
+  return request<MarketRefreshResult>("POST", "/market/refresh", undefined, 60000);
+}
+
+export function fetchEnrichedHoldings(): Promise<EnrichedHoldingsResult> {
+  return request<EnrichedHoldingsResult>("GET", "/holdings/enriched");
+}

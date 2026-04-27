@@ -35,7 +35,15 @@ from pydantic import BaseModel, Field
 # `app.config` import 자체가 .env 자동 로드를 트리거한다.
 # 환경변수에 의존하는 어떤 모듈보다 먼저 import 되어야 한다.
 from app import config  # noqa: F401  # side-effect import (load_dotenv)
-from app import delivery, draft, holdings as holdings_module, store
+from app import (
+    delivery,
+    draft,
+    holdings as holdings_module,
+    holdings_enrich,
+    market_cache,
+    market_naver,
+    store,
+)
 from app.holdings import HoldingsValidationError
 from app.models import Run
 from app.state import InvalidTransition, validate_transition
@@ -163,6 +171,11 @@ def post_generate_from_holdings() -> RunResponse:
 
     holdings 가 비어있거나 손상되면 422 — run 생성 차단 (FAILED run 만들지 않음).
     이후는 기존 승인 루프(PENDING_APPROVAL / Approve / Reject) 가 동일하게 처리.
+
+    POC2 Step 2: 시장데이터 캐시(market_cache)를 조회해 draft 에 주입한다.
+    - 캐시는 사용자가 명시적으로 POST /market/refresh 를 눌렀을 때만 채워진다.
+    - 캐시가 비어있거나 일부만 있으면 그 부분은 시세 없이 표시된다 (price_missing).
+    - 이 엔드포인트가 자동으로 외부 fetch 를 트리거하지 않는다.
     """
     try:
         loaded = holdings_module.load()
@@ -173,8 +186,143 @@ def post_generate_from_holdings() -> RunResponse:
             status_code=422,
             detail="holdings 가 비어 있습니다. 먼저 보유 종목을 입력 후 저장해 주세요.",
         )
-    run = draft.generate_draft_from_holdings(loaded)
+    # 캐시에서 holdings 종목에 해당하는 시세만 추출 (전체 캐시 노출 방지).
+    all_quotes = market_cache.get_all()
+    relevant_quotes = {
+        h.ticker: all_quotes[h.ticker] for h in loaded if h.ticker in all_quotes
+    }
+    run = draft.generate_draft_from_holdings(loaded, market_quotes=relevant_quotes)
     return RunResponse.from_run(run)
+
+
+# ─── POC2 Step 2: market data ──────────────────────────────────────────
+
+
+class MarketQuoteResponse(BaseModel):
+    ticker: str
+    name: Optional[str] = None
+    current_price: Optional[float] = None
+    price_asof: Optional[str] = None
+    price_source: Optional[str] = None
+
+
+class MarketRefreshResponse(BaseModel):
+    ok_count: int
+    fail_count: int
+    items: list[MarketQuoteResponse]
+    failures: list[dict[str, str]]
+
+
+class EnrichedHoldingResponse(BaseModel):
+    ticker: str
+    name: Optional[str] = None
+    quantity: float
+    avg_buy_price: float
+    invested_amount: float
+    current_price: Optional[float] = None
+    price_asof: Optional[str] = None
+    price_source: Optional[str] = None
+    eval_amount: Optional[float] = None
+    pnl_amount: Optional[float] = None
+    pnl_rate_pct: Optional[float] = None
+    buy_weight_pct: Optional[float] = None
+    market_weight_pct: Optional[float] = None
+    price_missing: bool
+    calc_missing: bool
+
+
+class EnrichedHoldingsResponse(BaseModel):
+    items: list[EnrichedHoldingResponse]
+
+
+@app.post("/market/refresh", response_model=MarketRefreshResponse)
+def post_market_refresh() -> MarketRefreshResponse:
+    """저장된 holdings 의 모든 ticker 에 대해 Naver 시세를 조회 + 캐시에 반영.
+
+    POC2 Step 2 설계자 결정:
+    - 사용자가 명시적으로 호출했을 때만 외부 fetch 발생 (page load / polling /
+      draft 조회 / 새로고침에서는 호출하지 않는다)
+    - 1차 소스 Naver 만 사용. pykrx / yfinance fallback 은 POC2-Step2A 로 이연.
+    - 단일 종목 실패는 격리 (다른 종목 진행)
+    - 결과 요약 + 실패 사유 반환
+    """
+    try:
+        loaded = holdings_module.load()
+    except HoldingsValidationError as e:
+        raise HTTPException(status_code=500, detail=f"holdings 저장 파일 손상: {e}")
+    if not loaded:
+        raise HTTPException(
+            status_code=422,
+            detail="holdings 가 비어 있습니다. 먼저 보유 종목을 입력 후 저장해 주세요.",
+        )
+
+    tickers = [h.ticker for h in loaded]
+    results = market_naver.fetch_many(tickers)
+
+    successes = [r for r in results if r.quote is not None]
+    failures = [r for r in results if r.quote is None]
+
+    if successes:
+        market_cache.upsert_many([r.quote for r in successes])  # type: ignore[misc]
+
+    return MarketRefreshResponse(
+        ok_count=len(successes),
+        fail_count=len(failures),
+        items=[
+            MarketQuoteResponse(
+                ticker=r.quote.ticker,
+                name=r.quote.name,
+                current_price=r.quote.current_price,
+                price_asof=r.quote.price_asof,
+                price_source=r.quote.price_source,
+            )
+            for r in successes
+            if r.quote is not None
+        ],
+        failures=[
+            {"ticker": r.ticker, "reason": r.reason or "unknown"} for r in failures
+        ],
+    )
+
+
+@app.get("/holdings/enriched", response_model=EnrichedHoldingsResponse)
+def get_holdings_enriched() -> EnrichedHoldingsResponse:
+    """holdings × market_cache 조합 결과 조회. 외부 fetch 트리거 없음.
+
+    캐시가 비어있어도 200 으로 holdings 단독 데이터(시세 없는 형태)를 반환한다.
+    UI 가 price_missing / calc_missing 플래그를 보고 적절히 표시한다.
+    """
+    try:
+        loaded = holdings_module.load()
+    except HoldingsValidationError as e:
+        raise HTTPException(status_code=500, detail=f"holdings 저장 파일 손상: {e}")
+    all_quotes = market_cache.get_all()
+    relevant_quotes = {
+        h.ticker: all_quotes[h.ticker] for h in loaded if h.ticker in all_quotes
+    }
+    enriched = holdings_enrich.enrich_holdings(loaded, relevant_quotes)
+    return EnrichedHoldingsResponse(
+        items=[
+            EnrichedHoldingResponse(
+                ticker=e.ticker,
+                name=e.name,
+                quantity=e.quantity,
+                avg_buy_price=e.avg_buy_price,
+                invested_amount=e.invested_amount,
+                current_price=e.current_price,
+                price_asof=e.price_asof,
+                price_source=e.price_source,
+                eval_amount=e.eval_amount,
+                pnl_amount=e.pnl_amount,
+                pnl_rate_pct=e.pnl_rate_pct,
+                buy_weight_pct=e.buy_weight_pct,
+                market_weight_pct=e.market_weight_pct,
+                price_missing=e.price_missing,
+                calc_missing=e.calc_missing,
+            )
+            for e in enriched
+        ]
+    )
 
 
 @app.get("/runs", response_model=list[RunResponse])

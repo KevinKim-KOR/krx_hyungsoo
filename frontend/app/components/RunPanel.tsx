@@ -102,6 +102,21 @@ function HoldingsCard({
   if (inv !== null) lines.push(["매입금액", inv]);
   const w = fmtPct(item.buy_weight_pct);
   if (w !== null) lines.push(["매입비중", w]);
+  // POC2 Step 2 — 시세/평가/손익/시장비중 (있을 때만)
+  const cur = fmtMoney(item.current_price);
+  if (cur !== null) lines.push(["현재가", cur]);
+  const ev = fmtMoney(item.eval_amount);
+  if (ev !== null) lines.push(["평가금액", ev]);
+  const pnl = fmtMoney(item.pnl_amount);
+  if (pnl !== null) lines.push(["평가손익", pnl]);
+  const pnlRate = fmtPct(item.pnl_rate_pct);
+  if (pnlRate !== null) lines.push(["평가수익률", pnlRate]);
+  const mw = fmtPct(item.market_weight_pct);
+  if (mw !== null) lines.push(["시장비중", mw]);
+  // current_price 키 자체가 없으면 시세 미확인 (Step 2: None 키는 응답에서 생략됨)
+  if (item.current_price === undefined || item.current_price === null) {
+    lines.push(["상태", "[시세 미확인]"]);
+  }
   if (typeof item.action === "string" && item.action) {
     lines.push(["판단", item.action]);
   }

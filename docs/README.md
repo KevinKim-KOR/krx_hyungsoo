@@ -1,7 +1,7 @@
 # Phase 2 POC — 승인 루프
 
 AI와 함께 투자 방향을 찾기 위한 최소 승인 루프 구현.
-POC1(승인 루프) → POC1 Step 3(실 OCI 전달 + Telegram) → POC2 Step 1(holdings 진입점 전환) → POC2 Step 1A(raw JSON 표시 제거 + 사람이 읽는 렌더링) 까지 완료.
+POC1(승인 루프) → POC1 Step 3(실 OCI 전달 + Telegram) → POC2 Step 1(holdings 진입점 전환) → POC2 Step 1A(raw JSON 표시 제거 + 사람이 읽는 렌더링) → POC2 Step 2(Naver 시세 enrichment) 까지 완료.
 
 ## 범위
 
@@ -70,12 +70,15 @@ npm run dev   # http://localhost:3000
 - `state.py` — 상태 전이 규칙
 - `store.py` — JSON 파일 저장소 (`state/runs/*.json`, `state/poc1_handoff/*`). handoff artifact 5필드 (run_id / asof / approved_at / draft_payload / message_text)
 - `holdings.py` — **POC2 Step 1**. 보유 종목 SSOT (`state/holdings/holdings_latest.json`)
-- `draft.py` — `generate_draft_from_holdings` (운영) / `generate_draft` (샘플)
+- `draft.py` — `generate_draft_from_holdings` (운영) / `generate_draft` (샘플). POC2 Step 2 부터 `market_quotes` 옵션 주입 지원
 - `sample_draft.py` — 샘플용 stub payload 빌더
-- `draft_message.py` — **POC2 Step 1A**. holdings draft → 사람이 읽는 message_text 빌더 (Telegram 본문)
+- `draft_message.py` — **POC2 Step 1A + Step 2**. holdings draft → 사람이 읽는 message_text 빌더. 시세/평가/손익/시장비중 포함 + [시세 미확인] 표기
+- `market_cache.py` — **POC2 Step 2**. 메모리 + JSON 이중 캐시 (`state/market_cache/market_latest.json`). 원자적 쓰기 + threading.Lock + 디스크 병합 보장
+- `market_naver.py` — **POC2 Step 2**. Naver 비공식 endpoint(`m.stock.naver.com/api/stock/{ticker}/basic`) httpx 어댑터. 종목별 timeout + 단일 실패 격리
+- `holdings_enrich.py` — **POC2 Step 2**. holdings × market_cache 결합 + eval/pnl/market_weight 계산 (외부 fetch 트리거 없음)
 - `delivery.py` — SCP/SSH 기반 OCI 전달 + outbox 조회 + holdings 식별 시 message_text 자동 첨부
 - `config.py` — `.env` 자동 로드 + `require_env`/`optional_env` 표준 진입점
-- `api.py` — FastAPI 엔드포인트 + CORS (localhost:3000) + holdings 엔드포인트
+- `api.py` — FastAPI 엔드포인트 + CORS (localhost:3000) + holdings 엔드포인트 + **POC2 Step 2** 시장데이터 엔드포인트
 
 ### 프론트 (`frontend/`)
 - `app/page.tsx` — 서버 컴포넌트 (MainPanel 위임)
@@ -101,7 +104,9 @@ npm run dev   # http://localhost:3000
 |---|---|---|
 | GET | `/holdings` | 저장된 holdings 조회 |
 | PUT | `/holdings` | holdings 저장 (검증 실패 시 422) |
-| POST | `/runs/generate-from-holdings` | **운영 흐름** — holdings 기반 PENDING_APPROVAL run 생성 |
+| GET | `/holdings/enriched` | **POC2 Step 2** holdings × market_cache 결합 결과 (외부 fetch 트리거 없음) |
+| POST | `/market/refresh` | **POC2 Step 2** Naver 시세를 holdings 종목에 한해 1회 조회 + 캐시 반영. 외부 fetch 가 발생하는 유일한 엔드포인트 |
+| POST | `/runs/generate-from-holdings` | **운영 흐름** — holdings 기반 PENDING_APPROVAL run 생성 (캐시에 시세 있으면 자동 enrich) |
 | POST | `/runs/generate` | 샘플 입력 (개발/테스트용) |
 | GET | `/runs` | 모든 run 목록 |
 | GET | `/runs/{run_id}` | 단일 run 조회 + DELIVERING 인 경우 OCI outbox reconciliation |
@@ -129,11 +134,11 @@ holdings 입력 검증 실패는 422 로 차단되며 run 자체가 만들어지
 - holdings run 에서 message_text 누락 = `CONTRACT_ERROR` → FAILED outbox (raw JSON 대체 발송 금지)
 - 평문 / 한국어 라벨 / 콤마·% 포맷 / payload 에 없는 필드는 줄 자체 생략
 
-예시 메시지:
+예시 메시지 (POC2 Step 2 — 시세 캐시가 있는 경우):
 ```
 ✅ POC2 holdings 승인 처리
-run_id: run_20260426T134657_0d09feec
-title: 보유 종목 기반 초안 (2026-04-26)
+run_id: run_20260428T090500_xxxxxxxx
+title: 보유 종목 기반 초안 (2026-04-28)
 
 holdings 항목 2건 기준 자동 생성. ...
 
@@ -143,9 +148,28 @@ holdings 항목 2건 기준 자동 생성. ...
    - 평균 매입단가: 10,050원
    - 매입금액: 50,250원
    - 매입비중: 47.6%
+   - 현재가: 11,920원
+   - 평가금액: 59,600원
+   - 평가손익: 9,350원
+   - 평가수익률: 18.61%
+   - 시장비중: 37.07%
    - 판단: HOLD
    - 사유: 보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)
 ```
+
+시세 캐시가 비어 있거나 일부 종목만 미수신인 경우 해당 항목은 시세/평가 줄을 생략하고 `[시세 미확인]` 으로 표기한다 (undefined/null/NaN 절대 노출하지 않음).
+
+## 시장 데이터 정책 (POC2 Step 2)
+
+- 1차 소스: **Naver Finance 비공식 endpoint** (`https://m.stock.naver.com/api/stock/{ticker}/basic`)
+- HTTP 클라이언트: **httpx** (종목별 5초 timeout). BeautifulSoup / desktop scraping / polling stream 금지
+- pykrx / yfinance fallback 은 **POC2 Step 2 한정 금지** — 별도 STEP `POC2-Step2A` 에서 검토 (BACKLOG)
+- 외부 fetch 가 발생하는 엔드포인트는 **`POST /market/refresh` 단 1곳**. page load / polling / 새로고침 / draft 조회 / `GET /holdings/enriched` / `POST /runs/generate-from-holdings` 모두 트리거하지 않음
+- 캐시 위치: `state/market_cache/market_latest.json` (gitignored). 메모리 + 디스크 이중. 원자적 쓰기(`tempfile + os.replace`) + threading.Lock 직렬화
+- 서버 재시작 후 일부 종목만 fetch 성공해도 기존 디스크 캐시의 타 종목은 **유실되지 않는다** (upsert_many 가 디스크를 메모리에 병합한 뒤 쓰기 수행)
+- 디스크 쓰기 실패 시 메모리도 직전 스냅샷으로 원복 (메모리/디스크 일관성 보장)
+- TTL 정책 없음 — 사용자가 [시세 갱신] 누르기 전까지 캐시값 재사용 (BACKLOG)
+- "실시간" 표현은 사용하지 않는다
 
 ## 상태 갱신 정책 (POC1 Step 3 + POC2 Step 1)
 
@@ -176,4 +200,5 @@ holdings 항목 2건 기준 자동 생성. ...
 - [backlog/BACKLOG.md](./backlog/BACKLOG.md) — deferred 항목 (현재 30건 누적)
 - [MASTER_PLAN.md](./MASTER_PLAN.md) — 전체 계획
 - [handoff/POC1_Step3_close_and_POC2_Step1_handoff.md](./handoff/POC1_Step3_close_and_POC2_Step1_handoff.md) — POC1 Step 3 ~ POC2 Step 1 통합 handoff
-- [handoff/POC2_Step1A_close.md](./handoff/POC2_Step1A_close.md) — POC2 Step 1A 종결 (가장 최근)
+- [handoff/POC2_Step1A_close.md](./handoff/POC2_Step1A_close.md) — POC2 Step 1A 종결
+- [handoff/POC2_Step2_close.md](./handoff/POC2_Step2_close.md) — POC2 Step 2 종결 (가장 최근)

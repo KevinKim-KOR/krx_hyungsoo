@@ -67,9 +67,15 @@ def is_holdings_draft(payload: Any) -> bool:
 def _render_item(idx: int, item: dict[str, Any]) -> str:
     """단일 holdings 항목 → 사람이 읽는 줄 묶음.
 
-    표시 우선순위 (지시문):
-      종목명 / 종목코드 / 수량 / 평균 매입단가 / 매입금액 / 매입비중 / 판단 / 사유
-    payload 에 없는 값은 줄 자체를 생략.
+    표시 우선순위:
+      헤더(종목명/종목코드)
+      수량 / 평균 매입단가 / 매입금액 / 매입비중 (Step 1 필드)
+      현재가 / 평가금액 / 평가손익 / 평가수익률 / 시장비중 (Step 2 필드, 있을 때만)
+      [시세 미확인] / [평가 정보 부족] (Step 2 누락 표시)
+      판단 / 사유
+
+    payload 에 없는 값은 줄 자체를 생략. None / undefined / NaN 노출 금지.
+    "실시간" 표현은 사용하지 않는다 (지시문 금지어).
     """
     ticker = item.get("ticker") or ""
     name = item.get("name") or ticker or "(종목 미상)"
@@ -99,6 +105,35 @@ def _render_item(idx: int, item: dict[str, Any]) -> str:
     weight = _format_pct(item.get("buy_weight_pct"))
     if weight is not None:
         lines.append(f"   - 매입비중: {weight}")
+
+    # POC2 Step 2 — 시세/평가/손익/시장비중 (모두 옵셔널, 있으면 줄 추가)
+    current_price = _format_money(item.get("current_price"))
+    if current_price is not None:
+        lines.append(f"   - 현재가: {current_price}")
+
+    eval_amount = _format_money(item.get("eval_amount"))
+    if eval_amount is not None:
+        lines.append(f"   - 평가금액: {eval_amount}")
+
+    pnl_amount = _format_money(item.get("pnl_amount"))
+    if pnl_amount is not None:
+        lines.append(f"   - 평가손익: {pnl_amount}")
+
+    pnl_rate = _format_pct(item.get("pnl_rate_pct"))
+    if pnl_rate is not None:
+        lines.append(f"   - 평가수익률: {pnl_rate}")
+
+    market_weight = _format_pct(item.get("market_weight_pct"))
+    if market_weight is not None:
+        lines.append(f"   - 시장비중: {market_weight}")
+
+    # 누락 사유 명시 — 사용자가 "왜 비었는지" 알 수 있게.
+    # holdings 항목인데 current_price 자체가 키로 없으면 "시세 미확인" 으로 간주
+    # (Step 2 to_recommendation_dict 가 None 시세 키를 생략하므로 키 존재 여부로 판단).
+    if item.get("current_price") is None and (
+        "quantity" in item or "avg_buy_price" in item
+    ):
+        lines.append("   - [시세 미확인]")
 
     action = item.get("action")
     if isinstance(action, str) and action:
