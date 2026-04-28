@@ -1,7 +1,7 @@
 # Phase 2 POC — 승인 루프
 
 AI와 함께 투자 방향을 찾기 위한 최소 승인 루프 구현.
-POC1(승인 루프) → POC1 Step 3(실 OCI 전달 + Telegram) → POC2 Step 1(holdings 진입점 전환) → POC2 Step 1A(raw JSON 표시 제거 + 사람이 읽는 렌더링) → POC2 Step 2(Naver 시세 enrichment) 까지 완료.
+POC1(승인 루프) → POC1 Step 3(실 OCI 전달 + Telegram) → POC2 Step 1(holdings 진입점 전환) → POC2 Step 1A(raw JSON 표시 제거 + 사람이 읽는 렌더링) → POC2 Step 2(Naver 시세 enrichment) → POC2 Step 2B(Telegram 메시지 요약형 + 길이 제한 방어) 까지 완료.
 
 ## 범위
 
@@ -72,7 +72,7 @@ npm run dev   # http://localhost:3000
 - `holdings.py` — **POC2 Step 1**. 보유 종목 SSOT (`state/holdings/holdings_latest.json`)
 - `draft.py` — `generate_draft_from_holdings` (운영) / `generate_draft` (샘플). POC2 Step 2 부터 `market_quotes` 옵션 주입 지원
 - `sample_draft.py` — 샘플용 stub payload 빌더
-- `draft_message.py` — **POC2 Step 1A + Step 2**. holdings draft → 사람이 읽는 message_text 빌더. 시세/평가/손익/시장비중 포함 + [시세 미확인] 표기
+- `draft_message.py` — **POC2 Step 1A + Step 2 + Step 2B**. holdings draft → 사람이 읽는 message_text 빌더. 요약형(전체 요약 + 주목 종목 일부) + 길이 제한 방어(MAX_LENGTH_CHARS=3500) + 시세 확인/평가 계산 가능 분리 + [시세 미확인]/[계산 정보 부족] 표기
 - `market_cache.py` — **POC2 Step 2**. 메모리 + JSON 이중 캐시 (`state/market_cache/market_latest.json`). 원자적 쓰기 + threading.Lock + 디스크 병합 보장
 - `market_naver.py` — **POC2 Step 2**. Naver 비공식 endpoint(`m.stock.naver.com/api/stock/{ticker}/basic`) httpx 어댑터. 종목별 timeout + 단일 실패 격리
 - `holdings_enrich.py` — **POC2 Step 2**. holdings × market_cache 결합 + eval/pnl/market_weight 계산 (외부 fetch 트리거 없음)
@@ -134,30 +134,52 @@ holdings 입력 검증 실패는 422 로 차단되며 run 자체가 만들어지
 - holdings run 에서 message_text 누락 = `CONTRACT_ERROR` → FAILED outbox (raw JSON 대체 발송 금지)
 - 평문 / 한국어 라벨 / 콤마·% 포맷 / payload 에 없는 필드는 줄 자체 생략
 
-예시 메시지 (POC2 Step 2 — 시세 캐시가 있는 경우):
+예시 메시지 (POC2 Step 2B — 요약형, 보유 종목이 많아도 안전 한도 이하):
 ```
 ✅ POC2 holdings 승인 처리
 run_id: run_20260428T090500_xxxxxxxx
 title: 보유 종목 기반 초안 (2026-04-28)
 
-holdings 항목 2건 기준 자동 생성. ...
+holdings 항목 18건 기준 자동 생성. 추천 판단 없이 보유 현황 기준입니다.
 
-보유 종목:
-1. RISE 미국은행TOP10 (0013P0)
-   - 수량: 5
-   - 평균 매입단가: 10,050원
-   - 매입금액: 50,250원
-   - 매입비중: 47.6%
-   - 현재가: 11,920원
-   - 평가금액: 59,600원
-   - 평가손익: 9,350원
-   - 평가수익률: 18.61%
-   - 시장비중: 37.07%
-   - 판단: HOLD
-   - 사유: 보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)
+전체 요약:
+   - 보유 종목: 18개
+   - 시세 확인: 16개 / 미확인: 2개
+   - 평가 계산 가능: 16개 / 계산 정보 부족: 0개
+   - 총 매입금액: 5,000,000원
+   - 평가금액: 5,300,000원 (평가 계산 16개 기준)
+   - 평가손익: +300,000원 (평가 계산 16개 기준)
+   - 평가수익률: +6% (평가 계산 16개 기준)
+   - ⚠ 일부 종목 시세 미확인 또는 계산 정보 부족 — 평가금액/손익/수익률은 평가 계산 가능 종목 기준입니다.
+
+주목 종목:
+  🔍 시세 미확인 종목
+   • 0015B0
+     - [시세 미확인]
+     - 판단: HOLD
+     - 사유: 보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)
+  📉 평가수익률 하위
+   • SOMETHING (XXXXXX)
+     - 평가수익률: -8.5%
+     - 평가손익: -42,500원
+     - 시장비중: 9.1%
+     - 판단: HOLD
+     - 사유: 보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)
+  📊 시장비중 상위
+   • ...
+  📈 평가수익률 상위
+   • ...
+
+전체 보유 상세는 웹 화면에서 확인하세요.
 ```
 
-시세 캐시가 비어 있거나 일부 종목만 미수신인 경우 해당 항목은 시세/평가 줄을 생략하고 `[시세 미확인]` 으로 표기한다 (undefined/null/NaN 절대 노출하지 않음).
+원칙:
+- 종목별 수량/평균매입단가/매입금액/매입비중/현재가/평가금액 라인은 **메시지에서 제외** (UI 에서 확인)
+- 종목별로는 평가수익률/판단/사유 + 옵션(평가손익/시장비중)만 표시
+- 기본 HOLD 종목(action=HOLD + 정적 reason)은 요약 카운트에는 포함되나 상세 목록 전부 나열 금지
+- 보유 종목 18+ 에서도 message_text 가 안전 한도(3500자) 이하로 보장됨 (초과 시 주목 종목 수 단계 축소 → 잘림 안내)
+- "시세 확인" ≠ "평가 계산 가능" — current_price 는 있지만 eval_amount/invested_amount 가 없는 종목은 평가 집계에서 제외 + 별도 카운트 + ⚙ 계산 정보 부족 종목 그룹에 표시
+- undefined/null/NaN 절대 노출 금지. "실시간" 단어 사용 금지
 
 ## 시장 데이터 정책 (POC2 Step 2)
 
@@ -201,4 +223,5 @@ holdings 항목 2건 기준 자동 생성. ...
 - [MASTER_PLAN.md](./MASTER_PLAN.md) — 전체 계획
 - [handoff/POC1_Step3_close_and_POC2_Step1_handoff.md](./handoff/POC1_Step3_close_and_POC2_Step1_handoff.md) — POC1 Step 3 ~ POC2 Step 1 통합 handoff
 - [handoff/POC2_Step1A_close.md](./handoff/POC2_Step1A_close.md) — POC2 Step 1A 종결
-- [handoff/POC2_Step2_close.md](./handoff/POC2_Step2_close.md) — POC2 Step 2 종결 (가장 최근)
+- [handoff/POC2_Step2_close.md](./handoff/POC2_Step2_close.md) — POC2 Step 2 종결
+- [handoff/POC2_Step2B_close.md](./handoff/POC2_Step2B_close.md) — POC2 Step 2B 종결 (가장 최근)
