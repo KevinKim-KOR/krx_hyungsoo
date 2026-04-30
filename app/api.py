@@ -112,6 +112,8 @@ class HoldingItem(BaseModel):
     quantity: float
     avg_buy_price: float
     name: Optional[str] = None
+    # POC2 Step 2C: 표시/그룹용 라벨. 누락/빈 값은 백엔드에서 "일반" 으로 정규화.
+    account_group: Optional[str] = None
 
 
 class HoldingsPayload(BaseModel):
@@ -133,6 +135,7 @@ def get_holdings() -> HoldingsPayload:
                 quantity=h.quantity,
                 avg_buy_price=h.avg_buy_price,
                 name=h.name,
+                account_group=h.account_group,
             )
             for h in loaded
         ]
@@ -159,6 +162,7 @@ def put_holdings(payload: HoldingsPayload) -> HoldingsPayload:
                 quantity=h.quantity,
                 avg_buy_price=h.avg_buy_price,
                 name=h.name,
+                account_group=h.account_group,
             )
             for h in validated
         ]
@@ -229,6 +233,9 @@ class EnrichedHoldingResponse(BaseModel):
     market_weight_pct: Optional[float] = None
     price_missing: bool
     calc_missing: bool
+    # POC2 Step 2C: 표시/그룹용 라벨 + UI key 안정성을 위한 행 위치.
+    account_group: str = "일반"
+    source_index: int = 0
 
 
 class EnrichedHoldingsResponse(BaseModel):
@@ -319,6 +326,8 @@ def get_holdings_enriched() -> EnrichedHoldingsResponse:
                 market_weight_pct=e.market_weight_pct,
                 price_missing=e.price_missing,
                 calc_missing=e.calc_missing,
+                account_group=e.account_group,
+                source_index=e.source_index,
             )
             for e in enriched
         ]

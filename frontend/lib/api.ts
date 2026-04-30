@@ -126,6 +126,8 @@ export interface HoldingItem {
   quantity: number;
   avg_buy_price: number;
   name?: string | null;
+  // POC2 Step 2C: 표시/그룹용 라벨. 빈 값/누락은 백엔드에서 "일반" 으로 정규화.
+  account_group?: string | null;
 }
 
 export interface HoldingsPayload {
@@ -177,6 +179,9 @@ export interface EnrichedHolding {
   market_weight_pct: number | null;
   price_missing: boolean;
   calc_missing: boolean;
+  // POC2 Step 2C: 표시/그룹용 라벨 + UI key 안정성을 위한 행 위치.
+  account_group?: string;
+  source_index?: number;
 }
 
 export interface EnrichedHoldingsResult {

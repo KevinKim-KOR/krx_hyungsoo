@@ -27,6 +27,11 @@ class EnrichedHolding:
 
     None 은 "값이 없음" 을 의미한다 (UI/메시지 렌더러가 줄 자체를 생략).
     NaN / 음수 / 0 은 만들지 않는다.
+
+    Step 2C: account_group(표시/그룹용 라벨) + source_index(원본 holdings 배열에서의
+    위치) 를 보존한다. UI 의 React key / 펼침 상태 식별자 안정성을 위함이며,
+    holdings_latest.json 에는 account_group 만 저장되고 source_index 는 결합 시점에
+    부여된다.
     """
 
     ticker: str
@@ -48,6 +53,9 @@ class EnrichedHolding:
 
     price_missing: bool
     calc_missing: bool
+
+    account_group: str = "일반"
+    source_index: int = 0
 
 
 def _is_valid_price(value: object) -> bool:
@@ -84,7 +92,7 @@ def enrich_holdings(
     invested_total = 0.0
 
     rows: list[dict[str, object]] = []
-    for h in holdings:
+    for source_index, h in enumerate(holdings):
         invested = float(h.quantity) * float(h.avg_buy_price)
         invested_total += invested
 
@@ -123,6 +131,7 @@ def enrich_holdings(
                 "pnl_amount": pnl_amount,
                 "pnl_rate_pct": pnl_rate_pct,
                 "calc_missing": calc_missing,
+                "source_index": source_index,
             }
         )
 
@@ -172,6 +181,8 @@ def enrich_holdings(
                 market_weight_pct=market_weight_pct,
                 price_missing=(row["current_price"] is None),
                 calc_missing=bool(row["calc_missing"]),
+                account_group=getattr(h, "account_group", "일반") or "일반",
+                source_index=int(row["source_index"]),  # type: ignore[arg-type]
             )
         )
 
@@ -198,6 +209,10 @@ def to_recommendation_dict(item: EnrichedHolding) -> dict[str, object]:
         "invested_amount": item.invested_amount,
         "action": "HOLD",
         "reason": "보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)",
+        # Step 2C: 표시/그룹용 라벨. 신규 draft_payload 부터 항상 포함.
+        "account_group": item.account_group,
+        # Step 2C: UI 의 React key / 펼침 상태 식별자 안정성을 위한 행 위치.
+        "source_index": item.source_index,
     }
     if item.buy_weight_pct is not None:
         base["buy_weight_pct"] = item.buy_weight_pct

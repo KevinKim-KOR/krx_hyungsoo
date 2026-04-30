@@ -344,3 +344,239 @@ details.card > summary::before {
 details.card[open] > summary::before {
   content: "▼ ";
 }
+
+/* POC2 Step 2C — compact UI / summary cards / per-account / collapsible */
+
+.summary-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.summary-card-title {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 12px;
+}
+
+.summary-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.summary-item-label {
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.summary-item-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-warning {
+  color: var(--warn);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.account-summary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+ul.account-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li.account-summary-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+
+li.account-summary-item:last-child {
+  margin-bottom: 0;
+}
+
+.account-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.account-summary-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 4px 10px;
+}
+
+.account-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(58, 122, 254, 0.18);
+  color: #6ea0ff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.account-counts {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.kv-row {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  padding: 1px 0;
+  flex-wrap: wrap;
+}
+
+.kv-row .k {
+  color: var(--muted);
+}
+
+.kv-row .v {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.compact-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.compact-table th,
+table.compact-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+table.compact-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  background: var(--bg);
+}
+
+table.compact-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+table.compact-table tr.compact-row {
+  cursor: pointer;
+}
+
+table.compact-table tr.compact-row:hover {
+  background: rgba(58, 122, 254, 0.06);
+}
+
+table.compact-table tr.compact-row-detail > td {
+  background: var(--bg);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+table.compact-table tr.compact-row-detail > td:first-child {
+  border-bottom: none;
+  padding: 0;
+}
+
+.toggle-cell {
+  width: 28px;
+  text-align: center;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.toggle-btn:hover:not(:disabled) {
+  background: transparent;
+  color: var(--fg);
+}
+
+.ticker-cell {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+ul.detail-fields {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 4px 16px;
+}
+
+ul.detail-fields li {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  padding: 1px 0;
+}
+
+ul.detail-fields .k {
+  color: var(--muted);
+  min-width: 90px;
+}
+
+ul.detail-fields .v {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.pnl-pos {
+  color: var(--ok);
+}
+
+.pnl-neg {
+  color: var(--danger);
+}
