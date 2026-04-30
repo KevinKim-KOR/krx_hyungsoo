@@ -17,6 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import api, delivery, holdings as holdings_module, market_cache, store
+from app.delivery import deliver as _ORIGINAL_DELIVER  # autouse stub 우회용 (Step 2D)
 from app.models import TERMINAL_STATES
 from app.state import InvalidTransition, validate_transition
 
@@ -2170,3 +2171,211 @@ def test_step2c_calc_missing_not_zeroed_per_account_group_aggregation():
     assert abs(s["priced_pnl_rate_pct"] - (15000 / 385000 * 100.0)) < 1e-6
     # 전체 매입금액(표시용)은 invested_amount 가 있는 항목만 합산 (385,000 + 70,925)
     assert s["total_invested"] == 385000 + 70925
+
+
+# ─── POC2 Step 2D: approval draft preview separation ────────────
+
+
+_VALID_HOLDINGS_FOR_2D = [
+    {
+        "ticker": "069500",
+        "name": "KODEX 200",
+        "quantity": 3,
+        "avg_buy_price": 84190,
+        "account_group": "일반",
+    },
+    {
+        "ticker": "0013P0",
+        "name": "RISE 미국은행TOP10",
+        "quantity": 5,
+        "avg_buy_price": 10050,
+        "account_group": "ISA",
+    },
+]
+
+
+def test_step2d_generate_from_holdings_persists_message_text(client):
+    """신규 run 은 generate 시점에 백엔드가 message_text 를 빌드해 Run 에 저장하고,
+    GET /runs/{id} 응답에 포함된다."""
+    client.put("/holdings", json={"holdings": _VALID_HOLDINGS_FOR_2D})
+    r = client.post("/runs/generate-from-holdings")
+    assert r.status_code == 200
+    body = r.json()
+    assert "message_text" in body
+    assert isinstance(body["message_text"], str)
+    assert len(body["message_text"]) > 0
+    # 운영 흐름의 핵심 토큰이 포함되어야 함 (Step 2B 정책의 헤더)
+    assert "POC2 holdings 승인 처리" in body["message_text"]
+    assert body["run_id"] in body["message_text"]
+
+    # 같은 run_id 로 GET 했을 때도 동일 message_text
+    rid = body["run_id"]
+    r2 = client.get(f"/runs/{rid}")
+    assert r2.status_code == 200
+    body2 = r2.json()
+    assert body2["message_text"] == body["message_text"]
+
+
+def test_step2d_generate_sample_no_message_text_for_non_holdings(client):
+    """샘플(비-holdings) 초안은 message_text 가 None — 프론트는 정적 fallback 표시."""
+    status, body = _generate(client, _VALID_INPUT)
+    assert status == 200
+    # holdings 식별 불가 payload → build_message_text 가 빈 문자열 반환 → Run.message_text=None
+    assert body.get("message_text") in (None, "")
+
+
+def test_step2d_legacy_run_without_message_text_loadable(tmp_path, monkeypatch):
+    """과거 state/runs/*.json 에 message_text 키가 없어도 Run.from_dict 가
+    KeyError 없이 None 으로 로드한다 (하위 호환)."""
+    import json as _json
+
+    runs_dir = tmp_path / "legacy_runs"
+    runs_dir.mkdir()
+    legacy_file = runs_dir / "run_legacy_2d.json"
+    legacy_file.write_text(
+        _json.dumps(
+            {
+                "run_id": "run_legacy_2d",
+                "asof": "2026-04-01T00:00:00+00:00",
+                "status": "PENDING_APPROVAL",
+                "draft_payload": {
+                    "title": "legacy",
+                    "asof": "2026-04-01T00:00:00+00:00",
+                    "note": "legacy",
+                    "recommendations": [],
+                },
+                # message_text 키 자체 없음
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(store, "STORE_DIR", runs_dir)
+
+    loaded = store.load("run_legacy_2d")
+    assert loaded.run_id == "run_legacy_2d"
+    assert loaded.message_text is None  # 누락 → None 으로 fallback
+
+
+def test_step2d_get_run_returns_none_message_text_for_legacy(tmp_path, monkeypatch):
+    """legacy run 의 GET /runs/{id} 응답에 message_text 가 None 으로 노출된다."""
+    import json as _json
+
+    runs_dir = tmp_path / "legacy_runs2"
+    runs_dir.mkdir()
+    rid = "run_legacy_2d_api"
+    (runs_dir / f"{rid}.json").write_text(
+        _json.dumps(
+            {
+                "run_id": rid,
+                "asof": "2026-04-01T00:00:00+00:00",
+                "status": "PENDING_APPROVAL",
+                "draft_payload": {
+                    "title": "legacy",
+                    "asof": "2026-04-01T00:00:00+00:00",
+                    "note": "legacy",
+                    "recommendations": [],
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(store, "STORE_DIR", runs_dir)
+
+    from fastapi.testclient import TestClient as _TC
+
+    c = _TC(api.app)
+    r = c.get(f"/runs/{rid}")
+    assert r.status_code == 200
+    body = r.json()
+    assert "message_text" in body  # 키 자체는 응답 스키마에 항상 존재
+    assert body["message_text"] is None
+
+
+def test_step2d_delivery_uses_stored_message_text(client, monkeypatch):
+    """신규 run 은 Run.message_text 가 빌드되어 저장된다. delivery 는 builder 를
+    재호출하지 않고 저장된 값을 그대로 handoff artifact 에 넣는다 → preview ↔
+    실제 발송문 단일 소스 보장."""
+    client.put("/holdings", json={"holdings": _VALID_HOLDINGS_FOR_2D})
+    r = client.post("/runs/generate-from-holdings")
+    rid = r.json()["run_id"]
+    expected_msg = r.json()["message_text"]
+    assert isinstance(expected_msg, str) and len(expected_msg) > 0
+
+    # _stub_oci_calls autouse fixture 가 delivery.deliver 를 람다로 stub 한 상태.
+    # 모듈 top-level 에서 미리 캡처한 원본 함수 객체를 사용해 우회한다.
+    _real_deliver = _ORIGINAL_DELIVER
+
+    def _should_not_be_called(*args, **kwargs):
+        raise AssertionError(
+            "신규 run 의 delivery 는 message_text 를 재생성하면 안 됩니다."
+        )
+
+    monkeypatch.setattr(delivery, "_scp_upload", lambda *a, **kw: None)
+    monkeypatch.setattr(delivery, "_ssh_target", lambda: "stub@host")
+    monkeypatch.setattr(delivery, "_remote_inbox", lambda: "/tmp/inbox")
+    monkeypatch.setattr(
+        delivery.draft_message, "build_message_text", _should_not_be_called
+    )
+
+    captured = {}
+    real_write = store.write_handoff_artifact
+
+    def _spy_write(run, approved_at, message_text=None):
+        captured["message_text"] = message_text
+        return real_write(run, approved_at, message_text)
+
+    monkeypatch.setattr(store, "write_handoff_artifact", _spy_write)
+
+    # store.load 로 신규 run (DELIVERING 으로 전환되지 않은 PENDING_APPROVAL 상태).
+    # deliver() 는 DELIVERING 만 받으므로 status 만 변경한 복제본 사용.
+    pending = store.load(rid)
+    pending.status = "DELIVERING"
+    _real_deliver(pending)
+    assert captured["message_text"] == expected_msg
+
+
+def test_step2d_delivery_legacy_run_falls_back_to_builder(monkeypatch):
+    """과거 run 은 Run.message_text 가 None 일 수 있다. 이 경우 delivery 는
+    holdings draft 면 builder fallback 을 트리거한다 (legacy 호환)."""
+    _real_deliver = _ORIGINAL_DELIVER
+    from app.models import Run as RunModel
+
+    legacy_run = RunModel(
+        run_id="run_legacy_2d_deliv",
+        asof="2026-04-01T00:00:00+00:00",
+        status="DELIVERING",
+        draft_payload={
+            "title": "legacy holdings",
+            "asof": "2026-04-01T00:00:00+00:00",
+            "note": "legacy",
+            "recommendations": [
+                {
+                    "ticker": "069500",
+                    "name": "KODEX 200",
+                    "quantity": 3,
+                    "avg_buy_price": 84190,
+                    "invested_amount": 252570,
+                    "buy_weight_pct": 100.0,
+                    "action": "HOLD",
+                    "reason": "보유 종목 현황 (이번 단계는 추천 판단 없이 HOLD 고정)",
+                }
+            ],
+        },
+        message_text=None,  # legacy
+    )
+
+    called = {"n": 0}
+
+    def _spy_builder(run_id, payload):
+        called["n"] += 1
+        return "LEGACY_FALLBACK_TEXT"
+
+    monkeypatch.setattr(delivery.draft_message, "build_message_text", _spy_builder)
+    monkeypatch.setattr(delivery, "_scp_upload", lambda *a, **kw: None)
+    monkeypatch.setattr(delivery, "_ssh_target", lambda: "stub@host")
+    monkeypatch.setattr(delivery, "_remote_inbox", lambda: "/tmp/inbox")
+
+    _real_deliver(legacy_run)
+    assert called["n"] == 1  # legacy 만 fallback 트리거

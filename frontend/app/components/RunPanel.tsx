@@ -251,42 +251,6 @@ function groupByAccount(recs: NormRec[]): AccountSummary[] {
 
 // ─── compact 렌더링 컴포넌트 ────────────────────────────────────
 
-function HoldingsCompactView({ recs }: { recs: NormRec[] }) {
-  const summary = useMemo(() => computeSummaryFor(recs), [recs]);
-  const accountSummaries = useMemo(() => groupByAccount(recs), [recs]);
-  const expandKeys = useMemo(() => recs.map((r) => rowKey(r)), [recs]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  // 동일 run 의 동일 항목 펼침 상태 유지: 키 보존 + 사라진 키 정리.
-  useEffect(() => {
-    setExpanded((prev) => {
-      const valid = new Set(expandKeys);
-      const next = new Set<string>();
-      for (const k of prev) {
-        if (valid.has(k)) next.add(k);
-      }
-      return next;
-    });
-  }, [expandKeys]);
-
-  const toggle = useCallback((k: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(k)) next.delete(k);
-      else next.add(k);
-      return next;
-    });
-  }, []);
-
-  return (
-    <div>
-      <OverallSummaryCard summary={summary} />
-      <AccountSummaryCards summaries={accountSummaries} />
-      <CompactHoldingsTable recs={recs} expanded={expanded} onToggle={toggle} />
-    </div>
-  );
-}
-
 function OverallSummaryCard({ summary }: { summary: Summary }) {
   const calcBasis =
     summary.calc_available_count > 0
@@ -603,22 +567,90 @@ function KV({
   );
 }
 
-// ─── Recommendations 진입점 ─────────────────────────────────────
+// ─── Step 2D — 승인 초안 영역 (preview 우선 + 전체 요약 기본 + 근거 데이터 접힘) ───
+//
+// 표시 정책:
+// 1. 최신 run + message_text 있음 → preview block + 전체 요약(기본) + 근거 데이터(접힘)
+// 2. 과거 run + message_text 없음 + holdings draft → 정적 안내 문구 + 전체 요약(기본) + 근거 데이터(펼침)
+// 3. 비-holdings(샘플) draft → 기존처럼 raw recommendations 한 줄 표시 (preview 없음)
+// 4. 빈 payload → "초안 본문이 없습니다" 안내
+//
+// 프론트엔드는 message_text 를 절대 조립/파싱하지 않는다. 백엔드가 내려준 원본만 그대로 렌더링.
 
-function Recommendations({ run }: { run: Run }) {
+const LEGACY_FALLBACK_NOTICE =
+  "이 과거 초안은 전송 메시지 미리보기를 지원하지 않습니다. " +
+  "아래 근거 데이터에서 초안 내용을 확인하세요.";
+
+function MessagePreview({ messageText }: { messageText: string }) {
+  return (
+    <div className="preview-block">
+      <div className="preview-header">전송 메시지 미리보기</div>
+      <pre className="preview-body">{messageText}</pre>
+    </div>
+  );
+}
+
+function LegacyFallback() {
+  return <div className="message info">{LEGACY_FALLBACK_NOTICE}</div>;
+}
+
+function EvidenceDetails({
+  recs,
+  defaultOpen,
+}: {
+  recs: NormRec[];
+  defaultOpen: boolean;
+}) {
+  return (
+    <details className="evidence-details" open={defaultOpen}>
+      <summary>근거 데이터 펼쳐보기 (계좌별 요약 + 보유 종목 표)</summary>
+      <div className="evidence-body">
+        <AccountSummaryCards summaries={groupByAccount(recs)} />
+        <CompactHoldingsTableStandalone recs={recs} />
+      </div>
+    </details>
+  );
+}
+
+// CompactHoldingsTable 은 기존에 expanded/onToggle 을 prop 으로 받음.
+// 근거 데이터 펼침 안에서 행별 상세 펼침 상태를 별도로 보존하려면 자기 상태를 가져야 하므로
+// wrapper 를 둔다 (기존 컴포넌트 재사용).
+function CompactHoldingsTableStandalone({ recs }: { recs: NormRec[] }) {
+  const expandKeys = useMemo(() => recs.map((r) => rowKey(r)), [recs]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setExpanded((prev) => {
+      const valid = new Set(expandKeys);
+      const next = new Set<string>();
+      for (const k of prev) if (valid.has(k)) next.add(k);
+      return next;
+    });
+  }, [expandKeys]);
+
+  const toggle = useCallback((k: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  }, []);
+
+  return <CompactHoldingsTable recs={recs} expanded={expanded} onToggle={toggle} />;
+}
+
+function ApprovalDraftBody({ run }: { run: Run }) {
   const payload = run.draft_payload ?? {};
-  const summary = (payload as Record<string, unknown>).summary_text;
   const recs = (payload as Record<string, unknown>).recommendations;
   const note = (payload as Record<string, unknown>).note;
+  const messageText =
+    typeof run.message_text === "string" && run.message_text.length > 0
+      ? run.message_text
+      : null;
 
-  const hasSummary = typeof summary === "string" && summary.length > 0;
   const hasRecs = Array.isArray(recs) && recs.length > 0;
   const hasNote = typeof note === "string" && note.length > 0;
-
-  if (!hasSummary && !hasRecs && !hasNote && Object.keys(payload).length === 0) {
-    return <div className="message info">초안 본문이 없습니다.</div>;
-  }
-
   const recsList = hasRecs
     ? (recs as Array<Record<string, unknown>>)
     : ([] as Array<Record<string, unknown>>);
@@ -628,36 +660,57 @@ function Recommendations({ run }: { run: Run }) {
     recsList[0] !== null &&
     isHoldingsRec(recsList[0]);
 
+  // 빈 payload — 안내만
+  if (!hasRecs && !hasNote && !messageText) {
+    return <div className="message info">초안 본문이 없습니다.</div>;
+  }
+
+  // 비-holdings 샘플 초안 — preview 미지원. raw 는 기본 접힘 details 안으로만 노출.
+  // Step 2D AC13: raw JSON 은 기본 노출되지 않는다.
+  if (hasRecs && !isHoldings) {
+    return (
+      <div>
+        <LegacyFallback />
+        {hasNote ? (
+          <div className="summary-text" style={{ marginTop: 10 }}>
+            {note as string}
+          </div>
+        ) : null}
+        <details className="evidence-details" style={{ marginTop: 12 }}>
+          <summary>근거 데이터 펼쳐보기 (샘플 recommendations 원본)</summary>
+          <ul className="reco-list" style={{ marginTop: 10 }}>
+            {recsList.map((r, idx) => (
+              <li key={idx}>
+                <code>{JSON.stringify(r)}</code>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
+    );
+  }
+
+  // holdings draft — preview / 정적 안내 + 전체 요약 + 근거 데이터(접힘/펼침)
+  const normRecs = recsList.map((r, idx) => normalizeRec(r, idx));
+  const summary = computeSummaryFor(normRecs);
+  const evidenceDefaultOpen = messageText === null;
+
   return (
     <div>
-      {hasSummary ? (
-        <div className="summary-text">{summary as string}</div>
-      ) : null}
+      {messageText !== null ? (
+        <MessagePreview messageText={messageText} />
+      ) : (
+        <LegacyFallback />
+      )}
       {hasNote ? (
-        <div className="summary-text" style={{ marginTop: hasSummary ? 8 : 0 }}>
+        <div className="summary-text" style={{ marginTop: 10 }}>
           {note as string}
         </div>
       ) : null}
-      {hasRecs && isHoldings ? (
-        <HoldingsCompactView
-          recs={recsList.map((r, idx) => normalizeRec(r, idx))}
-        />
-      ) : null}
-      {hasRecs && !isHoldings ? (
-        <ul
-          className="reco-list"
-          style={{ marginTop: hasSummary || hasNote ? 10 : 0 }}
-        >
-          {recsList.map((r, idx) => (
-            <li key={idx}>
-              <code>{JSON.stringify(r)}</code>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {!hasSummary && !hasRecs && !hasNote ? (
-        <pre>{JSON.stringify(payload, null, 2)}</pre>
-      ) : null}
+      <div style={{ marginTop: 12 }}>
+        <OverallSummaryCard summary={summary} />
+      </div>
+      <EvidenceDetails recs={normRecs} defaultOpen={evidenceDefaultOpen} />
     </div>
   );
 }
@@ -782,8 +835,8 @@ export default function RunPanel({
       </div>
 
       <div className="card">
-        <h2>3. 초안 본문</h2>
-        <Recommendations run={run} />
+        <h2>3. 승인 초안 (전송 메시지 미리보기)</h2>
+        <ApprovalDraftBody run={run} />
       </div>
 
       <div className="card">

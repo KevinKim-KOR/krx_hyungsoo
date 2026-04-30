@@ -127,12 +127,14 @@ def deliver(run: Run) -> None:
     remote_dir = _remote_inbox()
     approved_at = datetime.now(timezone.utc).isoformat()
 
-    # POC2 Step 1A: holdings 기반 draft 라면 사람이 읽는 message_text 를
-    # 로컬에서 미리 생성하여 handoff artifact 에 포함한다. OCI consumer 는
-    # 이 값을 우선 사용해 발송하므로 OCI bash 가 recommendations JSON 을
-    # 파싱해 메시지를 조립하지 않는다.
-    message_text: Optional[str] = None
-    if draft_message.is_holdings_draft(run.draft_payload):
+    # POC2 Step 2D: preview ↔ 실제 발송문 단일 소스 — Run 에 저장된 message_text 를
+    # 그대로 사용한다. 신규 run 은 generate 시점에 백엔드가 빌드해 Run 에 저장했고,
+    # GET /runs/{id} 응답·OCI handoff·Telegram 발송 모두 동일 문자열이다.
+    # 과거(Step 2D 이전 생성) run 은 Run.message_text 가 None 일 수 있다 — 이 경우
+    # holdings draft 라면 동일 빌더를 그 자리에서 호출해 fallback (POC2 Step 1A 호환).
+    # 이 fallback 은 신규 run 에서는 절대 트리거되지 않는다 (None 일 수 없음).
+    message_text: Optional[str] = run.message_text
+    if message_text is None and draft_message.is_holdings_draft(run.draft_payload):
         message_text = draft_message.build_message_text(
             run.run_id, run.draft_payload or {}
         )

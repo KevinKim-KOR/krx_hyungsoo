@@ -1,16 +1,16 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-04-29
+최종 업데이트: 2026-04-30
 
 ## 1. 프로젝트 현재 상태
 
 현재 프로젝트는 POC2 단계다.
 
 POC1에서는 승인 루프와 실제 OCI 전달을 검증했다.
-POC2에서는 holdings 기반 입력, Naver 시세 enrichment, Telegram 메시지 가독성, UI 압축 + 계좌 구분을 진행 중이다.
+POC2에서는 holdings 기반 입력, Naver 시세 enrichment, Telegram 메시지 가독성, UI 압축 + 계좌 구분, 승인 초안 미리보기 분리를 진행 중이다.
 
 현재 위치:
-- POC2-Step2C 완료 (Codex CONDITIONAL_PASS 후 보고 정확성 수정으로 완료 처리)
+- POC2-Step2D 완료 (Codex CONDITIONAL_PASS 후 raw JSON 기본 노출 차단 수정으로 완료 처리)
 - 다음 작업: 사용자 결정 대기
 
 ## 2. 완료된 Step
@@ -64,15 +64,30 @@ Holdings UI 압축 + 계좌 구분 도입.
 - 과거 holdings / draft_payload 의 account_group 누락은 백엔드 로드 단계 또는 프론트 normalizeRec 단계에서 "일반" / 행 인덱스 fallback 으로 안전 처리.
 - pytest 76 passed (기존 63 + Step2C 신규 13).
 
+### POC2-Step2D
+승인 초안 미리보기와 근거 데이터 분리.
+- `Run` 모델에 `message_text: Optional[str]` top-level 필드 추가.
+- generate 시점(generate_draft / generate_draft_from_holdings) 에 백엔드가 build_message_text 로 미리 빌드해 Run 에 저장.
+- GET /runs/{id} 응답·OCI handoff artifact·Telegram 발송 모두 동일한 Run.message_text 사용 → preview ↔ 실제 발송문 단일 소스 보장.
+- 과거 state/runs/*.json 의 message_text 키 누락은 Run.from_dict 가 None 으로 fallback (하위 호환).
+- 프론트 RunPanel 의 "초안 본문" 카드를 "승인 초안 (전송 메시지 미리보기)" 로 재편.
+  - preview block(백엔드 원본 message_text 그대로 렌더, 프론트가 조립/파싱하지 않음)
+  - 전체 요약 카드 기본 노출
+  - 계좌별 요약 + compact table 은 `근거 데이터 펼쳐보기` <details> 안으로 이동
+  - 최신 run + message_text 있음 → 근거 데이터 기본 접힘
+  - 과거 run + message_text 없음 → 정적 안내 문구 + 근거 데이터 기본 펼침
+  - 비-holdings(샘플) 분기도 정적 안내 + raw JSON 기본 접힘 details 안으로 이동 (Codex 지적 수용)
+- pytest 82 passed (Step2C 76 + Step2D 신규 6).
+
 ## 3. 현재 발견된 운영 이슈
 
-특이사항 없음. POC2-Step2B 의 메시지 길이 초과 이슈는 해결됨.
-운영 E2E 자연 검증(사용자 디바이스에서 18+ 종목 [시세 갱신] → 초안 → 승인 → Telegram 수신) 은 다음 사용자 실행 시점 자연 발생 검증 대기.
+특이사항 없음.
+운영 E2E 자연 검증 — preview 와 실제 Telegram 발송문 시각 비교 — 은 다음 사용자 실행 시점에서 자연 발생.
 
 ## 4. 다음 Step 후보
 
 ### 후보 A — 운영 E2E 자연 검증 follow-up
-사용자 디바이스에서 [시세 갱신] → 초안 → 승인 → 18+ 종목 새 형식 Telegram 수신 결과 사용자 보고 받기.
+사용자 디바이스에서 [시세 갱신] → 초안 → 승인 초안 화면(preview + 전체 요약 + 근거 데이터 접힘) 확인 → Approve → Telegram 수신 → preview 와 발송문 시각 비교 결과 사용자 보고.
 검증 OK 시 STATE_LATEST.md 업데이트. 검증 NG 시 즉시 fix 라운드.
 
 ### 후보 B — POC2-Step2A — pykrx EOD fallback 추가
@@ -98,18 +113,20 @@ Backend:
 - OCI handoff
 - existing daily_ops.sh 소비
 - Telegram 기존 발송 경로
+- Run.message_text top-level optional metadata (Step 2D 부터)
 
 Frontend:
 - Next.js
 - TypeScript
 - App Router
 - FastAPI 분리 + CORS
-- HTML datalist (account_group 입력 — Step 2C 추가)
+- HTML datalist (account_group 입력 — Step 2C 부터)
+- preview block + evidence-details (Step 2D 부터)
 
 Storage:
 - holdings: state/holdings/holdings_latest.json (Step 2C 부터 account_group 키 포함)
 - market cache: state/market_cache/market_latest.json
-- runs: 기존 run store
+- runs: state/runs/{run_id}.json (Step 2D 부터 message_text top-level 키 포함, 과거 run 은 누락 허용)
 
 금지:
 - MongoDB
@@ -133,6 +150,9 @@ Storage:
 - account_group 은 표시/그룹용 라벨이며 계좌번호/세금/증권사 판정값이 아니다.
 - 백엔드 정규화가 최종 방어선. 프론트엔드 정규화는 보조.
 - React key / 펼침 상태 식별자는 source_index + ticker + account_group + avg_buy_price 조합.
+- 승인 초안 화면의 message_text 는 백엔드가 generate 시점에 빌드한 원본을 그대로 렌더한다 — 프론트엔드는 조립/파싱하지 않는다.
+- preview / OCI handoff / Telegram 발송은 모두 동일한 Run.message_text 단일 소스를 사용한다.
+- raw JSON 은 어떤 분기에서도 기본 화면에 노출되지 않는다 (필요 시 기본 접힘 details 안으로만).
 
 ## 7. 다음 세션 첫 액션
 
@@ -145,6 +165,7 @@ Storage:
 5. docs/ASSUMPTIONS.md 읽기
 6. docs/MASTER_PLAN.md 읽기
 7. docs/handoff/STATE_LATEST.md 읽기 (본 문서)
-8. docs/handoff/POC2_Step2C_close.md 읽기 (직전 종결 문서)
-9. docs/backlog/BACKLOG.md 읽기
-10. "기반 문서 확인 완료" 응답 후 사용자 결정 대기
+8. docs/handoff/POC2_Step2D_close.md 읽기 (직전 종결 문서)
+9. docs/handoff/POC2_Step2C_close.md 읽기 (직전직전 종결 문서, 필요 시)
+10. docs/backlog/BACKLOG.md 읽기
+11. "기반 문서 확인 완료" 응답 후 사용자 결정 대기

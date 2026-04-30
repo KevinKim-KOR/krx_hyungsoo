@@ -82,6 +82,10 @@ class RunResponse(BaseModel):
     asof: str
     status: str
     draft_payload: Optional[dict[str, Any]] = None
+    # POC2 Step 2D: 신규 run 은 generate 시점에 백엔드가 빌드한 message_text 를
+    # 응답에 그대로 포함한다. 과거 run 은 None.
+    # 프론트엔드는 이 값을 opaque string 으로 받아 그대로 렌더링한다 (조립 금지).
+    message_text: Optional[str] = None
 
     @classmethod
     def from_run(cls, run: Run) -> "RunResponse":
@@ -90,6 +94,7 @@ class RunResponse(BaseModel):
             asof=run.asof,
             status=run.status,
             draft_payload=run.draft_payload,
+            message_text=run.message_text,
         )
 
 

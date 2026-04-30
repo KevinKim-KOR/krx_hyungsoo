@@ -34,6 +34,11 @@ class Run:
     asof: str
     status: Status
     draft_payload: Optional[dict[str, Any]] = None
+    # POC2 Step 2D: top-level optional metadata.
+    # 신규 run 은 generate 시점에 백엔드가 빌드해 저장하고, OCI handoff/Telegram 도
+    # 동일한 이 값을 사용한다 (preview ↔ 실제 발송문 단일 소스).
+    # 과거 state/runs/*.json 에 키가 없을 수 있으므로 from_dict 가 누락을 None 으로 허용.
+    message_text: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -47,9 +52,12 @@ class Run:
                 f"Run 역직렬화 실패 — 필수 키 누락: {missing}. "
                 f"저장 포맷이 계약을 어김 (기대 키: {list(required)})."
             )
+        # message_text 는 옵션. 과거 run 파일에 없으면 None.
+        msg = data.get("message_text")
         return cls(
             run_id=data["run_id"],
             asof=data["asof"],
             status=data["status"],
             draft_payload=data["draft_payload"],
+            message_text=msg if isinstance(msg, str) else None,
         )

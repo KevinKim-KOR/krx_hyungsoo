@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from app import sample_draft, store
+from app import draft_message, sample_draft, store
 from app.holdings import Holding
 from app.holdings_enrich import enrich_holdings, to_recommendation_dict
 from app.market_cache import MarketQuote
@@ -47,11 +47,16 @@ def generate_draft(input_data: dict[str, Any]) -> Run:
 
     try:
         payload = sample_draft.build_sample_payload(input_data)
+        # Step 2D: 생성 시점에 message_text 를 미리 빌드해 Run 에 저장.
+        # 비-holdings(샘플) payload 는 build_message_text 가 빈 문자열을 돌려주며
+        # 그 경우 Run.message_text 는 None 으로 둔다 (UI 가 정적 fallback 표시).
+        msg = draft_message.build_message_text(run_id, payload)
         run = Run(
             run_id=run_id,
             asof=asof,
             status="PENDING_APPROVAL",
             draft_payload=payload,
+            message_text=msg if msg else None,
         )
     except sample_draft.SampleDraftInputError as e:
         logger.error(f"draft 생성 실패 run_id={run_id}: {e}")
@@ -125,11 +130,16 @@ def generate_draft_from_holdings(
     run_id = _new_run_id()
     asof = datetime.now(timezone.utc).isoformat()
     payload = _build_holdings_payload(holdings, market_quotes=market_quotes)
+    # Step 2D: 생성 시점에 message_text 를 미리 빌드해 Run 에 저장.
+    # 같은 문자열을 GET /runs/{id} 응답(preview), Telegram 발송, OCI handoff
+    # 모두에서 재사용한다 → preview ↔ 실제 발송문 단일 소스 보장.
+    msg = draft_message.build_message_text(run_id, payload)
     run = Run(
         run_id=run_id,
         asof=asof,
         status="PENDING_APPROVAL",
         draft_payload=payload,
+        message_text=msg if msg else None,
     )
     store.save(run)
     return run

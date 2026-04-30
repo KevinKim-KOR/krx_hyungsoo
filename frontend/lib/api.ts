@@ -20,6 +20,10 @@ export interface Run {
   asof: string;
   status: RunStatus;
   draft_payload: Record<string, unknown> | null;
+  // POC2 Step 2D: 백엔드가 generate 시점에 빌드한 전송 메시지 원본.
+  // 프론트엔드는 opaque string 으로 받아 그대로 렌더링한다 (조립/파싱 금지).
+  // 과거 run 또는 비-holdings 초안에는 null/undefined.
+  message_text?: string | null;
 }
 
 export class ApiConfigError extends Error {}
