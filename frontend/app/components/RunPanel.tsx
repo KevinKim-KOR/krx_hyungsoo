@@ -640,6 +640,59 @@ function CompactHoldingsTableStandalone({ recs }: { recs: NormRec[] }) {
   return <CompactHoldingsTable recs={recs} expanded={expanded} onToggle={toggle} />;
 }
 
+// Step 3: draft_payload.factor_signals 에서 portfolio scope 1개 추출.
+// 종목별 signal 은 기본 영역에 표시하지 않는다 (Top N 정책 금지).
+function pickPortfolioFactorSignal(
+  payload: Record<string, unknown>,
+): {
+  factor_name: string;
+  is_available: boolean;
+  reason_text: string | null;
+  fallback_text: string | null;
+} | null {
+  const fs = payload.factor_signals;
+  if (!Array.isArray(fs)) return null;
+  for (const sig of fs) {
+    if (
+      sig &&
+      typeof sig === "object" &&
+      (sig as Record<string, unknown>).scope === "portfolio"
+    ) {
+      const s = sig as Record<string, unknown>;
+      return {
+        factor_name:
+          typeof s.factor_name === "string" ? s.factor_name : "보유 비중 영향",
+        is_available: Boolean(s.is_available),
+        reason_text: typeof s.reason_text === "string" ? s.reason_text : null,
+        fallback_text:
+          typeof s.fallback_text === "string" ? s.fallback_text : null,
+      };
+    }
+  }
+  return null;
+}
+
+function JudgmentReasonSection({
+  signal,
+}: {
+  signal: ReturnType<typeof pickPortfolioFactorSignal>;
+}) {
+  if (signal === null) return null;
+  const text = signal.is_available ? signal.reason_text : signal.fallback_text;
+  if (typeof text !== "string" || text.length === 0) return null;
+  return (
+    <div className="reason-section">
+      <div className="reason-section-title">판단 사유</div>
+      <ul className="reason-list">
+        <li>
+          <span className="reason-name">{signal.factor_name}</span>
+          <span className="reason-text">{text}</span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function ApprovalDraftBody({ run }: { run: Run }) {
   const payload = run.draft_payload ?? {};
   const recs = (payload as Record<string, unknown>).recommendations;
@@ -648,6 +701,7 @@ function ApprovalDraftBody({ run }: { run: Run }) {
     typeof run.message_text === "string" && run.message_text.length > 0
       ? run.message_text
       : null;
+  const portfolioSignal = pickPortfolioFactorSignal(payload as Record<string, unknown>);
 
   const hasRecs = Array.isArray(recs) && recs.length > 0;
   const hasNote = typeof note === "string" && note.length > 0;
@@ -690,7 +744,7 @@ function ApprovalDraftBody({ run }: { run: Run }) {
     );
   }
 
-  // holdings draft — preview / 정적 안내 + 전체 요약 + 근거 데이터(접힘/펼침)
+  // holdings draft — preview / 정적 안내 + 전체 요약 + 판단 사유 + 근거 데이터(접힘/펼침)
   const normRecs = recsList.map((r, idx) => normalizeRec(r, idx));
   const summary = computeSummaryFor(normRecs);
   const evidenceDefaultOpen = messageText === null;
@@ -710,6 +764,7 @@ function ApprovalDraftBody({ run }: { run: Run }) {
       <div style={{ marginTop: 12 }}>
         <OverallSummaryCard summary={summary} />
       </div>
+      <JudgmentReasonSection signal={portfolioSignal} />
       <EvidenceDetails recs={normRecs} defaultOpen={evidenceDefaultOpen} />
     </div>
   );

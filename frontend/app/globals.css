@@ -643,3 +643,49 @@ details.evidence-details[open] > summary::before {
 .evidence-body {
   margin-top: 10px;
 }
+
+/* POC2 Step 3 — 판단 사유 섹션 (portfolio scope factor reason 1줄) */
+
+.reason-section {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+
+.reason-section-title {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+
+ul.reason-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+ul.reason-list li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 2px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reason-name {
+  color: var(--muted);
+  font-weight: 600;
+  min-width: 96px;
+  flex-shrink: 0;
+}
+
+.reason-text {
+  color: var(--fg);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}

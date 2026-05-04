@@ -192,6 +192,32 @@ export interface EnrichedHoldingsResult {
   items: EnrichedHolding[];
 }
 
+// ─── POC2 Step 3: factor signals ─────────────────────────────────────
+//
+// draft_payload.factor_signals 5번째 키. Step3 한정 명시 승인.
+// 과거 run 에는 누락될 수 있으므로 모든 접근에서 옵션 처리한다.
+//
+// 프론트엔드는 factor_signals 를 새로 조립/계산하지 않는다 — 백엔드가 만든 dict 를
+// 그대로 표시만 한다. 종목별 signal 은 메시지에 나열하지 않으며, 승인 초안 기본
+// 영역에는 portfolio scope reason_text(또는 fallback_text) 1줄만 표시한다.
+export interface FactorSignal {
+  factor_id: string;
+  factor_name: string;
+  scope: "portfolio" | "holding_row";
+  is_available: boolean;
+  value: number | null;
+  unit: string;
+  reason_text: string | null;
+  fallback_text: string | null;
+  input_basis?: Record<string, unknown>;
+  computed_at?: string;
+  // holding_row scope 전용 필드
+  source_index?: number;
+  ticker?: string;
+  account_group?: string;
+  avg_buy_price?: number;
+}
+
 // 명시적 사용자 액션에서만 호출 (page load / polling / 새로고침에서 호출 금지).
 export function refreshMarket(): Promise<MarketRefreshResult> {
   // Naver 시세 조회는 종목당 최대 5초 + 직렬 호출이라 기본 timeout 보다 여유 필요.
