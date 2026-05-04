@@ -7,13 +7,23 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step2D 완료
-POC2-Step2 전체 종료
-다음 단계: POC2-Step3 — First Factor Signal Integration 설계 진입
+현재 단계: POC2-Step3 완료
+다음 단계: POC2-Step3 Conclusion 확인 후, 다음 Factor 방향 검토
 ```
 
-검증 보고 기준 Step2D AC 모두 충족. 사용자 디바이스 Telegram 수신까지 확인됨.
-Step2 종료 선언 문서: `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md`.
+Step3 완료 요약:
+보유 비중 영향 factor 1개가 draft_payload.factor_signals, 승인 초안 UI, message_text,
+Telegram/Push 문구까지 전달됨을 확인했다.
+
+주의:
+- Q1 은 ANSWERED 가 아니라 OPEN 유지 권고.
+- Step3 는 "잘 달리는 말 찾기" 또는 "잘 올라가는 섹터 발굴" 완료가 아니다.
+- Q4 는 OPEN 으로 유지하고, 현재 Factor 추가 작업 후 다음 Factor 도입 검토 전에 검토한다.
+- 다음 단계는 ML 구현도 아니고 sector discovery 구현도 아니다 — 먼저 다음 Factor 방향을 결정한다.
+
+직전 종결 문서:
+- `docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md` (Step3 종료 선언 + 다음 단계 진입 가드)
+- `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` (Step2 종료 선언)
 
 ---
 
@@ -48,6 +58,12 @@ Telegram message compaction, 승인 초안 preview 분리까지 완료했다.
 - POC2-Step2B: Telegram 메시지 요약형 + 길이 제한 방어 (MAX_LENGTH_CHARS=3500)
 - POC2-Step2C: Compact UI + account_group + React key 안정성 + polling 펼침 상태 유지
 - POC2-Step2D: 승인 초안 preview 분리 (Run.message_text top-level + 단일 소스 보장)
+- POC2-Step3: 첫 factor signal 통합 (portfolio_concentration_v1 / "보유 비중 영향")
+  · draft_payload.factor_signals 5번째 키 (Step3 한정 명시 승인)
+  · portfolio scope 1개 + max_weight_row holding_row scope 0~1개 고정
+  · message_text 에 [판단 사유] 1줄 (portfolio reason 또는 fallback)
+  · 승인 초안 UI 에 판단 사유 섹션 기본 노출
+  · BUY/SELL/리밸런싱/Top N/위험 등급 등 일체 미도입
 
 ---
 
@@ -152,9 +168,17 @@ Storage:
 2. docs/PROJECT_ORIGIN_INTENT.md 읽기
 3. docs/agent/INSTRUCTION_RULES.md 읽기 (선택)
 4. docs/KILL_SWITCHES.md 읽기
-5. docs/ASSUMPTIONS.md 읽기 (Q1 명시 연결을 위해 필수)
+5. docs/ASSUMPTIONS.md 읽기 (Q1 OPEN 유지 권고 / Q4 OPEN 명시 연결을 위해 필수)
 6. docs/MASTER_PLAN.md 읽기
 7. docs/handoff/STATE_LATEST.md 읽기 (본 문서)
-8. docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언 + Step3 진입 가드)
-9. docs/backlog/BACKLOG.md 읽기 (Step2 누적 deferred)
-10. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 Step3 설계 지시 대기
+8. docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언 + 다음 단계 진입 가드)
+9. docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언, 필요 시)
+10. docs/backlog/BACKLOG.md 읽기 (Step1~Step3 누적 deferred)
+11. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 다음 Factor 방향 검토 지시 대기
+
+다음 세션이 절대 하지 않을 것:
+- 다음 단계에서 ML 바로 구현
+- 다음 단계에서 sector discovery 바로 구현
+- 다음 단계에서 BUY/SELL/리밸런싱 구현
+- Q1 을 ANSWERED 로 임의 이동
+- factor 종류·라벨·산식·threshold 선확정
