@@ -7,31 +7,41 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step4 설계 완료 (방향 결정 단계, 구현 단계 아님)
-다음 단계: Momentum Engine 첫 구현 STEP 의 설계 지시문 작성
+현재 단계: POC2-Step5A 설계 완료 (계약 문서화 단계, 구현 단계 아님)
+다음 단계: Step5B — Momentum result 저장 위치 결정 설계 지시문 작성
 ```
 
-Step4 요약:
-Momentum Engine 방향을 정리했다.
-holdings mode 는 보유 종목 점검, universe mode 는 외부 ETF/섹터 후보 발굴로 구분한다.
-두 모드는 같은 Momentum Engine 을 공유하는 방향으로 둔다.
+Step5A 요약:
+Momentum Engine 의 최소 입력/출력 계약을 정의했다.
+Momentum Engine 은 holdings mode 와 universe mode 가 공유한다.
+universe mode 에서 엔진은 후보군을 직접 수집하지 않고, 외부에서 주입된 candidates 를 평가한다.
+rank 는 optional 이며 score / ranking_basis 가 없으면 생략 가능하다.
+
+이전 단계 누적:
+- Step4: Momentum Engine 방향 정리 (holdings mode / universe mode 두 축, 친구 시스템은 결과물 아닌 과정만 참고)
+- Step3: 보유 비중 영향 factor 1개를 draft_payload.factor_signals + 승인 초안 UI + message_text + Telegram/Push 까지 통합
+- Step2 전체 종료: holdings 입력/저장, account_group, Naver 시세, 평가 계산, compact UI, message compaction, 승인 초안 preview 분리
 
 ASSUMPTIONS:
-- Q3 → ANSWERED 이동 (A-5 — KS-3 비건설적 핑퐁 패턴 재발 없음)
+- Q3 → A-5 ANSWERED 이동 (Step4 시점 — KS-3 비건설적 핑퐁 패턴 재발 없음)
 - Q5 → OPEN 신규 등록 (검증 대상 = 사용자 본인)
 - 활성 질문은 Q1 / Q4 / Q5 유지 (3개)
 
 주의:
-- Step4 는 구현 단계가 아니다.
-- 구체 산식, 유니버스, 데이터 소스, ML 모델, UI 디자인은 확정하지 않았다.
-- "잘 달리는 말 찾기" 는 holdings factor 가 아니라 universe mode 에서 다룬다.
+- Step5A 는 구현 단계가 아니다 — 계약 문서화 단계.
+- 구체 점수 산식, MA 기간, RSI 기준, 수익률 기간, 유니버스 종목 수, ETF 후보군, 데이터 소스, ML 모델, 화면 디자인, Telegram Top N, BUY/SELL/리밸런싱, 운영 결과 저장소는 확정하지 않았다.
+- Momentum result 저장 위치(draft_payload / factor_signals / 별도 artifact / Run top-level / 외부 저장소) 는 Step5B 에서 판단.
+- 운영 결과 기록 / AI·ML 분석 넘김은 Step5C 또는 별도 Step 에서 판단.
+- "잘 달리는 말 찾기" 는 holdings factor 가 아니라 universe mode 에서 다룬다 — 단 엔진은 후보군을 직접 수집하지 않는다.
 - 와이프는 UI 가독성 검증 대상이며 Q5 의 투자 판단/운영 방식 적합성 검증 대상이 아니다.
 - Q1 은 ANSWERED 가 아니라 OPEN 유지. Step3 결과는 1차 긍정 증거에 불과.
 
 직전 종결/설계 문서:
-- `docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md` (Step4 설계서, 본 문서 직전)
-- `docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md` (Step3 종료 선언 + 다음 단계 진입 가드)
+- `docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md` (Step5A 설계서, 본 문서 직전)
+- `docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md` (Step4 설계서)
+- `docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md` (Step3 종료 선언)
 - `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` (Step2 종료 선언)
+- `docs/backlog/BACKLOG.md` (Step5 진입 전 정돈 완료 — ACTIVE REVIEW BEFORE STEP5 / CONSOLIDATED DEFERRED / CLOSED)
 
 ---
 
@@ -176,21 +186,25 @@ Storage:
 2. docs/PROJECT_ORIGIN_INTENT.md 읽기
 3. docs/agent/INSTRUCTION_RULES.md 읽기 (선택)
 4. docs/KILL_SWITCHES.md 읽기
-5. docs/ASSUMPTIONS.md 읽기 (Q1 OPEN 유지 / Q4 OPEN / Q5 OPEN 명시 연결, A-5 신규 ANSWERED 이동 확인)
+5. docs/ASSUMPTIONS.md 읽기 (Q1 OPEN 유지 / Q4 OPEN / Q5 OPEN 명시 연결, A-4 / A-5 ANSWERED 확인)
 6. docs/MASTER_PLAN.md 읽기
 7. docs/handoff/STATE_LATEST.md 읽기 (본 문서)
-8. docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md 읽기 (Step4 설계서 — 다음 STEP 의 방향 가드)
-9. docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언, 필요 시)
-10. docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언, 필요 시)
-11. docs/backlog/BACKLOG.md 읽기 (Step1~Step3 누적 deferred)
-12. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 다음 STEP (Momentum Engine 첫 구현 STEP) 설계 지시 대기
+8. docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md 읽기 (Step5A 설계서 — 다음 STEP 의 입력/출력 계약)
+9. docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md 읽기 (Step4 설계서 — Momentum Engine 방향 가드)
+10. docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언, 필요 시)
+11. docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언, 필요 시)
+12. docs/backlog/BACKLOG.md 읽기 (ACTIVE REVIEW BEFORE STEP5 5건 + CONSOLIDATED DEFERRED + CLOSED)
+13. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 Step5B (Momentum result 저장 위치 결정) 설계 지시 대기
 
 다음 세션이 절대 하지 않을 것:
-- 다음 STEP 에서 ML 바로 구현
-- 다음 STEP 에서 sector discovery 바로 구현 (Step4 설계서 §8 의 6개 결정 질문 답변 없이 진입 금지)
-- 다음 STEP 에서 BUY/SELL/리밸런싱 구현
-- 다음 STEP 에서 친구 UI 복제
-- 다음 STEP 에서 점수 산식 / threshold / 유니버스 / 데이터 소스 / ML 모델 / UI 디자인 한 번에 결정
-- Q1 / Q5 를 ANSWERED 로 임의 이동
+- Step5B 에서 Momentum Engine 코드 구현 (저장 위치 결정만)
+- Step5B/C 에서 점수 산식 / 유니버스 / 데이터 소스 / ML 모델 / UI 디자인 결정
+- Step5B 에서 draft_payload 6번째 키 신설 (factor_signals 안 또는 별도 artifact 또는 Run top-level 중 1개 선택)
+- Step5C 가 결정되기 전에 새 저장소 / 새 DB / 새 로그 체계 / 새 분석 파이프라인 도입
+- Momentum Engine 이 universe 후보군을 직접 수집하도록 구현 (외부 주입만)
+- ML 바로 구현 / sector discovery 바로 구현 / BUY·SELL·리밸런싱 구현
+- 친구 UI 복제 / 친구 산식 통째 이식
 - holdings mode 와 universe mode 동시 구현 강제
+- Q1 / Q5 를 ANSWERED 로 임의 이동
 - "와이프 = 투자 판단/운영 방식 적합성 검증 대상" 으로 혼동 (와이프는 UI 가독성 전용)
+- rank 를 Telegram Top N 또는 매수 우선순위로 해석

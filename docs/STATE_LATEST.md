@@ -18,8 +18,10 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
-- POC2-Step4 설계서 신규 + ASSUMPTIONS Q3→A-5 이동 + Q5 OPEN 신규 등록 반영.
+- POC2-Step5A 설계서 신규 — Momentum Engine 의 최소 입력/출력 계약 정의.
 - 직전 설계 문서:
+  [docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md](handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md).
+- 직전직전 설계 문서:
   [docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md](handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md).
 - 직전 종결 문서:
   [docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md](handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md).
