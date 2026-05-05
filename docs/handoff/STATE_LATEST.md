@@ -7,21 +7,29 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step3 완료
-다음 단계: POC2-Step3 Conclusion 확인 후, 다음 Factor 방향 검토
+현재 단계: POC2-Step4 설계 완료 (방향 결정 단계, 구현 단계 아님)
+다음 단계: Momentum Engine 첫 구현 STEP 의 설계 지시문 작성
 ```
 
-Step3 완료 요약:
-보유 비중 영향 factor 1개가 draft_payload.factor_signals, 승인 초안 UI, message_text,
-Telegram/Push 문구까지 전달됨을 확인했다.
+Step4 요약:
+Momentum Engine 방향을 정리했다.
+holdings mode 는 보유 종목 점검, universe mode 는 외부 ETF/섹터 후보 발굴로 구분한다.
+두 모드는 같은 Momentum Engine 을 공유하는 방향으로 둔다.
+
+ASSUMPTIONS:
+- Q3 → ANSWERED 이동 (A-5 — KS-3 비건설적 핑퐁 패턴 재발 없음)
+- Q5 → OPEN 신규 등록 (검증 대상 = 사용자 본인)
+- 활성 질문은 Q1 / Q4 / Q5 유지 (3개)
 
 주의:
-- Q1 은 ANSWERED 가 아니라 OPEN 유지 권고.
-- Step3 는 "잘 달리는 말 찾기" 또는 "잘 올라가는 섹터 발굴" 완료가 아니다.
-- Q4 는 OPEN 으로 유지하고, 현재 Factor 추가 작업 후 다음 Factor 도입 검토 전에 검토한다.
-- 다음 단계는 ML 구현도 아니고 sector discovery 구현도 아니다 — 먼저 다음 Factor 방향을 결정한다.
+- Step4 는 구현 단계가 아니다.
+- 구체 산식, 유니버스, 데이터 소스, ML 모델, UI 디자인은 확정하지 않았다.
+- "잘 달리는 말 찾기" 는 holdings factor 가 아니라 universe mode 에서 다룬다.
+- 와이프는 UI 가독성 검증 대상이며 Q5 의 투자 판단/운영 방식 적합성 검증 대상이 아니다.
+- Q1 은 ANSWERED 가 아니라 OPEN 유지. Step3 결과는 1차 긍정 증거에 불과.
 
-직전 종결 문서:
+직전 종결/설계 문서:
+- `docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md` (Step4 설계서, 본 문서 직전)
 - `docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md` (Step3 종료 선언 + 다음 단계 진입 가드)
 - `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` (Step2 종료 선언)
 
@@ -168,17 +176,21 @@ Storage:
 2. docs/PROJECT_ORIGIN_INTENT.md 읽기
 3. docs/agent/INSTRUCTION_RULES.md 읽기 (선택)
 4. docs/KILL_SWITCHES.md 읽기
-5. docs/ASSUMPTIONS.md 읽기 (Q1 OPEN 유지 권고 / Q4 OPEN 명시 연결을 위해 필수)
+5. docs/ASSUMPTIONS.md 읽기 (Q1 OPEN 유지 / Q4 OPEN / Q5 OPEN 명시 연결, A-5 신규 ANSWERED 이동 확인)
 6. docs/MASTER_PLAN.md 읽기
 7. docs/handoff/STATE_LATEST.md 읽기 (본 문서)
-8. docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언 + 다음 단계 진입 가드)
-9. docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언, 필요 시)
-10. docs/backlog/BACKLOG.md 읽기 (Step1~Step3 누적 deferred)
-11. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 다음 Factor 방향 검토 지시 대기
+8. docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md 읽기 (Step4 설계서 — 다음 STEP 의 방향 가드)
+9. docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언, 필요 시)
+10. docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언, 필요 시)
+11. docs/backlog/BACKLOG.md 읽기 (Step1~Step3 누적 deferred)
+12. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 다음 STEP (Momentum Engine 첫 구현 STEP) 설계 지시 대기
 
 다음 세션이 절대 하지 않을 것:
-- 다음 단계에서 ML 바로 구현
-- 다음 단계에서 sector discovery 바로 구현
-- 다음 단계에서 BUY/SELL/리밸런싱 구현
-- Q1 을 ANSWERED 로 임의 이동
-- factor 종류·라벨·산식·threshold 선확정
+- 다음 STEP 에서 ML 바로 구현
+- 다음 STEP 에서 sector discovery 바로 구현 (Step4 설계서 §8 의 6개 결정 질문 답변 없이 진입 금지)
+- 다음 STEP 에서 BUY/SELL/리밸런싱 구현
+- 다음 STEP 에서 친구 UI 복제
+- 다음 STEP 에서 점수 산식 / threshold / 유니버스 / 데이터 소스 / ML 모델 / UI 디자인 한 번에 결정
+- Q1 / Q5 를 ANSWERED 로 임의 이동
+- holdings mode 와 universe mode 동시 구현 강제
+- "와이프 = 투자 판단/운영 방식 적합성 검증 대상" 으로 혼동 (와이프는 UI 가독성 전용)
