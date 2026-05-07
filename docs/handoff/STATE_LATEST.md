@@ -7,18 +7,49 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step5B 구현 완료 (검증 대기)
-다음 단계: 사용자 결정 대기 — Step5C (운영 결과 기록 / AI·ML 분석 넘김 판단) 또는 다음 산식·universe mode 진입 설계
+현재 단계: POC2-Step5D Cleanup 완료 (검증 대기)
+다음 단계: 사용자/설계자 결정 대기 — 다음 Cleanup STEP (BACKLOG CLEANUP CANDIDATES) 또는 universe 모멘텀 산식 진입
 ```
 
-Step5B 요약:
+Step5D Cleanup 요약:
+검증자 NOTES B-3 누적 지적(단일 파일 책임 누적) 에 대응해 신규 기능 추가 없이 구조만 정돈.
+- 백엔드 테스트 파일 분리: tests/test_poc1_loop.py 3,452라인 → 298라인.
+  conftest.py / _helpers.py / 4개 신규 테스트 파일 (holdings_draft_flow / factor_signals / momentum_holdings / universe_seed) 로 분산.
+  pytest 119 passed 그대로 유지 — 의미/개수/검증 강도 변경 0건.
+- 프론트 컴포넌트 분리: RunPanel.tsx 1,055라인 → 905라인.
+  JudgmentReasonSection.tsx + MomentumCandidatesSection.tsx 로 표시 책임 일부 추출.
+  렌더링 / 문구 / 배치 / 동작 / message_text 모두 동일.
+- KS-10 (단일 파일 라인 수 / 책임 누적 임계 초과) 가드 추가: KILL_SWITCHES.md 명문화.
+- PROJECT_ORIGIN_INTENT 배움 자산 / ASSUMPTIONS Q3 보강 / Q5 확인 방법 보강.
+- BACKLOG CLEANUP CANDIDATES 신규 섹션: holdings_draft_flow 추가 분리, EvidenceDetails 분리, HoldingsClient 분리, draft_message 패키지화, api.py 라우터 분리.
+
+Step5C 요약 (직전 단계):
+manual universe seed 파일을 읽어 score 없는 universe mode momentum_result 를 생성하고
+state/universe/universe_momentum_latest.json 에 latest 1건 덮어쓰기 artifact 로 저장.
+실행 트리거: POST /universe/momentum/refresh 수동 backend API 1곳.
+universe 결과는 draft_payload / Run top-level / message_text / UI / Telegram 어디에도 노출 안 함.
+
+Step5C 요약:
+manual universe seed (state/universe/etf_universe_latest.json) 를 읽어 universe mode
+momentum_result 를 생성하고 state/universe/universe_momentum_latest.json (latest 1건 덮어쓰기)
+artifact 로 저장한다. 실행 트리거는 POST /universe/momentum/refresh 수동 backend API 1곳
+이며, holdings draft 생성 / Approve / OCI handoff / Telegram / scheduler 어디에서도
+자동 호출되지 않는다.
+asof 는 YYYY-MM-DD 필수 + 미래 날짜 차단. UNIVERSE_SEED_MAX_AGE_DAYS=30 초과 = stale
+(hard fail 아님, summary.source_freshness="stale" + summary_reason_text 에 명시).
+universe mode 는 점수 미부여 (score_result.is_scored=false, rank 미생성) — 이번 Step 은
+입력 통로 + latest artifact 저장만 검증.
+universe 결과는 draft_payload / Run top-level / message_text / UI / Telegram 어디에도
+실리지 않는다.
+pytest 119 passed (Step5B 107 + Step5C 신규 12).
+
+Step5B 요약 (직전 단계):
 placeholder 산식(pnl_rate)으로 Momentum Engine holdings mode 를 1회 실행했다.
 결과는 draft_payload.momentum_result (Step5B 한정 명시 승인된 6번째 키) 에 저장되며,
 승인 초안 UI 의 [판단 사유] 섹션과 message_text/Telegram 에 1줄 bullet 으로 추가된다.
 별도 [모멘텀 점검] 헤더는 만들지 않으며 [판단 사유] 헤더는 1번만 등장한다.
 candidates 의 row 매핑은 source_index + ticker + account_group + avg_buy_price 4 요소로
 보존되어 동일 ticker 분할매수 row 의 매핑 충돌을 방지한다.
-pytest 107 passed (Step3 93 + Step5B 신규 14).
 
 Step5A 요약 (직전 단계):
 Momentum Engine 의 최소 입력/출력 계약을 정의했다.
@@ -38,9 +69,11 @@ ASSUMPTIONS:
 
 주의:
 - Step5B 의 placeholder 산식(pnl_rate) 은 최종 투자 판단 산식이 아니다 — UI/메시지 모두 명시.
-- universe mode, 외부 ETF 발굴, MA/RSI/수익률 기간 산식, 유니버스 종목 수, ETF 후보군, 데이터 소스, ML 모델, 화면 대개편, Telegram Top N, BUY/SELL/리밸런싱, 운영 결과 별도 저장소는 아직 구현하지 않았다.
-- Momentum result 저장 위치는 Step5B 에서 draft_payload.momentum_result 6번째 키로 결정 (한정 승인). Run top-level 확장 / 별도 artifact / DB 미도입.
-- 운영 결과 기록 / AI·ML 분석 넘김은 Step5C 또는 별도 Step 에서 판단.
+- Step5C 는 universe 후보군 입력 통로와 latest artifact 저장만 만든 단계. 잘 달리는 말 후보를 평가한 것이 아니다 — 점수 미부여, rank 미생성.
+- 외부 ETF 자동 수집, MA/RSI/수익률 기간 산식, 유니버스 종목 수 / ETF 후보군 자동 결정, ML 모델, 화면 대개편, Telegram Top N, BUY/SELL/리밸런싱, 운영 결과 별도 DB, history 누적은 아직 구현하지 않았다.
+- universe mode 결과 저장 위치는 state/universe/universe_momentum_latest.json (latest 1건 덮어쓰기). draft_payload / Run top-level / DB / history 미도입.
+- holdings mode 결과 저장 위치는 draft_payload.momentum_result 6번째 키 (Step5B 결정 그대로).
+- 운영 결과 기록 / AI 해석 로그 / ML dataset 구조는 Step5C 까지 미도입 — 별도 Step 에서 판단.
 - "잘 달리는 말 찾기" 는 holdings factor 가 아니라 universe mode 에서 다룬다 — 단 엔진은 후보군을 직접 수집하지 않는다.
 - 와이프는 UI 가독성 검증 대상이며 Q5 의 투자 판단/운영 방식 적합성 검증 대상이 아니다.
 - Q1 은 ANSWERED 가 아니라 OPEN 유지. Step3 결과는 1차 긍정 증거에 불과.
@@ -52,13 +85,17 @@ ASSUMPTIONS:
 - `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` (Step2 종료 선언)
 - `docs/backlog/BACKLOG.md` (Step5 진입 전 정돈 완료 — ACTIVE REVIEW BEFORE STEP5 / CONSOLIDATED DEFERRED / CLOSED)
 
-Step5B 구현 진입점 (코드):
-- `app/momentum/holdings_mode.py` — placeholder 산식 빌더 (pnl_rate)
-- `app/momentum/__init__.py` — 패키지 진입점 (universe mode stub 미생성)
-- `app/draft.py` — _build_holdings_payload 에서 momentum_result 빌드 + 6번째 키 부착
-- `app/draft_message.py::_render_judgment_lines` — factor + momentum 두 bullet 을 1개의 [판단 사유] 헤더 아래에 합침
-- `frontend/lib/api.ts` — MomentumResult / MomentumCandidate / MomentumScoreResult / MomentumSummary / MomentumTopCandidate 타입
-- `frontend/app/components/RunPanel.tsx::JudgmentReasonSection` — 모멘텀 bullet 1줄 추가, EvidenceDetails 안 MomentumCandidatesSection
+Step5B / 5C 구현 진입점 (코드):
+- `app/momentum/holdings_mode.py` — placeholder 산식 빌더 (pnl_rate, Step5B)
+- `app/momentum/universe_mode.py` — universe candidates 변환 + latest artifact 저장 (Step5C)
+- `app/momentum/__init__.py` — 패키지 진입점 (holdings_mode + universe_mode export, 추상 클래스 / registry 미도입)
+- `app/universe_seed.py` — manual seed loader + asof 검증 + UNIVERSE_SEED_MAX_AGE_DAYS=30 staleness (Step5C)
+- `app/draft.py` — _build_holdings_payload 에서 holdings momentum_result 빌드 + draft_payload 6번째 키 부착 (Step5B). universe 와 무관.
+- `app/draft_message.py::_render_judgment_lines` — factor + holdings momentum 두 bullet 을 1개의 [판단 사유] 헤더 아래에 합침 (Step5B). universe 는 메시지 미반영.
+- `app/api.py` — POST /universe/momentum/refresh 수동 endpoint (Step5C, holdings draft 흐름과 분리)
+- `frontend/lib/api.ts` — MomentumResult / MomentumCandidate / ... 타입 (Step5B holdings mode UI 한정. universe 는 UI 미노출)
+- `frontend/app/components/RunPanel.tsx::JudgmentReasonSection` — 모멘텀 bullet 1줄 추가, EvidenceDetails 안 MomentumCandidatesSection (Step5B)
+- `docs/examples/etf_universe_latest.example.json` — universe seed 예시 (Step5C)
 
 ---
 
@@ -214,14 +251,15 @@ Storage:
 13. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 Step5B (Momentum result 저장 위치 결정) 설계 지시 대기
 
 다음 세션이 절대 하지 않을 것:
-- Step5B 에서 Momentum Engine 코드 구현 (저장 위치 결정만)
-- Step5B/C 에서 점수 산식 / 유니버스 / 데이터 소스 / ML 모델 / UI 디자인 결정
-- Step5B 에서 draft_payload 6번째 키 신설 (factor_signals 안 또는 별도 artifact 또는 Run top-level 중 1개 선택)
-- Step5C 가 결정되기 전에 새 저장소 / 새 DB / 새 로그 체계 / 새 분석 파이프라인 도입
-- Momentum Engine 이 universe 후보군을 직접 수집하도록 구현 (외부 주입만)
-- ML 바로 구현 / sector discovery 바로 구현 / BUY·SELL·리밸런싱 구현
+- universe mode 에 실제 모멘텀 산식을 추가 (Step5C 다음 별도 STEP — 산식·데이터 소스·UI 노출은 별도 결정)
+- universe 결과를 draft_payload / Run top-level / message_text / Telegram / UI 어디에도 자동 노출 (Step5C 가드)
+- POST /universe/momentum/refresh 를 GenerateDraft / Approve / scheduler / cron 에서 자동 호출
+- 외부 ETF 자동 수집 (Naver / pykrx / yfinance / KIS) — universe seed 는 사용자가 수기로 작성
+- DB / history 저장소 / AI 해석 로그 / ML dataset 도입
+- ML 바로 구현 / BUY·SELL·리밸런싱 구현
 - 친구 UI 복제 / 친구 산식 통째 이식
-- holdings mode 와 universe mode 동시 구현 강제
+- holdings mode 와 universe mode 동시 산식 도입 강제
 - Q1 / Q5 를 ANSWERED 로 임의 이동
 - "와이프 = 투자 판단/운영 방식 적합성 검증 대상" 으로 혼동 (와이프는 UI 가독성 전용)
 - rank 를 Telegram Top N 또는 매수 우선순위로 해석
+- draft_payload 7번째 키 신설 (Step5B 6번째 키까지가 한정 승인)

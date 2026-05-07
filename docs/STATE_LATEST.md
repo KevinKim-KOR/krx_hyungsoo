@@ -18,9 +18,16 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
-- POC2-Step5B 구현 — placeholder 산식(pnl_rate) 으로 Momentum Engine holdings mode 1회 실행.
-  draft_payload.momentum_result 6번째 키 + [판단 사유] 섹션 안 모멘텀 bullet 1줄.
-  pytest 107 passed (Step3 93 + Step5B 신규 14).
+- POC2-Step5D Cleanup — 단일 파일 책임 누적 재발 신호 대응.
+  · 백엔드 테스트 파일 분리 (test_poc1_loop.py 3,452→298라인 + conftest.py/_helpers.py + 4개 신규 파일)
+  · 프론트 RunPanel.tsx 책임 분리 (JudgmentReasonSection.tsx + MomentumCandidatesSection.tsx)
+  · KILL_SWITCHES KS-10 (단일 파일 라인 수 / 책임 누적 임계 초과) 가드 추가
+  · pytest 119 passed 유지 (의미/개수/검증 강도 변경 0건). 신규 기능 추가 0건.
+- 직전 구현: POC2-Step5C — universe mode minimal candidate source.
+  manual seed → score 없는 universe momentum_result → state/universe/universe_momentum_latest.json
+  (latest 1건 덮어쓰기). 실행 트리거: POST /universe/momentum/refresh 수동 backend API 1곳.
+  draft_payload / message_text / UI / Telegram 영향 없음. asof 필수 + 미래 차단 + 30일 staleness.
+- 직전 구현: POC2-Step5B (holdings mode placeholder, pnl_rate, draft_payload.momentum_result).
 - 직전 설계 문서:
   [docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md](handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md).
 - 직전직전 설계 문서:

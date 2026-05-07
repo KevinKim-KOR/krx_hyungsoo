@@ -7,6 +7,42 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## CLEANUP CANDIDATES (Step5D 이후 — 다음 Cleanup 또는 기능 STEP 진입 전 검토)
+
+다음 Cleanup STEP 진입 시 우선 검토 항목 (Step5D 에서 처리하지 않은 KS-10 트리거 충족 / 근접 항목).
+
+### CLEANUP NEXT: tests/test_holdings_draft_flow.py 추가 분리
+- 트리거 충족 (Step5D 종료 시점, 2026-04-30): 1,982 라인. KS-10 트리거 1 (테스트 파일 1,500라인 초과 + 여러 STEP 의 테스트가 섞임) 충족.
+- 분리 후보:
+  · tests/test_holdings_input.py (Step1 holdings put/get/validation)
+  · tests/test_market_naver_enrich.py (Step2 시세/enrich)
+  · tests/test_draft_message_step2b.py (Step2B 메시지 요약/길이 방어)
+  · tests/test_account_group.py (Step2C account_group)
+  · tests/test_message_text_step2d.py (Step2D message_text 단일 소스)
+- 처리 원칙: Step5D 와 동일 — 의미 / 검증 강도 / 동작 변경 0건, fixture / 헬퍼는 conftest.py / _helpers.py 활용.
+
+### CLEANUP NEXT: RunPanel.tsx 추가 분리 (EvidenceDetails)
+- 트리거 충족 (Step5D 종료 시점, 2026-04-30): 905 라인. KS-10 트리거 3 (프론트 컴포넌트 900라인 초과) 충족.
+- 분리 후보:
+  · frontend/app/components/EvidenceDetails.tsx (현재 RunPanel.tsx 안의 EvidenceDetails + CompactHoldingsTableStandalone + 관련 helper)
+- 처리 원칙: 렌더링 결과 / 문구 / 배치 / 동작 / message_text 동일.
+
+### CLEANUP NEXT: frontend/app/components/HoldingsClient.tsx 분리
+- 트리거: 832 라인 (Step5D 시점) — KS-10 트리거 3 근접. 추가 신규 책임이 들어가면 즉시 트리거.
+- 분리 후보 (잠정): EnrichedSection / OverallSummaryCard / AccountSummaryCards 를 RunPanel 의 동등 컴포넌트와 공용화 (BACKLOG "프론트 compact UI 공용 모듈 추출" 항목과 합쳐서 처리).
+
+### CLEANUP NEXT: app/draft_message.py 메시지 렌더링 책임 분리
+- 트리거 근접: 472 라인 (Step5D 시점). KS-10 트리거 4 (650라인) 미달이지만 _factor_bullet / _momentum_bullet / 길이 방어 / 요약 빌더 / 주목 종목 빌더가 한 모듈에 모임.
+- 분리 후보 (잠정): app/draft_message/__init__.py + judgment.py + summary.py + focus.py + length_guard.py 식 패키지화.
+- 처리 원칙: 출력 message_text 동일, [판단 사유] 헤더 1번 정책 유지.
+
+### CLEANUP NEXT: app/api.py 라우터 분리
+- 트리거 근접: 465 라인 (Step5D 시점). KS-10 트리거 4 미달이지만 runs / holdings / market / universe 라우터가 한 모듈에 모임.
+- 분리 후보 (잠정): FastAPI APIRouter 패턴으로 app/api/__init__.py + runs.py + holdings.py + market.py + universe.py 분리.
+- 처리 원칙: endpoint 경로 / 응답 스키마 동일, OCI handoff 경로 변경 0.
+
+---
+
 ## ACTIVE REVIEW BEFORE STEP5
 
 Step5 (Momentum Engine 첫 구현 STEP) 진입 전에 반드시 검토할 5개 항목.
@@ -335,6 +371,10 @@ Step5 설계 지시문 작성 시 이 섹션을 1회 정독 후 반영한다.
   · 동일 계산 버그가 두 곳에서 같이 발견되어 두 곳에 같은 수정이 필요한 사례 발생
   · 컴포넌트 한 파일이 ~600 라인을 넘어 코드 리뷰 스캔이 어려워지는 시점
 - **트리거 충족 (2026-04-30, Step5B 종료 시점)**: RunPanel.tsx 가 1,055라인으로 ~600 라인 트리거 초과. Step5B 에서 EvidenceDetails 안에 MomentumCandidatesSection 이 추가되어 책임이 더 늘어남. **다음 STEP 진입 전 우선 검토 필요**.
+- **PARTIALLY RESOLVED (2026-04-30, Step5D Cleanup)**: RunPanel.tsx 의 표시 책임 일부를 분리 완료.
+  · frontend/app/components/JudgmentReasonSection.tsx — 판단 사유 섹션 + pickPortfolioFactorSignal / pickMomentumBullet
+  · frontend/app/components/MomentumCandidatesSection.tsx — 모멘텀 후보 상세 + pickMomentumCandidates
+  RunPanel.tsx 1,055 → 905라인. 다만 KS-10 트리거(900라인) 와 EvidenceDetails 분리는 다음 Cleanup 후보로 잔존.
 
 #### DEFERRED: 백엔드 테스트 파일 분리 (tests/test_poc1_loop.py)
 - 발생 맥락: POC1 부터 단일 파일 tests/test_poc1_loop.py 에 모든 테스트 누적. Step1 ~ Step5B 까지 신규 케이스가 추가되며 단일 파일이 비대해짐.
@@ -345,6 +385,15 @@ Step5 설계 지시문 작성 시 이 섹션을 1회 정독 후 반영한다.
   · 신규 STEP 의 테스트 추가 시 기존 무관한 테스트와의 충돌이 1회라도 발생
   · pytest collection 시간이 사용자 체감 수준에 도달
 - **트리거 충족 (2026-04-30, Step5B 종료 시점)**: 3,158라인 — 3,000라인 트리거 초과. **다음 STEP 진입 전 우선 검토 권장** (분리 방향: tests/poc1/, tests/poc2_step2/, tests/poc2_step3/, tests/poc2_step5b/ 등 STEP 단위 또는 도메인 단위, conftest.py 로 공통 fixture 추출).
+- **RESOLVED (2026-04-30, Step5D Cleanup)**: tests/test_poc1_loop.py 가 POC1 핵심(298라인)으로 축소됨. 분리 결과:
+  · tests/conftest.py — 공통 fixture (autouse + 명시)
+  · tests/_helpers.py — 헬퍼 함수 / 상수
+  · tests/test_poc1_loop.py — POC1 승인 루프 핵심
+  · tests/test_holdings_draft_flow.py — Step1/1A/2/2B/2C/2D
+  · tests/test_factor_signals.py — Step3
+  · tests/test_momentum_holdings.py — Step5B
+  · tests/test_universe_seed.py — Step5C
+  pytest 119 passed 그대로 유지. 단, test_holdings_draft_flow.py 가 1,982라인으로 KS-10 1차 트리거(테스트 1,500라인 + 여러 STEP 섞임) 충족 — 다음 Cleanup 후보로 별도 등재.
 
 #### DEFERRED: 역할별 페이지 분리
 - 발생 맥락: POC2 Step 2D — 한 화면(MainPanel)에 입력 폼, 시세 평가, 승인 초안 preview, 근거 데이터, 샘플 폼이 모두 들어감

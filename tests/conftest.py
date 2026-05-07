@@ -1,0 +1,85 @@
+"""POC2 Step 5D Cleanup — 공통 pytest fixture (autouse + 명시).
+
+설계자 결정 (Step 5D 지시문 §4.1):
+- 기존 tests/test_poc1_loop.py 의 단일 파일 누적을 의미별로 분리한다.
+- 모든 분리 파일이 공유하는 fixture 는 본 conftest.py 에 둔다.
+- pytest 가 같은 디렉터리(또는 상위) 의 conftest.py 를 자동 인식 — import 불필요.
+
+내용:
+- _isolated_store (autouse): runs / handoff / holdings / market_cache 경로 격리
+- _stub_oci_calls (autouse): deliver / fetch_outbox_result 를 무동작 stub
+- client: FastAPI TestClient
+- _isolated_universe: Step5C universe seed / artifact 경로 격리
+
+상수 / 헬퍼 함수는 tests/_helpers.py 로 분리 (fixture 가 아니므로 명시 import).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app import api, delivery, holdings as holdings_module, market_cache, store
+
+
+@pytest.fixture(autouse=True)
+def _isolated_store(tmp_path, monkeypatch):
+    """runs / handoff / holdings / market_cache 경로를 임시 디렉터리로 격리."""
+    monkeypatch.setattr(store, "STORE_DIR", Path(tmp_path) / "runs")
+    monkeypatch.setattr(store, "HANDOFF_STAGING_DIR", Path(tmp_path) / "handoff")
+    monkeypatch.setattr(
+        store, "HANDOFF_PROCESSED_DIR", Path(tmp_path) / "handoff_processed"
+    )
+    # POC2 Step 1: holdings 저장 경로도 격리
+    monkeypatch.setattr(holdings_module, "HOLDINGS_DIR", Path(tmp_path) / "holdings")
+    monkeypatch.setattr(
+        holdings_module,
+        "HOLDINGS_FILE",
+        Path(tmp_path) / "holdings" / "holdings_latest.json",
+    )
+    # POC2 Step 2: market cache 도 격리 (개발자 로컬에 캐시가 있어도 테스트는 항상 빈 상태부터)
+    monkeypatch.setattr(market_cache, "CACHE_DIR", Path(tmp_path) / "market_cache")
+    monkeypatch.setattr(
+        market_cache,
+        "CACHE_FILE",
+        Path(tmp_path) / "market_cache" / "market_latest.json",
+    )
+    market_cache.reset_for_test()
+    yield
+    market_cache.reset_for_test()
+
+
+@pytest.fixture(autouse=True)
+def _stub_oci_calls(monkeypatch):
+    """기본 stub: deliver 는 무동작 성공, outbox 는 결과 없음(DELIVERING 유지).
+
+    개별 테스트가 필요시 monkeypatch.setattr 로 override.
+    실 SCP/SSH 호출이 테스트 환경에서 발생하지 않도록 보장한다.
+    """
+    monkeypatch.setattr(delivery, "deliver", lambda run: None)
+    monkeypatch.setattr(delivery, "fetch_outbox_result", lambda run_id: None)
+
+
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(api.app)
+
+
+@pytest.fixture
+def _isolated_universe(tmp_path, monkeypatch):
+    """Step5C 테스트용 universe seed / artifact 경로 격리."""
+    from app import universe_seed as us
+    from app.momentum import universe_mode as um
+
+    seed_dir = tmp_path / "universe"
+    seed_dir.mkdir()
+    seed_file = seed_dir / "etf_universe_latest.json"
+    artifact_file = seed_dir / "universe_momentum_latest.json"
+
+    monkeypatch.setattr(us, "UNIVERSE_DIR", seed_dir)
+    monkeypatch.setattr(us, "UNIVERSE_SEED_FILE", seed_file)
+    monkeypatch.setattr(um, "LATEST_ARTIFACT_DIR", seed_dir)
+    monkeypatch.setattr(um, "LATEST_ARTIFACT_FILE", artifact_file)
+    return {"seed_file": seed_file, "artifact_file": artifact_file}
