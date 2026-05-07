@@ -1,0 +1,24 @@
+{
+  "asof": "2026-05-07",
+  "source": "manual_seed",
+  "items": [
+    {
+      "ticker": "379800",
+      "name": "KODEX 미국 S&P500",
+      "universe_group": "미국지수",
+      "sector_or_theme": "S&P500"
+    },
+    {
+      "ticker": "379810",
+      "name": "KODEX 미국나스닥100",
+      "universe_group": "미국지수",
+      "sector_or_theme": "Nasdaq100"
+    },
+    {
+      "ticker": "069500",
+      "name": "KODEX 200",
+      "universe_group": "한국지수",
+      "sector_or_theme": "KOSPI200"
+    }
+  ]
+}
