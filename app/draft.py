@@ -24,6 +24,7 @@ from app.holdings import Holding
 from app.holdings_enrich import enrich_holdings, to_recommendation_dict
 from app.market_cache import MarketQuote
 from app.models import Run
+from app.momentum import build_holdings_momentum_result
 
 logger = logging.getLogger(__name__)
 
@@ -106,12 +107,19 @@ def _build_holdings_payload(
     # 다른 draft_payload 메타 flag 추가나 일반 확장 허용으로 해석 금지.
     factor_signals = build_factor_signals(enriched)
 
+    # POC2 Step 5B: Momentum Engine holdings mode placeholder 산식 1회 실행.
+    # 설계자 명시 승인 — Step5B 한정으로 draft_payload 6번째 키 momentum_result 를
+    # 추가한다 (Run top-level 확장 / 별도 artifact / DB 모두 도입 안 함).
+    # placeholder 산식(pnl_rate) 은 최종 투자 판단 산식이 아니다.
+    momentum_result = build_holdings_momentum_result(enriched, asof=asof_iso)
+
     return {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
         "note": note,
         "recommendations": recommendations,
         "factor_signals": factor_signals,
+        "momentum_result": momentum_result,
     }
 
 

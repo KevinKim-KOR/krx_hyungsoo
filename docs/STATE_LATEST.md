@@ -18,7 +18,9 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
-- POC2-Step5A 설계서 신규 — Momentum Engine 의 최소 입력/출력 계약 정의.
+- POC2-Step5B 구현 — placeholder 산식(pnl_rate) 으로 Momentum Engine holdings mode 1회 실행.
+  draft_payload.momentum_result 6번째 키 + [판단 사유] 섹션 안 모멘텀 bullet 1줄.
+  pytest 107 passed (Step3 93 + Step5B 신규 14).
 - 직전 설계 문서:
   [docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md](handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md).
 - 직전직전 설계 문서:

@@ -7,11 +7,20 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step5A 설계 완료 (계약 문서화 단계, 구현 단계 아님)
-다음 단계: Step5B — Momentum result 저장 위치 결정 설계 지시문 작성
+현재 단계: POC2-Step5B 구현 완료 (검증 대기)
+다음 단계: 사용자 결정 대기 — Step5C (운영 결과 기록 / AI·ML 분석 넘김 판단) 또는 다음 산식·universe mode 진입 설계
 ```
 
-Step5A 요약:
+Step5B 요약:
+placeholder 산식(pnl_rate)으로 Momentum Engine holdings mode 를 1회 실행했다.
+결과는 draft_payload.momentum_result (Step5B 한정 명시 승인된 6번째 키) 에 저장되며,
+승인 초안 UI 의 [판단 사유] 섹션과 message_text/Telegram 에 1줄 bullet 으로 추가된다.
+별도 [모멘텀 점검] 헤더는 만들지 않으며 [판단 사유] 헤더는 1번만 등장한다.
+candidates 의 row 매핑은 source_index + ticker + account_group + avg_buy_price 4 요소로
+보존되어 동일 ticker 분할매수 row 의 매핑 충돌을 방지한다.
+pytest 107 passed (Step3 93 + Step5B 신규 14).
+
+Step5A 요약 (직전 단계):
 Momentum Engine 의 최소 입력/출력 계약을 정의했다.
 Momentum Engine 은 holdings mode 와 universe mode 가 공유한다.
 universe mode 에서 엔진은 후보군을 직접 수집하지 않고, 외부에서 주입된 candidates 를 평가한다.
@@ -28,20 +37,28 @@ ASSUMPTIONS:
 - 활성 질문은 Q1 / Q4 / Q5 유지 (3개)
 
 주의:
-- Step5A 는 구현 단계가 아니다 — 계약 문서화 단계.
-- 구체 점수 산식, MA 기간, RSI 기준, 수익률 기간, 유니버스 종목 수, ETF 후보군, 데이터 소스, ML 모델, 화면 디자인, Telegram Top N, BUY/SELL/리밸런싱, 운영 결과 저장소는 확정하지 않았다.
-- Momentum result 저장 위치(draft_payload / factor_signals / 별도 artifact / Run top-level / 외부 저장소) 는 Step5B 에서 판단.
+- Step5B 의 placeholder 산식(pnl_rate) 은 최종 투자 판단 산식이 아니다 — UI/메시지 모두 명시.
+- universe mode, 외부 ETF 발굴, MA/RSI/수익률 기간 산식, 유니버스 종목 수, ETF 후보군, 데이터 소스, ML 모델, 화면 대개편, Telegram Top N, BUY/SELL/리밸런싱, 운영 결과 별도 저장소는 아직 구현하지 않았다.
+- Momentum result 저장 위치는 Step5B 에서 draft_payload.momentum_result 6번째 키로 결정 (한정 승인). Run top-level 확장 / 별도 artifact / DB 미도입.
 - 운영 결과 기록 / AI·ML 분석 넘김은 Step5C 또는 별도 Step 에서 판단.
 - "잘 달리는 말 찾기" 는 holdings factor 가 아니라 universe mode 에서 다룬다 — 단 엔진은 후보군을 직접 수집하지 않는다.
 - 와이프는 UI 가독성 검증 대상이며 Q5 의 투자 판단/운영 방식 적합성 검증 대상이 아니다.
 - Q1 은 ANSWERED 가 아니라 OPEN 유지. Step3 결과는 1차 긍정 증거에 불과.
 
 직전 종결/설계 문서:
-- `docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md` (Step5A 설계서, 본 문서 직전)
+- `docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md` (Step5A 설계서)
 - `docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md` (Step4 설계서)
 - `docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md` (Step3 종료 선언)
 - `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` (Step2 종료 선언)
 - `docs/backlog/BACKLOG.md` (Step5 진입 전 정돈 완료 — ACTIVE REVIEW BEFORE STEP5 / CONSOLIDATED DEFERRED / CLOSED)
+
+Step5B 구현 진입점 (코드):
+- `app/momentum/holdings_mode.py` — placeholder 산식 빌더 (pnl_rate)
+- `app/momentum/__init__.py` — 패키지 진입점 (universe mode stub 미생성)
+- `app/draft.py` — _build_holdings_payload 에서 momentum_result 빌드 + 6번째 키 부착
+- `app/draft_message.py::_render_judgment_lines` — factor + momentum 두 bullet 을 1개의 [판단 사유] 헤더 아래에 합침
+- `frontend/lib/api.ts` — MomentumResult / MomentumCandidate / MomentumScoreResult / MomentumSummary / MomentumTopCandidate 타입
+- `frontend/app/components/RunPanel.tsx::JudgmentReasonSection` — 모멘텀 bullet 1줄 추가, EvidenceDetails 안 MomentumCandidatesSection
 
 ---
 

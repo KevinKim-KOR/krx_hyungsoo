@@ -334,6 +334,17 @@ Step5 설계 지시문 작성 시 이 섹션을 1회 정독 후 반영한다.
   · 한쪽 컴포넌트에 컬럼/요약 항목이 추가되면서 다른 쪽도 동일 변경이 필요한 일이 2회 이상 발생
   · 동일 계산 버그가 두 곳에서 같이 발견되어 두 곳에 같은 수정이 필요한 사례 발생
   · 컴포넌트 한 파일이 ~600 라인을 넘어 코드 리뷰 스캔이 어려워지는 시점
+- **트리거 충족 (2026-04-30, Step5B 종료 시점)**: RunPanel.tsx 가 1,055라인으로 ~600 라인 트리거 초과. Step5B 에서 EvidenceDetails 안에 MomentumCandidatesSection 이 추가되어 책임이 더 늘어남. **다음 STEP 진입 전 우선 검토 필요**.
+
+#### DEFERRED: 백엔드 테스트 파일 분리 (tests/test_poc1_loop.py)
+- 발생 맥락: POC1 부터 단일 파일 tests/test_poc1_loop.py 에 모든 테스트 누적. Step1 ~ Step5B 까지 신규 케이스가 추가되며 단일 파일이 비대해짐.
+- 현재 결정: 분리하지 않음. 단일 파일 + import 한 fixtures(`_isolated_store`, `_stub_oci_calls`, `_ORIGINAL_DELIVER`) 가 모든 통합 테스트에서 자동 적용되는 구조. 분리 시 fixture 공유 정책을 다시 정해야 함.
+- 재검토 예정: 다음 STEP 진입 전 검토 권장 (검증자 NOTES B-3 누적 지적).
+- 트리거 (다음 중 하나라도 발생):
+  · 한 파일이 ~3,000 라인을 넘어 코드 리뷰 / IDE 검색이 느려지는 시점
+  · 신규 STEP 의 테스트 추가 시 기존 무관한 테스트와의 충돌이 1회라도 발생
+  · pytest collection 시간이 사용자 체감 수준에 도달
+- **트리거 충족 (2026-04-30, Step5B 종료 시점)**: 3,158라인 — 3,000라인 트리거 초과. **다음 STEP 진입 전 우선 검토 권장** (분리 방향: tests/poc1/, tests/poc2_step2/, tests/poc2_step3/, tests/poc2_step5b/ 등 STEP 단위 또는 도메인 단위, conftest.py 로 공통 fixture 추출).
 
 #### DEFERRED: 역할별 페이지 분리
 - 발생 맥락: POC2 Step 2D — 한 화면(MainPanel)에 입력 폼, 시세 평가, 승인 초안 preview, 근거 데이터, 샘플 폼이 모두 들어감

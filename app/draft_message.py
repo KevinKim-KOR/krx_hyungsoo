@@ -15,6 +15,14 @@
 - factor 계산 불가 시 portfolio signal 의 fallback_text 1줄을 그대로 사용한다.
 - 길이 방어 정책(MAX_LENGTH_CHARS=3500) 그대로 유지.
 
+설계자 결정 (Step 5B — Minimal Momentum Engine Execution):
+- draft_payload.momentum_result.summary 에서 1줄을 만들어 기존 [판단 사유] 섹션의
+  bullet 으로 추가한다 (별도 [모멘텀 점검] 헤더 신설 금지 — 헤더 중복 방지).
+- top_candidate 가 있으면 그 reason_text 를, 없으면 summary_reason_text 를 사용한다.
+- 전체 후보 순위 / Top N 정책 / BUY·SELL / 리밸런싱 표현 금지.
+- placeholder 산식 성격이 드러나도록 "이 값은 최종 투자 판단 산식이 아닙니다" 문구를
+  유지한다 (summary 빌더가 책임).
+
 설계자 결정 (Step 2B — Telegram Message Compaction):
 - Telegram 메시지는 "전체 상세 보고서" 가 아니라 "승인 결과 요약 + 주목 종목 일부" 다.
 - 보유 종목 18+ 에서도 message_text 가 안전 한도(MAX_LENGTH_CHARS=3500) 이하로 생성된다.
@@ -52,6 +60,9 @@ TRUNCATION_NOTICE = (
 
 # Step 3: 판단 사유 섹션의 라벨. portfolio scope signal 1줄만 표시.
 JUDGMENT_SECTION_HEADER = "[판단 사유]"
+
+# Step 5B: 모멘텀 점검 bullet 라벨. [판단 사유] 섹션 안의 두 번째 bullet 으로 추가.
+MOMENTUM_BULLET_LABEL = "모멘텀 점검"
 
 
 def _format_money(value: Any) -> Optional[str]:
@@ -449,25 +460,18 @@ def _enforce_length_limit(text: str) -> str:
     return text[:keep_chars] + notice_with_break
 
 
-def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
-    """Step 3 — [판단 사유] 섹션. draft_payload.factor_signals 의 portfolio scope
-    signal 1개에서 reason_text 또는 fallback_text 를 1줄 표시.
-
-    factor_signals 자체가 없거나 portfolio signal 이 없으면 빈 리스트 반환 (과거
-    run 호환). is_available=True 면 reason_text 사용, 아니면 fallback_text.
-
-    종목별 signal 은 메시지에 나열하지 않는다 (지시문 §9 — Top N 정책 금지).
-    """
+def _factor_bullet(payload: dict[str, Any]) -> Optional[str]:
+    """factor_signals 의 portfolio scope signal 1줄 → bullet 본문. 없으면 None."""
     factor_signals = payload.get("factor_signals")
     if not isinstance(factor_signals, list):
-        return []
+        return None
     portfolio_sig: Optional[dict[str, Any]] = None
     for sig in factor_signals:
         if isinstance(sig, dict) and sig.get("scope") == "portfolio":
             portfolio_sig = sig
             break
     if portfolio_sig is None:
-        return []
+        return None
 
     factor_name = portfolio_sig.get("factor_name") or "보유 비중 영향"
     if portfolio_sig.get("is_available"):
@@ -475,8 +479,50 @@ def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
     else:
         text = portfolio_sig.get("fallback_text")
     if not isinstance(text, str) or not text.strip():
+        return None
+    return f"- {factor_name}: {text}"
+
+
+def _momentum_bullet(payload: dict[str, Any]) -> Optional[str]:
+    """Step 5B — momentum_result.summary 1줄 → bullet 본문. 없으면 None.
+
+    top_candidate 가 있으면 그 reason_text 를, 없으면 summary_reason_text 를 사용.
+    별도 [모멘텀 점검] 헤더 신설 금지 — 본 함수는 bullet 본문만 반환한다.
+    """
+    momentum = payload.get("momentum_result")
+    if not isinstance(momentum, dict):
+        return None
+    summary = momentum.get("summary")
+    if not isinstance(summary, dict):
+        return None
+
+    top = summary.get("top_candidate")
+    if isinstance(top, dict):
+        text = top.get("reason_text")
+    else:
+        text = summary.get("summary_reason_text")
+    if not isinstance(text, str) or not text.strip():
+        return None
+    return f"- {MOMENTUM_BULLET_LABEL}: {text}"
+
+
+def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
+    """[판단 사유] 섹션 — Step 3 의 factor bullet 과 Step 5B 의 momentum bullet 을
+    한 헤더 아래에 모은다.
+
+    헤더 중복 금지: bullet 이 1개라도 있으면 헤더 1번 + bullets. 둘 다 없으면 빈 리스트.
+    종목별 / 후보별 항목은 메시지에 나열하지 않는다 (Top N 정책 금지).
+    """
+    bullets: list[str] = []
+    fb = _factor_bullet(payload)
+    if fb is not None:
+        bullets.append(fb)
+    mb = _momentum_bullet(payload)
+    if mb is not None:
+        bullets.append(mb)
+    if not bullets:
         return []
-    return ["", JUDGMENT_SECTION_HEADER, f"- {factor_name}: {text}"]
+    return ["", JUDGMENT_SECTION_HEADER, *bullets]
 
 
 def _build_with_focus_limit(

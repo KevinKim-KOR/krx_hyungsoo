@@ -597,16 +597,19 @@ function LegacyFallback() {
 function EvidenceDetails({
   recs,
   defaultOpen,
+  momentumBundle,
 }: {
   recs: NormRec[];
   defaultOpen: boolean;
+  momentumBundle?: ReturnType<typeof pickMomentumCandidates>;
 }) {
   return (
     <details className="evidence-details" open={defaultOpen}>
-      <summary>근거 데이터 펼쳐보기 (계좌별 요약 + 보유 종목 표)</summary>
+      <summary>근거 데이터 펼쳐보기 (계좌별 요약 + 보유 종목 표 + 모멘텀 후보 상세)</summary>
       <div className="evidence-body">
         <AccountSummaryCards summaries={groupByAccount(recs)} />
         <CompactHoldingsTableStandalone recs={recs} />
+        {momentumBundle ? <MomentumCandidatesSection bundle={momentumBundle} /> : null}
       </div>
     </details>
   );
@@ -672,22 +675,127 @@ function pickPortfolioFactorSignal(
   return null;
 }
 
+// Step 5B: draft_payload.momentum_result.summary 에서 1줄 추출.
+// 전체 후보 순위는 기본 영역에 표시하지 않는다 (Top N 정책 금지). 후보 상세는
+// EvidenceDetails 안에 별도 섹션으로 두고 기본 접힘.
+function pickMomentumBullet(
+  payload: Record<string, unknown>,
+): { label: string; text: string } | null {
+  const mr = payload.momentum_result;
+  if (!mr || typeof mr !== "object") return null;
+  const summary = (mr as Record<string, unknown>).summary;
+  if (!summary || typeof summary !== "object") return null;
+  const s = summary as Record<string, unknown>;
+  const top = s.top_candidate;
+  let text: unknown;
+  if (top && typeof top === "object") {
+    text = (top as Record<string, unknown>).reason_text;
+  }
+  if (typeof text !== "string" || text.length === 0) {
+    text = s.summary_reason_text;
+  }
+  if (typeof text !== "string" || text.length === 0) return null;
+  return { label: "모멘텀 점검", text };
+}
+
+function pickMomentumCandidates(
+  payload: Record<string, unknown>,
+): { items: Array<Record<string, unknown>>; mode: string; engine: string } | null {
+  const mr = payload.momentum_result;
+  if (!mr || typeof mr !== "object") return null;
+  const m = mr as Record<string, unknown>;
+  const cands = m.candidates;
+  if (!Array.isArray(cands) || cands.length === 0) return null;
+  return {
+    items: cands as Array<Record<string, unknown>>,
+    mode: typeof m.mode === "string" ? m.mode : "holdings",
+    engine: typeof m.engine_id === "string" ? m.engine_id : "",
+  };
+}
+
 function JudgmentReasonSection({
   signal,
+  momentumBullet,
 }: {
   signal: ReturnType<typeof pickPortfolioFactorSignal>;
+  momentumBullet: ReturnType<typeof pickMomentumBullet>;
 }) {
-  if (signal === null) return null;
-  const text = signal.is_available ? signal.reason_text : signal.fallback_text;
-  if (typeof text !== "string" || text.length === 0) return null;
+  // 두 bullet 중 하나라도 있어야 섹션을 그린다 (헤더 중복 방지 — 백엔드와 동일 정책).
+  const factorText = signal
+    ? signal.is_available
+      ? signal.reason_text
+      : signal.fallback_text
+    : null;
+  const hasFactor = signal !== null && typeof factorText === "string" && factorText.length > 0;
+  const hasMomentum = momentumBullet !== null;
+  if (!hasFactor && !hasMomentum) return null;
+
   return (
     <div className="reason-section">
       <div className="reason-section-title">판단 사유</div>
       <ul className="reason-list">
-        <li>
-          <span className="reason-name">{signal.factor_name}</span>
-          <span className="reason-text">{text}</span>
-        </li>
+        {hasFactor && signal ? (
+          <li>
+            <span className="reason-name">{signal.factor_name}</span>
+            <span className="reason-text">{factorText as string}</span>
+          </li>
+        ) : null}
+        {hasMomentum && momentumBullet ? (
+          <li>
+            <span className="reason-name">{momentumBullet.label}</span>
+            <span className="reason-text">{momentumBullet.text}</span>
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}
+
+function MomentumCandidatesSection({
+  bundle,
+}: {
+  bundle: ReturnType<typeof pickMomentumCandidates>;
+}) {
+  if (bundle === null) return null;
+  const { items, mode } = bundle;
+  return (
+    <div className="momentum-candidates" style={{ marginTop: 12 }}>
+      <div className="reason-section-title">
+        모멘텀 점검 후보 상세 (mode: {mode}, placeholder 산식 — 최종 투자 판단 산식이 아님)
+      </div>
+      <ul className="reason-list">
+        {items.map((c) => {
+          const ticker = typeof c.ticker === "string" ? c.ticker : "";
+          const name = typeof c.name === "string" ? c.name : ticker;
+          const ag = typeof c.account_group === "string" ? c.account_group : "";
+          const rank = typeof c.rank === "number" ? c.rank : null;
+          const sr = (c.score_result as Record<string, unknown>) ?? {};
+          const isScored = Boolean(sr.is_scored);
+          const score = typeof sr.score_value === "number" ? sr.score_value : null;
+          const unit = typeof sr.score_unit === "string" ? sr.score_unit : "";
+          const reason =
+            typeof c.reason_text === "string"
+              ? c.reason_text
+              : typeof c.exclusion_reason === "string"
+                ? c.exclusion_reason
+                : "";
+          const headParts: string[] = [];
+          if (rank !== null) headParts.push(`#${rank}`);
+          if (ag) headParts.push(`[${ag}]`);
+          headParts.push(name);
+          if (ticker && ticker !== name) headParts.push(`(${ticker})`);
+          const head = headParts.join(" ");
+          const valueText = isScored && score !== null ? `${score}${unit}` : "—";
+          return (
+            <li key={String(c.candidate_id ?? `${ticker}-${ag}`)}>
+              <span className="reason-name">{head}</span>
+              <span className="reason-text">
+                {valueText}
+                {reason ? ` · ${reason}` : ""}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -702,6 +810,8 @@ function ApprovalDraftBody({ run }: { run: Run }) {
       ? run.message_text
       : null;
   const portfolioSignal = pickPortfolioFactorSignal(payload as Record<string, unknown>);
+  const momentumBullet = pickMomentumBullet(payload as Record<string, unknown>);
+  const momentumBundle = pickMomentumCandidates(payload as Record<string, unknown>);
 
   const hasRecs = Array.isArray(recs) && recs.length > 0;
   const hasNote = typeof note === "string" && note.length > 0;
@@ -764,8 +874,12 @@ function ApprovalDraftBody({ run }: { run: Run }) {
       <div style={{ marginTop: 12 }}>
         <OverallSummaryCard summary={summary} />
       </div>
-      <JudgmentReasonSection signal={portfolioSignal} />
-      <EvidenceDetails recs={normRecs} defaultOpen={evidenceDefaultOpen} />
+      <JudgmentReasonSection signal={portfolioSignal} momentumBullet={momentumBullet} />
+      <EvidenceDetails
+        recs={normRecs}
+        defaultOpen={evidenceDefaultOpen}
+        momentumBundle={momentumBundle}
+      />
     </div>
   );
 }
