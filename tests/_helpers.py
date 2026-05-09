@@ -33,6 +33,13 @@ def _generate(client: TestClient, input_data: dict) -> tuple[int, dict]:
         return r.status_code, {}
 
 
+# Step2 / Step5D-2 분리 시점 — holdings put/get/draft 흐름의 표준 입력 (name 누락 케이스 포함).
+_VALID_HOLDINGS = [
+    {"ticker": "069500", "name": "KODEX 200", "quantity": 10, "avg_buy_price": 38500},
+    {"ticker": "091160", "quantity": 5, "avg_buy_price": 22000},  # name 생략
+]
+
+
 # ─── POC2 Step 2B (draft_message focus 빌더) ────────────────────────
 
 

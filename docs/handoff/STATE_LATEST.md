@@ -7,9 +7,20 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step5D Cleanup 완료 (검증 대기)
-다음 단계: 사용자/설계자 결정 대기 — 다음 Cleanup STEP (BACKLOG CLEANUP CANDIDATES) 또는 universe 모멘텀 산식 진입
+현재 단계: POC2-Step5D-2 Cleanup 완료 (검증 대기)
+다음 단계: 사용자/설계자 결정 대기 — universe 모멘텀 산식 기능 STEP 진입 또는 남은 Cleanup 후보 (HoldingsClient / draft_message / api.py 라우터)
 ```
+
+Step5D-2 Cleanup 요약:
+Step5D 1차 후 남은 KS-10 트리거 2건을 추가 분리.
+- tests/test_holdings_draft_flow.py 1,982 → 244라인. 추가 3개 파일로 도메인별 분리:
+  test_holdings_market_enrichment.py (504), test_holdings_message_text.py (924),
+  test_holdings_account_group.py (334).
+- frontend/app/components/RunPanel.tsx 905 → 606라인. EvidenceDetails.tsx (343라인) 추출.
+  RunPanel 의 helper/type 14개를 named export 로 노출 → EvidenceDetails 가 import.
+- pytest 119 passed 그대로 유지 — 의미 / 검증 강도 / 검증 개수 변경 0건.
+- frontend lint + build PASS.
+- KS-10 모든 트리거 해소 확인.
 
 Step5D Cleanup 요약:
 검증자 NOTES B-3 누적 지적(단일 파일 책임 누적) 에 대응해 신규 기능 추가 없이 구조만 정돈.

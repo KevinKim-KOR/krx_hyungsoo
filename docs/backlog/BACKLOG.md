@@ -20,12 +20,22 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   · tests/test_account_group.py (Step2C account_group)
   · tests/test_message_text_step2d.py (Step2D message_text 단일 소스)
 - 처리 원칙: Step5D 와 동일 — 의미 / 검증 강도 / 동작 변경 0건, fixture / 헬퍼는 conftest.py / _helpers.py 활용.
+- **RESOLVED (2026-05-08, Step5D-2 Cleanup)**: tests/test_holdings_draft_flow.py 가 244라인 (KS-10 트리거 1 미만)으로 축소됨. 분리 결과:
+  · tests/test_holdings_draft_flow.py — holdings draft 핵심 happy path + 검증 (244라인)
+  · tests/test_holdings_market_enrichment.py — market_cache + Naver fetch + enrich (504라인)
+  · tests/test_holdings_message_text.py — Step2B/Step2D draft_message + handoff (924라인)
+  · tests/test_holdings_account_group.py — Step2C account_group (334라인)
+  pytest 119 passed 그대로 유지 — 의미 / 개수 / 검증 강도 변경 0건.
 
 ### CLEANUP NEXT: RunPanel.tsx 추가 분리 (EvidenceDetails)
 - 트리거 충족 (Step5D 종료 시점, 2026-04-30): 905 라인. KS-10 트리거 3 (프론트 컴포넌트 900라인 초과) 충족.
 - 분리 후보:
   · frontend/app/components/EvidenceDetails.tsx (현재 RunPanel.tsx 안의 EvidenceDetails + CompactHoldingsTableStandalone + 관련 helper)
 - 처리 원칙: 렌더링 결과 / 문구 / 배치 / 동작 / message_text 동일.
+- **RESOLVED (2026-05-08, Step5D-2 Cleanup)**: RunPanel.tsx 905 → 606라인 (KS-10 트리거 3 미만). 분리 결과:
+  · frontend/app/components/EvidenceDetails.tsx — EvidenceDetails + CompactHoldingsTableStandalone + CompactHoldingsTable + CompactRow + DetailRowFields + AccountSummaryCards + KV + groupByAccount (343라인)
+  · RunPanel.tsx 가 helper / type 14개를 named export 로 노출 (NormRec / Summary / AccountSummary / toFiniteNumber / fmtMoney / fmtSignedMoney / fmtPct / fmtSignedPct / pnlClass / normalizeRec / isPriced / isCalcAvailable / rowKey / computeSummaryFor / OverallSummaryCard) — EvidenceDetails 가 import.
+  렌더링 / 문구 / 배치 / 동작 / message_text 모두 동일.
 
 ### CLEANUP NEXT: frontend/app/components/HoldingsClient.tsx 분리
 - 트리거: 832 라인 (Step5D 시점) — KS-10 트리거 3 근접. 추가 신규 책임이 들어가면 즉시 트리거.

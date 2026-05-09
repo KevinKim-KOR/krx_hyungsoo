@@ -12,7 +12,7 @@
 //   유지된다. polling 으로 동일 run 의 동일 항목이 다시 패치되어도 펼친 상태 유지.
 // - 새 run 으로 전환되면 펼침 상태 초기화.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
@@ -23,10 +23,9 @@ import {
   type Run,
   type RunStatus,
 } from "@/lib/api";
+import EvidenceDetails from "./EvidenceDetails";
 import JudgmentReasonSection from "./JudgmentReasonSection";
-import MomentumCandidatesSection, {
-  pickMomentumCandidates,
-} from "./MomentumCandidatesSection";
+import { pickMomentumCandidates } from "./MomentumCandidatesSection";
 
 const POLL_INTERVAL_MS = 12000;
 const MAX_POLL_TICKS = 30;
@@ -65,38 +64,38 @@ function isHoldingsRec(r: Record<string, unknown>): boolean {
   return "quantity" in r || "avg_buy_price" in r;
 }
 
-function toFiniteNumber(v: unknown): number | null {
+export function toFiniteNumber(v: unknown): number | null {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-function fmtMoney(v: unknown): string | null {
+export function fmtMoney(v: unknown): string | null {
   const n = toFiniteNumber(v);
   if (n === null) return null;
   return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`;
 }
 
-function fmtSignedMoney(v: unknown): string | null {
+export function fmtSignedMoney(v: unknown): string | null {
   const n = toFiniteNumber(v);
   if (n === null) return null;
   const sign = n > 0 ? "+" : "";
   return `${sign}${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}원`;
 }
 
-function fmtPct(v: unknown): string | null {
+export function fmtPct(v: unknown): string | null {
   const n = toFiniteNumber(v);
   if (n === null) return null;
   return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%`;
 }
 
-function fmtSignedPct(v: unknown): string | null {
+export function fmtSignedPct(v: unknown): string | null {
   const n = toFiniteNumber(v);
   if (n === null) return null;
   const sign = n > 0 ? "+" : "";
   return `${sign}${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%`;
 }
 
-function pnlClass(v: unknown): string {
+export function pnlClass(v: unknown): string {
   const n = toFiniteNumber(v);
   if (n === null) return "";
   if (n > 0) return "pnl-pos";
@@ -106,7 +105,7 @@ function pnlClass(v: unknown): string {
 
 // ─── recommendations 정규화 ─────────────────────────────────────
 
-type NormRec = {
+export type NormRec = {
   ticker: string;
   name: string;
   account_group: string;
@@ -126,7 +125,7 @@ type NormRec = {
   reason: string;
 };
 
-function normalizeRec(r: Record<string, unknown>, idx: number): NormRec {
+export function normalizeRec(r: Record<string, unknown>, idx: number): NormRec {
   const ag = typeof r.account_group === "string" && r.account_group.trim()
     ? r.account_group
     : DEFAULT_GROUP;
@@ -159,11 +158,11 @@ function normalizeRec(r: Record<string, unknown>, idx: number): NormRec {
   };
 }
 
-function isPriced(rec: NormRec): boolean {
+export function isPriced(rec: NormRec): boolean {
   return rec.current_price !== null && rec.current_price > 0;
 }
 
-function isCalcAvailable(rec: NormRec): boolean {
+export function isCalcAvailable(rec: NormRec): boolean {
   return (
     isPriced(rec) &&
     rec.eval_amount !== null &&
@@ -173,7 +172,7 @@ function isCalcAvailable(rec: NormRec): boolean {
   );
 }
 
-function rowKey(rec: NormRec): string {
+export function rowKey(rec: NormRec): string {
   // 지시문: source_index + ticker + account_group + avg_buy_price.
   // avg_buy_price 누락 시 "?" 토큰으로 대체 (동일 종목 다중 행 충돌 방지).
   const avg =
@@ -185,7 +184,7 @@ function rowKey(rec: NormRec): string {
 
 // ─── 요약 계산 ────────────────────────────────────────────────
 
-type Summary = {
+export type Summary = {
   total_count: number;
   priced_count: number;
   unpriced_count: number;
@@ -198,9 +197,9 @@ type Summary = {
   priced_pnl_rate_pct: number | null;
 };
 
-type AccountSummary = Summary & { account_group: string };
+export type AccountSummary = Summary & { account_group: string };
 
-function computeSummaryFor(recs: NormRec[]): Summary {
+export function computeSummaryFor(recs: NormRec[]): Summary {
   const total_count = recs.length;
   const priced = recs.filter(isPriced);
   const calc = priced.filter(isCalcAvailable);
@@ -237,25 +236,10 @@ function computeSummaryFor(recs: NormRec[]): Summary {
   };
 }
 
-function groupByAccount(recs: NormRec[]): AccountSummary[] {
-  const order: string[] = [];
-  const buckets: Record<string, NormRec[]> = {};
-  for (const r of recs) {
-    if (!(r.account_group in buckets)) {
-      buckets[r.account_group] = [];
-      order.push(r.account_group);
-    }
-    buckets[r.account_group].push(r);
-  }
-  return order.map((ag) => ({
-    account_group: ag,
-    ...computeSummaryFor(buckets[ag]),
-  }));
-}
 
 // ─── compact 렌더링 컴포넌트 ────────────────────────────────────
 
-function OverallSummaryCard({ summary }: { summary: Summary }) {
+export function OverallSummaryCard({ summary }: { summary: Summary }) {
   const calcBasis =
     summary.calc_available_count > 0
       ? `(평가 계산 ${summary.calc_available_count}개 기준)`
@@ -311,231 +295,6 @@ function OverallSummaryCard({ summary }: { summary: Summary }) {
   );
 }
 
-function AccountSummaryCards({ summaries }: { summaries: AccountSummary[] }) {
-  if (summaries.length === 0) return null;
-  return (
-    <div className="account-summary">
-      <div className="summary-card-title">계좌별 요약</div>
-      <ul className="account-summary-list">
-        {summaries.map((s) => {
-          const calcBasis =
-            s.calc_available_count > 0
-              ? `(평가 계산 ${s.calc_available_count}개 기준)`
-              : "";
-          const noCalc = s.calc_available_count === 0;
-          return (
-            <li className="account-summary-item" key={s.account_group}>
-              <div className="account-summary-header">
-                <span className="account-tag">{s.account_group}</span>
-                <span className="account-counts">
-                  {s.total_count}개 · 시세 확인 {s.priced_count}개
-                  {s.unpriced_count > 0 ? ` · 미확인 ${s.unpriced_count}개` : ""}
-                  {s.calc_missing_count > 0
-                    ? ` · 계산 정보 부족 ${s.calc_missing_count}개`
-                    : ""}
-                </span>
-              </div>
-              <div className="account-summary-body">
-                <KV label="총 매입금액" value={fmtMoney(s.total_invested) ?? "-"} />
-                {noCalc ? (
-                  <KV label="평가금액/손익/수익률" value="계산 불가" />
-                ) : (
-                  <>
-                    <KV
-                      label={`평가금액 ${calcBasis}`}
-                      value={fmtMoney(s.priced_eval) ?? "-"}
-                    />
-                    <KV
-                      label={`평가손익 ${calcBasis}`}
-                      value={fmtSignedMoney(s.priced_pnl) ?? "-"}
-                      valueClass={pnlClass(s.priced_pnl)}
-                    />
-                    <KV
-                      label={`평가수익률 ${calcBasis}`}
-                      value={fmtSignedPct(s.priced_pnl_rate_pct) ?? "-"}
-                      valueClass={pnlClass(s.priced_pnl_rate_pct)}
-                    />
-                  </>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-function CompactHoldingsTable({
-  recs,
-  expanded,
-  onToggle,
-}: {
-  recs: NormRec[];
-  expanded: Set<string>;
-  onToggle: (k: string) => void;
-}) {
-  return (
-    <div className="compact-table-wrapper">
-      <table className="compact-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th>계좌</th>
-            <th>종목</th>
-            <th>손익</th>
-            <th>시장비중</th>
-            <th>판단</th>
-            <th>상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {recs.map((rec) => {
-            const k = rowKey(rec);
-            const open = expanded.has(k);
-            const nm =
-              rec.name && rec.name !== rec.ticker
-                ? `${rec.name} (${rec.ticker})`
-                : rec.ticker || "(종목 미상)";
-            const priced = isPriced(rec);
-            const calcOK = isCalcAvailable(rec);
-            const pnlText = fmtSignedMoney(rec.pnl_amount);
-            const pnlRateText = fmtSignedPct(rec.pnl_rate_pct);
-            const mwText = fmtPct(rec.market_weight_pct);
-
-            let pnlCell: React.ReactNode;
-            if (calcOK && pnlText && pnlRateText) {
-              pnlCell = (
-                <span className={pnlClass(rec.pnl_amount)}>
-                  {pnlText} / {pnlRateText}
-                </span>
-              );
-            } else if (!priced) {
-              pnlCell = <span className="muted">시세 미확인</span>;
-            } else {
-              pnlCell = <span className="muted">계산 정보 부족</span>;
-            }
-
-            const mwCell = mwText ?? <span className="muted">시세 미확인</span>;
-
-            const stateLabel = !priced
-              ? "[시세 미확인]"
-              : !calcOK
-                ? "[계산 정보 부족]"
-                : "정상";
-
-            return (
-              <CompactRow
-                key={k}
-                rowKey={k}
-                open={open}
-                onToggle={onToggle}
-                tagAccount={rec.account_group}
-                nameLabel={nm}
-                pnlCell={pnlCell}
-                marketWeightCell={mwCell}
-                actionLabel={rec.action || "-"}
-                stateLabel={stateLabel}
-                detail={<DetailRowFields rec={rec} />}
-              />
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function CompactRow({
-  rowKey: k,
-  open,
-  onToggle,
-  tagAccount,
-  nameLabel,
-  pnlCell,
-  marketWeightCell,
-  actionLabel,
-  stateLabel,
-  detail,
-}: {
-  rowKey: string;
-  open: boolean;
-  onToggle: (k: string) => void;
-  tagAccount: string;
-  nameLabel: string;
-  pnlCell: React.ReactNode;
-  marketWeightCell: React.ReactNode;
-  actionLabel: string;
-  stateLabel: string;
-  detail: React.ReactNode;
-}) {
-  const handleToggle = () => onToggle(k);
-  return (
-    <>
-      <tr className="compact-row" onClick={handleToggle}>
-        <td className="toggle-cell">
-          <button
-            type="button"
-            className="toggle-btn"
-            aria-expanded={open}
-            aria-label={open ? "상세 접기" : "상세 펼치기"}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggle();
-            }}
-          >
-            {open ? "▼" : "▶"}
-          </button>
-        </td>
-        <td>
-          <span className="account-tag">{tagAccount}</span>
-        </td>
-        <td className="ticker-cell">{nameLabel}</td>
-        <td className="num">{pnlCell}</td>
-        <td className="num">{marketWeightCell}</td>
-        <td>{actionLabel}</td>
-        <td className={stateLabel === "정상" ? "muted" : ""}>{stateLabel}</td>
-      </tr>
-      {open ? (
-        <tr className="compact-row-detail">
-          <td></td>
-          <td colSpan={6}>{detail}</td>
-        </tr>
-      ) : null}
-    </>
-  );
-}
-
-function DetailRowFields({ rec }: { rec: NormRec }) {
-  const lines: Array<[string, string]> = [];
-  if (rec.quantity !== null)
-    lines.push(["수량", rec.quantity.toLocaleString("ko-KR")]);
-  const avg = fmtMoney(rec.avg_buy_price);
-  if (avg) lines.push(["평균 매입단가", avg]);
-  const inv = fmtMoney(rec.invested_amount);
-  if (inv) lines.push(["매입금액", inv]);
-  const bw = fmtPct(rec.buy_weight_pct);
-  if (bw) lines.push(["매입비중", bw]);
-  const cur = fmtMoney(rec.current_price);
-  if (cur) lines.push(["현재가", cur]);
-  const ev = fmtMoney(rec.eval_amount);
-  if (ev) lines.push(["평가금액", ev]);
-  if (rec.price_asof) lines.push(["가격 기준시각", rec.price_asof]);
-  if (rec.price_source) lines.push(["데이터 출처", rec.price_source]);
-  if (rec.reason) lines.push(["사유", rec.reason]);
-  return (
-    <ul className="detail-fields">
-      {lines.map(([k, v]) => (
-        <li key={k}>
-          <span className="k">{k}</span>
-          <span className="v">{v}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ─── 작은 표시 컴포넌트 ─────────────────────────────────────────
 
 function SummaryItem({
   label,
@@ -554,22 +313,8 @@ function SummaryItem({
   );
 }
 
-function KV({
-  label,
-  value,
-  valueClass,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
-  return (
-    <div className="kv-row">
-      <span className="k">{label}</span>
-      <span className={`v ${valueClass ?? ""}`}>{value}</span>
-    </div>
-  );
-}
+
+
 
 // ─── Step 2D — 승인 초안 영역 (preview 우선 + 전체 요약 기본 + 근거 데이터 접힘) ───
 //
@@ -598,54 +343,10 @@ function LegacyFallback() {
   return <div className="message info">{LEGACY_FALLBACK_NOTICE}</div>;
 }
 
-function EvidenceDetails({
-  recs,
-  defaultOpen,
-  momentumBundle,
-}: {
-  recs: NormRec[];
-  defaultOpen: boolean;
-  momentumBundle?: ReturnType<typeof pickMomentumCandidates>;
-}) {
-  return (
-    <details className="evidence-details" open={defaultOpen}>
-      <summary>근거 데이터 펼쳐보기 (계좌별 요약 + 보유 종목 표 + 모멘텀 후보 상세)</summary>
-      <div className="evidence-body">
-        <AccountSummaryCards summaries={groupByAccount(recs)} />
-        <CompactHoldingsTableStandalone recs={recs} />
-        {momentumBundle ? <MomentumCandidatesSection bundle={momentumBundle} /> : null}
-      </div>
-    </details>
-  );
-}
 
 // CompactHoldingsTable 은 기존에 expanded/onToggle 을 prop 으로 받음.
 // 근거 데이터 펼침 안에서 행별 상세 펼침 상태를 별도로 보존하려면 자기 상태를 가져야 하므로
 // wrapper 를 둔다 (기존 컴포넌트 재사용).
-function CompactHoldingsTableStandalone({ recs }: { recs: NormRec[] }) {
-  const expandKeys = useMemo(() => recs.map((r) => rowKey(r)), [recs]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    setExpanded((prev) => {
-      const valid = new Set(expandKeys);
-      const next = new Set<string>();
-      for (const k of prev) if (valid.has(k)) next.add(k);
-      return next;
-    });
-  }, [expandKeys]);
-
-  const toggle = useCallback((k: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(k)) next.delete(k);
-      else next.add(k);
-      return next;
-    });
-  }, []);
-
-  return <CompactHoldingsTable recs={recs} expanded={expanded} onToggle={toggle} />;
-}
 
 // Step 5D Cleanup: pickPortfolioFactorSignal / pickMomentumBullet / JudgmentReasonSection /
 // pickMomentumCandidates / MomentumCandidatesSection 은 별도 컴포넌트로 분리되었다:
