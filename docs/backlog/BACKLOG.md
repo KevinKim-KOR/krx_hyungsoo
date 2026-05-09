@@ -37,19 +37,30 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   · RunPanel.tsx 가 helper / type 14개를 named export 로 노출 (NormRec / Summary / AccountSummary / toFiniteNumber / fmtMoney / fmtSignedMoney / fmtPct / fmtSignedPct / pnlClass / normalizeRec / isPriced / isCalcAvailable / rowKey / computeSummaryFor / OverallSummaryCard) — EvidenceDetails 가 import.
   렌더링 / 문구 / 배치 / 동작 / message_text 모두 동일.
 
-### CLEANUP NEXT: frontend/app/components/HoldingsClient.tsx 분리
-- 트리거: 832 라인 (Step5D 시점) — KS-10 트리거 3 근접. 추가 신규 책임이 들어가면 즉시 트리거.
+### CLEANUP NEXT: frontend/app/components/HoldingsClient.tsx 분리 — **KS-10 트리거 3 충족 (미해소)**
+- **실측 (2026-05-08, Step5D-2 종료 시점 정정)**: 906 라인. KS-10 트리거 3 (프론트 컴포넌트 900라인 초과) **충족 상태**. 직전 보고서들의 "832 라인" 수치는 측정 없이 이전 STEP 의 추정값을 그대로 보고한 결과 — 정정.
+- 변경 이력: git log 기준 마지막 변경은 commit 310bedc5 (Step2C, account_group 도입) — 이후 본 STEP 작업과 무관하게 906 라인 유지.
+- Step5D-2 미처리 사유: 본 STEP §4.3 "관찰만 할 파일" 로 명시 분류되어 있었음. AC-19 "새 기능 / 분리 0건" 정책에 따라 추가 분리 안 함.
 - 분리 후보 (잠정): EnrichedSection / OverallSummaryCard / AccountSummaryCards 를 RunPanel 의 동등 컴포넌트와 공용화 (BACKLOG "프론트 compact UI 공용 모듈 추출" 항목과 합쳐서 처리).
+- **다음 Cleanup STEP 의 우선 처리 후보**.
 
 ### CLEANUP NEXT: app/draft_message.py 메시지 렌더링 책임 분리
-- 트리거 근접: 472 라인 (Step5D 시점). KS-10 트리거 4 (650라인) 미달이지만 _factor_bullet / _momentum_bullet / 길이 방어 / 요약 빌더 / 주목 종목 빌더가 한 모듈에 모임.
+- **실측 (2026-05-08)**: 600 라인. KS-10 트리거 4 (백엔드 핵심 모듈 650라인) 미달이나 근접. 직전 보고서의 "472 라인" 수치는 측정 없는 추정값으로 정정.
+- _factor_bullet / _momentum_bullet / 길이 방어 / 요약 빌더 / 주목 종목 빌더가 한 모듈에 모임.
 - 분리 후보 (잠정): app/draft_message/__init__.py + judgment.py + summary.py + focus.py + length_guard.py 식 패키지화.
 - 처리 원칙: 출력 message_text 동일, [판단 사유] 헤더 1번 정책 유지.
 
 ### CLEANUP NEXT: app/api.py 라우터 분리
-- 트리거 근접: 465 라인 (Step5D 시점). KS-10 트리거 4 미달이지만 runs / holdings / market / universe 라우터가 한 모듈에 모임.
+- **실측 (2026-05-08)**: 557 라인. KS-10 트리거 4 미달이나 근접. 직전 보고서의 "465 라인" 수치는 측정 없는 추정값으로 정정.
+- runs / holdings / market / universe 라우터가 한 모듈에 모임.
 - 분리 후보 (잠정): FastAPI APIRouter 패턴으로 app/api/__init__.py + runs.py + holdings.py + market.py + universe.py 분리.
 - 처리 원칙: endpoint 경로 / 응답 스키마 동일, OCI handoff 경로 변경 0.
+
+### CLEANUP NEXT: RunPanel.tsx ↔ EvidenceDetails.tsx 양방향 import 정돈
+- 발생 맥락 (2026-05-08, Step5D-2): RunPanel.tsx 가 EvidenceDetails 의 default export 를 import 하고, EvidenceDetails.tsx 가 RunPanel 의 helper / type 14개를 named export 로 import. 빌드 / lint 통과 상태이며 JS/TS 의 named export 는 정적으로 해결되어 동작 위험은 없음.
+- 다만 Cleanup 목적상 양방향 의존은 부채. 검증자 NOTES B-6.
+- 분리 후보 (잠정): RunPanel 의 helper / type 을 별도 모듈 (`frontend/app/components/holdings_view_helpers.ts` 또는 `frontend/lib/holdings_view.ts`) 로 추출 → RunPanel + EvidenceDetails 모두 단방향 import.
+- 처리 원칙: 추출 후 동작 / 렌더링 / message_text 동일 보장. import 경로만 변경.
 
 ---
 

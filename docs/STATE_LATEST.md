@@ -18,10 +18,13 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
-- POC2-Step5D-2 Cleanup — Step5D 1차 후 남은 KS-10 트리거 2건 해소.
+- POC2-Step5D-2 Cleanup — Step5D 1차 후 §1.2 명시 KS-10 트리거 2건 해소.
   · test_holdings_draft_flow.py 1,982→244라인 (3개 신규 도메인 파일로 분리)
   · RunPanel.tsx 905→606라인 (EvidenceDetails.tsx 추출)
-  · pytest 119 passed 유지. KS-10 모든 트리거 해소.
+  · pytest 119 passed 유지.
+  · **HoldingsClient.tsx 906라인은 KS-10 트리거 3 미해소 상태 — 다음 Cleanup 우선 후보**
+    (본 STEP §4.3 "관찰만" 대상. 직전 라운드 보고서 "832라인" 은 측정 없는 추정값으로
+    실제와 불일치. 정정.)
 - POC2-Step5D Cleanup (1차) — 단일 파일 책임 누적 재발 신호 대응.
   · 백엔드 테스트 파일 분리 (test_poc1_loop.py 3,452→298라인 + conftest.py/_helpers.py + 4개 신규 파일)
   · 프론트 RunPanel.tsx 책임 분리 (JudgmentReasonSection.tsx + MomentumCandidatesSection.tsx)

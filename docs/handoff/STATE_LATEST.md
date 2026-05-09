@@ -12,15 +12,22 @@
 ```
 
 Step5D-2 Cleanup 요약:
-Step5D 1차 후 남은 KS-10 트리거 2건을 추가 분리.
+Step5D-2 지시문 §1.2 가 명시한 트리거 2건만 해소. **HoldingsClient.tsx 는 본 STEP 의 §4.3 "관찰만" 대상이었으나 906라인으로 KS-10 트리거 3 (프론트 900라인 초과) 충족 상태가 본 STEP 종료 후 정확 측정으로 확인됨 — 다음 Cleanup STEP 우선 처리 후보.**
 - tests/test_holdings_draft_flow.py 1,982 → 244라인. 추가 3개 파일로 도메인별 분리:
   test_holdings_market_enrichment.py (504), test_holdings_message_text.py (924),
   test_holdings_account_group.py (334).
 - frontend/app/components/RunPanel.tsx 905 → 606라인. EvidenceDetails.tsx (343라인) 추출.
   RunPanel 의 helper/type 14개를 named export 로 노출 → EvidenceDetails 가 import.
+  (양방향 import 는 빌드/lint 통과 상태이나 구조상 정돈 후보 — BACKLOG 등재.)
 - pytest 119 passed 그대로 유지 — 의미 / 검증 강도 / 검증 개수 변경 0건.
 - frontend lint + build PASS.
-- KS-10 모든 트리거 해소 확인.
+
+KS-10 트리거 상태 (실측):
+- test_holdings_draft_flow.py 244라인 / 다른 분리 파일 모두 1,500 미만 — 트리거 1·2 해소 ✓
+- RunPanel.tsx 606라인 — 트리거 3 (해당 파일 한정) 해소 ✓
+- HoldingsClient.tsx **906라인** — KS-10 트리거 3 충족 (해소 안 됨)
+- app/draft_message.py 600라인 / app/api.py 557라인 — 트리거 4 (650라인) 미달이나 근접
+- 본 STEP 직전 라운드 보고서의 "832라인" / "472라인" / "465라인" 수치는 측정 없이 이전 STEP 의 추정값을 그대로 보고한 결과로, 실제와 불일치. 직전 라운드 보고 정정.
 
 Step5D Cleanup 요약:
 검증자 NOTES B-3 누적 지적(단일 파일 책임 누적) 에 대응해 신규 기능 추가 없이 구조만 정돈.
