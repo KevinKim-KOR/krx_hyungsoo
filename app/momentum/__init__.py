@@ -33,6 +33,7 @@ from app.momentum.holdings_mode import (
 from app.momentum.universe_mode import (
     LATEST_ARTIFACT_FILE,
     build_universe_momentum_result,
+    build_universe_momentum_result_scored,
     save_latest_artifact,
 )
 
@@ -41,6 +42,7 @@ __all__ = [
     "ENGINE_VERSION",
     "build_holdings_momentum_result",
     "build_universe_momentum_result",
+    "build_universe_momentum_result_scored",
     "save_latest_artifact",
     "LATEST_ARTIFACT_FILE",
 ]

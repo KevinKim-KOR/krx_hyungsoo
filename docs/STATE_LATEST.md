@@ -18,6 +18,21 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
+- POC2-Step6 (2026-05-11) — Universe Momentum Formula Minimal Scoring.
+  · 점검값: pykrx 기반 1개월 기간 수익률 (one_month_return_pct).
+  · pykrx 호출은 app/price_history_pykrx.py 1개 모듈만. bounded sync refresh
+    (20 items / 0.5s delay / 30s budget) + candidate 단위 실패 격리.
+  · POST /universe/momentum/refresh → ok / partial / failed 상태 + top_candidate
+    저장 (latest 1건 덮어쓰기). DB / history / 가격 캐시 모두 미도입.
+  · GET /universe/momentum/latest → UI 상태 패널용 최신 artifact 조회.
+  · GenerateDraft 가 latest artifact 의 top_candidate 를 draft_payload.external_universe_check
+    로 병합. pykrx 직접 호출 0건 (AC-20).
+  · [판단 사유] 3번째 bullet 추가 — 보유 비중 영향 / 모멘텀 점검 / 외부 후보 점검.
+    헤더 1번 유지. universe 후보 전체 목록 미노출.
+  · UniverseRefreshPanel 추가 (HoldingsClient 아래 별도 영역).
+  · 검증: pytest 136 passed (Step6 회귀 17개 추가) / black / flake8 / Next.js build PASS.
+  · KS-10 임계: 백엔드 max 536 / 프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0 유지.
+  · ASSUMPTIONS Q5 첫 실전 검증 기록 추가 (OPEN 유지).
 - POC2-Step5D-2 Final Round (2026-05-10) — 모든 KS-10 트리거 + 근접(50라인 이내) 0건 동시 달성.
   · HoldingsClient.tsx 906→394라인 (트리거 3 해소). EnrichedHoldingsSection.tsx 신규 (515라인) 로 시세평가 compact UI 책임 분리.
   · draft_message.py 600→525라인 (트리거 4 근접 해소). message_helpers.py 신규 (124라인) 로 leaf format / 항목 식별 helpers 분리. 공개 API 동일 import 경로 유지.

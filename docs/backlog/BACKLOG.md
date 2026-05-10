@@ -78,6 +78,59 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## STEP 6 향후 검토 (Universe Momentum 발전 방향)
+
+POC2-Step6 (Universe Momentum Formula Minimal Scoring) 에서 의도적으로 미도입한 항목.
+사용자 운영 결과를 보며 필요성이 확인되면 별도 STEP 으로 진입한다.
+
+### NEXT (Step6 미도입): 비동기 universe refresh
+- 발생 맥락: Step6 의 POST /universe/momentum/refresh 는 동기 sync API. ticker 별 0.5초
+  delay × 최대 20개 + 30초 budget 으로 HTTP 응답 시간 길어질 수 있음.
+- 현재 결정: 동기 유지. 사용자 명시 갱신 1회만 호출하므로 운영 부담 작다고 판단.
+- 재검토 트리거:
+  - seed 후보군이 20개를 넘어야 할 강한 이유가 생길 때
+  - 응답 시간 30초가 사용자 경험을 해친다는 명시 피드백 발생 시
+  - 백그라운드 워커 도입이 필요한 다른 기능과 함께 진입 시
+- 금지 (지금은): background worker / scheduler / async task queue / 자동 재시도.
+
+### NEXT (Step6 미도입): pykrx 가격 히스토리 캐시
+- 발생 맥락: Step6 는 매 refresh 마다 pykrx 호출. 같은 ticker 의 같은 기간 데이터를
+  반복 호출할 수 있다 (특히 사용자가 짧은 시간 안에 여러 번 refresh 누르면).
+- 현재 결정: 캐시 미도입. KS-9 (외부 의존 리스크) 와 KS-10 (단일 책임 누적) 위험 회피.
+- 재검토 트리거:
+  - 동일 ticker 의 동일 기간 호출이 분당 N회 이상 발생하는 운영 패턴이 확인될 때
+  - pykrx 응답 시간이 사용자 경험을 명시적으로 해칠 때
+- 금지 (지금은): pykrx 호출 결과 캐싱 / TTL 캐시 / 디스크 캐시.
+
+### NEXT (Step6 미도입): universe 결과 history 저장
+- 발생 맥락: Step6 는 latest 1건 덮어쓰기. 날짜별 누적 / Q5 검증용 변수 이력 / 성과
+  비교 / AI 해석 로그 모두 미저장.
+- 현재 결정: history 미도입. JSON SSOT 유지. DB 도입 금지.
+- 재검토 트리거 (Step6 §15 명시):
+  - universe momentum 결과를 날짜별로 누적해야 할 때
+  - Q5 검증을 위해 변수 변경 이력과 성과를 비교해야 할 때
+  - AI 해석 로그와 점수 결과를 연결해야 할 때
+- 금지 (지금은): SQLite / PostgreSQL / MongoDB / 날짜별 history 파일.
+
+### NEXT (Step6 미도입): ML dataset 저장 구조
+- 발생 맥락: Q5 의 "AI 와 토론해 점수체계를 다듬는 사이클" 의 다음 단계는 ML 학습용
+  dataset 일 수 있음. 그러나 Step6 시점에는 변수 1개 (one_month_return_pct) 만
+  존재하므로 dataset 구조 선정 보류.
+- 현재 결정: 미도입.
+- 재검토 트리거: 변수가 3개 이상 안정 운영되고, 사용자가 ML 학습 진입 의지를 명시할 때.
+- 금지 (지금은): ML feature store / training pipeline / 학습 데이터 누적.
+
+### NEXT (Step6 미도입): pykrx 외 fallback 데이터 소스
+- 발생 맥락: pykrx 단일 의존. pykrx 장애 / API 변경 시 universe refresh 전체 실패.
+- 현재 결정: fallback 미도입. KS-9 (외부 의존 리스크) 가드는 candidate 단위 실패 격리 +
+  refresh_status="failed" 정상 운영 경로 처리로 대응.
+- 재검토 트리거:
+  - pykrx 장애가 운영에 명시적 영향 (사용자 불만 발생) 을 줄 때
+  - 다른 데이터 소스 (예: 직접 API / 다른 라이브러리) 가 안정성이 높음이 확인될 때
+- 금지 (지금은): 다중 데이터 소스 / 자동 fallback / 데이터 소스 결정 트리.
+
+---
+
 ## ACTIVE REVIEW BEFORE STEP5
 
 Step5 (Momentum Engine 첫 구현 STEP) 진입 전에 반드시 검토할 5개 항목.

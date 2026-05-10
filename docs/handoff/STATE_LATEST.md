@@ -1,15 +1,89 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-10
+최종 업데이트: 2026-05-11
 
 ---
 
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step5D-2 Final Round 완료 (검증자 VERIFIED, 2026-05-10) — 모든 KS-10 트리거 + 근접(50라인 이내) 0건
-다음 단계: 사용자/설계자 결정 대기 — universe 모멘텀 산식 기능 STEP 진입
+현재 단계: POC2-Step6 Universe Momentum Formula Minimal Scoring 완료 (검증 대기, 2026-05-11)
+다음 단계: 검증자(Codex) 검증 → 운영 사이클 1회 시작 → Q5 첫 실전 데이터 수집
 ```
+
+Step6 요약 (본 STEP):
+"잘 달리는 말 찾기" 의 첫 실제 계산 단계. manual universe seed 후보군에 pykrx 기반
+1개월 기간 수익률 1개를 적용해 상위 1개를 UI / Telegram [판단 사유] 1줄에 반영.
+
+핵심 변경:
+- 점검값: **pykrx 기반 1개월 수익률** (one_month_return_pct = (latest/base - 1)*100).
+  복합 점수체계 / MA / RSI / 보너스 / Top N / BUY·SELL 일체 미도입.
+- pykrx 호출은 **app/price_history_pykrx.py 1개 모듈에만**. fetch_one_month_basis 함수.
+- bounded sync refresh: MAX_UNIVERSE_ITEMS_PER_REFRESH=20 / per_ticker_delay=0.5s /
+  budget=30s. seed >20 hard fail. candidate 단위 실패 격리.
+- POST /universe/momentum/refresh : status (ok / partial / failed) + scored/total 응답.
+- GET /universe/momentum/latest : UI 상태 패널용 latest artifact 조회 (refresh 안 된
+  상태는 status="absent").
+- universe_momentum_latest.json 확장: refresh_status / data_source="pykrx" /
+  score_basis="one_month_return_pct" / lookback_days=30 / fetch_window_days=45 /
+  top_candidate (rank=1).
+- candidate scored: score_value(%) / score_unit="%" / ranking_basis / price_history_basis
+  (base_date/base_close/latest_date/latest_close).
+- candidate unscored: exclusion_reason 만 기록. rank 키 미생성.
+- GenerateDraft → universe_momentum_latest.json 의 top_candidate 를 draft_payload
+  의 7번째 키 external_universe_check 로 병합. **pykrx 직접 호출 0건** (AC-20).
+- message_text [판단 사유] 3번째 bullet 추가 — "외부 후보 점검: pykrx 1개월 수익률
+  기준 {name} 이 가장 높습니다({value}%, 기준일 {date}, 계산 가능 {scored}/{total}개).
+  이 값은 매수 추천이 아닙니다."
+- 실패 시 bullet: "외부 후보 점검: pykrx 가격 데이터 부족으로 1개월 점검값을 계산하지
+  못했습니다(기준일 {basis_date})."
+- 기준일 우선순위: top_candidate.price_history_basis.latest_date → universe.asof →
+  "기준일 확인 불가".
+- [판단 사유] 헤더 1번 유지 (factor → 모멘텀 → 외부 후보 3 bullets).
+- UI: HoldingsClient 아래 별도 UniverseRefreshPanel — 외부 후보 점검 갱신 버튼 +
+  상태 패널 (마지막 asof / refresh_status / 기준일 / 계산 가능/전체 / top_candidate
+  1건 / 실패 사유). 후보 전체 목록 미노출.
+- 버튼 정책: 요청 중 disabled. Telegram / Approve / GenerateDraft 자동 실행 금지.
+
+신규 / 수정 파일:
+신규:
+- app/price_history_pykrx.py (138라인) — pykrx 단일 호출 모듈
+- app/universe_refresh.py (258라인) — bounded sync refresh service
+- app/api_universe.py (151라인) — POST refresh + GET latest 라우터 분리
+- app/message_universe_bullet.py (90라인) — 외부 후보 점검 bullet 빌더
+- frontend/app/components/UniverseRefreshPanel.tsx (210라인) — UI refresh 버튼 + 상태 패널
+- tests/test_universe_momentum_step6.py (391라인) — 17개 회귀 테스트
+
+수정:
+- app/momentum/universe_mode.py 147→314 (build_universe_momentum_result_scored 추가)
+- app/momentum/__init__.py (re-export 추가)
+- app/api.py 557→497 (universe endpoint → api_universe 로 분리, 라우터 include 만)
+- app/draft.py 160→221 (external_universe_check 로딩 함수 추가)
+- app/draft_message.py 525→536 (3번째 bullet 헤더 통합 — 본체는 message_universe_bullet)
+- frontend/lib/api.ts 290→380 (universe refresh / latest 엔드포인트 클라이언트)
+- frontend/app/components/MainPanel.tsx 65→69 (UniverseRefreshPanel embed)
+- frontend/app/components/JudgmentReasonSection.tsx 108→173 (3번째 bullet picker)
+- requirements.txt (pykrx>=1.0.51 추가)
+- tests/conftest.py 86→118 (pykrx fetcher stub + universe path patch)
+- tests/test_universe_seed.py (Step6 동작 반영 — external_universe_check 키 검증)
+
+KS-10 임계 상태 (실측):
+- 백엔드: max draft_message.py 536 / api.py 497 — 트리거 4 (650) 미달, 근접 (>=600) 0건 ✓
+- 프론트: max EnrichedHoldingsSection.tsx 515 — 트리거 3 (900) 미달, 근접 (>=850) 0건 ✓
+- 테스트: max test_holdings_message_text.py 924 — 트리거 1 (1500) 미달, 근접 (>=1450) 0건 ✓
+- **모든 트리거 0건 + 모든 근접 0건 유지** ✓ (Step5D-2 Final 이후 회귀 없음)
+
+검증:
+- pytest 119 → 136 passed (1.17s) — Step6 회귀 17개 추가
+- black --check / flake8 / TypeScript build / Next.js lint 모두 PASS
+- pykrx 의존성 추가 (requirements.txt) — pykrx>=1.0.51
+
+Q5 첫 실전 검증 기록 (ASSUMPTIONS.md Q5 보강):
+- 채택: pykrx 1개월 기간 수익률 (단일 가격 기반 변수)
+- 기각/보류: 수동 recent_return_pct (보수적) / 당일 등락률 (노이즈) / manual_score (근거 약함)
+- Q5 상태: OPEN 유지 — 운영 사이클 1회 후 1차 검토
+
+직전 상태 (Step5D-2 Final Round):
 
 Step5D-2 Final Round 요약 (본 라운드):
 직전 라운드의 §4.3 "관찰만" 대상이었던 HoldingsClient.tsx (906라인 = 트리거 3 충족) 와 draft_message.py (600라인 = 트리거 4 근접) 까지 모두 해소. 동시에 RunPanel ↔ EvidenceDetails 양방향 import 정돈.

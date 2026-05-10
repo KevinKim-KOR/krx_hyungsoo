@@ -56,6 +56,10 @@ from app.message_helpers import (
     _item_label,
     _to_finite_float,
 )
+from app.message_universe_bullet import (
+    EXTERNAL_UNIVERSE_BULLET_LABEL,
+    external_universe_bullet as _external_universe_bullet,
+)
 
 __all__ = [
     "MAX_LENGTH_CHARS",
@@ -67,6 +71,7 @@ __all__ = [
     "TRUNCATION_NOTICE",
     "JUDGMENT_SECTION_HEADER",
     "MOMENTUM_BULLET_LABEL",
+    "EXTERNAL_UNIVERSE_BULLET_LABEL",
     "is_holdings_draft",
     "compute_summary",
     "select_focus_items",
@@ -89,6 +94,9 @@ JUDGMENT_SECTION_HEADER = "[판단 사유]"
 
 # Step 5B: 모멘텀 점검 bullet 라벨. [판단 사유] 섹션 안의 두 번째 bullet 으로 추가.
 MOMENTUM_BULLET_LABEL = "모멘텀 점검"
+
+# Step 6: 외부 후보 점검 bullet 빌더는 app.message_universe_bullet 로 분리 — 본 파일은
+# 라벨 / 함수를 re-export 한다 (기존 import 경로 호환). KS-10 근접 해소를 위한 분리.
 
 
 def is_holdings_draft(payload: Any) -> bool:
@@ -432,11 +440,11 @@ def _momentum_bullet(payload: dict[str, Any]) -> Optional[str]:
 
 
 def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
-    """[판단 사유] 섹션 — Step 3 의 factor bullet 과 Step 5B 의 momentum bullet 을
-    한 헤더 아래에 모은다.
+    """[판단 사유] 섹션 — Step 3 factor / Step 5B momentum / Step 6 external universe 를
+    한 헤더 아래에 순서대로 모은다 (보유 비중 영향 → 모멘텀 점검 → 외부 후보 점검).
 
-    헤더 중복 금지: bullet 이 1개라도 있으면 헤더 1번 + bullets. 둘 다 없으면 빈 리스트.
-    종목별 / 후보별 항목은 메시지에 나열하지 않는다 (Top N 정책 금지).
+    헤더 중복 금지: bullet 이 1개라도 있으면 헤더 1번 + bullets. 모두 없으면 빈 리스트.
+    종목별 / 후보별 / Top N 항목은 메시지에 나열하지 않는다.
     """
     bullets: list[str] = []
     fb = _factor_bullet(payload)
@@ -445,6 +453,9 @@ def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
     mb = _momentum_bullet(payload)
     if mb is not None:
         bullets.append(mb)
+    eu = _external_universe_bullet(payload)
+    if eu is not None:
+        bullets.append(eu)
     if not bullets:
         return []
     return ["", JUDGMENT_SECTION_HEADER, *bullets]

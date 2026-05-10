@@ -13,9 +13,10 @@ draft_payload 는 화면에서도 보고 외부 전달 body 로도 사용되는 
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 from uuid import uuid4
 
 from app import draft_message, sample_draft, store
@@ -24,6 +25,7 @@ from app.holdings import Holding
 from app.holdings_enrich import enrich_holdings, to_recommendation_dict
 from app.market_cache import MarketQuote
 from app.models import Run
+from app.momentum import LATEST_ARTIFACT_FILE as UNIVERSE_LATEST_FILE
 from app.momentum import build_holdings_momentum_result
 
 logger = logging.getLogger(__name__)
@@ -113,7 +115,11 @@ def _build_holdings_payload(
     # placeholder 산식(pnl_rate) 은 최종 투자 판단 산식이 아니다.
     momentum_result = build_holdings_momentum_result(enriched, asof=asof_iso)
 
-    return {
+    # POC2 Step 6: universe_momentum_latest.json 의 top_candidate 를 [판단 사유] 의
+    # "외부 후보 점검" bullet 로 병합. GenerateDraft 는 pykrx 를 직접 호출하지 않고
+    # 이미 저장된 latest artifact 만 읽는다 (AC-20). artifact 부재 시 키를 추가하지
+    # 않는다 — pre-refresh 상태에서는 [판단 사유] 에 universe bullet 미표시.
+    payload: dict[str, Any] = {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
         "note": note,
@@ -121,6 +127,61 @@ def _build_holdings_payload(
         "factor_signals": factor_signals,
         "momentum_result": momentum_result,
     }
+    universe_summary = _load_external_universe_check()
+    if universe_summary is not None:
+        payload["external_universe_check"] = universe_summary
+    return payload
+
+
+def _load_external_universe_check() -> Optional[dict[str, Any]]:
+    """state/universe/universe_momentum_latest.json 을 읽어 draft_payload 에 들어갈
+    축약 dict 를 반환. artifact 부재 / 파싱 실패 / 형식 오류 모두 None 반환 (안전 격리).
+
+    축약 dict 구조 (preview / Telegram / UI 가 [판단 사유] bullet 만들 때 사용):
+    {
+      "refresh_status": "ok" | "partial" | "failed",
+      "asof": str,                                # universe_momentum_latest.asof
+      "scored_count": int,
+      "total_count": int,
+      "top_candidate": {                          # refresh_status != "failed" 시에만
+        "name": str, "ticker": str,
+        "score_value": float, "score_unit": "%",
+        "ranking_basis": str,
+        "price_history_basis": {...}              # latest_date / base_date 등
+      } | None
+    }
+    """
+    if not UNIVERSE_LATEST_FILE.exists():
+        return None
+    try:
+        text = UNIVERSE_LATEST_FILE.read_text(encoding="utf-8")
+        data = json.loads(text)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning(f"universe latest artifact 읽기 실패: {e}")
+        return None
+    if not isinstance(data, dict):
+        return None
+    summary = data.get("summary")
+    if not isinstance(summary, dict):
+        return None
+    refresh_status = summary.get("refresh_status")
+    if refresh_status not in ("ok", "partial", "failed"):
+        # 본 키가 없으면 Step5C 시점 (점수 미부여) 결과 — Step6 외부 후보 점검 대상 아님.
+        return None
+    asof = data.get("asof")
+    if not isinstance(asof, str):
+        return None
+    out: dict[str, Any] = {
+        "refresh_status": refresh_status,
+        "asof": asof,
+        "scored_count": int(summary.get("scored_candidates") or 0),
+        "total_count": int(summary.get("total_candidates") or 0),
+        "top_candidate": None,
+    }
+    top = summary.get("top_candidate")
+    if isinstance(top, dict):
+        out["top_candidate"] = top
+    return out
 
 
 def generate_draft_from_holdings(

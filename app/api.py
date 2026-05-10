@@ -44,14 +44,10 @@ from app import (
     market_naver,
     store,
 )
+from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
 from app.models import Run
-from app.momentum import (
-    build_universe_momentum_result,
-    save_latest_artifact as save_universe_latest_artifact,
-)
 from app.state import InvalidTransition, validate_transition
-from app.universe_seed import UniverseSeedError, load_universe_seed
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +64,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
+
+# POC2 Step 6 — universe momentum 엔드포인트는 별도 라우터로 분리 (app.api_universe).
+# KS-10 근접 해소 + 1개 책임 1개 파일.
+app.include_router(universe_router)
 
 
 class GenerateDraftRequest(BaseModel):
@@ -495,63 +495,3 @@ def post_approve(run_id: str, background_tasks: BackgroundTasks) -> RunResponse:
     background_tasks.add_task(_execute_delivery, run_id)
 
     return snapshot
-
-
-# ─── POC2 Step 5C: universe mode manual refresh (수동 backend API 전용) ──
-#
-# 설계자 결정 (Step 5C 지시문 §3):
-# - holdings draft 생성 / Approve / OCI handoff / Telegram 흐름에서 자동 호출 금지.
-# - frontend 버튼 / scheduler / cron 연동 모두 미도입.
-# - 결과는 state/universe/universe_momentum_latest.json (latest 1건 덮어쓰기) 에만 저장.
-#   draft_payload / Run top-level / message_text / Telegram 어디에도 노출 안 함.
-# - universe 후보군은 외부에서 수동 seed 로 주입. 엔진이 직접 수집하지 않는다 (Step5A
-#   §3.2 "발굴 = 주입된 후보 평가" 정책).
-
-
-class UniverseMomentumRefreshSummary(BaseModel):
-    total_candidates: int
-    scored_candidates: int
-    excluded_candidates: int
-    source_freshness: str
-
-
-class UniverseMomentumRefreshResultBrief(BaseModel):
-    mode: str
-    asof: str
-    summary: UniverseMomentumRefreshSummary
-
-
-class UniverseMomentumRefreshResponse(BaseModel):
-    status: str
-    artifact_path: str
-    momentum_result: UniverseMomentumRefreshResultBrief
-
-
-@app.post("/universe/momentum/refresh", response_model=UniverseMomentumRefreshResponse)
-def post_universe_momentum_refresh() -> UniverseMomentumRefreshResponse:
-    """수동 universe seed → universe mode momentum_result → latest artifact 저장.
-
-    실패 처리: asof 누락 / 형식 오류 / 미래 날짜 / items 비정상 / seed 파일 부재
-    모두 422 로 차단. 조용히 성공 처리하지 않는다 (Step5C 지시문 §7.1).
-    """
-    try:
-        seed = load_universe_seed()
-    except UniverseSeedError as e:
-        raise HTTPException(status_code=422, detail=f"universe seed 검증 실패: {e}")
-    momentum_result = build_universe_momentum_result(seed)
-    artifact_path = save_universe_latest_artifact(momentum_result)
-    summary = momentum_result["summary"]
-    return UniverseMomentumRefreshResponse(
-        status="ok",
-        artifact_path=str(artifact_path),
-        momentum_result=UniverseMomentumRefreshResultBrief(
-            mode=momentum_result["mode"],
-            asof=momentum_result["asof"],
-            summary=UniverseMomentumRefreshSummary(
-                total_candidates=summary["total_candidates"],
-                scored_candidates=summary["scored_candidates"],
-                excluded_candidates=summary["excluded_candidates"],
-                source_freshness=summary["source_freshness"],
-            ),
-        ),
-    )

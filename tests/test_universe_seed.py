@@ -193,15 +193,28 @@ def test_step5c_endpoint_invalid_seed_fails_422(client, _isolated_universe):
 def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     client, _isolated_universe
 ):
-    """universe refresh 호출이 holdings draft 의 draft_payload / message_text 에
-    영향을 주지 않는다 (자동 호출 / 끼워 넣기 금지 정책)."""
+    """Step6 변경: universe refresh 결과 (external_universe_check) 가 draft_payload 에
+    추가되고 [판단 사유] 에 '외부 후보 점검' bullet 1줄이 더해진다. 단:
+    - refresh 이전 (artifact 부재) 에는 external_universe_check 키 자체가 추가되지 않는다.
+    - holdings momentum_result / factor_signals / recommendations 등 기존 키는 모두 보존.
+    - [판단 사유] 헤더는 여전히 1번만 (헤더 중복 금지).
+    - draft_payload / message_text 에 universe 후보 전체 목록은 노출되지 않는다.
+    """
     from datetime import date
 
-    # holdings 흐름 1회 — universe refresh 전
+    # holdings 흐름 1회 — universe refresh 전 (artifact 부재)
     _put_holdings_for_momentum(client)
     body_before = client.post("/runs/generate-from-holdings").json()
     payload_before = body_before["draft_payload"]
     msg_before = body_before["message_text"]
+    # refresh 전: external_universe_check 키 미존재.
+    assert "external_universe_check" not in payload_before
+    # universe 후보 전체 목록 표시 금지 (Step6 §13 / AC-28).
+    assert "universe" not in msg_before.lower()
+    assert "외부 ETF 후보군" not in msg_before
+    # 기준선 [판단 사유] 헤더 1번.
+    assert msg_before.count("[판단 사유]") == 1
+    assert "- 모멘텀 점검:" in msg_before
 
     # universe refresh 수행
     _write_seed(
@@ -209,24 +222,33 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     )
     client.post("/universe/momentum/refresh")
 
-    # holdings 흐름 1회 — universe refresh 후. draft_payload 키 집합과
-    # message_text 의 [판단 사유] 섹션이 동일해야 한다.
+    # holdings 흐름 1회 — universe refresh 후
     body_after = client.post("/runs/generate-from-holdings").json()
     payload_after = body_after["draft_payload"]
     msg_after = body_after["message_text"]
 
-    assert set(payload_before.keys()) == set(payload_after.keys())
-    # draft_payload 에 universe 키가 새로 들어가지 않음
-    assert "universe_momentum_result" not in payload_after
+    # 기존 키 보존
+    for k in (
+        "title",
+        "asof",
+        "note",
+        "recommendations",
+        "factor_signals",
+        "momentum_result",
+    ):
+        assert k in payload_after
+    # Step6 신규 키
+    assert "external_universe_check" in payload_after
+    # universe 후보 전체 목록은 draft_payload / message 어디에도 풀려나오지 않음.
     assert "universe_candidates" not in payload_after
-    # message_text 에 universe 관련 표현 없음
-    assert "universe" not in msg_after.lower()
     assert "외부 ETF 후보군" not in msg_after
-    # 기존 [판단 사유] 헤더 1번 / 모멘텀 점검 bullet 그대로
+    # [판단 사유] 헤더는 여전히 1번 (헤더 중복 금지 — AC-26)
     assert msg_after.count("[판단 사유]") == 1
+    # 기존 모멘텀 점검 bullet 그대로 + 외부 후보 점검 bullet 추가
     assert "- 모멘텀 점검:" in msg_after
-    # 기준선과 동일한 헤더 카운트 유지
-    assert msg_before.count("[판단 사유]") == msg_after.count("[판단 사유]")
+    assert "- 외부 후보 점검:" in msg_after
+    # bullet 순서: 모멘텀 점검 → 외부 후보 점검 (Step6 §13 / AC-27)
+    assert msg_after.index("- 모멘텀 점검:") < msg_after.index("- 외부 후보 점검:")
 
 
 def test_step5c_existing_step5b_holdings_momentum_preserved(client, _isolated_universe):

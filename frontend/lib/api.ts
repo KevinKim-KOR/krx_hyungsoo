@@ -288,3 +288,93 @@ export function refreshMarket(): Promise<MarketRefreshResult> {
 export function fetchEnrichedHoldings(): Promise<EnrichedHoldingsResult> {
   return request<EnrichedHoldingsResult>("GET", "/holdings/enriched");
 }
+
+// ─── POC2 Step 6: universe momentum refresh + latest ─────────────────
+
+export interface UniverseRefreshSummary {
+  total_candidates: number;
+  scored_candidates: number;
+  excluded_candidates: number;
+  source_freshness: string;
+  refresh_status: "ok" | "partial" | "failed";
+}
+
+export interface UniverseRefreshResponse {
+  status: "ok" | "partial" | "failed";
+  artifact_path: string;
+  momentum_result: {
+    mode: string;
+    asof: string;
+    summary: UniverseRefreshSummary;
+  };
+}
+
+export interface UniversePriceHistoryBasis {
+  base_date: string;
+  base_close: number;
+  latest_date: string;
+  latest_close: number;
+}
+
+export interface UniverseTopCandidate {
+  candidate_id?: string;
+  ticker: string;
+  name: string;
+  rank?: number;
+  score_result?: {
+    is_scored: boolean;
+    score_value?: number;
+    score_unit?: string;
+    score_basis_text?: string;
+    ranking_basis?: string;
+    exclusion_reason?: string;
+  };
+  reason_text?: string;
+  price_history_basis?: UniversePriceHistoryBasis;
+}
+
+export interface UniverseLatestSummary {
+  total_candidates: number;
+  scored_candidates: number;
+  excluded_candidates: number;
+  source: string;
+  source_freshness: string;
+  staleness_days: number;
+  refresh_status?: "ok" | "partial" | "failed";
+  data_source?: string;
+  score_basis?: string;
+  lookback_days?: number;
+  fetch_window_days?: number;
+  summary_reason_text?: string;
+  top_candidate?: UniverseTopCandidate;
+}
+
+export interface UniverseLatestPayload {
+  engine_id: string;
+  engine_version: string;
+  mode: string;
+  asof: string;
+  summary: UniverseLatestSummary;
+  candidates: unknown[];
+}
+
+export interface UniverseLatestResponse {
+  status: "present" | "absent";
+  artifact_path: string;
+  momentum_result: UniverseLatestPayload | null;
+}
+
+// 명시적 사용자 액션에서만 호출 — Telegram / Approve / GenerateDraft 자동 발동 금지.
+export function refreshUniverseMomentum(): Promise<UniverseRefreshResponse> {
+  // pykrx ticker 별 0.5s delay × 최대 20개 + 30s budget — 60s timeout 으로 여유.
+  return request<UniverseRefreshResponse>(
+    "POST",
+    "/universe/momentum/refresh",
+    undefined,
+    60000,
+  );
+}
+
+export function fetchUniverseMomentumLatest(): Promise<UniverseLatestResponse> {
+  return request<UniverseLatestResponse>("GET", "/universe/momentum/latest");
+}

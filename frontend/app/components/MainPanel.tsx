@@ -15,6 +15,7 @@ import { useState } from "react";
 import HoldingsClient from "./HoldingsClient";
 import RunPanel from "./RunPanel";
 import SampleDraftQuickButton from "./SampleDraftQuickButton";
+import UniverseRefreshPanel from "./UniverseRefreshPanel";
 import type { Run } from "@/lib/api";
 
 export default function MainPanel() {
@@ -32,6 +33,9 @@ export default function MainPanel() {
 
       {/* 1. 운영 진입점 — 보유 종목 입력 (최상단, 첫 번째 섹션) */}
       <HoldingsClient onDraftCreated={setRun} />
+
+      {/* 1-2. POC2 Step 6 — 외부 후보 점검 (universe momentum) 별도 영역 (지시문 §12.2). */}
+      <UniverseRefreshPanel />
 
       {/* 2. 현재 run 표시 (run 있을 때만) */}
       {run ? (

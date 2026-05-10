@@ -69,9 +69,16 @@ def client() -> TestClient:
 
 @pytest.fixture
 def _isolated_universe(tmp_path, monkeypatch):
-    """Step5C 테스트용 universe seed / artifact 경로 격리."""
+    """Step5C 테스트용 universe seed / artifact 경로 격리.
+
+    Step6 추가: pykrx fetcher 도 기본 stub 으로 격리한다 (실 네트워크 호출 차단).
+    기본 stub 은 성공 결과를 반환 — Step5C 회귀 테스트가 status="ok" 를 가정하므로
+    호환 유지. 개별 Step6 테스트는 monkeypatch.setattr 로 override 가능.
+    """
     from app import universe_seed as us
+    from app import universe_refresh as ur
     from app.momentum import universe_mode as um
+    from app.price_history_pykrx import PriceHistoryBasis
 
     seed_dir = tmp_path / "universe"
     seed_dir.mkdir()
@@ -82,4 +89,30 @@ def _isolated_universe(tmp_path, monkeypatch):
     monkeypatch.setattr(us, "UNIVERSE_SEED_FILE", seed_file)
     monkeypatch.setattr(um, "LATEST_ARTIFACT_DIR", seed_dir)
     monkeypatch.setattr(um, "LATEST_ARTIFACT_FILE", artifact_file)
+    # POC2 Step 6: app.draft 는 LATEST_ARTIFACT_FILE 을 모듈 임포트 시점 별칭으로 들고
+    # 있으므로 별도 monkeypatch 필요. app.api_universe 는 universe_mode 모듈 attribute 를
+    # 호출 시점에 lookup 하므로 위 um monkeypatch 만으로 충분.
+    from app import draft as _draft
+
+    monkeypatch.setattr(_draft, "UNIVERSE_LATEST_FILE", artifact_file)
+
+    # POC2 Step 6: pykrx fetcher 기본 stub — 실 네트워크 호출 차단.
+    # ticker 별로 안정적 score 를 만들기 위해 ticker hash 로 기준 close 를 결정.
+    # **kwargs 수용: score_candidates 의 default fetcher 가 fetch_window_days /
+    # lookback_days 를 keyword 로 전달.
+    def _stub_fetcher(ticker, asof, **_kwargs):
+        ticker_factor = (sum(ord(c) for c in ticker) % 5) + 1  # 1..5
+        base_close = 10000.0
+        latest_close = base_close * (1 + ticker_factor / 100.0)  # +1%..+5%
+        return PriceHistoryBasis(
+            base_date="2026-04-10",
+            base_close=base_close,
+            latest_date=asof,
+            latest_close=latest_close,
+        )
+
+    monkeypatch.setattr(ur, "fetch_one_month_basis", _stub_fetcher)
+    # delay 도 0 으로 (테스트 속도)
+    monkeypatch.setattr(ur, "PYKRX_PER_TICKER_DELAY_SECONDS", 0.0)
+
     return {"seed_file": seed_file, "artifact_file": artifact_file}
