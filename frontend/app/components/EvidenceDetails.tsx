@@ -26,7 +26,7 @@ import {
   rowKey,
   type AccountSummary,
   type NormRec,
-} from "./RunPanel";
+} from "@/lib/holdings_view";
 
 
 function groupByAccount(recs: NormRec[]): AccountSummary[] {

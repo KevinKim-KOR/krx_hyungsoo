@@ -1,33 +1,43 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-04-30
+최종 업데이트: 2026-05-10
 
 ---
 
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step5D-2 Cleanup 완료 (검증 대기)
-다음 단계: 사용자/설계자 결정 대기 — universe 모멘텀 산식 기능 STEP 진입 또는 남은 Cleanup 후보 (HoldingsClient / draft_message / api.py 라우터)
+현재 단계: POC2-Step5D-2 Final Round 완료 (검증 대기) — 모든 KS-10 트리거 + 근접(50라인 이내) 0건
+다음 단계: 사용자/설계자 결정 대기 — universe 모멘텀 산식 기능 STEP 진입
 ```
 
-Step5D-2 Cleanup 요약:
-Step5D-2 지시문 §1.2 가 명시한 트리거 2건만 해소. **HoldingsClient.tsx 는 본 STEP 의 §4.3 "관찰만" 대상이었으나 906라인으로 KS-10 트리거 3 (프론트 900라인 초과) 충족 상태가 본 STEP 종료 후 정확 측정으로 확인됨 — 다음 Cleanup STEP 우선 처리 후보.**
-- tests/test_holdings_draft_flow.py 1,982 → 244라인. 추가 3개 파일로 도메인별 분리:
-  test_holdings_market_enrichment.py (504), test_holdings_message_text.py (924),
-  test_holdings_account_group.py (334).
-- frontend/app/components/RunPanel.tsx 905 → 606라인. EvidenceDetails.tsx (343라인) 추출.
-  RunPanel 의 helper/type 14개를 named export 로 노출 → EvidenceDetails 가 import.
-  (양방향 import 는 빌드/lint 통과 상태이나 구조상 정돈 후보 — BACKLOG 등재.)
-- pytest 119 passed 그대로 유지 — 의미 / 검증 강도 / 검증 개수 변경 0건.
-- frontend lint + build PASS.
+Step5D-2 Final Round 요약 (본 라운드):
+직전 라운드의 §4.3 "관찰만" 대상이었던 HoldingsClient.tsx (906라인 = 트리거 3 충족) 와 draft_message.py (600라인 = 트리거 4 근접) 까지 모두 해소. 동시에 RunPanel ↔ EvidenceDetails 양방향 import 정돈.
+- frontend/lib/holdings_view.ts (186라인) 신규 — RunPanel ↔ EvidenceDetails 가 공유하던 helpers/types 단일 출처. JSX 미포함 (.ts).
+  · DEFAULT_GROUP, fmt 5종 (Money/SignedMoney/Pct/SignedPct/pnlClass), NormRec/Summary/AccountSummary 타입, normalizeRec/isPriced/isCalcAvailable/rowKey/computeSummaryFor.
+- frontend/app/components/RunPanel.tsx 606 → 444라인. helpers/types 본문 제거 + lib import 로 전환. OverallSummaryCard 만 잔존 (JSX 컴포넌트라 lib 이동 부적합).
+- frontend/app/components/EvidenceDetails.tsx 343라인. import 출처를 "./RunPanel" → "@/lib/holdings_view" 로만 변경 (양방향 import 해소). 본문 / 동작 / 렌더 동일.
+- frontend/app/components/EnrichedHoldingsSection.tsx (515라인) 신규 — HoldingsClient.tsx 의 시세평가 compact UI 책임 분리.
+  · EnrichedSection (default) + 8개 자식 컴포넌트 (OverallSummaryCard / AccountSummaryCards / AccountSummaryRow / CompactHoldingsTable / CompactRow / DetailRowFields / SummaryItem / KV).
+  · 로컬 helpers (Summary/AccountSummary/isPriced/isCalcAvailable/computeSummaryFor/groupByAccount/rowKey) — EnrichedHolding 기반이라 holdings_view.ts 의 NormRec 기반 helpers 와 분리.
+  · fmt helpers 는 holdings_view.ts 에서 import (중복 제거).
+- frontend/app/components/HoldingsClient.tsx 906 → 394라인. EnrichedSection 추출 + fmt helpers 중복 제거. DEFAULT_GROUP 도 lib 사용.
+- app/message_helpers.py (124라인) 신규 — draft_message.py 의 leaf-level format / 항목 식별 helpers 분리.
+  · _to_finite_float, _format_money/_format_pct/_format_signed_money/_format_signed_pct, _is_priced/_is_calc_available/_is_default_hold/_item_label, DEFAULT_HOLD_REASON.
+- app/draft_message.py 600 → 525라인. leaf helpers 본문 제거 + message_helpers 재공개. 공개 API (`is_holdings_draft` / `compute_summary` / `build_message_text` / `DEFAULT_HOLD_REASON` / `MAX_LENGTH_CHARS`) 동일 import 경로 유지.
+- pytest 119 passed (1.16s). black --check / flake8 / TypeScript build / Next.js lint 모두 PASS.
+- message_text / UI 렌더 / Telegram payload / [판단 사유] 헤더 / 2 bullets 모두 동일 (본문 이동만, 로직 변경 0).
 
-KS-10 트리거 상태 (실측):
-- test_holdings_draft_flow.py 244라인 / 다른 분리 파일 모두 1,500 미만 — 트리거 1·2 해소 ✓
-- RunPanel.tsx 606라인 — 트리거 3 (해당 파일 한정) 해소 ✓
-- HoldingsClient.tsx **906라인** — KS-10 트리거 3 충족 (해소 안 됨)
-- app/draft_message.py 600라인 / app/api.py 557라인 — 트리거 4 (650라인) 미달이나 근접
-- 본 STEP 직전 라운드 보고서의 "832라인" / "472라인" / "465라인" 수치는 측정 없이 이전 STEP 의 추정값을 그대로 보고한 결과로, 실제와 불일치. 직전 라운드 보고 정정.
+KS-10 트리거 상태 (본 라운드 보고 직전 실측):
+- 백엔드: app/api.py 557 / draft_message.py 525 / 그 외 모두 250 이하 — 트리거 4 (650) 미달, **근접(>=600) 0건** ✓
+- 프론트: EnrichedHoldingsSection.tsx 515 / RunPanel.tsx 444 / HoldingsClient.tsx 394 / 그 외 모두 350 이하 — 트리거 3 (900) 미달, **근접(>=850) 0건** ✓
+- 테스트: test_holdings_message_text.py 924 / 그 외 모두 510 이하 — 트리거 1 (1,500) 미달, **근접(>=1,450) 0건** ✓
+- **모든 트리거 0건 + 모든 근접 0건 동시 달성** ✓
+
+직전 라운드 (Step5D-2 1차) 요약:
+Step5D-2 지시문 §1.2 가 명시한 트리거 2건만 해소.
+- tests/test_holdings_draft_flow.py 1,982 → 244라인. 3개 파일로 도메인별 분리.
+- frontend/app/components/RunPanel.tsx 905 → 606라인. EvidenceDetails.tsx (343라인) 추출.
 
 Step5D Cleanup 요약:
 검증자 NOTES B-3 누적 지적(단일 파일 책임 누적) 에 대응해 신규 기능 추가 없이 구조만 정돈.
