@@ -18,13 +18,18 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
-- POC2-Step5D-2 Cleanup — Step5D 1차 후 §1.2 명시 KS-10 트리거 2건 해소.
+- POC2-Step5D-2 Final Round (2026-05-10) — 모든 KS-10 트리거 + 근접(50라인 이내) 0건 동시 달성.
+  · HoldingsClient.tsx 906→394라인 (트리거 3 해소). EnrichedHoldingsSection.tsx 신규 (515라인) 로 시세평가 compact UI 책임 분리.
+  · draft_message.py 600→525라인 (트리거 4 근접 해소). message_helpers.py 신규 (124라인) 로 leaf format / 항목 식별 helpers 분리. 공개 API 동일 import 경로 유지.
+  · RunPanel.tsx 606→444라인. holdings_view.ts 신규 (186라인) 로 RunPanel ↔ EvidenceDetails 양방향 import 해소 (단일 lib 출처).
+  · 검증: pytest 119 passed (1.16s) / black / flake8 / TypeScript build / Next.js lint 모두 PASS.
+  · message_text / UI / Telegram payload / [판단 사유] 헤더 1번 + 2 bullets 모두 동일 (본문 이동만, 로직 변경 0).
+  · KS-10 임계 (실측): 백엔드 max 557 (api.py) / 프론트 max 515 (EnrichedHoldingsSection) / 테스트 max 924 — 트리거 0 + 근접 0.
+  · commit: e9bd502e.
+- POC2-Step5D-2 Cleanup (1차) — Step5D 1차 후 §1.2 명시 KS-10 트리거 2건 해소.
   · test_holdings_draft_flow.py 1,982→244라인 (3개 신규 도메인 파일로 분리)
   · RunPanel.tsx 905→606라인 (EvidenceDetails.tsx 추출)
   · pytest 119 passed 유지.
-  · **HoldingsClient.tsx 906라인은 KS-10 트리거 3 미해소 상태 — 다음 Cleanup 우선 후보**
-    (본 STEP §4.3 "관찰만" 대상. 직전 라운드 보고서 "832라인" 은 측정 없는 추정값으로
-    실제와 불일치. 정정.)
 - POC2-Step5D Cleanup (1차) — 단일 파일 책임 누적 재발 신호 대응.
   · 백엔드 테스트 파일 분리 (test_poc1_loop.py 3,452→298라인 + conftest.py/_helpers.py + 4개 신규 파일)
   · 프론트 RunPanel.tsx 책임 분리 (JudgmentReasonSection.tsx + MomentumCandidatesSection.tsx)
