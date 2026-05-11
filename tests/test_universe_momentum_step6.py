@@ -1,6 +1,6 @@
-"""POC2 Step 6 — Universe Momentum Formula Minimal Scoring 회귀 테스트.
+"""POC2 Step 6 + Fix 라운드 — Universe Momentum Formula Minimal Scoring 회귀 테스트.
 
-설계자 결정 (Step 6 §20 — 16개 최소 테스트):
+설계자 결정 (Step 6 §20 — 16개 최소 테스트, Fix 라운드 반영):
 1. pykrx price history 성공 시 one_month_return_pct 계산
 2. pykrx 실패 candidate 는 is_scored=false
 3. 일부 성공 시 refresh_status="partial"
@@ -10,13 +10,16 @@
 7. rank 는 scored 후보에만 부여
 8. top_candidate 저장
 9. GenerateDraft 가 pykrx 를 호출하지 않고 latest artifact 만 읽는지
+   + draft_payload 키 신설 없음 + factor_signals 안 scope="universe" signal 1건 확인
 10. message_text 에 외부 후보 점검 bullet 이 세 번째로 들어가는지
 11. message_text 의 외부 후보 점검 bullet 에 기준일 포함
 12. [판단 사유] 헤더가 1번만
 13. universe 후보 전체가 Telegram/message_text 에 나열되지 않는지
-14. refresh button API 호출 (= POST /universe/momentum/refresh) 동작
-15. UI status panel 데이터 (= GET /universe/momentum/latest) 가 마지막 갱신 asof + 기준일 노출
+14. POST /universe/momentum/refresh 응답에 refresh_status / scored / total +
+    top_candidate + summary_reason_text 포함 (UI 가 응답 1번으로 status panel 표시)
+15. GET /universe/momentum/latest 부재 검증 (Fix 라운드 — 신규 API 추가 금지 가드 준수)
 16. Step5B / Step5C regression — 기존 holdings momentum_result + universe seed 검증 그대로
++ 추가 실패 케이스: 전체 실패 시 message_text bullet 형식 + 기준일 포함
 """
 
 from __future__ import annotations

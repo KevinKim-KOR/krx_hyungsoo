@@ -264,7 +264,9 @@ export interface MomentumResult {
 export interface FactorSignal {
   factor_id: string;
   factor_name: string;
-  scope: "portfolio" | "holding_row";
+  // POC2 Step 6 Fix 라운드: scope="universe" 추가 — universe momentum 결과를 기존
+  // factor_signals 안의 signal 1건으로 표현 (draft_payload 키 신설 0건).
+  scope: "portfolio" | "holding_row" | "universe";
   is_available: boolean;
   value: number | null;
   unit: string;
