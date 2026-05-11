@@ -7,9 +7,21 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step6 Fix 라운드 완료 (검증 대기, 2026-05-11)
-다음 단계: 검증자(Codex) 재검증 → 통과 시 handoff 문서 작성 → 운영 사이클 1회 시작
+현재 단계: POC2-Step6 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-11) — 모든 NOTES 정정 적용 완료
+다음 단계: 운영 사이클 1회 시작 → Q5 첫 실전 데이터 수집 → 다음 STEP 후보 검토
 ```
+
+Step6 검증 통과 commit chain:
+- 6810e697 feat(poc2-step6): minimal universe momentum scoring (pykrx 1m return)
+- 2a225473 fix(poc2-step6): remove new API + new draft_payload key per Codex REJECTED
+- 8bd76072 chore(poc2-step6): address Codex VERIFIED_WITH_NOTES — type + docstring touch-ups
+
+검증자(Codex) 라운드 흐름:
+1차 REJECTED (신규 GET endpoint + 신규 draft_payload 키 + stale __init__ docstring)
+→ Fix 라운드로 3건 모두 수용 수정
+→ VERIFIED_WITH_NOTES (FactorSignal.scope 타입 + 테스트 docstring stale 표기 + 라인 수 수치 차이)
+→ NOTES 대응 commit (8bd76072) 으로 타입/docstring 정정
+→ 최종 VERIFIED_WITH_NOTES (남은 NOTES 2건: pykrx timeout MEDIUM + 배포 dependency 주의 — 사유 1줄 명시 후 수정 불필요 판정).
 
 Step6 Fix 라운드 요약 (본 라운드, 검증자 1차 REJECTED 대응):
 검증자(Codex) 1차 REJECTED 항목 3건 — A-3 (__init__.py stale docstring) / A-4 (신규 API

@@ -18,6 +18,12 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
+- POC2-Step6 VERIFIED (2026-05-11) — 검증자(Codex) VERIFIED_WITH_NOTES.
+  · Step6 본 라운드 + Fix 라운드 + NOTES 대응 commit 3건 = 6810e697 / 2a225473 / 8bd76072.
+  · NOTES 대응 (commit 8bd76072): FactorSignal.scope 타입에 "universe" 추가, 테스트
+    docstring 의 GET endpoint 언급 정정.
+  · 남은 NOTES (수정 불필요): pykrx 단일 호출 timeout MEDIUM (별도 후속), 배포 dependency
+    설치 주의 (정보 전달용 NOTE).
 - POC2-Step6 Fix 라운드 (2026-05-11) — 검증자(Codex) 1차 REJECTED 대응.
   · __init__.py docstring 을 Step6 현재 구조로 정정 (universe 결과는 factor_signals
     안의 scope="universe" signal 로 표현 명시).
