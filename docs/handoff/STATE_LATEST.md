@@ -7,14 +7,39 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step6 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-11) — 모든 NOTES 정정 적용 완료
-다음 단계: 운영 사이클 1회 시작 → Q5 첫 실전 데이터 수집 → 다음 STEP 후보 검토
+현재 단계: POC2-Step6 최종 PASS (Telegram 수신 확인, 2026-05-11) — 문서 정합성 보정 완료
+다음 단계: POC2-Step7 — System Output 3-Push Realignment Design (설계 단계 진입)
 ```
+
+POC2-Step6 최종 PASS 요약:
+- pykrx 1개월 수익률 기반 universe scoring 성공.
+- top_candidate 1개가 message_text / Telegram 판단 사유 3번째 bullet 로 도달.
+- Telegram 수신 확인됨 (사용자 운영 테스트 — 2026-05-11).
+
+Step6 의 의미 제한:
+- **ETF 개별 후보 모멘텀 점검 배관 검증 완료** — 잘 오르는 ETF 1건을 PUSH 까지 도달시키는 데이터 흐름이 정상 작동함을 확인.
+- 섹터/테마 발굴 완료 아님 — 발굴 단위 / 시간 측정 기간은 Layer A (ASSUMPTIONS Q4) 로 관리, 운영 첫 달 데이터로 검증.
+
+ASSUMPTIONS 정리 (2026-05-11):
+- **Q1**: OPEN 유지 (여러 factor 부착 가능 구조).
+- **Q4**: OPEN 유지 (잘 올라가는 섹터/ETF 발굴 단위 — Layer A 항목 2개 추가).
+- **Q5**: BACKLOG 이관 (AI 토론 점수체계 검증 — docs/backlog/BACKLOG.md "AI 토론 점수체계 검증" 항목).
+- **활성 질문**: Q1 / Q4 2개 (3개 채울 필요 없음).
+
+BACKLOG 정리 (2026-05-11):
+- AI 토론 점수체계 검증 (Q5 이관) + 와이프 UI 이해도 검증 항목 신규.
+- OPEN 6개 항목을 Layer A / B / C 3단계로 분류.
+- Layer A = ASSUMPTIONS Q4 활성 관리 (발굴 단위 세부 / 시간 측정 기간).
+- Layer B = BACKLOG + 향후 코드 주석 대상 (무릎머리어깨 / 급락 임계값 / 보유-외부 가중치).
+- Layer C = ML 단계 보류 (RS / 거래량 / 정배열 등 복합 지표).
 
 Step6 검증 통과 commit chain:
 - 6810e697 feat(poc2-step6): minimal universe momentum scoring (pykrx 1m return)
 - 2a225473 fix(poc2-step6): remove new API + new draft_payload key per Codex REJECTED
 - 8bd76072 chore(poc2-step6): address Codex VERIFIED_WITH_NOTES — type + docstring touch-ups
+- aa1253e1 docs(poc2-step6): mark VERIFIED + add handoff document for next session
+- 9518f749 docs: integrate strategy definition decisions into anchors
+- 93025d18 chore(deps): pin setuptools<81 for pykrx pkg_resources compatibility
 
 검증자(Codex) 라운드 흐름:
 1차 REJECTED (신규 GET endpoint + 신규 draft_payload 키 + stale __init__ docstring)

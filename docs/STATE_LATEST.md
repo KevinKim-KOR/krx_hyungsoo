@@ -18,6 +18,13 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
+- POC2-Step6 최종 PASS + 문서 정합성 보정 (2026-05-11).
+  · Telegram PUSH 수신 확인 — Step6 최종 PASS.
+  · Step6 의미 제한: ETF 개별 후보 모멘텀 점검 배관 검증 완료. 섹터/테마 발굴 완료 아님.
+  · ASSUMPTIONS Q5 → BACKLOG 이관. 활성 질문은 Q1 / Q4 2개로 축소.
+  · BACKLOG 에 OPEN 6개 항목 Layer A / B / C 분류 추가 (확정값 아님 / 운영 검증 필요).
+  · 와이프 UI 이해도 검증 항목 BACKLOG 신규 (PROJECT_ORIGIN_INTENT §4 의 장기 성공 기준은 보존).
+  · 다음 작업: POC2-Step7 — System Output 3-Push Realignment Design (설계 단계 진입).
 - POC2-Step6 VERIFIED (2026-05-11) — 검증자(Codex) VERIFIED_WITH_NOTES.
   · Step6 본 라운드 + Fix 라운드 + NOTES 대응 commit 3건 = 6810e697 / 2a225473 / 8bd76072.
   · NOTES 대응 (commit 8bd76072): FactorSignal.scope 타입에 "universe" 추가, 테스트
