@@ -7,8 +7,43 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step6 최종 PASS (Telegram 수신 확인, 2026-05-11) — 문서 정합성 보정 완료
-다음 단계: POC2-Step7 — System Output 3-Push Realignment Design (설계 단계 진입)
+현재 단계: POC2-Step7 설계서 저장 완료 (CONDITIONAL_PASS, 2026-05-11) — 구조 재정렬 설계 단계
+다음 단계: 사용자와 협의 후 후속 구현 Step 1개 선택 (한 번에 하나의 PUSH 만 다룸)
+```
+
+POC2-Step7 저장 요약 (본 작업):
+- 신규 설계서: docs/handoff/POC2_STEP7_SYSTEM_OUTPUT_3_PUSH_REALIGNMENT_DESIGN.md
+- 레드팀 결과: **CONDITIONAL_PASS** (MINOR 결함 1건 수용 — "보유 종목 상태 브리핑이
+  향후 매수/매도 의견으로 드리프트될 수 있는 표현" 중립화).
+- **Step7 은 구현 단계가 아니라 구조 재정렬 설계 단계**. 코드 / API / UI / Telegram /
+  데이터 계약 변경 0건.
+
+공식 PUSH 명칭 (중립형 — 매매 의견 드리프트 차단):
+1. **보유 종목 상태 브리핑** (PUSH 1) — 매매 의견이 아니라 상태 브리핑 재료.
+2. **신규 ETF 관찰 후보** (PUSH 2) — Step6 universe momentum 결과를 이어받은 관찰 후보.
+3. **급락 ETF 주의 신호** (PUSH 3) — 자리만 잡음, 현재 구현 없음.
+
+기존 산출물 3-PUSH 매핑:
+- Step3 보유 비중 영향 → PUSH 1 재료
+- Step5B holdings momentum → PUSH 1 재료
+- Step6 universe momentum → PUSH 2 재료
+- 급락 ETF 경고 → PUSH 3 자리만 잡음
+
+Step6 의미 제한 (드리프트 방지):
+- ETF 개별 후보 모멘텀 점검 배관 검증 완료. 섹터/테마 발굴 / 매수 추천 체계 / 매수·매도 판단
+  체계 / 급락 경고 / ML 검증 — 어느 것도 완료되지 않음.
+
+다음 상태:
+- 사용자와 협의 후 후속 구현 Step 1개 선택.
+- **후속 구현은 한 번에 하나의 PUSH 만 다룬다** (Step7 §13 분리 원칙).
+- 후속 구현 Step 후보: PUSH 1 / PUSH 2 / PUSH 3 / 운영 빈도 문서 정합성 보정 중 택일.
+
+---
+
+## 1.1 직전 상태 (POC2-Step6 최종 PASS)
+
+```text
+이전 단계: POC2-Step6 최종 PASS (Telegram 수신 확인, 2026-05-11) — 문서 정합성 보정 완료
 ```
 
 POC2-Step6 최종 PASS 요약:
