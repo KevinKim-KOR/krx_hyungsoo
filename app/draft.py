@@ -115,11 +115,17 @@ def _build_holdings_payload(
     # placeholder 산식(pnl_rate) 은 최종 투자 판단 산식이 아니다.
     momentum_result = build_holdings_momentum_result(enriched, asof=asof_iso)
 
-    # POC2 Step 6: universe_momentum_latest.json 의 top_candidate 를 [판단 사유] 의
-    # "외부 후보 점검" bullet 로 병합. GenerateDraft 는 pykrx 를 직접 호출하지 않고
-    # 이미 저장된 latest artifact 만 읽는다 (AC-20). artifact 부재 시 키를 추가하지
-    # 않는다 — pre-refresh 상태에서는 [판단 사유] 에 universe bullet 미표시.
-    payload: dict[str, Any] = {
+    # POC2 Step 6 (Fix 라운드 2026-05-11): universe_momentum_latest.json 의 top_candidate 를
+    # [판단 사유] 의 "외부 후보 점검" bullet 로 병합하되, draft_payload 키를 신설하지 않고
+    # 기존 factor_signals 안에 scope="universe" signal 1건으로 추가한다 (사용자 결정).
+    # GenerateDraft 는 pykrx 를 직접 호출하지 않고 이미 저장된 latest artifact 만 읽는다
+    # (AC-20). artifact 부재 시 signal 자체를 추가하지 않는다 — pre-refresh 상태에서는
+    # [판단 사유] 에 universe bullet 미표시.
+    universe_signal = _build_universe_factor_signal(asof_iso=asof_iso)
+    if universe_signal is not None:
+        factor_signals = list(factor_signals) + [universe_signal]
+
+    return {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
         "note": note,
@@ -127,29 +133,13 @@ def _build_holdings_payload(
         "factor_signals": factor_signals,
         "momentum_result": momentum_result,
     }
-    universe_summary = _load_external_universe_check()
-    if universe_summary is not None:
-        payload["external_universe_check"] = universe_summary
-    return payload
 
 
-def _load_external_universe_check() -> Optional[dict[str, Any]]:
-    """state/universe/universe_momentum_latest.json 을 읽어 draft_payload 에 들어갈
-    축약 dict 를 반환. artifact 부재 / 파싱 실패 / 형식 오류 모두 None 반환 (안전 격리).
+def _load_universe_latest_artifact() -> Optional[dict[str, Any]]:
+    """state/universe/universe_momentum_latest.json 을 읽어 raw dict 를 반환.
 
-    축약 dict 구조 (preview / Telegram / UI 가 [판단 사유] bullet 만들 때 사용):
-    {
-      "refresh_status": "ok" | "partial" | "failed",
-      "asof": str,                                # universe_momentum_latest.asof
-      "scored_count": int,
-      "total_count": int,
-      "top_candidate": {                          # refresh_status != "failed" 시에만
-        "name": str, "ticker": str,
-        "score_value": float, "score_unit": "%",
-        "ranking_basis": str,
-        "price_history_basis": {...}              # latest_date / base_date 등
-      } | None
-    }
+    파일 부재 / JSON 파싱 실패 / 비-dict 응답 모두 None 반환 (안전 격리).
+    Step5C 시점 결과 (refresh_status 키 없음) 도 None 반환 — Step6 외부 후보 점검 대상 외.
     """
     if not UNIVERSE_LATEST_FILE.exists():
         return None
@@ -166,22 +156,93 @@ def _load_external_universe_check() -> Optional[dict[str, Any]]:
         return None
     refresh_status = summary.get("refresh_status")
     if refresh_status not in ("ok", "partial", "failed"):
-        # 본 키가 없으면 Step5C 시점 (점수 미부여) 결과 — Step6 외부 후보 점검 대상 아님.
         return None
-    asof = data.get("asof")
-    if not isinstance(asof, str):
-        return None
-    out: dict[str, Any] = {
-        "refresh_status": refresh_status,
-        "asof": asof,
-        "scored_count": int(summary.get("scored_candidates") or 0),
-        "total_count": int(summary.get("total_candidates") or 0),
-        "top_candidate": None,
+    return data
+
+
+def _build_universe_factor_signal(asof_iso: str) -> Optional[dict[str, Any]]:
+    """universe_momentum_latest.json → factor_signals 리스트에 추가할 signal 1건.
+
+    포맷 (기존 portfolio factor signal 과 동일한 구조):
+    {
+      "factor_id": "universe_one_month_return",
+      "factor_name": "외부 후보 점검",
+      "scope": "universe",
+      "is_available": True | False,
+      "value": float | None,        # top_candidate.score_result.score_value (성공)
+      "unit": "%",
+      "reason_text": <성공 시 1줄> | None,
+      "fallback_text": <실패 시 1줄> | None,
+      "input_basis": {              # universe asof / 기준일 / scored / total
+        "asof": str,
+        "basis_date": str,
+        "scored": int,
+        "total": int,
+        "refresh_status": str,
+      },
+      "computed_at": <iso>,
     }
-    top = summary.get("top_candidate")
-    if isinstance(top, dict):
-        out["top_candidate"] = top
-    return out
+
+    refresh_status:
+    - "ok" / "partial" + top_candidate 존재 → is_available=True, reason_text 채움.
+    - "failed" 또는 top_candidate 부재 → is_available=False, fallback_text 채움.
+    artifact 부재 / 형식 오류 → None 반환 (signal 미추가).
+    """
+    from app.message_universe_bullet import build_universe_signal_texts
+
+    data = _load_universe_latest_artifact()
+    if data is None:
+        return None
+    summary = data["summary"]
+    asof = data.get("asof") or ""
+    refresh_status = summary.get("refresh_status")
+    top = (
+        summary.get("top_candidate")
+        if isinstance(summary.get("top_candidate"), dict)
+        else None
+    )
+
+    # 기준일 결정 (Step6 §13 우선순위).
+    basis_date = "기준일 확인 불가"
+    if top is not None:
+        phb = top.get("price_history_basis")
+        if isinstance(phb, dict):
+            ld = phb.get("latest_date")
+            if isinstance(ld, str) and ld.strip():
+                basis_date = ld
+    if basis_date == "기준일 확인 불가" and isinstance(asof, str) and asof.strip():
+        basis_date = asof
+
+    scored = int(summary.get("scored_candidates") or 0)
+    total = int(summary.get("total_candidates") or 0)
+
+    reason_text, fallback_text, value = build_universe_signal_texts(
+        refresh_status=refresh_status,
+        top_candidate=top,
+        scored=scored,
+        total=total,
+        basis_date=basis_date,
+    )
+
+    is_available = reason_text is not None
+    return {
+        "factor_id": "universe_one_month_return",
+        "factor_name": "외부 후보 점검",
+        "scope": "universe",
+        "is_available": is_available,
+        "value": value,
+        "unit": "%",
+        "reason_text": reason_text,
+        "fallback_text": fallback_text,
+        "input_basis": {
+            "asof": asof,
+            "basis_date": basis_date,
+            "scored": scored,
+            "total": total,
+            "refresh_status": refresh_status,
+        },
+        "computed_at": asof_iso,
+    }
 
 
 def generate_draft_from_holdings(

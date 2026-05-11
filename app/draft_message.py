@@ -56,10 +56,10 @@ from app.message_helpers import (
     _item_label,
     _to_finite_float,
 )
-from app.message_universe_bullet import (
-    EXTERNAL_UNIVERSE_BULLET_LABEL,
-    external_universe_bullet as _external_universe_bullet,
-)
+
+# Step 6 Fix 라운드: external_universe_bullet 빌더는 본 파일 안에 직접 둔다
+# (factor_signals universe scope signal 에서 추출 — message_universe_bullet 의
+# build_universe_signal_texts 가 reason_text/fallback_text 만 만드는 책임으로 단순화).
 
 __all__ = [
     "MAX_LENGTH_CHARS",
@@ -72,6 +72,7 @@ __all__ = [
     "JUDGMENT_SECTION_HEADER",
     "MOMENTUM_BULLET_LABEL",
     "EXTERNAL_UNIVERSE_BULLET_LABEL",
+    "EXTERNAL_UNIVERSE_FACTOR_ID",
     "is_holdings_draft",
     "compute_summary",
     "select_focus_items",
@@ -95,8 +96,9 @@ JUDGMENT_SECTION_HEADER = "[판단 사유]"
 # Step 5B: 모멘텀 점검 bullet 라벨. [판단 사유] 섹션 안의 두 번째 bullet 으로 추가.
 MOMENTUM_BULLET_LABEL = "모멘텀 점검"
 
-# Step 6: 외부 후보 점검 bullet 빌더는 app.message_universe_bullet 로 분리 — 본 파일은
-# 라벨 / 함수를 re-export 한다 (기존 import 경로 호환). KS-10 근접 해소를 위한 분리.
+# Step 6: 외부 후보 점검 bullet 라벨 + factor signal 식별자.
+EXTERNAL_UNIVERSE_BULLET_LABEL = "외부 후보 점검"
+EXTERNAL_UNIVERSE_FACTOR_ID = "universe_one_month_return"
 
 
 def is_holdings_draft(payload: Any) -> bool:
@@ -437,6 +439,37 @@ def _momentum_bullet(payload: dict[str, Any]) -> Optional[str]:
     if not isinstance(text, str) or not text.strip():
         return None
     return f"- {MOMENTUM_BULLET_LABEL}: {text}"
+
+
+def _external_universe_bullet(payload: dict[str, Any]) -> Optional[str]:
+    """Step 6 Fix — factor_signals 의 scope="universe" signal → bullet 본문.
+
+    universe signal 은 draft.py 가 universe_momentum_latest.json 에서 만든 factor signal
+    (factor_id="universe_one_month_return", scope="universe"). 신규 draft_payload 키가
+    아니라 factor_signals 5번째 키 안의 새 entry — BACKLOG 가드 준수.
+
+    is_available=True 면 reason_text 를, False 면 fallback_text 를 사용한다. 둘 다 빈
+    문자열이거나 signal 자체가 없으면 None 반환.
+    """
+    factor_signals = payload.get("factor_signals")
+    if not isinstance(factor_signals, list):
+        return None
+    universe_sig: Optional[dict[str, Any]] = None
+    for sig in factor_signals:
+        if isinstance(sig, dict) and sig.get("scope") == "universe":
+            universe_sig = sig
+            break
+    if universe_sig is None:
+        return None
+
+    factor_name = universe_sig.get("factor_name") or EXTERNAL_UNIVERSE_BULLET_LABEL
+    if universe_sig.get("is_available"):
+        text = universe_sig.get("reason_text")
+    else:
+        text = universe_sig.get("fallback_text")
+    if not isinstance(text, str) or not text.strip():
+        return None
+    return f"- {factor_name}: {text}"
 
 
 def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:

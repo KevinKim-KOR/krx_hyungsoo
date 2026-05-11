@@ -193,12 +193,14 @@ def test_step5c_endpoint_invalid_seed_fails_422(client, _isolated_universe):
 def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     client, _isolated_universe
 ):
-    """Step6 변경: universe refresh 결과 (external_universe_check) 가 draft_payload 에
-    추가되고 [판단 사유] 에 '외부 후보 점검' bullet 1줄이 더해진다. 단:
-    - refresh 이전 (artifact 부재) 에는 external_universe_check 키 자체가 추가되지 않는다.
-    - holdings momentum_result / factor_signals / recommendations 등 기존 키는 모두 보존.
-    - [판단 사유] 헤더는 여전히 1번만 (헤더 중복 금지).
-    - draft_payload / message_text 에 universe 후보 전체 목록은 노출되지 않는다.
+    """Step6 + Fix 라운드: universe refresh 결과는 draft_payload 의 신규 키가 아니라
+    factor_signals 안의 scope='universe' signal 1건으로 표현된다 (사용자 결정).
+    [판단 사유] 에 '외부 후보 점검' bullet 1줄이 더해진다. 단:
+    - refresh 이전 (artifact 부재) 에는 universe scope signal 미추가.
+    - holdings momentum_result / factor_signals / recommendations 등 기존 키 모두 보존.
+    - **draft_payload 키 신설 0건** (external_universe_check 등 새 키 금지).
+    - [판단 사유] 헤더 1번 유지 (헤더 중복 금지).
+    - draft_payload / message_text 에 universe 후보 전체 목록 노출 금지.
     """
     from datetime import date
 
@@ -207,8 +209,11 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     body_before = client.post("/runs/generate-from-holdings").json()
     payload_before = body_before["draft_payload"]
     msg_before = body_before["message_text"]
-    # refresh 전: external_universe_check 키 미존재.
+    # refresh 전: universe scope signal 미추가 + 키 신설 0건.
     assert "external_universe_check" not in payload_before
+    fs_before = payload_before.get("factor_signals", [])
+    universe_sigs_before = [s for s in fs_before if s.get("scope") == "universe"]
+    assert len(universe_sigs_before) == 0
     # universe 후보 전체 목록 표시 금지 (Step6 §13 / AC-28).
     assert "universe" not in msg_before.lower()
     assert "외부 ETF 후보군" not in msg_before
@@ -227,20 +232,22 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     payload_after = body_after["draft_payload"]
     msg_after = body_after["message_text"]
 
-    # 기존 키 보존
-    for k in (
+    # draft_payload 키 신설 0건 — 정확히 기존 6개 키만 존재
+    expected_keys = {
         "title",
         "asof",
         "note",
         "recommendations",
         "factor_signals",
         "momentum_result",
-    ):
-        assert k in payload_after
-    # Step6 신규 키
-    assert "external_universe_check" in payload_after
-    # universe 후보 전체 목록은 draft_payload / message 어디에도 풀려나오지 않음.
-    assert "universe_candidates" not in payload_after
+    }
+    assert set(payload_after.keys()) == expected_keys
+    # universe 결과는 factor_signals 안의 scope="universe" signal 1건으로 표현
+    fs_after = payload_after.get("factor_signals", [])
+    universe_sigs_after = [s for s in fs_after if s.get("scope") == "universe"]
+    assert len(universe_sigs_after) == 1
+    assert universe_sigs_after[0]["factor_id"] == "universe_one_month_return"
+    # universe 후보 전체 목록은 message 어디에도 풀려나오지 않음.
     assert "외부 ETF 후보군" not in msg_after
     # [판단 사유] 헤더는 여전히 1번 (헤더 중복 금지 — AC-26)
     assert msg_after.count("[판단 사유]") == 1

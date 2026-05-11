@@ -66,62 +66,37 @@ export function pickMomentumBullet(
   return { label: "모멘텀 점검", text };
 }
 
-// Step 6: draft_payload.external_universe_check 에서 1줄 조립.
-// 기준일 우선순위: top_candidate.price_history_basis.latest_date → universe.asof
-// → "기준일 확인 불가". refresh_status 별 형식은 백엔드 build_message_text 와 동일.
+// Step 6 + Fix 라운드: factor_signals 의 scope="universe" signal 에서 1줄 추출.
+// 백엔드 draft.py 가 universe_momentum_latest.json → factor signal 1건으로 변환하여
+// factor_signals 리스트에 추가한다 (draft_payload 키 신설 없음 — BACKLOG 가드 준수).
+// 본 picker 는 신호의 reason_text (성공/부분 성공) 또는 fallback_text (실패) 를
+// bullet 본문으로 사용한다.
 export function pickExternalUniverseBullet(
   payload: Record<string, unknown>,
 ): SimpleBullet | null {
-  const universe = payload.external_universe_check;
-  if (!universe || typeof universe !== "object") return null;
-  const u = universe as Record<string, unknown>;
-  const status = u.refresh_status;
-  if (status !== "ok" && status !== "partial" && status !== "failed") {
-    return null;
-  }
-  const top = u.top_candidate;
-  const asof = typeof u.asof === "string" ? u.asof : null;
-
-  let basisDate = "기준일 확인 불가";
-  if (top && typeof top === "object") {
-    const phb = (top as Record<string, unknown>).price_history_basis;
-    if (phb && typeof phb === "object") {
-      const ld = (phb as Record<string, unknown>).latest_date;
-      if (typeof ld === "string" && ld.length > 0) basisDate = ld;
+  const fs = payload.factor_signals;
+  if (!Array.isArray(fs)) return null;
+  let universeSig: Record<string, unknown> | null = null;
+  for (const sig of fs) {
+    if (
+      sig &&
+      typeof sig === "object" &&
+      (sig as Record<string, unknown>).scope === "universe"
+    ) {
+      universeSig = sig as Record<string, unknown>;
+      break;
     }
   }
-  if (basisDate === "기준일 확인 불가" && asof) basisDate = asof;
-
-  if (status === "failed") {
-    return {
-      label: "외부 후보 점검",
-      text: `pykrx 가격 데이터 부족으로 1개월 점검값을 계산하지 못했습니다(기준일 ${basisDate}).`,
-    };
-  }
-
-  if (!top || typeof top !== "object") return null;
-  const t = top as Record<string, unknown>;
-  const score = t.score_result;
-  if (!score || typeof score !== "object") return null;
-  const sv = (score as Record<string, unknown>).score_value;
-  const name = typeof t.name === "string" ? t.name : (t.ticker as string) || "(이름 미상)";
-  const scored = u.scored_count;
-  const total = u.total_count;
-  if (
-    typeof sv !== "number" ||
-    typeof scored !== "number" ||
-    typeof total !== "number" ||
-    total <= 0
-  ) {
-    return null;
-  }
-  return {
-    label: "외부 후보 점검",
-    text:
-      `pykrx 1개월 수익률 기준 ${name}이 가장 높습니다` +
-      `(${sv}%, 기준일 ${basisDate}, 계산 가능 ${scored}/${total}개). ` +
-      "이 값은 매수 추천이 아닙니다.",
-  };
+  if (universeSig === null) return null;
+  const factorName =
+    typeof universeSig.factor_name === "string"
+      ? universeSig.factor_name
+      : "외부 후보 점검";
+  const text = universeSig.is_available
+    ? universeSig.reason_text
+    : universeSig.fallback_text;
+  if (typeof text !== "string" || text.length === 0) return null;
+  return { label: factorName, text };
 }
 
 interface Props {

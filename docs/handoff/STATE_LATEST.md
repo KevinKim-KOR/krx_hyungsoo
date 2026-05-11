@@ -7,11 +7,51 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step6 Universe Momentum Formula Minimal Scoring 완료 (검증 대기, 2026-05-11)
-다음 단계: 검증자(Codex) 검증 → 운영 사이클 1회 시작 → Q5 첫 실전 데이터 수집
+현재 단계: POC2-Step6 Fix 라운드 완료 (검증 대기, 2026-05-11)
+다음 단계: 검증자(Codex) 재검증 → 통과 시 handoff 문서 작성 → 운영 사이클 1회 시작
 ```
 
-Step6 요약 (본 STEP):
+Step6 Fix 라운드 요약 (본 라운드, 검증자 1차 REJECTED 대응):
+검증자(Codex) 1차 REJECTED 항목 3건 — A-3 (__init__.py stale docstring) / A-4 (신규 API
+추가) / A-4 (신규 draft_payload 키 추가) — 모두 수용 + 수정.
+
+핵심 변경:
+- **app/momentum/__init__.py docstring 정정**: Step5C 시점 표기 ("universe 결과는 어디에도
+  실리지 않는다", "draft_payload 6번째 키까지") 를 Step6 현재 구조로 갱신.
+  universe 결과는 factor_signals 안의 scope="universe" signal 1건으로만 표현된다는
+  점 명시. draft_payload 키 추가 없음 명시.
+- **GET /universe/momentum/latest endpoint 제거**: 신규 API 추가 금지 가드 준수.
+  POST /universe/momentum/refresh 응답에 summary_reason_text / top_candidate 필드를
+  추가하여 UI 가 응답 1번으로 상태 패널 표시 가능.
+- **draft_payload.external_universe_check 키 제거**: BACKLOG `factor_signals 외 메타 키
+  추가 금지` 가드 준수. 사용자(설계자) 결정 — universe momentum 결과는 기존 factor_signals
+  5번째 키 안의 scope="universe" signal 1건으로 표현.
+  · factor_id="universe_one_month_return", scope="universe"
+  · is_available + reason_text / fallback_text + value(%) + input_basis(asof, basis_date,
+    scored, total, refresh_status) + computed_at
+- **draft_message.py 의 _external_universe_bullet 재작성**: factor_signals 의 universe
+  scope signal 에서 reason_text / fallback_text 를 그대로 bullet 본문으로 사용 (label
+  은 signal.factor_name).
+- **app/message_universe_bullet.py 단순화**: 외부 bullet 형식 문자열 만들기 책임만.
+  draft.py 의 _build_universe_factor_signal 이 본 모듈의 build_universe_signal_texts 를
+  호출해서 reason_text / fallback_text 두 문자열을 만든다.
+- **UI**: UniverseRefreshPanel 의 mount 시 GET 호출 제거. POST refresh 응답 → frontend
+  state 로 표시. 페이지 reload 시 state 비워짐 → 안내 문구만 표시. (사용성 trade-off
+  명시 — 페이지 reload 시 갱신 1회 더 필요.)
+- **JudgmentReasonSection**: pickExternalUniverseBullet 을 factor_signals scope==universe
+  에서 추출하도록 재작성. draft_payload.external_universe_check 참조 제거.
+
+draft_payload 키 신설 0건 (Step6 Fix 후):
+- 1) title, 2) asof, 3) note, 4) recommendations, 5) factor_signals, 6) momentum_result
+- universe 결과는 factor_signals 안의 scope="universe" signal 1건으로 표현 (키 추가 0).
+
+검증:
+- pytest 119 → **135 passed** (Step6 회귀 16개 추가 — GET endpoint 테스트 1건은 removed
+  검증 1건으로 통합).
+- black --check / flake8 / TypeScript build / Next.js lint 모두 PASS.
+- KS-10 임계 (실측): 백엔드 max 569 / 프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0.
+
+직전 라운드 (Step6 1차) 요약:
 "잘 달리는 말 찾기" 의 첫 실제 계산 단계. manual universe seed 후보군에 pykrx 기반
 1개월 기간 수익률 1개를 적용해 상위 1개를 UI / Telegram [판단 사유] 1줄에 반영.
 

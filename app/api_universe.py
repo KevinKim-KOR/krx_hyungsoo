@@ -1,26 +1,29 @@
-"""POC2 Step 6 — universe momentum FastAPI 라우터 분리.
+"""POC2 Step 6 — universe momentum FastAPI 라우터.
 
 분리 목적: app/api.py KS-10 근접 (>=600) 해소. FastAPI APIRouter 패턴.
 
-설계자 결정 (Step 6 §6 / §7 / §10 / §12):
+설계자 결정 (Step 6 §6 / §7 / §12 + Step6 Fix 라운드 2026-05-11):
 - POST /universe/momentum/refresh : 수동 sync refresh (pykrx 1개월 수익률).
-- GET  /universe/momentum/latest   : UI 상태 패널용 latest artifact 조회.
-- 두 endpoint 모두 본 모듈에 모으고, app/api.py 는 본 라우터를 include 한다.
-- 응답 스키마 / 경로 / 동작 모두 분리 전과 동일 — 위치만 이동.
+  GenerateDraft / Approve / Telegram 자동 호출 금지. seed >20 hard fail.
+  candidate 단위 실패는 partial / failed 결과로 저장 (HTTP 200).
+- **신규 endpoint 추가 금지** (Fix 라운드 결정) — GET /universe/momentum/latest 제거.
+  UI 의 마지막 갱신 결과 표시는 POST refresh 응답을 frontend state 로 보관해서 처리하며,
+  페이지 reload 시 안내 문구로 비워진다 (다음 refresh 클릭 전까지).
+- POST 응답에 top_candidate / summary_reason_text 를 함께 실어 UI 가 페이지 reload
+  전까지 상태 패널을 그릴 수 있게 한다 (응답 필드 확장은 신규 endpoint 가 아니다).
+
+draft_payload 노출 정책:
+- 본 라우터 응답에는 candidates 배열 전체 / 점수 전체를 싣지 않는다 (Step6 §13 / AC-28).
+- summary 와 top_candidate (rank=1 1건) 만 노출. UI 도 이 한 건만 표시.
 """
 
 from __future__ import annotations
 
-import json
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-# universe_mode 모듈 자체를 import — LATEST_ARTIFACT_FILE 은 호출 시점에 lookup 하여
-# 테스트에서 monkeypatch.setattr(universe_mode, "LATEST_ARTIFACT_FILE", ...) 가
-# 본 endpoint 에도 반영되도록 한다 (정적 binding 회피).
-from app.momentum import universe_mode
 from app.momentum import (
     build_universe_momentum_result_scored,
     save_latest_artifact as save_universe_latest_artifact,
@@ -42,6 +45,9 @@ class UniverseMomentumRefreshSummary(BaseModel):
     excluded_candidates: int
     source_freshness: str
     refresh_status: str
+    # Step6 Fix: UI 가 GET /latest 없이 POST 응답만으로 상태 패널을 그리도록 필드 확장.
+    summary_reason_text: Optional[str] = None
+    top_candidate: Optional[dict[str, Any]] = None
 
 
 class UniverseMomentumRefreshResultBrief(BaseModel):
@@ -102,50 +108,8 @@ def post_universe_momentum_refresh() -> UniverseMomentumRefreshResponse:
                 excluded_candidates=summary["excluded_candidates"],
                 source_freshness=summary["source_freshness"],
                 refresh_status=summary["refresh_status"],
+                summary_reason_text=summary.get("summary_reason_text"),
+                top_candidate=summary.get("top_candidate"),
             ),
         ),
-    )
-
-
-class UniverseMomentumLatestResponse(BaseModel):
-    """GET /universe/momentum/latest — UI 상태 패널용 latest artifact 조회.
-
-    artifact 가 없으면 status="absent" 반환 (404 가 아닌 200). 프론트가 안내 문구만 표시.
-    """
-
-    status: str  # 'present' | 'absent'
-    artifact_path: str
-    momentum_result: Optional[dict[str, Any]] = None
-
-
-@router.get(
-    "/universe/momentum/latest",
-    response_model=UniverseMomentumLatestResponse,
-)
-def get_universe_momentum_latest() -> UniverseMomentumLatestResponse:
-    """latest artifact 를 그대로 반환. UI status panel 이 직접 렌더링.
-
-    artifact 가 없거나 JSON 파싱 실패면 status="absent" 로 응답 (refresh 안 된 신규 환경).
-    """
-    # universe_mode 모듈에서 호출 시점에 lookup — 테스트가 monkeypatch 한 경로 반영.
-    path = universe_mode.LATEST_ARTIFACT_FILE
-    if not path.exists():
-        return UniverseMomentumLatestResponse(
-            status="absent",
-            artifact_path=str(path),
-            momentum_result=None,
-        )
-    try:
-        text = path.read_text(encoding="utf-8")
-        data = json.loads(text)
-    except (OSError, json.JSONDecodeError):
-        return UniverseMomentumLatestResponse(
-            status="absent",
-            artifact_path=str(path),
-            momentum_result=None,
-        )
-    return UniverseMomentumLatestResponse(
-        status="present",
-        artifact_path=str(path),
-        momentum_result=data,
     )

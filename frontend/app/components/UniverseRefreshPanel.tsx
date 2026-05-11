@@ -1,28 +1,27 @@
 "use client";
 
-// POC2 Step 6 — 외부 후보 점검 (universe momentum) refresh 버튼 + 상태 패널.
+// POC2 Step 6 + Fix 라운드 — 외부 후보 점검 (universe momentum) refresh 버튼 + 상태 패널.
 //
-// 정책 (Step6 §12):
+// 정책 (Fix 라운드 2026-05-11):
+// - 신규 endpoint 추가 금지 (GET /universe/momentum/latest 미도입).
+// - mount 시 fetch 미수행. POST refresh 응답을 frontend state 로 보관해 상태 패널 표시.
+// - 페이지 reload 시 state 비워짐 → 안내 문구만 표시 (사용자가 갱신 버튼 한 번 더 누르면 채워짐).
+//
+// Step6 §12 정책 유지:
 // - 갱신 버튼 / 상태 패널은 승인 초안 내부가 아니라 별도 영역.
 // - 버튼 클릭은 Telegram / Approve / GenerateDraft 자동 실행 안 함.
 // - 요청 중 버튼 disabled.
-// - 상태 패널에 마지막 갱신 asof / refresh_status / 기준일 (top_candidate.latest_date
-//   우선, 없으면 asof, 둘 다 없으면 "기준일 확인 불가") / 계산 가능/전체 후보 수 /
-//   top_candidate 1건 요약 / 실패 사유 표시.
-// - 후보 전체 리스트는 표시하지 않음 (Step6 §12.2 / AC-28).
-//
-// 데이터 소스:
-// - GET  /universe/momentum/latest  → 마지막 artifact 조회 (mount 시 + refresh 후)
-// - POST /universe/momentum/refresh → 사용자 명시적 갱신.
+// - 후보 전체 리스트는 표시하지 않음 (§12.2 / AC-28).
+// - 기준일 우선순위: top_candidate.price_history_basis.latest_date → momentum_result.asof
+//   → "기준일 확인 불가".
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   ApiConfigError,
   ApiRequestError,
-  fetchUniverseMomentumLatest,
   refreshUniverseMomentum,
-  type UniverseLatestPayload,
+  type UniverseRefreshResponse,
 } from "@/lib/api";
 
 function describeApiError(e: unknown): string {
@@ -39,13 +38,14 @@ function describeApiError(e: unknown): string {
   return `알 수 없는 오류: ${(e as Error).message}`;
 }
 
-function basisDate(payload: UniverseLatestPayload | null): string {
-  if (!payload) return "기준일 확인 불가";
-  const top = payload.summary.top_candidate;
+function basisDate(res: UniverseRefreshResponse | null): string {
+  if (!res) return "기준일 확인 불가";
+  const top = res.momentum_result.summary.top_candidate;
   if (top && top.price_history_basis && top.price_history_basis.latest_date) {
     return top.price_history_basis.latest_date;
   }
-  if (payload.asof) return payload.asof;
+  const asof = res.momentum_result.asof;
+  if (asof) return asof;
   return "기준일 확인 불가";
 }
 
@@ -59,23 +59,10 @@ function refreshStatusLabel(
 }
 
 export default function UniverseRefreshPanel() {
-  const [latest, setLatest] = useState<UniverseLatestPayload | null>(null);
+  const [latest, setLatest] = useState<UniverseRefreshResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [statusNote, setStatusNote] = useState<string | null>(null);
-
-  const loadLatest = useCallback(async () => {
-    try {
-      const res = await fetchUniverseMomentumLatest();
-      setLatest(res.momentum_result ?? null);
-    } catch (e) {
-      setErrorMsg(describeApiError(e));
-    }
-  }, []);
-
-  useEffect(() => {
-    loadLatest();
-  }, [loadLatest]);
 
   const onRefresh = useCallback(async () => {
     setLoading(true);
@@ -83,21 +70,21 @@ export default function UniverseRefreshPanel() {
     setStatusNote(null);
     try {
       const res = await refreshUniverseMomentum();
+      setLatest(res);
       const summary = res.momentum_result.summary;
       const ts = new Date().toLocaleTimeString("ko-KR");
       setStatusNote(
         `외부 후보 점검 ${refreshStatusLabel(summary.refresh_status)} ` +
           `— 계산 가능 ${summary.scored_candidates}/${summary.total_candidates}개 (${ts})`,
       );
-      await loadLatest();
     } catch (e) {
       setErrorMsg(describeApiError(e));
     } finally {
       setLoading(false);
     }
-  }, [loadLatest]);
+  }, []);
 
-  const summary = latest?.summary;
+  const summary = latest?.momentum_result.summary;
   const status = summary?.refresh_status;
   const top = summary?.top_candidate;
   const computedBasisDate = basisDate(latest);
@@ -108,6 +95,7 @@ export default function UniverseRefreshPanel() {
       <p className="helper" style={{ marginTop: 0 }}>
         manual seed 후보군에 pykrx 1개월 수익률을 적용해 1건의 점검값을 계산합니다.
         본 점검값은 매수 추천이 아닙니다. 갱신은 아래 버튼으로 수동 실행합니다.
+        (페이지 새로 고침 시 결과는 사라지며, 갱신을 한 번 더 눌러야 다시 표시됩니다.)
       </p>
 
       {errorMsg ? <div className="message error">{errorMsg}</div> : null}
@@ -136,7 +124,8 @@ export default function UniverseRefreshPanel() {
       ) : (
         <div className="summary-card" style={{ marginTop: 8 }}>
           <div className="summary-card-title">
-            마지막 갱신: asof {latest.asof} / 기준일 {computedBasisDate}
+            마지막 갱신: asof {latest.momentum_result.asof} / 기준일{" "}
+            {computedBasisDate}
           </div>
           <div className="summary-grid">
             <div className="summary-item">
@@ -153,16 +142,9 @@ export default function UniverseRefreshPanel() {
               </div>
             </div>
             <div className="summary-item">
-              <div className="summary-item-label">데이터 소스</div>
-              <div className="summary-item-value">
-                {summary?.data_source ?? "—"} ({summary?.score_basis ?? "—"})
-              </div>
-            </div>
-            <div className="summary-item">
               <div className="summary-item-label">seed freshness</div>
               <div className="summary-item-value">
-                {summary?.source_freshness ?? "—"} (staleness{" "}
-                {summary?.staleness_days ?? "—"}일)
+                {summary?.source_freshness ?? "—"}
               </div>
             </div>
           </div>

@@ -18,6 +18,20 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
+- POC2-Step6 Fix 라운드 (2026-05-11) — 검증자(Codex) 1차 REJECTED 대응.
+  · __init__.py docstring 을 Step6 현재 구조로 정정 (universe 결과는 factor_signals
+    안의 scope="universe" signal 로 표현 명시).
+  · GET /universe/momentum/latest endpoint 제거 (신규 API 추가 금지 가드 준수).
+    POST refresh 응답에 summary_reason_text / top_candidate 필드를 추가하여 UI 가
+    상태 패널 표시 가능.
+  · draft_payload.external_universe_check 키 제거 (BACKLOG `factor_signals 외 메타 키
+    추가 금지` 가드 준수). universe 결과는 기존 factor_signals 안의 scope="universe"
+    signal 1건으로 표현 — 사용자(설계자) 결정.
+  · UI: UniverseRefreshPanel 의 mount 시 GET 호출 제거 → POST 응답을 frontend state
+    로 보관. 페이지 reload 시 state 비워짐 (사용성 trade-off 수용).
+  · pytest 119 → 135 passed (Step6 회귀 16개). black / flake8 / Next.js build PASS.
+  · KS-10 임계: 백엔드 max 569 / 프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0.
+  · draft_payload 키 신설 0건 (Step6 Fix 후) — 기존 6개 키만 존재.
 - POC2-Step6 (2026-05-11) — Universe Momentum Formula Minimal Scoring.
   · 점검값: pykrx 기반 1개월 기간 수익률 (one_month_return_pct).
   · pykrx 호출은 app/price_history_pykrx.py 1개 모듈만. bounded sync refresh

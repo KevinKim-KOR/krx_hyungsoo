@@ -289,25 +289,12 @@ export function fetchEnrichedHoldings(): Promise<EnrichedHoldingsResult> {
   return request<EnrichedHoldingsResult>("GET", "/holdings/enriched");
 }
 
-// ─── POC2 Step 6: universe momentum refresh + latest ─────────────────
-
-export interface UniverseRefreshSummary {
-  total_candidates: number;
-  scored_candidates: number;
-  excluded_candidates: number;
-  source_freshness: string;
-  refresh_status: "ok" | "partial" | "failed";
-}
-
-export interface UniverseRefreshResponse {
-  status: "ok" | "partial" | "failed";
-  artifact_path: string;
-  momentum_result: {
-    mode: string;
-    asof: string;
-    summary: UniverseRefreshSummary;
-  };
-}
+// ─── POC2 Step 6 + Fix 라운드: universe momentum refresh ───────────────
+//
+// 정책 (Fix 라운드 2026-05-11): 신규 endpoint 추가 금지 — GET /universe/momentum/latest
+// 미도입. UI 의 마지막 갱신 표시는 POST refresh 응답을 frontend state 로 보관해서 처리
+// (페이지 reload 시 안내 문구로 비워짐). POST 응답에 top_candidate / summary_reason_text
+// 가 함께 포함되어 status panel 을 그릴 수 있다.
 
 export interface UniversePriceHistoryBasis {
   base_date: string;
@@ -333,35 +320,25 @@ export interface UniverseTopCandidate {
   price_history_basis?: UniversePriceHistoryBasis;
 }
 
-export interface UniverseLatestSummary {
+export interface UniverseRefreshSummary {
   total_candidates: number;
   scored_candidates: number;
   excluded_candidates: number;
-  source: string;
   source_freshness: string;
-  staleness_days: number;
-  refresh_status?: "ok" | "partial" | "failed";
-  data_source?: string;
-  score_basis?: string;
-  lookback_days?: number;
-  fetch_window_days?: number;
-  summary_reason_text?: string;
-  top_candidate?: UniverseTopCandidate;
+  refresh_status: "ok" | "partial" | "failed";
+  // Step6 Fix: UI 가 GET /latest 없이 POST 응답만으로 status panel 을 그리도록 확장.
+  summary_reason_text?: string | null;
+  top_candidate?: UniverseTopCandidate | null;
 }
 
-export interface UniverseLatestPayload {
-  engine_id: string;
-  engine_version: string;
-  mode: string;
-  asof: string;
-  summary: UniverseLatestSummary;
-  candidates: unknown[];
-}
-
-export interface UniverseLatestResponse {
-  status: "present" | "absent";
+export interface UniverseRefreshResponse {
+  status: "ok" | "partial" | "failed";
   artifact_path: string;
-  momentum_result: UniverseLatestPayload | null;
+  momentum_result: {
+    mode: string;
+    asof: string;
+    summary: UniverseRefreshSummary;
+  };
 }
 
 // 명시적 사용자 액션에서만 호출 — Telegram / Approve / GenerateDraft 자동 발동 금지.
@@ -373,8 +350,4 @@ export function refreshUniverseMomentum(): Promise<UniverseRefreshResponse> {
     undefined,
     60000,
   );
-}
-
-export function fetchUniverseMomentumLatest(): Promise<UniverseLatestResponse> {
-  return request<UniverseLatestResponse>("GET", "/universe/momentum/latest");
 }

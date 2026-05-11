@@ -236,7 +236,14 @@ def test_generate_draft_does_not_call_pykrx(client, monkeypatch, _isolated_unive
     r = client.post("/runs/generate-from-holdings")
     assert r.status_code == 200
     body = r.json()
-    assert "external_universe_check" in body["draft_payload"]
+    # Step6 Fix: draft_payload 에 신규 키 추가 금지. factor_signals 안 universe scope
+    # signal 1건이 존재해야 한다.
+    payload = body["draft_payload"]
+    assert "external_universe_check" not in payload
+    fs = payload.get("factor_signals", [])
+    universe_sigs = [s for s in fs if s.get("scope") == "universe"]
+    assert len(universe_sigs) == 1
+    assert universe_sigs[0]["factor_id"] == "universe_one_month_return"
 
 
 # ─── 10. message_text 에 외부 후보 점검 bullet 이 3번째 + 11. 기준일 포함 ───
@@ -305,46 +312,45 @@ def test_universe_candidates_not_listed_in_message_text(client, _isolated_univer
     assert counts == 1
 
 
-# ─── 14. POST /universe/momentum/refresh + 15. GET /universe/momentum/latest ───
+# ─── 14. POST /universe/momentum/refresh — 응답 구조 ───────────────────
 
 
 def test_refresh_endpoint_returns_summary(client, _isolated_universe):
-    """refresh button API 동작: 200 + refresh_status / scored / total."""
-    _write_seed(
-        _isolated_universe["seed_file"], _seed_payload(date.today().isoformat())
-    )
+    """refresh button API 동작: 200 + refresh_status / scored / total / top_candidate.
+
+    Step6 Fix: 신규 GET endpoint 추가 금지. POST 응답에 top_candidate /
+    summary_reason_text 가 포함되어 UI 가 상태 패널을 그릴 수 있다.
+    """
+    today = date.today().isoformat()
+    _write_seed(_isolated_universe["seed_file"], _seed_payload(today))
     r = client.post("/universe/momentum/refresh")
     assert r.status_code == 200
     body = r.json()
     assert body["status"] in ("ok", "partial", "failed")
-    summary = body["momentum_result"]["summary"]
+    mr = body["momentum_result"]
+    assert mr["asof"] == today
+    summary = mr["summary"]
     assert summary["refresh_status"] == body["status"]
     assert "scored_candidates" in summary
     assert "total_candidates" in summary
-
-
-def test_latest_endpoint_exposes_asof_and_basis_date(client, _isolated_universe):
-    """GET /universe/momentum/latest 는 마지막 asof / top_candidate.latest_date 노출."""
-    today = date.today().isoformat()
-    _write_seed(_isolated_universe["seed_file"], _seed_payload(today))
-    client.post("/universe/momentum/refresh")
-    r = client.get("/universe/momentum/latest")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["status"] == "present"
-    mr = body["momentum_result"]
-    assert mr["asof"] == today
-    top = mr["summary"].get("top_candidate")
+    # Fix 라운드: top_candidate / summary_reason_text 도 응답에 포함.
+    assert "top_candidate" in summary
+    assert "summary_reason_text" in summary
+    # 성공 (stub fetcher 가 모두 성공) → top_candidate 존재 + latest_date 노출
+    top = summary["top_candidate"]
     assert top is not None
     assert "price_history_basis" in top
     assert top["price_history_basis"]["latest_date"] == today
 
 
-def test_latest_endpoint_absent_when_no_artifact(client, _isolated_universe):
-    """artifact 부재 시 status='absent' (404 가 아님)."""
+def test_latest_endpoint_removed(client, _isolated_universe):
+    """Step6 Fix: GET /universe/momentum/latest 는 더 이상 존재하지 않는다.
+
+    신규 API 추가 금지 가드 준수. UI 의 마지막 갱신 표시는 POST 응답 + frontend state
+    로 처리한다.
+    """
     r = client.get("/universe/momentum/latest")
-    assert r.status_code == 200
-    assert r.json()["status"] == "absent"
+    assert r.status_code == 404
 
 
 # ─── 16. Step5B / Step5C regression ─────────────────────────────────

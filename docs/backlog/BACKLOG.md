@@ -167,6 +167,16 @@ Step5 설계 지시문 작성 시 이 섹션을 1회 정독 후 반영한다.
 - Step5 금지: draft_payload 의 6번째 키 신설 금지 (factor_signals 가 5번째 키이며, 그 안에서 표현).
 - 재검토 예정: 새 factor 도입 시 또는 draft_payload 표현 한계가 명확해질 때.
 - 트리거: factor_signals 1축으로는 표현이 불가능한 정책 결정이 들어올 때 (예: 실패 사유 분류, 알림 라우팅 메타).
+- **Step6 Fix 라운드 확인 (2026-05-11)**: 가드 적용 사례 — Step6 1차 라운드에서 universe
+  momentum 결과를 draft_payload.external_universe_check (7번째 키) 로 추가했으나
+  검증자(Codex) REJECTED. 사용자(설계자) 결정으로 키 제거 + 기존 factor_signals 안의
+  scope="universe" / factor_id="universe_one_month_return" signal 1건으로 재구성.
+  Step5B 의 momentum_result 추가가 "명시 승인된 예외" 였다는 점 재확인 — 동일 패턴을
+  명시 승인 없이 일반화하지 않는다는 가드의 적용 사례.
+- **Step6 Fix 라운드 신규 API 가드 (2026-05-11)**: BACKLOG 본 항목의 정신을 endpoint
+  영역으로도 확장. Step6 1차 라운드의 GET /universe/momentum/latest 추가가 검증자 REJECTED.
+  Fix 라운드에서 endpoint 제거 + POST refresh 응답 필드 확장으로 UI 요구 충족. 신규
+  endpoint 도입은 향후 STEP 지시문이 명시 승인할 때만.
 
 ### ACTIVE: ML 기반 초안 생성 / 분석 연결 (CONSOLIDATED)
 - 통합 대상 (이전 4개 항목):
