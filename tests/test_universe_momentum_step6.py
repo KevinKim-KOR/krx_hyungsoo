@@ -264,18 +264,14 @@ def test_message_text_external_universe_bullet_third(client, _isolated_universe)
     _put_holdings_for_momentum(client)
     body = client.post("/runs/generate-from-holdings").json()
     msg: str = body["message_text"]
-    # 3개 bullet 모두 존재
+    # Step7B 통합 후 bullet 구조: 보유 종목 상태 브리핑 + 신규 ETF 관찰 후보 (2개).
     assert msg.count("[판단 사유]") == 1
-    factor_idx = msg.find("- 보유 비중 영향:")
-    momentum_idx = msg.find("- 모멘텀 점검:")
+    briefing_idx = msg.find("- 보유 종목 상태 브리핑:")
     external_idx = msg.find("- 신규 ETF 관찰 후보:")
-    # 순서 확인 (모멘텀 / external 은 반드시 있음)
-    assert momentum_idx > 0
+    # 순서: 보유 종목 상태 브리핑 (있으면) → 신규 ETF 관찰 후보 (반드시 있음).
     assert external_idx > 0
-    if factor_idx > 0:
-        assert factor_idx < momentum_idx < external_idx
-    else:
-        assert momentum_idx < external_idx
+    if briefing_idx > 0:
+        assert briefing_idx < external_idx
     # 기준일 (top_candidate.latest_date 또는 universe asof) 포함
     after_external = msg[external_idx:]
     assert "기준일 " in after_external[:300]

@@ -219,7 +219,8 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     assert "외부 ETF 후보군" not in msg_before
     # 기준선 [판단 사유] 헤더 1번.
     assert msg_before.count("[판단 사유]") == 1
-    assert "- 모멘텀 점검:" in msg_before
+    # Step7B 통합 후: 보유 종목 상태 브리핑 1줄에 보유 비중 영향 + 모멘텀 점검 통합.
+    assert "- 보유 종목 상태 브리핑:" in msg_before
 
     # universe refresh 수행
     _write_seed(
@@ -251,11 +252,17 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     assert "외부 ETF 후보군" not in msg_after
     # [판단 사유] 헤더는 여전히 1번 (헤더 중복 금지 — AC-26)
     assert msg_after.count("[판단 사유]") == 1
-    # 기존 모멘텀 점검 bullet 그대로 + 외부 후보 점검 bullet 추가
-    assert "- 모멘텀 점검:" in msg_after
+    # Step7B 통합 후 bullet 구조:
+    # - 별도 "- 보유 비중 영향:" / "- 모멘텀 점검:" 줄 0건.
+    # - "- 보유 종목 상태 브리핑:" 1줄 + "- 신규 ETF 관찰 후보:" 1줄.
+    assert "- 보유 비중 영향:" not in msg_after
+    assert "- 모멘텀 점검:" not in msg_after
+    assert "- 보유 종목 상태 브리핑:" in msg_after
     assert "- 신규 ETF 관찰 후보:" in msg_after
-    # bullet 순서: 모멘텀 점검 → 외부 후보 점검 (Step6 §13 / AC-27)
-    assert msg_after.index("- 모멘텀 점검:") < msg_after.index("- 신규 ETF 관찰 후보:")
+    # bullet 순서: 보유 종목 상태 브리핑 → 신규 ETF 관찰 후보
+    assert msg_after.index("- 보유 종목 상태 브리핑:") < msg_after.index(
+        "- 신규 ETF 관찰 후보:"
+    )
 
 
 def test_step5c_existing_step5b_holdings_momentum_preserved(client, _isolated_universe):

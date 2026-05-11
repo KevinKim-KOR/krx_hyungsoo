@@ -7,8 +7,52 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step7A 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-11) — 신규 ETF 관찰 후보 (PUSH 2) 최소 운영화
-다음 단계: 사용자 협의 후 후속 구현 Step 1개 선택 (PUSH 1 / PUSH 3 / 운영 빈도 정합성 보정)
+현재 단계: POC2-Step7B 완료 (2026-05-12) — 보유 종목 상태 브리핑 (PUSH 1) 최소 정리
+다음 단계: 사용자 협의 후 후속 구현 Step 1개 선택 (PUSH 3 급락 ETF 주의 신호 / 운영 빈도 정합성 보정)
+```
+
+POC2-Step7B 요약 (본 STEP):
+- **[판단 사유] 통합**: 기존 별도 2 bullet ("보유 비중 영향" + "모멘텀 점검") 을 공식
+  PUSH 1 명칭 **"보유 종목 상태 브리핑"** 1줄로 통합. 두 데이터 소스 (portfolio reason
+  첫 문장 + holdings momentum top reason 첫 문장) 를 자연 1줄로 묶고 "이 내용은 매수/매도
+  의견이 아닙니다" 중립 안내 항상 부착.
+- **placeholder 사용자 노출 제거**: holdings_mode.py 의 사용자 노출 문구 ("placeholder
+  기준으로 ...") 를 "현재 보유 종목 점검 기준으로 ..." 로 정정. 내부 식별자 / 함수명 /
+  테스트명 / 상수 키명은 유지.
+- **새 모듈 분리**: `app/message_holdings_briefing.py` 신규 (draft_message.py 의
+  KS-10 trigger 해소 — 673 → 586라인). 빌더 책임 단독.
+- **Frontend JudgmentReasonSection**: pickHoldingsStatusBriefing 1개로 통합. 두 별도
+  picker (pickPortfolioFactorSignal / pickMomentumBullet) 사용 제거.
+- 새 endpoint 미도입. 새 draft_payload 키 미도입. 데이터 계약 변경 0건.
+
+검증:
+- pytest 147 → **159 passed** (Step7B 회귀 12개 추가).
+- black / flake8 / TypeScript build / Next.js lint 모두 PASS.
+- KS-10 임계: 백엔드 max 586 / 프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0.
+
+신규 / 수정 파일:
+신규:
+- app/message_holdings_briefing.py (110라인) — Step7B 통합 bullet 빌더 단독 책임
+- docs/handoff/POC2_STEP7B_HOLDINGS_STATUS_BRIEFING_MINIMAL_PUSH.md
+- tests/test_step7b_holdings_status_briefing.py (Step7B 회귀 12개)
+
+수정:
+- app/draft_message.py (Step7B 통합 + KS-10 trigger 해소)
+- app/momentum/holdings_mode.py (사용자 노출 placeholder 표현 정정)
+- frontend/app/components/JudgmentReasonSection.tsx (통합 picker 로 재작성)
+- tests/test_factor_signals.py / test_momentum_holdings.py / test_step7a_etf_watch_candidate.py /
+  test_universe_momentum_step6.py / test_universe_seed.py (Step7B 후 bullet 구조 검증 갱신)
+
+다음 단계:
+- 사용자 협의 후 후속 구현 Step 1개 선택 (한 번에 하나의 PUSH 원칙).
+- 후보: PUSH 3 급락 ETF 주의 신호 최소 구현 / 운영 빈도 문서 정합성 보정.
+
+---
+
+## 1.1 직전 상태 (POC2-Step7A 검증 통과)
+
+```text
+이전 단계: POC2-Step7A 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-11) — 신규 ETF 관찰 후보 (PUSH 2) 최소 운영화
 ```
 
 POC2-Step7A 검증 통과 commit chain:

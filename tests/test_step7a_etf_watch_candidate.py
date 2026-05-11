@@ -163,14 +163,17 @@ def test_judgment_header_appears_only_once_step7a(client, _isolated_universe):
 
 
 def test_bullet_order_step7a(client, _isolated_universe):
-    """bullet 순서: 보유 비중 영향 → 모멘텀 점검 → 신규 ETF 관찰 후보."""
+    """bullet 순서: 보유 종목 상태 브리핑 → 신규 ETF 관찰 후보 (Step7B 통합 후 새 순서).
+
+    Step7B 이후 "보유 비중 영향" + "모멘텀 점검" 은 "보유 종목 상태 브리핑" 1줄로 통합.
+    """
     client.post("/universe/momentum/refresh")
     _put_holdings_for_momentum(client)
     msg: str = client.post("/runs/generate-from-holdings").json()["message_text"]
-    momentum_idx = msg.find("- 모멘텀 점검:")
+    briefing_idx = msg.find("- 보유 종목 상태 브리핑:")
     new_etf_idx = msg.find("- 신규 ETF 관찰 후보:")
-    assert momentum_idx > 0 and new_etf_idx > 0
-    assert momentum_idx < new_etf_idx
+    assert briefing_idx > 0 and new_etf_idx > 0
+    assert briefing_idx < new_etf_idx
 
 
 def test_not_buy_recommendation_text_kept(client, _isolated_universe):

@@ -57,6 +57,17 @@ from app.message_helpers import (
     _to_finite_float,
 )
 
+# Step 7B (2026-05-12) — PUSH 1 "보유 종목 상태 브리핑" bullet 빌더는
+# app.message_holdings_briefing 으로 분리 (draft_message.py KS-10 trigger 해소).
+# 라벨 상수는 본 파일에서도 re-export 하여 기존 import 경로 호환을 유지한다.
+from app.message_holdings_briefing import (  # noqa: F401
+    HOLDINGS_STATUS_BRIEFING_LABEL,
+    HOLDINGS_STATUS_BRIEFING_NEUTRAL_NOTE,
+)
+from app.message_holdings_briefing import (
+    build_holdings_status_briefing_bullet as _holdings_status_briefing_bullet,
+)
+
 # Step 6 Fix 라운드: external_universe_bullet 빌더는 본 파일 안에 직접 둔다
 # (factor_signals universe scope signal 에서 추출 — message_universe_bullet 의
 # build_universe_signal_texts 가 reason_text/fallback_text 만 만드는 책임으로 단순화).
@@ -93,7 +104,9 @@ TRUNCATION_NOTICE = (
 # Step 3: 판단 사유 섹션의 라벨. portfolio scope signal 1줄만 표시.
 JUDGMENT_SECTION_HEADER = "[판단 사유]"
 
-# Step 5B: 모멘텀 점검 bullet 라벨. [판단 사유] 섹션 안의 두 번째 bullet 으로 추가.
+# Step 5B: 모멘텀 점검 bullet 라벨 — Step 7B (2026-05-12) 이후 [판단 사유] 별도 bullet
+# 으로 노출되지 않는다. holdings momentum 정보는 "보유 종목 상태 브리핑" bullet 안에
+# portfolio 비중 정보와 함께 통합 표시된다. 라벨 상수는 호환 / 테스트 참조 목적으로 유지.
 MOMENTUM_BULLET_LABEL = "모멘텀 점검"
 
 # Step 6 + Step 7A 명칭 정렬 (2026-05-11):
@@ -476,19 +489,20 @@ def _external_universe_bullet(payload: dict[str, Any]) -> Optional[str]:
 
 
 def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
-    """[판단 사유] 섹션 — Step 3 factor / Step 5B momentum / Step 6 external universe 를
-    한 헤더 아래에 순서대로 모은다 (보유 비중 영향 → 모멘텀 점검 → 외부 후보 점검).
+    """[판단 사유] 섹션 — Step 7B 이후 구조:
+      1. 보유 종목 상태 브리핑 (portfolio 비중 + holdings momentum 통합 1줄)
+      2. 신규 ETF 관찰 후보 (Step 7A 명칭 정렬된 universe scope signal 1줄)
 
     헤더 중복 금지: bullet 이 1개라도 있으면 헤더 1번 + bullets. 모두 없으면 빈 리스트.
     종목별 / 후보별 / Top N 항목은 메시지에 나열하지 않는다.
+
+    Step 5B 의 _factor_bullet / _momentum_bullet 은 본 함수에서 더 이상 호출하지
+    않는다 — 두 정보가 _holdings_status_briefing_bullet 에 통합 흡수됨.
     """
     bullets: list[str] = []
-    fb = _factor_bullet(payload)
-    if fb is not None:
-        bullets.append(fb)
-    mb = _momentum_bullet(payload)
-    if mb is not None:
-        bullets.append(mb)
+    briefing = _holdings_status_briefing_bullet(payload)
+    if briefing is not None:
+        bullets.append(briefing)
     eu = _external_universe_bullet(payload)
     if eu is not None:
         bullets.append(eu)

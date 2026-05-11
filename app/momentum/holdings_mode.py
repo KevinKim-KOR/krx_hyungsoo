@@ -28,11 +28,16 @@ ENGINE_VERSION = "0.1.0"
 MODE_HOLDINGS = "holdings"
 RANKING_BASIS_PNL_RATE = "pnl_rate"
 
-PLACEHOLDER_SCORE_BASIS_TEXT = "placeholder: 현재 평가수익률 기준"
-FALLBACK_TEXT = "데이터 부족으로 momentum 점검 제외"
+# Step 7B (2026-05-12) — 사용자 노출 텍스트에서 "placeholder" 단어 제거.
+# 내부 식별자 (engine_id="momentum_engine_placeholder_v1", PLACEHOLDER_SCORE_BASIS_TEXT
+# 상수 키, ENGINE_VERSION 등) 는 호환 / 데이터 계약 유지 위해 변경하지 않는다.
+# score_basis_text 는 candidate.score_result 필드로 들어가지만 사용자 노출 message_text
+# / Telegram 에는 노출되지 않음 (Step5B/Step6 설계). 안전 차원에서 사용자 친화 표현으로 보강.
+PLACEHOLDER_SCORE_BASIS_TEXT = "현재 보유 종목 점검 기준 (평가수익률)"
+FALLBACK_TEXT = "데이터 부족으로 보유 종목 점검 제외"
 
 CANDIDATE_REASON_AVAILABLE = (
-    "현재 평가수익률 기준 placeholder 점검값이 계산되었습니다. "
+    "현재 평가수익률 기준 보유 종목 점검값이 계산되었습니다. "
     "이 값은 최종 투자 판단 산식이 아닙니다."
 )
 EXCLUSION_REASON_NO_PNL = "pnl_rate 없음 또는 평가 계산 불가"
@@ -140,12 +145,13 @@ def _build_summary(
         summary["summary_reason_text"] = FALLBACK_TEXT
         return summary
 
-    # placeholder 기준 상위 후보 1개 — Telegram Top N 정책이 아님 (rank 1위 단건만).
+    # 현재 보유 종목 점검 기준 상위 후보 1개 — Telegram Top N 정책이 아님 (rank 1위 단건만).
     top = max(scored, key=lambda c: c["score_result"]["score_value"])
     top_label = top["name"] or top["ticker"]
+    # Step 7B (2026-05-12): 사용자 노출 message_text 에서 "placeholder" 단어 제거.
     summary["summary_reason_text"] = (
-        f"placeholder 기준으로 평가 가능한 보유 종목 {len(scored)}개를 점검했습니다. "
-        "이 값은 최종 투자 판단 산식이 아닙니다."
+        f"현재 보유 종목 점검 기준으로 평가 가능한 보유 종목 {len(scored)}개를 "
+        "점검했습니다. 이 값은 최종 투자 판단 산식이 아닙니다."
     )
     summary["top_candidate"] = {
         "candidate_id": top["candidate_id"],
@@ -156,7 +162,7 @@ def _build_summary(
         "avg_buy_price": top["avg_buy_price"],
         "score_value": top["score_result"]["score_value"],
         "reason_text": (
-            f"placeholder 기준으로 평가 가능한 보유 종목 중 {top_label}의 "
+            f"현재 보유 종목 점검 기준으로 평가 가능한 보유 종목 중 {top_label}의 "
             "점검값이 가장 높습니다. 이 값은 최종 투자 판단 산식이 아닙니다."
         ),
     }

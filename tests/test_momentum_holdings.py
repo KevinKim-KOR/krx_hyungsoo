@@ -106,7 +106,10 @@ def test_step5b_pnl_rate_present_yields_scored(client):
         assert isinstance(sr["score_value"], (int, float))
         assert sr["score_unit"] == "%"
         assert sr["ranking_basis"] == "pnl_rate"
-        assert "placeholder" in sr["score_basis_text"]
+        # Step7B (2026-05-12): score_basis_text 의 "placeholder" 단어 제거 — 사용자
+        # 노출 안전 차원. 현재 표현: "현재 보유 종목 점검 기준 (평가수익률)".
+        assert "평가수익률" in sr["score_basis_text"]
+        assert "placeholder" not in sr["score_basis_text"]
 
 
 def test_step5b_pnl_rate_missing_yields_excluded():
@@ -202,14 +205,24 @@ def test_step5b_message_text_judgment_header_appears_once(client):
 
 
 def test_step5b_message_text_contains_both_factor_and_momentum_bullets(client):
-    """[판단 사유] 섹션 안에 보유 비중 영향 + 모멘텀 점검 두 bullet 이 모두 포함된다."""
+    """Step7B 통합: 별도 "- 보유 비중 영향:" / "- 모멘텀 점검:" bullet 은 사라지고
+    "- 보유 종목 상태 브리핑:" 1줄 안에 두 정보가 모두 들어간다.
+
+    portfolio reason 의 핵심 (가장 비중이 큰 종목 라벨) + holdings momentum 의 핵심
+    (점검값 가장 높은 종목 라벨) 이 같은 1줄에 통합되어야 한다.
+    """
     _put_holdings_for_momentum(client)
     body = client.post("/runs/generate-from-holdings").json()
     msg = body["message_text"]
     assert "[판단 사유]" in msg
-    assert "- 보유 비중 영향:" in msg
-    assert "- 모멘텀 점검:" in msg
-    assert "이 값은 최종 투자 판단 산식이 아닙니다" in msg
+    assert "- 보유 종목 상태 브리핑:" in msg
+    # 별도 bullet 형태로는 더 이상 등장하지 않음
+    assert "- 보유 비중 영향:" not in msg
+    assert "- 모멘텀 점검:" not in msg
+    # 보유 비중 영향 핵심 표현이 본문에 통합 포함
+    assert "비중이 가장 큽니다" in msg
+    # holdings momentum 핵심 표현이 본문에 통합 포함
+    assert "점검값이 가장 높습니다" in msg
 
 
 def test_step5b_message_text_no_separate_momentum_header(client):
@@ -234,15 +247,26 @@ def test_step5b_existing_factor_signals_preserved(client):
 
 
 def test_step5b_message_text_does_not_list_all_candidate_ranks(client):
-    """전체 후보 순위는 Telegram 에 나열되지 않는다 (Top N 정책 금지)."""
+    """전체 후보 순위는 Telegram 에 나열되지 않는다 (Top N 정책 금지).
+
+    Step7B: 모멘텀 정보는 "- 보유 종목 상태 브리핑:" 1줄 안에 통합되며 candidate 별
+    상세 reason_text 는 노출되지 않는다.
+    """
     _put_holdings_for_momentum(client)
     body = client.post("/runs/generate-from-holdings").json()
     msg = body["message_text"]
-    # candidate 별 reason_text 가 메시지에 들어가지 않음
-    assert "현재 평가수익률 기준 placeholder 점검값이 계산되었습니다" not in msg
-    # 모멘텀 점검 라인은 정확히 1줄
-    momentum_lines = [ln for ln in msg.split("\n") if ln.startswith("- 모멘텀 점검:")]
-    assert len(momentum_lines) == 1
+    # candidate 별 상세 reason_text 가 메시지에 들어가지 않음 (Step7B 후 표현 정정 반영)
+    assert "현재 평가수익률 기준 보유 종목 점검값이 계산되었습니다" not in msg
+    # 보유 종목 상태 브리핑 라인은 정확히 1줄
+    briefing_lines = [
+        ln for ln in msg.split("\n") if ln.startswith("- 보유 종목 상태 브리핑:")
+    ]
+    assert len(briefing_lines) == 1
+    # 별도 "- 모멘텀 점검:" bullet 0건
+    legacy_momentum_lines = [
+        ln for ln in msg.split("\n") if ln.startswith("- 모멘텀 점검:")
+    ]
+    assert len(legacy_momentum_lines) == 0
 
 
 def test_step5b_legacy_payload_without_momentum_result_renders():
@@ -283,7 +307,10 @@ def test_step5b_legacy_payload_without_momentum_result_renders():
     msg = draft_message.build_message_text("run_legacy_5b", legacy)
     assert "[판단 사유]" in msg
     assert msg.count("[판단 사유]") == 1
-    assert "- 보유 비중 영향:" in msg
+    # Step7B 통합: legacy payload (momentum_result 없음) 라도 portfolio reason 만으로
+    # "보유 종목 상태 브리핑" bullet 이 생성된다. 별도 "- 보유 비중 영향:" 줄은 없다.
+    assert "- 보유 종목 상태 브리핑:" in msg
+    assert "- 보유 비중 영향:" not in msg
     assert "- 모멘텀 점검:" not in msg
 
 

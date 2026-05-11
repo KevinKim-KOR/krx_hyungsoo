@@ -18,6 +18,16 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
+- POC2-Step7B 완료 (2026-05-12) — 보유 종목 상태 브리핑 (PUSH 1) 최소 정리.
+  · 기존 별도 2 bullet ("보유 비중 영향" + "모멘텀 점검") 을 공식 PUSH 1 명칭
+    "보유 종목 상태 브리핑" 1줄로 통합. 매수/매도 의견 아님 중립 안내 항상 부착.
+  · 사용자 노출 placeholder 표현 ("placeholder 기준으로") 을 "현재 보유 종목 점검
+    기준으로" 로 정정. 내부 식별자 / 상수 키명 / 테스트명은 유지.
+  · 새 모듈 app/message_holdings_briefing.py — Step7B 통합 빌더 분리 (draft_message.py
+    KS-10 trigger 해소 673 → 586).
+  · pytest 147 → 159 passed (Step7B 회귀 12개). black / flake8 / Next.js build PASS.
+  · KS-10 임계: 백엔드 max 586 / 프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0.
+  · 데이터 계약 / API endpoint 변경 0건.
 - POC2-Step7A VERIFIED_WITH_NOTES (2026-05-11) — 신규 ETF 관찰 후보 (PUSH 2) 최소 운영화.
   · commit 3d9112d5. 사용자 노출 "외부 후보 점검" → 공식 PUSH 2 "신규 ETF 관찰 후보" 정렬.
   · seed 파일 부재 시 starter seed (3개 후보) 자동 생성, 기존 사용자 seed 절대 덮어쓰지

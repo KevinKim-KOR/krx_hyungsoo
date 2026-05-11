@@ -263,14 +263,20 @@ def test_step3_message_text_includes_portfolio_judgment_one_line(client):
     body = r.json()
     msg = body["message_text"]
     assert "[판단 사유]" in msg
-    assert "보유 비중 영향" in msg
-    # portfolio reason 에 max_weight ticker 의 라벨이 들어간다
+    # Step7B 명칭 정렬: portfolio reason 은 "보유 종목 상태 브리핑" bullet 안에 통합.
+    assert "- 보유 종목 상태 브리핑:" in msg
+    # portfolio reason 의 핵심 (max_weight ticker 의 라벨) 이 본문에 포함.
     assert "KODEX 200" in msg
-    # 판단 사유 줄은 정확히 1개여야 한다 (Top N 정책 금지)
-    judgment_lines = [
+    # Step7B: 별도 "- 보유 비중 영향:" bullet 은 사용자 노출에서 사라짐.
+    legacy_factor_lines = [
         ln for ln in msg.split("\n") if ln.startswith("- 보유 비중 영향:")
     ]
-    assert len(judgment_lines) == 1
+    assert len(legacy_factor_lines) == 0
+    # "보유 종목 상태 브리핑" bullet 은 정확히 1줄.
+    briefing_lines = [
+        ln for ln in msg.split("\n") if ln.startswith("- 보유 종목 상태 브리핑:")
+    ]
+    assert len(briefing_lines) == 1
 
 
 def test_step3_message_text_does_not_list_all_holdings_factor_reasons(client):
@@ -319,11 +325,15 @@ def test_step3_message_text_does_not_list_all_holdings_factor_reasons(client):
     msg = r.json()["message_text"]
     # holding_row scope reason ("이 종목은 ... 가장 큰 항목입니다") 은 메시지에 들어가지 않는다
     assert "이 종목은 평가 계산 가능 보유분 중 비중이 가장 큰 항목입니다." not in msg
-    # 판단 사유 라인은 1줄
-    judgment_lines = [
+    # Step7B: portfolio reason 은 "보유 종목 상태 브리핑" 1줄 안에 통합. 별도 "- 보유 비중 영향:" 줄 0건.
+    legacy_factor_lines = [
         ln for ln in msg.split("\n") if ln.startswith("- 보유 비중 영향:")
     ]
-    assert len(judgment_lines) == 1
+    assert len(legacy_factor_lines) == 0
+    briefing_lines = [
+        ln for ln in msg.split("\n") if ln.startswith("- 보유 종목 상태 브리핑:")
+    ]
+    assert len(briefing_lines) == 1
 
 
 def test_step3_message_text_uses_fallback_when_factor_unavailable(client):
