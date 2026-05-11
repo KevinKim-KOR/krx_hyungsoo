@@ -193,9 +193,9 @@ def test_step5c_endpoint_invalid_seed_fails_422(client, _isolated_universe):
 def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     client, _isolated_universe
 ):
-    """Step6 + Fix 라운드: universe refresh 결과는 draft_payload 의 신규 키가 아니라
-    factor_signals 안의 scope='universe' signal 1건으로 표현된다 (사용자 결정).
-    [판단 사유] 에 '외부 후보 점검' bullet 1줄이 더해진다. 단:
+    """Step6 + Fix 라운드 + Step 7A 명칭 정렬: universe refresh 결과는 draft_payload 의
+    신규 키가 아니라 factor_signals 안의 scope='universe' signal 1건으로 표현된다.
+    [판단 사유] 에 '신규 ETF 관찰 후보' bullet 1줄이 더해진다. 단:
     - refresh 이전 (artifact 부재) 에는 universe scope signal 미추가.
     - holdings momentum_result / factor_signals / recommendations 등 기존 키 모두 보존.
     - **draft_payload 키 신설 0건** (external_universe_check 등 새 키 금지).
@@ -253,9 +253,9 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     assert msg_after.count("[판단 사유]") == 1
     # 기존 모멘텀 점검 bullet 그대로 + 외부 후보 점검 bullet 추가
     assert "- 모멘텀 점검:" in msg_after
-    assert "- 외부 후보 점검:" in msg_after
+    assert "- 신규 ETF 관찰 후보:" in msg_after
     # bullet 순서: 모멘텀 점검 → 외부 후보 점검 (Step6 §13 / AC-27)
-    assert msg_after.index("- 모멘텀 점검:") < msg_after.index("- 외부 후보 점검:")
+    assert msg_after.index("- 모멘텀 점검:") < msg_after.index("- 신규 ETF 관찰 후보:")
 
 
 def test_step5c_existing_step5b_holdings_momentum_preserved(client, _isolated_universe):

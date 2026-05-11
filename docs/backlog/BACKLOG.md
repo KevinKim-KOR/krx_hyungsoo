@@ -17,21 +17,30 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 POC2-Step7 (System Output 3-Push Realignment Design) 설계서 도출 항목. 본 STEP 에서
 처리하지 않고 후속 구현 Step 또는 별도 작업으로 분리되는 항목들.
 
-### BACKLOG: manual seed 입력 UX 개선
+### BACKLOG: manual seed 입력 UX 개선 (seed 편집 UI)
 - **보류 사유**: Step6 의 manual universe seed JSON 입력은 사용자 작성 부담이 큼.
-  자동 universe 수집은 Step7 §6 정책으로 막혀 있어 UX 개선은 별도 작업 영역.
-- **보류된 위험**: 운영 시작 직후 사용자가 universe seed 작성에 진입 장벽을 느껴
-  PUSH 2 사이클 자체가 시작되지 못할 가능성.
-- **복귀 조건**: PUSH 2 구현 Step 진입 시 또는 사용자가 명시적으로 입력 UX 부담을
-  보고할 때.
+  Step7A 에서 starter seed 가 도입되어 첫 진입 장벽은 해소되었으나, 사용자가 후보군을
+  변경하려면 여전히 파일 직접 수정 또는 starter seed 삭제 후 재작성이 필요.
+- **보류된 위험**: 후보군 변경 부담이 운영 사이클 지속성을 떨어뜨릴 가능성.
+- **복귀 조건**: 사용자가 운영 중 후보군 직접 수정 필요 상황을 1회 이상 보고할 때 또는
+  PUSH 2 두 번째 구현 라운드 진입 시.
+- **자동 universe 수집과의 관계**: 자동 수집은 별도 BACKLOG 항목으로 분리. seed 편집
+  UI 는 수동 후보군 관리 UX 만 다룬다.
 
-### BACKLOG: 기본 ETF starter seed
-- **보류 사유**: 사용자 입력 부담 완화용 starter seed 가 임의 추천으로 해석될 위험.
-  "기본 추천 ETF" 가 시스템의 매수 추천처럼 오해될 수 있음.
-- **보류된 위험**: starter seed 의 종목 선택이 매수 추천으로 굳어지면 Step7 §3
-  투자 행동 지시 금지 원칙과 충돌.
-- **복귀 조건**: manual seed 입력 UX 개선 검토 시점에 starter seed 를 "예시 목록"
-  으로 한정해서 함께 검토.
+### BACKLOG: 기본 ETF starter seed (Step7A 부분 도입 + 향후 확장)
+- **현재 상태 (2026-05-11, Step7A)**: 최소 fallback 으로 starter seed 도입 완료
+  (`app/universe_seed.py:STARTER_SEED_ITEMS`).
+  · 후보 3개: KODEX 200 (069500) / KODEX 미국S&P500 (379800) / KODEX 미국나스닥100 (379810).
+  · seed 파일 부재 시 `ensure_seed_file_exists()` 가 생성. 기존 사용자 seed 절대 덮어쓰지 않음.
+  · API 응답에 `summary.source` 로 노출하여 UI 안내 가능.
+- **보류된 확장 (향후 STEP 후보)**:
+  · 후보 종목 확장 — 3개 → N개 (사용자 운영 결과 기반).
+  · "예시 목록" 라벨링 — UI 에서 starter seed 가 매수 추천이 아님을 시각적으로 더
+    명확히 (현재는 안내 문구로만).
+- **보류된 위험**: starter seed 의 종목 선택이 장기 운영 후보군으로 굳어져 매수 추천처럼
+  해석될 가능성 — 현재는 UI 안내 문구로 mitigation.
+- **복귀 조건**: 신규 ETF 관찰 후보를 2회 이상 운영하면서 후보군 관리가 병목으로 재확인
+  될 때 또는 사용자가 starter seed 종목 변경을 명시 요청할 때.
 
 ### BACKLOG: 급락 ETF 주의 신호 최소 구현 (PUSH 3 구현 Step)
 - **보류 사유**: Step7 PUSH 3 는 자리만 잡고 구현 없음. 급락 임계값 확정 필요.

@@ -11,8 +11,8 @@
 8. top_candidate 저장
 9. GenerateDraft 가 pykrx 를 호출하지 않고 latest artifact 만 읽는지
    + draft_payload 키 신설 없음 + factor_signals 안 scope="universe" signal 1건 확인
-10. message_text 에 외부 후보 점검 bullet 이 세 번째로 들어가는지
-11. message_text 의 외부 후보 점검 bullet 에 기준일 포함
+10. message_text 에 신규 ETF 관찰 후보 bullet 이 세 번째로 들어가는지
+11. message_text 의 신규 ETF 관찰 후보 bullet 에 기준일 포함
 12. [판단 사유] 헤더가 1번만
 13. universe 후보 전체가 Telegram/message_text 에 나열되지 않는지
 14. POST /universe/momentum/refresh 응답에 refresh_status / scored / total +
@@ -249,7 +249,7 @@ def test_generate_draft_does_not_call_pykrx(client, monkeypatch, _isolated_unive
     assert universe_sigs[0]["factor_id"] == "universe_one_month_return"
 
 
-# ─── 10. message_text 에 외부 후보 점검 bullet 이 3번째 + 11. 기준일 포함 ───
+# ─── 10. message_text 에 신규 ETF 관찰 후보 bullet 이 3번째 + 11. 기준일 포함 ───
 
 
 def test_message_text_external_universe_bullet_third(client, _isolated_universe):
@@ -268,7 +268,7 @@ def test_message_text_external_universe_bullet_third(client, _isolated_universe)
     assert msg.count("[판단 사유]") == 1
     factor_idx = msg.find("- 보유 비중 영향:")
     momentum_idx = msg.find("- 모멘텀 점검:")
-    external_idx = msg.find("- 외부 후보 점검:")
+    external_idx = msg.find("- 신규 ETF 관찰 후보:")
     # 순서 확인 (모멘텀 / external 은 반드시 있음)
     assert momentum_idx > 0
     assert external_idx > 0
@@ -382,7 +382,7 @@ def test_step5c_seed_validation_preserved_after_step6(client, _isolated_universe
 def test_message_text_failure_bullet_contains_basis_date(
     client, monkeypatch, _isolated_universe
 ):
-    """전체 실패 → [판단 사유] 의 외부 후보 점검 bullet 은 실패 형식 + 기준일 포함."""
+    """전체 실패 → [판단 사유] 의 신규 ETF 관찰 후보 bullet 은 실패 형식 + 기준일 포함."""
     from app import universe_refresh as ur
     from app.price_history_pykrx import PriceHistoryFailure
 
@@ -395,6 +395,6 @@ def test_message_text_failure_bullet_contains_basis_date(
     client.post("/universe/momentum/refresh")
     _put_holdings_for_momentum(client)
     msg: str = client.post("/runs/generate-from-holdings").json()["message_text"]
-    assert "- 외부 후보 점검:" in msg
+    assert "- 신규 ETF 관찰 후보:" in msg
     assert "pykrx 가격 데이터 부족" in msg
     assert f"기준일 {today}" in msg

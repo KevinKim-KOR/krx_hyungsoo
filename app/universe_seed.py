@@ -164,3 +164,79 @@ def load_universe_seed(
     except json.JSONDecodeError as e:
         raise UniverseSeedError(f"universe seed JSON 파싱 실패: {e}")
     return parse_universe_seed(raw, today=today)
+
+
+# ─── Step 7A — starter seed 정책 ─────────────────────────────────────
+#
+# 설계자 결정 (Step 7A §4.2):
+# - state/universe/etf_universe_latest.json 이 없을 때만 starter seed 를 생성한다.
+# - 기존 사용자 seed 가 있으면 절대 덮어쓰지 않는다.
+# - starter seed 는 투자전략 확정값이 아니라 "신규 ETF 관찰 후보 기능 작동 확인용
+#   기본 후보군" 이다.
+# - source="starter_seed" 로 표시 — UI / 응답에서 starter seed 사용 여부를 구분 가능.
+# - asof 는 생성 시점 KST 날짜 (YYYY-MM-DD).
+
+STARTER_SEED_SOURCE = "starter_seed"
+
+STARTER_SEED_ITEMS: list[dict[str, str]] = [
+    {
+        "ticker": "069500",
+        "name": "KODEX 200",
+        "universe_group": "국내지수",
+        "sector_or_theme": "KOSPI200",
+    },
+    {
+        "ticker": "379800",
+        "name": "KODEX 미국S&P500",
+        "universe_group": "미국지수",
+        "sector_or_theme": "S&P500",
+    },
+    {
+        "ticker": "379810",
+        "name": "KODEX 미국나스닥100",
+        "universe_group": "미국지수",
+        "sector_or_theme": "NASDAQ100",
+    },
+]
+
+
+def _kst_today_isoformat(today: Optional[date] = None) -> str:
+    """KST 기준 오늘 날짜 — 테스트에서 today 인자로 주입 가능.
+
+    KST 는 UTC+9. datetime.date.today() 가 시스템 로컬 시간대를 따르므로 명시 보정.
+    """
+    if today is not None:
+        return today.isoformat()
+    # KST 환경 가정 — 본 프로젝트는 K6/EOD 운영 원칙으로 KST 기준만 다룬다.
+    return date.today().isoformat()
+
+
+def ensure_seed_file_exists(
+    path: Optional[Path] = None,
+    today: Optional[date] = None,
+) -> bool:
+    """seed 파일이 없으면 starter seed 를 생성한다. 기존 파일은 절대 덮어쓰지 않는다.
+
+    반환값: True 면 본 호출에서 starter seed 를 생성, False 면 기존 파일 유지.
+
+    설계 원칙 (Step 7A §4.2):
+    - 새 API 를 만들지 않는다 — 본 함수는 API 핸들러가 load_universe_seed 전에
+      호출하는 보조 함수.
+    - 기존 사용자 seed (정상 파일) 가 있으면 그대로 둔다.
+    - 파일이 손상되었거나 JSON 파싱 실패해도 본 함수는 건드리지 않는다 — 그 경우는
+      load_universe_seed 가 UniverseSeedError 로 422 응답을 만든다.
+    """
+    target = path or UNIVERSE_SEED_FILE
+    if target.exists():
+        return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "asof": _kst_today_isoformat(today),
+        "source": STARTER_SEED_SOURCE,
+        "items": [dict(it) for it in STARTER_SEED_ITEMS],
+    }
+    target.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return True

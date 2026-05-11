@@ -96,8 +96,11 @@ JUDGMENT_SECTION_HEADER = "[판단 사유]"
 # Step 5B: 모멘텀 점검 bullet 라벨. [판단 사유] 섹션 안의 두 번째 bullet 으로 추가.
 MOMENTUM_BULLET_LABEL = "모멘텀 점검"
 
-# Step 6: 외부 후보 점검 bullet 라벨 + factor signal 식별자.
-EXTERNAL_UNIVERSE_BULLET_LABEL = "외부 후보 점검"
+# Step 6 + Step 7A 명칭 정렬 (2026-05-11):
+# Step 6 시점 "외부 후보 점검" 사용자 노출 명칭을 공식 PUSH 2 명칭 "신규 ETF 관찰 후보"
+# 로 정렬한다. factor_id (universe_one_month_return) / 내부 함수명 / 파일명은 변경하지
+# 않는다 — 사용자 노출 문구만 정렬.
+EXTERNAL_UNIVERSE_BULLET_LABEL = "신규 ETF 관찰 후보"
 EXTERNAL_UNIVERSE_FACTOR_ID = "universe_one_month_return"
 
 

@@ -1,6 +1,12 @@
 "use client";
 
-// POC2 Step 6 + Fix 라운드 — 외부 후보 점검 (universe momentum) refresh 버튼 + 상태 패널.
+// POC2 Step 6 + Fix 라운드 + Step 7A — 신규 ETF 관찰 후보 (PUSH 2) refresh 버튼 + 상태 패널.
+//
+// 정책 (Step7A 명칭 정렬, 2026-05-11):
+// - 사용자 노출 명칭은 공식 PUSH 2 "신규 ETF 관찰 후보" 로 통일 (기존 "외부 후보 점검"
+//   사용자 노출 문구 전면 정렬). 내부 함수명 / 컴포넌트명은 유지.
+// - seed 파일이 없으면 백엔드가 starter seed 를 생성 후 refresh 실행 (Step7A §4.2).
+//   응답의 summary.source === "starter_seed" 면 "기본 후보군 사용" 안내 표시.
 //
 // 정책 (Fix 라운드 2026-05-11):
 // - 신규 endpoint 추가 금지 (GET /universe/momentum/latest 미도입).
@@ -74,7 +80,7 @@ export default function UniverseRefreshPanel() {
       const summary = res.momentum_result.summary;
       const ts = new Date().toLocaleTimeString("ko-KR");
       setStatusNote(
-        `외부 후보 점검 ${refreshStatusLabel(summary.refresh_status)} ` +
+        `신규 ETF 관찰 후보 갱신 ${refreshStatusLabel(summary.refresh_status)} ` +
           `— 계산 가능 ${summary.scored_candidates}/${summary.total_candidates}개 (${ts})`,
       );
     } catch (e) {
@@ -89,11 +95,13 @@ export default function UniverseRefreshPanel() {
   const top = summary?.top_candidate;
   const computedBasisDate = basisDate(latest);
 
+  const usingStarterSeed = summary?.source === "starter_seed";
+
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <h2 style={{ fontSize: 16 }}>외부 후보 점검 (universe momentum)</h2>
+      <h2 style={{ fontSize: 16 }}>신규 ETF 관찰 후보 (PUSH 2)</h2>
       <p className="helper" style={{ marginTop: 0 }}>
-        manual seed 후보군에 pykrx 1개월 수익률을 적용해 1건의 점검값을 계산합니다.
+        후보군에 pykrx 1개월 수익률을 적용해 가장 높은 관찰 후보 1건을 보여줍니다.
         본 점검값은 매수 추천이 아닙니다. 갱신은 아래 버튼으로 수동 실행합니다.
         (페이지 새로 고침 시 결과는 사라지며, 갱신을 한 번 더 눌러야 다시 표시됩니다.)
       </p>
@@ -105,9 +113,11 @@ export default function UniverseRefreshPanel() {
           onClick={onRefresh}
           disabled={loading}
           type="button"
-          title="manual universe seed 의 모든 ticker 에 대해 pykrx 1개월 수익률을 1회 조회"
+          title="universe seed 의 모든 ticker 에 대해 pykrx 1개월 수익률을 1회 조회 (seed 파일 부재 시 기본 후보군 자동 생성)"
         >
-          {loading ? "외부 후보 점검 중..." : "외부 후보 점검 갱신"}
+          {loading
+            ? "신규 ETF 관찰 후보 갱신 중..."
+            : "신규 ETF 관찰 후보 갱신"}
         </button>
       </div>
 
@@ -117,9 +127,17 @@ export default function UniverseRefreshPanel() {
         </div>
       ) : null}
 
+      {usingStarterSeed ? (
+        <div className="helper" style={{ marginTop: 4 }}>
+          ⓘ 사용자 seed 파일이 없어 기본 후보군 (starter seed) 으로 동작 중입니다.
+          이 기본 후보군은 투자전략 확정값이 아니며, 신규 ETF 관찰 후보 기능 작동
+          확인용입니다.
+        </div>
+      ) : null}
+
       {!latest ? (
         <div className="helper" style={{ marginTop: 8 }}>
-          아직 외부 후보 점검 결과가 없습니다. 위 버튼을 눌러 1회 갱신해 주세요.
+          아직 신규 ETF 관찰 후보 결과가 없습니다. 위 버튼을 눌러 1회 갱신해 주세요.
         </div>
       ) : (
         <div className="summary-card" style={{ marginTop: 8 }}>

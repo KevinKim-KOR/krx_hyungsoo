@@ -1,11 +1,11 @@
 "use client";
 
-// POC2 Step 5D Cleanup + Step 6 — [판단 사유] 섹션.
+// POC2 Step 5D Cleanup + Step 6 + Step 7A — [판단 사유] 섹션.
 // 정책:
 // - factor bullet (보유 비중 영향) + momentum bullet (모멘텀 점검) +
-//   external universe bullet (외부 후보 점검) 까지 최대 3줄을 한 헤더 아래에.
+//   universe scope bullet (신규 ETF 관찰 후보) 까지 최대 3줄을 한 헤더 아래에.
 // - bullet 이 0개면 섹션 자체 미생성 (헤더 중복 / 빈 헤더 노출 금지).
-// - bullet 순서: 보유 비중 영향 → 모멘텀 점검 → 외부 후보 점검 (Step6 §13 / AC-27).
+// - bullet 순서: 보유 비중 영향 → 모멘텀 점검 → 신규 ETF 관찰 후보 (Step7A 명칭 정렬).
 // - 종목별 signal / 후보 순위 / Top N 표시 금지.
 
 import type { Run } from "@/lib/api";
@@ -91,7 +91,7 @@ export function pickExternalUniverseBullet(
   const factorName =
     typeof universeSig.factor_name === "string"
       ? universeSig.factor_name
-      : "외부 후보 점검";
+      : "신규 ETF 관찰 후보";
   const text = universeSig.is_available
     ? universeSig.reason_text
     : universeSig.fallback_text;

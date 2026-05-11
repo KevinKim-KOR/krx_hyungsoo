@@ -331,6 +331,8 @@ export interface UniverseRefreshSummary {
   // Step6 Fix: UI 가 GET /latest 없이 POST 응답만으로 status panel 을 그리도록 확장.
   summary_reason_text?: string | null;
   top_candidate?: UniverseTopCandidate | null;
+  // Step7A: seed source — "starter_seed" 면 UI 가 "기본 후보군 사용" 안내 표시.
+  source?: string | null;
 }
 
 export interface UniverseRefreshResponse {

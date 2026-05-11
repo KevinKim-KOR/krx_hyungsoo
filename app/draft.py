@@ -166,7 +166,7 @@ def _build_universe_factor_signal(asof_iso: str) -> Optional[dict[str, Any]]:
     포맷 (기존 portfolio factor signal 과 동일한 구조):
     {
       "factor_id": "universe_one_month_return",
-      "factor_name": "외부 후보 점검",
+      "factor_name": "신규 ETF 관찰 후보",  # Step7A 정렬: 사용자 노출 공식 PUSH 2 명칭
       "scope": "universe",
       "is_available": True | False,
       "value": float | None,        # top_candidate.score_result.score_value (성공)
@@ -227,7 +227,7 @@ def _build_universe_factor_signal(asof_iso: str) -> Optional[dict[str, Any]]:
     is_available = reason_text is not None
     return {
         "factor_id": "universe_one_month_return",
-        "factor_name": "외부 후보 점검",
+        "factor_name": "신규 ETF 관찰 후보",
         "scope": "universe",
         "is_available": is_available,
         "value": value,

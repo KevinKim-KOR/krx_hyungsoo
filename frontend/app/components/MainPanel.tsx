@@ -34,7 +34,7 @@ export default function MainPanel() {
       {/* 1. 운영 진입점 — 보유 종목 입력 (최상단, 첫 번째 섹션) */}
       <HoldingsClient onDraftCreated={setRun} />
 
-      {/* 1-2. POC2 Step 6 — 외부 후보 점검 (universe momentum) 별도 영역 (지시문 §12.2). */}
+      {/* 1-2. POC2 Step 6 + Step 7A — 신규 ETF 관찰 후보 (PUSH 2) 별도 영역. */}
       <UniverseRefreshPanel />
 
       {/* 2. 현재 run 표시 (run 있을 때만) */}

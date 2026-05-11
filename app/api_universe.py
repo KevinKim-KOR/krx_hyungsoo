@@ -34,7 +34,11 @@ from app.universe_refresh import (
     run_universe_refresh,
     validate_seed_for_refresh,
 )
-from app.universe_seed import UniverseSeedError, load_universe_seed
+from app.universe_seed import (
+    UniverseSeedError,
+    ensure_seed_file_exists,
+    load_universe_seed,
+)
 
 router = APIRouter()
 
@@ -48,6 +52,10 @@ class UniverseMomentumRefreshSummary(BaseModel):
     # Step6 Fix: UI 가 GET /latest 없이 POST 응답만으로 상태 패널을 그리도록 필드 확장.
     summary_reason_text: Optional[str] = None
     top_candidate: Optional[dict[str, Any]] = None
+    # Step7A: seed source — "starter_seed" 면 UI 가 "기본 후보군 사용" 안내 표시.
+    # universe_mode._build_summary 가 seed.source 를 그대로 summary 에 실어주므로
+    # 본 필드는 노출만 한다 (데이터 계약 신설 아님).
+    source: Optional[str] = None
 
 
 class UniverseMomentumRefreshResultBrief(BaseModel):
@@ -68,11 +76,17 @@ class UniverseMomentumRefreshResponse(BaseModel):
 def post_universe_momentum_refresh() -> UniverseMomentumRefreshResponse:
     """수동 universe seed → pykrx 1개월 수익률 scoring → latest artifact 저장.
 
+    Step 7A — seed 파일이 없을 때만 starter seed 생성 후 기존 흐름 진행.
+    기존 사용자 seed 가 있으면 절대 덮어쓰지 않는다.
+
     실패 처리:
     - seed 파일 부재 / asof 누락·형식 오류·미래 날짜 / items 비정상: 422 (universe seed 검증 실패)
     - items 20개 초과: 422 (UniverseRefreshError) — 조용히 자르지 않는다.
     - candidate 단위 pykrx 실패는 partial / failed 결과로 저장 (HTTP 200 OK).
     """
+    # Step 7A: seed 파일 부재 시 starter seed 생성 (기존 사용자 seed 보호).
+    ensure_seed_file_exists()
+
     try:
         seed = load_universe_seed()
     except UniverseSeedError as e:
@@ -110,6 +124,7 @@ def post_universe_momentum_refresh() -> UniverseMomentumRefreshResponse:
                 refresh_status=summary["refresh_status"],
                 summary_reason_text=summary.get("summary_reason_text"),
                 top_candidate=summary.get("top_candidate"),
+                source=summary.get("source"),
             ),
         ),
     )

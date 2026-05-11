@@ -7,8 +7,50 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step7 설계서 저장 완료 (CONDITIONAL_PASS, 2026-05-11) — 구조 재정렬 설계 단계
-다음 단계: 사용자와 협의 후 후속 구현 Step 1개 선택 (한 번에 하나의 PUSH 만 다룸)
+현재 단계: POC2-Step7A 완료 (2026-05-11) — 신규 ETF 관찰 후보 (PUSH 2) 최소 운영화
+다음 단계: 후속 구현 Step 1개 선택 (PUSH 1 또는 PUSH 3 또는 운영 빈도 문서 정합성 보정)
+```
+
+POC2-Step7A 요약 (본 STEP):
+- **명칭 정렬**: 사용자 노출 "외부 후보 점검" → 공식 PUSH 2 명칭 **"신규 ETF 관찰 후보"**
+  로 정렬. 내부 함수명 / 파일명 / factor_id 는 변경 없음.
+- **starter seed 도입**: seed 파일 부재 시 KODEX 200 + KODEX 미국S&P500 + KODEX
+  미국나스닥100 3개 후보로 starter seed 자동 생성. **기존 사용자 seed 는 절대 덮어쓰지
+  않음**. starter seed 는 투자전략 확정값이 아니며 기능 작동 확인용.
+- **POST 응답 source 노출**: `summary.source` 필드로 UI 가 "기본 후보군 사용" 안내 표시.
+- 새 endpoint 미도입. 새 draft_payload 키 미도입. 데이터 계약 변경 0건.
+
+검증:
+- pytest 119 → **147 passed** (Step6 16 + Step7A 11 추가).
+- black / flake8 / TypeScript build / Next.js lint 모두 PASS.
+- KS-10 임계: 백엔드 max 572 / 프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0 유지.
+
+신규 / 수정 파일:
+신규:
+- docs/handoff/POC2_STEP7A_NEW_ETF_WATCH_CANDIDATE_MINIMAL_PUSH.md (Step7A 종결 문서)
+- tests/test_step7a_etf_watch_candidate.py (Step7A 회귀 11개)
+
+수정:
+- app/draft_message.py (EXTERNAL_UNIVERSE_BULLET_LABEL 정렬)
+- app/draft.py (_build_universe_factor_signal 의 factor_name 정렬)
+- app/universe_seed.py (STARTER_SEED_ITEMS + ensure_seed_file_exists 신규)
+- app/api_universe.py (ensure_seed_file_exists 호출 + summary.source 노출)
+- frontend/lib/api.ts (UniverseRefreshSummary 에 source 옵셔널 필드 추가)
+- frontend/app/components/JudgmentReasonSection.tsx (default factor_name 정렬)
+- frontend/app/components/UniverseRefreshPanel.tsx (헤더 / 버튼 / 안내 문구 정렬 + starter seed 안내)
+- frontend/app/components/MainPanel.tsx (주석 정렬)
+- tests/test_universe_momentum_step6.py / tests/test_universe_seed.py (라벨 정렬)
+
+다음 단계:
+- 사용자 협의 후 후속 구현 Step 1개 선택 (한 번에 하나의 PUSH 원칙 — Step7 §13).
+- 후보: PUSH 1 보유 종목 상태 브리핑 / PUSH 3 급락 ETF 주의 신호 / 운영 빈도 문서 정합성 보정.
+
+---
+
+## 1.1 직전 상태 (POC2-Step7 설계서 저장)
+
+```text
+이전 단계: POC2-Step7 설계서 저장 완료 (CONDITIONAL_PASS, 2026-05-11) — 구조 재정렬 설계 단계
 ```
 
 POC2-Step7 저장 요약 (본 작업):
