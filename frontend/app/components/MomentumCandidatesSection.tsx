@@ -1,12 +1,13 @@
 "use client";
 
-// POC2 Step 5D Cleanup — RunPanel.tsx 에서 분리된 모멘텀 후보 상세 섹션.
+// POC2 Step 5D Cleanup + Step 7B — RunPanel.tsx 에서 분리된 모멘텀 후보 상세 섹션.
 // 분리 전후 렌더링 결과 / 문구 / 배치 / 동작 모두 동일.
 //
-// 정책 (Step5B 합의):
+// 정책 (Step5B + Step7B):
 // - 본 섹션은 EvidenceDetails 안에서만 사용된다 (기본 접힘).
 // - 승인 초안 기본 영역 / message_text / Telegram 에는 표시되지 않는다 (Top N 정책 금지).
-// - placeholder 산식 명시 문구가 헤더에 포함된다.
+// - Step 7B 명칭 정렬 (2026-05-12): 헤더 사용자 노출 문구에서 "placeholder" 단어 제거.
+//   "최종 투자 판단 산식이 아님" 취지는 유지. 내부 ENGINE_ID 등 식별자는 변경 안 함.
 
 type MomentumBundle = {
   items: Array<Record<string, unknown>>;
@@ -40,7 +41,7 @@ export default function MomentumCandidatesSection({ bundle }: Props) {
   return (
     <div className="momentum-candidates" style={{ marginTop: 12 }}>
       <div className="reason-section-title">
-        모멘텀 점검 후보 상세 (mode: {mode}, placeholder 산식 — 최종 투자 판단 산식이 아님)
+        모멘텀 점검 후보 상세 (mode: {mode} — 최종 투자 판단 산식이 아님)
       </div>
       <ul className="reason-list">
         {items.map((c) => {
