@@ -18,6 +18,18 @@
   `docs/handoff/STATE_LATEST.md` 에서만 한다.
 
 최근 갱신:
+- POC2-Step7A VERIFIED_WITH_NOTES (2026-05-11) — 신규 ETF 관찰 후보 (PUSH 2) 최소 운영화.
+  · commit 3d9112d5. 사용자 노출 "외부 후보 점검" → 공식 PUSH 2 "신규 ETF 관찰 후보" 정렬.
+  · seed 파일 부재 시 starter seed (3개 후보) 자동 생성, 기존 사용자 seed 절대 덮어쓰지
+    않음. POST 응답 summary.source 노출 — UI 가 "기본 후보군 사용" 안내.
+  · pytest 119 → 147 passed (Step6 16 + Step7A 11). black / flake8 / Next.js build PASS.
+  · KS-10 임계: 백엔드 max 572 / 프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0.
+  · 잔존 NOTE 1건 (B-6 starter seed asof KST 시간대 의존): 운영 주의 수준, 수정 불필요
+    판정 — PROJECT_ORIGIN_INTENT §7 K6/EOD KST 전제 부합.
+- POC2-Step7 설계서 저장 (2026-05-11) — 레드팀 CONDITIONAL_PASS.
+  · commit 1c7881d9. System Output 3-Push Realignment Design.
+  · 공식 PUSH 명칭 (중립형) 확정: 보유 종목 상태 브리핑 / 신규 ETF 관찰 후보 / 급락 ETF 주의 신호.
+  · 기존 산출물 3-PUSH 매핑 + AC-1~21 + 후속 Step 분리 원칙 (한 번에 하나의 PUSH).
 - POC2-Step6 최종 PASS + 문서 정합성 보정 (2026-05-11).
   · Telegram PUSH 수신 확인 — Step6 최종 PASS.
   · Step6 의미 제한: ETF 개별 후보 모멘텀 점검 배관 검증 완료. 섹터/테마 발굴 완료 아님.

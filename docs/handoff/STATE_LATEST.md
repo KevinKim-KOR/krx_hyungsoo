@@ -7,9 +7,19 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step7A 완료 (2026-05-11) — 신규 ETF 관찰 후보 (PUSH 2) 최소 운영화
-다음 단계: 후속 구현 Step 1개 선택 (PUSH 1 또는 PUSH 3 또는 운영 빈도 문서 정합성 보정)
+현재 단계: POC2-Step7A 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-11) — 신규 ETF 관찰 후보 (PUSH 2) 최소 운영화
+다음 단계: 사용자 협의 후 후속 구현 Step 1개 선택 (PUSH 1 / PUSH 3 / 운영 빈도 정합성 보정)
 ```
+
+POC2-Step7A 검증 통과 commit chain:
+- 3d9112d5 feat(poc2-step7a): align label + starter seed for new ETF watch candidate
+
+검증자(Codex) 라운드 흐름:
+- 1차 검증: VERIFIED_WITH_NOTES (B-6 KST 시간대 의존 NOTE 1건).
+- B-6 처리: 본 STEP §5 알려진 한계로 이미 명시 + PROJECT_ORIGIN_INTENT §7 K6/EOD
+  KST 전제 부합 → 수정 불필요 판정 (사유 1줄 보고).
+- A-1 / A-2 / A-3 / A-4 + B-1 ~ B-5 모두 통과.
+- 잔존 NOTE 는 운영 주의 수준이며 향후 timezone 도입 시 재검토.
 
 POC2-Step7A 요약 (본 STEP):
 - **명칭 정렬**: 사용자 노출 "외부 후보 점검" → 공식 PUSH 2 명칭 **"신규 ETF 관찰 후보"**
