@@ -122,6 +122,35 @@ export function pickExternalUniverseBullet(
   return { label: factorName, text };
 }
 
+// Step 7C: factor_signals 의 scope="universe_falling" signal 에서 1줄.
+// 신호 없으면 entry 자체가 추가되지 않으므로 null 반환 → bullet 미생성.
+export function pickFallingEtfCautionBullet(
+  payload: Record<string, unknown>,
+): SimpleBullet | null {
+  const fs = payload.factor_signals;
+  if (!Array.isArray(fs)) return null;
+  let fallingSig: Record<string, unknown> | null = null;
+  for (const sig of fs) {
+    if (
+      sig &&
+      typeof sig === "object" &&
+      (sig as Record<string, unknown>).scope === "universe_falling"
+    ) {
+      fallingSig = sig as Record<string, unknown>;
+      break;
+    }
+  }
+  if (fallingSig === null) return null;
+  if (!fallingSig.is_available) return null;
+  const factorName =
+    typeof fallingSig.factor_name === "string"
+      ? fallingSig.factor_name
+      : "급락 ETF 주의 신호";
+  const text = fallingSig.reason_text;
+  if (typeof text !== "string" || text.length === 0) return null;
+  return { label: factorName, text };
+}
+
 interface Props {
   run: Run;
 }
@@ -130,8 +159,15 @@ export default function JudgmentReasonSection({ run }: Props) {
   const payload = (run.draft_payload ?? {}) as Record<string, unknown>;
   const briefingBullet = pickHoldingsStatusBriefing(payload);
   const externalBullet = pickExternalUniverseBullet(payload);
+  const fallingBullet = pickFallingEtfCautionBullet(payload);
 
-  if (briefingBullet === null && externalBullet === null) return null;
+  if (
+    briefingBullet === null &&
+    externalBullet === null &&
+    fallingBullet === null
+  ) {
+    return null;
+  }
 
   return (
     <div className="reason-section">
@@ -147,6 +183,12 @@ export default function JudgmentReasonSection({ run }: Props) {
           <li>
             <span className="reason-name">{externalBullet.label}</span>
             <span className="reason-text">{externalBullet.text}</span>
+          </li>
+        ) : null}
+        {fallingBullet ? (
+          <li>
+            <span className="reason-name">{fallingBullet.label}</span>
+            <span className="reason-text">{fallingBullet.text}</span>
           </li>
         ) : null}
       </ul>

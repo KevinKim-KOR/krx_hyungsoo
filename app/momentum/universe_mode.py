@@ -213,6 +213,61 @@ def _build_top_candidate_dict(top: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _select_falling_candidate(
+    candidates: list[dict[str, Any]],
+    threshold_pct: float,
+) -> Optional[dict[str, Any]]:
+    """Step 7C — 급락 ETF 주의 신호 후보 1개 선택.
+
+    score_result.is_scored=True 후보 중 score_value <= threshold_pct 후보만 대상.
+    동률 시 tie-breaker (지시문 §3.3):
+      1순위: score_value 오름차순 (= 더 큰 하락 우선)
+      2순위: ticker 오름차순
+      3순위: candidate_id 오름차순
+
+    threshold_pct 는 호출자가 결정 (Step 7C 초기값 -10.0%, 확정값 아님).
+    후보 없으면 None.
+    """
+    eligible: list[dict[str, Any]] = []
+    for c in candidates:
+        sr = c.get("score_result", {})
+        if not sr.get("is_scored"):
+            continue
+        sv = sr.get("score_value")
+        if not isinstance(sv, (int, float)):
+            continue
+        if sv <= threshold_pct:
+            eligible.append(c)
+    if not eligible:
+        return None
+    eligible.sort(
+        key=lambda c: (
+            c["score_result"]["score_value"],
+            c["ticker"],
+            c["candidate_id"],
+        )
+    )
+    return eligible[0]
+
+
+def _build_falling_candidate_dict(falling: dict[str, Any]) -> dict[str, Any]:
+    """summary.falling_candidate 축약 dict — UI / 메시지 빌더가 사용.
+
+    필드 구조는 top_candidate 와 동일 (이름/티커/score/price_history_basis/reason_text).
+    """
+    out = {
+        "candidate_id": falling["candidate_id"],
+        "ticker": falling["ticker"],
+        "name": falling["name"],
+        "score_result": falling["score_result"],
+    }
+    if "price_history_basis" in falling:
+        out["price_history_basis"] = falling["price_history_basis"]
+    if "rank" in falling:
+        out["rank"] = falling["rank"]
+    return out
+
+
 def build_universe_momentum_result_scored(
     seed: UniverseSeed,
     scores: list[Any],  # list[CandidateScore]
@@ -220,11 +275,17 @@ def build_universe_momentum_result_scored(
     failure_summary_reason: Optional[str] = None,
     lookback_days: int = 30,
     fetch_window_days: int = 45,
+    falling_threshold_pct: float = -10.0,
 ) -> dict[str, Any]:
-    """Step 6 — pykrx scoring 결과를 반영한 universe momentum_result dict.
+    """Step 6 + Step 7C — pykrx scoring 결과를 반영한 universe momentum_result dict.
 
     refresh_status: ok | partial | failed.
     failure_summary_reason: 전체 실패 시 summary_reason_text 로 사용 (호출자가 결정).
+
+    Step 7C (2026-05-12) — 급락 ETF 주의 신호 (PUSH 3) 필드 추가:
+    - summary.falling_threshold_pct: 초기 기준값 (-10.0%, 확정값 아님 — 운영 검증 필요).
+    - summary.falling_candidate: scored 후보 중 score_value <= threshold 인 1건 (tie-breaker
+      score_value ASC → ticker ASC → candidate_id ASC). 후보 없으면 None.
     """
     candidates = [_build_scored_candidate(s) for s in scores]
     _assign_ranks(candidates)
@@ -265,6 +326,13 @@ def build_universe_momentum_result_scored(
             f"pykrx 가격 데이터 부족으로 1개월 점검값을 계산하지 못했습니다 "
             f"(asof {seed.asof})."
         )
+
+    # Step 7C — 급락 ETF 주의 신호 후보. threshold 는 확정값 아님 (운영 검증 필요).
+    summary["falling_threshold_pct"] = falling_threshold_pct
+    falling = _select_falling_candidate(candidates, falling_threshold_pct)
+    summary["falling_candidate"] = (
+        _build_falling_candidate_dict(falling) if falling is not None else None
+    )
 
     return {
         "engine_id": ENGINE_ID,

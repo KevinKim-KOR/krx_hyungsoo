@@ -68,6 +68,15 @@ from app.message_holdings_briefing import (
     build_holdings_status_briefing_bullet as _holdings_status_briefing_bullet,
 )
 
+# Step 7C (2026-05-12) — PUSH 3 "급락 ETF 주의 신호" bullet picker 는 동일 패턴으로
+# app.message_falling_etf_bullet 로 분리 (draft_message.py KS-10 near 해소).
+from app.message_falling_etf_bullet import (  # noqa: F401
+    FALLING_ETF_CAUTION_BULLET_LABEL,
+)
+from app.message_falling_etf_bullet import (
+    extract_falling_etf_bullet as _falling_etf_caution_bullet,
+)
+
 # Step 6 Fix 라운드: external_universe_bullet 빌더는 본 파일 안에 직접 둔다
 # (factor_signals universe scope signal 에서 추출 — message_universe_bullet 의
 # build_universe_signal_texts 가 reason_text/fallback_text 만 만드는 책임으로 단순화).
@@ -115,6 +124,9 @@ MOMENTUM_BULLET_LABEL = "모멘텀 점검"
 # 않는다 — 사용자 노출 문구만 정렬.
 EXTERNAL_UNIVERSE_BULLET_LABEL = "신규 ETF 관찰 후보"
 EXTERNAL_UNIVERSE_FACTOR_ID = "universe_one_month_return"
+
+# Step 7C 라벨 / 식별자는 app.message_falling_etf_bullet 에 정의됨 (단일 출처).
+FALLING_ETF_CAUTION_FACTOR_ID = "universe_falling_one_month_return"
 
 
 def is_holdings_draft(payload: Any) -> bool:
@@ -411,50 +423,9 @@ def _enforce_length_limit(text: str) -> str:
     return text[:keep_chars] + notice_with_break
 
 
-def _factor_bullet(payload: dict[str, Any]) -> Optional[str]:
-    """factor_signals 의 portfolio scope signal 1줄 → bullet 본문. 없으면 None."""
-    factor_signals = payload.get("factor_signals")
-    if not isinstance(factor_signals, list):
-        return None
-    portfolio_sig: Optional[dict[str, Any]] = None
-    for sig in factor_signals:
-        if isinstance(sig, dict) and sig.get("scope") == "portfolio":
-            portfolio_sig = sig
-            break
-    if portfolio_sig is None:
-        return None
-
-    factor_name = portfolio_sig.get("factor_name") or "보유 비중 영향"
-    if portfolio_sig.get("is_available"):
-        text = portfolio_sig.get("reason_text")
-    else:
-        text = portfolio_sig.get("fallback_text")
-    if not isinstance(text, str) or not text.strip():
-        return None
-    return f"- {factor_name}: {text}"
-
-
-def _momentum_bullet(payload: dict[str, Any]) -> Optional[str]:
-    """Step 5B — momentum_result.summary 1줄 → bullet 본문. 없으면 None.
-
-    top_candidate 가 있으면 그 reason_text 를, 없으면 summary_reason_text 를 사용.
-    별도 [모멘텀 점검] 헤더 신설 금지 — 본 함수는 bullet 본문만 반환한다.
-    """
-    momentum = payload.get("momentum_result")
-    if not isinstance(momentum, dict):
-        return None
-    summary = momentum.get("summary")
-    if not isinstance(summary, dict):
-        return None
-
-    top = summary.get("top_candidate")
-    if isinstance(top, dict):
-        text = top.get("reason_text")
-    else:
-        text = summary.get("summary_reason_text")
-    if not isinstance(text, str) or not text.strip():
-        return None
-    return f"- {MOMENTUM_BULLET_LABEL}: {text}"
+# Step 7B 통합 후 _factor_bullet / _momentum_bullet 별도 함수는 _render_judgment_lines
+# 에서 더 이상 호출되지 않으며 외부 import 도 없음 — 본 파일에서 함수 정의 제거.
+# 라벨 상수 (MOMENTUM_BULLET_LABEL 등) 는 호환 목적으로 유지.
 
 
 def _external_universe_bullet(payload: dict[str, Any]) -> Optional[str]:
@@ -489,12 +460,16 @@ def _external_universe_bullet(payload: dict[str, Any]) -> Optional[str]:
 
 
 def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
-    """[판단 사유] 섹션 — Step 7B 이후 구조:
+    """[판단 사유] 섹션 — Step 7C 이후 구조:
       1. 보유 종목 상태 브리핑 (portfolio 비중 + holdings momentum 통합 1줄)
-      2. 신규 ETF 관찰 후보 (Step 7A 명칭 정렬된 universe scope signal 1줄)
+      2. 신규 ETF 관찰 후보 (Step 7A — universe scope signal 1줄)
+      3. 급락 ETF 주의 신호 (Step 7C — universe_falling scope signal 1줄, optional)
 
     헤더 중복 금지: bullet 이 1개라도 있으면 헤더 1번 + bullets. 모두 없으면 빈 리스트.
     종목별 / 후보별 / Top N 항목은 메시지에 나열하지 않는다.
+
+    Step 7C: 급락 후보 없을 때는 falling bullet 자체가 생성되지 않으므로 자연 생략.
+    Telegram 에 "신호 없음" 같은 매번 메시지를 추가하지 않는다 (KS-5 알림 과다 방지).
 
     Step 5B 의 _factor_bullet / _momentum_bullet 은 본 함수에서 더 이상 호출하지
     않는다 — 두 정보가 _holdings_status_briefing_bullet 에 통합 흡수됨.
@@ -506,6 +481,9 @@ def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
     eu = _external_universe_bullet(payload)
     if eu is not None:
         bullets.append(eu)
+    falling = _falling_etf_caution_bullet(payload)
+    if falling is not None:
+        bullets.append(falling)
     if not bullets:
         return []
     return ["", JUDGMENT_SECTION_HEADER, *bullets]

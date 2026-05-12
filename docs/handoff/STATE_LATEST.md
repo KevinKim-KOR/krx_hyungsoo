@@ -7,8 +7,53 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step7B 완료 (2026-05-12) — 보유 종목 상태 브리핑 (PUSH 1) 최소 정리
-다음 단계: 사용자 협의 후 후속 구현 Step 1개 선택 (PUSH 3 급락 ETF 주의 신호 / 운영 빈도 정합성 보정)
+현재 단계: POC2-Step7C 완료 (2026-05-12) — 급락 ETF 주의 신호 (PUSH 3) 최소 구현. 3-PUSH 모두 최소 운영 가능.
+다음 단계: 사용자 협의 후 운영 사이클 1회 시작 또는 운영 빈도 문서 정합성 보정 STEP 선택
+```
+
+POC2-Step7C 요약 (본 STEP):
+- **3-PUSH 모두 최소 구현 완료**: PUSH 1 보유 종목 상태 브리핑 (Step7B) + PUSH 2 신규
+  ETF 관찰 후보 (Step7A) + PUSH 3 급락 ETF 주의 신호 (Step7C).
+- **급락 ETF 주의 신호**: 기존 pykrx 1개월 수익률 재사용. score_value <= -10.0 후보를
+  결정론적 tie-breaker (score ASC → ticker ASC → candidate_id ASC) 로 1건 선택.
+- **신호 없음 = bullet 자체 미추가**: Telegram 에 "신호 없음" 매번 메시지 미발송 (KS-5 가드).
+- **초기 기준 -10.0% 는 확정값 아님**: 코드 주석 + BACKLOG 항목으로 운영 검증 명시.
+- **draft_payload 키 신설 0건**: factor_signals 안의 scope="universe_falling" signal 1건
+  으로 표현 (Step7A 의 universe scope 와 동일 패턴).
+- 신규 endpoint 0건. 신규 API 0건.
+
+검증:
+- pytest 159 → **173 passed** (Step7C 회귀 14개 추가).
+- black / flake8 / TypeScript build / Next.js lint 모두 PASS.
+- KS-10 임계: 백엔드 max 564 (draft_message.py — 본 STEP 안에서 분리 작업 1회 후 복귀) /
+  프론트 max 515 / 테스트 max 924 — 트리거 0 + 근접 0.
+
+신규 / 수정 파일:
+신규:
+- app/message_falling_etf_bullet.py (78라인) — 급락 bullet 빌더 + picker 단독 모듈
+- docs/handoff/POC2_STEP7C_FALLING_ETF_CAUTION_SIGNAL_MINIMAL_PUSH.md
+- tests/test_step7c_falling_etf_caution.py (Step7C 회귀 14개)
+
+수정:
+- app/momentum/universe_mode.py (_select_falling_candidate + _build_falling_candidate_dict + summary.falling_candidate / falling_threshold_pct)
+- app/universe_refresh.py (FALLING_THRESHOLD_PCT 상수)
+- app/api_universe.py (응답 summary 에 falling_candidate / falling_threshold_pct 노출)
+- app/draft.py (_build_falling_etf_factor_signal — factor_signals 에 scope=universe_falling 추가)
+- app/draft_message.py (3번째 bullet 통합 + 미사용 _factor_bullet / _momentum_bullet 제거)
+- frontend/lib/api.ts (UniverseRefreshSummary 에 falling_candidate / falling_threshold_pct 옵셔널 추가)
+- frontend/app/components/JudgmentReasonSection.tsx (pickFallingEtfCautionBullet + 3번째 bullet 렌더링)
+- frontend/app/components/UniverseRefreshPanel.tsx (급락 신호 / "신호 없음" 안내 추가)
+
+다음 단계 후보:
+- 운영 빈도 문서 정합성 보정 (PROJECT_ORIGIN_INTENT §7 / Step7 §7 통합).
+- 운영 사이클 1회 시작 → ASSUMPTIONS Q5 BACKLOG 복귀 트리거 데이터 수집.
+
+---
+
+## 1.1 직전 상태 (POC2-Step7B 완료)
+
+```text
+이전 단계: POC2-Step7B 완료 (2026-05-12) — 보유 종목 상태 브리핑 (PUSH 1) 최소 정리
 ```
 
 POC2-Step7B 요약 (본 STEP):

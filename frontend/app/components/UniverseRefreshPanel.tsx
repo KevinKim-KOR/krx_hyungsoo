@@ -203,6 +203,33 @@ export default function UniverseRefreshPanel() {
               ⚠ {summary.summary_reason_text}
             </div>
           ) : null}
+
+          {/* Step7C 급락 ETF 주의 신호 상태 표시 (UI 대개편 아님, 최소 표시). */}
+          {status !== "failed" ? (
+            summary?.falling_candidate ? (
+              <div className="summary-warning" style={{ marginTop: 12 }}>
+                ⚠ 급락 ETF 주의 신호: {summary.falling_candidate.name} (
+                {summary.falling_candidate.ticker}){" "}
+                {typeof summary.falling_candidate.score_result?.score_value ===
+                "number"
+                  ? `${summary.falling_candidate.score_result.score_value}%`
+                  : "—"}{" "}
+                — 초기 급락 기준{" "}
+                {typeof summary.falling_threshold_pct === "number"
+                  ? `${summary.falling_threshold_pct}%`
+                  : "—"}{" "}
+                이하 (확정값 아님 / 매수/매도 지시 아님)
+              </div>
+            ) : (
+              <div className="helper" style={{ marginTop: 12 }}>
+                급락 주의 신호 없음 (초기 급락 기준{" "}
+                {typeof summary?.falling_threshold_pct === "number"
+                  ? `${summary.falling_threshold_pct}%`
+                  : "—"}
+                )
+              </div>
+            )
+          ) : null}
         </div>
       )}
     </div>

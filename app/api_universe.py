@@ -29,6 +29,7 @@ from app.momentum import (
     save_latest_artifact as save_universe_latest_artifact,
 )
 from app.universe_refresh import (
+    FALLING_THRESHOLD_PCT,
     UniverseRefreshError,
     build_failure_summary_reason,
     run_universe_refresh,
@@ -56,6 +57,10 @@ class UniverseMomentumRefreshSummary(BaseModel):
     # universe_mode._build_summary 가 seed.source 를 그대로 summary 에 실어주므로
     # 본 필드는 노출만 한다 (데이터 계약 신설 아님).
     source: Optional[str] = None
+    # Step7C: 급락 ETF 주의 신호 (PUSH 3) — universe_mode 가 summary 에 실어주는
+    # falling_candidate / falling_threshold_pct 를 노출. 후보 없으면 falling_candidate=None.
+    falling_candidate: Optional[dict[str, Any]] = None
+    falling_threshold_pct: Optional[float] = None
 
 
 class UniverseMomentumRefreshResultBrief(BaseModel):
@@ -107,6 +112,7 @@ def post_universe_momentum_refresh() -> UniverseMomentumRefreshResponse:
         scores=scores,
         refresh_status=refresh_status,
         failure_summary_reason=failure_reason,
+        falling_threshold_pct=FALLING_THRESHOLD_PCT,
     )
     artifact_path = save_universe_latest_artifact(momentum_result)
     summary = momentum_result["summary"]
@@ -125,6 +131,8 @@ def post_universe_momentum_refresh() -> UniverseMomentumRefreshResponse:
                 summary_reason_text=summary.get("summary_reason_text"),
                 top_candidate=summary.get("top_candidate"),
                 source=summary.get("source"),
+                falling_candidate=summary.get("falling_candidate"),
+                falling_threshold_pct=summary.get("falling_threshold_pct"),
             ),
         ),
     )

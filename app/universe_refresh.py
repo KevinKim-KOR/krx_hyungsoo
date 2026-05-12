@@ -37,6 +37,11 @@ MAX_UNIVERSE_ITEMS_PER_REFRESH = 20
 PYKRX_PER_TICKER_DELAY_SECONDS = 0.5
 UNIVERSE_REFRESH_TIME_BUDGET_SECONDS = 30.0
 
+# Step 7C §3.2 — 급락 ETF 주의 신호 (PUSH 3) 초기 기준값.
+# **확정값 아님 / 운영 검증 필요** — 너무 민감하면 알림 과다 (KS-5), 너무 둔하면 신호
+# 지연. BACKLOG "급락 임계값 검증" 항목과 연결.
+FALLING_THRESHOLD_PCT = -10.0
+
 
 class UniverseRefreshError(ValueError):
     """seed-level hard fail (>20 items 등). API layer 가 422 로 변환."""

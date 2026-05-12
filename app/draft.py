@@ -125,6 +125,15 @@ def _build_holdings_payload(
     if universe_signal is not None:
         factor_signals = list(factor_signals) + [universe_signal]
 
+    # POC2 Step 7C (2026-05-12): universe_momentum_latest.json 의 falling_candidate 를
+    # [판단 사유] 의 "급락 ETF 주의 신호" bullet 로 병합. PUSH 2 와 동일하게 새로운
+    # factor_signal entry 1건 (scope="universe_falling") 추가 — draft_payload 키 신설 없음.
+    # falling_candidate 가 None 이면 signal 자체를 추가하지 않는다 — 신호 없음 시 Telegram
+    # 에 "신호 없음" 문구도 추가되지 않게 한다 (KS-5 알림 과다 방지).
+    falling_signal = _build_falling_etf_factor_signal(asof_iso=asof_iso)
+    if falling_signal is not None:
+        factor_signals = list(factor_signals) + [falling_signal]
+
     return {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
@@ -240,6 +249,92 @@ def _build_universe_factor_signal(asof_iso: str) -> Optional[dict[str, Any]]:
             "scored": scored,
             "total": total,
             "refresh_status": refresh_status,
+        },
+        "computed_at": asof_iso,
+    }
+
+
+def _build_falling_etf_factor_signal(asof_iso: str) -> Optional[dict[str, Any]]:
+    """Step 7C — universe_momentum_latest.json 의 falling_candidate → factor signal 1건.
+
+    포맷 (기존 universe scope signal 과 동일한 구조 — scope 값만 다름):
+    {
+      "factor_id": "universe_falling_one_month_return",
+      "factor_name": "급락 ETF 주의 신호",
+      "scope": "universe_falling",
+      "is_available": True | False,
+      "value": float | None,             # falling_candidate.score_result.score_value
+      "unit": "%",
+      "reason_text": <성공 시 1줄> | None,
+      "fallback_text": None,             # 본 signal 은 없음 시 entry 자체 미추가
+      "input_basis": {
+        "asof": str,
+        "basis_date": str,
+        "threshold_pct": float,
+        "ticker": str,
+        "candidate_id": str,
+      },
+      "computed_at": <iso>,
+    }
+
+    artifact 부재 / falling_candidate=None / 형식 오류 → None 반환 (signal 미추가).
+    이는 [판단 사유] 에 "급락 ETF 주의 신호" bullet 가 생성되지 않게 한다 — KS-5 알림
+    과다 방지 (지시문 §3.4).
+    """
+    from app.message_falling_etf_bullet import build_falling_etf_signal_text
+
+    data = _load_universe_latest_artifact()
+    if data is None:
+        return None
+    summary = data.get("summary")
+    if not isinstance(summary, dict):
+        return None
+    falling = summary.get("falling_candidate")
+    if not isinstance(falling, dict):
+        return None  # falling_candidate None → signal 미추가
+    threshold_pct = summary.get("falling_threshold_pct")
+    if not isinstance(threshold_pct, (int, float)):
+        return None
+    asof = data.get("asof") or ""
+
+    # 기준일 결정 (Step6 §13 우선순위 + Step7C 동일).
+    basis_date = "기준일 확인 불가"
+    phb = falling.get("price_history_basis")
+    if isinstance(phb, dict):
+        ld = phb.get("latest_date")
+        if isinstance(ld, str) and ld.strip():
+            basis_date = ld
+    if basis_date == "기준일 확인 불가" and isinstance(asof, str) and asof.strip():
+        basis_date = asof
+
+    score_result = falling.get("score_result") or {}
+    score_value = score_result.get("score_value")
+    if not isinstance(score_value, (int, float)):
+        return None
+    name = falling.get("name") or falling.get("ticker") or "(이름 미상)"
+
+    reason_text = build_falling_etf_signal_text(
+        name=name,
+        score_value=float(score_value),
+        threshold_pct=float(threshold_pct),
+        basis_date=basis_date,
+    )
+
+    return {
+        "factor_id": "universe_falling_one_month_return",
+        "factor_name": "급락 ETF 주의 신호",
+        "scope": "universe_falling",
+        "is_available": True,
+        "value": float(score_value),
+        "unit": "%",
+        "reason_text": reason_text,
+        "fallback_text": None,
+        "input_basis": {
+            "asof": asof,
+            "basis_date": basis_date,
+            "threshold_pct": float(threshold_pct),
+            "ticker": falling.get("ticker") or "",
+            "candidate_id": falling.get("candidate_id") or "",
         },
         "computed_at": asof_iso,
     }

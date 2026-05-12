@@ -333,6 +333,10 @@ export interface UniverseRefreshSummary {
   top_candidate?: UniverseTopCandidate | null;
   // Step7A: seed source — "starter_seed" 면 UI 가 "기본 후보군 사용" 안내 표시.
   source?: string | null;
+  // Step7C: 급락 ETF 주의 신호 (PUSH 3) — universe_mode 가 계산한 결과.
+  // falling_candidate 가 null 이면 신호 없음.
+  falling_candidate?: UniverseTopCandidate | null;
+  falling_threshold_pct?: number | null;
 }
 
 export interface UniverseRefreshResponse {
