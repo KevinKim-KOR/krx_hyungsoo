@@ -7,20 +7,48 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step7C 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-13) — 3-PUSH 모두 최소 운영 가능
-다음 단계: 운영 사이클 1회 시작 또는 운영 빈도 문서 정합성 보정 STEP 선택
+현재 단계: POC2-Step8 진입 (2026-05-13) — 3-PUSH First Operational Cycle Validation (운영 검증 단계, 코드 변경 0)
+다음 단계: 운영 사이클 3회 이상 또는 조기 종료 또는 첫 의사결정 도달까지 운영 기록 누적
 ```
 
-POC2-Step7C 검증 통과 commit chain:
-- d7075bfd feat(poc2-step7c): falling ETF caution signal (PUSH 3) minimal push
+POC2-Step8 진입 요약 (본 STEP):
+- **성격**: 기능 개발 / 코드 변경 단계가 아닌 **문서 + 운영 검증 단계**.
+- **3-PUSH 최소 운영 구조 완성 (Step7 시리즈 종결)** 후 첫 운영 사이클 검증.
+- **단일 목표**: 사용자가 받은 PUSH 가 해석 가능하며 행동 또는 명시적 보류 판단으로
+  이어지는지 기록.
+- "행동" 정의: 매수/매도 외에도 AI 투자세션 / 보류 / 무시 / 개선 필요 / 메시지 이해
+  실패 / 운영 절차 번거로움 모두 포함.
 
-검증자(Codex) 라운드 흐름:
-- 1차 검증: VERIFIED_WITH_NOTES (B-6 stale 표기 2건: FactorSignal.scope 타입 +
-  BACKLOG "PUSH 3 미구현" 표기).
-- NOTE 정정 라운드: FactorSignal.scope 타입에 "universe_falling" 추가 + BACKLOG
-  항목을 "RESOLVED — Step7C 완료" 로 갱신.
-- 잔존 NOTE: pykrx 단일 호출 timeout 부재 (Step6 부터 누적된 별도 후속 리스크, 본
-  STEP 범위 외).
+Step8 운영 로그 문서: `docs/ops/POC2_STEP8_OPERATION_LOG.md`
+Step8 설계서: `docs/handoff/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md`
+
+Step8 완료 기준 (3가지 경로):
+- **표준 완료**: 서로 다른 영업일 3회 이상 운영 기록 + AI 투자세션 1회 이상 +
+  사용자 운영 가능성 명시 판단.
+- **조기 종료**: 메시지 이해 불가 / 운영 번거로움 / Telegram 무가치 / 알림 빈도 부적절 /
+  운영 병목 재발 — 실패 아님, 검증 결과로 기록.
+- **첫 의사결정 도달** (Q5 BACKLOG 복귀 핵심 트리거): PUSH 수신 → AI 투자세션 →
+  매수/매도/보류 중 하나 명시적 결정.
+
+본 STEP 진행 동안 코드 / API / UI / Telegram / 데이터 계약 변경 0건 정책.
+docs/STATE_LATEST.md 포인터 stub 본문 변경 없음.
+
+---
+
+## 1.1 직전 상태 (POC2-Step7C VERIFIED + Step7 시리즈 종결)
+
+```text
+이전 단계: POC2-Step7C 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-13) — 3-PUSH 모두 최소 운영 가능
+Step7 시리즈 종결 commit chain:
+- f6a64ead docs(poc2-step7): conclusion + next handoff for Step7 series
+- 88ae8bf1 docs(poc2-step7c): address Codex NOTES — extend scope type + mark BACKLOG resolved
+- d7075bfd feat(poc2-step7c): falling ETF caution signal (PUSH 3) minimal push
+- 5dcb207c fix(poc2-step7b): address Codex REJECTED — remove UI placeholder + revert pointer
+- 531ffbf6 feat(poc2-step7b): unify holdings status briefing (PUSH 1) bullet
+- d84bc7df docs(poc2-step7a): mark VERIFIED_WITH_NOTES + record Step7 design in pointer
+- 3d9112d5 feat(poc2-step7a): align label + starter seed for new ETF watch candidate
+- 1c7881d9 docs(poc2-step7): save 3-Push Realignment Design (CONDITIONAL_PASS)
+```
 
 POC2-Step7C 요약 (본 STEP):
 - **3-PUSH 모두 최소 구현 완료**: PUSH 1 보유 종목 상태 브리핑 (Step7B) + PUSH 2 신규
