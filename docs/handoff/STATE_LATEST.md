@@ -7,9 +7,20 @@
 ## 1. 현재 상태
 
 ```text
-현재 단계: POC2-Step7C 완료 (2026-05-12) — 급락 ETF 주의 신호 (PUSH 3) 최소 구현. 3-PUSH 모두 최소 운영 가능.
-다음 단계: 사용자 협의 후 운영 사이클 1회 시작 또는 운영 빈도 문서 정합성 보정 STEP 선택
+현재 단계: POC2-Step7C 완료 (검증자 VERIFIED_WITH_NOTES, 2026-05-13) — 3-PUSH 모두 최소 운영 가능
+다음 단계: 운영 사이클 1회 시작 또는 운영 빈도 문서 정합성 보정 STEP 선택
 ```
+
+POC2-Step7C 검증 통과 commit chain:
+- d7075bfd feat(poc2-step7c): falling ETF caution signal (PUSH 3) minimal push
+
+검증자(Codex) 라운드 흐름:
+- 1차 검증: VERIFIED_WITH_NOTES (B-6 stale 표기 2건: FactorSignal.scope 타입 +
+  BACKLOG "PUSH 3 미구현" 표기).
+- NOTE 정정 라운드: FactorSignal.scope 타입에 "universe_falling" 추가 + BACKLOG
+  항목을 "RESOLVED — Step7C 완료" 로 갱신.
+- 잔존 NOTE: pykrx 단일 호출 timeout 부재 (Step6 부터 누적된 별도 후속 리스크, 본
+  STEP 범위 외).
 
 POC2-Step7C 요약 (본 STEP):
 - **3-PUSH 모두 최소 구현 완료**: PUSH 1 보유 종목 상태 브리핑 (Step7B) + PUSH 2 신규

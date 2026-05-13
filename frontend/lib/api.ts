@@ -266,7 +266,9 @@ export interface FactorSignal {
   factor_name: string;
   // POC2 Step 6 Fix 라운드: scope="universe" 추가 — universe momentum 결과를 기존
   // factor_signals 안의 signal 1건으로 표현 (draft_payload 키 신설 0건).
-  scope: "portfolio" | "holding_row" | "universe";
+  // POC2 Step 7C: scope="universe_falling" 추가 — 급락 ETF 주의 신호 (PUSH 3) 도
+  // 동일 패턴으로 factor_signals 안의 signal 1건으로 표현.
+  scope: "portfolio" | "holding_row" | "universe" | "universe_falling";
   is_available: boolean;
   value: number | null;
   unit: string;
