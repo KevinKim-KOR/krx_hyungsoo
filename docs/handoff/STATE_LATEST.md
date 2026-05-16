@@ -1,10 +1,80 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-14
+최종 업데이트: 2026-05-15
 
 ---
 
-## 0. 현재 상태 — 2026-05-14 B 방향 전환
+## 0. 현재 상태 — 2026-05-15 FDR + SQLite Market Data Foundation 1차 구현 완료
+
+```text
+현재 단계: FDR + SQLite Market Data Foundation 1차 구현 완료 (2026-05-15)
+이전 단계: 가능성 확인 STEPs — pykrx 1.0.51 / 1.2.8 / KRX 인증 (FAIL) → FDR (PASS)
+다음 단계 후보: (a) PC ETF Universe TOP N 화면 구현, (b) decision evidence 별도 STEP,
+              (c) KRX OPEN API fallback 검증 (인증키 승인 후)
+```
+
+### 본 STEP 요약
+
+- **방향**: B 방향 PC 작업 1~2단계 (한국 상장 ETF 전체 universe 조회 → 일간/1개월/3개월
+  TOP N 산출) 의 데이터 기반 구축. UI 단계는 본 STEP 의 대상 아님.
+- **1순위 데이터 소스**: FinanceDataReader 채택 (가능성 확인 PASS — 2026-05-15).
+  `StockListing("ETF/KR")` 단일 호출로 1,107개 ETF universe + Name + Category + 현재가
+  + 거래량 + 시가총액 한 번에 확보.
+- **저장소**: SQLite (`state/market/market_data.sqlite`) — 3 테이블만 도입.
+- **신규 모듈 3개**:
+  - `app/market_data_store.py` — SQLite 스키마 + upsert (etf_master / etf_daily_price /
+    market_refresh_log).
+  - `app/market_data_fdr.py` — FDR universe + price fetch 래퍼. 테스트는 stub 으로
+    monkeypatch.
+  - `app/market_topn.py` — SQLite 가격 데이터 기준 일간/1개월/3개월 TOP N + JSON artifact.
+- **N+1 호출 금지 가드**: `refresh_etf_universe` 는 `StockListing("ETF/KR")` 단일 호출
+  결과만 etf_master 에 저장. ticker 별 추가 가격 호출은 본 함수 안에서 발생 0건 —
+  테스트가 이를 명시 검증.
+- **금지 사항 (본 STEP 에서 명시 회피)**:
+  · `decision_evidence` 테이블 신설 / writer 연결 — BACKLOG.
+  · AI 투자세션 / 사용자 매매 판단 / approval / Telegram / Run 상태 저장 — 본 저장소
+    책임 아님.
+  · PC UI 화면 구현 / API 추가 / Telegram 변경 / OCI 일 3회 PUSH 연결 / ML 연결.
+  · etf_master 의 ticker 별 N+1 보강 호출.
+- **검증**: pytest 191 passed (이전 173 + 신규 18 — store 6 / fdr 6 / topn 6).
+- **의존성 변화**: `finance-datareader>=0.9.202` 추가. **pandas 2.3.3 유지** (메이저
+  업그레이드 발생 안 함 — R2 위험 해소).
+- **artifact**: `state/market/etf_universe_topn_latest.json` — 1회 운영 fetch 시 생성.
+
+### 신규 / 수정 파일
+
+신규 (코드, black 적용 후 실측):
+- `app/market_data_store.py` (332라인) — SQLite DDL + upsert + log + helpers.
+- `app/market_data_fdr.py` (300라인) — FDR universe / price wrapper + refresh_log.
+- `app/market_topn.py` (206라인) — daily / 1m / 3m TOP N 산출 + artifact.
+- `tests/test_market_data_store.py` (224라인) — 6 tests.
+- `tests/test_market_data_fdr.py` (214라인) — 6 tests.
+- `tests/test_market_topn.py` (193라인) — 6 tests.
+
+KS-10 임계 (실측):
+- 백엔드 max 564 (app/draft_message.py, 기존) — trigger 650 / near 600 미달.
+- 테스트 max 924 (test_holdings_message_text.py, 기존) — trigger 1500 / near 1450 미달.
+- 프론트 max 515 (EnrichedHoldingsSection.tsx, 기존) — trigger 900 / near 850 미달.
+- 본 STEP 신규 6개 파일 모두 안전 범위 (백엔드 max 332 / 테스트 max 224).
+
+수정:
+- `requirements.txt` — `finance-datareader>=0.9.202` 추가.
+- `docs/PROJECT_ORIGIN_INTENT.md` §8 — FDR / SQLite 자산 추가, pykrx universe 폐기 명시.
+- `docs/backlog/BACKLOG.md` — decision evidence + FDR 약관 + Category 라벨 + SQLite
+  영구 보존 정책 4건 신규 등록.
+- `.gitignore` — SQLite 바이너리 / 자동 생성 artifact 운영 위생.
+
+### 가능성 확인 STEP 결과 흐름 (2026-05-15 동일자 누적)
+
+1. pykrx 1.0.51 ETF universe — FAIL.
+2. pykrx 1.2.8 ETF universe — FAIL (KRX 인증 요구 메시지 발견).
+3. pykrx 1.2.8 + KRX_ID/KRX_PW 인증 — FAIL (KRX 서버 거부).
+4. FinanceDataReader — **PASS** (1,107 ETF / 234초 / 76.1% 가격 데이터 성공률).
+5. 본 STEP — FDR + SQLite 구현 1차 완료.
+
+---
+
+## 0.1 직전 상태 (2026-05-14 B 방향 전환)
 
 ```text
 현재 단계: B 방향 전환 직후 (2026-05-14) — PC 작업 1~2단계 가능성 확인 진입 전

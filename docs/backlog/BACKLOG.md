@@ -12,6 +12,56 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## FDR + SQLite Market Data Foundation 후 신규 (2026-05-15)
+
+B 방향 PC 작업 1~2단계 구현 (FinanceDataReader ETF universe + SQLite market_data 저장소)
+완료 후 도출된 BACKLOG 항목.
+
+### BACKLOG: 판단 근거 저장 (decision evidence)
+- **사용자 요구 (유지)**: 향후 투자 결과를 판단한 근거를 저장해야 한다. 그래야 과거
+  판단과 며칠 뒤 결과를 비교할 수 있다.
+- **보류 사유**: 시장 데이터 저장소 안정화 전 판단 근거 저장까지 넣으면 범위가 커진다.
+  본 STEP 에서는 etf_master / etf_daily_price / market_refresh_log 3 테이블만 도입.
+  `decision_evidence` 테이블 / writer / AI 투자세션 대화 저장 / approval 상태 저장 /
+  Telegram message 저장 / Run 상태 저장은 모두 **이번 STEP 에서 명시적 금지**.
+- **보류된 위험**: 과거 판단과 이후 성과를 연결하지 못하면 AI 투자 시스템의 학습
+  자산이 약해진다.
+- **재검토 트리거**: PC ETF Universe TOP N 화면에서 사용자가 AI 투자세션에 1회 이상
+  가져가고, 매수 / 매도 / 보류 중 하나의 판단을 남긴 시점.
+- **연결**: 별도 STEP 으로 분리 — `decision_evidence` 테이블 스키마 + writer + 사용자
+  판단 hook 지점 + 비교 리포트 도입은 본 STEP 종료 후 별도 설계.
+
+### BACKLOG: FDR 외부 의존 약관 / 안정성 / 호출 빈도 제한 / 단일 호출 timeout 부재 검토
+- **보류 사유**: FinanceDataReader 는 비공식 데이터 출처 (네이버/Investing 등 스크래핑
+  추정) 기반. 본 STEP 에서는 가능성 확인 PASS 후 채택만 결정하고 약관 / 안정성 /
+  호출 빈도 / 차단 위험 검토는 별도 진행.
+- **보류된 위험 1 (출처 안정성)**: 출처 변경 / 차단 / 의존성 깨짐 시 운영 단절. 본 프로젝트는
+  1차 데이터 소스를 FDR 에 두고 KRX OPEN API 를 fallback 으로 유지.
+- **보류된 위험 2 (단일 호출 timeout 부재 — 검증자 B-6 NOTE)**: `app/market_data_fdr.py`
+  의 `_default_price_fetcher` / `_default_universe_fetcher` 는 단일 호출 timeout 을
+  강제하지 않는다. FDR 가 KRX/Naver 응답 hang 시 장시간 차단 가능성. 본 STEP 의
+  per-ticker 실패 격리는 예외 catch 만 처리하며 타임아웃 자체는 외부 라이브러리에
+  위임된 상태.
+- **재검토 트리거**: FDR 호출이 운영 중 1회라도 실패하거나 KRX OPEN API 인증키 승인
+  완료 시점 (월요일 이후 예상). 또는 운영 fetch 가 4분 이상 hang 되는 케이스 발생 시.
+- **권장 후속 조치 (별도 STEP)**: per-ticker timeout wrapper (`concurrent.futures` /
+  `signal.alarm` / `requests` timeout 직접 주입 등) + 운영 중 호출 시간 모니터링.
+
+### BACKLOG: ETF Category 라벨 매핑
+- **보류 사유**: `fdr.StockListing("ETF/KR")` 응답의 Category 컬럼은 정수 코드
+  (예: 1, 2, 4). 라벨 매핑 (예: 1=국내주식, 4=해외주식 등) 은 별도 정의 필요.
+- **연결**: B 방향 §3 의 섹터/테마 발굴 시 Category 활용 가능 — TOP N 화면 구현 STEP
+  에서 함께 처리.
+
+### BACKLOG: SQLite 영구 보존 운영 정책
+- **보류 사유**: 본 STEP 의 `state/market/market_data.sqlite` 는 .gitignore 처리 (운영
+  데이터 / 바이너리). PC 환경 간 동기화 / 백업 / OCI 배포 환경 SQLite 위치 / TTL 정책
+  미정.
+- **재검토 트리거**: OCI 일 3회 자동 PUSH 연결 STEP 또는 PC ↔ OCI 데이터 동기화 필요
+  시점.
+
+---
+
 ## STEP7C 완료 후 신규 (2026-05-12)
 
 POC2-Step7C 완료 — 급락 ETF 주의 신호 (PUSH 3) 최소 구현 후 도출된 BACKLOG 항목.

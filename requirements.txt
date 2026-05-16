@@ -10,3 +10,6 @@ pykrx>=1.0.51
 # setuptools 81 부터 pkg_resources 가 분리되어 import 실패하므로 <81 제약 필요.
 # (재검토 트리거: pykrx 가 pkg_resources 의존성을 제거한 새 버전 출시)
 setuptools>=68.0,<81
+# FinanceDataReader — B 방향 PC 작업 1~2단계 ETF universe / 가격 시계열 1순위 소스.
+# pykrx ETF universe 자동 조회 경로 폐기 후 채택 (가능성 확인 STEP PASS — 2026-05-15).
+finance-datareader>=0.9.202

@@ -141,7 +141,7 @@ OCI 작업 (일 3회 자동 PUSH):
 
 ## 8. 핵심 자산 (Phase 1에서 살려온 것)
 
-**코드 자산** (B 방향 전환 후 처리 분류 — 2026-05-14):
+**코드 자산** (B 방향 전환 후 처리 분류 — 2026-05-14 / 2026-05-15 갱신):
 
 - ML 모듈 (predictive_risk_classifier, 완전 독립)
   → **보존하되, 현재 B 방향 구조와 fit 검토 후 연결 여부 결정**.
@@ -152,8 +152,19 @@ OCI 작업 (일 3회 자동 PUSH):
 - Telegram 연동
   → **보조 출력 배관으로 유지**. 메인 의사결정 입력 아님 (§3.2).
 - pykrx 가격 조회 배관 (price_history_pykrx.py + universe_refresh.py)
-  → **ETF universe TOP N 산출에 재사용 후보**. PC 작업 1단계의 가능성 확인
-    대상이 본 배관이다.
+  → **ETF universe 자동 조회 경로는 폐기** (1.0.51 / 1.2.8 / KRX 인증 모두 거부 —
+    2026-05-15 가능성 확인 결과). 단일 ticker OHLCV (`get_market_ohlcv`) 만 작동.
+    기존 Step6 manual seed 흐름과 holdings 가격 점검 용도로만 보존.
+- **FinanceDataReader 배관** (신규, 2026-05-15) — `app/market_data_fdr.py` +
+  `app/market_data_store.py` + `app/market_topn.py`
+  → B 방향 PC 작업 1~2단계의 **1순위 데이터 소스**. ETF universe (`StockListing("ETF/KR")`,
+    1,107개) + ETF 이름 + 카테고리 + 일간/1개월/3개월 수익률 + TOP N 산출.
+- **SQLite 시장 데이터 저장소** (신규, 2026-05-15) — `state/market/market_data.sqlite`
+  → 테이블 3개 (etf_master / etf_daily_price / market_refresh_log) 만 도입.
+    운영 상태 / 승인 / Telegram / Run 상태 / decision evidence 저장은 본 저장소의
+    책임이 아니다 — BACKLOG 별도 STEP.
+- **KRX OPEN API fallback** — 인증키 승인 대기 (월요일 이후) 후 보조 검증용으로 유지.
+  FDR 운영 중 1회라도 실패하면 검증 STEP 진입.
 
 **배움 자산**:
 - GPT 주도 설계의 편향 (복잡도 폭발)
