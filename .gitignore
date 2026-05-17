@@ -135,6 +135,11 @@ momentum-etf/
 # Phase 1 자산 / 외부 참고 자산 — 로컬 보존, 원격에는 push 하지 않음
 backup/
 
+# Claude Code 사용자 환경 설정 (도구 권한 allowlist / local override) —
+# 사용자/머신별 누적 변경이 매 commit 마다 충돌하므로 추적 대상에서 제외 (2026-05-18).
+.claude/settings.json
+.claude/settings.local.json
+
 # 가상 환경
 venv/
 .venv/
