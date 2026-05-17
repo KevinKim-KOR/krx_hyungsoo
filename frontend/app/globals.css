@@ -689,3 +689,110 @@ ul.reason-list li {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
+
+/* POC2 PC UI Shell 1차 — 좌측 메뉴 + 우측 컨텐츠 레이아웃 */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  align-items: stretch;
+}
+
+.app-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  padding: 24px 0 24px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  font-weight: 700;
+  font-size: 16px;
+  padding: 0 20px 16px 20px;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.sidebar-menu {
+  list-style: none;
+  margin: 12px 0 0 0;
+  padding: 0;
+}
+
+.sidebar-menu li {
+  margin: 0;
+}
+
+.sidebar-menu-btn {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  padding: 10px 20px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.sidebar-menu-btn:hover {
+  background: rgba(58, 122, 254, 0.08);
+}
+
+.sidebar-menu li.active .sidebar-menu-btn {
+  background: rgba(58, 122, 254, 0.15);
+  border-left-color: var(--accent);
+  color: var(--accent);
+}
+
+.sidebar-menu-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sidebar-menu-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.app-content {
+  flex: 1;
+  min-width: 0;
+  max-width: 960px;
+  margin: 0;
+  padding: 28px 32px 48px 32px;
+}
+
+.dashboard-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-status-list li {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+}
+
+.dashboard-shortcut-row {
+  flex-wrap: wrap;
+}
+
+.placeholder-card {
+  border-style: dashed;
+}
+
+.placeholder-detail-area {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

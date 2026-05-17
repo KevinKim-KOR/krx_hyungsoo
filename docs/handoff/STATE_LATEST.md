@@ -1,10 +1,83 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-15
+최종 업데이트: 2026-05-17
 
 ---
 
-## 0. 현재 상태 — 2026-05-15 FDR + SQLite Market Data Foundation 1차 구현 완료
+## 0. 현재 상태 — 2026-05-17 PC UI Shell 1차 완료
+
+```text
+현재 단계: PC UI Shell 1차 완료 (2026-05-17) — 좌측 메뉴 + 5 View 분리
+이전 단계: FDR + SQLite Market Data Foundation 1차 구현 완료 (2026-05-15)
+다음 단계 후보:
+  (a) Market Discovery TOP N 상세표 구현 — SQLite artifact → UI 연결
+  (b) Data Status 화면에 SQLite refresh 상태 연결 (API 신설 필요)
+  (c) decision evidence 별도 STEP
+  (d) KRX OPEN API fallback 검증 (인증키 승인 후)
+```
+
+### 본 STEP 요약
+
+- **방향**: 기존 POC 단일 화면 (HoldingsClient + UniverseRefreshPanel + RunPanel +
+  SampleDraft 가 모두 섞여 있던 구조) 을 **좌측 메뉴 기반 5 View 구조** 로 분리.
+- **라우팅**: App Router 디렉토리 분기 미사용 — `MainPanel` 의 클라이언트 상태
+  (`active: MenuKey`) 로 view 전환. 지시문 §3.1 "메뉴 폴더 구조 만들지 않음" 준수.
+- **5 메뉴**: Dashboard (기본 화면) / Market Discovery (placeholder) / Holdings /
+  Approval & Telegram / Data Status (placeholder).
+- **승인 전/후 용어 분리** (지시문 §3.5, 검증자 NOTE 반영 후 3-way 분류):
+  - `classifyApprovalPhase(status)` → `"pending" | "delivered" | "terminated"`.
+  - `pending` (PENDING_APPROVAL) → "승인 대기 메시지 초안".
+  - `delivered` (DELIVERING / COMPLETED) → "Telegram 발송 결과 — 발송 완료 메시지".
+  - `terminated` (REJECTED / FAILED) → "거절 / 실패된 메시지 초안 (Telegram 미발송)".
+  - RunPanel §3 헤더 + MessagePreview header + ApprovalTelegramView 안내 +
+    LEGACY_FALLBACK_NOTICE 모두 본 phase 분류 적용.
+  - "PUSH 메시지" / "발송 메시지" 표현 사용 0건 (주석 포함 grep 검증).
+- **신규 컴포넌트 6 + 수정 3**:
+  - 신규: `LeftSidebar.tsx` (65) / `DashboardView.tsx` (84) / `MarketDiscoveryView.tsx`
+    (38) / `HoldingsView.tsx` (32) / `ApprovalTelegramView.tsx` (78) /
+    `DataStatusView.tsx` (37).
+  - 수정: `MainPanel.tsx` (69→64, 재구성) / `RunPanel.tsx` (444→486, 용어 3-way 분류) /
+    `globals.css` (691→798, sidebar 레이아웃).
+- **금지 회피** (지시문 §5): 신규 API 0건 / Telegram 문구 변경 0건 / SQLite 조회 API
+  0건 / TOP N 상세 화면 0건 / 차트 0건 / 매수·매도 판단 0건 / ML 연결 0건 / OCI
+  연결 0건 / 모바일 UI 0건 / backend 변경 0건.
+- **자동 메뉴 전환**: HoldingsClient 가 draft 를 생성하면 ApprovalTelegramView 로
+  자동 이동 — 기존 단일 페이지에서 즉시 노출되던 운영 동작 보존 (AC-11).
+- **검증**: pytest 191 passed / black PASS / flake8 PASS / frontend lint PASS /
+  frontend build PASS / dev server SSR 5 메뉴 렌더링 확인.
+- **KS-10**: trigger 0 / near 0. 신규 6 컴포넌트 모두 84라인 이하. RunPanel 468라인
+  (기존 444 + 24 — 용어 동적 전환). globals.css 798 (CSS 는 임계 대상 아님).
+
+### 신규 / 수정 파일
+
+신규 (Frontend, 라인 수 실측):
+- `frontend/app/components/LeftSidebar.tsx` (65라인) — 5 메뉴 sidebar.
+- `frontend/app/components/DashboardView.tsx` (84라인) — 시스템 상태 + 바로가기 카드.
+- `frontend/app/components/MarketDiscoveryView.tsx` (38라인) — placeholder.
+- `frontend/app/components/HoldingsView.tsx` (32라인) — HoldingsClient 래퍼.
+- `frontend/app/components/ApprovalTelegramView.tsx` (78라인) — RunPanel + UniverseRefresh
+  + SampleDraft 호스팅 + 승인 전/후 용어 명시.
+- `frontend/app/components/DataStatusView.tsx` (37라인) — placeholder.
+
+수정:
+- `frontend/app/components/MainPanel.tsx` — 좌측 메뉴 + view 라우터로 재구성.
+  run state 보유 + draft 생성 시 자동 메뉴 전환.
+- `frontend/app/components/RunPanel.tsx` — §3 헤더 status 기반 동적
+  (PENDING → "승인 대기 메시지 초안", 그 외 → "Telegram 발송 결과") +
+  MessagePreview header dynamic + LEGACY_FALLBACK_NOTICE 정정.
+- `frontend/app/globals.css` — sidebar/menu/dashboard/placeholder 스타일 추가.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것
+
+- TOP N 상세표 (Market Discovery placeholder).
+- SQLite 조회 API / 실시간 refresh 버튼 (Data Status placeholder).
+- AI 투자세션 / 매수·매도 판단 / 차트 / 시장 국면 표시.
+- backend 변경 (lint 가드 / 데이터 계약 / Telegram / OCI / ML 모두 손 안 댐).
+- 모바일 UI / 신규 라우트 / 신규 API.
+
+---
+
+## 0.1 직전 상태 — 2026-05-15 FDR + SQLite Market Data Foundation 1차 구현 완료
 
 ```text
 현재 단계: FDR + SQLite Market Data Foundation 1차 구현 완료 (2026-05-15)

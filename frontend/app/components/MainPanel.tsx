@@ -1,69 +1,64 @@
 "use client";
 
-// POC2 Step 1 — 메인 컨테이너.
+// POC2 PC UI Shell 1차 — 좌측 메뉴 기반 화면 컨테이너.
 //
-// UI 정책 (지시문 D항):
-// - 첫 번째 / 기본 노출 섹션 = HoldingsClient (운영 진입점)
-// - run 이 만들어지면 RunPanel 로 status / Approve / Reject 노출
-// - 샘플 입력은 가장 아래의 접힘 <details> 안. 라벨 "개발/테스트용 — 운영 입력 아님".
-//   기본 닫힘. 운영 입력과 동급 탭 구조 금지.
-//
-// run state 는 이 컨테이너가 controlled 로 보유. HoldingsClient /
-// SampleDraftQuickButton 모두 onDraftCreated(run) 으로 부모에 전달.
+// 정책 (지시문):
+// - 라우팅은 App Router 디렉토리 분기 대신 본 컴포넌트의 클라이언트 상태로 처리
+//   ("메뉴 폴더 구조는 만들지 않음" — 지시문 §3.1).
+// - 첫 진입 시 Dashboard.
+// - 5개 메뉴: Dashboard / Market Discovery / Holdings / Approval & Telegram / Data Status.
+// - run state 는 본 컨테이너가 controlled 로 보유. HoldingsView / ApprovalTelegramView
+//   가 동일 run state 를 공유.
+// - HoldingsClient 가 draft 를 생성하면 자동으로 Approval / Telegram 메뉴로 이동
+//   (기존 단일 페이지에서 즉시 noticed 되던 운영 동작 보존 — AC-11).
 
-import { useState } from "react";
-import HoldingsClient from "./HoldingsClient";
-import RunPanel from "./RunPanel";
-import SampleDraftQuickButton from "./SampleDraftQuickButton";
-import UniverseRefreshPanel from "./UniverseRefreshPanel";
+import { useCallback, useState } from "react";
+import ApprovalTelegramView from "./ApprovalTelegramView";
+import DashboardView from "./DashboardView";
+import DataStatusView from "./DataStatusView";
+import HoldingsView from "./HoldingsView";
+import LeftSidebar, { type MenuKey } from "./LeftSidebar";
+import MarketDiscoveryView from "./MarketDiscoveryView";
 import type { Run } from "@/lib/api";
 
 export default function MainPanel() {
+  const [active, setActive] = useState<MenuKey>("dashboard");
   const [run, setRun] = useState<Run | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleDraftCreated = useCallback(
+    (next: Run | null) => {
+      setRun(next);
+      if (next !== null) {
+        // draft 가 생성되면 사용자가 결과를 즉시 확인할 수 있도록 Approval 화면으로 전환.
+        setActive("approval");
+      }
+    },
+    []
+  );
+
+  let view: React.ReactNode;
+  switch (active) {
+    case "dashboard":
+      view = <DashboardView onNavigate={setActive} />;
+      break;
+    case "market_discovery":
+      view = <MarketDiscoveryView />;
+      break;
+    case "holdings":
+      view = <HoldingsView onDraftCreated={handleDraftCreated} />;
+      break;
+    case "approval":
+      view = <ApprovalTelegramView run={run} setRun={setRun} />;
+      break;
+    case "data_status":
+      view = <DataStatusView />;
+      break;
+  }
 
   return (
-    <main>
-      <h1>승인 루프</h1>
-      <p className="subtitle">
-        보유 종목을 입력하면 보유 현황 기반 초안이 생성되고, 승인 시 외부로 전달됩니다.
-        (이번 단계는 ML 추천이 아닌 보유 현황 그대로의 초안입니다.)
-      </p>
-
-      {/* 1. 운영 진입점 — 보유 종목 입력 (최상단, 첫 번째 섹션) */}
-      <HoldingsClient onDraftCreated={setRun} />
-
-      {/* 1-2. POC2 Step 6 + Step 7A — 신규 ETF 관찰 후보 (PUSH 2) 별도 영역. */}
-      <UniverseRefreshPanel />
-
-      {/* 2. 현재 run 표시 (run 있을 때만) */}
-      {run ? (
-        <RunPanel
-          run={run}
-          setRun={setRun}
-          loading={loading}
-          setLoading={setLoading}
-          errorMsg={errorMsg}
-          setErrorMsg={setErrorMsg}
-        />
-      ) : null}
-
-      {/* 3. 샘플 입력 (개발/테스트용, 접힘) — 가장 아래 */}
-      <details className="card" style={{ marginTop: 24 }}>
-        <summary
-          style={{
-            cursor: "pointer",
-            color: "var(--muted)",
-            fontWeight: 600,
-          }}
-        >
-          개발/테스트용 — 운영 입력 아님
-        </summary>
-        <div style={{ marginTop: 12 }}>
-          <SampleDraftQuickButton onDraftCreated={setRun} />
-        </div>
-      </details>
-    </main>
+    <div className="app-shell">
+      <LeftSidebar active={active} onSelect={setActive} />
+      <main className="app-content">{view}</main>
+    </div>
   );
 }

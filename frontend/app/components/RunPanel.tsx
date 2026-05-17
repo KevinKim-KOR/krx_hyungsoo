@@ -165,13 +165,19 @@ function SummaryItem({
 // 프론트엔드는 message_text 를 절대 조립/파싱하지 않는다. 백엔드가 내려준 원본만 그대로 렌더링.
 
 const LEGACY_FALLBACK_NOTICE =
-  "이 과거 초안은 전송 메시지 미리보기를 지원하지 않습니다. " +
+  "이 과거 초안은 승인 대기 메시지 초안 미리보기를 지원하지 않습니다. " +
   "아래 근거 데이터에서 초안 내용을 확인하세요.";
 
-function MessagePreview({ messageText }: { messageText: string }) {
+function MessagePreview({
+  messageText,
+  phase,
+}: {
+  messageText: string;
+  phase: ApprovalPhase;
+}) {
   return (
     <div className="preview-block">
-      <div className="preview-header">전송 메시지 미리보기</div>
+      <div className="preview-header">{previewHeaderForPhase(phase)}</div>
       <pre className="preview-body">{messageText}</pre>
     </div>
   );
@@ -192,6 +198,41 @@ function LegacyFallback() {
 // - frontend/app/components/MomentumCandidatesSection.tsx
 // 분리 전후 렌더링 / 문구 / 배치 / 동작 동일.
 
+type ApprovalPhase = "pending" | "delivered" | "terminated";
+
+function classifyApprovalPhase(status: RunStatus): ApprovalPhase {
+  // 3-way 분류 — 검증자 NOTE 반영 (REJECTED/FAILED 를 발송 결과로 분류하지 않음):
+  //   PENDING_APPROVAL → "승인 대기 메시지 초안" (승인 전)
+  //   DELIVERING / COMPLETED → "Telegram 발송 결과" (승인 후 발송)
+  //   REJECTED / FAILED → "거절 / 실패된 메시지 초안" (승인 후 미발송)
+  if (status === "PENDING_APPROVAL") return "pending";
+  if (status === "DELIVERING" || status === "COMPLETED") return "delivered";
+  return "terminated";
+}
+
+function sectionTitleForPhase(phase: ApprovalPhase): string {
+  switch (phase) {
+    case "pending":
+      return "3. 승인 대기 메시지 초안";
+    case "delivered":
+      return "3. Telegram 발송 결과";
+    case "terminated":
+      return "3. 거절 / 실패된 메시지 초안";
+  }
+}
+
+function previewHeaderForPhase(phase: ApprovalPhase): string {
+  switch (phase) {
+    case "pending":
+      return "승인 대기 메시지 초안 (Telegram 발송 전 미리보기)";
+    case "delivered":
+      return "Telegram 발송 결과 — 발송 완료 메시지";
+    case "terminated":
+      return "거절 / 실패된 메시지 초안 (Telegram 미발송)";
+  }
+}
+
+
 function ApprovalDraftBody({ run }: { run: Run }) {
   const payload = run.draft_payload ?? {};
   const recs = (payload as Record<string, unknown>).recommendations;
@@ -200,6 +241,7 @@ function ApprovalDraftBody({ run }: { run: Run }) {
     typeof run.message_text === "string" && run.message_text.length > 0
       ? run.message_text
       : null;
+  const phase = classifyApprovalPhase(run.status);
   const momentumBundle = pickMomentumCandidates(payload as Record<string, unknown>);
 
   const hasRecs = Array.isArray(recs) && recs.length > 0;
@@ -251,7 +293,7 @@ function ApprovalDraftBody({ run }: { run: Run }) {
   return (
     <div>
       {messageText !== null ? (
-        <MessagePreview messageText={messageText} />
+        <MessagePreview messageText={messageText} phase={phase} />
       ) : (
         <LegacyFallback />
       )}
@@ -393,7 +435,7 @@ export default function RunPanel({
       </div>
 
       <div className="card">
-        <h2>3. 승인 초안 (전송 메시지 미리보기)</h2>
+        <h2>{sectionTitleForPhase(classifyApprovalPhase(run.status))}</h2>
         <ApprovalDraftBody run={run} />
       </div>
 
