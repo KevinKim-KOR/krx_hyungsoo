@@ -12,6 +12,45 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## PC Market Discovery TOP N 최소 표시 후 신규 (2026-05-17)
+
+PC Market Discovery 메뉴에서 일간 / 1개월 / 3개월 TOP N artifact 를 표 형태로
+표시하는 최소 구현 완료 후 도출된 BACKLOG 항목.
+
+### BACKLOG: AI 투자세션 복사용 문구 생성
+- **보류 사유**: 본 STEP 에서는 TOP N 표를 사용자가 직접 읽는 단계까지만 구현.
+  사용자가 AI 투자세션 (외부 채널) 에 가져갈 때 매번 표를 정리하는 비용이 발생.
+- **보류된 위험**: 표 → AI 토론 → 결정 흐름이 번거롭다고 사용자가 느끼면 운영
+  지속성이 떨어진다.
+- **재검토 트리거**: 사용자가 Market Discovery 화면을 2회 이상 운영에 사용한 뒤
+  "AI 에게 복사해서 붙여넣기 너무 번거롭다" 고 명시할 때.
+- **연결**: decision evidence 항목과 트리거가 겹친다 — AI 투자세션 이후 사용자 판단
+  저장과 함께 묶어 별도 STEP 으로 다룰 가능성.
+
+### BACKLOG: 레버리지 / 인버스 / 합성 ETF 필터 정책
+- **보류 사유**: 본 STEP 의 TOP N artifact 는 universe 전체를 그대로 노출.
+  실제 운영 결과 레버리지·인버스·합성 ETF 가 일간/1개월/3개월 TOP 상위를 거의
+  독점 (예: 491630 RISE 미국반도체인버스, 461910 PLUS 미국테크TOP10레버리지,
+  438320 TIGER 차이나항셍테크레버리지 등).
+- **보류된 위험**: 사용자가 "TOP N 이 레버리지/인버스 위주라 매매 후보로 부적합"
+  이라 느낄 수 있음. 단, 본 STEP 은 의도적으로 임의 제외 정책 도입 금지
+  (지시문 §6).
+- **재검토 트리거**: 사용자가 "TOP N 에서 레버리지/인버스/합성 제외" 를 명시
+  요청할 때 또는 AI 투자세션에서 이들을 일관되게 무시할 때.
+- **권장 후속 검토 항목**: 제외 기준 (이름 기반 / Category 코드 기반 / 별도 분류
+  테이블), 필터 토글 (필터 끄기/켜기) 제공 여부, 보존 vs 노출 분리.
+
+### BACKLOG: Data Status 실제 연결
+- **보류 사유**: 본 STEP 의 Data Status view 는 여전히 placeholder. SQLite
+  market_refresh_log / market_data 상태를 실제로 조회·표시하려면 신규 API 도입
+  필요 (지시문 §3.6 의 신규 API 금지 가드에 막힘).
+- **재검토 트리거**: PC Market Discovery TOP N 화면 운영이 안정화된 뒤,
+  refresh log 화면이 사용자 운영 흐름에 필요해진 시점.
+- **권장 후속 작업**: GET /market/status 또는 GET /market/refresh-log/latest 등
+  read-only API 도입 + Data Status view 연결.
+
+---
+
 ## FDR + SQLite Market Data Foundation 후 신규 (2026-05-15)
 
 B 방향 PC 작업 1~2단계 구현 (FinanceDataReader ETF universe + SQLite market_data 저장소)

@@ -361,3 +361,41 @@ export function refreshUniverseMomentum(): Promise<UniverseRefreshResponse> {
     60000,
   );
 }
+
+// ─── PC Market Discovery — read-only TOP N artifact ───────────────
+// GET /market/topn/latest 는 state/market/etf_universe_topn_latest.json 만 읽는다.
+// 본 API 는 FDR refresh / SQLite 직접 조회 / TOP N 재계산을 수행하지 않는다.
+
+export type MarketTopNStatus = "ok" | "missing" | "invalid";
+
+// artifact 에 없는 값은 백엔드가 그대로 null 로 통과시킨다 (지시문 §3.2 "억지로
+// 만들지 않는다"). 따라서 frontend 도 모든 필드를 nullable 로 받아 "-" 표시한다.
+export interface MarketTopNEntry {
+  rank?: number | null;
+  ticker?: string | null;
+  name?: string | null;
+  return_pct?: number | null;
+  basis_start_date?: string | null;
+  basis_end_date?: string | null;
+}
+
+export interface MarketTopNResponse {
+  status: MarketTopNStatus;
+  error?: string | null;
+  asof?: string | null;
+  source?: string | null;
+  n?: number | null;
+  universe_count?: number | null;
+  price_success_count?: number | null;
+  price_fail_count?: number | null;
+  runtime_seconds?: number | null;
+  daily_topn: MarketTopNEntry[];
+  one_month_topn: MarketTopNEntry[];
+  three_month_topn: MarketTopNEntry[];
+  topn_caveat?: string | null;
+  artifact_path?: string | null;
+}
+
+export function fetchMarketTopnLatest(): Promise<MarketTopNResponse> {
+  return request<MarketTopNResponse>("GET", "/market/topn/latest");
+}

@@ -4,7 +4,77 @@
 
 ---
 
-## 0. 현재 상태 — 2026-05-17 PC UI Shell 1차 완료
+## 0. 현재 상태 — 2026-05-17 PC Market Discovery TOP N 최소 표시 완료
+
+```text
+현재 단계: PC Market Discovery TOP N 최소 표시 완료 (2026-05-17)
+이전 단계: PC UI Shell 1차 완료 (2026-05-17) — 좌측 메뉴 + 5 View 분리
+다음 단계 후보:
+  (a) AI 투자세션 복사용 문구 생성 (BACKLOG)
+  (b) 레버리지 / 인버스 / 합성 ETF 필터 정책 (BACKLOG)
+  (c) Data Status 실제 연결 (read-only refresh-log API + view) (BACKLOG)
+  (d) decision evidence 별도 STEP
+  (e) KRX OPEN API fallback 검증 (인증키 승인 후)
+```
+
+### 본 STEP 요약
+
+- **방향**: 이미 생성된 `state/market/etf_universe_topn_latest.json` artifact 를 PC
+  Market Discovery 메뉴에서 표 형태로 보여준다. 새 데이터 수집은 일으키지 않는다.
+- **Backend**: `GET /market/topn/latest` read-only API 1개 신규 — artifact 파일만
+  읽는다. SQLite 직접 조회 / FDR 호출 / refresh / TOP N 재계산 0건.
+  - 응답 status: `ok` / `missing` / `invalid` 3분기. 모두 HTTP 200 정상 응답.
+  - 신규 모듈: `app/api_market_topn.py` (161라인) — APIRouter 패턴.
+  - `app/api.py` 에 `market_topn_router` include 만 추가 (+2라인).
+- **Frontend**:
+  - `frontend/lib/api.ts` (363→399) — `fetchMarketTopnLatest()` + `MarketTopNResponse` /
+    `MarketTopNEntry` 타입.
+  - `MarketDiscoveryView.tsx` (38→207) — 요약 헤더 + 일간/1개월/3개월 TOP N 3 표.
+    loading / error / ok / missing / invalid 5 상태 처리.
+  - `DashboardView.tsx` (84→157) — Market Discovery 데이터 상태 카드 추가.
+    데이터 존재 여부 (`ok` / `missing` / `invalid` / 확인 실패) 만 노출, TOP N 상세표는
+    절대 두지 않음 (지시문 §3.3 / AC-8).
+  - `globals.css` (798→834) — TOP N 표 스타일 추가.
+- **운영 실측**: 로컬 uvicorn + curl 로 `GET /market/topn/latest` 검증 — `status=ok`,
+  `universe_count=1107`, daily TOP 1 = `491630 RISE 미국반도체인버스(합성 H) +4.89%`.
+- **금지 회피** (지시문 §6 / AC-9):
+  - 새 데이터 수집 / FDR refresh / SQLite 직접 조회 화면 / TOP N 재계산 0건.
+  - 차트 / 필터·정렬 고도화 / 레버리지·인버스·합성 ETF 임의 제외 0건.
+  - AI 투자세션 복사용 문구 / 구성 종목 추출 / ML / OCI / Telegram / 매수·매도 판단 0건.
+  - backend 기존 구조 변경 0건 (api.py 의 router include 1줄 추가만).
+- **테스트**: pytest 200 passed (191 → +9 신규). 본 STEP 신규 9 tests 매핑:
+  - artifact ok / missing / invalid (broken JSON) / invalid (missing keys) — 4 tests.
+  - endpoint ok / missing / invalid — 3 tests.
+  - FDR refresh 호출 0 / SQLite 직접 조회 0 — 2 tests.
+- **KS-10**: trigger 0 / near 0. 본 STEP 신규/수정 모두 안전 범위.
+
+### 신규 / 수정 파일
+
+신규:
+- `app/api_market_topn.py` (161라인) — read-only TOP N artifact router.
+- `tests/test_market_topn_api.py` (263라인) — 9 tests.
+
+수정:
+- `app/api.py` (497→499라인) — router include 1줄 + import 1줄.
+- `frontend/lib/api.ts` (363→399라인) — `fetchMarketTopnLatest()` + 타입.
+- `frontend/app/components/MarketDiscoveryView.tsx` (38→207라인) — placeholder → 3 TOP N 표.
+- `frontend/app/components/DashboardView.tsx` (84→157라인) — Market Discovery 상태 카드.
+- `frontend/app/globals.css` (798→836라인) — TOP N 표 스타일.
+- `docs/handoff/STATE_LATEST.md` — §0 갱신 (본 STEP), 이전 §0 은 §0.1 격하.
+- `docs/backlog/BACKLOG.md` — "PC Market Discovery TOP N 최소 표시 후 신규" 섹션 신규.
+  AI 투자세션 복사용 문구 / 레버리지·인버스·합성 필터 정책 / Data Status 실제 연결 3건.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것
+
+- 새 데이터 수집 실행 버튼 / FDR refresh / SQLite 직접 조회 화면 / TOP N 재계산.
+- 차트 / 필터 / 정렬 고도화 / 임의 ETF 제외 정책.
+- AI 투자세션 복사용 문구 자동 생성 / 구성 종목 추출 / 매수·매도 판단.
+- ML 연결 / OCI 일 3회 PUSH 연결 / Telegram 문구 변경.
+- Dashboard 에 TOP N 상세표 추가 (Dashboard 는 상태 요약 + 이동 버튼만).
+
+---
+
+## 0.1 직전 상태 — 2026-05-17 PC UI Shell 1차 완료
 
 ```text
 현재 단계: PC UI Shell 1차 완료 (2026-05-17) — 좌측 메뉴 + 5 View 분리

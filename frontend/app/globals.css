@@ -796,3 +796,39 @@ ul.reason-list li {
   align-items: center;
   justify-content: center;
 }
+
+/* PC Market Discovery TOP N */
+.market-topn-card {
+  margin-top: 16px;
+}
+
+.market-topn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.market-topn-table th,
+.market-topn-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.market-topn-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.market-topn-table tbody tr:hover {
+  background: rgba(58, 122, 254, 0.04);
+}
+
+.market-topn-table code {
+  font-size: 13px;
+  color: var(--fg);
+}

@@ -44,6 +44,7 @@ from app import (
     market_naver,
     store,
 )
+from app.api_market_topn import router as market_topn_router
 from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
 from app.models import Run
@@ -68,6 +69,7 @@ app.add_middleware(
 # POC2 Step 6 — universe momentum 엔드포인트는 별도 라우터로 분리 (app.api_universe).
 # KS-10 근접 해소 + 1개 책임 1개 파일.
 app.include_router(universe_router)
+app.include_router(market_topn_router)
 
 
 class GenerateDraftRequest(BaseModel):
