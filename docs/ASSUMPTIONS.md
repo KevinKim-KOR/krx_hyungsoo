@@ -53,8 +53,18 @@
 - **답**: 아니다. ML 모듈 + OCI crontab + Telegram 연동만 살림. 나머지 새로 작성.
 
 ### A-2. MongoDB로 전환하는가?
-- **상태**: ANSWERED (2026-04-21)
-- **답**: 아니다. JSON SSOT 유지. 향후 필요 시 SQLite/PostgreSQL 검토.
+- **상태**: REOPENED → ANSWERED (재정리) (2026-05-18)
+- **이전 답 (2026-04-21)**: 아니다. JSON SSOT 유지. 향후 필요 시 SQLite/PostgreSQL 검토.
+- **재오픈 사유 (2026-05-18)**: FDR + SQLite Market Data Foundation 이후 시장 시세 /
+  ETF universe / 가격 이력은 SQLite 를 기준으로 관리하기로 사용자 결정이 변경되었다.
+  (Market Discovery SQLite Direct Refresh STEP 의 §3.1 KS-11 문서 정합성 보정).
+- **현재 답 (재정리)**: 데이터 종류별 SSOT 분리.
+  - **시장 데이터** (시세 / universe / 가격 이력 / TOP N 산출 기준) → SQLite
+    (`state/market/market_data.sqlite`).
+  - **holdings / Run / 승인 / Telegram 흐름** → 기존 JSON SSOT 유지.
+  - **MongoDB / 신규 대형 DB 도입은 여전히 금지** (PROJECT_ORIGIN_INTENT §10 #2).
+  - **decision evidence 저장은 BACKLOG 유지** — 본 단계에서 SQLite 에도 별도 테이블
+    신설하지 않는다.
 
 ### A-3. 친구 프로젝트를 뼈대로 삼는가?
 - **상태**: ANSWERED (2026-04-21)

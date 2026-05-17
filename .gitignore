@@ -164,11 +164,11 @@ state/market_cache/*.json
 state/universe/*.json
 
 # FDR + SQLite market data foundation (2026-05-15) — 운영 데이터는 commit 대상 아님
+# SQLite 단일 SSOT 전환 (2026-05-18) — etf_universe_topn_latest.json 폐기.
 state/market/market_data.sqlite
 state/market/market_data.sqlite-journal
 state/market/market_data.sqlite-wal
 state/market/market_data.sqlite-shm
-state/market/etf_universe_topn_latest.json
 
 # Reports (All Runtime Generated)
 reports/**/*.json

@@ -1,10 +1,96 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-17
+최종 업데이트: 2026-05-18
 
 ---
 
-## 0. 현재 상태 — 2026-05-17 PC Market Discovery TOP N 최소 표시 완료
+## 0. 현재 상태 — 2026-05-18 Market Discovery SQLite Direct Refresh
+
+```text
+현재 단계: Market Discovery 의 시장 데이터 기준을 JSON artifact → SQLite 로 단일화 (2026-05-18)
+이전 단계: PC Market Discovery TOP N 최소 표시 (artifact 기반, 2026-05-17)
+다음 단계 후보:
+  (a) refresh running 상태 서버 재시작 복구 (BACKLOG)
+  (b) AI 투자세션 복사용 문구 / 레버리지·인버스 필터 / Data Status 실제 연결 / decision evidence (기존 BACKLOG)
+  (c) KRX OPEN API fallback 검증
+```
+
+### 본 STEP 요약
+
+- **시장 데이터 SSOT 전환** — JSON artifact (`state/market/etf_universe_topn_latest.json`)
+  → SQLite (`state/market/market_data.sqlite`) 단일.
+  - artifact 파일 로컬 삭제.
+  - `.gitignore` 에서 해당 파일 entry 제거 (SQLite 패턴만 유지).
+  - 코드 참조 0건 (`tests/test_market_topn_api.py::test_no_etf_universe_topn_latest_json_path_in_code` 가드).
+- **Backend (3 endpoints)**:
+  - `GET /market/topn/latest` (수정) — SQLite 직접 계산. `?n=` query param 추가.
+    응답 status `ok | missing | empty | invalid` + `latest_refresh` + `period_exclusions`.
+  - `POST /market/refresh` (신규) — FDR 수집을 background thread 로 실행 (ETF universe
+    + 가격). single-flight + 6h cooldown 가드. JSON artifact 생성 0건.
+  - `GET /market/refresh/status` (신규) — in-memory state + cooldown remaining 반환.
+  - **namespace 결정** (2026-05-18, 설계자 직접 확인 후 환원):
+    · 초안 1차에서 기존 holdings naver 시세 갱신 endpoint (`POST /market/refresh`)
+      와 경로 충돌 → 본 STEP 의 새 endpoint 를 자체로 `/market/topn/*` 로 변경했다가
+      설계자 검토에서 기각.
+    · FIX 라운드 (2026-05-18) — 본 STEP 의 새 endpoint 를 지시문 그대로 `/market/refresh`
+      / `/market/refresh/status` 로 환원. 기존 holdings naver 시세 endpoint 는
+      `POST /holdings/market/refresh` 로 이동 (의미 namespace 분리, backward
+      compatibility alias 미제공).
+- **Frontend**:
+  - `lib/api.ts` — `fetchMarketTopnLatest(n)`, `postMarketRefresh()`, `fetchMarketRefreshStatus()` + 타입.
+  - `MarketDiscoveryView` — "최신 시장 데이터 갱신" 버튼 + status polling
+    (idle / starting / running / completed / failed / cooldown 6 UI 상태).
+    "SQLite 에 저장된 시장 데이터 기준" 라벨 명시.
+  - 결측 필드는 `-` 표시 (0% 보정 금지 — 검증자 NOTE 반영).
+- **결측 처리 (지시문 §6)**:
+  - 결측 데이터 0% 보정 금지. `period_exclusions` 로 5 reason 분류 집계
+    (`missing_latest_price` / `missing_base_price` / `insufficient_history` /
+    `invalid_price` / `stale_price`).
+- **KS-11 문서 정합성 보정**:
+  - `PROJECT_ORIGIN_INTENT.md §10 #2` — "JSON SSOT 유지" → "데이터 종류별 SSOT 분리"
+    (시장 데이터 = SQLite, 운영 상태 = JSON).
+  - `ASSUMPTIONS.md A-2` — REOPENED → ANSWERED (재정리). 시장 데이터 SQLite 기록.
+  - `STATE_LATEST.md` 본 §0 갱신.
+  - `BACKLOG.md` — "refresh running 상태 서버 재시작 복구" 신규 등록.
+- **검증**: pytest 211 passed (200 → +11). black PASS / flake8 PASS / frontend lint + build PASS.
+- **운영 1회 검증**: `uvicorn + curl` 로 `GET /market/topn/latest` 응답 `status=ok`,
+  `universe=1107`, `?n=3` 도 정상. `GET /market/refresh/status` 는 `idle` 응답.
+- **KS-10**: trigger 0 / near 0.
+
+### 신규 / 수정 파일
+
+신규:
+- `app/market_refresh_service.py` (single-flight + 6h cooldown + background thread).
+- 테스트 — 본 STEP 에서는 기존 2 테스트 파일 (test_market_topn.py / test_market_topn_api.py) 을
+  재작성. 새 파일 추가는 0건.
+
+수정:
+- `app/market_topn.py` — artifact 함수 폐기 (save_topn_artifact / compute_and_save_topn / DEFAULT_TOPN_PATH 제거).
+  status 분기 + latest_refresh + period_exclusions + `_compute_period` 3-way reason 추가.
+- `app/api_market_topn.py` — read_topn_artifact 폐기 → compute_topn() 호출 + 2 신규 endpoint.
+- `frontend/lib/api.ts` — TOP N response schema 확장 + refresh / status API 추가.
+- `frontend/app/components/MarketDiscoveryView.tsx` — refresh 버튼 + polling + SQLite 기준 라벨.
+- `tests/test_market_topn.py` — artifact 테스트 폐기, status / period_exclusions / 결측 처리 추가.
+- `tests/test_market_topn_api.py` — artifact 기반 폐기, SQLite + refresh + status + cooldown + single-flight 추가.
+- `.gitignore` — `etf_universe_topn_latest.json` entry 제거.
+- `docs/PROJECT_ORIGIN_INTENT.md §10 #2` — SSOT 분리 정정.
+- `docs/ASSUMPTIONS.md A-2` — REOPENED → ANSWERED 재정리.
+- `docs/handoff/STATE_LATEST.md` — §0 갱신.
+- `docs/backlog/BACKLOG.md` — refresh running 재시작 복구 신규.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것
+
+- 레버리지 / 인버스 / 합성 ETF 필터 (BACKLOG).
+- AI 투자세션 복사용 문구.
+- Data Status 상세 연결 (placeholder 유지).
+- 구성 종목 추출 / ML 연결 / OCI 자동 PUSH 연결 / 매수·매도 판단 / 차트 / Settings UI / TOP N 설정 UI.
+- cron / scheduler / refresh 자동 실행.
+- decision evidence 저장.
+- 서버 재시작 시 running 상태 복구 (BACKLOG).
+
+---
+
+## 0.1 직전 상태 — 2026-05-17 PC Market Discovery TOP N 최소 표시 완료
 
 ```text
 현재 단계: PC Market Discovery TOP N 최소 표시 완료 (2026-05-17)

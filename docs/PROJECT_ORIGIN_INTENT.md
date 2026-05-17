@@ -214,7 +214,14 @@ OCI 작업 (일 3회 자동 PUSH):
 ## 10. 절대 하지 않을 것
 
 1. 친구 프로젝트를 뼈대로 삼지 않는다 (참조만)
-2. MongoDB로 전환하지 않는다 (JSON SSOT 유지)
+2. MongoDB / 신규 대형 DB / 엔터프라이즈 저장소로 확장하지 않는다.
+   - **데이터 종류별 SSOT 분리** (2026-05-18 정정):
+     · 시장 시세 / ETF universe / 가격 이력 / TOP N 산출 기준 — **SQLite**
+       (`state/market/market_data.sqlite` 단일 파일).
+     · holdings / Run / 승인 상태 / Telegram 발송 흐름 — **기존 JSON SSOT 유지**.
+   - SQLite 는 시장 데이터 로컬 저장소이며 운영 승인 상태 / Telegram 메시지 /
+     decision evidence 저장소가 아니다 (해당 항목은 BACKLOG).
+   - 즉 "JSON SSOT 완전 폐기" 가 아니라 **데이터 성격별 SSOT 분리** 다.
 3. GPT 설계에 전체 방향을 맡기지 않는다
 4. "혹시 필요할까" 로직 아카이브하지 않는다 (Git으로 충분)
 5. MDD 10%를 1차 목표로 삼지 않는다

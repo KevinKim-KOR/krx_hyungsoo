@@ -12,6 +12,27 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## Market Discovery SQLite Direct Refresh 후 신규 (2026-05-18)
+
+Market Discovery 의 데이터 기준을 JSON artifact → SQLite 단일로 전환하고 PC 수동
+refresh background job 을 도입한 후 도출된 BACKLOG 항목.
+
+### BACKLOG: refresh running 상태 서버 재시작 복구
+- **보류 사유**: 이번 단계의 목표는 PC 수동 refresh 최소 운영. 본 STEP 의
+  `app/market_refresh_service.py` 는 in-memory state + threading.Lock 으로 single-flight
+  를 구현하므로, 서버 재시작 시 in-memory state (running / last_success_at) 가 모두 사라진다.
+- **보류된 위험**: refresh 실행 중 서버가 재시작되면 다음 두 가지 문제 발생 가능.
+  · 사용자가 다시 POST 하면 6h cooldown 가드가 깨져서 중복 수집.
+  · in-memory running 표시가 사라져 frontend polling 이 idle 로 인식하고 마지막 결과를
+    못 받음.
+- **재검토 트리거**: refresh 중단/재시작 문제가 실제로 발생하거나, OCI 자동 refresh /
+  scheduler 단계로 넘어갈 때.
+- **권장 후속 작업**: market_refresh_log 의 마지막 row 가 unfinished (started_at 있고
+  finished_at 없음) 인 경우의 재기 처리 + last_success_at 도 market_refresh_log 에서
+  복원. service module 의 reset / replay 함수 도입.
+
+---
+
 ## PC Market Discovery TOP N 최소 표시 후 신규 (2026-05-17)
 
 PC Market Discovery 메뉴에서 일간 / 1개월 / 3개월 TOP N artifact 를 표 형태로

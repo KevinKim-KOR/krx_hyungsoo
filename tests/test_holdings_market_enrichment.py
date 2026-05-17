@@ -269,7 +269,7 @@ def test_market_refresh_endpoint_does_not_call_naver_on_get(client, monkeypatch)
 
 
 def test_market_refresh_endpoint_calls_naver_only_on_post(client, monkeypatch):
-    """POST /market/refresh 만 Naver fetch 를 트리거하고 캐시에 반영."""
+    """POST /holdings/market/refresh 만 Naver fetch 를 트리거하고 캐시에 반영."""
     from app import market_naver
 
     def _fake_fetch_many(tickers, **kw):
@@ -293,7 +293,7 @@ def test_market_refresh_endpoint_calls_naver_only_on_post(client, monkeypatch):
     monkeypatch.setattr(market_naver, "fetch_many", _fake_fetch_many)
 
     client.put("/holdings", json={"holdings": _VALID_HOLDINGS})
-    r = client.post("/market/refresh")
+    r = client.post("/holdings/market/refresh")
     assert r.status_code == 200
     body = r.json()
     assert body["ok_count"] == 2
@@ -336,7 +336,7 @@ def test_market_refresh_isolates_per_ticker_failure(client, monkeypatch):
 
     monkeypatch.setattr(market_naver, "fetch_many", _fake_fetch_many)
     client.put("/holdings", json={"holdings": _VALID_HOLDINGS})
-    r = client.post("/market/refresh")
+    r = client.post("/holdings/market/refresh")
     body = r.json()
     assert body["ok_count"] == 1
     assert body["fail_count"] == 1
@@ -346,7 +346,7 @@ def test_market_refresh_isolates_per_ticker_failure(client, monkeypatch):
 
 
 def test_market_refresh_blocks_on_empty_holdings_422(client):
-    r = client.post("/market/refresh")
+    r = client.post("/holdings/market/refresh")
     assert r.status_code == 422
 
 
@@ -406,7 +406,7 @@ def test_market_cache_preserves_other_tickers_after_restart_partial_refresh():
     재현 시나리오 (Codex REJECTED 지적):
     1. 캐시에 069500, 091160 2건 존재
     2. 서버 재시작 시뮬레이션 (메모리 리셋)
-    3. POST /market/refresh 가 069500 만 성공 (091160 은 timeout 등으로 실패)
+    3. POST /holdings/market/refresh 가 069500 만 성공 (091160 은 timeout 등으로 실패)
     4. upsert_many([069500]) 호출
     5. 디스크에 091160 의 기존 값이 그대로 보존되어야 한다.
     """

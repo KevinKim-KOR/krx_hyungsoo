@@ -1,50 +1,43 @@
-"""POC2 PC Market Discovery — GET /market/topn/latest read-only API 테스트.
+"""POC2 Market Discovery — SQLite 직접 + refresh + status API 테스트.
 
-검증 (지시문 §9 backend):
-1. artifact 정상 → status=ok + TOP N 데이터
-2. artifact 없음 → status=missing
-3. artifact JSON 깨짐 → status=invalid
-4. 필수 키 누락 → status=invalid
-5. API 호출 중 FDR refresh 발생하지 않음
-6. API 호출 중 SQLite 직접 조회 발생하지 않음
-7. API 는 artifact 파일만 읽음
+2026-05-18 변경:
+- artifact 기반 테스트 폐기 (JSON 파일 없음).
+- GET /market/topn/latest 가 SQLite 에서 직접 계산함을 검증.
+- POST /market/refresh single-flight + cooldown.
+- GET /market/refresh/status 상태 노출.
+- 결측 0% 보정 금지 (지시문 §6).
+- JSON artifact 절대 생성 안 함 (AC-8).
 """
 
 from __future__ import annotations
 
-import json
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
 from app import api as api_module
-from app import api_market_topn
-from app.market_topn import compute_and_save_topn
+from app import api_market_topn, market_data_store, market_refresh_service
 from app.market_data_store import (
     EtfDailyPriceRow,
     EtfMasterRow,
     upsert_daily_prices,
     upsert_etf_master,
 )
+from app.market_refresh_service import RefreshState
+
+# ─── helpers ──────────────────────────────────────────────────────
 
 
-@pytest.fixture
-def artifact_dir(tmp_path: Path) -> Path:
-    return tmp_path / "market"
-
-
-def _seed_artifact(artifact_dir: Path) -> Path:
-    """SQLite + artifact 를 tmp 경로에 모두 생성."""
-    db_path = artifact_dir / "market_data.sqlite"
-    artifact_path = artifact_dir / "etf_universe_topn_latest.json"
-    from datetime import date, timedelta
-
-    end = date(2024, 10, 31)
-    d_minus_1 = (end - timedelta(days=1)).isoformat()
-    d_minus_30 = (end - timedelta(days=30)).isoformat()
-    d_minus_90 = (end - timedelta(days=90)).isoformat()
-
+def _seed_two_etfs_with_prices(db_path: Path, end: date) -> None:
+    d = {
+        "end": end.isoformat(),
+        "minus_1": (end - timedelta(days=1)).isoformat(),
+        "minus_30": (end - timedelta(days=30)).isoformat(),
+        "minus_90": (end - timedelta(days=90)).isoformat(),
+    }
     upsert_etf_master(
         [
             EtfMasterRow("069500", "KODEX 200", "1", 100.0, 1000, 5000.0),
@@ -57,19 +50,19 @@ def _seed_artifact(artifact_dir: Path) -> Path:
         (
             "069500",
             [
-                (d_minus_90, 100.0),
-                (d_minus_30, 105.0),
-                (d_minus_1, 110.0),
-                (end.isoformat(), 112.0),
+                (d["minus_90"], 100.0),
+                (d["minus_30"], 105.0),
+                (d["minus_1"], 110.0),
+                (d["end"], 112.0),
             ],
         ),
         (
             "379800",
             [
-                (d_minus_90, 100.0),
-                (d_minus_30, 110.0),
-                (d_minus_1, 119.0),
-                (end.isoformat(), 120.0),
+                (d["minus_90"], 100.0),
+                (d["minus_30"], 110.0),
+                (d["minus_1"], 119.0),
+                (d["end"], 120.0),
             ],
         ),
     ]:
@@ -78,248 +71,367 @@ def _seed_artifact(artifact_dir: Path) -> Path:
             source="TestSource",
             db_path=db_path,
         )
-    compute_and_save_topn(n=10, db_path=db_path, artifact_path=artifact_path)
-    return artifact_path
-
-
-# === Pure reader unit tests ===
-
-
-def test_read_artifact_ok(artifact_dir: Path) -> None:
-    path = _seed_artifact(artifact_dir)
-    resp = api_market_topn.read_topn_artifact(path)
-    assert resp.status == "ok"
-    assert resp.asof == "2024-10-31"
-    assert resp.source == "FinanceDataReader"
-    assert resp.n == 10
-    assert resp.universe_count == 2
-    assert len(resp.daily_topn) == 2
-    assert len(resp.one_month_topn) == 2
-    assert len(resp.three_month_topn) == 2
-    # 한 항목 형식 확인
-    first = resp.daily_topn[0]
-    assert first.rank == 1
-    assert first.basis_end_date == "2024-10-31"
-
-
-def test_read_artifact_missing(tmp_path: Path) -> None:
-    path = tmp_path / "does_not_exist.json"
-    resp = api_market_topn.read_topn_artifact(path)
-    assert resp.status == "missing"
-    assert resp.error is not None
-    assert "artifact" in resp.error
-    # missing 일 때도 정상 응답 구조 유지 (None 필드 + 빈 리스트)
-    assert resp.daily_topn == []
-    assert resp.one_month_topn == []
-    assert resp.three_month_topn == []
-
-
-def test_read_artifact_invalid_json(tmp_path: Path) -> None:
-    path = tmp_path / "broken.json"
-    path.write_text("{not-valid-json", encoding="utf-8")
-    resp = api_market_topn.read_topn_artifact(path)
-    assert resp.status == "invalid"
-    assert resp.error is not None
-    assert "JSON" in resp.error or "파싱" in resp.error
-
-
-def test_entries_preserve_nulls_no_fabricated_defaults(tmp_path: Path) -> None:
-    """지시문 §3.2 fallback 금지 — entry 필드 누락은 None 통과, 0/""/0.0 생성 금지.
-
-    검증자 NOTE (A-1 / B-1) 반영: TOP N entry 의 rank/ticker/return_pct/name/basis_*
-    필드 중 일부가 artifact 에서 누락되어도 백엔드가 0 / "" / 0.0 으로 채워넣지 않는다.
-    """
-    path = tmp_path / "partial_entries.json"
-    path.write_text(
-        json.dumps(
-            {
-                "asof": "2024-10-31",
-                "source": "TestSource",
-                "n": 10,
-                "universe_count": 1,
-                "daily_topn": [
-                    # rank + ticker + return_pct 모두 있고 name 만 누락 — 통과
-                    {
-                        "rank": 1,
-                        "ticker": "069500",
-                        "return_pct": 1.23,
-                    },
-                    # return_pct 누락 — null 로 통과 (0.0 으로 생성 금지)
-                    {
-                        "rank": 2,
-                        "ticker": "379800",
-                    },
-                    # rank 누락 — null 로 통과
-                    {
-                        "ticker": "133690",
-                        "return_pct": -0.5,
-                    },
-                    # 3 필수 필드 모두 누락 — entry 자체 skip
-                    {
-                        "basis_start_date": "2024-10-01",
-                    },
-                ],
-                "one_month_topn": [],
-                "three_month_topn": [],
-            }
-        ),
-        encoding="utf-8",
-    )
-    resp = api_market_topn.read_topn_artifact(path)
-    assert resp.status == "ok"
-    daily = resp.daily_topn
-    # 마지막 entry (모든 필수 필드 누락) 만 skip — 3건 유지
-    assert len(daily) == 3
-    # row 0: name 만 누락 → name=None, 나머지는 그대로
-    assert daily[0].rank == 1
-    assert daily[0].ticker == "069500"
-    assert daily[0].return_pct == 1.23
-    assert daily[0].name is None  # 0 / "" 로 생성 금지
-    # row 1: return_pct 누락 → None (0.0 생성 금지)
-    assert daily[1].rank == 2
-    assert daily[1].ticker == "379800"
-    assert daily[1].return_pct is None
-    # row 2: rank 누락 → None (0 생성 금지)
-    assert daily[2].rank is None
-    assert daily[2].ticker == "133690"
-    assert daily[2].return_pct == -0.5
-
-
-def test_read_artifact_invalid_missing_required_keys(tmp_path: Path) -> None:
-    path = tmp_path / "partial.json"
-    # 최상위는 객체지만 필수 키 (universe_count / daily_topn 등) 누락
-    path.write_text(json.dumps({"asof": "2024-10-31"}), encoding="utf-8")
-    resp = api_market_topn.read_topn_artifact(path)
-    assert resp.status == "invalid"
-    assert "필수 키" in resp.error
-
-
-# === FastAPI endpoint tests (monkeypatch DEFAULT_TOPN_PATH) ===
 
 
 @pytest.fixture
 def api_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
-    """endpoint 가 사용하는 DEFAULT_TOPN_PATH 를 tmp 경로로 교체."""
-    fake_path = tmp_path / "etf_universe_topn_latest.json"
-    monkeypatch.setattr(api_market_topn, "DEFAULT_TOPN_PATH", fake_path)
+    """endpoint 가 사용하는 DB 경로를 tmp 로 교체 + refresh service state 초기화."""
+    fake_db = tmp_path / "market_data.sqlite"
+    # 양쪽 모듈의 DEFAULT_DB_PATH 를 모두 patch — compute_topn / api / refresh_service
+    monkeypatch.setattr(api_market_topn, "DEFAULT_DB_PATH", fake_db)
+    monkeypatch.setattr(market_data_store, "DEFAULT_DB_PATH", fake_db)
+    market_refresh_service.reset_state_for_testing()
     return TestClient(api_module.app)
 
 
-def test_endpoint_returns_ok_when_artifact_present(
-    api_client: TestClient,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    # endpoint 가 가리키는 경로에 valid artifact 쓰기
-    fake_path = api_market_topn.DEFAULT_TOPN_PATH
-    fake_path.parent.mkdir(parents=True, exist_ok=True)
-    fake_path.write_text(
-        json.dumps(
-            {
-                "asof": "2024-10-31",
-                "source": "FinanceDataReader",
-                "n": 10,
-                "universe_count": 1,
-                "price_success_count": 1,
-                "price_fail_count": 0,
-                "runtime_seconds": 0.1,
-                "daily_topn": [
-                    {
-                        "rank": 1,
-                        "ticker": "069500",
-                        "name": "KODEX 200",
-                        "return_pct": 1.23,
-                        "basis_start_date": "2024-10-30",
-                        "basis_end_date": "2024-10-31",
-                    }
-                ],
-                "one_month_topn": [],
-                "three_month_topn": [],
-                "topn_caveat": "TOP N 의 N 값은 고정값이 아니며 운영/테스트 중 변경 가능.",
-            }
-        ),
-        encoding="utf-8",
-    )
+# ─── GET /market/topn/latest ──────────────────────────────────────
+
+
+def test_topn_latest_sqlite_direct_ok(api_client: TestClient) -> None:
+    db = api_market_topn.DEFAULT_DB_PATH
+    _seed_two_etfs_with_prices(db, date(2024, 10, 31))
     res = api_client.get("/market/topn/latest")
     assert res.status_code == 200
     payload = res.json()
     assert payload["status"] == "ok"
     assert payload["asof"] == "2024-10-31"
-    assert payload["universe_count"] == 1
-    assert len(payload["daily_topn"]) == 1
-    assert payload["daily_topn"][0]["ticker"] == "069500"
+    assert payload["universe_count"] == 2
+    # source 라벨에 SQLite 명시
+    assert "SQLite" in (payload["source"] or "")
+    assert len(payload["daily_topn"]) == 2
 
 
-def test_endpoint_returns_missing_when_artifact_absent(
-    api_client: TestClient,
-) -> None:
+def test_topn_latest_status_missing_when_db_absent(api_client: TestClient) -> None:
     res = api_client.get("/market/topn/latest")
-    assert res.status_code == 200
     payload = res.json()
     assert payload["status"] == "missing"
     assert payload["daily_topn"] == []
 
 
-def test_endpoint_returns_invalid_when_json_broken(
+def test_topn_latest_status_empty_when_universe_without_prices(
     api_client: TestClient,
 ) -> None:
-    fake_path = api_market_topn.DEFAULT_TOPN_PATH
-    fake_path.parent.mkdir(parents=True, exist_ok=True)
-    fake_path.write_text("{broken", encoding="utf-8")
+    db = api_market_topn.DEFAULT_DB_PATH
+    upsert_etf_master(
+        [EtfMasterRow("069500", "KODEX 200", "1", 100.0, 1000, 5000.0)],
+        source="TestSource",
+        db_path=db,
+    )
     res = api_client.get("/market/topn/latest")
-    assert res.status_code == 200
     payload = res.json()
-    assert payload["status"] == "invalid"
-    assert payload["error"] is not None
+    assert payload["status"] == "empty"
+    assert payload["universe_count"] == 1
+    assert payload["daily_topn"] == []
 
 
-# === 금지 호출 가드 (지시문 AC-9 / §9 backend 4~6) ===
+def test_topn_latest_supports_n_query_param(api_client: TestClient) -> None:
+    db = api_market_topn.DEFAULT_DB_PATH
+    _seed_two_etfs_with_prices(db, date(2024, 10, 31))
+    res5 = api_client.get("/market/topn/latest?n=5")
+    payload5 = res5.json()
+    assert payload5["n"] == 5
+    assert len(payload5["daily_topn"]) <= 5
+    res1 = api_client.get("/market/topn/latest?n=1")
+    payload1 = res1.json()
+    assert payload1["n"] == 1
+    assert len(payload1["daily_topn"]) == 1
 
 
-def test_endpoint_does_not_trigger_fdr_refresh(
+def test_topn_latest_does_not_call_fdr(
     api_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """API 호출이 FDR refresh / SQLite 직접 조회를 발생시키지 않음."""
-    # FDR refresh 함수가 호출되면 즉시 실패시키는 가드
+    """GET endpoint 가 FDR refresh 함수를 호출하면 fail."""
     from app import market_data_fdr
 
     def boom(*args, **kwargs):
-        raise AssertionError("FDR refresh 호출 발생 — 금지 (지시문 §3.1)")
+        raise AssertionError("GET /market/topn/latest 가 FDR 호출 — 금지")
 
     monkeypatch.setattr(market_data_fdr, "refresh_etf_universe", boom)
     monkeypatch.setattr(market_data_fdr, "refresh_price_history", boom)
-
-    # SQLite 직접 조회 함수도 호출되면 실패
-    from app import market_data_store
-
-    def boom_sql(*args, **kwargs):
-        raise AssertionError("SQLite 직접 조회 호출 발생 — 금지 (지시문 §3.1)")
-
-    monkeypatch.setattr(market_data_store, "list_etf_tickers", boom_sql)
-    monkeypatch.setattr(market_data_store, "fetch_price_history", boom_sql)
-
     res = api_client.get("/market/topn/latest")
-    # artifact 없으니까 missing 응답이지만, 무엇보다 boom 들이 호출되지 않아야 함
     assert res.status_code == 200
+
+
+def test_topn_latest_missing_data_not_filled_with_zero(api_client: TestClient) -> None:
+    """결측 0% 보정 금지 — period_exclusions 에 집계.
+
+    TINY 신규 상장 ETF (history 1건) 는 어떤 기간 TOP N 에도 포함되면 안 된다.
+    """
+    db = api_market_topn.DEFAULT_DB_PATH
+    end = date(2024, 10, 31)
+    upsert_etf_master(
+        [
+            EtfMasterRow("FULL", "Full History", "1", None, None, None),
+            EtfMasterRow("TINY", "New Listing", "1", None, None, None),
+        ],
+        source="TestSource",
+        db_path=db,
+    )
+    # FULL: 정상 history
+    upsert_daily_prices(
+        [
+            EtfDailyPriceRow(
+                "FULL",
+                (end - timedelta(days=90)).isoformat(),
+                100.0,
+                100.0,
+                100.0,
+                100.0,
+                0,
+                0,
+            ),
+            EtfDailyPriceRow(
+                "FULL",
+                (end - timedelta(days=1)).isoformat(),
+                110.0,
+                110.0,
+                110.0,
+                110.0,
+                0,
+                0,
+            ),
+            EtfDailyPriceRow("FULL", end.isoformat(), 112.0, 112.0, 112.0, 112.0, 0, 0),
+        ],
+        source="TestSource",
+        db_path=db,
+    )
+    # TINY: latest 1건만 → 모든 기간 insufficient_history
+    upsert_daily_prices(
+        [EtfDailyPriceRow("TINY", end.isoformat(), 105.0, 105.0, 105.0, 105.0, 0, 0)],
+        source="TestSource",
+        db_path=db,
+    )
+    res = api_client.get("/market/topn/latest")
     payload = res.json()
-    assert payload["status"] in ("missing", "ok", "invalid")
+    assert payload["status"] == "ok"
+    # TINY 는 어디에도 포함 안 됨 (0% 보정 금지)
+    for label in ("daily_topn", "one_month_topn", "three_month_topn"):
+        assert all(r["ticker"] != "TINY" for r in payload[label])
+    excl = payload["period_exclusions"]
+    assert excl["daily"]["insufficient_history"] >= 1
+    assert excl["one_month"]["insufficient_history"] >= 1
 
 
-def test_endpoint_reads_only_artifact_file_not_sqlite(
+# ─── POST /market/refresh ─────────────────────────────────────────
+
+
+def _stub_universe_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "Symbol": "069500",
+                "Category": 1,
+                "Name": "KODEX 200",
+                "Price": 11720.0,
+                "Volume": 1000,
+                "MarCap": 50000.0,
+            },
+            {
+                "Symbol": "379800",
+                "Category": 4,
+                "Name": "KODEX 미국S&P500",
+                "Price": 27765.0,
+                "Volume": 2000,
+                "MarCap": 60000.0,
+            },
+        ]
+    )
+
+
+def _stub_price_df(start: date, end: date) -> pd.DataFrame:
+    idx = pd.to_datetime([start.isoformat(), end.isoformat()])
+    return pd.DataFrame(
+        {
+            "Open": [100.0, 101.0],
+            "High": [102.0, 103.0],
+            "Low": [99.0, 100.0],
+            "Close": [100.5, 101.5],
+            "Volume": [1000, 1100],
+            "Change": [0.0, 0.01],
+        },
+        index=idx,
+    )
+
+
+def test_post_refresh_accepted_and_runs_inline_for_test(
     api_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """artifact 파일만 읽고 SQLite 파일은 절대 열지 않는다."""
-    import sqlite3
+    """POST /market/refresh 가 accepted 응답 + background job 시작.
 
-    original_connect = sqlite3.connect
-    seen_connections: list[str] = []
+    테스트에서는 threading 대신 inline 실행으로 강제하기 위해 start_refresh_job 의
+    thread_runner 를 직접 호출하는 형태로 monkeypatch.
+    """
+    captured_calls = {"universe": 0, "prices": 0}
 
-    def tracking_connect(database, *args, **kwargs):
-        seen_connections.append(str(database))
-        return original_connect(database, *args, **kwargs)
+    def stub_uni():
+        captured_calls["universe"] += 1
+        return _stub_universe_df()
 
-    monkeypatch.setattr(sqlite3, "connect", tracking_connect)
-    api_client.get("/market/topn/latest")
-    assert seen_connections == []
+    def stub_price(ticker, start, end):
+        captured_calls["prices"] += 1
+        return _stub_price_df(start, end)
+
+    # API 엔드포인트 내부의 start_refresh_job 호출을 inline + stub 으로 가로채기
+    original = market_refresh_service.start_refresh_job
+
+    def inline_start(**kwargs):
+        kwargs.setdefault("universe_fetcher", stub_uni)
+        kwargs.setdefault("price_fetcher", stub_price)
+        kwargs.setdefault("end_date_for_prices", date(2024, 10, 31))
+        kwargs["thread_runner"] = lambda runner: runner()
+        return original(**kwargs)
+
+    monkeypatch.setattr(api_market_topn, "start_refresh_job", inline_start)
+
+    res = api_client.post("/market/refresh")
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["status"] == "accepted"
+    assert payload["refresh_id"] is not None
+    # background runner 가 inline 으로 실행됐으므로 FDR + 가격 수집이 호출돼야 함
+    assert captured_calls["universe"] == 1
+    assert captured_calls["prices"] >= 1
+
+
+def test_post_refresh_running_when_already_in_progress(
+    api_client: TestClient,
+) -> None:
+    """이미 running 상태일 때 추가 POST 는 running 응답 + 새 job 생성 안 함."""
+    # 현재 state 를 running 으로 직접 설정
+    market_refresh_service._service.state.status = "running"
+    market_refresh_service._service.state.refresh_id = "ongoing-001"
+    res = api_client.post("/market/refresh")
+    payload = res.json()
+    assert payload["status"] == "running"
+    assert payload["refresh_id"] == "ongoing-001"
+
+
+def test_post_refresh_skipped_within_cooldown(api_client: TestClient) -> None:
+    """6h cooldown 안 — skipped_cooldown 응답."""
+    market_refresh_service._service.last_success_at = datetime.now(timezone.utc)
+    market_refresh_service._service.state.status = "idle"
+    res = api_client.post("/market/refresh")
+    payload = res.json()
+    assert payload["status"] == "skipped_cooldown"
+    assert payload["cooldown_remaining_seconds"] > 0
+
+
+def test_post_refresh_does_not_create_json_artifact(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """AC-8 — POST /market/refresh 가 어떤 JSON artifact 도 생성하지 않는다."""
+    # state/market 디렉토리 (tmp_path 의 부모) 안에서 어떤 파일이 새로 생기는지 추적
+    market_dir = api_market_topn.DEFAULT_DB_PATH.parent
+    market_dir.mkdir(parents=True, exist_ok=True)
+    before = set(market_dir.iterdir())
+
+    original = market_refresh_service.start_refresh_job
+
+    def inline_start(**kwargs):
+        kwargs["universe_fetcher"] = _stub_universe_df
+        kwargs["price_fetcher"] = lambda tk, s, e: _stub_price_df(s, e)
+        kwargs["end_date_for_prices"] = date(2024, 10, 31)
+        kwargs["thread_runner"] = lambda runner: runner()
+        return original(**kwargs)
+
+    monkeypatch.setattr(api_market_topn, "start_refresh_job", inline_start)
+
+    res = api_client.post("/market/refresh")
+    assert res.status_code == 200
+    after = set(market_dir.iterdir())
+    new_files = after - before
+    # SQLite 파일은 생기지만 JSON artifact 는 절대 안 생긴다
+    json_files = [p for p in new_files if p.suffix == ".json"]
+    assert json_files == []
+
+
+# ─── GET /market/refresh/status ───────────────────────────────────
+
+
+def test_status_idle_initially(api_client: TestClient) -> None:
+    res = api_client.get("/market/refresh/status")
+    payload = res.json()
+    assert payload["status"] == "idle"
+    assert payload["refresh_id"] is None
+
+
+def test_status_running_after_state_set(api_client: TestClient) -> None:
+    market_refresh_service._service.state = RefreshState(
+        status="running",
+        refresh_id="rid-running",
+        started_at="2024-10-31T00:00:00Z",
+    )
+    res = api_client.get("/market/refresh/status")
+    payload = res.json()
+    assert payload["status"] == "running"
+    assert payload["refresh_id"] == "rid-running"
+
+
+def test_status_completed_with_counts(api_client: TestClient) -> None:
+    market_refresh_service._service.state = RefreshState(
+        status="completed",
+        refresh_id="rid-completed",
+        started_at="2024-10-31T00:00:00Z",
+        finished_at="2024-10-31T00:05:00Z",
+        asof="2024-10-31",
+        universe_count=1107,
+        price_attempted_count=1107,
+        price_success_count=842,
+        price_fail_count=265,
+        runtime_seconds=234.0,
+    )
+    res = api_client.get("/market/refresh/status")
+    payload = res.json()
+    assert payload["status"] == "completed"
+    assert payload["universe_count"] == 1107
+    assert payload["price_success_count"] == 842
+
+
+# ─── 회귀 / 통합 ──────────────────────────────────────────────────
+
+
+def test_market_refresh_log_is_recorded_by_refresh_job(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """POST /market/refresh 의 background job 이 market_refresh_log 를 기록."""
+    original = market_refresh_service.start_refresh_job
+
+    def inline_start(**kwargs):
+        kwargs["universe_fetcher"] = _stub_universe_df
+        kwargs["price_fetcher"] = lambda tk, s, e: _stub_price_df(s, e)
+        kwargs["end_date_for_prices"] = date(2024, 10, 31)
+        kwargs["thread_runner"] = lambda runner: runner()
+        return original(**kwargs)
+
+    monkeypatch.setattr(api_market_topn, "start_refresh_job", inline_start)
+
+    api_client.post("/market/refresh")
+    from app.market_data_store import latest_refresh_log
+
+    log = latest_refresh_log(db_path=api_market_topn.DEFAULT_DB_PATH)
+    assert log is not None
+    assert log["source"].startswith("FinanceDataReader")
+
+
+def test_no_etf_universe_topn_latest_json_path_in_code() -> None:
+    """AC-1/AC-14 — 코드에 etf_universe_topn_latest.json 참조가 남지 않는다.
+
+    app/ 내부 코드에서 grep 한 결과가 0건이어야 한다 (테스트 / 문서 / handoff 는 제외).
+    """
+    import re
+    from pathlib import Path as _P
+
+    app_dir = _P(__file__).resolve().parent.parent / "app"
+    bad_files: list[str] = []
+    for py in app_dir.glob("*.py"):
+        text = py.read_text(encoding="utf-8")
+        if re.search(r"etf_universe_topn_latest\.json", text):
+            bad_files.append(str(py))
+    assert (
+        bad_files == []
+    ), f"etf_universe_topn_latest.json 참조가 코드에 남아 있다: {bad_files}"

@@ -1,18 +1,24 @@
 "use client";
 
-// POC2 PC Market Discovery TOP N 최소 표시 (지시문 §3.2).
+// PC Market Discovery — SQLite 직접 계산 기준 TOP N 표시 + 수동 refresh.
 //
-// state/market/etf_universe_topn_latest.json artifact 를 GET /market/topn/latest
-// 로 읽어 일간 / 1개월 / 3개월 TOP N 표를 렌더링한다.
+// 2026-05-18 변경 (Market Discovery SQLite Direct Refresh):
+// - GET /market/topn/latest 응답은 이제 SQLite 직접 계산 결과 (artifact 폐기).
+// - "최신 시장 데이터 갱신" 버튼 → POST /market/refresh →
+//   GET /market/refresh/status polling → 완료 시 TOP N 재로드.
+// - cooldown (6h) / running / failed 모두 화면에서 안내.
 //
-// 본 화면은 read-only 다 (refresh 버튼 / 필터 / 정렬 / 차트 / SQLite 직접 조회
-// / TOP N 재계산 모두 금지 — 지시문 §6).
+// 결측 필드는 0%로 보정하지 않고 "-" 로 표시 (지시문 §6).
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
+  fetchMarketRefreshStatus,
   fetchMarketTopnLatest,
+  postMarketRefresh,
+  type MarketRefreshStartResponse,
+  type MarketRefreshStatusResponse,
   type MarketTopNEntry,
   type MarketTopNResponse,
 } from "@/lib/api";
@@ -22,6 +28,19 @@ type LoadState =
   | { phase: "error"; message: string }
   | { phase: "ready"; data: MarketTopNResponse };
 
+type RefreshUiState =
+  | { kind: "idle" }
+  | { kind: "starting" }
+  | { kind: "running"; refreshId: string | null }
+  | { kind: "completed"; refreshId: string | null }
+  | { kind: "failed"; message: string }
+  | { kind: "cooldown"; cooldownRemainingSeconds: number };
+
+const POLL_INTERVAL_MS = 4000;
+const POLL_MAX_TICKS = 90; // 6분 안전 상한
+
+const DASH = "-";
+
 function describeError(e: unknown): string {
   if (e instanceof ApiConfigError) return `구성 오류: ${e.message}`;
   if (e instanceof ApiRequestError) {
@@ -29,9 +48,6 @@ function describeError(e: unknown): string {
   }
   return `알 수 없는 오류: ${(e as Error).message}`;
 }
-
-// 지시문 §3.2 — artifact 에 없는 값은 "-" 로 표시. 0 / 0.0 으로 가공 금지.
-const DASH = "-";
 
 function fmt(value: string | null | undefined): string {
   if (value === null || value === undefined || value === "") return DASH;
@@ -49,9 +65,17 @@ function fmtPct(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
-function returnPctClass(value: number | null | undefined): string {
+function returnPctColor(value: number | null | undefined): string {
   if (value === null || value === undefined) return "var(--muted)";
   return value >= 0 ? "var(--ok)" : "var(--danger)";
+}
+
+function fmtCooldown(seconds: number): string {
+  if (seconds <= 0) return "0";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}시간 ${m}분`;
+  return `${m}분`;
 }
 
 function TopNTable({
@@ -82,14 +106,12 @@ function TopNTable({
             {entries.map((e, idx) => (
               <tr key={`${e.rank ?? "x"}-${e.ticker ?? "x"}-${idx}`}>
                 <td>{fmtNum(e.rank)}</td>
-                <td>
-                  {e.ticker ? <code>{e.ticker}</code> : DASH}
-                </td>
+                <td>{e.ticker ? <code>{e.ticker}</code> : DASH}</td>
                 <td>{fmt(e.name)}</td>
                 <td
                   style={{
                     textAlign: "right",
-                    color: returnPctClass(e.return_pct),
+                    color: returnPctColor(e.return_pct),
                   }}
                 >
                   {fmtPct(e.return_pct)}
@@ -110,12 +132,21 @@ function SummaryHeader({ data }: { data: MarketTopNResponse }) {
     <div className="card">
       <h2>요약</h2>
       <ul className="dashboard-status-list">
+        <li>
+          데이터 기준: <strong>SQLite 단일 SSOT</strong> (state/market/market_data.sqlite)
+        </li>
         <li>시장 데이터 기준일: <strong>{fmt(data.asof)}</strong></li>
         <li>데이터 소스: <strong>{fmt(data.source)}</strong></li>
         <li>Universe: <strong>{fmtNum(data.universe_count)}</strong>개</li>
         <li>가격 수집 성공: <strong>{fmtNum(data.price_success_count)}</strong>개</li>
         <li>가격 수집 실패: <strong>{fmtNum(data.price_fail_count)}</strong>개</li>
-        <li>기본 N: <strong>{fmtNum(data.n)}</strong></li>
+        <li>기본 N: <strong>{fmtNum(data.n)}</strong> (query parameter `n` 으로 변경 가능)</li>
+        {data.latest_refresh ? (
+          <li>
+            마지막 refresh: <strong>{fmt(data.latest_refresh.created_at)}</strong>
+            {data.latest_refresh.refresh_id ? ` (${data.latest_refresh.refresh_id})` : ""}
+          </li>
+        ) : null}
       </ul>
       {data.topn_caveat ? (
         <div className="helper" style={{ marginTop: 8 }}>
@@ -126,22 +157,187 @@ function SummaryHeader({ data }: { data: MarketTopNResponse }) {
   );
 }
 
+function RefreshControlCard({
+  state,
+  onStart,
+  disabled,
+  cooldownRemainingSeconds,
+}: {
+  state: RefreshUiState;
+  onStart: () => void;
+  disabled: boolean;
+  cooldownRemainingSeconds: number;
+}) {
+  let statusLine: React.ReactNode = null;
+  switch (state.kind) {
+    case "idle":
+      statusLine = (
+        <div className="helper">
+          시장 데이터를 즉시 갱신할 수 있습니다 (FDR → SQLite upsert).
+        </div>
+      );
+      break;
+    case "starting":
+      statusLine = <div className="message info">갱신을 시작하는 중...</div>;
+      break;
+    case "running":
+      statusLine = (
+        <div className="message info">
+          갱신 중입니다. 약 수 분이 소요됩니다 ({state.refreshId ?? "-"}).
+        </div>
+      );
+      break;
+    case "completed":
+      statusLine = (
+        <div className="message info">
+          갱신 완료. 최신 SQLite 기준으로 TOP N 을 재로드했습니다.
+        </div>
+      );
+      break;
+    case "failed":
+      statusLine = <div className="message error">갱신 실패: {state.message}</div>;
+      break;
+    case "cooldown":
+      statusLine = (
+        <div className="message info">
+          최근 시장 데이터가 이미 갱신되어 기존 데이터를 표시합니다 (재수집 가능까지{" "}
+          {fmtCooldown(state.cooldownRemainingSeconds)}).
+        </div>
+      );
+      break;
+  }
+  return (
+    <div className="card">
+      <h2>최신 시장 데이터 갱신</h2>
+      <div className="btn-row">
+        <button type="button" onClick={onStart} disabled={disabled}>
+          {state.kind === "running" || state.kind === "starting"
+            ? "갱신 중..."
+            : "최신 시장 데이터 갱신"}
+        </button>
+      </div>
+      {statusLine}
+      {cooldownRemainingSeconds > 0 && state.kind !== "cooldown" ? (
+        <div className="helper" style={{ marginTop: 4 }}>
+          (cooldown {fmtCooldown(cooldownRemainingSeconds)} 남음 — 그 사이 클릭은
+          무시되고 기존 데이터를 그대로 표시합니다.)
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function MarketDiscoveryView() {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
+  const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
+  const pollTickRef = useRef<number>(0);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadTopn = useCallback(() => {
+    fetchMarketTopnLatest(10)
+      .then((data) => setState({ phase: "ready", data }))
+      .catch((e) => setState({ phase: "error", message: describeError(e) }));
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchMarketTopnLatest()
-      .then((data) => {
-        if (!cancelled) setState({ phase: "ready", data });
-      })
-      .catch((e) => {
-        if (!cancelled) setState({ phase: "error", message: describeError(e) });
-      });
-    return () => {
-      cancelled = true;
-    };
+    loadTopn();
+  }, [loadTopn]);
+
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current !== null) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    pollTickRef.current = 0;
   }, []);
+
+  useEffect(() => {
+    return () => stopPolling();
+  }, [stopPolling]);
+
+  const applyStatus = useCallback(
+    (status: MarketRefreshStatusResponse) => {
+      if (status.status === "running") {
+        setRefreshUi({ kind: "running", refreshId: status.refresh_id ?? null });
+        return;
+      }
+      if (status.status === "completed") {
+        stopPolling();
+        setRefreshUi({ kind: "completed", refreshId: status.refresh_id ?? null });
+        loadTopn();
+        return;
+      }
+      if (status.status === "failed") {
+        stopPolling();
+        setRefreshUi({
+          kind: "failed",
+          message: status.error_summary ?? "원인 미상",
+        });
+        return;
+      }
+      if (status.status === "skipped_cooldown") {
+        stopPolling();
+        setRefreshUi({
+          kind: "cooldown",
+          cooldownRemainingSeconds: status.cooldown_remaining_seconds,
+        });
+        return;
+      }
+      // idle — 폴링 종료
+      stopPolling();
+      setRefreshUi({ kind: "idle" });
+    },
+    [stopPolling, loadTopn],
+  );
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollTimerRef.current = setInterval(async () => {
+      pollTickRef.current += 1;
+      if (pollTickRef.current > POLL_MAX_TICKS) {
+        stopPolling();
+        setRefreshUi({
+          kind: "failed",
+          message: "상태 확인 시간이 너무 길어졌습니다. 잠시 후 다시 시도하세요.",
+        });
+        return;
+      }
+      try {
+        const status = await fetchMarketRefreshStatus();
+        applyStatus(status);
+      } catch (e) {
+        stopPolling();
+        setRefreshUi({ kind: "failed", message: describeError(e) });
+      }
+    }, POLL_INTERVAL_MS);
+  }, [stopPolling, applyStatus]);
+
+  const handleStartRefresh = useCallback(async () => {
+    setRefreshUi({ kind: "starting" });
+    let started: MarketRefreshStartResponse;
+    try {
+      started = await postMarketRefresh();
+    } catch (e) {
+      setRefreshUi({ kind: "failed", message: describeError(e) });
+      return;
+    }
+    if (started.status === "accepted" || started.status === "running") {
+      setRefreshUi({ kind: "running", refreshId: started.refresh_id ?? null });
+      startPolling();
+      return;
+    }
+    if (started.status === "skipped_cooldown") {
+      setRefreshUi({
+        kind: "cooldown",
+        cooldownRemainingSeconds: started.cooldown_remaining_seconds,
+      });
+      return;
+    }
+    setRefreshUi({ kind: "failed", message: started.message });
+  }, [startPolling]);
+
+  const buttonDisabled =
+    refreshUi.kind === "starting" || refreshUi.kind === "running";
 
   if (state.phase === "loading") {
     return (
@@ -158,6 +354,12 @@ export default function MarketDiscoveryView() {
     return (
       <section aria-labelledby="market-discovery-h">
         <h1 id="market-discovery-h">Market Discovery</h1>
+        <RefreshControlCard
+          state={refreshUi}
+          onStart={handleStartRefresh}
+          disabled={buttonDisabled}
+          cooldownRemainingSeconds={0}
+        />
         <div className="card">
           <div className="message error">{state.message}</div>
         </div>
@@ -166,17 +368,50 @@ export default function MarketDiscoveryView() {
   }
 
   const { data } = state;
+  const cooldown =
+    data.latest_refresh && refreshUi.kind === "cooldown"
+      ? refreshUi.cooldownRemainingSeconds
+      : 0;
 
+  // status별 분기 — 표시 정책 (지시문 §7).
   if (data.status === "missing") {
     return (
       <section aria-labelledby="market-discovery-h">
         <h1 id="market-discovery-h">Market Discovery</h1>
+        <p className="subtitle">
+          이 화면은 SQLite 에 저장된 시장 데이터 기준입니다.
+        </p>
+        <RefreshControlCard
+          state={refreshUi}
+          onStart={handleStartRefresh}
+          disabled={buttonDisabled}
+          cooldownRemainingSeconds={cooldown}
+        />
         <div className="card placeholder-card">
-          <h2>시장 TOP N 데이터가 아직 생성되지 않았습니다</h2>
-          <p>먼저 시장 데이터 refresh 가 필요합니다.</p>
-          <p className="helper">
-            (이번 단계에서는 본 화면에 refresh 버튼을 추가하지 않습니다 — 지시문 §4.2.)
-          </p>
+          <h2>시장 데이터가 아직 없습니다</h2>
+          <p>최신 시장 데이터 갱신을 실행하세요.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (data.status === "empty") {
+    return (
+      <section aria-labelledby="market-discovery-h">
+        <h1 id="market-discovery-h">Market Discovery</h1>
+        <p className="subtitle">
+          이 화면은 SQLite 에 저장된 시장 데이터 기준입니다.
+        </p>
+        <RefreshControlCard
+          state={refreshUi}
+          onStart={handleStartRefresh}
+          disabled={buttonDisabled}
+          cooldownRemainingSeconds={cooldown}
+        />
+        <div className="card placeholder-card">
+          <h2>가격 데이터가 부족합니다</h2>
+          <p>{data.error ?? "etf_daily_price 테이블에 가격 시계열이 없습니다."}</p>
+          <p className="helper">최신 시장 데이터 갱신을 실행하세요.</p>
         </div>
       </section>
     );
@@ -186,9 +421,18 @@ export default function MarketDiscoveryView() {
     return (
       <section aria-labelledby="market-discovery-h">
         <h1 id="market-discovery-h">Market Discovery</h1>
+        <p className="subtitle">
+          이 화면은 SQLite 에 저장된 시장 데이터 기준입니다.
+        </p>
+        <RefreshControlCard
+          state={refreshUi}
+          onStart={handleStartRefresh}
+          disabled={buttonDisabled}
+          cooldownRemainingSeconds={cooldown}
+        />
         <div className="card">
           <div className="message error">
-            시장 TOP N 데이터를 읽을 수 없습니다. 데이터 파일 상태를 확인하세요.
+            SQLite 시장 데이터를 읽을 수 없습니다. 데이터 파일 상태를 확인하세요.
           </div>
           {data.error ? (
             <div className="helper" style={{ marginTop: 8 }}>
@@ -204,9 +448,16 @@ export default function MarketDiscoveryView() {
     <section aria-labelledby="market-discovery-h">
       <h1 id="market-discovery-h">Market Discovery</h1>
       <p className="subtitle">
-        FDR + SQLite 기반 ETF universe / 일간 / 1개월 / 3개월 TOP N 결과.
-        본 화면은 artifact 파일을 읽어 표시할 뿐, 새 데이터 수집은 일으키지 않습니다.
+        이 화면은 <strong>SQLite 에 저장된 시장 데이터</strong> 기준입니다. 새 데이터
+        수집은 아래 &lsquo;최신 시장 데이터 갱신&rsquo; 버튼으로만 실행됩니다
+        (single-flight + 6h cooldown).
       </p>
+      <RefreshControlCard
+        state={refreshUi}
+        onStart={handleStartRefresh}
+        disabled={buttonDisabled}
+        cooldownRemainingSeconds={cooldown}
+      />
       <SummaryHeader data={data} />
       <TopNTable title="일간 TOP N" entries={data.daily_topn} />
       <TopNTable title="1개월 TOP N" entries={data.one_month_topn} />

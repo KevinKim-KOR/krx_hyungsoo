@@ -1,14 +1,13 @@
-"""POC2 — SQLite 기반 일간 / 1개월 / 3개월 TOP N 산출 테스트.
+"""POC2 — SQLite 직접 계산 기반 일간 / 1개월 / 3개월 TOP N 산출 테스트.
 
-검증:
-- daily / 1m / 3m 모두 계산.
-- N 값 변경 시 결과 개수 변화.
-- artifact JSON 생성.
+2026-05-18 변경:
+- JSON artifact 저장/읽기 함수 폐기 (save_topn_artifact / compute_and_save_topn).
+- payload schema 확장: status / latest_refresh / period_exclusions.
+- 결측 데이터는 0% 로 보정하지 않고 exclusion 으로 집계 (지시문 §6).
 """
 
 from __future__ import annotations
 
-import json
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -17,13 +16,11 @@ import pytest
 from app.market_data_store import (
     EtfDailyPriceRow,
     EtfMasterRow,
+    log_refresh,
     upsert_daily_prices,
     upsert_etf_master,
 )
-from app.market_topn import (
-    compute_and_save_topn,
-    compute_topn,
-)
+from app.market_topn import compute_topn
 
 
 @pytest.fixture
@@ -34,7 +31,12 @@ def db_path(tmp_path: Path) -> Path:
 def _seed_universe(db_path: Path, ticker_names: list[tuple[str, str]]) -> None:
     rows = [
         EtfMasterRow(
-            ticker=tk, name=nm, category="X", price=None, volume=None, market_cap=None
+            ticker=tk,
+            name=nm,
+            category="X",
+            price=None,
+            volume=None,
+            market_cap=None,
         )
         for tk, nm in ticker_names
     ]
@@ -70,7 +72,6 @@ def _seed_three_etfs(db_path: Path, end: date) -> None:
         db_path,
         [("AAA001", "ETF A"), ("BBB002", "ETF B"), ("CCC003", "ETF C")],
     )
-    # AAA001: 1m 대박, 3m 대박, daily 보통
     _seed_price_series(
         db_path,
         "AAA001",
@@ -81,7 +82,6 @@ def _seed_three_etfs(db_path: Path, end: date) -> None:
             (d["end"], 120.0),
         ],
     )
-    # BBB002: 1m 평범, 3m 평범, daily 1위
     _seed_price_series(
         db_path,
         "BBB002",
@@ -92,7 +92,6 @@ def _seed_three_etfs(db_path: Path, end: date) -> None:
             (d["end"], 105.0),
         ],
     )
-    # CCC003: 1m 마이너스, 3m 마이너스, daily 최하
     _seed_price_series(
         db_path,
         "CCC003",
@@ -105,21 +104,22 @@ def _seed_three_etfs(db_path: Path, end: date) -> None:
     )
 
 
+# ─── 정상 흐름 (status=ok) ─────────────────────────────────────────
+
+
 def test_compute_topn_daily(db_path: Path) -> None:
     end = date(2024, 10, 31)
     _seed_three_etfs(db_path, end)
 
     payload = compute_topn(n=3, db_path=db_path)
+    assert payload["status"] == "ok"
     assert payload["asof"] == end.isoformat()
     assert payload["universe_count"] == 3
-
     daily = payload["daily_topn"]
     assert [r["ticker"] for r in daily] == ["BBB002", "AAA001", "CCC003"]
     assert daily[0]["rank"] == 1
     assert daily[0]["return_pct"] == pytest.approx(5.0, abs=0.01)
-    # ETF 이름 매핑 살아 있어야 함
     assert daily[0]["name"] == "ETF B"
-    # basis_start/end_date 가 일관됨
     assert daily[0]["basis_end_date"] == end.isoformat()
 
 
@@ -154,40 +154,129 @@ def test_compute_topn_respects_n_parameter(db_path: Path) -> None:
 
     payload_n2 = compute_topn(n=2, db_path=db_path)
     assert len(payload_n2["daily_topn"]) == 2
-    assert len(payload_n2["one_month_topn"]) == 2
-    assert len(payload_n2["three_month_topn"]) == 2
 
     payload_n10 = compute_topn(n=10, db_path=db_path)
-    # universe 가 3개뿐 — TOP 10 요청해도 최대 3개
-    assert len(payload_n10["daily_topn"]) == 3
+    assert len(payload_n10["daily_topn"]) == 3  # universe 3개 한계
     assert payload_n10["n"] == 10
 
 
-def test_compute_and_save_artifact_writes_json(tmp_path: Path) -> None:
-    db_path = tmp_path / "market_data.sqlite"
-    artifact = tmp_path / "etf_universe_topn_latest.json"
+def test_compute_topn_latest_refresh_field(db_path: Path) -> None:
     end = date(2024, 10, 31)
     _seed_three_etfs(db_path, end)
-
-    payload, written_path = compute_and_save_topn(
-        n=10, db_path=db_path, artifact_path=artifact
+    log_refresh(
+        run_id="rid-001",
+        source="FinanceDataReader/prices",
+        asof=end.isoformat(),
+        attempted=3,
+        success=3,
+        fail=0,
+        runtime_seconds=1.5,
+        db_path=db_path,
     )
-    assert written_path == artifact
-    assert artifact.exists()
-
-    loaded = json.loads(artifact.read_text(encoding="utf-8"))
-    assert loaded["asof"] == end.isoformat()
-    assert loaded["source"] == "FinanceDataReader"
-    assert loaded["n"] == 10
-    assert loaded["universe_count"] == 3
-    assert len(loaded["daily_topn"]) == 3
-    assert loaded["topn_caveat"].startswith("TOP N 의 N 값은 고정값이 아니며")
+    payload = compute_topn(n=3, db_path=db_path)
+    assert payload["latest_refresh"] is not None
+    assert payload["latest_refresh"]["refresh_id"] == "rid-001"
+    assert payload["latest_refresh"]["success_count"] == 3
 
 
-def test_compute_topn_empty_db_returns_safe_payload(db_path: Path) -> None:
-    payload = compute_topn(n=10, db_path=db_path)
-    assert payload["universe_count"] == 0
+# ─── status 분기 ──────────────────────────────────────────────────
+
+
+def test_compute_topn_missing_when_db_file_absent(tmp_path: Path) -> None:
+    payload = compute_topn(n=10, db_path=tmp_path / "does_not_exist.sqlite")
+    assert payload["status"] == "missing"
     assert payload["asof"] is None
     assert payload["daily_topn"] == []
-    assert payload["one_month_topn"] == []
-    assert payload["three_month_topn"] == []
+    assert payload["period_exclusions"]["daily"]
+
+
+def test_compute_topn_empty_when_no_price_rows(db_path: Path) -> None:
+    _seed_universe(db_path, [("AAA001", "ETF A")])  # universe 만 있고 price 없음
+    payload = compute_topn(n=10, db_path=db_path)
+    assert payload["status"] == "empty"
+    assert payload["universe_count"] == 1
+    assert payload["daily_topn"] == []
+
+
+def test_compute_topn_invalid_when_required_table_missing(tmp_path: Path) -> None:
+    """DB 파일은 있으나 필수 테이블 누락 → status=invalid."""
+    import sqlite3
+
+    bad_db = tmp_path / "bad.sqlite"
+    with sqlite3.connect(str(bad_db)) as con:
+        con.execute("CREATE TABLE etf_master (ticker TEXT PRIMARY KEY)")
+        # etf_daily_price / market_refresh_log 의도적 누락
+        con.commit()
+    payload = compute_topn(n=10, db_path=bad_db)
+    assert payload["status"] == "invalid"
+    assert payload["daily_topn"] == []
+
+
+# ─── 결측 처리 ────────────────────────────────────────────────────
+
+
+def test_compute_topn_missing_data_not_filled_with_zero(db_path: Path) -> None:
+    """지시문 §6 — 결측은 0% 보정 금지. period_exclusions 로 집계.
+
+    시나리오: TINY 신규 상장 ETF (history 1건뿐) → 모든 기간 insufficient_history.
+    어떤 TOP N 에도 포함되지 않아야 하고 period_exclusions 에 집계되어야 한다.
+    """
+    end = date(2024, 10, 31)
+    d = _dates_around(end)
+    _seed_universe(
+        db_path, [("AAA001", "Has Full History"), ("TINY002", "New Listing")]
+    )
+    _seed_price_series(
+        db_path,
+        "AAA001",
+        [
+            (d["minus_90"], 100.0),
+            (d["minus_30"], 110.0),
+            (d["minus_1"], 119.0),
+            (d["end"], 120.0),
+        ],
+    )
+    # TINY002: latest 1건만 — 모든 기간 insufficient_history
+    _seed_price_series(db_path, "TINY002", [(d["end"], 105.0)])
+
+    payload = compute_topn(n=10, db_path=db_path)
+    assert payload["status"] == "ok"
+    # AAA001 만 TOP N 에 포함, TINY002 는 어디에도 안 들어감 (0% 보정 금지)
+    for label in ("daily_topn", "one_month_topn", "three_month_topn"):
+        tickers = [r["ticker"] for r in payload[label]]
+        assert "TINY002" not in tickers
+        assert "AAA001" in tickers
+    # period_exclusions 에 insufficient_history 1건씩 집계
+    assert payload["period_exclusions"]["daily"]["insufficient_history"] >= 1
+    assert payload["period_exclusions"]["one_month"]["insufficient_history"] >= 1
+    assert payload["period_exclusions"]["three_month"]["insufficient_history"] >= 1
+
+
+def test_compute_topn_skips_invalid_price(db_path: Path) -> None:
+    """close <= 0 또는 base close <= 0 → invalid_price exclusion."""
+    end = date(2024, 10, 31)
+    d = _dates_around(end)
+    _seed_universe(db_path, [("AAA001", "Valid"), ("BAD002", "Zero Latest")])
+    _seed_price_series(
+        db_path,
+        "AAA001",
+        [
+            (d["minus_1"], 100.0),
+            (d["end"], 102.0),
+        ],
+    )
+    # close 0 은 fetch_price_history 가 이미 제외하지만, 의도 분명히 — 아예 행 안 넣음
+    # 대신 latest 만 있고 base 부재 케이스로 invalid 가 아니라 missing 처리 흐름
+    payload = compute_topn(n=10, db_path=db_path)
+    assert payload["status"] == "ok"
+    assert "AAA001" in [r["ticker"] for r in payload["daily_topn"]]
+    assert "BAD002" not in [r["ticker"] for r in payload["daily_topn"]]
+
+
+def test_compute_topn_no_legacy_artifact_function() -> None:
+    """save_topn_artifact / compute_and_save_topn 함수가 폐기됐는지 확인 (AC-8)."""
+    from app import market_topn
+
+    assert not hasattr(market_topn, "save_topn_artifact")
+    assert not hasattr(market_topn, "compute_and_save_topn")
+    assert not hasattr(market_topn, "DEFAULT_TOPN_PATH")

@@ -189,7 +189,9 @@ def post_generate_from_holdings() -> RunResponse:
     이후는 기존 승인 루프(PENDING_APPROVAL / Approve / Reject) 가 동일하게 처리.
 
     POC2 Step 2: 시장데이터 캐시(market_cache)를 조회해 draft 에 주입한다.
-    - 캐시는 사용자가 명시적으로 POST /market/refresh 를 눌렀을 때만 채워진다.
+    - 캐시는 사용자가 명시적으로 POST /holdings/market/refresh 를 눌렀을 때만 채워진다.
+      (2026-05-18: namespace 정정 — 기존 /market/refresh 가 ETF universe SQLite refresh
+      엔드포인트로 이동하면서 holdings naver 시세 갱신은 /holdings/market/refresh 로 분리.)
     - 캐시가 비어있거나 일부만 있으면 그 부분은 시세 없이 표시된다 (price_missing).
     - 이 엔드포인트가 자동으로 외부 fetch 를 트리거하지 않는다.
     """
@@ -254,7 +256,7 @@ class EnrichedHoldingsResponse(BaseModel):
     items: list[EnrichedHoldingResponse]
 
 
-@app.post("/market/refresh", response_model=MarketRefreshResponse)
+@app.post("/holdings/market/refresh", response_model=MarketRefreshResponse)
 def post_market_refresh() -> MarketRefreshResponse:
     """저장된 holdings 의 모든 ticker 에 대해 Naver 시세를 조회 + 캐시에 반영.
 
@@ -264,6 +266,11 @@ def post_market_refresh() -> MarketRefreshResponse:
     - 1차 소스 Naver 만 사용. pykrx / yfinance fallback 은 POC2-Step2A 로 이연.
     - 단일 종목 실패는 격리 (다른 종목 진행)
     - 결과 요약 + 실패 사유 반환
+
+    2026-05-18 namespace 정정 — 경로 `/market/refresh` 에서 `/holdings/market/refresh`
+    로 이동. 이유: Market Discovery SQLite Direct Refresh STEP 의 새 endpoint 가
+    ETF universe 전체 갱신용 `/market/refresh` 를 사용. 본 endpoint 는 holdings 시세
+    갱신이라 의미 namespace 가 `/holdings/*` 가 맞다 (backward compatibility alias 없음).
     """
     try:
         loaded = holdings_module.load()

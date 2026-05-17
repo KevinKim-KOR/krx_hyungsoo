@@ -284,9 +284,16 @@ export interface FactorSignal {
 }
 
 // 명시적 사용자 액션에서만 호출 (page load / polling / 새로고침에서 호출 금지).
+// holdings 시세 갱신 — 2026-05-18 namespace 정정 후 `/holdings/market/refresh`.
+// 기존 `/market/refresh` 는 ETF universe 전체 갱신용 (postMarketRefresh) 으로 이동.
 export function refreshMarket(): Promise<MarketRefreshResult> {
   // Naver 시세 조회는 종목당 최대 5초 + 직렬 호출이라 기본 timeout 보다 여유 필요.
-  return request<MarketRefreshResult>("POST", "/market/refresh", undefined, 60000);
+  return request<MarketRefreshResult>(
+    "POST",
+    "/holdings/market/refresh",
+    undefined,
+    60000,
+  );
 }
 
 export function fetchEnrichedHoldings(): Promise<EnrichedHoldingsResult> {
@@ -362,14 +369,17 @@ export function refreshUniverseMomentum(): Promise<UniverseRefreshResponse> {
   );
 }
 
-// ─── PC Market Discovery — read-only TOP N artifact ───────────────
-// GET /market/topn/latest 는 state/market/etf_universe_topn_latest.json 만 읽는다.
-// 본 API 는 FDR refresh / SQLite 직접 조회 / TOP N 재계산을 수행하지 않는다.
+// ─── PC Market Discovery — SQLite 직접 계산 + refresh background job ─
+// 2026-05-18 변경: 시장 데이터 SSOT = SQLite. JSON artifact 폐기.
+// GET  /market/topn/latest    — SQLite 에서 직접 TOP N 계산 (read-only).
+// POST /market/refresh        — FDR 수집을 background job 으로 트리거 (ETF universe + 가격).
+// GET  /market/refresh/status — 현재/마지막 refresh 상태.
+// (holdings naver 시세 갱신은 별도 endpoint `POST /holdings/market/refresh`.)
 
-export type MarketTopNStatus = "ok" | "missing" | "invalid";
+export type MarketTopNStatus = "ok" | "missing" | "empty" | "invalid";
 
-// artifact 에 없는 값은 백엔드가 그대로 null 로 통과시킨다 (지시문 §3.2 "억지로
-// 만들지 않는다"). 따라서 frontend 도 모든 필드를 nullable 로 받아 "-" 표시한다.
+// 결측 필드는 백엔드가 그대로 null 로 통과시킨다 (지시문 §6 "0% 보정 금지").
+// frontend 도 모든 필드를 nullable 로 받아 "-" 표시한다.
 export interface MarketTopNEntry {
   rank?: number | null;
   ticker?: string | null;
@@ -377,6 +387,18 @@ export interface MarketTopNEntry {
   return_pct?: number | null;
   basis_start_date?: string | null;
   basis_end_date?: string | null;
+}
+
+export interface MarketLatestRefresh {
+  refresh_id?: string | null;
+  source?: string | null;
+  asof?: string | null;
+  attempted_count?: number | null;
+  success_count?: number | null;
+  fail_count?: number | null;
+  runtime_seconds?: number | null;
+  error_summary?: string | null;
+  created_at?: string | null;
 }
 
 export interface MarketTopNResponse {
@@ -388,14 +410,66 @@ export interface MarketTopNResponse {
   universe_count?: number | null;
   price_success_count?: number | null;
   price_fail_count?: number | null;
+  latest_refresh?: MarketLatestRefresh | null;
   runtime_seconds?: number | null;
   daily_topn: MarketTopNEntry[];
   one_month_topn: MarketTopNEntry[];
   three_month_topn: MarketTopNEntry[];
+  period_exclusions?: Record<string, Record<string, number>>;
   topn_caveat?: string | null;
-  artifact_path?: string | null;
 }
 
-export function fetchMarketTopnLatest(): Promise<MarketTopNResponse> {
-  return request<MarketTopNResponse>("GET", "/market/topn/latest");
+export function fetchMarketTopnLatest(
+  n: number = 10,
+): Promise<MarketTopNResponse> {
+  return request<MarketTopNResponse>("GET", `/market/topn/latest?n=${n}`);
+}
+
+export type MarketRefreshStartStatus =
+  | "accepted"
+  | "running"
+  | "skipped_cooldown"
+  | "failed_to_start";
+
+export interface MarketRefreshStartResponse {
+  status: MarketRefreshStartStatus;
+  refresh_id?: string | null;
+  message: string;
+  cooldown_remaining_seconds: number;
+}
+
+export function postMarketRefresh(): Promise<MarketRefreshStartResponse> {
+  // FDR 수집은 background — POST 자체는 즉시 응답이라 짧은 timeout.
+  return request<MarketRefreshStartResponse>(
+    "POST",
+    "/market/refresh",
+    undefined,
+    15000,
+  );
+}
+
+export type MarketRefreshStatus =
+  | "idle"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped_cooldown";
+
+export interface MarketRefreshStatusResponse {
+  status: MarketRefreshStatus;
+  refresh_id?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  asof?: string | null;
+  universe_count?: number | null;
+  price_attempted_count?: number | null;
+  price_success_count?: number | null;
+  price_fail_count?: number | null;
+  runtime_seconds?: number | null;
+  error_summary?: string | null;
+  cooldown_remaining_seconds: number;
+}
+
+export function fetchMarketRefreshStatus(): Promise<MarketRefreshStatusResponse> {
+  return request<MarketRefreshStatusResponse>("GET", "/market/refresh/status");
 }
