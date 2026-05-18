@@ -55,10 +55,14 @@ export default function MainPanel() {
       break;
   }
 
+  // Market Discovery 는 7 컬럼 통합 테이블이라 넓은 폭이 필요. 다른 화면은 기본 폭 유지.
+  const contentClass =
+    active === "market_discovery" ? "app-content app-content--wide" : "app-content";
+
   return (
     <div className="app-shell">
       <LeftSidebar active={active} onSelect={setActive} />
-      <main className="app-content">{view}</main>
+      <main className={contentClass}>{view}</main>
     </div>
   );
 }

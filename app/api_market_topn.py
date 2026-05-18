@@ -17,7 +17,7 @@ SQLite 만이 시장 데이터의 단일 SSOT.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
@@ -28,7 +28,9 @@ from app.market_refresh_service import (
     get_state_snapshot,
     start_refresh_job,
 )
-from app.market_topn import DEFAULT_N, compute_topn
+from app.market_topn import DEFAULT_BASIS, DEFAULT_N, compute_topn
+
+BasisLiteral = Literal["daily", "one_month", "three_month"]
 
 router = APIRouter()
 
@@ -67,17 +69,47 @@ class MarketLatestRefresh(BaseModel):
     created_at: Optional[str] = None
 
 
+class MarketPeriodReturn(BaseModel):
+    return_pct: Optional[float] = None
+    basis_start_date: Optional[str] = None
+    basis_end_date: Optional[str] = None
+
+
+class MarketReturns(BaseModel):
+    daily: Optional[MarketPeriodReturn] = None
+    one_month: Optional[MarketPeriodReturn] = None
+    three_month: Optional[MarketPeriodReturn] = None
+
+
+class MarketCandidate(BaseModel):
+    """통합 후보 테이블 entry — 3 기간 수익률 + 선택된 basis 의 요약 필드."""
+
+    rank: Optional[int] = None
+    ticker: Optional[str] = None
+    name: Optional[str] = None
+    tags: list[str] = []
+    selected_return_pct: Optional[float] = None
+    selected_basis_start_date: Optional[str] = None
+    selected_basis_end_date: Optional[str] = None
+    returns: MarketReturns = MarketReturns()
+
+
 class MarketTopNResponse(BaseModel):
     status: str  # ok / missing / empty / invalid
     error: Optional[str] = None
     asof: Optional[str] = None
     source: Optional[str] = None
     n: Optional[int] = None
+    # 2026-05-18 통합 후보 테이블 1차 — basis: daily / one_month / three_month.
+    basis: Optional[str] = None
     universe_count: Optional[int] = None
     price_success_count: Optional[int] = None
     price_fail_count: Optional[int] = None
     latest_refresh: Optional[MarketLatestRefresh] = None
     runtime_seconds: Optional[float] = None
+    # 통합 후보 테이블 (frontend 기본 렌더 소스).
+    candidates: list[MarketCandidate] = []
+    # 호환용 — 기존 분리 테이블도 유지 (frontend 사용 안 함).
     daily_topn: list[MarketTopNEntry] = []
     one_month_topn: list[MarketTopNEntry] = []
     three_month_topn: list[MarketTopNEntry] = []
@@ -85,6 +117,7 @@ class MarketTopNResponse(BaseModel):
     # 2026-05-18 후보 정제 1차 — 활성 필터 / 기간별 필터 제외 집계.
     filters: MarketTopNFilters = MarketTopNFilters()
     filter_exclusions: dict[str, dict[str, int]] = {}
+    candidate_filter_exclusions: dict[str, int] = {}
     topn_caveat: Optional[str] = None
 
 
@@ -100,9 +133,38 @@ def _entry_to_model(raw: dict) -> MarketTopNEntry:
     )
 
 
+def _period_to_model(raw: Optional[dict]) -> Optional[MarketPeriodReturn]:
+    if raw is None:
+        return None
+    return MarketPeriodReturn(
+        return_pct=raw.get("return_pct"),
+        basis_start_date=raw.get("basis_start_date"),
+        basis_end_date=raw.get("basis_end_date"),
+    )
+
+
+def _candidate_to_model(raw: dict) -> MarketCandidate:
+    returns_raw = raw.get("returns") or {}
+    return MarketCandidate(
+        rank=raw.get("rank"),
+        ticker=raw.get("ticker"),
+        name=raw.get("name"),
+        tags=list(raw.get("tags") or []),
+        selected_return_pct=raw.get("selected_return_pct"),
+        selected_basis_start_date=raw.get("selected_basis_start_date"),
+        selected_basis_end_date=raw.get("selected_basis_end_date"),
+        returns=MarketReturns(
+            daily=_period_to_model(returns_raw.get("daily")),
+            one_month=_period_to_model(returns_raw.get("one_month")),
+            three_month=_period_to_model(returns_raw.get("three_month")),
+        ),
+    )
+
+
 @router.get("/market/topn/latest", response_model=MarketTopNResponse)
 def get_market_topn_latest(
     n: int = Query(default=DEFAULT_N, ge=1, le=200),
+    basis: BasisLiteral = Query(default=DEFAULT_BASIS),
     exclude_inverse: bool = Query(default=True),
     exclude_leveraged: bool = Query(default=True),
     exclude_synthetic: bool = Query(default=True),
@@ -113,11 +175,14 @@ def get_market_topn_latest(
     artifact 파일을 읽지 않는다. FDR 호출 / refresh 트리거 없음 (read-only).
 
     2026-05-18 후보 정제 1차 — 4개 exclude 옵션 (모두 default true).
+    2026-05-18 통합 후보 테이블 1차 — basis 파라미터 (default one_month).
+    invalid basis 는 FastAPI Literal 가 422 응답으로 차단.
     필터링은 TOP N limit 이전에 적용된다 (지시문 §3.1).
     """
     payload = compute_topn(
         n=n,
         db_path=DEFAULT_DB_PATH,
+        basis=basis,
         exclude_inverse=exclude_inverse,
         exclude_leveraged=exclude_leveraged,
         exclude_synthetic=exclude_synthetic,
@@ -131,6 +196,7 @@ def get_market_topn_latest(
         asof=payload.get("asof"),
         source=payload.get("source"),
         n=payload.get("n"),
+        basis=payload.get("basis"),
         universe_count=payload.get("universe_count"),
         price_success_count=payload.get("price_success_count"),
         price_fail_count=payload.get("price_fail_count"),
@@ -138,6 +204,7 @@ def get_market_topn_latest(
             MarketLatestRefresh(**latest_refresh) if latest_refresh else None
         ),
         runtime_seconds=payload.get("runtime_seconds"),
+        candidates=[_candidate_to_model(c) for c in payload.get("candidates", [])],
         daily_topn=[_entry_to_model(r) for r in payload.get("daily_topn", [])],
         one_month_topn=[_entry_to_model(r) for r in payload.get("one_month_topn", [])],
         three_month_topn=[
@@ -146,6 +213,7 @@ def get_market_topn_latest(
         period_exclusions=payload.get("period_exclusions", {}),
         filters=MarketTopNFilters(**filters_raw),
         filter_exclusions=payload.get("filter_exclusions", {}),
+        candidate_filter_exclusions=payload.get("candidate_filter_exclusions", {}),
         topn_caveat=payload.get("topn_caveat"),
     )
 

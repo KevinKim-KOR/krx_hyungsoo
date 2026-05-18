@@ -58,6 +58,10 @@ DAILY_LOOKBACK_DAYS = 1
 ONE_MONTH_LOOKBACK_DAYS = 30
 THREE_MONTH_LOOKBACK_DAYS = 90
 
+# 2026-05-18 통합 후보 테이블 1차 — 조회 기준 (basis).
+ALLOWED_BASIS = ("daily", "one_month", "three_month")
+DEFAULT_BASIS = "one_month"
+
 EXCLUSION_REASONS = (
     "missing_latest_price",
     "missing_base_price",
@@ -229,6 +233,7 @@ def _build_empty_payload(
     status: str,
     n: int,
     elapsed: float,
+    basis: str = DEFAULT_BASIS,
     error: Optional[str] = None,
     db_path: Optional[Path] = None,
     filters: Optional[dict[str, bool]] = None,
@@ -245,11 +250,13 @@ def _build_empty_payload(
         "asof": None,
         "source": "SQLite (FinanceDataReader 수집)",
         "n": n,
+        "basis": basis,
         "universe_count": 0,
         "price_success_count": 0,
         "price_fail_count": 0,
         "latest_refresh": latest_refresh,
         "runtime_seconds": round(elapsed, 3),
+        "candidates": [],
         "daily_topn": [],
         "one_month_topn": [],
         "three_month_topn": [],
@@ -267,6 +274,7 @@ def compute_topn(
     n: int = DEFAULT_N,
     db_path: Path = DEFAULT_DB_PATH,
     asof: Optional[str] = None,
+    basis: str = DEFAULT_BASIS,
     exclude_inverse: bool = True,
     exclude_leveraged: bool = True,
     exclude_synthetic: bool = True,
@@ -284,6 +292,8 @@ def compute_topn(
     되는 케이스가 발생).
     """
     t0 = time.perf_counter()
+    if basis not in ALLOWED_BASIS:
+        basis = DEFAULT_BASIS  # 호출자(API) 가 Literal 로 1차 막지만 안전 fallback.
     filters = _build_filters_dict(
         exclude_inverse, exclude_leveraged, exclude_synthetic, exclude_futures
     )
@@ -293,6 +303,7 @@ def compute_topn(
             status="missing",
             n=n,
             elapsed=time.perf_counter() - t0,
+            basis=basis,
             error="SQLite DB 파일이 없습니다. 먼저 시장 데이터 갱신을 실행하세요.",
             filters=filters,
         )
@@ -304,6 +315,7 @@ def compute_topn(
             status="invalid",
             n=n,
             elapsed=time.perf_counter() - t0,
+            basis=basis,
             error=f"SQLite 구조 확인 실패: {type(e).__name__}: {e}",
             filters=filters,
         )
@@ -312,6 +324,7 @@ def compute_topn(
             status="invalid",
             n=n,
             elapsed=time.perf_counter() - t0,
+            basis=basis,
             error=f"SQLite 의 필수 테이블이 누락되었습니다: {missing}",
             filters=filters,
         )
@@ -323,6 +336,7 @@ def compute_topn(
             status="invalid",
             n=n,
             elapsed=time.perf_counter() - t0,
+            basis=basis,
             error=f"SQLite 조회 실패: {type(e).__name__}: {e}",
             filters=filters,
         )
@@ -335,6 +349,7 @@ def compute_topn(
             status="empty",
             n=n,
             elapsed=time.perf_counter() - t0,
+            basis=basis,
             error="가격 데이터가 SQLite 에 아직 없습니다. 최신 시장 데이터 갱신을 실행하세요.",
             db_path=db_path,
             filters=filters,
@@ -350,10 +365,14 @@ def compute_topn(
         ("one_month", ONE_MONTH_LOOKBACK_DAYS),
         ("three_month", THREE_MONTH_LOOKBACK_DAYS),
     ]
-    # 산출 가능 후보 — (ticker, return_pct, base_date, tags)
+    # 기존 호환용 — 각 기간별 (ticker, return_pct, base_date, tags) 산출 가능 후보.
     buckets: dict[str, list[tuple[str, float, str, list[str]]]] = {
         label: [] for label, _ in period_specs
     }
+    # 통합 후보 — ticker 별 3 기간 결과 + 태그. 결측 기간은 None 으로 두고
+    # 0% 보정하지 않는다 (지시문 §6).
+    per_ticker_returns: dict[str, dict[str, Optional[dict[str, object]]]] = {}
+    per_ticker_tags: dict[str, list[str]] = {}
     exclusions = _empty_exclusion_buckets()
 
     # ticker 별 이름 캐싱 — get_etf_name 반복 호출 회피.
@@ -373,6 +392,8 @@ def compute_topn(
             continue
         price_success += 1
         tags = classify_etf_tags(_name_of(tk))
+        per_ticker_tags[tk] = tags
+        per_ticker_returns[tk] = {label: None for label, _ in period_specs}
         for label, lookback in period_specs:
             r = _compute_period(history, asof_iso, lookback)
             if r.exclusion_reason is not None:
@@ -382,6 +403,11 @@ def compute_topn(
                 continue
             assert r.return_pct is not None and r.base_date is not None
             buckets[label].append((tk, r.return_pct, r.base_date, tags))
+            per_ticker_returns[tk][label] = {
+                "return_pct": round(r.return_pct, 4),
+                "basis_start_date": r.base_date,
+                "basis_end_date": asof_iso,
+            }
 
     # exclude 옵션 → 활성 필터 태그
     exclude_tags: set[str] = set()
@@ -427,6 +453,50 @@ def compute_topn(
             out.append(entry)
         return out
 
+    # ── 통합 후보 테이블 (지시문 §5 / §6) ────────────────────────────────
+    # 1. 필터링: ticker 별 태그가 활성 필터와 매치하면 제외 (각 태그별 +1 카운트).
+    # 2. selected basis 가 None 인 후보 (선택된 기간 수익률 부재) 제외.
+    # 3. selected basis 의 return_pct 내림차순 정렬.
+    # 4. TOP N 자르기.
+    # 5. rank 1 부터 재부여.
+    candidate_filter_exclusions: dict[str, int] = {k: 0 for k in PRODUCT_TAG_TYPES}
+
+    kept_candidates: list[tuple[str, list[str], dict[str, Optional[dict]]]] = []
+    for tk, returns in per_ticker_returns.items():
+        tags = per_ticker_tags.get(tk, [])
+        matched = exclude_tags.intersection(tags)
+        if matched:
+            for t in matched:
+                candidate_filter_exclusions[t] += 1
+            continue
+        kept_candidates.append((tk, tags, returns))
+
+    def _basis_return_pct(item):
+        sel = item[2].get(basis)
+        if sel is None:
+            return None
+        return sel["return_pct"]
+
+    # selected basis 수익률이 없는 후보 제외 (지시문 §6 step 5).
+    kept_candidates = [c for c in kept_candidates if _basis_return_pct(c) is not None]
+    kept_candidates.sort(key=lambda c: _basis_return_pct(c), reverse=True)
+
+    candidates_out: list[dict] = []
+    for rank, (tk, tags, returns) in enumerate(kept_candidates[:n], start=1):
+        sel = returns[basis]
+        candidates_out.append(
+            {
+                "rank": rank,
+                "ticker": tk,
+                "name": _name_of(tk),
+                "tags": list(tags),
+                "selected_return_pct": sel["return_pct"] if sel else None,
+                "selected_basis_start_date": (sel["basis_start_date"] if sel else None),
+                "selected_basis_end_date": (sel["basis_end_date"] if sel else None),
+                "returns": returns,
+            }
+        )
+
     elapsed = time.perf_counter() - t0
     return {
         "status": "ok",
@@ -434,17 +504,22 @@ def compute_topn(
         "asof": asof_iso,
         "source": "SQLite (FinanceDataReader 수집)",
         "n": n,
+        "basis": basis,
         "universe_count": universe_count,
         "price_success_count": price_success,
         "price_fail_count": price_fail,
         "latest_refresh": _latest_refresh_payload(db_path),
         "runtime_seconds": round(elapsed, 3),
+        # 통합 후보 테이블 (frontend 기본 렌더 소스).
+        "candidates": candidates_out,
+        # 호환용 — 기존 분리 테이블 응답도 유지.
         "daily_topn": _topn_with_filter(buckets["daily"], "daily"),
         "one_month_topn": _topn_with_filter(buckets["one_month"], "one_month"),
         "three_month_topn": _topn_with_filter(buckets["three_month"], "three_month"),
         "period_exclusions": exclusions,
         "filter_exclusions": filter_exclusions,
         "filters": filters,
+        "candidate_filter_exclusions": candidate_filter_exclusions,
         "topn_caveat": (
             "TOP N 의 N 값은 고정값이 아니며 운영/테스트 중 변경 가능 (query parameter `n`)."
         ),

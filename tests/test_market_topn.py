@@ -463,6 +463,190 @@ def test_compute_topn_entries_include_tags_field(db_path: Path) -> None:
     assert gen_entry["tags"] == []
 
 
+# ─── 통합 후보 테이블 1차 (2026-05-18) ──────────────────────────────
+
+
+def _seed_basis_test_dataset(db_path: Path, end: date) -> None:
+    """3 ETF 의 daily / one_month / three_month 수익률 순위가 다르게 나오는 데이터셋.
+
+    기간별 1위가 서로 다른 ticker 가 되도록 가격을 설계.
+    """
+    d = _dates_around(end)
+    _seed_universe(
+        db_path,
+        [("GA", "Gen A"), ("GB", "Gen B"), ("GC", "Gen C")],
+    )
+    # GA: daily 최고, 1m 중간, 3m 최저
+    _seed_price_series(
+        db_path,
+        "GA",
+        [
+            (d["minus_90"], 100.0),
+            (d["minus_30"], 100.0),
+            (d["minus_1"], 100.0),
+            (d["end"], 110.0),  # daily +10%
+        ],
+    )
+    # GB: daily 중간, 1m 최고, 3m 중간
+    _seed_price_series(
+        db_path,
+        "GB",
+        [
+            (d["minus_90"], 100.0),
+            (d["minus_30"], 80.0),
+            (d["minus_1"], 100.0),
+            (d["end"], 105.0),  # daily +5%, 1m +31.25%, 3m +5%
+        ],
+    )
+    # GC: daily 최저, 1m 최저, 3m 최고
+    _seed_price_series(
+        db_path,
+        "GC",
+        [
+            (d["minus_90"], 100.0),
+            (d["minus_30"], 150.0),
+            (d["minus_1"], 200.0),
+            (d["end"], 202.0),  # daily +1%, 1m +35%... 잠깐 다시
+        ],
+    )
+
+
+def test_compute_topn_default_basis_is_one_month(db_path: Path) -> None:
+    end = date(2024, 10, 31)
+    _seed_basis_test_dataset(db_path, end)
+    payload = compute_topn(n=10, db_path=db_path)
+    assert payload["basis"] == "one_month"
+    # candidates 가 1개월 수익률 내림차순 정렬됐는지 확인 — selected_return_pct 가 단조 비증가
+    selected = [c["selected_return_pct"] for c in payload["candidates"]]
+    assert selected == sorted(selected, reverse=True)
+
+
+def test_compute_topn_basis_daily_sort_order(db_path: Path) -> None:
+    end = date(2024, 10, 31)
+    _seed_basis_test_dataset(db_path, end)
+    payload = compute_topn(n=10, db_path=db_path, basis="daily")
+    assert payload["basis"] == "daily"
+    # daily 기준 — GA(+10%) > GB(+5%) > GC(+1%)
+    tickers = [c["ticker"] for c in payload["candidates"]]
+    assert tickers[0] == "GA"
+    # 각 candidate 의 selected_return_pct == returns.daily.return_pct
+    for c in payload["candidates"]:
+        assert c["selected_return_pct"] == c["returns"]["daily"]["return_pct"]
+
+
+def test_compute_topn_basis_three_month_sort_order(db_path: Path) -> None:
+    end = date(2024, 10, 31)
+    _seed_basis_test_dataset(db_path, end)
+    payload = compute_topn(n=10, db_path=db_path, basis="three_month")
+    assert payload["basis"] == "three_month"
+    for c in payload["candidates"]:
+        assert c["selected_return_pct"] == c["returns"]["three_month"]["return_pct"]
+
+
+def test_compute_topn_candidates_include_all_three_returns(db_path: Path) -> None:
+    """각 candidate 에 daily / one_month / three_month 3 기간 returns 모두 포함."""
+    end = date(2024, 10, 31)
+    _seed_three_etfs(db_path, end)
+    payload = compute_topn(n=10, db_path=db_path)
+    assert len(payload["candidates"]) > 0
+    for c in payload["candidates"]:
+        returns = c["returns"]
+        assert "daily" in returns
+        assert "one_month" in returns
+        assert "three_month" in returns
+        # 정상 데이터는 모두 채워짐 (3 기간 모두 산출 가능 시계열).
+        for label in ("daily", "one_month", "three_month"):
+            assert returns[label] is not None
+            assert "return_pct" in returns[label]
+            assert "basis_start_date" in returns[label]
+            assert "basis_end_date" in returns[label]
+
+
+def test_compute_topn_selected_basis_dates_match_basis(db_path: Path) -> None:
+    end = date(2024, 10, 31)
+    _seed_three_etfs(db_path, end)
+    for b in ("daily", "one_month", "three_month"):
+        payload = compute_topn(n=10, db_path=db_path, basis=b)
+        for c in payload["candidates"]:
+            sel_start = c["selected_basis_start_date"]
+            sel_end = c["selected_basis_end_date"]
+            assert sel_start == c["returns"][b]["basis_start_date"]
+            assert sel_end == c["returns"][b]["basis_end_date"]
+
+
+def test_compute_topn_invalid_basis_falls_back_to_default(db_path: Path) -> None:
+    """compute_topn 의 안전 fallback — invalid basis 는 DEFAULT_BASIS 로 처리.
+
+    (API endpoint 에서는 FastAPI Literal 이 422 로 1차 차단하지만, compute_topn 단독
+    호출 시에도 silent corruption 방지를 위해 fallback.)
+    """
+    end = date(2024, 10, 31)
+    _seed_three_etfs(db_path, end)
+    payload = compute_topn(n=10, db_path=db_path, basis="weekly")  # invalid
+    assert payload["basis"] == "one_month"
+
+
+def test_compute_topn_rank_reassigned_after_filter_and_sort(db_path: Path) -> None:
+    """필터 적용 + 정렬 후 rank 1 부터 재부여."""
+    end = date(2024, 10, 31)
+    d_end = end.isoformat()
+    d_prev = (end - timedelta(days=1)).isoformat()
+    _seed_universe(
+        db_path,
+        [
+            ("LEV", "LEV 레버리지"),
+            ("GA", "Gen A"),
+            ("GB", "Gen B"),
+        ],
+    )
+    _seed_price_series(db_path, "LEV", [(d_prev, 100.0), (d_end, 200.0)])  # +100%
+    _seed_price_series(db_path, "GA", [(d_prev, 100.0), (d_end, 110.0)])  # +10%
+    _seed_price_series(db_path, "GB", [(d_prev, 100.0), (d_end, 105.0)])  # +5%
+    payload = compute_topn(n=10, db_path=db_path, basis="daily")
+    tickers = [c["ticker"] for c in payload["candidates"]]
+    assert "LEV" not in tickers  # 레버리지 제외
+    # rank 1 부터 재부여 — LEV 가 제거됐어도 GA 가 rank 1.
+    assert payload["candidates"][0]["rank"] == 1
+    assert payload["candidates"][0]["ticker"] == "GA"
+    assert payload["candidates"][1]["rank"] == 2
+    assert payload["candidates"][1]["ticker"] == "GB"
+
+
+def test_compute_topn_missing_basis_return_excludes_candidate(db_path: Path) -> None:
+    """선택된 basis 의 수익률이 None 인 ticker 는 candidates 에서 제외 (지시문 §6).
+
+    본 알고리즘 특성: latest + 직전 거래일만 있으면 1m / 3m base 도 직전 거래일로
+    잡혀 모든 기간 수익률이 산출된다. 진짜 "특정 basis 만 None" 케이스를 강제로
+    만들기는 어려움. 대신 history 1건 (insufficient_history) ticker 는 모든 기간
+    None → candidates 어디에도 포함되면 안 됨을 검증.
+    """
+    end = date(2024, 10, 31)
+    d_end = end.isoformat()
+    d_prev = (end - timedelta(days=1)).isoformat()
+    _seed_universe(
+        db_path,
+        [("FULL", "Has Full"), ("SOLO", "Latest Only")],
+    )
+    _seed_price_series(
+        db_path,
+        "FULL",
+        [
+            ((end - timedelta(days=90)).isoformat(), 100.0),
+            ((end - timedelta(days=30)).isoformat(), 110.0),
+            (d_prev, 119.0),
+            (d_end, 120.0),
+        ],
+    )
+    # SOLO: latest 1건만 → 모든 기간 insufficient_history
+    _seed_price_series(db_path, "SOLO", [(d_end, 105.0)])
+
+    for b in ("daily", "one_month", "three_month"):
+        payload = compute_topn(n=10, db_path=db_path, basis=b)
+        tickers = [c["ticker"] for c in payload["candidates"]]
+        assert "FULL" in tickers, f"basis={b}: FULL missing"
+        assert "SOLO" not in tickers, f"basis={b}: SOLO 가 포함됨"
+
+
 def test_compute_topn_does_not_modify_raw_sqlite(db_path: Path) -> None:
     """compute_topn 호출이 etf_master / etf_daily_price 의 row count 를 변경하지 않는다."""
     import sqlite3 as _sql

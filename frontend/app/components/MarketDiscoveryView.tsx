@@ -14,14 +14,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
+  DEFAULT_MARKET_BASIS,
   DEFAULT_MARKET_TOPN_FILTERS,
+  MARKET_BASIS_LABEL,
   fetchMarketRefreshStatus,
   fetchMarketTopnLatest,
   postMarketRefresh,
+  type MarketBasis,
+  type MarketCandidate,
   type MarketProductTag,
   type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
-  type MarketTopNEntry,
   type MarketTopNFilterOptions,
   type MarketTopNResponse,
 } from "@/lib/api";
@@ -101,54 +104,127 @@ function fmtCooldown(seconds: number): string {
   return `${m}분`;
 }
 
-function TopNTable({
-  title,
-  entries,
+function CandidateTable({
+  candidates,
+  basis,
 }: {
-  title: string;
-  entries: MarketTopNEntry[];
+  candidates: MarketCandidate[];
+  basis: MarketBasis;
 }) {
+  if (candidates.length === 0) {
+    return (
+      <div className="card market-topn-card">
+        <div className="message info">표시할 항목이 없습니다.</div>
+      </div>
+    );
+  }
   return (
     <div className="card market-topn-card">
-      <h2>{title}</h2>
-      {entries.length === 0 ? (
-        <div className="message info">표시할 항목이 없습니다.</div>
-      ) : (
-        <table className="market-topn-table">
-          <thead>
-            <tr>
-              <th style={{ width: 56 }}>순위</th>
-              <th style={{ width: 90 }}>티커</th>
-              <th>ETF명</th>
-              <th style={{ width: 110, textAlign: "right" }}>수익률</th>
-              <th style={{ width: 130 }}>기준 시작일</th>
-              <th style={{ width: 130 }}>기준 종료일</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((e, idx) => (
-              <tr key={`${e.rank ?? "x"}-${e.ticker ?? "x"}-${idx}`}>
-                <td>{fmtNum(e.rank)}</td>
-                <td>{e.ticker ? <code>{e.ticker}</code> : DASH}</td>
-                <td>
-                  {fmt(e.name)}
-                  <TagBadges tags={e.tags as MarketProductTag[] | undefined} />
+      <table className="market-topn-table market-candidate-table">
+        <thead>
+          <tr>
+            <th style={{ width: 56 }}>순위</th>
+            <th style={{ width: 90 }}>티커</th>
+            <th>ETF명</th>
+            <th
+              style={{ width: 100, textAlign: "right" }}
+              className={basis === "daily" ? "basis-active" : undefined}
+            >
+              일간
+            </th>
+            <th
+              style={{ width: 100, textAlign: "right" }}
+              className={basis === "one_month" ? "basis-active" : undefined}
+            >
+              1개월
+            </th>
+            <th
+              style={{ width: 100, textAlign: "right" }}
+              className={basis === "three_month" ? "basis-active" : undefined}
+            >
+              3개월
+            </th>
+            <th style={{ width: 200 }}>정렬 기준 기간</th>
+            <th style={{ width: 160 }}>태그</th>
+          </tr>
+        </thead>
+        <tbody>
+          {candidates.map((c, idx) => {
+            const dailyRet = c.returns?.daily?.return_pct ?? null;
+            const oneRet = c.returns?.one_month?.return_pct ?? null;
+            const threeRet = c.returns?.three_month?.return_pct ?? null;
+            const selStart = c.selected_basis_start_date;
+            const selEnd = c.selected_basis_end_date;
+            const tags = (c.tags ?? []) as MarketProductTag[];
+            return (
+              <tr key={`${c.rank ?? "x"}-${c.ticker ?? "x"}-${idx}`}>
+                <td>{fmtNum(c.rank)}</td>
+                <td>{c.ticker ? <code>{c.ticker}</code> : DASH}</td>
+                <td>{fmt(c.name)}</td>
+                <td
+                  style={{ textAlign: "right", color: returnPctColor(dailyRet) }}
+                  className={basis === "daily" ? "basis-active" : undefined}
+                >
+                  {fmtPct(dailyRet)}
                 </td>
                 <td
-                  style={{
-                    textAlign: "right",
-                    color: returnPctColor(e.return_pct),
-                  }}
+                  style={{ textAlign: "right", color: returnPctColor(oneRet) }}
+                  className={basis === "one_month" ? "basis-active" : undefined}
                 >
-                  {fmtPct(e.return_pct)}
+                  {fmtPct(oneRet)}
                 </td>
-                <td>{fmt(e.basis_start_date)}</td>
-                <td>{fmt(e.basis_end_date)}</td>
+                <td
+                  style={{ textAlign: "right", color: returnPctColor(threeRet) }}
+                  className={basis === "three_month" ? "basis-active" : undefined}
+                >
+                  {fmtPct(threeRet)}
+                </td>
+                <td>
+                  {selStart && selEnd ? `${selStart} → ${selEnd}` : DASH}
+                </td>
+                <td>
+                  {tags.length > 0 ? (
+                    <TagBadges tags={tags} />
+                  ) : (
+                    <span className="market-topn-tag-none">일반</span>
+                  )}
+                </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BasisSelector({
+  value,
+  onChange,
+}: {
+  value: MarketBasis;
+  onChange: (next: MarketBasis) => void;
+}) {
+  const options: MarketBasis[] = ["daily", "one_month", "three_month"];
+  return (
+    <div className="card">
+      <h2>조회 기준</h2>
+      <div className="btn-row market-basis-selector">
+        {options.map((b) => (
+          <button
+            key={b}
+            type="button"
+            onClick={() => onChange(b)}
+            className={value === b ? "basis-btn-active" : "reject"}
+          >
+            {MARKET_BASIS_LABEL[b]}
+          </button>
+        ))}
+      </div>
+      <div className="helper" style={{ marginTop: 8 }}>
+        현재 정렬 기준: <strong>{MARKET_BASIS_LABEL[value]}</strong>. 기본값은 1개월
+        모멘텀입니다.
+      </div>
     </div>
   );
 }
@@ -341,27 +417,30 @@ export default function MarketDiscoveryView() {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
   const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
   const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
+  const [basis, setBasis] = useState<MarketBasis>(DEFAULT_MARKET_BASIS);
   const pollTickRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // loadTopn 은 현재 filters state 를 캡처해서 fetch.
-  // 검증자 B-6 NOTE 반영 — filters 변경 시 한 번만 fetch 되도록 처리:
-  //   handleFiltersChange 는 setFilters 만 호출 → filters 변경 → loadTopn useCallback
-  //   재생성 → useEffect 가 단 한 번 재실행 → fetch 1회.
+  // loadTopn 은 현재 filters + basis state 를 캡처해서 fetch.
+  // 검증자 B-6 NOTE 반영 — handleFiltersChange / handleBasisChange 는 state 변경만,
+  // useEffect 가 단일 fetch 트리거.
   const loadTopn = useCallback(() => {
     setState({ phase: "loading" });
-    fetchMarketTopnLatest(10, toOptions(filters))
+    fetchMarketTopnLatest(10, { ...toOptions(filters), basis })
       .then((data) => setState({ phase: "ready", data }))
       .catch((e) => setState({ phase: "error", message: describeError(e) }));
-  }, [filters]);
+  }, [filters, basis]);
 
   useEffect(() => {
     loadTopn();
   }, [loadTopn]);
 
   const handleFiltersChange = useCallback((next: FilterUiState) => {
-    // state 변경만 — useEffect 가 단일 fetch 트리거.
     setFilters(next);
+  }, []);
+
+  const handleBasisChange = useCallback((next: MarketBasis) => {
+    setBasis(next);
   }, []);
 
   const stopPolling = useCallback(() => {
@@ -579,11 +658,10 @@ export default function MarketDiscoveryView() {
         disabled={buttonDisabled}
         cooldownRemainingSeconds={cooldown}
       />
+      <BasisSelector value={basis} onChange={handleBasisChange} />
       <FilterCard filters={filters} onChange={handleFiltersChange} />
       <SummaryHeader data={data} />
-      <TopNTable title="일간 TOP N" entries={data.daily_topn} />
-      <TopNTable title="1개월 TOP N" entries={data.one_month_topn} />
-      <TopNTable title="3개월 TOP N" entries={data.three_month_topn} />
+      <CandidateTable candidates={data.candidates ?? []} basis={basis} />
     </section>
   );
 }

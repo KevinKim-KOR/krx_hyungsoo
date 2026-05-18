@@ -1,10 +1,89 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-18
+최종 업데이트: 2026-05-19
 
 ---
 
-## 0. 현재 상태 — 2026-05-18 Market Discovery 후보 정제 1차
+## 0. 현재 상태 — 2026-05-19 Market Discovery 통합 후보 테이블 1차
+
+```text
+현재 단계: Market Discovery 통합 후보 테이블 1차 (2026-05-19) — basis selector + 1 통합 표
+이전 단계: Market Discovery 후보 정제 1차 (2026-05-18) — 4 exclude 옵션
+다음 단계 후보:
+  (a) Market Discovery 기본 조회 기준 설정 UI (BACKLOG, 본 STEP 신규)
+  (b) AI 투자세션 복사용 문구 / Data Status 실제 연결 / decision evidence (기존 BACKLOG)
+```
+
+### 본 STEP 요약
+
+- **방향**: 기존 일간 / 1개월 / 3개월 분리 표 (3개) → **단일 통합 후보 테이블** (1개).
+  각 row 에 3 기간 수익률을 모두 표시. 사용자는 상단 `basis selector` 로 정렬 기준
+  (`daily / one_month / three_month`) 선택.
+- **기본 조회 기준**: `one_month` (1개월 모멘텀). 추후 운영 중 변경 가능 — 설정 UI 는
+  본 STEP 에서 만들지 않음 (BACKLOG).
+- **Backend**:
+  - `GET /market/topn/latest` 에 `basis` query param 추가 — FastAPI Literal
+    (`daily / one_month / three_month`) 로 검증. invalid 는 422 응답.
+  - 응답에 `candidates: list[MarketCandidate]` 배열 추가. 각 entry 는:
+    `rank / ticker / name / tags / selected_return_pct / selected_basis_start_date /
+    selected_basis_end_date / returns: {daily, one_month, three_month}`.
+  - TOP N 산출 순서 (지시문 §6):
+    1. SQLite 산출 가능 후보 전체 → 2. 3 기간 수익률 모두 계산 → 3. 태깅 → 4. exclude 적용 →
+    5. selected basis 의 return 이 None 인 후보 제외 → 6. selected basis 내림차순 정렬 →
+    7. TOP N → 8. rank 재부여.
+  - 기존 `daily_topn / one_month_topn / three_month_topn` 배열은 호환용으로 응답에 유지
+    (frontend 미사용).
+- **Frontend**:
+  - `CandidateTable` 컴포넌트 — 8 컬럼 (순위 / 티커 / ETF명 / 일간 / 1개월 / 3개월 /
+    정렬 기준 기간 / 태그). 선택된 basis 컬럼은 헤더 + 셀 모두 강조 (`.basis-active`).
+    태그 컬럼은 별도 표시 (검증자 A-1 NOTE 반영 후 FIX — ETF명 셀 안 배지에서 별도 컬럼으로
+    이동).
+  - `BasisSelector` 컴포넌트 — 3 버튼 (`일간 급등 / 1개월 모멘텀 / 3개월 추세`).
+    기본 선택 = `1개월 모멘텀`. 활성 버튼은 `.basis-btn-active`.
+  - `MarketDiscoveryView` 에 `basis` state 추가. 변경 시 GET 재호출.
+  - 후보 정제 4 체크박스 유지.
+  - 기존 3개 `TopNTable` 호출 제거 → 1개 `CandidateTable` 로 통합.
+- **레이아웃**: `.app-content` 기본 max-width `960px` 유지. Market Discovery 화면에서만
+  `MainPanel` 이 `app-content--wide` 클래스를 부착하여 `max-width: 1400px` 적용.
+  Dashboard / Holdings / Approval / Data Status 는 영향 없음 (검증자 NOTE 반영 후 FIX).
+- **운영 1회 검증 (uvicorn + curl)**:
+  - default `basis=one_month`: candidates 1위 = 139260 TIGER 200 IT (1m +49.87%,
+    3m +82.05%). 각 candidate 에 3 기간 returns 모두 노출.
+  - `basis=daily`: 정렬 기준 변경, 1위 = 0183J0 TIGER 미국우주테크 (daily +5.42%).
+  - `basis=weekly` (invalid) → HTTP 422 (FastAPI Literal 가드 작동).
+- **검증**: pytest 231 passed (223 → +8 신규). black PASS / flake8 PASS / frontend lint+build PASS.
+- **KS-10**: trigger 0 / near 0. backend max 564 (기존) / 테스트 max 924 (기존) /
+  프론트 max 705 (MarketDiscoveryView.tsx 본 STEP — trigger 900 / near 850 미달).
+
+### 신규 / 수정 파일
+
+수정:
+- `app/market_topn.py` — `compute_topn` 의 `basis` 파라미터 + `candidates` 빌드 로직 +
+  per-ticker returns 캐시. `ALLOWED_BASIS` / `DEFAULT_BASIS` 상수.
+- `app/api_market_topn.py` — `BasisLiteral` (FastAPI Literal) + 신규 응답 model
+  (`MarketPeriodReturn / MarketReturns / MarketCandidate`) + endpoint 시그니처 확장.
+- `frontend/lib/api.ts` — `MarketBasis` 타입 + `MarketCandidate` / `MarketReturns` /
+  `MarketPeriodReturn` / `DEFAULT_MARKET_BASIS` / `MARKET_BASIS_LABEL` +
+  `fetchMarketTopnLatest(n, options.basis)`.
+- `frontend/app/components/MarketDiscoveryView.tsx` — 3 TopNTable → 1 CandidateTable +
+  BasisSelector + basis state + 통합 렌더.
+- `frontend/app/globals.css` — `.market-candidate-table .basis-active` + `.basis-btn-active`
+  + `app-content max-width: 960px → 1400px`.
+- `tests/test_market_topn.py` — 8 신규 테스트 (default basis / 정렬 / candidates
+  3 returns / selected_basis dates / invalid fallback / rank 재부여 / missing basis 제외).
+- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/backlog/BACKLOG.md` — "Market Discovery 기본 조회 기준 설정 UI" 항목 신규.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것
+
+- Settings 화면 / TOP N 설정 UI / 기본 조회 기준 설정 UI (BACKLOG).
+- 컬럼 클릭 정렬 / 시가총액·거래량 정렬.
+- 섹터 자동 분류 / 구성 종목 추출 / AI 투자세션 복사용 문구.
+- ML / OCI / 매수·매도 판단 / 점수 산식 / 백테스트 / Data Status 상세 연결.
+
+---
+
+## 0.1 직전 상태 — 2026-05-18 Market Discovery 후보 정제 1차
 
 ```text
 현재 단계: Market Discovery 후보 정제 1차 (2026-05-18) — 일반 후보 기본 표시 + 특수상품 제외 옵션

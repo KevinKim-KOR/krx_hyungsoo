@@ -12,6 +12,23 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## Market Discovery 통합 후보 테이블 1차 후 신규 (2026-05-19)
+
+Market Discovery 의 3개 분리 표 (일간/1개월/3개월) 를 단일 통합 후보 테이블로 전환 +
+basis selector 도입 후 도출된 BACKLOG.
+
+### BACKLOG: Market Discovery 기본 조회 기준 설정 UI
+- **보류 사유**: 본 STEP 은 통합 후보 테이블 1차가 목표이며 Settings 화면까지 넣으면
+  범위가 커진다. 기본값 `one_month` 는 코드 상수 (`DEFAULT_BASIS`) 로 고정.
+- **보류된 위험**: 운영 중 기본 기준을 1개월에서 3개월 등으로 바꾸고 싶을 때 코드 변경이
+  필요할 수 있다. 사용자가 매번 첫 진입 시 1개월 → 3개월 클릭하는 마찰 가능.
+- **재검토 트리거**: 사용자가 1개월 기본 기준이 실제 운영에 맞지 않는다고 판단하거나,
+  Settings 화면을 만들 때.
+- **권장 후속 작업**: 사용자 환경 설정 저장소 (예: localStorage 또는 별도 SQLite
+  preferences 테이블) + Settings UI 에서 default basis 변경 가능.
+
+---
+
 ## Market Discovery SQLite Direct Refresh 후 신규 (2026-05-18)
 
 Market Discovery 의 데이터 기준을 JSON artifact → SQLite 단일로 전환하고 PC 수동

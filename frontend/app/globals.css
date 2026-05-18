@@ -770,6 +770,12 @@ ul.reason-list li {
   padding: 28px 32px 48px 32px;
 }
 
+/* Market Discovery 통합 후보 테이블 (2026-05-19) — 8 컬럼을 위해 한정 적용.
+   MainPanel 이 active==='market_discovery' 일 때만 .app-content--wide 추가. */
+.app-content--wide {
+  max-width: 1400px;
+}
+
 .dashboard-status-list {
   list-style: none;
   margin: 0;
@@ -882,4 +888,33 @@ ul.reason-list li {
 .market-topn-tag.tag-futures {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.market-topn-tag-none {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* 통합 후보 테이블 / basis selector (2026-05-18) */
+.market-candidate-table th.basis-active,
+.market-candidate-table td.basis-active {
+  background: rgba(58, 122, 254, 0.10);
+}
+
+.market-candidate-table th.basis-active {
+  color: var(--accent);
+}
+
+.market-basis-selector {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.market-basis-selector button {
+  min-width: 120px;
+}
+
+.market-basis-selector button.basis-btn-active {
+  background: var(--accent);
+  color: white;
 }

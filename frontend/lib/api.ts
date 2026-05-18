@@ -386,6 +386,40 @@ export type MarketTopNStatus = "ok" | "missing" | "empty" | "invalid";
 // 일반 후보는 빈 배열.
 export type MarketProductTag = "inverse" | "leveraged" | "synthetic" | "futures";
 
+// 2026-05-18 통합 후보 테이블 1차 — 조회 기준 basis.
+export type MarketBasis = "daily" | "one_month" | "three_month";
+
+export const MARKET_BASIS_LABEL: Record<MarketBasis, string> = {
+  daily: "일간 급등",
+  one_month: "1개월 모멘텀",
+  three_month: "3개월 추세",
+};
+
+export const DEFAULT_MARKET_BASIS: MarketBasis = "one_month";
+
+export interface MarketPeriodReturn {
+  return_pct?: number | null;
+  basis_start_date?: string | null;
+  basis_end_date?: string | null;
+}
+
+export interface MarketReturns {
+  daily?: MarketPeriodReturn | null;
+  one_month?: MarketPeriodReturn | null;
+  three_month?: MarketPeriodReturn | null;
+}
+
+export interface MarketCandidate {
+  rank?: number | null;
+  ticker?: string | null;
+  name?: string | null;
+  tags?: MarketProductTag[];
+  selected_return_pct?: number | null;
+  selected_basis_start_date?: string | null;
+  selected_basis_end_date?: string | null;
+  returns?: MarketReturns;
+}
+
 export interface MarketTopNEntry {
   rank?: number | null;
   ticker?: string | null;
@@ -435,26 +469,36 @@ export interface MarketTopNResponse {
   asof?: string | null;
   source?: string | null;
   n?: number | null;
+  // 2026-05-18 통합 후보 테이블 1차 — 현재 조회 기준.
+  basis?: MarketBasis | null;
   universe_count?: number | null;
   price_success_count?: number | null;
   price_fail_count?: number | null;
   latest_refresh?: MarketLatestRefresh | null;
   runtime_seconds?: number | null;
+  // 통합 후보 테이블 (frontend 기본 렌더 소스).
+  candidates: MarketCandidate[];
+  // 호환용 — 기존 분리 테이블도 응답에 유지 (frontend 사용 안 함).
   daily_topn: MarketTopNEntry[];
   one_month_topn: MarketTopNEntry[];
   three_month_topn: MarketTopNEntry[];
   period_exclusions?: Record<string, Record<string, number>>;
-  // 2026-05-18 후보 정제 1차.
   filters?: MarketTopNFilters;
   filter_exclusions?: Record<string, Record<string, number>>;
+  candidate_filter_exclusions?: Record<string, number>;
   topn_caveat?: string | null;
+}
+
+export interface MarketTopNRequestOptions extends MarketTopNFilterOptions {
+  basis?: MarketBasis;
 }
 
 export function fetchMarketTopnLatest(
   n: number = 10,
-  options: MarketTopNFilterOptions = {},
+  options: MarketTopNRequestOptions = {},
 ): Promise<MarketTopNResponse> {
   const params = new URLSearchParams({ n: String(n) });
+  params.set("basis", options.basis ?? DEFAULT_MARKET_BASIS);
   params.set(
     "exclude_inverse",
     String(options.excludeInverse ?? DEFAULT_MARKET_TOPN_FILTERS.exclude_inverse),
