@@ -380,6 +380,12 @@ export type MarketTopNStatus = "ok" | "missing" | "empty" | "invalid";
 
 // 결측 필드는 백엔드가 그대로 null 로 통과시킨다 (지시문 §6 "0% 보정 금지").
 // frontend 도 모든 필드를 nullable 로 받아 "-" 표시한다.
+//
+// 2026-05-18 후보 정제 1차 — tags: ETF 이름 기반 상품 태그 배열.
+// 가능 값: "inverse" | "leveraged" | "synthetic" | "futures"
+// 일반 후보는 빈 배열.
+export type MarketProductTag = "inverse" | "leveraged" | "synthetic" | "futures";
+
 export interface MarketTopNEntry {
   rank?: number | null;
   ticker?: string | null;
@@ -387,7 +393,29 @@ export interface MarketTopNEntry {
   return_pct?: number | null;
   basis_start_date?: string | null;
   basis_end_date?: string | null;
+  tags?: MarketProductTag[];
 }
+
+export interface MarketTopNFilters {
+  exclude_inverse: boolean;
+  exclude_leveraged: boolean;
+  exclude_synthetic: boolean;
+  exclude_futures: boolean;
+}
+
+export interface MarketTopNFilterOptions {
+  excludeInverse?: boolean;
+  excludeLeveraged?: boolean;
+  excludeSynthetic?: boolean;
+  excludeFutures?: boolean;
+}
+
+export const DEFAULT_MARKET_TOPN_FILTERS: MarketTopNFilters = {
+  exclude_inverse: true,
+  exclude_leveraged: true,
+  exclude_synthetic: true,
+  exclude_futures: true,
+};
 
 export interface MarketLatestRefresh {
   refresh_id?: string | null;
@@ -416,13 +444,37 @@ export interface MarketTopNResponse {
   one_month_topn: MarketTopNEntry[];
   three_month_topn: MarketTopNEntry[];
   period_exclusions?: Record<string, Record<string, number>>;
+  // 2026-05-18 후보 정제 1차.
+  filters?: MarketTopNFilters;
+  filter_exclusions?: Record<string, Record<string, number>>;
   topn_caveat?: string | null;
 }
 
 export function fetchMarketTopnLatest(
   n: number = 10,
+  options: MarketTopNFilterOptions = {},
 ): Promise<MarketTopNResponse> {
-  return request<MarketTopNResponse>("GET", `/market/topn/latest?n=${n}`);
+  const params = new URLSearchParams({ n: String(n) });
+  params.set(
+    "exclude_inverse",
+    String(options.excludeInverse ?? DEFAULT_MARKET_TOPN_FILTERS.exclude_inverse),
+  );
+  params.set(
+    "exclude_leveraged",
+    String(options.excludeLeveraged ?? DEFAULT_MARKET_TOPN_FILTERS.exclude_leveraged),
+  );
+  params.set(
+    "exclude_synthetic",
+    String(options.excludeSynthetic ?? DEFAULT_MARKET_TOPN_FILTERS.exclude_synthetic),
+  );
+  params.set(
+    "exclude_futures",
+    String(options.excludeFutures ?? DEFAULT_MARKET_TOPN_FILTERS.exclude_futures),
+  );
+  return request<MarketTopNResponse>(
+    "GET",
+    `/market/topn/latest?${params.toString()}`,
+  );
 }
 
 export type MarketRefreshStartStatus =

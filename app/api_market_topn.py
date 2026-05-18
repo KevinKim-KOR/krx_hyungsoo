@@ -37,14 +37,22 @@ router = APIRouter()
 
 
 class MarketTopNEntry(BaseModel):
-    # 지시문 §3.2 / 검증자 NOTE 반영 — 모든 필드 Optional. 결측은 None 통과,
-    # 강제 변환 / 0·"" / 0.0 fallback 절대 금지. Frontend 가 "-" 표시.
+    # 결측은 None 통과, 강제 변환 / 0·"" / 0.0 fallback 절대 금지 — Frontend 가 "-" 표시.
     rank: Optional[int] = None
     ticker: Optional[str] = None
     name: Optional[str] = None
     return_pct: Optional[float] = None
     basis_start_date: Optional[str] = None
     basis_end_date: Optional[str] = None
+    # 2026-05-18 후보 정제 1차 — ETF 이름 기반 상품 태그 (inverse / leveraged / synthetic / futures).
+    tags: list[str] = []
+
+
+class MarketTopNFilters(BaseModel):
+    exclude_inverse: bool = True
+    exclude_leveraged: bool = True
+    exclude_synthetic: bool = True
+    exclude_futures: bool = True
 
 
 class MarketLatestRefresh(BaseModel):
@@ -74,6 +82,9 @@ class MarketTopNResponse(BaseModel):
     one_month_topn: list[MarketTopNEntry] = []
     three_month_topn: list[MarketTopNEntry] = []
     period_exclusions: dict[str, dict[str, int]] = {}
+    # 2026-05-18 후보 정제 1차 — 활성 필터 / 기간별 필터 제외 집계.
+    filters: MarketTopNFilters = MarketTopNFilters()
+    filter_exclusions: dict[str, dict[str, int]] = {}
     topn_caveat: Optional[str] = None
 
 
@@ -85,19 +96,35 @@ def _entry_to_model(raw: dict) -> MarketTopNEntry:
         return_pct=raw.get("return_pct"),
         basis_start_date=raw.get("basis_start_date"),
         basis_end_date=raw.get("basis_end_date"),
+        tags=list(raw.get("tags") or []),
     )
 
 
 @router.get("/market/topn/latest", response_model=MarketTopNResponse)
 def get_market_topn_latest(
     n: int = Query(default=DEFAULT_N, ge=1, le=200),
+    exclude_inverse: bool = Query(default=True),
+    exclude_leveraged: bool = Query(default=True),
+    exclude_synthetic: bool = Query(default=True),
+    exclude_futures: bool = Query(default=True),
 ) -> MarketTopNResponse:
     """SQLite 에서 직접 일간 / 1개월 / 3개월 TOP N 산출.
 
     artifact 파일을 읽지 않는다. FDR 호출 / refresh 트리거 없음 (read-only).
+
+    2026-05-18 후보 정제 1차 — 4개 exclude 옵션 (모두 default true).
+    필터링은 TOP N limit 이전에 적용된다 (지시문 §3.1).
     """
-    payload = compute_topn(n=n, db_path=DEFAULT_DB_PATH)
+    payload = compute_topn(
+        n=n,
+        db_path=DEFAULT_DB_PATH,
+        exclude_inverse=exclude_inverse,
+        exclude_leveraged=exclude_leveraged,
+        exclude_synthetic=exclude_synthetic,
+        exclude_futures=exclude_futures,
+    )
     latest_refresh = payload.get("latest_refresh")
+    filters_raw = payload.get("filters") or {}
     return MarketTopNResponse(
         status=payload["status"],
         error=payload.get("error"),
@@ -117,6 +144,8 @@ def get_market_topn_latest(
             _entry_to_model(r) for r in payload.get("three_month_topn", [])
         ],
         period_exclusions=payload.get("period_exclusions", {}),
+        filters=MarketTopNFilters(**filters_raw),
+        filter_exclusions=payload.get("filter_exclusions", {}),
         topn_caveat=payload.get("topn_caveat"),
     )
 

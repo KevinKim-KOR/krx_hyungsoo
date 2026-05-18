@@ -4,7 +4,75 @@
 
 ---
 
-## 0. 현재 상태 — 2026-05-18 Market Discovery SQLite Direct Refresh
+## 0. 현재 상태 — 2026-05-18 Market Discovery 후보 정제 1차
+
+```text
+현재 단계: Market Discovery 후보 정제 1차 (2026-05-18) — 일반 후보 기본 표시 + 특수상품 제외 옵션
+이전 단계: Market Discovery SQLite Direct Refresh (2026-05-18 동일자)
+다음 단계 후보:
+  (a) AI 투자세션 복사용 문구 / Data Status 실제 연결 / decision evidence (기존 BACKLOG)
+  (b) 사용자 결정 — 섹터 자동 분류 / TOP N 설정 UI / 구성 종목 추출 등
+```
+
+### 본 STEP 요약
+
+- **방향**: Market Discovery TOP N 결과에 ETF 이름 기반 상품 태그를 붙이고, 기본 화면은
+  인버스 / 레버리지 / 합성 / 선물형 ETF 를 제외한 일반 후보 TOP N 만 표시.
+- **필터링 순서 (지시문 §3.1)**: SQLite 산출 가능 후보 전체 → 태깅 → exclude 옵션 적용 →
+  정렬 → TOP N 자르기 → rank 재부여. **filter-before-limit**. SQLite 에서 먼저 TOP N
+  자른 뒤 필터링하는 방식은 금지 (필터 후 N 미만 회피).
+- **태깅 규칙 (이름 기반)**:
+  - `인버스` → `inverse`
+  - `레버리지` / `2X` (대/소문자 무시) / `2배` → `leveraged`
+  - `합성` → `synthetic`
+  - `선물` → `futures`
+  - 한 ETF 에 multi-tag 가능 (예: `TIGER 차이나전기차레버리지(합성)` → `[leveraged, synthetic]`).
+  - 금현물 / 배당 / 반도체 / AI / 조선 / 방산 / 원자재 등은 분류하지 않음.
+- **Backend**:
+  - `GET /market/topn/latest` 에 4 query param 추가 (모두 default true):
+    `exclude_inverse / exclude_leveraged / exclude_synthetic / exclude_futures`.
+  - 응답 entry 에 `tags: list[str]` 추가.
+  - 응답 최상위에 `filters` (활성 필터) + `filter_exclusions` (기간별 태그별 제외 카운트) 추가.
+  - `compute_topn` 의 단일 sort 를 `_topn_with_filter` 로 교체 — 태깅된 후보를 필터링 후 정렬.
+  - **원본 SQLite 데이터는 변경 0** (테스트 `test_compute_topn_does_not_modify_raw_sqlite` 가드).
+- **Frontend**:
+  - `MarketDiscoveryView` 상단에 후보 정제 카드 — 4 체크박스 (모두 기본 체크).
+  - 체크 변경 시 GET `/market/topn/latest?...` 재호출.
+  - 각 TOP N 행에 `TagBadges` — `인버스 / 레버리지 / 합성 / 선물형` 한글 라벨로 색상 칩 표시.
+  - **전체보기 버튼 미생성** (지시문 §11 명시).
+- **운영 1회 검증 (uvicorn + curl, SQLite asof=2026-05-15)**:
+  - default 요청 → universe 1107, daily TOP 5 모두 일반 ETF, `filter_exclusions.daily =
+    {inverse: 40, leveraged: 56, synthetic: 100, futures: 81}`.
+  - `exclude_leveraged=false` 요청 → 레버리지 다시 포함 가능 (filters 응답에 반영).
+- **검증**: pytest 223 passed (211 → +12). black PASS / flake8 PASS / frontend lint+build PASS.
+- **KS-10**: trigger 0 / near 0.
+
+### 신규 / 수정 파일
+
+수정:
+- `app/market_topn.py` — `classify_etf_tags()` + `PRODUCT_TAG_TYPES` + `compute_topn`
+  의 4 exclude 파라미터 + filter-before-limit 로직 (`_topn_with_filter`) +
+  응답에 `filters` / `filter_exclusions` 추가.
+- `app/api_market_topn.py` — `GET /market/topn/latest` 에 4 query param + entry `tags` 필드 +
+  응답 model 에 `MarketTopNFilters` / `filter_exclusions`.
+- `frontend/lib/api.ts` — `MarketProductTag` / `MarketTopNFilters` / `MarketTopNFilterOptions` /
+  `DEFAULT_MARKET_TOPN_FILTERS` + `fetchMarketTopnLatest(n, options)` 시그니처 확장.
+- `frontend/app/components/MarketDiscoveryView.tsx` — `FilterCard` 추가 + `TagBadges` +
+  filter state + 체크 변경 시 재호출.
+- `frontend/app/globals.css` — `.market-topn-filter-row` + `.market-topn-tag.*` 4 색상 변형 추가.
+- `tests/test_market_topn.py` — 12 신규 테스트 (태깅 5건, filter-before-limit / default exclude /
+  opt-in / multi-tag count / entries.tags / raw SQLite 미변경).
+- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것
+
+- 전체보기 버튼 / 섹터 자동 분류 / 구성 종목 추출 / AI 투자세션 복사용 문구.
+- ML / OCI / 매수·매도 판단 / 점수 산식 / 백테스트 / Settings / TOP N 설정 UI.
+- 원본 SQLite 데이터 변경 (필터링은 read-only 변환 — DB 미변경 가드 테스트 포함).
+
+---
+
+## 0.1 직전 상태 — 2026-05-18 Market Discovery SQLite Direct Refresh
 
 ```text
 현재 단계: Market Discovery 의 시장 데이터 기준을 JSON artifact → SQLite 로 단일화 (2026-05-18)

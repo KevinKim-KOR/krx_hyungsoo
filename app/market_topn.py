@@ -66,6 +66,45 @@ EXCLUSION_REASONS = (
     "stale_price",
 )
 
+# 2026-05-18 Market Discovery 후보 정제 1차:
+# ETF 이름 기반 1차 태깅 — 인버스 / 레버리지 / 합성 / 선물형.
+# 한 ETF 에 여러 태그가 붙을 수 있다 (예: "차이나전기차레버리지(합성)" → leveraged + synthetic).
+PRODUCT_TAG_TYPES = ("inverse", "leveraged", "synthetic", "futures")
+
+
+def classify_etf_tags(name: Optional[str]) -> list[str]:
+    """ETF 이름에서 1차 상품 태그를 추출 (지시문 §4).
+
+    - "인버스" → inverse
+    - "레버리지" / "2X" / "2배" → leveraged
+    - "합성" → synthetic
+    - "선물" → futures
+    이름이 비어있으면 빈 리스트.
+    금현물 / 배당 / 반도체 / AI / 조선 / 방산 / 원자재 등은 이 단계에서 분류하지 않는다.
+    """
+    if not name:
+        return []
+    tags: list[str] = []
+    if "인버스" in name:
+        tags.append("inverse")
+    # leveraged: "레버리지" 또는 "2X" (대/소문자 무시) 또는 "2배"
+    name_upper = name.upper()
+    if ("레버리지" in name) or ("2X" in name_upper) or ("2배" in name):
+        tags.append("leveraged")
+    if "합성" in name:
+        tags.append("synthetic")
+    if "선물" in name:
+        tags.append("futures")
+    return tags
+
+
+def _empty_filter_exclusion_buckets() -> dict[str, dict[str, int]]:
+    return {
+        "daily": {k: 0 for k in PRODUCT_TAG_TYPES},
+        "one_month": {k: 0 for k in PRODUCT_TAG_TYPES},
+        "three_month": {k: 0 for k in PRODUCT_TAG_TYPES},
+    }
+
 
 @dataclass
 class TopNEntry:
@@ -171,6 +210,20 @@ def _latest_refresh_payload(db_path: Path) -> Optional[dict]:
     }
 
 
+def _build_filters_dict(
+    exclude_inverse: bool,
+    exclude_leveraged: bool,
+    exclude_synthetic: bool,
+    exclude_futures: bool,
+) -> dict[str, bool]:
+    return {
+        "exclude_inverse": exclude_inverse,
+        "exclude_leveraged": exclude_leveraged,
+        "exclude_synthetic": exclude_synthetic,
+        "exclude_futures": exclude_futures,
+    }
+
+
 def _build_empty_payload(
     *,
     status: str,
@@ -178,6 +231,7 @@ def _build_empty_payload(
     elapsed: float,
     error: Optional[str] = None,
     db_path: Optional[Path] = None,
+    filters: Optional[dict[str, bool]] = None,
 ) -> dict:
     latest_refresh = None
     if db_path is not None and status in ("ok", "empty"):
@@ -200,6 +254,8 @@ def _build_empty_payload(
         "one_month_topn": [],
         "three_month_topn": [],
         "period_exclusions": _empty_exclusion_buckets(),
+        "filter_exclusions": _empty_filter_exclusion_buckets(),
+        "filters": filters or _build_filters_dict(True, True, True, True),
         "topn_caveat": (
             "TOP N 의 N 값은 고정값이 아니며 운영/테스트 중 변경 가능 (query parameter `n`)."
         ),
@@ -211,13 +267,26 @@ def compute_topn(
     n: int = DEFAULT_N,
     db_path: Path = DEFAULT_DB_PATH,
     asof: Optional[str] = None,
+    exclude_inverse: bool = True,
+    exclude_leveraged: bool = True,
+    exclude_synthetic: bool = True,
+    exclude_futures: bool = True,
 ) -> dict:
     """SQLite etf_daily_price 기준 일간 / 1개월 / 3개월 TOP N 산출.
 
     DB 부재 시 status="missing". DB 가 있어도 가격 데이터 없음/필수 테이블 부재면
     각각 status="empty"/"invalid". 본 함수는 외부 fetch / write 없음 — SQLite read only.
+
+    필터링 순서 (지시문 §3.1, Market Discovery 후보 정제 1차):
+    1. SQLite 산출 가능 후보 전체 → 2. 태깅 → 3. exclude 옵션 적용 →
+    4. 정렬 → 5. TOP N 자르기 → 6. rank 재부여.
+    SQLite 에서 먼저 TOP N 자른 뒤 필터링하는 방식은 금지 (필터 후 결과가 N 미만이
+    되는 케이스가 발생).
     """
     t0 = time.perf_counter()
+    filters = _build_filters_dict(
+        exclude_inverse, exclude_leveraged, exclude_synthetic, exclude_futures
+    )
 
     if not db_path.exists():
         return _build_empty_payload(
@@ -225,6 +294,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             error="SQLite DB 파일이 없습니다. 먼저 시장 데이터 갱신을 실행하세요.",
+            filters=filters,
         )
 
     try:
@@ -235,6 +305,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             error=f"SQLite 구조 확인 실패: {type(e).__name__}: {e}",
+            filters=filters,
         )
     if missing:
         return _build_empty_payload(
@@ -242,6 +313,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             error=f"SQLite 의 필수 테이블이 누락되었습니다: {missing}",
+            filters=filters,
         )
 
     try:
@@ -252,6 +324,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             error=f"SQLite 조회 실패: {type(e).__name__}: {e}",
+            filters=filters,
         )
 
     tickers = list_etf_tickers(db_path)
@@ -264,6 +337,7 @@ def compute_topn(
             elapsed=time.perf_counter() - t0,
             error="가격 데이터가 SQLite 에 아직 없습니다. 최신 시장 데이터 갱신을 실행하세요.",
             db_path=db_path,
+            filters=filters,
         )
         payload["universe_count"] = universe_count
         return payload
@@ -276,10 +350,19 @@ def compute_topn(
         ("one_month", ONE_MONTH_LOOKBACK_DAYS),
         ("three_month", THREE_MONTH_LOOKBACK_DAYS),
     ]
-    buckets: dict[str, list[tuple[str, float, str]]] = {
+    # 산출 가능 후보 — (ticker, return_pct, base_date, tags)
+    buckets: dict[str, list[tuple[str, float, str, list[str]]]] = {
         label: [] for label, _ in period_specs
     }
     exclusions = _empty_exclusion_buckets()
+
+    # ticker 별 이름 캐싱 — get_etf_name 반복 호출 회피.
+    name_cache: dict[str, Optional[str]] = {}
+
+    def _name_of(tk: str) -> Optional[str]:
+        if tk not in name_cache:
+            name_cache[tk] = get_etf_name(tk, db_path=db_path)
+        return name_cache[tk]
 
     for tk in tickers:
         history = fetch_price_history(tk, db_path=db_path)
@@ -289,6 +372,7 @@ def compute_topn(
                 exclusions[label]["missing_latest_price"] += 1
             continue
         price_success += 1
+        tags = classify_etf_tags(_name_of(tk))
         for label, lookback in period_specs:
             r = _compute_period(history, asof_iso, lookback)
             if r.exclusion_reason is not None:
@@ -297,22 +381,50 @@ def compute_topn(
                 )
                 continue
             assert r.return_pct is not None and r.base_date is not None
-            buckets[label].append((tk, r.return_pct, r.base_date))
+            buckets[label].append((tk, r.return_pct, r.base_date, tags))
 
-    def _topn(items: list[tuple[str, float, str]]) -> list[dict]:
-        items.sort(key=lambda x: x[1], reverse=True)
+    # exclude 옵션 → 활성 필터 태그
+    exclude_tags: set[str] = set()
+    if exclude_inverse:
+        exclude_tags.add("inverse")
+    if exclude_leveraged:
+        exclude_tags.add("leveraged")
+    if exclude_synthetic:
+        exclude_tags.add("synthetic")
+    if exclude_futures:
+        exclude_tags.add("futures")
+
+    filter_exclusions = _empty_filter_exclusion_buckets()
+
+    def _topn_with_filter(
+        items: list[tuple[str, float, str, list[str]]], period_label: str
+    ) -> list[dict]:
+        """filter-before-limit (지시문 §3.1) — 필터 → 정렬 → 자르기 → rank 재부여.
+
+        제외된 ETF 는 filter_exclusions[period_label][tag] 에 활성 필터 태그별로 가산.
+        한 ETF 가 여러 태그를 갖고 활성 필터가 그 태그 중 둘 이상이면 카운트가 각각 +1.
+        """
+        kept: list[tuple[str, float, str, list[str]]] = []
+        for tk, ret_pct, base_date, tags in items:
+            matched = exclude_tags.intersection(tags)
+            if matched:
+                for t in matched:
+                    filter_exclusions[period_label][t] += 1
+                continue
+            kept.append((tk, ret_pct, base_date, tags))
+        kept.sort(key=lambda x: x[1], reverse=True)
         out: list[dict] = []
-        for rank, (tk, ret_pct, base_date) in enumerate(items[:n], start=1):
-            out.append(
-                TopNEntry(
-                    rank=rank,
-                    ticker=tk,
-                    name=get_etf_name(tk, db_path=db_path),
-                    return_pct=ret_pct,
-                    basis_start_date=base_date,
-                    basis_end_date=asof_iso,
-                ).to_dict()
-            )
+        for rank, (tk, ret_pct, base_date, tags) in enumerate(kept[:n], start=1):
+            entry = TopNEntry(
+                rank=rank,
+                ticker=tk,
+                name=_name_of(tk),
+                return_pct=ret_pct,
+                basis_start_date=base_date,
+                basis_end_date=asof_iso,
+            ).to_dict()
+            entry["tags"] = list(tags)
+            out.append(entry)
         return out
 
     elapsed = time.perf_counter() - t0
@@ -327,10 +439,12 @@ def compute_topn(
         "price_fail_count": price_fail,
         "latest_refresh": _latest_refresh_payload(db_path),
         "runtime_seconds": round(elapsed, 3),
-        "daily_topn": _topn(buckets["daily"]),
-        "one_month_topn": _topn(buckets["one_month"]),
-        "three_month_topn": _topn(buckets["three_month"]),
+        "daily_topn": _topn_with_filter(buckets["daily"], "daily"),
+        "one_month_topn": _topn_with_filter(buckets["one_month"], "one_month"),
+        "three_month_topn": _topn_with_filter(buckets["three_month"], "three_month"),
         "period_exclusions": exclusions,
+        "filter_exclusions": filter_exclusions,
+        "filters": filters,
         "topn_caveat": (
             "TOP N 의 N 값은 고정값이 아니며 운영/테스트 중 변경 가능 (query parameter `n`)."
         ),

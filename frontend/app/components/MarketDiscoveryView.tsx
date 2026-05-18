@@ -14,12 +14,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
+  DEFAULT_MARKET_TOPN_FILTERS,
   fetchMarketRefreshStatus,
   fetchMarketTopnLatest,
   postMarketRefresh,
+  type MarketProductTag,
   type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
   type MarketTopNEntry,
+  type MarketTopNFilterOptions,
   type MarketTopNResponse,
 } from "@/lib/api";
 
@@ -70,6 +73,26 @@ function returnPctColor(value: number | null | undefined): string {
   return value >= 0 ? "var(--ok)" : "var(--danger)";
 }
 
+const TAG_LABELS: Record<MarketProductTag, string> = {
+  inverse: "인버스",
+  leveraged: "레버리지",
+  synthetic: "합성",
+  futures: "선물형",
+};
+
+function TagBadges({ tags }: { tags: MarketProductTag[] | undefined }) {
+  if (!tags || tags.length === 0) return null;
+  return (
+    <span className="market-topn-tags">
+      {tags.map((t) => (
+        <span key={t} className={`market-topn-tag tag-${t}`}>
+          {TAG_LABELS[t] ?? t}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function fmtCooldown(seconds: number): string {
   if (seconds <= 0) return "0";
   const h = Math.floor(seconds / 3600);
@@ -107,7 +130,10 @@ function TopNTable({
               <tr key={`${e.rank ?? "x"}-${e.ticker ?? "x"}-${idx}`}>
                 <td>{fmtNum(e.rank)}</td>
                 <td>{e.ticker ? <code>{e.ticker}</code> : DASH}</td>
-                <td>{fmt(e.name)}</td>
+                <td>
+                  {fmt(e.name)}
+                  <TagBadges tags={e.tags as MarketProductTag[] | undefined} />
+                </td>
                 <td
                   style={{
                     textAlign: "right",
@@ -227,21 +253,116 @@ function RefreshControlCard({
   );
 }
 
+interface FilterUiState {
+  excludeInverse: boolean;
+  excludeLeveraged: boolean;
+  excludeSynthetic: boolean;
+  excludeFutures: boolean;
+}
+
+const DEFAULT_FILTER_UI: FilterUiState = {
+  excludeInverse: DEFAULT_MARKET_TOPN_FILTERS.exclude_inverse,
+  excludeLeveraged: DEFAULT_MARKET_TOPN_FILTERS.exclude_leveraged,
+  excludeSynthetic: DEFAULT_MARKET_TOPN_FILTERS.exclude_synthetic,
+  excludeFutures: DEFAULT_MARKET_TOPN_FILTERS.exclude_futures,
+};
+
+function toOptions(s: FilterUiState): MarketTopNFilterOptions {
+  return {
+    excludeInverse: s.excludeInverse,
+    excludeLeveraged: s.excludeLeveraged,
+    excludeSynthetic: s.excludeSynthetic,
+    excludeFutures: s.excludeFutures,
+  };
+}
+
+function FilterCard({
+  filters,
+  onChange,
+}: {
+  filters: FilterUiState;
+  onChange: (next: FilterUiState) => void;
+}) {
+  return (
+    <div className="card">
+      <h2>후보 정제 옵션</h2>
+      <p className="helper" style={{ marginBottom: 8 }}>
+        기본 화면은 일반 후보 (인버스 / 레버리지 / 합성 / 선물형 제외) 만 표시합니다.
+        체크박스를 해제하면 해당 유형이 다시 포함됩니다.
+      </p>
+      <div className="market-topn-filter-row">
+        <label>
+          <input
+            type="checkbox"
+            checked={filters.excludeInverse}
+            onChange={(e) =>
+              onChange({ ...filters, excludeInverse: e.target.checked })
+            }
+          />{" "}
+          인버스 제외
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={filters.excludeLeveraged}
+            onChange={(e) =>
+              onChange({ ...filters, excludeLeveraged: e.target.checked })
+            }
+          />{" "}
+          레버리지 제외
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={filters.excludeSynthetic}
+            onChange={(e) =>
+              onChange({ ...filters, excludeSynthetic: e.target.checked })
+            }
+          />{" "}
+          합성 제외
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={filters.excludeFutures}
+            onChange={(e) =>
+              onChange({ ...filters, excludeFutures: e.target.checked })
+            }
+          />{" "}
+          선물형 제외
+        </label>
+      </div>
+    </div>
+  );
+}
+
+
 export default function MarketDiscoveryView() {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
   const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
+  const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
   const pollTickRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // loadTopn 은 현재 filters state 를 캡처해서 fetch.
+  // 검증자 B-6 NOTE 반영 — filters 변경 시 한 번만 fetch 되도록 처리:
+  //   handleFiltersChange 는 setFilters 만 호출 → filters 변경 → loadTopn useCallback
+  //   재생성 → useEffect 가 단 한 번 재실행 → fetch 1회.
   const loadTopn = useCallback(() => {
-    fetchMarketTopnLatest(10)
+    setState({ phase: "loading" });
+    fetchMarketTopnLatest(10, toOptions(filters))
       .then((data) => setState({ phase: "ready", data }))
       .catch((e) => setState({ phase: "error", message: describeError(e) }));
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     loadTopn();
   }, [loadTopn]);
+
+  const handleFiltersChange = useCallback((next: FilterUiState) => {
+    // state 변경만 — useEffect 가 단일 fetch 트리거.
+    setFilters(next);
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -458,6 +579,7 @@ export default function MarketDiscoveryView() {
         disabled={buttonDisabled}
         cooldownRemainingSeconds={cooldown}
       />
+      <FilterCard filters={filters} onChange={handleFiltersChange} />
       <SummaryHeader data={data} />
       <TopNTable title="일간 TOP N" entries={data.daily_topn} />
       <TopNTable title="1개월 TOP N" entries={data.one_month_topn} />

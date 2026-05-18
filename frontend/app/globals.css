@@ -832,3 +832,54 @@ ul.reason-list li {
   font-size: 13px;
   color: var(--fg);
 }
+
+/* 후보 정제 필터 (2026-05-18) */
+.market-topn-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.market-topn-filter-row label {
+  font-size: 14px;
+  color: var(--fg);
+  user-select: none;
+  cursor: pointer;
+}
+
+.market-topn-tags {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+  flex-wrap: wrap;
+}
+
+.market-topn-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+}
+
+.market-topn-tag.tag-inverse {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.market-topn-tag.tag-leveraged {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.market-topn-tag.tag-synthetic {
+  border-color: var(--info);
+}
+
+.market-topn-tag.tag-futures {
+  border-color: var(--accent);
+  color: var(--accent);
+}
