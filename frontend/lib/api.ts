@@ -387,15 +387,22 @@ export type MarketTopNStatus = "ok" | "missing" | "empty" | "invalid";
 export type MarketProductTag = "inverse" | "leveraged" | "synthetic" | "futures";
 
 // 2026-05-18 통합 후보 테이블 1차 — 조회 기준 basis.
+// 2026-05-19 Grid 사용성 FIX — 이전 표현 (일간 급등 / 1개월 모멘텀 / 3개월 추세) 라벨 상수
+// MARKET_BASIS_LABEL 제거. 컬럼 라벨은 MARKET_BASIS_COLUMN_LABEL 만 사용 (검증자 B-6 NOTE 반영).
 export type MarketBasis = "daily" | "one_month" | "three_month";
 
-export const MARKET_BASIS_LABEL: Record<MarketBasis, string> = {
-  daily: "일간 급등",
-  one_month: "1개월 모멘텀",
-  three_month: "3개월 추세",
-};
-
 export const DEFAULT_MARKET_BASIS: MarketBasis = "one_month";
+
+// 2026-05-19 Grid 사용성 FIX — 정렬 방향.
+export type MarketOrder = "desc" | "asc";
+export const DEFAULT_MARKET_ORDER: MarketOrder = "desc";
+
+// 컬럼 헤더 라벨 (Grid 사용성 FIX § 4.2 — 통일된 표현).
+export const MARKET_BASIS_COLUMN_LABEL: Record<MarketBasis, string> = {
+  daily: "일간 수익률",
+  one_month: "1개월 수익률",
+  three_month: "3개월 수익률",
+};
 
 export interface MarketPeriodReturn {
   return_pct?: number | null;
@@ -471,6 +478,8 @@ export interface MarketTopNResponse {
   n?: number | null;
   // 2026-05-18 통합 후보 테이블 1차 — 현재 조회 기준.
   basis?: MarketBasis | null;
+  // 2026-05-19 Grid 사용성 FIX — 현재 정렬 방향.
+  order?: MarketOrder | null;
   universe_count?: number | null;
   price_success_count?: number | null;
   price_fail_count?: number | null;
@@ -491,6 +500,7 @@ export interface MarketTopNResponse {
 
 export interface MarketTopNRequestOptions extends MarketTopNFilterOptions {
   basis?: MarketBasis;
+  order?: MarketOrder;
 }
 
 export function fetchMarketTopnLatest(
@@ -499,6 +509,7 @@ export function fetchMarketTopnLatest(
 ): Promise<MarketTopNResponse> {
   const params = new URLSearchParams({ n: String(n) });
   params.set("basis", options.basis ?? DEFAULT_MARKET_BASIS);
+  params.set("order", options.order ?? DEFAULT_MARKET_ORDER);
   params.set(
     "exclude_inverse",
     String(options.excludeInverse ?? DEFAULT_MARKET_TOPN_FILTERS.exclude_inverse),

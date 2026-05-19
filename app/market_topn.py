@@ -62,6 +62,12 @@ THREE_MONTH_LOOKBACK_DAYS = 90
 ALLOWED_BASIS = ("daily", "one_month", "three_month")
 DEFAULT_BASIS = "one_month"
 
+# 2026-05-19 Grid 사용성 FIX — 정렬 방향 (order).
+# desc 가 기본 (전체 후보 기준 TOP N), asc 는 전체 후보 기준 BOTTOM N.
+# 둘 다 SQLite 산출 가능 후보 전체에 대한 정렬이며, 프론트 로컬 reverse 가 아니다.
+ALLOWED_ORDER = ("desc", "asc")
+DEFAULT_ORDER = "desc"
+
 EXCLUSION_REASONS = (
     "missing_latest_price",
     "missing_base_price",
@@ -234,6 +240,7 @@ def _build_empty_payload(
     n: int,
     elapsed: float,
     basis: str = DEFAULT_BASIS,
+    order: str = DEFAULT_ORDER,
     error: Optional[str] = None,
     db_path: Optional[Path] = None,
     filters: Optional[dict[str, bool]] = None,
@@ -251,6 +258,7 @@ def _build_empty_payload(
         "source": "SQLite (FinanceDataReader 수집)",
         "n": n,
         "basis": basis,
+        "order": order,
         "universe_count": 0,
         "price_success_count": 0,
         "price_fail_count": 0,
@@ -275,6 +283,7 @@ def compute_topn(
     db_path: Path = DEFAULT_DB_PATH,
     asof: Optional[str] = None,
     basis: str = DEFAULT_BASIS,
+    order: str = DEFAULT_ORDER,
     exclude_inverse: bool = True,
     exclude_leveraged: bool = True,
     exclude_synthetic: bool = True,
@@ -294,6 +303,8 @@ def compute_topn(
     t0 = time.perf_counter()
     if basis not in ALLOWED_BASIS:
         basis = DEFAULT_BASIS  # 호출자(API) 가 Literal 로 1차 막지만 안전 fallback.
+    if order not in ALLOWED_ORDER:
+        order = DEFAULT_ORDER  # 동일하게 안전 fallback.
     filters = _build_filters_dict(
         exclude_inverse, exclude_leveraged, exclude_synthetic, exclude_futures
     )
@@ -304,6 +315,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             basis=basis,
+            order=order,
             error="SQLite DB 파일이 없습니다. 먼저 시장 데이터 갱신을 실행하세요.",
             filters=filters,
         )
@@ -316,6 +328,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             basis=basis,
+            order=order,
             error=f"SQLite 구조 확인 실패: {type(e).__name__}: {e}",
             filters=filters,
         )
@@ -325,6 +338,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             basis=basis,
+            order=order,
             error=f"SQLite 의 필수 테이블이 누락되었습니다: {missing}",
             filters=filters,
         )
@@ -337,6 +351,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             basis=basis,
+            order=order,
             error=f"SQLite 조회 실패: {type(e).__name__}: {e}",
             filters=filters,
         )
@@ -350,6 +365,7 @@ def compute_topn(
             n=n,
             elapsed=time.perf_counter() - t0,
             basis=basis,
+            order=order,
             error="가격 데이터가 SQLite 에 아직 없습니다. 최신 시장 데이터 갱신을 실행하세요.",
             db_path=db_path,
             filters=filters,
@@ -479,7 +495,9 @@ def compute_topn(
 
     # selected basis 수익률이 없는 후보 제외 (지시문 §6 step 5).
     kept_candidates = [c for c in kept_candidates if _basis_return_pct(c) is not None]
-    kept_candidates.sort(key=lambda c: _basis_return_pct(c), reverse=True)
+    # 정렬: desc → 내림차순 (TOP N), asc → 오름차순 (BOTTOM N).
+    # 전체 SQLite 후보 기준 정렬 — 로컬 reverse 가 아니다 (지시문 §3.2 / AC-13).
+    kept_candidates.sort(key=lambda c: _basis_return_pct(c), reverse=(order == "desc"))
 
     candidates_out: list[dict] = []
     for rank, (tk, tags, returns) in enumerate(kept_candidates[:n], start=1):
@@ -505,6 +523,7 @@ def compute_topn(
         "source": "SQLite (FinanceDataReader 수집)",
         "n": n,
         "basis": basis,
+        "order": order,
         "universe_count": universe_count,
         "price_success_count": price_success,
         "price_fail_count": price_fail,

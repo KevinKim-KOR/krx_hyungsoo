@@ -4,7 +4,80 @@
 
 ---
 
-## 0. 현재 상태 — 2026-05-19 Market Discovery 통합 후보 테이블 1차
+## 0. 현재 상태 — 2026-05-19 Market Discovery Grid 사용성 FIX
+
+```text
+현재 단계: Market Discovery Grid 사용성 FIX (2026-05-19) — GRID 우선 + 컬럼 클릭 정렬 + order=asc 지원
+이전 단계: Market Discovery 통합 후보 테이블 1차 (2026-05-19) — basis selector + 1 통합 표
+다음 단계 후보:
+  (a) AI 투자세션 복사용 문구 / Data Status 실제 연결 (기존 BACKLOG)
+  (b) 사용자 결정 — Settings 화면 / decision evidence 등
+```
+
+### 본 STEP 요약
+
+- **방향**: Market Discovery 진입 시 GRID 우선 노출 + 수익률 컬럼 클릭으로 정렬. 별도
+  basis selector 버튼 영역 제거 (컬럼 클릭으로 통합).
+- **Backend**:
+  - `GET /market/topn/latest` 에 `order: Literal["desc", "asc"]` query param 추가
+    (default `desc`).
+  - desc → 전체 후보 기준 TOP N, asc → 전체 후보 기준 BOTTOM N.
+  - 정렬 순서: SQLite 전체 후보 → 태깅 → exclude → selected basis None 제외 →
+    `kept.sort(reverse=(order=='desc'))` → TOP N → rank 재부여.
+  - **프론트 로컬 reverse 금지** — `test_compute_topn_order_asc_returns_bottom_n` 가
+    명시 검증 (전체 5건 중 BOTTOM 2 = B02 / B01, 로컬 reverse 면 T03 / T02 가 됨).
+  - 응답 model 에 `order: Optional[str]` 추가.
+  - invalid order 는 FastAPI Literal → HTTP 422.
+- **Frontend**:
+  - `BasisSelector` 컴포넌트 제거. 컬럼 클릭으로 basis 변경.
+  - `SortableHeader` 컴포넌트 — 헤더 클릭 + 정렬 아이콘 (↓ / ↑) 표시.
+  - `handleSort(column)`:
+    - 같은 컬럼 재클릭 → `order` 토글 (desc ↔ asc).
+    - 다른 컬럼 클릭 → basis 변경 + `order=desc` 리셋.
+  - 라벨 통일: `MARKET_BASIS_COLUMN_LABEL` → "일간 수익률 / 1개월 수익률 / 3개월 수익률".
+    "일간 급등 / 1개월 모멘텀 / 3개월 추세" 표현 제거.
+  - `SortStatusLine` — "정렬 기준: 1개월 수익률 ↓ 내림차순" 짧은 표시.
+  - **GRID 우선 배치**: `<CandidateTable>` 이 가장 위, 보조 컨트롤 (RefreshControl /
+    FilterCard / SummaryHeader) 은 그 아래.
+  - subtitle 축소: "SQLite 기준 최신 시장 데이터에서 일반 ETF 후보를 보여줍니다.
+    수익률 컬럼을 클릭하면 정렬됩니다." (긴 설명 제거).
+- **운영 1회 검증 (uvicorn + curl)**:
+  - default → `basis=one_month order=desc`, rank 1 = 139260 (1m +49.87%).
+  - `?order=asc` → BOTTOM 3 = 290080 / 451530 / 476000 (전체 후보 기준 하위, 로컬
+    reverse 가 아님).
+  - `?basis=daily&order=desc` → rank 1 = 0183J0 (daily +5.42%).
+  - `?order=random` → HTTP 422.
+- **검증**: pytest 235 passed (231 → +4). black PASS / flake8 PASS / lint+build PASS.
+- **KS-10**: trigger 0 / near 0.
+
+### 신규 / 수정 파일
+
+수정:
+- `app/market_topn.py` — `ALLOWED_ORDER` / `DEFAULT_ORDER` + `compute_topn` 에 `order`
+  파라미터 + `kept.sort(reverse=(order=='desc'))` + 응답에 `order` 키 추가.
+- `app/api_market_topn.py` — `OrderLiteral` + endpoint `order` 파라미터 + `MarketTopNResponse`
+  에 `order` 필드.
+- `frontend/lib/api.ts` — `MarketOrder` 타입 + `DEFAULT_MARKET_ORDER` +
+  `MARKET_BASIS_COLUMN_LABEL` + `fetchMarketTopnLatest(n, {basis, order, ...})`.
+  검증자 B-6 NOTE 반영 — UI 미사용 + 이전 표현 잔존 상수 `MARKET_BASIS_LABEL` 제거.
+- `frontend/app/components/MarketDiscoveryView.tsx` — BasisSelector 제거 →
+  `SortableHeader` + `SortStatusLine` + `handleSort` + GRID 우선 배치. subtitle 축소.
+- `frontend/app/globals.css` — `.market-topn-sortable` / `.market-topn-sort-indicator` /
+  `.market-topn-sort-status` / `.market-discovery-subtitle`.
+- `tests/test_market_topn.py` — 4 신규 테스트 (default desc / asc 가 전체 BOTTOM N /
+  invalid order fallback / asc rank 1 부터 재부여).
+- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것
+
+- 섹터 / 테마 분류 / 구성 종목 추출 / AI 투자세션 복사용 문구.
+- Settings 화면 / 기본 조회 기준 설정 UI / 컬럼 표시·숨김 / 시가총액·거래량 정렬.
+- 차트 / ML / 매수·매도 판단 / OCI / Data Status 상세.
+- refresh endpoint 경로 변경 (POST /market/refresh / GET /market/refresh/status 유지).
+
+---
+
+## 0.1 직전 상태 — 2026-05-19 Market Discovery 통합 후보 테이블 1차
 
 ```text
 현재 단계: Market Discovery 통합 후보 테이블 1차 (2026-05-19) — basis selector + 1 통합 표

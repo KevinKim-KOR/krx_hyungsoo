@@ -15,13 +15,15 @@ import {
   ApiConfigError,
   ApiRequestError,
   DEFAULT_MARKET_BASIS,
+  DEFAULT_MARKET_ORDER,
   DEFAULT_MARKET_TOPN_FILTERS,
-  MARKET_BASIS_LABEL,
+  MARKET_BASIS_COLUMN_LABEL,
   fetchMarketRefreshStatus,
   fetchMarketTopnLatest,
   postMarketRefresh,
   type MarketBasis,
   type MarketCandidate,
+  type MarketOrder,
   type MarketProductTag,
   type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
@@ -104,12 +106,45 @@ function fmtCooldown(seconds: number): string {
   return `${m}분`;
 }
 
+function SortableHeader({
+  label,
+  column,
+  basis,
+  order,
+  onSort,
+}: {
+  label: string;
+  column: MarketBasis;
+  basis: MarketBasis;
+  order: MarketOrder;
+  onSort: (column: MarketBasis) => void;
+}) {
+  const active = basis === column;
+  const indicator = active ? (order === "desc" ? "↓" : "↑") : "";
+  return (
+    <th
+      style={{ width: 130, textAlign: "right", cursor: "pointer" }}
+      className={`market-topn-sortable ${active ? "basis-active" : ""}`}
+      onClick={() => onSort(column)}
+      title="클릭하여 정렬"
+    >
+      {label}
+      {active ? <span className="market-topn-sort-indicator">{indicator}</span> : null}
+    </th>
+  );
+}
+
+
 function CandidateTable({
   candidates,
   basis,
+  order,
+  onSort,
 }: {
   candidates: MarketCandidate[];
   basis: MarketBasis;
+  order: MarketOrder;
+  onSort: (column: MarketBasis) => void;
 }) {
   if (candidates.length === 0) {
     return (
@@ -126,24 +161,27 @@ function CandidateTable({
             <th style={{ width: 56 }}>순위</th>
             <th style={{ width: 90 }}>티커</th>
             <th>ETF명</th>
-            <th
-              style={{ width: 100, textAlign: "right" }}
-              className={basis === "daily" ? "basis-active" : undefined}
-            >
-              일간
-            </th>
-            <th
-              style={{ width: 100, textAlign: "right" }}
-              className={basis === "one_month" ? "basis-active" : undefined}
-            >
-              1개월
-            </th>
-            <th
-              style={{ width: 100, textAlign: "right" }}
-              className={basis === "three_month" ? "basis-active" : undefined}
-            >
-              3개월
-            </th>
+            <SortableHeader
+              label="일간 수익률"
+              column="daily"
+              basis={basis}
+              order={order}
+              onSort={onSort}
+            />
+            <SortableHeader
+              label="1개월 수익률"
+              column="one_month"
+              basis={basis}
+              order={order}
+              onSort={onSort}
+            />
+            <SortableHeader
+              label="3개월 수익률"
+              column="three_month"
+              basis={basis}
+              order={order}
+              onSort={onSort}
+            />
             <th style={{ width: 200 }}>정렬 기준 기간</th>
             <th style={{ width: 160 }}>태그</th>
           </tr>
@@ -198,33 +236,11 @@ function CandidateTable({
   );
 }
 
-function BasisSelector({
-  value,
-  onChange,
-}: {
-  value: MarketBasis;
-  onChange: (next: MarketBasis) => void;
-}) {
-  const options: MarketBasis[] = ["daily", "one_month", "three_month"];
+function SortStatusLine({ basis, order }: { basis: MarketBasis; order: MarketOrder }) {
+  const dir = order === "desc" ? "↓ 내림차순" : "↑ 오름차순";
   return (
-    <div className="card">
-      <h2>조회 기준</h2>
-      <div className="btn-row market-basis-selector">
-        {options.map((b) => (
-          <button
-            key={b}
-            type="button"
-            onClick={() => onChange(b)}
-            className={value === b ? "basis-btn-active" : "reject"}
-          >
-            {MARKET_BASIS_LABEL[b]}
-          </button>
-        ))}
-      </div>
-      <div className="helper" style={{ marginTop: 8 }}>
-        현재 정렬 기준: <strong>{MARKET_BASIS_LABEL[value]}</strong>. 기본값은 1개월
-        모멘텀입니다.
-      </div>
+    <div className="market-topn-sort-status helper">
+      정렬 기준: <strong>{MARKET_BASIS_COLUMN_LABEL[basis]}</strong> {dir}
     </div>
   );
 }
@@ -418,18 +434,18 @@ export default function MarketDiscoveryView() {
   const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
   const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
   const [basis, setBasis] = useState<MarketBasis>(DEFAULT_MARKET_BASIS);
+  const [order, setOrder] = useState<MarketOrder>(DEFAULT_MARKET_ORDER);
   const pollTickRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // loadTopn 은 현재 filters + basis state 를 캡처해서 fetch.
-  // 검증자 B-6 NOTE 반영 — handleFiltersChange / handleBasisChange 는 state 변경만,
-  // useEffect 가 단일 fetch 트리거.
+  // loadTopn 은 현재 filters + basis + order state 를 캡처해서 fetch.
+  // 모든 핸들러는 state 변경만 — useEffect 가 단일 fetch 트리거 (B-6 NOTE 반영).
   const loadTopn = useCallback(() => {
     setState({ phase: "loading" });
-    fetchMarketTopnLatest(10, { ...toOptions(filters), basis })
+    fetchMarketTopnLatest(10, { ...toOptions(filters), basis, order })
       .then((data) => setState({ phase: "ready", data }))
       .catch((e) => setState({ phase: "error", message: describeError(e) }));
-  }, [filters, basis]);
+  }, [filters, basis, order]);
 
   useEffect(() => {
     loadTopn();
@@ -439,9 +455,20 @@ export default function MarketDiscoveryView() {
     setFilters(next);
   }, []);
 
-  const handleBasisChange = useCallback((next: MarketBasis) => {
-    setBasis(next);
-  }, []);
+  // 컬럼 클릭 정렬 (지시문 §4.3) — API 재호출 기반, 프론트 로컬 정렬 금지.
+  // - 같은 컬럼 재클릭: order asc/desc 전환
+  // - 다른 컬럼 클릭: basis 변경 + order=desc 리셋
+  const handleSort = useCallback(
+    (column: MarketBasis) => {
+      if (column === basis) {
+        setOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+      } else {
+        setBasis(column);
+        setOrder("desc");
+      }
+    },
+    [basis],
+  );
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -647,21 +674,27 @@ export default function MarketDiscoveryView() {
   return (
     <section aria-labelledby="market-discovery-h">
       <h1 id="market-discovery-h">Market Discovery</h1>
-      <p className="subtitle">
-        이 화면은 <strong>SQLite 에 저장된 시장 데이터</strong> 기준입니다. 새 데이터
-        수집은 아래 &lsquo;최신 시장 데이터 갱신&rsquo; 버튼으로만 실행됩니다
-        (single-flight + 6h cooldown).
+      <p className="subtitle market-discovery-subtitle">
+        SQLite 기준 최신 시장 데이터에서 일반 ETF 후보를 보여줍니다. 수익률 컬럼을
+        클릭하면 정렬됩니다.
       </p>
+      {/* GRID 우선 — 통합 테이블이 가장 위 */}
+      <CandidateTable
+        candidates={data.candidates ?? []}
+        basis={basis}
+        order={order}
+        onSort={handleSort}
+      />
+      <SortStatusLine basis={basis} order={order} />
+      {/* 보조 컨트롤 — 갱신 / 정제 */}
       <RefreshControlCard
         state={refreshUi}
         onStart={handleStartRefresh}
         disabled={buttonDisabled}
         cooldownRemainingSeconds={cooldown}
       />
-      <BasisSelector value={basis} onChange={handleBasisChange} />
       <FilterCard filters={filters} onChange={handleFiltersChange} />
       <SummaryHeader data={data} />
-      <CandidateTable candidates={data.candidates ?? []} basis={basis} />
     </section>
   );
 }

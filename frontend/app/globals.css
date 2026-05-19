@@ -895,6 +895,32 @@ ul.reason-list li {
   color: var(--muted);
 }
 
+/* Grid 사용성 FIX (2026-05-19) — 컬럼 클릭 정렬 + 정렬 표시 */
+.market-topn-sortable {
+  user-select: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.market-topn-sortable:hover {
+  background: rgba(58, 122, 254, 0.10);
+  color: var(--accent);
+}
+
+.market-topn-sort-indicator {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.market-topn-sort-status {
+  margin: 8px 0 16px 0;
+  padding: 0 4px;
+}
+
+.market-discovery-subtitle {
+  margin-bottom: 12px;
+}
+
 /* 통합 후보 테이블 / basis selector (2026-05-18) */
 .market-candidate-table th.basis-active,
 .market-candidate-table td.basis-active {

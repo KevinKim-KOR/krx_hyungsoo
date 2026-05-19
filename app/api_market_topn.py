@@ -28,9 +28,10 @@ from app.market_refresh_service import (
     get_state_snapshot,
     start_refresh_job,
 )
-from app.market_topn import DEFAULT_BASIS, DEFAULT_N, compute_topn
+from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
 
 BasisLiteral = Literal["daily", "one_month", "three_month"]
+OrderLiteral = Literal["desc", "asc"]
 
 router = APIRouter()
 
@@ -102,6 +103,8 @@ class MarketTopNResponse(BaseModel):
     n: Optional[int] = None
     # 2026-05-18 통합 후보 테이블 1차 — basis: daily / one_month / three_month.
     basis: Optional[str] = None
+    # 2026-05-19 Grid 사용성 FIX — 정렬 방향: desc / asc.
+    order: Optional[str] = None
     universe_count: Optional[int] = None
     price_success_count: Optional[int] = None
     price_fail_count: Optional[int] = None
@@ -165,6 +168,7 @@ def _candidate_to_model(raw: dict) -> MarketCandidate:
 def get_market_topn_latest(
     n: int = Query(default=DEFAULT_N, ge=1, le=200),
     basis: BasisLiteral = Query(default=DEFAULT_BASIS),
+    order: OrderLiteral = Query(default=DEFAULT_ORDER),
     exclude_inverse: bool = Query(default=True),
     exclude_leveraged: bool = Query(default=True),
     exclude_synthetic: bool = Query(default=True),
@@ -176,13 +180,17 @@ def get_market_topn_latest(
 
     2026-05-18 후보 정제 1차 — 4개 exclude 옵션 (모두 default true).
     2026-05-18 통합 후보 테이블 1차 — basis 파라미터 (default one_month).
-    invalid basis 는 FastAPI Literal 가 422 응답으로 차단.
+    2026-05-19 Grid 사용성 FIX — order 파라미터 (default desc).
+      · desc 는 전체 후보 기준 TOP N, asc 는 전체 후보 기준 BOTTOM N.
+      · 프론트 로컬 reverse 가 아니다.
+    invalid basis / order 는 FastAPI Literal 가 422 응답으로 차단.
     필터링은 TOP N limit 이전에 적용된다 (지시문 §3.1).
     """
     payload = compute_topn(
         n=n,
         db_path=DEFAULT_DB_PATH,
         basis=basis,
+        order=order,
         exclude_inverse=exclude_inverse,
         exclude_leveraged=exclude_leveraged,
         exclude_synthetic=exclude_synthetic,
@@ -197,6 +205,7 @@ def get_market_topn_latest(
         source=payload.get("source"),
         n=payload.get("n"),
         basis=payload.get("basis"),
+        order=payload.get("order"),
         universe_count=payload.get("universe_count"),
         price_success_count=payload.get("price_success_count"),
         price_fail_count=payload.get("price_fail_count"),

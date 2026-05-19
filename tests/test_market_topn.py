@@ -647,6 +647,83 @@ def test_compute_topn_missing_basis_return_excludes_candidate(db_path: Path) -> 
         assert "SOLO" not in tickers, f"basis={b}: SOLO 가 포함됨"
 
 
+# ─── Grid 사용성 FIX (2026-05-19) — order desc/asc ──────────────────
+
+
+def test_compute_topn_default_order_is_desc(db_path: Path) -> None:
+    end = date(2024, 10, 31)
+    _seed_basis_test_dataset(db_path, end)
+    payload = compute_topn(n=10, db_path=db_path)
+    assert payload["order"] == "desc"
+    selected = [c["selected_return_pct"] for c in payload["candidates"]]
+    assert selected == sorted(selected, reverse=True)  # desc
+
+
+def test_compute_topn_order_asc_returns_bottom_n(db_path: Path) -> None:
+    """order=asc 는 전체 후보 기준 BOTTOM N — 프론트 로컬 reverse 가 아님 (지시문 §3.2)."""
+    end = date(2024, 10, 31)
+    d_end = end.isoformat()
+    d_prev = (end - timedelta(days=1)).isoformat()
+    _seed_universe(
+        db_path,
+        [
+            ("T01", "Top1"),
+            ("T02", "Top2"),
+            ("T03", "Top3"),
+            ("B01", "Bottom1"),
+            ("B02", "Bottom2"),
+        ],
+    )
+    # daily 수익률: T01=+30%, T02=+20%, T03=+10%, B01=-10%, B02=-20%
+    _seed_price_series(db_path, "T01", [(d_prev, 100.0), (d_end, 130.0)])
+    _seed_price_series(db_path, "T02", [(d_prev, 100.0), (d_end, 120.0)])
+    _seed_price_series(db_path, "T03", [(d_prev, 100.0), (d_end, 110.0)])
+    _seed_price_series(db_path, "B01", [(d_prev, 100.0), (d_end, 90.0)])
+    _seed_price_series(db_path, "B02", [(d_prev, 100.0), (d_end, 80.0)])
+
+    # desc n=2 → TOP 2 (T01, T02)
+    desc = compute_topn(n=2, db_path=db_path, basis="daily", order="desc")
+    assert [c["ticker"] for c in desc["candidates"]] == ["T01", "T02"]
+
+    # asc n=2 → BOTTOM 2 (B02, B01) — 전체 5건 기준, 로컬 reverse 면 T03,T02 가 됨
+    asc = compute_topn(n=2, db_path=db_path, basis="daily", order="asc")
+    assert [c["ticker"] for c in asc["candidates"]] == ["B02", "B01"]
+    # rank 는 ASC 결과에서도 1 부터 재부여
+    assert asc["candidates"][0]["rank"] == 1
+    assert asc["candidates"][1]["rank"] == 2
+
+
+def test_compute_topn_invalid_order_falls_back_to_default(db_path: Path) -> None:
+    end = date(2024, 10, 31)
+    _seed_three_etfs(db_path, end)
+    payload = compute_topn(n=10, db_path=db_path, order="random")
+    assert payload["order"] == "desc"
+
+
+def test_compute_topn_order_asc_rank_starts_at_1(db_path: Path) -> None:
+    """ASC 정렬 + 필터 적용 후 rank 가 1 부터 시작 (지시문 §3.3 step 8)."""
+    end = date(2024, 10, 31)
+    d_end = end.isoformat()
+    d_prev = (end - timedelta(days=1)).isoformat()
+    _seed_universe(
+        db_path,
+        [
+            ("LEV", "BAD 레버리지"),  # 필터링 대상 (제외)
+            ("G01", "Gen 01"),
+            ("G02", "Gen 02"),
+        ],
+    )
+    _seed_price_series(db_path, "LEV", [(d_prev, 100.0), (d_end, 80.0)])  # -20%
+    _seed_price_series(db_path, "G01", [(d_prev, 100.0), (d_end, 105.0)])  # +5%
+    _seed_price_series(db_path, "G02", [(d_prev, 100.0), (d_end, 110.0)])  # +10%
+    payload = compute_topn(n=10, db_path=db_path, basis="daily", order="asc")
+    tickers = [c["ticker"] for c in payload["candidates"]]
+    assert "LEV" not in tickers  # 레버리지 제외
+    assert payload["candidates"][0]["rank"] == 1
+    assert payload["candidates"][0]["ticker"] == "G01"  # +5% (asc 1위)
+    assert payload["candidates"][1]["ticker"] == "G02"
+
+
 def test_compute_topn_does_not_modify_raw_sqlite(db_path: Path) -> None:
     """compute_topn 호출이 etf_master / etf_daily_price 의 row count 를 변경하지 않는다."""
     import sqlite3 as _sql
