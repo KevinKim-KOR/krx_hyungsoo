@@ -921,6 +921,13 @@ ul.reason-list li {
   margin-bottom: 12px;
 }
 
+/* AI 투자세션 복사용 문구 textarea (2026-05-19 STEP) */
+textarea.market-copy-textarea {
+  margin-top: 12px;
+  min-height: 280px;
+  line-height: 1.5;
+}
+
 /* 통합 후보 테이블 / basis selector (2026-05-18) */
 .market-candidate-table th.basis-active,
 .market-candidate-table td.basis-active {

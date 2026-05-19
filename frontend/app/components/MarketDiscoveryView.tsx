@@ -28,8 +28,10 @@ import {
   type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
   type MarketTopNFilterOptions,
+  type MarketTopNFilters,
   type MarketTopNResponse,
 } from "@/lib/api";
+import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
 
 type LoadState =
   | { phase: "loading" }
@@ -429,6 +431,90 @@ function FilterCard({
 }
 
 
+// AI 투자세션 복사용 문구 (2026-05-19 STEP).
+// - 새 API 호출 없음. 이미 조회된 data.asof / data.filters / data.candidates 로 빌드.
+// - AI 직접 호출 / 자동 토론 없음 — 외부 AI 채널에 사용자가 직접 붙여넣는 1차 입력문.
+// - 클립보드 복사 실패에 대비해 textarea 를 항상 유지 (지시문 §3.1 + AC-10).
+// - asof / filters 는 호출자가 status==='ok' 분기에서만 truthy 보장하고 prop 으로
+//   넘긴다 (fail-loud — 검증자 B-1 NOTE 반영, placeholder fallback 금지).
+function CopyTextCard({
+  asof,
+  filters,
+  candidates,
+}: {
+  asof: string;
+  filters: MarketTopNFilters;
+  candidates: MarketCandidate[];
+}) {
+  const [text, setText] = useState<string>("");
+  const [copyResult, setCopyResult] = useState<"idle" | "copied" | "failed">(
+    "idle",
+  );
+
+  const handleGenerate = useCallback(() => {
+    setText(buildMarketDiscoveryCopyText({ asof, filters, candidates }));
+    setCopyResult("idle");
+  }, [asof, filters, candidates]);
+
+  const handleCopy = useCallback(async () => {
+    if (!text) return;
+    try {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
+        await navigator.clipboard.writeText(text);
+        setCopyResult("copied");
+        return;
+      }
+      throw new Error("Clipboard API unavailable");
+    } catch {
+      setCopyResult("failed");
+    }
+  }, [text]);
+
+  return (
+    <div className="card">
+      <h2>AI 투자세션 복사용 문구</h2>
+      <p className="helper" style={{ marginBottom: 8 }}>
+        ETF명과 기간별 수익률 기반의 1차 시장 해석 요청문을 만듭니다. AI 를 직접
+        호출하지 않습니다 — 외부 AI 채널(GPT / Gemini / Claude) 에 직접 붙여넣는
+        용도입니다.
+      </p>
+      <div className="btn-row">
+        <button type="button" onClick={handleGenerate}>
+          AI 투자세션 문구 생성
+        </button>
+        <button type="button" onClick={handleCopy} disabled={!text}>
+          클립보드 복사
+        </button>
+      </div>
+      <textarea
+        className="market-copy-textarea"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setCopyResult("idle");
+        }}
+        placeholder="문구 생성 버튼을 클릭하면 여기에 표시됩니다. 클립보드 복사가 실패해도 textarea 에서 직접 선택해 복사할 수 있습니다."
+        rows={16}
+      />
+      {copyResult === "copied" ? (
+        <div className="message info" style={{ marginTop: 8 }}>
+          클립보드에 복사되었습니다.
+        </div>
+      ) : null}
+      {copyResult === "failed" ? (
+        <div className="message info" style={{ marginTop: 8 }}>
+          클립보드 복사가 실패했습니다. 위 textarea 에서 직접 선택해 복사하세요.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+
 export default function MarketDiscoveryView() {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
   const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
@@ -686,6 +772,22 @@ export default function MarketDiscoveryView() {
         onSort={handleSort}
       />
       <SortStatusLine basis={basis} order={order} />
+      {/* AI 투자세션 복사용 문구 — 새 API 호출 없이 현재 응답 기반으로 빌드.
+          asof / filters 누락은 비정상 상태로 fail-loud (검증자 B-1 NOTE 반영). */}
+      {data.asof && data.filters ? (
+        <CopyTextCard
+          asof={data.asof}
+          filters={data.filters}
+          candidates={data.candidates ?? []}
+        />
+      ) : (
+        <div className="card">
+          <div className="message error">
+            AI 투자세션 문구를 만들 수 없습니다 — 응답에 기준일(asof) 또는 필터
+            조건(filters) 이 포함되어 있지 않습니다.
+          </div>
+        </div>
+      )}
       {/* 보조 컨트롤 — 갱신 / 정제 */}
       <RefreshControlCard
         state={refreshUi}

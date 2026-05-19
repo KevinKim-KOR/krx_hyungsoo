@@ -1,10 +1,97 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-19
+최종 업데이트: 2026-05-20
 
 ---
 
-## 0. 현재 상태 — 2026-05-19 Market Discovery Grid 사용성 FIX
+## 0. 현재 상태 — 2026-05-20 AI 투자세션 복사용 문구 1차
+
+```text
+현재 단계: AI 투자세션 복사용 문구 1차 (2026-05-20) — Market Discovery → 외부 AI 채널 복사 입력문
+이전 단계: Market Discovery Grid 사용성 FIX (2026-05-19) — GRID 우선 + 컬럼 클릭 정렬
+다음 단계 후보:
+  (a) 운영 사용 후 ETF 구성 종목 / 정적 데이터 수집 (본 STEP 신규 BACKLOG)
+  (b) Data Status 실제 연결 (기존 BACKLOG)
+  (c) 사용자 결정 — Settings / decision evidence 등
+```
+
+### 본 STEP 요약
+
+- **방향**: Market Discovery 후보를 사용자가 GPT / Gemini / Claude 투자세션에 그대로
+  붙여넣을 수 있는 1차 시장 해석 요청문 (복사용 입력문) 생성. AI 직접 호출 / 자동
+  토론 / AI 응답 저장은 하지 않는다.
+- **새 API 없음**: 이미 조회된 `GET /market/topn/latest` 응답
+  (`asof` / `filters` / `candidates`) 을 그대로 사용해서 frontend 가 문구를 빌드한다.
+  조회 API 재설계 없음. 백엔드 변경 0 라인.
+- **Frontend**:
+  - 신규 모듈 `frontend/lib/marketDiscoveryCopyText.ts` — pure function
+    `buildMarketDiscoveryCopyText({asof, filters, candidates})` 가 지시문 §5 구조의
+    문구를 빌드한다. (데이터 기준 / 필터 조건 / 주의 / 후보 ETF / 요청 섹션)
+  - `MarketDiscoveryView.tsx` 에 `CopyTextCard` 컴포넌트 추가. 2 버튼 + 1 textarea:
+    "AI 투자세션 문구 생성" / "클립보드 복사" / textarea.
+    - 생성 → textarea 에 문구 표시.
+    - 복사 → `navigator.clipboard.writeText` 시도. 성공 시 안내, 실패 시 안내 +
+      textarea 에서 직접 선택 복사 (AC-10).
+    - textarea 는 editable — 사용자가 직접 수정 후 복사 가능.
+  - 배치: GRID + SortStatusLine 직후, RefreshControlCard 앞 — 후보를 본 직후
+    바로 복사할 수 있도록.
+- **문구 한계 명시 (AC-6)**:
+  - "이 입력은 ETF명과 기간별 수익률 기반의 1차 시장 해석용입니다."
+  - "ETF 구성 종목과 구성 비중 정보는 아직 포함되지 않았습니다."
+  - 요청 섹션은 시장 테마 / 섹터 흐름 해석 + 추가 확인 포인트 도출. 매수 / 매도
+    추천 요구 없음.
+- **검증**: pytest 235 passed (변화 없음 — 백엔드 미변경) / black PASS / flake8 PASS /
+  frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0.
+  - 백엔드 핵심 모듈 최대 564 (`app/draft_message.py`, 기존) — trigger 650 미달.
+  - 테스트 최대 924 (`tests/test_holdings_message_text.py`, 기존) — trigger 1500 미달.
+  - 프론트 컴포넌트 최대 790 (`frontend/app/components/MarketDiscoveryView.tsx`,
+    700 → 790, +90) — trigger 900 / near 850 미달 (60 라인 여유).
+  - 신규 ts 97 라인 (`frontend/lib/marketDiscoveryCopyText.ts`).
+  - 750 라인 이상: `tests/test_holdings_message_text.py` 924 (기존) /
+    `frontend/app/components/MarketDiscoveryView.tsx` 790 (본 STEP +90).
+
+### 신규 / 수정 파일
+
+신규:
+- `frontend/lib/marketDiscoveryCopyText.ts` — 복사용 문구 빌더 (pure function, 97 라인).
+
+수정:
+- `frontend/app/components/MarketDiscoveryView.tsx` — `CopyTextCard` 컴포넌트 +
+  렌더 위치 + import 1줄 추가 (700 → 790).
+- `frontend/app/globals.css` — `textarea.market-copy-textarea` 최소 스타일.
+- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/backlog/BACKLOG.md` — "ETF 구성 종목 / 정적 데이터 수집" 항목 신규.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §7 그대로)
+
+- GPT / Gemini / Claude API 직접 호출 / 자동 AI 토론 / AI 응답 저장.
+- decision evidence 구현 / 구성 종목 추출 / 섹터 자동 분류 / ML 연결.
+- 점수 산식 추가 / 매수·매도 판단 / Telegram 문구 변경 / OCI PUSH 연결.
+- Market Discovery GRID 추가 개편 / 조회 API 재설계.
+
+### FIX 라운드 (검증자 B-1 NOTE 반영, 2026-05-20)
+
+- **지적**: `marketDiscoveryCopyText.ts` 가 `asof` 누락 시 `"YYYY-MM-DD"` placeholder
+  로 대체하고, `MarketDiscoveryView.tsx` 가 `data.filters` 누락 시
+  `DEFAULT_MARKET_TOPN_FILTERS` 로 진행 — 필수 출력 데이터 누락이 명확한 오류로
+  드러나지 않는 fallback 구조 (frontend/lib/api.ts 의 `apiBase()` fail-loud
+  패턴과 충돌).
+- **수정**:
+  - `buildMarketDiscoveryCopyText` 의 `asof` 타입을 `string | null | undefined`
+    → `string` 으로 좁히고, 빈 문자열이면 `Error` 를 throw (silent fallback 금지).
+  - `MarketDiscoveryView` 의 CopyTextCard 호출을 `data.asof && data.filters` 가드로
+    감싸고 false 일 경우 명시 에러 카드 표시. `data.filters ?? DEFAULT_*` fallback
+    제거.
+  - `CopyTextCard` 컴포넌트의 `asof` prop 타입도 `string` 으로 좁힘.
+- **검증 재실행**: pytest 235 passed / black PASS / flake8 PASS / frontend lint PASS /
+  frontend build PASS.
+- **KS-10 재측정**: trigger 0 / near 0. `MarketDiscoveryView.tsx` 790 → 802 라인
+  (+12, near 850 까지 48 라인 여유). `marketDiscoveryCopyText.ts` 97 → 107 라인.
+
+---
+
+## 0.1 직전 상태 — 2026-05-19 Market Discovery Grid 사용성 FIX
 
 ```text
 현재 단계: Market Discovery Grid 사용성 FIX (2026-05-19) — GRID 우선 + 컬럼 클릭 정렬 + order=asc 지원
