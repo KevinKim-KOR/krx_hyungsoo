@@ -4,7 +4,120 @@
 
 ---
 
-## 0. 현재 상태 — 2026-05-20 AI 투자세션 복사용 문구 1차
+## 0. 현재 상태 — 2026-05-20 AI 투자세션 기록 / Decision Evidence 1차
+
+```text
+현재 단계: AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — 외부 AI 채널 답변 + 사용자 메모/판정 저장
+이전 단계: AI 투자세션 복사용 문구 1차 (2026-05-20) — 외부 AI 채널 입력문 생성
+다음 단계 후보 (사용자 결정 대기):
+  (a) KODEX200 / KOSPI 대비 초과수익 (alpha)
+  (b) 상승장 / 보합장 / 하락장 시장 국면 판단
+  (c) ETF 구성 종목 / 정적 데이터 수집 (직전 STEP BACKLOG)
+  (d) AI 투자세션 결과 기반 개선
+```
+
+### 본 STEP 요약
+
+- **방향**: Market Discovery 후보 → 외부 AI 질문 → AI 답변 → 사용자 메모 + 1차
+  판정을 시스템에 저장하고 다시 조회할 수 있는 최소 기록 구조. AI API 직접
+  호출 / 자동 토론 / 매매 결과 추적은 본 STEP 의 작업이 아니다 (지시문 §2 / §11).
+- **저장소 분리**: 시장 데이터 (`state/market/market_data.sqlite`) 와 별도로
+  `state/decision/decision_evidence.sqlite` 신설. PROJECT_ORIGIN_INTENT §10 의
+  "데이터 종류별 SSOT 분리" 정신과 정합. MongoDB / 신규 대형 DB 도입 없음.
+- **테이블 1개 신설**: `ai_session_records` — id / created_at / updated_at /
+  asof / source_screen / filters_json / candidate_snapshot_json / question_text /
+  answer_text / user_memo / user_verdict / next_checks_json /
+  linked_market_refresh_id. created_at 은 KST iso 마이크로초 포함 (정렬 안정성).
+- **Backend (신규 모듈)**:
+  - `app/decision_evidence_store.py` (263 라인) — DDL + SQLite store + 검증
+    (`DecisionValidationError`) + `insert_record` / `list_recent_records` /
+    `get_record`.
+  - `app/api_decision_sessions.py` (186 라인) — FastAPI APIRouter.
+    `POST /decision/sessions` (422 on invalid verdict / empty snapshot / 빈 텍스트),
+    `GET /decision/sessions?limit=10` (목록, 요약 우선순위 memo → answer → question
+    의 앞 50자), `GET /decision/sessions/{id}` (없으면 status=not_found / record=null).
+  - `app/api.py` 에 `decision_sessions_router` include 1줄 추가.
+- **사용자 1차 판정 enum**: `useful / needs_constituents / needs_market_compare /
+  hold` — FastAPI Literal 가 422 가드. 기본값 `hold`.
+- **Frontend (KS-10 회피용 분리)**:
+  - `frontend/app/components/AISessionRecordPanel.tsx` (365 라인) — Market
+    Discovery 안에서 사용되는 기록 패널. 별도 파일로 분리해서 MarketDiscoveryView
+    의 KS-10 트리거 회피.
+  - `frontend/lib/api.ts` — `DecisionUserVerdict` / `DECISION_VERDICT_LABEL` /
+    `DecisionFilters` / `DecisionCandidateSnapshot` / `CreateDecisionSessionRequest`
+    / 응답 모델 + `createDecisionSession` / `fetchDecisionSessions` /
+    `fetchDecisionSession` + `toDecisionCandidateSnapshot` 변환 헬퍼.
+  - `MarketDiscoveryView.tsx` — `data.asof && data.filters` guard 안에서
+    CopyTextCard + AISessionRecordPanel 둘 다 렌더 (직전 STEP fail-loud 패턴
+    그대로 유지).
+- **자동 채움**: 패널 내 "현재 복사용 문구를 질문에 채우기" 버튼 — 동일한
+  `buildMarketDiscoveryCopyText` 사용 → CopyTextCard 와 같은 텍스트.
+- **저장 시 snapshot**: candidate / filters 는 저장 시점 그대로 JSON 으로
+  영속화. Market Discovery 데이터가 바뀌어도 과거 기록의 후보는 불변
+  (지시문 §4 / §7.1).
+- **검증**: pytest 253 passed (235 → 253, +18 신규) / black PASS / flake8 PASS /
+  frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0.
+  - 백엔드 핵심 모듈 최대 564 (`app/draft_message.py`, 기존, 본 STEP 미변경).
+    신규 `decision_evidence_store.py` 263 / `api_decision_sessions.py` 186.
+  - 테스트 최대 924 (`tests/test_holdings_message_text.py`, 기존). 신규
+    테스트 154 + 155.
+  - 프론트 컴포넌트 최대 812 (`MarketDiscoveryView.tsx`, 802 → 812, +10) — near
+    850 까지 **38 라인 여유**. 신규 `AISessionRecordPanel.tsx` 365.
+
+### 신규 / 수정 파일
+
+신규:
+- `app/decision_evidence_store.py` (263 라인) — SQLite store.
+- `app/api_decision_sessions.py` (186 라인) — FastAPI router.
+- `tests/test_decision_evidence_store.py` (154 라인) — store 단위 테스트 9건.
+- `tests/test_decision_sessions_api.py` (155 라인) — API 통합 테스트 9건.
+- `frontend/app/components/AISessionRecordPanel.tsx` (365 라인) — 기록 패널.
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 방향 앵커 문서 (지시문 §8).
+
+수정:
+- `app/api.py` — `decision_sessions_router` include.
+- `frontend/lib/api.ts` — decision 타입 / 함수 / 변환 헬퍼 (+139 라인, 582 → 721).
+- `frontend/app/components/MarketDiscoveryView.tsx` — 패널 import + 렌더 통합
+  (802 → 812, +10).
+- `frontend/app/globals.css` — `.decision-card` / `.decision-textarea` /
+  `.decision-select` / `.decision-pre` / `.decision-detail-card`.
+- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/backlog/BACKLOG.md` — "판단 근거 저장 (decision evidence)" 항목을
+  REACTIVATED → 본 STEP 처리로 상태 갱신 (단, 매매 결과 추적은 별도 STEP
+  유지).
+- `.gitignore` — `state/decision/decision_evidence.sqlite` (+ journal/wal/shm)
+  운영 DB 추적 금지 추가.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §11)
+
+- KODEX200 / KOSPI 초과수익 계산 / 시장 국면 판정.
+- ETF 구성 종목 수집 / NAV / 괴리율 / 유동성 점수화.
+- ML 연결 / 매수·매도 판단 / 매매 결과 추적.
+- Telegram 문구 변경 / OCI PUSH 연결 / UI Grid 추가 개편.
+- AI API 직접 호출 / 자동 AI 토론.
+
+### FIX 라운드 (검증자 B-1 NOTE 반영, 2026-05-20)
+
+- **지적**: `DecisionFiltersModel` 의 4 필드 (`exclude_inverse / exclude_leveraged
+  / exclude_synthetic / exclude_futures`) 가 모두 `bool = True` default — 요청에
+  `filters: {}` 같은 incomplete payload 가 들어와도 4 필드가 모두 True 로 채워져
+  저장돼서 실제 적용 필터와 어긋날 위험. snapshot 핵심 데이터의 fail-loud 위반.
+- **수정**: 4 필드를 `Field(...)` 로 변경 (required). 누락 시 FastAPI/Pydantic
+  자동 422.
+- **신규 테스트 1건 추가**: `test_post_decision_sessions_rejects_incomplete_filters`
+  — `filters: {}` 와 `filters: {exclude_inverse: True, exclude_leveraged: True}`
+  모두 422 응답을 명시 검증.
+- **검증 재실행**: pytest 254 passed (253 → 254) / black PASS / flake8 PASS /
+  frontend lint PASS / frontend build PASS.
+- **KS-10 재측정**: trigger 0 / near 0. `app/api_decision_sessions.py` 186 → 189
+  (+3 주석), `tests/test_decision_sessions_api.py` 155 → 171 (+16 새 테스트).
+  프론트 컴포넌트 최대 812 (`MarketDiscoveryView.tsx`) 그대로 — near 850 까지
+  38 라인 여유 유지.
+
+---
+
+## 0.1 직전 상태 — 2026-05-20 AI 투자세션 복사용 문구 1차
 
 ```text
 현재 단계: AI 투자세션 복사용 문구 1차 (2026-05-20) — Market Discovery → 외부 AI 채널 복사 입력문

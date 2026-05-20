@@ -175,6 +175,12 @@ state/market/market_data.sqlite-journal
 state/market/market_data.sqlite-wal
 state/market/market_data.sqlite-shm
 
+# AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — 운영 DB 는 commit 대상 아님.
+state/decision/decision_evidence.sqlite
+state/decision/decision_evidence.sqlite-journal
+state/decision/decision_evidence.sqlite-wal
+state/decision/decision_evidence.sqlite-shm
+
 # Reports (All Runtime Generated)
 reports/**/*.json
 reports/**/*.jsonl

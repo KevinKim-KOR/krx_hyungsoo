@@ -580,3 +580,142 @@ export interface MarketRefreshStatusResponse {
 export function fetchMarketRefreshStatus(): Promise<MarketRefreshStatusResponse> {
   return request<MarketRefreshStatusResponse>("GET", "/market/refresh/status");
 }
+
+// ─── POC2 — AI 투자세션 기록 / Decision Evidence 1차 ─────────────
+// state/decision/decision_evidence.sqlite (시장 데이터 SQLite 와 분리).
+// 본 그룹은 매매 자동화 / Telegram / OCI PUSH / AI API 호출과 무관 — 사용자가
+// 외부 AI 채널 (GPT / Gemini / Claude) 에서 받은 텍스트를 저장·조회만 한다.
+
+export type DecisionUserVerdict =
+  | "useful"
+  | "needs_constituents"
+  | "needs_market_compare"
+  | "hold";
+
+export const DECISION_VERDICT_LABEL: Record<DecisionUserVerdict, string> = {
+  useful: "쓸 만함",
+  needs_constituents: "구성 종목 필요",
+  needs_market_compare: "시장 비교 필요",
+  hold: "보류",
+};
+
+export const DEFAULT_DECISION_VERDICT: DecisionUserVerdict = "hold";
+
+export interface DecisionFilters {
+  exclude_inverse: boolean;
+  exclude_leveraged: boolean;
+  exclude_synthetic: boolean;
+  exclude_futures: boolean;
+}
+
+export interface DecisionCandidateSnapshot {
+  rank?: number | null;
+  ticker?: string | null;
+  name?: string | null;
+  daily_return_pct?: number | null;
+  one_month_return_pct?: number | null;
+  three_month_return_pct?: number | null;
+  tags: string[];
+}
+
+export interface CreateDecisionSessionRequest {
+  asof: string;
+  source_screen: string;
+  filters: DecisionFilters;
+  candidate_snapshot: DecisionCandidateSnapshot[];
+  question_text: string;
+  answer_text: string;
+  user_memo: string;
+  user_verdict: DecisionUserVerdict;
+  next_checks: string[];
+  linked_market_refresh_id?: string | null;
+}
+
+export interface CreateDecisionSessionResponse {
+  status: "ok";
+  id: string;
+  created_at: string;
+}
+
+export interface DecisionSessionSummary {
+  id: string;
+  created_at: string;
+  asof: string;
+  source_screen: string;
+  user_verdict: DecisionUserVerdict;
+  summary: string;
+  candidate_count: number;
+}
+
+export interface ListDecisionSessionsResponse {
+  status: "ok";
+  records: DecisionSessionSummary[];
+}
+
+export interface DecisionSessionDetail {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  asof: string;
+  source_screen: string;
+  filters: DecisionFilters;
+  candidate_snapshot: DecisionCandidateSnapshot[];
+  question_text: string;
+  answer_text: string;
+  user_memo: string;
+  user_verdict: DecisionUserVerdict;
+  next_checks: string[];
+  linked_market_refresh_id?: string | null;
+}
+
+export interface GetDecisionSessionResponse {
+  status: "ok" | "not_found";
+  record?: DecisionSessionDetail | null;
+  message?: string | null;
+}
+
+export function createDecisionSession(
+  req: CreateDecisionSessionRequest,
+): Promise<CreateDecisionSessionResponse> {
+  return request<CreateDecisionSessionResponse>(
+    "POST",
+    "/decision/sessions",
+    req,
+  );
+}
+
+export function fetchDecisionSessions(
+  limit: number = 10,
+): Promise<ListDecisionSessionsResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return request<ListDecisionSessionsResponse>(
+    "GET",
+    `/decision/sessions?${params.toString()}`,
+  );
+}
+
+export function fetchDecisionSession(
+  id: string,
+): Promise<GetDecisionSessionResponse> {
+  return request<GetDecisionSessionResponse>(
+    "GET",
+    `/decision/sessions/${encodeURIComponent(id)}`,
+  );
+}
+
+// MarketCandidate (응답 형태) → DecisionCandidateSnapshot (저장 형태) 변환.
+// 저장 시점 후보를 그대로 보존 — Market Discovery 응답 구조가 바뀌어도 과거
+// 기록은 불변이어야 한다 (지시문 §4 / §7.1).
+export function toDecisionCandidateSnapshot(
+  c: MarketCandidate,
+): DecisionCandidateSnapshot {
+  return {
+    rank: c.rank ?? null,
+    ticker: c.ticker ?? null,
+    name: c.name ?? null,
+    daily_return_pct: c.returns?.daily?.return_pct ?? null,
+    one_month_return_pct: c.returns?.one_month?.return_pct ?? null,
+    three_month_return_pct: c.returns?.three_month?.return_pct ?? null,
+    tags: (c.tags ?? []) as string[],
+  };
+}

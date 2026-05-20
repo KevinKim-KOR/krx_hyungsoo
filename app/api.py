@@ -44,6 +44,7 @@ from app import (
     market_naver,
     store,
 )
+from app.api_decision_sessions import router as decision_sessions_router
 from app.api_market_topn import router as market_topn_router
 from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
@@ -70,6 +71,7 @@ app.add_middleware(
 # KS-10 근접 해소 + 1개 책임 1개 파일.
 app.include_router(universe_router)
 app.include_router(market_topn_router)
+app.include_router(decision_sessions_router)
 
 
 class GenerateDraftRequest(BaseModel):

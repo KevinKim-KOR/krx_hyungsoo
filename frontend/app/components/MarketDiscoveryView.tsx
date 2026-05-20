@@ -32,6 +32,7 @@ import {
   type MarketTopNResponse,
 } from "@/lib/api";
 import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
+import AISessionRecordPanel from "@/app/components/AISessionRecordPanel";
 
 type LoadState =
   | { phase: "loading" }
@@ -775,16 +776,25 @@ export default function MarketDiscoveryView() {
       {/* AI 투자세션 복사용 문구 — 새 API 호출 없이 현재 응답 기반으로 빌드.
           asof / filters 누락은 비정상 상태로 fail-loud (검증자 B-1 NOTE 반영). */}
       {data.asof && data.filters ? (
-        <CopyTextCard
-          asof={data.asof}
-          filters={data.filters}
-          candidates={data.candidates ?? []}
-        />
+        <>
+          <CopyTextCard
+            asof={data.asof}
+            filters={data.filters}
+            candidates={data.candidates ?? []}
+          />
+          {/* AI 투자세션 기록 / Decision Evidence 1차 — 별도 컴포넌트 (KS-10 분리) */}
+          <AISessionRecordPanel
+            asof={data.asof}
+            filters={data.filters}
+            candidates={data.candidates ?? []}
+            linkedMarketRefreshId={data.latest_refresh?.refresh_id ?? null}
+          />
+        </>
       ) : (
         <div className="card">
           <div className="message error">
-            AI 투자세션 문구를 만들 수 없습니다 — 응답에 기준일(asof) 또는 필터
-            조건(filters) 이 포함되어 있지 않습니다.
+            AI 투자세션 문구 / 기록 기능을 사용할 수 없습니다 — 응답에 기준일(asof)
+            또는 필터 조건(filters) 이 포함되어 있지 않습니다.
           </div>
         </div>
       )}

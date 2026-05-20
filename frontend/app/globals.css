@@ -928,6 +928,48 @@ textarea.market-copy-textarea {
   line-height: 1.5;
 }
 
+/* AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20 STEP) */
+.decision-card h3 {
+  font-size: 14px;
+  margin: 12px 0 6px 0;
+  color: var(--muted);
+}
+
+textarea.decision-textarea {
+  margin-top: 4px;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+.decision-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.decision-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  color: var(--fg);
+  margin: 4px 0 8px 0;
+}
+
+.decision-detail-card {
+  border-color: var(--accent);
+}
+
 /* 통합 후보 테이블 / basis selector (2026-05-18) */
 .market-candidate-table th.basis-active,
 .market-candidate-table td.basis-active {
