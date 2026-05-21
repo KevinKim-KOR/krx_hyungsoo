@@ -80,7 +80,19 @@ def _migrate_legacy_answer_text(con: sqlite3.Connection) -> None:
 
     기존 answer_text 값은 gpt_answer_text 로 이관한다 — 직전 STEP 까지는
     어떤 AI 채널의 답변인지 분리되어 있지 않았으므로 GPT 채널로 가정.
+
+    Robust 가드 (사용자 PC 운영 사고 1건 후 추가, 2026-05-21 FIX):
+    - 진입 시 잔재 ai_session_records_new (이전 부분 실패의 흔적) 가 있으면
+      먼저 drop. sqlite3 의 기본 isolation_level 에서 DDL 은 autocommit 이라
+      CREATE 만 영속화되고 INSERT 가 rollback 된 상태가 가능하다.
+    - PRAGMA 결과로 가드를 통과해도 실제 SELECT 가능성을 한 번 더 확인한다
+      (PRAGMA 와 실제 schema view 의 race condition 방어).
+    - 마이그레이션 도중 OperationalError 가 발생하면 _new 잔재를 cleanup
+      한 뒤 raise — 다음 호출이 stale 잔재 위에서 동작하지 않도록.
     """
+    # 잔재 cleanup — 정상 path 에서는 영향 없음 (테이블 없으면 IF EXISTS 가 무시).
+    con.execute("DROP TABLE IF EXISTS ai_session_records_new")
+
     cur = con.execute("PRAGMA table_info(ai_session_records)")
     cols = {row[1] for row in cur.fetchall()}
     if not cols:
@@ -88,6 +100,12 @@ def _migrate_legacy_answer_text(con: sqlite3.Connection) -> None:
     if "gpt_answer_text" in cols:
         return
     if "answer_text" not in cols:
+        return
+
+    # PRAGMA 와 실제 SELECT 가 동의하는지 명시 확인 — 둘이 어긋나면 안전 skip.
+    try:
+        con.execute("SELECT answer_text FROM ai_session_records LIMIT 0")
+    except sqlite3.OperationalError:
         return
 
     con.execute(
@@ -104,18 +122,24 @@ def _migrate_legacy_answer_text(con: sqlite3.Connection) -> None:
         "next_checks_json TEXT NOT NULL DEFAULT '[]', "
         "linked_market_refresh_id TEXT)"
     )
-    con.execute(
-        "INSERT INTO ai_session_records_new ("
-        "id, created_at, updated_at, asof, source_screen, "
-        "filters_json, candidate_snapshot_json, question_text, "
-        "gpt_answer_text, gemini_answer_text, claude_answer_text, "
-        "user_memo, user_verdict, next_checks_json, linked_market_refresh_id) "
-        "SELECT id, created_at, updated_at, asof, source_screen, "
-        "filters_json, candidate_snapshot_json, question_text, "
-        "answer_text, '', '', "
-        "user_memo, user_verdict, next_checks_json, linked_market_refresh_id "
-        "FROM ai_session_records"
-    )
+    try:
+        con.execute(
+            "INSERT INTO ai_session_records_new ("
+            "id, created_at, updated_at, asof, source_screen, "
+            "filters_json, candidate_snapshot_json, question_text, "
+            "gpt_answer_text, gemini_answer_text, claude_answer_text, "
+            "user_memo, user_verdict, next_checks_json, linked_market_refresh_id) "
+            "SELECT id, created_at, updated_at, asof, source_screen, "
+            "filters_json, candidate_snapshot_json, question_text, "
+            "answer_text, '', '', "
+            "user_memo, user_verdict, next_checks_json, linked_market_refresh_id "
+            "FROM ai_session_records"
+        )
+    except sqlite3.OperationalError:
+        # INSERT 실패 시 _new 잔재를 즉시 cleanup 후 raise — 다음 호출이
+        # stale 잔재를 보지 않도록.
+        con.execute("DROP TABLE IF EXISTS ai_session_records_new")
+        raise
     con.execute("DROP TABLE ai_session_records")
     con.execute("ALTER TABLE ai_session_records_new RENAME TO ai_session_records")
 

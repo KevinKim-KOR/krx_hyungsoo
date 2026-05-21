@@ -96,6 +96,33 @@
 - ML / 매수·매도 판단 / 매매 결과 추적.
 - AI API 직접 호출 / 자동 AI 토론 / Telegram 변경 / OCI PUSH 연결.
 
+### HOTFIX 라운드 (운영 사고 1건 후속, 2026-05-21)
+
+- **현상**: 사용자 PC 의 운영 DB (`state/decision/decision_evidence.sqlite`)
+  에서 AI Sessions 화면 진입 시 `GET /decision/sessions` 가
+  `sqlite3.OperationalError: no such column: answer_text` 로 500. 원인:
+  `_migrate_legacy_answer_text` 가 1차 시점에 부분 진행되어 `ai_session_records`
+  는 이미 신규 (3 분리) 스키마인데 `ai_session_records_new` 테이블이 잔재로
+  남은 상태. PRAGMA 결과와 실제 SELECT 가능 컬럼 사이의 불일치 가능성도 함께
+  관찰.
+- **즉시 조치**: 사용자 PC DB 의 `ai_session_records_new` 잔재 drop (양쪽 테이블
+  모두 0 rows 였으므로 데이터 손실 0).
+- **코드 방어 강화** (`app/decision_evidence_store.py`):
+  - `_migrate_legacy_answer_text` 진입 시 `DROP TABLE IF EXISTS
+    ai_session_records_new` 로 잔재를 먼저 cleanup (정상 path 에서는 영향 0).
+  - PRAGMA 통과 후 `SELECT answer_text FROM ai_session_records LIMIT 0` 으로
+    실제 컬럼 존재를 한 번 더 확인 — PRAGMA 와 SELECT 가 어긋나는 race 가
+    있을 때 안전 skip.
+  - INSERT 단계에서 `sqlite3.OperationalError` 발생 시 `ai_session_records_new`
+    drop 후 raise — 다음 호출이 stale 잔재 위에서 동작하지 않도록.
+- **회귀 테스트 1건 추가**:
+  `test_init_db_cleans_up_stale_ai_session_records_new` — 잔재 _new 테이블을
+  의도적으로 주입한 뒤 init_db() 호출 시 자동 cleanup 되는지 검증 + 정상
+  insert/조회 동작 확인.
+- **검증 재실행**: pytest 262 passed (261 → 262) / black PASS / flake8 PASS.
+- **KS-10 재측정**: trigger 0 / near 0. `decision_evidence_store.py` 354 → 378
+  라인 (+24, trigger 650 미달). 750 라인 이상 파일 변동 없음.
+
 ---
 
 ## 0.1 직전 상태 — 2026-05-20 AI 투자세션 기록 / Decision Evidence 1차

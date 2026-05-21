@@ -255,6 +255,51 @@ def test_list_recent_records_respects_limit(tmp_path: Path):
     assert len(list_recent_records(limit=3, db_path=db)) == 3
 
 
+def test_init_db_cleans_up_stale_ai_session_records_new(tmp_path: Path):
+    """이전 부분 마이그레이션 잔재 (ai_session_records_new 테이블) 가 있을 때
+    init_db() 가 호출되면 잔재를 자동 cleanup 한다.
+
+    재현: 운영 사고 1건 (2026-05-21) — 사용자 PC 에서 마이그레이션이 부분
+    진행되어 ai_session_records 는 이미 신규 스키마인데 ai_session_records_new
+    잔재가 남아 다음 init_db 가 같은 INSERT 를 재시도 → no-op 가드 통과 후에도
+    엉뚱한 컬럼 에러를 만들 수 있는 상태.
+    """
+    db = tmp_path / "decision_evidence.sqlite"
+    # 1) 정상 신규 DB 만들기 (3 분리 스키마).
+    init_db(db)
+    # 2) 의도적으로 잔재 _new 테이블 주입.
+    with sqlite3.connect(str(db)) as con:
+        con.execute(
+            "CREATE TABLE ai_session_records_new ("
+            "id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, "
+            "asof TEXT NOT NULL, source_screen TEXT NOT NULL, "
+            "filters_json TEXT NOT NULL, candidate_snapshot_json TEXT NOT NULL, "
+            "question_text TEXT NOT NULL, "
+            "gpt_answer_text TEXT NOT NULL DEFAULT '', "
+            "gemini_answer_text TEXT NOT NULL DEFAULT '', "
+            "claude_answer_text TEXT NOT NULL DEFAULT '', "
+            "user_memo TEXT NOT NULL DEFAULT '', "
+            "user_verdict TEXT NOT NULL, "
+            "next_checks_json TEXT NOT NULL DEFAULT '[]', "
+            "linked_market_refresh_id TEXT)"
+        )
+        con.commit()
+
+    # 3) init_db 재호출 → 잔재 cleanup.
+    init_db(db)
+    with sqlite3.connect(str(db)) as con:
+        tables = {
+            row[0]
+            for row in con.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert "ai_session_records" in tables
+    assert "ai_session_records_new" not in tables
+
+    # 4) 정상 insert/조회 동작 확인.
+    saved = insert_record(db_path=db, **_minimal_kwargs())
+    assert get_record(saved["id"], db_path=db) is not None
+
+
 def test_legacy_single_answer_text_schema_auto_migrates(tmp_path: Path):
     """직전 STEP 의 단일 answer_text DB 가 init_db 호출 시 무손실 마이그레이션.
 
