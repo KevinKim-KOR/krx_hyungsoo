@@ -96,6 +96,30 @@
 - ML / 매수·매도 판단 / 매매 결과 추적.
 - AI API 직접 호출 / 자동 AI 토론 / Telegram 변경 / OCI PUSH 연결.
 
+### HOTFIX 라운드 #2 (refresh polling 사고 1건 후속, 2026-05-22)
+
+- **현상**: 사용자가 Market Discovery 의 "최신 시장 데이터 갱신" 버튼을 누른
+  뒤 frontend 가 "상태 확인 시간이 너무 길어졌습니다. 잠시 후 다시 시도하세요."
+  오류를 표시. 그러나 새로고침 시 새 asof 로 정상 조회됨.
+- **원인 (로그 분석)**: 백엔드 refresh job 자체는 1115/1115 성공 / 0 실패 /
+  `error_summary=None` 로 **정상 완료**. 그러나 가격 수집이 약 6분 8초
+  (368초) 걸렸고, frontend 의 polling 상한 (`POLL_MAX_TICKS=90 ×
+  POLL_INTERVAL_MS=4000ms = 360초 = 6분`) 을 **8초 초과**. 그 시점에 frontend
+  가 fail 표시로 빠지면서도 백엔드는 묵묵히 SQLite 에 데이터 정상 저장.
+- **수정** (`frontend/app/components/MarketDiscoveryView.tsx`):
+  - (a) `POLL_MAX_TICKS` 90 → 120 (6분 → **8분**). 1115 ETF 6분+ 케이스 흡수.
+  - (b) timeout 진입 시점에 한 번 더 `fetchMarketRefreshStatus()` 명시 조회.
+    `completed / failed / skipped_cooldown / idle` 4 가지 응답은 그대로
+    `applyStatus` 가 처리 (completed 면 loadTopn 호출). running 으로 남아
+    있거나 fetch 자체 실패하면 fallback fail 표시. polling tick 사이의 짧은
+    틈에 백엔드가 완료한 케이스 차단.
+- **검증**: pytest 262 (백엔드 미변경) / frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0. `MarketDiscoveryView.tsx` 824 → 845 (+21).
+  near 850 까지 5 라인 여유.
+- **read-only 진단 → fix 까지**: 사용자 명시 요청 ("로그만 확인" → "(a) + (b)
+  둘 다 진행"). market_refresh_log / etf_master / etf_daily_price 조회만으로
+  근본 원인 식별, 소스 변경은 사용자 승인 후에만.
+
 ### HOTFIX 라운드 (운영 사고 1건 후속, 2026-05-21)
 
 - **현상**: 사용자 PC 의 운영 DB (`state/decision/decision_evidence.sqlite`)

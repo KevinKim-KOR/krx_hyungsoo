@@ -49,7 +49,10 @@ type RefreshUiState =
   | { kind: "cooldown"; cooldownRemainingSeconds: number };
 
 const POLL_INTERVAL_MS = 4000;
-const POLL_MAX_TICKS = 90; // 6분 안전 상한
+// 2026-05-22 — 운영 사고 1건 후 90 → 120 으로 상향. 1115 ETF 가격 수집이
+// 약 6분 8초 (368s) 걸려 90 × 4s = 360s 상한을 8초 초과했고, 그 결과 frontend
+// 가 fail 표시했지만 백엔드는 그 사이 정상 완료한 사례를 차단.
+const POLL_MAX_TICKS = 120; // 8분 안전 상한
 
 const DASH = "-";
 
@@ -618,7 +621,25 @@ export default function MarketDiscoveryView({
     pollTimerRef.current = setInterval(async () => {
       pollTickRef.current += 1;
       if (pollTickRef.current > POLL_MAX_TICKS) {
+        // 2026-05-22 — 운영 사고 1건 후 polling 상한 진입 시점에 한 번 더 status
+        // 명시 조회. 백엔드가 polling tick 사이의 짧은 틈에 완료했지만 frontend
+        // 가 fail 표시로 가버리는 케이스 차단. applyStatus 가 completed / failed /
+        // cooldown / idle 모두 처리하므로 결과를 그대로 신뢰한다.
         stopPolling();
+        try {
+          const finalStatus = await fetchMarketRefreshStatus();
+          applyStatus(finalStatus);
+          if (
+            finalStatus.status === "completed" ||
+            finalStatus.status === "failed" ||
+            finalStatus.status === "skipped_cooldown" ||
+            finalStatus.status === "idle"
+          ) {
+            return;
+          }
+        } catch {
+          // 마지막 조회마저 실패하면 아래 fallback fail 표시.
+        }
         setRefreshUi({
           kind: "failed",
           message: "상태 확인 시간이 너무 길어졌습니다. 잠시 후 다시 시도하세요.",
