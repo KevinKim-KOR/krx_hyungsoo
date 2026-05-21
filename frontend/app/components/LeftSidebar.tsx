@@ -1,13 +1,15 @@
 "use client";
 
-// POC2 PC UI Shell 1차 — 좌측 메뉴 컴포넌트.
+// POC2 PC UI Shell — 좌측 메뉴 컴포넌트.
 //
-// 5개 메뉴 고정 (지시문 §3.1):
-// Dashboard / Market Discovery / Holdings / Approval & Telegram / Data Status
+// 2026-05-21 갱신: AI Sessions 메뉴 추가 (Market Discovery 와 분리, 지시문 §3).
+// 메뉴 순서: Dashboard / Market Discovery / AI Sessions / Holdings /
+// Approval & Telegram / Data Status.
 
 export type MenuKey =
   | "dashboard"
   | "market_discovery"
+  | "ai_sessions"
   | "holdings"
   | "approval"
   | "data_status";
@@ -20,7 +22,8 @@ export interface MenuItem {
 
 export const MENU_ITEMS: MenuItem[] = [
   { key: "dashboard", label: "Dashboard", hint: "시스템 상태 + 바로가기" },
-  { key: "market_discovery", label: "Market Discovery", hint: "ETF TOP N (예정)" },
+  { key: "market_discovery", label: "Market Discovery", hint: "ETF 후보 발굴" },
+  { key: "ai_sessions", label: "AI Sessions", hint: "AI 질문/답변 기록" },
   { key: "holdings", label: "Holdings", hint: "보유 현황 / 평가" },
   { key: "approval", label: "Approval / Telegram", hint: "승인 대기 / 발송 결과" },
   { key: "data_status", label: "Data Status", hint: "시장 데이터 상태 (예정)" },

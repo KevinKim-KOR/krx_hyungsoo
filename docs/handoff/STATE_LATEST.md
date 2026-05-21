@@ -1,10 +1,104 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-20
+최종 업데이트: 2026-05-21
 
 ---
 
-## 0. 현재 상태 — 2026-05-20 AI 투자세션 기록 / Decision Evidence 1차
+## 0. 현재 상태 — 2026-05-21 AI Sessions / Decision Evidence + Context Bridge
+
+```text
+현재 단계: AI Sessions / Decision Evidence 화면 분리 + Context Bridge (2026-05-21)
+이전 단계: AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — Market Discovery 안 인라인
+다음 단계 후보 (사용자 결정 대기):
+  (a) KODEX200 / KOSPI 대비 초과수익 (alpha)
+  (b) 상승장 / 보합장 / 하락장 시장 국면 판단
+  (c) ETF 구성 종목 / 정적 데이터 수집
+  (d) AI 투자세션 결과 기반 개선
+```
+
+### 본 STEP 요약
+
+- **방향**: Market Discovery 와 AI Sessions 를 **화면 책임 분리**. Market Discovery
+  는 ETF 후보 발굴 + 복사용 문구 + "AI Sessions로 넘기기" 까지만 남기고, 외부
+  AI 답변 / 사용자 메모 / 1차 판정 / 다음 확인 항목은 AI Sessions 화면에서 저장.
+  AI Sessions 화면은 [새 기록 저장] / [기록 조회] 2 탭으로 분리.
+- **AI 답변 채널 분리 (스키마 변경)**: 기존 단일 `answer_text` → `gpt_answer_text`
+  / `gemini_answer_text` / `claude_answer_text` 3 컬럼. 저장 시 3 채널 중 최소
+  1개 이상 비어있지 않아야 한다 (store-level + frontend gating). 직전 STEP 의
+  단일 answer_text DB 는 `init_db()` 시점에 자동 무손실 마이그레이션 (SQLite
+  권장 패턴: new table + copy + drop + rename. 기존 answer_text 값은
+  gpt_answer_text 로 이관).
+- **Context Bridge**: Market Discovery → AI Sessions draft 전달은
+  `frontend/lib/aiSessionsDraft.ts` 가 sessionStorage 로 처리. 서버 draft
+  저장소 없음 (지시문 §5.2 / §14). 브라우저 새로고침으로 draft 가 사라지는
+  것은 본 STEP 허용 범위.
+  - Market Discovery 의 "AI Sessions로 넘기기" 클릭 시 — buildMarketDiscoveryCopyText
+    로 question_text 자동 생성 + sessionStorage 저장 + setActive("ai_sessions").
+  - AI Sessions 마운트 시 draft 있으면 [새 기록 저장] 탭 default, 없으면 [기록 조회]
+    탭 default.
+- **Frontend 좌측 메뉴**: AI Sessions 항목 추가 (Dashboard / Market Discovery /
+  **AI Sessions** / Holdings / Approval-Telegram / Data Status).
+- **Backend API 변경**:
+  - `POST /decision/sessions` — 3 답변 필드 + "최소 1개 이상" group-required 검증
+    (422). filters 4 필드 모두 required (직전 STEP fail-loud 정책 유지).
+  - `GET /decision/sessions` — summary 응답에 `has_gpt_answer / has_gemini_answer
+    / has_claude_answer` 추가 (목록에서 채널별 답변 입력 여부 한눈에 확인).
+  - `GET /decision/sessions/{id}` — record 에 3 답변 분리 필드.
+- **검증**: pytest 261 passed (253 → 261, +8 신규 / 기존 18 갱신) / black PASS /
+  flake8 PASS / frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0.
+  - 1차 측정 시 `MarketDiscoveryView.tsx` 891 라인 (near 850 진입) → 즉시 분리.
+    `TransferToAISessionsCard.tsx` (88 라인) 를 별도 파일로 추출 → 824 라인 (near
+    미달 26 라인 여유).
+  - 백엔드 핵심 모듈 최대 564 (`app/draft_message.py`, 기존). 신규
+    `decision_evidence_store.py` 354 / `api_decision_sessions.py` 195.
+  - 테스트 최대 924 (`tests/test_holdings_message_text.py`, 기존).
+  - 750 라인 이상: 924 / 824.
+
+### 신규 / 수정 / 삭제 파일
+
+신규:
+- `frontend/lib/aiSessionsDraft.ts` (69 라인) — sessionStorage Context Bridge util.
+- `frontend/app/components/AISessionsView.tsx` (98 라인) — 탭 컨테이너.
+- `frontend/app/components/AISessionsCreateTab.tsx` (308 라인) — 새 기록 저장 탭.
+- `frontend/app/components/AISessionsListTab.tsx` (273 라인) — 기록 조회 + 상세 탭.
+- `frontend/app/components/TransferToAISessionsCard.tsx` (88 라인) — Market
+  Discovery 에서 분리된 전달 카드 (KS-10 회피).
+
+삭제:
+- `frontend/app/components/AISessionRecordPanel.tsx` — 직전 STEP 의 Market
+  Discovery 인라인 패널. 본 STEP §4.2 명시 제거 항목 (Market Discovery 내
+  기록 패널 금지).
+
+수정:
+- `app/decision_evidence_store.py` — 3 답변 컬럼 + 마이그레이션 + 그룹 필수 검증
+  (263 → 354).
+- `app/api_decision_sessions.py` — Pydantic 모델 3 분리 + has_* 필드 (189 → 195).
+- `frontend/lib/api.ts` — DecisionSession 타입의 3 분리 필드 + has_* + 변환 헬퍼.
+- `frontend/app/components/MarketDiscoveryView.tsx` — AISessionRecordPanel
+  제거 + "AI Sessions로 넘기기" 버튼 + onNavigate prop (812 → 891 → 824, 분리 후).
+- `frontend/app/components/LeftSidebar.tsx` — `ai_sessions` MenuKey + MENU_ITEMS 항목.
+- `frontend/app/components/MainPanel.tsx` — `ai_sessions` 분기 + MarketDiscovery
+  로 onNavigate 전달.
+- `frontend/app/globals.css` — `.decision-tab-row` / `.decision-tab-btn` /
+  `.decision-answer-badges` 스타일.
+- `tests/test_decision_evidence_store.py` + `tests/test_decision_sessions_api.py`
+  — 3 답변 필드 / has_* / 그룹 필수 / 마이그레이션 검증 (기존 18 갱신 + 신규 8).
+- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md` /
+  `docs/backlog/BACKLOG.md` — 본 STEP 반영.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §14)
+
+- Market Discovery 안에 기록 패널 붙이기 (직전 STEP 의 인라인 패턴은 폐기).
+- 저장과 조회를 같은 덩어리 화면으로 섞기.
+- 서버 draft 저장소 만들기 (sessionStorage 만 사용, 새로고침 시 draft 소멸 허용).
+- KODEX200 / KOSPI 초과수익 / 시장 국면 판정 / ETF 구성 종목 / NAV / 유동성.
+- ML / 매수·매도 판단 / 매매 결과 추적.
+- AI API 직접 호출 / 자동 AI 토론 / Telegram 변경 / OCI PUSH 연결.
+
+---
+
+## 0.1 직전 상태 — 2026-05-20 AI 투자세션 기록 / Decision Evidence 1차
 
 ```text
 현재 단계: AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — 외부 AI 채널 답변 + 사용자 메모/판정 저장

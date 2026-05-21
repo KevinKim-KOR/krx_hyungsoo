@@ -1,14 +1,21 @@
-"""Decision Evidence SQLite 저장소 (POC2 — AI 투자세션 기록 1차).
+"""Decision Evidence SQLite 저장소 (POC2 — AI Sessions / Context Bridge).
 
 본 모듈은 다음 1개 테이블만 관리한다:
-- ai_session_records: AI 질문 / 답변 / 사용자 메모 / 1차 판정 / 후보 스냅샷 / 필터 스냅샷.
+- ai_session_records: AI 질문 / GPT·Gemini·Claude 3개 답변 / 사용자 메모 / 1차
+  판정 / 후보 스냅샷 / 필터 스냅샷.
 
 DB 파일은 시장 데이터(`state/market/market_data.sqlite`) 와 분리된
 `state/decision/decision_evidence.sqlite` 다. 두 도메인을 같은 DB 파일에
 섞지 않는다 (PROJECT_ORIGIN_INTENT §10 — 데이터 종류별 SSOT 분리).
 
-본 모듈은 매수/매도 판단 / 매매 결과 추적 / ML 점수 저장을 하지 않는다.
-이 STEP 의 범위는 "질문 + 답변 + 메모 + 1차 판정" 까지다.
+2026-05-21 변경 (AI Sessions / Decision Evidence + Context Bridge):
+- 기존 단일 `answer_text` 컬럼 → `gpt_answer_text` / `gemini_answer_text` /
+  `claude_answer_text` 3 컬럼으로 분리. AI 답변은 채널별로 영속 보존된다.
+- 신규 스키마는 `CREATE TABLE IF NOT EXISTS` 가 처리. 기존 DB (직전 STEP
+  bd387281 시점 단일 answer_text 스키마) 는 `_migrate_legacy_answer_text` 가
+  SQLite 권장 패턴 (new table + copy + drop + rename) 으로 무손실 마이그레이션.
+  기존 answer_text 값은 `gpt_answer_text` 로 이관 (분리 표기 정보가 없어
+  GPT 채널로 가정).
 """
 
 from __future__ import annotations
@@ -23,7 +30,7 @@ from typing import Optional
 
 DEFAULT_DB_PATH = Path("state/decision/decision_evidence.sqlite")
 
-# 사용자 1차 판정 enum (지시문 §5).
+# 사용자 1차 판정 enum (지시문 §9).
 ALLOWED_USER_VERDICTS = ("useful", "needs_constituents", "needs_market_compare", "hold")
 DEFAULT_USER_VERDICT = "hold"
 
@@ -37,7 +44,9 @@ CREATE TABLE IF NOT EXISTS ai_session_records (
     filters_json              TEXT NOT NULL,
     candidate_snapshot_json   TEXT NOT NULL,
     question_text             TEXT NOT NULL,
-    answer_text               TEXT NOT NULL,
+    gpt_answer_text           TEXT NOT NULL DEFAULT '',
+    gemini_answer_text        TEXT NOT NULL DEFAULT '',
+    claude_answer_text        TEXT NOT NULL DEFAULT '',
     user_memo                 TEXT NOT NULL DEFAULT '',
     user_verdict              TEXT NOT NULL,
     next_checks_json          TEXT NOT NULL DEFAULT '[]',
@@ -47,17 +56,11 @@ CREATE TABLE IF NOT EXISTS ai_session_records (
 
 
 # KST 고정 — 사용자가 한국 사용자이고 지시문 응답 예시(+09:00)와 정합.
-# market_data_store 의 UTC Z 와는 다른 DB 파일이라 시간대 통일 강제 없음.
 _KST = timezone(timedelta(hours=9))
 
 
 def _kst_now_iso() -> str:
-    """KST(+09:00) ISO-8601 timestamp.
-
-    마이크로초까지 포함한다 — created_at 을 정렬 키로 사용할 때 같은 초 안에
-    연속 insert 가 발생해도 안정적으로 순서가 유지되도록.
-    응답 노출 시점에는 그대로 ISO-8601 valid 문자열.
-    """
+    """KST(+09:00) ISO-8601 timestamp, 마이크로초 포함 (정렬 안정성)."""
     return datetime.now(_KST).strftime("%Y-%m-%dT%H:%M:%S.%f%z")
 
 
@@ -67,11 +70,62 @@ def _generate_id(now: Optional[datetime] = None) -> str:
     return f"decision_{base.strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
 
 
+def _migrate_legacy_answer_text(con: sqlite3.Connection) -> None:
+    """단일 answer_text 컬럼 → 3 분리 컬럼 (SQLite 권장 무손실 마이그레이션).
+
+    조건:
+    - 기존 테이블이 있고 `gpt_answer_text` 컬럼이 없으며 `answer_text` 컬럼이
+      있을 때만 동작.
+    - 그 외 (신규 DB / 이미 마이그레이션 완료 / 알 수 없는 스키마) 는 no-op.
+
+    기존 answer_text 값은 gpt_answer_text 로 이관한다 — 직전 STEP 까지는
+    어떤 AI 채널의 답변인지 분리되어 있지 않았으므로 GPT 채널로 가정.
+    """
+    cur = con.execute("PRAGMA table_info(ai_session_records)")
+    cols = {row[1] for row in cur.fetchall()}
+    if not cols:
+        return
+    if "gpt_answer_text" in cols:
+        return
+    if "answer_text" not in cols:
+        return
+
+    con.execute(
+        "CREATE TABLE ai_session_records_new ("
+        "id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, "
+        "asof TEXT NOT NULL, source_screen TEXT NOT NULL, "
+        "filters_json TEXT NOT NULL, candidate_snapshot_json TEXT NOT NULL, "
+        "question_text TEXT NOT NULL, "
+        "gpt_answer_text TEXT NOT NULL DEFAULT '', "
+        "gemini_answer_text TEXT NOT NULL DEFAULT '', "
+        "claude_answer_text TEXT NOT NULL DEFAULT '', "
+        "user_memo TEXT NOT NULL DEFAULT '', "
+        "user_verdict TEXT NOT NULL, "
+        "next_checks_json TEXT NOT NULL DEFAULT '[]', "
+        "linked_market_refresh_id TEXT)"
+    )
+    con.execute(
+        "INSERT INTO ai_session_records_new ("
+        "id, created_at, updated_at, asof, source_screen, "
+        "filters_json, candidate_snapshot_json, question_text, "
+        "gpt_answer_text, gemini_answer_text, claude_answer_text, "
+        "user_memo, user_verdict, next_checks_json, linked_market_refresh_id) "
+        "SELECT id, created_at, updated_at, asof, source_screen, "
+        "filters_json, candidate_snapshot_json, question_text, "
+        "answer_text, '', '', "
+        "user_memo, user_verdict, next_checks_json, linked_market_refresh_id "
+        "FROM ai_session_records"
+    )
+    con.execute("DROP TABLE ai_session_records")
+    con.execute("ALTER TABLE ai_session_records_new RENAME TO ai_session_records")
+
+
 def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
-    """DB 파일 + 테이블 보장. 시장 데이터 DB 와는 별도 파일."""
+    """DB 파일 + 테이블 보장. 기존 단일 answer_text 스키마는 자동 마이그레이션."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(str(db_path)) as con:
         con.execute(AI_SESSION_RECORDS_DDL)
+        _migrate_legacy_answer_text(con)
         con.commit()
 
 
@@ -105,7 +159,9 @@ def insert_record(
     filters: dict,
     candidate_snapshot: list[dict],
     question_text: str,
-    answer_text: str,
+    gpt_answer_text: str,
+    gemini_answer_text: str,
+    claude_answer_text: str,
     user_memo: str,
     user_verdict: str,
     next_checks: list[str],
@@ -114,10 +170,12 @@ def insert_record(
 ) -> dict:
     """신규 ai_session_records 1건 저장 → 저장된 row(요약) 반환.
 
-    - id 는 `decision_YYYYMMDDHHMMSS_<hex8>` 로 자동 생성 (호출자 지정 금지).
-    - created_at = updated_at = 저장 시각 (KST iso). 이번 STEP 은 수정 기능 없음.
-    - candidate_snapshot 은 비어있으면 안 된다 (지시문 §6.1 검증 규칙).
-    - 모든 JSON 필드는 ensure_ascii=False 로 한국어 그대로 저장.
+    검증 규칙 (지시문 §10.1):
+    - asof / source_screen / question_text 필수.
+    - candidate_snapshot 빈 배열 불가.
+    - gpt / gemini / claude 답변 중 **최소 1개 이상** 비어 있지 않아야 한다.
+    - user_verdict 는 enum.
+    - next_checks 는 배열.
     """
     if not asof:
         raise DecisionValidationError("asof is required.")
@@ -127,8 +185,15 @@ def insert_record(
         raise DecisionValidationError("candidate_snapshot must not be empty.")
     if not question_text:
         raise DecisionValidationError("question_text is required.")
-    if not answer_text:
-        raise DecisionValidationError("answer_text is required.")
+    if not (
+        (gpt_answer_text and gpt_answer_text.strip())
+        or (gemini_answer_text and gemini_answer_text.strip())
+        or (claude_answer_text and claude_answer_text.strip())
+    ):
+        raise DecisionValidationError(
+            "At least one of gpt_answer_text / gemini_answer_text / "
+            "claude_answer_text must be non-empty."
+        )
     _validate_user_verdict(user_verdict)
     if not isinstance(next_checks, list):
         raise DecisionValidationError("next_checks must be a list.")
@@ -145,9 +210,10 @@ def insert_record(
             "INSERT INTO ai_session_records ("
             "id, created_at, updated_at, asof, source_screen, "
             "filters_json, candidate_snapshot_json, question_text, "
-            "answer_text, user_memo, user_verdict, next_checks_json, "
+            "gpt_answer_text, gemini_answer_text, claude_answer_text, "
+            "user_memo, user_verdict, next_checks_json, "
             "linked_market_refresh_id"
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 new_id,
                 now_iso,
@@ -157,7 +223,9 @@ def insert_record(
                 filters_json,
                 snapshot_json,
                 question_text,
-                answer_text,
+                gpt_answer_text or "",
+                gemini_answer_text or "",
+                claude_answer_text or "",
                 user_memo or "",
                 user_verdict,
                 next_checks_json,
@@ -166,6 +234,14 @@ def insert_record(
         )
 
     return {"id": new_id, "created_at": now_iso}
+
+
+_SELECT_COLS = (
+    "id, created_at, updated_at, asof, source_screen, "
+    "filters_json, candidate_snapshot_json, question_text, "
+    "gpt_answer_text, gemini_answer_text, claude_answer_text, "
+    "user_memo, user_verdict, next_checks_json, linked_market_refresh_id"
+)
 
 
 def _row_to_full_dict(row: tuple) -> dict:
@@ -179,7 +255,9 @@ def _row_to_full_dict(row: tuple) -> dict:
         filters_json,
         snapshot_json,
         question_text,
-        answer_text,
+        gpt_answer_text,
+        gemini_answer_text,
+        claude_answer_text,
         user_memo,
         user_verdict,
         next_checks_json,
@@ -194,7 +272,9 @@ def _row_to_full_dict(row: tuple) -> dict:
         "filters": json.loads(filters_json),
         "candidate_snapshot": json.loads(snapshot_json),
         "question_text": question_text,
-        "answer_text": answer_text,
+        "gpt_answer_text": gpt_answer_text or "",
+        "gemini_answer_text": gemini_answer_text or "",
+        "claude_answer_text": claude_answer_text or "",
         "user_memo": user_memo,
         "user_verdict": user_verdict,
         "next_checks": json.loads(next_checks_json),
@@ -203,8 +283,18 @@ def _row_to_full_dict(row: tuple) -> dict:
 
 
 def _summary_text(record: dict) -> str:
-    """목록 표시용 요약 (지시문 §7.3 우선순위: memo → answer → question, 앞 50자)."""
-    for key in ("user_memo", "answer_text", "question_text"):
+    """목록 표시용 요약 (앞 50자).
+
+    우선순위: user_memo → gpt_answer_text → gemini_answer_text →
+    claude_answer_text → question_text. 첫 번째 비어있지 않은 텍스트를 사용.
+    """
+    for key in (
+        "user_memo",
+        "gpt_answer_text",
+        "gemini_answer_text",
+        "claude_answer_text",
+        "question_text",
+    ):
         text = (record.get(key) or "").strip()
         if text:
             return text[:50]
@@ -216,15 +306,16 @@ def list_recent_records(
     limit: int = 10,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> list[dict]:
-    """최근 created_at DESC 순 N건 — 목록용 축약 dict 리스트."""
+    """최근 created_at DESC 순 N건 — 목록용 축약 dict 리스트.
+
+    each item 에 `has_gpt_answer / has_gemini_answer / has_claude_answer` boolean
+    포함 (지시문 §10.2).
+    """
     if limit <= 0:
         return []
     with _connection(db_path) as con:
         cur = con.execute(
-            "SELECT id, created_at, updated_at, asof, source_screen, "
-            "filters_json, candidate_snapshot_json, question_text, "
-            "answer_text, user_memo, user_verdict, next_checks_json, "
-            "linked_market_refresh_id FROM ai_session_records "
+            f"SELECT {_SELECT_COLS} FROM ai_session_records "
             "ORDER BY created_at DESC, id DESC LIMIT ?",
             (int(limit),),
         )
@@ -242,6 +333,9 @@ def list_recent_records(
                 "user_verdict": full["user_verdict"],
                 "summary": _summary_text(full),
                 "candidate_count": len(full["candidate_snapshot"]),
+                "has_gpt_answer": bool(full["gpt_answer_text"].strip()),
+                "has_gemini_answer": bool(full["gemini_answer_text"].strip()),
+                "has_claude_answer": bool(full["claude_answer_text"].strip()),
             }
         )
     return out
@@ -251,10 +345,7 @@ def get_record(record_id: str, *, db_path: Path = DEFAULT_DB_PATH) -> Optional[d
     """단일 record 전체 — 없으면 None."""
     with _connection(db_path) as con:
         cur = con.execute(
-            "SELECT id, created_at, updated_at, asof, source_screen, "
-            "filters_json, candidate_snapshot_json, question_text, "
-            "answer_text, user_memo, user_verdict, next_checks_json, "
-            "linked_market_refresh_id FROM ai_session_records WHERE id = ?",
+            f"SELECT {_SELECT_COLS} FROM ai_session_records WHERE id = ?",
             (record_id,),
         )
         row = cur.fetchone()

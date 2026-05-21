@@ -13,6 +13,7 @@
 //   (기존 단일 페이지에서 즉시 noticed 되던 운영 동작 보존 — AC-11).
 
 import { useCallback, useState } from "react";
+import AISessionsView from "./AISessionsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
 import DashboardView from "./DashboardView";
 import DataStatusView from "./DataStatusView";
@@ -42,7 +43,11 @@ export default function MainPanel() {
       view = <DashboardView onNavigate={setActive} />;
       break;
     case "market_discovery":
-      view = <MarketDiscoveryView />;
+      // 2026-05-21 — "AI Sessions로 넘기기" 클릭 시 ai_sessions 화면 전환.
+      view = <MarketDiscoveryView onNavigate={setActive} />;
+      break;
+    case "ai_sessions":
+      view = <AISessionsView />;
       break;
     case "holdings":
       view = <HoldingsView onDraftCreated={handleDraftCreated} />;

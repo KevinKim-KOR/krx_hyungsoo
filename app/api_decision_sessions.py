@@ -1,14 +1,14 @@
-"""Decision Evidence API — AI 투자세션 기록 1차 (POC2).
+"""Decision Evidence API — AI Sessions / Context Bridge (POC2).
 
 엔드포인트:
-- POST /decision/sessions       : AI 질문 / 답변 / 메모 / 1차 판정 / 스냅샷 저장.
-- GET  /decision/sessions       : 최근 기록 목록 (요약).
-- GET  /decision/sessions/{id}  : 특정 기록 상세.
+- POST /decision/sessions       : AI 질문 / GPT·Gemini·Claude 3개 답변 / 메모 /
+  1차 판정 / 스냅샷 저장.
+- GET  /decision/sessions       : 최근 기록 목록 (요약 + has_* 플래그).
+- GET  /decision/sessions/{id}  : 특정 기록 상세 (3 답변 분리).
 
-본 router 는 매매 자동화 / Telegram 전송 / OCI PUSH / AI API 직접 호출과는
-완전히 분리된 read/write 경로이며, ml / 매수·매도 판단 / 매매 결과 추적도
-하지 않는다. 책임은 사용자가 외부 AI 채널에서 받은 텍스트의 영속 저장과
-조회까지다.
+2026-05-21 변경: 단일 answer_text → gpt_answer_text / gemini_answer_text /
+claude_answer_text 3 분리. 본 router 는 매매 자동화 / Telegram 전송 / OCI
+PUSH / AI API 직접 호출과 완전히 분리된 read/write 경로다.
 """
 
 from __future__ import annotations
@@ -36,9 +36,7 @@ router = APIRouter()
 
 
 class DecisionFiltersModel(BaseModel):
-    # 4 필드 모두 required (default 없음) — 저장 시점 snapshot 핵심 데이터이므로
-    # 누락은 fail-loud 422 로 드러난다. default True 로 덮으면 실제 적용 필터와
-    # 다른 값이 영속화될 수 있어 검증자 B-1 NOTE 로 차단된다.
+    # 4 필드 모두 required (default 없음) — snapshot 핵심 데이터 fail-loud.
     exclude_inverse: bool = Field(...)
     exclude_leveraged: bool = Field(...)
     exclude_synthetic: bool = Field(...)
@@ -46,9 +44,6 @@ class DecisionFiltersModel(BaseModel):
 
 
 class DecisionCandidateSnapshot(BaseModel):
-    """저장 시점 후보 1건. Market Discovery 응답 형태가 바뀌어도 기록은 불변이어야
-    하므로 frontend 가 보낸 raw dict 를 그대로 저장한다 (느슨 모델)."""
-
     rank: Optional[int] = None
     ticker: Optional[str] = None
     name: Optional[str] = None
@@ -64,7 +59,11 @@ class CreateDecisionSessionRequest(BaseModel):
     filters: DecisionFiltersModel
     candidate_snapshot: list[DecisionCandidateSnapshot]
     question_text: str = Field(..., min_length=1)
-    answer_text: str = Field(..., min_length=1)
+    # 3 답변 모두 default "" — 최소 1개 이상 채워야 한다는 정책은 store 가
+    # DecisionValidationError 로 검증한다 (단일 필드의 empty 와 그룹 필수의 구분).
+    gpt_answer_text: str = ""
+    gemini_answer_text: str = ""
+    claude_answer_text: str = ""
     user_memo: str = ""
     user_verdict: UserVerdictLiteral = DEFAULT_USER_VERDICT  # type: ignore[assignment]
     next_checks: list[str] = []
@@ -85,6 +84,9 @@ class DecisionSessionSummary(BaseModel):
     user_verdict: str
     summary: str
     candidate_count: int
+    has_gpt_answer: bool
+    has_gemini_answer: bool
+    has_claude_answer: bool
 
 
 class ListDecisionSessionsResponse(BaseModel):
@@ -101,7 +103,9 @@ class DecisionSessionDetail(BaseModel):
     filters: DecisionFiltersModel
     candidate_snapshot: list[DecisionCandidateSnapshot]
     question_text: str
-    answer_text: str
+    gpt_answer_text: str
+    gemini_answer_text: str
+    claude_answer_text: str
     user_memo: str
     user_verdict: str
     next_checks: list[str]
@@ -109,7 +113,6 @@ class DecisionSessionDetail(BaseModel):
 
 
 class GetDecisionSessionResponse(BaseModel):
-    # status 는 "ok" 또는 "not_found" — record 는 not_found 시 None.
     status: str
     record: Optional[DecisionSessionDetail] = None
     message: Optional[str] = None
@@ -126,7 +129,9 @@ def post_decision_session(
             filters=req.filters.model_dump(),
             candidate_snapshot=[c.model_dump() for c in req.candidate_snapshot],
             question_text=req.question_text,
-            answer_text=req.answer_text,
+            gpt_answer_text=req.gpt_answer_text,
+            gemini_answer_text=req.gemini_answer_text,
+            claude_answer_text=req.claude_answer_text,
             user_memo=req.user_memo,
             user_verdict=req.user_verdict,
             next_checks=list(req.next_checks),
@@ -173,7 +178,9 @@ def get_decision_session_detail(record_id: str) -> GetDecisionSessionResponse:
                 DecisionCandidateSnapshot(**c) for c in record["candidate_snapshot"]
             ],
             question_text=record["question_text"],
-            answer_text=record["answer_text"],
+            gpt_answer_text=record["gpt_answer_text"],
+            gemini_answer_text=record["gemini_answer_text"],
+            claude_answer_text=record["claude_answer_text"],
             user_memo=record["user_memo"],
             user_verdict=record["user_verdict"],
             next_checks=list(record["next_checks"]),
@@ -182,7 +189,6 @@ def get_decision_session_detail(record_id: str) -> GetDecisionSessionResponse:
     )
 
 
-# enum import re-export 가드 (모듈 외부에서 ALLOWED_USER_VERDICTS 참조 보장).
 __all__ = [
     "router",
     "ALLOWED_USER_VERDICTS",

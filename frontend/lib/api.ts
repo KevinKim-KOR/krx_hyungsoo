@@ -624,7 +624,11 @@ export interface CreateDecisionSessionRequest {
   filters: DecisionFilters;
   candidate_snapshot: DecisionCandidateSnapshot[];
   question_text: string;
-  answer_text: string;
+  // 2026-05-21 — 단일 answer_text → 3 채널 분리 (GPT / Gemini / Claude).
+  // 백엔드는 3개 중 **최소 1개 이상** 비어있지 않아야 함을 422 로 검증한다.
+  gpt_answer_text: string;
+  gemini_answer_text: string;
+  claude_answer_text: string;
   user_memo: string;
   user_verdict: DecisionUserVerdict;
   next_checks: string[];
@@ -645,6 +649,10 @@ export interface DecisionSessionSummary {
   user_verdict: DecisionUserVerdict;
   summary: string;
   candidate_count: number;
+  // 2026-05-21 — 목록에서 채널별 답변 입력 여부 표시 (지시문 §10.2).
+  has_gpt_answer: boolean;
+  has_gemini_answer: boolean;
+  has_claude_answer: boolean;
 }
 
 export interface ListDecisionSessionsResponse {
@@ -661,7 +669,9 @@ export interface DecisionSessionDetail {
   filters: DecisionFilters;
   candidate_snapshot: DecisionCandidateSnapshot[];
   question_text: string;
-  answer_text: string;
+  gpt_answer_text: string;
+  gemini_answer_text: string;
+  claude_answer_text: string;
   user_memo: string;
   user_verdict: DecisionUserVerdict;
   next_checks: string[];

@@ -970,6 +970,68 @@ textarea.decision-textarea {
   border-color: var(--accent);
 }
 
+/* AI Sessions 탭 + 답변 채널 배지 (2026-05-21 STEP) */
+.decision-tab-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.decision-tab-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 16px;
+  font-weight: 600;
+}
+
+.decision-tab-btn:hover:not(:disabled) {
+  background: rgba(58, 122, 254, 0.08);
+  color: var(--fg);
+}
+
+.decision-tab-btn.decision-tab-active {
+  background: var(--card);
+  color: var(--accent);
+  border-color: var(--border);
+  border-bottom-color: var(--card);
+  position: relative;
+  top: 1px;
+}
+
+.decision-answer-badges {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.decision-answer-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.decision-answer-badge.present {
+  background: rgba(52, 199, 89, 0.15);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.decision-answer-badge.absent {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+  opacity: 0.5;
+}
+
 /* 통합 후보 테이블 / basis selector (2026-05-18) */
 .market-candidate-table th.basis-active,
 .market-candidate-table td.basis-active {

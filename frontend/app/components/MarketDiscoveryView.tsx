@@ -32,7 +32,8 @@ import {
   type MarketTopNResponse,
 } from "@/lib/api";
 import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
-import AISessionRecordPanel from "@/app/components/AISessionRecordPanel";
+import type { MenuKey } from "./LeftSidebar";
+import TransferToAISessionsCard from "./TransferToAISessionsCard";
 
 type LoadState =
   | { phase: "loading" }
@@ -516,7 +517,15 @@ function CopyTextCard({
 }
 
 
-export default function MarketDiscoveryView() {
+interface MarketDiscoveryViewProps {
+  // 2026-05-21 — "AI Sessions로 넘기기" 클릭 시 호출 (MainPanel 이 setActive 전달).
+  onNavigate?: (key: MenuKey) => void;
+}
+
+
+export default function MarketDiscoveryView({
+  onNavigate,
+}: MarketDiscoveryViewProps = {}) {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
   const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
   const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
@@ -782,18 +791,21 @@ export default function MarketDiscoveryView() {
             filters={data.filters}
             candidates={data.candidates ?? []}
           />
-          {/* AI 투자세션 기록 / Decision Evidence 1차 — 별도 컴포넌트 (KS-10 분리) */}
-          <AISessionRecordPanel
+          {/* 2026-05-21 — AI Sessions 화면으로 draft 전달 (Context Bridge).
+              직전 STEP 의 inline 기록 패널은 제거됨 — Market Discovery 의 책임은
+              ETF 후보 발굴 + 복사용 문구 + 전달까지 (지시문 §4.1 / §4.2). */}
+          <TransferToAISessionsCard
             asof={data.asof}
             filters={data.filters}
             candidates={data.candidates ?? []}
             linkedMarketRefreshId={data.latest_refresh?.refresh_id ?? null}
+            onNavigate={onNavigate}
           />
         </>
       ) : (
         <div className="card">
           <div className="message error">
-            AI 투자세션 문구 / 기록 기능을 사용할 수 없습니다 — 응답에 기준일(asof)
+            AI 투자세션 문구 / 전달 기능을 사용할 수 없습니다 — 응답에 기준일(asof)
             또는 필터 조건(filters) 이 포함되어 있지 않습니다.
           </div>
         </div>

@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20
+작성일: 2026-05-20 / 갱신: 2026-05-21
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,23 +10,23 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-05-20)
+## 1. 현재 최우선 작업 (2026-05-21)
 
-### AI 투자세션 기록 / Decision Evidence 1차
+### AI Sessions / Decision Evidence 화면 분리 + Context Bridge
 
-- 외부 AI 채널 (GPT / Gemini / Claude) 에서 받은 답변 + 사용자 메모 + 1차
-  판정을 시스템에 저장 가능.
-- 저장소: `state/decision/decision_evidence.sqlite` (시장 데이터 SQLite 와
-  분리된 별도 파일).
-- API: `POST /decision/sessions` / `GET /decision/sessions` / `GET
-  /decision/sessions/{id}`.
-- Frontend: Market Discovery 내 `AISessionRecordPanel` (별도 컴포넌트 파일로
-  분리, KS-10 회피).
-- 저장 시점의 후보 / 필터를 **snapshot 으로 보존** — 이후 Market Discovery
-  데이터가 바뀌어도 과거 기록은 불변.
+- 좌측 메뉴에 `AI Sessions` 추가 → Market Discovery 와 화면 책임 분리.
+- AI Sessions 화면은 [새 기록 저장] / [기록 조회] 2 탭으로 명시 분리.
+- Market Discovery 는 ETF 후보 발굴 + 복사용 문구 + "AI Sessions로 넘기기"
+  까지만 남고, 외부 AI 답변 / 메모 / 판정은 AI Sessions 에서 저장.
+- AI 답변 채널은 `gpt_answer_text` / `gemini_answer_text` / `claude_answer_text`
+  3 분리. 저장 시 3 채널 중 **최소 1개 이상** 비어있지 않아야 한다.
+- Context Bridge: `frontend/lib/aiSessionsDraft.ts` 가 sessionStorage 로
+  Market Discovery → AI Sessions draft 전달. 서버 draft 저장소 미생성.
+- 저장 시점의 후보 / 필터는 candidate_snapshot / filters JSON 으로 영속 보존
+  — Market Discovery 데이터가 바뀌어도 과거 기록 불변.
 
-본 STEP 의 범위는 "기록" 까지다. 매수 / 매도 자동 판단 / 매매 결과 추적 /
-ML 연결은 본 STEP 의 작업이 아니다.
+본 STEP 의 범위는 "기록 + 채널 분리 + 화면 책임 분리" 까지다. 매수 / 매도
+자동 판단 / 매매 결과 추적 / ML 연결은 본 STEP 의 작업이 아니다.
 
 ---
 
@@ -81,6 +81,9 @@ PROJECT_ORIGIN_INTENT 에 기록 후 변경.
 3. **KOSDAQ 비교는 기본 비교 대상이 아니다.**
 4. **AI 질문 / 답변은 반드시 기록되어야 한다.** — 본 STEP 의 핵심 동기.
    기록 없는 AI 토론은 향후 검증 불가능 → 운영 학습 자산 손실.
+5. **AI 답변은 GPT / Gemini / Claude 로 분리 기록한다.** — 2026-05-21 추가.
+   3 채널 답변을 같은 셀에 합쳐 저장하지 않는다. 채널별 해석 차이를 사후
+   복기할 수 있어야 한다.
 
 ---
 
