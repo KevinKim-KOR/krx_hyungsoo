@@ -142,6 +142,8 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
         user_verdict: userVerdict,
         next_checks: splitNextChecks(nextChecksRaw),
         linked_market_refresh_id: draft.linked_market_refresh_id,
+        // 2026-05-22 — Market Discovery 에서 넘어온 시장 문맥 그대로 영속화.
+        market_context_snapshot: draft.market_context_snapshot ?? null,
       });
       setStatusMessage(
         `저장 완료 (id: ${res.id}). [기록 조회] 탭에서 확인할 수 있습니다.`,

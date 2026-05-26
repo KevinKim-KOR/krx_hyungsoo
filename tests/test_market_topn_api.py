@@ -418,6 +418,157 @@ def test_market_refresh_log_is_recorded_by_refresh_job(
     assert log["source"].startswith("FinanceDataReader")
 
 
+# ─── Market Regime & Benchmark Context (2026-05-22) ─────────────────
+
+
+def _seed_kodex200_long_history(db: Path, end: date, n_days: int = 80) -> None:
+    """KODEX200 (069500) 의 길이 충분한 가격 시계열 시드 — regime 계산용.
+
+    선형 trend 100 → 130 으로 강한 상승. MA20/MA60 모두 below price.
+    """
+    upsert_etf_master(
+        [EtfMasterRow("069500", "KODEX 200", "1", 130.0, 1000, 5000.0)],
+        source="Test",
+        db_path=db,
+    )
+    step = (130.0 - 100.0) / max(1, n_days - 1)
+    rows = []
+    for i in range(n_days):
+        dt = (end - timedelta(days=n_days - 1 - i)).isoformat()
+        close = 100.0 + step * i
+        rows.append(EtfDailyPriceRow("069500", dt, close, close, close, close, 0, 0))
+    upsert_daily_prices(rows, source="Test", db_path=db)
+
+
+def _seed_kospi_long_history(db: Path, end: date, n_days: int = 80) -> None:
+    """KOSPI benchmark 시계열 시드 (market_benchmark_daily_price)."""
+    from app.market_benchmark_store import upsert_benchmark_prices
+
+    step = (2900.0 - 2700.0) / max(1, n_days - 1)
+    rows = []
+    for i in range(n_days):
+        dt = (end - timedelta(days=n_days - 1 - i)).isoformat()
+        close = 2700.0 + step * i
+        rows.append((dt, close))
+    upsert_benchmark_prices(
+        benchmark_id="KOSPI",
+        benchmark_name="KOSPI",
+        rows=rows,
+        source="Test",
+        db_path=db,
+    )
+
+
+def test_topn_latest_includes_market_context_unavailable_when_short_history(
+    api_client: TestClient,
+) -> None:
+    """KODEX200 시계열이 짧으면 market_context.status=unavailable + 판정불가."""
+    db = api_market_topn.DEFAULT_DB_PATH
+    _seed_two_etfs_with_prices(db, date(2024, 10, 31))
+    res = api_client.get("/market/topn/latest")
+    payload = res.json()
+    assert payload["status"] == "ok"
+    ctx = payload["market_context"]
+    assert ctx is not None
+    # KODEX200 (069500) 가 4 일치 데이터만 있으면 unavailable.
+    assert ctx["status"] == "unavailable"
+    assert ctx["regime_label"] == "판정불가"
+    assert ctx["regime_code"] == "unavailable"
+
+
+def test_topn_latest_includes_market_context_ok_with_both_benchmarks(
+    api_client: TestClient,
+) -> None:
+    """KODEX200 + KOSPI 모두 충분 시계열이면 market_context.status=ok + 상승장."""
+    db = api_market_topn.DEFAULT_DB_PATH
+    end = date(2026, 5, 22)
+    _seed_kodex200_long_history(db, end, n_days=80)
+    _seed_kospi_long_history(db, end, n_days=80)
+    res = api_client.get("/market/topn/latest")
+    payload = res.json()
+    assert payload["status"] == "ok"
+    ctx = payload["market_context"]
+    assert ctx["status"] == "ok"
+    assert ctx["regime_label"] == "상승장"
+    assert ctx["regime_code"] == "bull"
+    assert ctx["primary_benchmark"] == "KODEX200"
+    assert ctx["kodex200"]["status"] == "ok"
+    assert ctx["kospi"]["status"] == "ok"
+    assert ctx["warnings"] == []
+
+
+def test_topn_latest_market_context_partial_when_kospi_missing(
+    api_client: TestClient,
+) -> None:
+    db = api_market_topn.DEFAULT_DB_PATH
+    end = date(2026, 5, 22)
+    _seed_kodex200_long_history(db, end, n_days=80)
+    # KOSPI 시드 안 함.
+    res = api_client.get("/market/topn/latest")
+    payload = res.json()
+    ctx = payload["market_context"]
+    assert ctx["status"] == "partial"
+    assert ctx["regime_label"] == "상승장"
+    assert ctx["kospi"]["status"] == "unavailable"
+    assert any("KOSPI" in w for w in ctx["warnings"])
+
+
+def test_topn_latest_candidate_includes_excess_return(api_client: TestClient) -> None:
+    """candidates 각 항목에 excess_return 객체가 포함된다 (지시문 §9.2)."""
+    db = api_market_topn.DEFAULT_DB_PATH
+    end = date(2026, 5, 22)
+    _seed_kodex200_long_history(db, end, n_days=80)
+    _seed_kospi_long_history(db, end, n_days=80)
+    # 추가로 후보 ETF 1개 (069500 외 다른 ticker) — 1m/3m 수익률 계산되도록 충분 길이.
+    other_ticker = "379800"
+    upsert_etf_master(
+        [EtfMasterRow(other_ticker, "KODEX 미국S&P500", "4", 200.0, 2000, 6000.0)],
+        source="Test",
+        db_path=db,
+    )
+    step = (250.0 - 100.0) / max(1, 80 - 1)  # 강한 상승
+    rows = []
+    for i in range(80):
+        dt = (end - timedelta(days=80 - 1 - i)).isoformat()
+        close = 100.0 + step * i
+        rows.append(
+            EtfDailyPriceRow(other_ticker, dt, close, close, close, close, 0, 0)
+        )
+    upsert_daily_prices(rows, source="Test", db_path=db)
+
+    res = api_client.get("/market/topn/latest")
+    payload = res.json()
+    candidates = payload["candidates"]
+    assert len(candidates) >= 1
+    for c in candidates:
+        assert "excess_return" in c
+        er = c["excess_return"]
+        # vs_kodex200_1m_pctp 와 _3m_pctp 는 후보가 1m/3m 계산되면 number.
+        # KODEX200 자신은 0 에 가까움 (자기 자신 비교).
+        assert er is not None
+        assert "vs_kodex200_1m_pctp" in er
+        assert "vs_kodex200_3m_pctp" in er
+        assert "vs_kospi_1m_pctp" in er
+        assert "vs_kospi_3m_pctp" in er
+
+
+def test_topn_latest_excess_return_vs_kospi_null_when_kospi_missing(
+    api_client: TestClient,
+) -> None:
+    db = api_market_topn.DEFAULT_DB_PATH
+    end = date(2026, 5, 22)
+    _seed_kodex200_long_history(db, end, n_days=80)
+    # KOSPI 시드 안 함 → vs_kospi_* 는 null.
+    res = api_client.get("/market/topn/latest")
+    payload = res.json()
+    candidates = payload["candidates"]
+    assert len(candidates) >= 1
+    for c in candidates:
+        er = c["excess_return"]
+        assert er["vs_kospi_1m_pctp"] is None
+        assert er["vs_kospi_3m_pctp"] is None
+
+
 def test_no_etf_universe_topn_latest_json_path_in_code() -> None:
     """AC-1/AC-14 — 코드에 etf_universe_topn_latest.json 참조가 남지 않는다.
 

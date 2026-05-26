@@ -1,10 +1,168 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-21
+최종 업데이트: 2026-05-27
 
 ---
 
-## 0. 현재 상태 — 2026-05-21 AI Sessions / Decision Evidence + Context Bridge
+## 0. 현재 상태 — 2026-05-27 Market Regime & Benchmark Context 1차
+
+```text
+현재 단계: Market Regime & Benchmark Context 1차 (2026-05-27)
+  — KODEX200 기준 시장 국면 판정 + KOSPI 보조 + 후보 ETF 초과수익 + Copy Text /
+    AI Sessions 연계
+이전 단계: AI Sessions / Decision Evidence 화면 분리 + Context Bridge (2026-05-21)
+다음 단계 후보 (사용자 결정 대기):
+  (a) ETF 구성 종목 / 중복률 (직전 BACKLOG)
+  (b) 상승장 / 보합장 / 하락장 시장 국면 고도화 (본 STEP 1차의 다음)
+  (c) NAV / 괴리율 / 유동성
+  (d) AI 투자세션 결과 기반 개선
+```
+
+### 본 STEP 요약
+
+- **방향**: 시스템이 **1차 시장 국면 판정** 을 한다 (지시문 §1) — AI 에게
+  장세 판단을 맡기지 않고, KODEX200 (필수) / KOSPI (보조) 의 정량 지표로
+  라벨을 산출한 뒤 AI 는 그 판정을 검토/해석/반론한다.
+- **판정 로직 (지시문 §6)**: KODEX200 20거래일 / 60거래일 수익률 + 20일 /
+  60일 이동평균 위치를 +1/-1/0 점수로 환산. 총점 +2 이상 상승장, -2 이하
+  하락장, 그 외 보합장. KODEX200 데이터 부족 시 판정불가.
+- **저장소 (지시문 §4.1)**: market_benchmark_daily_price 신규 테이블
+  (`state/market/market_data.sqlite` 내). KOSPI 같이 ETF 가 아닌 지수만 별도
+  보관. KODEX200 (069500) 은 기존 etf_daily_price 재사용 — API 응답에서는
+  둘 다 benchmark 로 정규화.
+- **Backend 신규 모듈 3개**:
+  - `app/market_benchmark_store.py` (198 라인) — 테이블 DDL + upsert/fetch +
+    KOSPI FDR refresh 함수 (`KS11`, 실패 격리).
+  - `app/market_regime.py` (253 라인) — pure function 모듈. KODEX200 metrics /
+    KOSPI metrics / regime score → label 매핑 / 후보 excess_return 계산.
+  - 신규 테이블 1개: `market_benchmark_daily_price` (benchmark_id, date PK).
+- **Backend 확장**:
+  - `app/market_refresh_service.py` — `_execute_refresh_job` 끝부분에 KOSPI
+    benchmark fetch 추가. 실패 시 격리 (전체 refresh 흐름 중단 X). 별도 log
+    row 로 결과 기록 (`kospi-benchmark-{refresh_id}`).
+  - `app/market_topn.py` — `compute_topn` 결과에 `market_context` 키 +
+    각 candidate 에 `excess_return` 객체 추가. SQLite read-only 유지.
+  - `app/api_market_topn.py` — Pydantic 모델 확장 (`MarketContextResponse` /
+    `MarketContextKodex200` / `MarketContextKospi` /
+    `MarketCandidateExcessReturn`).
+  - `app/decision_evidence_store.py` + `app/api_decision_sessions.py` —
+    `market_context_snapshot_json` 컬럼 추가 + 마이그레이션
+    (`_migrate_add_market_context_snapshot`, ALTER TABLE ADD COLUMN). payload /
+    response 에 `market_context_snapshot: dict` 추가.
+- **Frontend 신규 컴포넌트 2개**:
+  - `frontend/app/components/MarketContextCard.tsx` (120 라인) — 시장 배경
+    카드 (라벨 + KODEX200/KOSPI 지표 + 판정 근거 + warnings).
+  - `frontend/app/components/CandidateTable.tsx` (198 라인) — 통합 후보 테이블
+    분리 (MD KS-10 회피용). KODEX200 대비 1m/3m %p 컬럼 추가.
+- **Frontend 확장**:
+  - `frontend/lib/api.ts` — `MarketContext` / `MarketCandidateExcessReturn` /
+    `MarketRegimeCode` 타입 + decision_session 의 `market_context_snapshot`.
+  - `frontend/lib/aiSessionsDraft.ts` — schema v2 + `market_context_snapshot`.
+  - `frontend/lib/marketDiscoveryCopyText.ts` — [시스템 시장 판정] / [시장
+    대비 후보 강도] 섹션 추가 + 요청 문구를 "시스템 판정 전제 + 해석/반론
+    요청" 으로 변경 (지시문 §11 / AC-19).
+  - `MarketDiscoveryView.tsx` — MarketContextCard 렌더 + CandidateTable 분리
+    호출 + CopyTextCard/TransferToAISessionsCard 에 marketContext 전달.
+  - `TransferToAISessionsCard.tsx` — `_toMarketContextSnapshot` 헬퍼 +
+    draft 에 `market_context_snapshot` 포함.
+  - `AISessionsCreateTab.tsx` — POST payload 에 `market_context_snapshot`.
+  - `AISessionsListTab.tsx` — 상세 카드에 "시장 문맥 (저장 시점)" 섹션.
+  - `globals.css` — `.market-context-card` / `.market-regime-label.regime-*`
+    / `.market-regime-benchmarks` / `.market-regime-reasons` 스타일.
+- **AI 요청 문구 (지시문 §11)**:
+  > 시스템의 시장 국면 판정과 KODEX200/KOSPI 대비 초과수익을 전제로,
+  > 이 후보들이 시장 전체 상승에 따라간 것인지, 독립적인 섹터/테마 강세인지
+  > 해석해주세요. 매수/매도 추천은 하지 말고, 시스템 판정이 틀릴 수 있는
+  > 반대 근거와 추가 확인 포인트를 제시해주세요.
+- **AI Sessions 저장 (지시문 §13 / AC-21~22)**: `POST /decision/sessions` 가
+  `market_context_snapshot` (free schema dict) 을 저장하고 `GET /{id}` 가
+  그대로 반환. AI Sessions 상세 화면에 시장 문맥 섹션 노출.
+- **검증**: pytest **286 passed** (262 → 286, +24 신규 / 기존 회귀 0) /
+  black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0.
+  - 1차 측정 시 `MarketDiscoveryView.tsx` 856 라인 (near 850) 진입 → 즉시
+    `CandidateTable` 별도 파일로 분리 → 686 라인 (near 미달 164 여유). 신규
+    market 배경 카드도 별도 파일.
+  - 백엔드 핵심 모듈 최대 `app/market_topn.py` 590 (near 600 까지 10 라인
+    여유) / `app/draft_message.py` 564 (기존).
+  - 신규 backend: `market_regime.py` 253 / `market_benchmark_store.py` 198 /
+    decision_evidence_store +38 (378 → 416).
+  - 신규 tests: regime 127 / benchmark 149 / topn_api +151 / decision_sessions
+    +51 / decision_evidence +44.
+  - 750 라인 이상 보고: `tests/test_holdings_message_text.py` 924 (기존) /
+    `frontend/lib/api.ts` 786 (582 → 786, 본 STEP +65 — `.ts` 라이브러리라
+    KS-10 컴포넌트 기준에는 미해당, 별도 보고만).
+
+### 신규 / 수정 파일
+
+신규:
+- `app/market_benchmark_store.py` (198) — benchmark 테이블 + KOSPI FDR refresh.
+- `app/market_regime.py` (253) — pure function regime + excess_return.
+- `tests/test_market_regime.py` (127) — regime + excess_return 단위 테스트 11건.
+- `tests/test_market_benchmark_store.py` (149) — store + KOSPI refresh 6건.
+- `frontend/app/components/MarketContextCard.tsx` (120) — 시장 배경 카드.
+- `frontend/app/components/CandidateTable.tsx` (198) — KS-10 회피 분리.
+
+수정:
+- `app/api.py` — 변경 없음 (router 는 기존 `market_topn_router` 그대로).
+- `app/market_refresh_service.py` — KOSPI benchmark fetch + log_refresh +
+  실패 격리.
+- `app/market_topn.py` — `market_context` + candidate `excess_return` 추가.
+- `app/api_market_topn.py` — 신규 Pydantic 응답 모델 5개.
+- `app/decision_evidence_store.py` — `market_context_snapshot_json` 컬럼 +
+  `_migrate_add_market_context_snapshot` 마이그레이션 + insert signature 확장.
+- `app/api_decision_sessions.py` — payload + response 에 `market_context_snapshot`.
+- `tests/test_market_topn_api.py` — 신규 5건 (context unavailable / ok /
+  partial / excess_return / kospi null).
+- `tests/test_decision_sessions_api.py` — 신규 2건 (store / default empty).
+- `tests/test_decision_evidence_store.py` — 신규 1건 (column 자동 추가).
+- `frontend/lib/api.ts` — `MarketContext*` / `MarketCandidateExcessReturn` /
+  `decision_session.market_context_snapshot`.
+- `frontend/lib/aiSessionsDraft.ts` — schema v2 + `market_context_snapshot`.
+- `frontend/lib/marketDiscoveryCopyText.ts` — [시스템 시장 판정] / [시장 대비
+  후보 강도] 섹션 + 새 AI 요청 문구.
+- `frontend/app/components/MarketDiscoveryView.tsx` — 카드/테이블 분리 통합 +
+  marketContext prop 전달.
+- `frontend/app/components/TransferToAISessionsCard.tsx` — draft 에 시장
+  문맥 스냅샷 포함.
+- `frontend/app/components/AISessionsCreateTab.tsx` — POST payload 확장.
+- `frontend/app/components/AISessionsListTab.tsx` — 상세에 시장 문맥 섹션.
+- `frontend/app/globals.css` — `.market-context-card` / regime 라벨 스타일.
+- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md` /
+  `docs/backlog/BACKLOG.md`.
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §16)
+
+- 친구 UI 전체 복제 / 완성형 시장 정권 모델.
+- KOSDAQ 비교 (사용자가 코스피 중심 — 지시문 §3).
+- ETF 구성 종목 수집 / 구성 종목 중복률.
+- NAV / 괴리율 / 거래대금·유동성 점수화.
+- ML 연결 / 매수·매도 판단 / 리밸런싱 판단.
+- Telegram 문구 변경 / OCI PUSH 연결.
+- UI Grid 재개편.
+
+### FIX 라운드 (검증자 A-1 NOTE 반영, 2026-05-27)
+
+- **지적**: `TransferToAISessionsCard._toMarketContextSnapshot` 가 시장 국면
+  요약만 저장하고 **후보별 KODEX200/KOSPI 초과수익** 을 누락. 지시문 §12 의
+  "포함 내용 — 후보별 KODEX200 대비 초과수익 / 후보별 KOSPI 대비 초과수익,
+  있으면 포함" 명시와 불일치.
+- **수정** (`frontend/app/components/TransferToAISessionsCard.tsx`):
+  `_toMarketContextSnapshot` signature 에 `candidates: MarketCandidate[]` 추가
+  + 반환 dict 에 `candidate_excess_returns: [{rank, ticker, name,
+  vs_kodex200_1m_pctp, vs_kodex200_3m_pctp, vs_kospi_1m_pctp,
+  vs_kospi_3m_pctp}]` 배열 포함. 호출부 `handleTransfer` 에서 현재 candidates
+  를 전달.
+- AI Sessions 상세 화면은 `JSON.stringify(detail.market_context_snapshot, null,
+  2)` 로 raw JSON 노출 중이라 별도 UI 변경 없이 후보별 초과수익이 자동 표시.
+- **검증 재실행**: pytest 286 (백엔드 미변경) / frontend lint PASS / frontend
+  build PASS.
+- **KS-10 재측정**: trigger 0 / near 0. TransferToAISessionsCard 130 → 146
+  (+16). MarketDiscoveryView 695 그대로.
+
+---
+
+## 0.1 직전 상태 — 2026-05-21 AI Sessions / Decision Evidence + Context Bridge
 
 ```text
 현재 단계: AI Sessions / Decision Evidence 화면 분리 + Context Bridge (2026-05-21)

@@ -25,12 +25,19 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 
+from app.market_benchmark_store import fetch_benchmark_history
 from app.market_data_store import (
     DEFAULT_DB_PATH,
     fetch_price_history,
     get_etf_name,
     latest_refresh_log,
     list_etf_tickers,
+)
+from app.market_regime import (
+    KODEX200_TICKER,
+    KOSPI_ID,
+    compute_candidate_excess_return,
+    compute_market_context,
 )
 
 REQUIRED_TABLES = ("etf_master", "etf_daily_price", "market_refresh_log")
@@ -274,6 +281,7 @@ def _build_empty_payload(
         "topn_caveat": (
             "TOP N 의 N 값은 고정값이 아니며 운영/테스트 중 변경 가능 (query parameter `n`)."
         ),
+        "market_context": None,
     }
 
 
@@ -499,9 +507,37 @@ def compute_topn(
     # 전체 SQLite 후보 기준 정렬 — 로컬 reverse 가 아니다 (지시문 §3.2 / AC-13).
     kept_candidates.sort(key=lambda c: _basis_return_pct(c), reverse=(order == "desc"))
 
+    # ── Market Regime & Benchmark Context (지시문 §6~§9, 2026-05-22) ────
+    # KODEX200 history 는 etf_daily_price 에서, KOSPI 는 market_benchmark_daily_price
+    # 에서. 둘 다 SQLite read-only — 외부 fetch 없음.
+    kodex200_history = fetch_price_history(KODEX200_TICKER, db_path=db_path)
+    kospi_history = fetch_benchmark_history(KOSPI_ID, db_path=db_path)
+    market_context = compute_market_context(
+        asof=asof_iso,
+        kodex200_history=kodex200_history,
+        kospi_history=kospi_history if kospi_history else None,
+    )
+    # 후보 excess_return 계산용 benchmark 수익률 추출 (없으면 None 으로 노출).
+    _kodex = market_context.get("kodex200") or {}
+    _kospi = market_context.get("kospi") or {}
+    bench_kodex_1m = (
+        _kodex.get("return_1m_pct") if _kodex.get("status") == "ok" else None
+    )
+    bench_kodex_3m = (
+        _kodex.get("return_3m_pct") if _kodex.get("status") == "ok" else None
+    )
+    bench_kospi_1m = (
+        _kospi.get("return_1m_pct") if _kospi.get("status") == "ok" else None
+    )
+    bench_kospi_3m = (
+        _kospi.get("return_3m_pct") if _kospi.get("status") == "ok" else None
+    )
+
     candidates_out: list[dict] = []
     for rank, (tk, tags, returns) in enumerate(kept_candidates[:n], start=1):
         sel = returns[basis]
+        cand_1m = (returns.get("one_month") or {}).get("return_pct")
+        cand_3m = (returns.get("three_month") or {}).get("return_pct")
         candidates_out.append(
             {
                 "rank": rank,
@@ -512,6 +548,14 @@ def compute_topn(
                 "selected_basis_start_date": (sel["basis_start_date"] if sel else None),
                 "selected_basis_end_date": (sel["basis_end_date"] if sel else None),
                 "returns": returns,
+                "excess_return": compute_candidate_excess_return(
+                    candidate_1m_pct=cand_1m,
+                    candidate_3m_pct=cand_3m,
+                    kodex200_1m_pct=bench_kodex_1m,
+                    kodex200_3m_pct=bench_kodex_3m,
+                    kospi_1m_pct=bench_kospi_1m,
+                    kospi_3m_pct=bench_kospi_3m,
+                ),
             }
         )
 
@@ -542,4 +586,5 @@ def compute_topn(
         "topn_caveat": (
             "TOP N 의 N 값은 고정값이 아니며 운영/테스트 중 변경 가능 (query parameter `n`)."
         ),
+        "market_context": market_context,
     }

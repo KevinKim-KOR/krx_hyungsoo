@@ -416,6 +416,13 @@ export interface MarketReturns {
   three_month?: MarketPeriodReturn | null;
 }
 
+export interface MarketCandidateExcessReturn {
+  vs_kodex200_1m_pctp?: number | null;
+  vs_kodex200_3m_pctp?: number | null;
+  vs_kospi_1m_pctp?: number | null;
+  vs_kospi_3m_pctp?: number | null;
+}
+
 export interface MarketCandidate {
   rank?: number | null;
   ticker?: string | null;
@@ -425,6 +432,47 @@ export interface MarketCandidate {
   selected_basis_start_date?: string | null;
   selected_basis_end_date?: string | null;
   returns?: MarketReturns;
+  // 2026-05-22 — Market Regime & Benchmark Context 1차.
+  excess_return?: MarketCandidateExcessReturn | null;
+}
+
+// ─── Market Regime & Benchmark Context (2026-05-22) ─────────────────
+
+export type MarketRegimeCode = "bull" | "neutral" | "bear" | "unavailable";
+export type MarketContextStatus = "ok" | "partial" | "unavailable";
+
+export interface MarketContextKodex200 {
+  status: "ok" | "unavailable";
+  return_20d_pct?: number | null;
+  return_60d_pct?: number | null;
+  return_1m_pct?: number | null;
+  return_3m_pct?: number | null;
+  close?: number | null;
+  ma20?: number | null;
+  ma60?: number | null;
+  ma20_position?: "above" | "below" | null;
+  ma60_position?: "above" | "below" | null;
+}
+
+export interface MarketContextKospi {
+  status: "ok" | "unavailable";
+  return_20d_pct?: number | null;
+  return_60d_pct?: number | null;
+  return_1m_pct?: number | null;
+  return_3m_pct?: number | null;
+}
+
+export interface MarketContext {
+  status: MarketContextStatus;
+  asof?: string | null;
+  primary_benchmark: string;
+  regime_label: string;
+  regime_code: MarketRegimeCode;
+  regime_score?: number | null;
+  regime_reasons: string[];
+  kodex200: MarketContextKodex200;
+  kospi: MarketContextKospi;
+  warnings: string[];
 }
 
 export interface MarketTopNEntry {
@@ -496,6 +544,9 @@ export interface MarketTopNResponse {
   filter_exclusions?: Record<string, Record<string, number>>;
   candidate_filter_exclusions?: Record<string, number>;
   topn_caveat?: string | null;
+  // 2026-05-22 — Market Regime & Benchmark Context. status=missing/empty/invalid
+  // 에서는 null.
+  market_context?: MarketContext | null;
 }
 
 export interface MarketTopNRequestOptions extends MarketTopNFilterOptions {
@@ -633,6 +684,8 @@ export interface CreateDecisionSessionRequest {
   user_verdict: DecisionUserVerdict;
   next_checks: string[];
   linked_market_refresh_id?: string | null;
+  // 2026-05-22 — 저장 시점 시장 문맥 (free schema dict). null/빈 dict 모두 허용.
+  market_context_snapshot?: Record<string, unknown> | null;
 }
 
 export interface CreateDecisionSessionResponse {
@@ -676,6 +729,8 @@ export interface DecisionSessionDetail {
   user_verdict: DecisionUserVerdict;
   next_checks: string[];
   linked_market_refresh_id?: string | null;
+  // 2026-05-22 — 저장 시점 시장 문맥 (free schema dict). 백엔드가 항상 dict (없으면 {}) 로 반환.
+  market_context_snapshot: Record<string, unknown>;
 }
 
 export interface GetDecisionSessionResponse {

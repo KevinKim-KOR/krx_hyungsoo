@@ -13,7 +13,10 @@ import type {
   DecisionFilters,
 } from "./api";
 
-const STORAGE_KEY = "krx_alertor.ai_sessions.draft.v1";
+// 2026-05-22 — market_context_snapshot 필드 추가로 schema v2 로 승격.
+// v1 draft 는 새로고침되면 사라지고 본 STEP 의 sessionStorage 정책상 마이그레이션
+// 불필요 — key 만 v2 로 바꿔 호환 모호함 차단.
+const STORAGE_KEY = "krx_alertor.ai_sessions.draft.v2";
 
 export interface AISessionsDraft {
   asof: string;
@@ -23,6 +26,8 @@ export interface AISessionsDraft {
   linked_market_refresh_id: string | null;
   // draft 생성 시각 — 디버깅 / 사용자에게 "언제 넘긴 후보냐" 안내용.
   draft_created_at: string;
+  // 2026-05-22 — Market Regime & Benchmark Context. null 또는 빈 dict 허용.
+  market_context_snapshot?: Record<string, unknown> | null;
 }
 
 function safeStorage(): Storage | null {

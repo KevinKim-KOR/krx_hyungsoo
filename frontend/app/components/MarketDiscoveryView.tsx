@@ -23,8 +23,8 @@ import {
   postMarketRefresh,
   type MarketBasis,
   type MarketCandidate,
+  type MarketContext,
   type MarketOrder,
-  type MarketProductTag,
   type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
   type MarketTopNFilterOptions,
@@ -33,6 +33,8 @@ import {
 } from "@/lib/api";
 import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
 import type { MenuKey } from "./LeftSidebar";
+import CandidateTable from "./CandidateTable";
+import MarketContextCard from "./MarketContextCard";
 import TransferToAISessionsCard from "./TransferToAISessionsCard";
 
 type LoadState =
@@ -74,173 +76,12 @@ function fmtNum(value: number | null | undefined): string {
   return String(value);
 }
 
-function fmtPct(value: number | null | undefined): string {
-  if (value === null || value === undefined) return DASH;
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
-}
-
-function returnPctColor(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "var(--muted)";
-  return value >= 0 ? "var(--ok)" : "var(--danger)";
-}
-
-const TAG_LABELS: Record<MarketProductTag, string> = {
-  inverse: "인버스",
-  leveraged: "레버리지",
-  synthetic: "합성",
-  futures: "선물형",
-};
-
-function TagBadges({ tags }: { tags: MarketProductTag[] | undefined }) {
-  if (!tags || tags.length === 0) return null;
-  return (
-    <span className="market-topn-tags">
-      {tags.map((t) => (
-        <span key={t} className={`market-topn-tag tag-${t}`}>
-          {TAG_LABELS[t] ?? t}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 function fmtCooldown(seconds: number): string {
   if (seconds <= 0) return "0";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) return `${h}시간 ${m}분`;
   return `${m}분`;
-}
-
-function SortableHeader({
-  label,
-  column,
-  basis,
-  order,
-  onSort,
-}: {
-  label: string;
-  column: MarketBasis;
-  basis: MarketBasis;
-  order: MarketOrder;
-  onSort: (column: MarketBasis) => void;
-}) {
-  const active = basis === column;
-  const indicator = active ? (order === "desc" ? "↓" : "↑") : "";
-  return (
-    <th
-      style={{ width: 130, textAlign: "right", cursor: "pointer" }}
-      className={`market-topn-sortable ${active ? "basis-active" : ""}`}
-      onClick={() => onSort(column)}
-      title="클릭하여 정렬"
-    >
-      {label}
-      {active ? <span className="market-topn-sort-indicator">{indicator}</span> : null}
-    </th>
-  );
-}
-
-
-function CandidateTable({
-  candidates,
-  basis,
-  order,
-  onSort,
-}: {
-  candidates: MarketCandidate[];
-  basis: MarketBasis;
-  order: MarketOrder;
-  onSort: (column: MarketBasis) => void;
-}) {
-  if (candidates.length === 0) {
-    return (
-      <div className="card market-topn-card">
-        <div className="message info">표시할 항목이 없습니다.</div>
-      </div>
-    );
-  }
-  return (
-    <div className="card market-topn-card">
-      <table className="market-topn-table market-candidate-table">
-        <thead>
-          <tr>
-            <th style={{ width: 56 }}>순위</th>
-            <th style={{ width: 90 }}>티커</th>
-            <th>ETF명</th>
-            <SortableHeader
-              label="일간 수익률"
-              column="daily"
-              basis={basis}
-              order={order}
-              onSort={onSort}
-            />
-            <SortableHeader
-              label="1개월 수익률"
-              column="one_month"
-              basis={basis}
-              order={order}
-              onSort={onSort}
-            />
-            <SortableHeader
-              label="3개월 수익률"
-              column="three_month"
-              basis={basis}
-              order={order}
-              onSort={onSort}
-            />
-            <th style={{ width: 200 }}>정렬 기준 기간</th>
-            <th style={{ width: 160 }}>태그</th>
-          </tr>
-        </thead>
-        <tbody>
-          {candidates.map((c, idx) => {
-            const dailyRet = c.returns?.daily?.return_pct ?? null;
-            const oneRet = c.returns?.one_month?.return_pct ?? null;
-            const threeRet = c.returns?.three_month?.return_pct ?? null;
-            const selStart = c.selected_basis_start_date;
-            const selEnd = c.selected_basis_end_date;
-            const tags = (c.tags ?? []) as MarketProductTag[];
-            return (
-              <tr key={`${c.rank ?? "x"}-${c.ticker ?? "x"}-${idx}`}>
-                <td>{fmtNum(c.rank)}</td>
-                <td>{c.ticker ? <code>{c.ticker}</code> : DASH}</td>
-                <td>{fmt(c.name)}</td>
-                <td
-                  style={{ textAlign: "right", color: returnPctColor(dailyRet) }}
-                  className={basis === "daily" ? "basis-active" : undefined}
-                >
-                  {fmtPct(dailyRet)}
-                </td>
-                <td
-                  style={{ textAlign: "right", color: returnPctColor(oneRet) }}
-                  className={basis === "one_month" ? "basis-active" : undefined}
-                >
-                  {fmtPct(oneRet)}
-                </td>
-                <td
-                  style={{ textAlign: "right", color: returnPctColor(threeRet) }}
-                  className={basis === "three_month" ? "basis-active" : undefined}
-                >
-                  {fmtPct(threeRet)}
-                </td>
-                <td>
-                  {selStart && selEnd ? `${selStart} → ${selEnd}` : DASH}
-                </td>
-                <td>
-                  {tags.length > 0 ? (
-                    <TagBadges tags={tags} />
-                  ) : (
-                    <span className="market-topn-tag-none">일반</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
 }
 
 function SortStatusLine({ basis, order }: { basis: MarketBasis; order: MarketOrder }) {
@@ -446,10 +287,12 @@ function CopyTextCard({
   asof,
   filters,
   candidates,
+  marketContext,
 }: {
   asof: string;
   filters: MarketTopNFilters;
   candidates: MarketCandidate[];
+  marketContext: MarketContext | null;
 }) {
   const [text, setText] = useState<string>("");
   const [copyResult, setCopyResult] = useState<"idle" | "copied" | "failed">(
@@ -457,9 +300,11 @@ function CopyTextCard({
   );
 
   const handleGenerate = useCallback(() => {
-    setText(buildMarketDiscoveryCopyText({ asof, filters, candidates }));
+    setText(
+      buildMarketDiscoveryCopyText({ asof, filters, candidates, marketContext }),
+    );
     setCopyResult("idle");
-  }, [asof, filters, candidates]);
+  }, [asof, filters, candidates, marketContext]);
 
   const handleCopy = useCallback(async () => {
     if (!text) return;
@@ -795,6 +640,8 @@ export default function MarketDiscoveryView({
         SQLite 기준 최신 시장 데이터에서 일반 ETF 후보를 보여줍니다. 수익률 컬럼을
         클릭하면 정렬됩니다.
       </p>
+      {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
+      <MarketContextCard ctx={data.market_context ?? null} />
       {/* GRID 우선 — 통합 테이블이 가장 위 */}
       <CandidateTable
         candidates={data.candidates ?? []}
@@ -811,15 +658,18 @@ export default function MarketDiscoveryView({
             asof={data.asof}
             filters={data.filters}
             candidates={data.candidates ?? []}
+            marketContext={data.market_context ?? null}
           />
           {/* 2026-05-21 — AI Sessions 화면으로 draft 전달 (Context Bridge).
               직전 STEP 의 inline 기록 패널은 제거됨 — Market Discovery 의 책임은
-              ETF 후보 발굴 + 복사용 문구 + 전달까지 (지시문 §4.1 / §4.2). */}
+              ETF 후보 발굴 + 복사용 문구 + 전달까지 (지시문 §4.1 / §4.2).
+              2026-05-22 — marketContext 도 함께 전달 (지시문 §12). */}
           <TransferToAISessionsCard
             asof={data.asof}
             filters={data.filters}
             candidates={data.candidates ?? []}
             linkedMarketRefreshId={data.latest_refresh?.refresh_id ?? null}
+            marketContext={data.market_context ?? null}
             onNavigate={onNavigate}
           />
         </>

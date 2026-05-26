@@ -68,6 +68,9 @@ class CreateDecisionSessionRequest(BaseModel):
     user_verdict: UserVerdictLiteral = DEFAULT_USER_VERDICT  # type: ignore[assignment]
     next_checks: list[str] = []
     linked_market_refresh_id: Optional[str] = None
+    # 2026-05-22 Market Regime & Benchmark Context — 저장 시점 시장 문맥 스냅샷.
+    # 자유 schema dict (frontend 가 보낸 그대로 저장). None / 빈 dict 모두 허용.
+    market_context_snapshot: Optional[dict] = None
 
 
 class CreateDecisionSessionResponse(BaseModel):
@@ -110,6 +113,8 @@ class DecisionSessionDetail(BaseModel):
     user_verdict: str
     next_checks: list[str]
     linked_market_refresh_id: Optional[str] = None
+    # 2026-05-22 — 저장 시점 시장 문맥 (free dict, frontend 가 보낸 그대로).
+    market_context_snapshot: dict = {}
 
 
 class GetDecisionSessionResponse(BaseModel):
@@ -136,6 +141,7 @@ def post_decision_session(
             user_verdict=req.user_verdict,
             next_checks=list(req.next_checks),
             linked_market_refresh_id=req.linked_market_refresh_id,
+            market_context_snapshot=req.market_context_snapshot,
             db_path=DEFAULT_DB_PATH,
         )
     except DecisionValidationError as e:
@@ -185,6 +191,7 @@ def get_decision_session_detail(record_id: str) -> GetDecisionSessionResponse:
             user_verdict=record["user_verdict"],
             next_checks=list(record["next_checks"]),
             linked_market_refresh_id=record["linked_market_refresh_id"],
+            market_context_snapshot=record.get("market_context_snapshot") or {},
         ),
     )
 

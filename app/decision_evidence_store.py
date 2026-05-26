@@ -36,21 +36,22 @@ DEFAULT_USER_VERDICT = "hold"
 
 AI_SESSION_RECORDS_DDL = """
 CREATE TABLE IF NOT EXISTS ai_session_records (
-    id                        TEXT PRIMARY KEY,
-    created_at                TEXT NOT NULL,
-    updated_at                TEXT NOT NULL,
-    asof                      TEXT NOT NULL,
-    source_screen             TEXT NOT NULL,
-    filters_json              TEXT NOT NULL,
-    candidate_snapshot_json   TEXT NOT NULL,
-    question_text             TEXT NOT NULL,
-    gpt_answer_text           TEXT NOT NULL DEFAULT '',
-    gemini_answer_text        TEXT NOT NULL DEFAULT '',
-    claude_answer_text        TEXT NOT NULL DEFAULT '',
-    user_memo                 TEXT NOT NULL DEFAULT '',
-    user_verdict              TEXT NOT NULL,
-    next_checks_json          TEXT NOT NULL DEFAULT '[]',
-    linked_market_refresh_id  TEXT
+    id                            TEXT PRIMARY KEY,
+    created_at                    TEXT NOT NULL,
+    updated_at                    TEXT NOT NULL,
+    asof                          TEXT NOT NULL,
+    source_screen                 TEXT NOT NULL,
+    filters_json                  TEXT NOT NULL,
+    candidate_snapshot_json       TEXT NOT NULL,
+    question_text                 TEXT NOT NULL,
+    gpt_answer_text               TEXT NOT NULL DEFAULT '',
+    gemini_answer_text            TEXT NOT NULL DEFAULT '',
+    claude_answer_text            TEXT NOT NULL DEFAULT '',
+    user_memo                     TEXT NOT NULL DEFAULT '',
+    user_verdict                  TEXT NOT NULL,
+    next_checks_json              TEXT NOT NULL DEFAULT '[]',
+    linked_market_refresh_id      TEXT,
+    market_context_snapshot_json  TEXT NOT NULL DEFAULT '{}'
 );
 """.strip()
 
@@ -144,12 +145,39 @@ def _migrate_legacy_answer_text(con: sqlite3.Connection) -> None:
     con.execute("ALTER TABLE ai_session_records_new RENAME TO ai_session_records")
 
 
+def _migrate_add_market_context_snapshot(con: sqlite3.Connection) -> None:
+    """market_context_snapshot_json 컬럼이 없으면 ADD COLUMN 으로 추가.
+
+    SQLite 의 ALTER TABLE ADD COLUMN 은 단순 컬럼 추가만 지원하므로 본 변경은
+    DROP/RENAME 패턴 없이 가능. DEFAULT '{}' 로 기존 row 의 결측값을 채운다.
+    """
+    cur = con.execute("PRAGMA table_info(ai_session_records)")
+    cols = {row[1] for row in cur.fetchall()}
+    if not cols:
+        return
+    if "market_context_snapshot_json" in cols:
+        return
+    con.execute(
+        "ALTER TABLE ai_session_records "
+        "ADD COLUMN market_context_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+    )
+
+
 def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
-    """DB 파일 + 테이블 보장. 기존 단일 answer_text 스키마는 자동 마이그레이션."""
+    """DB 파일 + 테이블 보장. 기존 스키마는 자동 마이그레이션.
+
+    마이그레이션 순서:
+    1. 신규 스키마 (3 분리 답변 + market_context_snapshot_json) 로 CREATE TABLE
+       IF NOT EXISTS — 신규 DB 일 때만 효력.
+    2. _migrate_legacy_answer_text — 단일 answer_text → 3 분리 (POC2 2026-05-21).
+    3. _migrate_add_market_context_snapshot — 3 분리 직후 스키마 → market_context
+       컬럼 추가 (POC2 2026-05-22).
+    """
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(str(db_path)) as con:
         con.execute(AI_SESSION_RECORDS_DDL)
         _migrate_legacy_answer_text(con)
+        _migrate_add_market_context_snapshot(con)
         con.commit()
 
 
@@ -190,6 +218,7 @@ def insert_record(
     user_verdict: str,
     next_checks: list[str],
     linked_market_refresh_id: Optional[str],
+    market_context_snapshot: Optional[dict] = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> dict:
     """신규 ai_session_records 1건 저장 → 저장된 row(요약) 반환.
@@ -228,6 +257,7 @@ def insert_record(
     filters_json = json.dumps(filters, ensure_ascii=False, sort_keys=True)
     snapshot_json = json.dumps(candidate_snapshot, ensure_ascii=False)
     next_checks_json = json.dumps(next_checks, ensure_ascii=False)
+    market_context_json = json.dumps(market_context_snapshot or {}, ensure_ascii=False)
 
     with _connection(db_path) as con:
         con.execute(
@@ -236,8 +266,8 @@ def insert_record(
             "filters_json, candidate_snapshot_json, question_text, "
             "gpt_answer_text, gemini_answer_text, claude_answer_text, "
             "user_memo, user_verdict, next_checks_json, "
-            "linked_market_refresh_id"
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "linked_market_refresh_id, market_context_snapshot_json"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 new_id,
                 now_iso,
@@ -254,6 +284,7 @@ def insert_record(
                 user_verdict,
                 next_checks_json,
                 linked_market_refresh_id,
+                market_context_json,
             ),
         )
 
@@ -264,7 +295,8 @@ _SELECT_COLS = (
     "id, created_at, updated_at, asof, source_screen, "
     "filters_json, candidate_snapshot_json, question_text, "
     "gpt_answer_text, gemini_answer_text, claude_answer_text, "
-    "user_memo, user_verdict, next_checks_json, linked_market_refresh_id"
+    "user_memo, user_verdict, next_checks_json, linked_market_refresh_id, "
+    "market_context_snapshot_json"
 )
 
 
@@ -286,7 +318,12 @@ def _row_to_full_dict(row: tuple) -> dict:
         user_verdict,
         next_checks_json,
         linked_market_refresh_id,
+        market_context_snapshot_json,
     ) = row
+    try:
+        market_context_snapshot = json.loads(market_context_snapshot_json or "{}")
+    except (TypeError, ValueError):
+        market_context_snapshot = {}
     return {
         "id": id_,
         "created_at": created_at,
@@ -303,6 +340,7 @@ def _row_to_full_dict(row: tuple) -> dict:
         "user_verdict": user_verdict,
         "next_checks": json.loads(next_checks_json),
         "linked_market_refresh_id": linked_market_refresh_id,
+        "market_context_snapshot": market_context_snapshot,
     }
 
 

@@ -93,6 +93,56 @@ class MarketCandidate(BaseModel):
     selected_basis_start_date: Optional[str] = None
     selected_basis_end_date: Optional[str] = None
     returns: MarketReturns = MarketReturns()
+    # 2026-05-22 Market Regime & Benchmark Context 1차 — KODEX200/KOSPI 대비
+    # 1m/3m 초과수익 (percentage point). KOSPI 데이터 없으면 vs_kospi_* 는 null.
+    excess_return: Optional["MarketCandidateExcessReturn"] = None
+
+
+class MarketCandidateExcessReturn(BaseModel):
+    vs_kodex200_1m_pctp: Optional[float] = None
+    vs_kodex200_3m_pctp: Optional[float] = None
+    vs_kospi_1m_pctp: Optional[float] = None
+    vs_kospi_3m_pctp: Optional[float] = None
+
+
+MarketCandidate.model_rebuild()
+
+
+# ─── Market Regime & Benchmark Context (지시문 §9.1) ──────────────────
+
+
+class MarketContextKodex200(BaseModel):
+    status: str  # ok / unavailable
+    return_20d_pct: Optional[float] = None
+    return_60d_pct: Optional[float] = None
+    return_1m_pct: Optional[float] = None
+    return_3m_pct: Optional[float] = None
+    close: Optional[float] = None
+    ma20: Optional[float] = None
+    ma60: Optional[float] = None
+    ma20_position: Optional[str] = None  # above / below
+    ma60_position: Optional[str] = None
+
+
+class MarketContextKospi(BaseModel):
+    status: str  # ok / unavailable
+    return_20d_pct: Optional[float] = None
+    return_60d_pct: Optional[float] = None
+    return_1m_pct: Optional[float] = None
+    return_3m_pct: Optional[float] = None
+
+
+class MarketContextResponse(BaseModel):
+    status: str  # ok / partial / unavailable
+    asof: Optional[str] = None
+    primary_benchmark: str = "KODEX200"
+    regime_label: str  # 상승장 / 보합장 / 하락장 / 판정불가
+    regime_code: str  # bull / neutral / bear / unavailable
+    regime_score: Optional[int] = None
+    regime_reasons: list[str] = []
+    kodex200: MarketContextKodex200
+    kospi: MarketContextKospi
+    warnings: list[str] = []
 
 
 class MarketTopNResponse(BaseModel):
@@ -122,6 +172,10 @@ class MarketTopNResponse(BaseModel):
     filter_exclusions: dict[str, dict[str, int]] = {}
     candidate_filter_exclusions: dict[str, int] = {}
     topn_caveat: Optional[str] = None
+    # 2026-05-22 — Market Regime & Benchmark Context (지시문 §9.1).
+    # ok/partial/unavailable + KODEX200 (필수) + KOSPI (보조). status=missing/
+    # empty/invalid 인 경우 null 로 노출.
+    market_context: Optional[MarketContextResponse] = None
 
 
 def _entry_to_model(raw: dict) -> MarketTopNEntry:
@@ -148,6 +202,7 @@ def _period_to_model(raw: Optional[dict]) -> Optional[MarketPeriodReturn]:
 
 def _candidate_to_model(raw: dict) -> MarketCandidate:
     returns_raw = raw.get("returns") or {}
+    excess_raw = raw.get("excess_return") or None
     return MarketCandidate(
         rank=raw.get("rank"),
         ticker=raw.get("ticker"),
@@ -161,6 +216,28 @@ def _candidate_to_model(raw: dict) -> MarketCandidate:
             one_month=_period_to_model(returns_raw.get("one_month")),
             three_month=_period_to_model(returns_raw.get("three_month")),
         ),
+        excess_return=(
+            MarketCandidateExcessReturn(**excess_raw) if excess_raw else None
+        ),
+    )
+
+
+def _market_context_to_model(raw: Optional[dict]) -> Optional[MarketContextResponse]:
+    if not raw:
+        return None
+    kodex_raw = raw.get("kodex200") or {"status": "unavailable"}
+    kospi_raw = raw.get("kospi") or {"status": "unavailable"}
+    return MarketContextResponse(
+        status=raw.get("status") or "unavailable",
+        asof=raw.get("asof"),
+        primary_benchmark=raw.get("primary_benchmark") or "KODEX200",
+        regime_label=raw.get("regime_label") or "판정불가",
+        regime_code=raw.get("regime_code") or "unavailable",
+        regime_score=raw.get("regime_score"),
+        regime_reasons=list(raw.get("regime_reasons") or []),
+        kodex200=MarketContextKodex200(**kodex_raw),
+        kospi=MarketContextKospi(**kospi_raw),
+        warnings=list(raw.get("warnings") or []),
     )
 
 
@@ -224,6 +301,7 @@ def get_market_topn_latest(
         filter_exclusions=payload.get("filter_exclusions", {}),
         candidate_filter_exclusions=payload.get("candidate_filter_exclusions", {}),
         topn_caveat=payload.get("topn_caveat"),
+        market_context=_market_context_to_model(payload.get("market_context")),
     )
 
 

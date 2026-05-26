@@ -255,6 +255,46 @@ def test_list_recent_records_respects_limit(tmp_path: Path):
     assert len(list_recent_records(limit=3, db_path=db)) == 3
 
 
+def test_init_db_auto_adds_market_context_snapshot_column(tmp_path: Path):
+    """직전 STEP (3 분리 스키마, market_context_snapshot 컬럼 없음) DB 에 대해
+    init_db() 가 ALTER TABLE ADD COLUMN 으로 자동 마이그레이션."""
+    db = tmp_path / "decision_evidence.sqlite"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    # 직전 STEP 시점 DDL — market_context_snapshot_json 컬럼 없음.
+    prev_ddl = (
+        "CREATE TABLE ai_session_records ("
+        "id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, "
+        "asof TEXT NOT NULL, source_screen TEXT NOT NULL, "
+        "filters_json TEXT NOT NULL, candidate_snapshot_json TEXT NOT NULL, "
+        "question_text TEXT NOT NULL, "
+        "gpt_answer_text TEXT NOT NULL DEFAULT '', "
+        "gemini_answer_text TEXT NOT NULL DEFAULT '', "
+        "claude_answer_text TEXT NOT NULL DEFAULT '', "
+        "user_memo TEXT NOT NULL DEFAULT '', user_verdict TEXT NOT NULL, "
+        "next_checks_json TEXT NOT NULL DEFAULT '[]', "
+        "linked_market_refresh_id TEXT)"
+    )
+    with sqlite3.connect(str(db)) as con:
+        con.execute(prev_ddl)
+        con.commit()
+
+    init_db(db)
+
+    with sqlite3.connect(str(db)) as con:
+        cur = con.execute("PRAGMA table_info(ai_session_records)")
+        cols = {row[1] for row in cur.fetchall()}
+    assert "market_context_snapshot_json" in cols
+
+    # 신규 insert 가 정상 동작 + market_context_snapshot 저장 round-trip.
+    saved = insert_record(
+        db_path=db,
+        **_minimal_kwargs(),
+        market_context_snapshot={"regime_label": "상승장", "regime_code": "bull"},
+    )
+    fetched = get_record(saved["id"], db_path=db)
+    assert fetched["market_context_snapshot"]["regime_label"] == "상승장"
+
+
 def test_init_db_cleans_up_stale_ai_session_records_new(tmp_path: Path):
     """이전 부분 마이그레이션 잔재 (ai_session_records_new 테이블) 가 있을 때
     init_db() 가 호출되면 잔재를 자동 cleanup 한다.

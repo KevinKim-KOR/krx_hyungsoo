@@ -208,3 +208,52 @@ def test_post_decision_sessions_accepts_default_user_verdict(api_client):
     rid = res.json()["id"]
     detail = api_client.get(f"/decision/sessions/{rid}").json()
     assert detail["record"]["user_verdict"] == "hold"
+
+
+# ─── market_context_snapshot 저장/조회 (2026-05-22) ─────────────────
+
+
+def test_post_decision_sessions_stores_market_context_snapshot(api_client):
+    p = _payload(
+        market_context_snapshot={
+            "regime_label": "상승장",
+            "regime_code": "bull",
+            "primary_benchmark": "KODEX200",
+            "kodex200": {
+                "return_20d_pct": 3.2,
+                "return_60d_pct": 6.1,
+                "ma20_position": "above",
+                "ma60_position": "above",
+            },
+            "kospi": {
+                "status": "ok",
+                "return_20d_pct": 2.7,
+                "return_60d_pct": 5.4,
+            },
+        }
+    )
+    res = api_client.post("/decision/sessions", json=p)
+    assert res.status_code == 200
+    rid = res.json()["id"]
+
+    detail = api_client.get(f"/decision/sessions/{rid}").json()
+    rec = detail["record"]
+    snap = rec["market_context_snapshot"]
+    assert snap["regime_label"] == "상승장"
+    assert snap["regime_code"] == "bull"
+    assert snap["primary_benchmark"] == "KODEX200"
+    assert snap["kodex200"]["return_20d_pct"] == 3.2
+    assert snap["kospi"]["return_60d_pct"] == 5.4
+
+
+def test_post_decision_sessions_without_market_context_snapshot_defaults_to_empty(
+    api_client,
+):
+    """기존 payload (market_context_snapshot 미포함) 도 저장 가능 — 회귀 보호."""
+    p = _payload()
+    assert "market_context_snapshot" not in p
+    res = api_client.post("/decision/sessions", json=p)
+    assert res.status_code == 200
+    rid = res.json()["id"]
+    detail = api_client.get(f"/decision/sessions/{rid}").json()
+    assert detail["record"]["market_context_snapshot"] == {}

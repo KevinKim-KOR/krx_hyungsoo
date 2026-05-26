@@ -141,6 +141,16 @@ function DetailCard({
         </>
       ) : null}
 
+      {detail.market_context_snapshot &&
+      Object.keys(detail.market_context_snapshot).length > 0 ? (
+        <>
+          <h3>시장 문맥 (저장 시점)</h3>
+          <pre className="decision-pre">
+            {JSON.stringify(detail.market_context_snapshot, null, 2)}
+          </pre>
+        </>
+      ) : null}
+
       {detail.user_memo ? (
         <>
           <h3>사용자 메모</h3>

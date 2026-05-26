@@ -27,6 +27,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
+from app.market_benchmark_store import refresh_kospi_benchmark
 from app.market_data_fdr import (
     DEFAULT_LOOKBACK_DAYS,
     PriceFetcher,
@@ -37,6 +38,7 @@ from app.market_data_fdr import (
 from app.market_data_store import (
     DEFAULT_DB_PATH,
     list_etf_tickers,
+    log_refresh,
 )
 
 DEFAULT_COOLDOWN_HOURS = 6
@@ -165,6 +167,46 @@ def _execute_refresh_job(
                 error_summary = f"price_partial_failure: fail={p_result.fail}"
     except Exception as e:  # noqa: BLE001 — background thread 보호
         error_summary = f"refresh_unexpected: {type(e).__name__}: {e}"
+
+    # KOSPI benchmark — 실패해도 전체 refresh 흐름을 중단시키지 않는다
+    # (지시문 §4.4). 별도 log row 로 결과 보존, in-memory state 에는 노출 X.
+    try:
+        kospi_result = refresh_kospi_benchmark(
+            end_date=end_date_for_prices,
+            price_fetcher=price_fetcher,
+            db_path=db_path,
+        )
+        kospi_status = kospi_result.get("status", "failed")
+        kospi_error = kospi_result.get("error")
+        log_refresh(
+            run_id=f"kospi-benchmark-{refresh_id}",
+            source="FinanceDataReader/KS11",
+            asof=end_date_for_prices.isoformat(),
+            attempted=1,
+            success=1 if kospi_status == "ok" else 0,
+            fail=0 if kospi_status == "ok" else 1,
+            runtime_seconds=0.0,
+            error_summary=kospi_error,
+            db_path=db_path,
+        )
+        # 부분 실패 메시지에 KOSPI 정보 부착 (전체 실패 처리는 하지 않음).
+        if kospi_status != "ok" and error_summary is None:
+            error_summary = f"kospi_benchmark_unavailable: {kospi_error or 'unknown'}"
+    except Exception as e:  # noqa: BLE001 — KOSPI 실패도 thread 안에서 격리
+        try:
+            log_refresh(
+                run_id=f"kospi-benchmark-{refresh_id}",
+                source="FinanceDataReader/KS11",
+                asof=end_date_for_prices.isoformat(),
+                attempted=1,
+                success=0,
+                fail=1,
+                runtime_seconds=0.0,
+                error_summary=f"{type(e).__name__}: {e}"[:200],
+                db_path=db_path,
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     elapsed = time.perf_counter() - t0
     finished = _utcnow()

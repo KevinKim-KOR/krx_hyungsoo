@@ -1,15 +1,19 @@
-// AI 투자세션 복사용 문구 생성 (2026-05-19 STEP — 지시문 §5 구조).
+// AI 투자세션 복사용 문구 생성 (POC2 — 2026-05-19 1차 + 2026-05-22 시장 판정 반영).
 //
-// 입력은 이미 조회된 MarketTopNResponse 의 일부 (asof / filters / candidates) 다.
-// 새 API 호출 / AI 직접 호출 / 자동 토론은 하지 않는다 — 사용자가 외부 AI 채널
-// (GPT / Gemini / Claude) 에 직접 복사·붙여넣는 1차 시장 해석 요청문만 만든다.
+// 입력은 이미 조회된 MarketTopNResponse 의 일부 (asof / filters / candidates +
+// market_context). 새 API 호출 / AI 직접 호출 / 자동 토론은 하지 않는다 — 사용자가
+// 외부 AI 채널 (GPT / Gemini / Claude) 에 직접 복사·붙여넣는 입력문만 만든다.
 //
-// AC-6: ETF 구성 종목과 구성 비중 정보가 아직 포함되지 않았다는 한계를 명시한다.
-// AC-7: 요청 목적은 시장 테마 / 섹터 흐름 해석.
-// AC-8: 매수 / 매도 추천을 요구하지 않는다.
+// 2026-05-22 변경 (Market Regime & Benchmark Context 1차):
+// - [시스템 시장 판정] 섹션 추가 (지시문 §11) — 시스템이 1차 산출한 KODEX200 기준
+//   regime_label + KOSPI 보조 근거를 노출.
+// - [시장 대비 후보 강도] 섹션 추가 — KODEX200 / KOSPI 대비 초과수익 표시.
+// - [요청] 섹션 문구 변경 — AI 에게 장세 판정을 맡기지 않고 시스템 판정을 전제로
+//   해석과 반론을 요청 (지시문 §11 / AC-19).
 
 import type {
   MarketCandidate,
+  MarketContext,
   MarketProductTag,
   MarketTopNFilters,
 } from "./api";
@@ -40,6 +44,67 @@ export interface BuildCopyTextInput {
   asof: string;
   filters: MarketTopNFilters;
   candidates: MarketCandidate[];
+  // 2026-05-22 — Market Regime & Benchmark Context. null/undefined 면 시장 판정
+  // 섹션을 "판정불가 — 데이터 부족" 으로 노출.
+  marketContext?: MarketContext | null;
+}
+
+function appendMarketContextSection(
+  lines: string[],
+  ctx: MarketContext | null | undefined,
+): void {
+  lines.push("[시스템 시장 판정]");
+  if (!ctx || ctx.status === "unavailable") {
+    lines.push("- 시장 국면: 판정불가 (KODEX200 시계열 부족)");
+    return;
+  }
+  lines.push(`- 시장 국면: ${ctx.regime_label}`);
+  const k = ctx.kodex200;
+  if (k.status === "ok") {
+    const r20 = formatPct(k.return_20d_pct);
+    const r60 = formatPct(k.return_60d_pct);
+    lines.push(`- 기준: KODEX200 20거래일 ${r20}, 60거래일 ${r60}`);
+    const ma20 = k.ma20_position === "above" ? "위" : "아래";
+    const ma60 = k.ma60_position === "above" ? "위" : "아래";
+    lines.push(`- KODEX200 현재가: 20일 이동평균 ${ma20} / 60일 이동평균 ${ma60}`);
+  }
+  const kp = ctx.kospi;
+  if (kp.status === "ok") {
+    lines.push(
+      `- KOSPI 보조 기준: 20거래일 ${formatPct(kp.return_20d_pct)}, 60거래일 ${formatPct(kp.return_60d_pct)}`,
+    );
+  } else {
+    lines.push("- KOSPI 보조 기준: 데이터 없음 (N/A)");
+  }
+}
+
+function appendCandidateStrengthSection(
+  lines: string[],
+  candidates: MarketCandidate[],
+): void {
+  lines.push("[시장 대비 후보 강도]");
+  if (candidates.length === 0) {
+    lines.push("(후보 없음)");
+    return;
+  }
+  candidates.forEach((c, idx) => {
+    const num = c.rank ?? idx + 1;
+    const name = c.name ?? "-";
+    const ticker = c.ticker ?? "-";
+    const oneM = formatPct(c.returns?.one_month?.return_pct ?? null);
+    const exK1 = formatPctp(c.excess_return?.vs_kodex200_1m_pctp ?? null);
+    const exK3 = formatPctp(c.excess_return?.vs_kodex200_3m_pctp ?? null);
+    lines.push(`${num}. ${name} (${ticker})`);
+    lines.push(`   - 1개월 수익률: ${oneM}`);
+    lines.push(`   - KODEX200 대비 1개월 초과수익: ${exK1}`);
+    lines.push(`   - KODEX200 대비 3개월 초과수익: ${exK3}`);
+  });
+}
+
+function formatPctp(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "-";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%p`;
 }
 
 // fail-loud 정책 (frontend/lib/api.ts 의 apiBase() 와 동일 패턴):
@@ -96,12 +161,21 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
     });
   }
   lines.push("");
+  appendMarketContextSection(lines, input.marketContext);
+  lines.push("");
+  appendCandidateStrengthSection(lines, input.candidates);
+  lines.push("");
   lines.push("[요청]");
   lines.push(
-    "위 후보들이 어떤 시장 테마 또는 섹터 흐름을 시사하는지 해석해주세요.",
+    "시스템의 시장 국면 판정과 KODEX200/KOSPI 대비 초과수익을 전제로,",
   );
   lines.push(
-    "매수/매도 추천은 하지 말고, 추가로 확인해야 할 구성 종목, 업종, 리스크, 검증 포인트를 제시해주세요.",
+    "이 후보들이 시장 전체 상승에 따라간 것인지, 독립적인 섹터/테마 강세인지 해석해주세요.",
+  );
+  lines.push("");
+  lines.push("매수/매도 추천은 하지 말고,");
+  lines.push(
+    "시스템 판정이 틀릴 수 있는 반대 근거와 추가 확인 포인트를 제시해주세요.",
   );
   return lines.join("\n");
 }

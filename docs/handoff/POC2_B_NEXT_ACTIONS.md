@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-05-21
+작성일: 2026-05-20 / 갱신: 2026-05-27
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,23 +10,29 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-05-21)
+## 1. 현재 최우선 작업 (2026-05-27)
 
-### AI Sessions / Decision Evidence 화면 분리 + Context Bridge
+### Market Regime & Benchmark Context 1차
 
-- 좌측 메뉴에 `AI Sessions` 추가 → Market Discovery 와 화면 책임 분리.
-- AI Sessions 화면은 [새 기록 저장] / [기록 조회] 2 탭으로 명시 분리.
-- Market Discovery 는 ETF 후보 발굴 + 복사용 문구 + "AI Sessions로 넘기기"
-  까지만 남고, 외부 AI 답변 / 메모 / 판정은 AI Sessions 에서 저장.
-- AI 답변 채널은 `gpt_answer_text` / `gemini_answer_text` / `claude_answer_text`
-  3 분리. 저장 시 3 채널 중 **최소 1개 이상** 비어있지 않아야 한다.
-- Context Bridge: `frontend/lib/aiSessionsDraft.ts` 가 sessionStorage 로
-  Market Discovery → AI Sessions draft 전달. 서버 draft 저장소 미생성.
-- 저장 시점의 후보 / 필터는 candidate_snapshot / filters JSON 으로 영속 보존
-  — Market Discovery 데이터가 바뀌어도 과거 기록 불변.
+- 시스템이 KODEX200 (필수) / KOSPI (보조) 기준으로 **1차 시장 국면 판정** 산출.
+- 라벨: 상승장 / 보합장 / 하락장 / 판정불가 (regime_code: bull / neutral /
+  bear / unavailable).
+- 점수 방식: KODEX200 20거래일 / 60거래일 수익률 + MA20/MA60 위치 4 항목을
+  +1/-1/0 으로 합산 → +2 이상 bull / -2 이하 bear / 그 외 neutral.
+- Market Discovery 응답 (`GET /market/topn/latest`) 에 `market_context` +
+  각 candidate 의 `excess_return` (vs KODEX200 / KOSPI 1m / 3m %p) 포함.
+- Market Discovery 화면에 시장 배경 카드 + 후보 테이블에 KODEX200 대비 1m/3m
+  컬럼 추가.
+- AI 투자세션 복사용 문구에 [시스템 시장 판정] + [시장 대비 후보 강도] 섹션 추가.
+- AI 요청 문구를 **AI 에게 장세 판정을 맡기지 않고** 시스템 판정 전제 + 해석/
+  반론 요청으로 변경.
+- Market Discovery → AI Sessions Context Bridge draft 에
+  `market_context_snapshot` 포함. POST /decision/sessions 가 저장하고 GET
+  상세에서 노출.
 
-본 STEP 의 범위는 "기록 + 채널 분리 + 화면 책임 분리" 까지다. 매수 / 매도
-자동 판단 / 매매 결과 추적 / ML 연결은 본 STEP 의 작업이 아니다.
+본 STEP 의 범위는 "정량 1차 판정 + benchmark context + 화면/문구/저장소
+연계" 까지다. 완성형 시장 정권 모델 / KOSDAQ 비교 / ETF 구성 종목 / NAV /
+ML 연결 / 매수·매도 판단은 본 STEP 의 작업이 아니다.
 
 ---
 
@@ -34,23 +40,20 @@
 
 순서는 우선순위가 아니다 — 사용자가 명시 지시문으로 선택한다.
 
-1. **KODEX200 / KOSPI 대비 초과수익 (alpha)**
-   - 발굴된 ETF 후보가 시장 대비 어느 정도 성과인지 정량 비교.
-   - PROJECT_ORIGIN_INTENT §5 의 실패 기준 ("같은 기간 KODEX 200 대비 초과 수익")
-     과 직결.
-2. **상승장 / 보합장 / 하락장 시장 국면 판단**
-   - 현재 KODEX200 / KOSPI 흐름이 어느 국면인지 정량 라벨링.
-   - 후보 해석의 baseline 으로 사용.
-3. **ETF 구성 종목 / 중복률**
+1. **시장 국면 판정 고도화** (2026-05-27 본 STEP 1차 후 후속)
+   - 본 1차는 단순 점수 합산. 다음 단계 후보: 변동성 / 시장 폭 (advance-decline) /
+     장기 추세 / 외인·기관 수급 등을 점수에 반영해 라벨 신뢰도 향상.
+   - 운영 데이터로 1차 판정의 적중률을 검증한 뒤 진행.
+2. **ETF 구성 종목 / 중복률**
    - 본 STEP 종료 후 가장 강한 BACKLOG (직전 복사용 문구 STEP 에서 명시).
    - AI 의 시장 해석 품질이 ETF 명만으로는 얕다고 판단할 때.
-4. **NAV / 괴리율 / 유동성**
+3. **NAV / 괴리율 / 유동성**
    - 종목 선정 단계 진입 시 필요. ETF 가격이 NAV 와 얼마나 떨어져 있는지,
      거래량이 충분한지.
-5. **AI 투자세션 결과 기반 개선**
-   - 본 STEP 으로 누적된 `ai_session_records` 를 1개월 운영 후 들여다보고,
-     어떤 판정 / 메모 / 다음 확인 항목이 반복되는지 분석. 운영 데이터를
-     기반으로 다음 발굴 단위 / 비교 기간 / 점수체계 후보를 도출.
+4. **AI 투자세션 결과 기반 개선**
+   - 누적된 `ai_session_records` 를 1개월 운영 후 들여다보고, 어떤 판정 / 메모 /
+     다음 확인 항목이 반복되는지 분석. 운영 데이터를 기반으로 다음 발굴 단위 /
+     비교 기간 / 점수체계 후보를 도출.
 
 ---
 
