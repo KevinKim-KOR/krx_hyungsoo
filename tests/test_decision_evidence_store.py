@@ -255,6 +255,49 @@ def test_list_recent_records_respects_limit(tmp_path: Path):
     assert len(list_recent_records(limit=3, db_path=db)) == 3
 
 
+def test_init_db_auto_adds_constituent_and_overlap_snapshot_columns(tmp_path: Path):
+    """직전 STEP (market_context_snapshot 컬럼까지 있는 스키마) DB 에 대해
+    init_db() 가 constituent/overlap snapshot 컬럼 2개를 자동 ADD COLUMN."""
+    db = tmp_path / "decision_evidence.sqlite"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    # 직전 STEP 시점 DDL — constituent/overlap 컬럼 없음.
+    prev_ddl = (
+        "CREATE TABLE ai_session_records ("
+        "id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, "
+        "asof TEXT NOT NULL, source_screen TEXT NOT NULL, "
+        "filters_json TEXT NOT NULL, candidate_snapshot_json TEXT NOT NULL, "
+        "question_text TEXT NOT NULL, "
+        "gpt_answer_text TEXT NOT NULL DEFAULT '', "
+        "gemini_answer_text TEXT NOT NULL DEFAULT '', "
+        "claude_answer_text TEXT NOT NULL DEFAULT '', "
+        "user_memo TEXT NOT NULL DEFAULT '', user_verdict TEXT NOT NULL, "
+        "next_checks_json TEXT NOT NULL DEFAULT '[]', "
+        "linked_market_refresh_id TEXT, "
+        "market_context_snapshot_json TEXT NOT NULL DEFAULT '{}')"
+    )
+    with sqlite3.connect(str(db)) as con:
+        con.execute(prev_ddl)
+        con.commit()
+
+    init_db(db)
+
+    with sqlite3.connect(str(db)) as con:
+        cur = con.execute("PRAGMA table_info(ai_session_records)")
+        cols = {row[1] for row in cur.fetchall()}
+    assert "constituent_snapshot_json" in cols
+    assert "overlap_snapshot_json" in cols
+
+    saved = insert_record(
+        db_path=db,
+        **_minimal_kwargs(),
+        constituent_snapshot={"items": [{"etf_ticker": "139260"}]},
+        overlap_snapshot={"matrix": [{"left_ticker": "139260"}]},
+    )
+    fetched = get_record(saved["id"], db_path=db)
+    assert fetched["constituent_snapshot"]["items"][0]["etf_ticker"] == "139260"
+    assert fetched["overlap_snapshot"]["matrix"][0]["left_ticker"] == "139260"
+
+
 def test_init_db_auto_adds_market_context_snapshot_column(tmp_path: Path):
     """직전 STEP (3 분리 스키마, market_context_snapshot 컬럼 없음) DB 에 대해
     init_db() 가 ALTER TABLE ADD COLUMN 으로 자동 마이그레이션."""

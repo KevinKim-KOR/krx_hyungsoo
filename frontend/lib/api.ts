@@ -686,6 +686,9 @@ export interface CreateDecisionSessionRequest {
   linked_market_refresh_id?: string | null;
   // 2026-05-22 — 저장 시점 시장 문맥 (free schema dict). null/빈 dict 모두 허용.
   market_context_snapshot?: Record<string, unknown> | null;
+  // 2026-05-27 — 저장 시점 구성종목 / 중복률 스냅샷.
+  constituent_snapshot?: Record<string, unknown> | null;
+  overlap_snapshot?: Record<string, unknown> | null;
 }
 
 export interface CreateDecisionSessionResponse {
@@ -731,6 +734,9 @@ export interface DecisionSessionDetail {
   linked_market_refresh_id?: string | null;
   // 2026-05-22 — 저장 시점 시장 문맥 (free schema dict). 백엔드가 항상 dict (없으면 {}) 로 반환.
   market_context_snapshot: Record<string, unknown>;
+  // 2026-05-27 — 저장 시점 구성종목 / 중복률 (free schema dict, 없으면 {}).
+  constituent_snapshot: Record<string, unknown>;
+  overlap_snapshot: Record<string, unknown>;
 }
 
 export interface GetDecisionSessionResponse {
@@ -765,6 +771,134 @@ export function fetchDecisionSession(
   return request<GetDecisionSessionResponse>(
     "GET",
     `/decision/sessions/${encodeURIComponent(id)}`,
+  );
+}
+
+// ─── POC2 ETF Constituents & Overlap 1차 (2026-05-27) ──────────────
+// state/market/market_data.sqlite 의 etf_constituents / refresh_log 테이블 +
+// pykrx PDF fetcher (실패 시 unavailable). K6 방어 — 1회 최대 10개 ticker.
+
+export interface RefreshConstituentsRequest {
+  asof: string;
+  tickers: string[];
+  top_k?: number;
+  force?: boolean;
+}
+
+export interface RefreshConstituentsItem {
+  ticker: string;
+  status: "ok" | "unavailable" | "skipped_timeout";
+  source?: string | null;
+  constituent_count: number;
+  from_cache: boolean;
+  message?: string | null;
+}
+
+export interface RefreshConstituentsResponse {
+  status: "ok" | "partial" | "rejected";
+  reason?: string | null;
+  message?: string | null;
+  asof?: string | null;
+  requested_count: number;
+  success_count: number;
+  fail_count: number;
+  cached_count: number;
+  fetched_count: number;
+  skipped_count: number;
+  source?: string | null;
+  items: RefreshConstituentsItem[];
+}
+
+export function refreshConstituents(
+  req: RefreshConstituentsRequest,
+): Promise<RefreshConstituentsResponse> {
+  // pykrx 호출은 분당 가량이 걸릴 수 있어 timeout 여유.
+  return request<RefreshConstituentsResponse>(
+    "POST",
+    "/market/constituents/refresh",
+    req,
+    60000,
+  );
+}
+
+export interface TopHolding {
+  rank: number;
+  ticker?: string | null;
+  name?: string | null;
+  weight_pct?: number | null;
+}
+
+export interface Concentration {
+  top1_weight_pct?: number | null;
+  top3_weight_pct?: number | null;
+  top5_weight_pct?: number | null;
+  top10_weight_pct?: number | null;
+}
+
+export interface ConstituentItem {
+  etf_ticker: string;
+  etf_name?: string | null;
+  status: "ok" | "unavailable";
+  source?: string | null;
+  asof: string;
+  top_holdings: TopHolding[];
+  concentration: Concentration;
+}
+
+export interface OverlapCommonHolding {
+  ticker?: string | null;
+  name?: string | null;
+  left_weight_pct?: number | null;
+  right_weight_pct?: number | null;
+}
+
+export interface OverlapPair {
+  left_ticker: string;
+  right_ticker: string;
+  common_count_top10: number;
+  weighted_overlap_pct?: number | null;
+  common_holdings: OverlapCommonHolding[];
+}
+
+export interface RepeatedCoreItem {
+  etf_ticker: string;
+  weight_pct?: number | null;
+}
+
+export interface RepeatedCoreHolding {
+  ticker?: string | null;
+  name?: string | null;
+  appears_in_etf_count: number;
+  items: RepeatedCoreItem[];
+}
+
+export interface ConstituentsAnalysisResponse {
+  status: "ok";
+  asof: string;
+  top_k: number;
+  coverage: {
+    requested_count: number;
+    available_count: number;
+    unavailable_count: number;
+  };
+  constituents: ConstituentItem[];
+  overlap_matrix: OverlapPair[];
+  repeated_core_holdings: RepeatedCoreHolding[];
+}
+
+export function fetchConstituentsAnalysis(
+  tickers: string[],
+  asof: string,
+  top_k: number = 10,
+): Promise<ConstituentsAnalysisResponse> {
+  const params = new URLSearchParams({
+    tickers: tickers.join(","),
+    asof,
+    top_k: String(top_k),
+  });
+  return request<ConstituentsAnalysisResponse>(
+    "GET",
+    `/market/constituents/analysis?${params.toString()}`,
   );
 }
 

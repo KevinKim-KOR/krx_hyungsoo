@@ -151,6 +151,26 @@ function DetailCard({
         </>
       ) : null}
 
+      {detail.constituent_snapshot &&
+      Object.keys(detail.constituent_snapshot).length > 0 ? (
+        <>
+          <h3>구성종목 (저장 시점)</h3>
+          <pre className="decision-pre">
+            {JSON.stringify(detail.constituent_snapshot, null, 2)}
+          </pre>
+        </>
+      ) : null}
+
+      {detail.overlap_snapshot &&
+      Object.keys(detail.overlap_snapshot).length > 0 ? (
+        <>
+          <h3>중복률 (저장 시점)</h3>
+          <pre className="decision-pre">
+            {JSON.stringify(detail.overlap_snapshot, null, 2)}
+          </pre>
+        </>
+      ) : null}
+
       {detail.user_memo ? (
         <>
           <h3>사용자 메모</h3>

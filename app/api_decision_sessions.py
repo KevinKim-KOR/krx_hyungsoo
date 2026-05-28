@@ -71,6 +71,9 @@ class CreateDecisionSessionRequest(BaseModel):
     # 2026-05-22 Market Regime & Benchmark Context — 저장 시점 시장 문맥 스냅샷.
     # 자유 schema dict (frontend 가 보낸 그대로 저장). None / 빈 dict 모두 허용.
     market_context_snapshot: Optional[dict] = None
+    # 2026-05-27 ETF Constituents & Overlap 1차 — 저장 시점 구성종목 / 중복률.
+    constituent_snapshot: Optional[dict] = None
+    overlap_snapshot: Optional[dict] = None
 
 
 class CreateDecisionSessionResponse(BaseModel):
@@ -115,6 +118,9 @@ class DecisionSessionDetail(BaseModel):
     linked_market_refresh_id: Optional[str] = None
     # 2026-05-22 — 저장 시점 시장 문맥 (free dict, frontend 가 보낸 그대로).
     market_context_snapshot: dict = {}
+    # 2026-05-27 — 저장 시점 구성종목 / 중복률 스냅샷 (free dict).
+    constituent_snapshot: dict = {}
+    overlap_snapshot: dict = {}
 
 
 class GetDecisionSessionResponse(BaseModel):
@@ -142,6 +148,8 @@ def post_decision_session(
             next_checks=list(req.next_checks),
             linked_market_refresh_id=req.linked_market_refresh_id,
             market_context_snapshot=req.market_context_snapshot,
+            constituent_snapshot=req.constituent_snapshot,
+            overlap_snapshot=req.overlap_snapshot,
             db_path=DEFAULT_DB_PATH,
         )
     except DecisionValidationError as e:
@@ -192,6 +200,8 @@ def get_decision_session_detail(record_id: str) -> GetDecisionSessionResponse:
             next_checks=list(record["next_checks"]),
             linked_market_refresh_id=record["linked_market_refresh_id"],
             market_context_snapshot=record.get("market_context_snapshot") or {},
+            constituent_snapshot=record.get("constituent_snapshot") or {},
+            overlap_snapshot=record.get("overlap_snapshot") or {},
         ),
     )
 

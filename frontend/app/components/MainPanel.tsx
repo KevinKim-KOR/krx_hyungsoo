@@ -17,6 +17,7 @@ import AISessionsView from "./AISessionsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
 import DashboardView from "./DashboardView";
 import DataStatusView from "./DataStatusView";
+import ETFExposureView from "./ETFExposureView";
 import HoldingsView from "./HoldingsView";
 import LeftSidebar, { type MenuKey } from "./LeftSidebar";
 import MarketDiscoveryView from "./MarketDiscoveryView";
@@ -45,6 +46,11 @@ export default function MainPanel() {
     case "market_discovery":
       // 2026-05-21 — "AI Sessions로 넘기기" 클릭 시 ai_sessions 화면 전환.
       view = <MarketDiscoveryView onNavigate={setActive} />;
+      break;
+    case "etf_exposure":
+      // 2026-05-27 — ETF Constituents & Overlap 1차. "AI Sessions 로 넘기기"
+      // 도 onNavigate 로 분기.
+      view = <ETFExposureView onNavigate={setActive} />;
       break;
     case "ai_sessions":
       view = <AISessionsView />;

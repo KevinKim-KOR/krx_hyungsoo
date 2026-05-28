@@ -4,7 +4,185 @@
 
 ---
 
-## 0. 현재 상태 — 2026-05-27 Market Regime & Benchmark Context 1차
+## 0. 현재 상태 — 2026-05-27 ETF Constituents & Overlap 1차
+
+```text
+현재 단계: ETF Constituents & Overlap 1차 (2026-05-27)
+  — pykrx PDF + K6 방어 (10개 cap / 0.5s delay / 30s budget) + 집중도 + 중복률
+    + 반복 종목 + AI 문구 [구성종목/중복 노출] + AI Sessions snapshot 영속화
+이전 단계: Market Regime & Benchmark Context 1차 (2026-05-27 동일자)
+다음 단계 후보 (사용자 결정 대기):
+  (a) 시장 국면 판정 고도화 (BACKLOG)
+  (b) NAV / 괴리율 / 유동성
+  (c) AI 투자세션 결과 기반 개선
+```
+
+### 본 STEP 요약
+
+- **방향 (지시문 §1)**: "후보 ETF들이 정말 서로 다른 테마인가? 아니면 같은
+  핵심 종목을 여러 ETF 가 반복해서 담고 있는가?" 에 답하기 위한 구성종목
+  수집 + 중복률 분석 1차. 매수/매도 판단 X — 실제 노출 구조 확인 까지만.
+- **K6 방어 정책 (지시문 §4)**: 외부 KRX 데이터 (pykrx PDF) 의존성 강화 가드.
+  - 1회 최대 10개 ticker (rejected when exceeded).
+  - 캐시 우선 — (etf_ticker, asof, source) 키 매치 시 외부 호출 안 함.
+  - `force=true` 인 경우만 캐시 무시.
+  - ticker 별 0.5s delay (첫 외부 호출 제외).
+  - 전체 30s budget 초과 시 남은 ETF 는 `skipped_timeout`.
+  - 부분 실패 격리 — ETF 단위 실패가 전체 실패로 번지지 않음 (`partial`).
+  - source 불명 (`"unknown"` 또는 빈 문자열) 은 ok 처리 금지 — `unavailable`.
+- **신규 테이블 2개** (`state/market/market_data.sqlite`):
+  - `etf_constituents` (etf_ticker, asof, source, rank PK) — 상위 N 구성종목.
+  - `etf_constituent_refresh_log` (etf_ticker, asof, created_at PK) — 수집 결과.
+- **Backend 신규 모듈 4 + router**:
+  - `app/etf_constituents_store.py` (219) — DDL + upsert/fetch + log + latest.
+  - `app/etf_constituents_fetcher.py` (161) — pykrx PDF fetcher (DI 패턴, lazy
+    import, source 라벨 명시).
+  - `app/etf_constituents_service.py` (307) — refresh 흐름 (cache / cap /
+    delay / budget / partial / unavailable).
+  - `app/etf_constituents_analysis.py` (267) — pure function. 집중도 (top
+    1/3/5/10) + 중복률 (common_count_top10 + weighted_overlap_pct =
+    sum(min(left, right))) + repeated_core_holdings.
+  - `app/api_etf_constituents.py` (210) — POST refresh + GET analysis.
+    db_path 는 호출 시점 module attribute lookup (테스트 monkeypatch 친화).
+  - `app/api.py` — `etf_constituents_router` include 1줄.
+- **Decision Evidence 확장**:
+  - `app/decision_evidence_store.py` — `constituent_snapshot_json` /
+    `overlap_snapshot_json` 컬럼 추가 + `_migrate_add_constituent_overlap_snapshots`
+    자동 마이그레이션 (ALTER TABLE ADD COLUMN 각각).
+  - `app/api_decision_sessions.py` — payload + response 에 두 snapshot 필드.
+- **좌측 메뉴**: `etf_exposure` 추가 — Dashboard / Market Discovery /
+  **ETF Exposure** / AI Sessions / Holdings / Approval-Telegram / Data Status.
+- **Frontend 신규 컴포넌트 4 + util**:
+  - `frontend/lib/etfExposureDraft.ts` — sessionStorage Context Bridge
+    (Market Discovery → ETF Exposure).
+  - `frontend/app/components/ETFExposureView.tsx` (234) — 탭 컨테이너 +
+    draft 처리 + 마운트 시 캐시 기반 analysis 자동 호출 + "AI Sessions 로
+    넘기기" 카드 (구성종목/중복률 snapshot 포함 draft 생성).
+  - `frontend/app/components/ConstituentsTab.tsx` (191) — 수집 버튼 +
+    상위 holdings + 집중도 + status 배지.
+  - `frontend/app/components/OverlapTab.tsx` (106) — 쌍별 중복률 + 반복
+    핵심 종목.
+  - `frontend/app/components/TransferToETFExposureCard.tsx` (61) — Market
+    Discovery 에 추가될 전달 카드.
+- **AI 문구 / AI Sessions 연계 (지시문 §10 / §11)**:
+  - `frontend/lib/marketDiscoveryCopyText.ts` — `constituentsAnalysis`
+    optional 인자 + [구성종목 / 중복 노출] 섹션 + 새 AI 요청 문구 (analysis
+    있을 때만 "독립 테마 vs 반복 노출" 해석 요청).
+  - `frontend/lib/aiSessionsDraft.ts` — `constituent_snapshot` /
+    `overlap_snapshot` 필드 추가 (schema v3).
+  - `frontend/app/components/AISessionsCreateTab.tsx` — POST payload 확장.
+  - `frontend/app/components/AISessionsListTab.tsx` — 상세에 "구성종목 (저장
+    시점)" / "중복률 (저장 시점)" 섹션.
+- **fetcher 1차**: pykrx 1.0.51 의 `get_etf_portfolio_deposit_file` 함수
+  존재 확인 (PROJECT_ORIGIN_INTENT §8 자산 활용). 실패 시 명시 `unavailable`
+  반환 (지시문 §3 1순위 KRX 공식 데이터 경로).
+- **검증**: pytest **312 passed** (286 → 312, +26 신규 / 회귀 0) /
+  black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0.
+  - 1차 측정에서 `MarketDiscoveryView.tsx` 695 → 705 (+10, TransferToETFExposure
+    추가). near 850 까지 145 라인 여유.
+  - 백엔드 핵심 모듈 최대 `app/market_topn.py` 590 (기존, 본 STEP 미변경,
+    near 600 까지 10 라인 여유) / `decision_evidence_store.py` 416 → 452 (+36).
+  - 신규 backend: 219 / 161 / 307 / 267 / 210 — 모두 trigger/near 한참 미달.
+  - 신규 tests: store 145 / service 232 / analysis 138 / api 142 — 모두 미달.
+  - 신규 frontend: ETFExposureView 234 / ConstituentsTab 191 / OverlapTab
+    106 / TransferToETFExposureCard 61 — 모두 미달.
+  - 750 라인 이상 보고: `tests/test_holdings_message_text.py` 924 (기존) /
+    `frontend/lib/api.ts` 920 (786 → 920, 본 STEP +134 — constituents/overlap
+    타입 + 함수). `.ts` 라이브러리라 KS-10 컴포넌트 기준 미해당이지만 다음
+    STEP 에서 분리 후보.
+
+### 신규 / 수정 파일 (28 + 문서 3)
+
+신규 (10):
+- `app/etf_constituents_store.py` (219)
+- `app/etf_constituents_fetcher.py` (161)
+- `app/etf_constituents_service.py` (307)
+- `app/etf_constituents_analysis.py` (267)
+- `app/api_etf_constituents.py` (210)
+- `tests/test_etf_constituents_store.py` (145)
+- `tests/test_etf_constituents_service.py` (232)
+- `tests/test_etf_constituents_analysis.py` (138)
+- `tests/test_etf_constituents_api.py` (142)
+- `frontend/lib/etfExposureDraft.ts` (136)
+- `frontend/app/components/ETFExposureView.tsx` (234)
+- `frontend/app/components/ConstituentsTab.tsx` (191)
+- `frontend/app/components/OverlapTab.tsx` (106)
+- `frontend/app/components/TransferToETFExposureCard.tsx` (61)
+
+수정 (Backend): `app/api.py` / `app/decision_evidence_store.py` /
+`app/api_decision_sessions.py` / `tests/test_decision_evidence_store.py` /
+`tests/test_decision_sessions_api.py`.
+
+수정 (Frontend): `frontend/lib/api.ts` / `frontend/lib/aiSessionsDraft.ts` /
+`frontend/lib/marketDiscoveryCopyText.ts` / `frontend/app/components/LeftSidebar.tsx`
+/ `MainPanel.tsx` / `MarketDiscoveryView.tsx` / `AISessionsCreateTab.tsx` /
+`AISessionsListTab.tsx` / `globals.css`.
+
+문서: `STATE_LATEST.md` (본 §0 신규) / `POC2_B_NEXT_ACTIONS.md` (최우선 작업
+갱신) / `BACKLOG.md` (ETF 구성 종목 1차 PARTIAL + 추가 BACKLOG).
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §14)
+
+- 전체 ETF universe 구성종목 수집 / 서버 draft 저장소.
+- NAV / 괴리율 / 거래대금 / 순자산 / 설정좌수 / 변동성 / 베타 / 환율 효과.
+- ML 점수화 / 매수·매도 판단 / 리밸런싱 판단.
+- 친구 UI 복제 / UI Grid 재개편.
+- AI 에게 구성종목 추정시키기.
+
+### FIX 라운드 (검증자 A-1 / A-3 / B-6 NOTE 반영, 2026-05-27)
+
+5가지 지적 수정:
+
+1. **A-1 / B-1 (ETF Exposure → AI Sessions 질문문에서 시장 판정 손실)**:
+   - `ETFExposureDraft` schema v1 → **v2** 로 승격. `market_context_full:
+     MarketContext | null` + `market_candidates: MarketCandidate[]` (excess_return
+     포함) 필드 추가.
+   - `ETFExposureView.handleTransferToSessions` 가 `buildMarketDiscoveryCopyText`
+     호출 시 `marketContext: draft.market_context_full` + `candidates:
+     draft.market_candidates` 명시 전달 → AI 문구의 [시스템 시장 판정] /
+     [시장 대비 후보 강도] 가 정상 노출.
+   - `TransferToETFExposureCard` 가 `marketContext` 도 draft 에 함께 저장.
+
+2. **A-3 (copy text 자기모순)**:
+   - `marketDiscoveryCopyText.ts` 의 [주의] 섹션을 `constituentsAnalysis` 유무에
+     따라 분기. analysis 가 있으면 "구성종목 데이터는 수집된 스냅샷" 문구로
+     교체 — 직전까지의 "구성 종목 정보가 아직 포함되지 않았다" 와의 자기
+     모순 차단.
+
+3. **B-6 #1 (asof 필수 → optional)**:
+   - `GET /market/constituents/analysis` 의 `asof` query 를 optional 로 변경.
+     누락 시 `latest_constituent_asof(ticker)` 중 MAX 사용. 데이터 1건도
+     없으면 today (UTC) 로 fallback (compute_analysis 가 모두 unavailable
+     로 반환).
+   - 회귀 테스트 2건 신규.
+
+4. **B-6 #2 (cache key source 일치)**:
+   - 지시문 §4.3 cache key 원칙 `ticker+asof+source` 일치. 1차 단일 fetcher
+     (pykrx PDF) 시점 — service 가 `PYKRX_SOURCE` 를 명시 import 후 cache
+     check (`fetch_constituents(..., source=PYKRX_SOURCE)`). 다른 source 의
+     기존 row 는 cache hit 처리되지 않음.
+   - 회귀 테스트 1건 신규 (`test_refresh_cache_first_matches_pykrx_source`).
+
+5. **A-2 (staged 외 unstaged 변경)**:
+   - 직전 1차 commit 시점에 unstaged 잔재 (`MM app/decision_evidence_store.py`
+     / `AM app/etf_constituents_store.py`) 가 있었음을 검증자 지적. 본 FIX
+     라운드에서 모든 unstaged 를 명시 git add 로 재 staging.
+
+**검증 재실행**: pytest **315 passed** (312 → 315, +3 FIX 회귀 / 회귀 0) /
+black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
+
+**KS-10 재측정**: trigger 0 / near 0. 주요 변경 파일:
+- `etfExposureDraft.ts` 136 → ~150 (+14, 새 필드).
+- `ETFExposureView.tsx` 234 → 215 (-19, 변환 코드 단순화).
+- `marketDiscoveryCopyText.ts` 232 → 247 (+15, [주의] 분기).
+- `etf_constituents_service.py` 307 → 305 (-2, cache check 통합).
+- `api_etf_constituents.py` 210 → 240 (+30, asof optional fallback).
+- `tests/test_etf_constituents_api.py` 142 → 232 (+90, 신규 3건).
+
+---
+
+## 0.1 직전 상태 — 2026-05-27 Market Regime & Benchmark Context 1차
 
 ```text
 현재 단계: Market Regime & Benchmark Context 1차 (2026-05-27)

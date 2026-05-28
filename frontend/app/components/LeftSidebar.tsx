@@ -9,6 +9,7 @@
 export type MenuKey =
   | "dashboard"
   | "market_discovery"
+  | "etf_exposure"
   | "ai_sessions"
   | "holdings"
   | "approval"
@@ -23,6 +24,7 @@ export interface MenuItem {
 export const MENU_ITEMS: MenuItem[] = [
   { key: "dashboard", label: "Dashboard", hint: "시스템 상태 + 바로가기" },
   { key: "market_discovery", label: "Market Discovery", hint: "ETF 후보 발굴" },
+  { key: "etf_exposure", label: "ETF Exposure", hint: "구성종목 / 중복률" },
   { key: "ai_sessions", label: "AI Sessions", hint: "AI 질문/답변 기록" },
   { key: "holdings", label: "Holdings", hint: "보유 현황 / 평가" },
   { key: "approval", label: "Approval / Telegram", hint: "승인 대기 / 발송 결과" },

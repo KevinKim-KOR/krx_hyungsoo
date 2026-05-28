@@ -14,9 +14,9 @@ import type {
 } from "./api";
 
 // 2026-05-22 — market_context_snapshot 필드 추가로 schema v2 로 승격.
-// v1 draft 는 새로고침되면 사라지고 본 STEP 의 sessionStorage 정책상 마이그레이션
-// 불필요 — key 만 v2 로 바꿔 호환 모호함 차단.
-const STORAGE_KEY = "krx_alertor.ai_sessions.draft.v2";
+// 2026-05-27 — constituent_snapshot / overlap_snapshot 추가로 schema v3 승격.
+// 새로고침 시 draft 가 사라지는 정책상 in-place 호환 불필요. key 변경으로 모호함 차단.
+const STORAGE_KEY = "krx_alertor.ai_sessions.draft.v3";
 
 export interface AISessionsDraft {
   asof: string;
@@ -28,6 +28,10 @@ export interface AISessionsDraft {
   draft_created_at: string;
   // 2026-05-22 — Market Regime & Benchmark Context. null 또는 빈 dict 허용.
   market_context_snapshot?: Record<string, unknown> | null;
+  // 2026-05-27 — ETF Constituents & Overlap snapshots. ETF Exposure → AI Sessions
+  // 흐름에서 채워진다. Market Discovery 직접 흐름에서는 비어있음 (null).
+  constituent_snapshot?: Record<string, unknown> | null;
+  overlap_snapshot?: Record<string, unknown> | null;
 }
 
 function safeStorage(): Storage | null {

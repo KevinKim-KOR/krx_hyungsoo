@@ -36,6 +36,7 @@ import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
 import TransferToAISessionsCard from "./TransferToAISessionsCard";
+import TransferToETFExposureCard from "./TransferToETFExposureCard";
 
 type LoadState =
   | { phase: "loading" }
@@ -669,6 +670,15 @@ export default function MarketDiscoveryView({
             filters={data.filters}
             candidates={data.candidates ?? []}
             linkedMarketRefreshId={data.latest_refresh?.refresh_id ?? null}
+            marketContext={data.market_context ?? null}
+            onNavigate={onNavigate}
+          />
+          {/* 2026-05-27 ETF Constituents & Overlap 1차 — ETF Exposure 로 넘기는
+              별도 카드. 구성종목 / 중복률 분석은 거기서 진행. */}
+          <TransferToETFExposureCard
+            asof={data.asof}
+            filters={data.filters}
+            candidates={data.candidates ?? []}
             marketContext={data.market_context ?? null}
             onNavigate={onNavigate}
           />

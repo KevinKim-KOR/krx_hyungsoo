@@ -1104,6 +1104,35 @@ textarea.decision-textarea {
   color: var(--muted);
 }
 
+/* ETF Constituents & Overlap (2026-05-27) */
+.constituent-status-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+}
+
+.constituent-status-badge.constituent-status-ok {
+  background: rgba(52, 199, 89, 0.15);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.constituent-status-badge.constituent-status-unavailable {
+  background: rgba(138, 148, 166, 0.15);
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+.constituent-status-badge.constituent-status-timeout {
+  background: rgba(240, 160, 32, 0.15);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
 /* 통합 후보 테이블 / basis selector (2026-05-18) */
 .market-candidate-table th.basis-active,
 .market-candidate-table td.basis-active {

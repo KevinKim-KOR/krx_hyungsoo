@@ -144,6 +144,10 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
         linked_market_refresh_id: draft.linked_market_refresh_id,
         // 2026-05-22 — Market Discovery 에서 넘어온 시장 문맥 그대로 영속화.
         market_context_snapshot: draft.market_context_snapshot ?? null,
+        // 2026-05-27 — ETF Exposure 에서 넘어온 구성종목/중복률 snapshot.
+        // Market Discovery 직접 흐름에서는 null.
+        constituent_snapshot: draft.constituent_snapshot ?? null,
+        overlap_snapshot: draft.overlap_snapshot ?? null,
       });
       setStatusMessage(
         `저장 완료 (id: ${res.id}). [기록 조회] 탭에서 확인할 수 있습니다.`,

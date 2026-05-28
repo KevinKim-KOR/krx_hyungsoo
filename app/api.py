@@ -45,6 +45,7 @@ from app import (
     store,
 )
 from app.api_decision_sessions import router as decision_sessions_router
+from app.api_etf_constituents import router as etf_constituents_router
 from app.api_market_topn import router as market_topn_router
 from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
@@ -72,6 +73,7 @@ app.add_middleware(
 app.include_router(universe_router)
 app.include_router(market_topn_router)
 app.include_router(decision_sessions_router)
+app.include_router(etf_constituents_router)
 
 
 class GenerateDraftRequest(BaseModel):

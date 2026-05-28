@@ -257,3 +257,79 @@ def test_post_decision_sessions_without_market_context_snapshot_defaults_to_empt
     rid = res.json()["id"]
     detail = api_client.get(f"/decision/sessions/{rid}").json()
     assert detail["record"]["market_context_snapshot"] == {}
+
+
+# ─── constituent_snapshot / overlap_snapshot 저장/조회 (2026-05-27) ───
+
+
+def test_post_decision_sessions_stores_constituent_and_overlap_snapshots(api_client):
+    constituent_snap = {
+        "asof": "2026-05-26",
+        "top_k": 10,
+        "items": [
+            {
+                "etf_ticker": "139260",
+                "etf_name": "TIGER 200 IT",
+                "status": "ok",
+                "source": "pykrx/get_etf_portfolio_deposit_file",
+                "top_holdings": [
+                    {
+                        "rank": 1,
+                        "ticker": "005930",
+                        "name": "삼성전자",
+                        "weight_pct": 25.1,
+                    }
+                ],
+                "concentration": {
+                    "top1_weight_pct": 25.1,
+                    "top3_weight_pct": 52.4,
+                    "top5_weight_pct": 66.2,
+                    "top10_weight_pct": 82.0,
+                },
+            }
+        ],
+    }
+    overlap_snap = {
+        "matrix": [
+            {
+                "left_ticker": "139260",
+                "right_ticker": "363580",
+                "common_count_top10": 7,
+                "weighted_overlap_pct": 63.2,
+            }
+        ],
+        "repeated_core": [
+            {"ticker": "005930", "name": "삼성전자", "appears_in_etf_count": 5}
+        ],
+    }
+    p = _payload(
+        constituent_snapshot=constituent_snap,
+        overlap_snapshot=overlap_snap,
+    )
+    res = api_client.post("/decision/sessions", json=p)
+    assert res.status_code == 200
+    rid = res.json()["id"]
+
+    detail = api_client.get(f"/decision/sessions/{rid}").json()
+    rec = detail["record"]
+    assert rec["constituent_snapshot"]["items"][0]["etf_ticker"] == "139260"
+    assert (
+        rec["constituent_snapshot"]["items"][0]["concentration"]["top1_weight_pct"]
+        == 25.1
+    )
+    assert rec["overlap_snapshot"]["matrix"][0]["weighted_overlap_pct"] == 63.2
+    assert rec["overlap_snapshot"]["repeated_core"][0]["ticker"] == "005930"
+
+
+def test_post_decision_sessions_without_constituent_overlap_defaults_to_empty(
+    api_client,
+):
+    """기존 payload 호환성 — constituent/overlap 미포함 시 빈 dict 로 응답."""
+    p = _payload()
+    assert "constituent_snapshot" not in p
+    assert "overlap_snapshot" not in p
+    res = api_client.post("/decision/sessions", json=p)
+    rid = res.json()["id"]
+    detail = api_client.get(f"/decision/sessions/{rid}").json()
+    assert detail["record"]["constituent_snapshot"] == {}
+    assert detail["record"]["overlap_snapshot"] == {}

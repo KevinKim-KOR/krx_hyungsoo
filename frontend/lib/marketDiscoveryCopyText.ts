@@ -12,6 +12,7 @@
 //   해석과 반론을 요청 (지시문 §11 / AC-19).
 
 import type {
+  ConstituentsAnalysisResponse,
   MarketCandidate,
   MarketContext,
   MarketProductTag,
@@ -47,6 +48,80 @@ export interface BuildCopyTextInput {
   // 2026-05-22 — Market Regime & Benchmark Context. null/undefined 면 시장 판정
   // 섹션을 "판정불가 — 데이터 부족" 으로 노출.
   marketContext?: MarketContext | null;
+  // 2026-05-27 — ETF Constituents & Overlap 1차 (지시문 §10). 분석 결과가 있으면
+  // [구성종목 / 중복 노출] 섹션 + AI 요청 문구가 독립 테마 vs 반복 노출 해석을
+  // 요구하는 형태로 강화.
+  constituentsAnalysis?: ConstituentsAnalysisResponse | null;
+}
+
+function appendConstituentsSection(
+  lines: string[],
+  analysis: ConstituentsAnalysisResponse | null | undefined,
+): void {
+  if (!analysis) return;
+  lines.push("[구성종목 / 중복 노출]");
+  const cov = analysis.coverage;
+  lines.push(
+    `- 분석 대상: ${cov.requested_count}개 ETF (가용 ${cov.available_count} / 누락 ${cov.unavailable_count})`,
+  );
+  if (analysis.constituents.length > 0) {
+    lines.push("- ETF별 상위 구성종목 (5):");
+    analysis.constituents.forEach((c) => {
+      if (c.status !== "ok") {
+        lines.push(`  · ${c.etf_ticker} ${c.etf_name ?? "-"}: unavailable`);
+        return;
+      }
+      const top5 = c.top_holdings
+        .slice(0, 5)
+        .map(
+          (h) =>
+            `${h.name ?? h.ticker ?? "-"} ${
+              h.weight_pct !== null && h.weight_pct !== undefined
+                ? `${h.weight_pct.toFixed(1)}%`
+                : "-"
+            }`,
+        )
+        .join(", ");
+      const top3c = c.concentration.top3_weight_pct;
+      const top5c = c.concentration.top5_weight_pct;
+      lines.push(
+        `  · ${c.etf_ticker} ${c.etf_name ?? "-"}: ${top5} (top3 ${
+          top3c !== null && top3c !== undefined ? `${top3c.toFixed(1)}%` : "-"
+        } / top5 ${
+          top5c !== null && top5c !== undefined ? `${top5c.toFixed(1)}%` : "-"
+        })`,
+      );
+    });
+  }
+  if (analysis.overlap_matrix.length > 0) {
+    const top_pairs = [...analysis.overlap_matrix]
+      .filter((p) => p.weighted_overlap_pct !== null && p.weighted_overlap_pct !== undefined)
+      .sort(
+        (a, b) =>
+          (b.weighted_overlap_pct ?? 0) - (a.weighted_overlap_pct ?? 0),
+      )
+      .slice(0, 5);
+    if (top_pairs.length > 0) {
+      lines.push("- 중복률 상위 (top 5 쌍):");
+      top_pairs.forEach((p) => {
+        lines.push(
+          `  · ${p.left_ticker} ↔ ${p.right_ticker}: 공통 ${p.common_count_top10}, 비중중복 ${
+            p.weighted_overlap_pct !== null && p.weighted_overlap_pct !== undefined
+              ? `${p.weighted_overlap_pct.toFixed(1)}%`
+              : "-"
+          }`,
+        );
+      });
+    }
+  }
+  if (analysis.repeated_core_holdings.length > 0) {
+    lines.push("- 반복 등장 핵심 종목:");
+    analysis.repeated_core_holdings.slice(0, 10).forEach((r) => {
+      lines.push(
+        `  · ${r.name ?? r.ticker ?? "-"}: ${r.appears_in_etf_count}개 ETF`,
+      );
+    });
+  }
 }
 
 function appendMarketContextSection(
@@ -133,11 +208,26 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   lines.push(`- 선물형 제외: ${yesNo(input.filters.exclude_futures)}`);
   lines.push("");
   lines.push("[주의]");
-  lines.push("이 입력은 ETF명과 기간별 수익률 기반의 1차 시장 해석용입니다.");
-  lines.push("ETF 구성 종목과 구성 비중 정보는 아직 포함되지 않았습니다.");
-  lines.push(
-    "따라서 최종 투자 판단이 아니라 시장 흐름 해석과 추가 확인 포인트 도출이 목적입니다.",
-  );
+  if (input.constituentsAnalysis) {
+    // 2026-05-27 FIX (검증자 A-3 NOTE 반영) — constituentsAnalysis 가 있을 때는
+    // "구성 종목 정보가 아직 포함되지 않았다" 문구를 출력하지 않는다 (직전 STEP
+    // 까지의 기본 문구와 본 STEP 의 [구성종목/중복 노출] 섹션이 자기모순).
+    lines.push(
+      "이 입력은 ETF명/수익률 + 시장 국면 + 후보 구성종목/중복률을 묶은 해석 요청문입니다.",
+    );
+    lines.push(
+      "구성종목 데이터는 수집된 시점의 스냅샷이며 모든 후보가 포함되지 않을 수 있습니다.",
+    );
+    lines.push(
+      "따라서 최종 투자 판단이 아니라 시장 흐름 해석과 독립 테마 vs 반복 노출 판단이 목적입니다.",
+    );
+  } else {
+    lines.push("이 입력은 ETF명과 기간별 수익률 기반의 1차 시장 해석용입니다.");
+    lines.push("ETF 구성 종목과 구성 비중 정보는 아직 포함되지 않았습니다.");
+    lines.push(
+      "따라서 최종 투자 판단이 아니라 시장 흐름 해석과 추가 확인 포인트 도출이 목적입니다.",
+    );
+  }
   lines.push("");
   lines.push("[후보 ETF]");
   if (input.candidates.length === 0) {
@@ -164,18 +254,45 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   appendMarketContextSection(lines, input.marketContext);
   lines.push("");
   appendCandidateStrengthSection(lines, input.candidates);
+  // 2026-05-27 — 구성종목/중복률 섹션 (지시문 §10). analysis 가 있을 때만 노출.
+  if (input.constituentsAnalysis) {
+    lines.push("");
+    appendConstituentsSection(lines, input.constituentsAnalysis);
+  }
   lines.push("");
   lines.push("[요청]");
-  lines.push(
-    "시스템의 시장 국면 판정과 KODEX200/KOSPI 대비 초과수익을 전제로,",
-  );
-  lines.push(
-    "이 후보들이 시장 전체 상승에 따라간 것인지, 독립적인 섹터/테마 강세인지 해석해주세요.",
-  );
-  lines.push("");
-  lines.push("매수/매도 추천은 하지 말고,");
-  lines.push(
-    "시스템 판정이 틀릴 수 있는 반대 근거와 추가 확인 포인트를 제시해주세요.",
-  );
+  if (input.constituentsAnalysis) {
+    // 구성종목 정보가 있을 때 — 독립 테마 vs 반복 노출 해석 요청 (지시문 §10).
+    lines.push(
+      "시스템의 시장 국면 판정, KODEX200 대비 초과수익,",
+    );
+    lines.push(
+      "그리고 ETF 구성종목/중복률을 전제로 해석해주세요.",
+    );
+    lines.push("");
+    lines.push(
+      "ETF명이 달라도 실제로 같은 종목 노출이 반복되는지,",
+    );
+    lines.push(
+      "독립적인 테마로 볼 수 있는 후보가 무엇인지,",
+    );
+    lines.push(
+      "구성종목 기준으로 반대 근거를 제시해주세요.",
+    );
+    lines.push("");
+    lines.push("매수/매도 추천은 하지 마세요.");
+  } else {
+    lines.push(
+      "시스템의 시장 국면 판정과 KODEX200/KOSPI 대비 초과수익을 전제로,",
+    );
+    lines.push(
+      "이 후보들이 시장 전체 상승에 따라간 것인지, 독립적인 섹터/테마 강세인지 해석해주세요.",
+    );
+    lines.push("");
+    lines.push("매수/매도 추천은 하지 말고,");
+    lines.push(
+      "시스템 판정이 틀릴 수 있는 반대 근거와 추가 확인 포인트를 제시해주세요.",
+    );
+  }
   return lines.join("\n");
 }

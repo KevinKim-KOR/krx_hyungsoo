@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-05-27
+작성일: 2026-05-20 / 갱신: 2026-05-27 (ETF Constituents & Overlap 1차)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,9 +10,26 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-05-27)
+## 1. 현재 최우선 작업 (2026-05-27 — ETF Constituents & Overlap 1차)
 
-### Market Regime & Benchmark Context 1차
+### ETF Constituents & Overlap 1차
+
+- 좌측 메뉴에 `ETF Exposure` 추가 (Market Discovery 와 화면 분리).
+- Market Discovery → ETF Exposure draft 전달 (sessionStorage Context Bridge).
+- pykrx PDF (`get_etf_portfolio_deposit_file`) 1차 fetcher + K6 방어 (10개
+  cap / cache-first / 0.5s delay / 30s budget / partial / unavailable).
+- POST /market/constituents/refresh + GET /market/constituents/analysis.
+- 집중도 (top 1/3/5/10) + 쌍별 중복률 (common_count_top10 +
+  weighted_overlap_pct = sum(min(left, right))) + 반복 등장 핵심 종목.
+- AI 투자세션 복사용 문구에 [구성종목 / 중복 노출] 섹션 + 새 요청 문구
+  (독립 테마 vs 반복 노출 판단).
+- AI Sessions Context Bridge / POST /decision/sessions / 상세 화면 모두에
+  `constituent_snapshot` / `overlap_snapshot` 영속화 (마이그레이션 포함).
+
+본 STEP 의 범위는 "실제 노출 구조 확인" 까지다. 매수/매도 판단 / 리밸런싱 /
+NAV / 유동성 점수화는 본 STEP 의 작업이 아니다.
+
+### (이전) Market Regime & Benchmark Context 1차
 
 - 시스템이 KODEX200 (필수) / KOSPI (보조) 기준으로 **1차 시장 국면 판정** 산출.
 - 라벨: 상승장 / 보합장 / 하락장 / 판정불가 (regime_code: bull / neutral /
@@ -44,10 +61,7 @@ ML 연결 / 매수·매도 판단은 본 STEP 의 작업이 아니다.
    - 본 1차는 단순 점수 합산. 다음 단계 후보: 변동성 / 시장 폭 (advance-decline) /
      장기 추세 / 외인·기관 수급 등을 점수에 반영해 라벨 신뢰도 향상.
    - 운영 데이터로 1차 판정의 적중률을 검증한 뒤 진행.
-2. **ETF 구성 종목 / 중복률**
-   - 본 STEP 종료 후 가장 강한 BACKLOG (직전 복사용 문구 STEP 에서 명시).
-   - AI 의 시장 해석 품질이 ETF 명만으로는 얕다고 판단할 때.
-3. **NAV / 괴리율 / 유동성**
+2. **NAV / 괴리율 / 유동성**
    - 종목 선정 단계 진입 시 필요. ETF 가격이 NAV 와 얼마나 떨어져 있는지,
      거래량이 충분한지.
 4. **AI 투자세션 결과 기반 개선**
