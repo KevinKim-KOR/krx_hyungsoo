@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-05-27 (ETF Constituents & Overlap 1차)
+작성일: 2026-05-20 / 갱신: 2026-05-31 (ETF Constituents Source Diagnosis 1차)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,9 +10,26 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-05-27 — ETF Constituents & Overlap 1차)
+## 1. 현재 최우선 작업 (2026-05-31 — Source Diagnosis 결과 후속)
 
-### ETF Constituents & Overlap 1차
+### 다음 STEP 후보: C. KRX Open API / Official Provider Source Design
+
+**실측 근거** (2026-05-31 Source Diagnosis 1차):
+- pykrx `get_etf_portfolio_deposit_file` — 3 ETF × 5 날짜 = 15 호출 모두
+  `no_data` (예외 0건, df 0 rows). **pykrx_operational_issue** 분류. **hold**.
+- Naver Mobile ETF Component API — 3 ETF 모두 HTTP 404. **unusable**.
+- 지시문 §21.C: "Naver Mobile API 사용 불가 + pykrx 사용 불가" → KRX Open API
+  설계 후속 후보.
+
+본 다음 STEP 의 범위 (지시문 §8 / §21.C):
+- KRX Open API 인증키 필요 여부 확인.
+- 호출 한도 / 응답 구조 / ETF 별 커버리지 / 구성종목 비중 제공 여부.
+- K6 방어 가능 여부 (기존 service 의 10개 cap / 0.5s delay / 30s budget /
+  partial / unavailable 정책에 fit 하는지).
+- 인증키 활성화 대기 동안에는 ETF Exposure 메뉴를 사용 불가 상태로 인벤토리
+  명시 (`docs/handoff/POC2_FEATURE_INVENTORY.md` §2.10~12).
+
+### (이전) ETF Constituents & Overlap 1차
 
 - 좌측 메뉴에 `ETF Exposure` 추가 (Market Discovery 와 화면 분리).
 - Market Discovery → ETF Exposure draft 전달 (sessionStorage Context Bridge).

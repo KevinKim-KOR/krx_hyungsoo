@@ -1,0 +1,220 @@
+{
+  "executed_at": "2026-05-31T13:37:04Z",
+  "pykrx": {
+    "source": "pykrx/get_etf_portfolio_deposit_file",
+    "total_calls": 15,
+    "ok_count": 0,
+    "no_data_count": 15,
+    "call_failed_count": 0,
+    "import_failed_count": 0,
+    "classification": "pykrx_operational_issue",
+    "pdf_decision": "hold",
+    "details": [
+      {
+        "ticker": "069500",
+        "ticker_label": "대표 시장 (KODEX 200)",
+        "asof": "2026-05-27",
+        "asof_label": "현재 asof (수)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "069500",
+        "ticker_label": "대표 시장 (KODEX 200)",
+        "asof": "2026-05-26",
+        "asof_label": "직전 영업일 (화)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "069500",
+        "ticker_label": "대표 시장 (KODEX 200)",
+        "asof": "2026-05-15",
+        "asof_label": "과거 확실한 영업일 (금)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "069500",
+        "ticker_label": "대표 시장 (KODEX 200)",
+        "asof": "2026-04-30",
+        "asof_label": "최근 월말 (분기말 인근)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "069500",
+        "ticker_label": "대표 시장 (KODEX 200)",
+        "asof": "2026-03-31",
+        "asof_label": "분기말 (1Q)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "139260",
+        "ticker_label": "국내 섹터 (TIGER 200 IT)",
+        "asof": "2026-05-27",
+        "asof_label": "현재 asof (수)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "139260",
+        "ticker_label": "국내 섹터 (TIGER 200 IT)",
+        "asof": "2026-05-26",
+        "asof_label": "직전 영업일 (화)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "139260",
+        "ticker_label": "국내 섹터 (TIGER 200 IT)",
+        "asof": "2026-05-15",
+        "asof_label": "과거 확실한 영업일 (금)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "139260",
+        "ticker_label": "국내 섹터 (TIGER 200 IT)",
+        "asof": "2026-04-30",
+        "asof_label": "최근 월말 (분기말 인근)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "139260",
+        "ticker_label": "국내 섹터 (TIGER 200 IT)",
+        "asof": "2026-03-31",
+        "asof_label": "분기말 (1Q)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "411420",
+        "ticker_label": "테마/해외형 (Market Discovery 후보)",
+        "asof": "2026-05-27",
+        "asof_label": "현재 asof (수)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "411420",
+        "ticker_label": "테마/해외형 (Market Discovery 후보)",
+        "asof": "2026-05-26",
+        "asof_label": "직전 영업일 (화)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "411420",
+        "ticker_label": "테마/해외형 (Market Discovery 후보)",
+        "asof": "2026-05-15",
+        "asof_label": "과거 확실한 영업일 (금)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "411420",
+        "ticker_label": "테마/해외형 (Market Discovery 후보)",
+        "asof": "2026-04-30",
+        "asof_label": "최근 월말 (분기말 인근)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      },
+      {
+        "ticker": "411420",
+        "ticker_label": "테마/해외형 (Market Discovery 후보)",
+        "asof": "2026-03-31",
+        "asof_label": "분기말 (1Q)",
+        "status": "no_data",
+        "row_count": 0,
+        "columns": [],
+        "error": null
+      }
+    ]
+  },
+  "naver": {
+    "source": "naver_mobile_etf_component",
+    "total_calls": 3,
+    "operational_classification": "unusable",
+    "asof_field_candidates_found": [],
+    "details": [
+      {
+        "ticker": "069500",
+        "ticker_label": "대표 시장 (KODEX 200)",
+        "url": "https://m.stock.naver.com/api/etf/069500/component",
+        "http_status": 404,
+        "is_json": false,
+        "json_keys": [],
+        "row_count": 0,
+        "sample_item_keys": [],
+        "sample_item": null,
+        "error": "HTTPError: HTTP Error 404: 404",
+        "detected_code_field": null,
+        "detected_name_field": null,
+        "detected_weight_field": null
+      },
+      {
+        "ticker": "139260",
+        "ticker_label": "국내 섹터 (TIGER 200 IT)",
+        "url": "https://m.stock.naver.com/api/etf/139260/component",
+        "http_status": 404,
+        "is_json": false,
+        "json_keys": [],
+        "row_count": 0,
+        "sample_item_keys": [],
+        "sample_item": null,
+        "error": "HTTPError: HTTP Error 404: 404",
+        "detected_code_field": null,
+        "detected_name_field": null,
+        "detected_weight_field": null
+      },
+      {
+        "ticker": "411420",
+        "ticker_label": "테마/해외형 (Market Discovery 후보)",
+        "url": "https://m.stock.naver.com/api/etf/411420/component",
+        "http_status": 404,
+        "is_json": false,
+        "json_keys": [],
+        "row_count": 0,
+        "sample_item_keys": [],
+        "sample_item": null,
+        "error": "HTTPError: HTTP Error 404: 404",
+        "detected_code_field": null,
+        "detected_name_field": null,
+        "detected_weight_field": null
+      }
+    ]
+  },
+  "krx_open_api_needed_next": true,
+  "next_step_candidate": "C. KRX Open API / Official Provider Source Design"
+}

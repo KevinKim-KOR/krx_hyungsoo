@@ -1,10 +1,76 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-27
+최종 업데이트: 2026-05-31
 
 ---
 
-## 0. 현재 상태 — 2026-05-27 ETF Constituents & Overlap 1차
+## 0. 현재 상태 — 2026-05-31 ETF Constituents Source Diagnosis 1차
+
+```text
+현재 단계: ETF Constituents Source Diagnosis 1차 (2026-05-31)
+  — pykrx PDF no_data 원인 격리 + Naver Mobile API smoke test + 기능 인벤토리
+이전 단계: ETF Constituents & Overlap 1차 (2026-05-27)
+다음 단계 후보 (실측 기반 자동 선정):
+  C. KRX Open API / Official Provider Source Design
+  (pykrx + Naver 모두 unusable — 지시문 §21.C)
+```
+
+### 본 STEP 요약
+
+- **방향 (지시문 §3)**: ETF 구성종목 수집 실패 원인을 단계적으로 격리하고
+  Naver Mobile API 를 실전 후보 source 로 검증. **기능 대규모 재구현 X**.
+- **진단 script 신규**: `scripts/diagnose_constituents_source.py` (455 라인).
+  - pykrx PDF (3 ETF × 5 날짜 = 15 호출) — `069500` / `139260` / `411420`
+    × `2026-05-27 / 05-26 / 05-15 / 04-30 / 03-31`.
+  - Naver Mobile API (3 ETF × 1 호출 = 3 호출) —
+    `m.stock.naver.com/api/etf/<ticker>/component`.
+  - 결과 분류 → JSON artifact + Markdown 리포트 자동 생성.
+- **실측 결과**:
+  - **pykrx**: 15 호출 모두 `no_data` (예외 0건, df 0 rows). 함수는 호출되나
+    KRX PDF 페이지가 비어있음. → **pykrx_operational_issue** 분류. **hold**.
+  - **Naver Mobile API**: 3 ETF 모두 **HTTP 404**. URL 패턴이 더 이상 유효 X.
+    → **unusable**.
+  - **다음 단계 자동 선정**: **C. KRX Open API / Official Provider Source
+    Design** (지시문 §21.C — 두 source 모두 unusable).
+- **artifact**:
+  - `state/market/constituents_source_diagnosis_latest.json` — 실측 raw data.
+  - `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 사람이 읽는 리포트.
+- **기능 인벤토리 신규**: `docs/handoff/POC2_FEATURE_INVENTORY.md` (지시문
+  §11). 15개 기능 + 3 Context Bridge 모두 누락 없이 기록. ETF Exposure /
+  Constituents Refresh / Overlap Analysis 3 기능은 **사용 불가 (테스트용)**
+  로 정직 기록.
+- **코드 변경 0** (지시문 §9): 기존 ETF Exposure / API / store / fetcher /
+  analysis / Decision Evidence 흐름 모두 그대로. 진단 script 만 추가.
+- **검증**: pytest 315 passed (변동 0) / black PASS / flake8 PASS / frontend
+  lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0. `scripts/diagnose_constituents_source.py` 455
+  라인 — `scripts/` 디렉토리이고 본 모듈은 단발성 진단이라 KS-10 컴포넌트
+  기준 미해당. 750+ 미달.
+
+### 신규 / 수정 파일
+
+신규:
+- `scripts/diagnose_constituents_source.py` (455) — 진단 script.
+- `state/market/constituents_source_diagnosis_latest.json` — 실측 raw.
+- `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 진단 리포트.
+- `docs/handoff/POC2_FEATURE_INVENTORY.md` — 기능 인벤토리.
+
+수정:
+- `docs/handoff/STATE_LATEST.md` (본 §0).
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (다음 STEP 후보 C 확정).
+- `docs/backlog/BACKLOG.md` (ETF 구성종목 source 후보 항목 보강).
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §14)
+
+- KRX Open API 즉시 전환 / 운용사별 크롤러 구현.
+- ETF Exposure UI 대개편 / 운영 UI 전면 재설계.
+- 전체 ETF universe 구성종목 수집.
+- 구성종목 추정 / AI 에게 물어서 보완 / source 불명 ok 처리.
+- NAV / 괴리율 / 거래대금 / 변동성 / ML / 매수·매도 판단.
+
+---
+
+## 0.1 직전 상태 — 2026-05-27 ETF Constituents & Overlap 1차
 
 ```text
 현재 단계: ETF Constituents & Overlap 1차 (2026-05-27)
