@@ -165,14 +165,23 @@ export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props)
                       </tr>
                     </thead>
                     <tbody>
-                      {c.top_holdings.map((h) => (
-                        <tr key={`${c.etf_ticker}-${h.rank}`}>
-                          <td>{h.rank}</td>
-                          <td>{h.ticker ? <code>{h.ticker}</code> : DASH}</td>
-                          <td>{h.name ?? DASH}</td>
-                          <td style={{ textAlign: "right" }}>{fmtPct(h.weight_pct)}</td>
-                        </tr>
-                      ))}
+                      {c.top_holdings.map((h) => {
+                        // 2026-05-31 — Naver 통합. 해외형 종목 (ticker=null) 은
+                        // reuters code 또는 ISIN 으로 식별 노출.
+                        const displayId =
+                          h.ticker ||
+                          h.constituent_reuters_code ||
+                          h.constituent_isin ||
+                          null;
+                        return (
+                          <tr key={`${c.etf_ticker}-${h.rank}`}>
+                            <td>{h.rank}</td>
+                            <td>{displayId ? <code>{displayId}</code> : DASH}</td>
+                            <td>{h.name ?? DASH}</td>
+                            <td style={{ textAlign: "right" }}>{fmtPct(h.weight_pct)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </>

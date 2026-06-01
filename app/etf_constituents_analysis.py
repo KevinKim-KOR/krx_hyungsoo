@@ -43,9 +43,22 @@ def _normalize_name(name: Optional[str]) -> str:
 
 
 def _match_key(c: ConstituentRow) -> str:
-    """ticker 우선, 없으면 정규화된 name. 둘 다 없으면 빈 문자열."""
+    """매칭 키 우선순위 (2026-05-31 Naver 통합으로 확장, 지시문 §11.2):
+    1. constituent_key (Naver fetcher 가 미리 결정한 1차 키 — ticker / reuters /
+       isin / name 우선순위 반영).
+    2. constituent_ticker (국내 종목 ticker).
+    3. constituent_reuters_code (해외 종목 reuters code).
+    4. constituent_isin (해외 종목 ISIN).
+    5. 정규화된 constituent_name.
+    """
+    if c.constituent_key and c.constituent_key.strip():
+        return f"K:{c.constituent_key.strip()}"
     if c.constituent_ticker and c.constituent_ticker.strip():
         return f"T:{c.constituent_ticker.strip()}"
+    if c.constituent_reuters_code and c.constituent_reuters_code.strip():
+        return f"R:{c.constituent_reuters_code.strip()}"
+    if c.constituent_isin and c.constituent_isin.strip():
+        return f"I:{c.constituent_isin.strip()}"
     return f"N:{_normalize_name(c.constituent_name)}"
 
 
@@ -87,8 +100,9 @@ def compute_pair_overlap(
     left_map = {_match_key(c): c for c in left_top}
     right_map = {_match_key(c): c for c in right_top}
     common_keys = set(left_map.keys()) & set(right_map.keys())
-    common_keys.discard("T:")
-    common_keys.discard("N:")
+    # 빈 prefix-only 키는 무효 (Naver 통합 prefix 까지 모두 제거).
+    for empty in ("K:", "T:", "R:", "I:", "N:"):
+        common_keys.discard(empty)
     common_holdings: list[dict] = []
     weighted_sum = 0.0
     has_any_weight = False
@@ -131,7 +145,7 @@ def compute_repeated_core_holdings(
     for etf_ticker, rows in per_ticker_rows.items():
         for c in rows[:top_k]:
             k = _match_key(c)
-            if k in ("T:", "N:"):
+            if k in ("K:", "T:", "R:", "I:", "N:"):
                 continue
             if k not in agg:
                 agg[k] = {
@@ -208,6 +222,10 @@ def compute_analysis(
                 "ticker": r.constituent_ticker,
                 "name": r.constituent_name,
                 "weight_pct": r.weight_pct,
+                # 2026-05-31 — Naver 통합. 해외형 종목 식별자 노출.
+                "constituent_isin": r.constituent_isin,
+                "constituent_reuters_code": r.constituent_reuters_code,
+                "market_type": r.market_type,
             }
             for r in rows[:top_k]
         ]

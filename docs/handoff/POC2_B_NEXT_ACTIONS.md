@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-05-31 (ETF Constituents Source Diagnosis 1차)
+작성일: 2026-05-20 / 갱신: 2026-05-31 (Naver Stock ETFComponent 1차 채택)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,9 +10,20 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-05-31 — Source Diagnosis 결과 후속)
+## 1. 현재 최우선 작업 (2026-05-31 — Naver Stock ETFComponent 1차 채택 완료)
 
-### 다음 STEP 후보: C. KRX Open API / Official Provider Source Design
+### ETF Constituents Naver Source Integration (DONE)
+
+- `naver_stock_etf_component` 를 1차 source 로 채택. service 의 cache key 도
+  새 source 매칭.
+- DB 스키마 4 컬럼 확장 + 자동 마이그레이션 (직전 STEP DB 호환).
+- 해외형 ETF (`componentItemCode=null`) 도 `componentReutersCode` /
+  `componentIsinCode` 보존 + 매칭 키 우선순위 확장 (constituent_key → ticker →
+  reuters → ISIN → name).
+- ETF Exposure / 구성종목 Refresh / 중복률 / AI 문구 [구성종목/중복 노출] 섹션
+  모두 사용 가능 으로 전환 (POC2_FEATURE_INVENTORY 반영).
+
+### 다음 후보 (참고만): C. KRX Open API / Official Provider Source Design (기존)
 
 **실측 근거** (2026-05-31 Source Diagnosis 1차):
 - pykrx `get_etf_portfolio_deposit_file` — 3 ETF × 5 날짜 = 15 호출 모두

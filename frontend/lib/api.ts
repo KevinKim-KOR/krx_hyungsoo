@@ -826,6 +826,11 @@ export interface TopHolding {
   ticker?: string | null;
   name?: string | null;
   weight_pct?: number | null;
+  // 2026-05-31 — Naver Stock ETFComponent 통합. 해외형 종목은 ticker=null + 아래
+  // 필드 중 1개 이상으로 식별.
+  constituent_isin?: string | null;
+  constituent_reuters_code?: string | null;
+  market_type?: string | null;
 }
 
 export interface Concentration {

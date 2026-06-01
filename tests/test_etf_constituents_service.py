@@ -23,7 +23,7 @@ from app.etf_constituents_service import (
 from app.etf_constituents_store import fetch_constituents
 
 
-def _ok_fetcher(*, source: str = "pykrx/get_etf_portfolio_deposit_file"):
+def _ok_fetcher(*, source: str = "naver_stock_etf_component"):
     def fn(ticker, asof, top_k):  # noqa: ARG001
         return FetchResult(
             status="ok",

@@ -33,9 +33,9 @@ def api_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
 
 
 def _seed_two_etfs_in_db(db: Path):
-    # 2026-05-27 FIX (검증자 B-6 NOTE 후속) — cache hit 검증을 위해 PYKRX_SOURCE
-    # 와 일치하는 source 로 시드. service 의 cache check 가 PYKRX_SOURCE 매칭.
-    from app.etf_constituents_fetcher import PYKRX_SOURCE
+    # 2026-05-31 — service 의 cache check 가 NAVER_STOCK_SOURCE 매칭으로 교체
+    # (Naver Stock ETFComponent 1차 채택). 시드 source 도 동일하게.
+    from app.etf_constituents_fetcher import NAVER_STOCK_SOURCE as PYKRX_SOURCE
 
     upsert_constituents(
         [
@@ -191,15 +191,15 @@ def test_get_analysis_asof_optional_falls_back_to_today_when_no_data(api_client)
     assert body["coverage"]["unavailable_count"] == 2
 
 
-def test_refresh_cache_first_matches_pykrx_source(
+def test_refresh_cache_first_matches_naver_source(
     api_client, monkeypatch: pytest.MonkeyPatch
 ):
-    """2026-05-27 FIX (검증자 B-6 NOTE) — cache key 가 ticker+asof+source 일치
-    매칭. PYKRX_SOURCE 와 다른 source 의 캐시는 hit 처리되지 않는다.
+    """2026-05-31 — cache key 가 ticker+asof+source 일치 매칭. 본 STEP 부터
+    expected_source 가 NAVER_STOCK_SOURCE 라, 다른 source 의 캐시는 hit 안 됨.
     """
     from app import etf_constituents_store as store
 
-    # 다른 source 로 시드 (예: "src" — pykrx 와 다름).
+    # 다른 source 로 시드 (예: "src" — naver 와 다름).
     upsert_constituents(
         [ConstituentRow("139260", "2026-05-26", "src", 1, "005930", "삼성전자", 25.0)],
         db_path=store.DEFAULT_DB_PATH,
@@ -211,13 +211,13 @@ def test_refresh_cache_first_matches_pykrx_source(
         from app.etf_constituents_fetcher import (
             FetchedConstituent,
             FetchResult,
-            PYKRX_SOURCE,
+            NAVER_STOCK_SOURCE,
         )
 
         called.append(ticker)
         return FetchResult(
             status="ok",
-            source=PYKRX_SOURCE,
+            source=NAVER_STOCK_SOURCE,
             constituents=[
                 FetchedConstituent(
                     rank=1,

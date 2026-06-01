@@ -21,7 +21,7 @@ from typing import Callable, Optional
 from app.etf_constituents_fetcher import (
     FetcherFn,
     FetchResult,
-    PYKRX_SOURCE,
+    NAVER_STOCK_SOURCE,
     default_fetcher,
 )
 from app.etf_constituents_store import (
@@ -134,10 +134,10 @@ def refresh_constituents(
     source_seen: Optional[str] = None
     is_first_external = True
 
-    # 2026-05-27 FIX (검증자 B-6 NOTE 반영) — cache key 는 ticker+asof+source.
-    # 1차에는 단일 fetcher (pykrx PDF) 라 PYKRX_SOURCE 명시 매칭. 향후 다른
-    # fetcher 추가 시 service signature 에 expected_source 인자 추가 BACKLOG.
-    expected_source = PYKRX_SOURCE
+    # 2026-05-31 — Naver Stock ETFComponent 1차 채택 (직전 PYKRX_SOURCE 교체).
+    # cache key 일치성 (지시문 §4.3 ticker+asof+source) — 본 service 는 단일
+    # fetcher 기준으로 expected_source 를 NAVER_STOCK_SOURCE 로 명시 매칭.
+    expected_source = NAVER_STOCK_SOURCE
 
     for tk in tickers:
         if not force:
@@ -254,24 +254,40 @@ def refresh_constituents(
             fetched_count += 1
             continue
 
-        # upsert.
+        # 2026-05-31 — Naver 의 referenceDate 가 우선. 입력 asof 가 단순
+        # "오늘 기준 가져와줘" 의미였다면 응답의 referenceDate 를 신뢰한다
+        # (지시문 §6.1 — referenceDate → asof).
+        save_asof = result.effective_asof or asof
+
+        # constituent_key 빌드 (지시문 §6.3).
+        from app.etf_constituents_fetcher import _build_constituent_key
+
         rows = [
             ConstituentRow(
                 etf_ticker=tk,
-                asof=asof,
+                asof=save_asof,
                 source=result.source,
                 rank=c.rank,
                 constituent_ticker=c.constituent_ticker,
                 constituent_name=c.constituent_name,
                 weight_pct=c.weight_pct,
                 etf_name=result.etf_name,
+                constituent_key=_build_constituent_key(
+                    c.constituent_ticker,
+                    c.constituent_reuters_code,
+                    c.constituent_isin,
+                    c.constituent_name,
+                ),
+                constituent_isin=c.constituent_isin,
+                constituent_reuters_code=c.constituent_reuters_code,
+                market_type=c.market_type,
             )
             for c in result.constituents
         ]
         upsert_constituents(rows, db_path=db_path)
         log_constituent_refresh(
             etf_ticker=tk,
-            asof=asof,
+            asof=save_asof,
             status="ok",
             source=result.source,
             message=None,

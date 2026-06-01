@@ -4,7 +4,108 @@
 
 ---
 
-## 0. 현재 상태 — 2026-05-31 ETF Constituents Source Diagnosis 1차
+## 0. 현재 상태 — 2026-05-31 ETF Constituents Naver Source Integration
+
+```text
+현재 단계: Naver Stock ETFComponent 를 1차 구성종목 source 로 채택
+  — 직전 smoke test 결과 (HTTP 200 / JSON list / 3 ETF PASS) 반영
+이전 단계: ETF Constituents Source Diagnosis 1차 (pykrx hold + 모바일 endpoint unusable)
+다음 단계 후보 (사용자 결정 대기):
+  - 운영 데이터 누적 후 fetcher 다변화 / fallback chain (BACKLOG)
+  - Data Status 실 연결 (기존 BACKLOG)
+```
+
+### 본 STEP 요약
+
+- **source 교체 (지시문 §4)**: 직전 STEP 의 진단 결과 (pykrx PDF hold + 기존
+  모바일 endpoint 404) 이후 새 endpoint 검증 (smoke test 통과) 완료. 본 STEP
+  에서 1차 source 로 채택.
+  - `default_fetcher()` 가 `naver_stock_etf_component_fetcher` 반환 (1차).
+  - service 의 `expected_source` = `NAVER_STOCK_SOURCE` 명시 cache 매칭.
+  - pykrx fetcher 함수는 모듈에 남아있음 (향후 chained fallback BACKLOG).
+- **신규 fetcher (지시문 §5~§6)**:
+  - URL: `https://stock.naver.com/api/domestic/detail/{ticker}/ETFComponent?startIdx=0&pageSize=20`
+  - 표준 브라우저 header (User-Agent / Accept / Accept-Language / Referer).
+  - 응답 list[dict] 파싱 → 비중 내림차순 → top_k 잘라내기.
+  - weight string → float 변환. 변환 불가 (`"-"` / None / 빈 문자열) item 은
+    저장 제외 (지시문 §6.1 — 0 임의 대체 금지).
+  - `referenceDate` → `FetchResult.effective_asof` 노출 → service 가 그 값으로
+    저장 + cache key.
+  - 국내 종목: `componentItemCode` → `constituent_ticker`.
+  - 해외 종목 (componentItemCode=null): `componentReutersCode` / `componentIsinCode`
+    별도 컬럼 보존 + `_build_constituent_key` 가 우선순위로 매칭 키 생성.
+- **DB 스키마 확장 (지시문 §7)**: `etf_constituents` 테이블에 4 컬럼 신규.
+  - `constituent_key` — 매칭 1차 키 (국내 ticker / 해외 reuters / ISIN / name).
+  - `constituent_isin` / `constituent_reuters_code` / `market_type`.
+  - `_migrate_add_naver_columns` 가 init 시 자동 ADD COLUMN — 직전 STEP DB
+    호환.
+- **매칭 보정 (지시문 §11.2)**: `analysis._match_key` 우선순위 확장 —
+  `constituent_key` → ticker → reuters → ISIN → 정규화 name. 해외형 ETF 의
+  중복률 분석이 가능해짐. 신규 테스트 `test_analysis_matches_overseas_via_reuters_code`
+  로 검증.
+- **K6 방어 정책 (지시문 §9) 유지**: hard cap 10 / cache-first / 0.5s delay /
+  30s budget / partial / unavailable 모두 그대로. source 만 교체.
+- **Frontend (지시문 §10)**: UI 대개편 없음.
+  - `api.ts` 의 `TopHolding` 에 `constituent_isin` / `constituent_reuters_code`
+    / `market_type` optional 추가.
+  - `ConstituentsTab.tsx` 의 holdings 행이 ticker 없으면 reuters 또는 ISIN
+    표시 (해외 종목 식별).
+- **AI 문구 / AI Sessions snapshot (지시문 §12 / §13)**: 기존 흐름 그대로 동작.
+  실 데이터 들어오면 자동 노출.
+- **검증**: pytest 327 passed (315 → 327, +12 신규 / 회귀 0) / black PASS /
+  flake8 PASS / frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0.
+  - 백엔드 핵심 모듈 최대 `app/market_topn.py` 590 (기존, 본 STEP 미변경).
+  - 신규 fetcher 추가로 `etf_constituents_fetcher.py` 161 → 388 (+227 신규
+    함수). near 600 까지 212 라인 여유.
+  - `app/etf_constituents_service.py` 326 / `etf_constituents_store.py` 282 /
+    `etf_constituents_analysis.py` 279.
+  - 신규 tests: `test_etf_constituents_naver_fetcher.py` 191 /
+    `test_etf_constituents_naver_integration.py` 228.
+  - 프론트 컴포넌트 최대 `MarketDiscoveryView.tsx` 705 (기존).
+  - 750+ 보고: `tests/test_holdings_message_text.py` 924 (기존) /
+    `frontend/lib/api.ts` 925 (920 → 925, 본 STEP +5).
+
+### 신규 / 수정 파일
+
+신규:
+- `tests/test_etf_constituents_naver_fetcher.py` (191) — Naver fetcher 단위
+  테스트 8건 (HTTP 200/404 / parsing / weight 변환 / top_k / key 우선순위).
+- `tests/test_etf_constituents_naver_integration.py` (228) — service + store
+  + analysis 통합 4건 (effective_asof / 해외형 reuters / 매칭 / 마이그레이션).
+
+수정:
+- `app/etf_constituents_fetcher.py` — Naver fetcher 함수 + NAVER_STOCK_SOURCE
+  상수 + FetchResult.effective_asof + FetchedConstituent 의 isin/reuters/
+  market_type 필드 + helper 2개 + default_fetcher 교체.
+- `app/etf_constituents_store.py` — DDL 4 컬럼 + ConstituentRow 4 필드 +
+  자동 마이그레이션 + upsert/fetch SQL 갱신.
+- `app/etf_constituents_service.py` — expected_source = NAVER_STOCK_SOURCE +
+  effective_asof 우선 저장 + constituent_key 빌드 + 4 컬럼 전달.
+- `app/etf_constituents_analysis.py` — _match_key 우선순위 확장 (5 단계) +
+  빈 prefix-only 키 제외 + analysis 응답에 isin/reuters/market_type 노출.
+- `app/api_etf_constituents.py` — TopHolding Pydantic 모델 확장.
+- `frontend/lib/api.ts` — TopHolding interface 확장.
+- `frontend/app/components/ConstituentsTab.tsx` — 표시 식별자 fallback
+  (ticker → reuters → ISIN).
+- `tests/test_etf_constituents_service.py` + `tests/test_etf_constituents_api.py`
+  — source 상수 갱신 (PYKRX → NAVER).
+- `docs/handoff/POC2_FEATURE_INVENTORY.md` — ETF Exposure / Refresh / Overlap
+  3 기능을 사용 가능으로 전환 + AI 문구 부분 가능 → 사용 가능.
+- `docs/handoff/STATE_LATEST.md` (본 §0).
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (최우선 작업 = Naver 통합 완료).
+- `docs/backlog/BACKLOG.md` (ETF 구성종목 source 항목 update).
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §17)
+
+- KRX Open API 즉시 전환 / 운용사별 크롤러 / 전체 universe 수집.
+- ETF Exposure UI 대개편 / 운영 UI 전면 재설계.
+- NAV / 괴리율 / 거래대금 / 변동성 / ML / 매수·매도 판단.
+- 구성종목 임의 추정 / AI 보완 / source 불명 ok 처리.
+
+---
+
+## 0.1 직전 상태 — 2026-05-31 ETF Constituents Source Diagnosis 1차
 
 ```text
 현재 단계: ETF Constituents Source Diagnosis 1차 (2026-05-31)

@@ -118,6 +118,10 @@ class TopHolding(BaseModel):
     ticker: Optional[str] = None
     name: Optional[str] = None
     weight_pct: Optional[float] = None
+    # 2026-05-31 — Naver 통합. 해외형 종목은 ticker=null, 아래 식별자가 채워짐.
+    constituent_isin: Optional[str] = None
+    constituent_reuters_code: Optional[str] = None
+    market_type: Optional[str] = None
 
 
 class Concentration(BaseModel):

@@ -25,15 +25,19 @@ from app.market_data_store import DEFAULT_DB_PATH
 
 ETF_CONSTITUENTS_DDL = """
 CREATE TABLE IF NOT EXISTS etf_constituents (
-    etf_ticker         TEXT NOT NULL,
-    asof               TEXT NOT NULL,
-    source             TEXT NOT NULL,
-    rank               INTEGER NOT NULL,
-    constituent_ticker TEXT,
-    constituent_name   TEXT,
-    weight_pct         REAL,
-    etf_name           TEXT,
-    created_at         TEXT NOT NULL,
+    etf_ticker               TEXT NOT NULL,
+    asof                     TEXT NOT NULL,
+    source                   TEXT NOT NULL,
+    rank                     INTEGER NOT NULL,
+    constituent_ticker       TEXT,
+    constituent_name         TEXT,
+    weight_pct               REAL,
+    etf_name                 TEXT,
+    constituent_key          TEXT,
+    constituent_isin         TEXT,
+    constituent_reuters_code TEXT,
+    market_type              TEXT,
+    created_at               TEXT NOT NULL,
     PRIMARY KEY (etf_ticker, asof, source, rank)
 );
 """.strip()
@@ -61,6 +65,13 @@ class ConstituentRow:
     constituent_name: Optional[str]
     weight_pct: Optional[float]
     etf_name: Optional[str] = None
+    # 2026-05-31 — Naver Stock ETFComponent 통합 (지시문 §7).
+    # constituent_key: 매칭 1차 키 (국내 ticker / 해외 reuters / ISIN /
+    # normalized name 중 최우선 존재값). analysis._match_key 의 입력.
+    constituent_key: Optional[str] = None
+    constituent_isin: Optional[str] = None
+    constituent_reuters_code: Optional[str] = None
+    market_type: Optional[str] = None
 
 
 def _utcnow_iso() -> str:
@@ -69,12 +80,40 @@ def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
+def _migrate_add_naver_columns(con: sqlite3.Connection) -> None:
+    """2026-05-31 — Naver Stock ETFComponent 통합으로 4 컬럼 추가.
+
+    이전 STEP 의 DB (constituent_key 등 없음) 에 대해 init_constituents_db
+    호출 시점에 자동 ALTER TABLE ADD COLUMN. 각 컬럼 누락 시에만 추가.
+    """
+    cur = con.execute("PRAGMA table_info(etf_constituents)")
+    cols = {row[1] for row in cur.fetchall()}
+    if not cols:
+        return
+    for new_col in (
+        ("constituent_key", "TEXT"),
+        ("constituent_isin", "TEXT"),
+        ("constituent_reuters_code", "TEXT"),
+        ("market_type", "TEXT"),
+    ):
+        if new_col[0] not in cols:
+            con.execute(
+                f"ALTER TABLE etf_constituents ADD COLUMN {new_col[0]} {new_col[1]}"
+            )
+
+
 def init_constituents_db(db_path: Path = DEFAULT_DB_PATH) -> None:
-    """2개 신규 테이블 보장. market_data_store.init_db 와 동일 DB 파일."""
+    """2개 신규 테이블 보장 + Naver source 통합 마이그레이션.
+
+    마이그레이션 순서:
+    1. CREATE TABLE IF NOT EXISTS (신규 4 컬럼 포함) — 신규 DB.
+    2. _migrate_add_naver_columns — 기존 DB 자동 컬럼 추가 (POC2 2026-05-31).
+    """
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(str(db_path)) as con:
         con.execute(ETF_CONSTITUENTS_DDL)
         con.execute(ETF_CONSTITUENT_REFRESH_LOG_DDL)
+        _migrate_add_naver_columns(con)
         con.commit()
 
 
@@ -111,7 +150,11 @@ def upsert_constituents(
     *,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> int:
-    """ConstituentRow 들을 (etf_ticker, asof, source, rank) PK 기준 upsert."""
+    """ConstituentRow 들을 (etf_ticker, asof, source, rank) PK 기준 upsert.
+
+    2026-05-31 — constituent_key / isin / reuters_code / market_type 4 컬럼
+    추가 영속화 (Naver Stock ETFComponent 통합).
+    """
     now = _utcnow_iso()
     payload = [
         (
@@ -123,6 +166,10 @@ def upsert_constituents(
             r.constituent_name,
             r.weight_pct,
             r.etf_name,
+            r.constituent_key,
+            r.constituent_isin,
+            r.constituent_reuters_code,
+            r.market_type,
             now,
         )
         for r in rows
@@ -132,18 +179,30 @@ def upsert_constituents(
     sql = """
     INSERT INTO etf_constituents
         (etf_ticker, asof, source, rank, constituent_ticker, constituent_name,
-         weight_pct, etf_name, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         weight_pct, etf_name, constituent_key, constituent_isin,
+         constituent_reuters_code, market_type, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(etf_ticker, asof, source, rank) DO UPDATE SET
         constituent_ticker = excluded.constituent_ticker,
         constituent_name = excluded.constituent_name,
         weight_pct = excluded.weight_pct,
         etf_name = excluded.etf_name,
+        constituent_key = excluded.constituent_key,
+        constituent_isin = excluded.constituent_isin,
+        constituent_reuters_code = excluded.constituent_reuters_code,
+        market_type = excluded.market_type,
         created_at = excluded.created_at
     """
     with _connection(db_path) as con:
         con.executemany(sql, payload)
     return len(payload)
+
+
+_FETCH_COLUMNS = (
+    "etf_ticker, asof, source, rank, constituent_ticker, constituent_name, "
+    "weight_pct, etf_name, constituent_key, constituent_isin, "
+    "constituent_reuters_code, market_type"
+)
 
 
 def fetch_constituents(
@@ -157,16 +216,14 @@ def fetch_constituents(
     with _connection(db_path) as con:
         if source is None:
             cur = con.execute(
-                "SELECT etf_ticker, asof, source, rank, constituent_ticker, "
-                "constituent_name, weight_pct, etf_name "
+                f"SELECT {_FETCH_COLUMNS} "
                 "FROM etf_constituents WHERE etf_ticker = ? AND asof = ? "
                 "ORDER BY rank ASC",
                 (etf_ticker, asof),
             )
         else:
             cur = con.execute(
-                "SELECT etf_ticker, asof, source, rank, constituent_ticker, "
-                "constituent_name, weight_pct, etf_name "
+                f"SELECT {_FETCH_COLUMNS} "
                 "FROM etf_constituents WHERE etf_ticker = ? AND asof = ? "
                 "AND source = ? ORDER BY rank ASC",
                 (etf_ticker, asof, source),
@@ -181,6 +238,10 @@ def fetch_constituents(
                 constituent_name=r[5],
                 weight_pct=r[6],
                 etf_name=r[7],
+                constituent_key=r[8],
+                constituent_isin=r[9],
+                constituent_reuters_code=r[10],
+                market_type=r[11],
             )
             for r in cur.fetchall()
         ]

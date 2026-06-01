@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27
+작성일: 2026-05-27 / 갱신: 2026-05-31 (Naver Stock ETFComponent 1차 채택)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -94,11 +94,11 @@
 | 기능명 | 외부 AI 채널 (GPT/Gemini/Claude) 붙여넣기용 입력문 생성 |
 | 현재 메뉴 위치 | Market Discovery 화면 안 |
 | 기능 목적 | 시장 판정 + 후보 강도 + (선택) 구성종목/중복률 묶은 해석 요청문 |
-| 사용 가능 여부 | **부분 가능** |
-| 데이터 소스 상태 | 시장 판정 / 후보 강도 OK. 구성종목/중복률 섹션은 ETF Exposure 의 source 가 unusable 인 상태에서는 활용 못 함. |
+| 사용 가능 여부 | **사용 가능** (2026-05-31 Naver 통합 후) |
+| 데이터 소스 상태 | 시장 판정 + 후보 강도 + 구성종목/중복률 모두 활성화 |
 | 운영 UI 포함 여부 | 포함 |
 | 테스트용/임시 여부 | 아님 |
-| 다음 조치 | 구성종목 source 확보 시 자동 강화 |
+| 다음 조치 | 운영 데이터 누적 후 검증 |
 
 ### 2.7 AI Sessions — 새 기록 저장 탭
 
@@ -146,11 +146,11 @@
 | 기능명 | ETF 구성종목 + 중복률 분석 화면 |
 | 현재 메뉴 위치 | 좌측 3번 (Market Discovery 다음) |
 | 기능 목적 | 후보가 정말 다른 테마인지 / 같은 종목 반복인지 판단 |
-| 사용 가능 여부 | **사용 불가** |
-| 데이터 소스 상태 | **pykrx PDF no_data + Naver Mobile API HTTP 404 모두 운영 불가** (Source Diagnosis 1차 2026-05-27 결과) |
-| 운영 UI 포함 여부 | **보류** — 메뉴 노출은 유지하되 실제 분석 가치 없음 |
-| 테스트용/임시 여부 | **예** (사용자 운영 흐름에 그대로 노출하면 unavailable 안내만 보임) |
-| 다음 조치 | 다음 STEP 후보 **C. KRX Open API / Official Provider Source Design** |
+| 사용 가능 여부 | **사용 가능** (2026-05-31 Naver 통합 후) |
+| 데이터 소스 상태 | **`naver_stock_etf_component` 1차 채택** — 3 ETF smoke test PASS (HTTP 200, JSON list, 구성종목+비중+referenceDate). pykrx hold 유지. |
+| 운영 UI 포함 여부 | 포함 |
+| 테스트용/임시 여부 | 아님 |
+| 다음 조치 | 운영 데이터 누적 후 운영 검증 |
 
 ### 2.11 ETF Constituents Refresh (POST /market/constituents/refresh)
 
@@ -158,12 +158,12 @@
 |---|---|
 | 기능명 | 후보 ETF 구성종목 수집 API + K6 방어 (10개 cap / cache-first / 0.5s delay / 30s budget / partial / unavailable) |
 | 현재 메뉴 위치 | ETF Exposure 의 [구성종목] 탭 |
-| 기능 목적 | 외부 source 에서 상위 10 구성종목 + 비중 수집 |
-| 사용 가능 여부 | **사용 불가** |
-| 데이터 소스 상태 | pykrx fetcher unavailable (위 §2.10 동일) |
-| 운영 UI 포함 여부 | 보류 |
-| 테스트용/임시 여부 | 예 |
-| 다음 조치 | 새 source 확보 후 fetcher 추가 |
+| 기능 목적 | Naver Stock ETFComponent 에서 상위 구성종목 + 비중 수집 (해외형은 reuters_code / ISIN 보존) |
+| 사용 가능 여부 | **사용 가능** (2026-05-31 Naver 통합 후) |
+| 데이터 소스 상태 | `naver_stock_etf_component` (1차) / pykrx hold (fallback 후보) |
+| 운영 UI 포함 여부 | 포함 |
+| 테스트용/임시 여부 | 아님 |
+| 다음 조치 | 운영 데이터 누적 후 검증 |
 
 ### 2.12 ETF Overlap Analysis (GET /market/constituents/analysis)
 
@@ -171,12 +171,12 @@
 |---|---|
 | 기능명 | 집중도 (top 1/3/5/10) + 쌍별 중복률 + 반복 핵심 종목 |
 | 현재 메뉴 위치 | ETF Exposure 의 [중복률] 탭 |
-| 기능 목적 | ETF 간 중복 노출 정량 비교 |
-| 사용 가능 여부 | **사용 불가** |
-| 데이터 소스 상태 | 입력 (etf_constituents) 0 rows |
-| 운영 UI 포함 여부 | 보류 |
-| 테스트용/임시 여부 | 예 |
-| 다음 조치 | source 확보 후 자동 활성화 |
+| 기능 목적 | ETF 간 중복 노출 정량 비교 (해외형은 reuters_code / ISIN 기반 매칭) |
+| 사용 가능 여부 | **사용 가능** (2026-05-31 Naver 통합 후) |
+| 데이터 소스 상태 | etf_constituents 테이블 (Naver source 채워짐) |
+| 운영 UI 포함 여부 | 포함 |
+| 테스트용/임시 여부 | 아님 |
+| 다음 조치 | 운영 데이터 누적 후 검증 |
 
 ### 2.13 Holdings
 
@@ -256,10 +256,11 @@
 
 본 문서는 인벤토리이지 설계가 아니다. 단 명시적으로 드러난 사항만 기록.
 
-1. **ETF Exposure / 구성종목 Refresh / 중복률** 3 기능은 현재 **사용 불가** 상태. source 확보 전까지 운영 사용자에게 노출하면 unavailable 안내만 반복.
-2. **AI 투자세션 복사용 문구**의 [구성종목 / 중복 노출] 섹션은 source 가 unusable 인 동안 출력되지 않는다 (constituentsAnalysis null 분기). 자동 회피.
-3. **Data Status** placeholder — 실 연결은 별도 BACKLOG.
-4. 그 외 메뉴 모두 사용 가능.
+1. **ETF Exposure / 구성종목 Refresh / 중복률** 3 기능은 2026-05-31 Naver 통합으로 **사용 가능** 으로 전환. 운영 데이터 누적 후 검증 진행.
+2. **AI 투자세션 복사용 문구**의 [구성종목 / 중복 노출] 섹션은 실 데이터가 채워지면 자동 출력.
+3. **AI 투자세션 복사용 문구** (§2.6) 자동으로 **사용 가능** 으로 전환 (구성종목 데이터 흐름 활성화).
+4. **Data Status** placeholder — 실 연결은 별도 BACKLOG (이전 동일).
+5. 그 외 메뉴 모두 사용 가능.
 
 ---
 
