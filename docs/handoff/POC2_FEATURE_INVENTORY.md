@@ -235,20 +235,18 @@
 | 항목 | 값 |
 |---|---|
 | 기능명 | "ETF Exposure 로 넘기기" 버튼 + sessionStorage draft (v2) |
-| 사용 가능 여부 | **부분 가능** |
+| 사용 가능 여부 | **사용 가능** (2026-05-31 Naver 통합 + 2026-06-01 asof 흐름 FIX 후) |
 | 전달 데이터 | asof / tickers / candidate_snapshot / market_context_full / market_candidates (excess_return 포함) |
-| 한계 | 전달은 가능하지만 ETF Exposure 의 source 가 unavailable 이라 실제 분석 결과 0건. UI 흐름은 동작 |
-| 다음 조치 | source 확보 후 자동 활성화 |
+| 다음 조치 | 운영 데이터 누적 후 검증 |
 
 ### 3.3 ETF Exposure → AI Sessions
 
 | 항목 | 값 |
 |---|---|
 | 기능명 | ETF Exposure 의 "AI Sessions 로 넘기기" 버튼 |
-| 사용 가능 여부 | **부분 가능** |
-| 전달 데이터 | 시장 판정 + 후보 excess_return + (constituent_snapshot / overlap_snapshot — 데이터 있을 때만) |
-| 한계 | constituent/overlap snapshot 은 source 미확보로 빈 dict |
-| 다음 조치 | source 확보 후 자동 강화 |
+| 사용 가능 여부 | **사용 가능** (2026-05-31 Naver 통합 + 2026-06-01 asof 흐름 FIX 후) |
+| 전달 데이터 | 시장 판정 + 후보 excess_return + constituent_snapshot + overlap_snapshot (Naver source 채워짐) |
+| 다음 조치 | 운영 데이터 누적 후 검증 |
 
 ---
 
@@ -266,7 +264,21 @@
 
 ## 5. 참조
 
-- 진단 실측: `state/market/constituents_source_diagnosis_latest.json`
-- 진단 리포트: `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md`
+- 진단 실측 (직전 source diagnosis): `state/market/constituents_source_diagnosis_latest.json`
+- 진단 리포트 (직전 STEP, 현재는 stale — Naver 통합 완료 상태에서는 §2.10 의
+  현재 상태 표가 우선): `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md`
 - 다음 STEP 후보: `docs/handoff/POC2_B_NEXT_ACTIONS.md`
 - BACKLOG: `docs/backlog/BACKLOG.md`
+
+## 6. 변경 이력
+
+- 2026-05-27 초안 (Source Diagnosis 1차 시점 — ETF Exposure 3 기능 사용 불가
+  로 기록).
+- 2026-05-31 갱신 (Naver Stock ETFComponent 1차 채택 — ETF Exposure 3 기능 +
+  AI 문구 4 기능을 사용 가능 으로 전환). §2.6 / §2.10 / §2.11 / §2.12 의
+  현재 상태 표가 권위 있는 기록이며, 이전 분류 (§4 운영 UI 정리 권고의 1번
+  항목) 의 "사용 불가" 표현은 §2.6/§2.10~12 의 현재 상태로 대체됨.
+- 2026-06-01 갱신 (검증자 A-3 NOTE 반영 — end-to-end asof 흐름 FIX 후속).
+  §3.2 (Market Discovery → ETF Exposure) / §3.3 (ETF Exposure → AI Sessions)
+  의 "부분 가능" / "source 미확보" 표기를 §2.10~12 와 정합되게 "사용 가능"
+  으로 전환. 한 문서 내 같은 기능에 상충 표기가 남지 않도록 정리.

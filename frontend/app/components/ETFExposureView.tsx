@@ -84,12 +84,14 @@ export default function ETFExposureView({ onNavigate }: Props) {
     setDraftLoaded(true);
     // draft 가 있으면 마운트 시점에 캐시 기반 분석 즉시 시도 (외부 fetch 없이
     // SQLite 만 조회 — analysis 는 read-only).
+    // 2026-06-01 FIX — asof 는 명시 X. 백엔드가 latest_constituent_asof MAX
+    // 사용 (Naver referenceDate 와 draft.asof 불일치로 인한 0건 회피).
     if (d) {
       const tickers = d.candidate_snapshot
         .map((c) => c.ticker)
         .filter((t): t is string => !!t);
       if (tickers.length > 0) {
-        fetchConstituentsAnalysis(tickers, d.asof, 10)
+        fetchConstituentsAnalysis(tickers, null, 10)
           .then((a) => setAnalysis(a))
           .catch(() => setAnalysis(null));
       }

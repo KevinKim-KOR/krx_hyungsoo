@@ -893,14 +893,21 @@ export interface ConstituentsAnalysisResponse {
 
 export function fetchConstituentsAnalysis(
   tickers: string[],
-  asof: string,
+  asof?: string | null,
   top_k: number = 10,
 ): Promise<ConstituentsAnalysisResponse> {
+  // 2026-06-01 FIX (검증자 A-1 NOTE 반영) — asof 는 optional. 누락 시 백엔드가
+  // latest_constituent_asof MAX 를 effective asof 로 사용 (지시문 §8.2 응답
+  // 예시 + 직전 FIX 라운드 구현). Naver source 의 referenceDate 가 입력 asof
+  // 와 다른 케이스를 자동 정렬 — refresh 직후 analysis 가 0건으로 나오던
+  // end-to-end 버그를 해소한다.
   const params = new URLSearchParams({
     tickers: tickers.join(","),
-    asof,
     top_k: String(top_k),
   });
+  if (asof) {
+    params.set("asof", asof);
+  }
   return request<ConstituentsAnalysisResponse>(
     "GET",
     `/market/constituents/analysis?${params.toString()}`,

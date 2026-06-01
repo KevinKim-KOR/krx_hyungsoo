@@ -1,6 +1,6 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-05-31
+최종 업데이트: 2026-06-01
 
 ---
 
@@ -9,11 +9,63 @@
 ```text
 현재 단계: Naver Stock ETFComponent 를 1차 구성종목 source 로 채택
   — 직전 smoke test 결과 (HTTP 200 / JSON list / 3 ETF PASS) 반영
+  — 2026-06-01 FIX 라운드: 검증자 A-1 (asof 불일치) / A-3 (인벤토리 정합성) NOTE 반영 완료
 이전 단계: ETF Constituents Source Diagnosis 1차 (pykrx hold + 모바일 endpoint unusable)
 다음 단계 후보 (사용자 결정 대기):
   - 운영 데이터 누적 후 fetcher 다변화 / fallback chain (BACKLOG)
   - Data Status 실 연결 (기존 BACKLOG)
 ```
+
+### FIX 라운드 (검증자 A-1 / A-3 / B-6 NOTE 반영, 2026-06-01)
+
+검증자 1차 결과 REJECTED — A-1 (end-to-end asof 불일치로 UI 0건) / A-3
+(POC2_FEATURE_INVENTORY 내부 §2.10 vs §4 표기 불일치) / B-6 (end-to-end 회귀
+테스트 누락) NOTE. 본 FIX 라운드는 코드 흐름 버그만 수정 (source 교체 X).
+
+검증자 2차 결과 REJECTED — A-3 잔재 (같은 문서 §3.2 / §3.3 Context Bridge
+가 "부분 가능" + "source unavailable / 빈 dict" 로 §2.10~12 와 충돌) / A-2
+(`frontend/lib/api.ts` 라인수 925 보고 vs 실측 932). FIX2 라운드로 정정.
+
+- **A-1 FIX — end-to-end asof 흐름**:
+  - 원인: service 가 응답의 `effective_asof` (예: Naver `referenceDate` =
+    2026-06-01) 로 저장하지만, 프론트엔드가 `draft.asof` (예: 2026-05-28) 로
+    analysis 를 조회 → SQLite 매칭 0건 → UI `unavailable`.
+  - 백엔드 API `/market/constituents/analysis` 의 `asof` 가 이미 Optional
+    이고 omit 시 `latest_constituent_asof` MAX 사용하도록 본 STEP 1차에서
+    구현되어 있음. **추가 백엔드 변경 X**.
+  - 프론트 `fetchConstituentsAnalysis(tickers, asof?, top_k)` 시그니처 변경 —
+    `asof` optional + null 시 query param omit.
+  - `ETFExposureView.tsx` 마운트 시점 호출 → `asof = null` 전달.
+  - `ConstituentsTab.tsx` 수집 직후 재호출 → `asof = null` 전달.
+- **A-3 FIX — 인벤토리 내부 정합성**:
+  - `docs/handoff/POC2_FEATURE_INVENTORY.md` 의 §2.10 (ETF Exposure) 은
+    "사용 가능" 으로 갱신되었으나 §4 (사용 불가/테스트용 목록) 는 직전 STEP
+    의 "사용 불가" 표기 잔재. → §6 변경 이력 절을 신규 추가하여 §2.10 /
+    §2.11 / §2.12 / §2.6 이 권위 source 임을 명시 + §4 잔재 표기 무효 처리.
+- **B-6 FIX — end-to-end 회귀 테스트 신규**:
+  - `tests/test_etf_constituents_naver_integration.py` 에
+    `test_end_to_end_refresh_then_analysis_without_asof` 추가 — 입력 asof
+    (2026-05-28) ≠ effective_asof (2026-05-29) 시나리오 재현. 입력 asof 로
+    조회하면 0건, asof omit 시 latest 사용해 1건. 본 회귀 보호.
+- **검증**: pytest 328 passed (327 → 328, +1 신규 / 회귀 0) / black PASS /
+  flake8 PASS / frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0. `tests/test_etf_constituents_naver_integration.py`
+  228 → 264 라인 (실측, 신규 테스트 1건 +36). 750+ 미달.
+
+### FIX2 라운드 (검증자 A-3 잔재 / A-2 라인수 정정, 2026-06-01)
+
+- **A-3 잔재 FIX — POC2_FEATURE_INVENTORY §3.2 / §3.3 갱신**:
+  - §3.2 Market Discovery → ETF Exposure: "부분 가능" + "source unavailable
+    이라 실제 분석 결과 0건" → **"사용 가능"** (2026-05-31 Naver 통합 +
+    2026-06-01 asof 흐름 FIX 후). "한계" 행 제거.
+  - §3.3 ETF Exposure → AI Sessions: "부분 가능" + "constituent/overlap
+    snapshot 은 source 미확보로 빈 dict" → **"사용 가능"**. "한계" 행 제거.
+  - §6 변경 이력에 2026-06-01 항목 추가.
+- **A-2 FIX — 라인수 실측 재산정**: `frontend/lib/api.ts` 925 → 932 (실측).
+  본 §0 의 750+ 보고 줄에 932 로 정정 + FIX 라운드에서 +7 (Optional asof
+  처리 + URLSearchParams 분기) 명시.
+- **검증 재실행**: pytest 328 passed / black PASS / flake8 PASS / frontend
+  lint PASS / frontend build PASS.
 
 ### 본 STEP 요약
 
@@ -64,7 +116,8 @@
     `test_etf_constituents_naver_integration.py` 228.
   - 프론트 컴포넌트 최대 `MarketDiscoveryView.tsx` 705 (기존).
   - 750+ 보고: `tests/test_holdings_message_text.py` 924 (기존) /
-    `frontend/lib/api.ts` 925 (920 → 925, 본 STEP +5).
+    `frontend/lib/api.ts` 932 (920 → 932, 본 STEP +5 + 2026-06-01 FIX +7
+    실측 재산정).
 
 ### 신규 / 수정 파일
 

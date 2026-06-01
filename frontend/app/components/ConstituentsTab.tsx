@@ -84,7 +84,10 @@ export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props)
           `수집 완료: 성공 ${r.success_count} / 실패 ${r.fail_count} / 캐시 ${r.cached_count} / skip ${r.skipped_count}`,
         );
         // 수집 직후 analysis 재호출.
-        const a = await fetchConstituentsAnalysis(tickers, draft.asof, 10);
+        // 2026-06-01 FIX (검증자 A-1 NOTE 반영) — asof 는 omit. 백엔드가
+        // latest_constituent_asof MAX 를 사용 → Naver 의 referenceDate (예:
+        // 2026-06-01) 와 draft.asof (예: 2026-05-28) 불일치로 인한 0건 회피.
+        const a = await fetchConstituentsAnalysis(tickers, null, 10);
         setAnalysis(a);
       }
     } catch (e) {

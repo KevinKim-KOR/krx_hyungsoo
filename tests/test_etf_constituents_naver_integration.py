@@ -176,6 +176,42 @@ def test_analysis_matches_overseas_via_reuters_code(tmp_path: Path):
     assert out["weighted_overlap_pct"] == 9.14
 
 
+def test_end_to_end_refresh_then_analysis_without_asof(tmp_path: Path):
+    """2026-06-01 FIX (검증자 A-1 NOTE 반영) — refresh 가 effective_asof 로
+    저장한 뒤, analysis 가 asof omit 으로 호출되면 latest_constituent_asof
+    MAX 를 자동 사용해 available_count >= 1 이 나와야 한다.
+
+    재현: Naver fetcher 가 referenceDate=2026-06-01 을 반환할 때, 사용자 입력
+    asof=2026-05-28 로 refresh → 저장은 2026-06-01 → 입력 asof 로 analysis 면
+    available_count=0 (직전 검증자 NOTE) → asof omit 으로 분석 시 MAX 사용해
+    available_count=1.
+    """
+    from app.etf_constituents_analysis import compute_analysis
+    from app.etf_constituents_store import latest_constituent_asof
+
+    db = tmp_path / "m.sqlite"
+    # service 에 입력 asof 는 사용자 화면 시점 (예: 2026-05-28).
+    refresh_constituents(
+        asof="2026-05-28",
+        tickers=["069500"],
+        fetcher=_domestic_fetch,  # effective_asof=2026-05-29 (위 _domestic_fetch)
+        sleep_fn=lambda _s: None,
+        db_path=db,
+    )
+    # 입력 asof 로 직접 조회하면 0건 (이전 버그 재현).
+    out_with_input_asof = compute_analysis(
+        tickers=["069500"], asof="2026-05-28", db_path=db
+    )
+    assert out_with_input_asof["coverage"]["available_count"] == 0
+
+    # 본 FIX: asof omit 시 latest 사용 → available_count == 1.
+    effective = latest_constituent_asof("069500", db_path=db)
+    assert effective == "2026-05-29"
+    out_with_latest = compute_analysis(tickers=["069500"], asof=effective, db_path=db)
+    assert out_with_latest["coverage"]["available_count"] == 1
+    assert out_with_latest["constituents"][0]["status"] == "ok"
+
+
 def test_migration_adds_naver_columns_on_existing_db(tmp_path: Path):
     """직전 STEP 의 DB (constituent_key 등 4 컬럼 없음) → init_constituents_db
     호출 시 자동 ADD COLUMN 한다 (회귀 보호)."""
