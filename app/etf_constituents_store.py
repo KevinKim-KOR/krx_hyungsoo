@@ -85,6 +85,11 @@ def _migrate_add_naver_columns(con: sqlite3.Connection) -> None:
 
     이전 STEP 의 DB (constituent_key 등 없음) 에 대해 init_constituents_db
     호출 시점에 자동 ALTER TABLE ADD COLUMN. 각 컬럼 누락 시에만 추가.
+
+    2026-06-01 FIX — FastAPI threadpool 동시 init race 보호. PRAGMA 확인
+    시점과 ALTER 실행 시점 사이에 다른 스레드가 같은 컬럼을 추가하면
+    SQLite 가 "duplicate column name" OperationalError 를 던진다.
+    이 경우는 정상 race (다른 스레드가 이미 완료) 이므로 무시.
     """
     cur = con.execute("PRAGMA table_info(etf_constituents)")
     cols = {row[1] for row in cur.fetchall()}
@@ -97,9 +102,13 @@ def _migrate_add_naver_columns(con: sqlite3.Connection) -> None:
         ("market_type", "TEXT"),
     ):
         if new_col[0] not in cols:
-            con.execute(
-                f"ALTER TABLE etf_constituents ADD COLUMN {new_col[0]} {new_col[1]}"
-            )
+            try:
+                con.execute(
+                    f"ALTER TABLE etf_constituents ADD COLUMN {new_col[0]} {new_col[1]}"
+                )
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
 
 
 def init_constituents_db(db_path: Path = DEFAULT_DB_PATH) -> None:

@@ -52,6 +52,43 @@
 - **KS-10**: trigger 0 / near 0. `tests/test_etf_constituents_naver_integration.py`
   228 → 264 라인 (실측, 신규 테스트 1건 +36). 750+ 미달.
 
+### FIX3 라운드 (운영 사고 2건 후속 — 마이그레이션 동시 init race, 2026-06-01)
+
+운영 중 `/market/constituents/analysis` 호출 시 1차 500 Internal Server Error
+(`sqlite3.OperationalError: duplicate column name: constituent_key`) 발생.
+직후 `GET /decision/sessions` (AI Sessions 조회) 도 동일 원인의 500 발생
+(`duplicate column name: constituent_snapshot_json`). 모두 직후 200 OK.
+
+- **원인 (공통)**: FastAPI threadpool 이 entry 마다 `_connection()` 진입 →
+  매번 `init_*()` → 매번 `_migrate_*()` 호출. PRAGMA 확인 시점과 ALTER
+  실행 시점 사이 race — 스레드 A 가 ALTER 완료, 스레드 B 가 같은 컬럼
+  ALTER 시도 → duplicate column 으로 첫 요청 500. 이후 PRAGMA 에서 컬럼
+  보이므로 정상.
+- **FIX 1 — `app/etf_constituents_store.py`**:
+  - `_migrate_add_naver_columns` 의 ALTER 호출을 try/except 로 감싸
+    `duplicate column name` OperationalError 만 silent 처리.
+  - 그 외 OperationalError 는 그대로 re-raise (실 오류 은닉 방지).
+- **FIX 2 — `app/decision_evidence_store.py`**:
+  - `_safe_add_column(con, sql)` helper 신규 — 동일 race 보호 로직 단일화.
+  - `_migrate_add_market_context_snapshot` / `_migrate_add_constituent_overlap_snapshots`
+    의 ALTER 호출 3건 모두 helper 경유로 갈아끼움.
+- **회귀 테스트 신규 (2건)**:
+  - `tests/test_etf_constituents_naver_integration.py`:
+    `test_migration_concurrent_init_does_not_raise` — 4 컬럼 마이그레이션
+    직전 DB + 8 스레드 동시 init → 예외 0 + 4 컬럼 정상 추가.
+  - `tests/test_decision_evidence_store.py`:
+    `test_migration_concurrent_init_does_not_raise` — market_context /
+    constituent / overlap 3 컬럼 마이그레이션 직전 DB + 8 스레드 동시 init
+    → 예외 0 + 3 컬럼 정상 추가.
+- **검증**: pytest 330 passed (328 → 330, +2 신규 / 회귀 0) / black PASS /
+  flake8 PASS / frontend lint PASS / frontend build PASS.
+- **KS-10**: trigger 0 / near 0.
+  - `app/etf_constituents_store.py` 282 → 291 라인 (+9, try/except + docstring).
+  - `app/decision_evidence_store.py` 444 → 469 라인 (+25, _safe_add_column
+    helper + 호출부 3건 교체, 실측).
+  - `tests/test_etf_constituents_naver_integration.py` 264 → 315 라인 (+51).
+  - `tests/test_decision_evidence_store.py` 435 → 489 라인 (+54).
+
 ### FIX2 라운드 (검증자 A-3 잔재 / A-2 라인수 정정, 2026-06-01)
 
 - **A-3 잔재 FIX — POC2_FEATURE_INVENTORY §3.2 / §3.3 갱신**:

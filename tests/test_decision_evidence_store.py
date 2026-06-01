@@ -433,3 +433,57 @@ def test_legacy_single_answer_text_schema_auto_migrates(tmp_path: Path):
     assert fetched["gemini_answer_text"] == ""
     assert fetched["claude_answer_text"] == ""
     assert fetched["question_text"] == "직전 STEP 질문"
+
+
+def test_migration_concurrent_init_does_not_raise(tmp_path: Path):
+    """2026-06-01 FIX (운영 사고 1건 후속) — FastAPI threadpool 에서 AI Sessions
+    조회 등 API 가 동시 호출될 때, _connection() → init_db() →
+    _migrate_add_market_context_snapshot / _migrate_add_constituent_overlap_snapshots
+    가 매번 실행된다. PRAGMA 확인 시점과 ALTER 실행 시점 사이 race 로
+    duplicate column 오류 발생. 본 회귀 — 8 스레드 동시 init 예외 0.
+    """
+    import threading
+
+    db = tmp_path / "m.sqlite"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    # 직전 스키마 — market_context / constituent / overlap 3 컬럼 없음 (마이그레이션 trigger).
+    prev_ddl = (
+        "CREATE TABLE ai_session_records ("
+        "id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, "
+        "asof TEXT NOT NULL, source_screen TEXT NOT NULL, filters_json TEXT NOT NULL, "
+        "candidate_snapshot_json TEXT NOT NULL, question_text TEXT NOT NULL, "
+        "gpt_answer_text TEXT NOT NULL DEFAULT '', "
+        "gemini_answer_text TEXT NOT NULL DEFAULT '', "
+        "claude_answer_text TEXT NOT NULL DEFAULT '', "
+        "user_memo TEXT NOT NULL DEFAULT '', user_verdict TEXT NOT NULL DEFAULT 'pending', "
+        "next_checks_json TEXT NOT NULL DEFAULT '[]', "
+        "linked_market_refresh_id TEXT)"
+    )
+    with sqlite3.connect(str(db)) as con:
+        con.execute(prev_ddl)
+        con.commit()
+
+    errors: list[BaseException] = []
+
+    def _worker():
+        try:
+            init_db(db)
+        except BaseException as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=_worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == []
+    # 결과적으로 3 컬럼 모두 정상 추가.
+    with sqlite3.connect(str(db)) as con:
+        cur = con.execute("PRAGMA table_info(ai_session_records)")
+        cols = {row[1] for row in cur.fetchall()}
+    assert {
+        "market_context_snapshot_json",
+        "constituent_snapshot_json",
+        "overlap_snapshot_json",
+    } <= cols

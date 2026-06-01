@@ -147,6 +147,20 @@ def _migrate_legacy_answer_text(con: sqlite3.Connection) -> None:
     con.execute("ALTER TABLE ai_session_records_new RENAME TO ai_session_records")
 
 
+def _safe_add_column(con: sqlite3.Connection, sql: str) -> None:
+    """ALTER TABLE ADD COLUMN 실행 — 동시 init race 보호 (2026-06-01 FIX).
+
+    PRAGMA 확인 시점과 ALTER 실행 시점 사이에 다른 스레드가 같은 컬럼을
+    추가하면 "duplicate column name" OperationalError 가 발생한다. 이는 정상
+    race (이미 완료) 이므로 무시. 그 외 OperationalError 는 그대로 re-raise.
+    """
+    try:
+        con.execute(sql)
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" not in str(e):
+            raise
+
+
 def _migrate_add_market_context_snapshot(con: sqlite3.Connection) -> None:
     """market_context_snapshot_json 컬럼이 없으면 ADD COLUMN 으로 추가.
 
@@ -159,9 +173,10 @@ def _migrate_add_market_context_snapshot(con: sqlite3.Connection) -> None:
         return
     if "market_context_snapshot_json" in cols:
         return
-    con.execute(
+    _safe_add_column(
+        con,
         "ALTER TABLE ai_session_records "
-        "ADD COLUMN market_context_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+        "ADD COLUMN market_context_snapshot_json TEXT NOT NULL DEFAULT '{}'",
     )
 
 
@@ -173,14 +188,16 @@ def _migrate_add_constituent_overlap_snapshots(con: sqlite3.Connection) -> None:
     if not cols:
         return
     if "constituent_snapshot_json" not in cols:
-        con.execute(
+        _safe_add_column(
+            con,
             "ALTER TABLE ai_session_records "
-            "ADD COLUMN constituent_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+            "ADD COLUMN constituent_snapshot_json TEXT NOT NULL DEFAULT '{}'",
         )
     if "overlap_snapshot_json" not in cols:
-        con.execute(
+        _safe_add_column(
+            con,
             "ALTER TABLE ai_session_records "
-            "ADD COLUMN overlap_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+            "ADD COLUMN overlap_snapshot_json TEXT NOT NULL DEFAULT '{}'",
         )
 
 

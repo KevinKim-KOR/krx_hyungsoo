@@ -262,3 +262,54 @@ def test_migration_adds_naver_columns_on_existing_db(tmp_path: Path):
     stored = fetch_constituents(etf_ticker="139260", asof="2026-05-29", db_path=db)
     assert stored[0].constituent_key == "005930"
     assert stored[0].constituent_isin == "KR7005930003"
+
+
+def test_migration_concurrent_init_does_not_raise(tmp_path: Path):
+    """2026-06-01 FIX (운영 사고 1건 후속) — FastAPI threadpool 에서 analysis
+    엔드포인트가 ticker 마다 latest_constituent_asof 를 동시 호출 → 매번
+    _connection() → init_constituents_db() → _migrate_add_naver_columns()
+    실행. PRAGMA 확인 시점과 ALTER 실행 시점 사이 race 로 두 번째 스레드가
+    duplicate column 오류로 500. 본 회귀 — 동시 init 여러 번 실행해도 예외
+    없이 통과.
+    """
+    import threading
+
+    db = tmp_path / "m.sqlite"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    # 직전 STEP DDL — 신규 4 컬럼 없음. 마이그레이션 trigger 상태.
+    prev_ddl = (
+        "CREATE TABLE etf_constituents ("
+        "etf_ticker TEXT NOT NULL, asof TEXT NOT NULL, source TEXT NOT NULL, "
+        "rank INTEGER NOT NULL, constituent_ticker TEXT, constituent_name TEXT, "
+        "weight_pct REAL, etf_name TEXT, created_at TEXT NOT NULL, "
+        "PRIMARY KEY (etf_ticker, asof, source, rank))"
+    )
+    with sqlite3.connect(str(db)) as con:
+        con.execute(prev_ddl)
+        con.commit()
+
+    errors: list[BaseException] = []
+
+    def _worker():
+        try:
+            init_constituents_db(db)
+        except BaseException as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=_worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == []
+    # 결과적으로 4 컬럼 모두 정상 추가.
+    with sqlite3.connect(str(db)) as con:
+        cur = con.execute("PRAGMA table_info(etf_constituents)")
+        cols = {row[1] for row in cur.fetchall()}
+    assert {
+        "constituent_key",
+        "constituent_isin",
+        "constituent_reuters_code",
+        "market_type",
+    } <= cols
