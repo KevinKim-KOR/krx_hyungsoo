@@ -107,9 +107,9 @@ export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props)
       <div className="card">
         <h2>후보 ETF 구성종목 수집</h2>
         <p className="helper" style={{ marginBottom: 8 }}>
-          외부 KRX 데이터 (pykrx PDF) 에서 후보 ETF 의 상위 10개 구성종목 + 비중을
-          수집합니다. 1회 최대 10개 후보까지 가능. 캐시가 있으면 외부 호출 없이
-          기존 데이터를 사용합니다.
+          Naver Stock ETFComponent 기준 구성종목 데이터에서 후보 ETF 의 상위
+          10개 구성종목 + 비중을 수집합니다. 1회 최대 10개 후보까지 가능.
+          캐시가 있으면 외부 호출 없이 기존 데이터를 사용합니다.
         </p>
         <ul className="dashboard-status-list">
           <li>기준일 (asof): <strong>{draft.asof}</strong></li>

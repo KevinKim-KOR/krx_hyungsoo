@@ -486,4 +486,70 @@ def test_migration_concurrent_init_does_not_raise(tmp_path: Path):
         "market_context_snapshot_json",
         "constituent_snapshot_json",
         "overlap_snapshot_json",
+        "short_term_momentum_snapshot_json",
+        "data_quality_snapshot_json",
     } <= cols
+
+
+def test_insert_record_with_closeout_snapshots(tmp_path: Path):
+    """2026-06-01 Market Discovery Evidence Closeout 1차 — short_term_momentum
+    + data_quality snapshot 이 정상 저장 + 조회된다 (AC-17 / AC-18 / AC-19)."""
+    from app.decision_evidence_store import get_record, insert_record
+
+    db = tmp_path / "decision.sqlite"
+    saved = insert_record(
+        **_minimal_kwargs(
+            short_term_momentum_snapshot={
+                "asof": "2026-05-31",
+                "benchmark": "KODEX200",
+                "items": [
+                    {
+                        "ticker": "266390",
+                        "name": "KODEX 경기소비재",
+                        "return_5d_pct": 18.42,
+                        "excess_vs_kodex200_5d_pctp": 5.12,
+                    }
+                ],
+            },
+            data_quality_snapshot={
+                "asof": "2026-05-31",
+                "items": [
+                    {
+                        "ticker": "266390",
+                        "daily_return_check": {
+                            "status": "warning",
+                            "daily_return_pct": 23.86,
+                            "flag": "daily_surge_check_needed",
+                        },
+                        "nav_discount": {
+                            "status": "unavailable",
+                            "source": None,
+                        },
+                        "warnings": ["daily_surge_check_needed"],
+                    }
+                ],
+            },
+        ),
+        db_path=db,
+    )
+    fetched = get_record(saved["id"], db_path=db)
+    assert fetched is not None
+    s = fetched["short_term_momentum_snapshot"]
+    assert s["benchmark"] == "KODEX200"
+    assert s["items"][0]["return_5d_pct"] == 18.42
+    d = fetched["data_quality_snapshot"]
+    assert d["items"][0]["daily_return_check"]["flag"] == "daily_surge_check_needed"
+
+
+def test_insert_record_without_closeout_snapshots_defaults_to_empty(
+    tmp_path: Path,
+):
+    """본 STEP 이전 호출자는 신규 snapshot 을 보내지 않는다. 기존 흐름 무변경."""
+    from app.decision_evidence_store import get_record, insert_record
+
+    db = tmp_path / "decision.sqlite"
+    saved = insert_record(**_minimal_kwargs(), db_path=db)
+    fetched = get_record(saved["id"], db_path=db)
+    assert fetched is not None
+    assert fetched["short_term_momentum_snapshot"] == {}
+    assert fetched["data_quality_snapshot"] == {}

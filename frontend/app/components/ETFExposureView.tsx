@@ -70,6 +70,47 @@ function _toOverlapSnapshot(
   };
 }
 
+// 2026-06-01 — Market Discovery Evidence Closeout 1차. draft.market_candidates
+// 안에 이미 응답으로 받은 short_term_momentum / data_quality 가 포함되어 있어
+// AI Sessions snapshot 으로 그대로 추출.
+function _toShortTermMomentumSnapshot(
+  draft: ETFExposureDraft,
+): Record<string, unknown> | null {
+  const items = (draft.market_candidates ?? [])
+    .filter((c) => c.short_term_momentum)
+    .map((c) => ({
+      ticker: c.ticker ?? null,
+      name: c.name ?? null,
+      return_5d_pct: c.short_term_momentum?.return_5d_pct ?? null,
+      return_10d_pct: c.short_term_momentum?.return_10d_pct ?? null,
+      return_20d_pct: c.short_term_momentum?.return_20d_pct ?? null,
+      excess_vs_kodex200_5d_pctp:
+        c.short_term_momentum?.excess_vs_kodex200_5d_pctp ?? null,
+      excess_vs_kodex200_10d_pctp:
+        c.short_term_momentum?.excess_vs_kodex200_10d_pctp ?? null,
+      excess_vs_kodex200_20d_pctp:
+        c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null,
+    }));
+  if (items.length === 0) return null;
+  return { asof: draft.asof, benchmark: "KODEX200", items };
+}
+
+function _toDataQualitySnapshot(
+  draft: ETFExposureDraft,
+): Record<string, unknown> | null {
+  const items = (draft.market_candidates ?? [])
+    .filter((c) => c.data_quality)
+    .map((c) => ({
+      ticker: c.ticker ?? null,
+      name: c.name ?? null,
+      daily_return_check: c.data_quality?.daily_return_check ?? null,
+      nav_discount: c.data_quality?.nav_discount ?? null,
+      warnings: c.data_quality?.warnings ?? [],
+    }));
+  if (items.length === 0) return null;
+  return { asof: draft.asof, items };
+}
+
 export default function ETFExposureView({ onNavigate }: Props) {
   const [draft, setDraft] = useState<ETFExposureDraft | null>(null);
   const [draftLoaded, setDraftLoaded] = useState<boolean>(false);
@@ -120,6 +161,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
       market_context_snapshot: draft.market_context_snapshot ?? null,
       constituent_snapshot: _toConstituentSnapshot(analysis),
       overlap_snapshot: _toOverlapSnapshot(analysis),
+      short_term_momentum_snapshot: _toShortTermMomentumSnapshot(draft),
+      data_quality_snapshot: _toDataQualitySnapshot(draft),
     };
     saveAISessionsDraft(aiDraft);
     onNavigate?.("ai_sessions");

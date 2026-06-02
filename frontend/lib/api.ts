@@ -423,6 +423,57 @@ export interface MarketCandidateExcessReturn {
   vs_kospi_3m_pctp?: number | null;
 }
 
+export interface ShortTermMomentumStartDates {
+  five_d?: string | null;
+  ten_d?: string | null;
+  twenty_d?: string | null;
+}
+
+export interface ShortTermMomentumPayload {
+  status: "ok" | "unavailable";
+  return_5d_pct?: number | null;
+  return_10d_pct?: number | null;
+  return_20d_pct?: number | null;
+  excess_vs_kodex200_5d_pctp?: number | null;
+  excess_vs_kodex200_10d_pctp?: number | null;
+  excess_vs_kodex200_20d_pctp?: number | null;
+  start_dates?: ShortTermMomentumStartDates | null;
+  end_date?: string | null;
+  message?: string | null;
+}
+
+export type DailyReturnFlag =
+  | "daily_surge_check_needed"
+  | "daily_drop_check_needed";
+
+export interface DailyReturnCheckPayload {
+  status: "ok" | "warning" | "unavailable";
+  daily_return_pct?: number | null;
+  flag?: DailyReturnFlag | null;
+  threshold_pct?: number | null;
+  message?: string | null;
+}
+
+export type DiscountFlag = "discount_check_needed" | "discount_warning";
+
+export interface NavDiscountPayload {
+  status: "ok" | "unavailable" | "partial";
+  asof?: string | null;
+  nav?: number | null;
+  market_price?: number | null;
+  discount_rate_pct?: number | null;
+  flag?: DiscountFlag | null;
+  source?: string | null;
+  message?: string | null;
+}
+
+export interface DataQualityPayload {
+  status: "ok" | "warning" | "unavailable";
+  daily_return_check: DailyReturnCheckPayload;
+  nav_discount: NavDiscountPayload;
+  warnings: string[];
+}
+
 export interface MarketCandidate {
   rank?: number | null;
   ticker?: string | null;
@@ -434,6 +485,9 @@ export interface MarketCandidate {
   returns?: MarketReturns;
   // 2026-05-22 — Market Regime & Benchmark Context 1차.
   excess_return?: MarketCandidateExcessReturn | null;
+  // 2026-06-01 — Market Discovery Evidence Closeout 1차.
+  short_term_momentum?: ShortTermMomentumPayload | null;
+  data_quality?: DataQualityPayload | null;
 }
 
 // ─── Market Regime & Benchmark Context (2026-05-22) ─────────────────
@@ -689,6 +743,9 @@ export interface CreateDecisionSessionRequest {
   // 2026-05-27 — 저장 시점 구성종목 / 중복률 스냅샷.
   constituent_snapshot?: Record<string, unknown> | null;
   overlap_snapshot?: Record<string, unknown> | null;
+  // 2026-06-01 — Market Discovery Evidence Closeout 1차.
+  short_term_momentum_snapshot?: Record<string, unknown> | null;
+  data_quality_snapshot?: Record<string, unknown> | null;
 }
 
 export interface CreateDecisionSessionResponse {
@@ -737,6 +794,9 @@ export interface DecisionSessionDetail {
   // 2026-05-27 — 저장 시점 구성종목 / 중복률 (free schema dict, 없으면 {}).
   constituent_snapshot: Record<string, unknown>;
   overlap_snapshot: Record<string, unknown>;
+  // 2026-06-01 — Market Discovery Evidence Closeout 1차.
+  short_term_momentum_snapshot: Record<string, unknown>;
+  data_quality_snapshot: Record<string, unknown>;
 }
 
 export interface GetDecisionSessionResponse {
@@ -774,9 +834,10 @@ export function fetchDecisionSession(
   );
 }
 
-// ─── POC2 ETF Constituents & Overlap 1차 (2026-05-27) ──────────────
+// ─── POC2 ETF Constituents & Overlap 1차 (2026-05-27 / 2026-05-31 갱신) ──
 // state/market/market_data.sqlite 의 etf_constituents / refresh_log 테이블 +
-// pykrx PDF fetcher (실패 시 unavailable). K6 방어 — 1회 최대 10개 ticker.
+// Naver Stock ETFComponent fetcher (2026-05-31 채택, 실패 시 unavailable).
+// K6 방어 — 1회 최대 10개 ticker.
 
 export interface RefreshConstituentsRequest {
   asof: string;

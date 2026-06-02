@@ -77,6 +77,48 @@ function _toMarketContextSnapshot(
   };
 }
 
+// 2026-06-01 Market Discovery Evidence Closeout 1차 — 지시문 §11.1.
+function _toShortTermMomentumSnapshot(
+  asof: string,
+  candidates: MarketCandidate[],
+): Record<string, unknown> | null {
+  const items = candidates
+    .filter((c) => c.short_term_momentum)
+    .map((c) => ({
+      ticker: c.ticker ?? null,
+      name: c.name ?? null,
+      return_5d_pct: c.short_term_momentum?.return_5d_pct ?? null,
+      return_10d_pct: c.short_term_momentum?.return_10d_pct ?? null,
+      return_20d_pct: c.short_term_momentum?.return_20d_pct ?? null,
+      excess_vs_kodex200_5d_pctp:
+        c.short_term_momentum?.excess_vs_kodex200_5d_pctp ?? null,
+      excess_vs_kodex200_10d_pctp:
+        c.short_term_momentum?.excess_vs_kodex200_10d_pctp ?? null,
+      excess_vs_kodex200_20d_pctp:
+        c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null,
+    }));
+  if (items.length === 0) return null;
+  return { asof, benchmark: "KODEX200", items };
+}
+
+// 2026-06-01 Market Discovery Evidence Closeout 1차 — 지시문 §11.2.
+function _toDataQualitySnapshot(
+  asof: string,
+  candidates: MarketCandidate[],
+): Record<string, unknown> | null {
+  const items = candidates
+    .filter((c) => c.data_quality)
+    .map((c) => ({
+      ticker: c.ticker ?? null,
+      name: c.name ?? null,
+      daily_return_check: c.data_quality?.daily_return_check ?? null,
+      nav_discount: c.data_quality?.nav_discount ?? null,
+      warnings: c.data_quality?.warnings ?? [],
+    }));
+  if (items.length === 0) return null;
+  return { asof, items };
+}
+
 export default function TransferToAISessionsCard({
   asof,
   filters,
@@ -112,6 +154,9 @@ export default function TransferToAISessionsCard({
       // 2026-05-22 — AI Sessions 저장 payload 의 market_context_snapshot 으로
       // 그대로 영속화된다 (지시문 §13). 2026-05-27 FIX — 후보별 초과수익 포함.
       market_context_snapshot: _toMarketContextSnapshot(marketContext, candidates),
+      // 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질.
+      short_term_momentum_snapshot: _toShortTermMomentumSnapshot(asof, candidates),
+      data_quality_snapshot: _toDataQualitySnapshot(asof, candidates),
     };
     saveAISessionsDraft(draft);
     onNavigate?.("ai_sessions");

@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS ai_session_records (
     linked_market_refresh_id      TEXT,
     market_context_snapshot_json  TEXT NOT NULL DEFAULT '{}',
     constituent_snapshot_json     TEXT NOT NULL DEFAULT '{}',
-    overlap_snapshot_json         TEXT NOT NULL DEFAULT '{}'
+    overlap_snapshot_json         TEXT NOT NULL DEFAULT '{}',
+    short_term_momentum_snapshot_json TEXT NOT NULL DEFAULT '{}',
+    data_quality_snapshot_json    TEXT NOT NULL DEFAULT '{}'
 );
 """.strip()
 
@@ -201,6 +203,31 @@ def _migrate_add_constituent_overlap_snapshots(con: sqlite3.Connection) -> None:
         )
 
 
+def _migrate_add_evidence_closeout_snapshots(con: sqlite3.Connection) -> None:
+    """short_term_momentum_snapshot_json / data_quality_snapshot_json 컬럼 자동 추가
+    (POC2 2026-06-01 — Market Discovery Evidence Closeout 1차).
+
+    각각 누락 시에만 ADD COLUMN. _safe_add_column 으로 동시 init race 보호.
+    """
+    cur = con.execute("PRAGMA table_info(ai_session_records)")
+    cols = {row[1] for row in cur.fetchall()}
+    if not cols:
+        return
+    if "short_term_momentum_snapshot_json" not in cols:
+        _safe_add_column(
+            con,
+            "ALTER TABLE ai_session_records "
+            "ADD COLUMN short_term_momentum_snapshot_json "
+            "TEXT NOT NULL DEFAULT '{}'",
+        )
+    if "data_quality_snapshot_json" not in cols:
+        _safe_add_column(
+            con,
+            "ALTER TABLE ai_session_records "
+            "ADD COLUMN data_quality_snapshot_json TEXT NOT NULL DEFAULT '{}'",
+        )
+
+
 def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
     """DB 파일 + 테이블 보장. 기존 스키마는 자동 마이그레이션.
 
@@ -217,6 +244,7 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
         _migrate_legacy_answer_text(con)
         _migrate_add_market_context_snapshot(con)
         _migrate_add_constituent_overlap_snapshots(con)
+        _migrate_add_evidence_closeout_snapshots(con)
         con.commit()
 
 
@@ -260,6 +288,8 @@ def insert_record(
     market_context_snapshot: Optional[dict] = None,
     constituent_snapshot: Optional[dict] = None,
     overlap_snapshot: Optional[dict] = None,
+    short_term_momentum_snapshot: Optional[dict] = None,
+    data_quality_snapshot: Optional[dict] = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> dict:
     """신규 ai_session_records 1건 저장 → 저장된 row(요약) 반환.
@@ -301,6 +331,10 @@ def insert_record(
     market_context_json = json.dumps(market_context_snapshot or {}, ensure_ascii=False)
     constituent_json = json.dumps(constituent_snapshot or {}, ensure_ascii=False)
     overlap_json = json.dumps(overlap_snapshot or {}, ensure_ascii=False)
+    short_term_momentum_json = json.dumps(
+        short_term_momentum_snapshot or {}, ensure_ascii=False
+    )
+    data_quality_json = json.dumps(data_quality_snapshot or {}, ensure_ascii=False)
 
     with _connection(db_path) as con:
         con.execute(
@@ -310,8 +344,9 @@ def insert_record(
             "gpt_answer_text, gemini_answer_text, claude_answer_text, "
             "user_memo, user_verdict, next_checks_json, "
             "linked_market_refresh_id, market_context_snapshot_json, "
-            "constituent_snapshot_json, overlap_snapshot_json"
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "constituent_snapshot_json, overlap_snapshot_json, "
+            "short_term_momentum_snapshot_json, data_quality_snapshot_json"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 new_id,
                 now_iso,
@@ -331,6 +366,8 @@ def insert_record(
                 market_context_json,
                 constituent_json,
                 overlap_json,
+                short_term_momentum_json,
+                data_quality_json,
             ),
         )
 
@@ -342,7 +379,8 @@ _SELECT_COLS = (
     "filters_json, candidate_snapshot_json, question_text, "
     "gpt_answer_text, gemini_answer_text, claude_answer_text, "
     "user_memo, user_verdict, next_checks_json, linked_market_refresh_id, "
-    "market_context_snapshot_json, constituent_snapshot_json, overlap_snapshot_json"
+    "market_context_snapshot_json, constituent_snapshot_json, overlap_snapshot_json, "
+    "short_term_momentum_snapshot_json, data_quality_snapshot_json"
 )
 
 
@@ -374,6 +412,8 @@ def _row_to_full_dict(row: tuple) -> dict:
         market_context_snapshot_json,
         constituent_snapshot_json,
         overlap_snapshot_json,
+        short_term_momentum_snapshot_json,
+        data_quality_snapshot_json,
     ) = row
     return {
         "id": id_,
@@ -394,6 +434,10 @@ def _row_to_full_dict(row: tuple) -> dict:
         "market_context_snapshot": _safe_json(market_context_snapshot_json, {}),
         "constituent_snapshot": _safe_json(constituent_snapshot_json, {}),
         "overlap_snapshot": _safe_json(overlap_snapshot_json, {}),
+        "short_term_momentum_snapshot": _safe_json(
+            short_term_momentum_snapshot_json, {}
+        ),
+        "data_quality_snapshot": _safe_json(data_quality_snapshot_json, {}),
     }
 
 

@@ -74,6 +74,9 @@ class CreateDecisionSessionRequest(BaseModel):
     # 2026-05-27 ETF Constituents & Overlap 1차 — 저장 시점 구성종목 / 중복률.
     constituent_snapshot: Optional[dict] = None
     overlap_snapshot: Optional[dict] = None
+    # 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질.
+    short_term_momentum_snapshot: Optional[dict] = None
+    data_quality_snapshot: Optional[dict] = None
 
 
 class CreateDecisionSessionResponse(BaseModel):
@@ -121,6 +124,9 @@ class DecisionSessionDetail(BaseModel):
     # 2026-05-27 — 저장 시점 구성종목 / 중복률 스냅샷 (free dict).
     constituent_snapshot: dict = {}
     overlap_snapshot: dict = {}
+    # 2026-06-01 — 저장 시점 단기 흐름 / 데이터 품질 스냅샷.
+    short_term_momentum_snapshot: dict = {}
+    data_quality_snapshot: dict = {}
 
 
 class GetDecisionSessionResponse(BaseModel):
@@ -150,6 +156,8 @@ def post_decision_session(
             market_context_snapshot=req.market_context_snapshot,
             constituent_snapshot=req.constituent_snapshot,
             overlap_snapshot=req.overlap_snapshot,
+            short_term_momentum_snapshot=req.short_term_momentum_snapshot,
+            data_quality_snapshot=req.data_quality_snapshot,
             db_path=DEFAULT_DB_PATH,
         )
     except DecisionValidationError as e:
@@ -202,6 +210,10 @@ def get_decision_session_detail(record_id: str) -> GetDecisionSessionResponse:
             market_context_snapshot=record.get("market_context_snapshot") or {},
             constituent_snapshot=record.get("constituent_snapshot") or {},
             overlap_snapshot=record.get("overlap_snapshot") or {},
+            short_term_momentum_snapshot=(
+                record.get("short_term_momentum_snapshot") or {}
+            ),
+            data_quality_snapshot=record.get("data_quality_snapshot") or {},
         ),
     )
 

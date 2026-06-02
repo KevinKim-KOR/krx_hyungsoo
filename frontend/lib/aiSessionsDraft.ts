@@ -32,6 +32,10 @@ export interface AISessionsDraft {
   // 흐름에서 채워진다. Market Discovery 직접 흐름에서는 비어있음 (null).
   constituent_snapshot?: Record<string, unknown> | null;
   overlap_snapshot?: Record<string, unknown> | null;
+  // 2026-06-01 — Market Discovery Evidence Closeout 1차. 단기 흐름 + 데이터 품질
+  // 스냅샷. Market Discovery 시점에 응답의 candidates 에서 추출.
+  short_term_momentum_snapshot?: Record<string, unknown> | null;
+  data_quality_snapshot?: Record<string, unknown> | null;
 }
 
 function safeStorage(): Storage | null {

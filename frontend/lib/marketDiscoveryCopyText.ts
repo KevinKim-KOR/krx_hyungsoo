@@ -182,6 +182,87 @@ function formatPctp(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%p`;
 }
 
+
+// 2026-06-01 Market Discovery Evidence Closeout 1차 — 지시문 §15 단기 흐름 섹션.
+function appendShortTermMomentumSection(
+  lines: string[],
+  candidates: MarketCandidate[],
+): void {
+  const hasAny = candidates.some((c) => c.short_term_momentum);
+  if (!hasAny) return;
+  lines.push("");
+  lines.push("[단기 흐름]");
+  candidates.forEach((c, idx) => {
+    const num = c.rank ?? idx + 1;
+    const name = c.name ?? "-";
+    const ticker = c.ticker ?? "-";
+    const m = c.short_term_momentum;
+    if (!m || m.status !== "ok") {
+      lines.push(`${num}. ${name} (${ticker}) — 단기 흐름 데이터 부족`);
+      return;
+    }
+    lines.push(`${num}. ${name} (${ticker})`);
+    lines.push(`   - 5거래일 수익률: ${formatPct(m.return_5d_pct ?? null)}`);
+    lines.push(`   - 10거래일 수익률: ${formatPct(m.return_10d_pct ?? null)}`);
+    lines.push(`   - 20거래일 수익률: ${formatPct(m.return_20d_pct ?? null)}`);
+    lines.push(
+      `   - KODEX200 대비 5거래일 초과수익: ${formatPctp(m.excess_vs_kodex200_5d_pctp ?? null)}`,
+    );
+    lines.push(
+      `   - KODEX200 대비 10거래일 초과수익: ${formatPctp(m.excess_vs_kodex200_10d_pctp ?? null)}`,
+    );
+    lines.push(
+      `   - KODEX200 대비 20거래일 초과수익: ${formatPctp(m.excess_vs_kodex200_20d_pctp ?? null)}`,
+    );
+  });
+}
+
+
+// 2026-06-01 Market Discovery Evidence Closeout 1차 — 지시문 §15 데이터 품질 섹션.
+function appendDataQualitySection(
+  lines: string[],
+  candidates: MarketCandidate[],
+): void {
+  const hasAny = candidates.some((c) => c.data_quality);
+  if (!hasAny) return;
+  lines.push("");
+  lines.push("[데이터 품질]");
+  candidates.forEach((c, idx) => {
+    const num = c.rank ?? idx + 1;
+    const name = c.name ?? "-";
+    const ticker = c.ticker ?? "-";
+    const dq = c.data_quality;
+    if (!dq) {
+      lines.push(`${num}. ${name} (${ticker}) — 품질 정보 없음`);
+      return;
+    }
+    lines.push(`${num}. ${name} (${ticker})`);
+    const drc = dq.daily_return_check;
+    if (drc.status === "ok") {
+      lines.push(
+        `   - 일간 수익률: ${formatPct(drc.daily_return_pct ?? null)} (정상)`,
+      );
+    } else if (drc.status === "warning") {
+      lines.push(
+        `   - 일간 수익률: ${formatPct(drc.daily_return_pct ?? null)} — ${drc.flag ?? "확인 필요"}`,
+      );
+    } else {
+      lines.push("   - 일간 수익률: 데이터 부족");
+    }
+    const nd = dq.nav_discount;
+    if (nd.status === "ok") {
+      lines.push(
+        `   - 괴리율: ${formatPct(nd.discount_rate_pct ?? null)} (source: ${nd.source ?? "-"})`,
+      );
+      if (nd.flag) {
+        lines.push(`     · ${nd.flag}`);
+      }
+    } else {
+      lines.push("   - 괴리율: source unavailable");
+    }
+  });
+}
+
 // fail-loud 정책 (frontend/lib/api.ts 의 apiBase() 와 동일 패턴):
 // asof / filters 는 백엔드 ok 응답에 항상 포함되므로 누락은 비정상 상태이다.
 // "YYYY-MM-DD" 같은 placeholder 로 덮으면 사용자가 잘못된 기준일 문구를 AI 채널에
@@ -254,6 +335,10 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   appendMarketContextSection(lines, input.marketContext);
   lines.push("");
   appendCandidateStrengthSection(lines, input.candidates);
+  // 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질
+  // 섹션 (지시문 §15). candidates 에 응답 payload 가 들어있을 때만 노출.
+  appendShortTermMomentumSection(lines, input.candidates);
+  appendDataQualitySection(lines, input.candidates);
   // 2026-05-27 — 구성종목/중복률 섹션 (지시문 §10). analysis 가 있을 때만 노출.
   if (input.constituentsAnalysis) {
     lines.push("");
@@ -283,10 +368,19 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
     lines.push("매수/매도 추천은 하지 마세요.");
   } else {
     lines.push(
-      "시스템의 시장 국면 판정과 KODEX200/KOSPI 대비 초과수익을 전제로,",
+      "시스템의 시장 국면 판정, KODEX200/KOSPI 대비 초과수익,",
     );
     lines.push(
-      "이 후보들이 시장 전체 상승에 따라간 것인지, 독립적인 섹터/테마 강세인지 해석해주세요.",
+      "단기 흐름 (5/10/20거래일) 과 데이터 품질 체크 (일간 급등/급락 / 괴리율) 를 바탕으로",
+    );
+    lines.push(
+      "이 후보들이 시장 전체 상승에 따라간 것인지, 같은 핵심 종목 반복 노출인지,",
+    );
+    lines.push(
+      "최근 급등이 지속 흐름인지 단기 반응인지,",
+    );
+    lines.push(
+      "데이터 품질상 확인이 필요한 후보가 있는지 해석해주세요.",
     );
     lines.push("");
     lines.push("매수/매도 추천은 하지 말고,");

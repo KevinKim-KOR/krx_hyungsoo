@@ -148,6 +148,10 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
         // Market Discovery 직접 흐름에서는 null.
         constituent_snapshot: draft.constituent_snapshot ?? null,
         overlap_snapshot: draft.overlap_snapshot ?? null,
+        // 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질.
+        short_term_momentum_snapshot:
+          draft.short_term_momentum_snapshot ?? null,
+        data_quality_snapshot: draft.data_quality_snapshot ?? null,
       });
       setStatusMessage(
         `저장 완료 (id: ${res.id}). [기록 조회] 탭에서 확인할 수 있습니다.`,

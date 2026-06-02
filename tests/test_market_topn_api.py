@@ -586,3 +586,32 @@ def test_no_etf_universe_topn_latest_json_path_in_code() -> None:
     assert (
         bad_files == []
     ), f"etf_universe_topn_latest.json 참조가 코드에 남아 있다: {bad_files}"
+
+
+# ─── 2026-06-01 Market Discovery Evidence Closeout 1차 ────────────
+
+
+def test_topn_latest_candidates_include_short_term_momentum_and_data_quality(
+    api_client: TestClient,
+) -> None:
+    """AC-10 / AC-11 — candidates 각 항목에 short_term_momentum + data_quality
+    payload 가 포함된다. 데이터가 부족해도 status=unavailable 로라도 반환."""
+    db = api_market_topn.DEFAULT_DB_PATH
+    _seed_two_etfs_with_prices(db, date(2024, 10, 31))
+    res = api_client.get("/market/topn/latest")
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["status"] == "ok"
+    assert len(payload["candidates"]) >= 1
+    for c in payload["candidates"]:
+        # short_term_momentum 은 항상 payload 형태로 존재 (status ok / unavailable).
+        assert c["short_term_momentum"] is not None
+        assert c["short_term_momentum"]["status"] in ("ok", "unavailable")
+        # data_quality 도 항상 존재. NAV source 가 없으므로 nav_discount.status=unavailable.
+        assert c["data_quality"] is not None
+        assert c["data_quality"]["nav_discount"]["status"] == "unavailable"
+        assert c["data_quality"]["daily_return_check"]["status"] in (
+            "ok",
+            "warning",
+            "unavailable",
+        )

@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-05-31 (Naver Stock ETFComponent 1차 채택)
+작성일: 2026-05-20 / 갱신: 2026-06-01 (Market Discovery Evidence Closeout 1차)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,9 +10,35 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-05-31 — Naver Stock ETFComponent 1차 채택 완료)
+## 1. 현재 최우선 작업 (2026-06-01 — Market Discovery Evidence Closeout 1차 완료)
 
-### ETF Constituents Naver Source Integration (DONE)
+### Market Discovery Evidence Closeout 1차 (DONE)
+
+본 STEP 으로 Market Discovery 1차 증거 묶음을 마감했다. 단기 흐름 + 일간
+플래그 + NAV / 괴리율 인프라 + AI Sessions 증거 snapshot 까지 통합 완료.
+**Market Discovery 계열 신규 기능 확장은 일단 중단**한다. AI 가 지적하는
+보완 항목을 계속 하나씩 개발하면 Holdings 판단과 ML 단계로 못 넘어간다는
+지시문 §2 / §3 원칙에 따라 다음 단계로 이동.
+
+### 다음 큰 방향 (사용자 결정 대기)
+
+1. **Holdings 판단 연결** — PROJECT_ORIGIN_INTENT §3 PC 작업 4~5단계.
+   AI Sessions 기록과 holdings 상태를 연결해 매매 결정 / 보류 사유 기록.
+2. **AI Sessions 기록 복기 구조** — 누적 기록의 검색 / 비교 / 후속 판단
+   회수율 측정.
+3. **ML factor 후보 정리** — ASSUMPTIONS Q1 (여러 factor 를 붙일 수 있는
+   구조의 엔진).
+4. **ML / 백테스트 연결**.
+
+### 별도 분기 후보 (Market Discovery 영역으로 회귀하는 경우만)
+
+- **NAV / 괴리율 source 진단 STEP** — 직전 ETF Constituents Source
+  Diagnosis 패턴 따라 Naver Stock detail endpoint 등 candidate source
+  smoke test 후 채택 검토.
+
+### (이전) ETF Constituents Naver Source Integration (DONE 2026-05-31)
+
+본 STEP 의 산출물은 STATE_LATEST.md §0.1 참조.
 
 - `naver_stock_etf_component` 를 1차 source 로 채택. service 의 cache key 도
   새 source 매칭.

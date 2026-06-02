@@ -4,7 +4,171 @@
 
 ---
 
-## 0. 현재 상태 — 2026-05-31 ETF Constituents Naver Source Integration
+## 0. 현재 상태 — 2026-06-01 Market Discovery Evidence Closeout 1차
+
+```text
+현재 단계: Market Discovery 1차 증거 묶음 마감
+  — 단기 흐름 (5/10/20거래일) + KODEX200 대비 초과수익
+  — 일간 급등/급락 데이터 품질 플래그 (±10%)
+  — NAV / 괴리율 인프라 (default unavailable, source 채택은 별도 STEP)
+  — GET /market/topn/latest 응답 계약 확장 (short_term_momentum + data_quality)
+  — POST /market/refresh 흐름에 NAV 수집 후속 단계 통합
+  — POST /decision/sessions + decision_evidence 컬럼 2개 확장
+  — AI Copy Text 단기/품질 섹션 + ETF Exposure source 문구 정정
+  — AI Sessions 상세 화면에 2 snapshot 노출
+이전 단계: ETF Constituents Naver Source Integration + asof FIX 라운드
+다음 큰 방향 (사용자 결정 대기 — 본 STEP 으로 Market Discovery 확장 일단 중단):
+  1. Holdings 판단 연결 (PROJECT_ORIGIN_INTENT §3 PC 작업 4~5단계)
+  2. AI Sessions 기록 복기 구조 (운영 데이터 누적)
+  3. ML factor 후보 정리
+  4. ML / 백테스트 연결
+  - NAV / 괴리율 source 진단 STEP (별도 분기 — 직전 ETF Constituents Source Diagnosis 패턴)
+```
+
+### 본 STEP 요약
+
+- **단기 흐름 (지시문 §5, AC-1~6)**: 신규 모듈 `app/short_term_momentum.py` —
+  ticker 마다 fetch_price_history 시리즈에서 5/10/20 거래일 수익률 산출 +
+  KODEX200 대비 초과수익. batch helper 가 KODEX200 시계열을 1회만 fetch
+  하여 응답 빌더 효율 보장. 데이터 부족 시 status=unavailable, 0 임의 대체 X.
+- **일간 급등/급락 플래그 (지시문 §6, AC-7)**: ±10% 임계. `data_quality.daily_return_check`
+  에 status=warning + flag=daily_surge_check_needed / daily_drop_check_needed.
+  매수/매도 판단 X, 데이터 품질 확인 플래그.
+- **NAV / 괴리율 인프라 (지시문 §7~§9, AC-8~13)**:
+  - `app/etf_nav_fetcher.py` — Fetcher 인터페이스 + `unavailable_nav_fetcher`
+    default (본 STEP source 미확정). `compute_discount_rate_pct` + 3%/5%
+    임계 `classify_discount_flag`.
+  - `app/etf_nav_store.py` — `etf_nav_daily` 테이블 (PK = etf_ticker, asof,
+    source). `state/market/market_data.sqlite` 에 저장. unavailable row 도
+    기록 가능.
+  - `app/etf_nav_service.py` — K6 가드 (10개 cap / cache-first / 0.5s delay
+    / 30s budget / 실패 격리). default fetcher 가 unavailable 이므로 외부
+    호출 0건 + unavailable row 만 기록.
+  - `app/market_refresh_service.py` — refresh background job 의 KOSPI 단계
+    직후에 NAV 수집 호출 (compute_topn 으로 TOP 10 후보 추출 → refresh_nav).
+    실패는 refresh 전체로 전파 X.
+- **GET /market/topn/latest 응답 확장 (지시문 §10, AC-10/11)**:
+  - 신규 Pydantic 모델: ShortTermMomentumPayload / ShortTermMomentumStartDates
+    / DailyReturnCheckPayload / NavDiscountPayload / DataQualityPayload.
+  - MarketCandidate 에 `short_term_momentum` + `data_quality` optional 필드.
+  - `_enrich_candidates_with_evidence` 가 후보별로 batch 단기 흐름 + 일간
+    플래그 + store 의 latest NAV 조회 + warnings 집계 + 전체 status 결정.
+  - 기존 market_context / returns / excess_return / 구성종목/중복률 응답 무변경.
+- **POST /decision/sessions + decision_evidence (지시문 §12~§13, AC-17/18/19)**:
+  - `decision_evidence_store.py` DDL + 마이그레이션 — `short_term_momentum_snapshot_json`
+    / `data_quality_snapshot_json` 2 컬럼. _safe_add_column race 보호 패턴 동일 적용.
+  - `insert_record` / `_row_to_full_dict` / `_SELECT_COLS` 시그니처 + SQL 갱신.
+  - `api_decision_sessions.py` CreateDecisionSessionRequest + DecisionSessionDetail
+    에 2 snapshot 필드 추가. 기존 요청은 default {} 로 호환.
+- **Frontend (지시문 §10~§15, AC-14~16, 19)**:
+  - `frontend/lib/api.ts` — TypeScript interface 4개 신규 (ShortTermMomentumPayload
+    / DailyReturnCheckPayload / NavDiscountPayload / DataQualityPayload) +
+    MarketCandidate / CreateDecisionSessionRequest / DecisionSessionDetail 확장.
+    ETF Constituents 섹션의 stale "pykrx PDF" 코멘트 → Naver Stock ETFComponent.
+  - `aiSessionsDraft.ts` + `etfExposureDraft.ts` — 2 snapshot 필드 (호환).
+  - `marketDiscoveryCopyText.ts` — `[단기 흐름]` / `[데이터 품질]` 섹션 추가
+    (지시문 §15). 요청 문구도 §15 마지막 단락 (단기 흐름 + 데이터 품질 해석
+    요청, 매수/매도 추천 X) 반영.
+  - `ConstituentsTab.tsx` — "외부 KRX 데이터 (pykrx PDF)" → "Naver Stock
+    ETFComponent 기준 구성종목 데이터" (AC-14).
+  - `TransferToAISessionsCard.tsx` (Market Discovery 직접 흐름) +
+    `ETFExposureView.tsx` (ETF Exposure 경유 흐름) 양쪽 모두 단기/품질 snapshot
+    빌더 추가 후 AI Sessions draft 에 채워 넘김.
+  - `AISessionsCreateTab.tsx` — POST /decision/sessions 호출 시 2 snapshot 전달.
+  - `AISessionsListTab.tsx` 의 DetailCard — `단기 흐름 (저장 시점)` /
+    `데이터 품질 (저장 시점)` 섹션 신규 (AC-19).
+- **시스템 / AI 책임 (지시문 §16)**: 시스템은 계산 + 표시 + 플래그 + snapshot
+  저장만. 자동 클러스터링 / 대표 ETF 선정 / 중복 후보 접기 / 매수/매도 판단 X.
+- **검증**: pytest 352 passed (330 → 352, +22 신규 / 회귀 0) / black PASS /
+  flake8 PASS / frontend lint PASS / frontend build PASS.
+- **KS-10**: **trigger 1 / near 0**. (직전 보고 "trigger 0 / near 1" 은 자기
+  모순 — FIX 라운드 정정: frontend/lib/api.ts §1.5 발동 = trigger 1. 검증자
+  추가 NOTE 반영: KS-10 §1 정의 "근접 = 트리거 임계의 50라인 이내 (백엔드
+  ≥600라인)" 기준으로 백엔드 590 / 530 모두 600 미달이므로 near 0.)
+  - **trigger 1** — `frontend/lib/api.ts` 932 → 993 (+61). 이미 frontend 900
+    임계 초과 상태에서 본 STEP 으로 type interface 4개 + Decision Session
+    요청/응답 body 확장 신규 책임 추가 → **KS-10 §1.5 (한 Step 에서 같은
+    대형 파일에 신규 책임 추가)** 발동. 본 STEP 안에서 분리 수행 X — 별도
+    cleanup STEP (`api.ts` 책임 분리) 권고. KS-10 §발동 시 조치 1번 (다음
+    기능 STEP 진입 중단) 은 사용자 결정 영역.
+  - **near 0** — `app/api_market_topn.py` 367 → 530 (+163, 격차 120). `app/market_topn.py`
+    590 (격차 60, 본 STEP 미변경). 둘 다 백엔드 near 임계 600 미달.
+  - **참고 (near 미달이지만 변동 명시)**: `app/decision_evidence_store.py`
+    469 → 513 (+44 — _safe_add_column 패턴 재사용 + 2 컬럼 추가).
+
+### FIX 라운드 (검증자 A-1 / A-3 NOTE 반영, 2026-06-03)
+
+검증자 1차 결과 REJECTED — A-1 (`short_term_momentum` 의 status="ok" 인데
+일부 필드 null 가능, 응답 계약 위반) / A-3 (STATE_LATEST 의 KS-10 표기
+자기 모순) NOTE. B-3 / B-6 (`frontend/lib/api.ts` 책임 누적) 은 본 STEP
+범위 외이므로 별도 cleanup STEP 권고로 처리.
+
+- **A-1 FIX — `app/short_term_momentum.py`**:
+  - `MIN_TRADING_DAYS_FOR_OK = 21` 상수 도입 (20거래일 수익률에 필요한 close
+    개수).
+  - `compute_short_term_momentum` 가 ticker 시계열 < 21 또는 KODEX200
+    benchmark 시계열 < 21 인 경우 모두 status="unavailable" + 부족 사유
+    메시지로 응답. status="ok" 응답에는 5/10/20 거래일 수익률 + 초과수익이
+    모두 산출 가능함을 보장.
+  - `compute_short_term_momentum_batch` 도 동일 규칙. 부분 ok + null 필드
+    조합 금지 (응답 계약 정합).
+- **회귀 테스트 신규 (2건)**:
+  - `test_short_term_momentum_unavailable_when_only_10_days` — 10거래일
+    데이터 → status="unavailable", 모든 수치 None.
+  - `test_short_term_momentum_unavailable_when_kodex_short` — ticker 30일,
+    KODEX200 10일 → status="unavailable" + message 에 "KODEX200" 명시.
+- **A-3 FIX — 본 §0 KS-10 절 자기 모순 제거**:
+  - 직전 보고 "trigger 0 / near 1" + 본문 "§1.5 해당" 충돌을 정직 표기로
+    교체 → **trigger 1 / near 0** (검증자 PARTIALLY_VERIFIED 추가 NOTE 반영
+    — KS-10 §1 "근접 = 백엔드 ≥600라인" 정의상 590/530 모두 near 미달).
+- **검증**: pytest 354 passed (352 → 354, +2 신규 / 회귀 0) / black PASS /
+  flake8 PASS / frontend lint PASS / frontend build PASS.
+
+### 신규 / 수정 파일
+
+신규:
+- `app/short_term_momentum.py` (208) — 단기 흐름 + 일간 플래그.
+- `app/etf_nav_fetcher.py` (87) — NAV 인터페이스 + unavailable default.
+- `app/etf_nav_store.py` (169) — etf_nav_daily 테이블.
+- `app/etf_nav_service.py` (237) — 후보 수집 흐름 + K6 가드.
+- `tests/test_short_term_momentum.py` (123) — 7건 단위 테스트.
+- `tests/test_etf_nav.py` (252) — 12건 (fetcher / store / service).
+
+수정:
+- `app/api_market_topn.py` — 응답 모델 신규 + _enrich_candidates_with_evidence
+  + 빌더 통합.
+- `app/market_refresh_service.py` — refresh job 끝에 NAV 수집 통합.
+- `app/decision_evidence_store.py` — DDL + 마이그레이션 + insert/select 확장.
+- `app/api_decision_sessions.py` — Request/Detail 모델 확장.
+- `frontend/lib/api.ts` — type interface 4개 + MarketCandidate /
+  CreateDecisionSessionRequest / DecisionSessionDetail 확장 + pykrx PDF
+  코멘트 → Naver Stock.
+- `frontend/lib/aiSessionsDraft.ts` — 2 snapshot 필드.
+- `frontend/lib/marketDiscoveryCopyText.ts` — [단기 흐름] / [데이터 품질]
+  섹션 + 요청 문구.
+- `frontend/app/components/ConstituentsTab.tsx` — source 문구 정정.
+- `frontend/app/components/TransferToAISessionsCard.tsx` — 2 snapshot helper.
+- `frontend/app/components/ETFExposureView.tsx` — 2 snapshot helper.
+- `frontend/app/components/AISessionsCreateTab.tsx` — POST 호출 시 2 snapshot 전달.
+- `frontend/app/components/AISessionsListTab.tsx` — DetailCard 에 2 snapshot 노출.
+- `tests/test_decision_evidence_store.py` — 마이그레이션 + 신규 컬럼 회귀 +2.
+- `tests/test_market_topn_api.py` — 응답 계약 회귀 +1.
+- `docs/handoff/POC2_FEATURE_INVENTORY.md` — 신규 기능 등록.
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 다음 큰 방향.
+- `docs/handoff/STATE_LATEST.md` (본 §0).
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §22)
+
+- 자동 클러스터링 / 대표 ETF 선정 / 중복 후보 접기.
+- ML factor 연결 / 백테스트 연결.
+- NAV / 괴리율 source 채택 (별도 진단 STEP).
+- 매수/매도 / rebalance 자동 판단.
+- Telegram 발송 흐름 변경.
+- OCI 자동 push 연결.
+
+---
+
+## 0.1 직전 상태 — 2026-05-31 ETF Constituents Naver Source Integration
 
 ```text
 현재 단계: Naver Stock ETFComponent 를 1차 구성종목 source 로 채택

@@ -204,6 +204,45 @@
 | 테스트용/임시 여부 | 아님 |
 | 다음 조치 | 현재 상태 유지 |
 
+### 2.13a Short-term Momentum + KODEX200 단기 초과수익
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 후보 ETF 별 5/10/20 거래일 수익률 + KODEX200 대비 초과수익 |
+| 현재 메뉴 위치 | Market Discovery 통합 후보 응답 (candidates[].short_term_momentum) |
+| 기능 목적 | 단기 흐름 + 단기 alpha 정량 재료 제공 (AI 해석용) |
+| 사용 가능 여부 | **사용 가능** (2026-06-01 Closeout 1차) |
+| 데이터 소스 상태 | etf_daily_price + 후보 ticker (KODEX200=069500 시계열 reuse) |
+| 운영 UI 포함 여부 | 통합 후보 응답 — UI 노출 분리 표시는 BACKLOG |
+| 테스트용/임시 여부 | 아님 |
+| 다음 조치 | 운영 데이터 누적 후 검증 |
+
+### 2.13b 일간 급등/급락 데이터 품질 플래그
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 일간 수익률 ±10% 임계 플래그 (data_quality.daily_return_check) |
+| 현재 메뉴 위치 | Market Discovery candidates[].data_quality.daily_return_check |
+| 기능 목적 | 가격 데이터 / 분배금/권리락 / 단일 종목 급등 영향 확인 유도 |
+| 사용 가능 여부 | **사용 가능** (2026-06-01 Closeout 1차) |
+| 데이터 소스 상태 | etf_daily_price (마지막 2 거래일) |
+| 운영 UI 포함 여부 | 통합 후보 응답 — UI 노출 BACKLOG |
+| 테스트용/임시 여부 | 아님 |
+| 다음 조치 | 운영 데이터 누적 후 임계 재검토 |
+
+### 2.13c NAV / 괴리율 데이터 품질 체크
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | NAV / 시장가격 / 괴리율 + 3%/5% 임계 플래그 |
+| 현재 메뉴 위치 | Market Discovery candidates[].data_quality.nav_discount |
+| 기능 목적 | 데이터 품질 확인용 (매수/매도 판단 X) |
+| 사용 가능 여부 | **부분 가능 (인프라만)** — source 미확정으로 nav_discount.status=unavailable |
+| 데이터 소스 상태 | `etf_nav_daily` 테이블 + unavailable_nav_fetcher (default). 실 source 채택은 별도 진단 STEP |
+| 운영 UI 포함 여부 | 통합 후보 응답 — UI 노출 BACKLOG |
+| 테스트용/임시 여부 | 아님 (인프라는 운영용) |
+| 다음 조치 | NAV / 괴리율 source 진단 STEP — Naver Stock detail endpoint 등 채택 검증 |
+
 ### 2.15 Data Status
 
 | 항목 | 값 |
@@ -282,3 +321,7 @@
   §3.2 (Market Discovery → ETF Exposure) / §3.3 (ETF Exposure → AI Sessions)
   의 "부분 가능" / "source 미확보" 표기를 §2.10~12 와 정합되게 "사용 가능"
   으로 전환. 한 문서 내 같은 기능에 상충 표기가 남지 않도록 정리.
+- 2026-06-01 추가 (Market Discovery Evidence Closeout 1차). §2.13a 단기 흐름
+  + §2.13b 일간 급등/급락 플래그 + §2.13c NAV / 괴리율 데이터 품질 신규.
+  단기 흐름 / 일간 플래그는 사용 가능. NAV / 괴리율은 인프라만 — source 채택
+  은 별도 진단 STEP 으로 분기.

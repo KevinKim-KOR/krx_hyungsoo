@@ -171,6 +171,26 @@ function DetailCard({
         </>
       ) : null}
 
+      {detail.short_term_momentum_snapshot &&
+      Object.keys(detail.short_term_momentum_snapshot).length > 0 ? (
+        <>
+          <h3>단기 흐름 (저장 시점)</h3>
+          <pre className="decision-pre">
+            {JSON.stringify(detail.short_term_momentum_snapshot, null, 2)}
+          </pre>
+        </>
+      ) : null}
+
+      {detail.data_quality_snapshot &&
+      Object.keys(detail.data_quality_snapshot).length > 0 ? (
+        <>
+          <h3>데이터 품질 (저장 시점)</h3>
+          <pre className="decision-pre">
+            {JSON.stringify(detail.data_quality_snapshot, null, 2)}
+          </pre>
+        </>
+      ) : null}
+
       {detail.user_memo ? (
         <>
           <h3>사용자 메모</h3>

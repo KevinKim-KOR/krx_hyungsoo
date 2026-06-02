@@ -22,6 +22,8 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
+from app.etf_nav_fetcher import classify_discount_flag
+from app.etf_nav_store import fetch_latest_nav
 from app.market_data_store import DEFAULT_DB_PATH
 from app.market_refresh_service import (
     DEFAULT_COOLDOWN_HOURS,
@@ -29,6 +31,10 @@ from app.market_refresh_service import (
     start_refresh_job,
 )
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
+from app.short_term_momentum import (
+    compute_daily_return_check,
+    compute_short_term_momentum_batch,
+)
 
 BasisLiteral = Literal["daily", "one_month", "three_month"]
 OrderLiteral = Literal["desc", "asc"]
@@ -82,6 +88,51 @@ class MarketReturns(BaseModel):
     three_month: Optional[MarketPeriodReturn] = None
 
 
+class ShortTermMomentumStartDates(BaseModel):
+    five_d: Optional[str] = None
+    ten_d: Optional[str] = None
+    twenty_d: Optional[str] = None
+
+
+class ShortTermMomentumPayload(BaseModel):
+    status: str  # ok / unavailable
+    return_5d_pct: Optional[float] = None
+    return_10d_pct: Optional[float] = None
+    return_20d_pct: Optional[float] = None
+    excess_vs_kodex200_5d_pctp: Optional[float] = None
+    excess_vs_kodex200_10d_pctp: Optional[float] = None
+    excess_vs_kodex200_20d_pctp: Optional[float] = None
+    start_dates: Optional[ShortTermMomentumStartDates] = None
+    end_date: Optional[str] = None
+    message: Optional[str] = None
+
+
+class DailyReturnCheckPayload(BaseModel):
+    status: str  # ok / warning / unavailable
+    daily_return_pct: Optional[float] = None
+    flag: Optional[str] = None
+    threshold_pct: Optional[float] = None
+    message: Optional[str] = None
+
+
+class NavDiscountPayload(BaseModel):
+    status: str  # ok / unavailable / partial
+    asof: Optional[str] = None
+    nav: Optional[float] = None
+    market_price: Optional[float] = None
+    discount_rate_pct: Optional[float] = None
+    flag: Optional[str] = None
+    source: Optional[str] = None
+    message: Optional[str] = None
+
+
+class DataQualityPayload(BaseModel):
+    status: str  # ok / warning / unavailable
+    daily_return_check: DailyReturnCheckPayload
+    nav_discount: NavDiscountPayload
+    warnings: list[str] = []
+
+
 class MarketCandidate(BaseModel):
     """통합 후보 테이블 entry — 3 기간 수익률 + 선택된 basis 의 요약 필드."""
 
@@ -96,6 +147,9 @@ class MarketCandidate(BaseModel):
     # 2026-05-22 Market Regime & Benchmark Context 1차 — KODEX200/KOSPI 대비
     # 1m/3m 초과수익 (percentage point). KOSPI 데이터 없으면 vs_kospi_* 는 null.
     excess_return: Optional["MarketCandidateExcessReturn"] = None
+    # 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질.
+    short_term_momentum: Optional[ShortTermMomentumPayload] = None
+    data_quality: Optional[DataQualityPayload] = None
 
 
 class MarketCandidateExcessReturn(BaseModel):
@@ -222,6 +276,113 @@ def _candidate_to_model(raw: dict) -> MarketCandidate:
     )
 
 
+def _build_nav_discount_payload(ticker: str) -> NavDiscountPayload:
+    """store 에서 최신 NAV row 를 읽어 응답 payload 생성 (지시문 §10.2).
+
+    store 에 row 없으면 status=unavailable + message.
+    """
+    row = fetch_latest_nav(etf_ticker=ticker, db_path=DEFAULT_DB_PATH)
+    if row is None:
+        return NavDiscountPayload(
+            status="unavailable",
+            message="NAV / discount source unavailable",
+        )
+    return NavDiscountPayload(
+        status=row.status,
+        asof=row.asof,
+        nav=row.nav,
+        market_price=row.market_price,
+        discount_rate_pct=row.discount_rate_pct,
+        flag=classify_discount_flag(row.discount_rate_pct),
+        source=row.source,
+        message=row.message,
+    )
+
+
+def _enrich_candidates_with_evidence(
+    candidates: list[MarketCandidate],
+) -> list[MarketCandidate]:
+    """단기 흐름 + data_quality 채우기 (지시문 §10).
+
+    KODEX200 시계열은 1회만 fetch. NAV 는 store read only.
+    """
+    tickers = [c.ticker for c in candidates if c.ticker]
+    momentum_map = compute_short_term_momentum_batch(tickers, db_path=DEFAULT_DB_PATH)
+    enriched: list[MarketCandidate] = []
+    for c in candidates:
+        if not c.ticker:
+            enriched.append(c)
+            continue
+        m = momentum_map.get(c.ticker)
+        momentum_payload = (
+            ShortTermMomentumPayload(
+                status=m.status,
+                return_5d_pct=m.return_5d_pct,
+                return_10d_pct=m.return_10d_pct,
+                return_20d_pct=m.return_20d_pct,
+                excess_vs_kodex200_5d_pctp=m.excess_vs_kodex200_5d_pctp,
+                excess_vs_kodex200_10d_pctp=m.excess_vs_kodex200_10d_pctp,
+                excess_vs_kodex200_20d_pctp=m.excess_vs_kodex200_20d_pctp,
+                start_dates=(
+                    ShortTermMomentumStartDates(
+                        five_d=m.start_date_5d,
+                        ten_d=m.start_date_10d,
+                        twenty_d=m.start_date_20d,
+                    )
+                    if m.status == "ok"
+                    else None
+                ),
+                end_date=m.end_date,
+                message=m.message,
+            )
+            if m is not None
+            else None
+        )
+
+        d = compute_daily_return_check(c.ticker, db_path=DEFAULT_DB_PATH)
+        daily_payload = DailyReturnCheckPayload(
+            status=d.status,
+            daily_return_pct=d.daily_return_pct,
+            flag=d.flag,
+            threshold_pct=d.threshold_pct,
+            message=d.message,
+        )
+        nav_payload = _build_nav_discount_payload(c.ticker)
+
+        warnings: list[str] = []
+        if daily_payload.flag:
+            warnings.append(daily_payload.flag)
+        if nav_payload.flag:
+            warnings.append(nav_payload.flag)
+
+        # data_quality 전체 status — daily 또는 nav 중 warning 이 있으면 warning.
+        if daily_payload.status == "warning" or nav_payload.flag is not None:
+            overall_status = "warning"
+        elif (
+            daily_payload.status == "unavailable"
+            and nav_payload.status == "unavailable"
+        ):
+            overall_status = "unavailable"
+        else:
+            overall_status = "ok"
+
+        dq_payload = DataQualityPayload(
+            status=overall_status,
+            daily_return_check=daily_payload,
+            nav_discount=nav_payload,
+            warnings=warnings,
+        )
+        enriched.append(
+            c.model_copy(
+                update={
+                    "short_term_momentum": momentum_payload,
+                    "data_quality": dq_payload,
+                }
+            )
+        )
+    return enriched
+
+
 def _market_context_to_model(raw: Optional[dict]) -> Optional[MarketContextResponse]:
     if not raw:
         return None
@@ -290,7 +451,9 @@ def get_market_topn_latest(
             MarketLatestRefresh(**latest_refresh) if latest_refresh else None
         ),
         runtime_seconds=payload.get("runtime_seconds"),
-        candidates=[_candidate_to_model(c) for c in payload.get("candidates", [])],
+        candidates=_enrich_candidates_with_evidence(
+            [_candidate_to_model(c) for c in payload.get("candidates", [])]
+        ),
         daily_topn=[_entry_to_model(r) for r in payload.get("daily_topn", [])],
         one_month_topn=[_entry_to_model(r) for r in payload.get("one_month_topn", [])],
         three_month_topn=[
