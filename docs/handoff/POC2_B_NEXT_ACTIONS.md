@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-01 (Market Discovery Evidence Closeout 1차)
+작성일: 2026-05-20 / 갱신: 2026-06-03 (KS-10 Cleanup: API Client / Type 책임 분리)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,15 +10,22 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-06-01 — Market Discovery Evidence Closeout 1차 완료)
+## 1. 현재 최우선 작업 (2026-06-03 — KS-10 Cleanup 완료, 다음 방향 사용자 결정 대기)
 
-### Market Discovery Evidence Closeout 1차 (DONE)
+### KS-10 Cleanup: API Client / Type 책임 분리 (DONE)
 
-본 STEP 으로 Market Discovery 1차 증거 묶음을 마감했다. 단기 흐름 + 일간
-플래그 + NAV / 괴리율 인프라 + AI Sessions 증거 snapshot 까지 통합 완료.
-**Market Discovery 계열 신규 기능 확장은 일단 중단**한다. AI 가 지적하는
-보완 항목을 계속 하나씩 개발하면 Holdings 판단과 ML 단계로 못 넘어간다는
-지시문 §2 / §3 원칙에 따라 다음 단계로 이동.
+직전 STEP (Market Discovery Evidence Closeout 1차) 종료 시점에 남은 구조
+부채 — `frontend/lib/api.ts` 993 라인 단일 파일의 KS-10 §1.5 trigger — 를
+도메인 책임 기준 8개 모듈 + 1개 barrel 로 분리했다. 본 STEP 의 단일 목적은
+trigger / near 임계 0 달성이며 기능 추가 / API 계약 변경 / UI 문구 변경 0건.
+
+- 분리 결과: `frontend/lib/api/` 디렉토리에 core / runApproval / holdings /
+  universeMomentum / marketEvidence / market / etfExposure / decisionSessions
+  + index barrel. `@/lib/api` import 경로 호환 유지 (21 컴포넌트 0건 수정).
+- 활성 코드 trigger_files_after = [] / near_threshold_files_after = [].
+- 백엔드 / 프론트 / 테스트 모두 회귀 없음 (pytest 354 / build PASS).
+- 검증자 NOTE FIX 2건 반영 — A-2 (실측 카운트 정정 86 → 97) / B-6
+  (`request` 내부 fetch wrapper 를 barrel public surface 에서 제외).
 
 ### 다음 큰 방향 (사용자 결정 대기)
 
@@ -35,6 +42,12 @@
 - **NAV / 괴리율 source 진단 STEP** — 직전 ETF Constituents Source
   Diagnosis 패턴 따라 Naver Stock detail endpoint 등 candidate source
   smoke test 후 채택 검토.
+
+### (이전) Market Discovery Evidence Closeout 1차 (DONE 2026-06-01)
+
+본 STEP 으로 Market Discovery 1차 증거 묶음을 마감했다. 단기 흐름 + 일간
+플래그 + NAV / 괴리율 인프라 + AI Sessions 증거 snapshot 까지 통합 완료.
+**Market Discovery 계열 신규 기능 확장은 일단 중단**한다.
 
 ### (이전) ETF Constituents Naver Source Integration (DONE 2026-05-31)
 

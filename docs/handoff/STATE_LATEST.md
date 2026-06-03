@@ -1,10 +1,181 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-06-01
+최종 업데이트: 2026-06-03
 
 ---
 
-## 0. 현재 상태 — 2026-06-01 Market Discovery Evidence Closeout 1차
+## 0. 현재 상태 — 2026-06-03 KS-10 Cleanup: API Client / Type 책임 분리
+
+```text
+현재 단계: KS-10 §1.5 발동 (frontend/lib/api.ts 993 라인 trigger) 해소
+  — 기능 추가 0건. API 계약 / UI 문구 / 화면 흐름 무변경.
+  — frontend/lib/api.ts (993) 단일 파일을 도메인 8개 + barrel 1개로 분리.
+  — `@/lib/api` import 경로는 그대로 유지 (barrel re-export 호환).
+  — 모든 활성 코드에서 KS-10 trigger / near 0 달성.
+이전 단계: Market Discovery Evidence Closeout 1차 (Closeout 본 STEP + 검증자 A-1/A-3 FIX)
+다음 큰 방향 (사용자 결정 대기):
+  1. Holdings 판단 연결 (PROJECT_ORIGIN_INTENT §3 PC 작업 4~5단계)
+  2. AI Sessions 기록 복기 구조 (운영 데이터 누적)
+  3. NAV / 괴리율 source 진단 STEP (별도 분기)
+  4. ML factor 후보 정리 / 백테스트 연결
+```
+
+### 본 STEP 단일 목표 (지시문 §3)
+
+```text
+trigger_files_after = []
+near_threshold_files_after = []
+새 기능 추가 = false
+기존 API 계약 변경 = false
+기존 UI/문구 변경 = false
+기존 기능 회귀 = false
+```
+
+위 5개 조건 모두 달성. 직전 Closeout 1차에서 남은 구조 문제 (api.ts 993 라인
+trigger) 만 해소하고 기능은 일체 손대지 않음.
+
+### KS-10 측정 (지시문 §4.1 / AC-1~3)
+
+**측정 방법**: `wc -l` 로 모든 `.py` / `.ts` / `.tsx` 파일 라인 수 실측.
+KS-10 §1 정의에서 제외 (backup/ archived / node_modules / .next 등) 는 활성
+코드 범위에서 분리. `backup/backtest/` 4개 파일 (1910/1909/1007/877 라인) 은
+Phase 1 archived 로 KS-10 "백엔드 핵심 모듈" 정의에 해당하지 않음.
+
+**KS-10 임계** (docs/KILL_SWITCHES.md §1 + §73):
+- 백엔드 핵심 모듈 — trigger ≥650 / near ≥600
+- 프론트 컴포넌트 — trigger ≥900 / near ≥850
+- 테스트 — trigger ≥1500 (여러 Step 섞임) / near ≥1450
+
+**활성 코드 trigger / near (Before / After)**:
+
+```text
+trigger_files_before = ["frontend/lib/api.ts" (993)]
+trigger_files_after  = []
+near_threshold_files_before = []
+near_threshold_files_after  = []
+files_750_plus_before  (활성) = ["frontend/lib/api.ts" (993), "tests/test_holdings_message_text.py" (924)]
+files_750_plus_after   (활성) = ["tests/test_holdings_message_text.py" (924)]
+```
+
+- `tests/test_holdings_message_text.py` 924 라인은 테스트 near 임계 1450 미달
+  로 KS-10 trigger / near 모두 비해당. 본 Cleanup 범위 외 (지시문 §4.1
+  "trigger / near 아닌 파일은 억지로 분리하지 않는다").
+- 활성 코드에서 최대 backend 핵심 모듈은 `app/market_topn.py` 590 라인 — backend
+  near 600 미달.
+- 활성 코드에서 최대 frontend 파일은 `frontend/app/components/MarketDiscoveryView.tsx`
+  705 라인 — frontend near 850 미달.
+
+### 분리 매핑 (지시문 §4.2 / §5 / AC-4~6)
+
+**원본**: `frontend/lib/api.ts` 993 라인 (단일 파일에 8개 도메인 책임 누적).
+
+**분리 결과**: `frontend/lib/api/` 디렉토리 8개 도메인 파일 + 1개 barrel.
+
+| 파일 | 라인 | 책임 |
+|---|---|---|
+| `frontend/lib/api/core.ts` | 80 | 공통 fetch wrapper (`request<T>`), `ApiConfigError`, `ApiRequestError`, `apiBase()`, `DEFAULT_TIMEOUT_MS`. 도메인 타입 0건. |
+| `frontend/lib/api/runApproval.ts` | 140 | `Run` / `RunStatus` / `TERMINAL_STATES` + `generateDraft` / `approveRun` / `rejectRun` / `fetchRun` / `isTerminal`. draft_payload 내부 sub-type (Momentum* 5개 + FactorSignal). |
+| `frontend/lib/api/holdings.ts` | 93 | `HoldingItem` / `HoldingsPayload` + `EnrichedHolding` / `MarketQuoteItem` / `MarketRefreshResult`. `fetchHoldings` / `saveHoldings` / `generateDraftFromHoldings` / `refreshMarket` (holdings 시세 한정) / `fetchEnrichedHoldings`. |
+| `frontend/lib/api/universeMomentum.ts` | 73 | universe momentum refresh — `UniverseRefreshResponse` 계열 + `refreshUniverseMomentum`. PUSH 2/3 흐름 한정. |
+| `frontend/lib/api/marketEvidence.ts` | 116 | Market Discovery evidence — `ShortTermMomentumPayload` / `DataQualityPayload` / `DailyReturnCheckPayload` / `NavDiscountPayload` + Market Regime (`MarketContext` / `MarketRegimeCode` / `MarketContextKodex200` / `MarketContextKospi` / `MarketCandidateExcessReturn`). 호출 함수 0건. |
+| `frontend/lib/api/market.ts` | 231 | Market Discovery TOP N + Refresh — `MarketBasis` / `MarketProductTag` / `MarketCandidate` / `MarketTopN*` / `MarketRefresh*`. `fetchMarketTopnLatest` / `postMarketRefresh` / `fetchMarketRefreshStatus`. evidence / regime 타입은 marketEvidence import. |
+| `frontend/lib/api/etfExposure.ts` | 150 | ETF Constituents & Overlap — `RefreshConstituents*` / `TopHolding` / `Concentration` / `ConstituentItem` / `OverlapPair` / `RepeatedCoreHolding` / `ConstituentsAnalysisResponse` + `refreshConstituents` / `fetchConstituentsAnalysis`. |
+| `frontend/lib/api/decisionSessions.ts` | 170 | AI Sessions / Decision Evidence — `Decision*` 타입 일체 + `createDecisionSession` / `fetchDecisionSessions` / `fetchDecisionSession` + `toDecisionCandidateSnapshot` (MarketCandidate → snapshot 변환). |
+| `frontend/lib/api/index.ts` | 15 | barrel re-export 전용 (`export * from "./core"` × 8). 책임 0건. |
+
+**총 합계**: 1068 라인 (원본 993 + barrel/주석 75). 도메인별 ~80-231 라인.
+모두 KS-10 frontend trigger 900 의 1/4 이하.
+
+**분리 기준 (지시문 §4.2 허용/금지)**:
+- ✓ 파일명만 봐도 담당 도메인 식별 가능.
+- ✓ 다음 기능 추가 시 수정 위치 예측 가능.
+- ✓ 도메인별 타입 + API 호출 함수 묶음.
+- ✓ 공통 fetch helper 는 core.ts 1곳에만.
+- ✗ `api_part1` / `api_part2` 같은 기계 분할 사용 X.
+- ✗ index.ts 가 다시 거대 책임 파일이 되지 않도록 re-export 만 유지.
+
+### Import 경로 호환 (지시문 §4.2 §5.8 / AC-7)
+
+- `@/lib/api` (전 21개 컴포넌트 사용) — Next.js bundler resolution 이 `frontend/lib/api/index.ts` 로 자동 해석.
+- 원본 `frontend/lib/api.ts` 는 `git rm` 으로 제거 (디렉토리와 동시 존재 시 모호성 차단).
+- 21개 컴포넌트 (AISessionsCreateTab / ApprovalTelegramView / AISessionsListTab / CandidateTable / ConstituentsTab / DashboardView / EnrichedHoldingsSection / ETFExposureView / HoldingsClient / HoldingsView / JudgmentReasonSection / MainPanel / MarketContextCard / MarketDiscoveryView / OverlapTab / RunPanel / SampleDraftQuickButton / TransferToAISessionsCard / TransferToETFExposureCard / UniverseRefreshPanel + 한 import 의 type only EnrichedHolding) **0건 수정**.
+
+### 데이터 계약 / UI 변경 없음 (지시문 §6 / §7 / §9 / AC-8 ~ AC-12)
+
+- API endpoint path / request 필드 / response 필드 / enum 값 / snapshot JSON 구조 / sessionStorage draft 의미 — **무변경**.
+- TypeScript 타입 파일이 분리되어도 런타임 데이터 구조 무변경 (확인: 기존 97개 named export 가 8개 도메인 파일 + barrel 로 동일 이름·동일 시그니처 유지 — FIX 라운드에서 실측 정정).
+- UI 문구 / 버튼 / 탭 / 배치 / 흐름 — **무변경** (frontend/app 디렉토리 0건 수정).
+- 기존 테스트 354건 PASS — 검증 의미 약화 0건, 테스트 import 경로 변경 0건 (backend pytest 는 frontend import 와 무관).
+
+### 검증 결과 (지시문 §10 / AC-13)
+
+- **backend pytest** — 354 passed in 13.06s (직전 354 동일, 회귀 0).
+- **black --check** — 76 files unchanged (PASS).
+- **flake8** — 0건 (PASS).
+- **frontend ESLint** — 0건 (PASS).
+- **frontend Next.js build** — 4 static pages PASS, TypeScript types check PASS.
+
+### 신규 / 수정 / 삭제 파일
+
+신규 (9 — frontend/lib/api/ 디렉토리):
+- `frontend/lib/api/core.ts` (80)
+- `frontend/lib/api/runApproval.ts` (140)
+- `frontend/lib/api/holdings.ts` (93)
+- `frontend/lib/api/universeMomentum.ts` (73)
+- `frontend/lib/api/marketEvidence.ts` (116)
+- `frontend/lib/api/market.ts` (231)
+- `frontend/lib/api/etfExposure.ts` (150)
+- `frontend/lib/api/decisionSessions.ts` (170)
+- `frontend/lib/api/index.ts` (15)
+
+삭제 (1):
+- `frontend/lib/api.ts` (993 → 제거; 도메인 책임이 위 8 파일로 이전).
+
+수정 (1):
+- `docs/handoff/STATE_LATEST.md` (본 §0 추가 + 직전 §0 → §0.1 demote).
+
+`POC2_FEATURE_INVENTORY.md` 는 본 STEP 이 Cleanup (기능 변경 0건) 이므로 갱신
+안 함 (지시문 §8 마지막 문단).
+
+### FIX 라운드 (검증자 A-2 / B-6 NOTE 반영, 2026-06-03)
+
+검증자 1차 결과 REJECTED — A-2 (보고서의 "기존 86개 named export 동일" 이
+실측과 불일치 — 실제 old=97 / new=98, 차이는 `request` 1건) / B-6 (내부
+fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
+`@/lib/api` public surface 로 노출 — 원본 `frontend/lib/api.ts` 에서 비-export
+였던 항목이므로 cleanup 정합 위반).
+
+- **B-6 FIX — `frontend/lib/api/index.ts`**:
+  - `export * from "./core"` → `export { ApiConfigError, ApiRequestError } from "./core"` 으로 변경.
+  - `request` 는 `core.ts` 에서 그대로 export 유지 (도메인 모듈 7개가 내부
+    fetch wrapper 로 import — runApproval / holdings / universeMomentum /
+    market / etfExposure / decisionSessions).
+  - barrel 에서만 제외 — `@/lib/api` consumer 21개는 `request` 를 사용
+    하지 않음 (grep 으로 0건 확인) 이므로 호환 영향 없음.
+- **A-2 FIX — 본 §0 보고 라인 정정**:
+  - 위 §0 의 "기존 86개 named export" → "기존 97개 named export" 로 정정
+    (실측: 원본 api.ts 97 export / 분리 후 8 파일 합 98 export — 차이 1
+    건은 `request` 였고 본 FIX 로 public surface 에서 제거).
+  - 정정 후 public export 표면 = 97 (원본과 동일).
+- **검증**: pytest 354 passed (회귀 0) / black PASS / flake8 PASS /
+  frontend ESLint PASS / frontend Next.js build PASS (4 static pages).
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §6 / §11)
+
+- 새 기능 / 새 API endpoint / 새 데이터 계약 — 0건.
+- API field rename / optional / enum / snapshot shape 변경 — 0건.
+- UI 문구 / 화면 배치 / 버튼 동작 변경 — 0건.
+- Market Discovery 기능 확장 / NAV source 진단 / Holdings 판단 연결 / GenerateDraft 변경.
+- ETF 대표 선정 / 자동 클러스터링 / 독립 테마 자동 라벨 / 중복 후보 접기.
+- 매수/매도/교체 판단 / Telegram 문구 / OCI push 연결 / ML / 백테스트 연결.
+- backup/ archived Phase 1 코드 (1763/1704/1007/877/759 라인) — KS-10 정의상
+  "백엔드 핵심 모듈" 아님. 본 Cleanup 범위 외.
+- 활성 코드 trigger / near 미해당 파일 — 지시문 §4.1 "억지로 분리하지 않는다"
+  원칙 준수.
+
+---
+
+## 0.1 직전 상태 — 2026-06-01 Market Discovery Evidence Closeout 1차
 
 ```text
 현재 단계: Market Discovery 1차 증거 묶음 마감
