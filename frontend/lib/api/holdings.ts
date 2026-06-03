@@ -91,3 +91,137 @@ export function refreshMarket(): Promise<MarketRefreshResult> {
 export function fetchEnrichedHoldings(): Promise<EnrichedHoldingsResult> {
   return request<EnrichedHoldingsResult>("GET", "/holdings/enriched");
 }
+
+// ─── POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) ──────
+// GET /holdings/market-evidence/latest — read-only. 외부 fetch 트리거 X.
+// 매수/매도/교체 판단 X. 보유 ETF 가 현재 Market Discovery 후보 / 시장 국면 /
+// 단기 흐름 / 구성종목 중복 / NAV 상태와 어떻게 연결되는지의 raw evidence.
+// GenerateDraft 흐름과 같은 backend evidence builder 를 재사용 — snapshot 형태로
+// draft_payload.holdings_market_evidence_snapshot 에도 저장된다.
+
+export type HoldingsMarketEvidenceTopnMatchStatus =
+  | "matched_topn_candidate"
+  | "not_in_current_topn"
+  | "unavailable";
+
+export type HoldingsMarketEvidenceReturnsStatus = "ok" | "unavailable" | "partial";
+
+export type HoldingsMarketEvidenceConstituentsStatus =
+  | "ok"
+  | "constituents_unavailable"
+  | "market_core_unavailable"
+  | "unavailable";
+
+export type HoldingsMarketEvidenceNavStatus =
+  | "ok"
+  | "warning"
+  | "partial"
+  | "unavailable";
+
+export interface HoldingsMarketEvidenceTopnMatch {
+  status: HoldingsMarketEvidenceTopnMatchStatus;
+  rank: number | null;
+  basis: string | null;
+  candidate_name: string | null;
+}
+
+export interface HoldingsMarketEvidenceReturns {
+  status: HoldingsMarketEvidenceReturnsStatus;
+  one_month_return_pct: number | null;
+  three_month_return_pct: number | null;
+}
+
+export interface HoldingsMarketEvidenceExcess {
+  status: HoldingsMarketEvidenceReturnsStatus;
+  vs_kodex200_1m_pctp: number | null;
+  vs_kodex200_3m_pctp: number | null;
+}
+
+export interface HoldingsMarketEvidenceShortTermMomentum {
+  status: HoldingsMarketEvidenceReturnsStatus;
+  return_5d_pct: number | null;
+  return_10d_pct: number | null;
+  return_20d_pct: number | null;
+  excess_vs_kodex200_5d_pctp: number | null;
+  excess_vs_kodex200_10d_pctp: number | null;
+  excess_vs_kodex200_20d_pctp: number | null;
+}
+
+export interface HoldingsMarketEvidenceOverlapItem {
+  ticker: string | null;
+  name: string | null;
+  weight_pct: number | null;
+  market_core_count: number | null;
+}
+
+export interface HoldingsMarketEvidenceConstituentsOverlap {
+  status: HoldingsMarketEvidenceConstituentsStatus;
+  overlap_with_market_core: HoldingsMarketEvidenceOverlapItem[];
+}
+
+export interface HoldingsMarketEvidenceNavDiscount {
+  status: HoldingsMarketEvidenceNavStatus;
+  source: string | null;
+  asof: string | null;
+  nav: number | null;
+  market_price: number | null;
+  discount_rate_pct: number | null;
+  flag: string | null;
+  message: string | null;
+}
+
+export interface HoldingsMarketEvidenceHoldingSnapshot {
+  quantity: number;
+  avg_buy_price: number;
+  evaluation_amount: number | null;
+  pnl_rate_pct: number | null;
+}
+
+export interface HoldingsMarketEvidenceItem {
+  ticker: string;
+  name: string;
+  account_group?: string;
+  holding: HoldingsMarketEvidenceHoldingSnapshot;
+  topn_match: HoldingsMarketEvidenceTopnMatch;
+  returns: HoldingsMarketEvidenceReturns;
+  excess_return: HoldingsMarketEvidenceExcess;
+  short_term_momentum: HoldingsMarketEvidenceShortTermMomentum;
+  constituents_overlap: HoldingsMarketEvidenceConstituentsOverlap;
+  nav_discount: HoldingsMarketEvidenceNavDiscount;
+  evidence_notes: string[];
+}
+
+export interface HoldingsMarketEvidenceSummary {
+  total_holdings_count: number;
+  matched_topn_count: number;
+  not_in_current_topn_count: number;
+  evidence_unavailable_count: number;
+  constituents_available_count: number;
+  constituents_unavailable_count: number;
+  nav_discount_unavailable_count: number;
+}
+
+export interface HoldingsMarketEvidenceMarketContext {
+  status: string;
+  asof: string | null;
+  regime_label: string;
+  regime_code: string;
+}
+
+export interface HoldingsMarketEvidenceResponse {
+  status: "ok";
+  asof: string;
+  holdings_asof: string | null;
+  market_asof: string | null;
+  market_context: HoldingsMarketEvidenceMarketContext | null;
+  summary: HoldingsMarketEvidenceSummary;
+  holdings: HoldingsMarketEvidenceItem[];
+  warnings: string[];
+}
+
+export function fetchHoldingsMarketEvidence(): Promise<HoldingsMarketEvidenceResponse> {
+  return request<HoldingsMarketEvidenceResponse>(
+    "GET",
+    "/holdings/market-evidence/latest",
+  );
+}

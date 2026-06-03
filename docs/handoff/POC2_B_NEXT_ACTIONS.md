@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-03 (KS-10 Cleanup: API Client / Type 책임 분리)
+작성일: 2026-05-20 / 갱신: 2026-06-03 (Holdings × Market Discovery Evidence 1차)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
@@ -10,38 +10,47 @@
 
 ---
 
-## 1. 현재 최우선 작업 (2026-06-03 — KS-10 Cleanup 완료, 다음 방향 사용자 결정 대기)
+## 1. 현재 최우선 작업 (2026-06-03 — Holdings × Market Discovery Evidence 1차 완료)
 
-### KS-10 Cleanup: API Client / Type 책임 분리 (DONE)
+### Holdings × Market Discovery Evidence 1차 (DONE)
 
-직전 STEP (Market Discovery Evidence Closeout 1차) 종료 시점에 남은 구조
-부채 — `frontend/lib/api.ts` 993 라인 단일 파일의 KS-10 §1.5 trigger — 를
-도메인 책임 기준 8개 모듈 + 1개 barrel 로 분리했다. 본 STEP 의 단일 목적은
-trigger / near 임계 0 달성이며 기능 추가 / API 계약 변경 / UI 문구 변경 0건.
+사용자의 실제 holdings 를 Market Discovery evidence (TOP N 후보 일치 여부 /
+시장 국면 / KODEX200 대비 1m·3m 초과수익 / 5·10·20거래일 단기 흐름 / 구성종목
+중복 / NAV) 와 raw evidence 수준에서 연결했다. PROJECT_ORIGIN_INTENT §3 PC
+작업 4~5단계 (매매 결정 / 보류 + 결정 기록) 의 정량 재료 1차.
 
-- 분리 결과: `frontend/lib/api/` 디렉토리에 core / runApproval / holdings /
-  universeMomentum / marketEvidence / market / etfExposure / decisionSessions
-  + index barrel. `@/lib/api` import 경로 호환 유지 (21 컴포넌트 0건 수정).
-- 활성 코드 trigger_files_after = [] / near_threshold_files_after = [].
-- 백엔드 / 프론트 / 테스트 모두 회귀 없음 (pytest 354 / build PASS).
-- 검증자 NOTE FIX 2건 반영 — A-2 (실측 카운트 정정 86 → 97) / B-6
-  (`request` 내부 fetch wrapper 를 barrel public surface 에서 제외).
+- 신규 read-only API `GET /holdings/market-evidence/latest` — 외부 fetch 0건.
+- GenerateDraft 가 같은 evidence builder 를 재사용 — draft_payload.holdings_market_evidence_snapshot
+  + factor_signals scope="holdings_market_evidence" + [판단 사유] 1줄.
+- Strict Cache-only: 보유 ETF 구성종목 외부 source 신규 호출 0건.
+- NAV source 신규 채택 0건 (기존 unavailable 흐름 유지).
+- 매수/매도/교체 판단 어휘 0건 (회귀 테스트로 보장).
+- pytest 379 passed (354 → 379, +25 신규 / 회귀 0).
 
 ### 다음 큰 방향 (사용자 결정 대기)
 
-1. **Holdings 판단 연결** — PROJECT_ORIGIN_INTENT §3 PC 작업 4~5단계.
-   AI Sessions 기록과 holdings 상태를 연결해 매매 결정 / 보류 사유 기록.
-2. **AI Sessions 기록 복기 구조** — 누적 기록의 검색 / 비교 / 후속 판단
+1. **AI Sessions 기록 복기 구조** — 누적 기록의 검색 / 비교 / 후속 판단
    회수율 측정.
-3. **ML factor 후보 정리** — ASSUMPTIONS Q1 (여러 factor 를 붙일 수 있는
+2. **NAV / 괴리율 source 진단 STEP** — 직전 ETF Constituents Source Diagnosis
+   패턴 따라 source 후보 smoke test 후 채택 검토.
+3. **보유 ETF 구성종목 외부 source 채택** — Strict Cache-only 가 본 STEP
+   범위였으므로 보유 ETF 의 구성종목 cache 가 없는 경우 후속 STEP 에서 채택
+   여부 결정 (BACKLOG 후보).
+4. **ML factor 후보 정리** — ASSUMPTIONS Q1 (여러 factor 를 붙일 수 있는
    구조의 엔진).
-4. **ML / 백테스트 연결**.
+5. **ML / 백테스트 연결**.
 
 ### 별도 분기 후보 (Market Discovery 영역으로 회귀하는 경우만)
 
 - **NAV / 괴리율 source 진단 STEP** — 직전 ETF Constituents Source
   Diagnosis 패턴 따라 Naver Stock detail endpoint 등 candidate source
   smoke test 후 채택 검토.
+
+### (이전) KS-10 Cleanup: API Client / Type 책임 분리 (DONE 2026-06-03)
+
+`frontend/lib/api.ts` 993 라인 단일 파일을 도메인 8개 모듈 + barrel 로 분리.
+`@/lib/api` import 호환 유지 (21 컴포넌트 0건 수정). 활성 코드 trigger / near 0.
+검증자 NOTE FIX 2건 반영 — A-2 카운트 정정, B-6 `request` barrel public 제외.
 
 ### (이전) Market Discovery Evidence Closeout 1차 (DONE 2026-06-01)
 

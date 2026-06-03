@@ -4,7 +4,125 @@
 
 ---
 
-## 0. 현재 상태 — 2026-06-03 KS-10 Cleanup: API Client / Type 책임 분리
+## 0. 현재 상태 — 2026-06-03 Holdings × Market Discovery Evidence 1차
+
+```text
+현재 단계: 보유 ETF × Market Discovery evidence 연결
+  — 신규 read-only API `GET /holdings/market-evidence/latest` (외부 fetch 0건).
+  — Evidence 빌더는 SQLite + etf_constituents store + etf_nav store + market cache 만 read.
+  — Strict Cache-only: 보유 ETF 구성종목 외부 source 신규 호출 0건.
+  — NAV source 신규 채택 0건 (기존 unavailable 흐름 유지).
+  — GenerateDraft 가 같은 evidence builder 를 재사용 — draft_payload.holdings_market_evidence_snapshot 신규 키 +
+    factor_signals scope="holdings_market_evidence" signal 1건.
+  — [판단 사유] 섹션에 "보유 vs 시장" bullet 1줄 추가 (matched / TOP N 외 / 시장 비교 미가용 카운트 + 첫 일치 후보 단기 흐름 1건).
+  — 매수 / 매도 / 교체 판단 어휘 0건 (지시문 §5.10 / AC-11 / AC-8 회귀 테스트로 보장).
+이전 단계: KS-10 Cleanup: API Client / Type 책임 분리 (DONE 2026-06-03)
+다음 큰 방향 (사용자 결정 대기):
+  1. AI Sessions 기록 복기 구조 (운영 데이터 누적)
+  2. NAV / 괴리율 source 진단 STEP (별도 분기)
+  3. 구성종목 외부 source 추가 채택 (BACKLOG)
+  4. ML factor 후보 정리 / 백테스트 연결
+```
+
+### 본 STEP 단일 목표 (지시문 §3)
+
+```text
+read_only_api_added              = true   (GET /holdings/market-evidence/latest)
+external_calls_performed_by_api  = false  (회귀 테스트로 보장)
+topn_match_included              = true   (matched_topn_candidate / not_in_current_topn / unavailable)
+short_term_momentum_included     = true   (or unavailable)
+constituents_external_fetch_added= false  (Strict Cache-only)
+holdings_market_evidence_snapshot_added = true
+buy_sell_judgment_added          = false  (회귀 테스트로 보장)
+nav_source_diagnosis_added       = false
+existing_api_contracts_changed   = false
+telegram_changed                 = false
+```
+
+위 10개 조건 모두 달성. JSON 보고 `status=DONE`.
+
+### 분리 / 통합 구조 (지시문 §5.1 / §5.10 / §5.11)
+
+**Backend 신규 모듈 (3)**:
+- `app/holdings_market_evidence.py` (538 라인) — 핵심 evidence builder. `build_holdings_market_evidence(holdings, topn_payload, market_quotes, db_path, holdings_asof)` 함수. 외부 fetch X.
+- `app/api_holdings_market_evidence.py` (213 라인) — `GET /holdings/market-evidence/latest` 라우터 + Pydantic 응답 모델. holdings 빈 상태도 200.
+- `app/message_holdings_market_evidence_bullet.py` (139 라인) — [판단 사유] bullet 1줄 빌더 (`render_holdings_market_evidence_bullet` / `build_holdings_market_evidence_factor_signal` / `build_holdings_market_evidence_bullet`).
+
+**Backend 수정 (3)**:
+- `app/api.py` (510 → 514, +4) — router include 1줄 + 주석.
+- `app/draft.py` (377 → 413, +36) — `_build_holdings_payload` 에 evidence 호출 + snapshot 키 + factor_signal scope="holdings_market_evidence" 1건 추가. 기존 universe / falling signal 패턴 동일.
+- `app/draft_message.py` (564 → 576, +12) — `_render_judgment_lines` 에 새 bullet picker 1줄. picker 본체는 신규 helper 모듈에 분리 (KS-10 §1.5 발동 회피).
+
+**Frontend (3 — 1 신규 / 2 수정)**:
+- `frontend/lib/api/holdings.ts` (93 → 227, +134) — 신규 타입 14개 + `fetchHoldingsMarketEvidence()` 함수. barrel re-export 자동.
+- `frontend/app/components/HoldingsMarketEvidenceCard.tsx` (181 라인 신규) — 최소 표시 카드. 사용자 [Evidence 조회] 버튼 클릭 시에만 GET 호출 (page load auto X / polling X).
+- `frontend/app/components/HoldingsClient.tsx` (394 → 400, +6) — 시세 갱신 섹션 직후 카드 1개 렌더.
+
+**Backend 테스트 (3 신규 + 1 회귀 정합)**:
+- `tests/test_holdings_market_evidence.py` (332 라인) — builder 11건 (empty / matched / not_in / market unavailable / NAV cache / constituents cache / overlap / returns / evidence_notes 금지 표현 / 외부 fetch 차단).
+- `tests/test_api_holdings_market_evidence.py` (153 라인) — API 4건 (empty 200 / loaded 200 / 외부 호출 차단 / 응답 금지 표현 차단).
+- `tests/test_message_holdings_market_evidence_bullet.py` (214 라인) — bullet helper 10건.
+- `tests/test_universe_seed.py` (회귀 정합 1건) — Step5C universe seed endpoint 가 holdings draft 흐름에 영향을 주지 않는다는 회귀 테스트의 `expected_keys` 에 신규 `holdings_market_evidence_snapshot` 1건 추가 (지시문 §5.11 권장 신규 키 정합). 검증 의도 (universe 흐름이 draft_payload 신규 키를 0건 추가) 는 그대로 유지.
+
+**파일 카운트 (실측 git 상태)**:
+- 신규 (A) — 7건 (Backend 3 + Frontend 1 + Tests 3).
+- 수정 (M) — 9건 (Backend 3 + Frontend 2 + Tests 1 + Docs 3).
+- 총 16건. untracked 0건.
+
+### KS-10 측정 (사전 / 사후)
+
+**KS-10 임계** (KILL_SWITCHES.md §1 + §73):
+- 백엔드 핵심 모듈 — trigger ≥650 / near ≥600
+- 프론트 컴포넌트 — trigger ≥900 / near ≥850
+- 테스트 — trigger ≥1500 / near ≥1450
+
+**활성 코드 (backup/ 제외)**:
+```text
+trigger_files_before = []
+trigger_files_after  = []
+near_threshold_files_before = []
+near_threshold_files_after  = []
+```
+
+본 STEP 영향이 가장 큰 파일:
+- `app/draft.py` 377 → 413 (+36) — 신규 책임은 evidence builder 호출 1건 + factor_signal merge 1건. 기존 universe / falling 패턴 재사용.
+- `app/draft_message.py` 564 → 576 (+12) — picker 호출 1줄 + import 1건. 본체는 신규 helper 모듈에 분리.
+- 신규 모듈 3개는 모두 backend near 600 미달 (538 / 213 / 139).
+- 가장 가까운 임계: `app/market_topn.py` 590 (미변경) — near 600 까지 10 여유.
+
+KS-10 §1.5 "한 Step 에서 같은 대형 파일에 신규 책임 추가됨" 점검: `app/draft.py` / `app/api.py` / `app/draft_message.py` 모두 대형 파일 (≥600) 아님 + 신규 책임은 신규 helper 모듈로 분리. **§1.5 발동 안 함**.
+
+### 데이터 계약 / UI / 흐름 (지시문 §7 / §9 / AC-8 ~ AC-12)
+
+**계약 유지 (변경 0건)**:
+- 기존 endpoint path / request / response / enum / snapshot / sessionStorage draft 의미 — 무변경.
+- 기존 holdings / GenerateDraft / Approval / Telegram / Market Discovery / ETF Exposure / AI Sessions 흐름 — 무변경.
+- 신규 추가만 — `GET /holdings/market-evidence/latest` (read-only) + `draft_payload.holdings_market_evidence_snapshot` 키 + `factor_signals` 안의 scope="holdings_market_evidence" entry 1건.
+
+**UI 변경**:
+- 신규 카드 1개 (`HoldingsMarketEvidenceCard`) — Holdings 화면의 시세 갱신 섹션 직후 배치.
+- 기존 입력 폼 / compact table / EnrichedHoldingsSection — 무변경.
+
+### 검증 결과 (지시문 §10)
+
+- **backend pytest** — 379 passed in 105.44s (354 → 379, +25 신규 / 회귀 0).
+- **black --check** — PASS (82 files unchanged).
+- **flake8** — PASS (0건).
+- **frontend ESLint** — PASS (0건).
+- **frontend Next.js build** — PASS (4 static pages, TypeScript types check PASS).
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §6)
+
+- 매수 / 매도 / 교체 / 리밸런싱 / 진입 / 비중 확대·축소 / 탈락 / 대표 ETF 추천 어휘.
+- ETF 자동 클러스터링 / 중복 후보 자동 접기 / 독립 테마 자동 라벨.
+- NAV / 괴리율 source 진단 / NAV 신규 fetcher 채택 / 외부 endpoint smoke test.
+- Holdings 구성종목 외부 source 신규 호출 / Holdings 구성종목 새로고침 버튼 추가.
+- UI 전면 개편 / Market Discovery Grid 재설계 / AI Sessions 복기 리포트.
+- ML / 백테스트 연결 / Telegram 문구 변경 / OCI push 연결.
+
+---
+
+## 0.1 직전 상태 — 2026-06-03 KS-10 Cleanup: API Client / Type 책임 분리
 
 ```text
 현재 단계: KS-10 §1.5 발동 (frontend/lib/api.ts 993 라인 trigger) 해소

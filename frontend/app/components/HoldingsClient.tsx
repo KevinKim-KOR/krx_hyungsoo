@@ -30,6 +30,10 @@ import {
 } from "@/lib/api";
 import { DEFAULT_GROUP } from "@/lib/holdings_view";
 import EnrichedSection from "./EnrichedHoldingsSection";
+// POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) — 보유 ETF 가
+// Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 / NAV 와 어떻게
+// 연결되는지의 raw evidence 카드. 사용자 액션에서만 호출 (page load auto X).
+import HoldingsMarketEvidenceCard from "./HoldingsMarketEvidenceCard";
 
 // ─── 입력 폼 row 모델 ───────────────────────────────────────────
 
@@ -388,6 +392,8 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
       ) : null}
 
       {enriched.length > 0 ? <EnrichedSection items={enriched} /> : null}
+
+      <HoldingsMarketEvidenceCard />
     </div>
   );
 }

@@ -233,7 +233,11 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     payload_after = body_after["draft_payload"]
     msg_after = body_after["message_text"]
 
-    # draft_payload 키 신설 0건 — 정확히 기존 6개 키만 존재
+    # draft_payload 키 신설 — Step6 universe 흐름은 신규 키 0건이며 universe
+    # 결과는 factor_signals 안의 scope="universe" signal 1건으로 표현된다 (본 검증의
+    # 원래 의도). 본 STEP 외 신규 키 추가는 금지.
+    # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) — 별도 STEP 으로
+    # holdings_market_evidence_snapshot 1건 신규 키 추가 (지시문 §5.11 권장).
     expected_keys = {
         "title",
         "asof",
@@ -241,6 +245,7 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
         "recommendations",
         "factor_signals",
         "momentum_result",
+        "holdings_market_evidence_snapshot",
     }
     assert set(payload_after.keys()) == expected_keys
     # universe 결과는 factor_signals 안의 scope="universe" signal 1건으로 표현

@@ -21,9 +21,18 @@ from uuid import uuid4
 
 from app import draft_message, sample_draft, store
 from app.factors import build_factor_signals
-from app.holdings import Holding
+from app.holdings import HOLDINGS_FILE, Holding
 from app.holdings_enrich import enrich_holdings, to_recommendation_dict
+from app.holdings_market_evidence import (
+    build_holdings_market_evidence,
+    get_holdings_file_mtime_iso,
+)
 from app.market_cache import MarketQuote
+from app.market_data_store import DEFAULT_DB_PATH as MARKET_DB_PATH
+from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
+from app.message_holdings_market_evidence_bullet import (
+    build_holdings_market_evidence_factor_signal,
+)
 from app.models import Run
 from app.momentum import LATEST_ARTIFACT_FILE as UNIVERSE_LATEST_FILE
 from app.momentum import build_holdings_momentum_result
@@ -134,6 +143,30 @@ def _build_holdings_payload(
     if falling_signal is not None:
         factor_signals = list(factor_signals) + [falling_signal]
 
+    # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) —
+    # GET /holdings/market-evidence/latest 와 동일한 builder 를 재사용 (지시문 §5.10).
+    # 외부 fetch X (compute_topn 은 SQLite read only). 결과는:
+    #  · draft_payload.holdings_market_evidence_snapshot 신규 키 — snapshot 저장.
+    #  · factor_signals 에 scope="holdings_market_evidence" signal 1건 — [판단 사유] 1줄.
+    # holdings 비어있는 흐름은 본 함수에 도달 전 차단되어 있어 빈 응답 보호 불필요.
+    market_evidence_snapshot = build_holdings_market_evidence(
+        holdings=holdings,
+        topn_payload=compute_topn(
+            n=DEFAULT_N,
+            db_path=MARKET_DB_PATH,
+            basis=DEFAULT_BASIS,
+            order=DEFAULT_ORDER,
+        ),
+        market_quotes=quotes,
+        db_path=MARKET_DB_PATH,
+        holdings_asof=get_holdings_file_mtime_iso(HOLDINGS_FILE),
+    )
+    holdings_market_evidence_signal = build_holdings_market_evidence_factor_signal(
+        market_evidence_snapshot, asof_iso=asof_iso
+    )
+    if holdings_market_evidence_signal is not None:
+        factor_signals = list(factor_signals) + [holdings_market_evidence_signal]
+
     return {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
@@ -141,6 +174,9 @@ def _build_holdings_payload(
         "recommendations": recommendations,
         "factor_signals": factor_signals,
         "momentum_result": momentum_result,
+        # 저장 시점 evidence snapshot — 이후 시장 데이터가 바뀌어도 본 키의 의미가
+        # 변하지 않는다 (지시문 §5.11 / AC-9).
+        "holdings_market_evidence_snapshot": market_evidence_snapshot,
     }
 
 

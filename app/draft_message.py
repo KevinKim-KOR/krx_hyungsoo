@@ -77,6 +77,12 @@ from app.message_falling_etf_bullet import (
     extract_falling_etf_bullet as _falling_etf_caution_bullet,
 )
 
+# POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) — [판단 사유] 의
+# "보유 vs 시장" bullet 1줄 picker. helper 는 신규 모듈로 분리 (KS-10 부담 분리).
+from app.message_holdings_market_evidence_bullet import (
+    render_holdings_market_evidence_bullet,
+)
+
 # Step 6 Fix 라운드: external_universe_bullet 빌더는 본 파일 안에 직접 둔다
 # (factor_signals universe scope signal 에서 추출 — message_universe_bullet 의
 # build_universe_signal_texts 가 reason_text/fallback_text 만 만드는 책임으로 단순화).
@@ -478,6 +484,12 @@ def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
     briefing = _holdings_status_briefing_bullet(payload)
     if briefing is not None:
         bullets.append(briefing)
+    # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) — 보유 기준
+    # evidence 가 외부 후보 흐름보다 먼저 읽히도록 briefing 직후 배치. helper 는
+    # 신규 모듈로 분리 (KS-10 부담 분리).
+    market_evidence = render_holdings_market_evidence_bullet(payload)
+    if market_evidence is not None:
+        bullets.append(market_evidence)
     eu = _external_universe_bullet(payload)
     if eu is not None:
         bullets.append(eu)

@@ -243,6 +243,19 @@
 | 테스트용/임시 여부 | 아님 (인프라는 운영용) |
 | 다음 조치 | NAV / 괴리율 source 진단 STEP — Naver Stock detail endpoint 등 채택 검증 |
 
+### 2.13d Holdings × Market Discovery Evidence (보유 vs 시장)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 보유 ETF × Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 중복 / NAV 비교 |
+| 현재 메뉴 위치 | Holdings 화면의 `HoldingsMarketEvidenceCard` + GenerateDraft [판단 사유] 1줄 + GET `/holdings/market-evidence/latest` (read-only API) |
+| 기능 목적 | 보유 ETF 가 현재 시장 데이터 기준 어느 위치인지의 raw evidence (매수/매도/교체 판단 X) |
+| 사용 가능 여부 | **사용 가능** (2026-06-03 Holdings × Market Discovery Evidence 1차) |
+| 데이터 소스 상태 | holdings_latest.json + market_data.sqlite (compute_topn + KODEX200 시계열) + etf_constituents store (Strict Cache-only) + etf_nav store + market_cache |
+| 운영 UI 포함 여부 | 포함 (사용자 [Evidence 조회] 버튼 클릭 시 호출 — page load auto X / polling X) |
+| 테스트용/임시 여부 | 아님 |
+| 다음 조치 | 운영 데이터 누적 후 evidence_notes 표현 / 보유 ETF 구성종목 외부 source 채택 검토 |
+
 ### 2.15 Data Status
 
 | 항목 | 값 |
@@ -325,3 +338,7 @@
   + §2.13b 일간 급등/급락 플래그 + §2.13c NAV / 괴리율 데이터 품질 신규.
   단기 흐름 / 일간 플래그는 사용 가능. NAV / 괴리율은 인프라만 — source 채택
   은 별도 진단 STEP 으로 분기.
+- 2026-06-03 추가 (Holdings × Market Discovery Evidence 1차). §2.13d 보유 vs
+  시장 evidence 신규 — 사용 가능. 신규 read-only API + Holdings 화면 카드 +
+  GenerateDraft [판단 사유] 1줄 통합. Strict Cache-only 정책 (보유 ETF 구성
+  종목 외부 source 신규 호출 0건). NAV source 신규 채택 0건 (§2.13c 상태 그대로).
