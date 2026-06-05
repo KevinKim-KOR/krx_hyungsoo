@@ -26,6 +26,11 @@ export default function HoldingsView({ onDraftCreated }: Props) {
         보유 종목 입력 / 시세 갱신 / 평가 계산. 보유 종목 기반 초안 생성 후
         Approval / Telegram 메뉴에서 승인 여부를 판단합니다.
       </p>
+      <div className="role-banner">
+        <strong>[판단 흐름 STEP 3–4]</strong> 보유 ETF를 입력·저장하고, Evidence 조회로
+        현재 시장 후보와의 연결 상태를 확인합니다. 확인 후 &lsquo;저장된 보유 종목으로 초안 만들기&rsquo;로
+        판단 초안을 생성합니다. 생성 후 자동으로 Approval / Telegram 화면으로 이동합니다.
+      </div>
       <HoldingsClient onDraftCreated={onDraftCreated} />
     </section>
   );

@@ -1,10 +1,69 @@
 # STATE_LATEST.md
 
-최종 업데이트: 2026-06-03
+최종 업데이트: 2026-06-06
 
 ---
 
-## 0. 현재 상태 — 2026-06-03 Holdings × Market Discovery Evidence 1차
+## 0. 현재 상태 — 2026-06-06 Operational UI Cleanup 1차
+
+```text
+현재 단계: 운영 흐름 정리 — Dashboard 5-step 판단 흐름 + 각 화면 역할 설명 + 가독성 개선.
+  — 신규 API 0건. 기존 API 계약 변경 0건. 기존 투자 로직 변경 0건.
+  — Dashboard: 단순 링크 모음 → '오늘의 판단 흐름' 5-step 카드 화면으로 전환.
+  — 6개 화면 상단 role-banner 추가 (Market Discovery / ETF Exposure / Holdings /
+    AI Sessions / Approval/Telegram / Data Status).
+  — Market Discovery: 후보 확인 후 다음 단계 안내 섹션(구성종목/중복/Holdings/AI세션 복사) 추가.
+  — HoldingsMarketEvidenceCard: 요약 수치 그리드 + 종목별 배지 + NAV 미연동 배지.
+  — HoldingsClient: '초안 생성 시 포함 내용' 1줄 helper 안내.
+  — NAV/괴리율 미연동 안내: HoldingsMarketEvidenceCard + MarketDiscoveryView SummaryHeader 2곳.
+  — DataStatusView: placeholder 설명 명확화 + 현재 Market Discovery 화면에서 확인 안내.
+이전 단계: Holdings × Market Discovery Evidence 1차 (DONE 2026-06-03)
+다음 큰 방향 (사용자 결정 대기):
+  1. AI Sessions 기록 복기 구조 (운영 데이터 누적)
+  2. NAV / 괴리율 source 진단 STEP (별도 분기)
+  3. 구성종목 외부 source 추가 채택 (BACKLOG)
+  4. ML factor 후보 정리 / 백테스트 연결
+```
+
+### 본 STEP 단일 목표 (AC 달성 현황)
+
+```text
+AC-1: Dashboard 5-step 판단 흐름 카드            = DONE
+AC-2: 6개 화면 상단 역할 설명(role-banner)         = DONE
+AC-3: Market Discovery 다음 단계 안내 섹션         = DONE
+AC-4: HoldingsMarketEvidenceCard 가독성 개선       = DONE (summary grid + badge)
+AC-5: GenerateDraft 판단 사유 가독성 안내(Holdings) = DONE
+AC-6: NAV/괴리율 미연동 ≥2 화면 표시              = DONE (Evidence 카드 + MD SummaryHeader)
+AC-7: DataStatusView placeholder 안내 명확화        = DONE
+AC-8: 기존 Holdings/Draft/Approval 흐름 유지       = DONE (변경 0건)
+AC-9: 신규 API 추가 없음                          = DONE
+AC-10: 신규 투자 로직 추가 없음                   = DONE
+AC-11: Telegram 문구 변경 없음                    = DONE
+```
+
+### 변경 파일 목록 (10건, 모두 frontend)
+
+- `frontend/app/globals.css` — 수정 (dashboard-flow-grid / role-banner / nav-unavailable-note / evidence-* / next-step-* CSS 추가)
+- `frontend/app/components/DashboardView.tsx` — 수정 (5-step 판단 흐름 카드로 전면 개편)
+- `frontend/app/components/MarketDiscoveryView.tsx` — 수정 (role-banner 4분기 + next-step 카드 + NAV 안내 SummaryHeader)
+- `frontend/app/components/ETFExposureView.tsx` — 수정 (role-banner 3분기)
+- `frontend/app/components/HoldingsView.tsx` — 수정 (role-banner)
+- `frontend/app/components/HoldingsClient.tsx` — 수정 (초안 생성 포함 내용 helper 1줄)
+- `frontend/app/components/HoldingsMarketEvidenceCard.tsx` — 수정 (summary grid + badge + NAV 안내)
+- `frontend/app/components/AISessionsView.tsx` — 수정 (role-banner)
+- `frontend/app/components/ApprovalTelegramView.tsx` — 수정 (role-banner)
+- `frontend/app/components/DataStatusView.tsx` — 수정 (placeholder 안내 개선 + role-banner)
+
+### 검증 결과
+
+- **frontend ESLint** — PASS (unescaped-entity 수정 완료)
+- **frontend Next.js build** — PASS (4 static pages, TypeScript types check PASS)
+- **신규 API** — 0건
+- **기존 흐름 변경** — 0건
+
+---
+
+## 0.1 직전 상태 — 2026-06-03 Holdings × Market Discovery Evidence 1차
 
 ```text
 현재 단계: 보유 ETF × Market Discovery evidence 연결

@@ -35,6 +35,11 @@ export default function ApprovalTelegramView({ run, setRun }: Props) {
         단계는 <strong>Telegram 발송 결과</strong> 로 표시됩니다. 인간 최종
         승인 게이트를 유지합니다.
       </p>
+      <div className="role-banner">
+        <strong>[판단 흐름 STEP 5]</strong> Holdings 화면에서 생성된 초안을 검토하고
+        승인 또는 거절합니다. 승인 시 Telegram 3-PUSH(보유 종목 상태 / 신규 ETF 관찰
+        후보 / 급락 ETF 주의)가 발송됩니다. 거절 시 Telegram은 발송되지 않습니다.
+      </div>
 
       {/* 보조 출력 배관 — PUSH 2 신규 ETF 관찰 후보 */}
       <UniverseRefreshPanel />

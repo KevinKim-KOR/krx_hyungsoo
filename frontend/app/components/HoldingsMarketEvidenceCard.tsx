@@ -1,16 +1,12 @@
 "use client";
 
-// POC2 — Holdings × Market Discovery Evidence 1차 (2026-06-03).
+// POC2 Operational UI Cleanup 1차 — Holdings × Market Evidence 카드 (2026-06-06).
 //
-// 지시문 §5.12 — Holdings 화면의 최소 표시. UI 전면 개편 X. 카드 1개.
-// 페이지 로드 / polling 으로 자동 호출하지 않고 사용자가 [Evidence 조회] 버튼을
-// 누를 때만 GET /holdings/market-evidence/latest 호출. read-only API.
-//
+// 지시문 §5.12 — Holdings 화면의 최소 표시. UI 전면 개편 X.
 // 표시 정책 (지시문 §5.10 금지 표현 회피):
 // - 매수 / 매도 / 교체 / 진입 / 비중 확대·축소 / 탈락 / 대표 ETF 어휘 사용 X.
-// - 데이터 상태 (matched / not_in_current_topn / unavailable / constituents_unavailable
-//   / nav_discount.unavailable) 자체만 표시.
-// - 첫 holding 의 evidence_notes 만 노출 — 종목별 리스트 전면 표시는 다음 STEP.
+// - 데이터 상태 자체만 표시.
+// AC-4: 요약 수치 그리드 + 종목별 배지 + NAV 미연동 안내.
 
 import { useCallback, useState } from "react";
 import {
@@ -54,19 +50,19 @@ export default function HoldingsMarketEvidenceCard() {
         marginTop: "1rem",
       }}
     >
-      <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1rem" }}>
-        보유 vs 시장 Evidence (1차)
+      <h3 style={{ margin: "0 0 0.25rem 0", fontSize: "1rem" }}>
+        보유 vs 시장 Evidence
       </h3>
       <p
         style={{
-          margin: "0 0 0.75rem 0",
-          fontSize: "0.85rem",
+          margin: "0 0 0.5rem 0",
+          fontSize: "0.8rem",
           color: "var(--muted)",
         }}
       >
-        Read-only. 외부 fetch 없음. 보유 ETF 가 현재 Market Discovery 후보 /
-        시장 국면 / 단기 흐름 / 구성종목 중복 / NAV 상태와 어떻게 연결되는지
-        확인용 evidence. 매수·매도·교체 판단 아님.
+        Read-only. 외부 fetch 없음. 보유 ETF가 현재 Market Discovery 후보 / 시장 국면 /
+        단기 흐름 / 구성종목 중복 / NAV 상태와 어떻게 연결되는지 확인용 evidence.
+        매수·매도·교체 판단 아님.
       </p>
       <button
         type="button"
@@ -99,58 +95,90 @@ function EvidenceBody({ data }: { data: HoldingsMarketEvidenceResponse }) {
   if (summary.total_holdings_count === 0) {
     return (
       <p style={{ fontSize: "0.85rem", margin: "0.5rem 0" }}>
-        저장된 holdings 가 없습니다. 보유 종목을 입력하고 저장한 뒤 다시 조회해
-        주세요.
+        저장된 holdings가 없습니다. 보유 종목을 입력하고 저장한 뒤 다시 조회해 주세요.
       </p>
     );
   }
 
   return (
     <div style={{ fontSize: "0.85rem" }}>
-      <SummaryRow summary={summary} />
-      {market_context && <MarketContextRow context={market_context} />}
-      <p style={{ margin: "0.25rem 0", color: "var(--muted)" }}>
-        {market_asof && <>market_asof: {market_asof} </>}
-        {holdings_asof && <>· holdings_asof: {holdings_asof}</>}
+      {market_context && (
+        <p style={{ margin: "0 0 0.5rem 0" }}>
+          현재 시장 국면: <strong>{market_context.regime_label}</strong>{" "}
+          <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
+            ({market_context.regime_code})
+          </span>
+        </p>
+      )}
+
+      <div className="evidence-summary-grid">
+        <SummaryItem label="보유 종목" value={String(summary.total_holdings_count)} />
+        <SummaryItem
+          label="후보 일치"
+          value={String(summary.matched_topn_count)}
+          highlight={summary.matched_topn_count > 0 ? "ok" : undefined}
+        />
+        <SummaryItem
+          label="TOP N 외"
+          value={String(summary.not_in_current_topn_count)}
+          highlight={summary.not_in_current_topn_count > 0 ? "warn" : undefined}
+        />
+        <SummaryItem label="구성종목 비교 가능" value={String(summary.constituents_available_count)} />
+        <SummaryItem
+          label="NAV 미연동"
+          value={String(summary.nav_discount_unavailable_count)}
+          highlight={summary.nav_discount_unavailable_count > 0 ? "muted" : undefined}
+        />
+      </div>
+
+      {summary.nav_discount_unavailable_count > 0 && (
+        <span className="nav-unavailable-note">
+          NAV/괴리율 데이터 소스 미연동 — {summary.nav_discount_unavailable_count}건 표시 불가
+        </span>
+      )}
+
+      <p style={{ margin: "0.5rem 0 0.25rem 0", fontSize: "0.78rem", color: "var(--muted)" }}>
+        {market_asof && <>market_asof: {market_asof}</>}
+        {holdings_asof && <> · holdings_asof: {holdings_asof}</>}
       </p>
+
       {warnings.length > 0 && (
-        <ul style={{ margin: "0.25rem 0 0.5rem 1rem", color: "var(--warn)" }}>
+        <ul style={{ margin: "0.25rem 0 0.5rem 1rem", color: "var(--warn)", fontSize: "0.8rem" }}>
           {warnings.map((w, i) => (
             <li key={`w-${i}`}>{w}</li>
           ))}
         </ul>
       )}
+
       <HoldingsList holdings={holdings} />
     </div>
   );
 }
 
-function SummaryRow({
-  summary,
+function SummaryItem({
+  label,
+  value,
+  highlight,
 }: {
-  summary: HoldingsMarketEvidenceResponse["summary"];
+  label: string;
+  value: string;
+  highlight?: "ok" | "warn" | "muted";
 }) {
+  const valueColor =
+    highlight === "ok"
+      ? "var(--ok)"
+      : highlight === "warn"
+        ? "var(--warn)"
+        : highlight === "muted"
+          ? "var(--muted)"
+          : "var(--fg)";
   return (
-    <p style={{ margin: "0.25rem 0" }}>
-      <strong>보유 {summary.total_holdings_count}건</strong> 중 일치{" "}
-      {summary.matched_topn_count}건 / TOP N 외{" "}
-      {summary.not_in_current_topn_count}건 / 시장 비교 미가용{" "}
-      {summary.evidence_unavailable_count}건. 구성종목 비교 가능{" "}
-      {summary.constituents_available_count}건. NAV 미연동{" "}
-      {summary.nav_discount_unavailable_count}건.
-    </p>
-  );
-}
-
-function MarketContextRow({
-  context,
-}: {
-  context: NonNullable<HoldingsMarketEvidenceResponse["market_context"]>;
-}) {
-  return (
-    <p style={{ margin: "0.25rem 0" }}>
-      현재 시장 국면: <strong>{context.regime_label}</strong> ({context.regime_code})
-    </p>
+    <div className="evidence-summary-item">
+      <div className="evidence-summary-label">{label}</div>
+      <div className="evidence-summary-value" style={{ color: valueColor }}>
+        {value}
+      </div>
+    </div>
   );
 }
 
@@ -161,23 +189,37 @@ function HoldingsList({
 }) {
   if (holdings.length === 0) return null;
   return (
-    <ul style={{ margin: "0.5rem 0 0 0", paddingLeft: "1.25rem" }}>
-      {holdings.map((h) => (
-        <li key={h.ticker} style={{ marginBottom: "0.4rem" }}>
-          <strong>{h.name}</strong> ({h.ticker}) — {labelOfTopnStatus(h.topn_match.status)}
-          {h.topn_match.status === "matched_topn_candidate" && h.topn_match.rank && (
-            <> · rank {h.topn_match.rank}</>
-          )}
-          {h.evidence_notes.length > 0 && (
-            <ul style={{ margin: "0.15rem 0 0 0.75rem", color: "var(--fg)" }}>
-              {h.evidence_notes.map((note, i) => (
-                <li key={`${h.ticker}-n-${i}`}>{note}</li>
-              ))}
-            </ul>
-          )}
-        </li>
-      ))}
-    </ul>
+    <div style={{ marginTop: "0.75rem" }}>
+      {holdings.map((h) => {
+        const badgeClass =
+          h.topn_match.status === "matched_topn_candidate"
+            ? "evidence-topn-badge evidence-topn-matched"
+            : h.topn_match.status === "not_in_current_topn"
+              ? "evidence-topn-badge evidence-topn-outside"
+              : "evidence-topn-badge evidence-topn-unknown";
+
+        return (
+          <div key={h.ticker} className="evidence-holding-row">
+            <div className="evidence-holding-header">
+              <strong style={{ fontSize: "0.9rem" }}>{h.name}</strong>
+              <span className="evidence-holding-ticker">{h.ticker}</span>
+              <span className={badgeClass}>
+                {labelOfTopnStatus(h.topn_match.status)}
+                {h.topn_match.status === "matched_topn_candidate" &&
+                  h.topn_match.rank && <> · rank {h.topn_match.rank}</>}
+              </span>
+            </div>
+            {h.evidence_notes.length > 0 && (
+              <ul className="evidence-notes-list">
+                {h.evidence_notes.map((note, i) => (
+                  <li key={`${h.ticker}-n-${i}`}>{note}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

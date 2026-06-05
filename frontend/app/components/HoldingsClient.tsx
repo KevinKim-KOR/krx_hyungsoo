@@ -391,6 +391,12 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
         </div>
       ) : null}
 
+      <div className="helper" style={{ marginTop: 8, fontSize: "0.8rem" }}>
+        <strong>초안 생성 시 포함 내용:</strong> 보유 현황(계좌별 평가금액·손익) /
+        보유 vs 시장 Evidence(후보 일치·단기 흐름·구성종목 중복 상태) / 주의 항목(NAV 미연동 등).
+        Telegram 3-PUSH 문구 기반 — 매수·매도 판단이 아닙니다.
+      </div>
+
       {enriched.length > 0 ? <EnrichedSection items={enriched} /> : null}
 
       <HoldingsMarketEvidenceCard />

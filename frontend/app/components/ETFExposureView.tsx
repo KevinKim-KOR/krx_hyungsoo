@@ -173,10 +173,19 @@ export default function ETFExposureView({ onNavigate }: Props) {
     [draft],
   );
 
+  const roleBanner = (
+    <div className="role-banner">
+      <strong>[판단 흐름 STEP 2]</strong> Market Discovery 후보 ETF의 구성종목과
+      중복 노출을 점검합니다. Market Discovery 화면에서 &lsquo;ETF Exposure로 넘기기&rsquo;를
+      먼저 실행해야 후보 목록이 이 화면에 연결됩니다.
+    </div>
+  );
+
   if (!draftLoaded) {
     return (
       <section aria-labelledby="etf-exposure-h">
         <h1 id="etf-exposure-h">ETF Exposure</h1>
+        {roleBanner}
         <div className="card">
           <div className="message info">불러오는 중...</div>
         </div>
@@ -188,6 +197,7 @@ export default function ETFExposureView({ onNavigate }: Props) {
     return (
       <section aria-labelledby="etf-exposure-h">
         <h1 id="etf-exposure-h">ETF Exposure</h1>
+        {roleBanner}
         <div className="card">
           <div className="message info">
             Market Discovery 에서 후보를 조회한 뒤 &ldquo;ETF Exposure 로
@@ -206,6 +216,7 @@ export default function ETFExposureView({ onNavigate }: Props) {
         Market Discovery 후보 {tickerCount}개 ETF 의 구성종목과 중복 노출을
         분석합니다. asof {draft.asof}.
       </p>
+      {roleBanner}
 
       <div className="decision-tab-row">
         <button

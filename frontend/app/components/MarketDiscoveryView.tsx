@@ -120,6 +120,9 @@ function SummaryHeader({ data }: { data: MarketTopNResponse }) {
           {data.topn_caveat}
         </div>
       ) : null}
+      <span className="nav-unavailable-note" style={{ marginTop: 8 }}>
+        NAV/괴리율 데이터 소스 미연동 — 후보 ETF의 NAV·괴리율 수치는 현재 표시 불가
+      </span>
     </div>
   );
 }
@@ -529,10 +532,19 @@ export default function MarketDiscoveryView({
   const buttonDisabled =
     refreshUi.kind === "starting" || refreshUi.kind === "running";
 
+  const roleBanner = (
+    <div className="role-banner">
+      <strong>[판단 흐름 STEP 1–2]</strong> 시장 데이터를 갱신하고 수익률 기반
+      ETF 후보를 확인합니다. 후보 확인 후 구성종목 중복 분석(ETF Exposure)이나
+      AI 투자세션 문구 복사로 이어갑니다.
+    </div>
+  );
+
   if (state.phase === "loading") {
     return (
       <section aria-labelledby="market-discovery-h">
         <h1 id="market-discovery-h">Market Discovery</h1>
+        {roleBanner}
         <div className="card">
           <div className="message info">불러오는 중...</div>
         </div>
@@ -544,6 +556,7 @@ export default function MarketDiscoveryView({
     return (
       <section aria-labelledby="market-discovery-h">
         <h1 id="market-discovery-h">Market Discovery</h1>
+        {roleBanner}
         <RefreshControlCard
           state={refreshUi}
           onStart={handleStartRefresh}
@@ -571,6 +584,7 @@ export default function MarketDiscoveryView({
         <p className="subtitle">
           이 화면은 SQLite 에 저장된 시장 데이터 기준입니다.
         </p>
+        {roleBanner}
         <RefreshControlCard
           state={refreshUi}
           onStart={handleStartRefresh}
@@ -592,6 +606,7 @@ export default function MarketDiscoveryView({
         <p className="subtitle">
           이 화면은 SQLite 에 저장된 시장 데이터 기준입니다.
         </p>
+        {roleBanner}
         <RefreshControlCard
           state={refreshUi}
           onStart={handleStartRefresh}
@@ -614,6 +629,7 @@ export default function MarketDiscoveryView({
         <p className="subtitle">
           이 화면은 SQLite 에 저장된 시장 데이터 기준입니다.
         </p>
+        {roleBanner}
         <RefreshControlCard
           state={refreshUi}
           onStart={handleStartRefresh}
@@ -641,6 +657,7 @@ export default function MarketDiscoveryView({
         SQLite 기준 최신 시장 데이터에서 일반 ETF 후보를 보여줍니다. 수익률 컬럼을
         클릭하면 정렬됩니다.
       </p>
+      {roleBanner}
       {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
       <MarketContextCard ctx={data.market_context ?? null} />
       {/* GRID 우선 — 통합 테이블이 가장 위 */}
@@ -655,6 +672,37 @@ export default function MarketDiscoveryView({
           asof / filters 누락은 비정상 상태로 fail-loud (검증자 B-1 NOTE 반영). */}
       {data.asof && data.filters ? (
         <>
+          {/* 다음 단계 안내 — 새 API 호출 없음, 정적 안내만 */}
+          <div className="card next-step-card">
+            <h2>후보 확인 후 다음 단계</h2>
+            <ul className="next-step-list">
+              <li>
+                <span className="next-step-num">①</span>
+                <span>
+                  <strong>구성종목 / 중복 확인</strong> —
+                  아래 &lsquo;ETF Exposure로 넘기기&rsquo;를 클릭하면 ETF Exposure 화면에서
+                  구성종목 중복률을 분석할 수 있습니다.
+                </span>
+              </li>
+              <li>
+                <span className="next-step-num">②</span>
+                <span>
+                  <strong>내 보유 ETF와 비교</strong> —
+                  Holdings 메뉴에서 보유 종목을 입력 후 &lsquo;Evidence 조회&rsquo;로 후보와의
+                  연결 상태를 확인합니다.
+                </span>
+              </li>
+              <li>
+                <span className="next-step-num">③</span>
+                <span>
+                  <strong>AI 투자세션 문구 복사</strong> —
+                  아래 &lsquo;AI 투자세션 문구 생성&rsquo; 후 클립보드로 복사해 외부 AI에
+                  붙여넣습니다.
+                </span>
+              </li>
+            </ul>
+          </div>
+
           <CopyTextCard
             asof={data.asof}
             filters={data.filters}

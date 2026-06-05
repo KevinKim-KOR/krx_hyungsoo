@@ -1161,3 +1161,189 @@ textarea.decision-textarea {
   background: var(--accent);
   color: white;
 }
+
+/* Operational UI Cleanup 1차 (2026-06-06) */
+
+/* Dashboard 5-step 판단 흐름 그리드 */
+.dashboard-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dashboard-flow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  margin-bottom: 0;
+}
+
+.dashboard-flow-step-num {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.dashboard-flow-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.dashboard-flow-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.dashboard-flow-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  align-self: flex-start;
+}
+
+/* 화면 상단 역할 설명 배너 */
+.role-banner {
+  background: rgba(37, 99, 235, 0.07);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.55;
+}
+
+.role-banner strong {
+  color: var(--accent);
+}
+
+/* NAV 미연동 안내 배지 */
+.nav-unavailable-note {
+  display: inline-block;
+  background: rgba(217, 119, 6, 0.10);
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--warn);
+  margin-top: 4px;
+}
+
+/* Holdings Evidence 카드 개선 */
+.evidence-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.evidence-summary-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.evidence-summary-label {
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.evidence-summary-value {
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.evidence-holding-row {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.evidence-holding-row:last-child {
+  border-bottom: none;
+}
+
+.evidence-holding-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.evidence-holding-ticker {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.evidence-topn-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+
+.evidence-topn-matched {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.evidence-topn-outside {
+  background: rgba(217, 119, 6, 0.10);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.evidence-topn-unknown {
+  background: transparent;
+  color: var(--muted);
+}
+
+.evidence-notes-list {
+  margin: 4px 0 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Market Discovery 다음 단계 안내 */
+.next-step-card {
+  border-left: 3px solid var(--accent);
+}
+
+.next-step-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.next-step-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.next-step-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+}

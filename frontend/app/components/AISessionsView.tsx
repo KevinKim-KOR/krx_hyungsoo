@@ -62,6 +62,11 @@ export default function AISessionsView() {
         외부 AI(GPT / Gemini / Claude) 답변과 사용자 판단을 기록합니다. 저장은
         Market Discovery 에서 넘어온 후보 스냅샷 기반으로만 가능합니다.
       </p>
+      <div className="role-banner">
+        <strong>[보조 화면]</strong> Market Discovery에서 생성한 AI 투자세션 문구를 외부 AI에
+        붙여넣고 받은 답변 및 사용자 판단을 기록하는 화면입니다. 판단 초안 생성(Holdings 화면)
+        전후 참고 자료로 활용합니다.
+      </div>
 
       <div className="decision-tab-row">
         <button
