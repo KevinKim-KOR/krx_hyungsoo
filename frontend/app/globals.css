@@ -1,15 +1,18 @@
 :root {
-  --bg: #0f1115;
-  --fg: #f5f7fa;
-  --muted: #8a94a6;
-  --card: #181b21;
-  --border: #2a2f3a;
-  --accent: #3a7afe;
-  --accent-hover: #2d66e0;
-  --ok: #34c759;
-  --warn: #f0a020;
-  --danger: #ff4d4f;
-  --info: #8a94a6;
+  /* 2026-06-03 — 라이트 톤 전환 (사용자 요청: 흰 바탕 + 파랑 액센트).
+     이전 다크 톤 (#0f1115 배경) 에서 화이트 톤으로 단방향 전환. 토글 미지원.
+     강조 / 상태 색상은 라이트 배경에서도 가독성 유지하는 톤으로 조정. */
+  --bg: #f5f7fa;
+  --fg: #1a1d23;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --border: #d1d5db;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --ok: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+  --info: #6b7280;
 }
 
 * {
@@ -92,7 +95,7 @@ h1 {
 
 .status-PENDING_APPROVAL {
   background: rgba(58, 122, 254, 0.15);
-  color: #6ea0ff;
+  color: var(--accent);
 }
 .status-DELIVERING {
   background: rgba(240, 160, 32, 0.15);
@@ -127,8 +130,8 @@ button:hover:not(:disabled) {
 }
 
 button:disabled {
-  background: #2a2f3a;
-  color: #555c6a;
+  background: var(--border);
+  color: var(--muted);
   cursor: not-allowed;
 }
 
@@ -437,7 +440,7 @@ li.account-summary-item:last-child {
   display: inline-block;
   padding: 2px 8px;
   background: rgba(58, 122, 254, 0.18);
-  color: #6ea0ff;
+  color: var(--accent);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
@@ -765,13 +768,15 @@ ul.reason-list li {
 .app-content {
   flex: 1;
   min-width: 0;
-  max-width: 960px;
+  /* 2026-06-03 — Market Discovery 통합 후보 테이블 폭 (1400px) 을 전 메뉴에
+     공통 적용. 사용자 요청으로 화면 폭 통일 (이전 .app-content--wide 가 본 값과
+     같아지므로 동일 클래스 정의는 호환 별칭으로 유지). */
+  max-width: 1400px;
   margin: 0;
   padding: 28px 32px 48px 32px;
 }
 
-/* Market Discovery 통합 후보 테이블 (2026-05-19) — 8 컬럼을 위해 한정 적용.
-   MainPanel 이 active==='market_discovery' 일 때만 .app-content--wide 추가. */
+/* 호환 별칭 — 기존 markup 이 본 클래스를 참조해도 동일 폭 유지. */
 .app-content--wide {
   max-width: 1400px;
 }

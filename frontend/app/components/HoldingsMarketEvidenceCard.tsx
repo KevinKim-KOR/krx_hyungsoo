@@ -47,7 +47,8 @@ export default function HoldingsMarketEvidenceCard() {
   return (
     <section
       style={{
-        border: "1px solid #ccc",
+        border: "1px solid var(--border)",
+        background: "var(--card)",
         padding: "1rem",
         borderRadius: "0.5rem",
         marginTop: "1rem",
@@ -56,7 +57,13 @@ export default function HoldingsMarketEvidenceCard() {
       <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1rem" }}>
         보유 vs 시장 Evidence (1차)
       </h3>
-      <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.85rem", color: "#555" }}>
+      <p
+        style={{
+          margin: "0 0 0.75rem 0",
+          fontSize: "0.85rem",
+          color: "var(--muted)",
+        }}
+      >
         Read-only. 외부 fetch 없음. 보유 ETF 가 현재 Market Discovery 후보 /
         시장 국면 / 단기 흐름 / 구성종목 중복 / NAV 상태와 어떻게 연결되는지
         확인용 evidence. 매수·매도·교체 판단 아님.
@@ -70,7 +77,13 @@ export default function HoldingsMarketEvidenceCard() {
         {loading ? "조회 중..." : "Evidence 조회"}
       </button>
       {error && (
-        <p style={{ color: "#c00", fontSize: "0.85rem", margin: "0.5rem 0" }}>
+        <p
+          style={{
+            color: "var(--danger)",
+            fontSize: "0.85rem",
+            margin: "0.5rem 0",
+          }}
+        >
           {error}
         </p>
       )}
@@ -96,12 +109,12 @@ function EvidenceBody({ data }: { data: HoldingsMarketEvidenceResponse }) {
     <div style={{ fontSize: "0.85rem" }}>
       <SummaryRow summary={summary} />
       {market_context && <MarketContextRow context={market_context} />}
-      <p style={{ margin: "0.25rem 0", color: "#666" }}>
+      <p style={{ margin: "0.25rem 0", color: "var(--muted)" }}>
         {market_asof && <>market_asof: {market_asof} </>}
         {holdings_asof && <>· holdings_asof: {holdings_asof}</>}
       </p>
       {warnings.length > 0 && (
-        <ul style={{ margin: "0.25rem 0 0.5rem 1rem", color: "#a60" }}>
+        <ul style={{ margin: "0.25rem 0 0.5rem 1rem", color: "var(--warn)" }}>
           {warnings.map((w, i) => (
             <li key={`w-${i}`}>{w}</li>
           ))}
@@ -156,7 +169,7 @@ function HoldingsList({
             <> · rank {h.topn_match.rank}</>
           )}
           {h.evidence_notes.length > 0 && (
-            <ul style={{ margin: "0.15rem 0 0 0.75rem", color: "#444" }}>
+            <ul style={{ margin: "0.15rem 0 0 0.75rem", color: "var(--fg)" }}>
               {h.evidence_notes.map((note, i) => (
                 <li key={`${h.ticker}-n-${i}`}>{note}</li>
               ))}
