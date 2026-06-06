@@ -4,7 +4,103 @@
 
 ---
 
-## 0. 현재 상태 — 2026-06-06 ETF Exposure Data Unfolding 1차
+## 0. 현재 상태 — 2026-06-07 ETF NAV / Discount Source Diagnosis 1차 (FIX 반영)
+
+```text
+현재 단계: NAV / 괴리율 source 후보 5건 실측 진단 (운영 fetcher 교체 X).
+  — 진단 script + JSON artifact (schema_version=v2) + Markdown report.
+  — artifact 에 flat_records 추가 — AC-2 최소 필드 계약 (source_id / ticker /
+    call_status / http_status / has_nav / has_market_price / has_discount_rate /
+    has_asof / error_type / judgment) 모든 레코드 균일 충족.
+  — timeout 명시: socket.setdefaulttimeout(15s) + Naver HTTP timeout(8s).
+    pykrx / FDR 도 socket-level timeout 으로 강제 보장.
+  — Naver integration asof 키 후보 확장 (bizdate / stdDate 추가) + 괴리율 키
+    후보 확장 (deviationRate / deviationSign 추가) → 재실행 결과 반영.
+  — source별 판정 (재실행 기준):
+    · pykrx_etf_ohlcv               → unusable (모든 ticker×date empty)
+    · pykrx_etf_price_deviation     → unusable (모든 ticker×date empty)
+    · finance_data_reader           → hold_unstable (시장가격 + asof OK, NAV 없음)
+    · naver_mobile_stock_integration → hold_unstable (NAV + 시장가격 + 괴리율 +
+        asof 모두 4/4 OK, 비공식 endpoint — 운영 안정성 추가 진단 권고)
+    · naver_mobile_etf_detail       → unusable (후보 endpoint HTTP 404)
+  — adopt_candidate 0건. 단, naver_mobile_stock_integration 은 NAV + 시장가격 +
+    괴리율 + asof 모두 제공이라 운영 안정성 추가 STEP 후 adopt 승격 가능성 가장
+    높은 후보.
+  — 운영 NAV fetcher 교체 X. source integration X. 신규 API X.
+  — 기존 etf_nav_daily schema / unavailable_nav_fetcher / 괴리율 threshold 무변경.
+이전 단계: ETF Exposure Data Unfolding 1차 (DONE 2026-06-06 / commit bce8f7fd)
+다음 큰 방향 (사용자 결정 대기):
+  1. Naver Mobile stock integration 운영 안정성 추가 진단 (응답시간 / TTL /
+     schema 변경 모니터링)
+  2. 빈자리 후속 원칙에 따라 다른 빈자리 (구성종목 가격 시계열 / 위험 감지
+     지표 시계열) 로 전환
+  3. KRX OPEN API 인증키 확보 검토 (hold_auth_required source 발굴)
+```
+
+### 2026-06-07 FIX 라운드 (검증자 REJECTED 대응)
+
+```text
+FIX-1 (A-1): pykrx / FDR 명시 timeout 누락 → socket.setdefaulttimeout(15s) 추가.
+             진단 script 모든 외부 호출에 timeout 보장.
+FIX-2 (A-2): naver_mobile_stock_integration has_asof=false 보고 → 실제 응답에
+             bizdate / stdDate 키 발견. asof_keys 후보 확장 + 재측정 → has_asof=
+             true (4/4 ticker).
+FIX-3 (B-6): artifact 구조에 flat_records 추가. AC-2 최소 필드 계약을 균일한
+             평탄 레코드 리스트로 충족 — 후속 자동 비교 가능.
+FIX-4: 진단 script 재실행. Naver integration deviationRate 키도 새로 발견 →
+       괴리율 직접 제공 4/4 ticker (이전 진단에서 누락된 필드).
+FIX-5 (보고 정확성): STATE 본 섹션 / Markdown report 모두 재생성된 artifact 기준
+                   으로 재작성. 보고 JSON has_asof=true / deviationRate 발견 반영.
+```
+
+### 본 STEP 단일 목표 (AC 달성 현황)
+
+```text
+AC-1: source 후보 최소 2 범주 진단                          = DONE (3 범주: pykrx / fdr / naver_mobile)
+AC-2: smoke test 결과 JSON artifact 기록 (필수 필드)          = DONE
+AC-3: Markdown 리포트 작성                                  = DONE
+AC-4: 기존 etf_nav_daily schema fit 판정                     = DONE (report §4)
+AC-5: K6 / EOD 방어 가능성 기록                              = DONE (report §5)
+AC-6: source별 판정 (adopt / hold / unusable)                = DONE (5건)
+AC-7: 기존 흐름 변경 없음 (MD/ETF Exposure/Holdings/Draft/Approval) = DONE
+AC-8: 운영 fetcher 교체 / integration 없음                  = DONE
+AC-9: 신규 API 없음                                         = DONE
+AC-10: STATE / NEXT / BACKLOG 갱신                          = DONE
+AC-11: 범위 위반 0건                                        = DONE
+AC-12: 기존 테스트 PASS (pytest)                            = DONE (379 passed, 회귀 0)
+```
+
+### 변경 파일 목록 (5건)
+
+**신규 (3)**:
+- `scripts/diagnose_nav_discount_source.py` — 진단 script (운영 API / 정기 job 연결 X)
+- `state/market/nav_discount_source_diagnosis_latest.json` — JSON artifact (source별 summary)
+- `docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md` — Markdown report (판정 + 사유)
+
+**수정 (3)**:
+- `docs/handoff/STATE_LATEST.md` — 본 섹션
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 다음 분기 후보 추가
+- `docs/backlog/BACKLOG.md` — Naver 안정성 추가 진단 / FDR 결합 / KRX 인증 후보 등록
+
+**Backend / Frontend 코드 변경 0건. 신규 API 0건. 신규 라이브러리 0건.**
+
+### 검증 결과
+
+- **backend pytest** — PASS (379 passed, 회귀 0)
+- **black --check** — PASS (진단 script 포함)
+- **flake8** — PASS (0건)
+- **frontend** — 변경 없음 (직전 STEP build PASS 상태 유지)
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §9)
+
+- 운영 NAV fetcher 교체 / NAV source integration / 전체 universe NAV 수집.
+- 정기 수집 job / 신규 API / UI 운영 값 표시 변경.
+- 매수·매도 판단 / 괴리율 threshold 변경 / Telegram 변경 / OCI push 연결.
+- ML / 백테스트 연결.
+
+---
+
+## 0.1 직전 상태 — 2026-06-06 ETF Exposure Data Unfolding 1차
 
 ```text
 현재 단계: ETF Exposure 화면의 기존 데이터(구성종목/중복률/반복 핵심 종목) 펼쳐보기 +

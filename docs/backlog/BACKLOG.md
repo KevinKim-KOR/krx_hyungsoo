@@ -12,6 +12,59 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## ETF NAV / Discount Source Diagnosis 1차 후 신규 (2026-06-06)
+
+ETF NAV / 시장가격 / 괴리율 source 후보 5건을 실측 진단 후 도출된 BACKLOG.
+adopt_candidate 0건이지만 가능성 있는 후보가 있어 운영 안정성 추가 진단으로
+승격 경로를 남긴다. 진단 결과 상세는 `docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md`.
+
+### BACKLOG: Naver Mobile stock integration API 운영 안정성 추가 진단
+
+- **발생 맥락**: NAV / Discount Source Diagnosis 1차 — 4 sample ticker 모두
+  `$.etfKeyIndicator.nav` 와 `$.dealTrendInfos[0].closePrice` 제공 (HTTP 200,
+  KODEX 200 / TIGER 미국S&P500 / Market Discovery 후보 / 사용자 보유 6자리
+  신형 ticker 포함). NAV + 시장가격 모두 1차 진단 시점 OK.
+- **현재 결정**: `hold_unstable` — 비공식 endpoint 라 schema 변경 / 차단 위험
+  있음. adopt_candidate 로 승격 전 운영 안정성 별도 검증 필요.
+- **재검토 트리거**: 사용자가 NAV / 괴리율을 운영 판단에 사용하기로 결정.
+- **권장 후속 진단 항목**:
+  - 응답시간 측정 (10 ticker × 5 trial p50 / p95)
+  - 응답 schema 안정성 (1주일 이상 sampling)
+  - 차단·429 발생 빈도
+  - 기준시각 정확성 (NAV asof 키 분석)
+  - K6 / EOD budget 30초 내 fit 검증
+
+### BACKLOG: NAV source + FDR 시장가격 결합 패턴
+
+- **발생 맥락**: FDR 은 시장 종가만 제공하지만 안정적 (4/4 ticker OK). NAV 만
+  Naver 등 별도 source 에서 가져오고 시장가격은 FDR 또는 기존 시장 cache 에서
+  가져와 결합하면 호출 부담 줄일 수 있음.
+- **현재 결정**: 본 STEP 에서 결합 X. Naver 안정성 진단 후 결합 여부 결정.
+- **재검토 트리거**: Naver Mobile NAV Source Stability 진단 결과 adopt 승격 시.
+
+### BACKLOG: KRX OPEN API 인증키 확보 검토
+
+- **발생 맥락**: NAV / Discount Source Diagnosis 1차 에서 KRX 공식 endpoint 는
+  진단하지 못함 (auth 필요 endpoint 대상 X). hold_auth_required 후보로 남김.
+- **현재 결정**: 본 STEP 에서 인증키 확보 절차 X. 사용자 결정 영역.
+- **재검토 트리거**: 사용자가 공식 source 채택을 결정하거나, Naver / pykrx 경로가
+  모두 unusable 로 떨어질 때.
+- **권장 후속 항목**: KRX 정보데이터시스템 API 신청 절차 / 일일 호출 한도 /
+  ETF NAV 제공 endpoint 식별.
+
+### BACKLOG: pykrx ETF endpoint 자체 동작 진단
+
+- **발생 맥락**: NAV / Discount Source Diagnosis 1차 — pykrx `get_etf_ohlcv_by_date`
+  와 `get_etf_price_deviation` 이 모든 ticker × 8 날짜 조합에서 `empty` 응답.
+  pykrx 1.0.51 버전. 직전 STEP `ETF_CONSTITUENTS_SOURCE_DIAGNOSIS` 에서 pykrx
+  `get_etf_portfolio_deposit_file` 도 유사 no_data 이슈가 있었음.
+- **현재 결정**: 본 STEP 에서 pykrx 자체 동작 깊이 분석 X. `unusable` 판정 유지.
+- **재검토 트리거**: pykrx upstream 업데이트 / KRX 데이터 정책 변경 시 재진단.
+- **권장 후속 항목**: pykrx 버전별 ETF 함수 회귀 (1.0.45 → 1.0.51), KRX 페이지
+  직접 호출과 비교, `freq` 파라미터 변형 시도.
+
+---
+
 ## ETF Exposure Data Unfolding 1차 후 신규 (2026-06-06)
 
 ETF Exposure 화면에서 구성종목 / 중복률 / 반복 핵심 종목 데이터를 펼쳐서 비교

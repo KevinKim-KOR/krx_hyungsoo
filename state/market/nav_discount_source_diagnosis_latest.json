@@ -1,0 +1,1005 @@
+{
+  "schema_version": "nav_discount_source_diagnosis_v2",
+  "started_at": "2026-06-06T15:18:29Z",
+  "finished_at": "2026-06-06T15:18:32Z",
+  "samples": [
+    {
+      "ticker": "069500",
+      "name": "KODEX 200",
+      "category": "domestic_representative",
+      "reason": "국내 대표 ETF — 가장 거래량이 많고 NAV 공시가 안정적이라 추정"
+    },
+    {
+      "ticker": "360750",
+      "name": "TIGER 미국S&P500",
+      "category": "overseas",
+      "reason": "해외형 ETF — NAV 산정 / 기준시각이 국내와 다를 수 있음"
+    },
+    {
+      "ticker": "411420",
+      "name": "Market Discovery 후보 (테마/해외형)",
+      "category": "market_discovery_candidate",
+      "reason": "직전 STEP Constituents Source Diagnosis 와 동일 ticker 재사용"
+    },
+    {
+      "ticker": "0015B0",
+      "name": "KoAct 미국나스닥성장기업액티브",
+      "category": "user_holding",
+      "reason": "사용자 보유 ETF — 6자리 신형 ticker (액티브)"
+    }
+  ],
+  "pykrx_test_dates": [
+    "20260605",
+    "20260604",
+    "20260603",
+    "20260530",
+    "20260529",
+    "20260528",
+    "20260417",
+    "20260331"
+  ],
+  "timeouts": {
+    "global_socket_timeout_sec": 15,
+    "naver_http_timeout_sec": 8
+  },
+  "flat_records": [
+    {
+      "source_id": "pykrx_etf_ohlcv",
+      "ticker": "069500",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260331"
+    },
+    {
+      "source_id": "pykrx_etf_ohlcv",
+      "ticker": "360750",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260331"
+    },
+    {
+      "source_id": "pykrx_etf_ohlcv",
+      "ticker": "411420",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260331"
+    },
+    {
+      "source_id": "pykrx_etf_ohlcv",
+      "ticker": "0015B0",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260331"
+    },
+    {
+      "source_id": "pykrx_etf_price_deviation",
+      "ticker": "069500",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260603"
+    },
+    {
+      "source_id": "pykrx_etf_price_deviation",
+      "ticker": "360750",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260603"
+    },
+    {
+      "source_id": "pykrx_etf_price_deviation",
+      "ticker": "411420",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260603"
+    },
+    {
+      "source_id": "pykrx_etf_price_deviation",
+      "ticker": "0015B0",
+      "call_status": "empty",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "attempted_date": "20260603"
+    },
+    {
+      "source_id": "finance_data_reader",
+      "ticker": "069500",
+      "call_status": "ok",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": true,
+      "has_discount_rate": false,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "finance_data_reader",
+      "ticker": "360750",
+      "call_status": "ok",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": true,
+      "has_discount_rate": false,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "finance_data_reader",
+      "ticker": "411420",
+      "call_status": "ok",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": true,
+      "has_discount_rate": false,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "finance_data_reader",
+      "ticker": "0015B0",
+      "call_status": "ok",
+      "http_status": null,
+      "has_nav": false,
+      "has_market_price": true,
+      "has_discount_rate": false,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "naver_mobile_stock_integration",
+      "ticker": "069500",
+      "call_status": "ok",
+      "http_status": 200,
+      "has_nav": true,
+      "has_market_price": true,
+      "has_discount_rate": true,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "naver_mobile_stock_integration",
+      "ticker": "360750",
+      "call_status": "ok",
+      "http_status": 200,
+      "has_nav": true,
+      "has_market_price": true,
+      "has_discount_rate": true,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "naver_mobile_stock_integration",
+      "ticker": "411420",
+      "call_status": "ok",
+      "http_status": 200,
+      "has_nav": true,
+      "has_market_price": true,
+      "has_discount_rate": true,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "naver_mobile_stock_integration",
+      "ticker": "0015B0",
+      "call_status": "ok",
+      "http_status": 200,
+      "has_nav": true,
+      "has_market_price": true,
+      "has_discount_rate": true,
+      "has_asof": true,
+      "error_type": null,
+      "judgment": "hold_unstable"
+    },
+    {
+      "source_id": "naver_mobile_etf_detail",
+      "ticker": "069500",
+      "call_status": "call_failed",
+      "http_status": 404,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "candidates_checked": 3
+    },
+    {
+      "source_id": "naver_mobile_etf_detail",
+      "ticker": "360750",
+      "call_status": "call_failed",
+      "http_status": 404,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "candidates_checked": 3
+    },
+    {
+      "source_id": "naver_mobile_etf_detail",
+      "ticker": "411420",
+      "call_status": "call_failed",
+      "http_status": 404,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "candidates_checked": 3
+    },
+    {
+      "source_id": "naver_mobile_etf_detail",
+      "ticker": "0015B0",
+      "call_status": "call_failed",
+      "http_status": 404,
+      "has_nav": false,
+      "has_market_price": false,
+      "has_discount_rate": false,
+      "has_asof": false,
+      "error_type": null,
+      "judgment": "unusable",
+      "candidates_checked": 3
+    }
+  ],
+  "sources": {
+    "pykrx_etf_ohlcv": {
+      "source_id": "pykrx_etf_ohlcv",
+      "category": "pykrx",
+      "per_ticker": {
+        "069500": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260530": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260529": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260528": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260417": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260331": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        },
+        "360750": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260530": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260529": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260528": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260417": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260331": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        },
+        "411420": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260530": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260529": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260528": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260417": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260331": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        },
+        "0015B0": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260530": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260529": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260528": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260417": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260331": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        }
+      },
+      "judgment": "unusable",
+      "reason": "모든 ticker × 날짜 조합에서 ok 응답 0건 (empty / call_failed)."
+    },
+    "pykrx_etf_price_deviation": {
+      "source_id": "pykrx_etf_price_deviation",
+      "category": "pykrx",
+      "per_ticker": {
+        "069500": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        },
+        "360750": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        },
+        "411420": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        },
+        "0015B0": {
+          "20260605": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260604": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          },
+          "20260603": {
+            "status": "empty",
+            "row_count": 0,
+            "columns": []
+          }
+        }
+      },
+      "judgment": "unusable",
+      "reason": "모든 ticker × 날짜 조합 empty / call_failed."
+    },
+    "finance_data_reader": {
+      "source_id": "finance_data_reader",
+      "category": "fdr",
+      "per_ticker": {
+        "069500": {
+          "status": "ok",
+          "row_count": 8,
+          "columns": [
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+            "Change"
+          ],
+          "asof": "2026-06-05",
+          "has_nav": false,
+          "has_market_price": true,
+          "has_discount_rate": false,
+          "market_price_sample": 131030.0
+        },
+        "360750": {
+          "status": "ok",
+          "row_count": 8,
+          "columns": [
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+            "Change"
+          ],
+          "asof": "2026-06-05",
+          "has_nav": false,
+          "has_market_price": true,
+          "has_discount_rate": false,
+          "market_price_sample": 28845.0
+        },
+        "411420": {
+          "status": "ok",
+          "row_count": 8,
+          "columns": [
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+            "Change"
+          ],
+          "asof": "2026-06-05",
+          "has_nav": false,
+          "has_market_price": true,
+          "has_discount_rate": false,
+          "market_price_sample": 30940.0
+        },
+        "0015B0": {
+          "status": "ok",
+          "row_count": 8,
+          "columns": [
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+            "Change"
+          ],
+          "asof": "2026-06-05",
+          "has_nav": false,
+          "has_market_price": true,
+          "has_discount_rate": false,
+          "market_price_sample": 24715.0
+        }
+      },
+      "judgment": "hold_unstable",
+      "reason": "FDR 은 시장 종가만 제공 — NAV 직접 제공 안 함. NAV source 와 결합 시 괴리율 계산 후보. 단독 adopt_candidate 아님."
+    },
+    "naver_mobile_stock_integration": {
+      "source_id": "naver_mobile_stock_integration",
+      "category": "naver_mobile",
+      "per_ticker": {
+        "069500": {
+          "status": "ok",
+          "http_status": 200,
+          "top_level_keys": [
+            "stockEndType",
+            "itemCode",
+            "reutersCode",
+            "stockName",
+            "totalInfos",
+            "iconInfos",
+            "description",
+            "etfKeyIndicator",
+            "dealTrendInfos",
+            "researches",
+            "industryCode",
+            "industryCompareInfo",
+            "consensusInfo",
+            "shareholdersMeetingInfo",
+            "irScheduleInfo"
+          ],
+          "has_nav": true,
+          "has_market_price": true,
+          "has_discount_rate": true,
+          "has_asof": true,
+          "found_keys_summary": {
+            "nav": [
+              {
+                "path": "$.etfKeyIndicator.totalNav",
+                "value": "30조 4,759억"
+              },
+              {
+                "path": "$.etfKeyIndicator.nav",
+                "value": "138,874.15"
+              }
+            ],
+            "deviation": [
+              {
+                "path": "$.etfKeyIndicator.deviationSign",
+                "value": "-"
+              },
+              {
+                "path": "$.etfKeyIndicator.deviationRate",
+                "value": 0.1
+              }
+            ],
+            "asof": [
+              {
+                "path": "$.dealTrendInfos[0].bizdate",
+                "value": "20260605"
+              },
+              {
+                "path": "$.dealTrendInfos[1].bizdate",
+                "value": "20260604"
+              }
+            ],
+            "price": [
+              {
+                "path": "$.dealTrendInfos[0].closePrice",
+                "value": "131,030"
+              },
+              {
+                "path": "$.dealTrendInfos[1].closePrice",
+                "value": "138,730"
+              }
+            ]
+          }
+        },
+        "360750": {
+          "status": "ok",
+          "http_status": 200,
+          "top_level_keys": [
+            "stockEndType",
+            "itemCode",
+            "reutersCode",
+            "stockName",
+            "totalInfos",
+            "iconInfos",
+            "description",
+            "etfKeyIndicator",
+            "dealTrendInfos",
+            "researches",
+            "industryCode",
+            "industryCompareInfo",
+            "consensusInfo",
+            "shareholdersMeetingInfo",
+            "irScheduleInfo"
+          ],
+          "has_nav": true,
+          "has_market_price": true,
+          "has_discount_rate": true,
+          "has_asof": true,
+          "found_keys_summary": {
+            "nav": [
+              {
+                "path": "$.etfKeyIndicator.totalNav",
+                "value": "19조 1,676억"
+              },
+              {
+                "path": "$.etfKeyIndicator.nav",
+                "value": "28,663.96"
+              }
+            ],
+            "deviation": [
+              {
+                "path": "$.etfKeyIndicator.deviationSign",
+                "value": "-"
+              },
+              {
+                "path": "$.etfKeyIndicator.deviationRate",
+                "value": 0.22
+              }
+            ],
+            "asof": [
+              {
+                "path": "$.dealTrendInfos[0].bizdate",
+                "value": "20260605"
+              },
+              {
+                "path": "$.dealTrendInfos[1].bizdate",
+                "value": "20260604"
+              }
+            ],
+            "price": [
+              {
+                "path": "$.dealTrendInfos[0].closePrice",
+                "value": "28,845"
+              },
+              {
+                "path": "$.dealTrendInfos[1].closePrice",
+                "value": "28,600"
+              }
+            ]
+          }
+        },
+        "411420": {
+          "status": "ok",
+          "http_status": 200,
+          "top_level_keys": [
+            "stockEndType",
+            "itemCode",
+            "reutersCode",
+            "stockName",
+            "totalInfos",
+            "iconInfos",
+            "description",
+            "etfKeyIndicator",
+            "dealTrendInfos",
+            "researches",
+            "industryCode",
+            "industryCompareInfo",
+            "consensusInfo",
+            "shareholdersMeetingInfo",
+            "irScheduleInfo"
+          ],
+          "has_nav": true,
+          "has_market_price": true,
+          "has_discount_rate": true,
+          "has_asof": true,
+          "found_keys_summary": {
+            "nav": [
+              {
+                "path": "$.etfKeyIndicator.totalNav",
+                "value": "1,577억"
+              },
+              {
+                "path": "$.etfKeyIndicator.nav",
+                "value": "31,236.82"
+              }
+            ],
+            "deviation": [
+              {
+                "path": "$.etfKeyIndicator.deviationSign",
+                "value": "-"
+              },
+              {
+                "path": "$.etfKeyIndicator.deviationRate",
+                "value": 0.89
+              }
+            ],
+            "asof": [
+              {
+                "path": "$.dealTrendInfos[0].bizdate",
+                "value": "20260605"
+              },
+              {
+                "path": "$.dealTrendInfos[1].bizdate",
+                "value": "20260604"
+              }
+            ],
+            "price": [
+              {
+                "path": "$.dealTrendInfos[0].closePrice",
+                "value": "30,940"
+              },
+              {
+                "path": "$.dealTrendInfos[1].closePrice",
+                "value": "30,960"
+              }
+            ]
+          }
+        },
+        "0015B0": {
+          "status": "ok",
+          "http_status": 200,
+          "top_level_keys": [
+            "stockEndType",
+            "itemCode",
+            "reutersCode",
+            "stockName",
+            "totalInfos",
+            "iconInfos",
+            "description",
+            "etfKeyIndicator",
+            "dealTrendInfos",
+            "researches",
+            "industryCode",
+            "industryCompareInfo",
+            "consensusInfo",
+            "shareholdersMeetingInfo",
+            "irScheduleInfo"
+          ],
+          "has_nav": true,
+          "has_market_price": true,
+          "has_discount_rate": true,
+          "has_asof": true,
+          "found_keys_summary": {
+            "nav": [
+              {
+                "path": "$.etfKeyIndicator.totalNav",
+                "value": "7,429억"
+              },
+              {
+                "path": "$.etfKeyIndicator.nav",
+                "value": "25,399.40"
+              }
+            ],
+            "deviation": [
+              {
+                "path": "$.etfKeyIndicator.deviationSign",
+                "value": "-"
+              },
+              {
+                "path": "$.etfKeyIndicator.deviationRate",
+                "value": 1.22
+              }
+            ],
+            "asof": [
+              {
+                "path": "$.dealTrendInfos[0].bizdate",
+                "value": "20260605"
+              },
+              {
+                "path": "$.dealTrendInfos[1].bizdate",
+                "value": "20260604"
+              }
+            ],
+            "price": [
+              {
+                "path": "$.dealTrendInfos[0].closePrice",
+                "value": "24,715"
+              },
+              {
+                "path": "$.dealTrendInfos[1].closePrice",
+                "value": "25,090"
+              }
+            ]
+          }
+        }
+      },
+      "judgment": "hold_unstable",
+      "reason": "NAV / 시장가격 / 괴리율 모두 4/4 제공 (asof=4/4). 비공식 endpoint — schema 변경 / 차단 위험 + 운영 안정성 별도 검증 권장. 안정성 진단 후 adopt 승격 가능."
+    },
+    "naver_mobile_etf_detail": {
+      "source_id": "naver_mobile_etf_detail",
+      "category": "naver_mobile",
+      "per_ticker": {
+        "069500": {
+          "status": "ok",
+          "candidates": [
+            {
+              "url_suffix": "basicInfo",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "overview",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "component",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            }
+          ]
+        },
+        "360750": {
+          "status": "ok",
+          "candidates": [
+            {
+              "url_suffix": "basicInfo",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "overview",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "component",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            }
+          ]
+        },
+        "411420": {
+          "status": "ok",
+          "candidates": [
+            {
+              "url_suffix": "basicInfo",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "overview",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "component",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            }
+          ]
+        },
+        "0015B0": {
+          "status": "ok",
+          "candidates": [
+            {
+              "url_suffix": "basicInfo",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "overview",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            },
+            {
+              "url_suffix": "component",
+              "http_status": 404,
+              "status": "call_failed",
+              "error_type": "HTTPError: HTTP Error 404: 404"
+            }
+          ]
+        }
+      },
+      "judgment": "unusable",
+      "reason": "ETF dedicated endpoint 후보 모두 HTTP 200 응답 0건."
+    }
+  }
+}

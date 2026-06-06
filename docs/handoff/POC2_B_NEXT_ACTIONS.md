@@ -1,8 +1,42 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-06 (ETF Exposure Data Unfolding 1차)
+작성일: 2026-05-20 / 갱신: 2026-06-06 (ETF NAV / Discount Source Diagnosis 1차)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
+
+---
+
+## 0-1. 직전 빈자리 채우기 STEP 결과 (2026-06-06 — NAV / Discount Source Diagnosis 1차)
+
+ETF Exposure Data Unfolding 1차 §0 "빈자리 후속 원칙" 에 따라 NAV / 괴리율
+source 진단을 수행. 운영 fetcher 교체 X, source integration X.
+
+### 진단 결과 요약
+
+- pykrx (ohlcv / price_deviation): 모든 ticker × 날짜 empty → **unusable**
+- FinanceDataReader: 시장가격 안정, NAV 직접 제공 X → **hold_unstable**
+  (NAV source 와 결합 시 괴리율 계산 후보)
+- Naver Mobile stock integration API: NAV + 시장가격 4/4 ticker OK
+  (`$.etfKeyIndicator.nav`, `$.dealTrendInfos[0].closePrice`)
+  → **hold_unstable** (비공식 endpoint — 운영 안정성 추가 진단 권고)
+- Naver ETF dedicated endpoint 후보: 전부 HTTP 404 → **unusable**
+
+**adopt_candidate 0건**. 단, naver_mobile_stock_integration 은 운영 안정성
+추가 검증 STEP 거치면 adopt 승격 가능.
+
+### 다음 분기 후보 (사용자 결정 영역)
+
+빈자리 후속 원칙은 그대로 유효하다 — 다음 기능 STEP 은 여전히 빈자리 중
+하나를 채우는 STEP 으로 제한한다.
+
+1. **Naver Mobile NAV Source Stability 1차** — naver_mobile_stock_integration
+   응답시간 / TTL / schema 변경 모니터링 / 다일 sample 확장. 결과에 따라
+   adopt_candidate 승격 또는 unusable 하향.
+2. **다른 빈자리로 전환** — 구성종목 가격 시계열 source 진단, 위험 감지 지표
+   시계열 적재 후보 진단 등 (BACKLOG 참고).
+3. **KRX OPEN API 인증키 확보 검토** — hold_auth_required 후보 발굴.
+
+위 분기 중 어느 것을 선택할지는 사용자 결정. 본 문서에서 임의 확정하지 않는다.
 
 ---
 
