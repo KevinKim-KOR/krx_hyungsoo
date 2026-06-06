@@ -192,3 +192,8 @@ reports/**/*.yaml
 # Specific Conflict Resolutions
 test_scripts/
 test_dump/
+
+# 외부 참조 프로젝트 (친구 프로젝트 zip / 압축 해제 폴더) — commit 대상 아님.
+# 분석 결과만 docs/ref/ 에 별도 정리.
+# 루트 /ref/ 만 매칭 — docs/ref/ 같은 하위 경로는 제외하지 않는다.
+/ref/
