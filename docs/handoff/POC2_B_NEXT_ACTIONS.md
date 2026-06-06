@@ -1,8 +1,46 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-03 (Holdings × Market Discovery Evidence 1차)
+작성일: 2026-05-20 / 갱신: 2026-06-06 (ETF Exposure Data Unfolding 1차)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
+
+---
+
+## 0. 현재 최우선 작업 (2026-06-06 — ETF Exposure Data Unfolding 1차 완료)
+
+### ETF Exposure Data Unfolding 1차 (DONE)
+
+기존 ETF Exposure 화면의 구성종목 / 중복률 / 반복 핵심 종목 데이터를 펼쳐서
+비교 가능하게 표시. Holdings Evidence 와는 State Bridge (명시 호출 버튼) 로
+결합. ML / 위험 감지에 필요한 시계열 데이터 9축의 준비 상태를 화면 + 문서에
+명시.
+
+- 신규 API 0건. 신규 source 0건. 시계열 적재 job 0건.
+- 신규 컴포넌트 3건: HoldingsOverlapBridgeCard / NavDiscountPlaceholderCard /
+  MLTimeseriesReadinessCard.
+- 위험 감지는 "하락 예측"이 아니라 "위험 구간 분류" 로 정의 — INTENT §9.5,
+  ASSUMPTIONS Q6.
+- pytest 379 passed (회귀 0). frontend Next.js build PASS.
+
+### 빈자리 후속 원칙 (불변)
+
+**ETF Exposure Data Unfolding 1차 이후 다음 기능 STEP 은 본 STEP 에서 드러난
+빈자리 중 하나를 채우는 STEP 으로 제한한다.**
+
+화면 + 문서에 명시된 빈자리:
+
+1. **NAV / 괴리율 source** — `not_integrated`. source 진단 STEP 후보.
+2. **구성종목 가격 시계열** — `not_integrated`. 구성종목 등락률 unavailable
+   해소.
+3. **위험 감지 지표 시계열** (변동성 / 거래량 급변 / 외국인·기관 수급 / 시장 폭) —
+   `not_collected` / `not_calculated`. 축 2 선행 조건.
+4. **MDD / Sharpe 계산** — 현재 미구현. 시계열 적재 후 1차 지표.
+
+어떤 빈자리를 먼저 채울지는 **사용자 판단 영역**이다. 본 문서에서 임의로
+순서를 확정하지 않는다.
+
+위 제약은 ML / 백테스트 / 자동 매수·매도 판단 추가를 금지하는 의미가 아니라,
+**시계열 데이터가 부족한 상태에서 ML 모델로 점프하지 않는다**는 의미다.
 
 본 문서는 다음 챕터 진입자가 한 번 읽고 "지금 무엇을 해야 하는지" 를 즉시
 파악할 수 있도록 작성되었다 — 단기 (현재 STEP) / 중기 (바로 다음 후보) /

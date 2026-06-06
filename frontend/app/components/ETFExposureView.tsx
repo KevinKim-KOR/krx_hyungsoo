@@ -13,8 +13,12 @@ import {
   buildMarketDiscoveryCopyText,
 } from "@/lib/marketDiscoveryCopyText";
 import {
+  ApiConfigError,
+  ApiRequestError,
   type ConstituentsAnalysisResponse,
   fetchConstituentsAnalysis,
+  fetchHoldingsMarketEvidence,
+  type HoldingsMarketEvidenceResponse,
 } from "@/lib/api";
 import {
   type AISessionsDraft,
@@ -25,7 +29,12 @@ import {
   loadETFExposureDraft,
 } from "@/lib/etfExposureDraft";
 import ConstituentsTab from "./ConstituentsTab";
+import HoldingsOverlapBridgeCard, {
+  type BridgeState,
+} from "./HoldingsOverlapBridgeCard";
 import type { MenuKey } from "./LeftSidebar";
+import MLTimeseriesReadinessCard from "./MLTimeseriesReadinessCard";
+import NavDiscountPlaceholderCard from "./NavDiscountPlaceholderCard";
 import OverlapTab from "./OverlapTab";
 
 type TabKey = "constituents" | "overlap";
@@ -119,6 +128,31 @@ export default function ETFExposureView({ onNavigate }: Props) {
     null,
   );
 
+  // 2026-06-06 ETF Exposure Data Unfolding 1차 (지시문 §5.6 / AC-5 / AC-6) —
+  // Holdings Evidence State Bridge. 컨테이너만 API 호출. 명시 클릭으로만 로딩.
+  const [bridgeState, setBridgeState] = useState<BridgeState>("not_loaded");
+  const [bridgeData, setBridgeData] =
+    useState<HoldingsMarketEvidenceResponse | null>(null);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
+
+  const loadBridge = useCallback(async () => {
+    setBridgeState("loading");
+    setBridgeError(null);
+    try {
+      const res = await fetchHoldingsMarketEvidence();
+      setBridgeData(res);
+      setBridgeState("ok");
+    } catch (e) {
+      let msg = "알 수 없는 오류";
+      if (e instanceof ApiConfigError) msg = e.message;
+      else if (e instanceof ApiRequestError) {
+        msg = `HTTP ${e.httpStatus}: ${e.message}`;
+      } else if (e instanceof Error) msg = e.message;
+      setBridgeError(msg);
+      setBridgeState("unavailable");
+    }
+  }, []);
+
   useEffect(() => {
     const d = loadETFExposureDraft();
     setDraft(d);
@@ -173,12 +207,32 @@ export default function ETFExposureView({ onNavigate }: Props) {
     [draft],
   );
 
+  // 2026-06-06 ETF Exposure Data Unfolding 1차 (지시문 §5.1 / AC-1) —
+  // 화면 역할을 펼쳐보기 / 비교 / ML 준비 상태 확인의 프레임으로 명시화.
   const roleBanner = (
     <div className="role-banner">
-      <strong>[판단 흐름 STEP 2]</strong> Market Discovery 후보 ETF의 구성종목과
-      중복 노출을 점검합니다. Market Discovery 화면에서 &lsquo;ETF Exposure로 넘기기&rsquo;를
-      먼저 실행해야 후보 목록이 이 화면에 연결됩니다.
+      <strong>[판단 흐름 STEP 2]</strong> ETF Exposure는 후보 ETF들이 실제로 어떤
+      종목을 담고 있는지, 서로 얼마나 겹치는지, 그리고 ML / 위험 감지에 필요한
+      데이터가 현재 어디까지 준비됐는지 확인하는 화면입니다. Market Discovery에서
+      &lsquo;ETF Exposure로 넘기기&rsquo;를 먼저 실행해야 후보 목록이 이 화면에
+      연결됩니다.
     </div>
+  );
+
+  const candidateTickers = useMemo(
+    () =>
+      (draft?.candidate_snapshot ?? [])
+        .map((c) => c.ticker)
+        .filter((t): t is string => !!t),
+    [draft],
+  );
+
+  const repeatedCoreTickers = useMemo(
+    () =>
+      (analysis?.repeated_core_holdings ?? [])
+        .map((r) => r.ticker)
+        .filter((t): t is string => !!t),
+    [analysis],
   );
 
   if (!draftLoaded) {
@@ -252,6 +306,25 @@ export default function ETFExposureView({ onNavigate }: Props) {
       ) : (
         <OverlapTab analysis={analysis} />
       )}
+
+      {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-5/6) — Holdings Evidence
+          State Bridge. 명시 클릭으로만 로딩. 컨테이너만 API 호출. */}
+      <HoldingsOverlapBridgeCard
+        state={bridgeState}
+        data={bridgeData}
+        errorMessage={bridgeError}
+        candidateTickers={candidateTickers}
+        repeatedCoreTickers={repeatedCoreTickers}
+        onLoad={loadBridge}
+      />
+
+      {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-7) —
+          NAV/괴리율 source 미연동 빈자리 표시 (≥2 화면 노출 정책). */}
+      <NavDiscountPlaceholderCard />
+
+      {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-8) —
+          ML / 위험 감지 시계열 9축 준비 상태 표시. 학습 / threshold / factor 확정 X. */}
+      <MLTimeseriesReadinessCard />
 
       <div className="card">
         <h2>AI Sessions 전달</h2>

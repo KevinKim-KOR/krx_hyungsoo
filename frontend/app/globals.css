@@ -1347,3 +1347,70 @@ textarea.decision-textarea {
   color: var(--accent);
   min-width: 20px;
 }
+
+/* ETF Exposure Data Unfolding 1차 (2026-06-06) — ML readiness + Bridge */
+
+.ml-readiness-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.ml-readiness-available {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.ml-readiness-partial {
+  background: rgba(217, 119, 6, 0.10);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.ml-readiness-missing {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.bridge-status-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.bridge-status-ok {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.bridge-status-unavailable {
+  background: rgba(220, 38, 38, 0.10);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.bridge-status-loading {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bridge-status-not-loaded {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}

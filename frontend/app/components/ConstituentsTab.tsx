@@ -134,14 +134,23 @@ export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props)
 
       {analysis ? (
         <div className="card">
-          <h2>구성종목 (상위 10) + 집중도</h2>
+          <h2>구성종목 펼쳐보기 (상위 10) + 집중도</h2>
           <p className="helper" style={{ marginBottom: 8 }}>
-            가용 {analysis.coverage.available_count} /
-            요청 {analysis.coverage.requested_count} ·
-            asof {analysis.asof}
+            가용 {analysis.coverage.available_count} / 요청{" "}
+            {analysis.coverage.requested_count} · asof {analysis.asof}. ETF별
+            구성종목이 접히지 않고 바로 보입니다 — 후보 ETF 간 종목 비교용.
           </p>
+          {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (지시문 §5.2 / AC-2) —
+              구성종목 details 를 자동 펼침(open) 으로 표시. ETF별 종목이 한눈에
+              비교 가능하도록 한다. 구성종목 등락률 컬럼은 unavailable 로 표시
+              (가격 시계열 source 미연동 — 본 STEP 에서 신규 source 채택 X). */}
           {analysis.constituents.map((c: ConstituentItem) => (
-            <details key={c.etf_ticker} className="card" style={{ marginBottom: 8 }}>
+            <details
+              key={c.etf_ticker}
+              className="card"
+              style={{ marginBottom: 8 }}
+              open
+            >
               <summary>
                 <span className={`constituent-status-badge ${statusBadge(c.status)}`}>
                   {c.status}
@@ -165,6 +174,9 @@ export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props)
                         <th style={{ width: 90 }}>티커</th>
                         <th>종목명</th>
                         <th style={{ width: 90, textAlign: "right" }}>비중</th>
+                        <th style={{ width: 120, textAlign: "right" }}>
+                          등락률
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -182,11 +194,27 @@ export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props)
                             <td>{displayId ? <code>{displayId}</code> : DASH}</td>
                             <td>{h.name ?? DASH}</td>
                             <td style={{ textAlign: "right" }}>{fmtPct(h.weight_pct)}</td>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                color: "var(--muted)",
+                              }}
+                              title="구성종목 가격 시계열 미연결 — 본 STEP에서 source 채택 X"
+                            >
+                              unavailable
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  <p
+                    className="helper"
+                    style={{ marginTop: 4, fontSize: "0.78rem" }}
+                  >
+                    등락률 unavailable — 구성종목 가격 시계열 미연결
+                    (not_integrated).
+                  </p>
                 </>
               ) : (
                 <div className="helper" style={{ marginTop: 6 }}>

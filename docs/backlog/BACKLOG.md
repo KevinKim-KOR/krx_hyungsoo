@@ -12,6 +12,63 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+## ETF Exposure Data Unfolding 1차 후 신규 (2026-06-06)
+
+ETF Exposure 화면에서 구성종목 / 중복률 / 반복 핵심 종목 데이터를 펼쳐서 비교
+가능하게 표시하고, ML / 위험 감지에 필요한 시계열 데이터 9축의 준비 상태를 화면 +
+문서에 명시한 STEP 종료 후 도출된 BACKLOG.
+
+**원칙 (POC2_B_NEXT_ACTIONS §0 와 동일)**: 본 STEP 이후 다음 기능 STEP 은 본
+STEP 에서 드러난 빈자리 중 하나를 채우는 STEP 으로 제한한다. 어떤 빈자리를 먼저
+채울지는 사용자 판단 영역.
+
+### BACKLOG: NAV / 괴리율 source 진단 STEP
+
+- **발생 맥락**: ETF Exposure / Holdings Evidence 양쪽 화면에서 NAV / 괴리율을
+  unavailable / not_integrated 로 표시. source 미연동 상태.
+- **현재 결정**: 본 STEP 에서 source 진단 / 신규 fetcher 채택 X. ETF 구성종목 source
+  진단 STEP 과 동일한 패턴(후보 smoke test → 채택 여부 판단)으로 향후 별도 STEP 처리.
+- **재검토 트리거**: 사용자가 NAV / 괴리율을 운영 판단에 사용하겠다고 결정하거나,
+  위험 감지 축(ASSUMPTIONS Q6)에서 NAV / 괴리율 시계열이 1차 후보 factor 로 채택될 때.
+- **참조**: docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md 패턴 재사용.
+
+### BACKLOG: 구성종목 가격 시계열 source 진단
+
+- **발생 맥락**: ETF Exposure 구성종목 등락률 컬럼이 unavailable. 구성종목별 가격
+  시계열 source 미연동 상태.
+- **현재 결정**: 본 STEP 에서 source 채택 X. ETF Exposure 화면에 등락률 unavailable
+  로 정직하게 표시.
+- **재검토 트리거**: 구성종목 등락률이 ETF Exposure 비교 분석에 필요하다고 사용자가
+  결정할 때, 또는 위험 감지 축에서 구성종목 가격 변동이 factor 후보로 진입할 때.
+- **권장 후속 검토 항목**: 데이터 source (FDR / pykrx / KRX OPEN API 등) / 갱신 빈도 /
+  저장소 (별도 SQLite 테이블) / 종목 단위 (ETF 구성종목 ∩ 한국 상장 종목만 vs 해외 포함).
+
+### BACKLOG: 위험 감지 지표 시계열 적재 후보
+
+- **발생 맥락**: ML 방향성 2축 중 축 2 (위험 감지 = 위험 구간 분류)의 선행 조건.
+  ETF Exposure 화면 ML readiness 패널에서 not_collected / not_calculated 로 표시 중.
+- **현재 결정**: 본 STEP 에서 적재 X. 적재 후보를 BACKLOG 로 명시 등록.
+- **후보 지표** (factor / threshold 확정 X):
+  - 변동성 지표 (RV / IV / band width 등) — `not_calculated`
+  - 거래량 / 유동성 시계열 가공 (이동평균 대비 급변 등) — `partial → not_calculated`
+  - 외국인 / 기관 수급 — `not_collected`
+  - 시장 폭 지표 (advance/decline ratio 등) — `not_collected`
+- **재검토 트리거**: 사용자가 위 후보 중 하나를 1차 검증 대상으로 결정할 때.
+- **참조**: ASSUMPTIONS Q6 / PROJECT_ORIGIN_INTENT §9.5.
+
+### BACKLOG: MDD / Sharpe 계산 도입
+
+- **발생 맥락**: 본 STEP ML readiness 패널에서 변동성 지표 `not_calculated` 로 표시.
+  Phase 1 에서 다뤘던 MDD 가 현재 시스템에 직접 계산 로직 없음.
+- **현재 결정**: 본 STEP 에서 계산 추가 X. PROJECT_ORIGIN_INTENT §10 #5 ("MDD 10%를
+  1차 목표로 삼지 않는다") 와도 정합 — MDD 는 1차 목표가 아니다.
+- **재검토 트리거**: ETF 가격 시계열 → 위험 구간 분류 후보가 진행될 때, 단순
+  rule-based 분류의 1차 지표로 MDD / 변동성 계산이 필요한 시점.
+- **권장 후속 검토 항목**: 계산 단위 (ETF 단일 / 시장 / 포트폴리오) / 기간 (1m / 3m /
+  6m / YTD) / 저장 방식 (캐시 vs SQLite 컬럼).
+
+---
+
 ## AI 투자세션 복사용 문구 1차 후 신규 (2026-05-20)
 
 Market Discovery → 외부 AI 채널 복사 입력문 (지시문 §5 구조) 1차 구현 후 도출된

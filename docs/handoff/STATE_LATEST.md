@@ -4,7 +4,86 @@
 
 ---
 
-## 0. 현재 상태 — 2026-06-06 Operational UI Cleanup 1차
+## 0. 현재 상태 — 2026-06-06 ETF Exposure Data Unfolding 1차
+
+```text
+현재 단계: ETF Exposure 화면의 기존 데이터(구성종목/중복률/반복 핵심 종목) 펼쳐보기 +
+  ML/위험 감지 시계열 준비 상태 명시 + Holdings Evidence State Bridge 도입.
+  — 새 Workbench 화면 신설 X. 기존 ETF Exposure 화면 안에서 카드 추가/펼침.
+  — 신규 API 0건. 신규 source 0건. 시계열 적재 job 0건.
+  — 신규 컴포넌트 3건: HoldingsOverlapBridgeCard / NavDiscountPlaceholderCard /
+    MLTimeseriesReadinessCard.
+  — ConstituentsTab 자동 펼침(open) + 구성종목 등락률 unavailable 컬럼 추가.
+  — Holdings Evidence State Bridge: 사용자 명시 클릭으로만 GET /holdings/market-evidence/latest
+    호출. 페이지 진입 자동 호출 X. 하위 표시 컴포넌트는 props 만 받는다.
+  — ML 방향성 2축 문서화: (1) 상승 후보 발굴 / 점수화, (2) 위험 감지 = 위험 구간 분류.
+    하락 예측 표현 사용 안 함. factor / threshold / label 미확정.
+  — 빈자리: NAV/괴리율 source / 구성종목 가격 시계열 / MDD/Sharpe / 위험 감지 지표 시계열
+    / 외국인·기관 수급 / 시장 폭 지표 — 화면 + BACKLOG 에 명시.
+이전 단계: Operational UI Cleanup 1차 (DONE 2026-06-06 / commit 62c77d7c)
+다음 큰 방향 (사용자 결정 대기 — 본 STEP 의 빈자리 중 하나로 제한):
+  1. NAV / 괴리율 source 진단 STEP
+  2. 구성종목 가격 시계열 source 진단 STEP
+  3. 위험 감지 지표 시계열(변동성/거래량 급변/수급/시장 폭) 적재 후보 진단
+```
+
+### 본 STEP 단일 목표 (AC 달성 현황)
+
+```text
+AC-1: ETF Exposure 화면 역할 설명(펼쳐보기/비교/ML 준비 프레임)  = DONE
+AC-2: 구성종목 펼쳐보기 + 등락률 unavailable 컬럼                = DONE
+AC-3: 반복 핵심 종목 영역(OverlapTab에 기존)                     = DONE (변경 0건)
+AC-4: ETF 간 중복률 표                                          = DONE (변경 0건)
+AC-5: Holdings Evidence State Bridge (컨테이너만 API 호출)        = DONE
+AC-6: bridge not_loaded / ok / unavailable / loading 상태 구분    = DONE
+AC-7: NAV/괴리율 unavailable 빈자리 카드                          = DONE
+AC-8: ML 시계열 9축 readiness 패널 (5상태)                       = DONE
+AC-9: ML 방향성 2축 문서화 (INTENT/ASSUMPTIONS/NEXT/BACKLOG)      = DONE
+AC-10: 다음 STEP 빈자리 중 하나 제한 원칙(NEXT_ACTIONS 기록)      = DONE
+AC-11: 기존 흐름 유지 (Market Discovery / Holdings / Draft / Approval / AI Sessions) = DONE
+AC-12: 범위 위반 0건 (신규 API/source/job/MDD/factor/ML 추가 X)   = DONE
+AC-13: 문서 5건 갱신                                            = DONE
+```
+
+### 변경 파일 목록 (11건)
+
+**Frontend 신규 (3)**:
+- `frontend/app/components/HoldingsOverlapBridgeCard.tsx` — 신규 (State Bridge UI, 명시 호출만)
+- `frontend/app/components/NavDiscountPlaceholderCard.tsx` — 신규 (NAV unavailable 빈자리)
+- `frontend/app/components/MLTimeseriesReadinessCard.tsx` — 신규 (시계열 9축 readiness)
+
+**Frontend 수정 (3)**:
+- `frontend/app/components/ETFExposureView.tsx` — bridge state 관리 + 3개 카드 통합 + role banner 강화
+- `frontend/app/components/ConstituentsTab.tsx` — details 자동 펼침(open) + 등락률 unavailable 컬럼
+- `frontend/app/globals.css` — ml-readiness-* / bridge-status-* CSS
+
+**Docs 수정 (5)**:
+- `docs/handoff/STATE_LATEST.md` — 본 STEP 결과 (본 섹션)
+- `docs/PROJECT_ORIGIN_INTENT.md` — ML 2축 (상승 후보 발굴 / 위험 구간 분류) 기록
+- `docs/ASSUMPTIONS.md` — 위험 감지 축 Open Question 기록 (활성 ≤3 준수)
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 다음 기능 STEP 은 빈자리 중 하나로 제한
+- `docs/backlog/BACKLOG.md` — 시계열 적재 / NAV source / MDD/Sharpe / 구성종목 가격 후보 등록
+
+**총 11건 (Frontend 신규 3 + Frontend 수정 3 + Docs 수정 5). backend 변경 0건. 신규 API 0건. 신규 라이브러리 0건.**
+
+### 검증 결과
+
+- **backend pytest** — PASS (379 passed, 회귀 0)
+- **black --check** — PASS (82 files unchanged)
+- **flake8** — PASS (0건)
+- **frontend Next.js build** — PASS (4 static pages, TypeScript types check PASS)
+
+### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §8)
+
+- 새 Workbench 화면 신설 / Dashboard 대개편 / 전체 UI 리디자인.
+- 신규 API 추가 / NAV source 진단 / NAV 신규 fetcher / 구성종목 가격 source 추가.
+- 시계열 적재 job / MDD·Sharpe 계산 / 포트폴리오 버킷 자산 이력.
+- 위험 감지 factor / threshold / label 확정 / ML / 백테스트 / 매수·매도 판단.
+- 자동 클러스터링 / 대표 ETF 선정 / Telegram 문구 변경 / OCI push 연결.
+
+---
+
+## 0.1 직전 상태 — 2026-06-06 Operational UI Cleanup 1차
 
 ```text
 현재 단계: 운영 흐름 정리 — Dashboard 5-step 판단 흐름 + 각 화면 역할 설명 + 가독성 개선.
