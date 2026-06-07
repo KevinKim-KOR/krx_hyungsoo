@@ -235,13 +235,13 @@
 | 항목 | 값 |
 |---|---|
 | 기능명 | NAV / 시장가격 / 괴리율 + 3%/5% 임계 플래그 |
-| 현재 메뉴 위치 | Market Discovery candidates[].data_quality.nav_discount |
+| 현재 메뉴 위치 | Market Discovery candidates[].data_quality.nav_discount + ETF Exposure NavDiscountPlaceholderCard + Holdings Evidence Card NAV 줄 |
 | 기능 목적 | 데이터 품질 확인용 (매수/매도 판단 X) |
-| 사용 가능 여부 | **부분 가능 (인프라만)** — source 미확정으로 nav_discount.status=unavailable |
-| 데이터 소스 상태 | `etf_nav_daily` 테이블 + unavailable_nav_fetcher (default). 실 source 채택은 별도 진단 STEP |
-| 운영 UI 포함 여부 | 통합 후보 응답 — UI 노출 BACKLOG |
-| 테스트용/임시 여부 | 아님 (인프라는 운영용) |
-| 다음 조치 | NAV / 괴리율 source 진단 STEP — Naver Stock detail endpoint 등 채택 검증 |
+| 사용 가능 여부 | **사용 가능** (2026-06-08 Naver ETF Universe NAV / 괴리율 연동 DONE) |
+| 데이터 소스 상태 | Naver `finance.naver.com/api/sise/etfItemList.nhn` universe 1회 호출 + TTL 30s + stale 재사용. `etf_nav_daily` 일괄 upsert (source=`naver_etf_item_list`) |
+| 운영 UI 포함 여부 | Market Discovery / ETF Exposure / Holdings Evidence 3 화면 표시 |
+| 테스트용/임시 여부 | 아님 — 운영용 |
+| 다음 조치 | (선택) NAV / 괴리율 시계열 누적 → 위험 감지 축 2 의 1차 후보로 사용 검토 |
 
 ### 2.13d Holdings × Market Discovery Evidence (보유 vs 시장)
 

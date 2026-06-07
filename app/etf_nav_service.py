@@ -1,22 +1,25 @@
-"""NAV / 괴리율 수집 서비스 (POC2 — 2026-06-01).
+"""NAV / 괴리율 수집 서비스 (POC2 — 2026-06-01 / 2026-06-08).
 
-Market Discovery Evidence Closeout 1차 — 지시문 §9.
+Market Discovery Evidence Closeout 1차 — 지시문 §9 — per-ticker fetcher.
 
-K6 방어 정책:
+K6 방어 정책 (per-ticker):
 - 1회 최대 10개 ETF (hard cap).
 - cache-first: 동일 asof + ticker + source 가 store 에 있으면 외부 호출 X.
 - ticker 당 0.5초 delay.
 - 전체 time budget 30초.
 - 실패 격리: ETF 단위 실패가 Market Discovery refresh 전체 실패로 전파 X.
 
-본 STEP 의 default fetcher 는 unavailable_nav_fetcher — 외부 호출 0건.
-별도 진단 STEP 에서 실 fetcher 채택 시 인터페이스만 교체.
+2026-06-08 Naver Universe Integration (지시문 §5):
+- refresh_nav_universe() 신규 — Naver `etfItemList.nhn` 1회 호출로 전체 ETF
+  universe NAV / 시장가격 / 괴리율을 upsert.
+- per-ticker 1,000회 호출 패턴이 아니므로 MAX cap 적용 X.
+- TTL 30s + stale 재사용은 naver_etf_universe_fetcher 모듈 책임.
 """
 
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -32,6 +35,11 @@ from app.etf_nav_store import (
     NavDailyRow,
     fetch_nav_rows,
     upsert_nav_rows,
+)
+from app.naver_etf_universe_fetcher import (
+    NaverUniverseSnapshot,
+    SOURCE_LABEL as NAVER_UNIVERSE_SOURCE,
+    fetch_universe_snapshot,
 )
 
 MAX_TICKERS_PER_REQUEST = 10
@@ -234,4 +242,192 @@ def refresh_nav(
         fetched_count=fetched_count,
         skipped_count=skipped_count,
         items=items,
+    )
+
+
+# ─── Universe refresh (2026-06-08 — 지시문 §5) ────────────────────────
+
+
+@dataclass
+class NavUniverseRefreshSummary:
+    """Naver universe refresh 결과 요약 (지시문 §5.5)."""
+
+    source: str
+    status: str  # ok / partial / unavailable
+    asof: str
+    fetched_at: Optional[str]
+    started_at: str
+    finished_at: str
+    elapsed_seconds: float
+    total_count: int
+    success_count: int
+    unavailable_count: int
+    failed_count: int
+    ignored_count: int
+    cache_hit: bool
+    stale_cache_used: bool
+    message: Optional[str] = None
+    upserted_count: int = 0
+    sample_tickers: list[str] = field(default_factory=list)
+
+
+def _utcnow_iso() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def refresh_nav_universe(
+    *,
+    asof: str,
+    force: bool = False,
+    db_path: Path = DEFAULT_DB_PATH,
+    fetcher: Optional[Callable[..., NaverUniverseSnapshot]] = None,
+    universe_filter: Optional[list[str]] = None,
+) -> NavUniverseRefreshSummary:
+    """Naver ETF universe 1회 호출로 전체 NAV / 시장가격 / 괴리율 수집·저장.
+
+    지시문 §5 — per-ticker N회 호출 X. Naver `etfItemList.nhn` 1회 호출 + 일괄 upsert.
+
+    Args:
+        asof: 기준일 (YYYY-MM-DD). 일반적으로 직전 market refresh end_date 사용.
+              (a) 결정에 따라 호출자(market_refresh_service) 가 결정 — 본 함수는 받는다.
+        force: True 이면 TTL 무시 후 외부 호출 강제.
+        db_path: etf_nav_daily SQLite 경로.
+        fetcher: 테스트 주입용.
+        universe_filter: 지정 시 해당 ticker 만 저장 (디버그 용도).
+
+    Returns:
+        NavUniverseRefreshSummary — 화면 / 운영 로그 / artifact 용.
+    """
+    started_at = _utcnow_iso()
+    t0 = time.perf_counter()
+
+    if not asof:
+        finished_at = _utcnow_iso()
+        return NavUniverseRefreshSummary(
+            source=NAVER_UNIVERSE_SOURCE,
+            status="unavailable",
+            asof="",
+            fetched_at=None,
+            started_at=started_at,
+            finished_at=finished_at,
+            elapsed_seconds=round(time.perf_counter() - t0, 3),
+            total_count=0,
+            success_count=0,
+            unavailable_count=0,
+            failed_count=0,
+            ignored_count=0,
+            cache_hit=False,
+            stale_cache_used=False,
+            message="missing_asof",
+        )
+
+    fetch_fn = fetcher or fetch_universe_snapshot
+    snap: NaverUniverseSnapshot = fetch_fn(force=force)
+
+    if snap.status == "unavailable" or not snap.items:
+        finished_at = _utcnow_iso()
+        return NavUniverseRefreshSummary(
+            source=NAVER_UNIVERSE_SOURCE,
+            status="unavailable",
+            asof=asof,
+            fetched_at=snap.fetched_at,
+            started_at=started_at,
+            finished_at=finished_at,
+            elapsed_seconds=round(time.perf_counter() - t0, 3),
+            total_count=0,
+            success_count=0,
+            unavailable_count=0,
+            failed_count=0,
+            ignored_count=0,
+            cache_hit=snap.cache_hit,
+            stale_cache_used=snap.stale_cache_used,
+            message=snap.message or "no items",
+        )
+
+    # universe_filter 적용 (디버그 용도).
+    items_iter = snap.items.values()
+    if universe_filter:
+        keep = {t.upper() for t in universe_filter}
+        items_iter = [it for it in items_iter if it.ticker in keep]
+        ignored = len(snap.items) - len(items_iter)
+    else:
+        items_iter = list(items_iter)
+        ignored = 0
+
+    total = len(items_iter)
+    success = 0
+    unavailable = 0
+    rows: list[NavDailyRow] = []
+    sample: list[str] = []
+
+    for it in items_iter:
+        if (
+            it.status != "ok"
+            or it.nav is None
+            or it.market_price is None
+            or it.discount_rate_pct is None
+        ):
+            rows.append(
+                NavDailyRow(
+                    etf_ticker=it.ticker,
+                    asof=asof,
+                    nav=it.nav,
+                    market_price=it.market_price,
+                    discount_rate_pct=it.discount_rate_pct,
+                    source=NAVER_UNIVERSE_SOURCE,
+                    status="unavailable",
+                    message=it.message or "nav or market_price missing",
+                )
+            )
+            unavailable += 1
+            continue
+
+        # source 가 stale 인 경우 status=partial 표시 + 동일 row 저장 (asof 기준 최신값).
+        row_status = "partial" if snap.stale_cache_used else "ok"
+        row_message = "stale cache reused" if snap.stale_cache_used else None
+        rows.append(
+            NavDailyRow(
+                etf_ticker=it.ticker,
+                asof=asof,
+                nav=it.nav,
+                market_price=it.market_price,
+                discount_rate_pct=it.discount_rate_pct,
+                source=NAVER_UNIVERSE_SOURCE,
+                status=row_status,
+                message=row_message,
+            )
+        )
+        success += 1
+        if len(sample) < 5:
+            sample.append(it.ticker)
+
+    upserted = upsert_nav_rows(rows, db_path=db_path) if rows else 0
+
+    finished_at = _utcnow_iso()
+    overall = "ok"
+    if snap.stale_cache_used:
+        overall = "partial"
+    if success == 0:
+        overall = "unavailable"
+
+    return NavUniverseRefreshSummary(
+        source=NAVER_UNIVERSE_SOURCE,
+        status=overall,
+        asof=asof,
+        fetched_at=snap.fetched_at,
+        started_at=started_at,
+        finished_at=finished_at,
+        elapsed_seconds=round(time.perf_counter() - t0, 3),
+        total_count=total,
+        success_count=success,
+        unavailable_count=unavailable,
+        failed_count=0,
+        ignored_count=ignored,
+        cache_hit=snap.cache_hit,
+        stale_cache_used=snap.stale_cache_used,
+        upserted_count=upserted,
+        sample_tickers=sample,
+        message=snap.message,
     )

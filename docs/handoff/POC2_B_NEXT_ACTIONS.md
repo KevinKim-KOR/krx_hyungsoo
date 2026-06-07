@@ -1,12 +1,45 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-06 (ETF NAV / Discount Source Diagnosis 1차)
+작성일: 2026-05-20 / 갱신: 2026-06-08 (Naver ETF Universe NAV / 괴리율 연동)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0-1. 직전 빈자리 채우기 STEP 결과 (2026-06-06 — NAV / Discount Source Diagnosis 1차)
+## 0. 직전 빈자리 채우기 STEP 결과 (2026-06-08 — Naver ETF Universe NAV / 괴리율 연동)
+
+NAV / Discount Source Diagnosis 1차 (2026-06-07) 에서 발굴한 source 후보 +
+친구 프로젝트(momentum-etf) 분석으로 확인한 `finance.naver.com/api/sise/etfItemList.nhn`
+universe 단일 호출 패턴을 운영 fetcher 로 채택.
+
+### 연동 결과
+
+- 신규 모듈: `app/naver_etf_universe_fetcher.py` — TTL 30s + stale 재사용.
+- `etf_nav_service.refresh_nav_universe()` 추가 — 1회 호출 → 전체 ETF universe
+  `etf_nav_daily` upsert (per-ticker N회 호출 패턴 폐기).
+- `market_refresh_service`: 기존 NAV hook(per-ticker 10건 cap)을 universe refresh
+  로 교체. 실패 격리 정책 유지.
+- `scripts/refresh_nav_universe.py`: 수동 실행 CLI (운영 API / 정기 job 연결 X).
+- summary artifact: `state/market/nav_discount_refresh_latest.json`.
+- Frontend: Market Discovery / ETF Exposure NavDiscountPlaceholderCard /
+  Holdings Evidence Card 모두 unavailable 고정 → 실제 NAV / 시장가 / 괴리율 표시.
+- 기존 `data_quality.nav_discount` 응답 계약 / `etf_nav_daily` schema /
+  괴리율 threshold 무변경. 신규 API 0건. MongoDB 추가 0건.
+
+### 다음 분기 후보 (사용자 결정 영역)
+
+1. **NAV / 괴리율 시계열 누적** — universe 단면 스냅샷 → asof 일자별 누적.
+   `etf_nav_daily` PK 가 이미 `(ticker, asof, source)` 라 자동 누적되지만,
+   누적된 시계열을 ML readiness 카드에 반영하고 위험 감지 축 2 의 1차 후보로
+   사용할지는 별도 결정.
+2. **위험 감지 지표 시계열 적재 1차** — VKOSPI / Fear&Greed / 외국인·기관 수급 /
+   시장 폭 후보 진단.
+3. **구성종목 가격 시계열 source 진단** — ETF Exposure 등락률 unavailable 해소.
+4. **MDD / Sharpe 계산 도입**.
+
+---
+
+## 0-1. 이전 빈자리 채우기 STEP 결과 (2026-06-07 — NAV / Discount Source Diagnosis 1차)
 
 ETF Exposure Data Unfolding 1차 §0 "빈자리 후속 원칙" 에 따라 NAV / 괴리율
 source 진단을 수행. 운영 fetcher 교체 X, source integration X.

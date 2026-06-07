@@ -41,8 +41,8 @@ const AXES: ReadinessAxis[] = [
   },
   {
     label: "NAV / 괴리율 시계열",
-    status: "not_integrated",
-    note: "NAV source 미연동 — 다음 단계 source 진단 필요",
+    status: "partial",
+    note: "Naver ETF universe 단면 스냅샷은 etf_nav_daily 에 적재(2026-06-08). 시계열 누적은 미적용",
   },
   {
     label: "거래량 / 유동성 시계열",

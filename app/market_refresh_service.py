@@ -27,8 +27,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
-from app.etf_nav_service import MAX_TICKERS_PER_REQUEST as NAV_MAX_TICKERS
-from app.etf_nav_service import refresh_nav
+from app.etf_nav_service import refresh_nav_universe
 from app.market_benchmark_store import refresh_kospi_benchmark
 from app.market_data_fdr import (
     DEFAULT_LOOKBACK_DAYS,
@@ -42,9 +41,25 @@ from app.market_data_store import (
     list_etf_tickers,
     log_refresh,
 )
-from app.market_topn import DEFAULT_BASIS, compute_topn
 
 DEFAULT_COOLDOWN_HOURS = 6
+
+# NAV refresh summary artifact 경로 (지시문 §5.5).
+NAV_REFRESH_SUMMARY_PATH = Path("state/market/nav_discount_refresh_latest.json")
+
+
+def _write_nav_refresh_summary(summary) -> None:  # noqa: ANN001 — runtime dataclass
+    """NAV universe refresh 결과를 JSON artifact 로 저장. 실패 시 무시 (격리)."""
+    import json
+    from dataclasses import asdict
+
+    try:
+        NAV_REFRESH_SUMMARY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        payload = asdict(summary)
+        with NAV_REFRESH_SUMMARY_PATH.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
+    except Exception:  # noqa: BLE001 — artifact 실패도 thread 안에서 격리
+        pass
 
 
 @dataclass
@@ -211,31 +226,16 @@ def _execute_refresh_job(
         except Exception:  # noqa: BLE001
             pass
 
-    # NAV / 괴리율 수집 (지시문 §9) — 후보 TOP N 에 대해서만. 실패는 전체 refresh
-    # 흐름을 중단시키지 않는다 (지시문 §9 제약 — 전파 X). 본 STEP 의 default
-    # fetcher 는 unavailable 이라 외부 호출 0건 + unavailable row 만 기록.
+    # NAV / 괴리율 수집 (2026-06-08 Naver Universe Integration — 지시문 §5.4).
+    # Naver `etfItemList.nhn` 1회 호출로 전체 ETF universe NAV / 시장가격 / 괴리율
+    # 일괄 upsert. per-ticker N회 호출 패턴은 폐기. 실패는 전체 refresh 흐름
+    # 중단 X (지시문 §5.4 / §9 제약). summary artifact 도 함께 생성.
     try:
-        topn_payload = compute_topn(
-            n=NAV_MAX_TICKERS,
+        nav_summary = refresh_nav_universe(
+            asof=end_date_for_prices.isoformat(),
             db_path=db_path,
-            basis=DEFAULT_BASIS,
-            order="desc",
-            exclude_inverse=True,
-            exclude_leveraged=True,
-            exclude_synthetic=True,
-            exclude_futures=True,
         )
-        candidate_tickers: list[str] = [
-            c.get("ticker")
-            for c in (topn_payload.get("candidates") or [])
-            if c.get("ticker")
-        ][:NAV_MAX_TICKERS]
-        if candidate_tickers:
-            refresh_nav(
-                asof=end_date_for_prices.isoformat(),
-                tickers=candidate_tickers,
-                db_path=db_path,
-            )
+        _write_nav_refresh_summary(nav_summary)
     except Exception:  # noqa: BLE001 — NAV 실패도 thread 안에서 격리
         pass
 

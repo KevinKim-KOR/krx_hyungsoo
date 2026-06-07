@@ -120,8 +120,10 @@ function SummaryHeader({ data }: { data: MarketTopNResponse }) {
           {data.topn_caveat}
         </div>
       ) : null}
-      <span className="nav-unavailable-note" style={{ marginTop: 8 }}>
-        NAV/괴리율 데이터 소스 미연동 — 후보 ETF의 NAV·괴리율 수치는 현재 표시 불가
+      <span className="helper" style={{ marginTop: 8, display: "block" }}>
+        NAV / 괴리율은 Naver ETF universe(`etfItemList.nhn`) 1회 호출 결과를
+        SQLite `etf_nav_daily` 에 저장한 값입니다. 후보 ETF 행에서 표시되며,
+        unavailable 인 종목은 Naver 응답에서 누락된 것입니다 (매수·매도 판단 아님).
       </span>
     </div>
   );

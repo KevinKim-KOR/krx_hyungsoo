@@ -318,9 +318,10 @@ export default function ETFExposureView({ onNavigate }: Props) {
         onLoad={loadBridge}
       />
 
-      {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-7) —
-          NAV/괴리율 source 미연동 빈자리 표시 (≥2 화면 노출 정책). */}
-      <NavDiscountPlaceholderCard />
+      {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-7) — NAV / 괴리율 카드.
+          2026-06-08 Naver Universe Integration: data_quality.nav_discount 가
+          채워지면 NAV / 시장가 / 괴리율 표시. unavailable 이면 안내 배지 유지. */}
+      <NavDiscountPlaceholderCard candidates={draft.market_candidates ?? []} />
 
       {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-8) —
           ML / 위험 감지 시계열 9축 준비 상태 표시. 학습 / threshold / factor 확정 X. */}

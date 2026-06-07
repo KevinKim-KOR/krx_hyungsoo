@@ -175,6 +175,10 @@ state/market/market_data.sqlite-journal
 state/market/market_data.sqlite-wal
 state/market/market_data.sqlite-shm
 
+# Naver ETF Universe NAV refresh summary (2026-06-08) — 운영 호출마다 갱신됨,
+# 검증/실행마다 작업트리가 바뀌어 staged 상태와 어긋남. commit 대상 아님.
+state/market/nav_discount_refresh_latest.json
+
 # AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — 운영 DB 는 commit 대상 아님.
 state/decision/decision_evidence.sqlite
 state/decision/decision_evidence.sqlite-journal

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-07
+최종 업데이트: 2026-06-08
 
 ## 0. Canonical
 
@@ -23,27 +23,29 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: ETF NAV / Discount Source Diagnosis 1차 + FIX 라운드 (2026-06-07).
-  - NAV / 괴리율 source 5건 실측 진단. adopt_candidate 0건 / hold_unstable 2건 (FDR, Naver mobile integration) / unusable 3건.
-  - 친구 프로젝트(momentum-etf) 분석을 통해 `finance.naver.com/api/sise/etfItemList.nhn` universe 단일 호출 패턴 추가 발굴 — 다음 STEP 후보로 검토.
-  - 운영 NAV fetcher 교체 / source integration / 신규 API / 기존 etf_nav_daily schema / 괴리율 threshold 모두 무변경.
+- **현재 완료 상태**: **Naver ETF Universe NAV / 괴리율 연동** (2026-06-08).
+  - Naver `etfItemList.nhn` universe **1회 호출**로 전체 ETF NAV / 시장가 / 괴리율을 SQLite `etf_nav_daily` 에 일괄 upsert.
+  - TTL 30s + stale 재사용 캐시. per-ticker N회 호출 패턴 폐기.
+  - Market refresh 직후 자동 hook + 수동 CLI(`scripts/refresh_nav_universe.py`).
+  - Market Discovery / ETF Exposure / Holdings Evidence 모두 unavailable → 실제 NAV / 시장가 / 괴리율 표시.
+  - 기존 `data_quality.nav_discount` 응답 계약 / `etf_nav_daily` schema / 괴리율 threshold 무변경. 신규 API 0건.
 - **현재 진행 예정**: 사용자 결정 대기 (§6 Next action 참조).
 
 ## 2. Latest completed step
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
-| ETF NAV / Discount Source Diagnosis 1차 (FIX) | DONE | 2026-06-07 | [archive#0](handoff/STATE_LATEST_ARCHIVE.md) (commit `b5a80a3f`) |
+| Naver ETF Universe NAV / 괴리율 연동 | DONE | 2026-06-08 | [POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md](handoff/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
 
 ## 3. Recent history summary
 
 | Step | Result | Summary | Detail |
 | --- | --- | --- | --- |
+| 2026-06-08 Naver ETF Universe NAV / 괴리율 연동 | DONE | universe 1회 호출(`etfItemList.nhn`) → `etf_nav_daily` upsert + 3개 화면 NAV 표시. TTL 30s + stale 재사용. 신규 API 0건. | [conclusion](handoff/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
 | 2026-06-07 ETF NAV / Discount Source Diagnosis 1차 (FIX) | DONE | NAV/괴리율 source 5건 실측. adopt 0 / hold_unstable 2 / unusable 3. flat_records + timeout 명시 + asof 키 확장 FIX. | commit `b5a80a3f` / [archive](handoff/STATE_LATEST_ARCHIVE.md) |
 | 2026-06-06 ETF Exposure Data Unfolding 1차 | DONE | 구성종목 펼쳐보기 + 반복 핵심 종목 + 중복률 + Holdings Evidence State Bridge + ML readiness 9축. ML 방향성 2축 문서화. | commit `bce8f7fd` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
 | 2026-06-06 Operational UI Cleanup 1차 | DONE | Dashboard 5-step 판단 흐름 + 6개 화면 role banner + Market Discovery 다음 단계 안내 + NAV 미연동 안내 ≥2 화면. | commit `62c77d7c` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
-| 2026-06-03 Holdings × Market Discovery Evidence 1차 | DONE | 신규 read-only API `GET /holdings/market-evidence/latest`. GenerateDraft가 같은 evidence builder 재사용. | commit (handoff 참조) / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
-| 2026-06-03 KS-10 Cleanup (API Client / Type 책임 분리) | DONE | `frontend/lib/api.ts` 993라인을 도메인 8개로 분리. `@/lib/api` barrel import 호환 유지. | commit (handoff 참조) / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
+| 2026-06-03 Holdings × Market Discovery Evidence 1차 | DONE | 신규 read-only API `GET /holdings/market-evidence/latest`. GenerateDraft가 같은 evidence builder 재사용. | [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
 
 > 직전 5개를 제외한 이전 STEP (2026-06-01 이전 — Market Discovery Closeout / Constituents Naver Integration /
 > Constituents Diagnosis / Constituents & Overlap / Market Regime / AI Sessions / Decision Evidence /
@@ -53,9 +55,9 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 ## 4. Current evidence flow
 
-- **Market Discovery**: SQLite 직접 계산 TOP N. 수동 refresh (6h cooldown). 시장 국면(KODEX200 필수 / KOSPI 보조) / 단기 흐름 / 데이터 품질(`nav_discount.unavailable`) 동봉.
-- **ETF Exposure**: 구성종목 펼쳐보기(자동 open + 등락률 unavailable 컬럼) + 중복률 + 반복 핵심 종목 + Holdings Evidence State Bridge (명시 호출 버튼) + NAV 미연동 빈자리 + ML readiness 9축.
-- **Holdings Evidence**: `GET /holdings/market-evidence/latest` (read-only, 외부 fetch 0건). 보유 ETF × Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 중복 / NAV 상태.
+- **Market Discovery**: SQLite 직접 계산 TOP N. 수동 refresh (6h cooldown). 시장 국면(KODEX200 필수 / KOSPI 보조) / 단기 흐름 / 데이터 품질(`nav_discount` — Naver universe 연동으로 실제 NAV / 시장가 / 괴리율 표시. 2026-06-08 STEP) 동봉.
+- **ETF Exposure**: 구성종목 펼쳐보기(자동 open + 등락률 unavailable 컬럼) + 중복률 + 반복 핵심 종목 + Holdings Evidence State Bridge (명시 호출 버튼) + NAV/괴리율 카드(Naver universe 결과, candidates count + 상위 5건 표) + ML readiness 9축.
+- **Holdings Evidence**: `GET /holdings/market-evidence/latest` (read-only, 외부 fetch 0건). 보유 ETF × Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 중복 / NAV(Naver universe 1회 호출 결과 — `etf_nav_daily` store 에서 read).
 - **GenerateDraft**: 같은 evidence builder 재사용 — `draft_payload.holdings_market_evidence_snapshot` + `factor_signals` scope="holdings_market_evidence" + [판단 사유] bullet. 매수·매도·교체 어휘 0건.
 - **Approval / Telegram**: 인간 승인 게이트 유지. 3-PUSH (보유 종목 상태 / 신규 ETF 관찰 후보 / 급락 ETF 주의). 자동 매매 X.
 - **AI Sessions**: 외부 AI 답변 + 사용자 판단 기록. Market Discovery 후보 스냅샷 + 시장 국면 + 구성종목/중복률 / 단기 흐름 / 데이터 품질 / Decision Candidate 전부 포함.
@@ -71,10 +73,11 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 ## 6. Next action
 
 - **다음 Step 후보 (사용자 결정 대기)**:
-  1. **NAV / Discount Source Adoption 1차** — `finance.naver.com/api/sise/etfItemList.nhn` (친구 프로젝트 패턴) 또는 `m.stock.naver.com/api/stock/{ticker}/integration` 채택. 단일 호출 / 30초 TTL / stale 재사용 + 우리 `etf_nav_fetcher` 실 구현 교체. ([docs/ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md](ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md) 참조)
-  2. **Naver Mobile NAV Source Stability** — `naver_mobile_stock_integration` 응답시간 / TTL / schema 변경 추가 모니터링 후 adopt 승격.
+  1. ~~NAV / Discount Source Adoption~~ — **DONE (2026-06-08 Naver Universe NAV Integration)**.
+  2. **NAV / 괴리율 시계열 누적** — 현재는 universe 1회 호출 = 단면 스냅샷. asof 일자별 누적이 위험 감지 축 2 의 시계열 후보로 직접 사용 가능 (ML readiness 카드의 NAV/괴리율 시계열 partial → available 승격 경로).
   3. **위험 감지 지표 시계열 적재 1차** — VKOSPI / Fear&Greed / 외국인·기관 수급 / 시장 폭 후보 진단. ML 2축 중 축 2 선행 조건.
-  4. **다른 빈자리** — 구성종목 가격 시계열 source 진단 / MDD·Sharpe 계산 도입.
+  4. **구성종목 가격 시계열 source 진단** — ETF Exposure 화면에서 등락률 unavailable 해소.
+  5. **MDD / Sharpe 계산 도입** — Phase 1 BACKLOG 항목.
 - **하지 않을 것 (불변 원칙)**:
   - 자동 매매 / Telegram 문구 변경 / OCI push 자동화 (사용자 명시 승인 필요)
   - MongoDB 전환 (PROJECT_ORIGIN_INTENT §10 #2 — SQLite(시장) + JSON(holdings/Run) SSOT 분리)

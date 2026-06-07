@@ -209,6 +209,7 @@ function HoldingsList({
                   h.topn_match.rank && <> · rank {h.topn_match.rank}</>}
               </span>
             </div>
+            <NavDiscountLine nav={h.nav_discount} />
             {h.evidence_notes.length > 0 && (
               <ul className="evidence-notes-list">
                 {h.evidence_notes.map((note, i) => (
@@ -219,6 +220,51 @@ function HoldingsList({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function NavDiscountLine({
+  nav,
+}: {
+  nav: HoldingsMarketEvidenceResponse["holdings"][number]["nav_discount"];
+}) {
+  // 2026-06-08 Naver Universe NAV Integration — 종목별 NAV / 시장가격 / 괴리율
+  // 표시 (status=ok/partial 일 때만 값. unavailable 은 'NAV 확인 불가' 텍스트만).
+  if (nav.status !== "ok" && nav.status !== "partial") {
+    return (
+      <div
+        style={{
+          fontSize: "0.78rem",
+          color: "var(--muted)",
+          margin: "0.15rem 0 0 0",
+        }}
+      >
+        NAV / 괴리율 확인 불가 ({nav.status})
+      </div>
+    );
+  }
+  const navText = nav.nav != null ? Math.round(nav.nav).toLocaleString() : "-";
+  const priceText =
+    nav.market_price != null
+      ? Math.round(nav.market_price).toLocaleString()
+      : "-";
+  const discount =
+    nav.discount_rate_pct != null ? nav.discount_rate_pct.toFixed(2) : "-";
+  const flagText = nav.flag ? ` · ${nav.flag}` : "";
+  const sourceText = nav.source ? ` · source: ${nav.source}` : "";
+  return (
+    <div
+      style={{
+        fontSize: "0.78rem",
+        color: "var(--muted)",
+        margin: "0.15rem 0 0 0",
+      }}
+    >
+      NAV {navText} · 시장가 {priceText} · 괴리율{" "}
+      <strong style={{ color: "var(--fg)" }}>{discount}%</strong>
+      {flagText}
+      {sourceText}
     </div>
   );
 }
