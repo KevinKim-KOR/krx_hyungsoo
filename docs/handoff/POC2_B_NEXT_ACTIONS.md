@@ -132,7 +132,7 @@ source 진단을 수행. 운영 fetcher 교체 X, source integration X.
 
 ### (이전) ETF Constituents Naver Source Integration (DONE 2026-05-31)
 
-본 STEP 의 산출물은 STATE_LATEST.md §0.1 참조.
+본 STEP 의 산출물은 [docs/handoff/STATE_LATEST_ARCHIVE.md](STATE_LATEST_ARCHIVE.md) §0.1 (2026-05-31 ETF Constituents Naver Source Integration) 참조.
 
 - `naver_stock_etf_component` 를 1차 source 로 채택. service 의 cache key 도
   새 source 매칭.

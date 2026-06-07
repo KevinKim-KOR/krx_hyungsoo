@@ -301,8 +301,8 @@ EOD 분석 1회
    - 본 문서 (POC2_STEP7_CONCLUSION_AND_NEXT_HANDOFF.md)
 
 2. **STATE_LATEST 읽기**:
-   - `docs/handoff/STATE_LATEST.md` (SSOT) — 현재 단계 + Step7C VERIFIED 확인.
-   - `docs/STATE_LATEST.md` (포인터 stub) — 단축 버전.
+   - `docs/STATE_LATEST.md` (canonical, 2026-06-07 정리 이후) — 현재 상태 / history 요약 / index.
+   - `docs/handoff/STATE_LATEST_ARCHIVE.md` — 현재 단계 + Step7C VERIFIED 확인 (시간순 누적 본문 보존).
 
 3. **BACKLOG 읽기**:
    - `docs/backlog/BACKLOG.md` — STEP7C 종료 후 신규 + STEP7B + STEP7A + STEP7

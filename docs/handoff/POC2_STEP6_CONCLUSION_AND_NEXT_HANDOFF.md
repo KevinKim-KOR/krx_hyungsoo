@@ -168,8 +168,8 @@ ASSUMPTIONS.md Q5 의 첫 실전 데이터 수집 사이클이 본 Step6 종결 
    - 본 문서 (POC2_STEP6_CONCLUSION_AND_NEXT_HANDOFF.md)
 
 2. STATE_LATEST 읽기:
-   - `docs/handoff/STATE_LATEST.md` (SSOT) — Step6 종결 + 검증 이력 + KS-10 임계 실측.
-   - `docs/STATE_LATEST.md` (포인터 stub) — 같은 내용 단축 버전.
+   - `docs/STATE_LATEST.md` (canonical, 2026-06-07 정리 이후) — 현재 상태 / history 요약 / index.
+   - `docs/handoff/STATE_LATEST_ARCHIVE.md` — Step6 종결 + 검증 이력 + KS-10 임계 실측 (시간순 누적 본문 보존).
 
 3. BACKLOG 읽기:
    - `docs/backlog/BACKLOG.md` 의 **STEP 6 향후 검토** 섹션 5건 + 본 문서 §5 의 신규 항목 1건.
