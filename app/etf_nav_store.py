@@ -140,6 +140,49 @@ def fetch_latest_nav(
         )
 
 
+def fetch_all_latest_nav(
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> list[NavDailyRow]:
+    """모든 ticker 의 최신 asof NAV row 1건씩 반환 (지시문 §4.5 read-only API 용도).
+
+    PK 가 (ticker, asof, source) 이므로 한 ticker 에 여러 row 가 있을 수 있다.
+    본 함수는 ticker 별로 (asof DESC, created_at DESC) 기준 최신 row 1건만 반환.
+    DB 파일이 없으면 [] 반환.
+    """
+    if not db_path.exists():
+        return []
+    with _connection(db_path) as con:
+        cur = con.execute("""
+            SELECT t.etf_ticker, t.asof, t.nav, t.market_price, t.discount_rate_pct,
+                   t.source, t.status, t.message
+            FROM etf_nav_daily t
+            INNER JOIN (
+                SELECT etf_ticker,
+                       MAX(asof) AS max_asof,
+                       MAX(created_at) AS max_created_at
+                FROM etf_nav_daily
+                GROUP BY etf_ticker
+            ) latest ON t.etf_ticker = latest.etf_ticker
+                    AND t.asof = latest.max_asof
+                    AND t.created_at = latest.max_created_at
+            ORDER BY t.etf_ticker
+            """)
+        return [
+            NavDailyRow(
+                etf_ticker=row[0],
+                asof=row[1],
+                nav=row[2],
+                market_price=row[3],
+                discount_rate_pct=row[4],
+                source=row[5],
+                status=row[6],
+                message=row[7],
+            )
+            for row in cur.fetchall()
+        ]
+
+
 def fetch_nav_rows(
     *,
     etf_ticker: str,

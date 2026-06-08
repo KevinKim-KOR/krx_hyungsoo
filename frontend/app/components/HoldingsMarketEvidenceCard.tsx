@@ -252,7 +252,10 @@ function NavDiscountLine({
   const discount =
     nav.discount_rate_pct != null ? nav.discount_rate_pct.toFixed(2) : "-";
   const flagText = nav.flag ? ` · ${nav.flag}` : "";
+  // 2026-06-08 NAV / Discount Display FIX (검증자 매트릭스): asof 표시 추가.
+  const asofText = nav.asof ? ` · asof ${nav.asof}` : "";
   const sourceText = nav.source ? ` · source: ${nav.source}` : "";
+  const statusText = nav.status ? ` · status: ${nav.status}` : "";
   return (
     <div
       style={{
@@ -264,7 +267,9 @@ function NavDiscountLine({
       NAV {navText} · 시장가 {priceText} · 괴리율{" "}
       <strong style={{ color: "var(--fg)" }}>{discount}%</strong>
       {flagText}
+      {asofText}
       {sourceText}
+      {statusText}
     </div>
   );
 }

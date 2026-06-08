@@ -17,3 +17,4 @@ export * from "./marketEvidence";
 export * from "./market";
 export * from "./etfExposure";
 export * from "./decisionSessions";
+export * from "./navDiscount";

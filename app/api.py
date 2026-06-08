@@ -48,6 +48,7 @@ from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
 from app.api_holdings_market_evidence import router as holdings_market_evidence_router
 from app.api_market_topn import router as market_topn_router
+from app.api_nav_discount import router as nav_discount_router
 from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
 from app.models import Run
@@ -78,6 +79,9 @@ app.include_router(etf_constituents_router)
 # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) —
 # read-only GET /holdings/market-evidence/latest. 외부 fetch X, 신규 저장 X.
 app.include_router(holdings_market_evidence_router)
+# POC2 NAV / Discount Display FIX (2026-06-08) —
+# read-only GET /market/nav-discount/latest. 저장된 etf_nav_daily 만 read.
+app.include_router(nav_discount_router)
 
 
 class GenerateDraftRequest(BaseModel):

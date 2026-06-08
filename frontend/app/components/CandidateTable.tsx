@@ -137,6 +137,15 @@ export default function CandidateTable({
             />
             <th style={{ width: 110, textAlign: "right" }}>KODEX 200 대비 1m (%p)</th>
             <th style={{ width: 110, textAlign: "right" }}>KODEX 200 대비 3m (%p)</th>
+            {/* 2026-06-08 NAV / Discount Display FIX (지시문 §4.1 / §5 매트릭스) —
+                후보 row 에 NAV 직접 표시. asof / source / status 도 tooltip 이 아닌
+                직접 컬럼으로 노출 (검증자 A-1 FIX, 2026-06-08 라운드 2). */}
+            <th style={{ width: 95, textAlign: "right" }}>NAV</th>
+            <th style={{ width: 95, textAlign: "right" }}>시장가</th>
+            <th style={{ width: 100, textAlign: "right" }}>괴리율</th>
+            <th style={{ width: 100 }}>asof</th>
+            <th style={{ width: 130 }}>source</th>
+            <th style={{ width: 90 }}>status</th>
             <th style={{ width: 200 }}>정렬 기준 기간</th>
             <th style={{ width: 160 }}>태그</th>
           </tr>
@@ -151,6 +160,14 @@ export default function CandidateTable({
             const tags = (c.tags ?? []) as MarketProductTag[];
             const exKodex1m = c.excess_return?.vs_kodex200_1m_pctp ?? null;
             const exKodex3m = c.excess_return?.vs_kodex200_3m_pctp ?? null;
+            const nav = c.data_quality?.nav_discount ?? null;
+            const navVal = nav?.nav ?? null;
+            const priceVal = nav?.market_price ?? null;
+            const discountVal = nav?.discount_rate_pct ?? null;
+            const navStatus = nav?.status ?? "unavailable";
+            const asofVal = nav?.asof ?? null;
+            const sourceVal = nav?.source ?? null;
+            const flagVal = nav?.flag ?? null;
             return (
               <tr key={`${c.rank ?? "x"}-${c.ticker ?? "x"}-${idx}`}>
                 <td>{fmtNum(c.rank)}</td>
@@ -180,6 +197,41 @@ export default function CandidateTable({
                 <td style={{ textAlign: "right", color: returnPctColor(exKodex3m) }}>
                   {fmtPct(exKodex3m)}
                 </td>
+                <td style={{ textAlign: "right" }}>
+                  {navVal != null ? Math.round(navVal).toLocaleString() : DASH}
+                </td>
+                <td style={{ textAlign: "right" }}>
+                  {priceVal != null
+                    ? Math.round(priceVal).toLocaleString()
+                    : DASH}
+                </td>
+                <td style={{ textAlign: "right" }}>
+                  {discountVal != null ? (
+                    <span style={{ color: returnPctColor(discountVal) }}>
+                      {fmtPct(discountVal)}
+                      {flagVal ? (
+                        <>
+                          {" "}
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--warn)",
+                            }}
+                          >
+                            {flagVal}
+                          </span>
+                        </>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span style={{ color: "var(--muted)" }}>-</span>
+                  )}
+                </td>
+                <td style={{ fontSize: "0.78rem" }}>{asofVal ?? DASH}</td>
+                <td style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                  {sourceVal ?? DASH}
+                </td>
+                <td style={{ fontSize: "0.78rem" }}>{navStatus}</td>
                 <td>{selStart && selEnd ? `${selStart} → ${selEnd}` : DASH}</td>
                 <td>
                   {tags.length > 0 ? (
@@ -193,6 +245,13 @@ export default function CandidateTable({
           })}
         </tbody>
       </table>
+      <p
+        className="helper"
+        style={{ marginTop: 6, fontSize: "0.78rem" }}
+      >
+        NAV / 시장가 / 괴리율 / asof / source / status 는 모두 직접 컬럼으로 표시됩니다.
+        전체 ETF 조회는 Data Status 화면에서 가능합니다.
+      </p>
     </div>
   );
 }

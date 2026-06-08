@@ -84,8 +84,10 @@ export default function NavDiscountPlaceholderCard({ candidates = [] }: Props) {
             <th>ETF</th>
             <th style={{ textAlign: "right" }}>NAV</th>
             <th style={{ textAlign: "right" }}>시장가</th>
-            <th style={{ textAlign: "right", width: 110 }}>괴리율</th>
-            <th style={{ width: 110 }}>flag / source</th>
+            <th style={{ textAlign: "right", width: 100 }}>괴리율</th>
+            <th style={{ width: 100 }}>asof</th>
+            <th style={{ width: 160 }}>source</th>
+            <th style={{ width: 90 }}>status</th>
           </tr>
         </thead>
         <tbody>
@@ -102,10 +104,20 @@ export default function NavDiscountPlaceholderCard({ candidates = [] }: Props) {
                 </td>
                 <td style={{ textAlign: "right" }}>
                   {_fmtPctp(nav?.discount_rate_pct)}
+                  {nav?.flag ? (
+                    <>
+                      {" "}
+                      <span style={{ fontSize: "0.75rem", color: "var(--warn)" }}>
+                        {nav.flag}
+                      </span>
+                    </>
+                  ) : null}
                 </td>
+                <td>{nav?.asof ?? "-"}</td>
                 <td style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
-                  {nav?.flag ?? "-"} · {nav?.source ?? "-"}
+                  {nav?.source ?? "-"}
                 </td>
+                <td>{nav?.status ?? "-"}</td>
               </tr>
             );
           })}

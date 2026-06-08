@@ -1,12 +1,35 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-08 (Naver ETF Universe NAV / 괴리율 연동)
+작성일: 2026-05-20 / 갱신: 2026-06-08 (NAV / Discount Display FIX)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 빈자리 채우기 STEP 결과 (2026-06-08 — Naver ETF Universe NAV / 괴리율 연동)
+## 0. 직전 STEP 결과 (2026-06-08 — NAV / Discount Display FIX)
+
+직전 STEP(Naver ETF Universe NAV / 괴리율 연동)이 저장은 완료했지만 사용자가
+주요 화면에서 NAV 값을 한눈에 확인하기 어려운 표시 누락이 있었다. 본 FIX 로
+표시 매트릭스 6필드 × 4화면 모두 visible 상태로 정정.
+
+### 결과 요약
+
+- 신규 read-only API `GET /market/nav-discount/latest` — 저장된 `etf_nav_daily`
+  전체 ETF (1136건 실측) 1회 응답. 외부 source 호출 X, refresh X.
+- Data Status 화면 재설계 — placeholder → 전체 ETF NAV / 시장가 / 괴리율 표 +
+  검색(ticker/이름) + status 필터 + 괴리율 정렬.
+- Market Discovery CandidateTable — NAV / 시장가 / 괴리율 / asof / source /
+  status 6 컬럼 직접 노출 (FIX 라운드 2 에서 tooltip → 직접 컬럼으로 정정).
+- ETF Exposure NavDiscountPlaceholderCard — flag/source 통합 컬럼 → asof / source /
+  status 분리 컬럼 + flag 인라인.
+- Holdings Evidence NavDiscountLine — asof / status 추가 (이전 NAV·시장가·괴리율·source).
+- 표시 매트릭스 (지시문 §5): MD/ETF Exposure/Holdings Evidence/전체 ETF 조회 × NAV·시장가·괴리율·asof·source·status = 모두 visible.
+- 기존 `data_quality.nav_discount` 응답 계약 / `etf_nav_daily` schema 무변경.
+- pytest 395 passed (391→395 / 회귀 0). Next.js build PASS.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-08 — Naver ETF Universe NAV / 괴리율 연동)
 
 NAV / Discount Source Diagnosis 1차 (2026-06-07) 에서 발굴한 source 후보 +
 친구 프로젝트(momentum-etf) 분석으로 확인한 `finance.naver.com/api/sise/etfItemList.nhn`

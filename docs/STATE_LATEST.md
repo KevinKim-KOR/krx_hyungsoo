@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-08
+최종 업데이트: 2026-06-08 (NAV / Discount Display FIX)
 
 ## 0. Canonical
 
@@ -23,29 +23,30 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **Naver ETF Universe NAV / 괴리율 연동** (2026-06-08).
-  - Naver `etfItemList.nhn` universe **1회 호출**로 전체 ETF NAV / 시장가 / 괴리율을 SQLite `etf_nav_daily` 에 일괄 upsert.
-  - TTL 30s + stale 재사용 캐시. per-ticker N회 호출 패턴 폐기.
-  - Market refresh 직후 자동 hook + 수동 CLI(`scripts/refresh_nav_universe.py`).
-  - Market Discovery / ETF Exposure / Holdings Evidence 모두 unavailable → 실제 NAV / 시장가 / 괴리율 표시.
-  - 기존 `data_quality.nav_discount` 응답 계약 / `etf_nav_daily` schema / 괴리율 threshold 무변경. 신규 API 0건.
+- **현재 완료 상태**: **NAV / Discount Display FIX** (2026-06-08).
+  - 신규 read-only API `GET /market/nav-discount/latest` — 저장된 `etf_nav_daily` 전체 ETF 1136건을 1회 응답으로 노출 (외부 source 호출 X / refresh X).
+  - Data Status 화면 재설계 — 전체 ETF NAV / 시장가 / 괴리율 표 + 검색(ticker/이름) + status 필터 + 괴리율 정렬 (괴리율 |abs| / 부호 / ticker).
+  - Market Discovery CandidateTable — NAV / 시장가 / 괴리율 / asof / source / status 6 컬럼 직접 노출.
+  - ETF Exposure NAV 카드 — asof / source / status 컬럼 보강 (이전 flag/source 한 컬럼).
+  - Holdings Evidence NAV 라인 — asof / status 추가 (NAV·시장가·괴리율 옆).
+  - 직전 STEP(Naver Universe 연동) 의 표시 누락 5건 모두 해소. 표시 매트릭스 4 화면 × 6 필드 = 모두 visible.
 - **현재 진행 예정**: 사용자 결정 대기 (§6 Next action 참조).
 
 ## 2. Latest completed step
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
-| Naver ETF Universe NAV / 괴리율 연동 | DONE | 2026-06-08 | [POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md](handoff/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
+| NAV / Discount Display FIX (전체 ETF 조회 영역 + 표시 매트릭스) | DONE | 2026-06-08 | [POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
 
 ## 3. Recent history summary
 
 | Step | Result | Summary | Detail |
 | --- | --- | --- | --- |
+| 2026-06-08 NAV / Discount Display FIX | DONE | GET /market/nav-discount/latest 신규 + Data Status 전체 ETF NAV 표 + MD/ETF Exposure/Holdings 표시 보강. 표시 매트릭스 충족. | [conclusion](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
 | 2026-06-08 Naver ETF Universe NAV / 괴리율 연동 | DONE | universe 1회 호출(`etfItemList.nhn`) → `etf_nav_daily` upsert + 3개 화면 NAV 표시. TTL 30s + stale 재사용. 신규 API 0건. | [conclusion](handoff/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
 | 2026-06-07 ETF NAV / Discount Source Diagnosis 1차 (FIX) | DONE | NAV/괴리율 source 5건 실측. adopt 0 / hold_unstable 2 / unusable 3. flat_records + timeout 명시 + asof 키 확장 FIX. | commit `b5a80a3f` / [archive](handoff/STATE_LATEST_ARCHIVE.md) |
 | 2026-06-06 ETF Exposure Data Unfolding 1차 | DONE | 구성종목 펼쳐보기 + 반복 핵심 종목 + 중복률 + Holdings Evidence State Bridge + ML readiness 9축. ML 방향성 2축 문서화. | commit `bce8f7fd` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
 | 2026-06-06 Operational UI Cleanup 1차 | DONE | Dashboard 5-step 판단 흐름 + 6개 화면 role banner + Market Discovery 다음 단계 안내 + NAV 미연동 안내 ≥2 화면. | commit `62c77d7c` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
-| 2026-06-03 Holdings × Market Discovery Evidence 1차 | DONE | 신규 read-only API `GET /holdings/market-evidence/latest`. GenerateDraft가 같은 evidence builder 재사용. | [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
 
 > 직전 5개를 제외한 이전 STEP (2026-06-01 이전 — Market Discovery Closeout / Constituents Naver Integration /
 > Constituents Diagnosis / Constituents & Overlap / Market Regime / AI Sessions / Decision Evidence /
@@ -55,9 +56,10 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 ## 4. Current evidence flow
 
-- **Market Discovery**: SQLite 직접 계산 TOP N. 수동 refresh (6h cooldown). 시장 국면(KODEX200 필수 / KOSPI 보조) / 단기 흐름 / 데이터 품질(`nav_discount` — Naver universe 연동으로 실제 NAV / 시장가 / 괴리율 표시. 2026-06-08 STEP) 동봉.
-- **ETF Exposure**: 구성종목 펼쳐보기(자동 open + 등락률 unavailable 컬럼) + 중복률 + 반복 핵심 종목 + Holdings Evidence State Bridge (명시 호출 버튼) + NAV/괴리율 카드(Naver universe 결과, candidates count + 상위 5건 표) + ML readiness 9축.
-- **Holdings Evidence**: `GET /holdings/market-evidence/latest` (read-only, 외부 fetch 0건). 보유 ETF × Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 중복 / NAV(Naver universe 1회 호출 결과 — `etf_nav_daily` store 에서 read).
+- **Market Discovery**: SQLite 직접 계산 TOP N. 수동 refresh (6h cooldown). 시장 국면(KODEX200 필수 / KOSPI 보조) / 단기 흐름 / NAV(직접 컬럼 6개 — NAV/시장가/괴리율/asof/source/status) / 데이터 품질(`nav_discount`) 동봉.
+- **ETF Exposure**: 구성종목 펼쳐보기(자동 open + 등락률 unavailable 컬럼) + 중복률 + 반복 핵심 종목 + Holdings Evidence State Bridge (명시 호출 버튼) + NAV/괴리율 카드(상위 5건 + asof/source/status) + ML readiness 9축.
+- **Holdings Evidence**: `GET /holdings/market-evidence/latest` (read-only, 외부 fetch 0건). 보유 ETF × Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 중복 / NAV·시장가·괴리율·asof·status·source(`etf_nav_daily` store 에서 read).
+- **Data Status**: 전체 ETF NAV / 시장가 / 괴리율 조회 화면 (`GET /market/nav-discount/latest`). 검색 + status 필터 + 괴리율 정렬. 외부 source 호출 0건. 1136 ETF 1회 응답.
 - **GenerateDraft**: 같은 evidence builder 재사용 — `draft_payload.holdings_market_evidence_snapshot` + `factor_signals` scope="holdings_market_evidence" + [판단 사유] bullet. 매수·매도·교체 어휘 0건.
 - **Approval / Telegram**: 인간 승인 게이트 유지. 3-PUSH (보유 종목 상태 / 신규 ETF 관찰 후보 / 급락 ETF 주의). 자동 매매 X.
 - **AI Sessions**: 외부 AI 답변 + 사용자 판단 기록. Market Discovery 후보 스냅샷 + 시장 국면 + 구성종목/중복률 / 단기 흐름 / 데이터 품질 / Decision Candidate 전부 포함.
