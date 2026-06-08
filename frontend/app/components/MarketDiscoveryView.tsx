@@ -512,23 +512,12 @@ export default function MarketDiscoveryView({
         filters={filters}
         onFiltersChange={handleFiltersChange}
       />
-      {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
-      <MarketContextCard ctx={data.market_context ?? null} />
-      {/* 통합 테이블 */}
-      <CandidateTable
-        candidates={data.candidates ?? []}
-        basis={basis}
-        order={order}
-        onSort={handleSort}
-      />
-      <SummaryHeader data={data} />
-      {/* 2026-06-08 UI 정리 (사용자 요청 라운드 2) — AI Sessions 전달 / ETF
-          Exposure 전달 / AI 투자세션 복사용 문구 섹션 모두 삭제.
-          버튼 2개만 화면 맨 아래 한 줄로 배치 (compact 모드). */}
+      {/* 2026-06-08 UI 정리 라운드 3 (사용자 요청) — AI Sessions / ETF Exposure
+          버튼 2개를 최신 시장 데이터 갱신 버튼 바로 아래 (시장 배경 위) 한 줄로 배치. */}
       {data.asof && data.filters ? (
         <div
           className="btn-row"
-          style={{ gap: 12, flexWrap: "wrap", margin: "12px 0" }}
+          style={{ gap: 12, flexWrap: "wrap", margin: "0 0 12px 0" }}
         >
           <TransferToAISessionsCard
             asof={data.asof}
@@ -556,6 +545,16 @@ export default function MarketDiscoveryView({
           </div>
         </div>
       )}
+      {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
+      <MarketContextCard ctx={data.market_context ?? null} />
+      {/* 통합 테이블 */}
+      <CandidateTable
+        candidates={data.candidates ?? []}
+        basis={basis}
+        order={order}
+        onSort={handleSort}
+      />
+      <SummaryHeader data={data} />
     </section>
   );
 }
