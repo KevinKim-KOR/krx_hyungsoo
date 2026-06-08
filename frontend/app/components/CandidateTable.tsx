@@ -3,9 +3,11 @@
 // Market Discovery 통합 후보 테이블 (POC2 — 2026-05-22 KS-10 회피 분리 / 2026-06-08 UI 정리).
 //
 // 2026-06-08 UI 정리 (사용자 요청):
-// - 티커 / ETF명 컬럼 통합 → "(티커) 이름" 단일 컬럼.
+// - 티커 / ETF명 컬럼은 이전처럼 분리 유지 (라운드 2 — 사용자 정정: 티커/ETF명
+//   합치기는 MarketContextCard 의 KODEX200/KOSPI 표기 정정을 의도한 것이었음).
 // - source / status / 정렬 기준 기간 / 태그 컬럼 제거.
 // - 6개월 / 12개월 / 1년 / 3년 수익률 컬럼 추가 (표시 전용, 정렬 X).
+// - asof 컬럼 제거 (사용자 요청 — NAV/시장가/괴리율만 노출).
 //
 // 본 컴포넌트는 표시 책임만 — 정렬 / fetch / state 는 부모 (MarketDiscoveryView)
 // 가 보유한다 (lift state up).
@@ -17,6 +19,11 @@ import type {
 } from "@/lib/api";
 
 const DASH = "-";
+
+function fmt(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === "") return DASH;
+  return value;
+}
 
 function fmtNum(value: number | null | undefined): string {
   if (value === null || value === undefined) return DASH;
@@ -86,7 +93,8 @@ export default function CandidateTable({
         <thead>
           <tr>
             <th style={{ width: 56 }}>순위</th>
-            <th>ETF</th>
+            <th style={{ width: 90 }}>티커</th>
+            <th>ETF명</th>
             <SortableHeader
               label="일간"
               column="daily"
@@ -119,7 +127,6 @@ export default function CandidateTable({
             <th style={{ width: 95, textAlign: "right" }}>NAV</th>
             <th style={{ width: 95, textAlign: "right" }}>시장가</th>
             <th style={{ width: 100, textAlign: "right" }}>괴리율</th>
-            <th style={{ width: 100 }}>asof</th>
           </tr>
         </thead>
         <tbody>
@@ -139,15 +146,12 @@ export default function CandidateTable({
             const navVal = nav?.nav ?? null;
             const priceVal = nav?.market_price ?? null;
             const discountVal = nav?.discount_rate_pct ?? null;
-            const asofVal = nav?.asof ?? null;
             const flagVal = nav?.flag ?? null;
             return (
               <tr key={`${c.rank ?? "x"}-${c.ticker ?? "x"}-${idx}`}>
                 <td>{fmtNum(c.rank)}</td>
-                <td>
-                  {c.ticker ? <code>({c.ticker})</code> : DASH}{" "}
-                  {c.name ?? ""}
-                </td>
+                <td>{c.ticker ? <code>{c.ticker}</code> : DASH}</td>
+                <td>{fmt(c.name)}</td>
                 <td
                   style={{ textAlign: "right", color: returnPctColor(dailyRet) }}
                   className={basis === "daily" ? "basis-active" : undefined}
@@ -214,7 +218,6 @@ export default function CandidateTable({
                     <span style={{ color: "var(--muted)" }}>-</span>
                   )}
                 </td>
-                <td style={{ fontSize: "0.78rem" }}>{asofVal ?? DASH}</td>
               </tr>
             );
           })}

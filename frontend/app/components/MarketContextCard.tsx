@@ -69,7 +69,9 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
 
       <div className="market-regime-benchmarks">
         <div>
-          <h3>KODEX200 (필수)</h3>
+          {/* 2026-06-08 — 사용자 요청: 현재가/MA 표시 행에 어느 종목인지 명시.
+              KODEX200 시스템 상수 → (069500) KODEX 200 로 표시. */}
+          <h3>(069500) KODEX 200 (필수)</h3>
           {kodex.status === "ok" ? (
             <ul className="dashboard-status-list">
               <li>20거래일 수익률: <strong>{fmtPct(kodex.return_20d_pct)}</strong></li>
@@ -81,11 +83,11 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
               </li>
             </ul>
           ) : (
-            <div className="message info">N/A — KODEX200 시계열이 부족합니다.</div>
+            <div className="message info">N/A — KODEX 200 시계열이 부족합니다.</div>
           )}
         </div>
         <div>
-          <h3>KOSPI (보조)</h3>
+          <h3>(KS11) KOSPI (보조)</h3>
           {kospi.status === "ok" ? (
             <ul className="dashboard-status-list">
               <li>20거래일 수익률: <strong>{fmtPct(kospi.return_20d_pct)}</strong></li>

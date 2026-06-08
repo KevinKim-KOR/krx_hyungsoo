@@ -21,16 +21,12 @@ import {
   fetchMarketTopnLatest,
   postMarketRefresh,
   type MarketBasis,
-  type MarketCandidate,
-  type MarketContext,
   type MarketOrder,
   type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
   type MarketTopNFilterOptions,
-  type MarketTopNFilters,
   type MarketTopNResponse,
 } from "@/lib/api";
-import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
 import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
@@ -218,92 +214,8 @@ function toOptions(s: FilterUiState): MarketTopNFilterOptions {
 // TopControlsRow 가 갱신 버튼 옆에 체크박스를 함께 배치).
 
 
-// AI 투자세션 복사용 문구 (2026-05-19 STEP).
-// - 새 API 호출 없음. 이미 조회된 data.asof / data.filters / data.candidates 로 빌드.
-// - AI 직접 호출 / 자동 토론 없음 — 외부 AI 채널에 사용자가 직접 붙여넣는 1차 입력문.
-// - 클립보드 복사 실패에 대비해 textarea 를 항상 유지 (지시문 §3.1 + AC-10).
-// - asof / filters 는 호출자가 status==='ok' 분기에서만 truthy 보장하고 prop 으로
-//   넘긴다 (fail-loud — 검증자 B-1 NOTE 반영, placeholder fallback 금지).
-function CopyTextCard({
-  asof,
-  filters,
-  candidates,
-  marketContext,
-}: {
-  asof: string;
-  filters: MarketTopNFilters;
-  candidates: MarketCandidate[];
-  marketContext: MarketContext | null;
-}) {
-  const [text, setText] = useState<string>("");
-  const [copyResult, setCopyResult] = useState<"idle" | "copied" | "failed">(
-    "idle",
-  );
-
-  const handleGenerate = useCallback(() => {
-    setText(
-      buildMarketDiscoveryCopyText({ asof, filters, candidates, marketContext }),
-    );
-    setCopyResult("idle");
-  }, [asof, filters, candidates, marketContext]);
-
-  const handleCopy = useCallback(async () => {
-    if (!text) return;
-    try {
-      if (
-        typeof navigator !== "undefined" &&
-        navigator.clipboard &&
-        typeof navigator.clipboard.writeText === "function"
-      ) {
-        await navigator.clipboard.writeText(text);
-        setCopyResult("copied");
-        return;
-      }
-      throw new Error("Clipboard API unavailable");
-    } catch {
-      setCopyResult("failed");
-    }
-  }, [text]);
-
-  return (
-    <div className="card">
-      <h2>AI 투자세션 복사용 문구</h2>
-      <p className="helper" style={{ marginBottom: 8 }}>
-        ETF명과 기간별 수익률 기반의 1차 시장 해석 요청문을 만듭니다. AI 를 직접
-        호출하지 않습니다 — 외부 AI 채널(GPT / Gemini / Claude) 에 직접 붙여넣는
-        용도입니다.
-      </p>
-      <div className="btn-row">
-        <button type="button" onClick={handleGenerate}>
-          AI 투자세션 문구 생성
-        </button>
-        <button type="button" onClick={handleCopy} disabled={!text}>
-          클립보드 복사
-        </button>
-      </div>
-      <textarea
-        className="market-copy-textarea"
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          setCopyResult("idle");
-        }}
-        placeholder="문구 생성 버튼을 클릭하면 여기에 표시됩니다. 클립보드 복사가 실패해도 textarea 에서 직접 선택해 복사할 수 있습니다."
-        rows={16}
-      />
-      {copyResult === "copied" ? (
-        <div className="message info" style={{ marginTop: 8 }}>
-          클립보드에 복사되었습니다.
-        </div>
-      ) : null}
-      {copyResult === "failed" ? (
-        <div className="message info" style={{ marginTop: 8 }}>
-          클립보드 복사가 실패했습니다. 위 textarea 에서 직접 선택해 복사하세요.
-        </div>
-      ) : null}
-    </div>
-  );
-}
+// 2026-06-08 — CopyTextCard 제거 (사용자 요청 라운드 2: AI 투자세션 복사용 문구
+// 섹션 삭제). AI Sessions 화면에서 별도 입력문 생성 흐름 유지.
 
 
 interface MarketDiscoveryViewProps {
@@ -609,7 +521,10 @@ export default function MarketDiscoveryView({
         order={order}
         onSort={handleSort}
       />
-      {/* 2026-06-08 UI 정리 — AI Sessions / ETF Exposure 전달 버튼을 한 줄로 배치 */}
+      <SummaryHeader data={data} />
+      {/* 2026-06-08 UI 정리 (사용자 요청 라운드 2) — AI Sessions 전달 / ETF
+          Exposure 전달 / AI 투자세션 복사용 문구 섹션 모두 삭제.
+          버튼 2개만 화면 맨 아래 한 줄로 배치 (compact 모드). */}
       {data.asof && data.filters ? (
         <div
           className="btn-row"
@@ -622,6 +537,7 @@ export default function MarketDiscoveryView({
             linkedMarketRefreshId={data.latest_refresh?.refresh_id ?? null}
             marketContext={data.market_context ?? null}
             onNavigate={onNavigate}
+            compact
           />
           <TransferToETFExposureCard
             asof={data.asof}
@@ -629,26 +545,17 @@ export default function MarketDiscoveryView({
             candidates={data.candidates ?? []}
             marketContext={data.market_context ?? null}
             onNavigate={onNavigate}
+            compact
           />
         </div>
       ) : (
         <div className="card">
           <div className="message error">
-            AI 투자세션 문구 / 전달 기능을 사용할 수 없습니다 — 응답에 기준일(asof)
-            또는 필터 조건(filters) 이 포함되어 있지 않습니다.
+            AI Sessions / ETF Exposure 전달 기능을 사용할 수 없습니다 — 응답에
+            기준일(asof) 또는 필터 조건(filters) 이 포함되어 있지 않습니다.
           </div>
         </div>
       )}
-      {/* AI 투자세션 복사용 문구 — 새 API 호출 없이 현재 응답 기반으로 빌드 */}
-      {data.asof && data.filters ? (
-        <CopyTextCard
-          asof={data.asof}
-          filters={data.filters}
-          candidates={data.candidates ?? []}
-          marketContext={data.market_context ?? null}
-        />
-      ) : null}
-      <SummaryHeader data={data} />
     </section>
   );
 }

@@ -28,6 +28,8 @@ interface Props {
   candidates: MarketCandidate[];
   marketContext: MarketContext | null;
   onNavigate?: (key: MenuKey) => void;
+  // 2026-06-08 — compact 모드: 카드 wrapper / 설명 텍스트 없이 버튼만 렌더.
+  compact?: boolean;
 }
 
 export default function TransferToETFExposureCard({
@@ -36,6 +38,7 @@ export default function TransferToETFExposureCard({
   candidates,
   marketContext,
   onNavigate,
+  compact = false,
 }: Props) {
   const handleTransfer = useCallback(() => {
     if (candidates.length === 0) return;
@@ -50,6 +53,17 @@ export default function TransferToETFExposureCard({
     onNavigate?.("etf_exposure");
   }, [asof, filters, candidates, marketContext, onNavigate]);
 
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={handleTransfer}
+        disabled={candidates.length === 0}
+      >
+        ETF Exposure 로 넘기기
+      </button>
+    );
+  }
   return (
     <div className="card">
       <h2>ETF Exposure 전달</h2>

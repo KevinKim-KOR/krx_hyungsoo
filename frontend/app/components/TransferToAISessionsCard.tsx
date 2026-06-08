@@ -32,6 +32,9 @@ interface Props {
   // 2026-05-22 — Market Regime & Benchmark Context 1차 (지시문 §12). null 허용.
   marketContext: MarketContext | null;
   onNavigate?: (key: MenuKey) => void;
+  // 2026-06-08 — compact 모드: 카드 wrapper / 설명 텍스트 없이 버튼만 렌더.
+  // 사용자 요청 (Market Discovery 화면 정리) — 본 모드로 하단 한 줄에 배치.
+  compact?: boolean;
 }
 
 
@@ -126,6 +129,7 @@ export default function TransferToAISessionsCard({
   linkedMarketRefreshId,
   marketContext,
   onNavigate,
+  compact = false,
 }: Props) {
   const handleTransfer = useCallback(() => {
     if (candidates.length === 0) return;
@@ -169,6 +173,17 @@ export default function TransferToAISessionsCard({
     onNavigate,
   ]);
 
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={handleTransfer}
+        disabled={candidates.length === 0}
+      >
+        AI Sessions로 넘기기
+      </button>
+    );
+  }
   return (
     <div className="card">
       <h2>AI Sessions 전달</h2>
