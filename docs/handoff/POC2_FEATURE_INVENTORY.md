@@ -41,12 +41,13 @@
 |---|---|
 | 기능명 | Market Discovery — ETF 후보 발굴 |
 | 현재 메뉴 위치 | 좌측 2번 |
-| 기능 목적 | KRX 상장 ETF universe 에서 TOP N 발굴 (일간/1개월/3개월 수익률 기준) |
+| 기능 목적 | KRX 상장 ETF universe 에서 TOP N 발굴 (정렬: 일간/1개월/3개월. 표시: 6개월/12개월/1년/3년) |
 | 사용 가능 여부 | **사용 가능** |
 | 데이터 소스 상태 | `state/market/market_data.sqlite` (FDR universe + ETF 가격) |
-| 운영 UI 포함 여부 | 포함 |
+| 운영 UI 포함 여부 | 포함 — TopControlsRow 1 카드(갱신+필터+전달 버튼) + 시장 배경 + 그리드 + 요약. |
+| 응답 시간 (실측 2026-06-08) | warmup 후 0.85s — 직전 측정 2.4s 대비 65% 단축 (init_db 캐시 + name bulk loader) |
 | 테스트용/임시 여부 | 아님 |
-| 다음 조치 | 현재 상태 유지 |
+| 다음 조치 | 현재 상태 유지. 추가 perf 가 필요하면 `fetch_price_history` 도 bulk 화 검토. |
 
 ### 2.3 Market Refresh (Market Discovery 카드)
 

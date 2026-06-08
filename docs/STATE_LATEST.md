@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-08 (NAV / Discount Display FIX)
+최종 업데이트: 2026-06-08 (Market Discovery UI / Perf 후속 정리)
 
 ## 0. Canonical
 
@@ -23,30 +23,30 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **NAV / Discount Display FIX** (2026-06-08).
-  - 신규 read-only API `GET /market/nav-discount/latest` — 저장된 `etf_nav_daily` 전체 ETF 1136건을 1회 응답으로 노출 (외부 source 호출 X / refresh X).
-  - Data Status 화면 재설계 — 전체 ETF NAV / 시장가 / 괴리율 표 + 검색(ticker/이름) + status 필터 + 괴리율 정렬 (괴리율 |abs| / 부호 / ticker).
-  - Market Discovery CandidateTable — NAV / 시장가 / 괴리율 / asof / source / status 6 컬럼 직접 노출.
-  - ETF Exposure NAV 카드 — asof / source / status 컬럼 보강 (이전 flag/source 한 컬럼).
-  - Holdings Evidence NAV 라인 — asof / status 추가 (NAV·시장가·괴리율 옆).
-  - 직전 STEP(Naver Universe 연동) 의 표시 누락 5건 모두 해소. 표시 매트릭스 4 화면 × 6 필드 = 모두 visible.
+- **현재 완료 상태**: **Market Discovery UI / Perf 후속 정리** (2026-06-08, 사용자 즉시 피드백 라운드 5건).
+  - 직전 STEP(NAV / Discount Display FIX) 이후 사용자가 보낸 UI 정리 요청 + perf 지적 일괄 반영.
+  - **UI**: CandidateTable 의 source/status/정렬기준/태그 컬럼 제거, 6m/12m/1y/3y 표시 컬럼 추가 (표시 전용, 정렬 X). asof 컬럼 제거. TopControlsRow 1 카드 안에 (1행) 갱신+필터 / (2행) AI Sessions·ETF Exposure 전달 버튼 묶음. AI 투자세션 복사용 문구 / 별도 Transfer 섹션 / 정렬 기준 안내 / role banner / subtitle 문구 모두 제거.
+  - **MarketContextCard**: `(069500) KODEX 200 (필수)` / `(KS11) KOSPI (보조)` 헤더 — 현재가/MA20/MA60 행이 어느 종목인지 명확. 금액 천단위 콤마 (`119,560`).
+  - **Backend**: `MarketReturns` 모델에 six_month / twelve_month / three_year 추가 (lookback 180/365/1095). 정렬 가능 basis 는 daily/1m/3m 그대로 (신규 기간은 표시 전용).
+  - **Perf**: `/market/topn/latest` 응답 **2.4s → 0.85s (65% 단축)**. 원인 = `_connection()` 매 호출마다 `init_db()` 반복 + `get_etf_name()` universe 1137 회 단건 SQL. 처리 = process-level `_INITIALIZED_DBS` 캐시 + `get_etf_name_map()` bulk loader 추가.
 - **현재 진행 예정**: 사용자 결정 대기 (§6 Next action 참조).
 
 ## 2. Latest completed step
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| Market Discovery UI / Perf 후속 정리 (사용자 즉시 피드백 5 commit) | DONE | 2026-06-08 | commits `6c3728ec` → `8fad2bb4` (별도 Conclusion 미생성 — 본 STATE §1 + handoff 검증자 보고서 [POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md](handoff/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md)) |
 | NAV / Discount Display FIX (전체 ETF 조회 영역 + 표시 매트릭스) | DONE | 2026-06-08 | [POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
 
 ## 3. Recent history summary
 
 | Step | Result | Summary | Detail |
 | --- | --- | --- | --- |
+| 2026-06-08 Market Discovery UI / Perf 후속 정리 | DONE | CandidateTable 컬럼 정리 + 6m/12m/1y/3y 추가 + TopControlsRow 통합 + MarketContextCard 표기 정정 + 응답 2.4s→0.85s. | commits `6c3728ec`…`8fad2bb4` / [feedback note](handoff/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md) |
 | 2026-06-08 NAV / Discount Display FIX | DONE | GET /market/nav-discount/latest 신규 + Data Status 전체 ETF NAV 표 + MD/ETF Exposure/Holdings 표시 보강. 표시 매트릭스 충족. | [conclusion](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
 | 2026-06-08 Naver ETF Universe NAV / 괴리율 연동 | DONE | universe 1회 호출(`etfItemList.nhn`) → `etf_nav_daily` upsert + 3개 화면 NAV 표시. TTL 30s + stale 재사용. 신규 API 0건. | [conclusion](handoff/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
 | 2026-06-07 ETF NAV / Discount Source Diagnosis 1차 (FIX) | DONE | NAV/괴리율 source 5건 실측. adopt 0 / hold_unstable 2 / unusable 3. flat_records + timeout 명시 + asof 키 확장 FIX. | commit `b5a80a3f` / [archive](handoff/STATE_LATEST_ARCHIVE.md) |
 | 2026-06-06 ETF Exposure Data Unfolding 1차 | DONE | 구성종목 펼쳐보기 + 반복 핵심 종목 + 중복률 + Holdings Evidence State Bridge + ML readiness 9축. ML 방향성 2축 문서화. | commit `bce8f7fd` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
-| 2026-06-06 Operational UI Cleanup 1차 | DONE | Dashboard 5-step 판단 흐름 + 6개 화면 role banner + Market Discovery 다음 단계 안내 + NAV 미연동 안내 ≥2 화면. | commit `62c77d7c` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
 
 > 직전 5개를 제외한 이전 STEP (2026-06-01 이전 — Market Discovery Closeout / Constituents Naver Integration /
 > Constituents Diagnosis / Constituents & Overlap / Market Regime / AI Sessions / Decision Evidence /
@@ -56,7 +56,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 ## 4. Current evidence flow
 
-- **Market Discovery**: SQLite 직접 계산 TOP N. 수동 refresh (6h cooldown). 시장 국면(KODEX200 필수 / KOSPI 보조) / 단기 흐름 / NAV(직접 컬럼 6개 — NAV/시장가/괴리율/asof/source/status) / 데이터 품질(`nav_discount`) 동봉.
+- **Market Discovery**: SQLite 직접 계산 TOP N. 수동 refresh (6h cooldown). 응답 0.85s (2026-06-08 perf). TopControlsRow 1 카드 (1행 갱신+필터 / 2행 AI Sessions·ETF Exposure 전달). 시장 국면(`(069500) KODEX 200 (필수)` / `(KS11) KOSPI (보조)`, 금액 천단위 콤마). 그리드 컬럼: 순위/티커/ETF명/일간·1m·3m(정렬)/6m·12m·1y·3y(표시)/KODEX200 대비 1m·3m/NAV/시장가/괴리율. asof/source/status/태그 컬럼은 그리드에서 제거 (Data Status 화면에서 조회).
 - **ETF Exposure**: 구성종목 펼쳐보기(자동 open + 등락률 unavailable 컬럼) + 중복률 + 반복 핵심 종목 + Holdings Evidence State Bridge (명시 호출 버튼) + NAV/괴리율 카드(상위 5건 + asof/source/status) + ML readiness 9축.
 - **Holdings Evidence**: `GET /holdings/market-evidence/latest` (read-only, 외부 fetch 0건). 보유 ETF × Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 중복 / NAV·시장가·괴리율·asof·status·source(`etf_nav_daily` store 에서 read).
 - **Data Status**: 전체 ETF NAV / 시장가 / 괴리율 조회 화면 (`GET /market/nav-discount/latest`). 검색 + status 필터 + 괴리율 정렬. 외부 source 호출 0건. 1136 ETF 1회 응답.

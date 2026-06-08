@@ -1,12 +1,30 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-08 (NAV / Discount Display FIX)
+작성일: 2026-05-20 / 갱신: 2026-06-08 (Market Discovery UI / Perf 후속 정리)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-08 — NAV / Discount Display FIX)
+## 0. 직전 STEP 결과 (2026-06-08 — Market Discovery UI / Perf 후속 정리)
+
+NAV / Discount Display FIX 직후 사용자가 즉시 보낸 UI 정리 요청 / perf 지적 5건을
+연속 commit (`6c3728ec` → `8fad2bb4`) 으로 반영. 별도 STEP 보고서는 만들지 않고
+검증자 전달용 note 만 생성 (`POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md`).
+
+핵심:
+- CandidateTable 컬럼 정리 (source/status/정렬기준/태그 제거, 6m/12m/1y/3y 추가).
+- TopControlsRow 1 카드 안에 갱신+필터 + AI Sessions·ETF Exposure 전달 버튼 묶기.
+- MarketContextCard 헤더에 `(069500) KODEX 200 (필수)` / `(KS11) KOSPI (보조)` 표기 +
+  현재가/MA20/MA60 천단위 콤마.
+- 백엔드 `MarketReturns` 모델 6m/12m/3y 필드 추가 (lookback 180/365/1095).
+- `/market/topn/latest` 응답 2.4s → 0.85s (process-level init_db 캐시 + name bulk).
+
+다음 분기 후보 영향: 없음 (분류는 §0-1 유지).
+
+---
+
+## 0-2. 직전 빈자리 채우기 STEP 결과 (2026-06-08 — NAV / Discount Display FIX)
 
 직전 STEP(Naver ETF Universe NAV / 괴리율 연동)이 저장은 완료했지만 사용자가
 주요 화면에서 NAV 값을 한눈에 확인하기 어려운 표시 누락이 있었다. 본 FIX 로
