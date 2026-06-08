@@ -17,7 +17,6 @@ import {
   DEFAULT_MARKET_BASIS,
   DEFAULT_MARKET_ORDER,
   DEFAULT_MARKET_TOPN_FILTERS,
-  MARKET_BASIS_COLUMN_LABEL,
   fetchMarketRefreshStatus,
   fetchMarketTopnLatest,
   postMarketRefresh,
@@ -85,14 +84,7 @@ function fmtCooldown(seconds: number): string {
   return `${m}분`;
 }
 
-function SortStatusLine({ basis, order }: { basis: MarketBasis; order: MarketOrder }) {
-  const dir = order === "desc" ? "↓ 내림차순" : "↑ 오름차순";
-  return (
-    <div className="market-topn-sort-status helper">
-      정렬 기준: <strong>{MARKET_BASIS_COLUMN_LABEL[basis]}</strong> {dir}
-    </div>
-  );
-}
+// 2026-06-08 — SortStatusLine 제거 (사용자 요청: 정렬 기준 안내 문구 삭제).
 
 function SummaryHeader({ data }: { data: MarketTopNResponse }) {
   return (
@@ -222,65 +214,8 @@ function toOptions(s: FilterUiState): MarketTopNFilterOptions {
   };
 }
 
-function FilterCard({
-  filters,
-  onChange,
-}: {
-  filters: FilterUiState;
-  onChange: (next: FilterUiState) => void;
-}) {
-  return (
-    <div className="card">
-      <h2>후보 정제 옵션</h2>
-      <p className="helper" style={{ marginBottom: 8 }}>
-        기본 화면은 일반 후보 (인버스 / 레버리지 / 합성 / 선물형 제외) 만 표시합니다.
-        체크박스를 해제하면 해당 유형이 다시 포함됩니다.
-      </p>
-      <div className="market-topn-filter-row">
-        <label>
-          <input
-            type="checkbox"
-            checked={filters.excludeInverse}
-            onChange={(e) =>
-              onChange({ ...filters, excludeInverse: e.target.checked })
-            }
-          />{" "}
-          인버스 제외
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={filters.excludeLeveraged}
-            onChange={(e) =>
-              onChange({ ...filters, excludeLeveraged: e.target.checked })
-            }
-          />{" "}
-          레버리지 제외
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={filters.excludeSynthetic}
-            onChange={(e) =>
-              onChange({ ...filters, excludeSynthetic: e.target.checked })
-            }
-          />{" "}
-          합성 제외
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={filters.excludeFutures}
-            onChange={(e) =>
-              onChange({ ...filters, excludeFutures: e.target.checked })
-            }
-          />{" "}
-          선물형 제외
-        </label>
-      </div>
-    </div>
-  );
-}
+// 2026-06-08 — FilterCard 제거 (사용자 요청: 후보 정제 옵션 별도 카드 삭제,
+// TopControlsRow 가 갱신 버튼 옆에 체크박스를 함께 배치).
 
 
 // AI 투자세션 복사용 문구 (2026-05-19 STEP).
@@ -655,66 +590,31 @@ export default function MarketDiscoveryView({
   return (
     <section aria-labelledby="market-discovery-h">
       <h1 id="market-discovery-h">Market Discovery</h1>
-      <p className="subtitle market-discovery-subtitle">
-        SQLite 기준 최신 시장 데이터에서 일반 ETF 후보를 보여줍니다. 수익률 컬럼을
-        클릭하면 정렬됩니다.
-      </p>
-      {roleBanner}
+      {/* 2026-06-08 UI 정리 (사용자 요청) — subtitle / role banner / 정렬 기준 안내 문구 제거.
+          최상단: 시장 데이터 갱신 + 후보 정제 옵션 (한 줄). 그 아래 시장 배경 / 그리드. */}
+      <TopControlsRow
+        refreshUi={refreshUi}
+        onStartRefresh={handleStartRefresh}
+        refreshDisabled={buttonDisabled}
+        cooldownRemainingSeconds={cooldown}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+      />
       {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
       <MarketContextCard ctx={data.market_context ?? null} />
-      {/* GRID 우선 — 통합 테이블이 가장 위 */}
+      {/* 통합 테이블 */}
       <CandidateTable
         candidates={data.candidates ?? []}
         basis={basis}
         order={order}
         onSort={handleSort}
       />
-      <SortStatusLine basis={basis} order={order} />
-      {/* AI 투자세션 복사용 문구 — 새 API 호출 없이 현재 응답 기반으로 빌드.
-          asof / filters 누락은 비정상 상태로 fail-loud (검증자 B-1 NOTE 반영). */}
+      {/* 2026-06-08 UI 정리 — AI Sessions / ETF Exposure 전달 버튼을 한 줄로 배치 */}
       {data.asof && data.filters ? (
-        <>
-          {/* 다음 단계 안내 — 새 API 호출 없음, 정적 안내만 */}
-          <div className="card next-step-card">
-            <h2>후보 확인 후 다음 단계</h2>
-            <ul className="next-step-list">
-              <li>
-                <span className="next-step-num">①</span>
-                <span>
-                  <strong>구성종목 / 중복 확인</strong> —
-                  아래 &lsquo;ETF Exposure로 넘기기&rsquo;를 클릭하면 ETF Exposure 화면에서
-                  구성종목 중복률을 분석할 수 있습니다.
-                </span>
-              </li>
-              <li>
-                <span className="next-step-num">②</span>
-                <span>
-                  <strong>내 보유 ETF와 비교</strong> —
-                  Holdings 메뉴에서 보유 종목을 입력 후 &lsquo;Evidence 조회&rsquo;로 후보와의
-                  연결 상태를 확인합니다.
-                </span>
-              </li>
-              <li>
-                <span className="next-step-num">③</span>
-                <span>
-                  <strong>AI 투자세션 문구 복사</strong> —
-                  아래 &lsquo;AI 투자세션 문구 생성&rsquo; 후 클립보드로 복사해 외부 AI에
-                  붙여넣습니다.
-                </span>
-              </li>
-            </ul>
-          </div>
-
-          <CopyTextCard
-            asof={data.asof}
-            filters={data.filters}
-            candidates={data.candidates ?? []}
-            marketContext={data.market_context ?? null}
-          />
-          {/* 2026-05-21 — AI Sessions 화면으로 draft 전달 (Context Bridge).
-              직전 STEP 의 inline 기록 패널은 제거됨 — Market Discovery 의 책임은
-              ETF 후보 발굴 + 복사용 문구 + 전달까지 (지시문 §4.1 / §4.2).
-              2026-05-22 — marketContext 도 함께 전달 (지시문 §12). */}
+        <div
+          className="btn-row"
+          style={{ gap: 12, flexWrap: "wrap", margin: "12px 0" }}
+        >
           <TransferToAISessionsCard
             asof={data.asof}
             filters={data.filters}
@@ -723,8 +623,6 @@ export default function MarketDiscoveryView({
             marketContext={data.market_context ?? null}
             onNavigate={onNavigate}
           />
-          {/* 2026-05-27 ETF Constituents & Overlap 1차 — ETF Exposure 로 넘기는
-              별도 카드. 구성종목 / 중복률 분석은 거기서 진행. */}
           <TransferToETFExposureCard
             asof={data.asof}
             filters={data.filters}
@@ -732,7 +630,7 @@ export default function MarketDiscoveryView({
             marketContext={data.market_context ?? null}
             onNavigate={onNavigate}
           />
-        </>
+        </div>
       ) : (
         <div className="card">
           <div className="message error">
@@ -741,15 +639,121 @@ export default function MarketDiscoveryView({
           </div>
         </div>
       )}
-      {/* 보조 컨트롤 — 갱신 / 정제 */}
-      <RefreshControlCard
-        state={refreshUi}
-        onStart={handleStartRefresh}
-        disabled={buttonDisabled}
-        cooldownRemainingSeconds={cooldown}
-      />
-      <FilterCard filters={filters} onChange={handleFiltersChange} />
+      {/* AI 투자세션 복사용 문구 — 새 API 호출 없이 현재 응답 기반으로 빌드 */}
+      {data.asof && data.filters ? (
+        <CopyTextCard
+          asof={data.asof}
+          filters={data.filters}
+          candidates={data.candidates ?? []}
+          marketContext={data.market_context ?? null}
+        />
+      ) : null}
       <SummaryHeader data={data} />
     </section>
+  );
+}
+
+// 2026-06-08 UI 정리 — 최신 시장 데이터 갱신 + 후보 정제 옵션을 한 줄로 묶는다.
+// 시장배경 위쪽에 배치. 기존 별도 카드 2개 (갱신 / 필터) 는 본 컴포넌트가 흡수.
+function TopControlsRow({
+  refreshUi,
+  onStartRefresh,
+  refreshDisabled,
+  cooldownRemainingSeconds,
+  filters,
+  onFiltersChange,
+}: {
+  refreshUi: RefreshUiState;
+  onStartRefresh: () => void;
+  refreshDisabled: boolean;
+  cooldownRemainingSeconds: number;
+  filters: FilterUiState;
+  onFiltersChange: (next: FilterUiState) => void;
+}) {
+  let refreshMessage: React.ReactNode = null;
+  if (refreshUi.kind === "starting" || refreshUi.kind === "running") {
+    refreshMessage = (
+      <span className="helper">갱신 중... ({refreshUi.kind === "running" ? (refreshUi.refreshId ?? "-") : "starting"})</span>
+    );
+  } else if (refreshUi.kind === "completed") {
+    refreshMessage = <span className="helper">갱신 완료.</span>;
+  } else if (refreshUi.kind === "failed") {
+    refreshMessage = <span className="helper" style={{ color: "var(--danger)" }}>실패: {refreshUi.message}</span>;
+  } else if (refreshUi.kind === "cooldown") {
+    refreshMessage = (
+      <span className="helper">
+        cooldown 중 ({fmtCooldown(refreshUi.cooldownRemainingSeconds)} 남음)
+      </span>
+    );
+  } else if (cooldownRemainingSeconds > 0) {
+    refreshMessage = (
+      <span className="helper">
+        (cooldown {fmtCooldown(cooldownRemainingSeconds)} 남음)
+      </span>
+    );
+  }
+  return (
+    <div className="card">
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 16,
+          alignItems: "center",
+        }}
+      >
+        <button type="button" onClick={onStartRefresh} disabled={refreshDisabled}>
+          {refreshUi.kind === "running" || refreshUi.kind === "starting"
+            ? "갱신 중..."
+            : "최신 시장 데이터 갱신"}
+        </button>
+        <div
+          className="market-topn-filter-row"
+          style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+        >
+          <label>
+            <input
+              type="checkbox"
+              checked={filters.excludeInverse}
+              onChange={(e) =>
+                onFiltersChange({ ...filters, excludeInverse: e.target.checked })
+              }
+            />{" "}
+            인버스 제외
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={filters.excludeLeveraged}
+              onChange={(e) =>
+                onFiltersChange({ ...filters, excludeLeveraged: e.target.checked })
+              }
+            />{" "}
+            레버리지 제외
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={filters.excludeSynthetic}
+              onChange={(e) =>
+                onFiltersChange({ ...filters, excludeSynthetic: e.target.checked })
+              }
+            />{" "}
+            합성 제외
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={filters.excludeFutures}
+              onChange={(e) =>
+                onFiltersChange({ ...filters, excludeFutures: e.target.checked })
+              }
+            />{" "}
+            선물형 제외
+          </label>
+        </div>
+        {refreshMessage}
+      </div>
+    </div>
   );
 }

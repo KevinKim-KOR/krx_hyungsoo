@@ -1,11 +1,11 @@
 "use client";
 
-// Market Discovery 통합 후보 테이블 (POC2 — 2026-05-22 KS-10 회피 분리).
+// Market Discovery 통합 후보 테이블 (POC2 — 2026-05-22 KS-10 회피 분리 / 2026-06-08 UI 정리).
 //
-// 별도 파일로 분리한 이유:
-// MarketDiscoveryView.tsx 가 KS-10 near 850 라인 (856) 에 진입했고,
-// 본 STEP 의 KODEX200 대비 1m/3m 컬럼 추가가 직접 원인. 통합 테이블 책임을
-// 분리해 MD 라인 수를 다시 near 미만으로 낮춘다 (지시문 §20 / KS-10).
+// 2026-06-08 UI 정리 (사용자 요청):
+// - 티커 / ETF명 컬럼 통합 → "(티커) 이름" 단일 컬럼.
+// - source / status / 정렬 기준 기간 / 태그 컬럼 제거.
+// - 6개월 / 12개월 / 1년 / 3년 수익률 컬럼 추가 (표시 전용, 정렬 X).
 //
 // 본 컴포넌트는 표시 책임만 — 정렬 / fetch / state 는 부모 (MarketDiscoveryView)
 // 가 보유한다 (lift state up).
@@ -14,15 +14,9 @@ import type {
   MarketBasis,
   MarketCandidate,
   MarketOrder,
-  MarketProductTag,
 } from "@/lib/api";
 
 const DASH = "-";
-
-function fmt(value: string | null | undefined): string {
-  if (value === null || value === undefined || value === "") return DASH;
-  return value;
-}
 
 function fmtNum(value: number | null | undefined): string {
   if (value === null || value === undefined) return DASH;
@@ -38,26 +32,6 @@ function fmtPct(value: number | null | undefined): string {
 function returnPctColor(value: number | null | undefined): string {
   if (value === null || value === undefined) return "var(--muted)";
   return value >= 0 ? "var(--ok)" : "var(--danger)";
-}
-
-const TAG_LABELS: Record<MarketProductTag, string> = {
-  inverse: "인버스",
-  leveraged: "레버리지",
-  synthetic: "합성",
-  futures: "선물형",
-};
-
-function TagBadges({ tags }: { tags: MarketProductTag[] | undefined }) {
-  if (!tags || tags.length === 0) return null;
-  return (
-    <span className="market-topn-tags">
-      {tags.map((t) => (
-        <span key={t} className={`market-topn-tag tag-${t}`}>
-          {TAG_LABELS[t] ?? t}
-        </span>
-      ))}
-    </span>
-  );
 }
 
 function SortableHeader({
@@ -77,7 +51,7 @@ function SortableHeader({
   const indicator = active ? (order === "desc" ? "↓" : "↑") : "";
   return (
     <th
-      style={{ width: 130, textAlign: "right", cursor: "pointer" }}
+      style={{ width: 110, textAlign: "right", cursor: "pointer" }}
       className={`market-topn-sortable ${active ? "basis-active" : ""}`}
       onClick={() => onSort(column)}
       title="클릭하여 정렬"
@@ -112,42 +86,40 @@ export default function CandidateTable({
         <thead>
           <tr>
             <th style={{ width: 56 }}>순위</th>
-            <th style={{ width: 90 }}>티커</th>
-            <th>ETF명</th>
+            <th>ETF</th>
             <SortableHeader
-              label="일간 수익률"
+              label="일간"
               column="daily"
               basis={basis}
               order={order}
               onSort={onSort}
             />
             <SortableHeader
-              label="1개월 수익률"
+              label="1개월"
               column="one_month"
               basis={basis}
               order={order}
               onSort={onSort}
             />
             <SortableHeader
-              label="3개월 수익률"
+              label="3개월"
               column="three_month"
               basis={basis}
               order={order}
               onSort={onSort}
             />
-            <th style={{ width: 110, textAlign: "right" }}>KODEX 200 대비 1m (%p)</th>
-            <th style={{ width: 110, textAlign: "right" }}>KODEX 200 대비 3m (%p)</th>
-            {/* 2026-06-08 NAV / Discount Display FIX (지시문 §4.1 / §5 매트릭스) —
-                후보 row 에 NAV 직접 표시. asof / source / status 도 tooltip 이 아닌
-                직접 컬럼으로 노출 (검증자 A-1 FIX, 2026-06-08 라운드 2). */}
+            {/* 2026-06-08 신규 (표시 전용) — 정렬 X */}
+            <th style={{ width: 100, textAlign: "right" }}>6개월</th>
+            <th style={{ width: 100, textAlign: "right" }}>12개월</th>
+            <th style={{ width: 100, textAlign: "right" }}>1년</th>
+            <th style={{ width: 100, textAlign: "right" }}>3년</th>
+            <th style={{ width: 110, textAlign: "right" }}>KODEX200 대비 1m</th>
+            <th style={{ width: 110, textAlign: "right" }}>KODEX200 대비 3m</th>
+            {/* 2026-06-08 NAV / Discount Display FIX — 후보 row 에 NAV 직접 노출 */}
             <th style={{ width: 95, textAlign: "right" }}>NAV</th>
             <th style={{ width: 95, textAlign: "right" }}>시장가</th>
             <th style={{ width: 100, textAlign: "right" }}>괴리율</th>
             <th style={{ width: 100 }}>asof</th>
-            <th style={{ width: 130 }}>source</th>
-            <th style={{ width: 90 }}>status</th>
-            <th style={{ width: 200 }}>정렬 기준 기간</th>
-            <th style={{ width: 160 }}>태그</th>
           </tr>
         </thead>
         <tbody>
@@ -155,24 +127,27 @@ export default function CandidateTable({
             const dailyRet = c.returns?.daily?.return_pct ?? null;
             const oneRet = c.returns?.one_month?.return_pct ?? null;
             const threeRet = c.returns?.three_month?.return_pct ?? null;
-            const selStart = c.selected_basis_start_date;
-            const selEnd = c.selected_basis_end_date;
-            const tags = (c.tags ?? []) as MarketProductTag[];
+            // 2026-06-08 신규 기간 (표시 전용)
+            const sixRet = c.returns?.six_month?.return_pct ?? null;
+            const twelveRet = c.returns?.twelve_month?.return_pct ?? null;
+            // "1년" = backend twelve_month 와 동의어. 동일 값 또 표시.
+            const oneYearRet = c.returns?.twelve_month?.return_pct ?? null;
+            const threeYearRet = c.returns?.three_year?.return_pct ?? null;
             const exKodex1m = c.excess_return?.vs_kodex200_1m_pctp ?? null;
             const exKodex3m = c.excess_return?.vs_kodex200_3m_pctp ?? null;
             const nav = c.data_quality?.nav_discount ?? null;
             const navVal = nav?.nav ?? null;
             const priceVal = nav?.market_price ?? null;
             const discountVal = nav?.discount_rate_pct ?? null;
-            const navStatus = nav?.status ?? "unavailable";
             const asofVal = nav?.asof ?? null;
-            const sourceVal = nav?.source ?? null;
             const flagVal = nav?.flag ?? null;
             return (
               <tr key={`${c.rank ?? "x"}-${c.ticker ?? "x"}-${idx}`}>
                 <td>{fmtNum(c.rank)}</td>
-                <td>{c.ticker ? <code>{c.ticker}</code> : DASH}</td>
-                <td>{fmt(c.name)}</td>
+                <td>
+                  {c.ticker ? <code>({c.ticker})</code> : DASH}{" "}
+                  {c.name ?? ""}
+                </td>
                 <td
                   style={{ textAlign: "right", color: returnPctColor(dailyRet) }}
                   className={basis === "daily" ? "basis-active" : undefined}
@@ -190,6 +165,18 @@ export default function CandidateTable({
                   className={basis === "three_month" ? "basis-active" : undefined}
                 >
                   {fmtPct(threeRet)}
+                </td>
+                <td style={{ textAlign: "right", color: returnPctColor(sixRet) }}>
+                  {fmtPct(sixRet)}
+                </td>
+                <td style={{ textAlign: "right", color: returnPctColor(twelveRet) }}>
+                  {fmtPct(twelveRet)}
+                </td>
+                <td style={{ textAlign: "right", color: returnPctColor(oneYearRet) }}>
+                  {fmtPct(oneYearRet)}
+                </td>
+                <td style={{ textAlign: "right", color: returnPctColor(threeYearRet) }}>
+                  {fmtPct(threeYearRet)}
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(exKodex1m) }}>
                   {fmtPct(exKodex1m)}
@@ -228,18 +215,6 @@ export default function CandidateTable({
                   )}
                 </td>
                 <td style={{ fontSize: "0.78rem" }}>{asofVal ?? DASH}</td>
-                <td style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
-                  {sourceVal ?? DASH}
-                </td>
-                <td style={{ fontSize: "0.78rem" }}>{navStatus}</td>
-                <td>{selStart && selEnd ? `${selStart} → ${selEnd}` : DASH}</td>
-                <td>
-                  {tags.length > 0 ? (
-                    <TagBadges tags={tags} />
-                  ) : (
-                    <span className="market-topn-tag-none">일반</span>
-                  )}
-                </td>
               </tr>
             );
           })}
@@ -249,8 +224,9 @@ export default function CandidateTable({
         className="helper"
         style={{ marginTop: 6, fontSize: "0.78rem" }}
       >
-        NAV / 시장가 / 괴리율 / asof / source / status 는 모두 직접 컬럼으로 표시됩니다.
-        전체 ETF 조회는 Data Status 화면에서 가능합니다.
+        일간 / 1개월 / 3개월 컬럼 헤더는 클릭으로 정렬됩니다. 6개월 / 12개월 / 1년 /
+        3년은 표시 전용 (정렬 X — 신규 상장 ETF 는 시계열 미적재로 빈 값일 수 있습니다).
+        전체 ETF NAV 조회는 Data Status 화면에서 가능합니다.
       </p>
     </div>
   );

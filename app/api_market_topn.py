@@ -86,6 +86,10 @@ class MarketReturns(BaseModel):
     daily: Optional[MarketPeriodReturn] = None
     one_month: Optional[MarketPeriodReturn] = None
     three_month: Optional[MarketPeriodReturn] = None
+    # 2026-06-08 — 표시 전용 신규 기간 (UI 요청). 정렬 X.
+    six_month: Optional[MarketPeriodReturn] = None
+    twelve_month: Optional[MarketPeriodReturn] = None
+    three_year: Optional[MarketPeriodReturn] = None
 
 
 class ShortTermMomentumStartDates(BaseModel):
@@ -269,6 +273,10 @@ def _candidate_to_model(raw: dict) -> MarketCandidate:
             daily=_period_to_model(returns_raw.get("daily")),
             one_month=_period_to_model(returns_raw.get("one_month")),
             three_month=_period_to_model(returns_raw.get("three_month")),
+            # 2026-06-08 — 표시 전용 신규 기간.
+            six_month=_period_to_model(returns_raw.get("six_month")),
+            twelve_month=_period_to_model(returns_raw.get("twelve_month")),
+            three_year=_period_to_model(returns_raw.get("three_year")),
         ),
         excess_return=(
             MarketCandidateExcessReturn(**excess_raw) if excess_raw else None

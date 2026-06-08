@@ -64,8 +64,14 @@ DEFAULT_N = 10
 DAILY_LOOKBACK_DAYS = 1
 ONE_MONTH_LOOKBACK_DAYS = 30
 THREE_MONTH_LOOKBACK_DAYS = 90
+# 2026-06-08 — UI 요청 (6m/12m/1y/3y 컬럼 추가). 시계열이 없으면 None 으로
+# 정직 표시. 1m=30 패턴 유지 (영업일 기준 아니라 캘린더 일수).
+SIX_MONTH_LOOKBACK_DAYS = 180
+TWELVE_MONTH_LOOKBACK_DAYS = 365
+THREE_YEAR_LOOKBACK_DAYS = 365 * 3
 
 # 2026-05-18 통합 후보 테이블 1차 — 조회 기준 (basis).
+# 신규 6m/12m/3y 는 표시 전용 — 정렬 기준에서 제외 (사용자 정렬 요청 없음).
 ALLOWED_BASIS = ("daily", "one_month", "three_month")
 DEFAULT_BASIS = "one_month"
 
@@ -120,6 +126,10 @@ def _empty_filter_exclusion_buckets() -> dict[str, dict[str, int]]:
         "daily": {k: 0 for k in PRODUCT_TAG_TYPES},
         "one_month": {k: 0 for k in PRODUCT_TAG_TYPES},
         "three_month": {k: 0 for k in PRODUCT_TAG_TYPES},
+        # 2026-06-08 — 신규 기간 (표시 전용, 정렬 X). dict 동기화.
+        "six_month": {k: 0 for k in PRODUCT_TAG_TYPES},
+        "twelve_month": {k: 0 for k in PRODUCT_TAG_TYPES},
+        "three_year": {k: 0 for k in PRODUCT_TAG_TYPES},
     }
 
 
@@ -207,6 +217,10 @@ def _empty_exclusion_buckets() -> dict[str, dict[str, int]]:
         "daily": {k: 0 for k in EXCLUSION_REASONS},
         "one_month": {k: 0 for k in EXCLUSION_REASONS},
         "three_month": {k: 0 for k in EXCLUSION_REASONS},
+        # 2026-06-08 — 신규 기간 (표시 전용, 정렬 X). dict 동기화.
+        "six_month": {k: 0 for k in EXCLUSION_REASONS},
+        "twelve_month": {k: 0 for k in EXCLUSION_REASONS},
+        "three_year": {k: 0 for k in EXCLUSION_REASONS},
     }
 
 
@@ -388,6 +402,11 @@ def compute_topn(
         ("daily", DAILY_LOOKBACK_DAYS),
         ("one_month", ONE_MONTH_LOOKBACK_DAYS),
         ("three_month", THREE_MONTH_LOOKBACK_DAYS),
+        # 2026-06-08 — 표시 전용 신규 기간. 신규 상장 / 시계열 미적재 ETF 는
+        # exclusions 에 missing_*** 로 카운트되고 응답에서 None 으로 노출된다.
+        ("six_month", SIX_MONTH_LOOKBACK_DAYS),
+        ("twelve_month", TWELVE_MONTH_LOOKBACK_DAYS),
+        ("three_year", THREE_YEAR_LOOKBACK_DAYS),
     ]
     # 기존 호환용 — 각 기간별 (ticker, return_pct, base_date, tags) 산출 가능 후보.
     buckets: dict[str, list[tuple[str, float, str, list[str]]]] = {

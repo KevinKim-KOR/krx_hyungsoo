@@ -55,6 +55,10 @@ export interface MarketReturns {
   daily?: MarketPeriodReturn | null;
   one_month?: MarketPeriodReturn | null;
   three_month?: MarketPeriodReturn | null;
+  // 2026-06-08 — 표시 전용 신규 기간 (UI 요청). basis 정렬은 daily / 1m / 3m 만.
+  six_month?: MarketPeriodReturn | null;
+  twelve_month?: MarketPeriodReturn | null;
+  three_year?: MarketPeriodReturn | null;
 }
 
 export interface MarketCandidate {
