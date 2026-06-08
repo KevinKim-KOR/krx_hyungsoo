@@ -30,6 +30,7 @@ from app.market_data_store import (
     DEFAULT_DB_PATH,
     fetch_price_history,
     get_etf_name,
+    get_etf_name_map,
     latest_refresh_log,
     list_etf_tickers,
 )
@@ -418,12 +419,15 @@ def compute_topn(
     per_ticker_tags: dict[str, list[str]] = {}
     exclusions = _empty_exclusion_buckets()
 
-    # ticker 별 이름 캐싱 — get_etf_name 반복 호출 회피.
-    name_cache: dict[str, Optional[str]] = {}
+    # 2026-06-08 perf — universe 전체 ticker→name 매핑을 1 쿼리로 prefetch
+    # (이전: ticker 마다 SQLite 1 호출 = 1000+ 회). row 없는 ticker 는 None.
+    name_cache: dict[str, Optional[str]] = get_etf_name_map(db_path=db_path)
 
     def _name_of(tk: str) -> Optional[str]:
-        if tk not in name_cache:
-            name_cache[tk] = get_etf_name(tk, db_path=db_path)
+        # fallback: prefetch dict 에 없는 ticker (e.g. master 미등록) 는 단건 조회.
+        if tk in name_cache:
+            return name_cache[tk]
+        name_cache[tk] = get_etf_name(tk, db_path=db_path)
         return name_cache[tk]
 
     for tk in tickers:

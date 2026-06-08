@@ -60,9 +60,21 @@ def init_nav_db(db_path: Path = DEFAULT_DB_PATH) -> None:
         con.commit()
 
 
+# 2026-06-08 perf — db_path 별 1회만 init (process-level 캐시).
+_INITIALIZED_NAV_DBS: set[str] = set()
+
+
+def _ensure_nav_initialized(db_path: Path) -> None:
+    key = str(db_path.resolve())
+    if key in _INITIALIZED_NAV_DBS:
+        return
+    init_nav_db(db_path)
+    _INITIALIZED_NAV_DBS.add(key)
+
+
 @contextmanager
 def _connection(db_path: Path):
-    init_nav_db(db_path)
+    _ensure_nav_initialized(db_path)
     con = sqlite3.connect(str(db_path))
     try:
         yield con

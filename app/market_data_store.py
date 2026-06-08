@@ -104,9 +104,24 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
         con.commit()
 
 
+# 2026-06-08 perf — `_connection` 이 매 호출마다 init_db (connect + CREATE TABLE
+# IF NOT EXISTS × 3) 를 반복 실행해 1 요청당 ~2300 회 추가 connect 가 발생.
+# 동일 db_path 에 대해 1회만 init 하도록 process-level 캐시. tests 의 tmp_path
+# 도 path 단위로 각각 1회만 init 되어 회귀 없음.
+_INITIALIZED_DBS: set[str] = set()
+
+
+def _ensure_initialized(db_path: Path) -> None:
+    key = str(db_path.resolve())
+    if key in _INITIALIZED_DBS:
+        return
+    init_db(db_path)
+    _INITIALIZED_DBS.add(key)
+
+
 @contextmanager
 def _connection(db_path: Path):
-    init_db(db_path)
+    _ensure_initialized(db_path)
     con = sqlite3.connect(str(db_path))
     try:
         yield con
@@ -245,6 +260,19 @@ def get_etf_name(ticker: str, db_path: Path = DEFAULT_DB_PATH) -> Optional[str]:
         cur = con.execute("SELECT name FROM etf_master WHERE ticker = ?", (ticker,))
         row = cur.fetchone()
         return row[0] if row else None
+
+
+def get_etf_name_map(
+    db_path: Path = DEFAULT_DB_PATH,
+) -> dict[str, Optional[str]]:
+    """전체 etf_master 의 ticker → name 매핑을 1 쿼리로 반환 (2026-06-08 perf).
+
+    compute_topn 이 universe 1000+ ticker 마다 get_etf_name 을 호출하던 패턴을
+    1 쿼리로 대체. row 없는 ticker 는 호출자가 None 으로 처리.
+    """
+    with _connection(db_path) as con:
+        cur = con.execute("SELECT ticker, name FROM etf_master")
+        return {str(row[0]): (row[1] if row[1] else None) for row in cur.fetchall()}
 
 
 def fetch_price_history(
