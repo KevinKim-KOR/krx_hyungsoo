@@ -20,6 +20,15 @@ function fmtPct(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+// 2026-06-08 — 사용자 요청: 금액 천단위 콤마 (현재가 / MA20 / MA60).
+// 정수 / 실수 모두 toLocaleString 으로 콤마 적용. 소수점은 최대 2자리 유지.
+function fmtMoney(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return DASH;
+  return value.toLocaleString("ko-KR", {
+    maximumFractionDigits: 2,
+  });
+}
+
 function regimeClass(code: string): string {
   switch (code) {
     case "bull":
@@ -77,9 +86,9 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
               <li>20거래일 수익률: <strong>{fmtPct(kodex.return_20d_pct)}</strong></li>
               <li>60거래일 수익률: <strong>{fmtPct(kodex.return_60d_pct)}</strong></li>
               <li>
-                현재가: <strong>{kodex.close ?? DASH}</strong>
-                {" · "}MA20: {kodex.ma20 ?? DASH} ({kodex.ma20_position === "above" ? "위" : "아래"})
-                {" · "}MA60: {kodex.ma60 ?? DASH} ({kodex.ma60_position === "above" ? "위" : "아래"})
+                현재가: <strong>{fmtMoney(kodex.close)}</strong>
+                {" · "}MA20: {fmtMoney(kodex.ma20)} ({kodex.ma20_position === "above" ? "위" : "아래"})
+                {" · "}MA60: {fmtMoney(kodex.ma60)} ({kodex.ma60_position === "above" ? "위" : "아래"})
               </li>
             </ul>
           ) : (

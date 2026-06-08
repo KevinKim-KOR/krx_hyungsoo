@@ -504,6 +504,9 @@ export default function MarketDiscoveryView({
       <h1 id="market-discovery-h">Market Discovery</h1>
       {/* 2026-06-08 UI 정리 (사용자 요청) — subtitle / role banner / 정렬 기준 안내 문구 제거.
           최상단: 시장 데이터 갱신 + 후보 정제 옵션 (한 줄). 그 아래 시장 배경 / 그리드. */}
+      {/* 2026-06-08 UI 정리 라운드 4 (사용자 요청) — TopControlsRow 카드 안에서
+          최신 시장 데이터 갱신 + 필터 (1행) / AI Sessions·ETF Exposure 버튼 (2행)
+          을 모두 같은 카드 안에 묶어서 표시. 별도 카드 분리 X. */}
       <TopControlsRow
         refreshUi={refreshUi}
         onStartRefresh={handleStartRefresh}
@@ -511,40 +514,33 @@ export default function MarketDiscoveryView({
         cooldownRemainingSeconds={cooldown}
         filters={filters}
         onFiltersChange={handleFiltersChange}
+        transferAvailable={Boolean(data.asof && data.filters)}
+        transferAISessions={
+          data.asof && data.filters ? (
+            <TransferToAISessionsCard
+              asof={data.asof}
+              filters={data.filters}
+              candidates={data.candidates ?? []}
+              linkedMarketRefreshId={data.latest_refresh?.refresh_id ?? null}
+              marketContext={data.market_context ?? null}
+              onNavigate={onNavigate}
+              compact
+            />
+          ) : null
+        }
+        transferETFExposure={
+          data.asof && data.filters ? (
+            <TransferToETFExposureCard
+              asof={data.asof}
+              filters={data.filters}
+              candidates={data.candidates ?? []}
+              marketContext={data.market_context ?? null}
+              onNavigate={onNavigate}
+              compact
+            />
+          ) : null
+        }
       />
-      {/* 2026-06-08 UI 정리 라운드 3 (사용자 요청) — AI Sessions / ETF Exposure
-          버튼 2개를 최신 시장 데이터 갱신 버튼 바로 아래 (시장 배경 위) 한 줄로 배치. */}
-      {data.asof && data.filters ? (
-        <div
-          className="btn-row"
-          style={{ gap: 12, flexWrap: "wrap", margin: "0 0 12px 0" }}
-        >
-          <TransferToAISessionsCard
-            asof={data.asof}
-            filters={data.filters}
-            candidates={data.candidates ?? []}
-            linkedMarketRefreshId={data.latest_refresh?.refresh_id ?? null}
-            marketContext={data.market_context ?? null}
-            onNavigate={onNavigate}
-            compact
-          />
-          <TransferToETFExposureCard
-            asof={data.asof}
-            filters={data.filters}
-            candidates={data.candidates ?? []}
-            marketContext={data.market_context ?? null}
-            onNavigate={onNavigate}
-            compact
-          />
-        </div>
-      ) : (
-        <div className="card">
-          <div className="message error">
-            AI Sessions / ETF Exposure 전달 기능을 사용할 수 없습니다 — 응답에
-            기준일(asof) 또는 필터 조건(filters) 이 포함되어 있지 않습니다.
-          </div>
-        </div>
-      )}
       {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
       <MarketContextCard ctx={data.market_context ?? null} />
       {/* 통합 테이블 */}
@@ -559,8 +555,10 @@ export default function MarketDiscoveryView({
   );
 }
 
-// 2026-06-08 UI 정리 — 최신 시장 데이터 갱신 + 후보 정제 옵션을 한 줄로 묶는다.
-// 시장배경 위쪽에 배치. 기존 별도 카드 2개 (갱신 / 필터) 는 본 컴포넌트가 흡수.
+// 2026-06-08 UI 정리 — 최신 시장 데이터 갱신 + 후보 정제 옵션 + AI Sessions /
+// ETF Exposure 버튼을 모두 같은 카드 안에 묶는다 (사용자 요청 라운드 4).
+// 1행: 갱신 버튼 + 필터 체크박스 4개
+// 2행: AI Sessions로 넘기기 / ETF Exposure 로 넘기기 버튼 2개 (또는 안내)
 function TopControlsRow({
   refreshUi,
   onStartRefresh,
@@ -568,6 +566,9 @@ function TopControlsRow({
   cooldownRemainingSeconds,
   filters,
   onFiltersChange,
+  transferAvailable,
+  transferAISessions,
+  transferETFExposure,
 }: {
   refreshUi: RefreshUiState;
   onStartRefresh: () => void;
@@ -575,6 +576,9 @@ function TopControlsRow({
   cooldownRemainingSeconds: number;
   filters: FilterUiState;
   onFiltersChange: (next: FilterUiState) => void;
+  transferAvailable: boolean;
+  transferAISessions: React.ReactNode;
+  transferETFExposure: React.ReactNode;
 }) {
   let refreshMessage: React.ReactNode = null;
   if (refreshUi.kind === "starting" || refreshUi.kind === "running") {
@@ -659,6 +663,28 @@ function TopControlsRow({
           </label>
         </div>
         {refreshMessage}
+      </div>
+      {/* 2행 — AI Sessions / ETF Exposure 전달 버튼 */}
+      <div
+        className="btn-row"
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          marginTop: 12,
+        }}
+      >
+        {transferAvailable ? (
+          <>
+            {transferAISessions}
+            {transferETFExposure}
+          </>
+        ) : (
+          <span className="helper" style={{ color: "var(--danger)" }}>
+            AI Sessions / ETF Exposure 전달 기능을 사용할 수 없습니다 —
+            응답에 기준일(asof) 또는 필터 조건(filters) 이 포함되어 있지 않습니다.
+          </span>
+        )}
       </div>
     </div>
   );
