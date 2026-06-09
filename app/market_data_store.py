@@ -291,6 +291,28 @@ def fetch_price_history(
         return [(r[0], float(r[1])) for r in cur.fetchall()]
 
 
+def fetch_price_volume_history(
+    ticker: str,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> list[tuple[str, float, Optional[int]]]:
+    """(date, close, volume) 시계열 (date ASC) — ML feature 생성용 (2026-06-08).
+
+    close 가 null/0 이하인 행은 제외. volume 은 null 허용 (가용 종목 제한).
+    """
+    with _connection(db_path) as con:
+        cur = con.execute(
+            "SELECT date, close, volume FROM etf_daily_price "
+            "WHERE ticker = ? AND close IS NOT NULL AND close > 0 "
+            "ORDER BY date ASC",
+            (ticker,),
+        )
+        return [
+            (r[0], float(r[1]), (int(r[2]) if r[2] is not None else None))
+            for r in cur.fetchall()
+        ]
+
+
 def table_exists(table: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
     with _connection(db_path) as con:
         cur = con.execute(

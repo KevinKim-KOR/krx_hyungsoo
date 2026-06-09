@@ -1,12 +1,46 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-08 (Market Discovery UI / Perf 후속 정리)
+작성일: 2026-05-20 / 갱신: 2026-06-08 (ML 최소 데이터 레인 1차)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-08 — Market Discovery UI / Perf 후속 정리)
+## 0. 직전 STEP 결과 (2026-06-08 — ML 최소 데이터 레인 1차)
+
+ML baseline v0 가 바로 읽을 수 있는 daily feature dataset 을 SQLite 에 적재.
+CLI 전용 실행 — 화면 / refresh 흐름 hook 0건. ML 모델 / 라벨 / 예측 / threshold X.
+
+### 결과 요약
+
+- 신규 테이블 2종 (`etf_ml_feature_daily` PK=(asof,ticker), `market_risk_feature_daily` PK=asof).
+- 신규 모듈 3종: `app/ml_feature_store.py` / `app/ml_feature_builder.py` /
+  `app/api_ml_readiness.py`.
+- 신규 CLI: `scripts/generate_ml_features.py` (`--start-date` / `--end-date` /
+  `--lookback-days` 기본 60거래일 / `--ticker` / `--no-snapshot`).
+- 신규 read-only API: `GET /ml/readiness/latest`.
+- `MLTimeseriesReadinessCard` 7축으로 갱신 (정적 9축 → API 응답 기반 7축).
+- Snapshot: `state/ml/ml_feature_snapshot_latest.json` (gitignored).
+- 실측: 1137 ETF × 60일 → 65,691 ETF row + 60 market risk row / 4.46초.
+- pytest 405 passed (395 → 405 / 회귀 0). Next.js build PASS.
+
+### 다음 분기 후보
+
+ML baseline v0 가 본 dataset 을 입력으로 바로 시작 가능. 분기:
+
+1. **ML baseline v0** — 본 feature dataset 을 입력으로 상승 후보 점수화 모델 +
+   위험 구간 분류 (binary). 모델 / threshold / label 확정은 본 STEP 내용을 기반
+   으로 새 STEP 에서 진행.
+2. **CLI hook** — market refresh 직후 자동 ml_features generation hook 추가
+   (현재는 의도적으로 분리).
+3. **NAV / 괴리율 시계열 누적** — 이미 본 feature 에 join 되어 일부 노출. 별도
+   feature 시계열로 분리 누적 검토.
+4. **CNN Fear&Greed / VKOSPI / 외국인·기관 수급 / KOSPI 전체 시장 폭 / 구성종목
+   가격 시계열** — 본 STEP §6.6 에서 제외 명시. BACKLOG 후보.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-08 — Market Discovery UI / Perf 후속 정리)
 
 NAV / Discount Display FIX 직후 사용자가 즉시 보낸 UI 정리 요청 / perf 지적 5건을
 연속 commit (`6c3728ec` → `8fad2bb4`) 으로 반영. 별도 STEP 보고서는 만들지 않고

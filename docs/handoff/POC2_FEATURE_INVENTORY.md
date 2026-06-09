@@ -262,14 +262,29 @@
 
 | 항목 | 값 |
 |---|---|
-| 기능명 | 시장 데이터 상태 placeholder |
+| 기능명 | 전체 ETF NAV / 시장가 / 괴리율 조회 화면 |
 | 현재 메뉴 위치 | 좌측 7번 |
-| 기능 목적 | 시장 데이터 갱신 상태 확인 (계획) |
-| 사용 가능 여부 | **테스트용** |
-| 데이터 소스 상태 | placeholder — 실제 연결 미구현 |
-| 운영 UI 포함 여부 | 포함 (placeholder) |
-| 테스트용/임시 여부 | 예 |
-| 다음 조치 | BACKLOG: "Data Status 실제 연결" |
+| 기능 목적 | 저장된 etf_nav_daily 의 전체 ETF NAV / 시장가 / 괴리율을 검색 / 필터 / 정렬 (조회 전용) |
+| 사용 가능 여부 | **사용 가능** (2026-06-08 NAV / Discount Display FIX 로 placeholder → 운영 화면 전환) |
+| 데이터 소스 상태 | `GET /market/nav-discount/latest` (read-only). Naver universe 1회 호출 결과 SQLite 저장값 — 외부 source 호출 0건 |
+| 운영 UI 포함 여부 | 포함 |
+| 테스트용/임시 여부 | 아님 — 운영용 |
+| 다음 조치 | 현재 상태 유지 |
+
+### 2.16 ML 최소 데이터 레인 (etf_ml_feature_daily / market_risk_feature_daily)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | ML baseline v0 입력용 daily feature dataset |
+| 현재 메뉴 위치 | 좌측 4번 ETF Exposure 화면 안 `MLTimeseriesReadinessCard` (조회) + CLI 적재 |
+| 기능 목적 | 상승 후보 발굴 + 위험 구간 분류용 feature row 적재 — ML 모델 / 라벨 / 예측 X |
+| 사용 가능 여부 | **사용 가능** (2026-06-08 ML 최소 데이터 레인 1차 DONE) |
+| 데이터 소스 상태 | SQLite 2 신규 테이블 (`etf_ml_feature_daily` PK=(asof,ticker), `market_risk_feature_daily` PK=asof). 입력은 기존 `etf_daily_price` / `etf_nav_daily` / `market_benchmark_daily_price` 만 (외부 source 0건). |
+| API 진입점 | 적재: CLI `scripts/generate_ml_features.py` 만. 조회: `GET /ml/readiness/latest` (read-only row count / latest asof). |
+| 운영 UI 포함 여부 | ML readiness 7축 표시 (`MLTimeseriesReadinessCard`). CNN Fear&Greed / VKOSPI / 외국인·기관 수급 / KOSPI 전체 시장 폭 / 구성종목 가격 시계열은 표시 X (BACKLOG). |
+| 실측 (2026-06-08) | 1137 ETF × 60거래일 → 65,691 ETF row + 60 market risk row / CLI 4.46초 |
+| 테스트용/임시 여부 | 아님 — 운영용 |
+| 다음 조치 | ML baseline v0 STEP — 본 dataset 입력으로 상승 후보 점수화 + 위험 구간 분류 |
 
 ---
 

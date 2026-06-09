@@ -179,6 +179,10 @@ state/market/market_data.sqlite-shm
 # 검증/실행마다 작업트리가 바뀌어 staged 상태와 어긋남. commit 대상 아님.
 state/market/nav_discount_refresh_latest.json
 
+# ML 최소 데이터 레인 (2026-06-08) — feature snapshot 은 CLI 실행마다 갱신.
+# 운영 artifact 라 commit 대상 아님.
+state/ml/ml_feature_snapshot_latest.json
+
 # AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — 운영 DB 는 commit 대상 아님.
 state/decision/decision_evidence.sqlite
 state/decision/decision_evidence.sqlite-journal
