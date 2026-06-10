@@ -1,12 +1,61 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-08 (ML Feature Sanity Check)
+작성일: 2026-05-20 / 갱신: 2026-06-11 (ML Baseline v0 룩백 검증)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-08 — ML Feature Sanity Check)
+## 0. 직전 STEP 결과 (2026-06-11 — ML Baseline v0 룩백 검증)
+
+현재 feature dataset 이 과거 구간에서 (1) 상승 후보 발굴 / (2) 위험 구간 감지
+baseline 으로 의미가 있었는지 룩백 검증. CLI 전용. 매수/매도 판단 X,
+위험 알림 X, 조정장 확정 X, 위험 threshold X.
+
+### 결과 요약
+
+- 신규 모듈 4종: `app/ml_baseline_targets.py` (352) + `ml_baseline_candidate.py` (362) +
+  `ml_baseline_risk.py` (309) + `ml_baseline_v0.py` (186 — orchestrator). KS-10 trigger/near 0건.
+- 신규 API: `GET /ml/baseline-v0/latest` (snapshot read-only, 재계산 X / 외부 호출 X).
+- CLI: `scripts/run_ml_baseline_v0.py` + Snapshot `state/ml/ml_baseline_v0_report_latest.json` (gitignored).
+- Frontend 신규: `MLBaselineV0Card` (DataStatusView 하단). 매수/매도/위험 알림 문구 0건.
+- 사용자 결정: (a) candidate top group = top quintile 20%, (a) risk group split = market composite tercile 1/3, (a) horizon tail = max horizon 20d 제외.
+- 실측 (1137 ETF × 60거래일 / 평가 40거래일): **status=ok**. leakage 0. candidate top group 5d/10d/20d future return = 3.4%/5.5%/13.5% vs universe median 1.1%/2.1%/4.7%. risk high vs low future drawdown 10d = -8.1% vs -3.4% (위험 group 약 2.4x), drawdown_capture_rate 10d = 1.44.
+- pytest 429 passed (+12 신규, 회귀 0). black / flake8 / ESLint / Next.js build PASS.
+
+### 다음 분기 후보
+
+1. **NAV 일별 적재 / backfill** — Sanity 가 노출한 unavailable_ratio 0.98 해소.
+2. **5년 backfill** — `--start-date 2021-06-08` 로 평가 가능 거래일 ≫ 40일 확장.
+3. **Baseline v0 후속 — 시계열 rolling window 평가**: 본 STEP 의 단일-기간 평균을 rolling window 별로 분해.
+4. **§6.6 제외 항목** (CNN Fear&Greed / VKOSPI / 외국인·기관 수급 등) — BACKLOG.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-08 — ML Feature Sanity Check)
+
+ML baseline v0 입력 직전 데이터 품질 검산. CLI 전용. 4 sub-check
+(coverage / calculation / NAV join / risk proxy).
+
+### 결과 요약
+
+- 신규 모듈 2종: `app/ml_feature_sanity.py` (561 라인 — FIX r3 후) +
+  `ml_feature_sanity_helpers.py` (141 라인). KS-10 trigger/near 0건.
+- 신규 API: `GET /ml/feature-sanity/latest`. CLI: `scripts/check_ml_feature_sanity.py`.
+- Snapshot: `state/ml/ml_feature_sanity_latest.json` (gitignored).
+- Frontend: `MLFeatureSanityCard`.
+- FIX r3 (검증자 1차 REJECTED 반영): coverage §4.3 누락 보강 (ticker별 row 누락 + asof drop) + snapshot 손상 fail-loud + untracked staging.
+- 실측 (FIX r3 후): sanity_status=warn / ticker 1137 중 row 누락 69건 신규 감지 / calc 0 err / future_nav_join=0. pytest 417 passed.
+
+### 다음 분기 후보 (당시)
+
+→ 본 STEP (ML Baseline v0 룩백 검증) 으로 진입 (사용자 결정).
+
+---
+
+## 0-2. 이전 STEP 결과 (2026-06-08 — ML 최소 데이터 레인 1차)
 
 ML baseline v0 입력 직전 데이터 품질 검산. CLI 전용 실행. ML 모델 / 위험 threshold /
 매수·매도 판단 X.

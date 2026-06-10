@@ -23,7 +23,19 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **ML Feature Sanity Check** (2026-06-08).
+- **현재 완료 상태**: **ML Baseline v0 룩백 검증** (2026-06-11).
+  - 현재 feature dataset 이 과거 구간에서 (1) 상승 후보 발굴 baseline 과 (2) 위험 구간 감지 baseline 으로 의미가 있었는지 룩백 검증. 실시간 매수/매도 판단 X, 위험 알림 X, 조정장 확정 X, 위험 threshold X.
+  - CLI: `scripts/run_ml_baseline_v0.py` (외부 source 호출 0건). read-only API: `GET /ml/baseline-v0/latest`. Data Status 카드 신규: `MLBaselineV0Card`.
+  - Candidate baseline (사용자 결정 — Top quintile 20%): composite rank v0 = return_20d / excess_20d / return_10d / volume_ratio_20d DESC rank 평균. future_return / future_excess_return horizons = 5/10/20d.
+  - Risk baseline (사용자 결정 — market composite tercile 1/3): 13축 risk axes (변동성/시장폭/distance_from_20d_high/조정장 전조 proxy 등) rank 평균. future_kodex200_return 3/5/10d + future_market_drawdown 5/10d + future_universe_down_ratio_5d.
+  - Horizon tail (사용자 결정 — max horizon 20d 만큼 tail 제외): 마지막 20거래일은 평가에서 제외 (모든 horizon 의 future target 측정 가능 구간만).
+  - Leakage check: feature asof 이후 가격만 target 계산에 사용 — 구조적 누수 불가. time order ASC 보장.
+  - 실측 (1137 ETF × 60거래일 / 평가 40거래일 / FIX r2 후): **status=ok**, leakage 0. evaluated_asof_range=2026-03-11→2026-05-07. candidate top group 5d/10d/20d return = 3.4%/5.5%/13.5% vs universe median 1.1%/2.1%/4.7%. risk high vs low future drawdown 10d = -8.1% vs -3.4%, drawdown_capture_rate 10d = 1.44.
+  - **FIX r2 (검증자 1차 REJECTED 후속)**: (A-1) 지시문 §7.4/§8.4 단순 baseline 누락 보강 — candidate `simple_baselines` 2종 (return_20d / excess_20d top quintile) + risk `simple_baselines` 3종 (5일 시장 수익률 / 20일 drawdown / 시장폭) 노출. (A-2) `MLBaselineV0Card` helper 문구의 §12 금지 단어 (매수/매도/현금/위험알림/조정장) 제거 — "0건" 표현이라도 위반. (A-3) `evaluated_asof_range.end` null → "2026-05-07" 채움.
+  - 신규 파일 라인 수 (실측, FIX r2 후): `ml_baseline_targets.py` 352 / `ml_baseline_candidate.py` **426** / `ml_baseline_risk.py` **390** / `ml_baseline_v0.py` 199 / `api_ml_baseline.py` 66. KS-10 trigger/near 0건.
+  - Snapshot: `state/ml/ml_baseline_v0_report_latest.json` (gitignored, 운영 artifact).
+  - pytest **432 passed** (+15 신규 / 회귀 0). black / flake8 / ESLint / Next.js build PASS.
+- **이전 STEP**: **ML Feature Sanity Check** (2026-06-08, commit `7a259454`).
   - ML baseline v0 입력 직전 데이터 품질 검산 4종 (coverage / calculation / NAV join / risk proxy).
   - CLI: `scripts/check_ml_feature_sanity.py` (외부 source 호출 0건, sample_count 인자).
   - 신규 read-only API `GET /ml/feature-sanity/latest` — snapshot JSON 만 read (재계산 X).
@@ -56,6 +68,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| ML Baseline v0 룩백 검증 | DONE | 2026-06-11 | [POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md](handoff/POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md) |
 | ML Feature Sanity Check | DONE | 2026-06-08 | [POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md](handoff/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
 | ML 최소 데이터 레인 1차 | DONE | 2026-06-08 | [POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md](handoff/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |
 | Market Discovery UI / Perf 후속 정리 (사용자 즉시 피드백 5 commit) | DONE | 2026-06-08 | commits `6c3728ec` → `8fad2bb4` (별도 Conclusion 미생성 — handoff 검증자 보고서 [POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md](handoff/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md)) |

@@ -297,9 +297,25 @@
 | 데이터 소스 상태 | etf_ml_feature_daily / market_risk_feature_daily / etf_nav_daily / etf_daily_price read-only. 외부 source 호출 0건. |
 | API 진입점 | 갱신: CLI `scripts/check_ml_feature_sanity.py` 만 (재계산은 CLI에서만 발생). 조회: `GET /ml/feature-sanity/latest` (snapshot 만 read). |
 | 허용 오차 / 정책 | calculation: `abs_tol=1e-4 + rel_tol=1e-4` (사용자 결정 b). risk proxy 이상치: null 비율 + all-null per asof 만 (사용자 결정 f). 위험 threshold / 라벨 / 매수·매도 판단 0건. |
-| 실측 (2026-06-08) | sanity_status=warn / etf_rows=65,691 / 60거래일 / checked 10 ticker / calc 0 error / future_nav_join=0 / risk all-null=0 / warning 2건. |
+| 실측 (2026-06-08, FIX r3 후) | sanity_status=warn / etf_rows=65,691 / 60거래일 / checked 10 ticker / calc 0 error / future_nav_join=0 / risk all-null=0 / warning 3건 (NAV unavailable 2 + ticker 1137 중 row 누락 69건 신규 감지). |
 | 테스트용/임시 여부 | 아님 — 운영용 |
-| 다음 조치 | ML baseline v0 STEP. 또는 NAV 일별 적재 (unavailable_ratio 해소). |
+| 다음 조치 | ML baseline v0 룩백 검증 (DONE, §2.18). NAV 일별 적재 BACKLOG. |
+
+### 2.18 ML Baseline v0 룩백 검증 (candidate / risk baseline)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | ML feature dataset 의 과거 구간 baseline 룩백 검증 — 상승 후보 발굴 + 위험 구간 감지 |
+| 현재 메뉴 위치 | 좌측 7번 Data Status 화면 `MLBaselineV0Card` (조회) + CLI 실행 |
+| 기능 목적 | feature 가 과거 구간에서 단순 baseline 보다 의미 있었는지 확인. 실시간 매수/매도 판단 / 위험 알림 / 조정장 확정 0건. |
+| 사용 가능 여부 | **사용 가능** (2026-06-11 ML Baseline v0 룩백 검증 DONE) |
+| 데이터 소스 상태 | etf_ml_feature_daily / market_risk_feature_daily read-only. 외부 source 호출 0건. ML 학습 0건. |
+| API 진입점 | 갱신: CLI `scripts/run_ml_baseline_v0.py` 만 (재계산은 CLI에서만 발생). 조회: `GET /ml/baseline-v0/latest` (snapshot read-only). |
+| 정책 / 사용자 결정 | (a) candidate top group = top quintile 20%. (a) risk group split = market composite tercile 1/3. (a) horizon tail = max horizon 20d 제외. 위험 threshold / 조정장 label 0건. |
+| 누수 방지 | structural: future_* target 은 idx + horizon 의 close 만 사용 (구조적 누수 불가). horizon tail 모든 horizon 의 target 측정 가능 구간만 평가. time order ASC 보장. leakage_checks.feature_future_data_leakage_detected = False. |
+| 실측 (2026-06-11) | status=ok / feature 60거래일 / 평가 40거래일 / 1099 ticker. candidate top group 5/10/20d return = 3.4% / 5.5% / 13.5% vs universe median 1.1% / 2.1% / 4.7%. risk high vs low future drawdown 10d = -8.1% vs -3.4%. drawdown_capture_rate 10d = 1.44. |
+| 테스트용/임시 여부 | 아님 — 운영용 |
+| 다음 조치 | (1) NAV 일별 적재 / 5년 backfill. (2) 시계열 rolling window 분해. (3) §6.6 제외 source BACKLOG. 본 STEP 이 점수판이 아닌 룩백 baseline 임 — ML 모델 학습 / threshold 확정은 별도 STEP. |
 
 ---
 

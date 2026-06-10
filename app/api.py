@@ -48,6 +48,7 @@ from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
 from app.api_holdings_market_evidence import router as holdings_market_evidence_router
 from app.api_market_topn import router as market_topn_router
+from app.api_ml_baseline import router as ml_baseline_router
 from app.api_ml_readiness import router as ml_readiness_router
 from app.api_ml_sanity import router as ml_sanity_router
 from app.api_nav_discount import router as nav_discount_router
@@ -91,6 +92,9 @@ app.include_router(ml_readiness_router)
 # POC2 ML Feature Sanity Check (2026-06-08) — read-only
 # GET /ml/feature-sanity/latest. state/ml/ml_feature_sanity_latest.json 만 read.
 app.include_router(ml_sanity_router)
+# POC2 ML Baseline v0 룩백 검증 (2026-06-11) — read-only
+# GET /ml/baseline-v0/latest. state/ml/ml_baseline_v0_report_latest.json 만 read.
+app.include_router(ml_baseline_router)
 
 
 class GenerateDraftRequest(BaseModel):

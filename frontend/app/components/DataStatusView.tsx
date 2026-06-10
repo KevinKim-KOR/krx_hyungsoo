@@ -20,6 +20,7 @@ import {
   type NavDiscountItem,
   type NavDiscountLatestResponse,
 } from "@/lib/api";
+import MLBaselineV0Card from "./MLBaselineV0Card";
 import MLFeatureSanityCard from "./MLFeatureSanityCard";
 
 type LoadState =
@@ -185,6 +186,10 @@ export default function DataStatusView() {
       {/* 2026-06-08 ML Feature Sanity Check (지시문 §4.7) — ML 최소 데이터 레인
           상태 아래에 sanity 요약 표시. read-only API 호출만 (재계산 X). */}
       <MLFeatureSanityCard />
+
+      {/* 2026-06-11 ML Baseline v0 룩백 검증 (지시문 §12) — sanity 카드 아래에
+          후보 발굴 / 위험 패턴 baseline 의 룩백 검증 결과 요약 표시. read-only. */}
+      <MLBaselineV0Card />
     </section>
   );
 }
