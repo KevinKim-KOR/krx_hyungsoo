@@ -286,6 +286,21 @@
 | 테스트용/임시 여부 | 아님 — 운영용 |
 | 다음 조치 | ML baseline v0 STEP — 본 dataset 입력으로 상승 후보 점수화 + 위험 구간 분류 |
 
+### 2.17 ML Feature Sanity Check (etf/market_risk feature 검산)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | ML feature dataset 의 계산 정합성 / 데이터 품질 검산 |
+| 현재 메뉴 위치 | 좌측 7번 Data Status 화면 `MLFeatureSanityCard` (조회) + CLI 실행 |
+| 기능 목적 | ML baseline v0 입력 직전 데이터 품질 보증 — coverage / calculation / NAV join / risk proxy 4종 |
+| 사용 가능 여부 | **사용 가능** (2026-06-08 ML Feature Sanity Check DONE) |
+| 데이터 소스 상태 | etf_ml_feature_daily / market_risk_feature_daily / etf_nav_daily / etf_daily_price read-only. 외부 source 호출 0건. |
+| API 진입점 | 갱신: CLI `scripts/check_ml_feature_sanity.py` 만 (재계산은 CLI에서만 발생). 조회: `GET /ml/feature-sanity/latest` (snapshot 만 read). |
+| 허용 오차 / 정책 | calculation: `abs_tol=1e-4 + rel_tol=1e-4` (사용자 결정 b). risk proxy 이상치: null 비율 + all-null per asof 만 (사용자 결정 f). 위험 threshold / 라벨 / 매수·매도 판단 0건. |
+| 실측 (2026-06-08) | sanity_status=warn / etf_rows=65,691 / 60거래일 / checked 10 ticker / calc 0 error / future_nav_join=0 / risk all-null=0 / warning 2건. |
+| 테스트용/임시 여부 | 아님 — 운영용 |
+| 다음 조치 | ML baseline v0 STEP. 또는 NAV 일별 적재 (unavailable_ratio 해소). |
+
 ---
 
 ## 3. Context Bridges (화면 간 전달)

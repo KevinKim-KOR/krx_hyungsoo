@@ -183,6 +183,9 @@ state/market/nav_discount_refresh_latest.json
 # 운영 artifact 라 commit 대상 아님.
 state/ml/ml_feature_snapshot_latest.json
 
+# ML Feature Sanity Check (2026-06-08) — CLI 실행마다 갱신, 운영 artifact.
+state/ml/ml_feature_sanity_latest.json
+
 # AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — 운영 DB 는 commit 대상 아님.
 state/decision/decision_evidence.sqlite
 state/decision/decision_evidence.sqlite-journal

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-08 (ML 최소 데이터 레인 1차)
+최종 업데이트: 2026-06-08 (ML Feature Sanity Check)
 
 ## 0. Canonical
 
@@ -23,7 +23,17 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **ML 최소 데이터 레인 1차 + FIX r2** (2026-06-08).
+- **현재 완료 상태**: **ML Feature Sanity Check** (2026-06-08).
+  - ML baseline v0 입력 직전 데이터 품질 검산 4종 (coverage / calculation / NAV join / risk proxy).
+  - CLI: `scripts/check_ml_feature_sanity.py` (외부 source 호출 0건, sample_count 인자).
+  - 신규 read-only API `GET /ml/feature-sanity/latest` — snapshot JSON 만 read (재계산 X).
+  - Data Status 화면에 sanity 요약 + 7축 sub-check + 샘플 ETF 10건 (return/excess/vol/dd/NAV 괴리율) 표시.
+  - 허용 오차 (사용자 결정 (b)): `abs_tol=1e-4 + rel_tol=1e-4` (numpy isclose 패턴). risk proxy 이상치는 null 비율만 (사용자 결정 (f)).
+  - 실측 (FIX r3 후): 1137 ETF × 60일 / sanity_status=warn / calc 0 error / future_nav_join=0 / risk all-null=0 / warning 3건 (NAV unavailable 2 + **ticker별 row 누락 69건 신규 감지** — FIX r3 효과).
+  - **FIX r2 (KS-10 자체 점검)**: 첫 작성된 `ml_feature_sanity.py` 607 라인 → near 진입. helpers 모듈로 분리 → `ml_feature_sanity.py` 491 라인 + `ml_feature_sanity_helpers.py` 141 라인. ML 신규 파일 KS-10 trigger/near 0건.
+  - **FIX r3 (검증자 REJECTED 후속)**: (1) coverage §4.3 누락 보강 — ticker별 row 누락 + asof drop 검산 추가. (2) snapshot 손상 시 status=error 분리 (fail-loud, empty 와 구분). (3) untracked 8건 즉시 staging. 실측: `ml_feature_sanity.py` **561 라인** (near 600 미진입), `api_ml_sanity.py` 65 라인. pytest **417 passed** (+3, 회귀 0).
+  - Snapshot: `state/ml/ml_feature_sanity_latest.json` (gitignored).
+- **이전 STEP**: ML 최소 데이터 레인 1차 (2026-06-08, commit `e918bb47`).
   - FIX r2 (검증자 REJECTED 대응): 신규 `ml_feature_builder.py` 615 라인 (backend near ≥600) → 책임 분리. primitives / nav_lookup 2 모듈 신규. **builder 455 라인 (near 이탈)** + primitives 124 + nav_lookup 78. ML 핵심 파일 KS-10 trigger/near 0건.
   - SQLite 2 테이블 신규: `etf_ml_feature_daily` (ETF별 daily feature) + `market_risk_feature_daily` (시장 위험 daily feature).
   - CLI 전용 실행 (`scripts/generate_ml_features.py`) — 화면 / refresh 흐름 hook 0건. `--start-date` / `--end-date` / `--lookback-days` (기본 60거래일) / `--ticker` filter / `--no-snapshot`.
@@ -46,6 +56,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| ML Feature Sanity Check | DONE | 2026-06-08 | [POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md](handoff/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
 | ML 최소 데이터 레인 1차 | DONE | 2026-06-08 | [POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md](handoff/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |
 | Market Discovery UI / Perf 후속 정리 (사용자 즉시 피드백 5 commit) | DONE | 2026-06-08 | commits `6c3728ec` → `8fad2bb4` (별도 Conclusion 미생성 — handoff 검증자 보고서 [POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md](handoff/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md)) |
 | NAV / Discount Display FIX (전체 ETF 조회 영역 + 표시 매트릭스) | DONE | 2026-06-08 | [POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
@@ -54,6 +65,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Result | Summary | Detail |
 | --- | --- | --- | --- |
+| 2026-06-08 ML Feature Sanity Check | DONE | coverage / calculation / NAV join / risk proxy 검산 4종 + read-only API + Data Status 표시. sanity_status=warn / calc 0 err / future_nav_join=0. | [conclusion](handoff/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
 | 2026-06-08 ML 최소 데이터 레인 1차 | DONE | etf_ml_feature_daily + market_risk_feature_daily 2 테이블 + CLI + 7축 readiness API. 1137 ETF×60일 → 65,691 row / 4.46초. ML 모델 / threshold / label 0건. | [conclusion](handoff/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |
 | 2026-06-08 Market Discovery UI / Perf 후속 정리 | DONE | CandidateTable 컬럼 정리 + 6m/12m/1y/3y 추가 + TopControlsRow 통합 + MarketContextCard 표기 정정 + 응답 2.4s→0.85s. | commits `6c3728ec`…`8fad2bb4` / [feedback note](handoff/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md) |
 | 2026-06-08 NAV / Discount Display FIX | DONE | GET /market/nav-discount/latest 신규 + Data Status 전체 ETF NAV 표 + MD/ETF Exposure/Holdings 표시 보강. 표시 매트릭스 충족. | [conclusion](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |

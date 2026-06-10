@@ -20,6 +20,7 @@ import {
   type NavDiscountItem,
   type NavDiscountLatestResponse,
 } from "@/lib/api";
+import MLFeatureSanityCard from "./MLFeatureSanityCard";
 
 type LoadState =
   | { phase: "loading" }
@@ -180,6 +181,10 @@ export default function DataStatusView() {
       {state.phase === "ready" && state.data.status === "ok" && (
         <NavDiscountTable items={filteredSorted} />
       )}
+
+      {/* 2026-06-08 ML Feature Sanity Check (지시문 §4.7) — ML 최소 데이터 레인
+          상태 아래에 sanity 요약 표시. read-only API 호출만 (재계산 X). */}
+      <MLFeatureSanityCard />
     </section>
   );
 }

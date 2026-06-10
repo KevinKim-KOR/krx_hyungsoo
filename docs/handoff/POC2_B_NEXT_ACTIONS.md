@@ -1,12 +1,40 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-08 (ML 최소 데이터 레인 1차)
+작성일: 2026-05-20 / 갱신: 2026-06-08 (ML Feature Sanity Check)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-08 — ML 최소 데이터 레인 1차)
+## 0. 직전 STEP 결과 (2026-06-08 — ML Feature Sanity Check)
+
+ML baseline v0 입력 직전 데이터 품질 검산. CLI 전용 실행. ML 모델 / 위험 threshold /
+매수·매도 판단 X.
+
+### 결과 요약
+
+- 신규 모듈: `app/ml_feature_sanity.py` (491 라인) + `app/ml_feature_sanity_helpers.py`
+  (141 라인, FIX r2 분리). 4 검산 (coverage / calculation / NAV join / risk proxy).
+- 신규 API: `GET /ml/feature-sanity/latest` (snapshot read-only, 재계산 X).
+- CLI: `scripts/check_ml_feature_sanity.py` + Snapshot `state/ml/ml_feature_sanity_latest.json` (gitignored).
+- Frontend: `MLFeatureSanityCard` (DataStatusView) — 7축 sub-check 상태 + 샘플 ETF 10건.
+- 허용 오차 (사용자 결정 b): `abs_tol=1e-4 + rel_tol=1e-4`. risk proxy 이상치는 null 비율만 (사용자 결정 f).
+- 실측: 1137 ETF × 60일 / sanity_status=warn / calc 0 error / future_nav_join=0 /
+  risk all-null=0 / warning 2건 (NAV 분포 unavailable_ratio 0.983 — universe NAV refresh 1회만 적재된 운영 상태).
+- pytest 414 passed (회귀 0). Next.js build PASS.
+
+### 다음 분기 후보
+
+1. **ML baseline v0** — 본 sanity check 통과한 dataset 입력. 상승 후보 점수화 +
+   위험 구간 분류 binary 모델. threshold / label 확정 (별도 STEP).
+2. **NAV 일별 적재 / backfill** — sanity 가 노출한 unavailable_ratio 0.983 해소.
+   `etf_nav_daily` 가 universe refresh 1회만 적재 → 일별 누적 흐름 설계.
+3. **5년 backfill** — `--start-date 2021-06-08` 로 장기 시계열 적재.
+4. **§6.6 제외 항목 (CNN Fear&Greed / VKOSPI / 외국인·기관 수급 등)** — BACKLOG.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-08 — ML 최소 데이터 레인 1차)
 
 ML baseline v0 가 바로 읽을 수 있는 daily feature dataset 을 SQLite 에 적재.
 CLI 전용 실행 — 화면 / refresh 흐름 hook 0건. ML 모델 / 라벨 / 예측 / threshold X.
