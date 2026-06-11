@@ -1,12 +1,53 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-11 (ML Baseline Evidence Draft Integration)
+작성일: 2026-05-20 / 갱신: 2026-06-11 (UI 안전실행 — ML evidence 갱신 background job)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-11 — ML Baseline Evidence Draft Integration)
+## 0. 직전 STEP 결과 (2026-06-11 — UI 안전실행, ML evidence 갱신 background job)
+
+기존 CLI 3종 (`generate_ml_features` → `check_ml_feature_sanity` → `run_ml_baseline_v0`) 을
+Data Status 화면의 "ML evidence 갱신 실행" 버튼 1개로 안전하게 background 에서
+순차 실행. CLI 는 그대로 살아있음 (이중화). Celery / Redis / 신규 DB / 외부 source
+0건. 매수/매도/추천/현금비중/조정장/위험알림 0건.
+
+### 결과 요약
+
+- 신규 모듈 1종: `app/ml_job_runner.py` **447 라인** (KS-10 안전 — 임계 600 미진입).
+  job state schema + 3단계 runner + threading.Lock (in-process) + on-disk PID +
+  heartbeat (10분 stale 자동 해제).
+- 신규 API 2종: `POST /ml/jobs/evidence-refresh` (background 시작, FastAPI
+  `BackgroundTasks` 사용, 즉시 반환) + `GET /ml/jobs/latest` (read-only).
+  `app/api_ml_jobs.py` **101 라인**.
+- 신규 frontend Card: `MLEvidenceRefreshCard` **290 라인** + `frontend/lib/api/mlJobs.ts`
+  **79 라인**. DataStatusView 최상단 + 실행 중 5초 polling 자동 갱신 + 단계별 상태 표.
+- 단계 실패 시: 이후 단계 skipped + 전체 failed. 기존 snapshot 3종은 **삭제 안 함**
+  (마지막 성공 결과 사용자 계속 조회 가능, AC-6).
+- 중복 실행 차단: in-process Lock + on-disk status 검사 + PID/heartbeat 10분 stale 자동 해제.
+- runtime artifact `state/ml/ml_job_status_latest.json` (gitignored).
+- 실측 (uvicorn 직접): POST **2.6ms** 만에 accepted / 중복 POST **2.2ms** 만에
+  already_running / 단계별 polling 정확 / 운영 SQLite 로 최종 success
+  (evaluated_days=43, baseline_report_status=ok).
+- pytest **470 passed** (+16 신규 / 회귀 0, FIX r2 후). black / flake8 / Next.js build PASS.
+- **FIX r2 (검증자 1차 REJECTED 후속)**: (A-1/B-6) Windows 에서 `os.kill(pid, 0)` 비결정적 동작 (KeyboardInterrupt 유발) 해소 — `_PID_CHECK_SUPPORTED` OS 분기 추가, Windows 는 heartbeat 만으로 stale 판정. (B-1) status 파일 손상을 미실행과 구분 — `get_latest_status()` (state, error) tuple 반환, API status="error" 응답, POST 도 손상 시 새 job 자동 생성 안 함.
+- 사용자 결정 (a)+(a)+(a): in-process BackgroundTasks / PID+heartbeat 10분 stale /
+  MLEvidenceRefreshCard 신규.
+
+### 다음 분기 후보
+
+1. **schedule 기반 자동 실행** — 사용자가 시간(예: 18:00) 을 지정해 매일 자동 갱신.
+2. **단계별 진행률** — 현재는 단계 단위 상태만 표시. feature 생성 progress bar 등.
+3. **실행 히스토리** — 현재는 latest 1건만 저장. 최근 10건 보존 + UI 표.
+4. **stale 알림 통합** — ML baseline evidence 가 stale 일 때 GenerateDraft 화면
+   에서 "갱신이 필요합니다" 안내 + 본 STEP 의 갱신 버튼으로 deeplink.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-11 — ML Baseline Evidence Draft Integration)
 
 저장된 ML baseline v0 룩백 report 를 GenerateDraft / AI Sessions draft 의 보조
 evidence 로 연결. baseline 재계산 / feature 재생성 / 외부 source 호출 / ML 학습 /

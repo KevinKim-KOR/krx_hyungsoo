@@ -331,6 +331,25 @@
 | draft_payload 신규 키 | `ml_baseline_evidence_snapshot` = {status / report_status / report_generated_at / feature_asof_range / evaluated_asof_range / candidate_summary / risk_summary / leakage_summary / limitations / external_context_checklist (7건) / message}. |
 | AI Sessions 저장 (FIX r2) | `ai_session_records.ml_baseline_evidence_snapshot_json` 컬럼 + 자동 ADD COLUMN 마이그레이션. POST `/decision/sessions` 가 필드 수용, GET 응답에 그대로 반환. |
 | 데이터 계약 단일화 (FIX r3) | `GET /ml/baseline-v0/evidence-snapshot` 신규 — GenerateDraft 와 동일한 정규화 shape 반환 (status / candidate_summary / risk_summary / leakage_summary / limitations / external_context_checklist). frontend `AISessionsCreateTab` 가 draft 에 snapshot 없으면 본 API 결과로 fallback. fetch 실패 시 status="error" 정규화 snapshot 으로 채움 (silent fallback 금지). |
+
+### 2.20 UI 안전실행 — ML evidence 갱신 background job
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | Data Status 화면의 "ML evidence 갱신 실행" 버튼 + 3단계 background runner (feature → sanity → baseline) + 단계별 상태 표시. |
+| 현재 메뉴 위치 | 좌측 7번 Data Status 화면 최상단 `MLEvidenceRefreshCard`. |
+| 기능 목적 | 기존 CLI 3종을 화면에서 안전하게 트리거. HTTP 응답은 즉시 반환되고 실제 실행은 background thread / FastAPI BackgroundTasks. 매수/매도/추천/현금/조정장/위험알림 0건. |
+| 사용 가능 여부 | **사용 가능** (2026-06-11 DONE). |
+| 데이터 소스 상태 | 기존 SQLite (etf_ml_feature_daily / market_risk_feature_daily) read/write. 외부 source 호출 0건. ML 학습 0건. baseline 산식 변경 0건. |
+| API 진입점 | 실행: `POST /ml/jobs/evidence-refresh` (background 시작, 즉시 반환). 조회: `GET /ml/jobs/latest` (read-only, job 실행 X). |
+| CLI 경로 유지 | `scripts/generate_ml_features.py` / `scripts/check_ml_feature_sanity.py` / `scripts/run_ml_baseline_v0.py` 그대로 동작. UI 는 CLI 대체가 아니라 운영 편의 개선. |
+| 중복 실행 차단 | in-process `threading.Lock` + on-disk `state/ml/ml_job_status_latest.json` status 검사. 중복 POST 는 새 job 안 만들고 already_running 응답. |
+| Stale lock 자동 해제 | snapshot 의 PID + last_heartbeat_at 기준 — PID 죽었거나 heartbeat 10분 초과 시 stale 자동 해제 후 새 job 허용 (사용자 결정). |
+| 실패 격리 | 단계 실패 시 이후 단계 skipped + 전체 failed. **기존 snapshot 3종 삭제하지 않음** (마지막 성공 결과 보존, AC-6). |
+| Artifact | `state/ml/ml_job_status_latest.json` (gitignored, UI 실행마다 갱신). 기존 feature/sanity/baseline snapshot 은 단계 성공 시에만 덮어쓰기. |
+| 실측 (2026-06-11) | uvicorn 직접 호출 — POST 2.6ms accepted / 중복 2.2ms already_running / 단계 polling 정확 / 운영 SQLite 최종 success (evaluated_days=43). |
+| 테스트용/임시 여부 | 아님 — 운영용. |
+| 다음 조치 | schedule 기반 자동 실행 / 실행 히스토리 / stale 알림 deeplink 는 BACKLOG. |
 | factor_signals 신규 scope | `ml_baseline_evidence` (1건). is_available=True 면 reason_text, False 면 fallback_text. |
 | status 5종 | ok / warn / stale / unavailable / error (report 부재 / 손상 / errors 존재 / 7일 초과 자동 판정). |
 | 외부 context checklist (AI 확인용) | CNN Fear&Greed / VIX·VKOSPI 유사 / 원유 / USD-KRW / 미국장·선물 / 지정학 / 한국장 영향 업종 — 7건. 외부 수집 구현 0건 (질문 목록만). |

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-11 (ML Baseline Evidence Draft Integration)
+최종 업데이트: 2026-06-11 (UI 안전실행 — ML evidence 갱신 background job)
 
 ## 0. Canonical
 
@@ -23,7 +23,19 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **ML Baseline Evidence Draft Integration** (2026-06-11).
+- **현재 완료 상태**: **UI 안전실행 — ML evidence 갱신 background job** (2026-06-11).
+  - 기존 CLI 3종 (`generate_ml_features` → `check_ml_feature_sanity` → `run_ml_baseline_v0`) 을 Data Status 화면의 "ML evidence 갱신 실행" 버튼 1개로 안전하게 background 에서 순차 실행. CLI 경로는 그대로 살아있음 (이중화).
+  - 신규 모듈: `app/ml_job_runner.py` **447 라인** — job state schema + 3단계 runner + `threading.Lock` (in-process) + on-disk `state/ml/ml_job_status_latest.json` lock + PID/heartbeat 기반 stale 자동 해제 (10분, 사용자 결정).
+  - 신규 API: `POST /ml/jobs/evidence-refresh` (background 시작, 즉시 반환) + `GET /ml/jobs/latest` (read-only). FastAPI `BackgroundTasks` 사용 — Celery/Redis/신규 DB 0건 (§8).
+  - 신규 Card: `MLEvidenceRefreshCard` (DataStatusView 최상단). 실행 중 5초 polling 자동 갱신. 단계별 상태 / 시작·종료 시각 / 실패 메시지 / 마지막 성공 요약 표시. 매수/매도/추천/현금/조정장/위험알림 문구 0건.
+  - 단계 실패 시: 이후 단계 skipped, 기존 snapshot 3종 (feature/sanity/baseline) **삭제하지 않음** (마지막 성공 결과 보존, AC-6).
+  - 중복 실행 차단: in-process Lock + on-disk status running 검사. 중복 POST 는 새 job 안 만들고 현재 running 응답 (already_running).
+  - 실측 (uvicorn 직접 호출): POST `/ml/jobs/evidence-refresh` **2.6ms** 만에 accepted 반환 / 즉시 중복 POST 2.2ms 만에 already_running / 단계별 polling (feature→sanity→baseline) 정확 / 최종 status=success, evaluated_days=43, baseline_report_status=ok.
+  - **FIX r2 (검증자 1차 REJECTED 후속, 2건)**:
+    (A-1 / B-6) Windows 에서 `os.kill(pid, 0)` 이 PID 0 을 alive 로 반환하고 자기 PID 대상 시 KeyboardInterrupt 유발 가능 — `_PID_CHECK_SUPPORTED = sys.platform != "win32"` 분기 추가. Windows 에서는 PID 확인 비활성화 + heartbeat 10분 만으로 stale 판정 (POSIX 는 기존 로직 유지). psutil 등 신규 의존성 0건 (§8 정신 준수).
+    (B-1) `_read_status` 가 JSON 손상 시 None 반환해 미실행과 구분 안 되던 문제 — `_read_status_raw()` 가 `(state, error)` tuple 반환하도록 변경. `get_latest_status()` 도 동일 시그니처. API 가 손상 시 `status="error"` 응답 + frontend Card 에 error 분기 표시. POST 도 손상 감지 시 새 job 자동 생성 안 함 (fail-loud).
+  - pytest **470 passed** (+16 신규, 회귀 0, FIX r2 후 3회 연속 비결정성 0건 확인). black / flake8 / Next.js build PASS.
+- **이전 STEP**: **ML Baseline Evidence Draft Integration** (2026-06-11, commit `f7ec493e`).
   - 저장된 ML baseline v0 룩백 report 를 GenerateDraft 의 보조 evidence 로 연결. CLI 재실행 / feature 재생성 / 외부 source 호출 / ML 학습 0건. 매수/매도/추천/현금비중/조정장/위험 알림 문구 0건.
   - 신규 모듈: `app/ml_baseline_evidence.py` **452 라인** (KS-10 안전) — JSON 파일 직접 read (HTTP self-call X), stale 기준 `feature_asof_range.end` 7일 초과.
   - draft_payload 신규 키: `ml_baseline_evidence_snapshot` (status / candidate_summary / risk_summary / leakage_summary / limitations / external_context_checklist 7항목). factor_signals 신규 scope: `ml_baseline_evidence` (보조 evidence 1건).
@@ -78,6 +90,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| UI 안전실행 — ML evidence 갱신 background job | DONE | 2026-06-11 | [POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md](handoff/POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md) |
 | ML Baseline Evidence Draft Integration | DONE | 2026-06-11 | [POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md](handoff/POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md) |
 | ML Baseline v0 룩백 검증 | DONE | 2026-06-11 | [POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md](handoff/POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md) |
 | ML Feature Sanity Check | DONE | 2026-06-08 | [POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md](handoff/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |

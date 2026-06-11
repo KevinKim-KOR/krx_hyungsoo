@@ -21,6 +21,7 @@ import {
   type NavDiscountLatestResponse,
 } from "@/lib/api";
 import MLBaselineV0Card from "./MLBaselineV0Card";
+import MLEvidenceRefreshCard from "./MLEvidenceRefreshCard";
 import MLFeatureSanityCard from "./MLFeatureSanityCard";
 
 type LoadState =
@@ -182,6 +183,11 @@ export default function DataStatusView() {
       {state.phase === "ready" && state.data.status === "ok" && (
         <NavDiscountTable items={filteredSorted} />
       )}
+
+      {/* 2026-06-11 UI 안전실행 (지시문 §5.1) — 화면 상단에서 ML evidence
+          갱신을 background 로 시작 + 단계별 상태 확인. 본 카드는 baseline 산식 /
+          매수·매도 판단 0건 (§8 금지사항 준수). */}
+      <MLEvidenceRefreshCard />
 
       {/* 2026-06-08 ML Feature Sanity Check (지시문 §4.7) — ML 최소 데이터 레인
           상태 아래에 sanity 요약 표시. read-only API 호출만 (재계산 X). */}
