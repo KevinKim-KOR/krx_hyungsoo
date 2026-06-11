@@ -14,14 +14,14 @@ baseline 으로 의미가 있었는지 룩백 검증. CLI 전용. 매수/매도 
 
 ### 결과 요약
 
-- 신규 모듈 4종: `app/ml_baseline_targets.py` (352) + `ml_baseline_candidate.py` (362) +
-  `ml_baseline_risk.py` (309) + `ml_baseline_v0.py` (186 — orchestrator). KS-10 trigger/near 0건.
+- 신규 모듈 4종 (FIX r2 후 실측): `app/ml_baseline_targets.py` (352) + `ml_baseline_candidate.py` (426) +
+  `ml_baseline_risk.py` (390) + `ml_baseline_v0.py` (199 — orchestrator). KS-10 trigger/near 0건.
 - 신규 API: `GET /ml/baseline-v0/latest` (snapshot read-only, 재계산 X / 외부 호출 X).
 - CLI: `scripts/run_ml_baseline_v0.py` + Snapshot `state/ml/ml_baseline_v0_report_latest.json` (gitignored).
 - Frontend 신규: `MLBaselineV0Card` (DataStatusView 하단). 매수/매도/위험 알림 문구 0건.
 - 사용자 결정: (a) candidate top group = top quintile 20%, (a) risk group split = market composite tercile 1/3, (a) horizon tail = max horizon 20d 제외.
 - 실측 (1137 ETF × 60거래일 / 평가 40거래일): **status=ok**. leakage 0. candidate top group 5d/10d/20d future return = 3.4%/5.5%/13.5% vs universe median 1.1%/2.1%/4.7%. risk high vs low future drawdown 10d = -8.1% vs -3.4% (위험 group 약 2.4x), drawdown_capture_rate 10d = 1.44.
-- pytest 429 passed (+12 신규, 회귀 0). black / flake8 / ESLint / Next.js build PASS.
+- pytest **432 passed** (+15 신규, 회귀 0, FIX r2 후). black / flake8 / ESLint / Next.js build PASS.
 
 ### 다음 분기 후보
 
