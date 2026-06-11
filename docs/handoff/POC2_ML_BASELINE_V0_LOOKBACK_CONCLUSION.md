@@ -44,11 +44,14 @@ AC-12 문서 갱신 (STATE / NEXT_ACTIONS / FEATURE_INVENTORY + 본 파일)    =
 **Backend 신규 (5)**:
 - `app/ml_baseline_targets.py` **352 라인** — future return / drawdown /
   down_ratio target 생성 + `evaluate_leakage()`. `MAX_HORIZON=20`.
-- `app/ml_baseline_candidate.py` **362 라인** — top quintile composite
-  rank v0 (return_20d / excess_20d / return_10d / volume_ratio_20d DESC rank).
-- `app/ml_baseline_risk.py` **309 라인** — market composite risk score
-  (13 axes) tercile 1/3 분할 비교.
-- `app/ml_baseline_v0.py` **186 라인** — orchestrator (4 sub-step 통합).
+- `app/ml_baseline_candidate.py` **426 라인 (FIX r2 후)** — top quintile composite
+  rank v0 (return_20d / excess_20d / return_10d / volume_ratio_20d DESC rank) +
+  단순 baseline 2종 (`simple_return_20d` / `simple_excess_20d` top quintile).
+- `app/ml_baseline_risk.py` **390 라인 (FIX r2 후)** — market composite risk score
+  (13 axes) tercile 1/3 분할 비교 + 단순 baseline 3종 (5d return / 20d drawdown /
+  market breadth).
+- `app/ml_baseline_v0.py` **199 라인 (FIX r2 후)** — orchestrator (4 sub-step 통합)
+  + `evaluated_asof_range.end` SQL 직접 계산.
 - `app/api_ml_baseline.py` **66 라인** — `GET /ml/baseline-v0/latest`
   (snapshot JSON read-only).
 
@@ -56,12 +59,14 @@ AC-12 문서 갱신 (STATE / NEXT_ACTIONS / FEATURE_INVENTORY + 본 파일)    =
 - `app/api.py` — `ml_baseline_router` include.
 
 **Scripts 신규 (1)**:
-- `scripts/run_ml_baseline_v0.py` **88 라인** — CLI. `--db` / `--kodex-ticker` /
+- `scripts/run_ml_baseline_v0.py` **92 라인** — CLI. `--db` / `--kodex-ticker` /
   `--no-snapshot`. exit code 0 (status=error 제외) / 1.
 
 **Frontend 신규 (2)**:
-- `frontend/lib/api/mlBaselineV0.ts` **91 라인** — 타입 6종 + fetch.
-- `frontend/app/components/MLBaselineV0Card.tsx` **259 라인** — Data Status 카드.
+- `frontend/lib/api/mlBaselineV0.ts` **95 라인 (FIX r2 후)** — 타입 6종 + fetch +
+  `simple_baselines` 필드 추가.
+- `frontend/app/components/MLBaselineV0Card.tsx` **357 라인 (FIX r2 후)** — Data
+  Status 카드 (§12 허용 문구 전용, 단순 baseline 테이블 추가).
 
 **Frontend 수정 (2)**:
 - `frontend/lib/api/index.ts` — barrel re-export.
@@ -71,8 +76,9 @@ AC-12 문서 갱신 (STATE / NEXT_ACTIONS / FEATURE_INVENTORY + 본 파일)    =
 - `state/ml/ml_baseline_v0_report_latest.json` 운영 artifact.
 
 **Tests 신규 (1)**:
-- `tests/test_ml_baseline_v0.py` **259 라인** — 12 테스트
-  (targets tail / leakage / report status / API empty/present/error/no-recompute).
+- `tests/test_ml_baseline_v0.py` **288 라인 (FIX r2 후)** — 15 테스트
+  (targets tail / leakage / report status / evaluated_range.end /
+  simple_baselines 키 / API empty/present/error/no-recompute).
 
 **Docs 수정 (3)** + **신규 (1)**:
 - `docs/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md` /
@@ -158,7 +164,7 @@ hit rate / rank correlation 가 안정적으로 측정 가능.
 
 ## 6. 검증 결과
 
-- **backend pytest** — PASS (FIX r2 후 **432 passed in 65s**, +15 신규 / 회귀 0).
+- **backend pytest** — PASS (FIX r2 후 **432 passed in 65s**, +15 신규 (총 15 테스트) / 회귀 0).
 - **black --check / flake8 / frontend ESLint / Next.js build** — PASS.
 - **CLI live 실측** (운영 SQLite, 1137 ETF × 60거래일):
   - status=**ok** / trading_days=60 / evaluated_days=40 / candidate ticker=1099.
@@ -185,11 +191,11 @@ hit rate / rank correlation 가 안정적으로 측정 가능.
 | `app/ml_baseline_candidate.py` | **426 (FIX r2 후)** | 600 / 650 | 안전 |
 | `app/ml_baseline_risk.py` | **390 (FIX r2 후)** | 600 / 650 | 안전 |
 | `app/ml_baseline_v0.py` | **199 (FIX r2 후)** | 600 / 650 | 안전 |
-| `app/api_ml_baseline.py` | 66 | 600 / 650 | 안전 |
-| `scripts/run_ml_baseline_v0.py` | 88 | n/a (scripts) | 안전 |
-| `frontend/app/components/MLBaselineV0Card.tsx` | 357 (FIX r2 후) | 850 / 900 | 안전 |
-| `frontend/lib/api/mlBaselineV0.ts` | 91 | 850 / 900 | 안전 |
-| `tests/test_ml_baseline_v0.py` | 259 | n/a (tests) | 안전 |
+| `app/api_ml_baseline.py` | **66** | 600 / 650 | 안전 |
+| `scripts/run_ml_baseline_v0.py` | **92** | n/a (scripts) | 안전 |
+| `frontend/app/components/MLBaselineV0Card.tsx` | **357 (FIX r2 후)** | 850 / 900 | 안전 |
+| `frontend/lib/api/mlBaselineV0.ts` | **95 (FIX r2 후)** | 850 / 900 | 안전 |
+| `tests/test_ml_baseline_v0.py` | **288 (FIX r2 후)** | n/a (tests) | 안전 |
 
 KS-10 trigger/near 0건. 첫 작성 시점 분할 설계로 600 라인 진입 회피.
 
