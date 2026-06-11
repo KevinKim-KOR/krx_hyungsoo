@@ -215,7 +215,11 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     universe_sigs_before = [s for s in fs_before if s.get("scope") == "universe"]
     assert len(universe_sigs_before) == 0
     # universe 후보 전체 목록 표시 금지 (Step6 §13 / AC-28).
-    assert "universe" not in msg_before.lower()
+    # POC2 ML Baseline Evidence Draft Integration (2026-06-11) — ML baseline
+    # evidence bullet 본문에 "universe median" 비교 문구가 들어가므로 단순 substring
+    # "universe" 검사는 더 이상 유효하지 않다. universe momentum 후보 관련 노출이
+    # 없음을 확인하는 기존 의도는 "신규 ETF 관찰 후보" 라벨 부재로 보존.
+    assert "- 신규 ETF 관찰 후보:" not in msg_before
     assert "외부 ETF 후보군" not in msg_before
     # 기준선 [판단 사유] 헤더 1번.
     assert msg_before.count("[판단 사유]") == 1
@@ -238,6 +242,8 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     # 원래 의도). 본 STEP 외 신규 키 추가는 금지.
     # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) — 별도 STEP 으로
     # holdings_market_evidence_snapshot 1건 신규 키 추가 (지시문 §5.11 권장).
+    # POC2 ML Baseline Evidence Draft Integration (2026-06-11) — 추가로
+    # ml_baseline_evidence_snapshot 1건 신규 키 추가 (지시문 §4.2).
     expected_keys = {
         "title",
         "asof",
@@ -246,6 +252,7 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
         "factor_signals",
         "momentum_result",
         "holdings_market_evidence_snapshot",
+        "ml_baseline_evidence_snapshot",
     }
     assert set(payload_after.keys()) == expected_keys
     # universe 결과는 factor_signals 안의 scope="universe" signal 1건으로 표현

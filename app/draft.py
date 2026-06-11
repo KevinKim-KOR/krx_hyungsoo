@@ -33,6 +33,10 @@ from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_top
 from app.message_holdings_market_evidence_bullet import (
     build_holdings_market_evidence_factor_signal,
 )
+from app.ml_baseline_evidence import (
+    build_ml_baseline_evidence_factor_signal,
+    build_ml_baseline_evidence_snapshot,
+)
 from app.models import Run
 from app.momentum import LATEST_ARTIFACT_FILE as UNIVERSE_LATEST_FILE
 from app.momentum import build_holdings_momentum_result
@@ -167,6 +171,17 @@ def _build_holdings_payload(
     if holdings_market_evidence_signal is not None:
         factor_signals = list(factor_signals) + [holdings_market_evidence_signal]
 
+    # POC2 — ML Baseline Evidence Draft Integration (2026-06-11). 저장된
+    # ML baseline v0 룩백 report 를 보조 evidence 로 읽어 draft 에 연결.
+    # 재계산 / feature 재생성 / 외부 호출 / ML 학습 0건 (지시문 §4.1).
+    # report 부재 / 손상 / stale 도 draft 생성을 실패시키지 않는다 (지시문 §4.7).
+    ml_baseline_evidence_snapshot = build_ml_baseline_evidence_snapshot()
+    ml_baseline_evidence_signal = build_ml_baseline_evidence_factor_signal(
+        ml_baseline_evidence_snapshot, asof_iso=asof_iso
+    )
+    if ml_baseline_evidence_signal is not None:
+        factor_signals = list(factor_signals) + [ml_baseline_evidence_signal]
+
     return {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
@@ -177,6 +192,9 @@ def _build_holdings_payload(
         # 저장 시점 evidence snapshot — 이후 시장 데이터가 바뀌어도 본 키의 의미가
         # 변하지 않는다 (지시문 §5.11 / AC-9).
         "holdings_market_evidence_snapshot": market_evidence_snapshot,
+        # ML baseline 룩백 evidence snapshot — 본 draft 가 어떤 baseline 근거로
+        # 생성되었는지 추적 가능 (지시문 §4.2).
+        "ml_baseline_evidence_snapshot": ml_baseline_evidence_snapshot,
     }
 
 

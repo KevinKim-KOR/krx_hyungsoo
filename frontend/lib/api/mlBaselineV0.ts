@@ -93,3 +93,29 @@ export interface MlBaselineV0Response {
 export function fetchMlBaselineV0Latest(): Promise<MlBaselineV0Response> {
   return request<MlBaselineV0Response>("GET", "/ml/baseline-v0/latest");
 }
+
+// POC2 ML Baseline Evidence Draft Integration FIX r3 (2026-06-11).
+// GenerateDraft 와 동일 shape 의 정규화 evidence snapshot. AI Sessions /
+// Decision Evidence 저장 경로가 동일 계약을 쓰도록 노출. report 부재/손상/
+// stale 도 200 응답 + status 명시 (조용히 빠지지 않음).
+export interface MlBaselineEvidenceSnapshot {
+  status: "ok" | "warn" | "stale" | "unavailable" | "error" | string;
+  report_status: string;
+  report_path: string;
+  report_generated_at: string | null;
+  feature_asof_range: Record<string, unknown> | null;
+  evaluated_asof_range: Record<string, unknown> | null;
+  candidate_summary: Record<string, unknown> | null;
+  risk_summary: Record<string, unknown> | null;
+  leakage_summary: Record<string, unknown> | null;
+  limitations: string[];
+  external_context_checklist: string[];
+  message: string | null;
+}
+
+export function fetchMlBaselineEvidenceSnapshot(): Promise<MlBaselineEvidenceSnapshot> {
+  return request<MlBaselineEvidenceSnapshot>(
+    "GET",
+    "/ml/baseline-v0/evidence-snapshot",
+  );
+}

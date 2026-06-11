@@ -36,6 +36,10 @@ export interface AISessionsDraft {
   // 스냅샷. Market Discovery 시점에 응답의 candidates 에서 추출.
   short_term_momentum_snapshot?: Record<string, unknown> | null;
   data_quality_snapshot?: Record<string, unknown> | null;
+  // 2026-06-11 — ML Baseline Evidence Draft Integration. 저장된 ML baseline v0
+  // 룩백 report snapshot. 기본은 null (Market Discovery 직접 흐름에서는 비어있음).
+  // AISessionsCreateTab 가 GET /ml/baseline-v0/latest 결과를 옮겨 담는다.
+  ml_baseline_evidence_snapshot?: Record<string, unknown> | null;
 }
 
 function safeStorage(): Storage | null {

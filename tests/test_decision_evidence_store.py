@@ -553,3 +553,115 @@ def test_insert_record_without_closeout_snapshots_defaults_to_empty(
     assert fetched is not None
     assert fetched["short_term_momentum_snapshot"] == {}
     assert fetched["data_quality_snapshot"] == {}
+    # 2026-06-11 — ML Baseline Evidence Draft Integration. 신규 컬럼도
+    # 기본값이 빈 dict 로 안전하게 반환된다.
+    assert fetched["ml_baseline_evidence_snapshot"] == {}
+
+
+# ─── 2026-06-11 ML Baseline Evidence Draft Integration ─────────────
+
+
+def test_insert_record_with_ml_baseline_evidence_snapshot(tmp_path: Path):
+    """ml_baseline_evidence_snapshot 이 저장 + 조회된다."""
+    from app.decision_evidence_store import get_record, insert_record
+
+    db = tmp_path / "decision.sqlite"
+    snap = {
+        "status": "ok",
+        "report_status": "ok",
+        "report_path": "state/ml/ml_baseline_v0_report_latest.json",
+        "feature_asof_range": {"start": "2026-03-11", "end": "2026-06-08"},
+        "evaluated_asof_range": {
+            "start": "2026-03-11",
+            "end": "2026-05-10",
+            "evaluated_days": 40,
+        },
+        "candidate_summary": {
+            "status": "ok",
+            "evaluated_days": 40,
+            "top_group_avg_future_return": {"20d": 0.1351},
+        },
+        "risk_summary": {
+            "status": "ok",
+            "high_risk_group_future_drawdown": {"10d": -0.0809},
+        },
+        "leakage_summary": {
+            "future_data_leakage_detected": False,
+            "tail_excluded": True,
+            "time_order_preserved": True,
+        },
+        "limitations": ["평가 기간이 짧아 장기 안정성 검증은 아닙니다."],
+        "external_context_checklist": [
+            "CNN Fear & Greed 현재 수준",
+            "원유 가격 급등 여부",
+        ],
+    }
+    saved = insert_record(
+        **_minimal_kwargs(ml_baseline_evidence_snapshot=snap), db_path=db
+    )
+    fetched = get_record(saved["id"], db_path=db)
+    assert fetched is not None
+    got = fetched["ml_baseline_evidence_snapshot"]
+    assert got["status"] == "ok"
+    assert got["candidate_summary"]["evaluated_days"] == 40
+    assert got["risk_summary"]["high_risk_group_future_drawdown"]["10d"] == -0.0809
+    assert got["leakage_summary"]["future_data_leakage_detected"] is False
+    assert "CNN Fear & Greed 현재 수준" in got["external_context_checklist"]
+
+
+def test_ml_baseline_evidence_column_present_after_migration(tmp_path: Path):
+    """init_db 후 ml_baseline_evidence_snapshot_json 컬럼이 항상 존재."""
+    import sqlite3
+
+    from app.decision_evidence_store import init_db
+
+    db = tmp_path / "decision.sqlite"
+    init_db(db_path=db)
+    with sqlite3.connect(str(db)) as con:
+        cur = con.execute("PRAGMA table_info(ai_session_records)")
+        cols = {row[1] for row in cur.fetchall()}
+    assert "ml_baseline_evidence_snapshot_json" in cols
+
+
+def test_legacy_db_migrates_ml_baseline_evidence_column(tmp_path: Path):
+    """ml 컬럼이 없는 legacy DB 가 자동 마이그레이션된다."""
+    import sqlite3
+
+    from app.decision_evidence_store import init_db
+
+    db = tmp_path / "decision.sqlite"
+    # legacy: 신규 컬럼 누락한 옛 DDL.
+    legacy_ddl = """
+    CREATE TABLE ai_session_records (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        asof TEXT NOT NULL,
+        source_screen TEXT NOT NULL,
+        filters_json TEXT NOT NULL,
+        candidate_snapshot_json TEXT NOT NULL,
+        question_text TEXT NOT NULL,
+        gpt_answer_text TEXT NOT NULL DEFAULT '',
+        gemini_answer_text TEXT NOT NULL DEFAULT '',
+        claude_answer_text TEXT NOT NULL DEFAULT '',
+        user_memo TEXT NOT NULL DEFAULT '',
+        user_verdict TEXT NOT NULL,
+        next_checks_json TEXT NOT NULL DEFAULT '[]',
+        linked_market_refresh_id TEXT,
+        market_context_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        constituent_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        overlap_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        short_term_momentum_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        data_quality_snapshot_json TEXT NOT NULL DEFAULT '{}'
+    );
+    """.strip()
+    with sqlite3.connect(str(db)) as con:
+        con.execute(legacy_ddl)
+        con.commit()
+
+    init_db(db_path=db)
+
+    with sqlite3.connect(str(db)) as con:
+        cur = con.execute("PRAGMA table_info(ai_session_records)")
+        cols = {row[1] for row in cur.fetchall()}
+    assert "ml_baseline_evidence_snapshot_json" in cols

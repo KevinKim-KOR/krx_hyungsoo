@@ -64,6 +64,8 @@ export interface CreateDecisionSessionRequest {
   // 2026-06-01 — Market Discovery Evidence Closeout 1차.
   short_term_momentum_snapshot?: Record<string, unknown> | null;
   data_quality_snapshot?: Record<string, unknown> | null;
+  // 2026-06-11 — ML Baseline Evidence Draft Integration.
+  ml_baseline_evidence_snapshot?: Record<string, unknown> | null;
 }
 
 export interface CreateDecisionSessionResponse {
@@ -115,6 +117,8 @@ export interface DecisionSessionDetail {
   // 2026-06-01 — Market Discovery Evidence Closeout 1차.
   short_term_momentum_snapshot: Record<string, unknown>;
   data_quality_snapshot: Record<string, unknown>;
+  // 2026-06-11 — ML Baseline Evidence Draft Integration.
+  ml_baseline_evidence_snapshot: Record<string, unknown>;
 }
 
 export interface GetDecisionSessionResponse {

@@ -20,6 +20,7 @@ import {
   createDecisionSession,
   type DecisionUserVerdict,
 } from "@/lib/api";
+import { fetchMlBaselineEvidenceSnapshot } from "@/lib/api/mlBaselineV0";
 import {
   clearAISessionsDraft,
   type AISessionsDraft,
@@ -152,6 +153,40 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
         short_term_momentum_snapshot:
           draft.short_term_momentum_snapshot ?? null,
         data_quality_snapshot: draft.data_quality_snapshot ?? null,
+        // 2026-06-11 ML Baseline Evidence Draft Integration FIX r3 — 저장된
+        // ML baseline 룩백 report 의 정규화 evidence snapshot. draft 에 이미
+        // 있으면 그대로 사용, 없으면 GET /ml/baseline-v0/evidence-snapshot
+        // (read-only, GenerateDraft 와 동일 shape) 결과를 채움.
+        // 재계산 / feature 재생성 / 외부 호출 / ML 학습 0건. fetch 실패 시에도
+        // 조용히 빠지지 않도록 status="error" 정규화 snapshot 으로 채움
+        // (지시문 §4.7).
+        ml_baseline_evidence_snapshot:
+          draft.ml_baseline_evidence_snapshot ??
+          (await (async () => {
+            try {
+              return (await fetchMlBaselineEvidenceSnapshot()) as unknown as Record<
+                string,
+                unknown
+              >;
+            } catch (e) {
+              return {
+                status: "error",
+                report_status: "error",
+                report_path: "",
+                report_generated_at: null,
+                feature_asof_range: null,
+                evaluated_asof_range: null,
+                candidate_summary: null,
+                risk_summary: null,
+                leakage_summary: null,
+                limitations: [
+                  "ML baseline evidence snapshot 을 가져오지 못했습니다.",
+                ],
+                external_context_checklist: [],
+                message: `evidence snapshot fetch 실패: ${(e as Error).message}`,
+              } as Record<string, unknown>;
+            }
+          })()),
       });
       setStatusMessage(
         `저장 완료 (id: ${res.id}). [기록 조회] 탭에서 확인할 수 있습니다.`,

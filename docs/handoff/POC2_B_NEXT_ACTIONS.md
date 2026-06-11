@@ -1,12 +1,61 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-11 (ML Baseline v0 룩백 검증)
+작성일: 2026-05-20 / 갱신: 2026-06-11 (ML Baseline Evidence Draft Integration)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-11 — ML Baseline v0 룩백 검증)
+## 0. 직전 STEP 결과 (2026-06-11 — ML Baseline Evidence Draft Integration)
+
+저장된 ML baseline v0 룩백 report 를 GenerateDraft / AI Sessions draft 의 보조
+evidence 로 연결. baseline 재계산 / feature 재생성 / 외부 source 호출 / ML 학습 /
+HTTP self-call 0건. 매수/매도/추천/현금비중/조정장/위험 알림 0건.
+
+### 결과 요약
+
+- 신규 모듈 1종: `app/ml_baseline_evidence.py` **452 라인** — JSON 파일 직접 read
+  (`state/ml/ml_baseline_v0_report_latest.json`), stale 기준 `feature_asof_range.end`
+  7일 초과. snapshot builder + bullet builder + factor signal builder + renderer.
+- 수정 모듈 2종: `app/draft.py` (Run payload 에 `ml_baseline_evidence_snapshot`
+  키 + factor_signals 에 scope="ml_baseline_evidence" entry 1건 추가),
+  `app/draft_message.py` ([판단 사유] 섹션 bullet 1줄).
+- draft_payload 신규 키 `ml_baseline_evidence_snapshot`: status / report_status /
+  report_generated_at / feature_asof_range / evaluated_asof_range /
+  candidate_summary / risk_summary / leakage_summary / limitations /
+  external_context_checklist (7건) / message — 총 11항목.
+- status 5종 자동 판정: ok / warn / stale (7일 초과) / unavailable (report 부재)
+  / error (손상 또는 errors 존재).
+- AI 외부 context checklist 7건 (CNN Fear&Greed / VIX·VKOSPI / 원유 / USD-KRW /
+  미국장·선물 / 지정학 / 한국장 영향 업종) — 외부 수집 구현 0건 (질문 목록만).
+- 실측: 운영 SQLite 기준 status=ok / candidate evaluated_days=40 / risk
+  evaluated_days=40 / leakage 0 / external checklist 7건. report 부재 / 손상 /
+  stale 모두 draft 실패시키지 않음 (조용히 빠지지 않고 status 명시).
+- pytest **454 passed** (+22 신규 / 회귀 0, FIX r3 후). black / flake8 / Next.js build PASS.
+- 사용자 결정 (a)+(a)+(a): JSON 직접 read / stale 7일 / [판단 사유] bullet 위치.
+- **FIX r2 (검증자 1차 REJECTED 후속)**: AC-2 의 AI Sessions / Decision Evidence
+  저장 경로 통합 누락 보완. `ai_session_records.ml_baseline_evidence_snapshot_
+  json` 컬럼 + 자동 마이그레이션 + insert/get/SELECT 경로 + API 모델 (Create/
+  Detail) + frontend (aiSessionsDraft / decisionSessions 타입 + AISessionsCreateTab
+  fallback). 신규 테스트 4건 (decision store 3 + ML evidence 통합 2).
+- **FIX r3 (검증자 2차 REJECTED 후속, 데이터 계약 단일화)**: AISessionsCreateTab
+  fallback 이 raw `{api_status, report_path, report, message}` 를 저장하던 문제 해결.
+  backend `GET /ml/baseline-v0/evidence-snapshot` 신규 (GenerateDraft 와 동일 shape).
+  frontend `fetchMlBaselineEvidenceSnapshot()` 신규 + AISessionsCreateTab fallback
+  교체. fetch 실패 시에도 status="error" 정규화 snapshot 으로 채움 (silent fallback
+  제거). 신규 테스트 2건 (evidence-snapshot API ok / unavailable).
+
+### 다음 분기 후보
+
+1. **report stale 시 CLI 재실행 안내 UI** — Data Status 카드 옆 안내 배지.
+2. **5년 backfill 후 evidence 신호 강도 시계열 분해** — rolling window.
+3. **§6.6 제외 source** (CNN Fear&Greed / VKOSPI / 외국인·기관 수급) — BACKLOG.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-11 — ML Baseline v0 룩백 검증)
 
 현재 feature dataset 이 과거 구간에서 (1) 상승 후보 발굴 / (2) 위험 구간 감지
 baseline 으로 의미가 있었는지 룩백 검증. CLI 전용. 매수/매도 판단 X,
@@ -34,7 +83,7 @@ baseline 으로 의미가 있었는지 룩백 검증. CLI 전용. 매수/매도 
 
 ---
 
-## 0-1. 이전 STEP 결과 (2026-06-08 — ML Feature Sanity Check)
+## 0-2. 이전 STEP 결과 (2026-06-08 — ML Feature Sanity Check)
 
 ML baseline v0 입력 직전 데이터 품질 검산. CLI 전용. 4 sub-check
 (coverage / calculation / NAV join / risk proxy).
@@ -55,7 +104,7 @@ ML baseline v0 입력 직전 데이터 품질 검산. CLI 전용. 4 sub-check
 
 ---
 
-## 0-2. 이전 STEP 결과 (2026-06-08 — ML 최소 데이터 레인 1차)
+## 0-3. 이전 STEP 결과 (2026-06-08 — ML 최소 데이터 레인 1차)
 
 ML baseline v0 입력 직전 데이터 품질 검산. CLI 전용 실행. ML 모델 / 위험 threshold /
 매수·매도 판단 X.

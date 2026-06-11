@@ -83,6 +83,12 @@ from app.message_holdings_market_evidence_bullet import (
     render_holdings_market_evidence_bullet,
 )
 
+# POC2 — ML Baseline Evidence Draft Integration (2026-06-11). 저장된 baseline
+# 룩백 report 가 GenerateDraft 시점에 snapshot 으로 박혀 있고, 본 helper 가
+# [판단 사유] 의 "ML baseline 룩백 evidence" 1줄을 추출한다. unavailable / error
+# 도 1줄로 노출 (조용히 빠지지 않음 — 지시문 §4.7).
+from app.ml_baseline_evidence import render_ml_baseline_evidence_bullet
+
 # Step 6 Fix 라운드: external_universe_bullet 빌더는 본 파일 안에 직접 둔다
 # (factor_signals universe scope signal 에서 추출 — message_universe_bullet 의
 # build_universe_signal_texts 가 reason_text/fallback_text 만 만드는 책임으로 단순화).
@@ -490,6 +496,9 @@ def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
     market_evidence = render_holdings_market_evidence_bullet(payload)
     if market_evidence is not None:
         bullets.append(market_evidence)
+    ml_evidence = render_ml_baseline_evidence_bullet(payload)
+    if ml_evidence is not None:
+        bullets.append(ml_evidence)
     eu = _external_universe_bullet(payload)
     if eu is not None:
         bullets.append(eu)

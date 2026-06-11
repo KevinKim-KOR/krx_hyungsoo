@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-08 (ML Feature Sanity Check)
+최종 업데이트: 2026-06-11 (ML Baseline Evidence Draft Integration)
 
 ## 0. Canonical
 
@@ -23,7 +23,17 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **ML Baseline v0 룩백 검증** (2026-06-11).
+- **현재 완료 상태**: **ML Baseline Evidence Draft Integration** (2026-06-11).
+  - 저장된 ML baseline v0 룩백 report 를 GenerateDraft 의 보조 evidence 로 연결. CLI 재실행 / feature 재생성 / 외부 source 호출 / ML 학습 0건. 매수/매도/추천/현금비중/조정장/위험 알림 문구 0건.
+  - 신규 모듈: `app/ml_baseline_evidence.py` **452 라인** (KS-10 안전) — JSON 파일 직접 read (HTTP self-call X), stale 기준 `feature_asof_range.end` 7일 초과.
+  - draft_payload 신규 키: `ml_baseline_evidence_snapshot` (status / candidate_summary / risk_summary / leakage_summary / limitations / external_context_checklist 7항목). factor_signals 신규 scope: `ml_baseline_evidence` (보조 evidence 1건).
+  - **FIX r2 (검증자 1차 REJECTED 후속, AC-2 완전 구현)**: AI Sessions / Decision Evidence 저장 경로에도 `ml_baseline_evidence_snapshot` 정식 연결. `ai_session_records` 테이블에 `ml_baseline_evidence_snapshot_json` 컬럼 + 자동 ADD COLUMN 마이그레이션 (`_migrate_add_ml_baseline_evidence_snapshot`). `insert_record` / `get_record` / `_row_to_full_dict` / `_SELECT_COLS` 갱신. `app/api_decision_sessions.py` 의 `CreateDecisionSessionRequest` / `DecisionSessionDetail` 에 필드 추가. frontend `aiSessionsDraft.ts` / `decisionSessions.ts` 타입 + `AISessionsCreateTab` 저장 시점 fallback 으로 자동 채움 (draft 에 이미 있으면 그대로 사용).
+  - **FIX r3 (검증자 2차 REJECTED 후속, 데이터 계약 단일화)**: `AISessionsCreateTab` fallback 이 raw `{api_status, report_path, report, message}` 를 저장하던 문제를 해결. backend 에 `GET /ml/baseline-v0/evidence-snapshot` 신규 (GenerateDraft 와 동일한 정규화 shape 반환, read-only) + frontend `fetchMlBaselineEvidenceSnapshot()` 신규 + AISessionsCreateTab 가 이 API 결과를 그대로 payload 에 담음. fetch 실패 시에도 status="error" 정규화 snapshot 으로 채움 (지시문 §4.7 — 조용히 빠지지 않음).
+  - draft_message [판단 사유] 섹션에 "ML baseline 룩백 evidence" 1줄 추가 — 평가 거래일 / 후보 발굴 baseline / 위험 baseline / leakage / 한계 4종 본문.
+  - report 부재 → status=unavailable / 손상 → error / stale → stale / warn → warn 으로 draft 에 그대로 노출 (조용히 빠지지 않음).
+  - 실측 (운영 SQLite): status=ok / candidate evaluated_days=40 / risk evaluated_days=40 / leakage 0 / external checklist 7건.
+  - pytest **454 passed** (+22 신규, 회귀 0, FIX r3 후). black / flake8 / Next.js build PASS.
+- **이전 STEP**: **ML Baseline v0 룩백 검증** (2026-06-11, commit `4c1cb3b5`).
   - 현재 feature dataset 이 과거 구간에서 (1) 상승 후보 발굴 baseline 과 (2) 위험 구간 감지 baseline 으로 의미가 있었는지 룩백 검증. 실시간 매수/매도 판단 X, 위험 알림 X, 조정장 확정 X, 위험 threshold X.
   - CLI: `scripts/run_ml_baseline_v0.py` (외부 source 호출 0건). read-only API: `GET /ml/baseline-v0/latest`. Data Status 카드 신규: `MLBaselineV0Card`.
   - Candidate baseline (사용자 결정 — Top quintile 20%): composite rank v0 = return_20d / excess_20d / return_10d / volume_ratio_20d DESC rank 평균. future_return / future_excess_return horizons = 5/10/20d.
@@ -68,6 +78,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| ML Baseline Evidence Draft Integration | DONE | 2026-06-11 | [POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md](handoff/POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md) |
 | ML Baseline v0 룩백 검증 | DONE | 2026-06-11 | [POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md](handoff/POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md) |
 | ML Feature Sanity Check | DONE | 2026-06-08 | [POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md](handoff/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
 | ML 최소 데이터 레인 1차 | DONE | 2026-06-08 | [POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md](handoff/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |

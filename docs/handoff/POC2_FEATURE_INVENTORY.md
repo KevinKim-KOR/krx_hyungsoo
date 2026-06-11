@@ -317,6 +317,27 @@
 | 테스트용/임시 여부 | 아님 — 운영용 |
 | 다음 조치 | (1) NAV 일별 적재 / 5년 backfill. (2) 시계열 rolling window 분해. (3) §6.6 제외 source BACKLOG. 본 STEP 이 점수판이 아닌 룩백 baseline 임 — ML 모델 학습 / threshold 확정은 별도 STEP. |
 
+### 2.19 ML Baseline Evidence Draft Integration (보조 evidence)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 저장된 ML baseline v0 룩백 report 를 GenerateDraft / AI Sessions draft 에 보조 evidence 로 연결 |
+| 현재 메뉴 위치 | GenerateDraft 흐름 자동 통합 (draft_payload.`ml_baseline_evidence_snapshot` + draft_message [판단 사유] 1줄). 추가로 AI Sessions / Decision Evidence 저장 경로에도 `ai_session_records.ml_baseline_evidence_snapshot_json` 컬럼으로 영속화. 별도 화면 진입점 없음. |
+| 기능 목적 | 판단 초안 안에서 ML baseline 결과의 상태 / 검증 기간 / 후보 발굴 근거 / 위험 패턴 근거 / 한계 / AI 외부 context checklist 를 보조 evidence 로 노출. 매수/매도/추천/현금비중/조정장/위험 알림 0건. |
+| 사용 가능 여부 | **사용 가능** (2026-06-11 DONE) |
+| 데이터 소스 상태 | `state/ml/ml_baseline_v0_report_latest.json` 직접 read. baseline 재계산 / feature 재생성 / 외부 source 호출 / ML 학습 / HTTP self-call 0건. |
+| API 진입점 | 없음 (draft 생성 시점 자동 통합). 진단용은 §2.18 `GET /ml/baseline-v0/latest`. |
+| 정책 / 사용자 결정 | (a) JSON 파일 직접 read. (a) stale 기준 = `feature_asof_range.end` 가 오늘(KST) 대비 **7일 초과**. (a) draft 문구 반영 위치 = draft_message [판단 사유] bullet. |
+| draft_payload 신규 키 | `ml_baseline_evidence_snapshot` = {status / report_status / report_generated_at / feature_asof_range / evaluated_asof_range / candidate_summary / risk_summary / leakage_summary / limitations / external_context_checklist (7건) / message}. |
+| AI Sessions 저장 (FIX r2) | `ai_session_records.ml_baseline_evidence_snapshot_json` 컬럼 + 자동 ADD COLUMN 마이그레이션. POST `/decision/sessions` 가 필드 수용, GET 응답에 그대로 반환. |
+| 데이터 계약 단일화 (FIX r3) | `GET /ml/baseline-v0/evidence-snapshot` 신규 — GenerateDraft 와 동일한 정규화 shape 반환 (status / candidate_summary / risk_summary / leakage_summary / limitations / external_context_checklist). frontend `AISessionsCreateTab` 가 draft 에 snapshot 없으면 본 API 결과로 fallback. fetch 실패 시 status="error" 정규화 snapshot 으로 채움 (silent fallback 금지). |
+| factor_signals 신규 scope | `ml_baseline_evidence` (1건). is_available=True 면 reason_text, False 면 fallback_text. |
+| status 5종 | ok / warn / stale / unavailable / error (report 부재 / 손상 / errors 존재 / 7일 초과 자동 판정). |
+| 외부 context checklist (AI 확인용) | CNN Fear&Greed / VIX·VKOSPI 유사 / 원유 / USD-KRW / 미국장·선물 / 지정학 / 한국장 영향 업종 — 7건. 외부 수집 구현 0건 (질문 목록만). |
+| 실측 (2026-06-11) | 운영 SQLite 기준 status=ok / candidate evaluated_days=40 / risk evaluated_days=40 / leakage 0 / external checklist 7건 노출. |
+| 테스트용/임시 여부 | 아님 — 운영용 |
+| 다음 조치 | report stale 시 CLI 재실행 안내 (사용자 결정). 5년 backfill 후 evidence 신호 강도 시계열 분해 (BACKLOG). |
+
 ---
 
 ## 3. Context Bridges (화면 간 전달)
