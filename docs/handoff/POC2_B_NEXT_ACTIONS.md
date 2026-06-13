@@ -592,3 +592,11 @@ PROJECT_ORIGIN_INTENT 에 기록 후 변경.
   ASSUMPTIONS.md 를 변경하고, 본 문서는 그 변경을 짧게 반영한다.
 - 본 문서는 시간이 지나면 **현재 STEP** 만 갱신한다 — "바로 다음 후보" 와
   "지금 멈춘 것" 의 큰 흐름은 분기 1회 사용자 본인이 검토한다.
+
+---
+
+Active Reference:
+3-PUSH Runtime Package Contract
+- path: docs/handoff/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md
+- purpose: PC/OCI가 공유하는 three_push_runtime_package.v1 schema 계약
+- usage: PUSH 후속 Step에서는 evidence package / runtime snapshot / message_text 설계 시 이 문서를 기준으로 한다.
