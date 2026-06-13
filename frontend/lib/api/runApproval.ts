@@ -17,6 +17,16 @@ export const TERMINAL_STATES: ReadonlyArray<RunStatus> = [
   "COMPLETED",
 ];
 
+// POC2 3-PUSH Message Contract (2026-06-12, FIX r2) — 하루 3종 PUSH 메시지 구분.
+// "holdings_briefing" = 기존 /runs/generate-from-holdings (재정의).
+// "market_briefing" = PUSH-1, 기존 /runs/generate + input_data.push_kind 분기.
+// "spike_or_falling_alert" = PUSH-3, 기존 /runs/generate + input_data.push_kind 분기.
+// 별도 PUSH endpoint 신설 0건 (§3 / §11 준수). 과거 run 은 null/undefined 가능.
+export type PushKind =
+  | "holdings_briefing"
+  | "market_briefing"
+  | "spike_or_falling_alert";
+
 export interface Run {
   run_id: string;
   asof: string;
@@ -26,6 +36,8 @@ export interface Run {
   // 프론트엔드는 opaque string 으로 받아 그대로 렌더링한다 (조립/파싱 금지).
   // 과거 run 또는 비-holdings 초안에는 null/undefined.
   message_text?: string | null;
+  // POC2 3-PUSH Message Contract (2026-06-11).
+  push_kind?: PushKind | null;
 }
 
 export function generateDraft(input_data: Record<string, unknown>): Promise<Run> {
@@ -46,6 +58,25 @@ export function fetchRun(run_id: string): Promise<Run> {
 
 export function isTerminal(status: RunStatus): boolean {
   return TERMINAL_STATES.includes(status);
+}
+
+// POC2 3-PUSH Message Contract (2026-06-12, FIX r2 — 설계자 수용):
+// 별도 PUSH endpoint 신설 금지선 준수. PUSH-1 / PUSH-3 은 기존 /runs/generate
+// 의 input_data.push_kind 분기로 통합. PUSH-2 (holdings_briefing) 는
+// holdings.ts 의 generateDraftFromHoldings 가 담당 (별도 holdings 데이터 의존).
+//
+// 본 함수들은 backend 가 message_text 까지 미리 빌드한 Run 을 반환한다.
+// frontend 는 message_text 를 opaque 로 받아 그대로 표시 (조립 금지 — AC-2).
+export function generateMarketBriefingDraft(): Promise<Run> {
+  return request<Run>("POST", "/runs/generate", {
+    input_data: { push_kind: "market_briefing" },
+  });
+}
+
+export function generateSpikeAlertDraft(): Promise<Run> {
+  return request<Run>("POST", "/runs/generate", {
+    input_data: { push_kind: "spike_or_falling_alert" },
+  });
 }
 
 // ─── POC2 Step 5B: momentum result (holdings mode) ──────────────────

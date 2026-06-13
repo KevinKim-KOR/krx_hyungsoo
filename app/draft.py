@@ -50,15 +50,35 @@ def _new_run_id() -> str:
 
 
 def generate_draft(input_data: dict[str, Any]) -> Run:
-    """샘플 초안 생성 엔트리 (개발/테스트용 — 운영 입력 아님).
+    """샘플 초안 + PUSH-1/PUSH-3 draft 생성 엔트리.
 
-    POC2 Step 1 부터는 운영 흐름이 generate_draft_from_holdings() 로 바뀌었다.
-    이 함수는 샘플 입력 폼(접힘 섹션)에서만 사용된다.
+    POC2 Step 1 부터는 운영 holdings 흐름이 generate_draft_from_holdings() 로
+    분리되어 있다. 본 함수는:
+    - input_data.push_kind == "market_briefing" → PUSH-1 (시장 흐름 브리핑).
+    - input_data.push_kind == "spike_or_falling_alert" → PUSH-3 (급등락 관찰).
+    - 그 외 → 샘플 입력 폼 (개발/테스트용, POC1 호환).
 
-    계약 불만족(빈 dict 포함, 필수 키 누락) 시 SampleDraftInputError 가
-    발생하며 이 함수는 status=FAILED, draft_payload=None 인 Run 을 저장하고
-    반환한다. "GenerateDraft 실패 → FAILED 단일 규칙" (POC1) 유지.
+    설계자 수용 (3-PUSH FIX r2, 2026-06-12): 별도 PUSH endpoint 신설 금지선
+    준수. PUSH-1/PUSH-3 도 본 단일 endpoint 의 input_data 분기로 통합.
+    PUSH-2 (holdings_briefing) 는 별도 holdings 데이터 의존성으로 인해 기존
+    /runs/generate-from-holdings 가 재정의된 형태로 분리 유지.
+
+    계약 불만족 시 status=FAILED, draft_payload=None 인 Run 저장 후 반환
+    ("GenerateDraft 실패 → FAILED 단일 규칙" POC1 유지).
     """
+    push_kind = input_data.get("push_kind") if isinstance(input_data, dict) else None
+    if push_kind == "market_briefing":
+        # PUSH-1 분기 책임은 draft_three_push 모듈로 분리 (FIX r3 — KS-10
+        # 책임 집중 해소). 동적 import 로 circular 회피.
+        from app.draft_three_push import generate_market_briefing_via_generic
+
+        return generate_market_briefing_via_generic(input_data)
+    if push_kind == "spike_or_falling_alert":
+        from app.draft_three_push import generate_spike_alert_via_generic
+
+        return generate_spike_alert_via_generic(input_data)
+
+    # 기존 sample_draft 흐름 (POC1 호환 — 개발/테스트용).
     run_id = _new_run_id()
     asof = datetime.now(timezone.utc).isoformat()
 
@@ -420,12 +440,26 @@ def generate_draft_from_holdings(
     # 같은 문자열을 GET /runs/{id} 응답(preview), Telegram 발송, OCI handoff
     # 모두에서 재사용한다 → preview ↔ 실제 발송문 단일 소스 보장.
     msg = draft_message.build_message_text(run_id, payload)
+    # POC2 3-PUSH Message Contract 정렬 (2026-06-11) — 기존 holdings draft 는
+    # PUSH-2 holdings briefing 으로 재정의. push_kind 만 명시, builder / payload
+    # 구조는 변경 없음.
     run = Run(
         run_id=run_id,
         asof=asof,
         status="PENDING_APPROVAL",
         draft_payload=payload,
         message_text=msg if msg else None,
+        push_kind="holdings_briefing",
     )
     store.save(run)
     return run
+
+
+# ─── POC2 3-PUSH (2026-06-11) — PUSH-1 / PUSH-3 entry ────────────────
+# FIX r3 (2026-06-12, KS-10 책임 집중 해소): generate_market_briefing_draft /
+# generate_spike_alert_draft 본문은 app/draft_three_push.py 로 분리. 기존 호출자
+# (tests / app 내부) 호환을 위해 본 모듈에서 re-export 만 유지.
+from app.draft_three_push import (  # noqa: E402, F401  (re-export 호환)
+    generate_market_briefing_draft,
+    generate_spike_alert_draft,
+)

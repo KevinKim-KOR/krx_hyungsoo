@@ -350,6 +350,24 @@
 | 실측 (2026-06-11) | uvicorn 직접 호출 — POST 2.6ms accepted / 중복 2.2ms already_running / 단계 polling 정확 / 운영 SQLite 최종 success (evaluated_days=43). |
 | 테스트용/임시 여부 | 아님 — 운영용. |
 | 다음 조치 | schedule 기반 자동 실행 / 실행 히스토리 / stale 알림 deeplink 는 BACKLOG. |
+
+### 2.21 3-PUSH Message Contract 정렬 (PUSH-1 / PUSH-2 / PUSH-3 message_text 계약)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 하루 3종 PUSH 메시지의 `message_text` 계약 정리 — `market_briefing` / `holdings_briefing` / `spike_or_falling_alert`. |
+| 현재 메뉴 위치 | Approval / Telegram 화면의 `ThreePushDraftCard` (PUSH-1 / PUSH-3 진입점, 임시 위치) + Holdings 화면의 "초안 생성" 버튼 (PUSH-2 재정의). |
+| 기능 목적 | 기존 Run → Approval → OCI → Telegram 단일 경로를 유지하면서 3종 PUSH 메시지가 각각 어떤 입력을 쓰고 어떤 문구를 생성하는지 구분 가능하게 만든다. 새 PUSH API / Telegram 직접 발송 / 자동 발송 0건. |
+| 사용 가능 여부 | **사용 가능** (2026-06-12 DONE). |
+| 데이터 소스 상태 | 외부 source 호출 0건. ML baseline evidence snapshot (정규화 read-only) + Market Discovery TopN (`compute_topn`) + universe_momentum_latest.json (기존 PUSH 3 신호 재사용). |
+| API 진입점 | PUSH-1: 기존 `POST /runs/generate` + body `input_data.push_kind="market_briefing"`. PUSH-3: 동일 endpoint + `push_kind="spike_or_falling_alert"`. PUSH-2: 기존 `POST /runs/generate-from-holdings` (재정의, holdings 데이터 의존). **신규 PUSH endpoint 0건 — 지시문 §3 / §11 별도 PUSH API 신설 금지선 준수 (FIX r2 — 설계자 수용)**. |
+| Run 모델 확장 | `Run.push_kind: Optional[str]` 추가 — `"holdings_briefing"` / `"market_briefing"` / `"spike_or_falling_alert"`. 과거 run 은 None 허용 (하위호환). delivery / OCI consumer 는 본 필드를 읽지 않음 — Telegram 본문은 `message_text` 단일 소스 그대로. |
+| message_text 단일 소스 | backend 가 generate 시점에 빌드해 Run 에 저장. frontend / preview / OCI handoff / Telegram 모두 동일 문자열. frontend 본문 조립 0건 (AC-2). |
+| 승인 게이트 유지 | PENDING_APPROVAL → DELIVERING → COMPLETED / FAILED 흐름 변경 0건. 본 카드 자체가 Telegram 발송 트리거 X — 인간 승인 후 기존 OCI handoff 경로 사용 (AC-3 / AC-7). |
+| delivery fallback 안전 | message_text 누락된 PUSH-1/3 run 이 holdings builder 로 rebuild 되어 raw recommendations 발송되던 분기 차단 (`DeliveryError` raise). |
+| 실측 (2026-06-12 FIX r2 후) | `POST /runs/generate` + `input_data.push_kind` 분기 — PUSH-1 496자 / PUSH-3 213자. 양쪽 모두 PENDING_APPROVAL + push_kind 전파 + raw JSON 0건. 신규 PUSH endpoint 2개는 405 (제거 확인). |
+| 테스트용/임시 여부 | `ThreePushDraftCard` 의 UI 위치는 임시 진입점 — 발송 시간 / UX 확정은 별도 STEP (지시문 §13). builder / draft / API 계약 자체는 운영용. |
+| 다음 조치 | (1) 하루 3회 발송 시간 + 승인 UX 확정. (2) PUSH-1 뉴스 source 도입 여부. (3) PUSH-3 개별 주식 universe 확장 여부. (4) ThreePushDraftCard 정식 화면 위치. 모두 BACKLOG. |
 | factor_signals 신규 scope | `ml_baseline_evidence` (1건). is_available=True 면 reason_text, False 면 fallback_text. |
 | status 5종 | ok / warn / stale / unavailable / error (report 부재 / 손상 / errors 존재 / 7일 초과 자동 판정). |
 | 외부 context checklist (AI 확인용) | CNN Fear&Greed / VIX·VKOSPI 유사 / 원유 / USD-KRW / 미국장·선물 / 지정학 / 한국장 영향 업종 — 7건. 외부 수집 구현 0건 (질문 목록만). |

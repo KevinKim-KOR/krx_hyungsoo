@@ -138,6 +138,18 @@ def deliver(run: Run) -> None:
         message_text = draft_message.build_message_text(
             run.run_id, run.draft_payload or {}
         )
+    # POC2 3-PUSH (2026-06-11): PUSH-1 / PUSH-3 은 generate 시점에 message_text 가
+    # 항상 박혀있다. 본 분기에서 message_text 가 None 이면 운영 상 결함이므로
+    # holdings fallback 으로 raw 가 노출되지 않도록 명시 에러로 떨어진다 (§10.10
+    # raw JSON 금지).
+    if message_text is None and run.push_kind in (
+        "market_briefing",
+        "spike_or_falling_alert",
+    ):
+        raise DeliveryError(
+            f"push_kind={run.push_kind} run 에 message_text 가 없습니다 — "
+            f"holdings fallback 으로 대체 발송 금지: run_id={run.run_id}"
+        )
 
     # 1) staging artifact 작성
     local_path = store.write_handoff_artifact(run, approved_at, message_text)

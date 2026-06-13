@@ -1,12 +1,70 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-11 (UI 안전실행 — ML evidence 갱신 background job)
+작성일: 2026-05-20 / 갱신: 2026-06-12 (3-PUSH Message Contract 정렬)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-11 — UI 안전실행, ML evidence 갱신 background job)
+## 0. 직전 STEP 결과 (2026-06-12 — 3-PUSH Message Contract 정렬)
+
+기존 `Run → Approval → OCI handoff → Telegram` 단일 경로를 유지하면서 하루 3종
+PUSH 메시지 (`market_briefing` / `holdings_briefing` / `spike_or_falling_alert`)
+의 `message_text` 계약을 정리. 새 PUSH API / Telegram 직접 발송 / OCI 재구성 /
+scheduler / 신규 외부 source / 매수·매도·교체·현금비중·조정장 확정 0건.
+
+### 결과 요약
+
+- 신규 builder 2종: `app/message_market_briefing.py` (184 라인, PUSH-1) +
+  `app/message_spike_alert.py` (209 라인, PUSH-3). 입력은 모두 read-only —
+  ML baseline evidence snapshot / compute_topn / universe_momentum_latest.json.
+- **신규 API endpoint 0건 (FIX r2 — 설계자 수용)**: 1차 작업에서 신설했던
+  `/runs/generate-{market-briefing,spike-alert}` 는 §3 / §11 금지선과 충돌해
+  **모두 제거**. PUSH-1 / PUSH-3 는 기존 `POST /runs/generate` 의 `input_data.
+  push_kind` 분기로 통합. `app/api_three_push.py` 삭제.
+- draft entry 2종 (`generate_market_briefing_draft` / `generate_spike_alert_
+  draft`) + Run.push_kind: Optional[str] 필드 추가 (legacy run 하위호환).
+- `generate_draft(input_data)` 가 `input_data.get("push_kind")` 로 분기:
+  `"market_briefing"` → PUSH-1, `"spike_or_falling_alert"` → PUSH-3, 그 외 →
+  기존 sample_draft 흐름 (POC1 호환).
+- PUSH-2 (holdings_briefing) 는 기존 `generate_draft_from_holdings()` 재정의
+  — push_kind 만 명시, builder / payload 변경 0건.
+- delivery fallback 보강: message_text 누락된 PUSH-1/3 run 이 holdings builder
+  로 fallback 되어 raw recommendations 발송되는 것을 명시 차단 (DeliveryError).
+- frontend: Run.push_kind 타입 + 2개 API 함수 + ThreePushDraftCard (Approval
+  TelegramView 안 임시 진입점). 발송 시간 / UX 확정은 별도 STEP (지시문 §13).
+- 실측 (live API): PUSH-1 496자 (운영 SQLite ML baseline 위험 패턴 + checklist
+  7건), PUSH-3 209자 (현재 universe 임계 ±5% 이상 spike 없음 자연 노출).
+- **FIX r2 추가 변경**: (1) `SPIKE_DISPLAY_THRESHOLD_PCT` → `SPIKE_DISPLAY_
+  RETURN_PCT_MIN` rename ("threshold" 단어 제거). (2) `_load_universe_artifact`
+  부재/손상 구분 로그 (B-1 해소). (3) `app/models.py` docstring 갱신.
+- **FIX r3 (검증자 PARTIALLY_VERIFIED 후속 — B-2 / B-3 / B-6 수용)**:
+  (1) draft.py 책임 집중 해소 — PUSH-1/3 본문을 신규 `app/draft_three_push.py`
+  (207 라인) 으로 분리. draft.py 623 → 465 라인 (KS-10 안전 영역 복귀).
+  (2) `app/api.py` + `frontend/lib/api/runApproval.ts` 의 삭제된 endpoint /
+  파일을 가리키던 stale 주석 정리.
+- pytest **490 passed** (+20 신규 / 회귀 0, FIX r2 후). black / flake8 /
+  Next.js build PASS.
+- 사용자 결정 (1차): Run.push_kind 추가 / generate-from-holdings 를 PUSH-2 로
+  재정의 / 3층 테스트. **FIX r2 (설계자 수용)**: 신규 endpoint 제거, 기존
+  `/runs/generate` 의 input_data.push_kind 분기로 통합.
+
+### 다음 분기 후보
+
+1. **하루 3회 발송 시간 + 승인 UX 확정** — 지시문 §13 에서 본 STEP 범위 밖.
+   사용자가 시간을 정한 뒤 자동 스케줄 vs 수동 트리거 vs hybrid 결정 필요.
+2. **PUSH-1 뉴스 source 도입** — 본 STEP 은 뉴스 section 생략. 외부 source
+   (Naver / RSS) 추가 시 별도 STEP.
+3. **PUSH-3 개별 주식 universe 확장** — 본 STEP 은 ETF universe 만. 개별 주식
+   급등락 source 도입 여부는 별도 STEP.
+4. **draft 화면 UI 정렬** — ThreePushDraftCard 가 ApprovalTelegramView 안 임시
+   진입점. 정식 화면 위치는 별도 STEP.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-11 — UI 안전실행, ML evidence 갱신 background job)
 
 기존 CLI 3종 (`generate_ml_features` → `check_ml_feature_sanity` → `run_ml_baseline_v0`) 을
 Data Status 화면의 "ML evidence 갱신 실행" 버튼 1개로 안전하게 background 에서

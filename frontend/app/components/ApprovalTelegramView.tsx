@@ -15,6 +15,7 @@
 import { useState } from "react";
 import RunPanel from "./RunPanel";
 import SampleDraftQuickButton from "./SampleDraftQuickButton";
+import ThreePushDraftCard from "./ThreePushDraftCard";
 import UniverseRefreshPanel from "./UniverseRefreshPanel";
 import type { Run } from "@/lib/api";
 
@@ -43,6 +44,11 @@ export default function ApprovalTelegramView({ run, setRun }: Props) {
 
       {/* 보조 출력 배관 — PUSH 2 신규 ETF 관찰 후보 */}
       <UniverseRefreshPanel />
+
+      {/* POC2 3-PUSH Message Contract 정렬 (2026-06-11) — PUSH-1 / PUSH-3 의
+          초안 생성 진입점. 발송 시간 / UX 는 별도 STEP. 본 카드는 계약 확인용
+          진입점이며 인간 승인 게이트는 그대로 유지된다 (AC-7). */}
+      <ThreePushDraftCard onDraftCreated={setRun} />
 
       {/* 메인 흐름 — 현재 run (있을 때만) */}
       {run ? (

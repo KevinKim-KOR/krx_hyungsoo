@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-11 (UI 안전실행 — ML evidence 갱신 background job)
+최종 업데이트: 2026-06-12 (3-PUSH Message Contract 정렬)
 
 ## 0. Canonical
 
@@ -23,7 +23,19 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **UI 안전실행 — ML evidence 갱신 background job** (2026-06-11).
+- **현재 완료 상태**: **3-PUSH Message Contract 정렬** (2026-06-12).
+  - 기존 `Run → Approval → OCI handoff → Telegram` 단일 경로를 유지하면서 하루 3종 PUSH 메시지의 `message_text` 계약 정리. 새 PUSH API / Telegram 직접 발송 / OCI 재구성 / scheduler / 신규 외부 source / 매수·매도·교체·현금비중·조정장 확정 0건.
+  - 신규 builder 2종: `app/message_market_briefing.py` **184 라인** (PUSH-1 시장 흐름 브리핑), `app/message_spike_alert.py` **209 라인** (PUSH-3 급등락 관찰 신호). 모두 외부 source 호출 0건 — ML baseline evidence snapshot / compute_topn / universe_momentum_latest.json read-only 만 사용.
+  - **신규 API endpoint 0건 (FIX r2 — 설계자 수용)**: 1차 작업에서 신설했던 `/runs/generate-{market-briefing,spike-alert}` 와 `app/api_three_push.py` 는 §3 / §11 "별도 PUSH API 신설 금지" 와 충돌하여 **모두 제거**. PUSH-1 / PUSH-3 는 기존 `POST /runs/generate` 의 `input_data.push_kind` 분기로 통합.
+  - draft entry 2종 신규: `generate_market_briefing_draft()`, `generate_spike_alert_draft()`. `generate_draft(input_data)` 가 `push_kind` 값으로 분기. Run 모델에 `push_kind: Optional[str]` 추가 (legacy run 하위호환 — None 허용).
+  - PUSH-2 (holdings_briefing) 는 기존 `generate_draft_from_holdings()` 가 재정의 — push_kind 만 명시. builder / payload 변경 0건. 별도 holdings 데이터 의존성으로 인해 기존 `/runs/generate-from-holdings` endpoint 유지.
+  - delivery fallback 보강: message_text 누락 시 holdings builder 로 rebuild 되던 분기에 `push_kind in {"market_briefing", "spike_or_falling_alert"}` 가드 추가 — raw recommendations 발송 차단.
+  - frontend: `Run.push_kind` 타입 추가, `generateMarketBriefingDraft()` / `generateSpikeAlertDraft()` API 함수 + `ThreePushDraftCard` 신규 (ApprovalTelegramView 안 임시 진입점, 발송 시간 / UX 확정은 별도 STEP — 지시문 §13).
+  - **FIX r2 추가 변경**: (1) `SPIKE_DISPLAY_THRESHOLD_PCT` → `SPIKE_DISPLAY_RETURN_PCT_MIN` 으로 rename (변수명에 "threshold" 단어 제거 — §12 "위험 threshold 확정 금지" 와 의미 분리). message_text 본문의 "표시 임계" → "표시 하한" 으로 정리. (2) `_load_universe_artifact` 가 부재(정상)와 손상(이상) 을 logger.debug / logger.warning 으로 구분 (B-1 의심 해소). (3) `app/models.py` docstring 갱신 (`message_text` / `push_kind` 필드 반영, "필드 4개만 사용" 표현 정정).
+  - **FIX r3 추가 변경 (검증자 PARTIALLY_VERIFIED 후속, B-2 / B-3 / B-6 수용)**: (1) draft.py 책임 집중 해소 — PUSH-1/3 entry (`generate_market_briefing_draft` / `generate_spike_alert_draft`) + 분기 진입점 (`generate_*_via_generic`) + `_load_universe_artifact_for_spike` 를 신규 `app/draft_three_push.py` (**207 라인**) 로 분리. draft.py 623 → **465 라인** (KS-10 안전 영역 복귀). draft.py 는 re-export 만 유지 (기존 호출자 호환). (2) stale 주석 정리 — `app/api.py` 의 "app/api_three_push.py 로 분리" 와 `frontend/lib/api/runApproval.ts` 상단 주석의 삭제된 endpoint 표현 모두 정정.
+  - 실측 (live API, FIX r2 후): `POST /runs/generate` (`input_data.push_kind="market_briefing"`) → 496자 / push_kind=market_briefing 전파. (`spike_or_falling_alert`) → 213자. 신규 PUSH endpoint 2개는 405 (제거 확인).
+  - pytest **490 passed** (+20 신규, 회귀 0, FIX r3 후). black / flake8 / Next.js build PASS.
+- **이전 STEP**: **UI 안전실행 — ML evidence 갱신 background job** (2026-06-11, commit `b855a982`).
   - 기존 CLI 3종 (`generate_ml_features` → `check_ml_feature_sanity` → `run_ml_baseline_v0`) 을 Data Status 화면의 "ML evidence 갱신 실행" 버튼 1개로 안전하게 background 에서 순차 실행. CLI 경로는 그대로 살아있음 (이중화).
   - 신규 모듈: `app/ml_job_runner.py` **447 라인** — job state schema + 3단계 runner + `threading.Lock` (in-process) + on-disk `state/ml/ml_job_status_latest.json` lock + PID/heartbeat 기반 stale 자동 해제 (10분, 사용자 결정).
   - 신규 API: `POST /ml/jobs/evidence-refresh` (background 시작, 즉시 반환) + `GET /ml/jobs/latest` (read-only). FastAPI `BackgroundTasks` 사용 — Celery/Redis/신규 DB 0건 (§8).
@@ -90,6 +102,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| 3-PUSH Message Contract 정렬 | DONE | 2026-06-12 | [POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md](handoff/POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md) |
 | UI 안전실행 — ML evidence 갱신 background job | DONE | 2026-06-11 | [POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md](handoff/POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md) |
 | ML Baseline Evidence Draft Integration | DONE | 2026-06-11 | [POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md](handoff/POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md) |
 | ML Baseline v0 룩백 검증 | DONE | 2026-06-11 | [POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md](handoff/POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md) |

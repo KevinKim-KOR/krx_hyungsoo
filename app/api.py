@@ -99,6 +99,10 @@ app.include_router(ml_baseline_router)
 # POC2 UI 안전실행 (2026-06-11) — POST /ml/jobs/evidence-refresh + GET /ml/jobs/latest.
 # 3단계 (feature → sanity → baseline) background job runner + read-only status.
 app.include_router(ml_jobs_router)
+# POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
+# 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
+# PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.
+# PUSH-2 (holdings_briefing) 는 기존 POST /runs/generate-from-holdings 재정의.
 
 
 class GenerateDraftRequest(BaseModel):
@@ -122,6 +126,9 @@ class RunResponse(BaseModel):
     # 응답에 그대로 포함한다. 과거 run 은 None.
     # 프론트엔드는 이 값을 opaque string 으로 받아 그대로 렌더링한다 (조립 금지).
     message_text: Optional[str] = None
+    # POC2 3-PUSH Message Contract 정렬 (2026-06-11) — 3종 PUSH 구분 식별자.
+    # 과거 run 은 None. delivery / OCI consumer 는 본 필드를 읽지 않는다.
+    push_kind: Optional[str] = None
 
     @classmethod
     def from_run(cls, run: Run) -> "RunResponse":
@@ -131,6 +138,7 @@ class RunResponse(BaseModel):
             status=run.status,
             draft_payload=run.draft_payload,
             message_text=run.message_text,
+            push_kind=run.push_kind,
         )
 
 
@@ -240,6 +248,13 @@ def post_generate_from_holdings() -> RunResponse:
     }
     run = draft.generate_draft_from_holdings(loaded, market_quotes=relevant_quotes)
     return RunResponse.from_run(run)
+
+
+# POC2 3-PUSH Message Contract (2026-06-12, FIX r2 — 설계자 수용):
+# 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수. PUSH-1 / PUSH-3 은 위의
+# POST /runs/generate 가 input_data.push_kind 로 분기 처리한다 (draft.generate_
+# draft 가 draft_three_push 모듈로 위임). PUSH-2 (holdings_briefing) 는 위의
+# POST /runs/generate-from-holdings 가 재정의되어 동일 계약을 따른다.
 
 
 # ─── POC2 Step 2: market data ──────────────────────────────────────────
