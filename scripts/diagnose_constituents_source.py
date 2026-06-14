@@ -434,8 +434,10 @@ def _print_summary(payload: dict) -> None:
     print(f"=== pykrx ===")
     print(f"  classification: {pykrx['classification']}")
     print(f"  pdf_decision: {pykrx['pdf_decision']}")
-    print(f"  ok/no_data/call_failed = {pykrx['ok_count']}/"
-          f"{pykrx['no_data_count']}/{pykrx['call_failed_count']}")
+    print(
+        f"  ok/no_data/call_failed = {pykrx['ok_count']}/"
+        f"{pykrx['no_data_count']}/{pykrx['call_failed_count']}"
+    )
     print(f"=== Naver ===")
     print(f"  operational: {naver['operational_classification']}")
     print(f"  asof candidates: {naver['asof_field_candidates_found']}")

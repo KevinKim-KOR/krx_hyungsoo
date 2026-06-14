@@ -1,12 +1,59 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-14 (3-PUSH Message Text Runtime Evidence 반영)
+작성일: 2026-05-20 / 갱신: 2026-06-14 (3-PUSH Context Cleanup)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-14 — 3-PUSH Message Text Runtime Evidence 반영)
+## 0. 직전 STEP 결과 (2026-06-14 — 3-PUSH Context Cleanup)
+
+직전 기능 STEP (3-PUSH Message Text Runtime Evidence 반영) 의 PARTIALLY_VERIFIED
+판정 사유였던 KS-10 trigger / near 4건을 helper 모듈 분리로 모두 해소.
+
+### 결과 요약
+
+- **처리한 trigger / near (before → after, PowerShell 측정 기준 — 검증자 r2
+  NOTES A-2 반영)**:
+  - `app/push_context.py` 798→**72** (trigger 해소, format/market/holdings/spike
+    4 모듈로 분리 + orchestration wrapper).
+  - `scripts/diagnose_nav_discount_source.py` 984→**524** (trigger 해소, judge_* /
+    record / markdown helper 모듈로 분리).
+  - `app/draft_message.py` 616→**299** (near 해소, focus / summary 렌더링 분리).
+  - `app/market_topn.py` 613→**347** (near 해소, 상수 / dataclass / helper 분리).
+- **신규 모듈 7종**: `app/push_context_format.py` (59) / `push_context_market.py`
+  (266) / `push_context_holdings.py` (202) / `push_context_spike.py` (191) /
+  `app/draft_message_focus.py` (216) / `app/market_topn_helpers.py` (234) /
+  `scripts/diagnose_nav_discount_source_helpers.py` (391). 모두 KS-10 safe.
+- **호환성**: 기존 import 경로 (`from app.push_context import ...` /
+  `from app.draft_message import ...` / `from app.market_topn import ...`) 모두
+  유지. 테스트 / 호출자 코드 변경 0건.
+- **검증 후 trigger / near 잔여 (git-tracked 기준, backup/ref 제외 — 사용자
+  결정)**: 0건 (backend `.py` 최대 524, frontend `.tsx` 최대 691, tests `.py`
+  최대 924).
+- pytest **534 passed** (회귀 0). black / flake8 (신규 파일 0 warning) /
+  Next.js build PASS.
+- 신규 기능 / 신규 API endpoint / 신규 dependency / 신규 source / message_text
+  의미 변경 / 산식 변경 0건.
+
+### 다음 분기 후보
+
+본 Cleanup STEP 으로 구조 안정화 완료. 직전 STEP 의 PARTIALLY_VERIFIED 사유는
+해소되어 다음 기능 STEP 진입 가능.
+
+1. **OCI runtime source 도입** — PC 에서 검증한 source 가 OCI 네트워크에서도
+   작동하는지 확인 + outbox / Telegram 발송 분기 마이그레이션.
+2. **하루 3회 발송 시간 + 자동 발송 UX** — scheduler / 발송 시각 / 자동 vs 수동
+   트리거 결정.
+3. **runtime source 수동 refresh endpoint**.
+4. **뉴스 source 도입** (PUSH-1 의 [전일 기준 시장 흐름] 보강).
+5. **runtime_package preview 화면 정식화** (ThreePushDraftCard).
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev1. 이전 STEP 결과 (2026-06-14 — 3-PUSH Message Text Runtime Evidence 반영)
 
 직전 STEP (2026-06-13 3-PUSH Runtime Package PC 검증) 에서 만든
 `runtime_package` + `push_context` 의 실제 evidence 를 PUSH-1 / PUSH-2 / PUSH-3

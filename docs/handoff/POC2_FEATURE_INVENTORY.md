@@ -377,6 +377,26 @@
 
 ---
 
+### 2.24 3-PUSH Context Cleanup (KS-10 trigger/near 4건 해소)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 구조 안정화 STEP — 직전 STEP 의 KS-10 trigger / near 4건을 helper 모듈 분리로 모두 해소. 기능 추가 0건. |
+| 현재 메뉴 위치 | (UI 없음 — 코드 구조 변경) |
+| 기능 목적 | 직전 STEP (3-PUSH Message Text Runtime Evidence 반영) 의 PARTIALLY_VERIFIED 판정 사유 (push_context.py 798 trigger / draft_message.py 616 near) 해소 + 기존 보유 KS-10 트리거/near (market_topn.py 613 / diagnose_nav_discount_source.py 984) 도 함께 해소. |
+| 사용 가능 여부 | **사용 가능** (2026-06-14 DONE). |
+| 데이터 소스 상태 | 변경 없음. |
+| API 진입점 | 변경 없음. 신규 endpoint 0건. |
+| 분리 결과 (before → after, PowerShell 측정 기준) | `app/push_context.py` 798→72 / `scripts/diagnose_nav_discount_source.py` 984→524 / `app/draft_message.py` 616→299 / `app/market_topn.py` 613→347. |
+| 신규 모듈 | `app/push_context_format.py` (59) / `push_context_market.py` (266) / `push_context_holdings.py` (202) / `push_context_spike.py` (191) / `app/draft_message_focus.py` (216) / `app/market_topn_helpers.py` (234) / `scripts/diagnose_nav_discount_source_helpers.py` (391). |
+| 호환성 | 기존 import 경로 (`from app.push_context import ...` / `from app.draft_message import ...` / `from app.market_topn import ...`) 모두 유지. 테스트 / 호출자 변경 0건. |
+| KS-10 trigger / near 잔여 (git-tracked 기준) | **0건** (backend `.py` 최대 524, frontend `.tsx` 최대 691, tests `.py` 최대 924). |
+| 테스트 | pytest **534 passed** (회귀 0). black / flake8 (신규 파일 0 warning) / Next.js build PASS. |
+| 테스트용/임시 여부 | 아님 — 구조 안정화 (Cleanup STEP). |
+| 다음 조치 | 다음 기능 STEP 진입 가능 — OCI runtime source / 하루 3회 발송 시간 / runtime refresh endpoint / 뉴스 source / ThreePushDraftCard 정식 위치 중 사용자 결정. |
+
+---
+
 ### 2.23 3-PUSH Message Text Runtime Evidence 반영 (PUSH-1 / PUSH-2 / PUSH-3 본문 풍부화)
 
 | 항목 | 값 |
