@@ -33,13 +33,94 @@ from uuid import uuid4
 from app import store
 from app.models import Run
 from app.momentum import LATEST_ARTIFACT_FILE as UNIVERSE_LATEST_FILE
+from app.push_context import build_push_context
+from app.runtime_package import build_runtime_package
+from app.runtime_probe_cache import get_runtime_probe_snapshot
 
 logger = logging.getLogger(__name__)
+
+# PUSH-1/3 PC test probe 대상 ticker (Q2 — holdings/benchmark/spike 후보).
+# 기본 benchmark ETF: KODEX 200 (069500), KODEX 코스닥150 (229200).
+# holdings 종목은 PUSH-2 흐름에서 별도 주입되며, PUSH-1/3 은 benchmark 만 시도.
+PUSH13_DEFAULT_KR_TICKERS: tuple[str, ...] = ("069500", "229200")
 
 
 def _new_run_id() -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     return f"run_{stamp}_{uuid4().hex[:8]}"
+
+
+def _build_market_briefing_evidence(
+    *,
+    ml_baseline_snapshot: Optional[dict[str, Any]],
+    topn_payload: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """PUSH-1 evidence dict — market_discovery + ml_baseline + data_quality 채움."""
+    return {
+        "holdings_snapshot": {},
+        "market_discovery_snapshot": topn_payload or {},
+        "ml_baseline_snapshot": ml_baseline_snapshot or {},
+        "universe_momentum_snapshot": {},
+        "nav_discount_snapshot": {},
+        "data_quality_snapshot": {
+            "asof_date": (topn_payload or {}).get("asof") or "",
+            "warnings": [],
+            "errors": [],
+            "stale_sources": [],
+            "unavailable_sources": [],
+        },
+    }
+
+
+def _build_spike_alert_evidence(
+    *,
+    topn_payload: Optional[dict[str, Any]],
+    universe_artifact: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """PUSH-3 evidence dict — universe_momentum + market_discovery 채움."""
+    return {
+        "holdings_snapshot": {},
+        "market_discovery_snapshot": topn_payload or {},
+        "ml_baseline_snapshot": {},
+        "universe_momentum_snapshot": universe_artifact or {},
+        "nav_discount_snapshot": {},
+        "data_quality_snapshot": {
+            "asof_date": (topn_payload or {}).get("asof") or "",
+            "warnings": [],
+            "errors": [],
+            "stale_sources": [],
+            "unavailable_sources": [],
+        },
+    }
+
+
+def _runtime_snapshot_with_cache(kr_tickers: list[str]) -> dict[str, Any]:
+    """cache-aware runtime probe — 호출자가 ticker 주입. 외부 호출 timeout 격리.
+
+    cache 손상 / 네트워크 timeout 만 흡수 (원인 보존: logger.warning 에 예외 타입
+    명시). 그 외 예외 (코드 결함 등) 는 호출자에게 전파.
+    """
+    try:
+        return get_runtime_probe_snapshot(kr_tickers=kr_tickers)
+    except (OSError, TimeoutError) as e:
+        logger.warning(
+            "runtime probe I/O 실패 (%s): %s — unavailable snapshot 대체",
+            type(e).__name__,
+            e,
+        )
+        from app.runtime_kr_quote_probe import (
+            empty_unavailable_snapshot as _kr_empty,
+        )
+        from app.runtime_us_indices_probe import (
+            empty_unavailable_snapshot as _us_empty,
+        )
+
+        return {
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "kr_realtime_price_snapshot": _kr_empty(f"{type(e).__name__}: {e}"),
+            "overnight_us_market_snapshot": _us_empty(f"{type(e).__name__}: {e}"),
+            "cache_status": "miss",
+        }
 
 
 def generate_market_briefing_draft(
@@ -62,24 +143,53 @@ def generate_market_briefing_draft(
 
     run_id = _new_run_id()
     asof = datetime.now(timezone.utc).isoformat()
+
+    # 3-PUSH Runtime Package PC 검증 (2026-06-13) — 입력 흐름 정렬:
+    #   evidence + runtime → push_context → message_text → runtime_package.
+    runtime_snapshot = _runtime_snapshot_with_cache(list(PUSH13_DEFAULT_KR_TICKERS))
+    pc_evidence = _build_market_briefing_evidence(
+        ml_baseline_snapshot=ml_baseline_snapshot, topn_payload=topn_payload
+    )
+    push_context = build_push_context(
+        push_kind=MARKET_BRIEFING_KIND,
+        pc_evidence=pc_evidence,
+        runtime_snapshot=runtime_snapshot,
+    )
     message_text = build_market_briefing_message(
         asof_iso=asof,
         ml_baseline_snapshot=ml_baseline_snapshot,
         topn_payload=topn_payload,
+        push_context=push_context,
     )
+    runtime_package = build_runtime_package(
+        push_kind=MARKET_BRIEFING_KIND,
+        message_text=message_text,
+        pc_evidence_snapshot=pc_evidence,
+        runtime_snapshot=runtime_snapshot,
+        push_context=push_context,
+    )
+
+    # FIX r5 (검증자 4차 NOTES A-1 / B-1 / B-6): runtime_package 가 failed 면
+    # Run.message_text 도 None 으로 비운다 — 승인/preview 단일 소스에서도 정상
+    # 본문이 보이지 않게 (계약 §12).
+    is_failed_package = (runtime_package.get("generation_status") or {}).get(
+        "status"
+    ) == "failed"
+
     payload: dict[str, Any] = {
         "title": "시장 흐름 브리핑",
         "asof": asof,
         "push_kind": MARKET_BRIEFING_KIND,
         "note": "PUSH-1: 시장 내부 신호 + 위험 패턴 참고 + 외부 변수 체크리스트.",
         "recommendations": [],
+        "runtime_package": runtime_package,
     }
     run = Run(
         run_id=run_id,
         asof=asof,
         status="PENDING_APPROVAL",
         draft_payload=payload,
-        message_text=message_text,
+        message_text=None if is_failed_package else message_text,
         push_kind=MARKET_BRIEFING_KIND,
     )
     store.save(run)
@@ -106,24 +216,51 @@ def generate_spike_alert_draft(
 
     run_id = _new_run_id()
     asof = datetime.now(timezone.utc).isoformat()
+
+    # 3-PUSH Runtime Package PC 검증 (2026-06-13) — 입력 흐름 정렬:
+    #   evidence + runtime → push_context → message_text → runtime_package.
+    runtime_snapshot = _runtime_snapshot_with_cache(list(PUSH13_DEFAULT_KR_TICKERS))
+    pc_evidence = _build_spike_alert_evidence(
+        topn_payload=topn_payload, universe_artifact=universe_artifact
+    )
+    push_context = build_push_context(
+        push_kind=SPIKE_ALERT_KIND,
+        pc_evidence=pc_evidence,
+        runtime_snapshot=runtime_snapshot,
+    )
     message_text = build_spike_alert_message(
         asof_iso=asof,
         topn_payload=topn_payload,
         universe_artifact=universe_artifact,
+        push_context=push_context,
     )
+    runtime_package = build_runtime_package(
+        push_kind=SPIKE_ALERT_KIND,
+        message_text=message_text,
+        pc_evidence_snapshot=pc_evidence,
+        runtime_snapshot=runtime_snapshot,
+        push_context=push_context,
+    )
+
+    # FIX r5 (검증자 4차 NOTES A-1 / B-1 / B-6) — PUSH-1 과 동일 정책.
+    is_failed_package = (runtime_package.get("generation_status") or {}).get(
+        "status"
+    ) == "failed"
+
     payload: dict[str, Any] = {
         "title": "급등락 관찰 신호",
         "asof": asof,
         "push_kind": SPIKE_ALERT_KIND,
         "note": "PUSH-3: ETF universe 변동성 확대 + 기존 급락 ETF 신호 재사용.",
         "recommendations": [],
+        "runtime_package": runtime_package,
     }
     run = Run(
         run_id=run_id,
         asof=asof,
         status="PENDING_APPROVAL",
         draft_payload=payload,
-        message_text=message_text,
+        message_text=None if is_failed_package else message_text,
         push_kind=SPIKE_ALERT_KIND,
     )
     store.save(run)

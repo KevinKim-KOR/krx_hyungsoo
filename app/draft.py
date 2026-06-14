@@ -40,6 +40,9 @@ from app.ml_baseline_evidence import (
 from app.models import Run
 from app.momentum import LATEST_ARTIFACT_FILE as UNIVERSE_LATEST_FILE
 from app.momentum import build_holdings_momentum_result
+from app.push_context import build_push_context
+from app.runtime_package import build_runtime_package
+from app.runtime_probe_cache import get_runtime_probe_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +205,49 @@ def _build_holdings_payload(
     if ml_baseline_evidence_signal is not None:
         factor_signals = list(factor_signals) + [ml_baseline_evidence_signal]
 
+    # 3-PUSH Runtime Package PC 검증 (2026-06-13) — PUSH-2 holdings_briefing
+    # 흐름:
+    #   evidence + runtime → push_context → (기존) message_text → runtime_package.
+    # PUSH-2 의 message_text 는 holdings draft_message 가 별도로 빌드한다 —
+    # 본 함수는 payload 단계라 message_text 가 아직 없다. message_text 는
+    # 호출자(generate_draft_from_holdings)가 빌드 후 message_contract 에 동기화.
+    # push_context 의 market_view 는 holdings_briefing 의 필수 evidence 조건
+    # (지시문 §7.2 — holdings_snapshot + (market_view 또는 market_discovery_snapshot))
+    # 을 충족시키기 위해 build_push_context 가 채운다 (market_discovery_snapshot
+    # 부재 시에도 market_view 가 1건은 존재 — observations 비어있을 수 있음).
+    holdings_tickers = [h.ticker for h in holdings if isinstance(h.ticker, str)]
+    probe_tickers = list(dict.fromkeys(holdings_tickers + ["069500"]))
+    runtime_snapshot = _runtime_snapshot_for_holdings(probe_tickers)
+    pc_evidence_for_package = {
+        "holdings_snapshot": {
+            "asof_date": asof_date,
+            "positions": recommendations,
+        },
+        "market_discovery_snapshot": {},
+        "ml_baseline_snapshot": ml_baseline_evidence_snapshot or {},
+        "universe_momentum_snapshot": {},
+        "nav_discount_snapshot": {},
+        "data_quality_snapshot": {
+            "asof_date": asof_date,
+            "warnings": [],
+            "errors": [],
+            "stale_sources": [],
+            "unavailable_sources": [],
+        },
+    }
+    push_context = build_push_context(
+        push_kind="holdings_briefing",
+        pc_evidence=pc_evidence_for_package,
+        runtime_snapshot=runtime_snapshot,
+    )
+    runtime_package = build_runtime_package(
+        push_kind="holdings_briefing",
+        message_text="",
+        pc_evidence_snapshot=pc_evidence_for_package,
+        runtime_snapshot=runtime_snapshot,
+        push_context=push_context,
+    )
+
     return {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
@@ -215,7 +261,33 @@ def _build_holdings_payload(
         # ML baseline 룩백 evidence snapshot — 본 draft 가 어떤 baseline 근거로
         # 생성되었는지 추적 가능 (지시문 §4.2).
         "ml_baseline_evidence_snapshot": ml_baseline_evidence_snapshot,
+        # 3-PUSH Runtime Package PC 검증 (2026-06-13) — canonical PUSH-2 package.
+        "runtime_package": runtime_package,
     }
+
+
+def _runtime_snapshot_for_holdings(probe_tickers: list[str]) -> dict[str, Any]:
+    """holdings draft 용 cache-aware runtime probe.
+
+    cache 손상 / 네트워크 timeout 만 흡수 (원인 보존). 그 외 예외 전파.
+    """
+    try:
+        return get_runtime_probe_snapshot(kr_tickers=probe_tickers)
+    except (OSError, TimeoutError) as e:
+        logger.warning("holdings runtime probe I/O 실패 (%s): %s", type(e).__name__, e)
+        from app.runtime_kr_quote_probe import (
+            empty_unavailable_snapshot as _kr_empty,
+        )
+        from app.runtime_us_indices_probe import (
+            empty_unavailable_snapshot as _us_empty,
+        )
+
+        return {
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "kr_realtime_price_snapshot": _kr_empty(f"{type(e).__name__}: {e}"),
+            "overnight_us_market_snapshot": _us_empty(f"{type(e).__name__}: {e}"),
+            "cache_status": "miss",
+        }
 
 
 def _load_universe_latest_artifact() -> Optional[dict[str, Any]]:
@@ -440,6 +512,28 @@ def generate_draft_from_holdings(
     # 같은 문자열을 GET /runs/{id} 응답(preview), Telegram 발송, OCI handoff
     # 모두에서 재사용한다 → preview ↔ 실제 발송문 단일 소스 보장.
     msg = draft_message.build_message_text(run_id, payload)
+    # 3-PUSH Runtime Package PC 검증 (2026-06-13) — _build_holdings_payload 에서
+    # runtime_package 는 message_text 비워둔 상태로 만든다. Run 저장 직전에 동기화.
+    #
+    # FIX r4 (검증자 3차 NOTES A-1 / B-1): runtime_package 의 generation_status 가
+    # "failed" 이면 message_contract.message_text 를 빈 문자열로 유지한다.
+    #
+    # FIX r5 (검증자 4차 NOTES A-1 / B-1 / B-6): runtime_package 가 failed 일 때
+    # 실제 승인/preview/발송 단일 소스인 Run.message_text 도 None 으로 비운다.
+    # 그렇지 않으면 RunPanel 이 정상 본문 preview 를 보여주고 승인 버튼이 활성화
+    # 되는 "failed 인데 정상 흐름" 상태가 발생 (계약 §12 위반). Run.status 자체는
+    # PENDING_APPROVAL 유지 (FAILED 로 떨어뜨리면 기존 4-state 흐름 손상) — 사용자
+    # 는 RuntimePackageStatusCard 의 generation_status=failed 와 본문 없음을 함께
+    # 보고 승인을 거절 (또는 reject) 한다.
+    rp = payload.get("runtime_package")
+    is_failed_package = False
+    if isinstance(rp, dict):
+        gs = rp.get("generation_status") or {}
+        is_failed_package = gs.get("status") == "failed"
+        mc = rp.get("message_contract")
+        if isinstance(mc, dict):
+            mc["message_text"] = "" if is_failed_package else (msg or "")
+    effective_run_message_text = None if is_failed_package else (msg if msg else None)
     # POC2 3-PUSH Message Contract 정렬 (2026-06-11) — 기존 holdings draft 는
     # PUSH-2 holdings briefing 으로 재정의. push_kind 만 명시, builder / payload
     # 구조는 변경 없음.
@@ -448,7 +542,7 @@ def generate_draft_from_holdings(
         asof=asof,
         status="PENDING_APPROVAL",
         draft_payload=payload,
-        message_text=msg if msg else None,
+        message_text=effective_run_message_text,
         push_kind="holdings_briefing",
     )
     store.save(run)

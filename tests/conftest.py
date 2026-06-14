@@ -62,6 +62,45 @@ def _stub_oci_calls(monkeypatch):
     monkeypatch.setattr(delivery, "fetch_outbox_result", lambda run_id: None)
 
 
+@pytest.fixture(autouse=True)
+def _stub_runtime_probes(monkeypatch):
+    """3-PUSH Runtime Package PC 검증 (2026-06-13) — 모든 outbound HTTP 차단.
+
+    개별 테스트가 실 probe 결과를 필요로 하면 override. 기본 stub 은 ok 응답.
+    실 Yahoo Finance / Naver 호출이 테스트에서 발생하지 않도록 보장한다.
+    """
+    from app import runtime_probe_cache as _cache
+
+    def _ok_snapshot(*, kr_tickers, force_refresh=False):
+        return {
+            "captured_at": "2026-06-13T08:55:00+09:00",
+            "kr_realtime_price_snapshot": {
+                "captured_at": "2026-06-13T08:55:00+09:00",
+                "source": "naver",
+                "items": [],
+                "status": "unavailable",
+                "warnings": [],
+                "errors": [],
+            },
+            "overnight_us_market_snapshot": {
+                "captured_at": "2026-06-13T08:55:00+09:00",
+                "indices": [],
+                "status": "unavailable",
+                "warnings": [],
+                "errors": [],
+            },
+            "cache_status": "hit",
+        }
+
+    monkeypatch.setattr(_cache, "get_runtime_probe_snapshot", _ok_snapshot)
+    # draft 모듈들이 from-import 한 별칭도 차단.
+    from app import draft as _draft_mod
+    from app import draft_three_push as _draft_three
+
+    monkeypatch.setattr(_draft_mod, "get_runtime_probe_snapshot", _ok_snapshot)
+    monkeypatch.setattr(_draft_three, "get_runtime_probe_snapshot", _ok_snapshot)
+
+
 @pytest.fixture
 def client() -> TestClient:
     return TestClient(api.app)

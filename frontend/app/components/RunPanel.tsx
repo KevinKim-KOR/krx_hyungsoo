@@ -35,6 +35,7 @@ import {
 import EvidenceDetails from "./EvidenceDetails";
 import JudgmentReasonSection from "./JudgmentReasonSection";
 import { pickMomentumCandidates } from "./MomentumCandidatesSection";
+import RuntimePackageStatusCard from "./RuntimePackageStatusCard";
 
 const POLL_INTERVAL_MS = 12000;
 const MAX_POLL_TICKS = 30;
@@ -438,6 +439,8 @@ export default function RunPanel({
         <h2>{sectionTitleForPhase(classifyApprovalPhase(run.status))}</h2>
         <ApprovalDraftBody run={run} />
       </div>
+
+      <RuntimePackageStatusCard run={run} />
 
       <div className="card">
         <h2>4. 다음 행동</h2>

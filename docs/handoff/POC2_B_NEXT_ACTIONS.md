@@ -1,12 +1,102 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-12 (3-PUSH Message Contract 정렬)
+작성일: 2026-05-20 / 갱신: 2026-06-13 (3-PUSH Runtime Package PC 검증)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-12 — 3-PUSH Message Contract 정렬)
+## 0. 직전 STEP 결과 (2026-06-13 — 3-PUSH Runtime Package PC 검증)
+
+`three_push_runtime_package.v1` 구조를 PC 에서 실제 evidence + runtime probe
+(네이버 국내 시세 / Yahoo Finance 미국 지수 3종) 로 생성해 Approval/Telegram
+preview 에서 상태 확인 가능한 상태까지 검증. 3종 push_kind 모두
+`draft_payload.runtime_package` 에 schema_version `three_push_runtime_package.v1`
+저장 — OCI handoff JSON 으로도 자동 전달. OCI runtime 구현 / scheduler / Telegram
+직접 발송 / 뉴스 source / 매수·매도·교체 / ML 산식 변경 0건.
+
+### 결과 요약
+
+- **신규 PUSH 전용 endpoint 0건 (Q3 사용자 결정)**: PUSH-1/3 은 기존 `/runs/generate +
+  input_data.push_kind`, PUSH-2 는 기존 `/runs/generate-from-holdings` 유지.
+  holdings 데이터 의존성으로 PUSH-2 endpoint 통합 강요는 과한 설계자 지시였음.
+- **신규 dependency 0건 (Q1 사용자 결정)**: `urllib` + `json` + `http.cookiejar` 만
+  사용. `requests` / `yfinance` 추가 없음. `requirements.txt` 변경 없음.
+- 신규 backend 모듈 5종 (FIX r2/r3/r4 후 실측): `app/runtime_us_indices_probe.py`
+  (171 라인 — Yahoo Finance chart endpoint + cookie jar 단일 opener 캐시),
+  `app/runtime_kr_quote_probe.py` (182 라인 — Naver polling endpoint),
+  `app/runtime_probe_cache.py` (133 라인 — 30분 TTL cache),
+  `app/runtime_package.py` (292 라인 — three_push_runtime_package.v1 빌더),
+  `app/push_context.py` (247 라인 — FIX r2 추가, FIX r3 보강). 모두 KS-10 안전.
+- 신규 frontend Card: `RuntimePackageStatusCard` (204 라인) — `runtime_package`
+  상태 요약 + 빈 slot placeholder 노출 0건 (§14 — `status="unavailable"` 일 때
+  해당 행 자체 생략).
+- 수정 모듈 (FIX r2/r3/r4 후 실측): `app/draft.py` 465→552 라인 (PUSH-2 holdings
+  draft 에 `runtime_package` + push_context 키 추가 + FIX r4 동기화 가드 + FIX r5
+  Run.message_text 가드), `app/draft_three_push.py` 207→332 라인 (PUSH-1/3 generate
+  에 cache-aware runtime probe + build_push_context + `build_runtime_package` 호출
+  + FIX r5 Run.message_text 가드). `app/delivery.py` 변경 0건 — `write_handoff_artifact`
+  가 draft_payload 전체를 그대로 보존하므로 runtime_package 자동 포함.
+- 실측 (live API + live probe, 2026-06-13 KST 오전): Nasdaq close=25,888.844
+  +0.70%, SPX close=7,431.46 +0.65%, SOX close=13,371.47 +9.42%. KODEX 200
+  price=129,270 +4.38%, KODEX 코스닥150 price=18,015 +2.15%. `POST /runs/generate`
+  PUSH-1/3 generation_status=ok / PUSH-2 `/runs/generate-from-holdings` generation_status=ok
+  + message_text 2,507자 + `runtime_package.message_contract.message_text` 와 동일 (AC-6).
+- 30분 TTL cache: cache miss → probe 1회 + 저장, cache hit → probe 0건, TTL 만료 →
+  새 probe, force_refresh → bypass, 손상 → fall-through 후 재조회.
+- **FIX r2 (검증자 1차 REJECTED 후속)**: (A-1 (1)) message_text 생성 흐름을
+  `runtime_package → push_context → message_text` 로 정렬 — 신규 모듈
+  `app/push_context.py` 추가 (현재 라인 수는 위 신규 모듈 5종 표 참조 — FIX r3
+  보강 후 247 라인) + message builder 들 `push_context` 옵션 추가.
+  PUSH-1 message_text 안에 `push_context.market_view.observations` 기반
+  `[밤사이 미국 시장 (runtime probe)]` 1줄 섹션 추가 (probe ok 시에만 노출).
+  PUSH-3 도 push_context.spike_view 기반 1줄 섹션. PUSH-2 는 push_context.market_view
+  가 §7.2 필수 evidence 조건 충족. (A-1 (2)) holdings_briefing generation_status
+  검증에 market_view/market_discovery_snapshot 확인 추가. (B-1) broad exception 좁힘.
+  (B-6) cache 저장 정책 정렬 — 두 snapshot 모두 failed 면 저장 안 함.
+- **FIX r3 (검증자 2차 REJECTED 후속)**: (A-1) `unavailable` runtime 도
+  partial 로 노출 (이전엔 ok 정상 통과). push_context view 가 빈 경우 키 자체
+  생략 → holdings_briefing 검증의 market_view 조건이 빈 dict 면 False. failed
+  package 의 message_contract.message_text 는 빈 문자열로 강제 (정상 본문 차단).
+  (A-3) STATE_LATEST §1 라인 수 실측값으로 정정. 신규 테스트 4건.
+- **FIX r4 (검증자 3차 REJECTED 후속)**: (A-1 / B-1) `generate_draft_from_holdings`
+  의 message_contract 동기화 단계가 FIX r3 의 "failed package 본문 비움" 안전장치를
+  무력화하던 문제 해소 — 동기화 시점에 generation_status.status 확인 후 failed 면
+  본문 빈 문자열 유지. (A-3) §1 안 stale 라인 수 정정. 신규 테스트 1건.
+- **FIX r5 (검증자 4차 REJECTED 후속)**: (A-1 / B-1 / B-6) `Run.message_text` 도
+  `runtime_package.generation_status == "failed"` 이면 None 으로 비운다. PUSH-1/2/3
+  모두 동일 가드 적용 (대칭성). Run.status 는 PENDING_APPROVAL 유지. RunPanel
+  preview 가 정적 fallback 으로 자연스럽게 떨어져 정상 본문이 보이지 않고
+  RuntimePackageStatusCard 의 failed 상태가 함께 표시되어 사용자가 reject 결정 가능.
+  (A-3) 본 문서의 stale 라인 수 5건을 실측으로 정정. 신규 테스트 2건.
+- **FIX r6 (검증자 5차 REJECTED 후속)**: (A-1 / B-1 / B-6) `app/delivery.py:deliver()`
+  의 holdings legacy fallback 분기가 FIX r5 의 Run.message_text=None 가드를
+  무력화하던 문제 해소 — fallback 진입 전에 runtime_package.generation_status=
+  failed 사전 확인 가드 추가, failed 면 DeliveryError 명시 차단 (PUSH-1/3 의 기존
+  가드 패턴과 정렬). PUSH-2 holdings 도 failed package 일 때 OCI 로 정상 본문이
+  발송되지 않는다. (A-3) `delivery.py` 변경 0건 표기를 233→251 라인 으로 정정.
+  신규 테스트 1건.
+- pytest **519 passed** (+29 신규 / 회귀 0, 직전 STEP 490 → 519, FIX r6 후). black / flake8 / Next.js build PASS.
+- 사용자 결정 (Q1~Q5): urllib 기반 미국 지수 probe / Naver realtime quote probe /
+  PUSH-2 endpoint 분리 유지 / runtime_package 키 1건만 추가-기존 키 유지 / 30분 TTL
+  cache (refresh endpoint 없음).
+
+### 다음 분기 후보
+
+1. **OCI runtime source 도입** — PC 에서 검증한 source 가 OCI 네트워크에서도
+   작동하는지 확인 + outbox / Telegram 발송 분기 마이그레이션.
+2. **하루 3회 발송 시간 + 자동 발송 UX** — scheduler / 발송 시각 / 자동 vs 수동
+   트리거 결정.
+3. **runtime source 수동 refresh endpoint** — 사용자가 cache 즉시 갱신 필요 시.
+4. **뉴스 source 도입** — PUSH-1 의 [전일 기준 시장 흐름] 보강.
+5. **runtime_package preview 화면 정식화** — 임시 진입점 `ThreePushDraftCard` 를
+   정식 화면 위치로 이동 + UX 통일.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-1. 이전 STEP 결과 (2026-06-12 — 3-PUSH Message Contract 정렬)
 
 기존 `Run → Approval → OCI handoff → Telegram` 단일 경로를 유지하면서 하루 3종
 PUSH 메시지 (`market_briefing` / `holdings_briefing` / `spike_or_falling_alert`)

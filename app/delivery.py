@@ -133,10 +133,29 @@ def deliver(run: Run) -> None:
     # 과거(Step 2D 이전 생성) run 은 Run.message_text 가 None 일 수 있다 — 이 경우
     # holdings draft 라면 동일 빌더를 그 자리에서 호출해 fallback (POC2 Step 1A 호환).
     # 이 fallback 은 신규 run 에서는 절대 트리거되지 않는다 (None 일 수 없음).
+    #
+    # FIX r6 (검증자 5차 NOTES A-1 / B-1 / B-6): runtime_package.generation_status
+    # 가 "failed" 인 holdings draft 는 fallback 으로 본문을 재생성하면 안 된다.
+    # 이전 FIX r5 가 Run.message_text 를 None 으로 비웠어도 본 fallback 이 정상
+    # 본문을 다시 만들어 OCI 로 발송하던 문제를 차단한다 (계약 §12). PUSH-1/3 의
+    # 기존 가드와 동일 패턴 — 명시 DeliveryError.
     message_text: Optional[str] = run.message_text
-    if message_text is None and draft_message.is_holdings_draft(run.draft_payload):
+    rp = (run.draft_payload or {}).get("runtime_package") if run.draft_payload else None
+    is_failed_package = isinstance(rp, dict) and (
+        (rp.get("generation_status") or {}).get("status") == "failed"
+    )
+    if (
+        message_text is None
+        and draft_message.is_holdings_draft(run.draft_payload)
+        and not is_failed_package
+    ):
         message_text = draft_message.build_message_text(
             run.run_id, run.draft_payload or {}
+        )
+    if message_text is None and is_failed_package:
+        raise DeliveryError(
+            f"runtime_package.generation_status=failed 인 run 에 message_text 가 "
+            f"없습니다 — holdings fallback 으로 대체 발송 금지: run_id={run.run_id}"
         )
     # POC2 3-PUSH (2026-06-11): PUSH-1 / PUSH-3 은 generate 시점에 message_text 가
     # 항상 박혀있다. 본 분기에서 message_text 가 None 이면 운영 상 결함이므로

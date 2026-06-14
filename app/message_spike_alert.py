@@ -166,11 +166,36 @@ def _data_quality_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _spike_view_section(push_context: Optional[dict[str, Any]]) -> list[str]:
+    """3-PUSH Runtime Package PC 검증 (2026-06-13) — push_context.spike_view
+    의 items 가 있으면 1줄 요약 추가. universe_artifact 가 직접 falling/top
+    candidate 를 만들지 않은 흐름에서도 push_context 만으로 관찰 1줄 노출."""
+    if not isinstance(push_context, dict):
+        return []
+    sv = push_context.get("spike_view")
+    if not isinstance(sv, dict):
+        return []
+    items = sv.get("items") or []
+    if not items:
+        return []
+    lines = ["[universe momentum 관찰 (push_context 기반)]"]
+    for it in items[:4]:
+        if not isinstance(it, dict):
+            continue
+        name = it.get("name") or it.get("ticker") or "-"
+        sv_val = it.get("score_value")
+        direction = it.get("direction") or "-"
+        if isinstance(sv_val, (int, float)):
+            lines.append(f"  • {name} ({direction}) score={float(sv_val):+.2f}")
+    return lines if len(lines) > 1 else []
+
+
 def build_spike_alert_message(
     *,
     asof_iso: str,
     topn_payload: Optional[dict[str, Any]] = None,
     universe_artifact: Optional[dict[str, Any]] = None,
+    push_context: Optional[dict[str, Any]] = None,
 ) -> str:
     """PUSH-3 급등락 관찰 신호 message_text 생성.
 
@@ -187,6 +212,7 @@ def build_spike_alert_message(
 
     body: list[str] = []
     for section in (
+        _spike_view_section(push_context),
         _topn_spike_section(topn_payload),
         _falling_candidate_section(universe_artifact),
         _data_quality_section(topn_payload),

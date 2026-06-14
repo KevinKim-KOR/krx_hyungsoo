@@ -4,6 +4,11 @@
 0건 (저장된 artifact / read-only 정규화 evidence 만 사용). 매수/매도 / 상승장
 확정 / 조정장 확정 / 현금비중 조절 / 위험 알림 확정 문구 0건.
 
+3-PUSH Runtime Package PC 검증 (2026-06-13) — 입력 흐름 정렬:
+  pc_evidence + runtime_snapshot → push_context → 본 builder → message_text.
+push_context 가 주입되면 본 builder 가 그 안의 market_view.observations 를
+참고해 [밤사이 미국 시장] 1줄 섹션을 추가한다 (runtime probe 결과 반영).
+
 입력 (모두 read-only, 저장된 artifact / 정규화 evidence):
 - ML baseline evidence snapshot (위험 패턴 참고).
 - Market Discovery TopN (시장 내부 신호 — 상위 / 하위 N개 ETF).
@@ -136,13 +141,17 @@ def build_market_briefing_message(
     asof_iso: str,
     ml_baseline_snapshot: Optional[dict[str, Any]] = None,
     topn_payload: Optional[dict[str, Any]] = None,
+    push_context: Optional[dict[str, Any]] = None,
 ) -> str:
     """PUSH-1 시장 흐름 브리핑 message_text 생성.
 
+    입력 흐름 (2026-06-13 정렬): pc_evidence + runtime_snapshot → push_context
+    → 본 builder → message_text. push_context 가 주입되면 그 안의 market_view
+    .observations (overnight_us) 를 참고해 [밤사이 미국 시장] 1줄 섹션 추가.
+
     구조:
       ✅ 시장 흐름 브리핑 (asof)
-      [전일 기준 시장 흐름]
-        • (Market Discovery / TopN — 사용 가능 시)
+      [밤사이 미국 시장 (runtime probe)] — push_context 기반, 조회 성공 시
       [시장 내부 신호]
         • 상위 / 하위 ETF (TopN read-only)
       [위험 패턴 참고]
@@ -153,9 +162,12 @@ def build_market_briefing_message(
 
     뉴스 source 가 없으면 뉴스 섹션 자체 생략. "unavailable" 보여주기 X.
     """
+    from app.push_context import overnight_us_lines
+
     header = [TITLE, f"기준일/생성: {asof_iso}", ""]
 
     sections: list[list[str]] = [
+        overnight_us_lines(push_context),
         _market_internal_section(topn_payload),
         _evidence_section(ml_baseline_snapshot),
         _external_context_section(ml_baseline_snapshot),
