@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-13 (3-PUSH Runtime Package PC 검증)
+최종 업데이트: 2026-06-14 (3-PUSH Message Text Runtime Evidence 반영)
 
 ## 0. Canonical
 
@@ -23,7 +23,18 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **3-PUSH Runtime Package PC 검증** (2026-06-13).
+- **현재 완료 상태**: **3-PUSH Message Text Runtime Evidence 반영** (2026-06-14).
+  - 직전 STEP 에서 만든 `runtime_package` + `push_context` 의 실제 evidence (미국 지수 실제 등락률 / Market Discovery 상위·하위 흐름 / ML baseline 룩백 / holdings × runtime quote / universe momentum 후보) 를 PUSH-1 / PUSH-2 / PUSH-3 `message_text` 에 사람이 판단에 쓸 수 있는 수준으로 반영. 신규 source / 신규 dependency / 신규 endpoint / OCI runtime / scheduler / 매수·매도·교체·현금비중·조정장·위험 threshold 0건.
+  - **신규 backend 파일 0건**. 신규 frontend 파일 0건. 신규 API endpoint 0건.
+  - **수정 모듈 (라인 수 실측, 검증자 r2 NOTES 반영 후)**: `app/push_context.py` 247→**798 라인** (observation 별 실제 값 + 헬퍼 5종 추가 — overnight_us_lines 풍부화 + market_trend_lines / risk_pattern_lines / holdings_observation_lines / spike_view_lines 신규). ⚠ **KS-10 trigger (백엔드 핵심 모듈 ≥650)**. `app/message_market_briefing.py` 197→**225 라인** (body 에 [국내 시장 내부 신호] + [위험 패턴 참고 (ML baseline 룩백)] 2 섹션 + candidates/items 양쪽 호환). `app/message_spike_alert.py` 239→**240 라인** (`_spike_view_section` 제거 + `spike_view_lines(push_context)` 호출로 대체 — score 단독 표시 폐기). `app/draft_message.py` 586→**616 라인** (`_runtime_evidence_lines(payload)` 신규 + PUSH-2 본문에 [보유 종목 관찰 포인트] + [시장 흐름 연결 (market_view)] + [리뷰 포인트] 삽입). ⚠ **KS-10 근접 near (≥600)** — trigger 까지 34 라인 여유. `app/draft.py` 559→**586 라인** (`_build_holdings_payload` 가 PUSH-2 evidence 에 compute_topn 결과를 채움 — AC-4 market_view 연결 강화. compute_topn 은 함수당 1회만 호출 후 재사용 — 검증자 r2 NOTES B-6 반영. candidates 0건 시 빈 dict 유지로 FIX r3 안전장치 보존).
+  - **신규 테스트 파일**: `tests/test_three_push_message_text_runtime_evidence.py` **638 라인** (15건 — AC-1 / AC-2 / AC-3 / AC-4 / AC-5 / AC-7 / AC-8 / AC-10 검증).
+  - **PC 라이브 본문 실측**:
+    - PUSH-1 에 `[밤사이 미국 시장 (runtime probe)] • NASDAQ +0.85% (close 18,000.12) • SPX +0.41% (close 5,400.33) • SOX +1.25% (close 5,200.45) • 반도체 지수 강세는 국내 반도체/성장 ETF 해석에 참고 가능` + `[국내 시장 내부 신호 (Market Discovery)] 상위/하위 흐름 1줄` + `[위험 패턴 참고 (ML baseline 룩백)] 43거래일 룩백 1줄` 모두 노출.
+    - PUSH-3 에 `[universe momentum 관찰 (push_context 기반)] • {name}: 1d +X.XX%, 20d +X.XX% · 방향 up · data_quality 이상 없음 · 보유 종목과 겹치지 않음` 풍부 1줄/item 노출 (수익률 근거 / 방향 / data_quality / overlap 4축).
+    - PUSH-2 에 `[보유 종목 관찰 포인트] • {name} ({ticker}): runtime 시세 {±X.XX%} (가격 {N,NNN}) · 국내 기준선 — 밤사이 미국 지수 흐름과 함께 확인 필요 — 관찰 필요` + `[시장 흐름 연결 (market_view)] • 밤사이 미국: NASDAQ +0.85%, SPX +0.41%, SOX +1.25% / 상위(one_month): ...` + 리뷰 포인트 노출.
+  - pytest **534 passed** (직전 STEP 519 → +15 신규 / 회귀 0). black / flake8 / Next.js build PASS.
+  - ⚠ **KS-10 trigger + near**: `app/push_context.py` 798 라인 (trigger ≥650). `app/draft_message.py` 616 라인 (near ≥600, trigger 까지 34 라인 여유). 본 STEP 범위 안에서 자연 증가. 단일 Cleanup STEP 으로 두 파일 책임 분리 권고 (사용자 확인 항목).
+- **이전 STEP**: **3-PUSH Runtime Package PC 검증** (2026-06-13).
   - `three_push_runtime_package.v1` 구조를 PC 에서 실제 evidence + runtime probe (네이버 국내 시세 + Yahoo Finance 미국 지수 3종 Nasdaq/SPX/SOX) 로 생성해 Approval/Telegram preview 에서 상태 확인 가능한 상태까지 검증. 3종 push_kind 모두 `draft_payload.runtime_package` 에 schema_version `three_push_runtime_package.v1` 저장 — OCI handoff JSON 으로도 자동 전달 (store.write_handoff_artifact 변경 0건).
   - **신규 PUSH 전용 endpoint 0건 (Q3 사용자 결정)**: PUSH-1/3 은 기존 `POST /runs/generate + input_data.push_kind` 분기, PUSH-2 는 기존 `POST /runs/generate-from-holdings` 유지. holdings 데이터 의존성으로 PUSH-2 endpoint 통합 강요는 과한 설계자 지시였음 — 사용자 결정으로 분리 유지.
   - **신규 dependency 0건 (Q1 사용자 결정)**: `urllib` + `json` + `http.cookiejar` 만 사용. `requests` / `yfinance` 추가 없음.
@@ -137,6 +148,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| 3-PUSH Message Text Runtime Evidence 반영 | DONE | 2026-06-14 | [POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md](handoff/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md) |
 | 3-PUSH Runtime Package PC 검증 | DONE | 2026-06-13 | [POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md](handoff/POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md) |
 | 3-PUSH Message Contract 정렬 | DONE | 2026-06-12 | [POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md](handoff/POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md) |
 | UI 안전실행 — ML evidence 갱신 background job | DONE | 2026-06-11 | [POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md](handoff/POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md) |
@@ -186,11 +198,12 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 ## 6. Next action
 
 - **다음 Step 후보 (사용자 결정 대기)**:
-  1. ~~NAV / Discount Source Adoption~~ — **DONE (2026-06-08 Naver Universe NAV Integration)**.
-  2. **NAV / 괴리율 시계열 누적** — 현재는 universe 1회 호출 = 단면 스냅샷. asof 일자별 누적이 위험 감지 축 2 의 시계열 후보로 직접 사용 가능 (ML readiness 카드의 NAV/괴리율 시계열 partial → available 승격 경로).
-  3. **위험 감지 지표 시계열 적재 1차** — VKOSPI / Fear&Greed / 외국인·기관 수급 / 시장 폭 후보 진단. ML 2축 중 축 2 선행 조건.
-  4. **구성종목 가격 시계열 source 진단** — ETF Exposure 화면에서 등락률 unavailable 해소.
-  5. **MDD / Sharpe 계산 도입** — Phase 1 BACKLOG 항목.
+  1. **KS-10 Cleanup — `app/push_context.py` + `app/draft_message.py` 책임 분리** — 본 STEP (2026-06-14) 의 KS-10 trigger + near 동시 해소. push_context.py 의 helper 5종 (overnight_us_lines / market_trend_lines / risk_pattern_lines / holdings_observation_lines / spike_view_lines) + observation builder × 3 을 별도 모듈로 분리. draft_message.py 의 신규 `_runtime_evidence_lines` 도 같은 Cleanup 범위. UI / 문구 / 데이터 계약 변경 금지. **다음 기능 STEP 진입 전 우선 처리 필요 (KS-10 §발동 시 조치)**.
+  2. **OCI runtime source 도입** — PC 에서 검증한 source 가 OCI 네트워크에서 작동 확인 + outbox/Telegram 발송 분기 마이그레이션.
+  3. **하루 3회 발송 시간 + 자동 발송 UX** (scheduler 결정).
+  4. **runtime source 수동 refresh endpoint**.
+  5. **뉴스 source 도입** (PUSH-1 의 [전일 기준 시장 흐름] 보강).
+  6. **ThreePushDraftCard 정식 화면 위치 결정**.
 - **하지 않을 것 (불변 원칙)**:
   - 자동 매매 / Telegram 문구 변경 / OCI push 자동화 (사용자 명시 승인 필요)
   - MongoDB 전환 (PROJECT_ORIGIN_INTENT §10 #2 — SQLite(시장) + JSON(holdings/Run) SSOT 분리)
@@ -247,6 +260,9 @@ POC2 Step 7 (3-PUSH realignment):
 POC2 Step 8 (3-PUSH 운영 1주기 검증) + 별도 Foundation:
 - [POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md](handoff/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md)
 - [POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md](handoff/POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md) — FDR + SQLite 시장 데이터 기반 구축
+
+2026-06-14 ~ 직전 5개:
+- 2026-06-14 3-PUSH Message Text Runtime Evidence 반영 → [conclusion](handoff/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md)
 
 2026-06-01 이후 (가장 최근 5개 STEP — §3 참조 + ARCHIVE 전문):
 - 2026-06-07 NAV / Discount Source Diagnosis 1차 (FIX) → [STATE_LATEST_ARCHIVE §0](handoff/STATE_LATEST_ARCHIVE.md)

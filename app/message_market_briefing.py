@@ -9,6 +9,13 @@
 push_context 가 주입되면 본 builder 가 그 안의 market_view.observations 를
 참고해 [밤사이 미국 시장] 1줄 섹션을 추가한다 (runtime probe 결과 반영).
 
+3-PUSH Message Text Runtime Evidence 반영 (2026-06-14) — AC-1 / AC-2:
+- push_context.market_view 의 overnight_us 관찰에서 실제 close / change_pct +
+  섹터 해석 hint 를 노출.
+- push_context.market_view 의 market_trend / risk_pattern 관찰 텍스트도 그대로
+  message_text 에 1~2줄로 반영.
+- 단순 "조회 가능 지수" 노출 금지.
+
 입력 (모두 read-only, 저장된 artifact / 정규화 evidence):
 - ML baseline evidence snapshot (위험 패턴 참고).
 - Market Discovery TopN (시장 내부 신호 — 상위 / 하위 N개 ETF).
@@ -74,18 +81,23 @@ def _evidence_section(ml_baseline_snapshot: Optional[dict[str, Any]]) -> list[st
 def _market_internal_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
     """Market Discovery TopN 의 상위 / 하위 ETF 흐름 요약. 외부 source 호출 X.
 
-    topn_payload 가 비정상이면 섹션 생략. items 가 비어있어도 생략.
+    topn_payload 가 비정상이면 섹션 생략. candidates / items 비어있어도 생략.
+    compute_topn 응답은 candidates 키를 갖는다 — 호환을 위해 items 도 fallback.
     """
     if not isinstance(topn_payload, dict):
         return []
-    items = topn_payload.get("items")
+    items = topn_payload.get("candidates")
+    if not isinstance(items, list) or len(items) == 0:
+        items = topn_payload.get("items")
     if not isinstance(items, list) or len(items) == 0:
         return []
     basis = topn_payload.get("basis") or "1m"
     asof = topn_payload.get("asof") or "-"
 
     def _key(it: dict[str, Any]) -> Optional[float]:
-        v = it.get("return_pct") if isinstance(it, dict) else None
+        v = it.get("selected_return_pct") if isinstance(it, dict) else None
+        if not isinstance(v, (int, float)):
+            v = it.get("return_pct") if isinstance(it, dict) else None
         return v if isinstance(v, (int, float)) else None
 
     sortable = [(it, _key(it)) for it in items if isinstance(it, dict)]
@@ -103,13 +115,19 @@ def _market_internal_section(topn_payload: Optional[dict[str, Any]]) -> list[str
     ]
     for it, _ in top3:
         name = it.get("name") or it.get("ticker") or "-"
-        pct = _fmt_pct(it.get("return_pct"))
+        v = it.get("selected_return_pct")
+        if not isinstance(v, (int, float)):
+            v = it.get("return_pct")
+        pct = _fmt_pct(v)
         if pct:
             lines.append(f"    - {name} {pct}")
     lines.append("  • 하위 ETF 흐름:")
     for it, _ in bottom3:
         name = it.get("name") or it.get("ticker") or "-"
-        pct = _fmt_pct(it.get("return_pct"))
+        v = it.get("selected_return_pct")
+        if not isinstance(v, (int, float)):
+            v = it.get("return_pct")
+        pct = _fmt_pct(v)
         if pct:
             lines.append(f"    - {name} {pct}")
     return lines
@@ -146,29 +164,40 @@ def build_market_briefing_message(
     """PUSH-1 시장 흐름 브리핑 message_text 생성.
 
     입력 흐름 (2026-06-13 정렬): pc_evidence + runtime_snapshot → push_context
-    → 본 builder → message_text. push_context 가 주입되면 그 안의 market_view
-    .observations (overnight_us) 를 참고해 [밤사이 미국 시장] 1줄 섹션 추가.
+    → 본 builder → message_text.
+
+    3-PUSH Message Text Runtime Evidence 반영 (2026-06-14): push_context 가
+    주입되면 그 안의 market_view.observations 가 우선이며 (AC-1 / AC-2):
+      • overnight_us — 실제 close / change_pct + 섹터 해석 hint 노출.
+      • market_trend — Market Discovery 후보 흐름 1줄 (push_context 우선,
+        없으면 fallback 으로 기존 topn 섹션).
+      • risk_pattern — ML baseline 룩백 1줄 (push_context 우선).
 
     구조:
       ✅ 시장 흐름 브리핑 (asof)
       [밤사이 미국 시장 (runtime probe)] — push_context 기반, 조회 성공 시
-      [시장 내부 신호]
-        • 상위 / 하위 ETF (TopN read-only)
-      [위험 패턴 참고]
-        • ML baseline 룩백 high vs low drawdown (사용 가능 시)
+      [국내 시장 내부 신호 (Market Discovery)] — push_context.market_view 기반
+      [시장 내부 신호] — topn_payload 기반 상세 (상위/하위 ETF 목록)
+      [위험 패턴 참고 (ML baseline 룩백)] — push_context 기반 1줄
+      [위험 패턴 참고] — ML baseline snapshot 기반 상세
       [추가 확인 필요 외부 변수]
-        • CNN Fear & Greed / VIX / 환율 등 checklist
       (중립 안내)
 
     뉴스 source 가 없으면 뉴스 섹션 자체 생략. "unavailable" 보여주기 X.
     """
-    from app.push_context import overnight_us_lines
+    from app.push_context import (
+        market_trend_lines,
+        overnight_us_lines,
+        risk_pattern_lines,
+    )
 
     header = [TITLE, f"기준일/생성: {asof_iso}", ""]
 
     sections: list[list[str]] = [
         overnight_us_lines(push_context),
+        market_trend_lines(push_context),
         _market_internal_section(topn_payload),
+        risk_pattern_lines(push_context),
         _evidence_section(ml_baseline_snapshot),
         _external_context_section(ml_baseline_snapshot),
     ]

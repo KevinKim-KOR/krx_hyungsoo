@@ -4,6 +4,10 @@
 **개별 주식 전체 source 도입 금지** (이번 작업 범위 밖). ETF / market universe
 기준만 사용. 외부 source 호출 0건.
 
+3-PUSH Message Text Runtime Evidence 반영 (2026-06-14, AC-5):
+score 단독 표시 금지. push_context.spike_view 의 items 마다 수익률 근거 / 방향 /
+data_quality / holdings overlap 4개 축 중 최소 2개 이상이 함께 노출되도록 한다.
+
 입력 (모두 read-only, 저장된 artifact / API 결과):
 - Market Discovery TopN (compute_topn) — 상위·하위 ETF 수익률.
 - universe_momentum_latest.json 의 falling_candidate (기존 PUSH 3 bullet 재사용).
@@ -44,21 +48,34 @@ def _fmt_pct(value: Any, *, signed: bool = True) -> Optional[str]:
     return f"{pct:.2f}%"
 
 
+def _topn_candidates(topn_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """compute_topn 응답에서 candidates 또는 items 를 정규화하여 반환."""
+    cand = topn_payload.get("candidates")
+    if isinstance(cand, list) and cand:
+        return [it for it in cand if isinstance(it, dict)]
+    items = topn_payload.get("items")
+    if isinstance(items, list) and items:
+        return [it for it in items if isinstance(it, dict)]
+    return []
+
+
 def _topn_spike_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
     """compute_topn 결과의 상위 / 하위 ETF 중 표시 하한 이상 변동만 표시.
 
-    개별 주식 universe 가 아니라 **기존 ETF universe** (compute_topn 의 items)
-    만 사용. 새 source 추가 0건 (§4.4). 표시 하한은 보여줄 항목을 선별하는
-    화면 기준이며 매매 / 위험 판단 기준이 아니다.
+    개별 주식 universe 가 아니라 **기존 ETF universe** (compute_topn) 만 사용.
+    새 source 추가 0건 (§4.4). 표시 하한은 보여줄 항목을 선별하는 화면 기준이며
+    매매 / 위험 판단 기준이 아니다.
     """
     if not isinstance(topn_payload, dict):
         return []
-    items = topn_payload.get("items")
-    if not isinstance(items, list) or len(items) == 0:
+    items = _topn_candidates(topn_payload)
+    if not items:
         return []
 
     def _pct(it: dict[str, Any]) -> Optional[float]:
-        v = it.get("return_pct") if isinstance(it, dict) else None
+        v = it.get("selected_return_pct") if isinstance(it, dict) else None
+        if not isinstance(v, (int, float)):
+            v = it.get("return_pct") if isinstance(it, dict) else None
         if not isinstance(v, (int, float)):
             return None
         # compute_topn 결과는 % 단위로 들어옴 (e.g. 15.3 = +15.3%). 일관성 위해
@@ -148,7 +165,7 @@ def _data_quality_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
     """
     if not isinstance(topn_payload, dict):
         return []
-    items = topn_payload.get("items") or []
+    items = _topn_candidates(topn_payload)
     flagged: list[tuple[str, str]] = []
     for it in items:
         if not isinstance(it, dict):
@@ -166,30 +183,6 @@ def _data_quality_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def _spike_view_section(push_context: Optional[dict[str, Any]]) -> list[str]:
-    """3-PUSH Runtime Package PC 검증 (2026-06-13) — push_context.spike_view
-    의 items 가 있으면 1줄 요약 추가. universe_artifact 가 직접 falling/top
-    candidate 를 만들지 않은 흐름에서도 push_context 만으로 관찰 1줄 노출."""
-    if not isinstance(push_context, dict):
-        return []
-    sv = push_context.get("spike_view")
-    if not isinstance(sv, dict):
-        return []
-    items = sv.get("items") or []
-    if not items:
-        return []
-    lines = ["[universe momentum 관찰 (push_context 기반)]"]
-    for it in items[:4]:
-        if not isinstance(it, dict):
-            continue
-        name = it.get("name") or it.get("ticker") or "-"
-        sv_val = it.get("score_value")
-        direction = it.get("direction") or "-"
-        if isinstance(sv_val, (int, float)):
-            lines.append(f"  • {name} ({direction}) score={float(sv_val):+.2f}")
-    return lines if len(lines) > 1 else []
-
-
 def build_spike_alert_message(
     *,
     asof_iso: str,
@@ -199,8 +192,15 @@ def build_spike_alert_message(
 ) -> str:
     """PUSH-3 급등락 관찰 신호 message_text 생성.
 
+    3-PUSH Message Text Runtime Evidence 반영 (2026-06-14, AC-5): push_context.
+    spike_view 가 주어지면 그 items 마다 수익률 근거 / 방향 / data_quality /
+    holdings overlap 중 최소 2개 이상이 포함된 1줄 관찰을 노출한다. score 단독
+    표시 금지. push_context 가 비어있으면 기존 topn / universe / data_quality
+    섹션으로 fallback.
+
     구조:
       ⚡ 급등락 관찰 신호 (asof)
+      [universe momentum 관찰 (push_context 기반)] — 풍부 관찰 1줄/item
       [ETF universe 변동성 확대 관찰] — 표시 하한 이상 변동 항목만
       [기존 급락 ETF 주의 신호 (PUSH 3 재사용)]
       [data_quality 확인 필요]
@@ -208,11 +208,13 @@ def build_spike_alert_message(
 
     개별 주식 전체 source 도입 0건. ETF / market universe 기준만.
     """
+    from app.push_context import spike_view_lines
+
     header = [TITLE, f"기준일/생성: {asof_iso}", ""]
 
     body: list[str] = []
     for section in (
-        _spike_view_section(push_context),
+        spike_view_lines(push_context),
         _topn_spike_section(topn_payload),
         _falling_candidate_section(universe_artifact),
         _data_quality_section(topn_payload),

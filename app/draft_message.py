@@ -510,6 +510,31 @@ def _render_judgment_lines(payload: dict[str, Any]) -> list[str]:
     return ["", JUDGMENT_SECTION_HEADER, *bullets]
 
 
+def _runtime_evidence_lines(payload: dict[str, Any]) -> list[str]:
+    """PUSH-2 holdings draft 의 runtime_package.push_context 기반 [보유 종목 관찰
+    포인트] + [시장 흐름 연결] 섹션 (3-PUSH Message Text Runtime Evidence,
+    2026-06-14, AC-3 / AC-4).
+
+    payload 의 runtime_package 안 push_context 가 의미 있는 관찰을 갖고 있을
+    때만 노출. 없으면 빈 리스트 → 기존 흐름(보유 종목 상태 브리핑 bullet 등)
+    만으로 진행.
+    """
+    rp = payload.get("runtime_package")
+    if not isinstance(rp, dict):
+        return []
+    push_context = rp.get("push_context")
+    if not isinstance(push_context, dict) or not push_context:
+        return []
+    # 동적 import — draft_message 가 push_context 모듈을 top-level 로 의존하지
+    # 않게 (circular 방지).
+    from app.push_context import holdings_observation_lines
+
+    lines = holdings_observation_lines(push_context)
+    if not lines:
+        return []
+    return ["", *lines]
+
+
 def _build_with_focus_limit(
     run_id: str,
     payload: dict[str, Any],
@@ -531,6 +556,7 @@ def _build_with_focus_limit(
         header_lines.append(note)
 
     judgment_lines = _render_judgment_lines(payload)
+    runtime_lines = _runtime_evidence_lines(payload)
     summary_lines = _render_summary_lines(summary)
 
     if focus_limit is None:
@@ -542,7 +568,12 @@ def _build_with_focus_limit(
     footer_lines = ["", "전체 보유 상세는 웹 화면에서 확인하세요."]
 
     return "\n".join(
-        header_lines + judgment_lines + summary_lines + focus_lines + footer_lines
+        header_lines
+        + judgment_lines
+        + runtime_lines
+        + summary_lines
+        + focus_lines
+        + footer_lines
     )
 
 

@@ -377,6 +377,29 @@
 
 ---
 
+### 2.23 3-PUSH Message Text Runtime Evidence 반영 (PUSH-1 / PUSH-2 / PUSH-3 본문 풍부화)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | `runtime_package` + `push_context` 의 실제 evidence (미국 지수 실제 등락률 / Market Discovery 상위·하위 흐름 / ML baseline 룩백 / holdings × runtime quote / universe momentum 후보) 를 PUSH-1/2/3 `message_text` 에 사람이 판단에 쓸 수 있는 수준으로 노출. |
+| 현재 메뉴 위치 | Approval / Telegram 화면의 `ThreePushDraftCard` (PUSH-1/3 진입) + Holdings 화면 (PUSH-2 진입). 직전 STEP 의 진입점 그대로. |
+| 기능 목적 | 직전 STEP 까지의 본문은 "조회 가능 지수" / "score" 같이 사용자가 판단에 사용하기 부족한 표현이었다. 본 STEP 으로 실제 수치 + 관찰 문장 + market_view 연결까지 사용자가 1회 읽고 판단할 수 있게 한다. 매수/매도/추천/현금/조정장/위험알림 0건. |
+| 사용 가능 여부 | **사용 가능** (2026-06-14 DONE). |
+| 데이터 소스 상태 | 직전 STEP 의 runtime probe 그대로. 외부 source 호출 0건. 신규 dependency 0건. ML 산식 / Market Discovery 산식 / NAV·괴리율 산식 / universe momentum 산식 변경 0건. |
+| API 진입점 | PUSH-1: `POST /runs/generate + input_data.push_kind="market_briefing"`. PUSH-3: 동일 endpoint + `push_kind="spike_or_falling_alert"`. PUSH-2: `POST /runs/generate-from-holdings`. **신규 PUSH 전용 endpoint 0건**. |
+| message_text 생성 흐름 | `pc_evidence + runtime_snapshot → push_context (observations 에 실제 값 + text) → message builder (push_context 우선 + 기존 evidence 섹션 fallback) → message_text`. |
+| PUSH-1 신규 섹션 | `[밤사이 미국 시장 (runtime probe)]` 실제 close + change_pct + 섹터 해석 hint. `[국내 시장 내부 신호 (Market Discovery)]` 상위/하위 1줄. `[위험 패턴 참고 (ML baseline 룩백)]` 1줄. |
+| PUSH-2 신규 섹션 | `[보유 종목 관찰 포인트]` (holding 별 runtime quote / 비중 / Market Discovery overlap / 국내 기준선 안내). `[시장 흐름 연결 (market_view)]` (밤사이 미국 + Market Discovery 흐름). `[리뷰 포인트]`. |
+| PUSH-3 신규 섹션 | `[universe momentum 관찰 (push_context 기반)]` 각 item 마다 수익률 근거 / 방향 / data_quality / holdings overlap 4축 표시. score 단독 표시 폐기 (AC-5). |
+| UI placeholder 방지 | runtime probe 실패한 indices 는 행 자체 생략 / 전부 실패면 섹션 자체 생략. "unavailable" / "조회 실패" 본문 substring 0건. |
+| KS-10 영향 | `app/push_context.py` 247→**798 라인** (백엔드 핵심 모듈 ≥650 trigger). 본 STEP 범위 안에서 자연 증가 — 후속 Cleanup STEP 으로 분리 필요 (사용자 확인). |
+| 실측 (2026-06-14 PC stub probe) | PUSH-1 본문에 NASDAQ +0.85% / SPX +0.41% / SOX +1.25% 실제 값 + 반도체 강세 hint + Market Discovery 흐름 + ML baseline 43거래일 룩백 모두 노출. PUSH-3 본문에 KODEX 200 score +38.60 / ACE 코리아AI테크핵심산업 1d +0.92%, 20d +32.77% · 방향 up · data_quality 이상 없음 · 보유 종목과 겹치지 않음 형태로 풍부 1줄/item. PUSH-2 본문에 KODEX 200 (069500): runtime 시세 +0.42% (가격 36,000) + 국내 기준선 안내 + market_view 1줄 연결. |
+| 테스트 | pytest **534 passed** (+15 신규 / 회귀 0). `tests/test_three_push_message_text_runtime_evidence.py` 15건. black / flake8 / Next.js build PASS. |
+| 테스트용/임시 여부 | 아님 — 운영용. PC 검증 단계. OCI runtime 으로 옮길 때 본 builder 가 그대로 재사용된다 (산식 변경 0건). |
+| 다음 조치 | (1) KS-10 Cleanup — push_context 책임 분리. (2) OCI runtime source 도입. (3) 하루 3회 발송 시간 / 자동 발송 UX. (4) 뉴스 source 도입. (5) ThreePushDraftCard 정식 화면 위치. |
+
+---
+
 ### 2.22 3-PUSH Runtime Package PC 검증 (three_push_runtime_package.v1)
 
 | 항목 | 값 |

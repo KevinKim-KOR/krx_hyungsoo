@@ -176,14 +176,19 @@ def _build_holdings_payload(
     #  · draft_payload.holdings_market_evidence_snapshot 신규 키 — snapshot 저장.
     #  · factor_signals 에 scope="holdings_market_evidence" signal 1건 — [판단 사유] 1줄.
     # holdings 비어있는 흐름은 본 함수에 도달 전 차단되어 있어 빈 응답 보호 불필요.
+    # compute_topn 결과는 (1) holdings_market_evidence builder 입력 + (2) PUSH-2
+    # runtime_package 의 market_discovery_snapshot evidence (AC-4) 양쪽에서
+    # 사용된다. SQLite read-only 이지만 1137 ETF × 60거래일 계산이라 호출 비용이
+    # 있으므로 한 함수 호출당 1회만 수행한다.
+    topn_payload_for_holdings = compute_topn(
+        n=DEFAULT_N,
+        db_path=MARKET_DB_PATH,
+        basis=DEFAULT_BASIS,
+        order=DEFAULT_ORDER,
+    )
     market_evidence_snapshot = build_holdings_market_evidence(
         holdings=holdings,
-        topn_payload=compute_topn(
-            n=DEFAULT_N,
-            db_path=MARKET_DB_PATH,
-            basis=DEFAULT_BASIS,
-            order=DEFAULT_ORDER,
-        ),
+        topn_payload=topn_payload_for_holdings,
         market_quotes=quotes,
         db_path=MARKET_DB_PATH,
         holdings_asof=get_holdings_file_mtime_iso(HOLDINGS_FILE),
@@ -218,12 +223,34 @@ def _build_holdings_payload(
     holdings_tickers = [h.ticker for h in holdings if isinstance(h.ticker, str)]
     probe_tickers = list(dict.fromkeys(holdings_tickers + ["069500"]))
     runtime_snapshot = _runtime_snapshot_for_holdings(probe_tickers)
+    # 3-PUSH Message Text Runtime Evidence 반영 (2026-06-14, AC-4):
+    # PUSH-2 도 market_view 연결을 위해 market_discovery_snapshot 를 채운다.
+    # 위에서 holdings_market_evidence 입력으로 1회 호출한 topn_payload_for_holdings
+    # 를 그대로 재사용 — compute_topn 중복 호출 금지 (검증자 r2 NOTES B-6).
+    # candidates 가 없으면 (테스트 stub / 시장 데이터 미적재) market_discovery_snapshot
+    # 자체를 빈 dict 로 두어 holdings_briefing 필수 evidence 검증 (market_view 또는
+    # market_discovery) 이 정확히 동작하도록 한다 (FIX r3 가드 보존).
+
+    def _has_topn_candidates(payload: object) -> bool:
+        if not isinstance(payload, dict):
+            return False
+        cand = payload.get("candidates")
+        if isinstance(cand, list) and cand:
+            return True
+        items = payload.get("items")
+        return isinstance(items, list) and bool(items)
+
+    market_discovery_for_package: dict[str, Any] = (
+        topn_payload_for_holdings
+        if _has_topn_candidates(topn_payload_for_holdings)
+        else {}
+    )
     pc_evidence_for_package = {
         "holdings_snapshot": {
             "asof_date": asof_date,
             "positions": recommendations,
         },
-        "market_discovery_snapshot": {},
+        "market_discovery_snapshot": market_discovery_for_package,
         "ml_baseline_snapshot": ml_baseline_evidence_snapshot or {},
         "universe_momentum_snapshot": {},
         "nav_discount_snapshot": {},

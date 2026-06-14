@@ -1,12 +1,80 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-13 (3-PUSH Runtime Package PC 검증)
+작성일: 2026-05-20 / 갱신: 2026-06-14 (3-PUSH Message Text Runtime Evidence 반영)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-13 — 3-PUSH Runtime Package PC 검증)
+## 0. 직전 STEP 결과 (2026-06-14 — 3-PUSH Message Text Runtime Evidence 반영)
+
+직전 STEP (2026-06-13 3-PUSH Runtime Package PC 검증) 에서 만든
+`runtime_package` + `push_context` 의 실제 evidence 를 PUSH-1 / PUSH-2 / PUSH-3
+`message_text` 에 사람이 판단에 쓸 수 있는 수준으로 반영.
+
+### 결과 요약
+
+- **신규 source / dependency / endpoint / OCI runtime / scheduler 0건**. ML
+  산식 / Market Discovery 산식 / NAV·괴리율 산식 / universe momentum 산식 변경
+  0건. 매수·매도·교체·현금비중·조정장·위험 threshold 0건.
+- **수정 모듈 (라인 수 실측)**:
+  - `app/push_context.py` 247→**798 라인** — observation 별 사람이 읽는 text
+    + 실제 값 채움 + 헬퍼 5종 추가 (overnight_us_lines 풍부화 + market_trend_lines
+    / risk_pattern_lines / holdings_observation_lines / spike_view_lines 신규).
+    spike_view 가 universe momentum + Market Discovery candidates 양쪽 합쳐
+    풍부 표시. `_fmt_pct` 계약 변경 (% 가정).
+  - `app/message_market_briefing.py` 197→**225 라인** — `[국내 시장 내부 신호
+    (Market Discovery)]` + `[위험 패턴 참고 (ML baseline 룩백)]` 2 섹션 신규.
+    `_market_internal_section` 이 compute_topn `candidates` / `items` 양쪽 호환.
+  - `app/message_spike_alert.py` 239→**240 라인** — 직전 STEP 의 `_spike_view_
+    section` (score 만 노출) 제거 + `spike_view_lines(push_context)` 호출로
+    대체. score 단독 표시 폐기 (AC-5).
+  - `app/draft_message.py` 586→**616 라인** — `_runtime_evidence_lines(payload)`
+    신규 + PUSH-2 본문 조립 순서 갱신 (judgment → runtime → summary → focus).
+  - `app/draft.py` 559→**586 라인** — `_build_holdings_payload` 가 PUSH-2
+    evidence 에 compute_topn 결과를 채움 (AC-4 — market_view 연결). compute_topn
+    은 함수당 1회만 호출 후 재사용 (검증자 r2 NOTES B-6 반영). candidates
+    0건 시 빈 dict 로 유지하여 FIX r3 안전장치 보존.
+- **신규 테스트**: `tests/test_three_push_message_text_runtime_evidence.py`
+  **638 라인** / **15건** (AC-1 / AC-2 / AC-3 / AC-4 / AC-5 / AC-7 / AC-8 /
+  AC-10 검증).
+- **PC 라이브 본문 실측** (stub probe — Nasdaq +0.85% / SPX +0.41% / SOX +1.25%):
+  - PUSH-1: `[밤사이 미국 시장 (runtime probe)] • NASDAQ +0.85% (close 18,000.12)
+    • SPX +0.41% (close 5,400.33) • SOX +1.25% (close 5,200.45) • 반도체 지수
+    강세는 국내 반도체/성장 ETF 해석에 참고 가능` + Market Discovery 흐름
+    1줄 + ML baseline 룩백 1줄 모두 노출.
+  - PUSH-3: `[universe momentum 관찰 (push_context 기반)] • {name}: 1d +X.XX%,
+    20d +X.XX% · 방향 up · data_quality 이상 없음 · 보유 종목과 겹치지 않음`
+    풍부 1줄/item (4축 노출).
+  - PUSH-2: `[보유 종목 관찰 포인트] • {name} ({ticker}): runtime 시세
+    {±X.XX%} (가격 {N,NNN}) · 국내 기준선 — 밤사이 미국 지수 흐름과 함께 확인
+    필요 — 관찰 필요` + `[시장 흐름 연결 (market_view)]` + `[리뷰 포인트]`.
+- pytest **534 passed** (직전 STEP 519 → +15 / 회귀 0). black / flake8 /
+  Next.js build PASS.
+- ⚠ **KS-10 trigger + near**: `app/push_context.py` 798 라인 (trigger ≥650) +
+  `app/draft_message.py` 616 라인 (near ≥600, trigger 까지 34 라인 여유).
+  본 STEP 범위 안에서 자연 증가. 단일 Cleanup STEP 으로 두 파일 책임 분리
+  권고 (사용자 확인).
+
+### 다음 분기 후보
+
+1. **KS-10 Cleanup — `app/push_context.py` + `app/draft_message.py` 책임 분리**.
+   push_context.py 의 helper 5종 (observation builder × 3 + message line
+   helper × 5) 을 별도 모듈로 분리. draft_message.py 의 신규
+   `_runtime_evidence_lines` 도 같은 Cleanup 범위에 포함. UI / 문구 / 데이터
+   계약 변경 금지. **다음 기능 STEP 진입 전 우선 처리 권고 (KS-10 §발동 시
+   조치)**.
+2. **OCI runtime source 도입**.
+3. **하루 3회 발송 시간 + 자동 발송 UX**.
+4. **runtime source 수동 refresh endpoint**.
+5. **뉴스 source 도입**.
+6. **runtime_package preview 화면 정식화** (ThreePushDraftCard).
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-13 — 3-PUSH Runtime Package PC 검증)
 
 `three_push_runtime_package.v1` 구조를 PC 에서 실제 evidence + runtime probe
 (네이버 국내 시세 / Yahoo Finance 미국 지수 3종) 로 생성해 Approval/Telegram
