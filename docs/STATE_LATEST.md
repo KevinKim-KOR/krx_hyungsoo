@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-14 (3-PUSH Context Cleanup — KS-10 trigger/near 4건 해소)
+최종 업데이트: 2026-06-15 (PC-to-OCI 3-PUSH Evidence Package Sync)
 
 ## 0. Canonical
 
@@ -23,7 +23,16 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **3-PUSH Context Cleanup — KS-10 trigger/near 4건 해소** (2026-06-14).
+- **현재 완료 상태**: **PC-to-OCI 3-PUSH Evidence Package Sync** (2026-06-15).
+  - PC 에서 생성한 `three_push_runtime_package.v1` package 3종 + manifest 를 OCI 지정 경로로 동기화하는 최소 경로 구현. OCI crontab runner 가 읽을 수 있는 package 공급 경로 확보.
+  - **신규 backend 모듈 1종**: `app/three_push_package_exporter.py` — push_kind 별 package artifact export (`build_market_briefing_package` / `build_holdings_briefing_package` / `build_spike_or_falling_alert_package`) + manifest 생성 + token/chat_id 비노출 가드 (`_assert_no_sensitive_keys`) + atomic 저장 (`_write_atomic`, tmp→rename).
+  - **신규 스크립트 2종**: `scripts/sync_three_push_packages.py` (PC local 생성 → OCI SCP 업로드 atomic → OCI read verification → sync status 기록 / `--dry-run` / `--export-only` 옵션), `scripts/verify_three_push_packages_oci.py` (OCI 에서 standalone 실행, manifest + package 3종 schema/push_kind/token 비노출 검증 후 JSON 출력, stdlib 만 사용).
+  - **신규 상태 파일 경로**: `state/three_push/packages/` (latest_{push_kind}.json 3종 + manifest.json), `state/three_push/sync_status_latest.json`.
+  - **기존 흐름 재사용**: 기존 `draft_three_push.generate_*_via_generic` (PUSH-1/3) + `draft._build_holdings_payload` (PUSH-2) 재사용. 신규 PUSH endpoint / 신규 dependency / 신규 source / Telegram 발송 / SQLite 이전 / scheduler 0건.
+  - **atomic 업로드**: package 3종 → *.tmp SCP → mv rename. manifest 는 package 3종 교체 후 마지막에 교체.
+  - **환경변수**: `OCI_SSH_TARGET` (필수) / `THREE_PUSH_REMOTE_PACKAGE_DIR` (권장) 또는 `OCI_REMOTE_INBOX` (fallback 자동 구성) / `OCI_SSH_KEY_PATH` (선택). 신규 환경변수는 `THREE_PUSH_REMOTE_PACKAGE_DIR` 1개.
+  - pytest **534 passed** (직전 STEP 534 유지 / 회귀 0). black / flake8 / py_compile PASS.
+- **이전 STEP**: **3-PUSH Context Cleanup — KS-10 trigger/near 4건 해소** (2026-06-14).
   - 직전 STEP (3-PUSH Message Text Runtime Evidence 반영) 의 PARTIALLY_VERIFIED 판정 사유였던 KS-10 trigger / near 4건을 모두 helper 모듈 분리로 해소. 산식 / 문구 / 데이터 계약 / API endpoint / message_text 의미 변경 0건.
   - **처리한 4건 (before → after)**: `app/push_context.py` 798→**72 라인** (trigger 해소, format/market/holdings/spike 4 모듈로 분리 + orchestration wrapper 만 유지). `scripts/diagnose_nav_discount_source.py` 984→**524 라인** (trigger 해소, judge_*/record/markdown helper 모듈로 분리). `app/draft_message.py` 616→**299 라인** (near 해소, focus/summary 렌더링 분리). `app/market_topn.py` 613→**347 라인** (near 해소, 상수/dataclass/helper 분리).
   - **신규 모듈 7종**: `app/push_context_format.py` (59) / `app/push_context_market.py` (266) / `app/push_context_holdings.py` (202) / `app/push_context_spike.py` (191) / `app/draft_message_focus.py` (216) / `app/market_topn_helpers.py` (234) / `scripts/diagnose_nav_discount_source_helpers.py` (391). 모두 KS-10 safe.
@@ -155,6 +164,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
+| PC-to-OCI 3-PUSH Evidence Package Sync | DONE | 2026-06-15 | [POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md](handoff/POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md) |
 | 3-PUSH Context Cleanup (KS-10 trigger/near 4건 해소) | DONE | 2026-06-14 | [POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md](handoff/POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md) |
 | 3-PUSH Message Text Runtime Evidence 반영 | DONE | 2026-06-14 | [POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md](handoff/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md) |
 | 3-PUSH Runtime Package PC 검증 | DONE | 2026-06-13 | [POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md](handoff/POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md) |
@@ -207,11 +217,12 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 - **다음 Step 후보 (사용자 결정 대기)**:
   1. ~~**KS-10 Cleanup — `app/push_context.py` + `app/draft_message.py` 책임 분리**~~ — **DONE (2026-06-14 3-PUSH Context Cleanup)**. trigger/near 4건 모두 해소.
-  2. **OCI runtime source 도입** — PC 에서 검증한 source 가 OCI 네트워크에서 작동 확인 + outbox/Telegram 발송 분기 마이그레이션.
-  3. **하루 3회 발송 시간 + 자동 발송 UX** (scheduler 결정).
-  4. **runtime source 수동 refresh endpoint**.
-  5. **뉴스 source 도입** (PUSH-1 의 [전일 기준 시장 흐름] 보강).
-  6. **ThreePushDraftCard 정식 화면 위치 결정**.
+  2. ~~**PC-to-OCI 3-PUSH Evidence Package Sync**~~ — **DONE (2026-06-15)**. package 공급 경로 확보.
+  3. **OCI crontab runner 구현** — OCI 에서 manifest 읽고 package 소비 + Telegram 발송 (하루 3회 발송 시간 결정 선행 필요).
+  4. **하루 3회 발송 시간 + 자동 발송 UX** (scheduler 결정).
+  5. **runtime source 수동 refresh endpoint**.
+  6. **뉴스 source 도입** (PUSH-1 의 [전일 기준 시장 흐름] 보강).
+  7. **ThreePushDraftCard 정식 화면 위치 결정**.
 - **하지 않을 것 (불변 원칙)**:
   - 자동 매매 / Telegram 문구 변경 / OCI push 자동화 (사용자 명시 승인 필요)
   - MongoDB 전환 (PROJECT_ORIGIN_INTENT §10 #2 — SQLite(시장) + JSON(holdings/Run) SSOT 분리)
@@ -269,7 +280,8 @@ POC2 Step 8 (3-PUSH 운영 1주기 검증) + 별도 Foundation:
 - [POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md](handoff/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md)
 - [POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md](handoff/POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md) — FDR + SQLite 시장 데이터 기반 구축
 
-2026-06-14 ~ 직전 5개:
+2026-06-15 ~ 직전 5개:
+- 2026-06-15 PC-to-OCI 3-PUSH Evidence Package Sync → [conclusion](handoff/POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md)
 - 2026-06-14 3-PUSH Context Cleanup (KS-10 trigger/near 4건 해소) → [conclusion](handoff/POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md)
 - 2026-06-14 3-PUSH Message Text Runtime Evidence 반영 → [conclusion](handoff/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md)
 

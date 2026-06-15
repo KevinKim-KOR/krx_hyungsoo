@@ -449,6 +449,29 @@
 
 ---
 
+### 2.25 PC-to-OCI 3-PUSH Evidence Package Sync
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | PC 에서 생성한 `three_push_runtime_package.v1` package 3종 + manifest 를 OCI 지정 경로로 동기화. OCI crontab runner 가 이후 단계에서 읽을 수 있는 package 공급 경로 확보. |
+| 현재 메뉴 위치 | (UI 없음 — 수동 CLI 스크립트) |
+| 기능 목적 | OCI crontab runner 구현 전에 PC 에서 만든 최신 3-PUSH package 를 OCI 가 읽을 수 있는 위치로 동기화한다. crontab runner 가 없을 때 partial/failed 없이 evidence package 를 먼저 공급한다. |
+| 사용 가능 여부 | **사용 가능** (2026-06-15 DONE). |
+| 데이터 소스 상태 | 기존 `draft_three_push.generate_*_via_generic` (PUSH-1/3) + `draft._build_holdings_payload` (PUSH-2) 재사용. 신규 external source / 신규 DB / Telegram 발송 / SQLite 이전 / scheduler 0건. |
+| CLI 진입점 | `python scripts/sync_three_push_packages.py [--dry-run] [--export-only]` |
+| 환경변수 | `OCI_SSH_TARGET` (필수) / `THREE_PUSH_REMOTE_PACKAGE_DIR` (권장) 또는 `OCI_REMOTE_INBOX` (fallback 자동 구성) / `OCI_SSH_KEY_PATH` (선택). |
+| local artifact | `state/three_push/packages/latest_{push_kind}.json` 3종 + `manifest.json`. |
+| OCI remote | `~/krx-alertor/state/three_push/packages/` (THREE_PUSH_REMOTE_PACKAGE_DIR 기준). |
+| atomic 업로드 | package 3종 → *.tmp 업로드 → mv rename. manifest 는 package 3종 교체 후 마지막에 교체. |
+| OCI read verification | `scripts/verify_three_push_packages_oci.py` 를 OCI 에 SCP 후 원격 실행. manifest schema / push_kind 3종 / package schema / generation_status / token 비노출 검증 후 JSON 출력. stdlib 만 사용 (OCI 추가 패키지 설치 불필요). |
+| sync status 기록 | `state/three_push/sync_status_latest.json` — status (success/partial/failed) + export 결과 + OCI upload 결과 + verification 결과. |
+| safety_guards | token / chat_id 를 package / manifest / sync log 에 절대 포함하지 않도록 재귀 검증 (`_assert_no_sensitive_keys`). |
+| 테스트 | pytest **534 passed** (회귀 0). black / flake8 PASS. py_compile PASS. |
+| 테스트용/임시 여부 | 수동 실행 스크립트 — 운영용 (OCI crontab runner 구현 전 package 공급 경로). |
+| 다음 조치 | (1) OCI crontab runner 구현 (본 STEP 에서 공급한 manifest 소비 + Telegram 발송). (2) 하루 3회 발송 시간 + 자동 발송 UX 결정. |
+
+---
+
 ## 3. Context Bridges (화면 간 전달)
 
 ### 3.1 Market Discovery → AI Sessions

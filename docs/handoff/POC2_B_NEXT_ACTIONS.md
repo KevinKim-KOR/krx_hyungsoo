@@ -1,12 +1,57 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-14 (3-PUSH Context Cleanup)
+작성일: 2026-05-20 / 갱신: 2026-06-15 (PC-to-OCI 3-PUSH Evidence Package Sync)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-14 — 3-PUSH Context Cleanup)
+## 0. 직전 STEP 결과 (2026-06-15 — PC-to-OCI 3-PUSH Evidence Package Sync)
+
+PC 에서 생성한 `three_push_runtime_package.v1` package 3종과 manifest 를 OCI 가
+읽을 수 있는 경로로 동기화하는 최소 경로 구현.
+
+### 결과 요약
+
+- **신규 backend 모듈 1종**: `app/three_push_package_exporter.py` — push_kind 별
+  package artifact export + manifest 생성 + token/chat_id 비노출 가드.
+- **신규 스크립트 2종**:
+  - `scripts/sync_three_push_packages.py` — PC local 생성 → OCI SCP 업로드
+    (atomic tmp→rename) → OCI read verification 호출 → sync status 기록.
+  - `scripts/verify_three_push_packages_oci.py` — OCI 에서 standalone 으로 실행,
+    manifest + package 3종 schema / push_kind / token 비노출 검증 후 JSON 출력.
+- **신규 상태 파일 경로**:
+  - `state/three_push/packages/` — latest_{push_kind}.json 3종 + manifest.json.
+  - `state/three_push/sync_status_latest.json` — sync 결과 기록.
+- **기존 흐름 재사용**: 기존 `draft_three_push.generate_*_via_generic` (PUSH-1/3) +
+  `draft._build_holdings_payload` (PUSH-2) 재사용. 신규 PUSH endpoint / 신규
+  dependency / 신규 source / Telegram 발송 / SQLite 이전 / scheduler 0건.
+- **atomic 업로드**: package 3종 → *.tmp 업로드 → mv rename. manifest 는 마지막에
+  교체.
+- **실행 방법**:
+  - export-only (OCI 없음): `python scripts/sync_three_push_packages.py --export-only`
+  - dry-run: `python scripts/sync_three_push_packages.py --dry-run`
+  - 실제 sync: `python scripts/sync_three_push_packages.py`
+- pytest **534 passed** (회귀 0). black / flake8 PASS.
+- 신규 API endpoint / 신규 DB / crontab runner / scheduler / Telegram 발송 0건.
+
+### 다음 분기 후보
+
+본 STEP 으로 OCI crontab runner 가 읽을 수 있는 package 공급 경로 확보 완료.
+
+1. **OCI crontab runner 구현** — OCI 에서 manifest 읽고 package 소비 + Telegram
+   발송 (하루 3회 발송 시간 결정 선행 필요).
+2. **하루 3회 발송 시간 + 자동 발송 UX** — scheduler / 발송 시각 / 자동 vs 수동
+   트리거 결정.
+3. **runtime source 수동 refresh endpoint**.
+4. **뉴스 source 도입** (PUSH-1 의 [전일 기준 시장 흐름] 보강).
+5. **ThreePushDraftCard 정식 화면 위치** (Approval/Telegram 화면 외).
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev1. 이전 STEP 결과 (2026-06-14 — 3-PUSH Context Cleanup)
 
 직전 기능 STEP (3-PUSH Message Text Runtime Evidence 반영) 의 PARTIALLY_VERIFIED
 판정 사유였던 KS-10 trigger / near 4건을 helper 모듈 분리로 모두 해소.
