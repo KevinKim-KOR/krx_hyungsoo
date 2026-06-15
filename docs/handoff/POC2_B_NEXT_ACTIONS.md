@@ -1,49 +1,43 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-15 (PC-to-OCI 3-PUSH Evidence Package Sync)
+작성일: 2026-05-20 / 갱신: 2026-06-15 (OCI 3-PUSH Crontab Runner & Telegram Autosend)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-15 — PC-to-OCI 3-PUSH Evidence Package Sync)
+## 0. 직전 STEP 결과 (2026-06-15 — OCI 3-PUSH Crontab Runner & Telegram Autosend)
 
-PC 에서 생성한 `three_push_runtime_package.v1` package 3종과 manifest 를 OCI 가
-읽을 수 있는 경로로 동기화하는 최소 경로 구현.
+OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시
+Telegram 발송하는 runner 구현.
 
 ### 결과 요약
 
-- **신규 backend 모듈 1종**: `app/three_push_package_exporter.py` — push_kind 별
-  package artifact export + manifest 생성 + token/chat_id 비노출 가드.
-- **신규 스크립트 2종**:
-  - `scripts/sync_three_push_packages.py` — PC local 생성 → OCI SCP 업로드
-    (atomic tmp→rename) → OCI read verification 호출 → sync status 기록.
-  - `scripts/verify_three_push_packages_oci.py` — OCI 에서 standalone 으로 실행,
-    manifest + package 3종 schema / push_kind / token 비노출 검증 후 JSON 출력.
-- **신규 상태 파일 경로**:
-  - `state/three_push/packages/` — latest_{push_kind}.json 3종 + manifest.json.
-  - `state/three_push/sync_status_latest.json` — sync 결과 기록.
-- **기존 흐름 재사용**: 기존 `draft_three_push.generate_*_via_generic` (PUSH-1/3) +
-  `draft._build_holdings_payload` (PUSH-2) 재사용. 신규 PUSH endpoint / 신규
-  dependency / 신규 source / Telegram 발송 / SQLite 이전 / scheduler 0건.
-- **atomic 업로드**: package 3종 → *.tmp 업로드 → mv rename. manifest 는 마지막에
-  교체.
-- **실행 방법**:
-  - export-only (OCI 없음): `python scripts/sync_three_push_packages.py --export-only`
-  - dry-run: `python scripts/sync_three_push_packages.py --dry-run`
-  - 실제 sync: `python scripts/sync_three_push_packages.py`
+- **신규 스크립트 1종**: `scripts/run_three_push_oci.py` — `--push-kind / --mode`
+  인자 수신. dry-run: 검증만. send: guard 7종 통과 후 Telegram 발송. stdlib 전용.
+- **신규 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind
+  3종 crontab entry + 환경변수 설명 + dry-run 먼저 확인 절차.
+- **수정 모듈 1종**: `app/three_push_package_exporter.py` — `build_holdings_briefing_package`
+  에 message_text 동기화 추가 (직전 Step 누락 bug fix).
+- **신규 상태 경로** (gitignored): `state/three_push/oci_runner_status_latest.json` +
+  `state/three_push/oci_runner_history.jsonl` + `state/three_push/oci_sent_registry.json`.
+- **guard 7종**: (1) global enable flag (2) push_kind별 enable flag (3)
+  generation_status=failed 차단 (4) 최신성 36h guard (5) 중복 발송 방지 (6) 금지
+  문구 검사 (7) token/chat_id 비노출.
+- **Telegram 실환경 send 실측 (2026-06-15)**: `status=sent`, `telegram_sent=true`.
+  중복 재실행 → `status=skipped`, `reason=duplicate_package`.
 - pytest **534 passed** (회귀 0). black / flake8 PASS.
-- 신규 API endpoint / 신규 DB / crontab runner / scheduler / Telegram 발송 0건.
+- 신규 DB / scheduler / SQLite 이전 / 신규 external source 0건.
 
 ### 다음 분기 후보
 
-본 STEP 으로 OCI crontab runner 가 읽을 수 있는 package 공급 경로 확보 완료.
+OCI crontab runner 구현 완료. crontab 등록 전 운영 결정 필요.
 
-1. **OCI crontab runner 구현** — OCI 에서 manifest 읽고 package 소비 + Telegram
-   발송 (하루 3회 발송 시간 결정 선행 필요).
-2. **하루 3회 발송 시간 + 자동 발송 UX** — scheduler / 발송 시각 / 자동 vs 수동
-   트리거 결정.
-3. **runtime source 수동 refresh endpoint**.
+1. **OCI crontab 등록** — 발송 시간 확정 후 `crontab -e` 로 3 entry 등록.
+   (`docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 참고)
+2. **PC sync 주기 확립** — runner 가 36h stale guard 를 가지므로 PC 에서 하루 1회
+   이상 `sync_three_push_packages.py` 실행 필요.
+3. **runtime source 수동 refresh endpoint** — 시장 데이터 갱신 트리거.
 4. **뉴스 source 도입** (PUSH-1 의 [전일 기준 시장 흐름] 보강).
 5. **ThreePushDraftCard 정식 화면 위치** (Approval/Telegram 화면 외).
 
@@ -51,7 +45,22 @@ PC 에서 생성한 `three_push_runtime_package.v1` package 3종과 manifest 를
 
 ---
 
-## 0-prev1. 이전 STEP 결과 (2026-06-14 — 3-PUSH Context Cleanup)
+## 0-prev1. 이전 STEP 결과 (2026-06-15 — PC-to-OCI 3-PUSH Evidence Package Sync)
+
+PC 에서 생성한 `three_push_runtime_package.v1` package 3종과 manifest 를 OCI 가
+읽을 수 있는 경로로 동기화하는 최소 경로 구현.
+
+### 결과 요약
+
+- **신규 backend 모듈 1종**: `app/three_push_package_exporter.py`, **신규 스크립트 2종**:
+  `scripts/sync_three_push_packages.py` / `scripts/verify_three_push_packages_oci.py`.
+- **신규 상태 경로**: `state/three_push/packages/` + `state/three_push/sync_status_latest.json`.
+- **OCI 실측** (2026-06-15): status=success, package 3/3, manifest ok.
+- pytest **534 passed** (회귀 0). black / flake8 PASS.
+
+---
+
+## 0-prev2. 이전 STEP 결과 (2026-06-14 — 3-PUSH Context Cleanup)
 
 직전 기능 STEP (3-PUSH Message Text Runtime Evidence 반영) 의 PARTIALLY_VERIFIED
 판정 사유였던 KS-10 trigger / near 4건을 helper 모듈 분리로 모두 해소.

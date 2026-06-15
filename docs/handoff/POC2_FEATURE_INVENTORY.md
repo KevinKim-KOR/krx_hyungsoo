@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-05-31 (Naver Stock ETFComponent 1차 채택)
+작성일: 2026-05-27 / 갱신: 2026-06-15 (OCI 3-PUSH Crontab Runner & Telegram Autosend)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -467,8 +467,29 @@
 | sync status 기록 | `state/three_push/sync_status_latest.json` — status (success/partial/failed) + export 결과 + OCI upload 결과 + verification 결과. |
 | safety_guards | token / chat_id 를 package / manifest / sync log 에 절대 포함하지 않도록 재귀 검증 (`_assert_no_sensitive_keys`). |
 | 테스트 | pytest **534 passed** (회귀 0). black / flake8 PASS. py_compile PASS. |
-| 테스트용/임시 여부 | 수동 실행 스크립트 — 운영용 (OCI crontab runner 구현 전 package 공급 경로). |
-| 다음 조치 | (1) OCI crontab runner 구현 (본 STEP 에서 공급한 manifest 소비 + Telegram 발송). (2) 하루 3회 발송 시간 + 자동 발송 UX 결정. |
+| 테스트용/임시 여부 | 수동 실행 스크립트 — 운영용. |
+| 다음 조치 | 현재 상태 유지. OCI crontab runner 에서 소비. |
+
+---
+
+### 2.26 OCI 3-PUSH Crontab Runner & Telegram Autosend
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시 Telegram 발송. |
+| 현재 메뉴 위치 | (UI 없음 — OCI crontab 실행 스크립트) |
+| 기능 목적 | PC 에서 sync 한 package 를 OCI 가 읽어 하루 3회 Telegram 자동 발송. dry-run / send 2모드 지원. |
+| 사용 가능 여부 | **사용 가능** (2026-06-15 DONE). Telegram 실환경 send 실측 PASS (market_briefing 1건). |
+| 데이터 소스 상태 | `state/three_push/packages/` (PC sync 경로). 신규 external source / 신규 DB / scheduler framework 0건. |
+| CLI 진입점 | `python scripts/run_three_push_oci.py --push-kind {push_kind} --mode {dry-run\|send}` |
+| 환경변수 | `THREE_PUSH_PACKAGE_DIR` (기본 `/home/ubuntu/krx_hyungsoo/state/three_push/packages`) / `PUSH_AUTOSEND_ENABLED` / `PUSH_AUTOSEND_{KIND}_ENABLED` / `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` / `THREE_PUSH_MAX_PACKAGE_AGE_HOURS` (기본 36). |
+| guard 목록 | (1) global enable flag (2) push_kind별 enable flag (3) generation_status=failed 차단 (4) 최신성 36h guard (5) 중복 발송 방지 (package_id 기반) (6) 금지 문구 검사 (7) token/chat_id 비노출. |
+| 중복 발송 registry | `state/three_push/oci_sent_registry.json` — push_kind + package_id 키로 sent 기록. |
+| status 기록 | `state/three_push/oci_runner_status_latest.json` + `state/three_push/oci_runner_history.jsonl` + `logs/three_push_cron.log`. |
+| crontab template | `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind 3종 entry + 환경변수 설명 + dry-run 먼저 확인 절차. |
+| 테스트 | pytest **534 passed** (회귀 0). black / flake8 PASS. dry-run 3종 PASS. send 모드 disable guard PASS. stale guard PASS. duplicate guard PASS. Telegram 실환경 send PASS. |
+| 테스트용/임시 여부 | 운영용 — OCI crontab 등록으로 하루 3회 자동 실행 가능. |
+| 다음 조치 | (1) OCI crontab 등록 (발송 시간 조정 후). (2) PC sync 주기 확립 (36h 기준 만료 전 sync). |
 
 ---
 

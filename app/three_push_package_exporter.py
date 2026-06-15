@@ -71,6 +71,7 @@ def build_holdings_briefing_package() -> dict[str, Any]:
     import json as _json
 
     from app.draft import _build_holdings_payload
+    from app.draft_message import build_message_text
     from app.holdings import HOLDINGS_FILE, Holding
 
     if not HOLDINGS_FILE.exists():
@@ -81,10 +82,23 @@ def build_holdings_briefing_package() -> dict[str, Any]:
     if not holdings:
         raise RuntimeError("holdings 항목 0건 — PUSH-2 package 생성 불가")
 
+    import uuid
+
+    run_id = f"export-{uuid.uuid4().hex[:8]}"
     payload = _build_holdings_payload(holdings, market_quotes=None)
     rp = payload.get("runtime_package")
     if not isinstance(rp, dict):
         raise RuntimeError("holdings_briefing runtime_package 생성 실패")
+
+    # _build_holdings_payload 는 message_text="" 로 runtime_package 를 만든다.
+    # generate_draft_from_holdings 와 동일하게 message_text 를 빌드 후 동기화.
+    gs = rp.get("generation_status") or {}
+    is_failed = gs.get("status") == "failed"
+    msg = build_message_text(run_id, payload)
+    mc = rp.get("message_contract")
+    if isinstance(mc, dict):
+        mc["message_text"] = "" if is_failed else (msg or "")
+
     return rp
 
 

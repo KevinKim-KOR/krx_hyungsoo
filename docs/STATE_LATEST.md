@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-15 (PC-to-OCI 3-PUSH Evidence Package Sync)
+최종 업데이트: 2026-06-15 (OCI 3-PUSH Crontab Runner & Telegram Autosend — FIX r3)
 
 ## 0. Canonical
 
@@ -23,15 +23,20 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **PC-to-OCI 3-PUSH Evidence Package Sync** (2026-06-15).
+- **현재 완료 상태**: **OCI 3-PUSH Crontab Runner & Telegram Autosend** (2026-06-15).
+  - OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시 Telegram 발송하는 runner 구현.
+  - **신규 스크립트 1종**: `scripts/run_three_push_oci.py` — `--push-kind {market_briefing|holdings_briefing|spike_or_falling_alert} --mode {dry-run|send}`. guard 7종 (global enable flag / push_kind별 enable flag / generation_status=failed 차단 / 최신성 36h guard / 중복 발송 방지 / 금지 문구 검사 / token/chat_id 비노출). stdlib 전용 (추가 패키지 0건).
+  - **신규 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind 3종 crontab entry + 환경변수 설명 + dry-run 먼저 확인 절차.
+  - **수정 모듈 1종**: `app/three_push_package_exporter.py` — `build_holdings_briefing_package` 에 message_text 동기화 추가 (직전 Step 누락 bug fix — holdings package message_text 가 빈 문자열로 저장되던 문제).
+  - **신규 상태 파일 경로** (gitignored): `state/three_push/oci_runner_status_latest.json` / `state/three_push/oci_runner_history.jsonl` / `state/three_push/oci_sent_registry.json`.
+  - **Telegram 실환경 send 실측 (2026-06-15)**: market_briefing send → `status=sent`, `telegram_sent=true`. 중복 실행 → `status=skipped`, `reason=duplicate_package`.
+  - **환경변수**: `THREE_PUSH_PACKAGE_DIR` (기본 OCI 경로) / `PUSH_AUTOSEND_ENABLED` / `PUSH_AUTOSEND_{KIND}_ENABLED` 3종 / `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` / `THREE_PUSH_MAX_PACKAGE_AGE_HOURS` (기본 36).
+  - pytest **534 passed** (직전 STEP 534 유지 / 회귀 0). black / flake8 PASS.
+- **이전 STEP**: **PC-to-OCI 3-PUSH Evidence Package Sync** (2026-06-15).
   - PC 에서 생성한 `three_push_runtime_package.v1` package 3종 + manifest 를 OCI 지정 경로로 동기화하는 최소 경로 구현. OCI crontab runner 가 읽을 수 있는 package 공급 경로 확보.
-  - **신규 backend 모듈 1종**: `app/three_push_package_exporter.py` — push_kind 별 package artifact export (`build_market_briefing_package` / `build_holdings_briefing_package` / `build_spike_or_falling_alert_package`) + manifest 생성 + token/chat_id 비노출 가드 (`_assert_no_sensitive_keys`) + atomic 저장 (`_write_atomic`, tmp→rename).
-  - **신규 스크립트 2종**: `scripts/sync_three_push_packages.py` (PC local 생성 → OCI SCP 업로드 atomic → OCI read verification → sync status 기록 / `--dry-run` / `--export-only` 옵션), `scripts/verify_three_push_packages_oci.py` (OCI 에서 standalone 실행, manifest + package 3종 schema/push_kind/token 비노출 검증 후 JSON 출력, stdlib 만 사용).
-  - **신규 상태 파일 경로**: `state/three_push/packages/` (latest_{push_kind}.json 3종 + manifest.json), `state/three_push/sync_status_latest.json`.
-  - **기존 흐름 재사용**: 기존 `draft_three_push.generate_*_via_generic` (PUSH-1/3) + `draft._build_holdings_payload` (PUSH-2) 재사용. 신규 PUSH endpoint / 신규 dependency / 신규 source / Telegram 발송 / SQLite 이전 / scheduler 0건.
-  - **atomic 업로드**: package 3종 → *.tmp SCP → mv rename. manifest 는 package 3종 교체 후 마지막에 교체.
-  - **환경변수**: `OCI_SSH_TARGET` (필수) / `THREE_PUSH_REMOTE_PACKAGE_DIR` (권장) 또는 `OCI_REMOTE_INBOX` (fallback 자동 구성) / `OCI_SSH_KEY_PATH` (선택). 신규 환경변수는 `THREE_PUSH_REMOTE_PACKAGE_DIR` 1개.
-  - pytest **534 passed** (직전 STEP 534 유지 / 회귀 0). black / flake8 / py_compile PASS.
+  - **신규 backend 모듈 1종**: `app/three_push_package_exporter.py` / **신규 스크립트 2종**: `scripts/sync_three_push_packages.py` / `scripts/verify_three_push_packages_oci.py`.
+  - **신규 상태 파일 경로**: `state/three_push/packages/` + `state/three_push/sync_status_latest.json`.
+  - pytest **534 passed** (회귀 0). black / flake8 / py_compile PASS. OCI 실측 status=success.
 - **이전 STEP**: **3-PUSH Context Cleanup — KS-10 trigger/near 4건 해소** (2026-06-14).
   - 직전 STEP (3-PUSH Message Text Runtime Evidence 반영) 의 PARTIALLY_VERIFIED 판정 사유였던 KS-10 trigger / near 4건을 모두 helper 모듈 분리로 해소. 산식 / 문구 / 데이터 계약 / API endpoint / message_text 의미 변경 0건.
   - **처리한 4건 (before → after)**: `app/push_context.py` 798→**72 라인** (trigger 해소, format/market/holdings/spike 4 모듈로 분리 + orchestration wrapper 만 유지). `scripts/diagnose_nav_discount_source.py` 984→**524 라인** (trigger 해소, judge_*/record/markdown helper 모듈로 분리). `app/draft_message.py` 616→**299 라인** (near 해소, focus/summary 렌더링 분리). `app/market_topn.py` 613→**347 라인** (near 해소, 상수/dataclass/helper 분리).
