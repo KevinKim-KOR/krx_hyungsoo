@@ -42,6 +42,34 @@ from typing import Any, Optional
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 _DEFAULT_PACKAGE_DIR = Path("/home/ubuntu/krx_hyungsoo/state/three_push/packages")
+
+
+def _load_dotenv_file() -> None:
+    """프로젝트 루트 .env 를 stdlib 만으로 로드 (python-dotenv 없이).
+
+    OS 환경변수가 이미 설정돼 있으면 덮어쓰지 않는다 (override=False 동작).
+    crontab / SSH 비로그인 셸에서 .env 없이 실행될 때도 안전하게 skip.
+    """
+    env_path = _PROJECT_ROOT / ".env"
+    if not env_path.exists():
+        return
+    try:
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+    except Exception as exc:
+        import sys
+
+        print(f"[warn] .env 로드 실패: {exc}", file=sys.stderr)
+
+
+_load_dotenv_file()
 _REGISTRY_PATH = _PROJECT_ROOT / "state" / "three_push" / "oci_sent_registry.json"
 _STATUS_PATH = _PROJECT_ROOT / "state" / "three_push" / "oci_runner_status_latest.json"
 _HISTORY_PATH = _PROJECT_ROOT / "state" / "three_push" / "oci_runner_history.jsonl"
@@ -343,8 +371,22 @@ def _telegram_send(text: str) -> tuple[bool, Optional[str]]:
     """
     token = _env("TELEGRAM_BOT_TOKEN")
     chat_id = _env("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        return False, "TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID 환경변수 없음"
+    if not token:
+        return (
+            False,
+            "invalid_or_placeholder_bot_token: TELEGRAM_BOT_TOKEN 없음 (.env 또는 환경변수 미설정)",
+        )
+    if not chat_id:
+        return (
+            False,
+            "invalid_or_placeholder_bot_token: TELEGRAM_CHAT_ID 없음 (.env 또는 환경변수 미설정)",
+        )
+    # placeholder 감지 (길이 기준 — 실제 token 은 최소 30자 이상)
+    if len(token) < 20 or token in ("...", "your_token_here", "TOKEN"):
+        return (
+            False,
+            "invalid_or_placeholder_bot_token: token 형식 이상 (너무 짧거나 placeholder)",
+        )
 
     if str(token) in text or str(chat_id) in text:
         return False, "message_text 에 token/chat_id 노출 — 발송 차단"
@@ -368,7 +410,15 @@ def _telegram_send(text: str) -> tuple[bool, Optional[str]]:
             return False, f"Telegram API 오류: {result.get('description', 'unknown')}"
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        return False, f"HTTP {e.code}: {body[:200]}"
+        if e.code == 404:
+            # URL 에 token 이 포함돼 있으므로 body 만 안전하게 노출
+            return (
+                False,
+                "malformed_telegram_api_url: HTTP 404 — bot token 형식 오류 또는 API URL 잘못됨",
+            )
+        if e.code == 401:
+            return False, "invalid_or_placeholder_bot_token: HTTP 401 — token 인증 실패"
+        return False, f"other_non_secret_error: HTTP {e.code}"
     except Exception as e:
         # token 이 exception message 에 포함될 수 있어 안전하게 마스킹
         msg = str(e)
@@ -376,7 +426,7 @@ def _telegram_send(text: str) -> tuple[bool, Optional[str]]:
             msg = msg.replace(token, "***TOKEN***")
         if chat_id and chat_id in msg:
             msg = msg.replace(chat_id, "***CHAT_ID***")
-        return False, f"Telegram 요청 실패: {msg[:200]}"
+        return False, f"other_non_secret_error: {msg[:200]}"
 
 
 # ── status 기록 ───────────────────────────────────────────────────────────────

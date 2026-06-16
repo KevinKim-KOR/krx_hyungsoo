@@ -1,6 +1,6 @@
 # POC2 — OCI 3-PUSH Crontab Runner & Telegram Autosend Conclusion
 
-작성일: 2026-06-15 / FIX r1: 2026-06-15 (guard 4건 보강) / FIX r2: 2026-06-15 (guard 4건 실측 확인) / FIX r3: 2026-06-15 (manifest.generated_at stale + data_cutoff dict + dry-run stale 구분)
+작성일: 2026-06-15 / FIX r1: 2026-06-15 (guard 4건 보강) / FIX r2: 2026-06-15 (guard 4건 실측 확인) / FIX r3: 2026-06-15 (manifest.generated_at stale + data_cutoff dict + dry-run stale 구분) / FIX r4: 2026-06-16 (_load_dotenv_file 추가 + OCI package re-sync + OCI 전 항목 실측 PASS)
 STEP: OCI_THREE_PUSH_CRONTAB_RUNNER_AUTOSEND
 상태: DONE
 
@@ -116,11 +116,11 @@ THREE_PUSH_MAX_PACKAGE_AGE_HOURS=36  # 기본값
 ## 6. 검증 결과
 
 - black / flake8: **PASS**
-- pytest: **534 passed** (회귀 0)
+- pytest: **494 passed** (OCI 실측, 기존 환경 실패 40건은 이번 변경 전부터 존재 — 회귀 0)
 - 신규 의존성: 없음 (stdlib 전용)
-- **기능 검증 (2026-06-15 PC 실측, FIX r3 최종)**:
+- **기능 검증 (2026-06-16 OCI 실측, FIX r4 최종)**:
   - dry-run market_briefing: `status=dry_run_success`, msg_len=1252
-  - dry-run holdings_briefing: `status=dry_run_success`, msg_len=2086
+  - dry-run holdings_briefing: `status=dry_run_success`, msg_len=1793 (FIX r4: OCI re-sync 후)
   - dry-run spike_or_falling_alert: `status=dry_run_success`, msg_len=938
   - dry-run + stale manifest → `status=dry_run_stale`, `reason=stale_package` (FIX r3)
   - send + PUSH_AUTOSEND_ENABLED=false → `status=skipped`, `reason=autosend_disabled`
@@ -132,7 +132,9 @@ THREE_PUSH_MAX_PACKAGE_AGE_HOURS=36  # 기본값
   - send + `generation_status="weird"` → `status=failed`, `reason=package_load_error` (FIX r2)
   - send + `package_id` 없음 → `status=failed`, `reason=package_load_error` (FIX r2)
   - send + manifest path 존재하지 않음 → `status=failed`, `reason=package_load_error` (FIX r2)
-  - send + enable=true + 실환경 Telegram 자격증명 → `status=sent`, `telegram_sent=true` (**실측 PASS**)
+  - send + enable=true + `.env` 자격증명 (OCI) → `status=sent`, `telegram_sent=true` (**OCI 실측 PASS**, FIX r4)
+  - mock HTTP 404 → `malformed_telegram_api_url` 분류 (FIX r4)
+  - mock HTTP 401 → `invalid_or_placeholder_bot_token` 분류 (FIX r4)
   - status 파일 token/chat_id 노출 확인: **0건**
 
 ---
@@ -146,7 +148,8 @@ THREE_PUSH_MAX_PACKAGE_AGE_HOURS=36  # 기본값
 이번 Step 에서 `generate_draft_from_holdings` 와 동일하게 `build_message_text(run_id, payload)` 를
 호출 후 `message_contract.message_text` 에 동기화하는 로직을 추가.
 
-수정 후 holdings_briefing package message_text 길이: **2086** 자.
+수정 후 holdings_briefing package message_text 길이: **2086** 자 (당시 PC 로컬 측정값).
+FIX r4 OCI 실측값: **1793** 자 (2026-06-16 시황 반영 재생성).
 
 ---
 

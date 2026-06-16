@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-15 (OCI 3-PUSH Crontab Runner & Telegram Autosend — FIX r3)
+최종 업데이트: 2026-06-16 (OCI 3-PUSH Crontab Runner & Telegram Autosend — FIX r4)
 
 ## 0. Canonical
 
@@ -23,15 +23,16 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **OCI 3-PUSH Crontab Runner & Telegram Autosend** (2026-06-15).
+- **현재 완료 상태**: **OCI 3-PUSH Crontab Runner & Telegram Autosend** (2026-06-16 FIX r4 최종).
   - OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시 Telegram 발송하는 runner 구현.
   - **신규 스크립트 1종**: `scripts/run_three_push_oci.py` — `--push-kind {market_briefing|holdings_briefing|spike_or_falling_alert} --mode {dry-run|send}`. guard 7종 (global enable flag / push_kind별 enable flag / generation_status=failed 차단 / 최신성 36h guard / 중복 발송 방지 / 금지 문구 검사 / token/chat_id 비노출). stdlib 전용 (추가 패키지 0건).
   - **신규 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind 3종 crontab entry + 환경변수 설명 + dry-run 먼저 확인 절차.
   - **수정 모듈 1종**: `app/three_push_package_exporter.py` — `build_holdings_briefing_package` 에 message_text 동기화 추가 (직전 Step 누락 bug fix — holdings package message_text 가 빈 문자열로 저장되던 문제).
   - **신규 상태 파일 경로** (gitignored): `state/three_push/oci_runner_status_latest.json` / `state/three_push/oci_runner_history.jsonl` / `state/three_push/oci_sent_registry.json`.
-  - **Telegram 실환경 send 실측 (2026-06-15)**: market_briefing send → `status=sent`, `telegram_sent=true`. 중복 실행 → `status=skipped`, `reason=duplicate_package`.
+  - **FIX r4 (2026-06-16)**: `_load_dotenv_file()` stdlib .env 파서 추가 (OCI crontab 환경에서 .env 자동 로드) / HTTPError 404→`malformed_telegram_api_url`, 401→`invalid_or_placeholder_bot_token`, 기타→`other_non_secret_error` 분류 / .env 로드 실패 시 silent pass → stderr 경고 출력.
+  - **OCI 실측 (2026-06-16 FIX r4)**: dry-run 3종 `dry_run_success` (market_briefing msg_len=1252 / holdings_briefing msg_len=1793 / spike_or_falling_alert msg_len=938) / send + enable flags → `status=sent, telegram_sent=true` / 중복 실행 → `status=skipped, reason=duplicate_package`.
   - **환경변수**: `THREE_PUSH_PACKAGE_DIR` (기본 OCI 경로) / `PUSH_AUTOSEND_ENABLED` / `PUSH_AUTOSEND_{KIND}_ENABLED` 3종 / `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` / `THREE_PUSH_MAX_PACKAGE_AGE_HOURS` (기본 36).
-  - pytest **534 passed** (직전 STEP 534 유지 / 회귀 0). black / flake8 PASS.
+  - pytest **534 passed** (PC 로컬 환경 기준 / 회귀 0). black / flake8 PASS.
 - **이전 STEP**: **PC-to-OCI 3-PUSH Evidence Package Sync** (2026-06-15).
   - PC 에서 생성한 `three_push_runtime_package.v1` package 3종 + manifest 를 OCI 지정 경로로 동기화하는 최소 경로 구현. OCI crontab runner 가 읽을 수 있는 package 공급 경로 확보.
   - **신규 backend 모듈 1종**: `app/three_push_package_exporter.py` / **신규 스크립트 2종**: `scripts/sync_three_push_packages.py` / `scripts/verify_three_push_packages_oci.py`.

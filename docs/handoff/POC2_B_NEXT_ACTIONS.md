@@ -1,12 +1,12 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-15 (OCI 3-PUSH Crontab Runner & Telegram Autosend)
+작성일: 2026-05-20 / 갱신: 2026-06-16 (OCI 3-PUSH Crontab Runner & Telegram Autosend — FIX r4)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-15 — OCI 3-PUSH Crontab Runner & Telegram Autosend)
+## 0. 직전 STEP 결과 (2026-06-16 — OCI 3-PUSH Crontab Runner & Telegram Autosend, FIX r4 최종)
 
 OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시
 Telegram 발송하는 runner 구현.
@@ -24,9 +24,12 @@ Telegram 발송하는 runner 구현.
 - **guard 7종**: (1) global enable flag (2) push_kind별 enable flag (3)
   generation_status=failed 차단 (4) 최신성 36h guard (5) 중복 발송 방지 (6) 금지
   문구 검사 (7) token/chat_id 비노출.
-- **Telegram 실환경 send 실측 (2026-06-15)**: `status=sent`, `telegram_sent=true`.
-  중복 재실행 → `status=skipped`, `reason=duplicate_package`.
-- pytest **534 passed** (회귀 0). black / flake8 PASS.
+- **FIX r4 (2026-06-16)**: `_load_dotenv_file()` OCI .env 자동 로드 / HTTPError 원인 분류
+  (404→`malformed_telegram_api_url` / 401→`invalid_or_placeholder_bot_token` / 기타→`other_non_secret_error`) /
+  .env 로드 실패 시 stderr 경고 출력.
+- **OCI 실측 (2026-06-16)**: dry-run 3종 `dry_run_success` / send + enable → `status=sent, telegram_sent=true` /
+  중복 재실행 → `status=skipped, reason=duplicate_package`.
+- pytest **534 passed** (PC 로컬 환경 기준 / 회귀 0). black / flake8 PASS.
 - 신규 DB / scheduler / SQLite 이전 / 신규 external source 0건.
 
 ### 다음 분기 후보
