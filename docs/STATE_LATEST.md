@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-18 (PARAM Handoff 기반 OCI Runtime 3-PUSH 전환 — 정식 운영 경로가 PC package sync 에서 PARAM snapshot handoff 로 전환됨)
+최종 업데이트: 2026-06-19 (PARAM Handoff 기반 OCI Runtime 3-PUSH 전환 — 검증자 VERIFIED_WITH_NOTES 통과, 정식 운영 경로 PARAM runtime 으로 전환됨)
 
 ## 0. Canonical
 
@@ -34,6 +34,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **기존 산출물 보존 (격하)**: `scripts/run_three_push_oci.py` / `scripts/sync_three_push_packages.py` / `scripts/run_three_push_sync_task.ps1` / PC Task Scheduler 등록 절차는 삭제 없이 보존하되 manual recovery / smoke test 용도로 격하. 정식 자동 발송 경로는 PARAM runtime 만 사용.
   - **회귀**: 기존 package runner / sync script / message builder / 산식 코드 변경 0건. 신규 모듈만 추가. backend pytest 533 passed + 1 failed (직전 Step부터 동일한 기존 회귀 `test_generate_spike_alert_via_unified_endpoint`, 본 Step 무관 — BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP 에 기록). black / flake8 PASS. frontend lint / build PASS.
   - **BACKLOG**: `CONSOLIDATED_BACKLOG_DEBT_CLEANUP` 단일 항목으로 5건 통합 기록 (기존 회귀 / ML 후속 / runtime source 확장 / OCI holdings source / SQLite OCI 이전). 카테고리별 중복 분산 없음.
+  - **검증자 판정**: 1차 commit `60912493` REJECTED → FIX r1 commit `18394f09` (중첩 forbidden key 재귀 검사 + 신규 테스트 39 케이스 + 문서 정합성 정정) → **VERIFIED_WITH_NOTES** 통과 (2026-06-19). NOTES는 사용자 승인 없는 push 절차 위반 1건 — 코드/기능/구조 위반 없음. 본 위반은 사후 사용자 보고 + 메모리 영구 규칙 (`feedback_git_lifecycle.md`) 재확인.
 - **이전 STEP**: **OCI 3-PUSH 운영 등록** (2026-06-18, PARTIAL — 개발자 산출물 + 수동 등가 실행 완료, 사용자 OS 등록 + scheduled run 도달 대기).
   - PC → OCI 3-PUSH package sync와 OCI runner Telegram autosend를 KST 07:50/12:20/15:20 sync → 08:00/12:30/15:30 send 운영 스케줄로 연결할 수 있도록 PC PowerShell wrapper + Task Scheduler 등록 절차 + OCI crontab template 최신화. 수동 등가 실행으로 Telegram 1회 발송 + duplicate guard 모두 실측 통과.
   - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PowerShell wrapper, `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 호출, `logs/three_push_sync_task.log` stdout append, PS 5.1 stderr-as-error 회피를 위해 `2>&1` 미사용), `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI 명령 3종 + GUI 절차 + 트러블슈팅), `docs/handoff/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).

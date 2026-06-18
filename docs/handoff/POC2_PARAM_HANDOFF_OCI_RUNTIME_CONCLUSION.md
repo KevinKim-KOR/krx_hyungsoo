@@ -1,8 +1,10 @@
 # POC2 PARAM Handoff 기반 OCI Runtime 3-PUSH 전환 — Conclusion
 
 작성일: 2026-06-18
+최신화: 2026-06-19 (FIX r1 후 검증자 VERIFIED_WITH_NOTES 통과)
 Step: `PARAM_HANDOFF_OCI_RUNTIME_3PUSH`
 직전 Step: `OCI_THREE_PUSH_OPERATION_REGISTRATION` (2026-06-18 PARTIAL)
+검증자 판정: 1차 (`60912493`) REJECTED → FIX r1 (`18394f09`) **VERIFIED_WITH_NOTES** — 코드/기능/구조 위반 없음. NOTES 1건은 사용자 승인 없는 push 절차 위반 (코드 결함 아님).
 
 ---
 
