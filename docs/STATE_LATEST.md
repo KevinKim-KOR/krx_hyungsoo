@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-18 (OCI 3-PUSH 운영 등록 — PC sync wrapper + crontab template 최신화, scheduled run 도달 전 PARTIAL)
+최종 업데이트: 2026-06-18 (PARAM Handoff 기반 OCI Runtime 3-PUSH 전환 — 정식 운영 경로가 PC package sync 에서 PARAM snapshot handoff 로 전환됨)
 
 ## 0. Canonical
 
@@ -23,7 +23,18 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **OCI 3-PUSH 운영 등록** (2026-06-18, PARTIAL — 개발자 산출물 + 수동 등가 실행 완료, 사용자 OS 등록 + scheduled run 도달 대기).
+- **현재 완료 상태**: **PARAM Handoff 기반 OCI Runtime 3-PUSH 전환** (2026-06-18).
+  - 정식 운영 경로가 **PC message package sync → OCI package message_text 전달** 에서 **PC PARAM snapshot handoff → OCI runtime 메시지 생성** 으로 전환됨. PC 는 더 이상 매 발송마다 message package 를 만들지 않으며, 사용자가 승인한 PARAM snapshot 을 OCI 에 한 번만 전달한다. OCI 가 latest PARAM 을 고정 사용해 hourly runtime 메시지를 생성하고 Telegram 으로 발송.
+  - **신규 PARAM contract**: `three_push_runtime_param.v1` (`app/three_push_runtime_param.py` — schema 정의 / `RuntimeParam` dataclass / validator / loader / writer). 필수 필드: schema_version / param_id / created_at / approved_at / approved_by / param_source / enabled_push_kinds / runtime_policy / evidence_policy / safety_policy. 금지 키 11종: message_text / buy_candidates / sell_candidates / cash_allocation / regime_confirmation / risk_threshold_confirmation / etf_ranking / token / chat_id / bot_token / telegram_token / telegram_chat_id.
+  - **신규 backend 모듈 3종**: `app/three_push_runtime_param.py` (246 라인 — PARAM contract), `app/three_push_runner_common.py` (245 라인 — .env 로더 / Telegram / forbidden wording / secret 가드 / registry helper 공통 추출), `app/three_push_runtime_message_builder.py` (158 라인 — OCI runtime 전용 단순 빌더, 외부 API 호출 없음, 모든 source 기본 unavailable, runtime timestamp + param_id + data availability + 매매 지시 없음 면책 포함).
+  - **신규 entrypoint 1종**: `scripts/run_three_push_runtime_oci.py` (286 라인) — PARAM runtime 정식 runner. PC package message_text 의존 없음. duplicate key = `push_kind::param_id::KST_date`. status/history 별도 경로 (`state/three_push/oci_runtime_status_latest.json` / `oci_runtime_history.jsonl` / `oci_runtime_sent_registry.json`).
+  - **신규 PARAM 스크립트 3종**: `scripts/create_three_push_runtime_param.py` (manual_seed PARAM 생성 + --approve 시 latest 승격, history/<param_id>.json 보존) / `scripts/sync_three_push_runtime_param.py` (PC → OCI scp + atomic rename + remote verify) / `scripts/verify_three_push_param_oci.py` (OCI 측 stand-alone 검증, stdlib only).
+  - **수정 문서 2종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — 정식 crontab 을 runtime entrypoint 로 변경 (`run_three_push_runtime_oci.py` 호출). `scripts/run_three_push_oci.py` 호출은 manual recovery template 으로 분리. `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` — 정식 운영에서 격하 명시 + 기존 등록 schtasks 비활성화/제거 안내.
+  - **OCI 실측 (2026-06-18)**: PC PARAM approve + sync → OCI verify status=ok. OCI dry-run 3종 dry_run_success (msg_len market 581 / holdings 542 / spike 489). PUSH-1 send → status=sent, telegram_sent=true, duplicate_key=`market_briefing::param-20260618T142511-622384::2026-06-18`. 즉시 재실행 → status=skipped, reason=duplicate_runtime. latest PARAM 부재 시 → status=failed, reason=missing_latest_param (fail-closed). PUSH_AUTOSEND_HOLDINGS_BRIEFING_ENABLED=false 시 → status=skipped, reason=push_kind_disabled.
+  - **기존 산출물 보존 (격하)**: `scripts/run_three_push_oci.py` / `scripts/sync_three_push_packages.py` / `scripts/run_three_push_sync_task.ps1` / PC Task Scheduler 등록 절차는 삭제 없이 보존하되 manual recovery / smoke test 용도로 격하. 정식 자동 발송 경로는 PARAM runtime 만 사용.
+  - **회귀**: 기존 package runner / sync script / message builder / 산식 코드 변경 0건. 신규 모듈만 추가. backend pytest 533 passed + 1 failed (직전 Step부터 동일한 기존 회귀 `test_generate_spike_alert_via_unified_endpoint`, 본 Step 무관 — BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP 에 기록). black / flake8 PASS. frontend lint / build PASS.
+  - **BACKLOG**: `CONSOLIDATED_BACKLOG_DEBT_CLEANUP` 단일 항목으로 5건 통합 기록 (기존 회귀 / ML 후속 / runtime source 확장 / OCI holdings source / SQLite OCI 이전). 카테고리별 중복 분산 없음.
+- **이전 STEP**: **OCI 3-PUSH 운영 등록** (2026-06-18, PARTIAL — 개발자 산출물 + 수동 등가 실행 완료, 사용자 OS 등록 + scheduled run 도달 대기).
   - PC → OCI 3-PUSH package sync와 OCI runner Telegram autosend를 KST 07:50/12:20/15:20 sync → 08:00/12:30/15:30 send 운영 스케줄로 연결할 수 있도록 PC PowerShell wrapper + Task Scheduler 등록 절차 + OCI crontab template 최신화. 수동 등가 실행으로 Telegram 1회 발송 + duplicate guard 모두 실측 통과.
   - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PowerShell wrapper, `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 호출, `logs/three_push_sync_task.log` stdout append, PS 5.1 stderr-as-error 회피를 위해 `2>&1` 미사용), `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI 명령 3종 + GUI 절차 + 트러블슈팅), `docs/handoff/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).
   - **수정 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — venv 경로 `venv/bin/python` 명시 / .env 자동 로드 안내 / PC sync 선행 시간표 / 수동 등가 실행 절차 보강.

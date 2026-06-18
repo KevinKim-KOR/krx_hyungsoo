@@ -1,12 +1,37 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-18 (OCI 3-PUSH 운영 등록 — PARTIAL)
+작성일: 2026-05-20 / 갱신: 2026-06-18 (PARAM Handoff 기반 OCI Runtime 3-PUSH 전환)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-18 — OCI 3-PUSH 운영 등록, PARTIAL)
+## 0. 직전 STEP 결과 (2026-06-18 — PARAM Handoff 기반 OCI Runtime 3-PUSH 전환)
+
+정식 운영 경로를 **PC message package sync → OCI 단순 전달** 에서 **PC PARAM snapshot handoff → OCI runtime 메시지 생성** 으로 전환.
+
+### 결과 요약
+
+- 신규 PARAM contract `three_push_runtime_param.v1` 정의 (`app/three_push_runtime_param.py`).
+- 신규 backend 모듈 3종: PARAM contract / runner 공통 헬퍼 / OCI runtime 단순 빌더.
+- 신규 entrypoint `scripts/run_three_push_runtime_oci.py` (정식 crontab 실행 대상).
+- 신규 PARAM 스크립트 3종: create / sync / verify.
+- OCI 실측: dry-run 3종 PASS / PUSH-1 send → status=sent, telegram_sent=true / duplicate guard / disabled guard / missing_latest_param fail-closed 모두 통과.
+- 기존 package runner / sync 산출물은 manual recovery 로 격하 (삭제 0건).
+- BACKLOG 는 CONSOLIDATED_BACKLOG_DEBT_CLEANUP 1건으로 5건 통합 기록 (중복 분산 없음).
+
+### 다음 분기 후보
+
+1. **OCI crontab entry 를 PARAM runtime 명령으로 갱신** — 사용자가 OCI 에서 `crontab -e` 로 `run_three_push_oci.py` → `run_three_push_runtime_oci.py` 로 교체. 격하된 PC Task Scheduler 등록을 사용 중이라면 비활성화/제거.
+2. **PARAM 변경 운영 사이클 검증** — manual_seed 외 baseline_static PARAM 으로 변경 후 sync → OCI dry-run 결과 비교.
+3. **OCI runtime data source 점진 확장** — 지시문 §9 unavailable 목록 (CNN F&G / VIX / USD/KRW / 원유 / news / holdings valuation) 중 어떤 것부터 available 로 전환할지 사용자 결정.
+4. **기존 회귀 1건 해소** — `test_generate_spike_alert_via_unified_endpoint`.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev1. 이전 STEP 결과 (2026-06-18 — OCI 3-PUSH 운영 등록, PARTIAL)
 
 PC sync와 OCI runner를 KST 07:50/12:20/15:20 sync → 08:00/12:30/15:30 send 운영
 스케줄로 연결하기 위한 PowerShell wrapper + Task Scheduler 등록 절차 + OCI crontab

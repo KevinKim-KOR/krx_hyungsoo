@@ -1,11 +1,74 @@
-# PC 3-PUSH Sync — Windows Task Scheduler 등록 안내
+# PC 3-PUSH Sync — Windows Task Scheduler 등록 안내 (격하됨)
 
 작성일: 2026-06-18
-Step: OCI_THREE_PUSH_OPERATION_REGISTRATION
+최신화: 2026-06-18 (Step `PARAM_HANDOFF_OCI_RUNTIME_3PUSH` — **정식 운영 등록에서 격하됨**)
+Step 이력: OCI_THREE_PUSH_OPERATION_REGISTRATION → PARAM_HANDOFF_OCI_RUNTIME_3PUSH
 
-PC에서 OCI로 3-PUSH package를 매일 3회 자동 sync하기 위한 Windows Task Scheduler 등록 절차.
+---
 
-OCI crontab 등록은 [`OCI_THREE_PUSH_CRONTAB_TEMPLATE.md`](OCI_THREE_PUSH_CRONTAB_TEMPLATE.md) 참조.
+## 0. ⚠ 격하 안내 (2026-06-18)
+
+본 문서가 안내하는 PC Task Scheduler 등록은 **더 이상 정식 운영 등록 절차가 아니다**.
+
+### 0.1 격하 사유
+
+정식 운영 경로가 **PC → OCI message package sync** 에서 **PC → OCI PARAM snapshot handoff** 로 전환되었다 (Step `PARAM_HANDOFF_OCI_RUNTIME_3PUSH`). PC 는 더 이상 매 발송마다 message package 를 생성하지 않으며, OCI 가 latest PARAM 을 고정 사용해 runtime 메시지를 생성한다.
+
+자세한 내용은 [`OCI_THREE_PUSH_CRONTAB_TEMPLATE.md`](OCI_THREE_PUSH_CRONTAB_TEMPLATE.md) §0 참조.
+
+### 0.2 새 용도
+
+`scripts/run_three_push_sync_task.ps1` + `scripts/sync_three_push_packages.py` 산출물은 삭제하지 않으며 다음 용도로만 사용한다:
+
+```text
+- manual recovery
+- smoke test
+- OCI 파일 전달 검증
+- 비상 fallback
+- 과거 package 기반 발송 재현
+```
+
+### 0.3 이미 등록한 Task Scheduler 처리
+
+기존에 §3 절차로 schtasks 를 등록했다면 **비활성화 또는 제거**한다. 등록된 채로 두면 매일 KST 07:50/12:20/15:20 에 sync 가 실행되어 OCI 측에 무의미한 package 가 쌓이고 디스크/SSH 비용이 발생한다.
+
+비활성화:
+
+```powershell
+schtasks /Change /TN "KRX_ThreePushSync_MarketBriefing"      /DISABLE
+schtasks /Change /TN "KRX_ThreePushSync_HoldingsBriefing"    /DISABLE
+schtasks /Change /TN "KRX_ThreePushSync_SpikeOrFallingAlert" /DISABLE
+```
+
+제거:
+
+```powershell
+schtasks /Delete /TN "KRX_ThreePushSync_MarketBriefing"      /F
+schtasks /Delete /TN "KRX_ThreePushSync_HoldingsBriefing"    /F
+schtasks /Delete /TN "KRX_ThreePushSync_SpikeOrFallingAlert" /F
+```
+
+### 0.4 정식 운영 PARAM handoff 절차 위치
+
+PC PARAM 생성 + OCI handoff 는 CLI 1~2회로 충분하며 Task Scheduler 등록을 필요로 하지 않는다. 사용자가 PARAM 을 변경하기로 결정한 시점에만 수동 실행한다:
+
+```powershell
+# PARAM 생성 + approve
+& "d:\AI\krx_alertor_modular\.venv\Scripts\python.exe" "d:\AI\krx_alertor_modular\scripts\create_three_push_runtime_param.py" --source manual_seed --approve
+
+# OCI 로 PARAM handoff
+& "d:\AI\krx_alertor_modular\.venv\Scripts\python.exe" "d:\AI\krx_alertor_modular\scripts\sync_three_push_runtime_param.py"
+```
+
+본 문서 이하 §1~§9 는 **manual recovery 시점에 사용할 수 있는 참고 절차**다.
+
+---
+
+## 1. (참고) 사전 조건
+
+이하 절차를 manual recovery 로 사용할 때 필요한 조건이다.
+
+PC에서 OCI로 3-PUSH package를 수동 sync하기 위한 Windows Task Scheduler 등록 절차.
 
 ---
 

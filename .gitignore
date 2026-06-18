@@ -201,6 +201,12 @@ state/three_push/oci_runner_status_latest.json
 state/three_push/oci_runner_history.jsonl
 state/three_push/oci_sent_registry.json
 
+# PARAM Handoff 기반 OCI Runtime 3-PUSH (2026-06-18) — PARAM snapshot + runtime status, 운영 artifact.
+state/three_push/params/
+state/three_push/oci_runtime_status_latest.json
+state/three_push/oci_runtime_history.jsonl
+state/three_push/oci_runtime_sent_registry.json
+
 # AI 투자세션 기록 / Decision Evidence 1차 (2026-05-20) — 운영 DB 는 commit 대상 아님.
 state/decision/decision_evidence.sqlite
 state/decision/decision_evidence.sqlite-journal

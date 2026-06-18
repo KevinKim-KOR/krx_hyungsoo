@@ -1,6 +1,24 @@
 # BACKLOG
 
 POC 1단계부터 누적된 의도적으로 미룬 항목.
+
+**2026-06-18 추가** — Step `PARAM_HANDOFF_OCI_RUNTIME_3PUSH` 결과. 본 Step에서 발견하거나 후속으로 미룬 항목 5건을 **단일 consolidated debt 항목으로만** 기록한다 (지시문 §16 — 중복 확장 금지). 기존 카테고리별 분산 추가 없음.
+
+## CONSOLIDATED_BACKLOG_DEBT_CLEANUP (2026-06-18)
+
+- **발생 맥락**: Step `PARAM_HANDOFF_OCI_RUNTIME_3PUSH` 완료 후 정식 PARAM runtime 경로는 동작하지만, 본 Step scope 외로 미룬 장기부채 5건이 존재. BACKLOG 가 이미 1252+ 줄로 큰 상태라 항목별로 쪼개지 않고 통합 기록.
+- **현재 결정**: `consolidated_debt` — 본 Step 종료 후 별도 cleanup 또는 backlog 정리 Step 에서 재검토.
+- **재검토 트리거**: PARAM handoff 전환이 PARAM 변경/재발급 운영 사이클을 1회 이상 통과한 시점, 또는 BACKLOG 가 다음 Step 판단을 방해할 정도로 길어진 시점.
+- **포함 sub-bullet (이번 Step 무관 / scope 외 / 후속 결정 대상)**:
+  - 기존 회귀 1건 미해소: `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` — Clean tree 에서도 동일 실패. live API/probe 의존 또는 spike_or_falling_alert 의 generate-from-unified endpoint 흐름이 message_text 를 빈/None 으로 채우는 회귀로 추정. 본 Step 의 PARAM runtime 경로와는 무관 (PARAM runtime 은 자체 runtime 빌더 사용). 직전 Step `OCI_THREE_PUSH_OPERATION_REGISTRATION` 도 동일 회귀를 BACKLOG로 남기고 통과했음.
+  - ML 학습 / factor / threshold 후속: PROJECT_ORIGIN_INTENT 의 4070s ML 실행 성공 기준 달성 시도. 본 Step 에서 PARAM 의 `future_ml_placeholder` 슬롯만 예약. 실제 학습/튜닝/백테스트는 별도 Step.
+  - runtime data source 확장: 지시문 §9 의 unavailable 예시 (CNN F&G, VIX, USD/KRW, 원유, news, holdings valuation 등) 를 OCI runtime 에서 실제 가용 source 로 점진 추가. 본 Step 의 runtime 빌더는 모든 source 를 기본 unavailable 로 표시함.
+  - OCI holdings source 부재: PUSH-2 holdings_briefing 의 본문 가치 향상을 위해 OCI 에 holdings snapshot 을 어떻게 전달할지 결정 필요. PARAM 확장 또는 별도 holdings 전용 sync 경로 후보. 본 Step 에서는 unavailable 표시.
+  - SQLite OCI 이전 / 신규 DB 도입: 지시문 §15 명시 제외. file-based JSON SSOT 유지가 안정화된 후 검토.
+- **금지**: 본 항목을 BACKLOG 의 다른 카테고리로 중복 분산하지 않는다.
+
+---
+
 **Step5 진입 전 정돈 (2026-04-30)**: 완료된 항목은 CLOSED / RESOLVED 로 이동, ML / polling / 메시지·채널 / snapshot 관련 중복 항목 4개 통합, Step5 영향 항목 5개를 ACTIVE REVIEW BEFORE STEP5 로 분리. **항목 삭제는 하지 않았다.**
 
 **Step6 종료 + Step7 진입 전 정돈 (2026-05-11)**:
