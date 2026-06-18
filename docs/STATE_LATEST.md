@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-16 (OCI 3-PUSH Crontab Runner & Telegram Autosend — FIX r4)
+최종 업데이트: 2026-06-18 (OCI 3-PUSH 운영 등록 — PC sync wrapper + crontab template 최신화, scheduled run 도달 전 PARTIAL)
 
 ## 0. Canonical
 
@@ -23,7 +23,16 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **OCI 3-PUSH Crontab Runner & Telegram Autosend** (2026-06-16 FIX r4 최종).
+- **현재 완료 상태**: **OCI 3-PUSH 운영 등록** (2026-06-18, PARTIAL — 개발자 산출물 + 수동 등가 실행 완료, 사용자 OS 등록 + scheduled run 도달 대기).
+  - PC → OCI 3-PUSH package sync와 OCI runner Telegram autosend를 KST 07:50/12:20/15:20 sync → 08:00/12:30/15:30 send 운영 스케줄로 연결할 수 있도록 PC PowerShell wrapper + Task Scheduler 등록 절차 + OCI crontab template 최신화. 수동 등가 실행으로 Telegram 1회 발송 + duplicate guard 모두 실측 통과.
+  - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PowerShell wrapper, `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 호출, `logs/three_push_sync_task.log` stdout append, PS 5.1 stderr-as-error 회피를 위해 `2>&1` 미사용), `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI 명령 3종 + GUI 절차 + 트러블슈팅), `docs/handoff/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).
+  - **수정 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — venv 경로 `venv/bin/python` 명시 / .env 자동 로드 안내 / PC sync 선행 시간표 / 수동 등가 실행 절차 보강.
+  - **OCI 실측 (2026-06-18)**: PC sync `status=success` (3/3 upload + manifest + verify success) / OCI dry-run 3종 `dry_run_success` (msg_len: market 997, holdings 1606, spike 878) / `--push-kind market_briefing --mode send` → `status=sent, telegram_sent=true` / 동일 package_id 재실행 → `status=skipped, reason=duplicate_package, telegram_attempted=false` / token/chat_id 미노출.
+  - **stale 사례 (참고)**: 첫 dry-run에서 `asof_date=2026-06-17` 기반 36.7h stale 감지 → PC re-sync로 `asof_date=2026-06-18` 갱신 후 정상화. 운영 시 PC sync가 발송 직전 매번 실행되면 fresh 보장.
+  - **사용자 수행 대기 (DONE 격상 조건)**: (1) PC Task Scheduler 3 task 등록 (schtasks CLI 또는 GUI), (2) OCI crontab 3 entry 등록 (`crontab -e`), (3) 첫 scheduled run 자동 trigger 결과 확인.
+  - **회귀**: backend 코드 / frontend 코드 / runner / sync script / message_text / 산식 변경 0건. pytest 533 passed + 1 failed (`tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` — Clean tree에서도 동일하게 실패하는 직전 STEP 기존 회귀, 본 STEP 무관). frontend lint / build PASS.
+  - **사고 처리 (별도)**: 작업 초기 단계에서 개발자가 `.env`를 `Read`로 출력해 토큰이 대화 컨텍스트에 평문 인용된 사고 발생 → 사용자가 토큰 재발급 + PC/OCI .env 동시 갱신. 메모리에 `feedback_secret_file_handling.md` 영구 규칙 추가 (secret 파일은 `Read` 금지, `Grep` 키 매칭만).
+- **이전 STEP**: **OCI 3-PUSH Crontab Runner & Telegram Autosend** (2026-06-16 FIX r4 최종).
   - OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시 Telegram 발송하는 runner 구현.
   - **신규 스크립트 1종**: `scripts/run_three_push_oci.py` — `--push-kind {market_briefing|holdings_briefing|spike_or_falling_alert} --mode {dry-run|send}`. guard 7종 (global enable flag / push_kind별 enable flag / generation_status=failed 차단 / 최신성 36h guard / 중복 발송 방지 / 금지 문구 검사 / token/chat_id 비노출). stdlib 전용 (추가 패키지 0건).
   - **신규 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind 3종 crontab entry + 환경변수 설명 + dry-run 먼저 확인 절차.

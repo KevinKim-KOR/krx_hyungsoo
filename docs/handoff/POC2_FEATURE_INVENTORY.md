@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-16 (OCI 3-PUSH Crontab Runner & Telegram Autosend — FIX r4)
+작성일: 2026-05-27 / 갱신: 2026-06-18 (OCI 3-PUSH 운영 등록 — PARTIAL: 산출물 완료, 사용자 OS 등록 대기)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -486,10 +486,14 @@
 | guard 목록 | (1) global enable flag (2) push_kind별 enable flag (3) generation_status=failed 차단 (4) 최신성 36h guard (5) 중복 발송 방지 (package_id 기반) (6) 금지 문구 검사 (7) token/chat_id 비노출. |
 | 중복 발송 registry | `state/three_push/oci_sent_registry.json` — push_kind + package_id 키로 sent 기록. |
 | status 기록 | `state/three_push/oci_runner_status_latest.json` + `state/three_push/oci_runner_history.jsonl` + `logs/three_push_cron.log`. |
-| crontab template | `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind 3종 entry + 환경변수 설명 + dry-run 먼저 확인 절차. |
-| 테스트 | pytest **534 passed** (PC 로컬 / 회귀 0). black / flake8 PASS. OCI 실측: dry-run 3종 PASS (market_briefing 1252 / holdings_briefing 1793 / spike_or_falling_alert 938). send disable guard / push_kind disable guard / duplicate guard / Telegram 실환경 send PASS. HTTP 404→`malformed_telegram_api_url` / 401→`invalid_or_placeholder_bot_token` 분류 PASS. |
-| 테스트용/임시 여부 | 운영용 — OCI crontab 등록으로 하루 3회 자동 실행 가능. |
-| 다음 조치 | (1) OCI crontab 등록 (발송 시간 조정 후). (2) PC sync 주기 확립 (36h 기준 만료 전 sync). |
+| crontab template | `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` (2026-06-18 최신화 — venv 경로 `venv/bin/python` 명시 + .env 자동 로드 안내 + PC sync 선행 시간표 + dry-run/send 등가 실행 절차). |
+| PC sync 운영 등록 안내 | `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (2026-06-18 신규 — schtasks CLI 명령 3종 + GUI 절차 + 등록 확인 / 수동 트리거 / 중단·재개 / 트러블슈팅). |
+| PC sync wrapper | `scripts/run_three_push_sync_task.ps1` (2026-06-18 신규 — Task Scheduler 호출용. `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 실행 + `logs/three_push_sync_task.log` append + exit code 전달). |
+| 테스트 | pytest **534 passed** (직전 STEP 시점 / 본 STEP 코드 변경 0건). 2026-06-18 본 STEP 검증 시점에 1 failed (`test_generate_spike_alert_via_unified_endpoint`, Clean tree에서도 동일 실패하는 기존 회귀, 본 STEP 무관). black / flake8 PASS. OCI 실측 (2026-06-18): dry-run 3종 PASS (msg_len market 997 / holdings 1606 / spike 878). send → telegram_sent=true / duplicate guard → status=skipped, reason=duplicate_package PASS. |
+| 테스트용/임시 여부 | 운영용 — OCI crontab + PC Task Scheduler 등록으로 하루 3회 자동 실행 가능. |
+| 운영 등록 상태 (2026-06-18) | **개발자 산출물 완료 / 사용자 OS 등록 대기**. PC PowerShell wrapper + Task Scheduler 등록 절차 + OCI crontab template 최신화 모두 완료. 수동 등가 실행으로 Telegram 1회 발송 + duplicate guard 통과. 사용자가 PC schtasks 3 task + OCI crontab 3 entry 등록 후 첫 scheduled run 결과 확인 시 DONE 격상. |
+| 운영 시간표 (KST) | sync 07:50 / 12:20 / 15:20 (PC Task Scheduler) → send 08:00 / 12:30 / 15:30 (OCI crontab). 각 send 10분 전 sync로 fresh package 보장. |
+| 다음 조치 | (1) 사용자 PC schtasks 3 task 등록. (2) 사용자 OCI crontab 3 entry 등록. (3) 첫 scheduled run 결과 확인 → DONE 격상. (4) 필요 시 `THREE_PUSH_MAX_PACKAGE_AGE_HOURS=48` override 검토. |
 
 ---
 
