@@ -237,7 +237,7 @@ schtasks /Delete /TN "KRX_ThreePushSync_SpikeOrFallingAlert" /F
 - PC가 켜져 있어야 sync가 실행된다. 발송 시각 직전 PC가 꺼져 있으면 sync 누락 → OCI runner는 stale_package로 발송 차단.
 - 노트북 절전 모드 / 화면 잠금에서도 task는 실행되지만, "AC 전원 연결" 조건이 켜져 있고 배터리 상태면 안 돌 수 있다.
 - SSH key passphrase가 걸려 있으면 비대화형 실행에서 실패한다. ssh-agent / pageant가 백그라운드에서 미리 unlock 상태여야 한다.
-- wrapper는 logs/three_push_sync_task.log에 stdout만 append한다. 로그 폭증 방지를 위해 주기적으로 회수하거나 logrotate 도구를 별도 적용한다 (이번 STEP 범위 아님).
+- wrapper는 `logs/three_push_sync_task.log` 와 `logs/three_push_sync_task_run.log` 에 sync 스크립트의 **stdout 과 stderr 를 모두** append 한다 (PS 5.1 NativeCommandError 회피를 위해 `2>&1` 대신 `*>` 사용). 로그 폭증 방지를 위해 주기적으로 회수하거나 logrotate 도구를 별도 적용한다 (이번 STEP 범위 아님).
 - token/chat_id는 wrapper와 sync script 둘 다 로그에 출력하지 않는다.
 ```
 

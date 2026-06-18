@@ -47,21 +47,37 @@ PC sync 운영 등록(격하됨)은 [`PC_THREE_PUSH_SYNC_TASKSCHEDULER.md`](PC_T
 
 ---
 
-## 1. 전제 조건
+## 1. 전제 조건 (PARAM Runtime 정식 경로)
 
 OCI 에서 실행 전 확인 사항:
 
 ```bash
-# PC sync 완료 여부 확인 (PC 에서 sync 후)
-ls ~/krx_hyungsoo/state/three_push/packages/
-# 기대: manifest.json + latest_market_briefing.json + latest_holdings_briefing.json + latest_spike_or_falling_alert.json
+# latest PARAM snapshot 도착 여부 확인 (PC 에서 sync 후)
+ls ~/krx_hyungsoo/state/three_push/params/
+# 기대: latest_runtime_param.json
 
-# runner 동작 확인 (venv python 사용)
+# PARAM schema 검증
 cd ~/krx_hyungsoo
-venv/bin/python scripts/run_three_push_oci.py --push-kind market_briefing --mode dry-run
+python3 scripts/verify_three_push_param_oci.py --path state/three_push/params/latest_runtime_param.json
+
+# runtime runner 동작 확인 (venv python 사용)
+venv/bin/python scripts/run_three_push_runtime_oci.py --push-kind market_briefing --mode dry-run
 ```
 
 OCI 의 venv는 `venv/` (소문자) 이다. PC의 `.venv/` 와 경로가 다르다.
+
+### 1-fallback. 전제 조건 — package fallback (manual recovery 시에만)
+
+기존 package 경로를 manual recovery 로 사용할 경우의 전제 조건이다. **정식 자동 발송은 §1 PARAM runtime 전제 조건만 충족하면 된다**.
+
+```bash
+# manual recovery 시 — PC 가 미리 sync_three_push_packages.py 로 동기화한 package 가 있어야 함
+ls ~/krx_hyungsoo/state/three_push/packages/
+# 기대: manifest.json + latest_market_briefing.json + latest_holdings_briefing.json + latest_spike_or_falling_alert.json
+
+cd ~/krx_hyungsoo
+venv/bin/python scripts/run_three_push_oci.py --push-kind market_briefing --mode dry-run
+```
 
 ---
 

@@ -97,9 +97,25 @@ def main() -> int:
                 errors.append(f"enabled_push_kinds 허용값 위반: {k!r}")
     elif epk is not None:
         errors.append("enabled_push_kinds 는 list 이어야 함")
-    for k in FORBIDDEN_KEYS:
-        if k in data:
-            errors.append(f"금지 키 포함: {k!r}")
+
+    # 금지 키 — top-level 뿐 아니라 중첩 dict/list 내부도 거부 (fail-closed).
+    # 대소문자 무관 매칭.
+    def _collect_forbidden(obj, path=""):
+        hits = []
+        if isinstance(obj, dict):
+            for kk, vv in obj.items():
+                cp = f"{path}.{kk}" if path else kk
+                if isinstance(kk, str) and kk.lower() in FORBIDDEN_KEYS:
+                    hits.append(cp)
+                hits.extend(_collect_forbidden(vv, cp))
+        elif isinstance(obj, list):
+            for ii, item in enumerate(obj):
+                cp = f"{path}[{ii}]"
+                hits.extend(_collect_forbidden(item, cp))
+        return hits
+
+    for p in _collect_forbidden(data):
+        errors.append(f"금지 키 포함: {p!r} (중첩 포함)")
 
     if errors:
         for e in errors:

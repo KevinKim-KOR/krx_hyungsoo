@@ -47,7 +47,10 @@ ALLOWED_PARAM_SOURCES = (
     "ml_export",
 )
 
-# 금지: PARAM이 들고 있으면 안 되는 키 (완성 메시지 / 매매 판단 등)
+# 금지: PARAM이 들고 있으면 안 되는 키 (완성 메시지 / 매매 판단 / secret 등).
+# top-level만 검사하면 `{"nested": {"message_text": ...}}` 같은 우회를 막지 못하므로
+# validate_param_dict 가 재귀적으로 dict/list 전체를 순회한다.
+# 이름은 호환을 위해 유지하지만 의미는 "PARAM 전체에서 금지" 다.
 FORBIDDEN_PARAM_TOP_LEVEL_KEYS = frozenset(
     {
         "message_text",
@@ -65,6 +68,28 @@ FORBIDDEN_PARAM_TOP_LEVEL_KEYS = frozenset(
         "telegram_chat_id",
     }
 )
+
+# 명시적 별칭 — validator 내부에서 사용. 두 이름 모두 동일 set 을 가리킨다.
+FORBIDDEN_PARAM_KEYS_ANYWHERE = FORBIDDEN_PARAM_TOP_LEVEL_KEYS
+
+
+def _collect_forbidden_keys_recursive(obj: Any, path: str = "") -> list[str]:
+    """PARAM dict/list 전체를 순회해 금지 key가 어디든 등장하면 경로를 모은다.
+
+    key 매칭은 대소문자 무관 (lower 비교) — 'Token' / 'BOT_TOKEN' 등 변형도 차단.
+    """
+    hits: list[str] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            child_path = f"{path}.{k}" if path else k
+            if isinstance(k, str) and k.lower() in FORBIDDEN_PARAM_KEYS_ANYWHERE:
+                hits.append(child_path)
+            hits.extend(_collect_forbidden_keys_recursive(v, path=child_path))
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            child_path = f"{path}[{i}]"
+            hits.extend(_collect_forbidden_keys_recursive(item, path=child_path))
+    return hits
 
 
 @dataclass
@@ -225,11 +250,13 @@ def validate_param_dict(data: dict[str, Any]) -> list[str]:
     elif epk is not None:
         errors.append(f"enabled_push_kinds 는 list 이어야 함: got {type(epk).__name__}")
 
-    for key in FORBIDDEN_PARAM_TOP_LEVEL_KEYS:
-        if key in data:
-            errors.append(
-                f"금지 키 포함: {key!r} (완성 메시지 / 매매 판단 / secret 은 PARAM에 저장 금지)"
-            )
+    # 금지 키 — top-level 뿐 아니라 중첩된 dict/list 안의 키도 모두 거부 (fail-closed).
+    # 대소문자 무관 매칭.
+    forbidden_hits = _collect_forbidden_keys_recursive(data)
+    for path in forbidden_hits:
+        errors.append(
+            f"금지 키 포함: {path!r} (완성 메시지 / 매매 판단 / secret 은 PARAM에 저장 금지 — 중첩 포함)"
+        )
 
     return errors
 
