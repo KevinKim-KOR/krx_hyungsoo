@@ -1,6 +1,6 @@
 # POC2 — ML 축1 상대상승 점수 실행 UI 연결 Conclusion
 
-작성일: 2026-06-21 / FIX r1: 2026-06-21 (실패 분기 기존 snapshot 보존 + 응답 6 필드 정정 + meta 손상 분리 + 테스트 격리) / FIX r2: 2026-06-21 (stale 주석/문서 정합성 정정)
+작성일: 2026-06-21 / FIX r1: 2026-06-21 (실패 분기 기존 snapshot 보존 + 응답 6 필드 정정 + meta 손상 분리 + 테스트 격리) / FIX r2: 2026-06-21 (stale 주석/문서 정합성 정정) / FIX r3: 2026-06-21 (운영 회귀 — uvicorn sys.argv 가 main() argparse 에 흘러들어가 SystemExit 발생 차단)
 STEP: ML_RELATIVE_UPSIDE_UI
 상태: DONE
 
@@ -281,7 +281,67 @@ snapshot_path='' 로 저장 (이력 추적용)" 로 정정.
 
 ---
 
-## 10. 다음 단계 (사용자 결정 대기)
+## 10. FIX r3 (운영 회귀 — uvicorn sys.argv 차단)
+
+### 증상
+
+push 후 사용자가 화면에서 `[상대상승 점수 계산]` 버튼 클릭 시 500 Internal
+Server Error 발생. 서버 로그:
+
+```
+usage: __main__.py [-h] [--candidates CANDIDATES]
+__main__.py: error: unrecognized arguments: app.api:app --host 127.0.0.1 --port 8000 --reload
+...
+File "scripts/run_ml_relative_upside_score_v0.py", line 78, in _parse_args
+    return p.parse_args()
+SystemExit: 2
+```
+
+### 원인
+
+`main()` 안의 `_parse_args()` 가 `argv` 미지정 시 `sys.argv[1:]` 를 사용. 운영
+환경 (uvicorn) 의 `sys.argv` 는 `["uvicorn", "app.api:app", "--host", "127.0.0.1",
+"--port", "8000", "--reload"]` 형태로 채워져 있어 argparse 가 인식 불가 →
+SystemExit(2) → FastAPI 500 응답.
+
+기존 pytest 가 통과한 이유: 핵심 테스트 (`test_main_unavailable_branch_does_
+not_overwrite_existing_snapshot`) 는 `monkeypatch.setattr(_sys, "argv", ...)`
+로 임시 격리. 다른 테스트들은 `main` 자체를 lambda 로 mock 해서 argparse 가
+호출되지 않음. 실제 운영 경로의 회귀가 테스트에서 발현되지 않음.
+
+### 수정
+
+1. `scripts/run_ml_relative_upside_score_v0.py`:
+   - `_parse_args(argv: Optional[list[str]] = None)` 로 argv 명시 인자 추가.
+   - `main(argv: Optional[list[str]] = None)` 로 argv 명시 인자 추가.
+   - argv=None — CLI 직접 실행 (기존 동작 호환).
+   - argv=[] — API / 라이브러리 호출 (CLI 인자 무시, default 만 사용).
+
+2. `app/api_ml_relative_upside.py`:
+   - `run_ml_main(argv=[])` 로 명시 호출 — uvicorn sys.argv 와 무관하게 격리.
+
+3. `tests/test_api_ml_relative_upside.py`:
+   - 기존 `monkeypatch.setattr(_sys, "argv", ...)` 패턴 제거 → `run_ml_main(argv=[])`
+     로 변경.
+   - 기존 lambda mock 시그니처 `lambda: 0` → `lambda argv=None: 0` 정정 (API 가
+     argv 키워드 전달).
+   - **신규 회귀 테스트 1건**: `test_api_call_isolated_from_uvicorn_sys_argv` —
+     `monkeypatch.setattr(_sys, "argv", ["uvicorn", "app.api:app", ...])` 로
+     실제 운영 환경 sys.argv 오염을 시뮬레이션하고, POST 호출이 정상 200/ok
+     반환 + main 이 `argv=[]` 로 호출됐는지 확인.
+
+### 검증
+
+- 실측 (uvicorn sys.argv 오염 환경 시뮬레이션):
+  - POST `/market/relative-upside/run` → status_code=200,
+    body={status: "ok", asof_date: "2026-06-19", scored_candidate_count: 1111,
+    gpu_execution_used: true}.
+- pytest **616 passed** (615 + 1 회귀 테스트, 회귀 0).
+- black / flake8 PASS. frontend lint / build PASS.
+
+---
+
+## 11. 다음 단계 (사용자 결정 대기)
 
 PC_OCI_ARCHITECTURE_DIRECTION 순서 그대로:
 

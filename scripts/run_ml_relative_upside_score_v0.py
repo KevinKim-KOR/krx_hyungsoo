@@ -26,6 +26,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent
@@ -68,18 +69,29 @@ def _setup_logger() -> logging.Logger:
     return logger
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    """CLI argv 파싱. argv=None 이면 sys.argv[1:] 사용, [] 면 default 만 사용.
+
+    API 호출 경로 (`run_relative_upside_score`) 는 uvicorn 의 sys.argv 가
+    오염되어 있을 수 있어 main(argv=[]) 로 명시적 격리한다.
+    """
     p = argparse.ArgumentParser(description="ML 축1 — 상대상승 참고점수 v0")
     p.add_argument(
         "--candidates",
         default=None,
         help="추론 대상 ticker 콤마 구분 (default: 모든 ticker, KODEX200 제외)",
     )
-    return p.parse_args()
+    return p.parse_args(argv)
 
 
-def main() -> int:
-    args = _parse_args()
+def main(argv: Optional[list[str]] = None) -> int:
+    """ML 점수 계산 main entrypoint.
+
+    argv=None — CLI 직접 실행 (sys.argv[1:] 사용).
+    argv=[] — API / 라이브러리 호출 (CLI 인자 무시, default 만 사용).
+    argv=["--candidates", "..."] — 명시적 인자 전달.
+    """
+    args = _parse_args(argv)
     logger = _setup_logger()
 
     # 1. 전체 universe ticker.

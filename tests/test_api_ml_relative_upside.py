@@ -94,7 +94,9 @@ def test_run_success_returns_6_user_fields(monkeypatch, isolated_meta):
     }
     _write_meta(isolated_meta, fake_meta)
 
-    monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
+    monkeypatch.setattr(
+        "scripts.run_ml_relative_upside_score_v0.main", lambda argv=None: 0
+    )
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -129,7 +131,9 @@ def test_run_success_without_gpu_returns_specific_message(monkeypatch, isolated_
     }
     _write_meta(isolated_meta, fake_meta)
 
-    monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
+    monkeypatch.setattr(
+        "scripts.run_ml_relative_upside_score_v0.main", lambda argv=None: 0
+    )
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200
     body = resp.json()
@@ -169,7 +173,9 @@ def test_run_failure_preserves_existing_meta_file(monkeypatch, isolated_meta):
 
 
 def test_run_nonzero_rc_returns_failed(monkeypatch, isolated_meta):
-    monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 2)
+    monkeypatch.setattr(
+        "scripts.run_ml_relative_upside_score_v0.main", lambda argv=None: 2
+    )
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200
     body = resp.json()
@@ -187,7 +193,9 @@ def test_run_meta_unavailable_returns_unavailable(monkeypatch, isolated_meta):
         "model": {"gpu_execution_used": True},
     }
     _write_meta(isolated_meta, fake_meta)
-    monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
+    monkeypatch.setattr(
+        "scripts.run_ml_relative_upside_score_v0.main", lambda argv=None: 0
+    )
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200
     body = resp.json()
@@ -200,7 +208,9 @@ def test_run_meta_corrupted_returns_unavailable(monkeypatch, isolated_meta):
     """run meta 파일이 손상 (JSON parse 실패) 시 status=unavailable + 사용자 친화 message (B-1)."""
     isolated_meta.parent.mkdir(parents=True, exist_ok=True)
     isolated_meta.write_text("not a valid json {{{", encoding="utf-8")
-    monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
+    monkeypatch.setattr(
+        "scripts.run_ml_relative_upside_score_v0.main", lambda argv=None: 0
+    )
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200
     body = resp.json()
@@ -279,11 +289,10 @@ def test_main_unavailable_branch_does_not_overwrite_existing_snapshot(
 
     from scripts.run_ml_relative_upside_score_v0 import main as run_ml_main
 
-    # main() 의 argparse 가 pytest 인자를 읽지 않도록 sys.argv 임시 격리.
-    import sys as _sys
-
-    monkeypatch.setattr(_sys, "argv", ["run_ml_relative_upside_score_v0.py"])
-    rc = run_ml_main()
+    # argv=[] 로 명시 호출 — sys.argv 오염과 무관하게 default 만 사용.
+    # API 경로 (uvicorn) / pytest 경로 양쪽 모두 안전 (FIX r3 — uvicorn sys.argv
+    # 가 argparse 에 흘러들어가 SystemExit 발생하는 회귀 차단).
+    rc = run_ml_main(argv=[])
     assert rc == 0
     # 기존 score snapshot 파일 변경 0건 — A-1 핵심 검증.
     after = fake_snapshot_path.read_text(encoding="utf-8")
@@ -294,3 +303,48 @@ def test_main_unavailable_branch_does_not_overwrite_existing_snapshot(
     assert meta["status"] in ("failed", "unavailable")
     # snapshot_path 는 빈 문자열 ("저장 안 함" 명시).
     assert meta["snapshot_path"] == ""
+
+
+def test_api_call_isolated_from_uvicorn_sys_argv(monkeypatch, isolated_meta):
+    """API 경로에서 sys.argv 가 uvicorn 인자로 오염돼 있어도 정상 동작.
+
+    FIX r3 — 실제 운영에서 uvicorn 의 sys.argv 가
+    `["app.api:app", "--host", "127.0.0.1", "--port", "8000", "--reload"]`
+    형태로 오염돼 있어 main() 안의 argparse 가 SystemExit(2) 를 발생시키던
+    회귀를 차단. 해결: API endpoint 에서 `run_ml_main(argv=[])` 로 명시 호출.
+    """
+    import sys as _sys
+
+    # uvicorn 운영 환경과 동일한 sys.argv 오염 시뮬레이션.
+    monkeypatch.setattr(
+        _sys,
+        "argv",
+        ["uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "8000"],
+    )
+
+    fake_meta = {
+        "schema_version": "relative_upside_score_run.v0",
+        "status": "ok",
+        "asof_date": "2026-06-19",
+        "generated_at": "2026-06-20T15:00:00+00:00",
+        "scored_candidate_count": 1111,
+        "model": {"gpu_execution_used": True},
+    }
+    _write_meta(isolated_meta, fake_meta)
+
+    # main 시그니처가 argv 키워드를 받아야 한다 (FIX r3 — API 가 argv=[] 호출).
+    captured = {}
+
+    def _fake_main(argv=None):
+        captured["argv"] = argv
+        return 0
+
+    monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", _fake_main)
+    resp = client.post("/market/relative-upside/run")
+    # SystemExit 회귀 시 응답이 500 또는 status=failed 가 되지 않고 정상 200/ok.
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ok"
+    # API 가 argv=[] 로 명시 호출했는지 확인 (uvicorn sys.argv 격리).
+    assert captured["argv"] == []
+    _assert_no_raw_identifiers(resp.text)

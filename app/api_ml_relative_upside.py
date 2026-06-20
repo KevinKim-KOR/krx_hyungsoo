@@ -104,7 +104,9 @@ def run_relative_upside_score() -> RelativeUpsideRunResponse:
     try:
         from scripts.run_ml_relative_upside_score_v0 import main as run_ml_main
 
-        rc = run_ml_main()
+        # argv=[] 로 명시 — uvicorn 의 sys.argv (예: 'app.api:app --host ...') 가
+        # main() 안의 argparse 에 흘러들어가 SystemExit 발생하는 것을 차단.
+        rc = run_ml_main(argv=[])
     except Exception as e:  # noqa: BLE001
         logger.error("ML 점수 계산 실행 실패: %s", type(e).__name__)
         return RelativeUpsideRunResponse(
