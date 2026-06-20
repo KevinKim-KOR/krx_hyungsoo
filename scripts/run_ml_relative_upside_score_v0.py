@@ -167,25 +167,21 @@ def main() -> int:
 
     # 7. raw prediction + display score.
     if model is None or not inference_rows:
+        # 학습 데이터 부족 또는 유효 후보 0건 — 기존 정상 score snapshot 을
+        # 빈/failed/unavailable snapshot 으로 덮어쓰지 않는다 (UI 카드 계약 —
+        # "실패 시 기존 점수 유지", AC).
+        # run meta 만 갱신해서 이력 추적 가능하게 한다. 기존 SCORE_SNAPSHOT_PATH
+        # 는 그대로 유지.
         status = "unavailable" if model is not None else "failed"
-        snapshot = build_score_snapshot(
-            asof_date=asof_date,
-            generated_at=now_iso_utc(),
-            status=status,
-            display_scores={},
-            raw_scores={},
-            feature_rows=inference_rows,
-            simple_excess_return_ranking=[],
-        )
-        snapshot_path = save_score_snapshot(snapshot)
+        generated_at = now_iso_utc()
         meta = build_run_meta(
             asof_date=asof_date,
-            generated_at=snapshot["generated_at"],
+            generated_at=generated_at,
             status=status,
             train_result=train_result,
             candidate_count=len(inference_rows),
             scored_candidate_count=0,
-            snapshot_path=str(snapshot_path),
+            snapshot_path="",  # snapshot 저장 안 함 — 빈 경로로 명시.
             feature_columns=train_result.feature_columns,
             error=(
                 "model is None (insufficient training data)"
@@ -194,7 +190,10 @@ def main() -> int:
             ),
         )
         save_run_meta(meta)
-        logger.warning("status=%s — snapshot 저장 완료", status)
+        logger.warning(
+            "status=%s — score snapshot 미갱신 (기존 점수 보존), run meta 만 저장",
+            status,
+        )
         return 0
 
     raw_scores = predict_raw_scores(model, inference_rows)

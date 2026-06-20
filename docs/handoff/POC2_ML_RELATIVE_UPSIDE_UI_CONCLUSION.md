@@ -1,6 +1,6 @@
 # POC2 — ML 축1 상대상승 점수 실행 UI 연결 Conclusion
 
-작성일: 2026-06-21
+작성일: 2026-06-21 / FIX r1: 2026-06-21 (실패 분기 기존 snapshot 보존 + 응답 6 필드 정정 + meta 손상 분리 + 테스트 격리)
 STEP: ML_RELATIVE_UPSIDE_UI
 상태: DONE
 
@@ -23,7 +23,7 @@ feature / target / score 산식은 그대로 둔다.
 
 | 파일 | 역할 |
 |---|---|
-| `app/api_ml_relative_upside.py` | `POST /market/relative-upside/run` router. 동기 처리 — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출. 응답 5 필드 (status / asof_date / generated_at / scored_candidate_count / gpu_execution_used / message). 실패 / rc≠0 / meta.status≠ok 분기 처리. raw 식별자 (device name / loss / epoch / artifact path / traceback) 노출 0건. |
+| `app/api_ml_relative_upside.py` | `POST /market/relative-upside/run` router. 동기 처리 — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출. 응답 6 필드 (status / asof_date / generated_at / scored_candidate_count / gpu_execution_used / message). 실패 / rc≠0 / meta 손상 / meta.status≠ok 4분기 처리 (FIX r1 — 손상 분리). raw 식별자 (device name / loss / epoch / artifact path / traceback) 노출 0건. |
 
 ### 수정 backend
 
@@ -48,7 +48,7 @@ feature / target / score 산식은 그대로 둔다.
 
 | 파일 | 건수 | 범위 |
 |---|---|---|
-| `tests/test_api_ml_relative_upside.py` | 5 | 성공 5 필드 응답 / GPU 미확인 메시지 / 예외 시 기존 meta 파일 변경 0건 / rc≠0 → failed / meta.status≠ok → unavailable. 응답에 raw 식별자 노출 0건 검증. |
+| `tests/test_api_ml_relative_upside.py` | 7 | 성공 6 필드 응답 / GPU 미확인 메시지 / 예외 시 기존 meta 파일 변경 0건 / rc≠0 → failed / meta.status≠ok → unavailable / meta 손상 → unavailable / **main() unavailable 분기에서 기존 score snapshot 파일 덮어쓰기 0건** (A-1 핵심 검증). 응답에 raw 식별자 노출 0건 검증. 모든 테스트 monkeypatch 로 `RUN_META_PATH` / `SCORE_SNAPSHOT_PATH` 격리 (B-6 — 운영 artifact 오염 차단). |
 
 ---
 
@@ -59,8 +59,8 @@ feature / target / score 산식은 그대로 둔다.
 | 1. UI 버튼으로 점수 계산 가능 | DONE — `RelativeUpsideRunCard` 버튼 1개 |
 | 2. 계산 중 / 성공 / 실패 상태 표시 | DONE — badge 5종 (미실행 / 계산 중 / 완료 / 실패 / 데이터 부족) |
 | 3. 성공 후 후보 표 점수 자동 갱신 | DONE — `onSuccess={loadTopn}` 콜백으로 `GET /market/topn/latest` 재호출 |
-| 4. 기준일 / 실행 시각 / 후보 수 / GPU 여부 표시 | DONE — 5 필드 표시 |
-| 5. 실패해도 기존 점수 유지 | DONE — `main()` 예외 raise 시 atomic write 가 호출되지 않아 파일 변경 0건 (단위 테스트 검증) |
+| 4. 기준일 / 실행 시각 / 후보 수 / GPU 여부 표시 | DONE — 사용자용 4 표시 항목 + status / message |
+| 5. 실패해도 기존 점수 유지 | DONE — (a) `main()` 예외 raise 시 atomic write 가 호출되지 않아 파일 변경 0건. (b) **FIX r1**: `main()` 의 `model is None` 또는 `inference_rows` 빈 분기에서 빈 snapshot 저장 코드를 제거 → 기존 `SCORE_SNAPSHOT_PATH` 그대로 유지. `RUN_META_PATH` 만 갱신 (이력 추적, `snapshot_path=""` 명시). 단위 테스트 `test_main_unavailable_branch_does_not_overwrite_existing_snapshot` 로 검증. |
 | 6. 기존 모델 / feature / target / score 산식 불변 | DONE — `app/ml_relative_upside_features.py` / `_model.py` / `_score.py` 변경 0건 |
 | 7. OCI / PUSH / PARAM 회귀 없음 | DONE — 관련 모듈 변경 0건 |
 | 8. backend tests / black / flake8 / frontend lint / build 통과 | DONE — pytest 613 passed (608 → +5), 회귀 0 |
@@ -69,7 +69,7 @@ feature / target / score 산식은 그대로 둔다.
 
 ## 4. 데이터 계약
 
-### POST /market/relative-upside/run 응답 (5 필드)
+### POST /market/relative-upside/run 응답 (6 필드)
 
 ```json
 {
@@ -99,6 +99,7 @@ feature / target / score 산식은 그대로 둔다.
 | `main()` 예외 raise | "새 점수를 계산하지 못했습니다. 기존 점수는 유지됩니다." |
 | `main()` rc≠0 | (동일 — failed 분기) |
 | `main()` rc=0 이지만 meta.status≠ok | "계산은 시도했지만 점수를 생성하지 못했습니다. 기존 점수는 유지됩니다." |
+| run meta 파일 손상 (JSON parse 실패) — FIX r1 신규 분기 | "운영 상태 파일을 읽지 못했습니다. 기존 점수는 유지됩니다." (응답 `status=unavailable`) |
 
 ---
 
@@ -156,7 +157,7 @@ CUDA RTX 4070 SUPER 학습 + 1,111 후보 점수 부여 + 응답에 device name 
 
 | 항목 | 결과 |
 |---|---|
-| backend pytest | **613 passed** (608 → +5 신규, 회귀 0). 기존 환경 실패 1건 (`test_generate_spike_alert_via_unified_endpoint`) 은 본 STEP 이전부터 존재 |
+| backend pytest | **615 passed** (608 → +7 신규 FIX r1 후, 회귀 0). 기존 환경 실패 1건 (`test_generate_spike_alert_via_unified_endpoint`) 은 본 STEP 이전부터 존재 |
 | black | PASS |
 | flake8 | PASS |
 | frontend npm run lint | PASS |
@@ -168,7 +169,70 @@ CUDA RTX 4070 SUPER 학습 + 1,111 후보 점수 부여 + 응답에 device name 
 
 ---
 
-## 8. 다음 단계 (사용자 결정 대기)
+## 8. FIX r1 (검증자 1차 REJECTED 후속)
+
+검증자 1차 REJECTED 사유 4건 모두 수용 및 해소.
+
+### FIX-1 (A-1 / A-2) — 실패 시 기존 score snapshot 보존
+
+**문제**: `scripts/run_ml_relative_upside_score_v0.py:169-196` 의 unavailable/failed
+분기에서 `display_scores={}` 인 빈 snapshot 을 `save_score_snapshot()` 으로
+저장 → 기존 정상 점수를 빈 snapshot 으로 덮어쓰는 결함. 보고서는 "기존 점수
+유지" 라고 했으나 실제 코드는 그렇지 않음.
+
+**수정**: 해당 분기에서 `save_score_snapshot()` 호출 제거. `RUN_META_PATH` 만
+갱신 (status=failed/unavailable + `snapshot_path=""` 명시 — "snapshot 저장 안
+함"). 기존 `SCORE_SNAPSHOT_PATH` 는 그대로 유지.
+
+**검증**: `test_main_unavailable_branch_does_not_overwrite_existing_snapshot` —
+정상 snapshot 기록 후 `train_walk_forward` 가 model=None 반환하도록 patch +
+`list_etf_tickers` / `fetch_price_history` stub. main() 호출 후 snapshot 파일
+content 변경 0건 + run meta 의 `snapshot_path=""` 확인.
+
+### FIX-2 (A-3) — CONCLUSION 응답 필드 수 5 → 6 정정
+
+**문제**: 응답에 `status` 가 포함된 6 필드인데 CONCLUSION 문서는 "5 필드"
+라고 표기 (지시문 문구 그대로 옮기다 status 누락).
+
+**수정**: §2 신규 backend 표 / §4 데이터 계약 헤더 / §3 5번 셀의 "5 필드"
+표기를 모두 6 필드로 정정.
+
+### FIX-3 (B-1) — run meta 손상 / 부재 분리
+
+**문제**: `_read_run_meta()` 가 파일 부재 / JSON 손상 / 타입 불일치를 모두
+`{}` 로 흡수 → 손상과 데이터 부족이 응답에서 구분되지 않음.
+
+**수정**: `(state, payload)` 튜플 반환 — `META_STATE_MISSING` /
+`META_STATE_CORRUPTED` / `META_STATE_OK` 3분리. 손상 시 logger.warning + 사용자
+응답에 별도 메시지 ("운영 상태 파일을 읽지 못했습니다. 기존 점수는 유지됩니다.").
+
+**검증**: `test_run_meta_corrupted_returns_unavailable` — `not a valid json {{{`
+를 meta 파일에 작성 후 POST 호출. 응답 status=unavailable + "운영 상태 파일을
+읽지 못했습니다" 메시지 + raw 식별자 노출 0건.
+
+### FIX-4 (B-6) — 테스트가 실제 runtime artifact 직접 수정하는 문제 차단
+
+**문제**: 기존 테스트 5건이 `state/ml/relative_upside_score_run_latest.json`
+실제 경로를 직접 write → 운영 artifact 오염 위험. 또한 frontend API 주석에
+"subprocess" 라고 stale 표기.
+
+**수정**:
+- `isolated_meta` fixture 추가 — `tmp_path` 로 `RUN_META_PATH` /
+  `SCORE_SNAPSHOT_PATH` monkeypatch 격리. 모든 7 테스트가 fixture 사용.
+- `frontend/lib/api/mlRelativeUpside.ts` 주석을 "backend 는 같은 프로세스 내
+  scripts.run_ml_relative_upside_score_v0.main() 직접 import 호출 — subprocess
+  가 아님" 으로 정정.
+
+### FIX r1 검증
+
+- pytest **615 passed** (608 + 7 신규, 회귀 0).
+- black / flake8 PASS. frontend lint / build PASS.
+- 실제 운영 artifact (`state/ml/relative_upside_score_*.json`) 변경 0건 —
+  모든 테스트가 tmp_path 격리.
+
+---
+
+## 9. 다음 단계 (사용자 결정 대기)
 
 PC_OCI_ARCHITECTURE_DIRECTION 순서 그대로:
 

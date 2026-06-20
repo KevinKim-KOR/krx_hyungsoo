@@ -16,11 +16,12 @@
 - 신규 backend: `app/api_ml_relative_upside.py` — `POST /market/relative-upside/run` 동기 처리. `scripts.run_ml_relative_upside_score_v0.main()` 직접 import 호출.
 - 신규 frontend: `RelativeUpsideRunCard` (상태/기준일/마지막 계산/점수 반영 후보 수/GPU 실행 표시 + 단일 버튼 + 실패 시 기존 result 보존).
 - 수정: `MarketDiscoveryView` 가 카드의 `onSuccess` 로 후보 표 자동 재조회.
-- 신규 테스트 5건: 성공 / GPU 미확인 메시지 / 예외 시 기존 meta 파일 변경 0건 / rc≠0 → failed / meta.status≠ok → unavailable. 응답에 raw 식별자 노출 0건 검증.
+- 신규 테스트 7건 (FIX r1 후 +2): 성공 6 필드 / GPU 미확인 메시지 / 예외 시 기존 meta 파일 변경 0건 / rc≠0 → failed / meta.status≠ok → unavailable / **meta 파일 손상 → unavailable** / **main() unavailable 분기에서 기존 score snapshot 덮어쓰기 0건** (A-1 핵심). 모든 테스트 tmp_path 격리. 응답에 raw 식별자 노출 0건 검증.
 
 ### 검증
 
-- pytest **613 passed** (608 → +5, 회귀 0). black / flake8 / frontend lint / build PASS.
+- pytest **615 passed** (608 + 7 신규 FIX r1 후, 회귀 0). black / flake8 / frontend lint / build PASS.
+- 검증자 1차 REJECTED → FIX r1 (A-1 실패 시 snapshot 보존 / A-3 응답 6 필드 정정 / B-1 meta 손상 분리 / B-6 테스트 격리) 적용.
 - POST 실측 — status=ok, scored 1,111 후보, gpu_execution_used=true. 사용자 친화 message.
 - 기존 ML 산식 / score snapshot 구조 / OCI runner / PARAM / Telegram 변경 0건.
 

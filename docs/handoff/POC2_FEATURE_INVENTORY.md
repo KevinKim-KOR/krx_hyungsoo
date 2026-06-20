@@ -573,15 +573,15 @@
 | 기능 목적 | UI 한 번으로 점수 계산 + 정상 실행 여부 확인 (상태 / 기준일 / 마지막 계산 시각 / 점수 반영 후보 수 / GPU 실행 여부). |
 | 사용 가능 여부 | **사용 가능** (2026-06-21 commit 예정. POST 실측 status=ok, scored 1,111, gpu=true). |
 | API endpoint | `POST /market/relative-upside/run` (`app/api_ml_relative_upside.py`). 동기 처리 — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출 (subprocess 가 아님 — 사용자 결정 2026-06-21). 응답 timeout 120 초. |
-| 응답 5 필드 | `status` (ok / failed / unavailable) / `asof_date` / `generated_at` / `scored_candidate_count` / `gpu_execution_used` / `message`. raw 식별자 (`CUDA` / `device_name` / `loss` / `epoch` / `artifact_path` / `snapshot_path` / `Traceback`) 노출 0건 (단위 테스트 검증). |
+| 응답 6 필드 | `status` (ok / failed / unavailable) / `asof_date` / `generated_at` / `scored_candidate_count` / `gpu_execution_used` / `message`. raw 식별자 (`CUDA` / `device_name` / `loss` / `epoch` / `artifact_path` / `snapshot_path` / `Traceback`) 노출 0건 (단위 테스트 검증). FIX r1 — meta 파일 손상 시 별도 사용자 친화 메시지 ("운영 상태 파일을 읽지 못했습니다. 기존 점수는 유지됩니다.") + status=unavailable. |
 | 사용자 친화 message | 성공+GPU "상대상승 참고점수 계산이 완료되었습니다." / 성공+GPU 미확인 "계산은 완료됐지만 GPU 실행은 확인되지 않았습니다." / 실패 "새 점수를 계산하지 못했습니다. 기존 점수는 유지됩니다." / unavailable "계산은 시도했지만 점수를 생성하지 못했습니다. 기존 점수는 유지됩니다." |
 | UI 카드 | `frontend/app/components/RelativeUpsideRunCard.tsx` — 상태 badge (미실행 / 계산 중 / 완료 / 실패 / 데이터 부족) + 기준일 + 마지막 계산 시각 + 점수 반영 후보 수 + GPU 실행 여부 + 단일 버튼 `[상대상승 점수 계산]`. running 중 중복 클릭 차단. 실패 시 기존 result 유지 (지시문 — 실패 시 기존 점수 보존). |
 | API client | `frontend/lib/api/mlRelativeUpside.ts` (timeout 120s). |
 | 자동 갱신 | 성공 시 `onSuccess={loadTopn}` 콜백으로 `GET /market/topn/latest` 재호출 → 후보 표의 점수 / 고점 대비 / 근거 자동 최신화. |
-| 실패 보호 | `main()` 예외 raise 시 `state/ml/relative_upside_score_run_latest.json` + `relative_upside_score_latest.json` 파일 변경 0건 (atomic write 가 main() 마지막 단계에서만 호출). UI 는 직전 result 유지 + 사용자용 generic 실패 메시지 표시 (raw traceback 미노출). |
+| 실패 보호 | **2층 보호** — (1) `main()` 예외 raise 시 atomic write 가 호출되지 않아 두 파일 변경 0건. (2) **FIX r1**: `main()` 이 `model is None` / `inference_rows` 빈 분기로 들어와도 `save_score_snapshot()` 호출하지 않고 `RUN_META_PATH` 만 `snapshot_path=""` 명시 저장 → 기존 `SCORE_SNAPSHOT_PATH` 그대로 유지. 단위 테스트 `test_main_unavailable_branch_does_not_overwrite_existing_snapshot` 로 검증. UI 는 직전 result 유지 + 사용자용 generic 실패 메시지 표시 (raw traceback 미노출). |
 | 모델 / feature / 산식 | **변경 0건** — §2.29 의 `nn.Linear(7,1)` / walk-forward 1회 split / `drawdown_20d` / 0~100 정규화 그대로. 새 모델 / 새 factor / 새 학습 흐름 0건. |
 | OCI / PARAM / Telegram | **0건** — `scripts/run_three_push_runtime_oci.py` / `app/three_push_runtime_message_builder.py` / PARAM 구조 / Telegram 메시지 변경 X. |
-| 테스트 | 5건 — `tests/test_api_ml_relative_upside.py`. pytest 613 passed (608 → +5, 회귀 0). |
+| 테스트 | 7건 (FIX r1 후 +2) — `tests/test_api_ml_relative_upside.py`. pytest 615 passed (608 + 7 신규, 회귀 0). 모든 테스트 `tmp_path` 격리로 운영 artifact 오염 0건. |
 | 다음 조치 | (1) 사용자가 화면 운영 사이클 검증. (2) ML 축2 위험 감지 빈자리 STEP 진입 시 동일 UI 패턴 재사용. |
 
 ---

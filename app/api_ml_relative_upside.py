@@ -45,18 +45,36 @@ class RelativeUpsideRunResponse(BaseModel):
     message: str
 
 
-def _read_run_meta() -> dict:
-    """state/ml/relative_upside_score_run_latest.json read. 부재/손상 시 빈 dict."""
+# run meta 파일 상태 — 부재 / 손상 / 정상 3분리.
+META_STATE_MISSING = "missing"
+META_STATE_CORRUPTED = "corrupted"
+META_STATE_OK = "ok"
+
+
+def _read_run_meta() -> tuple[str, dict]:
+    """state/ml/relative_upside_score_run_latest.json 의 (상태, payload).
+
+    상태:
+      - META_STATE_MISSING — 파일 부재 (한 번도 실행 안 됨)
+      - META_STATE_CORRUPTED — JSON parse 실패 또는 dict 가 아님 (운영 상태 손상)
+      - META_STATE_OK — 정상 read
+
+    raw error / device name / artifact path 는 응답에 노출하지 않고 호출자가
+    사용자 친화 dict 로 변환한다 (지시문 — 일반 UI 노출 금지).
+    """
     if not RUN_META_PATH.exists():
-        return {}
+        return META_STATE_MISSING, {}
     try:
         data = json.loads(RUN_META_PATH.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as e:
         logger.warning("run meta read 실패: %s", type(e).__name__)
-        return {}
+        return META_STATE_CORRUPTED, {}
     if not isinstance(data, dict):
-        return {}
-    return data
+        logger.warning(
+            "run meta 형식 오류: 최상위가 dict 아님 (%s)", type(data).__name__
+        )
+        return META_STATE_CORRUPTED, {}
+    return META_STATE_OK, data
 
 
 @router.post("/run", response_model=RelativeUpsideRunResponse)
@@ -75,7 +93,8 @@ def run_relative_upside_score() -> RelativeUpsideRunResponse:
         유지됩니다."
       - 사용자에게 traceback / shell command / device name 노출 X (지시문).
 
-    응답 필드는 5개 (지시문 — 사용자용 최소 정보만).
+    응답 필드는 6개 (지시문 — 사용자용 최소 정보만).
+    status / asof_date / generated_at / scored_candidate_count / gpu_execution_used / message.
     """
     try:
         from scripts.run_ml_relative_upside_score_v0 import main as run_ml_main
@@ -103,7 +122,18 @@ def run_relative_upside_score() -> RelativeUpsideRunResponse:
             message=("새 점수를 계산하지 못했습니다. 기존 점수는 유지됩니다."),
         )
 
-    meta = _read_run_meta()
+    meta_state, meta = _read_run_meta()
+    # 손상은 응답에 별도로 노출하지 않고 unavailable 로 묶되 로그에는 남긴다
+    # (B-1 — 손상과 데이터 부족 구분, 사용자에게는 동일 사용자 친화 메시지).
+    if meta_state == META_STATE_CORRUPTED:
+        return RelativeUpsideRunResponse(
+            status="unavailable",
+            asof_date=None,
+            generated_at=None,
+            scored_candidate_count=None,
+            gpu_execution_used=None,
+            message=("운영 상태 파일을 읽지 못했습니다. 기존 점수는 유지됩니다."),
+        )
     meta_status = meta.get("status")
     asof_date = meta.get("asof_date") or None
     generated_at = meta.get("generated_at") or None

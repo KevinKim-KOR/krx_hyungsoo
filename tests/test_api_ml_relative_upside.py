@@ -1,11 +1,19 @@
 """tests for app.api_ml_relative_upside.
 
 POST /market/relative-upside/run — 동기 처리. 핵심 검증:
-  - 성공 (status=ok) — 5 필드 응답 + 사용자 친화 message.
-  - main() 예외 raise → status=failed + 기존 snapshot 보존 (파일 변경 0건).
+  - 성공 (status=ok) — 6 필드 응답 (status / asof_date / generated_at /
+    scored_candidate_count / gpu_execution_used / message) + 사용자 친화 message.
+  - main() 예외 raise → status=failed.
   - main() rc != 0 → status=failed.
   - main() rc=0 이지만 run_meta.status != "ok" → status=unavailable.
+  - main() 의 실제 unavailable / failed 경로 (model None / inference_rows 빈)
+    에서 기존 score snapshot 파일을 덮어쓰지 않는다 (실패 시 기존 점수 보존).
+  - run meta 파일 손상 시 status=unavailable (B-1).
   - 응답에 device name / loss / epoch / artifact path / raw traceback 노출 0건.
+
+본 테스트는 실제 운영 artifact 파일 (state/ml/relative_upside_score_run_latest.
+json) 을 건드리지 않는다 — monkeypatch 로 RUN_META_PATH 와
+SCORE_SNAPSHOT_PATH 를 tmp_path 로 격리 (B-6).
 """
 
 from __future__ import annotations
@@ -13,10 +21,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api import app
-from app.ml_relative_upside_score import RUN_META_PATH
 
 client = TestClient(app)
 
@@ -42,17 +50,33 @@ def _assert_no_raw_identifiers(text: str) -> None:
         assert ident not in text, f"응답에 raw 식별자 노출: {ident!r}"
 
 
-def _write_temp_run_meta(payload: dict) -> Path:
-    """RUN_META_PATH 에 임시 meta 작성 후 경로 반환."""
-    RUN_META_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RUN_META_PATH.write_text(
+@pytest.fixture
+def isolated_meta(tmp_path: Path, monkeypatch) -> Path:
+    """RUN_META_PATH 와 SCORE_SNAPSHOT_PATH 를 tmp_path 로 격리.
+
+    api_ml_relative_upside 의 모듈 전역 RUN_META_PATH 도 함께 patch — 실제
+    state/ml/ 의 운영 artifact 를 오염시키지 않는다.
+    """
+    fake_meta_path = tmp_path / "relative_upside_score_run_latest.json"
+    fake_snapshot_path = tmp_path / "relative_upside_score_latest.json"
+
+    monkeypatch.setattr("app.ml_relative_upside_score.RUN_META_PATH", fake_meta_path)
+    monkeypatch.setattr(
+        "app.ml_relative_upside_score.SCORE_SNAPSHOT_PATH", fake_snapshot_path
+    )
+    monkeypatch.setattr("app.api_ml_relative_upside.RUN_META_PATH", fake_meta_path)
+    return fake_meta_path
+
+
+def _write_meta(meta_path: Path, payload: dict) -> None:
+    meta_path.parent.mkdir(parents=True, exist_ok=True)
+    meta_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    return RUN_META_PATH
 
 
-def test_run_success_returns_user_only_fields(monkeypatch):
-    """성공 시 5 필드 응답 + 사용자 친화 message + raw 식별자 미노출."""
+def test_run_success_returns_6_user_fields(monkeypatch, isolated_meta):
+    """성공 시 6 필드 응답 (지시문 — status 포함) + 사용자 친화 message + raw 식별자 미노출."""
     fake_meta = {
         "schema_version": "relative_upside_score_run.v0",
         "status": "ok",
@@ -68,13 +92,13 @@ def test_run_success_returns_user_only_fields(monkeypatch):
             "epochs": 200,
         },
     }
-    _write_temp_run_meta(fake_meta)
+    _write_meta(isolated_meta, fake_meta)
 
-    # main() 자체는 실행하지 않고 rc=0 만 시뮬레이션.
     monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200, resp.text
     body = resp.json()
+    # 응답은 정확히 6 필드 (지시문 — status 포함).
     assert set(body.keys()) == {
         "status",
         "asof_date",
@@ -87,12 +111,10 @@ def test_run_success_returns_user_only_fields(monkeypatch):
     assert body["asof_date"] == "2026-06-19"
     assert body["scored_candidate_count"] == 1111
     assert body["gpu_execution_used"] is True
-    # device_name / cuda_available / train_loss_final / epochs 노출 0건.
     _assert_no_raw_identifiers(resp.text)
 
 
-def test_run_success_without_gpu_returns_specific_message(monkeypatch):
-    """GPU 사용 안 했을 때 메시지 변경 (지시문 — 'GPU 실행은 확인되지 않았습니다')."""
+def test_run_success_without_gpu_returns_specific_message(monkeypatch, isolated_meta):
     fake_meta = {
         "schema_version": "relative_upside_score_run.v0",
         "status": "ok",
@@ -105,7 +127,7 @@ def test_run_success_without_gpu_returns_specific_message(monkeypatch):
             "gpu_execution_used": False,
         },
     }
-    _write_temp_run_meta(fake_meta)
+    _write_meta(isolated_meta, fake_meta)
 
     monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
     resp = client.post("/market/relative-upside/run")
@@ -117,22 +139,18 @@ def test_run_success_without_gpu_returns_specific_message(monkeypatch):
     _assert_no_raw_identifiers(resp.text)
 
 
-def test_run_failure_preserves_existing_snapshot(monkeypatch):
-    """main() 예외 raise → 응답 status=failed + 기존 run_meta 파일 변경 0건.
-
-    지시문 — 실패 시 기존 정상 score snapshot 삭제/초기화/빈값 덮어쓰기 X.
-    """
-    # 기존 정상 meta 작성.
+def test_run_failure_preserves_existing_meta_file(monkeypatch, isolated_meta):
+    """main() 예외 raise → 응답 status=failed + 기존 run_meta 파일 변경 0건."""
     fake_meta = {
         "schema_version": "relative_upside_score_run.v0",
         "status": "ok",
-        "asof_date": "2026-06-18",  # 이전 정상 상태.
+        "asof_date": "2026-06-18",
         "generated_at": "2026-06-19T00:00:00+00:00",
         "scored_candidate_count": 999,
         "model": {"gpu_execution_used": True},
     }
-    meta_path = _write_temp_run_meta(fake_meta)
-    before_content = meta_path.read_text(encoding="utf-8")
+    _write_meta(isolated_meta, fake_meta)
+    before_content = isolated_meta.read_text(encoding="utf-8")
 
     def _raise(*args, **kwargs):
         raise RuntimeError("simulated training failure with secret_path=/etc/x")
@@ -143,16 +161,14 @@ def test_run_failure_preserves_existing_snapshot(monkeypatch):
     body = resp.json()
     assert body["status"] == "failed"
     assert "기존 점수는 유지됩니다" in body["message"]
-    # 응답에 raw error / secret_path / traceback 노출 0건.
     _assert_no_raw_identifiers(resp.text)
     assert "secret_path" not in resp.text
     # 기존 meta 파일 변경 0건.
-    after_content = meta_path.read_text(encoding="utf-8")
+    after_content = isolated_meta.read_text(encoding="utf-8")
     assert before_content == after_content
 
 
-def test_run_nonzero_rc_returns_failed(monkeypatch):
-    """main() rc != 0 → status=failed (기존 snapshot 보존)."""
+def test_run_nonzero_rc_returns_failed(monkeypatch, isolated_meta):
     monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 2)
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200
@@ -161,8 +177,7 @@ def test_run_nonzero_rc_returns_failed(monkeypatch):
     _assert_no_raw_identifiers(resp.text)
 
 
-def test_run_meta_unavailable_returns_unavailable(monkeypatch):
-    """main() rc=0 이지만 meta.status != 'ok' → status=unavailable."""
+def test_run_meta_unavailable_returns_unavailable(monkeypatch, isolated_meta):
     fake_meta = {
         "schema_version": "relative_upside_score_run.v0",
         "status": "unavailable",
@@ -171,7 +186,7 @@ def test_run_meta_unavailable_returns_unavailable(monkeypatch):
         "scored_candidate_count": 0,
         "model": {"gpu_execution_used": True},
     }
-    _write_temp_run_meta(fake_meta)
+    _write_meta(isolated_meta, fake_meta)
     monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
     resp = client.post("/market/relative-upside/run")
     assert resp.status_code == 200
@@ -179,3 +194,103 @@ def test_run_meta_unavailable_returns_unavailable(monkeypatch):
     assert body["status"] == "unavailable"
     assert "기존 점수는 유지됩니다" in body["message"]
     _assert_no_raw_identifiers(resp.text)
+
+
+def test_run_meta_corrupted_returns_unavailable(monkeypatch, isolated_meta):
+    """run meta 파일이 손상 (JSON parse 실패) 시 status=unavailable + 사용자 친화 message (B-1)."""
+    isolated_meta.parent.mkdir(parents=True, exist_ok=True)
+    isolated_meta.write_text("not a valid json {{{", encoding="utf-8")
+    monkeypatch.setattr("scripts.run_ml_relative_upside_score_v0.main", lambda: 0)
+    resp = client.post("/market/relative-upside/run")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "unavailable"
+    assert "기존 점수는 유지됩니다" in body["message"]
+    assert "운영 상태 파일을 읽지 못했습니다" in body["message"]
+    _assert_no_raw_identifiers(resp.text)
+
+
+def test_main_unavailable_branch_does_not_overwrite_existing_snapshot(
+    monkeypatch, tmp_path
+):
+    """main() 의 unavailable/failed 경로 (model None / inference_rows 빈) 에서
+    기존 score snapshot 파일을 덮어쓰지 않는다 (A-1 핵심 수정 검증).
+
+    1. 정상 snapshot 을 SCORE_SNAPSHOT_PATH 에 기록.
+    2. main() 의 학습 단계가 train_walk_forward 에서 model=None 반환하도록 patch.
+    3. main() 호출 후 SCORE_SNAPSHOT_PATH 파일 변경 0건 확인.
+    """
+    fake_snapshot_path = tmp_path / "relative_upside_score_latest.json"
+    fake_meta_path = tmp_path / "relative_upside_score_run_latest.json"
+    # 기존 정상 snapshot 시뮬레이션.
+    existing_snapshot = {
+        "schema_version": "relative_upside_score.v0",
+        "status": "ok",
+        "asof_date": "2026-06-15",
+        "candidates": [{"ticker": "069500", "relative_upside_score": 50.0}],
+    }
+    fake_snapshot_path.write_text(
+        json.dumps(existing_snapshot, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    before = fake_snapshot_path.read_text(encoding="utf-8")
+
+    # 모듈 전역 path patch.
+    monkeypatch.setattr(
+        "app.ml_relative_upside_score.SCORE_SNAPSHOT_PATH", fake_snapshot_path
+    )
+    monkeypatch.setattr("app.ml_relative_upside_score.RUN_META_PATH", fake_meta_path)
+
+    # main() 의 의존성 stub.
+    monkeypatch.setattr(
+        "app.market_data_store.list_etf_tickers",
+        lambda: ["069500", "TEST1"],
+    )
+    monkeypatch.setattr(
+        "app.market_data_store.fetch_price_history",
+        lambda ticker: [("2026-06-19", 100.0)],
+    )
+
+    # train_walk_forward 가 model=None 반환 (학습 데이터 부족 시뮬레이션).
+    from app.ml_relative_upside_model import TrainResult
+    from app.ml_relative_upside_features import FEATURE_COLUMNS
+
+    def _fake_train(rows, **kwargs):
+        return None, TrainResult(
+            train_row_count=0,
+            test_row_count=0,
+            train_date_range=("", ""),
+            test_date_range=("", ""),
+            train_loss_final=float("nan"),
+            test_loss_final=float("nan"),
+            epochs=0,
+            learning_rate=0.001,
+            device_name="cpu",
+            cuda_available=False,
+            gpu_execution_used=False,
+            train_seconds=0.0,
+            feature_columns=FEATURE_COLUMNS,
+        )
+
+    monkeypatch.setattr(
+        "scripts.run_ml_relative_upside_score_v0.train_walk_forward",
+        _fake_train,
+    )
+
+    from scripts.run_ml_relative_upside_score_v0 import main as run_ml_main
+
+    # main() 의 argparse 가 pytest 인자를 읽지 않도록 sys.argv 임시 격리.
+    import sys as _sys
+
+    monkeypatch.setattr(_sys, "argv", ["run_ml_relative_upside_score_v0.py"])
+    rc = run_ml_main()
+    assert rc == 0
+    # 기존 score snapshot 파일 변경 0건 — A-1 핵심 검증.
+    after = fake_snapshot_path.read_text(encoding="utf-8")
+    assert before == after
+    # run meta 는 갱신됨 (이력 추적용).
+    assert fake_meta_path.exists()
+    meta = json.loads(fake_meta_path.read_text(encoding="utf-8"))
+    assert meta["status"] in ("failed", "unavailable")
+    # snapshot_path 는 빈 문자열 ("저장 안 함" 명시).
+    assert meta["snapshot_path"] == ""
