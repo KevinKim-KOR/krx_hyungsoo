@@ -1,12 +1,43 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-20 (ML 축1 — 후보 ETF 상대상승 참고점수 v0)
+작성일: 2026-05-20 / 갱신: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-20 — ML 축1 — 후보 ETF 상대상승 참고점수 v0)
+## 0. 직전 STEP 결과 (2026-06-21 — ML 축1 — 상대상승 점수 실행 UI 연결)
+
+지시문 단일 목표: 기존 `relative_upside_score_v0` 실행을 Market Discovery UI 에 연결.
+사용자가 CLI 없이 화면 버튼 1개로 점수 계산 + 정상 실행 여부 확인.
+
+### 결과 요약
+
+- 신규 backend: `app/api_ml_relative_upside.py` — `POST /market/relative-upside/run` 동기 처리. `scripts.run_ml_relative_upside_score_v0.main()` 직접 import 호출.
+- 신규 frontend: `RelativeUpsideRunCard` (상태/기준일/마지막 계산/점수 반영 후보 수/GPU 실행 표시 + 단일 버튼 + 실패 시 기존 result 보존).
+- 수정: `MarketDiscoveryView` 가 카드의 `onSuccess` 로 후보 표 자동 재조회.
+- 신규 테스트 5건: 성공 / GPU 미확인 메시지 / 예외 시 기존 meta 파일 변경 0건 / rc≠0 → failed / meta.status≠ok → unavailable. 응답에 raw 식별자 노출 0건 검증.
+
+### 검증
+
+- pytest **613 passed** (608 → +5, 회귀 0). black / flake8 / frontend lint / build PASS.
+- POST 실측 — status=ok, scored 1,111 후보, gpu_execution_used=true. 사용자 친화 message.
+- 기존 ML 산식 / score snapshot 구조 / OCI runner / PARAM / Telegram 변경 0건.
+
+### 다음 분기 후보
+
+PC_OCI_ARCHITECTURE_DIRECTION 순서:
+
+1. **ML 축2** — 위험 감지용 시계열 빈자리 하나 채우기 STEP.
+2. **점수·위험·보유 비교가 모이는 PC 판단 화면** 좁은 STEP.
+3. **OCI read model foundation** — PC 판단 화면 + ML 1차 결과 확보 뒤 진입.
+4. **BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP**.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-20 — ML 축1 — 후보 ETF 상대상승 참고점수 v0)
 
 지시문 §3 단일 목표: 후보 ETF 별 0~100 상대상승 참고점수 생성 + UI 비교 가능.
 

@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-20 (ML 축1 — 후보 ETF 상대상승 참고점수 v0)
+작성일: 2026-05-27 / 갱신: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -563,6 +563,26 @@
 | 테스트 | 24건 — `tests/test_ml_relative_upside_features.py` (7) + `tests/test_ml_relative_upside_model.py` (7) + `tests/test_ml_relative_upside_score.py` (10). pytest 608 passed (회귀 0). |
 | OCI 영향 | **0건** — OCI runner / PARAM / Telegram 메시지 / crontab 구조 변경 X. PC 분석 평면에만 머문다. 향후 OCI read model snapshot handoff 가 결정된 뒤 별도 STEP. |
 | 다음 조치 | (1) ML 축2 위험 감지 빈자리 하나 채우기 STEP. (2) 점수·위험·보유 비교가 모이는 PC 판단 화면. (3) OCI read model foundation 준비 단계. |
+
+### 2.30 ML 축1 — 상대상승 점수 실행 UI 연결 (2026-06-21 신규)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 사용자가 CLI 없이 화면 버튼 1개로 상대상승 참고점수 v0 계산을 실행하고 결과를 확인. §2.29 의 후속 — 모델 / feature / 산식은 그대로. |
+| 현재 메뉴 위치 | Market Discovery 화면 — `MarketContextCard` 다음에 `RelativeUpsideRunCard` 배치. |
+| 기능 목적 | UI 한 번으로 점수 계산 + 정상 실행 여부 확인 (상태 / 기준일 / 마지막 계산 시각 / 점수 반영 후보 수 / GPU 실행 여부). |
+| 사용 가능 여부 | **사용 가능** (2026-06-21 commit 예정. POST 실측 status=ok, scored 1,111, gpu=true). |
+| API endpoint | `POST /market/relative-upside/run` (`app/api_ml_relative_upside.py`). 동기 처리 — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출 (subprocess 가 아님 — 사용자 결정 2026-06-21). 응답 timeout 120 초. |
+| 응답 5 필드 | `status` (ok / failed / unavailable) / `asof_date` / `generated_at` / `scored_candidate_count` / `gpu_execution_used` / `message`. raw 식별자 (`CUDA` / `device_name` / `loss` / `epoch` / `artifact_path` / `snapshot_path` / `Traceback`) 노출 0건 (단위 테스트 검증). |
+| 사용자 친화 message | 성공+GPU "상대상승 참고점수 계산이 완료되었습니다." / 성공+GPU 미확인 "계산은 완료됐지만 GPU 실행은 확인되지 않았습니다." / 실패 "새 점수를 계산하지 못했습니다. 기존 점수는 유지됩니다." / unavailable "계산은 시도했지만 점수를 생성하지 못했습니다. 기존 점수는 유지됩니다." |
+| UI 카드 | `frontend/app/components/RelativeUpsideRunCard.tsx` — 상태 badge (미실행 / 계산 중 / 완료 / 실패 / 데이터 부족) + 기준일 + 마지막 계산 시각 + 점수 반영 후보 수 + GPU 실행 여부 + 단일 버튼 `[상대상승 점수 계산]`. running 중 중복 클릭 차단. 실패 시 기존 result 유지 (지시문 — 실패 시 기존 점수 보존). |
+| API client | `frontend/lib/api/mlRelativeUpside.ts` (timeout 120s). |
+| 자동 갱신 | 성공 시 `onSuccess={loadTopn}` 콜백으로 `GET /market/topn/latest` 재호출 → 후보 표의 점수 / 고점 대비 / 근거 자동 최신화. |
+| 실패 보호 | `main()` 예외 raise 시 `state/ml/relative_upside_score_run_latest.json` + `relative_upside_score_latest.json` 파일 변경 0건 (atomic write 가 main() 마지막 단계에서만 호출). UI 는 직전 result 유지 + 사용자용 generic 실패 메시지 표시 (raw traceback 미노출). |
+| 모델 / feature / 산식 | **변경 0건** — §2.29 의 `nn.Linear(7,1)` / walk-forward 1회 split / `drawdown_20d` / 0~100 정규화 그대로. 새 모델 / 새 factor / 새 학습 흐름 0건. |
+| OCI / PARAM / Telegram | **0건** — `scripts/run_three_push_runtime_oci.py` / `app/three_push_runtime_message_builder.py` / PARAM 구조 / Telegram 메시지 변경 X. |
+| 테스트 | 5건 — `tests/test_api_ml_relative_upside.py`. pytest 613 passed (608 → +5, 회귀 0). |
+| 다음 조치 | (1) 사용자가 화면 운영 사이클 검증. (2) ML 축2 위험 감지 빈자리 STEP 진입 시 동일 UI 패턴 재사용. |
 
 ---
 

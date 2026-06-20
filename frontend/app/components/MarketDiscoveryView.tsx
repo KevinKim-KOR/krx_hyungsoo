@@ -30,6 +30,7 @@ import {
 import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
+import RelativeUpsideRunCard from "./RelativeUpsideRunCard";
 import TransferToAISessionsCard from "./TransferToAISessionsCard";
 import TransferToETFExposureCard from "./TransferToETFExposureCard";
 
@@ -543,6 +544,9 @@ export default function MarketDiscoveryView({
       />
       {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
       <MarketContextCard ctx={data.market_context ?? null} />
+      {/* 2026-06-21 ML 축1 — 상대상승 참고점수 계산 실행 카드. 성공 시
+          loadTopn() 으로 후보 표 재조회 (지시문 — 성공 후 후보 목록 갱신). */}
+      <RelativeUpsideRunCard onSuccess={loadTopn} />
       {/* 통합 테이블 */}
       <CandidateTable
         candidates={data.candidates ?? []}

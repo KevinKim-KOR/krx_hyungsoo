@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-20 (ML 축1 — 후보 ETF 상대상승 참고점수 v0)
+최종 업데이트: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결)
 
 ## 0. Canonical
 
@@ -23,7 +23,16 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **ML 축1 — 후보 ETF 상대상승 참고점수 v0** (2026-06-20).
+- **현재 완료 상태**: **ML 축1 — 상대상승 점수 실행 UI 연결** (2026-06-21).
+  - 지시문 단일 목표: 기존 `relative_upside_score_v0` 실행을 Market Discovery UI 에 연결. 사용자가 CLI 없이 화면에서 점수 계산 + 정상 실행 여부 확인.
+  - **신규 backend 1종**: `app/api_ml_relative_upside.py` — `POST /market/relative-upside/run` router. 동기 처리 (사용자 결정 2026-06-21) — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출 (subprocess 가 아닌 같은 프로세스 함수 호출). 실패 / rc≠0 / meta.status≠ok 분기 처리. 응답 5 필드 (status / asof_date / generated_at / scored_candidate_count / gpu_execution_used / message) — device name / loss / epoch / artifact path / raw traceback 노출 0건.
+  - **수정 1종**: `app/api.py` — router 등록.
+  - **신규 frontend 2종**: `frontend/lib/api/mlRelativeUpside.ts` (TS API client, timeout 120s) / `frontend/app/components/RelativeUpsideRunCard.tsx` (Market Discovery 후보 목록 상단 카드 — 상태/기준일/마지막 계산/점수 반영 후보 수/GPU 실행 표시 + 단일 `[상대상승 점수 계산]` 버튼 + running 중 중복 클릭 차단 + 실패 시 기존 result 유지).
+  - **수정 frontend 1종**: `frontend/app/components/MarketDiscoveryView.tsx` — 카드를 `MarketContextCard` 다음에 배치 + `onSuccess={loadTopn}` 으로 성공 시 후보 표 자동 재조회.
+  - **신규 테스트 5건**: `tests/test_api_ml_relative_upside.py` — 성공 5 필드 응답 + GPU 미확인 메시지 분기 + main() 예외 raise 시 기존 meta 파일 변경 0건 보존 + rc≠0 → failed + meta.status≠ok → unavailable. 응답에 `CUDA` / `cuda` / `epoch` / `loss` / `NVIDIA` / `device_name` / `artifact_path` / `snapshot_path` / `Traceback` 노출 0건 검증.
+  - **실측 (2026-06-21)**: `POST /market/relative-upside/run` → status=200, body={status: "ok", asof_date: "2026-06-19", scored_candidate_count: 1111, gpu_execution_used: true, message: "상대상승 참고점수 계산이 완료되었습니다."}. CUDA RTX 4070 SUPER 실행. 기존 ML 산식 / score snapshot 구조 / OCI runner / PARAM / Telegram 코드 변경 0건.
+  - pytest **613 passed** (608 → +5, 회귀 0). black / flake8 PASS. frontend lint / build PASS.
+- **이전 STEP**: **ML 축1 — 후보 ETF 상대상승 참고점수 v0** (2026-06-20).
   - 지시문 §3 단일 목표: 기존 ETF 가격 이력과 5/10/20일 수익률·초과수익 evidence 를 사용해 후보 ETF 별 0~100 상대상승 참고점수를 생성하고, 기존 후보 목록에서 점수·고점 대비·근거를 함께 비교. 매수·매도·교체·비중 조절 신호 아님 (참고용 정량 재료).
   - **신규 backend 모듈 3종**: `app/ml_relative_upside_features.py` (5/10/20일 수익률 + KODEX200 초과수익 + `drawdown_20d` = close/peak−1 첫 추가 factor 계산. `CandidateFeatureRow` dataclass + 학습/추론 모드 분리 + 미래 데이터 차단 가드) / `app/ml_relative_upside_model.py` (torch `nn.Linear(7,1)` 단일 선형회귀, walk-forward 1회 split 사용자 결정 2026-06-20, Adam lr=1e-3, MSE, 200 epochs, seed=42, CUDA 우선) / `app/ml_relative_upside_score.py` (사람 언어 reasons 최대 3개 + snapshot/run-meta 빌더 + atomic write + USER_NOTICE 상수).
   - **신규 CLI 1종**: `scripts/run_ml_relative_upside_score_v0.py` — SQLite read → feature 계산 → torch GPU 학습 → 추론 → 0~100 정규화 → simple vs ML 비교 기록 → snapshot 저장.
