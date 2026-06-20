@@ -516,6 +516,27 @@
 | crontab template | `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §3 (정식 운영) + §3-fallback (manual recovery). |
 | 다음 조치 | (1) 사용자 OCI 에서 `crontab -e` 로 정식 entry 3종 갱신 (`run_three_push_oci.py` → `run_three_push_runtime_oci.py`). (2) PARAM 변경 운영 사이클 검증 (manual_seed → baseline_static 등). (3) runtime data source 점진 확장 (BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP). |
 
+### 2.28 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 (2026-06-20 신규)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | Telegram PUSH 본문을 사용자 친화 메시지로 정리 + UI 한 번으로 OCI 에 PARAM 적용. |
+| 현재 메뉴 위치 | Approval / Telegram 화면 — `ThreePushParamCard` (`ThreePushDraftCard` 상단). |
+| 기능 목적 | (1) 운영 진단 로그 형식(`param_id`, `kr_realtime_price_snapshot=unavailable` 등)을 사람이 읽을 수 있는 짧은 안내로 변환. (2) CLI 없이 UI 단일 버튼으로 manual_seed PARAM 생성 + latest 승격 + OCI sync + verify. |
+| 사용 가능 여부 | **사용 가능** (2026-06-20 commit `b2946643` 검증자 VERIFIED_WITH_NOTES 통과). |
+| 데이터 소스 상태 | 신규 source 0건. 기존 latest PARAM + sync_status_latest.json read-only. |
+| 사용자 표시 라벨 | `app/push_user_labels.py` — source key 8종 → 사용자 라벨 (국내 ETF 시세 / 밤사이 미국 시장 / ETF 후보 흐름 / 보유 종목 평가 / NAV·괴리율 / 급등락 관찰 / 위험 참고 데이터 / 주요 뉴스). |
+| 사용자 메시지 빌더 | `app/push_user_copy.py` — 전체 unavailable 시 `build_all_unavailable_message` (헤더 + 기준 시각 + 안내 + 별도 확인 필요 + 짧은 주의 문장) + 일부 available 시 `render_unavailable_block`. |
+| PC builder 정렬 | `app/message_market_briefing.py` / `app/message_spike_alert.py` / `app/draft_message.py` 섹션 헤더를 사용자 표시명으로 정렬 + 전체 unavailable fallback 으로 사용자 중심 축약 메시지 호출. |
+| 정식 PARAM runtime builder | `app/three_push_runtime_message_builder.py` 가 사용자 중심 메시지로 재작성 — PARAM (`param_id` / `param_source`) 본문 노출 0건. duplicate guard / status 기록 / 로그용으로만 사용. |
+| raw 식별자 차단 안전망 | `app/three_push_runner_common.py:check_raw_identifiers()` 공통 헬퍼 (11종 식별자) — 정식 runtime runner + fallback package runner 양쪽에서 §4-b 단계로 차단. 감지 시 `status=failed, reason=raw_identifier_exposed` (정식) / `status=skipped, reason=raw_identifier_exposed` (fallback). |
+| API endpoint | `GET /three-push/param/state` (현재 운영 기준 카드 표시용 read-only state) + `POST /three-push/param/apply` (manual_seed PARAM 생성 + latest 승격 + sync subprocess + verify 동기 처리). 응답에 raw 식별자 (param_id / SSH target / remote path / 파일명 / raw stderr) 노출 0건. |
+| sync state 3분리 | `_read_sync_status()` 가 `(state, payload)` 튜플 반환. state ∈ {`SYNC_STATE_MISSING`, `SYNC_STATE_CORRUPTED`, `SYNC_STATE_OK`}. 손상은 logger.warning + UI `verification_required` 상태로 표시. |
+| UI 카드 | `frontend/app/components/ThreePushParamCard.tsx` — 현재 적용 기준 / OCI 반영 상태 (적용 완료 / 적용 중 / 적용 실패 / 확인 필요 / 미적용) / 마지막 적용 시각 (YYYY-MM-DD HH:MM, KST) / 단일 버튼 `[현재 기준 OCI 적용]` (지시문 §5.3) + 진행 단계 표시 (운영 기준 생성 중 → OCI 에 적용 중 → OCI 반영 확인 중 → 적용 완료). |
+| API client | `frontend/lib/api/threePushParam.ts` (apply timeout 120s). |
+| 테스트 | `tests/test_three_push_runtime_message_builder.py` (17건 — raw 식별자 미노출 + 사용자 라벨 + 전체/일부 unavailable 검증) + `tests/test_three_push_param_api.py` (3건 — state 응답 형식 + display_label 사용자 친화성 + apply 실패 시 raw 식별자 미노출). |
+| 다음 조치 | (1) 사용자가 UI 한 번으로 PARAM 적용 운영 사이클 검증. (2) `news_snapshot` 사용자 라벨 등록만 됐고 실제 뉴스 source 도입은 별도 STEP. (3) scheduled run 관찰 + 운영 진단 UI (OCI runner status/history read-only). |
+
 ---
 
 ## 3. Context Bridges (화면 간 전달)

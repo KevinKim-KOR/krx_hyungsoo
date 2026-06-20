@@ -32,7 +32,8 @@
 
 ### 검증 결과
 
-- pytest **581 passed** (회귀 0). 기존 환경 실패 1건은 본 STEP 이전부터 존재.
+- pytest **584 passed** (회귀 0, FIX r1 신규 테스트 +3). 기존 환경 실패 1건 (`test_generate_spike_alert_via_unified_endpoint`) 은 본 STEP 이전부터 존재.
+- 검증자 판정 **VERIFIED_WITH_NOTES** (commit `b2946643`, FIX r1 정식 PARAM runtime builder 사용자 메시지 + UI 단일 버튼 + sync state 3분리 / FIX r2 문서 정합성 정정).
 - black / flake8 PASS. frontend lint / build PASS.
 
 ### 다음 분기 후보
