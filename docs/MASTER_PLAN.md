@@ -32,4 +32,28 @@ Phase 1에서 살려온 독립 ML 자산을 새 구조에 연결하고, 첫 fact
 - 관련 Kill Switch: **KS-4, KS-5, KS-6** :contentReference[oaicite:13]{index=13}  
 - 완료 기준: **기본 저빈도 운영과 급변 예외 감시가 함께 동작하면서도 알림 과다와 과잉 교체 없이 성과 판정이 가능하다.**
 
-이 MASTER_PLAN의 목적은 기능을 벌리는 것이 아니라, **데이터 수집 → PENDING 초안 → 인간 승인 → OCI 전달/알림 → factor 확장 → 저빈도 운영 + 예외 감시**의 짧고 검증 가능한 루프를 완성하는 데 있다. Open Question은 질문으로 남겨 관리하고, Kill Switch가 발동하면 토론하지 말고 즉시 멈춘다. :contentReference[oaicite:14]{index=14} :contentReference[oaicite:15]{index=15}
+## 6단계. OCI read model foundation (확장 단계)
+**기존 5단계까지의 순서는 바꾸지 않는다**. 본 단계는 **PC 판단 화면 (3단계 확장)
+과 ML 1차 결과 (4단계 확장) 가 확보된 뒤**의 확장 단계로 기록한다. PC 분석·판단
+평면과 OCI 운영·조회 평면을 분리해, OCI 가 외부 / 모바일에서 마지막 published
+데이터와 운영 상태를 조회할 수 있는 **read-only 환경**으로 확장한다.
+
+- 연결 결정 기록: **`docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md`** (원본),
+  `docs/PROJECT_ORIGIN_INTENT.md` §7 운영 원칙 (PC 분석 평면 / OCI 운영·조회
+  평면 분리), `docs/ASSUMPTIONS.md` §3 A-6.
+- 관련 Kill Switch: **KS-1 (자동 매매 금지), KS-2 (인간 승인 게이트)** — 본
+  단계는 read-only 조회만 추가하며, 자동 실행 / 새 자동 매매 경로를 추가하지
+  않는다.
+- 본 단계가 다루지 않는 것:
+  - 신규 DB 도입 또는 full DB migration (PC SQLite 는 PC 작업용 기준 저장소로
+    유지).
+  - PC ML 이 OCI DB 를 직접 원격으로 읽는 구조.
+  - PC SQLite 즉시 폐기.
+  - 모바일 UI 구체 구현 (모바일 UI 후순위 원칙 유지 — PROJECT_ORIGIN_INTENT §7).
+- 완료 기준: **PC 승인 / 발행 시점에 OCI 로 read-only published snapshot 이
+  전달되고, OCI 측에서 마지막 published 데이터 + 운영 상태 + 기준 시각 + 데이터
+  신선도를 read-only 로 조회할 수 있다.** snapshot 구체 형식 (versioned SQLite
+  snapshot / read-only JSON artifact / 제한된 조회용 SQLite copy 등) 은 본 단계
+  진입 직전 별도 결정.
+
+이 MASTER_PLAN의 목적은 기능을 벌리는 것이 아니라, **데이터 수집 → PENDING 초안 → 인간 승인 → OCI 전달/알림 → factor 확장 → 저빈도 운영 + 예외 감시 → OCI read-only 조회 평면 확장**의 짧고 검증 가능한 루프를 완성하는 데 있다. Open Question은 질문으로 남겨 관리하고, Kill Switch가 발동하면 토론하지 말고 즉시 멈춘다. :contentReference[oaicite:14]{index=14} :contentReference[oaicite:15]{index=15}

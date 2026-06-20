@@ -288,6 +288,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 - [docs/handoff/POC2_B_NEXT_ACTIONS.md](handoff/POC2_B_NEXT_ACTIONS.md) — 빈자리 후속 원칙 + 다음 분기 후보
 - [docs/handoff/POC2_FEATURE_INVENTORY.md](handoff/POC2_FEATURE_INVENTORY.md) — 기능 인벤토리
+- [docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md](handoff/PC_OCI_ARCHITECTURE_DIRECTION.md) — PC·OCI 운영 평면 분리 결정 원본 기록 (2026-06-20). PROJECT_ORIGIN_INTENT §7 / ASSUMPTIONS §3 A-6 / MASTER_PLAN 6단계 와 동기화.
 
 Active Reference:
 3-PUSH Runtime Package Contract

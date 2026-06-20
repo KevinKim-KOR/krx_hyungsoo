@@ -97,6 +97,29 @@
 - **답**: 동작한다. POC1-Step3에서 실 OCI handoff와 Telegram 발송 end-to-end가 검증되었고, POC2-Step2D 종료 시점에도 사용자 디바이스 Telegram 수신까지 확인되었다.
 - **남은 주의**: 이 답은 "승인 후 OCI handoff와 Telegram 수신 경로가 동작한다"는 의미다. spike_watch / holding_watch / 자연 cron / 복수 알림 경로 통합은 별도 BACKLOG 또는 별도 Step에서 검토한다.
 
+### A-6. PC 와 OCI 의 장기 역할 분리는 어떻게 하는가?
+- **상태**: ANSWERED (2026-06-20)
+- **답**: **PC 분석 평면 / OCI 운영·조회 평면 분리**.
+  - **PC = 분석·판단 평면**: 시장 데이터 SQLite 관리, ETF universe 갱신, 후보
+    ETF 검토, ML 학습·백테스트·feature 실험, AI 투자세션, 사용자 승인,
+    approved PARAM 과 published data snapshot 생성. PC 는 24시간 상시 실행을
+    전제로 하지 않는다.
+  - **OCI = 상시 운영·조회 평면**: latest approved PARAM 보관, 일 3회 3-PUSH
+    실행, Telegram 발송. 장기 역할 — 외부 / 모바일에서 마지막 published 데이터
+    와 운영 상태를 조회할 수 있는 read-only 환경으로 확장. OCI 는 ML 학습을
+    수행하지 않는다.
+  - **데이터 흐름**: PC SQLite 는 PC 작업용 기준 저장소로 유지. PC ML 이 OCI
+    DB 를 직접 원격으로 읽지 않는다. PC 는 승인 / 발행 시점에 OCI 로 read-only
+    published snapshot 을 전달한다.
+- **DB 형식 미확정**: published snapshot 의 구체 형식 (versioned SQLite snapshot
+  / read-only JSON artifact / 제한된 조회용 SQLite copy 등) 은 본 시점에
+  확정하지 않는다. **OCI read model 구현 직전의 별도 결정**으로 남긴다. 현재
+  단계에서 신규 DB 나 full DB migration 은 하지 않는다.
+- **활성 Open Question 추가 없음**: 본 결정은 방향 앵커이며, 즉시 검증 트리거가
+  발생하는 것이 아니다. DB 형식 결정 시점에 도달하면 그 때 별도 Q 로 승격.
+- **참조**: `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` (원본 결정 기록),
+  `docs/PROJECT_ORIGIN_INTENT.md` §7 운영 원칙.
+
 ### A-5. "앞으로 못 나가는" 패턴이 재발할 것인가?
 - **상태**: ANSWERED (2026-04-30)
 - **기존 질문**: Q3. "앞으로 못 나가는" 패턴이 재발할 것인가?
