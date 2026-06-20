@@ -16,6 +16,7 @@ import { useState } from "react";
 import RunPanel from "./RunPanel";
 import SampleDraftQuickButton from "./SampleDraftQuickButton";
 import ThreePushDraftCard from "./ThreePushDraftCard";
+import ThreePushParamCard from "./ThreePushParamCard";
 import UniverseRefreshPanel from "./UniverseRefreshPanel";
 import type { Run } from "@/lib/api";
 
@@ -41,6 +42,11 @@ export default function ApprovalTelegramView({ run, setRun }: Props) {
         승인 또는 거절합니다. 승인 시 Telegram 3-PUSH(보유 종목 상태 / 신규 ETF 관찰
         후보 / 급락 ETF 주의)가 발송됩니다. 거절 시 Telegram은 발송되지 않습니다.
       </div>
+
+      {/* POC2 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 (2026-06-20) —
+          현재 운영 기준 카드 + [현재 기준 OCI 적용] 단일 동작. CLI 없이
+          UI 한 번으로 manual_seed PARAM 생성 + OCI sync + verify. */}
+      <ThreePushParamCard />
 
       {/* 보조 출력 배관 — PUSH 2 신규 ETF 관찰 후보 */}
       <UniverseRefreshPanel />

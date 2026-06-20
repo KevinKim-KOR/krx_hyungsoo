@@ -1,12 +1,58 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-18 (PARAM Handoff 기반 OCI Runtime 3-PUSH 전환)
+작성일: 2026-05-20 / 갱신: 2026-06-20 (PUSH 사용자 표현 정리 + PARAM 적용 UI 연결)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-18 — PARAM Handoff 기반 OCI Runtime 3-PUSH 전환)
+## 0. 직전 STEP 결과 (2026-06-20 — PUSH 사용자 표현 정리 + PARAM 적용 UI 연결)
+
+지시문 §3 단일 목표: 사람 중심 Telegram PUSH + 현재 운영 기준 UI 표시 +
+[현재 기준 OCI 적용] 단일 UI 동작. 2 commit 으로 분할 진행.
+
+### 결과 요약
+
+**Phase A — PUSH 사용자 표현 정리 (commit `2a65b277`)**
+- 신규 모듈 2종: `app/push_user_labels.py` (source key → 사용자 표시 라벨 8종 매핑) /
+  `app/push_user_copy.py` (전체 unavailable 축약 + 일부 available 별도 확인 블록 +
+  KST 시각 포맷 + push_kind 별 unavailable source key 추출).
+- 메시지 builder 수정: market_briefing / spike_alert / holdings_briefing 모두
+  사용자 친화 섹션 헤더 + 전체 unavailable 시 사용자 중심 축약 메시지로 fallback.
+- OCI runner 안전망: raw 기술 식별자 11종 본문 노출 차단.
+
+**Phase B — PARAM 적용 UI 연결 (이번 commit)**
+- 신규 API: `GET /three-push/param/state` + `POST /three-push/param/apply`.
+- 신규 frontend 카드: `ThreePushParamCard` — 현재 적용 기준 / OCI 반영 상태 /
+  마지막 적용 시각 표시 + [현재 기준 OCI 적용] 단일 버튼. 진행 단계 표시 +
+  실패 시 기존 PARAM 보호.
+- ApprovalTelegramView 에 카드 통합 (3-PUSH 화면 안).
+- 신규 테스트 3건 — state 응답 형식 + display_label 사용자 친화성 + apply 실패
+  시 raw 식별자 미노출 + 기존 PARAM 보호.
+
+### 검증 결과
+
+- pytest **581 passed** (회귀 0). 기존 환경 실패 1건은 본 STEP 이전부터 존재.
+- black / flake8 PASS. frontend lint / build PASS.
+
+### 다음 분기 후보
+
+PUSH 메시지 사람 중심 정리 + PARAM 적용 UI 완료. 이후 후보:
+
+1. **BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP** — 기존 회귀 1건 + Cleanup
+   항목 정리.
+2. **scheduled run 관찰 + 운영 진단 UI** — OCI runner 의 status/history 를
+   UI 에서 read-only 표시 (실패 시 사용자가 직접 확인 가능).
+3. **PARAM 후보 다중 관리 / 편집 UI** — 본 STEP 제외 항목. 정책 결정 후 별도
+   STEP 으로 진행.
+4. **PUSH-1 의 뉴스 source 도입** — `news_snapshot` 사용자 라벨은 만들었으나
+   실제 source 0건. 별도 STEP 으로 결정 필요.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-18 — PARAM Handoff 기반 OCI Runtime 3-PUSH 전환)
 
 정식 운영 경로를 **PC message package sync → OCI 단순 전달** 에서 **PC PARAM snapshot handoff → OCI runtime 메시지 생성** 으로 전환.
 

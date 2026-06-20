@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-19 (PARAM Handoff 기반 OCI Runtime 3-PUSH 전환 — 검증자 VERIFIED_WITH_NOTES 통과, 정식 운영 경로 PARAM runtime 으로 전환됨)
+최종 업데이트: 2026-06-20 (PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 — 2 commit: Phase A 사용자 중심 메시지 + Phase B 단일 동작 UI)
 
 ## 0. Canonical
 
@@ -23,7 +23,22 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **PARAM Handoff 기반 OCI Runtime 3-PUSH 전환** (2026-06-18).
+- **현재 완료 상태**: **PUSH 사용자 표현 정리 + PARAM 적용 UI 연결** (2026-06-20).
+  - 지시문 §3 단일 목표: 사람 중심 Telegram PUSH + 현재 운영 기준 UI 표시 + [현재 기준 OCI 적용] 단일 UI 동작. 2 commit 으로 분할 진행 (Phase A 메시지 + Phase B UI/API).
+  - **Phase A — PUSH 사용자 표현 정리** (commit `2a65b277`):
+    - **신규 backend 모듈 2종**: `app/push_user_labels.py` (39 라인 — source key 8종 → 사용자 표시 라벨 매핑 helper) / `app/push_user_copy.py` (217 라인 — 전체 unavailable 축약 메시지 + 일부 available 별도 확인 블록 + KST 시각 포맷 + push_kind 별 unavailable source key 추출).
+    - **수정 모듈 5종**: `app/message_market_briefing.py` (섹션 헤더를 사용자 표시명으로 정렬, 전체 unavailable 시 `build_all_unavailable_message` fallback), `app/message_spike_alert.py` (동일), `app/draft_message.py` (holdings briefing 의 `generation_status=failed` 시 사용자용 unavailable 메시지로 즉시 종료 + `_extract_source_keys_from_status` helper 신설), `app/draft_three_push.py` (message builder 호출 직전 `collect_unavailable_source_keys()` 로 추출 후 주입), `scripts/run_three_push_oci.py` (raw 기술 식별자 11종 본문 노출 차단 이중 안전망 추가 — `param_id` / `push_kind` / snake_case source key 등).
+    - **사용자 표시 라벨 (지시문 §4.2 그대로)**: 국내 ETF 시세 / 밤사이 미국 시장 / ETF 후보 흐름 / 보유 종목 평가 / NAV·괴리율 / 급등락 관찰 / 위험 참고 데이터 / 주요 뉴스.
+    - **테스트 수정**: `tests/test_three_push_contract.py` 새 섹션 헤더 / 새 타이틀 assertion 으로 정렬.
+  - **Phase B — PARAM 적용 UI 연결** (commit `<현재 commit>`):
+    - **신규 backend 모듈 1종**: `app/api_three_push_param.py` (286 라인 — `GET /three-push/param/state` + `POST /three-push/param/apply` router). apply 는 manual_seed PARAM 생성 + latest 승격 + `sync_three_push_runtime_param.py` subprocess 호출 + sync_status_latest.json 확인의 동기 처리. 응답에 raw 식별자 (param_id / SSH target / remote path / 파일명 / raw stderr) 노출 0건.
+    - **수정 모듈 1종**: `app/api.py` (router 등록).
+    - **신규 frontend 모듈 2종**: `frontend/lib/api/threePushParam.ts` (TS API client) / `frontend/app/components/ThreePushParamCard.tsx` (현재 운영 기준 카드 + 단일 동작 버튼 + 진행 상태 단계 표시). 동기 호출 timeout 120초 허용.
+    - **수정 frontend 1종**: `frontend/app/components/ApprovalTelegramView.tsx` (`ThreePushParamCard` 를 `ThreePushDraftCard` 상단에 배치).
+    - **신규 테스트 1종**: `tests/test_three_push_param_api.py` (3건 — state 응답 형식 / display_label 사용자 친화성 / apply 실패 시 raw 식별자 미노출 + 기존 PARAM 보호).
+  - AC-1 raw 식별자 제거 / AC-2 사용자 라벨 / AC-3 unavailable 축약 / AC-4 일부 available 구조 / AC-5 현재 운영 기준 카드 / AC-6 단일 적용 동작 / AC-7 CLI 직접 실행 불필요 / AC-8 진행 상태 표시 / AC-9 실패 시 기존 PARAM 보호 / AC-10 secret 비노출 / AC-11 기존 runtime guard 유지 / AC-12 기존 산식 불변 / AC-13 범위 통제.
+  - pytest **581 passed** (회귀 0). 기존 환경 실패 1건 (`test_generate_spike_alert_via_unified_endpoint`)은 본 STEP 전부터 존재. black / flake8 PASS. frontend lint / build PASS.
+- **이전 STEP**: **PARAM Handoff 기반 OCI Runtime 3-PUSH 전환** (2026-06-18).
   - 정식 운영 경로가 **PC message package sync → OCI package message_text 전달** 에서 **PC PARAM snapshot handoff → OCI runtime 메시지 생성** 으로 전환됨. PC 는 더 이상 매 발송마다 message package 를 만들지 않으며, 사용자가 승인한 PARAM snapshot 을 OCI 에 한 번만 전달한다. OCI 가 latest PARAM 을 고정 사용해 hourly runtime 메시지를 생성하고 Telegram 으로 발송.
   - **신규 PARAM contract**: `three_push_runtime_param.v1` (`app/three_push_runtime_param.py` — schema 정의 / `RuntimeParam` dataclass / validator / loader / writer). 필수 필드: schema_version / param_id / created_at / approved_at / approved_by / param_source / enabled_push_kinds / runtime_policy / evidence_policy / safety_policy. 금지 키 11종: message_text / buy_candidates / sell_candidates / cash_allocation / regime_confirmation / risk_threshold_confirmation / etf_ranking / token / chat_id / bot_token / telegram_token / telegram_chat_id.
   - **신규 backend 모듈 3종**: `app/three_push_runtime_param.py` (246 라인 — PARAM contract), `app/three_push_runner_common.py` (245 라인 — .env 로더 / Telegram / forbidden wording / secret 가드 / registry helper 공통 추출), `app/three_push_runtime_message_builder.py` (158 라인 — OCI runtime 전용 단순 빌더, 외부 API 호출 없음, 모든 source 기본 unavailable, runtime timestamp + param_id + data availability + 매매 지시 없음 면책 포함).

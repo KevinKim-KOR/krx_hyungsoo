@@ -53,6 +53,7 @@ from app.api_ml_jobs import router as ml_jobs_router
 from app.api_ml_readiness import router as ml_readiness_router
 from app.api_ml_sanity import router as ml_sanity_router
 from app.api_nav_discount import router as nav_discount_router
+from app.api_three_push_param import router as three_push_param_router
 from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
 from app.models import Run
@@ -99,6 +100,10 @@ app.include_router(ml_baseline_router)
 # POC2 UI 안전실행 (2026-06-11) — POST /ml/jobs/evidence-refresh + GET /ml/jobs/latest.
 # 3단계 (feature → sanity → baseline) background job runner + read-only status.
 app.include_router(ml_jobs_router)
+# POC2 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 (2026-06-20, Phase B):
+# GET /three-push/param/state + POST /three-push/param/apply — CLI 없이 UI 한
+# 번으로 현재 운영 기준을 OCI 에 적용. 신규 DB / scheduler 0건.
+app.include_router(three_push_param_router)
 # POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
 # 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
 # PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.
