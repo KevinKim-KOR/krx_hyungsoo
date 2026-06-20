@@ -27,6 +27,16 @@
 - **확인 방법**: 새 프로젝트에서 첫 ML feature 추가 시 난이도 측정
 - **판정 기준**: 새 factor 1개를 추가하는 데 10줄 이내로 가능한가
 - **데드라인**: POC 1단계 완료 시점
+- **첫 측정 evidence (2026-06-20, ML 축1 STEP)**: 첫 추가 factor `drawdown_20d`
+  도입. 신규 모듈 `app/ml_relative_upside_features.py` 안에서 정의 (1줄
+  계산 helper `_drawdown_from_peak` + rolling window 4줄 + dataclass 필드 1줄
+  = 약 6줄). `FEATURE_COLUMNS` 튜플 + 모델 input dim (`nn.Linear(7,1)`) + raw
+  feature → tensor 변환 (`_row_to_feature_tensor`) 까지 합치면 factor 1개 추가에
+  ~10줄 안팎. 단 본 평가는 baseline 단일 회귀 수준의 evidence 이며, 향후 모델
+  교체 시 재측정 필요. **본 evidence 만 기록하고 ANSWERED 로 승격하지 않는다**
+  (지시문 §16 AC-14 — "아직 답이 확정되지 않은 질문을 ANSWERED 로 바꾸지
+  않는다").
+- **참조**: `docs/handoff/POC2_ML_RELATIVE_UPSIDE_SCORE_V0_CONCLUSION.md`.
 
 ### Q6. 위험 감지 = 위험 구간 분류 — factor / threshold / label 을 어떻게 확정할 것인가?
 - **상태**: OPEN
@@ -149,6 +159,15 @@
 ### L-2. GPU/큰 ML이 현재 병목을 해결하는가?
 - **상태**: OPEN (ML 단계에서 재확인)
 - **사유**: Phase 1에서는 Track B closeout으로 부정적 결론. 새 프로젝트 구조에서 재시도 시 다시 봐야 함.
+- **첫 측정 evidence (2026-06-20, ML 축1 STEP)**: 4070 SUPER 에서 torch 단일
+  선형회귀 baseline 실측 — `device_name=NVIDIA GeForce RTX 4070 SUPER`,
+  `cuda_available=true`, `gpu_execution_used=true`, training 35,991 행 × 200
+  epochs 학습 시간 0.256 초. 본 STEP 의 baseline 은 모델이 매우 작아 GPU 의
+  필요성을 검증한다기보다 **실행 환경 자체의 GPU 사용 가능성**을 확인한
+  수준이다. 큰 ML / 위험 감지 ML / 더 복잡한 모델로 가야 본 질문의 본문 ("GPU 가
+  현재 병목을 해결하는가") 에 답할 수 있다. **본 evidence 만 기록하고 ANSWERED
+  로 승격하지 않는다** — 향후 ML 축2 또는 더 큰 모델 시 재측정.
+- **참조**: `docs/handoff/POC2_ML_RELATIVE_UPSIDE_SCORE_V0_CONCLUSION.md` §5.
 
 ### L-3. AI 토론 점수체계 검증
 - **상태**: BACKLOG 이관 (2026-05-11, 이전 Q5)

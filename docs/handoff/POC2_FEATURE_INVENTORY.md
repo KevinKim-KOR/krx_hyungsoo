@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-20 (PUSH 사용자 표현 정리 + PARAM 적용 UI 연결)
+작성일: 2026-05-27 / 갱신: 2026-06-20 (ML 축1 — 후보 ETF 상대상승 참고점수 v0)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -536,6 +536,33 @@
 | API client | `frontend/lib/api/threePushParam.ts` (apply timeout 120s). |
 | 테스트 | `tests/test_three_push_runtime_message_builder.py` (17건 — raw 식별자 미노출 + 사용자 라벨 + 전체/일부 unavailable 검증) + `tests/test_three_push_param_api.py` (3건 — state 응답 형식 + display_label 사용자 친화성 + apply 실패 시 raw 식별자 미노출). |
 | 다음 조치 | (1) 사용자가 UI 한 번으로 PARAM 적용 운영 사이클 검증. (2) `news_snapshot` 사용자 라벨 등록만 됐고 실제 뉴스 source 도입은 별도 STEP. (3) scheduled run 관찰 + 운영 진단 UI (OCI runner status/history read-only). |
+
+### 2.29 ML 축1 — 후보 ETF 상대상승 참고점수 v0 (2026-06-20 신규)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 후보 ETF 별 0~100 상대상승 참고점수 (torch GPU baseline) + 기존 후보 목록에서 점수·고점 대비·근거 비교. |
+| 현재 메뉴 위치 | Market Discovery 화면 — `CandidateTable` 컬럼 3개 추가 (상대상승 참고점수 / 고점 대비 / 점수 근거). |
+| 기능 목적 | 사용자가 AI 투자세션에서 후보 ETF 사이의 상대상승 가능성을 모델 기반으로 비교. 매수·매도·교체·비중 조절 신호 아님. |
+| 사용 가능 여부 | **사용 가능** (2026-06-20 1,111 후보 점수 부여 PASS). |
+| 데이터 소스 상태 | SQLite `etf_daily_price` 전체 universe (1,140 ticker, ~80 거래일) + KODEX200 (069500) 기준. 신규 external source / 신규 DB 0건. |
+| 점수 정의 | `relative_upside_score` ∈ 0~100. 후보군 내 raw prediction 의 상대 순위 정규화. 0~100 절대 비교 X (기준일 후보군 내에서만 의미). |
+| 첫 추가 factor | `drawdown_20d` = `close / rolling_20d_high - 1` (음수). 예: 현재가 90 / 20일 고점 100 → -0.10. UI 컬럼명 "고점 대비". |
+| 모델 | torch `nn.Linear(7,1)` 단일 선형회귀. Adam lr=1e-3, MSE, 200 epochs, seed=42. 자동 튜닝 / 앙상블 / RF/XGB/LGBM 비교 0건. |
+| 학습 target | 이후 20거래일 KODEX200 대비 상대수익 (`future_excess_return_20d`). 마지막 horizon row 의 target=None (미래 데이터 차단). |
+| 분할 방식 | walk-forward 1회 split (사용자 결정 2026-06-20) — 시간 순서 정렬 후 앞 80% / 뒤 20%. 랜덤 셔플 0건. |
+| feature 컬럼 7개 | `return_5d` / `return_10d` / `return_20d` / `excess_return_5d` / `excess_return_10d` / `excess_return_20d` / `drawdown_20d`. |
+| GPU 실행 증거 | `device_name=NVIDIA GeForce RTX 4070 SUPER`, `cuda_available=true`, `gpu_execution_used=true`, train_seconds=0.256. requirements.txt 에 `torch>=2.6.0` 추가 (CUDA 12.4 wheel). |
+| 산출물 (gitignored) | `state/ml/relative_upside_score_latest.json` (점수+근거) + `state/ml/relative_upside_score_run_latest.json` (학습 메타). |
+| CLI 진입점 | `python scripts/run_ml_relative_upside_score_v0.py [--candidates ticker1,ticker2,...]` |
+| API 노출 | 기존 `GET /market/topn/latest` 확장 (신규 endpoint 0건). top-level `relative_upside_score_status` / `_asof_date` / `_generated_at` / `_user_notice` 4 필드 + 후보당 `relative_upside_score` / `drawdown_20d` / `relative_upside_reasons` 3 필드. snapshot 부재 시 status=unavailable + candidate score=null, 후보 응답 자체는 유지. |
+| 사용자 고지 (USER_NOTICE) | "상대상승 참고점수는 과거 데이터 기반의 후보 비교용 참고값이며, 매수·매도 판단을 자동으로 제시하지 않습니다." 카드 하단에 항상 표시. |
+| 점수 근거 (reasons) | 사람 언어 짧은 요약 최대 3개 — KODEX200 대비 성과 / 20일 고점 대비 하락폭 / 데이터 품질. 모델 내부 식별자 (loss / epoch / device / feature_vector) 노출 0건 (단위 테스트 검증). |
+| 점수 정렬 | 헤더 클릭 로컬 정렬 (off → 내림차 → 오름차 → off). 점수 null 후보는 항상 점수 있는 후보 뒤로. 신규 API 정렬 파라미터 0건. |
+| 단순 vs ML 비교 | snapshot 의 `simple_vs_ml_rank_comparison` 블록 — 기존 20일 KODEX200 초과수익 순위 vs ML 점수 순위 (AC-5). |
+| 테스트 | 24건 — `tests/test_ml_relative_upside_features.py` (7) + `tests/test_ml_relative_upside_model.py` (7) + `tests/test_ml_relative_upside_score.py` (10). pytest 608 passed (회귀 0). |
+| OCI 영향 | **0건** — OCI runner / PARAM / Telegram 메시지 / crontab 구조 변경 X. PC 분석 평면에만 머문다. 향후 OCI read model snapshot handoff 가 결정된 뒤 별도 STEP. |
+| 다음 조치 | (1) ML 축2 위험 감지 빈자리 하나 채우기 STEP. (2) 점수·위험·보유 비교가 모이는 PC 판단 화면. (3) OCI read model foundation 준비 단계. |
 
 ---
 

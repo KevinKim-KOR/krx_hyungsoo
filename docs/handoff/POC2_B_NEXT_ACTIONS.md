@@ -1,12 +1,48 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-20 (PUSH 사용자 표현 정리 + PARAM 적용 UI 연결)
+작성일: 2026-05-20 / 갱신: 2026-06-20 (ML 축1 — 후보 ETF 상대상승 참고점수 v0)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-20 — PUSH 사용자 표현 정리 + PARAM 적용 UI 연결)
+## 0. 직전 STEP 결과 (2026-06-20 — ML 축1 — 후보 ETF 상대상승 참고점수 v0)
+
+지시문 §3 단일 목표: 후보 ETF 별 0~100 상대상승 참고점수 생성 + UI 비교 가능.
+
+### 결과 요약
+
+- 신규 backend 모듈 3종 (`app/ml_relative_upside_features.py` + `ml_relative_upside_model.py` + `ml_relative_upside_score.py`).
+- 신규 CLI: `scripts/run_ml_relative_upside_score_v0.py` — end-to-end runner.
+- 수정: `app/api_market_topn.py` — `MarketCandidate` / `MarketTopNResponse` 필드 확장 + 머지 함수.
+- 수정 frontend 3종: 컬럼 (상대상승 참고점수 / 고점 대비 / 점수 근거) + 로컬 정렬 + USER_NOTICE.
+- 신규 의존성: `torch>=2.6.0` (CUDA 12.4) — 사용자 결정 예외.
+- 신규 산출물 (gitignored): `state/ml/relative_upside_score_latest.json` + `_run_latest.json`.
+- 신규 테스트 24건 — drawdown 정의 / future leakage / 점수 0~100 / 시간 순서 split / reasons user-language / API 분기.
+- pytest **608 passed** (회귀 0). black / flake8 / frontend lint / build PASS.
+
+### 실측 (2026-06-20)
+
+- universe 1,140 ticker / training row pool 66,941
+- train 35,991 vs test 8,998 (walk-forward 1회 split, train_date 2026-03-20~2026-05-08 / test_date 2026-05-08~2026-05-20)
+- device `NVIDIA GeForce RTX 4070 SUPER`, GPU 사용, train 0.256초
+- asof_date 2026-06-19, scored 1,111 후보 (0~100)
+- 기존 ml_baseline_v0 / OCI runner / PARAM / Telegram 코드 변경 0건
+
+### 다음 분기 후보
+
+PC_OCI_ARCHITECTURE_DIRECTION 의 순서 유지:
+
+1. **ML 축2 — 위험 감지용 시계열 빈자리 하나 채우기**. NAV/괴리율 시계열, 변동성 지표, 외국인/기관 수급, 시장 폭 지표 중 하나의 빈자리.
+2. **점수·위험·보유 비교가 모이는 PC 판단 화면** 좁은 STEP.
+3. **OCI read model foundation** — PC 판단 화면 + ML 1차 결과 확보 뒤 진입.
+4. **BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP** — 기존 회귀 1건 + Cleanup.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-20 — PUSH 사용자 표현 정리 + PARAM 적용 UI 연결)
 
 지시문 §3 단일 목표: 사람 중심 Telegram PUSH + 현재 운영 기준 UI 표시 +
 [현재 기준 OCI 적용] 단일 UI 동작. 2 commit 으로 분할 진행.

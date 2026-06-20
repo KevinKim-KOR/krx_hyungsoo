@@ -75,7 +75,16 @@ export interface MarketCandidate {
   // 2026-06-01 — Market Discovery Evidence Closeout 1차.
   short_term_momentum?: ShortTermMomentumPayload | null;
   data_quality?: DataQualityPayload | null;
+  // 2026-06-20 ML 축1 — 상대상승 참고점수 v0.
+  // score 는 0~100 (상대 비교용). drawdown 은 음수 표기 (close/peak-1).
+  // reasons 는 사람 언어 짧은 요약 최대 3개. 점수 미생성 시 null/빈배열.
+  relative_upside_score?: number | null;
+  drawdown_20d?: number | null;
+  relative_upside_reasons?: string[];
 }
+
+// 2026-06-20 ML 축1 — 응답 top-level 의 상대상승 참고점수 상태.
+export type RelativeUpsideScoreStatus = "ok" | "unavailable" | "failed";
 
 export interface MarketTopNEntry {
   rank?: number | null;
@@ -149,6 +158,11 @@ export interface MarketTopNResponse {
   // 2026-05-22 — Market Regime & Benchmark Context. status=missing/empty/invalid
   // 에서는 null.
   market_context?: MarketContext | null;
+  // 2026-06-20 ML 축1 — 상대상승 참고점수 v0 top-level 상태.
+  relative_upside_score_status?: RelativeUpsideScoreStatus | null;
+  relative_upside_score_asof_date?: string | null;
+  relative_upside_score_generated_at?: string | null;
+  relative_upside_score_user_notice?: string | null;
 }
 
 export interface MarketTopNRequestOptions extends MarketTopNFilterOptions {

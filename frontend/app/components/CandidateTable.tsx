@@ -12,6 +12,7 @@
 // 본 컴포넌트는 표시 책임만 — 정렬 / fetch / state 는 부모 (MarketDiscoveryView)
 // 가 보유한다 (lift state up).
 
+import { useState } from "react";
 import type {
   MarketBasis,
   MarketCandidate,
@@ -69,17 +70,51 @@ function SortableHeader({
   );
 }
 
+// 2026-06-20 ML 축1 — 상대상승 참고점수 정렬 (지시문 §9). frontend 로컬 정렬만
+// (신규 API 정렬 파라미터 추가 금지). 점수 null 후보는 항상 점수 있는 후보 뒤로.
+type ScoreSort = "off" | "desc" | "asc";
+
+function sortByRelativeUpside(
+  candidates: MarketCandidate[],
+  direction: "desc" | "asc",
+): MarketCandidate[] {
+  const withScore: MarketCandidate[] = [];
+  const withoutScore: MarketCandidate[] = [];
+  for (const c of candidates) {
+    if (
+      c.relative_upside_score !== null &&
+      c.relative_upside_score !== undefined
+    ) {
+      withScore.push(c);
+    } else {
+      withoutScore.push(c);
+    }
+  }
+  withScore.sort((a, b) => {
+    const av = a.relative_upside_score as number;
+    const bv = b.relative_upside_score as number;
+    return direction === "desc" ? bv - av : av - bv;
+  });
+  return [...withScore, ...withoutScore];
+}
+
 export default function CandidateTable({
   candidates,
   basis,
   order,
   onSort,
+  relativeUpsideScoreStatus,
+  relativeUpsideScoreUserNotice,
 }: {
   candidates: MarketCandidate[];
   basis: MarketBasis;
   order: MarketOrder;
   onSort: (column: MarketBasis) => void;
+  // 2026-06-20 ML 축1 — 상대상승 참고점수 top-level 상태 / 사용자 고지.
+  relativeUpsideScoreStatus?: string | null;
+  relativeUpsideScoreUserNotice?: string | null;
 }) {
+  const [scoreSort, setScoreSort] = useState<ScoreSort>("off");
   if (candidates.length === 0) {
     return (
       <div className="card market-topn-card">
@@ -87,6 +122,17 @@ export default function CandidateTable({
       </div>
     );
   }
+  const displayed =
+    scoreSort === "off"
+      ? candidates
+      : sortByRelativeUpside(candidates, scoreSort);
+  const onScoreHeaderClick = () => {
+    setScoreSort((prev) =>
+      prev === "off" ? "desc" : prev === "desc" ? "asc" : "off",
+    );
+  };
+  const scoreIndicator =
+    scoreSort === "desc" ? "↓" : scoreSort === "asc" ? "↑" : "";
   return (
     <div className="card market-topn-card">
       <table className="market-topn-table market-candidate-table">
@@ -127,10 +173,27 @@ export default function CandidateTable({
             <th style={{ width: 95, textAlign: "right" }}>NAV</th>
             <th style={{ width: 95, textAlign: "right" }}>시장가</th>
             <th style={{ width: 100, textAlign: "right" }}>괴리율</th>
+            {/* 2026-06-20 ML 축1 — 상대상승 참고점수 v0 (지시문 §9). 로컬 정렬
+                토글: off → desc → asc → off. 점수 null 후보는 항상 뒤로. */}
+            <th
+              style={{ width: 120, textAlign: "right", cursor: "pointer" }}
+              className={`market-topn-sortable ${scoreSort !== "off" ? "basis-active" : ""}`}
+              onClick={onScoreHeaderClick}
+              title="클릭하여 상대상승 참고점수 기준 정렬 (off → 내림차 → 오름차)"
+            >
+              상대상승 참고점수
+              {scoreSort !== "off" ? (
+                <span className="market-topn-sort-indicator">
+                  {scoreIndicator}
+                </span>
+              ) : null}
+            </th>
+            <th style={{ width: 95, textAlign: "right" }}>고점 대비</th>
+            <th style={{ width: 280 }}>점수 근거</th>
           </tr>
         </thead>
         <tbody>
-          {candidates.map((c, idx) => {
+          {displayed.map((c, idx) => {
             const dailyRet = c.returns?.daily?.return_pct ?? null;
             const oneRet = c.returns?.one_month?.return_pct ?? null;
             const threeRet = c.returns?.three_month?.return_pct ?? null;
@@ -218,11 +281,68 @@ export default function CandidateTable({
                     <span style={{ color: "var(--muted)" }}>-</span>
                   )}
                 </td>
+                {/* 2026-06-20 ML 축1 — 상대상승 참고점수 / 고점 대비 / 점수 근거 */}
+                <td style={{ textAlign: "right" }}>
+                  {c.relative_upside_score !== null &&
+                  c.relative_upside_score !== undefined ? (
+                    <strong>{c.relative_upside_score.toFixed(1)}</strong>
+                  ) : (
+                    <span style={{ color: "var(--muted)" }}>점수 미생성</span>
+                  )}
+                </td>
+                <td
+                  style={{
+                    textAlign: "right",
+                    color: returnPctColor(
+                      c.drawdown_20d != null ? c.drawdown_20d * 100 : null,
+                    ),
+                  }}
+                >
+                  {c.drawdown_20d != null
+                    ? fmtPct(c.drawdown_20d * 100)
+                    : DASH}
+                </td>
+                <td style={{ fontSize: "0.82rem" }}>
+                  {c.relative_upside_reasons &&
+                  c.relative_upside_reasons.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: "1.1em" }}>
+                      {c.relative_upside_reasons.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span style={{ color: "var(--muted)" }}>-</span>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {/* 2026-06-20 ML 축1 — 사용자 고지 (지시문 §9 끝). 점수 미생성 상태에서는
+          backend 가 보낸 status / notice 를 그대로 표시. */}
+      {relativeUpsideScoreUserNotice ? (
+        <p
+          className="helper"
+          style={{
+            marginTop: 8,
+            fontSize: "0.78rem",
+            color: "var(--muted)",
+            borderTop: "1px dashed var(--border)",
+            paddingTop: 6,
+          }}
+        >
+          {relativeUpsideScoreUserNotice}
+          {relativeUpsideScoreStatus && relativeUpsideScoreStatus !== "ok" ? (
+            <>
+              {" "}
+              <span style={{ color: "var(--warn)" }}>
+                (현재 상태: {relativeUpsideScoreStatus} — 점수 미생성)
+              </span>
+            </>
+          ) : null}
+        </p>
+      ) : null}
       <p
         className="helper"
         style={{ marginTop: 6, fontSize: "0.78rem" }}

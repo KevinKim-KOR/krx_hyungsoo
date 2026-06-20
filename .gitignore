@@ -189,6 +189,10 @@ state/ml/ml_feature_sanity_latest.json
 # ML Baseline v0 룩백 검증 (2026-06-11) — CLI 실행마다 갱신, 운영 artifact.
 state/ml/ml_baseline_v0_report_latest.json
 
+# ML 축1 — 상대상승 참고점수 v0 (2026-06-20) — CLI 실행마다 갱신, 운영 artifact.
+state/ml/relative_upside_score_latest.json
+state/ml/relative_upside_score_run_latest.json
+
 # ML evidence refresh job status (2026-06-11 UI 안전실행) — UI 실행마다 갱신, 운영 artifact.
 state/ml/ml_job_status_latest.json
 

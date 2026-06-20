@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-20 (PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 — 2 commit: Phase A 사용자 중심 메시지 + Phase B 단일 동작 UI)
+최종 업데이트: 2026-06-20 (ML 축1 — 후보 ETF 상대상승 참고점수 v0)
 
 ## 0. Canonical
 
@@ -23,7 +23,18 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **PUSH 사용자 표현 정리 + PARAM 적용 UI 연결** (2026-06-20).
+- **현재 완료 상태**: **ML 축1 — 후보 ETF 상대상승 참고점수 v0** (2026-06-20).
+  - 지시문 §3 단일 목표: 기존 ETF 가격 이력과 5/10/20일 수익률·초과수익 evidence 를 사용해 후보 ETF 별 0~100 상대상승 참고점수를 생성하고, 기존 후보 목록에서 점수·고점 대비·근거를 함께 비교. 매수·매도·교체·비중 조절 신호 아님 (참고용 정량 재료).
+  - **신규 backend 모듈 3종**: `app/ml_relative_upside_features.py` (5/10/20일 수익률 + KODEX200 초과수익 + `drawdown_20d` = close/peak−1 첫 추가 factor 계산. `CandidateFeatureRow` dataclass + 학습/추론 모드 분리 + 미래 데이터 차단 가드) / `app/ml_relative_upside_model.py` (torch `nn.Linear(7,1)` 단일 선형회귀, walk-forward 1회 split 사용자 결정 2026-06-20, Adam lr=1e-3, MSE, 200 epochs, seed=42, CUDA 우선) / `app/ml_relative_upside_score.py` (사람 언어 reasons 최대 3개 + snapshot/run-meta 빌더 + atomic write + USER_NOTICE 상수).
+  - **신규 CLI 1종**: `scripts/run_ml_relative_upside_score_v0.py` — SQLite read → feature 계산 → torch GPU 학습 → 추론 → 0~100 정규화 → simple vs ML 비교 기록 → snapshot 저장.
+  - **수정 모듈 1종**: `app/api_market_topn.py` — `MarketCandidate` 에 `relative_upside_score` / `drawdown_20d` / `relative_upside_reasons` 3 필드 추가, `MarketTopNResponse` 에 top-level `relative_upside_score_status` / `_asof_date` / `_generated_at` / `_user_notice` 4 필드 추가, `_merge_relative_upside_score` 머지 함수 신설. snapshot 부재 시에도 기존 후보 응답 유지 (지시문 §10 끝).
+  - **수정 frontend 3종**: `frontend/lib/api/market.ts` (TS 타입 확장) / `frontend/app/components/CandidateTable.tsx` (컬럼 3개 추가 + 로컬 점수 정렬 토글 + USER_NOTICE 표시) / `frontend/app/components/MarketDiscoveryView.tsx` (props 전달).
+  - **신규 의존성 1종**: `torch>=2.6.0` (CUDA 12.4 wheel — `pip install torch --index-url https://download.pytorch.org/whl/cu124`). 사용자 결정 (2026-06-20) — 지시문 §6.1 "신규 ML 라이브러리 추가 금지" 의 예외 1회 허용. RF/XGB/LGBM 비교 / 자동 튜닝 / 앙상블 0건. AC-6 GPU 학습 증거 충족용.
+  - **신규 산출물 (gitignored)**: `state/ml/relative_upside_score_latest.json` (점수+근거 snapshot) + `state/ml/relative_upside_score_run_latest.json` (학습 메타). OCI 전달 / Telegram / PARAM 포함 0건.
+  - **신규 테스트 24건**: `tests/test_ml_relative_upside_features.py` (7건 — drawdown 정의, future leakage 차단, KODEX 시계열) / `tests/test_ml_relative_upside_model.py` (7건 — 점수 0~100, 동률, 시간 순서 split, 셔플 없음) / `tests/test_ml_relative_upside_score.py` (10건 — reasons user-language, snapshot 구조, API unavailable/failed 분기).
+  - **실측 (2026-06-20)**: universe 1,140 ticker / training row pool 66,941 / train 35,991 vs test 8,998 / train_date 2026-03-20~2026-05-08 / test_date 2026-05-08~2026-05-20 / train_loss 0.0690 / test_loss 0.0304 / device `NVIDIA GeForce RTX 4070 SUPER` / cuda_available=true / gpu_execution_used=true / train_seconds 0.256 / asof_date 2026-06-19 / scored 1,111 후보 (0~100 점수). 기존 ml_baseline_v0 경로 미변경. OCI runner / PARAM / Telegram 코드 변경 0건.
+  - AC-1 ~ AC-14 모두 DONE. pytest **608 passed** (584 → +24, 회귀 0). black / flake8 PASS. frontend lint / build PASS.
+- **이전 STEP**: **PUSH 사용자 표현 정리 + PARAM 적용 UI 연결** (2026-06-20).
   - 지시문 §3 단일 목표: 사람 중심 Telegram PUSH + 현재 운영 기준 UI 표시 + [현재 기준 OCI 적용] 단일 UI 동작. 2 commit 으로 분할 진행 (Phase A 메시지 + Phase B UI/API).
   - **Phase A — PUSH 사용자 표현 정리** (commit `2a65b277`):
     - **신규 backend 모듈 2종**: `app/push_user_labels.py` (39 라인 — source key 8종 → 사용자 표시 라벨 매핑 helper) / `app/push_user_copy.py` (217 라인 — 전체 unavailable 축약 메시지 + 일부 available 별도 확인 블록 + KST 시각 포맷 + push_kind 별 unavailable source key 추출).

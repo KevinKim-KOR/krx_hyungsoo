@@ -13,3 +13,9 @@ setuptools>=68.0,<81
 # FinanceDataReader — B 방향 PC 작업 1~2단계 ETF universe / 가격 시계열 1순위 소스.
 # pykrx ETF universe 자동 조회 경로 폐기 후 채택 (가능성 확인 STEP PASS — 2026-05-15).
 finance-datareader>=0.9.202
+# torch — ML 축1 (후보 ETF 상대상승 참고점수 v0) STEP (2026-06-20).
+# PC 4070 SUPER GPU 학습용. 사용자 결정 — 지시문 §6.1 의 "신규 ML 라이브러리
+# 추가 금지" 의 예외 1회 허용 (단일 회귀 baseline 만 사용, RF/XGB/LGBM 비교
+# 금지, 자동 튜닝 금지). CUDA 12.4 wheel:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+torch>=2.6.0

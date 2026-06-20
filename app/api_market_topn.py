@@ -154,6 +154,12 @@ class MarketCandidate(BaseModel):
     # 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질.
     short_term_momentum: Optional[ShortTermMomentumPayload] = None
     data_quality: Optional[DataQualityPayload] = None
+    # 2026-06-20 ML 축1 — 상대상승 참고점수 v0 (지시문 §10).
+    # snapshot 부재 / 점수 미생성 시 null. UI 가 점수 정렬 + "고점 대비" 컬럼 +
+    # 점수 근거 표시에 사용. 매매 판단 아님 — UI 측 USER_NOTICE 동행 필수.
+    relative_upside_score: Optional[float] = None
+    drawdown_20d: Optional[float] = None
+    relative_upside_reasons: list[str] = []
 
 
 class MarketCandidateExcessReturn(BaseModel):
@@ -234,6 +240,14 @@ class MarketTopNResponse(BaseModel):
     # ok/partial/unavailable + KODEX200 (필수) + KOSPI (보조). status=missing/
     # empty/invalid 인 경우 null 로 노출.
     market_context: Optional[MarketContextResponse] = None
+    # 2026-06-20 ML 축1 — 상대상승 참고점수 v0 top-level 상태 (지시문 §10).
+    # ok = 후보 중 일부 또는 전부에 점수 부여됨.
+    # unavailable = snapshot 부재 또는 모든 후보 점수 null (학습 데이터 부족 등).
+    # failed = snapshot 손상 또는 로드 실패. 어느 경우든 후보 응답 자체는 유지.
+    relative_upside_score_status: Optional[str] = None
+    relative_upside_score_asof_date: Optional[str] = None
+    relative_upside_score_generated_at: Optional[str] = None
+    relative_upside_score_user_notice: Optional[str] = None
 
 
 def _entry_to_model(raw: dict) -> MarketTopNEntry:
@@ -305,6 +319,76 @@ def _build_nav_discount_payload(ticker: str) -> NavDiscountPayload:
         source=row.source,
         message=row.message,
     )
+
+
+def _merge_relative_upside_score(
+    candidates: list[MarketCandidate],
+) -> tuple[list[MarketCandidate], dict[str, Optional[str]]]:
+    """후보별 ML score / drawdown / reasons 머지 (지시문 §10).
+
+    snapshot 부재 / 손상 / status != "ok" 면 후보는 그대로 두고 top-level 상태만
+    채워서 반환. 후보 응답 자체는 절대 실패시키지 않는다 (지시문 §10 끝).
+
+    반환: (수정된 후보 리스트, top-level 메타 dict)
+    """
+    from app.ml_relative_upside_score import (
+        USER_NOTICE as ML_USER_NOTICE,
+        load_score_snapshot,
+    )
+
+    snapshot = load_score_snapshot()
+    if not snapshot:
+        return candidates, {
+            "relative_upside_score_status": "unavailable",
+            "relative_upside_score_asof_date": None,
+            "relative_upside_score_generated_at": None,
+            "relative_upside_score_user_notice": ML_USER_NOTICE,
+        }
+
+    snapshot_status = snapshot.get("status")
+    asof = snapshot.get("asof_date")
+    generated = snapshot.get("generated_at")
+    if snapshot_status != "ok":
+        return candidates, {
+            "relative_upside_score_status": (
+                snapshot_status if isinstance(snapshot_status, str) else "failed"
+            ),
+            "relative_upside_score_asof_date": asof,
+            "relative_upside_score_generated_at": generated,
+            "relative_upside_score_user_notice": ML_USER_NOTICE,
+        }
+
+    by_ticker: dict[str, dict[str, object]] = {}
+    for c in snapshot.get("candidates") or []:
+        if not isinstance(c, dict):
+            continue
+        ticker = c.get("ticker")
+        if not isinstance(ticker, str):
+            continue
+        by_ticker[ticker] = c
+
+    merged: list[MarketCandidate] = []
+    for cand in candidates:
+        if not cand.ticker:
+            merged.append(cand)
+            continue
+        score_row = by_ticker.get(cand.ticker)
+        if score_row is None:
+            merged.append(cand)
+            continue
+        score = score_row.get("relative_upside_score")
+        cand.relative_upside_score = score  # type: ignore[assignment]
+        cand.drawdown_20d = score_row.get("drawdown_20d")  # type: ignore[assignment]
+        reasons = score_row.get("relative_upside_reasons") or []
+        cand.relative_upside_reasons = [r for r in reasons if isinstance(r, str)]
+        merged.append(cand)
+
+    return merged, {
+        "relative_upside_score_status": "ok",
+        "relative_upside_score_asof_date": asof,
+        "relative_upside_score_generated_at": generated,
+        "relative_upside_score_user_notice": ML_USER_NOTICE,
+    }
 
 
 def _enrich_candidates_with_evidence(
@@ -444,6 +528,12 @@ def get_market_topn_latest(
     )
     latest_refresh = payload.get("latest_refresh")
     filters_raw = payload.get("filters") or {}
+    enriched_candidates = _enrich_candidates_with_evidence(
+        [_candidate_to_model(c) for c in payload.get("candidates", [])]
+    )
+    # 2026-06-20 ML 축1 — 상대상승 참고점수 v0 머지 (지시문 §10). snapshot 부재
+    # 시에도 후보 응답 자체는 유지 (지시문 §10 끝 — 실패·미생성 격리).
+    merged_candidates, score_meta = _merge_relative_upside_score(enriched_candidates)
     return MarketTopNResponse(
         status=payload["status"],
         error=payload.get("error"),
@@ -459,9 +549,7 @@ def get_market_topn_latest(
             MarketLatestRefresh(**latest_refresh) if latest_refresh else None
         ),
         runtime_seconds=payload.get("runtime_seconds"),
-        candidates=_enrich_candidates_with_evidence(
-            [_candidate_to_model(c) for c in payload.get("candidates", [])]
-        ),
+        candidates=merged_candidates,
         daily_topn=[_entry_to_model(r) for r in payload.get("daily_topn", [])],
         one_month_topn=[_entry_to_model(r) for r in payload.get("one_month_topn", [])],
         three_month_topn=[
@@ -473,6 +561,16 @@ def get_market_topn_latest(
         candidate_filter_exclusions=payload.get("candidate_filter_exclusions", {}),
         topn_caveat=payload.get("topn_caveat"),
         market_context=_market_context_to_model(payload.get("market_context")),
+        relative_upside_score_status=score_meta.get("relative_upside_score_status"),
+        relative_upside_score_asof_date=score_meta.get(
+            "relative_upside_score_asof_date"
+        ),
+        relative_upside_score_generated_at=score_meta.get(
+            "relative_upside_score_generated_at"
+        ),
+        relative_upside_score_user_notice=score_meta.get(
+            "relative_upside_score_user_notice"
+        ),
     )
 
 
