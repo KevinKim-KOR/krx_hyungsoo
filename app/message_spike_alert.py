@@ -23,13 +23,17 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from app.push_user_copy import (
+    NEUTRAL_NOTES,
+    PUSH_KIND_HEADERS,
+    build_all_unavailable_message,
+    render_unavailable_block,
+)
+
 MAX_LENGTH_CHARS = 3500
 PUSH_KIND = "spike_or_falling_alert"
-TITLE = "⚡ 급등락 관찰 신호"
-NEUTRAL_NOTE = (
-    "이 신호는 universe 내부 관찰이며, 직접적인 매매 지시나 확정된 위험 신호를 "
-    "포함하지 않습니다. 단기 대응 여부는 사용자가 별도로 판단해야 합니다."
-)
+TITLE = PUSH_KIND_HEADERS["spike_or_falling_alert"]
+NEUTRAL_NOTE = NEUTRAL_NOTES["spike_or_falling_alert"]
 
 # 표시 대상으로 선별할 절대 수익률 하한 (% 단위) — 화면/메시지에 무엇을 보여줄지
 # 결정하는 표시 제한이며 매매 / 위험 판단 기준이 아니다 (지시문 §12 "위험
@@ -105,7 +109,7 @@ def _topn_spike_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
     basis = topn_payload.get("basis") or "1m"
     asof = topn_payload.get("asof") or "-"
     lines: list[str] = [
-        "[ETF universe 변동성 확대 관찰]",
+        "[ETF 변동성 확대 관찰]",
         f"  • 기준일: {asof} / 기준: {basis} / 표시 하한: 절대 수익률 ±{SPIKE_DISPLAY_RETURN_PCT_MIN:.1f}% 이상만",
     ]
     if rises:
@@ -152,7 +156,7 @@ def _falling_candidate_section(
     )
 
     return [
-        "[기존 급락 ETF 주의 신호 (PUSH 3 재사용)]",
+        "[급락 ETF 주의 신호]",
         f"  • {name} 1개월 수익률 {score_value:+.2f}% — 초기 급락 기준"
         f" {threshold_pct:+.2f}% 이하 (기준일 {basis_date}).",
         "  • 이 값은 매수/매도 지시가 아닙니다.",
@@ -189,6 +193,7 @@ def build_spike_alert_message(
     topn_payload: Optional[dict[str, Any]] = None,
     universe_artifact: Optional[dict[str, Any]] = None,
     push_context: Optional[dict[str, Any]] = None,
+    unavailable_source_keys: Optional[list[str]] = None,
 ) -> str:
     """PUSH-3 급등락 관찰 신호 message_text 생성.
 
@@ -210,8 +215,6 @@ def build_spike_alert_message(
     """
     from app.push_context import spike_view_lines
 
-    header = [TITLE, f"기준일/생성: {asof_iso}", ""]
-
     body: list[str] = []
     for section in (
         spike_view_lines(push_context),
@@ -223,12 +226,20 @@ def build_spike_alert_message(
             body.extend(section)
             body.append("")
 
+    # 모든 섹션이 비어있으면 사용자 중심 unavailable 메시지 (지시문 §4.3).
     if not body:
-        body = [
-            "[ETF universe 변동성 확대 관찰]",
-            "  • 현재 표시 하한 이상의 급등락 항목이 universe 내 관찰되지 않습니다.",
-            "",
-        ]
+        return build_all_unavailable_message(
+            push_kind=PUSH_KIND,
+            asof_iso=asof_iso,
+            unavailable_source_keys=list(unavailable_source_keys or []),
+        )
+
+    # 일부 available — 별도 확인 필요 블록 추가 (지시문 §4.4).
+    header = [TITLE, f"기준일/생성: {asof_iso}", ""]
+    unavail_block = render_unavailable_block(list(unavailable_source_keys or []))
+    if unavail_block:
+        body.extend(unavail_block)
+        body.append("")
 
     footer = [NEUTRAL_NOTE]
     text = "\n".join(header + body + footer).rstrip()

@@ -31,14 +31,17 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
+from app.push_user_copy import (
+    NEUTRAL_NOTES,
+    PUSH_KIND_HEADERS,
+    build_all_unavailable_message,
+    render_unavailable_block,
+)
+
 MAX_LENGTH_CHARS = 3500
 PUSH_KIND = "market_briefing"
-TITLE = "📊 시장 흐름 브리핑"
-NEUTRAL_NOTE = (
-    "이 브리핑은 시장 내부 신호의 요약이며, 직접적인 매매 지시를 포함하지 "
-    "않습니다. 외부 변수 (CNN Fear & Greed / 환율 / 원유 / 미국장 / 지정학) "
-    "는 별도 확인 필요합니다."
-)
+TITLE = PUSH_KIND_HEADERS["market_briefing"]
+NEUTRAL_NOTE = NEUTRAL_NOTES["market_briefing"]
 
 
 def _fmt_pct(value: Any, *, signed: bool = True) -> Optional[str]:
@@ -68,13 +71,13 @@ def _evidence_section(ml_baseline_snapshot: Optional[dict[str, Any]]) -> list[st
     high10 = _fmt_pct(high_dd.get("10d"))
     low10 = _fmt_pct(low_dd.get("10d"))
     eval_days = risk.get("evaluated_days")
-    parts: list[str] = ["[위험 패턴 참고]"]
+    parts: list[str] = ["[위험 참고 데이터]"]
     if high10 and low10 and isinstance(eval_days, int):
         parts.append(
-            f"  • 과거 {eval_days}거래일 룩백 — high-risk bucket 의 이후 10d "
-            f"drawdown {high10} vs low-risk {low10}."
+            f"  • 과거 {eval_days}거래일 기준 — 위험 높은 그룹의 이후 10일 하락 "
+            f"{high10}, 위험 낮은 그룹 {low10}."
         )
-    parts.append("  • 본 항목은 baseline 참고이며 현재 시장의 확정 판정이 아닙니다.")
+    parts.append("  • 이 항목은 참고 데이터이며 현재 시장의 확정 판정이 아닙니다.")
     return parts
 
 
@@ -109,7 +112,7 @@ def _market_internal_section(topn_payload: Optional[dict[str, Any]]) -> list[str
     bottom3 = sortable[-3:][::-1]  # 가장 낮은 것부터 표시.
 
     lines: list[str] = [
-        "[시장 내부 신호]",
+        "[ETF 후보 흐름]",
         f"  • 기준일: {asof} / 비교 기준: {basis}",
         "  • 상위 ETF 흐름:",
     ]
@@ -147,7 +150,7 @@ def _external_context_section(
     items = [s for s in checklist if isinstance(s, str) and s.strip()]
     if not items:
         return []
-    lines = ["[추가 확인 필요 외부 변수]"]
+    lines = ["[별도 확인 필요 외부 변수]"]
     # 최대 7개로 제한 (길이 안전 + 정규화 checklist 크기와 일치).
     for s in items[:7]:
         lines.append(f"  • {s}")
@@ -160,6 +163,7 @@ def build_market_briefing_message(
     ml_baseline_snapshot: Optional[dict[str, Any]] = None,
     topn_payload: Optional[dict[str, Any]] = None,
     push_context: Optional[dict[str, Any]] = None,
+    unavailable_source_keys: Optional[list[str]] = None,
 ) -> str:
     """PUSH-1 시장 흐름 브리핑 message_text 생성.
 
@@ -191,8 +195,6 @@ def build_market_briefing_message(
         risk_pattern_lines,
     )
 
-    header = [TITLE, f"기준일/생성: {asof_iso}", ""]
-
     sections: list[list[str]] = [
         overnight_us_lines(push_context),
         market_trend_lines(push_context),
@@ -207,12 +209,20 @@ def build_market_briefing_message(
             body.extend(s)
             body.append("")
 
+    # 모든 섹션이 비어있으면 사용자 중심 unavailable 메시지 (지시문 §4.3).
     if not body:
-        body = [
-            "[전일 기준 시장 흐름]",
-            "  • 현재 사용 가능한 시장 내부 신호 / 위험 패턴 evidence 가 없습니다.",
-            "",
-        ]
+        return build_all_unavailable_message(
+            push_kind=PUSH_KIND,
+            asof_iso=asof_iso,
+            unavailable_source_keys=list(unavailable_source_keys or []),
+        )
+
+    # 일부 available — 별도 확인 필요 블록 추가 (지시문 §4.4).
+    header = [TITLE, f"기준일/생성: {asof_iso}", ""]
+    unavail_block = render_unavailable_block(list(unavailable_source_keys or []))
+    if unavail_block:
+        body.extend(unavail_block)
+        body.append("")
 
     footer = [NEUTRAL_NOTE]
     text = "\n".join(header + body + footer).rstrip()

@@ -155,11 +155,19 @@ def generate_market_briefing_draft(
         pc_evidence=pc_evidence,
         runtime_snapshot=runtime_snapshot,
     )
+    from app.push_user_copy import collect_unavailable_source_keys
+
+    unavail_keys = collect_unavailable_source_keys(
+        push_kind=MARKET_BRIEFING_KIND,
+        pc_evidence=pc_evidence,
+        runtime_snapshot=runtime_snapshot,
+    )
     message_text = build_market_briefing_message(
         asof_iso=asof,
         ml_baseline_snapshot=ml_baseline_snapshot,
         topn_payload=topn_payload,
         push_context=push_context,
+        unavailable_source_keys=unavail_keys,
     )
     runtime_package = build_runtime_package(
         push_kind=MARKET_BRIEFING_KIND,
@@ -228,11 +236,19 @@ def generate_spike_alert_draft(
         pc_evidence=pc_evidence,
         runtime_snapshot=runtime_snapshot,
     )
+    from app.push_user_copy import collect_unavailable_source_keys
+
+    unavail_keys = collect_unavailable_source_keys(
+        push_kind=SPIKE_ALERT_KIND,
+        pc_evidence=pc_evidence,
+        runtime_snapshot=runtime_snapshot,
+    )
     message_text = build_spike_alert_message(
         asof_iso=asof,
         topn_payload=topn_payload,
         universe_artifact=universe_artifact,
         push_context=push_context,
+        unavailable_source_keys=unavail_keys,
     )
     runtime_package = build_runtime_package(
         push_kind=SPIKE_ALERT_KIND,

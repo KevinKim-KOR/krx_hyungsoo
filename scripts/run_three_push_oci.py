@@ -124,6 +124,23 @@ _FORBIDDEN_SECRET_KEYS = frozenset(
     {"token", "chat_id", "bot_token", "telegram_token", "telegram_chat_id"}
 )
 
+# PUSH 사용자 표현 정리 STEP (2026-06-20, 지시문 §4.1):
+# Telegram 본문에 절대 노출되면 안 되는 raw 기술 식별자. PC builder 가 사용자 중심
+# 메시지를 생성하지만, OCI runner 단에서도 이중 차단으로 보호한다.
+_FORBIDDEN_RAW_IDENTIFIERS = (
+    "param_id",
+    "param_source",
+    "manual_seed",
+    "kr_realtime_price_snapshot",
+    "overnight_us_market_snapshot",
+    "market_discovery_snapshot",
+    "holdings_snapshot",
+    "nav_discount_snapshot",
+    "universe_momentum_snapshot",
+    "ml_baseline_v0",
+    "news_snapshot",
+)
+
 # ── 로깅 ─────────────────────────────────────────────────────────────────────
 
 
@@ -252,6 +269,18 @@ def _check_forbidden_wording(text: str) -> Optional[str]:
     for phrase in _FORBIDDEN_PHRASES:
         if phrase in text:
             return phrase
+    return None
+
+
+def _check_raw_identifiers(text: str) -> Optional[str]:
+    """Telegram 본문에 raw 기술 식별자 노출 차단 (지시문 §4.1, AC-1).
+
+    PC builder 가 사용자 중심 메시지를 생성하지만, OCI runner 가 이중 차단으로
+    보호한다. 감지 시 발송 차단.
+    """
+    for ident in _FORBIDDEN_RAW_IDENTIFIERS:
+        if ident in text:
+            return ident
     return None
 
 
@@ -532,6 +561,14 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
     if bad_phrase:
         logger.warning("금지 문구 감지: %r — 발송 차단", bad_phrase)
         return _finish("skipped", "forbidden_wording")
+
+    # ── 4-b. raw 기술 식별자 노출 차단 (지시문 §4.1, AC-1) ─────────────────
+    raw_ident = _check_raw_identifiers(message_text)
+    if raw_ident:
+        logger.warning(
+            "raw 기술 식별자 감지: %r — 발송 차단 (사용자용 메시지 아님)", raw_ident
+        )
+        return _finish("skipped", "raw_identifier_exposed")
 
     # ── 5. token/chat_id 노출 검사 ───────────────────────────────────────────
     try:

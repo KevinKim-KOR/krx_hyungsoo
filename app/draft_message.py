@@ -152,6 +152,36 @@ EXTERNAL_UNIVERSE_FACTOR_ID = "universe_one_month_return"
 FALLING_ETF_CAUTION_FACTOR_ID = "universe_falling_one_month_return"
 
 
+def _extract_source_keys_from_status(
+    missing_sections: list[Any], warnings: list[Any]
+) -> list[str]:
+    """generation_status 의 missing_sections + warnings 에서 source key 추출.
+
+    값 예:
+      missing_sections: ["holdings_snapshot", "kr_realtime_price_snapshot=unavailable"]
+      warnings: ["overnight_us_market_snapshot=partial"]
+
+    "<source_key>=<status>" 형태와 "<source_key>" 단독 형태 모두 source_key 만 추출.
+    push_user_labels 에 매핑된 key 만 통과시키며 알 수 없는 값은 무시한다 — 사용자
+    노출 안전성 우선 (raw 식별자 그대로 흘러나가지 않도록).
+    """
+    from app.push_user_labels import SOURCE_USER_LABELS
+
+    collected: list[str] = []
+    seen: set[str] = set()
+    for raw in list(missing_sections) + list(warnings):
+        if not isinstance(raw, str):
+            continue
+        key = raw.split("=", 1)[0].strip()
+        if not key or key not in SOURCE_USER_LABELS:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        collected.append(key)
+    return collected
+
+
 def is_holdings_draft(payload: Any) -> bool:
     """draft_payload 가 holdings 기반 형태인지 식별.
 
@@ -340,6 +370,11 @@ def build_message_text(run_id: str, payload: dict[str, Any]) -> str:
 
     호출자는 is_holdings_draft 로 사전 검증해야 한다. 그렇지 않으면 빈 문자열 반환.
 
+    PUSH 사용자 표현 정리 (2026-06-20, 지시문 §4.3): runtime_package 의
+    generation_status 가 failed 이거나 모든 source 가 unavailable 이면
+    사용자 중심 unavailable 메시지로 즉시 종료한다 (운영 진단 로그처럼
+    raw source key 노출 X).
+
     길이 방어 흐름:
     1. 전체 요약 + 주목 종목 전부(최대 4 카테고리 × N) 로 1차 조립
     2. MAX_LENGTH_CHARS 초과 시 주목 종목 수를 단계적으로 축소 (전체 → 절반 → 0)
@@ -348,6 +383,24 @@ def build_message_text(run_id: str, payload: dict[str, Any]) -> str:
     """
     if not is_holdings_draft(payload):
         return ""
+
+    # 지시문 §4.3 — 전체 unavailable 시 사용자 중심 축약 메시지.
+    rp = payload.get("runtime_package") if isinstance(payload, dict) else None
+    if isinstance(rp, dict):
+        gs = rp.get("generation_status") or {}
+        gen_status = gs.get("status")
+        if gen_status == "failed":
+            from app.push_user_copy import build_all_unavailable_message
+
+            missing = gs.get("missing_sections") or []
+            warnings = gs.get("warnings") or []
+            unavailable_keys = _extract_source_keys_from_status(missing, warnings)
+            asof_iso = rp.get("created_at") or payload.get("asof_iso") or ""
+            return build_all_unavailable_message(
+                push_kind="holdings_briefing",
+                asof_iso=asof_iso,
+                unavailable_source_keys=unavailable_keys,
+            )
 
     recs = payload.get("recommendations") or []
     summary = compute_summary(recs)

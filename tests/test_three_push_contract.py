@@ -149,9 +149,10 @@ def test_push1_builder_includes_required_sections_when_evidence_available():
         topn_payload=_make_topn_payload(),
     )
     assert "시장 흐름 브리핑" in text
-    assert "[시장 내부 신호]" in text
-    assert "[위험 패턴 참고]" in text
-    assert "[추가 확인 필요 외부 변수]" in text
+    # PUSH 사용자 표현 정리 STEP (2026-06-20): 섹션 헤더가 사용자 표시명으로 정렬.
+    assert "[ETF 후보 흐름]" in text
+    assert "[위험 참고 데이터]" in text
+    assert "[별도 확인 필요 외부 변수]" in text
 
 
 def test_push1_builder_omits_news_section_when_unavailable():
@@ -164,8 +165,8 @@ def test_push1_builder_omits_news_section_when_unavailable():
     )
     assert "뉴스 수집 실패" not in text
     assert "뉴스 unavailable" not in text
-    # 위험 패턴 섹션은 evidence None 이므로 생략되어야 한다.
-    assert "[위험 패턴 참고]" not in text
+    # 위험 참고 데이터 섹션은 evidence None 이므로 생략되어야 한다.
+    assert "[위험 참고 데이터]" not in text
 
 
 def test_push1_builder_no_prohibited_wording():
@@ -210,8 +211,9 @@ def test_push3_builder_includes_topn_spike_when_threshold_met():
         topn_payload=_make_topn_payload(spike=True),
         universe_artifact=_make_universe_artifact_with_falling(),
     )
-    assert "급등락 관찰 신호" in text
-    assert "[ETF universe 변동성 확대 관찰]" in text
+    # PUSH 사용자 표현 정리 STEP (2026-06-20): title 이 '[급등락·상승 관찰 신호]' 로 변경.
+    assert "급등락" in text
+    assert "[ETF 변동성 확대 관찰]" in text
     # 18.42% 상승 / -11.20% 하락이 모두 임계 5% 이상이므로 포함.
     assert "+18.42%" in text or "+18.42" in text
     assert "-11.20%" in text or "-11.20" in text
@@ -225,7 +227,7 @@ def test_push3_builder_reuses_existing_falling_signal():
         topn_payload=_make_topn_payload(),
         universe_artifact=_make_universe_artifact_with_falling(),
     )
-    assert "기존 급락 ETF 주의 신호" in text
+    assert "급락 ETF 주의 신호" in text
     assert "TIGER 미국나스닥100" in text
 
 
@@ -250,9 +252,9 @@ def test_push3_builder_empty_universe_keeps_safe_default():
         topn_payload=None,
         universe_artifact=None,
     )
-    assert "급등락 관찰 신호" in text
-    # 빈 universe 도 본문 비어있지 않게.
-    assert "관찰" in text or "임계" in text
+    assert "급등락" in text
+    # 빈 universe 도 본문 비어있지 않게 (사용자 중심 unavailable 메시지로 fallback).
+    assert "관찰" in text or "임계" in text or "데이터" in text
 
 
 # ─── Layer 2: draft 통합 ───────────────────────────────────────────
@@ -288,7 +290,7 @@ def test_spike_alert_draft_creates_pending_run_with_push_kind(monkeypatch):
     )
     assert run.status == "PENDING_APPROVAL"
     assert run.push_kind == SPIKE_ALERT_KIND
-    assert isinstance(run.message_text, str) and "급등락 관찰 신호" in run.message_text
+    assert isinstance(run.message_text, str) and "급등락" in run.message_text
     assert run.draft_payload is not None
     assert run.draft_payload.get("push_kind") == SPIKE_ALERT_KIND
 
@@ -357,7 +359,7 @@ def test_generate_spike_alert_via_unified_endpoint(tmp_path: Path, monkeypatch):
     assert body["status"] == "PENDING_APPROVAL"
     assert body["push_kind"] == SPIKE_ALERT_KIND
     assert isinstance(body["message_text"], str) and len(body["message_text"]) > 0
-    assert "급등락 관찰 신호" in body["message_text"]
+    assert "급등락" in body["message_text"]
     for w in PROHIBITED_WORDS:
         assert w not in body["message_text"]
 
