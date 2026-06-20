@@ -181,7 +181,8 @@ export default function ThreePushParamCard() {
         <p style={{ marginTop: 12, color: "#dc2626" }}>{errorMsg}</p>
       ) : null}
 
-      <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+      {/* 지시문 §5.3 — 버튼은 하나만 둔다. 상태는 카드 마운트 시 자동 조회. */}
+      <div style={{ marginTop: 16 }}>
         <button
           type="button"
           onClick={handleApply}
@@ -196,20 +197,6 @@ export default function ThreePushParamCard() {
           }}
         >
           {applying ? "적용 진행 중..." : "현재 기준 OCI 적용"}
-        </button>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={loading || applying}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 6,
-            border: "1px solid #d1d5db",
-            backgroundColor: "white",
-            cursor: loading || applying ? "not-allowed" : "pointer",
-          }}
-        >
-          상태 새로고침
         </button>
       </div>
     </section>

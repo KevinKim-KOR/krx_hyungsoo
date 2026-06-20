@@ -46,6 +46,7 @@ from app.three_push_runner_common import (  # noqa: E402
     VALID_PUSH_KINDS,
     assert_no_sensitive_keys,
     check_forbidden_wording,
+    check_raw_identifiers,
     env_bool,
     is_already_sent,
     load_dotenv_file,
@@ -187,6 +188,15 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
     if bad:
         logger.warning("금지 문구 감지: %r — 발송 차단", bad)
         return _finish("failed", "forbidden_wording", f"phrase={bad}")
+
+    # ── 4-b. raw 기술 식별자 노출 차단 (지시문 §4.1 / AC-1) ─────────────────
+    # PARAM runtime builder 는 사용자 메시지만 생성하지만 이중 안전망.
+    raw_ident = check_raw_identifiers(message_text)
+    if raw_ident:
+        logger.warning(
+            "raw 기술 식별자 감지: %r — 발송 차단 (사용자용 메시지 아님)", raw_ident
+        )
+        return _finish("failed", "raw_identifier_exposed", f"identifier={raw_ident}")
 
     # ── 5. dry-run 종료 ──────────────────────────────────────────────────────
     if mode == "dry-run":

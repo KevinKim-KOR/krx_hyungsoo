@@ -1,6 +1,6 @@
 # POC2 — PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 Conclusion
 
-작성일: 2026-06-20
+작성일: 2026-06-20 / FIX r1: 2026-06-20 (정식 PARAM runtime builder + UI 단일 버튼 + sync state 부재/손상 분리)
 STEP: PUSH_COPY_AND_PARAM_UI
 상태: DONE
 
@@ -126,7 +126,7 @@ STEP: PUSH_COPY_AND_PARAM_UI
 | AC-8 | 적용 진행 상태 표시 | DONE — UI 단계 progress 표시 (생성 중 → 적용 중 → 확인 중 → 완료) |
 | AC-9 | 실패 시 기존 PARAM 보호 | DONE — sync 스크립트가 atomic rename + verify 후 교체. 실패 시 latest 파일 변경 없음. UI 실패 시 자동 refresh 로 직전 state 표시 |
 | AC-10 | secret 비노출 | DONE — token / chat_id / SSH key / remote path / raw command 응답 노출 0건. 테스트로 보호 |
-| AC-11 | 기존 PARAM runtime guard 유지 | DONE — `scripts/run_three_push_runtime_oci.py` 변경 0건 |
+| AC-11 | 기존 PARAM runtime guard 유지 | DONE — `scripts/run_three_push_runtime_oci.py` 의 guard 7종 (latest PARAM fail-closed / enabled_push_kinds / forbidden wording / secret 비노출 / enable flag / duplicate / Telegram 마스킹) 전부 보존. FIX r1 에서 raw 식별자 차단 §4-b 단계만 추가 (기존 guard 약화 0건) |
 | AC-12 | 기존 산식 불변 | DONE — 메시지 본문의 helper 함수 (compute_topn / build_runtime_package 등) 산식 변경 0건 |
 | AC-13 | 범위 통제 | DONE — ML 학습 / 위험 감지 / 점수·버킷 / 메인 판단 화면 / 신규 source 0건 |
 | AC-14 | 문서 갱신 | DONE — STATE_LATEST / POC2_B_NEXT_ACTIONS / POC2_FEATURE_INVENTORY / 본 CONCLUSION |
@@ -175,10 +175,11 @@ curl -X POST http://127.0.0.1:8000/three-push/param/apply
 
 ---
 
-## 6. 검증 결과
+## 6. 검증 결과 (FIX r1 최종)
 
 - black / flake8: **PASS**
-- backend pytest: **581 passed** (회귀 0)
+- backend pytest: **584 passed** (회귀 0). Phase A/B 시점은 581 passed 였으며
+  FIX r1 에서 신규 테스트 3건 추가로 584 passed.
   - 기존 환경 실패 1건 (`test_generate_spike_alert_via_unified_endpoint`) 은
     본 STEP 이전부터 존재하는 회귀 (universe / runtime probe 데이터 의존).
 - frontend npm run lint: **PASS**
@@ -199,7 +200,84 @@ curl -X POST http://127.0.0.1:8000/three-push/param/apply
 
 ---
 
-## 8. 다음 단계 (사용자 결정 대기)
+## 8. FIX r1 (검증자 1차 REJECTED 후속)
+
+검증자 1차 REJECTED 사유 4건 모두 수용 및 해소.
+
+### FIX-1 (A-1 / B-5) — 정식 PARAM runtime builder 의 raw 식별자 제거
+
+**문제**: 정식 OCI runner (`scripts/run_three_push_runtime_oci.py`) 가 사용하는
+`app/three_push_runtime_message_builder.py` 가 여전히 본문에 `param_id` /
+`param_source` / `push_kind` / snake_case source key 를 직접 출력하고 있었음.
+PC builder 만 사용자 메시지로 수정됐고 fallback runner 만 raw 식별자 차단이
+적용된 상태.
+
+**수정**: `build_runtime_message()` 를 사용자 중심으로 재작성.
+- raw 식별자 본문 노출 0건 (PARAM 은 status 기록/duplicate guard 용으로만 사용).
+- 전체 unavailable 시 `app.push_user_copy.build_all_unavailable_message()` 호출
+  → 지시문 §4.3 예시 형식 그대로 (헤더 + 기준 시각 + 안내 + "별도 확인 필요"
+  사용자 라벨 + 짧은 주의 문장).
+- 일부 available 시 사용자 라벨 + `render_unavailable_block()` 호출 → §4.4.
+- `PUSH_KIND_KOREAN["spike_or_falling_alert"]` 를 `"급등락·상승 관찰 신호"` 로
+  정렬 (PUSH_KIND_HEADERS 와 일치).
+
+### FIX-2 (A-1 / A-2 / B-5) — 정식 runner 에 raw 식별자 차단 안전망
+
+**문제**: raw 식별자 차단이 fallback runner (`run_three_push_oci.py`) 에만
+있고 정식 runtime runner (`run_three_push_runtime_oci.py`) 에는 없었음.
+
+**수정**:
+- `app/three_push_runner_common.py` 에 `FORBIDDEN_RAW_IDENTIFIERS` 상수 + `check_raw_identifiers()` 함수 추가.
+- `scripts/run_three_push_runtime_oci.py` 의 message 검증 단계 (§4) 다음에 §4-b
+  로 raw 식별자 검사 추가. 감지 시 `status=failed, reason=raw_identifier_exposed`.
+- `scripts/run_three_push_oci.py` 의 로컬 검사 함수는 그대로 유지 (양쪽 runner
+  공통 안전망).
+
+### FIX-3 (A-3 / B-6) — 테스트 갱신
+
+**문제**: `tests/test_three_push_runtime_message_builder.py` 가 `param_id` /
+`param_source` / `push_kind` 가 본문에 포함되어야 한다는 구 계약을 검증.
+
+**수정**: 새 사용자 메시지 계약에 맞게 8개 테스트 전면 재작성.
+- `test_message_has_no_raw_identifiers` (parametrize 3종) — 본문에 raw 식별자
+  노출 0건 검증.
+- `test_message_all_unavailable_uses_user_centric_copy` — 모든 source unavailable
+  시 지시문 §4.3 예시 문구 + 사용자 라벨 노출 확인.
+- `test_message_partial_available_shows_user_labels` — 일부 available 시 사용자
+  라벨 + 별도 확인 필요 블록 노출.
+- 기존 unavailable / available 테스트는 새 라벨 기반으로 정렬.
+
+### FIX-4 (A-1 / §5.3) — UI 단일 버튼 (상태 새로고침 제거)
+
+**문제**: `ThreePushParamCard` 에 `[현재 기준 OCI 적용]` 외에 `[상태 새로고침]`
+버튼이 추가로 있어 지시문 §5.3 "버튼은 하나만 둔다" 와 충돌.
+
+**수정**: `[상태 새로고침]` 버튼 제거. 카드 마운트 시 자동 조회는 유지하며
+사용자가 명시적으로 새로고침할 필요가 없도록 함.
+
+### FIX-5 (B-1) — sync status JSON 부재 / 손상 분리
+
+**문제**: `_read_sync_status()` 가 파일 부재와 JSON 손상을 같은 `{}` 로 반환해
+운영 상태 손상 감지가 흐려짐.
+
+**수정**:
+- `_read_sync_status()` 가 `(state, payload)` 튜플 반환으로 변경.
+  state 는 `SYNC_STATE_MISSING` / `SYNC_STATE_CORRUPTED` / `SYNC_STATE_OK` 3종.
+- 손상은 logger.warning 로 기록 + 사용자에게는 `verification_required` 상태로
+  표시 ("운영 상태 파일을 읽지 못했습니다. 한 번 더 적용 후 결과를 확인해 주세요.").
+- `_read_latest_param_display_label()` 도 부재 / 손상 / 정상 3분리 + 손상 시
+  logger.warning.
+
+### FIX r1 검증
+
+- pytest **584 passed** (회귀 0). 기존 환경 실패 1건 (`test_generate_spike_alert_via_unified_endpoint`) 은 본 STEP 전부터 존재.
+- black / flake8 PASS. frontend lint / build PASS.
+- 정식 runtime builder 실측 — market_briefing / holdings_briefing / spike_or_falling_alert
+  3종 모두 raw 식별자 노출 0건. 사용자 라벨로만 표시. 지시문 §4.3 예시와 일치.
+
+---
+
+## 9. 다음 단계 (사용자 결정 대기)
 
 1. **BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP** — 기존 회귀 1건 정리.
 2. **scheduled run 관찰 + 운영 진단 UI** — OCI runner status/history read-only.

@@ -79,31 +79,55 @@ class ParamApplyResponse(BaseModel):
 
 # ── state 읽기 ─────────────────────────────────────────────────────────────
 def _read_latest_param_display_label() -> str:
-    """latest PARAM 파일에서 사용자 표시 라벨 추출. raw param_source 노출 0건."""
+    """latest PARAM 파일에서 사용자 표시 라벨 추출. raw param_source 노출 0건.
+
+    파일 부재 / 손상은 구분된 fallback:
+      - 부재: "미적용" (사용자에게 의미 있는 상태 — 아직 한 번도 적용 안 됨)
+      - 손상: "기본 운영 기준" + logger.warning (운영 상태 손상 감지가 로그에 남음)
+    """
     if not _LATEST_PATH.exists():
         return "미적용"
     try:
         data = json.loads(_LATEST_PATH.read_text(encoding="utf-8"))
-        src = data.get("param_source") if isinstance(data, dict) else None
-        if isinstance(src, str):
-            return _DISPLAY_LABEL_MAP.get(src, "기본 운영 기준")
-    except (json.JSONDecodeError, OSError):
-        pass
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("latest PARAM 파일 손상: %s", type(e).__name__)
+        return "기본 운영 기준"
+    src = data.get("param_source") if isinstance(data, dict) else None
+    if isinstance(src, str):
+        return _DISPLAY_LABEL_MAP.get(src, "기본 운영 기준")
     return "기본 운영 기준"
 
 
-def _read_sync_status() -> dict[str, Any]:
-    """param_sync_status_latest.json read. 파일 없거나 손상 시 빈 dict.
+# sync status 파일 상태 — 부재 / 손상 / 정상 3분리.
+SYNC_STATE_MISSING = "missing"
+SYNC_STATE_CORRUPTED = "corrupted"
+SYNC_STATE_OK = "ok"
 
-    raw error / SSH target / remote path 는 응답에 노출하지 않고 본 함수 내부에만
-    유지한다.
+
+def _read_sync_status() -> tuple[str, dict[str, Any]]:
+    """param_sync_status_latest.json 의 (상태, payload) 반환.
+
+    상태:
+      - SYNC_STATE_MISSING — 파일 부재 (한 번도 sync 안 됨)
+      - SYNC_STATE_CORRUPTED — JSON parse 실패 또는 dict 가 아님 (운영 상태 손상)
+      - SYNC_STATE_OK — 정상 read
+
+    raw error / SSH target / remote path 는 응답에 노출하지 않고 호출자가
+    사용자 친화 dict 로 변환한다.
     """
     if not _SYNC_STATUS_PATH.exists():
-        return {}
+        return SYNC_STATE_MISSING, {}
     try:
-        return json.loads(_SYNC_STATUS_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
+        data = json.loads(_SYNC_STATUS_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("sync status 파일 손상: %s", type(e).__name__)
+        return SYNC_STATE_CORRUPTED, {}
+    if not isinstance(data, dict):
+        logger.warning(
+            "sync status JSON 형식 오류: 최상위가 dict 아님 (%s)", type(data).__name__
+        )
+        return SYNC_STATE_CORRUPTED, {}
+    return SYNC_STATE_OK, data
 
 
 def _status_to_user_response(sync_record: dict[str, Any]) -> dict[str, Any]:
@@ -150,14 +174,26 @@ def get_param_state() -> ParamStateResponse:
       raw error / token / chat_id.
     """
     display_label = _read_latest_param_display_label()
-    sync_record = _read_sync_status()
-    if not sync_record:
+    sync_state, sync_record = _read_sync_status()
+    if sync_state == SYNC_STATE_MISSING:
         return ParamStateResponse(
             status="not_applied",
             display_label=display_label,
             applied_at=None,
             oci_verified=False,
             message="아직 OCI 에 적용되지 않았습니다.",
+        )
+    if sync_state == SYNC_STATE_CORRUPTED:
+        # 손상은 부재와 구분 — 사용자에게 확인 필요 상태 표시.
+        return ParamStateResponse(
+            status="verification_required",
+            display_label=display_label,
+            applied_at=None,
+            oci_verified=False,
+            message=(
+                "운영 상태 파일을 읽지 못했습니다. 한 번 더 적용 후 결과를 "
+                "확인해 주세요."
+            ),
         )
     summary = _status_to_user_response(sync_record)
     return ParamStateResponse(
@@ -229,7 +265,9 @@ def _run_sync_to_oci() -> tuple[bool, str]:
         return False, f"sync returncode={result.returncode}"
 
     # sync_status_latest.json 확인.
-    record = _read_sync_status()
+    sync_state, record = _read_sync_status()
+    if sync_state != SYNC_STATE_OK:
+        return False, f"sync_status_{sync_state}"
     if record.get("status") == "success" and record.get("verify_status") == "success":
         return True, ""
     return False, f"sync status={record.get('status')!r}"
@@ -270,7 +308,7 @@ def apply_param_to_oci() -> ParamApplyResponse:
     display_label = _read_latest_param_display_label()
 
     success, _internal_err = _run_sync_to_oci()
-    sync_record = _read_sync_status()
+    _sync_state, sync_record = _read_sync_status()
     summary = _status_to_user_response(sync_record)
     if not success:
         summary["status"] = "failed"

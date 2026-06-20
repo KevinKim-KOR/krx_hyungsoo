@@ -71,9 +71,9 @@ def test_param_state_display_label_is_user_friendly():
     body = resp.json()
     assert body["display_label"] != "manual_seed"
     assert body["display_label"] != "baseline_static"
-    assert "_" not in body["display_label"], (
-        f"display_label 에 snake_case 노출: {body['display_label']!r}"
-    )
+    assert (
+        "_" not in body["display_label"]
+    ), f"display_label 에 snake_case 노출: {body['display_label']!r}"
 
 
 def test_param_apply_failure_preserves_existing_state(monkeypatch):

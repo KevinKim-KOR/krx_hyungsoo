@@ -163,6 +163,32 @@ def check_forbidden_wording(text: str) -> Optional[str]:
     return None
 
 
+# PUSH 사용자 표현 정리 STEP (2026-06-20, 지시문 §4.1 / AC-1):
+# Telegram 본문에 노출 금지인 raw 기술 식별자. PC builder + runtime builder 가
+# 사용자 메시지를 만들지만 runner 단에서 이중 차단으로 보호한다.
+FORBIDDEN_RAW_IDENTIFIERS = (
+    "param_id",
+    "param_source",
+    "manual_seed",
+    "kr_realtime_price_snapshot",
+    "overnight_us_market_snapshot",
+    "market_discovery_snapshot",
+    "holdings_snapshot",
+    "nav_discount_snapshot",
+    "universe_momentum_snapshot",
+    "ml_baseline_v0",
+    "news_snapshot",
+)
+
+
+def check_raw_identifiers(text: str) -> Optional[str]:
+    """본문에 raw 기술 식별자가 노출되면 첫 매치를 반환. 없으면 None."""
+    for ident in FORBIDDEN_RAW_IDENTIFIERS:
+        if ident in text:
+            return ident
+    return None
+
+
 # ── Telegram 발송 ─────────────────────────────────────────────────────────────
 
 
