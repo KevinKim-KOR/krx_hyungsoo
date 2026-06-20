@@ -1,6 +1,6 @@
 # POC2 — ML 축1 상대상승 점수 실행 UI 연결 Conclusion
 
-작성일: 2026-06-21 / FIX r1: 2026-06-21 (실패 분기 기존 snapshot 보존 + 응답 6 필드 정정 + meta 손상 분리 + 테스트 격리)
+작성일: 2026-06-21 / FIX r1: 2026-06-21 (실패 분기 기존 snapshot 보존 + 응답 6 필드 정정 + meta 손상 분리 + 테스트 격리) / FIX r2: 2026-06-21 (stale 주석/문서 정합성 정정)
 STEP: ML_RELATIVE_UPSIDE_UI
 상태: DONE
 
@@ -232,7 +232,56 @@ content 변경 0건 + run meta 의 `snapshot_path=""` 확인.
 
 ---
 
-## 9. 다음 단계 (사용자 결정 대기)
+## 9. FIX r2 (검증자 2차 REJECTED 후속)
+
+검증자 2차 REJECTED 사유 (A-2 보고 정확성 / A-3 산출물 정합성) — FIX r1 의 코드
+변경은 통과됐으나 문서/주석 stale 정합성이 남아있다는 지적. 3건 정정.
+
+### FIX r2-1 — `docs/STATE_LATEST.md` L28 stale "응답 5 필드"
+
+**문제**: FIX r1 commit 에 STATE_LATEST §1 본문 L28 의 "응답 5 필드" 표기가
+잔존. CONCLUSION 문서만 수정하고 STATE_LATEST 본문은 놓침.
+
+**수정**: L28 본문을 "응답 6 필드 (status / asof_date / generated_at /
+scored_candidate_count / gpu_execution_used / message)" 로 정정 + "실패 /
+rc≠0 / meta 손상 / meta.status≠ok 4분기 처리 (FIX r1 — 손상 분리)" 명시.
+
+### FIX r2-2 — `app/api_ml_relative_upside.py` docstring stale
+
+**문제**: 모듈 docstring 에 "동기 처리 (subprocess 실행 대기 후 응답)" 표현이
+남아 있음 (실제는 직접 import 호출). "실패 시 기존 run meta 는 그대로" 도 실제
+unavailable/failed 분기에서 run meta 가 이력 추적용으로 갱신되는 동작과 충돌.
+
+**수정**:
+- "동기 처리 — 같은 프로세스 내 함수 호출 대기 후 응답 (사용자 결정 2026-06-21).
+  subprocess 가 아니라 main() 을 직접 import 해서 호출" 로 정정.
+- "실패 시 기존 정상 score snapshot 은 삭제 / 초기화 / 빈값 덮어쓰기 X" 의
+  2층 보호 메커니즘을 명시 ((a) 예외 raise 시 atomic write 호출 안 됨 /
+  (b) FIX r1 — main() 의 unavailable/failed 분기에서 save_score_snapshot()
+  호출 자체 제거).
+- "실패 분기에서 score snapshot 은 유지된다. run meta 는 이력 추적을 위해
+  main() 의 unavailable/failed 분기에서도 갱신될 수 있다 (snapshot_path='')"
+  로 정확하게 표기.
+
+### FIX r2-3 — `scripts/run_ml_relative_upside_score_v0.py` L90 stale 주석
+
+**문제**: `KODEX200_TICKER not in all_tickers` 분기의 주석 "failed snapshot
+저장 후 종료" 가 실제 동작 (run meta 만 저장 + snapshot 미저장) 과 불일치.
+
+**수정**: "score snapshot 저장하지 않고 기존 SCORE_SNAPSHOT_PATH 그대로 유지
+(FIX r1 — 실패 시 기존 점수 보존). run meta 만 status=failed +
+snapshot_path='' 로 저장 (이력 추적용)" 로 정정.
+
+### FIX r2 검증
+
+- 정정 대상 외 코드 변경 0건 (주석/문서/docstring 만 변경).
+- pytest 7건 PASS (격리된 test_api_ml_relative_upside.py — 동작 회귀 없음).
+- black / flake8 PASS.
+- 실제 운영 artifact 변경 0건.
+
+---
+
+## 10. 다음 단계 (사용자 결정 대기)
 
 PC_OCI_ARCHITECTURE_DIRECTION 순서 그대로:
 

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결)
+최종 업데이트: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결, FIX r2 최종)
 
 ## 0. Canonical
 
@@ -25,13 +25,14 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
 - **현재 완료 상태**: **ML 축1 — 상대상승 점수 실행 UI 연결** (2026-06-21).
   - 지시문 단일 목표: 기존 `relative_upside_score_v0` 실행을 Market Discovery UI 에 연결. 사용자가 CLI 없이 화면에서 점수 계산 + 정상 실행 여부 확인.
-  - **신규 backend 1종**: `app/api_ml_relative_upside.py` — `POST /market/relative-upside/run` router. 동기 처리 (사용자 결정 2026-06-21) — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출 (subprocess 가 아닌 같은 프로세스 함수 호출). 실패 / rc≠0 / meta.status≠ok 분기 처리. 응답 5 필드 (status / asof_date / generated_at / scored_candidate_count / gpu_execution_used / message) — device name / loss / epoch / artifact path / raw traceback 노출 0건.
+  - **신규 backend 1종**: `app/api_ml_relative_upside.py` — `POST /market/relative-upside/run` router. 동기 처리 (사용자 결정 2026-06-21) — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출 (subprocess 가 아닌 같은 프로세스 함수 호출). 실패 / rc≠0 / meta 손상 / meta.status≠ok 4분기 처리 (FIX r1 — 손상 분리). 응답 6 필드 (status / asof_date / generated_at / scored_candidate_count / gpu_execution_used / message) — device name / loss / epoch / artifact path / raw traceback 노출 0건.
   - **수정 1종**: `app/api.py` — router 등록.
   - **신규 frontend 2종**: `frontend/lib/api/mlRelativeUpside.ts` (TS API client, timeout 120s) / `frontend/app/components/RelativeUpsideRunCard.tsx` (Market Discovery 후보 목록 상단 카드 — 상태/기준일/마지막 계산/점수 반영 후보 수/GPU 실행 표시 + 단일 `[상대상승 점수 계산]` 버튼 + running 중 중복 클릭 차단 + 실패 시 기존 result 유지).
   - **수정 frontend 1종**: `frontend/app/components/MarketDiscoveryView.tsx` — 카드를 `MarketContextCard` 다음에 배치 + `onSuccess={loadTopn}` 으로 성공 시 후보 표 자동 재조회.
   - **신규 테스트 7건** (FIX r1 후 +2): `tests/test_api_ml_relative_upside.py` — 성공 6 필드 응답 + GPU 미확인 메시지 분기 + main() 예외 raise 시 기존 meta 파일 변경 0건 보존 + rc≠0 → failed + meta.status≠ok → unavailable + **meta 파일 손상 → unavailable** (FIX r1 신규) + **main() unavailable 분기에서 기존 score snapshot 파일 덮어쓰기 0건** (FIX r1 신규 — A-1 핵심 검증). 모든 테스트 `RUN_META_PATH` / `SCORE_SNAPSHOT_PATH` 를 `tmp_path` 로 monkeypatch 격리 (FIX r1 — 운영 artifact 오염 차단). 응답에 `CUDA` / `cuda` / `epoch` / `loss` / `NVIDIA` / `device_name` / `artifact_path` / `snapshot_path` / `Traceback` 노출 0건 검증.
   - **실측 (2026-06-21)**: `POST /market/relative-upside/run` → status=200, body={status: "ok", asof_date: "2026-06-19", scored_candidate_count: 1111, gpu_execution_used: true, message: "상대상승 참고점수 계산이 완료되었습니다."}. CUDA RTX 4070 SUPER 실행. 기존 ML 산식 / score snapshot 구조 / OCI runner / PARAM / Telegram 코드 변경 0건.
   - **FIX r1 (검증자 1차 REJECTED 후속, A-1/A-3/B-1/B-6 수용)**: (A-1) `scripts/run_ml_relative_upside_score_v0.py` 의 `model is None` / `inference_rows` 빈 분기에서 빈 snapshot 저장 코드 제거 → 기존 `SCORE_SNAPSHOT_PATH` 그대로 유지 + `RUN_META_PATH` 만 `snapshot_path=""` 명시 저장 (이력 추적). (A-3) CONCLUSION 문서 "응답 5 필드" 표기를 6 필드 (status 포함) 로 정정. (B-1) `_read_run_meta()` 가 `(state, payload)` 튜플 반환 — `META_STATE_MISSING` / `META_STATE_CORRUPTED` / `META_STATE_OK` 3분리. 손상 시 logger.warning + 사용자에게 "운영 상태 파일을 읽지 못했습니다" 메시지. (B-6) 모든 테스트가 `tmp_path` fixture 로 격리. frontend 주석 stale "subprocess" 표기를 "직접 import 호출" 로 정정.
+  - **FIX r2 (검증자 2차 REJECTED 후속, A-2/A-3 정합성 정정)**: (r2-1) STATE_LATEST §1 본문 L28 의 "응답 5 필드" stale 표기를 6 필드로 정정. (r2-2) `app/api_ml_relative_upside.py` 모듈 docstring 의 "subprocess 실행 대기" / "기존 run meta 그대로" stale 표현을 실제 동작 (직접 import 호출 + 이력 추적용 run meta 갱신) 에 맞춰 정정. 2층 보호 메커니즘 명시. (r2-3) `scripts/run_ml_relative_upside_score_v0.py` L90 의 "failed snapshot 저장 후 종료" stale 주석을 "score snapshot 저장 안 함 + run meta 만 이력 추적용 저장" 으로 정정.
   - pytest **615 passed** (608 + 7 신규, 회귀 0). black / flake8 PASS. frontend lint / build PASS.
 - **이전 STEP**: **ML 축1 — 후보 ETF 상대상승 참고점수 v0** (2026-06-20).
   - 지시문 §3 단일 목표: 기존 ETF 가격 이력과 5/10/20일 수익률·초과수익 evidence 를 사용해 후보 ETF 별 0~100 상대상승 참고점수를 생성하고, 기존 후보 목록에서 점수·고점 대비·근거를 함께 비교. 매수·매도·교체·비중 조절 신호 아님 (참고용 정량 재료).

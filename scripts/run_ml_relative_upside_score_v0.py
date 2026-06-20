@@ -87,7 +87,9 @@ def main() -> int:
     logger.info("etf universe tickers: %d", len(all_tickers))
 
     if KODEX200_TICKER not in all_tickers:
-        # KODEX200 없으면 초과수익 계산 불가 → failed snapshot 저장 후 종료.
+        # KODEX200 없으면 초과수익 계산 불가 — score snapshot 저장하지 않고
+        # 기존 SCORE_SNAPSHOT_PATH 그대로 유지 (FIX r1 — 실패 시 기존 점수 보존).
+        # run meta 만 status=failed + snapshot_path="" 로 저장 (이력 추적용).
         meta = build_run_meta(
             asof_date="",
             generated_at=now_iso_utc(),
