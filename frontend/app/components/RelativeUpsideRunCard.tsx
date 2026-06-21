@@ -87,31 +87,37 @@ function describeError(e: unknown): string {
 }
 
 interface Props {
-  onSuccess?: () => void;
+  // result / errorMessage 는 부모 (MarketDiscoveryView) 가 보유 — onSuccess 의
+  // loadTopn() 호출이 부모의 phase 를 loading 으로 바꿔서 본 카드가 unmount/
+  // remount 되어도 결과 표시가 유지되도록 lift state up (2026-06-21 운영 회귀
+  // 수정).
+  result: RelativeUpsideRunResult | null;
+  errorMessage: string | null;
+  onResult: (result: RelativeUpsideRunResult) => void;
+  onError: (message: string) => void;
 }
 
-export default function RelativeUpsideRunCard({ onSuccess }: Props) {
+export default function RelativeUpsideRunCard({
+  result,
+  errorMessage,
+  onResult,
+  onError,
+}: Props) {
   const [running, setRunning] = useState<boolean>(false);
-  const [result, setResult] = useState<RelativeUpsideRunResult | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleRun = useCallback(async () => {
     if (running) return;
     setRunning(true);
-    setErrorMessage(null);
     try {
       const res = await runRelativeUpsideScore();
-      setResult(res);
-      if (res.status === "ok" && onSuccess) {
-        onSuccess();
-      }
+      onResult(res);
     } catch (e) {
-      setErrorMessage(describeError(e));
+      onError(describeError(e));
       // 기존 result 는 유지 (지시문 — 실패 시 기존 점수 보존).
     } finally {
       setRunning(false);
     }
-  }, [running, onSuccess]);
+  }, [running, onResult, onError]);
 
   const displayStatus: RelativeUpsideRunStatus | "idle" | "running" = running
     ? "running"

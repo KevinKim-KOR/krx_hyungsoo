@@ -31,6 +31,7 @@ import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
 import RelativeUpsideRunCard from "./RelativeUpsideRunCard";
+import type { RelativeUpsideRunResult } from "@/lib/api/mlRelativeUpside";
 import TransferToAISessionsCard from "./TransferToAISessionsCard";
 import TransferToETFExposureCard from "./TransferToETFExposureCard";
 
@@ -233,6 +234,14 @@ export default function MarketDiscoveryView({
   const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
   const [basis, setBasis] = useState<MarketBasis>(DEFAULT_MARKET_BASIS);
   const [order, setOrder] = useState<MarketOrder>(DEFAULT_MARKET_ORDER);
+  // 2026-06-21 ML 축1 UI — RelativeUpsideRunCard 결과를 부모가 보유 (lift state up).
+  // 카드의 onSuccess={loadTopn} 콜백이 phase 를 loading 으로 바꿔 카드 unmount/
+  // remount 가 발생하면 카드 내부 useState 가 초기화되는 회귀 차단.
+  const [relativeUpsideResult, setRelativeUpsideResult] =
+    useState<RelativeUpsideRunResult | null>(null);
+  const [relativeUpsideErrorMessage, setRelativeUpsideErrorMessage] = useState<
+    string | null
+  >(null);
   const pollTickRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -545,8 +554,21 @@ export default function MarketDiscoveryView({
       {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
       <MarketContextCard ctx={data.market_context ?? null} />
       {/* 2026-06-21 ML 축1 — 상대상승 참고점수 계산 실행 카드. 성공 시
-          loadTopn() 으로 후보 표 재조회 (지시문 — 성공 후 후보 목록 갱신). */}
-      <RelativeUpsideRunCard onSuccess={loadTopn} />
+          loadTopn() 으로 후보 표 재조회 (지시문 — 성공 후 후보 목록 갱신).
+          result / errorMessage 는 부모가 보유 — 카드 unmount/remount 와 무관하게
+          결과 유지 (2026-06-21 운영 회귀 수정). */}
+      <RelativeUpsideRunCard
+        result={relativeUpsideResult}
+        errorMessage={relativeUpsideErrorMessage}
+        onResult={(res) => {
+          setRelativeUpsideResult(res);
+          setRelativeUpsideErrorMessage(null);
+          if (res.status === "ok") {
+            loadTopn();
+          }
+        }}
+        onError={(msg) => setRelativeUpsideErrorMessage(msg)}
+      />
       {/* 통합 테이블 */}
       <CandidateTable
         candidates={data.candidates ?? []}
