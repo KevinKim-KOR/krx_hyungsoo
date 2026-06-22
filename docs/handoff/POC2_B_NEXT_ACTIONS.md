@@ -1,12 +1,43 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결)
+작성일: 2026-05-20 / 갱신: 2026-06-21 (보유 ETF와 시장 후보 비교 v1)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-21 — ML 축1 — 상대상승 점수 실행 UI 연결)
+## 0. 직전 STEP 결과 (2026-06-21 — 보유 ETF와 시장 후보 비교 v1)
+
+지시문 단일 목표: 기존 Market Discovery 안에서 보유 ETF 와 시장 후보 ETF 를
+같은 화면에서 비교. 신규 endpoint / 신규 계산 0건.
+
+### 결과 요약
+
+- 신규 frontend: `HoldingsCompareView` — 보유 요약 표 + 후보 비교 표 (좌측 70%) + 후보 선택 상세 (우측 30%, split pane).
+- 수정 frontend: `MarketDiscoveryView` — 상단 탭 토글 ("기본" / "보유와 비교") + 탭별 렌더 분기.
+- 데이터 조합 (지시문 §5): 기존 `GET /market/topn/latest` + `GET /holdings/enriched` + `GET /holdings/market-evidence/latest` 응답을 client-side ticker 매칭으로 조합. exact match + constituents overlap 두 종류 표시.
+- Evidence 명시 조회: 사용자 버튼 클릭으로만 조회, 후보 선택 자동 fetch 0건.
+- 기준일 분리 표시: 후보 / 보유 / 중복 정보 각각 별도 노출.
+- 신규 backend 0건. 기존 산식 변경 0건. OCI / PARAM / Telegram 변경 0건.
+
+### 검증
+
+- pytest **616 passed** (회귀 0 — backend 변경 0건). black / flake8 / frontend lint / build PASS.
+
+### 다음 분기 후보
+
+PC_OCI_ARCHITECTURE_DIRECTION 순서:
+
+1. **ML 축2** — 위험 감지용 시계열 빈자리 하나 채우기 STEP.
+2. **점수·위험·보유 비교가 모이는 PC 판단 화면** 좁은 STEP (본 STEP 의 후속).
+3. **OCI read model foundation** — PC 판단 화면 + ML 축2 1차 결과 확보 뒤.
+4. **BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP**.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-21 — ML 축1 — 상대상승 점수 실행 UI 연결)
 
 지시문 단일 목표: 기존 `relative_upside_score_v0` 실행을 Market Discovery UI 에 연결.
 사용자가 CLI 없이 화면 버튼 1개로 점수 계산 + 정상 실행 여부 확인.

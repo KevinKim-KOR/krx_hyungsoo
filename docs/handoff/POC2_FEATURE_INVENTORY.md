@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결)
+작성일: 2026-05-27 / 갱신: 2026-06-21 (보유 ETF와 시장 후보 비교 v1)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -583,6 +583,29 @@
 | OCI / PARAM / Telegram | **0건** — `scripts/run_three_push_runtime_oci.py` / `app/three_push_runtime_message_builder.py` / PARAM 구조 / Telegram 메시지 변경 X. |
 | 테스트 | 7건 (FIX r1 후 +2) — `tests/test_api_ml_relative_upside.py`. pytest 615 passed (608 + 7 신규, 회귀 0). 모든 테스트 `tmp_path` 격리로 운영 artifact 오염 0건. |
 | 다음 조치 | (1) 사용자가 화면 운영 사이클 검증. (2) ML 축2 위험 감지 빈자리 STEP 진입 시 동일 UI 패턴 재사용. |
+
+### 2.31 보유 ETF와 시장 후보 비교 v1 (2026-06-21 신규)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | Market Discovery 안에서 보유 ETF 와 시장 후보 ETF 를 같은 화면에서 비교. 신규 endpoint / 신규 계산 0건 — 기존 응답을 client-side 조합. |
+| 현재 메뉴 위치 | Market Discovery 화면 — 상단 탭 "기본" / "보유와 비교". |
+| 기능 목적 | 사용자가 후보 ETF 가 강해 보일 때 (a) 보유 ETF 와 겹치는가, (b) 기존 보유보다 최근 상대 흐름이 강한가, (c) 중복 정보가 조회된 상태인가, (d) 데이터 부족으로 비교 보류해야 하는가를 한 화면에서 판단 가능. |
+| 사용 가능 여부 | **사용 가능** (2026-06-21 commit 예정). |
+| UI 구성 | **상단**: 탭 토글 (CompareViewTabs). **기본 탭**: 기존 `CandidateTable` + `SummaryHeader`. **보유와 비교 탭**: `HoldingsCompareView` — (1) 기준일 헤더 (후보 / 보유 / 중복 정보 각각 별도) + Evidence 명시 조회 버튼. (2) 좌측 70% — 보유 요약 표 + 후보 비교 표. (3) 우측 30% — 후보 선택 상세 (split pane, sticky). |
+| 데이터 출처 | 기존 3개 endpoint 조합 — `GET /market/topn/latest` (후보 + 상대상승점수 + 단기 흐름) + `GET /holdings/enriched` (보유 + 평가금액/손익 — 캐시 기반 자동 로드) + `GET /holdings/market-evidence/latest` (보유별 evidence — 명시 조회). |
+| 보유 요약 표 | 컬럼: 티커 / ETF명 / 매입 비중 / 평가 비중 / 손익률 / 5d / 20d / KODEX 대비 20d / 데이터 상태. 로컬 정렬: 매입 비중 / 평가 비중 / 손익률. evidence 미조회 시 5d / 20d / 초과수익 → `—`, 데이터 상태 → `not_loaded`. |
+| 후보 비교 표 | 컬럼: 순위 / 티커 / ETF명 / 참고점수 / 20d / KODEX 대비 20d / 고점 대비 / 보유 중복. 로컬 정렬: 참고점수 / 20d / KODEX 대비 20d / 고점 대비 / 보유 중복. `null` 후보는 항상 뒤로 (지시문 §4.3 — 임의 순위 X). 행 클릭으로 후보 선택. |
+| 보유 중복 상태 | 두 종류 모두 제공 (사용자 결정 2026-06-21): (a) **exact match** — 후보 ticker ↔ 보유 ticker 직접 일치, 후보 표에 "보유 일치" 배지. (b) **constituents overlap** — 후보 선택 시 상세 영역에서 보유 ETF 의 구성종목 ↔ 현재 후보군 반복 핵심 종목 상위 5건 표시 (evidence 응답의 `constituents_overlap.overlap_with_market_core` 그대로 노출). |
+| Overlap 상태 분기 (지시문 §4.5) | `not_loaded` / `loading` / `ok` / `unavailable` 그대로 표시. 후보 선택만으로 자동 fetch 안 함. 조회 실패 시 기존 값 유지. `unavailable` 을 "중복 없음" 으로 해석 X. |
+| 선택 상세 영역 | sticky split pane 우측 30%. 표시: 참고점수 / 점수 근거 (reasons bullet) / 5/10/20일 수익률 + KODEX 대비 초과수익 / 고점 대비 / 데이터 품질 / 보유 비교 (exact match 시 "보유 ETF 와 ticker 일치" + 구성종목 overlap 상위 5건). `not_loaded` 시 명시 조회 안내. |
+| 기준일 분리 표시 (지시문 §4.1) | 후보 기준일 (`data.asof`) / 보유 정보 기준일 (`evidence.holdings_asof`) / 중복 정보 기준일 (`evidence.market_asof`) 모두 각각 별도 표시. 합쳐서 같은 시점처럼 표시 X. |
+| 사용자 고지 | 카드 하단 "본 비교 화면은 매수·매도·교체·비중 조절 판단을 자동으로 제시하지 않습니다." |
+| 신규 backend | **0건** — `app/api_market_topn.py` / `app/api.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건. |
+| OCI / PARAM / Telegram / DB | **0건**. |
+| 기존 산식 변경 | **0건** — 수익률 / 초과수익 / 상대상승점수 / overlap 산식 변경 X. |
+| 테스트 | backend pytest 616 passed (회귀 0 — backend 변경 0건). frontend lint / build PASS. |
+| 다음 조치 | (1) 사용자가 운영 사이클 검증. (2) ML 축2 위험 감지 빈자리 STEP 진입 시 위험 evidence 도 본 UI 패턴 재사용. |
 
 ---
 

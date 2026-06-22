@@ -30,8 +30,12 @@ import {
 import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
+import HoldingsCompareView from "./HoldingsCompareView";
 import RelativeUpsideRunCard from "./RelativeUpsideRunCard";
 import type { RelativeUpsideRunResult } from "@/lib/api/mlRelativeUpside";
+
+// 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1) — 탭 토글.
+type CompareViewMode = "default" | "holdings_compare";
 import TransferToAISessionsCard from "./TransferToAISessionsCard";
 import TransferToETFExposureCard from "./TransferToETFExposureCard";
 
@@ -242,6 +246,9 @@ export default function MarketDiscoveryView({
   const [relativeUpsideErrorMessage, setRelativeUpsideErrorMessage] = useState<
     string | null
   >(null);
+  // 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1).
+  const [compareViewMode, setCompareViewMode] =
+    useState<CompareViewMode>("default");
   const pollTickRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -569,19 +576,80 @@ export default function MarketDiscoveryView({
         }}
         onError={(msg) => setRelativeUpsideErrorMessage(msg)}
       />
-      {/* 통합 테이블 */}
-      <CandidateTable
-        candidates={data.candidates ?? []}
-        basis={basis}
-        order={order}
-        onSort={handleSort}
-        relativeUpsideScoreStatus={data.relative_upside_score_status ?? null}
-        relativeUpsideScoreUserNotice={
-          data.relative_upside_score_user_notice ?? null
-        }
+      {/* 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1) — 상단 탭 토글. */}
+      <CompareViewTabs
+        mode={compareViewMode}
+        onChange={setCompareViewMode}
       />
-      <SummaryHeader data={data} />
+      {compareViewMode === "default" ? (
+        <>
+          {/* 통합 테이블 */}
+          <CandidateTable
+            candidates={data.candidates ?? []}
+            basis={basis}
+            order={order}
+            onSort={handleSort}
+            relativeUpsideScoreStatus={data.relative_upside_score_status ?? null}
+            relativeUpsideScoreUserNotice={
+              data.relative_upside_score_user_notice ?? null
+            }
+          />
+          <SummaryHeader data={data} />
+        </>
+      ) : (
+        <HoldingsCompareView data={data} />
+      )}
     </section>
+  );
+}
+
+// 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1) — 상단 탭 토글.
+function CompareViewTabs({
+  mode,
+  onChange,
+}: {
+  mode: CompareViewMode;
+  onChange: (m: CompareViewMode) => void;
+}) {
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: "8px 16px",
+    border: "none",
+    borderBottom: active ? "2px solid #0284c7" : "2px solid transparent",
+    backgroundColor: "transparent",
+    color: active ? "#0284c7" : "var(--muted)",
+    fontWeight: active ? "bold" : "normal",
+    cursor: "pointer",
+  });
+  return (
+    <div
+      role="tablist"
+      style={{
+        display: "flex",
+        gap: 0,
+        borderBottom: "1px solid var(--border)",
+        marginTop: 12,
+        marginBottom: 12,
+      }}
+    >
+      <button
+        role="tab"
+        type="button"
+        aria-selected={mode === "default"}
+        onClick={() => onChange("default")}
+        style={tabStyle(mode === "default")}
+      >
+        기본
+      </button>
+      <button
+        role="tab"
+        type="button"
+        aria-selected={mode === "holdings_compare"}
+        onClick={() => onChange("holdings_compare")}
+        style={tabStyle(mode === "holdings_compare")}
+      >
+        보유와 비교
+      </button>
+    </div>
   );
 }
 

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-21 (ML 축1 — 상대상승 점수 실행 UI 연결, FIX r3 최종)
+최종 업데이트: 2026-06-21 (보유 ETF와 시장 후보 비교 v1, FIX r1 최종)
 
 ## 0. Canonical
 
@@ -23,7 +23,20 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **ML 축1 — 상대상승 점수 실행 UI 연결** (2026-06-21).
+- **현재 완료 상태**: **보유 ETF와 시장 후보 비교 v1** (2026-06-21).
+  - 지시문 단일 목표: 기존 Market Discovery 안에서 보유 ETF 와 시장 후보 ETF 를 같은 화면에서 비교. 신규 endpoint / 신규 계산 0건 — 기존 `GET /market/topn/latest` + `GET /holdings/enriched` + `GET /holdings/market-evidence/latest` 응답을 프론트에서 조합.
+  - **신규 frontend 1종**: `frontend/app/components/HoldingsCompareView.tsx` — 보유 ETF 요약 표 (티커/명/매입 비중/평가 비중/손익률/5d/20d/KODEX 대비 20d/데이터 상태 + 로컬 정렬) + 후보 비교 표 (참고점수/20d/KODEX 대비 20d/고점 대비/보유 중복 + 로컬 정렬) + split pane 우측에 후보 선택 상세 (점수 근거 + 5/10/20일 수익률·초과수익 + 고점 대비 + 데이터 품질 + 보유 비교 evidence — 보유 ETF ticker 일치 + 구성종목 반복 핵심 종목 최대 5건).
+  - **수정 frontend 1종**: `frontend/app/components/MarketDiscoveryView.tsx` — `CompareViewTabs` 상단 탭 ("기본" / "보유와 비교") 추가. 탭별로 기존 `CandidateTable + SummaryHeader` 또는 신규 `HoldingsCompareView` 렌더.
+  - **데이터 조합 원칙 (지시문 §5)**: ETF 식별자 (ticker) 기준 client-side 매칭. (a) **exact match** — 후보 ticker ↔ 보유 ticker. (b) **constituents overlap** — 선택된 후보가 보유 ETF 와 ticker 일치 시, 해당 보유 ETF 의 `constituents_overlap.overlap_with_market_core` (보유 ETF 구성종목 ↔ 현재 후보군 반복 핵심 종목) 상위 5건 표시. 신규 수익률 계산 / 신규 중복률 계산 / 신규 종합점수 0건.
+  - **Evidence 명시 조회 (지시문 §4.5)**: `not_loaded` / `loading` / `ok` / `unavailable` 상태 그대로 표시. 후보 선택만으로 자동 조회 안 함. 조회 실패 시 기존 값 유지. 사용자 버튼 "보유 비교 evidence 조회" 명시 클릭 필요.
+  - **기준일 분리 표시 (지시문 §4.1, AC-7)**: 후보 기준일 (`data.asof`) / 보유 정보 기준일 (`evidence.holdings_asof`) / 중복 정보 기준일 (`evidence.market_asof`) 각각 별도 표시. 합쳐서 같은 시점처럼 표시 X.
+  - **보유 중복 상태 표시 (지시문 §4.4)**: 후보 표의 "보유 중복" 컬럼 — `exact_match` (보유 일치) / `not_loaded` / `—`. `not_loaded` / `unavailable` 을 "중복 없음" 으로 해석 X.
+  - **데이터 부족 처리**: 없는 값은 `—` 또는 unavailable 로 표시. 임의 채우기 / 임의 순위 / 임의 합산 0건. 점수 null 후보는 정렬 시 항상 뒤로.
+  - **FIX r1 (검증자 1차 REJECTED 후속, A-1/A-2/A-3/A-4 수용)**: (r1-1) 보유 ETF 요약 표에 "고점 대비" 컬럼 추가. evidence 응답에 직접 필드 없으므로 `unavailable` 명시 (지시문 §4.2 — 없는 값은 unavailable 표시). (r1-2) 카드 하단 helper 문구에서 "매수·매도·교체·비중 조절 판단을 자동으로 제시하지 않습니다" 문장 완전 제거 (지시문 §6 / AC-9 — 부정 안내문 형태라도 해당 단어 금지). (r1-3) 신규 핵심 파일 (`HoldingsCompareView.tsx` + `POC2_HOLDINGS_CANDIDATE_COMPARE_V1_CONCLUSION.md`) 의 untracked 상태 → FIX r1 commit 시 명시적 staged. (r1-4) CONCLUSION §5.3 본문 표 헤더에 "고점 대비" 추가 + AC-2 셀 정정.
+  - 신규 backend 0건 — `app/api_market_topn.py` / `app/api.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건.
+  - OCI / PARAM / Telegram / scheduler / DB 구조 변경 0건. 기존 수익률/초과수익/상대상승점수/overlap 산식 변경 0건.
+  - pytest **616 passed** (회귀 0 — backend 변경 0건). black / flake8 PASS. frontend lint / build PASS.
+- **이전 STEP**: **ML 축1 — 상대상승 점수 실행 UI 연결** (2026-06-21).
   - 지시문 단일 목표: 기존 `relative_upside_score_v0` 실행을 Market Discovery UI 에 연결. 사용자가 CLI 없이 화면에서 점수 계산 + 정상 실행 여부 확인.
   - **신규 backend 1종**: `app/api_ml_relative_upside.py` — `POST /market/relative-upside/run` router. 동기 처리 (사용자 결정 2026-06-21) — `scripts.run_ml_relative_upside_score_v0.main()` 을 직접 import 호출 (subprocess 가 아닌 같은 프로세스 함수 호출). 실패 / rc≠0 / meta 손상 / meta.status≠ok 4분기 처리 (FIX r1 — 손상 분리). 응답 6 필드 (status / asof_date / generated_at / scored_candidate_count / gpu_execution_used / message) — device name / loss / epoch / artifact path / raw traceback 노출 0건.
   - **수정 1종**: `app/api.py` — router 등록.
