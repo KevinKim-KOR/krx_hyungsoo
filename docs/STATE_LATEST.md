@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-21 (보유 ETF와 시장 후보 비교 v1, FIX r3 최종)
+최종 업데이트: 2026-06-21 (보유 ETF와 시장 후보 비교 v1, FIX r4 최종)
 
 ## 0. Canonical
 
@@ -35,6 +35,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **FIX r1 (검증자 1차 REJECTED 후속, A-1/A-2/A-3/A-4 수용)**: (r1-1) 보유 ETF 요약 표에 "고점 대비" 컬럼 추가. evidence 응답에 직접 필드 없으므로 `unavailable` 명시 (지시문 §4.2 — 없는 값은 unavailable 표시). (r1-2) 카드 하단 helper 문구에서 "매수·매도·교체·비중 조절 판단을 자동으로 제시하지 않습니다" 문장 완전 제거 (지시문 §6 / AC-9 — 부정 안내문 형태라도 해당 단어 금지). (r1-3) 신규 핵심 파일 (`HoldingsCompareView.tsx` + `POC2_HOLDINGS_CANDIDATE_COMPARE_V1_CONCLUSION.md`) 의 untracked 상태 → FIX r1 commit 시 명시적 staged. (r1-4) CONCLUSION §5.3 본문 표 헤더에 "고점 대비" 추가 + AC-2 셀 정정.
   - **FIX r2 (검증자 2차 REJECTED 후속, A-2/A-3 stale 정합성)**: (r2-1) CONCLUSION L53 AC-9 셀의 stale 표현 ("카드 하단에 사용자 고지 '본 비교 화면은 매수·매도·교체·비중 조절...'") 을 실제 UI ("UI 사용자 표시 영역에 금지 단어 0건") 와 맞춰 정정. (r2-2) STATE_LATEST L28 보유 표 컬럼 목록 9 → 10 (`고점 대비` 명시 추가). (r2-3) pytest 결과를 "616 passed (회귀 0)" 단축 표기 대신 실제 명령 결과 "616 passed, 1 failed (종료 코드 1) — 실패 1건은 본 STEP 이전부터 존재하는 기존 환경 실패" 로 정직 표기 (검증자 권고).
   - **FIX r3 (검증자 3차 REJECTED 후속, A-3 산출물 정합성)**: FIX r2 에서 STATE_LATEST + CONCLUSION 만 정정하고 POC2_FEATURE_INVENTORY §2.31 본문은 stale 잔존. 3건 정정 — (r3-1) §2.31 "보유 요약 표" 컬럼 목록 9 → 10 (`고점 대비` 명시 + FIX r1 unavailable 정책 표기). (r3-2) "사용자 고지" 셀의 stale 부정 안내문 표현을 "UI 사용자 표시 영역에 금지 단어 0건" 으로 정정. (r3-3) "테스트" 셀의 "616 passed (회귀 0)" 단축 표기를 정직 표기 ("616 passed, 1 failed, 종료 코드 1 — 기존 환경 실패 1건은 본 STEP 무관") 로 정정.
+  - **FIX r4 (검증자 4차 REJECTED 후속, A-2/A-3 stale 정합성)**: FIX r3 에서 FEATURE_INVENTORY + NEXT_ACTIONS 만 정정하고 CONCLUSION AC-11 셀 (L55) stale 잔존. 1건 정정 — CONCLUSION L55 AC-11 셀의 "DONE — pytest 616 passed (회귀 0)" 단축 표기를 정직 표기 ("PARTIAL — 616 passed, 1 failed (종료 코드 1, 회귀 0 — 기존 환경 실패 1건 본 STEP 무관). AC-11 엄밀한 전체 통과 조건은 기존 회귀로 인해 충족 아님, BACKLOG 후속") 로 정정. 같은 CONCLUSION 안에서 §3 AC 표와 §8 검증 결과 표가 동일 결과를 일관되게 기록.
   - 신규 backend 0건 — `app/api_market_topn.py` / `app/api.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건.
   - OCI / PARAM / Telegram / scheduler / DB 구조 변경 0건. 기존 수익률/초과수익/상대상승점수/overlap 산식 변경 0건.
   - pytest 전체 명령 결과: **616 passed, 1 failed** (종료 코드 1, 회귀 0 — 실패 1건은 `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 로 본 STEP 이전부터 존재하는 기존 환경 실패. backend 변경 0건이므로 본 STEP 무관). black / flake8 PASS. frontend lint / build PASS.
