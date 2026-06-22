@@ -22,7 +22,7 @@
 
 ### 검증
 
-- pytest **616 passed** (회귀 0 — backend 변경 0건). black / flake8 / frontend lint / build PASS.
+- pytest 전체 실행 명령 결과: **616 passed, 1 failed** (종료 코드 1, 회귀 0 — backend 변경 0건). 실패 1건은 `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 로 본 STEP 이전부터 존재하는 기존 환경 실패. black / flake8 / frontend lint / build PASS.
 
 ### 다음 분기 후보
 

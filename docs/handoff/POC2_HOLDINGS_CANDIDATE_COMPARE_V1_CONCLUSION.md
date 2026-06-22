@@ -1,6 +1,6 @@
 # POC2 — 보유 ETF와 시장 후보 비교 v1 Conclusion
 
-작성일: 2026-06-21 / FIX r1: 2026-06-21 (보유 ETF "고점 대비" 컬럼 unavailable 명시 추가 + 금지 문구 제거 + staged 정정) / FIX r2: 2026-06-21 (stale 문서 정정 + pytest 결과 정직 표기)
+작성일: 2026-06-21 / FIX r1: 2026-06-21 (보유 ETF "고점 대비" 컬럼 unavailable 명시 추가 + 금지 문구 제거 + staged 정정) / FIX r2: 2026-06-21 (stale 문서 정정 + pytest 결과 정직 표기) / FIX r3: 2026-06-21 (POC2_FEATURE_INVENTORY §2.31 stale 정정)
 STEP: HOLDINGS_CANDIDATE_COMPARE_V1
 상태: DONE
 
@@ -293,7 +293,48 @@ UI helper 문구는 제거됐는데 AC 셀이 정정 누락.
 
 ---
 
-## 11. 다음 단계 (사용자 결정 대기)
+## 11. FIX r3 (검증자 3차 REJECTED 후속)
+
+검증자 3차 REJECTED 사유 (A-3 산출물 정합성) — FIX r2 에서 STATE_LATEST +
+CONCLUSION 만 정정하고 `POC2_FEATURE_INVENTORY.md §2.31` 본문은 stale 잔존.
+3건 정정.
+
+### FIX r3-1 (A-3) — FEATURE_INVENTORY §2.31 "보유 요약 표" 셀 stale
+
+**문제**: §2.31 의 "보유 요약 표" 셀 (L597) 이 컬럼 9종 ("티커 / ETF명 / 매입
+비중 / 평가 비중 / 손익률 / 5d / 20d / KODEX 대비 20d / 데이터 상태") 으로
+적혀 있어 FIX r1 에서 추가한 "고점 대비" 누락.
+
+**수정**: 셀을 10 컬럼으로 정정 + "**고점 대비** (FIX r1): evidence 응답에
+직접 필드 없으므로 모든 행에서 `unavailable` 명시" 표기.
+
+### FIX r3-2 (A-3) — FEATURE_INVENTORY §2.31 "사용자 고지" 셀 stale
+
+**문제**: §2.31 의 "사용자 고지" 셀 (L603) 에 FIX r1 에서 제거한 부정 안내문
+"매수·매도·교체·비중 조절 판단을 자동으로 제시하지 않습니다" 가 stale 로 남음.
+
+**수정**: 셀을 "UI 사용자 표시 영역에 매수·매도·추천·교체·비중 조절 단어 0건"
+으로 정정 (FIX r1 정책 반영).
+
+### FIX r3-3 (A-3) — FEATURE_INVENTORY §2.31 "테스트" 셀 stale
+
+**문제**: §2.31 의 "테스트" 셀 (L607) 에 "backend pytest 616 passed (회귀 0)"
+단축 표기. FIX r2 정직 표기 원칙과 충돌.
+
+**수정**: 셀을 "전체 실행 명령 결과: 616 passed, 1 failed (종료 코드 1, 회귀
+0 — backend 변경 0건). 실패 1건은 본 STEP 이전부터 존재하는 기존 환경 실패"
+로 정직 표기.
+
+### FIX r3 검증
+
+- 코드 동작 변경 0건 (문서 정정만).
+- 본 STEP 영역 stale 잔존 검증: 검증 결과 셀 / 사용자 고지 셀 / 보유 표 컬럼
+  목록 / pytest 결과 표기 — STATE_LATEST / CONCLUSION / FEATURE_INVENTORY 3
+  문서 모두 정합.
+
+---
+
+## 12. 다음 단계 (사용자 결정 대기)
 
 PC_OCI_ARCHITECTURE_DIRECTION 순서:
 
