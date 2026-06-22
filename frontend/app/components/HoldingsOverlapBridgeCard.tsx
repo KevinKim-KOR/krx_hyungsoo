@@ -180,9 +180,9 @@ export default function HoldingsOverlapBridgeCard({
                 <strong>{data.summary.nav_discount_unavailable_count}</strong>건.
               </p>
               <div style={{ marginTop: 6 }}>
-                {data.holdings.map((h) => (
+                {data.holdings.map((h, idx) => (
                   <HoldingsRow
-                    key={h.ticker}
+                    key={`${idx}|${h.ticker}|${h.account_group ?? ""}`}
                     h={h}
                     candidateTickerSet={candidateTickerSet}
                     repeatedCoreTickerSet={repeatedCoreTickerSet}

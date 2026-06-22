@@ -190,7 +190,7 @@ function HoldingsList({
   if (holdings.length === 0) return null;
   return (
     <div style={{ marginTop: "0.75rem" }}>
-      {holdings.map((h) => {
+      {holdings.map((h, idx) => {
         const badgeClass =
           h.topn_match.status === "matched_topn_candidate"
             ? "evidence-topn-badge evidence-topn-matched"
@@ -199,7 +199,10 @@ function HoldingsList({
               : "evidence-topn-badge evidence-topn-unknown";
 
         return (
-          <div key={h.ticker} className="evidence-holding-row">
+          <div
+            key={`${idx}|${h.ticker}|${h.account_group ?? ""}`}
+            className="evidence-holding-row"
+          >
             <div className="evidence-holding-header">
               <strong style={{ fontSize: "0.9rem" }}>{h.name}</strong>
               <span className="evidence-holding-ticker">{h.ticker}</span>
