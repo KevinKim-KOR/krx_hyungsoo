@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-21 (보유 ETF와 시장 후보 비교 v1, FIX r4 최종)
+최종 업데이트: 2026-06-21 (보유 ETF와 시장 후보 비교 v1, FIX r5 최종)
 
 ## 0. Canonical
 
@@ -36,6 +36,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **FIX r2 (검증자 2차 REJECTED 후속, A-2/A-3 stale 정합성)**: (r2-1) CONCLUSION L53 AC-9 셀의 stale 표현 ("카드 하단에 사용자 고지 '본 비교 화면은 매수·매도·교체·비중 조절...'") 을 실제 UI ("UI 사용자 표시 영역에 금지 단어 0건") 와 맞춰 정정. (r2-2) STATE_LATEST L28 보유 표 컬럼 목록 9 → 10 (`고점 대비` 명시 추가). (r2-3) pytest 결과를 "616 passed (회귀 0)" 단축 표기 대신 실제 명령 결과 "616 passed, 1 failed (종료 코드 1) — 실패 1건은 본 STEP 이전부터 존재하는 기존 환경 실패" 로 정직 표기 (검증자 권고).
   - **FIX r3 (검증자 3차 REJECTED 후속, A-3 산출물 정합성)**: FIX r2 에서 STATE_LATEST + CONCLUSION 만 정정하고 POC2_FEATURE_INVENTORY §2.31 본문은 stale 잔존. 3건 정정 — (r3-1) §2.31 "보유 요약 표" 컬럼 목록 9 → 10 (`고점 대비` 명시 + FIX r1 unavailable 정책 표기). (r3-2) "사용자 고지" 셀의 stale 부정 안내문 표현을 "UI 사용자 표시 영역에 금지 단어 0건" 으로 정정. (r3-3) "테스트" 셀의 "616 passed (회귀 0)" 단축 표기를 정직 표기 ("616 passed, 1 failed, 종료 코드 1 — 기존 환경 실패 1건은 본 STEP 무관") 로 정정.
   - **FIX r4 (검증자 4차 REJECTED 후속, A-2/A-3 stale 정합성)**: FIX r3 에서 FEATURE_INVENTORY + NEXT_ACTIONS 만 정정하고 CONCLUSION AC-11 셀 (L55) stale 잔존. 1건 정정 — CONCLUSION L55 AC-11 셀의 "DONE — pytest 616 passed (회귀 0)" 단축 표기를 정직 표기 ("PARTIAL — 616 passed, 1 failed (종료 코드 1, 회귀 0 — 기존 환경 실패 1건 본 STEP 무관). AC-11 엄밀한 전체 통과 조건은 기존 회귀로 인해 충족 아님, BACKLOG 후속") 로 정정. 같은 CONCLUSION 안에서 §3 AC 표와 §8 검증 결과 표가 동일 결과를 일관되게 기록.
+  - **FIX r5 (검증자 5차 REJECTED 후속, A-2/A-3 stale 정합성)**: FIX r4 에서 AC-11 셀과 §8 검증 결과 표는 정직 표기로 정렬했지만 같은 CONCLUSION §9 "FIX r1 검증" 섹션 L247 의 "616 passed (회귀 0)" 단축 표기 stale 잔존. 1건 정정 — L247 을 정직 표기 ("616 passed, 1 failed, 종료 코드 1") 로 정정. CONCLUSION 전체 활성 검증 결과 표기 3곳 (AC-11 셀 / §8 검증 결과 표 / §9 FIX r1 검증) 모두 일관 정직 표기 확보.
   - 신규 backend 0건 — `app/api_market_topn.py` / `app/api.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건.
   - OCI / PARAM / Telegram / scheduler / DB 구조 변경 0건. 기존 수익률/초과수익/상대상승점수/overlap 산식 변경 0건.
   - pytest 전체 명령 결과: **616 passed, 1 failed** (종료 코드 1, 회귀 0 — 실패 1건은 `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 로 본 STEP 이전부터 존재하는 기존 환경 실패. backend 변경 0건이므로 본 STEP 무관). black / flake8 PASS. frontend lint / build PASS.
