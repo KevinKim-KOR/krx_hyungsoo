@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-21 (보유 ETF와 시장 후보 비교 v1, FIX r3)
+작성일: 2026-05-27 / 갱신: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -594,11 +594,11 @@
 | 사용 가능 여부 | **사용 가능** (2026-06-21 commit 예정). |
 | UI 구성 | **상단**: 탭 토글 (CompareViewTabs). **기본 탭**: 기존 `CandidateTable` + `SummaryHeader`. **보유와 비교 탭**: `HoldingsCompareView` — (1) 기준일 헤더 (후보 / 보유 / 중복 정보 각각 별도) + Evidence 명시 조회 버튼. (2) 좌측 70% — 보유 요약 표 + 후보 비교 표. (3) 우측 30% — 후보 선택 상세 (split pane, sticky). |
 | 데이터 출처 | 기존 3개 endpoint 조합 — `GET /market/topn/latest` (후보 + 상대상승점수 + 단기 흐름) + `GET /holdings/enriched` (보유 + 평가금액/손익 — 캐시 기반 자동 로드) + `GET /holdings/market-evidence/latest` (보유별 evidence — 명시 조회). |
-| 보유 요약 표 | 컬럼 10종 (FIX r1): 티커 / ETF명 / 매입 비중 / 평가 비중 / 손익률 / 5d / 20d / KODEX 대비 20d / **고점 대비** / 데이터 상태. 로컬 정렬: 매입 비중 / 평가 비중 / 손익률. evidence 미조회 시 5d / 20d / 초과수익 → `—`, 데이터 상태 → `not_loaded`. **고점 대비** (FIX r1): evidence 응답에 직접 필드 없으므로 모든 행에서 `unavailable` 명시 (지시문 §4.2). 향후 evidence 응답 확장 시 활용 가능. |
-| 후보 비교 표 | 컬럼: 순위 / 티커 / ETF명 / 참고점수 / 20d / KODEX 대비 20d / 고점 대비 / 보유 중복. 로컬 정렬: 참고점수 / 20d / KODEX 대비 20d / 고점 대비 / 보유 중복. `null` 후보는 항상 뒤로 (지시문 §4.3 — 임의 순위 X). 행 클릭으로 후보 선택. |
-| 보유 중복 상태 | 두 종류 모두 제공 (사용자 결정 2026-06-21): (a) **exact match** — 후보 ticker ↔ 보유 ticker 직접 일치, 후보 표에 "보유 일치" 배지. (b) **constituents overlap** — 후보 선택 시 상세 영역에서 보유 ETF 의 구성종목 ↔ 현재 후보군 반복 핵심 종목 상위 5건 표시 (evidence 응답의 `constituents_overlap.overlap_with_market_core` 그대로 노출). |
-| Overlap 상태 분기 (지시문 §4.5) | `not_loaded` / `loading` / `ok` / `unavailable` 그대로 표시. 후보 선택만으로 자동 fetch 안 함. 조회 실패 시 기존 값 유지. `unavailable` 을 "중복 없음" 으로 해석 X. |
-| 선택 상세 영역 | sticky split pane 우측 30%. 표시: 참고점수 / 점수 근거 (reasons bullet) / 5/10/20일 수익률 + KODEX 대비 초과수익 / 고점 대비 / 데이터 품질 / 보유 비교 (exact match 시 "보유 ETF 와 ticker 일치" + 구성종목 overlap 상위 5건). `not_loaded` 시 명시 조회 안내. |
+| 보유 요약 표 | **CLOSEOUT (2026-06-24)** 컬럼 6종: ETF명 / 평가 비중 / 손익률 / 20일 KODEX 초과수익 / 고점 대비 / 상태. 매입 회차가 아닌 **티커별 통합** 한 줄로 표시 (`aggregateHoldingsByTicker`). 평가 비중 = 티커별 통합 평가금액 / 전체 평가금액. 손익률 = 티커별 통합 손익 / 통합 매입금액. 로컬 정렬: 평가 비중 / 손익률 / 20일 KODEX 초과. 고점 대비는 evidence 응답에 직접 필드 없으므로 `확인 필요` / `중복 확인 전` 사용자 친화 문구 표시. 기존 enriched 원본 / 매입 회차 데이터 변경 0건 — 화면 표시용 통합만 수행. |
+| 후보 비교 표 | **CLOSEOUT (2026-06-24)** 컬럼 6종: ETF명 / 참고점수 / 20일 KODEX 초과수익 / 고점 대비 / 보유 노출 / 데이터 상태. 로컬 정렬: 참고점수 / 20일 KODEX 초과 / 고점 대비 / 보유 노출. `null` 후보는 항상 뒤로. 행 클릭으로 후보 선택. 정렬 키 4 종. |
+| 보유 노출 단일 칸 (AC-4) | **CLOSEOUT 핵심**. 한 칸에서 6가지 표현 — `직접 보유` / `직접 보유 · 구성종목도 겹침` / `구성종목 겹침 · 보유 ETF N개` / `중복 없음` / `중복 확인 전` / `중복 확인 불가`. 직접 보유 = ticker exact match. 구성종목 겹침 = client-side reverse-lookup (보유 ETF 의 `overlap_with_market_core[].ticker` 가 후보 ticker 와 일치). `중복 없음` 은 모든 보유 ETF 의 overlap 정상 조회 + 일치 0건일 때만. `unavailable` 을 "중복 없음" 으로 해석 X. |
+| Overlap 상태 분기 | 사용자 화면에서 raw 상태값 (`not_loaded` / `loading` / `ok` / `unavailable`) 노출 0건. 사용자 친화 문구로 변환 — `정상` / `일부 확인 불가` / `중복 확인 전` / `중복 확인 불가` / `데이터 없음` / `확인 필요`. 후보 선택만으로 자동 fetch 안 함. 조회 실패 시 기존 값 유지. |
+| 선택 상세 영역 (AC-5/AC-6) | sticky split pane 우측 30%. **순서 고정 (CLOSEOUT)**: (1) 보유 노출 요약 (직접 보유 여부 / 겹침 보유 ETF 수 / 가장 큰 겹침 대상 + weight%) — 카드 최상단. (2) 후보 흐름 (참고점수 + 점수 근거 + 5/10/20일 수익률·초과수익 + 고점 대비 + 데이터 품질). (3) 세부 근거 (구성종목 목록 + overlap 수치 + 시장 반복 정보) — **기본 접힘**, 사용자가 명시적으로 펼치기 버튼 클릭 시에만 노출. |
 | 기준일 분리 표시 (지시문 §4.1) | 후보 기준일 (`data.asof`) / 보유 정보 기준일 (`evidence.holdings_asof`) / 중복 정보 기준일 (`evidence.market_asof`) 모두 각각 별도 표시. 합쳐서 같은 시점처럼 표시 X. |
 | 사용자 고지 | (FIX r1) 부정 안내문 형태도 금지 단어 포함 금지 — UI 사용자 표시 영역에 매수·매도·추천·교체·비중 조절 단어 0건. 카드 하단 helper 는 후보별 보유 중복 설명 + 데이터 부재 표시 원칙만 유지. |
 | 신규 backend | **0건** — `app/api_market_topn.py` / `app/api.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건. |

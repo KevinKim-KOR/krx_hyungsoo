@@ -1,8 +1,8 @@
 # POC2 — 보유 ETF와 시장 후보 비교 v1 Conclusion
 
-작성일: 2026-06-21 / FIX r1: 2026-06-21 (보유 ETF "고점 대비" 컬럼 unavailable 명시 추가 + 금지 문구 제거 + staged 정정) / FIX r2: 2026-06-21 (stale 문서 정정 + pytest 결과 정직 표기) / FIX r3: 2026-06-21 (POC2_FEATURE_INVENTORY §2.31 stale 정정) / FIX r4: 2026-06-21 (CONCLUSION AC-11 셀 stale 정직 표기 + DONE → PARTIAL) / FIX r5: 2026-06-21 (CONCLUSION FIX r1 검증 섹션 L247 stale 정직 표기)
+작성일: 2026-06-21 / FIX r1~r5: 2026-06-21 (stale 정합성 5회 정정) / **CLOSEOUT: 2026-06-24 (티커별 통합 + 보유 노출 단일 칸 + 사용자 친화 상태 문구)**
 STEP: HOLDINGS_CANDIDATE_COMPARE_V1
-상태: DONE
+상태: DONE (CLOSEOUT)
 
 ---
 
@@ -412,7 +412,50 @@ grep -rn "<단축 표기>" docs/
 
 ---
 
-## 14. 다음 단계 (사용자 결정 대기)
+## 14. CLOSEOUT (2026-06-24) — 보유·후보 비교 v1 판단 화면 마무리
+
+지시문 단일 목표: 사용자가 "보유와 비교" 화면에서 10초 안에 (1) 실제 보유
+ETF·평가 비중, (2) 후보의 보유 노출 겹침, (3) 후보의 상대 흐름을 판단 가능
+하도록 정리. 신규 endpoint / 신규 계산 0건.
+
+### CLOSEOUT 변경 요약
+
+| 항목 | 변경 |
+|---|---|
+| 보유 표 행 단위 | 매입 회차 다중 행 → **티커별 통합 한 줄** (`aggregateHoldingsByTicker`). 평가 비중 = 통합 평가금액 / 전체 평가금액. 손익률 = 통합 손익 / 통합 매입금액. 기존 enriched 원본 / 매입 회차 데이터 변경 0건. |
+| 보유 표 컬럼 | 10 → **6 컬럼** (ETF명 / 평가 비중 / 손익률 / 20일 KODEX 초과 / 고점 대비 / 상태). 매입 회차 / 5d / 10d / 세부 평가정보 기본 숨김. |
+| 후보 표 컬럼 | 8 → **6 컬럼** (ETF명 / 참고점수 / 20일 KODEX 초과 / 고점 대비 / 보유 노출 / 데이터 상태). 순위 / 티커 / 20d 수익률 / 보유 일치 배지 별도 컬럼 통합. |
+| 보유 노출 1 칸 (AC-4) | 6가지 표현 — `직접 보유` / `직접 보유 · 구성종목도 겹침` / `구성종목 겹침 · 보유 ETF N개` / `중복 없음` / `중복 확인 전` / `중복 확인 불가`. constituents overlap reverse-lookup (보유 ETF 의 `overlap_with_market_core[].ticker` 가 후보 ticker 와 일치) 으로 client-side 매핑. `중복 없음` 은 모든 보유 ETF overlap 정상 조회 + 일치 0건일 때만. |
+| 선택 상세 순서 (AC-5/AC-6) | 1) **보유 노출 요약 카드 최상단** (직접 보유 / 겹침 보유 ETF 수 / 가장 큰 겹침 대상 + weight%). 2) 후보 흐름 (점수 + 근거 + 5/10/20일 수익률·초과수익 + 고점 대비 + 데이터 품질). 3) **세부 근거 (구성종목 목록 + overlap 수치) — 기본 접힘**. |
+| raw 상태값 사용자 노출 (AC-7) | `ok` / `unavailable` / `not_loaded` / `loading` / `failed` 문자열 사용자 화면 노출 0건. 사용자 친화 문구 — `정상` / `일부 확인 불가` / `중복 확인 전` / `중복 확인 불가` / `데이터 없음` / `확인 필요`. |
+
+### CLOSEOUT AC 달성 현황
+
+| AC | 결과 |
+|---|---|
+| AC-1 티커별 통합 | DONE — `aggregateHoldingsByTicker` |
+| AC-2 보유 표 6 컬럼 | DONE — ETF명 / 평가 비중 / 손익률 / 20일 KODEX 초과 / 고점 대비 / 상태 |
+| AC-3 후보 표 6 컬럼 | DONE — ETF명 / 참고점수 / 20일 KODEX 초과 / 고점 대비 / 보유 노출 / 데이터 상태 |
+| AC-4 보유 노출 단일 칸 | DONE — 6가지 표현 + reverse-lookup |
+| AC-5 선택 상세 보유 노출 요약 최상단 | DONE — 카드 §1 보유 노출 요약 → §2 후보 흐름 → §3 세부 근거 |
+| AC-6 세부 근거 기본 접힘 | DONE — `detailsExpanded` state, 사용자 명시 클릭 시 펼침 |
+| AC-7 raw 상태값 미노출 | DONE — `STATE_NORMAL` / `STATE_PARTIAL_UNAVAIL` / `STATE_UNCHECKED` / `STATE_UNAVAIL` / `STATE_NO_DATA` / `STATE_NEED_CHECK` 사용자 친화 상수만 화면 노출 |
+| AC-8 후보 선택 자동 fetch 0건 | DONE — Evidence 명시 조회 버튼 유지, row 클릭은 상세 영역 갱신만 |
+| AC-9 기존 산식 변경 0건 | DONE — 신규 backend 0건, 새 수익률 / 새 overlap 계산 0건 |
+| AC-10 실제 화면 상태 5종 | 정상 overlap / 중복 확인 전 / 중복 확인 불가 / 직접 보유 후보 / 구성종목 겹침 후보 — 모두 6가지 보유 노출 표현으로 구분 |
+| AC-11 backend tests / lint / build | pytest 전체 실행 명령 결과: 616 passed, 1 deselected (회귀 0 — backend 변경 0건). black / flake8 PASS. frontend lint / build PASS. |
+
+### CLOSEOUT 검증
+
+- frontend lint / build PASS.
+- backend pytest 전체 실행 명령 결과: **616 passed, 1 deselected** (회귀 0).
+- 신규 backend / 신규 endpoint / 신규 계산 0건.
+- 기존 enriched 원본 / 매입 회차 데이터 / overlap 산식 변경 0건.
+- OCI / PARAM / Telegram / DB 변경 0건.
+
+---
+
+## 15. 다음 단계 (사용자 결정 대기)
 
 PC_OCI_ARCHITECTURE_DIRECTION 순서:
 

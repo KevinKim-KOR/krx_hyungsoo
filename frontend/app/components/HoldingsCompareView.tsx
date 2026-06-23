@@ -1,20 +1,19 @@
 "use client";
 
 // POC2 — 보유 ETF와 시장 후보 비교 v1 (2026-06-21).
+// CLOSEOUT (2026-06-23): 사용자가 10초 안에 (1) 실제 보유 ETF·평가 비중,
+// (2) 후보의 보유 노출 겹침, (3) 후보의 상대 흐름을 판단 가능하도록 정리.
 //
-// Market Discovery 안의 "보유와 비교" 보기 모드. 새 endpoint / 새 계산 0건 —
-// 기존 GET /market/topn/latest + GET /holdings/enriched + GET /holdings/market-
-// evidence/latest 응답을 프론트에서 조합한다.
+// 변경 핵심:
+//   - 보유 ETF 행 단위를 매입 회차가 아닌 **티커별 통합** 으로 변경 (AC-1).
+//   - 보유 표 6 컬럼: ETF명 / 평가 비중 / 손익률 / 20일 KODEX 초과 / 고점 대비 / 상태.
+//   - 후보 표 6 컬럼: ETF명 / 점수 / 20일 초과 / 고점 대비 / 보유 노출 / 데이터 상태.
+//   - 후보 "보유 노출" 1 칸에 직접 보유 / 구성종목 겹침 / 중복 없음 표현 통합.
+//   - 후보 선택 상세: 보유 노출 요약 → 후보 흐름 → 세부 근거 (접힘).
+//   - raw 상태값 (ok/unavailable/not_loaded) 사용자 화면 미노출.
 //
-// 화면 구성:
-//   - 기준일 헤더 (후보 / 보유 / 중복 정보 각각)
-//   - 좌측 70% : 보유 요약 표 + 후보 비교 표 (세로 배치)
-//   - 우측 30% : 후보 선택 상세 (점수 근거 + 보유 중복 evidence)
-//
-// 보유 중복 상태 = exact match (ticker 일치) + constituents overlap (보유 ETF
-// 구성종목 ↔ 현재 후보군 반복 핵심 종목). 둘 다 제공.
-//
-// 매수/매도/추천/교체/비중 조절 문구 0건. 새 종합점수 0건.
+// 신규 API / 신규 계산 0건. 기존 holdings_enriched + market_evidence + topn
+// 응답을 client-side 조합.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
@@ -33,11 +32,6 @@ import type {
 
 const DASH = "-";
 
-function fmtNum(value: number | null | undefined, digits = 2): string {
-  if (value === null || value === undefined) return DASH;
-  return value.toFixed(digits);
-}
-
 function fmtPct(value: number | null | undefined): string {
   if (value === null || value === undefined) return DASH;
   const sign = value >= 0 ? "+" : "";
@@ -49,88 +43,352 @@ function returnColor(value: number | null | undefined): string {
   return value >= 0 ? "var(--ok)" : "var(--danger)";
 }
 
-// 후보 1건의 보유 중복 상태 (exact match + constituents overlap).
-interface OverlapStatus {
-  // exact match: 후보 ticker 와 동일한 보유 ETF 가 있으면 그 보유 ticker.
-  exactMatchHoldingTicker: string | null;
-  exactMatchHoldingName: string | null;
-  // constituents overlap: 후보가 어떤 보유 ETF 의 reverse-lookup (보유 구성종목
-  // 중에서 본 후보가 시장 반복 핵심 종목으로 분류된 경우) 에 들어 있는지.
-  // evidence 응답은 holding 별 overlap_with_market_core 만 제공하므로 frontend
-  // 에서 holding↔candidate 매핑은 ticker exact match 만 client-side 가능.
-  // 본 STEP 에서는 exact match 가 핵심이고, constituents overlap 은 evidence
-  // 응답의 holding 별 overlap 결과를 그대로 노출 (후보 선택 시 상세 영역).
-  overlapStateForCandidate: "exact_match" | "no_exact_match" | "not_loaded";
+// 보유 표 + 후보 표 사용자 친화 상태 문구 (지시문 — raw 상태값 미노출).
+const STATE_NORMAL = "정상";
+const STATE_PARTIAL_UNAVAIL = "일부 확인 불가";
+const STATE_UNCHECKED = "중복 확인 전";
+const STATE_UNAVAIL = "중복 확인 불가";
+const STATE_NO_DATA = "데이터 없음";
+const STATE_NEED_CHECK = "확인 필요";
+
+// ─── 티커별 통합 보유 (AC-1) ─────────────────────────────────────────
+
+interface AggregatedHolding {
+  ticker: string;
+  name: string | null;
+  // 통합 매입금액 (Σ invested_amount).
+  invested_amount: number;
+  // 통합 평가금액 (Σ eval_amount). null 행이 1건이라도 있으면 부분 unavail.
+  eval_amount: number | null;
+  eval_partial_unavail: boolean;
+  // 통합 손익률 = Σ pnl / Σ invested (전체 매입금액 기준).
+  pnl_rate_pct: number | null;
+  // 평가 비중 = ticker eval / 전체 eval. 전체 eval 0 이거나 null 이면 null.
+  market_weight_pct: number | null;
+  // 행 데이터 미수집 여부 (price_missing | calc_missing 가 1건이라도 true).
+  data_missing: boolean;
 }
 
-function computeOverlapStatus(
+function aggregateHoldingsByTicker(
+  rows: EnrichedHolding[],
+): AggregatedHolding[] {
+  if (rows.length === 0) return [];
+
+  // 전체 평가금액 (Σ eval_amount, null 제외).
+  const totalEval = rows.reduce(
+    (acc, r) => acc + (r.eval_amount ?? 0),
+    0,
+  );
+
+  // ticker → rows 그룹화 (순서 유지를 위해 처음 등장 ticker 순).
+  const byTicker = new Map<string, EnrichedHolding[]>();
+  for (const r of rows) {
+    const arr = byTicker.get(r.ticker) ?? [];
+    arr.push(r);
+    byTicker.set(r.ticker, arr);
+  }
+
+  const result: AggregatedHolding[] = [];
+  for (const [ticker, group] of byTicker) {
+    const invested = group.reduce((acc, r) => acc + r.invested_amount, 0);
+    let evalSum: number | null = 0;
+    let evalPartial = false;
+    let dataMissing = false;
+    for (const r of group) {
+      if (r.price_missing || r.calc_missing) dataMissing = true;
+      if (r.eval_amount === null) {
+        evalPartial = true;
+      } else if (evalSum !== null) {
+        evalSum += r.eval_amount;
+      }
+    }
+    // 1건이라도 eval null 이면 통합 평가 부분 unavail — 합계 null 처리.
+    if (evalPartial) evalSum = null;
+
+    const pnlRate =
+      evalSum !== null && invested > 0
+        ? ((evalSum - invested) / invested) * 100
+        : null;
+    const marketWeight =
+      evalSum !== null && totalEval > 0 ? (evalSum / totalEval) * 100 : null;
+
+    result.push({
+      ticker,
+      name: group[0].name ?? null,
+      invested_amount: invested,
+      eval_amount: evalSum,
+      eval_partial_unavail: evalPartial,
+      pnl_rate_pct: pnlRate,
+      market_weight_pct: marketWeight,
+      data_missing: dataMissing,
+    });
+  }
+  return result;
+}
+
+// ─── 보유 노출 1 칸 표현 (AC-4) ─────────────────────────────────────
+
+type ExposureKind =
+  | "direct_only" // 직접 보유 (구성종목 정보 없음)
+  | "direct_and_overlap" // 직접 보유 · 구성종목도 겹침
+  | "overlap_only" // 구성종목 겹침 · 보유 ETF N개
+  | "no_overlap" // 중복 없음 (전부 정상 조회된 경우만)
+  | "unchecked" // 중복 확인 전
+  | "unavailable"; // 중복 확인 불가
+
+interface ExposureSummary {
+  kind: ExposureKind;
+  // direct_only / direct_and_overlap 일 때: 직접 보유 ticker.
+  directHoldingTicker: string | null;
+  directHoldingName: string | null;
+  // overlap reverse-lookup — 본 후보 ticker 가 어떤 보유 ETF 의
+  // constituents_overlap.overlap_with_market_core 에 들어있는지.
+  overlapHoldingCount: number;
+  // 가장 weight_pct 가 큰 겹침 대상 (보유 ETF 이름).
+  topOverlapHoldingName: string | null;
+  topOverlapWeightPct: number | null;
+}
+
+function computeExposure(
   candidateTicker: string | null | undefined,
-  holdings: EnrichedHolding[],
+  aggregated: AggregatedHolding[],
+  evidenceByTicker: Record<string, HoldingsMarketEvidenceItem>,
   evidenceLoaded: boolean,
-): OverlapStatus {
-  if (!candidateTicker) {
+  evidenceError: boolean,
+): ExposureSummary {
+  // 직접 보유 (exact match).
+  const direct = candidateTicker
+    ? aggregated.find((h) => h.ticker === candidateTicker)
+    : undefined;
+  const directHoldingTicker = direct?.ticker ?? null;
+  const directHoldingName = direct?.name ?? null;
+
+  // overlap reverse-lookup: 본 후보 ticker 가 어떤 보유 ETF 의 overlap_with_
+  // market_core 리스트에 들어 있는가.
+  let overlapHoldingCount = 0;
+  let topOverlapHoldingName: string | null = null;
+  let topOverlapWeightPct: number | null = null;
+  let constituentsAnyUnavail = false;
+
+  if (evidenceLoaded && candidateTicker) {
+    for (const h of aggregated) {
+      const ev = evidenceByTicker[h.ticker];
+      if (!ev) continue;
+      const co = ev.constituents_overlap;
+      if (!co) continue;
+      if (
+        co.status === "constituents_unavailable" ||
+        co.status === "market_core_unavailable" ||
+        co.status === "unavailable"
+      ) {
+        constituentsAnyUnavail = true;
+        continue;
+      }
+      const found = (co.overlap_with_market_core ?? []).find(
+        (it) => it.ticker === candidateTicker,
+      );
+      if (found) {
+        overlapHoldingCount += 1;
+        const w = found.weight_pct ?? 0;
+        if (topOverlapWeightPct === null || w > topOverlapWeightPct) {
+          topOverlapWeightPct = found.weight_pct ?? null;
+          topOverlapHoldingName = h.name;
+        }
+      }
+    }
+  }
+
+  // 분류 (지시문 §1 §2 — 6가지).
+  if (!evidenceLoaded) {
+    if (evidenceError) {
+      return {
+        kind: "unavailable",
+        directHoldingTicker,
+        directHoldingName,
+        overlapHoldingCount: 0,
+        topOverlapHoldingName: null,
+        topOverlapWeightPct: null,
+      };
+    }
+    // 직접 보유는 evidence 없이도 enriched 만으로 판단 가능.
+    if (direct) {
+      return {
+        kind: "direct_only",
+        directHoldingTicker,
+        directHoldingName,
+        overlapHoldingCount: 0,
+        topOverlapHoldingName: null,
+        topOverlapWeightPct: null,
+      };
+    }
     return {
-      exactMatchHoldingTicker: null,
-      exactMatchHoldingName: null,
-      overlapStateForCandidate: evidenceLoaded ? "no_exact_match" : "not_loaded",
+      kind: "unchecked",
+      directHoldingTicker: null,
+      directHoldingName: null,
+      overlapHoldingCount: 0,
+      topOverlapHoldingName: null,
+      topOverlapWeightPct: null,
     };
   }
-  const match = holdings.find((h) => h.ticker === candidateTicker);
-  if (match) {
+
+  // evidence 로드된 경우.
+  if (direct && overlapHoldingCount > 0) {
     return {
-      exactMatchHoldingTicker: match.ticker,
-      exactMatchHoldingName: match.name,
-      overlapStateForCandidate: "exact_match",
+      kind: "direct_and_overlap",
+      directHoldingTicker,
+      directHoldingName,
+      overlapHoldingCount,
+      topOverlapHoldingName,
+      topOverlapWeightPct,
     };
   }
+  if (direct) {
+    return {
+      kind: "direct_only",
+      directHoldingTicker,
+      directHoldingName,
+      overlapHoldingCount: 0,
+      topOverlapHoldingName: null,
+      topOverlapWeightPct: null,
+    };
+  }
+  if (overlapHoldingCount > 0) {
+    return {
+      kind: "overlap_only",
+      directHoldingTicker: null,
+      directHoldingName: null,
+      overlapHoldingCount,
+      topOverlapHoldingName,
+      topOverlapWeightPct,
+    };
+  }
+  if (constituentsAnyUnavail) {
+    // 직접 보유도 없고 overlap 데이터도 일부 unavail → 중복 확인 불가.
+    return {
+      kind: "unavailable",
+      directHoldingTicker: null,
+      directHoldingName: null,
+      overlapHoldingCount: 0,
+      topOverlapHoldingName: null,
+      topOverlapWeightPct: null,
+    };
+  }
+  // 모든 보유 ETF 의 overlap 정상 조회됐고 일치 0건 → 진짜 "중복 없음".
   return {
-    exactMatchHoldingTicker: null,
-    exactMatchHoldingName: null,
-    overlapStateForCandidate: evidenceLoaded ? "no_exact_match" : "not_loaded",
+    kind: "no_overlap",
+    directHoldingTicker: null,
+    directHoldingName: null,
+    overlapHoldingCount: 0,
+    topOverlapHoldingName: null,
+    topOverlapWeightPct: null,
   };
 }
 
-// 후보 비교 표의 로컬 정렬 키.
+function exposureLabel(ex: ExposureSummary): string {
+  switch (ex.kind) {
+    case "direct_only":
+      return "직접 보유";
+    case "direct_and_overlap":
+      return "직접 보유 · 구성종목도 겹침";
+    case "overlap_only":
+      return `구성종목 겹침 · 보유 ETF ${ex.overlapHoldingCount}개`;
+    case "no_overlap":
+      return "중복 없음";
+    case "unchecked":
+      return STATE_UNCHECKED;
+    case "unavailable":
+      return STATE_UNAVAIL;
+  }
+}
+
+function exposureColor(ex: ExposureSummary): string {
+  switch (ex.kind) {
+    case "direct_only":
+    case "direct_and_overlap":
+      return "var(--warn)";
+    case "overlap_only":
+      return "var(--warn)";
+    case "no_overlap":
+      return "var(--ok)";
+    case "unchecked":
+    case "unavailable":
+    default:
+      return "var(--muted)";
+  }
+}
+
+// ─── 후보 행 데이터 상태 (지시문 — raw 상태 미노출) ─────────────────
+
+function candidateDataState(c: MarketCandidate): string {
+  const sm = c.short_term_momentum;
+  const dq = c.data_quality;
+  const smOk = sm?.status === "ok";
+  const dqOk = dq?.status === "ok";
+  if (smOk && dqOk) return STATE_NORMAL;
+  if (smOk || dqOk) return STATE_PARTIAL_UNAVAIL;
+  return STATE_NEED_CHECK;
+}
+
+function holdingStateLabel(h: AggregatedHolding): string {
+  if (h.eval_partial_unavail || h.data_missing) return STATE_PARTIAL_UNAVAIL;
+  if (h.eval_amount === null) return STATE_NO_DATA;
+  return STATE_NORMAL;
+}
+
+// ─── 정렬 키 ─────────────────────────────────────────────────────────
+
 type CandidateSortKey =
   | "default"
-  | "relative_upside_score"
-  | "return_20d"
+  | "score"
   | "excess_20d"
-  | "drawdown_20d"
-  | "overlap";
-
+  | "drawdown"
+  | "exposure";
+type HoldingSortKey = "default" | "weight" | "pnl" | "excess_20d";
 type SortDirection = "desc" | "asc";
+
+function exposureSortRank(kind: ExposureKind): number {
+  // 직접 보유 > 직접+겹침 > 겹침만 > 중복 없음 > 확인 전 > 확인 불가.
+  switch (kind) {
+    case "direct_and_overlap":
+      return 5;
+    case "direct_only":
+      return 4;
+    case "overlap_only":
+      return 3;
+    case "no_overlap":
+      return 2;
+    case "unchecked":
+      return 1;
+    case "unavailable":
+    default:
+      return 0;
+  }
+}
+
+// ─── 메인 컴포넌트 ───────────────────────────────────────────────────
 
 interface Props {
   data: MarketTopNResponse;
 }
 
 export default function HoldingsCompareView({ data }: Props) {
-  // 보유 데이터 (enriched + evidence).
-  const [enrichedHoldings, setEnrichedHoldings] = useState<EnrichedHolding[]>([]);
+  const [enrichedRaw, setEnrichedRaw] = useState<EnrichedHolding[]>([]);
   const [enrichedLoading, setEnrichedLoading] = useState<boolean>(false);
   const [enrichedError, setEnrichedError] = useState<string | null>(null);
 
-  // Evidence — 명시 조회 (지시문 §4.5 — 자동 fetch 금지).
   const [evidence, setEvidence] =
     useState<HoldingsMarketEvidenceResponse | null>(null);
   const [evidenceLoading, setEvidenceLoading] = useState<boolean>(false);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
-  // 선택된 후보.
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState<boolean>(false);
 
-  // 후보 표 로컬 정렬.
-  const [sortKey, setSortKey] = useState<CandidateSortKey>("default");
-  const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const [candSortKey, setCandSortKey] = useState<CandidateSortKey>("default");
+  const [candSortDir, setCandSortDir] = useState<SortDirection>("desc");
+  const [holdSortKey, setHoldSortKey] = useState<HoldingSortKey>("default");
+  const [holdSortDir, setHoldSortDir] = useState<SortDirection>("desc");
 
-  // 보유 표 로컬 정렬.
-  const [holdingsSortKey, setHoldingsSortKey] = useState<
-    "default" | "buy_weight" | "market_weight" | "pnl_rate"
-  >("default");
-  const [holdingsSortDir, setHoldingsSortDir] = useState<SortDirection>("desc");
-
-  // 마운트 시 enriched 자동 로드 (캐시 기반, 외부 fetch 트리거 없음 — holdings.ts L96).
   useEffect(() => {
     let canceled = false;
     setEnrichedLoading(true);
@@ -138,7 +396,7 @@ export default function HoldingsCompareView({ data }: Props) {
     fetchEnrichedHoldings()
       .then((res) => {
         if (canceled) return;
-        setEnrichedHoldings(res.items ?? []);
+        setEnrichedRaw(res.items ?? []);
       })
       .catch((e) => {
         if (canceled) return;
@@ -153,7 +411,6 @@ export default function HoldingsCompareView({ data }: Props) {
     };
   }, []);
 
-  // Evidence 명시 조회 (사용자 버튼 클릭).
   const handleEvidenceFetch = useCallback(async () => {
     if (evidenceLoading) return;
     setEvidenceLoading(true);
@@ -163,13 +420,19 @@ export default function HoldingsCompareView({ data }: Props) {
       setEvidence(res);
     } catch (e) {
       setEvidenceError((e as Error).message ?? "Evidence 조회 실패");
-      // 기존 evidence 유지 (지시문 §4.5 — 조회 실패 시 기존 값을 지우지 않음).
+      // 기존 evidence 유지 (지시문 — 조회 실패 시 기존 값 삭제 X).
     } finally {
       setEvidenceLoading(false);
     }
   }, [evidenceLoading]);
 
-  // Evidence holding ticker → item map (보유 ETF 별 evidence 룩업).
+  // 티커별 통합 보유 (AC-1).
+  const aggregated = useMemo<AggregatedHolding[]>(
+    () => aggregateHoldingsByTicker(enrichedRaw),
+    [enrichedRaw],
+  );
+
+  // ticker → evidence item 룩업.
   const evidenceByTicker = useMemo(() => {
     const m: Record<string, HoldingsMarketEvidenceItem> = {};
     if (evidence?.holdings) {
@@ -182,57 +445,69 @@ export default function HoldingsCompareView({ data }: Props) {
 
   const evidenceLoaded = evidence !== null;
 
+  // 후보별 노출 (정렬용 사전 계산).
+  const exposureByTicker = useMemo(() => {
+    const m: Record<string, ExposureSummary> = {};
+    for (const c of data.candidates ?? []) {
+      if (!c.ticker) continue;
+      m[c.ticker] = computeExposure(
+        c.ticker,
+        aggregated,
+        evidenceByTicker,
+        evidenceLoaded,
+        evidenceError !== null,
+      );
+    }
+    return m;
+  }, [data.candidates, aggregated, evidenceByTicker, evidenceLoaded, evidenceError]);
+
   // 후보 정렬.
   const sortedCandidates = useMemo<MarketCandidate[]>(() => {
     const list = [...(data.candidates ?? [])];
-    if (sortKey === "default") return list;
-    const dirMul = sortDir === "desc" ? -1 : 1;
+    if (candSortKey === "default") return list;
+    const dirMul = candSortDir === "desc" ? -1 : 1;
     const getKey = (c: MarketCandidate): number | null => {
-      switch (sortKey) {
-        case "relative_upside_score":
+      switch (candSortKey) {
+        case "score":
           return c.relative_upside_score ?? null;
-        case "return_20d":
-          return c.short_term_momentum?.return_20d_pct ?? null;
         case "excess_20d":
           return c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null;
-        case "drawdown_20d":
+        case "drawdown":
           return c.drawdown_20d ?? null;
-        case "overlap": {
-          // exact match 후보를 가장 앞 / 뒤로.
-          const s = computeOverlapStatus(c.ticker, enrichedHoldings, evidenceLoaded);
-          return s.overlapStateForCandidate === "exact_match" ? 1 : 0;
+        case "exposure": {
+          if (!c.ticker) return null;
+          const ex = exposureByTicker[c.ticker];
+          return ex ? exposureSortRank(ex.kind) : null;
         }
-        default:
-          return null;
       }
     };
     list.sort((a, b) => {
       const av = getKey(a);
       const bv = getKey(b);
-      // null 후보는 항상 뒤로 (지시문 §4.3 — 임의 순위/값 X).
       if (av === null && bv === null) return 0;
       if (av === null) return 1;
       if (bv === null) return -1;
       return (av - bv) * dirMul;
     });
     return list;
-  }, [data.candidates, sortKey, sortDir, enrichedHoldings, evidenceLoaded]);
+  }, [data.candidates, candSortKey, candSortDir, exposureByTicker]);
 
   // 보유 정렬.
-  const sortedHoldings = useMemo<EnrichedHolding[]>(() => {
-    const list = [...enrichedHoldings];
-    if (holdingsSortKey === "default") return list;
-    const dirMul = holdingsSortDir === "desc" ? -1 : 1;
-    const getKey = (h: EnrichedHolding): number | null => {
-      switch (holdingsSortKey) {
-        case "buy_weight":
-          return h.buy_weight_pct ?? null;
-        case "market_weight":
+  const sortedHoldings = useMemo<AggregatedHolding[]>(() => {
+    const list = [...aggregated];
+    if (holdSortKey === "default") return list;
+    const dirMul = holdSortDir === "desc" ? -1 : 1;
+    const getKey = (h: AggregatedHolding): number | null => {
+      switch (holdSortKey) {
+        case "weight":
           return h.market_weight_pct ?? null;
-        case "pnl_rate":
+        case "pnl":
           return h.pnl_rate_pct ?? null;
-        default:
-          return null;
+        case "excess_20d":
+          return (
+            evidenceByTicker[h.ticker]?.short_term_momentum
+              ?.excess_vs_kodex200_20d_pctp ?? null
+          );
       }
     };
     list.sort((a, b) => {
@@ -244,9 +519,9 @@ export default function HoldingsCompareView({ data }: Props) {
       return (av - bv) * dirMul;
     });
     return list;
-  }, [enrichedHoldings, holdingsSortKey, holdingsSortDir]);
+  }, [aggregated, holdSortKey, holdSortDir, evidenceByTicker]);
 
-  // 선택된 후보 객체.
+  // 선택 후보 + 노출 요약.
   const selectedCandidate = useMemo<MarketCandidate | null>(() => {
     if (!selectedTicker) return null;
     return (
@@ -254,49 +529,46 @@ export default function HoldingsCompareView({ data }: Props) {
     );
   }, [selectedTicker, data.candidates]);
 
-  // 선택된 후보의 보유 중복 상태.
-  const selectedOverlap = useMemo<OverlapStatus>(() => {
-    if (!selectedCandidate) {
-      return {
-        exactMatchHoldingTicker: null,
-        exactMatchHoldingName: null,
-        overlapStateForCandidate: "not_loaded",
-      };
-    }
-    return computeOverlapStatus(
-      selectedCandidate.ticker,
-      enrichedHoldings,
-      evidenceLoaded,
-    );
-  }, [selectedCandidate, enrichedHoldings, evidenceLoaded]);
+  const selectedExposure = useMemo<ExposureSummary | null>(() => {
+    if (!selectedCandidate?.ticker) return null;
+    return exposureByTicker[selectedCandidate.ticker] ?? null;
+  }, [selectedCandidate, exposureByTicker]);
 
-  const handleCandidateSort = useCallback(
+  // 중복 정보 상태 헤더 문구 (사용자 친화).
+  const evidenceHeaderState = evidenceLoading
+    ? "확인 중"
+    : evidenceLoaded
+      ? STATE_NORMAL
+      : evidenceError
+        ? STATE_UNAVAIL
+        : STATE_UNCHECKED;
+
+  const handleCandSort = useCallback(
     (key: CandidateSortKey) => {
-      if (key === sortKey) {
-        setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+      if (key === candSortKey) {
+        setCandSortDir((d) => (d === "desc" ? "asc" : "desc"));
       } else {
-        setSortKey(key);
-        setSortDir("desc");
+        setCandSortKey(key);
+        setCandSortDir("desc");
       }
     },
-    [sortKey],
+    [candSortKey],
   );
-
-  const handleHoldingsSort = useCallback(
-    (key: "buy_weight" | "market_weight" | "pnl_rate") => {
-      if (key === holdingsSortKey) {
-        setHoldingsSortDir((d) => (d === "desc" ? "asc" : "desc"));
+  const handleHoldSort = useCallback(
+    (key: HoldingSortKey) => {
+      if (key === holdSortKey) {
+        setHoldSortDir((d) => (d === "desc" ? "asc" : "desc"));
       } else {
-        setHoldingsSortKey(key);
-        setHoldingsSortDir("desc");
+        setHoldSortKey(key);
+        setHoldSortDir("desc");
       }
     },
-    [holdingsSortKey],
+    [holdSortKey],
   );
 
   return (
     <section style={{ marginTop: 16 }}>
-      {/* 기준일 헤더 (지시문 §4.1 — 기준일이 다르면 하나로 합쳐 표시 X) */}
+      {/* 기준일 헤더 */}
       <div
         className="card"
         style={{
@@ -312,19 +584,13 @@ export default function HoldingsCompareView({ data }: Props) {
           <span>{data.asof ?? DASH}</span>
         </div>
         <div>
-          <span style={{ color: "var(--muted)" }}>보유 정보 기준일: </span>
+          <span style={{ color: "var(--muted)" }}>보유 기준일: </span>
           <span>{evidence?.holdings_asof ?? DASH}</span>
         </div>
         <div>
-          <span style={{ color: "var(--muted)" }}>중복 정보 상태: </span>
-          <span style={{ color: evidenceLoaded ? "var(--ok)" : "var(--warn)" }}>
-            {evidenceLoading
-              ? "loading"
-              : evidenceLoaded
-                ? "ok"
-                : evidenceError
-                  ? "unavailable"
-                  : "not_loaded"}
+          <span style={{ color: "var(--muted)" }}>중복 정보: </span>
+          <span style={{ color: exposureColorByState(evidenceHeaderState) }}>
+            {evidenceHeaderState}
           </span>
           {!evidenceLoaded ? (
             <button
@@ -343,84 +609,59 @@ export default function HoldingsCompareView({ data }: Props) {
             </button>
           ) : null}
         </div>
-        <div>
-          <span style={{ color: "var(--muted)" }}>중복 정보 기준일: </span>
-          <span>{evidence?.market_asof ?? DASH}</span>
-        </div>
-        {evidenceError ? (
-          <div style={{ color: "var(--danger)" }}>
-            evidence 조회 실패. 기존 값은 유지됩니다.
-          </div>
-        ) : null}
       </div>
 
-      {/* 좌측 70% (보유 + 후보 표) / 우측 30% (선택 상세) */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 350px", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 12 }}>
         <div style={{ display: "grid", gap: 12 }}>
-          {/* 보유 ETF 요약 표 */}
+          {/* 보유 ETF 표 (AC-1, AC-2) */}
           <div className="card" style={{ padding: 12 }}>
             <h3 style={{ margin: 0, marginBottom: 8 }}>보유 ETF</h3>
             {enrichedLoading ? (
               <p>보유 정보 조회 중...</p>
             ) : enrichedError ? (
               <p style={{ color: "var(--danger)" }}>보유 정보 조회 실패.</p>
-            ) : enrichedHoldings.length === 0 ? (
+            ) : aggregated.length === 0 ? (
               <p style={{ color: "var(--muted)" }}>보유 ETF 가 없습니다.</p>
             ) : (
               <table style={{ width: "100%", fontSize: "0.85em" }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left" }}>티커</th>
                     <th style={{ textAlign: "left" }}>ETF명</th>
                     <th
                       style={{ textAlign: "right", cursor: "pointer" }}
-                      onClick={() => handleHoldingsSort("buy_weight")}
-                      title="매입 비중 정렬"
-                    >
-                      매입 비중
-                    </th>
-                    <th
-                      style={{ textAlign: "right", cursor: "pointer" }}
-                      onClick={() => handleHoldingsSort("market_weight")}
-                      title="평가 비중 정렬"
+                      onClick={() => handleHoldSort("weight")}
                     >
                       평가 비중
                     </th>
                     <th
                       style={{ textAlign: "right", cursor: "pointer" }}
-                      onClick={() => handleHoldingsSort("pnl_rate")}
-                      title="손익률 정렬"
+                      onClick={() => handleHoldSort("pnl")}
                     >
                       손익률
                     </th>
-                    <th style={{ textAlign: "right" }}>5d</th>
-                    <th style={{ textAlign: "right" }}>20d</th>
-                    <th style={{ textAlign: "right" }}>KODEX 대비 20d</th>
+                    <th
+                      style={{ textAlign: "right", cursor: "pointer" }}
+                      onClick={() => handleHoldSort("excess_20d")}
+                    >
+                      20일 KODEX 초과
+                    </th>
                     <th style={{ textAlign: "right" }}>고점 대비</th>
-                    <th style={{ textAlign: "left" }}>데이터 상태</th>
+                    <th style={{ textAlign: "left" }}>상태</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedHoldings.map((h) => {
                     const ev = evidenceByTicker[h.ticker];
-                    const r5 = ev?.short_term_momentum?.return_5d_pct ?? null;
-                    const r20 = ev?.short_term_momentum?.return_20d_pct ?? null;
                     const ex20 =
                       ev?.short_term_momentum?.excess_vs_kodex200_20d_pctp ??
                       null;
-                    const dataState = !evidenceLoaded
-                      ? "not_loaded"
-                      : ev
-                        ? ev.short_term_momentum?.status ?? "unavailable"
-                        : "unavailable";
                     return (
-                      <tr
-                        key={`${h.source_index ?? ""}|${h.ticker}|${h.account_group ?? ""}`}
-                      >
-                        <td><code>{h.ticker}</code></td>
-                        <td>{h.name ?? DASH}</td>
-                        <td style={{ textAlign: "right" }}>
-                          {fmtPct(h.buy_weight_pct)}
+                      <tr key={h.ticker}>
+                        <td>
+                          <strong>{h.name ?? h.ticker}</strong>{" "}
+                          <code style={{ color: "var(--muted)", fontSize: "0.85em" }}>
+                            {h.ticker}
+                          </code>
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {fmtPct(h.market_weight_pct)}
@@ -433,23 +674,18 @@ export default function HoldingsCompareView({ data }: Props) {
                         >
                           {fmtPct(h.pnl_rate_pct)}
                         </td>
-                        <td style={{ textAlign: "right", color: returnColor(r5) }}>
-                          {fmtPct(r5)}
-                        </td>
-                        <td style={{ textAlign: "right", color: returnColor(r20) }}>
-                          {fmtPct(r20)}
-                        </td>
-                        <td style={{ textAlign: "right", color: returnColor(ex20) }}>
+                        <td
+                          style={{ textAlign: "right", color: returnColor(ex20) }}
+                        >
                           {fmtPct(ex20)}
                         </td>
-                        {/* 보유 ETF 의 고점 대비 — 기존 evidence 응답에 직접
-                            필드가 없으므로 unavailable 로 표시 (지시문 §4.2 —
-                            없는 값은 데이터 없음 / 비교 불가 / 확인 필요).
-                            향후 evidence 응답에 drawdown_20d 추가 시 활용. */}
+                        {/* 보유 ETF 의 고점 대비 — evidence 응답에 직접 필드 없음. 사용자 친화 표기. */}
                         <td style={{ textAlign: "right", color: "var(--muted)" }}>
-                          unavailable
+                          {evidenceLoaded ? STATE_NEED_CHECK : STATE_UNCHECKED}
                         </td>
-                        <td style={{ color: "var(--muted)" }}>{dataState}</td>
+                        <td style={{ color: "var(--muted)" }}>
+                          {holdingStateLabel(h)}
+                        </td>
                       </tr>
                     );
                   })}
@@ -458,65 +694,50 @@ export default function HoldingsCompareView({ data }: Props) {
             )}
           </div>
 
-          {/* 후보 비교 표 */}
+          {/* 후보 ETF 표 (AC-3, AC-4) */}
           <div className="card" style={{ padding: 12 }}>
-            <h3 style={{ margin: 0, marginBottom: 8 }}>후보 ETF 비교</h3>
+            <h3 style={{ margin: 0, marginBottom: 8 }}>후보 ETF</h3>
             <table style={{ width: "100%", fontSize: "0.85em" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left" }}>순위</th>
-                  <th style={{ textAlign: "left" }}>티커</th>
                   <th style={{ textAlign: "left" }}>ETF명</th>
                   <th
                     style={{ textAlign: "right", cursor: "pointer" }}
-                    onClick={() => handleCandidateSort("relative_upside_score")}
-                    title="상대상승 참고점수 정렬"
+                    onClick={() => handleCandSort("score")}
                   >
                     참고점수
                   </th>
                   <th
                     style={{ textAlign: "right", cursor: "pointer" }}
-                    onClick={() => handleCandidateSort("return_20d")}
-                    title="20일 수익률 정렬"
+                    onClick={() => handleCandSort("excess_20d")}
                   >
-                    20d
+                    20일 KODEX 초과
                   </th>
                   <th
                     style={{ textAlign: "right", cursor: "pointer" }}
-                    onClick={() => handleCandidateSort("excess_20d")}
-                    title="KODEX 대비 20d 초과수익 정렬"
-                  >
-                    KODEX 대비 20d
-                  </th>
-                  <th
-                    style={{ textAlign: "right", cursor: "pointer" }}
-                    onClick={() => handleCandidateSort("drawdown_20d")}
-                    title="고점 대비 정렬"
+                    onClick={() => handleCandSort("drawdown")}
                   >
                     고점 대비
                   </th>
                   <th
-                    style={{ textAlign: "center", cursor: "pointer" }}
-                    onClick={() => handleCandidateSort("overlap")}
-                    title="보유 중복 상태 정렬"
+                    style={{ textAlign: "left", cursor: "pointer" }}
+                    onClick={() => handleCandSort("exposure")}
                   >
-                    보유 중복
+                    보유 노출
                   </th>
+                  <th style={{ textAlign: "left" }}>데이터 상태</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedCandidates.map((c, idx) => {
-                  const overlap = computeOverlapStatus(
-                    c.ticker,
-                    enrichedHoldings,
-                    evidenceLoaded,
-                  );
-                  const isSelected = selectedTicker === c.ticker;
-                  const r20 = c.short_term_momentum?.return_20d_pct ?? null;
                   const ex20 =
                     c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null;
                   const dd =
                     c.drawdown_20d != null ? c.drawdown_20d * 100 : null;
+                  const exposure = c.ticker
+                    ? exposureByTicker[c.ticker]
+                    : undefined;
+                  const isSelected = selectedTicker === c.ticker;
                   return (
                     <tr
                       key={`${c.ticker ?? "x"}-${idx}`}
@@ -528,16 +749,16 @@ export default function HoldingsCompareView({ data }: Props) {
                           : undefined,
                       }}
                     >
-                      <td>{c.rank ?? DASH}</td>
-                      <td><code>{c.ticker ?? DASH}</code></td>
-                      <td>{c.name ?? DASH}</td>
+                      <td>
+                        <strong>{c.name ?? c.ticker}</strong>{" "}
+                        <code style={{ color: "var(--muted)", fontSize: "0.85em" }}>
+                          {c.ticker}
+                        </code>
+                      </td>
                       <td style={{ textAlign: "right" }}>
                         {c.relative_upside_score != null
                           ? c.relative_upside_score.toFixed(1)
                           : DASH}
-                      </td>
-                      <td style={{ textAlign: "right", color: returnColor(r20) }}>
-                        {fmtPct(r20)}
                       </td>
                       <td style={{ textAlign: "right", color: returnColor(ex20) }}>
                         {fmtPct(ex20)}
@@ -545,30 +766,29 @@ export default function HoldingsCompareView({ data }: Props) {
                       <td style={{ textAlign: "right", color: returnColor(dd) }}>
                         {fmtPct(dd)}
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        {overlap.overlapStateForCandidate === "exact_match" ? (
+                      <td>
+                        {exposure ? (
                           <span
                             style={{
-                              color: "var(--warn)",
-                              fontSize: "0.85em",
-                              fontWeight: "bold",
+                              color: exposureColor(exposure),
+                              fontSize: "0.9em",
+                              fontWeight:
+                                exposure.kind === "direct_only" ||
+                                exposure.kind === "direct_and_overlap"
+                                  ? "bold"
+                                  : "normal",
                             }}
                           >
-                            보유 일치
-                          </span>
-                        ) : overlap.overlapStateForCandidate === "not_loaded" ? (
-                          <span
-                            style={{ color: "var(--muted)", fontSize: "0.85em" }}
-                          >
-                            not_loaded
+                            {exposureLabel(exposure)}
                           </span>
                         ) : (
-                          <span
-                            style={{ color: "var(--muted)", fontSize: "0.85em" }}
-                          >
-                            —
+                          <span style={{ color: "var(--muted)" }}>
+                            {STATE_UNCHECKED}
                           </span>
                         )}
+                      </td>
+                      <td style={{ color: "var(--muted)" }}>
+                        {candidateDataState(c)}
                       </td>
                     </tr>
                   );
@@ -578,23 +798,23 @@ export default function HoldingsCompareView({ data }: Props) {
           </div>
         </div>
 
-        {/* 우측 30% — 선택 상세 */}
+        {/* 우측 30% — 선택 상세 (AC-5, AC-6) */}
         <div
           className="card"
           style={{ padding: 12, height: "fit-content", position: "sticky", top: 12 }}
         >
           <h3 style={{ margin: 0, marginBottom: 8 }}>선택 후보 상세</h3>
-          {selectedCandidate ? (
+          {selectedCandidate && selectedExposure ? (
             <SelectedDetail
               candidate={selectedCandidate}
-              overlap={selectedOverlap}
-              evidence={
-                selectedOverlap.exactMatchHoldingTicker
-                  ? evidenceByTicker[selectedOverlap.exactMatchHoldingTicker]
+              exposure={selectedExposure}
+              expanded={detailsExpanded}
+              onToggleExpanded={() => setDetailsExpanded((v) => !v)}
+              directHoldingEvidence={
+                selectedExposure.directHoldingTicker
+                  ? evidenceByTicker[selectedExposure.directHoldingTicker]
                   : undefined
               }
-              evidenceLoaded={evidenceLoaded}
-              evidenceMarketAsof={evidence?.market_asof ?? null}
             />
           ) : (
             <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
@@ -608,133 +828,203 @@ export default function HoldingsCompareView({ data }: Props) {
         className="helper"
         style={{ marginTop: 12, fontSize: "0.78rem", color: "var(--muted)" }}
       >
-        후보별 보유 중복은 ticker 일치 (exact match) 와 구성종목 반복 핵심 종목
-        (constituents overlap) 두 종류 모두 표시됩니다. 데이터가 없는 값은 임의
-        채우지 않고 unavailable 또는 &quot;—&quot; 로 표시합니다.
+        보유 노출은 직접 보유 여부 (ticker 일치) 와 구성종목 겹침 (보유 ETF 의
+        구성종목이 시장 반복 핵심 종목과 겹치는지) 을 합쳐 한 칸에 표시합니다.
+        데이터가 없는 값은 임의 채우지 않고 &quot;데이터 없음&quot; / &quot;확인
+        필요&quot; / &quot;중복 확인 전&quot; / &quot;중복 확인 불가&quot; 로
+        표시합니다.
       </p>
     </section>
   );
 }
 
-// ─── 선택 후보 상세 ───────────────────────────────────────────────────
+// 상태 문구 → 색상.
+function exposureColorByState(state: string): string {
+  if (state === STATE_NORMAL) return "var(--ok)";
+  if (state === STATE_UNAVAIL) return "var(--danger)";
+  if (state === STATE_UNCHECKED) return "var(--muted)";
+  return "var(--muted)";
+}
+
+// ─── 선택 상세 ───────────────────────────────────────────────────────
+
 interface SelectedDetailProps {
   candidate: MarketCandidate;
-  overlap: OverlapStatus;
-  evidence: HoldingsMarketEvidenceItem | undefined;
-  evidenceLoaded: boolean;
-  evidenceMarketAsof: string | null;
+  exposure: ExposureSummary;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  directHoldingEvidence: HoldingsMarketEvidenceItem | undefined;
 }
 
 function SelectedDetail({
   candidate,
-  overlap,
-  evidence,
-  evidenceLoaded,
-  evidenceMarketAsof,
+  exposure,
+  expanded,
+  onToggleExpanded,
+  directHoldingEvidence,
 }: SelectedDetailProps) {
   const sm = candidate.short_term_momentum;
   const dd =
     candidate.drawdown_20d != null ? candidate.drawdown_20d * 100 : null;
   return (
-    <div style={{ display: "grid", gap: 8, fontSize: "0.85em" }}>
+    <div style={{ display: "grid", gap: 10, fontSize: "0.85em" }}>
       <div>
         <strong>{candidate.name ?? candidate.ticker ?? "후보"}</strong>{" "}
         <code style={{ color: "var(--muted)" }}>{candidate.ticker}</code>
       </div>
-      <hr style={{ margin: "4px 0", borderColor: "var(--border)" }} />
 
-      <div>
-        <strong>참고점수: </strong>
-        {candidate.relative_upside_score != null
-          ? candidate.relative_upside_score.toFixed(1)
-          : "점수 미생성"}
-      </div>
-
-      {candidate.relative_upside_reasons &&
-      candidate.relative_upside_reasons.length > 0 ? (
+      {/* 1. 보유 노출 요약 (AC-5) */}
+      <section
+        style={{
+          padding: 8,
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          backgroundColor: "var(--bg-subtle, #f9fafb)",
+        }}
+      >
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>보유 노출 요약</div>
         <div>
-          <div style={{ color: "var(--muted)" }}>점수 근거:</div>
+          <span style={{ color: "var(--muted)" }}>직접 보유: </span>
+          <span
+            style={{
+              color:
+                exposure.kind === "direct_only" ||
+                exposure.kind === "direct_and_overlap"
+                  ? "var(--warn)"
+                  : undefined,
+              fontWeight:
+                exposure.kind === "direct_only" ||
+                exposure.kind === "direct_and_overlap"
+                  ? "bold"
+                  : "normal",
+            }}
+          >
+            {exposure.directHoldingTicker
+              ? `${exposure.directHoldingName ?? exposure.directHoldingTicker}`
+              : "없음"}
+          </span>
+        </div>
+        <div>
+          <span style={{ color: "var(--muted)" }}>구성종목 겹침: </span>
+          <span>
+            {exposure.kind === "unchecked"
+              ? STATE_UNCHECKED
+              : exposure.kind === "unavailable"
+                ? STATE_UNAVAIL
+                : `보유 ETF ${exposure.overlapHoldingCount}개`}
+          </span>
+        </div>
+        {exposure.topOverlapHoldingName ? (
+          <div>
+            <span style={{ color: "var(--muted)" }}>가장 큰 겹침: </span>
+            <span>
+              {exposure.topOverlapHoldingName}
+              {exposure.topOverlapWeightPct != null
+                ? ` (${exposure.topOverlapWeightPct.toFixed(1)}%)`
+                : ""}
+            </span>
+          </div>
+        ) : null}
+      </section>
+
+      {/* 2. 후보 흐름 */}
+      <section>
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>후보 흐름</div>
+        <div>
+          <span style={{ color: "var(--muted)" }}>참고점수: </span>
+          <strong>
+            {candidate.relative_upside_score != null
+              ? candidate.relative_upside_score.toFixed(1)
+              : STATE_NO_DATA}
+          </strong>
+        </div>
+        {candidate.relative_upside_reasons &&
+        candidate.relative_upside_reasons.length > 0 ? (
           <ul style={{ margin: "4px 0 0 0", paddingLeft: "1.2em" }}>
             {candidate.relative_upside_reasons.map((r, i) => (
               <li key={i}>{r}</li>
             ))}
           </ul>
+        ) : null}
+        <div style={{ marginTop: 6 }}>
+          <span style={{ color: "var(--muted)" }}>최근 수익률: </span>
         </div>
-      ) : null}
-
-      <hr style={{ margin: "4px 0", borderColor: "var(--border)" }} />
-
-      <div>
-        <div style={{ color: "var(--muted)" }}>최근 수익률:</div>
         <div>5d: {fmtPct(sm?.return_5d_pct ?? null)}</div>
         <div>10d: {fmtPct(sm?.return_10d_pct ?? null)}</div>
         <div>20d: {fmtPct(sm?.return_20d_pct ?? null)}</div>
-      </div>
-
-      <div>
-        <div style={{ color: "var(--muted)" }}>KODEX200 대비 초과수익:</div>
+        <div style={{ marginTop: 4 }}>
+          <span style={{ color: "var(--muted)" }}>KODEX 대비 초과수익: </span>
+        </div>
         <div>5d: {fmtPct(sm?.excess_vs_kodex200_5d_pctp ?? null)}</div>
         <div>10d: {fmtPct(sm?.excess_vs_kodex200_10d_pctp ?? null)}</div>
         <div>20d: {fmtPct(sm?.excess_vs_kodex200_20d_pctp ?? null)}</div>
-      </div>
+        <div style={{ marginTop: 4 }}>
+          <span style={{ color: "var(--muted)" }}>고점 대비: </span>
+          <span style={{ color: returnColor(dd) }}>{fmtPct(dd)}</span>
+        </div>
+        <div>
+          <span style={{ color: "var(--muted)" }}>데이터 품질: </span>
+          <span>{candidateDataState(candidate)}</span>
+        </div>
+      </section>
 
-      <div>
-        <strong>고점 대비: </strong>
-        <span style={{ color: returnColor(dd) }}>{fmtPct(dd)}</span>
-      </div>
-
-      <div>
-        <strong>데이터 품질: </strong>
-        {candidate.data_quality?.status ?? "unavailable"}
-      </div>
-
-      <hr style={{ margin: "4px 0", borderColor: "var(--border)" }} />
-
-      <div>
-        <div style={{ color: "var(--muted)" }}>보유 비교:</div>
-        {overlap.overlapStateForCandidate === "not_loaded" ? (
-          <div>
-            보유 비교 evidence 가 아직 조회되지 않았습니다 (상단의 &quot;보유
-            비교 evidence 조회&quot; 버튼 클릭).
-          </div>
-        ) : overlap.overlapStateForCandidate === "exact_match" ? (
-          <div>
-            <div style={{ color: "var(--warn)" }}>
-              <strong>보유 ETF 와 ticker 일치:</strong>{" "}
-              {overlap.exactMatchHoldingName ?? overlap.exactMatchHoldingTicker}
-            </div>
-            {evidence?.constituents_overlap?.status === "ok" ? (
-              <div style={{ marginTop: 4 }}>
+      {/* 3. 세부 근거 (AC-6 — 기본 접힘) */}
+      <section>
+        <button
+          type="button"
+          onClick={onToggleExpanded}
+          style={{
+            padding: "4px 8px",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            backgroundColor: "transparent",
+            cursor: "pointer",
+            fontSize: "0.85em",
+            width: "100%",
+            textAlign: "left",
+          }}
+        >
+          {expanded ? "▼ 세부 근거 접기" : "▶ 세부 근거 펼치기"}
+        </button>
+        {expanded ? (
+          <div style={{ marginTop: 8 }}>
+            {directHoldingEvidence?.constituents_overlap?.status === "ok" &&
+            (directHoldingEvidence.constituents_overlap.overlap_with_market_core
+              ?.length ?? 0) > 0 ? (
+              <div>
                 <div style={{ color: "var(--muted)" }}>
-                  구성종목 반복 핵심 종목 ({evidence.constituents_overlap.overlap_with_market_core.length}건):
+                  직접 보유 ETF 의 구성종목 ↔ 시장 반복 핵심 종목:
                 </div>
                 <ul style={{ margin: "4px 0 0 0", paddingLeft: "1.2em" }}>
-                  {evidence.constituents_overlap.overlap_with_market_core
-                    .slice(0, 5)
+                  {directHoldingEvidence.constituents_overlap.overlap_with_market_core
+                    .slice(0, 10)
                     .map((it, i) => (
                       <li key={i}>
-                        {it.name ?? it.ticker} ({fmtNum(it.weight_pct, 1)}%) ·
-                        시장 반복 {it.market_core_count}개
+                        {it.name ?? it.ticker}
+                        {it.weight_pct != null
+                          ? ` (${it.weight_pct.toFixed(1)}%)`
+                          : ""}
+                        {it.market_core_count != null
+                          ? ` · 시장 반복 ${it.market_core_count}개`
+                          : ""}
                       </li>
                     ))}
                 </ul>
               </div>
-            ) : evidence?.constituents_overlap?.status ? (
-              <div style={{ color: "var(--muted)", marginTop: 4 }}>
-                구성종목 상태: {evidence.constituents_overlap.status}
+            ) : exposure.kind === "overlap_only" ? (
+              <div style={{ color: "var(--muted)" }}>
+                본 후보가 보유 ETF {exposure.overlapHoldingCount}개의 구성종목
+                겹침에 포함됩니다. 상세 overlap 수치는 보유 ETF 별 evidence
+                응답에서 확인하세요.
               </div>
-            ) : null}
+            ) : (
+              <div style={{ color: "var(--muted)" }}>
+                추가 세부 근거가 없습니다.
+              </div>
+            )}
           </div>
-        ) : (
-          <div>보유 ETF 중 ticker 일치 없음.</div>
-        )}
-      </div>
-
-      <div style={{ fontSize: "0.85em", color: "var(--muted)" }}>
-        {evidenceLoaded
-          ? `중복 정보 기준일: ${evidenceMarketAsof ?? DASH}`
-          : "중복 정보 미조회"}
-      </div>
+        ) : null}
+      </section>
     </div>
   );
 }

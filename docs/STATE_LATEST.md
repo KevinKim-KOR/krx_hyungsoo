@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-21 (보유 ETF와 시장 후보 비교 v1, FIX r5 최종)
+최종 업데이트: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT — 티커별 통합 + 보유 노출 단일 칸 + 사용자 친화 상태 문구)
 
 ## 0. Canonical
 
@@ -23,7 +23,20 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **보유 ETF와 시장 후보 비교 v1** (2026-06-21).
+- **현재 완료 상태**: **보유·후보 비교 v1 CLOSEOUT** (2026-06-24).
+  - 지시문 단일 목표: 사용자가 "보유와 비교" 화면에서 10초 안에 (1) 실제 보유 ETF·평가 비중, (2) 후보의 보유 노출 겹침, (3) 후보의 상대 흐름을 판단 가능하도록 정리. 신규 endpoint / 신규 계산 0건.
+  - **수정 frontend 1종**: `frontend/app/components/HoldingsCompareView.tsx` — 전면 재작성.
+  - **AC-1 티커별 통합**: 매입 회차 다중 행 → ticker 별 한 줄 통합 표시. `aggregateHoldingsByTicker` helper. 통합 평가금액 / 통합 손익률 / 평가 비중. 기존 enriched 원본 / 매입 회차 데이터 변경 0건 — 화면 표시용 통합만.
+  - **AC-2 보유 표 6 컬럼**: ETF명 / 평가 비중 / 손익률 / 20일 KODEX 초과 / 고점 대비 / 상태. 매입 회차 / 5d / 10d / 세부 평가정보 기본 숨김.
+  - **AC-3 후보 표 6 컬럼**: ETF명 / 참고점수 / 20일 KODEX 초과 / 고점 대비 / 보유 노출 / 데이터 상태.
+  - **AC-4 보유 노출 단일 칸**: 한 칸에서 6가지 표현 — `직접 보유` / `직접 보유 · 구성종목도 겹침` / `구성종목 겹침 · 보유 ETF N개` / `중복 없음` / `중복 확인 전` / `중복 확인 불가`. `중복 없음`은 모든 보유 ETF 의 overlap 정상 조회 + 일치 0건일 때만.
+  - **AC-5 선택 상세 보유 노출 요약 최상단**: 직접 보유 여부 / 겹침 보유 ETF 수 / 가장 큰 겹침 대상 + weight%. **AC-6 세부 근거 기본 접힘** — 구성종목 목록 / overlap 수치 / 시장 반복 정보는 사용자 명시 클릭 후에만 노출.
+  - **AC-7 raw 상태값 미노출**: `ok` / `unavailable` / `not_loaded` / `loading` 직접 노출 0건. 사용자 친화 문구 — `정상` / `일부 확인 불가` / `중복 확인 전` / `중복 확인 불가` / `데이터 없음` / `확인 필요`.
+  - **AC-8 후보 선택 자동 fetch 0건**: Evidence 명시 조회 버튼 유지. 후보 row 클릭은 상세 영역 갱신만.
+  - **AC-9 기존 산식 변경 0건**: 새 수익률 / 새 초과수익 / 새 overlap / 보유·후보 종합점수 / 새 모델 0건. 신규 backend 0건.
+  - **상수**: 신규 backend 모듈 0건. `app/api_market_topn.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건. OCI / PARAM / Telegram / DB 변경 0건.
+  - pytest 전체 실행 명령 결과: **616 passed, 1 deselected** (회귀 0 — backend 변경 0건). deselected 1건은 본 STEP 이전부터 존재하는 기존 환경 실패. black / flake8 PASS. frontend lint / build PASS.
+- **이전 STEP**: **보유 ETF와 시장 후보 비교 v1** (2026-06-21).
   - 지시문 단일 목표: 기존 Market Discovery 안에서 보유 ETF 와 시장 후보 ETF 를 같은 화면에서 비교. 신규 endpoint / 신규 계산 0건 — 기존 `GET /market/topn/latest` + `GET /holdings/enriched` + `GET /holdings/market-evidence/latest` 응답을 프론트에서 조합.
   - **신규 frontend 1종**: `frontend/app/components/HoldingsCompareView.tsx` — 보유 ETF 요약 표 10 컬럼 (티커/명/매입 비중/평가 비중/손익률/5d/20d/KODEX 대비 20d/**고점 대비**/데이터 상태 + 로컬 정렬) + 후보 비교 표 (참고점수/20d/KODEX 대비 20d/고점 대비/보유 중복 + 로컬 정렬) + split pane 우측에 후보 선택 상세 (점수 근거 + 5/10/20일 수익률·초과수익 + 고점 대비 + 데이터 품질 + 보유 비교 evidence — 보유 ETF ticker 일치 + 구성종목 반복 핵심 종목 최대 5건). 보유 ETF 의 "고점 대비" 는 evidence 응답에 직접 필드 없으므로 `unavailable` 명시 (FIX r1).
   - **수정 frontend 1종**: `frontend/app/components/MarketDiscoveryView.tsx` — `CompareViewTabs` 상단 탭 ("기본" / "보유와 비교") 추가. 탭별로 기존 `CandidateTable + SummaryHeader` 또는 신규 `HoldingsCompareView` 렌더.

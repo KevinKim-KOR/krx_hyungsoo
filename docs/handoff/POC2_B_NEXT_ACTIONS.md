@@ -1,12 +1,41 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-21 (보유 ETF와 시장 후보 비교 v1)
+작성일: 2026-05-20 / 갱신: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-21 — 보유 ETF와 시장 후보 비교 v1)
+## 0. 직전 STEP 결과 (2026-06-24 — 보유·후보 비교 v1 CLOSEOUT)
+
+지시문 단일 목표: 사용자가 "보유와 비교" 화면에서 10초 안에 보유 ETF·평가 비중 +
+후보의 보유 노출 겹침 + 후보의 상대 흐름을 판단 가능하도록 정리. 신규 endpoint /
+신규 계산 0건.
+
+### 결과 요약
+
+- 수정 frontend 1종: `HoldingsCompareView` — 전면 재작성. AC-1 티커별 통합 (매입
+  회차 다중 행 → ticker 한 줄) / AC-2 보유 표 6 컬럼 / AC-3 후보 표 6 컬럼 /
+  AC-4 보유 노출 단일 칸 6가지 표현 / AC-5 선택 상세 보유 노출 요약 최상단 /
+  AC-6 세부 근거 기본 접힘 / AC-7 raw 상태값 사용자 화면 미노출.
+- 신규 backend 0건. 기존 산식 변경 0건. OCI / PARAM / Telegram 변경 0건.
+
+### 검증
+
+- pytest 전체 실행 명령 결과: **616 passed, 1 deselected** (회귀 0 — backend 변경 0건). black / flake8 / frontend lint / build PASS.
+
+### 다음 분기 후보
+
+1. ML 축2 — 위험 감지용 시계열 빈자리 채우기.
+2. 점수·위험·보유 비교가 모이는 PC 판단 화면 확장 (본 CLOSEOUT 의 후속).
+3. OCI read model foundation.
+4. BACKLOG `CONSOLIDATED_BACKLOG_DEBT_CLEANUP`.
+
+본 문서는 다음 STEP 을 임의 확정하지 않는다. 사용자 결정 대기.
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-21 — 보유 ETF와 시장 후보 비교 v1)
 
 지시문 단일 목표: 기존 Market Discovery 안에서 보유 ETF 와 시장 후보 ETF 를
 같은 화면에서 비교. 신규 endpoint / 신규 계산 0건.
