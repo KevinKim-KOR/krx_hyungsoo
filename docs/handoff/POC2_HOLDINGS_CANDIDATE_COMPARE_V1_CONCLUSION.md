@@ -1,6 +1,6 @@
 # POC2 — 보유 ETF와 시장 후보 비교 v1 Conclusion
 
-작성일: 2026-06-21 / FIX r1~r5: 2026-06-21 (stale 정합성 5회 정정) / **CLOSEOUT: 2026-06-24 (티커별 통합 + 보유 노출 단일 칸 + 사용자 친화 상태 문구)**
+작성일: 2026-06-21 / FIX r1~r5: 2026-06-21 (stale 정합성 5회 정정) / CLOSEOUT: 2026-06-24 (티커별 통합 + 보유 노출 단일 칸 + 사용자 친화 상태 문구) / **CLOSEOUT FIX r1: 2026-06-24 (중복 없음 evidence 누락 방어 + 보유 표 고점 대비 단일 표기 + B-3 파일 분리)**
 STEP: HOLDINGS_CANDIDATE_COMPARE_V1
 상태: DONE (CLOSEOUT)
 
@@ -455,7 +455,47 @@ ETF·평가 비중, (2) 후보의 보유 노출 겹침, (3) 후보의 상대 흐
 
 ---
 
-## 15. 다음 단계 (사용자 결정 대기)
+## 15. CLOSEOUT FIX r1 (2026-06-24)
+
+CLOSEOUT 1차 REJECTED 후속 (A-1 / A-3 / B-1 / B-3). 4건 정정.
+
+### FIX r1-1 (A-1 / B-1) — `중복 없음` evidence 누락 방어
+
+**문제**: `computeExposure` 가 보유 ETF 가 evidence 응답에 매칭되지 않으면 `continue` 로 건너뛰고, 결국 "모든 보유 ETF 정상 조회 + 일치 0건" 판단을 통과해 `no_overlap` (중복 없음) 으로 잘못 분류 가능. 지시문 — `중복 없음` 은 직접 보유 + 구성종목 overlap 이 모두 정상 조회된 경우에만 허용.
+
+**수정**: `holdings_compare/helpers.ts:computeExposure` 의 evidence 매칭 루프에서 `!ev` / `!co` 케이스를 `constituentsAnyUnavail = true` 로 마킹 후 continue. 이후 `no_overlap` 분기 도달 전에 `constituentsAnyUnavail` 확인 → unavailable 분기로 차단.
+
+### FIX r1-2 (A-1) — 보유 표 고점 대비 cell 중복 상태 문구 제거
+
+**문제**: 보유 ETF 표의 "고점 대비" 컬럼에 evidence 미조회 시 `중복 확인 전` 표시. 중복 상태 문구를 가격/고점 대비 값 위치에 섞는 형태.
+
+**수정**: evidence 로드 여부와 무관하게 `확인 필요` 단일 표기. 보유 ETF 의 고점 대비는 evidence 응답에 직접 필드가 없는 별도 사유이므로 가격 데이터 부재 상태 문구 (`확인 필요`) 로 통일.
+
+### FIX r1-3 (A-3) — FEATURE_INVENTORY pytest 표기 정합성
+
+**문제**: STATE_LATEST / NEXT_ACTIONS 는 CLOSEOUT 시점 명령 결과 `616 passed, 1 deselected` 로 표기하는데 FEATURE_INVENTORY 만 `616 passed, 1 failed (종료 코드 1)` (이전 FIX r2 정직 표기 잔존).
+
+**수정**: FEATURE_INVENTORY L607 을 `616 passed, 1 deselected` (CLOSEOUT 시점 명령) 로 정렬 + 동일 명령을 `--deselect` 옵션 없이 실행하면 `1 failed / 종료 코드 1` 로 표기됨을 참고 표기.
+
+### FIX r1-4 (B-3) — `HoldingsCompareView.tsx` 1035줄 책임 과다 분리
+
+**문제**: 본 파일이 1035줄로 책임 과다. 집계 / exposure 판정 / 상태 변환 / 정렬 / fetch / 테이블 렌더 / 상세 렌더가 모두 한 파일에 집중.
+
+**수정**: 신규 모듈 2종 분리.
+- `frontend/app/components/holdings_compare/helpers.ts` (330 라인): 상태 문구 상수 / `aggregateHoldingsByTicker` / `computeExposure` + `ExposureSummary` + `exposureLabel/Color/SortRank` / `candidateDataState` / `holdingStateLabel` / `exposureColorByState` / `fmtPct` / `returnColor`.
+- `frontend/app/components/holdings_compare/SelectedDetail.tsx` (198 라인): 우측 선택 상세 영역 (보유 노출 요약 + 후보 흐름 + 세부 근거 토글).
+
+본 파일 (`HoldingsCompareView.tsx`) 은 **1035 → 529 라인** 으로 축소. fetch + state + 좌측 표 렌더만 담당.
+
+### CLOSEOUT FIX r1 검증
+
+- frontend lint / build PASS.
+- backend pytest 변경 0건 → 직전 명령 결과 그대로 유지 (회귀 0).
+- 본 파일 1035 → 529 / 신규 helpers 330 / SelectedDetail 198 = 합계 1057 (책임 분리 후 +22). 단일 책임 위반 해소.
+
+---
+
+## 16. 다음 단계 (사용자 결정 대기)
 
 PC_OCI_ARCHITECTURE_DIRECTION 순서:
 

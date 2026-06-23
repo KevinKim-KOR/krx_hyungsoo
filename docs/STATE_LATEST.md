@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT — 티커별 통합 + 보유 노출 단일 칸 + 사용자 친화 상태 문구)
+최종 업데이트: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT + FIX r1 — 중복 없음 evidence 누락 방어 + B-3 파일 분리)
 
 ## 0. Canonical
 
@@ -36,6 +36,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **AC-9 기존 산식 변경 0건**: 새 수익률 / 새 초과수익 / 새 overlap / 보유·후보 종합점수 / 새 모델 0건. 신규 backend 0건.
   - **상수**: 신규 backend 모듈 0건. `app/api_market_topn.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건. OCI / PARAM / Telegram / DB 변경 0건.
   - pytest 전체 실행 명령 결과: **616 passed, 1 deselected** (회귀 0 — backend 변경 0건). deselected 1건은 본 STEP 이전부터 존재하는 기존 환경 실패. black / flake8 PASS. frontend lint / build PASS.
+  - **CLOSEOUT FIX r1 (2026-06-24, A-1/A-3/B-1/B-3 수용)**: (r1-1) `computeExposure` 의 evidence 매칭 루프에서 `!ev` / `!co` 케이스를 `constituentsAnyUnavail` 마킹 → `no_overlap` 분기 도달 전 차단. 지시문 — `중복 없음` 은 모든 보유 ETF 정상 조회 + 일치 0건일 때만. (r1-2) 보유 표 고점 대비 cell 에 `중복 확인 전` 같은 중복 상태 문구 제거 → `확인 필요` 단일 표기. (r1-3) FEATURE_INVENTORY L607 의 `1 failed` stale 을 `1 deselected` (CLOSEOUT 시점 명령 결과) 로 정렬. (r1-4) B-3 파일 분리 — `HoldingsCompareView.tsx` **1035 → 529 라인**. 신규 모듈 2종 (`holdings_compare/helpers.ts` 330 라인 / `holdings_compare/SelectedDetail.tsx` 198 라인) 분리.
 - **이전 STEP**: **보유 ETF와 시장 후보 비교 v1** (2026-06-21).
   - 지시문 단일 목표: 기존 Market Discovery 안에서 보유 ETF 와 시장 후보 ETF 를 같은 화면에서 비교. 신규 endpoint / 신규 계산 0건 — 기존 `GET /market/topn/latest` + `GET /holdings/enriched` + `GET /holdings/market-evidence/latest` 응답을 프론트에서 조합.
   - **신규 frontend 1종**: `frontend/app/components/HoldingsCompareView.tsx` — 보유 ETF 요약 표 10 컬럼 (티커/명/매입 비중/평가 비중/손익률/5d/20d/KODEX 대비 20d/**고점 대비**/데이터 상태 + 로컬 정렬) + 후보 비교 표 (참고점수/20d/KODEX 대비 20d/고점 대비/보유 중복 + 로컬 정렬) + split pane 우측에 후보 선택 상세 (점수 근거 + 5/10/20일 수익률·초과수익 + 고점 대비 + 데이터 품질 + 보유 비교 evidence — 보유 ETF ticker 일치 + 구성종목 반복 핵심 종목 최대 5건). 보유 ETF 의 "고점 대비" 는 evidence 응답에 직접 필드 없으므로 `unavailable` 명시 (FIX r1).

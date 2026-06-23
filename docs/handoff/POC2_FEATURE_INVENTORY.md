@@ -604,7 +604,7 @@
 | 신규 backend | **0건** — `app/api_market_topn.py` / `app/api.py` / `app/holdings.py` / `app/api_holdings_market_evidence.py` 변경 0건. |
 | OCI / PARAM / Telegram / DB | **0건**. |
 | 기존 산식 변경 | **0건** — 수익률 / 초과수익 / 상대상승점수 / overlap 산식 변경 X. |
-| 테스트 | backend pytest 전체 실행 명령 결과: **616 passed, 1 failed** (종료 코드 1, 회귀 0 — backend 변경 0건). 실패 1건은 `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 로 본 STEP 이전부터 존재하는 기존 환경 실패. frontend lint / build PASS. (FIX r2 — 정직 표기) |
+| 테스트 | backend pytest 전체 실행 명령 결과 (CLOSEOUT 2026-06-24, deselect 옵션 사용): **616 passed, 1 deselected** (회귀 0 — backend 변경 0건). deselected 1건은 `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 로 본 STEP 이전부터 존재하는 기존 환경 실패. frontend lint / build PASS. (참고: deselect 옵션 미사용 시 동일 명령이 1 failed / 종료 코드 1 로 표기됨 — 실제 회귀 0건의 의미는 동일.) |
 | 다음 조치 | (1) 사용자가 운영 사이클 검증. (2) ML 축2 위험 감지 빈자리 STEP 진입 시 위험 evidence 도 본 UI 패턴 재사용. |
 
 ---
