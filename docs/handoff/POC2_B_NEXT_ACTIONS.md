@@ -1,12 +1,37 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT)
+작성일: 2026-05-20 / 갱신: 2026-06-29 (BACKLOG 전수 감사·정리)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-24 — 보유·후보 비교 v1 CLOSEOUT)
+## 0. 직전 STEP 결과 (2026-06-29 — BACKLOG 전수 감사·정리)
+
+지시문 단일 목표: 1270 라인 누적 BACKLOG 를 다음 Step 우선순위 판단 가능한 상태로
+정리. 코드·UI·API·데이터 계약·OCI·Telegram 변경 0건.
+
+**5분류 판정 결과**: 완료 23 (RESOLVED 처리) / 폐기 11 (DISCARDED) / 중복 9 (DEDUPED) /
+현재 결함 2 (STATE_LATEST §5 D-1/D-2 escalate) / 유지 91 항목 (재작성 시 sub-bullet 26 승격 포함, 통일 포맷 4필드 재작성).
+
+**문서 갱신**:
+- `docs/backlog/BACKLOG.md` — Measure-Object -Line 기준 451 라인 (검증자 1차 REJECTED
+  반영 재작성 후). 16 카테고리 4필드 통일 포맷 (항목 / 보류 사유 / 보류된 위험 /
+  재검토 트리거). 4필드 각각 91건 grep 실측 (1:1 정렬).
+- `docs/STATE_LATEST.md` — §5 Open decisions 에 D-1 (test_three_push_contract 회귀) /
+  D-2 (market_refresh_service in-memory state 재시작 시 소실) escalate. §7 Index 에
+  BACKLOG audit conclusion 포인터 추가.
+- `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` — 신규. 분류표 / 사용자 모호 항목
+  일괄 판정 결과 / 통일 포맷 재구성 기록.
+
+**다음 분기 후보 (사용자 결정 대기)**: 본 문서 §2 "바로 다음 후보" 목록 유지. BACKLOG
+정리 결과 우선 검토 권고 — (a) D-1 / D-2 결함 해소 STEP, (b) 위험 evidence 시계열
+적재 (§2 위험 evidence 카테고리), (c) ML factor·threshold 1차 검증 (§1 ML 카테고리),
+(d) OCI read model foundation (PC_OCI_ARCHITECTURE_DIRECTION §5 4번 단계).
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-24 — 보유·후보 비교 v1 CLOSEOUT)
 
 지시문 단일 목표: 사용자가 "보유와 비교" 화면에서 10초 안에 보유 ETF·평가 비중 +
 후보의 보유 노출 겹침 + 후보의 상대 흐름을 판단 가능하도록 정리. 신규 endpoint /

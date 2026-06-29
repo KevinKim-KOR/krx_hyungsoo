@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT + FIX r1 — 중복 없음 evidence 누락 방어 + B-3 파일 분리)
+최종 업데이트: 2026-06-29 (BACKLOG 전수 감사·정리 + FIX r1 — 4필드 91 항목 / 부록 외부 이관 / 라인수 실측 정렬)
 
 ## 0. Canonical
 
@@ -23,7 +23,15 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **보유·후보 비교 v1 CLOSEOUT** (2026-06-24).
+- **현재 완료 상태**: **BACKLOG 전수 감사·정리** (2026-06-29).
+  - 지시문 단일 목표: 1270 라인 누적 BACKLOG 를 다음 Step 우선순위 판단 가능한 상태로 정리. 코드·UI·API·데이터 계약·OCI·Telegram 변경 0건.
+  - **수정 docs 4종**: `docs/backlog/BACKLOG.md` (Measure-Object -Line 기준 451 라인, 16 카테고리 4필드 통일 포맷 91 항목) / `docs/STATE_LATEST.md` (§1 prepend + §5 D-1/D-2 결함 escalate + §7 BACKLOG audit 포인터) / `docs/handoff/POC2_B_NEXT_ACTIONS.md` (§0 prepend + 직전 §0 → §0-prev) / `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` (신규, Measure-Object -Line 기준 99 라인).
+  - **5분류 판정 결과**: 완료 23 (RESOLVED 처리) / 폐기 11 (DISCARDED) / 중복 9 (DEDUPED) / 현재 결함 2 (STATE_LATEST §5 escalate) / 유지 91 항목 (재작성 시 sub-bullet 을 별도 항목으로 분리 — 1차 판정 65 + sub-bullet 승격 약 26). 사용자 모호 항목 일괄 판정 — L148 AI 투자세션 ETF 구성 수집 완료 / L400 보유 종목 브리핑 상세 UI 완료 / L1067 Next.js UI 세분화 폐기 / L1155 spike·holding_watch 연계 완료 / L828 market_cache 영속화 폐기 / L892 holdings 자동 불러오기 폐기 / L360 SQLite 영구 보존 폐기 / L14 ML 학습 유지(통일 포맷) / L539 Layer B 급락 임계값 §2 통합.
+  - **분류 기록 위치 (검증자 A-1 지적 반영)**: 완료 / 폐기 / 중복 / 현재 결함 escalate 기록은 BACKLOG 본문에서 제거하고 `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` 외부 문서에만 보존. BACKLOG.md 는 4필드 유지 항목만 포함.
+  - **통일 포맷**: 항목 / 보류 사유 / 보류된 위험 / 재검토 트리거 4필드.
+  - **16 카테고리 구조**: ML/Factor/Threshold, 위험 evidence/시계열/데이터 품질, NAV/시장 데이터 source, Market Discovery/Universe, ETF 구성종목/중복률, 시장 국면/Regime, 판단 근거 저장, Holdings/포트폴리오 구조, Message/Telegram/알림, UI/Frontend, OCI/Delivery/Operations, Snapshot/History/Audit, Universe/Cache 후순위, Layer 활성 관리, 항구적 가드 정책, 메타/검증 항목.
+  - **escalate 2건**: D-1 = `test_three_push_contract::test_generate_spike_alert_via_unified_endpoint` 회귀 (clean tree 에서도 실패), D-2 = `app/market_refresh_service.py` in-memory state 재시작 시 소실 (6h cooldown 가드 깨짐).
+- **이전 STEP**: **보유·후보 비교 v1 CLOSEOUT** (2026-06-24).
   - 지시문 단일 목표: 사용자가 "보유와 비교" 화면에서 10초 안에 (1) 실제 보유 ETF·평가 비중, (2) 후보의 보유 노출 겹침, (3) 후보의 상대 흐름을 판단 가능하도록 정리. 신규 endpoint / 신규 계산 0건.
   - **수정 frontend 1종**: `frontend/app/components/HoldingsCompareView.tsx` — 전면 재작성.
   - **AC-1 티커별 통합**: 매입 회차 다중 행 → ticker 별 한 줄 통합 표시. `aggregateHoldingsByTicker` helper. 통합 평가금액 / 통합 손익률 / 평가 비중. 기존 enriched 원본 / 매입 회차 데이터 변경 0건 — 화면 표시용 통합만.
@@ -311,6 +319,8 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 | Q1 | OPEN | 여러 factor 를 붙일 수 있는 구조의 엔진이 될 것인가? | ASSUMPTIONS §2 |
 | Q4 | OPEN | "잘 올라가는 섹터/ETF 발굴" 작동 단위 (운영 1개월 검증 필요) | ASSUMPTIONS §2 |
 | Q6 | OPEN | 위험 감지 = "위험 구간 분류" — factor / threshold / label 어떻게 확정할 것인가? (시계열 적재 선행) | ASSUMPTIONS §2 / INTENT §9.5 |
+| D-1 | DEFECT | `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 회귀 — Clean tree 에서도 실패. spike_or_falling_alert generate-from-unified endpoint 흐름이 message_text 를 빈/None 으로 채우는 회귀 추정. BACKLOG 2026-06-29 전수 감사에서 escalate. | BACKLOG.md 부록 |
+| D-2 | DEFECT | `app/market_refresh_service.py` in-memory state 가 서버 재시작 시 소실. 6h cooldown 가드 깨짐 + frontend polling idle 오인. BACKLOG 2026-06-29 전수 감사에서 escalate. | BACKLOG.md 부록 |
 
 ## 6. Next action
 
@@ -352,7 +362,8 @@ Active Reference:
 - usage: PUSH 후속 Step에서는 evidence package / runtime snapshot / message_text 설계 시 이 문서를 기준으로 한다.
 - [docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md](handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md) — NAV 진단 1차 결과
 - [docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md](handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md) — 구성종목 source 진단
-- [docs/backlog/BACKLOG.md](backlog/BACKLOG.md) — Backlog (시계열 / NAV source / MDD / Sharpe / 구성종목 가격 / 위험감지 지표)
+- [docs/backlog/BACKLOG.md](backlog/BACKLOG.md) — Backlog (2026-06-29 전수 감사 후 Measure-Object -Line 기준 451 라인 / 16 카테고리 4필드 통일 포맷 91 항목)
+- [docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md](handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md) — BACKLOG 전수 감사 결과 (2026-06-29, 4필드 91 항목, 완료 23/폐기 11/중복 9/결함 escalate 2)
 - [docs/ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md](ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md) — 친구 프로젝트 source / 주기 분석
 
 ### Step detail (Step 종료 후 생성된 상세 기록)
