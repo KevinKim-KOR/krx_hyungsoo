@@ -347,7 +347,33 @@ def test_generate_market_briefing_via_unified_endpoint(tmp_path: Path, monkeypat
 
 def test_generate_spike_alert_via_unified_endpoint(tmp_path: Path, monkeypatch):
     """FIX r2 (설계자 수용) — POST /runs/generate 의 input_data.push_kind 분기로
-    PUSH-3 생성. 별도 PUSH endpoint 신설 0건."""
+    PUSH-3 생성. 별도 PUSH endpoint 신설 0건.
+
+    Cleanup Round A: runtime probe / universe artifact 를 mock 격리.
+    generate_spike_alert_via_generic 이 외부 네트워크·파일에 의존하므로
+    테스트 환경에서 두 external 의존성을 stub 으로 교체한다.
+    계약 검증 범위 (변경 없음): endpoint 경로 / status / push_kind / message_text
+    비어 있지 않음 / 급등락 포함 / 금지 문구 0건.
+    """
+    from datetime import datetime, timezone
+
+    import app.draft_three_push as _dtp
+    from app.runtime_kr_quote_probe import empty_unavailable_snapshot as _kr_empty
+
+    _stub_runtime = {
+        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "kr_realtime_price_snapshot": {**_kr_empty("stub"), "status": "ok"},
+        "overnight_us_market_snapshot": {"status": "unavailable"},
+        "cache_status": "hit",
+    }
+    monkeypatch.setattr(
+        _dtp, "_runtime_snapshot_with_cache", lambda *a, **kw: _stub_runtime
+    )
+    monkeypatch.setattr(
+        _dtp,
+        "_load_universe_artifact_for_spike",
+        lambda: _make_universe_artifact_with_falling(),
+    )
     _isolate_state_dir(tmp_path, monkeypatch)
     client = TestClient(app)
     resp = client.post(

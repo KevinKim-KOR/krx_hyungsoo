@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-29 (BACKLOG 전수 감사·정리 + FIX r1 — 4필드 91 항목 / 부록 외부 이관 / 라인수 실측 정렬)
+최종 업데이트: 2026-06-29 (Cleanup KS-10 Round A — 기준선 측정 + D-1 회귀 해소)
 
 ## 0. Canonical
 
@@ -23,7 +23,20 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **BACKLOG 전수 감사·정리** (2026-06-29).
+- **현재 완료 상태**: **Cleanup KS-10 Round A** (2026-06-29).
+  - 지시문 목표: 전체 .py/.ts/.tsx 라인 수 기준선 측정 + KS-10 trigger/near 목록화 + D-1 회귀 해소.
+  - **측정 방식**: `wc -l` (Bash) 통일.
+  - **기준선 (측정 전, wc -l)**:
+    - KS-10 trigger (백엔드 핵심 모듈 ≥650): **없음** — `app/api_market_topn.py` 636 (trigger 미달).
+    - KS-10 near (백엔드 핵심 모듈 600~649): `app/api_market_topn.py` **636**.
+    - scripts/ ambiguity: `scripts/run_three_push_oci.py` **672** — "배포 스크립트" vs "백엔드 핵심 모듈" 분류 불명확 (§6 classification_ambiguities 기록).
+    - KS-10 near (테스트, 여러 Step 섞임 조건): 해당 없음 — `tests/test_holdings_message_text.py` 924 (단일 주제 파일, ≥1500 미달).
+    - KS-10 near (프론트엔드 ≥850): **없음** — `frontend/app/components/MarketDiscoveryView.tsx` 789 (near 미달).
+  - **D-1 회귀 해소**: `test_generate_spike_alert_via_unified_endpoint` — 원인: commit `21e400b0` 에서 `generate_spike_alert_draft` 에 `build_runtime_package` + `is_failed_package` 가드가 추가됐으나 테스트 격리(runtime probe mock)는 추가되지 않음 → 테스트 환경에서 `kr_realtime_price_snapshot.status=unavailable` + `universe_momentum_snapshot={}` → `generation_status=failed` → `message_text=None`. 최소 변경: `tests/test_three_push_contract.py` 에 `_runtime_snapshot_with_cache` / `_load_universe_artifact_for_spike` 두 stub 추가 (505→531 라인). assertion 변경 0건.
+  - **수정 파일 3종**: `tests/test_three_push_contract.py` (505→531 라인, wc -l 기준) / `docs/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md`. 신규 1종: `docs/handoff/POC2_CLEANUP_KS10_ROUND_A_CONCLUSION.md` (전체 파일 라인 수 기준선 포함 — app/ 22,406 / legacy/ 171 / scripts/ 4,410 / tests/ 16,082 / frontend/ 12,225).
+  - **backend 전체 테스트**: `617 passed` (skip 0 / deselect 0). black PASS / flake8 PASS.
+  - **남은 Round B 대상**: `app/api_market_topn.py` 636 (near) + `scripts/run_three_push_oci.py` 672 (ambiguity 해소 후 분류 결정) + 기타 근접 파일 전체 재분류 후 파일 분리.
+- **이전 완료 상태**: **BACKLOG 전수 감사·정리** (2026-06-29).
   - 지시문 단일 목표: 1270 라인 누적 BACKLOG 를 다음 Step 우선순위 판단 가능한 상태로 정리. 코드·UI·API·데이터 계약·OCI·Telegram 변경 0건.
   - **수정 docs 4종**: `docs/backlog/BACKLOG.md` (Measure-Object -Line 기준 451 라인, 16 카테고리 4필드 통일 포맷 91 항목) / `docs/STATE_LATEST.md` (§1 prepend + §5 D-1/D-2 결함 escalate + §7 BACKLOG audit 포인터) / `docs/handoff/POC2_B_NEXT_ACTIONS.md` (§0 prepend + 직전 §0 → §0-prev) / `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` (신규, Measure-Object -Line 기준 99 라인).
   - **5분류 판정 결과**: 완료 23 (RESOLVED 처리) / 폐기 11 (DISCARDED) / 중복 9 (DEDUPED) / 현재 결함 2 (STATE_LATEST §5 escalate) / 유지 91 항목 (재작성 시 sub-bullet 을 별도 항목으로 분리 — 1차 판정 65 + sub-bullet 승격 약 26). 사용자 모호 항목 일괄 판정 — L148 AI 투자세션 ETF 구성 수집 완료 / L400 보유 종목 브리핑 상세 UI 완료 / L1067 Next.js UI 세분화 폐기 / L1155 spike·holding_watch 연계 완료 / L828 market_cache 영속화 폐기 / L892 holdings 자동 불러오기 폐기 / L360 SQLite 영구 보존 폐기 / L14 ML 학습 유지(통일 포맷) / L539 Layer B 급락 임계값 §2 통합.
@@ -319,7 +332,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 | Q1 | OPEN | 여러 factor 를 붙일 수 있는 구조의 엔진이 될 것인가? | ASSUMPTIONS §2 |
 | Q4 | OPEN | "잘 올라가는 섹터/ETF 발굴" 작동 단위 (운영 1개월 검증 필요) | ASSUMPTIONS §2 |
 | Q6 | OPEN | 위험 감지 = "위험 구간 분류" — factor / threshold / label 어떻게 확정할 것인가? (시계열 적재 선행) | ASSUMPTIONS §2 / INTENT §9.5 |
-| D-1 | DEFECT | `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 회귀 — Clean tree 에서도 실패. spike_or_falling_alert generate-from-unified endpoint 흐름이 message_text 를 빈/None 으로 채우는 회귀 추정. BACKLOG 2026-06-29 전수 감사에서 escalate. | BACKLOG.md 부록 |
+| D-1 | RESOLVED | `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 회귀 — Cleanup Round A 에서 해소. 원인: test isolation 누락 (runtime probe mock 없음). 수정: stub 2개 추가. 617 passed 확인. | STATE_LATEST §1 |
 | D-2 | DEFECT | `app/market_refresh_service.py` in-memory state 가 서버 재시작 시 소실. 6h cooldown 가드 깨짐 + frontend polling idle 오인. BACKLOG 2026-06-29 전수 감사에서 escalate. | BACKLOG.md 부록 |
 
 ## 6. Next action

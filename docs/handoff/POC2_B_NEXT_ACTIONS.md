@@ -1,12 +1,30 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-29 (BACKLOG 전수 감사·정리)
+작성일: 2026-05-20 / 갱신: 2026-06-29 (Cleanup KS-10 Round A)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-29 — BACKLOG 전수 감사·정리)
+## 0. 직전 STEP 결과 (2026-06-29 — Cleanup KS-10 Round A)
+
+지시문 목표: 전체 .py/.ts/.tsx 라인 수 기준선 측정 + KS-10 trigger/near 목록화 + D-1 회귀 해소.
+
+**기준선 (wc -l)**:
+- KS-10 trigger 없음. near: `app/api_market_topn.py` 636 (백엔드 near).
+- scripts/ classification_ambiguity: `scripts/run_three_push_oci.py` 672 (Round B 에서 분류 결정).
+- frontend near 없음. test trigger 없음.
+
+**D-1 해소**:
+- 원인: test isolation 누락 (commit `21e400b0` 에서 runtime probe 가드 추가 시 테스트 mock 미추가).
+- 수정: `tests/test_three_push_contract.py` stub 2개 추가 (505→531 라인, wc -l).
+- 결과: 617 passed (skip 0 / deselect 0). black / flake8 PASS.
+
+**남은 Round B 대상**: `app/api_market_topn.py` near 해소 + scripts/ 분류 결정 + 전체 재측정 후 파일 분리.
+
+---
+
+## 0-prev. 이전 STEP 결과 (2026-06-29 — BACKLOG 전수 감사·정리)
 
 지시문 단일 목표: 1270 라인 누적 BACKLOG 를 다음 Step 우선순위 판단 가능한 상태로
 정리. 코드·UI·API·데이터 계약·OCI·Telegram 변경 0건.
