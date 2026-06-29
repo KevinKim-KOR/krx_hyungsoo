@@ -1,12 +1,30 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-29 (Cleanup KS-10 Round A)
+작성일: 2026-05-20 / 갱신: 2026-06-29 (Cleanup KS-10 Round B)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-29 — Cleanup KS-10 Round A)
+## 0. 직전 STEP 결과 (2026-06-29 — Cleanup KS-10 Round B)
+
+지시문 목표: Round A 에서 확인된 near/ambiguity 파일 분리 → KS-10 trigger=0, near=0 달성.
+
+**분리 결과 (wc -l 실측)**:
+- `scripts/run_three_push_oci.py`: 672 → **255** (신규 `scripts/three_push_oci_helpers.py` 450).
+- `app/api_market_topn.py`: 636 → **178** (신규 `app/api_market_topn_models.py` 234 / `app/api_market_topn_service.py` 274).
+
+**Round B 후 KS-10 재분류**: trigger 0건 / near 0건 (app/ 최대 586 — `app/draft.py`).
+
+**추가 수정**: `scripts/diagnose_constituents_source.py` F541 (f-string placeholder 누락 4건) FIX 라운드에서 수정.
+
+**결과**: 617 passed (skip 0 / deselect 0). black / flake8 PASS (FIX 라운드 포함 최종).
+
+**Note**: `enrich_candidates_with_evidence` / `build_nav_discount_payload` — `DEFAULT_DB_PATH` 직접 참조 → `db_path` 파라미터화 (테스트 monkeypatch 정합성).
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-06-29 — Cleanup KS-10 Round A)
 
 지시문 목표: 전체 .py/.ts/.tsx 라인 수 기준선 측정 + KS-10 trigger/near 목록화 + D-1 회귀 해소.
 

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-29 (Cleanup KS-10 Round A — 기준선 측정 + D-1 회귀 해소)
+최종 업데이트: 2026-06-29 (Cleanup KS-10 Round B — 파일 분리 + KS-10 trigger/near 0 달성)
 
 ## 0. Canonical
 
@@ -23,20 +23,22 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **Cleanup KS-10 Round A** (2026-06-29).
-  - 지시문 목표: 전체 .py/.ts/.tsx 라인 수 기준선 측정 + KS-10 trigger/near 목록화 + D-1 회귀 해소.
+- **현재 완료 상태**: **Cleanup KS-10 Round B** (2026-06-29).
+  - 지시문 목표: Round A 에서 확인된 near/ambiguity 파일 분리 → trigger=0, near=0 달성.
   - **측정 방식**: `wc -l` (Bash) 통일.
-  - **기준선 (측정 전, wc -l)**:
-    - KS-10 trigger (백엔드 핵심 모듈 ≥650): **없음** — `app/api_market_topn.py` 636 (trigger 미달).
-    - KS-10 near (백엔드 핵심 모듈 600~649): `app/api_market_topn.py` **636**.
-    - scripts/ ambiguity: `scripts/run_three_push_oci.py` **672** — "배포 스크립트" vs "백엔드 핵심 모듈" 분류 불명확 (§6 classification_ambiguities 기록).
-    - KS-10 near (테스트, 여러 Step 섞임 조건): 해당 없음 — `tests/test_holdings_message_text.py` 924 (단일 주제 파일, ≥1500 미달).
-    - KS-10 near (프론트엔드 ≥850): **없음** — `frontend/app/components/MarketDiscoveryView.tsx` 789 (near 미달).
-  - **D-1 회귀 해소**: `test_generate_spike_alert_via_unified_endpoint` — 원인: commit `21e400b0` 에서 `generate_spike_alert_draft` 에 `build_runtime_package` + `is_failed_package` 가드가 추가됐으나 테스트 격리(runtime probe mock)는 추가되지 않음 → 테스트 환경에서 `kr_realtime_price_snapshot.status=unavailable` + `universe_momentum_snapshot={}` → `generation_status=failed` → `message_text=None`. 최소 변경: `tests/test_three_push_contract.py` 에 `_runtime_snapshot_with_cache` / `_load_universe_artifact_for_spike` 두 stub 추가 (505→531 라인). assertion 변경 0건.
-  - **수정 파일 3종**: `tests/test_three_push_contract.py` (505→531 라인, wc -l 기준) / `docs/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md`. 신규 1종: `docs/handoff/POC2_CLEANUP_KS10_ROUND_A_CONCLUSION.md` (전체 파일 라인 수 기준선 포함 — app/ 22,406 / legacy/ 171 / scripts/ 4,410 / tests/ 16,082 / frontend/ 12,225).
-  - **backend 전체 테스트**: `617 passed` (skip 0 / deselect 0). black PASS / flake8 PASS.
-  - **남은 Round B 대상**: `app/api_market_topn.py` 636 (near) + `scripts/run_three_push_oci.py` 672 (ambiguity 해소 후 분류 결정) + 기타 근접 파일 전체 재분류 후 파일 분리.
-- **이전 완료 상태**: **BACKLOG 전수 감사·정리** (2026-06-29).
+  - **분리 결과 (wc -l 실측)**:
+    - `scripts/run_three_push_oci.py`: 672 → **255** (helper 모듈 분리). 신규 `scripts/three_push_oci_helpers.py` 450줄.
+    - `app/api_market_topn.py`: 636 → **178** (모델·서비스 분리). 신규 `app/api_market_topn_models.py` 234줄 / `app/api_market_topn_service.py` 274줄.
+  - **Round B 후 KS-10 재분류**: trigger 0건 / near 0건 (app/ 최대 586 — `app/draft.py`, 600 미달). scripts/ KS-10 기준 없음.
+  - **수정 파일 2종**: `app/api_market_topn.py` / `scripts/run_three_push_oci.py`. **신규 3종**: `app/api_market_topn_models.py` / `app/api_market_topn_service.py` / `scripts/three_push_oci_helpers.py`.
+  - **수정 파일 추가**: `scripts/diagnose_constituents_source.py` — F541 f-string placeholder 누락 4건 수정 (FIX 라운드).
+  - **backend 전체 테스트**: `617 passed` (skip 0 / deselect 0). black PASS / flake8 PASS (FIX 라운드 포함 최종).
+  - **Note**: `enrich_candidates_with_evidence` / `build_nav_discount_payload` — `DEFAULT_DB_PATH` 직접 참조 → `db_path` 파라미터화 (테스트 monkeypatch 정합성).
+- **이전 완료 상태**: **Cleanup KS-10 Round A** (2026-06-29).
+  - 지시문 목표: 전체 .py/.ts/.tsx 라인 수 기준선 측정 + KS-10 trigger/near 목록화 + D-1 회귀 해소.
+  - **수정 파일 3종**: `tests/test_three_push_contract.py` / `docs/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md`. 신규 1종: `docs/handoff/POC2_CLEANUP_KS10_ROUND_A_CONCLUSION.md`.
+  - **backend 전체 테스트**: `617 passed`. black PASS / flake8 PASS.
+- **이전 완료 상태 (prev-2)**: **BACKLOG 전수 감사·정리** (2026-06-29).
   - 지시문 단일 목표: 1270 라인 누적 BACKLOG 를 다음 Step 우선순위 판단 가능한 상태로 정리. 코드·UI·API·데이터 계약·OCI·Telegram 변경 0건.
   - **수정 docs 4종**: `docs/backlog/BACKLOG.md` (Measure-Object -Line 기준 451 라인, 16 카테고리 4필드 통일 포맷 91 항목) / `docs/STATE_LATEST.md` (§1 prepend + §5 D-1/D-2 결함 escalate + §7 BACKLOG audit 포인터) / `docs/handoff/POC2_B_NEXT_ACTIONS.md` (§0 prepend + 직전 §0 → §0-prev) / `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` (신규, Measure-Object -Line 기준 99 라인).
   - **5분류 판정 결과**: 완료 23 (RESOLVED 처리) / 폐기 11 (DISCARDED) / 중복 9 (DEDUPED) / 현재 결함 2 (STATE_LATEST §5 escalate) / 유지 91 항목 (재작성 시 sub-bullet 을 별도 항목으로 분리 — 1차 판정 65 + sub-bullet 승격 약 26). 사용자 모호 항목 일괄 판정 — L148 AI 투자세션 ETF 구성 수집 완료 / L400 보유 종목 브리핑 상세 UI 완료 / L1067 Next.js UI 세분화 폐기 / L1155 spike·holding_watch 연계 완료 / L828 market_cache 영속화 폐기 / L892 holdings 자동 불러오기 폐기 / L360 SQLite 영구 보존 폐기 / L14 ML 학습 유지(통일 포맷) / L539 Layer B 급락 임계값 §2 통합.

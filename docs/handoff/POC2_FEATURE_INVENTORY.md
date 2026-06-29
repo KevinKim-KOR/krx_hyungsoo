@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-24 (보유·후보 비교 v1 CLOSEOUT)
+작성일: 2026-05-27 / 갱신: 2026-06-29 (Cleanup KS-10 Round B)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -606,6 +606,39 @@
 | 기존 산식 변경 | **0건** — 수익률 / 초과수익 / 상대상승점수 / overlap 산식 변경 X. |
 | 테스트 | backend pytest 전체 실행 명령 결과 (CLOSEOUT 2026-06-24, deselect 옵션 사용): **616 passed, 1 deselected** (회귀 0 — backend 변경 0건). deselected 1건은 `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 로 본 STEP 이전부터 존재하는 기존 환경 실패. frontend lint / build PASS. (참고: deselect 옵션 미사용 시 동일 명령이 1 failed / 종료 코드 1 로 표기됨 — 실제 회귀 0건의 의미는 동일.) |
 | 다음 조치 | (1) 사용자가 운영 사이클 검증. (2) ML 축2 위험 감지 빈자리 STEP 진입 시 위험 evidence 도 본 UI 패턴 재사용. |
+
+---
+
+### 2.32 Cleanup KS-10 Round A — 기준선 측정 + D-1 회귀 해소 (2026-06-29)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 구조 안정화 STEP — 전체 .py/.ts/.tsx 라인 수 기준선 측정 + KS-10 trigger/near 목록화 + D-1 회귀 해소. 기능 추가 0건. |
+| 현재 메뉴 위치 | (UI 없음 — 코드 구조 + 테스트 수정) |
+| 기능 목적 | KS-10 기준선 확정 + 회귀 테스트 격리 복구. |
+| 사용 가능 여부 | **사용 가능** (2026-06-29 VERIFIED_WITH_NOTES). |
+| KS-10 기준선 (측정 전) | `app/api_market_topn.py` **636** (near ≥600). `scripts/run_three_push_oci.py` **672** (classification_ambiguity). |
+| D-1 해소 | `tests/test_three_push_contract.py` stub 2개 추가 (505→531 라인, wc -l). |
+| 테스트 | pytest **617 passed** (회귀 0). black / flake8 PASS. |
+| 테스트용/임시 여부 | 아님 — 구조 안정화. |
+| 다음 조치 | Round B — near/ambiguity 파일 분리 (2.33 참조). |
+
+---
+
+### 2.33 Cleanup KS-10 Round B — 파일 분리 + trigger/near 0 달성 (2026-06-29)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 구조 안정화 STEP — Round A near/ambiguity 파일 2종을 책임 단위로 분리. KS-10 trigger=0, near=0 달성. 기능 추가 0건. |
+| 현재 메뉴 위치 | (UI 없음 — 코드 구조 변경) |
+| 기능 목적 | `scripts/run_three_push_oci.py` 672→255 / `app/api_market_topn.py` 636→178. 신규 3종: `three_push_oci_helpers.py` 450 / `api_market_topn_models.py` 234 / `api_market_topn_service.py` 274. |
+| 사용 가능 여부 | **사용 가능** (2026-06-29). |
+| KS-10 재분류 | trigger 0건 / near 0건. app/ 최대 586 (`app/draft.py`). |
+| 호환성 | 기존 endpoint / 응답 필드 / OCI runner CLI / 테스트 모두 변경 0건. `api_market_topn._merge_relative_upside_score` + `MarketCandidate` re-export 유지. |
+| 설계 결정 | `enrich_candidates_with_evidence` / `build_nav_discount_payload` — `DEFAULT_DB_PATH` 직접 참조 → `db_path` 파라미터화 (테스트 monkeypatch 정합성). |
+| 테스트 | pytest **617 passed** (회귀 0). black / flake8 PASS. |
+| 테스트용/임시 여부 | 아님 — 구조 안정화. |
+| 다음 조치 | D-2 결함 해소 (`market_refresh_service` in-memory state) 또는 ML 축2 / OCI read model 진입 (사용자 결정). |
 
 ---
 

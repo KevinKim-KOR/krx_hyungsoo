@@ -431,20 +431,20 @@ def run_diagnosis() -> dict:
 def _print_summary(payload: dict) -> None:
     pykrx = payload["pykrx"]
     naver = payload["naver"]
-    print(f"=== pykrx ===")
+    print("=== pykrx ===")
     print(f"  classification: {pykrx['classification']}")
     print(f"  pdf_decision: {pykrx['pdf_decision']}")
     print(
         f"  ok/no_data/call_failed = {pykrx['ok_count']}/"
         f"{pykrx['no_data_count']}/{pykrx['call_failed_count']}"
     )
-    print(f"=== Naver ===")
+    print("=== Naver ===")
     print(f"  operational: {naver['operational_classification']}")
     print(f"  asof candidates: {naver['asof_field_candidates_found']}")
-    print(f"=== Next ===")
+    print("=== Next ===")
     print(f"  step: {payload['next_step_candidate']}")
     print(f"  krx_open_api_needed: {payload['krx_open_api_needed_next']}")
-    print(f"=== Artifacts ===")
+    print("=== Artifacts ===")
     print(f"  JSON: {ARTIFACT_JSON_PATH}")
     print(f"  MD:   {ARTIFACT_MD_PATH}")
 
