@@ -1,12 +1,35 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-29 (Cleanup KS-10 Round B)
+작성일: 2026-05-20 / 갱신: 2026-06-30 (D-2 시장 갱신 상태 SQLite 영속화)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-29 — Cleanup KS-10 Round B)
+## 0. 직전 STEP 결과 (2026-06-30 — D-2 시장 갱신 상태 SQLite 영속화)
+
+지시문 단일 목표: `market_refresh_service` 의 in-memory state SSOT 를 기존 시장 SQLite (`state/market/market_data.sqlite`) 의 신규 `market_refresh_state` 테이블로 전환. 재시작 후에도 마지막 정상 갱신 상태(detail 포함)를 동일하게 노출.
+
+**신규 테이블**: `market_refresh_state` — `refresh_scope='market_data'` 단일 행. 컬럼 14개 (외부 노출 RefreshState 필드 전체 포함). 별도 DB / cache / history 신설 0건.
+
+**신규 모듈**: `app/market_refresh_state_store.py` — `read_state` / `write_state` / `normalize_running_to_failed` / `clear_state`.
+
+**service 동작**:
+- 상태 변경 시점마다 SQLite upsert (running 시작 / 성공 / 실패 모두).
+- `get_state_snapshot` 첫 호출 시 SQLite hydrate + running → failed 정규화 (detail 필드 보존, last_success_* 유지).
+- 실패가 last_success_asof_date / last_success_at 을 덮어쓰지 않음 (`_persist_current_state` 가 prior row 의 success 정보를 보존).
+
+**API·UI 계약**: 변경 0건. `MarketRefreshStatusResponse` 12 필드 전체 의미 유지.
+
+**신규 테스트 10건**: `tests/test_market_refresh_state_persistence.py` — 최초 상태 / 성공 영속화 / 새 인스턴스 detail 전체 복구 / 성공 후 실패 last_success 보존 / running 정규화 detail 보존 / 응답 필드 회귀 / 단일 행 원칙.
+
+**결과**: 627 passed (617 → 627). black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
+
+**D-2 결함**: STATE_LATEST §5 에서 DEFECT → RESOLVED.
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-06-29 — Cleanup KS-10 Round B)
 
 지시문 목표: Round A 에서 확인된 near/ambiguity 파일 분리 → KS-10 trigger=0, near=0 달성.
 

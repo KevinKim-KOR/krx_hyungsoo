@@ -161,7 +161,10 @@ def post_market_refresh() -> MarketRefreshResponse:
 
 @router.get("/market/refresh/status", response_model=MarketRefreshStatusResponse)
 def get_market_refresh_status() -> MarketRefreshStatusResponse:
-    snap = get_state_snapshot(cooldown_hours=DEFAULT_COOLDOWN_HOURS)
+    snap = get_state_snapshot(
+        cooldown_hours=DEFAULT_COOLDOWN_HOURS,
+        db_path=DEFAULT_DB_PATH,
+    )
     return MarketRefreshStatusResponse(
         status=snap.status,
         refresh_id=snap.refresh_id,

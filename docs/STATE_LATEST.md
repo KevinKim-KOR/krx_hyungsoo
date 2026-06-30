@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-29 (Cleanup KS-10 Round B — 파일 분리 + KS-10 trigger/near 0 달성)
+최종 업데이트: 2026-06-30 (D-2 시장 갱신 상태 SQLite 영속화)
 
 ## 0. Canonical
 
@@ -23,7 +23,16 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **Cleanup KS-10 Round B** (2026-06-29).
+- **현재 완료 상태**: **D-2 시장 갱신 상태 SQLite 영속화** (2026-06-30).
+  - 지시문 단일 목표: `market_refresh_service` 의 in-memory state SSOT 를 기존 시장 SQLite (`state/market/market_data.sqlite`) 의 신규 `market_refresh_state` 테이블로 전환. 재시작 후에도 마지막 정상 갱신 상태(detail 포함)를 동일하게 노출.
+  - **신규 테이블**: `market_refresh_state` — `refresh_scope='market_data'` 단일 행만 유지. 컬럼: `last_success_asof_date / last_success_at / last_attempt_started_at / last_attempt_finished_at / last_attempt_status / last_error_summary / asof / universe_count / price_attempted_count / price_success_count / price_fail_count / runtime_seconds / refresh_id / updated_at`. 별도 DB / cache / history 신설 0건.
+  - **신규 모듈**: `app/market_refresh_state_store.py` — `read_state` / `write_state` / `normalize_running_to_failed` / `clear_state`. SSOT 는 SQLite, in-memory 는 동기화된 보조 캐시.
+  - **service 동작 변경**: `start_refresh_job` / `_execute_refresh_job` 가 상태 변경 시점마다 SQLite upsert. `get_state_snapshot` 첫 호출 시 SQLite hydrate + running → failed 정규화 (detail 보존). 실패가 last_success_* 를 덮어쓰지 않음.
+  - **API·UI 계약**: 변경 0건. `MarketRefreshStatusResponse` 필드 / `/market/refresh` / `/market/refresh/status` endpoint 그대로.
+  - **신규 테스트 (10건)**: `tests/test_market_refresh_state_persistence.py` — 최초 상태 / 성공 영속화 / 새 인스턴스 detail 복구 / 성공 후 실패 보존 / running 정규화 detail 보존 / 응답 필드 회귀 / 단일 행 원칙.
+  - **backend 전체 테스트**: `627 passed` (617 → 627). black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
+  - **수정 파일**: `app/market_data_store.py` (DDL 추가), `app/market_refresh_service.py` (SSOT 전환), `app/api_market_topn.py` (status endpoint 에 db_path 명시), `tests/test_market_topn_api.py` (fixture reset_state_for_testing 에 db_path 전달), `tests/test_market_data_store.py` (테이블 목록 검증 4 → 4종 갱신). **신규**: `app/market_refresh_state_store.py`, `tests/test_market_refresh_state_persistence.py`, `docs/handoff/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md`.
+- **이전 완료 상태**: **Cleanup KS-10 Round B** (2026-06-29).
   - 지시문 목표: Round A 에서 확인된 near/ambiguity 파일 분리 → trigger=0, near=0 달성.
   - **측정 방식**: `wc -l` (Bash) 통일.
   - **분리 결과 (wc -l 실측)**:
@@ -335,7 +344,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 | Q4 | OPEN | "잘 올라가는 섹터/ETF 발굴" 작동 단위 (운영 1개월 검증 필요) | ASSUMPTIONS §2 |
 | Q6 | OPEN | 위험 감지 = "위험 구간 분류" — factor / threshold / label 어떻게 확정할 것인가? (시계열 적재 선행) | ASSUMPTIONS §2 / INTENT §9.5 |
 | D-1 | RESOLVED | `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 회귀 — Cleanup Round A 에서 해소. 원인: test isolation 누락 (runtime probe mock 없음). 수정: stub 2개 추가. 617 passed 확인. | STATE_LATEST §1 |
-| D-2 | DEFECT | `app/market_refresh_service.py` in-memory state 가 서버 재시작 시 소실. 6h cooldown 가드 깨짐 + frontend polling idle 오인. BACKLOG 2026-06-29 전수 감사에서 escalate. | BACKLOG.md 부록 |
+| D-2 | RESOLVED | `app/market_refresh_service.py` in-memory state 재시작 소실 — 2026-06-30 D-2 SQLite 영속화 STEP 에서 해소. SSOT 를 `market_refresh_state` 테이블로 전환. 재시작 시 running → failed 정규화 + detail 보존. 627 passed. | STATE_LATEST §1 / handoff/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md |
 
 ## 6. Next action
 

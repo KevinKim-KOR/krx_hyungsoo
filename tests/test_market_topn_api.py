@@ -80,7 +80,8 @@ def api_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     # 양쪽 모듈의 DEFAULT_DB_PATH 를 모두 patch — compute_topn / api / refresh_service
     monkeypatch.setattr(api_market_topn, "DEFAULT_DB_PATH", fake_db)
     monkeypatch.setattr(market_data_store, "DEFAULT_DB_PATH", fake_db)
-    market_refresh_service.reset_state_for_testing()
+    # D-2 (2026-06-30) — SSOT 가 SQLite 로 전환됨. in-memory + 단일 행 모두 reset.
+    market_refresh_service.reset_state_for_testing(db_path=fake_db)
     return TestClient(api_module.app)
 
 

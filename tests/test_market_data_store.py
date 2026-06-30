@@ -29,13 +29,15 @@ def db_path(tmp_path: Path) -> Path:
     return tmp_path / "market_data.sqlite"
 
 
-def test_init_db_creates_three_tables_only(db_path: Path) -> None:
+def test_init_db_creates_expected_tables_only(db_path: Path) -> None:
     init_db(db_path)
     assert table_exists("etf_master", db_path)
     assert table_exists("etf_daily_price", db_path)
     assert table_exists("market_refresh_log", db_path)
+    # D-2 (2026-06-30) — market_refresh_state SQLite SSOT 영속화 테이블 추가.
+    assert table_exists("market_refresh_state", db_path)
 
-    # decision_evidence 테이블은 본 STEP 에서 생성 금지 (AC-10).
+    # decision_evidence 테이블은 본 STEP 에서 생성 금지.
     assert not table_exists("decision_evidence", db_path)
 
     with sqlite3.connect(str(db_path)) as con:
@@ -44,7 +46,12 @@ def test_init_db_creates_three_tables_only(db_path: Path) -> None:
             "AND name NOT LIKE 'sqlite_%' ORDER BY name"
         )
         names = sorted(row[0] for row in cur.fetchall())
-    assert names == ["etf_daily_price", "etf_master", "market_refresh_log"]
+    assert names == [
+        "etf_daily_price",
+        "etf_master",
+        "market_refresh_log",
+        "market_refresh_state",
+    ]
 
 
 def test_upsert_etf_master_replaces_same_ticker(db_path: Path) -> None:

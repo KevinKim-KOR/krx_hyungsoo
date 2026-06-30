@@ -4,17 +4,18 @@
 - POST /market/refresh 가 호출하는 백엔드 서비스 (ETF universe + 가격 수집).
 - 동시 1건만 실행 (single-flight).
 - 마지막 성공 refresh 후 6시간 cooldown.
-- 결과는 market_refresh_log + in-memory state 두 곳에 기록.
+- 결과는 market_refresh_log + market_refresh_state 두 곳에 기록.
 - JSON artifact 생성하지 않는다.
 
 namespace 주의 (2026-05-18):
 - 본 service 가 처리하는 `/market/refresh` 는 ETF universe 전체 수집용.
 - holdings naver 시세 갱신용 `/holdings/market/refresh` 와는 서로 다른 endpoint.
 
-설계자 결정:
-- in-memory state 는 모듈 수준 dict 1개 + threading.Lock 으로 보호.
-- 서버 재시작 시 running 상태 복구는 BACKLOG.
-- cooldown 은 in-memory `last_success_at` 기준 (서버 lifetime 안에서만 유효).
+D-2 (2026-06-30): 상태 SSOT 를 SQLite (market_refresh_state) 로 전환.
+- in-memory state 는 SQLite 와 동기화된 보조 캐시.
+- 모든 상태 변경 시 SQLite 영속화.
+- 모듈 초기화/첫 호출 시 SQLite 에서 복구 + running → failed 정규화.
+- 6h cooldown 도 SQLite last_success_at 기반.
 """
 
 from __future__ import annotations
@@ -41,6 +42,13 @@ from app.market_data_store import (
     list_etf_tickers,
     log_refresh,
 )
+from app.market_refresh_state_store import (
+    MarketRefreshStateRow,
+    clear_state,
+    normalize_running_to_failed,
+    read_state,
+    write_state,
+)
 
 DEFAULT_COOLDOWN_HOURS = 6
 
@@ -64,7 +72,7 @@ def _write_nav_refresh_summary(summary) -> None:  # noqa: ANN001 — runtime dat
 
 @dataclass
 class RefreshState:
-    """현재 refresh job 의 in-memory 상태 (서버 lifetime 안에서만 유효)."""
+    """현재 refresh job 의 상태. SSOT 는 SQLite, 본 dataclass 는 동기화된 캐시."""
 
     status: str = "idle"  # idle / running / completed / failed
     refresh_id: Optional[str] = None
@@ -85,6 +93,9 @@ class _ServiceState:
     state: RefreshState = field(default_factory=RefreshState)
     lock: threading.Lock = field(default_factory=threading.Lock)
     last_success_at: Optional[datetime] = None
+    last_success_asof_date: Optional[str] = None
+    # SQLite hydrate 가 db_path 별로 1회씩만 수행되도록.
+    loaded_for_db: Optional[str] = None
 
 
 _service = _ServiceState()
@@ -98,10 +109,114 @@ def _iso(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _parse_iso(s: Optional[str]) -> Optional[datetime]:
+    if not s:
+        return None
+    try:
+        # 기존 _iso 포맷: 'YYYY-MM-DDTHH:MM:SSZ'
+        return datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 def _new_refresh_id() -> str:
     return (
         f"market_refresh_{_utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
     )
+
+
+def _row_to_state(row: MarketRefreshStateRow) -> RefreshState:
+    """SQLite 행 → RefreshState 변환.
+
+    running 정규화는 호출 전에 normalize_running_to_failed 로 이미 처리됐다고 가정.
+    상태 행이 없거나 idle 인 경우 호출자가 별도 처리.
+    """
+    status = row.last_attempt_status or "idle"
+    return RefreshState(
+        status=status,
+        refresh_id=row.refresh_id,
+        started_at=row.last_attempt_started_at,
+        finished_at=row.last_attempt_finished_at,
+        asof=row.asof,
+        universe_count=row.universe_count,
+        price_attempted_count=row.price_attempted_count,
+        price_success_count=row.price_success_count,
+        price_fail_count=row.price_fail_count,
+        runtime_seconds=row.runtime_seconds,
+        error_summary=row.last_error_summary,
+    )
+
+
+def _hydrate_from_sqlite(db_path: Path) -> None:
+    """SQLite → in-memory 복구. 호출 전에 _service.lock 보유 필수.
+
+    - running 상태가 남아 있으면 failed 로 정규화 (detail 필드 보존).
+    - last_success_at / last_success_asof_date 도 in-memory 미러에 반영.
+    """
+    normalize_running_to_failed(db_path=db_path)
+    row = read_state(db_path=db_path)
+    if row is None:
+        _service.state = RefreshState()
+        _service.last_success_at = None
+        _service.last_success_asof_date = None
+    else:
+        _service.state = _row_to_state(row)
+        _service.last_success_at = _parse_iso(row.last_success_at)
+        _service.last_success_asof_date = row.last_success_asof_date
+    _service.loaded_for_db = str(db_path.resolve())
+
+
+def _ensure_loaded(db_path: Path) -> None:
+    """첫 호출 또는 db_path 변경 시 SQLite 에서 in-memory 복구. lock 자체 획득."""
+    key = str(db_path.resolve())
+    with _service.lock:
+        if _service.loaded_for_db == key:
+            return
+        _hydrate_from_sqlite(db_path)
+
+
+def _persist_current_state(db_path: Path) -> None:
+    """현재 in-memory state 를 SQLite 에 영속화. 호출 전에 _service.lock 보유 필수.
+
+    last_success_asof_date / last_success_at 보존 규칙:
+    - in-memory mirror 에 값이 있으면 그것을 우선.
+    - mirror 가 None 이고 SQLite 에 이전 성공 기록이 있으면 그것을 유지.
+    실패·중단·running 진입이 마지막 정상 성공 기록을 덮어쓰면 안 된다.
+    """
+    s = _service.state
+    last_success_iso = (
+        _iso(_service.last_success_at) if _service.last_success_at else None
+    )
+    last_success_asof = _service.last_success_asof_date
+    if last_success_iso is None or last_success_asof is None:
+        prior = read_state(db_path=db_path)
+        if prior is not None:
+            if last_success_iso is None:
+                last_success_iso = prior.last_success_at
+            if last_success_asof is None:
+                last_success_asof = prior.last_success_asof_date
+    row = MarketRefreshStateRow(
+        refresh_id=s.refresh_id,
+        last_success_asof_date=last_success_asof,
+        last_success_at=last_success_iso,
+        last_attempt_started_at=s.started_at,
+        last_attempt_finished_at=s.finished_at,
+        last_attempt_status=s.status,
+        last_error_summary=s.error_summary,
+        asof=s.asof,
+        universe_count=s.universe_count,
+        price_attempted_count=s.price_attempted_count,
+        price_success_count=s.price_success_count,
+        price_fail_count=s.price_fail_count,
+        runtime_seconds=s.runtime_seconds,
+    )
+    write_state(row, db_path=db_path)
+    # in-memory mirror 도 SQLite 와 동기화된 값으로 갱신
+    # (다음 cooldown 계산 등에서 일관성 유지).
+    if _service.last_success_at is None and last_success_iso is not None:
+        _service.last_success_at = _parse_iso(last_success_iso)
+    if _service.last_success_asof_date is None and last_success_asof is not None:
+        _service.last_success_asof_date = last_success_asof
 
 
 def _cooldown_remaining_seconds(cooldown_hours: int) -> int:
@@ -112,15 +227,25 @@ def _cooldown_remaining_seconds(cooldown_hours: int) -> int:
     return max(0, int(remaining))
 
 
-def reset_state_for_testing() -> None:
-    """단일 테스트 격리용 — service module state 초기화."""
+def reset_state_for_testing(db_path: Path = DEFAULT_DB_PATH) -> None:
+    """단일 테스트 격리용 — service module state + SQLite 단일 행 초기화."""
     with _service.lock:
         _service.state = RefreshState()
         _service.last_success_at = None
+        _service.last_success_asof_date = None
+        _service.loaded_for_db = str(db_path.resolve())
+    clear_state(db_path=db_path)
 
 
-def get_state_snapshot(cooldown_hours: int = DEFAULT_COOLDOWN_HOURS) -> RefreshState:
-    """현재 RefreshState 의 thread-safe snapshot."""
+def get_state_snapshot(
+    cooldown_hours: int = DEFAULT_COOLDOWN_HOURS,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> RefreshState:
+    """현재 RefreshState 의 thread-safe snapshot.
+
+    첫 호출 시 SQLite 에서 in-memory 복구 + running 정규화.
+    """
+    _ensure_loaded(db_path)
     with _service.lock:
         snap = RefreshState(**_service.state.__dict__)
     snap.cooldown_remaining_seconds = _cooldown_remaining_seconds(cooldown_hours)
@@ -153,6 +278,7 @@ def _execute_refresh_job(
         _service.state.price_fail_count = None
         _service.state.runtime_seconds = None
         _service.state.error_summary = None
+        _persist_current_state(db_path)
 
     t0 = time.perf_counter()
     error_summary: Optional[str] = None
@@ -255,6 +381,10 @@ def _execute_refresh_job(
         _service.state.error_summary = error_summary
         if success_overall:
             _service.last_success_at = finished
+            _service.last_success_asof_date = end_date_for_prices.isoformat()
+        # 성공/실패 모두 SQLite 영속화. 실패 경로는 last_success_* 를
+        # 건드리지 않으므로 마지막 정상 성공 기록은 그대로 유지된다.
+        _persist_current_state(db_path)
 
 
 @dataclass
@@ -279,6 +409,7 @@ def start_refresh_job(
     single-flight + cooldown 가드 통과 시 background thread 로 실행.
     thread_runner 인자는 테스트에서 동기 실행으로 강제하는 용도.
     """
+    _ensure_loaded(db_path)
     with _service.lock:
         current_status = _service.state.status
         if current_status == "running":
@@ -304,6 +435,7 @@ def start_refresh_job(
         _service.state.started_at = _iso(_utcnow())
         _service.state.finished_at = None
         _service.state.error_summary = None
+        _persist_current_state(db_path)
 
     end_for_prices = end_date_for_prices or date.today()
 

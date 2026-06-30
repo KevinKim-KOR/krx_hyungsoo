@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-29 (Cleanup KS-10 Round B)
+작성일: 2026-05-27 / 갱신: 2026-06-30 (D-2 시장 갱신 상태 SQLite 영속화)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -638,7 +638,26 @@
 | 설계 결정 | `enrich_candidates_with_evidence` / `build_nav_discount_payload` — `DEFAULT_DB_PATH` 직접 참조 → `db_path` 파라미터화 (테스트 monkeypatch 정합성). |
 | 테스트 | pytest **617 passed** (회귀 0). black / flake8 PASS. |
 | 테스트용/임시 여부 | 아님 — 구조 안정화. |
-| 다음 조치 | D-2 결함 해소 (`market_refresh_service` in-memory state) 또는 ML 축2 / OCI read model 진입 (사용자 결정). |
+| 다음 조치 | D-2 결함 해소 (2026-06-30 §2.34 로 진행됨). |
+
+---
+
+### 2.34 D-2 시장 갱신 상태 SQLite 영속화 (2026-06-30)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | `market_refresh_service` 의 in-memory state SSOT 를 기존 시장 SQLite 의 `market_refresh_state` 테이블 (단일 행) 로 전환. 재시작 후에도 마지막 정상 갱신 상태(detail 포함)를 동일하게 노출. |
+| 현재 메뉴 위치 | (UI 없음 — 내부 영속화 변경) |
+| 기능 목적 | D-2 결함 해소 — 서버 재시작 시 cooldown 가드 / frontend polling idle 오인 / 마지막 정상 갱신 정보 소실 방지. |
+| 사용 가능 여부 | **사용 가능** (2026-06-30). |
+| 신규 테이블 | `market_refresh_state` — `refresh_scope='market_data'` 단일 행. 컬럼 14개 (RefreshState 외부 노출 필드 전체 포함). |
+| 신규 모듈 | `app/market_refresh_state_store.py` — `read_state` / `write_state` / `normalize_running_to_failed` / `clear_state`. |
+| API·UI 계약 | 변경 0건. `MarketRefreshStatusResponse` 응답 필드 12개 그대로. endpoint 변경 X. |
+| 재시작 동작 | `_ensure_loaded` 가 첫 호출 시 SQLite hydrate + `running → failed` 정규화 (detail 보존, `last_success_*` 유지). 새 인스턴스는 다음 호출에서 다시 hydrate. |
+| 실패 보존 | `_persist_current_state` 가 prior row 의 `last_success_*` 를 자동 보존 — 실패·중단·running 진입이 마지막 정상 성공 기록을 덮어쓰지 않음. |
+| 테스트 | pytest **627 passed** (617 → 627, 신규 10 케이스). black / flake8 PASS / frontend lint / frontend build PASS. |
+| 테스트용/임시 여부 | 아님 — 결함 해소. |
+| 다음 조치 | ML 축2 / OCI read model foundation 진입 (사용자 결정 대기). |
 
 ---
 

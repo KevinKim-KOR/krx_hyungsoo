@@ -64,6 +64,30 @@ CREATE TABLE IF NOT EXISTS market_refresh_log (
 );
 """.strip()
 
+# D-2 (2026-06-30) — market refresh state SSOT. 단일 행만 유지
+# (refresh_scope='market_data'). in-memory state 와 동기화되는 보조가 아니라
+# SQLite 가 기준이다. 자세한 영속화 규칙은
+# docs/handoff/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md 참조.
+MARKET_REFRESH_STATE_DDL = """
+CREATE TABLE IF NOT EXISTS market_refresh_state (
+    refresh_scope             TEXT PRIMARY KEY,
+    refresh_id                TEXT,
+    last_success_asof_date    TEXT,
+    last_success_at           TEXT,
+    last_attempt_started_at   TEXT,
+    last_attempt_finished_at  TEXT,
+    last_attempt_status       TEXT,
+    last_error_summary        TEXT,
+    asof                      TEXT,
+    universe_count            INTEGER,
+    price_attempted_count     INTEGER,
+    price_success_count       INTEGER,
+    price_fail_count          INTEGER,
+    runtime_seconds           REAL,
+    updated_at                TEXT NOT NULL
+);
+""".strip()
+
 
 @dataclass
 class EtfMasterRow:
@@ -101,6 +125,7 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
         con.execute(ETF_MASTER_DDL)
         con.execute(ETF_DAILY_PRICE_DDL)
         con.execute(MARKET_REFRESH_LOG_DDL)
+        con.execute(MARKET_REFRESH_STATE_DDL)
         con.commit()
 
 
