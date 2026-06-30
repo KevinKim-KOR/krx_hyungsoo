@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-30 (D-2 시장 갱신 상태 SQLite 영속화)
+작성일: 2026-05-27 / 갱신: 2026-06-30 (시장 시계열 SQLite 기반 보강 — PARTIAL)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -657,7 +657,28 @@
 | 실패 보존 | `_persist_current_state` 가 prior row 의 `last_success_*` 를 자동 보존 — 실패·중단·running 진입이 마지막 정상 성공 기록을 덮어쓰지 않음. |
 | 테스트 | pytest **627 passed** (617 → 627, 신규 10 케이스). black / flake8 PASS / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 결함 해소. |
-| 다음 조치 | ML 축2 / OCI read model foundation 진입 (사용자 결정 대기). |
+| 다음 조치 | 시장 시계열 SQLite 기반 보강 (§2.35 로 진행됨). |
+
+---
+
+### 2.35 시장 시계열 SQLite 기반 보강 — PARTIAL (2026-06-30)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | KRX 데이터마켓 공식 자료 (CSV/ZIP) → PC CLI → SQLite 적재. 종목별 적재·범위·결측 상태 SSOT. 위험 evidence·국면·백테스트 기반 데이터 STEP. |
+| 현재 메뉴 위치 | (UI 없음 — 데이터 기반 STEP) |
+| 기능 목적 | KODEX200 / ETF universe 의 장기 일별 종가 시계열을 SQLite 에 점진 적재 + 결측 분류 + 중단 후 재개. 위험 evidence·ML 축2·백테스트 진입 전 데이터 기반 확보. |
+| 사용 가능 여부 | **PARTIAL** (2026-06-30) — 본 환경 KRX 자료 접근 불가. CLI / 계약 / fixture 테스트 완료. 실측은 사용자 PC 실행 필요. |
+| 신규 테이블 | `market_timeseries_ingestion_state` — ticker PK 11 컬럼 (확인된 상장일 / 시계열 시작·종료 / 관측 거래일 수 / 상장 후 결측 수 / 적재 상태 / 소스 / 가격 기준 / 마지막 확인 시각 / 오류 요약). |
+| 신규 모듈 | `app/market_timeseries_ingestion_store.py` (state CRUD + pending), `app/market_timeseries_ingestion_service.py` (결측 분류 + ingest). |
+| 신규 CLI | `scripts/ingest_krx_timeseries.py` — `benchmark` / `etf` / `status` 서브커맨드. 외부 네트워크 X. `--price-basis` 인자 필수. |
+| 결측 분류 | 상장 전 (count X) / source_missing (CSV 에 ticker 없음) / post_listing_missing (KODEX200 거래일 기준) / missing_confirm (충돌·bad price). 0/직전값/보간 채움 0건. |
+| 재개 / 중복 방지 | `list_pending_tickers` 가 `status != normal` 만 반환. (ticker, date) PK ON CONFLICT 흡수. `--force` 로 강제 재적재. |
+| 가격 시계열 SSOT | 기존 `etf_daily_price` (KODEX200 포함 ETF) / `market_benchmark_daily_price` (KOSPI 등 지수). 신규 가격 테이블 신설 0건. |
+| API·UI 계약 | 변경 0건. `fetch_price_history` / `fetch_benchmark_history` 그대로. |
+| 테스트 | pytest **650 passed** (627 → 650, 신규 23 케이스, FIX r1 +6, FIX r2 +2). black / flake8 / frontend lint / frontend build PASS. |
+| 테스트용/임시 여부 | 아님 — 데이터 기반. |
+| 다음 조치 | 사용자가 PC 에서 KRX 자료 다운로드 → CLI 실행 → conclusion §2~§4 실측 영역 채움 → DONE 승격. 이후 위험 evidence / ML 축2 / 백테스트 진입. |
 
 ---
 

@@ -1,12 +1,51 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-30 (D-2 시장 갱신 상태 SQLite 영속화)
+작성일: 2026-05-20 / 갱신: 2026-06-30 (시장 시계열 SQLite 기반 보강 — PARTIAL)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-30 — D-2 시장 갱신 상태 SQLite 영속화)
+## 0. 직전 STEP 결과 (2026-06-30 — 시장 시계열 SQLite 기반 보강, PARTIAL)
+
+지시문 단일 목표: ETF·KODEX200 일별 종가 시계열을 기존 시장 SQLite 로 적재. 위험 evidence·국면·백테스트의 기반.
+
+**완료 판정**: PARTIAL. 본 환경에서 KRX 데이터마켓 자료에 직접 접근 불가 → CLI 도구 / SQLite 계약 / 결측 분류·재개·중복방지 / fixture 기반 자동 테스트까지 완료. 실측 AC-1~AC-5 는 사용자 PC 실행 후 채워질 영역.
+
+**신규 SQLite 테이블 1종**: `market_timeseries_ingestion_state` — ticker PK 단일 행 / 11 컬럼. 가격 시계열은 기존 `etf_daily_price` / `market_benchmark_daily_price` 재사용 (신규 가격 테이블 신설 0건).
+
+**신규 모듈 3종**:
+- `app/market_timeseries_ingestion_store.py` — state CRUD + count + pending (재개 키).
+- `app/market_timeseries_ingestion_service.py` — 결측 분류 + ingest_etf / ingest_benchmark.
+- `scripts/ingest_krx_timeseries.py` CLI — `benchmark` / `etf` / `status` 서브커맨드. 외부 네트워크 X.
+
+**결측 분류 규칙** (지시문 §7):
+- 상장 전: 정상 비존재 (count X).
+- 소스 미제공: `source_missing` status.
+- 상장 후 KODEX200 거래일 결측: `post_listing_missing_count` + `partial`.
+- 충돌·bad price: 자동 선택 X, `missing_confirm`. 0/직전값/보간 채움 0건.
+
+**재개·중복 방지**:
+- `list_pending_tickers` 가 `status != normal` 만 반환.
+- `(ticker, date)` PK ON CONFLICT 흡수 — 동일 데이터 두 번 실행해도 중복 0건.
+
+**API·UI 계약**: 변경 0건.
+
+**테스트**: backend 650 passed (627 → 650, 신규 23, FIX r1 +6, FIX r2 +2). black / flake8 / frontend lint / frontend build PASS.
+
+**사용자 PC 실행 가이드** (DONE 승격 경로):
+```bash
+python -m scripts.ingest_krx_timeseries benchmark \
+    --csv <kodex200.csv> --benchmark-id 069500 \
+    --benchmark-name "KODEX 200" --price-basis "<자료 명시 기준>"
+python -m scripts.ingest_krx_timeseries etf \
+    --csv <etf_universe.csv> --price-basis "<자료 명시 기준>"
+python -m scripts.ingest_krx_timeseries status
+```
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-06-30 — D-2 시장 갱신 상태 SQLite 영속화)
 
 지시문 단일 목표: `market_refresh_service` 의 in-memory state SSOT 를 기존 시장 SQLite (`state/market/market_data.sqlite`) 의 신규 `market_refresh_state` 테이블로 전환. 재시작 후에도 마지막 정상 갱신 상태(detail 포함)를 동일하게 노출.
 

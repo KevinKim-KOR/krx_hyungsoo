@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-30 (D-2 시장 갱신 상태 SQLite 영속화)
+최종 업데이트: 2026-06-30 (시장 시계열 SQLite 기반 보강 — PARTIAL)
 
 ## 0. Canonical
 
@@ -23,7 +23,22 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **D-2 시장 갱신 상태 SQLite 영속화** (2026-06-30).
+- **현재 완료 상태**: **시장 시계열 SQLite 기반 보강 — PARTIAL** (2026-06-30).
+  - 지시문 단일 목표: 위험 evidence·국면·백테스트의 기반이 되는 ETF·KODEX200 일별 종가 시계열을 기존 시장 SQLite (`state/market/market_data.sqlite`) 로 적재. KRX 데이터마켓 공식 다운로드 자료 (CSV/ZIP) → PC CLI import → SQLite SSOT.
+  - **완료 판정**: PARTIAL. 본 환경에서 KRX 자료에 직접 접근 불가 — CLI 도구 / SQLite 계약 / 결측 분류·재개·중복방지 / fixture 기반 자동 테스트까지만 완료. 실측 AC-1~AC-5 는 사용자 PC 실행 후 채워질 영역. **FDR 대신 호출 금지** (지시문 Q2 답 준수).
+  - **신규 테이블**: `market_timeseries_ingestion_state` — 종목별 적재·범위·결측 상태. ticker PK 단일 종목당 1행. 컬럼 11개. **가격 시계열 테이블은 기존 `etf_daily_price` / `market_benchmark_daily_price` 재사용 — 신규 가격 테이블 신설 0건**.
+  - **신규 모듈 2종**: `app/market_timeseries_ingestion_store.py` (state CRUD + count + pending), `app/market_timeseries_ingestion_service.py` (결측 분류 + ingest_etf/benchmark).
+  - **신규 CLI**: `scripts/ingest_krx_timeseries.py` — `benchmark` / `etf` / `status` 서브커맨드. 외부 네트워크 호출 X. CSV 컬럼은 한글·영문 헤더 호환. `--price-basis` 인자 필수 (자동 추정 금지).
+  - **결측 분류**: 상장 전 (정상 비존재, count X) / 소스 미제공 (`source_missing` status) / 상장 후 (`post_listing_missing_count` + `partial` status) / 충돌·bad price (`missing_confirm`). 0·직전값·보간 채움 0건.
+  - **재개·중복 방지**: `list_pending_tickers` 가 `status != normal` 만 반환 + `(ticker, date)` PK ON CONFLICT 흡수.
+  - **API·UI 계약**: 변경 0건. 기존 `fetch_price_history` / `fetch_benchmark_history` read 경로 그대로.
+  - **신규 테스트 23건**: `tests/test_market_timeseries_ingestion.py` (15, FIX r1 +4) + `tests/test_ingest_krx_timeseries_cli.py` (8, FIX r1 +2, FIX r2 +2).
+  - **FIX r1 (2026-06-30)**: 검증자 A-1/A-3/A-4 (기존 가격 충돌 시 임의 덮어쓰기 금지) + B-1 (KODEX200 선행 없는 ETF 적재 normal 금지) + B-6 (CLI ETF universe 기준을 기존 SQLite `etf_master` 로 강제) 보강.
+  - **FIX r2 (2026-06-30)**: 검증자 A-1/A-2/B-6 (`--ticker` 경로도 universe empty 시 거부 — 가드 일관) + A-4/B-5 (Windows 콘솔 cp949 등에서 `UnicodeEncodeError` 방지 — CLI 출력 ASCII 강제 + stdout/stderr UTF-8 reconfigure) + A-3 (FIX r1 직후 본 문서 내부 수치 불일치 정정) 보강.
+  - **FIX r3 (2026-06-30)**: 검증자 A-3 (conclusion §10 변경 파일 목록의 테스트 케이스 수 `11`/`4` → `15`/`8` 정정 — §9 본문과 정합).
+  - **backend 전체 테스트**: `650 passed` (627 → 650). black / flake8 / frontend lint / frontend build PASS.
+  - **수정 파일**: `app/market_data_store.py` (DDL 추가), `tests/test_market_data_store.py` (테이블 목록 4 → 5종). **신규**: 위 모듈 3종 + 테스트 2종 + conclusion 1종.
+- **이전 완료 상태**: **D-2 시장 갱신 상태 SQLite 영속화** (2026-06-30).
   - 지시문 단일 목표: `market_refresh_service` 의 in-memory state SSOT 를 기존 시장 SQLite (`state/market/market_data.sqlite`) 의 신규 `market_refresh_state` 테이블로 전환. 재시작 후에도 마지막 정상 갱신 상태(detail 포함)를 동일하게 노출.
   - **신규 테이블**: `market_refresh_state` — `refresh_scope='market_data'` 단일 행만 유지. 컬럼: `last_success_asof_date / last_success_at / last_attempt_started_at / last_attempt_finished_at / last_attempt_status / last_error_summary / asof / universe_count / price_attempted_count / price_success_count / price_fail_count / runtime_seconds / refresh_id / updated_at`. 별도 DB / cache / history 신설 0건.
   - **신규 모듈**: `app/market_refresh_state_store.py` — `read_state` / `write_state` / `normalize_running_to_failed` / `clear_state`. SSOT 는 SQLite, in-memory 는 동기화된 보조 캐시.

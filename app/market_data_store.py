@@ -88,6 +88,38 @@ CREATE TABLE IF NOT EXISTS market_refresh_state (
 );
 """.strip()
 
+# 2026-06-30 시장 시계열 SQLite 기반 보강 — 종목별 적재·범위·결측 상태 SSOT.
+# 가격 시계열 자체는 기존 etf_daily_price / market_benchmark_daily_price 를
+# 그대로 재사용한다. 본 테이블은 적재 메타 (확인된 상장일 / 시작일 / 종료일 /
+# 관측 거래일 수 / 상장 후 확인 필요 결측 수 / 적재 상태 / 소스 / 가격 기준)
+# 만 관리한다. 별도 가격 시계열 테이블 신설 금지.
+#
+# 적재 상태 (status) enum:
+#   normal           정상 적재
+#   partial          부분 적재
+#   missing_confirm  상장 후 확인 필요 결측
+#   source_missing   소스 데이터 없음
+#   failed           적재 실패
+#   listing_unknown  상장일 또는 시작일 확인 불가
+#
+# 가격 기준 (price_basis) — 실측 시 KRX 자료 필드/문서를 기준으로 기록.
+# 임의로 가정하지 않는다. 확인 불가 시 NULL 유지.
+MARKET_TIMESERIES_INGESTION_STATE_DDL = """
+CREATE TABLE IF NOT EXISTS market_timeseries_ingestion_state (
+    ticker                       TEXT PRIMARY KEY,
+    confirmed_listing_date       TEXT,
+    confirmed_series_start_date  TEXT,
+    confirmed_series_end_date    TEXT,
+    observed_trading_day_count   INTEGER NOT NULL DEFAULT 0,
+    post_listing_missing_count   INTEGER NOT NULL DEFAULT 0,
+    ingestion_status             TEXT NOT NULL,
+    source                       TEXT,
+    price_basis                  TEXT,
+    last_checked_at              TEXT NOT NULL,
+    error_summary                TEXT
+);
+""".strip()
+
 
 @dataclass
 class EtfMasterRow:
@@ -126,6 +158,7 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
         con.execute(ETF_DAILY_PRICE_DDL)
         con.execute(MARKET_REFRESH_LOG_DDL)
         con.execute(MARKET_REFRESH_STATE_DDL)
+        con.execute(MARKET_TIMESERIES_INGESTION_STATE_DDL)
         con.commit()
 
 
@@ -278,6 +311,27 @@ def list_etf_tickers(db_path: Path = DEFAULT_DB_PATH) -> list[str]:
     with _connection(db_path) as con:
         cur = con.execute("SELECT ticker FROM etf_master ORDER BY ticker")
         return [row[0] for row in cur.fetchall()]
+
+
+def fetch_existing_close_map(
+    ticker: str,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> dict[str, Optional[float]]:
+    """기존 etf_daily_price 의 (date → close) 매핑. close>0 필터 적용 X.
+
+    2026-06-30 — 시장 시계열 보강 STEP: 신규 적재 전 기존 가격과 충돌 검출용.
+    close 가 NULL 인 기존 행도 포함 (값 자체는 None 으로 노출).
+    """
+    with _connection(db_path) as con:
+        cur = con.execute(
+            "SELECT date, close FROM etf_daily_price WHERE ticker = ?",
+            (ticker,),
+        )
+        return {
+            str(row[0]): (float(row[1]) if row[1] is not None else None)
+            for row in cur.fetchall()
+        }
 
 
 def get_etf_name(ticker: str, db_path: Path = DEFAULT_DB_PATH) -> Optional[str]:

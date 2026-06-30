@@ -36,6 +36,8 @@ def test_init_db_creates_expected_tables_only(db_path: Path) -> None:
     assert table_exists("market_refresh_log", db_path)
     # D-2 (2026-06-30) — market_refresh_state SQLite SSOT 영속화 테이블 추가.
     assert table_exists("market_refresh_state", db_path)
+    # 2026-06-30 시장 시계열 SQLite 기반 보강 STEP — 종목별 적재 상태 테이블.
+    assert table_exists("market_timeseries_ingestion_state", db_path)
 
     # decision_evidence 테이블은 본 STEP 에서 생성 금지.
     assert not table_exists("decision_evidence", db_path)
@@ -51,6 +53,7 @@ def test_init_db_creates_expected_tables_only(db_path: Path) -> None:
         "etf_master",
         "market_refresh_log",
         "market_refresh_state",
+        "market_timeseries_ingestion_state",
     ]
 
 

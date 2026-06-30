@@ -103,6 +103,27 @@ def fetch_benchmark_history(
         return [(r[0], float(r[1])) for r in cur.fetchall()]
 
 
+def fetch_existing_benchmark_close_map(
+    benchmark_id: str,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> dict[str, Optional[float]]:
+    """기존 market_benchmark_daily_price 의 (date → close) 매핑.
+
+    2026-06-30 — 시장 시계열 보강 STEP: 신규 적재 전 기존 가격과 충돌 검출용.
+    """
+    with _connection(db_path) as con:
+        cur = con.execute(
+            "SELECT date, close FROM market_benchmark_daily_price "
+            "WHERE benchmark_id = ?",
+            (benchmark_id,),
+        )
+        return {
+            str(row[0]): (float(row[1]) if row[1] is not None else None)
+            for row in cur.fetchall()
+        }
+
+
 def latest_benchmark_date(
     benchmark_id: str,
     *,
