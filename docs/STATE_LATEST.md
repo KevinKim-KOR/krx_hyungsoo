@@ -33,6 +33,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **API·UI 계약**: 변경 0건.
   - **신규 테스트 25건**: adapter (7, FIX r1 symbol builder +1) + refresh state (5) + CLI (7) + ML gate (6).
   - **FIX r1 (2026-06-30)**: 검증자 A-1/A-2/B-1 (FDR 호출 식별자에 `NAVER:` / `YAHOO:.KS` prefix 명시) + A-3/B-6 (기본 SQLite `state/market/market_data.sqlite` 에 실측 재수행하여 refresh_state / ingestion_state row 실제 산출) 보강.
+  - **FIX r3 (2026-07-03)**: 검증자 note (FDR 호출 timeout 부재) 를 CLOSEOUT conclusion §16 "알려진 한계" 로 명시 반영. §17 다음 작업 후보에 timeout 명시 항목 추가. BACKLOG §7 기존 항목과 동일 범주임을 문서화. 검증자 판정 VERIFIED_WITH_NOTES → VERIFIED 승격을 위한 note 해소.
   - **backend 전체 테스트**: `675 passed` (650 → 675). black / flake8 / frontend lint / frontend build PASS.
   - **BACKLOG**: "2014-04-07 이전 ETF 시계열 보강" 항목 신규 추가.
 - **이전 완료 상태**: **시장 시계열 SQLite 기반 보강 — PARTIAL** (2026-06-30, 본 Closeout 로 DONE 승격).

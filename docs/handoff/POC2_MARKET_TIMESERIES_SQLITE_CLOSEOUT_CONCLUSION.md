@@ -299,9 +299,39 @@ running 잔존 정규화: `normalize_running_to_failed` — 다음 CLI 또는 ML
 
 ---
 
-## 16. 다음 작업 후보 (사용자 결정 대기)
+## 16. 알려진 한계 (Known Limits)
+
+### 16.1 FDR 호출 timeout 부재
+
+- **상태**: 후속 리스크 (본 STEP 완료 판정 자체를 막지 않음).
+- **내용**: `app/market_timeseries_naver_yahoo_adapter.py::_default_price_fetcher` 가 `FinanceDataReader.DataReader(symbol, start, end)` 를 호출할 때 명시 timeout 인자를 지정하지 않는다. 네트워크 I/O 는 FDR 라이브러리 내부 동작에 위임된 상태.
+- **영향**: 네이버/야후 원격 응답 지연 시 CLI (`benchmark` / `initial` / `incremental`) 가 종목 단위로 예상보다 길게 대기할 가능성. 자동 재시도가 없어 무한 재요청은 발생하지 않으나, 응답 hang 시 종목 처리 지연이 있을 수 있음.
+- **완화 상태**:
+  - 지시문 §10 명시 금지·완료 기준 위반 아님 (검증자 note 로 이관).
+  - 지시문 §7.5 "자동 재시도 없음" 은 정상 적용 — hang 시 다음 종목으로 넘어가지 않는 대신 실행 취소·재시작이 정상 경로.
+  - CLI 는 사용자 명시 실행 (UI/scheduler 아님) — hang 시 사용자 취소 가능.
+- **참조 BACKLOG**: `docs/backlog/BACKLOG.md` §7 "FDR 외부 의존 약관 / 안정성 / 단일 호출 timeout 부재" (기존 항목, 본 STEP 이전부터 존재. 본 STEP 에서 발견된 note 가 동일 항목 범주에 포함됨을 확인).
+- **재검토 트리거**: 실제 CLI 운영 중 hang 사례가 관측되거나, 백그라운드 스케줄러 도입 검토 시.
+
+### 16.2 missing_confirm 138 종의 사용자 확인 대기
+
+- **상태**: 지시문 §8.1 정책 준수 결과 (한계라기보다 절차상 대기).
+- **내용**: `--all` 실측 후 138 종이 `missing_confirm` — 기존 SQLite 저장값과 명시 소스 반환값이 다른 케이스. 자동 덮어쓰기 금지 원칙 그대로 유지.
+- **재처리 경로**: `python -m scripts.refresh_market_timeseries incremental --retry-pending` — 사용자 명시 승인 시.
+
+### 16.3 KRX CSV 수동 보정 위치
+
+- **상태**: 유지 (본 STEP 범위 외).
+- **내용**: 2014-04-07 이전 데이터 및 네이버/야후 미제공 특정 과거 구간의 수동 보정은 기존 `scripts/ingest_krx_timeseries.py` 사용. 정기 최신화 경로는 아님.
+- **참조 BACKLOG**: "2014-04-07 이전 ETF 시계열 보강" (본 STEP FIX 라운드에서 신규 추가).
+
+---
+
+## 17. 다음 작업 후보 (사용자 결정 대기)
 
 1. **위험 evidence / 시장 국면 / 추세 전환 거리** — 본 STEP 확보 시계열 위에서 진입.
 2. **ML 축2** (위험 감지) 학습·추론 — 동일.
-3. **역사적 상장폐지 ETF universe 재구성** — 생존자 편향 해소 (BACKLOG).
-4. 기타 BACKLOG 항목.
+3. **missing_confirm 138 종 재처리** (`--retry-pending`) — 사용자 정책 결정.
+4. **FDR 호출 timeout 명시** — §16.1 note 후속. BACKLOG §7 항목과 동일 범주.
+5. **역사적 상장폐지 ETF universe 재구성** — 생존자 편향 해소 (BACKLOG).
+6. 기타 BACKLOG 항목.
