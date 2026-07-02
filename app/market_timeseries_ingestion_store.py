@@ -85,8 +85,12 @@ def _ensure_table_only(db_path: Path) -> None:
 
 
 def read_state(
-    ticker: str, db_path: Path = DEFAULT_DB_PATH
+    ticker: str, db_path: Optional[Path] = None
 ) -> Optional[TimeseriesIngestionStateRow]:
+    if db_path is None:
+        from app import market_timeseries_ingestion_store as _self
+
+        db_path = _self.DEFAULT_DB_PATH
     if not db_path.exists():
         return None
     _ensure_table_only(db_path)

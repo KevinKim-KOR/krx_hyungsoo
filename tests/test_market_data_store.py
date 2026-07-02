@@ -38,6 +38,8 @@ def test_init_db_creates_expected_tables_only(db_path: Path) -> None:
     assert table_exists("market_refresh_state", db_path)
     # 2026-06-30 시장 시계열 SQLite 기반 보강 STEP — 종목별 적재 상태 테이블.
     assert table_exists("market_timeseries_ingestion_state", db_path)
+    # 2026-06-30 Closeout — CLI 최신화 실행 상태 테이블.
+    assert table_exists("market_timeseries_refresh_state", db_path)
 
     # decision_evidence 테이블은 본 STEP 에서 생성 금지.
     assert not table_exists("decision_evidence", db_path)
@@ -54,6 +56,7 @@ def test_init_db_creates_expected_tables_only(db_path: Path) -> None:
         "market_refresh_log",
         "market_refresh_state",
         "market_timeseries_ingestion_state",
+        "market_timeseries_refresh_state",
     ]
 
 

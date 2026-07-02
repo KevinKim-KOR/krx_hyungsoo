@@ -1,12 +1,34 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-30 (시장 시계열 SQLite 기반 보강 — PARTIAL)
+작성일: 2026-05-20 / 갱신: 2026-06-30 (시장 시계열 SQLite Closeout — DONE)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-30 — 시장 시계열 SQLite 기반 보강, PARTIAL)
+## 0. 직전 STEP 결과 (2026-06-30 — 시장 시계열 SQLite Closeout, DONE)
+
+이전 PARTIAL 상태의 시장 시계열 STEP 을 네이버/FDR 주 소스 + Yahoo 보조 + CLI 최신화 + ML 실행 게이트로 닫음.
+
+**KODEX200 실측**: 069500 / NAVER_FDR / 2014-04-09 ~ 2026-07-02 / 3000 행 / benchmark_asof_date 확정.
+
+**표본 3종 실측**: 069660 KOSEF 200 (3000행) / 102110 TIGER 200 (3000행) / 0000D0 (2024-12-17 상장, 373행) 모두 NAVER_FDR 정상.
+
+**Universe --all 실측**: 기본 SQLite `state/market/market_data.sqlite` (gitignored) — normal 1007 / missing_confirm 138 / failed 0. eligible=1006 excluded=138. missing_confirm 은 기존 저장값과 명시 소스 반환 값이 다른 케이스 — 자동 덮어쓰기 금지 정책 그대로 (사용자 확인 후 `--retry-pending` 재처리).
+
+**신규 SQLite 테이블**: `market_timeseries_refresh_state` — 단일 행 (`refresh_scope='daily_prices'`). D-2 의 `market_refresh_state` 와는 별도.
+
+**신규 모듈 3종**: adapter (NAVER_FDR primary → YAHOO_FDR secondary, 자동 재시도 없음) + refresh state store + CLI (`benchmark` / `initial` / `incremental` / `status`).
+
+**ML 실행 게이트**: `POST /ml/jobs/evidence-refresh` 가 SQLite만 read 하여 사전 점검. 기존 응답 계약 유지. 실패 시 `status="error"` + 짧은 안내 문구.
+
+**결과**: 675 passed (650 → 675, 신규 25, FIX r1 +1). black / flake8 / frontend lint / frontend build PASS.
+
+**BACKLOG**: "2014-04-07 이전 ETF 시계열 보강" 항목 신규 추가.
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-06-30 — 시장 시계열 SQLite 기반 보강, PARTIAL, 본 Closeout 로 승격됨)
 
 지시문 단일 목표: ETF·KODEX200 일별 종가 시계열을 기존 시장 SQLite 로 적재. 위험 evidence·국면·백테스트의 기반.
 

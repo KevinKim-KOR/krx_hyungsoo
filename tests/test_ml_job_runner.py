@@ -44,6 +44,16 @@ def _isolate_state(tmp_path: Path, monkeypatch):
 
     monkeypatch.setattr(api_ml_jobs, "JOB_STATUS_PATH", job_path, raising=False)
 
+    # 2026-06-30 Closeout — 시계열 최신화 게이트가 도입되어 기본은 error 반환.
+    # 본 파일의 기존 테스트는 게이트 자체와 무관하므로 fixture 에서 bypass.
+    # (게이트 자체 검증은 tests/test_api_ml_jobs_timeseries_gate.py 참조.)
+    monkeypatch.setattr(
+        api_ml_jobs,
+        "_timeseries_ready_for_ml",
+        lambda: (True, ""),
+        raising=False,
+    )
+
     # _run_feature / _run_sanity / _run_baseline 내부의 snapshot path 도 격리.
     import scripts.generate_ml_features as gmf
     from app import api_ml_baseline, api_ml_sanity

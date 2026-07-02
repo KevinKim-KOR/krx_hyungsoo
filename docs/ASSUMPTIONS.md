@@ -52,6 +52,7 @@
   - 외국인 / 기관 수급 (현재 not_collected)
   - 시장 폭 지표 (현재 not_collected)
   - 구성종목 가격 시계열 (현재 not_integrated)
+  - 일별 종가 시계열 (현재 확보 — 2026-06-30 시장 시계열 Closeout STEP 완료). 요청 시작일 2014-04-07, 네이버/FDR 실측 KODEX200 최초 관측일 2014-04-09, universe 실측 normal 1007 / missing_confirm 138 / failed 0 (missing_confirm 은 기존 저장값과 명시 소스 반환값 차이 — 지시문 §8.1 자동 덮어쓰기 금지 정책 그대로). 소스: NAVER_FDR primary (`NAVER:<ticker>`) + YAHOO_FDR secondary (`YAHOO:<ticker>.KS`).
 - **확인 방법**: 위 빈자리 중 하나가 채워진 뒤 (시계열 적재 STEP 완료),
   factor 후보 1~2개로 위험 구간 분류 정의가 가능한지 검증.
 - **판정 기준**: 시계열 적재 → 단순 룰베이스 분류 → ML 분류 순서로 단계 검증.

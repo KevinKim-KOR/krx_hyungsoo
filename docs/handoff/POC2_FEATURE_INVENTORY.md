@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-30 (시장 시계열 SQLite 기반 보강 — PARTIAL)
+작성일: 2026-05-27 / 갱신: 2026-06-30 (시장 시계열 SQLite Closeout — DONE)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -678,7 +678,29 @@
 | API·UI 계약 | 변경 0건. `fetch_price_history` / `fetch_benchmark_history` 그대로. |
 | 테스트 | pytest **650 passed** (627 → 650, 신규 23 케이스, FIX r1 +6, FIX r2 +2). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 데이터 기반. |
-| 다음 조치 | 사용자가 PC 에서 KRX 자료 다운로드 → CLI 실행 → conclusion §2~§4 실측 영역 채움 → DONE 승격. 이후 위험 evidence / ML 축2 / 백테스트 진입. |
+| 다음 조치 | 2026-06-30 Closeout STEP §2.36 으로 네이버/FDR 주 소스 + Yahoo 보조 + ML 게이트로 DONE 승격됨. KRX CSV import 는 수동 과거 보정용으로만 유지. |
+
+---
+
+### 2.36 시장 시계열 SQLite Closeout — Naver/FDR 주 소스 + Yahoo 보조 + ML 게이트 (2026-06-30, DONE)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 이전 PARTIAL 시장 시계열 STEP 을 네이버/FDR primary + Yahoo/FDR secondary + CLI 최신화 + ML 실행 게이트로 완료. KRX CSV 는 수동 과거 보정용으로 유지. |
+| 현재 메뉴 위치 | (UI 변경 없음 — 내부 데이터 기반) |
+| 기능 목적 | PC CLI 로 KODEX200 + ETF universe 시계열을 SQLite 로 누적/갱신. ML 실행은 SQLite 준비 상태만 확인 후 진입. UI 대량 외부 호출 0건. |
+| 사용 가능 여부 | **사용 가능** (2026-06-30 DONE). |
+| 소스 정책 | NAVER_FDR primary (`NAVER:<ticker>`) → 실패 또는 빈 응답 시 YAHOO_FDR (`YAHOO:<ticker>.KS`) 1회. 호출 식별자에 소스 명시 (FIX r1). 자동 재시도 없음. 신규 의존성 0건. |
+| 신규 테이블 | `market_timeseries_refresh_state` — 단일 행 (`refresh_scope='daily_prices'`) 11 컬럼. D-2 `market_refresh_state` 와 별도. |
+| 신규 모듈 | `app/market_timeseries_refresh_state_store.py`, `app/market_timeseries_naver_yahoo_adapter.py`, `scripts/refresh_market_timeseries.py`. |
+| CLI 서브커맨드 | `benchmark` (KODEX200 먼저) / `initial` (`--max-tickers N` 또는 `--all` 필수) / `incremental` (last date+1 이후만 요청, `--retry-pending` 옵션) / `status`. |
+| ML 실행 게이트 | `POST /ml/jobs/evidence-refresh` 진입 전 SQLite 만 read 하여 확인 (refresh status ok + benchmark_asof_date + KODEX200 normal + eligible>0). 기존 응답 계약 유지. 실패 시 `status="error"` + 짧은 안내 문구. 새 endpoint 0건. |
+| 실측 (기본 SQLite `state/market/market_data.sqlite`, gitignored) | KODEX200 3000 행 (2014-04-09 ~ 2026-07-02), 069660 / 102110 / 0000D0 표본 3종 확인, universe normal 1007 / missing_confirm 138 / failed 0 (missing_confirm 은 기존 저장값과 명시 소스 반환값 차이 — 자동 덮어쓰기 금지 정책 그대로). |
+| 재개·중복 방지 | `list_pending_tickers` + `(ticker, date)` PK ON CONFLICT + `_split_by_existing_conflict`. `_incremental_start_for` 가 정상 종목의 last date+1 부터만 요청. |
+| API·UI 계약 | 변경 0건. 기존 `MlJobStartResponse` 필드 그대로. |
+| 테스트 | pytest **675 passed** (650 → 675, 신규 25, FIX r1 +1). black / flake8 / frontend lint / frontend build PASS. |
+| 테스트용/임시 여부 | 아님 — 데이터 기반 운영. |
+| 다음 조치 | 위험 evidence / 시장 국면 / 추세 전환 거리 / ML 축2 진입 (사용자 결정). |
 
 ---
 

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-30 (시장 시계열 SQLite 기반 보강 — PARTIAL)
+최종 업데이트: 2026-06-30 (시장 시계열 SQLite Closeout — DONE, Naver/FDR 주 소스 + Yahoo 보조 + ML 게이트)
 
 ## 0. Canonical
 
@@ -23,7 +23,19 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **시장 시계열 SQLite 기반 보강 — PARTIAL** (2026-06-30).
+- **현재 완료 상태**: **시장 시계열 SQLite Closeout — DONE** (2026-06-30).
+  - 지시문 단일 목표: 이전 PARTIAL 상태를 네이버/FDR 주 소스 + Yahoo/FDR 보조 + CLI 최신화 + ML 실행 게이트로 닫는다. KRX CSV import 는 수동 과거 보정용으로만 유지.
+  - **완료 판정**: DONE. KODEX200 (069500) 2014-04-09 ~ 2026-07-02 실측 적재 (NAVER_FDR, 3000 행). 표본 3종 (069660 KOSEF 200 / 102110 TIGER 200 / 0000D0 최근) 모두 NAVER_FDR 로 확인. **기본 SQLite `state/market/market_data.sqlite` (gitignored) 에 universe `--all` 실측 완료 — normal 1007 / missing_confirm 138 / failed 0**. `benchmark_asof_date=2026-07-02` / `eligible=1006` / `excluded=138`. missing_confirm 138 은 기존 SQLite 에 축적된 가격과 명시 소스 반환 값이 다른 케이스 — 지시문 §8.1 자동 덮어쓰기 금지 정책 그대로.
+  - **신규 테이블**: `market_timeseries_refresh_state` — 단일 행 (`refresh_scope='daily_prices'`). D-2 의 `market_refresh_state` 와는 별도. 11 컬럼 (target_asof_date / benchmark_asof_date / last_attempt_* / eligible_ticker_count / excluded_ticker_count / error_summary / updated_at).
+  - **신규 모듈 3종**: `app/market_timeseries_refresh_state_store.py` (SSOT CRUD), `app/market_timeseries_naver_yahoo_adapter.py` (primary → secondary 흐름, `PRICE_BASIS=SOURCE_CLOSE`), `scripts/refresh_market_timeseries.py` (CLI 4 서브커맨드).
+  - **소스 정책**: NAVER_FDR primary (`NAVER:<ticker>`) → 실패 또는 빈 응답 시 YAHOO_FDR (`YAHOO:<ticker>.KS`) 1회. **호출 식별자에 소스 명시** (FIX r1 — 지시문 §4.1 준수). 자동 재시도 없음. 신규 의존성 0건.
+  - **ML 실행 게이트** (지시문 §9): `POST /ml/jobs/evidence-refresh` 가 SQLite만 read 하여 사전 점검. 기존 응답 계약 유지 — 실패 시 `status="error"` + `message="시계열 최신화가 완료되지 않았습니다..."`. 새 endpoint / 새 응답 필드 0건.
+  - **API·UI 계약**: 변경 0건.
+  - **신규 테스트 25건**: adapter (7, FIX r1 symbol builder +1) + refresh state (5) + CLI (7) + ML gate (6).
+  - **FIX r1 (2026-06-30)**: 검증자 A-1/A-2/B-1 (FDR 호출 식별자에 `NAVER:` / `YAHOO:.KS` prefix 명시) + A-3/B-6 (기본 SQLite `state/market/market_data.sqlite` 에 실측 재수행하여 refresh_state / ingestion_state row 실제 산출) 보강.
+  - **backend 전체 테스트**: `675 passed` (650 → 675). black / flake8 / frontend lint / frontend build PASS.
+  - **BACKLOG**: "2014-04-07 이전 ETF 시계열 보강" 항목 신규 추가.
+- **이전 완료 상태**: **시장 시계열 SQLite 기반 보강 — PARTIAL** (2026-06-30, 본 Closeout 로 DONE 승격).
   - 지시문 단일 목표: 위험 evidence·국면·백테스트의 기반이 되는 ETF·KODEX200 일별 종가 시계열을 기존 시장 SQLite (`state/market/market_data.sqlite`) 로 적재. KRX 데이터마켓 공식 다운로드 자료 (CSV/ZIP) → PC CLI import → SQLite SSOT.
   - **완료 판정**: PARTIAL. 본 환경에서 KRX 자료에 직접 접근 불가 — CLI 도구 / SQLite 계약 / 결측 분류·재개·중복방지 / fixture 기반 자동 테스트까지만 완료. 실측 AC-1~AC-5 는 사용자 PC 실행 후 채워질 영역. **FDR 대신 호출 금지** (지시문 Q2 답 준수).
   - **신규 테이블**: `market_timeseries_ingestion_state` — 종목별 적재·범위·결측 상태. ticker PK 단일 종목당 1행. 컬럼 11개. **가격 시계열 테이블은 기존 `etf_daily_price` / `market_benchmark_daily_price` 재사용 — 신규 가격 테이블 신설 0건**.

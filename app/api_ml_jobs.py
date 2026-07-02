@@ -17,6 +17,18 @@ from typing import Any, Optional
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
+from app.market_timeseries_ingestion_store import STATUS_NORMAL as INGEST_STATUS_NORMAL
+from app.market_timeseries_ingestion_store import read_state as read_ingest_state
+from app.market_timeseries_ingestion_service import BENCHMARK_KODEX200_TICKER
+from app.market_timeseries_refresh_state_store import (
+    STATUS_OK as REFRESH_STATUS_OK,
+)
+from app.market_timeseries_refresh_state_store import (
+    normalize_running_to_failed as _normalize_refresh_running,
+)
+from app.market_timeseries_refresh_state_store import (
+    read_state as read_refresh_state,
+)
 from app.ml_job_runner import (
     JOB_STATUS_PATH,
     JobAlreadyRunningError,
@@ -24,6 +36,37 @@ from app.ml_job_runner import (
     get_latest_status,
     start_evidence_refresh_job,
 )
+
+_ML_GATE_MESSAGE = (
+    "시계열 최신화가 완료되지 않았습니다. "
+    "PC에서 시계열 최신화 배치를 실행한 뒤 다시 시도하세요."
+)
+
+
+def _timeseries_ready_for_ml() -> tuple[bool, str]:
+    """SQLite 만 read 하여 시계열 최신화 준비 여부 판정 (지시문 §9.1).
+
+    조건 (모두 만족해야 준비 완료):
+      - market_timeseries_refresh_state.last_attempt_status == 'ok'
+      - benchmark_asof_date 존재
+      - KODEX200 (069500) 의 market_timeseries_ingestion_state.status == 'normal'
+      - eligible_ticker_count > 0
+
+    return: (ready, gate_message). ready=False 이면 사용자용 짧은 안내.
+    """
+    _normalize_refresh_running()
+    refresh = read_refresh_state()
+    if refresh is None or refresh.last_attempt_status != REFRESH_STATUS_OK:
+        return False, _ML_GATE_MESSAGE
+    if not refresh.benchmark_asof_date:
+        return False, _ML_GATE_MESSAGE
+    if refresh.eligible_ticker_count <= 0:
+        return False, _ML_GATE_MESSAGE
+    bm_state = read_ingest_state(BENCHMARK_KODEX200_TICKER)
+    if bm_state is None or bm_state.ingestion_status != INGEST_STATUS_NORMAL:
+        return False, _ML_GATE_MESSAGE
+    return True, ""
+
 
 router = APIRouter()
 
@@ -96,7 +139,19 @@ def post_ml_jobs_evidence_refresh(
 
     FastAPI BackgroundTasks 가 응답 송신 직후 runner 를 실행한다 — HTTP 응답
     송신 자체는 즉시 일어난다.
+
+    2026-06-30 Closeout: 시계열 최신화 게이트 (지시문 §9). SQLite 만 read
+    하여 준비 여부 확인 후 진입. 외부 시세 호출 없음. 새 endpoint / 새 응답
+    필드 추가 없음 — 기존 status="error" + message 만 사용.
     """
+    ready, gate_message = _timeseries_ready_for_ml()
+    if not ready:
+        return MlJobStartResponse(
+            status="error",
+            job_status_path=str(JOB_STATUS_PATH),
+            job=None,
+            message=gate_message,
+        )
     try:
         state = start_evidence_refresh_job(
             requested_by="ui",

@@ -1,7 +1,13 @@
-# 시장 시계열 SQLite 기반 보강 — Conclusion (PARTIAL)
+# 시장 시계열 SQLite 기반 보강 — Conclusion (PARTIAL → DONE 승격)
 
 작성일: 2026-06-30
 측정 방식: `wc -l` (Bash) 통일.
+
+**2026-06-30 상태 정정**: 본 문서의 PARTIAL 판정 근거였던 "KRX 데이터마켓 자료 접근 불가" 는 실제 운영 방식과 맞지 않았음. 개인 프로젝트의 일상 최신화 경로는 KRX CSV 수동 다운로드가 아니라 네이버/FDR 주 소스 + Yahoo/FDR 보조 소스로 진행함. 후속 Closeout STEP 이 이 방식으로 DONE 승격.
+
+**후속 STEP 참조**: `docs/handoff/POC2_MARKET_TIMESERIES_SQLITE_CLOSEOUT_CONCLUSION.md`.
+
+KRX CSV import (`scripts/ingest_krx_timeseries.py`) 는 그대로 유지되며, 2014-04-07 이전 특정 과거 구간의 수동 보정용으로 사용한다. 현재 ETF universe 의 정기 최신화 경로는 아님.
 
 이 문서는 위험 evidence·국면·백테스트의 기반이 되는 ETF/KODEX200 일별 종가 시계열을
 기존 시장 SQLite (`state/market/market_data.sqlite`) 로 적재하는 STEP 의 종료 기록이다.

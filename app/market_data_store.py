@@ -120,6 +120,25 @@ CREATE TABLE IF NOT EXISTS market_timeseries_ingestion_state (
 );
 """.strip()
 
+# 2026-06-30 시장 시계열 Closeout — CLI 최신화 실행 상태 SSOT.
+# 단일 행 (refresh_scope='daily_prices') 만 유지. 실행 이력 / 장기 로그 아님.
+# D-2 의 market_refresh_state (기존 /market/refresh 용) 와는 별도 테이블.
+MARKET_TIMESERIES_REFRESH_STATE_DDL = """
+CREATE TABLE IF NOT EXISTS market_timeseries_refresh_state (
+    refresh_scope             TEXT PRIMARY KEY,
+    target_asof_date          TEXT,
+    benchmark_asof_date       TEXT,
+    last_attempt_started_at   TEXT,
+    last_attempt_finished_at  TEXT,
+    last_attempt_status       TEXT NOT NULL,
+    last_success_at           TEXT,
+    eligible_ticker_count     INTEGER NOT NULL DEFAULT 0,
+    excluded_ticker_count     INTEGER NOT NULL DEFAULT 0,
+    error_summary             TEXT,
+    updated_at                TEXT NOT NULL
+);
+""".strip()
+
 
 @dataclass
 class EtfMasterRow:
@@ -159,6 +178,7 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
         con.execute(MARKET_REFRESH_LOG_DDL)
         con.execute(MARKET_REFRESH_STATE_DDL)
         con.execute(MARKET_TIMESERIES_INGESTION_STATE_DDL)
+        con.execute(MARKET_TIMESERIES_REFRESH_STATE_DDL)
         con.commit()
 
 
