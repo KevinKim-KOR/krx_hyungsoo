@@ -196,6 +196,10 @@ state/ml/relative_upside_score_run_latest.json
 # ML evidence refresh job status (2026-06-11 UI 안전실행) — UI 실행마다 갱신, 운영 artifact.
 state/ml/ml_job_status_latest.json
 
+# Market Flow ML Dataset + Baseline v1 (2026-07-03) — 실행마다 갱신, 운영 artifact.
+state/ml/market_flow_baseline_latest.json
+state/ml/market_flow_training_dataset_latest.csv
+
 # PC-to-OCI 3-PUSH Evidence Package Sync (2026-06-15) — sync 실행마다 갱신, 운영 artifact.
 state/three_push/packages/
 state/three_push/sync_status_latest.json

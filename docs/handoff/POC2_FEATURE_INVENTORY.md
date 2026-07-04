@@ -1,19 +1,21 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-07-03 (시장 우선 운영 원칙 handoff — 문서 개정)
+작성일: 2026-05-27 / 갱신: 2026-07-03 (Market Flow ML Dataset + Baseline v1 — PARTIAL)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
 본 문서는 ETF Constituents Source Diagnosis 1차의 §11 명시 산출물이다.
 
-## 시장 우선 운영 원칙 (2026-07-03)
+## 시장 우선 운영 원칙 (2026-07-03) + 진행 중 STEP
+
+**진행 중 (PARTIAL)**: Market Flow ML Dataset + Baseline v1 — sklearn 미설치로 학습·평가·추론은 unavailable. 데이터셋 골격은 실측 90 rows 생성 완료. 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
 본 인벤토리의 기능들은 **시장 우선 운영 원칙** (`docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`) 하에서 역할이 고정된다:
 
 - **시계열 SQLite / Market Risk Reference / 보유·후보 비교**: 주력 운영 흐름 (시장 → 정합성 → 필요한 상세).
 - **Decision Draft Preview v1**: 선택적 drill-down 도구. 주력 운영 흐름 아님. 추가 확장 동결.
 - **기존 AI Sessions**: 사용자 판단 기록의 중심. 별도 승인 시스템 신설 금지.
-- **다음 활성 Step**: 시장 전체 흐름 ML 학습 데이터셋·Baseline v1.
+- **진행 중 Step (PARTIAL)**: 시장 전체 흐름 ML 학습 데이터셋·Baseline v1 — 데이터셋 골격 완료, DONE 승격 두 조건 대기 (sklearn 승인 + KOSPI 시계열 보강).
 
 ---
 

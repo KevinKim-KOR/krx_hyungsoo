@@ -605,6 +605,20 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+- **항목**: 시장 흐름 baseline 확인 이후의 모델 고도화·전략 백테스트
+- **보류 사유**: 2026-07-03 Market Flow ML Dataset + Baseline v1 STEP 은 단일 Ridge baseline 만 사용 (§4 절대 고정). RF / XGBoost / LightGBM 비교·자동 튜닝·전략 백테스트는 baseline 실 metrics 확인 후 별도 STEP 으로 검토.
+- **보류된 위험**: baseline metrics 를 보기 전에 고도화하면 개선 근거 없이 복잡도가 늘어남.
+- **재검토 트리거**: scikit-learn 승인 + baseline 실 metrics 산출 후, 성능이 실운영 판단 지원에 부족하다는 근거가 확인될 때.
+
+---
+
+- **항목**: 역사적 ETF universe 생존 편향
+- **보류 사유**: 2026-07-03 Market Flow ML Dataset STEP 은 현재 SQLite 의 정상 ETF universe (missing_confirm 제외) 만 사용. 과거 상장폐지 종목 재구성은 별도 STEP.
+- **보류된 위험**: 생존 편향으로 breadth·coverage 수치가 낙관적으로 편향될 가능성.
+- **재검토 트리거**: baseline metrics 확인 후 breadth 신뢰도가 판단 근거로 부족하다는 증거 확인 시.
+
+---
+
 - **항목**: 2014-04-07 이전 ETF 시계열 보강
 - **보류 사유**: 현재 개인 프로젝트의 첫 ML·위험 evidence 기반은 2014-04-07 이후 실제 접근 가능한 데이터로 시작한다. 시장 시계열 Closeout STEP (2026-06-30) 에서 네이버/FDR 이 반환하는 KODEX200 최초 관측일이 2014-04-09 로 실측 확인됨.
 - **보류된 위험**: 장기 백테스트 기간이 제한될 수 있음.
