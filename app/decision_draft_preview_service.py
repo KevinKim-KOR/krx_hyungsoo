@@ -97,6 +97,7 @@ def _build_holding_evidence_lines(
 
     name = holding.get("name") or holding.get("ticker") or "보유 ETF"
     confirmed.append(f"대상: {name} ({holding.get('ticker') or '미확인'}) — 보유 ETF")
+    # FIX r5 (설계자 Q4 확정): 값 없을 시 라인 삭제 금지, "미확인" 표기.
     weight = holding.get("market_weight_pct")
     pnl = holding.get("pnl_rate_pct")
     confirmed.append(f"평가비중: {_fmt_pct(weight)}")
@@ -104,10 +105,8 @@ def _build_holding_evidence_lines(
 
     stm = holding.get("short_term_momentum") or {}
     ex_20 = stm.get("excess_vs_kodex200_20d_pctp")
-    if ex_20 is not None:
-        confirmed.append(f"KODEX200 대비 20거래일 초과: {_fmt_pct(ex_20)}")
-    else:
-        warnings.append("KODEX200 대비 20거래일 초과 수치는 확인되지 않았습니다.")
+    # 값 유무 무관 항상 한 줄 — 값 있으면 수치, 없으면 "미확인".
+    confirmed.append(f"KODEX200 대비 20거래일 초과: {_fmt_pct(ex_20)}")
     stm_end = stm.get("end_date")
     if stm_end:
         target_asof = stm_end

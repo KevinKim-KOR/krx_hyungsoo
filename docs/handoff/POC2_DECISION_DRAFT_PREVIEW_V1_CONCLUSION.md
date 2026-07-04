@@ -107,13 +107,13 @@ preview_text 는 5 섹션 (대상·검토 맥락 / 확인된 근거 / 시장 참
 
 | 항목 | 결과 |
 |---|---|
-| backend 전체 테스트 | **708 passed** (691 → 708, 전용 파일 17 케이스 (초기 12 + FIX r1 +2 + FIX r2 +1 + FIX r3 +2)) |
+| backend 전체 테스트 | **714 passed** (691 → 714, 전용 파일 23 케이스 (초기 12 + FIX r1 +2 + FIX r2 +1 + FIX r3 +2 + FIX r5 +4 + FIX r6 +1 + FIX r7 +1)) |
 | black | PASS |
 | flake8 | PASS |
 | frontend lint | PASS |
 | frontend build | PASS |
 
-전용 테스트 파일 17 케이스 — `tests/test_decision_draft_preview.py` (초기 12 + FIX r1 +2 + FIX r2 +1 + FIX r3 +2):
+전용 테스트 파일 23 케이스 — `tests/test_decision_draft_preview.py` (초기 12 + FIX r1 +2 + FIX r2 +1 + FIX r3 +2 + FIX r5 +4 + FIX r6 +1 + FIX r7 +1):
 - service 단위 5건: holding / candidate 텍스트 조립 / 금지 표현 미포함 / invalid kind / empty ticker
 - endpoint 통합 7건: holding OK / candidate OK / unknown ticker error / invalid kind error / 응답 화이트리스트 / PENDING 미터치 / 외부 시세 미호출
 
@@ -196,7 +196,38 @@ preview_text 는 5 섹션 (대상·검토 맥락 / 확인된 근거 / 시장 참
 
 **실측 확인**: 기본 SQLite + holdings_latest.json 상태에서 loader 가 실제 dict 반환 확인 (RISE 네트워크인프라 367760). `TestClient` 를 통한 endpoint 실호출도 `status=ok` 확인.
 
-**backend 전체 테스트 경과**: 초기 703 → FIX r1 후 705 → FIX r2 후 706 → FIX r3 후 **708 passed**. 전용 테스트 파일은 초기 12 → r1 후 14 → r2 후 15 → r3 후 17 케이스.
+**backend 전체 테스트 경과**: 초기 703 → FIX r1 후 705 → FIX r2 후 706 → FIX r3 후 708 → FIX r5 후 712 → FIX r6 후 713 → FIX r7 후 **714 passed**. 전용 테스트 파일은 초기 12 → r1 후 14 → r2 후 15 → r3 후 17 → r5 후 21 → r6 후 22 → r7 후 23 케이스.
+
+---
+
+## 10.2 FIX r5 (2026-07-03, 사용자 화면 evidence 정합)
+
+**증상**: 사용자 화면에서 보유 `TIGER 코리아배당다우존스` 상세는 `평가 비중: +0.79% / 손익률: +55.11% / 20일 KODEX 초과: -`. 그러나 preview 미리보기는 `평가비중: 미확인 / 손익률: 미확인 / KODEX200 대비 20거래일 초과: -4.23%`. 같은 선택 ETF 의 evidence 가 화면과 preview 에서 서로 다름.
+
+**원인 (두 가지)**:
+1. `_load_holdings_evidence` 가 `build_holdings_market_evidence` 응답 items 만 사용. 이 응답에는 `market_weight_pct` / `pnl_rate_pct` 필드가 없어 화면과 달리 preview 에서 `None` → `"미확인"` 표시.
+2. 화면은 사용자가 `evidence 조회` 버튼을 눌러야만 evidence 로드 → 미로드 상태에서는 `20일 KODEX 초과: -` 표시. 반면 preview 서버는 매 요청마다 자동 재계산 → `-4.23%` 표시. **화면과 preview 가 다른 계산 경로를 쓰는 게 아니라, 같은 함수인데 화면은 미로드 / 서버는 자동 계산 상태**.
+
+**FIX r5 (Option A + C — 설계자 확정 답변)**:
+
+### 코드
+- **`_load_holdings_evidence` canonical 조립**: `enrich_holdings` (`market_weight_pct` / `pnl_rate_pct`) + `build_holdings_market_evidence` (`short_term_momentum` / `data_quality` / `overlap`) 을 동일 시점 · 동일 `market_cache.get_all()` quotes 로 조합. 두 결과를 ticker 로 대조하여 canonical dict 반환. Preview 전용 다른 상대성과 계산 경로 0건.
+- **`_build_holding_evidence_lines` — 값 없으면 라인 삭제 금지 (설계자 Q4)**: `KODEX200 대비 20거래일 초과` 는 값 유무 무관 항상 한 줄. 값 있으면 수치, 없으면 `"미확인"`. warnings 로만 이동시키던 로직 제거.
+- **화면 자동 evidence 로드**: `HoldingsCompareView.tsx` 마운트 시 `useEffect` 로 `handleEvidenceFetch()` 자동 호출. 이전에는 사용자가 버튼 눌러야만 evidence 로드되어 preview 와 불일치했다. 이제 화면 로드 시점에도 서버 preview 와 동일한 canonical 값이 표시된다.
+
+### 테스트 (5건)
+- `test_fix_r5_canonical_holding_evidence_includes_weight_and_pnl` — `enrich_holdings` 결과의 `market_weight_pct=100.00` / `pnl_rate_pct=55.11` 이 preview_text 에 그대로 노출됨을 assert (0052D0 fixture).
+- `test_fix_r5_missing_ex20_shows_unknown_not_hidden` — `short_term_momentum` 이 비어 있을 때 preview_text 에 `"KODEX200 대비 20거래일 초과: 미확인"` 라인 존재 (라인 삭제 금지 검증).
+- `test_fix_r5_preview_does_not_recompute_ex20_independently` — `build_holdings_market_evidence` 가 반환한 sentinel 값 `7.77` 만 등장, 화면과 다른 계산 결과 (`-4.23` 같은 값) 는 등장하지 않음을 assert. Preview 가 canonical 원천만 사용함을 실증.
+- `test_fix_r5_candidate_preview_regression_untouched` — 후보 preview 회귀 없음.
+- (0052D0 실측 스모크) `_load_holdings_evidence('0052D0')` 실호출 결과: `market_weight_pct=0.79 / pnl_rate_pct=55.11` — **화면 값과 정확히 일치 확인**.
+
+### 정직한 검증 범위
+- ✅ 서버 canonical dict 이 화면 `enrich_holdings` 원천의 `market_weight_pct` / `pnl_rate_pct` 를 그대로 포함.
+- ✅ 서버 canonical dict 이 `build_holdings_market_evidence` 원천의 `short_term_momentum` 을 그대로 포함 (preview 독자 계산 X).
+- ✅ 값이 null 이면 preview 도 `"미확인"` 표시 (라인 삭제 X).
+- ✅ 화면 마운트 시 evidence 자동 로드 → preview 와 동일한 시점 값 노출.
+- ✅ **FIX r7 (중복 ticker 집계 정합)**: 화면 `aggregateHoldingsByTicker` 를 Python 으로 이식한 `_aggregate_enriched_by_ticker`. `_load_holdings_evidence` 가 raw row 대신 집계 결과 사용. 실측 재확인: `367760` (2 account_group 중복 보유) → weight=2.74 / pnl=42.19 (사용자 화면 값과 정확히 일치). r5 회귀에서 raw list 를 ticker dict 로 마지막 row 만 선택하던 문제 해소.
 
 ---
 

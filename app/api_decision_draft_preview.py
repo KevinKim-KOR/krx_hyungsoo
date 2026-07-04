@@ -52,32 +52,46 @@ class PreviewResponse(BaseModel):
 
 
 def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
-    """기존 build_holdings_market_evidence 재사용 (부작용 없음 — SQLite/store read only).
+    """canonical 보유 evidence 조립 — 화면과 동일 원천·동일 계산 (FIX r5).
 
-    FIX r3 (2026-07-03):
-    - 데이터 오류 (파일 부재 / JSON 파싱 실패 / holdings 검증 실패 / SQLite 오류)
-      만 catch 하여 None 반환 + logger.warning.
-    - 프로그래머 오류 (ImportError / AttributeError / TypeError / NameError /
-      ModuleNotFoundError) 는 삼키지 않고 즉시 propagate — 오타 회귀를 테스트가
-      직접 잡을 수 있도록.
-    - endpoint 경계에서 프로그래머 오류를 catch 하여 사용자 친화 실패 응답을 유지.
+    화면 (HoldingsCompareView) 이 사용하는 두 데이터 원천을 그대로 결합한다:
+      - GET /holdings/enriched  → enrich_holdings 로 market_weight_pct /
+        pnl_rate_pct 계산 (market_cache.get_all() quotes 기준)
+      - GET /holdings/market-evidence/latest → build_holdings_market_evidence
+        로 short_term_momentum / data_quality / overlap 계산 (동일 quotes 사용)
+
+    화면과 preview 가 서로 다른 계산 경로를 쓰지 않도록 두 결과를 **동일 시점·
+    동일 quotes** 로 조립한 뒤 ticker 별 dict 반환.
+
+    FIX r3 예외 정책 그대로:
+    - 데이터 오류 (파일 부재 / JSON 파싱 / holdings 검증 / SQLite) 만 catch.
+    - 프로그래머 오류 (ImportError / AttributeError / TypeError) 는 propagate.
     """
     import json
     import logging
     import sqlite3
     import traceback
 
+    from app import market_cache
     from app.holdings import HoldingsValidationError, load as load_holdings
+    from app.holdings_enrich import enrich_holdings
     from app.holdings_market_evidence import build_holdings_market_evidence
     from app.market_topn import compute_topn
 
     logger = logging.getLogger(__name__)
     try:
         holdings = load_holdings()
+        # 화면과 동일하게 market_cache.get_all() 사용 (외부 fetch 0건, cache read).
+        all_quotes = market_cache.get_all()
+        relevant_quotes = {
+            h.ticker: all_quotes[h.ticker] for h in holdings if h.ticker in all_quotes
+        }
+        enriched = enrich_holdings(holdings, relevant_quotes)
         topn_payload = compute_topn()
-        payload = build_holdings_market_evidence(
+        evidence_payload = build_holdings_market_evidence(
             holdings=holdings,
             topn_payload=topn_payload,
+            market_quotes=relevant_quotes,
         )
     except (
         FileNotFoundError,
@@ -94,11 +108,99 @@ def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
         )
         return None
 
-    items = payload.get("holdings") or []
-    for h in items:
-        if str(h.get("ticker") or "") == ticker:
-            return h
-    return None
+    # FIX r7 — 화면의 aggregateHoldingsByTicker 와 동일한 ticker 단위 집계.
+    # 중복 ticker 보유 케이스에서 raw row 를 그대로 선택하면 화면 집계와 값이
+    # 갈라진다. 화면 helpers.ts::aggregateHoldingsByTicker 로직을 그대로 이식.
+    aggregated = _aggregate_enriched_by_ticker(enriched)
+    aggregated_by_ticker = {a["ticker"]: a for a in aggregated}
+    evidence_by_ticker = {
+        str(h.get("ticker") or ""): h for h in (evidence_payload.get("holdings") or [])
+    }
+    aggregated_row = aggregated_by_ticker.get(ticker)
+    evidence_row = evidence_by_ticker.get(ticker)
+    if aggregated_row is None and evidence_row is None:
+        return None
+
+    canonical: dict[str, Any] = {"ticker": ticker}
+    if aggregated_row is not None:
+        canonical["name"] = aggregated_row.get("name")
+        canonical["market_weight_pct"] = aggregated_row.get("market_weight_pct")
+        canonical["pnl_rate_pct"] = aggregated_row.get("pnl_rate_pct")
+    else:
+        canonical["name"] = evidence_row.get("name") if evidence_row else None
+        canonical["market_weight_pct"] = None
+        canonical["pnl_rate_pct"] = None
+    if evidence_row is not None:
+        canonical["short_term_momentum"] = evidence_row.get("short_term_momentum")
+        canonical["data_quality"] = evidence_row.get("data_quality")
+        canonical["overlap"] = evidence_row.get("overlap")
+    return canonical
+
+
+def _aggregate_enriched_by_ticker(enriched: list) -> list[dict[str, Any]]:
+    """화면 helpers.ts::aggregateHoldingsByTicker 와 동일한 집계 로직 (Python).
+
+    - invested_amount: ticker 그룹 합계
+    - eval_amount: ticker 그룹 합계 (한 row 라도 None 이면 그룹 전체 None)
+    - pnl_rate_pct: evalSum != null && invested > 0 → (eval - invested)/invested * 100
+    - market_weight_pct: evalSum != null && totalEval > 0 → eval / totalEval * 100
+
+    rounding 은 화면과 동일하게 2자리 (helpers.ts 는 round 안 함 — Python 도 그대로).
+    단, 화면 표시 시 `fmtPct` 가 `.toFixed(2)` 를 쓰므로 preview 도 fmtPct(_fmt_pct)
+    가 동일하게 `.2f` 로 처리. 여기서는 raw float 유지.
+    """
+    if not enriched:
+        return []
+    total_eval = sum(
+        (row.eval_amount or 0) for row in enriched if row.eval_amount is not None
+    )
+    # 화면과 정확히 동일하게: totalEval = rows.reduce(acc + (r.eval_amount ?? 0), 0)
+    total_eval = sum((row.eval_amount or 0) for row in enriched)
+
+    by_ticker: dict[str, list] = {}
+    for row in enriched:
+        by_ticker.setdefault(row.ticker, []).append(row)
+
+    result: list[dict[str, Any]] = []
+    for ticker, group in by_ticker.items():
+        invested = sum(row.invested_amount for row in group)
+        eval_sum: Optional[float] = 0.0
+        eval_partial = False
+        data_missing = False
+        for row in group:
+            if row.price_missing or row.calc_missing:
+                data_missing = True
+            if row.eval_amount is None:
+                eval_partial = True
+            elif eval_sum is not None:
+                eval_sum += row.eval_amount
+        if eval_partial:
+            eval_sum = None
+
+        pnl_rate = (
+            ((eval_sum - invested) / invested) * 100.0
+            if eval_sum is not None and invested > 0
+            else None
+        )
+        market_weight = (
+            (eval_sum / total_eval) * 100.0
+            if eval_sum is not None and total_eval > 0
+            else None
+        )
+
+        result.append(
+            {
+                "ticker": ticker,
+                "name": group[0].name,
+                "invested_amount": invested,
+                "eval_amount": eval_sum,
+                "eval_partial_unavail": eval_partial,
+                "pnl_rate_pct": pnl_rate,
+                "market_weight_pct": market_weight,
+                "data_missing": data_missing,
+            }
+        )
+    return result
 
 
 def _load_candidate_evidence(ticker: str) -> Optional[dict[str, Any]]:

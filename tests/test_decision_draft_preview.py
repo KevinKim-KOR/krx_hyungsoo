@@ -376,3 +376,391 @@ def test_endpoint_does_not_call_external_price_sources(
     ).json()
     assert body["status"] == "ok"
     assert calls == []
+
+
+# ------- FIX r5: canonical evidence 원천·의미 화면 정합 회귀 -------
+
+
+def _fake_market_quote(ticker: str, name: str, price: float):
+    """market_cache.MarketQuote 스텁 — enrich_holdings 가 요구하는 최소 필드만."""
+    from app.market_cache import MarketQuote
+
+    return MarketQuote(
+        ticker=ticker,
+        name=name,
+        current_price=price,
+        price_asof="2026-07-03",
+        price_source="TEST",
+    )
+
+
+def _seed_holdings_and_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """holdings 파일 + market_cache stub → _load_holdings_evidence 가 실제 canonical
+    조립을 수행하도록 한다.
+    """
+    from app import holdings as holdings_mod
+    from app import market_cache
+
+    # holdings 파일 (0052D0 하나) — TIGER 코리아배당다우존스.
+    hfile = tmp_path / "holdings_latest.json"
+    hfile.write_text(
+        '{"holdings": [{"ticker": "0052D0", "name": "TIGER 코리아배당다우존스",'
+        ' "quantity": 100, "avg_buy_price": 10000}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(holdings_mod, "HOLDINGS_FILE", hfile, raising=True)
+
+    # market_cache — 시세 있는 상태 (평가비중 / 손익률 계산 가능).
+    def fake_get_all():
+        return {
+            "0052D0": _fake_market_quote("0052D0", "TIGER 코리아배당다우존스", 15511.0)
+        }
+
+    monkeypatch.setattr(market_cache, "get_all", fake_get_all, raising=True)
+
+
+def test_fix_r7_duplicate_ticker_uses_aggregated_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FIX r7 — 동일 ticker 가 holdings 파일에 2 row 로 존재해도 preview 는
+    화면 aggregateHoldingsByTicker 와 동일하게 ticker 단위로 집계된 값을 사용.
+
+    구성 (367760 실제 케이스 재현 아이디어 — 2 row 로 집계됨):
+      367760 row1: quantity=100, avg=10, price=15 → invested=1000, eval=1500
+      367760 row2: quantity=100, avg=10, price=15 → invested=1000, eval=1500
+      → 그룹 집계: invested=2000, eval=3000, pnl_rate=(3000/2000-1)*100=50.0
+
+    raw 마지막 row 만 선택하면 그룹이 아닌 개별 row 기준 계산이 되어 값이
+    달라진다. 화면 집계와 preview 값이 반드시 일치해야 한다.
+    """
+    from app import holdings as holdings_mod
+    from app import market_cache
+
+    # 실제 보유 파일과 동일한 구조 재현 — 같은 ticker 를 다른 account_group 으로
+    # 두 row 로 저장 (holdings validator 는 이 조합을 허용).
+    hfile = tmp_path / "holdings_latest.json"
+    hfile.write_text(
+        '{"holdings": ['
+        '{"ticker": "367760", "name": "RISE 네트워크인프라",'
+        ' "quantity": 100, "avg_buy_price": 10, "account_group": "일반"},'
+        '{"ticker": "367760", "name": "RISE 네트워크인프라",'
+        ' "quantity": 100, "avg_buy_price": 10, "account_group": "연금저축"}'
+        "]}",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(holdings_mod, "HOLDINGS_FILE", hfile, raising=True)
+
+    def fake_get_all():
+        return {"367760": _fake_market_quote("367760", "RISE 네트워크인프라", 15.0)}
+
+    monkeypatch.setattr(market_cache, "get_all", fake_get_all, raising=True)
+
+    def stub_topn(**kwargs):
+        return {"status": "ok", "asof": "2026-07-03", "candidates": []}
+
+    def stub_build_evidence(**kwargs):
+        return {
+            "status": "ok",
+            "asof": "2026-07-03",
+            "holdings": [
+                {
+                    "ticker": "367760",
+                    "name": "RISE 네트워크인프라",
+                    "short_term_momentum": {},
+                    "data_quality": {"status": "ok"},
+                    "overlap": {"status": "not_loaded"},
+                }
+            ],
+        }
+
+    from app import holdings_market_evidence, market_topn
+
+    monkeypatch.setattr(market_topn, "compute_topn", stub_topn, raising=True)
+    monkeypatch.setattr(
+        holdings_market_evidence,
+        "build_holdings_market_evidence",
+        stub_build_evidence,
+        raising=True,
+    )
+
+    canonical = api_decision_draft_preview._load_holdings_evidence("367760")
+    assert canonical is not None
+    # 집계 기준: invested=2000, eval=3000 → pnl_rate=50.0
+    # 총 자산 대비 100% (다른 종목 없음).
+    assert canonical["pnl_rate_pct"] == pytest.approx(50.0, abs=0.01)
+    assert canonical["market_weight_pct"] == pytest.approx(100.0, abs=0.01)
+
+
+def test_fix_r6_canonical_holding_matches_screen_values_079_and_5511(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FIX r6 (설계자 요구 명시 검증) — 화면 값 `market_weight_pct=0.79 /
+    pnl_rate_pct=55.11` 이 preview 에 그대로 나타나는 회귀.
+
+    구성: 두 종목 holdings 파일로 총 자산 대비 0052D0 비중을 0.79% 로 맞춤.
+      0052D0: quantity=100, avg=10, price=15.511  → invested=1000, eval=1551.1,
+              pnl_rate=(1551.1/1000-1)*100 = 55.11
+      DUMMY : quantity=1,   avg=1,  price=194600  → invested=1,    eval=194600
+      total eval = 196151.1  → 0052D0 market_weight = 1551.1/196151.1*100 ≈ 0.79
+    """
+    from app import holdings as holdings_mod
+    from app import market_cache
+
+    hfile = tmp_path / "holdings_latest.json"
+    hfile.write_text(
+        '{"holdings": ['
+        '{"ticker": "0052D0", "name": "TIGER 코리아배당다우존스",'
+        ' "quantity": 100, "avg_buy_price": 10},'
+        '{"ticker": "DUMMY0", "name": "DUMMY",'
+        ' "quantity": 1, "avg_buy_price": 1}'
+        "]}",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(holdings_mod, "HOLDINGS_FILE", hfile, raising=True)
+
+    def fake_get_all():
+        return {
+            "0052D0": _fake_market_quote("0052D0", "TIGER 코리아배당다우존스", 15.511),
+            "DUMMY0": _fake_market_quote("DUMMY0", "DUMMY", 194600.0),
+        }
+
+    monkeypatch.setattr(market_cache, "get_all", fake_get_all, raising=True)
+
+    def stub_topn(**kwargs):
+        return {"status": "ok", "asof": "2026-07-03", "candidates": []}
+
+    def stub_build_evidence(**kwargs):
+        return {
+            "status": "ok",
+            "asof": "2026-07-03",
+            "holdings": [
+                {
+                    "ticker": "0052D0",
+                    "name": "TIGER 코리아배당다우존스",
+                    "short_term_momentum": {},
+                    "data_quality": {"status": "ok"},
+                    "overlap": {"status": "not_loaded"},
+                }
+            ],
+        }
+
+    from app import holdings_market_evidence, market_topn
+
+    monkeypatch.setattr(market_topn, "compute_topn", stub_topn, raising=True)
+    monkeypatch.setattr(
+        holdings_market_evidence,
+        "build_holdings_market_evidence",
+        stub_build_evidence,
+        raising=True,
+    )
+
+    canonical = api_decision_draft_preview._load_holdings_evidence("0052D0")
+    assert canonical is not None
+    # 설계자 요구 값과 정확히 일치 (round 2 자릿수).
+    assert canonical["market_weight_pct"] == pytest.approx(0.79, abs=0.01)
+    assert canonical["pnl_rate_pct"] == pytest.approx(55.11, abs=0.01)
+
+    from app.decision_draft_preview_service import build_preview_text
+
+    result = build_preview_text(
+        target_kind=TARGET_KIND_HOLDING,
+        ticker="0052D0",
+        target_evidence=canonical,
+    )
+    text = result.preview_text or ""
+    assert "0.79%" in text
+    assert "55.11%" in text
+
+
+def test_fix_r5_canonical_holding_evidence_includes_weight_and_pnl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FIX r5 회귀 #1 — enrich_holdings 결과의 평가비중·손익률이 preview 에 그대로."""
+    _seed_holdings_and_cache(monkeypatch, tmp_path)
+
+    # compute_topn / build_holdings_market_evidence 는 실제 SQLite 를 요구하므로
+    # stub — 20d 초과값이 있는 상태를 fixture 로 주입.
+    def stub_topn(**kwargs):
+        return {"status": "ok", "asof": "2026-07-03", "candidates": []}
+
+    def stub_build_evidence(**kwargs):
+        return {
+            "status": "ok",
+            "asof": "2026-07-03",
+            "holdings": [
+                {
+                    "ticker": "0052D0",
+                    "name": "TIGER 코리아배당다우존스",
+                    "short_term_momentum": {
+                        "excess_vs_kodex200_20d_pctp": 2.34,
+                        "end_date": "2026-07-03",
+                    },
+                    "data_quality": {"status": "ok"},
+                    "overlap": {"status": "not_loaded"},
+                }
+            ],
+        }
+
+    from app import holdings_market_evidence, market_topn
+
+    monkeypatch.setattr(market_topn, "compute_topn", stub_topn, raising=True)
+    monkeypatch.setattr(
+        holdings_market_evidence,
+        "build_holdings_market_evidence",
+        stub_build_evidence,
+        raising=True,
+    )
+
+    canonical = api_decision_draft_preview._load_holdings_evidence("0052D0")
+    assert canonical is not None
+    # enrich_holdings 계산 결과: eval=100*15511=1551100, invested=1000000,
+    #   pnl_rate=(1551100/1000000-1)*100=55.11 (round 2)
+    #   market_weight 단일 종목 100.00
+    assert canonical["pnl_rate_pct"] == pytest.approx(55.11, abs=0.01)
+    assert canonical["market_weight_pct"] == pytest.approx(100.0, abs=0.01)
+    # short_term_momentum 은 build_holdings_market_evidence 원천 그대로.
+    stm = canonical.get("short_term_momentum") or {}
+    assert stm.get("excess_vs_kodex200_20d_pctp") == pytest.approx(2.34, abs=0.01)
+
+    # preview_text 안에도 그대로 노출되는지.
+    from app.decision_draft_preview_service import build_preview_text
+
+    result = build_preview_text(
+        target_kind=TARGET_KIND_HOLDING,
+        ticker="0052D0",
+        target_evidence=canonical,
+    )
+    text = result.preview_text or ""
+    assert "55.11%" in text
+    assert "100.00%" in text
+    assert "+2.34%" in text
+
+
+def test_fix_r5_missing_ex20_shows_unknown_not_hidden(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FIX r5 회귀 #2 — 20일 KODEX 초과값이 없으면 미확인 표시, 라인 삭제 X."""
+    _seed_holdings_and_cache(monkeypatch, tmp_path)
+
+    def stub_topn(**kwargs):
+        return {"status": "ok", "asof": "2026-07-03", "candidates": []}
+
+    def stub_build_evidence(**kwargs):
+        return {
+            "status": "ok",
+            "asof": "2026-07-03",
+            "holdings": [
+                {
+                    "ticker": "0052D0",
+                    "name": "TIGER 코리아배당다우존스",
+                    "short_term_momentum": {},  # ex_20 없음
+                    "data_quality": {"status": "ok"},
+                    "overlap": {"status": "not_loaded"},
+                }
+            ],
+        }
+
+    from app import holdings_market_evidence, market_topn
+
+    monkeypatch.setattr(market_topn, "compute_topn", stub_topn, raising=True)
+    monkeypatch.setattr(
+        holdings_market_evidence,
+        "build_holdings_market_evidence",
+        stub_build_evidence,
+        raising=True,
+    )
+
+    canonical = api_decision_draft_preview._load_holdings_evidence("0052D0")
+    from app.decision_draft_preview_service import build_preview_text
+
+    result = build_preview_text(
+        target_kind=TARGET_KIND_HOLDING,
+        ticker="0052D0",
+        target_evidence=canonical,
+    )
+    text = result.preview_text or ""
+    # 라인 존재 + "미확인" 표기.
+    assert "KODEX200 대비 20거래일 초과: 미확인" in text
+
+
+def test_fix_r5_preview_does_not_recompute_ex20_independently(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FIX r5 회귀 #3 — preview 는 build_holdings_market_evidence 원천만 사용.
+
+    stub 이 반환하지 않은 다른 값 (예: -4.23) 이 preview_text 에 등장하면 실패.
+    (독자 계산 경로가 있으면 이 assert 가 잡는다.)
+    """
+    _seed_holdings_and_cache(monkeypatch, tmp_path)
+
+    def stub_topn(**kwargs):
+        return {"status": "ok", "asof": "2026-07-03", "candidates": []}
+
+    def stub_build_evidence(**kwargs):
+        # 명확한 sentinel 값. preview 가 canonical 원천만 사용하면 이 값만 등장.
+        return {
+            "status": "ok",
+            "asof": "2026-07-03",
+            "holdings": [
+                {
+                    "ticker": "0052D0",
+                    "name": "TIGER 코리아배당다우존스",
+                    "short_term_momentum": {
+                        "excess_vs_kodex200_20d_pctp": 7.77,
+                        "end_date": "2026-07-03",
+                    },
+                    "data_quality": {"status": "ok"},
+                    "overlap": {"status": "not_loaded"},
+                }
+            ],
+        }
+
+    from app import holdings_market_evidence, market_topn
+
+    monkeypatch.setattr(market_topn, "compute_topn", stub_topn, raising=True)
+    monkeypatch.setattr(
+        holdings_market_evidence,
+        "build_holdings_market_evidence",
+        stub_build_evidence,
+        raising=True,
+    )
+
+    canonical = api_decision_draft_preview._load_holdings_evidence("0052D0")
+    from app.decision_draft_preview_service import build_preview_text
+
+    result = build_preview_text(
+        target_kind=TARGET_KIND_HOLDING,
+        ticker="0052D0",
+        target_evidence=canonical,
+    )
+    text = result.preview_text or ""
+    # canonical sentinel 만 등장.
+    assert "+7.77%" in text
+    # -4.23% 같은 독자 계산 결과가 등장하면 안 됨 (사용자 지적의 회귀 시나리오).
+    assert "-4.23" not in text
+    # 그리고 실제로 canonical 값이 short_term_momentum 원천에서 왔음을 확인.
+    assert canonical["short_term_momentum"]["excess_vs_kodex200_20d_pctp"] == 7.77
+
+
+def test_fix_r5_candidate_preview_regression_untouched(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FIX r5 회귀 #5 — 후보 preview 는 영향 없음."""
+    from app.decision_draft_preview_service import build_preview_text
+
+    candidate = {
+        "ticker": "379800",
+        "name": "TEST",
+        "relative_upside_score": 88.8,
+        "short_term_momentum": {"excess_vs_kodex200_20d_pctp": 1.11},
+        "drawdown_20d": -0.02,
+        "data_quality": {"status": "ok"},
+    }
+    result = build_preview_text(
+        target_kind=TARGET_KIND_CANDIDATE,
+        ticker="379800",
+        target_evidence=candidate,
+    )
+    text = result.preview_text or ""
+    assert "88.8" in text
+    assert "+1.11%" in text

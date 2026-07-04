@@ -18,7 +18,7 @@
 
 **UI**: `HoldingsCompareView` 확장 — 보유 클릭 상태 추가 + preview 카드 삽입. `MarketDiscoveryView` / `MarketRiskReferenceCard` 미수정.
 
-**전용 테스트 파일 17 케이스** (초기 12 → r1 14 → r2 15 → r3 17). FIX r3 은 loader 직접 호출 테스트가 프로그래머 오류를 실제로 잡도록 재구성 + endpoint 사용자 응답 유지 실측 검증. **708 passed** (691 → 708). black / flake8 / frontend lint / frontend build PASS.
+**전용 테스트 파일 23 케이스** (초기 12 → r1 14 → r2 15 → r3 17 → r5 21 → r6 22 → r7 23). FIX r3 은 loader 직접 호출 테스트가 프로그래머 오류를 실제로 잡도록 재구성 + endpoint 사용자 응답 유지 실측 검증. FIX r5 는 화면-preview evidence canonical 조립. FIX r6 은 black 포맷 정정 + 설계자 요구 `market_weight_pct=0.79 / pnl_rate_pct=55.11` 명시 검증 테스트 추가. FIX r7 은 중복 ticker 집계 정합 — 화면 `aggregateHoldingsByTicker` 를 Python 으로 이식. **714 passed** (691 → 714). black / flake8 / frontend lint / frontend build PASS.
 
 ---
 

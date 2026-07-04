@@ -741,7 +741,7 @@
 | 대상 변경 처리 | 요청 식별자 (`currentReqIdRef`) 로 응답 도착 시 대상 일치 확인 → 이전 응답 폐기. |
 | 실패 처리 | "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요." 단일 문구. 이전 preview 재사용 / raw evidence 대체 표시 0건. |
 | API·UI 계약 | 기존 필드 삭제·이름 변경·의미 변경 0건. `MarketDiscoveryView` / `MarketRiskReferenceCard` 미수정. |
-| 테스트 | pytest **708 passed** (691 → 708, 전용 파일 17 케이스, FIX r1 +2 / FIX r2 +1 / FIX r3 +2). black / flake8 / frontend lint / frontend build PASS. |
+| 테스트 | pytest **714 passed** (691 → 714, 전용 파일 23 케이스, FIX r1 +2 / FIX r2 +1 / FIX r3 +2 / FIX r5 +4 / FIX r6 +1 / FIX r7 +1). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 사용자 판단 지원 evidence. |
 | 다음 조치 | 위험 evidence / 시장 국면 / ML 축2 진입 (사용자 결정). |
 

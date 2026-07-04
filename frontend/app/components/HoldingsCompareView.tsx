@@ -113,6 +113,16 @@ export default function HoldingsCompareView({ data }: Props) {
     }
   }, [evidenceLoading]);
 
+  // 2026-07-03 FIX r5 (사용자 지적 대응) — 컴포넌트 마운트 시 evidence 자동 로드.
+  // 이전에는 "보유 비교 evidence 조회" 버튼을 눌러야만 short_term_momentum 등이
+  // 화면에 표시되어 preview endpoint 가 자동 재계산한 값과 불일치했다.
+  // 이제 화면 로드 시점에도 서버 preview 와 동일한 canonical 값을 표시한다.
+  useEffect(() => {
+    handleEvidenceFetch();
+    // handleEvidenceFetch 는 evidenceLoading 에만 의존 — 한 번만 fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const aggregated = useMemo<AggregatedHolding[]>(
     () => aggregateHoldingsByTicker(enrichedRaw),
     [enrichedRaw],
