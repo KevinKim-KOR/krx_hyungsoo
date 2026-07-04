@@ -32,8 +32,11 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **금지 표현 필터**: preview_text 는 "지금 매수 / 지금 매도 / 반드시 유지 / 위험이 높습니다 / 시장 전환이 예상됩니다" 등 미포함 (자동 테스트).
   - **UI 확장**: `HoldingsCompareView` 에 보유 row 클릭 상태 추가 (기존 후보 클릭과 상호 배타). 우측 선택 상세 카드 안에 `DecisionDraftPreviewCard` 삽입. 요청 식별자로 대상 변경 시 이전 응답 폐기. 신규 화면·라우트·차트 0건.
   - **API·UI 계약**: 기존 필드 삭제·이름 변경·의미 변경 0건. `MarketDiscoveryView` / `MarketRiskReferenceCard` 미수정.
-  - **신규 테스트 12건**: service 5 + endpoint 7 (fixture 기반).
-  - **backend 전체 테스트**: `703 passed` (691 → 703). black / flake8 / frontend lint / frontend build PASS.
+  - **신규 테스트 17건 (전용 파일 케이스 수)**: 초기 12 (service 5 + endpoint 7) → FIX r1 후 14 → FIX r2 후 15 → FIX r3 후 17. FIX r3 은 loader 프로그래머 오류 propagate + endpoint 사용자 응답 유지 실측 테스트로 재구성.
+  - **FIX r1 (2026-07-03)**: 사용자 화면 실측 이슈 대응. `_load_holdings_evidence` 안 `from app.holdings import load_holdings_from_file` → 실제 함수명 `load` 로 정정 (broad except 가 ImportError 를 삼켜 사용자에게 일반 실패로만 표시된 결함). broad except 안 traceback logger 추가 + stub 없이 실제 loader 를 호출하는 스모크 테스트 2건 신규.
+  - **FIX r2 (2026-07-03)**: `hasattr` 기반 심볼 assert 테스트 추가 — 모듈 네임스페이스 옛 오타 심볼 존재 여부는 확인 가능. **한계**: 함수 내부 잘못된 import 문 재도입은 broad except 가 삼켜 이 테스트만으로는 감지 불가 (검증자 지적). 문서 수치 정합성 정정.
+  - **FIX r3 (2026-07-03, r2 한계 근본 해소)**: 설계자 승인 Option A + C. loader (`_load_holdings_evidence` / `_load_candidate_evidence`) 의 broad except 를 데이터 오류만 catch 하도록 좁힘 (`FileNotFoundError` / `json.JSONDecodeError` / `HoldingsValidationError` / `sqlite3.Error`). 프로그래머 오류 (`ImportError` / `AttributeError` / `TypeError`) 는 삼키지 않고 propagate. endpoint 경계에서 프로그래머 오류를 catch 하여 사용자 응답 계약 (`status="error"` + "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요.") 유지. traceback 은 서버 로그에만 기록. **정직한 검증 범위**: loader 직접 호출 테스트가 프로그래머 오류를 잡고 (`monkeypatch.delattr` 시나리오 실측 검증), endpoint 는 사용자 친화 실패 응답을 유지한다. Bash 셀프 검증으로 두 경로 모두 실측 확인.
+  - **backend 전체 테스트**: `708 passed` (691 → 708). black / flake8 / frontend lint / frontend build PASS.
 - **이전 완료 상태**: **Market Risk Reference v1 — DONE** (2026-07-03).
   - 지시문 단일 목표: Market Discovery 첫 화면에 KODEX200 (국내 기준선) + VIX (미국 변동성 참고) 일별 맥락 evidence 카드 추가. 원시 evidence만 — 시장 국면 라벨 / 추세 예측 / 위험 점수 / ML 축2 / 매수·매도 판단 0건.
   - **VIX 실측**: FDR `DataReader("VIX", ...)` — 2014-04-08 ~ 2026-07-03 / 3079 rows / `market_benchmark_daily_price` (benchmark_id='VIX') 저장. 최신 종가 15.81. 신규 의존성 / 신규 가격 테이블 / 신규 DB 엔진 0건.

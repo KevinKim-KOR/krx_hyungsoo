@@ -274,6 +274,88 @@ def test_endpoint_does_not_touch_pending_draft(
     assert save_calls == []
 
 
+def test_load_holdings_evidence_returns_dict_or_none_in_normal_state() -> None:
+    """정상 상태 스모크 — 실제 loader 를 호출해 예외 없이 dict / None 반환.
+
+    이 테스트만으로는 import 오타를 잡지 못하지만 (broad except 없이도 loader
+    가 존재 데이터에 대해 정상 반환하는지 확인), 아래 회귀 재현 테스트와
+    함께 봤을 때 loader 가 실제로 실행 가능함을 보증한다.
+    """
+    result = api_decision_draft_preview._load_holdings_evidence("999999")
+    assert result is None or isinstance(result, dict)
+
+
+def test_load_candidate_evidence_returns_dict_or_none_in_normal_state() -> None:
+    result = api_decision_draft_preview._load_candidate_evidence("999999")
+    assert result is None or isinstance(result, dict)
+
+
+def test_load_holdings_evidence_propagates_programmer_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FIX r3 — loader 안 프로그래머 오류 (ImportError / AttributeError) 는
+    삼키지 않고 propagate. 이 테스트가 있으면 `from app.holdings import
+    load_holdings_from_file` 같은 심볼 오타 재도입 시 loader 직접 호출에서
+    즉시 예외가 발생함을 확인.
+
+    시뮬레이션: `app.holdings.load` 를 잠깐 제거하면 loader 안 `load_holdings()`
+    호출이 AttributeError (또는 유사) 로 실패해야 한다.
+    """
+    import app.holdings as holdings_mod
+
+    # 실제 load 를 삭제해 loader 안 `load_holdings()` 호출이 실패하도록.
+    monkeypatch.delattr(holdings_mod, "load", raising=True)
+
+    with pytest.raises((AttributeError, ImportError, TypeError)):
+        api_decision_draft_preview._load_holdings_evidence("999999")
+
+
+def test_load_candidate_evidence_propagates_programmer_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FIX r3 — 후보 loader 도 동일. `compute_topn` 을 잠깐 제거하면 loader
+    호출이 즉시 실패해야 한다.
+    """
+    import app.market_topn as topn_mod
+
+    monkeypatch.delattr(topn_mod, "compute_topn", raising=True)
+
+    with pytest.raises((AttributeError, ImportError, TypeError)):
+        api_decision_draft_preview._load_candidate_evidence("999999")
+
+
+def test_endpoint_maintains_user_friendly_response_on_programmer_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FIX r3 — loader 가 프로그래머 오류를 propagate 해도, endpoint 는
+    사용자 친화 실패 응답 (status="error" + 짧은 문구) 을 유지.
+
+    응답 body 에 traceback / 심볼 정보 미노출.
+    """
+    from app import api_decision_draft_preview as api_mod
+
+    def raise_import_error(ticker: str):
+        raise ImportError("simulated regression: bad symbol import")
+
+    monkeypatch.setattr(api_mod, "_load_holdings_evidence", raise_import_error)
+
+    client = TestClient(app)
+    res = client.post(
+        "/decision-draft/preview",
+        json={"target_kind": "holding", "ticker": "069500"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "error"
+    assert (
+        body["message"] == "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요."
+    )
+    # 내부 traceback / 심볼 정보 미노출.
+    text = str(body)
+    for banned in ("simulated regression", "ImportError", "traceback", "Traceback"):
+        assert banned not in text
+
+
 def test_endpoint_does_not_call_external_price_sources(
     stub_evidence, monkeypatch: pytest.MonkeyPatch
 ) -> None:

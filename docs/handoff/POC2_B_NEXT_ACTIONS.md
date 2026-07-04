@@ -18,7 +18,7 @@
 
 **UI**: `HoldingsCompareView` 확장 — 보유 클릭 상태 추가 + preview 카드 삽입. `MarketDiscoveryView` / `MarketRiskReferenceCard` 미수정.
 
-**신규 테스트 12건**. **703 passed** (691 → 703). black / flake8 / frontend lint / frontend build PASS.
+**전용 테스트 파일 17 케이스** (초기 12 → r1 14 → r2 15 → r3 17). FIX r3 은 loader 직접 호출 테스트가 프로그래머 오류를 실제로 잡도록 재구성 + endpoint 사용자 응답 유지 실측 검증. **708 passed** (691 → 708). black / flake8 / frontend lint / frontend build PASS.
 
 ---
 

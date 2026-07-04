@@ -54,39 +54,78 @@ class PreviewResponse(BaseModel):
 def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
     """기존 build_holdings_market_evidence 재사용 (부작용 없음 — SQLite/store read only).
 
-    예외는 catch 하여 None 반환 — 사용자 노출 정보 최소화.
+    FIX r3 (2026-07-03):
+    - 데이터 오류 (파일 부재 / JSON 파싱 실패 / holdings 검증 실패 / SQLite 오류)
+      만 catch 하여 None 반환 + logger.warning.
+    - 프로그래머 오류 (ImportError / AttributeError / TypeError / NameError /
+      ModuleNotFoundError) 는 삼키지 않고 즉시 propagate — 오타 회귀를 테스트가
+      직접 잡을 수 있도록.
+    - endpoint 경계에서 프로그래머 오류를 catch 하여 사용자 친화 실패 응답을 유지.
     """
-    try:
-        from app.holdings import load_holdings_from_file
-        from app.holdings_market_evidence import build_holdings_market_evidence
-        from app.market_topn import compute_topn
+    import json
+    import logging
+    import sqlite3
+    import traceback
 
-        holdings = load_holdings_from_file()
+    from app.holdings import HoldingsValidationError, load as load_holdings
+    from app.holdings_market_evidence import build_holdings_market_evidence
+    from app.market_topn import compute_topn
+
+    logger = logging.getLogger(__name__)
+    try:
+        holdings = load_holdings()
         topn_payload = compute_topn()
         payload = build_holdings_market_evidence(
             holdings=holdings,
             topn_payload=topn_payload,
         )
-        items = payload.get("holdings") or []
-        for h in items:
-            if str(h.get("ticker") or "") == ticker:
-                return h
+    except (
+        FileNotFoundError,
+        json.JSONDecodeError,
+        HoldingsValidationError,
+        sqlite3.Error,
+    ) as exc:
+        logger.warning(
+            "decision-draft/preview: holdings evidence load data error "
+            "(ticker=%s): %s\n%s",
+            ticker,
+            type(exc).__name__,
+            traceback.format_exc(),
+        )
         return None
-    except Exception:  # noqa: BLE001 — 사용자 노출 최소화, 실패 시 None.
-        return None
+
+    items = payload.get("holdings") or []
+    for h in items:
+        if str(h.get("ticker") or "") == ticker:
+            return h
+    return None
 
 
 def _load_candidate_evidence(ticker: str) -> Optional[dict[str, Any]]:
-    try:
-        from app.market_topn import compute_topn
+    """FIX r3 (2026-07-03): 프로그래머 오류 propagate, 데이터 오류만 catch."""
+    import logging
+    import sqlite3
+    import traceback
 
+    from app.market_topn import compute_topn
+
+    logger = logging.getLogger(__name__)
+    try:
         payload = compute_topn()
-        for c in payload.get("candidates") or []:
-            if str(c.get("ticker") or "") == ticker:
-                return c
+    except sqlite3.Error as exc:
+        logger.warning(
+            "decision-draft/preview: candidate evidence load data error "
+            "(ticker=%s): %s\n%s",
+            ticker,
+            type(exc).__name__,
+            traceback.format_exc(),
+        )
         return None
-    except Exception:  # noqa: BLE001
-        return None
+
+    for c in payload.get("candidates") or []:
+        if str(c.get("ticker") or "") == ticker:
+            return c
+    return None
 
 
 @router.post("/decision-draft/preview", response_model=PreviewResponse)
@@ -101,10 +140,29 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
     if not ticker:
         return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
 
-    if req.target_kind == TARGET_KIND_HOLDING:
-        target_evidence = _load_holdings_evidence(ticker)
-    else:
-        target_evidence = _load_candidate_evidence(ticker)
+    # FIX r3 (2026-07-03): loader 는 프로그래머 오류 (import 오타 등) 를 삼키지
+    # 않고 propagate. endpoint 경계에서 catch 하여 사용자 친화 실패 응답을 유지.
+    # 서버 로그에는 traceback 이 loader / 여기 두 곳 모두에서 기록되므로 개발자
+    # 파악 가능하되, 응답 body 는 계약 그대로 짧은 문구만 노출.
+    import logging
+    import traceback
+
+    _preview_logger = logging.getLogger(__name__)
+    try:
+        if req.target_kind == TARGET_KIND_HOLDING:
+            target_evidence = _load_holdings_evidence(ticker)
+        else:
+            target_evidence = _load_candidate_evidence(ticker)
+    except Exception as exc:  # noqa: BLE001 — endpoint 경계 응답 계약 유지
+        _preview_logger.error(
+            "decision-draft/preview: unexpected loader error "
+            "(target_kind=%s, ticker=%s): %s\n%s",
+            req.target_kind,
+            ticker,
+            type(exc).__name__,
+            traceback.format_exc(),
+        )
+        return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
 
     if target_evidence is None:
         return PreviewResponse(status="error", message=_FAILURE_MESSAGE)

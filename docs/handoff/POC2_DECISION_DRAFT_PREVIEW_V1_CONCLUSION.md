@@ -107,13 +107,13 @@ preview_text 는 5 섹션 (대상·검토 맥락 / 확인된 근거 / 시장 참
 
 | 항목 | 결과 |
 |---|---|
-| backend 전체 테스트 | **703 passed** (691 → 703, 신규 12) |
+| backend 전체 테스트 | **708 passed** (691 → 708, 전용 파일 17 케이스 (초기 12 + FIX r1 +2 + FIX r2 +1 + FIX r3 +2)) |
 | black | PASS |
 | flake8 | PASS |
 | frontend lint | PASS |
 | frontend build | PASS |
 
-신규 테스트 12건 — `tests/test_decision_draft_preview.py`:
+전용 테스트 파일 17 케이스 — `tests/test_decision_draft_preview.py` (초기 12 + FIX r1 +2 + FIX r2 +1 + FIX r3 +2):
 - service 단위 5건: holding / candidate 텍스트 조립 / 금지 표현 미포함 / invalid kind / empty ticker
 - endpoint 통합 7건: holding OK / candidate OK / unknown ticker error / invalid kind error / 응답 화이트리스트 / PENDING 미터치 / 외부 시세 미호출
 
@@ -160,6 +160,43 @@ preview_text 는 5 섹션 (대상·검토 맥락 / 확인된 근거 / 시장 참
 | AC-12 시장 요약 / VIX 카드 미수정 | ✅ |
 | AC-13 자동 매매·승인·OCI·Telegram·ML 변경 없음 | ✅ |
 | AC-14 backend / black / flake8 / frontend lint / build | ✅ |
+
+---
+
+## 10.1 FIX r1 (2026-07-03, 사용자 화면 이슈)
+
+**증상**: 실제 UI 에서 보유 ETF `367760` (RISE 네트워크인프라) 선택 후 preview 생성 시 "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요." 오류 표시.
+
+**원인**: `app/api_decision_draft_preview.py::_load_holdings_evidence` 안에서 `from app.holdings import load_holdings_from_file` 로 존재하지 않는 심볼 import. 실제 함수는 `app.holdings.load()`. broad `except Exception` 이 ImportError 를 삼켜 사용자에게는 일반 실패 문구만 노출됨.
+
+**초기 자동 테스트 사각지대**: `stub_evidence` fixture 가 `_load_holdings_evidence` / `_load_candidate_evidence` 를 stub 으로 대체하여 실제 import path 를 검증하지 않았음.
+
+**FIX r1 코드 수정**:
+- `from app.holdings import load as load_holdings` 로 정정.
+- broad except 안에 `logger.warning(traceback.format_exc())` 추가.
+
+**FIX r2 (일부만 유효)**:
+- `hasattr` 기반 심볼 assert 테스트 추가. 모듈 네임스페이스에 옛 오타 심볼이 존재하는지 여부는 확인 가능.
+- **한계 (검증자 지적)**: `_load_holdings_evidence` 함수 **내부의 잘못된 import 문** 이 재도입되면 broad except 가 ImportError 를 삼켜 함수는 여전히 None 반환. hasattr 테스트로는 이 회귀를 직접 감지하지 못함.
+
+**FIX r3 (r2 한계 근본 해소)** — 설계자 승인 (Option A + C):
+- **코드**: `_load_holdings_evidence` / `_load_candidate_evidence` 의 broad `except Exception` 을 삭제하고, 데이터 오류 (`FileNotFoundError` / `json.JSONDecodeError` / `HoldingsValidationError` / `sqlite3.Error`) 만 catch 하여 `None` 반환. 프로그래머 오류 (`ImportError` / `AttributeError` / `TypeError` / `NameError` / `ModuleNotFoundError`) 는 **삼키지 않고 propagate**.
+- **endpoint 경계**: `post_decision_draft_preview` 안에서 loader 호출을 `try/except Exception` 으로 감싸 프로그래머 오류도 catch 하되, **사용자 응답 body 는 계약 그대로** (`status="error"` + "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요."). traceback 은 endpoint 안 logger.error 로 서버 로그에만 기록.
+- **테스트가 실제로 보장하는 범위**:
+  - `test_load_holdings_evidence_propagates_programmer_error` / `test_load_candidate_evidence_propagates_programmer_error` — `monkeypatch.delattr(app.holdings, "load")` 후 loader 호출 시 `AttributeError / ImportError / TypeError` 중 하나가 propagate 됨을 assert. 심볼 오타 재도입 시 loader 직접 호출 테스트가 실패한다.
+  - `test_endpoint_maintains_user_friendly_response_on_programmer_error` — loader 를 `raise ImportError(...)` 로 monkeypatch 한 상태에서 endpoint 응답이 여전히 `status_code=200 / status="error" / 짧은 문구` 이며 body 에 `ImportError` / `traceback` 문자열이 미노출됨을 assert.
+  - `test_load_*_returns_dict_or_none_in_normal_state` — 정상 상태 스모크 (이 자체로는 오타를 잡지 못함).
+- **실측 셀프 검증 (Bash)**: `del app.holdings.load` 후 (1) loader 직접 호출 → `ImportError` propagate 확인, (2) endpoint 호출 → `status=error` + body 에 `ImportError` / `Traceback` 미노출 확인.
+
+**정직한 검증 범위 요약**:
+- ✅ loader 직접 호출 테스트가 import / symbol 오류 (프로그래머 오류) 를 잡는다.
+- ✅ endpoint 는 프로그래머 오류가 발생해도 사용자 친화 실패 응답 (`status="error"` + 짧은 문구) 을 유지한다.
+- ✅ 응답 body 에 traceback / 심볼 정보 미노출.
+- ⚠️ hasattr 심볼 assert 만으로는 함수 내부 import 회귀를 직접 감지하지 못한다는 r2 한계는 r3 의 propagate 방식으로 대체 해소됨.
+
+**실측 확인**: 기본 SQLite + holdings_latest.json 상태에서 loader 가 실제 dict 반환 확인 (RISE 네트워크인프라 367760). `TestClient` 를 통한 endpoint 실호출도 `status=ok` 확인.
+
+**backend 전체 테스트 경과**: 초기 703 → FIX r1 후 705 → FIX r2 후 706 → FIX r3 후 **708 passed**. 전용 테스트 파일은 초기 12 → r1 후 14 → r2 후 15 → r3 후 17 케이스.
 
 ---
 
