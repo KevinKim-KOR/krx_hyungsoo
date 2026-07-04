@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-03 (Market Risk Reference v1 — DONE, KODEX200 + VIX 일별 맥락)
+최종 업데이트: 2026-07-03 (Decision Draft Preview v1 — DONE, 선택 ETF 임시 판단 근거 미리보기)
 
 ## 0. Canonical
 
@@ -23,7 +23,18 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **Market Risk Reference v1 — DONE** (2026-07-03).
+- **현재 완료 상태**: **Decision Draft Preview v1 — DONE** (2026-07-03).
+  - 지시문 단일 목표: 보유·후보 비교 화면 선택 ETF 상세 영역에 저장 없는 임시 `판단 근거 미리보기` 추가. 선택 ETF 하나에 대한 결정적 텍스트 (LLM 미사용) — 사용자가 복사해 외부 AI 웹에 입력하는 용도.
+  - **신규 endpoint**: `POST /decision-draft/preview` — 요청 `target_kind` (holding/candidate) + `ticker`. 응답 `preview_text` + `evidence_as_of` (target/kodex200/vix 세 기준일 분리). 저장 부작용 0건.
+  - **신규 모듈 2종**: `app/decision_draft_preview_service.py` (5구역 텍스트 조립), `app/api_decision_draft_preview.py` (endpoint).
+  - **기존 PENDING 초안 완전 분리**: `generate_draft` / `store.save` / 승인·OCI·Telegram 흐름 미참조. `store.save` 미호출 자동 테스트 검증. 새 DB 테이블 / 이력 저장 0건.
+  - **외부 호출 / ML 실행 0건**: `FinanceDataReader.DataReader` 미호출 자동 테스트 검증.
+  - **금지 표현 필터**: preview_text 는 "지금 매수 / 지금 매도 / 반드시 유지 / 위험이 높습니다 / 시장 전환이 예상됩니다" 등 미포함 (자동 테스트).
+  - **UI 확장**: `HoldingsCompareView` 에 보유 row 클릭 상태 추가 (기존 후보 클릭과 상호 배타). 우측 선택 상세 카드 안에 `DecisionDraftPreviewCard` 삽입. 요청 식별자로 대상 변경 시 이전 응답 폐기. 신규 화면·라우트·차트 0건.
+  - **API·UI 계약**: 기존 필드 삭제·이름 변경·의미 변경 0건. `MarketDiscoveryView` / `MarketRiskReferenceCard` 미수정.
+  - **신규 테스트 12건**: service 5 + endpoint 7 (fixture 기반).
+  - **backend 전체 테스트**: `703 passed` (691 → 703). black / flake8 / frontend lint / frontend build PASS.
+- **이전 완료 상태**: **Market Risk Reference v1 — DONE** (2026-07-03).
   - 지시문 단일 목표: Market Discovery 첫 화면에 KODEX200 (국내 기준선) + VIX (미국 변동성 참고) 일별 맥락 evidence 카드 추가. 원시 evidence만 — 시장 국면 라벨 / 추세 예측 / 위험 점수 / ML 축2 / 매수·매도 판단 0건.
   - **VIX 실측**: FDR `DataReader("VIX", ...)` — 2014-04-08 ~ 2026-07-03 / 3079 rows / `market_benchmark_daily_price` (benchmark_id='VIX') 저장. 최신 종가 15.81. 신규 의존성 / 신규 가격 테이블 / 신규 DB 엔진 0건.
   - **API 응답 확장**: `MarketTopNResponse` 최상위에 `market_risk_reference` 필드 (kodex200 + vix) 신규. 각 항목 `availability` / `as_of_date` / `close` / `change_1d_pct` / `recent_20d_series`. VIX 만 `change_5d_pct`. 기존 필드 변경 0건.

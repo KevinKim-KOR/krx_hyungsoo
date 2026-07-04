@@ -35,6 +35,7 @@ import {
   holdingStateLabel,
   returnColor,
 } from "./holdings_compare/helpers";
+import DecisionDraftPreviewCard from "./holdings_compare/DecisionDraftPreviewCard";
 import SelectedDetail from "./holdings_compare/SelectedDetail";
 
 type CandidateSortKey =
@@ -61,6 +62,13 @@ export default function HoldingsCompareView({ data }: Props) {
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  // 2026-07-03 Decision Draft Preview v1 — 선택 대상 종류 (보유 vs 후보 상호 배타).
+  const [selectedKind, setSelectedKind] = useState<"holding" | "candidate" | null>(
+    null,
+  );
+  const [selectedHoldingTicker, setSelectedHoldingTicker] = useState<string | null>(
+    null,
+  );
   const [detailsExpanded, setDetailsExpanded] = useState<boolean>(false);
 
   const [candSortKey, setCandSortKey] = useState<CandidateSortKey>("default");
@@ -333,8 +341,23 @@ export default function HoldingsCompareView({ data }: Props) {
                     const ex20 =
                       ev?.short_term_momentum?.excess_vs_kodex200_20d_pctp ??
                       null;
+                    const isHoldSelected =
+                      selectedKind === "holding" && selectedHoldingTicker === h.ticker;
                     return (
-                      <tr key={h.ticker}>
+                      <tr
+                        key={h.ticker}
+                        onClick={() => {
+                          setSelectedKind("holding");
+                          setSelectedHoldingTicker(h.ticker);
+                          setSelectedTicker(null);
+                        }}
+                        style={{
+                          cursor: "pointer",
+                          backgroundColor: isHoldSelected
+                            ? "var(--bg-active, #e0f2fe)"
+                            : undefined,
+                        }}
+                      >
                         <td>
                           <strong>{h.name ?? h.ticker}</strong>{" "}
                           <code
@@ -430,7 +453,12 @@ export default function HoldingsCompareView({ data }: Props) {
                   return (
                     <tr
                       key={`${c.ticker ?? "x"}-${idx}`}
-                      onClick={() => c.ticker && setSelectedTicker(c.ticker)}
+                      onClick={() => {
+                        if (!c.ticker) return;
+                        setSelectedTicker(c.ticker);
+                        setSelectedKind("candidate");
+                        setSelectedHoldingTicker(null);
+                      }}
                       style={{
                         cursor: "pointer",
                         backgroundColor: isSelected
@@ -497,22 +525,73 @@ export default function HoldingsCompareView({ data }: Props) {
             top: 12,
           }}
         >
-          <h3 style={{ margin: 0, marginBottom: 8 }}>선택 후보 상세</h3>
-          {selectedCandidate && selectedExposure ? (
-            <SelectedDetail
-              candidate={selectedCandidate}
-              exposure={selectedExposure}
-              expanded={detailsExpanded}
-              onToggleExpanded={() => setDetailsExpanded((v) => !v)}
-              directHoldingEvidence={
-                selectedExposure.directHoldingTicker
-                  ? evidenceByTicker[selectedExposure.directHoldingTicker]
-                  : undefined
-              }
-            />
+          <h3 style={{ margin: 0, marginBottom: 8 }}>
+            {selectedKind === "holding" ? "선택 보유 상세" : "선택 후보 상세"}
+          </h3>
+          {selectedKind === "candidate" && selectedCandidate && selectedExposure ? (
+            <>
+              <SelectedDetail
+                candidate={selectedCandidate}
+                exposure={selectedExposure}
+                expanded={detailsExpanded}
+                onToggleExpanded={() => setDetailsExpanded((v) => !v)}
+                directHoldingEvidence={
+                  selectedExposure.directHoldingTicker
+                    ? evidenceByTicker[selectedExposure.directHoldingTicker]
+                    : undefined
+                }
+              />
+              {selectedCandidate.ticker ? (
+                <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                  <DecisionDraftPreviewCard
+                    targetKind="candidate"
+                    ticker={selectedCandidate.ticker}
+                    displayName={selectedCandidate.name ?? selectedCandidate.ticker}
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : selectedKind === "holding" && selectedHoldingTicker ? (
+            <>
+              {(() => {
+                const h = aggregated.find((x) => x.ticker === selectedHoldingTicker);
+                const ev = evidenceByTicker[selectedHoldingTicker];
+                if (!h) {
+                  return (
+                    <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
+                      보유 정보 조회 실패.
+                    </p>
+                  );
+                }
+                return (
+                  <div style={{ display: "grid", gap: 8, fontSize: "0.85em" }}>
+                    <div>
+                      <strong>{h.name ?? h.ticker}</strong>{" "}
+                      <code style={{ color: "var(--muted)" }}>{h.ticker}</code>
+                    </div>
+                    <div>평가 비중: {fmtPct(h.market_weight_pct)}</div>
+                    <div>손익률: {fmtPct(h.pnl_rate_pct)}</div>
+                    <div>
+                      20일 KODEX 초과:{" "}
+                      {fmtPct(
+                        ev?.short_term_momentum?.excess_vs_kodex200_20d_pctp ??
+                          null,
+                      )}
+                    </div>
+                    <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                      <DecisionDraftPreviewCard
+                        targetKind="holding"
+                        ticker={h.ticker}
+                        displayName={h.name ?? h.ticker}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
           ) : (
             <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
-              후보 행을 클릭하면 상세 정보가 표시됩니다.
+              보유 또는 후보 행을 클릭하면 상세 정보가 표시됩니다.
             </p>
           )}
         </div>

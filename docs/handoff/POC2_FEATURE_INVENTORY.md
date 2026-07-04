@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-07-03 (Market Risk Reference v1 — DONE)
+작성일: 2026-05-27 / 갱신: 2026-07-03 (Decision Draft Preview v1 — DONE)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -721,6 +721,28 @@
 | UI | 카드 좌우 KODEX200 / VIX 패널 + 기준일 차이 안내 문구 + 상세 펼치기 최근 20거래일 sparkline. 두 시계열 별도 축. 외부 차트 라이브러리 0건. |
 | 테스트 | pytest **691 passed** (675 → 691, 신규 16, FIX r1 +3). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 운영 evidence. |
+| 다음 조치 | 2026-07-03 Decision Draft Preview v1 (§2.38) 로 선택 ETF 판단 근거 미리보기 진행 완료. 이후 위험 evidence / ML 축2 진입 (사용자 결정). |
+
+---
+
+### 2.38 Decision Draft Preview v1 — 선택 ETF 임시 판단 근거 미리보기 (2026-07-03, DONE)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 보유·후보 비교 화면 선택 ETF 상세 영역에 저장 없는 임시 판단 근거 미리보기 (5구역 결정적 텍스트). LLM 미사용 — 사용자가 결과를 복사해 외부 AI 웹에 입력. |
+| 현재 메뉴 위치 | `HoldingsCompareView` 우측 선택 상세 카드 (기존 후보 클릭 + 신규 보유 클릭). |
+| 기능 목적 | 무엇이 확인됐는지 / 무엇이 아직 불확실한지 / 승인 전에 무엇을 확인해야 하는지 짧게 읽을 수 있게 함. |
+| 사용 가능 여부 | **사용 가능** (2026-07-03 DONE). |
+| 신규 endpoint | `POST /decision-draft/preview` — 요청 target_kind + ticker. 응답 preview_text + evidence_as_of (세 기준일 분리). 저장 부작용 0건. |
+| 신규 모듈 | `app/decision_draft_preview_service.py`, `app/api_decision_draft_preview.py`, `frontend/lib/api/decisionDraftPreview.ts`, `frontend/app/components/holdings_compare/DecisionDraftPreviewCard.tsx`. |
+| 분리 원칙 | 기존 `POST /runs/generate` PENDING 흐름과 완전 분리. `generate_draft` / `store.save` 미호출. 승인·OCI·Telegram 미연결. 새 DB 테이블 / 이력 저장 0건. |
+| 외부 호출 / ML | 0건. FDR 미호출 자동 테스트 검증. SQLite / 기존 서비스 read only. |
+| 금지 표현 필터 | preview_text 에 "지금 매수 / 지금 매도 / 반드시 유지 / 위험이 높습니다 / 시장 전환이 예상" 등 미포함 (자동 테스트). |
+| 대상 변경 처리 | 요청 식별자 (`currentReqIdRef`) 로 응답 도착 시 대상 일치 확인 → 이전 응답 폐기. |
+| 실패 처리 | "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요." 단일 문구. 이전 preview 재사용 / raw evidence 대체 표시 0건. |
+| API·UI 계약 | 기존 필드 삭제·이름 변경·의미 변경 0건. `MarketDiscoveryView` / `MarketRiskReferenceCard` 미수정. |
+| 테스트 | pytest **703 passed** (691 → 703, 신규 12). black / flake8 / frontend lint / frontend build PASS. |
+| 테스트용/임시 여부 | 아님 — 사용자 판단 지원 evidence. |
 | 다음 조치 | 위험 evidence / 시장 국면 / ML 축2 진입 (사용자 결정). |
 
 ---

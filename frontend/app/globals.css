@@ -1442,3 +1442,23 @@ textarea.decision-textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* 2026-07-03 Decision Draft Preview v1 */
+.decision-draft-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.decision-draft-preview-text {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.8rem;
+  background: var(--bg-muted, #f8f8f8);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  margin: 6px 0;
+  max-height: 320px;
+  overflow: auto;
+}

@@ -1,12 +1,28 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-03 (Market Risk Reference v1 — DONE)
+작성일: 2026-05-20 / 갱신: 2026-07-03 (Decision Draft Preview v1 — DONE)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-07-03 — Market Risk Reference v1, DONE)
+## 0. 직전 STEP 결과 (2026-07-03 — Decision Draft Preview v1, DONE)
+
+보유·후보 비교 화면 선택 ETF 상세 영역에 저장 없는 임시 `판단 근거 미리보기` 추가.
+
+**신규 endpoint**: `POST /decision-draft/preview` — 저장 부작용 0건. LLM 미사용 결정적 텍스트.
+
+**분리 원칙 (지시문 §4)**: 기존 `POST /runs/generate` PENDING 초안 흐름과 완전 분리. `store.save` 미호출 자동 테스트 검증.
+
+**외부 호출 / ML 0건**: FDR 미호출 자동 테스트 검증. SQLite / 기존 서비스 read only.
+
+**UI**: `HoldingsCompareView` 확장 — 보유 클릭 상태 추가 + preview 카드 삽입. `MarketDiscoveryView` / `MarketRiskReferenceCard` 미수정.
+
+**신규 테스트 12건**. **703 passed** (691 → 703). black / flake8 / frontend lint / frontend build PASS.
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-07-03 — Market Risk Reference v1, DONE)
 
 Market Discovery 첫 화면에 KODEX200 + VIX 일별 맥락 evidence 카드 추가.
 

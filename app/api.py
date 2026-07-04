@@ -44,6 +44,7 @@ from app import (
     market_naver,
     store,
 )
+from app.api_decision_draft_preview import router as decision_draft_preview_router
 from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
 from app.api_holdings_market_evidence import router as holdings_market_evidence_router
@@ -109,6 +110,10 @@ app.include_router(ml_relative_upside_router)
 # GET /three-push/param/state + POST /three-push/param/apply — CLI 없이 UI 한
 # 번으로 현재 운영 기준을 OCI 에 적용. 신규 DB / scheduler 0건.
 app.include_router(three_push_param_router)
+# POC2 Decision Draft Preview v1 (2026-07-03) —
+# POST /decision-draft/preview: 선택 ETF 임시 판단 근거 미리보기.
+# 기존 PENDING draft 저장 경로와 분리. 승인/OCI/Telegram 연결 X. 부작용 0건.
+app.include_router(decision_draft_preview_router)
 # POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
 # 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
 # PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.
