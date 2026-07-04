@@ -14,6 +14,10 @@ from app.api_market_topn_models import (
     MarketContextResponse,
     MarketPeriodReturn,
     MarketReturns,
+    MarketRiskKodex200,
+    MarketRiskRecentPoint,
+    MarketRiskReference,
+    MarketRiskVix,
     MarketTopNEntry,
     NavDiscountPayload,
     ShortTermMomentumPayload,
@@ -271,4 +275,45 @@ def market_context_to_model(raw: Optional[dict]) -> Optional[MarketContextRespon
         kodex200=MarketContextKodex200(**kodex_raw),
         kospi=MarketContextKospi(**kospi_raw),
         warnings=list(raw.get("warnings") or []),
+    )
+
+
+# 2026-07-03 Market Risk Reference v1 (지시문 §7).
+
+
+def build_market_risk_reference_payload(db_path: Path) -> MarketRiskReference:
+    """SQLite 만 read 하여 KODEX200 + VIX evidence 를 API 응답 모델로 변환.
+
+    외부 시세 호출 X. 지시문 §7 계약: 최상위 필드로 항상 존재하며 데이터
+    부재 시 availability="unavailable".
+    """
+    from app.market_risk_reference_service import build_market_risk_reference
+
+    evidence = build_market_risk_reference(db_path=db_path)
+
+    def _to_points(series) -> list[MarketRiskRecentPoint]:
+        if not series:
+            return []
+        return [MarketRiskRecentPoint(date=p.date, close=p.close) for p in series]
+
+    return MarketRiskReference(
+        kodex200=MarketRiskKodex200(
+            availability=evidence.kodex200.availability,
+            as_of_date=evidence.kodex200.as_of_date,
+            close=evidence.kodex200.close,
+            change_1d_pct=evidence.kodex200.change_1d_pct,
+            recent_20d_series=_to_points(evidence.kodex200.recent_20d_series),
+            series_first_date=evidence.kodex200.series_first_date,
+            series_last_date=evidence.kodex200.series_last_date,
+        ),
+        vix=MarketRiskVix(
+            availability=evidence.vix.availability,
+            as_of_date=evidence.vix.as_of_date,
+            close=evidence.vix.close,
+            change_1d_pct=evidence.vix.change_1d_pct,
+            change_5d_pct=evidence.vix.change_5d_pct,
+            recent_20d_series=_to_points(evidence.vix.recent_20d_series),
+            series_first_date=evidence.vix.series_first_date,
+            series_last_date=evidence.vix.series_last_date,
+        ),
     )

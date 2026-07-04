@@ -1414,3 +1414,31 @@ textarea.decision-textarea {
   border-color: var(--border);
   color: var(--muted);
 }
+
+/* 2026-07-03 Market Risk Reference v1 — KODEX200 + VIX 카드 */
+.market-risk-reference-card .market-risk-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.market-risk-panel-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.market-risk-mini {
+  margin-top: 4px;
+}
+
+.market-risk-detail {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .market-risk-reference-card .market-risk-body {
+    grid-template-columns: 1fr;
+  }
+}

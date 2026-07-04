@@ -171,6 +171,42 @@ class MarketContextResponse(BaseModel):
     warnings: list[str] = []
 
 
+# 2026-07-03 Market Risk Reference v1 — KODEX200 + VIX 일별 맥락 (지시문 §7).
+# 기존 필드 삭제·이름 변경 없음. 최상위에 market_risk_reference 하나만 추가.
+
+
+class MarketRiskRecentPoint(BaseModel):
+    date: str
+    close: float
+
+
+class MarketRiskKodex200(BaseModel):
+    availability: str  # available / unavailable
+    as_of_date: Optional[str] = None
+    close: Optional[float] = None
+    change_1d_pct: Optional[float] = None
+    recent_20d_series: list[MarketRiskRecentPoint] = []
+    # 지시문 §8.2 — 상세 노출용 각 시계열 최초·최종 관측일 (전체 저장 범위).
+    series_first_date: Optional[str] = None
+    series_last_date: Optional[str] = None
+
+
+class MarketRiskVix(BaseModel):
+    availability: str
+    as_of_date: Optional[str] = None
+    close: Optional[float] = None
+    change_1d_pct: Optional[float] = None
+    change_5d_pct: Optional[float] = None
+    recent_20d_series: list[MarketRiskRecentPoint] = []
+    series_first_date: Optional[str] = None
+    series_last_date: Optional[str] = None
+
+
+class MarketRiskReference(BaseModel):
+    kodex200: MarketRiskKodex200
+    vix: MarketRiskVix
+
+
 class MarketTopNResponse(BaseModel):
     status: str  # ok / missing / empty / invalid
     error: Optional[str] = None
@@ -210,6 +246,9 @@ class MarketTopNResponse(BaseModel):
     relative_upside_score_asof_date: Optional[str] = None
     relative_upside_score_generated_at: Optional[str] = None
     relative_upside_score_user_notice: Optional[str] = None
+    # 2026-07-03 Market Risk Reference v1 — 최상위 신규 필드 (지시문 §7).
+    # 항상 존재하며, 데이터 부재 시 availability="unavailable" 로 응답.
+    market_risk_reference: Optional[MarketRiskReference] = None
 
 
 class MarketRefreshResponse(BaseModel):

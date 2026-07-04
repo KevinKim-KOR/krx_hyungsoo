@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-06-30 (시장 시계열 SQLite Closeout — DONE, Naver/FDR 주 소스 + Yahoo 보조 + ML 게이트)
+최종 업데이트: 2026-07-03 (Market Risk Reference v1 — DONE, KODEX200 + VIX 일별 맥락)
 
 ## 0. Canonical
 
@@ -23,7 +23,18 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **프로젝트 큰 흐름**:
   보유 현황 입력 → 시세/평가 계산 → 시장 후보 발굴(Market Discovery) → 구성종목 / 중복 분석(ETF Exposure)
   → 보유 vs 시장 Evidence → 판단 사유 있는 초안 생성(GenerateDraft) → 인간 승인 → OCI 전달 → Telegram 수신.
-- **현재 완료 상태**: **시장 시계열 SQLite Closeout — DONE** (2026-06-30).
+- **현재 완료 상태**: **Market Risk Reference v1 — DONE** (2026-07-03).
+  - 지시문 단일 목표: Market Discovery 첫 화면에 KODEX200 (국내 기준선) + VIX (미국 변동성 참고) 일별 맥락 evidence 카드 추가. 원시 evidence만 — 시장 국면 라벨 / 추세 예측 / 위험 점수 / ML 축2 / 매수·매도 판단 0건.
+  - **VIX 실측**: FDR `DataReader("VIX", ...)` — 2014-04-08 ~ 2026-07-03 / 3079 rows / `market_benchmark_daily_price` (benchmark_id='VIX') 저장. 최신 종가 15.81. 신규 의존성 / 신규 가격 테이블 / 신규 DB 엔진 0건.
+  - **API 응답 확장**: `MarketTopNResponse` 최상위에 `market_risk_reference` 필드 (kodex200 + vix) 신규. 각 항목 `availability` / `as_of_date` / `close` / `change_1d_pct` / `recent_20d_series`. VIX 만 `change_5d_pct`. 기존 필드 변경 0건.
+  - **CLI `vix` 서브커맨드**: `scripts/refresh_market_timeseries.py` 에 추가. `benchmark` / `initial` / `incremental` 과 완전 분리 — 상호 호출 X (sentinel 테스트 검증). 실행당 1회, 자동 재시도 없음. 기존 가격 충돌 시 자동 덮어쓰기 금지.
+  - **ML 실행 게이트**: 변경 0건. VIX 는 ML feature / 학습 데이터 / 후보 제외 규칙 / 매매 판단에 사용 X.
+  - **UI**: `MarketRiskReferenceCard.tsx` 신규. `MarketDiscoveryView` 의 `MarketContextCard` 뒤 삽입. 상세 펼치기에 KODEX200 / VIX 최근 20거래일 sparkline (외부 차트 라이브러리 없이 SVG polyline). 별도 화면·라우트·메뉴 0건.
+  - **신규 테스트 16건**: service (8, FIX r1 +2) + CLI/API 통합 (8, FIX r1 +1).
+  - **backend 전체 테스트**: `691 passed` (675 → 691). black / flake8 / frontend lint / frontend build PASS.
+  - **FIX r1 (2026-07-03)**: 검증자 A-1 (§8.2 각 시계열 최초·최종 관측일 표시 누락) + A-2/A-3 (테스트 케이스 수 / 기준일 사실 정정) + B-1 (VIX CLI latest 파싱 실패 시 명확한 실패로 변경) 보강. A-4 (recent_20d_series 응답 계약 초과 지적) 는 설계자 Q2/Q3 확정 답변 근거 conclusion §8 에 명시.
+  - **BACKLOG**: "Cboe VIX 자료를 이용한 수동 과거 보정 또는 보조 검증" 항목 신규 추가.
+- **이전 완료 상태**: **시장 시계열 SQLite Closeout — DONE** (2026-06-30).
   - 지시문 단일 목표: 이전 PARTIAL 상태를 네이버/FDR 주 소스 + Yahoo/FDR 보조 + CLI 최신화 + ML 실행 게이트로 닫는다. KRX CSV import 는 수동 과거 보정용으로만 유지.
   - **완료 판정**: DONE. KODEX200 (069500) 2014-04-09 ~ 2026-07-02 실측 적재 (NAVER_FDR, 3000 행). 표본 3종 (069660 KOSEF 200 / 102110 TIGER 200 / 0000D0 최근) 모두 NAVER_FDR 로 확인. **기본 SQLite `state/market/market_data.sqlite` (gitignored) 에 universe `--all` 실측 완료 — normal 1007 / missing_confirm 138 / failed 0**. `benchmark_asof_date=2026-07-02` / `eligible=1006` / `excluded=138`. missing_confirm 138 은 기존 SQLite 에 축적된 가격과 명시 소스 반환 값이 다른 케이스 — 지시문 §8.1 자동 덮어쓰기 금지 정책 그대로.
   - **신규 테이블**: `market_timeseries_refresh_state` — 단일 행 (`refresh_scope='daily_prices'`). D-2 의 `market_refresh_state` 와는 별도. 11 컬럼 (target_asof_date / benchmark_asof_date / last_attempt_* / eligible_ticker_count / excluded_ticker_count / error_summary / updated_at).

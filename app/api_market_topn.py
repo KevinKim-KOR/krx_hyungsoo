@@ -30,6 +30,7 @@ from app.api_market_topn_models import (  # noqa: F401 — MarketCandidate re-ex
     MarketTopNResponse,
 )
 from app.api_market_topn_service import (
+    build_market_risk_reference_payload,
     candidate_to_model,
     enrich_candidates_with_evidence,
     entry_to_model,
@@ -135,6 +136,8 @@ def get_market_topn_latest(
         relative_upside_score_user_notice=score_meta.get(
             "relative_upside_score_user_notice"
         ),
+        # 2026-07-03 Market Risk Reference v1 — SQLite 만 read (외부 호출 X).
+        market_risk_reference=build_market_risk_reference_payload(DEFAULT_DB_PATH),
     )
 
 

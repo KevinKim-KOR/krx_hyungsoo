@@ -1,12 +1,32 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-06-30 (시장 시계열 SQLite Closeout — DONE)
+작성일: 2026-05-20 / 갱신: 2026-07-03 (Market Risk Reference v1 — DONE)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-06-30 — 시장 시계열 SQLite Closeout, DONE)
+## 0. 직전 STEP 결과 (2026-07-03 — Market Risk Reference v1, DONE)
+
+Market Discovery 첫 화면에 KODEX200 + VIX 일별 맥락 evidence 카드 추가.
+
+**VIX 실측**: FDR — 2014-04-08 ~ 2026-07-03 / 3079 rows / `market_benchmark_daily_price` (benchmark_id='VIX'). 신규 의존성 0건, Cboe 미사용.
+
+**API**: `MarketTopNResponse.market_risk_reference` 최상위 신규 필드. kodex200 (as_of / close / change_1d / 20d series) + vix (동일 + change_5d). 기존 필드 변경 0건.
+
+**CLI**: `vix` 서브커맨드 신규. `benchmark`/`initial`/`incremental` 과 완전 분리. 실행당 1회, 자동 재시도 없음.
+
+**ML**: gate 변경 0건. VIX 를 ML feature/라벨/판단에 사용 X.
+
+**UI**: `MarketRiskReferenceCard` 신규 카드 + 상세 펼치기 sparkline. 별도 화면 0건.
+
+**결과**: 691 passed (675 → 691, 신규 16, FIX r1 +3). black / flake8 / frontend lint / frontend build PASS.
+
+**BACKLOG**: Cboe VIX 보조 검증 항목 신규 추가.
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-06-30 — 시장 시계열 SQLite Closeout, DONE)
 
 이전 PARTIAL 상태의 시장 시계열 STEP 을 네이버/FDR 주 소스 + Yahoo 보조 + CLI 최신화 + ML 실행 게이트로 닫음.
 

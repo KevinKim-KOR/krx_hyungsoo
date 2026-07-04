@@ -163,6 +163,39 @@ export interface MarketTopNResponse {
   relative_upside_score_asof_date?: string | null;
   relative_upside_score_generated_at?: string | null;
   relative_upside_score_user_notice?: string | null;
+  // 2026-07-03 Market Risk Reference v1 — KODEX200 + VIX 일별 맥락.
+  market_risk_reference?: MarketRiskReference | null;
+}
+
+export interface MarketRiskRecentPoint {
+  date: string;
+  close: number;
+}
+
+export interface MarketRiskKodex200 {
+  availability: "available" | "unavailable";
+  as_of_date?: string | null;
+  close?: number | null;
+  change_1d_pct?: number | null;
+  recent_20d_series: MarketRiskRecentPoint[];
+  series_first_date?: string | null;
+  series_last_date?: string | null;
+}
+
+export interface MarketRiskVix {
+  availability: "available" | "unavailable";
+  as_of_date?: string | null;
+  close?: number | null;
+  change_1d_pct?: number | null;
+  change_5d_pct?: number | null;
+  recent_20d_series: MarketRiskRecentPoint[];
+  series_first_date?: string | null;
+  series_last_date?: string | null;
+}
+
+export interface MarketRiskReference {
+  kodex200: MarketRiskKodex200;
+  vix: MarketRiskVix;
 }
 
 export interface MarketTopNRequestOptions extends MarketTopNFilterOptions {

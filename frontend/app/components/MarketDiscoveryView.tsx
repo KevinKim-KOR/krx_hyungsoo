@@ -30,6 +30,7 @@ import {
 import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
+import MarketRiskReferenceCard from "./MarketRiskReferenceCard";
 import HoldingsCompareView from "./HoldingsCompareView";
 import RelativeUpsideRunCard from "./RelativeUpsideRunCard";
 import type { RelativeUpsideRunResult } from "@/lib/api/mlRelativeUpside";
@@ -560,6 +561,8 @@ export default function MarketDiscoveryView({
       />
       {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
       <MarketContextCard ctx={data.market_context ?? null} />
+      {/* 2026-07-03 Market Risk Reference v1 — KODEX200 + VIX 일별 맥락. */}
+      <MarketRiskReferenceCard reference={data.market_risk_reference ?? null} />
       {/* 2026-06-21 ML 축1 — 상대상승 참고점수 계산 실행 카드. 성공 시
           loadTopn() 으로 후보 표 재조회 (지시문 — 성공 후 후보 목록 갱신).
           result / errorMessage 는 부모가 보유 — 카드 unmount/remount 와 무관하게

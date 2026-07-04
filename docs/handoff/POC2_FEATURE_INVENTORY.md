@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-06-30 (시장 시계열 SQLite Closeout — DONE)
+작성일: 2026-05-27 / 갱신: 2026-07-03 (Market Risk Reference v1 — DONE)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -700,7 +700,28 @@
 | API·UI 계약 | 변경 0건. 기존 `MlJobStartResponse` 필드 그대로. |
 | 테스트 | pytest **675 passed** (650 → 675, 신규 25, FIX r1 +1). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 데이터 기반 운영. |
-| 다음 조치 | 위험 evidence / 시장 국면 / 추세 전환 거리 / ML 축2 진입 (사용자 결정). |
+| 다음 조치 | 2026-07-03 Market Risk Reference v1 (§2.37) 로 KODEX200 + VIX 일별 맥락 카드 진행 완료. 이후 위험 evidence / ML 축2 진입 (사용자 결정). |
+
+---
+
+### 2.37 Market Risk Reference v1 — KODEX200 + VIX 일별 맥락 (2026-07-03, DONE)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | Market Discovery 첫 화면 카드 — KODEX200 (국내 기준선) + VIX (미국 변동성 참고) 일별 evidence. 원시 evidence 만, 판단 라벨 / 시장 국면 / 위험 점수 / 예측 없음. |
+| 현재 메뉴 위치 | `MarketDiscoveryView` — `MarketContextCard` 뒤 신규 `MarketRiskReferenceCard`. |
+| 기능 목적 | 국내 기준선과 외부 위험 맥락을 한 화면에 놓아 사용자 판단 전 참고. VIX 최근 1일·5거래일 변화율 노출. |
+| 사용 가능 여부 | **사용 가능** (2026-07-03 DONE). |
+| VIX 소스 | FDR `fdr.DataReader("VIX", ...)` 단일 경로. 신규 의존성 0건. Cboe 미사용. |
+| VIX 저장 | 기존 `market_benchmark_daily_price` 재사용 (benchmark_id='VIX'). 신규 가격 테이블 0건. |
+| VIX 실측 | 2014-04-08 ~ 2026-07-03 / 3079 rows. |
+| API 응답 | `MarketTopNResponse.market_risk_reference` 최상위 신규 필드. kodex200 + vix 각각 as_of_date / close / change_1d_pct + recent_20d_series. VIX 만 change_5d_pct. 기존 필드 변경 0건. |
+| CLI | `scripts/refresh_market_timeseries.py vix` 서브커맨드 신규. `benchmark` / `initial` / `incremental` 완전 분리 (sentinel 테스트로 검증). 실행당 1회, 자동 재시도 없음. 충돌 자동 덮어쓰기 금지. |
+| ML 실행 게이트 | 변경 0건. VIX 를 ML feature / 학습 데이터 / 후보 제외 / 매매 판단에 사용 X. |
+| UI | 카드 좌우 KODEX200 / VIX 패널 + 기준일 차이 안내 문구 + 상세 펼치기 최근 20거래일 sparkline. 두 시계열 별도 축. 외부 차트 라이브러리 0건. |
+| 테스트 | pytest **691 passed** (675 → 691, 신규 16, FIX r1 +3). black / flake8 / frontend lint / frontend build PASS. |
+| 테스트용/임시 여부 | 아님 — 운영 evidence. |
+| 다음 조치 | 위험 evidence / 시장 국면 / ML 축2 진입 (사용자 결정). |
 
 ---
 
