@@ -2,6 +2,19 @@
 
 이 프로젝트의 목적은 **AI와 함께 투자 방향을 찾는 것**이다. 운영 전제는 **직장인형 저빈도, K6/EOD 기준, 본업 우선**이며, 새 프로젝트는 Phase 1에서 검증된 자산 중 **독립 ML 모듈, OCI crontab 구조(daily_ops / spike_watch / holding_watch), Telegram 연동**만 살리고 나머지는 화이트리스트 기반으로 다시 시작한다. 성공 기준은 **친구의 긍정적 반응**, **4070s가 실제 ML 작업을 돌리는 상태**, **와이프가 이해할 수 있는 UI**이며, 1차 성과 판정은 **추천 ETF 평균 수익률**과 **같은 기간 KODEX 200 대비 초과 성과**로 본다. 친구 프로젝트 통째 이식, MongoDB 전환, 복잡도 증식은 범위 밖이다. :contentReference[oaicite:1]{index=1} :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
 
+## 현재 구현 우선 원칙 (2026-07-03, 마스터플랜 보완)
+
+아래 원칙은 기존 1~5단계 (+6단계 확장) 구조·순서·승인 게이트·완료 조건을 대체하지 않는다. 각 단계 안에서 **무엇을 먼저 구현할지** 정하는 우선순위 기준으로만 사용한다.
+
+```text
+시장 전체 흐름을 먼저 읽고,
+그 다음 보유 ETF가 그 흐름에 편승하는지를 본다.
+개별 ETF 상세 분석은 필요한 소수 종목에 대한
+선택적 확인 도구로 사용한다.
+```
+
+세부 흐름·역할 고정·다음 활성 Step 은 `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md` 를 참조한다. 본 마스터플랜의 단계 체계 자체는 변경되지 않는다.
+
 ## 1단계. 데이터 수집 및 추천 초안 생성
 K6/EOD 기준으로 시장 데이터를 수집하고, holdings와 결합하여 추천/상태 **초안**을 만든다. 이 단계의 산출물은 실행본이 아니라 **PENDING 상태의 승인 대기안**이다.  
 - 연결 Open Question: **Q2, Q3** :contentReference[oaicite:4]{index=4}  

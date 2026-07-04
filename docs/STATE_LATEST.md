@@ -1,6 +1,30 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-03 (Decision Draft Preview v1 — DONE, 선택 ETF 임시 판단 근거 미리보기)
+최종 업데이트: 2026-07-03 (시장 우선 운영 원칙 handoff — 문서 개정, 코드 변경 0건)
+
+## 운영 원칙 (2026-07-03 확정)
+
+- **시장 우선**: 시장 전체 흐름 → 보유 ETF 정합성 → 필요한 소수 상세 → AI Sessions → 전달.
+- **Decision Draft Preview 는 drill-down 도구** (주력 운영 흐름 아님).
+- **기존 AI Sessions 와 역할 중복되는 별도 승인 시스템 신설 금지**.
+- **NAVER_FDR 주 소스 / YAHOO_FDR 보조 / KRX CSV fallback**.
+- **다음 활성 Step**: 시장 전체 흐름 ML 학습 데이터셋·Baseline v1.
+- 상세: `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`.
+
+## 완료 / 동결 / 다음 (요약)
+
+**완료**:
+- 시장 시계열 SQLite Closeout
+- Market Risk Reference v1
+- Decision Draft Preview v1
+
+**동결** (본 원칙 하에서 확장 금지):
+- Decision Draft Preview 추가 확장
+- 별도 승인 테이블·승인 UI·결정 이력 화면 (AI Sessions 와 중복)
+- 보유 ETF 전체 개별 심사형 화면 확장
+
+**다음**:
+- 시장 전체 흐름 ML 학습 데이터셋·Baseline v1
 
 ## 0. Canonical
 

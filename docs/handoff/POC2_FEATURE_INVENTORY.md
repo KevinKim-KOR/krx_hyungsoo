@@ -1,10 +1,19 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-07-03 (Decision Draft Preview v1 — DONE)
+작성일: 2026-05-27 / 갱신: 2026-07-03 (시장 우선 운영 원칙 handoff — 문서 개정)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
 본 문서는 ETF Constituents Source Diagnosis 1차의 §11 명시 산출물이다.
+
+## 시장 우선 운영 원칙 (2026-07-03)
+
+본 인벤토리의 기능들은 **시장 우선 운영 원칙** (`docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`) 하에서 역할이 고정된다:
+
+- **시계열 SQLite / Market Risk Reference / 보유·후보 비교**: 주력 운영 흐름 (시장 → 정합성 → 필요한 상세).
+- **Decision Draft Preview v1**: 선택적 drill-down 도구. 주력 운영 흐름 아님. 추가 확장 동결.
+- **기존 AI Sessions**: 사용자 판단 기록의 중심. 별도 승인 시스템 신설 금지.
+- **다음 활성 Step**: 시장 전체 흐름 ML 학습 데이터셋·Baseline v1.
 
 ---
 

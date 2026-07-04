@@ -1,12 +1,50 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-03 (Decision Draft Preview v1 — DONE)
+작성일: 2026-05-20 / 갱신: 2026-07-03 (시장 우선 운영 원칙 handoff — 문서 개정)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
-흔들릴 때 PROJECT_ORIGIN_INTENT 원칙과 함께 본 문서로 복귀한다.
+흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-07-03 — Decision Draft Preview v1, DONE)
+## 0. 시장 우선 운영 원칙 (2026-07-03)
+
+시장 시계열 Closeout / Market Risk Reference v1 / Decision Draft Preview v1 완료 시점의 운영 우선순위 확정.
+
+**흐름**:
+```
+시장 시계열·시장 evidence
+→ 시장 전체 흐름 ML 학습 데이터셋·Baseline
+→ 시장 흐름과 보유 ETF 정합성
+→ 필요한 소수 ETF만 상세 evidence·Decision Draft Preview
+→ 외부 AI 해석 참고
+→ 기존 AI Sessions에 사용자 판단 기록
+→ 기존 승인·OCI·Telegram 전달 흐름
+```
+
+**완료** (역할 고정):
+- 시장 시계열 SQLite Closeout — evidence 기반, 사용자 일상 조작 X.
+- Market Risk Reference v1 — 시장 맥락 원시 evidence, 예측·자동 신호 X.
+- Decision Draft Preview v1 — 선택적 drill-down 도구, 주력 흐름 X.
+
+**동결**:
+- Decision Draft Preview 추가 확장.
+- 별도 승인 테이블·승인 UI·결정 이력 화면 (기존 AI Sessions 와 중복).
+- 보유 ETF 전체 개별 심사형 화면 확장.
+
+**다음 활성 Step**: **시장 전체 흐름 ML 학습 데이터셋·Baseline v1**.
+- 기존 SQLite KODEX200 / KOSPI / VIX / 정상 ETF universe 시계열 사용.
+- 누수 없는 날짜별 시장 학습 행 + baseline 결과.
+- 하지 않을 것: 보유 상세 UI 확장 / Preview 확장 / AI Sessions 확장 / 승인 UI 신설 / OCI·Telegram 변경 / 자동 매수·매도 / 시장 예측 문구·임계치 선확정.
+
+**데이터 소스 원칙**:
+- NAVER_FDR 주 / YAHOO_FDR 보조 (실패·빈 응답 시 1회) / KRX CSV fallback / KRX Open API 미사용.
+- PC CLI 로 필요할 때 최신화.
+
+상세: `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`.
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-07-03 — Decision Draft Preview v1, DONE)
 
 보유·후보 비교 화면 선택 ETF 상세 영역에 저장 없는 임시 `판단 근거 미리보기` 추가.
 
