@@ -606,16 +606,16 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **항목**: 시장 흐름 baseline 확인 이후의 모델 고도화·전략 백테스트
-- **보류 사유**: 2026-07-05 Closeout 실측 (Validation MAE=3.995 / directional_accuracy=0.4615, Test MAE=7.855 / directional_accuracy=0.4932) 에 이어 2026-07-05 Walk-forward Lookback v1 (110 예측, 2017-07-06 ~ 2026-06-01) 에서도 Ridge directional_accuracy=0.5273 이 simple baseline (training target 평균) directional_accuracy=0.5727 보다 낮게 관측됨. 지시문 §10 절대 고정 (단일 Ridge only) 하에서 RF / XGBoost / LightGBM 비교·자동 튜닝·전략 백테스트는 별도 STEP 필요.
-- **보류된 위험**: 현재 baseline 은 시장 판단 근거 참조점수 이상의 용도로 사용할 수 없음 (자동 매매 / AI Sessions 연결 금지).
-- **재검토 트리거**: 사용자가 walk-forward evidence 를 확인한 뒤 모델 고도화 STEP 을 별도로 승인할 때.
+- **보류 사유**: 2026-07-05 Closeout / Walk-forward v1 에 이어 2026-07-05 v2 Data Validity + Model Comparison 실측: Simple Baseline MAE 5.0685 / DA 0.5727 vs Full Ridge (13 feature) MAE 5.2466 / DA 0.5273 vs Core Ridge (7 feature) MAE 4.9499 / DA 0.5909. Core Ridge (breadth·coverage 제외) 가 세 지표 모두에서 Simple 대비 우세, Full Ridge 는 Simple 대비 열세. 지시문 §4 절대 고정 (단일 Ridge only) 하에서 feature 조합 · target 재정의 · RF / XGBoost / LightGBM 비교 · 자동 튜닝 · 전략 백테스트는 별도 STEP 필요.
+- **보류된 위험**: 현재 baseline / Core Ridge 는 시장 판단 근거 참조점수 이상의 용도로 사용할 수 없음 (자동 매매 / AI Sessions 연결 금지).
+- **재검토 트리거**: 사용자가 v2 evidence 를 확인한 뒤 feature 조합·모델 고도화 STEP 을 별도로 승인할 때.
 
 ---
 
 - **항목**: 역사적 ETF universe 생존 편향
-- **보류 사유**: 2026-07-03 Market Flow ML Dataset STEP 은 현재 SQLite 의 정상 ETF universe (missing_confirm 제외) 만 사용. 과거 상장폐지 종목 재구성은 별도 STEP.
-- **보류된 위험**: 생존 편향으로 breadth·coverage 수치가 낙관적으로 편향될 가능성.
-- **재검토 트리거**: baseline metrics 확인 후 breadth 신뢰도가 판단 근거로 부족하다는 증거 확인 시.
+- **보류 사유**: 2026-07-03 Market Flow ML Dataset STEP 은 현재 SQLite 의 정상 ETF universe (missing_confirm 제외) 만 사용. 과거 상장폐지 종목 재구성은 별도 STEP. 2026-07-05 v2 Data Validity 실측에서 초기 구간 coverage 는 낮게 관측 (Q1 coverage_ratio ≤ 0.2528, 28건).
+- **보류된 위험**: 생존 편향으로 breadth·coverage 수치가 낙관적으로 편향될 가능성. v2 Core Ridge 가 breadth·coverage 제외 시 우세한 것은 이 편향과 연관 가능 (독립 검증 필요).
+- **재검토 트리거**: v2 evidence 확인 후 breadth 신뢰도가 판단 근거로 부족하다는 증거가 별도로 확인될 때.
 
 ---
 

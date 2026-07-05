@@ -106,6 +106,19 @@ KRX Open API:
 
 ```text
 직전 활성 Step:
+Market Flow ML v2 Data Validity + Model Comparison → DONE (2026-07-05).
+
+v2 요약:
+  Simple / Full Ridge (13) / Core Ridge (7) 세 모델 공정 비교.
+  공통 walk-forward (KODEX200 20 거래일 · 학습 756 · Full feature 확보).
+  Coverage quartile 사후 진단 (numpy quantile method="linear").
+  실측: 공통 예측 110 / 제외 1. Simple DA 0.5727 / Full DA 0.5273 / Core DA 0.5909.
+  Coverage quartile Q1~Q4 count 28/27/27/28.
+  기존 baseline / walk-forward artifact 미변경.
+  numpy==2.4.6 명시 고정.
+  상세: docs/handoff/POC2_MARKET_FLOW_ML_V2_DATA_VALIDITY_MODEL_COMPARISON_CONCLUSION.md.
+
+이전 활성 Step:
 Market Flow ML Walk-forward Lookback v1 → DONE (2026-07-05).
 
 Walk-forward 요약:

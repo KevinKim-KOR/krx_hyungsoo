@@ -1,8 +1,23 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-05 (Market Flow ML Walk-forward Lookback v1 — DONE)
+최종 업데이트: 2026-07-05 (Market Flow ML v2 Data Validity + Model Comparison — DONE)
 
-## 이번 STEP 요약 (2026-07-05, Walk-forward Lookback v1)
+## 이번 STEP 요약 (2026-07-05, v2 Data Validity + Model Comparison)
+
+**Market Flow ML v2**: Ridge 부진 원인이 ETF breadth·coverage 데이터인지 feature 구성인지 분리 측정. 시장 판단 UI / 자동 매매 / AI Sessions 연결 아님.
+
+- **세 모델 공정 비교**: Simple Baseline / Full Ridge (13 feature) / Core Ridge (7 feature — breadth·coverage 제외). 동일 기준일 · 학습 행 · 실제 target 사용.
+- **공통 Walk-forward**: KODEX200 거래일 20 간격 grid, 최소 학습 행 756, Full feature 확보 기준일만 세 모델 공통 평가.
+- **numpy==2.4.6 명시 고정** (Q1 (b)) — quantile method="linear" · 분포 통계.
+- **실측 (real SQLite)**: status=ok, 공통 예측 110건, 제외 1건, coverage quartile 28/27/27/28.
+  - Simple: MAE 5.0685 / RMSE 7.9827 / directional_accuracy 0.5727.
+  - Full Ridge: MAE 5.2466 / RMSE 7.8969 / directional_accuracy 0.5273.
+  - Core Ridge: MAE **4.9499** / RMSE **7.7084** / directional_accuracy **0.5909**.
+- **backend 772 passed** (755 → 772, 신규 17). black / flake8 PASS. frontend 변경 0건.
+- **신규 endpoint / DB 테이블 / UI / 외부 호출 0건**. 기존 baseline / walk-forward artifact **미변경**.
+- 상세: `docs/handoff/POC2_MARKET_FLOW_ML_V2_DATA_VALIDITY_MODEL_COMPARISON_CONCLUSION.md`.
+
+## 직전 STEP (2026-07-05, Walk-forward Lookback v1, DONE)
 
 **Market Flow ML Walk-forward Lookback v1**: Ridge baseline v1 의 과거 반복 성능 evidence 를 남기는 룩백 실행. 시장 판단 UI / 자동 매매 / AI Sessions 연결 아님.
 

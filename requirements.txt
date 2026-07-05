@@ -24,3 +24,8 @@ torch>=2.6.0
 # "실제 설치된 정확한 버전 고정" 재현성 요건 (FIX r1 정정).
 # StandardScaler + Ridge(alpha=1.0) 만 사용. RF/XGB/LGBM/자동 튜닝/모델 비교 금지.
 scikit-learn==1.9.0
+# numpy — Market Flow ML v2 Data Validity + Model Comparison (2026-07-05).
+# 지시문 Q1 (b) 확정: quantile method="linear" / target 분포 percentile / mean /
+# stddev / min / max 등을 numpy 로 직접 계산. transitive dependency 회피 위해
+# 명시 선언 + 실제 설치 버전 정확 고정. 버전 범위 표기 금지.
+numpy==2.4.6

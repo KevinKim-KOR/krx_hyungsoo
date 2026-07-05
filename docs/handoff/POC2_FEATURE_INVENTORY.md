@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-07-05 (Market Flow ML Walk-forward Lookback v1 — DONE)
+작성일: 2026-05-27 / 갱신: 2026-07-05 (Market Flow ML v2 Data Validity + Model Comparison — DONE)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -757,6 +757,31 @@
 | 테스트 | pytest **714 passed** (691 → 714, 전용 파일 23 케이스, FIX r1 +2 / FIX r2 +1 / FIX r3 +2 / FIX r5 +4 / FIX r6 +1 / FIX r7 +1). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 사용자 판단 지원 evidence. |
 | 다음 조치 | 위험 evidence / 시장 국면 / ML 축2 진입 (사용자 결정). |
+
+---
+
+### 2.41 Market Flow ML v2 Data Validity + Model Comparison (2026-07-05, DONE)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | Ridge 부진 원인이 ETF breadth·coverage 데이터인지 feature 구성인지 분리 측정. Simple Baseline / Full Ridge (13 feature) / Core Ridge (7 feature) 세 모델 공정 비교 + target · coverage 분포 진단. |
+| 현재 위치 | `python -m scripts.run_market_flow_v2_model_comparison` (수동 CLI). |
+| 기능 목적 | 채택·폐기 판정이 아닌 evidence 산출. 성능 판정은 다음 별도 설계 판단에서. |
+| 사용 가능 여부 | **사용 가능** (2026-07-05 DONE). |
+| Full Ridge feature | 13개 (기존 build_dataset). |
+| Core Ridge feature | 7개 (시장 가격 흐름 4 + VIX 3) — breadth 3 + coverage 3 제외. |
+| 공통 walk-forward | KODEX200 20 거래일 grid + 학습 행 756 gate + target_end_date < t + Full feature 확보 기준일만. skip 후 grid 유지. |
+| 세 모델 계약 | Simple / Full / Core 는 반드시 동일 as_of · training row · actual target 사용 (Core 만 추가 기준일 사용 금지). |
+| Coverage quartile | numpy quantile method="linear" q25/q50/q75. 사후 진단용. 학습 · 기준일 제외 · 예측값 사용 절대 금지. |
+| 실측 | status=ok / 공통 예측 110 / 제외 1 / period 2017-07-06 ~ 2026-06-01. Simple MAE 5.0685 / DA 0.5727. Full MAE 5.2466 / DA 0.5273. Core MAE 4.9499 / DA 0.5909. Quartile Q1/Q2/Q3/Q4 count 28/27/27/28. q25=0.2528 / q50=0.3679 / q75=0.6090. |
+| 신규 파일 | `app/market_flow_v2_predictor.py` (137 줄, feature 상수 + 3모델 예측) / `app/market_flow_v2_diagnostics.py` (299 줄, target·coverage·quartile 진단) / `app/market_flow_v2_model_comparison.py` (298 줄, main runner + artifact writer). B-2/B-3 준수 위해 책임별 3 모듈 분리. + `scripts/run_market_flow_v2_model_comparison.py`, `tests/test_market_flow_v2_model_comparison.py`, `docs/handoff/POC2_MARKET_FLOW_ML_V2_DATA_VALIDITY_MODEL_COMPARISON_CONCLUSION.md`. |
+| 수정 파일 | `requirements.txt` (+numpy==2.4.6), `.gitignore` + docs 4건. |
+| 신규 endpoint / UI / DB 테이블 | 0건. |
+| 외부 호출 | 0건 (SQLite read only, FDR 감시 테스트 포함). |
+| 기존 artifact 미변경 | ✅ baseline / dataset CSV / walk-forward JSON+CSV 그대로. |
+| 제약 유지 | Ridge alpha=1.0 / target horizon 20 / VIX strictly-prior / ETF universe filter / breadth·coverage 정의 유지. RF·XGB·LGBM·NN·자동 튜닝·feature 자동 선택·시장 국면 라벨 X. |
+| 테스트 | pytest **772 passed** (755 → 772, 신규 17 v2). black / flake8 PASS. frontend 변경 0건. |
+| 다음 조치 | 미결정. v2 evidence 기반 후속 판단 (feature 조합 · target 재정의 등) 은 별도 STEP. Ridge baseline v1 은 여전히 자동 매매 / AI Sessions 연결 금지. |
 
 ---
 
