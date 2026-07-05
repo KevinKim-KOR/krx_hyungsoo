@@ -1,21 +1,21 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-07-03 (Market Flow ML Dataset + Baseline v1 — PARTIAL)
+작성일: 2026-05-27 / 갱신: 2026-07-05 (Market Flow ML Dataset + Baseline v1 Closeout — DONE)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
 본 문서는 ETF Constituents Source Diagnosis 1차의 §11 명시 산출물이다.
 
-## 시장 우선 운영 원칙 (2026-07-03) + 진행 중 STEP
+## 시장 우선 운영 원칙 (2026-07-03) + 직전 STEP (2026-07-05 DONE)
 
-**진행 중 (PARTIAL)**: Market Flow ML Dataset + Baseline v1 — sklearn 미설치로 학습·평가·추론은 unavailable. 데이터셋 골격은 실측 90 rows 생성 완료. 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
+**직전 Step (DONE 2026-07-05)**: Market Flow ML Dataset + Baseline v1 Closeout — scikit-learn 1.9.0 승인/선언, KOSPI 역사 시계열 CLI 보강 (2870 행), real SQLite baseline 실측 (split 1756/572/592, latest_inference=ok). 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
 본 인벤토리의 기능들은 **시장 우선 운영 원칙** (`docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`) 하에서 역할이 고정된다:
 
 - **시계열 SQLite / Market Risk Reference / 보유·후보 비교**: 주력 운영 흐름 (시장 → 정합성 → 필요한 상세).
 - **Decision Draft Preview v1**: 선택적 drill-down 도구. 주력 운영 흐름 아님. 추가 확장 동결.
 - **기존 AI Sessions**: 사용자 판단 기록의 중심. 별도 승인 시스템 신설 금지.
-- **진행 중 Step (PARTIAL)**: 시장 전체 흐름 ML 학습 데이터셋·Baseline v1 — 데이터셋 골격 완료, DONE 승격 두 조건 대기 (sklearn 승인 + KOSPI 시계열 보강).
+- **Market Flow ML Baseline v1 (DONE 2026-07-05)**: 시장 판단 근거 참조점수 (자동 매매 / AI Sessions 연결 금지).
 
 ---
 
@@ -755,6 +755,28 @@
 | 테스트 | pytest **714 passed** (691 → 714, 전용 파일 23 케이스, FIX r1 +2 / FIX r2 +1 / FIX r3 +2 / FIX r5 +4 / FIX r6 +1 / FIX r7 +1). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 사용자 판단 지원 evidence. |
 | 다음 조치 | 위험 evidence / 시장 국면 / ML 축2 진입 (사용자 결정). |
+
+---
+
+### 2.39 Market Flow ML Dataset + Baseline v1 Closeout — KOSPI 역사 보강 + real baseline 실측 (2026-07-05, DONE)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | (1) `kospi` 서브커맨드 — KOSPI 역사 시계열 보강 CLI (NAVER 주 / YAHOO 보조). (2) Ridge baseline 실측 metrics 산출. |
+| 현재 위치 | `python -m scripts.refresh_market_timeseries kospi` (역사 보강). `python -m scripts.run_market_flow_baseline` (baseline). |
+| 기능 목적 | 2026-07-03 PARTIAL 두 조건 (sklearn 승인 + KOSPI 시계열 보강) 해소하여 DONE 승격. |
+| 사용 가능 여부 | **사용 가능** (2026-07-05 DONE). |
+| KOSPI 역사 보강 실측 | NAVER_FDR 로 2870 행 삽입 (2014-04-10 ~ 2025-12-18). overwrite=false. YAHOO 미조회. 기존 130 행 유지. 총 3000 KOSPI 행. artifact `state/market/kospi_history_closeout_latest.json`. |
+| Baseline 실측 | status=ok. dataset 2960 rows (2014-05-13 ~ 2026-06-05). Split train=1756 / validation=572 / test=592. Validation MAE=3.995 / RMSE=5.014 / directional_accuracy=0.4615. Test MAE=7.855 / RMSE=11.061 / directional_accuracy=0.4932. latest_inference status=ok / as_of=2026-07-03 / pred=+5.495%. sklearn 1.9.0. |
+| 신규 파일 | `app/kospi_history_closeout.py`, `tests/test_kospi_history_closeout.py`. |
+| 수정 파일 | `requirements.txt` (+scikit-learn), `app/market_flow_baseline.py` (sklearn_version 필드), `scripts/refresh_market_timeseries.py` (`kospi` 서브커맨드). |
+| 신규 endpoint / UI / DB 테이블 | 0건. |
+| 외부 호출 | `kospi` 서브커맨드 실행 시에만 NAVER_FDR / YAHOO_FDR 1회 (상시 호출 X). `build_dataset` / `run_baseline` 은 SQLite 만 read. |
+| 제약 유지 | Ridge alpha=1.0 / 60/20/20 split / VIX strictly-prior. RF/XGB/LGBM/자동 튜닝/모델 비교 금지. |
+| 소스 혼합 금지 | NAVER + YAHOO 신규 행 혼합 금지 (한 source 만 저장) — 자동 테스트 검증. |
+| Overwrite 금지 | 기존 KOSPI 행 overwrite 금지 (동일 date 재기록 X) — 자동 테스트 검증. |
+| 테스트 | pytest **738 passed** (729 → 738, 신규 9 KOSPI closeout). black / flake8 PASS. frontend 변경 0건. |
+| 다음 조치 | 미결정 (설계자 지정 대기). Ridge baseline v1 은 시장 판단 근거 참조점수 이상의 용도로 사용하지 말 것 (자동 매매 / AI Sessions 연결 금지). |
 
 ---
 

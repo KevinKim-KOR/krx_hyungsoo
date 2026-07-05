@@ -134,6 +134,14 @@ def _parse_args(argv: Optional[list[str]] = None) -> _Args:
     )
     _add_common(sp_v)
 
+    # 2026-07-05 Market Flow ML Baseline v1 Closeout — KOSPI 역사 보강 독립 CLI.
+    # 일반 운영 최신화 아님. benchmark/initial/incremental/vix 책임 변경 없음.
+    sp_k = sub.add_parser(
+        "kospi",
+        help="KOSPI history closeout (NAVER primary / YAHOO secondary). One-shot.",
+    )
+    sp_k.add_argument("--db-path", type=Path, default=DEFAULT_DB_PATH)
+
     a = p.parse_args(argv)
     start_date = REQUESTED_START_DATE
     if hasattr(a, "start_date") and a.start_date:
@@ -630,6 +638,33 @@ def _cmd_status(args: _Args) -> int:
     return 0
 
 
+def _cmd_kospi(args: _Args) -> int:
+    """KOSPI 역사 보강 (지시문 §5.2 순서).
+
+    NAVER 우선 → YAHOO 보조. 둘 다 split 충분성 불충족 시 SQLite 미변경.
+    """
+    from app.kospi_history_closeout import run_kospi_closeout
+
+    result = run_kospi_closeout(db_path=args.db_path)
+    print(
+        f"[kospi] status={result.status} selected={result.selected_source} "
+        f"inserted={result.inserted_row_count}"
+    )
+    if result.naver.queried:
+        print(
+            f"[kospi.naver] rows={result.naver.row_count} "
+            f"split={result.naver.projected_split_rows}"
+        )
+    if result.yahoo.queried:
+        print(
+            f"[kospi.yahoo] rows={result.yahoo.row_count} "
+            f"split={result.yahoo.projected_split_rows}"
+        )
+    if result.unavailable_reason:
+        print(f"[kospi] reason={result.unavailable_reason}", file=sys.stderr)
+    return 0 if result.status == "ok" else 2
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     args = _parse_args(argv)
     if args.command == "benchmark":
@@ -642,6 +677,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         return _cmd_status(args)
     if args.command == "vix":
         return _cmd_vix(args)
+    if args.command == "kospi":
+        return _cmd_kospi(args)
     return 1
 
 

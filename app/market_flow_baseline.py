@@ -37,6 +37,11 @@ from app.market_flow_dataset import (
 
 DATASET_PATH = Path("state/ml/market_flow_training_dataset_latest.csv")
 BASELINE_ARTIFACT_PATH = Path("state/ml/market_flow_baseline_latest.json")
+# 지시문 §8.2 — baseline artifact 에도 KOSPI source 및 보강 적용 범위 포함
+# (FIX r1). kospi_history_closeout artifact 는 로컬 파일이므로 외부 호출 X.
+KOSPI_CLOSEOUT_ARTIFACT_READ_PATH = Path(
+    "state/market/kospi_history_closeout_latest.json"
+)
 
 RIDGE_ALPHA = 1.0
 SCHEMA_VERSION = "market_flow_baseline_v1"
@@ -122,6 +127,41 @@ def _sklearn_available() -> bool:
         return True
     except Exception:  # noqa: BLE001
         return False
+
+
+def _read_kospi_source_summary(
+    path: Path = KOSPI_CLOSEOUT_ARTIFACT_READ_PATH,
+) -> dict[str, Any]:
+    """kospi_history_closeout_latest.json 을 read 해서 baseline artifact 에
+    포함할 요약 dict 생성 (지시문 §8.2, FIX r1). 파일 부재 시 status=absent.
+    """
+    if not path.exists():
+        return {"status": "absent", "closeout_artifact_path": str(path)}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"status": "unreadable", "closeout_artifact_path": str(path)}
+    return {
+        "status": payload.get("status"),
+        "closeout_artifact_path": str(path),
+        "closeout_generated_at": payload.get("generated_at"),
+        "selected_source": payload.get("selected_source"),
+        "inserted_row_count": payload.get("inserted_row_count"),
+        "overwrite_performed": payload.get("overwrite_performed"),
+        "existing_row_count_before": (payload.get("existing_kospi") or {}).get(
+            "row_count_before"
+        ),
+        "source_application_ranges": payload.get("source_application_ranges"),
+    }
+
+
+def _sklearn_version() -> Optional[str]:
+    try:
+        import sklearn
+
+        return str(sklearn.__version__)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _rows_to_xy(
@@ -278,6 +318,7 @@ def run_baseline(
         "feature_columns": list(FEATURE_COLUMNS),
         "target_definition": "future 20 trading-day KODEX200 simple return (%)",
         "vix_alignment": "strictly_prior_observation",
+        "kospi_source_summary": _read_kospi_source_summary(),
         "splits": {
             "train": {
                 "start_date": train[0]["as_of_date"] if train else None,
@@ -299,6 +340,7 @@ def run_baseline(
             "name": "standard_scaler_ridge",
             "ridge_alpha": RIDGE_ALPHA,
             "dependency_reused": _sklearn_available(),
+            "sklearn_version": _sklearn_version(),
         },
         "metrics": {
             "validation": eval_result.get("val_metrics")

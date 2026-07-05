@@ -1,38 +1,33 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-03 (Market Flow ML Dataset + Baseline v1 — PARTIAL)
+작성일: 2026-05-20 / 갱신: 2026-07-05 (Market Flow ML Dataset + Baseline v1 Closeout — DONE)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-07-03 — Market Flow ML Dataset + Baseline v1, PARTIAL)
+## 0. 직전 STEP 결과 (2026-07-05 — Market Flow ML Dataset + Baseline v1 Closeout, DONE)
 
-시장 전체 흐름 ML 학습 데이터셋 + 단일 Ridge baseline 골격 구현.
+2026-07-03 PARTIAL 을 두 조건 모두 해소하여 DONE 으로 승격.
 
-**PARTIAL 사유**: `requirements.txt` 에 scikit-learn 미선언. 지시문 §7.1 "sklearn 이 기존 선언 환경에 없으면 새 패키지를 추가하지 말고 PARTIAL로 보고한다" 준수.
+**Closeout 두 조건 처리**:
+1. **scikit-learn 승인·선언**: 지시문 §6 명시 승인 하에 `scikit-learn==1.9.0` 을 `requirements.txt` 에 정확 고정 (§6 "실제 설치된 정확한 버전 고정" 재현성 요건). StandardScaler + Ridge(alpha=1.0) 만 사용.
+2. **KOSPI 시계열 보강**: 신규 CLI `python -m scripts.refresh_market_timeseries kospi` (NAVER 우선 / YAHOO 보조) 에서 NAVER_FDR 로 2870 행 삽입 (2014-04-10 ~ 2025-12-18). 기존 130 행 overwrite=false. YAHOO 미조회. 총 3000 KOSPI 행 확보.
 
-**신규 파일**: `app/market_flow_baseline.py`, `scripts/run_market_flow_baseline.py`, `tests/test_market_flow_baseline.py`.
+**신규 파일**: `app/kospi_history_closeout.py`, `tests/test_kospi_history_closeout.py`.
+**수정 파일**: `requirements.txt`, `app/market_flow_baseline.py` (sklearn_version 필드 추가), `scripts/refresh_market_timeseries.py` (`kospi` 서브커맨드 추가).
 
-**데이터 계약 준수**:
-- KODEX200 / KOSPI / VIX / ETF universe 시계열은 기존 SQLite 만 사용.
-- VIX strictly-prior 정렬 (`vix_source_date < as_of_date` 항상 성립).
-- ETF breadth: 인버스 / 레버리지 / 합성 / 선물형 / missing_confirm 제외.
-- target: KODEX200 이후 정확히 20번째 거래일 수익률 (%).
-- 시간 순서 split (train 60% / validation 20% / test 20%) + target overlap 방지.
+**실측 (real SQLite)**:
+- Dataset 2960 rows (2014-05-13 ~ 2026-06-05).
+- Split train=1756 / validation=572 / test=592 (모두 >0).
+- Validation MAE=3.995 / RMSE=5.014 / directional_accuracy=0.4615.
+- Test MAE=7.855 / RMSE=11.061 / directional_accuracy=0.4932.
+- latest_inference status=ok / as_of=2026-07-03 / pred=+5.495%.
+- VIX strictly-prior 유지. sklearn 1.9.0.
 
-**실측**:
-- Dataset 90 rows (2026-01-21 ~ 2026-06-05, `state/ml/market_flow_training_dataset_latest.csv`).
-- Baseline artifact `state/ml/market_flow_baseline_latest.json` status=`unavailable` / `unavailable_reason=sklearn_not_installed`.
-- KOSPI 시계열이 2025-12-19 부터 실측 저장되어 이전 KODEX200 거래일은 excluded.
+**신규 endpoint / DB 테이블 / UI / 상시 외부 호출 0건**. 외부 조회는 `kospi` 서브커맨드 1회 실행 시에만 (NAVER_FDR / YAHOO_FDR).
 
-**신규 endpoint / DB 테이블 / UI / 외부 호출 0건**. 기존 ML axis1 / Market Discovery / Holdings / Preview / AI Sessions / PENDING / OCI / Telegram 미변경.
-
-**결과**: 729 passed (714 → 729, 신규 15). black / flake8 PASS. frontend 변경 0건.
-
-**DONE 승격 두 조건**:
-1. `scikit-learn` 승인 + `requirements.txt` 선언.
-2. **KOSPI 시계열 보강** — 실측 split train=34 / **validation=0** / test=18. Val=0 은 target overlap 방지 필터가 val 구간을 모두 제거한 결과이며 KOSPI 짧음(2025-12-19~)이 원인. sklearn 만으로는 metrics 산출 불가.
+**결과**: 738 passed (729 → 738, 신규 9 — KOSPI closeout 테스트). black / flake8 PASS. frontend 변경 0건.
 
 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
@@ -63,10 +58,9 @@
 - 별도 승인 테이블·승인 UI·결정 이력 화면 (기존 AI Sessions 와 중복).
 - 보유 ETF 전체 개별 심사형 화면 확장.
 
-**진행 중 Step (PARTIAL)**: **시장 전체 흐름 ML 학습 데이터셋·Baseline v1** — 데이터셋 골격 완료. DONE 승격 두 조건 (sklearn + KOSPI 보강) 대기. 상세는 §0 참조.
-- 기존 SQLite KODEX200 / KOSPI / VIX / 정상 ETF universe 시계열 사용.
-- 누수 없는 날짜별 시장 학습 행 + baseline 결과.
-- 하지 않을 것: 보유 상세 UI 확장 / Preview 확장 / AI Sessions 확장 / 승인 UI 신설 / OCI·Telegram 변경 / 자동 매수·매도 / 시장 예측 문구·임계치 선확정.
+**직전 활성 Step (DONE)**: **시장 전체 흐름 ML 학습 데이터셋·Baseline v1 Closeout** (2026-07-05). scikit-learn 승인 + KOSPI 시계열 보강 + real SQLite baseline 실측 완료. 상세는 §0 참조.
+
+**다음 활성 Step**: 미결정 (설계자 지정 대기).
 
 **데이터 소스 원칙**:
 - NAVER_FDR 주 / YAHOO_FDR 보조 (실패·빈 응답 시 1회) / KRX CSV fallback / KRX Open API 미사용.

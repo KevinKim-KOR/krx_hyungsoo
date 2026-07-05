@@ -199,6 +199,9 @@ state/ml/ml_job_status_latest.json
 # Market Flow ML Dataset + Baseline v1 (2026-07-03) — 실행마다 갱신, 운영 artifact.
 state/ml/market_flow_baseline_latest.json
 state/ml/market_flow_training_dataset_latest.csv
+state/ml/market_flow_baseline_latest.json.bak-*
+state/market/kospi_history_closeout_latest.json
+state/market/market_data.sqlite.bak-*
 
 # PC-to-OCI 3-PUSH Evidence Package Sync (2026-06-15) — sync 실행마다 갱신, 운영 artifact.
 state/three_push/packages/

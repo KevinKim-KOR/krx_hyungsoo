@@ -1,20 +1,39 @@
-# Market Flow ML Dataset + Baseline v1 — Conclusion (PARTIAL)
+# Market Flow ML Dataset + Baseline v1 — Conclusion (DONE)
 
-작성일: 2026-07-03
+작성일: 2026-07-03 (PARTIAL 진입) → 2026-07-05 (Closeout DONE)
 성격: 시장 전체 흐름을 읽기 위한 첫 ML 학습 데이터셋과 단일 Ridge baseline. 시장 판단 UI / 자동 매매 / AI Sessions 연결 작업이 아니다.
 
 ---
 
-## 1. 완료 판정 — PARTIAL
+## 0. Closeout (2026-07-05) — DONE 승격 요약
 
-지시문 §7.1 명시:
-> "sklearn이 기존 선언 환경에 없으면 새 패키지를 추가하지 말고 PARTIAL로 보고한다."
+2026-07-03 시점 두 개의 PARTIAL 원인이 모두 해소되어 DONE 판정:
 
-현재 `requirements.txt` 에 scikit-learn 이 선언되어 있지 않고, 기존 ML 축1 은 `torch` 만 사용. 신규 의존성 추가 금지 원칙 그대로 유지:
+- **(1) scikit-learn 승인·선언**: 지시문 §6 명시 승인 하에 `scikit-learn==1.9.0` 을 `requirements.txt` 에 정확 고정 (§6 "실제 설치된 정확한 버전 고정" 재현성 요건, FIX r1 정정). StandardScaler + Ridge(alpha=1.0) 외 사용 금지 (RF/XGB/LGBM 비교·자동 튜닝 금지) — 승인 조건 그대로 유지.
+- **(2) KOSPI 시계열 보강**: 신규 CLI `python -m scripts.refresh_market_timeseries kospi` 로 NAVER_FDR 주 소스에서 2870 행 신규 삽입 (2014-04-10 ~ 2025-12-18). 기존 130 행 overwrite=false. YAHOO_FDR 미조회. 총 3000 KOSPI 행 확보. artifact: `state/market/kospi_history_closeout_latest.json`.
 
-- 데이터셋 생성 / VIX strictly-prior 정렬 / ETF breadth·coverage / 시간 순서 split 로직 → **전부 구현·자동 테스트 통과**.
-- Ridge baseline 학습·평가·최신 추론 → **status=unavailable** + `unavailable_reason="sklearn_not_installed"` 로 정직 기록.
-- **DONE 승격 두 조건 (사용자 판단 대기)**: (1) `scikit-learn` 승인 + `requirements.txt` 선언, (2) KOSPI 시계열 보강 (실측 `validation split=0` 해소). 두 조건 모두 충족되어야 baseline validation·test metrics 산출 가능. sklearn 단독 승인만으로는 불가 (§10 상세).
+Real SQLite 기반 baseline 실측:
+
+| 항목 | 값 |
+|---|---|
+| status | ok |
+| dataset row_count | 2960 (2014-05-13 ~ 2026-06-05) |
+| Split | train=1756 / validation=572 / test=592 |
+| Validation | MAE=3.995 / RMSE=5.014 / directional_accuracy=0.4615 |
+| Test | MAE=7.855 / RMSE=11.061 / directional_accuracy=0.4932 |
+| latest_inference | status=ok / as_of=2026-07-03 / pred=+5.495% |
+| VIX alignment | strictly_prior_observation (유지) |
+| sklearn version | 1.9.0 |
+
+**행동 문구 미포함 / UI 변경 0건 / 신규 endpoint 0건 / 상시 외부 호출 0건** (KOSPI 외부 조회는 `kospi` 서브커맨드 1회 실행 시에만). 기존 backend 738 passed.
+
+**주의 (한계)**: Test set directional_accuracy 0.4932 는 랜덤(0.5) 근처. Ridge baseline v1 은 시장 판단 근거 참조점수 이상의 용도로 사용하지 말 것 (자동 매매 / AI Sessions 연결 금지).
+
+---
+
+## 1. 완료 판정 — DONE (2026-07-05)
+
+2026-07-03 PARTIAL 이후 §0 Closeout 두 조건 (scikit-learn 승인 + KOSPI 시계열 보강) 모두 충족. real SQLite 실행에서 status=ok / 세 split 모두 >0 / metrics·latest_inference 실측 확보. 이전 PARTIAL 판정 근거였던 지시문 §7.1 문구는 종결.
 
 ---
 
@@ -28,7 +47,7 @@
 | ETF universe (breadth) | `etf_master` + `etf_daily_price` |
 | missing_confirm 제외 | `market_timeseries_ingestion_state` (status=`missing_confirm`) |
 
-외부 API / FDR / Yahoo / pykrx / KRX CSV 호출 0건 (자동 테스트 `test_10_no_external_data_calls` 검증).
+`build_dataset` / `run_baseline` 은 외부 API / FDR / Yahoo / pykrx / KRX CSV 호출 0건 (자동 테스트 `test_10_no_external_data_calls` 검증). KOSPI 시계열 보강 CLI (`kospi` 서브커맨드) 는 지시문 §5·§6 승인 하에 NAVER_FDR / YAHOO_FDR 만 호출 (2026-07-05 Closeout 신설).
 
 ---
 
@@ -103,42 +122,38 @@ Ridge alpha = 1.0
 
 ---
 
-## 8. 성능 결과
+## 8. 성능 결과 (2026-07-05 Closeout 실측)
 
-sklearn 미설치 상태에서 실측 (기본 SQLite `state/market/market_data.sqlite`):
+Real SQLite (`state/market/market_data.sqlite`) 기반 baseline 실행 결과:
 
 ```
-[market-flow-baseline] status=unavailable
-[dataset] rows=90 start=2026-01-21 end=2026-06-05 excluded=2911
-[split] train=34 / validation=0 / test=18
-[val]  {'mae': None, 'rmse': None, 'directional_accuracy': None}
-[test] {'mae': None, 'rmse': None, 'directional_accuracy': None}
-[latest_inference] status=unavailable
-                   reason=sklearn_not_installed
+[market-flow-baseline] status=ok
+[dataset] rows=2960 start=2014-05-13 end=2026-06-05 excluded=41
+[split] train=1756 / validation=572 / test=592
+[val]  {'mae': 3.9952, 'rmse': 5.0140, 'directional_accuracy': 0.4615}
+[test] {'mae': 7.8547, 'rmse': 11.0612, 'directional_accuracy': 0.4932}
+[latest_inference] status=ok as_of=2026-07-03 pred=+5.495%
 ```
 
-- **Dataset 90 rows** 실제 생성. KOSPI 시계열이 2025-12-19 부터 존재하여 상대적으로 짧음.
-- **Excluded 2911** 대부분 `kospi_lookback_insufficient` + `kospi_missing_on_asof` (KOSPI 시계열 확보 이전 KODEX200 거래일) + `kodex_lookback_insufficient` (초반 20 거래일).
-- **Split 실측**: train=34 / **validation=0** / test=18. Validation 이 비어 있는 이유는 target overlap 방지 필터가 val 구간을 모두 제거했기 때문 (val 시작 근처 labeled 행의 `target_end_date` 가 test 시작일을 침범 → 필터로 삭제). 원인은 KOSPI 시계열 짧음으로 labeled 행 밀도 부족.
-- Baseline metrics 는 sklearn 부재로 산출 불가 — artifact 에 `null` 기록.
+- **Dataset 2960 rows** (2014-05-13 ~ 2026-06-05). KOSPI 역사 시계열 보강 후 dataset 규모가 90 → 2960 rows 로 확대.
+- **Excluded 41** — `kodex_lookback_insufficient=20` + `kospi_lookback_insufficient=1` + `target_horizon_unavailable=20` (초반/말단 lookback / target 미확보).
+- **Split**: train=1756 (2014-05-13 ~ 2021-07-01) / validation=572 (2021-07-30 ~ 2023-11-24) / test=592 (2023-12-26 ~ 2026-06-05).
+- **KOSPI source summary** (baseline artifact `kospi_source_summary` 필드): selected_source=NAVER_FDR / inserted_row_count=2870 / overwrite_performed=false / existing_row_count_before=130 / application_range 2014-04-10 ~ 2025-12-18.
 
 ---
 
 ## 9. 최신 추론 가능 여부
 
-- `latest_inference.status = "unavailable"`
-- `unavailable_reason = "sklearn_not_installed"`
-- 무라벨 최신 feature 행 자체는 `build_dataset` 결과의 `unlabeled_latest_row` 로 준비되어 있음 — sklearn 활성화 시 즉시 예측 가능.
+- `latest_inference.status = "ok"`
+- `as_of_date = 2026-07-03`, `predicted_future_kodex200_return_20d_pct = +5.4952`
+- Ridge 는 전체 labeled 데이터 (train+val+test) 로 재학습 후 무라벨 최신 행에 대해 예측 — 지시문 §7.3 그대로.
 
 ---
 
 ## 10. 알려진 한계
 
-- **sklearn 미설치**: 신규 의존성 추가 금지 원칙 그대로 유지. `torch` 기반 대체 baseline 은 지시문 §4 "단일 baseline (Ridge)" 고정 위반이라 도입하지 않음.
-- **KOSPI 시계열 짧음**: 2025-12-19 부터 실측 저장. 이전 구간의 KODEX200 기준일은 excluded. 확보되면 자동으로 dataset 증가.
-- **Validation split 0행 (실측)**: 지시문 §8.2 target overlap 방지 필터가 val 구간을 모두 제거. sklearn 만 설치해도 val=0 이면 `validation` metrics 산출 불가. **DONE 승격 두 조건**:
-  1. `scikit-learn` 승인 + `requirements.txt` 선언.
-  2. **KOSPI 시계열 보강** — labeled 행 밀도가 확보되어야 val split 이 정상화. 두 조건이 모두 충족되어야 baseline 이 실 metrics 로 산출된다. sklearn 단독 승인만으로는 DONE 승격 불가.
+- **Test set directional_accuracy 0.4932 은 랜덤(0.5) 이하** — Ridge baseline v1 은 시장 판단 근거 참조점수 이상의 용도로 사용 금지. 자동 매매 / AI Sessions 연결 금지 (§4 절대 고정).
+- **YAHOO_FDR 폴백 실경로는 real 실행에서 미검증** — NAVER 가 첫 시도에 충족했기 때문. 자동 테스트 (fixture-stubbed) 로만 검증.
 - **행동 문구·시장 라벨·임계치**: 지시문 §12 금지 그대로. `latest_inference` 는 수익률 예측값일 뿐 상승/하락/위험 등급 부여 X.
 
 ---
@@ -147,67 +162,65 @@ sklearn 미설치 상태에서 실측 (기본 SQLite `state/market/market_data.s
 
 | 항목 | 결과 |
 |---|---|
-| backend 전체 | **729 passed** (714 → 729, 신규 15) |
+| backend 전체 | **738 passed** (729 → 738, 신규 9) |
 | black `--check app tests scripts` | PASS |
-| flake8 | PASS |
+| flake8 `app tests scripts` | PASS |
 | frontend lint / build | 변경 없음 (지시문 §12 UI 금지 그대로) |
 
-**신규 테스트 15건** — `tests/test_market_flow_baseline.py`:
-1. target 은 KODEX200 이후 정확히 20번째 거래일 수익률
-2. VIX source_date 는 as_of_date 보다 엄격히 이전
-3. 동일 날짜 VIX 미사용
-4. ETF breadth 에서 인버스/레버리지/합성/선물형/missing_confirm 제외
-5. coverage_count/coverage_ratio 정의대로 계산
-6. 필수 입력 없으면 임의 보정 X, unavailable 처리
-7~8. 시간 순서 split + target overlap 방지
-9. 재현성 (같은 fixture 에서 feature/target/split 동일)
-10. 외부 데이터 호출 없음 (FDR 감시)
-11. 무라벨 최신 feature 행에서만 latest inference
-+ helper 단위 (median / percentile / strictly-prior VIX)
-+ 통합 스모크 (sklearn 감지 stub → unavailable 마킹)
-+ CSV 컬럼 순서 고정
+**신규 테스트 9건** — `tests/test_kospi_history_closeout.py`:
+1. NAVER 충족 시 NAVER 선택 + YAHOO 미조회
+2. NAVER 불충족 + YAHOO 충족 시 YAHOO 만 저장
+3. 둘 다 불충족 시 SQLite 미변경 + status=unavailable
+4. 기존 KOSPI 행 overwrite 금지 (동일 date close 유지)
+5. NAVER + YAHOO 신규 행 혼합 금지
+6. artifact §8.1 필수 필드 존재
+7. KODEX range 부재 시 unavailable
+8. 경계 분리 (benchmark/incremental/initial/vix/status 는 KOSPI DataReader 호출 안 함)
+9. artifact 경로 상수 확인
+
+기존 `tests/test_market_flow_baseline.py` 15건은 그대로 유지 (외부 호출 없음, unavailable 시나리오 stub 포함).
 
 ---
 
-## 12. 변경 파일 목록
+## 12. 변경 파일 목록 (2026-07-05 Closeout)
 
-- `app/market_flow_dataset.py`: 신규 (SQLite reader + feature/breadth/coverage 계산 + build_dataset). 452 줄 (wc -l 실측).
-- `app/market_flow_baseline.py`: 신규 (split + train/evaluate + CSV/JSON writer + run_baseline). 327 줄 (wc -l 실측). B-2/B-3 지적 반영으로 dataset 로직은 별도 파일로 분리. 두 파일 합계 779 줄.
-- `scripts/run_market_flow_baseline.py`: 신규
-- `.gitignore`: 수정 (신규 artifact 2 경로 추가)
-- `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`: 수정 (§6 "다음 활성 Step" 을 이번 STEP 완료 상태 + DONE 승격 두 조건으로 정정)
-- `tests/test_market_flow_baseline.py`: 신규 (15 케이스)
-- `docs/STATE_LATEST.md`: 수정
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md`: 수정
-- `docs/handoff/POC2_FEATURE_INVENTORY.md`: 수정
-- `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`: 신규
-- `docs/backlog/BACKLOG.md`: 수정 (baseline 확인 이후 고도화 항목 추가)
+**신규**:
+- `app/kospi_history_closeout.py` — KOSPI 역사 보강 코어 (362 줄, wc -l 실측)
+- `tests/test_kospi_history_closeout.py` — §10 자동 테스트 9 케이스 (476 줄)
+
+**수정**:
+- `requirements.txt` — `scikit-learn==1.9.0` 정확 고정 (§6 승인)
+- `app/market_flow_baseline.py` — `sklearn_version` + `kospi_source_summary` 필드
+- `scripts/refresh_market_timeseries.py` — `kospi` 서브커맨드 추가
+- `.gitignore` — 신규 state artifact + 백업 패턴 3줄
+- `docs/STATE_LATEST.md`, `docs/handoff/POC2_B_NEXT_ACTIONS.md`, `docs/handoff/POC2_FEATURE_INVENTORY.md`, `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`, `docs/backlog/BACKLOG.md` — Closeout 상태 반영
 
 `docs/MASTER_PLAN.md` 는 지시문 §4 대로 변경하지 않음.
 
 ---
 
-## 13. AC 충족 (지시문 §15)
+## 13. AC 충족 (2026-07-05 Closeout)
 
 | AC | 결과 | 비고 |
 |---|---|---|
-| AC-1 SQLite 만 사용 dataset 생성 | ✅ | |
+| AC-1 SQLite 만 사용 dataset 생성 | ✅ | build_dataset / run_baseline SQLite read only |
 | AC-2 각 행에 기준일 / feature / target_end_date / target | ✅ | |
 | AC-3 KODEX200 기준일 이후 정보가 feature 에 미포함 | ✅ | |
-| AC-4 VIX strictly-prior 만 사용 | ✅ | |
+| AC-4 VIX strictly-prior 만 사용 | ✅ | `vix_alignment=strictly_prior_observation` |
 | AC-5 정상 ETF universe 필터 + coverage 적용 | ✅ | |
-| AC-6 제외 사유·coverage artifact 기록 | ✅ | |
-| AC-7 시간 순서 split + overlap 방지 | ✅ | |
-| AC-8 baseline metrics artifact 기록 | PARTIAL | (1) sklearn 미설치 + (2) 실측 validation split=0. 두 조건 모두 해결되어야 metrics 산출. |
-| AC-9 최신 추론 가능 여부 / unavailable 사유 | ✅ | reason=sklearn_not_installed |
-| AC-10 외부 호출 / 신규 API / DB 테이블 / UI 없음 | ✅ | |
-| AC-11 기존 ML axis1 / Discovery / Holdings / Preview / Sessions / PENDING / OCI / Telegram 미변경 | ✅ | |
-| AC-12 관련 테스트 + 기존 전체 테스트 / 정적 검사 통과 | ✅ | 729 passed |
+| AC-6 제외 사유·coverage artifact 기록 | ✅ | excluded_reason_counts 세 항목 |
+| AC-7 시간 순서 split + overlap 방지 | ✅ | 60/20/20 고정 |
+| AC-8 baseline metrics artifact 기록 | ✅ | val/test MAE·RMSE·directional_accuracy 모두 실측 |
+| AC-9 최신 추론 가능 여부 | ✅ | status=ok, pred=+5.495% |
+| AC-10 KOSPI closeout artifact §8.1 형태 | ✅ | `state/market/kospi_history_closeout_latest.json` |
+| AC-11 baseline artifact §8.2 (kospi source summary) | ✅ | `kospi_source_summary` 필드 |
+| AC-12 신규 UI / DB 테이블 / 상시 외부 호출 없음 | ✅ | 외부 호출은 `kospi` 서브커맨드 실행 시에만 |
+| AC-13 기존 ML axis1 / Discovery / Holdings / Preview / Sessions / PENDING / OCI / Telegram 미변경 | ✅ | |
+| AC-14 관련 테스트 + 전체 테스트 / 정적 검사 통과 | ✅ | 738 passed |
 
 ---
 
 ## 14. 다음 활성 Step 후보 (사용자 결정 대기)
 
-1. **scikit-learn 승인 여부 결정** — 승인만으로 metrics 산출되지 않음. #2 와 함께 필요.
-2. **KOSPI 시계열 장기 보강** — 2014~2025 구간을 KRX CSV 등으로 수동 보정. 이 조건이 함께 충족되어야 validation split 이 정상화되어 baseline metrics 가 산출된다.
-3. baseline 확인 이후 모델 고도화·전략 백테스트 (BACKLOG 이관, 본 STEP 범위 외).
+- 미결정 (설계자 지정 대기).
+- baseline 확인 이후 모델 고도화·전략 백테스트는 BACKLOG 이관 (본 STEP 범위 외).

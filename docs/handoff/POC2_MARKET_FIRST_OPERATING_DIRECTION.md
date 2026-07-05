@@ -105,18 +105,16 @@ KRX Open API:
 ## 6. 다음 활성 Step
 
 ```text
-다음 활성 Step (이전 계획):
-시장 전체 흐름 ML 학습 데이터셋·Baseline v1
+직전 활성 Step:
+시장 전체 흐름 ML 학습 데이터셋·Baseline v1 → Closeout DONE (2026-07-05).
 
-현재 상태 (2026-07-03):
-PARTIAL — 데이터셋·split·CSV/JSON artifact 골격 완료.
-  sklearn 미선언 및 KOSPI 시계열 짧음으로 baseline metrics 미산출.
-  상세: docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md
+Closeout 요약:
+  scikit-learn 1.9.0 requirements.txt 명시 (지시문 §6 승인).
+  KOSPI 역사 보강 CLI (kospi 서브커맨드) 신설 + NAVER_FDR 2870 행 삽입.
+  Real SQLite baseline 실측 — status=ok, split 1756/572/592, latest_inference=ok.
+  상세: docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md.
 
-DONE 승격 두 조건:
-  1) scikit-learn 추가 승인
-  2) KOSPI 시계열 보강 (labeled row 밀도 확보 → validation split 정상화)
-  두 조건이 모두 충족되어야 validation / test metrics 산출 가능.
+다음 활성 Step: 미결정 (설계자 지정 대기).
 ```
 
 **목표**: 기존 SQLite 의 KODEX200 / KOSPI / VIX / 정상 ETF universe 시계열을 사용해 **누수 없는 날짜별 시장 학습 행** 과 **baseline 결과** 를 만든다.

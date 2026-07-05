@@ -1,16 +1,16 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-03 (Market Flow ML Dataset + Baseline v1 — PARTIAL, sklearn 미설치)
+최종 업데이트: 2026-07-05 (Market Flow ML Dataset + Baseline v1 Closeout — DONE)
 
-## 이번 STEP 요약 (2026-07-03)
+## 이번 STEP 요약 (2026-07-05)
 
-**Market Flow ML Dataset + Baseline v1**: 시장 전체 흐름 ML 학습 데이터셋 + 단일 Ridge baseline 골격 구현. sklearn 이 requirements.txt 에 미선언되어 지시문 §7.1 대로 **PARTIAL** 보고 (신규 의존성 추가 금지 원칙 유지).
+**Market Flow ML Dataset + Baseline v1 Closeout**: 2026-07-03 PARTIAL 을 DONE 으로 승격. scikit-learn 1.9.0 을 requirements.txt 에 명시 (지시문 §6 명시 승인 하에서만), KOSPI 역사 시계열 보강 CLI (`kospi` 서브커맨드) 신규 추가, real SQLite 기반 baseline 실행하여 실측 metrics 산출.
 
-- **데이터셋 생성 / VIX strictly-prior / ETF breadth·coverage / 시간 순서 split**: 전부 구현·자동 테스트 통과.
-- **Ridge 학습·평가·최신 추론**: status=unavailable / unavailable_reason=sklearn_not_installed 로 정직 기록.
-- **실측**: dataset 90 rows (2026-01-21 ~ 2026-06-05). Split train=34 / **validation=0** / test=18 (target overlap 방지 필터가 val 구간 제거 — KOSPI 짧음이 원인). **DONE 승격에는 (1) scikit-learn 승인 + (2) KOSPI 시계열 보강 두 조건 모두 필요** (sklearn 만으로는 val=0 상태에서 metrics 산출 불가).
-- **backend 729 passed** (714 → 729, 신규 15). black/flake8 PASS. frontend 변경 0건 (UI 금지).
-- **신규 endpoint / DB 테이블 / UI / 외부 호출 0건**.
+- **KOSPI 역사 보강**: `python -m scripts.refresh_market_timeseries kospi` — NAVER_FDR 주 소스로 2870 행 신규 삽입 (2014-04-10 ~ 2025-12-18). 기존 130 행 overwrite 없음 (overwrite_performed=false). YAHOO_FDR 미조회 (NAVER 충족). 총 3000 KOSPI 행 확보.
+- **Baseline 실측** (`state/ml/market_flow_baseline_latest.json`): status=ok. dataset 2960 rows (2014-05-13 ~ 2026-06-05). Split train=1756 / validation=572 / test=592 (모두 >0). Validation MAE=3.995 / RMSE=5.014 / directional_accuracy=0.4615. Test MAE=7.855 / RMSE=11.061 / directional_accuracy=0.4932. latest_inference status=ok as_of=2026-07-03 pred=+5.495%.
+- **VIX strictly-prior 유지**. Ridge alpha=1.0 고정. Split 60/20/20 고정. sklearn 1.9.0.
+- **backend 738 passed** (729 → 738, 신규 9 — KOSPI closeout 테스트). black/flake8 PASS. frontend 변경 0건.
+- **신규 endpoint / DB 테이블 / UI / 상시 외부 호출 0건**. 외부 조회는 `kospi` 서브커맨드 1회 실행 시에만.
 - **기존 ML axis1 / Market Discovery / Holdings / Preview / AI Sessions / PENDING / OCI / Telegram 미변경**.
 - 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
@@ -22,7 +22,6 @@
 - **Decision Draft Preview 는 drill-down 도구** (주력 운영 흐름 아님).
 - **기존 AI Sessions 와 역할 중복되는 별도 승인 시스템 신설 금지**.
 - **NAVER_FDR 주 소스 / YAHOO_FDR 보조 / KRX CSV fallback**.
-- **진행 중 Step (PARTIAL)**: 시장 전체 흐름 ML 학습 데이터셋·Baseline v1 — 데이터셋 골격 완료, sklearn 미선언 + KOSPI 짧음으로 baseline metrics 미산출. DONE 승격 두 조건 필요.
 - 상세: `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md` / `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
 ## 완료 / 동결 / 다음 (요약)
@@ -37,8 +36,11 @@
 - 별도 승인 테이블·승인 UI·결정 이력 화면 (AI Sessions 와 중복)
 - 보유 ETF 전체 개별 심사형 화면 확장
 
-**다음** (PARTIAL 진행 중):
-- 시장 전체 흐름 ML 학습 데이터셋·Baseline v1 — 데이터셋 골격 완료. DONE 승격 두 조건 대기: (1) scikit-learn 승인 + (2) KOSPI 시계열 보강.
+**완료 추가 (2026-07-05)**:
+- 시장 전체 흐름 ML 학습 데이터셋·Baseline v1 Closeout (DONE) — scikit-learn 승인 + KOSPI 시계열 보강 2870 행 + 실측 metrics 산출.
+
+**다음**:
+- 미결정 (설계자 지정 대기).
 
 ## 0. Canonical
 

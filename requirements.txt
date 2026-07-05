@@ -19,3 +19,8 @@ finance-datareader>=0.9.202
 # 금지, 자동 튜닝 금지). CUDA 12.4 wheel:
 #   pip install torch --index-url https://download.pytorch.org/whl/cu124
 torch>=2.6.0
+# scikit-learn — Market Flow ML Dataset + Baseline v1 Closeout (2026-07-05).
+# 지시문 §6 "scikit-learn 하나만 프로젝트 의존성으로 추가" 명시 허용 +
+# "실제 설치된 정확한 버전 고정" 재현성 요건 (FIX r1 정정).
+# StandardScaler + Ridge(alpha=1.0) 만 사용. RF/XGB/LGBM/자동 튜닝/모델 비교 금지.
+scikit-learn==1.9.0
