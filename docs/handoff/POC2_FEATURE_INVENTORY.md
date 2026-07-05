@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-07-05 (Market Flow ML Dataset + Baseline v1 Closeout — DONE)
+작성일: 2026-05-27 / 갱신: 2026-07-05 (Market Flow ML Walk-forward Lookback v1 — DONE)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -8,7 +8,9 @@
 
 ## 시장 우선 운영 원칙 (2026-07-03) + 직전 STEP (2026-07-05 DONE)
 
-**직전 Step (DONE 2026-07-05)**: Market Flow ML Dataset + Baseline v1 Closeout — scikit-learn 1.9.0 승인/선언, KOSPI 역사 시계열 CLI 보강 (2870 행), real SQLite baseline 실측 (split 1756/572/592, latest_inference=ok). 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
+**직전 Step (DONE 2026-07-05, Walk-forward)**: Market Flow ML Walk-forward Lookback v1 — Ridge baseline v1 의 과거 반복 성능 evidence 산출 (예측 110 건, 2017-07-06 ~ 2026-06-01). Ridge directional_accuracy 0.5273 vs simple baseline 0.5727. 상세: `docs/handoff/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md`.
+
+**직전 Step (DONE 2026-07-05, Baseline Closeout)**: Market Flow ML Dataset + Baseline v1 Closeout — scikit-learn 1.9.0 승인/선언, KOSPI 역사 시계열 CLI 보강 (2870 행), real SQLite baseline 실측 (split 1756/572/592, latest_inference=ok). 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
 본 인벤토리의 기능들은 **시장 우선 운영 원칙** (`docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`) 하에서 역할이 고정된다:
 
@@ -755,6 +757,28 @@
 | 테스트 | pytest **714 passed** (691 → 714, 전용 파일 23 케이스, FIX r1 +2 / FIX r2 +1 / FIX r3 +2 / FIX r5 +4 / FIX r6 +1 / FIX r7 +1). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 사용자 판단 지원 evidence. |
 | 다음 조치 | 위험 evidence / 시장 국면 / ML 축2 진입 (사용자 결정). |
+
+---
+
+### 2.40 Market Flow ML Walk-forward Lookback v1 (2026-07-05, DONE)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | Ridge baseline v1 의 과거 반복 성능 evidence 산출. walk-forward 재학습 · 예측 · 실제값 비교 + simple baseline (training target 평균) 비교. |
+| 현재 위치 | `python -m scripts.run_market_flow_walk_forward` (수동 CLI). |
+| 기능 목적 | Ridge 최신 추론값을 UI · 보유 정합성 · AI Sessions 에 연결할지 판단하기 위한 evidence. 성능 합격·불합격 자동 판정 아님. |
+| 사용 가능 여부 | **사용 가능** (2026-07-05 DONE). |
+| Walk-forward 규칙 | `build_dataset()` 1회 계산 + 각 기준일 t 마다 `target_end_date < t` labeled row 만 학습 subset. StandardScaler · Ridge(alpha=1.0) 기준일별 새로 fit. Anchor = 756 학습 행 확보 첫 KODEX200 거래일. 이후 grid 는 **KODEX200 거래일 index 기준** 20 간격 고정 (labeled row index 가 아님). skip 이 grid 를 밀지 않음 (자동 테스트 `test_3` / `test_3b`). |
+| Simple baseline | 동일 학습 범위의 target 평균 — Ridge 와 항상 같은 학습 범위 사용. |
+| 실측 | status=ok / predictions=110 / period 2017-07-06 ~ 2026-06-01 / 연도별 요약 10 구간. Ridge MAE 5.2466 / RMSE 7.8969 / directional_accuracy 0.5273. Simple baseline MAE 5.0685 / RMSE 7.9827 / directional_accuracy 0.5727. |
+| 신규 파일 | `app/market_flow_walk_forward.py`, `scripts/run_market_flow_walk_forward.py`, `tests/test_market_flow_walk_forward.py`, `docs/handoff/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md`. |
+| 수정 파일 | `.gitignore` (walk-forward artifact 2 경로) + docs 4건. |
+| 신규 endpoint / UI / DB 테이블 | 0건. |
+| 외부 호출 | 0건 (SQLite read only, FDR 감시 테스트 포함). |
+| 기존 baseline artifact 미변경 | ✅ (`test_13`) — `state/ml/market_flow_baseline_latest.json` / `market_flow_training_dataset_latest.csv` 그대로. |
+| 제약 유지 | Ridge alpha=1.0 / VIX strictly-prior / target horizon 20 / ETF universe filter / breadth · coverage 유지. |
+| 테스트 | pytest **755 passed** (738 → 755, 신규 17 walk-forward). black / flake8 PASS. frontend 변경 0건. |
+| 다음 조치 | 미결정 (설계자 지정 대기). Ridge · simple baseline evidence 기반 후속 판단은 별도 STEP. Ridge 최신 추론값을 UI · 자동 매매 · AI Sessions 에 연결 금지. |
 
 ---
 

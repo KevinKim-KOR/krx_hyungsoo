@@ -200,6 +200,8 @@ state/ml/ml_job_status_latest.json
 state/ml/market_flow_baseline_latest.json
 state/ml/market_flow_training_dataset_latest.csv
 state/ml/market_flow_baseline_latest.json.bak-*
+state/ml/market_flow_walk_forward_latest.json
+state/ml/market_flow_walk_forward_predictions_latest.csv
 state/market/kospi_history_closeout_latest.json
 state/market/market_data.sqlite.bak-*
 

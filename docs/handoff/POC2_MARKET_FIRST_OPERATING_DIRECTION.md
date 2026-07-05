@@ -106,12 +106,20 @@ KRX Open API:
 
 ```text
 직전 활성 Step:
-시장 전체 흐름 ML 학습 데이터셋·Baseline v1 → Closeout DONE (2026-07-05).
+Market Flow ML Walk-forward Lookback v1 → DONE (2026-07-05).
 
-Closeout 요약:
-  scikit-learn 1.9.0 requirements.txt 명시 (지시문 §6 승인).
-  KOSPI 역사 보강 CLI (kospi 서브커맨드) 신설 + NAVER_FDR 2870 행 삽입.
-  Real SQLite baseline 실측 — status=ok, split 1756/572/592, latest_inference=ok.
+Walk-forward 요약:
+  Ridge baseline v1 의 과거 반복 성능 evidence 산출.
+  build_dataset() 1회 계산 + 각 기준일 t 마다 target_end_date < t 인 학습 subset.
+  StandardScaler · Ridge(alpha=1.0) 는 기준일별 새로 fit.
+  Anchor = 756 학습 행 확보 첫 KODEX200 거래일, 이후 grid 는 KODEX200 거래일 index 기준 20 간격 고정 (skip 이 grid 를 밀지 않음).
+  Simple baseline = 동일 학습 범위의 target 평균 비교.
+  실측: predictions=110, 2017-07-06 ~ 2026-06-01, 연도별 10 구간.
+  Ridge directional_accuracy 0.5273, simple baseline 0.5727.
+  상세: docs/handoff/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md.
+
+이전 활성 Step:
+Market Flow ML Dataset + Baseline v1 → Closeout DONE (2026-07-05).
   상세: docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md.
 
 다음 활성 Step: 미결정 (설계자 지정 대기).

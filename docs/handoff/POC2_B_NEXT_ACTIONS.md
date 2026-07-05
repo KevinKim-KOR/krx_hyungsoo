@@ -1,12 +1,38 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-05 (Market Flow ML Dataset + Baseline v1 Closeout — DONE)
+작성일: 2026-05-20 / 갱신: 2026-07-05 (Market Flow ML Walk-forward Lookback v1 — DONE)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (2026-07-05 — Market Flow ML Dataset + Baseline v1 Closeout, DONE)
+## 0. 직전 STEP 결과 (2026-07-05 — Market Flow ML Walk-forward Lookback v1, DONE)
+
+Ridge baseline v1 의 과거 반복 성능을 evidence 로 남기는 룩백 실행.
+
+**핵심 규칙**:
+- `build_dataset()` 1회 계산 + 각 기준일 t 마다 `target_end_date < t` labeled row 만 학습.
+- StandardScaler / Ridge(alpha=1.0) 는 기준일별 새로 fit — 전체 fit 재사용 금지.
+- Anchor = 756 학습 행 확보 첫 KODEX200 거래일. 이후 grid 는 **KODEX200 거래일 index 기준** 20 간격 고정 (labeled row index 가 아님). skip 이 grid 를 밀지 않음.
+- Simple baseline = 동일 학습 범위의 target 평균 — Ridge 와 항상 같은 학습 범위.
+
+**실측**:
+- status=ok. 예측 110 건 (2017-07-06 ~ 2026-06-01). 제외 1건 (`feature_row_missing_on_kodex_date`). 연도별 요약 10 구간.
+- Ridge: MAE 5.2466 / RMSE 7.8969 / directional_accuracy 0.5273.
+- Simple baseline: MAE 5.0685 / RMSE 7.9827 / directional_accuracy 0.5727.
+- 기존 baseline artifact (`state/ml/market_flow_baseline_latest.json`) 미변경.
+
+**신규 파일**: `app/market_flow_walk_forward.py`, `scripts/run_market_flow_walk_forward.py`, `tests/test_market_flow_walk_forward.py`, `docs/handoff/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md`.
+
+**결과**: backend **755 passed** (738 → 755, 신규 17). black / flake8 PASS. frontend 변경 0건.
+
+**신규 endpoint / DB 테이블 / UI / 외부 호출 0건**. 기존 ML axis1 / Market Discovery / Holdings / Preview / AI Sessions / PENDING / OCI / Telegram 미변경.
+
+상세: `docs/handoff/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md`.
+
+---
+
+## 0-prev. 직전 STEP 결과 (2026-07-05 — Market Flow ML Dataset + Baseline v1 Closeout, DONE)
 
 2026-07-03 PARTIAL 을 두 조건 모두 해소하여 DONE 으로 승격.
 
@@ -58,7 +84,7 @@
 - 별도 승인 테이블·승인 UI·결정 이력 화면 (기존 AI Sessions 와 중복).
 - 보유 ETF 전체 개별 심사형 화면 확장.
 
-**직전 활성 Step (DONE)**: **시장 전체 흐름 ML 학습 데이터셋·Baseline v1 Closeout** (2026-07-05). scikit-learn 승인 + KOSPI 시계열 보강 + real SQLite baseline 실측 완료. 상세는 §0 참조.
+**직전 활성 Step (DONE)**: **Market Flow ML Walk-forward Lookback v1** (2026-07-05). Ridge baseline v1 의 과거 반복 성능 evidence 산출. 상세는 §0 참조.
 
 **다음 활성 Step**: 미결정 (설계자 지정 대기).
 

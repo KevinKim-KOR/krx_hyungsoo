@@ -1,8 +1,22 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-05 (Market Flow ML Dataset + Baseline v1 Closeout — DONE)
+최종 업데이트: 2026-07-05 (Market Flow ML Walk-forward Lookback v1 — DONE)
 
-## 이번 STEP 요약 (2026-07-05)
+## 이번 STEP 요약 (2026-07-05, Walk-forward Lookback v1)
+
+**Market Flow ML Walk-forward Lookback v1**: Ridge baseline v1 의 과거 반복 성능 evidence 를 남기는 룩백 실행. 시장 판단 UI / 자동 매매 / AI Sessions 연결 아님.
+
+- **Walk-forward 규칙**: `build_dataset()` 1회 계산 + 각 기준일 t 마다 `target_end_date < t` 인 labeled row 만 학습. StandardScaler / Ridge 는 기준일별 새로 fit. 최초 anchor = 756 학습 행 확보되는 첫 KODEX200 거래일. 이후 20 거래일 고정 grid (skip 이 grid 를 밀지 않음).
+- **단순 기준 (simple baseline)**: 동일 학습 범위의 target 평균. Ridge 와 항상 같은 학습 범위 사용.
+- **실측 (real SQLite)**: status=ok, predictions=110, 평가기간 2017-07-06 ~ 2026-06-01, 연도별 요약 10개.
+  - Ridge: MAE 5.2466 / RMSE 7.8969 / directional_accuracy 0.5273.
+  - Simple baseline: MAE 5.0685 / RMSE 7.9827 / directional_accuracy 0.5727.
+- **산출물**: `state/ml/market_flow_walk_forward_predictions_latest.csv`, `state/ml/market_flow_walk_forward_latest.json`. 기존 baseline artifact 미변경.
+- **backend 755 passed** (738 → 755, 신규 17). black / flake8 PASS. frontend 변경 0건.
+- **신규 endpoint / DB 테이블 / UI / 외부 호출 0건**.
+- 상세: `docs/handoff/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md`.
+
+## 직전 STEP (2026-07-05, Baseline v1 Closeout, DONE)
 
 **Market Flow ML Dataset + Baseline v1 Closeout**: 2026-07-03 PARTIAL 을 DONE 으로 승격. scikit-learn 1.9.0 을 requirements.txt 에 명시 (지시문 §6 명시 승인 하에서만), KOSPI 역사 시계열 보강 CLI (`kospi` 서브커맨드) 신규 추가, real SQLite 기반 baseline 실행하여 실측 metrics 산출.
 

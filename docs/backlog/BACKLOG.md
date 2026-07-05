@@ -606,9 +606,9 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **항목**: 시장 흐름 baseline 확인 이후의 모델 고도화·전략 백테스트
-- **보류 사유**: 2026-07-05 Closeout 실측 (Validation MAE=3.995 / directional_accuracy=0.4615, Test MAE=7.855 / directional_accuracy=0.4932) 에서 Ridge baseline 이 랜덤(0.5) 근처의 방향 정확도를 보임. Test set 은 랜덤 이하. 그러나 지시문 §4 절대 고정 (단일 Ridge only) 하에서 RF / XGBoost / LightGBM 비교·자동 튜닝·전략 백테스트는 별도 STEP 필요.
+- **보류 사유**: 2026-07-05 Closeout 실측 (Validation MAE=3.995 / directional_accuracy=0.4615, Test MAE=7.855 / directional_accuracy=0.4932) 에 이어 2026-07-05 Walk-forward Lookback v1 (110 예측, 2017-07-06 ~ 2026-06-01) 에서도 Ridge directional_accuracy=0.5273 이 simple baseline (training target 평균) directional_accuracy=0.5727 보다 낮게 관측됨. 지시문 §10 절대 고정 (단일 Ridge only) 하에서 RF / XGBoost / LightGBM 비교·자동 튜닝·전략 백테스트는 별도 STEP 필요.
 - **보류된 위험**: 현재 baseline 은 시장 판단 근거 참조점수 이상의 용도로 사용할 수 없음 (자동 매매 / AI Sessions 연결 금지).
-- **재검토 트리거**: 사용자가 baseline 실측 결과를 확인한 뒤 모델 고도화 STEP 을 별도로 승인할 때.
+- **재검토 트리거**: 사용자가 walk-forward evidence 를 확인한 뒤 모델 고도화 STEP 을 별도로 승인할 때.
 
 ---
 
