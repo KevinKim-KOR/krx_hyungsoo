@@ -1,82 +1,78 @@
-# PUSH Content Gap Diagnosis v1 — Conclusion (PARTIAL, OCI 실측 대기)
+# PUSH Content Gap Diagnosis v1 — Conclusion (DONE, Closeout 완료)
 
 작성일: 2026-07-05
 성격: 3개 PUSH 가 "필요한 데이터가 부족하다" 축약 메시지로 도착하는 원인을 read-only 재현·확정. 이번 Step 은 SQLite 동기화·PUSH 문구 개선·OCI 배포 변경을 **하지 않는다**.
 
 ---
 
-## 1. 완료 판정 — PARTIAL
+## 1. 완료 판정 — DONE (Closeout)
 
-**PARTIAL 사유** (Q3 (c) 확정본 준수): OCI 실측 실행이 아직 수행되지 않았음. 지시문 §8.1 은 "동일 commit 을 OCI 에 반영 → OCI 에서 진단 CLI 를 1회 수동 실행" 을 명시. 개발자가 OCI 접속 권한 없어 PC 실측 + OCI 실행 준비까지만 완료.
+**기술 진단**: 완료. PC · OCI 양쪽 동일 commit `89f7cd31` 에서 read-only 진단 CLI 실행. artifact sanitised 요약 교차 비교 완료.
 
-PC 실측은 완료 상태:
+**저장소 Closeout**: 이 문서 갱신으로 마감. PC / OCI 개별 artifact 는 각자 원본 상태 그대로 유지 (`observation_status=single_environment_pending_cross_comparison` 필드 미수정 — 설계자 지시). 교차 비교 완료 사실은 본 Closeout 문서와 §15 완료 보고 JSON 에서 확정.
 
 | 항목 | 값 |
 |---|---|
-| 진단 CLI | `python -m scripts.run_push_content_gap_diagnosis --environment pc` |
-| commit | `c05f2c58` (Baseline v2 STEP 종료 상태) |
-| status | ok |
-| sqlite_integrity | ok |
-| 진단 artifact | `state/diagnostics/push_content_gap_diagnosis_latest.json` |
+| 진단 CLI | `python -m scripts.run_push_content_gap_diagnosis --environment pc|oci` |
+| PC 실행 commit | `89f7cd31` |
+| OCI 실행 commit | `89f7cd31` (사용자 확인) |
+| PC status | ok |
+| OCI status | ok |
 | 발송 · 외부 호출 | 0건 (자동 테스트 `test_2` / `test_3` 검증) |
 | 기존 SQLite / state artifact 변경 | 0건 (`test_4` / `test_5` 검증) |
 | 비밀정보 · 절대 경로 leak | 없음 (`test_9` 검증) |
 
 ---
 
-## 2. PC 실측 잠정 관측 (확정 아님)
+## 2. 최종 결론 (설계자 확정본)
 
-**중요**: Q3 (c) 확정본 준수 — OCI 실행 전에는 root cause · next step 을 단정하지 않는다. 아래는 **PC environment 한쪽만 담은 잠정 관측치**이며, 최종 root_cause 는 OCI 실측 후 PC · OCI 비교에서 확정한다. artifact 최상위 `observation_status=single_environment_pending_cross_comparison` 로도 명시.
+```text
+공통 직접 원인:
+PARAM runtime 이 available_sources=None 으로 실행되어
+3개 PUSH 모두 evidence 를 공급받지 못함.
 
-세 PUSH 모두 PC 시점에서 동일한 관측:
+OCI 추가 기여 원인:
+sqlite_integrity=unavailable,
+required_paths_ready=false.
 
-| PUSH | (PC 잠정) primary_root_cause | exact_reason_code | selection_result_count |
-|---|---|---|---|
-| market_briefing | RUNTIME_CONFIGURATION_GAP (잠정) | `runtime_available_sources_not_supplied` | 0 |
-| holdings_briefing | RUNTIME_CONFIGURATION_GAP (잠정) | `runtime_available_sources_not_supplied` | 0 |
-| spike_or_falling_alert | RUNTIME_CONFIGURATION_GAP (잠정) | `runtime_available_sources_not_supplied` | 0 |
+최종 분류:
+RUNTIME_CONFIGURATION_GAP.
+```
 
-### 2.1 PARAM runtime 경로 (실운영 경로, Q1 (c) 확정 기준)
+파일 부재 · 경로 설정 · 권한 중 어느 것인지는 이번 Step 에서 추정하거나 분해하지 않음. 다음 Step 에서 다룸.
 
-- PARAM 파일 (`state/three_push/params/latest_runtime_param.json`) 정상 로드.
-- 세 PUSH 모두 PARAM 의 `enabled_push_kinds` 에 포함됨 (`push_kind_enabled_in_param=True`).
-- `build_runtime_message(available_sources=None)` 호출 성공 → 메시지 자체는 생성됨 (`message_text_length` 142~177).
-- **하지만 `available_sources=None` 하드코딩** (`scripts/run_three_push_runtime_oci.py:177`) 때문에 축약 unavailable 메시지가 만들어짐.
+**다음 Step 유형** (완료 보고 분류값): `OCI_RUNTIME_CONFIGURATION_CLOSEOUT`.
 
-### 2.2 Package fallback 경로 (비교 근거)
-
-- **PC 에서 `state/three_push/packages/` 자체가 존재하지 않음** (`package_dir_missing`).
-- Package fallback 경로도 PC 에서 준비되지 않은 상태 → package 경로가 evidence 를 채워주는 대안으로도 작동하지 않음.
-- 세 PUSH 모두 package_fallback `applicable=False`.
-
-### 2.3 원인 종합 (PC 잠정, 확정 아님)
-
-Q1 확정본의 특수 규칙 (package_ready + runtime_not_supplied → RUNTIME_CONFIGURATION_GAP) 에는 해당하지 않음. 대신 일반 규칙 (PC 시점 잠정 관측):
-
-- PARAM runtime 이 `runtime_available_sources_not_supplied` 를 반환 → PC 시점 세 PUSH 모두 RUNTIME_CONFIGURATION_GAP 후보.
-- PC package 경로도 not-applicable → contributing 원인 후보로 `package_fallback_also_not_ready`.
-- **PC 기준 잠정 다음 Step 유형**: `OCI_RUNTIME_CONFIGURATION_CLOSEOUT`. OCI 실측 후 최종 확정.
+**다음 Step 정식 설계명** (별도 설계, 개발자가 임의 확정 X): `OCI Runtime Evidence Supply Closeout v1`. `available_sources=None` 보정과 OCI 의 SQLite · 필수 경로 준비가 함께 닫혀야 실제 PUSH 내용이 채워지기 때문.
 
 ---
 
-## 3. PC · OCI 비교 결과
+## 3. PC · OCI 비교
 
-**미완료 — OCI 실측 대기**.
+### 3.1 환경 비교표
 
-지시문 §8.1 순서:
-1. ✅ PC 실측 완료 (commit `c05f2c58`).
-2. ⏳ 동일 commit 을 OCI 에 반영.
-3. ⏳ OCI 에서 `--environment oci` 로 진단 CLI 1회 수동 실행.
-4. ⏳ PC · OCI artifact 비교.
-5. ⏳ Closeout 문서 · 최종 보고 마무리.
+| 항목 | PC | OCI |
+|---|---|---|
+| 실행 commit | `89f7cd31` | `89f7cd31c13e00acd108f63d701f066864d9711c` |
+| SQLite 무결성 | ok | unavailable |
+| 필수 logical path 준비 (`required_logical_paths_ready`) | True | false |
+| 관측 상태 (`observation_status`) | single_environment_pending_cross_comparison | single_environment_pending_cross_comparison |
 
-OCI 실측이 도착하면 아래 형태로 비교 표를 추가:
+`observation_status` 는 개별 환경 진단 artifact 원본 상태 (설계자 지시로 유지). 교차 비교 완료 사실은 본 Closeout 문서로 확정.
 
-| PUSH | PC path 상태 | OCI path 상태 | 최종 root_cause |
-|---|---|---|---|
-| market_briefing | ... | ... | ... |
-| holdings_briefing | ... | ... | ... |
-| spike_or_falling_alert | ... | ... | ... |
+### 3.2 PUSH 경로 비교표
+
+| PUSH | PC PARAM runtime 결과 | PC package fallback 결과 | OCI PARAM runtime 결과 | OCI package fallback 결과 | 공통 직접 원인 | 최종 root cause |
+|---|---|---|---|---|---|---|
+| market_briefing | content_generation_status=data_insufficient / exact_reason_code=runtime_available_sources_not_supplied / selection_result_count=0 | exact_reason_code=package_dir_missing / content_generation_status=runtime_unavailable | content_generation_status=data_insufficient / exact_reason_code=runtime_available_sources_not_supplied / selection_result_count=0 | exact_reason_code=None / content_generation_status=content_ready | PARAM runtime 이 available_sources=None 으로 실행 → evidence 미공급 | RUNTIME_CONFIGURATION_GAP |
+| holdings_briefing | content_generation_status=data_insufficient / exact_reason_code=runtime_available_sources_not_supplied / selection_result_count=0 | exact_reason_code=package_dir_missing / content_generation_status=runtime_unavailable | content_generation_status=data_insufficient / exact_reason_code=runtime_available_sources_not_supplied / selection_result_count=0 | exact_reason_code=None / content_generation_status=content_ready | PARAM runtime 이 available_sources=None 으로 실행 → evidence 미공급 | RUNTIME_CONFIGURATION_GAP |
+| spike_or_falling_alert | content_generation_status=data_insufficient / exact_reason_code=runtime_available_sources_not_supplied / selection_result_count=0 | exact_reason_code=package_dir_missing / content_generation_status=runtime_unavailable | content_generation_status=data_insufficient / exact_reason_code=runtime_available_sources_not_supplied / selection_result_count=0 | exact_reason_code=None / content_generation_status=content_ready | PARAM runtime 이 available_sources=None 으로 실행 → evidence 미공급 | RUNTIME_CONFIGURATION_GAP |
+
+### 3.3 교차 관측 정리
+
+- **PARAM runtime 경로 (실운영)**: PC · OCI 완전 동일 — 세 PUSH 모두 `data_insufficient` + `runtime_available_sources_not_supplied` + `selection_result_count=0`. `scripts/run_three_push_runtime_oci.py:177` 의 `available_sources=None` 하드코딩이 공통 직접 원인.
+- **Package fallback 경로 (비교 근거만)**: PC 는 `package_dir_missing` (PC 에는 `state/three_push/packages/` 자체가 부재), OCI 는 `content_ready` (OCI 에는 package 가 존재해서 fallback 이 정상 로드 가능). 이 차이는 최종 root cause 를 바꾸지 않음 — 실운영 경로는 PARAM runtime.
+- **환경 공통 결함이 아닌 OCI 만의 추가 관측**: `sqlite_integrity=unavailable` + `required_paths_ready=false`. 이 두 신호는 OCI 추가 기여 원인으로 기록되지만, 세부 (파일 부재 / 경로 설정 / 권한) 분해는 다음 Step 범위.
 
 ---
 
@@ -100,40 +96,36 @@ python -m scripts.run_push_content_gap_diagnosis --environment oci
 state/diagnostics/push_content_gap_diagnosis_latest.json
 ```
 
-이 파일은 OCI 로컬 파일시스템에만 생성됨. **PC 로 sync 필요 없음** (지시문 §8.2 금지 항목).
+이 파일은 OCI 로컬 파일시스템에만 생성됨. **PC 로 sync 하지 않음** (지시문 §8.2 금지 항목). 교차 비교는 sanitised 값만 사용.
 
-### 4.4 사용자가 붙여넣을 sanitised 요약
+### 4.4 실제 수집한 sanitised 요약
 
-다음 항목만 새 세션에 전달:
+**OCI 실측 완료값** (사용자 확인):
+- `environment`: `"oci"`
+- `code_version.commit`: `89f7cd31c13e00acd108f63d701f066864d9711c`
+- `runtime_readiness.sqlite_integrity`: `unavailable`
+- `runtime_readiness.required_logical_paths_ready`: `false`
+- 각 PUSH 별 세 값 (§3.2 비교표 참조):
+  - `param_runtime_path`: `content_generation_status=data_insufficient` / `exact_reason_code=runtime_available_sources_not_supplied` / `selection_result_count=0`
+  - `package_fallback_path`: `exact_reason_code=None` / `content_generation_status=content_ready`
 
-- `environment`: "oci"
-- `code_version.commit`
-- 각 PUSH 별:
-  - `push_id`
-  - `param_runtime_path.exact_reason_code`
-  - `param_runtime_path.message_text_length`
-  - `package_fallback_path.exact_reason_code`
-  - `package_fallback_path.content_generation_status`
-  - `primary_root_cause`
-  - `recommended_next_step_type`
-
-**절대 전달하지 말 것** (지시문 §9 준수): Telegram token / chat id / 환경변수 원문 / 절대 경로 / credential. 진단 CLI 자체가 이를 artifact 에 담지 않도록 이미 필터링돼 있음 (자동 테스트 `test_9` 검증).
+**Secret / 절대 경로 leak 없음** (진단 CLI 가 이를 artifact 에 담지 않도록 이미 필터링, 자동 테스트 `test_9` 검증).
 
 ---
 
 ## 5. AC 충족 (지시문 §14)
 
-| AC | 결과 (PC 시점) |
+| AC | 결과 |
 |---|---|
 | AC-1 3개 PUSH 각각의 입력 · artifact · 최소 관측 기간 · 필터 조건 식별 | ✅ (`PUSH_REQUIREMENTS` 매핑) |
-| AC-2 데이터 부족 · 빈 선택이 정확한 조건으로 재현 | ✅ (세 PUSH 모두 `runtime_available_sources_not_supplied`) |
-| AC-3 동일 commit 진단 CLI PC · OCI 각각 1회 수동 실행 | ⏳ PC ✅ / OCI 대기 |
-| AC-4 PC · OCI SQLite · artifact · 기준일 · 행 수 · commit · 실행 조건 차이 비교 | ⏳ OCI 실측 후 |
-| AC-5 각 PUSH primary root cause + contributing causes + 증거 기록 | ⏳ PC 잠정 관측만 기록 / OCI 실측 후 최종 확정 |
+| AC-2 데이터 부족 · 빈 선택이 정확한 조건으로 재현 | ✅ (PC · OCI 세 PUSH 모두 `runtime_available_sources_not_supplied`) |
+| AC-3 동일 commit 진단 CLI PC · OCI 각각 1회 수동 실행 | ✅ 양쪽 commit `89f7cd31` |
+| AC-4 PC · OCI SQLite · artifact · 기준일 · 행 수 · commit · 실행 조건 차이 비교 | ✅ §3.1 환경 비교표 + §3.2 PUSH 경로 비교표 |
+| AC-5 각 PUSH primary root cause + contributing causes + 증거 기록 | ✅ §2 최종 결론 (공통 직접 원인 + OCI 추가 기여 원인 + 최종 분류) |
 | AC-6 SQLite / 기존 state artifact / Telegram 실행 이력 미변경 | ✅ (자동 테스트 검증) |
 | AC-7 외부 시세 호출 · Telegram 발송 없음 | ✅ (자동 테스트 검증) |
 | AC-8 비밀정보 · 절대 경로 leak 없음 | ✅ (자동 테스트 검증) |
-| AC-9 다음 Step 유형 하나 결정 | ⏳ PC 기준 잠정 `OCI_RUNTIME_CONFIGURATION_CLOSEOUT` / OCI 실측 후 최종 확정 |
+| AC-9 다음 Step 유형 하나 결정 | ✅ `OCI_RUNTIME_CONFIGURATION_CLOSEOUT` (정식 설계명은 별도 설계 세션에서 확정) |
 | AC-10 PUSH 문구 · 선택 기준 · ML artifact · Discovery · Holdings · AI Sessions · Preview 미변경 | ✅ |
 | AC-11 기존 전체 테스트 · 정적 검사 통과 | ✅ 790 passed (772 → 790, 신규 18). black / flake8 PASS |
 
@@ -178,18 +170,20 @@ state/diagnostics/push_content_gap_diagnosis_latest.json
 
 ---
 
-## 8. 알려진 한계
+## 8. 알려진 한계 · 다음 Step 로 이관 항목
 
-- **OCI 실측 대기**: 지시문 §8.1 순서상 OCI 실행 없이는 DONE 처리 금지 (Q3 (c) 확정).
-- **root cause 를 PC 실측만으로 확정한 것은 아님**: 세 PUSH 모두 `runtime_available_sources_not_supplied` 라는 정황 증거는 강함. 다만 OCI 에서 (a) 동일 commit 이 반영되었는지, (b) OCI runtime 이 실제로 동일한 축약 메시지를 생성하는지, (c) OCI 쪽에만 다른 요인 (예: PARAM 파일 위치 · 권한 문제) 이 있는지 실측이 필요.
-- **PC package 경로 not-applicable**: PC 에도 `state/three_push/packages/` 자체가 없음. 즉 현재 PC 는 package fallback 경로를 통해 evidence 를 준비해두는 상태도 아님. package 경로를 되살리는 별도 STEP 이 필요할 수 있으나, 이번 STEP 범위는 아님.
+- **OCI 의 `sqlite_integrity=unavailable` + `required_paths_ready=false` 세부**: 파일 부재 / 경로 설정 / 권한 중 어느 것인지 이번 Step 에서 추정 · 분해하지 않음. 다음 Step 범위 (`OCI Runtime Evidence Supply Closeout v1`).
+- **PC package fallback 경로 not-applicable**: PC 에도 `state/three_push/packages/` 부재. 실운영 경로는 PARAM runtime 이므로 이번 STEP 결론에는 영향 없음. package 경로 부활 필요 여부는 별도 판단 (BACKLOG 이관 상태).
+- **개별 환경 진단 artifact 의 `observation_status=single_environment_pending_cross_comparison`**: 원본 상태 유지 (설계자 지시). 교차 비교 완료 사실은 본 Closeout 문서와 §15 완료 보고 JSON 으로만 확정.
 
 ---
 
-## 9. 다음 활성 Step 후보
+## 9. 다음 활성 Step
 
-PC 기준 잠정 결정 (OCI 실측 후 최종 확정):
+**분류값**: `OCI_RUNTIME_CONFIGURATION_CLOSEOUT` (완료 보고 §15 JSON `overall.next_step_type` 기록값).
 
-**`OCI_RUNTIME_CONFIGURATION_CLOSEOUT`** — `scripts/run_three_push_runtime_oci.py:177` 의 `available_sources=None` 하드코딩을 실제 evidence 를 전달받는 구성으로 교체하는 별도 STEP.
+**정식 설계명**: `OCI Runtime Evidence Supply Closeout v1` (별도 설계 세션에서 최종 확정 — 개발자가 임의로 정하지 않음).
+
+**이유**: `scripts/run_three_push_runtime_oci.py:177` 의 `available_sources=None` 보정과 OCI 의 SQLite · 필수 경로 준비가 **함께 닫혀야** 실제 PUSH 내용이 채워짐. 두 조건 중 하나만 해결해서는 부족.
 
 이번 STEP 안에서는 그 다음 STEP 을 구현하지 않음 (지시문 §11 명시).
