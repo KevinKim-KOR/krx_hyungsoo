@@ -1,8 +1,21 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-05 (Market Flow ML v2 Data Validity + Model Comparison — DONE)
+최종 업데이트: 2026-07-05 (PUSH Content Gap Diagnosis v1 — PARTIAL, OCI 실측 대기)
 
-## 이번 STEP 요약 (2026-07-05, v2 Data Validity + Model Comparison)
+## 이번 STEP 요약 (2026-07-05, PUSH Content Gap Diagnosis v1)
+
+**PUSH Content Gap Diagnosis v1**: 3개 PUSH ("필요한 데이터가 부족하다" 축약 메시지) 의 원인을 read-only 재현으로 확정하는 진단 Step. SQLite 동기화 · PUSH 문구 개선 · OCI 배포 변경 없음.
+
+- **진단 CLI**: `python -m scripts.run_push_content_gap_diagnosis --environment pc|oci`. 발송 없음. 외부 호출 없음. 기존 SQLite / state artifact 미변경.
+- **PC 실측 잠정 관측 (commit `c05f2c58`, 확정 아님, OCI 실측 후 최종)**: 세 PUSH 모두 (PC 시점) primary_root_cause=**RUNTIME_CONFIGURATION_GAP** (잠정), exact_reason_code=`runtime_available_sources_not_supplied`. artifact `observation_status=single_environment_pending_cross_comparison`. PARAM 정상 로드 · 세 PUSH 활성화되어 있지만, `scripts/run_three_push_runtime_oci.py:177` 의 `available_sources=None` 하드코딩이 축약 unavailable 메시지 원인 후보.
+- **PC package fallback 경로**: `state/three_push/packages/` 자체가 부재 → package_dir_missing (not-applicable).
+- **PARTIAL 사유**: 지시문 §8.1 순서상 OCI 에서 동일 commit `c05f2c58` 을 반영한 뒤 진단 CLI `--environment oci` 로 1회 수동 실행이 필요. 개발자가 OCI 접속 권한 없음 → 사용자 실행 대기.
+- **backend 790 passed** (772 → 790, 신규 18). black / flake8 PASS. frontend 변경 0건.
+- **신규 endpoint / DB 테이블 / UI / 외부 호출 0건**. Telegram · PUSH 코드 · Market Discovery · Holdings · AI Sessions · Preview · ML artifact **미변경**.
+- **다음 STEP 후보 (PC 기준 잠정)**: `OCI_RUNTIME_CONFIGURATION_CLOSEOUT`. OCI 실측 후 최종 확정.
+- 상세: `docs/handoff/POC2_PUSH_CONTENT_GAP_DIAGNOSIS_V1_CONCLUSION.md`.
+
+## 직전 STEP (2026-07-05, v2 Data Validity + Model Comparison, DONE)
 
 **Market Flow ML v2**: Ridge 부진 원인이 ETF breadth·coverage 데이터인지 feature 구성인지 분리 측정. 시장 판단 UI / 자동 매매 / AI Sessions 연결 아님.
 

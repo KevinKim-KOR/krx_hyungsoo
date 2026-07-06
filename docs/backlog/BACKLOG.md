@@ -699,3 +699,10 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 장기 성공 기준. 현재 모바일 UI 후순위 원칙 유지.
 - **보류된 위험**: 장기 성공 기준 검증 지연.
 - **재검토 트리거**: 와이프 / 친구 공유 STEP 진입 시.
+
+---
+
+- **항목**: PC package fallback 경로 재활성화 (`state/three_push/packages/` 생성 파이프라인)
+- **보류 사유**: 2026-07-05 PUSH Content Gap Diagnosis v1 PC 실측 결과 PC 에도 `state/three_push/packages/` 자체가 부재 (`package_dir_missing`). Package fallback 이 evidence 준비 대안으로 작동하지 않는 상태. 이번 진단 STEP 범위 아님.
+- **보류된 위험**: OCI RUNTIME_CONFIGURATION_CLOSEOUT 후에도 package fallback 경로가 여전히 not-applicable 이면 evidence 백업 경로 부재.
+- **재검토 트리거**: OCI RUNTIME_CONFIGURATION_CLOSEOUT 완료 후에도 package fallback 이 필요하다는 별도 근거가 확인될 때.

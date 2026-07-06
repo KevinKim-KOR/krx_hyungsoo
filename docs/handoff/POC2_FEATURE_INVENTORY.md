@@ -1,6 +1,6 @@
 # POC2 기능 인벤토리 (Feature Inventory)
 
-작성일: 2026-05-27 / 갱신: 2026-07-05 (Market Flow ML v2 Data Validity + Model Comparison — DONE)
+작성일: 2026-05-27 / 갱신: 2026-07-05 (PUSH Content Gap Diagnosis v1 — PARTIAL, OCI 실측 대기)
 성격: **현재까지 만든 기능을 누락 없이 기록하는 운영 인벤토리.** 새 기능 정의가
 아니며, 운영 UI 정리의 기준점으로 사용한다.
 
@@ -757,6 +757,31 @@
 | 테스트 | pytest **714 passed** (691 → 714, 전용 파일 23 케이스, FIX r1 +2 / FIX r2 +1 / FIX r3 +2 / FIX r5 +4 / FIX r6 +1 / FIX r7 +1). black / flake8 / frontend lint / frontend build PASS. |
 | 테스트용/임시 여부 | 아님 — 사용자 판단 지원 evidence. |
 | 다음 조치 | 위험 evidence / 시장 국면 / ML 축2 진입 (사용자 결정). |
+
+---
+
+### 2.42 PUSH Content Gap Diagnosis v1 (2026-07-05, PARTIAL — OCI 실측 대기)
+
+| 항목 | 값 |
+|---|---|
+| 기능명 | 3개 PUSH ("필요한 데이터가 부족하다" 축약 메시지) 원인을 read-only 재현으로 확정하는 진단 CLI. PARAM runtime 경로 + Package fallback 경로 두 개를 발송 없이 재현. |
+| 현재 위치 | `python -m scripts.run_push_content_gap_diagnosis --environment pc|oci` (수동 CLI). |
+| 기능 목적 | SQLite 동기화 · PUSH 문구 개선 · OCI 배포 변경 이전에 원인을 사전 확정. 다음 STEP 을 하나로 좁힘. |
+| 사용 가능 여부 | **부분 가능 (PARTIAL, OCI 실측 대기)**. |
+| 진단 대상 | market_briefing / holdings_briefing / spike_or_falling_alert (기존 3 PUSH 실제 식별자). |
+| 재현 방식 (Q2 (b) 확정) | 발송 이전 pure helper 직접 호출 (`build_runtime_message` / `load_manifest` / `load_package` / `extract_message_text`). subprocess · --dry-run 미사용. |
+| available_sources 처리 (Q1 확정) | 실운영과 동일하게 `None` 을 전달 → 축약 메시지 재현. 진단이 값을 주입하지 않음. |
+| PC 실측 잠정 관측 (commit `c05f2c58`, 확정 아님, OCI 실측 후 최종) | 세 PUSH 모두 (PC 시점) root_cause=RUNTIME_CONFIGURATION_GAP (잠정), reason=`runtime_available_sources_not_supplied`, selection_result_count=0. PARAM 정상 로드 · 세 push_kind 활성. `scripts/run_three_push_runtime_oci.py:177` 의 `available_sources=None` 하드코딩이 축약 메시지 원인 후보. artifact `observation_status=single_environment_pending_cross_comparison`. |
+| PC package fallback | `state/three_push/packages/` 부재 → package_dir_missing (not-applicable). |
+| OCI 실측 | 대기 중. 사용자가 동일 commit `c05f2c58` 반영 후 `--environment oci` 1회 수동 실행 → sanitised 요약 전달. |
+| 신규 파일 | FIX r2 로 core 를 책임별 4 모듈로 분리 (B-2/B-3 해소): `app/push_content_gap_diagnosis_requirements.py` (195줄, 상수 + readiness) / `app/push_content_gap_diagnosis_reproducers.py` (152줄, PARAM · package 재현) / `app/push_content_gap_diagnosis_classifier.py` (171줄, 원인 분류 + MIXED 분기 신규) / `app/push_content_gap_diagnosis.py` (210줄, main runner + artifact writer, 얇게 유지). + `scripts/run_push_content_gap_diagnosis.py`, `tests/test_push_content_gap_diagnosis.py`, `docs/handoff/POC2_PUSH_CONTENT_GAP_DIAGNOSIS_V1_CONCLUSION.md`. |
+| 수정 파일 | `.gitignore` (진단 artifact 경로 추가) + docs 4건. |
+| 신규 endpoint / UI / DB 테이블 | 0건. |
+| 외부 호출 / Telegram 발송 | 0건 (자동 테스트 `test_2` / `test_3` 검증). |
+| SQLite / 기존 state artifact 변경 | 0건 (자동 테스트 `test_4` / `test_5` 검증). |
+| 비밀정보 / 절대 경로 leak | 없음 (자동 테스트 `test_9` 검증). |
+| 테스트 | pytest **790 passed** (772 → 790, 신규 18). black / flake8 PASS. frontend 변경 0건. |
+| 다음 조치 | OCI 실측 결과 접수 후 최종 root_cause 확정. PC 기준 잠정 다음 STEP 유형: `OCI_RUNTIME_CONFIGURATION_CLOSEOUT`. |
 
 ---
 
