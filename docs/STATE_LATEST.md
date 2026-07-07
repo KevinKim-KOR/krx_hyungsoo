@@ -1,8 +1,32 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-07 (PUSH Content Gap Diagnosis v1 — DONE, Closeout 완료)
+최종 업데이트: 2026-07-07 (OCI Active Data Boundary Audit v1 — DONE, 감사 완료 · 코드 무변경)
 
-## 이번 STEP 요약 (PUSH Content Gap Diagnosis v1, DONE)
+## 이번 STEP 요약 (OCI Active Data Boundary Audit v1, DONE)
+
+**사용자 확정 (2026-07-07)**: OCI SQLite 중심 활성 운영 구조.
+- **OCI SQLite** = 활성 운영·조회 기준 DB (`state/market/market_data.sqlite`).
+- **PC SQLite** = OCI DB 의 분석 복제본 (원격 write 금지).
+- **PARAM** = DB version / approval / active pointer 로 관리 (JSON 파일 아님).
+- **JSON** = 로그 · archive · API transport · 테스트 fixture 만 허용.
+- 향후 모바일 조회는 OCI SQLite read-only 기반.
+
+**현재 구현 상태**: DB 전환 전 (사전 감사만 완료). 다음 STEP 부터 실제 전환 착수.
+
+**이번 STEP 산출물** (감사만, 코드 · DB · JSON · runtime · API · UI · scheduler · transfer 변경 0건):
+- 216 file 전수 감사 완료 (`state/**/*.json` / `*.jsonl` / `*.sqlite`).
+- 각 경로별 reader/writer 파일:라인 근거 확보 (전량 grep, Q1 확정본 준수).
+- A/B/C 분류 완료 (동적 경로는 생성 함수 + reader glob 한 행에 병합).
+- SQLite inventory 2건 (market_data.sqlite / decision_evidence.sqlite).
+- PARAM · runtime 경로 추적 완료 — `available_sources=None` 하드코딩 위치 확정: `scripts/run_three_push_runtime_oci.py:177`.
+- 3-PUSH evidence source map 완료.
+- PC↔OCI transfer map 완료 (기존 script 만 기록, 신규 transport 미설계).
+- 다음 STEP 확정 필요 항목 8개 목록 (개발자 임의 확정 금지, 설계자 확정 대기).
+- Canonical docs 5건 갱신 (PROJECT_ORIGIN_INTENT · MASTER_PLAN · ASSUMPTIONS · STATE_LATEST · POC2_B_NEXT_ACTIONS).
+- **다음 활성 STEP**: 다음 STEP schema mapping · publication 기준 등 8개 확정 사항 설계자 확정 대기.
+- 상세: `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
+
+## 직전 STEP 요약 (PUSH Content Gap Diagnosis v1, DONE 2026-07-07)
 
 **PUSH Content Gap Diagnosis v1**: 3개 PUSH ("필요한 데이터가 부족하다" 축약 메시지) 의 원인을 read-only 재현으로 확정하는 진단 Step. SQLite 동기화 · PUSH 문구 개선 · OCI 배포 변경 없음.
 

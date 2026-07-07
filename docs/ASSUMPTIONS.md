@@ -91,13 +91,22 @@
 - **재오픈 사유 (2026-05-18)**: FDR + SQLite Market Data Foundation 이후 시장 시세 /
   ETF universe / 가격 이력은 SQLite 를 기준으로 관리하기로 사용자 결정이 변경되었다.
   (Market Discovery SQLite Direct Refresh STEP 의 §3.1 KS-11 문서 정합성 보정).
-- **현재 답 (재정리)**: 데이터 종류별 SSOT 분리.
+- **답 (2026-05-18, 이력 보존)**: 데이터 종류별 SSOT 분리.
   - **시장 데이터** (시세 / universe / 가격 이력 / TOP N 산출 기준) → SQLite
     (`state/market/market_data.sqlite`).
   - **holdings / Run / 승인 / Telegram 흐름** → 기존 JSON SSOT 유지.
   - **MongoDB / 신규 대형 DB 도입은 여전히 금지** (PROJECT_ORIGIN_INTENT §10 #2).
   - **decision evidence 저장은 BACKLOG 유지** — 본 단계에서 SQLite 에도 별도 테이블
     신설하지 않는다.
+
+- **현재 결정 (2026-07-07 사용자 확정)**:
+  - **로그를 제외한 활성 데이터는 DB 로 관리한다**.
+  - **OCI SQLite 는 운영·조회 기준 DB** (`state/market/market_data.sqlite`).
+  - **PC 는 OCI DB 의 분석 복제본**을 사용한다.
+  - **PARAM 은 DB 로 관리** (version / approval / active pointer).
+  - **JSON 은 로그 · archive · API request/response · 테스트 fixture 만 허용**.
+  - 활성 JSON 은 DB 전환 대상과 순서를 먼저 측정하며, 전환 전 임의 삭제 · dual-write 금지.
+  - 관련 감사 근거: `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 
 ### A-3. 친구 프로젝트를 뼈대로 삼는가?
 - **상태**: ANSWERED (2026-04-21)
@@ -123,10 +132,20 @@
   - **데이터 흐름**: PC SQLite 는 PC 작업용 기준 저장소로 유지. PC ML 이 OCI
     DB 를 직접 원격으로 읽지 않는다. PC 는 승인 / 발행 시점에 OCI 로 read-only
     published snapshot 을 전달한다.
-- **DB 형식 미확정**: published snapshot 의 구체 형식 (versioned SQLite snapshot
-  / read-only JSON artifact / 제한된 조회용 SQLite copy 등) 은 본 시점에
-  확정하지 않는다. **OCI read model 구현 직전의 별도 결정**으로 남긴다. 현재
-  단계에서 신규 DB 나 full DB migration 은 하지 않는다.
+- **DB 형식 (2026-06-20 초안, 이력 보존)**: published snapshot 의 구체 형식
+  (versioned SQLite snapshot / read-only JSON artifact / 제한된 조회용 SQLite
+  copy 등) 은 본 시점에 확정하지 않는다. **OCI read model 구현 직전의 별도
+  결정**으로 남긴다. 현재 단계에서 신규 DB 나 full DB migration 은 하지 않는다.
+
+- **현재 결정 (2026-07-07 사용자 확정)**:
+  - **OCI SQLite = 활성 운영·조회 기준 DB**. PC 는 OCI publication 기반 분석
+    복제본을 사용한다.
+  - **PARAM 은 JSON 파일이 아닌 DB version / approval / active 상태로 관리** 한다.
+  - PC 에서 계산·승인된 PARAM 은 DB 기반 발행 절차로 OCI 에 반영한다.
+    JSON PARAM handoff 를 새 운영 경로로 만들지 않는다.
+  - 향후 모바일 조회는 **OCI SQLite read-only 기반** 으로 구현한다.
+  - 실제 활성 데이터 전수 감사와 다음 STEP 매핑 대기 항목:
+    `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 - **활성 Open Question 추가 없음**: 본 결정은 방향 앵커이며, 즉시 검증 트리거가
   발생하는 것이 아니다. DB 형식 결정 시점에 도달하면 그 때 별도 Q 로 승격.
 - **참조**: `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` (원본 결정 기록),

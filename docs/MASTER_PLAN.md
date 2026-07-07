@@ -65,8 +65,17 @@ Phase 1에서 살려온 독립 ML 자산을 새 구조에 연결하고, 첫 fact
   - 모바일 UI 구체 구현 (모바일 UI 후순위 원칙 유지 — PROJECT_ORIGIN_INTENT §7).
 - 완료 기준: **PC 승인 / 발행 시점에 OCI 로 read-only published snapshot 이
   전달되고, OCI 측에서 마지막 published 데이터 + 운영 상태 + 기준 시각 + 데이터
-  신선도를 read-only 로 조회할 수 있다.** snapshot 구체 형식 (versioned SQLite
-  snapshot / read-only JSON artifact / 제한된 조회용 SQLite copy 등) 은 본 단계
-  진입 직전 별도 결정.
+  신선도를 read-only 로 조회할 수 있다.**
+- **저장소 결정 정정 (2026-07-07 사용자 확정, 단계 순서 미변경)**:
+  - OCI SQLite (`state/market/market_data.sqlite`) 는 **활성 운영·조회 기준 DB** 다.
+  - PC SQLite 는 OCI publication 기반 **분석 복제본** 이다 (원격 write 금지).
+  - **PARAM 은 DB version / approval / active pointer 로 관리** 한다 (JSON 파일 아님).
+  - JSON 은 **로그 · archive · API transport** 만 허용. 활성 데이터 저장 · 동기화 ·
+    운영 입력으로 사용하지 않는다.
+  - 향후 모바일 조회는 **OCI SQLite read-only** 기반으로 구현한다.
+  - 위 결정으로 이전 문구 "snapshot 구체 형식 (versioned SQLite snapshot /
+    read-only JSON artifact / 제한된 조회용 SQLite copy 등) 은 본 단계 진입 직전
+    별도 결정" 은 **SQLite 중심 · JSON transport 제한** 방향으로 확정.
+  - 감사 근거: `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 
 이 MASTER_PLAN의 목적은 기능을 벌리는 것이 아니라, **데이터 수집 → PENDING 초안 → 인간 승인 → OCI 전달/알림 → factor 확장 → 저빈도 운영 + 예외 감시 → OCI read-only 조회 평면 확장**의 짧고 검증 가능한 루프를 완성하는 데 있다. Open Question은 질문으로 남겨 관리하고, Kill Switch가 발동하면 토론하지 말고 즉시 멈춘다. :contentReference[oaicite:14]{index=14} :contentReference[oaicite:15]{index=15}
