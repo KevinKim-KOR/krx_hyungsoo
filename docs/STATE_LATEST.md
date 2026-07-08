@@ -1,8 +1,39 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-07 (OCI Active Data Boundary Audit v1 — DONE, 감사 완료 · 코드 무변경)
+최종 업데이트: 2026-07-08 (OCI Database Preflight v1 — PARTIAL, OCI 실측 대기)
 
-## 이번 STEP 요약 (OCI Active Data Boundary Audit v1, DONE)
+## 이번 STEP 요약 (OCI Database Preflight v1, PARTIAL)
+
+**목적**: OCI SQLite 운영 전환 사전점검. read-only 실측만. DB / JSON / runtime / API / UI / scheduler / transfer 변경 0건.
+
+**PC 실측 (revision `13ced48e`)**:
+- `state/market/market_data.sqlite` = **READY** (integrity_check=ok, 12 tables, schema_version=12).
+- `state/decision/decision_evidence.sqlite` = **READY (OPTIONAL)** (integrity_check=ok, 1 table).
+- runtime paths: `confirmed_from_local_and_prior_audit` (5개 중 2개 PC 로컬 존재).
+- staging: `unconfirmed_from_audit` (`THREE_PUSH_REMOTE_PACKAGE_DIR` env 부재; 추정 · `.env` 로드 · 기본 경로 추론 0건, Q2 확정본 준수).
+- PC single_environment_readiness (CLI 출력) = **READY**.
+
+**PARTIAL 사유** (지시문 §7.2): OCI 실측 미완료 → overall 판정 불가. 사용자가 OCI 에서 동일 revision 실행 후 sanitised stdout 전달 시 재판정.
+
+**신규 파일** (지시문 §5 허용 범위):
+- `scripts/run_oci_database_preflight.py` (438줄, read-only CLI, FIX r1 최상위 예외 경계 포함)
+- `tests/test_oci_database_preflight.py` (372줄, 19 케이스 — FIX r1 sanitised failure contract 회귀 3건 포함)
+- `docs/handoff/POC2_OCI_DATABASE_PREFLIGHT_V1_CONCLUSION.md`
+
+**Q1 (a) 준수**: `market_data.sqlite` 기준 경로 = `app.market_data_store.DEFAULT_DB_PATH`. 보조 정의 (`etf_nav_store`) 동일 반환값 → 충돌 아님.
+
+**Q2 (a)+(b) 준수**: 로컬 실측 · prior_audit_evidence · unconfirmed_from_audit 3단계 근거 분리. 이전 `content_ready` 는 이번 실행의 staging_readiness 자동 승격 근거로 사용 안 함.
+
+**backend 809 passed** (790 → 809, 신규 19). black / flake8 PASS. frontend 변경 0건.
+
+**다음 STEP 후보 (사용자 액션)**:
+1. OCI 에서 `python -m scripts.run_oci_database_preflight --environment oci` + `git rev-parse --short HEAD` 실행.
+2. sanitised stdout + revision 전달.
+3. overall readiness 확정 후 다음 STEP 분기: READY → `PARAM / Runtime State DB Mapping v1` / NOT_READY → `OCI Database Environment Remediation v1`.
+
+상세: `docs/handoff/POC2_OCI_DATABASE_PREFLIGHT_V1_CONCLUSION.md`.
+
+## 직전 STEP 요약 (OCI Active Data Boundary Audit v1, DONE 2026-07-07)
 
 **사용자 확정 (2026-07-07)**: OCI SQLite 중심 활성 운영 구조.
 - **OCI SQLite** = 활성 운영·조회 기준 DB (`state/market/market_data.sqlite`).
