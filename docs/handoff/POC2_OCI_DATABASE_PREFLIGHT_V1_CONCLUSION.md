@@ -1,4 +1,4 @@
-# OCI Database Preflight v1 — Conclusion (PARTIAL, OCI 실측 대기)
+# OCI Database Preflight v1 — Conclusion (DONE, overall NOT_READY)
 
 작성일: 2026-07-08
 성격: OCI SQLite 운영 전환 사전점검. **read-only** 실측만. DB / JSON / runtime / API / UI / scheduler / transfer 변경 **0건**.
@@ -19,16 +19,16 @@
 
 ## 2. 실행 revision 과 PC / OCI 비교 표
 
-**PC 실측 완료 (2026-07-08)**:
+**PC · OCI 교차 실측 완료 (2026-07-08)**:
 
 | 항목 | PC | OCI |
 |---|---|---|
-| 실행 revision (short git hash) | `13ced48e` | ⏳ 대기 (사용자 실행 필요) |
+| 실행 revision (short git hash) | `fd7ff116` | `fd7ff116` |
 | `--environment` 인자 | `pc` | `oci` |
 | 실행 명령 | `python -m scripts.run_oci_database_preflight --environment pc` | `python -m scripts.run_oci_database_preflight --environment oci` |
-| CLI 결과 status | ok (single_environment_readiness=READY) | ⏳ 대기 |
+| CLI 결과 single_environment_readiness | **READY** | **NOT_READY** |
 
-**Same-revision 검증**: 지시문 §6.3 · §9 준수 — OCI 실행 시 `git rev-parse --short HEAD` 값이 `13ced48e` 와 동일해야 DONE 진행 가능.
+**Same-revision 검증**: PC `fd7ff116` = OCI `fd7ff116` → **same_revision=True** (지시문 §6.3 · §9 준수).
 
 ---
 
@@ -54,7 +54,22 @@
 
 **Q1 (a) 확정 준수**: 기준 경로 = `app.market_data_store.DEFAULT_DB_PATH`. 보조 정의 `app.etf_nav_store.DEFAULT_DB_PATH` 는 동일 반환값 별도 선언 — **충돌 아님**. 자동 테스트 `test_q1a_two_modules_with_same_return_is_ready` + `test_q1a_conflict_when_aux_returns_different_path` 로 두 케이스 검증.
 
-**OCI 실측**: ⏳ 대기.
+**OCI 실측 (revision `fd7ff116`)**:
+
+| 항목 | 값 |
+|---|---|
+| 프로젝트 상대 경로 | `state/market/market_data.sqlite` |
+| path resolution 상태 | `resolved` (single_canonical_path) |
+| 파일 존재 여부 | **False** |
+| regular file 여부 | False |
+| read access | False |
+| read-only open | False |
+| PRAGMA integrity_check | None |
+| table 목록 (개수) | None |
+| 파일 크기 | None |
+| **개별 readiness (§7.1)** | **NOT_READY** |
+
+**결정적 관측**: 기준 DB (`state/market/market_data.sqlite`) 가 OCI 에 부재. 다음 STEP `OCI_DATABASE_ENVIRONMENT_REMEDIATION` 의 최우선 대상.
 
 ---
 
@@ -74,7 +89,15 @@
 
 **§6.6 · §7.2 준수**: 부재 시 `OPTIONAL_MISSING` 처리 규칙은 자동 테스트 `test_5_decision_missing_is_optional_missing` 로 검증. overall readiness 실패로 강제하지 않음.
 
-**OCI 실측**: ⏳ 대기.
+**OCI 실측 (revision `fd7ff116`)**:
+
+| 항목 | 값 |
+|---|---|
+| 프로젝트 상대 경로 | `state/decision/decision_evidence.sqlite` |
+| 존재 여부 | **False** |
+| **readiness** | **OPTIONAL_MISSING** (지시문 §7.2 그대로 overall 실패 강제 X) |
+
+OCI 상 부재는 향후 역할이 확정되지 않은 optional DB 이므로 이번 STEP overall 판정에서 제외 (§6.6 준수). 다음 STEP 매핑에서 다룸.
 
 ---
 
@@ -92,7 +115,33 @@
 
 **PC 시점 runtime_paths_status**: `confirmed_from_local_and_prior_audit` (일부 파일 로컬 존재 확인 + audit 근거 인용).
 
-**OCI 실측**: ⏳ 대기. OCI 에서는 `oci_runtime_*` 3개 파일 실제 존재 여부가 확인되어야 함 (audit 상 `runtime_readiness.required_paths_ready=false` 관측 근거 재확인).
+**OCI 실측 (revision `fd7ff116`)**:
+
+| 경로 | exists | regular_file | read_access |
+|---|---|---|---|
+| `state/three_push/params/latest_runtime_param.json` | True | True | True |
+| `state/three_push/oci_runtime_status_latest.json` | **True** | True | True |
+| `state/three_push/oci_runtime_sent_registry.json` | **True** | True | True |
+| `state/three_push/oci_runtime_history.jsonl` | **True** | True | True |
+| `state/runtime/three_push_runtime_probe_latest.json` | False | False | False |
+
+**OCI runtime_paths_status**: `confirmed_from_local_and_prior_audit`.
+
+**핵심 관측 (OCI 만의 신규 확인)**:
+- OCI runtime write 파일 3종 (`oci_runtime_status_latest.json` / `oci_runtime_sent_registry.json` / `oci_runtime_history.jsonl`) 모두 실제 존재 → PARAM runtime 이 OCI 상에서 실제 실행되고 있음.
+- 반면 `three_push_runtime_probe_latest.json` 은 OCI 상 부재 → OCI runtime probe cache 가 아직 채워지지 않음 (audit 상 `sqlite_integrity=unavailable` + `required_paths_ready=false` 관측 근거 재확인).
+
+**PC · OCI 교차 관측**:
+
+| 경로 | PC | OCI |
+|---|---|---|
+| `latest_runtime_param.json` | True | True |
+| `oci_runtime_status_latest.json` | False | **True** |
+| `oci_runtime_sent_registry.json` | False | **True** |
+| `oci_runtime_history.jsonl` | False | **True** |
+| `three_push_runtime_probe_latest.json` | True | **False** |
+
+OCI runtime write 파일은 OCI 에서만, PC 로컬 probe cache 는 PC 에서만 채워짐 — 각자 역할대로 분리 실행되고 있음.
 
 ### 5.2 transfer staging 관찰 (Q2 (a)+(b) 3단계 근거 분리)
 
@@ -131,54 +180,69 @@
 | staging | unconfirmed_from_audit (env 부재) |
 | **PC single_environment_readiness (CLI 출력)** | **READY** |
 
-### 6.2 Overall environment readiness (지시문 §7.2)
+### 6.2 OCI single-environment readiness (revision `fd7ff116`)
 
-**PARTIAL** — 지시문 §7.2 · §9 명시:
-> "PC 또는 OCI 중 한쪽 결과가 없음 → PARTIAL"
-> "OCI 결과를 실측이 아닌 추정으로 기록함 → PARTIAL"
+| 구성 요소 | 상태 |
+|---|---|
+| market_data.sqlite | **NOT_READY** (파일 부재) |
+| decision_evidence.sqlite | OPTIONAL_MISSING (§6.6 준수, overall 실패 강제 X) |
+| runtime paths | confirmed_from_local_and_prior_audit (4 exists / 1 부재) |
+| staging | unconfirmed_from_audit (env 부재, Q2 확정본 준수) |
+| **OCI single_environment_readiness (CLI 출력)** | **NOT_READY** |
 
-PC 단독으로는 READY 라도 OCI 실측 없이는 overall 판정 불가. **staging_confirmed_or_proven_unused 는 별도로 OCI 실측 후에도 unconfirmed_from_audit 유지 가능** (§6.7: OCI 상 remote 절대 경로 · 권한 · atomic rename 등은 이번 STEP 범위 밖).
+### 6.3 Overall environment readiness (지시문 §7.2) — 확정
+
+**NOT_READY** — 지시문 §7.2 명시:
+> "PC 와 OCI 실행은 모두 완료됐으나 market_data.sqlite, path resolution, read access, integrity, runtime path, staging 중 하나 이상이 준비되지 않음 → NOT_READY"
+
+**판정 근거**:
+- PC · OCI 양쪽 실행 완료 ✅
+- same_revision (`fd7ff116` = `fd7ff116`) ✅
+- OCI `market_data.sqlite` **부재** → 이 하나로 NOT_READY 판정 확정
+- staging 은 `unconfirmed_from_audit` 유지 (§6.7 명시: 이번 STEP 범위 밖)
+
+**진단 결과이며 STEP 실패가 아님** (지시문 §7.3): "이후 schema, PARAM migration, runtime rewire 로 진행 금지 / 확인된 OCI 환경 결함만 다루는 remediation Step 이 필요".
 
 ---
 
-## 7. OCI 미확인 항목
+## 7. OCI 실측 후 확인된 사실 vs 여전히 미확인
 
-지시문 §10 · §6.4 규칙 그대로:
+### 7.1 이번 OCI 실측에서 확인된 사실
 
-- OCI 상 `state/market/market_data.sqlite` 실제 파일 존재 · integrity_check · table_count.
-- OCI 상 `state/decision/decision_evidence.sqlite` 존재 여부.
-- OCI runtime write 파일 3종 (`oci_runtime_status_latest.json` / `oci_runtime_sent_registry.json` / `oci_runtime_history.jsonl`) 실제 상태.
-- OCI 상 `state/runtime/three_push_runtime_probe_latest.json` 존재 여부.
-- OCI 상 `state/three_push/params/latest_runtime_param.json` 존재 및 read access.
-- OCI 상 `THREE_PUSH_REMOTE_PACKAGE_DIR` env 변수 presence.
-- OCI 실행 revision (`git rev-parse --short HEAD`) — PC 와 동일 여부.
+- OCI `state/market/market_data.sqlite`: **부재** (exists=False).
+- OCI `state/decision/decision_evidence.sqlite`: **부재** (exists=False).
+- OCI runtime write 파일 3종 (`oci_runtime_status_latest.json` / `oci_runtime_sent_registry.json` / `oci_runtime_history.jsonl`): **모두 존재** — PARAM runtime 이 OCI 상에서 실제 실행되고 있음 (write 결과물 존재가 이를 증명).
+- OCI `state/runtime/three_push_runtime_probe_latest.json`: **부재** — OCI 상 probe cache 미형성.
+- OCI `state/three_push/params/latest_runtime_param.json`: **존재** (read_access=True) — active PARAM 이 OCI 에 반영되어 있음.
+- OCI 실행 revision: `fd7ff116` = PC revision `fd7ff116` (**same_revision=True**).
 
-**추정 금지**: 위 항목은 사용자 sanitised OCI stdout 출력 도착 시에만 conclusion 에 반영.
+### 7.2 여전히 미확인 (§6.4 · §6.7 규칙 그대로 유지)
+
+- OCI 상 `THREE_PUSH_REMOTE_PACKAGE_DIR` env 변수 presence: `env_variable_absent` (Q2 확정본대로 추정 · `.env` 로드 · 기본 경로 추론 없음).
+- OCI 상 remote transfer staging 실제 절대 경로 · 권한 · atomic rename · verify 가능 여부: `unconfirmed_from_audit` (§6.7: 이번 STEP 범위 밖, 다음 STEP 에서 다룸).
+
+**추정 금지 원칙 준수**: 이번 실측에서 확인되지 않은 항목은 "확인됨" 으로 표기하지 않음.
 
 ---
 
-## 8. 다음 Step 분기
+## 8. 다음 Step 분기 (확정)
 
 지시문 §3 · §11 그대로:
 
-| overall readiness | 다음 STEP 후보 |
-|---|---|
-| READY | PARAM / Runtime State DB Mapping v1 (다음 STEP 설계) |
-| **PARTIAL (이번 시점)** | **같은 OCI Database Preflight v1 의 부족한 실측 완료 → OCI 실측 후 재판정** |
-| NOT_READY | OCI Database Environment Remediation v1 (다음 STEP 설계) |
+| overall readiness | 다음 STEP 후보 | 이번 판정 |
+|---|---|---|
+| READY | PARAM / Runtime State DB Mapping v1 | — |
+| **NOT_READY** | **`OCI Database Environment Remediation v1`** | **✅ 확정** |
+| PARTIAL | 같은 OCI Database Preflight v1 이어서 완료 | — |
 
-**현재 시점 다음 액션 (사용자)**:
-1. 동일 commit (본 PR 병합 후 최신 `main`) 을 OCI 에 반영.
-2. OCI 에서:
-   ```
-   python -m scripts.run_oci_database_preflight --environment oci
-   git rev-parse --short HEAD
-   ```
-   두 줄만 실행.
-3. sanitised stdout + revision 값을 새 세션에 전달.
-4. 개발자가 PC · OCI 비교 → overall readiness 확정 → conclusion 최종 갱신.
+**다음 STEP 유형**: `OCI Database Environment Remediation v1`.
 
-**절대 전달 X**: Telegram token · chat id · 환경변수 값 원문 · 절대 경로 · credential · raw traceback (CLI 가 애초에 이를 stdout 에 담지 않음, 자동 테스트 `test_9` / `test_10` 검증).
+**주요 remediation 대상** (OCI 실측 근거):
+- OCI `state/market/market_data.sqlite` 부재 → 초기화 / 시드 반영 방식 설계.
+- OCI `state/runtime/three_push_runtime_probe_latest.json` 부재 → probe cache 형성 흐름 확인.
+- OCI staging 실제 경로 · 권한 · atomic rename · verify 가능 여부 확인 (§6.7 다음 STEP 이관 항목).
+
+**이번 STEP 안에서는 remediation 을 구현하지 않음** (지시문 §7.3): "이후 schema, PARAM migration, runtime rewire 로 진행 금지".
 
 ---
 

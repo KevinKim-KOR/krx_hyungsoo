@@ -1,19 +1,22 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-08 (OCI Database Preflight v1 — PARTIAL, OCI 실측 대기)
+최종 업데이트: 2026-07-08 (OCI Database Preflight v1 — DONE, overall NOT_READY)
 
-## 이번 STEP 요약 (OCI Database Preflight v1, PARTIAL)
+## 이번 STEP 요약 (OCI Database Preflight v1, DONE)
 
 **목적**: OCI SQLite 운영 전환 사전점검. read-only 실측만. DB / JSON / runtime / API / UI / scheduler / transfer 변경 0건.
 
-**PC 실측 (revision `13ced48e`)**:
-- `state/market/market_data.sqlite` = **READY** (integrity_check=ok, 12 tables, schema_version=12).
-- `state/decision/decision_evidence.sqlite` = **READY (OPTIONAL)** (integrity_check=ok, 1 table).
-- runtime paths: `confirmed_from_local_and_prior_audit` (5개 중 2개 PC 로컬 존재).
-- staging: `unconfirmed_from_audit` (`THREE_PUSH_REMOTE_PACKAGE_DIR` env 부재; 추정 · `.env` 로드 · 기본 경로 추론 0건, Q2 확정본 준수).
-- PC single_environment_readiness (CLI 출력) = **READY**.
+**PC · OCI 교차 실측 완료 (양쪽 revision `fd7ff116`, same_revision=True)**:
+- PC `state/market/market_data.sqlite` = **READY** (integrity_check=ok, 12 tables, schema_version=12).
+- **OCI `state/market/market_data.sqlite` = NOT_READY (파일 부재)** — 기준 DB 자체가 OCI 에 없음.
+- PC `state/decision/decision_evidence.sqlite` = READY (OPTIONAL).
+- OCI `state/decision/decision_evidence.sqlite` = OPTIONAL_MISSING (부재; §6.6 그대로 overall 실패 강제 X).
+- OCI runtime paths: 4개 존재 (OCI runtime write 3종 + latest_runtime_param) + 1개 부재 (probe cache) → PARAM runtime 은 OCI 상에서 실제 실행 중.
+- staging: 양쪽 모두 `unconfirmed_from_audit` (§6.7 다음 STEP 이관).
 
-**PARTIAL 사유** (지시문 §7.2): OCI 실측 미완료 → overall 판정 불가. 사용자가 OCI 에서 동일 revision 실행 후 sanitised stdout 전달 시 재판정.
+**Overall environment_readiness = NOT_READY** (§7.2 · §7.3 — OCI market_data.sqlite 부재가 근거. **진단 결과이며 STEP 실패 아님**; 다음 STEP 은 확인된 결함만 다루는 remediation Step).
+
+**다음 STEP 유형** (확정): **`OCI Database Environment Remediation v1`**. 이번 STEP 안에서 remediation 은 구현하지 않음.
 
 **신규 파일** (지시문 §5 허용 범위):
 - `scripts/run_oci_database_preflight.py` (438줄, read-only CLI, FIX r1 최상위 예외 경계 포함)
