@@ -1,8 +1,36 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-08 (OCI Database Preflight v1 — DONE, overall NOT_READY)
+최종 업데이트: 2026-07-09 (OCI Database Environment Remediation v1 — PARTIAL, 사용자 OCI 실행 대기)
 
-## 이번 STEP 요약 (OCI Database Preflight v1, DONE)
+## 이번 STEP 요약 (OCI Database Environment Remediation v1, PARTIAL)
+
+**목적**: 이전 STEP `OCI Database Preflight v1` 에서 확인된 OCI `state/market/market_data.sqlite` 부재를 1회성 시드 반영으로 복구.
+
+**협업 방식 (Q1 (b) 확정)**: 개발자는 OCI 접속 없음. 개발자 = PC 확인 + OCI 명령 세트 작성 + 결과 검증. 사용자 = OCI 실제 실행 + sanitised 결과 전달.
+
+**PC source DB 확인 완료 (2026-07-09)** (Q2 (a) 확정 — SHA-256 통일):
+- path: `state/market/market_data.sqlite`
+- size: **131,538,944 bytes**
+- SHA-256: **`f7df867d0f69fc07929b0a25a87ccdc0f235a01097299a9a522bf991614cf286`**
+- integrity_check: **ok**
+- schema_version: 12 / application_id: 0
+- table_count: **12**
+- Preflight PC 결과 (revision `fd7ff116`): READY
+
+**PARTIAL 사유**: 사용자가 OCI 에서 §8.1 ~ §8.7 (temp 전송 → 검증 → atomic rename → target 재검증 → Preflight 재실행) 실행 후 sanitised 결과 전달 대기.
+
+**신규 파일**:
+- `docs/handoff/POC2_OCI_DATABASE_ENVIRONMENT_REMEDIATION_V1_CONCLUSION.md` (사용자 실행 명령 세트 + 검증 기준)
+
+**변경 없음** (지시문 §5 준수): 소스 코드 · SQLite schema · row · JSON · runtime · API · UI · scheduler · Telegram · `available_sources=None` · `decision_evidence.sqlite` · `three_push_runtime_probe_latest.json` · 기존 PARAM JSON / runtime status / sent registry / history — 모두 0건.
+
+**다음 활성 STEP 게이트**:
+- OCI Preflight 재실행 결과 market_data readiness=READY → **DONE** → 다음 STEP: `PARAM / Runtime State DB Mapping v1`.
+- readiness=NOT_READY → 같은 STEP 추가 라운드 (확인된 실패 원인만 해소).
+
+상세: `docs/handoff/POC2_OCI_DATABASE_ENVIRONMENT_REMEDIATION_V1_CONCLUSION.md`.
+
+## 직전 STEP 요약 (OCI Database Preflight v1, DONE 2026-07-08)
 
 **목적**: OCI SQLite 운영 전환 사전점검. read-only 실측만. DB / JSON / runtime / API / UI / scheduler / transfer 변경 0건.
 
