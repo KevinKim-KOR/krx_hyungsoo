@@ -1,6 +1,7 @@
-# PARAM / Runtime State DB Cutover v1 — Conclusion (PARTIAL — PC DONE, OCI 실행 대기)
+# PARAM / Runtime State DB Cutover v1 — Conclusion (DONE — PC + OCI PASS, PC↔OCI PARAM hash 차이 known limitation)
 
 작성일: 2026-07-09
+closeout: 2026-07-09
 성격: JSON 중심 active runtime 운영 상태를 `runtime_state.sqlite` 기준으로 전환한 구현 Step.
 
 **협업 방식 (Q1 (b) 재적용)**: 개발자는 OCI 접속 없음. PC 구현/검증 + OCI 사용자 실행 명령 세트 작성. OCI 실행 결과 도착 후 closeout.
@@ -223,19 +224,44 @@ verify 결과 stdout 에서:
 - `checks.json_fallback_used`
 - OCI `git rev-parse --short HEAD` 결과
 
-### 11.3 PC vs OCI PARAM hash 비교 (Q9)
+### 11.3 PC vs OCI PARAM hash 비교 (Q9 실측)
 
-| 항목 | PC (최신 실측) | PC (초기 seed) | OCI |
+| 항목 | PC (최신 실측) | PC (초기 seed) | OCI (실측 2026-07-09) |
 |---|---|---|---|
-| `source_hash_sha256` | `94ccca0a...e8a6f` | `622ba812...598888` | ⏳ |
-| `param_version_id` | `param-20260709T140204-335512` | `param-20260708T141218-914114` | ⏳ |
-| `activated_by` | `api_param_apply` | `cutover_seed` | ⏳ |
-| `same_hash` | — | — | ⏳ |
-| revision | 본 commit | — | ⏳ |
+| `source_hash_sha256` | `94ccca0a...e8a6f` | `622ba812...598888` | **`561bfd92...820f73`** |
+| `param_version_id` | `param-20260709T140204-335512` | `param-20260708T141218-914114` | **`param-20260620T103410-757435`** |
+| `activated_by` | `api_param_apply` | `cutover_seed` | **`cutover_seed`** |
+| `same_hash` (PC 초기 vs OCI) | — | — | **false** |
+| revision | 본 commit | — | **`16956f95`** (same_revision=True) |
 
-`same_hash=true` 예상 (PC 에서 최근 sync 한 경우). `same_hash=false` 발견 시 known limitation / operational warning 으로 §14 에 기록 — 자동 FAIL 아님 (Q9 확정본).
+**`same_hash=false` 판정**: Q9 확정본상 **자동 FAIL 아님** — operational warning / known limitation 으로 §15 에 기록.
 
-### 11.4 OCI 판정 대기: `OCI_result = ⏳`.
+**원인**: OCI 상 `state/three_push/params/latest_runtime_param.json` 이 `param-20260620T103410-757435` (2026-06-20 시점 PARAM) 이고, PC 초기 seed 는 `param-20260708T141218-914114` (2026-07-08 시점). 즉 OCI 가 이후 PC 승인분을 반영하지 못한 상태. 이는 §12.2 BACKLOG "PC↔OCI publication 표준화" 의 실증 근거로 이월.
+
+**semantic_match_with_latest_json=true** (OCI verify): OCI DB 재구성 hash = OCI JSON canonical hash. **OCI 로컬 관점 정합성은 완전**. Cutover 자체는 성공.
+
+### 11.4 OCI 실측 결과 (2026-07-09)
+
+**seed stdout 요약**:
+- `steps.param`: `param_version_id=param-20260620T103410-757435`, `source_hash_sha256=561bfd92...820f73`, `created_new_version=true`, `pointer_action=created`.
+- `steps.status`: `seeded_run_id=1`, `absence_recorded=false` (OCI 상 `oci_runtime_status_latest.json` 존재).
+- `steps.sent_registry`: `input_entries=47`, `inserted=47`, `conflicts_ignored=0`.
+- `warnings`: 0건.
+- `db.tables`: 5 + `sqlite_sequence`, `integrity_check=ok`.
+- `db.row_counts`: `runtime_param_version=1, runtime_param_value=13, runtime_param_active=1, runtime_execution_status=1, runtime_sent_registry=47`.
+
+**verify stdout 요약**:
+- `overall=READY`.
+- `missing_tables=[]`, `integrity_check=ok`.
+- `active_pointer`: `active_scope=three_push`, `active_param_version_id=param-20260620T103410-757435`, `activated_by=cutover_seed`, `activated_at=2026-07-09T14:19:39.791791+00:00`.
+- `reconstruct_active_param_ok=true`.
+- `canonical_hash_json=canonical_hash_db_reconstruction=561bfd92...820f73`, `semantic_match_with_latest_json=true`.
+- `latest_execution_status_present=true`: `run_id=1, push_kind=spike_or_falling_alert, status=sent, runtime_date_kst=2026-07-09`.
+- `sent_registry_count=47`.
+- `json_fallback_used=false`.
+- OCI revision: `16956f95` (same_revision=True with PC).
+
+**OCI 판정: `OCI_result = READY`**.
 
 ## 12. 변경된 코드 / 문서 / DB 파일 목록
 
@@ -283,18 +309,17 @@ verify 결과 stdout 에서:
 
 ## 14. 다음 Step 게이트
 
-OCI 실행 완료 후:
-- OCI `verify overall=READY` + PC `overall=READY` → **DONE** → 다음 Step: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션).
-- OCI `overall=NOT_READY` → **Cutover PARTIAL 계속** → 원인 해소.
+**판정: DONE** (PC + OCI 모두 `verify overall=READY`).
+**다음 Step**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — `available_sources=None` 제거 준비.
 
-## 15. 남은 미확인 항목 / 알려진 한계
+## 15. 알려진 한계
 
-**사용자 OCI 실행 후 확정 예정**:
-- OCI seed `param_version_id` / `source_hash_sha256`.
-- OCI seed status/registry counts.
-- OCI verify `semantic_match_with_latest_json`.
-- OCI revision (`git rev-parse --short HEAD`).
-- PC/OCI `same_hash` 결과.
+**PC↔OCI PARAM version 불일치** (Q9 실측 결과, operational warning):
+- PC 초기 seed active PARAM = `param-20260708T141218-914114` (2026-07-08 승인).
+- OCI 활성 PARAM = `param-20260620T103410-757435` (2026-06-20 승인).
+- OCI 가 이후 PC 승인분을 반영 못한 상태. same_revision=True (양쪽 code `16956f95`) 이나 데이터 계층 (`latest_runtime_param.json`) 이 미동기화.
+- **Cutover 자체는 성공** (OCI 로컬 JSON ↔ OCI DB 정합, `semantic_match_with_latest_json=true`).
+- **BACKLOG §12.2 (PC↔OCI publication 표준화)** 의 실증 근거로 이월. 다음 STEP `Runtime Evidence DB Connection v1` 이후 별도 STEP 에서 다룰 예정.
 
 **test isolation 이슈** (다음 STEP 이관 후보):
 - `tests/test_three_push_param_api.py` 등이 `_create_approved_manual_seed_param` 을 통해 **실제 PC 운영 DB (`state/runtime/runtime_state.sqlite`)** 에 write 를 유발함. 그 결과 backend 회귀 실행 중 초기 seed `version=1, value=13, active=cutover_seed` 상태가 최신 `version=5, value=65, active=api_param_apply` 로 진화.

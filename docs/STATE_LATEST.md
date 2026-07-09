@@ -1,8 +1,8 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-09 (PARAM / Runtime State DB Cutover v1 — PARTIAL, PC DONE · OCI 실행 대기)
+최종 업데이트: 2026-07-09 (PARAM / Runtime State DB Cutover v1 — DONE, PC + OCI 모두 verify READY)
 
-## 이번 STEP 요약 (PARAM / Runtime State DB Cutover v1, PARTIAL — PC DONE)
+## 이번 STEP 요약 (PARAM / Runtime State DB Cutover v1, DONE)
 
 **목적**: JSON 중심 active runtime 운영 상태 (`latest_runtime_param.json`, `oci_runtime_status_latest.json`, `oci_runtime_sent_registry.json`) 를 `state/runtime/runtime_state.sqlite` 기준으로 전환. history JSONL 은 archive 유지.
 
@@ -35,9 +35,15 @@
 
 **backend 회귀**: **820 passed** (직전 809 → 820, 신규 11). 0 fail. black / flake8 / py_compile PASS.
 
-**PARTIAL 사유**: 지시문 §12 · §13 상 OCI 실행 결과 필요. 사용자 OCI seed/verify 실행 후 CONCLUSION §11 갱신 → DONE 승격.
+**OCI seed/verify 결과 (2026-07-09, revision `16956f95` same_revision=True)**:
+- OCI 활성 PARAM: `param-20260620T103410-757435` (2026-06-20 승인분), `activated_by=cutover_seed`, hash=`561bfd92...820f73`.
+- `sent_registry` seed: 47 entries (input=inserted=47, conflicts=0).
+- `runtime_execution_status` seed: 1건 (`run_id=1, push_kind=spike_or_falling_alert, status=sent, runtime_date_kst=2026-07-09`).
+- OCI `overall=READY`, `semantic_match_with_latest_json=true`, `json_fallback_used=false`, integrity=ok, warnings 0건.
 
-**다음 활성 STEP (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — OCI closeout PASS 후.
+**PC↔OCI PARAM version 불일치 (Q9 operational warning)**: PC 초기 seed = `param-20260708T141218-914114` (2026-07-08) vs OCI = `param-20260620T103410-757435` (2026-06-20). `same_hash=false`. Cutover 자체는 양쪽 로컬 정합 유지 (`semantic_match_with_latest_json=true` 양쪽 모두). BACKLOG §12.2 (PC↔OCI publication 표준화) 실증 근거로 이월.
+
+**다음 활성 STEP (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — `available_sources=None` 제거 준비.
 
 상세: `docs/handoff/POC2_PARAM_RUNTIME_STATE_DB_CUTOVER_V1_CONCLUSION.md`.
 
