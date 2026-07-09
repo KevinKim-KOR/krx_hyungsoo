@@ -1,8 +1,39 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-09 (OCI Database Environment Remediation v1 — DONE, 3-way SHA-256 일치 · Preflight READY)
+최종 업데이트: 2026-07-09 (PARAM / Runtime State DB Mapping v1 — DONE, code_contract + OCI observed 일치)
 
-## 이번 STEP 요약 (OCI Database Environment Remediation v1, DONE)
+## 이번 STEP 요약 (PARAM / Runtime State DB Mapping v1, DONE)
+
+**목적**: active PARAM · runtime latest status · sent registry 를 DB 로 전환하기 위한 저장소 역할 + table/column 매핑 계약 확정. **구현 Step 아님.** 다음 `PARAM / Runtime State DB Cutover v1` 의 입력.
+
+**협업 방식 (Q1 (b) 재적용)**: 개발자 = 코드 grep + PC read-only 실측 + OCI sanitised 구조 샘플 요청·검증. 사용자 = OCI 파일 구조 sanitised 회신 (값 원문 · secret · 절대 경로 미포함).
+
+**PC 실측**:
+- `latest_runtime_param.json`: `three_push_runtime_param.v1` schema, 필수 10 필드 (`schema_version` + `param_id` + `created_at` + `approved_at` + `approved_by` + `param_source` + `enabled_push_kinds` + `runtime_policy` + `evidence_policy` + `safety_policy`) + extra 2 (`param_description`, `source_note`).
+- PARAM history 95건: schema/param_source uniform, approval/activated_at/active 필드 부재 → **archive** (active 판단 미사용).
+
+**OCI 실측 (code_contract 완전 일치)**:
+- `oci_runtime_status_latest.json`: 16 keys single record (629 bytes), `availability={available:int, unavailable_or_other:int}`.
+- `oci_runtime_sent_registry.json`: dict 47 entries, key=`push_kind::param_id::runtime_date_kst`, entry 4 필드 (`push_kind`, `param_id`, `runtime_date_kst`, `sent_at_utc`).
+- `oci_runtime_history.jsonl`: 59 lines, status record 그대로 append, first/last key set 동일 → **log/archive** (reader 없음, active 미사용).
+
+**DB 역할 경계**:
+- `market_data.sqlite` = 시장 evidence 만 (PARAM/runtime 금지 유입).
+- `runtime_state.sqlite` (다음 Cutover Step 신규): active PARAM · runtime latest status · sent registry.
+- `decision_evidence.sqlite`: 이번 Step 재사용 X.
+
+**핵심 매핑 결정**:
+- active PARAM = JSON blob 저장 금지 (§9.1). `runtime_param_version` (메타) + `runtime_param_value` (정규화 key-value) + `runtime_param_active` (pointer) 분리.
+- runtime latest vs history: latest 만 DB (`runtime_execution_status` + `run_id` append + latest view). history JSONL 은 archive 유지 (§12.1 BACKLOG).
+- sent registry duplicate guard: UNIQUE (`push_kind`, `param_id`, `runtime_date_kst`). `message_hash` / `send_status` / TTL 부재 유지 (§12.4 BACKLOG).
+
+**변경 없음** (지시문 §6 준수): DB 파일 · table · row · migration · runtime 코드 · `latest_runtime_param.json` · OCI runtime state 파일 · API · UI · scheduler · Telegram · `available_sources=None` · `decision_evidence.sqlite` · `market_data.sqlite` — 모두 0건.
+
+**다음 활성 STEP (확정)**: **`PARAM / Runtime State DB Cutover v1`** (설계자 확정 세션). §11 항목 구현.
+
+상세: `docs/handoff/POC2_PARAM_RUNTIME_STATE_DB_MAPPING_V1_CONCLUSION.md`.
+
+## 직전 STEP 요약 (OCI Database Environment Remediation v1, DONE 2026-07-09, commit `22d29193`)
 
 **목적**: 이전 STEP `OCI Database Preflight v1` 에서 확인된 OCI `state/market/market_data.sqlite` 부재를 1회성 시드 반영으로 복구.
 
