@@ -1,0 +1,336 @@
+"""PARAM / Runtime State DB Cutover v1 — seed / verify CLI.
+
+허용 서브커맨드:
+  seed    latest_runtime_param.json / oci_runtime_status_latest.json /
+          oci_runtime_sent_registry.json 을 runtime_state.sqlite 로 seed.
+  verify  DB 존재 / 5 table / active pointer / 재구성 결과 검증.
+
+계약 (지시문 §12 sanitised 원칙 준수):
+- Telegram 호출 없음. 외부 API 호출 없음. OCI SSH 자동화 없음.
+- market_data.sqlite 미변경. decision_evidence.sqlite 미변경.
+- available_sources=None 미변경.
+- JSON fallback 없음. 실패 시 stderr 로 fail-closed 사유 출력.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _SCRIPT_DIR.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from app import runtime_state_store as store  # noqa: E402
+from app.three_push_runtime_param import (  # noqa: E402
+    activate_param_version,
+    create_param_version_in_db,
+    read_active_param_from_db,
+    read_param_file,
+    validate_param_dict,
+)
+
+_LATEST_PARAM_JSON = Path("state/three_push/params/latest_runtime_param.json")
+_STATUS_JSON = Path("state/three_push/oci_runtime_status_latest.json")
+_REGISTRY_JSON = Path("state/three_push/oci_runtime_sent_registry.json")
+
+_ACTIVATED_BY_SEED = "cutover_seed"
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _emit(payload: dict) -> None:
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def cmd_seed(args: argparse.Namespace) -> int:
+    db_path = Path(args.db_path or store.DEFAULT_DB_PATH)
+    result: dict = {
+        "command": "seed",
+        "db_path": str(db_path),
+        "steps": {},
+        "warnings": [],
+    }
+
+    # 1. PARAM seed
+    if not _LATEST_PARAM_JSON.exists():
+        result["steps"]["param"] = {"status": "failed", "reason": "latest_param_absent"}
+        _emit(result)
+        return 2
+    try:
+        param = read_param_file(_LATEST_PARAM_JSON)
+    except Exception as e:
+        result["steps"]["param"] = {"status": "failed", "reason": str(e)[:400]}
+        _emit(result)
+        return 2
+
+    param_version_id, source_hash, created_new = create_param_version_in_db(
+        param, db_path=db_path
+    )
+
+    ptr_before = store.get_active_pointer(db_path)
+    pointer_action = "no_op"
+    if ptr_before is None:
+        activate_param_version(
+            param_version_id,
+            activated_at=_now_utc_iso(),
+            activated_by=_ACTIVATED_BY_SEED,
+            db_path=db_path,
+        )
+        pointer_action = "created"
+    elif ptr_before["active_param_version_id"] != param_version_id:
+        activate_param_version(
+            param_version_id,
+            activated_at=_now_utc_iso(),
+            activated_by=_ACTIVATED_BY_SEED,
+            db_path=db_path,
+        )
+        pointer_action = "moved"
+        result["warnings"].append(
+            {
+                "kind": "active_pointer_moved",
+                "previous_param_version_id": ptr_before["active_param_version_id"],
+                "new_param_version_id": param_version_id,
+            }
+        )
+
+    result["steps"]["param"] = {
+        "status": "ok",
+        "param_version_id": param_version_id,
+        "source_hash_sha256": source_hash,
+        "created_new_version": created_new,
+        "pointer_action": pointer_action,
+    }
+
+    # 2. runtime status seed (optional presence)
+    if _STATUS_JSON.exists():
+        try:
+            status_record = json.loads(_STATUS_JSON.read_text(encoding="utf-8"))
+        except Exception as e:
+            result["steps"]["status"] = {"status": "failed", "reason": str(e)[:400]}
+            _emit(result)
+            return 3
+        try:
+            availability = status_record.get("availability") or {}
+            run_id = store.insert_execution_status(
+                db_path,
+                push_kind=str(status_record.get("push_kind", "")),
+                mode=str(status_record.get("mode", "")),
+                status=str(status_record.get("status", "")),
+                reason=status_record.get("reason"),
+                started_at=str(status_record.get("started_at", "")),
+                finished_at=str(status_record.get("finished_at", "")),
+                runtime_kst=str(status_record.get("runtime_kst", "")),
+                runtime_date_kst=str(status_record.get("runtime_date_kst", "")),
+                param_id=str(status_record.get("param_id", "")),
+                param_source=str(status_record.get("param_source", "")),
+                message_text_length=int(status_record.get("message_text_length", 0)),
+                availability_available=int(availability.get("available", 0)),
+                availability_unavailable_or_other=int(
+                    availability.get("unavailable_or_other", 0)
+                ),
+                duplicate_key=str(status_record.get("duplicate_key", "")),
+                telegram_attempted=bool(status_record.get("telegram_attempted", False)),
+                telegram_sent=bool(status_record.get("telegram_sent", False)),
+                error=status_record.get("error"),
+                inserted_at=_now_utc_iso(),
+            )
+            result["steps"]["status"] = {
+                "status": "ok",
+                "seeded_run_id": run_id,
+                "absence_recorded": False,
+            }
+        except Exception as e:
+            result["steps"]["status"] = {"status": "failed", "reason": str(e)[:400]}
+            _emit(result)
+            return 3
+    else:
+        result["steps"]["status"] = {
+            "status": "ok",
+            "seeded_run_id": None,
+            "absence_recorded": True,
+        }
+
+    # 3. sent registry seed (optional presence)
+    if _REGISTRY_JSON.exists():
+        try:
+            registry = json.loads(_REGISTRY_JSON.read_text(encoding="utf-8"))
+        except Exception as e:
+            result["steps"]["sent_registry"] = {
+                "status": "failed",
+                "reason": str(e)[:400],
+            }
+            _emit(result)
+            return 4
+        if not isinstance(registry, dict):
+            result["steps"]["sent_registry"] = {
+                "status": "failed",
+                "reason": f"registry not dict: {type(registry).__name__}",
+            }
+            _emit(result)
+            return 4
+        seeded = 0
+        conflicts = 0
+        now = _now_utc_iso()
+        for key, entry in registry.items():
+            if not isinstance(entry, dict):
+                result["warnings"].append(
+                    {"kind": "registry_entry_not_dict", "key": key}
+                )
+                continue
+            ok = store.registry_insert(
+                db_path,
+                push_kind=str(entry.get("push_kind", "")),
+                param_id=str(entry.get("param_id", "")),
+                runtime_date_kst=str(entry.get("runtime_date_kst", "")),
+                sent_at_utc=str(entry.get("sent_at_utc", "")),
+                inserted_at=now,
+                on_conflict="ignore",
+            )
+            if ok:
+                seeded += 1
+            else:
+                conflicts += 1
+                result["warnings"].append(
+                    {"kind": "registry_conflict_ignored", "key": key}
+                )
+        result["steps"]["sent_registry"] = {
+            "status": "ok",
+            "input_entries": len(registry),
+            "inserted": seeded,
+            "conflicts_ignored": conflicts,
+        }
+    else:
+        result["steps"]["sent_registry"] = {
+            "status": "ok",
+            "input_entries": 0,
+            "inserted": 0,
+            "empty_registry_start": True,
+        }
+
+    # 4. DB summary.
+    result["db"] = {
+        "tables": store.list_tables(db_path),
+        "integrity_check": store.integrity_check(db_path),
+        "row_counts": store.table_row_counts(db_path),
+    }
+    _emit(result)
+    return 0
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    db_path = Path(args.db_path or store.DEFAULT_DB_PATH)
+    result: dict = {
+        "command": "verify",
+        "db_path": str(db_path),
+        "checks": {},
+    }
+    if not db_path.exists():
+        result["checks"]["db_exists"] = False
+        result["overall"] = "FAIL_CLOSED"
+        _emit(result)
+        return 2
+    result["checks"]["db_exists"] = True
+    tables = store.list_tables(db_path)
+    result["checks"]["tables_present"] = sorted(store.TABLE_NAMES)
+    result["checks"]["tables_observed"] = tables
+    missing = [t for t in store.TABLE_NAMES if t not in tables]
+    result["checks"]["missing_tables"] = missing
+    result["checks"]["integrity_check"] = store.integrity_check(db_path)
+    counts = store.table_row_counts(db_path)
+    result["checks"]["row_counts"] = counts
+
+    ptr = store.get_active_pointer(db_path)
+    result["checks"]["active_pointer_exists"] = ptr is not None
+    if ptr:
+        result["checks"]["active_pointer"] = ptr
+
+    # DB read + reconstruct + validate.
+    reconstruct_ok = False
+    reconstruct_error = None
+    reconstructed_dict: dict = {}
+    try:
+        param = read_active_param_from_db(db_path)
+        reconstructed_dict = param.to_dict()
+        errors = validate_param_dict(reconstructed_dict)
+        reconstruct_ok = not errors
+        if errors:
+            reconstruct_error = "; ".join(errors)
+    except Exception as e:
+        reconstruct_error = str(e)[:400]
+    result["checks"]["reconstruct_active_param_ok"] = reconstruct_ok
+    if reconstruct_error:
+        result["checks"]["reconstruct_active_param_error"] = reconstruct_error
+
+    # semantic match: DB reconstruction vs current latest JSON.
+    if _LATEST_PARAM_JSON.exists() and reconstruct_ok:
+        try:
+            json_data = json.loads(_LATEST_PARAM_JSON.read_text(encoding="utf-8"))
+            json_hash = store.canonical_json_sha256(json_data)
+            db_hash = store.canonical_json_sha256(reconstructed_dict)
+            result["checks"]["canonical_hash_json"] = json_hash
+            result["checks"]["canonical_hash_db_reconstruction"] = db_hash
+            result["checks"]["semantic_match_with_latest_json"] = json_hash == db_hash
+        except Exception as e:
+            result["checks"]["semantic_match_error"] = str(e)[:400]
+
+    latest = store.latest_execution_status(db_path)
+    result["checks"]["latest_execution_status_present"] = latest is not None
+    if latest:
+        result["checks"]["latest_execution_status_summary"] = {
+            "run_id": latest["run_id"],
+            "push_kind": latest["push_kind"],
+            "status": latest["status"],
+            "runtime_date_kst": latest["runtime_date_kst"],
+        }
+
+    result["checks"]["sent_registry_count"] = store.registry_count(db_path)
+    result["checks"]["json_fallback_used"] = False
+
+    overall = "READY"
+    if missing:
+        overall = "NOT_READY"
+    if not result["checks"]["active_pointer_exists"]:
+        overall = "NOT_READY"
+    if not reconstruct_ok:
+        overall = "NOT_READY"
+    result["overall"] = overall
+    _emit(result)
+    return 0 if overall == "READY" else 5
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="PARAM / Runtime State DB Cutover — seed / verify CLI"
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_seed = sub.add_parser("seed", help="JSON → runtime_state.sqlite seed")
+    p_seed.add_argument(
+        "--db-path", default=None, help="override runtime_state DB path"
+    )
+    p_seed.set_defaults(func=cmd_seed)
+
+    p_verify = sub.add_parser("verify", help="runtime_state.sqlite active PARAM 검증")
+    p_verify.add_argument(
+        "--db-path", default=None, help="override runtime_state DB path"
+    )
+    p_verify.set_defaults(func=cmd_verify)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return int(args.func(args))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

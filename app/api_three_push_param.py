@@ -207,21 +207,34 @@ def get_param_state() -> ParamStateResponse:
 
 # ── apply 동작 ─────────────────────────────────────────────────────────────
 def _create_approved_manual_seed_param() -> str:
-    """manual_seed PARAM 생성 후 latest_runtime_param.json 으로 승격.
+    """manual_seed PARAM 생성 → DB active pointer 갱신 (Cutover v1 §4.8).
 
-    create_three_push_runtime_param.py 의 main 동작과 동등 — build_manual_seed_param()
-    후 latest 로 쓴다. raw param_id 는 호출자가 사용자에게 노출하지 않는다.
+    - DB: `runtime_param_version` 새 version + `runtime_param_active` pointer 갱신.
+    - JSON: history + latest 파일도 함께 write (legacy reference / rollback source).
+    - `activated_by="api_param_apply"` — cutover_seed 와 구분.
     """
+    from datetime import datetime, timezone
+
     from scripts.create_three_push_runtime_param import (
         _HISTORY_DIR,
         _LATEST_PATH as _CREATE_LATEST_PATH,
     )
     from app.three_push_runtime_param import (
+        activate_param_version,
         build_manual_seed_param,
+        create_param_version_in_db,
         write_param_file,
     )
 
     param = build_manual_seed_param()
+
+    param_version_id, _, _ = create_param_version_in_db(param)
+    activate_param_version(
+        param_version_id,
+        activated_at=datetime.now(timezone.utc).isoformat(),
+        activated_by="api_param_apply",
+    )
+
     history_path = _HISTORY_DIR / f"{param.param_id}.json"
     write_param_file(history_path, param)
     write_param_file(_CREATE_LATEST_PATH, param)

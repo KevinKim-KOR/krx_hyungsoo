@@ -48,12 +48,12 @@ from app.three_push_runner_common import (  # noqa: E402
     check_forbidden_wording,
     check_raw_identifiers,
     env_bool,
-    is_already_sent,
+    is_already_sent_db,
     load_dotenv_file,
-    mark_sent,
+    mark_sent_db,
     setup_logging,
     telegram_send,
-    write_status,
+    write_status_db_and_history,
 )
 
 load_dotenv_file()
@@ -64,13 +64,12 @@ from app.three_push_runtime_message_builder import (  # noqa: E402
     kst_now_iso,
     kst_today_date,
 )
-from app.three_push_runtime_param import read_param_file  # noqa: E402
+from app.three_push_runtime_param import read_active_param_from_db  # noqa: E402
 
 # ── 경로 ─────────────────────────────────────────────────────────────────────
 
-_PARAM_PATH = STATE_DIR / "params" / "latest_runtime_param.json"
-_REGISTRY_PATH = STATE_DIR / "oci_runtime_sent_registry.json"
-_STATUS_PATH = STATE_DIR / "oci_runtime_status_latest.json"
+# Cutover v1: active PARAM · latest status · sent registry 는 runtime_state.sqlite
+# 기준으로 전환. history JSONL 만 archive 로 유지.
 _HISTORY_PATH = STATE_DIR / "oci_runtime_history.jsonl"
 
 
@@ -116,7 +115,7 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         record["reason"] = reason
         record["error"] = error
         record["finished_at"] = datetime.now(timezone.utc).isoformat()
-        write_status(_STATUS_PATH, _HISTORY_PATH, record)
+        write_status_db_and_history(_HISTORY_PATH, record)
         logger.info(
             "runtime runner 완료: push_kind=%s mode=%s status=%s reason=%s",
             push_kind,
@@ -133,18 +132,11 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         runtime_kst,
     )
 
-    # ── 1. latest PARAM 로드 ─────────────────────────────────────────────────
-    if not _PARAM_PATH.exists():
-        logger.error("latest PARAM 부재: %s", _PARAM_PATH)
-        return _finish(
-            "failed",
-            "missing_latest_param",
-            f"PARAM 파일이 없음: {_PARAM_PATH}",
-        )
+    # ── 1. active PARAM 로드 (Cutover v1: runtime_state.sqlite 기준) ─────────
     try:
-        param = read_param_file(_PARAM_PATH)
+        param = read_active_param_from_db()
     except Exception as e:
-        logger.error("PARAM 로드/검증 실패: %s", e)
+        logger.error("active PARAM 로드/검증 실패: %s", e)
         return _finish("failed", "param_load_error", str(e)[:400])
 
     record["param_id"] = param.param_id
@@ -218,13 +210,13 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         logger.info("%s=false — 발송 skip", kind_flag_env)
         return _finish("skipped", "push_kind_disabled")
 
-    # ── 7. duplicate guard ───────────────────────────────────────────────────
+    # ── 7. duplicate guard (Cutover v1: DB 기준) ─────────────────────────────
     dup_key = _registry_key(push_kind, param.param_id, runtime_date_kst)
     record["duplicate_key"] = dup_key
     try:
-        already = is_already_sent(_REGISTRY_PATH, dup_key)
-    except RuntimeError as e:
-        logger.error("registry 손상으로 발송 차단: %s", e)
+        already = is_already_sent_db(push_kind, param.param_id, runtime_date_kst)
+    except Exception as e:
+        logger.error("registry DB 접근 실패: %s", e)
         return _finish("failed", "registry_corrupted", str(e)[:400])
     if already:
         logger.info("중복 발송 차단: %s", dup_key)
@@ -237,15 +229,11 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
 
     if sent:
         sent_at = datetime.now(timezone.utc).isoformat()
-        mark_sent(
-            _REGISTRY_PATH,
-            dup_key,
-            {
-                "push_kind": push_kind,
-                "param_id": param.param_id,
-                "runtime_date_kst": runtime_date_kst,
-                "sent_at_utc": sent_at,
-            },
+        mark_sent_db(
+            push_kind=push_kind,
+            param_id=param.param_id,
+            runtime_date_kst=runtime_date_kst,
+            sent_at_utc=sent_at,
         )
         return _finish("sent")
     else:

@@ -32,7 +32,9 @@ if str(_PROJECT_ROOT) not in sys.path:
 from app.three_push_runner_common import STATE_DIR  # noqa: E402
 from app.three_push_runtime_param import (  # noqa: E402
     ALLOWED_PARAM_SOURCES,
+    activate_param_version,
     build_manual_seed_param,
+    create_param_version_in_db,
     write_param_file,
 )
 
@@ -100,6 +102,15 @@ def main() -> None:
     write_param_file(history_path, param)
 
     if args.approve:
+        # Cutover v1: DB 반영 (새 version + active pointer) + JSON legacy write 병행.
+        from datetime import datetime, timezone
+
+        param_version_id, _, _ = create_param_version_in_db(param)
+        activate_param_version(
+            param_version_id,
+            activated_at=datetime.now(timezone.utc).isoformat(),
+            activated_by="create_script_approve",
+        )
         write_param_file(_LATEST_PATH, param)
         print(
             json.dumps(

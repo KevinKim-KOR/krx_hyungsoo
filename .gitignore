@@ -175,6 +175,13 @@ state/market/market_data.sqlite-journal
 state/market/market_data.sqlite-wal
 state/market/market_data.sqlite-shm
 
+# PARAM / Runtime State DB (2026-07-09 Cutover v1) — PC/OCI 각자 로컬 seed,
+# 지시문 §6 상 PC 에서 OCI 로 복사 금지. commit 대상 아님.
+state/runtime/runtime_state.sqlite
+state/runtime/runtime_state.sqlite-journal
+state/runtime/runtime_state.sqlite-wal
+state/runtime/runtime_state.sqlite-shm
+
 # Naver ETF Universe NAV refresh summary (2026-06-08) — 운영 호출마다 갱신됨,
 # 검증/실행마다 작업트리가 바뀌어 staged 상태와 어긋남. commit 대상 아님.
 state/market/nav_discount_refresh_latest.json

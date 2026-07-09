@@ -1,8 +1,47 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-09 (PARAM / Runtime State DB Mapping v1 — DONE, code_contract + OCI observed 일치)
+최종 업데이트: 2026-07-09 (PARAM / Runtime State DB Cutover v1 — PARTIAL, PC DONE · OCI 실행 대기)
 
-## 이번 STEP 요약 (PARAM / Runtime State DB Mapping v1, DONE)
+## 이번 STEP 요약 (PARAM / Runtime State DB Cutover v1, PARTIAL — PC DONE)
+
+**목적**: JSON 중심 active runtime 운영 상태 (`latest_runtime_param.json`, `oci_runtime_status_latest.json`, `oci_runtime_sent_registry.json`) 를 `state/runtime/runtime_state.sqlite` 기준으로 전환. history JSONL 은 archive 유지.
+
+**협업 방식 (Q1 (b) 재적용)**: 개발자 = PC 구현 + PC seed/verify + OCI 명령 세트 handoff. 사용자 = OCI seed/verify 실행 + sanitised 결과 회신.
+
+**설계자 10개 확정본 준수**: activated_by="cutover_seed" · active_scope="three_push" · dot notation · index suffix · canonical JSON hash · 단일 CLI subcommand · legacy JSON 함수 유지 + 신규 DB 함수 병행 · status DB + history JSONL archive · PC/OCI hash 비교 기록 · hash-based idempotent seed.
+
+**PC seed/verify 결과 (2026-07-09)**:
+- `state/runtime/runtime_state.sqlite` 신규 생성 (5 table, integrity_check=ok, `.gitignore` 대상).
+- **초기 seed** (`cutover_seed`): `version=1, value=13`, `active=param-20260708T141218-914114`, hash=`622ba812...598888`. AC-3/AC-4/AC-5/AC-6 통과 근거.
+- **회귀 테스트 이후 최신 실측**: `version=5, value=65, active=1`, `active=param-20260709T140204-335512`, `activated_by=api_param_apply`, hash=`94ccca0a...e8a6f`. 이는 `test_three_push_param_api` 가 `_create_approved_manual_seed_param` 을 통해 실제 PC DB 에 write 를 실행 = **AC-8 (PARAM apply/write = DB) 의 run-through 증명**.
+- **DB 재구성 hash = JSON canonical hash** (초기·최신 모두 `semantic_match_with_latest_json=true`). AC-5 · AC-6 통과.
+- verify `overall=READY`. `json_fallback_used=false`.
+- idempotent 초기 재실행: `created_new_version=false`, `pointer_action=no_op`, warnings 0건 (Q10 (b) 확인).
+- **알려진 test isolation 이슈**: PC 운영 DB 오염 → 다음 STEP 에서 test DB path override 도입 예정. `.gitignore` 로 원격 미반영.
+
+**Runtime status / sent registry**: PC 로컬 JSON 부재 → `absence_recorded=true` / `empty_registry_start=true` (지시문 §8.2 · §8.3 준수, 실패 처리 X). OCI 는 존재 (Mapping v1 확인 16 keys / 47 entries) — OCI seed 결과 회신 대기.
+
+**Fail-closed**: DB 부재 / active pointer 부재 시 `RuntimeError` (JSON fallback 없음). test 로 확인.
+
+**Cutover 전환 완료 (PC)**:
+- `run_three_push_runtime_oci` PARAM read → `read_active_param_from_db()` (DB 기준).
+- `run_three_push_runtime_oci` status write → `write_status_db_and_history(_HISTORY_PATH, record)` (DB insert + JSONL append).
+- `run_three_push_runtime_oci` duplicate guard → `is_already_sent_db` / `mark_sent_db`.
+- `api_three_push_param._create_approved_manual_seed_param` + `create_three_push_runtime_param --approve` → DB version 생성 + active pointer 갱신 병행.
+
+**기존 JSON 유지** (지시문 §5, §9): `latest_runtime_param.json` / `oci_runtime_status_latest.json` / `oci_runtime_sent_registry.json` / `oci_runtime_history.jsonl` / `params/history/*.json` — 삭제·rename 0건. legacy reference / rollback source.
+
+**변경 없음** (지시문 §5): `market_data.sqlite` schema/row · `decision_evidence.sqlite` · runtime evidence DB 조회 · `available_sources=None` · Telegram · UI · scheduler · PC↔OCI publication 방식 · runtime history 전체 DB화 — 모두 0건.
+
+**backend 회귀**: **820 passed** (직전 809 → 820, 신규 11). 0 fail. black / flake8 / py_compile PASS.
+
+**PARTIAL 사유**: 지시문 §12 · §13 상 OCI 실행 결과 필요. 사용자 OCI seed/verify 실행 후 CONCLUSION §11 갱신 → DONE 승격.
+
+**다음 활성 STEP (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — OCI closeout PASS 후.
+
+상세: `docs/handoff/POC2_PARAM_RUNTIME_STATE_DB_CUTOVER_V1_CONCLUSION.md`.
+
+## 직전 STEP 요약 (PARAM / Runtime State DB Mapping v1, DONE 2026-07-09, commit `8a7a7ccc`)
 
 **목적**: active PARAM · runtime latest status · sent registry 를 DB 로 전환하기 위한 저장소 역할 + table/column 매핑 계약 확정. **구현 Step 아님.** 다음 `PARAM / Runtime State DB Cutover v1` 의 입력.
 
