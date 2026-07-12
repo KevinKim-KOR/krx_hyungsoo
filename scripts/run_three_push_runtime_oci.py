@@ -48,23 +48,28 @@ from app.three_push_runner_common import (  # noqa: E402
     check_forbidden_wording,
     check_raw_identifiers,
     env_bool,
-    is_already_sent_db,
     load_dotenv_file,
-    mark_sent_db,
     setup_logging,
     telegram_send,
-    write_status_db_and_history,
 )
 
 load_dotenv_file()
 
+from app.runtime_execution_status_store import (  # noqa: E402
+    insert_status_from_record,
+)
+from app.runtime_param_store import read_active_param_dict  # noqa: E402
+from app.runtime_sent_registry_store import (  # noqa: E402
+    is_already_sent,
+    mark_sent,
+)
 from app.three_push_runtime_message_builder import (  # noqa: E402
     availability_summary,
     build_runtime_message,
     kst_now_iso,
     kst_today_date,
 )
-from app.three_push_runtime_param import read_active_param_from_db  # noqa: E402
+from app.three_push_runtime_param import from_dict as param_from_dict  # noqa: E402
 
 # ── 경로 ─────────────────────────────────────────────────────────────────────
 
@@ -115,7 +120,11 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         record["reason"] = reason
         record["error"] = error
         record["finished_at"] = datetime.now(timezone.utc).isoformat()
-        write_status_db_and_history(_HISTORY_PATH, record)
+        # Refactor v1 Q9 (c): DB latest status + history JSONL 을 runner 에서 분리 호출.
+        insert_status_from_record(record)
+        _HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _HISTORY_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
         logger.info(
             "runtime runner 완료: push_kind=%s mode=%s status=%s reason=%s",
             push_kind,
@@ -132,9 +141,10 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         runtime_kst,
     )
 
-    # ── 1. active PARAM 로드 (Cutover v1: runtime_state.sqlite 기준) ─────────
+    # ── 1. active PARAM 로드 (runtime_state.sqlite 기준) ─────────────────────
     try:
-        param = read_active_param_from_db()
+        param_dict = read_active_param_dict()
+        param = param_from_dict(param_dict)
     except Exception as e:
         logger.error("active PARAM 로드/검증 실패: %s", e)
         return _finish("failed", "param_load_error", str(e)[:400])
@@ -214,7 +224,7 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
     dup_key = _registry_key(push_kind, param.param_id, runtime_date_kst)
     record["duplicate_key"] = dup_key
     try:
-        already = is_already_sent_db(push_kind, param.param_id, runtime_date_kst)
+        already = is_already_sent(push_kind, param.param_id, runtime_date_kst)
     except Exception as e:
         logger.error("registry DB 접근 실패: %s", e)
         return _finish("failed", "registry_corrupted", str(e)[:400])
@@ -229,7 +239,7 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
 
     if sent:
         sent_at = datetime.now(timezone.utc).isoformat()
-        mark_sent_db(
+        mark_sent(
             push_kind=push_kind,
             param_id=param.param_id,
             runtime_date_kst=runtime_date_kst,

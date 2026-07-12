@@ -52,6 +52,22 @@ def _isolated_store(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolated_runtime_state_db(tmp_path, monkeypatch):
+    """Refactor v1 Q4 (a): runtime_state.sqlite 를 test 마다 tmp_path 로 격리.
+
+    실제 운영 DB (`state/runtime/runtime_state.sqlite`) 는 테스트로 write 되지 않는다.
+    market_data.sqlite / decision_evidence.sqlite 등 다른 DB path 는 건드리지 않는다.
+    """
+    from app import runtime_state_db as _rt_db
+
+    test_db_path = Path(tmp_path) / "runtime_state.sqlite"
+    monkeypatch.setattr(_rt_db, "DEFAULT_DB_PATH", test_db_path)
+    _rt_db.reset_init_cache_for_testing()
+    yield
+    _rt_db.reset_init_cache_for_testing()
+
+
+@pytest.fixture(autouse=True)
 def _stub_oci_calls(monkeypatch):
     """기본 stub: deliver 는 무동작 성공, outbox 는 결과 없음(DELIVERING 유지).
 

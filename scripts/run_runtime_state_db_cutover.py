@@ -25,11 +25,22 @@ _PROJECT_ROOT = _SCRIPT_DIR.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from app import runtime_state_store as store  # noqa: E402
-from app.three_push_runtime_param import (  # noqa: E402
+from app import runtime_state_db as db_helper  # noqa: E402
+from app.runtime_execution_status_store import (  # noqa: E402
+    insert_status_from_record,
+    latest_execution_status,
+)
+from app.runtime_param_store import (  # noqa: E402
     activate_param_version,
-    create_param_version_in_db,
-    read_active_param_from_db,
+    create_param_version,
+    get_active_pointer,
+    read_active_param_dict,
+)
+from app.runtime_sent_registry_store import (  # noqa: E402
+    count as registry_count,
+    insert as registry_insert,
+)
+from app.three_push_runtime_param import (  # noqa: E402
     read_param_file,
     validate_param_dict,
 )
@@ -50,7 +61,7 @@ def _emit(payload: dict) -> None:
 
 
 def cmd_seed(args: argparse.Namespace) -> int:
-    db_path = Path(args.db_path or store.DEFAULT_DB_PATH)
+    db_path = Path(args.db_path or db_helper.DEFAULT_DB_PATH)
     result: dict = {
         "command": "seed",
         "db_path": str(db_path),
@@ -70,11 +81,11 @@ def cmd_seed(args: argparse.Namespace) -> int:
         _emit(result)
         return 2
 
-    param_version_id, source_hash, created_new = create_param_version_in_db(
-        param, db_path=db_path
+    param_version_id, source_hash, created_new = create_param_version(
+        param.to_dict(), db_path=db_path
     )
 
-    ptr_before = store.get_active_pointer(db_path)
+    ptr_before = get_active_pointer(db_path)
     pointer_action = "no_op"
     if ptr_before is None:
         activate_param_version(
@@ -117,29 +128,8 @@ def cmd_seed(args: argparse.Namespace) -> int:
             _emit(result)
             return 3
         try:
-            availability = status_record.get("availability") or {}
-            run_id = store.insert_execution_status(
-                db_path,
-                push_kind=str(status_record.get("push_kind", "")),
-                mode=str(status_record.get("mode", "")),
-                status=str(status_record.get("status", "")),
-                reason=status_record.get("reason"),
-                started_at=str(status_record.get("started_at", "")),
-                finished_at=str(status_record.get("finished_at", "")),
-                runtime_kst=str(status_record.get("runtime_kst", "")),
-                runtime_date_kst=str(status_record.get("runtime_date_kst", "")),
-                param_id=str(status_record.get("param_id", "")),
-                param_source=str(status_record.get("param_source", "")),
-                message_text_length=int(status_record.get("message_text_length", 0)),
-                availability_available=int(availability.get("available", 0)),
-                availability_unavailable_or_other=int(
-                    availability.get("unavailable_or_other", 0)
-                ),
-                duplicate_key=str(status_record.get("duplicate_key", "")),
-                telegram_attempted=bool(status_record.get("telegram_attempted", False)),
-                telegram_sent=bool(status_record.get("telegram_sent", False)),
-                error=status_record.get("error"),
-                inserted_at=_now_utc_iso(),
+            run_id = insert_status_from_record(
+                status_record, db_path=db_path, inserted_at=_now_utc_iso()
             )
             result["steps"]["status"] = {
                 "status": "ok",
@@ -184,7 +174,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
                     {"kind": "registry_entry_not_dict", "key": key}
                 )
                 continue
-            ok = store.registry_insert(
+            ok = registry_insert(
                 db_path,
                 push_kind=str(entry.get("push_kind", "")),
                 param_id=str(entry.get("param_id", "")),
@@ -216,16 +206,16 @@ def cmd_seed(args: argparse.Namespace) -> int:
 
     # 4. DB summary.
     result["db"] = {
-        "tables": store.list_tables(db_path),
-        "integrity_check": store.integrity_check(db_path),
-        "row_counts": store.table_row_counts(db_path),
+        "tables": db_helper.list_tables(db_path),
+        "integrity_check": db_helper.integrity_check(db_path),
+        "row_counts": db_helper.table_row_counts(db_path),
     }
     _emit(result)
     return 0
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
-    db_path = Path(args.db_path or store.DEFAULT_DB_PATH)
+    db_path = Path(args.db_path or db_helper.DEFAULT_DB_PATH)
     result: dict = {
         "command": "verify",
         "db_path": str(db_path),
@@ -237,16 +227,16 @@ def cmd_verify(args: argparse.Namespace) -> int:
         _emit(result)
         return 2
     result["checks"]["db_exists"] = True
-    tables = store.list_tables(db_path)
-    result["checks"]["tables_present"] = sorted(store.TABLE_NAMES)
+    tables = db_helper.list_tables(db_path)
+    result["checks"]["tables_present"] = sorted(db_helper.TABLE_NAMES)
     result["checks"]["tables_observed"] = tables
-    missing = [t for t in store.TABLE_NAMES if t not in tables]
+    missing = [t for t in db_helper.TABLE_NAMES if t not in tables]
     result["checks"]["missing_tables"] = missing
-    result["checks"]["integrity_check"] = store.integrity_check(db_path)
-    counts = store.table_row_counts(db_path)
+    result["checks"]["integrity_check"] = db_helper.integrity_check(db_path)
+    counts = db_helper.table_row_counts(db_path)
     result["checks"]["row_counts"] = counts
 
-    ptr = store.get_active_pointer(db_path)
+    ptr = get_active_pointer(db_path)
     result["checks"]["active_pointer_exists"] = ptr is not None
     if ptr:
         result["checks"]["active_pointer"] = ptr
@@ -256,8 +246,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     reconstruct_error = None
     reconstructed_dict: dict = {}
     try:
-        param = read_active_param_from_db(db_path)
-        reconstructed_dict = param.to_dict()
+        reconstructed_dict = read_active_param_dict(db_path)
         errors = validate_param_dict(reconstructed_dict)
         reconstruct_ok = not errors
         if errors:
@@ -272,15 +261,15 @@ def cmd_verify(args: argparse.Namespace) -> int:
     if _LATEST_PARAM_JSON.exists() and reconstruct_ok:
         try:
             json_data = json.loads(_LATEST_PARAM_JSON.read_text(encoding="utf-8"))
-            json_hash = store.canonical_json_sha256(json_data)
-            db_hash = store.canonical_json_sha256(reconstructed_dict)
+            json_hash = db_helper.canonical_json_sha256(json_data)
+            db_hash = db_helper.canonical_json_sha256(reconstructed_dict)
             result["checks"]["canonical_hash_json"] = json_hash
             result["checks"]["canonical_hash_db_reconstruction"] = db_hash
             result["checks"]["semantic_match_with_latest_json"] = json_hash == db_hash
         except Exception as e:
             result["checks"]["semantic_match_error"] = str(e)[:400]
 
-    latest = store.latest_execution_status(db_path)
+    latest = latest_execution_status(db_path)
     result["checks"]["latest_execution_status_present"] = latest is not None
     if latest:
         result["checks"]["latest_execution_status_summary"] = {
@@ -290,7 +279,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
             "runtime_date_kst": latest["runtime_date_kst"],
         }
 
-    result["checks"]["sent_registry_count"] = store.registry_count(db_path)
+    result["checks"]["sent_registry_count"] = registry_count(db_path)
     result["checks"]["json_fallback_used"] = False
 
     overall = "READY"

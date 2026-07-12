@@ -299,7 +299,8 @@ def mark_sent(registry_path: Path, key: str, entry: dict[str, Any]) -> None:
 def write_status(status_path: Path, history_path: Path, record: dict[str, Any]) -> None:
     """Legacy JSON writer — Cutover v1 이후 seed/reference 용도만.
 
-    active runtime 은 `write_status_db_and_history` 를 사용한다.
+    active runtime 은 runner 가 직접 runtime_execution_status_store 를 호출하고
+    별도로 history JSONL 을 append 한다 (Refactor v1 Q9 (c)).
     """
     status_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = status_path.with_suffix(".tmp")
@@ -311,96 +312,7 @@ def write_status(status_path: Path, history_path: Path, record: dict[str, Any]) 
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-# ── DB IO — Cutover v1 (§4.9 status writer, §4.10 registry read/write) ───────
-
-
-def write_status_db_and_history(
-    history_path: Path,
-    record: dict[str, Any],
-    *,
-    db_path: Optional[Path] = None,
-    now_iso_utc: Optional[str] = None,
-) -> int:
-    """runtime_execution_status DB insert + history JSONL append (Q8 (a)).
-
-    - status latest = DB active state (`runtime_execution_status`).
-    - history JSONL = archive log (기존 파일 append 유지).
-    - JSON latest status 파일 (`oci_runtime_status_latest.json`) 은 더 이상 write 하지 않는다.
-
-    fail-closed: DB 접근 실패 시 예외 그대로 상승. JSON fallback 없음.
-    """
-    from datetime import datetime, timezone
-
-    from app import runtime_state_store as store
-
-    p = Path(db_path or store.DEFAULT_DB_PATH)
-    availability = record.get("availability") or {}
-    run_id = store.insert_execution_status(
-        p,
-        push_kind=str(record.get("push_kind", "")),
-        mode=str(record.get("mode", "")),
-        status=str(record.get("status", "")),
-        reason=record.get("reason"),
-        started_at=str(record.get("started_at", "")),
-        finished_at=str(record.get("finished_at", "")),
-        runtime_kst=str(record.get("runtime_kst", "")),
-        runtime_date_kst=str(record.get("runtime_date_kst", "")),
-        param_id=str(record.get("param_id", "")),
-        param_source=str(record.get("param_source", "")),
-        message_text_length=int(record.get("message_text_length", 0)),
-        availability_available=int(availability.get("available", 0)),
-        availability_unavailable_or_other=int(
-            availability.get("unavailable_or_other", 0)
-        ),
-        duplicate_key=str(record.get("duplicate_key", "")),
-        telegram_attempted=bool(record.get("telegram_attempted", False)),
-        telegram_sent=bool(record.get("telegram_sent", False)),
-        error=record.get("error"),
-        inserted_at=now_iso_utc or datetime.now(timezone.utc).isoformat(),
-    )
-
-    history_path.parent.mkdir(parents=True, exist_ok=True)
-    with history_path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-    return run_id
-
-
-def is_already_sent_db(
-    push_kind: str,
-    param_id: str,
-    runtime_date_kst: str,
-    *,
-    db_path: Optional[Path] = None,
-) -> bool:
-    """runtime_sent_registry DB 조회 (JSON fallback 없음)."""
-    from app import runtime_state_store as store
-
-    p = Path(db_path or store.DEFAULT_DB_PATH)
-    return store.registry_contains(p, push_kind, param_id, runtime_date_kst)
-
-
-def mark_sent_db(
-    *,
-    push_kind: str,
-    param_id: str,
-    runtime_date_kst: str,
-    sent_at_utc: str,
-    db_path: Optional[Path] = None,
-    now_iso_utc: Optional[str] = None,
-) -> bool:
-    """runtime_sent_registry DB insert (Q10: INSERT OR IGNORE — 조용한 덮어쓰기 금지)."""
-    from datetime import datetime, timezone
-
-    from app import runtime_state_store as store
-
-    p = Path(db_path or store.DEFAULT_DB_PATH)
-    return store.registry_insert(
-        p,
-        push_kind=push_kind,
-        param_id=param_id,
-        runtime_date_kst=runtime_date_kst,
-        sent_at_utc=sent_at_utc,
-        inserted_at=now_iso_utc or datetime.now(timezone.utc).isoformat(),
-        on_conflict="ignore",
-    )
+# DB IO (write_status_db_and_history / is_already_sent_db / mark_sent_db) 는
+# Refactor v1 에서 app.runtime_execution_status_store + app.runtime_sent_registry_store
+# 로 이동. runner 는 store 를 직접 호출하고, history JSONL append 는 runner 안에서 별도로
+# 수행 (Q9 (c) 확정).

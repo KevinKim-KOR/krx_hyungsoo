@@ -1,8 +1,56 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-09 (PARAM / Runtime State DB Cutover v1 — DONE, PC + OCI 모두 verify READY)
+최종 업데이트: 2026-07-10 (Runtime State Store Refactor & Test Isolation v1 — DONE)
 
-## 이번 STEP 요약 (PARAM / Runtime State DB Cutover v1, DONE)
+## 이번 STEP 요약 (Runtime State Store Refactor & Test Isolation v1, DONE)
+
+**목적**: 이전 STEP (`PARAM / Runtime State DB Cutover v1`) PARTIALLY_VERIFIED 원인 B-2 (단일 책임 과다), B-3 (`runtime_state_store.py` 620줄), B-6 (test isolation 미흡) 해소. **새 기능 없음.**
+
+**11개 확정본 준수**:
+- Q1 (c) 완전 분리 · shim 유지 없음.
+- Q2 (a) 공통 helper `app/runtime_state_db.py`.
+- Q3 (a) `runtime_state_store.py` 삭제.
+- Q4 (a)+(b) `tests/conftest.py` autouse + 개별 fixture.
+- Q5 (c) 테스트 + conclusion 실측 병행.
+- Q6 실측 자동.
+- Q7 (a) `three_push_runtime_param.py` DB 3함수 → `runtime_param_store.py` 이전.
+- Q8 (a) `three_push_runner_common.py` DB 3함수 → `runtime_execution_status_store.py` + `runtime_sent_registry_store.py` 이전.
+- Q9 (c) history JSONL append 은 runner 안에서 별도 (store 밖).
+- Q10 (a) legacy JSON 함수 유지 (active fallback 아님).
+- Q11 (a) `.gitignore` 유지.
+
+**분리된 모듈** (신규 4):
+- `app/runtime_state_db.py` — DEFAULT_DB_PATH · 5 table DDL · init_db · connection · list_tables · integrity_check · table_row_counts · canonical_json_sha256 · utc_now_iso.
+- `app/runtime_param_store.py` — PARAM flatten/reconstruct · version write/read · active pointer · high-level create_param_version/activate_param_version/read_active_param_dict (fail-closed).
+- `app/runtime_execution_status_store.py` — insert_execution_status · insert_status_from_record · latest_execution_status.
+- `app/runtime_sent_registry_store.py` — contains · insert (INSERT OR IGNORE) · count · is_already_sent/mark_sent.
+
+**삭제**: `app/runtime_state_store.py` (620줄, git rm).
+
+**schema/row 변경**: 0건. 5 table DDL 은 그대로 새 모듈로 이동. row migration 없음. sent registry unique 기준 (`push_kind, param_id, runtime_date_kst`) 유지.
+
+**call site 전환**:
+- `scripts/run_three_push_runtime_oci.py` — `read_active_param_dict` + `insert_status_from_record` + JSONL append 분리 + `is_already_sent` / `mark_sent`.
+- `app/api_three_push_param.py`, `scripts/create_three_push_runtime_param.py` — DB apply 는 `runtime_param_store.create_param_version` + `activate_param_version`.
+- `scripts/run_runtime_state_db_cutover.py` — helper/store 신규 import.
+- `tests/test_runtime_state_db_cutover.py` — 재구성 (13 케이스 — 기존 11 + insert_status_from_record + isolation 관련).
+
+**test isolation (AC-11, AC-12)**:
+- `tests/conftest.py` 신규 `_isolated_runtime_state_db` autouse fixture — `runtime_state_db.DEFAULT_DB_PATH` 를 `tmp_path/runtime_state.sqlite` 로 monkeypatch. `market_data.sqlite` / `decision_evidence.sqlite` 는 unaffected.
+- 신규 `tests/test_runtime_state_isolation.py` — DEFAULT_DB_PATH 가 실제 path 가 아닌지 + `create_param_version` + `activate_param_version` 실행이 실제 DB 를 변화시키지 않는지 (size/mtime/sha256 unchanged) 검증.
+
+**리팩토링 전 baseline** (`state/runtime/runtime_state.sqlite`):
+- exists=True, size=69632, sha256=`5d09a0068bf659720aa1cc1c81a8f5f8ecc02422345b0f5cb880ec1421442861`.
+
+**리팩토링 후 실측**: (commit 직전 재측 · 예상: 무변화).
+
+**금지 항목 변경 0건**: runtime evidence 연결 · `available_sources=None` · Telegram · market_data · decision_evidence · UI · scheduler · schema · migration · PARAM 정책 · sent registry unique 기준 — 모두 0.
+
+**다음 활성 STEP (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — `available_sources=None` 제거 준비.
+
+상세: `docs/handoff/POC2_RUNTIME_STATE_STORE_REFACTOR_TEST_ISOLATION_V1_CONCLUSION.md`.
+
+## 이전 STEP 요약 (PARAM / Runtime State DB Cutover v1, DONE 2026-07-09, commit `13fc8a09`)
 
 **목적**: JSON 중심 active runtime 운영 상태 (`latest_runtime_param.json`, `oci_runtime_status_latest.json`, `oci_runtime_sent_registry.json`) 를 `state/runtime/runtime_state.sqlite` 기준으로 전환. history JSONL 은 archive 유지.
 

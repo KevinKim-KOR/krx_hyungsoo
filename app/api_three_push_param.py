@@ -212,26 +212,26 @@ def _create_approved_manual_seed_param() -> str:
     - DB: `runtime_param_version` 새 version + `runtime_param_active` pointer 갱신.
     - JSON: history + latest 파일도 함께 write (legacy reference / rollback source).
     - `activated_by="api_param_apply"` — cutover_seed 와 구분.
+    - Refactor v1 Q7: DB IO 는 `app.runtime_param_store` 로 이동됨.
     """
-    from datetime import datetime, timezone
-
     from scripts.create_three_push_runtime_param import (
         _HISTORY_DIR,
         _LATEST_PATH as _CREATE_LATEST_PATH,
     )
-    from app.three_push_runtime_param import (
+    from app.runtime_param_store import (
         activate_param_version,
+        create_param_version,
+    )
+    from app.three_push_runtime_param import (
         build_manual_seed_param,
-        create_param_version_in_db,
         write_param_file,
     )
 
     param = build_manual_seed_param()
 
-    param_version_id, _, _ = create_param_version_in_db(param)
+    param_version_id, _, _ = create_param_version(param.to_dict())
     activate_param_version(
         param_version_id,
-        activated_at=datetime.now(timezone.utc).isoformat(),
         activated_by="api_param_apply",
     )
 
