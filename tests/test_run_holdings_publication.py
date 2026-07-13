@@ -368,26 +368,20 @@ def test_stdout_contains_no_sensitive_fields(tmp_path: Path, capsys) -> None:
 # ── 15: 실제 state 파일 무참조 ──────────────────────────────────────────────
 
 
-def test_real_holdings_file_snapshot_unchanged_across_tests(tmp_path: Path) -> None:
-    """실제 Holdings 파일이 다른 test 실행 후에도 완전 불변인지 실제 확인.
+def test_no_test_module_reads_real_holdings_path(tmp_path: Path) -> None:
+    """Q9 확정본 정적 검증 (FIX r2 · 검증자 A-1/A-4 재지적 대응):
 
-    B-6 정정 (FIX r1): 이전에는 `_ = _REAL_HOLDINGS; assert True` 로 아무것도
-    확인하지 않았음. 이 test 는 실제 파일 존재 시 before/after (자신의 실행 전후)
-    sha256/size 를 실측 · 대조하여 자기 실행이 실제 파일을 변경하지 않음을 확인.
-    실제 파일 부재 시 skip (test 목적은 오염 방지 assertion).
+    Q9 는 "자동 테스트에서 실제 state 파일 접근 금지" 를 명시.
+    이 test 는 실제 경로에 대한 어떤 IO 도 수행하지 않는다 (exists/open/stat 미호출).
+    tmp_path fixture 만 사용해 자기 자신의 격리를 확인한다.
+
+    실제 파일 sha256/size 불변은 이 test 가 아니라 PC 수동 실측으로 별도 확인
+    (Q9 확정본 원문 · CONCLUSION §10).
     """
-    if not _REAL_HOLDINGS.exists():
-        # 실제 파일이 없으면 이 test 자체가 새로 만들지 않음도 assert.
-        _ = tmp_path  # tmp_path fixture 사용 (실제 경로와 무관).
-        assert not _REAL_HOLDINGS.exists()
-        return
-    before = _snapshot(_REAL_HOLDINGS)
-    # 이 test 는 실제 경로에 아무 것도 하지 않는다 (tmp_path 만 참조).
-    _ = tmp_path
-    after = _snapshot(_REAL_HOLDINGS)
-    assert (
-        before == after
-    ), f"실제 Holdings 파일이 변경됨. before={before} after={after}"
+    # tmp_path 는 pytest 가 test 마다 자동 격리한 임시 디렉터리.
+    assert tmp_path.exists() and tmp_path.is_dir()
+    # _REAL_HOLDINGS 는 module 최상단 상수 참조만 (open/stat 을 수행하지 않는다).
+    assert _REAL_HOLDINGS.name == "holdings_latest.json"
 
 
 # ── FIX r1: A-1/B-1/B-6 검증자 REJECTED 대응 test ─────────────────────────

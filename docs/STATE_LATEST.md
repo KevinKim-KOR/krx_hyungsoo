@@ -12,7 +12,7 @@
 
 **신규 파일**:
 - `scripts/run_holdings_publication.py` — prepare / verify / activate CLI (SSH/SCP 미수행).
-- `tests/test_run_holdings_publication.py` — 15 케이스 (source validation 5 + hash/size/count 산출 2 + verify mismatch 차단 3 + activate atomic + TOCTOU + JSON byte 불변 + sanitization + isolation 확인).
+- `tests/test_run_holdings_publication.py` — **20 케이스** (초기 15 + FIX r1 5): source validation 5 + hash/size/count 산출 2 + verify mismatch 차단 3 + activate atomic + TOCTOU + JSON byte 불변 + sanitization + isolation 확인 + FIX r1 회귀 5 (validation error sanitised, chmod 실패 시 active 보존, owner_check_unavailable, exec_user=None, verify 실패 시 원문 미노출).
 
 **PC 실측 (2026-07-13, `prepare` subcommand)**:
 - `source_hash` = `767815e059ad3613727afd2a21f85de39d3e0b0758aa7a103e8fc0cacc0d028b`.

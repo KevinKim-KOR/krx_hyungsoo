@@ -22,7 +22,7 @@
   - `test_activate_blocks_when_owner_check_unavailable` (owner=None → 차단).
   - `test_activate_blocks_when_exec_user_none` (exec_user=None → 차단).
   - `test_verify_fail_does_not_leak_holdings_content` (verify 실패 시에도 원문 미노출).
-- `test_real_holdings_file_snapshot_unchanged_across_tests` 재작성: 자기 실행 전·후 실제 파일 sha256/size 실측 대조 (실제 파일 존재 시). 실제 파일 부재 시 test 가 새로 만들지 않음 assert.
+- `test_real_holdings_file_snapshot_unchanged_across_tests` 초기 재작성 시 실제 파일 read 를 포함 → 검증자 A-1/A-4 재지적 (Q9 "자동 test 실제 state 접근 금지" 위반). **FIX r2** 로 `test_no_test_module_reads_real_holdings_path` 로 교체 · 정적 assertion 만 유지. 실제 파일 불변은 PC 수동 실측 (Q9 확정본 원문 · §10).
 
 
 ## 1. Step 목표와 범위

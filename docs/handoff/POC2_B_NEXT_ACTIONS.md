@@ -10,7 +10,7 @@
 
 **목적**: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI `holdings_briefing` 실제 evidence 연결.
 
-**신규**: `scripts/run_holdings_publication.py` (prepare/verify/activate CLI, SSH/SCP 미수행), `tests/test_run_holdings_publication.py` (15 케이스).
+**신규**: `scripts/run_holdings_publication.py` (prepare/verify/activate CLI, SSH/SCP 미수행), `tests/test_run_holdings_publication.py` (**20 케이스** = 초기 15 + FIX r1 5).
 
 **Q1 b + TOCTOU 보정**: SCP 는 사용자 수행. verify 후에도 activate 는 expected 값 재검증 → 원자적 replace → active 재검증 → mode 600 + owner 재확인.
 
