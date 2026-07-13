@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-12 (Runtime State Store Refactor & Test Isolation v1 — FIX r1 DONE, 오염 상태 복구 + verify CLI 강화)
+최종 업데이트: 2026-07-12 (Runtime State Store Refactor & Test Isolation v1 — VERIFIED, commit `f43e5565`)
 
 ## 이번 STEP 요약 (Runtime State Store Refactor & Test Isolation v1, DONE)
 
@@ -51,6 +51,8 @@
 - **Q2 판단 근거**: 현 latest JSON = 회귀 test 산출 (mtime 2026-07-12 17:37, git tracked 아님 + git log 이력 없음). 마지막 정상 사용자 승인분 = `param-20260708T141218-914114` (Cutover v1 §2 초기 seed source, 문서 근거).
 - **조치**: (1) latest JSON 을 history 마지막 승인분으로 복사 복구 (canonical hash `622ba812...` = Cutover v1 §2 값). (2) DB 삭제 + clean seed → `activated_by=cutover_seed`, semantic_match=true. (3) verify CLI 강화: `_TEST_ACTIVATED_BY_MARKERS = {"isolation_test", "test"}` 및 `semantic_match_with_latest_json=false` → `overall=NOT_READY` + `readiness_errors` 필드. (4) `tests/conftest.py` isolation fixture 확장: legacy JSON path (`api_three_push_param._LATEST_PATH`, `create_three_push_runtime_param._LATEST_PATH`/`_HISTORY_DIR`/`_PARAM_DIR`) 도 tmp_path 로 monkeypatch.
 - **최종 검증**: pytest 전/후 실제 `runtime_state.sqlite` + `latest_runtime_param.json` 모두 완전 불변 (size · sha256 · mtime 3중 일치). backend **827 passed** (Refactor v1 823 → FIX r1 827, verify 강화 4 순증), 0 fail. verify `overall=READY, readiness_errors=[], semantic_match=true, active_pointer=cutover_seed`. verify 강화 자체 검증도 완료 (`isolation_test`/`test`/semantic mismatch/clean seed 4 케이스 자동 회귀).
+
+**검증자 최종 판정**: **VERIFIED** (2026-07-12, HEAD `f43e5565`). 이전 REJECTED 사유 (A-2 flake8 E501 + A-3 stale 823/827) 모두 해소. Cutover v1 최종 PASS 자격 확정. B-2 · B-3 (Refactor v1) + B-6 (FIX r1) 완전 통과.
 
 **다음 활성 STEP (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — `available_sources=None` 제거 준비.
 
