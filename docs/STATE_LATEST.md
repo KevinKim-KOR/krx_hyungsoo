@@ -1,8 +1,38 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-13 (Runtime Evidence DB Connection v1 — DONE, PC + OCI dry-run 완료)
+최종 업데이트: 2026-07-13 (Holdings Evidence OCI Publication v1 — PARTIAL, PC DONE · OCI 실행 대기)
 
-## 이번 STEP 요약 (Runtime Evidence DB Connection v1, DONE)
+## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, PARTIAL — PC DONE)
+
+**목적**: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI Runtime `holdings_briefing` 실제 evidence 연결.
+
+**협업 방식 (Q1 b · Cutover v1 원칙 재적용)**: 개발자 = PC 구현 + PC prepare 실측 + OCI 명령 세트. 사용자 = OCI SCP (기존 운영 방식) + verify/activate 실행 + sanitised 결과 회신.
+
+**설계자 11 확정본 준수**: Q1 b subcommand CLI (prepare/verify/activate) + SCP 사용자 실행 · Q2 b `validate_holdings` 재사용 (신규 validator 신설 X) · Q3 deterministic JSON stdout · Q4 mode 600 + owner 재확인 + `active_file_permission_checked` 정책 · Q5 sync_three_push_runtime_param 미재사용 · Q6 a `len(validate_holdings(...))` · Q7 b expected 인자 비교 + TOCTOU 보정 (activate 재검증) · Q8 SCP 사용자 실행 · Q9 자동 test 는 temp fixture 만 · Q10 publication 성공 후 evidence 실패 시 PARTIAL · Q11 mode 600 + owner + read + no-group/other.
+
+**신규 파일**:
+- `scripts/run_holdings_publication.py` — prepare / verify / activate CLI (SSH/SCP 미수행).
+- `tests/test_run_holdings_publication.py` — 15 케이스 (source validation 5 + hash/size/count 산출 2 + verify mismatch 차단 3 + activate atomic + TOCTOU + JSON byte 불변 + sanitization + isolation 확인).
+
+**PC 실측 (2026-07-13, `prepare` subcommand)**:
+- `source_hash` = `767815e059ad3613727afd2a21f85de39d3e0b0758aa7a103e8fc0cacc0d028b`.
+- `source_size` = 6238 bytes.
+- `source_holding_count` = 35 (validate_holdings 통과).
+- `status` = ok · `error_reason` = empty.
+
+**변경 없음** (§12 금지): Holdings JSON schema · Holdings DB Cutover · Holdings UI/API · 자동 동기화 · 양방향 sync · Universe Momentum publication · ML publication · 실시간 시세 probe · Telegram · scheduler · market DB · runtime DB schema · package fallback — 모두 0.
+
+**backend regression**: **865 passed** (직전 850 → 865, 이번 STEP 순증 15). 0 fail. 205s. black / flake8 (max-line=100) / py_compile PASS.
+
+**실제 state 무변경 (pytest 865 전·후 실측 대조)**: `state/holdings/holdings_latest.json` (`767815e059ad3613...` 6238B) + runtime_state.sqlite + latest JSON + market_data.sqlite 모두 sha256 완전 동일. Q9 확정본 자동 test isolation 확인.
+
+**PARTIAL 사유**: 지시문 §13.3 / §16 · OCI 실행 결과 필요.
+
+**다음 활성 STEP (확정, OCI PASS 후)**: **`Universe Momentum Evidence Publication v1`** (설계자 확정 세션).
+
+상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md`.
+
+## 이전 STEP 요약 (Runtime Evidence DB Connection v1, DONE 2026-07-13, commit `4501a8e3`)
 
 **목적**: OCI PARAM Runtime 에 기존 read-only evidence (`market_data.sqlite` · Holdings · `runtime_state.sqlite`) 를 연결해 실제 시장 수치가 포함된 사용자 메시지 생성. **새 데이터 수집 · 신규 selection 로직 · Telegram 발송 없음.**
 
