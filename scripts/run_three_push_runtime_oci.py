@@ -197,8 +197,12 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
     record["message_text_length"] = len(message_text)
     record["availability"] = availability_summary(evidence.available_sources)
     # 지시문 §9: record 에 diagnostics summary 추가 (본문 비노출 대상은 저장하지 않음).
-    record["contentful_fact_count"] = evidence.diagnostics.get("contentful_fact_count", 0)
-    record["selection_result_count"] = evidence.diagnostics.get("selection_result_count", 0)
+    record["contentful_fact_count"] = evidence.diagnostics.get(
+        "contentful_fact_count", 0
+    )
+    record["selection_result_count"] = evidence.diagnostics.get(
+        "selection_result_count", 0
+    )
     record["unavailable_reasons"] = evidence.diagnostics.get("unavailable_reasons", {})
 
     # ── 4. 금지 문구 검사 ────────────────────────────────────────────────────

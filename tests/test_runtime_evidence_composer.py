@@ -283,16 +283,81 @@ def test_nav_unavailable_when_row_missing(tmp_path: Path) -> None:
 
 
 def test_spike_or_falling_alert_all_unavailable(tmp_path: Path) -> None:
+    """§15.8 · B-6: Spike source 는 모두 unavailable, contentful/selection 은 0."""
+    calls: list[str] = []
+
+    def _tracking_topn(**_kwargs):
+        calls.append("topn_called")
+        return _ok_topn_payload()
+
     result = compose_runtime_evidence(
         "spike_or_falling_alert",
         market_db_path=tmp_path / "market_data.sqlite",
         holdings_file=tmp_path / "holdings.json",
-        topn_fn=lambda **_: _ok_topn_payload(),
+        topn_fn=_tracking_topn,
     )
     assert result.available_sources[SRC_UNIVERSE_MOMENTUM] == REASON_NOT_IMPLEMENTED
     assert result.available_sources[SRC_KR_REALTIME] == REASON_EXTERNAL_FETCH_REQUIRED
     assert result.extra_notes == []
+    # A-1 정정: spike 는 market_discovery / holdings 미사용 → contentful 은 0.
+    assert result.diagnostics["contentful_fact_count"] == 0
     assert result.diagnostics["selection_result_count"] == 0
+    # B-6 정정: spike 는 topn_fn 을 호출하지 않아야 함 (불필요 계산 제거).
+    assert calls == []
+    # source_statuses 는 unavailable 라벨 (not_applicable 아님).
+    assert all(
+        v == "unavailable" for v in result.diagnostics["source_statuses"].values()
+    )
+
+
+def test_market_briefing_contentful_only_counts_own_sources(tmp_path: Path) -> None:
+    """A-1: market_briefing contentful 은 market_discovery 만 집계 (Holdings/NAV 미가산)."""
+    result = compose_runtime_evidence(
+        "market_briefing",
+        market_db_path=tmp_path / "market_data.sqlite",
+        holdings_file=tmp_path / "holdings.json",
+        topn_fn=lambda **_: _ok_topn_payload(asof="2026-07-11"),
+    )
+    # fixture: kodex + kospi + preview = 3 fact.
+    assert result.diagnostics["contentful_fact_count"] == 3
+
+
+def test_market_briefing_source_status_labels_are_unavailable(tmp_path: Path) -> None:
+    """A-1: 고정 unavailable source 는 status='unavailable' (not_applicable X)."""
+    result = compose_runtime_evidence(
+        "market_briefing",
+        market_db_path=tmp_path / "market_data.sqlite",
+        holdings_file=tmp_path / "holdings.json",
+        topn_fn=lambda **_: _ok_topn_payload(),
+    )
+    ss = result.diagnostics["source_statuses"]
+    # market_discovery 는 available.
+    assert ss[SRC_MARKET_DISCOVERY] == "available"
+    # 나머지 4 는 모두 unavailable.
+    for src in (SRC_KR_REALTIME, SRC_OVERNIGHT_US, SRC_ML_BASELINE, SRC_NEWS):
+        assert ss[src] == "unavailable", f"{src}: {ss[src]}"
+
+
+def test_holdings_broad_exception_propagates(tmp_path: Path) -> None:
+    """B-1: 프로그래머 오류 (TypeError 등) 는 unavailable 로 위장하지 않고 propagate."""
+    import pytest as _pytest
+
+    hfile = tmp_path / "holdings.json"
+    hfile.write_text("{}", encoding="utf-8")
+
+    def _boom() -> list[Holding]:
+        raise TypeError("programmer_error_intentional")
+
+    with _pytest.raises(TypeError, match="programmer_error_intentional"):
+        compose_runtime_evidence(
+            "holdings_briefing",
+            market_db_path=tmp_path / "market_data.sqlite",
+            holdings_file=hfile,
+            holdings_loader=_boom,
+            topn_fn=lambda **_: _ok_topn_payload(),
+            evidence_fn=_ok_evidence_fn,
+            nav_fn=lambda **_: None,
+        )
 
 
 # ── §15.11 실제 state 무변경 (Composer pure test 확인) ─────────────────────

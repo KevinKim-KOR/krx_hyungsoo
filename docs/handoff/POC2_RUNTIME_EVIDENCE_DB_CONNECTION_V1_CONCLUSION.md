@@ -69,20 +69,30 @@ class RuntimeEvidenceResult:
 - daily close 를 realtime source 로 승격 X (§5.4 · AC-9).
 - NAV 는 Holdings + DB row 있을 때만 available (§5.3 · AC-12), 실제 DB as-of 사용 (AC-13).
 
-## 4. 3-PUSH 별 결과 (PC 실측)
+## 4. 3-PUSH 별 결과 (PC 실측 · FIX r1)
 
-**PC 실행 조건**: PC 로컬은 `state/holdings/holdings_latest.json` 존재. tmp market_db 는 test 로만 사용, 실제 PC 에서는 `state/market/market_data.sqlite` (baseline 그대로) 조회.
+**실행 방식**: 실제 PC 로컬 `state/market/market_data.sqlite` (baseline `f7df867d...`) + `state/holdings/holdings_latest.json` 존재 상태에서 `compose_runtime_evidence()` 를 직접 호출한 결과.
 
-Composer 는 read-only 이므로 CONCLUSION 작성 시점의 PC 실측은 test fixture 기반이며 (§6 참조), 실제 프로덕션 PC 값은 사용자가 아래 명령을 로컬에서 실행해 확인할 수 있음:
+**market_briefing (실측)**:
+- `market_discovery_snapshot=available` (asof=`2026-07-03`), 나머지 4 source unavailable.
+- `extra_notes count=3` (KODEX200 · KOSPI · TOP preview 각 1건, 모두 `(2026-07-03 기준)` 표시).
+- `contentful_fact_count=3` (`market_discovery_snapshot` 만 집계 — A-1 정정 결과).
+- `selection_result_count=10` (compute_topn 실제 후보 수).
+- `source_statuses`: `market_discovery_snapshot=available`, 나머지 4 = `unavailable` (A-1 정정 · `not_applicable` 제거).
 
-```bash
-python -c "from app.runtime_evidence_composer import compose_runtime_evidence; import json; r = compose_runtime_evidence('market_briefing'); print(json.dumps({'available_sources': r.available_sources, 'diagnostics': r.diagnostics}, ensure_ascii=False, indent=2))"
-```
+**holdings_briefing (실측)**:
+- `holdings_snapshot=unavailable` (reason=`no_contentful_fact` — TOP-N 이 Holdings 실제 보유 종목과 매칭 안 되는 상태), `nav_discount_snapshot=available` (asof=`2026-07-04`), 나머지 2 unavailable.
+- `extra_notes count=32` (NAV 문장 32건, 각각 실제 as-of 포함).
+- `contentful_fact_count=32` (holdings=0 + nav=32 = 32 — A-1 정정 결과, Market Discovery fact 미가산).
+- `selection_result_count=0` (holdings evidence 매칭 없음).
 
-**PC 테스트 fixture 실측**:
-- `market_briefing`: `market_discovery_snapshot=available`, `contentful_fact_count=3` (KODEX200 + KOSPI + TOP 후보), `selection_result_count=2` (fixture 후보 수).
-- `holdings_briefing`: Holdings + NAV 조건부. fixture 상 both available 시 `contentful_fact_count>=2`, `selection_result_count>=1`.
-- `spike_or_falling_alert`: 모든 source unavailable. `contentful_fact_count=0`, `selection_result_count=0`.
+**spike_or_falling_alert (실측)**:
+- `universe_momentum_snapshot=unavailable_not_implemented`, `kr_realtime_price_snapshot=unavailable_external_fetch_required`.
+- `extra_notes=[]`.
+- `contentful_fact_count=0` ✅ (이전 잘못 합산 3 → 정정 후 0, B-6 재현 · A-1 정정).
+- `selection_result_count=0`.
+- `source_asof={}` — Spike 는 `compute_topn` 미호출 (B-6 정정).
+- `source_statuses` 모두 `unavailable` 라벨.
 
 ## 5. Diagnosis 정합화 (§11)
 
@@ -110,7 +120,7 @@ python -c "from app.runtime_evidence_composer import compose_runtime_evidence; i
 
 **BUY / SELL / 교체 / 비중 조절 문구**: Composer 문장 생성 시 사용 안 함 (기존 forbidden wording 검사도 통과).
 
-**diagnostics 는 record 에만 저장** (지시문 §9): `contentful_fact_count`, `selection_result_count`, `unavailable_reasons` 는 record dict → `insert_status_from_record` 로 DB `runtime_execution_status` 에 기록되나, message body 에는 노출되지 않음. Holdings 개인정보는 record 에도 저장하지 않음.
+**diagnostics 저장 범위** (지시문 §9 · A-3 정정): `contentful_fact_count`, `selection_result_count`, `unavailable_reasons` 는 record dict 에 추가되어 **history JSONL 에는 그대로 append** 됨 (runner 가 `_HISTORY_PATH` 로 직접 append). **DB `runtime_execution_status` 에는 이번 STEP 에서 저장되지 않음** — DB schema 변경은 §13 금지 항목이므로 신규 컬럼 추가 없이 기존 컬럼만 사용. `insert_status_from_record` 는 기존 record 필드만 매핑. 신규 diagnostics 세 필드의 DB 저장은 별도 STEP (schema 변경 승인 필요). message body 에는 노출되지 않음. Holdings 개인정보는 record 에도 저장하지 않음.
 
 ## 7. dry-run side effect 결과 (§10)
 
@@ -124,11 +134,13 @@ python -c "from app.runtime_evidence_composer import compose_runtime_evidence; i
 
 **§10 §19 note**: `dry_run.runtime_status_written = true`, `dry_run.history_appended = true`, `dry_run.telegram_attempted = false`, `dry_run.sent_registry_before == sent_registry_after`.
 
-## 8. PC 검증 결과
+## 8. PC 검증 결과 (FIX r1)
 
-**backend regression**: **838 passed** (Refactor v1 FIX r1 이후 827 → 838, 이번 STEP 순증 11). 0 fail. 실행 197s.
-**Composer focused test**: **11 passed** (`tests/test_runtime_evidence_composer.py`).
+**Composer focused test**: **14 passed** (`tests/test_runtime_evidence_composer.py`, 11 → 14: `test_market_briefing_contentful_only_counts_own_sources`, `test_market_briefing_source_status_labels_are_unavailable`, `test_holdings_broad_exception_propagates` 신규).
+**Runner dry-run focused test**: **4 passed** (`tests/test_runtime_runner_dry_run.py` 신규): market_briefing/holdings_briefing/spike Telegram 미호출 + sent_registry 불변 + history JSONL append + record 신규 필드 확인.
 **Diagnosis test 정정 확인**: `test_1_diagnosis_calls_existing_push_helpers` (active PARAM seed → build_runtime_message 도달) + `test_8_exact_reason_code_recorded` (허용 reason code 세트 확장) 모두 pass.
+**backend regression (FIX r1 최종)**: **845 passed** (이전 838 → 845, FIX r1 순증 7 = Composer test 3 + runner dry-run test 4). 0 fail. 201s.
+**실제 state 3종 (`runtime_state.sqlite` / `latest_runtime_param.json` / `market_data.sqlite`) pytest 전·후 완전 불변** (sha256 3중 일치 확인).
 **Lint**: black / flake8 (max-line=100) / py_compile PASS.
 
 **실제 state 무변경 (pytest 838 실행 전·후 실측 대조)**:

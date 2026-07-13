@@ -11,7 +11,7 @@
 **설계자 13개 확정본 준수**: `PUSH_KIND_DATA_SOURCES` 계약 유지 · Q3 기존 함수 재사용 (신설 금지) · Q4 `extra_notes` 시그니처 활용 · Q6 dataclass · Q7 contentful fact 정의 · Q8 selection count push_kind 별 정의 · Q9 diagnosis DB active PARAM · Q10 DI · Q13 OCI 실행 후 DONE.
 
 **신규 구현**:
-- `app/runtime_evidence_composer.py` (429줄) — `compose_runtime_evidence(push_kind)` = `RuntimeEvidenceResult(available_sources, extra_notes, diagnostics)`. DI (market_db_path/holdings_file/holdings_loader/topn_fn/nav_fn/evidence_fn) 지원.
+- `app/runtime_evidence_composer.py` (504줄, FIX r1 반영) — `compose_runtime_evidence(push_kind)` = `RuntimeEvidenceResult(available_sources, extra_notes, diagnostics)`. DI (market_db_path/holdings_file/holdings_loader/topn_fn/nav_fn/evidence_fn) 지원.
 - source 처리: `market_discovery_snapshot` (`compute_topn` 필수 연결) · `holdings_snapshot` + `nav_discount_snapshot` (조건부 · Holdings JSON 존재 시) · 나머지 5개 unavailable 유지.
 
 **전환**:
@@ -24,7 +24,7 @@
 
 **신규 테스트**: `tests/test_runtime_evidence_composer.py` **11 케이스** (지시문 §15 최소 15 중 12-15 는 기존 test 로 커버).
 
-**backend regression**: **838 passed** (Refactor v1 FIX r1 이후 827 → 838, 순증 11). 0 fail. 197s. black / flake8 / py_compile PASS.
+**backend regression (FIX r1 최종)**: **845 passed** (Refactor v1 FIX r1 이후 827 → 838 → 845, 이번 STEP 순증 18: Composer 14 + runner dry-run 4). 0 fail. 201s. black / flake8 (max-line=100) / py_compile PASS.
 
 **실제 state 무변경 (pytest 전·후 대조)**:
 - `state/runtime/runtime_state.sqlite`: `f72dd796...` 완전 동일.

@@ -17,11 +17,17 @@ DI (지시문 Q10):
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from app.holdings import HOLDINGS_FILE, Holding, load as _holdings_load
+from app.holdings import (
+    HOLDINGS_FILE,
+    Holding,
+    HoldingsValidationError,
+    load as _holdings_load,
+)
 from app.holdings_market_evidence import (
     build_holdings_market_evidence as _build_holdings_market_evidence,
     get_holdings_file_mtime_iso,
@@ -140,14 +146,13 @@ def _compose_market_discovery(
                 parts.append(f"1개월 {pct1m}")
             if pct3m:
                 parts.append(f"3개월 {pct3m}")
-            notes.append("KOSPI 최근 수익률: " + " / ".join(parts) + ".")
+            notes.append(f"KOSPI 최근 수익률 ({asof} 기준): " + " / ".join(parts) + ".")
             fact_count += 1
 
-    # Market Discovery TOP 후보.
+    # Market Discovery TOP 후보 — 실제 as-of 가 있을 때만 preview fact 로 인정.
     candidates = payload.get("candidates") or []
     diag["candidates_count"] = len(candidates)
     if candidates:
-        # 상위 3 (또는 그 이하) 후보.
         top_preview = candidates[: min(3, len(candidates))]
         preview_pairs: list[str] = []
         for c in top_preview:
@@ -157,7 +162,7 @@ def _compose_market_discovery(
                 preview_pairs.append(f"{name} {ret_pct}")
         if preview_pairs:
             notes.append(
-                f"Market Discovery 후보 {len(candidates)}종 상위: "
+                f"Market Discovery 후보 {len(candidates)}종 상위 ({asof} 기준): "
                 + ", ".join(preview_pairs)
                 + "."
             )
@@ -203,9 +208,11 @@ def _compose_holdings_and_nav(
         return ("unavailable", [], holdings_diag), ("unavailable", [], nav_diag)
 
     holdings_diag["source_present"] = True
+    # B-1 정정: 데이터 문제 (JSON 파싱 실패 · 검증 실패) 만 unavailable 로 격리.
+    # ImportError / TypeError 등 프로그래머 오류는 상위로 propagate 하여 조용한 실패 방지.
     try:
         holdings = holdings_loader()
-    except Exception as e:  # noqa: BLE001
+    except (HoldingsValidationError, json.JSONDecodeError, ValueError) as e:
         holdings_diag["status"] = "unavailable"
         holdings_diag["reason"] = f"holdings_load_error:{type(e).__name__}"
         nav_diag["status"] = "unavailable"
@@ -362,25 +369,35 @@ def compose_runtime_evidence(
     result = RuntimeEvidenceResult()
     diag_sources: dict[str, Any] = {}
 
-    # Market discovery — 모든 push_kind 가 참조할 수 있으므로 항상 계산.
-    md_status, md_notes, md_diag = _compose_market_discovery(tfn, market_db)
-    diag_sources[SRC_MARKET_DISCOVERY] = md_diag
+    # B-6: push_kind 가 실제로 참조하는 source 만 계산 (spike 는 market discovery 불필요).
+    _MD_PUSH_KINDS = {"market_briefing"}
+    _HOLDINGS_PUSH_KINDS = {"holdings_briefing"}
 
-    # Holdings + NAV — market_briefing 은 미사용, holdings_briefing 만 사용.
-    if push_kind == "holdings_briefing":
+    if push_kind in _MD_PUSH_KINDS or push_kind in _HOLDINGS_PUSH_KINDS:
+        # holdings_briefing 은 evidence 조립 안에서 topn_fn 을 별도로 호출하므로
+        # market_briefing 만 여기서 market_discovery 를 별도 계산.
+        pass
+
+    md_status = "unavailable"
+    md_notes: list[str] = []
+    md_diag: dict[str, Any] = {"status": "unavailable"}
+    if push_kind in _MD_PUSH_KINDS:
+        md_status, md_notes, md_diag = _compose_market_discovery(tfn, market_db)
+        diag_sources[SRC_MARKET_DISCOVERY] = md_diag
+
+    # Holdings + NAV — holdings_briefing 만 사용.
+    h_status = "unavailable"
+    h_notes: list[str] = []
+    h_diag: dict[str, Any] = {}
+    nav_status = "unavailable"
+    nav_notes: list[str] = []
+    nav_diag: dict[str, Any] = {}
+    if push_kind in _HOLDINGS_PUSH_KINDS:
         (h_status, h_notes, h_diag), (nav_status, nav_notes, nav_diag) = (
             _compose_holdings_and_nav(hload, hfile, tfn, market_db, efn, nfn)
         )
         diag_sources[SRC_HOLDINGS] = h_diag
         diag_sources[SRC_NAV_DISCOUNT] = nav_diag
-    else:
-        h_status = "unavailable"
-        h_notes = []
-        h_diag = {"status": "not_applicable_for_push_kind"}
-        nav_status = "unavailable"
-        nav_notes = []
-        nav_diag = {"status": "not_applicable_for_push_kind"}
-        # holdings_briefing 이 아니면 diagnostics 에 노출하지 않음.
 
     # push_kind 별 source 조립 (지시문 Q1 · PUSH_KIND_DATA_SOURCES 계약).
     if push_kind == "market_briefing":
@@ -428,41 +445,53 @@ def compose_runtime_evidence(
         result.available_sources = {}
         result.extra_notes = []
 
-    # diagnostics 조립.
-    unavailable_reasons = {
-        src: st for src, st in result.available_sources.items() if st != "available"
-    }
+    # push_kind 별 실제 사용하는 source 만 contentful 합산 (지시문 §6 · A-1 정정).
     if push_kind == "market_briefing":
+        contentful_fact_count = (
+            (md_diag.get("contentful_fact_count", 0) or 0)
+            if md_status == "available"
+            else 0
+        )
         selection_result_count = (
             md_diag.get("candidates_count", 0) if md_status == "available" else 0
         )
     elif push_kind == "holdings_briefing":
+        contentful_fact_count = (
+            (h_diag.get("contentful_fact_count", 0) or 0)
+            if h_status == "available"
+            else 0
+        ) + (
+            (nav_diag.get("contentful_fact_count", 0) or 0)
+            if nav_status == "available"
+            else 0
+        )
         selection_result_count = (
             h_diag.get("matched_evidence_count", 0) if h_status == "available" else 0
         )
     else:
+        contentful_fact_count = 0
         selection_result_count = 0
 
-    contentful_fact_count = sum(
-        diag_sources.get(src, {}).get("contentful_fact_count", 0) or 0
-        for src in (SRC_MARKET_DISCOVERY, SRC_HOLDINGS, SRC_NAV_DISCOUNT)
-    )
-    # market_briefing 은 market_discovery 만 카운트 (Holdings 미사용).
-    if push_kind == "market_briefing":
-        contentful_fact_count = (
-            diag_sources.get(SRC_MARKET_DISCOVERY, {}).get("contentful_fact_count", 0)
-            or 0
-        )
+    # source_statuses: 고정 unavailable source 는 'unavailable' 로 라벨 (검증자 A-1 지적).
+    def _status_for(src_key: str, reason_or_status: str) -> str:
+        # 실제 계산된 source (diag 존재) 는 그 status 사용.
+        if src_key in diag_sources:
+            return diag_sources[src_key].get("status") or "unavailable"
+        # 고정 unavailable source (외부 API 필요 / not_implemented) 는 'unavailable'.
+        return "unavailable"
+
+    unavailable_reasons = {
+        src: st for src, st in result.available_sources.items() if st != "available"
+    }
 
     result.diagnostics = {
         "push_kind": push_kind,
         "source_statuses": {
-            src: (diag_sources.get(src, {}).get("status") or "not_applicable")
-            for src in result.available_sources.keys()
+            src: _status_for(src, st) for src, st in result.available_sources.items()
         },
         "source_asof": {
             src: diag_sources.get(src, {}).get("asof")
-            for src in (SRC_MARKET_DISCOVERY, SRC_HOLDINGS, SRC_NAV_DISCOUNT)
+            for src in diag_sources
             if diag_sources.get(src, {}).get("asof") is not None
         },
         "contentful_fact_count": contentful_fact_count,
