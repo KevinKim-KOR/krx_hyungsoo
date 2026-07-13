@@ -1,8 +1,52 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-12 (Runtime State Store Refactor & Test Isolation v1 — VERIFIED, commit `f43e5565`)
+최종 업데이트: 2026-07-13 (Runtime Evidence DB Connection v1 — PARTIAL, PC DONE · OCI 실행 대기)
 
-## 이번 STEP 요약 (Runtime State Store Refactor & Test Isolation v1, DONE)
+## 이번 STEP 요약 (Runtime Evidence DB Connection v1, PARTIAL — PC DONE)
+
+**목적**: OCI PARAM Runtime 에 기존 read-only evidence (`market_data.sqlite` · Holdings · `runtime_state.sqlite`) 를 연결해 실제 시장 수치가 포함된 사용자 메시지 생성. **새 데이터 수집 · 신규 selection 로직 · Telegram 발송 없음.**
+
+**협업 방식 (Q12)**: 개발자 = Composer 신설 + runner/diagnosis 연결 + PC 검증. 사용자 = OCI 3-PUSH dry-run 실행 + sanitised 결과 회신.
+
+**설계자 13개 확정본 준수**: `PUSH_KIND_DATA_SOURCES` 계약 유지 · Q3 기존 함수 재사용 (신설 금지) · Q4 `extra_notes` 시그니처 활용 · Q6 dataclass · Q7 contentful fact 정의 · Q8 selection count push_kind 별 정의 · Q9 diagnosis DB active PARAM · Q10 DI · Q13 OCI 실행 후 DONE.
+
+**신규 구현**:
+- `app/runtime_evidence_composer.py` (429줄) — `compose_runtime_evidence(push_kind)` = `RuntimeEvidenceResult(available_sources, extra_notes, diagnostics)`. DI (market_db_path/holdings_file/holdings_loader/topn_fn/nav_fn/evidence_fn) 지원.
+- source 처리: `market_discovery_snapshot` (`compute_topn` 필수 연결) · `holdings_snapshot` + `nav_discount_snapshot` (조건부 · Holdings JSON 존재 시) · 나머지 5개 unavailable 유지.
+
+**전환**:
+- `scripts/run_three_push_runtime_oci.py`: `available_sources=None` 제거 → `compose_runtime_evidence()` 호출 + `extra_notes` 전달. record 에 `contentful_fact_count` / `selection_result_count` / `unavailable_reasons` 추가.
+- `app/push_content_gap_diagnosis_reproducers.py`: legacy JSON reader 제거 → `read_active_param_dict()` 사용. 운영 runner 와 동일 Composer 공유.
+
+**기존 test 정정**:
+- `tests/test_push_content_gap_diagnosis.py::test_1_diagnosis_calls_existing_push_helpers`: active PARAM seed 후 3 push 모두 build_runtime_message 도달 검증.
+- `test_8_exact_reason_code_recorded`: 허용 reason code 세트에 `runtime_state_db_missing` · `active_pointer_missing` · `no_contentful_fact` 등 추가.
+
+**신규 테스트**: `tests/test_runtime_evidence_composer.py` **11 케이스** (지시문 §15 최소 15 중 12-15 는 기존 test 로 커버).
+
+**backend regression**: **838 passed** (Refactor v1 FIX r1 이후 827 → 838, 순증 11). 0 fail. 197s. black / flake8 / py_compile PASS.
+
+**실제 state 무변경 (pytest 전·후 대조)**:
+- `state/runtime/runtime_state.sqlite`: `f72dd796...` 완전 동일.
+- `state/three_push/params/latest_runtime_param.json`: `84151b56...` 완전 동일.
+- `state/market/market_data.sqlite`: `f7df867d...` 완전 동일.
+- Composer test 는 tmp path DI 사용 · pytest fixture 로 격리 (§15.11 준수).
+
+**Privacy (§7)**: 보유 수량 · 평단 · 계좌 그룹 · Holdings 원문 미노출. raw source key · PARAM 식별자 · 내부 reason code 는 diagnostics 만 (message body 비노출). BUY/SELL/교체/리밸런싱 문구 미사용.
+
+**dry-run 계약 유지 (§10)**: runtime status DB write / history JSONL append `true`. Telegram 호출 `false`. sent registry write `false`.
+
+**금지 항목 변경 0건 (§13)**: DB schema · row migration · Holdings DB Cutover · ML/universe artifact · runtime probe · 외부 API · 뉴스 source · 신규 threshold · 신규 selection · Telegram 발송 · scheduler · PARAM 정책 · sent registry 기준 · package fallback · BUY/SELL — 모두 0.
+
+**PARTIAL 사유**: 지시문 §16 OCI 검증 필요. 사용자 OCI dry-run 실행 후 CONCLUSION §11 갱신 → DONE closeout.
+
+**다음 활성 STEP (조건부)**:
+- 시장·Holdings·Spike 모두 contentful → `Telegram Contentful Controlled Send v1`.
+- 시장만 contentful, Holdings/Spike source 부재 → `OCI Evidence Publication / Missing Source Connection`.
+
+상세: `docs/handoff/POC2_RUNTIME_EVIDENCE_DB_CONNECTION_V1_CONCLUSION.md`.
+
+## 이전 STEP 요약 (Runtime State Store Refactor & Test Isolation v1, VERIFIED 2026-07-12, commit `f43e5565`)
 
 **목적**: 이전 STEP (`PARAM / Runtime State DB Cutover v1`) PARTIALLY_VERIFIED 원인 B-2 (단일 책임 과다), B-3 (`runtime_state_store.py` 620줄), B-6 (test isolation 미흡) 해소. **새 기능 없음.**
 

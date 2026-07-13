@@ -63,6 +63,9 @@ from app.runtime_sent_registry_store import (  # noqa: E402
     is_already_sent,
     mark_sent,
 )
+from app.runtime_evidence_composer import (  # noqa: E402
+    compose_runtime_evidence,
+)
 from app.three_push_runtime_message_builder import (  # noqa: E402
     availability_summary,
     build_runtime_message,
@@ -107,6 +110,9 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         "param_source": "",
         "message_text_length": 0,
         "availability": {},
+        "contentful_fact_count": 0,
+        "selection_result_count": 0,
+        "unavailable_reasons": {},
         "duplicate_key": "",
         "telegram_attempted": False,
         "telegram_sent": False,
@@ -168,22 +174,32 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         )
         return _finish("skipped", "push_kind_not_in_param")
 
-    # ── 3. runtime message 생성 ──────────────────────────────────────────────
-    # 본 빌더는 외부 API 호출하지 않으며, 모든 source 를 기본 unavailable 로 표시한다.
-    # 향후 OCI에 실제 가용 source 가 추가되면 available_sources 인자로 전달한다.
+    # ── 3. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
+    try:
+        evidence = compose_runtime_evidence(push_kind)
+    except Exception as e:
+        logger.error("runtime evidence 조립 실패: %s", e)
+        return _finish("failed", "runtime_evidence_error", str(e)[:400])
+
+    # ── 4. runtime message 생성 ──────────────────────────────────────────────
     try:
         message_text = build_runtime_message(
             push_kind=push_kind,
             param=param,
             runtime_kst_iso=runtime_kst,
-            available_sources=None,
+            available_sources=evidence.available_sources,
+            extra_notes=evidence.extra_notes,
         )
     except Exception as e:
         logger.error("runtime message 생성 실패: %s", e)
         return _finish("failed", "runtime_message_build_error", str(e)[:400])
 
     record["message_text_length"] = len(message_text)
-    record["availability"] = availability_summary(None)
+    record["availability"] = availability_summary(evidence.available_sources)
+    # 지시문 §9: record 에 diagnostics summary 추가 (본문 비노출 대상은 저장하지 않음).
+    record["contentful_fact_count"] = evidence.diagnostics.get("contentful_fact_count", 0)
+    record["selection_result_count"] = evidence.diagnostics.get("selection_result_count", 0)
+    record["unavailable_reasons"] = evidence.diagnostics.get("unavailable_reasons", {})
 
     # ── 4. 금지 문구 검사 ────────────────────────────────────────────────────
     bad = check_forbidden_wording(message_text)

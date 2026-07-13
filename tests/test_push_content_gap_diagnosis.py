@@ -36,10 +36,20 @@ def test_1_diagnosis_calls_existing_push_helpers(
     """§12.1: 진단이 기존 PUSH 3개 실제 내용 생성 helper 를 호출한다.
 
     `build_runtime_message` (PARAM runtime path 의 실제 message 생성 helper) 를
-    호출 감시. 3 push 마다 1 회 = 3 회.
+    호출 감시.
+
+    Runtime Evidence DB Connection v1 (2026-07-12) 이후 diagnosis reproducer 는
+    runtime_state.sqlite 의 active PARAM 을 SSOT 로 사용한다. active pointer 가
+    없으면 early return 하므로 helper 호출 여부가 갈린다.
     """
-    from app import push_content_gap_diagnosis as diag
     from app import push_content_gap_diagnosis_reproducers as rep
+    from app.runtime_param_store import activate_param_version, create_param_version
+    from app.three_push_runtime_param import build_manual_seed_param
+
+    # runtime_state DB 는 conftest fixture 로 tmp_path 격리됨. active PARAM seed.
+    param = build_manual_seed_param()
+    version_id, _, _ = create_param_version(param.to_dict())
+    activate_param_version(version_id, activated_by="test")
 
     calls: list = []
     original = rep.build_runtime_message
@@ -48,34 +58,22 @@ def test_1_diagnosis_calls_existing_push_helpers(
         calls.append(kw["push_kind"])
         return original(**kw)
 
-    # PARAM 파일이 없어도 helper 호출이 발생하려면 PARAM 이 있어야 함.
-    # 실제 latest_runtime_param.json 이 없는 tmp 환경에서는 param_available=False
-    # 로 early return 하므로 mock PARAM 을 skip 대신 실제 PARAM 존재 여부와
-    # 무관하게 이 테스트는 `reproduce_param_runtime` 이 helper 를 조건부로
-    # 호출한다는 계약만 확인한다 (FIX r2: reproducer 모듈 분리 후 patch 대상 이전).
     rep.build_runtime_message = wrapper
     try:
-        payload = run_push_content_gap_diagnosis(
+        run_push_content_gap_diagnosis(
             environment="pc",
             db_path=empty_db,
             artifact_path=tmp_path / "diag.json",
         )
     finally:
         rep.build_runtime_message = original
-    # PARAM 존재 여부에 따라 helper 호출 여부가 달라진다. PARAM 있으면 3 회
-    # 호출, 없으면 0 회 + 각 push 는 missing_latest_param 사유로 기록.
-    if diag.PARAM_PATH.exists():
-        assert set(calls) == {
-            "market_briefing",
-            "holdings_briefing",
-            "spike_or_falling_alert",
-        }
-    else:
-        for p in payload["pushes"]:
-            reason = p["actual_readiness"]["param_runtime_path"].get(
-                "exact_reason_code"
-            )
-            assert reason == "missing_latest_param"
+
+    # active PARAM 이 seed 되었으므로 3 push 모두 build_runtime_message 도달.
+    assert set(calls) == {
+        "market_briefing",
+        "holdings_briefing",
+        "spike_or_falling_alert",
+    }
 
 
 def test_2_no_telegram_send_called(
@@ -215,7 +213,12 @@ def test_7_per_push_requirements_and_actuals_recorded(
 
 
 def test_8_exact_reason_code_recorded(empty_db: Path, tmp_path: Path) -> None:
-    """§12.8: 데이터 부족 · 빈 선택이 정확한 reason code 로 기록."""
+    """§12.8: 데이터 부족 · 빈 선택이 정확한 reason code 로 기록.
+
+    Runtime Evidence DB Connection v1 (2026-07-12) 이후 diagnosis 는 runtime_state
+    DB 의 active PARAM 을 SSOT 로 사용한다. active pointer 부재/부재 relatives
+    조건에서 발생 가능한 코드 세트가 확장된다.
+    """
     payload = run_push_content_gap_diagnosis(
         environment="pc",
         db_path=empty_db,
@@ -223,12 +226,18 @@ def test_8_exact_reason_code_recorded(empty_db: Path, tmp_path: Path) -> None:
     )
     for p in payload["pushes"]:
         code = p["content_generation"]["exact_reason_code"]
-        # PARAM 존재 여부에 따라 두 시나리오만 허용.
+        # active PARAM 유무 및 evidence 조립 결과에 따른 허용 시나리오.
         assert code in {
             "runtime_available_sources_not_supplied",
             "missing_latest_param",
             "param_load_error",
             "push_kind_not_in_param",
+            "runtime_state_db_missing",
+            "active_pointer_missing",
+            "param_validation_error",
+            "runtime_evidence_error",
+            "no_contentful_fact",
+            None,  # content_ready 인 경우.
         }, f"unexpected reason code: {code!r}"
 
 
