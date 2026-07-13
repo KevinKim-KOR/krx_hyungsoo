@@ -1,8 +1,8 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-13 (Runtime Evidence DB Connection v1 — PARTIAL, PC DONE · OCI 실행 대기)
+최종 업데이트: 2026-07-13 (Runtime Evidence DB Connection v1 — DONE, PC + OCI dry-run 완료)
 
-## 이번 STEP 요약 (Runtime Evidence DB Connection v1, PARTIAL — PC DONE)
+## 이번 STEP 요약 (Runtime Evidence DB Connection v1, DONE)
 
 **목적**: OCI PARAM Runtime 에 기존 read-only evidence (`market_data.sqlite` · Holdings · `runtime_state.sqlite`) 를 연결해 실제 시장 수치가 포함된 사용자 메시지 생성. **새 데이터 수집 · 신규 selection 로직 · Telegram 발송 없음.**
 
@@ -38,9 +38,21 @@
 
 **금지 항목 변경 0건 (§13)**: DB schema · row migration · Holdings DB Cutover · ML/universe artifact · runtime probe · 외부 API · 뉴스 source · 신규 threshold · 신규 selection · Telegram 발송 · scheduler · PARAM 정책 · sent registry 기준 · package fallback · BUY/SELL — 모두 0.
 
-**검증자 판정**: **VERIFIED (PARTIAL)** — 2026-07-13, FIX r4 · 850 passed 기준. NAV row asof 필수 검사 + Holdings/NAV 독립 + dry-run test spy 강화 + docs 정합 모두 통과. tracked 5 파일 안전한 스냅샷.
+**검증자 판정**: **VERIFIED** — 2026-07-13, FIX r4 · 850 passed 기준. NAV row asof 필수 검사 + Holdings/NAV 독립 + dry-run test spy 강화 + docs 정합 모두 통과.
 
-**PARTIAL 사유**: 지시문 §16 OCI 검증 필요. 사용자 OCI dry-run 실행 후 CONCLUSION §11 갱신 → DONE closeout.
+**OCI dry-run 실측 (2026-07-13, revision `fd65eaca` same_revision=True)**:
+- market_briefing: `contentful_fact_count=3` ✅, `market_discovery_snapshot=available`, `message_text_length=393`, `selection_result_count=10`, market_asof=`2026-07-03`.
+- holdings_briefing: contentful=0 (OCI Holdings JSON 부재 · `holdings_source_missing` · 지시문 §18 FAIL 아님).
+- spike_or_falling_alert: contentful=0 (universe momentum 미구현 · 기대).
+- Telegram: `telegram_attempted=false`, `telegram_sent=false` 3회 모두 ✅.
+- sent_registry: 53 → 53 (**불변 확인**) ✅.
+- verify: `overall=READY`, `readiness_errors=[]`, `activated_by=cutover_seed`.
+
+**지시문 §18 PASS 조건 실측 충족**: market_briefing contentful ≥1 · 실제 as-of · Telegram 미발송 · sent_registry 불변 · Diagnosis 공통 Composer.
+
+**다음 활성 STEP (확정)**: **`OCI Evidence Publication / Missing Source Connection`** — Holdings JSON OCI publication + universe momentum artifact + kr_realtime/overnight_us source 연결 후보.
+
+상세: `docs/handoff/POC2_RUNTIME_EVIDENCE_DB_CONNECTION_V1_CONCLUSION.md`.
 
 **다음 활성 STEP (조건부)**:
 - 시장·Holdings·Spike 모두 contentful → `Telegram Contentful Controlled Send v1`.

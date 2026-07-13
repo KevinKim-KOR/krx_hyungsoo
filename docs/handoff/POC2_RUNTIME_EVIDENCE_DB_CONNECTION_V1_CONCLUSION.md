@@ -1,6 +1,7 @@
-# Runtime Evidence DB Connection v1 — Conclusion (VERIFIED PARTIAL — PC DONE · OCI 실행 대기)
+# Runtime Evidence DB Connection v1 — Conclusion (DONE · PC + OCI 확인)
 
-**검증자 최종 판정**: **VERIFIED (PARTIAL)** — 2026-07-13, FIX r4 · 850 passed. tracked 5 파일 안전한 스냅샷. OCI 실행 후 DONE closeout.
+**검증자 최종 판정**: **VERIFIED (PARTIAL)** — 2026-07-13, FIX r4 · 850 passed.
+**closeout**: 2026-07-13 · OCI 3-PUSH dry-run 실행 완료 (revision `fd65eaca`, same_revision=True) · 지시문 §18 PASS 조건 충족.
 
 
 작성일: 2026-07-12
@@ -209,33 +210,43 @@ python3 -m scripts.run_runtime_state_db_cutover verify
 - `news_snapshot` — producer/reader 신설.
 - `universe_momentum_snapshot` — artifact 생성 · 전송 STEP.
 
-## 11. PC vs OCI 비교 (사용자 실행 후 갱신)
+## 11. PC vs OCI 비교 (2026-07-13 실측)
 
-| 항목 | PC | OCI |
+| 항목 | PC | OCI (revision `fd65eaca`) |
 |---|---|---|
-| revision (git HEAD) | (이 commit) | ⏳ |
-| active_param_version_id | `param-20260708T141218-914114` | ⏳ (same_hash 예상 여부) |
-| market_asof (compute_topn) | ⏳ (사용자 실행) | ⏳ |
-| market_briefing available/reasons | ⏳ | ⏳ |
-| holdings_briefing available/reasons | ⏳ | ⏳ |
-| spike_or_falling_alert available | unavailable | unavailable (기대) |
-| telegram_attempted/sent | false/false | false/false (기대) |
-| sent_registry_before → after | 무변화 | 무변화 (기대) |
+| revision (git HEAD) | `fd65eaca` | `fd65eaca` (same_revision=True) |
+| active_param_version_id | `param-20260708T141218-914114` | `param-20260620T103410-757435` (기존 Cutover v1 §11.3 same_hash=false 상태 유지) |
+| active_pointer.activated_by | `cutover_seed`/`api_param_apply` | `cutover_seed` |
+| market_asof (compute_topn) | `2026-07-03` | `2026-07-03` (동일) |
+| market_briefing available | market_discovery_snapshot | market_discovery_snapshot |
+| market_briefing contentful_fact_count | 3 | **3** ✅ |
+| market_briefing selection_result_count | 10 | **10** |
+| market_briefing message_text_length | (변동) | 393 |
+| holdings_briefing available | nav_discount_snapshot (PC 로컬 Holdings 존재) | (모두 unavailable — Holdings JSON OCI 부재) |
+| holdings_briefing unavailable_reasons | holdings=no_contentful_fact, nav=available | holdings=`holdings_source_missing`, nav=`holdings_source_missing`, kr_realtime=external_fetch, ml=not_implemented |
+| holdings_briefing contentful_fact_count | 32 | 0 (OCI Holdings JSON 부재 · 지시문 §18 FAIL 아님) |
+| spike_or_falling_alert available | 없음 | 없음 |
+| spike_or_falling_alert contentful_fact_count | 0 | **0** ✅ |
+| telegram_attempted/sent | false/false | **false/false** ✅ |
+| sent_registry_before → after | 무변화 | **53 → 53 (불변)** ✅ |
+| verify overall | READY | (Refactor v1 FIX r1 이후 OCI 상 유지, sent_registry=47 baseline 그대로 · 이번 dry-run 은 미변경) |
 
-## 12. 다음 STEP 게이트
+## 12. 다음 STEP 게이트 (판정 완료)
 
-**PASS 조건** (지시문 §18):
-- OCI market briefing contentful evidence 최소 1개 생성.
-- 실제 as-of + 실제 수치.
-- available_sources · extra_notes 전달 확인.
-- Telegram 미발송 · sent registry 불변.
-- Diagnosis 공통 Composer 사용 확인 (test 로 이미 확인).
+**지시문 §18 PASS 조건 실측 확인**:
+- OCI market_briefing contentful=3 (≥1) ✅.
+- market_asof=2026-07-03 (실제 as-of) ✅.
+- available_sources · extra_notes 전달 완료 (message_text_length=393).
+- Telegram 미발송 (`telegram_attempted=false`) ✅.
+- sent_registry 불변 (53 → 53) ✅.
+- Diagnosis 공통 Composer 사용 확인 (test).
 
-**분기**:
-- 시장 · Holdings · Spike 모두 contentful → `Telegram Contentful Controlled Send v1`.
-- 시장만 contentful, Holdings/Spike source 부재 → `OCI Evidence Publication / Missing Source Connection`.
+**§18 실측 분기**:
+- 시장 = contentful (3) ✅.
+- Holdings/Spike source 부재 (OCI 상 Holdings JSON 부재 · universe momentum 미구현).
+- → **다음 활성 STEP: `OCI Evidence Publication / Missing Source Connection`** (설계자 확정 세션).
 
-**Holdings JSON OCI 부재 시**: `holdings_source_missing` 으로 unavailable. **이번 STEP FAIL 아님** (지시문 §18 명시).
+**Holdings JSON OCI 부재**: `holdings_source_missing` 으로 unavailable 정상 처리 (지시문 §18 FAIL 아님 명시 · 실측 확인).
 
 ## 13. 금지 항목 변경 0건 확인 (§13)
 
