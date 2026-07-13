@@ -245,65 +245,62 @@ def _compose_holdings_and_nav(
     holdings_diag["asof"] = market_asof
     holdings_diag["market_asof"] = market_asof
 
-    # A-1 정정 r2: 지시문 §8 "as-of 가 없으면 available 처리하지 않음" 준수.
-    # Holdings evidence 문장은 market_asof 를 필수로 요구. as-of 부재 시 조기 반환.
-    if not market_asof:
-        holdings_diag["status"] = "unavailable"
-        holdings_diag["reason"] = "holdings_market_asof_missing"
-        nav_diag["status"] = "unavailable"
-        nav_diag["reason"] = "holdings_market_asof_missing"
-        return ("unavailable", [], holdings_diag), ("unavailable", [], nav_diag)
-
-    # Holdings evidence notes 조립 — 실제 수치 있는 항목만.
+    # A-1 정정 r3: Holdings 시장 evidence 는 market_asof 필수 (§8 "as-of 없으면
+    # available X"). NAV 는 아래에서 독립적으로 자체 asof + 값 조건만으로 판정.
     holdings_notes: list[str] = []
     holdings_fact_count = 0
     matched_evidence_count = 0
 
-    for h_out in evidence_payload.get("holdings") or []:
-        name = h_out.get("name") or h_out.get("ticker")
-        line_parts: list[str] = []
-
-        returns_payload = h_out.get("returns") or {}
-        if returns_payload.get("status") == "ok":
-            r1m = _fmt_pct(returns_payload.get("one_month_return_pct"))
-            r3m = _fmt_pct(returns_payload.get("three_month_return_pct"))
-            frag = []
-            if r1m:
-                frag.append(f"1개월 {r1m}")
-            if r3m:
-                frag.append(f"3개월 {r3m}")
-            if frag:
-                line_parts.append(" / ".join(frag))
-
-        excess_payload = h_out.get("excess_return") or {}
-        if excess_payload.get("status") == "ok":
-            exc_1m = _fmt_pct(excess_payload.get("vs_kodex200_1m_pctp"))
-            if exc_1m:
-                line_parts.append(f"KODEX200 대비 1개월 초과 {exc_1m}")
-
-        topn_match = h_out.get("topn_match") or {}
-        if topn_match.get("status") == "matched_topn_candidate":
-            rank = topn_match.get("rank")
-            if rank is not None:
-                line_parts.append(f"Market Discovery TOP{rank}")
-
-        if line_parts and name:
-            # A-1 정정 r2: 각 Holdings evidence 문장에 실제 기준일 명시.
-            holdings_notes.append(
-                f"{name} ({market_asof} 기준): " + " · ".join(line_parts) + "."
-            )
-            holdings_fact_count += 1
-            matched_evidence_count += 1
-
-    if holdings_fact_count == 0:
+    if not market_asof:
         holdings_diag["status"] = "unavailable"
-        holdings_diag["reason"] = REASON_NO_CONTENTFUL_FACT
+        holdings_diag["reason"] = "holdings_market_asof_missing"
+        # NAV 계산은 계속 진행 (독립).
     else:
-        holdings_diag["status"] = "available"
-        holdings_diag["contentful_fact_count"] = holdings_fact_count
-        holdings_diag["matched_evidence_count"] = matched_evidence_count
+        # Holdings evidence notes 조립 — 실제 수치 있는 항목만.
+        for h_out in evidence_payload.get("holdings") or []:
+            name = h_out.get("name") or h_out.get("ticker")
+            line_parts: list[str] = []
 
-    # NAV — 각 보유 ETF 에 대해 fetch_latest_nav 조회.
+            returns_payload = h_out.get("returns") or {}
+            if returns_payload.get("status") == "ok":
+                r1m = _fmt_pct(returns_payload.get("one_month_return_pct"))
+                r3m = _fmt_pct(returns_payload.get("three_month_return_pct"))
+                frag = []
+                if r1m:
+                    frag.append(f"1개월 {r1m}")
+                if r3m:
+                    frag.append(f"3개월 {r3m}")
+                if frag:
+                    line_parts.append(" / ".join(frag))
+
+            excess_payload = h_out.get("excess_return") or {}
+            if excess_payload.get("status") == "ok":
+                exc_1m = _fmt_pct(excess_payload.get("vs_kodex200_1m_pctp"))
+                if exc_1m:
+                    line_parts.append(f"KODEX200 대비 1개월 초과 {exc_1m}")
+
+            topn_match = h_out.get("topn_match") or {}
+            if topn_match.get("status") == "matched_topn_candidate":
+                rank = topn_match.get("rank")
+                if rank is not None:
+                    line_parts.append(f"Market Discovery TOP{rank}")
+
+            if line_parts and name:
+                holdings_notes.append(
+                    f"{name} ({market_asof} 기준): " + " · ".join(line_parts) + "."
+                )
+                holdings_fact_count += 1
+                matched_evidence_count += 1
+
+        if holdings_fact_count == 0:
+            holdings_diag["status"] = "unavailable"
+            holdings_diag["reason"] = REASON_NO_CONTENTFUL_FACT
+        else:
+            holdings_diag["status"] = "available"
+            holdings_diag["contentful_fact_count"] = holdings_fact_count
+            holdings_diag["matched_evidence_count"] = matched_evidence_count
+
+    # NAV — 각 보유 ETF 에 대해 fetch_latest_nav 조회 (§5.3 독립 조건).
     nav_notes: list[str] = []
     nav_fact_count = 0
     nav_matched = 0
@@ -312,12 +309,16 @@ def _compose_holdings_and_nav(
         row = nav_fn(etf_ticker=h.ticker, db_path=market_db_path)
         if row is None:
             continue
+        # A-1 정정 r4: NAV row 자체의 실제 as-of 필수 (지시문 §5.3 "실제 as-of 존재").
+        # asof 부재 시 해당 row 를 available 처리하지 않는다.
+        if not row.asof:
+            continue
         # 실제 값이 있어야 available (지시문 §5.3).
         has_nav_or_price = (row.nav is not None) or (row.market_price is not None)
         if not has_nav_or_price and row.discount_rate_pct is None:
             continue
         nav_matched += 1
-        if nav_asof_latest is None or (row.asof or "") > nav_asof_latest:
+        if nav_asof_latest is None or row.asof > nav_asof_latest:
             nav_asof_latest = row.asof
         parts: list[str] = []
         if row.market_price is not None and row.nav is not None:

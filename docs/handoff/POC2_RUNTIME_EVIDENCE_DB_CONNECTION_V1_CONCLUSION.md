@@ -1,4 +1,7 @@
-# Runtime Evidence DB Connection v1 — Conclusion (PARTIAL — PC DONE · OCI 실행 대기)
+# Runtime Evidence DB Connection v1 — Conclusion (VERIFIED PARTIAL — PC DONE · OCI 실행 대기)
+
+**검증자 최종 판정**: **VERIFIED (PARTIAL)** — 2026-07-13, FIX r4 · 850 passed. tracked 5 파일 안전한 스냅샷. OCI 실행 후 DONE closeout.
+
 
 작성일: 2026-07-12
 성격: OCI PARAM Runtime 에 기존 read-only evidence (market_data.sqlite · Holdings · runtime_state.sqlite) 를 연결해 실제 시장 수치가 포함된 사용자 메시지를 생성하는 STEP. **새 데이터 수집 · 신규 selection 로직 · Telegram 발송 없음.**
@@ -69,7 +72,7 @@ class RuntimeEvidenceResult:
 - daily close 를 realtime source 로 승격 X (§5.4 · AC-9).
 - NAV 는 Holdings + DB row 있을 때만 available (§5.3 · AC-12), 실제 DB as-of 사용 (AC-13).
 
-## 4. 3-PUSH 별 결과 (PC 실측 · FIX r1)
+## 4. 3-PUSH 별 결과 (PC 실측 · FIX r3)
 
 **실행 방식**: 실제 PC 로컬 `state/market/market_data.sqlite` (baseline `f7df867d...`) + `state/holdings/holdings_latest.json` 존재 상태에서 `compose_runtime_evidence()` 를 직접 호출한 결과.
 
@@ -135,16 +138,16 @@ class RuntimeEvidenceResult:
 
 **§10 §19 note**: `dry_run.runtime_status_written = true`, `dry_run.history_appended = true`, `dry_run.telegram_attempted = false`, `dry_run.sent_registry_before == sent_registry_after`.
 
-## 8. PC 검증 결과 (FIX r2)
+## 8. PC 검증 결과 (FIX r3 · r4 최종)
 
-**Composer focused test**: **17 passed** (14 → 17: `test_holdings_value_error_propagates`, `test_holdings_unavailable_when_market_asof_missing`, `test_holdings_source_asof_populated_when_available` 신규).
+**Composer focused test**: **19 passed** (18 → 19: `test_nav_unavailable_when_row_asof_missing` 신규 · FIX r4).
 **Runner dry-run focused test**: **4 passed** (holdings/spike test 에 Telegram spy 미호출 + `sent_registry` 불변 직접 assert 추가).
 **Diagnosis test**: `test_1_diagnosis_calls_existing_push_helpers` + `test_8_exact_reason_code_recorded` 통과.
-**backend regression (FIX r2 최종)**: **848 passed** (827 → 838 → 845 → 848, 이번 STEP 순증 21). 0 fail. 196s.
+**backend regression (FIX r4 최종)**: **850 passed** (827 → 838 → 845 → 848 → 849 → 850, 이번 STEP 순증 23). 0 fail. 199s.
 **실제 state 3종 (`runtime_state.sqlite` / `latest_runtime_param.json` / `market_data.sqlite`) pytest 전·후 완전 불변** (sha256 3중 일치 확인).
 **Lint**: black / flake8 (max-line=100) / py_compile PASS.
 
-**실제 state 무변경 (pytest 838 실행 전·후 실측 대조)**:
+**실제 state 무변경 (pytest 850 실행 전·후 실측 대조)**:
 - `state/runtime/runtime_state.sqlite`: size=53248, sha256=`f72dd796b20441c8d89ab59815c546cbdf74cac318f27eabede011750d1b386e`, mtime=1783846900.8138113. 3중 완전 동일.
 - `state/three_push/params/latest_runtime_param.json`: size=884, sha256=`84151b5659abba0a8622af3e418856e5512e3f290c6fd50a0697b0609af422aa`, mtime=1783846900.6387017. 3중 완전 동일.
 - `state/market/market_data.sqlite`: size=131538944, sha256=`f7df867d0f69fc07929b0a25a87ccdc0f235a01097299a9a522bf991614cf286`, mtime=1783231217.8648515. 3중 완전 동일 (Cutover v1 §2 · Remediation v1 baseline).

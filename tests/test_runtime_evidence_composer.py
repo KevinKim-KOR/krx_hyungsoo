@@ -383,13 +383,15 @@ def test_holdings_value_error_propagates(tmp_path: Path) -> None:
 
 
 def test_holdings_unavailable_when_market_asof_missing(tmp_path: Path) -> None:
-    """A-1 정정 r2: market_asof 부재 시 Holdings/NAV 는 available 처리하지 않음."""
+    """A-1 정정 r3: Holdings 시장 evidence 는 market_asof 부재 시 unavailable.
+    NAV 는 자체 조건 (row.asof + 값) 만으로 판정되어 available 유지 (독립).
+    """
     hfile = tmp_path / "holdings.json"
     hfile.write_text("{}", encoding="utf-8")
 
     def _evidence_without_asof(**_kwargs: Any) -> dict[str, Any]:
         payload = _ok_evidence_fn(**_kwargs)
-        payload["market_asof"] = None  # as-of 부재 시나리오.
+        payload["market_asof"] = None
         return payload
 
     result = compose_runtime_evidence(
@@ -399,13 +401,63 @@ def test_holdings_unavailable_when_market_asof_missing(tmp_path: Path) -> None:
         holdings_loader=_fake_holdings_ok,
         topn_fn=lambda **_: _ok_topn_payload(),
         evidence_fn=_evidence_without_asof,
-        nav_fn=lambda **_: _fake_nav_row(),
+        nav_fn=lambda **_: _fake_nav_row(asof="2026-07-11"),
     )
-    # A-1: as-of 없으면 Holdings 는 available 아님.
+    # Holdings 시장 evidence 는 unavailable.
     assert result.available_sources[SRC_HOLDINGS] == "holdings_market_asof_missing"
-    assert result.available_sources[SRC_NAV_DISCOUNT] == "holdings_market_asof_missing"
-    assert result.diagnostics["contentful_fact_count"] == 0
-    assert result.extra_notes == []
+    # NAV 는 독립적으로 available (row.asof + 값 존재).
+    assert result.available_sources[SRC_NAV_DISCOUNT] == "available"
+    # extra_notes 는 NAV 만 포함.
+    assert any("NAV" in n and "2026-07-11 기준" in n for n in result.extra_notes)
+    # contentful_fact_count 는 NAV 만 계산 (holdings=0 + nav=1).
+    assert result.diagnostics["contentful_fact_count"] >= 1
+
+
+def test_nav_unavailable_when_row_asof_missing(tmp_path: Path) -> None:
+    """A-1 정정 r4: NAV row 자체의 as-of 부재 시 available 처리하지 않음 (지시문 §5.3)."""
+    hfile = tmp_path / "holdings.json"
+    hfile.write_text("{}", encoding="utf-8")
+    result = compose_runtime_evidence(
+        "holdings_briefing",
+        market_db_path=tmp_path / "market_data.sqlite",
+        holdings_file=hfile,
+        holdings_loader=_fake_holdings_ok,
+        topn_fn=lambda **_: _ok_topn_payload(),
+        evidence_fn=_ok_evidence_fn,
+        # row 반환 but asof=None → NAV 는 unavailable.
+        nav_fn=lambda **_: _fake_nav_row(asof=None),
+    )
+    assert result.available_sources[SRC_NAV_DISCOUNT] != "available"
+    # extra_notes 에 "None 기준" 이 절대 나오지 않아야 함.
+    assert not any("None 기준" in n for n in result.extra_notes)
+    assert not any("NAV" in n for n in result.extra_notes)
+
+
+def test_nav_independent_from_holdings_market_asof(tmp_path: Path) -> None:
+    """A-1 정정 r3 (재확인): NAV 는 Holdings 시장 asof 종속 없음."""
+    hfile = tmp_path / "holdings.json"
+    hfile.write_text("{}", encoding="utf-8")
+
+    def _evidence_missing_asof(**_kwargs: Any) -> dict[str, Any]:
+        payload = _ok_evidence_fn(**_kwargs)
+        payload["market_asof"] = None
+        return payload
+
+    result = compose_runtime_evidence(
+        "holdings_briefing",
+        market_db_path=tmp_path / "market_data.sqlite",
+        holdings_file=hfile,
+        holdings_loader=_fake_holdings_ok,
+        topn_fn=lambda **_: _ok_topn_payload(),
+        evidence_fn=_evidence_missing_asof,
+        nav_fn=lambda **_: _fake_nav_row(asof="2026-07-11"),
+    )
+    # source_asof 에 NAV asof 는 반영, Holdings asof 는 None (반영 안 됨).
+    source_asof = result.diagnostics["source_asof"]
+    assert source_asof.get(SRC_NAV_DISCOUNT) == "2026-07-11"
+    # Holdings 시장 evidence 는 unavailable 이므로 source_asof 에 없어야 함
+    # (asof=None 이므로 조립 시 필터됨).
+    assert SRC_HOLDINGS not in source_asof
 
 
 def test_holdings_source_asof_populated_when_available(tmp_path: Path) -> None:

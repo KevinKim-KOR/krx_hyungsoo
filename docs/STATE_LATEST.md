@@ -11,7 +11,7 @@
 **설계자 13개 확정본 준수**: `PUSH_KIND_DATA_SOURCES` 계약 유지 · Q3 기존 함수 재사용 (신설 금지) · Q4 `extra_notes` 시그니처 활용 · Q6 dataclass · Q7 contentful fact 정의 · Q8 selection count push_kind 별 정의 · Q9 diagnosis DB active PARAM · Q10 DI · Q13 OCI 실행 후 DONE.
 
 **신규 구현**:
-- `app/runtime_evidence_composer.py` (522줄, FIX r2 반영) — `compose_runtime_evidence(push_kind)` = `RuntimeEvidenceResult(available_sources, extra_notes, diagnostics)`. DI (market_db_path/holdings_file/holdings_loader/topn_fn/nav_fn/evidence_fn) 지원.
+- `app/runtime_evidence_composer.py` (523줄, FIX r3/r4 반영) — `compose_runtime_evidence(push_kind)` = `RuntimeEvidenceResult(available_sources, extra_notes, diagnostics)`. DI (market_db_path/holdings_file/holdings_loader/topn_fn/nav_fn/evidence_fn) 지원.
 - source 처리: `market_discovery_snapshot` (`compute_topn` 필수 연결) · `holdings_snapshot` + `nav_discount_snapshot` (조건부 · Holdings JSON 존재 시) · 나머지 5개 unavailable 유지.
 
 **전환**:
@@ -22,9 +22,9 @@
 - `tests/test_push_content_gap_diagnosis.py::test_1_diagnosis_calls_existing_push_helpers`: active PARAM seed 후 3 push 모두 build_runtime_message 도달 검증.
 - `test_8_exact_reason_code_recorded`: 허용 reason code 세트에 `runtime_state_db_missing` · `active_pointer_missing` · `no_contentful_fact` 등 추가.
 
-**신규 테스트**: `tests/test_runtime_evidence_composer.py` **17 케이스** (FIX r1 3 + FIX r2 3 신규) + `tests/test_runtime_runner_dry_run.py` **4 케이스** (runner dry-run 자동 회귀).
+**신규 테스트**: `tests/test_runtime_evidence_composer.py` **19 케이스** (FIX r1 3 + FIX r2 3 + FIX r3 1 + FIX r4 1 신규) + `tests/test_runtime_runner_dry_run.py` **4 케이스** (runner dry-run 자동 회귀).
 
-**backend regression (FIX r2 최종)**: **848 passed** (Refactor v1 FIX r1 이후 827 → 838 → 845 → 848, 이번 STEP 순증 21: Composer 17 + runner dry-run 4). 0 fail. 196s. black / flake8 (max-line=100) / py_compile PASS.
+**backend regression (FIX r4 최종)**: **850 passed** (Refactor v1 FIX r1 이후 827 → 838 → 845 → 848 → 849 → 850, 이번 STEP 순증 23: Composer 19 + runner dry-run 4). 0 fail. 199s. black / flake8 (max-line=100) / py_compile PASS.
 
 **실제 state 무변경 (pytest 전·후 대조)**:
 - `state/runtime/runtime_state.sqlite`: `f72dd796...` 완전 동일.
@@ -37,6 +37,8 @@
 **dry-run 계약 유지 (§10)**: runtime status DB write / history JSONL append `true`. Telegram 호출 `false`. sent registry write `false`.
 
 **금지 항목 변경 0건 (§13)**: DB schema · row migration · Holdings DB Cutover · ML/universe artifact · runtime probe · 외부 API · 뉴스 source · 신규 threshold · 신규 selection · Telegram 발송 · scheduler · PARAM 정책 · sent registry 기준 · package fallback · BUY/SELL — 모두 0.
+
+**검증자 판정**: **VERIFIED (PARTIAL)** — 2026-07-13, FIX r4 · 850 passed 기준. NAV row asof 필수 검사 + Holdings/NAV 독립 + dry-run test spy 강화 + docs 정합 모두 통과. tracked 5 파일 안전한 스냅샷.
 
 **PARTIAL 사유**: 지시문 §16 OCI 검증 필요. 사용자 OCI dry-run 실행 후 CONCLUSION §11 갱신 → DONE closeout.
 
