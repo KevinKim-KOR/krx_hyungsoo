@@ -51,6 +51,10 @@ _REGISTRY_JSON = Path("state/three_push/oci_runtime_sent_registry.json")
 
 _ACTIVATED_BY_SEED = "cutover_seed"
 
+# FIX r1 (Refactor v1) Q6: 오염된 active pointer 를 READY 로 통과시키지 않기 위한 marker set.
+# runtime state DB 의 active_pointer.activated_by 값이 아래에 포함되면 verify overall=NOT_READY.
+_TEST_ACTIVATED_BY_MARKERS = frozenset({"isolation_test", "test"})
+
 
 def _now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -282,13 +286,30 @@ def cmd_verify(args: argparse.Namespace) -> int:
     result["checks"]["sent_registry_count"] = registry_count(db_path)
     result["checks"]["json_fallback_used"] = False
 
+    # FIX r1 (Q3 · Q6): 판정 강화. 위험 신호 발견 시 NOT_READY + readiness_errors.
+    readiness_errors: list[str] = []
     overall = "READY"
     if missing:
         overall = "NOT_READY"
+        readiness_errors.append("missing_tables")
     if not result["checks"]["active_pointer_exists"]:
         overall = "NOT_READY"
+        readiness_errors.append("active_pointer_missing")
     if not reconstruct_ok:
         overall = "NOT_READY"
+        readiness_errors.append("reconstruct_active_param_failed")
+    # test marker contamination.
+    if ptr and ptr.get("activated_by") in _TEST_ACTIVATED_BY_MARKERS:
+        overall = "NOT_READY"
+        readiness_errors.append(
+            f"active_pointer_activated_by_test_marker:{ptr.get('activated_by')}"
+        )
+    # semantic divergence (local DB reconstruction vs local latest JSON).
+    sem = result["checks"].get("semantic_match_with_latest_json")
+    if sem is False:
+        overall = "NOT_READY"
+        readiness_errors.append("db_reconstruction_diverges_from_latest_json")
+    result["readiness_errors"] = readiness_errors
     result["overall"] = overall
     _emit(result)
     return 0 if overall == "READY" else 5

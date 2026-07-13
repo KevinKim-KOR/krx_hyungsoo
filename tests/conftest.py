@@ -53,15 +53,33 @@ def _isolated_store(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _isolated_runtime_state_db(tmp_path, monkeypatch):
-    """Refactor v1 Q4 (a): runtime_state.sqlite 를 test 마다 tmp_path 로 격리.
+    """Refactor v1 Q4 (a) + FIX r1: runtime_state.sqlite + latest_runtime_param.json
+    을 test 마다 tmp_path 로 격리.
 
-    실제 운영 DB (`state/runtime/runtime_state.sqlite`) 는 테스트로 write 되지 않는다.
-    market_data.sqlite / decision_evidence.sqlite 등 다른 DB path 는 건드리지 않는다.
+    실제 운영 DB (`state/runtime/runtime_state.sqlite`) 및 실제 운영 PARAM 파일
+    (`state/three_push/params/latest_runtime_param.json` / history/) 은 test 로
+    write 되지 않는다. market_data.sqlite / decision_evidence.sqlite 등 다른 DB
+    path 는 건드리지 않는다.
     """
+    from app import api_three_push_param as _api
     from app import runtime_state_db as _rt_db
+    from scripts import create_three_push_runtime_param as _create
 
     test_db_path = Path(tmp_path) / "runtime_state.sqlite"
     monkeypatch.setattr(_rt_db, "DEFAULT_DB_PATH", test_db_path)
+
+    # FIX r1: legacy JSON write path 도 격리 (latest + history).
+    # api_three_push_param 과 create_three_push_runtime_param 이 apply/approve
+    # 흐름에서 실제 파일에 쓰지 못하도록 tmp_path 로 지정.
+    test_param_dir = Path(tmp_path) / "three_push" / "params"
+    test_history_dir = test_param_dir / "history"
+    test_history_dir.mkdir(parents=True, exist_ok=True)
+    test_latest_path = test_param_dir / "latest_runtime_param.json"
+    monkeypatch.setattr(_api, "_LATEST_PATH", test_latest_path)
+    monkeypatch.setattr(_create, "_LATEST_PATH", test_latest_path)
+    monkeypatch.setattr(_create, "_HISTORY_DIR", test_history_dir)
+    monkeypatch.setattr(_create, "_PARAM_DIR", test_param_dir)
+
     _rt_db.reset_init_cache_for_testing()
     yield
     _rt_db.reset_init_cache_for_testing()

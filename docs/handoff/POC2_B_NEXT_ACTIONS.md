@@ -1,6 +1,6 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-10 (Runtime State Store Refactor & Test Isolation v1 — DONE)
+작성일: 2026-05-20 / 갱신: 2026-07-12 (Runtime State Store Refactor & Test Isolation v1 — FIX r1 DONE, 오염 복구 + verify 강화)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
@@ -29,6 +29,8 @@
 **schema/row 변경**: 0건. 5 table DDL 그대로 이동. sent registry unique 기준 유지.
 
 **금지 항목 변경 0건**: runtime evidence · `available_sources=None` · Telegram · market_data · decision_evidence · UI · scheduler · schema · migration · PARAM 정책 · unique 기준 — 모두 0.
+
+**FIX r1 (2026-07-12)**: 실제 verify 결과상 `activated_by=isolation_test` + `semantic_match=false` 인데도 verify 가 READY 로 판정하는 취약점 발견 (설계자 REJECTED). 해소 조치: (1) latest JSON 을 마지막 정상 승인분 `param-20260708T141218-914114` 로 복구. (2) DB 삭제 후 clean seed. (3) verify CLI 판정 강화 (test marker + semantic mismatch → NOT_READY) + 자동 회귀 test 4 케이스 신설. (4) conftest fixture 를 legacy JSON path 까지 확장. 결과: pytest 전/후 실제 DB + latest JSON 모두 완전 불변, backend **827 passed** (823 → 827), verify overall=READY / readiness_errors=[].
 
 **다음 활성 Step (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — `available_sources=None` 제거 준비.
 

@@ -215,22 +215,96 @@ def test_enabled_push_kinds_index_ordering_preserved(tmp_path: Path) -> None:
     ]
 
 
-def test_seed_cli_invokes_seed_then_verify(tmp_path: Path, monkeypatch) -> None:
+def _cli_setup_and_seed(tmp_path: Path, monkeypatch, param=None) -> tuple:
+    """FIX r1 verify 강화 회귀 test 공용 helper."""
     from scripts import run_runtime_state_db_cutover as cli
 
     p = _fresh_db(tmp_path)
     src_dir = tmp_path / "state" / "three_push" / "params"
     src_dir.mkdir(parents=True)
     src_json = src_dir / "latest_runtime_param.json"
-    param = build_manual_seed_param()
+    param = param or build_manual_seed_param()
     src_json.write_text(
         json.dumps(param.to_dict(), ensure_ascii=False), encoding="utf-8"
     )
     monkeypatch.setattr(cli, "_LATEST_PARAM_JSON", src_json)
     monkeypatch.setattr(cli, "_STATUS_JSON", tmp_path / "no_status.json")
     monkeypatch.setattr(cli, "_REGISTRY_JSON", tmp_path / "no_registry.json")
-
     exit_code = cli.main(["seed", "--db-path", str(p)])
     assert exit_code == 0
+    return cli, p, src_json, param
+
+
+def test_seed_cli_invokes_seed_then_verify(tmp_path: Path, monkeypatch) -> None:
+    cli, p, _, _ = _cli_setup_and_seed(tmp_path, monkeypatch)
     exit_code = cli.main(["verify", "--db-path", str(p)])
     assert exit_code == 0
+
+
+def _run_verify_capture(cli, p, capsys) -> tuple[int, dict]:
+    # setup/seed 단계 stdout 을 버림.
+    capsys.readouterr()
+    exit_code = cli.main(["verify", "--db-path", str(p)])
+    out = capsys.readouterr().out.strip()
+    payload = json.loads(out)
+    return exit_code, payload
+
+
+def test_verify_cli_flags_test_marker_isolation_test(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """FIX r1 Q3 · Q6: activated_by=isolation_test → overall=NOT_READY + readiness_errors."""
+    cli, p, _, param = _cli_setup_and_seed(tmp_path, monkeypatch)
+    # 오염 인위 삽입.
+    activate_param_version(param.param_id, activated_by="isolation_test", db_path=p)
+    exit_code, payload = _run_verify_capture(cli, p, capsys)
+    assert payload["overall"] == "NOT_READY"
+    assert exit_code == 5
+    assert any(
+        e.startswith("active_pointer_activated_by_test_marker:isolation_test")
+        for e in payload["readiness_errors"]
+    )
+
+
+def test_verify_cli_flags_test_marker_bare_test(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """FIX r1 Q6: 'test' 도 marker set 에 포함."""
+    cli, p, _, param = _cli_setup_and_seed(tmp_path, monkeypatch)
+    activate_param_version(param.param_id, activated_by="test", db_path=p)
+    exit_code, payload = _run_verify_capture(cli, p, capsys)
+    assert payload["overall"] == "NOT_READY"
+    assert exit_code == 5
+    assert any(
+        e.startswith("active_pointer_activated_by_test_marker:test")
+        for e in payload["readiness_errors"]
+    )
+
+
+def test_verify_cli_flags_semantic_mismatch(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """FIX r1 Q3: DB reconstruction ≠ latest JSON → overall=NOT_READY + readiness_errors."""
+    cli, p, src_json, _ = _cli_setup_and_seed(tmp_path, monkeypatch)
+    # latest JSON 만 다른 값으로 덮어써서 semantic mismatch 유발.
+    other = build_manual_seed_param(
+        enabled_push_kinds=["market_briefing"]  # DB seed 와 다른 값
+    )
+    src_json.write_text(
+        json.dumps(other.to_dict(), ensure_ascii=False), encoding="utf-8"
+    )
+    exit_code, payload = _run_verify_capture(cli, p, capsys)
+    assert payload["overall"] == "NOT_READY"
+    assert exit_code == 5
+    assert "db_reconstruction_diverges_from_latest_json" in payload["readiness_errors"]
+
+
+def test_verify_cli_clean_seed_passes(tmp_path: Path, monkeypatch, capsys) -> None:
+    """FIX r1: activated_by=cutover_seed + semantic_match=true → overall=READY + empty readiness_errors."""
+    cli, p, _, _ = _cli_setup_and_seed(tmp_path, monkeypatch)
+    exit_code, payload = _run_verify_capture(cli, p, capsys)
+    assert payload["overall"] == "READY"
+    assert exit_code == 0
+    assert payload["readiness_errors"] == []
+    assert payload["checks"]["active_pointer"]["activated_by"] == "cutover_seed"
+    assert payload["checks"]["semantic_match_with_latest_json"] is True
