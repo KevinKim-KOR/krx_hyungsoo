@@ -300,7 +300,7 @@ def test_verify_cli_flags_semantic_mismatch(
 
 
 def test_verify_cli_clean_seed_passes(tmp_path: Path, monkeypatch, capsys) -> None:
-    """FIX r1: activated_by=cutover_seed + semantic_match=true → overall=READY + empty readiness_errors."""
+    """FIX r1: clean seed → READY + empty readiness_errors (cutover_seed + semantic match)."""
     cli, p, _, _ = _cli_setup_and_seed(tmp_path, monkeypatch)
     exit_code, payload = _run_verify_capture(cli, p, capsys)
     assert payload["overall"] == "READY"

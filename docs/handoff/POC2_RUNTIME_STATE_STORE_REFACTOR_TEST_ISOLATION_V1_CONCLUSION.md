@@ -202,7 +202,7 @@ def _isolated_runtime_state_db(tmp_path, monkeypatch):
 - **FIX r1 최종 backend full regression: 827 passed** (Refactor v1 823 → FIX r1 827, verify 강화 4 순증). 0 fail. 실행 202s.
 - **실제 PC DB / latest JSON 은 827 test 실행 전·후 완전 불변** (§7 6행/7행 baseline `f72dd796b20441c8d89ab59815c546cbdf74cac318f27eabede011750d1b386e` / `84151b5659abba0a8622af3e418856e5512e3f290c6fd50a0697b0609af422aa` 그대로).
 - **B-6 검증자 지적 (verify 판정 강화 자동 회귀 test 부재) 해소**: 위 4 신규 케이스가 marker 오염 · semantic mismatch · clean seed 각 경로를 자동 재현 · assert.
-- **실제 `runtime_state.sqlite` 불변 확인 (FIX r1 최종)**: pytest 전 `f72dd796b20441c8d89ab59815c546cbdf74cac318f27eabede011750d1b386e` (size=53248, mtime=1783846900.8138113), pytest 후 동일. **conftest fixture 가 823 test 실행 중 실제 PC DB 를 단 1 byte 도 건드리지 않음** = AC-11 · AC-12 완전 통과.
+- **실제 `runtime_state.sqlite` 불변 확인 (FIX r1 최종)**: pytest 전 `f72dd796b20441c8d89ab59815c546cbdf74cac318f27eabede011750d1b386e` (size=53248, mtime=1783846900.8138113), pytest 후 동일. **conftest fixture 가 827 test 실행 중 실제 PC DB 를 단 1 byte 도 건드리지 않음** = AC-11 · AC-12 완전 통과.
 - **실제 `latest_runtime_param.json` 불변 확인 (FIX r1 확장)**: pytest 전 `84151b5659abba0a8622af3e418856e5512e3f290c6fd50a0697b0609af422aa` (size=884, mtime=1783846900.6387017), pytest 후 동일.
 - black / flake8 / py_compile PASS.
 
