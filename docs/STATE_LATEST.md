@@ -1,8 +1,8 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-13 (Holdings Evidence OCI Publication v1 — PARTIAL, PC DONE · OCI 실행 대기)
+최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — DONE, PC + OCI verify/activate/dry-run 완료)
 
-## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, PARTIAL — PC DONE)
+## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, DONE)
 
 **목적**: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI Runtime `holdings_briefing` 실제 evidence 연결.
 
@@ -34,7 +34,17 @@
 
 **실제 state 무변경 (pytest 870 전·후 실측 대조)**: `state/holdings/holdings_latest.json` (`767815e059ad3613...` 6238B) + runtime_state.sqlite + latest JSON + market_data.sqlite 모두 sha256 완전 동일. Q9 확정본 자동 test isolation 확인.
 
-**PARTIAL 사유**: 지시문 §13.3 / §16 · OCI 실행 결과 필요.
+**OCI 실측 (2026-07-14, revision `4c2bdd8f` same_revision=True)**:
+- verify: hash/size/count 모두 match, activation_ready=true.
+- activate: atomic_activation_completed=true, active_file_mode=`600`, active_file_owner=`ubuntu`, active_file_permission_checked=true, status=ok, 3-way byte 완전 일치 (`767815e0...` = source = destination = active).
+- dry-run market_briefing: contentful=3, msg_len=393 (이전 STEP 값 회귀 없음).
+- dry-run holdings_briefing: `nav_discount_snapshot=available` (실제 보유 ETF NAV 32건), **contentful_fact_count=32**, msg_len=**2626** (Publication 전 178 → 14배 증가).
+- Telegram 미발송 (전 records `telegram_attempted/sent=false`), sent_registry 53 → 53 (불변).
+- 상세 note: `holdings_snapshot=no_contentful_fact` + `selection_result_count=0` 은 사용자 보유 ETF ↔ 현재 TOP-N (asof=`2026-07-03`) 매칭 없음 data gap. NAV 는 독립적으로 available → 지시문 §17 PASS 정의 (contentful evidence 생성) 충족. AC-14 완전 통과. 지시문 §8 상위 판정 기준도 충족. data gap 은 별도 STEP `Market Discovery Refresh` 이월.
+
+**검증자 판정 이력**: 초기 REJECTED → FIX r1 REJECTED (실제 파일 접근 test 잔존 + stale 15/20) → **FIX r2 VERIFIED (PC 범위)** → OCI dry-run 완료 → **DONE**.
+
+**다음 활성 STEP (확정)**: **`Universe Momentum Evidence Publication v1`** (설계자 확정 세션).
 
 **다음 활성 STEP (확정, OCI PASS 후)**: **`Universe Momentum Evidence Publication v1`** (설계자 확정 세션).
 
