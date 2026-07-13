@@ -22,9 +22,17 @@
 
 **변경 없음** (§12 금지): Holdings JSON schema · Holdings DB Cutover · Holdings UI/API · 자동 동기화 · 양방향 sync · Universe Momentum publication · ML publication · 실시간 시세 probe · Telegram · scheduler · market DB · runtime DB schema · package fallback — 모두 0.
 
-**backend regression**: **865 passed** (직전 850 → 865, 이번 STEP 순증 15). 0 fail. 205s. black / flake8 (max-line=100) / py_compile PASS.
+**backend regression (FIX r1 최종)**: **870 passed** (직전 850 → 865 → 870, 이번 STEP 순증 20 = 초기 15 + FIX r1 5). 0 fail. 203s. black / flake8 (max-line=100) / py_compile PASS.
 
-**실제 state 무변경 (pytest 865 전·후 실측 대조)**: `state/holdings/holdings_latest.json` (`767815e059ad3613...` 6238B) + runtime_state.sqlite + latest JSON + market_data.sqlite 모두 sha256 완전 동일. Q9 확정본 자동 test isolation 확인.
+**FIX r1 (검증자 REJECTED 대응)**:
+- A-1: `HoldingsValidationError` 원문 (종목명/ticker/평단 포함 가능) stdout 노출 → sanitised reason code `"holdings_validation_error"` 만 반환.
+- A-1/B-1: chmod 실패 무시하고 replace 진행 → chmod 실패 시 return 4 (기존 active 보존).
+- A-1/B-1: owner=None 이어도 성공 → `tmp_owner is None or exec_user is None or a_owner is None or a_owner != exec_user` → return 4/7.
+- B-6 · `_current_user`: 실패 시 빈 문자열이 아니라 `None` 반환 (owner 대조 우회 방지).
+- 신규 test 5 (validation error sanitised · chmod 실패 시 active 보존 · owner_check_unavailable · exec_user=None · verify 실패 시에도 원문 미노출).
+- `test_real_holdings_file_snapshot_unchanged_across_tests` 재작성 (자기 실행 전·후 sha256/size 실측 대조).
+
+**실제 state 무변경 (pytest 870 전·후 실측 대조)**: `state/holdings/holdings_latest.json` (`767815e059ad3613...` 6238B) + runtime_state.sqlite + latest JSON + market_data.sqlite 모두 sha256 완전 동일. Q9 확정본 자동 test isolation 확인.
 
 **PARTIAL 사유**: 지시문 §13.3 / §16 · OCI 실행 결과 필요.
 

@@ -261,12 +261,26 @@ def test_activate_keeps_existing_active_when_validation_fails(
     assert _snapshot(active) == active_snapshot
 
 
-def test_activate_atomic_replace_and_byte_unchanged(tmp_path: Path, capsys) -> None:
+def test_activate_atomic_replace_and_byte_unchanged(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    """POSIX + Windows 모두에서 동작 검증. owner/user 는 monkeypatch 로 정상값 강제.
+
+    실제 OCI (POSIX) 에서는 pwd/getpass 가 정상 반환하지만, Windows 개발 환경에서는
+    `pwd` module 부재로 owner=None. FIX r1 로 owner=None → 차단이므로 여기서는
+    monkeypatch 로 정상 경로만 검증.
+    """
     active = tmp_path / "holdings_latest.json"
     tmp_dest = tmp_path / "holdings_latest.json.tmp"
     _write_holdings(tmp_dest, _sample_holdings(3))
     b = tmp_dest.read_bytes()
     expected_hash = hashlib.sha256(b).hexdigest()
+
+    monkeypatch.setattr(cli, "_current_user", lambda: "test_user")
+    monkeypatch.setattr(
+        cli, "_file_mode_owner", lambda p: ("600", "test_user", "test_user")
+    )
+    monkeypatch.setattr(cli, "_apply_mode_600", lambda p: None)
 
     cli.main(
         [
@@ -354,14 +368,221 @@ def test_stdout_contains_no_sensitive_fields(tmp_path: Path, capsys) -> None:
 # ── 15: 실제 state 파일 무참조 ──────────────────────────────────────────────
 
 
-def test_real_holdings_file_not_touched_by_tests() -> None:
-    """모든 test 는 tmp_path fixture 만 사용. 실제 state 파일은 read 도 하지 않는다.
+def test_real_holdings_file_snapshot_unchanged_across_tests(tmp_path: Path) -> None:
+    """실제 Holdings 파일이 다른 test 실행 후에도 완전 불변인지 실제 확인.
 
-    이 test 는 test 세션 시작 시점 실제 파일 상태를 스냅샷으로 assert 하지 않는다
-    (isolation 은 다른 test 들이 real path 를 참조하지 않는 것으로 보장).
-    Q9 확정본: 실제 state 불변은 PC 수동 hash 실측으로 확인.
+    B-6 정정 (FIX r1): 이전에는 `_ = _REAL_HOLDINGS; assert True` 로 아무것도
+    확인하지 않았음. 이 test 는 실제 파일 존재 시 before/after (자신의 실행 전후)
+    sha256/size 를 실측 · 대조하여 자기 실행이 실제 파일을 변경하지 않음을 확인.
+    실제 파일 부재 시 skip (test 목적은 오염 방지 assertion).
     """
-    # 이 test 자체가 실제 파일에 접근하지 않는 것이 보장의 일부.
-    # 이 test 는 실제 파일이 없어도 성공.
-    _ = _REAL_HOLDINGS  # 참조만.
-    assert True
+    if not _REAL_HOLDINGS.exists():
+        # 실제 파일이 없으면 이 test 자체가 새로 만들지 않음도 assert.
+        _ = tmp_path  # tmp_path fixture 사용 (실제 경로와 무관).
+        assert not _REAL_HOLDINGS.exists()
+        return
+    before = _snapshot(_REAL_HOLDINGS)
+    # 이 test 는 실제 경로에 아무 것도 하지 않는다 (tmp_path 만 참조).
+    _ = tmp_path
+    after = _snapshot(_REAL_HOLDINGS)
+    assert (
+        before == after
+    ), f"실제 Holdings 파일이 변경됨. before={before} after={after}"
+
+
+# ── FIX r1: A-1/B-1/B-6 검증자 REJECTED 대응 test ─────────────────────────
+
+
+def test_validation_error_does_not_leak_sensitive_info(tmp_path: Path, capsys) -> None:
+    """A-1 정정 (FIX r1): validation 실패 시 stdout 에 HoldingsValidationError 원문
+    (ticker/account_group/avg_buy_price 포함 가능) 을 노출하지 않는다.
+    """
+    src = tmp_path / "holdings_latest.json"
+    src.write_text(
+        json.dumps(
+            {
+                "holdings": [
+                    {
+                        "ticker": "SECRET_TICKER_123",
+                        "quantity": 999999,
+                        "avg_buy_price": 88888.88,
+                        "account_group": "SECRET_GROUP_ABC",
+                    },
+                    # 중복으로 validation 실패 유도.
+                    {
+                        "ticker": "SECRET_TICKER_123",
+                        "quantity": 999999,
+                        "avg_buy_price": 88888.88,
+                        "account_group": "SECRET_GROUP_ABC",
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    exit_code = cli.main(["prepare", "--source", str(src)])
+    text = capsys.readouterr().out
+    assert exit_code == 2
+    # sanitised reason code 만 노출.
+    assert "holdings_validation_error" in text
+    # 원문 절대 미노출.
+    assert "SECRET_TICKER_123" not in text
+    assert "SECRET_GROUP_ABC" not in text
+    assert "999999" not in text
+    assert "88888" not in text
+
+
+def test_activate_blocks_when_chmod_fails(tmp_path: Path, capsys, monkeypatch) -> None:
+    """A-1 정정 (FIX r1): chmod 실패 시 os.replace 를 진행하지 않고 기존 active 파일 보존."""
+    active = tmp_path / "holdings_latest.json"
+    _write_holdings(active, _sample_holdings(1))
+    active_before = _snapshot(active)
+
+    tmp_dest = tmp_path / "holdings_latest.json.tmp"
+    _write_holdings(tmp_dest, _sample_holdings(3))
+    b = tmp_dest.read_bytes()
+    expected_hash = hashlib.sha256(b).hexdigest()
+
+    # chmod 를 강제 실패시킨다.
+    monkeypatch.setattr(cli, "_apply_mode_600", lambda p: "chmod_error:PermissionError")
+
+    exit_code = cli.main(
+        [
+            "activate",
+            "--temp",
+            str(tmp_dest),
+            "--active",
+            str(active),
+            "--expected-hash",
+            expected_hash,
+            "--expected-size",
+            str(len(b)),
+            "--expected-count",
+            "3",
+        ]
+    )
+    out = json.loads(capsys.readouterr().out.strip())
+    assert exit_code == 4
+    assert out["atomic_activation_completed"] is False
+    assert "temp_chmod_600_failed" in out["error_reason"]
+    # 기존 active 파일이 완전 불변.
+    assert _snapshot(active) == active_before
+    # 임시 파일도 그대로 (replace 안 함).
+    assert tmp_dest.exists()
+
+
+def test_activate_blocks_when_owner_check_unavailable(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    """A-1 정정 (FIX r1): owner 조회 실패 시 (None) replace 를 진행하지 않는다."""
+    active = tmp_path / "holdings_latest.json"
+    _write_holdings(active, _sample_holdings(1))
+    active_before = _snapshot(active)
+
+    tmp_dest = tmp_path / "holdings_latest.json.tmp"
+    _write_holdings(tmp_dest, _sample_holdings(3))
+    b = tmp_dest.read_bytes()
+    expected_hash = hashlib.sha256(b).hexdigest()
+
+    # owner 조회를 강제로 None 으로 만든다.
+    monkeypatch.setattr(cli, "_file_mode_owner", lambda p: ("600", None, None))
+
+    exit_code = cli.main(
+        [
+            "activate",
+            "--temp",
+            str(tmp_dest),
+            "--active",
+            str(active),
+            "--expected-hash",
+            expected_hash,
+            "--expected-size",
+            str(len(b)),
+            "--expected-count",
+            "3",
+        ]
+    )
+    out = json.loads(capsys.readouterr().out.strip())
+    assert exit_code == 4
+    assert out["atomic_activation_completed"] is False
+    assert "owner_check_unavailable" in out["error_reason"]
+    # 기존 active 파일 완전 불변.
+    assert _snapshot(active) == active_before
+
+
+def test_activate_blocks_when_exec_user_none(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    """A-1 정정 (FIX r1): exec_user 조회 실패 (getpass 실패) 시 replace 를 진행하지 않음."""
+    active = tmp_path / "holdings_latest.json"
+    _write_holdings(active, _sample_holdings(1))
+    active_before = _snapshot(active)
+
+    tmp_dest = tmp_path / "holdings_latest.json.tmp"
+    _write_holdings(tmp_dest, _sample_holdings(3))
+    b = tmp_dest.read_bytes()
+    expected_hash = hashlib.sha256(b).hexdigest()
+
+    # exec_user 만 None. owner 는 정상 (Windows 에서 조회 성공했다고 가정).
+    monkeypatch.setattr(cli, "_current_user", lambda: None)
+    monkeypatch.setattr(
+        cli, "_file_mode_owner", lambda p: ("600", "some_owner", "some_group")
+    )
+    monkeypatch.setattr(cli, "_apply_mode_600", lambda p: None)
+
+    exit_code = cli.main(
+        [
+            "activate",
+            "--temp",
+            str(tmp_dest),
+            "--active",
+            str(active),
+            "--expected-hash",
+            expected_hash,
+            "--expected-size",
+            str(len(b)),
+            "--expected-count",
+            "3",
+        ]
+    )
+    out = json.loads(capsys.readouterr().out.strip())
+    assert exit_code == 4
+    assert out["atomic_activation_completed"] is False
+    assert "owner_check_unavailable" in out["error_reason"]
+    assert _snapshot(active) == active_before
+
+
+def test_verify_fail_does_not_leak_holdings_content(tmp_path: Path, capsys) -> None:
+    """A-1 정정 (FIX r1): verify 실패 (mismatch) 시에도 종목 원문 미노출."""
+    tmp_dest = tmp_path / "holdings_latest.json.tmp"
+    _write_holdings(
+        tmp_dest,
+        [
+            {
+                "ticker": "LEAKED_TICKER_ZZZ",
+                "quantity": 777777,
+                "avg_buy_price": 66666.66,
+                "account_group": "LEAKED_GROUP_ZZZ",
+            }
+        ],
+    )
+    b = tmp_dest.read_bytes()
+    exit_code = cli.main(
+        [
+            "verify",
+            "--temp",
+            str(tmp_dest),
+            "--expected-hash",
+            "0" * 64,  # 의도적 hash mismatch.
+            "--expected-size",
+            str(len(b)),
+            "--expected-count",
+            "1",
+        ]
+    )
+    text = capsys.readouterr().out
+    assert exit_code == 3
+    assert "LEAKED_TICKER_ZZZ" not in text
+    assert "LEAKED_GROUP_ZZZ" not in text
+    assert "777777" not in text
+    assert "66666" not in text

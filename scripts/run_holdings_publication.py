@@ -54,7 +54,12 @@ def _hash_size(path: Path) -> tuple[str, int]:
 
 
 def _parse_and_validate(path: Path) -> tuple[bool, int, Optional[str]]:
-    """returns (valid, holding_count, error_reason)."""
+    """returns (valid, holding_count, error_reason).
+
+    지시문 §9 · AC-17 준수 (FIX r1): HoldingsValidationError 원문은 종목 식별
+    정보 (ticker / account_group / avg_buy_price) 를 포함할 수 있으므로 sanitised
+    reason code 로만 반환. 상세 원인은 상위 로그에도 전달하지 않는다.
+    """
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as e:
@@ -70,8 +75,9 @@ def _parse_and_validate(path: Path) -> tuple[bool, int, Optional[str]]:
         return False, 0, "missing_holdings_key"
     try:
         holdings = validate_holdings(raw)
-    except HoldingsValidationError as e:
-        return False, 0, f"holdings_validation_error:{str(e)[:200]}"
+    except HoldingsValidationError:
+        # 예외 str() 은 종목명·ticker·평단 등 원문을 포함할 수 있어 stdout 반환 X.
+        return False, 0, "holdings_validation_error"
     return True, len(holdings), None
 
 
@@ -112,11 +118,17 @@ def _apply_mode_600(path: Path) -> Optional[str]:
     return None
 
 
-def _current_user() -> str:
+def _current_user() -> Optional[str]:
+    """실행 계정. 조회 실패 시 None (owner 검증 우회 금지).
+
+    B-1 정정 (FIX r1): 이전에는 실패 시 빈 문자열 반환 → owner 대조 로직이
+    "빈 문자열 비교" 로 우회됐음. None 을 반환하여 상위에서 명시적으로
+    "owner 확인 불가" 로 판정하도록 강제.
+    """
     try:
         return getpass.getuser()
     except Exception:  # noqa: BLE001
-        return ""
+        return None
 
 
 # ── prepare ──────────────────────────────────────────────────────────────────
@@ -279,14 +291,29 @@ def cmd_activate(args: argparse.Namespace) -> int:
         return 3
     out["final_validation_passed"] = True
 
-    # mode 600 적용 및 owner 확인 (임시 파일에 먼저).
+    # A-1/B-1 정정 (FIX r1): chmod 실패 시 replace 중단 (기존 active 파일 보존).
     chmod_err = _apply_mode_600(tmp)
     if chmod_err is not None:
-        # Windows 등에서는 chmod 가 완전 반영 안 될 수 있음. 실행 계정 및 mode 재확인.
-        pass
+        out["error_reason"] = f"temp_chmod_600_failed:{chmod_err}"
+        _emit(out)
+        return 4
+
     tmp_mode, tmp_owner, _ = _file_mode_owner(tmp)
+    if tmp_mode != "600":
+        out["error_reason"] = f"temp_mode_not_600_after_chmod:mode={tmp_mode!r}"
+        _emit(out)
+        return 4
+
     exec_user = _current_user()
-    if tmp_owner is not None and exec_user and tmp_owner != exec_user:
+    # A-1/B-1 정정 (FIX r1): owner 또는 exec_user 조회 실패 시 replace 중단.
+    if tmp_owner is None or exec_user is None:
+        out["error_reason"] = (
+            f"owner_check_unavailable:temp_owner={tmp_owner!r} "
+            f"exec_user={exec_user!r}"
+        )
+        _emit(out)
+        return 4
+    if tmp_owner != exec_user:
         out["error_reason"] = (
             f"temp_owner_mismatch:owner={tmp_owner!r} exec_user={exec_user!r}"
         )
@@ -322,31 +349,19 @@ def cmd_activate(args: argparse.Namespace) -> int:
         _emit(out)
         return 6
 
-    # active 파일 권한 재확인.
-    a_mode, a_owner, a_group = _file_mode_owner(active)
+    # active 파일 권한 재확인. A-1/B-1 정정: owner 조회 실패 시 permission_checked=false.
+    a_mode, a_owner, _ = _file_mode_owner(active)
     out["active_file_mode"] = a_mode or ""
     out["active_file_owner"] = a_owner or ""
-    permission_ok = a_mode == "600" and (
-        not a_owner or not exec_user or a_owner == exec_user
-    )
+    permission_ok = a_mode == "600" and a_owner is not None and a_owner == exec_user
     out["active_file_permission_checked"] = permission_ok
     if not permission_ok:
-        # active 파일에 재적용 시도 (안전망).
-        chmod_err2 = _apply_mode_600(active)
-        a_mode2, a_owner2, _ = _file_mode_owner(active)
-        out["active_file_mode"] = a_mode2 or ""
-        out["active_file_owner"] = a_owner2 or ""
-        out["active_file_permission_checked"] = (
-            a_mode2 == "600"
-            and (not a_owner2 or not exec_user or a_owner2 == exec_user)
-            and chmod_err2 is None
+        out["error_reason"] = (
+            f"active_permission_not_met:mode={a_mode!r} owner={a_owner!r} "
+            f"exec_user={exec_user!r}"
         )
-        if not out["active_file_permission_checked"]:
-            out["error_reason"] = (
-                f"active_permission_not_met:mode={a_mode2!r} owner={a_owner2!r}"
-            )
-            _emit(out)
-            return 7
+        _emit(out)
+        return 7
 
     out["status"] = "ok"
     _emit(out)

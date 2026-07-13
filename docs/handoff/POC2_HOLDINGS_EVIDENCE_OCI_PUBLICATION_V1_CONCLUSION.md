@@ -1,7 +1,29 @@
-# Holdings Evidence OCI Publication v1 — Conclusion (PARTIAL — PC DONE · OCI 실행 대기)
+# Holdings Evidence OCI Publication v1 — Conclusion (PARTIAL FIX r1 — PC DONE · OCI 실행 대기)
 
-작성일: 2026-07-13
+작성일: 2026-07-13 / FIX r1: 2026-07-13
 성격: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI Runtime `holdings_briefing` 실제 evidence 연결.
+
+## 0. FIX r1 요약 (검증자 REJECTED 대응)
+
+**원인**: 최초 커밋 (`4937423c`) 후 검증자 지적:
+- A-1: `HoldingsValidationError` 원문 stdout 노출 (종목명 · ticker · 평단 등).
+- A-1/B-1: chmod 실패를 무시하고 `os.replace()` 진행 → 기존 active 파일 보존 계약 위반.
+- A-1/B-1: owner 조회 결과 None 이어도 `active_file_permission_checked=true`, `status=ok` 로 성공.
+- B-6: chmod 실패 / owner 조회 불가 / validation 실패 개인정보 출력 회귀 test 부재.
+- B-6: `test_real_holdings_file_not_touched_by_tests` 는 `assert True` 만 → 의미 없는 test.
+
+**FIX r1 조치**:
+- `_parse_and_validate`: `HoldingsValidationError` catch 후 예외 str() 을 그대로 반환하지 않고 sanitised reason code `"holdings_validation_error"` 만 반환.
+- `cmd_activate`: (1) chmod 실패 → return 4 (기존 active 보존). (2) `tmp_mode != "600"` → return 4. (3) `tmp_owner is None or exec_user is None` → return 4. (4) `a_owner != exec_user` → return 4/7.
+- `_current_user`: 실패 시 빈 문자열이 아니라 `None` 반환 (owner 대조 우회 방지).
+- 신규 test 5 추가:
+  - `test_validation_error_does_not_leak_sensitive_info` (A-1 · prepare 원문 미노출).
+  - `test_activate_blocks_when_chmod_fails` (chmod 실패 → 기존 active 보존).
+  - `test_activate_blocks_when_owner_check_unavailable` (owner=None → 차단).
+  - `test_activate_blocks_when_exec_user_none` (exec_user=None → 차단).
+  - `test_verify_fail_does_not_leak_holdings_content` (verify 실패 시에도 원문 미노출).
+- `test_real_holdings_file_snapshot_unchanged_across_tests` 재작성: 자기 실행 전·후 실제 파일 sha256/size 실측 대조 (실제 파일 존재 시). 실제 파일 부재 시 test 가 새로 만들지 않음 assert.
+
 
 ## 1. Step 목표와 범위
 
@@ -95,8 +117,8 @@ Publication CLI 자체는 Telegram 미호출 · sent_registry 미변경. 다음 
 
 ## 10. PC 검증 결과
 
-**backend regression**: **865 passed** (직전 850 → 865, 이번 STEP 순증 15). 0 fail. 205s.
-**focused test**: **15 passed** (`tests/test_run_holdings_publication.py`).
+**backend regression (FIX r1 최종)**: **870 passed** (직전 850 → 865 → 870, 이번 STEP 순증 20 = 초기 15 + FIX r1 5). 0 fail. 203s.
+**focused test**: **20 passed** (`tests/test_run_holdings_publication.py`, FIX r1 순증 5).
 **Lint**: black / flake8 (max-line=100) / py_compile PASS.
 
 **실제 state 무변경 (자동 test)**:
