@@ -80,11 +80,12 @@ class RuntimeEvidenceResult:
 - `selection_result_count=10` (compute_topn 실제 후보 수).
 - `source_statuses`: `market_discovery_snapshot=available`, 나머지 4 = `unavailable` (A-1 정정 · `not_applicable` 제거).
 
-**holdings_briefing (실측)**:
-- `holdings_snapshot=unavailable` (reason=`no_contentful_fact` — TOP-N 이 Holdings 실제 보유 종목과 매칭 안 되는 상태), `nav_discount_snapshot=available` (asof=`2026-07-04`), 나머지 2 unavailable.
+**holdings_briefing (FIX r2 실측)**:
+- `holdings_snapshot=unavailable` (reason=`no_contentful_fact` — TOP-N 이 Holdings 실제 보유 종목과 매칭 안 되는 상태, market_asof=`2026-07-03` 존재하여 이 자체는 정상 판정 경로), `nav_discount_snapshot=available` (asof=`2026-07-04`), 나머지 2 unavailable.
 - `extra_notes count=32` (NAV 문장 32건, 각각 실제 as-of 포함).
 - `contentful_fact_count=32` (holdings=0 + nav=32 = 32 — A-1 정정 결과, Market Discovery fact 미가산).
 - `selection_result_count=0` (holdings evidence 매칭 없음).
+- `source_asof={"holdings_snapshot": "2026-07-03", "nav_discount_snapshot": "2026-07-04"}` — FIX r2 정정 결과 Holdings 도 asof 반영 (이전에는 nav 만).
 
 **spike_or_falling_alert (실측)**:
 - `universe_momentum_snapshot=unavailable_not_implemented`, `kr_realtime_price_snapshot=unavailable_external_fetch_required`.
@@ -134,12 +135,12 @@ class RuntimeEvidenceResult:
 
 **§10 §19 note**: `dry_run.runtime_status_written = true`, `dry_run.history_appended = true`, `dry_run.telegram_attempted = false`, `dry_run.sent_registry_before == sent_registry_after`.
 
-## 8. PC 검증 결과 (FIX r1)
+## 8. PC 검증 결과 (FIX r2)
 
-**Composer focused test**: **14 passed** (`tests/test_runtime_evidence_composer.py`, 11 → 14: `test_market_briefing_contentful_only_counts_own_sources`, `test_market_briefing_source_status_labels_are_unavailable`, `test_holdings_broad_exception_propagates` 신규).
-**Runner dry-run focused test**: **4 passed** (`tests/test_runtime_runner_dry_run.py` 신규): market_briefing/holdings_briefing/spike Telegram 미호출 + sent_registry 불변 + history JSONL append + record 신규 필드 확인.
-**Diagnosis test 정정 확인**: `test_1_diagnosis_calls_existing_push_helpers` (active PARAM seed → build_runtime_message 도달) + `test_8_exact_reason_code_recorded` (허용 reason code 세트 확장) 모두 pass.
-**backend regression (FIX r1 최종)**: **845 passed** (이전 838 → 845, FIX r1 순증 7 = Composer test 3 + runner dry-run test 4). 0 fail. 201s.
+**Composer focused test**: **17 passed** (14 → 17: `test_holdings_value_error_propagates`, `test_holdings_unavailable_when_market_asof_missing`, `test_holdings_source_asof_populated_when_available` 신규).
+**Runner dry-run focused test**: **4 passed** (holdings/spike test 에 Telegram spy 미호출 + `sent_registry` 불변 직접 assert 추가).
+**Diagnosis test**: `test_1_diagnosis_calls_existing_push_helpers` + `test_8_exact_reason_code_recorded` 통과.
+**backend regression (FIX r2 최종)**: **848 passed** (827 → 838 → 845 → 848, 이번 STEP 순증 21). 0 fail. 196s.
 **실제 state 3종 (`runtime_state.sqlite` / `latest_runtime_param.json` / `market_data.sqlite`) pytest 전·후 완전 불변** (sha256 3중 일치 확인).
 **Lint**: black / flake8 (max-line=100) / py_compile PASS.
 

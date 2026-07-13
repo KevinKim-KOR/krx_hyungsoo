@@ -208,11 +208,14 @@ def _compose_holdings_and_nav(
         return ("unavailable", [], holdings_diag), ("unavailable", [], nav_diag)
 
     holdings_diag["source_present"] = True
-    # B-1 정정: 데이터 문제 (JSON 파싱 실패 · 검증 실패) 만 unavailable 로 격리.
-    # ImportError / TypeError 등 프로그래머 오류는 상위로 propagate 하여 조용한 실패 방지.
+    # B-1 정정 r2: 데이터 파일 자체 문제 (JSON 손상 · Holdings validation 실패) 만
+    # unavailable 로 격리. `ValueError` 는 프로그래머 오류 (예: dict.get with wrong
+    # signature) 로도 발생 가능하므로 catch 하지 않는다. Holdings JSON 파싱은
+    # `json.JSONDecodeError` (JSONDecodeError 는 ValueError 상속) 로 잡히지만
+    # 우리는 명시적으로 JSONDecodeError 만 캐치하여 다른 ValueError 는 propagate.
     try:
         holdings = holdings_loader()
-    except (HoldingsValidationError, json.JSONDecodeError, ValueError) as e:
+    except (HoldingsValidationError, json.JSONDecodeError) as e:
         holdings_diag["status"] = "unavailable"
         holdings_diag["reason"] = f"holdings_load_error:{type(e).__name__}"
         nav_diag["status"] = "unavailable"
@@ -237,7 +240,19 @@ def _compose_holdings_and_nav(
         holdings_asof=holdings_asof,
     )
     market_asof = evidence_payload.get("market_asof")
+    # A-3 정정 r2: source_asof 조립이 통일된 `asof` 키를 읽으므로 diag 에도 `asof`
+    # 를 저장 (market_asof 필드도 병기 · 하위 호환).
+    holdings_diag["asof"] = market_asof
     holdings_diag["market_asof"] = market_asof
+
+    # A-1 정정 r2: 지시문 §8 "as-of 가 없으면 available 처리하지 않음" 준수.
+    # Holdings evidence 문장은 market_asof 를 필수로 요구. as-of 부재 시 조기 반환.
+    if not market_asof:
+        holdings_diag["status"] = "unavailable"
+        holdings_diag["reason"] = "holdings_market_asof_missing"
+        nav_diag["status"] = "unavailable"
+        nav_diag["reason"] = "holdings_market_asof_missing"
+        return ("unavailable", [], holdings_diag), ("unavailable", [], nav_diag)
 
     # Holdings evidence notes 조립 — 실제 수치 있는 항목만.
     holdings_notes: list[str] = []
@@ -273,7 +288,10 @@ def _compose_holdings_and_nav(
                 line_parts.append(f"Market Discovery TOP{rank}")
 
         if line_parts and name:
-            holdings_notes.append(f"{name}: " + " · ".join(line_parts) + ".")
+            # A-1 정정 r2: 각 Holdings evidence 문장에 실제 기준일 명시.
+            holdings_notes.append(
+                f"{name} ({market_asof} 기준): " + " · ".join(line_parts) + "."
+            )
             holdings_fact_count += 1
             matched_evidence_count += 1
 

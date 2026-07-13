@@ -91,7 +91,8 @@ def test_runner_dry_run_holdings_briefing_holdings_source_missing_reported(
     는 명시적으로 부재하는 tmp path 로 monkeypatch 한다 (composer default 참조 우회).
     """
     _seed_active_param(tmp_path)
-    _install_telegram_and_registry_spies(monkeypatch, tmp_path)
+    telegram_calls = _install_telegram_and_registry_spies(monkeypatch, tmp_path)
+    registry_before = registry_count()
 
     # Composer default 가 참조하는 HOLDINGS_FILE 을 tmp 부재 path 로 override.
     from app import holdings as _holdings
@@ -107,15 +108,17 @@ def test_runner_dry_run_holdings_briefing_holdings_source_missing_reported(
 
     # Holdings source missing 이 record 에 기록됨.
     unavail = record.get("unavailable_reasons") or {}
-    # holdings_snapshot 은 unavailable 이며 reason 이 holdings_source_missing.
     from app.runtime_evidence_composer import (
         REASON_SOURCE_MISSING_HOLDINGS,
         SRC_HOLDINGS,
     )
 
     assert unavail.get(SRC_HOLDINGS) == REASON_SOURCE_MISSING_HOLDINGS
-    # dry-run 이므로 Telegram/registry 변화 없음.
+    # B-6 정정 r2: dry-run 은 Telegram spy 미호출 + sent_registry 불변을 직접 assert.
+    assert telegram_calls == []
+    assert record["telegram_attempted"] is False
     assert record["telegram_sent"] is False
+    assert registry_count() == registry_before
 
 
 def test_runner_dry_run_spike_all_unavailable_no_topn_calls(
@@ -126,14 +129,19 @@ def test_runner_dry_run_spike_all_unavailable_no_topn_calls(
     runner 는 Composer 를 통해 접근하므로 여기서는 record 결과로 확인.
     """
     _seed_active_param(tmp_path)
-    _install_telegram_and_registry_spies(monkeypatch, tmp_path)
+    telegram_calls = _install_telegram_and_registry_spies(monkeypatch, tmp_path)
+    registry_before = registry_count()
 
     from scripts.run_three_push_runtime_oci import run
 
     record = run("spike_or_falling_alert", "dry-run")
     assert record["contentful_fact_count"] == 0
     assert record["selection_result_count"] == 0
+    # B-6 정정 r2: Telegram spy 미호출 + sent_registry 불변 직접 assert.
+    assert telegram_calls == []
+    assert record["telegram_attempted"] is False
     assert record["telegram_sent"] is False
+    assert registry_count() == registry_before
 
 
 def test_runner_dry_run_history_jsonl_appended(tmp_path: Path, monkeypatch) -> None:

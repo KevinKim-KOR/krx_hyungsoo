@@ -360,6 +360,74 @@ def test_holdings_broad_exception_propagates(tmp_path: Path) -> None:
         )
 
 
+def test_holdings_value_error_propagates(tmp_path: Path) -> None:
+    """B-1 정정 r2: ValueError 도 프로그래머 오류로 propagate (JSONDecodeError 만 제외)."""
+    import pytest as _pytest
+
+    hfile = tmp_path / "holdings.json"
+    hfile.write_text("{}", encoding="utf-8")
+
+    def _boom() -> list[Holding]:
+        raise ValueError("programmer_value_error")
+
+    with _pytest.raises(ValueError, match="programmer_value_error"):
+        compose_runtime_evidence(
+            "holdings_briefing",
+            market_db_path=tmp_path / "market_data.sqlite",
+            holdings_file=hfile,
+            holdings_loader=_boom,
+            topn_fn=lambda **_: _ok_topn_payload(),
+            evidence_fn=_ok_evidence_fn,
+            nav_fn=lambda **_: None,
+        )
+
+
+def test_holdings_unavailable_when_market_asof_missing(tmp_path: Path) -> None:
+    """A-1 정정 r2: market_asof 부재 시 Holdings/NAV 는 available 처리하지 않음."""
+    hfile = tmp_path / "holdings.json"
+    hfile.write_text("{}", encoding="utf-8")
+
+    def _evidence_without_asof(**_kwargs: Any) -> dict[str, Any]:
+        payload = _ok_evidence_fn(**_kwargs)
+        payload["market_asof"] = None  # as-of 부재 시나리오.
+        return payload
+
+    result = compose_runtime_evidence(
+        "holdings_briefing",
+        market_db_path=tmp_path / "market_data.sqlite",
+        holdings_file=hfile,
+        holdings_loader=_fake_holdings_ok,
+        topn_fn=lambda **_: _ok_topn_payload(),
+        evidence_fn=_evidence_without_asof,
+        nav_fn=lambda **_: _fake_nav_row(),
+    )
+    # A-1: as-of 없으면 Holdings 는 available 아님.
+    assert result.available_sources[SRC_HOLDINGS] == "holdings_market_asof_missing"
+    assert result.available_sources[SRC_NAV_DISCOUNT] == "holdings_market_asof_missing"
+    assert result.diagnostics["contentful_fact_count"] == 0
+    assert result.extra_notes == []
+
+
+def test_holdings_source_asof_populated_when_available(tmp_path: Path) -> None:
+    """A-3 정정 r2: Holdings diag 의 asof 가 source_asof 에 정확히 반영됨."""
+    hfile = tmp_path / "holdings.json"
+    hfile.write_text("{}", encoding="utf-8")
+    result = compose_runtime_evidence(
+        "holdings_briefing",
+        market_db_path=tmp_path / "market_data.sqlite",
+        holdings_file=hfile,
+        holdings_loader=_fake_holdings_ok,
+        topn_fn=lambda **_: _ok_topn_payload(),
+        evidence_fn=_ok_evidence_fn,
+        nav_fn=lambda **_: _fake_nav_row(asof="2026-07-11"),
+    )
+    source_asof = result.diagnostics["source_asof"]
+    # Holdings source 의 asof 가 source_asof 에 포함.
+    assert source_asof.get(SRC_HOLDINGS) == "2026-07-11"
+    # 문장에도 기준일 명시.
+    assert any("2026-07-11 기준" in n for n in result.extra_notes)
+
+
 # ── §15.11 실제 state 무변경 (Composer pure test 확인) ─────────────────────
 
 
