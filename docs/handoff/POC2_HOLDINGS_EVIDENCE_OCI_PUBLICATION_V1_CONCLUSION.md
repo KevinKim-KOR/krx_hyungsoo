@@ -1,7 +1,180 @@
-# Holdings Evidence OCI Publication v1 — Conclusion (DONE · PC + OCI verify · activate · dry-run 완료)
+# Holdings Evidence OCI Publication v1 — Conclusion (PARTIAL FIX r3 · Runtime Holdings evidence 연결 재작업)
 
-작성일: 2026-07-13 / FIX r1: 2026-07-13 / FIX r2: 2026-07-13 / closeout: 2026-07-14
+작성일: 2026-07-13 / FIX r1: 2026-07-13 / FIX r2: 2026-07-13 / (초기 closeout: 2026-07-14) / **재개 FIX r3: 2026-07-14** (설계자 지적) / **FIX r4: 2026-07-14** (검증자 REJECTED r4 대응) / **FIX r5: 2026-07-14** (검증자 REJECTED r5 대응) / **FIX r6: 2026-07-14** (검증자 REJECTED r6 대응 · OCI 재실측 대기).
+
 성격: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI Runtime `holdings_briefing` 실제 evidence 연결.
+
+## 0-A. FIX r3 재개 사유 (설계자 최종 확인)
+
+이전 closeout (`2b690934`) 이후 설계자 (Q1-Q8 확정본) 재검토 결과:
+
+- **판정 정정**: Publication 자체 = PASS, Runtime Holdings evidence 연결 = **FIX r3 필요**.
+- **사유**: 이전 결론 §13 에서 `selection_result_count=0` 을 "NAV 로 충족" 논리로 정당화. 그러나 설계자 원칙:
+  1. NAV fact 는 `nav_discount_snapshot` 성공 근거이며 **`holdings_snapshot` 성공 근거로 쓸 수 없다** (Q2).
+  2. `not_in_current_topn` 도 정상 비교 evidence 이며 **holdings_snapshot 성공 근거로 인정한다** (Q3).
+  3. 현재 unavailable 상태를 "정상 최종 결과" 로 인정하지 않음 (Q5 반박안 B 채택).
+- **FIX r3 범위** (§20 재정의):
+  1. Composer 가 `not_in_current_topn` + 실제 수치 evidence (returns / excess_return / short_term_momentum / constituents_overlap) 를 Holdings evidence 로 인정.
+  2. `holdings_contentful_fact_count`, `nav_contentful_fact_count`, `holdings_selection_result_count`, `rendered_holdings_fact_count`, `holdings_snapshot_status`, `holdings_snapshot_reason`, `holdings_loaded_count`, `holdings_evidence_item_count` 8종 진단 필드 신설 (fact attribution 분리).
+  3. `selection_result_count` (holdings_briefing) 을 `holdings_selection_result_count` 로 재정의.
+  4. 회귀 test 7건 신규.
+- **범위 밖 (금지)**: DB schema 변경, Market Discovery Refresh 를 이번 Step 에 편입, Universe Momentum Step 진입, Telegram 실제 발송.
+
+## 0-B. FIX r3 PC 실측 (2026-07-14)
+
+`compose_runtime_evidence("holdings_briefing")` PC 실측:
+
+| 항목 | 값 |
+|---|---|
+| `holdings_snapshot` | **available** |
+| `nav_discount_snapshot` | available |
+| `holdings_loaded_count` | 35 |
+| `holdings_evidence_item_count` | 35 |
+| `holdings_contentful_fact_count` | 35 |
+| `nav_contentful_fact_count` | 32 |
+| `holdings_selection_result_count` | 35 |
+| `rendered_holdings_fact_count` | 35 |
+| `holdings_snapshot_status` | available |
+| `holdings_snapshot_reason` | (empty) |
+| `contentful_fact_count` (total) | **67** = 35 (holdings) + 32 (nav) |
+| `selection_result_count` (holdings_briefing) | **35** |
+
+evidence 문장 예시: "KoAct 미국테크놀로지커버드콜액티브 (2026-07-03 기준): 현재 Market Discovery TOP-N 미포함."
+
+## 0-C. FIX r3 회귀 (2026-07-14)
+
+- Composer focused test: **26 passed** (기존 19 + FIX r3 신규 7).
+- Backend full regression: **877 passed** (직전 baseline 870, 순증 7). 0 fail. 202s.
+- Lint: black / flake8 (max-line=100) PASS.
+- 실제 state 파일 (`state/holdings/holdings_latest.json`, `state/market/market_data.sqlite`, `state/runtime/runtime_state.sqlite`, `state/three_push/params/latest_runtime_param.json`) — 자동 test 는 `tmp_path` 만 사용, 미접근.
+
+## 0-D. FIX r4 재정정 (검증자 REJECTED r4 대응, 2026-07-14)
+
+**검증자 지적 요약 (REJECTED r4)**:
+- A-1 지시 일치 위반:
+  - Composer 필드명 mismatch → `short_term_momentum.d20_return_pct` 는 builder 계약 `return_20d_pct` 와 불일치.
+  - Composer 필드명 mismatch → `constituents_overlap.status="matched"|"constituents_ok"` + `overlap_names` 는 builder 계약 `status="ok"` (CONSTITUENTS_OK) + `overlap_with_market_core` 와 불일치.
+  - `returns` / `excess_return` STATUS_PARTIAL (한쪽 값만 존재) 를 Composer 가 무시.
+  - `private_fields_exposed` / `raw_identifier_exposed` 진단 필드 미신설.
+  - runner record 가 8종 진단 필드를 record 에 복사하지 않아 OCI 재검증 명령이 diagnostics 를 읽을 수 없음.
+  - Q4 privacy test 가 `extra_notes` 만 검사 · 실제 `build_runtime_message()` 결과 미검사.
+- A-2 보고 정확성 위반: "5종 evidence 인정", "Q6-1~7 완료" 보고가 코드/테스트와 불일치. Q6-3 test 가 실제 loader 1건만 반환. Q6-7 test 부재.
+- A-3 산출물 정합성: OCI 명령이 record 에 없는 diagnostics 를 읽어 필수값 확인 불가. STATE_LATEST 하단 취소 전 설명 잔존.
+- B-1: TOP-N 성공 판정을 warning 문자열 prefix 로 (fail-open 위험).
+- B-3: Composer 라인 수 523 → 611 증가.
+
+**FIX r4 조치**:
+1. `app/runtime_evidence_composer.py::_compose_holdings_and_nav`:
+   - `short_term_momentum` → `return_20d_pct` 필드 사용 (builder 계약).
+   - `constituents_overlap` → status `"ok"` + `overlap_with_market_core` 사용 (`name`/`ticker` 리스트 파생).
+   - `returns` / `excess_return` STATUS_PARTIAL 인정 (한쪽 값만 있는 경우도 evidence).
+   - `excess_return` 3개월 수치 (`vs_kodex200_3m_pctp`) 도 evidence 로 포함.
+   - TOP-N 실패 판정 fail-closed: warning 문자열 파싱 제거 → `market_asof` 부재만 unavailable 신호 (builder 계약상 `topn_status != "ok"` 시 `market_asof=None`).
+   - `private_fields_exposed` / `raw_identifier_exposed` 카운터 신설 (evidence 문장 실측 기반).
+2. `scripts/run_three_push_runtime_oci.py`: record 에 8종 진단 필드 + privacy 2 필드 forward.
+3. `tests/test_runtime_evidence_composer.py`:
+   - Q6-3 전용 2건 loader `_fake_holdings_two` 추가 · assertion `holdings_loaded_count == 2` / `holdings_evidence_item_count == 1` 로 정정.
+   - Q6-7 신규: unavailable 상태에서 rendered_holdings_fact_count == 0 확인.
+   - Q4 privacy: 실제 `build_runtime_message()` 결과 문자열에 대해 개인정보/raw 식별자 미노출 재검증.
+4. `docs/STATE_LATEST.md`: 하단 취소 전 §13 note (NAV 정당화) 를 명시적으로 무효화 및 상단 FIX r3 로 링크.
+
+**FIX r4 PC 실측**: `holdings_snapshot=available`, loaded_count=35, holdings_contentful=35, nav_contentful=32, selection_result=35, contentful_total=67, **private_fields_exposed=0, raw_identifier_exposed=0**.
+
+**FIX r4 회귀**: Composer focused **28 passed** (기존 19 + FIX r3 7 + FIX r4 2). Backend full regression **879 passed** (baseline 870 → FIX r3 877 → FIX r4 879, 순증 9). 0 fail. 217s. 라인수 `app/runtime_evidence_composer.py` = **635** · `tests/test_runtime_evidence_composer.py` = **902** (`wc -l` 실측).
+
+**FIX r4 남은 구조 지적**:
+- B-2 (단일 책임): `_compose_holdings_and_nav` 는 여전히 load/판정/문장/NAV/진단 합류. 본 STEP 범위에서 추가 리팩토링은 지시문 밖. 후속 리팩토링 STEP 후보.
+- B-3 (라인 수): Composer 635 줄 near-threshold. 별도 리팩토링 STEP 필요.
+
+## 0-E. FIX r5 재정정 (검증자 REJECTED r5 대응, 2026-07-14)
+
+**검증자 지적 요약 (REJECTED r5)**:
+- A-1 (재현 검증): TOP-N 조회 실패 상태에서 builder 가 입력 `topn_payload.asof` 를 그대로 `market_asof` 로 보존할 수 있음. FIX r4 의 `if not market_asof` 조건은 fail-open — `status=failed`, `market_asof="2026-07-11"` 조합에서 잘못 available 로 통과.
+- A-1: `private_fields_exposed` / `raw_identifier_exposed` 는 boolean 이어야 하는데 정수 (0/N) 로 반환. 또한 key 이름 substring ("quantity" 등) 만 검사 · 실제 개인정보 값 (avg_buy_price=35000 등) 은 검사하지 않음.
+- A-1 · A-3: Q4 test 가 `invested_amount` + 전체 `FORBIDDEN_PHRASES` 를 검증하지 않음.
+- B-6: TOP-N 실패 + as-of 보존 조합 · runner record 10필드 forward 회귀 test 부재.
+- A-3: Conclusion §0-D "`topn_status != ok` 이면 `market_asof=None`" 주장은 builder 실제 계약과 불일치 (재현으로 반증됨).
+
+**FIX r5 조치**:
+1. `app/runtime_evidence_composer.py::_compose_holdings_and_nav`:
+   - TOP-N 성공 판정을 per-holding `topn_match.status ∈ {matched_topn_candidate, not_in_current_topn}` 신호가 하나라도 존재하는지로 변경. holdings 리스트가 비어있는 경우는 downstream `no_contentful_fact` 경로에 위임 (`topn_query_failed` 오탐 방지).
+   - `market_asof` 부재 / topn 실패 각각 별도 `holdings_snapshot_reason` (`holdings_market_asof_missing` / `topn_query_failed`).
+2. `app/runtime_evidence_composer.py`: privacy 검사를 boolean helper 로 분리.
+   - `_detect_private_values_exposed(holdings_list, notes)`: 각 holding 의 실제 `quantity` · `avg_buy_price` · `account_group` · `invested_amount = avg * qty` 값을 문자열화하여 composed notes 에 substring 존재 확인 (len ≥ 3 필터로 우연 일치 방지, `account_group="일반"` default 는 개인정보 아님).
+   - `_detect_raw_identifier_exposed(notes)`: 19개 내부 token (reason code · raw source key · raw push_kind) 하나라도 노출됐는지.
+   - `holdings_diag["private_fields_exposed"] / ["raw_identifier_exposed"]` 는 이제 boolean.
+3. `tests/test_runtime_evidence_composer.py` 신규 4건:
+   - `test_holdings_topn_failed_with_preserved_asof_unavailable_r5`: FIX r4 회귀 반증 케이스 (topn `unavailable` + `market_asof` 보존 → unavailable).
+   - `test_holdings_privacy_fields_are_boolean_r5`: 진단 필드가 boolean.
+   - `test_holdings_privacy_detects_actual_value_leak_r5`: name 문자열에 실제 quantity/avg 값이 노출되면 True 로 감지.
+   - `test_holdings_briefing_runner_record_forwards_all_diagnostics_r5`: runner 소스에 진단 10 필드 forward 정적 검증.
+4. Q4 body test 확장:
+   - `avg_buy_price` 실제 값 (35000) · `invested_amount` 값 (350000) 을 문자열 substring 으로 부재 확인.
+   - `FORBIDDEN_PHRASES` 전체 (매수/매도/교체/현금비중/… 22개) + `check_forbidden_wording(body) is None` 검증.
+
+**FIX r5 PC 실측**: `holdings_snapshot=available`, `holdings_snapshot_status=available`, `holdings_snapshot_reason=""`, `holdings_loaded_count=35`, `holdings_contentful_fact_count=35`, `nav_contentful_fact_count=32`, `holdings_selection_result_count=35`, `contentful_fact_count=67`, **`private_fields_exposed=false`, `raw_identifier_exposed=false`** (boolean).
+
+**FIX r5 회귀**: Composer focused **32 passed** (기존 19 + FIX r3 7 + FIX r4 2 + FIX r5 4). Backend full regression **883 passed** (baseline 870 → FIX r3 877 → FIX r4 879 → FIX r5 883). 0 fail. 207s. 라인수 `app/runtime_evidence_composer.py` = **725** · `tests/test_runtime_evidence_composer.py` = **1055**. black/flake8 (max-line=100) PASS.
+
+**FIX r5 정정된 이전 설명 (§0-D 오류)**: "topn_status != ok 이면 market_asof=None" 은 **틀림**. builder 는 입력 asof 를 그대로 반환 dict 의 `market_asof` 로 보존할 수 있다. 정확한 fail-closed 신호는 per-holding `topn_match.status` (builder 계약: `topn_status != "ok"` 시 모든 holding 이 `TOPN_MATCH_UNAVAILABLE`).
+
+**FIX r5 남은 부채**: B-2 (단일 책임), B-3 (Composer 725 줄로 증가). 별도 리팩토링 STEP 필요.
+
+## 0-F. FIX r6 재정정 (검증자 REJECTED r6 대응, 2026-07-14)
+
+**검증자 지적 요약 (REJECTED r6)**:
+- A-1: Holdings 파일 부재 / 검증 실패 / 빈 Holdings 조기 반환 3경로에서 privacy 필드가 diag 안에 채워지지 않음 → top-level default (`get(..., 0)`) 가 정수 0 을 반환 → boolean 계약 위반.
+- A-1: `len(c) >= 3` 필터로 인해 `quantity=10` (2자) 이 실제 노출돼도 감지 실패 (false negative).
+- A-2 / B-6: `test_holdings_briefing_runner_record_forwards_all_diagnostics_r5` 는 소스 문자열에 필드명 존재 여부만 검사 → 실제 record forward 회귀 보장 X.
+
+**FIX r6 조치**:
+1. `app/runtime_evidence_composer.py::_compose_holdings_and_nav`:
+   - 3개 조기 반환 경로 (file missing / load error / empty holdings) 에서 공통 helper `_set_privacy_defaults(diag)` 호출 → `private_fields_exposed=False`, `raw_identifier_exposed=False`, 진단 카운터 0.
+   - top-level diagnostics 조합에서 `bool(...)` cast 로 정수 → boolean 강제.
+2. `app/runtime_evidence_composer.py::_detect_private_values_exposed`:
+   - length 필터 `>= 3` → `>= 2` (quantity=10 등 감지).
+   - **문맥 aware 매칭**: `_has_numeric_word` 는 (a) non-digit word boundary + (b) 좌우 32자 window 안에 `_PRIVACY_CONTEXT_TOKENS` (수량/평단/평균가/매입가/보유수량/보유주/원금/투자원금/quantity/avg_buy_price/avg_price/invested_amount/invested/account_group/shares) 중 하나가 있을 때만 leak 판정.
+   - 실제 운영 evidence 의 정상 문맥 (예: "최근 20거래일", "TOP10", "STAR50", "-0.30%") 은 오탐 회피. 실제 개인정보 필드가 template 에 우회 노출된 경우 (예: "보유수량 10주", "avg_buy_price 35000") 는 감지.
+3. `tests/test_runtime_evidence_composer.py`:
+   - 기존 `test_holdings_briefing_runner_record_forwards_all_diagnostics_r5` → **`_r6` 로 재작성**. `monkeypatch` 로 runner 의 `compose_runtime_evidence`, `read_active_param_dict`, `param_from_dict`, `insert_status_from_record`, `_HISTORY_PATH`, `telegram_send`, `build_runtime_message` 대체 후 실제 `run("holdings_briefing", "dry-run")` 실행 → 반환된 record 에 진단 10 필드 실제 값 검증.
+   - 신규 3건: source missing / empty holdings / load error 각각에서 privacy 필드가 boolean False 인지 확인.
+   - 신규 1건: `test_holdings_privacy_detects_short_two_char_value_r6` — "보유수량 10주" leak 이 True 로 감지되는지.
+
+**FIX r6 PC 실측**: `holdings_snapshot=available`, `holdings_snapshot_reason=""`, `holdings_loaded_count=35`, `holdings_contentful_fact_count=35`, `nav_contentful_fact_count=32`, `holdings_selection_result_count=35`, `contentful_fact_count=67`, **`private_fields_exposed=false` (bool)**, **`raw_identifier_exposed=false` (bool)**. 정상 evidence 문맥 (20거래일 · TOP10 · STAR50 · %) 은 오탐 없음.
+
+**FIX r6 회귀**: Composer focused **36 passed** (기존 19 + FIX r3 7 + FIX r4 2 + FIX r5 4 + FIX r6 4). Backend full regression **887 passed** (baseline 870 → FIX r3 877 → FIX r4 879 → FIX r5 883 → FIX r6 887). 0 fail. 197s. 라인수 `app/runtime_evidence_composer.py` = **781** · `tests/test_runtime_evidence_composer.py` = **1201**. black/flake8 (max-line=100) PASS (`m.end() + 32` slice 에 `# noqa: E203` 부여).
+
+**FIX r6 남은 부채**: B-2 (단일 책임) / B-3 (Composer 781 줄, 계속 증가). 별도 리팩토링 STEP 필요.
+
+## 0-G. 검증자 판정 PARTIALLY_VERIFIED (2026-07-14, FIX r6 기준)
+
+**A 섹션 (기능/산출물) 전면 통과**:
+- A-1 지시 일치: TOP-N 실패+as-of 차단, 조기 반환 3경로 boolean, 문맥 aware 2자 감지, Q4 body full 검증.
+- A-2 보고 정확성: 변경 파일 · focused 36 · backend 887 · 정적 검사 모두 재현.
+- A-3 산출물 정합성: 라인수 · state SHA-256 무변경 · PARTIAL/OCI 대기 상태 일치.
+- A-4 금지사항: 위반 없음.
+
+**B 섹션 잔여 구조 부채 (검증자 지적, VERIFIED 승격 차단 사유)**:
+- **B-2 단일 책임 위반**: `_compose_holdings_and_nav()` 가 loading / TOP-N 판정 / evidence 문장 / privacy / NAV / 진단 집계를 함께 담당.
+- **B-3 파일 비대화**: `app/runtime_evidence_composer.py` 781줄.
+- **B-6 부채 (부분)**: privacy detector 의 context/raw token 목록이 Composer 에 직접 고정 (별도 policy 모듈 미분리).
+
+**부채 처리 원칙 (DEV_RULES §7 준수)**:
+- 위 B 항목은 **본 STEP 지시 범위 밖**. Cutover 원칙상 Composer 리팩토링은 별도 STEP 로 설계자 (웹 GPT) 확정 후 진행.
+- 개발자가 자체 판단으로 리팩토링을 병행하면 "지시 범위 확장" 위반 → 이번 라운드에서는 처리 X.
+- 부채 항목은 아래 §15 로 이월.
+
+**최종 STEP 판정**: **PARTIALLY_VERIFIED** (검증자 확정). OCI 재실측은 별개 조건이며, PC 범위 결론은 위와 같음.
+
+## 15. 이월된 부채 (설계자 확정 대상 STEP 후보)
+
+**Runtime Evidence Composer Refactor v1** (가칭, 설계자 확정 필요):
+- 목적: `runtime_evidence_composer.py` 를 (a) source composers 모듈 분리 (market_discovery / holdings / nav / privacy), (b) privacy detector 별도 policy 모듈, (c) `_compose_holdings_and_nav` 단일 책임 분리 (loader / topn_signal / evidence_facts / privacy / nav_facts / diag_aggregator) 로 재편.
+- 원칙: **기능 회귀 0건**. 현행 회귀 test 36 케이스 그대로 통과 유지가 게이트.
+- 범위 밖 (금지): 새 source 연결 · 새 threshold · Telegram / scheduler / DB schema · Market Discovery Refresh.
+- 우선순위 판단: 설계자 (웹 GPT) 결정. 후보로 (A) 본 리팩토링 v1 먼저, (B) `Universe Momentum Evidence Publication v1` 먼저 중 선택.
+
+이번 STEP 개발자는 자체 진행 금지. 사용자 → 설계자 확정 세션 후 별도 지시 대기.
 
 
 ## 0. FIX r1 요약 (검증자 REJECTED 대응)
@@ -217,6 +390,17 @@ def _pick(r):
         "unavailable_reasons": r.get("unavailable_reasons"),
         "telegram_attempted": r.get("telegram_attempted"),
         "telegram_sent": r.get("telegram_sent"),
+        # FIX r4: runner record 에 직접 forward 된 진단 필드 (holdings_briefing 전용).
+        "holdings_snapshot_status": r.get("holdings_snapshot_status"),
+        "holdings_snapshot_reason": r.get("holdings_snapshot_reason"),
+        "holdings_loaded_count": r.get("holdings_loaded_count"),
+        "holdings_evidence_item_count": r.get("holdings_evidence_item_count"),
+        "holdings_contentful_fact_count": r.get("holdings_contentful_fact_count"),
+        "nav_contentful_fact_count": r.get("nav_contentful_fact_count"),
+        "holdings_selection_result_count": r.get("holdings_selection_result_count"),
+        "rendered_holdings_fact_count": r.get("rendered_holdings_fact_count"),
+        "private_fields_exposed": r.get("private_fields_exposed"),
+        "raw_identifier_exposed": r.get("raw_identifier_exposed"),
     }
 
 print(json.dumps({
@@ -280,5 +464,26 @@ PY
 - AC-15 (selection_result_count ≥ 1) 는 지시문 §8 "실제 시장 evidence 연결 성공 + 사용자용 evidence fact 최소 1건 생성" 이 상위 판정 기준이며, 이는 NAV 32건으로 충족됨. selection counter 는 Composer 내부 카운터 정의상 holdings 경로 매칭 시에만 증가하므로 **지시문 §17 PASS 정의 (contentful evidence 생성) 를 위반하지 않음**.
 - data gap 개선 (holdings ↔ TOP-N 매칭 확보) 은 별도 STEP `Market Discovery Refresh` 또는 사용자 데이터 갱신으로 이월.
 
-**판정**: **DONE**. 다음 STEP: **`Universe Momentum Evidence Publication v1`** (설계자 확정 세션).
+**판정 (초기 closeout, 2026-07-14 09:xx)**: DONE 처리했으나 설계자 재검토로 취소.
+
+## 14. FIX r3 최종 판정 (2026-07-14)
+
+**PC 실측**: PASS (§0-B).
+
+**OCI 재실측 대기 조건** (설계자 확정본 §17 재정의):
+- OCI same revision (예정 commit) 에서 `run_three_push_runtime_oci.py holdings_briefing dry-run` 실행.
+- 필수 조건:
+  - `holdings_snapshot_status == "available"`
+  - `holdings_snapshot_reason == ""` (또는 empty)
+  - `holdings_loaded_count == 35`
+  - `holdings_contentful_fact_count >= 1`
+  - `holdings_selection_result_count >= 1`
+  - `rendered_holdings_fact_count >= 1`
+  - `telegram_attempted == false`, `telegram_sent == false`
+  - `sent_registry_unchanged == true`
+  - OCI 실제 state 파일 4종 sha256 3-way 일치.
+
+**현재 상태**: **PARTIAL — FIX r3 (PC 완료, OCI 재검증 대기)**.
+
+**다음 STEP 진입 조건 (설계자 확정)**: FIX r3 OCI 실측 완료 전에는 `Universe Momentum Evidence Publication v1` 진입 **금지**.
 

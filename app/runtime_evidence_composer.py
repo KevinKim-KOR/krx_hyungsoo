@@ -18,6 +18,7 @@ DI (지시문 Q10):
 from __future__ import annotations
 
 import json
+import re as _re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -83,6 +84,129 @@ def _fmt_pct_unsigned(value: Optional[float]) -> Optional[str]:
     if value is None:
         return None
     return f"{float(value):.2f}%"
+
+
+# ── privacy 검사 (FIX r5, 검증자 REJECTED r5 대응) ─────────────────────────────
+
+
+_RAW_IDENT_TOKENS = (
+    "unavailable_external_fetch_required",
+    "unavailable_not_implemented",
+    "holdings_source_missing",
+    "market_db_missing_or_empty",
+    "no_contentful_fact",
+    "nav_row_unavailable",
+    "topn_query_failed",
+    "holdings_market_asof_missing",
+    "market_briefing",
+    "holdings_briefing",
+    "spike_or_falling_alert",
+    "market_discovery_snapshot",
+    "holdings_snapshot",
+    "nav_discount_snapshot",
+    "kr_realtime_price_snapshot",
+    "overnight_us_market_snapshot",
+    "ml_baseline_v0",
+    "news_snapshot",
+    "universe_momentum_snapshot",
+)
+
+
+_PRIVACY_CONTEXT_TOKENS = (
+    "수량",
+    "평단",
+    "평균가",
+    "매입가",
+    "보유수량",
+    "보유주",
+    "원금",
+    "투자원금",
+    "quantity",
+    "avg_buy_price",
+    "avg_price",
+    "invested_amount",
+    "invested",
+    "account_group",
+    "shares",
+)
+
+
+def _has_numeric_word(text: str, value: str) -> bool:
+    """숫자 value 가 개인정보 문맥에 노출됐는지 검사.
+
+    실제 운영 evidence 는 20/10/50 같은 소수 정수를 "20거래일", "TOP10",
+    "STAR50" 등 정상 문맥에서 사용한다. 개인정보 노출 판정은 다음을 요구:
+    1. value 가 non-digit 경계로 감싸진 단어여야 한다 (date/percent 오탐 회피).
+    2. value 매칭 위치의 좌·우 32자 내에 _PRIVACY_CONTEXT_TOKENS 하나가 있어야
+       실제 leak 로 인정 (예: "보유수량 10주", "avg_buy_price=35000").
+    이 조합은 "TOP10" 같은 정상 문맥은 통과하고, 실제 개인정보 필드가
+    template 에 우회 노출되는 시나리오는 차단한다.
+    """
+    if not value or not value.isdigit():
+        return False
+    pattern = _re.compile(r"(?<!\d)" + _re.escape(value) + r"(?!\d)")
+    for m in pattern.finditer(text):
+        start = max(0, m.start() - 32)
+        window = text[start : m.end() + 32]  # noqa: E203
+        if any(tok in window for tok in _PRIVACY_CONTEXT_TOKENS):
+            return True
+    return False
+
+
+def _has_string_word(text: str, value: str) -> bool:
+    """비숫자 문자열 값 (account_group 등) 검사 — 단순 substring."""
+    return bool(value) and value in text
+
+
+def _detect_private_values_exposed(
+    holdings_list: list[Holding], notes: list[str]
+) -> bool:
+    """실제 개인정보 값이 composed notes 에 노출됐는지 boolean.
+
+    FIX r6 (검증자 REJECTED r6 대응):
+    - quantity=10 등 2자 값도 감지 (numeric word boundary 로 date/percent 오탐 회피).
+    - 검사 대상: quantity · avg_buy_price · invested_amount (avg × qty) ·
+      account_group.
+    """
+    if not notes:
+        return False
+    text = "\n".join(notes)
+    for h in holdings_list:
+        qty = getattr(h, "quantity", None)
+        avg = getattr(h, "avg_buy_price", None)
+        acct = getattr(h, "account_group", None)
+
+        numeric_candidates: set[str] = set()
+        if qty is not None:
+            try:
+                numeric_candidates.add(str(int(qty)))
+            except (TypeError, ValueError):
+                pass
+        if avg is not None:
+            try:
+                numeric_candidates.add(str(int(avg)))
+            except (TypeError, ValueError):
+                pass
+            if qty is not None:
+                try:
+                    numeric_candidates.add(str(int(float(avg) * float(qty))))
+                except (TypeError, ValueError):
+                    pass
+        for c in numeric_candidates:
+            if len(c) >= 2 and _has_numeric_word(text, c):
+                return True
+        if acct and isinstance(acct, str) and acct != "일반":
+            if _has_string_word(text, acct):
+                return True
+    return False
+
+
+def _detect_raw_identifier_exposed(notes: list[str]) -> bool:
+    """내부 reason code · raw source key · raw push_kind 가 노출됐는지 boolean."""
+    if not notes:
+        return False
+    text = "\n".join(notes)
+    return any(tok in text for tok in _RAW_IDENT_TOKENS)
 
 
 # ── market_discovery_snapshot (§5.1 필수 연결) ───────────────────────────────
@@ -200,11 +324,23 @@ def _compose_holdings_and_nav(
     }
     nav_diag: dict[str, Any] = {"status": None, "asof": None, "matched_count": 0}
 
+    # FIX r6 (검증자 REJECTED r6 대응): 조기 반환 경로에서도 privacy 진단 필드를
+    # 명시적 boolean False 로 채워야 한다 (top-level default 정수 0 로 잘못 대체됨).
+    def _set_privacy_defaults(diag: dict[str, Any]) -> None:
+        diag["private_fields_exposed"] = False
+        diag["raw_identifier_exposed"] = False
+        diag.setdefault("holdings_loaded_count", 0)
+        diag.setdefault("holdings_evidence_item_count", 0)
+        diag.setdefault("holdings_contentful_fact_count", 0)
+        diag.setdefault("holdings_selection_result_count", 0)
+        diag.setdefault("rendered_holdings_fact_count", 0)
+
     if not holdings_file.exists():
         holdings_diag["status"] = "unavailable"
         holdings_diag["reason"] = REASON_SOURCE_MISSING_HOLDINGS
         nav_diag["status"] = "unavailable"
         nav_diag["reason"] = REASON_SOURCE_MISSING_HOLDINGS
+        _set_privacy_defaults(holdings_diag)
         return ("unavailable", [], holdings_diag), ("unavailable", [], nav_diag)
 
     holdings_diag["source_present"] = True
@@ -220,6 +356,7 @@ def _compose_holdings_and_nav(
         holdings_diag["reason"] = f"holdings_load_error:{type(e).__name__}"
         nav_diag["status"] = "unavailable"
         nav_diag["reason"] = "holdings_load_error"
+        _set_privacy_defaults(holdings_diag)
         return ("unavailable", [], holdings_diag), ("unavailable", [], nav_diag)
 
     holdings_diag["holdings_count"] = len(holdings)
@@ -228,6 +365,7 @@ def _compose_holdings_and_nav(
         holdings_diag["reason"] = "holdings_empty"
         nav_diag["status"] = "unavailable"
         nav_diag["reason"] = "holdings_empty"
+        _set_privacy_defaults(holdings_diag)
         return ("unavailable", [], holdings_diag), ("unavailable", [], nav_diag)
 
     topn_payload = topn_fn(db_path=market_db_path)
@@ -251,18 +389,41 @@ def _compose_holdings_and_nav(
     holdings_fact_count = 0
     matched_evidence_count = 0
 
-    if not market_asof:
+    # FIX r5 (검증자 REJECTED r5 대응): TOP-N 조회 성공 판정 fail-closed 정정.
+    #   builder 는 topn_status != "ok" 여도 topn_payload.asof (입력) 를 그대로 보존
+    #   할 수 있으므로 market_asof 존재만으로는 fail-open. 대신 per-holding
+    #   topn_match.status 를 검사:
+    #     - TOP-N 조회 성공 → 각 holding 의 topn_match.status ∈
+    #       {matched_topn_candidate, not_in_current_topn}.
+    #     - TOP-N 조회 실패 → 모든 topn_match.status == "unavailable".
+    #   holdings 가 존재하는데 모든 topn_match 가 unavailable 이면 TOP-N 실패.
+    holdings_evidence_item_count = 0
+    holdings_selection_result_count = 0
+    holdings_out_list = evidence_payload.get("holdings") or []
+    topn_ok_signal_count = sum(
+        1
+        for h in holdings_out_list
+        if (h.get("topn_match") or {}).get("status")
+        in ("matched_topn_candidate", "not_in_current_topn")
+    )
+    # holdings 가 있는데 어떤 holding 도 TOP-N ok 신호 (matched / not_in_topn)
+    # 를 못 받았다면 TOP-N reader 실패. holdings 자체가 비어 있으면 이 판정
+    # 이 아니라 downstream no_contentful_fact 로 흘려보낸다.
+    topn_reader_failed = bool(holdings_out_list) and topn_ok_signal_count == 0
+
+    if not market_asof or topn_reader_failed:
         holdings_diag["status"] = "unavailable"
-        holdings_diag["reason"] = "holdings_market_asof_missing"
-        # NAV 계산은 계속 진행 (독립).
+        holdings_diag["reason"] = (
+            "holdings_market_asof_missing" if not market_asof else "topn_query_failed"
+        )
     else:
-        # Holdings evidence notes 조립 — 실제 수치 있는 항목만.
         for h_out in evidence_payload.get("holdings") or []:
             name = h_out.get("name") or h_out.get("ticker")
             line_parts: list[str] = []
+            has_evidence_item = False
 
             returns_payload = h_out.get("returns") or {}
-            if returns_payload.get("status") == "ok":
+            if returns_payload.get("status") in ("ok", "partial"):
                 r1m = _fmt_pct(returns_payload.get("one_month_return_pct"))
                 r3m = _fmt_pct(returns_payload.get("three_month_return_pct"))
                 frag = []
@@ -272,24 +433,67 @@ def _compose_holdings_and_nav(
                     frag.append(f"3개월 {r3m}")
                 if frag:
                     line_parts.append(" / ".join(frag))
+                    has_evidence_item = True
 
             excess_payload = h_out.get("excess_return") or {}
-            if excess_payload.get("status") == "ok":
+            if excess_payload.get("status") in ("ok", "partial"):
                 exc_1m = _fmt_pct(excess_payload.get("vs_kodex200_1m_pctp"))
+                exc_3m = _fmt_pct(excess_payload.get("vs_kodex200_3m_pctp"))
+                frag2 = []
                 if exc_1m:
-                    line_parts.append(f"KODEX200 대비 1개월 초과 {exc_1m}")
+                    frag2.append(f"1개월 초과 {exc_1m}")
+                if exc_3m:
+                    frag2.append(f"3개월 초과 {exc_3m}")
+                if frag2:
+                    line_parts.append("KODEX200 대비 " + " / ".join(frag2))
+                    has_evidence_item = True
 
             topn_match = h_out.get("topn_match") or {}
-            if topn_match.get("status") == "matched_topn_candidate":
+            match_status = topn_match.get("status")
+            if match_status == "matched_topn_candidate":
                 rank = topn_match.get("rank")
                 if rank is not None:
                     line_parts.append(f"Market Discovery TOP{rank}")
+                    has_evidence_item = True
+            elif match_status == "not_in_current_topn":
+                # FIX r3 (설계자 확정본 Q3): 정상 조회 결과 TOP-N 에 없음도 evidence.
+                line_parts.append("현재 Market Discovery TOP-N 미포함")
+                has_evidence_item = True
 
-            if line_parts and name:
-                holdings_notes.append(
+            # 단기 흐름 (builder: STATUS_OK "ok" / STATUS_PARTIAL "partial",
+            # 필드 return_20d_pct).
+            stm = h_out.get("short_term_momentum") or {}
+            if stm.get("status") in ("ok", "partial"):
+                stm_20d = _fmt_pct(stm.get("return_20d_pct"))
+                if stm_20d:
+                    line_parts.append(f"최근 20거래일 {stm_20d}")
+                    has_evidence_item = True
+
+            # 구성종목 overlap (builder: status=CONSTITUENTS_OK("ok") ·
+            # 필드 overlap_with_market_core = list[dict]).
+            constituents = h_out.get("constituents_overlap") or {}
+            if constituents.get("status") == "ok":
+                overlap_items = constituents.get("overlap_with_market_core") or []
+                overlap_names = [
+                    (it.get("name") or it.get("ticker"))
+                    for it in overlap_items
+                    if isinstance(it, dict) and (it.get("name") or it.get("ticker"))
+                ]
+                if overlap_names:
+                    preview = ", ".join(overlap_names[: min(3, len(overlap_names))])
+                    line_parts.append(f"구성종목 반복 핵심: {preview}")
+                    has_evidence_item = True
+
+            if has_evidence_item:
+                holdings_evidence_item_count += 1
+
+            if line_parts and name and has_evidence_item:
+                line_text = (
                     f"{name} ({market_asof} 기준): " + " · ".join(line_parts) + "."
                 )
+                holdings_notes.append(line_text)
                 holdings_fact_count += 1
+                holdings_selection_result_count += 1
                 matched_evidence_count += 1
 
         if holdings_fact_count == 0:
@@ -299,6 +503,22 @@ def _compose_holdings_and_nav(
             holdings_diag["status"] = "available"
             holdings_diag["contentful_fact_count"] = holdings_fact_count
             holdings_diag["matched_evidence_count"] = matched_evidence_count
+
+    # FIX r3 (설계자 확정본 Q7): fact attribution 진단 필드 확장.
+    holdings_diag["holdings_loaded_count"] = len(holdings)
+    holdings_diag["holdings_evidence_item_count"] = holdings_evidence_item_count
+    holdings_diag["holdings_contentful_fact_count"] = holdings_fact_count
+    holdings_diag["holdings_selection_result_count"] = holdings_selection_result_count
+    holdings_diag["rendered_holdings_fact_count"] = holdings_fact_count
+    # FIX r5 (검증자 REJECTED r5 대응): Q4 privacy 진단 boolean + 실제 값 검사.
+    #   각 holding 의 실제 quantity / avg_buy_price / account_group 값이 composed
+    #   notes 안에 substring 으로 나타나는지 검사. 진단 표기는 boolean.
+    holdings_diag["private_fields_exposed"] = _detect_private_values_exposed(
+        holdings, holdings_notes
+    )
+    holdings_diag["raw_identifier_exposed"] = _detect_raw_identifier_exposed(
+        holdings_notes
+    )
 
     # NAV — 각 보유 ETF 에 대해 fetch_latest_nav 조회 (§5.3 독립 조건).
     nav_notes: list[str] = []
@@ -347,6 +567,8 @@ def _compose_holdings_and_nav(
         nav_diag["status"] = "available"
         nav_diag["contentful_fact_count"] = nav_fact_count
         nav_status = "available"
+    # FIX r3 명시적 필드 (설계자 확정본 Q7).
+    nav_diag["nav_contentful_fact_count"] = nav_fact_count
 
     holdings_status = "available" if holdings_fact_count > 0 else "unavailable"
     return (
@@ -520,4 +742,40 @@ def compose_runtime_evidence(
             "source_present", False
         ),
     }
+    # FIX r3 (설계자 확정본 Q7): holdings_briefing 전용 fact attribution 필드.
+    if push_kind == "holdings_briefing":
+        h_source_diag = diag_sources.get(SRC_HOLDINGS, {})
+        nav_source_diag = diag_sources.get(SRC_NAV_DISCOUNT, {})
+        result.diagnostics.update(
+            {
+                "holdings_loaded_count": h_source_diag.get("holdings_loaded_count", 0),
+                "holdings_evidence_item_count": h_source_diag.get(
+                    "holdings_evidence_item_count", 0
+                ),
+                "holdings_contentful_fact_count": h_source_diag.get(
+                    "holdings_contentful_fact_count", 0
+                ),
+                "nav_contentful_fact_count": nav_source_diag.get(
+                    "nav_contentful_fact_count", 0
+                ),
+                "holdings_selection_result_count": h_source_diag.get(
+                    "holdings_selection_result_count", 0
+                ),
+                "rendered_holdings_fact_count": h_source_diag.get(
+                    "rendered_holdings_fact_count", 0
+                ),
+                "holdings_snapshot_status": h_source_diag.get("status", "unavailable"),
+                "holdings_snapshot_reason": h_source_diag.get("reason") or "",
+                "private_fields_exposed": bool(
+                    h_source_diag.get("private_fields_exposed", False)
+                ),
+                "raw_identifier_exposed": bool(
+                    h_source_diag.get("raw_identifier_exposed", False)
+                ),
+            }
+        )
+        # selection_result_count 를 holdings 전용 값으로 재정의 (설계자 확정본 Q3).
+        result.diagnostics["selection_result_count"] = h_source_diag.get(
+            "holdings_selection_result_count", 0
+        )
     return result

@@ -1,12 +1,52 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-14 (Holdings Evidence OCI Publication v1 — DONE, PC + OCI 완료)
+작성일: 2026-05-20 / 갱신: 2026-07-14 (Holdings Evidence OCI Publication v1 — **PARTIAL FIX r3 재개**)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (Holdings Evidence OCI Publication v1, DONE 2026-07-14)
+## 0. 현재 STEP (Holdings Evidence OCI Publication v1, PARTIAL FIX r3 재개 2026-07-14)
+
+**재개 사유**: 이전 DONE closeout (`2b690934`) 이후 설계자 (Q1-Q8 확정본) 재검토로 취소. Publication 자체 = PASS, Runtime Holdings evidence 연결 = FIX r3 필요.
+
+**설계자 원칙**:
+- NAV fact 는 `nav_discount_snapshot` 성공 근거일 뿐 `holdings_snapshot` 성공 근거로 사용 X (Q2).
+- `not_in_current_topn` + 정상 TOP-N 조회 → Holdings evidence 인정 (Q3).
+- 현재 unavailable 상태를 정상 최종 결과로 인정하지 않음 (Q5 반박안 B).
+
+**FIX r3 조치**:
+- Composer `_compose_holdings_and_nav` 를 확장해 `not_in_current_topn` + 실제 수치 evidence (returns/excess_return/short_term_momentum/constituents_overlap) 를 Holdings evidence 로 인정.
+- diagnostics 8종 신설 + `selection_result_count` (holdings_briefing) 재정의.
+- 회귀 test 7건 신설.
+
+**PC 실측**: `holdings_snapshot=available`, `holdings_loaded_count=35`, `holdings_contentful_fact_count=35`, `holdings_selection_result_count=35`, `contentful_fact_count(total)=67`.
+
+**회귀 (FIX r3)**: focused 26 passed, backend **877 passed** (baseline 870, 순증 7). 0 fail.
+
+**FIX r4 (검증자 REJECTED r4 대응)**: Composer 필드명 정정 (`short_term_momentum.return_20d_pct`, `constituents_overlap.status="ok"` + `overlap_with_market_core`), STATUS_PARTIAL 인정, TOP-N fail-closed, privacy 진단 필드 신설, runner record 진단 forward, Q6-3 fixture 정정 + Q6-7 신설 + Q4 test build_runtime_message 로 전환. Composer focused **28 passed**, backend **879 passed** (baseline 870 → FIX r3 877 → FIX r4 879). 상세: CONCLUSION §0-D.
+
+**FIX r5 (검증자 REJECTED r5 대응)**: fail-closed 재정정 (per-holding `topn_match.status` 신호 · `market_asof` 만으로 판정 X), privacy 진단 boolean + 실제 값 substring 검사 (invested_amount 포함), Q4 body test 에 FORBIDDEN_PHRASES 전체 + invested_amount + `check_forbidden_wording` 추가, 회귀 4건 신규. Composer focused **32 passed**, backend **883 passed**. 상세: CONCLUSION §0-E.
+
+**FIX r6 (검증자 REJECTED r6 대응)**: 조기 반환 3경로 boolean 유지 + top-level `bool(...)` cast, 2자 값 감지 + 문맥 aware 매칭 (word boundary + `_PRIVACY_CONTEXT_TOKENS` window), runner forward test 를 실행 기반 monkeypatch 로 재작성, 회귀 4건 신규. Composer focused **36 passed**, backend **887 passed**. 상세: CONCLUSION §0-F.
+
+**검증자 최종 판정 (2026-07-14, FIX r6 기준)**: **PARTIALLY_VERIFIED**. A 섹션 (기능/산출물) 전면 통과. B-2 단일 책임 · B-3 Composer 781줄 부채로 VERIFIED 승격 차단. 부채는 별도 리팩토링 STEP 로 이월 (설계자 확정 대상). 개발자 자체 리팩토링 금지 (지시 범위 확장). 상세: CONCLUSION §0-G · §15.
+
+**다음 활성 Step 후보 (설계자 확정 대기)**:
+- (A) **`Runtime Evidence Composer Refactor v1`** (가칭): B-2/B-3 부채 해소. 기능 회귀 0건 필수 (현행 test 36 케이스 유지).
+- (B) **`Universe Momentum Evidence Publication v1`**: 기능 진행 먼저.
+
+설계자 선택 후 별도 지시로 진입.
+
+**OCI 재검증 대기 조건**: `holdings_snapshot_status=available`, `holdings_selection_result_count>=1`, `telegram_attempted/sent=false`, `sent_registry_unchanged=true`, OCI state 4종 sha256 3-way 일치.
+
+**다음 활성 Step 진입 조건**: **FIX r3 OCI 실측 완료 전까지 `Universe Momentum Evidence Publication v1` 진입 금지** (설계자 확정).
+
+상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §0-A ~ §14.
+
+---
+
+## 0-prior. 직전 STEP 결과 (Holdings Evidence OCI Publication v1 — Publication PASS 부분)
 
 **목적**: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI `holdings_briefing` 실제 evidence 연결.
 
@@ -20,9 +60,9 @@
 
 **OCI 실측 (2026-07-14, revision `4c2bdd8f` same_revision=True)**: verify + activate 모두 status=ok, active_file_permission_checked=true (mode=600, owner=ubuntu), 3-way byte 완전 일치. dry-run holdings_briefing contentful=32 / msg_len=2626 (Publication 전 178 → 14배 증가), market_briefing 회귀 없음 (3/393), Telegram 미발송, sent_registry 53→53 불변. 상세는 CONCLUSION §13 참조.
 
-**검증자 판정**: 초기 REJECTED → FIX r1 REJECTED → FIX r2 **VERIFIED (PC 범위)** → OCI 실측 완료 → **DONE**.
+**검증자 판정**: 초기 REJECTED → FIX r1 REJECTED → FIX r2 **VERIFIED (PC 범위)** → OCI 실측 완료 → 초기 DONE closeout (`2b690934`, 이후 §0 FIX r3 로 재개).
 
-**다음 활성 Step (확정)**: **`Universe Momentum Evidence Publication v1`** (설계자 확정 세션).
+**다음 활성 Step**: 위 §0 FIX r3 OCI 재검증 대기.
 
 상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md`.
 

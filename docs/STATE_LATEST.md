@@ -1,8 +1,62 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — DONE, PC + OCI verify/activate/dry-run 완료)
+최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — **PARTIAL FIX r3 재개**, Runtime Holdings evidence 연결 재작업, OCI 재검증 대기)
 
-## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, DONE)
+## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, PARTIAL FIX r3)
+
+**FIX r3 재개 (2026-07-14)**: 이전 DONE closeout (`2b690934`) 취소. 설계자 Q1-Q8 확정본:
+- NAV fact 는 `nav_discount_snapshot` 성공 근거일 뿐 `holdings_snapshot` 성공 근거로 사용 X (Q2).
+- `not_in_current_topn` + 정상 TOP-N 조회 → Holdings evidence 인정 (Q3).
+- 현재 unavailable 상태를 정상 최종 결과로 인정하지 않음 (Q5 반박안 B).
+
+**FIX r3 조치**:
+- `app/runtime_evidence_composer.py::_compose_holdings_and_nav`: `matched_topn_candidate` 외에 `not_in_current_topn` + 실제 수치 evidence (returns / excess_return / short_term_momentum / constituents_overlap) 를 Holdings evidence 로 인정.
+- diagnostics 8종 신설: `holdings_loaded_count`, `holdings_evidence_item_count`, `holdings_contentful_fact_count`, `nav_contentful_fact_count`, `holdings_selection_result_count`, `rendered_holdings_fact_count`, `holdings_snapshot_status`, `holdings_snapshot_reason`.
+- `selection_result_count` (holdings_briefing) 재정의 → holdings-only 카운트.
+- 회귀 test 7건 신설.
+
+**FIX r3 PC 실측**: `holdings_snapshot=available`, `holdings_loaded_count=35`, `holdings_contentful_fact_count=35`, `nav_contentful_fact_count=32`, `holdings_selection_result_count=35`, `contentful_fact_count(total)=67`.
+
+**FIX r3 회귀**: focused 26 passed (기존 19 + 신규 7), backend **877 passed** (직전 baseline 870, 순증 7). 0 fail. 202s. black/flake8 PASS.
+
+**FIX r4 (검증자 REJECTED r4 대응, 2026-07-14)**:
+- Composer 필드명 정정: `short_term_momentum.return_20d_pct`, `constituents_overlap.status="ok"` + `overlap_with_market_core`.
+- `returns`/`excess_return` STATUS_PARTIAL 인정, excess 3개월도 evidence.
+- TOP-N 성공 판정 fail-closed: warning 문자열 파싱 제거 → `market_asof` 부재로만 판정.
+- privacy 진단 필드 신설 (`private_fields_exposed`, `raw_identifier_exposed`).
+- runner record 에 진단 8종 + privacy 2 필드 forward.
+- Q6-3 test 를 2건 loader 로 정정 (`_fake_holdings_two`) · Q6-7 test 신설 · Q4 privacy test 를 실제 `build_runtime_message()` 결과로 전환.
+- Composer focused **28 passed** (FIX r3 26 + 2). Backend **879 passed** (baseline 870 → FIX r3 877 → FIX r4 879). Composer 라인 635 / test 902. 상세: CONCLUSION §0-D.
+
+**FIX r5 (검증자 REJECTED r5 대응, 2026-07-14)**:
+- **fail-closed 재정정** (재현 지적): builder 는 `topn_status != "ok"` 여도 입력 `asof` 를 `market_asof` 로 보존 → FIX r4 의 `if not market_asof` 는 fail-open. per-holding `topn_match.status ∈ {matched, not_in_current_topn}` 신호 존재 여부로 판정.
+- privacy 진단 boolean 화: `_detect_private_values_exposed` (실제 quantity/avg_buy_price/invested_amount/account_group 값 substring 검사) · `_detect_raw_identifier_exposed` (내부 token 19종).
+- Q4 body test 확장: invested_amount(350000) + FORBIDDEN_PHRASES 전체 + `check_forbidden_wording`.
+- 회귀 test 4건 신규 (fail-closed 반증 · boolean 계약 · 실값 노출 감지 · runner record 10필드 forward 정적 검증).
+- Composer focused **32 passed** (28+4), backend **883 passed** (879+4). Composer 라인 725 / test 1055. 상세: CONCLUSION §0-E.
+
+**FIX r6 (검증자 REJECTED r6 대응, 2026-07-14)**:
+- privacy 진단 boolean 계약을 모든 경로에서 유지: 조기 반환 3경로 (source missing / load error / empty holdings) 에서 `_set_privacy_defaults` 호출 + top-level `bool(...)` cast.
+- 길이 필터 3자 → 2자 (`quantity=10` 감지). 오탐 회피는 numeric word boundary + 좌우 32자 window 안 `_PRIVACY_CONTEXT_TOKENS` 조합으로 재설계 (20거래일 · TOP10 · STAR50 · % 등 정상 문맥 통과).
+- runner forward test 를 정적 grep → 실제 `run()` 호출 monkeypatch 기반으로 재작성.
+- 회귀 test 4건 신규 (source missing/empty/load error boolean · 2자 값 감지).
+- Composer focused **36 passed** (32+4), backend **887 passed** (883+4). Composer 라인 781 / test 1201. 상세: CONCLUSION §0-F.
+
+**검증자 판정 (2026-07-14, FIX r6)**: **PARTIALLY_VERIFIED**. A 섹션 (기능/산출물) 전면 통과. B-2 (단일 책임) · B-3 (Composer 781줄) 부채로 VERIFIED 승격 차단. 부채는 별도 리팩토링 STEP 로 이월 (설계자 확정 대상). 상세: CONCLUSION §0-G · §15.
+
+**다음 활성 STEP 결정**: 설계자 (웹 GPT) 확정 대기. 후보 (A) `Runtime Evidence Composer Refactor v1` (부채 해소 먼저), (B) `Universe Momentum Evidence Publication v1` (기능 진행 먼저). 개발자 자체 결정 금지.
+
+**OCI 재실측 대기**: STEP DONE 승격 조건 (§14). 명령셋: CONCLUSION §11.3 참조.
+
+**OCI 재검증 대기 조건**: `holdings_snapshot_status=available`, `holdings_snapshot_reason=""`, `holdings_loaded_count=35`, `holdings_selection_result_count>=1`, `telegram_attempted/sent=false`, `sent_registry_unchanged=true`.
+
+**다음 STEP 진입 조건**: **FIX r3 OCI 실측 완료 전까지 `Universe Momentum Evidence Publication v1` 진입 금지**.
+
+상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §0-A ~ §14.
+
+---
+
+## 이번 STEP — Publication 자체 (PASS, 참고)
 
 **목적**: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI Runtime `holdings_briefing` 실제 evidence 연결.
 
@@ -40,13 +94,11 @@
 - dry-run market_briefing: contentful=3, msg_len=393 (이전 STEP 값 회귀 없음).
 - dry-run holdings_briefing: `nav_discount_snapshot=available` (실제 보유 ETF NAV 32건), **contentful_fact_count=32**, msg_len=**2626** (Publication 전 178 → 14배 증가).
 - Telegram 미발송 (전 records `telegram_attempted/sent=false`), sent_registry 53 → 53 (불변).
-- 상세 note: `holdings_snapshot=no_contentful_fact` + `selection_result_count=0` 은 사용자 보유 ETF ↔ 현재 TOP-N (asof=`2026-07-03`) 매칭 없음 data gap. NAV 는 독립적으로 available → 지시문 §17 PASS 정의 (contentful evidence 생성) 충족. AC-14 완전 통과. 지시문 §8 상위 판정 기준도 충족. data gap 은 별도 STEP `Market Discovery Refresh` 이월.
+- 상세 note (당시 기록): `holdings_snapshot=no_contentful_fact` + `selection_result_count=0` 은 사용자 보유 ETF ↔ 현재 TOP-N (asof=`2026-07-03`) 매칭 없음. → **이후 FIX r3 에서 이 해석이 취소됨** (설계자 Q2/Q3/Q5 재검토: NAV 로 holdings 성공 정당화 X · `not_in_current_topn` 도 evidence 인정). 현재 판정은 상단 §"이번 STEP 요약 (Holdings Evidence OCI Publication v1, PARTIAL FIX r3)" 참조.
 
-**검증자 판정 이력**: 초기 REJECTED → FIX r1 REJECTED (실제 파일 접근 test 잔존 + stale 15/20) → **FIX r2 VERIFIED (PC 범위)** → OCI dry-run 완료 → **DONE**.
+**검증자 판정 이력**: 초기 REJECTED → FIX r1 REJECTED → FIX r2 VERIFIED (PC 범위) → OCI dry-run 완료 → 초기 DONE closeout (`2b690934`) → **FIX r3 재개 (상단 참조)**.
 
-**다음 활성 STEP (확정)**: **`Universe Momentum Evidence Publication v1`** (설계자 확정 세션).
-
-**다음 활성 STEP (확정, OCI PASS 후)**: **`Universe Momentum Evidence Publication v1`** (설계자 확정 세션).
+**다음 활성 STEP**: 상단 §"다음 STEP 진입 조건" 참조 (FIX r3 OCI 실측 완료 전 진입 금지).
 
 상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md`.
 

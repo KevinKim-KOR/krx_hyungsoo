@@ -204,6 +204,22 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         "selection_result_count", 0
     )
     record["unavailable_reasons"] = evidence.diagnostics.get("unavailable_reasons", {})
+    # FIX r3 · r4 (설계자 확정본 Q7): holdings_briefing 진단 필드 record 전달 (OCI dry-run 확인용).
+    #   개인정보 · Holdings JSON 원문 · raw ticker 등은 이미 Composer 계약상 제외.
+    for k in (
+        "holdings_snapshot_status",
+        "holdings_snapshot_reason",
+        "holdings_loaded_count",
+        "holdings_evidence_item_count",
+        "holdings_contentful_fact_count",
+        "nav_contentful_fact_count",
+        "holdings_selection_result_count",
+        "rendered_holdings_fact_count",
+        "private_fields_exposed",
+        "raw_identifier_exposed",
+    ):
+        if k in evidence.diagnostics:
+            record[k] = evidence.diagnostics[k]
 
     # ── 4. 금지 문구 검사 ────────────────────────────────────────────────────
     bad = check_forbidden_wording(message_text)
