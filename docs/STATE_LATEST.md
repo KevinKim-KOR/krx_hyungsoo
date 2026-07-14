@@ -1,8 +1,8 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — **PARTIAL FIX r3 재개**, Runtime Holdings evidence 연결 재작업, OCI 재검증 대기)
+최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — **DONE**, FIX r6 · OCI 재실측 revision `1086d87c` PASS)
 
-## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, PARTIAL FIX r3)
+## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, DONE)
 
 **FIX r3 재개 (2026-07-14)**: 이전 DONE closeout (`2b690934`) 취소. 설계자 Q1-Q8 확정본:
 - NAV fact 는 `nav_discount_snapshot` 성공 근거일 뿐 `holdings_snapshot` 성공 근거로 사용 X (Q2).
@@ -44,9 +44,16 @@
 
 **검증자 판정 (2026-07-14, FIX r6)**: **PARTIALLY_VERIFIED**. A 섹션 (기능/산출물) 전면 통과. B-2 (단일 책임) · B-3 (Composer 781줄) 부채로 VERIFIED 승격 차단. 부채는 별도 리팩토링 STEP 로 이월 (설계자 확정 대상). 상세: CONCLUSION §0-G · §15.
 
-**다음 활성 STEP 결정**: 설계자 (웹 GPT) 확정 대기. 후보 (A) `Runtime Evidence Composer Refactor v1` (부채 해소 먼저), (B) `Universe Momentum Evidence Publication v1` (기능 진행 먼저). 개발자 자체 결정 금지.
+**OCI 재실측 (2026-07-14, revision `1086d87c` same_revision=True, DONE 승격)**:
+- holdings_briefing: `holdings_snapshot=available`, `contentful_fact_count=67` (holdings 35 + nav 32), `selection_result_count=35`, `holdings_selection_result_count=35`, `msg_len=5506` (FIX r2 종료 시 2626 → FIX r6 5506, 사용자 메시지 실제 종목 evidence 35건 추가), `private_fields_exposed=false`, `raw_identifier_exposed=false`.
+- `unavailable_reasons` 에 `holdings_snapshot` 제거 (이전 `no_contentful_fact` → available).
+- market_briefing 회귀 없음 (contentful=3, msg_len=393, selection=10).
+- Telegram 미발송 (전 records), sent_registry 56→56 (불변).
+- PC ↔ OCI 실측 완전 일치.
 
-**OCI 재실측 대기**: STEP DONE 승격 조건 (§14). 명령셋: CONCLUSION §11.3 참조.
+**최종 STEP 판정**: **DONE** (검증자 PC 범위 PARTIALLY_VERIFIED + OCI 실측 PASS). 상세: CONCLUSION §0-H · §13.
+
+**다음 활성 STEP 결정**: 설계자 (웹 GPT) 확정 대기. 후보 (A) `Runtime Evidence Composer Refactor v1` (부채 해소 먼저), (B) `Universe Momentum Evidence Publication v1` (기능 진행 먼저). 개발자 자체 결정 금지.
 
 **OCI 재검증 대기 조건**: `holdings_snapshot_status=available`, `holdings_snapshot_reason=""`, `holdings_loaded_count=35`, `holdings_selection_result_count>=1`, `telegram_attempted/sent=false`, `sent_registry_unchanged=true`.
 

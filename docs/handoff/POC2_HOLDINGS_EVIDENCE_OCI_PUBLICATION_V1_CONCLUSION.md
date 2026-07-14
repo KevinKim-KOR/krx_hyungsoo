@@ -1,6 +1,6 @@
-# Holdings Evidence OCI Publication v1 — Conclusion (PARTIAL FIX r3 · Runtime Holdings evidence 연결 재작업)
+# Holdings Evidence OCI Publication v1 — Conclusion (DONE · FIX r6 · OCI 재실측 PASS)
 
-작성일: 2026-07-13 / FIX r1: 2026-07-13 / FIX r2: 2026-07-13 / (초기 closeout: 2026-07-14) / **재개 FIX r3: 2026-07-14** (설계자 지적) / **FIX r4: 2026-07-14** (검증자 REJECTED r4 대응) / **FIX r5: 2026-07-14** (검증자 REJECTED r5 대응) / **FIX r6: 2026-07-14** (검증자 REJECTED r6 대응 · OCI 재실측 대기).
+작성일: 2026-07-13 / FIX r1: 2026-07-13 / FIX r2: 2026-07-13 / (초기 closeout: 2026-07-14) / **재개 FIX r3: 2026-07-14** (설계자 지적) / **FIX r4: 2026-07-14** (검증자 REJECTED r4 대응) / **FIX r5: 2026-07-14** (검증자 REJECTED r5 대응) / **FIX r6: 2026-07-14** (검증자 REJECTED r6 대응 · PARTIALLY_VERIFIED) / **DONE closeout: 2026-07-14** (OCI 재실측 revision `1086d87c` PASS).
 
 성격: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI Runtime `holdings_briefing` 실제 evidence 연결.
 
@@ -175,6 +175,37 @@ evidence 문장 예시: "KoAct 미국테크놀로지커버드콜액티브 (2026-
 - 우선순위 판단: 설계자 (웹 GPT) 결정. 후보로 (A) 본 리팩토링 v1 먼저, (B) `Universe Momentum Evidence Publication v1` 먼저 중 선택.
 
 이번 STEP 개발자는 자체 진행 금지. 사용자 → 설계자 확정 세션 후 별도 지시 대기.
+
+## 0-H. DONE closeout (2026-07-14, OCI 재실측 PASS, revision `1086d87c`)
+
+**OCI 재실측 대조 (revision `1086d87c` same_revision=True)**:
+
+| 조건 | 실측 | 판정 |
+|---|---|---|
+| revision (PC = OCI) | `1086d87c` = `1086d87c` | ✅ AC-24 |
+| holdings_briefing `holdings_snapshot_status` | `"available"` | ✅ |
+| holdings_briefing `holdings_snapshot_reason` | `""` (empty) | ✅ |
+| `holdings_loaded_count` | 35 | ✅ |
+| `holdings_evidence_item_count` | 35 | ✅ |
+| `holdings_contentful_fact_count` | 35 (Holdings 전용) | ✅ |
+| `nav_contentful_fact_count` | 32 (NAV 전용) | ✅ |
+| `holdings_selection_result_count` | 35 (≥ 1) | ✅ AC-15 |
+| `rendered_holdings_fact_count` | 35 | ✅ |
+| holdings_briefing `contentful_fact_count` (total) | **67** = 35 + 32 (FIX r2 종료 시 32 → FIX r6 67, msg_len 2626 → **5506**) | ✅ AC-14 |
+| holdings_briefing `selection_result_count` | **35** (FIX r2 종료 시 0 → FIX r6 35) | ✅ |
+| `unavailable_reasons` 에 `holdings_snapshot` | **없음** (FIX r2 종료 시 `no_contentful_fact` → FIX r6 제거) | ✅ |
+| `private_fields_exposed` | `false` (boolean) | ✅ Q4 |
+| `raw_identifier_exposed` | `false` (boolean) | ✅ Q4 |
+| market_briefing 회귀 없음 | contentful=3, msg_len=393, selection=10 | ✅ AC-20 |
+| Telegram 미발송 | `telegram_attempted/sent=false` (전 records) | ✅ AC-18 |
+| sent_registry 불변 | 56 → 56 | ✅ AC-19 |
+| verify + activate (§13 이전 실측) | active hash/size/count 3-way 완전 일치, mode 600, owner ubuntu | ✅ AC-1~13 |
+
+**PC ↔ OCI 실측 완전 일치**: PC 실측 (holdings_loaded=35, contentful=35+32=67, selection=35, privacy 모두 false) = OCI 실측.
+
+**최종 판정**: **DONE**. 검증자 PC 범위 판정 **PARTIALLY_VERIFIED** (B-2/B-3 구조 부채) + OCI 실측 PASS 조합으로 STEP 종료 조건 충족. 구조 부채는 §15 별도 리팩토링 STEP 로 이월.
+
+**다음 활성 STEP (설계자 확정 대기)**: (A) `Runtime Evidence Composer Refactor v1` (B-2/B-3 부채 해소 먼저) 또는 (B) `Universe Momentum Evidence Publication v1` (기능 진행 먼저). 개발자 자체 결정 금지.
 
 
 ## 0. FIX r1 요약 (검증자 REJECTED 대응)

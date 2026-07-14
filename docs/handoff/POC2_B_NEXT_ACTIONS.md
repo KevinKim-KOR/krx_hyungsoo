@@ -1,12 +1,12 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-14 (Holdings Evidence OCI Publication v1 — **PARTIAL FIX r3 재개**)
+작성일: 2026-05-20 / 갱신: 2026-07-14 (Holdings Evidence OCI Publication v1 — **DONE** · FIX r6 · OCI 재실측 revision `1086d87c` PASS)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 현재 STEP (Holdings Evidence OCI Publication v1, PARTIAL FIX r3 재개 2026-07-14)
+## 0. 직전 STEP 결과 (Holdings Evidence OCI Publication v1, DONE 2026-07-14, commit `1086d87c`)
 
 **재개 사유**: 이전 DONE closeout (`2b690934`) 이후 설계자 (Q1-Q8 확정본) 재검토로 취소. Publication 자체 = PASS, Runtime Holdings evidence 연결 = FIX r3 필요.
 
@@ -31,6 +31,15 @@
 **FIX r6 (검증자 REJECTED r6 대응)**: 조기 반환 3경로 boolean 유지 + top-level `bool(...)` cast, 2자 값 감지 + 문맥 aware 매칭 (word boundary + `_PRIVACY_CONTEXT_TOKENS` window), runner forward test 를 실행 기반 monkeypatch 로 재작성, 회귀 4건 신규. Composer focused **36 passed**, backend **887 passed**. 상세: CONCLUSION §0-F.
 
 **검증자 최종 판정 (2026-07-14, FIX r6 기준)**: **PARTIALLY_VERIFIED**. A 섹션 (기능/산출물) 전면 통과. B-2 단일 책임 · B-3 Composer 781줄 부채로 VERIFIED 승격 차단. 부채는 별도 리팩토링 STEP 로 이월 (설계자 확정 대상). 개발자 자체 리팩토링 금지 (지시 범위 확장). 상세: CONCLUSION §0-G · §15.
+
+**OCI 재실측 (2026-07-14, revision `1086d87c` same_revision=True, DONE 승격)**:
+- holdings_briefing: `holdings_snapshot=available`, `contentful=67` (35+32), `selection=35`, `holdings_selection_result_count=35`, `msg_len=5506` (2626 → 5506), `private_fields_exposed=false`, `raw_identifier_exposed=false`, `unavailable_reasons` 에 `holdings_snapshot` 제거.
+- market_briefing 회귀 없음 (contentful=3, msg_len=393).
+- Telegram 미발송 (전 records), sent_registry 56→56 불변.
+- PC ↔ OCI 실측 완전 일치.
+- 상세: CONCLUSION §0-H · §13.
+
+**최종 STEP 판정**: **DONE**. 검증자 PC 범위 PARTIALLY_VERIFIED + OCI 실측 PASS.
 
 **다음 활성 Step 후보 (설계자 확정 대기)**:
 - (A) **`Runtime Evidence Composer Refactor v1`** (가칭): B-2/B-3 부채 해소. 기능 회귀 0건 필수 (현행 test 36 케이스 유지).
