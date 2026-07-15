@@ -1,12 +1,12 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-14 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 PC VERIFIED** · KS-10 trigger 해소 · OCI 재검증 대기)
+작성일: 2026-05-20 / 갱신: 2026-07-16 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 최종 PASS** · revision `4d724adf` · OCI 재검증 완료)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 현재 STEP 상태 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 PC VERIFIED 2026-07-14, OCI 재검증 대기)
+## 0. 직전 STEP 결과 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 최종 PASS 2026-07-16, revision `4d724adf`)
 
 **초기 STEP DONE**: revision `1086d87c` (2026-07-14, FIX r1~r6 · OCI 재실측 PASS).
 
@@ -24,14 +24,17 @@
 - Round 3: **VERIFIED**
 - Round 4: PC 검증 통과 (OCI 재검증 대기)
 
-**최종 Step 판정**: **PARTIAL — Cleanup / FIX r7 PC VERIFIED**. OCI 재검증 후 최종 PASS 승격 예정.
+**최종 Step 판정**: **DONE — 최종 PASS** (Cleanup / FIX r7 완료).
 
-**OCI 재검증 대기 조건** (holdings_briefing record):
-- `holdings_snapshot_status=available`, `holdings_loaded_count=35`, `holdings_contentful_fact_count=35`, `nav_contentful_fact_count=32`, `holdings_selection_result_count=35`, `rendered_holdings_fact_count=35`, `contentful_fact_count=67`, `private_fields_exposed=false` (boolean), `raw_identifier_exposed=false` (boolean).
-- market_briefing: `contentful_fact_count=3`, `selection_result_count=10`.
-- 안전 조건: `telegram_attempted/sent=false`, `sent_registry_before=sent_registry_after`.
+**OCI 재검증 실측 (2026-07-16, revision `4d724adf` same_revision=True)**:
+- holdings_briefing: `holdings_snapshot=available`, `contentful=67`, `selection=35`, `msg_len=5506`, `private_fields_exposed/raw_identifier_exposed=false`.
+- market_briefing: `contentful=3`, `msg_len=393`, `selection=10`.
+- Telegram 미발송, sent_registry 58 → 58 불변.
+- PC ↔ OCI 실측 완전 일치.
 
-**다음 활성 Step**: OCI 재검증 완료 후 원래 투자 운영 흐름 복귀 (Cleanup PASS 후 추가 구조 개선 제안·연속 수행 금지, 지시문 §20).
+**AC 충족 최종**: AC-1~35 전부 ✅. 상세: CONCLUSION §16.15.
+
+**다음 활성 Step**: 설계자 (웹 GPT) 확정 대기. Cleanup 종료 조건 (§20) 충족 → 원래 투자 운영 흐름 복귀. 개발자 자체 진행 · 다음 STEP 제안 금지.
 
 상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §16 (Cleanup / FIX r7 Closeout).
 

@@ -1,8 +1,8 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 PC VERIFIED**, OCI 재검증 대기)
+최종 업데이트: 2026-07-16 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 최종 PASS**, revision `4d724adf` · OCI 재검증 완료)
 
-## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 PC VERIFIED)
+## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 최종 PASS)
 
 **Cleanup / FIX r7 (2026-07-14)**: 초기 STEP DONE (`1086d87c`) 이후 검증자 PARTIALLY_VERIFIED 부채 (B-2 · B-3 · B-6) 해소 목적. 4 Round 진행:
 
@@ -13,9 +13,15 @@
 
 **KS-10 canonical trigger 해소 완료**. §16 상세.
 
-**다음 STEP 결정**: 설계자 (웹 GPT) 확정 대기. Cleanup 완료 후 원래 투자 운영 흐름 복귀 대상.
+**OCI 재검증 완료 (2026-07-16, revision `4d724adf` same_revision=True)**:
+- holdings_briefing: `holdings_snapshot=available`, `contentful=67` (holdings 35 + nav 32), `selection=35`, `msg_len=5506`, `private_fields_exposed=false`, `raw_identifier_exposed=false`.
+- market_briefing: `contentful=3`, `msg_len=393`, `selection=10`.
+- Telegram 미발송 (전 records), sent_registry 58 → 58 (불변).
+- PC ↔ OCI 실측 완전 일치.
 
-**OCI 재검증 대기**: Round 4 push 후 OCI 에서 동일 revision baseline 재현 확인 → STEP 최종 PASS 승격.
+**최종 STEP 판정**: **DONE — 최종 PASS** (Cleanup / FIX r7 완료).
+
+**다음 STEP 결정**: 설계자 (웹 GPT) 확정 대기. 개발자 자체 결정 금지 (지시문 §20).
 
 상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §16.
 
