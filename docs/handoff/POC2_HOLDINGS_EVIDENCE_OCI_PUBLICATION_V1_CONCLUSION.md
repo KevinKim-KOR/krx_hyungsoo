@@ -1,6 +1,12 @@
-# Holdings Evidence OCI Publication v1 — Conclusion (DONE · FIX r6 · OCI 재실측 PASS)
+# Holdings Evidence OCI Publication v1 — Conclusion (Cleanup / FIX r7 PC VERIFIED · OCI 재검증 대기)
 
-작성일: 2026-07-13 / FIX r1: 2026-07-13 / FIX r2: 2026-07-13 / (초기 closeout: 2026-07-14) / **재개 FIX r3: 2026-07-14** (설계자 지적) / **FIX r4: 2026-07-14** (검증자 REJECTED r4 대응) / **FIX r5: 2026-07-14** (검증자 REJECTED r5 대응) / **FIX r6: 2026-07-14** (검증자 REJECTED r6 대응 · PARTIALLY_VERIFIED) / **DONE closeout: 2026-07-14** (OCI 재실측 revision `1086d87c` PASS).
+작성일: 2026-07-13 / FIX r1~r6: 2026-07-14 / **초기 STEP DONE: 2026-07-14** (revision `1086d87c`) / **Cleanup / FIX r7 시작: 2026-07-14** (구조 부채 해소).
+
+FIX r7 Round 상태:
+- Round 1 (실측 · PARTIALLY_VERIFIED, revision `7c5b0f22` 기반 working tree)
+- Round 2 (Production 구조 분리 · PARTIALLY_VERIFIED)
+- Round 3 (테스트 분리 + privacy policy/detector 분리 + false-negative 보정 · **VERIFIED**)
+- Round 4 (전체 재측정 + PC 회귀 + closeout · **PC VERIFIED**, OCI 재검증 대기).
 
 성격: PC 승인 Holdings SSOT 를 OCI 로 controlled publication + OCI Runtime `holdings_briefing` 실제 evidence 연결.
 
@@ -518,3 +524,160 @@ PY
 
 **다음 STEP 진입 조건 (설계자 확정)**: FIX r3 OCI 실측 완료 전에는 `Universe Momentum Evidence Publication v1` 진입 **금지**.
 
+
+## 16. Cleanup / FIX r7 Closeout (2026-07-14)
+
+### 16.1 Cleanup 시작 사유
+
+초기 STEP DONE closeout (`7c5b0f22`) 이후 검증자 최종 판정은 **PARTIALLY_VERIFIED**:
+- A 섹션 (기능/산출물) 전면 통과.
+- B-2 (단일 책임) · B-3 (Composer 781줄) · B-6 (privacy 정책 결합, 알려진 false-negative) 부채로 VERIFIED 승격 차단.
+- §15 에 별도 리팩토링 STEP `Runtime Evidence Composer Refactor v1` 후보 이월.
+- 설계자 확정 후 Cleanup / FIX r7 진입.
+
+### 16.2 KS-10 canonical 기준
+
+- 백엔드 (`app/**/*.py` + `scripts/**/*.py`): trigger ≥ 650 · near = 600~649
+- 프론트 컴포넌트 (`.tsx`): trigger ≥ 900 · near = 850~899
+- 테스트 (`tests/**/*.py`): trigger ≥ 1500 (여러 Step 혼재) 또는 ≥ 2500 · near = 1450~1499
+- `.ts` (frontend/lib · next.config.ts 등) 및 `legacy/**/*.py`: canonical 미확정 → `normal` 로 분류, threshold 필드는 `canonical_undefined` 라벨.
+
+측정 도구: `git ls-files "*.py" "*.ts" "*.tsx"` (find 금지, staged/tracked 파일 명세 유일 진실).
+
+### 16.3 측정 · 대상 확정
+
+**Round 1 실측 (측정 전, revision `7c5b0f22` 기반)**:
+- total_files_measured: 281 (.py 216 + .ts 23 + .tsx 42)
+- trigger_files_before:
+  - `app/runtime_evidence_composer.py` = 781 (초과 +131)
+  - `scripts/refresh_market_timeseries.py` = 686 (초과 +36)
+- near_threshold_files_before: 0
+- additional_cleanup_target: `tests/test_runtime_evidence_composer.py` = 1201 (normal, accepted_structural_debt 사유로 §Q2 편입).
+
+### 16.4 Production 구조 분리 (Round 2)
+
+`app/runtime_evidence_composer.py` (781) → 얇은 facade (70줄) + `app/runtime_evidence/` 패키지 8개 모듈:
+- `constants.py`, `privacy.py` (facade), `market_discovery.py`, `holdings_evidence.py`, `nav_evidence.py`, `diagnostics.py`, `holdings_composer.py`, `composer.py` (orchestrator, 196줄).
+
+`scripts/refresh_market_timeseries.py` (686 → 585) + `scripts/_market_refresh/vix_ingest.py` (122) 로 최소 분리.
+
+### 16.5 Privacy 정책/탐지 분리 (Round 3A) + 테스트 분리 (Round 3B) + false-negative 보정 (Round 3C)
+
+- `privacy.py` (facade, 하위 호환) + `privacy_policy.py` (정책 상수) + `privacy_detector.py` (탐지 알고리즘) 3개로 분리.
+- 대형 테스트 파일 `tests/test_runtime_evidence_composer.py` (1201) → **`tests/runtime_evidence/`** 아래 fixture 1 + 책임별 test 7개.
+- `PRIVACY_CONTEXT_TOKENS` 15 → 27 종 확장 (한글 15 + 영문 12).
+- `detect_private_values_exposed(evidence_payload=...)` 확장 → `evaluation_amount` · `pnl_amount` 실제 힌트를 후보로 사용.
+
+### 16.6 Round 4 재측정
+
+측정 후 (working tree, `git ls-files`):
+- total_files_measured: **302** (.py 237 + .ts 23 + .tsx 42)
+- **trigger_files_after: []** (AC-6 충족)
+- **near_threshold_files_after: []** (AC-7 충족)
+- Backend max: `scripts/diagnose_nav_discount_source.py` = 594 (distance=56, normal)
+- Test max: `tests/test_holdings_message_text.py` = 924 (normal)
+- TSX max: `frontend/app/components/MarketDiscoveryView.tsx` = 792 (normal)
+
+### 16.7 책임 분리 전후 구조
+
+Before (Round 1):
+```
+app/runtime_evidence_composer.py                781줄 (trigger)
+scripts/refresh_market_timeseries.py            686줄 (trigger)
+tests/test_runtime_evidence_composer.py        1201줄 (accepted_structural_debt)
+```
+
+After (Round 4):
+```
+app/runtime_evidence_composer.py                 70줄 (thin facade)
+app/runtime_evidence/__init__.py                 55줄
+app/runtime_evidence/constants.py                52줄
+app/runtime_evidence/privacy.py                  38줄 (facade)
+app/runtime_evidence/privacy_policy.py           98줄 (정책 상수)
+app/runtime_evidence/privacy_detector.py        168줄 (탐지 알고리즘)
+app/runtime_evidence/market_discovery.py        105줄
+app/runtime_evidence/holdings_evidence.py       147줄
+app/runtime_evidence/nav_evidence.py             65줄
+app/runtime_evidence/diagnostics.py              88줄
+app/runtime_evidence/holdings_composer.py       241줄
+app/runtime_evidence/composer.py                196줄 (orchestrator)
+
+scripts/refresh_market_timeseries.py            585줄
+scripts/_market_refresh/__init__.py               7줄
+scripts/_market_refresh/vix_ingest.py           122줄
+
+tests/runtime_evidence/__init__.py                0줄
+tests/runtime_evidence/_fixtures.py             317줄
+tests/runtime_evidence/test_market_evidence.py       103줄 (5 tests)
+tests/runtime_evidence/test_holdings_evidence.py     182줄 (10 tests)
+tests/runtime_evidence/test_nav_evidence.py          139줄 (6 tests)
+tests/runtime_evidence/test_privacy_detector.py      219줄 (6 tests, Round 3C 1건 신규)
+tests/runtime_evidence/test_diagnostics.py            45줄 (2 tests)
+tests/runtime_evidence/test_runtime_runner_forwarding.py  92줄 (1 test)
+tests/runtime_evidence/test_failure_paths.py         156줄 (7 tests)
+```
+
+### 16.8 회귀
+
+- Runtime evidence focused: **37 passed** (기존 36 계약 유지 + Round 3C `evaluation_amount` test 1건 신규).
+- Runtime runner dry-run: 4 passed.
+- Backend full regression: **888 passed, 0 failed** (Round 3 시점부터 888 유지 = Round 2 887 + Round 3C 신규 1건. Round 4 재실행 동일 888). 209s.
+- black · flake8 (max-line=100) PASS.
+- Frontend lint/build: not_applicable (Round 3 frontend 변경 0건).
+
+### 16.9 실제 state 무변경 (SHA-256 실측)
+
+`pytest` 전·후:
+
+| 파일 | before | after | 결과 |
+|---|---|---|---|
+| `state/holdings/holdings_latest.json` | `767815e0…` | `767815e0…` | ✅ 불변 |
+| `state/market/market_data.sqlite` | `f7df867d…` | `f7df867d…` | ✅ 불변 |
+| `state/runtime/runtime_state.sqlite` | `f72dd796…` | `f72dd796…` | ✅ 불변 |
+| `state/three_push/params/latest_runtime_param.json` | `84151b56…` | `84151b56…` | ✅ 불변 |
+
+### 16.10 PC baseline 비교
+
+`compose_runtime_evidence` 실측 (Round 4):
+
+market_briefing:
+- `contentful_fact_count=3` ✅
+- `selection_result_count=10` ✅
+
+holdings_briefing:
+- `holdings_snapshot_status="available"` ✅
+- `holdings_loaded_count=35` ✅
+- `holdings_evidence_item_count=35` ✅
+- `holdings_contentful_fact_count=35` ✅
+- `nav_contentful_fact_count=32` ✅
+- `holdings_selection_result_count=35` ✅
+- `rendered_holdings_fact_count=35` ✅
+- `contentful_fact_count=67` ✅
+- `private_fields_exposed=False` (boolean) ✅
+- `raw_identifier_exposed=False` (boolean) ✅
+
+**초기 STEP DONE closeout (revision `1086d87c`) 값과 완전 일치.**
+
+### 16.11 OCI baseline 비교 대기
+
+Round 4 push 후 OCI 재검증에서 위 baseline 이 동일하게 재현되어야 최종 DONE 승격.
+
+### 16.12 Telegram · sent_registry
+
+- Telegram 호출: 0 (전 records `telegram_attempted/sent=false`).
+- sent registry: 자동 test 는 conftest isolation 으로 실제 파일 미접근. PC 회귀 전·후 SHA 불변 (§16.9).
+
+### 16.13 새 기능 추가 여부
+
+- new_feature_added = **false**
+- 신규 source · 신규 threshold · 신규 selection · 신규 DB schema · 신규 API · Telegram 실행 · scheduler 변경 · Holdings JSON schema 변경 · publication CLI 계약 변경: **모두 없음**.
+
+### 16.14 남은 Cleanup 후보
+
+없음. 이번 Cleanup 은 KS-10 trigger 2건 (`runtime_evidence_composer.py` · `refresh_market_timeseries.py`) 과 명시적 부채 1건 (대형 test file) 을 전부 해소.
+
+### 16.15 최종 Step 판정
+
+- **PC 범위**: **VERIFIED** (Round 3 검증자 판정 · Round 4 회귀 통과).
+- **전체 Step**: **PARTIAL** (OCI 재검증 전까지 최종 PASS 유보).
+- **완료 조건 (Round 4 남은 부분)**: OCI 동일 revision 재검증 → holdings_briefing 실측 baseline (§16.10) 재현 · Telegram 미발송 · sent_registry 불변 확인 → 최종 STEP `Holdings Evidence OCI Publication v1` 최종 PASS 승격.

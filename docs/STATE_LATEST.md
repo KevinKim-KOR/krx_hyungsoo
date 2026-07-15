@@ -1,8 +1,27 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — **DONE**, FIX r6 · OCI 재실측 revision `1086d87c` PASS)
+최종 업데이트: 2026-07-14 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 PC VERIFIED**, OCI 재검증 대기)
 
-## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, DONE)
+## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 PC VERIFIED)
+
+**Cleanup / FIX r7 (2026-07-14)**: 초기 STEP DONE (`1086d87c`) 이후 검증자 PARTIALLY_VERIFIED 부채 (B-2 · B-3 · B-6) 해소 목적. 4 Round 진행:
+
+- **Round 1** (실측 · PARTIALLY_VERIFIED): 281 파일 실측 → trigger 2건 (`app/runtime_evidence_composer.py` 781, `scripts/refresh_market_timeseries.py` 686), near 0, accepted_structural_debt 1건 (`tests/test_runtime_evidence_composer.py` 1201).
+- **Round 2** (Production 구조 분리 · PARTIALLY_VERIFIED): Composer 를 `app/runtime_evidence/` 패키지 8개 모듈로 분리 + facade 유지. refresh_market_timeseries 는 VIX helper 만 최소 분리.
+- **Round 3** (test 분리 + privacy 정책/탐지 분리 + false-negative 보정 · **VERIFIED**): 대형 test 를 `tests/runtime_evidence/` 아래 fixture 1 + 책임별 7개로 분리, `privacy_policy.py` + `privacy_detector.py` + `privacy.py` (facade) 3분리, `PRIVACY_CONTEXT_TOKENS` 15→27 확장 + `evaluation_amount` / `pnl_amount` 힌트 탐지.
+- **Round 4** (전체 재측정 + PC 회귀 + closeout · **PC VERIFIED**): 302 파일 재측정 → **trigger 0, near 0**. Backend 888 passed. 실제 state 4종 SHA-256 완전 불변. PC baseline (holdings 35/35/32/35/67, boolean False) 완전 유지. OCI 재검증 대기.
+
+**KS-10 canonical trigger 해소 완료**. §16 상세.
+
+**다음 STEP 결정**: 설계자 (웹 GPT) 확정 대기. Cleanup 완료 후 원래 투자 운영 흐름 복귀 대상.
+
+**OCI 재검증 대기**: Round 4 push 후 OCI 에서 동일 revision baseline 재현 확인 → STEP 최종 PASS 승격.
+
+상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §16.
+
+---
+
+## 이전 STEP 요약 (Holdings Evidence OCI Publication v1, 초기 STEP DONE)
 
 **FIX r3 재개 (2026-07-14)**: 이전 DONE closeout (`2b690934`) 취소. 설계자 Q1-Q8 확정본:
 - NAV fact 는 `nav_discount_snapshot` 성공 근거일 뿐 `holdings_snapshot` 성공 근거로 사용 X (Q2).

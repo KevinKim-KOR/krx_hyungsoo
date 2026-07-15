@@ -506,115 +506,14 @@ def _cmd_incremental(args: _Args) -> int:
 
 
 def _cmd_vix(args: _Args) -> int:
-    """VIX 일별 Close 를 FDR 로 조회하여 market_benchmark_daily_price 에 적재.
+    """VIX 서브커맨드 — 실 구현은 scripts/_market_refresh/vix_ingest.py 로 분리.
 
-    지시문 §5.1 / §5.2:
-    - 최초 실행: 2014-04-09 ~ 최신 반환일.
-    - 이후 실행: SQLite 마지막 저장일 다음 날짜 ~ 최신 반환일.
-    - 실행당 1회, 자동 재시도 없음.
-    - KODEX200 호출 X, ETF universe 순회 X, ML 호출 X.
+    Cleanup / FIX r7 Round 2: KS-10 trigger (686줄) 해소를 위한 최소 분리.
+    CLI 계약 · 인자 · 출력 · 종료 코드 유지.
     """
-    from datetime import timedelta
+    from scripts._market_refresh.vix_ingest import run_vix_ingest
 
-    import FinanceDataReader as fdr
-
-    from app.market_benchmark_store import (
-        fetch_existing_benchmark_close_map,
-        latest_benchmark_date,
-        upsert_benchmark_prices,
-    )
-
-    default_vix_start = date(2014, 4, 9)
-    latest = latest_benchmark_date("VIX", db_path=args.db_path)
-    if latest:
-        try:
-            start = date.fromisoformat(latest) + timedelta(days=1)
-        except ValueError:
-            # FIX r1: 기존 latest 파싱 실패는 명확한 실패로 종료.
-            # 자동 fallback 시 사용자가 데이터 손상을 감지하지 못한다.
-            print(
-                f"[vix] existing latest VIX date is unparseable: {latest!r} -- "
-                "manual check required. Aborting without fallback.",
-                file=sys.stderr,
-            )
-            return 2
-    else:
-        start = default_vix_start
-    end = date.today()
-    if start > end:
-        print(f"[vix] already up to date -- latest={latest}")
-        return 0
-
-    try:
-        df = fdr.DataReader("VIX", start, end)
-    except Exception as e:  # noqa: BLE001
-        print(f"[vix] fetch failed: {type(e).__name__}: {e}", file=sys.stderr)
-        return 2
-
-    if df is None or len(df) == 0 or "Close" not in df.columns:
-        print("[vix] empty response or missing Close column", file=sys.stderr)
-        return 2
-
-    rows: list[tuple[str, Optional[float]]] = []
-    for idx, raw in df.iterrows():
-        try:
-            dt = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
-        except Exception:  # noqa: BLE001
-            continue
-        close_raw = raw["Close"]
-        try:
-            if close_raw is None:
-                continue
-            close = float(close_raw)
-            if close != close or close <= 0:  # NaN or non-positive
-                continue
-        except (TypeError, ValueError):
-            continue
-        rows.append((dt, close))
-
-    if not rows:
-        print("[vix] no valid rows after filter", file=sys.stderr)
-        return 2
-
-    # 지시문 §4.2: 기존 값과 다른 새 값은 자동 덮어쓰지 않는다.
-    existing = fetch_existing_benchmark_close_map("VIX", db_path=args.db_path)
-    appendable: list[tuple[str, float]] = []
-    conflicts: list[str] = []
-    for dt, close in rows:
-        prior = existing.get(dt)
-        if prior is None or prior <= 0:
-            appendable.append((dt, close))
-            continue
-        if abs(prior - close) <= 1e-9:
-            continue  # 동일 값 skip
-        conflicts.append(dt)
-
-    if conflicts:
-        sample = ",".join(conflicts[:3])
-        print(
-            f"[vix] conflict with existing prices on {len(conflicts)} dates -- "
-            f"aborting without overwrite (e.g. {sample})",
-            file=sys.stderr,
-        )
-        return 2
-
-    if not appendable:
-        print(f"[vix] no new rows to write (already up to date, fetched={len(rows)})")
-        return 0
-
-    written = upsert_benchmark_prices(
-        benchmark_id="VIX",
-        benchmark_name="VIX",
-        rows=[(dt, close) for dt, close in appendable],
-        source="FDR_VIX",
-        db_path=args.db_path,
-    )
-    new_latest = latest_benchmark_date("VIX", db_path=args.db_path)
-    print(
-        f"[vix] source=FDR_VIX written={written} "
-        f"range={appendable[0][0]}~{appendable[-1][0]} latest={new_latest}"
-    )
-    return 0
+    return run_vix_ingest(args.db_path)
 
 
 def _cmd_status(args: _Args) -> int:

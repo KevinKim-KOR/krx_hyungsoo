@@ -1,12 +1,43 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-14 (Holdings Evidence OCI Publication v1 — **DONE** · FIX r6 · OCI 재실측 revision `1086d87c` PASS)
+작성일: 2026-05-20 / 갱신: 2026-07-14 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 PC VERIFIED** · KS-10 trigger 해소 · OCI 재검증 대기)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (Holdings Evidence OCI Publication v1, DONE 2026-07-14, commit `1086d87c`)
+## 0. 현재 STEP 상태 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 PC VERIFIED 2026-07-14, OCI 재검증 대기)
+
+**초기 STEP DONE**: revision `1086d87c` (2026-07-14, FIX r1~r6 · OCI 재실측 PASS).
+
+**Cleanup / FIX r7 진입 사유**: 초기 STEP DONE closeout (`7c5b0f22`) 이후 검증자 최종 판정 **PARTIALLY_VERIFIED** (A 통과 · B-2/B-3/B-6 부채로 VERIFIED 승격 차단). 설계자 확정 후 `Runtime Evidence Composer Refactor v1` 후보를 이번 Cleanup 으로 편입.
+
+**Cleanup / FIX r7 4 Round 결과**:
+- Round 1 (실측): 281 → trigger 2 (`runtime_evidence_composer.py` 781, `refresh_market_timeseries.py` 686), near 0, accepted_structural_debt 1 (`test_runtime_evidence_composer.py` 1201).
+- Round 2 (Production 구조): Composer 를 `app/runtime_evidence/` 패키지 8개 + facade 유지. refresh_market_timeseries 는 VIX helper 만 최소 분리.
+- Round 3 (test + privacy 분리 + false-negative 보정): 대형 test 를 `tests/runtime_evidence/` 아래 fixture 1 + test 7 로 분리. `privacy_policy.py` + `privacy_detector.py` + `privacy.py` (facade) 3 분리. `PRIVACY_CONTEXT_TOKENS` 15→27. `evaluation_amount` / `pnl_amount` 힌트 탐지.
+- Round 4 (재측정 + PC 회귀 + closeout): 302 파일 재측정 → **trigger 0, near 0** (AC-6/7 충족). Backend **888 passed**. 실제 state 4종 SHA 완전 불변. PC baseline (holdings 35/35/32/35/67, boolean False) 초기 STEP DONE 값과 완전 일치.
+
+**검증자 판정 이력**:
+- Round 1: PARTIALLY_VERIFIED
+- Round 2: PARTIALLY_VERIFIED
+- Round 3: **VERIFIED**
+- Round 4: PC 검증 통과 (OCI 재검증 대기)
+
+**최종 Step 판정**: **PARTIAL — Cleanup / FIX r7 PC VERIFIED**. OCI 재검증 후 최종 PASS 승격 예정.
+
+**OCI 재검증 대기 조건** (holdings_briefing record):
+- `holdings_snapshot_status=available`, `holdings_loaded_count=35`, `holdings_contentful_fact_count=35`, `nav_contentful_fact_count=32`, `holdings_selection_result_count=35`, `rendered_holdings_fact_count=35`, `contentful_fact_count=67`, `private_fields_exposed=false` (boolean), `raw_identifier_exposed=false` (boolean).
+- market_briefing: `contentful_fact_count=3`, `selection_result_count=10`.
+- 안전 조건: `telegram_attempted/sent=false`, `sent_registry_before=sent_registry_after`.
+
+**다음 활성 Step**: OCI 재검증 완료 후 원래 투자 운영 흐름 복귀 (Cleanup PASS 후 추가 구조 개선 제안·연속 수행 금지, 지시문 §20).
+
+상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §16 (Cleanup / FIX r7 Closeout).
+
+---
+
+## 0-prior. 초기 STEP DONE 이력 참고 (revision `1086d87c`, Cleanup 진입 이전)
 
 **재개 사유**: 이전 DONE closeout (`2b690934`) 이후 설계자 (Q1-Q8 확정본) 재검토로 취소. Publication 자체 = PASS, Runtime Holdings evidence 연결 = FIX r3 필요.
 
@@ -39,17 +70,11 @@
 - PC ↔ OCI 실측 완전 일치.
 - 상세: CONCLUSION §0-H · §13.
 
-**최종 STEP 판정**: **DONE**. 검증자 PC 범위 PARTIALLY_VERIFIED + OCI 실측 PASS.
+**초기 STEP 판정 (Cleanup 진입 이전)**: DONE (검증자 PC 범위 PARTIALLY_VERIFIED + OCI 실측 PASS).
 
-**다음 활성 Step 후보 (설계자 확정 대기)**:
-- (A) **`Runtime Evidence Composer Refactor v1`** (가칭): B-2/B-3 부채 해소. 기능 회귀 0건 필수 (현행 test 36 케이스 유지).
-- (B) **`Universe Momentum Evidence Publication v1`**: 기능 진행 먼저.
-
-설계자 선택 후 별도 지시로 진입.
-
-**OCI 재검증 대기 조건**: `holdings_snapshot_status=available`, `holdings_selection_result_count>=1`, `telegram_attempted/sent=false`, `sent_registry_unchanged=true`, OCI state 4종 sha256 3-way 일치.
-
-**다음 활성 Step 진입 조건**: **FIX r3 OCI 실측 완료 전까지 `Universe Momentum Evidence Publication v1` 진입 금지** (설계자 확정).
+**당시 다음 활성 Step 후보 → Cleanup / FIX r7 로 편입 후 해소**:
+- ~~(A) `Runtime Evidence Composer Refactor v1` — B-2/B-3 부채 해소~~ → **Cleanup / FIX r7 로 완료** (§0 참조).
+- (B) `Universe Momentum Evidence Publication v1` — 여전히 후속 STEP 후보 (Cleanup 완료 후 설계자 확정 대기).
 
 상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §0-A ~ §14.
 
