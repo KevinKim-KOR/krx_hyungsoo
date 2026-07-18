@@ -1,20 +1,34 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 진행 중 · 직전 Market STEP 은 **DONE · PASS · accepted_deviation** 로 정정)
+작성일: 2026-05-20 / 갱신: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 — **DONE · PASS · FIX (a) sender 분할 반영**)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 진행 중 STEP (Telegram Holdings Briefing Controlled Send v1)
+## 0. 직전 STEP 결과 (Telegram Holdings Briefing Controlled Send v1, DONE · PASS 2026-07-18, revision `3d65aa9a` + closeout commit)
 
-**목적**: 기존 Runtime send 경로로 `holdings_briefing` 실제 1회 발송 · 사용자 수신 · 중복 차단 실측 (신규 기능 X, 코드 변경 X).
+**목적**: 기존 Runtime send 경로로 `holdings_briefing` 실제 1회 발송 · 사용자 수신 · 중복 차단 실측.
 
-**진행 순서**: Preview → 승인 → 발송 직전 재확인 dry-run (선행 단독) → dry-run 회신 · 비교 → send → 수신 확인 → 중복 차단. §4.1 재발 방지 규칙 무조건 적용.
+**Preview (16:22 KST)**: param_id (masked)=`****757435`, contentful=67, selection=35, loaded=35, msg_len=5506, target `****5904`.
 
-**현재 gate**: Phase A Preview 명령 준비.
+**FIX (a) 적용 근거**: 최초 send (msg_len 5506 > Telegram 4096 한도) → HTTP 400. Registry_delta=0 (§9 FAIL 미해당). 사용자 (a) 승인: sender 계층 최소 수정. `app/three_push_runner_common.py` 에 `_split_message_for_telegram()` (줄바꿈 경계 분할 · `(i/N)` header) + `telegram_send()` 순차 전송 (하나라도 실패 시 partial_delivery). 신규 focused test 15 passed. Holdings evidence composer/builder/산식/duplicate key/registry schema 미변경. Commit `3d65aa9a`.
 
-상세 (Phase F 완료 후 신설): `docs/handoff/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
+**Send (16:32 KST · FIX 반영)**: status=sent, telegram_attempted/sent=true/true, 2 chunks 발송, duplicate_key = `holdings_briefing::****757435::2026-07-18`.
+
+**수신 확인**: chat `****5904` 로 `(1/2)`+`(2/2)` 정확 2 chunks. Preview 완전 일치. AC-6 정정 "논리 1건 · 물리 chunk 여러 건 허용" 충족.
+
+**중복 차단 (16:34 KST)**: 동일 키 재실행 → skipped/duplicate_runtime, telegram_attempted=false. Registry 63 → 64 → 64.
+
+**총 발송**: holdings_briefing 1건 (2 chunks). Market 0건, Spike 0건. AC-1~AC-9 전 항목 충족. §6 준수.
+
+**FIX r2 (검증자 PARTIALLY_VERIFIED r1 대응)**: sender 반환 3-tuple 확장 (partial_delivery boolean), runner record `partial_delivery` 필드, 신규 integration test (partial_delivery 3 케이스). 오류 문자열 파싱 의존 제거.
+
+**Regression**: focused 18 passed (chunking 15 + partial 3), backend 987 passed / 2 deselected (사전 test 결함 · BACKLOG 이관).
+
+**next_step_gate**: `TELEGRAM_SPIKE_ALERT_CONDITIONAL_SEND_V1`.
+
+상세: `docs/handoff/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
 
 ---
 

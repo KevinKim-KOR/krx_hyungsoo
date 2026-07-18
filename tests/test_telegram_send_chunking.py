@@ -94,7 +94,9 @@ class _FakeSendRecorder:
         self._results = list(results)
         self.calls: list[str] = []
 
-    def __call__(self, token: str, chat_id: str, text: str) -> tuple[bool, Any]:
+    def __call__(
+        self, token: str, chat_id: str, text: str
+    ) -> tuple[bool, Any]:  # noqa: E501
         self.calls.append(text)
         if not self._results:
             raise AssertionError("send called more times than expected")
@@ -112,8 +114,8 @@ def test_telegram_send_single_chunk_success(
 ) -> None:
     rec = _FakeSendRecorder([(True, None)])
     monkeypatch.setattr(trc, "_telegram_send_one", rec)
-    ok, err = trc.telegram_send("short body")
-    assert (ok, err) == (True, None)
+    ok, err, partial = trc.telegram_send("short body")
+    assert (ok, err, partial) == (True, None, False)
     assert rec.calls == ["short body"]
 
 
@@ -136,51 +138,57 @@ def test_telegram_send_multi_chunk_all_success(
     assert expected_chunks >= 2
     rec = _FakeSendRecorder([(True, None)] * expected_chunks)
     monkeypatch.setattr(trc, "_telegram_send_one", rec)
-    ok, err = trc.telegram_send(text)
-    assert (ok, err) == (True, None)
+    ok, err, partial = trc.telegram_send(text)
+    assert (ok, err, partial) == (True, None, False)
     assert len(rec.calls) == expected_chunks
     for i, c in enumerate(rec.calls, start=1):
         assert c.startswith(f"({i}/{expected_chunks})\n")
 
 
-def test_telegram_send_first_chunk_fail_stops_and_reports_partial(
+def test_telegram_send_first_chunk_fail_partial_false(
     env_with_valid_token: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """1번째 chunk 부터 실패 → partial_delivery=False (아직 어떤 chunk 도 성공하지 않음)."""
     rec = _FakeSendRecorder([(False, "other_non_secret_error: HTTP 400")])
     monkeypatch.setattr(trc, "_telegram_send_one", rec)
     text = "\n".join("x" * 500 for _ in range(20))
-    ok, err = trc.telegram_send(text)
+    ok, err, partial = trc.telegram_send(text)
     assert ok is False
     assert err is not None
     assert err.startswith("partial_delivery_at_chunk_1_of_")
     assert "HTTP 400" in err
+    assert partial is False
     assert len(rec.calls) == 1
 
 
-def test_telegram_send_second_chunk_fail_stops_before_third(
+def test_telegram_send_second_chunk_fail_partial_true(
     env_with_valid_token: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """1번째 성공 + 2번째 실패 → partial_delivery=True. 3번째는 미호출."""
     rec = _FakeSendRecorder([(True, None), (False, "other_non_secret_error: HTTP 500")])
     monkeypatch.setattr(trc, "_telegram_send_one", rec)
     text = "\n".join("x" * 500 for _ in range(30))
-    ok, err = trc.telegram_send(text)
+    ok, err, partial = trc.telegram_send(text)
     assert ok is False
     assert err is not None
     assert err.startswith("partial_delivery_at_chunk_2_of_")
-    assert len(rec.calls) == 2  # 세 번째는 호출되지 않음
+    assert partial is True
+    assert len(rec.calls) == 2
 
 
-def test_telegram_send_single_chunk_failure_keeps_original_error(
+def test_telegram_send_single_chunk_failure_no_partial_prefix(
     env_with_valid_token: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """단일 chunk 실패 → partial_delivery=False + partial 접두 없음."""
     rec = _FakeSendRecorder([(False, "other_non_secret_error: HTTP 400")])
     monkeypatch.setattr(trc, "_telegram_send_one", rec)
-    ok, err = trc.telegram_send("short body")
+    ok, err, partial = trc.telegram_send("short body")
     assert ok is False
     assert err == "other_non_secret_error: HTTP 400"
+    assert partial is False
 
 
-def test_telegram_send_placeholder_token_rejected_before_split(
+def test_telegram_send_placeholder_token_partial_false(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "TOKEN")
@@ -192,20 +200,22 @@ def test_telegram_send_placeholder_token_rejected_before_split(
         raise AssertionError("_telegram_send_one must not be called")
 
     monkeypatch.setattr(trc, "_telegram_send_one", _boom)
-    ok, err = trc.telegram_send("body")
+    ok, err, partial = trc.telegram_send("body")
     assert ok is False
     assert err is not None
     assert "invalid_or_placeholder_bot_token" in err
+    assert partial is False
     assert called == []
 
 
-def test_telegram_send_token_in_message_rejected(
+def test_telegram_send_token_in_message_partial_false(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     token = "1234567890:AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", token)
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "9999999")
     monkeypatch.setattr(trc, "_telegram_send_one", lambda *a, **k: (True, None))
-    ok, err = trc.telegram_send(f"body contains {token}")
+    ok, err, partial = trc.telegram_send(f"body contains {token}")
     assert ok is False
     assert err == "message_text 에 token/chat_id 노출 — 발송 차단"
+    assert partial is False

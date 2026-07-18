@@ -239,17 +239,20 @@ def _split_message_for_telegram(text: str) -> list[str]:
     return [f"({i + 1}/{total})\n{c}" for i, c in enumerate(chunks)]
 
 
-def telegram_send(text: str) -> tuple[bool, Optional[str]]:
+def telegram_send(text: str) -> tuple[bool, Optional[str], bool]:
     """Telegram Bot API 로 메시지 발송.
 
     token/chat_id 는 환경변수에서만 읽고 로그/status 에 출력하지 않는다.
-    반환: (성공 여부, 에러 요약 또는 None)
+    반환: (성공 여부, 에러 요약 또는 None, partial_delivery 여부)
 
-    Holdings Controlled Send v1 FIX (§5 · §6 준수 최소 수정):
+    partial_delivery=True 조건: 다중 chunk 중 하나라도 성공한 뒤 후속이 실패한 경우.
+    즉 첫 chunk 부터 실패했거나 단일 chunk 실패, 또는 검증 단계 실패는 partial_delivery=False.
+
+    Holdings Controlled Send v1 FIX + FIX r2 (§5 · §6 준수 최소 수정):
     - 한도 이하 본문은 기존 단일 전송.
     - 초과 본문은 줄바꿈 경계 우선 분할 후 순차 전송.
-    - 하나라도 실패하면 즉시 중단 · (False, "partial_delivery_at_chunk_N: ...") 반환.
-    - 자동 재시도 금지 (기존 계약 유지).
+    - 하나라도 실패하면 즉시 중단 · error 접두어 partial_delivery_at_chunk_N_of_M · boolean 별도 반환.
+    - 자동 재시도 금지.
     - "모든 chunk 성공 후에만 sent=true → registry +1" 은 runner 계층에서 자동 준수.
     """
     token = env("TELEGRAM_BOT_TOKEN")
@@ -258,29 +261,37 @@ def telegram_send(text: str) -> tuple[bool, Optional[str]]:
         return (
             False,
             "invalid_or_placeholder_bot_token: TELEGRAM_BOT_TOKEN 없음 (.env 또는 환경변수 미설정)",
+            False,
         )
     if not chat_id:
         return (
             False,
             "invalid_or_placeholder_bot_token: TELEGRAM_CHAT_ID 없음 (.env 또는 환경변수 미설정)",
+            False,
         )
     if len(token) < 20 or token in ("...", "your_token_here", "TOKEN"):
         return (
             False,
             "invalid_or_placeholder_bot_token: token 형식 이상 (너무 짧거나 placeholder)",
+            False,
         )
 
     if str(token) in text or str(chat_id) in text:
-        return False, "message_text 에 token/chat_id 노출 — 발송 차단"
+        return False, "message_text 에 token/chat_id 노출 — 발송 차단", False
 
     chunks = _split_message_for_telegram(text)
     for idx, chunk in enumerate(chunks, start=1):
         ok, err = _telegram_send_one(token, chat_id, chunk)
         if not ok:
             if len(chunks) == 1:
-                return False, err
-            return False, f"partial_delivery_at_chunk_{idx}_of_{len(chunks)}: {err}"
-    return True, None
+                return False, err, False
+            partial = idx > 1  # 이전 chunk 는 성공했음
+            return (
+                False,
+                f"partial_delivery_at_chunk_{idx}_of_{len(chunks)}: {err}",
+                partial,
+            )
+    return True, None, False
 
 
 def _telegram_send_one(

@@ -1,18 +1,40 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 진행 중 · 직전 Market STEP 은 **DONE · PASS · accepted_deviation** 로 정정)
+최종 업데이트: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 — **DONE · PASS · FIX (a) sender 분할 반영**)
 
-## 진행 중 STEP (Telegram Holdings Briefing Controlled Send v1)
+## 이번 STEP 요약 (Telegram Holdings Briefing Controlled Send v1, DONE)
 
-**목적**: 기존 OCI Runtime · Telegram send · sent registry 계약을 그대로 사용해 `holdings_briefing` 을 실제 1회 발송하고 사용자 수신 · 중복 차단 실측 (신규 기능 개발 아님).
+**목적**: 기존 OCI Runtime · Telegram send · sent registry 계약을 그대로 사용해 `holdings_briefing` 을 실제 1회 발송하고 사용자 수신 · 중복 차단 실측. Send 직전 재확인 dry-run 계약 준수.
 
-**Phase A~F 진행 순서**: Preview → 사용자 승인 → 발송 직전 재확인 dry-run (선행 단독) → dry-run 회신 · 비교 → send → 수신 확인 → 중복 차단.
+**Preview (2026-07-18 16:22 KST)**: OCI revision `3d65aa9a`, param_id (masked)=`****757435`, contentful=67 (holdings 35+nav 32), selection=35, loaded=35, msg_len=5506, private/raw False. target `****5904`. Autosend 4 flags True (변경 없음). Cron 3건 평일 필터, 오늘=토 → 자동실행 위험 없음. duplicate_key_exists=false, registry=63.
 
-**재발 방지 규칙 (직전 STEP §4.1)**: send 직전 재확인 dry-run 을 사용자 실행 명령셋에서 **선행 단독 단계** 로 분리 안내하고, 재확인 record 를 사용자 회신에 요구한 후에만 send 명령 안내.
+**FIX (a) 반영 근거 (2026-07-18 16:32 KST 시점)**:
+- 최초 send 시도 → HTTP 400 (5506자 > Telegram 4096 한도). registry_delta=0 (§9 FAIL "send 실패인데 registry 기록" 미해당).
+- 사용자 (a) 승인: sender 계층 최소 수정.
+- 코드 (`app/three_push_runner_common.py`): `_TELEGRAM_MESSAGE_MAX_CHARS=4000`, `_split_message_for_telegram()` (줄바꿈 경계 우선 분할 · `(i/N)\n` header · 순수 분할), `telegram_send()` (분할 · 순차 전송 · 하나라도 실패 시 `partial_delivery_at_chunk_N_of_M` 반환 · 자동 재시도 없음), 신규 헬퍼 `_telegram_send_one()`.
+- 신규 focused test (`tests/test_telegram_send_chunking.py`, 15 케이스, 전량 passed).
+- Holdings evidence composer / builder / 산식 / 선정 기준 / duplicate key / registry schema / runner / PARAM / scheduler / DB 미변경.
+- FIX commit `3d65aa9a`, PC↔OCI 동기화.
 
-**현재 gate**: Phase A Preview 명령 준비 중.
+**Send (2026-07-18 16:32 KST · FIX 반영)**: status=sent, telegram_attempted/sent=true/true, msg_len 5506 완전 동일 (Phase C 재확인 통과). duplicate_key = `holdings_briefing::****757435::2026-07-18`.
 
-상세: `docs/handoff/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md` (Phase F 완료 후 신설 예정).
+**수신 확인**: chat `****5904` 로 `(1/2)` + `(2/2)` 정확히 2 chunks. 두 chunk 이어 붙이면 Preview 5506자 완전 일치. 잘림/문자 깨짐/내부 식별자/금지 문구 없음. AC-6 은 지시문 정정된 "논리적 1 briefing · 물리 chunk 여러 건 허용" 기준으로 충족.
+
+**중복 차단 (2026-07-18 16:34 KST)**: 동일 키 재실행 → status=skipped, reason=duplicate_runtime, telegram_attempted=false, telegram_sent=false. Registry 63 → 64 → 64. 두 번째 chunk 도착 없음.
+
+**총 발송**: holdings_briefing 1건 (2 chunks). Market 0건, Spike 0건.
+
+**AC-1~AC-9 전 항목 충족** (§8). §6 금지사항 전 항목 준수.
+
+**FIX r2 추가 정정 (검증자 PARTIALLY_VERIFIED r1 대응)**: sender 반환 `(bool, err)` → `(bool, err, partial_delivery)` 3-tuple 확장. Runner record 에 `partial_delivery` boolean 필드 신규. 신규 integration test `tests/test_runtime_runner_partial_delivery.py` (3 케이스: 2번째 chunk 실패=partial_true / 1번째 chunk 실패=partial_false / 전 성공=partial_false). 오류 문자열 파싱 의존 제거.
+
+**Regression**: focused 18 passed (chunking 15 + partial_delivery 3), backend `987 passed, 4 skipped, 2 deselected` (222s). Deselected 2건은 이번 FIX 와 무관한 사전 test 결함 (Universe artifact fixture 미격리 · 문구 substring 매치), **BACKLOG 이관** 후 별도 STEP.
+
+**next_step_gate**: `TELEGRAM_SPIKE_ALERT_CONDITIONAL_SEND_V1`.
+
+**다음 STEP 후보 (설계자 지시 대기)**: `Telegram Spike Alert Conditional Send v1`.
+
+상세: `docs/handoff/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
 
 ---
 

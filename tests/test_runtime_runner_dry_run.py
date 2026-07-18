@@ -39,7 +39,7 @@ def _install_telegram_and_registry_spies(monkeypatch, tmp_path: Path):
 
     def _fake_telegram_send(*args, **kwargs):
         telegram_calls.append(("telegram_send", args, kwargs))
-        return True, ""
+        return True, "", False
 
     monkeypatch.setattr(runner, "telegram_send", _fake_telegram_send)
 

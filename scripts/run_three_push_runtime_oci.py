@@ -116,6 +116,7 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         "duplicate_key": "",
         "telegram_attempted": False,
         "telegram_sent": False,
+        "partial_delivery": False,
         "error": None,
     }
 
@@ -282,8 +283,9 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
 
     # ── 8. Telegram 발송 ─────────────────────────────────────────────────────
     record["telegram_attempted"] = True
-    sent, err = telegram_send(message_text)
+    sent, err, partial_delivery = telegram_send(message_text)
     record["telegram_sent"] = sent
+    record["partial_delivery"] = partial_delivery
 
     if sent:
         sent_at = datetime.now(timezone.utc).isoformat()

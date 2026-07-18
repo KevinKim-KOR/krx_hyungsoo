@@ -736,3 +736,17 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 현재 정성 판단 기반. ML 산출물 신뢰도 정성 합의 전 seed 자동화 금지.
 - **보류된 위험**: seed 품질이 사용자 판단에만 의존하여 감사 어려움.
 - **재검토 트리거**: ML baseline v1 안정화 후.
+
+---
+
+- **항목**: `test_runner_dry_run_spike_all_unavailable_no_topn_calls` universe artifact fixture 미격리
+- **보류 사유**: Universe STEP 산출물 (`state/universe/universe_momentum_latest.json`) 이 실제 파일로 존재하기 시작한 이후, 이 test 는 `tmp_path` 로 격리되지 않아 spike composer 가 5 candidate evidence 를 생성 → 기대 `contentful_fact_count=0` 위반. Telegram Holdings Send v1 (2026-07-18) closeout regression 에서 발견. 이번 FIX (telegram_send 분할) 와 인과관계 없음.
+- **보류된 위험**: 사전 test 결함이 회귀 결과에 잡음으로 남음. 실제 운영 영향 없음.
+- **재검토 트리거**: Universe artifact fixture 격리 리팩토링 STEP 또는 spike composer test 정리 STEP.
+
+---
+
+- **항목**: `test_push2_message_text_has_observation_points` 금지 문구 substring 검사 갱신
+- **보류 사유**: Message contract 정렬 commit (`65c04362`, 2026-06-20) 시 안내 문구 "이 값은 매수/매도 지시가 아닙니다" 로 변경되어 test 의 substring 검사 `"매도 지시" not in msg` 에 걸림. Test 는 정확 매치 (whole word) 로 개선 필요. Telegram Holdings Send v1 (2026-07-18) closeout regression 에서 발견. 이번 FIX (telegram_send 분할) 와 인과관계 없음.
+- **보류된 위험**: 사전 test 결함이 회귀 결과에 잡음으로 남음. 실제 운영 영향 없음.
+- **재검토 트리거**: Message contract test 정리 STEP 또는 3-PUSH 문구 재정렬 STEP.
