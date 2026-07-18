@@ -1,8 +1,47 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-18 (Universe Momentum Evidence Publication v1 — **DONE · PC+OCI 완료**)
+최종 업데이트: 2026-07-18 (Telegram Market Briefing Controlled Send v1 — **PARTIAL · 실제 발송 1회 + 중복 차단 실측 · Q5 절차 이탈**)
 
-## 이번 STEP 요약 (Universe Momentum Evidence Publication v1, DONE)
+## 이번 STEP 요약 (Telegram Market Briefing Controlled Send v1, PARTIAL)
+
+**목적**: 기존 OCI Runtime · Telegram send · sent registry 계약을 그대로 사용해 `market_briefing` 을 실제 1회 발송하고 사용자 수신 · 중복 차단을 실측 (신규 기능 개발 아님).
+
+**Phase B (Preview 실측, 2026-07-18 14:32 KST)**:
+- OCI revision `90f18f58`.
+- param_id (masked)=`****757435`, contentful=3, selection=10, msg_len=393, telegram_attempted=false.
+- Telegram 설정 확인: token/chat configured, target masked `****5904`.
+- Autosend flags 4개 모두 True. flag 변경 없음 (사용자 지시 (c)).
+- 자동 실행 위험 확인: crontab 3건 등록되어 있으나 모두 평일(1-5) 필터. 실행 시점 KST 2026-07-18 (토) → 이번 세션 자동 실행 위험 없음.
+- Duplicate key 사전 상태: current_duplicate_key_exists=false, sent_registry_total=62.
+
+**Phase D (실제 발송, 2026-07-18 14:42 KST)**:
+- CLI: `python3 scripts/run_three_push_runtime_oci.py --push-kind market_briefing --mode send`.
+- Record: status=sent, telegram_attempted=true, telegram_sent=true, msg_len=393 (승인 시점과 완전 동일), duplicate_key=`market_briefing::****757435::2026-07-18`.
+
+**⚠ Phase D 절차 이탈**: Q5 계약 "send 직전 재확인 dry-run" 단계가 생략됨. 사용자가 곧바로 `--mode send` 를 실행. send record 5필드 · 수신 본문이 승인 시점 preview 와 완전 일치해 실질 위해 없음. 재발 방지 (다음 STEP): 재확인 dry-run 을 선행 단독 단계로 분리 후 record 회신 받고 send 안내. 상세: conclusion §4.1.
+
+**Phase E (사용자 수신 확인)**: chat `****5904` 로 1건 도착. 본문 preview 와 완전 일치 (기준 시각만 14:32 → 14:42). 잘림/문자 깨짐/내부 식별자/금지 문구 없음.
+
+**Phase F (중복 차단, 2026-07-18 14:44 KST)**:
+- 동일 키 재실행 record: status=skipped, reason=duplicate_runtime, telegram_attempted=false, telegram_sent=false.
+- sent_registry: 62 → 63 (+1) → 63 (0).
+- Telegram 두 번째 메시지 미수신 (사용자 실측 확인).
+
+**실제 Telegram 발송 총 건수**: 1건 (market_briefing). Holdings 0건, Spike 0건.
+
+**AC-1~AC-7 명문 항목 충족**. **⚠ Q5 재확인 계약 이탈 → 최종 판정 PARTIAL** (§9 FAIL 목록에는 해당 없음). 코드 변경 없음 → 신규 test 없음, 전체 회귀 없음 (지시문 §7).
+
+**사용자 최종 결정 (2026-07-18)**: (a) 이탈 수용. §4.1 재발 방지 규칙 다음 STEP 부터 무조건 적용 조건 하에 다음 STEP 진입 승인.
+
+**next_step_gate**: `TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1`.
+
+**다음 STEP 후보 (설계자 지시 대기)**: `Telegram Holdings Briefing Controlled Send v1`.
+
+상세: `docs/handoff/POC2_TELEGRAM_MARKET_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (Universe Momentum Evidence Publication v1, DONE)
 
 **목적**: 기존 Holdings + Market Discovery 결과를 이용해 Universe seed 후보 제안 → 사용자 승인 → manual seed → producer PC 1회 실행 → OCI controlled publication → `spike_or_falling_alert` real evidence.
 

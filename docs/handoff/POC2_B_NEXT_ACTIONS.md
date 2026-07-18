@@ -1,12 +1,40 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-18 (Universe Momentum Evidence Publication v1 — **DONE** · PC+OCI 완료)
+작성일: 2026-05-20 / 갱신: 2026-07-18 (Telegram Market Briefing Controlled Send v1 — **PARTIAL** · 실제 발송 1회 + 중복 차단 실측 · Q5 절차 이탈)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (Universe Momentum Evidence Publication v1, DONE 2026-07-18, revision `b8eaeeac`)
+## 0. 직전 STEP 결과 (Telegram Market Briefing Controlled Send v1, PARTIAL 2026-07-18, revision `90f18f58`)
+
+**목적**: 기존 OCI Runtime · Telegram send · sent registry 계약으로 `market_briefing` 실제 1회 발송 + 사용자 수신 + 중복 차단 실측 (신규 기능 개발 X).
+
+**Preview (14:32 KST)**: param_id (masked)=`****757435`, contentful=3, selection=10, msg_len=393. Token/chat configured, target `****5904`. Autosend flags 4개 True (변경 없음). Cron 3건 등록되어 있으나 평일 필터, 오늘=토 → 자동 실행 위험 없음.
+
+**Send (14:42 KST)**: status=sent, telegram_attempted/sent=true/true, msg_len 393 완전 동일. Duplicate key = `market_briefing::****757435::2026-07-18`.
+
+**⚠ 절차 이탈**: Q5 계약 "send 직전 재확인 dry-run" 단계 생략. send record · 수신 본문이 승인 시점과 완전 일치해 실질 위해 없음. 재발 방지 규칙은 conclusion §4.1.
+
+**수신 확인**: chat `****5904` 1건. 본문 preview 와 완전 일치 (시각만 14:32 → 14:42). 잘림/내부 식별자/금지 문구 없음.
+
+**중복 차단 (14:44 KST)**: 동일 키 재실행 → status=skipped, reason=duplicate_runtime, telegram_attempted=false. Registry 62 → 63 → 63. 두 번째 메시지 미수신.
+
+**총 발송**: market_briefing 1건. Holdings 0건, Spike 0건. AC-1~AC-7 명문 항목 충족. **⚠ Q5 재확인 계약 이탈 → 최종 판정 PARTIAL**.
+
+**코드 변경 없음** → 신규 test 0, 전체 회귀 0 (지시문 §7).
+
+**사용자 최종 결정 (2026-07-18)**: (a) 이탈 수용. §4.1 재발 방지 규칙 다음 STEP 부터 무조건 적용.
+
+**next_step_gate**: `TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1`.
+
+**다음 STEP 후보 (설계자 지시 대기)**: `Telegram Holdings Briefing Controlled Send v1`.
+
+상세: `docs/handoff/POC2_TELEGRAM_MARKET_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
+
+---
+
+## 0-prior. 직전 STEP 결과 (Universe Momentum Evidence Publication v1, DONE 2026-07-18, revision `b8eaeeac`)
 
 **목적**: Universe seed Bootstrap + producer PC 1회 + OCI controlled publication + `spike_or_falling_alert` real evidence.
 
