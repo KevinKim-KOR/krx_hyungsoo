@@ -1,8 +1,22 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-18 (Telegram Market Briefing Controlled Send v1 — **PARTIAL · 실제 발송 1회 + 중복 차단 실측 · Q5 절차 이탈**)
+최종 업데이트: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 진행 중 · 직전 Market STEP 은 **DONE · PASS · accepted_deviation** 로 정정)
 
-## 이번 STEP 요약 (Telegram Market Briefing Controlled Send v1, PARTIAL)
+## 진행 중 STEP (Telegram Holdings Briefing Controlled Send v1)
+
+**목적**: 기존 OCI Runtime · Telegram send · sent registry 계약을 그대로 사용해 `holdings_briefing` 을 실제 1회 발송하고 사용자 수신 · 중복 차단 실측 (신규 기능 개발 아님).
+
+**Phase A~F 진행 순서**: Preview → 사용자 승인 → 발송 직전 재확인 dry-run (선행 단독) → dry-run 회신 · 비교 → send → 수신 확인 → 중복 차단.
+
+**재발 방지 규칙 (직전 STEP §4.1)**: send 직전 재확인 dry-run 을 사용자 실행 명령셋에서 **선행 단독 단계** 로 분리 안내하고, 재확인 record 를 사용자 회신에 요구한 후에만 send 명령 안내.
+
+**현재 gate**: Phase A Preview 명령 준비 중.
+
+상세: `docs/handoff/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md` (Phase F 완료 후 신설 예정).
+
+---
+
+## 이전 STEP 요약 (Telegram Market Briefing Controlled Send v1, DONE · PASS · accepted_deviation)
 
 **목적**: 기존 OCI Runtime · Telegram send · sent registry 계약을 그대로 사용해 `market_briefing` 을 실제 1회 발송하고 사용자 수신 · 중복 차단을 실측 (신규 기능 개발 아님).
 
@@ -29,13 +43,9 @@
 
 **실제 Telegram 발송 총 건수**: 1건 (market_briefing). Holdings 0건, Spike 0건.
 
-**AC-1~AC-7 명문 항목 충족**. **⚠ Q5 재확인 계약 이탈 → 최종 판정 PARTIAL** (§9 FAIL 목록에는 해당 없음). 코드 변경 없음 → 신규 test 없음, 전체 회귀 없음 (지시문 §7).
+**AC-1~AC-7 명문 항목 충족**. Q5 재확인 계약 이탈은 §4.1 · accepted_deviation 블록에 영구 기록. 실측 결과 · §9 FAIL 목록 미해당 · 발송 본문 승인 Preview 완전 일치 → **최종 판정 DONE · PASS · accepted_deviation** (Holdings STEP §2 정정). 코드 변경 없음 → 신규 test 없음, 전체 회귀 없음 (지시문 §7).
 
-**사용자 최종 결정 (2026-07-18)**: (a) 이탈 수용. §4.1 재발 방지 규칙 다음 STEP 부터 무조건 적용 조건 하에 다음 STEP 진입 승인.
-
-**next_step_gate**: `TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1`.
-
-**다음 STEP 후보 (설계자 지시 대기)**: `Telegram Holdings Briefing Controlled Send v1`.
+**next_step_gate**: `TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1` (진행 중).
 
 상세: `docs/handoff/POC2_TELEGRAM_MARKET_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
 

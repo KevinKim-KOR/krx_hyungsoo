@@ -1,12 +1,24 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-18 (Telegram Market Briefing Controlled Send v1 — **PARTIAL** · 실제 발송 1회 + 중복 차단 실측 · Q5 절차 이탈)
+작성일: 2026-05-20 / 갱신: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 진행 중 · 직전 Market STEP 은 **DONE · PASS · accepted_deviation** 로 정정)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (Telegram Market Briefing Controlled Send v1, PARTIAL 2026-07-18, revision `90f18f58`)
+## 0. 진행 중 STEP (Telegram Holdings Briefing Controlled Send v1)
+
+**목적**: 기존 Runtime send 경로로 `holdings_briefing` 실제 1회 발송 · 사용자 수신 · 중복 차단 실측 (신규 기능 X, 코드 변경 X).
+
+**진행 순서**: Preview → 승인 → 발송 직전 재확인 dry-run (선행 단독) → dry-run 회신 · 비교 → send → 수신 확인 → 중복 차단. §4.1 재발 방지 규칙 무조건 적용.
+
+**현재 gate**: Phase A Preview 명령 준비.
+
+상세 (Phase F 완료 후 신설): `docs/handoff/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
+
+---
+
+## 0-prior. 직전 STEP 결과 (Telegram Market Briefing Controlled Send v1, DONE · PASS · accepted_deviation 2026-07-18, revision `df4b4a26` · Holdings STEP §2 정정)
 
 **목적**: 기존 OCI Runtime · Telegram send · sent registry 계약으로 `market_briefing` 실제 1회 발송 + 사용자 수신 + 중복 차단 실측 (신규 기능 개발 X).
 
@@ -20,15 +32,11 @@
 
 **중복 차단 (14:44 KST)**: 동일 키 재실행 → status=skipped, reason=duplicate_runtime, telegram_attempted=false. Registry 62 → 63 → 63. 두 번째 메시지 미수신.
 
-**총 발송**: market_briefing 1건. Holdings 0건, Spike 0건. AC-1~AC-7 명문 항목 충족. **⚠ Q5 재확인 계약 이탈 → 최종 판정 PARTIAL**.
+**총 발송**: market_briefing 1건. Holdings 0건, Spike 0건. AC-1~AC-7 명문 항목 충족. Q5 재확인 이탈은 accepted_deviation 로 영구 기록. **최종 판정 DONE · PASS**.
 
 **코드 변경 없음** → 신규 test 0, 전체 회귀 0 (지시문 §7).
 
-**사용자 최종 결정 (2026-07-18)**: (a) 이탈 수용. §4.1 재발 방지 규칙 다음 STEP 부터 무조건 적용.
-
-**next_step_gate**: `TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1`.
-
-**다음 STEP 후보 (설계자 지시 대기)**: `Telegram Holdings Briefing Controlled Send v1`.
+**next_step_gate**: `TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1` (진행 중).
 
 상세: `docs/handoff/POC2_TELEGRAM_MARKET_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
 

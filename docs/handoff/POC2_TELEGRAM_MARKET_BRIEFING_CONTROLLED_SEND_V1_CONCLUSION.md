@@ -1,4 +1,4 @@
-# Telegram Market Briefing Controlled Send v1 — Conclusion (PARTIAL · Q5 절차 이탈)
+# Telegram Market Briefing Controlled Send v1 — Conclusion (DONE · PASS · accepted_deviation)
 
 작성일: 2026-07-18
 성격: 신규 기능 개발 X. 기존 OCI Runtime · Telegram send · sent registry 계약을 그대로 사용해 `market_briefing` 을 실제 1회 발송하고 중복 차단을 실측.
@@ -193,13 +193,18 @@ Telegram 두 번째 메시지 도착 없음 (사용자 실측 확인).
 ## 13. 최종 상태
 
 ```
-status = PARTIAL
+status = DONE
+completion_judgment = PASS
 next_step_gate = TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1
-user_decision = (a) Q5 절차 이탈 수용 · 재발 방지 규칙 §4.1 적용 조건 하에 다음 STEP 진입
 ```
 
-**PARTIAL 사유**: 발송·수신·중복 차단 실측 (AC-1~AC-7 명문 항목) 은 전부 충족. 그러나 지시문 Q5 확정 계약 "승인 → send 직전 재확인 dry-run → 내용 비교 → send" 순서 중 재확인 dry-run 단계가 이탈. 사후 소급 실행으로 계약을 충족할 수 없음 (재확인은 send **직전** 이어야 함). 지시문 §9 FAIL 목록 (승인 전 발송 · 잘못된 대상 · 두 번째 메시지 발송 · send 실패인데 registry 기록 · Holdings·Spike 동시 발송 · 내부 식별자 노출) 어디에도 해당하지 않아 FAIL 은 아님.
+**accepted_deviation**:
+- send 직전 재확인 dry-run 생략
+- 실제 발송 본문은 승인 Preview와 완전히 일치
+- 사용자 수신, registry +1, 중복 차단 실측 완료
+- 사용자가 결과 확인 후 절차 이탈 수용
+- 다음 Controlled Send부터 재확인 dry-run 회신 후에만 send 명령 제공
 
-**사용자 최종 결정 (2026-07-18)**: **(a) 이탈 수용**. 이번 STEP 을 PARTIAL 로 종료하되 다음 STEP 진입 승인. §4.1 재발 방지 규칙 (send 직전 재확인 dry-run 을 사용자 실행 명령셋에서 선행 단독 단계로 분리 안내, 재확인 record 회신 받고서만 send 명령 안내) 은 다음 STEP (`Telegram Holdings Briefing Controlled Send v1`) 부터 무조건 적용.
+**정정 근거**: 후속 Holdings Controlled Send v1 지시문 §2 에서 사용자가 Q5 절차 이탈 수용을 확정. 실측 결과 (발송 · 수신 · registry · 중복 차단) 전부 충족, §9 FAIL 목록 어디에도 해당하지 않음, 실제 발송 본문이 승인 Preview 와 완전 일치 → 최종 판정 PASS/DONE. 이탈 사실 자체는 삭제하지 않고 §4.1 · 본 accepted_deviation 블록에 영구 기록.
 
-다음 STEP 후보 (설계자 지시 대기): `Telegram Holdings Briefing Controlled Send v1`.
+다음 STEP (설계자 지시 수령): `Telegram Holdings Briefing Controlled Send v1`.

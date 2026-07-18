@@ -191,12 +191,66 @@ def check_raw_identifiers(text: str) -> Optional[str]:
 
 # ── Telegram 발송 ─────────────────────────────────────────────────────────────
 
+# Telegram sendMessage HTML 본문 안전 한도. 공식 상한은 4096.
+# 여유 96자를 chunk header (예: "(3/3)\n") 및 인코딩 오차 대비로 확보한다.
+_TELEGRAM_MESSAGE_MAX_CHARS = 4000
+
+
+def _split_message_for_telegram(text: str) -> list[str]:
+    """길이 제한 대응 분할.
+
+    계약 (Holdings Controlled Send v1 FIX):
+    - 한도 이하: 단일 chunk 반환 (기존 단일 전송 계약 유지).
+    - 초과: 줄바꿈(\\n) 경계 우선. 한 line 이 홀로 한도를 넘으면 hard split.
+    - 전체 내용 누락·요약·재작성 금지. 순수 분할만 수행.
+    - 결과 chunk 는 header ``(i/N)\\n`` 이 앞에 붙는다 (지시문 "chunk 순서 표식 허용").
+      단일 chunk (N=1) 인 경우 header 를 붙이지 않는다 (기존 본문 그대로).
+    """
+    if len(text) <= _TELEGRAM_MESSAGE_MAX_CHARS:
+        return [text]
+
+    lines = text.split("\n")
+    chunks: list[str] = []
+    buf: list[str] = []
+    buf_len = 0
+    for line in lines:
+        line_len = len(line) + 1  # +1 for the "\n" separator we would re-insert
+        if line_len > _TELEGRAM_MESSAGE_MAX_CHARS:
+            # 한 line 자체가 한도 초과 — 현재 버퍼 flush 후 hard split.
+            if buf:
+                chunks.append("\n".join(buf))
+                buf, buf_len = [], 0
+            start = 0
+            while start < len(line):
+                end = min(start + _TELEGRAM_MESSAGE_MAX_CHARS, len(line))
+                chunks.append(line[start:end])
+                start = end
+            continue
+        if buf_len + line_len > _TELEGRAM_MESSAGE_MAX_CHARS:
+            chunks.append("\n".join(buf))
+            buf, buf_len = [line], line_len
+        else:
+            buf.append(line)
+            buf_len += line_len
+    if buf:
+        chunks.append("\n".join(buf))
+
+    total = len(chunks)
+    return [f"({i + 1}/{total})\n{c}" for i, c in enumerate(chunks)]
+
 
 def telegram_send(text: str) -> tuple[bool, Optional[str]]:
     """Telegram Bot API 로 메시지 발송.
 
     token/chat_id 는 환경변수에서만 읽고 로그/status 에 출력하지 않는다.
     반환: (성공 여부, 에러 요약 또는 None)
+
+    Holdings Controlled Send v1 FIX (§5 · §6 준수 최소 수정):
+    - 한도 이하 본문은 기존 단일 전송.
+    - 초과 본문은 줄바꿈 경계 우선 분할 후 순차 전송.
+    - 하나라도 실패하면 즉시 중단 · (False, "partial_delivery_at_chunk_N: ...") 반환.
+    - 자동 재시도 금지 (기존 계약 유지).
+    - "모든 chunk 성공 후에만 sent=true → registry +1" 은 runner 계층에서 자동 준수.
     """
     token = env("TELEGRAM_BOT_TOKEN")
     chat_id = env("TELEGRAM_CHAT_ID")
@@ -219,6 +273,20 @@ def telegram_send(text: str) -> tuple[bool, Optional[str]]:
     if str(token) in text or str(chat_id) in text:
         return False, "message_text 에 token/chat_id 노출 — 발송 차단"
 
+    chunks = _split_message_for_telegram(text)
+    for idx, chunk in enumerate(chunks, start=1):
+        ok, err = _telegram_send_one(token, chat_id, chunk)
+        if not ok:
+            if len(chunks) == 1:
+                return False, err
+            return False, f"partial_delivery_at_chunk_{idx}_of_{len(chunks)}: {err}"
+    return True, None
+
+
+def _telegram_send_one(
+    token: str, chat_id: str, text: str
+) -> tuple[bool, Optional[str]]:
+    """단일 chunk 발송. 기존 telegram_send 본체를 그대로 옮긴 순수 헬퍼."""
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     data = json.dumps({"chat_id": chat_id, "text": text, "parse_mode": "HTML"}).encode(
         "utf-8"
