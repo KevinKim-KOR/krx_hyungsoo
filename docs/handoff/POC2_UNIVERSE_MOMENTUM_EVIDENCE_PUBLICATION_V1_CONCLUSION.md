@@ -1,6 +1,6 @@
-# Universe Momentum Evidence Publication v1 — Conclusion (PARTIAL · PC 완료 · OCI 재검증 대기)
+# Universe Momentum Evidence Publication v1 — Conclusion (DONE · PC+OCI 완료)
 
-작성일: 2026-07-16
+작성일: 2026-07-16 (PC) · 2026-07-18 (OCI closeout)
 성격: Universe Seed Bootstrap + Runtime `spike_or_falling_alert` evidence 연결 + OCI controlled publication.
 
 ## 1. Step 목표
@@ -194,26 +194,115 @@ Publication 통과 artifact 는 Runtime 에서 반드시 available (candidate_co
 
 최종 판정 r10: **VERIFIED_WITH_NOTES** (PC 범위). OCI 재검증 대기.
 
-## 13. AC 충족 상황
+## 13. OCI 재검증 실측 (2026-07-18)
+
+### 13.1 revision
+
+- OCI `git log --oneline -1`: `b8eaeeac feat(universe-momentum-evidence-publication-v1): ...`
+- PC ↔ OCI revision 동일 (AC-45).
+
+### 13.2 verify JSON 실측
+
+```
+command=verify, status=ok
+destination_temp_received=true, destination_valid=true
+destination_artifact_status=ok
+destination_asof=2026-07-16
+destination_candidate_count=20
+destination_hash=9722ef2dc49bc9f22d3d8c399b640f9e0b88e11c269031c3f7fd53e25034df9c
+destination_size=18406
+hash_match=true, size_match=true, asof_match=true, candidate_count_match=true
+mode_match=true, owner_match=true
+activation_ready=true
+temp_mode=600, temp_owner=ubuntu, temp_group=ubuntu
+```
+
+### 13.3 activate JSON 실측
+
+```
+command=activate, status=ok
+final_validation_passed=true, atomic_activation_completed=true
+active_file_exists=true
+active_artifact_status=ok, active_asof=2026-07-16
+active_candidate_count=20
+active_hash=9722ef2dc49bc9f22d3d8c399b640f9e0b88e11c269031c3f7fd53e25034df9c
+active_size=18406
+active_file_mode=600, active_file_owner=ubuntu
+active_file_permission_checked=true
+```
+
+### 13.4 OCI Runtime dry-run 3종
+
+**spike_or_falling_alert** (universe evidence 첫 실운영 실측):
+```
+status=dry_run_success
+universe_snapshot_status=available, universe_snapshot_reason=""
+universe_artifact_present=true, universe_artifact_valid=true
+universe_artifact_status=ok, universe_artifact_asof=2026-07-16
+universe_candidate_count=20, universe_selected_count=5, universe_contentful_fact_count=5
+contentful_fact_count=5, selection_result_count=5
+no_signal=false
+private_fields_exposed=false, raw_identifier_exposed=false
+telegram_attempted=false, telegram_sent=false
+message_text_length=344
+```
+
+**market_briefing** (baseline 유지 확인):
+```
+status=dry_run_success
+contentful_fact_count=3, selection_result_count=10
+telegram_attempted=false, telegram_sent=false
+message_text_length=393
+```
+
+**holdings_briefing** (baseline 유지 확인):
+```
+status=dry_run_success
+holdings_snapshot_status=available, holdings_loaded_count=35
+holdings_contentful_fact_count=67 (record 표기: contentful_fact_count=67)
+holdings_selection_result_count=35
+private_fields_exposed=false, raw_identifier_exposed=false
+telegram_attempted=false, telegram_sent=false
+```
+
+### 13.5 PC ↔ OCI 대조
+
+| 항목 | PC | OCI | 판정 |
+|---|---|---|---|
+| revision | b8eaeeac | b8eaeeac | ✅ |
+| artifact hash | 9722ef2d... | 9722ef2d... | ✅ |
+| artifact size | 18406 | 18406 | ✅ |
+| artifact asof | 2026-07-16 | 2026-07-16 | ✅ |
+| candidate_count | 20 | 20 | ✅ |
+| spike universe_selected/contentful | 5/5 | 5/5 | ✅ |
+| spike no_signal | false | false | ✅ |
+| spike privacy | false/false | false/false | ✅ |
+| market contentful/selection | 3/10 | 3/10 | ✅ baseline |
+| holdings loaded/contentful/selection | 35/67/35 | 35/67/35 | ✅ baseline |
+| holdings privacy | false/false | false/false | ✅ baseline |
+
+전 항목 완전 일치.
+
+## 14. AC 충족 상황 (최종)
 
 | AC | 상태 |
 |---|---|
 | AC-1~12 (Bootstrap) | ✅ |
 | AC-13~16 (Producer) | ✅ |
 | AC-17~19 (PC prepare · Publication) | ✅ |
-| AC-20~27 (OCI verify · activate · 권한) | **OCI 재검증 대기** |
-| AC-28~37 (Runtime source · 회귀 · 개인정보) | ✅ (PC 범위) |
+| AC-20~27 (OCI verify · activate · 권한) | ✅ |
+| AC-28~37 (Runtime source · 회귀 · 개인정보) | ✅ |
 | AC-38~44 (회귀 · 안전) | ✅ |
-| AC-45~46 (PC↔OCI same revision · docs) | **OCI 재검증 대기** |
+| AC-45~46 (PC↔OCI same revision · docs) | ✅ |
 
-## 14. Phase 상태
+## 15. Phase 상태 (최종)
 
 ```
-status = PARTIAL
-next_step_gate = OCI_VALIDATION_REQUIRED
+status = DONE
+next_step_gate = READY_FOR_NEXT_STEP
 ```
 
-## 15. BACKLOG 이관 (§40)
+## 16. BACKLOG 이관 (§40)
 
 - 보유/외부 후보 비율 가변화
 - 거래대금·유동성 필터
@@ -226,6 +315,6 @@ next_step_gate = OCI_VALIDATION_REQUIRED
 
 재검토 트리거: Telegram 운영 1회전 완료 후 Universe 후보 품질 평가 시점.
 
-## 16. 다음 Step
+## 17. 다음 Step
 
-OCI 재검증 완료 후 최종 STEP DONE 승격 → 다음 Step 후보 (§29 · §43): `Telegram Contentful Controlled Send v1`.
+Universe Momentum Evidence Publication v1 완료. 다음 Step 후보 (§29 · §43): `Telegram Contentful Controlled Send v1`.

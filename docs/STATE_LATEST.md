@@ -1,8 +1,8 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-16 (Universe Momentum Evidence Publication v1 — **PARTIAL · PC 완료 · OCI 재검증 대기**)
+최종 업데이트: 2026-07-18 (Universe Momentum Evidence Publication v1 — **DONE · PC+OCI 완료**)
 
-## 이번 STEP 요약 (Universe Momentum Evidence Publication v1, PARTIAL · PC 완료)
+## 이번 STEP 요약 (Universe Momentum Evidence Publication v1, DONE)
 
 **목적**: 기존 Holdings + Market Discovery 결과를 이용해 Universe seed 후보 제안 → 사용자 승인 → manual seed → producer PC 1회 실행 → OCI controlled publication → `spike_or_falling_alert` real evidence.
 
@@ -24,7 +24,14 @@
 **회귀**: focused 124 passed, backend 971 passed, 0 failed. 199s.
 **Lint**: black 247 files unchanged, flake8 통과.
 
-**OCI 재검증 대기**: push 후 PC↔OCI same revision publication + spike dry-run + market/holdings 회귀.
+**OCI 재검증 완료 (2026-07-18, revision `b8eaeeac` same_revision=True)**:
+- verify: `activation_ready=true`, mode_match=true, owner_match=true, temp_mode=600, temp_owner=ubuntu.
+- activate: `active_file_permission_checked=true`, active_hash=`9722ef2d...`, active_size=18406, mode=600, owner=ubuntu.
+- spike_or_falling_alert dry-run: `universe_snapshot_status=available`, candidate=20, selected=5, contentful=5, no_signal=false, privacy=false/false, msg_len=344.
+- market_briefing 회귀: contentful=3, selection=10, msg_len=393 (baseline 유지).
+- holdings_briefing 회귀: available/loaded=35/contentful=67/selection=35/private=false/raw_ident=false, msg_len=5506 (baseline 유지).
+- Telegram 미발송 (전 records), telegram_attempted=false / telegram_sent=false.
+- PC ↔ OCI 실측 완전 일치.
 
 **다음 STEP 후보 (§43)**: `Telegram Contentful Controlled Send v1`.
 

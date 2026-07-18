@@ -1,16 +1,16 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-16 (Universe Momentum Evidence Publication v1 — **PARTIAL** · PC 완료 · OCI 재검증 대기)
+작성일: 2026-05-20 / 갱신: 2026-07-18 (Universe Momentum Evidence Publication v1 — **DONE** · PC+OCI 완료)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 진행 중 STEP (Universe Momentum Evidence Publication v1, PARTIAL · PC 완료)
+## 0. 직전 STEP 결과 (Universe Momentum Evidence Publication v1, DONE 2026-07-18, revision `b8eaeeac`)
 
 **목적**: Universe seed Bootstrap + producer PC 1회 + OCI controlled publication + `spike_or_falling_alert` real evidence.
 
-**Phase 1~2 검증자 판정**: r1~r9 정정 반영 후 **VERIFIED_WITH_NOTES** (PC 범위).
+**검증자 판정**: r1~r9 정정 반영 후 r10 **VERIFIED_WITH_NOTES** (PC 범위).
 
 **Phase 3 (PC 완료)**:
 - 사용자 승인 (a) v5 20 ETF 전부 + pykrx 실행 승인.
@@ -20,9 +20,16 @@
 - market_briefing (3/10) · holdings_briefing (available/35/67/35/False/False) 회귀 유지.
 - 기존 state 4종 SHA-256 완전 불변.
 
-**Phase 4 (진행 중)**: commit + push 사용자 승인 대기.
-**Phase 5**: OCI 명령셋 사용자 실행 대기.
-**Phase 6**: OCI 결과 검증 + closeout + 최종 결과문.
+**Phase 4~5 (commit + push + OCI 실행)**:
+- Commit `b8eaeeac`, push origin main.
+- OCI verify: `activation_ready=true`, mode/owner match, temp mode=600 owner=ubuntu.
+- OCI activate: `active_file_permission_checked=true`, active_hash=`9722ef2d...`, mode=600 owner=ubuntu.
+- OCI Runtime dry-run 3종: spike available/20/5/5/no_signal=false/privacy=false, market 3/10, holdings available/35/67/35/False/False.
+- PC ↔ OCI 실측 완전 일치.
+
+**Phase 6 (DONE)**: STEP DONE 승격. AC-1~46 전 항목 충족. Telegram 미발송 (전 records).
+
+**다음 STEP 후보 (§43)**: `Telegram Contentful Controlled Send v1`.
 
 상세: `docs/handoff/POC2_UNIVERSE_MOMENTUM_EVIDENCE_PUBLICATION_V1_CONCLUSION.md`.
 
