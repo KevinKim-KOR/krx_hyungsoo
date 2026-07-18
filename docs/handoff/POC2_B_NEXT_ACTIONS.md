@@ -1,12 +1,34 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-16 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 최종 PASS** · revision `4d724adf` · OCI 재검증 완료)
+작성일: 2026-05-20 / 갱신: 2026-07-16 (Universe Momentum Evidence Publication v1 — **PARTIAL** · PC 완료 · OCI 재검증 대기)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 최종 PASS 2026-07-16, revision `4d724adf`)
+## 0. 진행 중 STEP (Universe Momentum Evidence Publication v1, PARTIAL · PC 완료)
+
+**목적**: Universe seed Bootstrap + producer PC 1회 + OCI controlled publication + `spike_or_falling_alert` real evidence.
+
+**Phase 1~2 검증자 판정**: r1~r9 정정 반영 후 **VERIFIED_WITH_NOTES** (PC 범위).
+
+**Phase 3 (PC 완료)**:
+- 사용자 승인 (a) v5 20 ETF 전부 + pykrx 실행 승인.
+- Materialize · Producer (refresh_status=ok, scored=20/20) · PC prepare (publishable=true).
+- artifact hash `9722ef2d...`, size 18406.
+- PC Runtime spike dry-run: available/20/5/5/no_signal=false/privacy=false.
+- market_briefing (3/10) · holdings_briefing (available/35/67/35/False/False) 회귀 유지.
+- 기존 state 4종 SHA-256 완전 불변.
+
+**Phase 4 (진행 중)**: commit + push 사용자 승인 대기.
+**Phase 5**: OCI 명령셋 사용자 실행 대기.
+**Phase 6**: OCI 결과 검증 + closeout + 최종 결과문.
+
+상세: `docs/handoff/POC2_UNIVERSE_MOMENTUM_EVIDENCE_PUBLICATION_V1_CONCLUSION.md`.
+
+---
+
+## 0-prior. 직전 STEP 결과 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 최종 PASS 2026-07-16, revision `4d724adf`)
 
 **초기 STEP DONE**: revision `1086d87c` (2026-07-14, FIX r1~r6 · OCI 재실측 PASS).
 

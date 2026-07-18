@@ -43,13 +43,16 @@ from app.runtime_evidence.constants import (
 )
 from app.runtime_evidence.diagnostics import (
     add_holdings_briefing_diagnostics,
+    add_spike_alert_diagnostics,
     build_base_diagnostics,
 )
 from app.runtime_evidence.holdings_composer import compose_holdings_and_nav
 from app.runtime_evidence.market_discovery import compose_market_discovery
+from app.runtime_evidence.universe_momentum import compose_universe_momentum
 
 _MD_PUSH_KINDS = {"market_briefing"}
 _HOLDINGS_PUSH_KINDS = {"holdings_briefing"}
+_SPIKE_PUSH_KINDS = {"spike_or_falling_alert"}
 
 
 def _resolve_market_briefing_sources(
@@ -99,6 +102,7 @@ def compose_runtime_evidence(
     topn_fn: Optional[Callable[..., dict]] = None,
     nav_fn: Optional[Callable[..., Any]] = None,
     evidence_fn: Optional[Callable[..., dict[str, Any]]] = None,
+    universe_artifact_loader: Optional[Callable[[], Optional[dict[str, Any]]]] = None,
 ) -> RuntimeEvidenceResult:
     """OCI Runtime + Diagnosis 공통 evidence 조립.
 
@@ -134,6 +138,15 @@ def compose_runtime_evidence(
         )
         diag_sources[SRC_HOLDINGS] = h_diag
         diag_sources[SRC_NAV_DISCOUNT] = nav_diag
+
+    u_status = "unavailable"
+    u_notes: list[str] = []
+    u_diag: dict[str, Any] = {}
+    if push_kind in _SPIKE_PUSH_KINDS:
+        u_status, u_notes, u_diag = compose_universe_momentum(
+            artifact_loader=universe_artifact_loader
+        )
+        diag_sources[SRC_UNIVERSE_MOMENTUM] = u_diag
 
     if push_kind == "market_briefing":
         result.available_sources = _resolve_market_briefing_sources(md_status, md_diag)
@@ -171,12 +184,18 @@ def compose_runtime_evidence(
         )
     elif push_kind == "spike_or_falling_alert":
         result.available_sources = {
-            SRC_UNIVERSE_MOMENTUM: REASON_NOT_IMPLEMENTED,
+            SRC_UNIVERSE_MOMENTUM: (
+                "available"
+                if u_status == "available"
+                else (u_diag.get("universe_snapshot_reason") or "unavailable")
+            ),
             SRC_KR_REALTIME: REASON_EXTERNAL_FETCH_REQUIRED,
         }
-        result.extra_notes = []
-        contentful_fact_count = 0
-        selection_result_count = 0
+        result.extra_notes = u_notes if u_status == "available" else []
+        contentful_fact_count = int(
+            u_diag.get("universe_contentful_fact_count", 0) or 0
+        )
+        selection_result_count = int(u_diag.get("universe_selected_count", 0) or 0)
     else:
         result.available_sources = {}
         result.extra_notes = []
@@ -192,5 +211,9 @@ def compose_runtime_evidence(
     )
     if push_kind == "holdings_briefing":
         add_holdings_briefing_diagnostics(result.diagnostics, diag_sources)
+    if push_kind == "spike_or_falling_alert":
+        add_spike_alert_diagnostics(
+            result.diagnostics, diag_sources, result.extra_notes
+        )
 
     return result

@@ -1,8 +1,38 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-16 (Holdings Evidence OCI Publication v1 — **Cleanup / FIX r7 최종 PASS**, revision `4d724adf` · OCI 재검증 완료)
+최종 업데이트: 2026-07-16 (Universe Momentum Evidence Publication v1 — **PARTIAL · PC 완료 · OCI 재검증 대기**)
 
-## 이번 STEP 요약 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 최종 PASS)
+## 이번 STEP 요약 (Universe Momentum Evidence Publication v1, PARTIAL · PC 완료)
+
+**목적**: 기존 Holdings + Market Discovery 결과를 이용해 Universe seed 후보 제안 → 사용자 승인 → manual seed → producer PC 1회 실행 → OCI controlled publication → `spike_or_falling_alert` real evidence.
+
+**Phase 1~2 (검증자 판정 VERIFIED_WITH_NOTES · r1~r9 정정 반영)**: Bootstrap propose (20개 · unique ticker · SK하이닉스 등 개별주식 배제) · publishable_proposal boolean · Holdings 중복 ticker 평가금액 합산 · Publication↔Runtime shared validator (refresh_status allowlist + candidate shape + is_scored boolean + score_value 유한수 + producer status 완전 교차 + asof YYYY-MM-DD + verify mode/owner activation_ready 포함 + owner hardcoded ubuntu) · privacy detector 재사용 · sanitized error_reason.
+
+**Phase 3 (PC 실행)**:
+- 사용자 승인 (a) v5 20개 전부 + pykrx 실행 승인.
+- Materialize: `state/universe/etf_universe_latest.json` (source=manual, asof=2026-07-16, items=20).
+- Producer (pykrx): refresh_status=ok, scored=20/20.
+- Artifact: `state/universe/universe_momentum_latest.json` (hash `9722ef2d...`, size 18406).
+- PC prepare: publishable=true.
+- PC Runtime dry-run:
+  - `spike_or_falling_alert`: available, candidate=20, selected=5, contentful=5, no_signal=false, privacy=false.
+  - market_briefing 회귀: 3/10 (baseline 유지).
+  - holdings_briefing 회귀: available/35/67/35/False/False (baseline 유지).
+
+**실제 state 4종 SHA-256 완전 불변** (Holdings publication STEP 값 그대로). 신규 2종 (seed · artifact) 은 명시적 사용자 승인 하에 생성.
+
+**회귀**: focused 124 passed, backend 971 passed, 0 failed. 199s.
+**Lint**: black 247 files unchanged, flake8 통과.
+
+**OCI 재검증 대기**: push 후 PC↔OCI same revision publication + spike dry-run + market/holdings 회귀.
+
+**다음 STEP 후보 (§43)**: `Telegram Contentful Controlled Send v1`.
+
+상세: `docs/handoff/POC2_UNIVERSE_MOMENTUM_EVIDENCE_PUBLICATION_V1_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (Holdings Evidence OCI Publication v1, Cleanup / FIX r7 최종 PASS)
 
 **Cleanup / FIX r7 (2026-07-14)**: 초기 STEP DONE (`1086d87c`) 이후 검증자 PARTIALLY_VERIFIED 부채 (B-2 · B-3 · B-6) 해소 목적. 4 Round 진행:
 

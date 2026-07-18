@@ -79,25 +79,40 @@ def test_kr_realtime_not_promoted_from_daily_data(tmp_path: Path) -> None:
 
 
 def test_spike_or_falling_alert_all_unavailable(tmp_path: Path) -> None:
-    """§15.8 · B-6: Spike source 는 모두 unavailable, contentful/selection 은 0."""
+    """§15.8 · B-6: Spike 는 universe artifact 부재 + kr_realtime 외부 필요.
+
+    Universe Publication v1 (FIX): universe 는 실제 artifact 상태를 반영하므로
+    부재 시 사유는 `artifact_missing_or_invalid_json`. kr_realtime 은 여전히
+    `unavailable_external_fetch_required` (§35 - 이 STEP 에서 unavailable 유지).
+    """
     calls: list[str] = []
 
     def _tracking_topn(**_kwargs):
         calls.append("topn_called")
         return _ok_topn_payload()
 
+    # universe artifact 부재를 explicit 하게 시뮬레이션 (loader None 반환).
     result = compose_runtime_evidence(
         "spike_or_falling_alert",
         market_db_path=tmp_path / "market_data.sqlite",
         holdings_file=tmp_path / "holdings.json",
         topn_fn=_tracking_topn,
+        universe_artifact_loader=lambda: None,
     )
-    assert result.available_sources[SRC_UNIVERSE_MOMENTUM] == REASON_NOT_IMPLEMENTED
+    # universe 는 실제 artifact 상태 반영 → unavailable + 실제 사유.
+    assert result.available_sources[SRC_UNIVERSE_MOMENTUM] != "available"
+    assert (
+        result.available_sources[SRC_UNIVERSE_MOMENTUM]
+        == "artifact_missing_or_invalid_json"
+    )
+    # kr_realtime 은 여전히 외부 fetch 필요.
     assert result.available_sources[SRC_KR_REALTIME] == REASON_EXTERNAL_FETCH_REQUIRED
     assert result.extra_notes == []
     assert result.diagnostics["contentful_fact_count"] == 0
     assert result.diagnostics["selection_result_count"] == 0
+    # topn 은 여전히 spike 에서 호출되지 않아야 함 (universe 만 참조).
     assert calls == []
+    # source_statuses: universe=unavailable, kr_realtime=unavailable.
     assert all(
         v == "unavailable" for v in result.diagnostics["source_statuses"].values()
     )

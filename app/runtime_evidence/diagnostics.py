@@ -86,3 +86,54 @@ def add_holdings_briefing_diagnostics(
     )
     # 설계자 확정본 Q3: selection_result_count 를 holdings 전용 값으로 재정의.
     diagnostics["selection_result_count"] = h.get("holdings_selection_result_count", 0)
+
+
+def add_spike_alert_diagnostics(
+    diagnostics: dict[str, Any],
+    diag_sources: dict[str, dict[str, Any]],
+    extra_notes: list[str],
+) -> None:
+    """spike_or_falling_alert 전용 universe diagnostics 필드 (지시문 §27).
+
+    검증자 REJECTED r2 재정정:
+    - private_fields_exposed / raw_identifier_exposed 는 하드코드 False 금지.
+      기존 privacy detector 를 재사용하여 실제 extra_notes 스캔 결과 반환.
+    - Universe artifact 는 개인정보가 없더라도 template 이 실수로 노출할 수 있으므로
+      실측 결과가 계약.
+
+    boolean 계약: universe_artifact_present · universe_artifact_valid · no_signal ·
+    private_fields_exposed · raw_identifier_exposed. 0/1/None/문자열 반환 금지.
+    """
+    from app.runtime_evidence.constants import SRC_UNIVERSE_MOMENTUM
+    from app.runtime_evidence.privacy_detector import (
+        detect_private_values_exposed,
+        detect_raw_identifier_exposed,
+    )
+
+    u = diag_sources.get(SRC_UNIVERSE_MOMENTUM, {})
+    # spike 는 holdings list 를 참조하지 않지만 privacy detector 는 빈 리스트에서도
+    # 안전. raw identifier 검사는 항상 실측.
+    raw_exposed = detect_raw_identifier_exposed(extra_notes)
+    private_exposed = detect_private_values_exposed([], extra_notes)
+    diagnostics.update(
+        {
+            "universe_artifact_present": bool(
+                u.get("universe_artifact_present", False)
+            ),
+            "universe_artifact_valid": bool(u.get("universe_artifact_valid", False)),
+            "universe_artifact_status": u.get("universe_artifact_status", "") or "",
+            "universe_artifact_asof": u.get("universe_artifact_asof", "") or "",
+            "universe_candidate_count": int(u.get("universe_candidate_count", 0) or 0),
+            "universe_selected_count": int(u.get("universe_selected_count", 0) or 0),
+            "universe_contentful_fact_count": int(
+                u.get("universe_contentful_fact_count", 0) or 0
+            ),
+            "universe_snapshot_status": u.get(
+                "universe_snapshot_status", "unavailable"
+            ),
+            "universe_snapshot_reason": u.get("universe_snapshot_reason", "") or "",
+            "no_signal": bool(u.get("no_signal", False)),
+            "private_fields_exposed": bool(private_exposed),
+            "raw_identifier_exposed": bool(raw_exposed),
+        }
+    )

@@ -207,6 +207,7 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
     # FIX r3 · r4 (설계자 확정본 Q7): holdings_briefing 진단 필드 record 전달 (OCI dry-run 확인용).
     #   개인정보 · Holdings JSON 원문 · raw ticker 등은 이미 Composer 계약상 제외.
     for k in (
+        # holdings_briefing 진단.
         "holdings_snapshot_status",
         "holdings_snapshot_reason",
         "holdings_loaded_count",
@@ -217,6 +218,17 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         "rendered_holdings_fact_count",
         "private_fields_exposed",
         "raw_identifier_exposed",
+        # spike_or_falling_alert 진단 (Universe Momentum, §14).
+        "universe_artifact_present",
+        "universe_artifact_valid",
+        "universe_artifact_status",
+        "universe_artifact_asof",
+        "universe_candidate_count",
+        "universe_selected_count",
+        "universe_contentful_fact_count",
+        "universe_snapshot_status",
+        "universe_snapshot_reason",
+        "no_signal",
     ):
         if k in evidence.diagnostics:
             record[k] = evidence.diagnostics[k]

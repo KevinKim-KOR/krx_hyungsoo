@@ -706,3 +706,33 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 2026-07-05 PUSH Content Gap Diagnosis v1 PC 실측 결과 PC 에도 `state/three_push/packages/` 자체가 부재 (`package_dir_missing`). Package fallback 이 evidence 준비 대안으로 작동하지 않는 상태. 이번 진단 STEP 범위 아님.
 - **보류된 위험**: OCI RUNTIME_CONFIGURATION_CLOSEOUT 후에도 package fallback 경로가 여전히 not-applicable 이면 evidence 백업 경로 부재.
 - **재검토 트리거**: OCI RUNTIME_CONFIGURATION_CLOSEOUT 완료 후에도 package fallback 이 필요하다는 별도 근거가 확인될 때.
+
+---
+
+## Universe Seed Bootstrap 후속 (Universe Momentum Evidence Publication v1 이월)
+
+- **항목**: 보유/외부 후보 비율 가변화 (현재는 10/10 고정)
+- **보류 사유**: 첫 승인 세션에서는 고정 비율로 단순성 확보. 운영 데이터 축적 후 재검토.
+- **보류된 위험**: 사용자 포트폴리오 변화 시 후보 비율이 실제 관심도와 어긋날 수 있음.
+- **재검토 트리거**: Telegram Contentful Controlled Send v1 완료 후 1회전 운영 데이터 확보 시.
+
+---
+
+- **항목**: 거래대금·유동성 필터 · 변동성/하락 위험 반영 · 테마 중복 제거 · constituents overlap
+- **보류 사유**: Bootstrap v1 은 평가금액 (보유) + 기존 Market Discovery 순위 (외부) 만 사용. 추가 필터 도입 시 첫 승인 세션 복잡도 증가.
+- **보류된 위험**: 유동성 부족 종목 · 테마 중복 · 하락 위험 큰 종목이 seed 에 포함될 가능성.
+- **재검토 트리거**: Telegram 운영 1회전 후 seed 품질 정성 평가 시.
+
+---
+
+- **항목**: seed 유지 기간 / 교체 조건 / 갱신 주기 / 사용자 재승인 조건
+- **보류 사유**: 첫 승인은 수동 트리거. 자동 갱신 조건은 운영 경험 축적 후 확정.
+- **보류된 위험**: 오래된 seed 로 후보 산정 시 실제 시장 관심도와 괴리.
+- **재검토 트리거**: 첫 seed 승인 후 30일 시점, staleness 감지 로직 검토.
+
+---
+
+- **항목**: ML·백테스트 기반 seed 품질 개선
+- **보류 사유**: 현재 정성 판단 기반. ML 산출물 신뢰도 정성 합의 전 seed 자동화 금지.
+- **보류된 위험**: seed 품질이 사용자 판단에만 의존하여 감사 어려움.
+- **재검토 트리거**: ML baseline v1 안정화 후.
