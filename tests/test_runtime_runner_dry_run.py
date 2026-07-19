@@ -132,6 +132,13 @@ def test_runner_dry_run_spike_all_unavailable_no_topn_calls(
     telegram_calls = _install_telegram_and_registry_spies(monkeypatch, tmp_path)
     registry_before = registry_count()
 
+    # Spike Conditional Send v1 FIX: 운영 universe artifact 를 실제로 읽지 않도록
+    # 격리. reader (`_load_universe_artifact_for_spike`) 가 참조하는 파일 상수를
+    # 존재하지 않는 tmp 경로로 monkeypatch → all_unavailable 시나리오 재현.
+    from app import draft_three_push as _dtp
+
+    monkeypatch.setattr(_dtp, "UNIVERSE_LATEST_FILE", tmp_path / "no_universe.json")
+
     from scripts.run_three_push_runtime_oci import run
 
     record = run("spike_or_falling_alert", "dry-run")

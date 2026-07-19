@@ -615,9 +615,12 @@ def test_push2_message_text_has_observation_points(_stub_full_runtime):
     assert (
         has_market_view_connection
     ), "PUSH-2 message_text 가 market_view 와 연결되어야 함 (AC-4)"
-    # 금지 문구.
-    for forbidden in ("매수 지시", "매도 지시", "교체 지시", "비중 조절 지시"):
-        assert forbidden not in msg
+    # 금지 문구 검사는 이 test 의 본질 (AC-3/AC-4: 섹션 존재 + market_view 연결)
+    # 밖이며, 별도 test (test_three_push_runtime_message_builder.py · runner §4-b
+    # 통합) 가 이미 담당한다. Spike Conditional Send v1 FIX §4.2:
+    # 원래 이 test 에 있던 hard-coded substring 검사 (`"매도 지시" not in msg`) 는
+    # 안내 문구 "매수/매도 지시가 아닙니다" 를 오탐하여 실패했다. 새로운 메시지
+    # 정책 신설 금지 원칙에 따라 이 부가 검사를 제거한다.
 
 
 # ─── AC-2: market_view 가 없을 때도 fallback 동작 ──────────────

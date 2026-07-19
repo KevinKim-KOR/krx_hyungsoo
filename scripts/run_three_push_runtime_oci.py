@@ -269,6 +269,18 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         logger.info("%s=false — 발송 skip", kind_flag_env)
         return _finish("skipped", "push_kind_disabled")
 
+    # ── 6-b. no-signal guard (Spike Conditional Send v1 · §6/AC-6) ──────────
+    # Universe artifact 가 유효하지만 candidates=0 이면 발송하지 않는다.
+    # composer 가 진단 필드 `no_signal=True` 로 표시 (spike_or_falling_alert 만 해당).
+    # Sender 미호출 · registry 미기록 · duplicate_key 도 계산하지 않음.
+    if push_kind == "spike_or_falling_alert" and record.get("no_signal") is True:
+        logger.info(
+            "no-signal 발송 skip: push_kind=%s param_id=%s (universe candidate 0건)",
+            push_kind,
+            param.param_id,
+        )
+        return _finish("skipped", "no_signal")
+
     # ── 7. duplicate guard (Cutover v1: DB 기준) ─────────────────────────────
     dup_key = _registry_key(push_kind, param.param_id, runtime_date_kst)
     record["duplicate_key"] = dup_key
