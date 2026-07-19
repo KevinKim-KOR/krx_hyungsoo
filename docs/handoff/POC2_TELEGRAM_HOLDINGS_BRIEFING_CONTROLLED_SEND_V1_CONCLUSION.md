@@ -299,3 +299,7 @@ next_step_gate = TELEGRAM_SPIKE_ALERT_CONDITIONAL_SEND_V1
 ```
 
 다음 STEP 후보 (설계자 지시 대기): `Telegram Spike Alert Conditional Send v1`.
+
+## 17. 사후 정책 갱신 (2026-07-19, Spike STEP §7)
+
+이후 Telegram Spike Alert Conditional Send v1 (2026-07-19) 지시문 §7 에서 **사용자 승인 게이트 제거** 확정. Market · Holdings · Spike PUSH 는 매 발송 전 사용자 승인을 요구하지 않으며, 사용자 개입은 매수 · 매도 · 비중 변경 · 종목 교체 · 주문 실행 판단에만 남음. 본 STEP 의 사용자 승인·수신 확인 실측 (2026-07-18 16:32 KST) 및 Phase C 재확인 dry-run 절차 는 최초 발송 경로 검증 당시의 **일회성 실측 절차** 로 기록. 향후 운영 계약에서 `USER_SEND_APPROVAL_REQUIRED` · `USER_RECEIPT_CONFIRMATION_REQUIRED` · `PRE_SEND_DRY_RUN_CONFIRMATION_REQUIRED` 게이트 없음. 단, sender 분할 · partial_delivery 계약 (§6.1) · no-signal 미발송 계약 (Spike §6-b) 은 유지.

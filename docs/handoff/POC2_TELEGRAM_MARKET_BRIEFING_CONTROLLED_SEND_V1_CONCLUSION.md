@@ -208,3 +208,7 @@ next_step_gate = TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1
 **정정 근거**: 후속 Holdings Controlled Send v1 지시문 §2 에서 사용자가 Q5 절차 이탈 수용을 확정. 실측 결과 (발송 · 수신 · registry · 중복 차단) 전부 충족, §9 FAIL 목록 어디에도 해당하지 않음, 실제 발송 본문이 승인 Preview 와 완전 일치 → 최종 판정 PASS/DONE. 이탈 사실 자체는 삭제하지 않고 §4.1 · 본 accepted_deviation 블록에 영구 기록.
 
 다음 STEP (설계자 지시 수령): `Telegram Holdings Briefing Controlled Send v1`.
+
+## 14. 사후 정책 갱신 (2026-07-19, Spike STEP §7)
+
+이후 Telegram Spike Alert Conditional Send v1 (2026-07-19) 지시문 §7 에서 **사용자 승인 게이트 제거** 확정. Market · Holdings · Spike PUSH 는 매 발송 전 사용자 승인을 요구하지 않으며, 사용자 개입은 매수 · 매도 · 비중 변경 · 종목 교체 · 주문 실행 판단에만 남음. 본 STEP 의 사용자 승인·수신 확인 실측 (2026-07-18 14:42 KST) 은 최초 발송 경로 검증 당시의 **일회성 실측 절차** 로 기록. 향후 운영 계약에서 `USER_SEND_APPROVAL_REQUIRED` · `USER_RECEIPT_CONFIRMATION_REQUIRED` 게이트 없음.

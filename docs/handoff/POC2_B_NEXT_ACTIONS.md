@@ -1,12 +1,41 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 — **DONE · PASS · FIX (a) sender 분할 반영**)
+작성일: 2026-05-20 / 갱신: 2026-07-19 (Telegram Spike Alert Conditional Send v1 — **DONE · PASS · 3-PUSH Controlled Send Stage Closeout · 사용자 승인 게이트 제거**)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (Telegram Holdings Briefing Controlled Send v1, DONE · PASS 2026-07-18, revision `3d65aa9a` + closeout commit)
+## 0. 직전 STEP 결과 (Telegram Spike Alert Conditional Send v1, DONE · PASS · 3-PUSH Stage Closeout 2026-07-19, revision `81c204d8` + closeout commit)
+
+**목적**: (1) 사전 test 결함 2건 해소, (2) Spike 실제 발송·중복 차단·no-signal 미발송 검증, (3) 3-PUSH Controlled Send Stage 종료 + 사용자 승인 게이트 제거.
+
+**Phase 1 (사전 결함)**: Universe artifact fixture 격리 (`UNIVERSE_LATEST_FILE` monkeypatch) + `test_push2_message_text_has_observation_points` 부가 forbidden loop 제거 (r2, 새 정책 신설 없음).
+
+**Phase 5 (no-signal)**: `tests/test_runtime_runner_spike_no_signal.py` 신규 2 케이스 → send 결함 발견 → `run_three_push_runtime_oci.py` §6-b no-signal guard 신설 (spike_or_falling_alert & no_signal=True 이면 sender 미호출 · skipped/no_signal).
+
+**Phase 3+4 OCI 실측 (2026-07-19 10:08~10:09 KST)**:
+- Dry-run: universe available/20/5/5/no_signal=false/msg_len=344/privacy=false
+- Send: status=sent, telegram_sent=true, partial_delivery=false, duplicate_key=`spike_or_falling_alert::****757435::2026-07-19`
+- 수신: chat `****5904` 로 344자 1 chunk (4096 미만). Preview 완전 일치.
+- Registry: 64 → 65 → 65 (delta +1 / 0). 두 번째 도착 없음.
+- **사용자 승인 게이트 없이** 진행 (첫 적용).
+
+**전체 회귀 (closeout 1회 · deselect 없음)**: **991 passed, 4 skipped, 0 failed, 0 deselected** (209s).
+
+**AC-1~AC-9 전 항목 충족**. §9 금지사항 전 항목 준수. 총 발송: Spike 1건. Market 0건, Holdings 0건.
+
+**사용자 승인 게이트 제거**: 향후 운영 계약에서 `USER_SEND_APPROVAL_REQUIRED` · `USER_RECEIPT_CONFIRMATION_REQUIRED` 제거. 정보 PUSH 매 발송 승인 없음, 사용자는 매수/매도/비중/교체/주문에만 개입.
+
+**3-PUSH Controlled Send Stage 완료** (Market · Holdings · Spike 3종 실제 발송 · 중복 차단 · partial_delivery · no-signal 계약 완비).
+
+**next_step_gate**: `POST_OCI_PROJECT_REANCHOR`. 다음 STEP 은 최신 MASTER_PLAN · STATE_LATEST · handoff · BACKLOG 기준 재선택.
+
+상세: `docs/handoff/POC2_TELEGRAM_SPIKE_ALERT_CONDITIONAL_SEND_V1_CONCLUSION.md`.
+
+---
+
+## 0-prior. 직전 STEP 결과 (Telegram Holdings Briefing Controlled Send v1, DONE · PASS 2026-07-18, revision `3d65aa9a` + closeout commit)
 
 **목적**: 기존 Runtime send 경로로 `holdings_briefing` 실제 1회 발송 · 사용자 수신 · 중복 차단 실측.
 

@@ -1,8 +1,52 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-18 (Telegram Holdings Briefing Controlled Send v1 — **DONE · PASS · FIX (a) sender 분할 반영**)
+최종 업데이트: 2026-07-19 (Telegram Spike Alert Conditional Send v1 — **DONE · PASS · 3-PUSH Controlled Send Stage Closeout · 사용자 승인 게이트 제거**)
 
-## 이번 STEP 요약 (Telegram Holdings Briefing Controlled Send v1, DONE)
+## 이번 STEP 요약 (Telegram Spike Alert Conditional Send v1, DONE · PASS)
+
+**목적**: (1) 사전 test 결함 2건 해소, (2) `spike_or_falling_alert` 실제 발송·중복 차단·no-signal 미발송 검증, (3) 3-PUSH Controlled Send Stage 종료 + 사용자 승인 게이트 제거.
+
+**Phase 1 (사전 test 결함 2건)**:
+- `tests/test_runtime_runner_dry_run.py::test_runner_dry_run_spike_all_unavailable_no_topn_calls` — `UNIVERSE_LATEST_FILE` monkeypatch 격리
+- `tests/test_three_push_message_text_runtime_evidence.py::test_push2_message_text_has_observation_points` — r1 `_NEGATION_MARKERS` 신설 REJECTED → r2 부가 forbidden loop 제거 (본질 assertion 2건 유지, 새 정책 신설 없음)
+
+**Phase 5 (no-signal 미발송 + runner 결함 최소 수정)**:
+- `tests/test_runtime_runner_spike_no_signal.py` 신규 2 케이스 → send mode 결함 발견
+- `scripts/run_three_push_runtime_oci.py` §6-b 신설: `spike_or_falling_alert` & `no_signal=True` 이면 sender 호출 전 `skipped/no_signal` 반환
+- Universe artifact · candidate · threshold · duplicate key · registry schema 미변경
+
+**Phase 3+4 (OCI 실측, 2026-07-19 10:08~10:09 KST)**:
+- Revision `81c204d8`. Dry-run: universe available/20/5/5/no_signal=false/msg_len=344/privacy=false → 조건 충족
+- Send: status=sent, telegram_sent=true, partial_delivery=false, duplicate_key=`spike_or_falling_alert::****757435::2026-07-19`
+- 사용자 수신: chat `****5904` 로 344자 1 chunk (Telegram 4096 한도 미만). Preview 완전 일치. 잘림/개인정보/내부식별자/금지문구 없음
+- Registry: 64 → 65 (+1)
+- 중복 재실행: status=skipped, reason=duplicate_runtime, sender 미호출. Registry 65 유지. 두 번째 도착 없음
+- **사용자 승인 게이트 없이** 진행 (지시문 §7 정책 첫 적용)
+
+**Phase 6 (전체 회귀, closeout 1회 · deselect 없음)**:
+- `pytest tests/ --ignore=tests/backtest`: **991 passed, 4 skipped, 0 failed, 0 deselected** (209s)
+- 지시문 §10 완료 조건 `failed=0 · known_failures=0 · deselected_known_failures=0` 충족
+
+**AC-1~AC-9 전 항목 충족**. §9 금지사항 전 항목 준수.
+
+**총 발송**: spike_or_falling_alert 1건 (1 chunk). Market 0건, Holdings 0건.
+
+**사용자 승인 게이트 제거 (지시문 §7)**: `USER_SEND_APPROVAL_REQUIRED`, `USER_RECEIPT_CONFIRMATION_REQUIRED` 향후 운영 계약에서 제거. Market/Holdings/Spike PUSH 매 발송 전 사용자 승인 없음. 사용자는 매수/매도/비중 변경/종목 교체/주문 실행 판단에만 개입. 과거 승인·수신 기록은 이력으로 유지.
+
+**3-PUSH Controlled Send Stage 최종 상태**:
+- Market Briefing v1 (2026-07-18, 393자 1 chunk)
+- Holdings Briefing v1 (2026-07-18, 5506자 2 chunks · FIX (a) sender 분할)
+- Spike Alert Conditional v1 (2026-07-19, 344자 1 chunk · §6-b no-signal guard)
+
+**next_step_gate**: `POST_OCI_PROJECT_REANCHOR`.
+
+**다음 STEP 재선택 근거 (지시문 §14)**: 최신 MASTER_PLAN · STATE_LATEST · handoff · BACKLOG 기준. 우선 확인할 전체 흐름: `보유 종목과 외부 시장 후보 비교 → 판단 사유가 있는 초안 생성 → 사용자의 매수·매도 최종 판단`.
+
+상세: `docs/handoff/POC2_TELEGRAM_SPIKE_ALERT_CONDITIONAL_SEND_V1_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (Telegram Holdings Briefing Controlled Send v1, DONE)
 
 **목적**: 기존 OCI Runtime · Telegram send · sent registry 계약을 그대로 사용해 `holdings_briefing` 을 실제 1회 발송하고 사용자 수신 · 중복 차단 실측. Send 직전 재확인 dry-run 계약 준수.
 
