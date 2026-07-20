@@ -2,6 +2,60 @@
 
 이 프로젝트의 목적은 **AI와 함께 투자 방향을 찾는 것**이다. 운영 전제는 **직장인형 저빈도, K6/EOD 기준, 본업 우선**이며, 새 프로젝트는 Phase 1에서 검증된 자산 중 **독립 ML 모듈, OCI crontab 구조(daily_ops / spike_watch / holding_watch), Telegram 연동**만 살리고 나머지는 화이트리스트 기반으로 다시 시작한다. 성공 기준은 **친구의 긍정적 반응**, **4070s가 실제 ML 작업을 돌리는 상태**, **와이프가 이해할 수 있는 UI**이며, 1차 성과 판정은 **추천 ETF 평균 수익률**과 **같은 기간 KODEX 200 대비 초과 성과**로 본다. 친구 프로젝트 통째 이식, MongoDB 전환, 복잡도 증식은 범위 밖이다. :contentReference[oaicite:1]{index=1} :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
 
+## 인간 승인 게이트 위치 정정 (2026-07-19, Holdings–Market PENDING Judgment Draft v1)
+
+이전 2단계 "인간 최종 승인 게이트" 는 **정보 PUSH 앞** 이 아니라 **PENDING 투자 판단 초안 ↔ 실제 투자 행동** 사이에 둔다.
+
+```text
+정보 PUSH (Market briefing · Holdings briefing · Spike alert ·
+  OCI evidence · artifact publication)
+  ↓ (사용자 승인 게이트 없음, 자동 발송/발행)
+
+PENDING 판단 초안 (GenerateDraft → PENDING_APPROVAL 저장)
+  ↓ (인간 승인 게이트 · Approve / Reject)
+
+실제 투자 행동 (매수 · 매도 · 비중 변경 · 종목 교체 · 주문 실행)
+  · Approve 전에는 주문 또는 확정된 투자 행동으로 진행하지 않는다.
+  · Reject 는 기록만 남기고 종료한다.
+  · 자동 매매는 금지 (KS-1).
+```
+
+### 정보 PUSH 자동 정책
+
+다음은 매 발송 전 사용자 승인을 요구하지 않는다:
+
+- Market briefing (평일 08:00 KST)
+- Holdings briefing (평일 12:30 KST)
+- Spike alert (평일 15:30 KST, no-signal 시 미발송)
+- OCI evidence · artifact publication (사용자 승인 하 controlled publication 완료 후 정기 발행)
+
+계약:
+- 중복 차단: `push_kind + param_id + runtime_date_kst` (KST 오늘) UNIQUE
+- 장문 자동 분할: Telegram 4096 자 초과 시 `_split_message_for_telegram` 순차 전송 · `(i/N)` header · `partial_delivery` boolean
+- no-signal 미발송: universe candidate=0 이면 sender 미호출
+- 실제 발송 이력: `state/three_push/oci_runtime_history.jsonl` · `runtime_sent_registry` DB
+
+### 인간 승인 게이트 (PENDING → 투자 행동)
+
+- 진입점: `POST /runs/generate-from-holdings` (기존 GenerateDraft)
+- 저장 상태: `PENDING_APPROVAL` (기존, JSON 파일 store)
+- 승인 API: `POST /runs/{run_id}/approve` · 거절: `POST /runs/{run_id}/reject`
+- UI: 기존 `RunPanel` · Approve · Reject 버튼
+- 신규 승인 UI / DB / factor / threshold / 알고리즘 신설 금지
+
+### 매수 · 매도 어휘 경계
+
+- **정보 PUSH · 일반 evidence 화면**: 직접적인 매매 지시 금지. 안내 문구 "이 값은 매수/매도 지시가 아닙니다" 계속 사용.
+- **PENDING 판단 초안**: 판단 목적상 매수 · 매도 관련 표현 사용 가능. 단:
+  - 기존 GenerateDraft 가 제공하는 표현만 사용
+  - 새 BUY / SELL 결정 규칙 추가 금지
+  - PENDING 문구가 자동 주문 또는 확정 판단을 의미하지 않음
+  - 최종 결정은 인간 승인 게이트 통과 후 사용자가 실행
+
+이력:
+- 3-PUSH Controlled Send Stage (Market · Holdings · Spike) 실제 발송 · 중복 차단 · partial_delivery · no-signal 계약 완비 (2026-07-18 ~ 2026-07-19)
+- Holdings–Market PENDING Judgment Draft v1 (2026-07-19): 실제 PENDING 초안 1건 생성 · 화면 확인 · 부수효과 없음
+
 ## 현재 구현 우선 원칙 (2026-07-03, 마스터플랜 보완)
 
 아래 원칙은 기존 1~5단계 (+6단계 확장) 구조·순서·승인 게이트·완료 조건을 대체하지 않는다. 각 단계 안에서 **무엇을 먼저 구현할지** 정하는 우선순위 기준으로만 사용한다.

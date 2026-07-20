@@ -225,7 +225,7 @@ def test_step2d_generate_from_holdings_persists_message_text(client):
     assert isinstance(body["message_text"], str)
     assert len(body["message_text"]) > 0
     # 운영 흐름의 핵심 토큰이 포함되어야 함 (Step 2B 정책의 헤더)
-    assert "POC2 holdings 승인 처리" in body["message_text"]
+    assert "POC2 holdings 판단 초안 (승인 대기)" in body["message_text"]
     assert body["run_id"] in body["message_text"]
 
     # 같은 run_id 로 GET 했을 때도 동일 message_text

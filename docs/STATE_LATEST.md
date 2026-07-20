@@ -1,8 +1,55 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-19 (Telegram Spike Alert Conditional Send v1 — **DONE · PASS · 3-PUSH Controlled Send Stage Closeout · 사용자 승인 게이트 제거**)
+최종 업데이트: 2026-07-20 (Holdings–Market PENDING Judgment Draft v1 — **DONE · PASS · REJECTED r1 → r4 정정 · 재실측 완료**)
 
-## 이번 STEP 요약 (Telegram Spike Alert Conditional Send v1, DONE · PASS)
+## 이번 STEP 요약 (Holdings–Market PENDING Judgment Draft v1, DONE · PASS)
+
+**목적**: 기존 evidence · 기존 GenerateDraft · 기존 화면을 연결해 실제 PENDING 판단 초안 1건 생성·확인. 신규 코드/알고리즘 없음.
+
+**§4 계약 실측**: 진입점 `POST /runs/generate-from-holdings` (`app/api.py:236`) · 저장 상태 `PENDING_APPROVAL` (`app/draft.py:570`) · 저장소 `app/store.py:save()` · 조회 API `GET /runs/{run_id}` · 프론트 진입 버튼 `HoldingsClient.tsx:370` "저장된 보유 종목으로 초안 만들기" · draft_payload 9 keys (title/asof/note/recommendations/factor_signals/momentum_result/holdings_market_evidence_snapshot/ml_baseline_evidence_snapshot/runtime_package) · factor_signals 6 scope · 부수효과 없음 (Telegram 미호출 · OCI 미트리거 · 주문 없음). 계약과 지시문 §5 완전 일치 → 신규 구조 추가 없음.
+
+**§5 초기 실행 (2026-07-19 11:39 KST · r1 이력)**: 사용자가 PC 로컬 백엔드 (uvicorn) + 프론트 (Next.js) 기동 → 브라우저에서 "저장된 보유 종목으로 초안 만들기" 1회 클릭. 실제 holdings 35 종목 + 기존 market cache 사용 · Refresh 미실행.
+- 초기 Run (r1): `run_20260719T113955_74e43561`, status=PENDING_APPROVAL, asof=2026-07-19T11:39:55.907051+00:00, push_kind=holdings_briefing, message_text 3091 자, factor_signals 6 (portfolio · holding_row · universe · universe_falling · holdings_market_evidence · ml_baseline_evidence)
+- ML baseline unavailable 그대로 유지 · 임의 값 대체 없음
+- ⚠ 이 초기 실측 화면에는 내부 기술키 노출 (`[시장 흐름 연결 (market_view)]` · `상위(one_month)` · Runtime Package 카드 `schema/push_kind/source_mode/cache` · 헤더 "✅ 승인 처리") 이 있어 검증자 REJECTED. r2/r3/r4 코드 정정 → 재실측 필요.
+
+**최종 실측 (2026-07-20 11:55 KST · r1~r4 정정 반영, 아래 §재실측 블록 참조)**: `run_20260720T115529_d5974936` 로 재실측. 내부 identifier 스캔 8/8 OK · Runtime Package 카드 기본 화면 축소 확인 · 저장 ↔ 화면 완전 일치.
+
+**저장 ↔ 화면 대조 (AC-6)**: run_id · status · asof · message_text · draft_payload 키 · factor_signals · 시장 흐름 · ML unavailable 전 필드 일치.
+
+**부수효과 없음 (AC-8)**: Telegram 0, OCI publication 0, 주문 실행 0, sent_registry 변경 없음.
+
+**§6 MASTER_PLAN 정정**: `docs/MASTER_PLAN.md` 최상단에 "인간 승인 게이트 위치 정정" 섹션 신설:
+- 정보 PUSH (Market · Holdings · Spike · OCI publication) 는 매 발송 전 사용자 승인 없음 (중복 차단 · 장문 분할 · no-signal 미발송 계약 명시)
+- 인간 승인 게이트는 PENDING 판단 초안 ↔ 실제 투자 행동 (매수/매도/비중/교체/주문) 사이
+- 매수·매도 어휘 경계: 정보 PUSH 는 지시 금지 · PENDING 초안은 기존 표현 사용 가능 · 자동 주문 의미 없음
+- 기존 1~6단계 체계 유지 (지시문 "단계 체계 자체는 변경되지 않는다" 계약)
+
+**AC-1~AC-8 전 항목 충족**. §7 금지사항 전 항목 준수.
+
+**검증자 판정 이력**:
+- r1 REJECTED: `RuntimePackageStatusCard` 기본 화면에 `schema/push_kind/source_mode/cache/warnings/errors/missing_sections` 노출 · `message_text` 첫 줄 "✅ POC2 holdings 승인 처리" (확정 어감)
+- r2 코드 정정: RuntimePackageStatusCard 내부 field 제거 (기존 `<details>` raw JSON 안으로 이동), draft_message.py 헤더 "⏳ POC2 holdings 판단 초안 (승인 대기)" 로 변경. Test 4 파일 갱신. focused 64 passed. black/flake8/next lint/next build 통과.
+- r2 REJECTED (재지적): `message_text` 안 `[시장 흐름 연결 (market_view)]` · `상위(one_month)` · `하위(one_month)` 내부 source key 노출 잔존
+- r3 코드 정정: `app/push_context_holdings.py` "[시장 흐름 연결]" (market_view 접미 제거), `app/push_context_market.py` `_BASIS_USER_LABEL` 매핑 (`one_month` → "최근 1개월") + `f"상위 ({basis_label}): ..."`. Test 1 파일 갱신. focused 79 passed. black/flake8 통과.
+- r3 REJECTED (재지적): `_BASIS_USER_LABEL.get(basis, basis)` fallback 이 미등록 basis 시 내부 값 그대로 노출 · 허용 basis `daily` 매핑 누락 · 계약 test 부재 · handoff/STATE_LATEST DONE 잔존
+- r4 코드 정정: `push_context_market.py` `_BASIS_USER_LABEL` 확장 (`daily` "일간" 추가, `three_month` "최근 3개월" 명시) + 신규 helper `_basis_user_label` (미등록 basis 는 빈 문자열 반환) + `_market_trend_observation` 이 라벨 빈 문자열 시 `"상위: ..."` 형식 (라벨 자체 생략, 내부 값 미노출). 신규 focused test `tests/test_push_context_market_basis_label.py` 7 케이스 (매핑 완결 · 허용 basis parametrize · 미등록 basis · helper · header 계약). handoff/STATE_LATEST pointer 정합 정정. focused 7 passed. black/flake8 통과.
+
+**코드 변경 (r2+r3+r4)**: 4 파일 (`RuntimePackageStatusCard.tsx` · `draft_message.py` · `push_context_holdings.py` · `push_context_market.py`). Test 6 파일 (5 갱신 + 1 신규 `test_push_context_market_basis_label.py`). 내부 계약 (dict return 필드 · 데이터 계약) 미변경 · 사용자 화면 표시 문자열만 정정.
+
+**사용자 재실측 (2026-07-20 11:55 KST)**: 새 `run_20260720T115529_d5974936` 생성. message_text 내부 identifier 스캔 8/8 OK (`✅ 승인 처리` 없음 · `⏳ 판단 초안 (승인 대기)` 있음 · `(market_view)` 없음 · `[시장 흐름 연결]` 있음 · `(one_month)/(three_month)/(daily)` 없음 · `(최근 1개월)` 있음). Runtime Package 카드 기본 화면 status badge + probe 요약만, 내부 field 완전 사라짐 (스크린샷 확인). 개발자 보기 raw JSON 안에는 정상 포함. 저장 ↔ 화면 완전 일치.
+
+**Regression (closeout 1회 · deselect 없음)**: **998 passed, 4 skipped, 0 failed, 0 deselected** (270s). 지시문 §10 완료 조건 (`failed=0 · known_failures=0 · deselected_known_failures=0`) 충족. Frontend lint · build 통과.
+
+**AC-1~AC-8 전 항목 충족**. §7 금지사항 전 항목 준수.
+
+**next_step_gate**: `INVESTMENT_DECISION_GATE_V1` (사용자 승인·거절 입력 · 실제 매수/매도 결정 저장). 설계자 지시 대기.
+
+상세: `docs/handoff/POC2_HOLDINGS_MARKET_PENDING_JUDGMENT_DRAFT_V1_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (Telegram Spike Alert Conditional Send v1, DONE · PASS)
 
 **목적**: (1) 사전 test 결함 2건 해소, (2) `spike_or_falling_alert` 실제 발송·중복 차단·no-signal 미발송 검증, (3) 3-PUSH Controlled Send Stage 종료 + 사용자 승인 게이트 제거.
 

@@ -427,7 +427,7 @@ def test_holdings_observation_lines_contain_market_view_connection():
     lines = holdings_observation_lines(ctx)
     joined = "\n".join(lines)
     assert "[보유 종목 관찰 포인트]" in joined
-    assert "[시장 흐름 연결 (market_view)]" in joined
+    assert "[시장 흐름 연결]" in joined
     # 미국 지수 실제 등락률이 market_view 요약에 포함되어야 한다.
     assert "+0.85%" in joined or "+1.25%" in joined or "+0.41%" in joined
 
@@ -610,7 +610,7 @@ def test_push2_message_text_has_observation_points(_stub_full_runtime):
     msg = run.message_text or ""
     # market_view 연결 또는 보유 종목 관찰 포인트 섹션 중 최소 1개.
     has_observation = "[보유 종목 관찰 포인트]" in msg
-    has_market_view_connection = "[시장 흐름 연결 (market_view)]" in msg
+    has_market_view_connection = "[시장 흐름 연결]" in msg
     assert has_observation, "PUSH-2 에 [보유 종목 관찰 포인트] 섹션이 보여야 함"
     assert (
         has_market_view_connection

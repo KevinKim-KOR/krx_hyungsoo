@@ -428,4 +428,4 @@ def test_step3_legacy_draft_payload_without_factor_signals_renders(client):
     assert len(msg) > 0
     assert "[판단 사유]" not in msg  # 누락 키는 섹션 자체 생략
     # 기본 헤더/요약은 그대로 빌드
-    assert "POC2 holdings 승인 처리" in msg
+    assert "POC2 holdings 판단 초안 (승인 대기)" in msg

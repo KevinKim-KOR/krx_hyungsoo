@@ -216,7 +216,10 @@ def holdings_observation_lines(
             connection_parts.append(trend_text)
         if connection_parts:
             lines.append("")
-            lines.append("[시장 흐름 연결 (market_view)]")
+            # Holdings-Market PENDING Judgment Draft v1 REJECTED r2 정정:
+            # 내부 source key "(market_view)" 는 사용자 화면 헤더에서 제거.
+            # 내부 필드/데이터 계약 미변경.
+            lines.append("[시장 흐름 연결]")
             lines.append("  • " + " / ".join(connection_parts))
     review_points = hv.get("review_points") or []
     if isinstance(review_points, list) and review_points:

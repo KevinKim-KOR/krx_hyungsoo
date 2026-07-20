@@ -118,12 +118,13 @@ export default function RuntimePackageStatusCard({ run }: { run: Run }) {
   const showKr = kr && kr.status && kr.status !== "unavailable";
   const showUs = us && us.status && us.status !== "unavailable";
 
-  const warnings = Array.isArray(gs.warnings) ? (gs.warnings as string[]) : [];
-  const errors = Array.isArray(gs.errors) ? (gs.errors as string[]) : [];
-  const missing = Array.isArray(gs.missing_sections)
-    ? (gs.missing_sections as string[])
-    : [];
+  // warnings / errors / missing_sections 는 gs 원본에 남아 raw JSON <details>
+  // 안에서만 확인 가능. 기본 화면 별도 표시는 §5.3 금지 (reason code 노출).
 
+  // Holdings-Market PENDING Judgment Draft v1 REJECTED r1 정정:
+  // 기본 화면에 내부 기술키 (schema · push_kind · source_mode · cache 등) 및
+  // raw reason code (warnings/errors/missing) 노출 금지. status badge 와
+  // 사용자 이해 가능한 probe 요약만 기본 노출. 나머지는 "개발자 보기" 아래로.
   return (
     <div className="card" style={{ marginTop: 12 }}>
       <h3 style={{ marginTop: 0 }}>Runtime Package 상태</h3>
@@ -131,26 +132,6 @@ export default function RuntimePackageStatusCard({ run }: { run: Run }) {
         <span className={`status-badge ${statusBadgeClass(gs.status)}`}>
           {gs.status ?? "-"}
         </span>
-        <span className="kv">
-          <span className="k">schema</span>
-          <span className="v">
-            <code>{pkg.schema_version ?? "-"}</code>
-          </span>
-        </span>
-        <span className="kv">
-          <span className="k">push_kind</span>
-          <span className="v">{pkg.push_kind ?? "-"}</span>
-        </span>
-        <span className="kv">
-          <span className="k">source_mode</span>
-          <span className="v">{pkg.source_mode ?? "-"}</span>
-        </span>
-        {rs.cache_status ? (
-          <span className="kv">
-            <span className="k">cache</span>
-            <span className="v">{rs.cache_status}</span>
-          </span>
-        ) : null}
       </div>
       <div style={{ marginTop: 8 }}>
         {showKr ? (
@@ -164,21 +145,6 @@ export default function RuntimePackageStatusCard({ run }: { run: Run }) {
           </div>
         ) : null}
       </div>
-      {warnings.length > 0 ? (
-        <div className="message info" style={{ marginTop: 8 }}>
-          <strong>warnings:</strong> {warnings.join(", ")}
-        </div>
-      ) : null}
-      {errors.length > 0 ? (
-        <div className="message error" style={{ marginTop: 8 }}>
-          <strong>errors:</strong> {errors.join(", ")}
-        </div>
-      ) : null}
-      {missing.length > 0 ? (
-        <div className="message error" style={{ marginTop: 8 }}>
-          <strong>missing:</strong> {missing.join(", ")}
-        </div>
-      ) : null}
       <details style={{ marginTop: 8 }}>
         <summary
           style={{ cursor: "pointer", color: "var(--muted)", fontSize: "0.85rem" }}

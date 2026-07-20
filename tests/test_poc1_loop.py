@@ -280,7 +280,7 @@ def test_handoff_artifact_with_message_text_top_level(tmp_path, monkeypatch):
         status="DELIVERING",
         draft_payload={"title": "T", "note": "N", "recommendations": []},
     )
-    msg = "✅ POC2 holdings 승인 처리\nrun_id: run_test_002"
+    msg = "✅ POC2 holdings 판단 초안 (승인 대기)\nrun_id: run_test_002"
     path = store.write_handoff_artifact(run, "2026-04-25T00:00:01+00:00", msg)
     import json
 

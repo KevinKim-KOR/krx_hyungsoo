@@ -51,7 +51,7 @@ def test_draft_message_step2b_summary_form_no_per_item_buy_fields():
     assert "recommendations:" not in msg
 
     # 헤더 / run_id / 제목 / 전체 요약 섹션
-    assert "POC2 holdings 승인 처리" in msg
+    assert "POC2 holdings 판단 초안 (승인 대기)" in msg
     assert "run_id: run_xxx" in msg
     assert "보유 종목 기반 초안" in msg
     assert "전체 요약:" in msg
@@ -187,7 +187,7 @@ def test_handoff_artifact_message_text_for_holdings_payload(tmp_path, monkeypatc
 
     body = _json.loads(path.read_text(encoding="utf-8"))
     assert "message_text" in body
-    assert "POC2 holdings 승인 처리" in body["message_text"]
+    assert "POC2 holdings 판단 초안 (승인 대기)" in body["message_text"]
     assert "KODEX 200 (069500)" in body["message_text"]
     # draft_payload 는 그대로 유지
     assert body["draft_payload"] == holdings_payload

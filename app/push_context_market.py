@@ -26,6 +26,33 @@ from app.push_context_format import (
     _topn_candidates,
 )
 
+# 사용자 화면 노출용 basis 라벨 매핑 (내부 identifier → 사용자 이해 가능 문구).
+# Holdings-Market PENDING Judgment Draft v1 REJECTED r2/r3 정정.
+#
+# 매핑 목록은 `app.market_topn_helpers.ALLOWED_BASIS` (daily · one_month ·
+# three_month) 를 포함해야 한다. 미등록 basis 는 아래 `_basis_user_label`
+# 함수가 라벨 자체를 생략 (내부 값 노출 방지). 계약: 내부 basis identifier 는
+# 어떤 경우에도 사용자 화면에 원문 그대로 나타나지 않는다.
+_BASIS_USER_LABEL: dict[str, str] = {
+    "daily": "일간",
+    "one_month": "최근 1개월",
+    "three_month": "최근 3개월",
+    "six_month": "최근 6개월",
+    "one_year": "최근 1년",
+    "1m": "최근 1개월",
+    "3m": "최근 3개월",
+    "6m": "최근 6개월",
+    "1y": "최근 1년",
+}
+
+
+def _basis_user_label(basis: str) -> str:
+    """미등록 basis 는 내부 값 노출 대신 빈 문자열 반환.
+
+    호출자는 반환값이 빈 문자열이면 라벨 자체를 생략한다.
+    """
+    return _BASIS_USER_LABEL.get(basis, "")
+
 
 def _market_trend_observation(md: dict[str, Any]) -> Optional[dict[str, Any]]:
     """Market Discovery TopN 의 상위/하위 흐름을 1줄 관찰로 변환."""
@@ -39,15 +66,24 @@ def _market_trend_observation(md: dict[str, Any]) -> Optional[dict[str, Any]]:
         return None
     sortable.sort(key=lambda x: x[1], reverse=True)  # type: ignore[arg-type]
     basis = md.get("basis") or "1m"
+    # Holdings-Market PENDING Judgment Draft v1 REJECTED r2/r3 정정:
+    # basis 는 내부 identifier. 사용자 화면 문구는 매핑된 사용자 이해 가능한
+    # 라벨로 표시하고, 매핑에 없는 값은 라벨 자체를 생략 (내부 값 노출 방지).
+    # 내부 basis 값 자체는 dict return 에 그대로 보존 (계약 유지).
+    basis_label = _basis_user_label(basis)
     top = sortable[:3]
     bot = sortable[-3:][::-1]
     text_parts: list[str] = []
     if top:
         head = ", ".join(f"{_candidate_name(c)} {_fmt_pct(p)}" for c, p in top)
-        text_parts.append(f"상위({basis}): {head}")
+        text_parts.append(
+            f"상위 ({basis_label}): {head}" if basis_label else f"상위: {head}"
+        )
     if bot:
         tail = ", ".join(f"{_candidate_name(c)} {_fmt_pct(p)}" for c, p in bot)
-        text_parts.append(f"하위({basis}): {tail}")
+        text_parts.append(
+            f"하위 ({basis_label}): {tail}" if basis_label else f"하위: {tail}"
+        )
     if not text_parts:
         return None
     return {

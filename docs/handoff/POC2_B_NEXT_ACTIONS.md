@@ -1,12 +1,42 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-19 (Telegram Spike Alert Conditional Send v1 — **DONE · PASS · 3-PUSH Controlled Send Stage Closeout · 사용자 승인 게이트 제거**)
+작성일: 2026-05-20 / 갱신: 2026-07-20 (Holdings–Market PENDING Judgment Draft v1 — **DONE · PASS · REJECTED r1 → r4 정정 · 재실측 완료 · 998 passed / 0 failed / 0 deselected**)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
 ---
 
-## 0. 직전 STEP 결과 (Telegram Spike Alert Conditional Send v1, DONE · PASS · 3-PUSH Stage Closeout 2026-07-19, revision `81c204d8` + closeout commit)
+## 0. 직전 STEP 결과 (Holdings–Market PENDING Judgment Draft v1, DONE · PASS 2026-07-20, revision `152ab949` + closeout commit)
+
+**목적**: 기존 evidence · 기존 GenerateDraft · 기존 화면 연결 → 실제 PENDING 초안 1건 생성·확인. 신규 알고리즘 없음. r1~r4 정정 과정에서 사용자 화면 내부 기술키 노출 제거를 위한 최소 코드/test 수정 발생.
+
+**§4 계약 실측**: `POST /runs/generate-from-holdings` → `draft.generate_draft_from_holdings()` → `store.save()` (PENDING_APPROVAL) → `GET /runs/{run_id}` 조회. 프론트 진입 버튼 `HoldingsClient.tsx:371`. draft_payload 9 keys + factor_signals 6 scope. 부수효과 없음.
+
+**최종 실측 Run (2026-07-20 11:55 KST · r1~r4 정정 반영)**: `run_20260720T115529_d5974936`, status=PENDING_APPROVAL, asof=2026-07-20T11:55:29.014590+00:00, push_kind=holdings_briefing, message_text 3079자, factor_signals 6. Holdings 35 종목 (기존 저장분 그대로) · market cache 그대로 (Refresh 미실행).
+
+**저장 ↔ 화면 대조 (재실측)**: 전 필드 일치. 내부 identifier 스캔 8/8 OK (`(market_view)/(one_month)/(three_month)/(daily)` 노출 없음 · 사용자 라벨 `[시장 흐름 연결]` · `(최근 1개월)` 표시 · 헤더 `⏳ POC2 holdings 판단 초안 (승인 대기)`). Runtime Package 카드 기본 화면에 내부 field 완전 제거 (스크린샷 확인). 개발자 보기 raw JSON 안에는 정상 포함. Unavailable evidence (ML baseline) 그대로 유지.
+
+**초기 실측 (2026-07-19 11:39 KST, `run_20260719T113955_74e43561`)**: r1 시점 실측. 이후 검증자 REJECTED (기본 화면 내부 기술키 노출 · 확정 어감 문구) 로 r2/r3/r4 정정 필요. 이력만 유지.
+
+**부수효과 없음**: Telegram 0, OCI 0, 주문 0, sent_registry 변경 없음.
+
+**§6 MASTER_PLAN 정정**: 인간 승인 게이트를 "정보 PUSH 앞" → "PENDING 초안 ↔ 실제 투자 행동 사이" 로 재정의. 정보 PUSH 자동 정책 · 매수·매도 어휘 경계 명시. 기존 1~6단계 체계 유지.
+
+**검증자 판정 이력**: REJECTED r1 → r2 (RuntimePackageStatusCard + draft 헤더) → REJECTED r2 재지적 → r3 (market_view/basis 라벨) → REJECTED r3 재지적 → r4 (fallback 안전화 + 매핑 완결 + 계약 test 신설) → 재실측 → VERIFIED_WITH_NOTES.
+
+**코드 변경 (4)**: `frontend/app/components/RuntimePackageStatusCard.tsx` · `app/draft_message.py` · `app/push_context_holdings.py` · `app/push_context_market.py`. **Test (6)**: 5 갱신 + 1 신규 (`tests/test_push_context_market_basis_label.py`, r4 계약 검증 7 케이스).
+
+**AC-1~AC-8 전 항목 충족**. §7 금지사항 전 항목 준수.
+
+**Regression (closeout 1회)**: focused 86 passed, backend **998 passed, 4 skipped, 0 failed, 0 deselected** (270s). Frontend lint · build 통과.
+
+**next_step_gate**: `INVESTMENT_DECISION_GATE_V1` (사용자 승인·거절 입력 · 실제 매수/매도 결정 저장).
+
+상세: `docs/handoff/POC2_HOLDINGS_MARKET_PENDING_JUDGMENT_DRAFT_V1_CONCLUSION.md`.
+
+---
+
+## 0-prior. 직전 STEP 결과 (Telegram Spike Alert Conditional Send v1, DONE · PASS · 3-PUSH Stage Closeout 2026-07-19, revision `81c204d8` + closeout commit)
 
 **목적**: (1) 사전 test 결함 2건 해소, (2) Spike 실제 발송·중복 차단·no-signal 미발송 검증, (3) 3-PUSH Controlled Send Stage 종료 + 사용자 승인 게이트 제거.
 

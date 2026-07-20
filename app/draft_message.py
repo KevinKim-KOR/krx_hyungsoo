@@ -334,8 +334,12 @@ def _build_with_focus_limit(
     title = payload.get("title") or "보유 종목 기반 초안"
     note = payload.get("note") or ""
 
+    # Holdings-Market PENDING Judgment Draft v1 REJECTED r1 정정:
+    # 기존 "✅ 승인 처리" 문구는 확정 판단 어감으로 §6 "PENDING 문구가 자동 주문
+    # 이나 확정 판단을 의미하면 안 됨" 계약 위반. PENDING 상태 (승인 대기) 를
+    # 명확히 하는 문구로 최소 수정. 새 결정 규칙/추천 알고리즘 추가 없음.
     header_lines = [
-        "✅ POC2 holdings 승인 처리",
+        "⏳ POC2 holdings 판단 초안 (승인 대기)",
         f"run_id: {run_id}",
         f"title: {title}",
     ]
