@@ -220,6 +220,41 @@
 
 이 전제는 이미 완료된 기능들 (시장 시계열 CLI / Market Risk Reference / Decision Draft Preview) 이 갖는 **역할 범위** 를 정한다. 24시간 수집·무중단 운영·엔터프라이즈 고가용성은 후속 STEP 에서도 목표가 아니다.
 
+## 5.1 제품 평면별 역할 · 최소 사용자 개입 원칙 (2026-07-20, Mobile Decision Operating Boundary Amendment v1)
+
+Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`) 확정에 따라 다음을 운영 전제로 추가한다.
+
+### 제품 평면별 역할
+
+- **PC (Workbench)**:
+  - 보유 관리
+  - 전체 비교 · 분석
+  - PENDING 초안 생성
+  - 과거 판단 복기
+
+- **Mobile (Decision Cockpit)**:
+  - 핵심 evidence 확인
+  - 필요 시 상세 evidence 조회
+  - 투자 판단 기록
+
+- **OCI (운영 · 조회 평면)**:
+  - 상시 운영 · 조회
+  - published evidence read-only
+  - 사용자 판단 기록에 한해 제한적 write
+  - 주문 · 자동매매 · Holdings 자동 변경 금지
+
+- **증권 앱 (영웅문 · 카카오페이 등)**:
+  - 실제 주문 · 체결
+
+### 최소 사용자 개입 원칙
+
+```text
+정보 PUSH 는 매 발송 전 사용자 승인을 요구하지 않는다.
+사용자는 매수 · 매도 · 비중 변경 · 종목 교체 · 주문 실행에서 최종 결정한다.
+```
+
+정보 PUSH 자동 정책 · 인간 승인 게이트 위치 · 매수·매도 어휘 경계 상세: `docs/MASTER_PLAN.md` "인간 승인 게이트 위치 정정" 섹션 (2026-07-19 신설).
+
 ## 6. 마지막 원칙
 
 가정을 너무 빨리 사실로 승격시키면 실패 원인 추적이 흐려진다.

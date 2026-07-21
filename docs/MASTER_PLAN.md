@@ -2,6 +2,36 @@
 
 이 프로젝트의 목적은 **AI와 함께 투자 방향을 찾는 것**이다. 운영 전제는 **직장인형 저빈도, K6/EOD 기준, 본업 우선**이며, 새 프로젝트는 Phase 1에서 검증된 자산 중 **독립 ML 모듈, OCI crontab 구조(daily_ops / spike_watch / holding_watch), Telegram 연동**만 살리고 나머지는 화이트리스트 기반으로 다시 시작한다. 성공 기준은 **친구의 긍정적 반응**, **4070s가 실제 ML 작업을 돌리는 상태**, **와이프가 이해할 수 있는 UI**이며, 1차 성과 판정은 **추천 ETF 평균 수익률**과 **같은 기간 KODEX 200 대비 초과 성과**로 본다. 친구 프로젝트 통째 이식, MongoDB 전환, 복잡도 증식은 범위 밖이다. :contentReference[oaicite:1]{index=1} :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
 
+## 모바일 판단 운영 순서 앵커 (2026-07-20, Mobile Decision Operating Boundary Amendment v1)
+
+`docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 를 canonical 참조로 등재한다. 다음 순서는 사용자가 명시적으로 변경하지 않는 한 재배열하지 않는다.
+
+```text
+1. Mobile Decision Cockpit v1                        (현재 활성)
+2. Low-Frequency Mobile Alert Operation v1
+3. First Real Decision Cycle v1
+4. Decision Outcome Ledger v1
+5. Universe · ML · factor · PC UI 품질 개선
+```
+
+동시에 명시한다:
+
+- 기존 `Approve / Reject` 는 사용자 투자 판단 언어와 **동일하지 않다** (승인/거절은 초안 파이프라인 상태 전이일 뿐이다).
+- 모바일 판단 언어 (매수 판단 / 매도 판단 / 관망 / 추가 확인 필요) + 정보 품질 평가 (판단에 도움 됨 / 안 됨) 는 후속 Step 에서 별도 확정.
+- 정보 PUSH (Market · Holdings · Spike · OCI publication) 는 매 발송 승인 없이 운영.
+- 실제 투자 행동 (매수 · 매도 · 비중 변경 · 종목 교체 · 주문 실행) 은 사용자 최종 결정.
+- 모바일 판단 경로 (Mobile Decision Cockpit v1) PASS 전에 scheduler 활성화를 먼저 진행하지 않는다.
+- 기존 1~6단계 체계 자체는 변경되지 않으며, 본 앵커의 5개 Step 순서는 그 안에서 "무엇을 먼저 구현할지" 를 확정한 것이다.
+
+문서 간 충돌이 있으면 해석 우선순위:
+
+1. 최신 사용자 결정
+2. 본 앵커 (MASTER_PLAN 상단)
+3. STATE_LATEST
+4. 최신 handoff
+5. BACKLOG 재검토 트리거
+6. 과거 conclusion · 이전 분기 후보
+
 ## 인간 승인 게이트 위치 정정 (2026-07-19, Holdings–Market PENDING Judgment Draft v1)
 
 이전 2단계 "인간 최종 승인 게이트" 는 **정보 PUSH 앞** 이 아니라 **PENDING 투자 판단 초안 ↔ 실제 투자 행동** 사이에 둔다.
@@ -116,7 +146,7 @@ Phase 1에서 살려온 독립 ML 자산을 새 구조에 연결하고, 첫 fact
     유지).
   - PC ML 이 OCI DB 를 직접 원격으로 읽는 구조.
   - PC SQLite 즉시 폐기.
-  - 모바일 UI 구체 구현 (모바일 UI 후순위 원칙 유지 — PROJECT_ORIGIN_INTENT §7).
+  - 모바일 UI 구체 구현 (본 6단계 범위에서는 다루지 않는다 — 모바일 판단 진입 조건과 순서는 상단 "모바일 판단 운영 순서 앵커 (2026-07-20)" 섹션 및 `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 로 이관되어 별도 관리한다).
 - 완료 기준: **PC 승인 / 발행 시점에 OCI 로 read-only published snapshot 이
   전달되고, OCI 측에서 마지막 published 데이터 + 운영 상태 + 기준 시각 + 데이터
   신선도를 read-only 로 조회할 수 있다.**

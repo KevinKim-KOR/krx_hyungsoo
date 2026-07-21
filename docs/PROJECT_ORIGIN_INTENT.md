@@ -124,10 +124,20 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
     published snapshot 을 전달한다 (구체 형식은 OCI 조회 메뉴 구현 직전 결정).
 - **2주 미갱신 알림**: 어떤 산출물이든 2주 이상 갱신되지 않으면 사용자에게 알림.
   운영 단절이 길어졌음을 인지하기 위한 가드.
-- **모바일 UI 후순위 — 유지** (2026-06-20 재확인): OCI 가 외부 / 모바일 조회
-  평면으로 확장된다는 장기 방향에도 불구하고, 현재 단계의 모바일 UI 후순위
-  원칙은 그대로 유지된다. 모바일 UI 는 PC 작업 1~7단계 + OCI 작업 8~11단계가
-  충분히 검증된 뒤 12단계에서 다룬다. 현재 단계의 작업 대상 아님.
+- **모바일 UI 트리거 기반 진입** (2026-07-20 정정, Mobile Decision Operating
+  Boundary Amendment v1): 이전 "무조건 12단계" 문구를 트리거 기반 원칙으로
+  정정. 모바일 UI 는 PC 판단 초안과 OCI 운영 기반이 확보되기 전에는 진행하지
+  않는다. 다음 트리거가 모두 충족된 이후에만 모바일 Step 을 활성화한다.
+  - 실제 PENDING 판단 초안 생성 (Holdings–Market PENDING Judgment Draft v1 · DONE 2026-07-20)
+  - PC 판단 사유 화면 검증 (RunPanel · 재실측 완료)
+  - OCI evidence publication (Holdings · Universe Momentum · Market Discovery)
+  - Telegram 3-PUSH 실제 발송 (Market · Holdings · Spike Controlled Send 각 DONE)
+  - PC 중심 사용만으로 반복 판단이 발생하기 어렵다는 운영 근거 확인 (2026-07-20 사용자 확정)
+
+  현재 상태에서 위 트리거가 모두 충족됐으므로 `Mobile Decision Cockpit v1`
+  Step 진입 조건이 충족됐다. 이는 "모바일 우선 개발" 을 일반 원칙으로 바꾸는
+  것이 아니라, 본 프로젝트의 현재 상태에서 트리거가 충족됐음을 기록하는
+  것이다. 상세: `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
 - **K6/EOD 기준**: 장중 실시간 반응 아님.
 - **본업 우선**: 본업 지장 없는 수준에서만 운영.
 

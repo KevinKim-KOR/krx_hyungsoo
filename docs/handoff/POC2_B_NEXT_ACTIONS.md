@@ -1,12 +1,39 @@
 # POC2 B 방향 — 다음 액션 (NEXT ACTIONS)
 
-작성일: 2026-05-20 / 갱신: 2026-07-20 (Holdings–Market PENDING Judgment Draft v1 — **DONE · PASS · REJECTED r1 → r4 정정 · 재실측 완료 · 998 passed / 0 failed / 0 deselected**)
+작성일: 2026-05-20 / 갱신: 2026-07-20 (Mobile Decision Operating Boundary Amendment v1 — **DONE · PASS · 문서 정합성 고정 · next_step_gate = MOBILE_DECISION_COCKPIT_V1**)
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
+> **⚠ 문서 우선순위 (2026-07-20 사용자 확정)**: 본 문서 §0 이하의 과거 분기 후보 · 임의 다음 STEP 후보보다 **`docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`** 의 잠금된 순서 (Mobile Decision Cockpit v1 → Low-Frequency Mobile Alert Operation v1 → First Real Decision Cycle v1 → Decision Outcome Ledger v1 → 판단 품질 개선) 가 우선한다. 상세 우선순위 규칙은 MASTER_PLAN "모바일 판단 운영 순서 앵커" 섹션 참조.
+
 ---
 
-## 0. 직전 STEP 결과 (Holdings–Market PENDING Judgment Draft v1, DONE · PASS 2026-07-20, revision `152ab949` + closeout commit)
+## 0. 직전 STEP 결과 (Mobile Decision Operating Boundary Amendment v1, DONE · PASS 2026-07-20, 문서 정합성 고정 STEP)
+
+**성격**: 문서 정합성 고정. 기능·코드·DB·scheduler 변경 없음.
+
+**목적**: 신규 앵커 `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (사용자 확정, 2026-07-20) 를 canonical 문서에 반영하고 기존 두 충돌 해소:
+- 모바일 UI 무조건 후순위 원칙 → 트리거 기반 원칙 (현재 트리거 충족 확인)
+- OCI 순수 read-only 원칙 → read-mostly (published evidence read-only + 사용자 투자 판단 기록 제한적 write 허용, 주문/Holdings/시장 데이터 변경 금지)
+
+**잠금된 후속 순서 (canonical)**:
+1. Mobile Decision Cockpit v1                        (현재 활성)
+2. Low-Frequency Mobile Alert Operation v1
+3. First Real Decision Cycle v1
+4. Decision Outcome Ledger v1
+5. Universe · ML · factor · PC UI 품질 개선
+
+**문서 정정 (10 파일)**: 앵커 §5.1 · PROJECT_ORIGIN_INTENT · ASSUMPTIONS · MASTER_PLAN · PC_OCI_ARCHITECTURE_DIRECTION · STATE_LATEST × 2 (canonical + handoff pointer) · POC2_B_NEXT_ACTIONS (본 문서) · BACKLOG · KILL_SWITCHES.
+
+**KS-11 기록**: 순서 변경 근거 (PC PENDING 초안 완료 · OCI publication + Telegram 실제 발송 완료 · PC 단독 반복 판단 어려움 · 판단 원장/성과 평가 진입 위해 모바일 경로 필수) 를 KILL_SWITCHES 에 근거로 기록. **KS-11 자체는 변경/약화하지 않음**.
+
+**AC-1~AC-7 전 항목 충족**. §6 금지사항 전 항목 준수. 코드·회귀 없음 (지시문 §7).
+
+**next_step_gate**: `MOBILE_DECISION_COCKPIT_V1`. 설계자 지시 대기.
+
+---
+
+## 0-prior. 직전 STEP 결과 (Holdings–Market PENDING Judgment Draft v1, DONE · PASS 2026-07-20, revision `152ab949` + closeout commit)
 
 **목적**: 기존 evidence · 기존 GenerateDraft · 기존 화면 연결 → 실제 PENDING 초안 1건 생성·확인. 신규 알고리즘 없음. r1~r4 정정 과정에서 사용자 화면 내부 기술키 노출 제거를 위한 최소 코드/test 수정 발생.
 

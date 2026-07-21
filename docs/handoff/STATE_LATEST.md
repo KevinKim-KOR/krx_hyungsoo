@@ -5,8 +5,9 @@ Past archive: [STATE_LATEST_ARCHIVE.md](STATE_LATEST_ARCHIVE.md)
 
 This file is non-canonical. Do not append step details here.
 
-최종 갱신: 2026-07-20 (Holdings–Market PENDING Judgment Draft v1 — DONE · PASS · REJECTED r1 → r4 정정 · 재실측 완료).
-직전 STEP conclusion: [POC2_HOLDINGS_MARKET_PENDING_JUDGMENT_DRAFT_V1_CONCLUSION.md](POC2_HOLDINGS_MARKET_PENDING_JUDGMENT_DRAFT_V1_CONCLUSION.md).
+최종 갱신: 2026-07-20 (Mobile Decision Operating Boundary Amendment v1 — DONE · PASS · 문서 정합성 고정 · next_step_gate = MOBILE_DECISION_COCKPIT_V1).
+직전 STEP: Holdings–Market PENDING Judgment Draft v1 (DONE · PASS 2026-07-20).
+canonical 순서 앵커: [POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md](POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md).
 
 ---
 

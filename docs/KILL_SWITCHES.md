@@ -94,6 +94,23 @@
 - 조치: 결정 변경 시 새 데이터/근거를 ASSUMPTIONS 또는 PROJECT_ORIGIN_INTENT에 기록 후 변경
 - 적용 대상: 운영 빈도, 발굴 단위, 점수체계 기준 등 시스템 방향 결정
 
+#### KS-11 변경 근거 기록 (2026-07-20, Mobile Decision Operating Boundary Amendment v1)
+
+**KS-11 자체는 변경/약화하지 않는다.** 다음은 "모바일 UI 무조건 후순위" → "트리거 기반 진입 (트리거 충족 시 활성화)" 로 순서를 변경한 근거를 KS-11 조치 (새 데이터/근거 기록 후 변경) 에 부합하도록 남기는 기록이다.
+
+**변경 근거**:
+- PC 에서 실제 PENDING 초안 생성과 화면 확인 완료 (Holdings–Market PENDING Judgment Draft v1, DONE 2026-07-20)
+- OCI publication 완료 (Holdings Evidence · Universe Momentum Evidence · Market Discovery)
+- Telegram 3-PUSH 실제 발송 완료 (Market · Holdings · Spike Controlled Send v1, 각 DONE 2026-07-18~19)
+- 사용자가 PC 에 주기적으로 접근하기 어려워 판단 기록이 발생하지 않는 운영 문제 확인 (2026-07-20 사용자 확정)
+- 모바일 판단 경로 없이는 판단 원장과 성과 평가도 시작할 수 없음 (canonical 순서 Step 4 Decision Outcome Ledger 진입 조건)
+
+**기록 위치**:
+- `docs/PROJECT_ORIGIN_INTENT.md` §운영 원칙 (모바일 UI 후순위 → 트리거 기반)
+- `docs/ASSUMPTIONS.md` §5.1 (제품 평면별 역할 · 최소 사용자 개입 원칙)
+- `docs/MASTER_PLAN.md` (모바일 판단 운영 순서 앵커 섹션)
+- `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (canonical 앵커)
+
 ---
 
 ## 4. 이식 금지 (Phase 1 교훈)

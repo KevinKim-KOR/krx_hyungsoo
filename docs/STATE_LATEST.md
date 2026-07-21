@@ -1,5 +1,47 @@
 # STATE_LATEST
 
+최종 업데이트: 2026-07-20 (Mobile Decision Operating Boundary Amendment v1 — **DONE · PASS · 문서 정합성 고정 · next_step_gate = MOBILE_DECISION_COCKPIT_V1**)
+
+## 이번 STEP 요약 (Mobile Decision Operating Boundary Amendment v1, DONE · PASS)
+
+**성격**: 문서 정합성 고정 STEP. 기능·코드·DB·scheduler 변경 없음. 신규 앵커 `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (사용자 확정, 2026-07-20) 를 기존 canonical 문서에 반영하고 다음 두 충돌을 해소:
+
+- 모바일 UI 무조건 후순위 원칙 → 트리거 기반 원칙 (트리거 충족 시 진입 가능)
+- OCI 순수 read-only 원칙 → read-mostly (published evidence read-only + 사용자 투자 판단 기록만 제한적 write 허용, 주문/Holdings/시장 데이터 변경 금지)
+
+**잠금된 후속 순서 (canonical)**:
+```
+1. Mobile Decision Cockpit v1                        (현재 활성)
+2. Low-Frequency Mobile Alert Operation v1
+3. First Real Decision Cycle v1
+4. Decision Outcome Ledger v1
+5. Universe · ML · factor · PC UI 품질 개선
+```
+
+**문서 정정 (10 파일)**:
+- `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (신규 · §5.1 OCI 경계 보완)
+- `docs/PROJECT_ORIGIN_INTENT.md` (모바일 후순위 → 트리거 기반)
+- `docs/ASSUMPTIONS.md` (§5.1 제품 평면별 역할 · 최소 사용자 개입 원칙)
+- `docs/MASTER_PLAN.md` (모바일 판단 운영 순서 앵커 섹션 신설)
+- `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` (OCI 경계 정정)
+- `docs/STATE_LATEST.md` · `docs/handoff/STATE_LATEST.md` · `docs/handoff/POC2_B_NEXT_ACTIONS.md` (상태/pointer/§0 반영)
+- `docs/backlog/BACKLOG.md` (5개 항목 상태/트리거 정정)
+- `docs/KILL_SWITCHES.md` (KS-11 변경 근거 기록, KS 자체 미변경)
+
+**KS-11 기록**: 순서 변경 근거 (실제 PENDING 초안 생성 완료 · OCI publication + Telegram 실제 발송 완료 · PC 단독으로는 반복 판단 발생 어려움 · 모바일 판단 경로 없이는 판단 원장/성과 평가 불가) 를 KILL_SWITCHES 에 근거로 기록. **KS-11 자체는 변경/약화하지 않음**.
+
+**AC-1~AC-7 전 항목 충족**. §6 금지사항 전 항목 준수 (모바일 UI 미구현 · 판단 저장 API 미구현 · 신규 DB 없음 · scheduler 미변경 · PC UI 미수정 · KS-11 미변경 등).
+
+**Regression / 테스트**: 코드·frontend 변경 없음 → 지시문 §7 에 따라 회귀 미수행. 문서 정합성 7항 자체 검증 통과.
+
+**next_step_gate**: `MOBILE_DECISION_COCKPIT_V1`. 설계자 지시 대기.
+
+상세: `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
+
+---
+
+## 이전 STEP 요약 (Holdings–Market PENDING Judgment Draft v1 — **DONE · PASS · REJECTED r1 → r4 정정 · 재실측 완료**)
+
 최종 업데이트: 2026-07-20 (Holdings–Market PENDING Judgment Draft v1 — **DONE · PASS · REJECTED r1 → r4 정정 · 재실측 완료**)
 
 ## 이번 STEP 요약 (Holdings–Market PENDING Judgment Draft v1, DONE · PASS)
