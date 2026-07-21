@@ -1,8 +1,33 @@
 # POC2 Mobile Decision Operating Sequence Anchor
 
+> ## ⚠ SUPERSEDED (2026-07-22, Mobile Decision Cockpit v1 Deferred)
+>
+> 본 앵커의 잠금된 순서 (Mobile Decision Cockpit v1 → Low-Frequency Mobile Alert Operation v1 → First Real Decision Cycle v1 → Decision Outcome Ledger v1 → 품질 개선) 는 **최신 사용자 결정으로 superseded 됨**.
+>
+> **사유**:
+> 모바일 기능 자체보다 OCI Web 배포 · 인증 · 보안 경계 범위가 커져 PC 본체 완성을 지연시킬 위험이 확인됨.
+>
+> **최신 결정**:
+> Telegram PUSH 만으로 우선 운영하고, PC 완성 후 Telegram Cockpit 부터 재검토.
+>
+> **현재 canonical 순서**:
+> 1. Low-Frequency Telegram Push Operation v1
+> 2. First Real Decision Cycle v1
+> 3. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
+> 4. Decision Outcome Ledger v1
+> 5. Universe · ML · factor · PC UI 품질 개선
+>
+> **모바일 상태**: `DEFERRED_BY_USER`. 재개 트리거 4개 (PC 흐름 완성 · Telegram 저빈도 운영 안정화 · 모바일 부재가 다시 운영 차단 사유 · 사용자 명시 재개 결정) 모두 충족 시에만 Telegram Cockpit 부터 재검토.
+>
+> **본 문서는 이력 · 재개 시 참조용** 으로 유지. 삭제하지 않음.
+>
+> 상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
+
+---
+
 작성일: 2026-07-20  
-성격: 사용자 확정 운영 순서 및 재설계 방지 앵커  
-적용 범위: MASTER_PLAN / STATE_LATEST / handoff / BACKLOG / 후속 Step 설계
+성격: 사용자 확정 운영 순서 및 재설계 방지 앵커 (2026-07-22 SUPERSEDED)  
+적용 범위: MASTER_PLAN / STATE_LATEST / handoff / BACKLOG / 후속 Step 설계 (SUPERSEDED)
 
 ## 1. 확정된 제품 역할
 

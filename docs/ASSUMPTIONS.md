@@ -232,10 +232,11 @@ Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2_MOBILE_DECISION_OP
   - PENDING 초안 생성
   - 과거 판단 복기
 
-- **Mobile (Decision Cockpit)**:
-  - 핵심 evidence 확인
-  - 필요 시 상세 evidence 조회
-  - 투자 판단 기록
+- **Mobile (2026-07-22 정정, Mobile Decision Cockpit v1 Deferred)**:
+  - 현재 운영 상태: **`TELEGRAM_PUSH_ONLY`** (Telegram Market/Holdings/Spike 정보 PUSH 수신만).
+  - 모바일 Web · Decision Cockpit · 판단 write · Deep link 는 **미구현 · DEFERRED_BY_USER**.
+  - 재개 트리거 4개 (PC 판단 흐름 완성 · Telegram 저빈도 운영 안정화 · 모바일 부재가 다시 운영 차단 사유 · 사용자 명시 재개 결정) 모두 충족 시에만 **Telegram Cockpit** (Web 아님) 부터 재검토.
+  - 상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
 
 - **OCI (운영 · 조회 평면)**:
   - 상시 운영 · 조회

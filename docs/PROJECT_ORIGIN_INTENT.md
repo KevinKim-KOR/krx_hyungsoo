@@ -124,20 +124,26 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
     published snapshot 을 전달한다 (구체 형식은 OCI 조회 메뉴 구현 직전 결정).
 - **2주 미갱신 알림**: 어떤 산출물이든 2주 이상 갱신되지 않으면 사용자에게 알림.
   운영 단절이 길어졌음을 인지하기 위한 가드.
-- **모바일 UI 트리거 기반 진입** (2026-07-20 정정, Mobile Decision Operating
-  Boundary Amendment v1): 이전 "무조건 12단계" 문구를 트리거 기반 원칙으로
-  정정. 모바일 UI 는 PC 판단 초안과 OCI 운영 기반이 확보되기 전에는 진행하지
-  않는다. 다음 트리거가 모두 충족된 이후에만 모바일 Step 을 활성화한다.
-  - 실제 PENDING 판단 초안 생성 (Holdings–Market PENDING Judgment Draft v1 · DONE 2026-07-20)
-  - PC 판단 사유 화면 검증 (RunPanel · 재실측 완료)
-  - OCI evidence publication (Holdings · Universe Momentum · Market Discovery)
-  - Telegram 3-PUSH 실제 발송 (Market · Holdings · Spike Controlled Send 각 DONE)
-  - PC 중심 사용만으로 반복 판단이 발생하기 어렵다는 운영 근거 확인 (2026-07-20 사용자 확정)
+- **모바일 UI DEFERRED_BY_USER** (2026-07-22 정정, Mobile Decision Cockpit v1
+  Deferred): 이전 (2026-07-20) "트리거 기반 진입 · 트리거 충족 확인" 판단은
+  **최신 사용자 결정으로 보류**. Unit 0 조사에서 확인된 사실:
+  - 모바일 Web 을 착수하면 OCI Web 배포 · 인증 · 보안 접근 경로 · 제한된
+    판단 write · PC/모바일 공통 판단 저장 · Deep link · 보안 검증 범위가
+    동시에 필요해짐
+  - PC 판단 흐름이 충분히 완성되지 않은 상태에서 위 범위를 진행하면 프로젝트
+    본체가 모바일 인프라 · 보안 작업에 다시 묶일 위험
 
-  현재 상태에서 위 트리거가 모두 충족됐으므로 `Mobile Decision Cockpit v1`
-  Step 진입 조건이 충족됐다. 이는 "모바일 우선 개발" 을 일반 원칙으로 바꾸는
-  것이 아니라, 본 프로젝트의 현재 상태에서 트리거가 충족됐음을 기록하는
-  것이다. 상세: `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
+  현재 결정: **Telegram PUSH 만으로 우선 운영**하고, PC 흐름 완성 후
+  **Telegram Cockpit** (모바일 Web 아님) 부터 재검토.
+
+  **재개 트리거 (4개 모두 충족 시에만)**:
+  1. PC 판단 흐름이 충분히 완성됐다고 사용자가 판단
+  2. Telegram 저빈도 운영이 실제 스케줄로 안정적으로 동작
+  3. 모바일 부재가 실제 운영의 차단 사유로 다시 확인
+  4. 사용자가 Telegram Cockpit 재개를 명시적으로 결정
+
+  트리거 전에는 모바일 Web · Telegram 판단 버튼 · 모바일 판단 저장을 다시
+  신규 Step 으로 제안하지 않는다. 상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
 - **K6/EOD 기준**: 장중 실시간 반응 아님.
 - **본업 우선**: 본업 지장 없는 수준에서만 운영.
 

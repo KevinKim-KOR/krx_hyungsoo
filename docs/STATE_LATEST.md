@@ -1,6 +1,64 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-20 (Mobile Decision Operating Boundary Amendment v1 — **DONE · PASS · 문서 정합성 고정 · next_step_gate = MOBILE_DECISION_COCKPIT_V1**)
+최종 업데이트: 2026-07-22 (Mobile Decision Cockpit v1 — **DEFERRED_BY_USER · Unit 0 조사 완료 · Unit 1~3 미착수 · next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1**)
+
+## 이번 STEP 요약 (Mobile Decision Cockpit v1, DEFERRED_BY_USER)
+
+**상태**:
+```text
+mobile_decision_cockpit = DEFERRED_BY_USER
+mobile_unit_0_research = DONE
+mobile_feature_implemented = false
+current_operation_mode = TELEGRAM_PUSH_ONLY
+mobile_reentry_candidate = TELEGRAM_COCKPIT
+next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
+```
+
+**성격**: FAIL 이 아니라 사용자 운영 판단에 따른 의도적 보류. 기능·코드·DB·Frontend·Scheduler 변경 없음.
+
+**Unit 0 조사 완료** (핵심):
+- FastAPI 인증·권한 미들웨어 없음 (CORSMiddleware localhost:3000 만)
+- Approve → SCP OCI outbox 실제 트리거. 판단 저장으로 자동 매핑 금지
+- PENDING evidence 는 `run_id` 자체가 immutable snapshot (draft_payload 9 keys + recommendations 35 + factor_signals 6)
+- DIRECT_LOOKUP evidence 는 재개 시 최소 immutable snapshot 필요 (asof/refresh_id 참조만으로는 부족)
+- 판단 기록 저장 후보: `state/user_decisions/{decision_id}.json` (신규 DB 아닌 기존 JSON state 패턴 확장) — 구현 안 함
+- 모바일 Web 보안 후보: Tailscale Serve · Cloudflare Tunnel · 공개 HTTPS+Basic Auth 는 후순위 — 채택 안 함
+
+**보류 결정 사유**: 모바일 Web 을 착수하면 OCI Web 배포 + 인증 + 보안 접근 + 제한 판단 write + PC/모바일 공통 저장 + Deep link + 보안 검증 범위가 동시에 필요. PC 판단 흐름이 충분히 완성되지 않은 상태에서 이 범위를 진행하면 프로젝트 본체가 모바일 인프라·보안 작업에 다시 묶일 위험.
+
+**재개 트리거 (4개 모두 충족 시에만)**: PC 판단 흐름 완성 · Telegram 저빈도 운영 안정화 · 모바일 부재가 다시 운영 차단 사유 · 사용자 명시 재개 결정. 재개 시 첫 후보는 **Telegram Cockpit** (모바일 Web 아님).
+
+**canonical 순서 변경** (2026-07-20 앵커 SUPERSEDED, 2026-07-22 확정):
+```text
+1. Low-Frequency Telegram Push Operation v1          (현재 활성)
+2. First Real Decision Cycle v1
+3. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
+4. Decision Outcome Ledger v1
+5. Universe · ML · factor · PC UI 품질 개선
+
+모바일: DEFERRED_BY_USER
+```
+
+**문서 정정 (9 파일)**:
+- `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md` (신규, 사용자 추가)
+- `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (SUPERSEDED 표기, 삭제 안 함)
+- `docs/MASTER_PLAN.md` (Telegram 저빈도 운영 우선 앵커 신설, 이전 모바일 앵커 SUPERSEDED)
+- `docs/PROJECT_ORIGIN_INTENT.md` (모바일 UI 트리거 기반 → DEFERRED_BY_USER 정정)
+- `docs/ASSUMPTIONS.md` (Mobile 항목 TELEGRAM_PUSH_ONLY 정정)
+- `docs/STATE_LATEST.md` (본 문서)
+- `docs/handoff/STATE_LATEST.md` (pointer)
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (§0 + canonical 순서 변경)
+- `docs/backlog/BACKLOG.md` (모바일 항목 5건 재검토 트리거 정정)
+
+**next_step_gate**: `LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1`. 설계자 지시 대기.
+
+상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (Mobile Decision Operating Boundary Amendment v1 — **DONE · PASS · 문서 정합성 고정 · next_step_gate = MOBILE_DECISION_COCKPIT_V1**)
+
+최종 업데이트: 2026-07-20 (Mobile Decision Operating Boundary Amendment v1 — **DONE · PASS · 문서 정합성 고정 · next_step_gate = MOBILE_DECISION_COCKPIT_V1**) ← 이후 2026-07-22 Mobile Deferred 로 gate 재변경
 
 ## 이번 STEP 요약 (Mobile Decision Operating Boundary Amendment v1, DONE · PASS)
 

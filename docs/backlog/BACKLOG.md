@@ -453,11 +453,16 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **항목**: 모바일 최적화 (compact table / 터치 UX)
-- **상태 (2026-07-20 정정, Mobile Decision Operating Boundary Amendment v1)**: **BACKLOG 유지 → 현재 활성 Step `Mobile Decision Cockpit v1` 범위로 승격**. PROJECT_ORIGIN_INTENT 모바일 UI 트리거가 충족되어 canonical 순서 1번 Step 으로 진입.
+- **상태 (2026-07-22 재정정, Mobile Decision Cockpit v1 Deferred)**: **BACKLOG 유지 · DEFERRED_BY_USER**. 2026-07-20 승격 결정은 최신 사용자 결정으로 보류. 재개 시 첫 후보는 **Telegram Cockpit** (모바일 Web 아님).
 - 원 보류 사유 (이력): 현재 PC 데스크톱 중심. PROJECT_ORIGIN_INTENT "모바일 UI 후순위" 원칙 유지.
 - 원 보류된 위험 (이력): 와이프 / 친구 공유 시 모바일 가독성 저하.
-- 원 재검토 트리거 (이력): OCI 외부·모바일 조회 메뉴 진입 STEP 시.
-- 승격 근거: `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
+- 재검토 트리거 (2026-07-22 정정): 다음 4개 모두 충족 시 · 사용자 명시 재개 결정 시에만.
+  1. PC 판단 흐름 완성
+  2. Telegram 저빈도 운영 안정화
+  3. 모바일 부재가 다시 실제 운영 차단 사유
+  4. 사용자 명시 재개 결정
+- 상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
+- 이전 앵커 (SUPERSEDED): `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
 
 ---
 
@@ -698,11 +703,11 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **항목**: 와이프 UI 이해도 검증
-- **상태 (2026-07-20 정정, Mobile Decision Operating Boundary Amendment v1)**: **BACKLOG 유지 → `Mobile Decision Cockpit v1` AC 로 승격**.
+- **상태 (2026-07-22 재정정, Mobile Decision Cockpit v1 Deferred)**: **BACKLOG 유지 · DEFERRED_BY_USER**. 2026-07-20 AC 승격은 Mobile Deferred 로 함께 보류.
 - 원 보류 사유 (이력): 장기 성공 기준. 현재 모바일 UI 후순위 원칙 유지.
 - 원 보류된 위험 (이력): 장기 성공 기준 검증 지연.
-- 원 재검토 트리거 (이력): 와이프 / 친구 공유 STEP 진입 시.
-- 승격 근거: `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
+- 재검토 트리거 (2026-07-22 정정): Mobile Cockpit 재개 시 (모바일 최적화 항목과 동일 트리거).
+- 상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
 
 ---
 
@@ -764,20 +769,20 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **항목**: 저빈도 scheduler 운영 (Market/Holdings/Spike PUSH 정기 발송 실운영)
-- **상태 (2026-07-20 정정)**: BACKLOG 유지. **`Mobile Decision Cockpit v1` PASS 후 활성화** (canonical Step 2 = Low-Frequency Mobile Alert Operation v1).
-- **보류 사유**: 모바일 판단 경로 검증 전에 scheduler 를 먼저 활성화하지 않는다는 순서 잠금 규칙 (앵커 §6).
-- **재검토 트리거**: Mobile Decision Cockpit v1 PASS.
+- **상태 (2026-07-22 재정정, Mobile Deferred)**: **현재 canonical Step 1 (`Low-Frequency Telegram Push Operation v1`) 로 승격 · 활성화 대기**. 2026-07-20 "Mobile 뒤 활성화" 결정은 Mobile Deferred 로 재정정 · Mobile 없이 먼저 진행.
+- 원 보류 사유 (이력): 모바일 판단 경로 검증 전에 scheduler 먼저 활성화 안 함.
+- 재검토 트리거 (2026-07-22 정정): 현재 활성 (설계자 지시 대기).
 
 ---
 
 - **항목**: 판단 성과 원장 (Decision Outcome Ledger — 판단 당시 가격/evidence snapshot + 1주·1개월 성과 연결)
-- **상태 (2026-07-20 정정)**: BACKLOG 유지. **`First Real Decision Cycle v1` PASS 후 활성화** (canonical Step 4 = Decision Outcome Ledger v1).
-- **보류 사유**: 실제 사용자 판단 1건 기록이 발생하기 전에 원장을 먼저 만들지 않는다는 순서 잠금 규칙 (앵커 §6).
-- **재검토 트리거**: First Real Decision Cycle v1 PASS (실제 판단 1건 기록).
+- **상태 (2026-07-22 재정정, Mobile Deferred)**: BACKLOG 유지. **canonical Step 4 (`Decision Outcome Ledger v1`) · `First Real Decision Cycle v1` PASS 후 활성화** (canonical Step 2 완료 조건 · 순서 자체 유지).
+- 보류 사유: 실제 사용자 판단 1건 기록이 발생하기 전에 원장 먼저 만들지 않음.
+- 재검토 트리거: First Real Decision Cycle v1 PASS (실제 판단 1건 기록).
 
 ---
 
 - **항목**: Universe · ML · factor · PC UI 품질 개선 (Universe 후보 품질 · ML/백테스트 고도화 · factor/threshold 재검토 · PC UI 에 모바일 디자인 언어 역적용)
-- **상태 (2026-07-20 정정)**: BACKLOG 유지. **실제 판단 사이클 완료 및 결과 데이터 확보 후 재검토** (canonical Step 5).
-- **보류 사유**: 실제 판단 사이클 전에 Universe/ML/factor 고도화로 회귀하지 않는다는 순서 잠금 규칙 (앵커 §6).
-- **재검토 트리거**: 실제 판단 기록이 누적되어 개선 근거가 생김 (Decision Outcome Ledger v1 이후).
+- **상태 (2026-07-22 재정정, Mobile Deferred)**: BACKLOG 유지. **canonical Step 5 · Decision Outcome Ledger v1 이후 활성화** (순서 자체 유지). PC UI 모바일 디자인 언어 역적용 부분은 Mobile Deferred 로 후순위 강화.
+- 보류 사유: 실제 판단 사이클 전에 Universe/ML/factor 고도화로 회귀하지 않음.
+- 재검토 트리거: 실제 판단 기록이 누적되어 개선 근거가 생김 (Decision Outcome Ledger v1 이후).

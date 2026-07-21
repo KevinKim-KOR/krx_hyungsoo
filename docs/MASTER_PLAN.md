@@ -2,35 +2,51 @@
 
 이 프로젝트의 목적은 **AI와 함께 투자 방향을 찾는 것**이다. 운영 전제는 **직장인형 저빈도, K6/EOD 기준, 본업 우선**이며, 새 프로젝트는 Phase 1에서 검증된 자산 중 **독립 ML 모듈, OCI crontab 구조(daily_ops / spike_watch / holding_watch), Telegram 연동**만 살리고 나머지는 화이트리스트 기반으로 다시 시작한다. 성공 기준은 **친구의 긍정적 반응**, **4070s가 실제 ML 작업을 돌리는 상태**, **와이프가 이해할 수 있는 UI**이며, 1차 성과 판정은 **추천 ETF 평균 수익률**과 **같은 기간 KODEX 200 대비 초과 성과**로 본다. 친구 프로젝트 통째 이식, MongoDB 전환, 복잡도 증식은 범위 밖이다. :contentReference[oaicite:1]{index=1} :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
 
-## 모바일 판단 운영 순서 앵커 (2026-07-20, Mobile Decision Operating Boundary Amendment v1)
+## Telegram 저빈도 운영 우선 앵커 (2026-07-22, Mobile Decision Cockpit v1 Deferred)
 
-`docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 를 canonical 참조로 등재한다. 다음 순서는 사용자가 명시적으로 변경하지 않는 한 재배열하지 않는다.
+이전 "모바일 판단 운영 순서 앵커 (2026-07-20)" 는 **최신 사용자 결정으로 superseded**. 사유: 모바일 기능 자체보다 OCI Web 배포·인증·보안 경계 범위가 커져 PC 본체 완성을 지연시킬 위험 확인.
+
+### 현재 canonical 순서 (사용자 명시 변경 없는 한 재배열 금지)
 
 ```text
-1. Mobile Decision Cockpit v1                        (현재 활성)
-2. Low-Frequency Mobile Alert Operation v1
-3. First Real Decision Cycle v1
+1. Low-Frequency Telegram Push Operation v1          (현재 활성)
+2. First Real Decision Cycle v1
+3. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
 4. Decision Outcome Ledger v1
 5. Universe · ML · factor · PC UI 품질 개선
+
+모바일:
+DEFERRED_BY_USER
+→ PC 완성 후 Telegram Cockpit 부터 재검토
 ```
 
-동시에 명시한다:
+### 모바일 재개 트리거 (4개 모두 충족 시에만)
 
-- 기존 `Approve / Reject` 는 사용자 투자 판단 언어와 **동일하지 않다** (승인/거절은 초안 파이프라인 상태 전이일 뿐이다).
-- 모바일 판단 언어 (매수 판단 / 매도 판단 / 관망 / 추가 확인 필요) + 정보 품질 평가 (판단에 도움 됨 / 안 됨) 는 후속 Step 에서 별도 확정.
+1. PC 판단 흐름 (Holdings → evidence → PENDING 초안 → 사용자 판단·복기) 이 충분히 완성됐다고 사용자가 판단
+2. Telegram 저빈도 운영이 실제 스케줄로 안정적으로 동작
+3. 모바일 부재가 실제 운영의 차단 사유로 다시 확인
+4. 사용자가 Telegram Cockpit 재개를 명시적으로 결정
+
+트리거 전에는 모바일 Web · Telegram 판단 버튼 · 모바일 판단 저장을 다시 제안하지 않는다.
+
+### 유지되는 계약
+
+- 기존 `Approve / Reject` 는 사용자 투자 판단 언어와 **동일하지 않다** (승인/거절은 초안 파이프라인 상태 전이일 뿐).
 - 정보 PUSH (Market · Holdings · Spike · OCI publication) 는 매 발송 승인 없이 운영.
 - 실제 투자 행동 (매수 · 매도 · 비중 변경 · 종목 교체 · 주문 실행) 은 사용자 최종 결정.
-- 모바일 판단 경로 (Mobile Decision Cockpit v1) PASS 전에 scheduler 활성화를 먼저 진행하지 않는다.
 - 기존 1~6단계 체계 자체는 변경되지 않으며, 본 앵커의 5개 Step 순서는 그 안에서 "무엇을 먼저 구현할지" 를 확정한 것이다.
+- 모바일 재개 시 첫 후보는 **모바일 Web 이 아니라 Telegram Cockpit** (딥링크 · callback 기반).
 
-문서 간 충돌이 있으면 해석 우선순위:
+### 문서 간 충돌 해석 우선순위
 
-1. 최신 사용자 결정
+1. 최신 사용자 결정 (2026-07-22 Mobile Deferred)
 2. 본 앵커 (MASTER_PLAN 상단)
 3. STATE_LATEST
 4. 최신 handoff
 5. BACKLOG 재검토 트리거
-6. 과거 conclusion · 이전 분기 후보
+6. 과거 conclusion · 이전 분기 후보 (2026-07-20 Mobile Decision Operating Sequence Anchor 포함, SUPERSEDED)
+
+상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
 
 ## 인간 승인 게이트 위치 정정 (2026-07-19, Holdings–Market PENDING Judgment Draft v1)
 
