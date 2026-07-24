@@ -256,6 +256,57 @@ Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2_MOBILE_DECISION_OP
 
 정보 PUSH 자동 정책 · 인간 승인 게이트 위치 · 매수·매도 어휘 경계 상세: `docs/MASTER_PLAN.md` "인간 승인 게이트 위치 정정" 섹션 (2026-07-19 신설).
 
+## 5.2 Telegram PUSH 목적별 독립 운영 · 평가와 알림 구분 (2026-07-24, Telegram Push Operating Boundary Amendment v1)
+
+### 전역 일일 횟수 제한 제거
+
+이전 "일 3회 자동 PUSH" 전역 제한을 제거한다. PUSH 종류가 3개인 것과 전체 Telegram 알림을 하루 3회로 제한하는 것은 다르다. 각 PUSH 는 목적별 독립 운영 정책을 가진다.
+
+### PUSH 별 운영 정책
+
+| PUSH | 정책 | 발송 조건 |
+|---|---|---|
+| Market briefing | 평일 08:00 KST 1회 정기 | 정기 시각 |
+| Holdings briefing | 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감) | 각 슬롯 발송 · 동일 슬롯 재실행은 중복 차단 · 서로 다른 슬롯은 같은 날짜에도 발송 허용 |
+| Spike/Falling Alert | 조건 발생형 예외 알림 (고정 시각·횟수 없음) | 정해진 간격 조건 평가 → 신호 없음 미발송 · 동일 신호 지속 중복 미발송 · 신규 신호만 알림 |
+
+정확한 Holdings 슬롯 시각과 Spike 평가 간격은 다음 STEP (`Low-Frequency Telegram Push Operation v1`) 에서 확정.
+
+### 평가 실행 ↔ 사용자 알림 구분
+
+- **평가 실행**: 시스템이 데이터를 확인하고 조건을 계산하는 행위. Holdings 현재 평가 · Spike 조건 확인 · 데이터 최신성 확인.
+- **사용자 알림**: 평가 결과 중 사용자에게 전달할 필요가 있는 결과만 Telegram 발송.
+
+정상 사례: `Spike 평가 7회 · 신호 없음 · 알림 0회` · `Spike 평가 7회 · 신규 신호 1건 · 알림 1회`. 평가 실행 다수를 저빈도 위반으로 판정하지 않는다. 판정 기준은 **사용자에게 의미 없는 알림 반복 여부**.
+
+### 저빈도 운영 정의
+
+시스템 실행 횟수나 고정된 하루 메시지 수가 아니라 다음 의미로 고정:
+
+- 사용자가 시장을 계속 감시하지 않아도 필요한 정보를 받을 수 있음
+- 동일하거나 의미 없는 알림을 반복하지 않음
+- 사용자의 즉각적인 행동을 계속 요구하지 않음
+- 정보 PUSH 와 실제 투자 행동 분리
+- 자동 주문·리밸런싱 없음
+
+### PC · OCI 역할 경계
+
+- **PC**: Holdings 입력·관리 · 전략과 PARAM 작성 · Market Discovery · 후보 비교 · factor/threshold 결정 · 상세 evidence 생성 · PENDING 초안 · 사용자 판단·복기 · ML/백테스트
+- **OCI**: PC publish 된 PARAM/evidence 보관 · Telegram runner 실행 · 발송 registry · 중복 차단 · 실행 로그 · **제한적 런타임 가격 조회 (기존 승인된 시세 출처 · Holdings 평가 재계산 · Spike 조건 재평가 · active PARAM 적용 · as-of 기록)**
+
+OCI 계속 금지: 신규 전략 · 신규 후보 선정 · factor 추가 · threshold 변경 · 추천 알고리즘 변경 · ML 학습·튜닝 · Holdings 수정 · PARAM 생성/승격 · Market Discovery 구조 변경 · Published Evidence 임의 수정 · 자동 매수·매도 · 주문 실행.
+
+### Published Evidence ↔ Runtime Evidence
+
+- **Published Evidence** (PC 생성·승인·publish → OCI read-only): active PARAM · Market Discovery 후보 · Universe 후보 · ML baseline · PENDING 초안 snapshot · 분석 factor 결과. OCI 가 임의 수정 X.
+- **Runtime Evidence** (OCI 발송 시점 제한적 확인·계산): 현재 가격 · Holdings 현재 평가 · 발송 시점 수익률 · Spike 조건 결과 · 데이터 조회 상태 · as-of. Published Evidence 를 대체·덮어쓰지 않음.
+
+### 가격 조회 실패 시 원칙
+
+오래된 값을 최신값처럼 발송하지 않는다. 상태 구분: `sent · no_signal · duplicate · partial · failed`. 조회 실패를 `no_signal` 로 처리하지 않는다. Spike 최신 시세 확보 실패 시 조건 평가 실패 · `failed` · Telegram 미발송.
+
+상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
+
 ## 6. 마지막 원칙
 
 가정을 너무 빨리 사실로 승격시키면 실패 원인 추적이 흐려진다.

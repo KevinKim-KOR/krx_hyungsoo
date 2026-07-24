@@ -769,9 +769,10 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **항목**: 저빈도 scheduler 운영 (Market/Holdings/Spike PUSH 정기 발송 실운영)
-- **상태 (2026-07-22 재정정, Mobile Deferred)**: **현재 canonical Step 1 (`Low-Frequency Telegram Push Operation v1`) 로 승격 · 활성화 대기**. 2026-07-20 "Mobile 뒤 활성화" 결정은 Mobile Deferred 로 재정정 · Mobile 없이 먼저 진행.
-- 원 보류 사유 (이력): 모바일 판단 경로 검증 전에 scheduler 먼저 활성화 안 함.
-- 재검토 트리거 (2026-07-22 정정): 현재 활성 (설계자 지시 대기).
+- **상태 (2026-07-24 재정정, Telegram Push Operating Boundary Amendment v1)**: **canonical Step 2 (`Low-Frequency Telegram Push Operation v1`) 로 이동 · Step 1 (본 STEP · 문서 정정) PASS 후 활성화 대기**. Telegram 운영 계약은 이번 문서 STEP 에서 확정 (전역 일 3회 제거 · Market 평일 08:00 1회 · Holdings 3 슬롯 · Spike 조건 발생형 · OCI 제한적 런타임 가격 조회 허용).
+- 원 보류 사유 (이력): 모바일 판단 경로 검증 전에 scheduler 먼저 활성화 안 함. (Mobile Deferred 로 무효화.)
+- 재검토 트리거 (2026-07-24 정정): Step 1 문서 정정 PASS 후 즉시 활성 (설계자 지시 대기).
+- **다음 STEP 이관 항목**: Holdings 3 슬롯의 정확한 시각 · 슬롯별 중복 차단 · Spike 조건 평가 간격 · Spike signal fingerprint · OCI 기존 가격 조회 경로 실측 · 최종 crontab · 첫 자동 수신.
 
 ---
 

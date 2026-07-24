@@ -6,19 +6,32 @@
 
 이전 "모바일 판단 운영 순서 앵커 (2026-07-20)" 는 **최신 사용자 결정으로 superseded**. 사유: 모바일 기능 자체보다 OCI Web 배포·인증·보안 경계 범위가 커져 PC 본체 완성을 지연시킬 위험 확인.
 
-### 현재 canonical 순서 (사용자 명시 변경 없는 한 재배열 금지)
+### 현재 canonical 순서 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1 삽입)
 
 ```text
-1. Low-Frequency Telegram Push Operation v1          (현재 활성)
-2. First Real Decision Cycle v1
-3. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
-4. Decision Outcome Ledger v1
-5. Universe · ML · factor · PC UI 품질 개선
+1. Telegram Push Operating Boundary Amendment v1     (현재 활성 · 문서 정정 STEP)
+2. Low-Frequency Telegram Push Operation v1
+3. First Real Decision Cycle v1
+4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
+5. Decision Outcome Ledger v1
+6. Universe · ML · factor · PC UI 품질 개선
 
 모바일:
 DEFERRED_BY_USER
 → PC 완성 후 Telegram Cockpit 부터 재검토
 ```
+
+### Telegram PUSH 운영 경계 정정 (2026-07-24)
+
+- 전체 PUSH 의 전역 "일 3회" 제한 제거. 각 PUSH 는 목적별 독립 운영 정책.
+- Market briefing: 평일 08:00 KST 1회.
+- Holdings briefing: 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감). 정확한 시각은 다음 STEP.
+- Spike/Falling Alert: 조건 발생형 예외 알림. 고정 시각·횟수 없음.
+- 평가 실행 횟수 ↔ 사용자 알림 횟수 구분.
+- OCI 제한적 런타임 가격 조회 허용 (Published Evidence read-only 유지 · Runtime Evidence 별개).
+- 가격 조회 실패 시 stale 값 발송 금지.
+
+상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
 ### 모바일 재개 트리거 (4개 모두 충족 시에만)
 
@@ -66,20 +79,29 @@ PENDING 판단 초안 (GenerateDraft → PENDING_APPROVAL 저장)
   · 자동 매매는 금지 (KS-1).
 ```
 
-### 정보 PUSH 자동 정책
+### 정보 PUSH 자동 정책 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1)
 
 다음은 매 발송 전 사용자 승인을 요구하지 않는다:
 
-- Market briefing (평일 08:00 KST)
-- Holdings briefing (평일 12:30 KST)
-- Spike alert (평일 15:30 KST, no-signal 시 미발송)
-- OCI evidence · artifact publication (사용자 승인 하 controlled publication 완료 후 정기 발행)
+- **Market briefing**: 평일 08:00 KST 1회 정기 발송
+- **Holdings briefing**: 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감). 정확한 시각은 다음 STEP `Low-Frequency Telegram Push Operation v1` 에서 확정
+- **Spike/Falling Alert**: 고정 시각·횟수 없음. **조건 발생형 예외 알림** (정해진 간격 조건 평가 → 신호 없음/중복은 미발송 · 신규 신호만 알림). 평가 간격은 다음 STEP 에서 확정
+- **OCI evidence · artifact publication**: 사용자 승인 하 controlled publication 완료 후 정기 발행
 
-계약:
-- 중복 차단: `push_kind + param_id + runtime_date_kst` (KST 오늘) UNIQUE
-- 장문 자동 분할: Telegram 4096 자 초과 시 `_split_message_for_telegram` 순차 전송 · `(i/N)` header · `partial_delivery` boolean
-- no-signal 미발송: universe candidate=0 이면 sender 미호출
-- 실제 발송 이력: `state/three_push/oci_runtime_history.jsonl` · `runtime_sent_registry` DB
+**참고**: 2026-07-24 이전 문서에 기록된 "Holdings 12:30 KST 1회" · "Spike 15:30 KST 1회" 는 Holdings Controlled Send v1 · Spike Controlled Send v1 **실측 시점의 crontab 값** (2026-07-18 시점) 으로, 본 STEP 정정 이후는 canonical 이 아니다. 다음 STEP 에서 새 계약에 맞는 crontab 을 확정한다.
+
+**계약**:
+- **중복 차단**:
+  - Market: `push_kind + param_id + runtime_date_kst` (KST 오늘) UNIQUE — 하루 1회 조건
+  - Holdings: `push_kind + param_id + runtime_date_kst + slot_id` (slot_id 는 다음 STEP 에서 확정) — 같은 날짜에 서로 다른 슬롯 발송 허용 · 동일 슬롯 재실행은 차단
+  - **Spike**: 정확한 중복 키 계약은 본 STEP 에서 확정하지 않는다. 조건 발생형 알림 특성 (신호 없음/동일 신호 지속 미발송 · 신규 신호 발생 시 알림 · 고정 시각·횟수 없음) 을 보존하는 signal fingerprint 기반 계약을 다음 STEP `Low-Frequency Telegram Push Operation v1` 에서 확정 (기존 가격 조회 경로 · 데이터 source 호출 제약 · 실제 freshness · 처리시간 · 중복 차단 가능 여부 실측 후). 본 STEP 에서는 Spike 를 날짜당 1회로 제한하지 않는다
+- **장문 자동 분할**: Telegram 4096 자 초과 시 `_split_message_for_telegram` 순차 전송 · `(i/N)` header · `partial_delivery` boolean
+- **no-signal 미발송**: universe candidate=0 이면 sender 미호출 (Spike). Holdings 도 조회 실패 시 stale 값 발송 금지 (`sent/no_signal/duplicate/partial/failed` 상태 구분)
+- **평가 실행 ↔ 사용자 알림 구분**: 평가 다회 실행이라도 신호 없으면 알림 0 (Spike). 저빈도 위반 아님
+- **OCI 제한적 런타임 가격 조회**: Telegram 운영 최신성을 위해 허용 (기존 승인된 시세 출처 · Holdings 평가 재계산 · Spike 조건 재평가 · active PARAM 적용 · as-of 기록). Published Evidence read-only 유지 · Runtime Evidence 는 별개
+- **실제 발송 이력**: `state/three_push/oci_runtime_history.jsonl` · `runtime_sent_registry` DB
+
+상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
 ### 인간 승인 게이트 (PENDING → 투자 행동)
 

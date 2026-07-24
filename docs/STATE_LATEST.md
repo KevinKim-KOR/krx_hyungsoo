@@ -1,5 +1,77 @@
 # STATE_LATEST
 
+최종 업데이트: 2026-07-24 (Telegram Push Operating Boundary Amendment v1 — **DONE · PASS · 문서 정정 STEP · next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1**)
+
+## 이번 STEP 요약 (Telegram Push Operating Boundary Amendment v1, DONE · PASS)
+
+**성격**: 문서 정정 STEP. 코드·DB·Frontend·Scheduler·crontab 변경 없음. Telegram 발송 동작 변경 없음.
+
+**목적**: Telegram PUSH 운영 정책과 PC·OCI 역할 경계를 canonical 문서에 정합화. 기존 "일 3회 자동 PUSH" 전역 제한 표현이 PUSH 종류 3개와 하루 알림 3회 제한을 혼동하게 하는 문제 해소.
+
+**최종 운영 계약**:
+
+| 항목 | 정정 후 |
+|---|---|
+| 전역 일일 PUSH 횟수 제한 | **제거** |
+| Market briefing | 평일 08:00 KST 1회 정기 (유지) |
+| Holdings briefing | 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감) |
+| Spike/Falling Alert | 조건 발생형 예외 알림 (고정 시각·횟수 없음) |
+| 평가 실행 ↔ 사용자 알림 | 구분 (평가 다회 실행이라도 신호 없으면 알림 0) |
+| OCI 런타임 가격 조회 | 제한적 허용 (기존 승인된 시세 출처 · Holdings 평가 재계산 · Spike 조건 재평가 · active PARAM 적용 · as-of 기록) |
+| Published Evidence | read-only 유지 (OCI 임의 수정 X) |
+| Runtime Evidence | Published Evidence 대체·덮어쓰기 없음 |
+| 가격 조회 실패 | stale 값 발송 금지 · `sent/no_signal/duplicate/partial/failed` 구분 |
+| OCI 계속 금지 | 전략·factor·threshold·ML·Holdings·주문 변경 |
+
+**canonical 순서 (2026-07-24 정정, 이번 STEP 삽입)**:
+```text
+1. Telegram Push Operating Boundary Amendment v1     (현재 활성 · DONE)
+2. Low-Frequency Telegram Push Operation v1
+3. First Real Decision Cycle v1
+4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
+5. Decision Outcome Ledger v1
+6. Universe · ML · factor · PC UI 품질 개선
+
+모바일: DEFERRED_BY_USER
+```
+
+**상태 앵커**:
+```text
+current_step = TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1
+push_global_daily_count_limit = REMOVED
+market_briefing_policy = WEEKDAY_08_00
+holdings_briefing_slots_per_weekday = 3
+spike_alert_policy = CONDITION_TRIGGERED
+oci_runtime_price_refresh = LIMITED_ALLOWED
+mobile_operation_mode = TELEGRAM_PUSH_ONLY
+next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
+```
+
+**문서 정정 (9 파일)**:
+- 신규: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`
+- `docs/PROJECT_ORIGIN_INTENT.md` (일 3회 제거 · OCI 제한적 가격 조회)
+- `docs/ASSUMPTIONS.md` §5.2 신설 (PUSH 별 정책 · 평가/알림 구분 · PC/OCI 경계 · Published/Runtime Evidence · 실패 원칙)
+- `docs/MASTER_PLAN.md` (canonical 순서 이번 STEP 삽입 · Telegram 운영 경계 섹션)
+- `docs/KILL_SWITCHES.md` (KS-11 변경 근거 이력 추가 · KS 자체 미변경)
+- `docs/STATE_LATEST.md` (본 문서)
+- `docs/handoff/STATE_LATEST.md` (pointer)
+- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (문서 우선순위 · §0)
+- `docs/backlog/BACKLOG.md` (현재 활성 · 다음 STEP 이관 · 계속 보류 재분류)
+
+**KS-11 근거 기록**: 이번 순서 변경과 정책 정정은 KS-11 (의사결정 24시간 룰) 조치 (새 데이터/근거를 ASSUMPTIONS/PROJECT_ORIGIN_INTENT 에 기록 후 변경) 에 부합. KS-11 자체는 변경/약화 없음.
+
+**AC-1~AC-14 전 항목 충족**. §14 하지 않는 것 전 항목 준수 (코드·DB·Frontend·Scheduler·crontab·Telegram 발송 미변경).
+
+**Regression/테스트**: 코드 변경 없음 → §17 에 따라 회귀 미수행. 문서 정합성 9항 자체 검증 통과.
+
+**next_step_gate**: `LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1`. 설계자 지시 대기.
+
+상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (Mobile Decision Cockpit v1 — **DEFERRED_BY_USER · Unit 0 조사 완료 · Unit 1~3 미착수 · next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1**)
+
 최종 업데이트: 2026-07-22 (Mobile Decision Cockpit v1 — **DEFERRED_BY_USER · Unit 0 조사 완료 · Unit 1~3 미착수 · next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1**)
 
 ## 이번 STEP 요약 (Mobile Decision Cockpit v1, DEFERRED_BY_USER)

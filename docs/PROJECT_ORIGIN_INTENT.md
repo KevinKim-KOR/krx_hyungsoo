@@ -107,18 +107,38 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
   발굴/판단 작업이고, OCI 작업은 사용자가 부재중일 때도 자동으로 도는 알림 작업이다.
 - **PC 작업 빈도**: 주 2회 예상 (상한 아님). 사용자가 가능한 시점에 PC 앞에서
   발굴/판단 작업을 진행한다. 빈도는 운영하며 조정 가능.
-- **OCI 작업 빈도**: 일 3회 자동 PUSH (장초 / 점심 / 장마감 전). OCI 작업은
-  알림 배관 유지용이며 메인 의사결정 입력이 아니다.
+- **OCI 작업 빈도 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1)**:
+  이전 "일 3회 자동 PUSH (장초 / 점심 / 장마감 전)" 전역 제한 표현을 제거한다.
+  각 PUSH 는 목적에 맞는 독립 운영 정책을 가진다:
+  - **Market briefing**: 평일 08:00 KST 1회 정기 발송 (전일 시장 흐름 · 장 시작 전 확인).
+  - **Holdings briefing**: 평일 하루 **3개 평가·발송 슬롯** (오전 · 장중 · 마감).
+    정확한 실행 시각은 다음 STEP (Low-Frequency Telegram Push Operation v1) 에서 확정.
+  - **Spike/Falling Alert**: 고정 시각 발송 아님. **조건 발생형 예외 알림**.
+    정해진 운영 간격으로 조건 평가 → 신호 없음/중복은 미발송 · 신규 신호만 알림.
+  전체 PUSH 의 하루 총 횟수를 사전에 고정하지 않는다. **평가 실행 횟수와 사용자
+  알림 횟수는 구분**한다 (평가 다회 실행이라도 신호 없으면 알림 0회). OCI 작업은
+  알림 배관 유지용이며 메인 의사결정 입력이 아니다. 상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 - **PC 분석 평면 / OCI 운영·조회 평면 분리** (2026-06-20 추가, 본 문서
   `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` 참조):
   - **PC = 분석·판단 평면**: 시장 데이터 SQLite 관리, ETF universe 갱신, 후보
     ETF 검토, ML 학습·백테스트·feature 실험, AI 투자세션, 사용자 승인, approved
     PARAM 과 published data snapshot 생성. PC 는 24시간 상시 실행을 전제로
     하지 않는다.
-  - **OCI = 상시 운영·조회 평면**: latest approved PARAM 보관, 일 3회 3-PUSH
-    실행, Telegram 발송. **OCI 장기 역할 — 외부 / 모바일에서 마지막 published
-    데이터와 운영 상태를 조회할 수 있는 read-only 환경**으로 확장. OCI 는 ML
-    학습을 수행하지 않는다.
+  - **OCI = 상시 운영·조회 평면**: latest approved PARAM 보관, PUSH 별 목적에
+    맞는 독립 운영 (Market briefing 평일 08:00 · Holdings briefing 평일 3 슬롯 ·
+    Spike/Falling Alert 조건 발생형), Telegram 발송. **OCI 장기 역할 — 외부 /
+    모바일에서 마지막 published 데이터와 운영 상태를 조회할 수 있는 read-only
+    환경**으로 확장. OCI 는 ML 학습을 수행하지 않는다.
+  - **OCI 제한적 런타임 가격 조회 허용 (2026-07-24 정정)**: Telegram 운영
+    최신성을 위해 다음 런타임 역할만 허용:
+    - 기존 승인된 시세 출처 통한 가격 조회
+    - 기존 Holdings 의 평가금액·수익률 재계산
+    - 기존 Spike/Falling 조건 재평가
+    - 현재 active PARAM 적용
+    - 조회 성공·실패와 기준시각 (`as-of`) 기록
+    이는 PC 의 분석 기능을 OCI 로 이전하는 것이 아니다. Published Evidence 는
+    여전히 read-only. Runtime Evidence 는 Published Evidence 를 대체하거나
+    덮어쓰지 않는다.
   - **데이터 흐름**: PC SQLite 는 PC 작업용 기준 저장소로 유지. PC ML 이 OCI
     DB 를 직접 원격으로 읽지 않는다. PC 는 승인 / 발행 시점에 OCI 로 read-only
     published snapshot 을 전달한다 (구체 형식은 OCI 조회 메뉴 구현 직전 결정).
@@ -158,11 +178,11 @@ PC 작업 (주 2회 예상, 상한 아님):
 5. 결정 기록 — 결정 사유 / 보류 사유를 기록 (운영 데이터 누적).
 6. 다음 PC 작업 시점 결정.
 
-OCI 작업 (일 3회 자동 PUSH):
+OCI 작업 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1 — 이전 "일 3회 자동 PUSH" 전역 제한 표현 제거):
 
-7. 보유 종목 상태 브리핑 (보조 PUSH 1).
-8. 신규 ETF 관찰 후보 (보조 PUSH 2).
-9. 급락 ETF 주의 신호 (보조 PUSH 3).
+7. Holdings briefing (보조 PUSH 1) — 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감).
+8. Market briefing (보조 PUSH 2) — 평일 08:00 KST 1회 정기.
+9. Spike/Falling Alert (보조 PUSH 3) — 조건 발생형 예외 알림 (고정 시각·횟수 없음).
 10. 알림 수신 후 사용자가 PC 작업으로 넘어갈지 판단.
 
 위 항목 중 **메인 의사결정 입력은 PC 작업 1~5단계** 다. OCI 작업은 보조 알림이며
@@ -178,8 +198,10 @@ OCI 작업 (일 3회 자동 PUSH):
   → **보존하되, 현재 B 방향 구조와 fit 검토 후 연결 여부 결정**.
     출력 정의(§3) 가 확정되기 전까지는 자동 연결하지 않는다.
 - OCI crontab 구조 (daily_ops, spike_watch, holding_watch)
-  → **새 param 구조와 일 3회 자동 PUSH 흐름에 연결 필요**.
-    PC 작업 1~5단계가 정착된 뒤 OCI 작업 (운영 사이클 7~10단계) 에 연결.
+  → **새 param 구조와 PUSH 별 목적 기반 운영 흐름에 연결 필요** (2026-07-24
+    정정, 이전 "일 3회 자동 PUSH" 표현 제거). Market 평일 08:00 · Holdings 평일
+    3 슬롯 · Spike 조건 발생형. PC 작업 1~5단계가 정착된 뒤 OCI 작업 (운영
+    사이클 7~10단계) 에 연결.
 - Telegram 연동
   → **보조 출력 배관으로 유지**. 메인 의사결정 입력 아님 (§3.2).
 - pykrx 가격 조회 배관 (price_history_pykrx.py + universe_refresh.py)
@@ -237,7 +259,7 @@ OCI 작업 (일 3회 자동 PUSH):
   - 정적 데이터 화면
   - AI 투자세션 자동화
   - ML 연결
-  - OCI 일 3회 자동 PUSH script 연결
+  - OCI 자동 PUSH script 연결 (Market/Holdings/Spike PUSH 별 목적 기반 운영 · 2026-07-24 정정)
   - 모바일 UI
 
 ---

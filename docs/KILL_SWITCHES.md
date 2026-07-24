@@ -111,6 +111,29 @@
 - `docs/MASTER_PLAN.md` (모바일 판단 운영 순서 앵커 섹션)
 - `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (canonical 앵커)
 
+#### KS-11 변경 근거 기록 (2026-07-22 ~ 2026-07-24, Telegram Push Operating Boundary Amendment v1)
+
+**KS-11 자체는 변경/약화하지 않는다.** 다음은 사용자 운영 결정 기록:
+
+- Mobile Decision Cockpit 은 DEFERRED_BY_USER 상태로 보류
+- 현재 모바일 운영 채널은 Telegram PUSH 로 제한
+- **전체 PUSH 횟수를 하루 3회로 고정하지 않음** (이전 "일 3회 자동 PUSH" 전역 제한 제거)
+- Market briefing 은 현재 평일 08:00 1회 유지
+- Holdings 평가·브리핑은 평일 하루 3개 슬롯으로 운영
+- Spike/Falling Alert 는 고정 시각 발송이 아닌 조건 발생형 알림으로 운영
+- 평가 실행 횟수와 사용자 알림 횟수 구분
+- 각 PUSH 의 실행·발송 정책은 해당 PUSH 목적에 맞게 결정
+- Telegram 운영 최신성을 위해 OCI 의 제한적 런타임 가격 조회 허용
+- OCI 의 전략·factor·threshold·ML·Holdings·주문 변경 금지는 유지
+
+**기록 위치**:
+- `docs/PROJECT_ORIGIN_INTENT.md` (§운영 원칙 · OCI 작업 빈도 · OCI 평면 역할)
+- `docs/ASSUMPTIONS.md` §5.2 (Telegram PUSH 목적별 독립 운영 · 평가/알림 구분)
+- `docs/MASTER_PLAN.md` (Telegram PUSH 운영 경계 정정 섹션)
+- `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`
+
+사용자 요청만으로 KS-11 예외를 허용하지 않는다. 본 기록은 규칙 변경이 아니라 운영 정책 결정 근거의 문서화이다.
+
 ---
 
 ## 4. 이식 금지 (Phase 1 교훈)
