@@ -97,11 +97,13 @@ def fetch_one(
     price = _parse_price(data.get("closePrice"))
     if price is None:
         return FetchResult(ticker=ticker, quote=None, reason="missing_price")
-    asof = (
-        data.get("localTradedAt")
-        if isinstance(data.get("localTradedAt"), str)
-        else None
-    )
+    # Low-Frequency Telegram Push Operation v1 A+ 재정정:
+    # price_asof (Naver localTradedAt) 는 필수. 기준시각 없는 가격은 사용자에게
+    # "이 가격이 언제 값인지" 를 전달할 수 없으므로 quote 실패로 처리한다.
+    # Runtime 메시지에서 as-of 없는 fact 를 생성하면 Fail-Closed 계약 위반.
+    asof = data.get("localTradedAt")
+    if not isinstance(asof, str) or not asof:
+        return FetchResult(ticker=ticker, quote=None, reason="missing_asof")
     quote = MarketQuote(
         ticker=ticker,
         name=name,

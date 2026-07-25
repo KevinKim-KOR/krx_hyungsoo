@@ -495,6 +495,11 @@ def build_holdings_market_evidence(
                     "avg_buy_price": float(h.avg_buy_price),
                     "evaluation_amount": (e.eval_amount if e else None),
                     "pnl_rate_pct": (e.pnl_rate_pct if e else None),
+                    # Low-Frequency Telegram Push Operation v1 (Unit 2):
+                    # Runtime overlay 로 채워질 현재가·가격 기준시각. quote 미확보
+                    # 시 None 유지. holdings_latest.json 은 수정하지 않는다.
+                    "current_price": (e.current_price if e else None),
+                    "price_asof": (e.price_asof if e else None),
                 },
                 "topn_match": topn_match,
                 "returns": returns_payload,

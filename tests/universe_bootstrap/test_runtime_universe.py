@@ -292,9 +292,20 @@ def test_spike_runner_record_forwards_universe_diagnostics(
         evidence_policy={},
         safety_policy={},
     )
+    # Low-Frequency Telegram Push Operation v1: compose_runtime_evidence 시그니처
+    # 에 market_quotes / universe_reevaluate_fn 파라미터 추가됨. mock 도 **kw 수신.
     monkeypatch.setattr(
-        runner_mod, "compose_runtime_evidence", lambda pk: fake_evidence
+        runner_mod, "compose_runtime_evidence", lambda pk, **kw: fake_evidence
     )
+    # Runner 가 Runtime price refresh 를 위해 market_naver.fetch_many 를 호출하는데
+    # test 환경에서는 실 네트워크 호출을 막는다. Runner 는 lazy import 를 사용하므로
+    # sys.modules 에 등록된 fake 로 대체 (universe artifact ticker 재조회 회피).
+    import sys
+    import types
+
+    fake_naver = types.ModuleType("app.market_naver")
+    fake_naver.fetch_many = lambda tickers, timeout=15.0: []  # noqa: E501
+    monkeypatch.setitem(sys.modules, "app.market_naver", fake_naver)
     monkeypatch.setattr(
         runner_mod, "read_active_param_dict", lambda: fake_param.to_dict()
     )

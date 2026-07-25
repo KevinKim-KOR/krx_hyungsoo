@@ -84,11 +84,31 @@ _HISTORY_PATH = STATE_DIR / "oci_runtime_history.jsonl"
 # ── 메인 runner ───────────────────────────────────────────────────────────────
 
 
-def _registry_key(push_kind: str, param_id: str, runtime_date_kst: str) -> str:
-    return f"{push_kind}::{param_id}::{runtime_date_kst}"
+# Low-Frequency Telegram Push Operation v1 A+ (E · KS-10):
+# 아래 helper 는 app.three_push_runtime 로 분리 · 여기서는 re-export 로 기존 참조
+# 경로 유지 (tests 및 외부 caller 호환).
+from app.three_push_runtime.registry_key import (  # noqa: E402
+    HOLDINGS_SLOT_IDS,
+    registry_key as _registry_key,
+    resolve_registry_date_field as _resolve_registry_date_field,
+)
+from app.three_push_runtime.target_tickers import (  # noqa: E402
+    collect_target_tickers as _collect_target_tickers,
+)
 
 
-def run(push_kind: str, mode: str) -> dict[str, Any]:
+def run(
+    push_kind: str,
+    mode: str,
+    slot_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """3-PUSH runner.
+
+    Low-Frequency Telegram Push Operation v1:
+    - slot_id: holdings_briefing 에만 유효 (OPEN/MIDDAY/CLOSE). 다른 push_kind
+      에 slot_id 를 넘기면 무시. holdings_briefing 에서 slot_id 미지정 시
+      failed/slot_id_required.
+    """
     logger = setup_logging(
         f"three_push_runtime_runner.{push_kind}",
         log_filename="three_push_runtime_cron.log",
@@ -100,6 +120,7 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
     record: dict[str, Any] = {
         "push_kind": push_kind,
         "mode": mode,
+        "slot_id": None,
         "status": "failed",
         "reason": None,
         "started_at": started_at_utc,
@@ -166,6 +187,25 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         logger.error("PARAM secret 노출: %s", e)
         return _finish("failed", "param_secret_exposed", str(e)[:400])
 
+    # ── 1-b. slot_id 계약 검증 (holdings_briefing 만) ────────────────────────
+    # Low-Frequency Telegram Push Operation v1: holdings_briefing 은 OPEN/MIDDAY/CLOSE
+    # 세 슬롯으로 나뉜다. slot_id 는 registry key 문자열에 삽입되어 슬롯별 중복 차단.
+    if push_kind == "holdings_briefing":
+        if slot_id is None:
+            logger.error("holdings_briefing 은 --slot-id 필수 (OPEN/MIDDAY/CLOSE)")
+            return _finish("failed", "slot_id_required")
+        if slot_id not in HOLDINGS_SLOT_IDS:
+            logger.error("잘못된 slot_id=%s (허용값 %s)", slot_id, HOLDINGS_SLOT_IDS)
+            return _finish("failed", "slot_id_invalid")
+        record["slot_id"] = slot_id
+    else:
+        if slot_id is not None:
+            logger.info(
+                "slot_id=%s 는 push_kind=%s 에서 무시됨 (holdings_briefing 만 유효)",
+                slot_id,
+                push_kind,
+            )
+
     # ── 2. PARAM에서 push_kind 활성화 확인 ────────────────────────────────────
     if not param.is_push_kind_enabled(push_kind):
         logger.info(
@@ -175,14 +215,80 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         )
         return _finish("skipped", "push_kind_not_in_param")
 
-    # ── 3. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
+    # ── 3. Runtime 가격 조회 (Low-Frequency Telegram Push Operation v1 A+ 재정정) ──
+    # Fail-Closed 계약 (사용자 확정):
+    #   attempted == 0  → skip 대상 없음 (Market 등) · 정상 진행.
+    #   loader 예외      → failed (ticker_loader_error) · 미발송 · registry 미기록.
+    #   Naver 예외       → failed (runtime_price_refresh_error).
+    #   전건 실패        → failed (runtime_price_all_failed).
+    #   일부 실패        → failed (runtime_price_partial_failed) · 미발송.
+    from app.three_push_runtime.price_refresh import refresh_runtime_quotes
+
+    market_quotes, price_refresh_diag, price_refresh_error = refresh_runtime_quotes(
+        push_kind, _collect_target_tickers
+    )
+    record["runtime_price_refresh"] = price_refresh_diag
+    if price_refresh_error is not None:
+        logger.error("runtime price refresh 실패: %s", price_refresh_error)
+        return _finish(
+            "failed",
+            "runtime_price_refresh_error",
+            price_refresh_error,
+        )
+    attempted = price_refresh_diag.get("attempted", 0)
+    success = price_refresh_diag.get("success", 0)
+    failed = price_refresh_diag.get("failed", 0)
+    if attempted > 0:
+        logger.info(
+            "runtime price refresh: attempted=%d success=%d failed=%d",
+            attempted,
+            success,
+            failed,
+        )
+        if success == 0:
+            return _finish(
+                "failed",
+                "runtime_price_all_failed",
+                f"attempted={attempted} failed={failed}",
+            )
+        if failed > 0:
+            # A+ 재정정: 일부 실패도 failed 종료 (partial 발송 금지).
+            return _finish(
+                "failed",
+                "runtime_price_partial_failed",
+                f"attempted={attempted} success={success} failed={failed}",
+            )
+
+    # ── 3-b. Universe re-evaluator 준비 (Spike 만 · Unit 3 helper 연결) ──────
+    reeval_fn = None
+    if push_kind == "spike_or_falling_alert":
+        from app.runtime_evidence.universe_reevaluator import (
+            reevaluate_spike_signals,
+        )
+        from app.draft_three_push import _load_universe_artifact_for_spike
+
+        def _reeval() -> list:
+            art = _load_universe_artifact_for_spike()
+            if not isinstance(art, dict):
+                return []
+            return reevaluate_spike_signals(
+                art, market_quotes, runtime_date_kst=runtime_date_kst
+            )
+
+        reeval_fn = _reeval
+
+    # ── 4. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
     try:
-        evidence = compose_runtime_evidence(push_kind)
+        evidence = compose_runtime_evidence(
+            push_kind,
+            market_quotes=(market_quotes or None),
+            universe_reevaluate_fn=reeval_fn,
+        )
     except Exception as e:
         logger.error("runtime evidence 조립 실패: %s", e)
         return _finish("failed", "runtime_evidence_error", str(e)[:400])
 
-    # ── 4. runtime message 생성 ──────────────────────────────────────────────
+    # ── 4-b. runtime message 생성 ────────────────────────────────────────────
     try:
         message_text = build_runtime_message(
             push_kind=push_kind,
@@ -234,7 +340,42 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         if k in evidence.diagnostics:
             record[k] = evidence.diagnostics[k]
 
-    # ── 4. 금지 문구 검사 ────────────────────────────────────────────────────
+    # Low-Frequency Telegram Push Operation v1 A+ 재정정 (A):
+    # Spike 재조건평가 결과 fingerprint 목록. 각 신규 signal 은 개별 registry.
+    if push_kind == "spike_or_falling_alert":
+        fps = getattr(evidence, "spike_signal_fingerprints", []) or []
+        record["spike_signal_fingerprints"] = fps
+        reeval_status = evidence.diagnostics.get("reevaluate_status")
+        record["reevaluate_status"] = reeval_status
+        record["reevaluate_missing_fields"] = evidence.diagnostics.get(
+            "reevaluate_missing_fields", []
+        )
+        record["reevaluate_quote_missing_tickers"] = evidence.diagnostics.get(
+            "reevaluate_quote_missing_tickers", []
+        )
+        record["reevaluate_candidate_missing_fields"] = evidence.diagnostics.get(
+            "reevaluate_candidate_missing_fields", {}
+        )
+        if reeval_status == "failed":
+            missing = record["reevaluate_missing_fields"]
+            return _finish(
+                "failed",
+                "reevaluate_missing_published_evidence",
+                f"missing_fields={missing}",
+            )
+        if reeval_status == "partial":
+            return _finish(
+                "failed",
+                "reevaluate_partial",
+                (
+                    "quote_missing="
+                    f"{record['reevaluate_quote_missing_tickers']}"
+                    " candidate_missing="
+                    f"{list(record['reevaluate_candidate_missing_fields'].keys())}"
+                ),
+            )
+
+    # ── 4-c. 금지 문구 검사 ──────────────────────────────────────────────────
     bad = check_forbidden_wording(message_text)
     if bad:
         logger.warning("금지 문구 감지: %r — 발송 차단", bad)
@@ -269,44 +410,147 @@ def run(push_kind: str, mode: str) -> dict[str, Any]:
         logger.info("%s=false — 발송 skip", kind_flag_env)
         return _finish("skipped", "push_kind_disabled")
 
-    # ── 6-b. no-signal guard (Spike Conditional Send v1 · §6/AC-6) ──────────
-    # Universe artifact 가 유효하지만 candidates=0 이면 발송하지 않는다.
-    # composer 가 진단 필드 `no_signal=True` 로 표시 (spike_or_falling_alert 만 해당).
-    # Sender 미호출 · registry 미기록 · duplicate_key 도 계산하지 않음.
-    if push_kind == "spike_or_falling_alert" and record.get("no_signal") is True:
-        logger.info(
-            "no-signal 발송 skip: push_kind=%s param_id=%s (universe candidate 0건)",
+    # ── 6-b. no-signal guard (Spike · Conditional Send v1 + Low-Frequency v1) ──
+    # 미발송 조건:
+    #   (a) composer 진단 no_signal=True (universe candidates=0)
+    #   (b) Runtime 재평가 결과 신규 falling signal 0건 이고 재평가 status=ok
+    #       (partial/failed 는 상위 §4 이미 처리). ok+0건 만 no_signal.
+    # Sender 미호출 · registry 미기록.
+    if push_kind == "spike_or_falling_alert":
+        if record.get("no_signal") is True:
+            logger.info(
+                "no-signal 발송 skip: universe candidate 0건 (param_id=%s)",
+                param.param_id,
+            )
+            return _finish("skipped", "no_signal")
+        fps_all = record.get("spike_signal_fingerprints") or []
+        reeval_st = record.get("reevaluate_status")
+        if not fps_all and reeval_st == "ok":
+            logger.info(
+                "no-signal 발송 skip: Runtime 재평가 결과 신규 falling 0건 "
+                "(param_id=%s)",
+                param.param_id,
+            )
+            return _finish("skipped", "no_signal")
+
+    # ── 7. duplicate guard (Low-Frequency Push v1 A+) ────────────────────────
+    # Holdings: slot_id 접미.
+    # Spike: 각 fingerprint 별로 개별 registry entry. 모든 fingerprint 가 이미 sent
+    #        면 duplicate_runtime skip. 하나라도 신규면 발송 후 신규 fingerprint 만
+    #        각각 registry 에 기록.
+    if push_kind == "spike_or_falling_alert":
+        fps_all = record.get("spike_signal_fingerprints") or []
+        new_fps: list[str] = []
+        already_fps: list[str] = []
+        for fp in fps_all:
+            date_field = _resolve_registry_date_field(
+                runtime_date_kst, signal_fingerprint=fp
+            )
+            try:
+                if is_already_sent(push_kind, param.param_id, date_field):
+                    already_fps.append(fp)
+                else:
+                    new_fps.append(fp)
+            except Exception as e:
+                logger.error("registry DB 접근 실패 (fp=%s): %s", fp, e)
+                return _finish("failed", "registry_corrupted", str(e)[:400])
+        record["spike_new_fingerprints"] = new_fps
+        record["spike_already_sent_fingerprints"] = already_fps
+        record["duplicate_key"] = (
+            _registry_key(
+                push_kind,
+                param.param_id,
+                runtime_date_kst,
+                signal_fingerprint=new_fps[0],
+            )
+            if new_fps
+            else ""
+        )
+        if not new_fps:
+            logger.info(
+                "중복 발송 차단: 신규 fingerprint 없음 (already_fps=%d)",
+                len(already_fps),
+            )
+            return _finish("skipped", "duplicate_runtime")
+        # A+ 재정정 (B): 혼합 신호 시 body 를 신규 fp 만으로 재조립. 기발송 신호가
+        # 본문에 포함되어 재발송되는 문제 해소. length mismatch 는 composer 계약
+        # 위반이므로 즉시 failed.
+        from app.three_push_runtime.spike_body import (
+            filter_extra_notes_to_new_signals,
+        )
+
+        try:
+            filtered_notes = filter_extra_notes_to_new_signals(
+                evidence.extra_notes, fps_all, new_fps
+            )
+        except ValueError as e:
+            logger.error("spike body 재조립 계약 위반: %s", e)
+            return _finish("failed", "spike_body_contract_error", str(e)[:400])
+        try:
+            message_text = build_runtime_message(
+                push_kind=push_kind,
+                param=param,
+                runtime_kst_iso=runtime_kst,
+                available_sources=evidence.available_sources,
+                extra_notes=filtered_notes,
+            )
+        except Exception as e:  # format_spike_signal_note 등의 재-빌드 예외
+            logger.error("runtime message 재조립 실패: %s", e)
+            return _finish("failed", "runtime_message_build_error", str(e)[:400])
+        record["message_text_length"] = len(message_text)
+    else:
+        # Market / Holdings.
+        registry_date_field = _resolve_registry_date_field(
+            runtime_date_kst,
+            slot_id=slot_id if push_kind == "holdings_briefing" else None,
+        )
+        dup_key = _registry_key(
             push_kind,
             param.param_id,
+            runtime_date_kst,
+            slot_id=slot_id if push_kind == "holdings_briefing" else None,
         )
-        return _finish("skipped", "no_signal")
-
-    # ── 7. duplicate guard (Cutover v1: DB 기준) ─────────────────────────────
-    dup_key = _registry_key(push_kind, param.param_id, runtime_date_kst)
-    record["duplicate_key"] = dup_key
-    try:
-        already = is_already_sent(push_kind, param.param_id, runtime_date_kst)
-    except Exception as e:
-        logger.error("registry DB 접근 실패: %s", e)
-        return _finish("failed", "registry_corrupted", str(e)[:400])
-    if already:
-        logger.info("중복 발송 차단: %s", dup_key)
-        return _finish("skipped", "duplicate_runtime")
+        record["duplicate_key"] = dup_key
+        try:
+            already = is_already_sent(push_kind, param.param_id, registry_date_field)
+        except Exception as e:
+            logger.error("registry DB 접근 실패: %s", e)
+            return _finish("failed", "registry_corrupted", str(e)[:400])
+        if already:
+            logger.info("중복 발송 차단: %s", dup_key)
+            return _finish("skipped", "duplicate_runtime")
 
     # ── 8. Telegram 발송 ─────────────────────────────────────────────────────
     record["telegram_attempted"] = True
     sent, err, partial_delivery = telegram_send(message_text)
     record["telegram_sent"] = sent
-    record["partial_delivery"] = partial_delivery
+    # A+ 재정정 (B-6): telegram chunk 전송의 부분 결과만 telegram_partial_delivery
+    # 필드로 저장. 데이터 품질 partial 은 이미 상위에서 failed 로 처리되므로 여기에는
+    # 섞지 않는다.
+    record["telegram_partial_delivery"] = bool(partial_delivery)
+    record["partial_delivery"] = bool(partial_delivery)
 
     if sent:
         sent_at = datetime.now(timezone.utc).isoformat()
-        mark_sent(
-            push_kind=push_kind,
-            param_id=param.param_id,
-            runtime_date_kst=runtime_date_kst,
-            sent_at_utc=sent_at,
-        )
+        if push_kind == "spike_or_falling_alert":
+            # 발송 성공 시 신규 fingerprint 각각 registry entry 기록.
+            for fp in record.get("spike_new_fingerprints", []):
+                date_field = _resolve_registry_date_field(
+                    runtime_date_kst, signal_fingerprint=fp
+                )
+                mark_sent(
+                    push_kind=push_kind,
+                    param_id=param.param_id,
+                    runtime_date_kst=date_field,
+                    sent_at_utc=sent_at,
+                )
+        else:
+            mark_sent(
+                push_kind=push_kind,
+                param_id=param.param_id,
+                runtime_date_kst=registry_date_field,
+                sent_at_utc=sent_at,
+            )
         return _finish("sent")
     else:
         logger.error("Telegram 발송 실패: %s", err)
@@ -336,12 +580,23 @@ def _parse_args() -> argparse.Namespace:
         choices=["dry-run", "send"],
         help="dry-run: 검증/메시지 생성만 / send: Telegram 발송",
     )
+    parser.add_argument(
+        "--slot-id",
+        required=False,
+        default=None,
+        choices=list(HOLDINGS_SLOT_IDS),
+        help=(
+            "holdings_briefing 전용 슬롯 식별자 (OPEN/MIDDAY/CLOSE). "
+            "Low-Frequency Telegram Push Operation v1: 같은 날짜에 서로 다른 "
+            "슬롯 발송 허용 · 동일 슬롯 재실행은 중복 차단."
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    result = run(push_kind=args.push_kind, mode=args.mode)
+    result = run(push_kind=args.push_kind, mode=args.mode, slot_id=args.slot_id)
     status = result.get("status", "failed")
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if status in ("sent", "dry_run_success", "skipped"):

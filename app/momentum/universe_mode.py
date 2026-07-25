@@ -333,6 +333,13 @@ def build_universe_momentum_result_scored(
     summary["falling_candidate"] = (
         _build_falling_candidate_dict(falling) if falling is not None else None
     )
+    # Low-Frequency Telegram Push Operation v1 A+ (AC-4):
+    # Reevaluator 가 Published Evidence 만 소비하도록 trigger_type · direction ·
+    # evidence_as_of 를 artifact summary 에 명시 기록한다. 새 factor/threshold 를
+    # 도입하는 것이 아니라 기존 산식이 이미 사용한 의미와 값을 직렬화한다.
+    summary["spike_trigger_type"] = "falling"
+    summary["spike_direction"] = "down"
+    summary["evidence_as_of"] = seed.asof
 
     return {
         "engine_id": ENGINE_ID,

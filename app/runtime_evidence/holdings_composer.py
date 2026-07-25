@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from app.holdings import Holding, HoldingsValidationError
 from app.holdings_market_evidence import get_holdings_file_mtime_iso
@@ -199,11 +199,17 @@ def compose_holdings_and_nav(
     market_db_path: Path,
     evidence_fn: Callable[..., dict[str, Any]],
     nav_fn: Callable[..., Any],
+    market_quotes: Optional[dict[str, Any]] = None,
 ) -> tuple[
     tuple[str, list[str], dict[str, Any]],
     tuple[str, list[str], dict[str, Any]],
 ]:
     """Holdings + NAV source 조립. orchestrator 로부터 호출된다.
+
+    Low-Frequency Telegram Push Operation v1 (A1): market_quotes 를 명시적으로
+    받아 evidence_fn 에 전달한다. Runner 가 실행 시점에 market_naver.fetch_many
+    로 채우고 이 함수를 호출한다. None 이면 기존 계약대로 evaluation_amount /
+    pnl_rate_pct / current_price / price_asof 모두 None (composer 계약 유지).
 
     returns ((holdings_status, holdings_notes, holdings_diag),
              (nav_status, nav_notes, nav_diag)).
@@ -224,7 +230,7 @@ def compose_holdings_and_nav(
     evidence_payload = evidence_fn(
         holdings=holdings,
         topn_payload=topn_payload,
-        market_quotes=None,
+        market_quotes=market_quotes,
         db_path=market_db_path,
         holdings_asof=holdings_asof,
     )

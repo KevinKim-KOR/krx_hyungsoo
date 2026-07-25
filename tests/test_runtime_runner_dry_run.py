@@ -84,37 +84,27 @@ def test_runner_dry_run_market_briefing_no_telegram_no_registry_write(
 def test_runner_dry_run_holdings_briefing_holdings_source_missing_reported(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Composer 는 Holdings 파일 부재 시 holdings_source_missing 을 unavailable_reasons
-    로 기록해야 한다.
+    """Low-Frequency Telegram Push Operation v1 A+ Fail-Closed:
 
-    실제 PC 에는 `state/holdings/holdings_latest.json` 이 존재할 수 있으므로 이 test
-    는 명시적으로 부재하는 tmp path 로 monkeypatch 한다 (composer default 참조 우회).
+    Holdings 파일 부재 시 Runner 는 즉시 `runtime_price_refresh_error/failed` 로
+    종료한다 (이전엔 composer 진단으로 흘렸으나 attempted=0 guard 우회 위험이
+    검증자에 의해 지적되어 A+ 계약으로 재정정). Telegram 미호출 · registry 미기록.
     """
     _seed_active_param(tmp_path)
     telegram_calls = _install_telegram_and_registry_spies(monkeypatch, tmp_path)
     registry_before = registry_count()
 
-    # Composer default 가 참조하는 HOLDINGS_FILE 을 tmp 부재 path 로 override.
     from app import holdings as _holdings
 
     monkeypatch.setattr(_holdings, "HOLDINGS_FILE", tmp_path / "no_holdings.json")
-    from app import runtime_evidence_composer as _rec
-
-    monkeypatch.setattr(_rec, "HOLDINGS_FILE", tmp_path / "no_holdings.json")
 
     from scripts.run_three_push_runtime_oci import run
 
-    record = run("holdings_briefing", "dry-run")
+    record = run("holdings_briefing", "dry-run", slot_id="OPEN")
 
-    # Holdings source missing 이 record 에 기록됨.
-    unavail = record.get("unavailable_reasons") or {}
-    from app.runtime_evidence_composer import (
-        REASON_SOURCE_MISSING_HOLDINGS,
-        SRC_HOLDINGS,
-    )
-
-    assert unavail.get(SRC_HOLDINGS) == REASON_SOURCE_MISSING_HOLDINGS
-    # B-6 정정 r2: dry-run 은 Telegram spy 미호출 + sent_registry 불변을 직접 assert.
+    assert record["status"] == "failed"
+    assert record["reason"] == "runtime_price_refresh_error"
+    assert "holdings source missing" in (record.get("error") or "")
     assert telegram_calls == []
     assert record["telegram_attempted"] is False
     assert record["telegram_sent"] is False

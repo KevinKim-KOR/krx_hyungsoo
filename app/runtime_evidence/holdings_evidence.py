@@ -140,8 +140,56 @@ def build_holdings_facts(
             fact_count += 1
             selection_count += 1
 
+        # Low-Frequency Telegram Push Operation v1 A+ (selection count 정정):
+        # Runtime overlay 로 채워진 현재가·평가수익률·가격 as-of 를 별도 fact 한
+        # 줄로 추가한다. fact_count 는 실제 문장 수이므로 +1. 그러나
+        # selection_count 는 "선택된 종목 수" 이므로 종목당 1회만 (기존 fact 라인이
+        # 있든 없든 runtime 라인 있든 없든 최대 1). 즉 종목당 중복 집계 금지.
+        runtime_line = _build_holding_runtime_line(h_out)
+        if runtime_line is not None:
+            notes.append(runtime_line)
+            fact_count += 1
+            # runtime line 만 있고 evidence line 이 없었던 경우에만 selection_count
+            # +1. evidence line 에서 이미 +1 했으면 중복 카운트 금지.
+            if not (line_parts and has_evidence_item and market_asof):
+                selection_count += 1
+
     return notes, {
         "holdings_evidence_item_count": evidence_item_count,
         "holdings_selection_result_count": selection_count,
         "holdings_contentful_fact_count": fact_count,
     }
+
+
+def _build_holding_runtime_line(h_out: dict[str, Any]) -> Optional[str]:
+    """Runtime 가격 · 평가수익률 · 가격 as-of 한 줄. current_price 없으면 None.
+
+    Low-Frequency Telegram Push Operation v1 (B1):
+    - `holding.current_price` 가 있어야 한다 (composer market_quotes 전달 필수).
+    - `pnl_rate_pct` 는 있으면 함께 표시, 없으면 생략.
+    - `price_asof` 는 있으면 괄호에 함께 표시.
+    - stored 가격을 현재 가격처럼 대체하지 않는다. 값이 없으면 라인 자체 없음.
+    """
+    name = h_out.get("name") or h_out.get("ticker")
+    if not name:
+        return None
+    holding = h_out.get("holding") or {}
+    current_price = holding.get("current_price")
+    if not isinstance(current_price, (int, float)) or current_price <= 0:
+        return None
+    # A+ 재정정: price_asof 는 필수. Naver 계약상 asof 없는 quote 는 이미 upstream
+    # 에서 걸러지지만, 방어적으로 여기서도 라인 자체 생성 안 함 (기준시각 없는
+    # 가격을 사용자에게 fact 로 보여주는 것 금지).
+    price_asof = holding.get("price_asof")
+    if not isinstance(price_asof, str) or not price_asof:
+        return None
+    parts: list[str] = [f"현재가 {int(round(current_price)):,}"]
+    pnl_rate = holding.get("pnl_rate_pct")
+    if isinstance(pnl_rate, (int, float)):
+        pnl_str = fmt_pct(pnl_rate)
+        if pnl_str:
+            parts.append(f"평가수익률 {pnl_str}")
+    eval_amount = holding.get("evaluation_amount")
+    if isinstance(eval_amount, (int, float)) and eval_amount > 0:
+        parts.append(f"평가금액 {int(round(eval_amount)):,}")
+    return f"{name} runtime ({price_asof}): " + " · ".join(parts) + "."

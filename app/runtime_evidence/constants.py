@@ -33,11 +33,19 @@ REASON_NAV_UNAVAILABLE = "nav_row_unavailable"
 
 @dataclass
 class RuntimeEvidenceResult:
-    """Composer 반환 계약 (지시문 §4.2)."""
+    """Composer 반환 계약 (지시문 §4.2).
+
+    Low-Frequency Telegram Push Operation v1 (Unit 3):
+    - spike_signal_fingerprints: Spike push_kind 에서 Runtime 재평가로 신규
+      falling signal 을 판정한 경우 각 signal 의 fingerprint 문자열 리스트.
+      Runner 가 registry duplicate guard 에 사용한다. universe_reevaluate_fn
+      이 주입되지 않은 backward-compatible 경로에서는 빈 리스트.
+    """
 
     available_sources: dict[str, str] = field(default_factory=dict)
     extra_notes: list[str] = field(default_factory=list)
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    spike_signal_fingerprints: list[str] = field(default_factory=list)
 
 
 def fmt_pct(value: Optional[float]) -> Optional[str]:

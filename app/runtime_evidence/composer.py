@@ -103,6 +103,8 @@ def compose_runtime_evidence(
     nav_fn: Optional[Callable[..., Any]] = None,
     evidence_fn: Optional[Callable[..., dict[str, Any]]] = None,
     universe_artifact_loader: Optional[Callable[[], Optional[dict[str, Any]]]] = None,
+    market_quotes: Optional[dict[str, Any]] = None,
+    universe_reevaluate_fn: Optional[Callable[..., Any]] = None,
 ) -> RuntimeEvidenceResult:
     """OCI Runtime + Diagnosis 공통 evidence 조립.
 
@@ -134,7 +136,15 @@ def compose_runtime_evidence(
     nav_diag: dict[str, Any] = {}
     if push_kind in _HOLDINGS_PUSH_KINDS:
         (h_status, h_notes, h_diag), (nav_status, nav_notes, nav_diag) = (
-            compose_holdings_and_nav(hload, hfile, tfn, market_db, efn, nfn)
+            compose_holdings_and_nav(
+                hload,
+                hfile,
+                tfn,
+                market_db,
+                efn,
+                nfn,
+                market_quotes=market_quotes,
+            )
         )
         diag_sources[SRC_HOLDINGS] = h_diag
         diag_sources[SRC_NAV_DISCOUNT] = nav_diag
@@ -183,25 +193,93 @@ def compose_runtime_evidence(
             h_diag.get("matched_evidence_count", 0) if h_status == "available" else 0
         )
     elif push_kind == "spike_or_falling_alert":
+        # Low-Frequency Telegram Push Operation v1 (Unit 3):
+        # universe_reevaluate_fn 이 주입되면 Runtime 가격으로 기존 falling 조건
+        # 재평가. 결과 SpikeSignal 리스트가 있으면 이를 signals 로 사용하고,
+        # 기존 배치 계산 u_notes 는 사용하지 않는다 (stale 위험 회피).
+        # Low-Frequency Telegram Push Operation v1 A+ 재정정 (D):
+        # universe_reevaluate_fn 은 ReevaluationResult 를 반환한다 (Published
+        # Evidence 기반). 예외 발생 시 기존 배치 u_notes 로 폴백하지 않는다 —
+        # fake ReevaluationResult(status=failed) 를 만들어 Runner 가 상위에서
+        # failed 종료하도록 신호한다. universe_reevaluate_fn=None (기본 프로덕션
+        # 경로) 만 backward-compat 로 u_notes 사용.
+        reeval_result = None
+        if universe_reevaluate_fn is not None and u_status == "available":
+            try:
+                reeval_result = universe_reevaluate_fn()
+            except Exception as e:  # noqa: BLE001
+                from app.runtime_evidence.universe_reevaluator import (
+                    ReevaluationResult,
+                )
+
+                reeval_result = ReevaluationResult(
+                    status="failed",
+                    missing_fields=[f"reevaluate_exception:{type(e).__name__}"],
+                )
+                result.diagnostics["reevaluate_exception"] = str(e)[:200]
         result.available_sources = {
             SRC_UNIVERSE_MOMENTUM: (
                 "available"
                 if u_status == "available"
                 else (u_diag.get("universe_snapshot_reason") or "unavailable")
             ),
-            SRC_KR_REALTIME: REASON_EXTERNAL_FETCH_REQUIRED,
+            SRC_KR_REALTIME: (
+                "available"
+                if reeval_result is not None
+                else REASON_EXTERNAL_FETCH_REQUIRED
+            ),
         }
-        result.extra_notes = u_notes if u_status == "available" else []
-        contentful_fact_count = int(
-            u_diag.get("universe_contentful_fact_count", 0) or 0
-        )
-        selection_result_count = int(u_diag.get("universe_selected_count", 0) or 0)
+        if reeval_result is not None:
+            from app.runtime_evidence.universe_reevaluator import (
+                format_spike_signal_note,
+            )
+
+            spike_signals = reeval_result.signals
+            signal_notes = [format_spike_signal_note(s) for s in spike_signals]
+            result.extra_notes = signal_notes
+            contentful_fact_count = len(signal_notes)
+            selection_result_count = len(signal_notes)
+            result.spike_signal_fingerprints = [s.fingerprint for s in spike_signals]
+            # Runner partial/failed 판정용 진단 필드.
+            result.diagnostics["reevaluate_status"] = reeval_result.status
+            result.diagnostics["reevaluate_missing_fields"] = (
+                reeval_result.missing_fields
+            )
+            result.diagnostics["reevaluate_quote_missing_tickers"] = (
+                reeval_result.quote_missing_tickers
+            )
+            result.diagnostics["reevaluate_candidate_missing_fields"] = (
+                reeval_result.candidate_missing_fields
+            )
+            result.diagnostics["reevaluate_scored_candidate_count"] = (
+                reeval_result.scored_candidate_count
+            )
+        else:
+            result.extra_notes = u_notes if u_status == "available" else []
+            contentful_fact_count = int(
+                u_diag.get("universe_contentful_fact_count", 0) or 0
+            )
+            selection_result_count = int(u_diag.get("universe_selected_count", 0) or 0)
     else:
         result.available_sources = {}
         result.extra_notes = []
         contentful_fact_count = 0
         selection_result_count = 0
 
+    # Low-Frequency Telegram Push Operation v1 A+:
+    # reeval 진단 필드를 base_diagnostics 덮어쓰기로 잃지 않도록 임시 저장 후 재삽입.
+    reeval_carry = {
+        k: result.diagnostics[k]
+        for k in (
+            "reevaluate_status",
+            "reevaluate_missing_fields",
+            "reevaluate_quote_missing_tickers",
+            "reevaluate_candidate_missing_fields",
+            "reevaluate_scored_candidate_count",
+            "reevaluate_exception",
+        )
+        if k in result.diagnostics
+    }
     result.diagnostics = build_base_diagnostics(
         push_kind,
         result.available_sources,
@@ -215,5 +293,6 @@ def compose_runtime_evidence(
         add_spike_alert_diagnostics(
             result.diagnostics, diag_sources, result.extra_notes
         )
+    result.diagnostics.update(reeval_carry)
 
     return result
