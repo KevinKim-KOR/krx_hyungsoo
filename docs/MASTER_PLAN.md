@@ -31,7 +31,7 @@ DEFERRED_BY_USER
 - OCI 제한적 런타임 가격 조회 허용 (Published Evidence read-only 유지 · Runtime Evidence 별개).
 - 가격 조회 실패 시 stale 값 발송 금지.
 
-상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
 ### OCI 자율 시장 데이터 경계 정정 (2026-07-26)
 
@@ -45,7 +45,7 @@ PC 없이 Spike 를 반복 운영하려면 OCI 가 승인 대상의 일별 시�
 - **Fail-Closed**: 시세 갱신 실패 · 승인 대상 데이터 누락 · freshness 미달 · artifact 생성 실패 · seed/PARAM/산식 불일치 → 오래된 결과를 최신으로 표시하지 않고 · Spike 미발송 · sent registry 미기록. Market·Holdings 기존 운영은 유지.
 - **현재 상태 (2026-07-26 갱신)**: `market_holdings_operation = ACTIVE` · `spike_operation = ACTIVE`. Low-Frequency Telegram Push Operation v1 DONE 으로 OCI 자율 시세 갱신·artifact 생성·Spike freshness guard 구현 완료. OCI 07:20 데이터 배치 (기존 FDR 증분 갱신 · SQLite Universe artifact · freshness) 후 Spike 7 tick 발송. freshness = 당일 배치 success + artifact.price_data_as_of 일치 + 36h + 7달력일 상한 (외부 거래일 조회 없음). 상세 POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md.
 
-상세: `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
 
 ### 모바일 재개 트리거 (4개 모두 충족 시에만)
 
@@ -115,7 +115,7 @@ PENDING 판단 초안 (GenerateDraft → PENDING_APPROVAL 저장)
 - **OCI 제한적 런타임 가격 조회**: Telegram 운영 최신성을 위해 허용 (기존 승인된 시세 출처 · Holdings 평가 재계산 · Spike 조건 재평가 · active PARAM 적용 · as-of 기록). Published Evidence read-only 유지 · Runtime Evidence 는 별개
 - **실제 발송 이력**: `state/three_push/oci_runtime_history.jsonl` · `runtime_sent_registry` DB
 
-상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
 ### 인간 승인 게이트 (PENDING → 투자 행동)
 
@@ -149,7 +149,7 @@ PENDING 판단 초안 (GenerateDraft → PENDING_APPROVAL 저장)
 선택적 확인 도구로 사용한다.
 ```
 
-세부 흐름·역할 고정·다음 활성 Step 은 `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md` 를 참조한다. 본 마스터플랜의 단계 체계 자체는 변경되지 않는다.
+세부 흐름·역할 고정·다음 활성 Step 은 `docs/handoff/POC2/POC2_MARKET_FIRST_OPERATING_DIRECTION.md` 를 참조한다. 본 마스터플랜의 단계 체계 자체는 변경되지 않는다.
 
 ## 1단계. 데이터 수집 및 추천 초안 생성
 K6/EOD 기준으로 시장 데이터를 수집하고, holdings와 결합하여 추천/상태 **초안**을 만든다. 이 단계의 산출물은 실행본이 아니라 **PENDING 상태의 승인 대기안**이다.  
@@ -198,7 +198,7 @@ Phase 1에서 살려온 독립 ML 자산을 새 구조에 연결하고, 첫 fact
     유지).
   - PC ML 이 OCI DB 를 직접 원격으로 읽는 구조.
   - PC SQLite 즉시 폐기.
-  - 모바일 UI 구체 구현 (본 6단계 범위에서는 다루지 않는다 — 모바일 판단 진입 조건과 순서는 상단 "모바일 판단 운영 순서 앵커 (2026-07-20)" 섹션 및 `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 로 이관되어 별도 관리한다).
+  - 모바일 UI 구체 구현 (본 6단계 범위에서는 다루지 않는다 — 모바일 판단 진입 조건과 순서는 상단 "모바일 판단 운영 순서 앵커 (2026-07-20)" 섹션 및 `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 로 이관되어 별도 관리한다).
 - 완료 기준: **PC 승인 / 발행 시점에 OCI 로 read-only published snapshot 이
   전달되고, OCI 측에서 마지막 published 데이터 + 운영 상태 + 기준 시각 + 데이터
   신선도를 read-only 로 조회할 수 있다.**
@@ -212,6 +212,6 @@ Phase 1에서 살려온 독립 ML 자산을 새 구조에 연결하고, 첫 fact
   - 위 결정으로 이전 문구 "snapshot 구체 형식 (versioned SQLite snapshot /
     read-only JSON artifact / 제한된 조회용 SQLite copy 등) 은 본 단계 진입 직전
     별도 결정" 은 **SQLite 중심 · JSON transport 제한** 방향으로 확정.
-  - 감사 근거: `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
+  - 감사 근거: `docs/handoff/POC2/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 
 이 MASTER_PLAN의 목적은 기능을 벌리는 것이 아니라, **데이터 수집 → PENDING 초안 → 인간 승인 → OCI 전달/알림 → factor 확장 → 저빈도 운영 + 예외 감시 → OCI read-only 조회 평면 확장**의 짧고 검증 가능한 루프를 완성하는 데 있다. Open Question은 질문으로 남겨 관리하고, Kill Switch가 발동하면 토론하지 말고 즉시 멈춘다. :contentReference[oaicite:14]{index=14} :contentReference[oaicite:15]{index=15}

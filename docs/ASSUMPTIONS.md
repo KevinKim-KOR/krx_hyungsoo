@@ -36,7 +36,7 @@
   교체 시 재측정 필요. **본 evidence 만 기록하고 ANSWERED 로 승격하지 않는다**
   (지시문 §16 AC-14 — "아직 답이 확정되지 않은 질문을 ANSWERED 로 바꾸지
   않는다").
-- **참조**: `docs/handoff/POC2_ML_RELATIVE_UPSIDE_SCORE_V0_CONCLUSION.md`.
+- **참조**: `docs/handoff/POC2/POC2_ML_RELATIVE_UPSIDE_SCORE_V0_CONCLUSION.md`.
 
 ### Q6. 위험 감지 = 위험 구간 분류 — factor / threshold / label 을 어떻게 확정할 것인가?
 - **상태**: OPEN
@@ -106,7 +106,7 @@
   - **PARAM 은 DB 로 관리** (version / approval / active pointer).
   - **JSON 은 로그 · archive · API request/response · 테스트 fixture 만 허용**.
   - 활성 JSON 은 DB 전환 대상과 순서를 먼저 측정하며, 전환 전 임의 삭제 · dual-write 금지.
-  - 관련 감사 근거: `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
+  - 관련 감사 근거: `docs/handoff/POC2/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 
 ### A-3. 친구 프로젝트를 뼈대로 삼는가?
 - **상태**: ANSWERED (2026-04-21)
@@ -147,7 +147,7 @@
     JSON PARAM handoff 를 새 운영 경로로 만들지 않는다.
   - 향후 모바일 조회는 **OCI SQLite read-only 기반** 으로 구현한다.
   - 실제 활성 데이터 전수 감사와 다음 STEP 매핑 대기 항목:
-    `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
+    `docs/handoff/POC2/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 - **활성 Open Question 추가 없음**: 본 결정은 방향 앵커이며, 즉시 검증 트리거가
   발생하는 것이 아니다. DB 형식 결정 시점에 도달하면 그 때 별도 Q 로 승격.
 - **참조**: `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` (원본 결정 기록),
@@ -190,7 +190,7 @@
   수준이다. 큰 ML / 위험 감지 ML / 더 복잡한 모델로 가야 본 질문의 본문 ("GPU 가
   현재 병목을 해결하는가") 에 답할 수 있다. **본 evidence 만 기록하고 ANSWERED
   로 승격하지 않는다** — 향후 ML 축2 또는 더 큰 모델 시 재측정.
-- **참조**: `docs/handoff/POC2_ML_RELATIVE_UPSIDE_SCORE_V0_CONCLUSION.md` §5.
+- **참조**: `docs/handoff/POC2/POC2_ML_RELATIVE_UPSIDE_SCORE_V0_CONCLUSION.md` §5.
 
 ### L-3. AI 토론 점수체계 검증
 - **상태**: BACKLOG 이관 (2026-05-11, 이전 Q5)
@@ -213,7 +213,7 @@
 
 ## 5. 개인 프로젝트 운영 전제 (2026-07-03)
 
-시장 우선 운영 원칙 (`docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`) 과 정합되는 개인 프로젝트 운영 전제:
+시장 우선 운영 원칙 (`docs/handoff/POC2/POC2_MARKET_FIRST_OPERATING_DIRECTION.md`) 과 정합되는 개인 프로젝트 운영 전제:
 
 - 주 3회 수준의 수동 실행도 허용되는 개인용 분석 도구다.
 - 상시 수집·24/365 API 가용성은 목표가 아니다.
@@ -224,7 +224,7 @@
 
 ## 5.1 제품 평면별 역할 · 최소 사용자 개입 원칙 (2026-07-20, Mobile Decision Operating Boundary Amendment v1)
 
-Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`) 확정에 따라 다음을 운영 전제로 추가한다.
+Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`) 확정에 따라 다음을 운영 전제로 추가한다.
 
 ### 제품 평면별 역할
 
@@ -326,7 +326,7 @@ OCI 계속 금지: 신규 전략 · 신규 후보 선정 · **전체 시장 후�
 
 오래된 값을 최신값처럼 발송하지 않는다. 상태 구분: `sent · no_signal · duplicate · partial · failed`. 조회 실패를 `no_signal` 로 처리하지 않는다. Spike 최신 시세 확보 실패 시 조건 평가 실패 · `failed` · Telegram 미발송.
 
-상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
 ## 6. 마지막 원칙
 

@@ -188,9 +188,9 @@ Low-Frequency Telegram Push Operation v1
 - `docs/ASSUMPTIONS.md`
 - `docs/STATE_LATEST.md`
 - `docs/handoff/STATE_LATEST.md`
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md`
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md`
 - `docs/backlog/BACKLOG.md`
-- `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`
+- `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`
 
 신규 문서 실제 배치 경로 (2026-07-22 사용자 확정):
 
@@ -198,7 +198,7 @@ Low-Frequency Telegram Push Operation v1
 
 (본 문서 · 사용자가 `docs/backlog/` 에 배치하여 canonical 위치 확정)
 
-기존 앵커 (`docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`) 는 삭제하지 않고 최신 사용자 결정에 의해 superseded 되었음을 표시한다.
+기존 앵커 (`docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`) 는 삭제하지 않고 최신 사용자 결정에 의해 superseded 되었음을 표시한다.
 
 ---
 

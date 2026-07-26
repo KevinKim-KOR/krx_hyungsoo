@@ -12,7 +12,7 @@
 - **기록이 없으면 Step8 은 완료될 수 없다.**
 - 매수/매도 여부보다 **"해석 가능성 / 보류 판단 / 개선 필요"** 가 중요하다.
 
-선행 읽기: `docs/handoff/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md`
+선행 읽기: `docs/handoff/POC2/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md`
 
 ---
 

@@ -224,7 +224,7 @@ holdings 항목 18건 기준 자동 생성. 추천 판단 없이 보유 현황 �
 - [KILL_SWITCHES.md](./KILL_SWITCHES.md) — 중단 조건
 - [backlog/BACKLOG.md](./backlog/BACKLOG.md) — deferred 항목 (현재 30건 누적)
 - [MASTER_PLAN.md](./MASTER_PLAN.md) — 전체 계획
-- [handoff/POC1_Step3_close_and_POC2_Step1_handoff.md](./handoff/POC1_Step3_close_and_POC2_Step1_handoff.md) — POC1 Step 3 ~ POC2 Step 1 통합 handoff
-- [handoff/POC2_Step1A_close.md](./handoff/POC2_Step1A_close.md) — POC2 Step 1A 종결
-- [handoff/POC2_Step2_close.md](./handoff/POC2_Step2_close.md) — POC2 Step 2 종결
-- [handoff/POC2_Step2B_close.md](./handoff/POC2_Step2B_close.md) — POC2 Step 2B 종결 (가장 최근)
+- [handoff/POC1/POC1_Step3_close_and_POC2_Step1_handoff.md](./handoff/POC1/POC1_Step3_close_and_POC2_Step1_handoff.md) — POC1 Step 3 ~ POC2 Step 1 통합 handoff
+- [handoff/POC2/POC2_Step1A_close.md](./handoff/POC2/POC2_Step1A_close.md) — POC2 Step 1A 종결
+- [handoff/POC2/POC2_Step2_close.md](./handoff/POC2/POC2_Step2_close.md) — POC2 Step 2 종결
+- [handoff/POC2/POC2_Step2B_close.md](./handoff/POC2/POC2_Step2B_close.md) — POC2 Step 2B 종결 (가장 최근)

@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS market_refresh_log (
 # D-2 (2026-06-30) — market refresh state SSOT. 단일 행만 유지
 # (refresh_scope='market_data'). in-memory state 와 동기화되는 보조가 아니라
 # SQLite 가 기준이다. 자세한 영속화 규칙은
-# docs/handoff/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md 참조.
+# docs/handoff/POC2/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md 참조.
 MARKET_REFRESH_STATE_DDL = """
 CREATE TABLE IF NOT EXISTS market_refresh_state (
     refresh_scope             TEXT PRIMARY KEY,

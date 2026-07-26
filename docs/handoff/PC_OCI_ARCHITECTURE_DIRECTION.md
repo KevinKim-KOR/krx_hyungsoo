@@ -99,7 +99,7 @@ OCI 의 Market · Holdings · Universe · ML evidence 는 published read-only �
 
 판단 기록의 구체 저장 방식 (API 경로 · 스키마 · 인증) 은 본 문서에서 확정하지 않는다. 후속 Step (`Mobile Decision Cockpit v1` → `First Real Decision Cycle v1` 등) 에서 별도 지시문으로 확정한다.
 
-상세: `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
+상세: `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
 
 ## 4. UI 방향
 
@@ -170,7 +170,7 @@ evidence 표현의 참고 자료로만 사용한다.
 PROJECT_ORIGIN_INTENT.md:
 
 * 운영 원칙에 “OCI 장기 역할: 외부 read-only 조회 평면”을 추가한다.
-* 모바일 UI 진입 조건은 트리거 기반으로 관리한다 (2026-07-20 정정, Mobile Decision Operating Boundary Amendment v1). 상세는 `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 및 상단 "OCI 경계 정정 (2026-07-20)" 섹션 참조.
+* 모바일 UI 진입 조건은 트리거 기반으로 관리한다 (2026-07-20 정정, Mobile Decision Operating Boundary Amendment v1). 상세는 `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 및 상단 "OCI 경계 정정 (2026-07-20)" 섹션 참조.
 
 ASSUMPTIONS.md:
 

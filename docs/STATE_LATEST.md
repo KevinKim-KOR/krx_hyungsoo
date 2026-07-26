@@ -29,7 +29,7 @@ next_step_gate = FIRST_REAL_DECISION_CYCLE_V1
 
 **commit**: `6da326f5` (Runtime 오버레이·Spike 재평가) · `b4c573f8` (OCI 증분 갱신·SQLite artifact·freshness).
 
-상세: `docs/handoff/POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md`.
 
 ---
 
@@ -68,7 +68,7 @@ spike_operation = DISABLED
 next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_SAME_STEP_CONTINUE
 ```
 
-**문서 정정 (8 파일 + 신규 conclusion 1)**: PROJECT_ORIGIN_INTENT · ASSUMPTIONS §5.2 · MASTER_PLAN (OCI 자율 시장 데이터 경계 정정 섹션) · KILL_SWITCHES (KS-11 근거 · KS 자체 미변경) · STATE_LATEST (본 문서) · handoff/STATE_LATEST · POC2_B_NEXT_ACTIONS · BACKLOG · 신규 `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
+**문서 정정 (8 파일 + 신규 conclusion 1)**: PROJECT_ORIGIN_INTENT · ASSUMPTIONS §5.2 · MASTER_PLAN (OCI 자율 시장 데이터 경계 정정 섹션) · KILL_SWITCHES (KS-11 근거 · KS 자체 미변경) · STATE_LATEST (본 문서) · handoff/STATE_LATEST · POC2_B_NEXT_ACTIONS · BACKLOG · 신규 `docs/handoff/POC2/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
 
 **KS-11 근거 기록**: PC 비의존 Spike 운영 목적 · 실측 배경을 KILL_SWITCHES 에 기록. KS-11 자체 미변경.
 
@@ -76,7 +76,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_SAME_STEP_CONTINUE
 
 **next_step_gate**: `LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1` 동일 STEP 계속 (SAME_STEP_CONTINUE). 후속: OCI 시세 갱신·builder SQLite 연결 구현 → Spike 실측·등록 → Low-Frequency Push v1 최종 PASS.
 
-상세: `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
 
 ---
 
@@ -126,14 +126,14 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 ```
 
 **문서 정정 (9 파일)**:
-- 신규: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`
+- 신규: `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`
 - `docs/PROJECT_ORIGIN_INTENT.md` (일 3회 제거 · OCI 제한적 가격 조회)
 - `docs/ASSUMPTIONS.md` §5.2 신설 (PUSH 별 정책 · 평가/알림 구분 · PC/OCI 경계 · Published/Runtime Evidence · 실패 원칙)
 - `docs/MASTER_PLAN.md` (canonical 순서 이번 STEP 삽입 · Telegram 운영 경계 섹션)
 - `docs/KILL_SWITCHES.md` (KS-11 변경 근거 이력 추가 · KS 자체 미변경)
 - `docs/STATE_LATEST.md` (본 문서)
 - `docs/handoff/STATE_LATEST.md` (pointer)
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (문서 우선순위 · §0)
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (문서 우선순위 · §0)
 - `docs/backlog/BACKLOG.md` (현재 활성 · 다음 STEP 이관 · 계속 보류 재분류)
 
 **KS-11 근거 기록**: 이번 순서 변경과 정책 정정은 KS-11 (의사결정 24시간 룰) 조치 (새 데이터/근거를 ASSUMPTIONS/PROJECT_ORIGIN_INTENT 에 기록 후 변경) 에 부합. KS-11 자체는 변경/약화 없음.
@@ -144,7 +144,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **next_step_gate**: `LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1`. 설계자 지시 대기.
 
-상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
 ---
 
@@ -191,13 +191,13 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **문서 정정 (9 파일)**:
 - `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md` (신규, 사용자 추가)
-- `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (SUPERSEDED 표기, 삭제 안 함)
+- `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (SUPERSEDED 표기, 삭제 안 함)
 - `docs/MASTER_PLAN.md` (Telegram 저빈도 운영 우선 앵커 신설, 이전 모바일 앵커 SUPERSEDED)
 - `docs/PROJECT_ORIGIN_INTENT.md` (모바일 UI 트리거 기반 → DEFERRED_BY_USER 정정)
 - `docs/ASSUMPTIONS.md` (Mobile 항목 TELEGRAM_PUSH_ONLY 정정)
 - `docs/STATE_LATEST.md` (본 문서)
 - `docs/handoff/STATE_LATEST.md` (pointer)
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (§0 + canonical 순서 변경)
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (§0 + canonical 순서 변경)
 - `docs/backlog/BACKLOG.md` (모바일 항목 5건 재검토 트리거 정정)
 
 **next_step_gate**: `LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1`. 설계자 지시 대기.
@@ -212,7 +212,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 ## 이번 STEP 요약 (Mobile Decision Operating Boundary Amendment v1, DONE · PASS)
 
-**성격**: 문서 정합성 고정 STEP. 기능·코드·DB·scheduler 변경 없음. 신규 앵커 `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (사용자 확정, 2026-07-20) 를 기존 canonical 문서에 반영하고 다음 두 충돌을 해소:
+**성격**: 문서 정합성 고정 STEP. 기능·코드·DB·scheduler 변경 없음. 신규 앵커 `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (사용자 확정, 2026-07-20) 를 기존 canonical 문서에 반영하고 다음 두 충돌을 해소:
 
 - 모바일 UI 무조건 후순위 원칙 → 트리거 기반 원칙 (트리거 충족 시 진입 가능)
 - OCI 순수 read-only 원칙 → read-mostly (published evidence read-only + 사용자 투자 판단 기록만 제한적 write 허용, 주문/Holdings/시장 데이터 변경 금지)
@@ -227,12 +227,12 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 ```
 
 **문서 정정 (10 파일)**:
-- `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (신규 · §5.1 OCI 경계 보완)
+- `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (신규 · §5.1 OCI 경계 보완)
 - `docs/PROJECT_ORIGIN_INTENT.md` (모바일 후순위 → 트리거 기반)
 - `docs/ASSUMPTIONS.md` (§5.1 제품 평면별 역할 · 최소 사용자 개입 원칙)
 - `docs/MASTER_PLAN.md` (모바일 판단 운영 순서 앵커 섹션 신설)
 - `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` (OCI 경계 정정)
-- `docs/STATE_LATEST.md` · `docs/handoff/STATE_LATEST.md` · `docs/handoff/POC2_B_NEXT_ACTIONS.md` (상태/pointer/§0 반영)
+- `docs/STATE_LATEST.md` · `docs/handoff/STATE_LATEST.md` · `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (상태/pointer/§0 반영)
 - `docs/backlog/BACKLOG.md` (5개 항목 상태/트리거 정정)
 - `docs/KILL_SWITCHES.md` (KS-11 변경 근거 기록, KS 자체 미변경)
 
@@ -244,7 +244,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **next_step_gate**: `MOBILE_DECISION_COCKPIT_V1`. 설계자 지시 대기.
 
-상세: `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
+상세: `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
 
 ---
 
@@ -295,7 +295,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **next_step_gate**: `INVESTMENT_DECISION_GATE_V1` (사용자 승인·거절 입력 · 실제 매수/매도 결정 저장). 설계자 지시 대기.
 
-상세: `docs/handoff/POC2_HOLDINGS_MARKET_PENDING_JUDGMENT_DRAFT_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_HOLDINGS_MARKET_PENDING_JUDGMENT_DRAFT_V1_CONCLUSION.md`.
 
 ---
 
@@ -339,7 +339,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 STEP 재선택 근거 (지시문 §14)**: 최신 MASTER_PLAN · STATE_LATEST · handoff · BACKLOG 기준. 우선 확인할 전체 흐름: `보유 종목과 외부 시장 후보 비교 → 판단 사유가 있는 초안 생성 → 사용자의 매수·매도 최종 판단`.
 
-상세: `docs/handoff/POC2_TELEGRAM_SPIKE_ALERT_CONDITIONAL_SEND_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_TELEGRAM_SPIKE_ALERT_CONDITIONAL_SEND_V1_CONCLUSION.md`.
 
 ---
 
@@ -375,7 +375,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 STEP 후보 (설계자 지시 대기)**: `Telegram Spike Alert Conditional Send v1`.
 
-상세: `docs/handoff/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
 
 ---
 
@@ -410,7 +410,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **next_step_gate**: `TELEGRAM_HOLDINGS_BRIEFING_CONTROLLED_SEND_V1` (진행 중).
 
-상세: `docs/handoff/POC2_TELEGRAM_MARKET_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_TELEGRAM_MARKET_BRIEFING_CONTROLLED_SEND_V1_CONCLUSION.md`.
 
 ---
 
@@ -447,7 +447,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 STEP 후보 (§43)**: `Telegram Contentful Controlled Send v1`.
 
-상세: `docs/handoff/POC2_UNIVERSE_MOMENTUM_EVIDENCE_PUBLICATION_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_UNIVERSE_MOMENTUM_EVIDENCE_PUBLICATION_V1_CONCLUSION.md`.
 
 ---
 
@@ -472,7 +472,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 STEP 결정**: 설계자 (웹 GPT) 확정 대기. 개발자 자체 결정 금지 (지시문 §20).
 
-상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §16.
+상세: `docs/handoff/POC2/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §16.
 
 ---
 
@@ -533,7 +533,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 STEP 진입 조건**: **FIX r3 OCI 실측 완료 전까지 `Universe Momentum Evidence Publication v1` 진입 금지**.
 
-상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §0-A ~ §14.
+상세: `docs/handoff/POC2/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md` §0-A ~ §14.
 
 ---
 
@@ -581,7 +581,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 활성 STEP**: 상단 §"다음 STEP 진입 조건" 참조 (FIX r3 OCI 실측 완료 전 진입 금지).
 
-상세: `docs/handoff/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_HOLDINGS_EVIDENCE_OCI_PUBLICATION_V1_CONCLUSION.md`.
 
 ## 이전 STEP 요약 (Runtime Evidence DB Connection v1, DONE 2026-07-13, commit `4501a8e3`)
 
@@ -633,13 +633,13 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 활성 STEP (확정)**: **`OCI Evidence Publication / Missing Source Connection`** — Holdings JSON OCI publication + universe momentum artifact + kr_realtime/overnight_us source 연결 후보.
 
-상세: `docs/handoff/POC2_RUNTIME_EVIDENCE_DB_CONNECTION_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_RUNTIME_EVIDENCE_DB_CONNECTION_V1_CONCLUSION.md`.
 
 **다음 활성 STEP (조건부)**:
 - 시장·Holdings·Spike 모두 contentful → `Telegram Contentful Controlled Send v1`.
 - 시장만 contentful, Holdings/Spike source 부재 → `OCI Evidence Publication / Missing Source Connection`.
 
-상세: `docs/handoff/POC2_RUNTIME_EVIDENCE_DB_CONNECTION_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_RUNTIME_EVIDENCE_DB_CONNECTION_V1_CONCLUSION.md`.
 
 ## 이전 STEP 요약 (Runtime State Store Refactor & Test Isolation v1, VERIFIED 2026-07-12, commit `f43e5565`)
 
@@ -695,7 +695,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 활성 STEP (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — `available_sources=None` 제거 준비.
 
-상세: `docs/handoff/POC2_RUNTIME_STATE_STORE_REFACTOR_TEST_ISOLATION_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_RUNTIME_STATE_STORE_REFACTOR_TEST_ISOLATION_V1_CONCLUSION.md`.
 
 ## 이전 STEP 요약 (PARAM / Runtime State DB Cutover v1, DONE 2026-07-09, commit `13fc8a09`)
 
@@ -740,7 +740,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 활성 STEP (확정)**: **`Runtime Evidence DB Connection v1`** (설계자 확정 세션) — `available_sources=None` 제거 준비.
 
-상세: `docs/handoff/POC2_PARAM_RUNTIME_STATE_DB_CUTOVER_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_PARAM_RUNTIME_STATE_DB_CUTOVER_V1_CONCLUSION.md`.
 
 ## 직전 STEP 요약 (PARAM / Runtime State DB Mapping v1, DONE 2026-07-09, commit `8a7a7ccc`)
 
@@ -771,7 +771,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 활성 STEP (확정)**: **`PARAM / Runtime State DB Cutover v1`** (설계자 확정 세션). §11 항목 구현.
 
-상세: `docs/handoff/POC2_PARAM_RUNTIME_STATE_DB_MAPPING_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_PARAM_RUNTIME_STATE_DB_MAPPING_V1_CONCLUSION.md`.
 
 ## 직전 STEP 요약 (OCI Database Environment Remediation v1, DONE 2026-07-09, commit `22d29193`)
 
@@ -799,7 +799,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 **다음 활성 STEP (확정)**: **`PARAM / Runtime State DB Mapping v1`** (설계자 확정 세션). PARAM · runtime status · sent registry · holdings 등 JSON → DB 매핑 계약.
 
-상세: `docs/handoff/POC2_OCI_DATABASE_ENVIRONMENT_REMEDIATION_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_OCI_DATABASE_ENVIRONMENT_REMEDIATION_V1_CONCLUSION.md`.
 
 ## 직전 STEP 요약 (OCI Database Preflight v1, DONE 2026-07-08)
 
@@ -820,7 +820,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 **신규 파일** (지시문 §5 허용 범위):
 - `scripts/run_oci_database_preflight.py` (438줄, read-only CLI, FIX r1 최상위 예외 경계 포함)
 - `tests/test_oci_database_preflight.py` (372줄, 19 케이스 — FIX r1 sanitised failure contract 회귀 3건 포함)
-- `docs/handoff/POC2_OCI_DATABASE_PREFLIGHT_V1_CONCLUSION.md`
+- `docs/handoff/POC2/POC2_OCI_DATABASE_PREFLIGHT_V1_CONCLUSION.md`
 
 **Q1 (a) 준수**: `market_data.sqlite` 기준 경로 = `app.market_data_store.DEFAULT_DB_PATH`. 보조 정의 (`etf_nav_store`) 동일 반환값 → 충돌 아님.
 
@@ -833,7 +833,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 2. sanitised stdout + revision 전달.
 3. overall readiness 확정 후 다음 STEP 분기: READY → `PARAM / Runtime State DB Mapping v1` / NOT_READY → `OCI Database Environment Remediation v1`.
 
-상세: `docs/handoff/POC2_OCI_DATABASE_PREFLIGHT_V1_CONCLUSION.md`.
+상세: `docs/handoff/POC2/POC2_OCI_DATABASE_PREFLIGHT_V1_CONCLUSION.md`.
 
 ## 직전 STEP 요약 (OCI Active Data Boundary Audit v1, DONE 2026-07-07)
 
@@ -857,7 +857,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - 다음 STEP 확정 필요 항목 8개 목록 (개발자 임의 확정 금지, 설계자 확정 대기).
 - Canonical docs 5건 갱신 (PROJECT_ORIGIN_INTENT · MASTER_PLAN · ASSUMPTIONS · STATE_LATEST · POC2_B_NEXT_ACTIONS).
 - **다음 활성 STEP**: 다음 STEP schema mapping · publication 기준 등 8개 확정 사항 설계자 확정 대기.
-- 상세: `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
+- 상세: `docs/handoff/POC2/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 
 ## 직전 STEP 요약 (PUSH Content Gap Diagnosis v1, DONE 2026-07-07)
 
@@ -872,7 +872,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - **backend 790 passed** (772 → 790, 신규 18). black / flake8 PASS. frontend 변경 0건.
 - **신규 endpoint / DB 테이블 / UI / 외부 호출 0건**. Telegram · PUSH 코드 · Market Discovery · Holdings · AI Sessions · Preview · ML artifact **미변경**.
 - **다음 STEP 유형**: `OCI_RUNTIME_CONFIGURATION_CLOSEOUT` (정식 설계명은 별도 설계 세션에서 확정 — 예: `OCI Runtime Evidence Supply Closeout v1`).
-- 상세: `docs/handoff/POC2_PUSH_CONTENT_GAP_DIAGNOSIS_V1_CONCLUSION.md`.
+- 상세: `docs/handoff/POC2/POC2_PUSH_CONTENT_GAP_DIAGNOSIS_V1_CONCLUSION.md`.
 
 ## 직전 STEP (2026-07-05, v2 Data Validity + Model Comparison, DONE)
 
@@ -887,7 +887,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
   - Core Ridge: MAE **4.9499** / RMSE **7.7084** / directional_accuracy **0.5909**.
 - **backend 772 passed** (755 → 772, 신규 17). black / flake8 PASS. frontend 변경 0건.
 - **신규 endpoint / DB 테이블 / UI / 외부 호출 0건**. 기존 baseline / walk-forward artifact **미변경**.
-- 상세: `docs/handoff/POC2_MARKET_FLOW_ML_V2_DATA_VALIDITY_MODEL_COMPARISON_CONCLUSION.md`.
+- 상세: `docs/handoff/POC2/POC2_MARKET_FLOW_ML_V2_DATA_VALIDITY_MODEL_COMPARISON_CONCLUSION.md`.
 
 ## 직전 STEP (2026-07-05, Walk-forward Lookback v1, DONE)
 
@@ -901,7 +901,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - **산출물**: `state/ml/market_flow_walk_forward_predictions_latest.csv`, `state/ml/market_flow_walk_forward_latest.json`. 기존 baseline artifact 미변경.
 - **backend 755 passed** (738 → 755, 신규 17). black / flake8 PASS. frontend 변경 0건.
 - **신규 endpoint / DB 테이블 / UI / 외부 호출 0건**.
-- 상세: `docs/handoff/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md`.
+- 상세: `docs/handoff/POC2/POC2_MARKET_FLOW_WALK_FORWARD_LOOKBACK_V1_CONCLUSION.md`.
 
 ## 직전 STEP (2026-07-05, Baseline v1 Closeout, DONE)
 
@@ -913,7 +913,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - **backend 738 passed** (729 → 738, 신규 9 — KOSPI closeout 테스트). black/flake8 PASS. frontend 변경 0건.
 - **신규 endpoint / DB 테이블 / UI / 상시 외부 호출 0건**. 외부 조회는 `kospi` 서브커맨드 1회 실행 시에만.
 - **기존 ML axis1 / Market Discovery / Holdings / Preview / AI Sessions / PENDING / OCI / Telegram 미변경**.
-- 상세: `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
+- 상세: `docs/handoff/POC2/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
 ## 시장 우선 운영 원칙 (2026-07-03 확정, 이전 STEP)
 
@@ -923,7 +923,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - **Decision Draft Preview 는 drill-down 도구** (주력 운영 흐름 아님).
 - **기존 AI Sessions 와 역할 중복되는 별도 승인 시스템 신설 금지**.
 - **NAVER_FDR 주 소스 / YAHOO_FDR 보조 / KRX CSV fallback**.
-- 상세: `docs/handoff/POC2_MARKET_FIRST_OPERATING_DIRECTION.md` / `docs/handoff/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
+- 상세: `docs/handoff/POC2/POC2_MARKET_FIRST_OPERATING_DIRECTION.md` / `docs/handoff/POC2/POC2_MARKET_FLOW_ML_DATASET_BASELINE_V1_CONCLUSION.md`.
 
 ## 완료 / 동결 / 다음 (요약)
 
@@ -1028,7 +1028,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **API·UI 계약**: 변경 0건. `MarketRefreshStatusResponse` 필드 / `/market/refresh` / `/market/refresh/status` endpoint 그대로.
   - **신규 테스트 (10건)**: `tests/test_market_refresh_state_persistence.py` — 최초 상태 / 성공 영속화 / 새 인스턴스 detail 복구 / 성공 후 실패 보존 / running 정규화 detail 보존 / 응답 필드 회귀 / 단일 행 원칙.
   - **backend 전체 테스트**: `627 passed` (617 → 627). black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
-  - **수정 파일**: `app/market_data_store.py` (DDL 추가), `app/market_refresh_service.py` (SSOT 전환), `app/api_market_topn.py` (status endpoint 에 db_path 명시), `tests/test_market_topn_api.py` (fixture reset_state_for_testing 에 db_path 전달), `tests/test_market_data_store.py` (테이블 목록 검증 4 → 4종 갱신). **신규**: `app/market_refresh_state_store.py`, `tests/test_market_refresh_state_persistence.py`, `docs/handoff/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md`.
+  - **수정 파일**: `app/market_data_store.py` (DDL 추가), `app/market_refresh_service.py` (SSOT 전환), `app/api_market_topn.py` (status endpoint 에 db_path 명시), `tests/test_market_topn_api.py` (fixture reset_state_for_testing 에 db_path 전달), `tests/test_market_data_store.py` (테이블 목록 검증 4 → 4종 갱신). **신규**: `app/market_refresh_state_store.py`, `tests/test_market_refresh_state_persistence.py`, `docs/handoff/POC2/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md`.
 - **이전 완료 상태**: **Cleanup KS-10 Round B** (2026-06-29).
   - 지시문 목표: Round A 에서 확인된 near/ambiguity 파일 분리 → trigger=0, near=0 달성.
   - **측정 방식**: `wc -l` (Bash) 통일.
@@ -1042,13 +1042,13 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **Note**: `enrich_candidates_with_evidence` / `build_nav_discount_payload` — `DEFAULT_DB_PATH` 직접 참조 → `db_path` 파라미터화 (테스트 monkeypatch 정합성).
 - **이전 완료 상태**: **Cleanup KS-10 Round A** (2026-06-29).
   - 지시문 목표: 전체 .py/.ts/.tsx 라인 수 기준선 측정 + KS-10 trigger/near 목록화 + D-1 회귀 해소.
-  - **수정 파일 3종**: `tests/test_three_push_contract.py` / `docs/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md`. 신규 1종: `docs/handoff/POC2_CLEANUP_KS10_ROUND_A_CONCLUSION.md`.
+  - **수정 파일 3종**: `tests/test_three_push_contract.py` / `docs/STATE_LATEST.md` / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md`. 신규 1종: `docs/handoff/POC2/POC2_CLEANUP_KS10_ROUND_A_CONCLUSION.md`.
   - **backend 전체 테스트**: `617 passed`. black PASS / flake8 PASS.
 - **이전 완료 상태 (prev-2)**: **BACKLOG 전수 감사·정리** (2026-06-29).
   - 지시문 단일 목표: 1270 라인 누적 BACKLOG 를 다음 Step 우선순위 판단 가능한 상태로 정리. 코드·UI·API·데이터 계약·OCI·Telegram 변경 0건.
-  - **수정 docs 4종**: `docs/backlog/BACKLOG.md` (Measure-Object -Line 기준 451 라인, 16 카테고리 4필드 통일 포맷 91 항목) / `docs/STATE_LATEST.md` (§1 prepend + §5 D-1/D-2 결함 escalate + §7 BACKLOG audit 포인터) / `docs/handoff/POC2_B_NEXT_ACTIONS.md` (§0 prepend + 직전 §0 → §0-prev) / `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` (신규, Measure-Object -Line 기준 99 라인).
+  - **수정 docs 4종**: `docs/backlog/BACKLOG.md` (Measure-Object -Line 기준 451 라인, 16 카테고리 4필드 통일 포맷 91 항목) / `docs/STATE_LATEST.md` (§1 prepend + §5 D-1/D-2 결함 escalate + §7 BACKLOG audit 포인터) / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (§0 prepend + 직전 §0 → §0-prev) / `docs/handoff/POC2/POC2_BACKLOG_AUDIT_CONCLUSION.md` (신규, Measure-Object -Line 기준 99 라인).
   - **5분류 판정 결과**: 완료 23 (RESOLVED 처리) / 폐기 11 (DISCARDED) / 중복 9 (DEDUPED) / 현재 결함 2 (STATE_LATEST §5 escalate) / 유지 91 항목 (재작성 시 sub-bullet 을 별도 항목으로 분리 — 1차 판정 65 + sub-bullet 승격 약 26). 사용자 모호 항목 일괄 판정 — L148 AI 투자세션 ETF 구성 수집 완료 / L400 보유 종목 브리핑 상세 UI 완료 / L1067 Next.js UI 세분화 폐기 / L1155 spike·holding_watch 연계 완료 / L828 market_cache 영속화 폐기 / L892 holdings 자동 불러오기 폐기 / L360 SQLite 영구 보존 폐기 / L14 ML 학습 유지(통일 포맷) / L539 Layer B 급락 임계값 §2 통합.
-  - **분류 기록 위치 (검증자 A-1 지적 반영)**: 완료 / 폐기 / 중복 / 현재 결함 escalate 기록은 BACKLOG 본문에서 제거하고 `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` 외부 문서에만 보존. BACKLOG.md 는 4필드 유지 항목만 포함.
+  - **분류 기록 위치 (검증자 A-1 지적 반영)**: 완료 / 폐기 / 중복 / 현재 결함 escalate 기록은 BACKLOG 본문에서 제거하고 `docs/handoff/POC2/POC2_BACKLOG_AUDIT_CONCLUSION.md` 외부 문서에만 보존. BACKLOG.md 는 4필드 유지 항목만 포함.
   - **통일 포맷**: 항목 / 보류 사유 / 보류된 위험 / 재검토 트리거 4필드.
   - **16 카테고리 구조**: ML/Factor/Threshold, 위험 evidence/시계열/데이터 품질, NAV/시장 데이터 source, Market Discovery/Universe, ETF 구성종목/중복률, 시장 국면/Regime, 판단 근거 저장, Holdings/포트폴리오 구조, Message/Telegram/알림, UI/Frontend, OCI/Delivery/Operations, Snapshot/History/Audit, Universe/Cache 후순위, Layer 활성 관리, 항구적 가드 정책, 메타/검증 항목.
   - **escalate 2건**: D-1 = `test_three_push_contract::test_generate_spike_alert_via_unified_endpoint` 회귀 (clean tree 에서도 실패), D-2 = `app/market_refresh_service.py` in-memory state 재시작 시 소실 (6h cooldown 가드 깨짐).
@@ -1138,7 +1138,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **검증자 판정**: 1차 commit `60912493` REJECTED → FIX r1 commit `18394f09` (중첩 forbidden key 재귀 검사 + 신규 테스트 39 케이스 + 문서 정합성 정정) → **VERIFIED_WITH_NOTES** 통과 (2026-06-19). NOTES는 사용자 승인 없는 push 절차 위반 1건 — 코드/기능/구조 위반 없음. 본 위반은 사후 사용자 보고 + 메모리 영구 규칙 (`feedback_git_lifecycle.md`) 재확인.
 - **이전 STEP**: **OCI 3-PUSH 운영 등록** (2026-06-18, PARTIAL — 개발자 산출물 + 수동 등가 실행 완료, 사용자 OS 등록 + scheduled run 도달 대기).
   - PC → OCI 3-PUSH package sync와 OCI runner Telegram autosend를 KST 07:50/12:20/15:20 sync → 08:00/12:30/15:30 send 운영 스케줄로 연결할 수 있도록 PC PowerShell wrapper + Task Scheduler 등록 절차 + OCI crontab template 최신화. 수동 등가 실행으로 Telegram 1회 발송 + duplicate guard 모두 실측 통과.
-  - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PowerShell wrapper, `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 호출, `logs/three_push_sync_task.log` stdout append, PS 5.1 stderr-as-error 회피를 위해 `2>&1` 미사용), `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI 명령 3종 + GUI 절차 + 트러블슈팅), `docs/handoff/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).
+  - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PowerShell wrapper, `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 호출, `logs/three_push_sync_task.log` stdout append, PS 5.1 stderr-as-error 회피를 위해 `2>&1` 미사용), `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI 명령 3종 + GUI 절차 + 트러블슈팅), `docs/handoff/POC2/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).
   - **수정 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — venv 경로 `venv/bin/python` 명시 / .env 자동 로드 안내 / PC sync 선행 시간표 / 수동 등가 실행 절차 보강.
   - **OCI 실측 (2026-06-18)**: PC sync `status=success` (3/3 upload + manifest + verify success) / OCI dry-run 3종 `dry_run_success` (msg_len: market 997, holdings 1606, spike 878) / `--push-kind market_briefing --mode send` → `status=sent, telegram_sent=true` / 동일 package_id 재실행 → `status=skipped, reason=duplicate_package, telegram_attempted=false` / token/chat_id 미노출.
   - **stale 사례 (참고)**: 첫 dry-run에서 `asof_date=2026-06-17` 기반 36.7h stale 감지 → PC re-sync로 `asof_date=2026-06-18` 갱신 후 정상화. 운영 시 PC sync가 발송 직전 매번 실행되면 fresh 보장.
@@ -1292,28 +1292,28 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 | Step | Status | Date | Detail |
 | --- | --- | --- | --- |
-| PC-to-OCI 3-PUSH Evidence Package Sync | DONE | 2026-06-15 | [POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md](handoff/POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md) |
-| 3-PUSH Context Cleanup (KS-10 trigger/near 4건 해소) | DONE | 2026-06-14 | [POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md](handoff/POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md) |
-| 3-PUSH Message Text Runtime Evidence 반영 | DONE | 2026-06-14 | [POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md](handoff/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md) |
-| 3-PUSH Runtime Package PC 검증 | DONE | 2026-06-13 | [POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md](handoff/POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md) |
-| 3-PUSH Message Contract 정렬 | DONE | 2026-06-12 | [POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md](handoff/POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md) |
-| UI 안전실행 — ML evidence 갱신 background job | DONE | 2026-06-11 | [POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md](handoff/POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md) |
-| ML Baseline Evidence Draft Integration | DONE | 2026-06-11 | [POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md](handoff/POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md) |
-| ML Baseline v0 룩백 검증 | DONE | 2026-06-11 | [POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md](handoff/POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md) |
-| ML Feature Sanity Check | DONE | 2026-06-08 | [POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md](handoff/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
-| ML 최소 데이터 레인 1차 | DONE | 2026-06-08 | [POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md](handoff/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |
-| Market Discovery UI / Perf 후속 정리 (사용자 즉시 피드백 5 commit) | DONE | 2026-06-08 | commits `6c3728ec` → `8fad2bb4` (별도 Conclusion 미생성 — handoff 검증자 보고서 [POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md](handoff/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md)) |
-| NAV / Discount Display FIX (전체 ETF 조회 영역 + 표시 매트릭스) | DONE | 2026-06-08 | [POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
+| PC-to-OCI 3-PUSH Evidence Package Sync | DONE | 2026-06-15 | [POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md](handoff/POC2/POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md) |
+| 3-PUSH Context Cleanup (KS-10 trigger/near 4건 해소) | DONE | 2026-06-14 | [POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md](handoff/POC2/POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md) |
+| 3-PUSH Message Text Runtime Evidence 반영 | DONE | 2026-06-14 | [POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md](handoff/POC2/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md) |
+| 3-PUSH Runtime Package PC 검증 | DONE | 2026-06-13 | [POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md](handoff/POC2/POC2_THREE_PUSH_RUNTIME_PACKAGE_PC_VERIFICATION_CONCLUSION.md) |
+| 3-PUSH Message Contract 정렬 | DONE | 2026-06-12 | [POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md](handoff/POC2/POC2_THREE_PUSH_MESSAGE_CONTRACT_ALIGNMENT_CONCLUSION.md) |
+| UI 안전실행 — ML evidence 갱신 background job | DONE | 2026-06-11 | [POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md](handoff/POC2/POC2_UI_SAFE_ML_EVIDENCE_EXECUTION_CONCLUSION.md) |
+| ML Baseline Evidence Draft Integration | DONE | 2026-06-11 | [POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md](handoff/POC2/POC2_ML_BASELINE_EVIDENCE_DRAFT_INTEGRATION_CONCLUSION.md) |
+| ML Baseline v0 룩백 검증 | DONE | 2026-06-11 | [POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md](handoff/POC2/POC2_ML_BASELINE_V0_LOOKBACK_CONCLUSION.md) |
+| ML Feature Sanity Check | DONE | 2026-06-08 | [POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md](handoff/POC2/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
+| ML 최소 데이터 레인 1차 | DONE | 2026-06-08 | [POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md](handoff/POC2/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |
+| Market Discovery UI / Perf 후속 정리 (사용자 즉시 피드백 5 commit) | DONE | 2026-06-08 | commits `6c3728ec` → `8fad2bb4` (별도 Conclusion 미생성 — handoff 검증자 보고서 [POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md](handoff/POC2/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md)) |
+| NAV / Discount Display FIX (전체 ETF 조회 영역 + 표시 매트릭스) | DONE | 2026-06-08 | [POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md](handoff/POC2/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
 
 ## 3. Recent history summary
 
 | Step | Result | Summary | Detail |
 | --- | --- | --- | --- |
-| 2026-06-08 ML Feature Sanity Check | DONE | coverage / calculation / NAV join / risk proxy 검산 4종 + read-only API + Data Status 표시. sanity_status=warn / calc 0 err / future_nav_join=0. | [conclusion](handoff/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
-| 2026-06-08 ML 최소 데이터 레인 1차 | DONE | etf_ml_feature_daily + market_risk_feature_daily 2 테이블 + CLI + 7축 readiness API. 1137 ETF×60일 → 65,691 row / 4.46초. ML 모델 / threshold / label 0건. | [conclusion](handoff/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |
-| 2026-06-08 Market Discovery UI / Perf 후속 정리 | DONE | CandidateTable 컬럼 정리 + 6m/12m/1y/3y 추가 + TopControlsRow 통합 + MarketContextCard 표기 정정 + 응답 2.4s→0.85s. | commits `6c3728ec`…`8fad2bb4` / [feedback note](handoff/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md) |
-| 2026-06-08 NAV / Discount Display FIX | DONE | GET /market/nav-discount/latest 신규 + Data Status 전체 ETF NAV 표 + MD/ETF Exposure/Holdings 표시 보강. 표시 매트릭스 충족. | [conclusion](handoff/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
-| 2026-06-08 Naver ETF Universe NAV / 괴리율 연동 | DONE | universe 1회 호출(`etfItemList.nhn`) → `etf_nav_daily` upsert + 3개 화면 NAV 표시. TTL 30s + stale 재사용. 신규 API 0건. | [conclusion](handoff/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
+| 2026-06-08 ML Feature Sanity Check | DONE | coverage / calculation / NAV join / risk proxy 검산 4종 + read-only API + Data Status 표시. sanity_status=warn / calc 0 err / future_nav_join=0. | [conclusion](handoff/POC2/POC2_ML_FEATURE_SANITY_CHECK_CONCLUSION.md) |
+| 2026-06-08 ML 최소 데이터 레인 1차 | DONE | etf_ml_feature_daily + market_risk_feature_daily 2 테이블 + CLI + 7축 readiness API. 1137 ETF×60일 → 65,691 row / 4.46초. ML 모델 / threshold / label 0건. | [conclusion](handoff/POC2/POC2_ML_MINIMAL_DATA_LANE_CONCLUSION.md) |
+| 2026-06-08 Market Discovery UI / Perf 후속 정리 | DONE | CandidateTable 컬럼 정리 + 6m/12m/1y/3y 추가 + TopControlsRow 통합 + MarketContextCard 표기 정정 + 응답 2.4s→0.85s. | commits `6c3728ec`…`8fad2bb4` / [feedback note](handoff/POC2/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md) |
+| 2026-06-08 NAV / Discount Display FIX | DONE | GET /market/nav-discount/latest 신규 + Data Status 전체 ETF NAV 표 + MD/ETF Exposure/Holdings 표시 보강. 표시 매트릭스 충족. | [conclusion](handoff/POC2/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
+| 2026-06-08 Naver ETF Universe NAV / 괴리율 연동 | DONE | universe 1회 호출(`etfItemList.nhn`) → `etf_nav_daily` upsert + 3개 화면 NAV 표시. TTL 30s + stale 재사용. 신규 API 0건. | [conclusion](handoff/POC2/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
 | 2026-06-07 ETF NAV / Discount Source Diagnosis 1차 (FIX) | DONE | NAV/괴리율 source 5건 실측. adopt 0 / hold_unstable 2 / unusable 3. flat_records + timeout 명시 + asof 키 확장 FIX. | commit `b5a80a3f` / [archive](handoff/STATE_LATEST_ARCHIVE.md) |
 | 2026-06-06 ETF Exposure Data Unfolding 1차 | DONE | 구성종목 펼쳐보기 + 반복 핵심 종목 + 중복률 + Holdings Evidence State Bridge + ML readiness 9축. ML 방향성 2축 문서화. | commit `bce8f7fd` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
 
@@ -1341,7 +1341,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 | Q4 | OPEN | "잘 올라가는 섹터/ETF 발굴" 작동 단위 (운영 1개월 검증 필요) | ASSUMPTIONS §2 |
 | Q6 | OPEN | 위험 감지 = "위험 구간 분류" — factor / threshold / label 어떻게 확정할 것인가? (시계열 적재 선행) | ASSUMPTIONS §2 / INTENT §9.5 |
 | D-1 | RESOLVED | `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 회귀 — Cleanup Round A 에서 해소. 원인: test isolation 누락 (runtime probe mock 없음). 수정: stub 2개 추가. 617 passed 확인. | STATE_LATEST §1 |
-| D-2 | RESOLVED | `app/market_refresh_service.py` in-memory state 재시작 소실 — 2026-06-30 D-2 SQLite 영속화 STEP 에서 해소. SSOT 를 `market_refresh_state` 테이블로 전환. 재시작 시 running → failed 정규화 + detail 보존. 627 passed. | STATE_LATEST §1 / handoff/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md |
+| D-2 | RESOLVED | `app/market_refresh_service.py` in-memory state 재시작 소실 — 2026-06-30 D-2 SQLite 영속화 STEP 에서 해소. SSOT 를 `market_refresh_state` 테이블로 전환. 재시작 시 running → failed 정규화 + detail 보존. 627 passed. | STATE_LATEST §1 / handoff/POC2/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md |
 
 ## 6. Next action
 
@@ -1380,8 +1380,8 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 ### Active reference (현 진행에 영향, 자주 갱신)
 
-- [docs/handoff/POC2_B_NEXT_ACTIONS.md](handoff/POC2_B_NEXT_ACTIONS.md) — 빈자리 후속 원칙 + 다음 분기 후보
-- [docs/handoff/POC2_FEATURE_INVENTORY.md](handoff/POC2_FEATURE_INVENTORY.md) — 기능 인벤토리
+- [docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md](handoff/POC2/POC2_B_NEXT_ACTIONS.md) — 빈자리 후속 원칙 + 다음 분기 후보
+- [docs/handoff/POC2/POC2_FEATURE_INVENTORY.md](handoff/POC2/POC2_FEATURE_INVENTORY.md) — 기능 인벤토리
 - [docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md](handoff/PC_OCI_ARCHITECTURE_DIRECTION.md) — PC·OCI 운영 평면 분리 결정 원본 기록 (2026-06-20). PROJECT_ORIGIN_INTENT §7 / ASSUMPTIONS §3 A-6 / MASTER_PLAN 6단계 와 동기화.
 
 Active Reference:
@@ -1392,38 +1392,38 @@ Active Reference:
 - [docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md](handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md) — NAV 진단 1차 결과
 - [docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md](handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md) — 구성종목 source 진단
 - [docs/backlog/BACKLOG.md](backlog/BACKLOG.md) — Backlog (2026-06-29 전수 감사 후 Measure-Object -Line 기준 451 라인 / 16 카테고리 4필드 통일 포맷 91 항목)
-- [docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md](handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md) — BACKLOG 전수 감사 결과 (2026-06-29, 4필드 91 항목, 완료 23/폐기 11/중복 9/결함 escalate 2)
+- [docs/handoff/POC2/POC2_BACKLOG_AUDIT_CONCLUSION.md](handoff/POC2/POC2_BACKLOG_AUDIT_CONCLUSION.md) — BACKLOG 전수 감사 결과 (2026-06-29, 4필드 91 항목, 완료 23/폐기 11/중복 9/결함 escalate 2)
 - [docs/ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md](ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md) — 친구 프로젝트 source / 주기 분석
 
 ### Step detail (Step 종료 후 생성된 상세 기록)
 
 POC1 → POC2 초기:
-- [POC1_step3_close_and_POC2_handoff.md](handoff/POC1_step3_close_and_POC2_handoff.md) — POC1 Step3 종결 + POC2 진입 1차
-- [POC1_Step3_close_and_POC2_Step1_handoff.md](handoff/POC1_Step3_close_and_POC2_Step1_handoff.md) — POC1 Step3 종결 + POC2 Step1 완료 종합
+- [POC1_step3_close_and_POC2_handoff.md](handoff/POC1/POC1_step3_close_and_POC2_handoff.md) — POC1 Step3 종결 + POC2 진입 1차
+- [POC1_Step3_close_and_POC2_Step1_handoff.md](handoff/POC1/POC1_Step3_close_and_POC2_Step1_handoff.md) — POC1 Step3 종결 + POC2 Step1 완료 종합
 
 POC2 Step 1A ~ 6:
-- [POC2_Step1A_close.md](handoff/POC2_Step1A_close.md) / [POC2_Step2_close.md](handoff/POC2_Step2_close.md) / [Step2B](handoff/POC2_Step2B_close.md) / [Step2C](handoff/POC2_Step2C_close.md) / [Step2D](handoff/POC2_Step2D_close.md)
-- [POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md](handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md)
-- [POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md](handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md)
-- [POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md](handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md)
-- [POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md](handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md)
-- [POC2_STEP6_CONCLUSION_AND_NEXT_HANDOFF.md](handoff/POC2_STEP6_CONCLUSION_AND_NEXT_HANDOFF.md)
+- [POC2_Step1A_close.md](handoff/POC2/POC2_Step1A_close.md) / [POC2_Step2_close.md](handoff/POC2/POC2_Step2_close.md) / [Step2B](handoff/POC2/POC2_Step2B_close.md) / [Step2C](handoff/POC2/POC2_Step2C_close.md) / [Step2D](handoff/POC2/POC2_Step2D_close.md)
+- [POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md](handoff/POC2/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md)
+- [POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md](handoff/POC2/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md)
+- [POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md](handoff/POC2/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md)
+- [POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md](handoff/POC2/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md)
+- [POC2_STEP6_CONCLUSION_AND_NEXT_HANDOFF.md](handoff/POC2/POC2_STEP6_CONCLUSION_AND_NEXT_HANDOFF.md)
 
 POC2 Step 7 (3-PUSH realignment):
-- [POC2_STEP7_SYSTEM_OUTPUT_3_PUSH_REALIGNMENT_DESIGN.md](handoff/POC2_STEP7_SYSTEM_OUTPUT_3_PUSH_REALIGNMENT_DESIGN.md)
-- [POC2_STEP7A_NEW_ETF_WATCH_CANDIDATE_MINIMAL_PUSH.md](handoff/POC2_STEP7A_NEW_ETF_WATCH_CANDIDATE_MINIMAL_PUSH.md)
-- [POC2_STEP7B_HOLDINGS_STATUS_BRIEFING_MINIMAL_PUSH.md](handoff/POC2_STEP7B_HOLDINGS_STATUS_BRIEFING_MINIMAL_PUSH.md)
-- [POC2_STEP7C_FALLING_ETF_CAUTION_SIGNAL_MINIMAL_PUSH.md](handoff/POC2_STEP7C_FALLING_ETF_CAUTION_SIGNAL_MINIMAL_PUSH.md)
-- [POC2_STEP7_CONCLUSION_AND_NEXT_HANDOFF.md](handoff/POC2_STEP7_CONCLUSION_AND_NEXT_HANDOFF.md)
+- [POC2_STEP7_SYSTEM_OUTPUT_3_PUSH_REALIGNMENT_DESIGN.md](handoff/POC2/POC2_STEP7_SYSTEM_OUTPUT_3_PUSH_REALIGNMENT_DESIGN.md)
+- [POC2_STEP7A_NEW_ETF_WATCH_CANDIDATE_MINIMAL_PUSH.md](handoff/POC2/POC2_STEP7A_NEW_ETF_WATCH_CANDIDATE_MINIMAL_PUSH.md)
+- [POC2_STEP7B_HOLDINGS_STATUS_BRIEFING_MINIMAL_PUSH.md](handoff/POC2/POC2_STEP7B_HOLDINGS_STATUS_BRIEFING_MINIMAL_PUSH.md)
+- [POC2_STEP7C_FALLING_ETF_CAUTION_SIGNAL_MINIMAL_PUSH.md](handoff/POC2/POC2_STEP7C_FALLING_ETF_CAUTION_SIGNAL_MINIMAL_PUSH.md)
+- [POC2_STEP7_CONCLUSION_AND_NEXT_HANDOFF.md](handoff/POC2/POC2_STEP7_CONCLUSION_AND_NEXT_HANDOFF.md)
 
 POC2 Step 8 (3-PUSH 운영 1주기 검증) + 별도 Foundation:
-- [POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md](handoff/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md)
-- [POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md](handoff/POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md) — FDR + SQLite 시장 데이터 기반 구축
+- [POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md](handoff/POC2/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md)
+- [POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md](handoff/POC2/POC2_FDR_SQLITE_MARKET_DATA_FOUNDATION.md) — FDR + SQLite 시장 데이터 기반 구축
 
 2026-06-15 ~ 직전 5개:
-- 2026-06-15 PC-to-OCI 3-PUSH Evidence Package Sync → [conclusion](handoff/POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md)
-- 2026-06-14 3-PUSH Context Cleanup (KS-10 trigger/near 4건 해소) → [conclusion](handoff/POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md)
-- 2026-06-14 3-PUSH Message Text Runtime Evidence 반영 → [conclusion](handoff/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md)
+- 2026-06-15 PC-to-OCI 3-PUSH Evidence Package Sync → [conclusion](handoff/POC2/POC2_THREE_PUSH_EVIDENCE_PACKAGE_OCI_SYNC_CONCLUSION.md)
+- 2026-06-14 3-PUSH Context Cleanup (KS-10 trigger/near 4건 해소) → [conclusion](handoff/POC2/POC2_THREE_PUSH_CONTEXT_CLEANUP_CONCLUSION.md)
+- 2026-06-14 3-PUSH Message Text Runtime Evidence 반영 → [conclusion](handoff/POC2/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md)
 
 2026-06-01 이후 (가장 최근 5개 STEP — §3 참조 + ARCHIVE 전문):
 - 2026-06-07 NAV / Discount Source Diagnosis 1차 (FIX) → [STATE_LATEST_ARCHIVE §0](handoff/STATE_LATEST_ARCHIVE.md)

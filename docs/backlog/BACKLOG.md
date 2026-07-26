@@ -8,7 +8,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류된 위험**: 미루면 발생 가능한 부작용
 - **재검토 트리거**: 언제 다시 꺼낼 것인가
 
-전수 감사 결과 (완료 / 폐기 / 중복 / 현재 결함 escalate 분류 기록) 는 본 문서 외부 — `docs/handoff/POC2_BACKLOG_AUDIT_CONCLUSION.md` 에 보존된다.
+전수 감사 결과 (완료 / 폐기 / 중복 / 현재 결함 escalate 분류 기록) 는 본 문서 외부 — `docs/handoff/POC2/POC2_BACKLOG_AUDIT_CONCLUSION.md` 에 보존된다.
 
 ---
 
@@ -462,7 +462,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   3. 모바일 부재가 다시 실제 운영 차단 사유
   4. 사용자 명시 재개 결정
 - 상세: `docs/backlog/POC2_MOBILE_DECISION_COCKPIT_DEFERRED_CONCLUSION.md`.
-- 이전 앵커 (SUPERSEDED): `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
+- 이전 앵커 (SUPERSEDED): `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`.
 
 ---
 
@@ -764,7 +764,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ## Mobile Decision Operating Boundary Amendment v1 반영 (2026-07-20)
 
-`docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 확정에 따라 다음 항목의 상태와 재검토 트리거를 정정한다. 항목 자체는 삭제하지 않는다.
+`docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 확정에 따라 다음 항목의 상태와 재검토 트리거를 정정한다. 항목 자체는 삭제하지 않는다.
 
 ---
 
@@ -773,7 +773,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - 2026-07-26 실측 확정 (Market·Holdings): dry-run·send·Telegram 4건 수신·registry 슬롯 분리·중복 차단 검증.
 - 2026-07-26 실측 확정 (Spike + OCI 데이터 배치): OCI 07:20 배치 success (41/41 · price_data_as_of=2026-07-24 · freshness fresh) · Spike 수동 send=sent · Telegram 실 수신. builder 가 pykrx 아닌 SQLite 로 계산 (외부 호출 0). crontab 등록 완료 (Market 08:00 + Holdings 3슬롯 무변경 + 데이터 배치 07:20 + Spike 7 tick).
 - **Spike 차단 원인 (해소)**: builder 가 pykrx 직접 호출 + OCI 일별 시세 2026-07-03 중단 → OCI Operational Market Data Refresh v1 (증분 갱신 + SQLite fetcher + freshness) 으로 해소.
-- 상세: `docs/handoff/POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md`.
+- 상세: `docs/handoff/POC2/POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md`.
 
 ---
 

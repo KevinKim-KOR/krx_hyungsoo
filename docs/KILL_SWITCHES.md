@@ -109,7 +109,7 @@
 - `docs/PROJECT_ORIGIN_INTENT.md` §운영 원칙 (모바일 UI 후순위 → 트리거 기반)
 - `docs/ASSUMPTIONS.md` §5.1 (제품 평면별 역할 · 최소 사용자 개입 원칙)
 - `docs/MASTER_PLAN.md` (모바일 판단 운영 순서 앵커 섹션)
-- `docs/handoff/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (canonical 앵커)
+- `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` (canonical 앵커)
 
 #### KS-11 변경 근거 기록 (2026-07-22 ~ 2026-07-24, Telegram Push Operating Boundary Amendment v1)
 
@@ -130,7 +130,7 @@
 - `docs/PROJECT_ORIGIN_INTENT.md` (§운영 원칙 · OCI 작업 빈도 · OCI 평면 역할)
 - `docs/ASSUMPTIONS.md` §5.2 (Telegram PUSH 목적별 독립 운영 · 평가/알림 구분)
 - `docs/MASTER_PLAN.md` (Telegram PUSH 운영 경계 정정 섹션)
-- `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`
+- `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`
 
 #### KS-11 변경 근거 기록 (2026-07-26, OCI Autonomous Market Data Boundary Amendment)
 
@@ -149,7 +149,7 @@
 - `docs/PROJECT_ORIGIN_INTENT.md` (OCI 승인 대상 자율 시세 갱신·운영 artifact 생성)
 - `docs/ASSUMPTIONS.md` §5.2 (OCI 역할 · Operational Derived Evidence · Fail-Closed)
 - `docs/MASTER_PLAN.md` (OCI 자율 시장 데이터 경계 정정 섹션)
-- `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`
+- `docs/handoff/POC2/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`
 
 사용자 요청만으로 KS-11 예외를 허용하지 않는다. 본 기록은 규칙 변경이 아니라 운영 정책 결정 근거의 문서화이다.
 

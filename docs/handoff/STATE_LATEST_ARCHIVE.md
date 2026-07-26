@@ -79,7 +79,7 @@ AC-12: 기존 테스트 PASS (pytest)                            = DONE (379 pas
 
 **수정 (3)**:
 - `docs/handoff/STATE_LATEST.md` — 본 섹션
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 다음 분기 후보 추가
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` — 다음 분기 후보 추가
 - `docs/backlog/BACKLOG.md` — Naver 안정성 추가 진단 / FDR 결합 / KRX 인증 후보 등록
 
 **Backend / Frontend 코드 변경 0건. 신규 API 0건. 신규 라이브러리 0건.**
@@ -157,7 +157,7 @@ AC-13: 문서 5건 갱신                                            = DONE
 - `docs/handoff/STATE_LATEST.md` — 본 STEP 결과 (본 섹션)
 - `docs/PROJECT_ORIGIN_INTENT.md` — ML 2축 (상승 후보 발굴 / 위험 구간 분류) 기록
 - `docs/ASSUMPTIONS.md` — 위험 감지 축 Open Question 기록 (활성 ≤3 준수)
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 다음 기능 STEP 은 빈자리 중 하나로 제한
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` — 다음 기능 STEP 은 빈자리 중 하나로 제한
 - `docs/backlog/BACKLOG.md` — 시계열 적재 / NAV source / MDD/Sharpe / 구성종목 가격 후보 등록
 
 **총 11건 (Frontend 신규 3 + Frontend 수정 3 + Docs 수정 5). backend 변경 0건. 신규 API 0건. 신규 라이브러리 0건.**
@@ -676,8 +676,8 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
 - `frontend/app/components/AISessionsListTab.tsx` — DetailCard 에 2 snapshot 노출.
 - `tests/test_decision_evidence_store.py` — 마이그레이션 + 신규 컬럼 회귀 +2.
 - `tests/test_market_topn_api.py` — 응답 계약 회귀 +1.
-- `docs/handoff/POC2_FEATURE_INVENTORY.md` — 신규 기능 등록.
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 다음 큰 방향.
+- `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` — 신규 기능 등록.
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` — 다음 큰 방향.
 - `docs/handoff/STATE_LATEST.md` (본 §0).
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §22)
@@ -725,7 +725,7 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
   - `ETFExposureView.tsx` 마운트 시점 호출 → `asof = null` 전달.
   - `ConstituentsTab.tsx` 수집 직후 재호출 → `asof = null` 전달.
 - **A-3 FIX — 인벤토리 내부 정합성**:
-  - `docs/handoff/POC2_FEATURE_INVENTORY.md` 의 §2.10 (ETF Exposure) 은
+  - `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` 의 §2.10 (ETF Exposure) 은
     "사용 가능" 으로 갱신되었으나 §4 (사용 불가/테스트용 목록) 는 직전 STEP
     의 "사용 불가" 표기 잔재. → §6 변경 이력 절을 신규 추가하여 §2.10 /
     §2.11 / §2.12 / §2.6 이 권위 source 임을 명시 + §4 잔재 표기 무효 처리.
@@ -867,10 +867,10 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
   (ticker → reuters → ISIN).
 - `tests/test_etf_constituents_service.py` + `tests/test_etf_constituents_api.py`
   — source 상수 갱신 (PYKRX → NAVER).
-- `docs/handoff/POC2_FEATURE_INVENTORY.md` — ETF Exposure / Refresh / Overlap
+- `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` — ETF Exposure / Refresh / Overlap
   3 기능을 사용 가능으로 전환 + AI 문구 부분 가능 → 사용 가능.
 - `docs/handoff/STATE_LATEST.md` (본 §0).
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (최우선 작업 = Naver 통합 완료).
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (최우선 작업 = Naver 통합 완료).
 - `docs/backlog/BACKLOG.md` (ETF 구성종목 source 항목 update).
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §17)
@@ -913,7 +913,7 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
 - **artifact**:
   - `state/market/constituents_source_diagnosis_latest.json` — 실측 raw data.
   - `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 사람이 읽는 리포트.
-- **기능 인벤토리 신규**: `docs/handoff/POC2_FEATURE_INVENTORY.md` (지시문
+- **기능 인벤토리 신규**: `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` (지시문
   §11). 15개 기능 + 3 Context Bridge 모두 누락 없이 기록. ETF Exposure /
   Constituents Refresh / Overlap Analysis 3 기능은 **사용 불가 (테스트용)**
   로 정직 기록.
@@ -931,11 +931,11 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
 - `scripts/diagnose_constituents_source.py` (455) — 진단 script.
 - `state/market/constituents_source_diagnosis_latest.json` — 실측 raw.
 - `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 진단 리포트.
-- `docs/handoff/POC2_FEATURE_INVENTORY.md` — 기능 인벤토리.
+- `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` — 기능 인벤토리.
 
 수정:
 - `docs/handoff/STATE_LATEST.md` (본 §0).
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` (다음 STEP 후보 C 확정).
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (다음 STEP 후보 C 확정).
 - `docs/backlog/BACKLOG.md` (ETF 구성종목 source 후보 항목 보강).
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §14)
@@ -1250,7 +1250,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
 - `frontend/app/components/AISessionsCreateTab.tsx` — POST payload 확장.
 - `frontend/app/components/AISessionsListTab.tsx` — 상세에 시장 문맥 섹션.
 - `frontend/app/globals.css` — `.market-context-card` / regime 라벨 스타일.
-- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md` /
+- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` /
   `docs/backlog/BACKLOG.md`.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §16)
@@ -1364,7 +1364,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
   `.decision-answer-badges` 스타일.
 - `tests/test_decision_evidence_store.py` + `tests/test_decision_sessions_api.py`
   — 3 답변 필드 / has_* / 그룹 필수 / 마이그레이션 검증 (기존 18 갱신 + 신규 8).
-- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2_B_NEXT_ACTIONS.md` /
+- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` /
   `docs/backlog/BACKLOG.md` — 본 STEP 반영.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §14)
@@ -1498,7 +1498,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
 - `tests/test_decision_evidence_store.py` (154 라인) — store 단위 테스트 9건.
 - `tests/test_decision_sessions_api.py` (155 라인) — API 통합 테스트 9건.
 - `frontend/app/components/AISessionRecordPanel.tsx` (365 라인) — 기록 패널.
-- `docs/handoff/POC2_B_NEXT_ACTIONS.md` — 방향 앵커 문서 (지시문 §8).
+- `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` — 방향 앵커 문서 (지시문 §8).
 
 수정:
 - `app/api.py` — `decision_sessions_router` include.
@@ -2262,7 +2262,7 @@ POC2-Step8 진입 요약 (본 STEP):
   실패 / 운영 절차 번거로움 모두 포함.
 
 Step8 운영 로그 문서: `docs/ops/POC2_STEP8_OPERATION_LOG.md`
-Step8 설계서: `docs/handoff/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md`
+Step8 설계서: `docs/handoff/POC2/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md`
 
 Step8 완료 기준 (3가지 경로):
 - **표준 완료**: 서로 다른 영업일 3회 이상 운영 기록 + AI 투자세션 1회 이상 +
@@ -2312,7 +2312,7 @@ POC2-Step7C 요약 (본 STEP):
 신규 / 수정 파일:
 신규:
 - app/message_falling_etf_bullet.py (78라인) — 급락 bullet 빌더 + picker 단독 모듈
-- docs/handoff/POC2_STEP7C_FALLING_ETF_CAUTION_SIGNAL_MINIMAL_PUSH.md
+- docs/handoff/POC2/POC2_STEP7C_FALLING_ETF_CAUTION_SIGNAL_MINIMAL_PUSH.md
 - tests/test_step7c_falling_etf_caution.py (Step7C 회귀 14개)
 
 수정:
@@ -2359,7 +2359,7 @@ POC2-Step7B 요약 (본 STEP):
 신규 / 수정 파일:
 신규:
 - app/message_holdings_briefing.py (110라인) — Step7B 통합 bullet 빌더 단독 책임
-- docs/handoff/POC2_STEP7B_HOLDINGS_STATUS_BRIEFING_MINIMAL_PUSH.md
+- docs/handoff/POC2/POC2_STEP7B_HOLDINGS_STATUS_BRIEFING_MINIMAL_PUSH.md
 - tests/test_step7b_holdings_status_briefing.py (Step7B 회귀 12개)
 
 수정:
@@ -2407,7 +2407,7 @@ POC2-Step7A 요약 (본 STEP):
 
 신규 / 수정 파일:
 신규:
-- docs/handoff/POC2_STEP7A_NEW_ETF_WATCH_CANDIDATE_MINIMAL_PUSH.md (Step7A 종결 문서)
+- docs/handoff/POC2/POC2_STEP7A_NEW_ETF_WATCH_CANDIDATE_MINIMAL_PUSH.md (Step7A 종결 문서)
 - tests/test_step7a_etf_watch_candidate.py (Step7A 회귀 11개)
 
 수정:
@@ -2434,7 +2434,7 @@ POC2-Step7A 요약 (본 STEP):
 ```
 
 POC2-Step7 저장 요약 (본 작업):
-- 신규 설계서: docs/handoff/POC2_STEP7_SYSTEM_OUTPUT_3_PUSH_REALIGNMENT_DESIGN.md
+- 신규 설계서: docs/handoff/POC2/POC2_STEP7_SYSTEM_OUTPUT_3_PUSH_REALIGNMENT_DESIGN.md
 - 레드팀 결과: **CONDITIONAL_PASS** (MINOR 결함 1건 수용 — "보유 종목 상태 브리핑이
   향후 매수/매도 의견으로 드리프트될 수 있는 표현" 중립화).
 - **Step7 은 구현 단계가 아니라 구조 재정렬 설계 단계**. 코드 / API / UI / Telegram /
@@ -2715,10 +2715,10 @@ ASSUMPTIONS:
 - Q1 은 ANSWERED 가 아니라 OPEN 유지. Step3 결과는 1차 긍정 증거에 불과.
 
 직전 종결/설계 문서:
-- `docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md` (Step5A 설계서)
-- `docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md` (Step4 설계서)
-- `docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md` (Step3 종료 선언)
-- `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` (Step2 종료 선언)
+- `docs/handoff/POC2/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md` (Step5A 설계서)
+- `docs/handoff/POC2/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md` (Step4 설계서)
+- `docs/handoff/POC2/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md` (Step3 종료 선언)
+- `docs/handoff/POC2/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` (Step2 종료 선언)
 - `docs/backlog/BACKLOG.md` (Step5 진입 전 정돈 완료 — ACTIVE REVIEW BEFORE STEP5 / CONSOLIDATED DEFERRED / CLOSED)
 
 Step5B / 5C 구현 진입점 (코드):
@@ -2744,11 +2744,11 @@ Telegram message compaction, 승인 초안 preview 분리까지 완료했다.
 ```
 
 세부 종결 문서:
-- `docs/handoff/POC2_Step2_close.md` — Naver 시세 enrichment
-- `docs/handoff/POC2_Step2B_close.md` — Telegram message compaction
-- `docs/handoff/POC2_Step2C_close.md` — Holdings UI compaction + account grouping
-- `docs/handoff/POC2_Step2D_close.md` — Approval draft preview separation
-- `docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` — Step2 전체 종료 선언 + Step3 진입 가드
+- `docs/handoff/POC2/POC2_Step2_close.md` — Naver 시세 enrichment
+- `docs/handoff/POC2/POC2_Step2B_close.md` — Telegram message compaction
+- `docs/handoff/POC2/POC2_Step2C_close.md` — Holdings UI compaction + account grouping
+- `docs/handoff/POC2/POC2_Step2D_close.md` — Approval draft preview separation
+- `docs/handoff/POC2/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md` — Step2 전체 종료 선언 + Step3 진입 가드
 
 ---
 
@@ -2879,10 +2879,10 @@ Storage:
 5. docs/ASSUMPTIONS.md 읽기 (Q1 OPEN 유지 / Q4 OPEN / Q5 OPEN 명시 연결, A-4 / A-5 ANSWERED 확인)
 6. docs/MASTER_PLAN.md 읽기
 7. docs/handoff/STATE_LATEST.md 읽기 (본 문서)
-8. docs/handoff/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md 읽기 (Step5A 설계서 — 다음 STEP 의 입력/출력 계약)
-9. docs/handoff/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md 읽기 (Step4 설계서 — Momentum Engine 방향 가드)
-10. docs/handoff/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언, 필요 시)
-11. docs/handoff/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언, 필요 시)
+8. docs/handoff/POC2/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md 읽기 (Step5A 설계서 — 다음 STEP 의 입력/출력 계약)
+9. docs/handoff/POC2/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md 읽기 (Step4 설계서 — Momentum Engine 방향 가드)
+10. docs/handoff/POC2/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언, 필요 시)
+11. docs/handoff/POC2/POC2_STEP2_CONCLUSION_AND_STEP3_HANDOFF.md 읽기 (Step2 종료 선언, 필요 시)
 12. docs/backlog/BACKLOG.md 읽기 (ACTIVE REVIEW BEFORE STEP5 5건 + CONSOLIDATED DEFERRED + CLOSED)
 13. "기반 문서 확인 완료" 응답 후 사용자/설계자 의 Step5B (Momentum result 저장 위치 결정) 설계 지시 대기
 

@@ -1032,7 +1032,7 @@ message_text 생성 전의 evidence package를 보존하고 preview해야 하기
 ```text
 docs/handoff/STATE_LATEST.md
 docs/STATE_LATEST.md
-docs/handoff/POC2_B_NEXT_ACTIONS.md
+docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md
 ```
 
 등록 문구 예:

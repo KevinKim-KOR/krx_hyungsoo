@@ -117,7 +117,7 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
     정해진 운영 간격으로 조건 평가 → 신호 없음/중복은 미발송 · 신규 신호만 알림.
   전체 PUSH 의 하루 총 횟수를 사전에 고정하지 않는다. **평가 실행 횟수와 사용자
   알림 횟수는 구분**한다 (평가 다회 실행이라도 신호 없으면 알림 0회). OCI 작업은
-  알림 배관 유지용이며 메인 의사결정 입력이 아니다. 상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
+  알림 배관 유지용이며 메인 의사결정 입력이 아니다. 상세: `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 - **PC 분석 평면 / OCI 운영·조회 평면 분리** (2026-06-20 추가, 본 문서
   `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` 참조):
   - **PC = 분석·판단 평면**: 시장 데이터 SQLite 관리, ETF universe 갱신, 후보
@@ -327,7 +327,7 @@ threshold / label / 모델 / 학습 데이터는 본 시점에 확정하지 않�
 
 - 시계열 적재가 부족하다 — NAV / 괴리율 시계열 미연동, 구성종목 가격 시계열
   미연동, 시장 폭 지표 미수집, 외국인/기관 수급 미수집, 변동성 지표 미계산.
-- 본 한계는 docs/handoff/POC2_B_NEXT_ACTIONS.md 의 빈자리 후속 원칙으로
+- 본 한계는 docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md 의 빈자리 후속 원칙으로
   관리한다. 다음 기능 STEP 은 본 한계 중 **하나의 빈자리**를 채우는 STEP 으로
   제한한다.
 
@@ -358,7 +358,7 @@ threshold / label / 모델 / 학습 데이터는 본 시점에 확정하지 않�
      · **PC 와 OCI 는 SQLite 운영 파일을 서로 통째로 덮어쓰지 않는다**. 같은
        SQLite 파일의 동시 write 도 금지한다.
    - 실제 활성 데이터 boundary 감사와 다음 STEP schema/publication 매핑은
-     `docs/handoff/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md` 참조.
+     `docs/handoff/POC2/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md` 참조.
 3. GPT 설계에 전체 방향을 맡기지 않는다
 4. "혹시 필요할까" 로직 아카이브하지 않는다 (Git으로 충분)
 5. MDD 10%를 1차 목표로 삼지 않는다
