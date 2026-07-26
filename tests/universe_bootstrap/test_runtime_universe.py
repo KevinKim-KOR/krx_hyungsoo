@@ -318,6 +318,42 @@ def test_spike_runner_record_forwards_universe_diagnostics(
     monkeypatch.setattr(
         runner_mod, "build_runtime_message", lambda **kw: "test body 2026-07-16"
     )
+    # OCI Operational Market Data Refresh v1: price refresh 대상 없음 + Spike
+    # freshness guard 가 실 artifact 를 읽지 않도록 fresh fixture 로 mock.
+    monkeypatch.setattr(runner_mod, "_collect_target_tickers", lambda pk: [])
+    from app import draft_three_push as _dtp
+    from app.three_push_runtime_message_builder import kst_today_date
+    from datetime import datetime as _dt, timezone as _tz
+
+    _today = kst_today_date()
+    _gen = _dt.now(_tz.utc).isoformat()
+    monkeypatch.setattr(
+        _dtp,
+        "_load_universe_artifact_for_spike",
+        lambda: {
+            "mode": "universe",
+            "asof": _today,
+            "summary": {
+                "refresh_status": "ok",
+                "evidence_as_of": _today,
+                "artifact_generated_at": _gen,
+            },
+            "candidates": [],
+        },
+    )
+    # C 확정: Spike guard 가 읽는 당일 배치 성공 상태를 tmp 로 격리 mock.
+    from app.three_push_runtime import market_data_batch as _mdb
+
+    _state_path = tmp_path / "batch_state.json"
+    monkeypatch.setattr(_mdb, "MARKET_DATA_BATCH_STATE_PATH", _state_path)
+    _mdb.write_batch_state(
+        status="success",
+        price_data_as_of=_today,
+        artifact_generated_at=_gen,
+        refresh_date_kst=_today,
+        refresh_completed_at=_gen,
+        state_path=_state_path,
+    )
 
     record = runner_mod.run("spike_or_falling_alert", "dry-run")
 

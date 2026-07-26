@@ -340,6 +340,11 @@ def build_universe_momentum_result_scored(
     summary["spike_trigger_type"] = "falling"
     summary["spike_direction"] = "down"
     summary["evidence_as_of"] = seed.asof
+    # OCI Operational Market Data Refresh v1 (§4.3): artifact 생성 시각 기록
+    # (freshness guard 입력). 배치 경로가 별도 override 하지 않으면 이 값 사용.
+    from datetime import datetime, timezone
+
+    summary["artifact_generated_at"] = datetime.now(timezone.utc).isoformat()
 
     return {
         "engine_id": ENGINE_ID,

@@ -392,7 +392,49 @@ def _install_common_mocks(monkeypatch, tmp_path):
     monkeypatch.setenv("PUSH_AUTOSEND_ENABLED", "true")
     monkeypatch.setenv("PUSH_HOLDINGS_BRIEFING_ENABLED", "true")
     monkeypatch.setenv("PUSH_SPIKE_OR_FALLING_ALERT_ENABLED", "true")
+    # OCI Operational Market Data Refresh v1: Spike freshness guard 가 실 artifact
+    # 를 읽지 않도록 fresh fixture 로 mock (compose 를 별도 mock 하는 test 기본값).
+    _install_fresh_universe_artifact(monkeypatch, tmp_path=tmp_path)
     return runner
+
+
+def _install_fresh_universe_artifact(monkeypatch, candidates=None, tmp_path=None):
+    """freshness guard 통과용 fresh universe artifact + 당일 배치 성공 상태 mock."""
+    from app import draft_three_push as _dtp
+    from app.three_push_runtime_message_builder import kst_today_date
+    from app.three_push_runtime import market_data_batch as _mdb
+    from datetime import datetime, timezone
+    import tempfile
+    from pathlib import Path
+
+    today = kst_today_date()
+    gen = datetime.now(timezone.utc).isoformat()
+    art = {
+        "mode": "universe",
+        "asof": today,
+        "summary": {
+            "refresh_status": "ok",
+            "falling_threshold_pct": -10.0,
+            "spike_trigger_type": "falling",
+            "spike_direction": "down",
+            "evidence_as_of": today,
+            "artifact_generated_at": gen,
+        },
+        "candidates": candidates or [],
+    }
+    monkeypatch.setattr(_dtp, "_load_universe_artifact_for_spike", lambda: art)
+    # C 확정: Spike guard 가 읽는 당일 배치 성공 상태를 tmp 로 격리 mock.
+    base = Path(tmp_path) if tmp_path else Path(tempfile.mkdtemp())
+    state_path = base / "batch_state.json"
+    monkeypatch.setattr(_mdb, "MARKET_DATA_BATCH_STATE_PATH", state_path)
+    _mdb.write_batch_state(
+        status="success",
+        price_data_as_of=today,
+        artifact_generated_at=gen,
+        refresh_date_kst=today,
+        refresh_completed_at=gen,
+        state_path=state_path,
+    )
 
 
 def _install_naver(monkeypatch, fetch_many):

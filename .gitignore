@@ -186,6 +186,10 @@ state/runtime/runtime_state.sqlite-shm
 # 검증/실행마다 작업트리가 바뀌어 staged 상태와 어긋남. commit 대상 아님.
 state/market/nav_discount_refresh_latest.json
 
+# OCI 일일 시장 데이터 배치 실행 상태 (OCI Operational Market Data Refresh v1) —
+# 배치 실행마다 갱신되는 운영 산출물. commit 대상 아님.
+state/market/oci_market_data_batch_state.json
+
 # ML 최소 데이터 레인 (2026-06-08) — feature snapshot 은 CLI 실행마다 갱신.
 # 운영 artifact 라 commit 대상 아님.
 state/ml/ml_feature_snapshot_latest.json

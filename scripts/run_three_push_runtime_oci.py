@@ -259,6 +259,23 @@ def run(
                 f"attempted={attempted} success={success} failed={failed}",
             )
 
+    # ── 3-a2. Spike freshness guard (OCI Operational Market Data Refresh v1 · §4.3) ──
+    # Spike 는 Universe 운영 artifact 의 Published 계약(validate_artifact) + freshness
+    # 를 검증한다. 미달 시 Fail-Closed. helper 로 분리 (KS-10 억제). Market/Holdings 무관.
+    if push_kind == "spike_or_falling_alert":
+        from app.draft_three_push import _load_universe_artifact_for_spike
+        from app.three_push_runtime.spike_freshness import check_spike_freshness
+
+        art_for_fresh = _load_universe_artifact_for_spike()
+        fresh = check_spike_freshness(art_for_fresh, runtime_date_kst=runtime_date_kst)
+        record["freshness_ok"] = fresh.ok
+        record["freshness_reason"] = fresh.reason
+        record["price_data_as_of"] = fresh.price_data_as_of
+        record["artifact_generated_at"] = fresh.artifact_generated_at
+        if not fresh.ok:
+            logger.error("Spike freshness/validation 미달: %s", fresh.reason)
+            return _finish("failed", "freshness_stale", fresh.reason)
+
     # ── 3-b. Universe re-evaluator 준비 (Spike 만 · Unit 3 helper 연결) ──────
     reeval_fn = None
     if push_kind == "spike_or_falling_alert":

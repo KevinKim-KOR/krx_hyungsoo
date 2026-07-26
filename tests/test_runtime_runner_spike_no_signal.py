@@ -26,20 +26,50 @@ from app.runtime_param_store import activate_param_version, create_param_version
 from app.runtime_sent_registry_store import count as registry_count
 from app.three_push_runtime_param import build_manual_seed_param
 
-_NO_SIGNAL_ARTIFACT: dict[str, Any] = {
-    "engine_id": "universe_momentum",
-    "engine_version": "v1",
-    "mode": "universe",
-    "asof": "2026-07-18",
-    "summary": {
-        "refresh_status": "ok",
-        "scored_count": 0,
-        "total_count": 0,
-        "top_candidate": None,
-        "falling_candidate": None,
-    },
-    "candidates": [],
-}
+
+def _fresh_no_signal_artifact() -> dict[str, Any]:
+    """no-signal fixture. OCI Operational Market Data Refresh v1: freshness guard
+    통과를 위해 asof/evidence_as_of/artifact_generated_at 을 오늘로 동적 생성."""
+    from app.three_push_runtime_message_builder import kst_today_date
+    from datetime import datetime, timezone
+
+    today = kst_today_date()
+    return {
+        "engine_id": "universe_momentum",
+        "engine_version": "v1",
+        "mode": "universe",
+        "asof": today,
+        "summary": {
+            "refresh_status": "ok",
+            "scored_count": 0,
+            "total_count": 0,
+            "top_candidate": None,
+            "falling_candidate": None,
+            "evidence_as_of": today,
+            "artifact_generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "candidates": [],
+    }
+
+
+_NO_SIGNAL_ARTIFACT: dict[str, Any] = _fresh_no_signal_artifact()
+
+
+def _install_fresh_batch_state(monkeypatch, tmp_path, artifact) -> None:
+    """C 확정: Spike guard 가 읽는 당일 배치 성공 상태를 tmp 로 격리 mock."""
+    from app.three_push_runtime import market_data_batch as _mdb
+
+    summary = artifact.get("summary", {})
+    state_path = tmp_path / "batch_state.json"
+    monkeypatch.setattr(_mdb, "MARKET_DATA_BATCH_STATE_PATH", state_path)
+    _mdb.write_batch_state(
+        status="success",
+        price_data_as_of=summary.get("evidence_as_of"),
+        artifact_generated_at=summary.get("artifact_generated_at"),
+        refresh_date_kst=summary.get("evidence_as_of"),
+        refresh_completed_at=summary.get("artifact_generated_at") or "t",
+        state_path=state_path,
+    )
 
 
 def _seed_active_param() -> str:
@@ -57,12 +87,14 @@ def test_spike_no_signal_dry_run_no_send_no_registry(
     from app import draft_three_push as _dtp
     from scripts import run_three_push_runtime_oci as runner
 
+    art = dict(_NO_SIGNAL_ARTIFACT)
     # 유효하지만 candidates 가 비어있는 artifact 주입.
     monkeypatch.setattr(
         _dtp,
         "_load_universe_artifact_for_spike",
-        lambda: dict(_NO_SIGNAL_ARTIFACT),
+        lambda: art,
     )
+    _install_fresh_batch_state(monkeypatch, tmp_path, art)
     # Telegram 및 history 격리.
     telegram_calls: list = []
 
@@ -103,11 +135,13 @@ def test_spike_no_signal_send_mode_no_telegram_no_registry(
     from app import draft_three_push as _dtp
     from scripts import run_three_push_runtime_oci as runner
 
+    art = dict(_NO_SIGNAL_ARTIFACT)
     monkeypatch.setattr(
         _dtp,
         "_load_universe_artifact_for_spike",
-        lambda: dict(_NO_SIGNAL_ARTIFACT),
+        lambda: art,
     )
+    _install_fresh_batch_state(monkeypatch, tmp_path, art)
     telegram_calls: list = []
 
     def _fake_send(*args, **kwargs):

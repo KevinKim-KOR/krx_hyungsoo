@@ -390,6 +390,34 @@ def fetch_price_history(
         return [(r[0], float(r[1])) for r in cur.fetchall()]
 
 
+def get_last_price_date(
+    ticker: str,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+    require_valid_close: bool = True,
+) -> Optional[str]:
+    """ticker 의 etf_daily_price 최신 저장일 (YYYY-MM-DD). 없으면 None.
+
+    OCI Operational Market Data Refresh v1:
+    - require_valid_close=True (기본): 유효 종가 (close IS NOT NULL AND close > 0)
+      가 있는 최신일. `price_data_as_of` (freshness 판정 근거) 계산에 사용 —
+      NULL/0 종가만 있는 최신 행이 stale 가격을 fresh 로 위장하는 것을 막는다.
+    - require_valid_close=False: close 유효성 무관 MAX(date). 증분 수집 시작점
+      결정용 (어느 날짜까지 row 가 있는지).
+    """
+    if require_valid_close:
+        sql = (
+            "SELECT MAX(date) FROM etf_daily_price "
+            "WHERE ticker = ? AND close IS NOT NULL AND close > 0"
+        )
+    else:
+        sql = "SELECT MAX(date) FROM etf_daily_price WHERE ticker = ?"
+    with _connection(db_path) as con:
+        cur = con.execute(sql, (ticker,))
+        row = cur.fetchone()
+        return row[0] if row and row[0] else None
+
+
 def fetch_price_volume_history(
     ticker: str,
     *,
