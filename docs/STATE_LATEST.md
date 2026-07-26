@@ -1,8 +1,51 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-24 (Telegram Push Operating Boundary Amendment v1 — **DONE · PASS · 문서 정정 STEP · next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1**)
+최종 업데이트: 2026-07-26 (OCI Autonomous Market Data Boundary Amendment — **DONE · 문서 전용 STEP · Low-Frequency Telegram Push Operation v1 은 PARTIAL 유지**)
 
-## 이번 STEP 요약 (Telegram Push Operating Boundary Amendment v1, DONE · PASS)
+## 이번 STEP 요약 (OCI Autonomous Market Data Boundary Amendment, DONE · 문서 전용)
+
+**성격**: PC·OCI 역할 경계를 정정하는 문서 전용 STEP. 코드·DB·Scheduler·crontab·Telegram 동작 변경 없음.
+
+**목적**: PC 없이 Spike 를 반복 운영하기 위해, OCI 가 승인 대상의 일별 시세를 스스로 갱신하고 운영 artifact 를 생성할 수 있도록 canonical 역할 경계를 정정. (구현이 아니라 경계 정의만.)
+
+**배경 (직전 세션 실측)**:
+- builder (`build_universe_momentum_result_scored`) 는 pykrx 직접 호출 (SQLite 미경유)
+- OCI `market_data.sqlite` 에 승인 seed 20종목·Holdings 시세 존재하나 적재가 2026-07-03 에서 중단 → artifact 신선도 상한이 Spike 차단 원인 (seed 부재 아님)
+- 이번 정정 **이전** OCI 는 "실행 시점 현재가 조회" 까지만 허용되어 있어 PC 비의존 Spike 운영이 불가했음 (본 STEP 이 이 경계를 확장). 정정 후 OCI 는 승인 대상 자율 시세 갱신·운영 artifact 생성도 허용됨.
+
+**정정 내용**:
+
+| 축 | 정정 후 |
+|---|---|
+| PC 역할 | seed 생성·변경·승인 · PARAM 승인 · factor·threshold 결정 · 전체 시장 후보 탐색 · Market Discovery · ML·백테스트 (유지) |
+| OCI 역할 (추가) | `승인 seed ticker ∪ 현재 Holdings ticker` 한정 일별 시세 **증분** 갱신 · 운영 저장소 갱신 · 승인 seed·PARAM·기존 산식으로 운영 artifact 생성 · freshness/실패/중복 기록 |
+| Evidence 계약 | Published Evidence (seed·PARAM·factor·threshold·후보 규칙·전략 = PC, read-only) / **Operational Derived Evidence** (일별 시세 저장 결과·Universe 운영 artifact·Holdings/Spike Runtime·freshness = OCI 생성 · Published 대체 X) / Runtime Evidence (현재가·평가 = 별개) |
+| 갱신 대상 경계 | 승인 seed ∪ Holdings ticker 로 제한. 전체 시장 수집·seed 외 자동 추가·신규 후보 탐색 금지 |
+| Fail-Closed | 시세 갱신 실패·데이터 누락·freshness 미달·artifact 생성 실패·seed/PARAM/산식 불일치 → 오래된 결과 최신 표시 금지 · Spike 미발송 · registry 미기록 · Market·Holdings 유지 |
+| OCI 금지 | seed 임의 변경 · 전체 시장 탐색 · 신규 factor·threshold · PARAM 생성·승격 · 전략 변경 · ML · Holdings 수량·평단 변경 · 자동 주문 |
+
+**상태 앵커**:
+```text
+current_step = OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT
+low_frequency_push_operation = PARTIAL_BLOCKED_BY_DATA_BOUNDARY
+market_holdings_operation = ACTIVE
+spike_operation = DISABLED
+next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_SAME_STEP_CONTINUE
+```
+
+**문서 정정 (8 파일 + 신규 conclusion 1)**: PROJECT_ORIGIN_INTENT · ASSUMPTIONS §5.2 · MASTER_PLAN (OCI 자율 시장 데이터 경계 정정 섹션) · KILL_SWITCHES (KS-11 근거 · KS 자체 미변경) · STATE_LATEST (본 문서) · handoff/STATE_LATEST · POC2_B_NEXT_ACTIONS · BACKLOG · 신규 `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
+
+**KS-11 근거 기록**: PC 비의존 Spike 운영 목적 · 실측 배경을 KILL_SWITCHES 에 기록. KS-11 자체 미변경.
+
+**범위**: 코드·DB·Scheduler·crontab·Telegram 동작 변경 없음. 시세 수집/SQLite 갱신 코드·Universe Builder 수정·신규 source 선정·Spike 활성화 없음. 구체 source·저장 함수·실행 시각·freshness 수치는 후속 구현 설계에서 확정.
+
+**next_step_gate**: `LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1` 동일 STEP 계속 (SAME_STEP_CONTINUE). 후속: OCI 시세 갱신·builder SQLite 연결 구현 → Spike 실측·등록 → Low-Frequency Push v1 최종 PASS.
+
+상세: `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (Telegram Push Operating Boundary Amendment v1, DONE · PASS)
 
 **성격**: 문서 정정 STEP. 코드·DB·Frontend·Scheduler·crontab 변경 없음. Telegram 발송 동작 변경 없음.
 
@@ -1274,7 +1317,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 - **canonical 순서 (2026-07-24 확정 · 상단 §이번 STEP 요약과 동일)**:
   1. Telegram Push Operating Boundary Amendment v1 — **DONE · PASS** (2026-07-24)
-  2. **Low-Frequency Telegram Push Operation v1** — 현재 진행 중 (구현 VERIFIED · OCI 실측 진행 단계, 2026-07-26)
+  2. **Low-Frequency Telegram Push Operation v1** — 현재 진행 중 (PARTIAL · Market·Holdings OCI 운영 중 · Spike 는 데이터 공급 경계 구현 전까지 DISABLED · 2026-07-26 OCI Autonomous Market Data Boundary Amendment 로 OCI 자율 시세 갱신 경계 정의 완료)
   3. First Real Decision Cycle v1
   4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
   5. Decision Outcome Ledger v1
@@ -1288,7 +1331,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - MongoDB 전환 (PROJECT_ORIGIN_INTENT §10 #2 — SQLite(시장) + JSON(holdings/Run) SSOT 분리)
   - ML / 백테스트 / threshold / label 확정 (Q6 답 나오기 전)
   - 매수·매도·교체 어휘 / 자동 클러스터링 / 대표 ETF 선정
-- **현재 상태**: Low-Frequency Telegram Push Operation v1 구현 VERIFIED · commit `6da326f5` · OCI 실측 진행 중.
+- **현재 상태 (2026-07-26)**: Low-Frequency Telegram Push Operation v1 = **PARTIAL**. Market·Holdings OCI 운영 등록 완료 (commit `6da326f5` 구현 · Market 08:00 + Holdings 3슬롯 crontab 등록 · Telegram 실측 4건 수신 확인). Spike = **DISABLED** (일별 시세 적재가 2026-07-03 중단 · OCI 자율 시세 갱신 구현 전까지). OCI Autonomous Market Data Boundary Amendment (2026-07-26 · 본 STEP) 로 OCI 자율 시세 갱신·운영 artifact 생성 경계를 canonical 에 정의. 다음: 해당 경계 구현 → Spike 실측·등록 → 최종 PASS.
 
 ## 7. Index
 

@@ -293,15 +293,34 @@ Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2_MOBILE_DECISION_OP
 
 ### PC · OCI 역할 경계
 
-- **PC**: Holdings 입력·관리 · 전략과 PARAM 작성 · Market Discovery · 후보 비교 · factor/threshold 결정 · 상세 evidence 생성 · PENDING 초안 · 사용자 판단·복기 · ML/백테스트
-- **OCI**: PC publish 된 PARAM/evidence 보관 · Telegram runner 실행 · 발송 registry · 중복 차단 · 실행 로그 · **제한적 런타임 가격 조회 (기존 승인된 시세 출처 · Holdings 평가 재계산 · Spike 조건 재평가 · active PARAM 적용 · as-of 기록)**
+- **PC**: Holdings 입력·관리 · seed 생성·변경·승인 · 전략과 PARAM 작성·승인 · Market Discovery · 전체 시장 후보 탐색 · 후보 비교 · factor/threshold 결정 · 상세 evidence 생성 · PENDING 초안 · 사용자 판단·복기 · ML/백테스트
+- **OCI**: PC publish 된 PARAM/evidence 보관 · Telegram runner 실행 · 발송 registry · 중복 차단 · 실행 로그 · **제한적 런타임 가격 조회 (기존 승인된 시세 출처 · Holdings 평가 재계산 · Spike 조건 재평가 · active PARAM 적용 · as-of 기록)** · **(2026-07-26 정정) 승인 대상 자율 시세 갱신·운영 artifact 생성** (아래)
 
-OCI 계속 금지: 신규 전략 · 신규 후보 선정 · factor 추가 · threshold 변경 · 추천 알고리즘 변경 · ML 학습·튜닝 · Holdings 수정 · PARAM 생성/승격 · Market Discovery 구조 변경 · Published Evidence 임의 수정 · 자동 매수·매도 · 주문 실행.
+**OCI 승인 대상 자율 시세 갱신·운영 artifact 생성 (2026-07-26, OCI Autonomous Market Data Boundary Amendment — 경계 정의만 · 구현 전)**:
+- 승인된 seed ticker ∪ 현재 Holdings ticker 확인
+- 해당 ticker 의 일별 시세 **증분** 갱신 → 운영 시장 데이터 저장소 갱신
+- 승인된 seed·PARAM·기존 산식으로 운영 artifact (Universe 등) 생성
+- freshness · 실패 · 중복 상태 기록
+- **대상 경계**: 갱신 가능 대상 = `승인 seed ticker ∪ 현재 Holdings ticker`. 전체 시장 수집 · seed 외 종목 자동 추가 · 신규 후보 탐색 금지.
+- 구분 원칙: `PC = 대상·기준·전략 결정` / `OCI = 승인된 대상과 기준의 반복 계산·운영`.
 
-### Published Evidence ↔ Runtime Evidence
+OCI 계속 금지: 신규 전략 · 신규 후보 선정 · **전체 시장 후보 탐색** · factor 추가 · threshold 변경 · 추천 알고리즘 변경 · ML 학습·튜닝 · Holdings 수량·평단 변경 · **seed 임의 추가·삭제** · PARAM 생성/승격 · Market Discovery 구조 변경 · Published Evidence 임의 수정 · 자동 매수·매도 · 주문 실행.
 
-- **Published Evidence** (PC 생성·승인·publish → OCI read-only): active PARAM · Market Discovery 후보 · Universe 후보 · ML baseline · PENDING 초안 snapshot · 분석 factor 결과. OCI 가 임의 수정 X.
+### Published Evidence ↔ Operational Derived Evidence ↔ Runtime Evidence
+
+- **Published Evidence** (PC 생성·승인·publish → OCI read-only): seed · active PARAM · factor · threshold · 후보 선정 규칙 · 전략/판단 기준 · Market Discovery 후보 · Universe 후보 · ML baseline · PENDING 초안 snapshot · 분석 factor 결과. OCI 가 임의 수정 X.
+- **Operational Derived Evidence** (2026-07-26 신설 · OCI 가 승인된 Published Evidence 계약과 운영 데이터로 생성): 일별 시세 저장 결과 · Universe 운영 artifact · Holdings Runtime 평가 · Spike Runtime 신호 · freshness/실행 상태. **Published Evidence 를 변경·대체하지 않는다.** 승인된 seed·PARAM·산식 범위 안에서의 반복 계산 결과일 뿐이다.
 - **Runtime Evidence** (OCI 발송 시점 제한적 확인·계산): 현재 가격 · Holdings 현재 평가 · 발송 시점 수익률 · Spike 조건 결과 · 데이터 조회 상태 · as-of. Published Evidence 를 대체·덮어쓰지 않음.
+
+### OCI 운영 데이터 Fail-Closed (2026-07-26)
+
+일별 시세 갱신 실패 · 승인 대상 데이터 누락 · freshness 기준 미달 · artifact 생성 실패 · 승인된 seed/PARAM/산식 불일치 시 → 오래된 결과를 최신으로 표시하지 않고 · 관련 artifact 와 Spike 는 Fail-Closed (Spike 미발송 · sent registry 미기록). **Market·Holdings 기존 운영은 유지**한다.
+
+### 현재 운영 상태 (2026-07-26)
+
+- `market_holdings_operation = ACTIVE` (OCI 운영 중)
+- `spike_operation = DISABLED` (자율 시세 갱신·artifact 생성 구현 전까지 비활성)
+- 위 자율 갱신·artifact 생성은 **경계 정의만** 완료 · 구현은 후속.
 
 ### 가격 조회 실패 시 원칙
 

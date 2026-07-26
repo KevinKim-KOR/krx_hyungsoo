@@ -139,6 +139,32 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
     이는 PC 의 분석 기능을 OCI 로 이전하는 것이 아니다. Published Evidence 는
     여전히 read-only. Runtime Evidence 는 Published Evidence 를 대체하거나
     덮어쓰지 않는다.
+  - **OCI 승인 대상 자율 시세 갱신·운영 artifact 생성 허용 (2026-07-26 정정,
+    OCI Autonomous Market Data Boundary Amendment)**: PC 없이 Spike 를 반복
+    운영하려면 OCI 가 승인된 대상의 일별 시세를 스스로 갱신하고 운영 artifact 를
+    생성할 수 있어야 한다. 다음만 허용한다:
+    - **승인된 seed ticker ∪ 현재 Holdings ticker** 로 한정한 일별 시세 **증분** 갱신
+    - 그 결과를 운영 시장 데이터 저장소에 저장
+    - 승인된 seed·PARAM·기존 산식으로 **운영 artifact (Universe 등) 생성**
+    - freshness · 실패 · 중복 상태 기록
+    갱신 대상은 위 두 집합으로 제한한다. **전체 시장 수집 · seed 외 종목 자동
+    추가 · 신규 후보 탐색은 허용하지 않는다.** 구체 source · 저장 함수 · 실행
+    시각 · freshness 수치는 후속 구현 설계에서 확정한다.
+    - 이는 **대상·기준·전략 결정 (PC) 과 승인된 대상·기준의 반복 계산·운영
+      (OCI) 을 구분**하는 것이다. OCI 는 seed·PARAM·factor·threshold·전략을
+      생성하거나 변경하지 않는다.
+    - OCI 가 생성한 결과 (일별 시세 저장 결과 · Universe 운영 artifact · Holdings
+      Runtime 평가 · Spike Runtime 신호 · freshness/실행 상태) 는 **Operational
+      Derived Evidence** 이며, PC 의 **Published Evidence (seed · PARAM ·
+      factor · threshold · 후보 선정 규칙 · 전략/판단 기준) 를 대체하거나
+      변경하지 않는다.**
+    - **Fail-Closed 원칙**: 일별 시세 갱신 실패 · 승인 대상 데이터 누락 ·
+      freshness 기준 미달 · artifact 생성 실패 · 승인된 seed/PARAM/산식 불일치 시
+      → 오래된 결과를 최신으로 표시하지 않고 · Spike 미발송 · sent registry
+      미기록. Market·Holdings 기존 운영은 유지한다.
+    - **현재 상태**: 위 자율 시세 갱신·artifact 생성은 **구현 전 경계 정의만**
+      한 것이다. Spike 는 데이터 공급 경계가 구현될 때까지 비활성 (DISABLED)
+      이며, Market·Holdings 는 계속 운영한다.
   - **데이터 흐름**: PC SQLite 는 PC 작업용 기준 저장소로 유지. PC ML 이 OCI
     DB 를 직접 원격으로 읽지 않는다. PC 는 승인 / 발행 시점에 OCI 로 read-only
     published snapshot 을 전달한다 (구체 형식은 OCI 조회 메뉴 구현 직전 결정).

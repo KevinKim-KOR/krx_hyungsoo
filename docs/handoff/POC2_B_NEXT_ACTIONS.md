@@ -4,8 +4,10 @@
 성격: **방향을 잊지 않기 위한 앵커.** 새로운 가드 문서가 아니다. 설계 결정이
 흔들릴 때 PROJECT_ORIGIN_INTENT / 시장 우선 운영 원칙과 함께 본 문서로 복귀한다.
 
-> **⚠ 문서 우선순위 (2026-07-24 사용자 확정, Telegram Push Operating Boundary Amendment v1)**:
-> - **현재 canonical 순서**: 1. Telegram Push Operating Boundary Amendment v1 (DONE) → 2. Low-Frequency Telegram Push Operation v1 → 3. First Real Decision Cycle v1 → 4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소 → 5. Decision Outcome Ledger v1 → 6. Universe·ML·factor·PC UI 품질 개선.
+> **⚠ 문서 우선순위 (2026-07-26 갱신, OCI Autonomous Market Data Boundary Amendment)**:
+> - **현재 canonical 순서**: 1. Telegram Push Operating Boundary Amendment v1 (DONE) → 2. Low-Frequency Telegram Push Operation v1 (진행 중 · PARTIAL) → 3. First Real Decision Cycle v1 → 4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소 → 5. Decision Outcome Ledger v1 → 6. Universe·ML·factor·PC UI 품질 개선.
+> - **현재 운영 상태 (2026-07-26)**: Low-Frequency Telegram Push Operation v1 = **PARTIAL**. Market·Holdings = OCI 운영 중 (ACTIVE). Spike = **DISABLED** (일별 시세 적재 2026-07-03 중단 · OCI 자율 시세 갱신 구현 전까지). next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_SAME_STEP_CONTINUE.
+> - **OCI 자율 시장 데이터 경계 (2026-07-26 정정)**: OCI 가 `승인 seed ticker ∪ 현재 Holdings ticker` 한정 일별 시세 증분 갱신 + 승인 seed·PARAM·기존 산식으로 운영 artifact (Operational Derived Evidence) 생성 허용. Published Evidence (seed·PARAM·factor·threshold·전략) read-only 유지. 전체 시장 탐색·seed 변경·전략 변경·ML·주문 금지. 경계 정의만 · 구현 후속.
 > - **Telegram 운영 계약**: 전역 일 3회 제한 제거. Market 평일 08:00 1회. Holdings 평일 3 슬롯. Spike 조건 발생형. 평가/알림 구분. OCI 제한적 런타임 가격 조회 허용. Published Evidence read-only 유지.
 > - **모바일 상태**: `DEFERRED_BY_USER`. 재개 시 첫 후보는 **Telegram Cockpit** (모바일 Web 아님).
 > - **이전 앵커 (2026-07-20 Mobile Decision Operating Sequence Anchor) 는 SUPERSEDED**. 삭제하지 않고 이력 유지.

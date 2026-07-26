@@ -132,6 +132,25 @@
 - `docs/MASTER_PLAN.md` (Telegram PUSH 운영 경계 정정 섹션)
 - `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`
 
+#### KS-11 변경 근거 기록 (2026-07-26, OCI Autonomous Market Data Boundary Amendment)
+
+**KS-11 자체는 변경/약화하지 않는다.** 다음은 OCI 역할 경계 정정 근거 (문서 전용 · 코드 변경 없음):
+
+- **변경 근거**: PC 없이 Spike 를 반복 운영하려면 OCI 가 승인 대상의 일별 시세를 스스로 갱신하고 운영 artifact 를 생성해야 함이 실측으로 확인됨.
+  - builder (`build_universe_momentum_result_scored`) 가 pykrx 를 직접 호출 (SQLite 미경유)
+  - OCI `market_data.sqlite` 에 승인 seed·Holdings 시세는 있으나 적재가 2026-07-03 에서 중단 → artifact 신선도 상한이 곧 Spike 차단 원인 (seed 부재 아님)
+  - 이번 정정 **이전** OCI 는 "실행 시점 현재가 조회" 까지만 허용되어 있어, PC 비의존 Spike 운영 불가 (본 정정으로 승인 대상 자율 시세 갱신·운영 artifact 생성까지 확장)
+- **정정 내용**: OCI 에 `승인 seed ticker ∪ 현재 Holdings ticker` 한정 일별 시세 증분 갱신 + 승인 seed·PARAM·기존 산식 기반 운영 artifact 생성 (= Operational Derived Evidence) 허용.
+- **PC 비의존 OCI 운영 목적**: Market·Holdings 는 이미 OCI 자율 운영 중. Spike 도 PC 상시 구동 없이 반복 운영하기 위한 경계 확장.
+- **유지되는 금지**: seed 임의 변경 · 전체 시장 후보 탐색 · 신규 factor·threshold · PARAM 생성·승격 · 전략 변경 · ML · Holdings 수량·평단 변경 · 자동 주문. Published Evidence read-only 유지.
+- **현재 상태**: 경계 정의만 · 구현 전. `spike_operation = DISABLED` (구현 시점까지) · `market_holdings_operation = ACTIVE`.
+
+**기록 위치**:
+- `docs/PROJECT_ORIGIN_INTENT.md` (OCI 승인 대상 자율 시세 갱신·운영 artifact 생성)
+- `docs/ASSUMPTIONS.md` §5.2 (OCI 역할 · Operational Derived Evidence · Fail-Closed)
+- `docs/MASTER_PLAN.md` (OCI 자율 시장 데이터 경계 정정 섹션)
+- `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`
+
 사용자 요청만으로 KS-11 예외를 허용하지 않는다. 본 기록은 규칙 변경이 아니라 운영 정책 결정 근거의 문서화이다.
 
 ---

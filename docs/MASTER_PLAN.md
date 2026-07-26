@@ -33,6 +33,20 @@ DEFERRED_BY_USER
 
 상세: `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
+### OCI 자율 시장 데이터 경계 정정 (2026-07-26)
+
+PC 없이 Spike 를 반복 운영하려면 OCI 가 승인 대상의 일별 시세를 스스로 갱신하고 운영 artifact 를 생성할 수 있어야 한다. 이번 정정은 **경계 정의만** 하며 코드·DB·crontab·Telegram 동작은 변경하지 않는다.
+
+- **PC = 대상·기준·전략 결정**: seed 생성·변경·승인 · PARAM 승인 · factor·threshold 결정 · 전체 시장 후보 탐색 · Market Discovery · ML·백테스트.
+- **OCI = 승인된 대상·기준의 반복 계산·운영**: 승인 seed·현재 Holdings ticker 확인 · 해당 ticker 일별 시세 **증분** 갱신 · 운영 저장소 갱신 · 승인 seed·PARAM·기존 산식으로 운영 artifact 생성 · 현재가 조회 · Holdings 평가·Spike 재평가 · Telegram 발송 · freshness/실패/중복 기록.
+- **갱신 대상 경계**: `승인 seed ticker ∪ 현재 Holdings ticker` 로 제한. 전체 시장 수집 · seed 외 자동 추가 · 신규 후보 탐색 금지.
+- **Evidence 계약**: seed·PARAM·factor·threshold·후보 선정 규칙·전략은 **PC Published Evidence** (OCI read-only). OCI 가 생성하는 일별 시세 저장 결과·Universe 운영 artifact·Holdings/Spike Runtime 결과·freshness 는 **Operational Derived Evidence** 이며 Published Evidence 를 대체·변경하지 않는다.
+- **OCI 금지**: seed 임의 추가·삭제 · 전체 시장 후보 탐색 · 신규 factor·threshold · PARAM 생성·승격 · 전략 변경 · ML 학습·튜닝 · Holdings 수량·평단 변경 · 자동 주문.
+- **Fail-Closed**: 시세 갱신 실패 · 승인 대상 데이터 누락 · freshness 미달 · artifact 생성 실패 · seed/PARAM/산식 불일치 → 오래된 결과를 최신으로 표시하지 않고 · Spike 미발송 · sent registry 미기록. Market·Holdings 기존 운영은 유지.
+- **현재 상태**: `market_holdings_operation = ACTIVE` · `spike_operation = DISABLED` (자율 시세 갱신·artifact 생성 구현 전까지). 구체 source·저장 함수·실행 시각·freshness 수치는 후속 구현 설계에서 확정.
+
+상세: `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
+
 ### 모바일 재개 트리거 (4개 모두 충족 시에만)
 
 1. PC 판단 흐름 (Holdings → evidence → PENDING 초안 → 사용자 판단·복기) 이 충분히 완성됐다고 사용자가 판단

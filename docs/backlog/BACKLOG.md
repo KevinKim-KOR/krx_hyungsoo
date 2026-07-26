@@ -769,10 +769,12 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **항목**: 저빈도 scheduler 운영 (Market/Holdings/Spike PUSH 정기 발송 실운영)
-- **상태 (2026-07-24 재정정, Telegram Push Operating Boundary Amendment v1)**: **canonical Step 2 (`Low-Frequency Telegram Push Operation v1`) 로 이동 · Step 1 (본 STEP · 문서 정정) PASS 후 활성화 대기**. Telegram 운영 계약은 이번 문서 STEP 에서 확정 (전역 일 3회 제거 · Market 평일 08:00 1회 · Holdings 3 슬롯 · Spike 조건 발생형 · OCI 제한적 런타임 가격 조회 허용).
+- **상태 (2026-07-26 재정정, OCI Autonomous Market Data Boundary Amendment)**: **Market·Holdings = OCI 운영 등록 완료 (ACTIVE)** · **Spike = DISABLED** (일별 시세 적재 2026-07-03 중단 · OCI 자율 시세 갱신 구현 전까지). Low-Frequency Telegram Push Operation v1 = **PARTIAL** (SAME_STEP_CONTINUE).
+- 2026-07-26 실측 확정: Market·Holdings dry-run·send·Telegram 4건 수신·registry 슬롯 분리·중복 차단 모두 검증. crontab (Market 08:00 + Holdings OPEN/MIDDAY/CLOSE) 등록. Spike crontab 미등록.
+- **Spike 차단 원인**: seed 부재 아님 · builder 가 pykrx 직접 호출하며 OCI 일별 시세가 2026-07-03 에서 중단됨. OCI Autonomous Market Data Boundary Amendment (2026-07-26) 로 OCI 자율 시세 갱신·운영 artifact 생성 경계를 canonical 에 정의 (경계 정의만 · 구현 후속).
 - 원 보류 사유 (이력): 모바일 판단 경로 검증 전에 scheduler 먼저 활성화 안 함. (Mobile Deferred 로 무효화.)
-- 재검토 트리거 (2026-07-24 정정): Step 1 문서 정정 PASS 후 즉시 활성 (설계자 지시 대기).
-- **다음 STEP 이관 항목**: Holdings 3 슬롯의 정확한 시각 · 슬롯별 중복 차단 · Spike 조건 평가 간격 · Spike signal fingerprint · OCI 기존 가격 조회 경로 실측 · 최종 crontab · 첫 자동 수신.
+- **다음 진행**: OCI 승인 대상 일별 시세 증분 갱신 구현 → builder SQLite 연결 → Spike 실측·등록 → Low-Frequency Push v1 최종 PASS.
+- **다음 STEP 이관 항목 (Spike)**: Spike 조건 평가 간격 · OCI 자율 시세 갱신 source·저장 함수·실행 시각·freshness 수치 확정 · Spike crontab · 첫 자동 수신.
 
 ---
 
