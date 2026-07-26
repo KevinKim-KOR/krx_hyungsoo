@@ -9,9 +9,9 @@
 ### 현재 canonical 순서 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1 삽입)
 
 ```text
-1. Telegram Push Operating Boundary Amendment v1     (현재 활성 · 문서 정정 STEP)
-2. Low-Frequency Telegram Push Operation v1
-3. First Real Decision Cycle v1
+1. Telegram Push Operating Boundary Amendment v1     (DONE 2026-07-24)
+2. Low-Frequency Telegram Push Operation v1          (DONE 2026-07-26 · Market/Holdings/Spike ACTIVE)
+3. First Real Decision Cycle v1                      (현재 활성)
 4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
 5. Decision Outcome Ledger v1
 6. Universe · ML · factor · PC UI 품질 개선
@@ -43,7 +43,7 @@ PC 없이 Spike 를 반복 운영하려면 OCI 가 승인 대상의 일별 시�
 - **Evidence 계약**: seed·PARAM·factor·threshold·후보 선정 규칙·전략은 **PC Published Evidence** (OCI read-only). OCI 가 생성하는 일별 시세 저장 결과·Universe 운영 artifact·Holdings/Spike Runtime 결과·freshness 는 **Operational Derived Evidence** 이며 Published Evidence 를 대체·변경하지 않는다.
 - **OCI 금지**: seed 임의 추가·삭제 · 전체 시장 후보 탐색 · 신규 factor·threshold · PARAM 생성·승격 · 전략 변경 · ML 학습·튜닝 · Holdings 수량·평단 변경 · 자동 주문.
 - **Fail-Closed**: 시세 갱신 실패 · 승인 대상 데이터 누락 · freshness 미달 · artifact 생성 실패 · seed/PARAM/산식 불일치 → 오래된 결과를 최신으로 표시하지 않고 · Spike 미발송 · sent registry 미기록. Market·Holdings 기존 운영은 유지.
-- **현재 상태**: `market_holdings_operation = ACTIVE` · `spike_operation = DISABLED` (자율 시세 갱신·artifact 생성 구현 전까지). 구체 source·저장 함수·실행 시각·freshness 수치는 후속 구현 설계에서 확정.
+- **현재 상태 (2026-07-26 갱신)**: `market_holdings_operation = ACTIVE` · `spike_operation = ACTIVE`. Low-Frequency Telegram Push Operation v1 DONE 으로 OCI 자율 시세 갱신·artifact 생성·Spike freshness guard 구현 완료. OCI 07:20 데이터 배치 (기존 FDR 증분 갱신 · SQLite Universe artifact · freshness) 후 Spike 7 tick 발송. freshness = 당일 배치 success + artifact.price_data_as_of 일치 + 36h + 7달력일 상한 (외부 거래일 조회 없음). 상세 POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md.
 
 상세: `docs/handoff/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`.
 

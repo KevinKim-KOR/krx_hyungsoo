@@ -1,5 +1,40 @@
 # STATE_LATEST
 
+최종 업데이트: 2026-07-26 (Low-Frequency Telegram Push Operation v1 — **DONE · Market/Holdings/Spike ACTIVE · OCI 실측 완료 · next_step_gate = FIRST_REAL_DECISION_CYCLE_V1**)
+
+## 이번 STEP 요약 (Low-Frequency Telegram Push Operation v1, DONE)
+
+**성격**: 기능 STEP. OCI 가 PC 없이 Market·Holdings·Spike 3-PUSH 를 자율 운영.
+
+**최종 상태 앵커**:
+```text
+low_frequency_telegram_push_operation = DONE
+market_briefing = ACTIVE (평일 08:00 KST)
+holdings_briefing = ACTIVE (평일 OPEN 09:15 / MIDDAY 12:30 / CLOSE 15:40 KST)
+spike_or_falling_alert = ACTIVE (평일 09:30~15:20 7 tick · 조건 발생형)
+oci_market_data_batch = ACTIVE (평일 07:20 KST)
+next_step_gate = FIRST_REAL_DECISION_CYCLE_V1
+```
+
+**완성 내용**:
+- Runtime 가격 오버레이 (Holdings/Spike · market_naver · holdings_latest.json 미수정 · price_asof 필수).
+- Spike Published Evidence 재평가 (universe artifact base_close + Runtime 현재가 · fingerprint 중복 차단).
+- registry key 확장 (Holdings slot_id · Spike fingerprint · DB PRIMARY KEY 무변경).
+- **OCI 자율 시장 데이터** (OCI Operational Market Data Refresh v1): 승인 대상(seed ∪ Holdings) 증분 시세 갱신 → SQLite Universe artifact → freshness 검증. builder 가 pykrx 아닌 SQLite 로 계산 (외부 호출 0 · pykrx 경로는 PC/진단용 보존).
+- **Freshness (설계자 C 확정)**: DB 거래일 캘린더 순환 결함 폐기. 배치가 한 번 확정하고 Spike 는 결과만 검증 (당일 배치 success + as-of 일치 + 36h + 7달력일 상한 + validate · 외부 조회 없음). 지시문 §4.3 "최대 1거래일" 문구는 정확한 KRX 거래일 캘린더 부재로 이 계약으로 대체 (7일 = 장기 stale 안전 상한).
+
+**OCI 실측 (2026-07-26)**: 배치 success (41/41) · price_data_as_of=2026-07-24 · freshness fresh · **Spike status=sent · Telegram 실 수신 확인**. crontab 등록 완료 (Market/Holdings 무변경 + 데이터 배치 07:20 + Spike 7 tick).
+
+**Regression**: focused 26 passed · 전체 회귀 1066 passed/4 skipped/0 failed · black·flake8 clean · Runner 626줄.
+
+**commit**: `6da326f5` (Runtime 오버레이·Spike 재평가) · `b4c573f8` (OCI 증분 갱신·SQLite artifact·freshness).
+
+상세: `docs/handoff/POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md`.
+
+---
+
+## 이전 STEP 요약 (OCI Autonomous Market Data Boundary Amendment — **DONE · 문서 전용 STEP**)
+
 최종 업데이트: 2026-07-26 (OCI Autonomous Market Data Boundary Amendment — **DONE · 문서 전용 STEP · Low-Frequency Telegram Push Operation v1 은 PARTIAL 유지**)
 
 ## 이번 STEP 요약 (OCI Autonomous Market Data Boundary Amendment, DONE · 문서 전용)
@@ -1317,8 +1352,8 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 - **canonical 순서 (2026-07-24 확정 · 상단 §이번 STEP 요약과 동일)**:
   1. Telegram Push Operating Boundary Amendment v1 — **DONE · PASS** (2026-07-24)
-  2. **Low-Frequency Telegram Push Operation v1** — 현재 진행 중 (PARTIAL · Market·Holdings OCI 운영 중 · Spike 는 데이터 공급 경계 구현 전까지 DISABLED · 2026-07-26 OCI Autonomous Market Data Boundary Amendment 로 OCI 자율 시세 갱신 경계 정의 완료)
-  3. First Real Decision Cycle v1
+  2. **Low-Frequency Telegram Push Operation v1** — **DONE** (2026-07-26 · Market/Holdings/Spike ACTIVE · OCI 실측 완료)
+  3. **First Real Decision Cycle v1** — 현재 활성 (next_step_gate)
   4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
   5. Decision Outcome Ledger v1
   6. Universe · ML · factor · PC UI 품질 개선
@@ -1331,7 +1366,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - MongoDB 전환 (PROJECT_ORIGIN_INTENT §10 #2 — SQLite(시장) + JSON(holdings/Run) SSOT 분리)
   - ML / 백테스트 / threshold / label 확정 (Q6 답 나오기 전)
   - 매수·매도·교체 어휘 / 자동 클러스터링 / 대표 ETF 선정
-- **현재 상태 (2026-07-26)**: Low-Frequency Telegram Push Operation v1 = **PARTIAL**. Market·Holdings OCI 운영 등록 완료 (commit `6da326f5` 구현 · Market 08:00 + Holdings 3슬롯 crontab 등록 · Telegram 실측 4건 수신 확인). Spike = **DISABLED** (일별 시세 적재가 2026-07-03 중단 · OCI 자율 시세 갱신 구현 전까지). OCI Autonomous Market Data Boundary Amendment (2026-07-26 · 본 STEP) 로 OCI 자율 시세 갱신·운영 artifact 생성 경계를 canonical 에 정의. 다음: 해당 경계 구현 → Spike 실측·등록 → 최종 PASS.
+- **현재 상태 (2026-07-26)**: Low-Frequency Telegram Push Operation v1 = **DONE**. Market·Holdings·Spike 전부 OCI ACTIVE. OCI 07:20 데이터 배치 (승인 대상 증분 시세 갱신 + SQLite Universe artifact + freshness) 후 Market 08:00 / Holdings 3슬롯 / Spike 7 tick 발송. OCI 실측 완료 (배치 success · Spike sent · Telegram 실 수신). next_step_gate = `FIRST_REAL_DECISION_CYCLE_V1`.
 
 ## 7. Index
 
