@@ -125,10 +125,12 @@
     ETF 검토, ML 학습·백테스트·feature 실험, AI 투자세션, 사용자 승인,
     approved PARAM 과 published data snapshot 생성. PC 는 24시간 상시 실행을
     전제로 하지 않는다.
-  - **OCI = 상시 운영·조회 평면**: latest approved PARAM 보관, 일 3회 3-PUSH
-    실행, Telegram 발송. 장기 역할 — 외부 / 모바일에서 마지막 published 데이터
-    와 운영 상태를 조회할 수 있는 read-only 환경으로 확장. OCI 는 ML 학습을
-    수행하지 않는다.
+  - **OCI = 상시 운영·조회 평면**: latest approved PARAM 보관, PUSH 별 독립
+    정책 (Market 평일 08:00 1회 · Holdings 평일 3 슬롯 · Spike 조건 발생형) 에
+    따른 Runtime 평가·Telegram 발송. (2026-07-24 정정: 이전 "일 3회 3-PUSH"
+    전역 표현은 §5.2 에 따라 제거됨.) 장기 역할 — 외부 / 모바일에서 마지막
+    published 데이터와 운영 상태를 조회할 수 있는 read-only 환경으로 확장. OCI
+    는 ML 학습을 수행하지 않는다.
   - **데이터 흐름**: PC SQLite 는 PC 작업용 기준 저장소로 유지. PC ML 이 OCI
     DB 를 직접 원격으로 읽지 않는다. PC 는 승인 / 발행 시점에 OCI 로 read-only
     published snapshot 을 전달한다.

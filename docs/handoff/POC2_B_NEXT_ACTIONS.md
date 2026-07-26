@@ -9,6 +9,7 @@
 > - **Telegram 운영 계약**: 전역 일 3회 제한 제거. Market 평일 08:00 1회. Holdings 평일 3 슬롯. Spike 조건 발생형. 평가/알림 구분. OCI 제한적 런타임 가격 조회 허용. Published Evidence read-only 유지.
 > - **모바일 상태**: `DEFERRED_BY_USER`. 재개 시 첫 후보는 **Telegram Cockpit** (모바일 Web 아님).
 > - **이전 앵커 (2026-07-20 Mobile Decision Operating Sequence Anchor) 는 SUPERSEDED**. 삭제하지 않고 이력 유지.
+> - **하위 STEP 이력의 "하루 3회 발송 시간 + 자동 발송 UX" 등 표현은 확정 전 후보 기록 (이력)** 이며, 실제 운영 정책은 위 §0 · Telegram 운영 계약이 단일 소스다. "하루 3회 전역" 정책은 2026-07-24 제거됨 — 발송은 PUSH 별 독립 정책 (Market 08:00 1회 · Holdings 3 슬롯 · Spike 조건 발생형) 이다.
 > - 상세: MASTER_PLAN "Telegram 저빈도 운영 우선 앵커 (2026-07-22)" + "Telegram PUSH 운영 경계 정정 (2026-07-24)" 섹션 · `docs/handoff/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 
 ---

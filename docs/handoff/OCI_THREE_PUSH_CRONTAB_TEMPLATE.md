@@ -4,6 +4,14 @@
 최신화: 2026-06-18 (Step `PARAM_HANDOFF_OCI_RUNTIME_3PUSH` — **정식 운영 경로가 PARAM runtime 으로 전환됨**)
 Step 이력: OCI_THREE_PUSH_CRONTAB_RUNNER_AUTOSEND → OCI_THREE_PUSH_OPERATION_REGISTRATION → PARAM_HANDOFF_OCI_RUNTIME_3PUSH
 
+> **⚠ SUPERSEDED (2026-07-26)**: 본 문서의 crontab 스케줄 (Market 08:00 · Holdings
+> **12:30 1회** · Spike **15:30 고정 1회** — "하루 3회") 은 **이전 정책** 이다.
+> 2026-07-24 Telegram Push Operating Boundary Amendment v1 로 전역 "하루 3회" 제한이
+> 제거되고 PUSH 별 독립 정책 (Market 08:00 1회 · Holdings **3 슬롯** OPEN/MIDDAY/CLOSE
+> · Spike **조건 발생형** 다중 tick) 으로 전환됨. **신규 운영 crontab 은**
+> [`OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md`](OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md)
+> **를 사용한다.** 본 문서는 이력·PARAM runtime 전환 근거로만 보존한다.
+
 ---
 
 ## 0. 정식 운영 경로 변경 안내 (2026-06-18)
@@ -16,7 +24,7 @@ Step 이력: OCI_THREE_PUSH_CRONTAB_RUNNER_AUTOSEND → OCI_THREE_PUSH_OPERATION
 PC 에서 사용자가 승인한 PARAM snapshot 생성
 → scripts/sync_three_push_runtime_param.py 로 OCI 전달
 → OCI latest PARAM 저장 (state/three_push/params/latest_runtime_param.json)
-→ OCI crontab 이 하루 3회 scripts/run_three_push_runtime_oci.py 실행
+→ OCI crontab 이 정해진 스케줄로 scripts/run_three_push_runtime_oci.py 실행 (스케줄은 상단 SUPERSEDED 배너 참조 · 현행은 PUSH 별 독립 정책)
 → OCI runtime 메시지 생성 (app/three_push_runtime_message_builder.py)
 → Telegram 발송
 ```

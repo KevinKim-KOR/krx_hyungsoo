@@ -1267,20 +1267,28 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 ## 6. Next action
 
-- **다음 Step 후보 (사용자 결정 대기)**:
-  1. ~~**KS-10 Cleanup — `app/push_context.py` + `app/draft_message.py` 책임 분리**~~ — **DONE (2026-06-14 3-PUSH Context Cleanup)**. trigger/near 4건 모두 해소.
-  2. ~~**PC-to-OCI 3-PUSH Evidence Package Sync**~~ — **DONE (2026-06-15)**. package 공급 경로 확보.
-  3. **OCI crontab runner 구현** — OCI 에서 manifest 읽고 package 소비 + Telegram 발송 (하루 3회 발송 시간 결정 선행 필요).
-  4. **하루 3회 발송 시간 + 자동 발송 UX** (scheduler 결정).
-  5. **runtime source 수동 refresh endpoint**.
-  6. **뉴스 source 도입** (PUSH-1 의 [전일 기준 시장 흐름] 보강).
-  7. **ThreePushDraftCard 정식 화면 위치 결정**.
+> 이 섹션은 상단 "이번 STEP 요약" (2026-07-24 Telegram Push Operating Boundary
+> Amendment v1) 이후 갱신되지 않아 6월 중순 후보 목록이 남아 있었음. 2026-07-26
+> 현재 canonical 순서·상태로 정정. 상단 canonical 순서 블록이 단일 소스이며 본
+> 섹션은 그 요약이다.
+
+- **canonical 순서 (2026-07-24 확정 · 상단 §이번 STEP 요약과 동일)**:
+  1. Telegram Push Operating Boundary Amendment v1 — **DONE · PASS** (2026-07-24)
+  2. **Low-Frequency Telegram Push Operation v1** — 현재 진행 중 (구현 VERIFIED · OCI 실측 진행 단계, 2026-07-26)
+  3. First Real Decision Cycle v1
+  4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
+  5. Decision Outcome Ledger v1
+  6. Universe · ML · factor · PC UI 품질 개선
+  - 모바일: DEFERRED_BY_USER (재개 시 Telegram Cockpit 부터)
+- **완료 처리된 과거 후보 (6월 중순 목록 · 참고)**:
+  - OCI crontab runner 구현 — **DONE** (2026-06-16 crontab runner · 2026-06-18 운영 등록). 발송 시각은 "하루 3회 전역" 정책이 아니라 PUSH 별 독립 정책 (Market 08:00 1회 · Holdings 3 슬롯 · Spike 조건 발생형) 으로 대체됨.
+  - PC-to-OCI 3-PUSH Evidence Package Sync — **DONE** (2026-06-15).
 - **하지 않을 것 (불변 원칙)**:
-  - 자동 매매 / Telegram 문구 변경 / OCI push 자동화 (사용자 명시 승인 필요)
+  - 자동 매매 / Telegram 문구 변경 (사용자 명시 승인 필요)
   - MongoDB 전환 (PROJECT_ORIGIN_INTENT §10 #2 — SQLite(시장) + JSON(holdings/Run) SSOT 분리)
   - ML / 백테스트 / threshold / label 확정 (Q6 답 나오기 전)
   - 매수·매도·교체 어휘 / 자동 클러스터링 / 대표 ETF 선정
-- **사용자 결정 필요**: ✅ 위 4개 후보 중 다음 Step 선택.
+- **현재 상태**: Low-Frequency Telegram Push Operation v1 구현 VERIFIED · commit `6da326f5` · OCI 실측 진행 중.
 
 ## 7. Index
 
