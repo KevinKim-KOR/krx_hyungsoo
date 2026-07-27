@@ -1,8 +1,45 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-26 (POC3-01 UI-1 PC Status Dashboard 초안 — **IMPLEMENTED_AWAITING_VERIFICATION · 검증자 판정 대기**)
+최종 업데이트: 2026-07-26 (POC3-01 UI-1 Dashboard REMEDIATION — **검증자 VERIFIED_WITH_NOTES · 최종 UI_PASS/DONE 미선언**)
 
-## 이번 STEP 요약 (POC3-01 UI-1 PC Status Dashboard 초안, IMPLEMENTED_AWAITING_VERIFICATION)
+## 이번 라운드 요약 (POC3-01 UI-1 Dashboard REMEDIATION, VERIFIED_WITH_NOTES)
+
+**검증 결과 (2026-07-26)**: 검증자 REJECTED r1(결측 0 표시·무효화 미연결) → r2(Evidence stale·invalid 미표시) 정정 후 **VERIFIED_WITH_NOTES**. 검증자가 1440×900 실브라우저 smoke 직접 수행 (최초 topn 미호출·명시 조회 ~2.27초·VIX stale·브라우저 오류 0건 확인). 최종 UI_PASS/DONE 은 개발자가 선언하지 않음 (지시 §8·§10).
+
+**NOTES (BACKLOG 이관)**: 무효화 통합 테스트가 실제 컴포넌트(HoldingsClient/MarketDiscoveryView)를 렌더링하지 않고 분기 로직을 재현 → 생산 코드에서 호출 제거 시 미감지. `docs/backlog/BACKLOG.md` 에 "Dashboard 캐시 무효화 통합 테스트" 항목 등록 (POC3-02 이후 UI 테스트 확장 STEP 에서 처리).
+
+**성격**: POC3-01 실사용 보완 (base revision 596078f5 위에서 보완). 화면 왕복 재조회/timeout 해소 + 첫 화면 밀도 개선 + 최소 UI 테스트 체계 도입.
+
+**REMEDIATION 반영 (설계자 확정)**:
+- **시장 카드 lazy**: Dashboard 최초 진입/재진입에서 `/market/topn/latest` **자동 호출 안 함**. `not_loaded` 상태로 시작 → 사용자 "시장 상태 불러오기" 클릭 시 1회 조회 (시장 국면·VIX·기준일만 사용, 후보 건수·목록 미표시). AC-8/§4.1 충돌은 설계자 (a) 확정으로 해소.
+- **frontend 조회 상태 공유** (`frontend/lib/api/queryCache.ts` 신설): 성공 결과·진행 중 요청을 앱 세션 메모리에서 공유. 화면 왕복 재호출 X · 동일 진행중 요청 dedup · 새로고침 시 재조회 · 변경 성공 시 관련 읽기만 무효화. localStorage/DB/backend cache 없음.
+- **첫 화면 재구성**: 판단 요약 1줄 → 시장|보유 2열 → 예외(원인·건수·직접 행동 버튼) → 항목별 기준일+다시 불러오기 → STEP 1~5 접힘. 중복 대형 카드(오늘의 데이터 상태 표·오늘 확인 대상·상세 화면) 제거.
+- **표시 규칙**: VIX/수익률 소수점 둘째 · 지수/가격 천 단위 · 금액 요약 단위(억/만) · 기준일 KST · 결측 정직성(전체결측=확인 불가, 부분=N/M건 기준). 재조회 실패 시 이전 성공값 stale 명시.
+- **최소 UI 테스트 (Vitest+RTL+jsdom)**: `npm run test` 스크립트 추가. queryCache 8 + DashboardView 13 + dashboardInvalidation 7 = **28 passed**.
+
+**변경 파일 (수정 8 + 신규 7 = 15)**: 수정 코드 6 — DashboardView.tsx · globals.css · package.json · package-lock.json · HoldingsClient.tsx · MarketDiscoveryView.tsx. 수정 문서 2 — docs/STATE_LATEST.md · docs/handoff/STATE_LATEST.md. 신규 7 — queryCache.ts · dashboardKeys.ts · queryCache.test.ts · DashboardView.test.tsx · dashboardInvalidation.test.ts · vitest.config.ts · vitest.setup.ts.
+
+**무효화 연결 (REJECTED r1 정정 · A-1(1))**: Holdings 저장 성공(`HoldingsClient.tsx`)→보유·Evidence 읽기 무효화, Market 갱신 완료(`MarketDiscoveryView.tsx`)→시장 읽기 무효화. **변경 실패 분기에서는 무효화 안 함**. 공유 키·무효화 그룹은 `dashboardKeys.ts`.
+
+**재조회 실패 stale 유지 (A-1(2))**: 재조회 실패 플래그(refetchFailed)를 캐시 엔트리에 저장 → 화면 재진입해도 stale 유지 (이전 성공값이 정상값으로 위장 안 됨). 재조회 성공 시 해제.
+
+**KST 변환 (A-1(3))**: ISO datetime 기준일은 Asia/Seoul 로 변환해 `YYYY-MM-DD HH:mm KST` 표시 (raw ISO 원문 미노출). 순수 날짜(YYYY-MM-DD)는 그대로.
+
+**조회 실패 예외 (A-1(4))**: 시장/Evidence/NAV 조회 실패를 예외 목록에 추가 → 기준일 "확인 실패" 와 "확인된 예외 없음" 동시 표시 차단.
+
+**Market 캐시 키 (A-1(5))**: 실제 요청 필터 4개(exclude_inverse/leveraged/synthetic/futures=true)를 키에 포함해 요청 조건과 일치.
+
+**검증**: frontend test 28 passed · eslint 통과 · next build 성공. contract_changes 전부 false (신규 API/DB/backend cache/산식/factor/OCI·Telegram 무변경). DashboardView 755줄 (KS-10 900 미만).
+
+**미검증 / UI 테스터 대기**: 1440×900 실데이터 화면 + 네트워크 관찰(AC-8 개발자 smoke)은 backend 미기동·GUI 불가로 이 세션에서 미수행. 자동 테스트로 계약(최초 topn 미호출·재진입 캐시·결측 정직·VIX stale)은 고정. **UI 테스터·검증자·사용자 확인 전까지 UI_PASS/PASS/DONE 아님.**
+
+**다음**: UI 테스터 → 검증자 PASS 후에만 POC3-02 진입.
+
+상세: `docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md` (마스터 · 현재 저장소에 실재). 본 라운드 REMEDIATION 설계문서는 설계자 지시문에만 존재하고 저장소에 파일로 커밋되지 않음 (개발자가 임의 생성하지 않음).
+
+---
+
+## 직전 STEP 요약 (POC3-01 UI-1 PC Status Dashboard 초안, VERIFIED_WITH_NOTES · commit 596078f5)
 
 **성격**: Frontend 첫 화면 재조합. 첫 화면을 "STEP 1~5 절차 안내" → "오늘의 판단 상태" Dashboard 초안으로 전환.
 

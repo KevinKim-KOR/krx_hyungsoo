@@ -788,3 +788,10 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **상태 (2026-07-22 재정정, Mobile Deferred)**: BACKLOG 유지. **canonical Step 5 · Decision Outcome Ledger v1 이후 활성화** (순서 자체 유지). PC UI 모바일 디자인 언어 역적용 부분은 Mobile Deferred 로 후순위 강화.
 - 보류 사유: 실제 판단 사이클 전에 Universe/ML/factor 고도화로 회귀하지 않음.
 - 재검토 트리거: 실제 판단 기록이 누적되어 개선 근거가 생김 (Decision Outcome Ledger v1 이후).
+
+---
+
+- **항목**: Dashboard 캐시 무효화 통합 테스트 (실제 컴포넌트 렌더 기반)
+- **보류 사유**: POC3-01 REMEDIATION 에서 무효화 계약은 `dashboardInvalidation.test.ts` 로 검증했으나, 이는 HoldingsClient/MarketDiscoveryView 의 성공·실패 분기 **로직을 재현**해 `invalidateQueries` 호출을 확인할 뿐 실제 컴포넌트를 렌더링하지 않는다. 지시 §5 최소 UI 테스트 범위를 넘는 추가 통합 테스트이고, 검증자도 "경미한 미흡·참고" 로 분류하며 해당 라운드를 VERIFIED 했다.
+- **보류된 위험**: 생산 코드(HoldingsClient/MarketDiscoveryView)에서 `invalidateQueries` 호출이 제거돼도 현재 테스트가 이를 직접 감지하지 못한다. Holdings 저장/Market 갱신 후 Dashboard 캐시가 무효화되지 않는 회귀가 조용히 통과될 수 있다.
+- **재검토 트리거**: POC3-02 이후 UI 테스트 체계를 확장하는 STEP 이 배정되거나, 무효화 회귀가 실제 화면에서 관찰될 때. (실제 HoldingsClient 저장 → Dashboard Evidence 재조회, MarketDiscoveryView 갱신 완료 → Dashboard 시장·Evidence 재조회를 컴포넌트 렌더로 검증)

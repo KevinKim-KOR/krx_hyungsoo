@@ -818,9 +818,63 @@ ul.reason-list li {
 
 .dashboard-exception-list li {
   margin: 6px 0;
-  padding-left: 12px;
+  padding: 6px 10px;
   border-left: 2px solid var(--warn);
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  /* §4.3: 낮은 채도의 경고 행 강조 (강한 배경 대신 옅은 톤) */
+  background: #fffaf2;
+}
+
+/* POC3-01 REMEDIATION — 판단 요약 · 2열 · 예외 행동 버튼 (§4.1·§4.3) */
+.dashboard-root h1 {
+  margin-bottom: 4px;
+}
+
+.dashboard-summary-line {
+  font-size: 15px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.dashboard-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dashboard-col-card {
+  margin: 0;
+}
+
+/* 좁은 화면에서 2열 → 1열 (본문 가로 오버플로 방지) */
+@media (max-width: 900px) {
+  .dashboard-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-exception-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.dashboard-exception-btn:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 .dashboard-shortcut-row {

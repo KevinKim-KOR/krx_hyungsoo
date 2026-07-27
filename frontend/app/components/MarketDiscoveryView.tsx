@@ -27,6 +27,8 @@ import {
   type MarketTopNFilterOptions,
   type MarketTopNResponse,
 } from "@/lib/api";
+import { invalidateQueries } from "@/lib/api/queryCache";
+import { MARKET_INVALIDATION_KEYS } from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
@@ -306,6 +308,9 @@ export default function MarketDiscoveryView({
       if (status.status === "completed") {
         stopPolling();
         setRefreshUi({ kind: "completed", refreshId: status.refresh_id ?? null });
+        // 갱신 성공 시에만 Dashboard 의 시장 읽기 무효화 (failed 분기는 무효화
+        // 안 함 — §4.5 "변경 실패 시 무효화 금지").
+        for (const k of MARKET_INVALIDATION_KEYS) invalidateQueries(k);
         loadTopn();
         return;
       }

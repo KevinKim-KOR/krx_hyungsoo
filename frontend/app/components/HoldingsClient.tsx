@@ -29,6 +29,8 @@ import {
   type Run,
 } from "@/lib/api";
 import { DEFAULT_GROUP } from "@/lib/holdings_view";
+import { invalidateQueries } from "@/lib/api/queryCache";
+import { HOLDINGS_INVALIDATION_KEYS } from "@/lib/api/dashboardKeys";
 import EnrichedSection from "./EnrichedHoldingsSection";
 // POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) — 보유 ETF 가
 // Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 / NAV 와 어떻게
@@ -186,6 +188,9 @@ export default function HoldingsClient({ onDraftCreated }: Props) {
       const saved = await saveHoldings(payload);
       setRows(saved.holdings.map(holdingToRow));
       setSavedAt(new Date().toLocaleTimeString("ko-KR"));
+      // 저장 성공 시에만 Dashboard 의 보유·Evidence 읽기 무효화 (변경 실패 시
+      // catch 로 가서 미호출 — §4.5 "변경 실패 시 무효화 금지").
+      for (const k of HOLDINGS_INVALIDATION_KEYS) invalidateQueries(k);
       // 저장 후 enriched 표시도 갱신 (시세는 캐시에 있을 때만 반영, fetch 트리거 X).
       await loadEnriched();
     } catch (e) {
