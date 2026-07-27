@@ -793,6 +793,36 @@ ul.reason-list li {
   border-left: 2px solid var(--border);
 }
 
+/* POC3-01 UI-1 Status Dashboard — 오늘의 데이터 상태 표 · 예외 목록 */
+.dashboard-status-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dashboard-status-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.dashboard-status-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dashboard-exception-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-exception-list li {
+  margin: 6px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--warn);
+  font-size: 13px;
+}
+
 .dashboard-shortcut-row {
   flex-wrap: wrap;
 }

@@ -1,8 +1,32 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-26 (Low-Frequency Telegram Push Operation v1 — **DONE · Market/Holdings/Spike ACTIVE · OCI 실측 완료 · next_step_gate = FIRST_REAL_DECISION_CYCLE_V1**)
+최종 업데이트: 2026-07-26 (POC3-01 UI-1 PC Status Dashboard 초안 — **IMPLEMENTED_AWAITING_VERIFICATION · 검증자 판정 대기**)
 
-## 이번 STEP 요약 (Low-Frequency Telegram Push Operation v1, DONE)
+## 이번 STEP 요약 (POC3-01 UI-1 PC Status Dashboard 초안, IMPLEMENTED_AWAITING_VERIFICATION)
+
+**성격**: Frontend 첫 화면 재조합. 첫 화면을 "STEP 1~5 절차 안내" → "오늘의 판단 상태" Dashboard 초안으로 전환.
+
+**상위 문서**: `docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md` (canonical 마스터).
+
+**구현 (기존 데이터 경로만 · 신규 API/DB/source/factor 없음)**:
+- `DashboardView.tsx` 재작성 — 6섹션: 오늘의 데이터 상태 · 시장 상태 · 보유 현황 · 확인할 예외 · 오늘 확인 대상 · 상세 화면 이동 + 사용 흐름 도움말(STEP 1~5 접힘).
+- 기존 API 재사용: `fetchMarketTopnLatest`(시장·VIX·후보·국면) · `fetchEnrichedHoldings`(보유 items COMPOSE 합산) · `fetchHoldingsMarketEvidence`(summary 건수 DIRECT) · `fetchNavDiscountLatest`(summary DIRECT).
+- 기준일 분리 (시장 asof / holdings_asof / market_asof / NAV asof / VIX as_of_date). VIX 는 시장 기준일보다 이전이면 stale 경고 (날짜 하드코딩 없이 실제 응답 비교).
+- unavailable/warning 을 0/정상으로 치환하지 않음. 예외 우선 · 건수 요약.
+
+**변경 파일 (총 4개 = 코드 2 + 문서 2)**: 코드 — `frontend/app/components/DashboardView.tsx` · `frontend/app/globals.css` (표·예외목록 클래스 2개 추가). 문서 — `docs/STATE_LATEST.md` · `docs/handoff/STATE_LATEST.md`.
+
+**검증**: eslint 전체 통과 · `next build` 성공 (타입 체크 포함). frontend test 스크립트 부재 → lint+build 만 수행 (지시 §11). backend·API·다른 View·산식 무변경.
+
+**미검증 / 검증 대기**: 실제 데이터 화면 사용자 확인 (30초 내 상태 파악)은 사용자 브라우저 관찰 필요. 검증자 판정 전까지 PASS/DONE 아님.
+
+**다음**: 검증자 PASS 후에만 POC3-02(Judgment Workbench) 진입.
+
+상세: `docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md` (canonical 마스터 설계 · POC3-01 은 그 §6 UI-1).
+
+---
+
+## 이전 STEP 요약 (Low-Frequency Telegram Push Operation v1, DONE)
 
 **성격**: 기능 STEP. OCI 가 PC 없이 Market·Holdings·Spike 3-PUSH 를 자율 운영.
 

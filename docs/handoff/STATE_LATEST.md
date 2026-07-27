@@ -5,8 +5,9 @@ Past archive: [STATE_LATEST_ARCHIVE.md](STATE_LATEST_ARCHIVE.md)
 
 This file is non-canonical. Do not append step details here.
 
-최종 갱신: 2026-07-26 (Low-Frequency Telegram Push Operation v1 — DONE · Market/Holdings/Spike ACTIVE · OCI 실측 완료 · next_step_gate = FIRST_REAL_DECISION_CYCLE_V1).
-직전 STEP: OCI Autonomous Market Data Boundary Amendment (DONE · 문서 전용 STEP 2026-07-26).
+최종 갱신: 2026-07-26 (POC3-01 UI-1 PC Status Dashboard 초안 — IMPLEMENTED_AWAITING_VERIFICATION · 검증자 판정 대기).
+직전 STEP: Low-Frequency Telegram Push Operation v1 (DONE · Market/Holdings/Spike ACTIVE · OCI 실측 완료).
+POC3 진입: PC 판단 UI 재조합 (상태 Dashboard → 판정 Workbench → 실행 Operations Panel). 마스터 설계서 docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md. POC3-01 = 첫 화면을 STEP 안내 → 오늘의 판단 상태 Dashboard 초안으로 전환 (frontend 2파일 · 기존 데이터 경로만 · lint/build 통과 · 검증 대기).
 현재 canonical 순서: 1. Telegram Push Operating Boundary Amendment v1 (DONE) → 2. Low-Frequency Telegram Push Operation v1 (DONE) → 3. First Real Decision Cycle v1 (활성) → 4. PC 판단 흐름 차단 결함 해소 → 5. Decision Outcome Ledger v1 → 6. Universe·ML·factor·PC UI 품질 개선.
 Low-Frequency 최종: Market 08:00 / Holdings 3슬롯 / Spike 7 tick + OCI 07:20 데이터 배치 (증분 시세 갱신 + SQLite Universe artifact + freshness) · OCI 실측 완료 (Spike sent · Telegram 실 수신) · 상세 POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md.
 Telegram 운영 계약: 전역 일 3회 제한 제거 · Market 평일 08:00 · Holdings 평일 3 슬롯 · Spike 조건 발생형 · 평가/알림 구분 · OCI 제한적 런타임 가격 조회 허용 · Published Evidence read-only 유지.
