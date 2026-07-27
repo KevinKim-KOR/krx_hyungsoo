@@ -1,10 +1,12 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-26 (POC3-01 UI-1 Dashboard REMEDIATION — **검증자 VERIFIED_WITH_NOTES · 최종 UI_PASS/DONE 미선언**)
+최종 업데이트: 2026-07-26 (POC3-01 UI-1 Dashboard REMEDIATION — **검증자 VERIFIED_WITH_NOTES + UI 테스터(사용자) 확인 완료 · 개발자 몫 종료 · 설계자 POC3-02 설계 대기**)
 
-## 이번 라운드 요약 (POC3-01 UI-1 Dashboard REMEDIATION, VERIFIED_WITH_NOTES)
+## 이번 라운드 요약 (POC3-01 UI-1 Dashboard REMEDIATION, VERIFIED + UI 테스터 확인)
 
-**검증 결과 (2026-07-26)**: 검증자 REJECTED r1(결측 0 표시·무효화 미연결) → r2(Evidence stale·invalid 미표시) 정정 후 **VERIFIED_WITH_NOTES**. 검증자가 1440×900 실브라우저 smoke 직접 수행 (최초 topn 미호출·명시 조회 ~2.27초·VIX stale·브라우저 오류 0건 확인). 최종 UI_PASS/DONE 은 개발자가 선언하지 않음 (지시 §8·§10).
+**검증 결과 (2026-07-26)**: 검증자 REJECTED r1(결측 0 표시·무효화 미연결) → r2(Evidence stale·invalid 미표시) 정정 후 **VERIFIED_WITH_NOTES**. 검증자가 1440×900 실브라우저 smoke 직접 수행 (최초 topn 미호출·명시 조회 ~2.27초·VIX stale·브라우저 오류 0건 확인). **UI 테스터(사용자) 실화면 확인 완료 (2026-07-26): 이전 대비 개선 확인 · 개발자 추가 수정 불필요 판정.**
+
+**개발자 몫 종료. 다음은 설계자 영역**: POC3-02(Judgment Workbench) 세부 레이아웃·구현 파일·AC 는 마스터 설계 §7 대로 해당 STEP 설계에서 확정 (설계자 결정 · 개발자 진입 금지 유지).
 
 **NOTES (BACKLOG 이관)**: 무효화 통합 테스트가 실제 컴포넌트(HoldingsClient/MarketDiscoveryView)를 렌더링하지 않고 분기 로직을 재현 → 생산 코드에서 호출 제거 시 미감지. `docs/backlog/BACKLOG.md` 에 "Dashboard 캐시 무효화 통합 테스트" 항목 등록 (POC3-02 이후 UI 테스트 확장 STEP 에서 처리).
 
