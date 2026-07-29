@@ -8,6 +8,7 @@
 
 export type MenuKey =
   | "dashboard"
+  | "workbench"
   | "market_discovery"
   | "etf_exposure"
   | "ai_sessions"
@@ -23,6 +24,7 @@ export interface MenuItem {
 
 export const MENU_ITEMS: MenuItem[] = [
   { key: "dashboard", label: "Dashboard", hint: "시스템 상태 + 바로가기" },
+  { key: "workbench", label: "Judgment Workbench", hint: "후보·보유·근거 한 화면 검토" },
   { key: "market_discovery", label: "Market Discovery", hint: "ETF 후보 발굴" },
   { key: "etf_exposure", label: "ETF Exposure", hint: "구성종목 / 중복률" },
   { key: "ai_sessions", label: "AI Sessions", hint: "AI 질문/답변 기록" },

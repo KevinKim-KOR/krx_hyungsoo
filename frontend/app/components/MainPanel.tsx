@@ -16,6 +16,7 @@ import { useCallback, useState } from "react";
 import AISessionsView from "./AISessionsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
 import DashboardView from "./DashboardView";
+import JudgmentWorkbenchView from "./JudgmentWorkbenchView";
 import DataStatusView from "./DataStatusView";
 import ETFExposureView from "./ETFExposureView";
 import HoldingsView from "./HoldingsView";
@@ -42,6 +43,9 @@ export default function MainPanel() {
   switch (active) {
     case "dashboard":
       view = <DashboardView onNavigate={setActive} />;
+      break;
+    case "workbench":
+      view = <JudgmentWorkbenchView onNavigate={setActive} />;
       break;
     case "market_discovery":
       // 2026-05-21 — "AI Sessions로 넘기기" 클릭 시 ai_sessions 화면 전환.

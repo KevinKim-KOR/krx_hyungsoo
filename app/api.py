@@ -55,6 +55,7 @@ from app.api_ml_relative_upside import router as ml_relative_upside_router
 from app.api_ml_readiness import router as ml_readiness_router
 from app.api_ml_sanity import router as ml_sanity_router
 from app.api_nav_discount import router as nav_discount_router
+from app.api_price_series import router as price_series_router
 from app.api_three_push_param import router as three_push_param_router
 from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
@@ -89,6 +90,9 @@ app.include_router(holdings_market_evidence_router)
 # POC2 NAV / Discount Display FIX (2026-06-08) —
 # read-only GET /market/nav-discount/latest. 저장된 etf_nav_daily 만 read.
 app.include_router(nav_discount_router)
+# POC3-02 REMEDIATION-1 (2026-07-28) — read-only GET /market/price-series.
+# 기존 etf_daily_price 저장값을 fetch_price_history 로 반환 (신규 수집·산식 없음).
+app.include_router(price_series_router)
 # POC2 ML 최소 데이터 레인 (2026-06-08) —
 # read-only GET /ml/readiness/latest. etf_ml_feature_daily / market_risk_feature_daily
 # row 수 + latest asof 만 read. 외부 source 호출 X.

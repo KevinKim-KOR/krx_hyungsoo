@@ -1,8 +1,49 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-26 (POC3-01 UI-1 Dashboard REMEDIATION — **검증자 VERIFIED_WITH_NOTES + UI 테스터(사용자) 확인 완료 · 개발자 몫 종료 · 설계자 POC3-02 설계 대기**)
+최종 업데이트: 2026-07-28 (POC3-02 UI-2 Judgment Workbench + REMEDIATION-1 — **IMPLEMENTED_AWAITING_VERIFICATION · 검증자 실제 브라우저 확인 대기**)
 
-## 이번 라운드 요약 (POC3-01 UI-1 Dashboard REMEDIATION, VERIFIED + UI 테스터 확인)
+## 이번 STEP 요약 (POC3-02 UI-2 Judgment Workbench + REMEDIATION-1 Price Series Read Path)
+
+**상태**: `IMPLEMENTED_AWAITING_VERIFICATION` · 다음 게이트 = 검증자 실제 브라우저 확인. POC3-03 = 설계·레드팀 PASS · 착수 대기 (현재 STEP 아님).
+
+**성격**: 후보·보유·Evidence 를 읽기 전용 Judgment Workbench 에 재조합. 종목 선택 시 실제 저장 가격 차트 + 상세 Evidence 를 같은 화면에.
+
+**REMEDIATION-1 (예외 허용된 읽기 전용 API 1건)**:
+- `app/api_price_series.py` 신설 — `GET /market/price-series?ticker=`. 기존 `fetch_price_history`(SQLite etf_daily_price) 재사용. 저장값만 반환(재계산·보간·예측 없음) · date ASC · availability `AVAILABLE`/`NO_DATA`/`UNAVAILABLE` 구분 · ticker 형식오류/데이터없음/조회실패 구분 · raw 경로·SQL 미노출. 신규 DB/schema/source/cache 없음.
+
+**Frontend Workbench (신규 API 외 기존 응답만)**:
+- `JudgmentWorkbenchView.tsx` — route(LeftSidebar+MainPanel) · 상단 상태줄 · 요약 · 후보/보유/확인필요 3탭 고밀도 표(종목당 한 행·정렬·필터·검색·선택) · 선택 상세(가격 차트 + 수치 근거 + NAV/구성종목 접힘).
+- `workbench/PriceChart.tsx` — 선택 ticker lazy 조회(queryCache) · NO_DATA/UNAVAILABLE 은 빈 정상 차트 아닌 사유 표시 · BUY/SELL·예측선 없음.
+- `workbench/helpers.ts` — 표시 헬퍼(방향 부호+기호, 금액 요약, 결측 정직성).
+- 방향 수치 부호/기호(▲▼) · 색만으로 방향 표현 안 함 · unavailable 0 위장 안 함 · stale 분리.
+- **queryCache 재사용**: Holdings/Evidence/NAV 는 Dashboard 와 요청 조건이 같아 **같은 캐시 키 공유** (화면 왕복 재조회 방지 · §9). Market topn 만 조건(n=30 vs n=10) 달라 별도 키 — 이 분리가 AC-28(Workbench cache 를 Dashboard 후보 공급 경로로 안 씀) 충족. Dashboard 데이터 계약 미변경. 가격 시계열은 선택 ticker lazy(N+1 방지) · 부분 실패 격리.
+- Benchmark 비교 시계열 미생성 (excess_return 수치만) · `benchmark_series` = UNAVAILABLE 유지.
+
+**데이터 가용성**: candidate_list/holdings_list/candidate_holding_match/nav_overlap = LIST_DIRECT · selected_price_series = SELECTED_ONLY (이번 API) · benchmark_series = UNAVAILABLE.
+
+**변경 파일 (수정 9 + 신규 8 = 17)**: 수정 — app/api.py · LeftSidebar.tsx · MainPanel.tsx · globals.css · lib/api/index.ts · lib/api/dashboardKeys.ts · lib/api/dashboardInvalidation.test.ts · STATE_LATEST 2. 신규 — app/api_price_series.py · tests/test_api_price_series.py · JudgmentWorkbenchView.tsx · JudgmentWorkbenchView.test.tsx · workbench/HoldingTable.tsx · workbench/PriceChart.tsx · workbench/helpers.ts · lib/api/priceSeries.ts.
+
+**REJECTED r1 정정 (검증자 실화면 지적 전부 반영)**: 보유 표 재작성 — 같은 ticker 다계좌 한 행 집계(중복행 해소) · Evidence 기반 평가수익률/1M/3M/KODEX초과 열 추가('일간=pnlRate' 의미오류 제거) · Evidence 부재/실패는 "정상" 아닌 "확인 불가"/"확인 중" · ticker/ETF명 검색 · 기준일 KST 변환(ISO 원문 미노출) · stale 표시 · StatusLine 에 보유 상태 · Workbench 조회 키를 Holdings/Market 무효화 그룹에 추가 · 선택 상세가 보유만 선택 시 Evidence 수치 fallback. HoldingTable 을 workbench/HoldingTable.tsx 로 분리(KS-10).
+
+**REJECTED r2 정정 (실데이터 지적 반영)**: 가격 API ticker 정규식 6자리숫자→**영숫자 6자**(실제 ETF `0000D0` 형식 거부 해소) · Holdings/Evidence/NAV 캐시 키를 Dashboard 와 **공유**(§9 동일 endpoint·조건 · Market topn 만 분리) · 요약 보유 종목 수=고유 ticker 수·후보 포함=현재 후보∩보유 교집합(matched_topn_count 대체) · 보유 표 현재가 열 복원 + NAV·구성종목 상태 열 분리 · holdingNeedsAttention 가 returns/excess 상태도 검사 + Evidence 부재를 확인 필요로 · 다계좌 평가수익률 "계좌별 상이"·부분결측 N/M 표기 · 확인 필요 탭 stale 통합.
+
+**REJECTED r3 정정**: 후보·보유 일치를 **현재 후보 목록 ∩ 현재 Holdings 목록** 직접 교집합으로 통일(과거 Evidence topn_match/isHeld 대신 → 요약·후보표·보유표 정합) · §7.6 "일간" 열 추가(현재 응답에 일간 필드 없어 값은 — · 명시 열 유지) · 보유표 "Evidence" 상태 배지 열 추가(전체 근거 상태 즉시 식별) · 확인 필요 stale 에 Holdings 추가 · weight 부분결측 유효건수(N/M) 표기.
+
+**REJECTED r4 정정**: (A-1(1)) 선택 상세(SelectedDetail)의 보유 여부·후보 포함을 과거 Evidence(`held=!!ev`/holdingTopnMatch) 대신 **현재 heldTickers/candTickers 집합 기반**으로 전환 — 후보표·보유표·선택상세 세 곳 모두 동일 기준. (A-1(4)) 관계 3-state 헬퍼 `relationState` 신설 — 현재 목록 조회 실패/미완(집합 undefined)이면 관계를 "미포함(—)" 으로 축약하지 않고 **"확인 불가"** 로 표시(포함=yes/미포함=no/미확정=unknown). (A-1(2)) 1440×900 가로 오버플로 — `.wb-table` 폰트 13→12px·패딩 축소로 14열 압축 + `.wb-table-wrap` 컨테이너 스크롤(max-height 70vh)로 하단 가로 스크롤바를 뷰포트 내로 + 헤더 sticky. (A-3) STATE 라인 수·테스트 수 실측 정정. 관계 판정을 현재 목록으로 전환하며 참조가 사라진 `holdingTopnMatch`(helpers.ts) 죽은 코드 제거 — 사용자 승인 후 진행.
+
+**검증**: backend price_series focused 6 passed · backend 전체 회귀 **1072 passed / 4 skipped / 0 failed** · frontend test **52 passed** (Workbench 24 + queryCache 8 + Dashboard 13 + invalidation 7) · black·flake8·eslint·next build 통과. JudgmentWorkbenchView 789줄 · HoldingTable 276줄 · helpers 199줄 · PriceChart 101줄 · api_price_series 91줄 (KS-10 프론트 900·백엔드 650 미만).
+
+**계약 무변경**: 승인된 가격 시계열 read API 외 신규 API 없음. DB/schema/source/factor/label/threshold/backend cache/OCI/Telegram 무변경. topn timeout 미변경. Dashboard `/market/topn/latest` 호출 미복구. Workbench cache 를 Dashboard 공급 경로로 사용 안 함. POC3-03 코드 미착수.
+
+**미검증 / 검증자 대기**: 실제 브라우저 정보 밀도·네트워크·화면 왕복·30초 판단 과업은 검증자·사용자 확인 영역 (backend 미기동·GUI 불가로 개발자 미수행). 자동 테스트로 계약 고정. **검증 전 POC3-02 PASS/DONE 아님.**
+
+보류 유지: VIX stale = POC3-05 · Dashboard cache 무효화 실제 렌더 검증 = POC3-03 · Benchmark 비교 시계열 = 보류.
+
+상세 설계: `docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md` (마스터 §7 UI-2).
+
+---
+
+## 직전 라운드 요약 (POC3-01 UI-1 Dashboard REMEDIATION, VERIFIED + UI 테스터 확인)
 
 **검증 결과 (2026-07-26)**: 검증자 REJECTED r1(결측 0 표시·무효화 미연결) → r2(Evidence stale·invalid 미표시) 정정 후 **VERIFIED_WITH_NOTES**. 검증자가 1440×900 실브라우저 smoke 직접 수행 (최초 topn 미호출·명시 조회 ~2.27초·VIX stale·브라우저 오류 0건 확인). **UI 테스터(사용자) 실화면 확인 완료 (2026-07-26): 이전 대비 개선 확인 · 개발자 추가 수정 불필요 판정.**
 

@@ -9,6 +9,9 @@ import {
   DASH_KEY_HOLDINGS,
   DASH_KEY_EVIDENCE,
   DASH_KEY_NAV,
+  WB_KEY_CAND,
+  WB_KEY_HOLD,
+  WB_KEY_EVID,
   HOLDINGS_INVALIDATION_KEYS,
   MARKET_INVALIDATION_KEYS,
 } from "./dashboardKeys";
@@ -37,19 +40,28 @@ function simulateMarketStatus(status: "completed" | "failed") {
 }
 
 describe("무효화 그룹 정합성", () => {
-  it("Holdings 무효화 그룹은 보유·Evidence 만 포함하고 시장·NAV 는 제외한다", () => {
+  it("Holdings 무효화 그룹은 Dashboard·Workbench 의 보유·Evidence 를 포함한다", () => {
     expect(HOLDINGS_INVALIDATION_KEYS).toContain(DASH_KEY_HOLDINGS);
     expect(HOLDINGS_INVALIDATION_KEYS).toContain(DASH_KEY_EVIDENCE);
+    // A-1(7): Workbench 키도 무효화 대상.
+    expect(HOLDINGS_INVALIDATION_KEYS).toContain(WB_KEY_HOLD);
+    expect(HOLDINGS_INVALIDATION_KEYS).toContain(WB_KEY_EVID);
+    // 시장·NAV 는 무관.
     expect(HOLDINGS_INVALIDATION_KEYS).not.toContain(DASH_KEY_MARKET);
     expect(HOLDINGS_INVALIDATION_KEYS).not.toContain(DASH_KEY_NAV);
+    expect(HOLDINGS_INVALIDATION_KEYS).not.toContain(WB_KEY_CAND);
   });
 
-  it("Market 무효화 그룹은 시장 + Evidence 를 포함하고 보유·NAV 는 제외한다", () => {
-    // Evidence 는 시장 후보·국면을 사용하므로 Market 갱신 시 함께 무효화.
+  it("Market 무효화 그룹은 Dashboard·Workbench 의 시장·Evidence 를 포함한다", () => {
     expect(MARKET_INVALIDATION_KEYS).toContain(DASH_KEY_MARKET);
     expect(MARKET_INVALIDATION_KEYS).toContain(DASH_KEY_EVIDENCE);
+    // A-1(7): Workbench 후보·Evidence 도 무효화 대상.
+    expect(MARKET_INVALIDATION_KEYS).toContain(WB_KEY_CAND);
+    expect(MARKET_INVALIDATION_KEYS).toContain(WB_KEY_EVID);
+    // 보유·NAV 는 무관.
     expect(MARKET_INVALIDATION_KEYS).not.toContain(DASH_KEY_HOLDINGS);
     expect(MARKET_INVALIDATION_KEYS).not.toContain(DASH_KEY_NAV);
+    expect(MARKET_INVALIDATION_KEYS).not.toContain(WB_KEY_HOLD);
   });
 });
 

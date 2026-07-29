@@ -1546,3 +1546,108 @@ textarea.decision-textarea {
   max-height: 320px;
   overflow: auto;
 }
+
+/* POC3-02 Judgment Workbench (고밀도 표 · 탭 · 상세) */
+.wb-root h1 { margin-bottom: 8px; }
+.wb-muted { color: var(--muted); font-size: 13px; }
+.wb-danger { color: var(--danger); font-size: 13px; }
+.wb-warn { color: var(--warn); font-size: 13px; }
+
+.wb-status-line {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 12px; margin-bottom: 8px;
+  background: #fff; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px;
+}
+.wb-status-cell { white-space: nowrap; }
+
+.wb-summary-row {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding: 8px 12px; margin-bottom: 10px;
+  background: #f9fafb; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px;
+}
+.wb-summary-cell strong { font-size: 16px; }
+
+.wb-btn {
+  font-size: 12px; padding: 3px 10px;
+  border: 1px solid var(--accent); border-radius: 6px;
+  background: #fff; color: var(--accent); cursor: pointer;
+}
+.wb-btn:hover { background: var(--accent); color: #fff; }
+
+.wb-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.wb-tab {
+  font-size: 13px; padding: 6px 16px; cursor: pointer;
+  border: 1px solid var(--border); border-bottom: none;
+  border-radius: 6px 6px 0 0; background: #f3f4f6; color: var(--muted);
+}
+.wb-tab-active { background: #fff; color: var(--fg, #111); font-weight: 600; }
+
+.wb-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.wb-filters { display: flex; gap: 6px; }
+.wb-search {
+  width: 220px; padding: 5px 10px; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; color: var(--fg);
+}
+.wb-filter {
+  font-size: 12px; padding: 2px 10px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: #fff; color: var(--muted);
+}
+.wb-filter-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* 가로 오버플로 대비: 컨테이너 자체 스크롤 + 세로 상한(하단 스크롤바가
+   뷰포트 밖으로 밀려 접근 불가해지는 것 방지 · A-1(2)). */
+.wb-table-wrap { overflow: auto; max-height: 70vh; }
+/* 14열 고밀도 표를 1440×900 가용폭(~1141px)에 맞게 압축 — 핵심 열이
+   잘리거나 겹치지 않게 폰트/패딩 축소 (§7.6 · A-1(2)). */
+.wb-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.wb-table th, .wb-table td {
+  padding: 4px 6px; border-bottom: 1px solid var(--border);
+  text-align: right; white-space: nowrap;
+}
+.wb-table th:nth-child(2), .wb-table td:nth-child(2) { text-align: left; }
+.wb-table th:first-child, .wb-table td:first-child { text-align: center; }
+/* 헤더: 세로 스크롤 시 열 이름 고정(sticky) + 표시 스타일. */
+.wb-table thead th {
+  position: sticky; top: 0; z-index: 1; background: #fff;
+  color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--border);
+}
+.wb-row-sel { background: #eff6ff; }
+.wb-table tbody tr:hover { background: #f9fafb; }
+
+.wb-attn-list { list-style: none; margin: 0; padding: 0; }
+.wb-attn-list li {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 6px 10px; margin: 6px 0; font-size: 13px;
+  border-left: 2px solid var(--border);
+}
+.wb-attn-unavailable { border-left-color: var(--danger); background: #fef2f2; }
+.wb-attn-warn { border-left-color: var(--warn); background: #fffaf2; }
+.wb-attn-neutral { border-left-color: var(--border); }
+.wb-attn-btn {
+  flex-shrink: 0; font-size: 12px; padding: 3px 10px;
+  border: 1px solid var(--accent); border-radius: 6px;
+  background: #fff; color: var(--accent); cursor: pointer;
+}
+.wb-attn-btn:hover { background: var(--accent); color: #fff; }
+
+.wb-detail { margin-top: 12px; }
+.wb-detail-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+}
+.wb-detail-cell {
+  display: flex; flex-direction: column;
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .wb-detail-grid { grid-template-columns: repeat(2, 1fr); }
+}

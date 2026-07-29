@@ -5,7 +5,9 @@ Past archive: [STATE_LATEST_ARCHIVE.md](STATE_LATEST_ARCHIVE.md)
 
 This file is non-canonical. Do not append step details here.
 
-최종 갱신: 2026-07-26 (POC3-01 UI-1 Dashboard REMEDIATION — 검증자 VERIFIED_WITH_NOTES + UI 테스터(사용자) 확인 완료 · 개발자 몫 종료 · 설계자 POC3-02 설계 대기).
+최종 갱신: 2026-07-28 (POC3-02 UI-2 Judgment Workbench + REMEDIATION-1 — IMPLEMENTED_AWAITING_VERIFICATION · 검증자 실제 브라우저 확인 대기).
+직전: POC3-01 UI-1 Dashboard (VERIFIED + UI 테스터 확인 · 개발자 몫 종료).
+POC3-02 내용: 후보·보유·확인필요 3탭 고밀도 Workbench + 선택 상세 가격 차트. REMEDIATION-1 로 읽기 전용 GET /market/price-series 신설 (기존 fetch_price_history 재사용 · 신규 DB/source/cache 없음). queryCache 재사용(가격 lazy·N+1 방지·Dashboard 계약 미변경). 검증자 REJECTED r1·r2·r3·r4 정정 완료 — r1(보유표 의미오류·중복행·검색·KST) + r2(영숫자 ticker·캐시 키 공유·요약 수치·현재가/NAV/구성종목 열·returns attention·다계좌·stale) + r3(후보·보유 일치를 현재 목록 직접 교집합으로 통일·일간 열·Evidence 상태 배지·Holdings stale·weight 결측) + r4(선택상세도 현재 heldTickers/candTickers 기반·관계 3-state 확인불가·1440×900 가로 오버플로 CSS 압축+컨테이너 스크롤+헤더 sticky). backend 회귀 통과 · frontend 52 passed · lint/build 통과. 검증 전 PASS/DONE 아님. POC3-03 착수 금지. VIX=POC3-05 · Dashboard 무효화 렌더검증=POC3-03 · Benchmark=보류 유지.
 직전: POC3-01 UI-1 Dashboard 초안 (VERIFIED_WITH_NOTES · commit 596078f5) → 화면 왕복 재조회/timeout 실사용 결함 발견 → REMEDIATION.
 REMEDIATION 내용: 시장 카드 lazy (최초 topn 자동 호출 안 함 · 버튼으로 1회 조회) · frontend 조회 상태 공유 queryCache (왕복 재호출 X·dedup·관련 읽기만 무효화) · 첫 화면 2열 재구성 · 최소 UI 테스트 Vitest+RTL (28 passed). 신규 API/DB/backend cache 없음. UI 테스터·검증자·사용자 확인 전 UI_PASS/PASS/DONE 아님.
 POC3 진입: PC 판단 UI 재조합 (상태 Dashboard → 판정 Workbench → 실행 Operations Panel). 마스터 설계서 docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md. POC3-01 = 첫 화면을 STEP 안내 → 오늘의 판단 상태 Dashboard 초안으로 전환 (frontend 2파일 · 기존 데이터 경로만 · lint/build 통과 · 검증 대기).
