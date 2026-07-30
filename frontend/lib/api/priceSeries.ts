@@ -27,3 +27,15 @@ export function fetchPriceSeries(ticker: string): Promise<PriceSeriesResponse> {
     `/market/price-series?${params.toString()}`,
   );
 }
+
+// POC3-01 오늘의 투자 점검 — 시장지수 benchmark 시계열 (코스피 대표 차트).
+// 같은 엔드포인트 확장 (?benchmark=KOSPI). 저장값 read-only, 신규 산식 없음.
+export function fetchBenchmarkSeries(
+  benchmark: string,
+): Promise<PriceSeriesResponse> {
+  const params = new URLSearchParams({ benchmark });
+  return request<PriceSeriesResponse>(
+    "GET",
+    `/market/price-series?${params.toString()}`,
+  );
+}

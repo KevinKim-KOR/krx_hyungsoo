@@ -15,6 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api import app
+from app.market_benchmark_store import init_benchmark_db, upsert_benchmark_prices
 from app.market_data_store import init_db, EtfDailyPriceRow, upsert_daily_prices
 
 
@@ -22,6 +23,7 @@ from app.market_data_store import init_db, EtfDailyPriceRow, upsert_daily_prices
 def tmp_db(tmp_path: Path, monkeypatch) -> Path:
     db = tmp_path / "market_data.sqlite"
     init_db(db)
+    init_benchmark_db(db)
     monkeypatch.setattr("app.api_price_series.MARKET_DB_PATH", db, raising=False)
     return db
 
@@ -115,6 +117,97 @@ def test_read_failure_distinct_and_no_raw_leak(tmp_path, monkeypatch):
     assert body["reason"] == "read_failure"
     # raw SQL/경로가 응답에 노출되지 않음.
     assert "/secret/path" not in resp.text
+    assert "SELECT" not in resp.text
+
+
+# ─── POC3-01 오늘의 투자 점검 — KOSPI benchmark 시계열 확장 (Q1-a) ────────
+
+
+def _seed_benchmark(db: Path, benchmark_id: str, rows: list[tuple[str, float]]) -> None:
+    upsert_benchmark_prices(
+        benchmark_id=benchmark_id,
+        benchmark_name=benchmark_id,
+        rows=rows,
+        source="test",
+        db_path=db,
+    )
+
+
+def test_benchmark_kospi_returns_stored_series(tmp_db: Path):
+    # ?benchmark=KOSPI → market_benchmark_daily_price 저장값 그대로 date ASC.
+    _seed_benchmark(
+        tmp_db,
+        "KOSPI",
+        [("2026-07-02", 2650.0), ("2026-07-01", 2600.0), ("2026-07-03", 2700.0)],
+    )
+    client = TestClient(app)
+    resp = client.get("/market/price-series", params={"benchmark": "KOSPI"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["availability"] == "AVAILABLE"
+    assert body["ticker"] == "KOSPI"
+    dates = [p["date"] for p in body["series"]]
+    assert dates == ["2026-07-01", "2026-07-02", "2026-07-03"]
+    prices = {p["date"]: p["price"] for p in body["series"]}
+    assert prices["2026-07-01"] == 2600.0  # 저장값 그대로 (재계산 없음)
+    assert body["available_from"] == "2026-07-01"
+    assert body["available_to"] == "2026-07-03"
+
+
+def test_benchmark_is_case_insensitive(tmp_db: Path):
+    # 소문자 benchmark 도 정규화되어 조회 (kospi → KOSPI).
+    _seed_benchmark(tmp_db, "KOSPI", [("2026-07-01", 2600.0)])
+    client = TestClient(app)
+    resp = client.get("/market/price-series", params={"benchmark": "kospi"})
+    body = resp.json()
+    assert body["availability"] == "AVAILABLE"
+    assert body["ticker"] == "KOSPI"
+
+
+def test_benchmark_no_data_distinct(tmp_db: Path):
+    # 허용 benchmark 이나 저장 데이터 없음 → NO_DATA (빈 정상 아님).
+    client = TestClient(app)
+    resp = client.get("/market/price-series", params={"benchmark": "KOSPI"})
+    body = resp.json()
+    assert body["availability"] == "NO_DATA"
+    assert body["series"] == []
+
+
+def test_benchmark_not_allowed_rejected(tmp_db: Path):
+    # 허용 목록 밖 benchmark → UNAVAILABLE(invalid_benchmark). 임의 조회 차단.
+    client = TestClient(app)
+    for bad in ("NASDAQ", "SP500", "KOSDAQ"):
+        resp = client.get("/market/price-series", params={"benchmark": bad})
+        body = resp.json()
+        assert body["availability"] == "UNAVAILABLE"
+        assert body["reason"] == "invalid_benchmark"
+
+
+def test_benchmark_takes_precedence_over_ticker(tmp_db: Path):
+    # benchmark 와 ticker 동시 → benchmark 우선 (KOSPI 반환).
+    _seed(tmp_db, "069500", [("2026-07-01", 34000.0)])
+    _seed_benchmark(tmp_db, "KOSPI", [("2026-07-01", 2600.0)])
+    client = TestClient(app)
+    resp = client.get(
+        "/market/price-series", params={"ticker": "069500", "benchmark": "KOSPI"}
+    )
+    body = resp.json()
+    assert body["ticker"] == "KOSPI"
+    assert body["series"][0]["price"] == 2600.0
+
+
+def test_benchmark_read_failure_no_raw_leak(tmp_db: Path, monkeypatch):
+    # benchmark 조회 내부 실패 → UNAVAILABLE(read_failure) · raw 미노출.
+    def _boom(*a, **k):
+        raise RuntimeError("SELECT ... /secret/benchmark.sqlite")
+
+    monkeypatch.setattr("app.api_price_series.fetch_benchmark_history", _boom)
+    client = TestClient(app)
+    resp = client.get("/market/price-series", params={"benchmark": "KOSPI"})
+    body = resp.json()
+    assert body["availability"] == "UNAVAILABLE"
+    assert body["reason"] == "read_failure"
+    assert "/secret" not in resp.text
     assert "SELECT" not in resp.text
 
 

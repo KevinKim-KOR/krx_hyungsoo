@@ -1651,3 +1651,137 @@ textarea.decision-textarea {
 @media (max-width: 900px) {
   .wb-detail-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── POC3-01 오늘의 투자 점검 (Today Investment Check) ──────────────────────
+   설계서 §8 디자인 기준 (Apple 방향 차용): 넓은 여백 · 큰 핵심 정보 · 명확한 계층 ·
+   적은 장식 · 읽을 수 있는 글자 · 장식용 그림자 금지. 배경 #f5f5f7 · 카드 흰색 ·
+   글자 #1d1d1f · 링크 #0066cc · 모서리 18px. */
+.tc-root {
+  background: #f5f5f7;
+  color: #1d1d1f;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  /* 다른 메뉴 화면과 동일한 폭을 쓴다 — .app-content(max-width:1400px)를 그대로
+     채운다. 이전 max-width:1000px 는 이 화면만 좁게 만들어 가로 라인이 어긋났음
+     (사용자 지적 2026-07-29). 코스피 대표 영역이 넉넉한 폭을 확보(§4.1). */
+  width: 100%;
+}
+.tc-header { margin-bottom: 4px; }
+.tc-h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.tc-h2 { font-size: 20px; font-weight: 600; margin-bottom: 12px; }
+.tc-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px 22px;
+}
+/* 장식용 그림자 사용 안 함 (§8.1). 계층은 여백과 굵기로만. */
+.tc-block { margin-top: 4px; }
+.tc-divider {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.tc-label { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.tc-regime { font-size: 22px; font-weight: 700; }
+.tc-muted { color: var(--muted); }
+.tc-small { font-size: 14px; }
+.tc-warn { color: var(--warn); }
+.tc-danger { color: var(--danger); }
+.tc-tip { margin-top: 6px; line-height: 1.5; }
+.tc-list-plain { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 17px; }
+.tc-dev-list { list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 17px; }
+.tc-dev-list p { font-size: 14px; margin-top: 2px; }
+/* 코스피 상세 지표 — 한 줄 가로 나열 (사용자 요청). 폭 좁으면 자연 줄바꿈. */
+.tc-dev-row { display: flex; flex-wrap: wrap; gap: 20px 28px; font-size: 16px; align-items: center; }
+.tc-badge {
+  display: inline-block; font-size: 12px; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; margin-left: 4px;
+}
+.tc-badge-dev { background: #eef1f4; color: var(--muted); border: 1px solid var(--border); }
+/* 이번 단계 미도입 — 개발 중과 시각적으로 구분(더 옅게). */
+.tc-badge-off { background: #f5f5f7; color: #9aa0a6; border: 1px dashed var(--border); }
+/* §4.3 정비 큐 그룹. */
+.tc-maint-group { margin-top: 4px; }
+/* 제목 행: 제목 + 건수 + 경량 갱신 버튼 1개 + 상태 문구 (사용자 요청). */
+.tc-maint-title-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;
+}
+/* 1번: 그룹 라벨을 제목급(20px)으로 통일 (사용자 요청 2026-07-30). */
+.tc-maint-group-label { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+/* 2번: 마지막 완료 시각을 항목 문구(15px)와 같은 크기로. */
+.tc-maint-asof { font-size: 15px; color: var(--muted); }
+/* 3번: 최신 판정 시 파란 박스·흰 글자 "최신" 배지. */
+.tc-fresh-badge {
+  display: inline-block; font-size: 13px; font-weight: 600;
+  padding: 2px 10px; border-radius: 999px;
+  background: #0066cc; color: #ffffff;
+  margin-right: 6px;
+}
+/* 정비 항목 문구 + ⓘ 정렬. */
+.tc-maint-text { display: inline; }
+/* 판단 큐 (§4.2) — 상세 표 없음. 건수 + 한 줄 + 진입 버튼만. */
+.tc-queue-item { display: flex; flex-direction: column; gap: 6px; }
+.tc-queue-head { font-size: 18px; font-weight: 600; }
+/* 정비 큐 (§4.3) — 판단 큐와 시각적으로도 분리. */
+.tc-refresh-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.tc-maint-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.tc-maint-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 15px; padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.tc-maint-item:last-child { border-bottom: none; }
+.tc-btn {
+  font-size: 15px; font-weight: 600; padding: 8px 16px;
+  border-radius: 12px; border: 1px solid #0066cc;
+  background: #0066cc; color: #ffffff; cursor: pointer;
+}
+.tc-btn:hover { background: #0055aa; }
+.tc-btn:disabled { background: var(--border); border-color: var(--border); color: var(--muted); cursor: default; }
+.tc-btn-link {
+  background: transparent; color: #0066cc; border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tc-btn-link:hover { background: #f0f4f8; }
+/* 헤더 부제(괄호 안내)는 작은 글씨 (사용자 요청). */
+.tc-subnote { font-size: 13px; margin-top: 2px; }
+/* §4.1 + 사용자 요청: 코스피 대표 영역은 최상단 "전체 폭". 카드 안에서 차트(좌·넓게)
+   + 통계 패널(우)로 나눠 밀도를 높인다. 폭 좁으면 1열. */
+.tc-headline { width: 100%; }
+.tc-headline-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.tc-headline-chart { min-width: 0; }
+.tc-headline-stats { display: flex; flex-direction: column; }
+.tc-stat-block { margin-top: 0; }
+/* 코스피(전체 폭) 아래: 판단 큐 + 정비 큐 2열 → 첫 화면에서 세 영역 모두 노출. */
+.tc-queue-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .tc-headline-grid { grid-template-columns: 1fr; }
+  .tc-queue-grid { grid-template-columns: 1fr; }
+}
+/* AC-11: 한계 설명 등 hover 툴팁 마커. 기본은 짧게, 상세는 title/aria 로. */
+.tc-info {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: help;
+  border-bottom: 1px dotted var(--border);
+  margin-top: 6px;
+}
+.tc-info:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* AC-1: 정비 큐 총 건수 — 첫 화면에서 "몇 건" 을 한눈에. */
+.tc-count {
+  font-size: 15px; font-weight: 600; color: var(--warn);
+  margin-left: 6px;
+}

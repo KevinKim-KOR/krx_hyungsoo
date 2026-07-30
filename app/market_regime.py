@@ -79,6 +79,19 @@ def compute_kodex200_metrics(history: Sequence[tuple[str, float]]) -> dict:
     latest_close = closes[-1]
     ma20 = _simple_ma(closes, LOOKBACK_20D)
     ma60 = _simple_ma(closes, LOOKBACK_60D)
+    # 2026-07-29 POC3-01 — 기준선 대비 거리(%). 기존 저장값의 단순 산술
+    # ((close-ma)/ma*100). 신규 지표·산식 아님 (설계자 Q4-a 확정: MA20·MA60
+    # 각각 명시 · 백엔드 제공 · 단일 "시장 전환까지 거리" 표기 금지).
+    ma20_distance_pct = (
+        _round_pct((latest_close / ma20 - 1.0) * 100.0)
+        if ma20 is not None and ma20 > 0
+        else None
+    )
+    ma60_distance_pct = (
+        _round_pct((latest_close / ma60 - 1.0) * 100.0)
+        if ma60 is not None and ma60 > 0
+        else None
+    )
     return {
         "status": "ok",
         "return_20d_pct": _round_pct(_return_n_days_back(closes, LOOKBACK_20D)),
@@ -94,6 +107,8 @@ def compute_kodex200_metrics(history: Sequence[tuple[str, float]]) -> dict:
         "ma60_position": (
             "above" if ma60 is not None and latest_close > ma60 else "below"
         ),
+        "ma20_distance_pct": ma20_distance_pct,
+        "ma60_distance_pct": ma60_distance_pct,
     }
 
 

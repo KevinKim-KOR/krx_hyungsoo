@@ -173,7 +173,45 @@ PARTIAL/SKIPPED인 경우 사유 1줄 포함.
 
 ---
 
-## 9. 마지막 원칙
+## 9. 문서 관리 규칙 (사용자 확정)
+
+- **문서 종류별 최상위 폴더 분리 (2026-07-29 확정)**. 설계자 입력·개발자 회신·개발자 결과는 출처·독자·수명이 달라 폴더를 나눈다:
+  - `docs/ai_design/` — **설계자 설계서** (개발자 입력). 예: `docs/ai_design/POC3/POC3-01_..._DESIGN_V1.md`
+  - `docs/ai_plan/` — **개발자 개발 PLAN** (모호점 질문 포함, 설계자에게 회신). 예: `docs/ai_plan/POC3/POC3-01_..._PLAN_V1.md`
+  - `docs/ai_result/` — **개발 결과서** (검증자 입력 · 개발자→검증자 보고). 예: `docs/ai_result/POC3/POC3-01_..._RESULT.md`
+- 세 폴더 모두 밑에 `POC1`, `POC2`, `POC3` 로 분류.
+- **작업 흐름**: 설계서(ai_design) → 개발 PLAN(ai_plan) → 개발 → 개발 결과서(ai_result) → 검증. 검증자는 세 문서를 대조해 검증한다.
+- **파일 생성 규칙: 작업당 1개 파일.** FAIL 수정 시 새 문서 만들지 말고 기존 문서를 수정.
+- 파일명으로 작업 순서/내역을 알 수 있게 관리.
+- **다음 세션 개발자에게 넘기는 개발자용 문서는 이 파일(CLAUDE.md=DEV_RULES) 하나로 통합** (2026-07-29 확정). 별도 ONBOARDING 문서를 두지 않는다.
+
+---
+
+## 10. 환경/도구 함정 (실측 교훈)
+
+- 플랫폼 Windows 11, 쉘 PowerShell(주) + Bash(POSIX). 각자 문법.
+- **commit 메시지 멀티라인**: Bash heredoc `@'...'@` 는 subject 앞에 `@` 붙는 버그 → `git commit -F <메시지파일>` 사용. 필요 시 `--amend -F` + `--force-with-lease`.
+- commit 메시지 끝: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
+- 기본 브랜치 main. commit/push 는 사용자 요청 시에만. push 별도 승인.
+- 프론트 검증: `npx tsc --noEmit`(타입) · `npm run lint`(eslint) · `npx vitest run`(테스트). **dev 서버 켜둔 채 `npm run build` 돌리면 `.next` 캐시 겹쳐 dev 500 오류** → build 는 필요 시 dev 내리고 실행. 복구: dev 중지 → `rm -rf frontend/.next` → `npm run dev`.
+- 백엔드 전체 pytest 는 ~4분 소요 → 2분 타임아웃 초과. `run_in_background` 로 돌리고 완료 알림 대기. 부분 확인은 `pytest tests/ -k api` 등.
+
+---
+
+## 11. ⚠️최우선 누적 교훈 (반복 실패에서 확정)
+
+- **보고 정확성 — 측정 없는 추정값 금지**: 라인 수 / git status / staged 상태 / stale 문구는 반드시 그 자리에서 실측 + 출력 직접 인용. 보고 직전 `git status` 로 우측 컬럼 공백 + `??` 0건 확인 (검증자는 staged 기준 판정).
+- **코드 작성 전 인접 계약 확인**: 다른 모듈의 반환 필드명·상태값·모든 return path·caller record 필드를 실제 소스 grep/read 로 확인 후 작성. 지시문 필드명을 그대로 믿지 말 것.
+- **안전 가드는 모든 layer 일괄**: 계약/정책 보호 가드는 먼저 grep 으로 위반 가능한 모든 layer 열거 후 일괄 적용. 한 layer 만 막으면 "한 통로 막기".
+- **AC/지적 트레이드오프로 핵심 계약 훼손 금지**: 한 AC·검증자 지적을 맞추려고 더 중요한 설계 §·사용자 명시 요청을 깨지 말 것. 충돌하면 둘 다 만족하는 구조를 찾거나 멈추고 확인. 레이아웃/폭은 자동 테스트로 안 잡히니 실화면 기준.
+- **설계서 → 개발 PLAN 먼저**: 설계서 수신 시 바로 코딩 금지. 모호점 질문 포함한 개발 PLAN 을 먼저 세워 설계자에게 회신 → 확정 후 개발.
+- **개발 목적 = 프로젝트 목적**: 개발은 `docs/PROJECT_ORIGIN_INTENT.md` 목적을 위해서. 설계자/검증자 PASS 받기 위한 개발 금지.
+
+> 현재 진행 상태·챕터·직전 인계는 이 파일이 아니라 `docs/STATE_LATEST.md` (canonical 상태 앵커) 에서 확인한다. 규칙 문서에 휘발성 상태를 적지 않는다.
+
+---
+
+## 12. 마지막 원칙
 
 당신은 이 프로젝트의 유일한 코드 작성자입니다.
 사용자는 Python 초보이며 직접 코드를 검토하지 않습니다.

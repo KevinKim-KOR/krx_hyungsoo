@@ -148,6 +148,9 @@ class MarketContextKodex200(BaseModel):
     ma60: Optional[float] = None
     ma20_position: Optional[str] = None  # above / below
     ma60_position: Optional[str] = None
+    # 2026-07-29 POC3-01 — 기준선 대비 거리(%). (close-ma)/ma*100 저장값 단순 산술.
+    ma20_distance_pct: Optional[float] = None
+    ma60_distance_pct: Optional[float] = None
 
 
 class MarketContextKospi(BaseModel):

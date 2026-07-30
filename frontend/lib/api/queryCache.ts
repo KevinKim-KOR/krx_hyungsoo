@@ -141,7 +141,7 @@ export function useSharedQuery<T>(
   key: string,
   fetcher: () => Promise<T>,
   opts: { lazy?: boolean } = {},
-): QueryState<T> & { reload: () => void } {
+): QueryState<T> & { reload: () => void; reloadAsync: () => Promise<T> } {
   const lazy = opts.lazy ?? false;
   const [, forceRender] = useState(0);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
@@ -149,16 +149,22 @@ export function useSharedQuery<T>(
   // 키 갱신 구독.
   useEffect(() => subscribe(key, rerender), [key, rerender]);
 
-  const run = useCallback(
-    (force: boolean) => {
-      // 실패 상태(refetchFailed)는 캐시 엔트리에 저장되므로 로컬 state 불필요.
-      fetchShared(key, fetcher, { force }).catch(() => {
-        // 에러는 fetchShared 가 엔트리에 refetchFailed 로 기록 후 rethrow.
-      });
-    },
+  // 결과(성공/실패)를 알아야 하는 호출부는 runAsync 를 await 한다.
+  const runAsync = useCallback(
+    (force: boolean) => fetchShared(key, fetcher, { force }),
     // fetcher 는 호출부에서 안정적으로 전달해야 한다 (모듈 함수 래핑).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key],
+  );
+
+  const run = useCallback(
+    (force: boolean) => {
+      // 실패 상태(refetchFailed)는 캐시 엔트리에 저장되므로 로컬 state 불필요.
+      runAsync(force).catch(() => {
+        // 에러는 fetchShared 가 엔트리에 refetchFailed 로 기록 후 rethrow.
+      });
+    },
+    [runAsync],
   );
 
   // 비-lazy: 마운트 시 캐시에 성공값 없으면 1회 조회. 있으면 재사용 (재호출 X).
@@ -172,6 +178,7 @@ export function useSharedQuery<T>(
   }, [key]);
 
   const reload = useCallback(() => run(true), [run]);
+  const reloadAsync = useCallback(() => runAsync(true), [runAsync]);
 
   // 상태는 전적으로 캐시 엔트리에서 파생 → 화면 재진입해도 refetchFailed(stale)
   // 가 유지된다 (A-1(2)).
@@ -191,5 +198,5 @@ export function useSharedQuery<T>(
     state = { phase: "loading" };
   }
 
-  return { ...state, reload };
+  return { ...state, reload, reloadAsync };
 }

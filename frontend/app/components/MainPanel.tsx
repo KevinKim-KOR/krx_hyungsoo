@@ -16,6 +16,7 @@ import { useCallback, useState } from "react";
 import AISessionsView from "./AISessionsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
 import DashboardView from "./DashboardView";
+import TodayInvestmentCheckView from "./TodayInvestmentCheckView";
 import JudgmentWorkbenchView from "./JudgmentWorkbenchView";
 import DataStatusView from "./DataStatusView";
 import ETFExposureView from "./ETFExposureView";
@@ -25,7 +26,9 @@ import MarketDiscoveryView from "./MarketDiscoveryView";
 import type { Run } from "@/lib/api";
 
 export default function MainPanel() {
-  const [active, setActive] = useState<MenuKey>("dashboard");
+  // 2026-07-29 POC3-01 — 첫 진입 기본 화면을 "오늘의 투자 점검" 으로 전환.
+  // 기존 Dashboard 는 "기존 대시보드" 메뉴로 보존 (§6·§10·AC-10).
+  const [active, setActive] = useState<MenuKey>("today_check");
   const [run, setRun] = useState<Run | null>(null);
 
   const handleDraftCreated = useCallback(
@@ -41,6 +44,9 @@ export default function MainPanel() {
 
   let view: React.ReactNode;
   switch (active) {
+    case "today_check":
+      view = <TodayInvestmentCheckView onNavigate={setActive} />;
+      break;
     case "dashboard":
       view = <DashboardView onNavigate={setActive} />;
       break;

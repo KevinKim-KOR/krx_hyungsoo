@@ -38,6 +38,22 @@ def test_compute_kodex200_metrics_strong_bull():
     assert out["return_20d_pct"] > 2.0
     assert out["ma20_position"] == "above"
     assert out["ma60_position"] == "above"
+    # 2026-07-29 POC3-01 — 기준선 대비 거리(%). MA 위이므로 양수.
+    assert out["ma20_distance_pct"] is not None and out["ma20_distance_pct"] > 0
+    assert out["ma60_distance_pct"] is not None and out["ma60_distance_pct"] > 0
+
+
+def test_compute_kodex200_metrics_ma_distance_matches_formula():
+    # 거리(%) 는 (close-ma)/ma*100 저장값 단순 산술 — 위치와 부호 정합.
+    history = _series_with_trend(120.0, 100.0, 61)  # 하락 → MA 아래
+    out = compute_kodex200_metrics(history)
+    close = out["close"]
+    ma20 = out["ma20"]
+    expected = round((close / ma20 - 1.0) * 100.0, 2)
+    assert out["ma20_distance_pct"] == expected
+    # 하락 시계열이므로 현재가는 MA 아래 → 거리 음수.
+    assert out["ma20_position"] == "below"
+    assert out["ma20_distance_pct"] < 0
 
 
 def test_compute_market_context_bull():

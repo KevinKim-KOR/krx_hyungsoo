@@ -92,6 +92,9 @@ export interface MarketContextKodex200 {
   ma60?: number | null;
   ma20_position?: "above" | "below" | null;
   ma60_position?: "above" | "below" | null;
+  // 2026-07-29 POC3-01 — 기준선 대비 거리(%). (close-ma)/ma*100 백엔드 제공.
+  ma20_distance_pct?: number | null;
+  ma60_distance_pct?: number | null;
 }
 
 export interface MarketContextKospi {
