@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-07-31 (POC3-REF-01 친구 프로젝트 소스 사실 조사 — **VERIFIED / CLOSED · commit `16d56702` + push 완료**)
+최종 업데이트: 2026-08-01 (POC3-01 오늘의 투자 점검 — 사용자 실화면 확인 완료 · **COMPLETED / VERIFIED · commit `31428ce1`**. 직전 2026-07-31 POC3-REF-01 VERIFIED / CLOSED · commit `16d56702`)
 
 ## 이번 STEP 요약 (POC3-REF-01 친구 프로젝트 소스 사실 조사)
 
