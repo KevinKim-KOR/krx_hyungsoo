@@ -1,24 +1,38 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-01 (POC3-01 오늘의 투자 점검 — 사용자 실화면 확인 완료 · **COMPLETED / VERIFIED · commit `31428ce1`**. 직전 2026-07-31 POC3-REF-01 VERIFIED / CLOSED · commit `16d56702`)
+최종 업데이트: 2026-08-01 (POC3-REF-02 Canonical Alignment Application — 통합지도 V2·STATE·BACKLOG canonical 반영 · **CANONICAL_APPLICATION_AWAITING_VERIFICATION**. POC3-01 = COMPLETED / VERIFIED · commit `31428ce1` 유지)
 
-## 이번 STEP 요약 (POC3-REF-01 친구 프로젝트 소스 사실 조사)
+## 이번 STEP 요약 (POC3-REF-02 Canonical Alignment Application)
 
-**상태**: `VERIFIED / CLOSED`. 검증자 VERIFIED_WITH_NOTES → 유일 NOTE(결과서·설계서·개발계획서 3문서 untracked) 를 `git add` → commit `16d56702` → `git push origin main` 으로 해소(2026-07-31, 사용자 승인). 조사 Step 종료.
+**상태**: `CANONICAL_APPLICATION_AWAITING_VERIFICATION` · 다음 게이트 = **검증자 판정.** 검증자 PASS 전까지 POC3-REF-02 를 `PASS / CLOSED` 로 기록하지 않으며 **POC3-03 진입 금지.**
 
-**성격**: 친구 프로젝트(momentum-etf) 소스 **사실 조사만**. 채택 판단·대시보드 반영·구현 지시 없음(AC-11). 다음 = 조사 결과 기반 채택 판단·메뉴 트리 재편 설계 (설계자 영역, 미착수).
+**성격**: 소스 사실 검증(POC3-REF-02) 이후 설계자 재판정(SOURCE_CONFLICT 2건 수용)에 따라, 레드팀 PASS 문서를 현재 2026-08-01 canonical 상태에 맞게 반영. **기능·소스 코드 무변경 · 문서 반영만.**
 
-**산출물 3문서 (모두 commit `16d56702`)**: `docs/ai_design/POC3/POC3-REF-01_..._DESIGN_V1.md` · `docs/ai_plan/POC3/POC3-REF-01_..._PLAN_V1.md` · `docs/ai_result/POC3/POC3-REF-01_..._RESULT_V1.md`. `design/DESIGN-apple.md`(사용자 참고 파일) 는 커밋 제외.
+**설계자 재판정 반영 (충돌 2건 해소)**:
+- STATE 날짜 후퇴(§8-5): 07-31 갱신안을 상단 교체로 적용하지 않고 **현재 08-01 canonical 기준으로 재작성.** POC3-01 VERIFIED·commit `31428ce1` 유지.
+- POC3-00 V1 경로(§8-7): V2 를 `docs/ai_design/POC3/POC3-00_PC_JUDGMENT_UI_INTEGRATED_IMPLEMENTATION_MAP_V2.md` 에 **신규 canonical 등록**. 기존 마스터 `docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md` 는 삭제하지 않고 `SUPERSEDED_FOR_CURRENT_PLANNING` 이력으로 보존.
 
-**주요 조사 사실**: 전체 메뉴 19개(AppShell.tsx) 전수 · 대문/라우팅/위험·알람 3축 심층 · 레짐 = 회귀 기울기+deadband 0.05(`config.py:207`) · `live_24h_slack` 3% 급변동 알림(`LIVE_24H_ALERT_PCT`) · 자동주문 "발견 못 함"(보수적) · `weight_allocator` 호출자 0건 · 스냅샷 지문 `dc2ef185`/302파일 고정 · 민감정보 값 미기록.
+**반영 산출물**: 통합지도 V2 canonical 등록 · 마스터 V1 SUPERSEDED 안내 · BACKLOG 반영(전체 105개 = 완료 17·확정 3·후속 16·보류 65·제외 4 → **canonical BACKLOG 본문에는 조건부 보류 65개만 물리적 유지, 40개 제거**. 105개 분류·귀속 이력은 통합지도 V2 §6·Git 이력 보존) · handoff STATE redirect 정리 · ref 무효본·proposal 6종 제거.
+
+**다음 게이트**: 검증자 판정 → PASS 시 설계자가 POC3-03 설계 진입.
 
 ---
 
-## 직전 STEP 요약 (POC3-01 오늘의 투자 점검 대시보드, COMPLETED / VERIFIED · commit `2603d3dd`)
+## 직전 STEP 요약 (POC3-01 오늘의 투자 점검 대시보드, COMPLETED / VERIFIED · commit `2603d3dd`·`31428ce1`)
 
-**상태**: `COMPLETED / VERIFIED` · 검증자 VERIFIED_WITH_NOTES(자동 게이트: vitest 82 passed·tsc·eslint) + **사용자 실화면 확인 완료 (2026-08-01) → AC-15 충족.** 개발자 몫 종료. 결과서: `docs/ai_result/POC3/POC3-01_TODAY_INVESTMENT_CHECK_DASHBOARD_RESULT.md`.
+**상태**: `COMPLETED / VERIFIED` · 검증자 VERIFIED_WITH_NOTES(자동 게이트: vitest 82 passed·tsc·eslint) + **사용자 실화면 확인 완료 (2026-08-01) → AC-15 충족.** commit `2603d3dd`(구현)·`31428ce1`(상태 반영). 개발자 몫 종료. 결과서: `docs/ai_result/POC3/POC3-01_TODAY_INVESTMENT_CHECK_DASHBOARD_RESULT.md`.
 
 **성격**: 첫 화면을 "오늘의 투자 점검" 으로 전환 — 코스피 대표(전폭 헤드라인) + 판단 큐 / 정비 큐 분리 + 개발 중 판단 기능 보드. 기존 대시보드 보존.
+
+---
+
+## 이전 STEP 요약 (POC3-REF-01 친구 프로젝트 소스 사실 조사, VERIFIED / CLOSED · commit `16d56702`)
+
+**상태**: `VERIFIED / CLOSED`. 검증자 VERIFIED_WITH_NOTES → 유일 NOTE(결과서·설계서·개발계획서 3문서 untracked) 를 `git add` → commit `16d56702` → `git push origin main` 으로 해소(2026-07-31, 사용자 승인). 조사 Step 종료.
+
+**성격**: 친구 프로젝트(momentum-etf) 소스 **사실 조사만**. 채택 판단·대시보드 반영·구현 지시 없음(AC-11).
+
+**주요 조사 사실**: 전체 메뉴 19개(AppShell.tsx) 전수 · 대문/라우팅/위험·알람 3축 심층 · 레짐 = 회귀 기울기+deadband 0.05(`config.py:207`) · `live_24h_slack` 3% 급변동 알림 · 자동주문 "발견 못 함"(보수적) · `weight_allocator` 호출자 0건 · 스냅샷 지문 `dc2ef185`/302파일 고정 · 민감정보 값 미기록.
 
 ---
 

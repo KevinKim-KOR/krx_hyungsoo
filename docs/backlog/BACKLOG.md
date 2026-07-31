@@ -12,14 +12,35 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-## 1. ML / Factor / Threshold
+## 최신 귀속·분류 기준 (2026-08-01 · POC3-REF-02 Canonical Alignment)
 
-- **항목**: 상대상승 축1 이후 factor·threshold·위험 축2 검토
-- **보류 사유**: 상대상승 v0 는 첫 baseline 일 뿐이며, 현재 시계열과 검증 근거만으로 factor·threshold 를 확정할 수 없음.
-- **보류된 위험**: 성급한 점수 기준·모델 확장은 사용자 판단 evidence 를 왜곡할 수 있음.
-- **재검토 트리거**: BACKLOG 감사와 Cleanup 완료 후, 시계열 기반이 확보되고 다음 ML Step 의 단일 목표가 확정될 때.
+**본 canonical BACKLOG 본문(아래 §1~)에는 조건부 보류 65개만 유지**한다. 전체 105개 분류·귀속 이력은 통합지도 V2 §6과 Git 이력에서 보존한다.
+
+전체 항목의 최신 상태와 담당 Lane 은 다음 문서를 **단일 기준**으로 한다.
+
+`docs/ai_design/POC3/POC3-00_PC_JUDGMENT_UI_INTEGRATED_IMPLEMENTATION_MAP_V2.md`
+
+5분류 (통합지도 V2 §6 기준 · 총 105개):
+
+| 분류 | 개수 | canonical BACKLOG 본문 |
+|---|---|---|
+| 완료 | 17 | 본문에서 제거 (구현·검증·최신 결정으로 해소 · V2 §6 보존) |
+| 확정 개발 | 3 | 본문에서 제거 · 통합지도 Lane 관리 (B-003→POC3-05 · B-072→POC3-04 · B-105→POC3-07) |
+| 후속 개발 | 16 | 본문에서 제거 · POC3 이후/선행조건 이후 (POC4/POC5 등) |
+| **조건부 보류** | **65** | **본문 유지 — 재검토 트리거 충족 전 미착수. 실질 관리 대상** |
+| 제외·폐기 | 4 | 본문에서 제거 (개발하지 않음 · V2 §6 보존) |
+| 합계 | **105** | 본문 유지 = 65 · 제거 = 40 |
+
+- **조건부 보류 65개만** 본문에 4필드(항목·보류 사유·보류된 위험·재검토 트리거) 원문으로 유지한다(설계자 확정 2026-08-01 · POC3-REF-02 §4.4).
+- 완료·확정 개발·후속 개발·제외·폐기 40개는 본문에서 제거했다. 이들의 분류·귀속·이력은 통합지도 V2 §6과 Git 이력에서 보존된다(별도 보관 문서 없음).
+- 항목별 B-ID(B-001~B-105)는 통합지도 V2 §6 의 원본 BACKLOG(105개) 출현 순서 부여값이다. 본문에서 40개를 제거해 현재 65개만 남았으므로, V2 §6 과 대조할 때는 B-ID 로 매칭한다.
+- 섹션 번호(§1~§16 등)는 원문 번호를 보존한다(항목이 모두 제거된 섹션은 헤더째 삭제되어 번호가 건너뛸 수 있음). 재번호하지 않는다 — V2 §6 이력 대조 유지 목적.
+- 장기 순서는 예상이며, **다음 실제 Step 하나만 `docs/STATE_LATEST.md` 에서 확정**한다.
+- 분류와 재검토 트리거 내용은 본 반영에서 **변경하지 않았다**(65개 원문 보존 · 40개 제거만 수행).
 
 ---
+
+## 1. ML / Factor / Threshold
 
 - **항목**: ML 기반 초안 생성 / 분석 연결 (추천 로직 / 정렬 / score 도입, 추천 판단 사유 message 노출)
 - **보류 사유**: ML 단계 진입 전 단순 rule-based 운영 유지. ML 산출물 안정화 전 메시지 노출 시 사용자 판단 흐림.
@@ -30,38 +51,10 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ## 2. 위험 evidence / 시계열 / 데이터 품질
 
-- **항목**: 위험 evidence 의 급락·국면 경계 검증
-- **보류 사유**: 현재 축1 상대상승 baseline 까지만 완료됐고, 위험 evidence 는 시계열 기반과 별도 검증이 먼저 필요함.
-- **보류된 위험**: 임계값이나 국면 기준을 성급히 확정하면 자동 매매 신호처럼 오해될 수 있음.
-- **재검토 트리거**: Cleanup 완료 후 시계열 데이터 상태를 확인하고, 위험 축2 Step 을 별도로 설계할 때.
-
----
-
-- **항목**: 급락 기준 기간 비교 (1일 / 60일 / 120일 등)
-- **보류 사유**: 현재 급락 판정은 1개월 수익률 재사용. 다른 기간 미검증.
-- **보류된 위험**: 1개월 기준만으로는 단기 급락이 늦게 포착될 수 있음.
-- **재검토 트리거**: 사용자가 "이미 많이 빠진 뒤에야 신호가 나온다" 보고 또는 ASSUMPTIONS Q4 Layer A "시간 측정 기간" 확정 시.
-
----
-
 - **항목**: 급락 신호 UI 고도화
 - **보류 사유**: 현재 message_text + UniverseRefreshPanel ⚠ 1줄만 노출. 가격 흐름 evidence 미제공.
 - **보류된 위험**: Telegram 만으로 급락 근거 식별 어려움.
 - **재검토 트리거**: 사용자가 급락 후보의 가격 흐름 UI 명시 요청 시.
-
----
-
-- **항목**: 위험 감지 지표 시계열 적재 후보 (변동성 / 거래량 / 외국인·기관 수급 / 시장 폭)
-- **보류 사유**: ML 위험 축2 의 선행 조건. 본 단계에서 적재 X. 모두 not_calculated / not_collected.
-- **보류된 위험**: 위험 evidence 의 데이터 빈자리로 분석 불가능 영역 지속.
-- **재검토 트리거**: 사용자가 위 후보 중 하나를 1차 검증 대상으로 결정할 때 (ASSUMPTIONS Q6 / PROJECT_ORIGIN_INTENT §9.5).
-
----
-
-- **항목**: MDD / Sharpe 계산 도입
-- **보류 사유**: PROJECT_ORIGIN_INTENT §10 #5 "MDD 10% 를 1차 목표로 삼지 않는다" 와 정합.
-- **보류된 위험**: 위험 구간 분류 단계 진입 시 rule-based 1차 지표 부재.
-- **재검토 트리거**: ETF 가격 시계열 → 위험 구간 분류 후보 진행 시.
 
 ---
 
@@ -88,24 +81,10 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: KRX OPEN API 인증키 확보 검토
-- **보류 사유**: 공식 endpoint 진단 안 함. 사용자 결정 영역 (인증키 신청 절차).
-- **보류된 위험**: Naver / pykrx 모두 unusable 로 떨어질 때 대안 부재.
-- **재검토 트리거**: 사용자가 공식 source 채택 결정 또는 Naver / pykrx 모두 unusable 시.
-
----
-
 - **항목**: pykrx ETF endpoint 자체 동작 진단
 - **보류 사유**: pykrx 1.0.51 에서 ETF NAV / 가격편차 함수가 empty 응답. 본 단계에서 깊이 분석 X.
 - **보류된 위험**: pykrx fallback 경로 부재.
 - **재검토 트리거**: pykrx upstream 업데이트 또는 KRX 데이터 정책 변경 시.
-
----
-
-- **항목**: NAV / 괴리율 source 진단 STEP (ETF Exposure / Holdings Evidence)
-- **보류 사유**: 양쪽 화면 NAV / 괴리율 unavailable. source 미연동.
-- **보류된 위험**: 위험 감지 축에 NAV / 괴리율 시계열 진입 시 데이터 부재.
-- **재검토 트리거**: 사용자가 NAV / 괴리율을 운영 판단에 사용 결정 또는 ASSUMPTIONS Q6 에서 factor 후보 채택 시.
 
 ---
 
@@ -141,13 +120,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 단일 환경 1일 운영. TTL 정책 미수립.
 - **보류된 위험**: stale 데이터 노출.
 - **재검토 트리거**: stale 노출 사용자 보고 시.
-
----
-
-- **항목**: refresh 실패 종목 사용자 안내 / 재시도 UX
-- **보류 사유**: 실패 빈도 낮음. 안내 / 재시도 UX 미구현.
-- **보류된 위험**: 사용자가 실패 원인 파악 어려움.
-- **재검토 트리거**: 실패 빈도 증가 시.
 
 ---
 
@@ -223,20 +195,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: 레버리지 / 인버스 / 합성 ETF 필터 정책
-- **보류 사유**: TOP N 임의 제외 정책 미도입 (의도적). 운영 결과 레버리지·인버스 상위 독점.
-- **보류된 위험**: 사용자가 TOP N 을 매매 후보로 부적합 판단 가능.
-- **재검토 트리거**: 사용자 "제외" 명시 요청 또는 AI 투자세션에서 일관 무시 시.
-
----
-
-- **항목**: Data Status 실제 연결
-- **보류 사유**: Data Status view placeholder. 신규 read-only API 도입 가드.
-- **보류된 위험**: refresh log 화면 부재.
-- **재검토 트리거**: PC Market Discovery TOP N 운영 안정화 후 refresh log 화면 필요 시.
-
----
-
 - **항목**: ETF Category 라벨 매핑
 - **보류 사유**: FDR Category 컬럼이 정수 코드. 라벨 매핑 미정의.
 - **보류된 위험**: 섹터 / 테마 발굴 시 Category 활용 불가.
@@ -274,37 +232,12 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-## 6. 시장 국면 / Regime
-
-- **항목**: 시장 국면 판정 고도화 (1차 PARTIAL 후속 — 변동성 / 시장 폭 / 장기 추세 / 수급)
-- **보류 사유**: KODEX200 + KOSPI 20/60거래일 수익률 + MA20/MA60 으로 1차 라벨 산출 완료.
-- **보류된 위험**: 단순 라벨이 실제 시장 흐름과 맞지 않을 수 있음.
-- **재검토 트리거**: ai_session_records 누적 후 라벨 적중률 검증 또는 사용자가 KOSDAQ 비교 요청 시.
-
----
-
-## 7. 판단 근거 저장 (decision evidence)
-
-- **항목**: 판단 근거 저장 후속 (매매 결과 추적 / 비교 리포트 / update·delete / draft 영구 보존)
-- **보류 사유**: AI Sessions 1차 (insert / read + 3 채널 답변 + 후보 / 필터 스냅샷) 완료.
-- **보류된 위험**: 1차 판정과 실제 시장 결과 비교 불가, AI 채널별 적중률 검증 불가.
-- **재검토 트리거**: 1개월+ AI Sessions 기록 누적 후 사용자가 비교 리포트 요청 또는 매매 실행 결과를 evidence 와 연결하고 싶다고 명시 시.
-
----
-
 ## 8. Holdings / 포트폴리오 구조
 
 - **항목**: holdings 스키마 확장 (평균단가 외 필드 — 매수일자 / 메모 / 목표가)
 - **보류 사유**: 현재 ticker + qty + 평균단가 + account_group 최소.
 - **보류된 위험**: 매수일자 / 메모 / 목표가 등 필드 부재.
 - **재검토 트리거**: 사용자 명시 요구 시.
-
----
-
-- **항목**: 운영용 holdings 편집 UX 개선
-- **보류 사유**: 현재 JSON 직접 편집 가능. UI 편집 부담 낮음.
-- **보류된 위험**: 종목 수 증가 시 편집 마찰.
-- **재검토 트리거**: 사용자 피드백 또는 종목 수 임계 초과 시.
 
 ---
 
@@ -366,13 +299,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: Telegram split 발송 검토
-- **보류 사유**: 현재 단일 메시지. Telegram 4096 자 제한 초과 시 잘림 위험.
-- **보류된 위험**: 정보 손실.
-- **재검토 트리거**: 메시지 길이 임계 초과 시.
-
----
-
 - **항목**: 계좌별 Telegram 요약 / 채널 분리
 - **보류 사유**: 단일 채널 운영. 와이프 / 본인 분리 미구현.
 - **보류된 위험**: 와이프 / 본인 메시지 혼재.
@@ -417,13 +343,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ## 10. UI / Frontend
 
-- **항목**: 역할별 페이지 분리
-- **보류 사유**: 현재 단일 페이지에서 4 화면 (Holdings / Market / AI Sessions / Compare) 운영.
-- **보류된 위험**: 사용자가 화면 간 왕복 부담.
-- **재검토 트리거**: 4회+ 왕복 동선 보고 시.
-
----
-
 - **항목**: 근거 데이터 접힘 상태 영구 저장 (localStorage / URL Query)
 - **보류 사유**: 현재 새로고침 시 초기화.
 - **보류된 위험**: F5 시 사용자 컨텍스트 손실.
@@ -442,13 +361,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 현재 sessionStorage 기반.
 - **보류된 위험**: 새로고침 시 run 컨텍스트 손실.
 - **재검토 트리거**: 사용자 보고 시.
-
----
-
-- **항목**: 시세 표시 timezone / 사람이 읽는 형식 정규화
-- **보류 사유**: 현재 KST 기본. 표기 단일.
-- **보류된 위험**: 사용자가 기준 시각 인지 비용.
-- **재검토 트리거**: 가독성 피드백 시.
 
 ---
 
@@ -510,20 +422,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: 실제 운영 배포 구조 통합
-- **보류 사유**: PC ↔ OCI 배포 환경 확정 단계. PC=분석, OCI=조회 분리 결정 후 배포 통합 별도 STEP.
-- **보류된 위험**: 배포 환경 파편화.
-- **재검토 트리거**: OCI read model foundation STEP 진입 시.
-
----
-
-- **항목**: OCI handoff artifact 형식 고도화
-- **보류 사유**: 현재 PARAM JSON 단일.
-- **보류된 위험**: 다중 artifact 충돌 / 중복 발생 시.
-- **재검토 트리거**: artifact 충돌 / 중복 실측 시.
-
----
-
 - **항목**: 알림 재시도 정책 (5xx / 429)
 - **보류 사유**: 현재 단발 발송.
 - **보류된 위험**: Telegram API 일시 장애 시 알림 손실.
@@ -538,20 +436,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: 전달 결과 대시보드 분리
-- **보류 사유**: 현재 메시지 기반 확인.
-- **보류된 위험**: 정기 리뷰 어려움.
-- **재검토 트리거**: 정기 리뷰 필요성 발생 시.
-
----
-
-- **항목**: OCI holdings source 부재 (PUSH-2 holdings_briefing 본문 가치 향상)
-- **보류 사유**: OCI 에 holdings snapshot 전달 경로 미결정. PARAM 확장 또는 별도 sync 후보. 현재 unavailable.
-- **보류된 위험**: PUSH-2 본문 가치 저하.
-- **재검토 트리거**: 사용자가 PUSH-2 본문 보강 명시 요청 또는 OCI read model foundation 진입 시.
-
----
-
 - **항목**: runtime data source 확장 (CNN F&G / VIX / USD KRW / 원유 / news / holdings valuation)
 - **보류 사유**: 현재 OCI runtime 빌더에서 모두 unavailable 기본 표시.
 - **보류된 위험**: PUSH 메시지의 운영 컨텍스트 가치 저하.
@@ -559,44 +443,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-## 12. Snapshot / History / Audit
-
-- **항목**: 운영 결과 / 스냅샷 / 변화 감지 기록
-- **보류 사유**: 현재 JSON SSOT 단일. 시계열 snapshot / 변화 감지 미구현.
-- **보류된 위험**: 재현성 / 감사 요구 시 추적 비용.
-- **재검토 트리거**: 사용자가 과거 시점 재현 또는 변화 감지 요청 시.
-
----
-
 ## 13. Universe / Cache 후순위
-
-- **항목**: 비동기 universe refresh
-- **보류 사유**: 현재 동기 refresh. 운영 부담 낮음.
-- **보류된 위험**: refresh 길어질 때 사용자 차단.
-- **재검토 트리거**: refresh 시간 임계 초과 시.
-
----
-
-- **항목**: pykrx 가격 히스토리 캐시
-- **보류 사유**: 호출 패턴 단순.
-- **보류된 위험**: 호출량 증가 시 latency.
-- **재검토 트리거**: 호출 패턴 변화 시.
-
----
-
-- **항목**: universe 결과 history 저장
-- **보류 사유**: 현재 latest snapshot 단일.
-- **보류된 위험**: Q5 검증 / AI 연결 시 history 부재.
-- **재검토 트리거**: Q5 검증 또는 AI 연결 STEP 진입 시.
-
----
-
-- **항목**: ML dataset 저장 구조
-- **보류 사유**: ML 진입 전.
-- **보류된 위험**: ML 진입 시 dataset 형식 결정 비용.
-- **재검토 트리거**: ML 진입 시.
-
----
 
 - **항목**: pykrx 외 fallback 데이터 source
 - **보류 사유**: pykrx 단일.
@@ -612,20 +459,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: 시장 흐름 baseline 확인 이후의 모델 고도화·전략 백테스트
-- **보류 사유**: 2026-07-05 Closeout / Walk-forward v1 에 이어 2026-07-05 v2 Data Validity + Model Comparison 실측: Simple Baseline MAE 5.0685 / DA 0.5727 vs Full Ridge (13 feature) MAE 5.2466 / DA 0.5273 vs Core Ridge (7 feature) MAE 4.9499 / DA 0.5909. Core Ridge (breadth·coverage 제외) 가 세 지표 모두에서 Simple 대비 우세, Full Ridge 는 Simple 대비 열세. 지시문 §4 절대 고정 (단일 Ridge only) 하에서 feature 조합 · target 재정의 · RF / XGBoost / LightGBM 비교 · 자동 튜닝 · 전략 백테스트는 별도 STEP 필요.
-- **보류된 위험**: 현재 baseline / Core Ridge 는 시장 판단 근거 참조점수 이상의 용도로 사용할 수 없음 (자동 매매 / AI Sessions 연결 금지).
-- **재검토 트리거**: 사용자가 v2 evidence 를 확인한 뒤 feature 조합·모델 고도화 STEP 을 별도로 승인할 때.
-
----
-
-- **항목**: 역사적 ETF universe 생존 편향
-- **보류 사유**: 2026-07-03 Market Flow ML Dataset STEP 은 현재 SQLite 의 정상 ETF universe (missing_confirm 제외) 만 사용. 과거 상장폐지 종목 재구성은 별도 STEP. 2026-07-05 v2 Data Validity 실측에서 초기 구간 coverage 는 낮게 관측 (Q1 coverage_ratio ≤ 0.2528, 28건).
-- **보류된 위험**: 생존 편향으로 breadth·coverage 수치가 낙관적으로 편향될 가능성. v2 Core Ridge 가 breadth·coverage 제외 시 우세한 것은 이 편향과 연관 가능 (독립 검증 필요).
-- **재검토 트리거**: v2 evidence 확인 후 breadth 신뢰도가 판단 근거로 부족하다는 증거가 별도로 확인될 때.
-
----
-
 - **항목**: 2014-04-07 이전 ETF 시계열 보강
 - **보류 사유**: 현재 개인 프로젝트의 첫 ML·위험 evidence 기반은 2014-04-07 이후 실제 접근 가능한 데이터로 시작한다. 시장 시계열 Closeout STEP (2026-06-30) 에서 네이버/FDR 이 반환하는 KODEX200 최초 관측일이 2014-04-09 로 실측 확인됨.
 - **보류된 위험**: 장기 백테스트 기간이 제한될 수 있음.
@@ -634,20 +467,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 ## 14. Layer 활성 관리 (ASSUMPTIONS 연계)
-
-- **항목**: Layer A — ASSUMPTIONS Q4 발굴 단위 세부
-- **보류 사유**: ASSUMPTIONS Q4 활성 관리 중.
-- **보류된 위험**: ASSUMPTIONS Q4 closeout 지연 시 발굴 단위 결정 지연.
-- **재검토 트리거**: ASSUMPTIONS Q4 closeout 시점.
-
----
-
-- **항목**: Layer A — ASSUMPTIONS Q4 시간 측정 기간
-- **보류 사유**: ASSUMPTIONS Q4 활성 관리 중.
-- **보류된 위험**: 시간 측정 기간 미확정으로 운영 1개월 검증 평가 기준 부재.
-- **재검토 트리거**: ASSUMPTIONS Q4 closeout 시점.
-
----
 
 - **항목**: Layer B — 무릎 / 머리 / 어깨 정량 기준
 - **보류 사유**: 보유 상태 브리핑 운영 후 정량 기준 미확정.
@@ -670,30 +489,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-## 15. 항구적 가드 정책
-
-- **항목**: draft_payload.factor_signals 외 다른 메타 키 추가 금지
-- **보류 사유**: 항구적 가드 정책. 별도 STEP 으로 재검토하지 않음.
-- **보류된 위험**: 메타 키 무분별 확장 시 schema 파편화.
-- **재검토 트리거**: 정책 변경 사용자 결정 시.
-
----
-
-- **항목**: 운영 빈도 문서 정합성 보정 (KS-11 가드)
-- **보류 사유**: PROJECT_ORIGIN_INTENT §7 "1일 3회 PC 분석" 과 Step7 §7 "K6/EOD 저빈도" 표현 충돌 소지.
-- **보류된 위험**: 후속 STEP 설계 시 운영 빈도 결정 흔들림.
-- **재검토 트리거**: PUSH 1 / 2 / 3 추가 구현 STEP 진입 직전.
-
----
-
 ## 16. 메타 / 검증 항목
-
-- **항목**: AI 토론 점수체계 검증 (ASSUMPTIONS Q5 이관)
-- **보류 사유**: 1개월+ AI Sessions 누적 후 검증.
-- **보류된 위험**: 점수체계 신뢰도 미검증 상태로 운영 지속.
-- **재검토 트리거**: AI Sessions 1개월+ 누적 후 채널별 적중률 비교 시.
-
----
 
 - **항목**: manual seed 입력 UX 개선 (seed 편집 UI)
 - **보류 사유**: starter seed 부분 도입 완료. 후보군 변경 시 여전히 파일 직접 수정 필요.
@@ -727,20 +523,6 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: 거래대금·유동성 필터 · 변동성/하락 위험 반영 · 테마 중복 제거 · constituents overlap
-- **보류 사유**: Bootstrap v1 은 평가금액 (보유) + 기존 Market Discovery 순위 (외부) 만 사용. 추가 필터 도입 시 첫 승인 세션 복잡도 증가.
-- **보류된 위험**: 유동성 부족 종목 · 테마 중복 · 하락 위험 큰 종목이 seed 에 포함될 가능성.
-- **재검토 트리거**: Telegram 운영 1회전 후 seed 품질 정성 평가 시.
-
----
-
-- **항목**: seed 유지 기간 / 교체 조건 / 갱신 주기 / 사용자 재승인 조건
-- **보류 사유**: 첫 승인은 수동 트리거. 자동 갱신 조건은 운영 경험 축적 후 확정.
-- **보류된 위험**: 오래된 seed 로 후보 산정 시 실제 시장 관심도와 괴리.
-- **재검토 트리거**: 첫 seed 승인 후 30일 시점, staleness 감지 로직 검토.
-
----
-
 - **항목**: ML·백테스트 기반 seed 품질 개선
 - **보류 사유**: 현재 정성 판단 기반. ML 산출물 신뢰도 정성 합의 전 seed 자동화 금지.
 - **보류된 위험**: seed 품질이 사용자 판단에만 의존하여 감사 어려움.
@@ -748,50 +530,3 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
-- **항목**: `test_runner_dry_run_spike_all_unavailable_no_topn_calls` universe artifact fixture 미격리
-- **보류 사유**: Universe STEP 산출물 (`state/universe/universe_momentum_latest.json`) 이 실제 파일로 존재하기 시작한 이후, 이 test 는 `tmp_path` 로 격리되지 않아 spike composer 가 5 candidate evidence 를 생성 → 기대 `contentful_fact_count=0` 위반. Telegram Holdings Send v1 (2026-07-18) closeout regression 에서 발견. 이번 FIX (telegram_send 분할) 와 인과관계 없음.
-- **보류된 위험**: 사전 test 결함이 회귀 결과에 잡음으로 남음. 실제 운영 영향 없음.
-- **재검토 트리거**: Universe artifact fixture 격리 리팩토링 STEP 또는 spike composer test 정리 STEP.
-
----
-
-- **항목**: `test_push2_message_text_has_observation_points` 금지 문구 substring 검사 갱신
-- **보류 사유**: Message contract 정렬 commit (`65c04362`, 2026-06-20) 시 안내 문구 "이 값은 매수/매도 지시가 아닙니다" 로 변경되어 test 의 substring 검사 `"매도 지시" not in msg` 에 걸림. Test 는 정확 매치 (whole word) 로 개선 필요. Telegram Holdings Send v1 (2026-07-18) closeout regression 에서 발견. 이번 FIX (telegram_send 분할) 와 인과관계 없음.
-- **보류된 위험**: 사전 test 결함이 회귀 결과에 잡음으로 남음. 실제 운영 영향 없음.
-- **재검토 트리거**: Message contract test 정리 STEP 또는 3-PUSH 문구 재정렬 STEP.
-
----
-
-## Mobile Decision Operating Boundary Amendment v1 반영 (2026-07-20)
-
-`docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md` 확정에 따라 다음 항목의 상태와 재검토 트리거를 정정한다. 항목 자체는 삭제하지 않는다.
-
----
-
-- **항목**: 저빈도 scheduler 운영 (Market/Holdings/Spike PUSH 정기 발송 실운영)
-- **상태 (2026-07-26 완료, Low-Frequency Telegram Push Operation v1 DONE)**: **Market·Holdings·Spike 전부 OCI ACTIVE**. Low-Frequency Telegram Push Operation v1 = **DONE**.
-- 2026-07-26 실측 확정 (Market·Holdings): dry-run·send·Telegram 4건 수신·registry 슬롯 분리·중복 차단 검증.
-- 2026-07-26 실측 확정 (Spike + OCI 데이터 배치): OCI 07:20 배치 success (41/41 · price_data_as_of=2026-07-24 · freshness fresh) · Spike 수동 send=sent · Telegram 실 수신. builder 가 pykrx 아닌 SQLite 로 계산 (외부 호출 0). crontab 등록 완료 (Market 08:00 + Holdings 3슬롯 무변경 + 데이터 배치 07:20 + Spike 7 tick).
-- **Spike 차단 원인 (해소)**: builder 가 pykrx 직접 호출 + OCI 일별 시세 2026-07-03 중단 → OCI Operational Market Data Refresh v1 (증분 갱신 + SQLite fetcher + freshness) 으로 해소.
-- 상세: `docs/handoff/POC2/POC2_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CONCLUSION.md`.
-
----
-
-- **항목**: 판단 성과 원장 (Decision Outcome Ledger — 판단 당시 가격/evidence snapshot + 1주·1개월 성과 연결)
-- **상태 (2026-07-22 재정정, Mobile Deferred)**: BACKLOG 유지. **canonical Step 4 (`Decision Outcome Ledger v1`) · `First Real Decision Cycle v1` PASS 후 활성화** (canonical Step 2 완료 조건 · 순서 자체 유지).
-- 보류 사유: 실제 사용자 판단 1건 기록이 발생하기 전에 원장 먼저 만들지 않음.
-- 재검토 트리거: First Real Decision Cycle v1 PASS (실제 판단 1건 기록).
-
----
-
-- **항목**: Universe · ML · factor · PC UI 품질 개선 (Universe 후보 품질 · ML/백테스트 고도화 · factor/threshold 재검토 · PC UI 에 모바일 디자인 언어 역적용)
-- **상태 (2026-07-22 재정정, Mobile Deferred)**: BACKLOG 유지. **canonical Step 5 · Decision Outcome Ledger v1 이후 활성화** (순서 자체 유지). PC UI 모바일 디자인 언어 역적용 부분은 Mobile Deferred 로 후순위 강화.
-- 보류 사유: 실제 판단 사이클 전에 Universe/ML/factor 고도화로 회귀하지 않음.
-- 재검토 트리거: 실제 판단 기록이 누적되어 개선 근거가 생김 (Decision Outcome Ledger v1 이후).
-
----
-
-- **항목**: Dashboard 캐시 무효화 통합 테스트 (실제 컴포넌트 렌더 기반)
-- **보류 사유**: POC3-01 REMEDIATION 에서 무효화 계약은 `dashboardInvalidation.test.ts` 로 검증했으나, 이는 HoldingsClient/MarketDiscoveryView 의 성공·실패 분기 **로직을 재현**해 `invalidateQueries` 호출을 확인할 뿐 실제 컴포넌트를 렌더링하지 않는다. 지시 §5 최소 UI 테스트 범위를 넘는 추가 통합 테스트이고, 검증자도 "경미한 미흡·참고" 로 분류하며 해당 라운드를 VERIFIED 했다.
-- **보류된 위험**: 생산 코드(HoldingsClient/MarketDiscoveryView)에서 `invalidateQueries` 호출이 제거돼도 현재 테스트가 이를 직접 감지하지 못한다. Holdings 저장/Market 갱신 후 Dashboard 캐시가 무효화되지 않는 회귀가 조용히 통과될 수 있다.
-- **재검토 트리거**: POC3-02 이후 UI 테스트 체계를 확장하는 STEP 이 배정되거나, 무효화 회귀가 실제 화면에서 관찰될 때. (실제 HoldingsClient 저장 → Dashboard Evidence 재조회, MarketDiscoveryView 갱신 완료 → Dashboard 시장·Evidence 재조회를 컴포넌트 렌더로 검증)

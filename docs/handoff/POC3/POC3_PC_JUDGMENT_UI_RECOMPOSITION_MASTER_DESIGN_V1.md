@@ -1,5 +1,11 @@
 # 투자모델_v2 — PC 판단 UI 재조합 전체 설계 v1
 
+> **상태: `SUPERSEDED_FOR_CURRENT_PLANNING` (설계자 확정 2026-08-01)**
+> - 본 문서는 UI 재조합의 **초기 상위 설계 이력**으로 보존된다(삭제·이동하지 않음).
+> - **현재 상태·항목 귀속·5분류·다음 Lane 은 통합 구현지도 V2 우선**: `docs/ai_design/POC3/POC3-00_PC_JUDGMENT_UI_INTEGRATED_IMPLEMENTATION_MAP_V2.md`.
+> - **최신 Step 상태는 `docs/STATE_LATEST.md` 우선.**
+> - V2 는 본 V1 을 파일 교체하는 문서가 아니라 계획 권한을 이어받는 후속 문서다. 아래 본문은 역사적 근거로만 참조한다.
+
 - 작성일: 2026-07-26
 - 문서 성격: UI 개편의 상위 설계와 개발 순서 확정
 - 현재 상태: 설계 초안
