@@ -3,8 +3,8 @@
 * 문서 종류: 소스 조사 결과 문서 (검증자 입력)
 * 대응 설계서: `docs/ai_design/POC3/POC3-REF-01_FRIEND_PROJECT_SOURCE_FACT_SURVEY_DESIGN_V1.md`
 * 대응 개발계획: `docs/ai_plan/POC3/POC3-REF-01_FRIEND_PROJECT_SOURCE_FACT_SURVEY_PLAN_V1.md`
-* 작성일: 2026-07-31 (초안) / 1·2·3·4차 / **5차 (검증자 VERIFIED_WITH_NOTES · 3문서 staged 전환)**
-* 상태: **POC3-REF-01 VERIFIED_WITH_NOTES** — NOTE(3문서 untracked) 해소: 3문서 `git add`(staged). 사용자 승인 후 commit. 채택 판단·메뉴 트리 재편은 이후 별도 Step.
+* 작성일: 2026-07-31 (초안) / 1·2·3·4차 / 5차 (검증자 VERIFIED_WITH_NOTES · 3문서 staged 전환) / **6차 (VERIFIED/CLOSED · commit `16d56702` + push 완료)**
+* 상태: **POC3-REF-01 VERIFIED / CLOSED** — 검증자 VERIFIED_WITH_NOTES 의 유일 NOTE(3문서 untracked) 를 3문서 `git add` → commit `16d56702` → `git push origin main` 으로 해소(2026-07-31). 조사 Step 종료. 채택 판단·메뉴 트리 재편은 이후 별도 설계 Step (설계자 영역, 미착수).
 * **4차 정정 (검증자 2차 REJECTED — 3차에서도 남은 조사 미완)**:
   - **A-1-1 대시보드 원천**: "daily_snapshots+실시간" 만 적음 → **불완전.** 실제 `load_dashboard_data` 는 `portfolio_master`·`weekly_fund_data`·일/월/연 집계·계좌설정·실보유·실시간 시세 모두 사용. §3 전체 열거.
   - **A-1-2 SSR API 누락**: 클라이언트 `/api/*` 만 봄 → **서버 컴포넌트(page.tsx) SSR `/internal/*` 놓침.** market-trend page.tsx 가 `/internal/market-trend/defaults` 직접 호출 — 추가. (전 page.tsx 재확인: SSR internal 직접호출은 market-trend 1건뿐.)
@@ -211,12 +211,12 @@
 - **AC-12**: 전수 분석 안 함. 메뉴는 전수 목록화(얕게), 심층은 대문·라우팅·위험/알람 3축으로 제한.
 - **민감정보**: 값·개인정보 기록 안 함(존재·역할만).
 - **스냅샷 재확인 [확인]**: 조사 시작·종료 시 파일 목록 지문 `dc2ef185...`·파일 수 302 **동일**로 재확인됨. → **조사 세션 중 파일 목록에 변화가 없었다**는 사실까지만 기록. "소스 내용이 절대 안 바뀌었다" 단정 아님(지시6).
-- **git 상태 [확인·5차 — staged 전환]**: 본 결과서 + 설계서 + 개발계획서 **3문서를 `git add` 하여 `A`(staged, commit 전) 상태로 전환** (검증자 NOTE 반영). 검증 대상 3파일:
-  - `docs/ai_design/POC3/POC3-REF-01_..._DESIGN_V1.md` (A)
-  - `docs/ai_plan/POC3/POC3-REF-01_..._PLAN_V1.md` (A)
-  - `docs/ai_result/POC3/POC3-REF-01_..._RESULT_V1.md` (A · 본 문서)
-  - **사용자 참고 파일 `design/DESIGN-apple.md` 는 검증 범위 밖 — stage 하지 않음(제외).**
-  - **커밋은 아직 안 함** — staged(commit 전). 사용자 승인 후 commit. staged diff = 위 3파일과 정확히 일치.
+- **git 상태 [확인·6차 — commit + push 완료]**: 검증자 VERIFIED_WITH_NOTES 의 유일 NOTE(3문서 untracked) 를 해소. 본 결과서 + 설계서 + 개발계획서 **3문서를 `git add` → commit `16d56702` → `git push origin main`** (2026-07-31, 사용자 승인). 커밋 3파일:
+  - `docs/ai_design/POC3/POC3-REF-01_..._DESIGN_V1.md` (committed)
+  - `docs/ai_plan/POC3/POC3-REF-01_..._PLAN_V1.md` (committed)
+  - `docs/ai_result/POC3/POC3-REF-01_..._RESULT_V1.md` (committed · 본 문서)
+  - **사용자 참고 파일 `design/DESIGN-apple.md` 는 검증 범위 밖 — 커밋 제외(로컬 untracked 유지).**
+  - 커밋: `16d56702 docs(poc3-ref-01): 친구 프로젝트 소스 사실 조사 — 설계서·개발계획·결과서`. push: `2603d3dd..16d56702 main -> main`. → **NOTE 해소 완료 · POC3-REF-01 CLOSED.**
 
 ---
 

@@ -1,5 +1,29 @@
 # STATE_LATEST
 
+최종 업데이트: 2026-07-31 (POC3-REF-01 친구 프로젝트 소스 사실 조사 — **VERIFIED / CLOSED · commit `16d56702` + push 완료**)
+
+## 이번 STEP 요약 (POC3-REF-01 친구 프로젝트 소스 사실 조사)
+
+**상태**: `VERIFIED / CLOSED`. 검증자 VERIFIED_WITH_NOTES → 유일 NOTE(결과서·설계서·개발계획서 3문서 untracked) 를 `git add` → commit `16d56702` → `git push origin main` 으로 해소(2026-07-31, 사용자 승인). 조사 Step 종료.
+
+**성격**: 친구 프로젝트(momentum-etf) 소스 **사실 조사만**. 채택 판단·대시보드 반영·구현 지시 없음(AC-11). 다음 = 조사 결과 기반 채택 판단·메뉴 트리 재편 설계 (설계자 영역, 미착수).
+
+**산출물 3문서 (모두 commit `16d56702`)**: `docs/ai_design/POC3/POC3-REF-01_..._DESIGN_V1.md` · `docs/ai_plan/POC3/POC3-REF-01_..._PLAN_V1.md` · `docs/ai_result/POC3/POC3-REF-01_..._RESULT_V1.md`. `design/DESIGN-apple.md`(사용자 참고 파일) 는 커밋 제외.
+
+**주요 조사 사실**: 전체 메뉴 19개(AppShell.tsx) 전수 · 대문/라우팅/위험·알람 3축 심층 · 레짐 = 회귀 기울기+deadband 0.05(`config.py:207`) · `live_24h_slack` 3% 급변동 알림(`LIVE_24H_ALERT_PCT`) · 자동주문 "발견 못 함"(보수적) · `weight_allocator` 호출자 0건 · 스냅샷 지문 `dc2ef185`/302파일 고정 · 민감정보 값 미기록.
+
+---
+
+## 직전 STEP 요약 (POC3-01 오늘의 투자 점검 대시보드, IMPLEMENTED_AWAITING_VERIFICATION · commit `2603d3dd`)
+
+**상태**: `IMPLEMENTED_AWAITING_VERIFICATION` · 검증자 VERIFIED_WITH_NOTES(자동 게이트) 통과했으나 **AC-15(사용자 실화면 판정) 미충족 — 사용자 실화면 확인 대기.** 결과서 §4 규칙에 따라 AC-15 PASS 전까지 POC3-01 은 CLOSED 로 올리지 않으며 STATE_LATEST 의 POC3-01 상태 앵커도 이 대기 상태를 유지한다. 결과서: `docs/ai_result/POC3/POC3-01_TODAY_INVESTMENT_CHECK_DASHBOARD_RESULT.md`.
+
+**성격**: 첫 화면을 "오늘의 투자 점검" 으로 전환 — 코스피 대표(전폭 헤드라인) + 판단 큐 / 정비 큐 분리 + 개발 중 판단 기능 보드. 기존 대시보드 보존.
+
+---
+
+## 이전 STEP 요약 (POC3-02 UI-2 Judgment Workbench + REMEDIATION-1 — IMPLEMENTED_AWAITING_VERIFICATION · commit `c2b7df13`)
+
 최종 업데이트: 2026-07-28 (POC3-02 UI-2 Judgment Workbench + REMEDIATION-1 — **IMPLEMENTED_AWAITING_VERIFICATION · 검증자 실제 브라우저 확인 대기**)
 
 ## 이번 STEP 요약 (POC3-02 UI-2 Judgment Workbench + REMEDIATION-1 Price Series Read Path)
