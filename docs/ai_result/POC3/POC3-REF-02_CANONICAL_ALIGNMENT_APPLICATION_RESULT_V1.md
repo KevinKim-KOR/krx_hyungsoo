@@ -3,7 +3,7 @@
 * 문서 종류: 개발 결과서 (검증자 입력 · 설계자 전달)
 * 대응 지시문: `docs/ai_design/POC3/POC3-REF-02_SOURCE_FACT_VERIFICATION_DESIGN_V1.md` (소스 사실 검증) + 설계자 재판정 후 `POC3-REF-02 Canonical Alignment Application` 최종 지시문(사용자 채팅 전달)
 * 작성일: 2026-08-01
-* 상태: **VERIFIED (검증자) · commit `35d718f0` + push 완료.** POC3-REF-02 canonical 반영 종료. **POC3-03 미진입.**
+* 상태: **VERIFIED / CLOSED** — 검증자 VERIFIED + 설계자 최종 판정(2026-08-01) 마감. commit `35d718f0`(반영)·`e9b88c7b`(결과서) push 완료. **POC3-03 미진입 · next_gate = 설계자 POC3-03 설계서.**
 * base revision: `b4ab6269` → 결과 commit: `35d718f0`
 
 ---
@@ -84,11 +84,11 @@ POC3-REF-02 소스 사실 검증(SOURCE_CONFLICT 2건 반환) → 설계자 재�
 ## 6. 알려진 한계 / 다음 게이트
 
 - POC3-REF-02 canonical 반영은 종료(검증 VERIFIED). **다음 = 설계자가 POC3-03 (Navigation Information Architecture v1) 설계서 작성 → 레드팀 → PASS → 개발자 최종 지시문.**
-- 현재 `docs/STATE_LATEST.md` = POC3-REF-02 `CANONICAL_APPLICATION_AWAITING_VERIFICATION` 로 기록돼 있음. 검증 VERIFIED 확정에 따라 **설계자/사용자 판단으로 이 상태를 CLOSED 로 승격**할지 결정 필요(개발자가 임의 CLOSED 선언 안 함).
+- (완료) `docs/STATE_LATEST.md` POC3-REF-02 상태 = 설계자 최종 판정(2026-08-01)으로 `VERIFIED / CLOSED` 승격 완료. 상태 마감 작업이며 별도 레드팀/검증 불필요.
 - POC3-03 코드·설계 미착수 (지시문 §6 준수).
 
 ---
 
 ## 7. 사용자 확인이 필요한 항목
 
-- STATE_LATEST 의 POC3-REF-02 상태를 `CANONICAL_APPLICATION_AWAITING_VERIFICATION` → (검증 VERIFIED 반영) `CLOSED` 로 올릴지 여부. 올린다면 개발자가 STATE 한 줄 정정 후 재커밋 가능(현재는 검증 시점 표기 그대로 유지).
+- (해소) STATE_LATEST 의 POC3-REF-02 상태 승격 → **설계자 최종 판정(2026-08-01)으로 `VERIFIED / CLOSED` 확정.** STATE·본 결과서 상태 라인 정정 완료 · 별도 레드팀/검증 불필요(상태 마감 작업). 다음 게이트 = 설계자 POC3-03 설계서.

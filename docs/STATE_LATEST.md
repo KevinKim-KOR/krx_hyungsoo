@@ -1,10 +1,10 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-01 (POC3-REF-02 Canonical Alignment Application — 통합지도 V2·STATE·BACKLOG canonical 반영 · **CANONICAL_APPLICATION_AWAITING_VERIFICATION**. POC3-01 = COMPLETED / VERIFIED · commit `31428ce1` 유지)
+최종 업데이트: 2026-08-01 (POC3-REF-02 Canonical Alignment Application — 통합지도 V2·STATE·BACKLOG canonical 반영 · **VERIFIED / CLOSED** · commit `35d718f0`(반영)·`e9b88c7b`(결과서). POC3-01 = COMPLETED / VERIFIED · commit `31428ce1` 유지)
 
 ## 이번 STEP 요약 (POC3-REF-02 Canonical Alignment Application)
 
-**상태**: `CANONICAL_APPLICATION_AWAITING_VERIFICATION` · 다음 게이트 = **검증자 판정.** 검증자 PASS 전까지 POC3-REF-02 를 `PASS / CLOSED` 로 기록하지 않으며 **POC3-03 진입 금지.**
+**상태**: `VERIFIED / CLOSED` · 검증자 최종 VERIFIED + 설계자 최종 판정(2026-08-01)으로 마감. commit `35d718f0`(canonical 반영)·`e9b88c7b`(결과서) push 완료. **다음 게이트 = 설계자의 POC3-03 (Navigation Information Architecture v1) 설계서 작성.** POC3-03 개발 진입은 그 설계서 → 레드팀 PASS → 개발자 지시문 이후.
 
 **성격**: 소스 사실 검증(POC3-REF-02) 이후 설계자 재판정(SOURCE_CONFLICT 2건 수용)에 따라, 레드팀 PASS 문서를 현재 2026-08-01 canonical 상태에 맞게 반영. **기능·소스 코드 무변경 · 문서 반영만.**
 
