@@ -14,9 +14,9 @@
 
 ---
 
-## 직전 STEP 요약 (POC3-01 오늘의 투자 점검 대시보드, IMPLEMENTED_AWAITING_VERIFICATION · commit `2603d3dd`)
+## 직전 STEP 요약 (POC3-01 오늘의 투자 점검 대시보드, COMPLETED / VERIFIED · commit `2603d3dd`)
 
-**상태**: `IMPLEMENTED_AWAITING_VERIFICATION` · 검증자 VERIFIED_WITH_NOTES(자동 게이트) 통과했으나 **AC-15(사용자 실화면 판정) 미충족 — 사용자 실화면 확인 대기.** 결과서 §4 규칙에 따라 AC-15 PASS 전까지 POC3-01 은 CLOSED 로 올리지 않으며 STATE_LATEST 의 POC3-01 상태 앵커도 이 대기 상태를 유지한다. 결과서: `docs/ai_result/POC3/POC3-01_TODAY_INVESTMENT_CHECK_DASHBOARD_RESULT.md`.
+**상태**: `COMPLETED / VERIFIED` · 검증자 VERIFIED_WITH_NOTES(자동 게이트: vitest 82 passed·tsc·eslint) + **사용자 실화면 확인 완료 (2026-08-01) → AC-15 충족.** 개발자 몫 종료. 결과서: `docs/ai_result/POC3/POC3-01_TODAY_INVESTMENT_CHECK_DASHBOARD_RESULT.md`.
 
 **성격**: 첫 화면을 "오늘의 투자 점검" 으로 전환 — 코스피 대표(전폭 헤드라인) + 판단 큐 / 정비 큐 분리 + 개발 중 판단 기능 보드. 기존 대시보드 보존.
 
