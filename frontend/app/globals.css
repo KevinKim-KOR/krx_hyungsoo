@@ -1853,3 +1853,71 @@ textarea.decision-textarea {
   font-size: 15px; font-weight: 600; color: var(--warn);
   margin-left: 6px;
 }
+
+/* ── OCI 적용·알림 화면 (승인·알림 역할 분리, A구간) ─────────────────────── */
+.oci-alert-header {
+  margin-bottom: 20px;
+}
+/* 화면 역할 요약 — OCI 적용 / 정보 PUSH 두 역할을 나란히 구분. */
+.oci-role-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.oci-role-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--card);
+}
+.oci-role-label {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.oci-role-desc {
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.5;
+}
+/* 정보 PUSH 운영 기준 — 같은 위계의 세 카드(안내 전용). */
+.info-push-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.info-push-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--card);
+}
+.info-push-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+/* 자동 발송·메시지별 승인 없음 — 정보 안내 배지(승인 대기처럼 보이지 않게). */
+.info-push-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(120, 120, 120, 0.12);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-bottom: 8px;
+}
+.info-push-operating {
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.5;
+}
+/* B·C구간 정리 예정 안내 — 임시. */
+.pending-reorg-note {
+  color: var(--muted);
+  font-size: 13px;
+  border-style: dashed;
+}

@@ -1,16 +1,21 @@
 "use client";
 
-// POC2 PC UI Shell 1차 — Approval / Telegram view.
+// OCI 적용·알림 화면 (기존 approval route key 유지).
 //
-// 지시문 §3.5 — 승인 전/후 용어 분리:
-//   승인 전 산출물 라벨: "승인 대기 메시지 초안" (이전 표현 사용 금지)
-//   승인 후 결과 라벨: "Telegram 발송 결과" / "발송 완료 메시지"
-//   거절 / 실패 결과 라벨: "거절 / 실패된 메시지 초안" (Telegram 미발송)
+// 2026-08-01 승인·알림 역할 분리 및 재배치 — A구간 (역할 정리·상단 재배치):
+//   설계 정정(Q1-c): push_kind 3종은 모두 정보 PUSH. 현재 계약에 "투자 판단 초안"
+//   식별 필드가 없으므로 판단 초안 영역·승인 대기 표현·빈 자리표시자를 만들지 않는다.
+//   화면 명칭 = "OCI 적용·알림". 내부 approval route key·MainPanel 분기·draft→approval
+//   자동 이동 경로는 불변.
 //
-// 기존 흐름 유지:
-// - HoldingsClient 가 생성한 run 을 RunPanel 이 호스팅 (status / Approve / Reject).
-// - UniverseRefreshPanel (PUSH 2 신규 ETF 관찰 후보) 은 보조 출력 배관으로 본 view 에 잔존.
-// - SampleDraftQuickButton 은 개발/테스트용으로 접힘 details 안에만 잔존.
+//   상단 구조 (A구간):
+//     1) OciAlertHeader — 화면 역할 안내 (OCI 적용 / 정보 PUSH 구분)
+//     2) ThreePushParamCard — OCI 운영 기준 적용 (주 작업 · create→approve→sync→verify 불변)
+//     3) InfoPushGuideCards — 정보 PUSH 운영 기준 안내 (승인 run 미포함 · 실측 상태 위장 없음)
+//
+//   하단(B·C구간에서 정식 정리 예정): ThreePushDraftCard·RunPanel(현재 run)·개발용은
+//   기능 누락 방지를 위해 아래에 유지한다. B구간에서 "미리보기·수동 전달 점검" 으로
+//   이동하고 문구를 정정한다. A구간에서는 상단 역할 분리만 확정한다.
 
 import { useState } from "react";
 import RunPanel from "./RunPanel";
@@ -18,6 +23,8 @@ import SampleDraftQuickButton from "./SampleDraftQuickButton";
 import ThreePushDraftCard from "./ThreePushDraftCard";
 import ThreePushParamCard from "./ThreePushParamCard";
 import UniverseRefreshPanel from "./UniverseRefreshPanel";
+import OciAlertHeader from "./approval/OciAlertHeader";
+import InfoPushGuideCards from "./approval/InfoPushGuideCards";
 import type { Run } from "@/lib/api";
 
 interface Props {
@@ -31,32 +38,30 @@ export default function ApprovalTelegramView({ run, setRun }: Props) {
 
   return (
     <section aria-labelledby="approval-h">
-      <h1 id="approval-h">Approval / Telegram</h1>
-      <p className="subtitle">
-        승인 전 단계는 <strong>승인 대기 메시지 초안</strong> 으로, 승인 후
-        단계는 <strong>Telegram 발송 결과</strong> 로 표시됩니다. 인간 최종
-        승인 게이트를 유지합니다.
-      </p>
-      <div className="role-banner">
-        <strong>[판단 흐름 STEP 5]</strong> Holdings 화면에서 생성된 초안을 검토하고
-        승인 또는 거절합니다. 승인 시 Telegram 3-PUSH(보유 종목 상태 / 신규 ETF 관찰
-        후보 / 급락 ETF 주의)가 발송됩니다. 거절 시 Telegram은 발송되지 않습니다.
-      </div>
+      {/* A구간 1) 화면 역할 안내 */}
+      <OciAlertHeader />
 
-      {/* POC2 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 (2026-06-20) —
-          현재 운영 기준 카드 + [현재 기준 OCI 적용] 단일 동작. CLI 없이
-          UI 한 번으로 manual_seed PARAM 생성 + OCI sync + verify. */}
+      {/* A구간 2) OCI 운영 기준 적용 — 주 작업 (계약 불변) */}
       <ThreePushParamCard />
 
-      {/* 보조 출력 배관 — PUSH 2 신규 ETF 관찰 후보 */}
+      {/* A구간 3) 정보 PUSH 운영 기준 — 안내만 (승인 run 미포함) */}
+      <InfoPushGuideCards />
+
+      {/* ─── B·C구간에서 정식 정리 예정 (기능 누락 방지용 임시 유지) ─────────
+          아래는 미리보기·수동 전달 점검 / 잘못 배치된 기능. B구간에서
+          "미리보기·수동 전달 점검" 영역으로 이동하고 문구를 정정한다. */}
+      <div className="pending-reorg-note card">
+        아래 항목은 다음 단계(B·C)에서 <strong>미리보기·수동 전달 점검</strong>{" "}
+        영역으로 정리됩니다. 현재는 기존 기능을 그대로 사용할 수 있습니다.
+      </div>
+
+      {/* 보조 출력 배관 — 신규 ETF 관찰 후보 (C구간에서 요즘 잘 오르는 ETF 로 이동) */}
       <UniverseRefreshPanel />
 
-      {/* POC2 3-PUSH Message Contract 정렬 (2026-06-11) — PUSH-1 / PUSH-3 의
-          초안 생성 진입점. 발송 시간 / UX 는 별도 STEP. 본 카드는 계약 확인용
-          진입점이며 인간 승인 게이트는 그대로 유지된다 (AC-7). */}
+      {/* PUSH-1 / PUSH-3 수동 초안 생성 (B구간에서 미리보기·수동 점검으로 이동) */}
       <ThreePushDraftCard onDraftCreated={setRun} />
 
-      {/* 메인 흐름 — 현재 run (있을 때만) */}
+      {/* 현재 run 수동 처리 (B구간에서 "현재 미리보기·수동 처리 상태" 로 정리) */}
       {run ? (
         <RunPanel
           run={run}
@@ -66,15 +71,7 @@ export default function ApprovalTelegramView({ run, setRun }: Props) {
           errorMsg={errorMsg}
           setErrorMsg={setErrorMsg}
         />
-      ) : (
-        <div className="card">
-          <h2>현재 승인 대기 메시지 초안</h2>
-          <div className="message info">
-            아직 생성된 초안이 없습니다. Holdings 메뉴에서 보유 종목 기반
-            초안을 만든 뒤 본 화면에서 승인 여부를 결정합니다.
-          </div>
-        </div>
-      )}
+      ) : null}
 
       {/* 개발/테스트용 — 접힘. 운영 입력 아님. */}
       <details className="card" style={{ marginTop: 24 }}>
