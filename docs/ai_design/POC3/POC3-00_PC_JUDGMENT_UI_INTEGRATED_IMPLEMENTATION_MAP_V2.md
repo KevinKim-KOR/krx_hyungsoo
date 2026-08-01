@@ -18,7 +18,9 @@
 
 ## 0. 결론
 
-현재 다음 실제 개발 Step은 아래 하나로 고정한다.
+> **[2026-08-01 갱신] POC3-03 Navigation Information Architecture v1 = COMPLETED · PASS / CLOSED · commit `bbd30a98`** (검증자 VERIFIED · 최종 구조 §8-1). 다음 실제 Step 은 설계자가 §4 예상 Lane(POC3-04 Operations Panel 또는 POC3-05 등) 중 하나를 확정한다. 아래는 착수 당시 "다음 Step = POC3-03" 고정 판단의 이력이다.
+
+당시(착수 전) 다음 실제 개발 Step 은 아래 하나로 고정했다.
 
 > **POC3-03 Navigation Information Architecture v1 — 좌측 메뉴 1차 재편**
 
@@ -91,7 +93,7 @@
 | P-01 | 초기 상태 Dashboard | 완료 | 재개발 금지 |
 | P-02 | Judgment Workbench + 선택 가격 차트 | 완료 | benchmark 차트는 P-16으로 분리 |
 | P-03 | 오늘의 투자 점검 대시보드 | 완료 | 결과서·STATE 문서 상태만 정정 |
-| P-04 | 좌측 메뉴 과업별 1차 재편 | **확정 개발** | **다음 Step POC3-03**. route·기능·API 불변 |
+| P-04 | 좌측 메뉴 과업별 1차 재편 | **COMPLETED** | POC3-03 Navigation Information Architecture v1 · 검증자 VERIFIED · commit `bbd30a98`. route·기능·API 불변. 최종 구조 = 5그룹·9개 화면 1회 귀속(§8-1). 사용자 지시 변경 2건 설계자 승인(§8-2) |
 | P-05 | Operations Panel 통합 | 확정 개발 | POC3-03 PASS 이후 예상. 판단 초안/승인, OCI, 정보 PUSH를 역할별 분리 |
 | P-06 | 내가 가진 ETF의 위험 신호와 구체 이유 | 확정 개발 | P-05 이후 별도 evidence foundation. Q6 산식 선확정 금지 |
 | P-07 | 코스피 흐름 지속 거래일 수 | 확정 개발 | 기존 시계열·기존 국면 계약으로 제공 가능한지 사실 확인 후 |
@@ -117,7 +119,7 @@
 
 | 예상 Lane | 목표 | 상태 |
 |---|---|---|
-| POC3-03 | Navigation Information Architecture v1 | **다음 Step 예정 · POC3-REF-02 검증 PASS 전 진입 금지** |
+| POC3-03 | Navigation Information Architecture v1 | **COMPLETED · PASS / CLOSED · 검증자 VERIFIED · commit `bbd30a98`** |
 | POC3-04 | Operations Panel Consolidation v1 | 예상 |
 | POC3-05 | Holdings Risk Evidence Foundation v1 | 예상 · 산식 미확정 |
 | POC3-06 | Market Position & Data Quality Completeness v1 | 예상 · VIX/freshness/시장 위치 누락 귀속 |
@@ -307,7 +309,28 @@ POC3-03 종료 후 사용자가 보유 위험을 더 급한 차단 결함으로 
 
 ---
 
-## 8. POC3-03 진입 경계
+## 8. POC3-03 결과 (COMPLETED · PASS / CLOSED · 2026-08-01)
+
+> POC3-03 Navigation Information Architecture v1 완료. 검증자 VERIFIED · commit `bbd30a98` push. 아래 "진입 경계" 는 착수 전 계약으로, 완료 결과를 §8-1·§8-2 에 기록한다.
+
+### 8-1. 최종 구조 (완료)
+
+- 좌측 메뉴 = **5그룹**: 오늘 확인 / 비교·판단 / 보유·자료 관리 / 승인·운영 / 점검대상.
+- **9개 화면 전환 key(MenuKey) 가 각 1회 귀속** (중복·누락·신규 0). 모듈 로드 시 `assertMenuGroupsCover()` 로 무결성 throw.
+- 첫 진입 = 오늘의 투자 점검. 접힘 토글(저장 X)·active 그룹 자동 펼침·그룹 활성 표시.
+- route·화면 전환 key·기능·데이터 계약·백엔드 = 불변(신규 API·DB·화면 key·백엔드 0건).
+
+### 8-2. 사용자 지시 변경 2건 — 설계자 승인 (2026-08-01)
+
+설계서 §3.2/§6 를 실화면에서 사용자가 직접 지시로 재편한 2건을 설계자가 **승인**한다:
+1. **"기존 대시보드" 를 별도 "점검대상" 그룹으로 분리** (설계서 §3.2 "보유·자료 관리 마지막" → 5번째 그룹). dashboard key·기능 불변.
+2. **`.app-content` 콘텐츠 폭 1400 → 1920px** (고해상도 우측 잘림 해소). 사이드바 폭 220px 유지.
+
+→ 두 변경은 승인되어 canonical 구조로 확정. UI 최종 판단은 사용자.
+
+---
+
+## 8-3. (착수 전 계약) POC3-03 진입 경계
 
 이번 통합지도 승인 후 설계할 다음 Step의 범위는 아래까지만이다.
 
@@ -344,6 +367,6 @@ POC3-03 종료 후 사용자가 보유 위험을 더 급한 차단 결함으로 
 - POC3 현재 화면의 `개발 중`·`이번 단계 미도입` 항목이 P-06~P-16에 귀속됐다.
 - 친구 프로젝트 참고요소가 F-01~F-17로 채택·변형·보류·제외 판정을 받았다.
 - POC3-01·POC3-02의 실제 완료 상태가 오래된 문서보다 우선하도록 정정됐다.
-- 다음 실제 개발 Step은 POC3-03 하나만 확정됐다.
+- 다음 실제 개발 Step은 POC3-03 하나만 확정됐다. **[2026-08-01] POC3-03 = COMPLETED·PASS/CLOSED(commit `bbd30a98`, §8) → 다음 실제 Step 은 설계자가 §4 Lane 중 하나를 새로 확정한다.**
 
 따라서 이 지도의 `orphan_count = 0`이다.

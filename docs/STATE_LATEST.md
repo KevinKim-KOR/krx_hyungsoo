@@ -1,10 +1,32 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-01 (POC3-REF-02 Canonical Alignment Application — 통합지도 V2·STATE·BACKLOG canonical 반영 · **VERIFIED / CLOSED** · commit `35d718f0`(반영)·`e9b88c7b`(결과서). POC3-01 = COMPLETED / VERIFIED · commit `31428ce1` 유지)
+최종 업데이트: 2026-08-01 (POC3-03 Navigation Information Architecture v1 — 좌측 메뉴 과업별 그룹 재편 · **PASS / CLOSED** · 검증자 VERIFIED · commit `bbd30a98`. 통합지도 P-04 COMPLETED 반영)
 
-## 이번 STEP 요약 (POC3-REF-02 Canonical Alignment Application)
+## 이번 STEP 요약 (POC3-03 Navigation Information Architecture v1)
 
-**상태**: `VERIFIED / CLOSED` · 검증자 최종 VERIFIED + 설계자 최종 판정(2026-08-01)으로 마감. commit `35d718f0`(canonical 반영)·`e9b88c7b`(결과서) push 완료. **다음 게이트 = 설계자의 POC3-03 (Navigation Information Architecture v1) 설계서 작성.** POC3-03 개발 진입은 그 설계서 → 레드팀 PASS → 개발자 지시문 이후.
+**상태**: `PASS / CLOSED` · 완료 revision `bbd30a98`.
+
+**검증**: 검증자 **VERIFIED** (REJECTED r1~r3 정정 후) · tsc 0 · eslint 0 · vitest 96 passed · **사용자 실화면 확인 완료(AC-15)**.
+
+**성격**: 순수 Navigation Step — 평면 좌측 메뉴를 사용자 과업 순서 그룹으로 재편. **신규 API·DB·화면 전환 key·백엔드 변경 = 0건.** MainPanel·데이터 계약 불변.
+
+**최종 구조**: 좌측 메뉴 5그룹(오늘 확인 / 비교·판단 / 보유·자료 관리 / 승인·운영 / 점검대상) · 9개 화면 전환 key 각 1회 귀속(중복·누락·신규 0, `assertMenuGroupsCover()` throw). 첫 진입 = 오늘의 투자 점검 · 접힘 토글(저장 X)·active 그룹 자동 펼침.
+
+**사용자 지시 변경 2건(설계자 승인 · 통합지도 §8-2)**: (1) "기존 대시보드" → 별도 "점검대상" 그룹 분리(설계서 §3.2 재편). (2) `.app-content` 폭 1400→1920px. UI 최종 판단은 사용자.
+
+**변경 파일**: `frontend/app/components/LeftSidebar.tsx`·`globals.css`(수정) · `LeftSidebar.test.tsx`(신규 13 케이스) + 문서 3(설계서·PLAN·결과서). 모두 commit `bbd30a98` push 완료.
+
+**미커밋·미배포 작업**: 없음(개발 산출물 6종 커밋·push 완료). 본 canonical 반영분(통합지도 V2 P-04 COMPLETED + 본 STATE STEP)은 별도 커밋으로 push 예정 — 반영 완료 시 미커밋 0.
+
+**결과서**: `docs/ai_result/POC3/POC3-03_NAVIGATION_INFORMATION_ARCHITECTURE_V1_RESULT.md`.
+
+**다음 게이트**: 설계자가 다음 실제 Step(예상 POC3-04 Operations Panel 또는 POC3-05, 통합지도 §4 Lane) 하나를 확정. POC3-03 종료조건(설계서 §12) 모두 충족 — P-04 COMPLETED 반영·STATE 갱신 완료.
+
+---
+
+## 직전 STEP 요약 (POC3-REF-02 Canonical Alignment Application)
+
+**상태**: `VERIFIED / CLOSED` · 검증자 최종 VERIFIED + 설계자 최종 판정(2026-08-01)으로 마감. commit `35d718f0`(canonical 반영)·`e9b88c7b`(결과서) push 완료.
 
 **성격**: 소스 사실 검증(POC3-REF-02) 이후 설계자 재판정(SOURCE_CONFLICT 2건 수용)에 따라, 레드팀 PASS 문서를 현재 2026-08-01 canonical 상태에 맞게 반영. **기능·소스 코드 무변경 · 문서 반영만.**
 
@@ -18,7 +40,7 @@
 
 ---
 
-## 직전 STEP 요약 (POC3-01 오늘의 투자 점검 대시보드, COMPLETED / VERIFIED · commit `2603d3dd`·`31428ce1`)
+## 이전 STEP 요약 (POC3-01 오늘의 투자 점검 대시보드, COMPLETED / VERIFIED · commit `2603d3dd`·`31428ce1`)
 
 **상태**: `COMPLETED / VERIFIED` · 검증자 VERIFIED_WITH_NOTES(자동 게이트: vitest 82 passed·tsc·eslint) + **사용자 실화면 확인 완료 (2026-08-01) → AC-15 충족.** commit `2603d3dd`(구현)·`31428ce1`(상태 반영). 개발자 몫 종료. 결과서: `docs/ai_result/POC3/POC3-01_TODAY_INVESTMENT_CHECK_DASHBOARD_RESULT.md`.
 
