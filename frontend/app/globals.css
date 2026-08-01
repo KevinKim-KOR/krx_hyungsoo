@@ -720,9 +720,58 @@ ul.reason-list li {
   color: var(--accent);
 }
 
+/* 2026-08-01 POC3-03 — 좌측 메뉴 그룹 구조(5개: 오늘 확인/비교·판단/보유·자료 관리/
+   승인·운영/점검대상). 그룹 제목(접힘 토글) + 소속 메뉴. 사이드바 폭(220px) 유지.
+   외부 아이콘 라이브러리 없이 텍스트 caret(▸/▾). */
+.sidebar-group {
+  margin-top: 8px;
+}
+
+.sidebar-group:first-of-type {
+  margin-top: 12px;
+}
+
+/* 그룹 제목: 접기·펼치기만. 화면 이동 아님(§4.2). 메뉴명과 정보 계층 구분(§6). */
+.sidebar-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  padding: 14px 20px 6px 18px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.sidebar-group-title:hover {
+  color: var(--fg);
+}
+
+.sidebar-group-caret {
+  font-size: 11px;
+  width: 11px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+/* 현재 메뉴가 속한 그룹도 활성 식별(보완2·§6): 제목을 accent 로 강조. */
+.sidebar-group.active-group > .sidebar-group-title {
+  color: var(--accent);
+}
+
+.sidebar-group.active-group > .sidebar-group-title .sidebar-group-caret {
+  color: var(--accent);
+}
+
 .sidebar-menu {
   list-style: none;
-  margin: 12px 0 0 0;
+  margin: 0 0 4px 0;
   padding: 0;
 }
 
@@ -738,7 +787,9 @@ ul.reason-list li {
   background: transparent;
   border: none;
   color: var(--fg);
-  padding: 10px 20px;
+  /* 2026-08-01 사용자 요청 — 하위 메뉴를 우측으로 들여써 그룹과 위계 구분(친구 캡처 참고).
+     그룹 제목(좌 18px) 보다 안쪽(좌 32px) 으로. active 좌측 border(3px) 는 유지. */
+  padding: 9px 20px 9px 32px;
   cursor: pointer;
   border-left: 3px solid transparent;
   transition: background 0.12s ease, border-color 0.12s ease;
@@ -757,28 +808,45 @@ ul.reason-list li {
 .sidebar-menu-label {
   font-weight: 600;
   font-size: 14px;
+  /* 메뉴명이 한 글자씩 세로로 내려가지 않게 (AC-11). 220px 폭에서 잘림 시 말줄임. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-menu-hint {
   color: var(--muted);
   font-size: 12px;
   margin-top: 2px;
+  /* 보조 설명은 최대 두 줄 안에서 읽힘 (§6). */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 그룹명도 세로 줄바꿈 방지 (AC-10·AC-11). */
+.sidebar-group-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-content {
   flex: 1;
   min-width: 0;
-  /* 2026-06-03 — Market Discovery 통합 후보 테이블 폭 (1400px) 을 전 메뉴에
-     공통 적용. 사용자 요청으로 화면 폭 통일 (이전 .app-content--wide 가 본 값과
-     같아지므로 동일 클래스 정의는 호환 별칭으로 유지). */
-  max-width: 1400px;
+  /* 2026-06-03 — 전 메뉴 화면 폭 통일 (당시 1400px).
+     2026-08-01 사용자 요청 — 고해상도에서 우측이 잘리고 여백이 낭비돼 폭을 넓힘.
+     콘텐츠가 남은 영역을 채우되(flex:1) 초광폭 모니터에서 한 줄이 너무 길어지지 않게
+     상한만 둔다. 사이드바 폭(220px)·좌측 정렬은 유지. */
+  max-width: 1920px;
   margin: 0;
-  padding: 28px 32px 48px 32px;
+  padding: 28px 40px 48px 40px;
 }
 
 /* 호환 별칭 — 기존 markup 이 본 클래스를 참조해도 동일 폭 유지. */
 .app-content--wide {
-  max-width: 1400px;
+  max-width: 1920px;
 }
 
 .dashboard-status-list {
@@ -1663,7 +1731,7 @@ textarea.decision-textarea {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  /* 다른 메뉴 화면과 동일한 폭을 쓴다 — .app-content(max-width:1400px)를 그대로
+  /* 다른 메뉴 화면과 동일한 폭을 쓴다 — .app-content(현재 max-width:1920px)를 그대로
      채운다. 이전 max-width:1000px 는 이 화면만 좁게 만들어 가로 라인이 어긋났음
      (사용자 지적 2026-07-29). 코스피 대표 영역이 넉넉한 폭을 확보(§4.1). */
   width: 100%;
