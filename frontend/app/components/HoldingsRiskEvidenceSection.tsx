@@ -59,7 +59,9 @@ function NavConstituentsDetail({
   }
   const nav = item.nav_discount;
   const overlap = item.constituents_overlap;
-  const navOk = nav.status === "ok" || nav.status === "partial";
+  // §6.4: not_loaded/partial/unavailable 을 구분한다. partial 은 값이 있으면 보여주되
+  // "부분 자료" 상태를 숨기지 않는다. ok 만 완전 정상으로 표시한다.
+  const navShowsValues = nav.status === "ok" || nav.status === "partial";
   const navText = nav.nav != null ? Math.round(nav.nav).toLocaleString("ko-KR") : "-";
   const priceText =
     nav.market_price != null
@@ -73,14 +75,20 @@ function NavConstituentsDetail({
       <div className="hre-detail-line">
         <span className="k">NAV · 괴리율</span>
         <span className="v">
-          {navOk ? (
+          {navShowsValues ? (
             <>
               NAV {navText} · 시장가 {priceText} · 괴리율 {discountText}
               {nav.asof ? ` · asof ${nav.asof}` : ""}
+              {nav.status === "partial" ? (
+                <span className="hre-status-check"> · 부분 자료</span>
+              ) : null}
             </>
           ) : (
             `NAV / 괴리율 확인 불가 (${nav.status})`
           )}
+          {nav.message ? (
+            <span className="hre-detail-note"> · {nav.message}</span>
+          ) : null}
         </span>
       </div>
       <div className="hre-detail-line">

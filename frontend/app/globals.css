@@ -1808,6 +1808,7 @@ textarea.decision-textarea {
 }
 .tc-btn:hover { background: #0055aa; }
 .tc-btn:disabled { background: var(--border); border-color: var(--border); color: var(--muted); cursor: default; }
+.tc-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .tc-btn-link {
   background: transparent; color: #0066cc; border: 1px solid var(--border);
   white-space: nowrap;
@@ -2070,4 +2071,8 @@ textarea.decision-textarea {
 .hre-overlap-list {
   margin: 0;
   padding-left: 16px;
+}
+.hre-detail-note {
+  color: var(--muted);
+  font-size: 0.8rem;
 }

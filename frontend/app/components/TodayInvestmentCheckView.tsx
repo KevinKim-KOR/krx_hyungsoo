@@ -397,11 +397,24 @@ function KospiDetailSection({
 // ── §4.2 판단 큐 (오늘 내가 확인할 것) ───────────────────────────────────────
 function JudgmentQueueSection({
   market,
+  holdings,
+  evidence,
   onNavigate,
 }: {
   market: QueryState<MarketTopNResponse>;
+  holdings: QueryState<EnrichedHoldingsResult>;
+  evidence: QueryState<HoldingsMarketEvidenceResponse>;
   onNavigate: (key: MenuKey) => void;
 }) {
+  // 보유 종목 수(고유 ticker) 와 자료 확인 필요 건수 — 직접 동선 요약(§7·AC-13).
+  const holdCount =
+    holdings.phase === "success"
+      ? new Set(holdings.data.items.map((it) => it.ticker)).size
+      : null;
+  const needCheckCount =
+    evidence.phase === "success"
+      ? evidence.data.summary.evidence_unavailable_count
+      : null;
   const candCount =
     market.phase === "success" && market.data.status === "ok"
       ? market.data.candidates.length
@@ -435,15 +448,43 @@ function JudgmentQueueSection({
         </button>
       </div>
 
-      {/* 내가 가진 ETF 중 확인할 종목 — 위험 점검 축 미구축 → 개발 중 (Q6) */}
+      {/* 내가 가진 ETF — 평가·확인 근거 직접 동선 (POC3-05 DESIGN_V2 §7·AC-13). */}
       <div className="tc-queue-item tc-divider">
         <div className="tc-queue-head">
-          내가 가진 ETF 중 확인할 종목{" "}
-          <span className="tc-badge tc-badge-dev">개발 중</span>
+          내가 가진 ETF{" "}
+          {holdCount != null ? (
+            <strong>{holdCount}개</strong>
+          ) : holdings.phase === "loading" ? (
+            <span className="tc-muted tc-small">불러오는 중...</span>
+          ) : (
+            <span className="tc-muted tc-small">확인 불가</span>
+          )}
+          {needCheckCount != null && needCheckCount > 0 ? (
+            <span className="tc-muted tc-small">
+              {" "}· 자료 확인 필요 {needCheckCount}건
+            </span>
+          ) : null}
         </div>
         <p className="tc-muted tc-small">
-          보유 ETF 중 먼저 점검할 종목과 이유를 찾는 기능을 준비하고 있습니다.
+          보유 평가는 &lsquo;보유 현황&rsquo;, 오늘 먼저 볼 ETF와 수치 근거는 &lsquo;확인
+          근거&rsquo;에서 확인합니다.
         </p>
+        <div className="tc-btn-row">
+          <button
+            type="button"
+            className="tc-btn"
+            onClick={() => onNavigate("holdings")}
+          >
+            보유 현황
+          </button>
+          <button
+            type="button"
+            className="tc-btn"
+            onClick={() => onNavigate("holdings_evidence")}
+          >
+            확인 근거
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -717,7 +758,12 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
       <KospiDetailSection market={market} />
 
       <div className="tc-queue-grid">
-        <JudgmentQueueSection market={market} onNavigate={onNavigate} />
+        <JudgmentQueueSection
+          market={market}
+          holdings={holdings}
+          evidence={evidence}
+          onNavigate={onNavigate}
+        />
         <MaintenanceQueueSection
           items={maintenance}
           loading={maintLoading}

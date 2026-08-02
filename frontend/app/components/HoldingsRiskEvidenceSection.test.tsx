@@ -3,7 +3,7 @@
 // - 급락(falling) 관련 열·빠른보기 없음(이번 Step 제외).
 // - 읽기 전용(값 수정·저장 버튼 없음). N+1 없음(2 endpoint 단일 조회).
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
 
 const fetchEnrichedHoldings = vi.fn();
@@ -129,5 +129,28 @@ describe("보유 ETF 확인 근거 (POC3-05 B)", () => {
     await renderSection();
     expect(screen.queryByRole("button", { name: /저장/ })).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("§6.4: 선택 상세에서 NAV partial 을 정상(ok)과 구분해 표시하고 message 를 노출한다", async () => {
+    const ev = evidenceResult();
+    ev.holdings[0].nav_discount = {
+      status: "partial",
+      source: "naver",
+      asof: "2026-07-24",
+      nav: 1050,
+      market_price: 1100,
+      discount_rate_pct: null, // 일부 값 결측 = partial
+      flag: null,
+      message: "괴리율 계산 불가",
+    };
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    await renderSection();
+    // 행 선택 → 선택 상세 렌더.
+    fireEvent.click(screen.getByText("KODEX200"));
+    const text = document.body.textContent ?? "";
+    // partial 상태가 정상처럼 숨겨지지 않는다.
+    expect(text).toContain("부분 자료");
+    // message 가 노출된다.
+    expect(text).toContain("괴리율 계산 불가");
   });
 });

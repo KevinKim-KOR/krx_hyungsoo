@@ -580,13 +580,16 @@ describe("TodayInvestmentCheckView", () => {
     expect(heading.textContent).toMatch(/\d+건/);
   });
 
-  it("내가 가진 ETF 중 확인할 종목 = 개발 중 (건수 없음, Q6)", async () => {
-    await renderView();
+  it("POC3-05 §7·AC-13: 판단 큐에서 보유 현황·확인 근거로 직접 이동한다", async () => {
+    const { onNavigate } = await renderView();
     const judgment = screen.getByLabelText("오늘 내가 확인할 것");
-    expect(
-      within(judgment).getByText("내가 가진 ETF 중 확인할 종목"),
-    ).toBeInTheDocument();
-    // 개발 중 뱃지 존재.
-    expect(within(judgment).getAllByText("개발 중").length).toBeGreaterThan(0);
+    // 개발 중 자리표시자 대신 실제 동선. "개발 중" 뱃지는 이 영역에 없다.
+    expect(within(judgment).getByText("내가 가진 ETF")).toBeInTheDocument();
+
+    fireEvent.click(within(judgment).getByRole("button", { name: "보유 현황" }));
+    expect(onNavigate).toHaveBeenCalledWith("holdings");
+
+    fireEvent.click(within(judgment).getByRole("button", { name: "확인 근거" }));
+    expect(onNavigate).toHaveBeenCalledWith("holdings_evidence");
   });
 });
