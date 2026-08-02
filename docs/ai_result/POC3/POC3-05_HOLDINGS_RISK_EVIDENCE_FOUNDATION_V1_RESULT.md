@@ -10,8 +10,8 @@
   `a38893b4`(A구간) · **`077636e3`(B구간)** · **`d05a122e`(C구간)** · `f04ef4c4`(결과서 초판).
   검증자 REJECTED 후 FIX 라운드 커밋은 재보고 시 실측 추가.
 * 레드팀: PASS · 별도 revision 없음 (사용자 확인 2026-08-02)
-* 자체 검수(최종): `npx tsc --noEmit` 0 · `npm run lint` 0 · `npx vitest run` **125 passed** (act 경고 0)
-* 사용자 실화면 확인: **B 통과** ("잘 나눠졌네요") · **C 통과** ("화면 쪼개진 것 말고는 크게 와닿는 것 없어요")
+* 자체 검수(최종): `npx tsc --noEmit` 0 · `npm run lint` 0 · `npx vitest run` **126 passed** (act 경고 0)
+* 사용자 실화면 확인: **B 통과** ("잘 나눠졌네요") · **C 통과** ("화면 쪼개진 것 말고는 크게 와닿는 것 없어요"). **단 FIX r1~r3 UI 변경(오늘 화면 직접 동선·NAV partial·건수 통일·evidence 실패 시 보유 수 보존)은 자동 테스트 커버, 사용자 재확인 미실시 → 최종 판정 전 1회 재확인 필요.**
 
 ---
 
@@ -95,10 +95,10 @@
 | 17 | PASS | 신규 API·DB·source·factor·formula·threshold·scheduler·OCI·Telegram 변경 0. §3 의존성 0. |
 | 18 | PASS | 신규 화면 전환 key = holdings_manage·holdings_evidence 2개뿐. 신규 최상위 그룹·URL 라우터 0. |
 | 19 | PASS | 운영 화면에 `저위험/고위험/안전/매도/손절/BUY/SELL` 라벨·액션 0. grep hit 은 전부 "…아님" 중립 안내·comment. |
-| 20 | PASS | tsc 0 · eslint 0 · vitest 124 passed. B·C 사용자 실화면 확인 통과. |
-| 21 | PASS | 4화면 분리로 보유 평가(보유 현황)·종목 수정(종목 관리)·확인 근거를 좌측 메뉴에서 1회 선택. 사용자 실화면 확인 C 통과. |
+| 20 | PARTIAL | tsc 0 · eslint 0 · vitest 126 passed. **B·C 사용자 실화면 확인은 화면 분리·이동 기준으로 통과.** 단 FIX r1~r3 의 UI 변경(오늘 화면 직접 동선·NAV partial 표시·건수 통일·evidence 실패 시 보유 수 보존)은 자동 테스트로만 커버 — 사용자 재확인 미실시(§7 참조). |
+| 21 | PARTIAL | 4화면 분리로 보유 평가·종목 수정·확인 근거를 좌측 메뉴에서 1회 선택. 화면 분리 실화면 확인(C) 통과. FIX 반영 최종 화면의 사용자 재확인은 미실시. |
 
-AC 1~21 **전부 PASS**.
+AC 1~19 **PASS**. AC-20·21 은 **자동 게이트·화면 분리 기준 PASS · FIX 반영 최종 화면 사용자 재확인 대기(PARTIAL)**. → 최종 `PASS / CLOSED` 판정 전 사용자 실화면 재확인 1회 필요.
 
 ## 6) 다음 검증자(Codex)에게 알릴 점
 
@@ -112,6 +112,11 @@ AC 1~21 **전부 PASS**.
 - **#2 `자료 확인 필요` 건수 화면 간 불일치(AC-14) → 수정**: `오늘의 투자 점검` 판단 큐가 backend `evidence_unavailable_count`(좁은 기준)를 쓰고 `확인 근거` 화면은 `computeNeedCheck`(넓은 기준)를 써 같은 라벨의 건수가 달라질 수 있었음. 오늘 화면을 **`buildRiskEvidenceRows(...).coverage`(확인 근거와 동일 함수) 재사용**으로 통일. 보유 종목 수도 `coverage.total`(집계 기준) 사용. 화면 간 정합 테스트 추가.
 - **B-6 act 경고 → 해소**: NAV partial 테스트의 선택 클릭을 `act(async …)` 로 감쌈. `act(...)` 경고 0 확인.
 
+### FIX 라운드 3 (검증자 REJECTED 3건 반영, 2026-08-02)
+- **#1 Holdings 성공값이 Evidence 상태에 종속 → 수정**: FIX r2 에서 `holdCount` 를 `built`(holdings AND evidence 성공)에서 뽑아, evidence 로딩·실패 시 이미 확인된 보유 수가 "확인 불가" 로 덮이는 회귀 발생. `holdCount` 를 holdings 성공만으로 확정 표시하도록 분리(§6.4 조회 상태 구분·확정값 보존). `needCheckCount` 만 두 조회 성공 시 계산. **evidence 실패 시 보유 수 보존 테스트 추가.**
+- **#2 결과서 테스트 수치 불일치(125/124) → 정정**: AC-20 표·상단·본문 모두 실측 **126 passed** 로 통일.
+- **#3 최종 UI 실화면 근거 불일치 → 정정**: FIX r1~r3 UI 변경은 B·C 사용자 실화면 확인 **이후** 발생 → AC-20·21 을 PARTIAL 로 낮추고, 최종 화면 사용자 재확인 1회 필요를 §7 에 명시. 변경 전 확인을 최종 근거로 주장하지 않음.
+
 ### 상시
 
 - **AC-7 `근거` 금지어 제외 (B 섹션 우선 검토 요망)**: POC3-03 테스트가 메뉴 텍스트에 `근거` 를 금지했으나 DESIGN_V2 §4.1 이 `확인 근거` 를 사용자 라벨로 지정. 사용자 확인 후 `TodayInvestmentCheckView.test` FORBIDDEN_TERMS 에서 `근거` 제거(`후보` 유지). V2 AC-19 사용자 금지어에 `근거` 없음 — 계약 훼손 아님으로 판단.
@@ -121,6 +126,7 @@ AC 1~21 **전부 PASS**.
 
 ## 7) 사용자 확인이 필요한 항목
 
+- **[재확인 필요] FIX 반영 최종 화면 실화면 확인 1회**: B·C 확인 이후 FIX r1~r3 로 (1) 오늘의 투자 점검 판단 큐 직접 동선(보유 현황·확인 근거), (2) 확인 근거 선택 상세 NAV partial "부분 자료"+message, (3) 오늘 화면 `자료 확인 필요` 건수 통일, (4) evidence 실패 시 보유 수 보존 이 추가·변경됨. 자동 테스트는 커버하나 사용자 실화면 재확인 미실시 → 최종 `PASS/CLOSED` 전 1회 확인 필요.
 - **미커밋 무관 파일**: `design/DESIGN-apple.md`·`docs.zip` 은 POC3-05 무관 잡파일로 커밋 제외. 처리 필요 시 별도 지시.
 - **push 미실행**: 규칙상 push 별도 승인. 현재 미push 커밋 다수 — push 시 실측 후 개수 명시 예정.
 - **[설계자 전달] krx 그리드 디자인 개선**: 사용자가 2026-08-02 지적 — krx 그리드(테이블) 완성도가 사용자 자체 제작 화면(안티그래비티) 대비 낮음. 사용자 지시로 **이번 Step 에 넣지 않고 설계자에게 다음 개선 후보로 전달**. (Closeout 시 통합지도/다음 게이트 제안에 포함.)

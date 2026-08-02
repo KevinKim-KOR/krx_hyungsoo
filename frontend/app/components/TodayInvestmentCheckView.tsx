@@ -408,15 +408,20 @@ function JudgmentQueueSection({
   onNavigate: (key: MenuKey) => void;
 }) {
   // 보유 종목 수(고유 ticker) 와 자료 확인 필요 건수 — 직접 동선 요약(§7·AC-13).
-  // 자료 확인 필요 건수는 "확인 근거" 화면과 동일 판정(buildRiskEvidenceRows·computeNeedCheck)
-  // 을 재사용한다. backend evidence_unavailable_count 는 판정 기준이 좁아 화면 간 건수가
-  // 달라지므로 사용하지 않는다(AC-14 동일 데이터 동일 해석).
-  const built =
+  // §6.4 조회 상태 구분: 보유 종목 수는 holdings 조회 성공만으로 확정 표시한다. evidence
+  // 로딩·실패가 이미 확인된 보유 수를 "확인 불가"로 덮지 않는다.
+  const holdCount =
+    holdings.phase === "success"
+      ? new Set(holdings.data.items.map((it) => it.ticker)).size
+      : null;
+  // 자료 확인 필요 건수만 두 조회 성공 시 계산한다. "확인 근거" 화면과 동일 판정
+  // (buildRiskEvidenceRows·computeNeedCheck)을 재사용한다. backend evidence_unavailable_count
+  // 는 판정 기준이 좁아 화면 간 건수가 달라지므로 사용하지 않는다(AC-14 동일 데이터 동일 해석).
+  const needCheckCount =
     holdings.phase === "success" && evidence.phase === "success"
       ? buildRiskEvidenceRows(holdings.data.items, evidence.data.holdings)
+          .coverage.need_check
       : null;
-  const holdCount = built ? built.coverage.total : null;
-  const needCheckCount = built ? built.coverage.need_check : null;
   const candCount =
     market.phase === "success" && market.data.status === "ok"
       ? market.data.candidates.length

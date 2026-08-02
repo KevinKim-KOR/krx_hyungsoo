@@ -639,4 +639,26 @@ describe("TodayInvestmentCheckView", () => {
     // computeNeedCheck 기준 1건(partial). backend count(0)를 썼다면 이 문구가 없어야 한다.
     expect(within(judgment).getByText(/자료 확인 필요 1건/)).toBeInTheDocument();
   });
+
+  it("§6.4: Evidence 조회 실패여도 성공한 보유 종목 수는 확인 불가로 덮이지 않는다", async () => {
+    fetchEnrichedHoldings.mockResolvedValue({
+      items: [
+        { ticker: "069500", name: "KODEX200", price_missing: false },
+        { ticker: "133690", name: "TIGER", price_missing: false },
+      ],
+    });
+    // Evidence 만 실패 — holdings 는 성공.
+    fetchHoldingsMarketEvidence.mockRejectedValue(new Error("evidence down"));
+    await renderView();
+    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    // "내가 가진 ETF" head 에 보유 수(2)가 확정 표시되고 "확인 불가" 는 없다.
+    const holdHead = within(judgment)
+      .getByText("내가 가진 ETF")
+      .closest(".tc-queue-head") as HTMLElement;
+    expect(holdHead.textContent).toContain("2");
+    expect(holdHead.textContent).toContain("개");
+    expect(holdHead.textContent).not.toContain("확인 불가");
+    // 자료 확인 필요 건수는 evidence 없으니 표시하지 않는다(오해 방지).
+    expect(within(judgment).queryByText(/자료 확인 필요/)).toBeNull();
+  });
 });
