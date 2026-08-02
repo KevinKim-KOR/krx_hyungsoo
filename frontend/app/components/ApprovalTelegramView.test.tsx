@@ -155,3 +155,13 @@ describe("OCI 적용·알림 B구간 — 미리보기·수동 전달 점검", ()
     void container;
   });
 });
+
+describe("OCI 적용·알림 C구간 — 잘못 배치된 기능 이동", () => {
+  it("신규 ETF 관찰 후보 갱신(UniverseRefreshPanel)은 이 화면에 없다 (요즘 잘 오르는 ETF 로 이동)", async () => {
+    const { container } = await renderView();
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("신규 ETF 관찰 후보");
+    // 이동 예정 임시 안내(pending-reorg-note)도 더 이상 없다.
+    expect(container.querySelector(".pending-reorg-note")).toBeNull();
+  });
+});

@@ -17,9 +17,9 @@
 //       4) ManualPreviewSection  : 미리보기·수동 전달 점검 (ThreePushDraftCard + 현재 run
 //                                  중 신뢰 가능한 push_kind 만). 자동 PUSH 와 구분.
 //       (dev) DevCompatSection   : 개발·호환 점검 (샘플 + push_kind=null run). 기본 접힘.
-//     C구간(예정) — UniverseRefreshPanel 을 "요즘 잘 오르는 ETF" 로 이동, 전체 정리.
+//     C구간 — UniverseRefreshPanel 을 "요즘 잘 오르는 ETF"(MarketDiscoveryView) 로 이동
+//            (이 화면에서 제거). 개발·호환 점검 기본 접힘. 전체 위계 정리.
 
-import UniverseRefreshPanel from "./UniverseRefreshPanel";
 import OciAlertHeader from "./approval/OciAlertHeader";
 import InfoPushGuideCards from "./approval/InfoPushGuideCards";
 import ManualPreviewSection from "./approval/ManualPreviewSection";
@@ -49,12 +49,8 @@ export default function ApprovalTelegramView({ run, setRun }: Props) {
       {/* B구간 4) 미리보기·수동 전달 점검 (자동 PUSH 와 구분) */}
       <ManualPreviewSection run={run} setRun={setRun} />
 
-      {/* C구간에서 "요즘 잘 오르는 ETF" 로 이동 예정 — 기능 누락 방지 임시 유지 */}
-      <div className="pending-reorg-note card">
-        아래 <strong>신규 ETF 관찰 후보</strong> 갱신은 다음 단계(C)에서{" "}
-        <strong>요즘 잘 오르는 ETF</strong> 화면으로 이동합니다.
-      </div>
-      <UniverseRefreshPanel />
+      {/* C구간: 신규 ETF 관찰 후보 갱신(UniverseRefreshPanel)은 "요즘 잘 오르는 ETF"
+          화면으로 이동했다. 이 화면에는 두지 않는다(중복 금지). */}
 
       {/* 개발·호환 점검 — 기본 접힘 (샘플 + push_kind=null run) */}
       <DevCompatSection run={run} setRun={setRun} />

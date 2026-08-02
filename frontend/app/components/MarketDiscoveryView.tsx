@@ -35,6 +35,8 @@ import MarketContextCard from "./MarketContextCard";
 import MarketRiskReferenceCard from "./MarketRiskReferenceCard";
 import HoldingsCompareView from "./HoldingsCompareView";
 import RelativeUpsideRunCard from "./RelativeUpsideRunCard";
+// 2026-08-01 승인·알림 역할 분리 C구간 — 신규 ETF 관찰 후보 갱신을 이 화면으로 이동.
+import UniverseRefreshPanel from "./UniverseRefreshPanel";
 import type { RelativeUpsideRunResult } from "@/lib/api/mlRelativeUpside";
 
 // 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1) — 탭 토글.
@@ -564,6 +566,11 @@ export default function MarketDiscoveryView({
           ) : null
         }
       />
+      {/* 2026-08-01 승인·알림 역할 분리 C구간 — 신규 ETF 관찰 후보 갱신을 여기로 이동.
+          위 "최신 시장 데이터 갱신"(TopControlsRow)은 시세·시장 데이터 최신화이고,
+          아래 "신규 ETF 관찰 후보"는 수집된 데이터로 관찰 후보를 재계산한다 —
+          두 갱신은 다른 기능이며 합치지 않는다 (Q6). 이 화면에 정확히 1회만 둔다. */}
+      <UniverseRefreshPanel />
       {/* 시장 배경 — 시스템 1차 시장 국면 (KODEX200 필수 / KOSPI 보조). */}
       <MarketContextCard ctx={data.market_context ?? null} />
       {/* 2026-07-03 Market Risk Reference v1 — KODEX200 + VIX 일별 맥락. */}
