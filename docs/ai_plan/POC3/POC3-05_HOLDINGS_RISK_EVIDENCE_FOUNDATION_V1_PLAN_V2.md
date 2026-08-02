@@ -54,7 +54,8 @@
 
 ### 3.2 `HoldingsRiskEvidenceSection.tsx` — `holdings_evidence` 화면으로 재사용
 - 조회: `useSharedQuery(DASH_KEY_HOLDINGS, fetchEnrichedHoldings)` + `useSharedQuery(DASH_KEY_EVIDENCE, fetchHoldingsMarketEvidence)` — Dashboard 와 캐시 키 공유(N+1 없음 · AC-15). 목록에서 ticker별 시계열 재호출 없음.
-- 요약(기준일·coverage) · 빠른 보기(전체/자료 확인 필요) · ticker 통합 한 줄 표 · 선택 상세 lazy `PriceChart` = 설계서 §4.4 노출 요구 충족.
+- **현재 구현 범위(실측):** 요약(기준일·coverage) · 빠른 보기(전체/자료 확인 필요) · ticker 통합 한 줄 표 · 선택 상세 lazy `PriceChart`(가격 차트만). 설계서 §4.4 기본 표·기준일·상태 요구는 충족.
+- **미충족(§4.4 선택 상세):** NAV·괴리율·구성종목·중복률은 현재 선택 상세에 **미포함** → B구간에서 기존 표시(§4.5 HoldingsMarketEvidenceCard 제공분) 이식 필요(신규 계산 아님). 상세는 §5-Q2·§4.4 미포함 항목 참조. **따라서 현 컴포넌트만으로는 §4.4 전체 요구를 충족하지 않는다.**
 - `자료 확인 필요` 문구만 사용 · 위험 등급/매도 없음(AC-19). Holdings·Market 기준일 분리 표시(§6.4).
 
 ---
