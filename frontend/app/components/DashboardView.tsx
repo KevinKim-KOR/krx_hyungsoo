@@ -153,8 +153,9 @@ function collectExceptions(
     const s = evidence.data.summary;
     if (s.evidence_unavailable_count > 0) {
       list.push({
+        // 근거 확인은 "확인 근거" 화면으로 (§7·AC-13 — 평가 아닌 근거 연결).
         text: `보유 Evidence 확인 필요 ${s.evidence_unavailable_count}건`,
-        action: "holdings",
+        action: "holdings_evidence",
         actionLabel: "해당 근거 확인",
       });
       anyUnavailable = true;
@@ -213,8 +214,8 @@ function collectExceptions(
   if (evidence.phase === "error") {
     list.push({
       text: "보유 Evidence 조회 실패",
-      action: "holdings",
-      actionLabel: "Holdings 확인",
+      action: "holdings_evidence",
+      actionLabel: "확인 근거 열기",
     });
     anyUnavailable = true;
   }
@@ -441,14 +442,23 @@ function HoldingsCard({
           </span>
         </div>
       )}
-      <button
-        type="button"
-        className="dashboard-flow-btn"
-        onClick={() => onNavigate("holdings")}
-        style={{ marginTop: 8 }}
-      >
-        Holdings 열기 →
-      </button>
+      {/* §7·AC-13: 평가 연결 → 보유 현황, 확인 대상 연결 → 확인 근거. */}
+      <div className="btn-row" style={{ marginTop: 8 }}>
+        <button
+          type="button"
+          className="dashboard-flow-btn"
+          onClick={() => onNavigate("holdings")}
+        >
+          보유 현황 열기 →
+        </button>
+        <button
+          type="button"
+          className="dashboard-flow-btn"
+          onClick={() => onNavigate("holdings_evidence")}
+        >
+          확인 근거 →
+        </button>
+      </div>
     </div>
   );
 }
@@ -651,8 +661,8 @@ function AsOfPanel({
 const HELP_STEPS: { title: string; desc: string }[] = [
   { title: "시장 데이터 갱신", desc: "Market Discovery 화면에서 '최신 시장 데이터 갱신'을 실행합니다." },
   { title: "시장 후보 확인 + ETF 구성종목 분석", desc: "Market Discovery TOP N 후보 확인, ETF Exposure 구성종목 중복률 점검." },
-  { title: "내 보유 ETF와 비교", desc: "Holdings 화면에서 보유 ETF 입력·저장, Evidence 조회로 후보와 연결 확인." },
-  { title: "판단 초안 생성", desc: "Holdings 화면의 '저장된 보유 종목으로 초안 만들기'를 실행합니다." },
+  { title: "보유 종목 입력 · 확인 근거", desc: "'종목 관리'에서 보유 ETF 입력·저장, '보유 현황'·'확인 근거'에서 평가와 수치 근거 확인." },
+  { title: "판단 초안 생성", desc: "'OCI 적용·알림 > 미리보기·수동 전달 점검'에서 '저장된 보유 종목으로 초안 만들기'를 실행합니다." },
   { title: "승인 / Telegram 발송", desc: "Approval / Telegram 화면에서 초안을 검토·승인합니다." },
 ];
 

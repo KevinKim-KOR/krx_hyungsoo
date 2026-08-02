@@ -244,12 +244,20 @@ function StatusLine({
         >
           Market Discovery →
         </button>
+        {/* §7·AC-14: 보유 평가 → 보유 현황, 근거 확인 → 확인 근거. */}
         <button
           type="button"
           className="wb-btn"
           onClick={() => onNavigate("holdings")}
         >
-          Holdings →
+          보유 현황 →
+        </button>
+        <button
+          type="button"
+          className="wb-btn"
+          onClick={() => onNavigate("holdings_evidence")}
+        >
+          확인 근거 →
         </button>
       </span>
     </div>
@@ -594,9 +602,10 @@ function AttentionTab({
     const s = evid.data.summary;
     if (s.evidence_unavailable_count > 0)
       rows.push({
+        // 근거 확인은 "확인 근거" 화면으로 (§7·AC-14).
         text: `보유 Evidence 확인 필요 ${s.evidence_unavailable_count}건`,
         kind: "unavailable",
-        action: "holdings",
+        action: "holdings_evidence",
         actionLabel: "해당 근거 확인",
       });
     if (s.constituents_unavailable_count > 0)
@@ -617,8 +626,8 @@ function AttentionTab({
     rows.push({
       text: "보유 Evidence 조회 실패",
       kind: "unavailable",
-      action: "holdings",
-      actionLabel: "Holdings 확인",
+      action: "holdings_evidence",
+      actionLabel: "확인 근거 열기",
     });
   }
 

@@ -186,7 +186,8 @@ describe("DashboardView — VIX stale · 예외 · 일부 실패", () => {
     render(<DashboardView onNavigate={onNavigate} />);
     const btn = await screen.findByText("해당 근거 확인 →");
     fireEvent.click(btn);
-    expect(onNavigate).toHaveBeenCalledWith("holdings");
+    // POC3-05 DESIGN_V2 §7·AC-13: 근거 확인 연결은 "확인 근거"(holdings_evidence) 로.
+    expect(onNavigate).toHaveBeenCalledWith("holdings_evidence");
   });
 
   it("일부 영역(NAV) 실패해도 정상 영역(보유)은 유지된다", async () => {

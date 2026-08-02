@@ -4,7 +4,9 @@
 //
 // 책임 (지시문 §4 / §10):
 // - PUSH-1 (시장 흐름 브리핑) / PUSH-3 (급등락 관찰 신호) Run 생성 진입점.
-//   PUSH-2 (보유 관찰 브리핑) 는 Holdings 화면의 "초안 생성" 버튼 (기존) 이 담당.
+//   PUSH-2 (보유 관찰 브리핑) 는 같은 "미리보기·수동 전달 점검" 영역의
+//   HoldingsDraftButton 이 담당 (2026-08-02 POC3-05 DESIGN_V2 §4.6 — 구 Holdings
+//   화면에서 이동).
 // - backend 가 message_text 까지 미리 빌드한 Run 을 받아 그대로 setRun 으로 넘긴다.
 //   frontend 는 message_text 를 조립/파싱하지 않는다 (AC-2).
 // - 생성된 Run 은 위의 RunPanel 에서 승인 게이트를 통과해야 OCI/Telegram 으로 간다.
@@ -69,9 +71,10 @@ export default function ThreePushDraftCard({ onDraftCreated }: Props) {
       <h2>3-PUSH 초안 생성 (PUSH-1 / PUSH-3)</h2>
       <p className="helper" style={{ marginBottom: 8 }}>
         하루 3종 PUSH 메시지 중 PUSH-1 시장 흐름 브리핑 / PUSH-3 급등락 관찰
-        신호의 초안을 생성합니다. PUSH-2 보유 관찰 브리핑은 Holdings 화면의 &lsquo;초안
-        생성&rsquo; 버튼이 담당합니다. 본 카드는 backend 가 빌드한 message_text 를
-        그대로 받아 표시하며, 인간 승인 전에는 Telegram 으로 발송되지 않습니다.
+        신호의 초안을 생성합니다. PUSH-2 보유 관찰 브리핑은 아래 &lsquo;PUSH-2 보유
+        관찰 브리핑 초안 생성&rsquo; 버튼이 담당합니다. 본 카드는 backend 가 빌드한
+        message_text 를 그대로 받아 표시하며, 인간 승인 전에는 Telegram 으로 발송되지
+        않습니다.
       </p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
