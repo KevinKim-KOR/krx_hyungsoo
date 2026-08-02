@@ -1949,3 +1949,125 @@ textarea.decision-textarea {
   border-radius: 4px;
   padding: 2px 8px;
 }
+
+/* ── POC3-05 보유 ETF 확인 근거 (읽기 전용) ─────────────────────────── */
+.hre-divider {
+  border-top: 2px solid var(--border);
+  margin: 24px 0 0 0;
+}
+.hre-section {
+  margin-top: 16px;
+}
+.hre-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 10px 0;
+}
+.hre-quickview {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.hre-quickview button {
+  font-size: 13px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+.hre-quickview button.active {
+  background: rgba(58, 122, 254, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.hre-table-wrap {
+  overflow-x: auto;
+  max-height: 70vh;
+}
+.hre-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.hre-table th,
+.hre-table td {
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.hre-table th:first-child,
+.hre-table td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: var(--card);
+}
+.hre-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  font-weight: 700;
+  color: var(--muted);
+}
+.hre-table tbody tr {
+  cursor: pointer;
+}
+.hre-table tbody tr:hover {
+  background: rgba(58, 122, 254, 0.06);
+}
+.hre-table tbody tr.selected {
+  background: rgba(58, 122, 254, 0.12);
+}
+.hre-name {
+  font-weight: 600;
+  display: block;
+}
+.hre-ticker {
+  font-size: 11px;
+  color: var(--muted);
+}
+.hre-status-ok {
+  color: var(--muted);
+}
+.hre-status-check {
+  color: var(--warn);
+  font-weight: 600;
+}
+.hre-detail {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.hre-detail-hint {
+  margin-top: 12px;
+}
+/* POC3-05 DESIGN_V2 — 선택 상세 NAV·구성종목 (Q2 통합). */
+.hre-detail-evidence {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hre-detail-line {
+  display: flex;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+.hre-detail-line > .k {
+  min-width: 100px;
+  color: var(--muted);
+}
+.hre-detail-line > .v {
+  color: var(--fg);
+}
+.hre-overlap-list {
+  margin: 0;
+  padding-left: 16px;
+}

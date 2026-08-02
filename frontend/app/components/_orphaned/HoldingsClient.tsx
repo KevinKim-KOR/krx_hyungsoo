@@ -31,7 +31,7 @@ import {
 import { DEFAULT_GROUP } from "@/lib/holdings_view";
 import { invalidateQueries } from "@/lib/api/queryCache";
 import { HOLDINGS_INVALIDATION_KEYS } from "@/lib/api/dashboardKeys";
-import EnrichedSection from "./EnrichedHoldingsSection";
+import EnrichedSection from "../EnrichedHoldingsSection";
 // POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) — 보유 ETF 가
 // Market Discovery 후보 / 시장 국면 / 단기 흐름 / 구성종목 / NAV 와 어떻게
 // 연결되는지의 raw evidence 카드. 사용자 액션에서만 호출 (page load auto X).

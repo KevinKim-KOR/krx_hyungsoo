@@ -532,7 +532,10 @@ describe("TodayInvestmentCheckView", () => {
     expect(screen.getByText(/KODEX200 MA20 대비 자료 없음/)).toBeInTheDocument();
   });
 
-  // 금지 용어: 라틴 내부 용어 + 한국어 금지 용어(후보/근거 등). label·hint 모두 적용.
+  // 금지 용어: 라틴 내부 용어 + 한국어 금지 용어. label·hint 모두 적용.
+  // 2026-08-02 POC3-05 DESIGN_V2: "확인 근거" 가 설계서 §4.1·§4.4 가 명시한 사용자 화면
+  //   메뉴 라벨이 되어 "근거" 는 금지어에서 제외한다(V2 AC-2·AC-7). V2 AC-19 사용자 금지어
+  //   (저위험/고위험/안전/매도/손절/BUY/SELL)에는 "근거" 가 없다. "후보" 는 계속 금지.
   const FORBIDDEN_TERMS = [
     "Workbench",
     "Market Discovery",
@@ -546,7 +549,6 @@ describe("TodayInvestmentCheckView", () => {
     "Pending",
     "Operations Panel",
     "후보",
-    "근거",
   ];
 
   it("AC-7: 좌측 메뉴 전체 텍스트(라벨+힌트)에 금지 용어가 없다 (Sidebar 실제 렌더)", () => {
@@ -557,7 +559,7 @@ describe("TodayInvestmentCheckView", () => {
     }
     // 사용자 언어 라벨이 실제로 있는지도 확인.
     expect(text).toContain("요즘 잘 오르는 ETF");
-    expect(text).toContain("내가 가진 ETF");
+    expect(text).toContain("보유 현황");
     expect(text).toContain("ETF 비교하기");
   });
 

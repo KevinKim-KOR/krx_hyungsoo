@@ -28,6 +28,8 @@ export type MenuKey =
   | "etf_exposure"
   | "ai_sessions"
   | "holdings"
+  | "holdings_manage"
+  | "holdings_evidence"
   | "approval"
   | "data_status";
 
@@ -63,11 +65,18 @@ export const MENU_GROUPS: MenuGroup[] = [
       { key: "ai_sessions", label: "AI 투자 세션", hint: "AI 질문/답변 기록" },
     ],
   },
+  // 2026-08-02 POC3-05 DESIGN_V2: "보유·자료 관리" 아래를 4개 하위 메뉴로 분리
+  //   (설계서 §4.1). 순서: 보유 현황 → 종목 관리 → 확인 근거 → 데이터 상태.
+  //   기존 holdings key 는 "보유 현황" 진입점으로 유지. 신규 key 2개
+  //   (holdings_manage · holdings_evidence). "내가 가진 ETF" 부모 메뉴는 두지 않음
+  //   (2단계 구조). MenuKey 9→11 (AC-2·AC-3·AC-18).
   {
     id: "manage",
     title: "보유·자료 관리",
     items: [
-      { key: "holdings", label: "내가 가진 ETF", hint: "보유 현황 / 평가" },
+      { key: "holdings", label: "보유 현황", hint: "평가 현황 / 시세 갱신" },
+      { key: "holdings_manage", label: "종목 관리", hint: "입력 / 수정 / 저장" },
+      { key: "holdings_evidence", label: "확인 근거", hint: "오늘 먼저 볼 ETF와 근거" },
       { key: "data_status", label: "데이터 상태", hint: "시장 데이터 상태 (예정)" },
     ],
   },
@@ -105,6 +114,8 @@ const ALL_MENU_KEYS: MenuKey[] = [
   "etf_exposure",
   "ai_sessions",
   "holdings",
+  "holdings_manage",
+  "holdings_evidence",
   "approval",
   "data_status",
 ];

@@ -3,7 +3,8 @@
 //
 // 검증 대상 (설계서 §3·§4·§6 + AC + 보완사항):
 // - AC-1: 좌측 메뉴가 오늘 확인 / 비교·판단 / 보유·자료 관리 / 승인·운영 / 점검대상 그룹으로 표시.
-// - AC-2: 9개 화면 전환 key 가 정확히 한 그룹에 1회 귀속(중복·누락·신규 0).
+// - AC-2: 11개 화면 전환 key 가 정확히 한 그룹에 1회 귀속(중복·누락·신규 0).
+//   (2026-08-02 POC3-05 DESIGN_V2: 보유·자료 관리 4하위 분리로 9→11.)
 // - AC-4: 선택 화면과 좌측 메뉴 활성 표시 일치.
 // - AC-5/보완3: 접힌 그룹으로 내부 이동 시 그 그룹 자동 펼침, 다른 그룹 접힘 유지.
 // - AC-6: 그룹 접기·펼치기는 화면 전환(onSelect) 을 발생시키지 않는다.
@@ -28,6 +29,8 @@ const ALL_KEYS: MenuKey[] = [
   "etf_exposure",
   "ai_sessions",
   "holdings",
+  "holdings_manage",
+  "holdings_evidence",
   "approval",
   "data_status",
 ];
@@ -65,11 +68,11 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · 5그룹)", () => {
     expect(titles.length).toBe(GROUP_TITLES.length);
   });
 
-  it("AC-2: 9개 key 가 그룹에 정확히 1회씩 귀속(중복·누락·신규 0)", () => {
+  it("AC-2: 11개 key 가 그룹에 정확히 1회씩 귀속(중복·누락·신규 0)", () => {
     const keys = MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key));
     expect(keys.sort()).toEqual([...ALL_KEYS].sort());
-    expect(new Set(keys).size).toBe(9);
-    expect(keys.length).toBe(9);
+    expect(new Set(keys).size).toBe(11);
+    expect(keys.length).toBe(11);
     // 평탄화 export 도 동일.
     expect(MENU_ITEMS.map((i) => i.key).sort()).toEqual([...ALL_KEYS].sort());
   });
@@ -93,7 +96,7 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · 5그룹)", () => {
     const groupTitles = screen.getAllByRole("button", { expanded: true });
     // 접힘 토글(aria-expanded) 를 가진 그룹 제목이 전부 expanded=true.
     expect(groupTitles.length).toBe(GROUP_TITLES.length);
-    // 각 그룹의 메뉴가 실제로 보인다(9개 메뉴 버튼 노출).
+    // 각 그룹의 메뉴가 실제로 보인다(11개 메뉴 버튼 노출).
     for (const item of MENU_ITEMS) {
       expect(screen.getByText(item.label)).toBeTruthy();
     }
@@ -102,7 +105,7 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · 5그룹)", () => {
   it("AC-4 + 보완2: 선택 메뉴와 그 메뉴가 속한 그룹이 함께 활성 표시된다", () => {
     render(<LeftSidebar active="holdings" onSelect={() => {}} />);
     // 선택 메뉴: aria-current=page
-    const activeMenu = screen.getByText("내가 가진 ETF").closest("button");
+    const activeMenu = screen.getByText("보유 현황").closest("button");
     expect(activeMenu?.getAttribute("aria-current")).toBe("page");
     // 그 메뉴가 속한 그룹(보유·자료 관리) 이 active-group 클래스.
     const groupTitle = screen.getByText("보유·자료 관리").closest(".sidebar-group");
@@ -140,13 +143,13 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · 5그룹)", () => {
     // 보유·자료 관리, 비교·판단 두 그룹을 사용자가 접는다.
     fireEvent.click(screen.getByText("보유·자료 관리").closest("button")!);
     fireEvent.click(screen.getByText("비교·판단").closest("button")!);
-    expect(screen.queryByText("내가 가진 ETF")).toBeNull();
+    expect(screen.queryByText("보유 현황")).toBeNull();
     expect(screen.queryByText("ETF 비교하기")).toBeNull();
 
     // 내부 이동으로 active 가 holdings(접힌 보유·자료 관리 그룹) 로 바뀐다.
     rerender(<LeftSidebar active="holdings" onSelect={() => {}} />);
     // 보유·자료 관리 그룹이 자동으로 펼쳐진다.
-    expect(screen.getByText("내가 가진 ETF")).toBeTruthy();
+    expect(screen.getByText("보유 현황")).toBeTruthy();
     // 사용자가 접은 다른 그룹(비교·판단) 은 그대로 접힘 유지.
     expect(screen.queryByText("ETF 비교하기")).toBeNull();
   });
