@@ -95,7 +95,7 @@
 | P-03 | 오늘의 투자 점검 대시보드 | 완료 | 결과서·STATE 문서 상태만 정정 |
 | P-04 | 좌측 메뉴 과업별 1차 재편 | **COMPLETED** | POC3-03 Navigation Information Architecture v1 · 검증자 VERIFIED · commit `bbd30a98`. route·기능·API 불변. 최종 구조 = 5그룹·9개 화면 1회 귀속(§8-1). 사용자 지시 변경 2건 설계자 승인(§8-2) |
 | P-05 | Operations Panel 통합 | **제외·폐기** | **[2026-08-01]** 독립 Operations Panel 을 신설하지 않는다. 기존 승인·알림 화면 재배치(`OCI 적용·알림`)로 역할 분리를 충족 — 판단(정보 PUSH 안내)/OCI 적용/미리보기·수동 점검을 역할별로 정리(commit `c676de3d`). 폐기 사유: 기존 화면 재배치로 충족 가능한 정리 요구를 신규 화면으로 확대한 오류. |
-| P-06 | 내가 가진 ETF의 위험 신호와 구체 이유 | 확정 개발 | P-05 이후 별도 evidence foundation. Q6 산식 선확정 금지 |
+| P-06 | 내가 가진 ETF의 위험 신호와 구체 이유 | **부분 완료** | **[2026-08-03]** POC3-05 로 `확인 근거` 화면(평가·5일·20일·KODEX200 대비·NAV·구성종목 evidence 표시) 구축. 급락 신호·종합 위험 구간 분류는 자동 조회 계약/근거 부재로 BACKLOG(§13). Q6 산식 선확정 금지 유지. |
 | P-07 | 코스피 흐름 지속 거래일 수 | 확정 개발 | 기존 시계열·기존 국면 계약으로 제공 가능한지 사실 확인 후 |
 | P-08 | 최근 고점 대비 현재 위치 | 확정 개발 | 기존 KOSPI 시계열 재사용 가능성 확인 후 |
 | P-09 | 코스피 일간·1년 수익률 | 확정 개발 | 시장 위치 evidence 보완 Lane. 임시 숫자 금지 |
@@ -121,7 +121,7 @@
 |---|---|---|
 | POC3-03 | Navigation Information Architecture v1 | **COMPLETED · PASS / CLOSED · 검증자 VERIFIED · commit `bbd30a98`** |
 | ~~POC3-04 Operations Panel Consolidation v1~~ | **삭제** | **[2026-08-01]** 독립 Operations Panel Lane 삭제. 승인·알림 화면 재배치(`OCI 적용·알림`)로 역할 분리 충족 · 검증자 VERIFIED · commit `c676de3d`. |
-| POC3-05 | Holdings Risk Evidence Foundation v1 | 예상 · 산식 미확정 |
+| POC3-05 | Holdings Risk Evidence Foundation v1 | **COMPLETED · PASS / CLOSED · 검증자 VERIFIED · 완료 revision `b431f9a6`** — **[2026-08-03]** DESIGN_V2 화면 분리로 완료. 보유·자료 관리 4하위(보유 현황·종목 관리·확인 근거·데이터 상태, MenuKey 9→11). 기존 evidence 재사용(신규 산식·API 0). 급락 신호는 BACKLOG. 초안 생성 → OCI 적용·알림 이동. |
 | POC3-06 | Market Position & Data Quality Completeness v1 | 예상 · VIX/freshness/시장 위치 누락 귀속 |
 | POC3-07 | PC Judgment Flow Closeout v1 | 예상 |
 | POC4 | Decision Outcome Ledger v1 | 선행 gate 충족 후 |
@@ -316,7 +316,7 @@
 ### 8-1. 최종 구조 (완료)
 
 - 좌측 메뉴 = **5그룹**: 오늘 확인 / 비교·판단 / 보유·자료 관리 / 승인·운영 / 점검대상.
-- **9개 화면 전환 key(MenuKey) 가 각 1회 귀속** (중복·누락·신규 0). 모듈 로드 시 `assertMenuGroupsCover()` 로 무결성 throw.
+- **화면 전환 key(MenuKey) 가 각 1회 귀속** (중복·누락·신규 0). 모듈 로드 시 `assertMenuGroupsCover()` 로 무결성 throw. POC3-03 시점 9개 → **[2026-08-03] POC3-05 로 11개** (보유·자료 관리 = 보유 현황`holdings`·종목 관리`holdings_manage`·확인 근거`holdings_evidence`·데이터 상태`data_status` 4하위 분리).
 - 첫 진입 = 오늘의 투자 점검. 접힘 토글(저장 X)·active 그룹 자동 펼침·그룹 활성 표시.
 - route·화면 전환 key·기능·데이터 계약·백엔드 = 불변(신규 API·DB·화면 key·백엔드 0건).
 

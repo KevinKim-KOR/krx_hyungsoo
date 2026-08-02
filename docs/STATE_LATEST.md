@@ -1,8 +1,34 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-01 (승인·알림 화면 역할 분리·재배치 → `OCI 적용·알림` · **PASS / CLOSED** · 검증자 VERIFIED · commit `c676de3d`. 통합지도 P-05 제외·폐기 / POC3-04 Lane 삭제 반영)
+최종 업데이트: 2026-08-03 (POC3-05 Holdings Risk Evidence — 보유·자료 관리 4하위 화면 분리 · **PASS / CLOSED** · 검증자 VERIFIED · 완료 revision `b431f9a6`. 사용자 최종 실화면 확인 완료)
 
-## 이번 STEP 요약 (승인·알림 화면 역할 분리 및 재배치 — `OCI 적용·알림`)
+## 이번 STEP 요약 (POC3-05 — 보유·자료 관리 4하위 화면 분리, DESIGN_V2)
+
+**상태**: `PASS / CLOSED` · 완료 revision `b431f9a6` (PLAN_V2 `78d902c2`~`9f49547b` · A `a38893b4` · B `077636e3` · C `d05a122e` · 결과서·FIX r1~r3 `f04ef4c4`~`b431f9a6`).
+
+**검증**: 검증자 **VERIFIED** · tsc 0 · eslint 0 · vitest 126 passed · **사용자 실화면 확인 완료(B·C + FIX 반영 최종 화면 재확인)**.
+
+**성격**: 한 화면(`내가 가진 ETF`)에 누적되던 입력·평가·시장 Evidence·확인 근거를 `보유·자료 관리` 그룹 아래 4개 하위 화면으로 분리. 신규 API·DB·source·factor·threshold·label 0건. 기존 evidence·보유 계약 재사용.
+
+**구조**: A(보존·메뉴 계약 + A-Q5 초안 위치 사실확인) · B(4화면 분리 — 보유 현황`holdings`/종목 관리`holdings_manage`신규/확인 근거`holdings_evidence`신규/데이터 상태`data_status`, MenuKey 9→11) · C(Dashboard·Workbench 목적별 이동 + 초안 생성 OCI 적용·알림으로 이동).
+
+**핵심 결정**: (1) 초안 생성 버튼 Holdings 계열 제거 → OCI 적용·알림 미리보기·수동 점검으로 이동(기존 계약 그대로, 신규 run·승인 계약 0 · A-Q5). (2) 확인 근거 선택 상세에 NAV·괴리율·구성종목·중복률 통합(기존 표시 재사용, topn·급락 제외). (3) `자료 확인 필요` 건수는 오늘 화면·확인 근거 화면이 동일 함수(`buildRiskEvidenceRows`) 공유(AC-14). (4) 급락(falling) 신호는 자동 조회 GET 계약 부재로 BACKLOG.
+
+**FIX 3라운드 정정**: r1(오늘 화면 §7 직접 동선 + NAV partial 상태 구분 §6.4) · r2(tsc TS2322 + 건수 기준 통일 AC-14) · r3(Holdings 성공값 evidence 종속 회귀 §6.4 + 결과서 정합). 각 라운드 tsc·eslint·vitest 재실행 확인.
+
+**구 컴포넌트 처리**: `HoldingsClient`·`HoldingsMarketEvidenceCard` 참조 끊겨 `_orphaned/` 이동(사용자 지시). 오류 없으면 추후 삭제.
+
+**결과서**: `docs/ai_result/POC3/POC3-05_HOLDINGS_RISK_EVIDENCE_FOUNDATION_V1_RESULT.md`.
+
+**설계자 전달 예정 (사용자 지시)**: krx 그리드(테이블) 디자인 완성도 개선 — 다음 개선 후보. 이번 Step 범위 아님.
+
+**미커밋·미배포**: 본 Closeout 갱신분 커밋 후 전체 push 예정(사용자 승인). 무관 untracked 2건(`design/`·`docs.zip`)은 제외.
+
+**다음 게이트**: 설계자가 통합지도 §4 남은 Lane 중 다음 실제 Step 확정. (그리드 개선 검토 포함.)
+
+---
+
+## 직전 STEP 요약 (승인·알림 화면 역할 분리 및 재배치 — `OCI 적용·알림`)
 
 **상태**: `PASS / CLOSED` · 완료 revision `c676de3d` (PLAN `48af5052` · A `13d2cc38` · B `62290a18` · C `c676de3d`).
 
