@@ -1921,3 +1921,31 @@ textarea.decision-textarea {
   font-size: 13px;
   border-style: dashed;
 }
+/* 미리보기·수동 전달 점검 영역 (B구간) — 자동 PUSH 와 시각적으로 구분. */
+.manual-preview-section {
+  margin-top: 20px;
+  border-top: 2px solid var(--border);
+  padding-top: 16px;
+}
+.current-manual-run {
+  margin-top: 12px;
+}
+.current-manual-run-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.current-manual-run-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+/* 현재 run 의 push_kind 라벨 — 종류 안내(승인 대기처럼 보이지 않게). */
+.current-manual-run-kind {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(120, 120, 120, 0.12);
+  border-radius: 4px;
+  padding: 2px 8px;
+}

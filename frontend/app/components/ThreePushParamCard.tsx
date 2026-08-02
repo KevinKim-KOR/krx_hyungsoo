@@ -144,13 +144,20 @@ export default function ThreePushParamCard() {
         현재 운영 기준
       </h3>
       {state ? (
-        <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-          <div>
-            <span style={{ color: "#6b7280" }}>현재 적용 기준: </span>
-            <strong>{state.display_label}</strong>
-          </div>
-          <div>
-            <span style={{ color: "#6b7280" }}>OCI 반영 상태: </span>
+        <div style={{ marginTop: 10 }}>
+          {/* 컴팩트 한 줄 — 현재 적용 기준 · OCI 반영 상태 · 마지막 적용 시각. */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: "6px 16px",
+            }}
+          >
+            <span>
+              <span style={{ color: "#6b7280" }}>현재 적용 기준 </span>
+              <strong>{state.display_label}</strong>
+            </span>
             <span
               style={{
                 display: "inline-block",
@@ -163,12 +170,27 @@ export default function ThreePushParamCard() {
             >
               {statusBadgeText(state.status)}
             </span>
+            <span style={{ color: "#6b7280", fontSize: "0.9em" }}>
+              마지막 적용 {state.applied_at ?? "—"}
+            </span>
           </div>
-          <div>
-            <span style={{ color: "#6b7280" }}>마지막 적용 시각: </span>
-            <span>{state.applied_at ?? "—"}</span>
+          <div style={{ color: "#6b7280", fontSize: "0.85em", marginTop: 4 }}>
+            {state.message}
           </div>
-          <div style={{ color: "#374151", marginTop: 4 }}>{state.message}</div>
+          {state.status === "failed" ? (
+            <div
+              style={{
+                color: "#6b7280",
+                fontSize: "0.82em",
+                marginTop: 6,
+                lineHeight: 1.5,
+              }}
+            >
+              OCI(운영 서버) 연결이 없는 환경에서는 적용이 실패할 수 있습니다.
+              이 경우 기존 적용 기준은 그대로 유지되며, 실제 운영 환경에서 다시
+              적용하면 됩니다. (화면 오류가 아니라 OCI 반영 단계의 실패입니다.)
+            </div>
+          ) : null}
         </div>
       ) : null}
 

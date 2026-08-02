@@ -30,6 +30,20 @@ vi.mock("@/lib/api/threePushParam", () => ({
 }));
 
 import ApprovalTelegramView from "./ApprovalTelegramView";
+import type { Run } from "@/lib/api";
+
+// RunPanel 표시용 최소 run fixture (PENDING — polling 미발생).
+function makeRun(overrides: Partial<Run> = {}): Run {
+  return {
+    run_id: "r-1",
+    asof: "2026-07-24",
+    status: "PENDING_APPROVAL",
+    draft_payload: { note: "미리보기" },
+    message_text: "샘플 미리보기 본문",
+    push_kind: "market_briefing",
+    ...overrides,
+  };
+}
 
 // mount 시 ThreePushParamCard 의 비동기 state 업데이트(fetchThreePushParamState resolve)를
 // flush 해 act() 경고 없이 렌더를 안정화한다.
@@ -91,5 +105,53 @@ describe("OCI 적용·알림 A구간", () => {
   it("내부 route key 'approval' 이 화면 텍스트로 노출되지 않는다", async () => {
     const { container } = await renderView();
     expect(container.textContent ?? "").not.toContain("approval");
+  });
+});
+
+describe("OCI 적용·알림 B구간 — 미리보기·수동 전달 점검", () => {
+  it("미리보기·수동 전달 점검 영역이 자동 PUSH 와 구분됨을 안내한다", async () => {
+    await renderView();
+    expect(screen.getByText("미리보기·수동 전달 점검")).toBeTruthy();
+    // 자동 발송(OCI)이 아니라 PC 수동임을 명시.
+    const sec = screen
+      .getByText("미리보기·수동 전달 점검")
+      .closest(".manual-preview-section");
+    expect(sec?.textContent ?? "").toContain("수동");
+  });
+
+  it("신뢰 가능한 push_kind 의 현재 run 은 '현재 미리보기·수동 처리 상태' 로 종류 라벨과 함께 표시된다", async () => {
+    await renderView(makeRun({ push_kind: "market_briefing" }));
+    expect(screen.getByText("현재 미리보기·수동 처리 상태")).toBeTruthy();
+    // push_kind 라벨(시장 흐름) 이 표시된다 — "승인 대기" 로 표시하지 않는다.
+    const head = screen
+      .getByText("현재 미리보기·수동 처리 상태")
+      .closest(".current-manual-run-head");
+    expect(head?.textContent ?? "").toContain("시장 흐름");
+  });
+
+  it("push_kind=null 인 run 은 미리보기 영역이 아니라 개발·호환 점검에 '종류 확인 불가' 로 표시된다", async () => {
+    await renderView(makeRun({ push_kind: null }));
+    // 미리보기·수동 처리 상태에는 나타나지 않는다.
+    expect(screen.queryByText("현재 미리보기·수동 처리 상태")).toBeNull();
+    // 개발·호환 점검에 "종류 확인 불가" 안내가 있다.
+    expect(screen.getByText(/종류 확인 불가/)).toBeTruthy();
+  });
+
+  it("자동 발송 이력처럼 보이는 표현이 없다 (발송 완료 이력·자동 발송됨 등)", async () => {
+    const { container } = await renderView(makeRun());
+    const text = container.textContent ?? "";
+    // 자동 발송 이력을 읽는 계약이 없으므로 그런 표현을 만들지 않는다.
+    expect(text).not.toContain("자동 발송 이력");
+    expect(text).not.toContain("발송 완료 이력");
+  });
+
+  it("개발·호환 점검은 details(기본 접힘) 안에 있다", async () => {
+    const { container } = await renderView();
+    const summary = screen.getByText("개발·호환 점검 — 일반 운영 기능 아님");
+    const details = summary.closest("details");
+    expect(details).toBeTruthy();
+    // 기본 접힘 — open 속성 없음.
+    expect(details?.hasAttribute("open")).toBe(false);
+    void container;
   });
 });
