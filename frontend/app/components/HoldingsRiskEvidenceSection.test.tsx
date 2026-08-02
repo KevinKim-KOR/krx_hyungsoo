@@ -23,6 +23,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import HoldingsRiskEvidenceSection from "./HoldingsRiskEvidenceSection";
+import type { HoldingsMarketEvidenceResponse } from "@/lib/api";
 
 function enrichedResult() {
   return {
@@ -37,7 +38,7 @@ function enrichedResult() {
     ],
   };
 }
-function evidenceResult() {
+function evidenceResult(): HoldingsMarketEvidenceResponse {
   return {
     status: "ok", asof: "2026-07-24", holdings_asof: "2026-07-24", market_asof: "2026-07-24",
     market_context: null,
@@ -145,8 +146,12 @@ describe("보유 ETF 확인 근거 (POC3-05 B)", () => {
     };
     fetchHoldingsMarketEvidence.mockResolvedValue(ev);
     await renderSection();
-    // 행 선택 → 선택 상세 렌더.
-    fireEvent.click(screen.getByText("KODEX200"));
+    // 행 선택 → 선택 상세 렌더. PriceChart lazy 조회 state 업데이트까지 act 로 감싼다.
+    await act(async () => {
+      fireEvent.click(screen.getByText("KODEX200"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     const text = document.body.textContent ?? "";
     // partial 상태가 정상처럼 숨겨지지 않는다.
     expect(text).toContain("부분 자료");

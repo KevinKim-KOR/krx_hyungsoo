@@ -592,4 +592,51 @@ describe("TodayInvestmentCheckView", () => {
     fireEvent.click(within(judgment).getByRole("button", { name: "확인 근거" }));
     expect(onNavigate).toHaveBeenCalledWith("holdings_evidence");
   });
+
+  it("AC-14: 자료 확인 필요 건수가 '확인 근거' 화면과 동일 판정(buildRiskEvidenceRows)을 쓴다", async () => {
+    // short_term_momentum.status=partial → computeNeedCheck=true 이지만 backend
+    // evidence_unavailable_count 는 0. 오늘 화면이 backend count 를 쓰면 0건,
+    // 확인 근거와 같은 판정(computeNeedCheck)을 쓰면 1건. 후자여야 한다(화면 간 정합).
+    fetchEnrichedHoldings.mockResolvedValue({
+      items: [
+        {
+          ticker: "069500", name: "KODEX200", quantity: 10, avg_buy_price: 1000,
+          invested_amount: 10000, current_price: 1100, price_asof: "2026-07-24",
+          price_source: "naver", eval_amount: 11000, pnl_amount: 1000,
+          pnl_rate_pct: 10, buy_weight_pct: 50, market_weight_pct: 50,
+          price_missing: false, calc_missing: false,
+        },
+      ],
+    });
+    fetchHoldingsMarketEvidence.mockResolvedValue({
+      status: "ok", asof: "2026-07-24", holdings_asof: "2026-07-24", market_asof: "2026-07-24",
+      market_context: null,
+      summary: {
+        total_holdings_count: 1, matched_topn_count: 0, not_in_current_topn_count: 1,
+        evidence_unavailable_count: 0, constituents_available_count: 1,
+        constituents_unavailable_count: 0, nav_discount_unavailable_count: 0,
+      },
+      holdings: [
+        {
+          ticker: "069500", name: "KODEX200",
+          holding: { quantity: 10, avg_buy_price: 1000, evaluation_amount: 11000, pnl_rate_pct: 10 },
+          topn_match: { status: "unavailable", rank: null, basis: null, candidate_name: null },
+          returns: { status: "ok", one_month_return_pct: 1, three_month_return_pct: 2 },
+          excess_return: { status: "ok", vs_kodex200_1m_pctp: 1, vs_kodex200_3m_pctp: 2 },
+          short_term_momentum: {
+            status: "partial", return_5d_pct: -1, return_10d_pct: null, return_20d_pct: null,
+            excess_vs_kodex200_5d_pctp: null, excess_vs_kodex200_10d_pctp: null, excess_vs_kodex200_20d_pctp: null,
+          },
+          constituents_overlap: { status: "ok", overlap_with_market_core: [] },
+          nav_discount: { status: "ok", source: null, asof: null, nav: null, market_price: null, discount_rate_pct: null, flag: null, message: null },
+          evidence_notes: [],
+        },
+      ],
+      warnings: [],
+    });
+    await renderView();
+    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    // computeNeedCheck 기준 1건(partial). backend count(0)를 썼다면 이 문구가 없어야 한다.
+    expect(within(judgment).getByText(/자료 확인 필요 1건/)).toBeInTheDocument();
+  });
 });

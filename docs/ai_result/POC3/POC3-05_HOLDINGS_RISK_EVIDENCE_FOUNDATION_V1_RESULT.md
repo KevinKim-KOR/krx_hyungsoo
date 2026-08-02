@@ -10,7 +10,7 @@
   `a38893b4`(A구간) · **`077636e3`(B구간)** · **`d05a122e`(C구간)** · `f04ef4c4`(결과서 초판).
   검증자 REJECTED 후 FIX 라운드 커밋은 재보고 시 실측 추가.
 * 레드팀: PASS · 별도 revision 없음 (사용자 확인 2026-08-02)
-* 자체 검수(최종): `npx tsc --noEmit` 0 · `npm run lint` 0 · `npx vitest run` **124 passed**
+* 자체 검수(최종): `npx tsc --noEmit` 0 · `npm run lint` 0 · `npx vitest run` **125 passed** (act 경고 0)
 * 사용자 실화면 확인: **B 통과** ("잘 나눠졌네요") · **C 통과** ("화면 쪼개진 것 말고는 크게 와닿는 것 없어요")
 
 ---
@@ -89,7 +89,7 @@
 | 11 | PASS | `lowestFiveDayRows`(helpers.ts) = status ok & 5일 유효만 로컬 오름차순. DB·cache·rank·signal 저장 0. |
 | 12 | PASS | 확인 근거 계열에 `topn_match`·`falling_candidate` 사용 0(helpers·Section 은 comment 만, 표 컬럼 없음). |
 | 13 | PASS | Dashboard 보유 카드: `보유 현황 열기`→holdings / `확인 근거`→holdings_evidence. evidence 예외→holdings_evidence(§7). **(FIX)** `오늘의 투자 점검` 판단 큐도 `개발 중` 자리표시자 제거 후 보유 현황·확인 근거 직접 이동 버튼 추가(§7) — TodayInvestmentCheckView.test 커버. |
-| 14 | PASS | Workbench·확인 근거·Dashboard 모두 `fetchEnrichedHoldings`/`fetchHoldingsMarketEvidence` + `aggregateHoldingsByTicker` 공유. 화면별 파생 산식 없음. |
+| 14 | PASS | Workbench·확인 근거·Dashboard 모두 `fetchEnrichedHoldings`/`fetchHoldingsMarketEvidence` + `aggregateHoldingsByTicker` 공유. **(FIX r2)** `오늘의 투자 점검` 판단 큐도 backend `evidence_unavailable_count` 대신 확인 근거와 동일한 `buildRiskEvidenceRows(...).coverage` 를 써 `자료 확인 필요` 건수를 통일 — 화면 간 정합 테스트 커버. |
 | 15 | PASS | 확인 근거 목록에 ticker별 N+1 시계열 호출 없음. 선택 상세에서만 `PriceChart`(lazy) 1건. |
 | 16 | PASS | `generateDraftFromHoldings` 운영 호출처 = ManualPreviewSection 단 1곳. Holdings 계열 0. |
 | 17 | PASS | 신규 API·DB·source·factor·formula·threshold·scheduler·OCI·Telegram 변경 0. §3 의존성 0. |
@@ -106,6 +106,11 @@ AC 1~21 **전부 PASS**.
 - **#1 §7 직접 동선 누락 → 수정**: `TodayInvestmentCheckView` 판단 큐의 `내가 가진 ETF 중 확인할 종목 = 개발 중` 자리표시자를 제거하고, 보유 종목 수·자료 확인 필요 건수 요약 + `보유 현황`(holdings)·`확인 근거`(holdings_evidence) 직접 이동 버튼으로 교체. 테스트 추가.
 - **#2 NAV partial 정상 표시 → 수정**: `NavConstituentsDetail` 이 `partial` 을 `ok` 와 합쳐 표시하던 것을 §6.4대로 구분(값은 표시하되 "부분 자료" 상태 + `message` 노출). 테스트 추가.
 - **#3 결과서 누락 → 정정**: 변경 파일에 문서 7경로 추가, 완료 커밋 10개 전체 기재(위 상단).
+
+### FIX 라운드 2 (검증자 REJECTED 2건 반영, 2026-08-02)
+- **#1 tsc 오보고 → 정정**: FIX r1 에서 추가한 NAV partial 테스트 fixture 가 `nav_discount` 전 필드 `null` 로 추론돼 재대입 시 TS2322 5건 발생. `evidenceResult()` 반환 타입을 `HoldingsMarketEvidenceResponse` 로 명시해 해소. **tsc 재실행하지 않고 이전 통과 결과를 결과서에 적은 것이 오보고 원인** — 이후 FIX 커밋마다 tsc 재실행 확인.
+- **#2 `자료 확인 필요` 건수 화면 간 불일치(AC-14) → 수정**: `오늘의 투자 점검` 판단 큐가 backend `evidence_unavailable_count`(좁은 기준)를 쓰고 `확인 근거` 화면은 `computeNeedCheck`(넓은 기준)를 써 같은 라벨의 건수가 달라질 수 있었음. 오늘 화면을 **`buildRiskEvidenceRows(...).coverage`(확인 근거와 동일 함수) 재사용**으로 통일. 보유 종목 수도 `coverage.total`(집계 기준) 사용. 화면 간 정합 테스트 추가.
+- **B-6 act 경고 → 해소**: NAV partial 테스트의 선택 클릭을 `act(async …)` 로 감쌈. `act(...)` 경고 0 확인.
 
 ### 상시
 

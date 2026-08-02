@@ -40,6 +40,7 @@ import {
   DASH_KEY_NAV,
 } from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
+import { buildRiskEvidenceRows } from "./holdings_risk_evidence/helpers";
 import KospiChart from "./today/KospiChart";
 import {
   fmtKstDate,
@@ -407,14 +408,15 @@ function JudgmentQueueSection({
   onNavigate: (key: MenuKey) => void;
 }) {
   // 보유 종목 수(고유 ticker) 와 자료 확인 필요 건수 — 직접 동선 요약(§7·AC-13).
-  const holdCount =
-    holdings.phase === "success"
-      ? new Set(holdings.data.items.map((it) => it.ticker)).size
+  // 자료 확인 필요 건수는 "확인 근거" 화면과 동일 판정(buildRiskEvidenceRows·computeNeedCheck)
+  // 을 재사용한다. backend evidence_unavailable_count 는 판정 기준이 좁아 화면 간 건수가
+  // 달라지므로 사용하지 않는다(AC-14 동일 데이터 동일 해석).
+  const built =
+    holdings.phase === "success" && evidence.phase === "success"
+      ? buildRiskEvidenceRows(holdings.data.items, evidence.data.holdings)
       : null;
-  const needCheckCount =
-    evidence.phase === "success"
-      ? evidence.data.summary.evidence_unavailable_count
-      : null;
+  const holdCount = built ? built.coverage.total : null;
+  const needCheckCount = built ? built.coverage.need_check : null;
   const candCount =
     market.phase === "success" && market.data.status === "ok"
       ? market.data.candidates.length
@@ -461,7 +463,7 @@ function JudgmentQueueSection({
           )}
           {needCheckCount != null && needCheckCount > 0 ? (
             <span className="tc-muted tc-small">
-              {" "}· 자료 확인 필요 {needCheckCount}건
+              {` · 자료 확인 필요 ${needCheckCount}건`}
             </span>
           ) : null}
         </div>
