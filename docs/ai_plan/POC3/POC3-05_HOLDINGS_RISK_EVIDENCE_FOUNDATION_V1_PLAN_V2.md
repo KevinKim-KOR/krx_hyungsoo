@@ -147,8 +147,34 @@
 ## 8. 설계자 복귀 조건 감시 (설계서 §11)
 
 §11 1~8 중 하나라도 확인되면 자체 판단 없이 설계자 복귀. 특히:
-- (5) 초안 이동에 신규 run 종류·승인·외부 발송 변경 필요 시(A-Q5 실측 결과) → 즉시 복귀.
+- (5) 초안 이동에 신규 run 종류·승인·외부 발송 변경 필요 시(A-Q5 실측 결과) → 즉시 복귀. **A-Q5 실측 결과 미해당(§9 참조).**
 - (3) ticker 통합 의미가 `aggregateHoldingsByTicker`와 달라져야 할 때 → 복귀. (현재 §3.1 실측상 동일 의미 재사용이라 미해당.)
 - (7) 화면 분리 과정에서 보유 입력·저장 의미가 달라질 때 → 복귀.
+
+---
+
+## 9. A구간 실측 결과 (2026-08-02 · 코딩 재개 전 확정)
+
+### 9.1 A-Q5 — 수동 초안 기능 위치 사실확인 [완료]
+
+`generateDraftFromHoldings` **직접 호출 경로 grep 결과(앱 소스)**: 유일 호출처 = `frontend/app/components/HoldingsClient.tsx:207`. 다른 컴포넌트 호출 0건(그 외 hit은 문서·`holdings.ts:32` 정의부·`runApproval.ts:66` 주석뿐).
+
+POC3-04 결과물 `OCI 적용·알림 > 미리보기·수동 전달 점검`(`approval/ManualPreviewSection.tsx`) 실측:
+- 이 영역은 `ThreePushDraftCard`(PUSH-1/PUSH-3 초안 생성) + 현재 run(RunPanel)을 호스트.
+- `ThreePushDraftCard`(`frontend/app/components/ThreePushDraftCard.tsx` L3~14·L69~74)가 주석·화면 문구로 **"PUSH-2 보유 관찰 브리핑은 Holdings 화면의 '초안 생성' 버튼이 담당"**이라 명시 — 즉 **PUSH-2(=`generateDraftFromHoldings`)와 동일한 기능은 이 영역에 아직 없다.**
+- 단, `ManualPreviewSection`은 이미 run 생성 카드를 `onDraftCreated=setRun` 계약으로 호스트하고, 생성된 run은 `RunPanel`의 기존 승인/거절/발송 계약으로 처리됨.
+
+**판정 (§6 A구간 3분기 중):** **"동일 기능은 없지만 기존 계약(`generateDraftFromHoldings` + run→setRun) 그대로 이동 가능"** → **중복 없이 C구간에서 위치만 이동.**
+- 신규 run 종류·승인·발송 계약 **불필요** → 설계자 복귀 조건 §11-5 **미해당.**
+- 이동 방식(C구간): Holdings 계열에서 `저장된 보유 종목으로 초안 만들기` 버튼·`onGenerate` 제거하고, `미리보기·수동 전달 점검`에 동일 실행(`generateDraftFromHoldings` → setRun)을 PUSH-2 진입점으로 추가. `ThreePushDraftCard` 문구의 "Holdings 화면이 담당" 서술도 이동에 맞춰 정정.
+- Q4(자동 전환 불필요) 확정과 정합: 이동 후 이미 그 화면에 있으므로 `MainPanel.handleDraftCreated`의 초안→approval 자동 전환은 불필요해짐.
+
+### 9.2 보존 목록·메뉴 귀속·이동 매핑 [확정]
+
+- **보존·재사용 컴포넌트** = §2·§3 표 그대로. 미커밋 B구간 구현물(helpers·HoldingsRiskEvidenceSection·hre CSS) 삭제·되돌림 없음.
+- **메뉴 귀속(11 key)** = §4.1. `manage` 그룹 `보유 현황`·`종목 관리`·`holdings_manage`·`holdings_evidence`·`data_status` 순, `ALL_MENU_KEYS`에 2 key 추가 → `assertMenuGroupsCover` 11개 자동 검증.
+- **목적별 이동 매핑** = §4.5 + §7(설계서). 평가 연결→`보유 현황`, 확인 대상 연결→`확인 근거`(C구간 적용).
+
+A구간 사실확인·계약 확정 완료 → B구간(화면 분리) 착수 가능.
 
 문서 끝.
