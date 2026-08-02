@@ -18,7 +18,7 @@
 
 ## 0. 결론
 
-> **[2026-08-01 갱신] POC3-03 Navigation Information Architecture v1 = COMPLETED · PASS / CLOSED · commit `bbd30a98`** (검증자 VERIFIED · 최종 구조 §8-1). 다음 실제 Step 은 설계자가 §4 예상 Lane(POC3-04 Operations Panel 또는 POC3-05 등) 중 하나를 확정한다. 아래는 착수 당시 "다음 Step = POC3-03" 고정 판단의 이력이다.
+> **[2026-08-01 갱신] POC3-03 Navigation Information Architecture v1 = COMPLETED · PASS / CLOSED · commit `bbd30a98`** (검증자 VERIFIED · 최종 구조 §8-1). **이후 승인·알림 화면 역할 분리·재배치(`OCI 적용·알림`) 완료 · 검증자 VERIFIED · commit `c676de3d` → P-05 Operations Panel 은 제외·폐기, POC3-04 Lane 삭제.** 다음 실제 Step 은 설계자가 §4 남은 Lane(POC3-05 등) 중 하나를 확정한다. 아래는 착수 당시 "다음 Step = POC3-03" 고정 판단의 이력이다.
 
 당시(착수 전) 다음 실제 개발 Step 은 아래 하나로 고정했다.
 
@@ -94,7 +94,7 @@
 | P-02 | Judgment Workbench + 선택 가격 차트 | 완료 | benchmark 차트는 P-16으로 분리 |
 | P-03 | 오늘의 투자 점검 대시보드 | 완료 | 결과서·STATE 문서 상태만 정정 |
 | P-04 | 좌측 메뉴 과업별 1차 재편 | **COMPLETED** | POC3-03 Navigation Information Architecture v1 · 검증자 VERIFIED · commit `bbd30a98`. route·기능·API 불변. 최종 구조 = 5그룹·9개 화면 1회 귀속(§8-1). 사용자 지시 변경 2건 설계자 승인(§8-2) |
-| P-05 | Operations Panel 통합 | 확정 개발 | POC3-03 PASS 이후 예상. 판단 초안/승인, OCI, 정보 PUSH를 역할별 분리 |
+| P-05 | Operations Panel 통합 | **제외·폐기** | **[2026-08-01]** 독립 Operations Panel 을 신설하지 않는다. 기존 승인·알림 화면 재배치(`OCI 적용·알림`)로 역할 분리를 충족 — 판단(정보 PUSH 안내)/OCI 적용/미리보기·수동 점검을 역할별로 정리(commit `c676de3d`). 폐기 사유: 기존 화면 재배치로 충족 가능한 정리 요구를 신규 화면으로 확대한 오류. |
 | P-06 | 내가 가진 ETF의 위험 신호와 구체 이유 | 확정 개발 | P-05 이후 별도 evidence foundation. Q6 산식 선확정 금지 |
 | P-07 | 코스피 흐름 지속 거래일 수 | 확정 개발 | 기존 시계열·기존 국면 계약으로 제공 가능한지 사실 확인 후 |
 | P-08 | 최근 고점 대비 현재 위치 | 확정 개발 | 기존 KOSPI 시계열 재사용 가능성 확인 후 |
@@ -107,7 +107,7 @@
 | P-15 | VIX stale 결함 | 확정 개발 | POC3 Closeout 전 적재 정상화 또는 현재 판단 영역 제외 중 하나를 별도 Step에서 판정 |
 | P-16 | Workbench benchmark 비교 시계열 | 조건부 보류 | 표의 기존 초과수익만으로 실제 판단이 막힌다는 사용자 보고 시 |
 | P-17 | Dashboard 캐시 무효화 실제 컴포넌트 통합 테스트 | 확정 개발 | POC3 Flow Closeout에 포함. 신규 기능 아님 |
-| P-18 | 상태→판정→실행 전체 동선 Closeout | 확정 개발 | P-04, P-05 및 Closeout 필수 데이터 결함 처리 후 |
+| P-18 | 상태→판정→실행 전체 동선 Closeout | 확정 개발 | P-04(완료)·승인·알림 재배치(완료, P-05 폐기 대체) 이후 Closeout 필수 데이터 결함 처리 후 |
 | P-19 | Decision Outcome Ledger | 후속 개발 | First Real Decision Cycle formal PASS와 실제 판단 1건 기록 후 |
 | P-20 | ML·백테스트·튜닝 | 후속 개발 | P-19 이후. factor·label·threshold는 해당 Step에서만 확정 |
 
@@ -120,14 +120,14 @@
 | 예상 Lane | 목표 | 상태 |
 |---|---|---|
 | POC3-03 | Navigation Information Architecture v1 | **COMPLETED · PASS / CLOSED · 검증자 VERIFIED · commit `bbd30a98`** |
-| POC3-04 | Operations Panel Consolidation v1 | 예상 |
+| ~~POC3-04 Operations Panel Consolidation v1~~ | **삭제** | **[2026-08-01]** 독립 Operations Panel Lane 삭제. 승인·알림 화면 재배치(`OCI 적용·알림`)로 역할 분리 충족 · 검증자 VERIFIED · commit `c676de3d`. |
 | POC3-05 | Holdings Risk Evidence Foundation v1 | 예상 · 산식 미확정 |
 | POC3-06 | Market Position & Data Quality Completeness v1 | 예상 · VIX/freshness/시장 위치 누락 귀속 |
 | POC3-07 | PC Judgment Flow Closeout v1 | 예상 |
 | POC4 | Decision Outcome Ledger v1 | 선행 gate 충족 후 |
 | POC5 | Universe·ML·Backtest·Tuning | Ledger evidence 이후 |
 
-POC3-03 종료 후 사용자가 보유 위험을 더 급한 차단 결함으로 판정하면 POC3-05를 POC3-04보다 먼저 열 수 있다. 순서 변경은 새 사용자 실화면·운영 evidence를 근거로 기록한다.
+**[2026-08-01]** POC3-04(독립 Operations Panel)는 삭제됐다 — "상태→판정→실행" 은 화면 3개를 새로 만드는 것이 아니라 기존 화면의 **역할·배치 원칙**이며, 승인·알림 화면 정돈으로 귀속됐다(P-05·B-072 참조). POC3-03 종료 후 다음 실제 Step 은 설계자가 남은 Lane(POC3-05 등) 중 하나를 사용자 실화면·운영 evidence 로 확정한다.
 
 ---
 
@@ -251,7 +251,7 @@ POC3-03 종료 후 사용자가 보유 위험을 더 급한 차단 결함으로 
 | B-069 | OCI handoff artifact 고도화 | 완료 | PARAM DB·published evidence·runtime 계약으로 대체 |
 | B-070 | 알림 5xx·429 재시도 | 조건부 보류 | 실패 빈도 증가 시 |
 | B-071 | OCI timeout·orphan | 조건부 보류 | inbox 적체 실측 시 |
-| B-072 | 전달 결과 대시보드 | 확정 개발 | POC3-04 Operations Panel에 흡수 |
+| B-072 | 전달 결과 대시보드 | **부분 흡수 · 잔여 조건부 보류** | **[2026-08-01]** POC3-04 삭제. 기존 승인·알림의 "현재 미리보기·수동 처리 상태" 에 **조회 가능한 범위만** 흡수(commit `c676de3d`). OCI 자동 발송 이력 조회는 신규 API 필요 → 조건부 보류(설계 §9: 실제 Telegram 누락·실패 & 기존 로그로 원인 파악 어려울 때 재검토). |
 | B-073 | OCI holdings source 부재 | 완료 | Holdings evidence publication·runtime 운영 완료 |
 | B-074 | runtime source 확장 | 조건부 보류 | source별 운영 가치가 확인될 때만 |
 | B-075 | 운영 결과·snapshot·변화 기록 | 완료 | runtime history·sent registry 구축. 판단 성과는 B-038로 분리 |
@@ -300,7 +300,7 @@ POC3-03 종료 후 사용자가 보유 위험을 더 급한 차단 결함으로 
 | Holdings Risk Evidence | P-06, B-003, B-004, B-006, B-037, F-07 |
 | Market Position Completeness | P-07, P-08, P-09, P-10 |
 | Data Quality & Freshness | P-14, P-15, B-009~B-024 중 트리거 도달 항목 |
-| Operations Panel | P-05, B-072 |
+| ~~Operations Panel (P-05, B-072)~~ | **[2026-08-01] 삭제** — 독립 Operations Panel 폐기. 승인·알림 화면 재배치(`OCI 적용·알림`)로 역할 분리 충족. B-072 는 조회 가능 범위만 흡수(잔여 조건부 보류). |
 | Decision Outcome Ledger | P-19, B-038, B-103 |
 | ML·Backtest·Tuning | P-20, B-001, B-007, B-082~B-086, B-092, B-097, B-104 |
 | Dashboard cache regression | P-17, B-105 |

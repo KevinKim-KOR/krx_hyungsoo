@@ -5,7 +5,7 @@
 * 대응 개발 PLAN: `docs/ai_plan/POC3/POC3-APPROVAL_ALERT_ROLE_SEPARATION_V1_PLAN_V1.md`
 * 작성일: 2026-08-01
 * 기준 revision: `041a8c2a` → 결과: PLAN `48af5052` · A `13d2cc38` · B `62290a18` · C(본 커밋 예정)
-* 상태: **IMPLEMENTED · A·B·C 사용자 실화면 확인 완료** — 검증자 전체 검증 대기(설계서 §7: C 통과 후 전체 검증). 개발자 PASS/DONE 선언 아님.
+* 상태: **VERIFIED / CLOSED** — 검증자 전체 검증 VERIFIED + A·B·C 사용자 실화면 확인 완료. 통합지도·STATE Closeout 정정 반영(별도 커밋). 다음 게이트 = 설계자가 남은 §4 Lane 중 다음 Step 확정.
 * 성격: 기존 화면(approval key·ApprovalTelegramView) 재배치. 신규 화면·메뉴·route·API·DB·backend 0건. 독립 Operations Panel 제외·폐기.
 
 ---
@@ -96,9 +96,12 @@
 
 ---
 
-## 6. 통합지도·STATE 정정 (미반영 — 최종 Closeout 예정)
+## 6. 통합지도·STATE 정정 (검증 PASS 후 Closeout — 반영 완료)
 
-설계서 §10·§1에 따라 통합지도(P-04 완료·P-05 제외·폐기·POC3-04 Lane 삭제 등)·STATE 정정은 **본 작업의 착수 선행조건이 아니며 최종 Closeout 에서 반영**한다. 검증자 전체 검증 PASS 후 별도 처리.
+검증자 VERIFIED 후 설계서 §10·§1대로 Closeout 반영 완료:
+- 통합지도 V2: P-05 Operations Panel **제외·폐기** · POC3-04 Operations Panel Lane **삭제** · B-072 조회 가능 범위만 흡수(잔여 조건부 보류) · Operations Panel 통합키 삭제 · §0·P-18 정정.
+- `docs/STATE_LATEST.md`: 이번 STEP(승인·알림 역할분리 = `OCI 적용·알림`) PASS/CLOSED 블록 추가, POC3-03 → 직전 강등.
+- `docs/handoff/STATE_LATEST.md`: redirect 유지, 미수정.
 
 ---
 

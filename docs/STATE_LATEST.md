@@ -1,8 +1,32 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-01 (POC3-03 Navigation Information Architecture v1 — 좌측 메뉴 과업별 그룹 재편 · **PASS / CLOSED** · 검증자 VERIFIED · commit `bbd30a98`. 통합지도 P-04 COMPLETED 반영)
+최종 업데이트: 2026-08-01 (승인·알림 화면 역할 분리·재배치 → `OCI 적용·알림` · **PASS / CLOSED** · 검증자 VERIFIED · commit `c676de3d`. 통합지도 P-05 제외·폐기 / POC3-04 Lane 삭제 반영)
 
-## 이번 STEP 요약 (POC3-03 Navigation Information Architecture v1)
+## 이번 STEP 요약 (승인·알림 화면 역할 분리 및 재배치 — `OCI 적용·알림`)
+
+**상태**: `PASS / CLOSED` · 완료 revision `c676de3d` (PLAN `48af5052` · A `13d2cc38` · B `62290a18` · C `c676de3d`).
+
+**검증**: 검증자 **VERIFIED** · tsc 0 · eslint 0 · vitest 108 passed · **사용자 실화면 확인 완료(A·B·C)**.
+
+**성격**: 기존 승인·알림 화면 재배치. **독립 Operations Panel 제외·폐기.** 신규 화면·메뉴·route·API·DB·backend·화면 전환 key = 0건.
+
+**핵심 (Q1-c 정정)**: `push_kind` 3종은 모두 정보 PUSH · 현재 계약에 "투자 판단 초안" 식별 필드 없음 → 판단 초안 영역·승인 대기 표현·자리표시자 미생성. 화면 명칭 `OCI 적용·알림`(내부 `approval` route key 유지).
+
+**구조**: A(역할 정리 — OCI 적용 주작업 + 정보 PUSH 3카드 안내) · B(미리보기·수동 전달 점검 — RunPanel·ThreePushDraftCard, push_kind 라벨, null은 개발·호환 점검) · C(UniverseRefreshPanel → 요즘 잘 오르는 ETF 이동, 정확히 1회).
+
+**사용자 지시 UI 개선 2건**: (1) "현재 운영 기준" 세로 4줄 → 컴팩트 한 줄. (2) OCI 적용 실패 시 "로컬/OCI 미연결 환경 실패" 안내. 계약·실패 보호 불변.
+
+**통합지도 정정(설계서 §10 · 본 Closeout)**: P-04 완료 / **P-05 Operations Panel 제외·폐기** / **POC3-04 Operations Panel Lane 삭제** / B-072 조회 가능 범위만 흡수(잔여 조건부 보류) / "상태→판정→실행" = 화면 3개 신설 아닌 역할·배치 원칙.
+
+**결과서**: `docs/ai_result/POC3/POC3-APPROVAL_ALERT_ROLE_SEPARATION_V1_RESULT.md`.
+
+**미커밋·미배포**: 없음(개발 4커밋 push 완료). 본 Closeout 정정분(통합지도 V2 + 본 STATE)은 별도 커밋으로 push 예정.
+
+**다음 게이트**: 설계자가 남은 §4 Lane(POC3-05 Holdings Risk Evidence 등) 중 다음 실제 Step 하나를 확정.
+
+---
+
+## 직전 STEP 요약 (POC3-03 Navigation Information Architecture v1)
 
 **상태**: `PASS / CLOSED` · 완료 revision `bbd30a98`.
 
@@ -24,7 +48,7 @@
 
 ---
 
-## 직전 STEP 요약 (POC3-REF-02 Canonical Alignment Application)
+## 이전 STEP 요약 (POC3-REF-02 Canonical Alignment Application)
 
 **상태**: `VERIFIED / CLOSED` · 검증자 최종 VERIFIED + 설계자 최종 판정(2026-08-01)으로 마감. commit `35d718f0`(canonical 반영)·`e9b88c7b`(결과서) push 완료.
 
