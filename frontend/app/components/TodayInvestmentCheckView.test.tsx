@@ -55,7 +55,17 @@ function marketOk(overrides: Record<string, unknown> = {}) {
         ma20_distance_pct: -5.56,
         ma60_distance_pct: -10.53,
       },
-      kospi: {},
+      kospi: {
+        status: "ok",
+        return_1m_pct: -3.0,
+        return_3m_pct: -8.0,
+        // POC3-06 §6.2 실제값.
+        daily_return_pct: -1.5,
+        return_1y_pct: 12.3,
+        high_52w_gap_pct: -7.4,
+        as_of_date: "2026-07-24",
+      },
+      regime_streak: { regime_code: "bear", streak_days: 12, at_least: false },
       primary_benchmark: "KODEX200",
       regime_reasons: [],
     },
@@ -210,19 +220,28 @@ describe("TodayInvestmentCheckView", () => {
     expect(screen.getByText(/KODEX200 MA60 대비/)).toBeInTheDocument();
   });
 
-  it("AC-9 정직 표시: 코스피 상세 지표 board 에 안 되는 항목이 모두 기록된다", async () => {
+  it("POC3-06 §3.2: KOSPI 일간·1년·고점 대비·지속일이 실제값으로 표시된다", async () => {
     await renderView();
-    // 코스피 상세 지표 board 안에서 확인 (InDevelopment board 와 중복되므로 scope).
+    const headline = screen.getByLabelText("KOSPI 현재 위치");
+    const text = headline.textContent ?? "";
+    // 일간·1년·최근 1년 고점 대비 실제값 (개발 중 자리표시자 아님).
+    expect(text).toContain("일간");
+    expect(text).toContain("최근 1년 고점 대비");
+    // 흐름 지속 거래일 수 실제값.
+    expect(text).toContain("12거래일째");
+    // 개발 중 자리표시자는 headline 에 없다.
+    expect(text).not.toContain("개발 중");
+  });
+
+  it("AC-13: 거래량·공격방어·SuperTrend 는 이번 단계 미도입으로 남는다", async () => {
+    await renderView();
     const detail = screen.getByLabelText("코스피 상세 (개발 중)");
-    // 개발 중 부류.
-    expect(within(detail).getByText("흐름 지속 거래일 수")).toBeInTheDocument();
-    expect(within(detail).getByText("최근 고점 대비 위치")).toBeInTheDocument();
-    expect(within(detail).getByText("일간 등락률")).toBeInTheDocument();
-    expect(within(detail).getByText("1년 수익률")).toBeInTheDocument();
-    // 이번 단계 미도입 부류 (설계 §11 금지 항목 포함).
+    // 이번 단계 미도입 부류만 남는다 (개발 중 4항목 제거됨).
     expect(within(detail).getByText("거래량 흐름")).toBeInTheDocument();
     expect(within(detail).getByText("공격·방어 비중")).toBeInTheDocument();
     expect(within(detail).getByText(/SuperTrend/)).toBeInTheDocument();
+    expect(within(detail).queryByText("일간 등락률")).toBeNull();
+    expect(within(detail).queryByText("1년 수익률")).toBeNull();
     // 거래량 미저장 사유는 hover 툴팁(title)로 제공.
     const volInfo = within(detail).getByRole("note", {
       name: /거래량 자료를 저장하지 않아/,

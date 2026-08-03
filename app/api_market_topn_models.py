@@ -159,6 +159,22 @@ class MarketContextKospi(BaseModel):
     return_60d_pct: Optional[float] = None
     return_1m_pct: Optional[float] = None
     return_3m_pct: Optional[float] = None
+    # 2026-08-03 POC3-06 §6.2 — KOSPI 관찰값 additive 확장. 값은 공통 composer 에서
+    # 1회 계산(설계자 Q1). daily/1y 는 수익률, high_52w_gap_pct 는 "고점 대비 음수%"
+    # (고점이면 0). 비율(%) 표기 아님. 계산 불가 시 None(자료 없음).
+    daily_return_pct: Optional[float] = None
+    return_1y_pct: Optional[float] = None
+    high_52w_gap_pct: Optional[float] = None
+    as_of_date: Optional[str] = None
+
+
+class MarketContextRegimeStreak(BaseModel):
+    # 2026-08-03 POC3-06 §6.2 — 현재 국면 라벨이 이어진 거래일 수(설계자 Q4).
+    # 기존 국면 규칙을 과거 KODEX200 시계열에 재적용해 역산. 계산 불가 시 None.
+    # at_least=True 면 저장 이력 시작점까지 같은 라벨(= N거래일 이상).
+    regime_code: Optional[str] = None
+    streak_days: Optional[int] = None
+    at_least: bool = False
 
 
 class MarketContextResponse(BaseModel):
@@ -171,6 +187,8 @@ class MarketContextResponse(BaseModel):
     regime_reasons: list[str] = []
     kodex200: MarketContextKodex200
     kospi: MarketContextKospi
+    # 2026-08-03 POC3-06 — 국면 지속 거래일 수 (additive, 기존 필드 불변).
+    regime_streak: Optional[MarketContextRegimeStreak] = None
     warnings: list[str] = []
 
 

@@ -231,16 +231,35 @@ function KospiHeadline({ market }: { market: QueryState<MarketTopNResponse> }) {
         </div>
 
         <div className="tc-headline-stats">
-          {/* 코스피 기간 수익률 (저장 KOSPI 시계열 기반 · 기존 응답 재사용). */}
+          {/* 코스피 수익률·위치 (저장 KOSPI 시계열 기반 · POC3-06 §6.2 실제값).
+              일간·1년·최근 1년 고점 대비를 실제 저장값으로 표시(개발 중 자리표시 제거). */}
           <div className="tc-stat-block">
-            <div className="tc-label">코스피 기간 수익률</div>
+            <div className="tc-label">코스피 수익률·위치</div>
             {kospi && kospi.status === "ok" ? (
               <ul className="tc-list-plain">
+                <li>
+                  일간{" "}
+                  {kospi.daily_return_pct != null
+                    ? fmtPct(kospi.daily_return_pct)
+                    : "자료 없음"}
+                </li>
                 <li>1개월 {fmtPct(kospi.return_1m_pct)}</li>
                 <li>3개월 {fmtPct(kospi.return_3m_pct)}</li>
+                <li>
+                  1년{" "}
+                  {kospi.return_1y_pct != null
+                    ? fmtPct(kospi.return_1y_pct)
+                    : "자료 없음"}
+                </li>
+                <li>
+                  최근 1년 고점 대비{" "}
+                  {kospi.high_52w_gap_pct != null
+                    ? fmtPct(kospi.high_52w_gap_pct)
+                    : "자료 없음"}
+                </li>
               </ul>
             ) : (
-              <span className="tc-muted">기간 수익률 자료 없음</span>
+              <span className="tc-muted">수익률·위치 자료 없음</span>
             )}
           </div>
 
@@ -255,6 +274,16 @@ function KospiHeadline({ market }: { market: QueryState<MarketTopNResponse> }) {
                 <span className="tc-regime">
                   {regimeLabelKo(ctx.regime_code, ctx.regime_label)}
                 </span>
+                {/* POC3-06 §6.2 — 현재 국면 지속 거래일 수(실제값, 개발 중 제거). */}
+                {ctx.regime_streak && ctx.regime_streak.streak_days != null ? (
+                  <span className="tc-muted tc-small">
+                    {" "}
+                    · {ctx.regime_streak.streak_days}거래일째
+                    {ctx.regime_streak.at_least ? " 이상" : ""}
+                  </span>
+                ) : (
+                  <span className="tc-muted tc-small"> · 지속일 자료 없음</span>
+                )}
                 {ctx.asof && (
                   <span className="tc-muted tc-small"> · 기준일 {fmtKstDate(ctx.asof)}</span>
                 )}
@@ -306,28 +335,9 @@ type BlockedMetric = { name: string; badge: string; reason: string };
 // 이번 Step 에서 코스피 영역에 "안 되는 것" 을 모두 기록 (사용자 지시 2026-07-29).
 // 두 부류로 구분: (A) 기능 개발 중 (향후 저장값 파생) (B) 이번 단계 미도입
 // (설계서 §11 금지 · 신규 산식/수집 필요 → 후속 Step). 숨기지 않고 board 로 노출.
-const KOSPI_IN_DEV: BlockedMetric[] = [
-  {
-    name: "흐름 지속 거래일 수",
-    badge: "개발 중",
-    reason: "연속 상승·하락이 며칠째인지 세는 기능을 준비하고 있습니다.",
-  },
-  {
-    name: "최근 고점 대비 위치",
-    badge: "개발 중",
-    reason: "최근 고점에서 얼마나 내려왔는지 보여주는 기능을 준비하고 있습니다.",
-  },
-  {
-    name: "일간 등락률",
-    badge: "개발 중",
-    reason: "전일 대비 등락률 표시는 준비 중입니다.",
-  },
-  {
-    name: "1년 수익률",
-    badge: "개발 중",
-    reason: "현재 1개월·3개월 수익률만 제공하며 1년 수익률은 준비 중입니다.",
-  },
-];
+// 2026-08-03 POC3-06 §3.2 — 흐름 지속 거래일 수·최근 고점 대비 위치·일간 등락률·
+// 1년 수익률은 실제값으로 교체 완료(위 KospiHeadline). 개발 중 board 에서 제거.
+const KOSPI_IN_DEV: BlockedMetric[] = [];
 
 const KOSPI_NOT_IN_STEP: BlockedMetric[] = [
   {
@@ -634,16 +644,8 @@ const DEV_IN_PROGRESS: DevItem[] = [
     badge: "개발 중",
     desc: "현재는 KODEX200 기준선 대비 위치만 참고로 제공합니다.",
   },
-  {
-    name: "흐름 지속 거래일 수 · 최근 고점 대비 위치",
-    badge: "개발 중",
-    desc: "코스피가 며칠째 같은 흐름인지, 고점에서 얼마나 내려왔는지.",
-  },
-  {
-    name: "일간 등락률 · 1년 수익률",
-    badge: "개발 중",
-    desc: "현재 1개월·3개월 수익률만 제공.",
-  },
+  // 2026-08-03 POC3-06: 흐름 지속 거래일 수·최근 고점 대비 위치·일간 등락률·
+  // 1년 수익률은 실제값 제공 완료 → 개발 중 목록에서 제거.
 ];
 
 const DEV_NOT_IN_STEP: DevItem[] = [

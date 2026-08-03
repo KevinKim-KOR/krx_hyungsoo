@@ -126,6 +126,143 @@ def compute_kospi_metrics(history: Sequence[tuple[str, float]]) -> dict:
     }
 
 
+# ── POC3-06 §6.2 — KOSPI 관찰값 확장 (일간·1년·52주 고점 대비) ─────────────
+# 설계자 Q1 확정: 값은 공통 composer 에서 1회 계산, 기존 저장 series 단순 산술.
+# 신규 source·DB 없음. "고점 대비" 는 음수%(고점이면 0%) 의미로 통일 — 비율(%) 표기 금지.
+
+
+def _nearest_prior_close_by_date(
+    history: Sequence[tuple[str, float]], target_date: str
+) -> Optional[float]:
+    """history(date ASC) 에서 target_date 이하의 가장 가까운(가장 최근) 유효 close.
+
+    1년 전 날짜에 정확히 거래일이 없을 수 있으므로 '이전 유효 거래일' 을 취한다.
+    """
+    prior: Optional[float] = None
+    for d, c in history:
+        if c is None or c <= 0:
+            continue
+        if d <= target_date:
+            prior = c
+        else:
+            break
+    return prior
+
+
+def _one_year_ago_iso(latest_date: str) -> Optional[str]:
+    """YYYY-MM-DD 문자열의 1년 전 날짜. 파싱 실패 시 None."""
+    from datetime import date
+
+    try:
+        y, m, d = (int(x) for x in latest_date.split("-"))
+    except (ValueError, AttributeError):
+        return None
+    try:
+        return date(y - 1, m, d).isoformat()
+    except ValueError:
+        # 2/29 → 1년 전 없음. 2/28 로 보정.
+        try:
+            return date(y - 1, m, d - 1).isoformat()
+        except ValueError:
+            return None
+
+
+def compute_kospi_position_metrics(history: Sequence[tuple[str, float]]) -> dict:
+    """KOSPI 시계열 → 일간 수익률·1년 수익률·최근 1년 고점 대비 (§6.2).
+
+    - daily_return_pct: 최신 유효 close vs 직전 유효 close.
+    - return_1y_pct: 최신 close vs '1년 전 날짜에 가장 가까운 이전 유효 거래일' close.
+    - high_52w_gap_pct: (현재 close / 최근 1년 최고 close - 1) * 100. 고점이면 0%,
+      아래면 음수. 1년 이력 부족 시 None(자료 없음).
+    - as_of_date: 최신 유효 거래일.
+    각 값은 독립적으로 계산 불가 시 None — 결측을 0 으로 위장하지 않는다(§9.3).
+    """
+    valid = [(d, c) for d, c in history if c is not None and c > 0]
+    if not valid:
+        return {
+            "as_of_date": None,
+            "daily_return_pct": None,
+            "return_1y_pct": None,
+            "high_52w_gap_pct": None,
+        }
+
+    latest_date, latest_close = valid[-1]
+    daily = (
+        _round_pct(_pct_change(latest_close, valid[-2][1])) if len(valid) >= 2 else None
+    )
+
+    # 1년 수익률·52주 고점: 최신 기준일의 1년 전 이후 구간만 사용.
+    one_year_ago = _one_year_ago_iso(latest_date)
+    return_1y = None
+    high_gap = None
+    if one_year_ago is not None:
+        base = _nearest_prior_close_by_date(valid, one_year_ago)
+        if base is not None and base > 0:
+            return_1y = _round_pct(_pct_change(latest_close, base))
+        window = [c for d, c in valid if d >= one_year_ago]
+        if window:
+            year_high = max(window)
+            if year_high > 0:
+                # 고점 대비: 고점이면 0%, 아래면 음수.
+                high_gap = _round_pct((latest_close / year_high - 1.0) * 100.0)
+
+    return {
+        "as_of_date": latest_date,
+        "daily_return_pct": daily,
+        "return_1y_pct": return_1y,
+        "high_52w_gap_pct": high_gap,
+    }
+
+
+# ── POC3-06 §6.2 — 기존 국면 라벨의 지속 거래일 수 (Q4) ──────────────────
+# 기존 market_regime 판정 규칙을 과거 KODEX200 시계열에 그대로 재적용. 신규 규칙
+# 없음. 각 거래일 시점까지의 데이터만 사용(미래 데이터 금지). 최신 라벨 계산 불가면
+# '자료 없음'(None), 저장 이력 시작점까지 같은 라벨이면 at_least=True(N거래일 이상).
+
+
+def _label_at(closes: Sequence[float], upto: int) -> Optional[str]:
+    """closes[:upto+1] 로 기존 국면 규칙을 적용해 regime_code 반환. 부족 시 None."""
+    window = closes[: upto + 1]
+    if len(window) < LOOKBACK_60D + 1:
+        return None
+    metrics = compute_kodex200_metrics([("", c) for c in window])
+    if metrics.get("status") != "ok":
+        return None
+    score, _ = _score_kodex200(metrics)
+    code, _label = _label_from_score(score)
+    return code
+
+
+def compute_regime_streak(kodex200_history: Sequence[tuple[str, float]]) -> dict:
+    """현재 국면 라벨이 며칠째 이어졌는지 (§6.2·Q4).
+
+    반환: {"regime_code": str|None, "streak_days": int|None, "at_least": bool}.
+    - 최신 라벨 계산 불가 → regime_code=None·streak_days=None(자료 없음).
+    - 저장 이력 시작점까지 같은 라벨이면 at_least=True (N거래일 이상).
+    """
+    closes = [c for _, c in kodex200_history if c is not None and c > 0]
+    last = len(closes) - 1
+    latest_code = _label_at(closes, last) if last >= 0 else None
+    if latest_code is None:
+        return {"regime_code": None, "streak_days": None, "at_least": False}
+
+    streak = 1
+    at_least = False
+    i = last - 1
+    while i >= 0:
+        code_i = _label_at(closes, i)
+        if code_i is None:
+            # 더 과거는 계산 불가(60일 미만) — 이력 시작점 도달로 간주.
+            at_least = True
+            break
+        if code_i == latest_code:
+            streak += 1
+            i -= 1
+        else:
+            break
+    return {"regime_code": latest_code, "streak_days": streak, "at_least": at_least}
+
+
 def _score_kodex200(metrics: dict) -> tuple[int, list[str]]:
     """metrics → (점수 합, 사람이 읽을 사유 리스트). status='ok' 가정."""
     score = 0

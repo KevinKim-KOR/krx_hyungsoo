@@ -310,6 +310,28 @@ def compute_topn(
         kodex200_history=kodex200_history,
         kospi_history=kospi_history if kospi_history else None,
     )
+    # 2026-08-03 POC3-06 §6.2 — KOSPI 관찰값(일간·1년·52주 고점 대비) additive 병합
+    # + 국면 지속 거래일 수. 기존 저장 series read 만 사용(신규 source·DB 0).
+    from app.market_regime import (
+        compute_kospi_position_metrics,
+        compute_regime_streak,
+    )
+
+    _kospi_ctx = market_context.get("kospi")
+    if (
+        isinstance(_kospi_ctx, dict)
+        and _kospi_ctx.get("status") == "ok"
+        and kospi_history
+    ):
+        _pos = compute_kospi_position_metrics(kospi_history)
+        _kospi_ctx["daily_return_pct"] = _pos.get("daily_return_pct")
+        _kospi_ctx["return_1y_pct"] = _pos.get("return_1y_pct")
+        _kospi_ctx["high_52w_gap_pct"] = _pos.get("high_52w_gap_pct")
+        _kospi_ctx["as_of_date"] = _pos.get("as_of_date")
+    if isinstance(market_context.get("kodex200"), dict) and (
+        market_context["kodex200"].get("status") == "ok"
+    ):
+        market_context["regime_streak"] = compute_regime_streak(kodex200_history)
     # 후보 excess_return 계산용 benchmark 수익률 추출 (없으면 None 으로 노출).
     _kodex = market_context.get("kodex200") or {}
     _kospi = market_context.get("kospi") or {}

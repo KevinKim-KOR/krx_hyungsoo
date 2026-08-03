@@ -103,6 +103,19 @@ export interface MarketContextKospi {
   return_60d_pct?: number | null;
   return_1m_pct?: number | null;
   return_3m_pct?: number | null;
+  // 2026-08-03 POC3-06 §6.2 — KOSPI 관찰값 (additive). high_52w_gap_pct 는
+  // "고점 대비 음수%"(고점이면 0). 계산 불가 시 null(자료 없음).
+  daily_return_pct?: number | null;
+  return_1y_pct?: number | null;
+  high_52w_gap_pct?: number | null;
+  as_of_date?: string | null;
+}
+
+// 2026-08-03 POC3-06 §6.2 — 현재 국면 라벨이 이어진 거래일 수.
+export interface MarketContextRegimeStreak {
+  regime_code?: MarketRegimeCode | null;
+  streak_days?: number | null;
+  at_least: boolean;
 }
 
 export interface MarketContext {
@@ -115,5 +128,6 @@ export interface MarketContext {
   regime_reasons: string[];
   kodex200: MarketContextKodex200;
   kospi: MarketContextKospi;
+  regime_streak?: MarketContextRegimeStreak | null;
   warnings: string[];
 }

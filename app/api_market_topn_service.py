@@ -11,6 +11,7 @@ from app.api_market_topn_models import (
     MarketCandidateExcessReturn,
     MarketContextKodex200,
     MarketContextKospi,
+    MarketContextRegimeStreak,
     MarketContextResponse,
     MarketPeriodReturn,
     MarketReturns,
@@ -264,6 +265,7 @@ def market_context_to_model(raw: Optional[dict]) -> Optional[MarketContextRespon
         return None
     kodex_raw = raw.get("kodex200") or {"status": "unavailable"}
     kospi_raw = raw.get("kospi") or {"status": "unavailable"}
+    streak_raw = raw.get("regime_streak")
     return MarketContextResponse(
         status=raw.get("status") or "unavailable",
         asof=raw.get("asof"),
@@ -274,6 +276,11 @@ def market_context_to_model(raw: Optional[dict]) -> Optional[MarketContextRespon
         regime_reasons=list(raw.get("regime_reasons") or []),
         kodex200=MarketContextKodex200(**kodex_raw),
         kospi=MarketContextKospi(**kospi_raw),
+        regime_streak=(
+            MarketContextRegimeStreak(**streak_raw)
+            if isinstance(streak_raw, dict)
+            else None
+        ),
         warnings=list(raw.get("warnings") or []),
     )
 
