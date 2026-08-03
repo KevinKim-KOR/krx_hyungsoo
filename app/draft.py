@@ -52,6 +52,47 @@ def _new_run_id() -> str:
     return f"run_{stamp}_{uuid4().hex[:8]}"
 
 
+def _compose_holdings_judgment_summary(
+    *,
+    market_evidence_snapshot: dict[str, Any],
+    topn_payload: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """POC3-06 §6 공통 판단 요약 — PUSH-2 package 저장용.
+
+    Dashboard read 응답과 동일한 composer/규칙으로 시장 위치 + 보유 최대 3건 +
+    자료 상태를 1회 계산한다. 시장 위치의 KOSPI 관찰값·국면 지속일은 Dashboard 와
+    동일하게 저장 benchmark series read 로 산출(신규 source 0).
+    """
+    from app.market_benchmark_store import fetch_benchmark_history
+    from app.market_regime import (
+        KODEX200_TICKER,
+        KOSPI_ID,
+        compute_kospi_position_metrics,
+        compute_regime_streak,
+    )
+    from app.market_data_store import fetch_price_history
+    from app.market_summary_composer import compose_judgment_summary
+
+    market_context = (topn_payload or {}).get("market_context") or {}
+    kospi_history = fetch_benchmark_history(KOSPI_ID, db_path=MARKET_DB_PATH)
+    kodex_history = fetch_price_history(KODEX200_TICKER, db_path=MARKET_DB_PATH)
+    kospi_position = (
+        compute_kospi_position_metrics(kospi_history) if kospi_history else None
+    )
+    regime_streak = compute_regime_streak(kodex_history) if kodex_history else None
+    return compose_judgment_summary(
+        market_context=market_context,
+        kospi_position=kospi_position,
+        regime_streak=regime_streak,
+        evidence_holdings=market_evidence_snapshot.get("holdings") or [],
+        market_risk=None,
+        evidence_asof={
+            "holdings_asof": market_evidence_snapshot.get("holdings_asof"),
+            "market_asof": market_evidence_snapshot.get("market_asof"),
+        },
+    )
+
+
 def generate_draft(input_data: dict[str, Any]) -> Run:
     """샘플 초안 + PUSH-1/PUSH-3 draft 생성 엔트리.
 
@@ -275,6 +316,15 @@ def _build_holdings_payload(
         push_context=push_context,
     )
 
+    # 2026-08-03 POC3-06 §6.1 — 공통 판단 요약 composer. Dashboard read 응답과
+    # PUSH-2 package 가 **동일 결과**(같은 최대 3건·시장 위치·기준일)를 쓰도록,
+    # 여기서 이미 계산한 market_evidence_snapshot(holdings) + market_context 를
+    # composer 에 넘겨 1회 계산해 draft_payload 에 저장한다. 화면별 재계산 없음(AC-2·7).
+    judgment_summary = _compose_holdings_judgment_summary(
+        market_evidence_snapshot=market_evidence_snapshot,
+        topn_payload=topn_payload_for_holdings,
+    )
+
     return {
         "title": f"보유 종목 기반 초안 ({asof_date})",
         "asof": asof_iso,
@@ -285,6 +335,8 @@ def _build_holdings_payload(
         # 저장 시점 evidence snapshot — 이후 시장 데이터가 바뀌어도 본 키의 의미가
         # 변하지 않는다 (지시문 §5.11 / AC-9).
         "holdings_market_evidence_snapshot": market_evidence_snapshot,
+        # POC3-06 §6 공통 판단 요약 — Dashboard·PUSH 공용 단일 결과 (additive 키).
+        "judgment_summary": judgment_summary,
         # ML baseline 룩백 evidence snapshot — 본 draft 가 어떤 baseline 근거로
         # 생성되었는지 추적 가능 (지시문 §4.2).
         "ml_baseline_evidence_snapshot": ml_baseline_evidence_snapshot,

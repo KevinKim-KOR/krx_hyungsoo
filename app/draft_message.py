@@ -323,6 +323,45 @@ def _runtime_evidence_lines(payload: dict[str, Any]) -> list[str]:
     return ["", *lines]
 
 
+def _fmt_signed_pct(v: Any) -> str:
+    """수치 → '+1.23%' / '-1.23%'. 결측은 '자료 확인 필요' (0 위장 금지)."""
+    if not isinstance(v, (int, float)):
+        return "자료 확인 필요"
+    sign = "+" if v >= 0 else ""
+    return f"{sign}{v:.2f}%"
+
+
+def _render_today_holdings_lines(payload: dict[str, Any]) -> list[str]:
+    """POC3-06 §7.3 — '오늘 먼저 볼 보유 ETF' 최대 3건 (holdings_briefing 본문).
+
+    Dashboard 와 동일한 공통 요약(draft_payload.judgment_summary.holdings.top_holdings)
+    을 그대로 표시한다. PUSH 가 별도 계산·정렬하지 않는다(AC-7·AC-15). top_holdings
+    가 없으면 섹션 자체를 생략(보여주기식 '0건' 문구 금지).
+    """
+    js = payload.get("judgment_summary") if isinstance(payload, dict) else None
+    if not isinstance(js, dict):
+        return []
+    holdings = (
+        (js.get("holdings") or {}) if isinstance(js.get("holdings"), dict) else {}
+    )
+    top = holdings.get("top_holdings") or []
+    if not isinstance(top, list) or not top:
+        return []
+    lines = ["", "[오늘 먼저 볼 보유 ETF]"]
+    for h in top[:3]:
+        if not isinstance(h, dict):
+            continue
+        name = h.get("name") or h.get("ticker") or "-"
+        ticker = h.get("ticker") or "-"
+        r5 = _fmt_signed_pct(h.get("return_5d_pct"))
+        r20 = _fmt_signed_pct(h.get("return_20d_pct"))
+        ex = _fmt_signed_pct(h.get("excess_vs_kodex200_20d_pctp"))
+        lines.append(
+            f"  • {name} ({ticker}) — 5일 {r5} / 20일 {r20} / KODEX200 대비 {ex}"
+        )
+    return lines
+
+
 def _build_with_focus_limit(
     run_id: str,
     payload: dict[str, Any],
@@ -348,6 +387,7 @@ def _build_with_focus_limit(
         header_lines.append(note)
 
     judgment_lines = _render_judgment_lines(payload)
+    today_lines = _render_today_holdings_lines(payload)
     runtime_lines = _runtime_evidence_lines(payload)
     summary_lines = _render_summary_lines(summary)
 
@@ -362,6 +402,7 @@ def _build_with_focus_limit(
     return "\n".join(
         header_lines
         + judgment_lines
+        + today_lines
         + runtime_lines
         + summary_lines
         + focus_lines

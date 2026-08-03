@@ -81,6 +81,52 @@ def _evidence_section(ml_baseline_snapshot: Optional[dict[str, Any]]) -> list[st
     return parts
 
 
+def _market_position_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
+    """POC3-06 §7.2 — 시장 위치 요약 (KOSPI 관찰값 + 기존 국면 + 지속 거래일 수).
+
+    Dashboard 와 동일한 market_context(같은 저장값 read 산출)를 표시한다. PUSH 가
+    별도 계산하지 않는다(§6.1·AC-14). market_context 부재/미확정 시 섹션 생략.
+    KOSPI(사용자 대표 지수)와 KODEX200 기준 국면을 섞지 않는다(§4.2).
+    """
+    if not isinstance(topn_payload, dict):
+        return []
+    mc = topn_payload.get("market_context")
+    if not isinstance(mc, dict) or mc.get("status") == "unavailable":
+        return []
+    kospi = mc.get("kospi") if isinstance(mc.get("kospi"), dict) else {}
+    streak = (
+        mc.get("regime_streak") if isinstance(mc.get("regime_streak"), dict) else {}
+    )
+
+    lines: list[str] = ["[시장 위치]"]
+    if kospi and kospi.get("status") == "ok":
+        daily = _fmt_pct(kospi.get("daily_return_pct"))
+        y1 = _fmt_pct(kospi.get("return_1y_pct"))
+        gap = _fmt_pct(kospi.get("high_52w_gap_pct"))
+        asof = kospi.get("as_of_date") or mc.get("asof") or "-"
+        parts = []
+        if daily:
+            parts.append(f"일간 {daily}")
+        if y1:
+            parts.append(f"1년 {y1}")
+        if gap:
+            parts.append(f"최근 1년 고점 대비 {gap}")
+        if parts:
+            lines.append(f"  • KOSPI {' / '.join(parts)} (기준일 {asof})")
+    # 기존 시장 국면 (KODEX200 기준) + 지속 거래일 수.
+    regime_label = mc.get("regime_label")
+    if isinstance(regime_label, str) and regime_label:
+        streak_txt = ""
+        sd = streak.get("streak_days")
+        if isinstance(sd, int):
+            streak_txt = f" · {sd}거래일째" + (
+                " 이상" if streak.get("at_least") else ""
+            )
+        lines.append(f"  • 기존 시장 국면(KODEX200 기준): {regime_label}{streak_txt}")
+    # 헤더만 있고 내용 없으면 생략.
+    return lines if len(lines) > 1 else []
+
+
 def _market_internal_section(topn_payload: Optional[dict[str, Any]]) -> list[str]:
     """Market Discovery TopN 의 상위 / 하위 ETF 흐름 요약. 외부 source 호출 X.
 
@@ -196,6 +242,8 @@ def build_market_briefing_message(
     )
 
     sections: list[list[str]] = [
+        # POC3-06 §7.2 — 시장 위치 요약을 가장 먼저(§7.2 "먼저 길게 나오지 않게").
+        _market_position_section(topn_payload),
         overnight_us_lines(push_context),
         market_trend_lines(push_context),
         _market_internal_section(topn_payload),

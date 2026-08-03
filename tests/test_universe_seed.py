@@ -246,6 +246,8 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
     # ml_baseline_evidence_snapshot 1건 신규 키 추가 (지시문 §4.2).
     # POC2 3-PUSH Runtime Package PC 검증 (2026-06-13) — 추가로 runtime_package
     # 1건 신규 키 추가 (지시문 §9 / Q4 — canonical three_push_runtime_package.v1).
+    # POC3-06 (2026-08-03) — judgment_summary 1건 신규 키 추가 (§6 공통 판단 요약,
+    # Dashboard·PUSH 공용 단일 결과. additive — 기존 키 불변).
     expected_keys = {
         "title",
         "asof",
@@ -256,6 +258,7 @@ def test_step5c_endpoint_does_not_affect_holdings_draft_flow(
         "holdings_market_evidence_snapshot",
         "ml_baseline_evidence_snapshot",
         "runtime_package",
+        "judgment_summary",
     }
     assert set(payload_after.keys()) == expected_keys
     # universe 결과는 factor_signals 안의 scope="universe" signal 1건으로 표현
