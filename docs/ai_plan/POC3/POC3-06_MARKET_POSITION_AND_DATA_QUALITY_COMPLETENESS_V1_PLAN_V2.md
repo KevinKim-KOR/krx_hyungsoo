@@ -6,7 +6,7 @@
 * 작성일: 2026-08-03
 * 기준 revision: `a0a0b192` (POC3-05 PASS/CLOSED · push 완료)
 * 레드팀: **PASS** (설계자→레드팀→개발자 경유로 도달 = 이미 통과. 레드팀은 PASS 여부만 판정·revision 없음).
-* 상태: **PLAN 확정 (설계자 Q1~Q4 답변 반영, 2026-08-03).** PLAN 단독 커밋 후 A구간 착수.
+* 상태: **PLAN 확정 · A구간 실측 완료 (2026-08-03).** VIX 연결 확정·composer 입력 충돌 없음(§5-A). B구간(공통 요약 composer) 착수 가능.
 * 성격: 기존 KOSPI·KODEX200·VIX·Holdings·Market Evidence **저장값 read 재사용 + 공통 판단 요약 조립(server-side composer)**. 신규 endpoint·DB·table·source·factor·threshold·label 0건(§9.2·§12 AC-19).
 
 ---
@@ -100,6 +100,23 @@
 7. 전체 검증(AC 1~20) → RESULT·STATE·통합지도 Closeout.
 
 각 구간 개발 → (C는 사용자 Dashboard, E는 사용자 실제 수신) 확인 → 커밋. 결과서까지 만든 뒤 push.
+
+---
+
+## 5-A. A구간 실측 결과 (2026-08-03 · 개발자 focused 확인 완료)
+
+### A-Q5. VIX 처리 → **연결 확정 (기준일 명시)**
+`app/market_risk_reference_service.py` `_build_vix_card` 실측:
+- VIX read = `market_benchmark_daily_price`(id `VIX`), SQLite-only. `availability="available"|"unavailable"`·`as_of_date`·`close`·`change_1d/5d` 계약 제공.
+- **런타임 실측**: VIX `available` · as_of_date `2026-07-03` · close `15.81` · series `2014-04-08~2026-07-03`. KODEX200 as_of `2026-07-24`.
+- **판정**: 기존 상태 기준으로 **사용 가능 → 연결.** 단 VIX 기준일(2026-07-03)이 KODEX200(2026-07-24)보다 오래됨 → **VIX는 자기 기준일과 함께 표시**하고, 오래된 VIX가 사용 가능한 KOSPI·KODEX200·Holdings 요약을 오염시키지 않는다(§8·AC-10).
+- 신규 stale threshold 신설 없음 — 기존 `as_of_date` 비교만 사용(프론트 정비 큐가 이미 `vix.as_of_date < kodex.as_of_date` 로 "오래됨" 표시). 신규 source·CSV·API key 0.
+
+### A-composer 입력 계약 충돌 여부 → **충돌 없음**
+- 5개 입력(KOSPI `api_price_series`/benchmark read · KODEX200·VIX `market_risk_reference` · Holdings enriched · Market Evidence latest) 모두 **저장값 read 계약**이 명확(availability/status·as_of_date·close/수치). composer 가 조합만 하면 됨 — 신규 endpoint·DB·source 불요.
+- **최대 3건 "오늘 먼저 볼 보유 ETF" 는 현재 어느 화면에도 렌더되지 않음**: `lowestFiveDayRows`(프론트 순수 함수)는 **테스트에서만 참조**되고 `.tsx` view 렌더 0. PUSH `push_context_holdings` 의 `review_points[:3]`(L228)은 **텍스트 리뷰포인트 slice**로 5일-낮은-순 ETF 선택과 다른 개념.
+  → 즉 §6.3/AC-6 "최대 3건"은 **composer 가 처음이자 단일 산출처**가 된다. Dashboard·PUSH 별도 계산 통일(Q2)의 대상이 명확. **§11.4(화면별 파생 산식 필요)·§11.8(값 불일치) 미해당** — 오히려 composer 도입으로 단일화.
+- 결론: A구간 어떤 §11 복귀조건도 미해당. B구간(공통 요약 composer + KOSPI 관찰값 + 지속일 helper) 착수 가능.
 
 ---
 
