@@ -13,7 +13,9 @@ from app.draft_message import build_message_text
 from app.message_market_briefing import build_market_briefing_message
 
 
-def _holdings_payload_with_summary(top_holdings: list[dict]) -> dict:
+def _holdings_payload_with_summary(
+    top_holdings: list[dict], *, need_check: int = 0
+) -> dict:
     return {
         "title": "보유 종목 기반 초안 (2026-07-24)",
         "asof": "2026-07-24T00:00:00+00:00",
@@ -26,12 +28,15 @@ def _holdings_payload_with_summary(top_holdings: list[dict]) -> dict:
             "holdings": {
                 "top_holdings": top_holdings,
                 "coverage": {
-                    "total": len(top_holdings),
-                    "need_check": 0,
+                    "total": len(top_holdings) + need_check,
+                    "need_check": need_check,
                     "ok": len(top_holdings),
                 },
             },
-            "data_status": {},
+            "data_status": {
+                "holdings_asof": "2026-06-17T14:35:07+00:00",
+                "market_evidence_asof": "2026-07-24",
+            },
         },
         # runtime_package 없음 → failed 분기 미진입(정상 본문 조립).
     }
@@ -42,6 +47,8 @@ def test_holdings_briefing_shows_top_holdings_from_summary():
         {
             "ticker": "A00001",
             "name": "ETF 하나",
+            "market_weight_pct": 60.0,
+            "pnl_rate_pct": -2.0,
             "return_5d_pct": -5.0,
             "return_20d_pct": -3.0,
             "excess_vs_kodex200_20d_pctp": -1.5,
@@ -49,20 +56,31 @@ def test_holdings_briefing_shows_top_holdings_from_summary():
         {
             "ticker": "A00002",
             "name": "ETF 둘",
+            "market_weight_pct": 40.0,
+            "pnl_rate_pct": 1.5,
             "return_5d_pct": -1.0,
             "return_20d_pct": 2.0,
             "excess_vs_kodex200_20d_pctp": 0.5,
         },
     ]
-    payload = _holdings_payload_with_summary(top)
+    payload = _holdings_payload_with_summary(top, need_check=2)
     msg = build_message_text("run_test", payload)
     assert "[오늘 먼저 볼 보유 ETF]" in msg
     # Dashboard 와 동일 순서·ticker.
     assert "ETF 하나 (A00001)" in msg
     assert "ETF 둘 (A00002)" in msg
+    # AC-7: 평가 비중·평가손익 표시.
+    assert "비중 60.0%" in msg
+    assert "손익 -2.00%" in msg
     # 5일 값 표시 (composer 결과 그대로).
     assert "5일 -5.00%" in msg
     assert "20일 -3.00%" in msg
+    # AC-15: Holdings/Market 기준일 표시.
+    assert "보유 기준일" in msg
+    assert "시장 기준일 2026-07-24" in msg
+    # 자료 확인 필요 제한 문장 (판정 아님).
+    assert "자료 확인 필요 2건" in msg
+    assert "매수·매도 판단이 아닙니다" in msg
     # A00001 이 A00002 보다 먼저 (5일 낮은 순).
     assert msg.index("A00001") < msg.index("A00002")
 

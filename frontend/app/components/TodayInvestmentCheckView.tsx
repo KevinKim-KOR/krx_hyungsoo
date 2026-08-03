@@ -40,7 +40,10 @@ import {
   DASH_KEY_NAV,
 } from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
-import { buildRiskEvidenceRows } from "./holdings_risk_evidence/helpers";
+import {
+  buildRiskEvidenceRows,
+  lowestFiveDayRows,
+} from "./holdings_risk_evidence/helpers";
 import KospiChart from "./today/KospiChart";
 import {
   fmtKstDate,
@@ -424,14 +427,16 @@ function JudgmentQueueSection({
     holdings.phase === "success"
       ? new Set(holdings.data.items.map((it) => it.ticker)).size
       : null;
-  // 자료 확인 필요 건수만 두 조회 성공 시 계산한다. "확인 근거" 화면과 동일 판정
-  // (buildRiskEvidenceRows·computeNeedCheck)을 재사용한다. backend evidence_unavailable_count
-  // 는 판정 기준이 좁아 화면 간 건수가 달라지므로 사용하지 않는다(AC-14 동일 데이터 동일 해석).
-  const needCheckCount =
+  // POC3-06 §6.1·§6.3 — 두 조회 성공 시 공통 판단 요약을 1회 계산한다.
+  // buildRiskEvidenceRows·lowestFiveDayRows 는 backend market_summary_composer 의
+  // select_top_holdings 와 동일 규칙(전환 테스트로 고정) → Dashboard·PUSH 가 같은
+  // 최대 3건·자료 확인 필요 건수를 표시한다(AC-2·6·7·14).
+  const built =
     holdings.phase === "success" && evidence.phase === "success"
       ? buildRiskEvidenceRows(holdings.data.items, evidence.data.holdings)
-          .coverage.need_check
       : null;
+  const needCheckCount = built ? built.coverage.need_check : null;
+  const topHoldings = built ? lowestFiveDayRows(built.rows, 3) : [];
   const candCount =
     market.phase === "success" && market.data.status === "ok"
       ? market.data.candidates.length
@@ -486,6 +491,32 @@ function JudgmentQueueSection({
           보유 평가는 &lsquo;보유 현황&rsquo;, 오늘 먼저 볼 ETF와 수치 근거는 &lsquo;확인
           근거&rsquo;에서 확인합니다.
         </p>
+
+        {/* POC3-06 §6.3·§7.1 — 오늘 먼저 볼 보유 ETF 최대 3건 (공통 요약, 5일 낮은 순).
+            backend PUSH 와 동일 규칙(lowestFiveDayRows = select_top_holdings). */}
+        {topHoldings.length > 0 ? (
+          <ul className="tc-today-holdings">
+            {topHoldings.map((r) => (
+              <li key={r.ticker}>
+                <span className="tc-th-name">{r.name ?? r.ticker}</span>{" "}
+                <span className="tc-muted tc-small">
+                  5일 {fmtPct(r.return_5d_pct)} · 20일 {fmtPct(r.return_20d_pct)} ·
+                  KODEX200 대비 {fmtPct(r.excess_vs_kodex200_20d_pctp)}
+                  {r.market_weight_pct != null
+                    ? ` · 비중 ${r.market_weight_pct.toFixed(1)}%`
+                    : ""}
+                  {r.pnl_rate_pct != null ? ` · 손익 ${fmtPct(r.pnl_rate_pct)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : holdCount != null && holdCount > 0 ? (
+          <p className="tc-muted tc-small">
+            5일 흐름을 계산할 수 있는 보유 ETF가 없어 먼저 볼 종목을 정할 수 없습니다.
+            &lsquo;확인 근거&rsquo;에서 자료 상태를 확인하세요.
+          </p>
+        ) : null}
+
         <div className="tc-btn-row">
           <button
             type="button"

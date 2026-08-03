@@ -46,6 +46,18 @@ def select_top_holdings(
     - 중복 ticker 는 첫 등장만 유지(evidence 는 이미 ticker 단위).
     위험 점수·rank·signal 을 만들지 않는다 — 표시 정렬일 뿐이다.
     """
+    # 평가 비중(§4.4·AC-7) = 이 ticker 평가금액 / 전체 유효 평가금액 합. 기존 저장값
+    # 단순 산술(신규 산식 아님). 합이 0 이거나 계산 불가면 None(0 위장 금지).
+    total_eval = 0.0
+    for it in evidence_holdings:
+        ev = (
+            (it.get("holding") or {}).get("evaluation_amount")
+            if isinstance(it, dict)
+            else None
+        )
+        if isinstance(ev, (int, float)):
+            total_eval += ev
+
     seen: set[str] = set()
     sortable: list[dict] = []
     for it in evidence_holdings:
@@ -62,11 +74,16 @@ def select_top_holdings(
     for it in sortable[:limit]:
         stm = it.get("short_term_momentum") or {}
         holding = it.get("holding") or {}
+        eval_amount = holding.get("evaluation_amount")
+        market_weight = None
+        if isinstance(eval_amount, (int, float)) and total_eval > 0:
+            market_weight = round(eval_amount / total_eval * 100.0, 1)
         out.append(
             {
                 "ticker": it.get("ticker"),
                 "name": it.get("name"),
-                "eval_amount": holding.get("evaluation_amount"),
+                "eval_amount": eval_amount,
+                "market_weight_pct": market_weight,
                 "pnl_rate_pct": holding.get("pnl_rate_pct"),
                 "return_5d_pct": stm.get("return_5d_pct"),
                 "return_20d_pct": stm.get("return_20d_pct"),
@@ -92,13 +109,23 @@ def _need_check(item: dict) -> bool:
     return False
 
 
-def summarize_holdings(evidence_holdings: list[dict]) -> dict:
-    """§6.3 보유 요약: 최대 3건 + coverage(전체·자료 확인 필요)."""
+def summarize_holdings(evidence_holdings: Optional[list[dict]]) -> dict:
+    """§6.3 보유 요약: 최대 3건 + coverage(전체·자료 확인 필요).
+
+    입력 결측을 조용히 흡수하지 않는다(§9.3·B-1). evidence_holdings 가 list 가
+    아니면 available=False 로 명시 — "보유 0건" 과 "자료 미확인" 을 구분한다.
+    """
+    if not isinstance(evidence_holdings, list):
+        return {
+            "available": False,
+            "top_holdings": [],
+            "coverage": {"total": 0, "need_check": 0, "ok": 0},
+        }
     total = 0
     need = 0
     seen: set[str] = set()
     for it in evidence_holdings:
-        ticker = it.get("ticker")
+        ticker = it.get("ticker") if isinstance(it, dict) else None
         if not ticker or ticker in seen:
             continue
         seen.add(ticker)
@@ -106,6 +133,7 @@ def summarize_holdings(evidence_holdings: list[dict]) -> dict:
         if _need_check(it):
             need += 1
     return {
+        "available": True,
         "top_holdings": select_top_holdings(evidence_holdings),
         "coverage": {"total": total, "need_check": need, "ok": total - need},
     }
@@ -123,9 +151,15 @@ def summarize_market_position(
     지속일을 additive 로 얹는다. KODEX200 이 시장 국면 기준(§4.2)이며 KOSPI 는
     사용자 대표 지수 — 둘을 섞지 않는다.
     """
-    mc = market_context or {}
+    # 입력 결측을 조용히 흡수하지 않는다(§9.3·B-1). market_context 가 dict 가
+    # 아니거나 status=unavailable 이면 available=False 로 명시한다.
+    available = isinstance(market_context, dict) and (
+        market_context.get("status") not in (None, "unavailable")
+    )
+    mc = market_context if isinstance(market_context, dict) else {}
     kospi = mc.get("kospi") or {}
     return {
+        "available": available,
         "regime_label": mc.get("regime_label"),
         "regime_code": mc.get("regime_code"),
         "regime_streak_days": (regime_streak or {}).get("streak_days"),

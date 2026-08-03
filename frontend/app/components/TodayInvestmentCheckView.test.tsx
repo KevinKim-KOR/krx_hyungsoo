@@ -680,4 +680,53 @@ describe("TodayInvestmentCheckView", () => {
     // 자료 확인 필요 건수는 evidence 없으니 표시하지 않는다(오해 방지).
     expect(within(judgment).queryByText(/자료 확인 필요/)).toBeNull();
   });
+
+  it("POC3-06 §6.1·AC-2·6·7: Dashboard 판단 큐가 오늘 먼저 볼 보유 ETF 최대 3건을 표시한다", async () => {
+    // 5일 값이 다른 두 종목 → lowestFiveDayRows(= backend select_top_holdings 동일 규칙)
+    // 로 5일 낮은 순 표시. Dashboard 가 실제로 이 목록을 렌더링해야 한다(REJECTED #1).
+    const enriched = (ticker: string, name: string) => ({
+      ticker, name, quantity: 10, avg_buy_price: 1000,
+      invested_amount: 10000, current_price: 1100, price_asof: "2026-07-24",
+      price_source: "naver", eval_amount: 11000, pnl_amount: 1000,
+      pnl_rate_pct: 10, buy_weight_pct: 50, market_weight_pct: 50,
+      price_missing: false, calc_missing: false,
+    });
+    const evItem = (ticker: string, name: string, r5: number) => ({
+      ticker, name,
+      holding: { quantity: 10, avg_buy_price: 1000, evaluation_amount: 11000, pnl_rate_pct: 10 },
+      topn_match: { status: "unavailable", rank: null, basis: null, candidate_name: null },
+      returns: { status: "ok", one_month_return_pct: 1, three_month_return_pct: 2 },
+      excess_return: { status: "ok", vs_kodex200_1m_pctp: 1, vs_kodex200_3m_pctp: 2 },
+      short_term_momentum: {
+        status: "ok", return_5d_pct: r5, return_10d_pct: -2, return_20d_pct: -3,
+        excess_vs_kodex200_5d_pctp: -0.5, excess_vs_kodex200_10d_pctp: -1,
+        excess_vs_kodex200_20d_pctp: -1.5,
+      },
+      constituents_overlap: { status: "ok", overlap_with_market_core: [] },
+      nav_discount: { status: "ok", source: null, asof: null, nav: null, market_price: null, discount_rate_pct: null, flag: null, message: null },
+      evidence_notes: [],
+    });
+    fetchEnrichedHoldings.mockResolvedValue({
+      items: [enriched("069500", "코덱스200"), enriched("133690", "타이거나스닥")],
+    });
+    fetchHoldingsMarketEvidence.mockResolvedValue({
+      status: "ok", asof: "2026-07-24", holdings_asof: "2026-07-24", market_asof: "2026-07-24",
+      market_context: null,
+      summary: {
+        total_holdings_count: 2, matched_topn_count: 0, not_in_current_topn_count: 2,
+        evidence_unavailable_count: 0, constituents_available_count: 2,
+        constituents_unavailable_count: 0, nav_discount_unavailable_count: 0,
+      },
+      holdings: [evItem("069500", "코덱스200", -1), evItem("133690", "타이거나스닥", -8)],
+      warnings: [],
+    });
+    await renderView();
+    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    // 최대 3건 목록에 두 ETF 모두 표시.
+    expect(within(judgment).getByText("타이거나스닥")).toBeInTheDocument();
+    expect(within(judgment).getByText("코덱스200")).toBeInTheDocument();
+    // 5일 낮은 순: 타이거나스닥(-8) 이 코덱스200(-1) 보다 먼저.
+    const text = judgment.textContent ?? "";
+    expect(text.indexOf("타이거나스닥")).toBeLessThan(text.indexOf("코덱스200"));
+  });
 });

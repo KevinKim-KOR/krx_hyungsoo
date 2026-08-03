@@ -347,7 +347,18 @@ def _render_today_holdings_lines(payload: dict[str, Any]) -> list[str]:
     top = holdings.get("top_holdings") or []
     if not isinstance(top, list) or not top:
         return []
+    data_status = (
+        js.get("data_status") if isinstance(js.get("data_status"), dict) else {}
+    )
     lines = ["", "[오늘 먼저 볼 보유 ETF]"]
+    # Holdings / Market Evidence 기준일 (§4.4·AC-15). 없으면 표기 생략.
+    asof_bits = []
+    if data_status.get("holdings_asof"):
+        asof_bits.append(f"보유 기준일 {data_status.get('holdings_asof')}")
+    if data_status.get("market_evidence_asof"):
+        asof_bits.append(f"시장 기준일 {data_status.get('market_evidence_asof')}")
+    if asof_bits:
+        lines.append("  (" + " / ".join(asof_bits) + ")")
     for h in top[:3]:
         if not isinstance(h, dict):
             continue
@@ -356,9 +367,25 @@ def _render_today_holdings_lines(payload: dict[str, Any]) -> list[str]:
         r5 = _fmt_signed_pct(h.get("return_5d_pct"))
         r20 = _fmt_signed_pct(h.get("return_20d_pct"))
         ex = _fmt_signed_pct(h.get("excess_vs_kodex200_20d_pctp"))
+        # 평가 비중·평가손익 (§4.4·AC-7). 계산 불가면 '자료 확인 필요'.
+        w = h.get("market_weight_pct")
+        w_txt = f"{w:.1f}%" if isinstance(w, (int, float)) else "자료 확인 필요"
+        pnl = _fmt_signed_pct(h.get("pnl_rate_pct"))
+        lines.append(f"  • {name} ({ticker})")
         lines.append(
-            f"  • {name} ({ticker}) — 5일 {r5} / 20일 {r20} / KODEX200 대비 {ex}"
+            f"     비중 {w_txt} / 손익 {pnl} / 5일 {r5} / 20일 {r20} / "
+            f"KODEX200 대비 {ex}"
         )
+    # 자료 확인 필요 제한 문장 (§4.4·§7.3) — 정렬은 유효값 기준이며 판정이 아님.
+    cov = holdings.get("coverage") if isinstance(holdings.get("coverage"), dict) else {}
+    need = cov.get("need_check")
+    if isinstance(need, int) and need > 0:
+        lines.append(
+            f"  ※ 자료 확인 필요 {need}건은 위 정렬에서 제외했습니다. "
+            "5일 낮은 순 표시일 뿐 매수·매도 판단이 아닙니다."
+        )
+    else:
+        lines.append("  ※ 5일 낮은 순 표시일 뿐 매수·매도 판단이 아닙니다.")
     return lines
 
 

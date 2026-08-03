@@ -120,6 +120,30 @@ def test_kospi_position_insufficient_history_none():
     assert m["high_52w_gap_pct"] is None
 
 
+def test_kospi_position_sub_one_year_no_high_gap():
+    # 검증자 REJECTED 재현: 1년 미만(23일) 이력이면 고점 대비·1년 수익률 모두 None.
+    # 23일 중 최고를 52주 고점으로 오인하면 안 된다(§6.2 "1년 이력 부족 시 계산 불가").
+    hist = [(f"2026-07-{i:02d}", 2600.0 - i * 10) for i in range(1, 24)]
+    m = compute_kospi_position_metrics(hist)
+    assert m["daily_return_pct"] is not None  # 일간은 이력 무관하게 계산
+    assert m["return_1y_pct"] is None
+    assert m["high_52w_gap_pct"] is None
+
+
+def test_top_holdings_includes_eval_weight_and_pnl():
+    # §4.4·AC-7 — 평가 비중(전체 대비)·평가손익 포함.
+    holdings = [
+        _ev_item("A00001", r5=-5.0, eval_amount=3000.0, pnl=-2.0),
+        _ev_item("A00002", r5=-1.0, eval_amount=1000.0, pnl=1.5),
+    ]
+    top = select_top_holdings(holdings, limit=3)
+    a1 = next(h for h in top if h["ticker"] == "A00001")
+    # 비중 = 3000 / 4000 = 75.0%
+    assert a1["market_weight_pct"] == 75.0
+    assert a1["pnl_rate_pct"] == -2.0
+    assert a1["eval_amount"] == 3000.0
+
+
 # ── 국면 지속 거래일 수 (§6.2 · Q4) ──────────────────────────────────────
 
 

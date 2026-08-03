@@ -192,10 +192,15 @@ def compute_kospi_position_metrics(history: Sequence[tuple[str, float]]) -> dict
     )
 
     # 1년 수익률·52주 고점: 최신 기준일의 1년 전 이후 구간만 사용.
+    # **1년 이력 부족 시 계산하지 않는다(§6.2)**: 저장 series 의 최초 유효 거래일이
+    # 1년 전 목표일보다 뒤면(= 이력이 1년을 못 채우면) return_1y·high_gap 모두 None.
+    # 이 가드가 없으면 23일짜리 데이터로도 "23일 중 최고" 를 52주 고점으로 오인한다.
     one_year_ago = _one_year_ago_iso(latest_date)
     return_1y = None
     high_gap = None
-    if one_year_ago is not None:
+    earliest_date = valid[0][0]
+    has_one_year_history = one_year_ago is not None and earliest_date <= one_year_ago
+    if has_one_year_history:
         base = _nearest_prior_close_by_date(valid, one_year_ago)
         if base is not None and base > 0:
             return_1y = _round_pct(_pct_change(latest_close, base))

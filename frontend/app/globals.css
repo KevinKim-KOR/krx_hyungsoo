@@ -1809,6 +1809,10 @@ textarea.decision-textarea {
 .tc-btn:hover { background: #0055aa; }
 .tc-btn:disabled { background: var(--border); border-color: var(--border); color: var(--muted); cursor: default; }
 .tc-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+/* POC3-06 — 오늘 먼저 볼 보유 ETF 최대 3건 목록. */
+.tc-today-holdings { margin: 8px 0; padding-left: 18px; }
+.tc-today-holdings li { margin-bottom: 4px; font-size: 14px; }
+.tc-th-name { font-weight: 600; }
 .tc-btn-link {
   background: transparent; color: #0066cc; border: 1px solid var(--border);
   white-space: nowrap;
