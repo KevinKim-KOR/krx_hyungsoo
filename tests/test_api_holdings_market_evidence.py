@@ -71,6 +71,25 @@ def test_endpoint_returns_200_for_empty_holdings(api_client: TestClient) -> None
     assert body["summary"]["total_holdings_count"] == 0
 
 
+def test_endpoint_response_includes_judgment_summary(api_client: TestClient) -> None:
+    """POC3-06 §6.1 — 실제 GET 응답에 judgment_summary 가 직렬화되어 포함된다.
+
+    builder 가 만들어도 response_model 에서 유실되면 Dashboard 가 못 받는다
+    (검증자 지적). 실제 endpoint 응답 body 로 검증한다(mock 아님).
+    """
+    res = api_client.get("/holdings/market-evidence/latest")
+    assert res.status_code == 200
+    body = res.json()
+    assert "judgment_summary" in body
+    js = body["judgment_summary"]
+    assert js is not None
+    assert "market_position" in js
+    assert "holdings" in js
+    assert "data_status" in js
+    assert "top_holdings" in js["holdings"]
+    assert "coverage" in js["holdings"]
+
+
 def test_endpoint_returns_evidence_for_loaded_holdings(api_client: TestClient) -> None:
     """holdings 있고 market topn 가능 → 200 + summary 카운트."""
     end = date(2026, 5, 30)

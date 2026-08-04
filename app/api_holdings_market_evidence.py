@@ -141,6 +141,9 @@ class HoldingsMarketEvidenceResponse(BaseModel):
     market_context: Optional[MarketContextResponse] = None
     summary: EvidenceSummary
     holdings: list[HoldingEvidenceItem] = []
+    # 2026-08-04 POC3-06 §6.1 — 공통 판단 요약(backend 단일 계산 결과). Dashboard·PUSH
+    # 가 이 동일 객체를 표시한다. composer 가 만든 dict 를 그대로 통과(중첩 구조 보존).
+    judgment_summary: Optional[dict[str, Any]] = None
     warnings: list[str] = []
 
 
@@ -209,5 +212,6 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
         market_context=_to_market_context_response(evidence.get("market_context")),
         summary=EvidenceSummary(**evidence["summary"]),
         holdings=[HoldingEvidenceItem(**h) for h in evidence.get("holdings", [])],
+        judgment_summary=evidence.get("judgment_summary"),
         warnings=list(evidence.get("warnings") or []),
     )

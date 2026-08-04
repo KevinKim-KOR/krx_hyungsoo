@@ -63,7 +63,7 @@
 | AC | 판정 | 실측 근거 |
 |---:|:---:|---|
 | 1 | PASS | POC3-05 보유 화면·계산 계약 불변. holdings evidence·enriched read 재사용, 신규 산식 0. |
-| 2 | PASS (FIX r2) | **r1 도 미흡(동일 규칙일 뿐 별도 계산)**. FIX r2: `build_holdings_market_evidence` 응답에 `judgment_summary` additive 추가 → PC read(Dashboard)·PUSH(draft) 가 **동일 backend 객체** 사용. Dashboard 프론트 계산 제거(§9.2 준수). |
+| 2 | PASS (FIX r3) | r2 는 builder 에만 넣고 API response_model 에서 유실됐음(검증자 지적). FIX r3: `HoldingsMarketEvidenceResponse` 에 `judgment_summary` 필드 추가 + endpoint 전달 → 실제 GET 응답에 포함. **실제 endpoint API 테스트로 검증**(mock 아님). Dashboard·PUSH 동일 backend 객체 사용. |
 | 3 | PASS | KOSPI 일간·1년 수익률·최근 1년 고점 대비·기준일 = `compute_kospi_position_metrics` 실제값. 화면·PUSH 표시. |
 | 4 | PASS | 국면 라벨·지속 거래일 수 = KODEX200 기준(`compute_regime_streak`). "KODEX200 기준" 명시, KOSPI 흐름으로 오해 안 함. |
 | 5 | PASS | MA20·MA60 대비 = 기존 저장값 단순 산술(POC3-01). 미래 예측·시장 전환 라벨 아님. |
@@ -87,7 +87,7 @@ AC 1~19 — FIX r2(§6.1 단일 backend 계산 결과 공유)로 충족. **AC-20
 
 ### 자체 검수 재실행 (FIX r1 후)
 - frontend: tsc 0 · eslint 0 · vitest **128 passed**
-- backend: 전체 pytest **1098 passed · 4 skipped** (FIX r2 테스트 추가). black · flake8 0.
+- backend: 전체 pytest **1099 passed · 4 skipped** (FIX r3 실제 endpoint 테스트 추가). black · flake8 0.
 - frontend: tsc 0 · eslint 0 · vitest 128 passed.
 
 ## 6) 다음 검증자(Codex)에게 알릴 점
@@ -110,6 +110,17 @@ FIX r1 은 "동일 **규칙**"으로 맞췄으나 설계서 §6.1 은 "동일 **
 - **AC-8·9·15**: top_holdings 가 비어도(보유는 있으나 5일 유효 없음) PUSH 섹션·제한 문장 유지(초판은 즉시 생략).
 - **B-1**: draft caller 의 `{}`/`[]` 우회 제거 — evidence 가 채운 judgment_summary(available 명시) 사용.
 - **테스트**: Dashboard 가 backend judgment_summary 를 표시하는지(프론트 재계산 아님) + evidence 응답에 judgment_summary 존재 + need_check 의미 일치 테스트 추가.
+
+### FIX 라운드 3 (검증자 재-REJECTED 반영 — API 직렬화 유실, 2026-08-04)
+FIX r2 는 builder 에는 `judgment_summary` 를 넣었으나 **실제 GET endpoint 의 response_model(`HoldingsMarketEvidenceResponse`)에 필드가 없어 직렬화에서 유실**됐다(검증자 지적). Dashboard 는 실제로 요약을 못 받았음. 수정:
+- **`HoldingsMarketEvidenceResponse` 에 `judgment_summary: Optional[dict]` 추가** + endpoint 반환부에서 `evidence.get("judgment_summary")` 전달(`app/api_holdings_market_evidence.py`). 이제 실제 응답에 포함.
+- **실제 endpoint API 테스트 추가**(`test_api_holdings_market_evidence.py`): TestClient 로 `/holdings/market-evidence/latest` 를 호출해 응답 body 에 `judgment_summary`(market_position·holdings·data_status·top_holdings·coverage) 존재를 검증. mock 아닌 실제 직렬화 경로 검증(B-6 gap 해소).
+- 결과서 §2 변경 파일 목록에 FIX r2·r3 변경 반영(아래).
+
+### FIX r2·r3 변경 파일 (전체)
+- backend: `app/holdings_market_evidence.py`(judgment_summary 생성) · `app/api_holdings_market_evidence.py`(응답 모델·직렬화, r3) · `app/market_summary_composer.py`(need_check 통일·available) · `app/draft.py`(evidence 요약 재사용) · `app/draft_message.py`(빈 top 처리)
+- frontend: `frontend/app/components/TodayInvestmentCheckView.tsx`(프론트 계산 제거·요약 표시) · `frontend/lib/api/holdings.ts`(JudgmentSummary 타입)
+- 테스트: `tests/test_market_summary_composer.py` · `tests/test_poc306_push_dashboard_parity.py` · `tests/test_api_holdings_market_evidence.py`(r3 실제 endpoint) · `frontend/.../TodayInvestmentCheckView.test.tsx`
 
 ### 상시
 
