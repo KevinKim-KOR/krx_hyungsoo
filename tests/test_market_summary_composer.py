@@ -130,6 +130,30 @@ def test_kospi_position_sub_one_year_no_high_gap():
     assert m["high_52w_gap_pct"] is None
 
 
+def test_need_check_requires_eval_pnl_and_weight():
+    # 프론트 computeNeedCheck 와 동일 의미(§6.1): 평가액·손익·비중·흐름값 중 하나라도
+    # 결측이면 자료 확인 필요. 여기서는 평가액 결측 케이스.
+    holdings = [
+        # 평가액 있음·흐름 ok → 확인 불필요.
+        _ev_item("A00001", r5=-1.0, eval_amount=1000.0, pnl=1.0),
+        # 평가액 결측 → 확인 필요.
+        {
+            "ticker": "A00002",
+            "name": "ETF A00002",
+            "holding": {"evaluation_amount": None, "pnl_rate_pct": 1.0},
+            "short_term_momentum": {
+                "status": "ok",
+                "return_5d_pct": -2.0,
+                "return_20d_pct": 1.0,
+                "excess_vs_kodex200_20d_pctp": 0.5,
+            },
+        },
+    ]
+    s = summarize_holdings(holdings)
+    assert s["coverage"]["total"] == 2
+    assert s["coverage"]["need_check"] == 1  # A00002 만
+
+
 def test_top_holdings_includes_eval_weight_and_pnl():
     # §4.4·AC-7 — 평가 비중(전체 대비)·평가손익 포함.
     holdings = [

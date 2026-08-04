@@ -345,7 +345,11 @@ def _render_today_holdings_lines(payload: dict[str, Any]) -> list[str]:
         (js.get("holdings") or {}) if isinstance(js.get("holdings"), dict) else {}
     )
     top = holdings.get("top_holdings") or []
-    if not isinstance(top, list) or not top:
+    cov = holdings.get("coverage") if isinstance(holdings.get("coverage"), dict) else {}
+    total = cov.get("total") if isinstance(cov.get("total"), int) else 0
+    # 보유가 아예 없으면 섹션 생략. 보유는 있으나 5일 유효 종목이 없어 top 이 비면
+    # "먼저 볼 종목 없음 + 자료 확인 필요" 를 정직하게 표시한다(§8·§9.3·AC-8·9·15).
+    if not isinstance(top, list) or (not top and total == 0):
         return []
     data_status = (
         js.get("data_status") if isinstance(js.get("data_status"), dict) else {}
@@ -359,6 +363,12 @@ def _render_today_holdings_lines(payload: dict[str, Any]) -> list[str]:
         asof_bits.append(f"시장 기준일 {data_status.get('market_evidence_asof')}")
     if asof_bits:
         lines.append("  (" + " / ".join(asof_bits) + ")")
+    if not top:
+        # 보유는 있으나 5일 유효 종목이 없어 먼저 볼 종목을 정할 수 없는 경우.
+        lines.append(
+            "  • 5일 흐름을 계산할 수 있는 보유 ETF가 없어 먼저 볼 종목을 정할 수 "
+            "없습니다."
+        )
     for h in top[:3]:
         if not isinstance(h, dict):
             continue
@@ -377,7 +387,6 @@ def _render_today_holdings_lines(payload: dict[str, Any]) -> list[str]:
             f"KODEX200 대비 {ex}"
         )
     # 자료 확인 필요 제한 문장 (§4.4·§7.3) — 정렬은 유효값 기준이며 판정이 아님.
-    cov = holdings.get("coverage") if isinstance(holdings.get("coverage"), dict) else {}
     need = cov.get("need_check")
     if isinstance(need, int) and need > 0:
         lines.append(

@@ -387,6 +387,48 @@ def _build_evidence_notes(
     return notes
 
 
+def _build_judgment_summary(
+    *,
+    holdings_out: list[dict],
+    market_context: Optional[dict],
+    holdings_asof: Optional[str],
+    market_asof: Optional[str],
+    db_path: Path,
+) -> dict:
+    """POC3-06 §6 공통 판단 요약 — PC read·PUSH 공용 단일 결과.
+
+    시장 위치(KOSPI 관찰값·국면·지속일)는 저장 benchmark series read 로 산출한다
+    (신규 source 0). 보유 최대 3건·자료 확인 필요는 evidence(holdings_out) 기반.
+    """
+    from app.market_benchmark_store import fetch_benchmark_history
+    from app.market_data_store import fetch_price_history as _fetch_etf_history
+    from app.market_regime import (
+        KODEX200_TICKER,
+        KOSPI_ID,
+        compute_kospi_position_metrics,
+        compute_regime_streak,
+    )
+    from app.market_summary_composer import compose_judgment_summary
+
+    kospi_history = fetch_benchmark_history(KOSPI_ID, db_path=db_path)
+    kodex_history = _fetch_etf_history(KODEX200_TICKER, db_path=db_path)
+    kospi_position = (
+        compute_kospi_position_metrics(kospi_history) if kospi_history else None
+    )
+    regime_streak = compute_regime_streak(kodex_history) if kodex_history else None
+    return compose_judgment_summary(
+        market_context=market_context,
+        kospi_position=kospi_position,
+        regime_streak=regime_streak,
+        evidence_holdings=holdings_out,
+        market_risk=None,
+        evidence_asof={
+            "holdings_asof": holdings_asof,
+            "market_asof": market_asof,
+        },
+    )
+
+
 def build_holdings_market_evidence(
     *,
     holdings: list[Holding],
@@ -518,6 +560,18 @@ def build_holdings_market_evidence(
     if market_core_lookup is None and topn_status == "ok" and candidates:
         warnings.append("market_core_constituents_unavailable")
 
+    # 2026-08-04 POC3-06 §6.1 — 공통 판단 요약(judgment_summary)을 이 응답에 additive 로
+    # 실어, PC read(Dashboard)와 PUSH package 가 **동일 backend 결과**를 쓰게 한다.
+    # 신규 endpoint·DB 없음(기존 read 조합). Dashboard 는 이 값을 표시만 하고 프론트
+    # 에서 재계산하지 않는다(§9.2 "Dashboard/PUSH 별도 계산 금지").
+    judgment_summary = _build_judgment_summary(
+        holdings_out=holdings_out,
+        market_context=market_context,
+        holdings_asof=holdings_asof,
+        market_asof=market_asof,
+        db_path=db_path,
+    )
+
     return {
         "status": "ok",
         "asof": market_asof or holdings_asof or _utcnow_iso(),
@@ -526,6 +580,7 @@ def build_holdings_market_evidence(
         "market_context": market_context,
         "summary": summary,
         "holdings": holdings_out,
+        "judgment_summary": judgment_summary,
         "warnings": warnings,
     }
 

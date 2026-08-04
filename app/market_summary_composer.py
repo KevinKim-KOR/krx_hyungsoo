@@ -93,12 +93,24 @@ def select_top_holdings(
     return out
 
 
-def _need_check(item: dict) -> bool:
-    """자료 확인 필요 판정 (POC3-05 §6.2 핵심 표시값 기준, evidence 측만).
+def _need_check(item: dict, *, market_weight: Optional[float] = None) -> bool:
+    """자료 확인 필요 판정 — 프론트 computeNeedCheck(helpers.ts)와 **동일 의미**.
 
-    enriched 결측은 상위 요약에서 별도 집계하므로, 여기서는 evidence 측
-    status/흐름값 null 만 본다. NAV·구성종목·topn 은 판정에 넣지 않는다.
+    §6.1 단일 계산 원칙: Dashboard·PUSH 가 같은 judgment_summary 를 쓰므로 판정
+    기준도 프론트와 일치해야 한다. 평가(enriched) 측 결측 + evidence 측 결측을 모두 본다.
+    - 평가액(evaluation_amount)·평가손익(pnl_rate_pct)·평가 비중(market_weight) 중
+      하나라도 계산 불가 → 자료 확인 필요.
+    - short_term_momentum status partial/unavailable/None, 또는 5·20·KODEX200 대비
+      중 하나라도 null → 자료 확인 필요.
+    NAV·구성종목·topn 은 판정에 넣지 않는다(POC3-05 §6.2 동일).
     """
+    holding = item.get("holding") or {}
+    if not isinstance(holding.get("evaluation_amount"), (int, float)):
+        return True
+    if not isinstance(holding.get("pnl_rate_pct"), (int, float)):
+        return True
+    if market_weight is None:
+        return True
     stm = item.get("short_term_momentum") or {}
     status = stm.get("status")
     if status in ("partial", "unavailable", None):
@@ -121,6 +133,17 @@ def summarize_holdings(evidence_holdings: Optional[list[dict]]) -> dict:
             "top_holdings": [],
             "coverage": {"total": 0, "need_check": 0, "ok": 0},
         }
+    # 평가 비중(전체 평가금액 대비) — need_check 판정에도 필요하므로 여기서 1회 계산.
+    total_eval = 0.0
+    for it in evidence_holdings:
+        ev = (
+            (it.get("holding") or {}).get("evaluation_amount")
+            if isinstance(it, dict)
+            else None
+        )
+        if isinstance(ev, (int, float)):
+            total_eval += ev
+
     total = 0
     need = 0
     seen: set[str] = set()
@@ -130,7 +153,13 @@ def summarize_holdings(evidence_holdings: Optional[list[dict]]) -> dict:
             continue
         seen.add(ticker)
         total += 1
-        if _need_check(it):
+        ev = (it.get("holding") or {}).get("evaluation_amount")
+        weight = (
+            round(ev / total_eval * 100.0, 1)
+            if isinstance(ev, (int, float)) and total_eval > 0
+            else None
+        )
+        if _need_check(it, market_weight=weight):
             need += 1
     return {
         "available": True,

@@ -612,50 +612,39 @@ describe("TodayInvestmentCheckView", () => {
     expect(onNavigate).toHaveBeenCalledWith("holdings_evidence");
   });
 
-  it("AC-14: 자료 확인 필요 건수가 '확인 근거' 화면과 동일 판정(buildRiskEvidenceRows)을 쓴다", async () => {
-    // short_term_momentum.status=partial → computeNeedCheck=true 이지만 backend
-    // evidence_unavailable_count 는 0. 오늘 화면이 backend count 를 쓰면 0건,
-    // 확인 근거와 같은 판정(computeNeedCheck)을 쓰면 1건. 후자여야 한다(화면 간 정합).
+  it("POC3-06 §6.1·AC-2·14: 자료 확인 필요 건수는 backend judgment_summary 를 그대로 표시한다", async () => {
+    // §6.1 단일 계산 원칙 — Dashboard 는 프론트에서 재계산하지 않고 backend 공통
+    // 요약(judgment_summary.holdings.coverage)을 그대로 표시한다.
     fetchEnrichedHoldings.mockResolvedValue({
-      items: [
-        {
-          ticker: "069500", name: "KODEX200", quantity: 10, avg_buy_price: 1000,
-          invested_amount: 10000, current_price: 1100, price_asof: "2026-07-24",
-          price_source: "naver", eval_amount: 11000, pnl_amount: 1000,
-          pnl_rate_pct: 10, buy_weight_pct: 50, market_weight_pct: 50,
-          price_missing: false, calc_missing: false,
-        },
-      ],
+      items: [{ ticker: "069500", name: "KODEX200", price_missing: false }],
     });
     fetchHoldingsMarketEvidence.mockResolvedValue({
-      status: "ok", asof: "2026-07-24", holdings_asof: "2026-07-24", market_asof: "2026-07-24",
+      status: "ok",
+      asof: "2026-07-24",
+      holdings_asof: "2026-07-24",
+      market_asof: "2026-07-24",
       market_context: null,
       summary: {
         total_holdings_count: 1, matched_topn_count: 0, not_in_current_topn_count: 1,
         evidence_unavailable_count: 0, constituents_available_count: 1,
         constituents_unavailable_count: 0, nav_discount_unavailable_count: 0,
       },
-      holdings: [
-        {
-          ticker: "069500", name: "KODEX200",
-          holding: { quantity: 10, avg_buy_price: 1000, evaluation_amount: 11000, pnl_rate_pct: 10 },
-          topn_match: { status: "unavailable", rank: null, basis: null, candidate_name: null },
-          returns: { status: "ok", one_month_return_pct: 1, three_month_return_pct: 2 },
-          excess_return: { status: "ok", vs_kodex200_1m_pctp: 1, vs_kodex200_3m_pctp: 2 },
-          short_term_momentum: {
-            status: "partial", return_5d_pct: -1, return_10d_pct: null, return_20d_pct: null,
-            excess_vs_kodex200_5d_pctp: null, excess_vs_kodex200_10d_pctp: null, excess_vs_kodex200_20d_pctp: null,
-          },
-          constituents_overlap: { status: "ok", overlap_with_market_core: [] },
-          nav_discount: { status: "ok", source: null, asof: null, nav: null, market_price: null, discount_rate_pct: null, flag: null, message: null },
-          evidence_notes: [],
+      holdings: [],
+      // backend 공통 요약: 자료 확인 필요 1건.
+      judgment_summary: {
+        market_position: { available: false },
+        holdings: {
+          available: true,
+          top_holdings: [],
+          coverage: { total: 1, need_check: 1, ok: 0 },
         },
-      ],
+        data_status: {},
+      },
       warnings: [],
     });
     await renderView();
     const judgment = screen.getByLabelText("오늘 내가 확인할 것");
-    // computeNeedCheck 기준 1건(partial). backend count(0)를 썼다면 이 문구가 없어야 한다.
+    // backend coverage.need_check=1 을 그대로 표시.
     expect(within(judgment).getByText(/자료 확인 필요 1건/)).toBeInTheDocument();
   });
 
@@ -681,51 +670,54 @@ describe("TodayInvestmentCheckView", () => {
     expect(within(judgment).queryByText(/자료 확인 필요/)).toBeNull();
   });
 
-  it("POC3-06 §6.1·AC-2·6·7: Dashboard 판단 큐가 오늘 먼저 볼 보유 ETF 최대 3건을 표시한다", async () => {
-    // 5일 값이 다른 두 종목 → lowestFiveDayRows(= backend select_top_holdings 동일 규칙)
-    // 로 5일 낮은 순 표시. Dashboard 가 실제로 이 목록을 렌더링해야 한다(REJECTED #1).
-    const enriched = (ticker: string, name: string) => ({
-      ticker, name, quantity: 10, avg_buy_price: 1000,
-      invested_amount: 10000, current_price: 1100, price_asof: "2026-07-24",
-      price_source: "naver", eval_amount: 11000, pnl_amount: 1000,
-      pnl_rate_pct: 10, buy_weight_pct: 50, market_weight_pct: 50,
-      price_missing: false, calc_missing: false,
-    });
-    const evItem = (ticker: string, name: string, r5: number) => ({
-      ticker, name,
-      holding: { quantity: 10, avg_buy_price: 1000, evaluation_amount: 11000, pnl_rate_pct: 10 },
-      topn_match: { status: "unavailable", rank: null, basis: null, candidate_name: null },
-      returns: { status: "ok", one_month_return_pct: 1, three_month_return_pct: 2 },
-      excess_return: { status: "ok", vs_kodex200_1m_pctp: 1, vs_kodex200_3m_pctp: 2 },
-      short_term_momentum: {
-        status: "ok", return_5d_pct: r5, return_10d_pct: -2, return_20d_pct: -3,
-        excess_vs_kodex200_5d_pctp: -0.5, excess_vs_kodex200_10d_pctp: -1,
-        excess_vs_kodex200_20d_pctp: -1.5,
-      },
-      constituents_overlap: { status: "ok", overlap_with_market_core: [] },
-      nav_discount: { status: "ok", source: null, asof: null, nav: null, market_price: null, discount_rate_pct: null, flag: null, message: null },
-      evidence_notes: [],
-    });
+  it("POC3-06 §6.1·AC-2·6·7: Dashboard 는 backend judgment_summary.top_holdings 를 그대로 표시한다", async () => {
+    // §9.2 — Dashboard 는 프론트에서 재계산하지 않고 backend 공통 요약의 최대 3건을
+    // 그대로 렌더링한다. 순서·수치도 backend 가 준 그대로.
     fetchEnrichedHoldings.mockResolvedValue({
-      items: [enriched("069500", "코덱스200"), enriched("133690", "타이거나스닥")],
+      items: [{ ticker: "069500", name: "코덱스200", price_missing: false }],
     });
     fetchHoldingsMarketEvidence.mockResolvedValue({
-      status: "ok", asof: "2026-07-24", holdings_asof: "2026-07-24", market_asof: "2026-07-24",
+      status: "ok",
+      asof: "2026-07-24",
+      holdings_asof: "2026-07-24",
+      market_asof: "2026-07-24",
       market_context: null,
       summary: {
         total_holdings_count: 2, matched_topn_count: 0, not_in_current_topn_count: 2,
         evidence_unavailable_count: 0, constituents_available_count: 2,
         constituents_unavailable_count: 0, nav_discount_unavailable_count: 0,
       },
-      holdings: [evItem("069500", "코덱스200", -1), evItem("133690", "타이거나스닥", -8)],
+      holdings: [],
+      // backend 공통 요약: 5일 낮은 순 정렬된 최대 3건(순서 그대로 표시해야 함).
+      judgment_summary: {
+        market_position: { available: false },
+        holdings: {
+          available: true,
+          top_holdings: [
+            {
+              ticker: "133690", name: "타이거나스닥",
+              eval_amount: 11000, market_weight_pct: 50, pnl_rate_pct: 5,
+              return_5d_pct: -8, return_20d_pct: -3,
+              excess_vs_kodex200_20d_pctp: -1.5,
+            },
+            {
+              ticker: "069500", name: "코덱스200",
+              eval_amount: 11000, market_weight_pct: 50, pnl_rate_pct: 5,
+              return_5d_pct: -1, return_20d_pct: -3,
+              excess_vs_kodex200_20d_pctp: -1.5,
+            },
+          ],
+          coverage: { total: 2, need_check: 0, ok: 2 },
+        },
+        data_status: {},
+      },
       warnings: [],
     });
     await renderView();
     const judgment = screen.getByLabelText("오늘 내가 확인할 것");
-    // 최대 3건 목록에 두 ETF 모두 표시.
     expect(within(judgment).getByText("타이거나스닥")).toBeInTheDocument();
     expect(within(judgment).getByText("코덱스200")).toBeInTheDocument();
-    // 5일 낮은 순: 타이거나스닥(-8) 이 코덱스200(-1) 보다 먼저.
+    // backend 가 준 순서 그대로: 타이거나스닥(-8) 이 코덱스200(-1) 보다 먼저.
     const text = judgment.textContent ?? "";
     expect(text.indexOf("타이거나스닥")).toBeLessThan(text.indexOf("코덱스200"));
   });

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from app.draft_message import build_message_text
 from app.message_market_briefing import build_market_briefing_message
+from app.holdings_market_evidence import build_holdings_market_evidence
 
 
 def _holdings_payload_with_summary(
@@ -133,6 +134,27 @@ def test_market_briefing_shows_market_position_from_context():
     assert "하락장" in msg
     assert "12거래일째" in msg
     assert "KODEX200 기준" in msg
+
+
+def test_evidence_response_carries_judgment_summary_single_source(tmp_path):
+    # §6.1 — GET /holdings/market-evidence/latest 응답(= Dashboard 가 받는 것)에
+    # judgment_summary 가 담겨야 한다. PC read 와 PUSH 가 이 동일 객체를 쓴다.
+    # DB 없이도 함수가 judgment_summary 키를 항상 포함하는지 확인(빈 holdings).
+    ev = build_holdings_market_evidence(
+        holdings=[],
+        topn_payload={"status": "unavailable", "candidates": []},
+        market_quotes={},
+        db_path=tmp_path / "empty.sqlite",
+        holdings_asof="2026-07-24T00:00:00+00:00",
+    )
+    assert "judgment_summary" in ev
+    js = ev["judgment_summary"]
+    assert "market_position" in js
+    assert "holdings" in js
+    assert "data_status" in js
+    # holdings 가 list(빈 list)이면 available=True·total=0 (조용한 결측 아님).
+    assert js["holdings"]["available"] is True
+    assert js["holdings"]["coverage"]["total"] == 0
 
 
 def test_market_briefing_omits_position_when_context_unavailable():

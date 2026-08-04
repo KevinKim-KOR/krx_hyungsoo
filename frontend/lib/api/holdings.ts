@@ -208,6 +208,31 @@ export interface HoldingsMarketEvidenceMarketContext {
   regime_code: string;
 }
 
+// 2026-08-04 POC3-06 §6.1 — 공통 판단 요약(backend 단일 계산 결과). Dashboard·PUSH
+// 가 이 값을 그대로 표시한다(프론트 재계산 금지).
+export interface JudgmentSummaryTopHolding {
+  ticker: string;
+  name: string | null;
+  eval_amount: number | null;
+  market_weight_pct: number | null;
+  pnl_rate_pct: number | null;
+  return_5d_pct: number | null;
+  return_20d_pct: number | null;
+  excess_vs_kodex200_20d_pctp: number | null;
+}
+
+export interface JudgmentSummaryHoldings {
+  available: boolean;
+  top_holdings: JudgmentSummaryTopHolding[];
+  coverage: { total: number; need_check: number; ok: number };
+}
+
+export interface JudgmentSummary {
+  market_position: Record<string, unknown> & { available?: boolean };
+  holdings: JudgmentSummaryHoldings;
+  data_status: Record<string, unknown>;
+}
+
 export interface HoldingsMarketEvidenceResponse {
   status: "ok";
   asof: string;
@@ -216,6 +241,8 @@ export interface HoldingsMarketEvidenceResponse {
   market_context: HoldingsMarketEvidenceMarketContext | null;
   summary: HoldingsMarketEvidenceSummary;
   holdings: HoldingsMarketEvidenceItem[];
+  // POC3-06 §6.1 additive — 공통 판단 요약(backend 단일 결과).
+  judgment_summary?: JudgmentSummary | null;
   warnings: string[];
 }
 

@@ -40,10 +40,6 @@ import {
   DASH_KEY_NAV,
 } from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
-import {
-  buildRiskEvidenceRows,
-  lowestFiveDayRows,
-} from "./holdings_risk_evidence/helpers";
 import KospiChart from "./today/KospiChart";
 import {
   fmtKstDate,
@@ -427,16 +423,13 @@ function JudgmentQueueSection({
     holdings.phase === "success"
       ? new Set(holdings.data.items.map((it) => it.ticker)).size
       : null;
-  // POC3-06 §6.1·§6.3 — 두 조회 성공 시 공통 판단 요약을 1회 계산한다.
-  // buildRiskEvidenceRows·lowestFiveDayRows 는 backend market_summary_composer 의
-  // select_top_holdings 와 동일 규칙(전환 테스트로 고정) → Dashboard·PUSH 가 같은
-  // 최대 3건·자료 확인 필요 건수를 표시한다(AC-2·6·7·14).
-  const built =
-    holdings.phase === "success" && evidence.phase === "success"
-      ? buildRiskEvidenceRows(holdings.data.items, evidence.data.holdings)
-      : null;
-  const needCheckCount = built ? built.coverage.need_check : null;
-  const topHoldings = built ? lowestFiveDayRows(built.rows, 3) : [];
+  // POC3-06 §6.1 단일 계산 원칙 — Dashboard 는 backend 공통 요약(judgment_summary)을
+  // **그대로 표시**한다. 프론트에서 재계산하지 않는다(§9.2 Dashboard/PUSH 별도 계산
+  // 금지). 최대 3건·자료 확인 필요 건수 모두 evidence 응답의 judgment_summary 사용.
+  const summary =
+    evidence.phase === "success" ? evidence.data.judgment_summary ?? null : null;
+  const needCheckCount = summary?.holdings?.coverage?.need_check ?? null;
+  const topHoldings = summary?.holdings?.top_holdings ?? [];
   const candCount =
     market.phase === "success" && market.data.status === "ok"
       ? market.data.candidates.length

@@ -63,7 +63,7 @@
 | AC | 판정 | 실측 근거 |
 |---:|:---:|---|
 | 1 | PASS | POC3-05 보유 화면·계산 계약 불변. holdings evidence·enriched read 재사용, 신규 산식 0. |
-| 2 | PASS (FIX r1) | **초판 오류**: Dashboard 가 최대 3건을 렌더링하지 않아 미충족이었음. FIX: `TodayInvestmentCheckView` 판단 큐에 `lowestFiveDayRows`(= backend `select_top_holdings` 동일 규칙, 전환 테스트 고정) 로 최대 3건 렌더. Dashboard·PUSH 동일 규칙·순서. |
+| 2 | PASS (FIX r2) | **r1 도 미흡(동일 규칙일 뿐 별도 계산)**. FIX r2: `build_holdings_market_evidence` 응답에 `judgment_summary` additive 추가 → PC read(Dashboard)·PUSH(draft) 가 **동일 backend 객체** 사용. Dashboard 프론트 계산 제거(§9.2 준수). |
 | 3 | PASS | KOSPI 일간·1년 수익률·최근 1년 고점 대비·기준일 = `compute_kospi_position_metrics` 실제값. 화면·PUSH 표시. |
 | 4 | PASS | 국면 라벨·지속 거래일 수 = KODEX200 기준(`compute_regime_streak`). "KODEX200 기준" 명시, KOSPI 흐름으로 오해 안 함. |
 | 5 | PASS | MA20·MA60 대비 = 기존 저장값 단순 산술(POC3-01). 미래 예측·시장 전환 라벨 아님. |
@@ -81,13 +81,14 @@
 | 17 | PASS | PUSH 종류·스케줄·승인·OCI·중복 차단·sent registry 계약 불변. message 문구만 additive 추가. |
 | 18 | PASS | BUY·SELL·매수·매도·교체·비중·주문 지시 0(composer·message 섹션 grep 0). "매매 지시 아님" 중립 문구 유지. |
 | 19 | PASS | 신규 endpoint·DB·source·시장 알고리즘·score·threshold·저장 rank 0(composer 는 기존 read 조합). |
-| 20 | PASS | 사용자 실제 Dashboard(C) + 두 PUSH 실제 발송 결과(E) 확인 후 PASS. |
+| 20 | PARTIAL | 초기 사용자 확인(2026-08-03, C·E) 이후 FIX r1·r2 로 Dashboard·PUSH 본문이 변경됨. **FIX 반영 최종 화면·Telegram 재확인 필요**(자동 테스트는 커버). 최종 판정 전 사용자 재확인 1회 필요. |
 
-AC 1~20 — 초판에서 AC-2·6·7·8·9·15 미충족(Dashboard 미연결·PUSH 표시 부족·1년 미만 계약)이었으나 **FIX r1 로 전부 충족.** (검증자 재검증 대상.)
+AC 1~19 — FIX r2(§6.1 단일 backend 계산 결과 공유)로 충족. **AC-20 은 PARTIAL** (FIX 반영 최종 화면·Telegram 사용자 재확인 대기). → 검증자 재검증 + 사용자 재확인 후 최종 PASS.
 
 ### 자체 검수 재실행 (FIX r1 후)
 - frontend: tsc 0 · eslint 0 · vitest **128 passed**
-- backend: 전체 pytest **1096 passed · 4 skipped** (초판 1094 + FIX 테스트 2). black · flake8 0.
+- backend: 전체 pytest **1098 passed · 4 skipped** (FIX r2 테스트 추가). black · flake8 0.
+- frontend: tsc 0 · eslint 0 · vitest 128 passed.
 
 ## 6) 다음 검증자(Codex)에게 알릴 점
 
@@ -99,6 +100,16 @@ AC 1~20 — 초판에서 AC-2·6·7·8·9·15 미충족(Dashboard 미연결·PUS
 - **#4 B-1 fallback** → composer 필수 입력(market_context·evidence_holdings) 결측 시 `available=False` 명시(조용한 빈 요약 금지).
 - **#5 테스트 보강** → Dashboard 실제 렌더 최대 3건 정합 테스트(frontend) + 1년 미만 계약 테스트(backend) 추가.
 - **#6 결과서 정정** → 위 AC 를 "(FIX r1)"로 표기, "전부 PASS" 과잉 주장 정정, 설계서 헤더 메타데이터 불일치 명시.
+
+### FIX 라운드 2 (검증자 재-REJECTED 반영 — 근본 아키텍처, 2026-08-04)
+FIX r1 은 "동일 **규칙**"으로 맞췄으나 설계서 §6.1 은 "동일 **backend 계산 결과 공유**"를 요구한다. Dashboard 가 프론트에서 `buildRiskEvidenceRows`/`lowestFiveDayRows`를 돌리는 한 §9.2(Dashboard/PUSH 별도 계산 금지) 위반. 근본 수정:
+- **§6.1 단일 계산**: `build_holdings_market_evidence`(= `GET /holdings/market-evidence/latest`, Dashboard 가 이미 fetch) 응답에 `judgment_summary` **additive 키** 추가. 신규 endpoint·DB 0. PC read(Dashboard)와 PUSH(draft) 가 이 **동일 객체**를 사용.
+- **Dashboard**: `TodayInvestmentCheckView` 가 프론트 계산(`buildRiskEvidenceRows`/`lowestFiveDayRows`) 제거하고 `evidence.data.judgment_summary` 를 **표시만** 함.
+- **PUSH(draft.py)**: 자체 composer 호출 제거, `market_evidence_snapshot["judgment_summary"]` 재사용(단일 소스).
+- **need_check 의미 통일 (AC-2·8)**: backend `_need_check` 를 프론트 `computeNeedCheck` 와 동일 의미로(평가액·손익·비중·흐름값 결측 모두 확인). 전환 테스트.
+- **AC-8·9·15**: top_holdings 가 비어도(보유는 있으나 5일 유효 없음) PUSH 섹션·제한 문장 유지(초판은 즉시 생략).
+- **B-1**: draft caller 의 `{}`/`[]` 우회 제거 — evidence 가 채운 judgment_summary(available 명시) 사용.
+- **테스트**: Dashboard 가 backend judgment_summary 를 표시하는지(프론트 재계산 아님) + evidence 응답에 judgment_summary 존재 + need_check 의미 일치 테스트 추가.
 
 ### 상시
 
