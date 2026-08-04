@@ -17,43 +17,43 @@
 
 - **A구간 (계약 확정·VIX 실측)**: DONE — VIX 연결 확정(자기 기준일 표시), composer 입력 계약 충돌 없음. §11 복귀조건 미해당.
 - **B구간 (공통 요약 composer + KOSPI 관찰값)**: DONE — `market_summary_composer.py`(신규) + KOSPI 일간·1년·52주 고점 대비 + 국면 지속일 helper.
-- **C구간 (오늘의 투자 점검 연결)**: DONE — KOSPI `개발 중` 4항목 실제값 교체. **사용자 Dashboard 실화면 확인 통과.**
-- **D구간 (PUSH·Dashboard 정합)**: DONE — 두 PUSH 가 composer/market_context 동일 결과 사용. 정합 테스트.
-- **E구간 (실제 Telegram 수신)**: DONE — 두 PUSH 실제 발송(`telegram_send` ok=True) + **사용자 수신 확인.**
+- **C구간 (오늘의 투자 점검 연결)**: 코드 DONE — KOSPI `개발 중` 4항목 실제값 교체 + 최대 3건 목록. 초기 Dashboard 확인(2026-08-03)은 최대 3건·API 직렬화 FIX **이전** → **AC-11 재확인 대기(PARTIAL).**
+- **D구간 (PUSH·Dashboard 정합)**: DONE — Dashboard·PUSH 가 동일 backend `judgment_summary` 사용. 정합·실제 endpoint 테스트.
+- **E구간 (실제 Telegram 수신)**: 초기 발송·수신(2026-08-03)은 FIX **이전** 본문. FIX 반영 새 본문(비중·손익·기준일) **재수신 대기 → AC-15·20 PARTIAL.**
 
 ## 2) 변경된 파일 목록
 
-### 신규
-- `app/market_summary_composer.py` — 공통 판단 요약 composer (§6, Q3)
-- `tests/test_market_summary_composer.py` — composer·helper 단위 + 프론트 규칙 동일성 (11 케이스)
-- `tests/test_poc306_push_dashboard_parity.py` — PUSH·Dashboard 정합 (4 케이스)
+> `git diff --name-status origin/main..HEAD` 실측 = **22개**(신규 A 6 · 수정 M 16). FIX r1~r3 반영 최종 상태와 1:1.
 
-> 아래는 **FIX r1~r3 반영 후 최종 코드 상태**와 1:1 대응한다(중간 라운드의 stale 설명 제거).
+### 신규 (A, 6개)
+- `docs/ai_design/POC3/POC3-06_..._DESIGN_V1.md` — 설계서 정본(ai_design 배치)
+- `docs/ai_plan/POC3/POC3-06_..._PLAN_V2.md` — 개발 PLAN 확정본
+- `docs/ai_result/POC3/POC3-06_..._RESULT.md` — 본 결과서
+- `app/market_summary_composer.py` — 공통 판단 요약 composer(§6). `_need_check` 프론트 동일 의미·`market_weight_pct`·`available`(B-1)
+- `tests/test_market_summary_composer.py` — composer·helper 단위 + 프론트 규칙 동일성 + need_check 의미 + 1년 미만 계약
+- `tests/test_poc306_push_dashboard_parity.py` — PUSH·Dashboard 정합 + evidence 응답 judgment_summary 존재
 
-### 수정 (backend)
-- `app/market_regime.py` — `compute_kospi_position_metrics`(일간·1년·52주 고점, **1년 미만 이력 시 None**) + `compute_regime_streak`(국면 지속일)
-- `app/api_market_topn_models.py` — `MarketContextKospi` additive 확장 + `MarketContextRegimeStreak`
+### 수정 (M, 16개) — backend
+- `app/market_regime.py` — `compute_kospi_position_metrics`(일간·1년·52주 고점, 1년 미만 시 None) + `compute_regime_streak`
+- `app/api_market_topn_models.py` — `MarketContextKospi` additive + `MarketContextRegimeStreak`
 - `app/api_market_topn_service.py` — regime_streak 매핑
-- `app/market_topn.py` — KOSPI 관찰값·streak 병합 (compute_topn)
-- `app/market_summary_composer.py`(신규) — 공통 판단 요약. `_need_check` 를 프론트 `computeNeedCheck` 와 동일 의미로 통일 + `market_weight_pct` 계산 + `available` 명시(B-1)
-- `app/holdings_market_evidence.py` — `build_holdings_market_evidence` 응답에 `judgment_summary` additive 생성(`_build_judgment_summary`)
-- `app/api_holdings_market_evidence.py` — **`HoldingsMarketEvidenceResponse` 에 `judgment_summary` 필드 + endpoint 전달**(실제 GET 직렬화, r3 핵심)
-- `app/draft.py` — PUSH-2 가 `market_evidence_snapshot["judgment_summary"]`(= PC read 와 동일 객체)를 재사용. **자체 composer 호출 없음**(`_compose_holdings_judgment_summary` 는 최종본에 존재하지 않음)
+- `app/market_topn.py` — KOSPI 관찰값·streak 병합(compute_topn)
+- `app/holdings_market_evidence.py` — 응답에 `judgment_summary` 생성(`_build_judgment_summary`)
+- `app/api_holdings_market_evidence.py` — `HoldingsMarketEvidenceResponse` 에 `judgment_summary` 필드 + endpoint 전달(실제 GET 직렬화, r3 핵심)
+- `app/draft.py` — PUSH-2 가 evidence 의 `judgment_summary`(= PC read 와 동일 객체) 재사용. 자체 composer 호출 없음
 - `app/draft_message.py` — holdings_briefing `[오늘 먼저 볼 보유 ETF]` 섹션(비중·손익·기준일·제한 문장, top 비어도 유지)
-- `app/message_market_briefing.py` — `[시장 위치]` 섹션 (맨 앞)
+- `app/message_market_briefing.py` — `[시장 위치]` 섹션(맨 앞)
 
-### 수정 (frontend)
-- `frontend/app/components/TodayInvestmentCheckView.tsx` — KOSPI 4항목 실제값 + **판단 큐가 backend `evidence.data.judgment_summary` 를 표시**(프론트 `buildRiskEvidenceRows`/`lowestFiveDayRows` 계산 **제거**, §9.2 준수)
+### 수정 (M) — frontend
+- `frontend/app/components/TodayInvestmentCheckView.tsx` — KOSPI 4항목 실제값 + 판단 큐가 backend `judgment_summary` 표시(프론트 `buildRiskEvidenceRows`/`lowestFiveDayRows` 계산 제거, §9.2)
+- `frontend/app/components/TodayInvestmentCheckView.test.tsx` — Dashboard 가 backend 요약을 표시하는지 검증(프론트 재계산 아님)
 - `frontend/lib/api/holdings.ts` — `JudgmentSummary` 타입 + `HoldingsMarketEvidenceResponse.judgment_summary`
 - `frontend/lib/api/marketEvidence.ts` — MarketContextKospi·RegimeStreak 타입 additive
 - `frontend/app/globals.css` — tc-today-holdings 스타일
 
-### 수정 (테스트)
-- `tests/test_market_summary_composer.py` — composer·helper 단위 + 프론트 규칙 동일성 + need_check 의미 일치 + 1년 미만 계약
-- `tests/test_poc306_push_dashboard_parity.py` — PUSH·Dashboard 정합 + evidence 응답 judgment_summary 존재
-- `tests/test_api_holdings_market_evidence.py` — **실제 endpoint 직렬화 테스트**(judgment_summary 포함, r3)
+### 수정 (M) — 테스트
+- `tests/test_api_holdings_market_evidence.py` — 실제 endpoint 직렬화 테스트(judgment_summary 포함, r3)
 - `tests/test_universe_seed.py` — draft_payload 키 집합에 judgment_summary 추가(schema lock)
-- `frontend/.../TodayInvestmentCheckView.test.tsx` — Dashboard 가 backend 요약을 표시하는지 검증(프론트 재계산 아님)
 
 ## 3) 신규 추가된 의존성
 
@@ -134,9 +134,9 @@ FIX r2 는 builder 에는 `judgment_summary` 를 넣었으나 **실제 GET endpo
 
 ## 7) 사용자 확인이 필요한 항목
 
-- **[완료] E 실제 Telegram 수신**: 사용자 2026-08-03 확인 — 시장흐름 브리핑·홀딩스 판단 초안 두 PUSH 모두 수신.
-- **[별도 이슈] KOSPI 데이터 품질**: 향후 실제 코스피 지수 적재/검증 Step 필요(§13 BACKLOG 후보). 그 전까지 KOSPI 표시값이 비현실적이어도 산식이 아니라 데이터 문제.
+- **[재확인 대기] AC-11·15·20 사용자 재확인**: 초기 확인(2026-08-03)은 최대 3건 목록·API 직렬화·PUSH 본문 FIX r1~r3 **이전**. 따라서 (1) Dashboard 오늘의 투자 점검 최대 3건 실화면, (2) FIX 반영 새 holdings Telegram 본문 실제 수신을 **1회 재확인**해야 최종 PASS. (초기 발송·수신 자체는 있었으나 FIX 이전 본문이라 근거로 쓰지 않음.)
+- **[별도 이슈] KOSPI 데이터 품질**: 향후 실제 코스피 지수 적재/검증 Step 필요(BACKLOG 후보). 그 전까지 KOSPI 표시값이 비현실적이어도 산식이 아니라 데이터 문제.
 - **미커밋 무관 파일**: `design/DESIGN-apple.md`·`docs.zip` — POC3-06 무관, 커밋 제외.
-- **push 미실행**: 규칙상 별도 승인. POC3-06 커밋(PLAN·A·B·C·D)은 push 대기.
+- **push 미실행**: 규칙상 별도 승인. POC3-06 커밋(PLAN·A·B·C·D·FIX r1~r3·정정)은 push 대기.
 
 문서 끝.
