@@ -1,10 +1,10 @@
 # POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — 개발 결과서
 
-- 작성일: 2026-08-06 (검증자 REJECTED r3 반영 갱신 — PLAN §4.3 복원 + 순서 교정)
+- 작성일: 2026-08-06 (검증자 REJECTED r4 반영 갱신 — active 교체 payload 단일 mv)
 - 문서 성격: 개발 결과서 (검증자 입력)
 - 대상 설계서: `docs/ai_design/POC3/PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_DESIGN_V1.md`
 - 개발 PLAN: `docs/ai_plan/POC3/POC3-07_PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_V1_PLAN_V1.md` (V2 확정본)
-- 커밋: `37c310f2`(기준) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) · `5dc8e852`(결과서) · `06c856eb`(r1) · `6536b29d`(r2) · (본 갱신 = r3)
+- 커밋: `37c310f2`(기준) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) · `5dc8e852`(결과서) · `06c856eb`(r1) · `6536b29d`(r2) · `8f31fdeb`(r3) · (본 갱신 = r4)
 - 검증: tsc 0 · eslint 0 · vitest 121 passed · pytest(holdings/oci/param) 관련 통과(신규 test_holdings_oci_apply **11** + test_oci_startup_status 8) · black/flake8/py_compile OK
   - 재현 명령: `.venv/Scripts/python.exe -m pytest tests/test_holdings_oci_apply.py tests/test_oci_startup_status.py -q` (19 passed)
 - **작업 트리 untracked 4개**(POC3-07 범위 밖): `.claude/hooks/result_doc_gate.sh`·`.claude/hooks/stop_verify_gate.sh`(개발자 Stop hook), `design/DESIGN-apple.md`·`docs.zip`(사용자 파일). POC3-07 산출물은 전부 커밋됨.
@@ -22,7 +22,7 @@
   - 첫 화면(오늘의 투자 점검): OCI 상태 한 줄 + 진단·상태 링크. 상세는 `diagnostics`.
   - `운영 관리` 신규화면 만들지 않음(설계자 정정). 버튼·새로고침·타이머 재조회 없음.
 - **C. Holdings·PARAM 명시적 OCI 적용**: DONE.
-  - `POST /holdings/apply`: 저장된 `state/holdings/holdings_latest.json`(OCI 실측 소스)을 payload·manifest **둘 다 tmp 전송** → 원격 sha256 대조·schema 검증 → manifest 승격 후 **payload 를 마지막에 atomic rename** → active hash 재확인(PLAN §4.3). PC==OCI 면 OCI_APPLIED, 불일치 OUT_OF_SYNC. payload 승격 이전 어떤 실패도 기존 active 보존.
+  - `POST /holdings/apply`: 저장된 `state/holdings/holdings_latest.json`(OCI 실측 소스)을 payload-tmp 전송 → 원격 sha256 대조·schema 검증 → **payload 단일 atomic mv 로만 active 교체**(active 를 바꾸는 유일한 원자 연산) → manifest 기록(payload 성공 후) → active hash 재확인(PLAN §4.3). PC==OCI 면 OCI_APPLIED, 불일치 OUT_OF_SYNC, 기록·재확인 실패 UNKNOWN. payload mv 이전 어떤 실패도 active·manifest 둘 다 보존.
   - PARAM 적용은 기존 `POST /three-push/param/apply`(create+approve+sync+verify+active 보존) 재사용. 응답에 `content_sha256`(표시용) 추가, 성공 판정은 기존 `oci_verified` 유지(Q4).
   - `holdings_manage` 에 OCI 적용 버튼·상태. 저장(PUT /holdings)과 별도 동작.
 - **approval 역할 축소**: DONE. `승인·적용`으로 축소(ThreePushParamCard 만). 정보 PUSH 카드·미리보기·샘플·개발호환은 diagnostics 로 이동.
@@ -96,7 +96,7 @@
 
 - **OCI 실측은 개발자 직접 SSH 읽기(옵션 B, 설계자 Q2 확정)로 수행**했다. `ubuntu@krx-alertor-vm`. 읽기 전용(crontab -l / stat / sha256sum)만. 원격 write·job 실행·Telegram 발송은 하지 않음.
 - **기동 읽기·Holdings apply 는 실제로 라이브 확인**: 백엔드 기동 시 `GET /oci/startup-status` → `reachable=true, overall=OPERATING, crontab_active=true` 반환 확인(포트 8123/8125). `POST /holdings/apply`·`GET /oci/startup-status` 라우트 등록 OpenAPI 로 확인(POST 는 실행 안 함).
-- **Holdings apply 의 원자성·active 보존**은 단위 테스트로 검증(`tests/test_holdings_oci_apply.py` 11): 로컬 schema 손상 시 SSH 미호출, scp 실패·manifest 전송 실패·tmp hash 불일치·tmp schema 불일치·**manifest 승격 실패** 모두 **payload mv 미호출(active 보존)**, 정상 순서 scp→manifest전송→sha256sum(tmp)→schema→manifest mv→payload mv→sha256sum(active), 승격 후 hash 불일치→OUT_OF_SYNC, 재확인 실패→UNKNOWN. 실 OCI write 는 mock.
+- **Holdings apply 의 원자성·active 보존**은 단위 테스트로 검증(`tests/test_holdings_oci_apply.py` 11): 로컬 schema 손상 시 SSH 미호출, scp 실패·tmp hash 불일치·tmp schema 불일치·**payload mv 실패** 모두 **active·manifest 둘 다 미변경**(payload mv 실패 시 manifest write 미호출), 정상 순서 scp→sha256sum(tmp)→schema→payload mv→manifest→sha256sum(active), payload mv 후 manifest 실패→UNKNOWN(active 정상), 승격 후 hash 불일치→OUT_OF_SYNC, 재확인 실패→UNKNOWN. 실 OCI write 는 mock.
 - **`private_fields_exposed`(Q10)**: r2 에서 소스 확인 완료 — `app/runtime_evidence/diagnostics.py :: detect_private_values_exposed` 로 개인값 노출을 실측 스캔하는 **탐지 boolean**(하드코드 False 금지 가드). 노출 필드가 아니라 노출 감시 플래그이므로 추가 차단 불필요. "실제 true 관측 이력" 조사만 로그 분석 BACKLOG.
 - **approval 축소로 삭제한 것**: `InfoPushGuideCards`·`ManualPreviewSection`·`DevCompatSection` 을 approval 에서 제거(파일은 존재, diagnostics 가 후 2개 참조). `InfoPushGuideCards` 는 어디서도 참조 안 됨 → 고아 후보(삭제 안 함).
 
@@ -117,7 +117,7 @@
 | AC-3 PC 화면이 OCI job/Telegram 자동실행 안 함 | DONE | 조회는 기동 캐시. apply 는 명시적 클릭만. |
 | AC-4 Holdings PC·OCI hash 구분 | DONE(r2 강화) | content_sha256 PC 계산 + rename 전 원격 tmp sha256 대조 + manifest(kind/content_sha256/created_at) 로컬·원격 기록. |
 | AC-5 적용 성공 시만 OCI_APPLIED | DONE(r3) | 승격 후 active hash == PC hash 일 때만 OCI_APPLIED. 불일치 OUT_OF_SYNC, 재확인 실패 UNKNOWN(PLAN §4.3 재확인 복원). |
-| AC-6 적용 실패 시 기존 active 보존·단계 표시 | DONE(r3) | **payload 승격이 마지막**이라 그 앞의 모든 실패(로컬 schema·scp·manifest 전송·tmp hash·tmp schema·manifest 승격)에서 payload active 미변경. 테스트 6개 실패 경로 모두 payload mv 미호출 검증. |
+| AC-6 적용 실패 시 기존 active 보존·단계 표시 | DONE(r4) | **active 교체는 payload 단일 atomic mv 하나뿐**. 그 앞의 모든 실패(로컬 schema·scp·tmp hash·tmp schema)와 payload mv 실패 자체에서 active·manifest 둘 다 미변경. payload mv 실패 시 manifest write 미호출 검증. |
 | AC-7 PARAM 승인됨/OCI 적용됨 분리 | DONE | 기존 param state status + apply 결과 분리. |
 | AC-8 PARAM 성공 시 PC==OCI hash | PARTIAL | 성공 판정은 기존 verify(Q4 사용자 확정). hash 는 표시용. |
 | AC-9 동일 revision 재적용 idempotent | DONE | 같은 내용→같은 hash→같은 결과(테스트). |
@@ -223,3 +223,26 @@ r2 검증자 REJECTED 를 받아 근본 재작업했다. **r2 의 두 잘못을 
 **A-2/A-3 (보고):** §1·§6·AC-5·AC-6·§24행 등 r2 의 "사후 재검증 제거·manifest 실패 UNKNOWN(active 변경)" 서술을 전부 PLAN 복원 서술로 정정. 테스트 수 11. 상단 검증 라인·커밋 목록 갱신.
 
 **pytest 재현 명령(검증자 재현용):** `.venv/Scripts/python.exe -m pytest tests/test_holdings_oci_apply.py tests/test_oci_startup_status.py -q` (독립 19 passed). 전체 관련 범위: `-k "holdings or oci_startup or param"`.
+
+> ⚠️ r3 의 위 접근(payload·manifest 를 각각 mv — manifest 먼저·payload 마지막)은 **payload mv 실패 시 active-manifest 만 이미 새 hash 로 바뀌는 대칭적 불일치**를 남겨 r4 에서 REJECTED. 아래 r4 에서 교정.
+
+---
+
+## 검증자 REJECTED r4 반영 (2026-08-06)
+
+r3 검증자 REJECTED 를 받아 교정했다. **r3 의 잘못 인정:** payload·manifest 를 각각 atomic mv 하면 어느 순서로 하든 그 사이 실패 시 한쪽만 바뀐다 — manifest 를 먼저 승격한 r3 은 payload mv 실패 시 active-manifest 가 새 hash 로 바뀐 채 payload 는 옛것으로 남아, Q4(payload-manifest 일치)와 Q11(기존 상태 보존)이 함께 성립하지 않았다.
+
+**근본 원인:** payload·manifest 2개 파일을 하나의 원자로 올릴 방법이 없다.
+
+**사용자 확정(2026-08-06):** "manifest 분리 안 함 — payload 단일 mv".
+
+**수정:**
+- **active 를 바꾸는 원자 연산을 payload 단일 mv 하나로 국한**한다. manifest 를 payload 보다 먼저 올리지 않는다.
+- 순서: 로컬 schema → payload-tmp 전송 → (승격 전) tmp hash·schema 검증 → **payload-tmp → active 단일 mv** → active manifest 기록(payload 성공 후) → active hash 재확인.
+- payload mv 이전 어떤 실패도 active·active-manifest 를 전혀 안 건드림 → **둘 다 보존**(r4 대칭 불일치 제거).
+- payload mv 성공 후 manifest 기록 실패는 payload 를 되돌리지 않는다 — active 는 이미 검증 통과한 정상 payload 이고, manifest 를 payload 보다 먼저 올리지 않았으므로 active-manifest 가 payload 와 어긋나는 경로 자체가 없다. 이 경우 "적용됐으나 기록 실패 = UNKNOWN" 으로 정직히 보고.
+- PLAN §4.3 의 active hash 재확인·OUT_OF_SYNC 는 그대로 유지.
+- 사용 안 하게 된 `_REMOTE_MANIFEST_TMP` 상수·manifest-tmp 정리 로직 제거.
+- 테스트 11: `test_payload_mv_failure_preserves_both`(payload mv 실패 시 manifest write 미호출=둘 다 보존), `test_manifest_write_failure_after_payload_unknown`(payload 성공 후 기록 실패=UNKNOWN, active 정상) 포함. 순서 테스트 `scp→sha256sum→schema→payload_mv→manifest→sha256sum`.
+
+**안전성 HIGH 해소:** payload mv 실패 시 API 는 `APPLY_FAILED`·"기존 상태 유지"를 반환하고, 그 시점 active·manifest 는 실제로 둘 다 옛 상태다(보고=실제 일치).

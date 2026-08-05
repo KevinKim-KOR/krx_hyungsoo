@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1~r3 반영 수정 · 재검증 대기** · 결과서 작성됨)
+최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1~r4 반영 수정 · 재검증 대기** · 결과서 작성됨)
 
 ## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
 
@@ -22,7 +22,9 @@
 
 **검증자 REJECTED r2 반영(철회됨)**: rename 후 재검증 제거·OUT_OF_SYNC 삭제·manifest 뒤 기록 → **r3 에서 PLAN 임의변경·보존 미성립으로 REJECTED, 아래 r3 에서 철회**.
 
-**검증자 REJECTED r3 반영(2026-08-06)**: r2 의 두 잘못 인정 — ① 확정 PLAN §4.3(active hash 재확인·OUT_OF_SYNC)을 임의 삭제(역할 위반), ② manifest 를 rename 뒤에 써서 실패 시 active 보존 미성립. **사용자 확정 "PLAN 그대로 + 순서만 교정"** 으로: PLAN §4.3 전 계약 **복원**(active hash 재확인·OUT_OF_SYNC), payload·manifest 둘 다 rename 전 tmp 전송 후 **manifest 먼저·payload 마지막 원자 승격** → payload 승격 이전 모든 실패(manifest 포함)에서 active 보존. 로컬 manifest fallback 제거(B-1). 테스트 `test_holdings_oci_apply.py` 11(manifest 전송/승격 실패 시 payload active 미변경 포함) + `test_oci_startup_status.py` 8.
+**검증자 REJECTED r3 반영**: PLAN §4.3 복원 + payload·manifest 각각 mv(manifest 먼저) → **r4 에서 payload mv 실패 시 manifest 만 바뀌는 대칭 불일치로 REJECTED**.
+
+**검증자 REJECTED r4 반영(2026-08-06)**: r3 의 잘못 인정 — payload·manifest 2개를 각각 mv 하면 어느 순서든 그 사이 실패 시 한쪽만 바뀜(불일치). **사용자 확정 "manifest 분리 안 함 — payload 단일 mv"** 로: **active 교체를 payload 단일 atomic mv 하나로 국한**, manifest 는 payload mv 성공 후에만 기록(실패 시 payload 되돌리지 않고 UNKNOWN — active 는 정상). payload mv 이전 모든 실패에서 active·manifest 둘 다 보존. PLAN §4.3 active hash 재확인·OUT_OF_SYNC 유지. 테스트 11(`test_payload_mv_failure_preserves_both`·`test_manifest_write_failure_after_payload_unknown` 포함) + startup 8 = 19 passed.
 
 ---
 
