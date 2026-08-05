@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1·r2 반영 수정 · 재검증 대기** · 결과서 작성됨)
+최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1~r3 반영 수정 · 재검증 대기** · 결과서 작성됨)
 
 ## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
 
@@ -20,7 +20,9 @@
 
 **검증자 REJECTED r1 반영**: (A-1) Holdings 적용 순서 정정 — rename **전에** schema+hash 검증 완료 후에만 atomic rename + 로컬 schema 검증 + manifest 기록. (B-6) startup 스케줄 판정을 필수 push-kind 3종 등록 여부로(OPERATING/DEGRADED/UNKNOWN), stat 값 job detail 반영, 신규 테스트 2파일.
 
-**검증자 REJECTED r2 반영(2026-08-06)**: (A-1/안전성) rename **이후** 사후 hash 재검증 제거(복원 불가 경로 없앰 — 무결성은 rename 이전 검증으로 보장, mv atomic), `OUT_OF_SYNC` 상태 제거. manifest 기록 실패 시 OCI_APPLIED 아님·UNKNOWN(Q4 보장). (A-2) §2 git 실측 **31파일(A13·M18)** 확정(frontend M15·docs A4/M1). (A-3) Q10 상충 제거(탐지 boolean 확인 완료로 통일). 테스트 `test_holdings_oci_apply.py` 8(manifest 실패·순서 재확인) + `test_oci_startup_status.py` 8.
+**검증자 REJECTED r2 반영(철회됨)**: rename 후 재검증 제거·OUT_OF_SYNC 삭제·manifest 뒤 기록 → **r3 에서 PLAN 임의변경·보존 미성립으로 REJECTED, 아래 r3 에서 철회**.
+
+**검증자 REJECTED r3 반영(2026-08-06)**: r2 의 두 잘못 인정 — ① 확정 PLAN §4.3(active hash 재확인·OUT_OF_SYNC)을 임의 삭제(역할 위반), ② manifest 를 rename 뒤에 써서 실패 시 active 보존 미성립. **사용자 확정 "PLAN 그대로 + 순서만 교정"** 으로: PLAN §4.3 전 계약 **복원**(active hash 재확인·OUT_OF_SYNC), payload·manifest 둘 다 rename 전 tmp 전송 후 **manifest 먼저·payload 마지막 원자 승격** → payload 승격 이전 모든 실패(manifest 포함)에서 active 보존. 로컬 manifest fallback 제거(B-1). 테스트 `test_holdings_oci_apply.py` 11(manifest 전송/승격 실패 시 payload active 미변경 포함) + `test_oci_startup_status.py` 8.
 
 ---
 

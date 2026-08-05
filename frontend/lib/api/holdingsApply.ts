@@ -10,6 +10,7 @@ import { request } from "./core";
 export type HoldingsApplyStatus =
   | "PC_SAVED"
   | "OCI_APPLIED"
+  | "OUT_OF_SYNC"
   | "APPLY_FAILED"
   | "UNKNOWN";
 

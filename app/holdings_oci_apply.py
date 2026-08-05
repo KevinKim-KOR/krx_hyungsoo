@@ -6,23 +6,20 @@ POC3-07 (PLAN V2 §4.3 · 설계자 Q3·Q4·Q11 · 검증자 REJECTED r1 반영)
   - 적용 대상 = OCI 가 실제 읽는 소스 `state/holdings/holdings_latest.json`
     (실측: app/holdings.py :: HOLDINGS_FILE, PC·OCI 동일 경로).
 
-원자적 적용의 순서(중요 — 기존 active 보존 계약):
+원자적 적용의 순서(확정 PLAN §4.3 그대로 — 기존 active 보존 계약):
   1. 로컬 파일 **schema 검증**(validate_holdings). 손상 파일은 전송조차 안 한다.
-  2. manifest(kind/content_sha256/created_at) 생성.
-  3. payload·manifest 를 원격 **tmp** 로 전송(active 는 아직 안 건드림).
-  4. **rename 전에** 원격 tmp 에서 검증을 모두 끝낸다:
-       (a) sha256(tmp) == 로컬 sha256  (전송 무결성)
-       (b) tmp 를 JSON 파싱 + holdings 배열 구조 확인  (schema 무결성)
+  2. payload → payload-tmp, manifest(kind/content_sha256/created_at) → manifest-tmp
+     로 **둘 다 전송**(active·active-manifest 는 아직 안 건드림).
+  3. **승격 전에** 검증을 모두 끝낸다:
+       (a) sha256(payload-tmp) == 로컬 sha256  (전송 무결성)
+       (b) payload-tmp JSON 파싱 + holdings 배열 구조 확인  (schema 무결성)
      → 하나라도 실패하면 tmp 를 지우고 **active 는 그대로 둔다**(보존).
-  5. 위 검증을 모두 통과한 tmp 만 atomic rename(tmp → active) 한다. 즉 active 로
-     승격되는 파일은 항상 검증을 통과한 내용이다. rename 자체가 실패하면 active 는
-     바뀌지 않는다(tmp 만 남고, 정리한다).
-  6. rename 성공 후 active manifest(Q4)를 기록한다. **manifest 기록이 실패하면
-     OCI_APPLIED 로 확정하지 않고 UNKNOWN 으로 보고한다**(적용 사실 추적 불가).
-  - rename 이후에는 별도 사후 hash 재검증을 두지 않는다. active 는 rename 이전에
-    hash·schema 를 통과한 내용이고 mv 가 atomic 이므로 무결성이 이미 보장된다.
-    rename 이후 시점의 재검증은 복원 불가한 "post-rename 실패 경로"만 만들 뿐이라
-    두지 않는다(원자 적용 계약).
+  4. 승격: manifest-tmp → active-manifest 를 먼저, **payload-tmp → active 를 마지막에**
+     atomic rename. payload 승격이 마지막이므로 그 앞의 어떤 실패(manifest 승격 실패
+     포함)도 active(payload) 를 바꾸지 않는다 → 실패 시 보존 성립. (r2 의 "manifest 를
+     rename 뒤에 써서 실패 시 active 이미 변경" 결함을 이 순서로 제거한다.)
+  5. 승격 후 **OCI active hash 재확인**(PLAN §4.3): PC==OCI 면 OCI_APPLIED, 불일치면
+     OUT_OF_SYNC, 재확인 자체 실패면 UNKNOWN.
   - idempotent: 같은 내용을 다시 적용해도 같은 hash·schema → 같은 성공 경로.
 
 응답 데이터 계약(§6·§13): SSH target·remote path·raw subprocess 출력·secret 을
@@ -47,12 +44,12 @@ logger = logging.getLogger(__name__)
 
 # PC·OCI 공통 Holdings 소스 경로(app/holdings.py 와 동일 규약).
 _LOCAL_HOLDINGS = Path("state/holdings/holdings_latest.json")
-_LOCAL_MANIFEST = Path("state/holdings/holdings_apply_manifest.json")
 _REMOTE_HOME = "/home/ubuntu/krx_hyungsoo"
 _REMOTE_DIR = f"{_REMOTE_HOME}/state/holdings"
 _REMOTE_FINAL = f"{_REMOTE_DIR}/holdings_latest.json"
 _REMOTE_TMP = f"{_REMOTE_DIR}/holdings_latest.json.apply-tmp"
 _REMOTE_MANIFEST = f"{_REMOTE_DIR}/holdings_apply_manifest.json"
+_REMOTE_MANIFEST_TMP = f"{_REMOTE_DIR}/holdings_apply_manifest.json.apply-tmp"
 
 _MANIFEST_KIND = "holdings_latest"
 
@@ -60,13 +57,14 @@ _SCP_TIMEOUT_SEC = 60
 _SSH_TIMEOUT_SEC = 30
 
 
-# 적용 상태(설계 §6.2). UI 표시용.
+# 적용 상태(설계 §6.2 · PLAN §4.3). UI 표시용.
 STATUS_PC_SAVED = "PC_SAVED"  # 로컬 파일 없음/미적용 전
-STATUS_OCI_APPLIED = "OCI_APPLIED"  # rename+manifest 성공(검증 통과본이 active)
+STATUS_OCI_APPLIED = "OCI_APPLIED"  # 승격 성공 + active hash == PC hash
+STATUS_OUT_OF_SYNC = "OUT_OF_SYNC"  # 승격됐으나 active hash 재확인 불일치(PLAN §4.3)
 STATUS_APPLY_FAILED = (
-    "APPLY_FAILED"  # 로컬 schema·전송·rename 전 검증 실패(active 보존)
+    "APPLY_FAILED"  # 승격 이전 실패(로컬 schema·전송·검증·manifest 전송) → active 보존
 )
-STATUS_UNKNOWN = "UNKNOWN"  # ENV 미설정 / manifest 기록 실패(적용됐으나 추적 불가)
+STATUS_UNKNOWN = "UNKNOWN"  # ENV 미설정 / 승격 후 hash 재확인 자체 실패
 
 
 @dataclass
@@ -128,32 +126,29 @@ def _fail(msg: str, sha: Optional[str] = None) -> HoldingsApplyResult:
     )
 
 
-def _write_local_manifest(sha: str, created_at: str) -> None:
-    """PC 전송 manifest 기록(kind/content_sha256/created_at). 실패는 무시(부가)."""
-    try:
-        _LOCAL_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
-        _LOCAL_MANIFEST.write_text(
-            json.dumps(
-                {
-                    "kind": _MANIFEST_KIND,
-                    "content_sha256": sha,
-                    "created_at": created_at,
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-    except OSError as e:  # noqa: BLE001 - manifest 기록 실패는 적용 자체를 막지 않음
-        logger.warning("로컬 apply manifest 기록 실패(무시): %s", e)
+def _cleanup_tmp(ssh_base: list[str]) -> None:
+    """승격 실패·검증 실패 시 원격 tmp(payload·manifest) 정리. active 는 안 건드림."""
+    _run(
+        ssh_base + [f"rm -f {_REMOTE_TMP} {_REMOTE_MANIFEST_TMP}"],
+        timeout=_SSH_TIMEOUT_SEC,
+    )
 
 
 def apply_holdings_to_oci() -> HoldingsApplyResult:
     """저장된 Holdings 를 OCI 에 명시적으로 적용한다.
 
-    순서: 로컬 schema 검증 → tmp 전송 → (rename 전) tmp hash·schema 검증 →
-    atomic rename → manifest 기록 → 사후 hash 확인. 검증 실패는 모두 rename
-    이전이라 기존 OCI active Holdings 가 보존된다. 사용자 명시 클릭에서만 호출.
+    순서(모든 검증·전송이 payload 승격 이전 → 실패 시 active 보존):
+      1. 로컬 schema 검증(손상 파일 전송 안 함).
+      2. payload → payload-tmp, manifest → manifest-tmp **둘 다 전송**
+         (active·active-manifest 는 아직 안 건드림).
+      3. (승격 전) 검증: payload-tmp sha256 == 로컬, payload-tmp schema,
+         manifest-tmp 존재. 하나라도 실패하면 tmp 정리 후 **active 보존**.
+      4. 승격: manifest-tmp → active-manifest 를 먼저, **payload-tmp → active
+         를 마지막에** atomic rename. payload 승격이 마지막이므로 그 앞 어떤
+         실패(manifest 승격 실패 포함)도 active(payload) 미변경 = 보존.
+      5. atomic 승격 후 **OCI active hash 재확인**(PLAN §4.3): PC==OCI 면
+         OCI_APPLIED, 불일치면 OUT_OF_SYNC.
+    사용자 명시 클릭에서만 호출.
     """
     # 0. 로컬 소스 존재 확인.
     if not _LOCAL_HOLDINGS.exists():
@@ -190,7 +185,7 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
 
     key_opts = _ssh_key_opts()
     created_at = datetime.now(timezone.utc).isoformat()
-    _write_local_manifest(local_sha, created_at)
+    applied_at = created_at
 
     ssh_base = [
         "ssh",
@@ -202,7 +197,7 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
         target,
     ]
 
-    # 2. tmp 로 전송(active 를 아직 건드리지 않음).
+    # 2a. payload 를 payload-tmp 로 전송(active 는 아직 안 건드림).
     scp_cmd = [
         "scp",
         "-o",
@@ -216,56 +211,11 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
     rc, _so, _se = _run(scp_cmd, timeout=_SCP_TIMEOUT_SEC)
     if rc != 0:
         logger.error("holdings scp 실패: rc=%s", rc)
-        _run(ssh_base + [f"rm -f {_REMOTE_TMP}"], timeout=_SSH_TIMEOUT_SEC)
+        _cleanup_tmp(ssh_base)
         return _fail("OCI 전송에 실패했습니다. 기존 적용 상태는 유지됩니다.", local_sha)
 
-    # 3. (rename 전) tmp hash 검증 — 전송 무결성.
-    rc, so, _se = _run(
-        ssh_base + [f"sha256sum {_REMOTE_TMP} 2>/dev/null | cut -d' ' -f1"],
-        timeout=_SSH_TIMEOUT_SEC,
-    )
-    remote_tmp_sha = so.strip() if rc == 0 else ""
-    if rc != 0 or remote_tmp_sha != local_sha:
-        _run(ssh_base + [f"rm -f {_REMOTE_TMP}"], timeout=_SSH_TIMEOUT_SEC)
-        return _fail(
-            "전송 파일 무결성 검증에 실패했습니다. 기존 적용 상태는 유지됩니다.",
-            local_sha,
-        )
-
-    # 4. (rename 전) tmp schema 검증 — 원격에서 JSON 파싱 + holdings 배열 확인.
-    #    파이썬 한 줄로 구조를 검사한다(비어있거나 holdings 키 없으면 rc!=0).
-    remote_schema_check = (
-        'python3 -c "import json,sys; '
-        f"d=json.load(open('{_REMOTE_TMP}')); "
-        "sys.exit(0 if (isinstance(d,dict) and isinstance(d.get('holdings'),list) "
-        "and len(d['holdings'])>0) else 1)\""
-    )
-    rc, _so, _se = _run(ssh_base + [remote_schema_check], timeout=_SSH_TIMEOUT_SEC)
-    if rc != 0:
-        _run(ssh_base + [f"rm -f {_REMOTE_TMP}"], timeout=_SSH_TIMEOUT_SEC)
-        return _fail(
-            "전송 파일 구조 검증에 실패했습니다. 기존 적용 상태는 유지됩니다.",
-            local_sha,
-        )
-
-    # 5. 모든 검증 통과 — atomic rename(tmp → active). 여기서만 active 가 바뀐다.
-    #    승격되는 tmp 는 hash·schema 를 이미 통과한 내용이다.
-    rc, _so, _se = _run(
-        ssh_base + [f"mv {_REMOTE_TMP} {_REMOTE_FINAL}"], timeout=_SSH_TIMEOUT_SEC
-    )
-    if rc != 0:
-        _run(ssh_base + [f"rm -f {_REMOTE_TMP}"], timeout=_SSH_TIMEOUT_SEC)
-        return _fail(
-            "OCI 적용(원자 교체)에 실패했습니다. 기존 적용 상태는 유지됩니다.",
-            local_sha,
-        )
-
-    applied_at = datetime.now(timezone.utc).isoformat()
-
-    # 6. active manifest 기록(원격) — Q4 계약. **기록 실패는 무시하지 않는다.**
-    #    active(=검증 통과한 tmp)는 이미 반영됐지만 manifest 가 없으면 적용 사실을
-    #    추적할 수 없으므로 OCI_APPLIED 로 확정하지 않고 UNKNOWN 으로 보고한다.
-    #    (mv 는 atomic 이라 active 자체는 유효한 검증 통과본이다.)
+    # 2b. active manifest 를 manifest-tmp 로 전송(Q4). active-manifest 는 안 건드림.
+    #     manifest 전송을 승격 이전에 끝내므로, manifest 문제도 active 보존 범위 안이다.
     manifest_json = json.dumps(
         {
             "kind": _MANIFEST_KIND,
@@ -276,31 +226,94 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
         ensure_ascii=False,
     )
     rc, _so, _se = _run(
-        ssh_base + [f"printf '%s' {json.dumps(manifest_json)} > {_REMOTE_MANIFEST}"],
+        ssh_base
+        + [f"printf '%s' {json.dumps(manifest_json)} > {_REMOTE_MANIFEST_TMP}"],
         timeout=_SSH_TIMEOUT_SEC,
     )
+    if rc != 0:
+        _cleanup_tmp(ssh_base)
+        return _fail(
+            "적용 기록(manifest) 전송에 실패했습니다. 기존 적용 상태는 유지됩니다.",
+            local_sha,
+        )
+
+    # 3. (승격 전) payload-tmp hash 검증 — 전송 무결성.
+    rc, so, _se = _run(
+        ssh_base + [f"sha256sum {_REMOTE_TMP} 2>/dev/null | cut -d' ' -f1"],
+        timeout=_SSH_TIMEOUT_SEC,
+    )
+    remote_tmp_sha = so.strip() if rc == 0 else ""
+    if rc != 0 or remote_tmp_sha != local_sha:
+        _cleanup_tmp(ssh_base)
+        return _fail(
+            "전송 파일 무결성 검증에 실패했습니다. 기존 적용 상태는 유지됩니다.",
+            local_sha,
+        )
+
+    # 4. (승격 전) payload-tmp schema 검증 — 원격 JSON 파싱 + holdings 배열 확인.
+    remote_schema_check = (
+        'python3 -c "import json,sys; '
+        f"d=json.load(open('{_REMOTE_TMP}')); "
+        "sys.exit(0 if (isinstance(d,dict) and isinstance(d.get('holdings'),list) "
+        "and len(d['holdings'])>0) else 1)\""
+    )
+    rc, _so, _se = _run(ssh_base + [remote_schema_check], timeout=_SSH_TIMEOUT_SEC)
+    if rc != 0:
+        _cleanup_tmp(ssh_base)
+        return _fail(
+            "전송 파일 구조 검증에 실패했습니다. 기존 적용 상태는 유지됩니다.",
+            local_sha,
+        )
+
+    # 5. 승격 — manifest 를 먼저, payload 를 **마지막에** atomic rename 한다.
+    #    payload 승격이 마지막이므로, 그 앞의 어떤 실패(manifest 승격 실패 포함)도
+    #    active(payload) 를 바꾸지 않는다 → "실패 시 기존 active 보존"(PLAN Q11) 성립.
+    rc, _so, _se = _run(
+        ssh_base + [f"mv {_REMOTE_MANIFEST_TMP} {_REMOTE_MANIFEST}"],
+        timeout=_SSH_TIMEOUT_SEC,
+    )
+    if rc != 0:
+        _cleanup_tmp(ssh_base)  # payload 는 아직 active 아님 → 보존.
+        return _fail(
+            "적용 기록(manifest) 반영에 실패했습니다. 기존 적용 상태는 유지됩니다.",
+            local_sha,
+        )
+    rc, _so, _se = _run(
+        ssh_base + [f"mv {_REMOTE_TMP} {_REMOTE_FINAL}"], timeout=_SSH_TIMEOUT_SEC
+    )
+    if rc != 0:
+        _cleanup_tmp(ssh_base)  # payload 승격 실패 → payload active 미변경(보존).
+        return _fail(
+            "OCI 적용(원자 교체)에 실패했습니다. 기존 적용 상태는 유지됩니다.",
+            local_sha,
+        )
+
+    # 6. OCI active hash 재확인(PLAN §4.3) → PC==OCI 면 OCI_APPLIED, 불일치면 OUT_OF_SYNC.
+    rc, so, _se = _run(
+        ssh_base + [f"sha256sum {_REMOTE_FINAL} 2>/dev/null | cut -d' ' -f1"],
+        timeout=_SSH_TIMEOUT_SEC,
+    )
+    active_sha = so.strip() if rc == 0 else ""
     if rc != 0:
         return HoldingsApplyResult(
             status=STATUS_UNKNOWN,
             applied_at=applied_at,
             content_sha256=local_sha,
             oci_verified=False,
-            message=(
-                "보유 종목은 OCI 에 반영됐으나 적용 기록(manifest) 저장에 실패했습니다. "
-                "진단·상태에서 마지막 적용을 확인하세요."
-            ),
+            message="적용은 완료됐으나 OCI 상태 확인에 실패했습니다.",
         )
-
-    # 7. 성공 확정.
-    #    active 로 승격된 것은 5단계 rename 이전에 hash·schema 를 모두 통과한 tmp 이고
-    #    mv 는 atomic 이므로, mv 성공 = active 가 검증된 내용임이 보장된다. 별도의
-    #    사후 hash 재확인(rename 이후 시점)은 두지 않는다 — 그 시점 이후 외부 변경을
-    #    가정한 재검증은 원자 적용 계약 밖이며, 복원 불가한 "post-rename 실패 경로"만
-    #    만들기 때문이다(검증자 지적 해소). 무결성은 rename 이전 검증으로 보장한다.
+    if active_sha == local_sha:
+        return HoldingsApplyResult(
+            status=STATUS_OCI_APPLIED,
+            applied_at=applied_at,
+            content_sha256=local_sha,
+            oci_verified=True,
+            message="보유 종목을 OCI 에 적용했습니다.",
+        )
     return HoldingsApplyResult(
-        status=STATUS_OCI_APPLIED,
+        status=STATUS_OUT_OF_SYNC,
         applied_at=applied_at,
         content_sha256=local_sha,
-        oci_verified=True,
-        message="보유 종목을 OCI 에 적용했습니다.",
+        oci_verified=False,
+        message="적용 후 OCI 값이 PC 와 일치하지 않습니다. 다시 적용하세요.",
     )

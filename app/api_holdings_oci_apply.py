@@ -31,7 +31,7 @@ router = APIRouter(prefix="/holdings", tags=["holdings-oci-apply"])
 
 
 class HoldingsApplyResponse(BaseModel):
-    status: str  # PC_SAVED / OCI_APPLIED / APPLY_FAILED / UNKNOWN
+    status: str  # PC_SAVED / OCI_APPLIED / OUT_OF_SYNC / APPLY_FAILED / UNKNOWN
     applied_at: str | None
     content_sha256: str | None  # 표시용(전송 payload 해시)
     oci_verified: bool
