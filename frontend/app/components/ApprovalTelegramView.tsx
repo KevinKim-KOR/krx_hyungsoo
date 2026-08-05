@@ -1,59 +1,28 @@
 "use client";
 
-// OCI 적용·알림 화면 (기존 approval route key 유지).
+// 승인·적용 화면 (기존 approval route key 유지).
 //
-// 2026-08-01 승인·알림 역할 분리 및 재배치.
-//   설계 정정(Q1-c): push_kind 3종은 모두 정보 PUSH. 현재 계약에 "투자 판단 초안"
-//   식별 필드가 없으므로 판단 초안 영역·승인 대기 표현·빈 자리표시자를 만들지 않는다.
-//   화면 명칭 = "OCI 적용·알림". 내부 approval route key·MainPanel 분기·draft→approval
-//   자동 이동 경로는 불변.
+// 2026-08-05 POC3-07 §5.4·§7·§10.1 역할 축소:
+//   이 화면은 "실제 승인 대상 = PARAM·seed 운영 기준의 OCI 적용" 만 다룬다.
+//   - 정보 PUSH(Market·Holdings·Spike)는 승인 대상이 아니다 → 카드 만들지 않음.
+//   - 식별 계약이 없는 빈 승인 카드를 만들지 않는다(직전 POC3 확정 유지).
+//   - 미리보기·샘플·개발 호환 점검·현재 run 표시는 진단·상태(diagnostics)로 이동했다.
+//   - PUSH 실행 결과는 기동 시 상태 요약(첫 화면)·진단·상태에서만 확인한다.
 //
-//   구조:
-//     A구간 — 운영 기능 역할 정리
-//       1) OciAlertHeader        : 화면 역할 안내 (OCI 적용 / 정보 PUSH 구분)
-//       2) ThreePushParamCard    : OCI 운영 기준 적용 (주 작업 · 계약 불변)
-//       3) InfoPushGuideCards    : 정보 PUSH 운영 기준 안내 (승인 run 미포함)
-//     B구간 — 수동 점검과 현재 run 정리
-//       4) ManualPreviewSection  : 미리보기·수동 전달 점검 (ThreePushDraftCard + 현재 run
-//                                  중 신뢰 가능한 push_kind 만). 자동 PUSH 와 구분.
-//       (dev) DevCompatSection   : 개발·호환 점검 (샘플 + push_kind=null run). 기본 접힘.
-//     C구간 — UniverseRefreshPanel 을 "요즘 잘 오르는 ETF"(MarketDiscoveryView) 로 이동
-//            (이 화면에서 제거). 개발·호환 점검 기본 접힘. 전체 위계 정리.
+//   내부 approval route key·MainPanel 분기는 불변. run/setRun 은 더 이상 이 화면에서
+//   사용하지 않는다(미리보기가 진단·상태로 이동).
 
 import OciAlertHeader from "./approval/OciAlertHeader";
-import InfoPushGuideCards from "./approval/InfoPushGuideCards";
-import ManualPreviewSection from "./approval/ManualPreviewSection";
-import DevCompatSection from "./approval/DevCompatSection";
 import ThreePushParamCard from "./ThreePushParamCard";
-import type { Run } from "@/lib/api";
 
-// RunPanel 은 ManualPreviewSection / DevCompatSection 내부에서 사용된다(여기서 직접 참조 없음).
-
-interface Props {
-  run: Run | null;
-  setRun: (run: Run | null) => void;
-}
-
-export default function ApprovalTelegramView({ run, setRun }: Props) {
+export default function ApprovalTelegramView() {
   return (
     <section aria-labelledby="approval-h">
-      {/* A구간 1) 화면 역할 안내 */}
+      {/* 화면 역할 안내 (OCI 적용 대상 = 운영 기준) */}
       <OciAlertHeader />
 
-      {/* A구간 2) OCI 운영 기준 적용 — 주 작업 (계약 불변) */}
+      {/* OCI 운영 기준 적용 — 이 화면의 유일한 실제 승인·적용 작업 (계약 불변) */}
       <ThreePushParamCard />
-
-      {/* A구간 3) 정보 PUSH 운영 기준 — 안내만 (승인 run 미포함) */}
-      <InfoPushGuideCards />
-
-      {/* B구간 4) 미리보기·수동 전달 점검 (자동 PUSH 와 구분) */}
-      <ManualPreviewSection run={run} setRun={setRun} />
-
-      {/* C구간: 신규 ETF 관찰 후보 갱신(UniverseRefreshPanel)은 "요즘 잘 오르는 ETF"
-          화면으로 이동했다. 이 화면에는 두지 않는다(중복 금지). */}
-
-      {/* 개발·호환 점검 — 기본 접힘 (샘플 + push_kind=null run) */}
-      <DevCompatSection run={run} setRun={setRun} />
     </section>
   );
 }

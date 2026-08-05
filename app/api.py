@@ -42,6 +42,7 @@ from app import (
     holdings_enrich,
     market_cache,
     market_naver,
+    oci_startup_status,
     store,
 )
 from app.api_decision_draft_preview import router as decision_draft_preview_router
@@ -55,6 +56,7 @@ from app.api_ml_relative_upside import router as ml_relative_upside_router
 from app.api_ml_readiness import router as ml_readiness_router
 from app.api_ml_sanity import router as ml_sanity_router
 from app.api_nav_discount import router as nav_discount_router
+from app.api_oci_startup_status import router as oci_startup_status_router
 from app.api_price_series import router as price_series_router
 from app.api_three_push_param import router as three_push_param_router
 from app.api_universe import router as universe_router
@@ -118,10 +120,32 @@ app.include_router(three_push_param_router)
 # POST /decision-draft/preview: 선택 ETF 임시 판단 근거 미리보기.
 # 기존 PENDING draft 저장 경로와 분리. 승인/OCI/Telegram 연결 X. 부작용 0건.
 app.include_router(decision_draft_preview_router)
+# POC3-07 (2026-08-05) — OCI 기동 시 상태 스냅샷 조회 (읽기 전용).
+# GET /oci/startup-status: 기동 시 1회 읽은 프로세스 로컬 캐시 반환(재조회 없음).
+# OCI runner·crontab 미수정. 요청·새로고침·타이머마다 SSH 재실행 안 함(설계자 Q2).
+app.include_router(oci_startup_status_router)
 # POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
 # 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
 # PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.
 # PUSH-2 (holdings_briefing) 는 기존 POST /runs/generate-from-holdings 재정의.
+
+
+@app.on_event("startup")
+def _read_oci_status_once_on_startup() -> None:
+    """PC 백엔드 기동 시 OCI 상태를 1회만 읽는다(설계자 Q2, POC3-07).
+
+    실패해도 예외를 올리지 않아 기동을 막지 않는다(oci_startup_status 내부에서
+    UNKNOWN 스냅샷을 남긴다). 이후 요청·새로고침으로 재조회하지 않는다.
+    """
+    try:
+        snap = oci_startup_status.refresh_snapshot()
+        logger.info(
+            "OCI 기동 상태 읽기 완료: reachable=%s overall=%s",
+            snap.reachable,
+            snap.overall,
+        )
+    except Exception as e:  # noqa: BLE001 - 기동을 절대 막지 않는다
+        logger.warning("OCI 기동 상태 읽기 중 예외(무시): %s", e)
 
 
 class GenerateDraftRequest(BaseModel):

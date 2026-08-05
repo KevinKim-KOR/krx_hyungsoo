@@ -1820,6 +1820,16 @@ textarea.decision-textarea {
 .tc-btn-link:hover { background: #f0f4f8; }
 /* 헤더 부제(괄호 안내)는 작은 글씨 (사용자 요청). */
 .tc-subnote { font-size: 13px; margin-top: 2px; }
+/* POC3-07: 첫 화면 OCI 상태 한 줄의 "상세 보기" 링크형 버튼. */
+.tc-linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent, #2563eb);
+  cursor: pointer;
+  text-decoration: underline;
+}
 /* §4.1 + 사용자 요청: 코스피 대표 영역은 최상단 "전체 폭". 카드 안에서 차트(좌·넓게)
    + 통계 패널(우)로 나눠 밀도를 높인다. 폭 좁으면 1열. */
 .tc-headline { width: 100%; }

@@ -31,6 +31,8 @@ import {
   fetchNavDiscountLatest,
   type NavDiscountLatestResponse,
   refreshMarket,
+  fetchOciStartupStatus,
+  type OciStartupStatus,
 } from "@/lib/api";
 import { useSharedQuery, type QueryState } from "@/lib/api/queryCache";
 import {
@@ -731,6 +733,61 @@ function InDevelopmentSection() {
 }
 
 // ── 컨테이너 ─────────────────────────────────────────────────────────────────
+// POC3-07: 기동 시 읽은 OCI 상태 한 줄. 이 GET 은 백엔드 캐시를 반환하며 OCI 를
+// 재조회하지 않는다. 실패·미확인이면 UNKNOWN 으로 조용히 한 줄만 표시(첫 화면을
+// 막지 않음). 상세는 진단·상태로 이동.
+function OciStatusOneLine({
+  onNavigate,
+}: {
+  onNavigate?: (key: MenuKey) => void;
+}) {
+  const [status, setStatus] = useState<OciStartupStatus | null>(null);
+  const [failed, setFailed] = useState<boolean>(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await fetchOciStartupStatus();
+        if (!cancelled) setStatus(s);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  let text: string;
+  if (failed) text = "OCI 상태 미확인";
+  else if (status === null) text = "OCI 상태 확인 중…";
+  else {
+    const when = status.checked_at
+      ? new Date(status.checked_at).toLocaleString()
+      : "미확인";
+    text = `OCI: ${status.summary_line} · 확인 ${when}`;
+  }
+
+  return (
+    <p className="tc-muted tc-subnote" style={{ marginTop: 4 }}>
+      {text}
+      {onNavigate ? (
+        <>
+          {" · "}
+          <button
+            type="button"
+            className="tc-linklike"
+            onClick={() => onNavigate("diagnostics")}
+          >
+            진단·상태에서 상세 보기 →
+          </button>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
 export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   // Dashboard 와 같은 조회 조건 → 같은 캐시 키 공유 (화면 왕복 재조회 방지).
   const market = useSharedQuery<MarketTopNResponse>(DASH_KEY_MARKET, () =>
@@ -783,6 +840,9 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
           코스피 현재 위치 · 오늘 내가 확인할 것 · 시스템이 처리할 자료를 한 화면에서
           구분합니다.
         </p>
+        {/* POC3-07 §4.2·§5.1: 기동 시 읽은 OCI 상태를 한 줄로만 표시.
+            상세는 진단·상태로. 여기서 OCI 를 재조회하지 않는다(백엔드 캐시). */}
+        <OciStatusOneLine onNavigate={onNavigate} />
       </header>
 
       {/* §4.1: 코스피 대표 영역은 최상단 전체 폭 (사용자 요청 "가로로 제일 길게").

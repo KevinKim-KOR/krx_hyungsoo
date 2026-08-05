@@ -14,10 +14,9 @@
 import { useState } from "react";
 import AISessionsView from "./AISessionsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
-import DashboardView from "./DashboardView";
+import DiagnosticsView from "./DiagnosticsView";
 import TodayInvestmentCheckView from "./TodayInvestmentCheckView";
 import JudgmentWorkbenchView from "./JudgmentWorkbenchView";
-import DataStatusView from "./DataStatusView";
 import ETFExposureView from "./ETFExposureView";
 import HoldingsView from "./HoldingsView";
 import HoldingsManageView from "./HoldingsManageView";
@@ -28,21 +27,17 @@ import type { Run } from "@/lib/api";
 
 export default function MainPanel() {
   // 2026-07-29 POC3-01 — 첫 진입 기본 화면을 "오늘의 투자 점검" 으로 전환.
-  // 기존 Dashboard 는 "기존 대시보드" 메뉴로 보존 (§6·§10·AC-10).
+  // 2026-08-05 POC3-07 — 기존 Dashboard 는 진단·상태(diagnostics) 안 LEGACY 로 흡수.
   const [active, setActive] = useState<MenuKey>("today_check");
-  // run state 는 ApprovalTelegramView(OCI 적용·알림)가 controlled 로 공유.
-  // 2026-08-02 POC3-05 DESIGN_V2 §4.6: 초안 생성 버튼이 Holdings 계열에서 제거되어
-  //   draft→approval 자동 전환(구 handleDraftCreated)은 B구간에서 사용되지 않는다.
-  //   초안 생성은 C구간에서 OCI 적용·알림의 수동 점검 영역으로 이동한다.
+  // run state 는 진단·상태(DiagnosticsView)의 미리보기·샘플 영역이 controlled 로 공유.
+  //   2026-08-05 POC3-07: 미리보기·샘플이 승인·적용에서 진단·상태로 이동하며 run 공유
+  //   대상도 DiagnosticsView 로 옮겨졌다. 자동 발송 아님(PREVIEW/TEST).
   const [run, setRun] = useState<Run | null>(null);
 
   let view: React.ReactNode;
   switch (active) {
     case "today_check":
       view = <TodayInvestmentCheckView onNavigate={setActive} />;
-      break;
-    case "dashboard":
-      view = <DashboardView onNavigate={setActive} />;
       break;
     case "workbench":
       view = <JudgmentWorkbenchView onNavigate={setActive} />;
@@ -72,10 +67,14 @@ export default function MainPanel() {
       view = <HoldingsEvidenceView onNavigate={setActive} />;
       break;
     case "approval":
-      view = <ApprovalTelegramView run={run} setRun={setRun} />;
+      view = <ApprovalTelegramView />;
       break;
-    case "data_status":
-      view = <DataStatusView />;
+    case "diagnostics":
+      // POC3-07 §5.3: 진단·상태 — 기동 시 OCI 상태 상세 · 데이터 진단 ·
+      //   미리보기/샘플(PREVIEW/TEST) · LEGACY 대시보드 흡수. run state 공유.
+      view = (
+        <DiagnosticsView run={run} setRun={setRun} onNavigate={setActive} />
+      );
       break;
   }
 

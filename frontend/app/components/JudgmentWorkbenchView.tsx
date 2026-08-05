@@ -558,8 +558,8 @@ function AttentionTab({
     rows.push({
       text: `이전 조회값 (재조회 실패): ${staleAreas.join(", ")}`,
       kind: "warn",
-      action: "data_status",
-      actionLabel: "데이터 상태 확인",
+      action: "diagnostics",
+      actionLabel: "진단·상태 확인",
     });
   }
 
@@ -577,8 +577,8 @@ function AttentionTab({
       rows.push({
         text: `VIX stale — 기준일 ${vix.as_of_date} (시장 ${kodex.as_of_date}보다 이전)`,
         kind: "warn",
-        action: "data_status",
-        actionLabel: "데이터 상태 확인",
+        action: "diagnostics",
+        actionLabel: "진단·상태 확인",
       });
     }
     if (cand.data.status !== "ok") {
@@ -619,7 +619,7 @@ function AttentionTab({
       rows.push({
         text: `Evidence NAV 미연동 ${s.nav_discount_unavailable_count}건`,
         kind: "warn",
-        action: "data_status",
+        action: "diagnostics",
         actionLabel: "NAV 상태 확인",
       });
   } else if (evid.phase === "error") {
@@ -638,15 +638,15 @@ function AttentionTab({
       rows.push({
         text: `NAV 미연동/실패 ${bad}건`,
         kind: "warn",
-        action: "data_status",
+        action: "diagnostics",
         actionLabel: "NAV 상태 확인",
       });
   } else if (nav.phase === "error") {
     rows.push({
       text: "NAV 조회 실패",
       kind: "unavailable",
-      action: "data_status",
-      actionLabel: "데이터 상태 확인",
+      action: "diagnostics",
+      actionLabel: "진단·상태 확인",
     });
   }
 

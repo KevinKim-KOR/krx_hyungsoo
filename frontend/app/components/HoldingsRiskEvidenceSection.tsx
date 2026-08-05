@@ -275,9 +275,9 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                 <button
                   type="button"
                   style={{ marginTop: 8 }}
-                  onClick={() => onNavigate("data_status")}
+                  onClick={() => onNavigate("diagnostics")}
                 >
-                  데이터 상태에서 원인 확인 →
+                  진단·상태에서 원인 확인 →
                 </button>
               ) : null}
             </div>

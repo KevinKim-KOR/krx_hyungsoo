@@ -22,7 +22,6 @@ import { useEffect, useState } from "react";
 
 export type MenuKey =
   | "today_check"
-  | "dashboard"
   | "workbench"
   | "market_discovery"
   | "etf_exposure"
@@ -31,7 +30,7 @@ export type MenuKey =
   | "holdings_manage"
   | "holdings_evidence"
   | "approval"
-  | "data_status";
+  | "diagnostics";
 
 export interface MenuItem {
   key: MenuKey;
@@ -65,36 +64,34 @@ export const MENU_GROUPS: MenuGroup[] = [
       { key: "ai_sessions", label: "AI 투자 세션", hint: "AI 질문/답변 기록" },
     ],
   },
-  // 2026-08-02 POC3-05 DESIGN_V2: "보유·자료 관리" 아래를 4개 하위 메뉴로 분리
-  //   (설계서 §4.1). 순서: 보유 현황 → 종목 관리 → 확인 근거 → 데이터 상태.
-  //   기존 holdings key 는 "보유 현황" 진입점으로 유지. 신규 key 2개
-  //   (holdings_manage · holdings_evidence). "내가 가진 ETF" 부모 메뉴는 두지 않음
-  //   (2단계 구조). MenuKey 9→11 (AC-2·AC-3·AC-18).
+  // 2026-08-02 POC3-05 DESIGN_V2: "보유·자료 관리" 아래 하위 메뉴 분리(설계서 §4.1).
+  //   2026-08-05 POC3-07: "데이터 상태"(data_status)는 진단·상태 그룹으로 흡수(§5.4).
+  //   순서: 보유 현황 → 종목 관리 → 확인 근거.
   {
     id: "manage",
     title: "보유·자료 관리",
     items: [
       { key: "holdings", label: "보유 현황", hint: "평가 현황 / 시세 갱신" },
-      { key: "holdings_manage", label: "종목 관리", hint: "입력 / 수정 / 저장" },
+      { key: "holdings_manage", label: "종목 관리", hint: "입력 / 수정 / 저장 / OCI 적용" },
       { key: "holdings_evidence", label: "확인 근거", hint: "오늘 먼저 볼 ETF와 근거" },
-      { key: "data_status", label: "데이터 상태", hint: "시장 데이터 상태 (예정)" },
     ],
   },
+  // 2026-08-05 POC3-07 §5.4·§10.1: "승인·알림" → "승인·적용" 역할 축소
+  //   (실제 승인 대상 = PARAM·seed OCI 적용). 정보 PUSH 카드·빈 승인 카드 없음.
   {
     id: "ops",
     title: "승인·운영",
     items: [
-      { key: "approval", label: "승인·알림", hint: "승인 대기 / 발송 결과" },
+      { key: "approval", label: "승인·적용", hint: "운영 기준 승인 / OCI 적용" },
     ],
   },
-  // 2026-08-01 사용자 요청 — "기존 대시보드" 를 보유·자료 관리에서 분리해
-  // 승인·운영 아래 별도 "점검대상" 그룹으로 이동. UI 최종 판단은 사용자.
-  // (설계서 §3.2·Q2 의 "보유·자료 관리 마지막" 귀속을 사용자 지시로 재편.)
+  // 2026-08-05 POC3-07 §5.3: 정상 업무와 시각적으로 분리된 마지막 관리 그룹.
+  //   data_status 흡수 + 기존 dashboard(LEGACY) + 미리보기·샘플·미연결 격리.
   {
-    id: "inspect",
-    title: "점검대상",
+    id: "diagnostics",
+    title: "진단·상태",
     items: [
-      { key: "dashboard", label: "기존 대시보드", hint: "이전 상태 화면 (참고용)" },
+      { key: "diagnostics", label: "진단·상태 상세", hint: "기동 시 OCI 상태 · 진단 · 미리보기 · LEGACY" },
     ],
   },
 ];
@@ -108,7 +105,6 @@ export const MENU_ITEMS: MenuItem[] = MENU_GROUPS.flatMap((g) => g.items);
 // 하는 경로 자체가 존재하지 않는다.
 const ALL_MENU_KEYS: MenuKey[] = [
   "today_check",
-  "dashboard",
   "workbench",
   "market_discovery",
   "etf_exposure",
@@ -117,7 +113,7 @@ const ALL_MENU_KEYS: MenuKey[] = [
   "holdings_manage",
   "holdings_evidence",
   "approval",
-  "data_status",
+  "diagnostics",
 ];
 
 function assertMenuGroupsCover(): void {

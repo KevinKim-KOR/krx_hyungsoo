@@ -127,15 +127,15 @@ function collectExceptions(
     ) {
       list.push({
         text: `VIX stale — 기준일 ${vix.as_of_date} (시장 ${kodex.as_of_date}보다 이전)`,
-        action: "data_status",
-        actionLabel: "데이터 상태 확인",
+        action: "diagnostics",
+        actionLabel: "진단·상태 확인",
       });
     }
     if (vix?.availability === "unavailable") {
       list.push({
         text: "VIX unavailable",
-        action: "data_status",
-        actionLabel: "데이터 상태 확인",
+        action: "diagnostics",
+        actionLabel: "진단·상태 확인",
       });
       anyUnavailable = true;
     }
@@ -171,7 +171,7 @@ function collectExceptions(
     if (s.nav_discount_unavailable_count > 0) {
       list.push({
         text: `Evidence NAV 미연동 ${s.nav_discount_unavailable_count}건`,
-        action: "data_status",
+        action: "diagnostics",
         actionLabel: "NAV 상태 확인",
       });
       anyUnavailable = true;
@@ -185,7 +185,7 @@ function collectExceptions(
     if (bad > 0) {
       list.push({
         text: `NAV 미연동/실패 ${bad}건`,
-        action: "data_status",
+        action: "diagnostics",
         actionLabel: "NAV 상태 확인",
       });
       anyUnavailable = true;
@@ -193,7 +193,7 @@ function collectExceptions(
     if (nav.data.status === "empty") {
       list.push({
         text: "NAV 데이터 없음",
-        action: "data_status",
+        action: "diagnostics",
         actionLabel: "NAV 상태 확인",
       });
       anyUnavailable = true;
@@ -222,8 +222,8 @@ function collectExceptions(
   if (nav.phase === "error") {
     list.push({
       text: "NAV 조회 실패",
-      action: "data_status",
-      actionLabel: "데이터 상태 확인",
+      action: "diagnostics",
+      actionLabel: "진단·상태 확인",
     });
     anyUnavailable = true;
   }
