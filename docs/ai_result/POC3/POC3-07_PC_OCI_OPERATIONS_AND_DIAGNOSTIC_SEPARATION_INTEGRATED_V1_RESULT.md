@@ -1,11 +1,12 @@
 # POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — 개발 결과서
 
-- 작성일: 2026-08-06 (검증자 REJECTED r1 반영 갱신)
+- 작성일: 2026-08-06 (검증자 REJECTED r2 반영 갱신)
 - 문서 성격: 개발 결과서 (검증자 입력)
 - 대상 설계서: `docs/ai_design/POC3/PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_DESIGN_V1.md`
 - 개발 PLAN: `docs/ai_plan/POC3/POC3-07_PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_V1_PLAN_V1.md` (V2 확정본)
-- 커밋: `37c310f2`(기준·문서) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) — 전부 커밋됨(미커밋 0)
-- 검증: tsc 0 · eslint 0 · vitest 121 passed · pytest(param/holdings 관련) 64 + 신규 6 passed · black/flake8/py_compile OK
+- 커밋: `37c310f2`(기준·문서) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) · `5dc8e852`(결과서) · `06c856eb`(REJECTED r1) · (본 갱신 = r2)
+- 검증: tsc 0 · eslint 0 · vitest 121 passed · pytest(holdings/oci/param 관련) 275 passed(신규 test_holdings_oci_apply 8 + test_oci_startup_status 8 포함) · black/flake8/py_compile OK
+- **작업 트리 untracked 4개**(POC3-07 범위 밖): `.claude/hooks/result_doc_gate.sh`·`.claude/hooks/stop_verify_gate.sh`(개발자 Stop hook), `design/DESIGN-apple.md`·`docs.zip`(사용자 파일). POC3-07 산출물은 전부 커밋됨.
 
 ---
 
@@ -28,15 +29,15 @@
 
 ## 2) 변경된 파일 목록
 
-`git diff --name-status 608907bc..HEAD` 실측 기준. **총 30개**(초기 커밋 시점) + REJECTED r1 반영 파일. 상태 문자(A=신규/M=수정)는 git 기준.
+`git diff --name-status 608907bc..HEAD` 실측 기준. **총 31개 (A 13 · M 18)**. 상태 문자(A=신규/M=수정)는 git 기준.
+> 정정 이력: r0 27개(설계서·PLAN·결과서 누락) → r1 30개(docs A5/M2·frontend M12 오분류) → **r2 31개 실측 확정**(docs A4/M1 · frontend A3/M15 · 백엔드 A4/M2 · 테스트 A2 · 위 tests 는 r2 test_oci_startup_status 포함).
 
-**문서 (A=신규 5 · M=수정 2)**
-- `docs/PROGRAM_TRUTH.md`: **신규(A)** — git 기준 신규 파일(직전 세션 생성분 포함). ※ r0 결과서에서 "수정"으로 오기재했던 것 정정.
-- `docs/STATE_LATEST.md`: 수정(M)
-- `docs/ai_design/POC3/PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_DESIGN_V1.md`: 신규(A) — 설계서
+**문서 (A=신규 4 · M=수정 1)**
+- `docs/PROGRAM_TRUTH.md`: **신규(A)** — git 기준 신규 파일(직전 세션 생성분 포함). ※ r0 "수정" 오기재 정정.
+- `docs/ai_design/POC3/PC_OCI_..._DESIGN_V1.md`: 신규(A) — 설계서
 - `docs/ai_plan/POC3/POC3-07_..._PLAN_V1.md`: 신규(A) — 개발 PLAN(V2 내용)
 - `docs/ai_result/POC3/POC3-07_..._RESULT.md`: 신규(A) — 본 결과서
-> ※ r0 §2 는 설계서·PLAN·결과서 3개를 누락해 27개로 적었음. 정정: **30개**.
+- `docs/STATE_LATEST.md`: 수정(M)
 
 **백엔드 (A 4 · M 2)**
 - `app/oci_startup_status.py`: 신규(A) — 기동 시 OCI 읽기 모듈
@@ -46,7 +47,7 @@
 - `app/api.py`: 수정(M) — lifespan 전환 + 두 라우터 등록
 - `app/api_three_push_param.py`: 수정(M) — content_sha256 표시
 
-**프론트 (A 3 · M 12)**
+**프론트 (A 3 · M 15)**
 - `frontend/app/components/DiagnosticsView.tsx`: 신규(A)
 - `frontend/lib/api/ociStartupStatus.ts`: 신규(A)
 - `frontend/lib/api/holdingsApply.ts`: 신규(A)
@@ -94,8 +95,8 @@
 
 - **OCI 실측은 개발자 직접 SSH 읽기(옵션 B, 설계자 Q2 확정)로 수행**했다. `ubuntu@krx-alertor-vm`. 읽기 전용(crontab -l / stat / sha256sum)만. 원격 write·job 실행·Telegram 발송은 하지 않음.
 - **기동 읽기·Holdings apply 는 실제로 라이브 확인**: 백엔드 기동 시 `GET /oci/startup-status` → `reachable=true, overall=OPERATING, crontab_active=true` 반환 확인(포트 8123/8125). `POST /holdings/apply`·`GET /oci/startup-status` 라우트 등록 OpenAPI 로 확인(POST 는 실행 안 함).
-- **Holdings apply 의 원자성·active 보존**은 단위 테스트로 검증(`tests/test_holdings_oci_apply.py`): scp 실패 시 mv 미호출, tmp hash 불일치 시 rename 안 함+tmp 정리, 정상 순서 scp→sha256sum(tmp)→mv→sha256sum(active), 적용 후 불일치 OUT_OF_SYNC. 실 OCI write 는 mock.
-- **`private_fields_exposed`(Q10)**: 아직 소스에서 의미 확인 안 함. OCI runner 소스에 있을 가능성. 검증자가 이 필드 노출 위험을 별도로 봐주면 좋겠음(실제 노출이면 차단 필요 — 이번 미처리).
+- **Holdings apply 의 원자성·active 보존**은 단위 테스트로 검증(`tests/test_holdings_oci_apply.py` 8): 로컬 schema 손상 시 SSH 미호출, scp 실패·tmp hash 불일치·tmp schema 불일치 시 mv 미호출+tmp 정리, 정상 순서 scp→sha256sum(tmp)→schema→mv→manifest(사후 hash 재확인 없음), manifest 기록 실패 시 OCI_APPLIED 아님·UNKNOWN. 실 OCI write 는 mock.
+- **`private_fields_exposed`(Q10)**: r2 에서 소스 확인 완료 — `app/runtime_evidence/diagnostics.py :: detect_private_values_exposed` 로 개인값 노출을 실측 스캔하는 **탐지 boolean**(하드코드 False 금지 가드). 노출 필드가 아니라 노출 감시 플래그이므로 추가 차단 불필요. "실제 true 관측 이력" 조사만 로그 분석 BACKLOG.
 - **approval 축소로 삭제한 것**: `InfoPushGuideCards`·`ManualPreviewSection`·`DevCompatSection` 을 approval 에서 제거(파일은 존재, diagnostics 가 후 2개 참조). `InfoPushGuideCards` 는 어디서도 참조 안 됨 → 고아 후보(삭제 안 함).
 
 ## 7) 사용자 확인이 필요한 항목
@@ -113,11 +114,10 @@
 | AC-1 OCI 스케줄·발송 계약 불변 | DONE | crontab·runner 미수정. 읽기 전용만. |
 | AC-2 OCI 자동 운영 지속 | DONE | 기동 읽기·apply 모두 OCI runner 안 건드림. |
 | AC-3 PC 화면이 OCI job/Telegram 자동실행 안 함 | DONE | 조회는 기동 캐시. apply 는 명시적 클릭만. |
-| AC-4 Holdings PC·OCI revision/hash 구분 | DONE | content_sha256 PC 계산 + OCI active sha256 대조. |
-| AC-5 적용 성공 시만 OCI_APPLIED | DONE | PC==OCI hash 일치만 OCI_APPLIED. |
-| AC-6 적용 실패 시 기존 active 보존·단계 표시 | DONE(r1 정정) | **rename 전에** schema+hash 검증 완료 → 검증 실패는 모두 rename 이전이라 active 미변경. 테스트: scp실패/hash불일치/schema불일치 모두 mv 미호출·tmp 정리. |
+| AC-4 Holdings PC·OCI hash 구분 | DONE(r2 강화) | content_sha256 PC 계산 + rename 전 원격 tmp sha256 대조 + manifest(kind/content_sha256/created_at) 로컬·원격 기록. |
+| AC-5 적용 성공 시만 OCI_APPLIED | DONE(r2 정정) | rename 전 hash·schema 통과 + rename 성공 + manifest 성공 = OCI_APPLIED. manifest 실패는 UNKNOWN(성공 위장 안 함). |
+| AC-6 적용 실패 시 기존 active 보존·단계 표시 | DONE(r2 정정) | **모든 검증이 rename 이전**(로컬 schema·tmp hash·tmp schema) → 실패 시 active 미변경. **rename 이후 사후 재검증 제거**(복원 불가 경로 없앰). 테스트: 4개 실패 경로 모두 mv 미호출·tmp 정리. |
 | AC-7 PARAM 승인됨/OCI 적용됨 분리 | DONE | 기존 param state status + apply 결과 분리. |
-| AC-4 Holdings PC·OCI hash 구분 | DONE(r1 강화) | manifest(kind/content_sha256/created_at) 기록 + OCI active sha256 대조. |
 | AC-8 PARAM 성공 시 PC==OCI hash | PARTIAL | 성공 판정은 기존 verify(Q4 사용자 확정). hash 는 표시용. |
 | AC-9 동일 revision 재적용 idempotent | DONE | 같은 내용→같은 hash→같은 결과(테스트). |
 | AC-10 PC·OCI 배포 revision 표시 | SKIPPED | 배포 sha 표시 BACKLOG(§17.3). |
@@ -170,7 +170,7 @@ r0 검증자 REJECTED 를 받아 아래를 수정했다.
 - 읽어온 holdings·runtime_state stat 값을 job detail 에 **실제 반영**(미사용 제거).
 - 신규 테스트 `tests/test_oci_startup_status.py` 8케이스(등록/누락/없음/접속실패/ENV미설정/stat 반영).
 
-**A-2 (보고 정확성) — 수정 완료:** §2 를 30파일(설계서·PLAN·결과서 포함)로 정정. `docs/PROGRAM_TRUTH.md` 를 git 기준 **신규(A)** 로 정정(r0 "수정" 오기).
+**A-2 (보고 정확성) — 수정(r1, r2 에서 재정정):** §2 에 설계서·PLAN·결과서를 추가하고 `docs/PROGRAM_TRUTH.md` 를 git 기준 **신규(A)** 로 정정. (r1 은 30파일·frontend M12 로 오분류 → **r2 에서 31파일·frontend M15 실측 확정**, 아래 r2 섹션 참조.)
 
 **A-3 (산출물 정합) — 수정 완료:** STATE_LATEST 를 "개발 완료·재검증 대기"로 갱신(결과서 "예정"→"작성됨"). AC-6 근거 보강. 최종 판정 문구에서 과대 단정 철회.
 
@@ -179,3 +179,19 @@ r0 검증자 REJECTED 를 받아 아래를 수정했다.
 - 계약: 하드코드 False 금지·실측 강제(diagnostics.py:99). 즉 이미 보안 가드로 설계됨.
 - 판정: 설계자 Q10 의 (a)"단순 안전 점검 boolean" 에 해당. **값 자체가 민감정보가 아니며**(true/false), 노출을 표시하는 게 아니라 노출을 감시한다. → 추가 차단·표시 이동 불필요. 이번 범위에서 이 필드를 새로 다루거나 노출하지 않았고, 기존 가드를 훼손하지 않았다.
 - 단, 이 플래그가 **실제로 true 로 관측된 이력**(=실제 개인값 노출 발생)은 이번에 확인하지 않았다. 그 이력 조사는 별도(런타임 로그 분석 = §17.2 BACKLOG).
+
+---
+
+## 검증자 REJECTED r2 반영 (2026-08-06)
+
+r1 검증자 REJECTED 를 받아 아래를 추가 수정했다.
+
+**A-1 / 안전성 HIGH (post-rename 실패 + manifest 무시) — 수정 완료:**
+- (post-rename) r1 은 rename 후 active hash 를 **재확인**하고, 실패 시 UNKNOWN/OUT_OF_SYNC 를 반환했다. 검증자 지적대로 이 재확인은 복원 불가한 실패 경로를 만들었다. → **rename 이후 사후 hash 재검증을 제거**했다. 무결성은 이미 rename **이전** 검증(로컬 schema·tmp hash·tmp schema)으로 보장되고 mv 는 atomic 이므로, rename 성공 = active 가 검증 통과본임이 보장된다. `OUT_OF_SYNC` 상태·사후 sha256sum 호출을 코드·API·프론트 타입·테스트에서 모두 제거.
+  - 주의: "이전 active 복원"은 atomic mv 구조상 백업이 없어 불가능하며, 검증 통과본을 미확인 옛 파일로 되돌리는 것이라 오히려 위험하다. 따라서 복원 대신 **재검증 경로 자체를 없애** 지적을 해소했다.
+- (manifest) r1 은 active manifest 기록 실패를 무시하고 OCI_APPLIED 를 반환했다(Q4 미보장). → **manifest 기록 실패 시 OCI_APPLIED 로 확정하지 않고 UNKNOWN 으로 보고**한다(active 는 반영됐으나 적용 추적 불가). 신규 테스트 `test_manifest_write_failure_returns_unknown_not_applied`.
+- 성공 순서 테스트를 `scp→sha256sum(tmp)→schema→mv→manifest`(사후 hash 없음)로 갱신, `sha256sum` 1회만 호출됨을 assert.
+
+**A-2 (보고 정확성) — 재정정:** §2 를 git 실측으로 **31파일(A 13·M 18)** 확정. docs A4/M1 · frontend A3/**M15**(r1 의 M12 오분류 정정) · 백엔드 A4/M2 · 테스트 A2. 상단 커밋 목록에 `5dc8e852`(결과서)·`06c856eb`(r1) 추가. 테스트 수 "신규 6"→"8+8". untracked 4개(범위 밖) 명시.
+
+**A-3 (산출물 정합) — 재정정:** Q10 상충 제거 — §6 과 판정·`PROGRAM_TRUTH.md:376` 모두 "탐지 boolean·확인 완료"로 통일(r1 에 남아 있던 "확인 안 함" 문장 제거). STATE_LATEST r2 반영.

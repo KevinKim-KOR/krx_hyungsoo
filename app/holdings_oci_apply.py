@@ -17,9 +17,13 @@ POC3-07 (PLAN V2 §4.3 · 설계자 Q3·Q4·Q11 · 검증자 REJECTED r1 반영)
   5. 위 검증을 모두 통과한 tmp 만 atomic rename(tmp → active) 한다. 즉 active 로
      승격되는 파일은 항상 검증을 통과한 내용이다. rename 자체가 실패하면 active 는
      바뀌지 않는다(tmp 만 남고, 정리한다).
-  6. rename 성공 후 active manifest 를 기록하고, active sha256 을 재확인해
-     PC==OCI 면 OCI_APPLIED 로 확정한다.
-  - idempotent: 같은 내용을 다시 적용해도 같은 hash → 같은 성공 결과.
+  6. rename 성공 후 active manifest(Q4)를 기록한다. **manifest 기록이 실패하면
+     OCI_APPLIED 로 확정하지 않고 UNKNOWN 으로 보고한다**(적용 사실 추적 불가).
+  - rename 이후에는 별도 사후 hash 재검증을 두지 않는다. active 는 rename 이전에
+    hash·schema 를 통과한 내용이고 mv 가 atomic 이므로 무결성이 이미 보장된다.
+    rename 이후 시점의 재검증은 복원 불가한 "post-rename 실패 경로"만 만들 뿐이라
+    두지 않는다(원자 적용 계약).
+  - idempotent: 같은 내용을 다시 적용해도 같은 hash·schema → 같은 성공 경로.
 
 응답 데이터 계약(§6·§13): SSH target·remote path·raw subprocess 출력·secret 을
 반환하지 않는다. 사용자 중심 상태·시각·짧은 오류 요약만.
@@ -58,10 +62,11 @@ _SSH_TIMEOUT_SEC = 30
 
 # 적용 상태(설계 §6.2). UI 표시용.
 STATUS_PC_SAVED = "PC_SAVED"  # 로컬 파일 없음/미적용 전
-STATUS_OCI_APPLIED = "OCI_APPLIED"  # 검증 통과 후 PC==OCI hash 일치
-STATUS_OUT_OF_SYNC = "OUT_OF_SYNC"  # 적용됐으나 사후 hash 불일치
-STATUS_APPLY_FAILED = "APPLY_FAILED"  # 로컬 schema·전송·검증 실패(active 보존)
-STATUS_UNKNOWN = "UNKNOWN"  # OCI 상태 확인 불가
+STATUS_OCI_APPLIED = "OCI_APPLIED"  # rename+manifest 성공(검증 통과본이 active)
+STATUS_APPLY_FAILED = (
+    "APPLY_FAILED"  # 로컬 schema·전송·rename 전 검증 실패(active 보존)
+)
+STATUS_UNKNOWN = "UNKNOWN"  # ENV 미설정 / manifest 기록 실패(적용됐으나 추적 불가)
 
 
 @dataclass
@@ -257,7 +262,10 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
 
     applied_at = datetime.now(timezone.utc).isoformat()
 
-    # 6. active manifest 기록(원격). 부가 — 실패해도 적용 자체는 성공으로 본다.
+    # 6. active manifest 기록(원격) — Q4 계약. **기록 실패는 무시하지 않는다.**
+    #    active(=검증 통과한 tmp)는 이미 반영됐지만 manifest 가 없으면 적용 사실을
+    #    추적할 수 없으므로 OCI_APPLIED 로 확정하지 않고 UNKNOWN 으로 보고한다.
+    #    (mv 는 atomic 이라 active 자체는 유효한 검증 통과본이다.)
     manifest_json = json.dumps(
         {
             "kind": _MANIFEST_KIND,
@@ -267,38 +275,32 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
         },
         ensure_ascii=False,
     )
-    _run(
+    rc, _so, _se = _run(
         ssh_base + [f"printf '%s' {json.dumps(manifest_json)} > {_REMOTE_MANIFEST}"],
         timeout=_SSH_TIMEOUT_SEC,
     )
-
-    # 7. 사후 active hash 재확인 → PC==OCI 면 성공 확정.
-    rc, so, _se = _run(
-        ssh_base + [f"sha256sum {_REMOTE_FINAL} 2>/dev/null | cut -d' ' -f1"],
-        timeout=_SSH_TIMEOUT_SEC,
-    )
-    active_sha = so.strip() if rc == 0 else ""
     if rc != 0:
-        # 적용된 내용은 검증을 통과한 것이지만 사후 확인만 실패.
         return HoldingsApplyResult(
             status=STATUS_UNKNOWN,
             applied_at=applied_at,
             content_sha256=local_sha,
             oci_verified=False,
-            message="적용은 완료됐으나 OCI 상태 확인에 실패했습니다.",
+            message=(
+                "보유 종목은 OCI 에 반영됐으나 적용 기록(manifest) 저장에 실패했습니다. "
+                "진단·상태에서 마지막 적용을 확인하세요."
+            ),
         )
-    if active_sha == local_sha:
-        return HoldingsApplyResult(
-            status=STATUS_OCI_APPLIED,
-            applied_at=applied_at,
-            content_sha256=local_sha,
-            oci_verified=True,
-            message="보유 종목을 OCI 에 적용했습니다.",
-        )
+
+    # 7. 성공 확정.
+    #    active 로 승격된 것은 5단계 rename 이전에 hash·schema 를 모두 통과한 tmp 이고
+    #    mv 는 atomic 이므로, mv 성공 = active 가 검증된 내용임이 보장된다. 별도의
+    #    사후 hash 재확인(rename 이후 시점)은 두지 않는다 — 그 시점 이후 외부 변경을
+    #    가정한 재검증은 원자 적용 계약 밖이며, 복원 불가한 "post-rename 실패 경로"만
+    #    만들기 때문이다(검증자 지적 해소). 무결성은 rename 이전 검증으로 보장한다.
     return HoldingsApplyResult(
-        status=STATUS_OUT_OF_SYNC,
+        status=STATUS_OCI_APPLIED,
         applied_at=applied_at,
         content_sha256=local_sha,
-        oci_verified=False,
-        message="적용 후 OCI 값이 PC 와 일치하지 않습니다. 다시 적용하세요.",
+        oci_verified=True,
+        message="보유 종목을 OCI 에 적용했습니다.",
     )

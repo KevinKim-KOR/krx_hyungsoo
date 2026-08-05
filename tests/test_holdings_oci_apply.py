@@ -10,8 +10,9 @@
   - scp 실패 → APPLY_FAILED, active 보존(mv 미호출).
   - 전송 tmp hash 불일치 → APPLY_FAILED, rename 안 함, tmp 정리.
   - 전송 tmp schema 검증 실패 → APPLY_FAILED, rename 안 함(rename 전 검증).
-  - 정상: scp → sha256sum(tmp) → schema-check → mv → manifest → sha256sum(active) → OCI_APPLIED.
-  - 사후 active hash 불일치 → OUT_OF_SYNC.
+  - 정상: scp → sha256sum(tmp) → schema-check → mv → manifest → OCI_APPLIED
+    (rename 이후 사후 hash 재확인 없음 — 복원 불가 경로 제거).
+  - rename 성공 후 manifest 기록 실패 → OCI_APPLIED 아님, UNKNOWN(Q4 계약).
 """
 
 from __future__ import annotations
@@ -168,35 +169,37 @@ def test_success_order_and_verified(tmp_path, monkeypatch):
     assert result.oci_verified is True
     assert result.content_sha256 == _SHA
     assert result.applied_at is not None
-    # 핵심 순서: schema 검증이 mv 앞에 온다.
-    assert seq.index("schema") < seq.index("mv")
+    # 핵심 순서: hash·schema 검증이 mv 앞에 온다(모든 검증이 rename 이전).
     assert seq.index("sha256sum") < seq.index("mv")
-    # 순서 전체.
-    assert seq == ["scp", "sha256sum", "schema", "mv", "manifest", "sha256sum"]
+    assert seq.index("schema") < seq.index("mv")
+    # 순서 전체 — rename 이후 사후 hash 재확인은 없다(복원 불가 경로 제거).
+    assert seq == ["scp", "sha256sum", "schema", "mv", "manifest"]
+    # sha256sum 은 rename 이전 tmp 검증 1회만(사후 재확인 없음).
+    assert seq.count("sha256sum") == 1
 
 
-def test_active_hash_mismatch_after_apply_out_of_sync(tmp_path, monkeypatch):
+def test_manifest_write_failure_returns_unknown_not_applied(tmp_path, monkeypatch):
+    # rename 성공(active 반영됨) 후 manifest 기록 실패 → OCI_APPLIED 아님, UNKNOWN.
     _write_local(tmp_path, monkeypatch)
     monkeypatch.setattr(mod, "require_env", lambda _k: "oci-krx")
-
-    state = {"sha_calls": 0}
 
     def _fake_run(cmd, timeout):
         joined = " ".join(cmd)
         if cmd[0] == "scp":
             return 0, "", ""
         if "sha256sum" in joined:
-            state["sha_calls"] += 1
-            if state["sha_calls"] == 1:
-                return 0, _SHA, ""  # tmp 일치
-            return 0, "different", ""  # 사후 active 불일치
+            return 0, _SHA, ""
         if "json.load" in joined:
             return 0, "", ""
         if "mv " in joined:
             return 0, "", ""
+        if "> " in joined:  # manifest write 실패
+            return 1, "", "disk full"
         return 0, "", ""
 
     monkeypatch.setattr(mod, "_run", _fake_run)
     result = mod.apply_holdings_to_oci()
-    assert result.status == mod.STATUS_OUT_OF_SYNC
+    assert result.status == mod.STATUS_UNKNOWN
     assert result.oci_verified is False
+    # 적용 시각은 남기되(active 는 반영됨), 성공(OCI_APPLIED)으로 확정하지 않는다.
+    assert result.applied_at is not None

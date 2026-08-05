@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1 반영 수정 · 재검증 대기** · 결과서 작성됨)
+최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1·r2 반영 수정 · 재검증 대기** · 결과서 작성됨)
 
 ## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
 
@@ -18,7 +18,9 @@
 
 **결과서**: `docs/ai_result/POC3/POC3-07_PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_V1_RESULT.md` (작성됨).
 
-**검증자 REJECTED r1 반영(2026-08-06)**: (A-1) Holdings 적용 순서 정정 — rename **전에** schema+hash 검증 완료 후에만 atomic rename(post-rename 실패로 active 훼손되던 문제 제거) + 로컬 schema 검증(손상 파일 전송 차단) + manifest(kind/sha256/created_at) 기록. (B-6) startup 스케줄 판정을 필수 push-kind 3종 등록 여부로(하나만 있어도 OPERATING 하던 문제 → OPERATING/DEGRADED/UNKNOWN), 읽어온 stat 값을 job detail 에 실제 반영, 신규 테스트 `test_oci_startup_status.py` 8 + `test_holdings_oci_apply.py` 8. (A-2/A-3) 결과서 §2 30파일 정정·STATE_LATEST 상태 갱신.
+**검증자 REJECTED r1 반영**: (A-1) Holdings 적용 순서 정정 — rename **전에** schema+hash 검증 완료 후에만 atomic rename + 로컬 schema 검증 + manifest 기록. (B-6) startup 스케줄 판정을 필수 push-kind 3종 등록 여부로(OPERATING/DEGRADED/UNKNOWN), stat 값 job detail 반영, 신규 테스트 2파일.
+
+**검증자 REJECTED r2 반영(2026-08-06)**: (A-1/안전성) rename **이후** 사후 hash 재검증 제거(복원 불가 경로 없앰 — 무결성은 rename 이전 검증으로 보장, mv atomic), `OUT_OF_SYNC` 상태 제거. manifest 기록 실패 시 OCI_APPLIED 아님·UNKNOWN(Q4 보장). (A-2) §2 git 실측 **31파일(A13·M18)** 확정(frontend M15·docs A4/M1). (A-3) Q10 상충 제거(탐지 boolean 확인 완료로 통일). 테스트 `test_holdings_oci_apply.py` 8(manifest 실패·순서 재확인) + `test_oci_startup_status.py` 8.
 
 ---
 
