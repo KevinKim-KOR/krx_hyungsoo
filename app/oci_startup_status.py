@@ -49,7 +49,7 @@ class OciStartupSnapshot:
 
     checked_at: Optional[str] = None  # ISO8601, 읽기를 시도한 시각
     reachable: bool = False
-    overall: str = "UNKNOWN"  # OPERATING / UNKNOWN
+    overall: str = "UNKNOWN"  # OPERATING / DEGRADED / UNKNOWN
     summary_line: str = "OCI 상태 미확인"  # 첫 화면 한 줄
     crontab_active: Optional[bool] = None
     jobs: list[OciJobStatus] = field(default_factory=list)
@@ -102,12 +102,40 @@ def _ssh_read(remote_cmd: str) -> tuple[bool, str]:
     return True, result.stdout.strip()
 
 
-def _classify_crontab(reachable: bool, crontab_out: str) -> Optional[bool]:
-    """crontab 활성 여부. reachable 아니면 None(UNKNOWN)."""
-    if not reachable:
-        return None
-    # runner 호출 줄이 하나라도 있으면 활성으로 본다.
-    return "run_three_push_runtime_oci.py" in crontab_out
+# crontab 에 등록되어 있어야 하는 필수 push-kind(설계·crontab 실측 기준).
+#   이 중 하나라도 crontab 에서 빠지면 "일부 스케줄 누락" 으로 구분한다
+#   (검증자 B-6: runner 한 줄만 있어도 OPERATING 으로 판정하던 문제 정정).
+_REQUIRED_PUSH_KINDS = (
+    "market_briefing",
+    "holdings_briefing",
+    "spike_or_falling_alert",
+)
+
+
+def _classify_schedule(scheduled_kinds: set[str]) -> tuple[str, list[str]]:
+    """등록된 push-kind 집합으로 스케줄 상태를 판정.
+
+    반환: (overall, missing_kinds)
+      - OPERATING: 필수 kind 가 모두 등록됨
+      - DEGRADED: 일부 필수 kind 누락(운영 중이나 불완전)
+      - UNKNOWN: 등록된 runner 가 하나도 없음
+    """
+    if not scheduled_kinds:
+        return "UNKNOWN", list(_REQUIRED_PUSH_KINDS)
+    missing = [k for k in _REQUIRED_PUSH_KINDS if k not in scheduled_kinds]
+    if missing:
+        return "DEGRADED", missing
+    return "OPERATING", []
+
+
+def _unknown_snapshot(checked_at: str, summary: str, note: str) -> OciStartupSnapshot:
+    return OciStartupSnapshot(
+        checked_at=checked_at,
+        reachable=False,
+        overall="UNKNOWN",
+        summary_line=summary,
+        note=note,
+    )
 
 
 def refresh_snapshot() -> OciStartupSnapshot:
@@ -122,22 +150,22 @@ def refresh_snapshot() -> OciStartupSnapshot:
     try:
         require_env("OCI_SSH_TARGET")
     except Exception:  # noqa: BLE001 - EnvConfigError 포함, 기동 막지 않음
-        _snapshot = OciStartupSnapshot(
-            checked_at=checked_at,
-            reachable=False,
-            overall="UNKNOWN",
-            summary_line="OCI 상태 미확인 (OCI_SSH_TARGET 미설정)",
-            note="OCI 접속 대상이 설정되지 않아 기동 시 조회를 건너뛰었습니다.",
+        _snapshot = _unknown_snapshot(
+            checked_at,
+            "OCI 상태 미확인 (OCI_SSH_TARGET 미설정)",
+            "OCI 접속 대상이 설정되지 않아 기동 시 조회를 건너뛰었습니다.",
         )
         return _snapshot
 
-    # 한 번의 SSH 세션으로 필요한 읽기 전용 사실을 모아 읽는다.
-    #   1) crontab 존재/활성
-    #   2) holdings 소스 파일 최근 수정 시각
-    #   3) runtime_state.sqlite 최근 수정 시각·크기
-    # 모두 읽기 전용(crontab -l / stat). 원격 상태를 바꾸지 않는다.
+    # 한 번의 SSH 세션으로 필요한 읽기 전용 사실을 모아 읽는다(모두 읽기 전용).
+    #   1) crontab 에 등록된 push-kind 목록(--push-kind 인자 추출)
+    #   2) holdings 소스 파일 최근 수정 epoch
+    #   3) runtime_state.sqlite 최근 수정 epoch·크기
+    # 구분자 '###' 로 세 블록을 나눠 파싱한다.
     remote_cmd = (
-        "crontab -l 2>/dev/null | grep -c run_three_push_runtime_oci.py; "
+        "crontab -l 2>/dev/null "
+        "| grep -oE -- '--push-kind [a-z_]+' | awk '{print $2}' | sort -u; "
+        "echo '###'; "
         f"stat -c '%Y' {_REMOTE_HOME}/state/holdings/holdings_latest.json "
         "2>/dev/null || echo 0; "
         f"stat -c '%Y %s' {_REMOTE_HOME}/state/runtime/runtime_state.sqlite "
@@ -146,44 +174,72 @@ def refresh_snapshot() -> OciStartupSnapshot:
     ok, out = _ssh_read(remote_cmd)
 
     if not ok:
-        _snapshot = OciStartupSnapshot(
-            checked_at=checked_at,
-            reachable=False,
-            overall="UNKNOWN",
-            summary_line="OCI 상태 미확인 (접속 실패)",
-            note="OCI 에 접속하지 못해 상태를 확인할 수 없습니다. 기동은 정상 진행됩니다.",
+        _snapshot = _unknown_snapshot(
+            checked_at,
+            "OCI 상태 미확인 (접속 실패)",
+            "OCI 에 접속하지 못해 상태를 확인할 수 없습니다. 기동은 정상 진행됩니다.",
         )
         return _snapshot
 
-    lines = out.splitlines()
-    cron_count = lines[0].strip() if len(lines) > 0 else "0"
-    crontab_active = _classify_crontab(
-        True, "run_three_push_runtime_oci.py" if cron_count not in ("", "0") else ""
-    )
+    # 파싱: '###' 앞 = push-kind 목록, 뒤 = stat 두 줄.
+    parts = out.split("###")
+    kinds_block = parts[0] if len(parts) > 0 else ""
+    stat_block = parts[1] if len(parts) > 1 else ""
+    scheduled_kinds = {ln.strip() for ln in kinds_block.splitlines() if ln.strip()}
+    stat_lines = [ln.strip() for ln in stat_block.splitlines() if ln.strip()]
+    holdings_epoch = stat_lines[0] if len(stat_lines) > 0 else "0"
+    runtime_stat = stat_lines[1] if len(stat_lines) > 1 else "0 0"
+
+    overall, missing = _classify_schedule(scheduled_kinds)
+    crontab_active = overall in ("OPERATING", "DEGRADED")
 
     jobs: list[OciJobStatus] = []
-    # crontab 은 활성/비활성을 구분할 수 있다.
+    # crontab — 필수 push-kind 등록 여부(누락 구분).
+    if overall == "OPERATING":
+        cron_detail = "필수 스케줄(시장·보유·급등락) 모두 등록됨"
+        cron_status = "SUCCESS"
+    elif overall == "DEGRADED":
+        cron_detail = f"일부 스케줄 누락: {', '.join(missing)}"
+        cron_status = "STALE"
+    else:
+        cron_detail = "등록된 스케줄 확인 불가"
+        cron_status = "UNKNOWN"
+    jobs.append(OciJobStatus(job="crontab", status=cron_status, detail=cron_detail))
+
+    # 관측한 artifact 최신성(읽어온 stat 값을 실제로 사용한다 — 검증자 B-6).
     jobs.append(
         OciJobStatus(
-            job="crontab",
-            status="SUCCESS" if crontab_active else "UNKNOWN",
-            detail="스케줄 등록됨" if crontab_active else "스케줄 확인 불가",
+            job="holdings_source",
+            status="SUCCESS" if holdings_epoch not in ("", "0") else "UNKNOWN",
+            detail=_epoch_detail("holdings 소스", holdings_epoch),
         )
     )
-    # 개별 job(Market/Holdings/Spike)의 성공/실패는 기동 읽기만으로는 신뢰성 있게
-    # 구분할 수 없다(단일 status 파일은 spike 1건만 유지 — PROGRAM_TRUTH §14).
-    # 따라서 UNKNOWN 으로 남긴다(설계자 Q5).
+    runtime_epoch = runtime_stat.split()[0] if runtime_stat else "0"
+    runtime_size = runtime_stat.split()[1] if len(runtime_stat.split()) > 1 else "0"
     jobs.append(
         OciJobStatus(
-            job="job_details",
+            job="runtime_state_db",
+            status="SUCCESS" if runtime_size not in ("", "0") else "UNKNOWN",
+            detail=(
+                _epoch_detail("runtime_state.sqlite", runtime_epoch)
+                + f" · {runtime_size} bytes"
+            ),
+        )
+    )
+    # 개별 PUSH job 의 최신 성공/실패는 기동 읽기만으로 신뢰성 있게 구분 불가
+    # (단일 status 파일은 spike 1건만 유지 — PROGRAM_TRUTH §14). UNKNOWN 유지(Q5).
+    jobs.append(
+        OciJobStatus(
+            job="push_job_results",
             status="UNKNOWN",
-            detail="개별 job 최신 상태는 기동 읽기 범위 밖 (진단·상태에서 근거만 표시)",
+            detail="개별 PUSH job 최신 성공/실패는 기동 읽기 범위 밖 (Q5)",
         )
     )
 
-    overall = "OPERATING" if crontab_active else "UNKNOWN"
-    if crontab_active:
-        summary = "OCI 자동 운영 스케줄 활성 (기동 시 확인)"
+    if overall == "OPERATING":
+        summary = "OCI 자동 운영 스케줄 활성 (필수 3종 등록 · 기동 시 확인)"
+    elif overall == "DEGRADED":
+        summary = f"OCI 스케줄 일부 누락: {', '.join(missing)} (기동 시 확인)"
     else:
         summary = "OCI 스케줄 확인 불가"
 
@@ -195,11 +251,24 @@ def refresh_snapshot() -> OciStartupSnapshot:
         crontab_active=crontab_active,
         jobs=jobs,
         note=(
-            "기동 시 1회 읽은 읽기 전용 스냅샷입니다. 개별 job 의 최신 성공/실패는 "
+            "기동 시 1회 읽은 읽기 전용 스냅샷입니다. crontab 필수 push-kind 등록 "
+            "여부와 artifact 최신성을 표시합니다. 개별 PUSH job 의 최신 성공/실패는 "
             "기존 단일 status 파일만으로 신뢰성 있게 구분할 수 없어 UNKNOWN 으로 둡니다."
         ),
     )
     return _snapshot
+
+
+def _epoch_detail(label: str, epoch_str: str) -> str:
+    """epoch 문자열을 사용자용 '최근 수정 …' 문구로. 0/파싱실패는 '확인 불가'."""
+    try:
+        epoch = int(epoch_str)
+    except (TypeError, ValueError):
+        return f"{label} 시각 확인 불가"
+    if epoch <= 0:
+        return f"{label} 파일 없음/확인 불가"
+    dt = datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
+    return f"{label} 최근 수정 {dt}"
 
 
 def get_snapshot() -> OciStartupSnapshot:

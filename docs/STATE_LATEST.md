@@ -1,10 +1,10 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-05 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **착수 중** · PLAN V2 확정 · 기준점 커밋 `37c310f2`)
+최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1 반영 수정 · 재검증 대기** · 결과서 작성됨)
 
 ## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
 
-**상태**: `착수 중` · 기준점 커밋 `37c310f2`(설계서 + PLAN V2 + PROGRAM_TRUTH 정정).
+**상태**: `개발 완료 · REJECTED r1 반영 수정 완료 · 재검증 대기`. 커밋 `37c310f2`(기준) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) · `5dc8e852`(결과서) + r1 수정 커밋(Holdings 적용 순서 정정·startup 스케줄 판정·테스트 추가).
 
 **성격**: 고장 복구 아님. OCI 자동 운영은 RUNTIME_VERIFIED·OPERATING(이미 정상 작동). 3축 통합: (A) 문서 정정, (B) 화면 분리(정상 업무 / `diagnostics`) + PC 백엔드 **기동 시 1회** OCI 읽기, (C) Holdings·PARAM **명시적 OCI 적용** 실연동.
 
@@ -16,7 +16,9 @@
 
 **개발 순서**: A(문서)→B(화면+기동읽기)→C(Holdings 적용+PARAM hash). 커밋 분할, 완료 판정 통합 1회. 실전 write 검증은 사용자 명시 클릭(Q11).
 
-**결과서 예정**: `docs/ai_result/POC3/POC3-07_..._RESULT.md`.
+**결과서**: `docs/ai_result/POC3/POC3-07_PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_V1_RESULT.md` (작성됨).
+
+**검증자 REJECTED r1 반영(2026-08-06)**: (A-1) Holdings 적용 순서 정정 — rename **전에** schema+hash 검증 완료 후에만 atomic rename(post-rename 실패로 active 훼손되던 문제 제거) + 로컬 schema 검증(손상 파일 전송 차단) + manifest(kind/sha256/created_at) 기록. (B-6) startup 스케줄 판정을 필수 push-kind 3종 등록 여부로(하나만 있어도 OPERATING 하던 문제 → OPERATING/DEGRADED/UNKNOWN), 읽어온 stat 값을 job detail 에 실제 반영, 신규 테스트 `test_oci_startup_status.py` 8 + `test_holdings_oci_apply.py` 8. (A-2/A-3) 결과서 §2 30파일 정정·STATE_LATEST 상태 갱신.
 
 ---
 

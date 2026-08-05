@@ -1,6 +1,6 @@
 # POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — 개발 결과서
 
-- 작성일: 2026-08-06
+- 작성일: 2026-08-06 (검증자 REJECTED r1 반영 갱신)
 - 문서 성격: 개발 결과서 (검증자 입력)
 - 대상 설계서: `docs/ai_design/POC3/PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_DESIGN_V1.md`
 - 개발 PLAN: `docs/ai_plan/POC3/POC3-07_PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_V1_PLAN_V1.md` (V2 확정본)
@@ -28,43 +28,51 @@
 
 ## 2) 변경된 파일 목록
 
-**A (`30acd561`)**
-- `docs/PROGRAM_TRUTH.md`: 수정
-- `docs/STATE_LATEST.md`: 수정
+`git diff --name-status 608907bc..HEAD` 실측 기준. **총 30개**(초기 커밋 시점) + REJECTED r1 반영 파일. 상태 문자(A=신규/M=수정)는 git 기준.
 
-**B (`fdced239`)**
-- `app/oci_startup_status.py`: 신규 (기동 시 OCI 읽기 모듈)
-- `app/api_oci_startup_status.py`: 신규 (GET /oci/startup-status)
-- `app/api.py`: 수정 (라우터 등록 — B분)
-- `frontend/app/components/DiagnosticsView.tsx`: 신규
-- `frontend/lib/api/ociStartupStatus.ts`: 신규
-- `frontend/app/components/LeftSidebar.tsx`: 수정 (10키 재편)
-- `frontend/app/components/LeftSidebar.test.tsx`: 수정
-- `frontend/app/components/MainPanel.tsx`: 수정
-- `frontend/app/components/ApprovalTelegramView.tsx`: 수정 (역할 축소)
-- `frontend/app/components/ApprovalTelegramView.test.tsx`: 수정
-- `frontend/app/components/approval/OciAlertHeader.tsx`: 수정
-- `frontend/app/components/TodayInvestmentCheckView.tsx`: 수정 (OCI 한 줄)
-- `frontend/app/components/DashboardView.tsx`: 수정 (data_status→diagnostics navigate)
-- `frontend/app/components/JudgmentWorkbenchView.tsx`: 수정 (동상)
-- `frontend/app/components/HoldingsRiskEvidenceSection.tsx`: 수정 (동상)
-- `frontend/app/globals.css`: 수정 (.tc-linklike)
-- `frontend/lib/api/index.ts`: 수정 (barrel export)
+**문서 (A=신규 5 · M=수정 2)**
+- `docs/PROGRAM_TRUTH.md`: **신규(A)** — git 기준 신규 파일(직전 세션 생성분 포함). ※ r0 결과서에서 "수정"으로 오기재했던 것 정정.
+- `docs/STATE_LATEST.md`: 수정(M)
+- `docs/ai_design/POC3/PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_DESIGN_V1.md`: 신규(A) — 설계서
+- `docs/ai_plan/POC3/POC3-07_..._PLAN_V1.md`: 신규(A) — 개발 PLAN(V2 내용)
+- `docs/ai_result/POC3/POC3-07_..._RESULT.md`: 신규(A) — 본 결과서
+> ※ r0 §2 는 설계서·PLAN·결과서 3개를 누락해 27개로 적었음. 정정: **30개**.
 
-**C (`b39cc7c1`)**
-- `app/holdings_oci_apply.py`: 신규
-- `app/api_holdings_oci_apply.py`: 신규 (POST /holdings/apply)
-- `app/api.py`: 수정 (lifespan 전환 + apply 라우터 — C분)
-- `app/api_three_push_param.py`: 수정 (content_sha256 표시)
-- `frontend/app/components/HoldingsManageView.tsx`: 수정 (OCI 적용 버튼)
-- `frontend/app/components/ThreePushParamCard.tsx`: 수정 (해시 표시)
-- `frontend/lib/api/holdingsApply.ts`: 신규
-- `frontend/lib/api/threePushParam.ts`: 수정 (content_sha256 타입)
-- `frontend/lib/api/index.ts`: 수정
-- `tests/test_holdings_oci_apply.py`: 신규
+**백엔드 (A 4 · M 2)**
+- `app/oci_startup_status.py`: 신규(A) — 기동 시 OCI 읽기 모듈
+- `app/api_oci_startup_status.py`: 신규(A) — GET /oci/startup-status
+- `app/holdings_oci_apply.py`: 신규(A) — Holdings OCI 적용
+- `app/api_holdings_oci_apply.py`: 신규(A) — POST /holdings/apply
+- `app/api.py`: 수정(M) — lifespan 전환 + 두 라우터 등록
+- `app/api_three_push_param.py`: 수정(M) — content_sha256 표시
+
+**프론트 (A 3 · M 12)**
+- `frontend/app/components/DiagnosticsView.tsx`: 신규(A)
+- `frontend/lib/api/ociStartupStatus.ts`: 신규(A)
+- `frontend/lib/api/holdingsApply.ts`: 신규(A)
+- `frontend/app/components/LeftSidebar.tsx`: 수정(M) — 10키 재편
+- `frontend/app/components/LeftSidebar.test.tsx`: 수정(M)
+- `frontend/app/components/MainPanel.tsx`: 수정(M)
+- `frontend/app/components/ApprovalTelegramView.tsx`: 수정(M) — 역할 축소
+- `frontend/app/components/ApprovalTelegramView.test.tsx`: 수정(M)
+- `frontend/app/components/approval/OciAlertHeader.tsx`: 수정(M)
+- `frontend/app/components/TodayInvestmentCheckView.tsx`: 수정(M) — OCI 한 줄
+- `frontend/app/components/DashboardView.tsx`: 수정(M) — navigate 정정
+- `frontend/app/components/JudgmentWorkbenchView.tsx`: 수정(M) — navigate 정정
+- `frontend/app/components/HoldingsRiskEvidenceSection.tsx`: 수정(M) — navigate 정정
+- `frontend/app/components/HoldingsManageView.tsx`: 수정(M) — OCI 적용 버튼
+- `frontend/app/components/ThreePushParamCard.tsx`: 수정(M) — 해시 표시
+- `frontend/app/globals.css`: 수정(M) — .tc-linklike
+- `frontend/lib/api/index.ts`: 수정(M) — barrel export
+- `frontend/lib/api/threePushParam.ts`: 수정(M) — content_sha256 타입
+
+**테스트 (A)**
+- `tests/test_holdings_oci_apply.py`: 신규(A)
+- `tests/test_oci_startup_status.py`: 신규(A) — **REJECTED r1 추가**(startup 경로 테스트)
 
 > `app/api.py`, `frontend/lib/api/index.ts` 는 B·C 두 커밋에 걸쳐 수정됨.
-> `approval/ManualPreviewSection.tsx`·`DevCompatSection.tsx` 는 **파일 이동 없이** DiagnosticsView 가 참조(회귀 최소화). 파일 자체 미변경.
+> `approval/ManualPreviewSection.tsx`·`DevCompatSection.tsx` 는 **파일 이동 없이** DiagnosticsView 가 참조. 파일 자체 미변경.
+> `InfoPushGuideCards.tsx` 는 approval 축소로 미참조(고아 후보) — 미변경·미삭제.
 
 ## 3) 신규 추가된 의존성
 
@@ -79,7 +87,7 @@
 
 - **실전 OCI write 검증 미수행**: 설계 Q11 대로 개발자는 dry-run·단위 테스트(subprocess mock)까지만. Holdings 실제 OCI 적용은 사용자가 화면에서 명시적 클릭해야 최종 확인됨. → 최종 판정은 `INTEGRATED_COMPLETE_WITH_DECLARED_RUNTIME_GAP` 후보(사용자 실사용 확인 전).
 - **기동 읽기의 개별 job 상태**: crontab 활성만 판정. Market/Holdings/Spike 개별 최근 성공/실패는 UNKNOWN(설계자 Q5 — 단일 status 파일이 spike 1건만 유지, 신뢰성 있게 구분 불가. 실측 확인).
-- **`private_fields_exposed`(Q10)**: 이번 범위에서 소스 확인 미완 → §6 에 별도 기술. 표시/차단 결정 보류.
+- **`private_fields_exposed`(Q10)**: r1 에서 소스 확인 완료 — 노출 필드가 아니라 노출 **탐지 boolean**(이미 실측 가드). 추가 차단 불필요. 단 "실제 true 관측 이력" 조사는 런타임 로그 분석(§17.2 BACKLOG)으로 남김.
 - OCI 배포 revision(정확한 sha) 표시: BACKLOG(§17.3 · 설계 범위 밖).
 
 ## 6) 다음 검증자(Codex)에게 알릴 점
@@ -107,15 +115,16 @@
 | AC-3 PC 화면이 OCI job/Telegram 자동실행 안 함 | DONE | 조회는 기동 캐시. apply 는 명시적 클릭만. |
 | AC-4 Holdings PC·OCI revision/hash 구분 | DONE | content_sha256 PC 계산 + OCI active sha256 대조. |
 | AC-5 적용 성공 시만 OCI_APPLIED | DONE | PC==OCI hash 일치만 OCI_APPLIED. |
-| AC-6 적용 실패 시 기존 active 보존·단계 표시 | DONE | atomic rename, 실패 시 mv 미호출(테스트). |
+| AC-6 적용 실패 시 기존 active 보존·단계 표시 | DONE(r1 정정) | **rename 전에** schema+hash 검증 완료 → 검증 실패는 모두 rename 이전이라 active 미변경. 테스트: scp실패/hash불일치/schema불일치 모두 mv 미호출·tmp 정리. |
 | AC-7 PARAM 승인됨/OCI 적용됨 분리 | DONE | 기존 param state status + apply 결과 분리. |
+| AC-4 Holdings PC·OCI hash 구분 | DONE(r1 강화) | manifest(kind/content_sha256/created_at) 기록 + OCI active sha256 대조. |
 | AC-8 PARAM 성공 시 PC==OCI hash | PARTIAL | 성공 판정은 기존 verify(Q4 사용자 확정). hash 는 표시용. |
 | AC-9 동일 revision 재적용 idempotent | DONE | 같은 내용→같은 hash→같은 결과(테스트). |
 | AC-10 PC·OCI 배포 revision 표시 | SKIPPED | 배포 sha 표시 BACKLOG(§17.3). |
-| AC-11 job별 상태 독립 표시 | PARTIAL | crontab 활성 표시. 개별 job UNKNOWN(Q5 실측 근거). |
+| AC-11 job별 상태 독립 표시 | PARTIAL(r1 강화) | crontab(필수 3종 등록 판정) + holdings_source + runtime_state_db + push_job_results 를 독립 표시. 개별 PUSH job 성공/실패는 UNKNOWN(Q5). |
 | AC-12 단일 status 로 전체 stale 오판 안 함 | DONE | status 파일 성격 확정, 구분 불가는 UNKNOWN. |
-| AC-13 SUCCESS/스킵/FAILED/STALE/UNKNOWN 구분 | PARTIAL | 기동 읽기 범위에서 crontab=SUCCESS, 나머지 UNKNOWN. |
-| AC-14 실패 단계·조치 표시 | PARTIAL | apply 실패 단계별 메시지. 기동 읽기는 UNKNOWN note. |
+| AC-13 SUCCESS/스킵/FAILED/STALE/UNKNOWN 구분 | PARTIAL(r1 강화) | crontab=SUCCESS/STALE(일부 누락)/UNKNOWN, artifact=SUCCESS/UNKNOWN, push job=UNKNOWN. 필수 push-kind 누락 시 DEGRADED 로 구분(하나만 있어도 OPERATING 하던 문제 정정). |
+| AC-14 실패 단계·조치 표시 | PARTIAL | apply 실패 단계별 메시지. 기동 읽기는 DEGRADED 시 누락 kind 명시. |
 | AC-15 token·chat id·민감 payload 미노출 | DONE | 스냅샷·응답에 secret/target/raw 없음. |
 | AC-16 정상 메뉴에 MOCK/TEST/LEGACY 없음 | DONE | diagnostics 로 격리. |
 | AC-17 data_status → diagnostics | DONE | 흡수 + navigate 정정. |
@@ -136,4 +145,37 @@
 | AC-32 정상/진단 기능 메뉴·화면 구분 | DONE | diagnostics 그룹 분리. |
 | AC-33 실 PC→OCI→자동운영 통합 확인 후 완료 | PARTIAL | 사용자 실사용 확인 전이라 GAP 선언. |
 
-**완료 판정 제안**: `INTEGRATED_COMPLETE_WITH_DECLARED_RUNTIME_GAP` — 소스·화면·계약 완료, 실 OCI write(Holdings apply)의 실사용 확인만 사용자에게 남음(Q11 설계 의도대로). 남은 GAP·영향·확인 방법은 §7 에 명시.
+**완료 판정 제안**: `INTEGRATED_COMPLETE_WITH_DECLARED_RUNTIME_GAP` — 소스·화면·계약은 구현됐고 안전 계약(active 보존·schema 검증)은 r1 에서 정정했으나, **다음 항목이 선언된 GAP 으로 남는다**:
+- (Q11) 실 OCI write(Holdings apply) 실사용 확인 — 사용자 명시 클릭 필요.
+- (AC-10) PC·OCI 배포 revision(정확한 sha) 표시 — BACKLOG(§17.3).
+- (Q10 이력) `private_fields_exposed` 는 탐지 boolean 임을 소스로 확인(가드 정상). 단 "실제 true 관측 이력" 조사는 런타임 로그 분석 BACKLOG(§17.2).
+"소스·화면·계약 완료"라는 r0 의 단정은 위 미완 항목과 상충하므로 철회한다. 정확히는 "**핵심 기능·안전 계약 구현 완료, AC-10·실사용 확인 GAP 선언**"이다.
+
+---
+
+## 검증자 REJECTED r1 반영 (2026-08-06)
+
+r0 검증자 REJECTED 를 받아 아래를 수정했다.
+
+**A-1 (active 보존 계약) — 수정 완료:**
+- 원인: r0 은 `mv tmp→active` **후** 검증 → post-rename 실패 시 이전 active 복원 불가.
+- 수정: **rename 전에** (a) 로컬 schema 검증(손상 파일은 전송조차 안 함), (b) 원격 tmp 의 sha256 == 로컬, (c) 원격 tmp JSON 파싱 + holdings 배열 구조 검증을 모두 끝내고, **통과한 tmp 만** atomic rename. 검증 실패는 전부 rename 이전 → active 보존. rename 자체 실패도 active 미변경(tmp 정리).
+- Q4 manifest(kind/content_sha256/created_at) 로컬·원격 기록 추가.
+- 테스트: `tests/test_holdings_oci_apply.py` 8케이스(로컬 schema 손상 시 SSH 미호출, hash·schema 불일치 시 mv 미호출·tmp 정리, 정상 순서 scp→sha256sum→schema→mv→manifest→sha256sum).
+
+**코드 안전성 HIGH — 해소:** schema 손상 파일은 (로컬·원격 이중) 검증에서 차단되어 active 로 승격되지 않는다.
+
+**B-6 (startup 미사용 값·OPERATING 오판·무테스트) — 수정 완료:**
+- crontab 판정을 "runner 한 줄 존재"에서 **필수 push-kind 3종(market/holdings/spike) 등록 여부**로 변경 → OPERATING/DEGRADED(일부 누락, 누락 kind 명시)/UNKNOWN.
+- 읽어온 holdings·runtime_state stat 값을 job detail 에 **실제 반영**(미사용 제거).
+- 신규 테스트 `tests/test_oci_startup_status.py` 8케이스(등록/누락/없음/접속실패/ENV미설정/stat 반영).
+
+**A-2 (보고 정확성) — 수정 완료:** §2 를 30파일(설계서·PLAN·결과서 포함)로 정정. `docs/PROGRAM_TRUTH.md` 를 git 기준 **신규(A)** 로 정정(r0 "수정" 오기).
+
+**A-3 (산출물 정합) — 수정 완료:** STATE_LATEST 를 "개발 완료·재검증 대기"로 갱신(결과서 "예정"→"작성됨"). AC-6 근거 보강. 최종 판정 문구에서 과대 단정 철회.
+
+**Q10 (private_fields_exposed) — 소스 확인 완료(r1):**
+- 정의: `app/runtime_evidence/diagnostics.py:136` — `bool(detect_private_values_exposed(...))`. 값을 노출하는 필드가 **아니라**, 메시지·extra_notes 에 개인값이 새는지 `privacy_detector` 로 실측 스캔한 **탐지 boolean**이다.
+- 계약: 하드코드 False 금지·실측 강제(diagnostics.py:99). 즉 이미 보안 가드로 설계됨.
+- 판정: 설계자 Q10 의 (a)"단순 안전 점검 boolean" 에 해당. **값 자체가 민감정보가 아니며**(true/false), 노출을 표시하는 게 아니라 노출을 감시한다. → 추가 차단·표시 이동 불필요. 이번 범위에서 이 필드를 새로 다루거나 노출하지 않았고, 기존 가드를 훼손하지 않았다.
+- 단, 이 플래그가 **실제로 true 로 관측된 이력**(=실제 개인값 노출 발생)은 이번에 확인하지 않았다. 그 이력 조사는 별도(런타임 로그 분석 = §17.2 BACKLOG).
