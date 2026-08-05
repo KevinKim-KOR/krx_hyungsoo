@@ -28,6 +28,8 @@ export interface ThreePushParamApplyResult {
   applied_at: string | null;
   oci_verified: boolean;
   message: string;
+  // POC3-07 (Q4): 표시용 전송 payload SHA-256. 성공 판정은 oci_verified 유지.
+  content_sha256?: string | null;
 }
 
 // apply 동작은 OCI scp + verify subprocess 를 포함하므로 GET timeout(10s) 보다

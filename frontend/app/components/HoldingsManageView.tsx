@@ -16,7 +16,9 @@ import {
   ApiRequestError,
   fetchHoldings,
   saveHoldings,
+  applyHoldingsToOci,
   type HoldingItem,
+  type HoldingsApplyResult,
 } from "@/lib/api";
 import { DEFAULT_GROUP } from "@/lib/holdings_view";
 import { invalidateQueries } from "@/lib/api/queryCache";
@@ -105,6 +107,11 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  // POC3-07: OCI 적용은 저장과 별도 동작(설계자 Q3). 명시적 클릭에서만 실행.
+  const [applying, setApplying] = useState<boolean>(false);
+  const [applyResult, setApplyResult] = useState<HoldingsApplyResult | null>(
+    null
+  );
 
   const handleApiError = useCallback((e: unknown) => {
     if (e instanceof ApiConfigError) {
@@ -169,6 +176,21 @@ export default function HoldingsManageView({ onNavigate }: Props) {
       setLoading(false);
     }
   }, [rows, handleApiError]);
+
+  // OCI 적용 — 저장된 Holdings 를 OCI 에 명시적으로 전송·검증·적용(Q3·Q4·Q11).
+  //   저장과 별도 동작. 자동 실행 아님. 실패해도 기존 OCI active 는 보존된다.
+  const onApplyToOci = useCallback(async () => {
+    setApplying(true);
+    setApplyResult(null);
+    try {
+      const result = await applyHoldingsToOci();
+      setApplyResult(result);
+    } catch (e) {
+      handleApiError(e);
+    } finally {
+      setApplying(false);
+    }
+  }, [handleApiError]);
 
   const investedList = computeInvested(rows);
   const totalInvested = investedList.reduce((a, b) => a + b, 0);
@@ -322,6 +344,35 @@ export default function HoldingsManageView({ onNavigate }: Props) {
             >
               보유 현황 보기 →
             </button>
+          </div>
+        ) : null}
+      </div>
+
+      {/* POC3-07 §6: OCI 적용 — 저장과 별도 동작. 명시적 클릭에서만 실행한다.
+          저장 성공을 OCI 적용 성공으로 위장하지 않는다(§6.4). */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <h2>OCI 적용</h2>
+        <p className="helper" style={{ marginBottom: 8 }}>
+          저장한 보유 종목을 OCI 운영 환경에 적용합니다. <strong>저장과는 별도</strong>{" "}
+          동작이며, 이 버튼을 눌러야만 전송됩니다. 실패해도 기존 OCI 적용 상태는
+          유지됩니다.
+        </p>
+        <button type="button" onClick={onApplyToOci} disabled={applying || loading}>
+          {applying ? "적용 중..." : "저장한 보유 종목 OCI 적용"}
+        </button>
+        {applyResult ? (
+          <div
+            className={
+              applyResult.status === "OCI_APPLIED" ? "message" : "message error"
+            }
+            style={{ marginTop: 8 }}
+          >
+            [{applyResult.status}] {applyResult.message}
+            {applyResult.applied_at ? (
+              <div className="helper" style={{ marginTop: 4 }}>
+                적용 시각: {new Date(applyResult.applied_at).toLocaleString()}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

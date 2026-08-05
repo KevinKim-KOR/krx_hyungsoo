@@ -26,7 +26,8 @@ APPROVED 상태는 존재하지 않는다.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Optional
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,6 +50,7 @@ from app.api_decision_draft_preview import router as decision_draft_preview_rout
 from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
 from app.api_holdings_market_evidence import router as holdings_market_evidence_router
+from app.api_holdings_oci_apply import router as holdings_oci_apply_router
 from app.api_market_topn import router as market_topn_router
 from app.api_ml_baseline import router as ml_baseline_router
 from app.api_ml_jobs import router as ml_jobs_router
@@ -66,7 +68,27 @@ from app.state import InvalidTransition, validate_transition
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="POC 1단계 승인 루프")
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """PC 백엔드 기동 시 OCI 상태를 1회만 읽는다(설계자 Q2, POC3-07).
+
+    실패해도 예외를 올리지 않아 기동을 막지 않는다(oci_startup_status 내부에서
+    UNKNOWN 스냅샷을 남긴다). 이후 요청·새로고침으로 재조회하지 않는다.
+    """
+    try:
+        snap = oci_startup_status.refresh_snapshot()
+        logger.info(
+            "OCI 기동 상태 읽기 완료: reachable=%s overall=%s",
+            snap.reachable,
+            snap.overall,
+        )
+    except Exception as e:  # noqa: BLE001 - 기동을 절대 막지 않는다
+        logger.warning("OCI 기동 상태 읽기 중 예외(무시): %s", e)
+    yield
+
+
+app = FastAPI(title="POC 1단계 승인 루프", lifespan=_lifespan)
 
 # Next.js dev(3000) 프론트에서 직접 호출 허용.
 # Next.js API Routes/Proxy 를 거치지 않고 프론트 ↔ FastAPI 분리 연결이
@@ -124,28 +146,14 @@ app.include_router(decision_draft_preview_router)
 # GET /oci/startup-status: 기동 시 1회 읽은 프로세스 로컬 캐시 반환(재조회 없음).
 # OCI runner·crontab 미수정. 요청·새로고침·타이머마다 SSH 재실행 안 함(설계자 Q2).
 app.include_router(oci_startup_status_router)
+# POC3-07 (2026-08-05) — Holdings OCI 명시적 적용 (전송 → 검증 → 원자 적용).
+# POST /holdings/apply: 사용자 명시 클릭에서만. 저장(PUT /holdings)과 별도 동작.
+# 실패 시 기존 OCI active 보존. secret/target/raw 미노출.
+app.include_router(holdings_oci_apply_router)
 # POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
 # 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
 # PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.
 # PUSH-2 (holdings_briefing) 는 기존 POST /runs/generate-from-holdings 재정의.
-
-
-@app.on_event("startup")
-def _read_oci_status_once_on_startup() -> None:
-    """PC 백엔드 기동 시 OCI 상태를 1회만 읽는다(설계자 Q2, POC3-07).
-
-    실패해도 예외를 올리지 않아 기동을 막지 않는다(oci_startup_status 내부에서
-    UNKNOWN 스냅샷을 남긴다). 이후 요청·새로고침으로 재조회하지 않는다.
-    """
-    try:
-        snap = oci_startup_status.refresh_snapshot()
-        logger.info(
-            "OCI 기동 상태 읽기 완료: reachable=%s overall=%s",
-            snap.reachable,
-            snap.overall,
-        )
-    except Exception as e:  # noqa: BLE001 - 기동을 절대 막지 않는다
-        logger.warning("OCI 기동 상태 읽기 중 예외(무시): %s", e)
 
 
 class GenerateDraftRequest(BaseModel):

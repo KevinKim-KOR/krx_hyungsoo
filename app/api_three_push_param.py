@@ -17,6 +17,7 @@ frontend response 에 절대 포함하지 않는 것 (지시문 §5.2 / §6):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -75,6 +76,22 @@ class ParamApplyResponse(BaseModel):
     applied_at: Optional[str]
     oci_verified: bool
     message: str
+    # POC3-07 (Q4): 표시용 전송 payload SHA-256. 성공 판정은 기존 oci_verified 유지
+    #   (sync 스크립트의 OCI verify). hash 는 사용자 표시·대조 참고용일 뿐이다.
+    content_sha256: Optional[str] = None
+
+
+def _latest_param_sha256() -> Optional[str]:
+    """PC latest_runtime_param.json 의 SHA-256(표시용). 없으면 None.
+
+    성공 판정에는 쓰지 않는다(기존 oci_verified 유지, Q4). 사용자 대조 참고용.
+    """
+    try:
+        if _LATEST_PATH.exists():
+            return hashlib.sha256(_LATEST_PATH.read_bytes()).hexdigest()
+    except OSError:
+        return None
+    return None
 
 
 # ── state 읽기 ─────────────────────────────────────────────────────────────
@@ -315,6 +332,7 @@ def apply_param_to_oci() -> ParamApplyResponse:
                 "운영 기준 생성에 실패했습니다. 기존 적용 기준은 유지됩니다. "
                 "운영 상세에서 마지막 확인 시각을 확인하세요."
             ),
+            content_sha256=_latest_param_sha256(),
         )
 
     # 생성 직후 display_label 재계산 (param_source 변경 가능성 대비).
@@ -337,4 +355,5 @@ def apply_param_to_oci() -> ParamApplyResponse:
         applied_at=summary["applied_at"],
         oci_verified=summary["oci_verified"],
         message=summary["message"],
+        content_sha256=_latest_param_sha256(),
     )

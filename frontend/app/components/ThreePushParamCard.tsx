@@ -70,6 +70,8 @@ export default function ThreePushParamCard() {
   // 진행 상태 단계 표시 (지시문 §5.4): "운영 기준 생성 중" → "OCI 에 적용 중" →
   // "OCI 반영 확인 중" → "적용 완료".
   const [progressStage, setProgressStage] = useState<string | null>(null);
+  // POC3-07 (Q4): 표시용 전송 payload SHA-256 (성공 판정 아님, 대조 참고용).
+  const [appliedHash, setAppliedHash] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -99,6 +101,7 @@ export default function ThreePushParamCard() {
     try {
       const result = await applyThreePushParamToOci();
       setState(result);
+      setAppliedHash(result.content_sha256 ?? null);
       setProgressStage(null);
     } catch (e) {
       setErrorMsg(describeError(e));
@@ -177,6 +180,14 @@ export default function ThreePushParamCard() {
           <div style={{ color: "#6b7280", fontSize: "0.85em", marginTop: 4 }}>
             {state.message}
           </div>
+          {appliedHash ? (
+            <div
+              style={{ color: "#9ca3af", fontSize: "0.78em", marginTop: 2 }}
+              title="전송 내용 식별용 해시 (성공 판정은 OCI 검증)"
+            >
+              적용 내용 해시 {appliedHash.slice(0, 12)}…
+            </div>
+          ) : null}
           {state.status === "failed" ? (
             <div
               style={{
