@@ -276,7 +276,7 @@ flowchart LR
 ```
 
 - **RUNTIME_VERIFIED (사용자 실측 2026-08-05)**: crontab 활성(Market 08:00·Holdings 09:15/12:30/15:40·배치 07:20·Spike 7틱), `state/` Aug 5 갱신, 로그 35종목 처리, `oci_runtime_status_latest.json` `telegram_sent:true`, 사용자 "PUSH 잘 받고 있다". → **자동 운영 정상 작동**.
-- **잔여 미확인**: `oci_runtime_status_latest.json` **스냅샷 시각이 2026-07-09**(param manual_seed) 로 표시 — kind 별 최신 status 파일 1개만 유지되어 오래돼 보이는 것인지, 최신 crontab 발송이 이 파일을 갱신하는지 별도 확인 필요(§14).
+- **status 파일 성격 확정(실측)**: `oci_runtime_status_latest.json` 은 **spike push 1건(2026-07-09)의 status 만 유지**하며 kind 별 덮어쓰기 — 최근 Market·Holdings 발송은 이 파일을 갱신하지 않음. 이 파일 단독으로 job별 최신 상태를 판정하면 stale 오염(§14). 구분 불가 job 은 UNKNOWN.
 - **DUPLICATED**: 정식 `run_three_push_runtime_oci.py`(PARAM runtime, 메시지 새로 생성) vs fallback `run_three_push_oci.py`(PC package 소비) 두 경로 공존.
 - 등급: SOURCE_CONFIRMED(스크립트) / **RUNTIME_VERIFIED(스케줄·발송)**.
 
@@ -362,16 +362,18 @@ flowchart LR
 
 ---
 
-**RUNTIME_VERIFIED 로 승격됨 (사용자 제공 실측 2026-08-05)** — 아래 항목은 초안에서 UNVERIFIED 로 적었으나 사용자 OCI 실측으로 확인됨:
-- OCI 호스트 crontab 활성·스케줄(08:00/09:15/12:30/15:40 + 배치 07:20 + Spike 7틱): VERIFIED.
-- OCI 측 `state/` artifact 최신성: VERIFIED(`runtime` Aug 5 15:40, `universe`·`market` Aug 5 07:20).
-- OCI Telegram 발송 이력: VERIFIED(`oci_runtime_status_latest.json` `status:"sent"`·`telegram_sent:true` + 사용자 수신 확인).
+**RUNTIME_VERIFIED 로 승격됨 (개발자 직접 OCI 읽기 실측 2026-08-05, `ubuntu@krx-alertor-vm`)** — 초안에서 UNVERIFIED 로 적었으나 확인됨:
+- OCI 호스트 crontab 활성·스케줄: VERIFIED. `crontab -l` 실측 — Market 08:00 / Holdings 09:15·12:30·15:40(slot OPEN·MIDDAY·CLOSE) / 배치 07:20 / Spike 09:30~15:20 다수. runner = `scripts/run_three_push_runtime_oci.py --push-kind …`.
+- OCI 측 `state/` artifact 최신성: VERIFIED.
+- **OCI `state/runtime/runtime_state.sqlite` = 167,936 bytes, 2026-08-05 15:40 (정상)**. → 초안의 "0바이트(Jul 26)" 는 **오래된 관측이었고 현재는 정상**. OCI 가 PARAM SSOT sqlite 를 실제로 쓰고 있음(AC-26: 0바이트 이슈 해소).
+- **OCI 실제 Holdings 소스 = `state/holdings/holdings_latest.json`** (`app/holdings.py :: load()`, PC·OCI 동일 경로). package(`state/three_push/packages/latest_holdings_briefing.json`)는 2026-06-18 자 fallback 이며 실제 holdings PUSH 소스 아님. 현재가는 runner 실행 시 실시간 조회.
+- OCI Telegram 발송: VERIFIED(사용자 수신 확인).
+
+**`oci_runtime_status_latest.json` 성격 확정 (실측)**: 2026-07-09 15:30, `push_kind:"spike_or_falling_alert"`, `status:"sent"`, 629 bytes. → 이 파일은 **spike push 1건의 status 만 유지**하며 kind 별로 덮어써진다. **최근 Market·Holdings 발송은 이 파일을 갱신하지 않음** → 이 파일은 "최신 전체 운영 상태" 지표가 아니다. (그래서 job별 최신 status 를 이 단일 파일로 판정하면 stale 오염 — 설계 §8.1 지적과 일치. 구분 불가 job 은 UNKNOWN 으로 남긴다.)
 
 **여전히 UNKNOWN / 별도 확인 필요:**
 - PC 배포 revision · OCI 배포 revision(정확한 커밋 sha): UNKNOWN.
-- `oci_runtime_status_latest.json` **스냅샷 시각이 2026-07-09**(param manual_seed) 로 표시 — kind 별 최신 status 파일 1개만 유지되는지, 최신 crontab 발송이 이 status 파일을 갱신하는지 미확인. (crontab·로그·state 타임스탬프는 Aug 5 로 최신이나 이 status 파일만 오래됨.)
-- OCI `state/runtime_state.sqlite` 가 0바이트(Jul 26)로 관측된 건과 runtime 디렉토리 Aug 5 갱신의 정합: 미확인.
-- 로그의 `"private_fields_exposed": true` 항목 의미·영향: 미확인(기록만).
+- 로그의 `"private_fields_exposed": true` 항목 의미·영향: 미확인(POC3-07 착수 시 소스 확인 예정).
 - `GET /runs`(run 목록)의 실제 소비자: UNKNOWN(FE 는 `/runs/{id}` 단건만 호출). 나머지 `/apply`·`/state`·`/run`·`/decision-draft/preview` 는 FE 호출 확인됨(§6.2 정정).
 - `market_data.sqlite` KOSPI 데이터: **정상 확인됨**(실제 지수와 일치, 2026-08-05 실측). 원천 파이프라인 자체의 세부 검증은 별도지만 값 정합은 확인.
 

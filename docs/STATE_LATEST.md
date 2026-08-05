@@ -1,8 +1,26 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-03 (POC3-05 Holdings Risk Evidence — 보유·자료 관리 4하위 화면 분리 · **PASS / CLOSED** · 검증자 VERIFIED · 완료 revision `b431f9a6`. 사용자 최종 실화면 확인 완료)
+최종 업데이트: 2026-08-05 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **착수 중** · PLAN V2 확정 · 기준점 커밋 `37c310f2`)
 
-## 이번 STEP 요약 (POC3-05 — 보유·자료 관리 4하위 화면 분리, DESIGN_V2)
+## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
+
+**상태**: `착수 중` · 기준점 커밋 `37c310f2`(설계서 + PLAN V2 + PROGRAM_TRUTH 정정).
+
+**성격**: 고장 복구 아님. OCI 자동 운영은 RUNTIME_VERIFIED·OPERATING(이미 정상 작동). 3축 통합: (A) 문서 정정, (B) 화면 분리(정상 업무 / `diagnostics`) + PC 백엔드 **기동 시 1회** OCI 읽기, (C) Holdings·PARAM **명시적 OCI 적용** 실연동.
+
+**설계자 정정(V1→V2)**: OCI 모니터링 과설계 폐기 — `운영 관리` 신규화면 없음, 버튼/새로고침마다 OCI 조회 금지, OCI runner 미수정, job status 신설 없음. 기동 시 1회 읽기 + 첫 화면 한 줄 + 상세는 `diagnostics`.
+
+**OCI 실측(개발자 직접, `ubuntu@krx-alertor-vm`, 옵션 B 읽기전용)**: crontab 활성(runner=`run_three_push_runtime_oci.py`). **Holdings 소스 = `state/holdings/holdings_latest.json`**(PC·OCI 동일). `runtime_state.sqlite` 167KB·Aug5(0바이트 아님, AC-26 해소). `oci_runtime_status_latest.json` = spike 1건(7/9)만 유지(job별 판정 불가 → UNKNOWN). PARAM 적용은 `POST /three-push/param/apply` 로 **이미 완성**(create+approve+sync+verify+active 보존).
+
+**최종 MenuKey 10개**: today_check·workbench·market_discovery·etf_exposure·ai_sessions·holdings·holdings_manage·holdings_evidence·approval·**diagnostics**(신규). 제거: dashboard·data_status(→diagnostics 흡수).
+
+**개발 순서**: A(문서)→B(화면+기동읽기)→C(Holdings 적용+PARAM hash). 커밋 분할, 완료 판정 통합 1회. 실전 write 검증은 사용자 명시 클릭(Q11).
+
+**결과서 예정**: `docs/ai_result/POC3/POC3-07_..._RESULT.md`.
+
+---
+
+## 직전 STEP 요약 (POC3-05 — 보유·자료 관리 4하위 화면 분리, DESIGN_V2)
 
 **상태**: `PASS / CLOSED` · 완료 revision `b431f9a6` (PLAN_V2 `78d902c2`~`9f49547b` · A `a38893b4` · B `077636e3` · C `d05a122e` · 결과서·FIX r1~r3 `f04ef4c4`~`b431f9a6`).
 
