@@ -33,3 +33,17 @@ export async function applyHoldingsToOci(): Promise<HoldingsApplyResult> {
     APPLY_TIMEOUT_MS
   );
 }
+
+// POC3-08: 마지막 OCI 적용 상태(지속 기록). 화면 재진입해도 남는다.
+//   GET 은 PC 로컬 status 파일만 읽고 재적용하지 않는다.
+export interface HoldingsApplyStatusRecord {
+  has_record: boolean;
+  status: HoldingsApplyStatus | null;
+  applied_at: string | null;
+  oci_verified: boolean | null;
+  message: string | null;
+}
+
+export async function fetchHoldingsApplyStatus(): Promise<HoldingsApplyStatusRecord> {
+  return request<HoldingsApplyStatusRecord>("GET", "/holdings/apply/status");
+}

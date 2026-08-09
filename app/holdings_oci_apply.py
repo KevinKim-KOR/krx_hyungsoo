@@ -52,6 +52,10 @@ logger = logging.getLogger(__name__)
 
 # PC·OCI 공통 Holdings 소스 경로(app/holdings.py 와 동일 규약).
 _LOCAL_HOLDINGS = Path("state/holdings/holdings_latest.json")
+# POC3-08: 마지막 OCI 적용 시각·상태를 PC 로컬에 남긴다(PARAM 의 sync_status 패턴).
+#   OCI active manifest(r5 에서 정합 문제로 제거)와 무관 — 이건 PC 로컬 기록일 뿐이고
+#   적용 성공 판정 근거가 아니다(판정은 active 재독출 hash). "언제 적용했나" 만 남긴다.
+_LOCAL_APPLY_STATUS = Path("state/holdings/holdings_apply_status_latest.json")
 _REMOTE_HOME = "/home/ubuntu/krx_hyungsoo"
 _REMOTE_DIR = f"{_REMOTE_HOME}/state/holdings"
 _REMOTE_FINAL = f"{_REMOTE_DIR}/holdings_latest.json"
@@ -84,6 +88,51 @@ class HoldingsApplyResult:
     oci_verified: bool
     message: str
     kind: str = _APPLY_KIND  # 응답용 식별자(별도 정본 파일 아님)
+
+
+def _save_apply_status(result: "HoldingsApplyResult") -> None:
+    """마지막 OCI 적용 상태를 PC 로컬에 기록(요구 4). 실패는 무시(부가 기록).
+
+    PARAM 의 sync_status 패턴과 동일. 이 파일은 성공 판정 근거가 아니라 "언제·무슨
+    결과로 적용했나" 표시용이다(판정은 active 재독출 hash). OCI active manifest
+    (r5 에서 정합 문제로 제거)와 무관한 PC 로컬 기록이다.
+    """
+    try:
+        _LOCAL_APPLY_STATUS.parent.mkdir(parents=True, exist_ok=True)
+        recorded_at = datetime.now(timezone.utc).isoformat()
+        _LOCAL_APPLY_STATUS.write_text(
+            json.dumps(
+                {
+                    "kind": _APPLY_KIND,
+                    "status": result.status,
+                    "oci_verified": result.oci_verified,
+                    "applied_at": result.applied_at,
+                    "content_sha256": result.content_sha256,
+                    "message": result.message,
+                    "recorded_at": recorded_at,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    except OSError as e:  # noqa: BLE001 - 상태 기록 실패는 적용 결과를 바꾸지 않음
+        logger.warning("holdings apply status 기록 실패(무시): %s", e)
+
+
+def read_apply_status() -> Optional[dict]:
+    """마지막 OCI 적용 상태를 읽는다. 파일 없거나 손상이면 None.
+
+    저장 시 원격 경로·SSH target·secret 을 애초에 담지 않으므로 마스킹 불필요.
+    """
+    if not _LOCAL_APPLY_STATUS.exists():
+        return None
+    try:
+        data = json.loads(_LOCAL_APPLY_STATUS.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("holdings apply status 파일 손상: %s", type(e).__name__)
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def _ssh_key_opts() -> list[str]:
@@ -142,6 +191,19 @@ def _cleanup_tmp(ssh_base: list[str]) -> None:
 
 
 def apply_holdings_to_oci() -> HoldingsApplyResult:
+    """저장된 Holdings 를 OCI 에 적용하고, 마지막 적용 상태를 PC 로컬에 기록한다.
+
+    실제 적용 로직은 _apply_holdings_to_oci_impl 이 수행하고, 여기서 결과를 받아
+    holdings_apply_status_latest.json 에 남긴다(요구 4 — 언제 적용했는지 지속 표시).
+    """
+    result = _apply_holdings_to_oci_impl()
+    # PC_SAVED(적용 시도 자체 안 함)를 제외하고 실제 적용 시도 결과만 기록한다.
+    if result.status != STATUS_PC_SAVED:
+        _save_apply_status(result)
+    return result
+
+
+def _apply_holdings_to_oci_impl() -> HoldingsApplyResult:
     """저장된 Holdings 를 OCI 에 명시적으로 적용한다(단일 정본 payload).
 
     임시 파일 전송 → 형식 검증 → 단일 atomic replace → active 재독출 → hash 확인.

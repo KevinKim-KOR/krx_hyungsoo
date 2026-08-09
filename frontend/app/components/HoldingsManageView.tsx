@@ -17,8 +17,10 @@ import {
   fetchHoldings,
   saveHoldings,
   applyHoldingsToOci,
+  fetchHoldingsApplyStatus,
   type HoldingItem,
   type HoldingsApplyResult,
+  type HoldingsApplyStatusRecord,
 } from "@/lib/api";
 import { DEFAULT_GROUP } from "@/lib/holdings_view";
 import { invalidateQueries } from "@/lib/api/queryCache";
@@ -136,6 +138,10 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   const [applyResult, setApplyResult] = useState<HoldingsApplyResult | null>(
     null
   );
+  // POC3-08: 마지막 OCI 적용 이력(지속 표시). null = 이력 없음.
+  const [lastApply, setLastApply] = useState<HoldingsApplyStatusRecord | null>(
+    null
+  );
 
   const handleApiError = useCallback((e: unknown) => {
     if (e instanceof ApiConfigError) {
@@ -206,6 +212,20 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     }
   }, [rows, handleApiError]);
 
+  // POC3-08: 마지막 OCI 적용 이력(지속 표시). 마운트 시 1회 조회.
+  const loadApplyStatus = useCallback(async () => {
+    try {
+      const rec = await fetchHoldingsApplyStatus();
+      setLastApply(rec.has_record ? rec : null);
+    } catch {
+      // 이력 조회 실패는 조용히 무시(부가 정보). 적용 자체와 무관.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadApplyStatus();
+  }, [loadApplyStatus]);
+
   // OCI 적용 — 저장된 Holdings 를 OCI 에 명시적으로 전송·검증·적용(Q3·Q4·Q11).
   //   저장과 별도 동작. 자동 실행 아님. 실패해도 기존 OCI active 는 보존된다.
   const onApplyToOci = useCallback(async () => {
@@ -214,12 +234,14 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     try {
       const result = await applyHoldingsToOci();
       setApplyResult(result);
+      // 적용 후 지속 이력도 갱신(화면 재진입해도 남게).
+      await loadApplyStatus();
     } catch (e) {
       handleApiError(e);
     } finally {
       setApplying(false);
     }
-  }, [handleApiError]);
+  }, [handleApiError, loadApplyStatus]);
 
   const investedList = computeInvested(rows);
   const totalInvested = investedList.reduce((a, b) => a + b, 0);
@@ -384,6 +406,19 @@ export default function HoldingsManageView({ onNavigate }: Props) {
           동작이며, 이 버튼을 눌러야만 전송됩니다. 실패해도 기존 OCI 적용 상태는
           유지됩니다.
         </p>
+        {lastApply && lastApply.applied_at ? (
+          <div className="helper" style={{ marginBottom: 8 }}>
+            마지막 OCI 적용:{" "}
+            {new Date(lastApply.applied_at).toLocaleString("ko-KR")} ·{" "}
+            {lastApply.status === "OCI_APPLIED"
+              ? "성공"
+              : `${lastApply.status}`}
+          </div>
+        ) : (
+          <div className="helper" style={{ marginBottom: 8 }}>
+            아직 OCI 에 적용한 기록이 없습니다.
+          </div>
+        )}
         <button type="button" onClick={onApplyToOci} disabled={applying || loading}>
           {applying ? "적용 중..." : "저장한 보유 종목 OCI 적용"}
         </button>

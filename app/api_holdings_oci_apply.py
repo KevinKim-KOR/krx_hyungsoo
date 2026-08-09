@@ -49,3 +49,31 @@ def post_apply_holdings_to_oci() -> HoldingsApplyResponse:
         oci_verified=result.oci_verified,
         message=result.message,
     )
+
+
+class HoldingsApplyStatusResponse(BaseModel):
+    """마지막 OCI 적용 상태(지속 기록). 한 번도 적용 안 했으면 has_record=false."""
+
+    has_record: bool
+    status: str | None = None
+    applied_at: str | None = None
+    oci_verified: bool | None = None
+    message: str | None = None
+
+
+@router.get("/apply/status", response_model=HoldingsApplyStatusResponse)
+def get_holdings_apply_status() -> HoldingsApplyStatusResponse:
+    """마지막 OCI 적용 시각·상태를 반환(요구 4). 화면 재진입해도 남는다.
+
+    PC 로컬 status 파일을 읽는다. 실제 재적용은 하지 않는다(POST /apply 만 write).
+    """
+    rec = holdings_oci_apply.read_apply_status()
+    if rec is None:
+        return HoldingsApplyStatusResponse(has_record=False)
+    return HoldingsApplyStatusResponse(
+        has_record=True,
+        status=rec.get("status"),
+        applied_at=rec.get("applied_at"),
+        oci_verified=rec.get("oci_verified"),
+        message=rec.get("message"),
+    )

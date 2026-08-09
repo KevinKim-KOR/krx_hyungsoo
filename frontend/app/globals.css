@@ -564,6 +564,19 @@ li.account-summary-item:last-child {
   font-weight: 700;
   letter-spacing: 0.3px;
 }
+/* POC3-08: 계좌별 색(종목 관리 화면과 동일 체계 — 조회 시 계좌 구분). */
+.account-tag-ISA {
+  background: #e9f7ef;
+  color: #1a7a45;
+}
+.account-tag-오픈뱅킹 {
+  background: #fdf1e7;
+  color: #a8620f;
+}
+.account-tag-연금 {
+  background: #f3eefb;
+  color: #6b3fa0;
+}
 
 .account-counts {
   font-size: 12px;

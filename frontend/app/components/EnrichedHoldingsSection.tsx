@@ -135,6 +135,15 @@ function rowKey(it: EnrichedHolding, fallbackIdx: number): string {
   return `${si}|${it.ticker}|${ag}|${it.avg_buy_price}`;
 }
 
+// POC3-08: 계좌 태그에 계좌별 색(종목 관리 화면과 동일 체계).
+//   알려진 계좌만 색 매핑(임의 입력이 클래스명 되는 것 방지).
+const KNOWN_ACCOUNTS = new Set(["ISA", "오픈뱅킹", "연금"]);
+function accountTagClass(ag: string): string {
+  return KNOWN_ACCOUNTS.has(ag)
+    ? `account-tag account-tag-${ag}`
+    : "account-tag";
+}
+
 // ─── 메인 컴포넌트 ────────────────────────────────────────────
 
 interface EnrichedSectionProps {
@@ -269,7 +278,9 @@ function AccountSummaryRow({ summary }: { summary: AccountSummary }) {
   return (
     <li className="account-summary-item">
       <div className="account-summary-header">
-        <span className="account-tag">{summary.account_group}</span>
+        <span className={accountTagClass(summary.account_group)}>
+          {summary.account_group}
+        </span>
         <span className="account-counts">
           {summary.total_count}개 · 시세 확인 {summary.priced_count}개
           {summary.unpriced_count > 0 ? ` · 미확인 ${summary.unpriced_count}개` : ""}
@@ -432,7 +443,7 @@ function CompactRow({
           </button>
         </td>
         <td>
-          <span className="account-tag">{tagAccount}</span>
+          <span className={accountTagClass(tagAccount)}>{tagAccount}</span>
         </td>
         <td className="ticker-cell">{nameLabel}</td>
         <td className="num">{pnlCell}</td>
