@@ -4,10 +4,12 @@
 - 문서 성격: 개발 결과서 (검증자 입력)
 - 대상 설계서: `docs/ai_design/POC3/PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_DESIGN_V1.md`
 - 개발 PLAN: `docs/ai_plan/POC3/POC3-07_PC_OCI_OPERATIONS_AND_DIAGNOSTIC_SEPARATION_INTEGRATED_V1_PLAN_V1.md` (V2 확정본)
-- 커밋: `37c310f2`(기준) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) · `5dc8e852`(결과서) · `06c856eb`(r1) · `6536b29d`(r2) · `8f31fdeb`(r3) · `c52251ae`(r4) · (본 갱신 = r5)
+- 커밋: `37c310f2`(기준) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) · `5dc8e852`(결과서) · `06c856eb`(r1) · `6536b29d`(r2) · `8f31fdeb`(r3) · `c52251ae`(r4) · `997bdf9f`(r5) · (본 문서 정합 갱신 = r6, HEAD)
 - 검증: tsc 0 · eslint 0 · vitest 121 passed · pytest(holdings/oci/param) 관련 통과(신규 test_holdings_oci_apply **11** + test_oci_startup_status 8) · black/flake8/py_compile OK
   - 재현 명령: `.venv/Scripts/python.exe -m pytest tests/test_holdings_oci_apply.py tests/test_oci_startup_status.py -q` (19 passed)
 - **작업 트리 untracked 4개**(POC3-07 범위 밖): `.claude/hooks/result_doc_gate.sh`·`.claude/hooks/stop_verify_gate.sh`(개발자 Stop hook), `design/DESIGN-apple.md`·`docs.zip`(사용자 파일). POC3-07 산출물은 전부 커밋됨.
+
+> **현재(HEAD `997bdf9f`) 테스트 수 앵커** — 아래 §"REJECTED r1~r5 반영" 이력 섹션의 테스트 개수(6·8·11 등)는 **각 라운드 당시 값**이라 지금과 다를 수 있다. **현재 값이 canonical**: `tests/test_holdings_oci_apply.py` **11** + `tests/test_oci_startup_status.py` **8** = 19 passed. 프론트 vitest 121.
 
 ---
 
@@ -270,3 +272,15 @@ r1~r4 가 매번 "payload·manifest 두 파일의 정합"을 반쪽만 고쳐 �
 **A-2/A-3(보고):** §1·§6·AC-4/5/6 을 단일 payload 구조로 정정. 함수 docstring 을 현재 코드와 일치하도록 재작성(r3 잔재 제거). 테스트 수 11. r1~r4 서술은 이력으로 두되 각 말미에 "다음 라운드에서 교정" 표기.
 
 **pytest 재현:** `.venv/Scripts/python.exe -m pytest tests/test_holdings_oci_apply.py tests/test_oci_startup_status.py -q` → 19 passed.
+
+---
+
+## 검증자 REJECTED r6 반영 — 문서 정합 (2026-08-06)
+
+r5 에서 **코드·안전성은 통과**(검증자 위험수준 NONE). 남은 REJECTED 사유는 문서 정합 3건뿐이라 일괄 정정.
+
+1. **결과서 커밋 SHA**: `(본 갱신 = r5)` → r5 실제 SHA `997bdf9f` 명시 + r6(HEAD) 추가.
+2. **결과서 테스트 수 혼동**: 상단에 "현재 테스트 수 앵커"(11 + 8 = 19) 추가. r1~r4 이력 섹션의 6·8 등은 **각 라운드 당시 값**임을 명시(현재 canonical 은 앵커).
+3. **PLAN stale 계약 갱신**(canonical 충돌 해소): `docs/ai_plan/.../PLAN_V1.md` 의 Q4(§3 표)·§4.3 의 "별도 active manifest 기록" 을 **설계자 확정(2026-08-06) 단일 payload 계약**으로 갱신(별도 manifest 정본 없음·active 재독출 hash). §4.3 상태값 목록의 미사용 `TRANSFER_PENDING` 제거(코드 5개 상태로 정정).
+
+→ 이제 코드·테스트·STATE_LATEST·결과서·PLAN 이 모두 **단일 payload 정본** 계약으로 일치.

@@ -54,7 +54,7 @@ V2 가 **하는 일**(3축):
 | Q1 | 실연동은 Holdings·PARAM 적용에만. OCI 모니터링 시스템 안 만듦. 기동 시 읽기 1회만. 완료·검증은 통합 단위, 커밋은 분할 가능, 축별 PASS 없음 |
 | Q2 | OCI 상태 조회 = **PC 백엔드 기동 시 승인된 SSH 읽기 1회만**. 요청·진입·새로고침·타이머·수동버튼 실행 전부 금지 |
 | Q3 | `OCI 적용` 버튼 = 실제 전송·적용(업무 실행). 저장/승인과 적용은 별도 동작. 자동 전송 금지. 적용 결과만 그 요청 응답에 표시. 적용 후 일반 상태 재조회 안 함 |
-| Q4 | 복잡한 canonical revision 안 만듦. **전송 payload 바이트 SHA-256**. manifest 에 kind·content_sha256·created_at. OCI 원자 적용 후 같은 hash 를 active manifest 에 기록. PC==OCI hash 면 성공. 기존 승인 ID 는 보조 식별자로 재사용 |
+| Q4 | 복잡한 canonical revision 안 만듦. **전송 payload 바이트 SHA-256**. PC==OCI hash 면 성공. 기존 승인 ID 는 보조 식별자로 재사용 · **⚠️ manifest 계약 갱신(설계자 확정 2026-08-06 — 아래 §4.3): OCI active 정본은 payload 파일 1개, 별도 active manifest 정본 파일을 만들지 않는다. applied_hash 는 적용 후 OCI active payload 재독출로 SHA-256 재계산. kind/created_at 은 응답·로그에만.** (초안의 "active manifest 에 기록"은 payload·manifest 2파일 동시 원자성 불가로 폐기됨) |
 | Q5 | **OCI runner 수정 안 함**. 기존 status·log·cron 근거에서 기동 시 읽을 수 있는 사실만. 구분 불가 시 `UNKNOWN` |
 | Q6 | `운영 관리` 없음. 최종 MenuKey 10개(아래 §4.2). `dashboard`·`data_status` 정상 메뉴에서 제거 → `diagnostics` 흡수 |
 | Q7 | `approval` = `승인·적용` 역할만. PARAM·seed 등 실제 승인 대상만. 정보 PUSH 카드·빈 승인 카드 금지. PUSH 실행 결과는 기동 상태 요약/진단에서만 |
@@ -106,10 +106,10 @@ V2 가 **하는 일**(3축):
 - 추가: 응답에 `content_sha256`(표시용) — 기존 verify(`oci_verified`)를 성공 판정으로 유지. 스크립트 verify 로직 재사용.
 
 **Holdings 적용**(신규):
-- 신규 `POST /holdings/apply`(경로명 확정 전, §6 주의) — 동작: `state/holdings/holdings_latest.json` payload SHA-256 계산 → manifest(kind·content_sha256·created_at) → SCP tmp 전송 → OCI schema/존재 검증 → **atomic rename**(기존 active 보존) → OCI active hash 재확인 → PC==OCI hash 성공 판정.
+- 신규 `POST /holdings/apply` — 동작(**manifest 계약 갱신 반영, 설계자 확정 2026-08-06**): `state/holdings/holdings_latest.json` payload SHA-256 계산 → SCP tmp 전송 → OCI schema/hash 검증 → **단일 atomic replace(mv)**(기존 active 보존) → **OCI active payload 재독출·hash 재계산** → PC==OCI hash 성공 판정. **별도 manifest 정본 파일은 만들지 않는다**(OCI active 정본 = payload 1개 · 2파일 동시 원자성 불가로 초안의 별도 manifest 기록 폐기). kind/created_at 은 응답·로그에만.
 - PARAM 의 `sync_three_push_runtime_param.py` 패턴과 동형(atomic·verify·실패 시 기존 유지). Holdings 전송이므로 대상 파일만 다름.
 - 저장(`PUT /holdings`)과 적용(`POST /holdings/apply`)은 **별도 동작**. 자동 전송 금지. 사용자 명시 클릭만.
-- `holdings_manage` 화면에 `OCI 적용` 버튼 + 적용 결과 상태(`PC_SAVED`/`TRANSFER_PENDING`/`OCI_APPLIED`/`OUT_OF_SYNC`/`APPLY_FAILED`/`UNKNOWN`).
+- `holdings_manage` 화면에 `OCI 적용` 버튼 + 적용 결과 상태. **구현된 상태값(코드 기준)**: `PC_SAVED`/`OCI_APPLIED`/`OUT_OF_SYNC`/`APPLY_FAILED`/`UNKNOWN`. (초안의 `TRANSFER_PENDING`은 동기 단일 동작이라 중간 대기 상태가 없어 미사용.)
 
 **상태 표시 원칙**(§5.5·§6.4): PC 저장 성공을 OCI 적용 성공으로 위장 금지. 적용 실패 시 기존 OCI active 유지 + 실패 단계 표시.
 
