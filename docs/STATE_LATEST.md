@@ -1,10 +1,12 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1~r5 반영 수정 · 재검증 대기** · 결과서 작성됨)
+최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **검증자 VERIFIED · PASS** · 설계자 Closeout 대기)
 
 ## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
 
-**상태**: `개발 완료 · REJECTED r1 반영 수정 완료 · 재검증 대기`. 커밋 `37c310f2`(기준) · `30acd561`(A) · `fdced239`(B) · `b39cc7c1`(C) · `5dc8e852`(결과서) + r1 수정 커밋(Holdings 적용 순서 정정·startup 스케줄 판정·테스트 추가).
+**상태**: `VERIFIED · PASS`. 검증자 최종 판정 VERIFIED(위험수준 NONE). 커밋 `37c310f2`(기준)·`30acd561`(A)·`fdced239`(B)·`b39cc7c1`(C)·`5dc8e852`(결과서)·`06c856eb`(r1)·`6536b29d`(r2)·`8f31fdeb`(r3)·`c52251ae`(r4)·`997bdf9f`(r5)·`686fa47c`(r6)·`96a4a414`(r7). 최신 HEAD 는 `git log`로 실측.
+
+**검증**: 검증자 VERIFIED · tsc 0 · eslint 0 · vitest 121 · pytest(holdings/oci) 19 · black/flake8/py_compile OK. **실전 OCI write(Holdings apply 버튼)·실화면 확인은 사용자 몫**(Q11 — INTEGRATED_COMPLETE_WITH_DECLARED_RUNTIME_GAP).
 
 **성격**: 고장 복구 아님. OCI 자동 운영은 RUNTIME_VERIFIED·OPERATING(이미 정상 작동). 3축 통합: (A) 문서 정정, (B) 화면 분리(정상 업무 / `diagnostics`) + PC 백엔드 **기동 시 1회** OCI 읽기, (C) Holdings·PARAM **명시적 OCI 적용** 실연동.
 
