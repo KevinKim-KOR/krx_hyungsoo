@@ -1,28 +1,33 @@
 """Holdings 를 OCI 로 명시적 적용(전송·검증)하는 업무 동작.
 
-POC3-07 (PLAN V2 §4.3 · 설계자 Q3·Q4·Q11 · 검증자 REJECTED r1 반영):
+POC3-07 (PLAN §4.3 · 설계자 Q3·Q11 · manifest 계약 확정 2026-08-06):
   - Holdings 저장(`PUT /holdings`)과 OCI 적용은 **별도 동작**이다. 이 모듈은
     사용자가 명시적으로 "OCI 적용" 을 눌렀을 때만 호출된다(자동 전송 없음).
   - 적용 대상 = OCI 가 실제 읽는 소스 `state/holdings/holdings_latest.json`
     (실측: app/holdings.py :: HOLDINGS_FILE, PC·OCI 동일 경로).
 
-원자적 적용의 순서(확정 PLAN §4.3 — 기존 적용 상태 보존 계약):
+**manifest 계약(설계자 확정 2026-08-06):**
+  - OCI 의 active 정본은 **payload 파일 1개**다. 별도 active manifest 파일을 만들지
+    않는다(2개 파일은 파일시스템이 동시 원자 교체를 보장 못 해 정합이 깨지므로).
+  - applied_hash 는 적용 완료 후 OCI active payload 원문 바이트에서 SHA-256 으로
+    다시 계산한다. PC 가 전송 전 계산한 hash 와 같으면 성공.
+  - kind/created_at 은 응답·로그에만 담고, payload 와 원자 교체할 별도 정본 파일로
+    만들지 않는다. Holdings JSON 스키마에 _apply_meta 를 추가하지 않는다.
+  - 기존 manifest 가 있더라도 이번 적용 성공 판정 근거로 쓰지 않는다.
+
+원자적 적용의 순서(기존 적용 상태 보존 계약):
   1. 로컬 파일 **schema 검증**(validate_holdings). 손상 파일은 전송조차 안 한다.
-  2. payload → payload-tmp 전송(active·active-manifest 는 아직 안 건드림).
-  3. **승격 전에** 검증을 모두 끝낸다:
+  2. payload → payload-tmp 전송(active 는 아직 안 건드림).
+  3. **replace 전에** 검증을 모두 끝낸다:
        (a) sha256(payload-tmp) == 로컬 sha256  (전송 무결성)
        (b) payload-tmp JSON 파싱 + holdings 배열 구조 확인  (schema 무결성)
-     → 하나라도 실패하면 payload-tmp 를 지우고 **active 는 그대로 둔다**(보존).
-  4. **payload-tmp → active 를 단일 atomic mv 로만** 교체한다. active 를 바꾸는
-     원자 연산은 이 mv 하나뿐이므로, 그 앞의 어떤 실패도 active(payload)·active-manifest
-     를 전혀 바꾸지 않는다 → "실패 시 기존 적용 상태 보존"(Q11) 성립.
-     (payload·manifest 를 각각 mv 하면 그 사이 실패 시 한쪽만 바뀌는 불일치가 생기므로,
-      active 교체를 payload 단일 mv 로 국한한다 — 검증자 r4 지적 해소.)
-  5. payload 성공 후 active manifest(Q4) 기록. 실패 시 payload 를 되돌리지 않고
-     (active 는 이미 정상), "적용됐으나 기록 실패 = UNKNOWN" 으로 보고한다. manifest 를
-     payload 보다 먼저 올리지 않으므로 active-manifest 가 payload 와 어긋나는 경로가 없다.
-  6. **OCI active hash 재확인**(PLAN §4.3): PC==OCI 면 OCI_APPLIED, 불일치면
-     OUT_OF_SYNC, 재확인 자체 실패면 UNKNOWN.
+     → 하나라도 실패하면 payload-tmp 를 지우고 active 는 그대로 둔다(보존).
+  4. **payload-tmp → active 를 단일 atomic mv 로 교체**한다. active 를 바꾸는
+     원자 연산은 이 mv 하나뿐이고, 정본 파일도 이 payload 하나뿐이므로 부분 실패로
+     정합이 깨지는 경로가 없다. mv 이전 실패는 전부 active 보존, mv 자체 실패도
+     active 미변경.
+  5. **active payload 재독출 + hash 재계산**: PC hash == OCI active hash 면
+     OCI_APPLIED, 불일치면 OUT_OF_SYNC, 재확인 자체 실패면 UNKNOWN.
   - idempotent: 같은 내용을 다시 적용해도 같은 hash·schema → 같은 성공 경로.
 
 응답 데이터 계약(§6·§13): SSH target·remote path·raw subprocess 출력·secret 을
@@ -51,9 +56,9 @@ _REMOTE_HOME = "/home/ubuntu/krx_hyungsoo"
 _REMOTE_DIR = f"{_REMOTE_HOME}/state/holdings"
 _REMOTE_FINAL = f"{_REMOTE_DIR}/holdings_latest.json"
 _REMOTE_TMP = f"{_REMOTE_DIR}/holdings_latest.json.apply-tmp"
-_REMOTE_MANIFEST = f"{_REMOTE_DIR}/holdings_apply_manifest.json"
 
-_MANIFEST_KIND = "holdings_latest"
+# kind: 응답·로그용 식별자(별도 정본 파일 아님).
+_APPLY_KIND = "holdings_latest"
 
 _SCP_TIMEOUT_SEC = 60
 _SSH_TIMEOUT_SEC = 30
@@ -61,21 +66,24 @@ _SSH_TIMEOUT_SEC = 30
 
 # 적용 상태(설계 §6.2 · PLAN §4.3). UI 표시용.
 STATUS_PC_SAVED = "PC_SAVED"  # 로컬 파일 없음/미적용 전
-STATUS_OCI_APPLIED = "OCI_APPLIED"  # 승격 성공 + active hash == PC hash
-STATUS_OUT_OF_SYNC = "OUT_OF_SYNC"  # 승격됐으나 active hash 재확인 불일치(PLAN §4.3)
-STATUS_APPLY_FAILED = (
-    "APPLY_FAILED"  # 승격 이전 실패(로컬 schema·전송·검증·manifest 전송) → active 보존
+STATUS_OCI_APPLIED = "OCI_APPLIED"  # replace 성공 + active hash == PC hash
+STATUS_OUT_OF_SYNC = (
+    "OUT_OF_SYNC"  # replace 됐으나 active hash 재확인 불일치(PLAN §4.3)
 )
-STATUS_UNKNOWN = "UNKNOWN"  # ENV 미설정 / 승격 후 hash 재확인 자체 실패
+STATUS_APPLY_FAILED = (
+    "APPLY_FAILED"  # replace 이전 실패(로컬 schema·전송·검증·mv) → active 보존
+)
+STATUS_UNKNOWN = "UNKNOWN"  # ENV 미설정 / replace 후 hash 재확인 자체 실패
 
 
 @dataclass
 class HoldingsApplyResult:
     status: str
     applied_at: Optional[str]
-    content_sha256: Optional[str]  # 표시용(전송 payload 해시)
+    content_sha256: Optional[str]  # PC 전송 payload 해시(표시용)
     oci_verified: bool
     message: str
+    kind: str = _APPLY_KIND  # 응답용 식별자(별도 정본 파일 아님)
 
 
 def _ssh_key_opts() -> list[str]:
@@ -129,24 +137,15 @@ def _fail(msg: str, sha: Optional[str] = None) -> HoldingsApplyResult:
 
 
 def _cleanup_tmp(ssh_base: list[str]) -> None:
-    """검증 실패 시 원격 payload-tmp 정리. active·active-manifest 는 안 건드림."""
+    """검증·replace 실패 시 원격 payload-tmp 정리. active 는 안 건드림."""
     _run(ssh_base + [f"rm -f {_REMOTE_TMP}"], timeout=_SSH_TIMEOUT_SEC)
 
 
 def apply_holdings_to_oci() -> HoldingsApplyResult:
-    """저장된 Holdings 를 OCI 에 명시적으로 적용한다.
+    """저장된 Holdings 를 OCI 에 명시적으로 적용한다(단일 정본 payload).
 
-    순서(모든 검증·전송이 payload 승격 이전 → 실패 시 active 보존):
-      1. 로컬 schema 검증(손상 파일 전송 안 함).
-      2. payload → payload-tmp, manifest → manifest-tmp **둘 다 전송**
-         (active·active-manifest 는 아직 안 건드림).
-      3. (승격 전) 검증: payload-tmp sha256 == 로컬, payload-tmp schema,
-         manifest-tmp 존재. 하나라도 실패하면 tmp 정리 후 **active 보존**.
-      4. 승격: manifest-tmp → active-manifest 를 먼저, **payload-tmp → active
-         를 마지막에** atomic rename. payload 승격이 마지막이므로 그 앞 어떤
-         실패(manifest 승격 실패 포함)도 active(payload) 미변경 = 보존.
-      5. atomic 승격 후 **OCI active hash 재확인**(PLAN §4.3): PC==OCI 면
-         OCI_APPLIED, 불일치면 OUT_OF_SYNC.
+    임시 파일 전송 → 형식 검증 → 단일 atomic replace → active 재독출 → hash 확인.
+    별도 manifest 정본 파일을 만들지 않으므로 2파일 정합 문제가 없다.
     사용자 명시 클릭에서만 호출.
     """
     # 0. 로컬 소스 존재 확인.
@@ -183,8 +182,6 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
         )
 
     key_opts = _ssh_key_opts()
-    created_at = datetime.now(timezone.utc).isoformat()
-    applied_at = created_at
 
     ssh_base = [
         "ssh",
@@ -196,7 +193,7 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
         target,
     ]
 
-    # 2a. payload 를 payload-tmp 로 전송(active 는 아직 안 건드림).
+    # 2. payload 를 payload-tmp 로 전송(active 는 아직 안 건드림).
     scp_cmd = [
         "scp",
         "-o",
@@ -213,7 +210,7 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
         _cleanup_tmp(ssh_base)
         return _fail("OCI 전송에 실패했습니다. 기존 적용 상태는 유지됩니다.", local_sha)
 
-    # 3. (승격 전) payload-tmp hash 검증 — 전송 무결성.
+    # 3. (replace 전) payload-tmp hash 검증 — 전송 무결성.
     rc, so, _se = _run(
         ssh_base + [f"sha256sum {_REMOTE_TMP} 2>/dev/null | cut -d' ' -f1"],
         timeout=_SSH_TIMEOUT_SEC,
@@ -226,7 +223,7 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
             local_sha,
         )
 
-    # 4. (승격 전) payload-tmp schema 검증 — 원격 JSON 파싱 + holdings 배열 확인.
+    # 4. (replace 전) payload-tmp schema 검증 — 원격 JSON 파싱 + holdings 배열 확인.
     remote_schema_check = (
         'python3 -c "import json,sys; '
         f"d=json.load(open('{_REMOTE_TMP}')); "
@@ -241,55 +238,23 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
             local_sha,
         )
 
-    # 5. 승격 — **payload-tmp → active 를 단일 atomic mv 로만** 교체한다.
-    #    active 를 바꾸는 원자 연산은 이 mv 하나뿐이다. 이 mv 이전의 어떤 실패
-    #    (scp·hash·schema)도 active(payload)·active-manifest 를 전혀 바꾸지 않는다
-    #    → "실패 시 기존 적용 상태 보존"(PLAN Q11) 성립. manifest 는 아직 안 건드린다
-    #    (2개 파일을 각각 mv 하면 그 사이 실패 시 한쪽만 바뀌는 불일치가 생기므로,
-    #     active 교체는 payload 단일 mv 로 국한한다 — 검증자 r4 지적 해소).
+    # 5. 단일 atomic replace — payload-tmp → active. active 를 바꾸는 원자 연산은
+    #    이 mv 하나뿐이고 정본 파일도 payload 하나뿐이므로, 부분 실패로 정합이
+    #    깨지는 경로가 없다. mv 이전 실패는 전부 active 보존, mv 자체 실패도 미변경.
     rc, _so, _se = _run(
         ssh_base + [f"mv {_REMOTE_TMP} {_REMOTE_FINAL}"], timeout=_SSH_TIMEOUT_SEC
     )
     if rc != 0:
-        _cleanup_tmp(ssh_base)  # payload active 미변경 → payload·manifest 둘 다 보존.
+        _cleanup_tmp(ssh_base)  # payload active 미변경 → 보존.
         return _fail(
             "OCI 적용(원자 교체)에 실패했습니다. 기존 적용 상태는 유지됩니다.",
             local_sha,
         )
 
-    # 여기부터 active payload 는 검증 통과한 새 내용이다(정상). 아래 단계 실패는
-    # active 를 되돌리지 않는다 — active 자체는 유효하고, 실패한 것은 기록·확인뿐.
+    applied_at = datetime.now(timezone.utc).isoformat()
 
-    # 6. active manifest 기록(Q4) — payload 성공 후에만. 실패 시 payload 를 되돌리지
-    #    않고(active 는 정상), "적용됐으나 기록 실패 = UNKNOWN" 으로 정직히 보고한다.
-    #    payload 를 먼저 올렸으므로 active-manifest 가 payload 와 어긋나는 경로는 없다
-    #    (manifest 를 payload 보다 먼저 올리지 않기 때문).
-    manifest_json = json.dumps(
-        {
-            "kind": _MANIFEST_KIND,
-            "content_sha256": local_sha,
-            "created_at": created_at,
-            "applied_at": applied_at,
-        },
-        ensure_ascii=False,
-    )
-    rc, _so, _se = _run(
-        ssh_base + [f"printf '%s' {json.dumps(manifest_json)} > {_REMOTE_MANIFEST}"],
-        timeout=_SSH_TIMEOUT_SEC,
-    )
-    if rc != 0:
-        return HoldingsApplyResult(
-            status=STATUS_UNKNOWN,
-            applied_at=applied_at,
-            content_sha256=local_sha,
-            oci_verified=False,
-            message=(
-                "보유 종목은 OCI 에 반영됐으나 적용 기록(manifest) 저장에 실패했습니다. "
-                "진단·상태에서 마지막 적용을 확인하세요."
-            ),
-        )
-
-    # 7. OCI active hash 재확인(PLAN §4.3) → PC==OCI 면 OCI_APPLIED, 불일치면 OUT_OF_SYNC.
+    # 6. active payload 재독출 + hash 재계산(PLAN §4.3). PC hash == OCI active hash 면
+    #    OCI_APPLIED, 불일치면 OUT_OF_SYNC, 재확인 자체 실패면 UNKNOWN.
     rc, so, _se = _run(
         ssh_base + [f"sha256sum {_REMOTE_FINAL} 2>/dev/null | cut -d' ' -f1"],
         timeout=_SSH_TIMEOUT_SEC,
@@ -304,6 +269,9 @@ def apply_holdings_to_oci() -> HoldingsApplyResult:
             message="적용은 완료됐으나 OCI 상태 확인에 실패했습니다.",
         )
     if active_sha == local_sha:
+        logger.info(
+            "holdings OCI 적용 성공: kind=%s applied_at=%s", _APPLY_KIND, applied_at
+        )
         return HoldingsApplyResult(
             status=STATUS_OCI_APPLIED,
             applied_at=applied_at,

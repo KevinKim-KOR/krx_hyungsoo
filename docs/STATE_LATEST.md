@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1~r4 반영 수정 · 재검증 대기** · 결과서 작성됨)
+최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **개발 완료 · 검증자 REJECTED r1~r5 반영 수정 · 재검증 대기** · 결과서 작성됨)
 
 ## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
 
@@ -24,7 +24,9 @@
 
 **검증자 REJECTED r3 반영**: PLAN §4.3 복원 + payload·manifest 각각 mv(manifest 먼저) → **r4 에서 payload mv 실패 시 manifest 만 바뀌는 대칭 불일치로 REJECTED**.
 
-**검증자 REJECTED r4 반영(2026-08-06)**: r3 의 잘못 인정 — payload·manifest 2개를 각각 mv 하면 어느 순서든 그 사이 실패 시 한쪽만 바뀜(불일치). **사용자 확정 "manifest 분리 안 함 — payload 단일 mv"** 로: **active 교체를 payload 단일 atomic mv 하나로 국한**, manifest 는 payload mv 성공 후에만 기록(실패 시 payload 되돌리지 않고 UNKNOWN — active 는 정상). payload mv 이전 모든 실패에서 active·manifest 둘 다 보존. PLAN §4.3 active hash 재확인·OUT_OF_SYNC 유지. 테스트 11(`test_payload_mv_failure_preserves_both`·`test_manifest_write_failure_after_payload_unknown` 포함) + startup 8 = 19 passed.
+**검증자 REJECTED r4 반영**: active 교체를 payload 단일 mv 로 국한하되 manifest 를 payload 성공 후 별도 파일 기록 → **r5 에서 manifest write 실패 시 payload·manifest 불일치로 REJECTED**.
+
+**검증자 REJECTED r5 반영(2026-08-06) — 근본 종결**: r1~r4 가 "payload·manifest 두 파일 정합"을 반쪽씩 고쳐 대칭 구멍 반복(근본=파일시스템이 2파일 동시 원자 교체 불가). **설계자 확정: OCI active 정본 = payload 파일 1개. 별도 manifest 정본 파일 안 만듦. applied_hash 는 적용 후 active payload 재독출로 재계산.** manifest 관련 코드 전부 제거 → 임시전송→검증→**단일 atomic replace**→active 재독출 hash 확인. **정본 파일이 1개뿐이라 "두 산출물 불일치" 경로가 코드에 존재하지 않음** = 반복 지적 근본 종결. 테스트 11(`test_active_mv_failure_preserves_active`·`test_no_separate_manifest_file_written`) + startup 8 = 19 passed. 근본원인·재발방지 메모리 `feedback_enumerate_layers_before_guard` 참조.
 
 ---
 
