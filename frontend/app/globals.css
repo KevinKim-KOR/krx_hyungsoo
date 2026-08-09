@@ -7,6 +7,7 @@
   --muted: #6b7280;
   --card: #ffffff;
   --border: #d1d5db;
+  --border-soft: #e8ebf0;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --ok: #16a34a;
@@ -332,6 +333,123 @@ table.holdings-table input[type="number"] {
 table.holdings-table button {
   padding: 4px 10px;
   font-size: 14px;
+}
+
+/* ── POC3-08 종목 관리 카드행 그리드 (입력 편의 우선) ───────────────── */
+.hm-grid {
+  margin-top: 10px;
+}
+/* 컬럼: 코드 · 종목명 · 계좌 · 수량 · 매입단가 · 매입금액 · 매입비중 · 삭제 */
+.hm-chead,
+.hm-rowcard,
+.hm-foot {
+  display: grid;
+  grid-template-columns:
+    116px minmax(150px, 1fr) 128px 84px 116px 118px 118px 34px;
+  gap: 10px;
+  align-items: center;
+}
+.hm-chead {
+  padding: 4px 12px 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.hm-chead .num {
+  text-align: right;
+}
+.hm-rowcard {
+  padding: 9px 12px;
+  border: 1px solid var(--border-soft, #e8ebf0);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: #fff;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.hm-rowcard:hover {
+  border-color: #c7d6f5;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08);
+}
+.hm-inp {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  background: #fff;
+  color: var(--fg);
+}
+.hm-inp:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+.hm-inp.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.hm-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+/* 계좌 입력칸: 별도 pill 없이 입력칸 자체에 계좌별 옅은 색(중복 방지). */
+.hm-inp-acct {
+  font-weight: 600;
+}
+.hm-inp-acct-ISA {
+  background: #f0faf4;
+  border-color: #bfe6cd;
+  color: #1a7a45;
+}
+.hm-inp-acct-오픈뱅킹 {
+  background: #fdf6ef;
+  border-color: #f0d8bd;
+  color: #a8620f;
+}
+.hm-inp-acct-연금 {
+  background: #f8f4fd;
+  border-color: #ddccef;
+  color: #6b3fa0;
+}
+/* 매입비중: 숫자만(막대 없음 — 조회 화면에서 시각화). 8%+ 강조. */
+.hm-w-big {
+  color: var(--accent);
+  font-weight: 700;
+}
+.hm-del {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-soft, #e8ebf0);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.hm-del:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: #fff5f5;
+}
+.hm-del:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.hm-foot {
+  margin-top: 4px;
+  padding: 11px 12px 0;
+  border-top: 2px solid var(--border);
+  font-weight: 700;
+}
+.hm-foot-label {
+  grid-column: 1 / 6;
+  text-align: right;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 details.card > summary {

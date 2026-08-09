@@ -57,8 +57,9 @@ function holdingToRow(h: HoldingItem): RowDraft {
   return {
     ticker: h.ticker,
     name: h.name ?? "",
-    quantity: String(h.quantity),
-    avg_buy_price: String(h.avg_buy_price),
+    // 저장된 숫자를 불러올 때도 콤마 표시(요구 3).
+    quantity: formatWithCommas(String(h.quantity)),
+    avg_buy_price: formatWithCommas(String(h.avg_buy_price)),
     account_group: h.account_group ?? DEFAULT_GROUP,
   };
 }
@@ -66,8 +67,9 @@ function holdingToRow(h: HoldingItem): RowDraft {
 function rowsToPayload(rows: RowDraft[]): { holdings: HoldingItem[] } {
   return {
     holdings: rows.map((r) => {
-      const q = Number(r.quantity);
-      const p = Number(r.avg_buy_price);
+      // 입력칸에 콤마가 있을 수 있으므로 제거 후 숫자로.
+      const q = Number(stripCommas(r.quantity));
+      const p = Number(stripCommas(r.avg_buy_price));
       const nm = r.name.trim();
       const ag = r.account_group.trim();
       const item: HoldingItem = {
@@ -85,8 +87,8 @@ function rowsToPayload(rows: RowDraft[]): { holdings: HoldingItem[] } {
 
 function computeInvested(rows: RowDraft[]): number[] {
   return rows.map((r) => {
-    const q = Number(r.quantity);
-    const p = Number(r.avg_buy_price);
+    const q = Number(stripCommas(r.quantity));
+    const p = Number(stripCommas(r.avg_buy_price));
     return Number.isFinite(q) && Number.isFinite(p) ? q * p : 0;
   });
 }
@@ -96,6 +98,28 @@ function formatNumber(n: number): string {
   return n.toLocaleString("ko-KR", {
     maximumFractionDigits: 2,
   });
+}
+
+// 입력칸용 콤마 포맷 — 입력 중에도 천단위 콤마를 보여준다(요구 3).
+//   저장 시에는 stripCommas 로 콤마를 제거해 숫자로 전송한다.
+//   소수점·입력 중 상태(예: "1," "1.")를 깨지 않도록 정수부만 콤마 처리.
+export function formatWithCommas(raw: string): string {
+  if (raw === "") return "";
+  // 숫자·소수점·콤마만 남기고 나머지 제거.
+  const cleaned = raw.replace(/[^\d.]/g, "");
+  const negative = raw.trim().startsWith("-");
+  const [intPart, ...decParts] = cleaned.split(".");
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  // 소수점이 입력된 경우(끝에 "." 포함)를 보존.
+  const hasDot = cleaned.includes(".");
+  const dec = decParts.join("");
+  const body = hasDot ? `${grouped}.${dec}` : grouped;
+  return negative ? `-${body}` : body;
+}
+
+// 콤마 제거 — 저장/계산 전 순수 숫자 문자열로.
+export function stripCommas(s: string): string {
+  return s.replace(/,/g, "");
 }
 
 interface Props {
@@ -149,8 +173,13 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   }, [handleApiError]);
 
   const updateRow = (idx: number, key: keyof RowDraft, value: string) => {
+    // 수량·매입단가는 입력 중에도 천단위 콤마로 보여준다(요구 3).
+    const next =
+      key === "quantity" || key === "avg_buy_price"
+        ? formatWithCommas(value)
+        : value;
     setRows((prev) =>
-      prev.map((r, i) => (i === idx ? { ...r, [key]: value } : r))
+      prev.map((r, i) => (i === idx ? { ...r, [key]: next } : r))
     );
   };
 
@@ -218,112 +247,110 @@ export default function HoldingsManageView({ onNavigate }: Props) {
           ))}
         </datalist>
 
-        <table className="holdings-table">
-          <thead>
-            <tr>
-              <th>종목코드 *</th>
-              <th>종목명</th>
-              <th>계좌</th>
-              <th>수량 *</th>
-              <th>매입단가 *</th>
-              <th>매입금액</th>
-              <th>매입비중</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, idx) => {
-              const invested = investedList[idx];
-              const weight =
-                totalInvested > 0 ? (invested / totalInvested) * 100 : 0;
-              return (
-                <tr key={idx}>
-                  <td>
-                    <input
-                      type="text"
-                      value={r.ticker}
-                      onChange={(e) => updateRow(idx, "ticker", e.target.value)}
-                      placeholder="069500"
-                      disabled={loading}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      value={r.name}
-                      onChange={(e) => updateRow(idx, "name", e.target.value)}
-                      placeholder="(선택)"
-                      disabled={loading}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      list="account-group-options"
-                      value={r.account_group}
-                      onChange={(e) =>
-                        updateRow(idx, "account_group", e.target.value)
-                      }
-                      placeholder="일반"
-                      maxLength={ACCOUNT_GROUP_MAX_LEN}
-                      disabled={loading}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      value={r.quantity}
-                      onChange={(e) => updateRow(idx, "quantity", e.target.value)}
-                      placeholder="10"
-                      min="0"
-                      step="any"
-                      disabled={loading}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      value={r.avg_buy_price}
-                      onChange={(e) =>
-                        updateRow(idx, "avg_buy_price", e.target.value)
-                      }
-                      placeholder="38500"
-                      min="0"
-                      step="any"
-                      disabled={loading}
-                    />
-                  </td>
-                  <td className="num">{formatNumber(invested)}</td>
-                  <td className="num">
-                    {totalInvested > 0 ? `${weight.toFixed(2)}%` : "-"}
-                  </td>
-                  <td>
-                    <button
-                      className="reject"
-                      onClick={() => removeRow(idx)}
-                      disabled={loading || rows.length <= 1}
-                      title="이 행 삭제"
-                    >
-                      ×
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={5} style={{ textAlign: "right", color: "var(--muted)" }}>
-                합계
-              </td>
-              <td className="num">
-                <strong>{formatNumber(totalInvested)}</strong>
-              </td>
-              <td className="num">100%</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
+        {/* POC3-08: 입력 편의 우선 카드행 그리드. 각 종목이 넉넉한 간격의 행 카드.
+            수량·매입단가는 콤마 표시(입력 중에도) · 계좌 색 pill · 비중 막대. */}
+        <div className="hm-grid">
+          <div className="hm-chead" role="row">
+            <span>종목코드 *</span>
+            <span>종목명</span>
+            <span>계좌</span>
+            <span className="num">수량 *</span>
+            <span className="num">매입단가 *</span>
+            <span className="num">매입금액</span>
+            <span className="num">매입비중</span>
+            <span></span>
+          </div>
+
+          {rows.map((r, idx) => {
+            const invested = investedList[idx];
+            const weight =
+              totalInvested > 0 ? (invested / totalInvested) * 100 : 0;
+            // 입력칸 자체에 계좌 색을 입힌다(별도 pill 없이 — 중복 방지).
+            //   알려진 계좌만 색 매핑(임의 입력이 클래스명 되는 것 방지).
+            const knownAcct = new Set(["ISA", "오픈뱅킹", "연금"]);
+            const acctInpClass = knownAcct.has(r.account_group)
+              ? `hm-inp hm-inp-acct hm-inp-acct-${r.account_group}`
+              : "hm-inp hm-inp-acct";
+            return (
+              <div className="hm-rowcard" key={idx}>
+                <input
+                  className="hm-inp"
+                  type="text"
+                  value={r.ticker}
+                  onChange={(e) => updateRow(idx, "ticker", e.target.value)}
+                  placeholder="069500"
+                  aria-label="종목코드"
+                  disabled={loading}
+                />
+                <input
+                  className="hm-inp"
+                  type="text"
+                  value={r.name}
+                  onChange={(e) => updateRow(idx, "name", e.target.value)}
+                  placeholder="(선택)"
+                  aria-label="종목명"
+                  disabled={loading}
+                />
+                <input
+                  className={acctInpClass}
+                  type="text"
+                  list="account-group-options"
+                  value={r.account_group}
+                  onChange={(e) =>
+                    updateRow(idx, "account_group", e.target.value)
+                  }
+                  placeholder="일반"
+                  maxLength={ACCOUNT_GROUP_MAX_LEN}
+                  aria-label="계좌"
+                  disabled={loading}
+                />
+                <input
+                  className="hm-inp num"
+                  type="text"
+                  inputMode="decimal"
+                  value={r.quantity}
+                  onChange={(e) => updateRow(idx, "quantity", e.target.value)}
+                  placeholder="10"
+                  aria-label="수량"
+                  disabled={loading}
+                />
+                <input
+                  className="hm-inp num"
+                  type="text"
+                  inputMode="numeric"
+                  value={r.avg_buy_price}
+                  onChange={(e) =>
+                    updateRow(idx, "avg_buy_price", e.target.value)
+                  }
+                  placeholder="38,500"
+                  aria-label="매입단가"
+                  disabled={loading}
+                />
+                <span className="hm-num">{formatNumber(invested)}</span>
+                <span className={weight >= 8 ? "hm-num hm-w-big" : "hm-num"}>
+                  {totalInvested > 0 ? `${weight.toFixed(2)}%` : "-"}
+                </span>
+                <button
+                  className="hm-del"
+                  onClick={() => removeRow(idx)}
+                  disabled={loading || rows.length <= 1}
+                  title="이 행 삭제"
+                  aria-label="이 행 삭제"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+
+          <div className="hm-foot">
+            <span className="hm-foot-label">합계 · {rows.length}종목</span>
+            <span className="hm-num">
+              <strong>{formatNumber(totalInvested)}</strong>
+            </span>
+            <span className="hm-num">100%</span>
+          </div>
+        </div>
 
         <div className="btn-row" style={{ marginTop: 12 }}>
           <button className="reject" onClick={addRow} disabled={loading}>
