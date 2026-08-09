@@ -2,6 +2,8 @@
 
 현행 프로그램 통합 설계서 (PROGRAM_TRUTH_RECONSTRUCTION_V1)
 
+- **최종 반영**: 2026-08-06 — **POC3-07(PC 운영 연결·운영/진단 화면 분리 통합) 반영**. 메뉴 10키(diagnostics 신설·data_status·dashboard 흡수)·approval 축소·신규 API(`/oci/startup-status`·`/holdings/apply`)·기동 시 1회 OCI 읽기·Holdings 단일 payload OCI 적용.
+
 ---
 
 ## 0. 문서 권위와 사용 방법
@@ -135,20 +137,22 @@ flowchart LR
 | etf_exposure | ETF 구성종목 | `ETFExposureView` | 비교·판단 | 조회 | IMPLEMENTED_UNVERIFIED |
 | ai_sessions | AI 투자 세션 | `AISessionsView` | 비교·판단 | 기록 | IMPLEMENTED_UNVERIFIED |
 | holdings | 보유 현황 | `HoldingsView` | 보유·자료 관리 | 평가·시세 갱신 | IMPLEMENTED_UNVERIFIED |
-| holdings_manage | 종목 관리 | `HoldingsManageView` | 보유·자료 관리 | 입력·저장 | IMPLEMENTED_UNVERIFIED |
+| holdings_manage | 종목 관리 | `HoldingsManageView` | 보유·자료 관리 | 입력·저장·**OCI 적용**(POC3-07) | IMPLEMENTED_UNVERIFIED |
 | holdings_evidence | 확인 근거 | `HoldingsEvidenceView` | 보유·자료 관리 | 읽기 근거 | IMPLEMENTED_UNVERIFIED |
-| data_status | 데이터 상태 | `DataStatusView` | 보유·자료 관리 | 진단 + placeholder | DIAGNOSTIC / 부분 MOCK |
-| approval | 승인·알림(OCI 적용·알림) | `ApprovalTelegramView` | 승인·운영 | 운영(승인 게이트) | IMPLEMENTED_UNVERIFIED |
-| dashboard | 기존 대시보드 | `DashboardView` | 점검대상 | 참고용 | LEGACY (라벨 "참고용") |
+| approval | 승인·적용 | `ApprovalTelegramView` | 승인·운영 | 운영(PARAM·seed OCI 적용) — POC3-07 역할 축소 | IMPLEMENTED_UNVERIFIED |
+| diagnostics | 진단·상태 | `DiagnosticsView` | 진단·상태 | 진단·미리보기·LEGACY 흡수(POC3-07 신규) | DIAGNOSTIC |
+
+> **POC3-07(2026-08-06) 메뉴 재편**: MenuKey 11→10. `data_status`·`dashboard` 제거 → `diagnostics` 신설·흡수. `DataStatusView`·`DashboardView` 컴포넌트는 존재하나 `DiagnosticsView` 내부에서만 참조(정상 메뉴 진입점 아님). `approval` 라벨 "승인·알림"→"승인·적용", 정보 PUSH 카드·미리보기·샘플은 `diagnostics`로 이동.
 
 ### 5.2 화면별 요지 (근거 symbol)
 
 - **today_check** (`TodayInvestmentCheckView`): 최초 진입 시 `fetchMarketTopnLatest` · `fetchEnrichedHoldings` · `fetchHoldingsMarketEvidence` · `fetchNavDiscountLatest` 자동 조회. KOSPI 위치·국면·오늘 먼저 볼 보유 ETF 최대 3건(= backend `judgment_summary` 표시)·정비 큐. **표시 데이터가 저장 DB/캐시에 의존** → 데이터 부실 시 빈 화면(§13).
 - **market_discovery** (`MarketDiscoveryView`): "최신 시장 데이터 갱신" 버튼 → `POST /market/refresh` (FDR BG job). **PC가 외부 수집을 트리거하는 운영 경로**.
-- **holdings_manage**: `PUT /holdings`(saveHoldings) → `state/holdings/holdings_latest.json` 로컬 파일 저장. **OCI 전달은 화면에서 안 함**(별도 PC 스크립트).
+- **holdings_manage**: `PUT /holdings`(saveHoldings) → `state/holdings/holdings_latest.json` 로컬 저장 + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)**. 저장과 OCI 적용은 **별도 동작**. 적용은 단일 payload atomic replace(별도 manifest 파일 없음, active 재독출 hash 확인). 사용자 명시 클릭만.
 - **holdings**(보유 현황): `POST /holdings/market/refresh`(Naver) + `fetchEnrichedHoldings`. 시세 갱신은 PC 직접.
-- **approval**(OCI 적용·알림): `ApprovalTelegramView` — 승인 대기 run 표시 + `approveRun`/`rejectRun` + PUSH 미리보기·수동 점검. 초안 생성(`generateDraftFromHoldings`=PUSH-2)도 여기로 이동됨(POC3-05).
-- **data_status**: `DataStatusView` 에 `placeholder-card` 존재(`grep` L174) — 일부 **MOCK/placeholder**. 진단 성격.
+- **approval**(승인·적용, POC3-07 축소): `ApprovalTelegramView` — `OciAlertHeader` + `ThreePushParamCard`(PARAM·seed OCI 적용)만. 정보 PUSH 카드·미리보기·샘플·개발호환·현재 run 표시는 **`diagnostics`로 이동**. 빈 승인 카드 안 만듦(직전 POC3 확정).
+- **diagnostics**(진단·상태, POC3-07 신규): `DiagnosticsView` — (a) 기동 시 OCI 상태 상세(`GET /oci/startup-status`), (b) `DataStatusView`(placeholder 포함) 흡수, (c) 미리보기·샘플(`ManualPreviewSection`·`DevCompatSection`, PREVIEW/TEST 표기), (d) `DashboardView`(LEGACY, details 접힘). 정상 업무 아님.
+- **첫 화면 OCI 한 줄**(POC3-07): `today_check` 상단에 `GET /oci/startup-status` 로 기동 시 읽은 OCI 상태 한 줄 + 진단·상태 링크. 이 GET 은 **백엔드 기동 시 1회 읽은 캐시** 반환(요청·새로고침으로 OCI 재조회 안 함).
 
 > 전체 버튼→handler→API 매핑은 §6 API 표 + 부록 A 색인에서 교차 확인.
 
@@ -178,7 +182,9 @@ flowchart LR
 | createDecisionSession / fetchDecisionSession(s) | POST·GET `/decision/sessions` | 기록 |
 | fetchMlReadinessLatest / fetchMlBaselineV0Latest / fetchMlFeatureSanityLatest / fetchMlJobsLatest / fetchMlBaselineEvidenceSnapshot | GET `/ml/*/latest` | 조회(ML evidence) |
 | (evidence refresh) | POST `/ml/jobs/evidence-refresh` | 갱신 |
-| fetch(three-push param state) | GET `/three-push/param/state` | 조회 |
+| fetchThreePushParamState / applyThreePushParamToOci | GET·POST `/three-push/param/state`·`/apply` | 조회·운영(OCI 적용 + content_sha256 표시) |
+| fetchOciStartupStatus | GET `/oci/startup-status` | 조회(**POC3-07** 기동 시 1회 읽은 OCI 상태 캐시. 요청마다 재조회 안 함) |
+| applyHoldingsToOci | POST `/holdings/apply` | 운영(**POC3-07** Holdings 단일 payload atomic replace, 사용자 명시 클릭만) |
 | refreshUniverseMomentum | (universe) | 갱신 |
 
 ### 6.2 소비자 관점 분류
@@ -242,9 +248,9 @@ flowchart LR
 ### 프로세스 A — Holdings 변경
 
 - **APPROVED**: PC 입력 → PC 저장 → OCI 전달 → OCI 반영 → 다음 평가 사용.
-- **SOURCE 현재**: `HoldingsManageView` → `PUT /holdings`(`saveHoldings`) → `state/holdings/holdings_latest.json` 저장까지.
-- **최초 단절 지점**: **"OCI 전달"** — 화면/`PUT /holdings` 에 OCI 전송 로직 없음. OCI 반영은 별도 PC 스크립트(`sync_*`)를 사람이 수동 실행해야 함(RUNTIME_UNVERIFIED).
-- 등급: SOURCE_CONFIRMED(PC 저장) / RUNTIME_UNVERIFIED(OCI 반영).
+- **SOURCE 현재**: `HoldingsManageView` → `PUT /holdings`(`saveHoldings`) → `state/holdings/holdings_latest.json` 저장 + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)** → 단일 payload atomic replace → active 재독출 hash 확인.
+- **단절 지점 (POC3-07 이후 정정)**: 이제 화면에서 OCI 적용 가능(별도 sync 스크립트 불필요). 단 **저장·적용은 별도 2동작**(설계자 Q3 명시적 분리)이고, **실전 write 는 사용자 명시 클릭 필요**(개발자 dry-run만 — Q11). 실패 시 기존 active 보존.
+- 등급: SOURCE_CONFIRMED(PC 저장·OCI 적용 코드) / RUNTIME_VERIFIED 미완(사용자 실클릭 전).
 
 ```mermaid
 flowchart LR
@@ -282,7 +288,7 @@ flowchart LR
 
 ### 프로세스 D — PC 운영 점검
 
-- **SOURCE**: `today_check`/`data_status`/`approval` 화면이 최신 topn·evidence·nav·run 상태를 조회. OCI 실행 성공시각·마지막 PUSH 결과는 **OCI 측 `oci_runtime_status_latest.json` 을 PC가 직접 읽는 경로 미발견**.
+- **SOURCE**: `today_check`/`diagnostics`/`approval` 화면이 최신 topn·evidence·nav·run 상태를 조회. **POC3-07 이후 OCI 상태는 `diagnostics`(+today_check 한 줄)가 `GET /oci/startup-status`(기동 시 1회 읽은 캐시)로 표시** — 단 개별 PUSH job 최신 성공/실패는 UNKNOWN(단일 status 파일 한계).
 - **최초 단절 지점**: **"OCI 최신 성공 시각·PUSH 결과 조회"** — PC 화면이 OCI 실행 결과를 가져오는 API/동기화 경로 미확인.
 - 등급: SOURCE_CONFIRMED(PC 조회 화면) / UNKNOWN(OCI 결과 PC 노출).
 
@@ -306,9 +312,12 @@ flowchart LR
 | 항목 | 분류 |
 |---|---|
 | today_check / holdings / holdings_manage / holdings_evidence / market_discovery / workbench / approval | IMPLEMENTED_UNVERIFIED (운영 의도, 런타임 데이터 의존) |
-| data_status | DIAGNOSTIC / 부분 MOCK (placeholder-card) |
-| dashboard(기존 대시보드) | LEGACY (라벨 "참고용") |
-| `_orphaned/HoldingsClient.tsx`, `_orphaned/HoldingsMarketEvidenceCard.tsx` | ORPHANED (참조 끊김, POC3-05) |
+| diagnostics(진단·상태, POC3-07 신규) | DIAGNOSTIC (기동 OCI 상태·DataStatus·미리보기/샘플·LEGACY 대시보드 흡수) |
+| `DataStatusView`(→diagnostics 흡수) | DIAGNOSTIC / 부분 MOCK (placeholder-card). 정상 메뉴 진입점 제거됨(POC3-07) |
+| `DashboardView`(→diagnostics 내 LEGACY) | LEGACY. 정상 메뉴 진입점 제거됨(POC3-07) |
+| `oci_startup_status.py`·`holdings_oci_apply.py`(POC3-07 신규) | 운영 — 기동 시 1회 OCI 읽기(읽기전용) · Holdings 단일 payload OCI 적용 |
+| `frontend .../_orphaned/HoldingsClient.tsx`, `_orphaned/HoldingsMarketEvidenceCard.tsx` | ORPHANED (참조 끊김, POC3-05) |
+| `frontend .../approval/InfoPushGuideCards.tsx` | ORPHANED 후보 (approval 축소로 미참조, POC3-07 — 삭제 미결) |
 | `run_three_push_runtime_oci.py` ↔ `run_three_push_oci.py` | DUPLICATED (정식/fallback) |
 | `scripts/diagnose_*`, `check_ml_feature_sanity.py`, `run_push_content_gap_diagnosis.py`, `verify_*_oci.py` | DIAGNOSTIC |
 | `/three-push/param/apply`·`/state`, `/market/relative-upside/run`, `/decision-draft/preview` | **운영 API** (prefix 붙은 full path 로 FE 호출됨 — ORPHANED 아님, 정정) |
@@ -320,7 +329,7 @@ flowchart LR
 ## 12. 현재 운영 방법 (소스로 가능한 실제 절차)
 
 - **평상시 자동 운영**: **정상 작동** — OCI crontab 이 시장데이터 배치(07:20)·Holdings PUSH(09:15/12:30/15:40)·Market(08:00)·Spike(7틱)를 자동 실행하고 Telegram 발송(`telegram_sent:true`, 사용자 수신 확인). RUNTIME_VERIFIED(2026-08-05).
-- **Holdings 변경**: 종목 관리 화면 저장(PC 로컬)까지 가능. OCI 반영은 `sync_*` 수동 스크립트 필요(PC→OCI 전달 자체는 RUNTIME_UNVERIFIED).
+- **Holdings 변경**: 종목 관리 화면 저장(PC 로컬) + **POC3-07: OCI 적용 버튼(`POST /holdings/apply`)** 으로 화면에서 OCI 반영. 저장·적용 별도 동작(Q3). 실전 write 는 사용자 명시 클릭(Q11).
 - **PARAM·seed 변경**: PC 생성 후 `sync_three_push_runtime_param.py` 수동 실행 필요.
 - **수동 운영 점검**: today_check/approval 화면에서 PC 조회 가능. OCI 실행 결과를 PC 화면이 직접 가져오는 경로는 미확인(§9 프로세스 D).
 - **최신화 실패 확인**: PC `/market/refresh/status` 로 PC 갱신 상태 확인 가능. OCI 배치 실패는 OCI `logs/low_freq_push_cron.log` 로 확인(사용자 tail 로 실측 가능).
@@ -346,11 +355,11 @@ flowchart LR
    - 증거: 사용자 `crontab -l` 실측 · `state/` Aug 5 갱신 · `oci_runtime_status_latest.json` `telegram_sent:true`.
    - 상태: OCI 스케줄 RUNTIME_VERIFIED / 저장소-호스트 SSOT 이원화는 기록상 위험(문서만으로 상태 오독 가능).
 
-3. **Holdings/PARAM 의 OCI 전달이 화면 밖 수동 스크립트**
-   - 기대: 승인→전달→반영 연속. 실제: 저장은 화면, 전달은 사람이 `sync_*` 수동 실행.
-   - 사용자 영향: 저장했다고 OCI에 반영됐다는 보장 없음.
-   - 증거: `scripts/sync_three_push_runtime_param.py`, `sync_three_push_packages.py`.
-   - 상태: CONNECTED_BUT_BROKEN(화면↔OCI 자동 연결 없음).
+3. **Holdings/PARAM 의 OCI 적용 — POC3-07 로 화면 연결됨(정정)**
+   - 이전: 저장은 화면, OCI 전달은 사람이 `sync_*` 수동 실행 → 반영 보장 없음.
+   - **POC3-07 이후**: `종목 관리 > OCI 적용`(`POST /holdings/apply`) · `승인·적용`(`POST /three-push/param/apply`)으로 화면에서 OCI 적용. 적용 결과 상태 표시(OCI_APPLIED/OUT_OF_SYNC/APPLY_FAILED/UNKNOWN).
+   - 남은 것: 실전 write 는 **사용자 명시 클릭 필요**(개발자 dry-run만, Q11). 저장·적용은 별도 2동작(Q3). 구 `sync_*` 스크립트도 존재(중복 경로).
+   - 상태: CONNECTED(화면↔OCI 적용 경로 있음) / 실사용 확인은 사용자 몫.
 
 4. **KOSPI 데이터 정상 (이전 의심 철회)**
    - 산식 정확, 저장값(6,690대)도 **실제 지수와 일치**(사용자 실측 2026-08-05 종가 6,598.26). today_check·PUSH 값의 큰 변동은 실제 시장 움직임을 정직하게 반영한 것.
@@ -383,9 +392,9 @@ flowchart LR
 
 - **운영 승격 후보**: PC `/holdings/market/refresh`·`/market/refresh`·`build_holdings_market_evidence` — 이미 작동하는 PC 경로. (단 §3 승인구조와의 경계는 설계자 결정.)
 - **중복 제거 후보**: OCI PUSH runner 2개(runtime/package) 중 하나로 단일화.
-- **진단 격리 후보**: `data_status`(placeholder), `diagnose_*`/`verify_*_oci` 스크립트 — 운영 화면과 분리.
-- **LEGACY 차단 후보**: `dashboard`(기존 대시보드), `_orphaned/*`, `*.bak-*`.
-- **사용자 조작 단계 축소 후보**: Holdings 저장→OCI 전달을 수동 2단계에서 한 경로로(현재는 저장·sync 분리). 최종 설계는 설계자.
+- **진단 격리 ✅ POC3-07 완료**: `data_status`(placeholder)·미리보기/샘플을 `diagnostics`(진단·상태) 화면으로 분리. `diagnose_*`/`verify_*_oci` 스크립트는 여전히 스크립트 레벨.
+- **LEGACY 차단 ✅ POC3-07 부분완료**: `dashboard`(기존 대시보드)를 `diagnostics` 내 LEGACY(details 접힘)로 격리·정상 메뉴 제거. `_orphaned/*`·`*.bak-*` 는 그대로.
+- **사용자 조작 단계 축소 △ POC3-07**: Holdings 저장→OCI 적용을 화면 버튼(`POST /holdings/apply`)으로 연결. 단 저장·적용은 여전히 별도 2동작(설계자 Q3 — 명시적 분리 의도).
 
 ---
 
@@ -394,7 +403,9 @@ flowchart LR
 - 화면 컨테이너: `frontend/app/components/MainPanel.tsx :: MainPanel` / `LeftSidebar.tsx :: MENU_GROUPS, MenuKey, assertMenuGroupsCover`
 - 오늘 점검: `TodayInvestmentCheckView.tsx :: JudgmentQueueSection, KospiHeadline`
 - 보유: `HoldingsView.tsx` · `HoldingsManageView.tsx :: onSave` · `HoldingsEvidenceView.tsx` · `HoldingsRiskEvidenceSection.tsx`
-- 승인/PUSH: `ApprovalTelegramView.tsx` · `approval/ManualPreviewSection.tsx` · `ThreePushDraftCard.tsx`
+- 승인/PUSH: `ApprovalTelegramView.tsx`(POC3-07 축소=OciAlertHeader+ThreePushParamCard) · `approval/ManualPreviewSection.tsx`·`DevCompatSection.tsx`(→DiagnosticsView 참조) · `ThreePushDraftCard.tsx`
+- **진단·상태(POC3-07)**: `frontend/app/components/DiagnosticsView.tsx` · `frontend/lib/api/ociStartupStatus.ts` · `holdingsApply.ts`
+- **OCI 적용/기동읽기(POC3-07)**: `app/oci_startup_status.py :: refresh_snapshot, get_snapshot` · `app/api_oci_startup_status.py`(GET /oci/startup-status) · `app/holdings_oci_apply.py :: apply_holdings_to_oci`(단일 payload atomic replace) · `app/api_holdings_oci_apply.py`(POST /holdings/apply) · `app/api.py :: _lifespan`(기동 시 OCI 읽기 1회)
 - Backend app: `app/api.py :: post_market_refresh, post_approve, _execute_delivery`
 - Evidence/composer: `app/holdings_market_evidence.py :: build_holdings_market_evidence, _build_judgment_summary` · `app/market_summary_composer.py :: compose_judgment_summary, select_top_holdings`
 - 시장/국면: `app/market_topn.py :: compute_topn` · `app/market_regime.py :: compute_market_context, compute_kospi_position_metrics, compute_regime_streak`
@@ -407,6 +418,7 @@ flowchart LR
 ## 부록 B. 미사용·고아 코드 후보 (삭제 아님 · 후보만)
 
 - `frontend/app/components/_orphaned/HoldingsClient.tsx`, `_orphaned/HoldingsMarketEvidenceCard.tsx` (ORPHANED, POC3-05)
+- `frontend/app/components/approval/InfoPushGuideCards.tsx` (ORPHANED 후보 — approval 축소로 미참조, POC3-07. 삭제 미결)
 - `state/market/*.bak-2026-07-05-150001`, `state/ml/*.bak-*` (백업)
 - (정정) 초기 조사에서 ORPHANED 후보로 적었던 `/apply`·`/state`·`/run`·`/decision-draft/preview` 는 prefix 붙은 full path 로 FE 가 호출하는 운영 API 로 확인됨 → 후보에서 제외. `/runs`(GET 목록)만 FE 직접 호출 미검출 상태로 남음(개별 재확인).
 
