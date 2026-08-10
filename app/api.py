@@ -42,6 +42,7 @@ from app import (
     holdings as holdings_module,
     holdings_enrich,
     market_cache,
+    market_data_store,
     market_naver,
     oci_startup_status,
     store,
@@ -248,10 +249,14 @@ def put_holdings(payload: HoldingsPayload) -> HoldingsPayload:
 
     POC2 Step 1 E항: 단순 입력 오류로 run_id 를 만들거나 FAILED run 을
     저장하지 않는다. validation error 는 422 로 즉시 반환.
+
+    POC3-08 (A): 저장 경로는 strict_ticker=True — ticker 가 영숫자 6자가 아니면
+    422 로 차단("111"·"dasdasd" 같은 오타 저장 방지). ETF 실존 여부는 막지 않는다
+    (개별주 허용 — 프론트에서 경고만).
     """
     raw = [item.model_dump() for item in payload.holdings]
     try:
-        validated = holdings_module.validate_holdings(raw)
+        validated = holdings_module.validate_holdings(raw, strict_ticker=True)
     except HoldingsValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     holdings_module.save(validated)
@@ -267,6 +272,32 @@ def put_holdings(payload: HoldingsPayload) -> HoldingsPayload:
             for h in validated
         ]
     )
+
+
+class EtfNameLookupResponse(BaseModel):
+    """POC3-08 (A): 종목코드 → 종목명 조회 결과.
+
+    found=True 이면 etf_master 에 존재(ETF) · name 채움.
+    found=False 이면 etf_master 에 없음(개별주 또는 미등록) · name=None.
+      → 프론트는 found=False 를 "저장 차단"이 아니라 "경고(개별주일 수 있음)"로 표시.
+    형식(영숫자 6자)은 프론트에서 1차 검사하고, 저장 시 백엔드가 최종 차단한다.
+    """
+
+    ticker: str
+    found: bool
+    name: str | None = None
+
+
+@app.get("/holdings/etf-name", response_model=EtfNameLookupResponse)
+def get_etf_name_lookup(ticker: str) -> EtfNameLookupResponse:
+    """종목코드로 etf_master 종목명을 조회(읽기 전용). 신규 DB·수집 없음.
+
+    입력 화면에서 종목코드 입력 시 종목명 자동 표시용. etf_master 에 없으면
+    found=False 로 반환(개별주는 여기 없음 — 저장은 허용, 프론트 경고).
+    """
+    t = ticker.strip().upper()
+    name = market_data_store.get_etf_name(t) if t else None
+    return EtfNameLookupResponse(ticker=t, found=name is not None, name=name)
 
 
 @app.post("/runs/generate-from-holdings", response_model=RunResponse)

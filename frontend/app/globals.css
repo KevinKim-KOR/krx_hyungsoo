@@ -452,6 +452,90 @@ table.holdings-table button {
   font-weight: 600;
 }
 
+/* POC3-08 (A): 종목코드 칸 — input + 상태 아이콘을 한 줄에(행 높이 불변). */
+.hm-code-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.hm-code-cell .hm-inp {
+  flex: 1;
+  min-width: 0;
+}
+.hm-flag {
+  flex: none;
+  font-size: 13px;
+  line-height: 1;
+  cursor: help;
+}
+.hm-flag-err {
+  color: var(--danger);
+}
+.hm-flag-warn {
+  color: var(--warn);
+}
+/* 문제 행 테두리·코드칸 색(행 높이/줄 수 불변 — 색만). */
+.hm-row-err {
+  border-color: #f3b6b6;
+  background: #fffafa;
+}
+.hm-row-warn {
+  border-color: #f0dcae;
+  background: #fffdf7;
+}
+.hm-inp-err {
+  border-color: var(--danger);
+}
+.hm-inp-warn {
+  border-color: var(--warn);
+}
+
+/* POC3-08 (B): 하단 고정 액션바 — 경고·오류 → 저장 → 결과 한 흐름. */
+.hm-actionbar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft, #e8ebf0);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+.hm-msgline {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+}
+.hm-msg-err {
+  color: var(--danger);
+  font-weight: 600;
+}
+.hm-msg-warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+.hm-msg-ok {
+  color: #1a7a45;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+.hm-actionbar-btns {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hm-actionbar-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 details.card > summary {
   list-style: none;
 }

@@ -26,7 +26,25 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 import app.holdings_oci_apply as mod
+
+
+@pytest.fixture(autouse=True)
+def _isolate_apply_status(tmp_path, monkeypatch):
+    """apply_holdings_to_oci() 는 적용 후 _LOCAL_APPLY_STATUS 파일을 write 한다.
+
+    POC3-08 (C): 기본값은 live 경로(state/holdings/holdings_apply_status_latest.json)라
+    이 테스트가 실행되면 사용자 화면에 UNKNOWN 껍데기 파일이 생겼다(handoff §2 C 지적).
+    모든 테스트에서 tmp 로 격리해 live state 오염을 원천 차단한다.
+    """
+    monkeypatch.setattr(
+        mod,
+        "_LOCAL_APPLY_STATUS",
+        tmp_path / "holdings_apply_status_latest.json",
+    )
+
 
 _VALID = {"holdings": [{"ticker": "069500", "quantity": 1.0, "avg_buy_price": 100.0}]}
 _CONTENT = json.dumps(_VALID, ensure_ascii=False).encode("utf-8")

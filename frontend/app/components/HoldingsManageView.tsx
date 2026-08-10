@@ -7,15 +7,23 @@
 // 이 화면에 노출하지 않는다(§4.3 금지). 저장 완료 후 "보유 현황 보기" 연결(Q3: 자동 전환
 // 없음, 사용자 클릭 이동).
 //
-// 저장/입력 의미는 기존과 동일 — 새 계산·새 API 없음. 저장 성공 시 Dashboard 읽기 무효화도
+// 저장/입력 의미는 기존과 동일 — 새 계산 없음. 저장 성공 시 Dashboard 읽기 무효화도
 // 기존과 동일(HOLDINGS_INVALIDATION_KEYS).
+//
+// POC3-08 (A·B·D) — 사용자 실화면 지적 반영:
+//   (A) 종목코드 형식검증(영숫자 6자) + etf_master 종목명 자동조회 + 경고.
+//       형식 오류(111·dasdasd)는 저장 차단. etf_master 미존재(개별주)는 경고만·저장 허용.
+//   (B) 하단 고정 액션바 — 경고·오류 요약 → 저장 버튼 → 결과를 한 흐름으로.
+//   (D) 계좌 = 추천 목록 select 로 제한(자유입력 차단).
+//   ※ 행은 항상 1줄 고정. 문제 행은 종목코드 칸 아이콘 + 테두리 색만(행 높이 불변).
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
   fetchHoldings,
   saveHoldings,
+  fetchEtfName,
   applyHoldingsToOci,
   fetchHoldingsApplyStatus,
   type HoldingItem,
@@ -37,6 +45,15 @@ type RowDraft = {
   account_group: string;
 };
 
+// POC3-08 (A): 종목코드 조회/검증 결과(행별). name 은 자동조회 성공 시 채움.
+//   codeStatus: ok=etf_master 존재 · warn=형식OK지만 미등록(개별주?) · err=형식오류 · none=미입력/조회전
+type CodeStatus = "ok" | "warn" | "err" | "none";
+type RowMeta = {
+  codeStatus: CodeStatus;
+  autoName: string | null; // etf_master 조회로 자동 채워진 이름(표시용)
+};
+
+// (D) 계좌는 추천 목록에서만 선택(자유입력 차단). 백엔드 normalize 대상과 동일.
 const RECOMMENDED_GROUPS: ReadonlyArray<string> = [
   "일반",
   "ISA",
@@ -45,7 +62,8 @@ const RECOMMENDED_GROUPS: ReadonlyArray<string> = [
   "기타",
 ];
 
-const ACCOUNT_GROUP_MAX_LEN = 30;
+// 색 매핑이 있는 계좌(임의 입력 방지 겸 클래스 안전).
+const ACCT_COLOR_CLASS = new Set(["ISA", "오픈뱅킹", "연금"]);
 
 const EMPTY_ROW: RowDraft = {
   ticker: "",
@@ -54,6 +72,14 @@ const EMPTY_ROW: RowDraft = {
   avg_buy_price: "",
   account_group: "",
 };
+
+const EMPTY_META: RowMeta = { codeStatus: "none", autoName: null };
+
+// POC3-08 (A): 종목코드 형식 — 영숫자 6자(대문자). 백엔드 TICKER_PATTERN 과 동일 계약.
+//   "111"·"dasdasd" 같은 오타를 저장 전 프론트에서 1차 차단(백엔드가 최종 방어선).
+export function isValidTickerFormat(ticker: string): boolean {
+  return /^[0-9A-Z]{6}$/.test(ticker.trim().toUpperCase());
+}
 
 function holdingToRow(h: HoldingItem): RowDraft {
   return {
@@ -75,7 +101,7 @@ function rowsToPayload(rows: RowDraft[]): { holdings: HoldingItem[] } {
       const nm = r.name.trim();
       const ag = r.account_group.trim();
       const item: HoldingItem = {
-        ticker: r.ticker.trim(),
+        ticker: r.ticker.trim().toUpperCase(),
         quantity: Number.isFinite(q) ? q : 0,
         avg_buy_price: Number.isFinite(p) ? p : 0,
       };
@@ -130,6 +156,8 @@ interface Props {
 
 export default function HoldingsManageView({ onNavigate }: Props) {
   const [rows, setRows] = useState<RowDraft[]>([{ ...EMPTY_ROW }]);
+  // 행별 종목코드 검증/자동조회 메타(rows 와 동일 index).
+  const [metas, setMetas] = useState<RowMeta[]>([{ ...EMPTY_META }]);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -142,6 +170,9 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   const [lastApply, setLastApply] = useState<HoldingsApplyStatusRecord | null>(
     null
   );
+
+  // 종목코드 조회 debounce timer(행별). 언마운트/재입력 시 취소.
+  const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   const handleApiError = useCallback((e: unknown) => {
     if (e instanceof ApiConfigError) {
@@ -161,6 +192,51 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     setErrorMsg(`알 수 없는 오류: ${(e as Error).message}`);
   }, []);
 
+  const setMeta = useCallback((idx: number, patch: Partial<RowMeta>) => {
+    setMetas((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, ...patch } : m))
+    );
+  }, []);
+
+  // POC3-08 (A): 종목코드 형식검증 + etf_master 종목명 자동조회.
+  //   형식 오류 → codeStatus=err(저장 차단). 형식 OK → 조회:
+  //     found → codeStatus=ok · autoName 채움(이름칸 비어있으면 자동 반영)
+  //     not found → codeStatus=warn(개별주일 수 있음 · 저장 허용)
+  const lookupTicker = useCallback(
+    async (idx: number, rawTicker: string) => {
+      const t = rawTicker.trim().toUpperCase();
+      if (t === "") {
+        setMeta(idx, { codeStatus: "none", autoName: null });
+        return;
+      }
+      if (!isValidTickerFormat(t)) {
+        setMeta(idx, { codeStatus: "err", autoName: null });
+        return;
+      }
+      try {
+        const res = await fetchEtfName(t);
+        if (res.found && res.name) {
+          setMeta(idx, { codeStatus: "ok", autoName: res.name });
+          // 이름칸이 비어있으면 자동 채움(사용자가 이미 입력했으면 덮지 않음).
+          setRows((prev) =>
+            prev.map((r, i) =>
+              i === idx && r.name.trim() === ""
+                ? { ...r, name: res.name as string }
+                : r
+            )
+          );
+        } else {
+          setMeta(idx, { codeStatus: "warn", autoName: null });
+        }
+      } catch {
+        // 조회 실패는 저장을 막지 않는다 — 경고 없이 중립(none).
+        //   (형식은 이미 통과했고, 저장 시 백엔드가 형식 최종 검증.)
+        setMeta(idx, { codeStatus: "none", autoName: null });
+      }
+    },
+    [setMeta]
+  );
+
   // 최초 로드: 저장된 holdings 조회 (외부 시세 fetch 없음 — 입력 화면).
   useEffect(() => {
     (async () => {
@@ -168,7 +244,14 @@ export default function HoldingsManageView({ onNavigate }: Props) {
       try {
         const data = await fetchHoldings();
         if (data.holdings.length > 0) {
-          setRows(data.holdings.map(holdingToRow));
+          const loadedRows = data.holdings.map(holdingToRow);
+          setRows(loadedRows);
+          // 로드된 각 행의 종목코드 상태를 조회(형식·존재). 이름칸은 이미 저장값이 있어
+          //   자동 덮어쓰기는 안 되고 codeStatus 배지만 갱신.
+          setMetas(loadedRows.map(() => ({ ...EMPTY_META })));
+          loadedRows.forEach((r, i) => {
+            void lookupTicker(i, r.ticker);
+          });
         }
       } catch (e) {
         handleApiError(e);
@@ -176,7 +259,9 @@ export default function HoldingsManageView({ onNavigate }: Props) {
         setLoading(false);
       }
     })();
-  }, [handleApiError]);
+    // 최초 1회만. lookupTicker/handleApiError 는 안정 참조.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateRow = (idx: number, key: keyof RowDraft, value: string) => {
     // 수량·매입단가는 입력 중에도 천단위 콤마로 보여준다(요구 3).
@@ -187,11 +272,32 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     setRows((prev) =>
       prev.map((r, i) => (i === idx ? { ...r, [key]: next } : r))
     );
+    // 종목코드 변경 시 debounce 조회(A). 즉시 상태는 "조회 전(none)".
+    if (key === "ticker") {
+      setMeta(idx, { codeStatus: "none", autoName: null });
+      if (lookupTimers.current[idx]) clearTimeout(lookupTimers.current[idx]);
+      lookupTimers.current[idx] = setTimeout(() => {
+        void lookupTicker(idx, value);
+      }, 350);
+    }
   };
 
-  const addRow = () => setRows((prev) => [...prev, { ...EMPTY_ROW }]);
-  const removeRow = (idx: number) =>
+  const addRow = () => {
+    setRows((prev) => [...prev, { ...EMPTY_ROW }]);
+    setMetas((prev) => [...prev, { ...EMPTY_META }]);
+  };
+  const removeRow = (idx: number) => {
     setRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
+    setMetas((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
+  };
+
+  // 언마운트 시 debounce timer 정리.
+  useEffect(() => {
+    const timers = lookupTimers.current;
+    return () => {
+      Object.values(timers).forEach((t) => clearTimeout(t));
+    };
+  }, []);
 
   const onSave = useCallback(async () => {
     setLoading(true);
@@ -200,7 +306,10 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     try {
       const payload = rowsToPayload(rows);
       const saved = await saveHoldings(payload);
-      setRows(saved.holdings.map(holdingToRow));
+      const savedRows = saved.holdings.map(holdingToRow);
+      setRows(savedRows);
+      setMetas(savedRows.map(() => ({ ...EMPTY_META })));
+      savedRows.forEach((r, i) => void lookupTicker(i, r.ticker));
       setSavedAt(new Date().toLocaleTimeString("ko-KR"));
       // 저장 성공 시에만 Dashboard 의 보유·Evidence 읽기 무효화 (변경 실패 시
       // catch 로 가서 미호출 — §4.5 "변경 실패 시 무효화 금지").
@@ -210,7 +319,7 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [rows, handleApiError]);
+  }, [rows, handleApiError, lookupTicker]);
 
   // POC3-08: 마지막 OCI 적용 이력(지속 표시). 마운트 시 1회 조회.
   const loadApplyStatus = useCallback(async () => {
@@ -246,6 +355,15 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   const investedList = computeInvested(rows);
   const totalInvested = investedList.reduce((a, b) => a + b, 0);
 
+  // (B) 저장 흐름 요약 — 형식 오류/경고 집계. 형식 오류가 하나라도 있으면 저장 비활성.
+  const errRows = rows
+    .map((r, i) => ({ r, i }))
+    .filter(({ i }) => metas[i]?.codeStatus === "err");
+  const warnRows = rows
+    .map((r, i) => ({ r, i }))
+    .filter(({ i }) => metas[i]?.codeStatus === "warn");
+  const hasFormatError = errRows.length > 0;
+
   return (
     <section aria-labelledby="holdings-manage-h">
       <h1 id="holdings-manage-h">종목 관리</h1>
@@ -257,20 +375,15 @@ export default function HoldingsManageView({ onNavigate }: Props) {
       <div className="card">
         <h2>1. 보유 종목 입력</h2>
         <p className="helper">
-          종목코드 / 수량 / 매입단가는 필수. 종목명·계좌는 선택 (계좌 미입력 시 “일반”).
-          계좌 라벨은 표시/그룹용이며 실제 계좌번호 / 증권사 / 세금 판정값이 아닙니다.
+          종목코드 6자리 입력 시 종목명이 자동 표시됩니다. 종목코드 / 수량 /
+          매입단가는 필수. 계좌는 목록에서 선택합니다. 계좌 라벨은 표시/그룹용이며
+          실제 계좌번호 / 증권사 / 세금 판정값이 아닙니다.
         </p>
 
         {errorMsg ? <div className="message error">{errorMsg}</div> : null}
 
-        <datalist id="account-group-options">
-          {RECOMMENDED_GROUPS.map((g) => (
-            <option value={g} key={g} />
-          ))}
-        </datalist>
-
-        {/* POC3-08: 입력 편의 우선 카드행 그리드. 각 종목이 넉넉한 간격의 행 카드.
-            수량·매입단가는 콤마 표시(입력 중에도) · 계좌 색 pill · 비중 막대. */}
+        {/* POC3-08: 입력 편의 우선 카드행 그리드. 각 행은 항상 1줄 고정.
+            수량·매입단가 콤마 · 계좌 select · 문제 행은 종목코드 칸 아이콘 + 테두리색만. */}
         <div className="hm-grid">
           <div className="hm-chead" role="row">
             <span>종목코드 *</span>
@@ -287,45 +400,86 @@ export default function HoldingsManageView({ onNavigate }: Props) {
             const invested = investedList[idx];
             const weight =
               totalInvested > 0 ? (invested / totalInvested) * 100 : 0;
-            // 입력칸 자체에 계좌 색을 입힌다(별도 pill 없이 — 중복 방지).
-            //   알려진 계좌만 색 매핑(임의 입력이 클래스명 되는 것 방지).
-            const knownAcct = new Set(["ISA", "오픈뱅킹", "연금"]);
-            const acctInpClass = knownAcct.has(r.account_group)
+            const meta = metas[idx] ?? EMPTY_META;
+            const cs = meta.codeStatus;
+            // 행 테두리/코드칸 색: err=빨강 · warn=노랑 · 그외 기본.
+            const rowClass =
+              cs === "err"
+                ? "hm-rowcard hm-row-err"
+                : cs === "warn"
+                  ? "hm-rowcard hm-row-warn"
+                  : "hm-rowcard";
+            const codeInpClass =
+              cs === "err"
+                ? "hm-inp hm-inp-err"
+                : cs === "warn"
+                  ? "hm-inp hm-inp-warn"
+                  : "hm-inp";
+            const acctInpClass = ACCT_COLOR_CLASS.has(r.account_group)
               ? `hm-inp hm-inp-acct hm-inp-acct-${r.account_group}`
               : "hm-inp hm-inp-acct";
+            const flagTitle =
+              cs === "err"
+                ? "종목코드는 영숫자 6자리여야 합니다"
+                : cs === "warn"
+                  ? "ETF 목록에 없음 — 개별주면 정상"
+                  : "";
             return (
-              <div className="hm-rowcard" key={idx}>
-                <input
-                  className="hm-inp"
-                  type="text"
-                  value={r.ticker}
-                  onChange={(e) => updateRow(idx, "ticker", e.target.value)}
-                  placeholder="069500"
-                  aria-label="종목코드"
-                  disabled={loading}
-                />
+              <div className={rowClass} key={idx}>
+                {/* 종목코드 칸: input + 상태 아이콘을 한 줄에(행 높이 불변). */}
+                <div className="hm-code-cell">
+                  <input
+                    className={codeInpClass}
+                    type="text"
+                    value={r.ticker}
+                    onChange={(e) => updateRow(idx, "ticker", e.target.value)}
+                    placeholder="069500"
+                    aria-label="종목코드"
+                    disabled={loading}
+                  />
+                  {cs === "err" ? (
+                    <span className="hm-flag hm-flag-err" title={flagTitle} aria-hidden>
+                      ✗
+                    </span>
+                  ) : cs === "warn" ? (
+                    <span
+                      className="hm-flag hm-flag-warn"
+                      title={flagTitle}
+                      aria-hidden
+                    >
+                      ⚠
+                    </span>
+                  ) : null}
+                </div>
                 <input
                   className="hm-inp"
                   type="text"
                   value={r.name}
                   onChange={(e) => updateRow(idx, "name", e.target.value)}
-                  placeholder="(선택)"
+                  placeholder={meta.autoName ?? "(선택)"}
                   aria-label="종목명"
                   disabled={loading}
                 />
-                <input
+                {/* (D) 계좌 = 추천 목록 select(자유입력 차단). 빈 값은 저장 시 "일반". */}
+                <select
                   className={acctInpClass}
-                  type="text"
-                  list="account-group-options"
-                  value={r.account_group}
+                  value={
+                    RECOMMENDED_GROUPS.includes(r.account_group)
+                      ? r.account_group
+                      : "일반"
+                  }
                   onChange={(e) =>
                     updateRow(idx, "account_group", e.target.value)
                   }
-                  placeholder="일반"
-                  maxLength={ACCOUNT_GROUP_MAX_LEN}
                   aria-label="계좌"
                   disabled={loading}
-                />
+                >
+                  {RECOMMENDED_GROUPS.map((g) => (
+                    <option value={g} key={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
                 <input
                   className="hm-inp num"
                   type="text"
@@ -374,27 +528,52 @@ export default function HoldingsManageView({ onNavigate }: Props) {
           </div>
         </div>
 
-        <div className="btn-row" style={{ marginTop: 12 }}>
-          <button className="reject" onClick={addRow} disabled={loading}>
-            행 추가
-          </button>
-          <button onClick={onSave} disabled={loading}>
-            {loading ? "처리 중..." : "보유 종목 저장"}
-          </button>
-        </div>
-
-        {savedAt ? (
-          <div className="helper" style={{ marginTop: 8 }}>
-            저장 완료 ({savedAt})
-            <button
-              type="button"
-              style={{ marginLeft: 10 }}
-              onClick={() => onNavigate("holdings")}
-            >
-              보유 현황 보기 →
+        {/* (B) 하단 고정 액션바 — 경고·오류 요약 → 저장 버튼 → 저장 결과 한 흐름. */}
+        <div className="hm-actionbar">
+          {(hasFormatError || warnRows.length > 0) && (
+            <div className="hm-msgline">
+              {hasFormatError ? (
+                <span className="hm-msg-err">
+                  ✗ 저장 불가: 종목코드 형식 오류 {errRows.length}건 (
+                  {errRows.map(({ r }) => r.ticker || "빈칸").join(", ")}) —
+                  영숫자 6자리여야 합니다
+                </span>
+              ) : null}
+              {warnRows.length > 0 ? (
+                <span className="hm-msg-warn">
+                  ⚠ 경고 {warnRows.length}건 (
+                  {warnRows.map(({ r }) => r.ticker).join(", ")}): ETF 목록에
+                  없음 — 개별주면 정상, 저장 가능
+                </span>
+              ) : null}
+            </div>
+          )}
+          <div className="hm-actionbar-btns">
+            <button className="reject" onClick={addRow} disabled={loading}>
+              행 추가
             </button>
+            <button onClick={onSave} disabled={loading || hasFormatError}>
+              {loading ? "처리 중..." : "보유 종목 저장"}
+            </button>
+            {savedAt ? (
+              <span className="hm-msg-ok">
+                ✓ 저장 완료 ({savedAt})
+                <button
+                  type="button"
+                  className="reject"
+                  style={{ marginLeft: 10 }}
+                  onClick={() => onNavigate("holdings")}
+                >
+                  보유 현황 보기 →
+                </button>
+              </span>
+            ) : (
+              <span className="hm-actionbar-hint">
+                형식 오류가 있으면 저장 버튼이 비활성화됩니다.
+              </span>
+            )}
           </div>
-        ) : null}
+        </div>
       </div>
 
       {/* POC3-07 §6: OCI 적용 — 저장과 별도 동작. 명시적 클릭에서만 실행한다.

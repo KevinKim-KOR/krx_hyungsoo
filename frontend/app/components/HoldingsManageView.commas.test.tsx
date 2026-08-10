@@ -1,7 +1,11 @@
 // POC3-08 입력 콤마 로직 테스트.
 // 핵심: 콤마 표시가 저장 왕복을 깨지 않아야 한다(매입단가 NaN 방지).
 import { describe, it, expect } from "vitest";
-import { formatWithCommas, stripCommas } from "./HoldingsManageView";
+import {
+  formatWithCommas,
+  stripCommas,
+  isValidTickerFormat,
+} from "./HoldingsManageView";
 
 describe("formatWithCommas — 입력 중 콤마 표시", () => {
   it("정수에 천단위 콤마를 넣는다", () => {
@@ -58,5 +62,32 @@ describe("저장 왕복 — 콤마 표시가 숫자 저장을 깨지 않는다",
   it("큰 매입단가 왕복", () => {
     const displayed = formatWithCommas("301667"); // "301,667"
     expect(Number(stripCommas(displayed))).toBe(301667);
+  });
+});
+
+// POC3-08 (A): 종목코드 형식 검증. 백엔드 TICKER_PATTERN(영숫자 6자) 과 동일 계약.
+describe("isValidTickerFormat — 종목코드 형식(영숫자 6자)", () => {
+  it("정상 ETF·개별주 코드는 통과", () => {
+    expect(isValidTickerFormat("069500")).toBe(true); // ETF
+    expect(isValidTickerFormat("005930")).toBe(true); // 개별주(삼성전자)
+    expect(isValidTickerFormat("0005G0")).toBe(true); // 영숫자 ETF
+    expect(isValidTickerFormat("000660")).toBe(true); // 개별주(SK하이닉스)
+  });
+
+  it("소문자는 대문자로 정규화 후 통과", () => {
+    expect(isValidTickerFormat("0005g0")).toBe(true);
+  });
+
+  it("형식 오류(오타·쓰레기값)는 차단", () => {
+    expect(isValidTickerFormat("111")).toBe(false); // 3자
+    expect(isValidTickerFormat("dasdasd")).toBe(false); // 7자·소문자
+    expect(isValidTickerFormat("")).toBe(false); // 빈값
+    expect(isValidTickerFormat("06950")).toBe(false); // 5자
+    expect(isValidTickerFormat("0695000")).toBe(false); // 7자
+    expect(isValidTickerFormat("06-500")).toBe(false); // 특수문자
+  });
+
+  it("앞뒤 공백은 무시하고 판정", () => {
+    expect(isValidTickerFormat("  069500  ")).toBe(true);
   });
 });

@@ -29,12 +29,20 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
 HOLDINGS_DIR = Path("state/holdings")
 HOLDINGS_FILE = HOLDINGS_DIR / "holdings_latest.json"
+
+# POC3-08 (A): 종목코드 형식 검증. 국내 종목코드는 영숫자 6자(대문자).
+#   예: "069500"(ETF), "0005G0"(영숫자 ETF), "005930"(개별주).
+#   "111"·"dasdasd" 같은 오타/쓰레기 값은 이 형식 게이트에서 차단한다.
+#   ETF 실존 여부(etf_master 존재)는 여기서 막지 않는다 — 개별주는 etf_master 에
+#   없으므로 실존 게이트로 막으면 정상 개별주까지 차단됨(프론트에서 경고만).
+TICKER_PATTERN = re.compile(r"^[0-9A-Z]{6}$")
 
 # Step 2C: account_group 정책 상수.
 ACCOUNT_GROUP_DEFAULT = "일반"
@@ -102,11 +110,16 @@ class Holding:
         return float(self.quantity) * float(self.avg_buy_price)
 
 
-def _coerce_holding(raw: Any, idx: int) -> Holding:
+def _coerce_holding(raw: Any, idx: int, *, strict_ticker: bool = False) -> Holding:
     """단일 holding dict 1건을 Holding 으로 변환 + 검증.
 
     필수 키 누락 / 빈 문자열 / 숫자 음수 등은 HoldingsValidationError.
     account_group 은 누락/빈 값이면 "일반" 으로 정규화. 30자 초과는 차단.
+
+    strict_ticker (POC3-08 A): True 이면 ticker 가 영숫자 6자(TICKER_PATTERN)여야
+      한다. 신규 저장(PUT /holdings) 경로에서만 True — "111"·"dasdasd" 같은 오타를
+      저장 시점에 차단. 기본 False 는 기존 로드 경로 하위호환(이미 저장된 비정형
+      값이 있어도 읽기는 막지 않음).
     """
     if not isinstance(raw, dict):
         raise HoldingsValidationError(
@@ -119,6 +132,12 @@ def _coerce_holding(raw: Any, idx: int) -> Holding:
             f"holdings[{idx}].ticker 가 비어있거나 문자열이 아닙니다."
         )
     ticker = ticker.strip()
+
+    if strict_ticker and not TICKER_PATTERN.match(ticker):
+        raise HoldingsValidationError(
+            f"holdings[{idx}].ticker 형식 오류 — 종목코드는 영숫자 6자리여야 합니다 "
+            f"(received: {ticker!r})"
+        )
 
     if "quantity" not in raw:
         raise HoldingsValidationError(f"holdings[{idx}].quantity 가 누락됐습니다.")
@@ -173,12 +192,15 @@ def _coerce_holding(raw: Any, idx: int) -> Holding:
     )
 
 
-def validate_holdings(raw_list: Any) -> list[Holding]:
+def validate_holdings(raw_list: Any, *, strict_ticker: bool = False) -> list[Holding]:
     """입력값을 검증하고 Holding 리스트로 변환. 실패 시 HoldingsValidationError.
 
     Step 2C 중복 정책:
     동일 (ticker, account_group, avg_buy_price) 삼중조합만 중복 차단한다.
     같은 종목을 분할 매수해 평단이 다른 행은 허용. 같은 계좌·같은 평단 중복은 의미 없음.
+
+    strict_ticker (POC3-08 A): 저장 경로에서만 True — ticker 형식(영숫자 6자) 강제.
+    기본 False 는 기존 로드/재사용 경로 하위호환.
     """
     if not isinstance(raw_list, list):
         raise HoldingsValidationError("holdings 페이로드는 리스트여야 합니다.")
@@ -189,7 +211,7 @@ def validate_holdings(raw_list: Any) -> list[Holding]:
     seen: set[tuple[str, str, float]] = set()
     holdings: list[Holding] = []
     for idx, raw in enumerate(raw_list):
-        h = _coerce_holding(raw, idx)
+        h = _coerce_holding(raw, idx, strict_ticker=strict_ticker)
         key = (h.ticker, h.account_group, float(h.avg_buy_price))
         if key in seen:
             raise HoldingsValidationError(

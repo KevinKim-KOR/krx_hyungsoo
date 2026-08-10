@@ -33,6 +33,24 @@ export function generateDraftFromHoldings(): Promise<Run> {
   return request<Run>("POST", "/runs/generate-from-holdings");
 }
 
+// ─── POC3-08 (A): 종목코드 → 종목명 조회 (읽기 전용) ──────────────────
+// 종목 관리 입력 화면에서 종목코드 입력 시 종목명 자동 표시용.
+// found=false 는 etf_master 에 없음(개별주 또는 미등록) — 저장 차단이 아니라
+// 프론트 경고(개별주일 수 있음)로 표시한다. 신규 DB/수집 없음.
+
+export interface EtfNameLookupResult {
+  ticker: string;
+  found: boolean;
+  name: string | null;
+}
+
+export function fetchEtfName(ticker: string): Promise<EtfNameLookupResult> {
+  return request<EtfNameLookupResult>(
+    "GET",
+    `/holdings/etf-name?ticker=${encodeURIComponent(ticker)}`,
+  );
+}
+
 // ─── POC2 Step 2: holdings 시세 enrichment ────────────────────────────
 
 export interface MarketQuoteItem {

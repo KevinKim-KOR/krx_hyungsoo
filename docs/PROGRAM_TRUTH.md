@@ -2,7 +2,7 @@
 
 현행 프로그램 통합 설계서 (PROGRAM_TRUTH_RECONSTRUCTION_V1)
 
-- **최종 반영**: 2026-08-06 — **POC3-07(PC 운영 연결·운영/진단 화면 분리 통합) 반영**. 메뉴 10키(diagnostics 신설·data_status·dashboard 흡수)·approval 축소·신규 API(`/oci/startup-status`·`/holdings/apply`)·기동 시 1회 OCI 읽기·Holdings 단일 payload OCI 적용.
+- **최종 반영**: 2026-08-10 — **POC3-08(종목 관리·보유 현황 그리드 UX 개선 A~D) 반영**. 종목 관리 입력에 종목코드 형식검증(영숫자 6자·저장 차단)·`etf_master` 종목명 자동조회(신규 GET `/holdings/etf-name`)·하단 고정 액션바·계좌 select 제한. `PUT /holdings` 저장 경로 strict_ticker=True. (그 전) 2026-08-06 POC3-07 반영: 메뉴 10키(diagnostics 신설·data_status·dashboard 흡수)·approval 축소·신규 API(`/oci/startup-status`·`/holdings/apply`)·기동 시 1회 OCI 읽기·Holdings 단일 payload OCI 적용.
 
 ---
 
@@ -137,7 +137,7 @@ flowchart LR
 | etf_exposure | ETF 구성종목 | `ETFExposureView` | 비교·판단 | 조회 | IMPLEMENTED_UNVERIFIED |
 | ai_sessions | AI 투자 세션 | `AISessionsView` | 비교·판단 | 기록 | IMPLEMENTED_UNVERIFIED |
 | holdings | 보유 현황 | `HoldingsView` | 보유·자료 관리 | 평가·시세 갱신 | IMPLEMENTED_UNVERIFIED |
-| holdings_manage | 종목 관리 | `HoldingsManageView` | 보유·자료 관리 | 입력·저장·**OCI 적용**(POC3-07) | IMPLEMENTED_UNVERIFIED |
+| holdings_manage | 종목 관리 | `HoldingsManageView` | 보유·자료 관리 | 입력·저장·**OCI 적용**(POC3-07)·**형식검증+종목명 자동조회**(POC3-08) | IMPLEMENTED_UNVERIFIED |
 | holdings_evidence | 확인 근거 | `HoldingsEvidenceView` | 보유·자료 관리 | 읽기 근거 | IMPLEMENTED_UNVERIFIED |
 | approval | 승인·적용 | `ApprovalTelegramView` | 승인·운영 | 운영(PARAM·seed OCI 적용) — POC3-07 역할 축소 | IMPLEMENTED_UNVERIFIED |
 | diagnostics | 진단·상태 | `DiagnosticsView` | 진단·상태 | 진단·미리보기·LEGACY 흡수(POC3-07 신규) | DIAGNOSTIC |
@@ -148,7 +148,7 @@ flowchart LR
 
 - **today_check** (`TodayInvestmentCheckView`): 최초 진입 시 `fetchMarketTopnLatest` · `fetchEnrichedHoldings` · `fetchHoldingsMarketEvidence` · `fetchNavDiscountLatest` 자동 조회. KOSPI 위치·국면·오늘 먼저 볼 보유 ETF 최대 3건(= backend `judgment_summary` 표시)·정비 큐. **표시 데이터가 저장 DB/캐시에 의존** → 데이터 부실 시 빈 화면(§13).
 - **market_discovery** (`MarketDiscoveryView`): "최신 시장 데이터 갱신" 버튼 → `POST /market/refresh` (FDR BG job). **PC가 외부 수집을 트리거하는 운영 경로**.
-- **holdings_manage**: `PUT /holdings`(saveHoldings) → `state/holdings/holdings_latest.json` 로컬 저장 + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)**. 저장과 OCI 적용은 **별도 동작**. 적용은 단일 payload atomic replace(별도 manifest 파일 없음, active 재독출 hash 확인). 사용자 명시 클릭만.
+- **holdings_manage**: `PUT /holdings`(saveHoldings) → `state/holdings/holdings_latest.json` 로컬 저장 + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)**. 저장과 OCI 적용은 **별도 동작**. 적용은 단일 payload atomic replace(별도 manifest 파일 없음, active 재독출 hash 확인). 사용자 명시 클릭만. **POC3-08 (A·B·D)**: 종목코드 입력 시 `GET /holdings/etf-name` 로 `etf_master` 종목명 자동조회(있으면 이름칸 자동채움·✓, 없으면 개별주 경고 ⚠·저장 허용). 형식(영숫자 6자) 위반은 저장 차단(✗) — `PUT /holdings` 가 `strict_ticker=True` 로 최종 방어(`app/holdings.py :: TICKER_PATTERN`). 단 `load()`(읽기)는 lenient 유지(기존 비정형 값 하위호환). 계좌는 추천 목록 select 로 제한(자유입력 차단). 저장 흐름(경고·오류→저장→결과)은 하단 고정 액션바.
 - **holdings**(보유 현황): `POST /holdings/market/refresh`(Naver) + `fetchEnrichedHoldings`. 시세 갱신은 PC 직접.
 - **approval**(승인·적용, POC3-07 축소): `ApprovalTelegramView` — `OciAlertHeader` + `ThreePushParamCard`(PARAM·seed OCI 적용)만. 정보 PUSH 카드·미리보기·샘플·개발호환·현재 run 표시는 **`diagnostics`로 이동**. 빈 승인 카드 안 만듦(직전 POC3 확정).
 - **diagnostics**(진단·상태, POC3-07 신규): `DiagnosticsView` — (a) 기동 시 OCI 상태 상세(`GET /oci/startup-status`), (b) `DataStatusView`(placeholder 포함) 흡수, (c) 미리보기·샘플(`ManualPreviewSection`·`DevCompatSection`, PREVIEW/TEST 표기), (d) `DashboardView`(LEGACY, details 접힘). 정상 업무 아님.
@@ -185,6 +185,7 @@ flowchart LR
 | fetchThreePushParamState / applyThreePushParamToOci | GET·POST `/three-push/param/state`·`/apply` | 조회·운영(OCI 적용 + content_sha256 표시) |
 | fetchOciStartupStatus | GET `/oci/startup-status` | 조회(**POC3-07** 기동 시 1회 읽은 OCI 상태 캐시. 요청마다 재조회 안 함) |
 | applyHoldingsToOci | POST `/holdings/apply` | 운영(**POC3-07** Holdings 단일 payload atomic replace, 사용자 명시 클릭만) |
+| fetchEtfName | GET `/holdings/etf-name?ticker=` | 조회(**POC3-08** `etf_master` 종목명 자동조회 · found=false=개별주/미등록 경고용 · 읽기전용) |
 | refreshUniverseMomentum | (universe) | 갱신 |
 
 ### 6.2 소비자 관점 분류
@@ -402,7 +403,8 @@ flowchart LR
 
 - 화면 컨테이너: `frontend/app/components/MainPanel.tsx :: MainPanel` / `LeftSidebar.tsx :: MENU_GROUPS, MenuKey, assertMenuGroupsCover`
 - 오늘 점검: `TodayInvestmentCheckView.tsx :: JudgmentQueueSection, KospiHeadline`
-- 보유: `HoldingsView.tsx` · `HoldingsManageView.tsx :: onSave` · `HoldingsEvidenceView.tsx` · `HoldingsRiskEvidenceSection.tsx`
+- 보유: `HoldingsView.tsx` · `HoldingsManageView.tsx :: onSave, isValidTickerFormat, lookupTicker`(POC3-08) · `HoldingsEvidenceView.tsx` · `HoldingsRiskEvidenceSection.tsx`
+- **종목 형식검증/종목명 조회(POC3-08)**: `app/holdings.py :: TICKER_PATTERN, validate_holdings(strict_ticker=)` · `app/api.py :: put_holdings(strict_ticker=True), get_etf_name_lookup(GET /holdings/etf-name)` · `app/market_data_store.py :: get_etf_name`(재사용) · `frontend/lib/api/holdings.ts :: fetchEtfName`
 - 승인/PUSH: `ApprovalTelegramView.tsx`(POC3-07 축소=OciAlertHeader+ThreePushParamCard) · `approval/ManualPreviewSection.tsx`·`DevCompatSection.tsx`(→DiagnosticsView 참조) · `ThreePushDraftCard.tsx`
 - **진단·상태(POC3-07)**: `frontend/app/components/DiagnosticsView.tsx` · `frontend/lib/api/ociStartupStatus.ts` · `holdingsApply.ts`
 - **OCI 적용/기동읽기(POC3-07)**: `app/oci_startup_status.py :: refresh_snapshot, get_snapshot` · `app/api_oci_startup_status.py`(GET /oci/startup-status) · `app/holdings_oci_apply.py :: apply_holdings_to_oci`(단일 payload atomic replace) · `app/api_holdings_oci_apply.py`(POST /holdings/apply) · `app/api.py :: _lifespan`(기동 시 OCI 읽기 1회)
