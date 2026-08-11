@@ -1,19 +1,16 @@
 "use client";
 
-// POC2 Step 5D-2 Final — HoldingsClient.tsx 의 시세평가 compact UI 영역 분리.
-// 분리 전후 렌더링 결과 / 문구 / 배치 / 상세 펼침 상태 / 데이터 처리 모두 동일.
+// POC2 Step 5D-2 — HoldingsClient.tsx 의 시세평가 UI 영역 분리(default export
+//   EnrichedSection). 입력 폼/시세 갱신/저장/초안 액션은 HoldingsView·HoldingsManageView.
 //
-// 분리 목적: KS-10 트리거 (HoldingsClient.tsx 906라인) 해소.
-// 분리 대상:
-//   EnrichedSection (default export) + 내부 자식 컴포넌트
-//     OverallSummaryCard / AccountSummaryCards / AccountSummaryRow /
-//     CompactHoldingsTable / CompactRow / DetailRowFields / SummaryItem / KV
-//   + 로컬 helpers (Summary / AccountSummary / isPriced / isCalcAvailable /
-//                  computeSummaryFor / groupByAccount / rowKey)
-//
-// 책임 경계:
-//   본 파일은 EnrichedHolding 배열을 입력받아 compact 평가 UI 만 그린다.
-//   입력 폼 / 시세 갱신 / 저장 / 초안 생성 액션은 HoldingsClient.tsx 에 잔존.
+// POC3-08 증권사 스타일 개편: 기존 요약 카드 + compact 표를 다음으로 교체.
+//   - HoldingsHero: 상단 큰 평가 배너(총 평가금액·평가손익). 기존 summary 재사용.
+//   - AccountSection: 계좌순이면 계좌 소계 헤더로 묶고, 종목명/코드순이면 단일 섹션.
+//   - HoldingRow: 종목 행 2단×2열(좌상 종목명+판단 · 우상 손익 · 좌하 티커/수량/비중 ·
+//                 우하 매입가→현재가). 클릭 시 DetailRowFields 상세 펼침.
+//   평가·계산·요약·정렬 로직은 무변경(sortHoldings/computeSummaryFor 그대로) — 표시만 교체.
+//   손익 색은 앱 실제 pnlClass(수익=--ok 초록 / 손실=--danger 빨강) 재사용.
+//   ※ 기존 .summary-card/.compact-table CSS 는 EvidenceDetails.tsx 가 여전히 사용.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -42,6 +39,74 @@ type Summary = {
 };
 
 type AccountSummary = Summary & { account_group: string };
+
+// ─── POC3-08 정렬 (보유 현황 조회 순서) ──────────────────────────
+//   기본·최우선 = 계좌순(증권사 계좌조회 순서). 표시 순서만 바꾼다(평가·계산 무변경).
+
+export type HoldingsSortKey = "account" | "name" | "ticker";
+
+// 계좌 그룹 표시 우선순위(사용자 확정: 증권사 계좌조회 순서).
+//   목록에 없는 계좌(사용자 커스텀)는 뒤에 이름 가나다순.
+const ACCOUNT_ORDER: ReadonlyArray<string> = [
+  "일반",
+  "ISA",
+  "연금",
+  "오픈뱅킹",
+  "기타",
+];
+
+// 계좌 라벨 정규화 — 누락/빈 값은 "일반"(백엔드 normalize_account_group 과 동일 계약).
+function normAccount(ag: string | null | undefined): string {
+  const t = (ag ?? "").trim();
+  return t === "" ? "일반" : t;
+}
+
+function accountRank(ag: string): number {
+  const i = ACCOUNT_ORDER.indexOf(ag);
+  // 목록에 없으면 뒤로(같은 큰 값), 그 안에서는 이름 비교로 안정 정렬.
+  return i === -1 ? ACCOUNT_ORDER.length : i;
+}
+
+// 종목명 표시 라벨(정렬 키). 이름 없으면 ticker 로 대체(가나다에서 자연스럽게).
+function nameKey(it: EnrichedHolding): string {
+  return (it.name && it.name.trim() !== "" ? it.name : it.ticker).trim();
+}
+
+// ko 로케일 비교(가나다/영문 혼재 안정). 동률은 ticker 로 tie-break.
+function compareByName(a: EnrichedHolding, b: EnrichedHolding): number {
+  const c = nameKey(a).localeCompare(nameKey(b), "ko");
+  return c !== 0 ? c : a.ticker.localeCompare(b.ticker);
+}
+
+function compareByTicker(a: EnrichedHolding, b: EnrichedHolding): number {
+  return a.ticker.localeCompare(b.ticker);
+}
+
+// 정렬은 표시용 새 배열만 만든다(원본 items 불변 — expand key/평가 계약 보존).
+export function sortHoldings(
+  items: EnrichedHolding[],
+  key: HoldingsSortKey
+): EnrichedHolding[] {
+  const arr = [...items];
+  if (key === "ticker") {
+    arr.sort(compareByTicker);
+  } else if (key === "name") {
+    arr.sort(compareByName);
+  } else {
+    // account: 계좌 우선순위 → 같은 계좌 안은 종목명 가나다.
+    arr.sort((a, b) => {
+      const ag = normAccount(a.account_group);
+      const bg = normAccount(b.account_group);
+      const ra = accountRank(ag);
+      const rb = accountRank(bg);
+      if (ra !== rb) return ra - rb;
+      // 같은 우선순위(둘 다 커스텀 계좌 포함)면 계좌명 자체로 안정화.
+      if (ag !== bg) return ag.localeCompare(bg, "ko");
+      return compareByName(a, b);
+    });
+  }
+  return arr;
+}
 
 // ─── 로컬 helpers (EnrichedHolding 기반) ────────────────────────
 
@@ -144,6 +209,31 @@ function accountTagClass(ag: string): string {
     : "account-tag";
 }
 
+// POC3-08: 구성 막대용 계좌 색(태그 색 계열과 맞춤). 미매핑 계좌는 회청 계열.
+const ACCOUNT_BAR_COLOR: Record<string, string> = {
+  일반: "#94a3b8",
+  ISA: "#4ba46e",
+  연금: "#9b7ec8",
+  오픈뱅킹: "#d99a4e",
+  기타: "#b0b6bf",
+};
+function accountBarColor(ag: string): string {
+  return ACCOUNT_BAR_COLOR[ag] ?? "#b0b6bf";
+}
+
+// 계좌 표시 우선순위(구성 막대 세그먼트 순서 = 계좌순 정렬과 동일).
+const ACCOUNT_BAR_ORDER: ReadonlyArray<string> = [
+  "일반",
+  "ISA",
+  "연금",
+  "오픈뱅킹",
+  "기타",
+];
+function accountBarRank(ag: string): number {
+  const i = ACCOUNT_BAR_ORDER.indexOf(ag);
+  return i === -1 ? ACCOUNT_BAR_ORDER.length : i;
+}
+
 // ─── 메인 컴포넌트 ────────────────────────────────────────────
 
 interface EnrichedSectionProps {
@@ -154,6 +244,15 @@ export default function EnrichedSection({ items }: EnrichedSectionProps) {
   const summary = useMemo(() => computeSummaryFor(items), [items]);
   const accountSummaries = useMemo(() => groupByAccount(items), [items]);
   const hasAnyPrice = summary.priced_count > 0;
+
+  // POC3-08: 정렬(조회 순서). 기본 = 계좌순. 표시 순서만 바꾼다.
+  const [sortKey, setSortKey] = useState<HoldingsSortKey>("account");
+  const sortedItems = useMemo(
+    () => sortHoldings(items, sortKey),
+    [items, sortKey]
+  );
+
+  // expand key 는 source_index 기반이라 표시 순서와 무관(정렬해도 펼침 유지).
   const expandKeys = useMemo(
     () => items.map((it, idx) => rowKey(it, idx)),
     [items]
@@ -181,281 +280,382 @@ export default function EnrichedSection({ items }: EnrichedSectionProps) {
     });
   }, []);
 
+  // POC3-08 증권사 스타일: 계좌순이면 계좌 섹션(소계 헤더)으로 묶고, 종목명/코드순이면
+  //   계좌 헤더 없이 한 섹션으로(앞서 확정한 정렬 정책과 동일).
+  const sections = useMemo<Section[]>(() => {
+    if (sortKey !== "account") {
+      return [{ account_group: null, items: sortedItems }];
+    }
+    // 이미 계좌순 정렬됐으므로 인접 그룹으로 자른다(계좌 우선순위 순서 유지).
+    const out: Section[] = [];
+    for (const it of sortedItems) {
+      const ag = (it.account_group ?? "일반").trim() || "일반";
+      const last = out[out.length - 1];
+      if (last && last.account_group === ag) last.items.push(it);
+      else out.push({ account_group: ag, items: [it] });
+    }
+    return out;
+  }, [sortedItems, sortKey]);
+
+  const accountSubtotal = useMemo(() => {
+    const m: Record<string, AccountSummary> = {};
+    for (const s of accountSummaries) m[s.account_group] = s;
+    return m;
+  }, [accountSummaries]);
+
   return (
     <div style={{ marginTop: 24 }}>
-      <h3 style={{ fontSize: 14, margin: "0 0 8px 0" }}>보유 종목 시세 평가</h3>
-      <p className="helper" style={{ marginTop: 0 }}>
+      <HoldingsHero summary={summary} accounts={accountSummaries} />
+
+      <p className="helper" style={{ margin: "0 0 12px" }}>
         {hasAnyPrice
           ? "캐시된 Naver 시세 기준 평가. 갱신은 위의 [시세 갱신] 버튼."
           : "아직 시세가 캐시되지 않았습니다. [시세 갱신] 버튼으로 1회 조회하세요."}
       </p>
 
-      <OverallSummaryCard summary={summary} />
-      <AccountSummaryCards summaries={accountSummaries} />
-      <CompactHoldingsTable
-        items={items}
-        expanded={expanded}
-        onToggle={toggle}
-      />
+      {/* POC3-08: 정렬 컨트롤. 기본 계좌순(증권사 계좌조회 순서). */}
+      <div className="holdings-sortbar">
+        <span className="holdings-sortbar-label">정렬</span>
+        <div className="holdings-sort-seg" role="group" aria-label="보유 종목 정렬 기준">
+          {(
+            [
+              ["account", "계좌순"],
+              ["name", "종목명순"],
+              ["ticker", "종목코드순"],
+            ] as ReadonlyArray<[HoldingsSortKey, string]>
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={sortKey === key ? "on" : ""}
+              aria-pressed={sortKey === key}
+              onClick={() => setSortKey(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {sortKey === "account" ? (
+          <span className="holdings-sortbar-hint">
+            계좌 순서: 일반 · ISA · 연금 · 오픈뱅킹 · 기타 (계좌 안은 종목명순)
+          </span>
+        ) : null}
+      </div>
+
+      {sections.map((sec, si) => (
+        <AccountSection
+          key={sec.account_group ?? `flat-${si}`}
+          section={sec}
+          subtotal={
+            sec.account_group ? accountSubtotal[sec.account_group] : undefined
+          }
+          expanded={expanded}
+          onToggle={toggle}
+        />
+      ))}
     </div>
   );
 }
 
-// ─── 전체 요약 카드 ─────────────────────────────────────────────
+// ─── 증권사 스타일 상단 평가 배너 (POC3-08) ─────────────────────
+//   전체 평가금액·손익을 큰 숫자로. 기존 summary 재사용(신규 계산 없음).
 
-function OverallSummaryCard({ summary }: { summary: Summary }) {
-  const { total_count, priced_count, unpriced_count, calc_available_count, calc_missing_count } =
-    summary;
+function HoldingsHero({
+  summary,
+  accounts,
+}: {
+  summary: Summary;
+  accounts: AccountSummary[];
+}) {
+  const {
+    total_count,
+    priced_count,
+    unpriced_count,
+    calc_missing_count,
+    priced_eval,
+    priced_pnl,
+    priced_pnl_rate_pct,
+  } = summary;
   const hasUnpriced = unpriced_count > 0 || calc_missing_count > 0;
-  const calcBasis =
-    calc_available_count > 0 ? `(평가 계산 ${calc_available_count}개 기준)` : "";
 
   return (
-    <div className="summary-card">
-      <div className="summary-card-title">전체 요약</div>
-      <div className="summary-grid">
-        <SummaryItem label="보유 종목" value={`${total_count}개`} />
-        <SummaryItem label="시세 확인" value={`${priced_count}개`} />
-        <SummaryItem label="시세 미확인" value={`${unpriced_count}개`} />
-        {calc_missing_count > 0 ? (
-          <SummaryItem label="계산 정보 부족" value={`${calc_missing_count}개`} />
-        ) : null}
-        <SummaryItem label="총 매입금액" value={fmtMoney(summary.total_invested) ?? "-"} />
-        {calc_available_count > 0 ? (
-          <>
-            <SummaryItem
-              label={`평가금액 ${calcBasis}`}
-              value={fmtMoney(summary.priced_eval) ?? "-"}
-            />
-            <SummaryItem
-              label={`평가손익 ${calcBasis}`}
-              value={fmtSignedMoney(summary.priced_pnl) ?? "-"}
-              valueClass={pnlClass(summary.priced_pnl)}
-            />
-            <SummaryItem
-              label={`평가수익률 ${calcBasis}`}
-              value={fmtSignedPct(summary.priced_pnl_rate_pct) ?? "-"}
-              valueClass={pnlClass(summary.priced_pnl_rate_pct)}
-            />
-          </>
-        ) : (
-          <SummaryItem label="평가금액/손익/수익률" value="계산 불가" />
-        )}
+    <div className="hld-hero">
+      <div className="hld-hero-top">
+        <div className="hld-hero-eval">
+          <div className="hld-hero-lbl">총 평가금액</div>
+          <div className="hld-hero-amt">
+            {priced_eval !== null ? (fmtMoney(priced_eval) ?? "-") : "계산 불가"}
+          </div>
+        </div>
+        <div className="hld-hero-pnl">
+          <div className="hld-hero-lbl">평가손익</div>
+          <div className={`hld-hero-pamt ${pnlClass(priced_pnl)}`}>
+            {priced_pnl !== null ? (fmtSignedMoney(priced_pnl) ?? "-") : "-"}
+            {priced_pnl_rate_pct !== null ? (
+              <span className="hld-hero-rate">
+                {fmtSignedPct(priced_pnl_rate_pct)}
+              </span>
+            ) : null}
+          </div>
+        </div>
       </div>
+      <div className="hld-hero-sub">
+        <div className="hld-kv">
+          <div className="k">총 매입금액</div>
+          <div className="v">{fmtMoney(summary.total_invested) ?? "-"}</div>
+        </div>
+        <div className="hld-kv">
+          <div className="k">보유 종목</div>
+          <div className="v">{total_count}개</div>
+        </div>
+        <div className="hld-kv">
+          <div className="k">시세 확인</div>
+          <div className="v">{priced_count}개</div>
+        </div>
+      </div>
+
+      <CompositionBar accounts={accounts} totalEval={priced_eval} />
+
       {hasUnpriced ? (
-        <div className="summary-warning">
-          ⚠ 시세 미확인 또는 계산 정보 부족 종목이 있습니다 — 평가금액/손익/수익률은 평가
-          계산 가능 종목 기준입니다.
+        <div className="hld-hero-warn">
+          ⚠ 시세 미확인 또는 계산 정보 부족 종목이 있습니다 — 평가금액·손익·구성은
+          평가 계산 가능 종목 기준입니다.
         </div>
       ) : null}
     </div>
   );
 }
 
-// ─── 계좌별 요약 카드 (compact rows) ───────────────────────────
+// ─── 계좌별 구성 막대 (POC3-08) ─────────────────────────────────
+//   계좌별 평가금액(priced_eval) 비율을 가로 누적 막대로. 계좌순 세그먼트.
+//   비율 기준 = 평가금액(개별 행 시장비중과 동일 기준). 계산 불가 계좌는 제외.
 
-function AccountSummaryCards({ summaries }: { summaries: AccountSummary[] }) {
-  if (summaries.length === 0) return null;
+function CompositionBar({
+  accounts,
+  totalEval,
+}: {
+  accounts: AccountSummary[];
+  totalEval: number | null;
+}) {
+  // 평가금액이 있는 계좌만, 계좌순으로.
+  const segs = accounts
+    .filter((a) => a.priced_eval !== null && (a.priced_eval as number) > 0)
+    .map((a) => ({
+      account_group: a.account_group,
+      eval: a.priced_eval as number,
+    }))
+    .sort((x, y) => accountBarRank(x.account_group) - accountBarRank(y.account_group));
+
+  const total =
+    totalEval !== null && totalEval > 0
+      ? totalEval
+      : segs.reduce((s, x) => s + x.eval, 0);
+  if (segs.length === 0 || total <= 0) return null;
+
   return (
-    <div className="account-summary">
-      <div className="summary-card-title">계좌별 요약</div>
-      <ul className="account-summary-list">
-        {summaries.map((s) => (
-          <AccountSummaryRow key={s.account_group} summary={s} />
-        ))}
-      </ul>
+    <div className="hld-comp">
+      <div className="hld-comp-lbl">
+        <span>계좌별 구성 (평가금액 기준)</span>
+      </div>
+      <div className="hld-comp-bar">
+        {segs.map((s) => {
+          const pct = (s.eval / total) * 100;
+          return (
+            <div
+              key={s.account_group}
+              className="hld-comp-seg"
+              style={{
+                width: `${pct}%`,
+                background: accountBarColor(s.account_group),
+              }}
+              title={`${s.account_group} · ${pct.toLocaleString("ko-KR", {
+                maximumFractionDigits: 1,
+              })}%`}
+            />
+          );
+        })}
+      </div>
+      <div className="hld-comp-legend">
+        {segs.map((s) => {
+          const pct = (s.eval / total) * 100;
+          return (
+            <span className="lg" key={s.account_group}>
+              <span
+                className="sw"
+                style={{ background: accountBarColor(s.account_group) }}
+              />
+              {s.account_group}{" "}
+              {pct.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}%
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function AccountSummaryRow({ summary }: { summary: AccountSummary }) {
-  const calcBasis =
-    summary.calc_available_count > 0
-      ? `(평가 계산 ${summary.calc_available_count}개 기준)`
-      : "";
-  const noCalc = summary.calc_available_count === 0;
+// ─── 계좌 섹션 (증권사 스타일, POC3-08) ─────────────────────────
 
-  return (
-    <li className="account-summary-item">
-      <div className="account-summary-header">
-        <span className={accountTagClass(summary.account_group)}>
-          {summary.account_group}
-        </span>
-        <span className="account-counts">
-          {summary.total_count}개 · 시세 확인 {summary.priced_count}개
-          {summary.unpriced_count > 0 ? ` · 미확인 ${summary.unpriced_count}개` : ""}
-          {summary.calc_missing_count > 0
-            ? ` · 계산 정보 부족 ${summary.calc_missing_count}개`
-            : ""}
-        </span>
-      </div>
-      <div className="account-summary-body">
-        <KV label="총 매입금액" value={fmtMoney(summary.total_invested) ?? "-"} />
-        {noCalc ? (
-          <KV label="평가금액/손익/수익률" value="계산 불가" />
-        ) : (
-          <>
-            <KV
-              label={`평가금액 ${calcBasis}`}
-              value={fmtMoney(summary.priced_eval) ?? "-"}
-            />
-            <KV
-              label={`평가손익 ${calcBasis}`}
-              value={fmtSignedMoney(summary.priced_pnl) ?? "-"}
-              valueClass={pnlClass(summary.priced_pnl)}
-            />
-            <KV
-              label={`평가수익률 ${calcBasis}`}
-              value={fmtSignedPct(summary.priced_pnl_rate_pct) ?? "-"}
-              valueClass={pnlClass(summary.priced_pnl_rate_pct)}
-            />
-          </>
-        )}
-      </div>
-    </li>
-  );
-}
+type Section = { account_group: string | null; items: EnrichedHolding[] };
 
-// ─── compact holdings table ────────────────────────────────────
-
-function CompactHoldingsTable({
-  items,
+function AccountSection({
+  section,
+  subtotal,
   expanded,
   onToggle,
 }: {
-  items: EnrichedHolding[];
+  section: Section;
+  subtotal: AccountSummary | undefined;
   expanded: Set<string>;
   onToggle: (k: string) => void;
 }) {
   return (
-    <div className="compact-table-wrapper">
-      <table className="compact-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th>계좌</th>
-            <th>종목</th>
-            <th>손익</th>
-            <th>시장비중</th>
-            <th>판단</th>
-            <th>상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((it, idx) => {
-            const k = rowKey(it, idx);
-            const open = expanded.has(k);
-            const ag = it.account_group ?? "일반";
-            const nm =
-              it.name && it.name !== it.ticker
-                ? `${it.name} (${it.ticker})`
-                : it.ticker;
-
-            const priced = isPriced(it);
-            const calcOK = isCalcAvailable(it);
-            const pnlText = fmtSignedMoney(it.pnl_amount);
-            const pnlRateText = fmtSignedPct(it.pnl_rate_pct);
-            const mwText = fmtPct(it.market_weight_pct);
-
-            let pnlCell: React.ReactNode;
-            if (calcOK && pnlText && pnlRateText) {
-              pnlCell = (
-                <span className={pnlClass(it.pnl_amount)}>
-                  {pnlText} / {pnlRateText}
-                </span>
-              );
-            } else if (!priced) {
-              pnlCell = <span className="muted">시세 미확인</span>;
-            } else {
-              pnlCell = <span className="muted">계산 정보 부족</span>;
-            }
-
-            const mwCell = mwText ?? <span className="muted">시세 미확인</span>;
-
-            const stateCell = !priced
-              ? "[시세 미확인]"
-              : !calcOK
-                ? "[계산 정보 부족]"
-                : "정상";
-
-            return (
-              <CompactRow
-                key={k}
-                rowKey={k}
-                open={open}
-                onToggle={onToggle}
-                tagAccount={ag}
-                nameLabel={nm}
-                pnlCell={pnlCell}
-                marketWeightCell={mwCell}
-                // POC2 Step2C: 이번 단계 추천 로직 확장 금지 — holdings 평가는 항상 HOLD.
-                actionLabel="HOLD"
-                stateLabel={stateCell}
-                detail={<DetailRowFields it={it} />}
-              />
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="hld-acct">
+      {section.account_group ? (
+        <div className="hld-acct-head">
+          <span className={accountTagClass(section.account_group)}>
+            {section.account_group}
+          </span>
+          <span className="hld-acct-cnt">{section.items.length}종목</span>
+          {subtotal ? <AccountSubtotal summary={subtotal} /> : null}
+        </div>
+      ) : null}
+      {section.items.map((it, idx) => (
+        <HoldingRow
+          key={rowKey(it, idx)}
+          it={it}
+          rk={rowKey(it, idx)}
+          open={expanded.has(rowKey(it, idx))}
+          onToggle={onToggle}
+        />
+      ))}
     </div>
   );
 }
 
-function CompactRow({
-  rowKey: k,
+function AccountSubtotal({ summary }: { summary: AccountSummary }) {
+  if (summary.calc_available_count === 0) {
+    return <span className="hld-acct-sub muted">일부 시세 미확인</span>;
+  }
+  return (
+    <span className="hld-acct-sub">
+      평가손익{" "}
+      <span className={`amt ${pnlClass(summary.priced_pnl)}`}>
+        {fmtSignedMoney(summary.priced_pnl) ?? "-"}
+      </span>{" "}
+      <span className={pnlClass(summary.priced_pnl_rate_pct)}>
+        ({fmtSignedPct(summary.priced_pnl_rate_pct) ?? "-"})
+      </span>
+    </span>
+  );
+}
+
+// ─── 종목 행: 2단(상/하) × 2열(좌/우), 클릭 시 상세 펼침 (POC3-08) ──
+//   좌상 종목명+판단 · 우상 손익 · 좌하 티커/수량/비중 · 우하 매입가→현재가.
+
+function HoldingRow({
+  it,
+  rk,
   open,
   onToggle,
-  tagAccount,
-  nameLabel,
-  pnlCell,
-  marketWeightCell,
-  actionLabel,
-  stateLabel,
-  detail,
 }: {
-  rowKey: string;
+  it: EnrichedHolding;
+  rk: string;
   open: boolean;
   onToggle: (k: string) => void;
-  tagAccount: string;
-  nameLabel: string;
-  pnlCell: React.ReactNode;
-  marketWeightCell: React.ReactNode;
-  actionLabel: string;
-  stateLabel: string;
-  detail: React.ReactNode;
 }) {
-  const handleToggle = () => onToggle(k);
+  const priced = isPriced(it);
+  const calcOK = isCalcAvailable(it);
+  const pnlText = fmtSignedMoney(it.pnl_amount);
+  const pnlRateText = fmtSignedPct(it.pnl_rate_pct);
+  // 비중은 숫자로만(막대는 상단 계좌별 구성 막대로 통합 — 개별 행 막대 제거).
+  const mwText = fmtPct(it.market_weight_pct);
+  const avgText = fmtMoney(it.avg_buy_price);
+  const curText = fmtMoney(it.current_price);
+  const qtyText = Number.isFinite(it.quantity)
+    ? it.quantity.toLocaleString("ko-KR")
+    : "-";
+  const nm = it.name && it.name !== it.ticker ? it.name : it.ticker;
+
   return (
     <>
-      <tr className="compact-row" onClick={handleToggle}>
-        <td className="toggle-cell">
-          <button
-            type="button"
-            className="toggle-btn"
-            aria-expanded={open}
-            aria-label={open ? "상세 접기" : "상세 펼치기"}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggle();
-            }}
-          >
-            {open ? "▼" : "▶"}
-          </button>
-        </td>
-        <td>
-          <span className={accountTagClass(tagAccount)}>{tagAccount}</span>
-        </td>
-        <td className="ticker-cell">{nameLabel}</td>
-        <td className="num">{pnlCell}</td>
-        <td className="num">{marketWeightCell}</td>
-        <td>{actionLabel || "-"}</td>
-        <td className={stateLabel === "정상" ? "muted" : ""}>{stateLabel}</td>
-      </tr>
+      <div
+        className="hld-row"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => onToggle(rk)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle(rk);
+          }
+        }}
+      >
+        {/* 상단: 좌 종목명+판단 / 우 손익 */}
+        <div className="hld-row-top">
+          <div className="hld-row-name">
+            {nm}
+            <span className="hld-badges">
+              <span className="hld-b-hold">보유</span>
+              {!priced ? (
+                <span className="hld-b-warn">시세 미확인</span>
+              ) : !calcOK ? (
+                <span className="hld-b-warn">계산 정보 부족</span>
+              ) : null}
+            </span>
+          </div>
+          <div className="hld-row-pnl">
+            {calcOK && pnlText && pnlRateText ? (
+              <>
+                <span className={`amt ${pnlClass(it.pnl_amount)}`}>{pnlText}</span>
+                <span className={`rate ${pnlClass(it.pnl_amount)}`}>
+                  {pnlRateText}
+                </span>
+              </>
+            ) : (
+              <span className="amt muted">—</span>
+            )}
+          </div>
+        </div>
+        {/* 하단: 좌 티커/수량/비중 / 우 매입가→현재가 */}
+        <div className="hld-row-bot">
+          <div className="hld-row-facts">
+            <span className="tk">{it.ticker}</span>
+            <span className="sep">/</span>
+            <span>{qtyText}주</span>
+            <span className="sep">/</span>
+            {mwText ? (
+              <span>
+                비중 <span className="hld-wv">{mwText}</span>
+              </span>
+            ) : (
+              <span className="muted">비중 계산 불가</span>
+            )}
+          </div>
+          <div className="hld-row-price">
+            {avgText ? (
+              <>
+                매입 <b>{avgText}</b>
+                <span className="arw">→</span>
+                {curText ? (
+                  <>
+                    현재 <b>{curText}</b>
+                  </>
+                ) : (
+                  <span className="muted">현재 확인 불가</span>
+                )}
+              </>
+            ) : (
+              <span className="muted">매입가 없음</span>
+            )}
+          </div>
+        </div>
+      </div>
       {open ? (
-        <tr className="compact-row-detail">
-          <td></td>
-          <td colSpan={6}>{detail}</td>
-        </tr>
+        <div className="hld-row-detail">
+          <DetailRowFields it={it} />
+        </div>
       ) : null}
     </>
   );
@@ -486,41 +686,5 @@ function DetailRowFields({ it }: { it: EnrichedHolding }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-// ─── 작은 표시 컴포넌트 ─────────────────────────────────────────
-
-function SummaryItem({
-  label,
-  value,
-  valueClass,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
-  return (
-    <div className="summary-item">
-      <div className="summary-item-label">{label}</div>
-      <div className={`summary-item-value ${valueClass ?? ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function KV({
-  label,
-  value,
-  valueClass,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
-  return (
-    <div className="kv-row">
-      <span className="k">{label}</span>
-      <span className={`v ${valueClass ?? ""}`}>{value}</span>
-    </div>
   );
 }

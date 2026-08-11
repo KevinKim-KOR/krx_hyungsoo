@@ -65,6 +65,70 @@ const RECOMMENDED_GROUPS: ReadonlyArray<string> = [
 // 색 매핑이 있는 계좌(임의 입력 방지 겸 클래스 안전).
 const ACCT_COLOR_CLASS = new Set(["ISA", "오픈뱅킹", "연금"]);
 
+// ─── POC3-08 정렬 (종목 관리 조회 순서) ──────────────────────────
+//   보유 현황(EnrichedHoldingsSection)과 동일 계약: 계좌순(기본) = 계좌 그룹
+//   (일반·ISA·연금·오픈뱅킹·기타) + 계좌 안 종목명 가나다 · 종목명순 · 종목코드순.
+//   조회(로드/저장 직후) 시 자동 계좌순 정렬. 편집 중에는 재정렬 안 함(행 튐 방지).
+
+export type ManageSortKey = "account" | "name" | "ticker";
+
+// 계좌 우선순위 = RECOMMENDED_GROUPS 순서. 목록에 없으면 뒤로.
+function accountRank(ag: string): number {
+  const i = RECOMMENDED_GROUPS.indexOf(ag);
+  return i === -1 ? RECOMMENDED_GROUPS.length : i;
+}
+
+// 계좌 라벨 정규화 — 빈 값은 "일반"(백엔드 normalize_account_group 계약과 동일).
+function normAccount(ag: string): string {
+  const t = (ag ?? "").trim();
+  return t === "" ? "일반" : t;
+}
+
+// 종목명 정렬 키 — 이름 없으면 ticker 로 대체.
+function rowNameKey(r: RowDraft): string {
+  return (r.name && r.name.trim() !== "" ? r.name : r.ticker).trim();
+}
+
+function compareRowByName(a: RowDraft, b: RowDraft): number {
+  const c = rowNameKey(a).localeCompare(rowNameKey(b), "ko");
+  return c !== 0 ? c : a.ticker.localeCompare(b.ticker);
+}
+
+// rows·metas 를 함께 정렬한 새 배열 쌍을 반환(index 짝 보존).
+//   빈 행(ticker 비어있음)은 정렬에서 맨 뒤로 — 새로 추가한 입력 행이 위로 안 튐.
+export function sortRowsWithMetas(
+  rows: RowDraft[],
+  metas: RowMeta[],
+  key: ManageSortKey
+): { rows: RowDraft[]; metas: RowMeta[] } {
+  const paired = rows.map((r, i) => ({ r, m: metas[i] ?? EMPTY_META }));
+  const cmp = (
+    x: { r: RowDraft },
+    y: { r: RowDraft }
+  ): number => {
+    // 빈 종목코드 행은 항상 뒤로(정렬 대상 아님).
+    const xe = x.r.ticker.trim() === "";
+    const ye = y.r.ticker.trim() === "";
+    if (xe !== ye) return xe ? 1 : -1;
+    if (xe && ye) return 0;
+    if (key === "ticker") return x.r.ticker.localeCompare(y.r.ticker);
+    if (key === "name") return compareRowByName(x.r, y.r);
+    // account
+    const ag = normAccount(x.r.account_group);
+    const bg = normAccount(y.r.account_group);
+    const ra = accountRank(ag);
+    const rb = accountRank(bg);
+    if (ra !== rb) return ra - rb;
+    if (ag !== bg) return ag.localeCompare(bg, "ko");
+    return compareRowByName(x.r, y.r);
+  };
+  paired.sort(cmp);
+  return {
+    rows: paired.map((p) => p.r),
+    metas: paired.map((p) => p.m),
+  };
+}
+
 const EMPTY_ROW: RowDraft = {
   ticker: "",
   name: "",
@@ -170,6 +234,8 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   const [lastApply, setLastApply] = useState<HoldingsApplyStatusRecord | null>(
     null
   );
+  // POC3-08: 정렬 기준(조회 시 계좌순 자동 · 버튼으로 수동 변경). 편집 중 자동 재정렬 X.
+  const [sortKey, setSortKey] = useState<ManageSortKey>("account");
 
   // 종목코드 조회 debounce timer(행별). 언마운트/재입력 시 취소.
   const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
@@ -245,11 +311,17 @@ export default function HoldingsManageView({ onNavigate }: Props) {
         const data = await fetchHoldings();
         if (data.holdings.length > 0) {
           const loadedRows = data.holdings.map(holdingToRow);
-          setRows(loadedRows);
+          // 조회 시 자동 계좌순 정렬(사용자 확정). 정렬 기준은 초기값 "account".
+          const sorted = sortRowsWithMetas(
+            loadedRows,
+            loadedRows.map(() => ({ ...EMPTY_META })),
+            "account"
+          );
+          setRows(sorted.rows);
           // 로드된 각 행의 종목코드 상태를 조회(형식·존재). 이름칸은 이미 저장값이 있어
           //   자동 덮어쓰기는 안 되고 codeStatus 배지만 갱신.
-          setMetas(loadedRows.map(() => ({ ...EMPTY_META })));
-          loadedRows.forEach((r, i) => {
+          setMetas(sorted.metas);
+          sorted.rows.forEach((r, i) => {
             void lookupTicker(i, r.ticker);
           });
         }
@@ -307,9 +379,15 @@ export default function HoldingsManageView({ onNavigate }: Props) {
       const payload = rowsToPayload(rows);
       const saved = await saveHoldings(payload);
       const savedRows = saved.holdings.map(holdingToRow);
-      setRows(savedRows);
-      setMetas(savedRows.map(() => ({ ...EMPTY_META })));
-      savedRows.forEach((r, i) => void lookupTicker(i, r.ticker));
+      // 저장 직후에도 현재 정렬 기준으로 재정렬(조회 상태로 정돈).
+      const sorted = sortRowsWithMetas(
+        savedRows,
+        savedRows.map(() => ({ ...EMPTY_META })),
+        sortKey
+      );
+      setRows(sorted.rows);
+      setMetas(sorted.metas);
+      sorted.rows.forEach((r, i) => void lookupTicker(i, r.ticker));
       setSavedAt(new Date().toLocaleTimeString("ko-KR"));
       // 저장 성공 시에만 Dashboard 의 보유·Evidence 읽기 무효화 (변경 실패 시
       // catch 로 가서 미호출 — §4.5 "변경 실패 시 무효화 금지").
@@ -319,7 +397,22 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [rows, handleApiError, lookupTicker]);
+  }, [rows, sortKey, handleApiError, lookupTicker]);
+
+  // POC3-08: 수동 정렬 버튼. 현재 rows·metas 를 선택 기준으로 재배열(편집값 보존).
+  //   rows·metas 는 index 로 짝지어져 있어 함께 정렬해야 한다. debounce 조회 타이머도
+  //   index 기반이라 재정렬 시 잔여 타이머를 정리한다.
+  const applySort = useCallback(
+    (key: ManageSortKey) => {
+      setSortKey(key);
+      Object.values(lookupTimers.current).forEach((t) => clearTimeout(t));
+      lookupTimers.current = {};
+      const sorted = sortRowsWithMetas(rows, metas, key);
+      setRows(sorted.rows);
+      setMetas(sorted.metas);
+    },
+    [rows, metas]
+  );
 
   // POC3-08: 마지막 OCI 적용 이력(지속 표시). 마운트 시 1회 조회.
   const loadApplyStatus = useCallback(async () => {
@@ -381,6 +474,41 @@ export default function HoldingsManageView({ onNavigate }: Props) {
         </p>
 
         {errorMsg ? <div className="message error">{errorMsg}</div> : null}
+
+        {/* POC3-08: 정렬 컨트롤. 조회 시 계좌순 자동 정렬 · 버튼으로 수동 재정렬.
+            편집 중 자동 재정렬은 안 함(버튼 눌러야 재정렬 — 행 튐 방지). */}
+        <div className="holdings-sortbar">
+          <span className="holdings-sortbar-label">정렬</span>
+          <div
+            className="holdings-sort-seg"
+            role="group"
+            aria-label="보유 종목 정렬 기준"
+          >
+            {(
+              [
+                ["account", "계좌순"],
+                ["name", "종목명순"],
+                ["ticker", "종목코드순"],
+              ] as ReadonlyArray<[ManageSortKey, string]>
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={sortKey === key ? "on" : ""}
+                aria-pressed={sortKey === key}
+                onClick={() => applySort(key)}
+                disabled={loading}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {sortKey === "account" ? (
+            <span className="holdings-sortbar-hint">
+              계좌 순서: 일반 · ISA · 연금 · 오픈뱅킹 · 기타 (계좌 안은 종목명순)
+            </span>
+          ) : null}
+        </div>
 
         {/* POC3-08: 입력 편의 우선 카드행 그리드. 각 행은 항상 1줄 고정.
             수량·매입단가 콤마 · 계좌 select · 문제 행은 종목코드 칸 아이콘 + 테두리색만. */}

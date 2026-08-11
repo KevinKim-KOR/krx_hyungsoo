@@ -136,8 +136,8 @@ flowchart LR
 | market_discovery | 요즘 잘 오르는 ETF | `MarketDiscoveryView` | 비교·판단 | 운영(시장 갱신 트리거) | IMPLEMENTED_UNVERIFIED |
 | etf_exposure | ETF 구성종목 | `ETFExposureView` | 비교·판단 | 조회 | IMPLEMENTED_UNVERIFIED |
 | ai_sessions | AI 투자 세션 | `AISessionsView` | 비교·판단 | 기록 | IMPLEMENTED_UNVERIFIED |
-| holdings | 보유 현황 | `HoldingsView` | 보유·자료 관리 | 평가·시세 갱신 | IMPLEMENTED_UNVERIFIED |
-| holdings_manage | 종목 관리 | `HoldingsManageView` | 보유·자료 관리 | 입력·저장·**OCI 적용**(POC3-07)·**형식검증+종목명 자동조회**(POC3-08) | IMPLEMENTED_UNVERIFIED |
+| holdings | 보유 현황 | `HoldingsView` | 보유·자료 관리 | 평가·시세 갱신·**정렬(계좌순 기본)**(POC3-08) | IMPLEMENTED_UNVERIFIED |
+| holdings_manage | 종목 관리 | `HoldingsManageView` | 보유·자료 관리 | 입력·저장·**OCI 적용**(POC3-07)·**형식검증+종목명 자동조회+정렬**(POC3-08) | IMPLEMENTED_UNVERIFIED |
 | holdings_evidence | 확인 근거 | `HoldingsEvidenceView` | 보유·자료 관리 | 읽기 근거 | IMPLEMENTED_UNVERIFIED |
 | approval | 승인·적용 | `ApprovalTelegramView` | 승인·운영 | 운영(PARAM·seed OCI 적용) — POC3-07 역할 축소 | IMPLEMENTED_UNVERIFIED |
 | diagnostics | 진단·상태 | `DiagnosticsView` | 진단·상태 | 진단·미리보기·LEGACY 흡수(POC3-07 신규) | DIAGNOSTIC |
@@ -148,8 +148,8 @@ flowchart LR
 
 - **today_check** (`TodayInvestmentCheckView`): 최초 진입 시 `fetchMarketTopnLatest` · `fetchEnrichedHoldings` · `fetchHoldingsMarketEvidence` · `fetchNavDiscountLatest` 자동 조회. KOSPI 위치·국면·오늘 먼저 볼 보유 ETF 최대 3건(= backend `judgment_summary` 표시)·정비 큐. **표시 데이터가 저장 DB/캐시에 의존** → 데이터 부실 시 빈 화면(§13).
 - **market_discovery** (`MarketDiscoveryView`): "최신 시장 데이터 갱신" 버튼 → `POST /market/refresh` (FDR BG job). **PC가 외부 수집을 트리거하는 운영 경로**.
-- **holdings_manage**: `PUT /holdings`(saveHoldings) → `state/holdings/holdings_latest.json` 로컬 저장 + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)**. 저장과 OCI 적용은 **별도 동작**. 적용은 단일 payload atomic replace(별도 manifest 파일 없음, active 재독출 hash 확인). 사용자 명시 클릭만. **POC3-08 (A·B·D)**: 종목코드 입력 시 `GET /holdings/etf-name` 로 `etf_master` 종목명 자동조회(있으면 이름칸 자동채움·✓, 없으면 개별주 경고 ⚠·저장 허용). 형식(영숫자 6자) 위반은 저장 차단(✗) — `PUT /holdings` 가 `strict_ticker=True` 로 최종 방어(`app/holdings.py :: TICKER_PATTERN`). 단 `load()`(읽기)는 lenient 유지(기존 비정형 값 하위호환). 계좌는 추천 목록 select 로 제한(자유입력 차단). 저장 흐름(경고·오류→저장→결과)은 하단 고정 액션바.
-- **holdings**(보유 현황): `POST /holdings/market/refresh`(Naver) + `fetchEnrichedHoldings`. 시세 갱신은 PC 직접.
+- **holdings_manage**: `PUT /holdings`(saveHoldings) → `state/holdings/holdings_latest.json` 로컬 저장 + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)**. 저장과 OCI 적용은 **별도 동작**. 적용은 단일 payload atomic replace(별도 manifest 파일 없음, active 재독출 hash 확인). 사용자 명시 클릭만. **POC3-08 (A·B·D)**: 종목코드 입력 시 `GET /holdings/etf-name` 로 `etf_master` 종목명 자동조회(있으면 이름칸 자동채움·✓, 없으면 개별주 경고 ⚠·저장 허용). 형식(영숫자 6자) 위반은 저장 차단(✗) — `PUT /holdings` 가 `strict_ticker=True` 로 최종 방어(`app/holdings.py :: TICKER_PATTERN`). 단 `load()`(읽기)는 lenient 유지(기존 비정형 값 하위호환). 계좌는 추천 목록 select 로 제한(자유입력 차단). 저장 흐름(경고·오류→저장→결과)은 하단 고정 액션바. **정렬 컨트롤**(`sortRowsWithMetas`) — 조회(로드/저장 직후) 시 계좌순 자동 정렬 + 계좌순/종목명순/종목코드순 수동 버튼(편집 중 자동 재정렬 X, rows·metas 짝 보존).
+- **holdings**(보유 현황): `POST /holdings/market/refresh`(Naver) + `fetchEnrichedHoldings`. 시세 갱신은 PC 직접. **POC3-08: 정렬 컨트롤**(`EnrichedHoldingsSection.tsx :: sortHoldings`) — 계좌순(기본, 일반·ISA·연금·오픈뱅킹·기타 순 + 계좌 내 종목명 가나다)·종목명순·종목코드순. **증권사 스타일 표시 개편**(`HoldingsHero`·`CompositionBar`·`AccountSection`·`HoldingRow`) — 상단 큰 평가 배너(총 평가금액·평가손익 + 계좌별 구성 막대) + 계좌 소계 헤더 + 종목 행 2단×2열(종목명·판단배지 / 손익 / 티커·수량·비중숫자 / 매입가→현재가), 행 클릭 상세 펼침. 구성 막대 = 계좌별 평가금액 비율(계좌순·계좌색). 표시 방식만 교체(평가·계산·요약·정렬 계약 무변경, 신규 API·계산 없음, 손익색은 기존 pnlClass 초록/빨강 재사용).
 - **approval**(승인·적용, POC3-07 축소): `ApprovalTelegramView` — `OciAlertHeader` + `ThreePushParamCard`(PARAM·seed OCI 적용)만. 정보 PUSH 카드·미리보기·샘플·개발호환·현재 run 표시는 **`diagnostics`로 이동**. 빈 승인 카드 안 만듦(직전 POC3 확정).
 - **diagnostics**(진단·상태, POC3-07 신규): `DiagnosticsView` — (a) 기동 시 OCI 상태 상세(`GET /oci/startup-status`), (b) `DataStatusView`(placeholder 포함) 흡수, (c) 미리보기·샘플(`ManualPreviewSection`·`DevCompatSection`, PREVIEW/TEST 표기), (d) `DashboardView`(LEGACY, details 접힘). 정상 업무 아님.
 - **첫 화면 OCI 한 줄**(POC3-07): `today_check` 상단에 `GET /oci/startup-status` 로 기동 시 읽은 OCI 상태 한 줄 + 진단·상태 링크. 이 GET 은 **백엔드 기동 시 1회 읽은 캐시** 반환(요청·새로고침으로 OCI 재조회 안 함).
