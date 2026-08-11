@@ -1,8 +1,34 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-06 (POC3-07 PC 운영 연결·운영/진단 화면 분리 통합 — **검증자 VERIFIED · PASS** · 설계자 Closeout 대기)
+최종 업데이트: 2026-08-11 (POC3-08 종목 관리·보유 현황 그리드 UX 개선 A~F — **검증자 VERIFIED_WITH_NOTES** · 사용자 실화면 확인(Holdings 32종목 정합) 대기)
 
-## 이번 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
+## 이번 STEP 요약 (POC3-08 — 종목 관리·보유 현황 그리드 UX 개선 A~F, 사용자 직접 UI 지시)
+
+**상태**: `VERIFIED_WITH_NOTES`(위험수준 MEDIUM — 유일 근거 = 복구된 Holdings 32종목의 실보유 정합은 사용자 판단). 커밋 `ca9a0415`(파트1)·`0a8fe3cd`(파트2)·`be6d27d9`(A~D)·`3b2a3175`(E·F)·`90c2b005`(검증자 재작업)·`591a05a0`(결과서 NOTE 정정). 전부 push 완료. 최신 HEAD 는 `git log`로 실측.
+
+**검증**: 검증자 VERIFIED_WITH_NOTES · tsc 0 · eslint 0 · vitest **157** · 백엔드 focused(holdings/oci/ticker/apply) **41** · black/flake8 OK. **실화면 확인·Holdings 32종목 정합은 사용자 몫.**
+
+**성격**: 설계서 없는 **사용자 실화면 직접 확정 UI 개선**(handoff §2 미해결 4건 A~D + 추가 지시 E·F). 신규 API 1개(읽기전용 `GET /holdings/etf-name`) 외 DB·외부 source·산식·OCI·매매로직 무변경. 손익 색·평가·요약 계약 보존.
+
+**요구별 결과**:
+- **(A)** 종목코드 형식검증(영숫자 6자·저장 차단, `PUT /holdings` strict_ticker) + `etf_master` 종목명 자동조회(신규 `GET /holdings/etf-name`, 개별주는 경고만·저장 허용).
+- **(B)** 종목 관리 하단 고정 액션바(경고·오류→저장→결과 한 흐름, 행 1줄 고정).
+- **(C)** OCI 적용 UNKNOWN 껍데기 파일 **근본 해소**(artifact 삭제 + .gitignore + 테스트가 live 경로에 write 하던 원인 tmp 격리).
+- **(D)** 계좌 입력 datalist 자유입력 → 추천 목록 select 제한.
+- **(E)** 두 화면 정렬(계좌순 기본 — 일반·ISA·연금·오픈뱅킹·기타 + 계좌 내 종목명 가나다 / 종목명순 / 종목코드순). 종목 관리는 조회 시 자동 계좌순 + 수동 버튼(편집 중 재정렬 X).
+- **(F)** 보유 현황 증권사 스타일 개편 — 상단 평가 배너 + 계좌별 구성 막대(평가금액 비율) + 종목 행 2단×2열(종목명·판단 / 손익 / 티커·수량·비중 / 매입가→현재가). 개별 행 비중 막대는 값이 작아 제거·숫자로만.
+
+**검증자 재작업 반영(`90c2b005`)**: #1 비동기 종목명 조회 index 경합 → 행 uid 식별(늦은 응답 폐기) · #2 기존 커스텀 계좌 표시=저장 정합(위장 제거) · #3 부분 평가값 3상태(전부/일부/전부불가)+N/M 기준 표기. 실비동기·3상태 컴포넌트 테스트 6건 추가.
+
+**⚠️ 라이브 Holdings 사고·복구**: 개발 중 `PUT /holdings` 를 live 파일 대상 실행한 실수로 33건→1건 덮어씀 → OCI 정본(`ssh oci-krx` 읽기전용)에서 **32건 복구**(오타 `111` 소거). 재발방지 메모리 `feedback_no_write_api_test_on_live_state` 등록. **실보유 32건 정합은 사용자 확인 대기.**
+
+**결과서**: `docs/ai_result/POC3/POC3-08_HOLDINGS_GRID_UX_IMPROVEMENT_RESULT.md`.
+
+**다음 게이트**: 사용자 실화면 확인(특히 종목 관리 32종목 정합) → 설계자 Closeout / 다음 Step 확정.
+
+---
+
+## 직전 STEP 요약 (POC3-07 — PC 운영 연결·운영/진단 화면 분리 통합, INTEGRATED_DESIGN_V1)
 
 **상태**: `VERIFIED · PASS`. 검증자 최종 판정 VERIFIED(위험수준 NONE). 커밋 `37c310f2`(기준)·`30acd561`(A)·`fdced239`(B)·`b39cc7c1`(C)·`5dc8e852`(결과서)·`06c856eb`(r1)·`6536b29d`(r2)·`8f31fdeb`(r3)·`c52251ae`(r4)·`997bdf9f`(r5)·`686fa47c`(r6)·`96a4a414`(r7). 최신 HEAD 는 `git log`로 실측.
 
