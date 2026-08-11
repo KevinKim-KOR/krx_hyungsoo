@@ -794,6 +794,15 @@ li.account-summary-item:last-child {
   font-size: 12px;
   color: var(--warn);
 }
+/* 계산 기준(N/M) 표기 — 부분 합계임을 명시 */
+.hld-basis {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 5px;
+}
+.hld-basis.part {
+  color: var(--warn);
+}
 
 /* 계좌별 구성 막대 */
 .hld-comp {

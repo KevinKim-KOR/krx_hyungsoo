@@ -47,21 +47,34 @@
 
 ## 2) 변경된 파일 목록
 
-- `app/holdings.py`: 수정 — `TICKER_PATTERN` 신설, `validate_holdings`/`_coerce_holding` 에 `strict_ticker` 파라미터(기본 False=하위호환).
-- `app/api.py`: 수정 — `put_holdings` 에 `strict_ticker=True`, 신규 `GET /holdings/etf-name`(`get_etf_name_lookup`), `market_data_store` import.
-- `frontend/lib/api/holdings.ts`: 수정 — `fetchEtfName` + `EtfNameLookupResult` 추가.
-- `frontend/app/components/HoldingsManageView.tsx`: 수정 — 종목코드 검증/자동조회·행별 메타·하단 액션바·계좌 select·`isValidTickerFormat` export.
-- `frontend/app/globals.css`: 수정 — `.hm-code-cell`·`.hm-flag*`·`.hm-row-err/warn`·`.hm-inp-err/warn`·`.hm-actionbar*`·`.hm-msg-*`.
-- `frontend/app/components/HoldingsManageView.commas.test.tsx`: 수정 — `isValidTickerFormat` 테스트 4케이스 추가.
-- `tests/test_holdings_ticker_validation.py`: **신규** — 형식 게이트·etf-name·하위호환 13케이스(untracked).
-- `tests/test_holdings_oci_apply.py`: 수정 — `_LOCAL_APPLY_STATUS` tmp 격리 autouse fixture(C 근본).
-- `.gitignore`: 수정 — `state/holdings/holdings_apply_status_latest.json` 추가.
-- `docs/PROGRAM_TRUTH.md`: 수정 — 헤더·§5.1·§5.2·§6.1·부록 A 에 POC3-08 반영(정렬 포함).
-- `frontend/app/components/EnrichedHoldingsSection.tsx`: 수정 — (E) 정렬 `sortHoldings`·`HoldingsSortKey`·정렬 컨트롤 + (F) 증권사 스타일 `HoldingsHero`·`CompositionBar`(계좌별 구성 막대)·`AccountSection`·`HoldingRow`(죽은 표 컴포넌트 제거·개별 행 비중 막대 제거).
-- `frontend/app/components/EnrichedHoldingsSection.sort.test.tsx`: **신규** — 보유 현황 정렬 8케이스(untracked).
-- `frontend/app/components/HoldingsManageView.tsx`: 수정 — (E) 종목 관리 정렬 `sortRowsWithMetas`·`ManageSortKey`·조회 시 자동 계좌순·수동 정렬 버튼(rows·metas 짝 보존).
-- `frontend/app/components/HoldingsManageView.sort.test.tsx`: **신규** — 종목 관리 정렬 8케이스(untracked, 빈 행·metas 짝 보존 포함).
-- `frontend/app/globals.css`: 수정 — (E) `.holdings-sortbar*`·`.holdings-sort-seg` + (F) `.hld-hero*`·`.hld-comp*`(계좌별 구성 막대)·`.hld-acct*`·`.hld-row*`·`.hld-badges`·`.hld-wv` 추가(위 (A~D) 수정에 이어).
+> **기준: `git diff --name-status ca9a0415^..HEAD` 와 1:1 대조 (재작업 시 정정).** ca9a0415 = POC3-08 최초 커밋. 아래 tracked = 커밋 완료. **재작업분(비동기·계좌·평가 3상태 + 신규 2 테스트)은 본 결과서와 함께 커밋 예정.**
+
+**백엔드 (A·C, 커밋 `be6d27d9` 계열):**
+- `app/holdings.py`: 수정(tracked) — `TICKER_PATTERN` 신설, `validate_holdings`/`_coerce_holding` 에 `strict_ticker`(기본 False=하위호환).
+- `app/api.py`: 수정(tracked) — `put_holdings` `strict_ticker=True`, 신규 `GET /holdings/etf-name`, `market_data_store` import.
+- `app/api_holdings_oci_apply.py`: 수정(tracked) — POC3-08 파트2(OCI 적용 status GET). *(A~D 이전 커밋 파트2 산출물, 본 diff 범위 포함)*
+- `app/holdings_oci_apply.py`: 수정(tracked) — 파트2 `_save_apply_status`/`read_apply_status`.
+- `.gitignore`: 수정(tracked) — `state/holdings/holdings_apply_status_latest.json` 추가.
+- `tests/test_holdings_ticker_validation.py`: 신규(tracked) — 형식 게이트·etf-name·하위호환 13케이스.
+- `tests/test_holdings_apply_status.py`: 신규(tracked) — 파트2 apply status 6케이스.
+- `tests/test_holdings_oci_apply.py`: 수정(tracked) — `_LOCAL_APPLY_STATUS` tmp 격리 autouse fixture(C 근본).
+
+**프론트 (A·B·D·E·F):**
+- `frontend/lib/api/holdings.ts`: 수정(tracked) — `fetchEtfName` + `EtfNameLookupResult`.
+- `frontend/lib/api/holdingsApply.ts`: 수정(tracked) — 파트2 apply status FE 함수.
+- `frontend/app/components/HoldingsManageView.tsx`: 수정 — (A·B·D) 형식검증·자동조회·액션바·계좌 select + (E) 정렬 `sortRowsWithMetas` + **재작업: 행 uid 도입(비동기 조회 index 경합 해소)·계좌 select 위장 제거**. *(tracked, 재작업분 미커밋)*
+- `frontend/app/components/EnrichedHoldingsSection.tsx`: 수정 — (E) 정렬 `sortHoldings` + (F) 증권사 스타일 `HoldingsHero`·`CompositionBar`·`AccountSection`·`HoldingRow`(죽은 표 컴포넌트·개별 행 막대 제거) + **재작업: 평가 3상태·N/M 기준 표기**. *(tracked, 재작업분 미커밋)*
+- `frontend/app/globals.css`: 수정 — (A~D) `.hm-*` + (E) `.holdings-sortbar*` + (F) `.hld-*`(hero·comp·acct·row·badges·wv) + **재작업: `.hld-basis`**. *(tracked, 재작업분 미커밋)*
+- `frontend/app/components/HoldingsManageView.commas.test.tsx`: 신규(tracked) — 콤마·형식검증 14케이스.
+- `frontend/app/components/EnrichedHoldingsSection.sort.test.tsx`: 신규(tracked) — 보유 현황 정렬 8케이스.
+- `frontend/app/components/HoldingsManageView.sort.test.tsx`: 신규(tracked, 재작업 시 uid shape 반영 수정) — 종목 관리 정렬 8케이스.
+- `frontend/app/components/HoldingsManageView.behavior.test.tsx`: **신규(untracked, 재작업)** — #1 비동기 경합·#2 계좌 정합 3케이스(deferred 실비동기).
+- `frontend/app/components/EnrichedHoldingsSection.eval.test.tsx`: **신규(untracked, 재작업)** — #3 평가 3상태(전부/일부/전부불가) 3케이스.
+
+**문서:**
+- `docs/ai_plan/POC3/POC3-08_HOLDINGS_GRID_UX_IMPROVEMENT_PLAN_V1.md`: 신규(tracked) — 개발 PLAN.
+- `docs/ai_result/POC3/POC3-08_HOLDINGS_GRID_UX_IMPROVEMENT_RESULT.md`: 본 결과서(tracked, 재작업 시 정정).
+- `docs/PROGRAM_TRUTH.md`: 수정(tracked) — 헤더·§5.1·§5.2·§6.1·부록 A 에 A~F 반영.
 
 ## 3) 신규 추가된 의존성
 
@@ -70,6 +83,15 @@
 ## 4) 지시문 외 변경
 
 - **`tests/test_holdings_oci_apply.py` autouse fixture 추가**: 지시(C)는 "artifact 삭제 + .gitignore" 였으나, 삭제만으로는 기존 테스트가 live 경로에 재생성함을 실측 → 재발 방지 위해 테스트 격리를 함께 수정. (C의 근본 원인 해소 — 지시 취지 범위 내.)
+
+## 4-R) 검증자 재작업 요청 반영 (2026-08-11)
+
+> 검증자 판정: E·F는 설계서 없는 **사용자 실화면 직접 확정 UI 변경**(설계서 부재는 BLOCKED 사유 아님). UI 자체(1280×720 오버플로/콘솔 오류 없음·정렬·구성 막대 렌더)는 통과. 아래 기능·정합 4건만 재작업. **통과한 시각 스타일은 변경 안 함.**
+
+- **#1 비동기 조회 ↔ 정렬/삭제 index 경합**: `lookupTicker`가 배열 index 로 행을 식별하던 것을 **행 안정 식별자 `uid`** 기반으로 전환. `RowDraft.uid` 신설(`emptyRow()`/`holdingToRow()`가 부여, payload 엔 미포함). 응답 적용 직전 `currentTickerOf(uid)`로 **그 행의 현재 ticker 가 조회 대상과 같은지 재확인** → 다르면(코드 변경/행 삭제) 결과 폐기. debounce 타이머·`removeRow`도 uid 키. 정렬(`applySort`)은 uid 라 타이머 강제 취소 불필요. **실비동기 테스트**(deferred + 실제 삭제/코드변경)로 고정 — `HoldingsManageView.behavior.test.tsx`.
+- **#2 기존 사용자 정의 계좌 표시=저장 정합**: select 가 추천 목록 밖 값을 "일반"으로 위장하던 것 제거 → **실제 저장값을 select value 로 표시**하고, 추천 목록 밖이면 `"<값> (기존)"` 옵션을 추가로 노출. 미변경 저장 시 payload 가 화면 표시값과 일치. fixture(`키움-일반`)로 표시=저장 정합 테스트.
+- **#3 부분 평가값을 전체처럼 표시**: `HoldingsHero`·`AccountSubtotal` 에 **3상태(전부/일부/전부불가)** + 부분이면 **N/M 종목 기준** 명시. 총 평가금액 라벨·계좌 소계에 `N/M종목 기준`, 전부불가면 "계산 불가"+갱신 유도. 3상태 컴포넌트 테스트 — `EnrichedHoldingsSection.eval.test.tsx`.
+- **#4 결과서 파일 목록 / #5 PROGRAM_TRUTH 헤더**: §2를 `git diff --name-status ca9a0415^..HEAD` 와 1:1 대조로 정정(누락 6파일 추가·tracked/untracked 정정). PROGRAM_TRUTH 헤더 A~D→A~F·날짜 갱신.
 
 ## 5) 알려진 한계 / 미완성
 
@@ -81,7 +103,8 @@
 
 ## 6) 다음 검증자(Codex)에게 알릴 점
 
-- **⚠️ 라이브 holdings 파일 복구 이력**: 개발 중 `PUT /holdings` 를 TestClient 로 **live 파일 대상** 실행하는 실수로 `state/holdings/holdings_latest.json`(사용자 보유 33종목)을 1종목으로 덮어씀 → **OCI authoritative 복사본**(`ssh oci-krx`, 읽기전용)에서 복구. 복구본 = **32종목**(OCI 최종 적용본, 오타 `111` 행은 없음 — 목표 A와 정합). PC 원본의 `111` 1건은 소거됨. 이후 모든 쓰기 테스트는 경로 격리(tmp)로만 수행. (재발방지 메모리 등록.)
+- **본 작업은 설계자 지시서 없는 사용자 직접 UI 지시 작업이다**(E·F 및 재작업). 설계서 부재를 BLOCKED 사유로 쓰지 않는다(검증자 정정 반영). 검증 기준 = 결과서 요구 · 커밋 diff · 사용자 실화면 지시.
+- **⚠️ 라이브 Holdings 데이터 상태(#6, read-only 보고)**: 개발 중 `PUT /holdings` 를 live 파일 대상 실행한 실수로 33건이 1건으로 덮어써진 뒤 **OCI 32건으로 복구**됨. 재작업에서는 **추가 write 로 정리하지 않음** — read-only 실측만 보고: 현재 `state/holdings/holdings_latest.json` = **32종목**, ticker `111` **없음**(소거됨), 중복 ticker 존재(`069500`×3·`367760`×2 — 다계좌/분할매수 허용 정책). **실제 32건이 맞는지는 사용자 판단 대기.**
 - **⚠️ 사전 존재 실패(내 변경 무관)**: `tests/test_factor_signals.py::test_step3_message_text_does_not_list_all_holdings_factor_reasons` 가 `KeyError: 'message_text'` 로 FAIL. 내 코드를 stash 한 clean HEAD 에서도 동일 FAIL → **POC3-08 이전부터 존재하는 실패**. 이번 작업과 무관(`/runs/generate-from-holdings` 응답 shape 이슈).
 - **strict_ticker 계약 핵심**: 저장(PUT)만 strict, 읽기(`load()`)는 lenient. 이 분리로 기존 저장 파일의 비정형 값(`111` 등)이 있어도 전체 화면이 죽지 않음 — `test_load_backward_compat_with_legacy_ticker` 로 고정.
 - **(C) 근본 검증법**: artifact 삭제 후 `pytest tests/test_holdings_oci_apply.py` 재실행 → `state/holdings/holdings_apply_status_latest.json` 재생성 안 되면 OK.
@@ -94,13 +117,16 @@
 
 ---
 
-## 검증 산출물 (실측)
+## 검증 산출물 (실측 · 재작업 재검증 2026-08-11)
 
-- 백엔드(A·C 커밋 `be6d27d9`): `black --check` OK · `flake8` 0 · `py_compile` OK · `pytest tests/test_holdings_ticker_validation.py tests/test_holdings_oci_apply.py tests/test_holdings_apply_status.py tests/test_holdings_account_group.py` = **41 passed**. E·F 는 프론트 전용 — 백엔드 무변경.
-- 프론트(최종 A~F): `npx tsc --noEmit` 0 · `npm run lint` 0 · `npx vitest run` = **151 passed** (12 파일). POC3-08 신규/확장 테스트: `HoldingsManageView.commas.test.tsx`(14, +콤마·형식검증) · `EnrichedHoldingsSection.sort.test.tsx`(8, 신규) · `HoldingsManageView.sort.test.tsx`(8, 신규).
+- 백엔드(A·C 커밋 `be6d27d9`, 재작업서 백엔드 무변경): `black --check` OK · `flake8` 0 · `pytest tests/test_holdings_ticker_validation.py tests/test_holdings_oci_apply.py tests/test_holdings_apply_status.py tests/test_holdings_account_group.py` = **41 passed**.
+- 프론트(A~F + 재작업): `npx tsc --noEmit` **0** · `npm run lint` **0** · `npx vitest run` = **157 passed** (14 파일). 재작업 신규: `HoldingsManageView.behavior.test.tsx`(3 — #1 비동기 경합·#2 계좌 정합) · `EnrichedHoldingsSection.eval.test.tsx`(3 — #3 평가 3상태). 기존: commas(14)·sort 2파일(8+8) 등.
 - 런타임 실측:
-  - (A) `GET /holdings/etf-name` — 069500→"KODEX 200"(found) · 005930→found=false · 0005g0→0005G0 정규화·"IBK K-AI반도체코어테크". `PUT /holdings` — 111→422 · 005930→200 (격리 파일).
-  - (E) 계좌순 정렬 실데이터 32종목 — 일반→ISA→오픈뱅킹 그룹핑 + 계좌 내 종목명 가나다 · 종목 관리 metas 짝 보존 OK.
-  - (F) `GET /holdings/enriched` 실측 — 컴포넌트 소비 필드 12종 전부 존재(32종목·27 priced) · 계좌별 구성 막대 비율 일반 37.1%·ISA 40.0%·오픈뱅킹 22.9%(합 100%).
-- (C) artifact: 삭제 후 `pytest tests/test_holdings_oci_apply.py` 재실행에도 `state/holdings/holdings_apply_status_latest.json` 재생성 안 됨 확인. gitignore 적용 확인(`git check-ignore`).
-- **사전 존재 실패(무관)**: `tests/test_factor_signals.py::test_step3_message_text_does_not_list_all_holdings_factor_reasons` FAIL — POC3-08 이전부터 존재(§6, 내 코드 stash 후에도 동일 FAIL).
+  - (A) `GET /holdings/etf-name` — 069500→"KODEX 200"(found) · 005930→found=false · 0005g0→0005G0 정규화. `PUT /holdings` — 111→422 · 005930→200 (격리 파일).
+  - (E) 계좌순 정렬 실데이터 32종목 — 일반→ISA→오픈뱅킹 + 계좌 내 종목명 가나다.
+  - (F) `GET /holdings/enriched` 실측 — 소비 필드 12종 전부 존재(32종목·27 priced) · 구성 막대 비율 일반 37.1%·ISA 40.0%·오픈뱅킹 22.9%(합 100%).
+  - (#1 재작업) `behavior.test.tsx` deferred 실비동기 — 조회 중 행 삭제/코드 변경 시 늦은 응답이 엉뚱한 행 미적용 확인.
+- (C) artifact: 삭제 후 `pytest tests/test_holdings_oci_apply.py` 재실행에도 재생성 안 됨. gitignore 적용 확인.
+- (#6) `state/holdings/holdings_latest.json` read-only: **32종목 · `111` 없음** (write 안 함).
+- **사전 존재 실패(무관)**: `tests/test_factor_signals.py::test_step3_message_text_does_not_list_all_holdings_factor_reasons` FAIL — POC3-08 이전부터 존재(§6, 코드 stash 후에도 동일 FAIL). `/runs/generate-from-holdings` 응답 shape 이슈, 본 작업 무관.
+- **git 상태(보고 시점 실측)**: 재작업 커밋 전 — `frontend/.../EnrichedHoldingsSection.tsx`·`HoldingsManageView.tsx`·`HoldingsManageView.sort.test.tsx`·`globals.css` M · `behavior.test.tsx`·`eval.test.tsx`·본 결과서·PROGRAM_TRUTH 변경. 커밋 후 `git status --short`·`git diff --name-status ca9a0415^..HEAD` 재확인해 §2와 대조.

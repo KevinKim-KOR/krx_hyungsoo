@@ -369,29 +369,49 @@ function HoldingsHero({
 }) {
   const {
     total_count,
-    priced_count,
     unpriced_count,
+    calc_available_count,
     calc_missing_count,
     priced_eval,
     priced_pnl,
     priced_pnl_rate_pct,
   } = summary;
-  const hasUnpriced = unpriced_count > 0 || calc_missing_count > 0;
+  // 재작업(#3): 부분 합계를 전체처럼 표시하지 않는다. 3상태 명시:
+  //   allCalc(전부 계산) / partial(일부만) / none(전부 불가). 부분이면 N/M 기준 표기.
+  const evalState: "all" | "partial" | "none" =
+    calc_available_count === 0
+      ? "none"
+      : calc_available_count < total_count
+        ? "partial"
+        : "all";
+  const basisLabel =
+    evalState === "partial"
+      ? `${calc_available_count}/${total_count}종목 기준`
+      : evalState === "all"
+        ? `${total_count}종목 전체`
+        : null;
 
   return (
     <div className="hld-hero">
       <div className="hld-hero-top">
         <div className="hld-hero-eval">
-          <div className="hld-hero-lbl">총 평가금액</div>
+          <div className="hld-hero-lbl">
+            총 평가금액
+            {evalState === "partial" ? (
+              <span className="hld-basis part">· {basisLabel}</span>
+            ) : null}
+          </div>
           <div className="hld-hero-amt">
-            {priced_eval !== null ? (fmtMoney(priced_eval) ?? "-") : "계산 불가"}
+            {evalState !== "none" ? (fmtMoney(priced_eval) ?? "-") : "계산 불가"}
           </div>
         </div>
         <div className="hld-hero-pnl">
           <div className="hld-hero-lbl">평가손익</div>
           <div className={`hld-hero-pamt ${pnlClass(priced_pnl)}`}>
-            {priced_pnl !== null ? (fmtSignedMoney(priced_pnl) ?? "-") : "-"}
-            {priced_pnl_rate_pct !== null ? (
+            {evalState !== "none" && priced_pnl !== null
+              ? (fmtSignedMoney(priced_pnl) ?? "-")
+              : "계산 불가"}
+            {evalState !== "none" && priced_pnl_rate_pct !== null ? (
               <span className="hld-hero-rate">
                 {fmtSignedPct(priced_pnl_rate_pct)}
               </span>
@@ -409,17 +429,25 @@ function HoldingsHero({
           <div className="v">{total_count}개</div>
         </div>
         <div className="hld-kv">
-          <div className="k">시세 확인</div>
-          <div className="v">{priced_count}개</div>
+          <div className="k">평가 계산</div>
+          <div className="v">
+            {calc_available_count}/{total_count}개
+          </div>
         </div>
       </div>
 
       <CompositionBar accounts={accounts} totalEval={priced_eval} />
 
-      {hasUnpriced ? (
+      {evalState === "partial" ? (
         <div className="hld-hero-warn">
-          ⚠ 시세 미확인 또는 계산 정보 부족 종목이 있습니다 — 평가금액·손익·구성은
-          평가 계산 가능 종목 기준입니다.
+          ⚠ {calc_missing_count + unpriced_count}종목은 시세 미확인·계산 정보 부족 —
+          위 총 평가금액·손익·구성은 <strong>{calc_available_count}/{total_count}종목만의
+          부분 합계</strong>입니다(전체 아님).
+        </div>
+      ) : evalState === "none" ? (
+        <div className="hld-hero-warn">
+          ⚠ 시세 확인된 종목이 없어 평가금액·손익·구성을 계산할 수 없습니다. [시세
+          갱신]으로 현재가를 먼저 조회하세요.
         </div>
       ) : null}
     </div>
@@ -534,9 +562,13 @@ function AccountSection({
 }
 
 function AccountSubtotal({ summary }: { summary: AccountSummary }) {
-  if (summary.calc_available_count === 0) {
-    return <span className="hld-acct-sub muted">일부 시세 미확인</span>;
+  // 재작업(#3): 계좌 소계도 3상태 구분 + 부분이면 N/M 기준 명시.
+  const avail = summary.calc_available_count;
+  const total = summary.total_count;
+  if (avail === 0) {
+    return <span className="hld-acct-sub muted">평가 계산 불가(시세 미확인)</span>;
   }
+  const partial = avail < total;
   return (
     <span className="hld-acct-sub">
       평가손익{" "}
@@ -546,6 +578,9 @@ function AccountSubtotal({ summary }: { summary: AccountSummary }) {
       <span className={pnlClass(summary.priced_pnl_rate_pct)}>
         ({fmtSignedPct(summary.priced_pnl_rate_pct) ?? "-"})
       </span>
+      {partial ? (
+        <span className="hld-basis part"> · {avail}/{total}종목 기준</span>
+      ) : null}
     </span>
   );
 }

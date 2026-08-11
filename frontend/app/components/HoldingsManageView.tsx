@@ -38,12 +38,22 @@ import type { MenuKey } from "./LeftSidebar";
 // ─── 입력 폼 row 모델 (기존 HoldingsClient 와 동일) ─────────────────
 
 type RowDraft = {
+  // POC3-08 재작업: 행의 안정 식별자. 배열 index 대신 uid 로 비동기 조회 결과를
+  //   짝짓는다(정렬·삭제로 index 가 바뀌어도 늦게 온 응답이 엉뚱한 행을 안 건드림).
+  uid: string;
   ticker: string;
   name: string;
   quantity: string;
   avg_buy_price: string;
   account_group: string;
 };
+
+// 행 uid 생성기 — 모듈 단조 카운터(테스트 결정성). 렌더/조회와 무관.
+let _rowUidSeq = 0;
+function nextRowUid(): string {
+  _rowUidSeq += 1;
+  return `row-${_rowUidSeq}`;
+}
 
 // POC3-08 (A): 종목코드 조회/검증 결과(행별). name 은 자동조회 성공 시 채움.
 //   codeStatus: ok=etf_master 존재 · warn=형식OK지만 미등록(개별주?) · err=형식오류 · none=미입력/조회전
@@ -129,13 +139,17 @@ export function sortRowsWithMetas(
   };
 }
 
-const EMPTY_ROW: RowDraft = {
-  ticker: "",
-  name: "",
-  quantity: "",
-  avg_buy_price: "",
-  account_group: "",
-};
+// 빈 행 팩토리 — 매번 새 uid 를 부여한다(상수 spread 로는 uid 가 겹침).
+function emptyRow(): RowDraft {
+  return {
+    uid: nextRowUid(),
+    ticker: "",
+    name: "",
+    quantity: "",
+    avg_buy_price: "",
+    account_group: "",
+  };
+}
 
 const EMPTY_META: RowMeta = { codeStatus: "none", autoName: null };
 
@@ -147,6 +161,7 @@ export function isValidTickerFormat(ticker: string): boolean {
 
 function holdingToRow(h: HoldingItem): RowDraft {
   return {
+    uid: nextRowUid(),
     ticker: h.ticker,
     name: h.name ?? "",
     // 저장된 숫자를 불러올 때도 콤마 표시(요구 3).
@@ -219,9 +234,18 @@ interface Props {
 }
 
 export default function HoldingsManageView({ onNavigate }: Props) {
-  const [rows, setRows] = useState<RowDraft[]>([{ ...EMPTY_ROW }]);
-  // 행별 종목코드 검증/자동조회 메타(rows 와 동일 index).
+  const [rows, setRows] = useState<RowDraft[]>(() => [emptyRow()]);
+  // 행별 종목코드 검증/자동조회 메타(rows 와 동일 index·길이 유지).
   const [metas, setMetas] = useState<RowMeta[]>([{ ...EMPTY_META }]);
+
+  // 재작업(#1): 비동기 조회가 응답 시점의 최신 rows 를 uid 로 조회하기 위한 ref.
+  //   (setState 클로저 stale 문제 회피 — 렌더마다 최신 rows 를 담는다.)
+  const rowsRef = useRef<RowDraft[]>(rows);
+  rowsRef.current = rows;
+  const currentTickerOf = useCallback((uid: string): string | null => {
+    const r = rowsRef.current.find((x) => x.uid === uid);
+    return r ? r.ticker.trim().toUpperCase() : null;
+  }, []);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -237,8 +261,8 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   // POC3-08: 정렬 기준(조회 시 계좌순 자동 · 버튼으로 수동 변경). 편집 중 자동 재정렬 X.
   const [sortKey, setSortKey] = useState<ManageSortKey>("account");
 
-  // 종목코드 조회 debounce timer(행별). 언마운트/재입력 시 취소.
-  const lookupTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  // 종목코드 조회 debounce timer — 행 uid 로 키(정렬·삭제로 index 바뀌어도 안전).
+  const lookupTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const handleApiError = useCallback((e: unknown) => {
     if (e instanceof ApiConfigError) {
@@ -258,49 +282,58 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     setErrorMsg(`알 수 없는 오류: ${(e as Error).message}`);
   }, []);
 
-  const setMeta = useCallback((idx: number, patch: Partial<RowMeta>) => {
-    setMetas((prev) =>
-      prev.map((m, i) => (i === idx ? { ...m, ...patch } : m))
-    );
+  // 재작업(검증 #1): meta 갱신은 index 가 아니라 행 uid 로. 정렬·삭제 후에도
+  //   uid 로 해당 행을 찾아 갱신 → 늦게 온 응답이 엉뚱한 행을 안 건드린다.
+  const setMetaByUid = useCallback((uid: string, patch: Partial<RowMeta>) => {
+    setMetas((prevMetas) => {
+      // rows 와 metas 는 항상 같은 순서·길이. rowsRef 로 uid→index 를 찾는다.
+      const idx = rowsRef.current.findIndex((r) => r.uid === uid);
+      if (idx < 0) return prevMetas; // 삭제된 행이면 무시.
+      return prevMetas.map((m, i) => (i === idx ? { ...m, ...patch } : m));
+    });
   }, []);
 
-  // POC3-08 (A): 종목코드 형식검증 + etf_master 종목명 자동조회.
-  //   형식 오류 → codeStatus=err(저장 차단). 형식 OK → 조회:
-  //     found → codeStatus=ok · autoName 채움(이름칸 비어있으면 자동 반영)
-  //     not found → codeStatus=warn(개별주일 수 있음 · 저장 허용)
+  // POC3-08 (A) · 재작업(#1): 종목코드 형식검증 + etf_master 종목명 자동조회.
+  //   uid 로 행을 식별하고, 응답 적용 직전 "그 행의 현재 ticker 가 조회한 ticker 와
+  //   같은지"를 재확인한다. 다르면(사용자가 그새 코드 변경) 결과를 버린다(stale 방지).
+  //     형식 오류 → codeStatus=err(저장 차단). found → ok(+이름 자동채움). 없음 → warn.
   const lookupTicker = useCallback(
-    async (idx: number, rawTicker: string) => {
+    async (uid: string, rawTicker: string) => {
       const t = rawTicker.trim().toUpperCase();
       if (t === "") {
-        setMeta(idx, { codeStatus: "none", autoName: null });
+        setMetaByUid(uid, { codeStatus: "none", autoName: null });
         return;
       }
       if (!isValidTickerFormat(t)) {
-        setMeta(idx, { codeStatus: "err", autoName: null });
+        setMetaByUid(uid, { codeStatus: "err", autoName: null });
         return;
       }
+      let res: Awaited<ReturnType<typeof fetchEtfName>>;
       try {
-        const res = await fetchEtfName(t);
-        if (res.found && res.name) {
-          setMeta(idx, { codeStatus: "ok", autoName: res.name });
-          // 이름칸이 비어있으면 자동 채움(사용자가 이미 입력했으면 덮지 않음).
-          setRows((prev) =>
-            prev.map((r, i) =>
-              i === idx && r.name.trim() === ""
-                ? { ...r, name: res.name as string }
-                : r
-            )
-          );
-        } else {
-          setMeta(idx, { codeStatus: "warn", autoName: null });
-        }
+        res = await fetchEtfName(t);
       } catch {
-        // 조회 실패는 저장을 막지 않는다 — 경고 없이 중립(none).
-        //   (형식은 이미 통과했고, 저장 시 백엔드가 형식 최종 검증.)
-        setMeta(idx, { codeStatus: "none", autoName: null });
+        // 조회 실패는 저장을 막지 않는다 — 중립(none). 단 그새 코드가 바뀌었으면 무시.
+        if (currentTickerOf(uid) === t) {
+          setMetaByUid(uid, { codeStatus: "none", autoName: null });
+        }
+        return;
+      }
+      // 응답 적용 전 재확인: 이 행의 현재 ticker 가 여전히 조회 대상과 같아야 한다.
+      if (currentTickerOf(uid) !== t) return; // 코드 변경/행 삭제 → 결과 폐기.
+      if (res.found && res.name) {
+        const name = res.name;
+        setMetaByUid(uid, { codeStatus: "ok", autoName: name });
+        // 이름칸이 비어있을 때만 자동 채움(사용자 입력 보존). uid 로 행 지정.
+        setRows((prev) =>
+          prev.map((r) =>
+            r.uid === uid && r.name.trim() === "" ? { ...r, name } : r
+          )
+        );
+      } else {
+        setMetaByUid(uid, { codeStatus: "warn", autoName: null });
       }
     },
-    [setMeta]
+    [setMetaByUid, currentTickerOf]
   );
 
   // 최초 로드: 저장된 holdings 조회 (외부 시세 fetch 없음 — 입력 화면).
@@ -318,11 +351,12 @@ export default function HoldingsManageView({ onNavigate }: Props) {
             "account"
           );
           setRows(sorted.rows);
+          rowsRef.current = sorted.rows; // 조회가 즉시 최신 rows 를 보도록.
           // 로드된 각 행의 종목코드 상태를 조회(형식·존재). 이름칸은 이미 저장값이 있어
-          //   자동 덮어쓰기는 안 되고 codeStatus 배지만 갱신.
+          //   자동 덮어쓰기는 안 되고 codeStatus 배지만 갱신. uid 로 조회.
           setMetas(sorted.metas);
-          sorted.rows.forEach((r, i) => {
-            void lookupTicker(i, r.ticker);
+          sorted.rows.forEach((r) => {
+            void lookupTicker(r.uid, r.ticker);
           });
         }
       } catch (e) {
@@ -336,6 +370,7 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   }, []);
 
   const updateRow = (idx: number, key: keyof RowDraft, value: string) => {
+    const uid = rows[idx]?.uid;
     // 수량·매입단가는 입력 중에도 천단위 콤마로 보여준다(요구 3).
     const next =
       key === "quantity" || key === "avg_buy_price"
@@ -344,21 +379,27 @@ export default function HoldingsManageView({ onNavigate }: Props) {
     setRows((prev) =>
       prev.map((r, i) => (i === idx ? { ...r, [key]: next } : r))
     );
-    // 종목코드 변경 시 debounce 조회(A). 즉시 상태는 "조회 전(none)".
-    if (key === "ticker") {
-      setMeta(idx, { codeStatus: "none", autoName: null });
-      if (lookupTimers.current[idx]) clearTimeout(lookupTimers.current[idx]);
-      lookupTimers.current[idx] = setTimeout(() => {
-        void lookupTicker(idx, value);
+    // 종목코드 변경 시 debounce 조회(A). 타이머·조회는 uid 로(정렬/삭제 안전).
+    if (key === "ticker" && uid) {
+      setMetaByUid(uid, { codeStatus: "none", autoName: null });
+      if (lookupTimers.current[uid]) clearTimeout(lookupTimers.current[uid]);
+      lookupTimers.current[uid] = setTimeout(() => {
+        void lookupTicker(uid, value);
       }, 350);
     }
   };
 
   const addRow = () => {
-    setRows((prev) => [...prev, { ...EMPTY_ROW }]);
+    setRows((prev) => [...prev, emptyRow()]);
     setMetas((prev) => [...prev, { ...EMPTY_META }]);
   };
   const removeRow = (idx: number) => {
+    const uid = rows[idx]?.uid;
+    // 삭제되는 행의 대기 중 조회 타이머 정리(늦은 응답이 다른 행 안 건드리게).
+    if (uid && lookupTimers.current[uid]) {
+      clearTimeout(lookupTimers.current[uid]);
+      delete lookupTimers.current[uid];
+    }
     setRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
     setMetas((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
   };
@@ -386,8 +427,9 @@ export default function HoldingsManageView({ onNavigate }: Props) {
         sortKey
       );
       setRows(sorted.rows);
+      rowsRef.current = sorted.rows; // 조회가 즉시 최신 rows 를 보도록.
       setMetas(sorted.metas);
-      sorted.rows.forEach((r, i) => void lookupTicker(i, r.ticker));
+      sorted.rows.forEach((r) => void lookupTicker(r.uid, r.ticker));
       setSavedAt(new Date().toLocaleTimeString("ko-KR"));
       // 저장 성공 시에만 Dashboard 의 보유·Evidence 읽기 무효화 (변경 실패 시
       // catch 로 가서 미호출 — §4.5 "변경 실패 시 무효화 금지").
@@ -400,15 +442,14 @@ export default function HoldingsManageView({ onNavigate }: Props) {
   }, [rows, sortKey, handleApiError, lookupTicker]);
 
   // POC3-08: 수동 정렬 버튼. 현재 rows·metas 를 선택 기준으로 재배열(편집값 보존).
-  //   rows·metas 는 index 로 짝지어져 있어 함께 정렬해야 한다. debounce 조회 타이머도
-  //   index 기반이라 재정렬 시 잔여 타이머를 정리한다.
+  //   rows·metas 는 함께 정렬(짝 보존). 재작업(#1): 조회 타이머·응답은 uid 기반이라
+  //   정렬로 index 가 바뀌어도 안전 → 대기 중 타이머를 억지로 취소하지 않는다.
   const applySort = useCallback(
     (key: ManageSortKey) => {
       setSortKey(key);
-      Object.values(lookupTimers.current).forEach((t) => clearTimeout(t));
-      lookupTimers.current = {};
       const sorted = sortRowsWithMetas(rows, metas, key);
       setRows(sorted.rows);
+      rowsRef.current = sorted.rows;
       setMetas(sorted.metas);
     },
     [rows, metas]
@@ -588,14 +629,13 @@ export default function HoldingsManageView({ onNavigate }: Props) {
                   aria-label="종목명"
                   disabled={loading}
                 />
-                {/* (D) 계좌 = 추천 목록 select(자유입력 차단). 빈 값은 저장 시 "일반". */}
+                {/* (D) 계좌 = 추천 목록 select(자유입력 차단). 재작업(검증 #2):
+                    기존 사용자 정의 계좌(추천 목록 밖)는 "일반"으로 위장하지 않고
+                    실제 저장값을 그대로 옵션으로 노출 → 화면 표시값 = 저장 payload 일치.
+                    사용자가 명시적으로 바꾸기 전까지 값이 조용히 변경되지 않는다. */}
                 <select
                   className={acctInpClass}
-                  value={
-                    RECOMMENDED_GROUPS.includes(r.account_group)
-                      ? r.account_group
-                      : "일반"
-                  }
+                  value={r.account_group === "" ? DEFAULT_GROUP : r.account_group}
                   onChange={(e) =>
                     updateRow(idx, "account_group", e.target.value)
                   }
@@ -607,6 +647,13 @@ export default function HoldingsManageView({ onNavigate }: Props) {
                       {g}
                     </option>
                   ))}
+                  {/* 추천 목록 밖 기존 계좌: 실제 값 그대로 옵션 표시(위장 방지). */}
+                  {r.account_group !== "" &&
+                  !RECOMMENDED_GROUPS.includes(r.account_group) ? (
+                    <option value={r.account_group}>
+                      {r.account_group} (기존)
+                    </option>
+                  ) : null}
                 </select>
                 <input
                   className="hm-inp num"

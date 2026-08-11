@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import { sortRowsWithMetas } from "./HoldingsManageView";
 
 // RowDraft / RowMeta 는 내부 타입 — 테스트는 동일 shape 객체로 구성.
+let _uid = 0;
 function row(
   ticker: string,
   name: string,
@@ -11,7 +12,15 @@ function row(
   quantity = "1",
   avg_buy_price = "100"
 ) {
-  return { ticker, name, quantity, avg_buy_price, account_group };
+  _uid += 1;
+  return {
+    uid: `t-${_uid}`,
+    ticker,
+    name,
+    quantity,
+    avg_buy_price,
+    account_group,
+  };
 }
 function meta(codeStatus: "ok" | "warn" | "err" | "none" = "none") {
   return { codeStatus, autoName: null };
