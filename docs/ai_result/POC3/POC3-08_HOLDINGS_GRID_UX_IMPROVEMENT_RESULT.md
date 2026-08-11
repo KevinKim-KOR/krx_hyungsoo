@@ -47,7 +47,7 @@
 
 ## 2) 변경된 파일 목록
 
-> **기준: `git diff --name-status ca9a0415^..HEAD` 와 1:1 대조 (재작업 시 정정).** ca9a0415 = POC3-08 최초 커밋. 아래 tracked = 커밋 완료. **재작업분(비동기·계좌·평가 3상태 + 신규 2 테스트)은 본 결과서와 함께 커밋 예정.**
+> **기준: `git diff --name-status ca9a0415^..HEAD` 와 1:1 대조.** ca9a0415 = POC3-08 최초 커밋. 아래 전 파일 tracked·커밋 완료(재작업분 포함 커밋 `90c2b005`). 커밋 체인: `ca9a0415`→`0a8fe3cd`→`be6d27d9`(A~D)→`3b2a3175`(E·F)→`90c2b005`(재작업).
 
 **백엔드 (A·C, 커밋 `be6d27d9` 계열):**
 - `app/holdings.py`: 수정(tracked) — `TICKER_PATTERN` 신설, `validate_holdings`/`_coerce_holding` 에 `strict_ticker`(기본 False=하위호환).
@@ -62,14 +62,14 @@
 **프론트 (A·B·D·E·F):**
 - `frontend/lib/api/holdings.ts`: 수정(tracked) — `fetchEtfName` + `EtfNameLookupResult`.
 - `frontend/lib/api/holdingsApply.ts`: 수정(tracked) — 파트2 apply status FE 함수.
-- `frontend/app/components/HoldingsManageView.tsx`: 수정 — (A·B·D) 형식검증·자동조회·액션바·계좌 select + (E) 정렬 `sortRowsWithMetas` + **재작업: 행 uid 도입(비동기 조회 index 경합 해소)·계좌 select 위장 제거**. *(tracked, 재작업분 미커밋)*
-- `frontend/app/components/EnrichedHoldingsSection.tsx`: 수정 — (E) 정렬 `sortHoldings` + (F) 증권사 스타일 `HoldingsHero`·`CompositionBar`·`AccountSection`·`HoldingRow`(죽은 표 컴포넌트·개별 행 막대 제거) + **재작업: 평가 3상태·N/M 기준 표기**. *(tracked, 재작업분 미커밋)*
-- `frontend/app/globals.css`: 수정 — (A~D) `.hm-*` + (E) `.holdings-sortbar*` + (F) `.hld-*`(hero·comp·acct·row·badges·wv) + **재작업: `.hld-basis`**. *(tracked, 재작업분 미커밋)*
+- `frontend/app/components/HoldingsManageView.tsx`: 수정(tracked·committed) — (A·B·D) 형식검증·자동조회·액션바·계좌 select + (E) 정렬 `sortRowsWithMetas` + 재작업: 행 uid 도입(비동기 조회 index 경합 해소)·계좌 select 위장 제거.
+- `frontend/app/components/EnrichedHoldingsSection.tsx`: 수정(tracked·committed) — (E) 정렬 `sortHoldings` + (F) 증권사 스타일 `HoldingsHero`·`CompositionBar`·`AccountSection`·`HoldingRow`(죽은 표 컴포넌트·개별 행 막대 제거) + 재작업: 평가 3상태·N/M 기준 표기.
+- `frontend/app/globals.css`: 수정(tracked·committed) — (A~D) `.hm-*` + (E) `.holdings-sortbar*` + (F) `.hld-*`(hero·comp·acct·row·badges·wv) + 재작업: `.hld-basis`.
 - `frontend/app/components/HoldingsManageView.commas.test.tsx`: 신규(tracked) — 콤마·형식검증 14케이스.
 - `frontend/app/components/EnrichedHoldingsSection.sort.test.tsx`: 신규(tracked) — 보유 현황 정렬 8케이스.
 - `frontend/app/components/HoldingsManageView.sort.test.tsx`: 신규(tracked, 재작업 시 uid shape 반영 수정) — 종목 관리 정렬 8케이스.
-- `frontend/app/components/HoldingsManageView.behavior.test.tsx`: **신규(untracked, 재작업)** — #1 비동기 경합·#2 계좌 정합 3케이스(deferred 실비동기).
-- `frontend/app/components/EnrichedHoldingsSection.eval.test.tsx`: **신규(untracked, 재작업)** — #3 평가 3상태(전부/일부/전부불가) 3케이스.
+- `frontend/app/components/HoldingsManageView.behavior.test.tsx`: **신규(tracked·committed, 재작업)** — #1 비동기 경합·#2 계좌 정합 3케이스(deferred 실비동기).
+- `frontend/app/components/EnrichedHoldingsSection.eval.test.tsx`: **신규(tracked·committed, 재작업)** — #3 평가 3상태(전부/일부/전부불가) 3케이스.
 
 **문서:**
 - `docs/ai_plan/POC3/POC3-08_HOLDINGS_GRID_UX_IMPROVEMENT_PLAN_V1.md`: 신규(tracked) — 개발 PLAN.
@@ -129,4 +129,4 @@
 - (C) artifact: 삭제 후 `pytest tests/test_holdings_oci_apply.py` 재실행에도 재생성 안 됨. gitignore 적용 확인.
 - (#6) `state/holdings/holdings_latest.json` read-only: **32종목 · `111` 없음** (write 안 함).
 - **사전 존재 실패(무관)**: `tests/test_factor_signals.py::test_step3_message_text_does_not_list_all_holdings_factor_reasons` FAIL — POC3-08 이전부터 존재(§6, 코드 stash 후에도 동일 FAIL). `/runs/generate-from-holdings` 응답 shape 이슈, 본 작업 무관.
-- **git 상태(보고 시점 실측)**: 재작업 커밋 전 — `frontend/.../EnrichedHoldingsSection.tsx`·`HoldingsManageView.tsx`·`HoldingsManageView.sort.test.tsx`·`globals.css` M · `behavior.test.tsx`·`eval.test.tsx`·본 결과서·PROGRAM_TRUTH 변경. 커밋 후 `git status --short`·`git diff --name-status ca9a0415^..HEAD` 재확인해 §2와 대조.
+- **git 상태(실측)**: 재작업 커밋 `90c2b005` 완료 — POC3-08 코드·테스트·문서 전 파일 tracked·committed. `git diff --name-status ca9a0415^..HEAD` = 21경로, §2와 1:1 일치. `git status --short` 상 POC3-08 관련 미커밋 0(무관 untracked: `.claude/hooks/*`·`design/*`·`docs.zip`·세션 인계 문서 — 운영 경로 아님).
