@@ -211,11 +211,60 @@ OCI 접속은 **읽기 전용**이며 쓰기·발송·재시작은 금지다 (�
 
 ---
 
-## 4. 미완 항목
+## 4. PC 에서 맥으로 가져와야 할 것 (체크리스트)
 
-| 항목 | 상태 | 필요한 조치 |
-|---|---|---|
-| `OCI_BACKEND_URL` / `OCI_OPS_TOKEN` | 비어 있음 | PC `.env` 에서 옮기기 (읽기 확인 용도로는 불필요) |
-| OCI SSH 접속 | `Permission denied (publickey)` | PC 등 기존 접속 수단에서 맥 공개키 1회 등록 |
-| 장기 시장 시계열 | 맥은 약 4개월치 | 필요 시 PC/OCI 의 sqlite 를 가져오기 |
-| `tests/test_factor_signals.py` 2건 | 실패 (양쪽 공통) | 별도 지시 필요 — 티커를 실제 6자리로 바꿀지 검증을 우회할지는 설계 판단 |
+맥에 없고 git 으로도 오지 않는 것들이다. PC 앞에 앉았을 때 한 번에 처리하면 좋다.
+
+### 4.1 OCI SSH 접속 — 우선순위 1
+
+이것만 뚫리면 4.2·4.3 은 맥에서 알아서 가져올 수 있다. **PC 에서 아래 한 줄을 실행한다.**
+
+```bash
+ssh oci-krx "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHKwfpC5JTmwWdupWd46ik0u5za0RW3LNNMWLb6DMBZv minandsoo44@gmail.com' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+맥 쪽 `~/.ssh/config` 의 `oci-krx` alias 는 이미 등록돼 있다 (§1.7). 등록 후 맥에서
+`ssh oci-krx "echo ok"` 로 확인한다.
+
+파일을 옮기는 방식(PC 의 `D:\AI\oci_ssh_key\id_rsa` 를 맥으로 복사)도 되지만,
+개인키 사본을 늘리지 않는 위 방식이 낫다.
+
+### 4.2 보유(holdings) 파일
+
+맥에 `state/holdings/holdings_latest.json` 이 없어 보유 화면이 0건으로 보인다.
+**OCI 정본에서 읽기 전용으로 가져오는 게 맞다** (4.1 완료 후):
+
+```bash
+mkdir -p state/holdings
+scp oci-krx:/home/ubuntu/krx_hyungsoo/state/holdings/holdings_latest.json state/holdings/
+```
+
+PC 의 사본을 복사해도 되지만, 정본은 OCI 다. 가져온 뒤에는 §3.2 를 반드시 읽을 것 —
+**오래된 맥 사본을 OCI 로 발행하면 실보유를 덮어쓴다.**
+
+### 4.3 `.env` 나머지 값
+
+`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` 는 입력 완료. 남은 것:
+
+| 키 | 용도 |
+|---|---|
+| `OCI_BACKEND_URL` | Phase 1 호환 — `daily_ops.sh` 가 사용 |
+| `OCI_OPS_TOKEN` | 같음 |
+
+둘 다 비밀값이라 PC `.env` 에서 옮겨야 한다. **읽기 확인 용도로는 없어도 된다.**
+
+`OCI_SSH_TARGET` / `OCI_REMOTE_INBOX` / `OCI_REMOTE_OUTBOX` 는 저장소 문서에서 찾아 이미 채웠다.
+
+### 4.4 장기 시장 시계열 (선택)
+
+맥의 시장 DB 는 FDR 로 새로 받은 **약 4개월치**다 (§1.5). 장기 백테스트가 필요하면
+PC 또는 OCI 의 `state/market/market_data.sqlite` 를 통째로 가져온다. 그전까지는
+맥에서 백테스트·ML 산출물을 만들지 않는다 (§3.3 · §3.7).
+
+### 4.5 반대로 — PC 에서 확인해야 할 것
+
+| 항목 | 내용 |
+|---|---|
+| ETF 비교하기 카드 전환 | 2026-08-12 맥에서 작업. **사용자 실화면 확인 전 · `확인 필요` 탭 미전환.** 결과서 `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md` |
+| `tests/test_factor_signals.py` 2건 | POC3-08 종목코드 6자리 검증과 어긋나 실패. **PC 에서도 동일하게 실패**한다. 수정은 별도 지시 필요 |
+| 맥/윈도우 폰트 차이 | §3 서두. 손대면 윈도우 화면도 같이 바뀐다 |

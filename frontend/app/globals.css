@@ -2216,6 +2216,149 @@ textarea.decision-textarea {
 .wb-row-sel { background: #eff6ff; }
 .wb-table tbody tr:hover { background: #f9fafb; }
 
+/* ── 보유 표: 하이브리드 행 (2026-08-12 사용자 실화면 직접 지시) ───────
+   14열 가로 표 → 좌측은 보유 현황 .hld-row 와 같은 2단 × 2열 카드,
+   우측은 비교 지표(일간/1M/3M/KODEX초과) 고정 열.
+   패딩·폰트·색 값은 .hld-row 계열과 동일하게 맞춘다.
+   후보 표(.wb-table)는 기존 표 형태를 그대로 유지한다. */
+.wb-hlist {
+  border: 1px solid var(--border-soft, #e8ebf0);
+  border-radius: 10px;
+  background: var(--card);
+  overflow: hidden;
+}
+.wb-hstale {
+  padding: 9px 15px;
+  background: #fffaf0;
+  color: var(--warn);
+  font-size: 12px;
+  border-bottom: 1px solid #f2f4f7;
+}
+.wb-hrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  border-bottom: 1px solid #f2f4f7;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.wb-hrow:last-child { border-bottom: none; }
+.wb-hrow:hover { background: #fafbfe; }
+.wb-hrow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.wb-hrow.sel { background: #f2f6ff; box-shadow: inset 3px 0 0 var(--accent); }
+
+/* 좌측 카드 */
+.wb-hcard { padding: 12px 15px; min-width: 0; }
+.wb-hrow-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.wb-hrow-name { font-weight: 700; font-size: 14px; min-width: 0; }
+.wb-hbadges {
+  margin-left: 7px;
+  display: inline-flex;
+  gap: 5px;
+  vertical-align: middle;
+  flex-wrap: wrap;
+}
+.wb-hb {
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.wb-hb.hold { background: rgba(37, 99, 235, 0.1); color: var(--accent); }
+.wb-hb.ok { background: rgba(22, 163, 74, 0.1); color: var(--ok); }
+.wb-hb.warn { background: rgba(217, 119, 6, 0.12); color: var(--warn); }
+.wb-hb.danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
+.wb-hb.mute { background: #eef0f4; color: var(--muted); }
+
+.wb-hrow-pnl { text-align: right; white-space: nowrap; }
+.wb-hrow-pnl .amt {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.wb-hrow-pnl .rate { font-size: 12.5px; font-weight: 700; margin-left: 6px; }
+/* 부분 평가 (N/M) — 부분값을 전체값처럼 보이지 않게 하는 기존 계약. */
+.wb-hpartial { color: var(--warn); font-size: 11px; margin-left: 3px; }
+.wb-hmuted { color: var(--muted); }
+
+.wb-hrow-bot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.wb-hrow-facts {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.wb-hrow-facts .tk { font-variant-numeric: tabular-nums; }
+.wb-hrow-facts .sep { color: #cbd2dc; }
+.wb-hrow-facts .wv {
+  font-weight: 700;
+  color: #4b5563;
+  font-variant-numeric: tabular-nums;
+}
+.wb-hrow-price {
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wb-hrow-price b { color: var(--fg); font-weight: 700; }
+
+/* 우측 비교 지표 열 */
+.wb-hmetrics {
+  border-left: 1px solid #eceff4;
+  background: #fcfdff;
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  justify-content: center;
+}
+.wb-hm3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.wb-hm-cell { display: flex; flex-direction: column; gap: 1px; }
+.wb-hm-cell .k,
+.wb-hm-ex .k {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+.wb-hm-cell .v,
+.wb-hm-ex .v {
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wb-hm-ex {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  border-top: 1px dashed #e3e8ef;
+  padding-top: 6px;
+}
+.wb-hm-ex .k { font-size: 10.5px; }
+
+/* 좁은 폭에서는 지표 열을 카드 아래로 내린다. */
+@media (max-width: 900px) {
+  .wb-hrow { grid-template-columns: minmax(0, 1fr); }
+  .wb-hmetrics { border-left: none; border-top: 1px solid #eceff4; }
+}
+
 .wb-attn-list { list-style: none; margin: 0; padding: 0; }
 .wb-attn-list li {
   display: flex; align-items: center; justify-content: space-between;

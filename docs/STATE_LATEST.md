@@ -1,8 +1,44 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-11 (POC3-08 종목 관리·보유 현황 그리드 UX 개선 A~F — **검증자 VERIFIED_WITH_NOTES · 사용자 실화면 확인 완료(Holdings 32종목 정합 OK)** · 설계자 Closeout 대기)
+최종 업데이트: 2026-08-12 (ETF 비교하기 그리드 카드 전환 — **PARTIAL · 사용자 실화면 확인 전 · 검증 미착수** · 맥북 개발환경 신규 구성)
 
-## 이번 STEP 요약 (POC3-08 — 종목 관리·보유 현황 그리드 UX 개선 A~F, 사용자 직접 UI 지시)
+## 이번 작업 요약 (ETF 비교하기 그리드 카드 전환 — 사용자 실화면 직접 지시, 설계서 없음)
+
+**상태**: `PARTIAL`. 자동 검증은 통과했으나 **사용자 실화면 확인 전이고 검증자 검증도 미착수**. `확인 필요` 탭은 미전환.
+
+**성격**: POC3-08 과 같은 **설계서 없는 사용자 직접 UI 지시**. 목업(HTML)으로 구조 승인 후 착수.
+
+**한 일**: `workbench`(ETF 비교하기)의 **후보·보유 두 탭**을 가로 표(후보 9열 · 보유 14열)에서 보유 현황과 같은 **하이브리드 행**(좌측 2단×2열 카드 + 우측 지표 열)으로 전환. 상태 4종(후보포함·NAV·구성종목·Evidence)을 배지로 통합. 후보 탭의 **헤더 클릭 정렬은 세그먼트 바로 이전**(정렬 키 6개·재클릭 asc/desc 동작 동일 — 제거 아님).
+
+**무변경**: 집계(`aggregateHoldings`)·3-state(`relationState`)·부분 평가 `(N/M)`·"계좌별 상이"·`holdingEvidenceState`·NAV/구성종목 분리·stale 줄·행 클릭→`PriceChart`·빠른 필터·검색. 백엔드 0건.
+
+**변경 파일(코드 4)**: `workbench/HoldingTable.tsx` · `JudgmentWorkbenchView.tsx` · `JudgmentWorkbenchView.test.tsx` · `globals.css`. `git diff --stat` 실측 489 insertions / 238 deletions.
+
+**검증(맥북)**: tsc 0 · eslint 0 · vitest **157 passed (14 files)** · 워크벤치 단독 24 passed · dev 서버 `✓ Compiled` · `localhost:3000` 200. **백엔드 무변경이라 pytest 미재실행.**
+
+**⚠ 주의 — 테스트 10건의 표기 기준 변경**: 검사 항목은 유지하되 화면 문구가 바뀐 곳이 있다(`◆ 후보`→`후보 포함`, `◆ 보유`→`보유`/`미보유`, 열 헤더 검사→지표 라벨 검사). 과거 검증 라운드에서 확정된 표시 계약이라 검증자 중점 확인 대상.
+
+**결과서**: `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md`
+
+**다음 할 일**: (1) 사용자 실화면 확인 (2) `확인 필요` 탭 전환 여부 결정 (3) 보유 탭 `보유` 배지 유지 여부 (4) 맥/윈도우 폰트 차이 별도 처리.
+
+---
+
+## 맥북 개발환경 신규 구성 (2026-08-12)
+
+윈도우 PC 와 병행 작업을 위해 맥북(arm64)에 개발환경을 새로 구성했다. **sudo 가 필요 없는 홈 디렉터리 설치**로 통일 — uv(Python 3.12.13) + nvm(Node v24.19.0), 프로젝트 `.venv`, `frontend/node_modules`, `.env`/`frontend/.env.local`, 맥용 `start.sh`/`stop.sh`.
+
+시장 DB(`state/market/market_data.sqlite`)는 gitignored 라 clone 에 없어 **`POST /market/refresh`**(FDR 경유)로 새로 적재 — ETF **1,163**종 / `etf_daily_price` **92,123**행 / 실패 0건 / **가격 이력 2026-04-14~2026-08-12(약 4개월)**. PC 의 장기 시계열과 범위가 다르므로 **백테스트·ML 수치를 양쪽에서 섞어 비교하면 안 된다.**
+
+**미완**: OCI SSH(맥 공개키가 서버 `authorized_keys` 에 미등록 — `Permission denied (publickey)`) · `.env` 의 `OCI_BACKEND_URL`/`OCI_OPS_TOKEN` · `state/holdings/holdings_latest.json` 부재 · 장기 시장 시계열.
+
+**기존 실패 2건(양쪽 공통)**: `tests/test_factor_signals.py` 2건이 POC3-08 종목코드 6자리 검증 때문에 `AAA` 티커 PUT 이 422 로 막혀 실패한다. 환경 의존이 없어 **PC 에서도 동일하게 실패**하며 미수정 상태.
+
+상세: `docs/handoff/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md`
+
+---
+
+## 직전 STEP 요약 (POC3-08 — 종목 관리·보유 현황 그리드 UX 개선 A~F, 사용자 직접 UI 지시)
 
 **상태**: `VERIFIED_WITH_NOTES` → **사용자 실화면 확인 완료**(2026-08-11 — 복구된 Holdings **32종목이 실보유와 일치** 확인, 검증자 MEDIUM 유일 근거 해소). 커밋 `ca9a0415`(파트1)·`0a8fe3cd`(파트2)·`be6d27d9`(A~D)·`3b2a3175`(E·F)·`90c2b005`(검증자 재작업)·`591a05a0`(결과서 NOTE 정정)·`34322970`(STATE)·+Closeout. 전부 push. 최신 HEAD 는 `git log`로 실측.
 

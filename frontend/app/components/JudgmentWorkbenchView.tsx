@@ -450,35 +450,40 @@ function CandidateTable({
     return dir === "asc" ? cmp : -cmp;
   });
 
-  const H = (key: string, label: string) => (
-    <th onClick={() => toggle(key)} style={{ cursor: "pointer" }}>
+  // 2026-08-12 카드 전환 — 표 헤더가 사라지므로 정렬을 세그먼트 바로 옮긴다.
+  //   정렬 키·동작(같은 키 재클릭 시 asc/desc 전환)은 기존 그대로.
+  //   보유 현황(.holdings-sortbar)과 같은 표기를 재사용한다.
+  const S = (key: string, label: string) => (
+    <button
+      type="button"
+      className={sortKey === key ? "on" : undefined}
+      onClick={() => toggle(key)}
+      aria-pressed={sortKey === key}
+    >
       {label}
       {sortKey === key ? (dir === "asc" ? " ▲" : " ▼") : ""}
-    </th>
+    </button>
   );
 
   return (
-    <table className="wb-table">
-      <thead>
-        <tr>
-          {H("rank", "순위")}
-          <th>ETF</th>
-          {H("one_month", "1M")}
-          {H("three_month", "3M")}
-          {H("excess", "KODEX초과")}
-          {H("score", "참고점수")}
-          {H("drawdown", "고점대비")}
-          <th>보유</th>
-          <th>상태</th>
-        </tr>
-      </thead>
-      <tbody>
+    <>
+      <div className="holdings-sortbar">
+        <span className="holdings-sortbar-label">정렬</span>
+        <span className="holdings-sort-seg">
+          {S("rank", "순위")}
+          {S("one_month", "1M")}
+          {S("three_month", "3M")}
+          {S("excess", "KODEX초과")}
+          {S("score", "참고점수")}
+          {S("drawdown", "고점대비")}
+        </span>
+        <span className="holdings-sortbar-hint">
+          같은 항목을 다시 누르면 오름/내림 전환
+        </span>
+      </div>
+      <div className="wb-hlist" data-testid="wb-candidate-list">
         {stale && (
-          <tr>
-            <td colSpan={9} style={{ color: "var(--warn)", fontSize: 12 }}>
-              ⚠ 이전 조회값 (재조회 실패 — 최신 아님)
-            </td>
-          </tr>
+          <div className="wb-hstale">⚠ 이전 조회값 (재조회 실패 — 최신 아님)</div>
         )}
         {rows.map((c) => {
           // 보유 여부 3-state: heldTickers 미로드(보유 조회 실패)면 확인 불가 —
@@ -490,44 +495,85 @@ function CandidateTable({
           const dd = candDrawdown(c);
           const isSel = selected === c.ticker;
           return (
-            <tr
+            <div
               key={c.ticker ?? String(c.rank)}
-              className={isSel ? "wb-row-sel" : ""}
+              className={`wb-hrow${isSel ? " sel" : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSel}
               onClick={() => c.ticker && onSelect(c.ticker)}
-              style={{ cursor: "pointer" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  if (c.ticker) onSelect(c.ticker);
+                }
+              }}
             >
-              <td>{c.rank ?? "—"}</td>
-              <td>
-                {c.name ?? "—"}{" "}
-                <code style={{ color: "var(--muted)" }}>{c.ticker}</code>
-              </td>
-              <td style={{ color: directionColor(om) }}>{fmtSignedPct(om)}</td>
-              <td style={{ color: directionColor(tm) }}>{fmtSignedPct(tm)}</td>
-              <td style={{ color: directionColor(ex) }}>{fmtSignedPct(ex)}</td>
-              <td>{fmtScore(c.relative_upside_score)}</td>
-              <td style={{ color: directionColor(dd) }}>{fmtPlainPct(dd)}</td>
-              <td>
-                {heldSt === "yes" ? (
-                  "◆ 보유"
-                ) : heldSt === "unknown" ? (
-                  <span style={{ color: "var(--danger)", fontSize: 12 }}>확인 불가</span>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td>{candDataState(c)}</td>
-            </tr>
+              {/* 좌측 카드 — 보유 표와 같은 2단 × 2열 */}
+              <div className="wb-hcard">
+                <div className="wb-hrow-top">
+                  <div className="wb-hrow-name">
+                    {c.name ?? "—"}
+                    <span className="wb-hbadges">
+                      {/* 보유 여부 3-state: 미보유와 확인 불가를 구분 (A-1(4)). */}
+                      {heldSt === "yes" ? (
+                        <span className="wb-hb hold">보유</span>
+                      ) : heldSt === "unknown" ? (
+                        <span className="wb-hb danger">보유 확인 불가</span>
+                      ) : (
+                        <span className="wb-hb mute">미보유</span>
+                      )}
+                      <span className="wb-hb mute">{candDataState(c)}</span>
+                    </span>
+                  </div>
+                  <div className="wb-hrow-pnl">
+                    <span className="amt">{fmtScore(c.relative_upside_score)}</span>
+                    <span className="rate wb-hmuted">참고점수</span>
+                  </div>
+                </div>
+                <div className="wb-hrow-bot">
+                  <div className="wb-hrow-facts">
+                    <span>순위 {c.rank ?? "—"}</span>
+                    <span className="sep">/</span>
+                    <span className="tk">{c.ticker}</span>
+                  </div>
+                </div>
+              </div>
+              {/* 우측 비교 지표 열 */}
+              <div className="wb-hmetrics">
+                <div className="wb-hm3">
+                  <div className="wb-hm-cell">
+                    <span className="k">1M</span>
+                    <span className="v" style={{ color: directionColor(om) }}>
+                      {fmtSignedPct(om)}
+                    </span>
+                  </div>
+                  <div className="wb-hm-cell">
+                    <span className="k">3M</span>
+                    <span className="v" style={{ color: directionColor(tm) }}>
+                      {fmtSignedPct(tm)}
+                    </span>
+                  </div>
+                  <div className="wb-hm-cell">
+                    <span className="k">KODEX초과</span>
+                    <span className="v" style={{ color: directionColor(ex) }}>
+                      {fmtSignedPct(ex)}
+                    </span>
+                  </div>
+                </div>
+                <div className="wb-hm-ex">
+                  <span className="k">고점대비</span>
+                  <span className="v" style={{ color: directionColor(dd) }}>
+                    {fmtPlainPct(dd)}
+                  </span>
+                </div>
+              </div>
+            </div>
           );
         })}
-        {rows.length === 0 && (
-          <tr>
-            <td colSpan={9} className="wb-muted">
-              조건에 맞는 후보 없음
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+        {rows.length === 0 && <p className="wb-muted">조건에 맞는 후보 없음</p>}
+      </div>
+    </>
   );
 }
 

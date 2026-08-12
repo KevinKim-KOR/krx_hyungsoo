@@ -2,6 +2,11 @@
 
 // POC3-02 Judgment Workbench — 보유 표 (§7.6 · KS-10 분리).
 // 같은 ticker 다계좌 집계(종목당 한 행) + Evidence 기반 1M/3M/KODEX초과/상태.
+//
+// 2026-08-12 사용자 실화면 직접 지시 — 14컬럼 가로 표 → 하이브리드 행으로 전환.
+//   좌측: 보유 현황(.hld-row)과 같은 2단 카드. 우측: 비교 지표 고정 열.
+//   상태 4종(후보포함 / NAV / 구성종목 / Evidence)은 배지로 묶는다.
+//   집계·상태 판정 로직은 전부 기존 그대로 — 표시 형태만 바뀐다.
 
 import type {
   EnrichedHoldingsResult,
@@ -74,6 +79,17 @@ function aggregateHoldings(items: EnrichedHoldingsResult["items"]): AggHolding[]
   return Array.from(map.values());
 }
 
+// 부분 평가 표기 — N개 계좌 중 M개만 계산됨을 값 옆에 붙인다.
+// 부분값을 전체값처럼 보이지 않게 하는 기존 계약 (검증자 지적 반영분).
+function PartialMark({ ok, count }: { ok: number; count: number }) {
+  if (ok <= 0 || ok >= count) return null;
+  return (
+    <span className="wb-hpartial">
+      ({ok}/{count})
+    </span>
+  );
+}
+
 // ── 보유 표 (§7.6) ─────────────────────────────────────────────────────────
 export function HoldingTable({
   hold,
@@ -121,156 +137,193 @@ export function HoldingTable({
   const stale =
     hold.stale || (evid.phase === "success" && evid.stale) || false;
 
-  const COLS = 14;
   return (
-    <table className="wb-table">
-      <thead>
-        <tr>
-          <th>ETF</th>
-          <th>평가액</th>
-          <th>비중</th>
-          <th>평가손익</th>
-          <th>평가수익률</th>
-          <th>현재가</th>
-          <th>일간</th>
-          <th>1M</th>
-          <th>3M</th>
-          <th>KODEX초과</th>
-          <th>후보포함</th>
-          <th>NAV</th>
-          <th>구성종목</th>
-          <th>Evidence</th>
-        </tr>
-      </thead>
-      <tbody>
-        {stale && (
-          <tr>
-            <td colSpan={COLS} style={{ color: "var(--warn)", fontSize: 12 }}>
-              ⚠ 이전 조회값 (재조회 실패 — 최신 아님)
-            </td>
-          </tr>
-        )}
-        {rows.map((r) => {
-          const ev = evidenceByTicker(evidenceItems, r.ticker);
-          // 후보 포함 3-state: **현재 후보 목록** ∩ 이 보유 ticker. 후보 조회
-          // 실패(candTickers undefined)면 "확인 불가" — "미포함(—)" 아님 (A-1(4)).
-          const candSt = relationState(candTickers, r.ticker);
-          // 평가수익률: 단일 계좌면 Evidence snapshot 값. 다계좌 집계는 대표값이
-          // 애매하므로 "계좌별 상이" 로 표시 (첫 값을 전체처럼 보이지 않게 · B-1).
-          const pnlRate = r.count > 1 ? null : ev?.holding?.pnl_rate_pct ?? null;
-          const om = evidenceReturn(ev, "one_month");
-          const tm = evidenceReturn(ev, "three_month");
-          const ex = evidenceExcess(ev);
-          // NAV·구성종목 상태를 별도 열로 분리 (어느 근거가 불가한지 식별 · A-1).
-          const navSt = ev?.nav_discount?.status ?? null;
-          const conSt = ev?.constituents_overlap?.status ?? null;
-          const evState = holdingEvidenceState(ev, evid.phase);
-          const evMissing = evState === "unavailable";
-          const isSel = selected === r.ticker;
-          return (
-            <tr
-              key={r.ticker}
-              className={isSel ? "wb-row-sel" : ""}
-              onClick={() => onSelect(r.ticker)}
-              style={{ cursor: "pointer" }}
-            >
-              <td>
-                {r.name ?? "—"}{" "}
-                <code style={{ color: "var(--muted)" }}>{r.ticker}</code>
-                {r.count > 1 && (
-                  <span style={{ color: "var(--muted)", fontSize: 11 }}>
-                    {" "}
-                    ({r.count}계좌 합산)
+    <div className="wb-hlist" data-testid="wb-holding-list">
+      {stale && (
+        <div className="wb-hstale">⚠ 이전 조회값 (재조회 실패 — 최신 아님)</div>
+      )}
+      {rows.map((r) => {
+        const ev = evidenceByTicker(evidenceItems, r.ticker);
+        // 후보 포함 3-state: **현재 후보 목록** ∩ 이 보유 ticker. 후보 조회
+        // 실패(candTickers undefined)면 "확인 불가" — "미포함(—)" 아님 (A-1(4)).
+        const candSt = relationState(candTickers, r.ticker);
+        // 평가수익률: 단일 계좌면 Evidence snapshot 값. 다계좌 집계는 대표값이
+        // 애매하므로 "계좌별 상이" 로 표시 (첫 값을 전체처럼 보이지 않게 · B-1).
+        const pnlRate = r.count > 1 ? null : ev?.holding?.pnl_rate_pct ?? null;
+        const om = evidenceReturn(ev, "one_month");
+        const tm = evidenceReturn(ev, "three_month");
+        const ex = evidenceExcess(ev);
+        // NAV·구성종목 상태를 별도 배지로 분리 (어느 근거가 불가한지 식별 · A-1).
+        const navSt = ev?.nav_discount?.status ?? null;
+        const conSt = ev?.constituents_overlap?.status ?? null;
+        const evState = holdingEvidenceState(ev, evid.phase);
+        const evMissing = evState === "unavailable";
+        const isSel = selected === r.ticker;
+        return (
+          <div
+            key={r.ticker}
+            className={`wb-hrow${isSel ? " sel" : ""}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={isSel}
+            onClick={() => onSelect(r.ticker)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(r.ticker);
+              }
+            }}
+          >
+            {/* 좌측 카드 — 보유 현황(.hld-row) 과 같은 2단 × 2열 */}
+            <div className="wb-hcard">
+              <div className="wb-hrow-top">
+                <div className="wb-hrow-name">
+                  {r.name ?? "—"}
+                  <span className="wb-hbadges">
+                    <span className="wb-hb hold">보유</span>
+                    {r.count > 1 && (
+                      <span className="wb-hb mute">{r.count}계좌 합산</span>
+                    )}
+                    <CandidateBadge state={candSt} />
+                    <StatusBadge label="NAV" status={navSt} evMissing={evMissing} />
+                    <StatusBadge
+                      label="구성종목"
+                      status={conSt}
+                      evMissing={evMissing}
+                    />
+                    <EvidenceBadge state={evState} />
                   </span>
-                )}
-              </td>
-              <td>
-                {r.evalOk === 0 ? "확인 불가" : fmtAmountSummary(r.evalAmount)}
-                {r.evalOk > 0 && r.evalOk < r.count && (
-                  <span style={{ color: "var(--warn)", fontSize: 11 }}>
-                    {" "}
-                    ({r.evalOk}/{r.count})
+                </div>
+                <div className="wb-hrow-pnl">
+                  {r.pnlOk === 0 ? (
+                    <span className="amt wb-hmuted">확인 불가</span>
+                  ) : (
+                    <span
+                      className="amt"
+                      style={{ color: directionColor(r.pnlAmount) }}
+                    >
+                      {fmtAmountSummary(r.pnlAmount)}
+                    </span>
+                  )}
+                  <PartialMark ok={r.pnlOk} count={r.count} />
+                  {r.count > 1 ? (
+                    <span className="rate wb-hmuted">계좌별 상이</span>
+                  ) : (
+                    <span className="rate" style={{ color: directionColor(pnlRate) }}>
+                      {fmtSignedPct(pnlRate)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="wb-hrow-bot">
+                <div className="wb-hrow-facts">
+                  <span className="tk">{r.ticker}</span>
+                  <span className="sep">/</span>
+                  {r.weightOk === 0 ? (
+                    <span className="wb-hmuted">비중 —</span>
+                  ) : (
+                    <span>
+                      비중 <span className="wv">{fmtPlainPct(r.weight)}</span>
+                      <PartialMark ok={r.weightOk} count={r.count} />
+                    </span>
+                  )}
+                  <span className="sep">/</span>
+                  {r.evalOk === 0 ? (
+                    <span className="wb-hmuted">평가액 확인 불가</span>
+                  ) : (
+                    <span>
+                      평가액{" "}
+                      <span className="wv">{fmtAmountSummary(r.evalAmount)}</span>
+                      <PartialMark ok={r.evalOk} count={r.count} />
+                    </span>
+                  )}
+                </div>
+                <div className="wb-hrow-price">
+                  {r.currentPrice == null ? (
+                    <span className="wb-hmuted">현재 —</span>
+                  ) : (
+                    <>
+                      현재 <b>{fmtIndex(r.currentPrice)}</b>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* 우측 비교 지표 열 */}
+            <div className="wb-hmetrics">
+              <div className="wb-hm3">
+                {/* 일간 수익률: 현재 Holdings 응답에 일간 필드가 없어 항상 미제공.
+                    §7.6 명시 항목이므로 자리는 두되 값 없음(—)을 표시한다. */}
+                <div className="wb-hm-cell">
+                  <span className="k">일간</span>
+                  <span className="v wb-hmuted">—</span>
+                </div>
+                <div className="wb-hm-cell">
+                  <span className="k">1M</span>
+                  <span className="v" style={{ color: directionColor(om) }}>
+                    {fmtSignedPct(om)}
                   </span>
-                )}
-              </td>
-              <td>
-                {r.weightOk === 0 ? "—" : fmtPlainPct(r.weight)}
-                {r.weightOk > 0 && r.weightOk < r.count && (
-                  <span style={{ color: "var(--warn)", fontSize: 11 }}>
-                    {" "}
-                    ({r.weightOk}/{r.count})
+                </div>
+                <div className="wb-hm-cell">
+                  <span className="k">3M</span>
+                  <span className="v" style={{ color: directionColor(tm) }}>
+                    {fmtSignedPct(tm)}
                   </span>
-                )}
-              </td>
-              <td style={{ color: directionColor(r.pnlAmount) }}>
-                {r.pnlOk === 0 ? "확인 불가" : fmtAmountSummary(r.pnlAmount)}
-                {r.pnlOk > 0 && r.pnlOk < r.count && (
-                  <span style={{ color: "var(--warn)", fontSize: 11 }}>
-                    {" "}
-                    ({r.pnlOk}/{r.count})
-                  </span>
-                )}
-              </td>
-              <td style={{ color: directionColor(pnlRate) }}>
-                {r.count > 1 ? (
-                  <span style={{ color: "var(--muted)", fontSize: 12 }}>계좌별 상이</span>
-                ) : (
-                  fmtSignedPct(pnlRate)
-                )}
-              </td>
-              <td>{r.currentPrice == null ? "—" : fmtIndex(r.currentPrice)}</td>
-              {/* 일간 수익률: 현재 Holdings 응답에 일간 필드가 없어 항상 미제공.
-                  §7.6 명시 열이므로 열은 두되 값 없음 사유(—)를 표시한다. */}
-              <td style={{ color: "var(--muted)" }}>—</td>
-              <td style={{ color: directionColor(om) }}>{fmtSignedPct(om)}</td>
-              <td style={{ color: directionColor(tm) }}>{fmtSignedPct(tm)}</td>
-              <td style={{ color: directionColor(ex) }}>{fmtSignedPct(ex)}</td>
-              <td>
-                {candSt === "yes" ? (
-                  <span style={{ color: "var(--ok)" }}>◆ 후보</span>
-                ) : candSt === "unknown" ? (
-                  <span style={{ color: "var(--danger)", fontSize: 12 }}>확인 불가</span>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td>{statusCell(navSt, evMissing)}</td>
-              <td>{statusCell(conSt, evMissing)}</td>
-              <td>{evidenceBadge(evState)}</td>
-            </tr>
-          );
-        })}
-        {rows.length === 0 && (
-          <tr>
-            <td colSpan={COLS} className="wb-muted">
-              조건에 맞는 보유 종목 없음
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+                </div>
+              </div>
+              <div className="wb-hm-ex">
+                <span className="k">KODEX초과</span>
+                <span className="v" style={{ color: directionColor(ex) }}>
+                  {fmtSignedPct(ex)}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {rows.length === 0 && (
+        <p className="wb-muted">조건에 맞는 보유 종목 없음</p>
+      )}
+    </div>
   );
 }
 
-// NAV / 구성종목 개별 상태 셀 — ok=정상, 없음/부재=확인 불가.
-function statusCell(status: string | null, evMissing: boolean) {
+// 후보 포함 3-state 배지 — 미포함과 확인 불가를 구분해 표시 (A-1(4)).
+function CandidateBadge({ state }: { state: ReturnType<typeof relationState> }) {
+  if (state === "yes") return <span className="wb-hb ok">후보 포함</span>;
+  if (state === "unknown")
+    return <span className="wb-hb danger">후보 확인 불가</span>;
+  return <span className="wb-hb mute">후보 미포함</span>;
+}
+
+// NAV / 구성종목 개별 상태 배지 — ok=정상, 없음/부재=확인 불가.
+function StatusBadge({
+  label,
+  status,
+  evMissing,
+}: {
+  label: string;
+  status: string | null;
+  evMissing: boolean;
+}) {
   if (evMissing || status == null) {
-    return <span style={{ color: "var(--danger)" }}>확인 불가</span>;
+    return <span className="wb-hb danger">{label} 확인 불가</span>;
   }
   if (status === "ok") {
-    return <span style={{ color: "var(--muted)" }}>정상</span>;
+    return <span className="wb-hb mute">{label}</span>;
   }
-  return <span style={{ color: "var(--warn)", fontWeight: 600 }}>⚠ {status}</span>;
+  return (
+    <span className="wb-hb warn">
+      ⚠ {label} {status}
+    </span>
+  );
 }
 
 // Evidence 전체 상태 배지 — 종목별 근거 전반을 한눈에 (A-1).
-function evidenceBadge(state: HoldingEvidenceState) {
-  if (state === "ok")
-    return <span style={{ color: "var(--muted)" }}>정상</span>;
-  if (state === "attention")
-    return <span style={{ color: "var(--warn)", fontWeight: 600 }}>⚠ 확인</span>;
+function EvidenceBadge({ state }: { state: HoldingEvidenceState }) {
+  if (state === "ok") return <span className="wb-hb mute">근거 정상</span>;
+  if (state === "attention") return <span className="wb-hb warn">⚠ 근거 확인</span>;
   if (state === "unavailable")
-    return <span style={{ color: "var(--danger)", fontWeight: 600 }}>확인 불가</span>;
-  return <span style={{ color: "var(--muted)" }}>확인 중</span>;
+    return <span className="wb-hb danger">근거 확인 불가</span>;
+  return <span className="wb-hb mute">근거 확인 중</span>;
 }
-

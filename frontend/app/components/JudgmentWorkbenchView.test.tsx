@@ -219,10 +219,12 @@ describe("Workbench — 정렬·필터", () => {
   it("정렬 클릭이 표 순서를 바꾸되 원본 데이터를 변경하지 않는다", async () => {
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
-    // 1M 열 헤더 클릭 → 오름차순 정렬 (하락 종목 -2% 가 먼저).
-    fireEvent.click(screen.getByText(/^1M/));
-    const table = screen.getByRole("table");
-    const firstDataRow = within(table).getAllByRole("row")[1];
+    // 2026-08-12 카드 전환: 열 헤더 클릭 → 정렬 바 버튼 클릭. 동작은 동일.
+    // 카드 안에도 "1M" 지표 라벨이 있으므로 정렬 바 안에서만 찾는다.
+    const sortbar = document.querySelector(".holdings-sortbar") as HTMLElement;
+    fireEvent.click(within(sortbar).getByText(/^1M/));
+    const list = screen.getByTestId("wb-candidate-list");
+    const firstDataRow = within(list).getAllByRole("button")[0];
     expect(within(firstDataRow).getByText("TIGER 반도체")).toBeInTheDocument();
   });
 
@@ -247,25 +249,29 @@ describe("Workbench — REJECTED 정정 (보유 표 의미·중복·검색·Evid
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
-    const table = await screen.findByRole("table");
+    const list = await screen.findByTestId("wb-holding-list");
     // 069500 은 한 행만 (2계좌 합산 표기).
-    const codeCells = within(table).getAllByText("069500");
+    const codeCells = within(list).getAllByText("069500");
     expect(codeCells.length).toBe(1);
-    expect(within(table).getByText(/2계좌 합산/)).toBeInTheDocument();
+    expect(within(list).getByText(/2계좌 합산/)).toBeInTheDocument();
   });
 
-  it("보유 표에 평가수익률·1M·3M·KODEX초과 열이 있고 '일간=평가수익률' 오류가 없다 (A-1(2)(3))", async () => {
+  it("보유 행에 1M·3M·KODEX초과 지표가 있고 '일간=평가수익률' 오류가 없다 (A-1(2)(3))", async () => {
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
-    const table = await screen.findByRole("table");
-    const heads = within(table).getAllByRole("columnheader").map((h) => h.textContent);
-    expect(heads).toContain("평가수익률");
-    expect(heads).toContain("1M");
-    expect(heads).toContain("3M");
-    expect(heads).toContain("KODEX초과");
-    // 평가수익률과 별개로 §7.6 명시 열 "일간" 도 존재 (값 없으면 —).
-    expect(heads).toContain("일간");
+    const list = await screen.findByTestId("wb-holding-list");
+    // 2026-08-12 카드 전환: 열 헤더 → 지표 라벨. 검사 항목은 동일.
+    const labels = within(list)
+      .getAllByText(/^(일간|1M|3M|KODEX초과)$/)
+      .map((el) => el.textContent);
+    expect(labels).toContain("1M");
+    expect(labels).toContain("3M");
+    expect(labels).toContain("KODEX초과");
+    // §7.6 명시 항목 "일간" 은 자리를 두되 값은 미제공(—).
+    expect(labels).toContain("일간");
+    const dayCell = within(list).getAllByText("일간")[0].parentElement!;
+    expect(dayCell.textContent).toMatch(/일간—/);
   });
 
   it("Evidence 없는 보유 종목은 '정상'이 아니라 '확인 불가' 로 표시한다 (A-1(5))", async () => {
@@ -278,10 +284,10 @@ describe("Workbench — REJECTED 정정 (보유 표 의미·중복·검색·Evid
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
-    const table = await screen.findByRole("table");
-    // NAV·구성종목 상태 열이 분리 → 둘 다 "확인 불가". "정상" 은 없음.
-    expect(within(table).getAllByText("확인 불가").length).toBeGreaterThan(0);
-    expect(within(table).queryByText("정상")).not.toBeInTheDocument();
+    const list = await screen.findByTestId("wb-holding-list");
+    // NAV·구성종목 상태 배지가 분리 → 둘 다 "확인 불가". "정상" 은 없음.
+    expect(within(list).getAllByText(/확인 불가/).length).toBeGreaterThan(0);
+    expect(within(list).queryByText(/정상/)).not.toBeInTheDocument();
   });
 
   it("검색 입력으로 ticker/ETF명 필터링한다 (A-1(1))", async () => {
@@ -317,15 +323,15 @@ describe("Workbench — REJECTED r2 정정 (요약·교집합·현재가·attent
     expect(summary.textContent).toMatch(/후보에 포함된 보유\s*1/);
   });
 
-  it("보유 표에 현재가 열이 있고 NAV·구성종목 상태가 분리된다 (§7.6·A-1)", async () => {
+  it("보유 행에 현재가가 있고 NAV·구성종목 상태가 분리된다 (§7.6·A-1)", async () => {
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
-    const table = await screen.findByRole("table");
-    const heads = within(table).getAllByRole("columnheader").map((h) => h.textContent);
-    expect(heads).toContain("현재가");
-    expect(heads).toContain("NAV");
-    expect(heads).toContain("구성종목");
+    const list = await screen.findByTestId("wb-holding-list");
+    // 2026-08-12 카드 전환: 현재가는 행 하단 우측, NAV·구성종목은 별도 배지 2개.
+    expect(within(list).getAllByText(/현재/).length).toBeGreaterThan(0);
+    expect(within(list).getByText("NAV")).toBeInTheDocument();
+    expect(within(list).getByText("구성종목")).toBeInTheDocument();
   });
 
   it("returns 상태가 unavailable 인 보유 종목은 확인 필요로 분류된다 (A-1)", async () => {
@@ -360,8 +366,8 @@ describe("Workbench — REJECTED r2 정정 (요약·교집합·현재가·attent
       Array.from(attnFilter).find((b) => b.textContent === "확인 필요")!,
     );
     // returns unavailable → 확인 필요 필터에 남는다.
-    const table = await screen.findByRole("table");
-    expect(within(table).getAllByText("테스트ETF").length).toBeGreaterThan(0);
+    const list = await screen.findByTestId("wb-holding-list");
+    expect(within(list).getAllByText("테스트ETF").length).toBeGreaterThan(0);
   });
 });
 
@@ -389,14 +395,15 @@ describe("Workbench — REJECTED r3 정정 (현재 교집합·Evidence 상태·w
     });
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
-    const table = await screen.findByRole("table");
-    // 후보 표에서 139260(TIGER 반도체) 행이 "◆ 보유" (현재 보유 목록 기준).
-    const rows = within(table).getAllByRole("row");
-    const tigerRow = rows.find((r) => r.textContent?.includes("139260"));
-    expect(tigerRow?.textContent).toMatch(/보유/);
-    // 069500 은 현재 보유 아님 → 보유 표기 없음.
-    const kodexRow = rows.find((r) => r.textContent?.includes("069500"));
-    expect(kodexRow?.textContent).not.toMatch(/◆ 보유/);
+    const list = await screen.findByTestId("wb-candidate-list");
+    // 2026-08-12 카드 전환: "◆ 보유" 셀 → "보유" 배지. 3-state 구분은 동일.
+    const rows = within(list).getAllByRole("button");
+    const tigerRow = rows.find((r) => r.textContent?.includes("139260"))!;
+    expect(within(tigerRow).getByText("보유")).toBeInTheDocument();
+    // 069500 은 현재 보유 아님 → "미보유" 이며 보유 배지는 없다.
+    const kodexRow = rows.find((r) => r.textContent?.includes("069500"))!;
+    expect(within(kodexRow).getByText("미보유")).toBeInTheDocument();
+    expect(within(kodexRow).queryByText("보유")).not.toBeInTheDocument();
   });
 
   it("보유 표 후보포함은 현재 후보 목록 교집합이며 요약과 정합한다", async () => {
@@ -406,18 +413,20 @@ describe("Workbench — REJECTED r3 정정 (현재 교집합·Evidence 상태·w
     const summary = document.querySelector(".wb-summary-row")!;
     expect(summary.textContent).toMatch(/후보에 포함된 보유\s*1/);
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
-    const table = await screen.findByRole("table");
-    const row = within(table).getAllByRole("row").find((r) => r.textContent?.includes("069500"));
-    expect(row?.textContent).toMatch(/◆ 후보/);
+    const list = await screen.findByTestId("wb-holding-list");
+    const row = within(list)
+      .getAllByRole("button")
+      .find((r) => r.textContent?.includes("069500"));
+    // 2026-08-12 카드 전환: "◆ 후보" 셀 → "후보 포함" 배지. 3-state 구분은 동일.
+    expect(row?.textContent).toMatch(/후보 포함/);
   });
 
-  it("보유 표에 Evidence 상태 열이 있다", async () => {
+  it("보유 행에 Evidence 상태 배지가 있다", async () => {
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
-    const table = await screen.findByRole("table");
-    const heads = within(table).getAllByRole("columnheader").map((h) => h.textContent);
-    expect(heads).toContain("Evidence");
+    const list = await screen.findByTestId("wb-holding-list");
+    expect(within(list).getAllByText(/^근거 /).length).toBeGreaterThan(0);
   });
 
   it("비중 부분 결측이면 유효 건수를 표기한다 (B-1)", async () => {
@@ -430,8 +439,8 @@ describe("Workbench — REJECTED r3 정정 (현재 교집합·Evidence 상태·w
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
-    const table = await screen.findByRole("table");
+    const list = await screen.findByTestId("wb-holding-list");
     // 2계좌 중 1계좌만 비중 유효 → (1/2) 표기.
-    expect(within(table).getByText(/\(1\/2\)/)).toBeInTheDocument();
+    expect(within(list).getByText(/\(1\/2\)/)).toBeInTheDocument();
   });
 });
