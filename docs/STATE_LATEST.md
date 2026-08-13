@@ -1,10 +1,12 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-12 (ETF 비교하기 그리드 카드 전환 — **PARTIAL · 사용자 실화면 확인 전 · 검증 미착수** · 맥북 개발환경 신규 구성)
+최종 업데이트: 2026-08-13 (ETF 비교하기 그리드 카드 전환 — **PARTIAL · 1차 화면 확인 후 지적 4건 반영 · 검증자 미착수** · 맥북 OCI 연결 + 시장 DB 정본 교체)
 
 ## 이번 작업 요약 (ETF 비교하기 그리드 카드 전환 — 사용자 실화면 직접 지시, 설계서 없음)
 
-**상태**: `PARTIAL`. 자동 검증은 통과했으나 **사용자 실화면 확인 전이고 검증자 검증도 미착수**. `확인 필요` 탭은 미전환.
+**상태**: `PARTIAL`. 1차 화면 확인에서 나온 지적 4건을 반영했고 자동 검증은 통과. **검증자 검증 미착수 · `확인 필요` 탭 미전환 · 보유 탭 배지 정리 미결.**
+
+**2026-08-13 지적 반영 4건**: (1) `ok` 배지 뜻 불명 → 정상이면 숨기고 비정상만 `⚠ 데이터 <상태>` (2) 우측 지표가 별도 패널로 보임 → 카드 본문 780px 제한 + 지표 열 배경 틴트 제거(목록 컨테이너는 안 좁힘 — 2026-07-29 "이 화면만 좁다" 지적 재발 방지) (3) `KODEX초과` 항상 `—` → **기존 버그**, `candExcess` 가 없는 키 `excess_return_pct` 를 읽던 것을 `vs_kodex200_1m_pctp` 로 정정(보유 탭 `evidenceExcess` 와 같은 1M 기준). 표시·정렬·선택 상세 3곳에 함께 반영 (4) 선택 상세가 모든 탭에 잔존 → **탭 전환 시 선택 해제** + 회귀 테스트 1건 추가.
 
 **성격**: POC3-08 과 같은 **설계서 없는 사용자 직접 UI 지시**. 목업(HTML)으로 구조 승인 후 착수.
 
@@ -12,25 +14,29 @@
 
 **무변경**: 집계(`aggregateHoldings`)·3-state(`relationState`)·부분 평가 `(N/M)`·"계좌별 상이"·`holdingEvidenceState`·NAV/구성종목 분리·stale 줄·행 클릭→`PriceChart`·빠른 필터·검색. 백엔드 0건.
 
-**변경 파일(코드 4)**: `workbench/HoldingTable.tsx` · `JudgmentWorkbenchView.tsx` · `JudgmentWorkbenchView.test.tsx` · `globals.css`. `git diff --stat` 실측 489 insertions / 238 deletions.
+**변경 파일(코드 5)**: `workbench/HoldingTable.tsx` · `workbench/helpers.ts` · `JudgmentWorkbenchView.tsx` · `JudgmentWorkbenchView.test.tsx` · `globals.css`. 커밋 2개로 분할 — 카드 전환 본체 `08ceb771`(489 insertions / 238 deletions 실측) + 지적 반영분(47 insertions / 7 deletions 실측).
 
-**검증(맥북)**: tsc 0 · eslint 0 · vitest **157 passed (14 files)** · 워크벤치 단독 24 passed · dev 서버 `✓ Compiled` · `localhost:3000` 200. **백엔드 무변경이라 pytest 미재실행.**
+**검증(맥북)**: tsc 0 · eslint 0 · vitest **158 passed (14 files)** · 워크벤치 단독 25 passed · dev 서버 `✓ Compiled` · `localhost:3000` 200. **백엔드 무변경이라 pytest 미재실행** (직전 실측은 시장 DB 교체 전 값이라 재측정 필요).
 
 **⚠ 주의 — 테스트 10건의 표기 기준 변경**: 검사 항목은 유지하되 화면 문구가 바뀐 곳이 있다(`◆ 후보`→`후보 포함`, `◆ 보유`→`보유`/`미보유`, 열 헤더 검사→지표 라벨 검사). 과거 검증 라운드에서 확정된 표시 계약이라 검증자 중점 확인 대상.
 
 **결과서**: `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md`
 
-**다음 할 일**: (1) 사용자 실화면 확인 (2) `확인 필요` 탭 전환 여부 결정 (3) 보유 탭 `보유` 배지 유지 여부 (4) 맥/윈도우 폰트 차이 별도 처리.
+**다음 할 일**: (1) 지적 반영분 재확인(카드 780px 폭) (2) `확인 필요` 탭 전환 여부 (3) 보유 탭 `보유` 배지 유지 여부 (4) 보유 탭 정상 상태 배지(`NAV`·`구성종목`·`근거 정상`)도 후보 탭처럼 숨길지 (5) 맥/윈도우 폰트 차이 별도 처리.
 
 ---
 
-## 맥북 개발환경 신규 구성 (2026-08-12)
+## 맥북 개발환경 신규 구성 (2026-08-12) · OCI 연결·정본 반영 (2026-08-13)
 
 윈도우 PC 와 병행 작업을 위해 맥북(arm64)에 개발환경을 새로 구성했다. **sudo 가 필요 없는 홈 디렉터리 설치**로 통일 — uv(Python 3.12.13) + nvm(Node v24.19.0), 프로젝트 `.venv`, `frontend/node_modules`, `.env`/`frontend/.env.local`, 맥용 `start.sh`/`stop.sh`.
 
-시장 DB(`state/market/market_data.sqlite`)는 gitignored 라 clone 에 없어 **`POST /market/refresh`**(FDR 경유)로 새로 적재 — ETF **1,163**종 / `etf_daily_price` **92,123**행 / 실패 0건 / **가격 이력 2026-04-14~2026-08-12(약 4개월)**. PC 의 장기 시계열과 범위가 다르므로 **백테스트·ML 수치를 양쪽에서 섞어 비교하면 안 된다.**
+**2026-08-13 — OCI 연결 후 정본 반영**: PC 에서 맥 공개키를 서버 `authorized_keys` 에 등록해 `ssh oci-krx` 접속 성공. 이후 정본을 직접 받아왔다.
 
-**미완**: OCI SSH(맥 공개키가 서버 `authorized_keys` 에 미등록 — `Permission denied (publickey)`) · `.env` 의 `OCI_BACKEND_URL`/`OCI_OPS_TOKEN` · `state/holdings/holdings_latest.json` 부재 · 장기 시장 시계열.
+- **보유**: `state/holdings/holdings_latest.json` **32종목**(일반 12 / ISA 13 / 오픈뱅킹 7) — 실보유와 일치.
+- **시장 DB**: OCI 정본으로 **교체**(131MB, 23초) — `etf_daily_price` 92,123 → **1,344,177행**, 가격 기간 4개월 → **2014-04-09~2026-08-12(약 12년)**. **PC·OCI 와 같은 기준이 되어 수치 비교 제약이 해소**됐다. 교체 전 맥 FDR DB(11MB)는 세션 스크래치패드에 백업.
+- 이력이 짧을 때 1M·3M 이 같은 값으로 나오던 현상은 조회 시작일이 데이터 시작일로 눌린 결과였고, 정본 교체 후 정상 분리됨을 실측 확인(예: `1M +6.01`(2026-07-13~) / `3M -13.82`(2026-05-14~)).
+
+**⚠ `.env` 통째 복사 주의**: 사용자가 PC `.env` 를 그대로 붙여넣으면서 `PUSH_AUTOSEND_*` 4개가 `true` 로 들어왔다(토큰도 채워진 상태). 그대로 발송 스크립트를 돌렸다면 맥 데이터로 실제 텔레그램이 나갈 수 있었다. **사용자 지시로 맥은 전부 `false` 로 되돌림. PC 는 `true` 가 정상.** 같은 복사로 `OCI_REMOTE_INBOX`/`OCI_REMOTE_OUTBOX`/`OCI_BACKEND_URL`/`OCI_OPS_TOKEN` 이 사라지고 `THREE_PUSH_REMOTE_PACKAGE_DIR` 이 들어왔는데, PC 도 그 4개 없이 운영 중이라 PC 현행에 맞춰 두었다.
 
 **기존 실패 2건(양쪽 공통)**: `tests/test_factor_signals.py` 2건이 POC3-08 종목코드 6자리 검증 때문에 `AAA` 티커 PUT 이 422 로 막혀 실패한다. 환경 의존이 없어 **PC 에서도 동일하게 실패**하며 미수정 상태.
 

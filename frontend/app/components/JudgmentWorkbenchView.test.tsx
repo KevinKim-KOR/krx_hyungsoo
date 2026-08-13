@@ -444,3 +444,20 @@ describe("Workbench — REJECTED r3 정정 (현재 교집합·Evidence 상태·w
     expect(within(list).getByText(/\(1\/2\)/)).toBeInTheDocument();
   });
 });
+
+describe("Workbench — 탭 전환 시 선택 상세 해제 (사용자 지적 2026-08-13)", () => {
+  it("탭을 바꾸면 선택이 풀려 이전 탭에서 고른 종목 상세가 남지 않는다", async () => {
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await screen.findByText("KODEX 200");
+    // 후보 탭에서 한 종목 선택 → 선택 상세가 열린다.
+    const list = await screen.findByTestId("wb-candidate-list");
+    const row = within(list)
+      .getAllByRole("button")
+      .find((r) => r.textContent?.includes("069500"))!;
+    fireEvent.click(row);
+    expect(document.querySelector(".wb-detail")).not.toBeNull();
+    // 보유 탭으로 이동 → 선택 해제되어 상세가 닫힌다.
+    fireEvent.click(screen.getByRole("tab", { name: "보유" }));
+    expect(document.querySelector(".wb-detail")).toBeNull();
+  });
+});

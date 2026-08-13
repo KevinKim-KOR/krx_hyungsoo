@@ -128,7 +128,16 @@ export default function JudgmentWorkbenchView({ onNavigate }: Props) {
 
       <SummaryRow cand={cand} hold={hold} evid={evid} />
 
-      <TabBar tab={tab} setTab={setTab} />
+      {/* 탭을 옮기면 선택을 해제한다. 선택 상세는 탭 분기 바깥에 있어, 해제하지 않으면
+          지금 목록에 없는 종목의 상세가 계속 남는다 (사용자 지적 2026-08-13 —
+          보유 탭이 "조건에 맞는 보유 종목 없음" 인데 후보에서 고른 종목 상세가 붙어 있었음). */}
+      <TabBar
+        tab={tab}
+        setTab={(t) => {
+          setTab(t);
+          setSelected(null);
+        }}
+      />
       <div className="wb-controls">
         <QuickFilters filter={filter} setFilter={setFilter} />
         <input
@@ -523,7 +532,14 @@ function CandidateTable({
                       ) : (
                         <span className="wb-hb mute">미보유</span>
                       )}
-                      <span className="wb-hb mute">{candDataState(c)}</span>
+                      {/* 데이터 상태: 정상(ok)이면 배지를 띄우지 않는다. 열 제목이
+                          사라지면서 "ok" 만 남아 뜻이 통하지 않던 문제 정정
+                          (사용자 지적 2026-08-13). 비정상일 때만 원문 상태를 함께 노출. */}
+                      {candDataState(c) !== "ok" && (
+                        <span className="wb-hb warn">
+                          ⚠ 데이터 {candDataState(c)}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="wb-hrow-pnl">

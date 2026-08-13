@@ -2,7 +2,7 @@
 
 현행 프로그램 통합 설계서 (PROGRAM_TRUTH_RECONSTRUCTION_V1)
 
-- **최종 반영**: 2026-08-12 — **ETF 비교하기 그리드 카드 전환 반영 (사용자 실화면 직접 지시 · PARTIAL)**. `workbench` 의 후보/보유 두 탭이 가로 표(후보 9열 · 보유 14열) → 보유 현황과 같은 하이브리드 행(좌측 2단 카드 + 우측 지표 열)으로 바뀜. 상태 4종(후보포함·NAV·구성종목·Evidence)은 배지로 통합. 후보 탭의 헤더 클릭 정렬은 정렬 세그먼트 바로 이전(정렬 키·동작 동일). `확인 필요` 탭은 미전환. **사용자 실화면 확인 전.** 집계·3-state·부분 평가(N/M)·stale·선택 동작 등 판정 로직은 전부 무변경. 결과서 `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md`.
+- **최종 반영**: 2026-08-13 — **ETF 비교하기 그리드 카드 전환 반영 (사용자 실화면 직접 지시 · PARTIAL)**. `workbench` 의 후보/보유 두 탭이 가로 표(후보 9열 · 보유 14열) → 보유 현황과 같은 하이브리드 행(좌측 2단 카드 + 우측 지표 열)으로 바뀜. 상태 4종(후보포함·NAV·구성종목·Evidence)은 배지로 통합하되 **후보 탭의 데이터 상태 배지는 정상일 때 숨김**. 후보 탭의 헤더 클릭 정렬은 정렬 세그먼트 바로 이전(정렬 키·동작 동일). **탭 전환 시 선택 상세 해제**(이전에는 다른 탭까지 잔존). `KODEX초과` 는 `candExcess` 필드명 오류로 계속 `—` 였던 것을 정정 — 표시·정렬·선택 상세 3곳에서 1M 기준(`vs_kodex200_1m_pctp`) 값이 나온다. `확인 필요` 탭은 미전환. 집계·3-state·부분 평가(N/M)·stale·행 클릭→차트 등 판정 로직은 전부 무변경. 결과서 `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md`.
 - (그 전) 2026-08-11 — **POC3-08(종목 관리·보유 현황 그리드 UX 개선 A~F) 반영**. (A~D) 종목 관리 입력에 종목코드 형식검증(영숫자 6자·저장 차단)·`etf_master` 종목명 자동조회(신규 GET `/holdings/etf-name`)·하단 고정 액션바·계좌 select 제한, `PUT /holdings` strict_ticker=True. (E) 두 화면 정렬(계좌순 기본/종목명순/종목코드순). (F) 보유 현황 증권사 스타일 개편(평가 배너·계좌별 구성 막대·2단 종목 행). 재작업: 종목 관리 비동기 조회 uid 식별(index 경합 해소)·계좌 표시=저장 정합·평가 3상태(N/M 기준) 표기. (그 전) 2026-08-06 POC3-07 반영: 메뉴 10키(diagnostics 신설·data_status·dashboard 흡수)·approval 축소·신규 API(`/oci/startup-status`·`/holdings/apply`)·기동 시 1회 OCI 읽기·Holdings 단일 payload OCI 적용.
 
 ---

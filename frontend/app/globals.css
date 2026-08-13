@@ -2234,9 +2234,13 @@ textarea.decision-textarea {
   font-size: 12px;
   border-bottom: 1px solid #f2f4f7;
 }
+/* 카드 본문 폭을 제한하고 왼쪽으로 몰아, 지표 열이 카드에서 멀리 떨어진
+   "별도 패널" 처럼 보이던 문제를 없앤다 (사용자 지적 2026-08-13).
+   목록 컨테이너 자체는 좁히지 않는다 — 화면만 좁아지는 문제를 만들지 않기 위함. */
 .wb-hrow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 236px;
+  grid-template-columns: minmax(0, 780px) 236px;
+  justify-content: start;
   border-bottom: 1px solid #f2f4f7;
   cursor: pointer;
   transition: background 0.1s;
@@ -2319,9 +2323,9 @@ textarea.decision-textarea {
 .wb-hrow-price b { color: var(--fg); font-weight: 700; }
 
 /* 우측 비교 지표 열 */
+/* 배경 틴트를 빼서 같은 카드의 일부로 읽히게 한다 (별도 패널 오해 방지). */
 .wb-hmetrics {
-  border-left: 1px solid #eceff4;
-  background: #fcfdff;
+  border-left: 1px solid #f2f4f7;
   padding: 11px 14px;
   display: flex;
   flex-direction: column;

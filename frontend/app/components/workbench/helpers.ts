@@ -74,12 +74,15 @@ export function candReturn(
 }
 
 // 후보 초과수익 (excess_return · optional shape 안전 접근).
+// 2026-08-13 필드명 정정 — 실제 응답 키는 `vs_kodex200_1m_pctp` 이며
+// `excess_return_pct` 는 존재하지 않아 항상 null 이었다(화면 전체 "—").
+// 보유 탭의 evidenceExcess 와 같은 1M 기준으로 맞춘다.
 export function candExcess(c: MarketCandidate | undefined): number | null {
   const ex = c?.excess_return as
-    | { excess_return_pct?: number | null }
+    | { vs_kodex200_1m_pctp?: number | null; excess_return_pct?: number | null }
     | null
     | undefined;
-  return ex?.excess_return_pct ?? null;
+  return ex?.vs_kodex200_1m_pctp ?? ex?.excess_return_pct ?? null;
 }
 
 // 후보 고점 대비 (drawdown_20d · 음수 표기 close/peak-1 → %).
