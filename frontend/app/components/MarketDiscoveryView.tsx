@@ -27,10 +27,19 @@ import {
   type MarketTopNFilterOptions,
   type MarketTopNResponse,
 } from "@/lib/api";
-import { invalidateQueries } from "@/lib/api/queryCache";
-import { MARKET_INVALIDATION_KEYS } from "@/lib/api/dashboardKeys";
+import { invalidateQueries, useSharedQuery } from "@/lib/api/queryCache";
+import {
+  MARKET_INVALIDATION_KEYS,
+  DASH_KEY_HOLDINGS,
+} from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
+import CandidateCards from "./CandidateCards";
+import {
+  fetchEnrichedHoldings,
+  type EnrichedHoldingsResult,
+} from "@/lib/api";
+import { heldTickerSet } from "./workbench/helpers";
 import MarketContextCard from "./MarketContextCard";
 import MarketRiskReferenceCard from "./MarketRiskReferenceCard";
 import HoldingsCompareView from "./HoldingsCompareView";
@@ -38,7 +47,9 @@ import HoldingsCompareView from "./HoldingsCompareView";
 import UniverseRefreshPanel from "./UniverseRefreshPanel";
 
 // 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1) — 탭 토글.
-type CompareViewMode = "default" | "holdings_compare";
+// 2026-08-16 사용자 지시 — 후보를 카드(기본)/표 두 보기로 나눈다.
+//   기존 "default"(표) → "card"(기본) + "table" 로 분리.
+type CompareViewMode = "card" | "table" | "holdings_compare";
 import TransferToAISessionsCard from "./TransferToAISessionsCard";
 import TransferToETFExposureCard from "./TransferToETFExposureCard";
 
@@ -245,7 +256,19 @@ export default function MarketDiscoveryView({
   // 결과·오류 상태(lift state up)도 함께 제거했다. 카드가 없으므로 참조도 없다.
   // 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1).
   const [compareViewMode, setCompareViewMode] =
-    useState<CompareViewMode>("default");
+    useState<CompareViewMode>("card");
+  // 후보 카드의 "보유 여부" 배지용. Dashboard·Workbench 와 같은 캐시 키를 쓰므로
+  // 이미 조회됐으면 재호출하지 않는다. 실패/미완이면 집합이 undefined → 3-state
+  // 의 "확인 불가"(미보유로 축약하지 않음).
+  const holdingsQ = useSharedQuery<EnrichedHoldingsResult>(
+    DASH_KEY_HOLDINGS,
+    () => fetchEnrichedHoldings(),
+  );
+  const heldTickers =
+    holdingsQ.phase === "success"
+      ? heldTickerSet(holdingsQ.data.items)
+      : undefined;
+  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const pollTickRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -576,9 +599,22 @@ export default function MarketDiscoveryView({
         mode={compareViewMode}
         onChange={setCompareViewMode}
       />
-      {compareViewMode === "default" ? (
+      {compareViewMode === "card" ? (
         <>
-          {/* 통합 테이블 */}
+          {/* 기본 보기 — 카드 (2026-08-16). 표 보기는 옆 탭에 그대로 남는다. */}
+          <div className="card market-topn-card">
+            <CandidateCards
+              candidates={data.candidates ?? []}
+              heldTickers={heldTickers}
+              selected={selectedCandidate}
+              onSelect={setSelectedCandidate}
+            />
+          </div>
+          <SummaryHeader data={data} />
+        </>
+      ) : compareViewMode === "table" ? (
+        <>
+          {/* 통합 테이블 (기존) */}
           <CandidateTable
             candidates={data.candidates ?? []}
             basis={basis}
@@ -629,11 +665,20 @@ function CompareViewTabs({
       <button
         role="tab"
         type="button"
-        aria-selected={mode === "default"}
-        onClick={() => onChange("default")}
-        style={tabStyle(mode === "default")}
+        aria-selected={mode === "card"}
+        onClick={() => onChange("card")}
+        style={tabStyle(mode === "card")}
       >
-        기본
+        카드
+      </button>
+      <button
+        role="tab"
+        type="button"
+        aria-selected={mode === "table"}
+        onClick={() => onChange("table")}
+        style={tabStyle(mode === "table")}
+      >
+        표
       </button>
       <button
         role="tab"

@@ -136,6 +136,8 @@ export default function CandidateTable({
     scoreSort === "desc" ? "↓" : scoreSort === "asc" ? "↑" : "";
   return (
     <div className="card market-topn-card">
+      {/* 2026-08-16: 16열을 width:100% 에 욱여넣어 열이 눌리던 것을 가로 스크롤로 푼다. */}
+      <div className="market-candidate-table-wrap">
       <table className="market-topn-table market-candidate-table">
         <thead>
           <tr>
@@ -166,7 +168,6 @@ export default function CandidateTable({
             {/* 2026-06-08 신규 (표시 전용) — 정렬 X */}
             <th style={{ width: 100, textAlign: "right" }}>6개월</th>
             <th style={{ width: 100, textAlign: "right" }}>12개월</th>
-            <th style={{ width: 100, textAlign: "right" }}>1년</th>
             <th style={{ width: 100, textAlign: "right" }}>3년</th>
             <th style={{ width: 110, textAlign: "right" }}>KODEX200 대비 1m</th>
             <th style={{ width: 110, textAlign: "right" }}>KODEX200 대비 3m</th>
@@ -201,8 +202,8 @@ export default function CandidateTable({
             // 2026-06-08 신규 기간 (표시 전용)
             const sixRet = c.returns?.six_month?.return_pct ?? null;
             const twelveRet = c.returns?.twelve_month?.return_pct ?? null;
-            // "1년" = backend twelve_month 와 동의어. 동일 값 또 표시.
-            const oneYearRet = c.returns?.twelve_month?.return_pct ?? null;
+            // 2026-08-16: "1년" 열 제거. backend twelve_month 를 두 번 표시하던
+            //   중복이었다(기존 주석에 "동일 값 또 표시" 로 명시). 17열 → 16열.
             const threeYearRet = c.returns?.three_year?.return_pct ?? null;
             const exKodex1m = c.excess_return?.vs_kodex200_1m_pctp ?? null;
             const exKodex3m = c.excess_return?.vs_kodex200_3m_pctp ?? null;
@@ -239,9 +240,6 @@ export default function CandidateTable({
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(twelveRet) }}>
                   {fmtPct(twelveRet)}
-                </td>
-                <td style={{ textAlign: "right", color: returnPctColor(oneYearRet) }}>
-                  {fmtPct(oneYearRet)}
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(threeYearRet) }}>
                   {fmtPct(threeYearRet)}
@@ -320,6 +318,7 @@ export default function CandidateTable({
           })}
         </tbody>
       </table>
+      </div>
       {/* 2026-06-20 ML 축1 — 사용자 고지 (지시문 §9 끝). 점수 미생성 상태에서는
           backend 가 보낸 status / notice 를 그대로 표시. */}
       {relativeUpsideScoreUserNotice ? (

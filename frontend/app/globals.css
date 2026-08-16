@@ -2772,3 +2772,66 @@ textarea.decision-textarea {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+/* ── 요즘 잘 오르는 ETF: 후보 카드 (2026-08-16 사용자 실화면 직접 지시) ───────
+   카드 골격은 .wb-hrow 계열을 그대로 재사용하고, 이 화면에만 필요한 것만 더한다. */
+.cand-rank {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-right: 7px;
+  font-weight: 600;
+}
+.cand-flag {
+  font-size: 10.5px;
+  color: var(--warn);
+  font-weight: 700;
+}
+/* 펼침 상세 — 카드에 넣지 않은 항목(6개월·12개월·3년·KODEX200 대비 3M·고점 대비·점수 근거) */
+.cand-detail {
+  padding: 2px 15px 14px 15px;
+  border-bottom: 1px solid #f2f4f7;
+  background: #fbfcfe;
+}
+.cand-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 18px;
+  max-width: 1016px;
+}
+.cand-dcell {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  border-bottom: 1px dotted #e3e8ef;
+  padding: 4px 0;
+}
+.cand-dcell .k { color: var(--muted); }
+.cand-dcell .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cand-detail-reasons {
+  margin-top: 10px;
+  font-size: 12px;
+  max-width: 1016px;
+}
+.cand-detail-reasons .k { color: var(--muted); font-weight: 600; }
+.cand-detail-reasons ul { margin: 4px 0 0 0; padding-left: 1.1em; }
+.cand-detail-reasons li { margin-bottom: 2px; }
+
+/* ── 표 보기 크기 조절 (2026-08-16 사용자 지적 "표가 답답하다") ──────────────
+   원인은 글자 크기가 아니라 **폭**이었다. 베이스 .market-topn-table 은 이미
+   14px · 패딩 8px 인데, width:100% 인 표에 16열을 욱여넣어 열당 70px 남짓으로
+   눌리면서 글자가 접히고 숫자가 서로 붙어 보였다.
+   카드가 기본 보기가 된 만큼 표는 "필요할 때 보는" 별도 탭이므로, 가로 스크롤을
+   허용해 각 열이 제 폭을 갖게 하고 행 높이를 키운다. */
+.market-candidate-table-wrap {
+  overflow-x: auto;
+}
+.market-candidate-table {
+  min-width: 1500px;
+}
+.market-candidate-table th,
+.market-candidate-table td {
+  padding: 10px 12px;
+  line-height: 1.55;
+}

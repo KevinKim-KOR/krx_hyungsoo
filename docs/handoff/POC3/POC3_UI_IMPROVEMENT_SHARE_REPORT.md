@@ -140,7 +140,7 @@ excess_return: {'vs_kodex200_1m_pctp': 29.55, 'vs_kodex200_3m_pctp': 35.56, ...}
 |---|---|
 | `npx tsc --noEmit` | 0건 |
 | `npm run lint` | 0건 |
-| `npx vitest run` | **161 passed (14 files)** |
+| `npx vitest run` | **167 passed (15 files)** |
 | 백엔드 전체 pytest | **1139 passed · 실패 0건** (§6.1) |
 
 **테스트를 여러 건 수정했다.** 화면 구조가 바뀌면 조회 방식이 바뀌기 때문이며, **검사 항목은 유지**했다. 다만 §3.4 의 문구 변경과 메뉴 계약(개수·그룹 귀속)은 실제 계약 변경이라 테스트 기대값을 바꿨다.
@@ -192,7 +192,9 @@ excess_return: {'vs_kodex200_1m_pctp': 29.55, 'vs_kodex200_3m_pctp': 35.56, ...}
 
 설계자 판단 대상이 아니며, 진행 상황 공유 목적이다.
 
-1. **비교·판단 하위 화면 개편** — `요즘 잘 오르는 ETF`(17열)·`ETF 구성종목`·`AI 투자 세션`. 사용자가 "보기 어렵다"고 지적.
+1. **비교·판단 하위 화면 개편** — 사용자가 "보기 어렵다"고 지적.
+   - `요즘 잘 오르는 ETF` — **완료(2026-08-16)**. `카드`(기본)/`표`/`보유와 비교` 3탭. 17열 중 카드에 없는 것은 펼침 상세로(열 미유실). `1년` 중복 열 제거로 16열. 표는 가로 스크롤로 폭 확보.
+   - 남은 표 5개: `HoldingsCompareView`(14) · `OverlapTab`(11) · `AISessionsListTab`(8) · `ConstituentsTab`(6) · `EvidenceDetails`(8).
 2. ~~손익 색 국내 관례 전환~~ — **완료(2026-08-16)**. 전용 토큰 `--pnl-up`/`--pnl-down` 신설. 착수 전 "두 곳" 으로 보고했으나 전수 조사 결과 **여섯 곳**이어서 전부 통일했다. 상태 색 3종은 방향이 아니므로 제외.
 3. ~~보유 탭 배지 정리~~ — **완료(2026-08-16)**. 후보 탭 규칙에 맞춰 정상이면 숨김, 상시 참이던 `보유` 배지 제거. `확인 필요` 탭 전환은 여전히 미결(항목 목록이라 성격이 다름).
 4. 맥/윈도우 폰트 차이 — `-apple-system` vs `Segoe UI` 로 렌더가 달라지는 건. 사용자 결정으로 **PC(32" 4K) 기준 유지**, 미조치.
@@ -208,5 +210,6 @@ excess_return: {'vs_kodex200_1m_pctp': 29.55, 'vs_kodex200_3m_pctp': 35.56, ...}
 | `docs/PROGRAM_TRUTH.md` §5.1 | 현행 메뉴 13키 표 + 재편 주석 |
 | `docs/STATE_LATEST.md` | 진행 상태 (canonical 앵커) |
 | `docs/ai_result/POC3/POC3-PNL_COLOR_AND_BADGE_CONSISTENCY_RESULT.md` | 손익 색 전환 + 배지 통일 (7섹션) |
+| `docs/ai_result/POC3/POC3-MARKET_DISCOVERY_CARD_CONVERSION_RESULT.md` | 요즘 잘 오르는 ETF 카드 전환 (7섹션) |
 | `docs/backlog/BACKLOG.md` | 백로그 69→68, 갱신 3건 |
 | `docs/handoff/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md` | 맥/PC 병행 작업 환경·주의사항 |
