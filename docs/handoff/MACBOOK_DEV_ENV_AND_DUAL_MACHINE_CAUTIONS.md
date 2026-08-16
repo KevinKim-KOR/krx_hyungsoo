@@ -145,12 +145,12 @@ PUSH_AUTOSEND_HOLDINGS_BRIEFING_ENABLED=true .venv/bin/python -m pytest tests/ -
 cd frontend && npx tsc --noEmit && npm run lint && npx vitest run
 ```
 
-실측: black 276 files unchanged · flake8 0 · tsc 0 · eslint 0 (2026-08-12) ·
-vitest **158 passed** (2026-08-13) · pytest **1137 passed / 2 failed** (2026-08-12).
-잔여 2건은 §3.6 참조 (맥 환경 문제 아님).
+실측 (2026-08-16 · 시장 DB 를 OCI 정본으로 교체한 뒤 측정):
+tsc 0 · eslint 0 · vitest **160 passed (14 files)** · pytest **1139 passed · 실패 0건**.
+black/flake8 은 2026-08-12 기준 276 files unchanged · 0.
 
-> pytest 수치는 시장 DB 를 OCI 정본으로 교체하기 전에 잰 값이다. DB 교체 후에는
-> 다시 재야 한다 (§3.4 — 일부 테스트가 실제 `state/` 를 읽는다).
+> **상시 실패 0건이 정상 상태다.** 하나라도 빨간불이 뜨면 그 자리에서 원인을 본다
+> (§3.6 — 이전에 2건이 상시 실패로 방치돼 새 실패를 가릴 뻔했다).
 
 ---
 
@@ -227,7 +227,7 @@ PC `.env` 에 플래그가 있으면 통과하고, 맥에서는 실패한다. **
 > `OCI_OPS_TOKEN` 이 사라지고 `THREE_PUSH_REMOTE_PACKAGE_DIR` 이 들어왔다.
 > PC 도 그 4개 없이 운영 중이라 PC 현행에 맞춰 그대로 두었다.
 
-### 3.6 현재 알려진 기존 실패 2건 (양쪽 공통)
+### 3.6 기존 실패 2건 (양쪽 공통) — 2026-08-16 해소
 
 `tests/test_factor_signals.py` 2건이 `KeyError: 'message_text'` 로 실패한다.
 티커를 `AAA`/`BBB`/`CCC` 로 넣는데 **POC3-08 (A) 의 종목코드 6자리 검증**이 이를 막는다.
@@ -238,7 +238,11 @@ PUT /holdings status = 422
 ```
 
 환경 의존이 없는 순수 계약 불일치라 **PC 에서도 동일하게 실패한다.**
-POC3-08 때 백엔드는 focused 41건만 돌려서 잡히지 않은 것으로 보인다. 미수정 상태.
+POC3-08 때 백엔드는 focused 41건만 돌려서 잡히지 않은 것으로 보인다.
+
+**2026-08-16 해소** — 검증을 그대로 둔 채 fixture 티커를 실제 형식(`069500`/`360750`/
+`379810`, 시세 미확인 fallback 테스트는 `999999`)으로 교체했다. 백엔드 전체
+**1139 passed · 실패 0건**. 상시 실패가 없어야 새 실패가 즉시 드러난다.
 
 ### 3.7 torch 빌드가 다르다 — ML 산출물은 PC 에서만
 

@@ -95,7 +95,7 @@
 
 **⚠ `.env` 통째 복사 주의**: 사용자가 PC `.env` 를 그대로 붙여넣으면서 `PUSH_AUTOSEND_*` 4개가 `true` 로 들어왔다(토큰도 채워진 상태). 그대로 발송 스크립트를 돌렸다면 맥 데이터로 실제 텔레그램이 나갈 수 있었다. **사용자 지시로 맥은 전부 `false` 로 되돌림. PC 는 `true` 가 정상.** 같은 복사로 `OCI_REMOTE_INBOX`/`OCI_REMOTE_OUTBOX`/`OCI_BACKEND_URL`/`OCI_OPS_TOKEN` 이 사라지고 `THREE_PUSH_REMOTE_PACKAGE_DIR` 이 들어왔는데, PC 도 그 4개 없이 운영 중이라 PC 현행에 맞춰 두었다.
 
-**기존 실패 2건(양쪽 공통)**: `tests/test_factor_signals.py` 2건이 POC3-08 종목코드 6자리 검증 때문에 `AAA` 티커 PUT 이 422 로 막혀 실패한다. 환경 의존이 없어 **PC 에서도 동일하게 실패**하며 미수정 상태.
+**기존 실패 2건 — 2026-08-16 해소**: `tests/test_factor_signals.py` 2건이 POC3-08 종목코드 6자리 검증 때문에 `AAA` 티커 PUT 이 422 로 막혀 실패했다. 개발자가 "설계 판단 필요"로 분류해 미수정으로 두었으나 **사용자가 오분류를 지적** — 검증 약화가 아니라 fixture 문제이고, "2 failed" 상시화는 진짜 실패를 가린다. **검증은 그대로 두고 fixture 티커만 실제 형식으로 교체**(`069500`/`360750`/`379810`, fallback 테스트는 `999999`). 백엔드 전체 **1139 passed · 실패 0건**.
 
 상세: `docs/handoff/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md`
 

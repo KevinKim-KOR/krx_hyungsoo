@@ -286,22 +286,22 @@ def test_step3_message_text_does_not_list_all_holdings_factor_reasons(client):
         json={
             "holdings": [
                 {
-                    "ticker": "AAA",
-                    "name": "AAA Corp",
+                    "ticker": "069500",
+                    "name": "KODEX 200",
                     "quantity": 1,
                     "avg_buy_price": 100,
                     "account_group": "일반",
                 },
                 {
-                    "ticker": "BBB",
-                    "name": "BBB Corp",
+                    "ticker": "360750",
+                    "name": "TIGER 미국S&P500",
                     "quantity": 1,
                     "avg_buy_price": 100,
                     "account_group": "ISA",
                 },
                 {
-                    "ticker": "CCC",
-                    "name": "CCC Corp",
+                    "ticker": "379810",
+                    "name": "KODEX 미국나스닥100",
                     "quantity": 1,
                     "avg_buy_price": 100,
                     "account_group": "연금",
@@ -313,12 +313,12 @@ def test_step3_message_text_does_not_list_all_holdings_factor_reasons(client):
         [
             market_cache.MarketQuote(
                 ticker=t,
-                name=f"{t} Corp",
+                name=f"ETF {t}",
                 current_price=100.0,
                 price_asof=None,
                 price_source="naver",
             )
-            for t in ("AAA", "BBB", "CCC")
+            for t in ("069500", "360750", "379810")
         ]
     )
     r = client.post("/runs/generate-from-holdings")
@@ -343,8 +343,8 @@ def test_step3_message_text_uses_fallback_when_factor_unavailable(client):
         json={
             "holdings": [
                 {
-                    "ticker": "ZZZ",
-                    "name": "ZZZ",
+                    "ticker": "999999",
+                    "name": "미확인 종목",
                     "quantity": 1,
                     "avg_buy_price": 100,
                     "account_group": "일반",
