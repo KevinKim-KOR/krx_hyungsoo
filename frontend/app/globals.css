@@ -2333,6 +2333,8 @@ textarea.decision-textarea {
   justify-content: center;
 }
 .wb-hm3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+/* 확인 근거는 지표가 5일·20일 둘뿐이라 2칸을 쓴다. */
+.wb-hm2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
 .wb-hm-cell { display: flex; flex-direction: column; gap: 1px; }
 .wb-hm-cell .k,
 .wb-hm-ex .k {

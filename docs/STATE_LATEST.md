@@ -1,8 +1,30 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-13 (ETF 비교하기 그리드 카드 전환 — **PARTIAL · 1차 화면 확인 후 지적 4건 반영 · 검증자 미착수** · 맥북 OCI 연결 + 시장 DB 정본 교체)
+최종 업데이트: 2026-08-16 (확인 근거 그리드 카드 전환 **완료·실화면 확인 완료** + 기동 스크립트 주인 확인 가드 · 검증자 미착수)
 
-## 이번 작업 요약 (ETF 비교하기 그리드 카드 전환 — 사용자 실화면 직접 지시, 설계서 없음)
+## 이번 작업 요약 (확인 근거 그리드 카드 전환 + stop 스크립트 주인 확인 — 사용자 직접 지시)
+
+**상태**: 확인 근거 화면 **DONE**(사용자 실화면 확인 완료). `stop.bat` 만 **PC 실행 검증 미완**. 검증자 검증 미착수.
+
+**사용자 확정 작업 순서**: ① 확인 근거 화면 → ② 백로그 보류 해소(이미 해소된 것만) → ③ 손익 색 국내 관례 전환(안 B `--pnl-up #d92d20`/`--pnl-down #1570ef`, 전 화면 일괄) → ④ 개별주 종목명 조회(보유 종목 한정). **본 항목은 ① 까지.**
+
+**① 확인 근거**: `HoldingsRiskEvidenceSection` 의 8컬럼 표 → ETF 비교하기와 같은 하이브리드 행. 우측 지표 **2칸**(5일·20일) + `KODEX200 대비 20일` 아랫줄. `확인됨` 배지는 정상 시 숨김. **요약·빠른 보기·선택 상세·`need_check` 판정·값 없는 칸 표기는 무변경.** 원래 색 없던 화면에 `directionColor` 적용.
+
+**⚠ 잠재 버그 차단**: 행을 `role="button"` 으로 바꾸면서 `자료 확인 필요` 배지가 붙은 행의 접근가능 이름에 그 문구가 섞여, 같은 문구를 쓰는 빠른 보기 버튼 조회(`getByRole`)와 다중 매치로 터지는 상태가 됐다. 기존 테스트는 fixture 에 `need_check` 행이 없어 우연히 통과 중이었다. `aria-label` 로 이름 고정 + 재현 테스트 2건 추가.
+
+**기동 스크립트 주인 확인**: 기존 `stop.sh`/`stop.bat` 은 **포트 번호만 보고 종료**해, 3000·8000 을 쓰는 다른 프로젝트 서버를 죽였다(`start.sh` 도 내부에서 stop 호출). `stop.sh` 는 `lsof -d cwd` 로 작업 디렉터리가 이 프로젝트 밑일 때만 종료하고 **확인 불가 시 죽이지 않는다**. 가짜 외부 프로세스를 8000 에 띄워 **실측 검증 완료**. `stop.bat` 은 창 제목(`POC1 Backend`/`POC1 Frontend`) `taskkill /T` + 남은 포트의 `ExecutablePath` 검사 2단계 — **PC 검증 필요**.
+
+**⚠ 손익 색 함수가 두 곳**: `pnlClass()`(`frontend/lib/holdings_view.ts` → `.pnl-pos`/`.pnl-neg`)와 `directionColor()`(`workbench/helpers.ts` 인라인). **후속 ③ 에서 두 곳을 함께 고쳐야** 전 화면이 일관된다.
+
+**변경 파일(코드 5)**: `HoldingsRiskEvidenceSection.tsx` · `HoldingsRiskEvidenceSection.test.tsx` · `globals.css` · `stop.sh` · `stop.bat`. `git diff --stat` 실측 **216 insertions / 56 deletions**.
+
+**검증(맥북)**: tsc 0 · eslint 0 · vitest **160 passed (14 files)** · 확인 근거 단독 8 passed · 백엔드 `/docs` 200 · 프론트 200. 백엔드 코드 무변경이라 pytest 미재실행.
+
+**결과서**: `docs/ai_result/POC3/POC3-EVIDENCE_GRID_AND_STOP_GUARD_RESULT.md`
+
+---
+
+## 직전 작업 요약 (ETF 비교하기 그리드 카드 전환 — 사용자 실화면 직접 지시, 설계서 없음)
 
 **상태**: `PARTIAL`. 1차 화면 확인에서 나온 지적 4건을 반영했고 자동 검증은 통과. **검증자 검증 미착수 · `확인 필요` 탭 미전환 · 보유 탭 배지 정리 미결.**
 

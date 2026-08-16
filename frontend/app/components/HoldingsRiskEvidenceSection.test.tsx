@@ -159,3 +159,37 @@ describe("보유 ETF 확인 근거 (POC3-05 B)", () => {
     expect(text).toContain("괴리율 계산 불가");
   });
 });
+
+describe("확인 근거 — 카드 전환 (사용자 실화면 직접 지시 2026-08-15)", () => {
+  beforeEach(() => {
+    __resetQueryCache();
+    fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
+  });
+
+  it("자료 확인 필요 행은 배지를 띄우고, 빠른보기 버튼 조회와 충돌하지 않는다", async () => {
+    // 시장 evidence 가 없는 보유 → need_check 행이 되어 "자료 확인 필요" 배지가 뜬다.
+    fetchEnrichedHoldings.mockResolvedValue(enrichedResult());
+    fetchHoldingsMarketEvidence.mockResolvedValue({
+      ...evidenceResult(),
+      holdings: [],
+    });
+    await renderSection();
+    // 행은 role=button 이지만 접근가능 이름이 종목으로 고정돼 있어,
+    // 같은 문구를 쓰는 빠른보기 버튼 조회가 단일 매치로 유지된다.
+    expect(
+      screen.getByRole("button", { name: /자료 확인 필요/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /KODEX200 상세 보기/ })).toBeTruthy();
+    // 배지 문구 자체는 화면에 존재한다.
+    expect(document.querySelector(".wb-hb.warn")?.textContent).toContain(
+      "자료 확인 필요",
+    );
+  });
+
+  it("정상 행에는 '확인됨' 배지를 띄우지 않는다", async () => {
+    fetchEnrichedHoldings.mockResolvedValue(enrichedResult());
+    fetchHoldingsMarketEvidence.mockResolvedValue(evidenceResult());
+    const { container } = await renderSection();
+    expect(container.textContent ?? "").not.toContain("확인됨");
+  });
+});

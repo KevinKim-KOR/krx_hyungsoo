@@ -53,6 +53,21 @@ Homebrew 는 `/opt/homebrew` (시스템 공용) 에 설치돼 관리자 비밀�
 
 nvm 으로 설치한 node 는 비대화형 셸의 PATH 에 없어서, `start.sh` 안에서 `nvm.sh` 를 명시적으로 로드한다.
 
+> **⚠ 2026-08-16 — 다른 프로젝트를 죽이던 문제 수정.** 3000(Next/React/Express) 과
+> 8000(FastAPI/Django) 은 가장 흔한 개발 포트라, **포트 번호만 보고 종료하면 다른 프로젝트의
+> 서버가 죽는다.** `./start.sh` 도 내부에서 stop 을 부르므로 기동만 해도 남의 것이 죽었다.
+> 실제로 다른 프로젝트가 이쪽 백엔드(8000)를 종료시킨 사례가 발생했다.
+>
+> 이제 두 스크립트 모두 **주인 확인 후에만 종료**한다.
+> - `stop.sh` — `lsof -a -p <pid> -d cwd` 로 작업 디렉터리가 이 프로젝트 밑인지 확인.
+>   **확인 불가 시 죽이지 않는다.** 가짜 외부 프로세스로 실측 검증 완료.
+> - `stop.bat` — (1) `start.bat` 이 붙인 창 제목(`POC1 Backend`/`POC1 Frontend`)으로 `taskkill /T`
+>   (2) 남은 포트만 `ExecutablePath` 가 프로젝트 밑인지 검사. **PC 실행 검증 미완.**
+>
+> 반대로 **다른 프로젝트가 이쪽을 죽이는 것은 막을 수 없다.** 서버가 조용히 죽어 있으면
+> 포트 점유를 먼저 확인한다:
+> `lsof -i :3000 -i :8000 -sTCP:LISTEN -P -n`
+
 ### 1.5 시장 데이터 — 현재 OCI 정본 (2026-08-13 교체)
 
 `state/market/market_data.sqlite` 는 gitignored 라 clone 에 포함되지 않는다. 두 가지 방법이 있고,
@@ -312,6 +327,8 @@ grep -E "^PUSH_AUTOSEND" .env      # 맥은 전부 false 가 정상
 | 항목 | 내용 |
 |---|---|
 | ETF 비교하기 카드 전환 | 2026-08-12~13 맥에서 작업. 1차 화면 확인 후 지적 4건 반영 완료. **`확인 필요` 탭 미전환 · 보유 탭 배지 정리 미결.** 결과서 `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md` |
+| **`stop.bat` 주인 확인 가드** | 2026-08-16 추가. **맥에서 작성해 PC 실행 검증을 못 했다.** PC 에서 `stop.bat` 1회 실행해 백엔드·프론트가 정상 종료되는지 확인 필요. 프론트가 안 죽으면 알려줄 것 |
+| 확인 근거 카드 전환 | 2026-08-16 완료·실화면 확인 완료. 결과서 `docs/ai_result/POC3/POC3-EVIDENCE_GRID_AND_STOP_GUARD_RESULT.md` |
 | PC `.env` 발송 스위치 | 맥은 `false` 로 되돌렸다. **PC 는 `true` 가 정상**이므로 실수로 따라 끄지 말 것 (§3.5) |
 | `tests/test_factor_signals.py` 2건 | POC3-08 종목코드 6자리 검증과 어긋나 실패. **PC 에서도 동일하게 실패**한다. 수정은 별도 지시 필요 |
 | 맥/윈도우 폰트 차이 | §3 서두. 손대면 윈도우 화면도 같이 바뀐다 |

@@ -22,6 +22,9 @@ import {
   type RiskEvidenceRow,
 } from "./holdings_risk_evidence/helpers";
 import PriceChart from "./workbench/PriceChart";
+// 손익·수익률 방향 색은 ETF 비교하기와 같은 함수를 쓴다 — 국내 관례 전환 시
+// 한 곳만 고치면 두 화면이 함께 바뀐다.
+import { directionColor } from "./workbench/helpers";
 import type { MenuKey } from "./LeftSidebar";
 
 type QuickView = "all" | "need_check";
@@ -216,51 +219,112 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
             </button>
           </div>
 
-          {/* 고밀도 표 (ticker 통합 · 한 줄) */}
-          <div className="hre-table-wrap">
-            <table className="hre-table">
-              <thead>
-                <tr>
-                  <th>ETF</th>
-                  <th>평가금액</th>
-                  <th>평가 비중</th>
-                  <th>손익률</th>
-                  <th>5일</th>
-                  <th>20일</th>
-                  <th>KODEX200 대비 20일</th>
-                  <th>데이터 상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shownRows.map((r) => (
-                  <tr
-                    key={r.ticker}
-                    className={selected === r.ticker ? "selected" : ""}
-                    onClick={() => setSelected(r.ticker)}
-                  >
-                    <td>
+          {/* 2026-08-15 사용자 실화면 직접 지시 — 8컬럼 표 → 하이브리드 행.
+              ETF 비교하기(.wb-hrow)와 같은 규칙: 좌측 2단 카드 + 우측 지표 열.
+              지표가 5일·20일 둘뿐이라 우측은 2칸 + 라벨이 긴 KODEX200 대비 20일은
+              아랫줄. 데이터 상태는 "확인됨" 이면 배지를 띄우지 않고 "자료 확인 필요"
+              일 때만 표시한다(ETF 비교하기 ok 배지와 동일 방침).
+              값이 없는 칸을 임의로 채우지 않는 기존 계약(자료 확인 필요 / —)은 그대로. */}
+          <div className="wb-hlist" data-testid="hre-evidence-list">
+            {shownRows.map((r) => (
+              <div
+                key={r.ticker}
+                className={`wb-hrow${selected === r.ticker ? " sel" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={selected === r.ticker}
+                /* 접근가능 이름을 종목으로 고정한다. 없으면 행 안의 "자료 확인 필요"
+                   배지 문구까지 이름에 섞여, 같은 문구를 쓰는 빠른보기 버튼 조회와
+                   충돌한다(getByRole 다중 매치). */
+                aria-label={`${r.name ?? r.ticker} 상세 보기`}
+                onClick={() => setSelected(r.ticker)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(r.ticker);
+                  }
+                }}
+              >
+                <div className="wb-hcard">
+                  <div className="wb-hrow-top">
+                    <div className="wb-hrow-name">
                       <span className="hre-name">{r.name ?? r.ticker}</span>
-                      <span className="hre-ticker">{r.ticker}</span>
-                    </td>
-                    <td>{fmtMoney(r.eval_amount)}</td>
-                    <td>{r.market_weight_pct === null ? "자료 확인 필요" : `${r.market_weight_pct.toFixed(1)}%`}</td>
-                    <td>{fmtPct(r.pnl_rate_pct)}</td>
-                    <td>{fmtPct(r.return_5d_pct)}</td>
-                    <td>{fmtPct(r.return_20d_pct)}</td>
-                    <td>{fmtPctp(r.excess_vs_kodex200_20d_pctp)}</td>
-                    <td>
+                      {r.need_check && (
+                        <span className="wb-hbadges">
+                          <span className="wb-hb warn">자료 확인 필요</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="wb-hrow-pnl">
                       <span
-                        className={
-                          r.need_check ? "hre-status-check" : "hre-status-ok"
-                        }
+                        className="amt"
+                        style={{ color: directionColor(r.pnl_rate_pct) }}
                       >
-                        {r.need_check ? "자료 확인 필요" : "확인됨"}
+                        {fmtPct(r.pnl_rate_pct)}
                       </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span className="rate wb-hmuted">손익률</span>
+                    </div>
+                  </div>
+                  <div className="wb-hrow-bot">
+                    <div className="wb-hrow-facts">
+                      <span className="tk hre-ticker">{r.ticker}</span>
+                      <span className="sep">/</span>
+                      {r.market_weight_pct === null ? (
+                        <span className="wb-hmuted">비중 자료 확인 필요</span>
+                      ) : (
+                        <span>
+                          비중{" "}
+                          <span className="wv">
+                            {r.market_weight_pct.toFixed(1)}%
+                          </span>
+                        </span>
+                      )}
+                      <span className="sep">/</span>
+                      {r.eval_amount === null ? (
+                        <span className="wb-hmuted">평가 자료 확인 필요</span>
+                      ) : (
+                        <span>
+                          평가 <span className="wv">{fmtMoney(r.eval_amount)}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="wb-hmetrics">
+                  <div className="wb-hm2">
+                    <div className="wb-hm-cell">
+                      <span className="k">5일</span>
+                      <span
+                        className="v"
+                        style={{ color: directionColor(r.return_5d_pct) }}
+                      >
+                        {fmtPct(r.return_5d_pct)}
+                      </span>
+                    </div>
+                    <div className="wb-hm-cell">
+                      <span className="k">20일</span>
+                      <span
+                        className="v"
+                        style={{ color: directionColor(r.return_20d_pct) }}
+                      >
+                        {fmtPct(r.return_20d_pct)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="wb-hm-ex">
+                    <span className="k">KODEX200 대비 20일</span>
+                    <span
+                      className="v"
+                      style={{
+                        color: directionColor(r.excess_vs_kodex200_20d_pctp),
+                      }}
+                    >
+                      {fmtPctp(r.excess_vs_kodex200_20d_pctp)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* 선택 상세 — 가격 차트(lazy) + NAV·괴리율·구성종목·중복률(§4.4·Q2 통합).
