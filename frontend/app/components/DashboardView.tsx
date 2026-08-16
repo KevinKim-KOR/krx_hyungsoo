@@ -350,7 +350,10 @@ function MarketCardBody({
             <span
               style={{
                 color:
-                  risk.kodex200.change_1d_pct >= 0 ? "var(--ok)" : "var(--danger)",
+                  // 2026-08-16 국내 관례 — 상승 빨강 / 하락 파랑.
+                  risk.kodex200.change_1d_pct >= 0
+                    ? "var(--pnl-up)"
+                    : "var(--pnl-down)",
               }}
             >
               {" "}
@@ -523,7 +526,8 @@ function HoldingsCardBody({
             <span
               style={{
                 fontWeight: 600,
-                color: pnlSum >= 0 ? "var(--ok)" : "var(--danger)",
+                // 2026-08-16 국내 관례 — 상승 빨강 / 하락 파랑.
+                color: pnlSum >= 0 ? "var(--pnl-up)" : "var(--pnl-down)",
               }}
             >
               {pnlSum >= 0 ? "+" : ""}

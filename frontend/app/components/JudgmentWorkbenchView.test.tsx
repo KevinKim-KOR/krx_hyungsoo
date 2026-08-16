@@ -324,14 +324,28 @@ describe("Workbench — REJECTED r2 정정 (요약·교집합·현재가·attent
   });
 
   it("보유 행에 현재가가 있고 NAV·구성종목 상태가 분리된다 (§7.6·A-1)", async () => {
+    // 2026-08-16: 정상 상태는 배지를 띄우지 않는다(후보 탭과 동일 규칙). 따라서
+    //   "분리 표시" 는 한쪽만 이상일 때 그 쪽만 뜨는 것으로 검사한다 — 정상 배지
+    //   존재 검사보다 분리 계약을 더 정확히 확인한다.
+    fetchHoldingsMarketEvidence.mockResolvedValue({
+      ...evidOk(),
+      holdings: [
+        {
+          ...evidOk().holdings[0],
+          nav_discount: { ...evidOk().holdings[0].nav_discount, status: "ok" },
+          constituents_overlap: { status: "unavailable", overlap_with_market_core: [] },
+        },
+      ],
+    });
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
     const list = await screen.findByTestId("wb-holding-list");
-    // 2026-08-12 카드 전환: 현재가는 행 하단 우측, NAV·구성종목은 별도 배지 2개.
+    // 현재가는 행 하단 우측.
     expect(within(list).getAllByText(/현재/).length).toBeGreaterThan(0);
-    expect(within(list).getByText("NAV")).toBeInTheDocument();
-    expect(within(list).getByText("구성종목")).toBeInTheDocument();
+    // 구성종목만 이상 → 구성종목 배지만 뜨고 NAV 배지는 뜨지 않는다.
+    expect(within(list).getByText(/구성종목/)).toBeInTheDocument();
+    expect(within(list).queryByText(/^NAV/)).not.toBeInTheDocument();
   });
 
   it("returns 상태가 unavailable 인 보유 종목은 확인 필요로 분류된다 (A-1)", async () => {
@@ -421,12 +435,22 @@ describe("Workbench — REJECTED r3 정정 (현재 교집합·Evidence 상태·w
     expect(row?.textContent).toMatch(/후보 포함/);
   });
 
-  it("보유 행에 Evidence 상태 배지가 있다", async () => {
+  it("Evidence 정상이면 배지를 띄우지 않고, 확인 불가일 때만 띄운다 (2026-08-16)", async () => {
+    // 정상 케이스 — 근거 배지 없음.
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
     const list = await screen.findByTestId("wb-holding-list");
-    expect(within(list).getAllByText(/^근거 /).length).toBeGreaterThan(0);
+    expect(within(list).queryByText(/^근거 /)).not.toBeInTheDocument();
+  });
+
+  it("Evidence 가 없는 보유 종목은 근거 확인 불가 배지를 띄운다", async () => {
+    fetchHoldingsMarketEvidence.mockResolvedValue({ ...evidOk(), holdings: [] });
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await screen.findByText("KODEX 200");
+    fireEvent.click(screen.getByRole("tab", { name: "보유" }));
+    const list = await screen.findByTestId("wb-holding-list");
+    expect(within(list).getByText(/근거 확인 불가/)).toBeInTheDocument();
   });
 
   it("비중 부분 결측이면 유효 건수를 표기한다 (B-1)", async () => {

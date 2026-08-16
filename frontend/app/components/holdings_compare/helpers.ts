@@ -326,5 +326,6 @@ export function fmtPct(value: number | null | undefined): string {
 
 export function returnColor(value: number | null | undefined): string {
   if (value === null || value === undefined) return "var(--muted)";
-  return value >= 0 ? "var(--ok)" : "var(--danger)";
+  // 2026-08-16 국내 관례 — 상승 빨강 / 하락 파랑 (전용 토큰).
+  return value >= 0 ? "var(--pnl-up)" : "var(--pnl-down)";
 }

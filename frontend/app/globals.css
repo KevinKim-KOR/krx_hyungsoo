@@ -14,6 +14,14 @@
   --warn: #d97706;
   --danger: #dc2626;
   --info: #6b7280;
+
+  /* 손익·수익률 방향 전용 (2026-08-16 사용자 지시 — 국내 증권사 관례).
+     상승/이익 = 빨강, 하락/손실 = 파랑. 이전에는 --ok(초록)/--danger(빨강)를
+     재사용했으나, 상승에 "위험" 색을 쓰면 같은 화면의 경고 표시와 의미가 섞인다.
+     그래서 경고(--danger)·링크(--accent)와 분리된 전용 토큰을 둔다.
+     방향 색을 바꿀 일이 생기면 이 두 줄만 고치면 된다. */
+  --pnl-up: #d92d20;
+  --pnl-down: #1570ef;
 }
 
 * {
@@ -1102,11 +1110,11 @@ ul.detail-fields .v {
 }
 
 .pnl-pos {
-  color: var(--ok);
+  color: var(--pnl-up);
 }
 
 .pnl-neg {
-  color: var(--danger);
+  color: var(--pnl-down);
 }
 
 /* POC2 Step 2D — 승인 초안 영역 (preview / evidence) */

@@ -61,7 +61,8 @@ export function fmtAmountSummary(v: number | null | undefined): string {
 
 export function directionColor(v: number | null | undefined): string {
   if (v == null) return "var(--muted)";
-  return v > 0 ? "var(--ok)" : v < 0 ? "var(--danger)" : "var(--muted)";
+  // 2026-08-16 국내 관례 — 상승 빨강 / 하락 파랑 (전용 토큰).
+  return v > 0 ? "var(--pnl-up)" : v < 0 ? "var(--pnl-down)" : "var(--muted)";
 }
 
 // 후보 returns 접근 (없으면 null). c 가 없어도(undefined) 안전.

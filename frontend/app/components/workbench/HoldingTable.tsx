@@ -180,7 +180,6 @@ export function HoldingTable({
                 <div className="wb-hrow-name">
                   {r.name ?? "—"}
                   <span className="wb-hbadges">
-                    <span className="wb-hb hold">보유</span>
                     {r.count > 1 && (
                       <span className="wb-hb mute">{r.count}계좌 합산</span>
                     )}
@@ -296,7 +295,10 @@ function CandidateBadge({ state }: { state: ReturnType<typeof relationState> }) 
   return <span className="wb-hb mute">후보 미포함</span>;
 }
 
-// NAV / 구성종목 개별 상태 배지 — ok=정상, 없음/부재=확인 불가.
+// NAV / 구성종목 개별 상태 배지 — 없음/부재=확인 불가.
+// 2026-08-16: 정상(ok)이면 배지를 띄우지 않는다. 후보 탭의 데이터 상태 배지와
+//   같은 규칙 — 모든 행에 뜨는 "정상" 배지는 정보량이 없고 종목명 줄만 길게 한다.
+//   이상이 있을 때만 눈에 띄게 하는 것이 이 화면의 목적에 맞는다.
 function StatusBadge({
   label,
   status,
@@ -310,7 +312,7 @@ function StatusBadge({
     return <span className="wb-hb danger">{label} 확인 불가</span>;
   }
   if (status === "ok") {
-    return <span className="wb-hb mute">{label}</span>;
+    return null;
   }
   return (
     <span className="wb-hb warn">
@@ -321,7 +323,8 @@ function StatusBadge({
 
 // Evidence 전체 상태 배지 — 종목별 근거 전반을 한눈에 (A-1).
 function EvidenceBadge({ state }: { state: HoldingEvidenceState }) {
-  if (state === "ok") return <span className="wb-hb mute">근거 정상</span>;
+  // 정상이면 배지 없음 (StatusBadge 와 동일 규칙).
+  if (state === "ok") return null;
   if (state === "attention") return <span className="wb-hb warn">⚠ 근거 확인</span>;
   if (state === "unavailable")
     return <span className="wb-hb danger">근거 확인 불가</span>;
