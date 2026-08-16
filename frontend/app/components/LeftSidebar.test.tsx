@@ -4,6 +4,9 @@
 // - data_status 흡수 + dashboard(LEGACY) 이동 → "진단·상태"(diagnostics) 그룹.
 // - "승인·운영" 라벨 "승인·알림" → "승인·적용"(§5.4·§10.1).
 // - MenuKey 11→10 (dashboard·data_status 제거, diagnostics 추가).
+// - 2026-08-16: ml 추가로 10→11. 흩어져 있던 ML 카드 5개를 한 메뉴로 모음(사용자 지시).
+// - 2026-08-16: data_status·oci_status 분리로 11→13. 진단 서랍에 섞여 있던 정상 업무를
+//   독립 메뉴로 복원하고, 남은 diagnostics 라벨을 '개발·실험용' 으로 변경(사용자 지시).
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import LeftSidebar, {
@@ -23,6 +26,9 @@ const ALL_KEYS: MenuKey[] = [
   "holdings_evidence",
   "approval",
   "diagnostics",
+  "ml",
+  "data_status",
+  "oci_status",
 ];
 
 const GROUP_TITLES = [
@@ -56,11 +62,11 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(titles.length).toBe(GROUP_TITLES.length);
   });
 
-  it("AC-2: 10개 key 가 그룹에 정확히 1회씩 귀속(중복·누락·신규 0)", () => {
+  it("AC-2: 13개 key 가 그룹에 정확히 1회씩 귀속(중복·누락·신규 0)", () => {
     const keys = MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key));
     expect(keys.sort()).toEqual([...ALL_KEYS].sort());
-    expect(new Set(keys).size).toBe(10);
-    expect(keys.length).toBe(10);
+    expect(new Set(keys).size).toBe(13);
+    expect(keys.length).toBe(13);
     expect(MENU_ITEMS.map((i) => i.key).sort()).toEqual([...ALL_KEYS].sort());
   });
 
@@ -147,15 +153,22 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(ops.items.map((i) => i.label)).toEqual(["승인·적용"]);
   });
 
-  it("진단·상태 그룹은 diagnostics 1개이며 승인·운영 뒤에 온다 (POC3-07 §5.3)", () => {
+  it("진단·상태 그룹은 정상 업무→ML→개발용 순서이며 승인·운영 뒤에 온다 (POC3-07 §5.3 · 2026-08-16 재편)", () => {
     const diag = MENU_GROUPS.find((g) => g.title === "진단·상태")!;
-    expect(diag.items.map((i) => i.key)).toEqual(["diagnostics"]);
+    // 사용자 지시 순서: 데이터 상태 → OCI 운영 상태 → ML 실험 → 개발·실험용.
+    expect(diag.items.map((i) => i.key)).toEqual([
+      "data_status",
+      "oci_status",
+      "ml",
+      "diagnostics",
+    ]);
     const order = MENU_GROUPS.map((g) => g.title);
     expect(order.indexOf("진단·상태")).toBe(order.indexOf("승인·운영") + 1);
     // 제거된 key 는 어디에도 없다.
     const allKeys = MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key));
     expect(allKeys).not.toContain("dashboard" as MenuKey);
-    expect(allKeys).not.toContain("data_status" as MenuKey);
+    // data_status 는 2026-08-16 사용자 지시로 복원됨 (POC3-07 흡수 근거가 낡았던 건).
+    expect(allKeys).toContain("data_status" as MenuKey);
   });
 
   it("보완2: 진단·상태 선택 시 그 그룹이 활성 표시된다", () => {

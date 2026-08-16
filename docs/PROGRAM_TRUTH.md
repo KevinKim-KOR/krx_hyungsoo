@@ -2,7 +2,7 @@
 
 현행 프로그램 통합 설계서 (PROGRAM_TRUTH_RECONSTRUCTION_V1)
 
-- **최종 반영**: 2026-08-16 — **확인 근거 그리드 카드 전환 반영 (사용자 실화면 직접 지시 · 실화면 확인 완료)**. `holdings_evidence` 의 8컬럼 표(`.hre-table`)가 ETF 비교하기와 같은 하이브리드 행으로 바뀜(좌측 2단 카드 + 우측 지표 **2칸**(5일·20일) + KODEX200 대비 20일 아랫줄). `확인됨` 상태 배지는 정상일 때 숨기고 `자료 확인 필요` 만 표시. 요약·빠른 보기·선택 상세·`need_check` 판정·값 없는 칸 표기(`자료 확인 필요`/`—`)는 전부 무변경. 원래 색이 없던 화면에 방향 색(`directionColor`)이 새로 적용됨 — 국내 관례 전환은 후속. 결과서 `docs/ai_result/POC3/POC3-EVIDENCE_GRID_AND_STOP_GUARD_RESULT.md`.
+- **최종 반영**: 2026-08-16 — **메뉴 재편(ML 실험 신설 · 데이터 상태/OCI 운영 상태 복원·분리 · diagnostics→개발·실험용) 반영**. MenuKey 10→13. 흩어져 있던 ML 카드 5개를 한 메뉴로 모으고, 진단 서랍에 섞여 있던 정상 업무 조회를 분리했다. 화면 내용·API 무변경(위치 이동). 상세는 §5.1 표 아래 주석. (같은 날) **확인 근거 그리드 카드 전환 반영 (사용자 실화면 직접 지시 · 실화면 확인 완료)**. `holdings_evidence` 의 8컬럼 표(`.hre-table`)가 ETF 비교하기와 같은 하이브리드 행으로 바뀜(좌측 2단 카드 + 우측 지표 **2칸**(5일·20일) + KODEX200 대비 20일 아랫줄). `확인됨` 상태 배지는 정상일 때 숨기고 `자료 확인 필요` 만 표시. 요약·빠른 보기·선택 상세·`need_check` 판정·값 없는 칸 표기(`자료 확인 필요`/`—`)는 전부 무변경. 원래 색이 없던 화면에 방향 색(`directionColor`)이 새로 적용됨 — 국내 관례 전환은 후속. 결과서 `docs/ai_result/POC3/POC3-EVIDENCE_GRID_AND_STOP_GUARD_RESULT.md`.
 - (그 전) 2026-08-13 — **ETF 비교하기 그리드 카드 전환 반영 (사용자 실화면 직접 지시 · PARTIAL)**. `workbench` 의 후보/보유 두 탭이 가로 표(후보 9열 · 보유 14열) → 보유 현황과 같은 하이브리드 행(좌측 2단 카드 + 우측 지표 열)으로 바뀜. 상태 4종(후보포함·NAV·구성종목·Evidence)은 배지로 통합하되 **후보 탭의 데이터 상태 배지는 정상일 때 숨김**. 후보 탭의 헤더 클릭 정렬은 정렬 세그먼트 바로 이전(정렬 키·동작 동일). **탭 전환 시 선택 상세 해제**(이전에는 다른 탭까지 잔존). `KODEX초과` 는 `candExcess` 필드명 오류로 계속 `—` 였던 것을 정정 — 표시·정렬·선택 상세 3곳에서 1M 기준(`vs_kodex200_1m_pctp`) 값이 나온다. `확인 필요` 탭은 미전환. 집계·3-state·부분 평가(N/M)·stale·행 클릭→차트 등 판정 로직은 전부 무변경. 결과서 `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md`.
 - (그 전) 2026-08-11 — **POC3-08(종목 관리·보유 현황 그리드 UX 개선 A~F) 반영**. (A~D) 종목 관리 입력에 종목코드 형식검증(영숫자 6자·저장 차단)·`etf_master` 종목명 자동조회(신규 GET `/holdings/etf-name`)·하단 고정 액션바·계좌 select 제한, `PUT /holdings` strict_ticker=True. (E) 두 화면 정렬(계좌순 기본/종목명순/종목코드순). (F) 보유 현황 증권사 스타일 개편(평가 배너·계좌별 구성 막대·2단 종목 행). 재작업: 종목 관리 비동기 조회 uid 식별(index 경합 해소)·계좌 표시=저장 정합·평가 3상태(N/M 기준) 표기. (그 전) 2026-08-06 POC3-07 반영: 메뉴 10키(diagnostics 신설·data_status·dashboard 흡수)·approval 축소·신규 API(`/oci/startup-status`·`/holdings/apply`)·기동 시 1회 OCI 읽기·Holdings 단일 payload OCI 적용.
 
@@ -142,9 +142,19 @@ flowchart LR
 | holdings_manage | 종목 관리 | `HoldingsManageView` | 보유·자료 관리 | 입력·저장·**OCI 적용**(POC3-07)·**형식검증+종목명 자동조회+정렬**(POC3-08) | IMPLEMENTED_UNVERIFIED |
 | holdings_evidence | 확인 근거 | `HoldingsEvidenceView` | 보유·자료 관리 | 읽기 근거 · **카드형 그리드**(2026-08-16) | IMPLEMENTED_UNVERIFIED |
 | approval | 승인·적용 | `ApprovalTelegramView` | 승인·운영 | 운영(PARAM·seed OCI 적용) — POC3-07 역할 축소 | IMPLEMENTED_UNVERIFIED |
-| diagnostics | 진단·상태 | `DiagnosticsView` | 진단·상태 | 진단·미리보기·LEGACY 흡수(POC3-07 신규) | DIAGNOSTIC |
+| data_status | 데이터 상태 | `DataStatusView` | 진단·상태 | **조회(전체 ETF NAV·괴리율·수집 상태)** — 2026-08-16 정상 메뉴 복원 | IMPLEMENTED_UNVERIFIED |
+| oci_status | OCI 운영 상태 | `OciStatusView` | 진단·상태 | **조회(기동 시 1회 읽은 OCI 상태)** — 2026-08-16 분리 | IMPLEMENTED_UNVERIFIED |
+| ml | ML 실험 | `MLView` | 진단·상태 | 학습 자료 상태·baseline·참고점수 — 2026-08-16 신설(카드 5개 집결) | DIAGNOSTIC |
+| diagnostics | 개발·실험용 | `DiagnosticsView` | 진단·상태 | 미리보기·샘플·개발 호환·LEGACY — 2026-08-16 범위 축소·라벨 변경 | DIAGNOSTIC |
 
-> **POC3-07(2026-08-06) 메뉴 재편**: MenuKey 11→10. `data_status`·`dashboard` 제거 → `diagnostics` 신설·흡수. `DataStatusView`·`DashboardView` 컴포넌트는 존재하나 `DiagnosticsView` 내부에서만 참조(정상 메뉴 진입점 아님). `approval` 라벨 "승인·알림"→"승인·적용", 정보 PUSH 카드·미리보기·샘플은 `diagnostics`로 이동.
+> **2026-08-16 메뉴 재편(사용자 직접 지시)**: MenuKey 10→**13**. 진단 서랍에 **정상 업무가 섞여 있던 것을 분리**했다.
+> - `ml` 신설 — ML 카드 5개를 한 메뉴로 집결(`DataStatusView` 3 + `ETFExposureView` 1 + `MarketDiscoveryView` 1). 판단 화면(비교·판단)에서 ML 실험 카드가 빠졌다.
+> - `data_status` **복원** — POC3-07 은 이를 "placeholder" 로 보고 흡수했으나, 실제로는 **2026-06-08 NAV/Discount Display FIX 로 이미 전체 ETF 조회 화면**이었다(흡수 판단 근거가 낡음).
+> - `oci_status` 분리 — 기동 시 OCI 상태는 정상 업무 조회다.
+> - `diagnostics` 라벨 "진단·상태 상세"→**"개발·실험용"**, 범위를 미리보기·샘플·개발 호환·LEGACY 로 축소(이름과 내용 일치).
+> - 진단·상태 그룹 순서: 데이터 상태 → OCI 운영 상태 → ML 실험 → 개발·실험용.
+>
+> (그 전) **POC3-07(2026-08-06) 메뉴 재편**: MenuKey 11→10. `data_status`·`dashboard` 제거 → `diagnostics` 신설·흡수. `approval` 라벨 "승인·알림"→"승인·적용", 정보 PUSH 카드·미리보기·샘플은 `diagnostics`로 이동. `DashboardView` 는 지금도 `DiagnosticsView` 내부 LEGACY 로만 참조된다.
 
 ### 5.2 화면별 요지 (근거 symbol)
 
@@ -395,7 +405,7 @@ flowchart LR
 
 - **운영 승격 후보**: PC `/holdings/market/refresh`·`/market/refresh`·`build_holdings_market_evidence` — 이미 작동하는 PC 경로. (단 §3 승인구조와의 경계는 설계자 결정.)
 - **중복 제거 후보**: OCI PUSH runner 2개(runtime/package) 중 하나로 단일화.
-- **진단 격리 ✅ POC3-07 완료**: `data_status`(placeholder)·미리보기/샘플을 `diagnostics`(진단·상태) 화면으로 분리. `diagnose_*`/`verify_*_oci` 스크립트는 여전히 스크립트 레벨.
+- **진단 격리 ⚠ 2026-08-16 재조정**: POC3-07 은 `data_status` 를 **placeholder 로 보고** 미리보기/샘플과 함께 `diagnostics` 로 흡수했으나, 그 화면은 이미 2026-06-08 부터 전체 ETF NAV·괴리율 **조회 화면**이었다 — 판단 근거가 낡았다. 사용자 지시로 `data_status`·`oci_status` 를 정상 메뉴로 되돌리고, `diagnostics` 는 미리보기·샘플·개발 호환·LEGACY 만 남겨 **개발·실험용**으로 이름을 맞췄다. `diagnose_*`/`verify_*_oci` 스크립트는 여전히 스크립트 레벨.
 - **LEGACY 차단 ✅ POC3-07 부분완료**: `dashboard`(기존 대시보드)를 `diagnostics` 내 LEGACY(details 접힘)로 격리·정상 메뉴 제거. `_orphaned/*`·`*.bak-*` 는 그대로.
 - **사용자 조작 단계 축소 △ POC3-07**: Holdings 저장→OCI 적용을 화면 버튼(`POST /holdings/apply`)으로 연결. 단 저장·적용은 여전히 별도 2동작(설계자 Q3 — 명시적 분리 의도).
 

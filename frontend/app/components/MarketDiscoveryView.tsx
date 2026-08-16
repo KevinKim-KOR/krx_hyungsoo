@@ -34,10 +34,8 @@ import CandidateTable from "./CandidateTable";
 import MarketContextCard from "./MarketContextCard";
 import MarketRiskReferenceCard from "./MarketRiskReferenceCard";
 import HoldingsCompareView from "./HoldingsCompareView";
-import RelativeUpsideRunCard from "./RelativeUpsideRunCard";
 // 2026-08-01 승인·알림 역할 분리 C구간 — 신규 ETF 관찰 후보 갱신을 이 화면으로 이동.
 import UniverseRefreshPanel from "./UniverseRefreshPanel";
-import type { RelativeUpsideRunResult } from "@/lib/api/mlRelativeUpside";
 
 // 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1) — 탭 토글.
 type CompareViewMode = "default" | "holdings_compare";
@@ -243,14 +241,8 @@ export default function MarketDiscoveryView({
   const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
   const [basis, setBasis] = useState<MarketBasis>(DEFAULT_MARKET_BASIS);
   const [order, setOrder] = useState<MarketOrder>(DEFAULT_MARKET_ORDER);
-  // 2026-06-21 ML 축1 UI — RelativeUpsideRunCard 결과를 부모가 보유 (lift state up).
-  // 카드의 onSuccess={loadTopn} 콜백이 phase 를 loading 으로 바꿔 카드 unmount/
-  // remount 가 발생하면 카드 내부 useState 가 초기화되는 회귀 차단.
-  const [relativeUpsideResult, setRelativeUpsideResult] =
-    useState<RelativeUpsideRunResult | null>(null);
-  const [relativeUpsideErrorMessage, setRelativeUpsideErrorMessage] = useState<
-    string | null
-  >(null);
+  // 2026-08-16 — RelativeUpsideRunCard 를 ML 실험 메뉴로 옮기면서 이 화면이 들고 있던
+  // 결과·오류 상태(lift state up)도 함께 제거했다. 카드가 없으므로 참조도 없다.
   // 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1).
   const [compareViewMode, setCompareViewMode] =
     useState<CompareViewMode>("default");
@@ -579,18 +571,6 @@ export default function MarketDiscoveryView({
           loadTopn() 으로 후보 표 재조회 (지시문 — 성공 후 후보 목록 갱신).
           result / errorMessage 는 부모가 보유 — 카드 unmount/remount 와 무관하게
           결과 유지 (2026-06-21 운영 회귀 수정). */}
-      <RelativeUpsideRunCard
-        result={relativeUpsideResult}
-        errorMessage={relativeUpsideErrorMessage}
-        onResult={(res) => {
-          setRelativeUpsideResult(res);
-          setRelativeUpsideErrorMessage(null);
-          if (res.status === "ok") {
-            loadTopn();
-          }
-        }}
-        onError={(msg) => setRelativeUpsideErrorMessage(msg)}
-      />
       {/* 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1) — 상단 탭 토글. */}
       <CompareViewTabs
         mode={compareViewMode}

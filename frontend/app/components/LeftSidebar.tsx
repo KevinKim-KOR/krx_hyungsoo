@@ -30,7 +30,10 @@ export type MenuKey =
   | "holdings_manage"
   | "holdings_evidence"
   | "approval"
-  | "diagnostics";
+  | "diagnostics"
+  | "ml"
+  | "data_status"
+  | "oci_status";
 
 export interface MenuItem {
   key: MenuKey;
@@ -90,8 +93,15 @@ export const MENU_GROUPS: MenuGroup[] = [
   {
     id: "diagnostics",
     title: "진단·상태",
+    // 2026-08-16 사용자 직접 지시 — 진단 서랍에 정상 업무가 섞여 있어 분리했다.
+    //   순서: 정상 업무(데이터 상태 → OCI 운영 상태) → ML 실험 → 개발·실험용.
+    //   data_status 는 POC3-07 이 "placeholder" 로 보고 흡수했으나, 실제로는
+    //   2026-06-08 부터 전체 ETF NAV·괴리율 조회 화면이었다(판단 근거가 낡음) → 복원.
     items: [
-      { key: "diagnostics", label: "진단·상태 상세", hint: "기동 시 OCI 상태 · 진단 · 미리보기 · LEGACY" },
+      { key: "data_status", label: "데이터 상태", hint: "전체 ETF NAV · 괴리율 · 수집 상태" },
+      { key: "oci_status", label: "OCI 운영 상태", hint: "기동 시 1회 읽은 OCI 상태" },
+      { key: "ml", label: "ML 실험", hint: "학습 자료 상태 · baseline · 참고점수" },
+      { key: "diagnostics", label: "개발·실험용", hint: "미리보기 · 샘플 · 개발 호환 · LEGACY" },
     ],
   },
 ];
@@ -114,6 +124,9 @@ const ALL_MENU_KEYS: MenuKey[] = [
   "holdings_evidence",
   "approval",
   "diagnostics",
+  "ml",
+  "data_status",
+  "oci_status",
 ];
 
 function assertMenuGroupsCover(): void {

@@ -33,7 +33,6 @@ import HoldingsOverlapBridgeCard, {
   type BridgeState,
 } from "./HoldingsOverlapBridgeCard";
 import type { MenuKey } from "./LeftSidebar";
-import MLTimeseriesReadinessCard from "./MLTimeseriesReadinessCard";
 import NavDiscountPlaceholderCard from "./NavDiscountPlaceholderCard";
 import OverlapTab from "./OverlapTab";
 
@@ -325,7 +324,6 @@ export default function ETFExposureView({ onNavigate }: Props) {
 
       {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-8) —
           ML / 위험 감지 시계열 9축 준비 상태 표시. 학습 / threshold / factor 확정 X. */}
-      <MLTimeseriesReadinessCard />
 
       <div className="card">
         <h2>AI Sessions 전달</h2>

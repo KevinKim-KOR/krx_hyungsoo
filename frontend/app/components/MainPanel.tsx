@@ -15,6 +15,9 @@ import { useState } from "react";
 import AISessionsView from "./AISessionsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
 import DiagnosticsView from "./DiagnosticsView";
+import MLView from "./MLView";
+import DataStatusView from "./DataStatusView";
+import OciStatusView from "./OciStatusView";
 import TodayInvestmentCheckView from "./TodayInvestmentCheckView";
 import JudgmentWorkbenchView from "./JudgmentWorkbenchView";
 import ETFExposureView from "./ETFExposureView";
@@ -75,6 +78,17 @@ export default function MainPanel() {
       view = (
         <DiagnosticsView run={run} setRun={setRun} onNavigate={setActive} />
       );
+      break;
+    case "ml":
+      // 2026-08-16 사용자 지시 — 흩어져 있던 ML 카드 5개를 한 메뉴로 모음.
+      view = <MLView onNavigate={setActive} />;
+      break;
+    case "data_status":
+      // 2026-08-16 — POC3-07 이 diagnostics 로 흡수했던 것을 정상 업무 조회로 복원.
+      view = <DataStatusView />;
+      break;
+    case "oci_status":
+      view = <OciStatusView />;
       break;
   }
 

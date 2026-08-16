@@ -1,8 +1,43 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-16 (확인 근거 그리드 카드 전환 **완료·실화면 확인 완료** + 기동 스크립트 주인 확인 가드 · 검증자 미착수)
+최종 업데이트: 2026-08-16 (**메뉴 재편 — ML 실험 신설 · 데이터 상태/OCI 운영 상태 복원·분리 · diagnostics→개발·실험용**. 사용자 실화면 확인 완료 · 검증자 미착수)
 
-## 이번 작업 요약 (확인 근거 그리드 카드 전환 + stop 스크립트 주인 확인 — 사용자 직접 지시)
+## 이번 작업 요약 (메뉴 재편 — 사용자 직접 지시, 설계서 없음)
+
+**상태**: **DONE** (사용자 실화면 확인 완료 — "ML분리 좋습니다" / "좋습니다"). 검증자 검증 미착수.
+
+**배경**: 사용자가 두 가지를 지적했다. (1) ML 카드가 **비교·판단 화면에 박혀 있어 판단 화면이 무겁다** (2) 진단·상태가 "백로그들의 향연" 인데 **그 안에 실제로 써야 하는 것이 섞여 있다.**
+
+**MenuKey 10 → 13.**
+
+| 변경 | 내용 |
+|---|---|
+| `ml` 신설 (`MLView`) | ML 카드 5개 집결 — `DataStatusView` 3(Evidence/Sanity/Baseline) + `ETFExposureView` 1(TimeseriesReadiness) + `MarketDiscoveryView` 1(RelativeUpsideRun). **판단 화면 2곳에서 ML 카드가 빠졌다.** |
+| `data_status` **복원** | POC3-07 이 **placeholder 로 보고 흡수**했으나, 실제로는 **2026-06-08 NAV/Discount Display FIX 로 이미 전체 ETF NAV·괴리율 조회 화면**이었다. 흡수 판단 근거가 낡았던 것 — 사용자 지적이 정확했다. |
+| `oci_status` 분리 (`OciStatusView`) | 기동 시 1회 읽은 OCI 상태 = 정상 업무 조회. `DiagnosticsView` 내부 함수에서 독립 컴포넌트로. |
+| `diagnostics` 축소·개명 | 라벨 "진단·상태 상세" → **"개발·실험용"**. 남은 것은 미리보기·샘플(PREVIEW/TEST)·개발 호환 점검·LEGACY 대시보드뿐 — 이름과 내용이 일치. |
+
+**그룹 순서(사용자 지정)**: 데이터 상태 → OCI 운영 상태 → ML 실험 → 개발·실험용. 그룹명 `진단·상태` 유지.
+
+**화면 내용·API 무변경** — 위치 이동과 라벨 변경만. 카드 내부 로직 0건 수정.
+
+**⚠ 이동으로 끊긴 연결 1건**: `RelativeUpsideRunCard` 는 원래 `MarketDiscoveryView` 안에 있어 실행 성공 시 그 화면의 `loadTopn()` 으로 후보 표를 즉시 재조회했다. 화면 분리로 호출 대상이 없어져, **자동 재조회 대신 "요즘 잘 오르는 ETF →" 이동 버튼**을 띄운다. 결과·오류 상태는 `MLView` 가 보유(2026-06-21 remount 회귀 수정 유지). 자동 재조회를 살리려면 상태를 `MainPanel` 로 끌어올려야 해 범위가 커진다 — 미적용.
+
+**곁가지 정리**: 카드 이동 후 `MarketDiscoveryView` 에 남은 죽은 상태 4개(`relativeUpsideResult` 등)와 미사용 타입 import 제거(lint 경고 4건 해소).
+
+**메뉴 계약 테스트**: `LeftSidebar.test.tsx` 가 MenuKey 개수·그룹 귀속을 계약으로 검사해 3라운드에 걸쳐 잡아냈다. 특히 POC3-07 이 못박은 `expect(allKeys).not.toContain("data_status")` 를 **복원이 맞으므로 `toContain` 으로 뒤집고** 사유를 주석에 남겼다.
+
+**변경 파일(코드 8 + 신규 2)**: `LeftSidebar.tsx`·`LeftSidebar.test.tsx`·`MainPanel.tsx`·`DiagnosticsView.tsx`(축소)·`DataStatusView.tsx`·`ETFExposureView.tsx`·`MarketDiscoveryView.tsx` 수정, `MLView.tsx`·`OciStatusView.tsx` 신규.
+
+**검증(맥북)**: tsc 0 · eslint 0 · vitest **160 passed (14 files)** · dev 서버 `✓ Compiled` · 200. 백엔드 무변경.
+
+**백로그 정리 동반**: 69→68 항목. 제거 1건(`holdings ticker 형식 검증 강화` — POC3-08 에서 구현 완료). 갱신 3건(`app/api.py 라우터 분리` 557→**632** 실측 / `종목명 자동 조회` ETF 해소·개별주 잔존 / `그리드 디자인` 다크 테마 **드랍**·컬럼 프리셋만 잔존).
+
+**남은 작업 순서**: 비교·판단 하위 화면 개편 → 손익 색 국내 관례 전환(안 B, 두 색 함수 함께) → 개별주 종목명 조회(**설계자 결정 대기**).
+
+---
+
+## 직전 작업 요약 (확인 근거 그리드 카드 전환 + stop 스크립트 주인 확인 — 사용자 직접 지시)
 
 **상태**: 확인 근거 화면 **DONE**(사용자 실화면 확인 완료). `stop.bat` 만 **PC 실행 검증 미완**. 검증자 검증 미착수.
 
