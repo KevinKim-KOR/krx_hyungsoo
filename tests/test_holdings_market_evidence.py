@@ -368,42 +368,65 @@ def test_returns_carries_six_and_twelve_month(market_db: Path) -> None:
     # 필드가 응답에 존재한다 (누락이 아니라 명시 키).
     assert "six_month_return_pct" in r
     assert "twelve_month_return_pct" in r
+
+    # 2026-08-17 (검증자 B-6) — 후보 값이 **실제로 비어 있지 않음**을 먼저 단정한다.
+    #   이걸 빼면 양쪽이 모두 None 이어도 "전달됐다" 로 통과해 테스트가 무의미해진다.
+    cand_six = (cand_returns.get("six_month") or {}).get("return_pct")
+    cand_twelve = (cand_returns.get("twelve_month") or {}).get("return_pct")
+    assert cand_six is not None, "전제 불성립 — 후보 6개월 값이 비어 있다"
+    assert cand_twelve is not None, "전제 불성립 — 후보 12개월 값이 비어 있다"
+
     # 후보 값과 동일하다 — 신규 계산이 아니라 전달이다.
-    assert r["six_month_return_pct"] == (
-        (cand_returns.get("six_month") or {}).get("return_pct")
-    )
-    assert r["twelve_month_return_pct"] == (
-        (cand_returns.get("twelve_month") or {}).get("return_pct")
-    )
+    assert r["six_month_return_pct"] == cand_six
+    assert r["twelve_month_return_pct"] == cand_twelve
 
 
 def test_returns_status_still_judged_by_one_and_three_month(market_db: Path) -> None:
-    """(2) status 는 1·3개월 기준 그대로 — 6·12개월 유무가 판정을 바꾸지 않는다."""
-    end = date(2026, 5, 30)
-    _seed_kodex200_history(market_db, end)
-    _seed_etf_history(
-        market_db,
-        "100001",
-        "Strong ETF",
-        end,
-        [100.0 + i * 1.0 for i in range(25)],
-    )
-    holdings = [_holding("100001", "Strong ETF")]
-    topn = compute_topn(n=5, db_path=market_db)
-    out = build_holdings_market_evidence(
-        holdings=holdings, topn_payload=topn, db_path=market_db
-    )
-    r = _returns_of(out)
+    """(2) status 는 1·3개월 기준 그대로 — 6·12개월 유무가 판정을 바꾸지 않는다.
 
-    one_m = r["one_month_return_pct"]
-    three_m = r["three_month_return_pct"]
-    if one_m is None and three_m is None:
-        expected = "unavailable"
-    elif one_m is not None and three_m is not None:
-        expected = "ok"
-    else:
-        expected = "partial"
-    assert r["status"] == expected
+    2026-08-17 (검증자 B-6) — 이전 판은 현재 출력의 1·3개월로 기대값을 **다시
+    계산**할 뿐이라 어떤 결과든 통과하는 항등식이었다. 여기서는 **경계 조건을
+    직접 만들어** 판정 기준을 고정한다: 같은 1·3개월 입력에 6·12개월만 넣고 뺐을
+    때 status 가 동일해야 한다.
+    """
+    from app.holdings_market_evidence import _build_returns_and_excess
+
+    base = {
+        "one_month": {"return_pct": 5.0},
+        "three_month": {"return_pct": 7.0},
+    }
+
+    # 6·12개월 없음
+    without, _ = _build_returns_and_excess({"returns": dict(base)})
+    # 6·12개월 있음 (1·3개월 입력은 동일)
+    with_long, _ = _build_returns_and_excess(
+        {
+            "returns": {
+                **base,
+                "six_month": {"return_pct": 9.0},
+                "twelve_month": {"return_pct": 11.0},
+            }
+        }
+    )
+
+    assert without["status"] == with_long["status"] == "ok"
+    assert without["six_month_return_pct"] is None
+    assert with_long["six_month_return_pct"] == 9.0
+    assert with_long["twelve_month_return_pct"] == 11.0
+
+    # partial 경계 — 3개월만 없는 입력에 6·12개월이 있어도 partial 을 유지한다.
+    partial, _ = _build_returns_and_excess(
+        {
+            "returns": {
+                "one_month": {"return_pct": 5.0},
+                "six_month": {"return_pct": 9.0},
+                "twelve_month": {"return_pct": 11.0},
+            }
+        }
+    )
+    assert partial["status"] == "partial"
+    assert partial["three_month_return_pct"] is None
+    assert partial["six_month_return_pct"] == 9.0
 
 
 def test_returns_six_twelve_are_none_when_unmatched(market_db: Path) -> None:

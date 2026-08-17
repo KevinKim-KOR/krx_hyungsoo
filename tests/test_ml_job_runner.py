@@ -103,14 +103,23 @@ def _isolate_state(tmp_path: Path, monkeypatch):
             if _th.is_alive():
                 leaked.append(_th.name)
 
+    # 2026-08-17 재작업(검증자 A-2/B-6) — **순서가 중요하다.**
+    #   이전 판은 생존 스레드를 기록해 놓고도 `release()` 를 **먼저** 호출한 뒤
+    #   assert 했다. 보고서에는 "락을 풀지 않고 실패시킨다" 라고 적어 **코드와
+    #   보고가 달랐다.** 살아 있는 스레드는 곧 자기 `finally` 에서 release 하므로,
+    #   여기서 먼저 풀면 이중 해제 경로가 그대로 열린다.
+    #   따라서 **생존 시에는 락을 건드리지 않고 즉시 실패**시킨다.
+    assert not leaked, (
+        f"job 스레드가 테스트 경계를 넘어 살아남았다: {leaked} — "
+        "락을 강제 해제하지 않고 중단한다(이중 해제·다음 테스트 오염 방지)"
+    )
+
+    # 여기 도달 = 생존 스레드 없음. 이제 남은 락은 안전하게 정리할 수 있다.
     if ml_job_runner._RUN_LOCK.locked():
         try:
             ml_job_runner._RUN_LOCK.release()
         except RuntimeError:
             pass
-
-    # 누수는 조용히 넘기지 않는다 — 다음 테스트를 오염시키느니 여기서 터뜨린다.
-    assert not leaked, f"job 스레드가 테스트 경계를 넘어 살아남았다: {leaked}"
 
 
 def _stub_all_steps_success(monkeypatch):
