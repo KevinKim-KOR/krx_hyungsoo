@@ -2835,3 +2835,31 @@ textarea.decision-textarea {
   padding: 10px 12px;
   line-height: 1.55;
 }
+
+/* ── 보유와 비교: 카드 (2026-08-16 사용자 실화면 직접 지시) ──────────────────
+   좌우 2열 안에 들어가므로 .wb-hrow 보다 폭이 좁다. 기간 4칸을 넣기 위해
+   지표 열을 조금 넓히고 글자를 한 단계 줄인다(카드 골격은 그대로 재사용). */
+.wb-hrow.compact {
+  grid-template-columns: minmax(0, 1fr) 236px;
+}
+.wb-hrow.compact .wb-hcard { padding: 11px 14px; }
+.wb-hrow.compact .wb-hrow-name { font-size: 13.5px; }
+.wb-hrow.compact .wb-hrow-pnl .amt { font-size: 14.5px; }
+.wb-hrow.compact .wb-hmetrics { padding: 10px 12px; }
+
+/* 기간 4칸 — 1개월·3개월·6개월·12개월을 좌우 같은 자리에 놓아 견주게 한다. */
+.wb-hm4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+.wb-hm4 .k { font-size: 9px; }
+.wb-hm4 .v { font-size: 11.5px; }
+
+/* 후보의 "왜 이 목록에 있는지" — 참고점수 자리를 대신한다. 수치가 아니라
+   순위 기준 표기이므로 큰 숫자보다 한 단계 작게. */
+.cand-basis-rank {
+  font-size: 12.5px !important;
+  font-weight: 700;
+  color: var(--accent);
+}

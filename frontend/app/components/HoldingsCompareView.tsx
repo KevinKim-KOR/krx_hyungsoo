@@ -20,22 +20,19 @@ import {
   type AggregatedHolding,
   type ExposureSummary,
   DASH,
-  STATE_NEED_CHECK,
   STATE_NORMAL,
   STATE_UNAVAIL,
   STATE_UNCHECKED,
   aggregateHoldingsByTicker,
-  candidateDataState,
   computeExposure,
-  exposureColor,
   exposureColorByState,
-  exposureLabel,
   exposureSortRank,
-  fmtPct,
-  holdingStateLabel,
-  returnColor,
 } from "./holdings_compare/helpers";
 import DecisionDraftPreviewCard from "./holdings_compare/DecisionDraftPreviewCard";
+import {
+  HoldingCompareCards,
+  CandidateCompareCards,
+} from "./holdings_compare/CompareCards";
 import SelectedDetail from "./holdings_compare/SelectedDetail";
 
 type CandidateSortKey =
@@ -319,209 +316,96 @@ export default function HoldingsCompareView({ data }: Props) {
             ) : aggregated.length === 0 ? (
               <p style={{ color: "var(--muted)" }}>보유 ETF 가 없습니다.</p>
             ) : (
-              <table style={{ width: "100%", fontSize: "0.85em" }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: "left" }}>ETF명</th>
-                    <th
-                      style={{ textAlign: "right", cursor: "pointer" }}
-                      onClick={() => handleHoldSort("weight")}
-                    >
-                      평가 비중
-                    </th>
-                    <th
-                      style={{ textAlign: "right", cursor: "pointer" }}
-                      onClick={() => handleHoldSort("pnl")}
-                    >
-                      손익률
-                    </th>
-                    <th
-                      style={{ textAlign: "right", cursor: "pointer" }}
-                      onClick={() => handleHoldSort("excess_20d")}
-                    >
-                      20일 KODEX 초과
-                    </th>
-                    <th style={{ textAlign: "right" }}>고점 대비</th>
-                    <th style={{ textAlign: "left" }}>상태</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedHoldings.map((h) => {
-                    const ev = evidenceByTicker[h.ticker];
-                    const ex20 =
-                      ev?.short_term_momentum?.excess_vs_kodex200_20d_pctp ??
-                      null;
-                    const isHoldSelected =
-                      selectedKind === "holding" && selectedHoldingTicker === h.ticker;
-                    return (
-                      <tr
-                        key={h.ticker}
-                        onClick={() => {
-                          setSelectedKind("holding");
-                          setSelectedHoldingTicker(h.ticker);
-                          setSelectedTicker(null);
-                        }}
-                        style={{
-                          cursor: "pointer",
-                          backgroundColor: isHoldSelected
-                            ? "var(--bg-active, #e0f2fe)"
-                            : undefined,
-                        }}
+              <>
+                {/* 2026-08-16 카드 전환 — 정렬은 헤더 클릭 → 세그먼트 바로 이동.
+                    정렬 키(비중·손익률·20일 초과)는 그대로다. */}
+                <div className="holdings-sortbar" style={{ margin: "0 0 8px" }}>
+                  <span className="holdings-sortbar-label">정렬</span>
+                  <span className="holdings-sort-seg">
+                    {(
+                      [
+                        ["weight", "비중"],
+                        ["pnl", "손익률"],
+                        ["excess_20d", "20일 초과"],
+                      ] as [HoldingSortKey, string][]
+                    ).map(([k, label]) => (
+                      <button
+                        key={k}
+                        type="button"
+                        className={holdSortKey === k ? "on" : undefined}
+                        aria-pressed={holdSortKey === k}
+                        onClick={() => handleHoldSort(k)}
                       >
-                        <td>
-                          <strong>{h.name ?? h.ticker}</strong>{" "}
-                          <code
-                            style={{ color: "var(--muted)", fontSize: "0.85em" }}
-                          >
-                            {h.ticker}
-                          </code>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {fmtPct(h.market_weight_pct)}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: "right",
-                            color: returnColor(h.pnl_rate_pct),
-                          }}
-                        >
-                          {fmtPct(h.pnl_rate_pct)}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: "right",
-                            color: returnColor(ex20),
-                          }}
-                        >
-                          {fmtPct(ex20)}
-                        </td>
-                        {/* 보유 ETF 의 고점 대비 — evidence 응답에 직접 필드 없음.
-                            FIX r1-2 (A-1): 중복 상태 문구 미사용. "확인 필요" 단일 표기. */}
-                        <td
-                          style={{ textAlign: "right", color: "var(--muted)" }}
-                        >
-                          {STATE_NEED_CHECK}
-                        </td>
-                        <td style={{ color: "var(--muted)" }}>
-                          {holdingStateLabel(h)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        {label}
+                        {holdSortKey === k
+                          ? holdSortDir === "asc"
+                            ? " ▲"
+                            : " ▼"
+                          : ""}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+                <HoldingCompareCards
+                  rows={sortedHoldings}
+                  evidenceByTicker={evidenceByTicker}
+                  selectedTicker={
+                    selectedKind === "holding" ? selectedHoldingTicker : null
+                  }
+                  onSelect={(tk) => {
+                    setSelectedKind("holding");
+                    setSelectedHoldingTicker(tk);
+                    setSelectedTicker(null);
+                  }}
+                />
+              </>
             )}
           </div>
 
           {/* 후보 ETF 표 */}
           <div className="card" style={{ padding: 12 }}>
             <h3 style={{ margin: 0, marginBottom: 8 }}>후보 ETF</h3>
-            <table style={{ width: "100%", fontSize: "0.85em" }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left" }}>ETF명</th>
-                  <th
-                    style={{ textAlign: "right", cursor: "pointer" }}
-                    onClick={() => handleCandSort("score")}
+            {/* 2026-08-16 카드 전환 — 정렬 키(참고점수·20일 초과·고점 대비·보유 노출)
+                는 그대로 두고 헤더 클릭 → 세그먼트 바로 옮긴다. */}
+            <div className="holdings-sortbar" style={{ margin: "0 0 8px" }}>
+              <span className="holdings-sortbar-label">정렬</span>
+              <span className="holdings-sort-seg">
+                {(
+                  [
+                    ["score", "참고점수"],
+                    ["excess_20d", "20일 초과"],
+                    ["drawdown", "고점 대비"],
+                    ["exposure", "보유 노출"],
+                  ] as [CandidateSortKey, string][]
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className={candSortKey === k ? "on" : undefined}
+                    aria-pressed={candSortKey === k}
+                    onClick={() => handleCandSort(k)}
                   >
-                    참고점수
-                  </th>
-                  <th
-                    style={{ textAlign: "right", cursor: "pointer" }}
-                    onClick={() => handleCandSort("excess_20d")}
-                  >
-                    20일 KODEX 초과
-                  </th>
-                  <th
-                    style={{ textAlign: "right", cursor: "pointer" }}
-                    onClick={() => handleCandSort("drawdown")}
-                  >
-                    고점 대비
-                  </th>
-                  <th
-                    style={{ textAlign: "left", cursor: "pointer" }}
-                    onClick={() => handleCandSort("exposure")}
-                  >
-                    보유 노출
-                  </th>
-                  <th style={{ textAlign: "left" }}>데이터 상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedCandidates.map((c, idx) => {
-                  const ex20 =
-                    c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null;
-                  const dd =
-                    c.drawdown_20d != null ? c.drawdown_20d * 100 : null;
-                  const exposure = c.ticker
-                    ? exposureByTicker[c.ticker]
-                    : undefined;
-                  const isSelected = selectedTicker === c.ticker;
-                  const isDirectKind =
-                    exposure?.kind === "direct_only" ||
-                    exposure?.kind === "direct_and_overlap";
-                  return (
-                    <tr
-                      key={`${c.ticker ?? "x"}-${idx}`}
-                      onClick={() => {
-                        if (!c.ticker) return;
-                        setSelectedTicker(c.ticker);
-                        setSelectedKind("candidate");
-                        setSelectedHoldingTicker(null);
-                      }}
-                      style={{
-                        cursor: "pointer",
-                        backgroundColor: isSelected
-                          ? "var(--bg-active, #e0f2fe)"
-                          : undefined,
-                      }}
-                    >
-                      <td>
-                        <strong>{c.name ?? c.ticker}</strong>{" "}
-                        <code
-                          style={{ color: "var(--muted)", fontSize: "0.85em" }}
-                        >
-                          {c.ticker}
-                        </code>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        {c.relative_upside_score != null
-                          ? c.relative_upside_score.toFixed(1)
-                          : DASH}
-                      </td>
-                      <td
-                        style={{ textAlign: "right", color: returnColor(ex20) }}
-                      >
-                        {fmtPct(ex20)}
-                      </td>
-                      <td style={{ textAlign: "right", color: returnColor(dd) }}>
-                        {fmtPct(dd)}
-                      </td>
-                      <td>
-                        {exposure ? (
-                          <span
-                            style={{
-                              color: exposureColor(exposure),
-                              fontSize: "0.9em",
-                              fontWeight: isDirectKind ? "bold" : "normal",
-                            }}
-                          >
-                            {exposureLabel(exposure)}
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--muted)" }}>
-                            {STATE_UNCHECKED}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ color: "var(--muted)" }}>
-                        {candidateDataState(c)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    {label}
+                    {candSortKey === k
+                      ? candSortDir === "asc"
+                        ? " ▲"
+                        : " ▼"
+                      : ""}
+                  </button>
+                ))}
+              </span>
+            </div>
+            <CandidateCompareCards
+              rows={sortedCandidates}
+              basis={data.basis ?? "one_month"}
+              exposureByTicker={exposureByTicker}
+              selectedTicker={selectedKind === "candidate" ? selectedTicker : null}
+              onSelect={(tk) => {
+                setSelectedKind("candidate");
+                setSelectedTicker(tk);
+                setSelectedHoldingTicker(null);
+              }}
+            />
           </div>
         </div>
 
@@ -565,7 +449,6 @@ export default function HoldingsCompareView({ data }: Props) {
             <>
               {(() => {
                 const h = aggregated.find((x) => x.ticker === selectedHoldingTicker);
-                const ev = evidenceByTicker[selectedHoldingTicker];
                 if (!h) {
                   return (
                     <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
@@ -579,15 +462,9 @@ export default function HoldingsCompareView({ data }: Props) {
                       <strong>{h.name ?? h.ticker}</strong>{" "}
                       <code style={{ color: "var(--muted)" }}>{h.ticker}</code>
                     </div>
-                    <div>평가 비중: {fmtPct(h.market_weight_pct)}</div>
-                    <div>손익률: {fmtPct(h.pnl_rate_pct)}</div>
-                    <div>
-                      20일 KODEX 초과:{" "}
-                      {fmtPct(
-                        ev?.short_term_momentum?.excess_vs_kodex200_20d_pctp ??
-                          null,
-                      )}
-                    </div>
+                    {/* 2026-08-16: 평가 비중·손익률·20일 KODEX 초과 3줄 제거.
+                        카드 전환으로 목록에 이미 같은 값이 보이므로 중복이다.
+                        상세에는 종목 식별과 판단 초안 미리보기만 남긴다. */}
                     <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                       <DecisionDraftPreviewCard
                         targetKind="holding"

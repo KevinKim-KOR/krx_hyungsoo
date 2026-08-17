@@ -147,6 +147,10 @@ export interface HoldingsMarketEvidenceReturns {
   status: HoldingsMarketEvidenceReturnsStatus;
   one_month_return_pct: number | null;
   three_month_return_pct: number | null;
+  // 2026-08-16 추가 — 보유↔후보를 같은 기간으로 비교하기 위해.
+  //   status 판정은 기존대로 1m/3m 기준이며 아래 둘은 표시 전용(없을 수 있음).
+  six_month_return_pct?: number | null;
+  twelve_month_return_pct?: number | null;
 }
 
 export interface HoldingsMarketEvidenceExcess {

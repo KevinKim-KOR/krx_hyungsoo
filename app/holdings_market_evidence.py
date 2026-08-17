@@ -114,23 +114,36 @@ def _build_returns_and_excess(
     returns_block = matched_candidate.get("returns") or {}
     one_m = (returns_block.get("one_month") or {}).get("return_pct")
     three_m = (returns_block.get("three_month") or {}).get("return_pct")
+    # 2026-08-16 사용자 지시 — 보유↔후보를 같은 기간으로 견주려면 6개월·12개월이
+    #   보유 쪽에도 있어야 한다. candidate 의 returns 에 이미 들어 있는 값을
+    #   옮기기만 한다 (신규 계산·외부 조회 0건).
+    #   status 판정은 기존과 동일하게 **1m/3m 기준**을 유지한다 — 6m/12m 유무로
+    #   기존 unavailable/partial/ok 계약이 바뀌면 화면 판정이 달라지기 때문.
+    six_m = (returns_block.get("six_month") or {}).get("return_pct")
+    twelve_m = (returns_block.get("twelve_month") or {}).get("return_pct")
     if one_m is None and three_m is None:
         returns_payload = {
             "status": STATUS_UNAVAILABLE,
             "one_month_return_pct": None,
             "three_month_return_pct": None,
+            "six_month_return_pct": None,
+            "twelve_month_return_pct": None,
         }
     elif one_m is not None and three_m is not None:
         returns_payload = {
             "status": STATUS_OK,
             "one_month_return_pct": one_m,
             "three_month_return_pct": three_m,
+            "six_month_return_pct": six_m,
+            "twelve_month_return_pct": twelve_m,
         }
     else:
         returns_payload = {
             "status": STATUS_PARTIAL,
             "one_month_return_pct": one_m,
             "three_month_return_pct": three_m,
+            "six_month_return_pct": six_m,
+            "twelve_month_return_pct": twelve_m,
         }
 
     excess_block = matched_candidate.get("excess_return") or {}

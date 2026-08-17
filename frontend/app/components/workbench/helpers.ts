@@ -166,16 +166,25 @@ export function holdingEval(h: EnrichedHolding): {
   };
 }
 
-// Evidence item 의 기간 수익률 (1M/3M) — 없으면 null.
+// Evidence item 의 기간 수익률 — 없으면 null.
+// 2026-08-16: 6M/12M 추가(보유↔후보 같은 기간 비교). status 판정은 기존대로
+//   1m/3m 기준이므로, status=ok 여도 6M/12M 은 null 일 수 있다.
 export function evidenceReturn(
   ev: HoldingsMarketEvidenceItem | undefined,
-  key: "one_month" | "three_month",
+  key: "one_month" | "three_month" | "six_month" | "twelve_month",
 ): number | null {
   const r = ev?.returns;
   if (!r || r.status !== "ok") return null;
-  return key === "one_month"
-    ? r.one_month_return_pct
-    : r.three_month_return_pct;
+  switch (key) {
+    case "one_month":
+      return r.one_month_return_pct;
+    case "three_month":
+      return r.three_month_return_pct;
+    case "six_month":
+      return r.six_month_return_pct ?? null;
+    case "twelve_month":
+      return r.twelve_month_return_pct ?? null;
+  }
 }
 
 // Evidence item 의 KODEX200 대비 초과수익 (1M pctp) — 없으면 null.

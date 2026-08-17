@@ -80,6 +80,23 @@ def _isolate_state(tmp_path: Path, monkeypatch):
         "baseline_path": baseline_path,
     }
 
+    # 2026-08-17 — teardown 에서 **job 스레드를 먼저 거둔다.**
+    #
+    # 기존에는 락만 강제 해제했는데, 그러면 아직 살아 있는 스레드가 남는다.
+    # `_wait_for_job_status` 는 상태 파일이 종료 상태가 되면 바로 반환하지만,
+    # 스레드는 그 뒤에 `finally: _RUN_LOCK.release()` 를 실행한다. 그 사이에
+    # 다음 테스트가 시작되면:
+    #   - 픽스처가 락을 강제 해제 → 뒤늦게 깨어난 스레드가 또 release
+    #     → RuntimeError: release unlocked lock
+    #   - JOB_STATUS_PATH 는 모듈 전역이라 이미 **다음 테스트의 tmp 파일**을
+    #     가리킨다 → 남의 파일을 쓰다 만 상태로 만들어 JobStatusCorruptedError
+    # 전체 실행에서만 재현되고 단독 실행은 통과하던 원인이 이것이다.
+    for _th in threading.enumerate():
+        if _th is threading.current_thread():
+            continue
+        if _th.name.startswith("ml-evidence-refresh"):
+            _th.join(timeout=10.0)
+
     if ml_job_runner._RUN_LOCK.locked():
         try:
             ml_job_runner._RUN_LOCK.release()

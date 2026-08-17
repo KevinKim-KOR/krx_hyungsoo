@@ -1,6 +1,48 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-16 (**요즘 잘 오르는 ETF 후보 카드 전환** — 코드·검증 완료 · 사용자 실화면 확인 대기)
+최종 업데이트: 2026-08-17 (**보유와 비교 카드 전환 + 보유 기간 수익률 확장(백엔드)** — 사용자 실화면 확인 완료 · 검증자 미착수)
+
+## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
+
+**상태**: **DONE** — 사용자 실화면 확인 완료("화면 좋습니다. 이대로 진행하면 됩니다."). 검증자 미착수.
+
+**⚠ 이번은 표시 형태만의 변경이 아니다 — 백엔드 응답이 바뀌었다.**
+
+**발단**: 사용자가 화면 목적을 다시 짚었다 — *"내가 보유한 것과 추천한 것을 비교하는 것"*, 그러려면 *1달/3달/6개월/12개월 비교*가 첫째. 확인해보니 **그 비교가 데이터상 불가능**했다. 후보는 4개 기간이 있는데 **보유 evidence 에는 1개월·3개월뿐**이었다.
+
+**원인**: `app/holdings_market_evidence.py` 가 후보의 `returns` 블록에서 1M·3M 만 꺼내 쓰고 `six_month`·`twelve_month` 를 **버리고** 있었다. 값은 이미 응답 안에 있었다 → **신규 계산·외부 조회 0건**으로 연결.
+
+**⚠ `status` 판정은 기존대로 1M/3M 기준 유지**. 6·12개월을 판정에 넣으면 `unavailable`/`partial`/`ok` 분포가 바뀌어 화면 계약이 달라진다. **결과: `status=ok` 여도 6·12개월이 `null` 일 수 있다.** 프론트 타입도 optional.
+
+**실측 확인**(`GET /holdings/market-evidence/latest`): `0035T0 1M=-2.85 3M=-19.05 6M=+0.71 12M=+70.97` 등.
+
+**화면**: 표 2개(보유 6열 / 후보 6열) → 카드 2열. **2열 배치·상호 배타 선택·`DecisionDraftPreviewCard`·정렬 키 7개는 무변경**(정렬은 헤더 → 세그먼트 바로 위치만 이동).
+
+**후보 참고점수 제거**: 사용자 지시. 사유·키워드를 넣으려 했으나 `relative_upside_reasons` 가 **10건 전부 빈 배열**(ML 미실행 · `relative_upside_score_status: unavailable`). 그래서 응답에 있는 `basis`+`rank` 로 **`1개월 1위`** 표기 — **새 판단 문구를 만들지 않았다.**
+
+**`선택 보유 상세` 중복 3줄 제거**: 평가 비중·손익률·20일 KODEX 초과가 카드에 그대로 보이게 되어 중복. 종목 식별 + 판단 초안 미리보기만 남김.
+
+**곁가지**: 표 제거로 미사용이 된 import 7 + 지역변수 1 정리(eslint 경고 8건 해소). `HoldingsCompareView.tsx` **622 → 499줄**.
+
+**⚠ 문서화 공백 발견**: 이 화면의 목적("보유↔추천 비교")이 **어느 문서에도 없었다.** `PROGRAM_TRUTH` §5.1 도 "운영(시장 갱신 트리거)" 로만 적혀 있었다. 화면 목적이 기록되지 않으면 나중에 알아채기 어렵다.
+
+**변경 파일(백엔드 2 · 프론트 4 + 신규 1)**: `holdings_market_evidence.py` · `api_holdings_market_evidence.py` · `lib/api/holdings.ts` · `workbench/helpers.ts` · `HoldingsCompareView.tsx` · `globals.css` · `holdings_compare/CompareCards.tsx`(신규 248줄). `git diff --stat` 실측 **152 insertions / 217 deletions**.
+
+**⚠ UI 외 변경 3건 — 설계자·검증자 판단 대상**: ① 백엔드 API 응답 필드 추가 ② 테스트 격리 수정 ③ lint 정리. 상세는 결과서 §4.0 / 공유 보고서 §7-A.
+
+**⚠ 전체 pytest 실패 1건 발생 → 원인 규명 후 해소**: ①을 넣자 `test_ml_job_runner.py::test_duplicate_start_returns_already_running` 이 실패했다(단독 통과 · 전체에서만 2회 연속 재현). **베이스라인 대조**(①만 stash → 1139 passed/0 failed)로 **방아쇠가 이번 작업임을 확정**했고, 결함은 테스트 격리에 있었다 — `_isolate_state` teardown 이 **락만 강제 해제하고 job 스레드는 살려둬서**, 뒤늦게 깨어난 스레드가 다음 테스트의 `JOB_STATUS_PATH`(모듈 전역)에 쓰고 전역 `_RUN_LOCK` 을 또 해제했다. teardown 에서 스레드를 먼저 `join` 하도록 고쳐 해소. **운영 코드는 건드리지 않았다**(구조적 취약점은 §설계 판단 요청으로 남김).
+
+> 개발자 판단 오류 2회 기록: "제 변경과 무관" · "flaky 라 어쩌다 한 번" 둘 다 **측정 전 결론**이었고 베이스라인 대조로 뒤집혔다. 원인 규명을 선택한 사용자 판단이 맞았다.
+
+**검증**: black 276 unchanged · flake8 0 · tsc 0 · eslint 0 · vitest **167 passed (15 files)** · 백엔드 전체 pytest **1139 passed · 실패 0건 · 스레드 경고 0건** · 프론트 200.
+
+**결과서**: `docs/ai_result/POC3/POC3-HOLDINGS_COMPARE_CARD_CONVERSION_RESULT.md`
+
+**다음**: 표로 남은 4개 — `OverlapTab`(11) · `AISessionsListTab`(8) · `ConstituentsTab`(6) · `EvidenceDetails`(8).
+
+---
+
+## 직전 작업 요약 (**요즘 잘 오르는 ETF 후보 카드 전환** — 코드·검증 완료 · 사용자 실화면 확인 대기)
 
 ## 이번 작업 요약 (요즘 잘 오르는 ETF 후보 카드 전환 — 사용자 직접 지시)
 

@@ -1,0 +1,219 @@
+# POC3 — 보유와 비교 카드 전환 + 보유 기간 수익률 확장 (개발 결과서)
+
+- **성격**: 설계서 없는 **사용자 실화면 직접 지시** UI 개선 + **백엔드 응답 필드 추가**.
+- **작업일**: 2026-08-16 ~ 08-17 (맥북 환경)
+- **상태**: **DONE — 사용자 실화면 확인 완료** ("화면 좋습니다. 이대로 진행하면 됩니다.")
+- **선행**: `POC3-MARKET_DISCOVERY_CARD_CONVERSION_RESULT.md` 등 카드 전환 3건
+
+**이번 작업은 앞선 UI 작업들과 성격이 다르다.** 표시 형태만 바꾼 것이 아니라
+**화면의 목적이 데이터 부족으로 달성되지 못하고 있던 것**을 발견해 백엔드를 고쳤다.
+
+---
+
+## 1) 처리한 요구사항
+
+| 요구사항 | 결과 |
+|---|---|
+| `보유와 비교` 탭을 카드형으로 | **DONE** |
+| 보유↔후보를 **같은 기간(1/3/6/12개월)** 으로 비교 | **DONE** (백엔드 확장 · §1.2) |
+| 보유 카드는 **현재 손익률이 맨 앞** | **DONE** (사용자 지정) |
+| 후보 카드에서 **참고점수 제거** | **DONE** — 대신 순위 기준 표기 (§1.3) |
+| `선택 보유 상세` 의 중복 3줄 제거 | **DONE** (§1.4) |
+
+### 1.1 발단 — 사용자가 화면 목적을 다시 물었다
+
+> "처음으로 이 표가 뭐하는건지 제대로 생각해봤네요. 내가 보유한 것과 추천한 것을 비교하는거였네요.
+> … 첫 번째는 1달/3달/6개월/12개월의 비교를 해야겠죠. 그래야지 어떤게 비교 우위인지 알 수 있을 것 같은데"
+
+확인 결과 **그 비교가 데이터상 불가능한 상태**였다.
+
+| | 1개월 | 3개월 | 6개월 | 12개월 |
+|---|---|---|---|---|
+| 후보 ETF | ✅ | ✅ | ✅ | ✅ |
+| 보유 ETF (이전) | ✅ | ✅ | ❌ | ❌ |
+
+**이 화면의 목적이 "보유와 추천의 비교" 라는 사실이 어느 문서에도 기록돼 있지 않았다.**
+`PROGRAM_TRUTH` §5.1 에도 `market_discovery` 는 "운영(시장 갱신 트리거)" 로만 적혀 있었다.
+
+### 1.2 백엔드 — 보유 evidence 에 6개월·12개월 추가
+
+`app/holdings_market_evidence.py` 가 후보의 `returns` 블록에서 **1개월·3개월만 꺼내 쓰고
+6개월·12개월을 버리고** 있었다. 값은 이미 응답 안에 있었다.
+
+```python
+returns_block = matched_candidate.get("returns") or {}
+one_m   = (returns_block.get("one_month") or {}).get("return_pct")
+three_m = (returns_block.get("three_month") or {}).get("return_pct")
+# six_month · twelve_month 는 존재하는데 옮기지 않았다
+```
+
+**신규 계산·외부 조회 0건.** 이미 있는 값을 payload 로 옮기기만 했다.
+
+**⚠ `status` 판정은 기존 그대로 1개월·3개월 기준으로 유지했다.** 6·12개월 유무로
+`unavailable`/`partial`/`ok` 가 바뀌면 화면 판정 계약이 달라지기 때문이다.
+→ **`status=ok` 여도 6·12개월은 `null` 일 수 있다.** 프론트 타입도 optional 로 뒀다.
+
+실측 (2026-08-16, `GET /holdings/market-evidence/latest`):
+
+```
+0035T0 PLUS 글로벌휴머노이드로  ok  1M=-2.85  3M=-19.05  6M=+0.71  12M=+70.97
+0052D0 TIGER 코리아배당다우존  ok  1M=+0.35  3M=-6.77   6M=-5.38  12M=+34.07
+0097L0 KIWOOM 한국고배당&미   ok  1M=-2.29  3M=-6.52   6M=-0.65  12M=+32.27
+```
+
+### 1.3 후보 카드 — 참고점수 제거, 순위 기준 표기로 대체
+
+사용자: "후보ETF의 참고점수는 필요없습니다. 차라리 간단한 사유나 키워드를 넣어주는게 나을 것 같은데요."
+
+**사유를 넣으려 했으나 재료가 없었다.** 실측 결과 `relative_upside_reasons` 는 **10건 전부
+빈 배열**이고 `tags` 도 마찬가지다. 사유는 ML 점수와 한 몸이라
+(`relative_upside_score_status: "unavailable"`) 점수가 없으면 사유도 없다.
+
+그래서 **응답에 이미 있는 `basis` + `rank` 로 "왜 이 목록에 있는지" 를 그대로 적었다** —
+`1개월 1위`. **새 판단 문구를 만들지 않았다**(관찰값만 제공하는 원칙).
+
+### 1.4 `선택 보유 상세` 중복 제거
+
+기존 상세는 `평가 비중` · `손익률` · `20일 KODEX 초과` 세 줄 + 판단 초안 미리보기였다.
+카드 전환으로 앞 세 줄이 목록에 그대로 보이게 되어 **완전 중복**이 됐다. 제거하고
+종목 식별 + `DecisionDraftPreviewCard` 만 남겼다.
+
+### 1.5 최종 배치
+
+```
+보유 ┃ KODEX 200                +11.10% 손익률 ┃ 1개월  3개월  6개월  12개월
+     ┃ 069500 / 비중 12.3%                     ┃ +6.01 −13.82 +4.10  +11.2
+                                                ┃ 20일 KODEX 초과  +1.2%p
+후보 ┃ KODEX 200 [직접 보유]      1개월 1위     ┃ (같은 4칸 · 같은 자리)
+```
+
+**무변경**: 2열 배치(좌우 견주기가 화면 목적) · 보유/후보 상호 배타 선택 ·
+`DecisionDraftPreviewCard` · 정렬 키 7개(위치만 헤더 → 세그먼트 바) ·
+`보유 노출` 3-state 라벨·색 · 값 없는 칸 표기.
+
+---
+
+## 2) 변경된 파일 목록
+
+| 파일 | 구분 |
+|---|---|
+| `app/holdings_market_evidence.py` | 수정 (6M·12M 전달) |
+| `app/api_holdings_market_evidence.py` | 수정 (`ReturnsPayload` 필드 2개 추가) |
+| `frontend/lib/api/holdings.ts` | 수정 (타입 optional 2개 추가) |
+| `frontend/app/components/workbench/helpers.ts` | 수정 (`evidenceReturn` 4기간 지원) |
+| `frontend/app/components/holdings_compare/CompareCards.tsx` | **신규** (248줄) |
+| `frontend/app/components/HoldingsCompareView.tsx` | 수정 (표 2개 → 카드 · 499줄) |
+| `frontend/app/globals.css` | 수정 (`.wb-hrow.compact` · `.wb-hm4` · `.cand-basis-rank`) |
+| `docs/*` | PROGRAM_TRUTH · STATE_LATEST · 공유 보고서 · 본 문서(신규) |
+
+`git diff --stat` 실측 (수정 6파일): **152 insertions / 217 deletions**. 신규 1파일 별도.
+KS-10 — `CompareCards.tsx` 248 · `HoldingsCompareView.tsx` 622 → **499**(표 제거로 감소).
+
+---
+
+## 3) 신규 추가된 의존성
+
+없음.
+
+---
+
+## 4) 지시문 외 변경
+
+### 4.0 ⚠ UI 외 영역을 건드렸다 — 설계자·검증자 확인 대상
+
+이번 작업은 **UI 지시로 시작했으나 UI 밖 3개 지점을 바꿨다.** 사용자 UI 주도 원칙의
+바깥이므로 설계자·검증자 판단을 받아야 한다.
+
+| # | 대상 | 성격 | 사유 |
+|---|---|---|---|
+| 1 | `app/holdings_market_evidence.py` · `app/api_holdings_market_evidence.py` | **API 응답 필드 추가** | 화면 목적(보유↔추천 비교)이 데이터 부족으로 달성 불가 |
+| 2 | `tests/test_ml_job_runner.py` | **테스트 격리 수정** | 1번이 방아쇠가 되어 전체 pytest 1건 실패 |
+| 3 | `HoldingsCompareView.tsx` | 미사용 import 7·변수 1 제거 | 표 제거로 생긴 lint 경고 8건 |
+
+**1번 — 무엇이 문제였나.** 이 탭은 보유와 추천을 견주는 화면인데, 후보에는 1/3/6/12개월이
+있고 **보유에는 1·3개월밖에 없어 같은 기간 비교 자체가 불가능**했다. 원인은
+`holdings_market_evidence` 가 후보 `returns` 에서 1M·3M 만 꺼내 쓰고 `six_month`·
+`twelve_month` 를 **버리고** 있던 것이다. 값은 이미 응답 안에 있었다.
+
+**왜 이렇게 고쳤나.** 이미 있는 값을 payload 로 옮기기만 했다 — **신규 계산·외부 조회 0건**.
+`status` 판정은 **기존대로 1M/3M 기준을 유지**했다. 6·12개월을 판정에 넣으면
+`unavailable`/`partial`/`ok` 분포가 바뀌어 화면 표시 계약이 달라지기 때문이다.
+그 대가로 **`status=ok` 여도 6·12개월이 `null` 일 수 있다**(프론트 타입 optional).
+
+**2번 — 무엇이 문제였나.** 1번 반영 후 전체 pytest 에서
+`test_ml_job_runner.py::test_duplicate_start_returns_already_running` 1건이 실패했다.
+**단독 실행은 통과하고 전체 실행에서만 재현**됐다(2회 연속).
+
+판정 근거는 **베이스라인 대조**다.
+
+| 실행 | 결과 |
+|---|---|
+| 백엔드 변경만 `git stash` (베이스라인) | **1139 passed · 0 failed** |
+| 변경 포함 1·2회차 | 1138 passed · **1 failed** (동일 재현) |
+| 변경 + 픽스처 수정 | **1139 passed · 0 failed · 스레드 경고 0** |
+
+즉 **방아쇠는 이 작업이 맞고, 결함 자체는 테스트 격리에 있었다.**
+
+**기전**: `_isolate_state` 픽스처 teardown 이 **락만 강제 해제하고 job 스레드는 살려뒀다.**
+`_wait_for_job_status` 는 상태 파일이 종료 상태가 되면 즉시 반환하는데, 스레드는 그 **뒤에**
+`finally: _RUN_LOCK.release()` 를 실행한다. 그 틈에 다음 테스트가 시작되면 —
+(a) 픽스처가 락을 강제 해제 → 뒤늦게 깨어난 스레드가 또 release → `RuntimeError: release
+unlocked lock`, (b) `JOB_STATUS_PATH` 가 모듈 전역이라 이미 **다음 테스트의 tmp 파일**을
+가리켜 남의 파일을 쓰다 만 상태로 만든다 → `JobStatusCorruptedError`.
+단독 실행이 통과하던 이유는 "다음 테스트" 가 없었기 때문이다.
+
+**왜 이렇게 고쳤나.** teardown 에서 **락을 건드리기 전에 스레드를 먼저 거두도록** 했다
+(`ml-evidence-refresh*` 스레드 `join(timeout=10)`). **운영 코드(`app/ml_job_runner.py`)는
+건드리지 않았다** — 원인이 테스트 격리 쪽이고, 운영 동시성 구조 변경은 지시 범위 밖이라
+설계 판단이 필요하다고 봤다(§5-6 참조).
+
+### 4.1 그 외
+
+**표를 걷어내며 미사용이 된 import 7개·지역변수 1개 제거** (`STATE_NEED_CHECK` ·
+`candidateDataState` · `exposureColor` · `exposureLabel` · `fmtPct` · `holdingStateLabel` ·
+`returnColor` · `ev`). eslint 경고 8건으로 잡혔고, 해당 헬퍼는 새 카드 컴포넌트가 쓴다.
+
+---
+
+## 5) 알려진 한계 / 미완성
+
+1. **후보 사유·키워드는 여전히 비어 있다.** `relative_upside_reasons` 를 채우려면 PC 에서
+   ML 을 실행해야 한다. 맥에서는 확인 불가.
+2. **`status=ok` 인데 6·12개월이 빈칸일 수 있다**(§1.2). 판정 기준을 바꾸지 않은 결과다.
+3. **보유 종목이 후보 목록에 없으면(`matched_candidate is None`) 4개 기간 전부 `unavailable`.**
+   6·12개월 추가와 무관한 기존 제약이다.
+4. 이 화면에는 **표 보기 탭을 두지 않았다**(6열뿐이라 표가 답답하지 않음). 필요 여부 미확정.
+5. 표로 남은 화면 4개 — `OverlapTab`(11열) · `AISessionsListTab`(8) · `ConstituentsTab`(6) ·
+   `EvidenceDetails`(8).
+6. **운영 코드의 구조적 취약점은 그대로 남았다.** `app/ml_job_runner.py` 의 `_RUN_LOCK` 은
+   모듈 전역 `threading.Lock` 이라 **아무 스레드나 해제할 수 있고**, `JOB_STATUS_PATH` 도
+   모듈 전역이라 경로가 바뀌면 실행 중 job 이 엉뚱한 곳에 쓴다. 운영은 단일 프로세스라
+   현재 영향은 없으나, job 을 병렬 실행하거나 별도 프로세스로 분리하면 드러난다.
+   **백로그 등재·수정 여부는 설계자 판단 대상**으로 남긴다.
+
+---
+
+## 6) 다음 검증자(Codex)에게 알릴 점
+
+1. **이번엔 백엔드 응답이 바뀌었다.** 앞선 UI 작업들과 달리 표시 형태만의 변경이 아니다.
+   `ReturnsPayload` 에 optional 필드 2개 추가 — **기존 필드·status 계약은 무변경**이다.
+2. **`status` 를 1M/3M 기준으로 유지한 판단**의 타당성 확인 바람(§1.2). 6·12개월을 판정에
+   넣으면 기존 `ok`/`partial` 분포가 바뀌어 화면 표시가 달라진다.
+3. **참고점수 제거는 값 은닉이 아니다.** 이 환경에서 항상 `null` 이라 표시할 것이 없었고,
+   그 자리에 `basis`+`rank` 라는 **응답에 있는 사실**을 넣었다. 새 문구를 만들지 않았다.
+4. `HoldingsCompareView.tsx` 가 **622 → 499줄로 줄었다**(표 제거분이 카드 컴포넌트로 이동).
+5. **UI 외 변경 3건이 있다 — §4.0 을 먼저 볼 것.** API 응답 필드 추가(기존 필드·status
+   계약 무변경) · 테스트 격리 수정 · lint 정리. 특히 `status` 를 1M/3M 기준으로 유지한
+   판단과, 운영 코드를 건드리지 않고 테스트에서 막은 판단의 타당성 확인 바람.
+6. **이 화면에는 테스트가 없다.** 신규 `CompareCards.tsx` 도 테스트 미작성 —
+   `MarketDiscoveryView` 계열은 원래 테스트가 없었고 이번에도 추가하지 못했다.
+
+---
+
+## 7) 사용자 확인이 필요한 항목
+
+1. **기간 4칸 폭** — 좌우 2열 안이라 숫자가 11.5px 이고 `%` 기호를 뺐다. 실화면 확인 완료됐으나
+   장기 사용 후 좁게 느껴지면 2칸씩 두 줄로 접을 수 있다.
+2. **이 화면 표 탭 필요 여부** (§5-4).
+3. **후보 사유 채우기** — PC 에서 ML 실행 시 `relative_upside_reasons` 를 카드에 노출할지.
+4. 남은 표 4개 화면의 전환 순서.

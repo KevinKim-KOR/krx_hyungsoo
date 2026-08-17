@@ -57,6 +57,10 @@ class ReturnsPayload(BaseModel):
     status: str
     one_month_return_pct: Optional[float] = None
     three_month_return_pct: Optional[float] = None
+    # 2026-08-16 추가 — 보유↔후보를 같은 기간으로 비교하기 위해. status 판정은
+    #   기존대로 1m/3m 기준이며 이 두 필드는 표시 전용이다.
+    six_month_return_pct: Optional[float] = None
+    twelve_month_return_pct: Optional[float] = None
 
 
 class ExcessReturnPayload(BaseModel):
