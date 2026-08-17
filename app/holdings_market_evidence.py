@@ -103,6 +103,11 @@ def _build_returns_and_excess(
                 "status": STATUS_UNAVAILABLE,
                 "one_month_return_pct": None,
                 "three_month_return_pct": None,
+                # 2026-08-17 — 매칭 없는 경로에도 같은 키를 둔다. 한 함수가 분기에
+                #   따라 다른 키 집합을 돌려주면 raw dict 소비자가 KeyError 를 만난다
+                #   (API 모델은 기본값으로 덮어써 응답에서는 드러나지 않았다).
+                "six_month_return_pct": None,
+                "twelve_month_return_pct": None,
             },
             {
                 "status": STATUS_UNAVAILABLE,

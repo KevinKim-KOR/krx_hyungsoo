@@ -91,17 +91,26 @@ def _isolate_state(tmp_path: Path, monkeypatch):
     #   - JOB_STATUS_PATH 는 모듈 전역이라 이미 **다음 테스트의 tmp 파일**을
     #     가리킨다 → 남의 파일을 쓰다 만 상태로 만들어 JobStatusCorruptedError
     # 전체 실행에서만 재현되고 단독 실행은 통과하던 원인이 이것이다.
+    leaked: list[str] = []
     for _th in threading.enumerate():
         if _th is threading.current_thread():
             continue
         if _th.name.startswith("ml-evidence-refresh"):
             _th.join(timeout=10.0)
+            # join 은 timeout 이어도 조용히 반환한다. **생존 여부를 반드시 확인**
+            # 해야 한다 (검증자 B-6). 살아 있는데 락을 강제 해제하면 이중 해제·
+            # 다음 테스트 파일 오염 경로가 그대로 열린다.
+            if _th.is_alive():
+                leaked.append(_th.name)
 
     if ml_job_runner._RUN_LOCK.locked():
         try:
             ml_job_runner._RUN_LOCK.release()
         except RuntimeError:
             pass
+
+    # 누수는 조용히 넘기지 않는다 — 다음 테스트를 오염시키느니 여기서 터뜨린다.
+    assert not leaked, f"job 스레드가 테스트 경계를 넘어 살아남았다: {leaked}"
 
 
 def _stub_all_steps_success(monkeypatch):
@@ -248,9 +257,11 @@ def test_failure_does_not_delete_existing_snapshots(_isolate_state, monkeypatch)
 def test_duplicate_start_returns_already_running(_isolate_state, monkeypatch):
     """AC-4 — running 중에 두 번째 start 요청은 새 job 을 만들지 않고 raise."""
     barrier = threading.Event()
+    entered_feature = threading.Event()
 
     def _feat(state, db_path):
         # 첫 번째 job 이 feature 단계에서 멈춰서 'running' 상태 유지.
+        entered_feature.set()
         barrier.wait(timeout=3.0)
         return {"last_asof": "2026-06-08", "etf_upserted": 1, "market_upserted": 1}
 
@@ -260,14 +271,20 @@ def test_duplicate_start_returns_already_running(_isolate_state, monkeypatch):
     first = ml_job_runner.start_evidence_refresh_job(requested_by="test")
     assert first["job_id"]
 
-    # 첫 job 이 running 상태가 되기를 기다림. get_latest_status 는 FIX r2 이후
-    # (state, error) tuple 반환.
-    deadline = time.time() + 2.0
-    while time.time() < deadline:
-        snap, _err = ml_job_runner.get_latest_status()
-        if snap is not None and snap.get("status") == "running":
-            break
-        time.sleep(0.02)
+    # 2026-08-17 재작업 — 상태 파일 폴링 대신 **단계 진입 이벤트**를 기다린다.
+    #
+    # `_run_job` 은 상태 파일에 두 번 쓴다:
+    #   ① state["status"]="running" → _heartbeat → _write_status
+    #   ② _mark_step(feature, running) → _heartbeat → _write_status
+    # 파일을 폴링하면 ①만 보고 통과해버리고, 그 직후 ②가 파일을 비우고 쓰는
+    # 중에 두 번째 start 가 읽어 **빈 파일**을 만나 JobStatusCorruptedError 가
+    # 났다(운영 `_write_status` 가 open("w") 직후 기록이라 비원자적 · 별도 과제).
+    # `entered_feature` 는 ②가 끝난 뒤에 set 되므로, 이 시점엔 쓰기가 없다.
+    assert entered_feature.wait(
+        timeout=3.0
+    ), "첫 job 이 feature 단계에 진입하지 못했다 — 이후 단정의 전제가 성립 안 함"
+    snap, _err = ml_job_runner.get_latest_status()
+    assert snap is not None and snap.get("status") == "running"
 
     with pytest.raises(ml_job_runner.JobAlreadyRunningError) as ei:
         ml_job_runner.start_evidence_refresh_job(requested_by="test")

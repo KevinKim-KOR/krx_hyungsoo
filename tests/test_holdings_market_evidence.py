@@ -330,3 +330,92 @@ def test_no_external_fetch_triggered(market_db: Path, monkeypatch) -> None:
         holdings=holdings, topn_payload=topn, db_path=market_db
     )
     assert out["status"] == "ok"
+
+
+# ─── 2026-08-17 보유 기간 수익률 확장 (6개월·12개월) ────────────────────────
+# 검증자 지적: 신규 필드 2개를 직접 검증하는 자동테스트가 없었다.
+# 계약 3가지를 고정한다.
+#   (1) 후보 returns 의 six_month·twelve_month 를 보유 evidence 로 전달한다.
+#   (2) status 판정은 **기존대로 1개월·3개월 기준** — 6·12개월은 판정에 넣지 않는다.
+#   (3) 값이 없으면 None (0 대체 금지 · 지시문 §5.6).
+
+
+def _returns_of(out: dict, idx: int = 0) -> dict:
+    return out["holdings"][idx]["returns"]
+
+
+def test_returns_carries_six_and_twelve_month(market_db: Path) -> None:
+    """(1) 후보에 있는 6·12개월 값이 보유 evidence 에 그대로 실린다."""
+    end = date(2026, 5, 30)
+    _seed_kodex200_history(market_db, end)
+    _seed_etf_history(
+        market_db,
+        "100001",
+        "Strong ETF",
+        end,
+        [100.0 + i * 1.0 for i in range(25)],
+    )
+    holdings = [_holding("100001", "Strong ETF")]
+    topn = compute_topn(n=5, db_path=market_db)
+    out = build_holdings_market_evidence(
+        holdings=holdings, topn_payload=topn, db_path=market_db
+    )
+
+    cand = next(c for c in topn["candidates"] if c.get("ticker") == "100001")
+    cand_returns = cand.get("returns") or {}
+    r = _returns_of(out)
+
+    # 필드가 응답에 존재한다 (누락이 아니라 명시 키).
+    assert "six_month_return_pct" in r
+    assert "twelve_month_return_pct" in r
+    # 후보 값과 동일하다 — 신규 계산이 아니라 전달이다.
+    assert r["six_month_return_pct"] == (
+        (cand_returns.get("six_month") or {}).get("return_pct")
+    )
+    assert r["twelve_month_return_pct"] == (
+        (cand_returns.get("twelve_month") or {}).get("return_pct")
+    )
+
+
+def test_returns_status_still_judged_by_one_and_three_month(market_db: Path) -> None:
+    """(2) status 는 1·3개월 기준 그대로 — 6·12개월 유무가 판정을 바꾸지 않는다."""
+    end = date(2026, 5, 30)
+    _seed_kodex200_history(market_db, end)
+    _seed_etf_history(
+        market_db,
+        "100001",
+        "Strong ETF",
+        end,
+        [100.0 + i * 1.0 for i in range(25)],
+    )
+    holdings = [_holding("100001", "Strong ETF")]
+    topn = compute_topn(n=5, db_path=market_db)
+    out = build_holdings_market_evidence(
+        holdings=holdings, topn_payload=topn, db_path=market_db
+    )
+    r = _returns_of(out)
+
+    one_m = r["one_month_return_pct"]
+    three_m = r["three_month_return_pct"]
+    if one_m is None and three_m is None:
+        expected = "unavailable"
+    elif one_m is not None and three_m is not None:
+        expected = "ok"
+    else:
+        expected = "partial"
+    assert r["status"] == expected
+
+
+def test_returns_six_twelve_are_none_when_unmatched(market_db: Path) -> None:
+    """(3) 후보에 없는 보유는 6·12개월도 None — 0 으로 대체하지 않는다."""
+    end = date(2026, 5, 30)
+    _seed_kodex200_history(market_db, end)
+    holdings = [_holding("999999", "Unknown ETF")]
+    topn = compute_topn(n=5, db_path=market_db)
+    out = build_holdings_market_evidence(
+        holdings=holdings, topn_payload=topn, db_path=market_db
+    )
+    r = _returns_of(out)
+    assert r["status"] == "unavailable"
+    assert r["six_month_return_pct"] is None
+    assert r["twelve_month_return_pct"] is None

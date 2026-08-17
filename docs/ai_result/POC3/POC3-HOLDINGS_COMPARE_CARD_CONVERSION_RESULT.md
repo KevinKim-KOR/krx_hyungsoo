@@ -104,9 +104,23 @@ three_m = (returns_block.get("three_month") or {}).get("return_pct")
 | `frontend/app/components/holdings_compare/CompareCards.tsx` | **신규** (248줄) |
 | `frontend/app/components/HoldingsCompareView.tsx` | 수정 (표 2개 → 카드 · 499줄) |
 | `frontend/app/globals.css` | 수정 (`.wb-hrow.compact` · `.wb-hm4` · `.cand-basis-rank`) |
+| **`tests/test_ml_job_runner.py`** | **수정 (테스트 격리 · §4.0-②)** |
+| **`tests/test_holdings_market_evidence.py`** | **수정 (신규 필드 직접 테스트 3건 · 2026-08-17 재작업)** |
 | `docs/*` | PROGRAM_TRUTH · STATE_LATEST · 공유 보고서 · 본 문서(신규) |
 
-`git diff --stat` 실측 (수정 6파일): **152 insertions / 217 deletions**. 신규 1파일 별도.
+> **A-2 정정 (2026-08-17)**: 최초 결과서는 이 표에서 `tests/test_ml_job_runner.py` 를
+> 빠뜨렸고, diff 통계에서도 해당 파일의 추가 줄을 제외했다. 검증자 지적으로 정정한다.
+> **UI 외 변경(§4.0)을 파일 목록에 적지 않은 것은 보고 정확성 위반이다.**
+
+`git diff --numstat` 실측 (2026-08-17 재작업 후):
+
+| 파일 | 추가 | 삭제 |
+|---|---|---|
+| `app/holdings_market_evidence.py` | 5 | 0 |
+| `tests/test_holdings_market_evidence.py` | 89 | 0 |
+| `tests/test_ml_job_runner.py` | 25 | 8 |
+
+카드 전환분(프론트 6파일)은 커밋 `edd7fdeb` 기준 **152 insertions / 217 deletions**.
 KS-10 — `CompareCards.tsx` 248 · `HoldingsCompareView.tsx` 622 → **499**(표 제거로 감소).
 
 ---
@@ -162,10 +176,39 @@ unlocked lock`, (b) `JOB_STATUS_PATH` 가 모듈 전역이라 이미 **다음 �
 가리켜 남의 파일을 쓰다 만 상태로 만든다 → `JobStatusCorruptedError`.
 단독 실행이 통과하던 이유는 "다음 테스트" 가 없었기 때문이다.
 
-**왜 이렇게 고쳤나.** teardown 에서 **락을 건드리기 전에 스레드를 먼저 거두도록** 했다
-(`ml-evidence-refresh*` 스레드 `join(timeout=10)`). **운영 코드(`app/ml_job_runner.py`)는
-건드리지 않았다** — 원인이 테스트 격리 쪽이고, 운영 동시성 구조 변경은 지시 범위 밖이라
-설계 판단이 필요하다고 봤다(§5-6 참조).
+**⚠ 1차 조치는 실패했다 (검증자 REJECTED · 2026-08-17).** teardown 에 스레드 `join` 을
+넣고 **전체 pytest 1회 통과를 근거로 "해소" 라고 보고**했으나, 검증자가 직접 대상 32건
+1차 실행에서 **동일 실패를 재현**했다(31 passed/1 failed · 재실행 32 passed).
+**1회 통과는 경쟁 상태 소멸의 증거가 아니다.**
+
+**2차 — 진짜 원인은 교차 테스트 오염이 아니라 테스트 내부 경쟁이었다.**
+`_run_job` 은 상태 파일에 **두 번** 쓴다.
+
+```
+① state["status"]="running" → _heartbeat → _write_status    ← 테스트가 여기서 통과 판정
+② _mark_step(feature, running) → _heartbeat → _write_status  ← 아직 쓰는 중
+③ _feat() 호출 → barrier 대기
+```
+
+테스트가 파일을 폴링해 **①만 보고** 두 번째 `start` 를 호출했고, 그때 **②가 파일을 비우고
+쓰는 중**이면 빈 파일을 읽었다. 운영 `_write_status` 가 `open("w")` 직후 기록이라
+비원자적인 것이 배경이다(**운영 수정은 사용자 지시로 제외** · §5-6).
+
+**최종 조치** — 둘 다 테스트 파일만 고쳤다.
+1. 중간 상태 폴링 → **단계 진입 이벤트(`entered_feature`) 대기**. ②가 끝난 뒤 set 되므로
+   그 시점엔 쓰기가 없다 — 결정적으로 경쟁이 사라진다.
+2. teardown 은 `join` 후 **`is_alive()` 를 확인**하고, 살아 있으면 조용히 락을 풀지 않고
+   **테스트를 실패시킨다**(검증자 B-6 반영).
+
+**운영 코드(`app/ml_job_runner.py`)는 건드리지 않았다** — 사용자 지시로 운영 제외.
+
+**안정성 실측 — 1회 통과로 주장하지 않는다**
+
+| 범위 | 반복 | 결과 |
+|---|---|---|
+| `test_ml_job_runner.py` 단독 | **15회** | 통과 15 · 실패 0 |
+| 직접 대상 3파일(검증자 범위) | **12회** | 통과 12 · 실패 0 |
+| 백엔드 전체 | **3회** | **1142 passed · 실패 0건** (3회 모두) |
 
 ### 4.1 그 외
 
@@ -205,7 +248,12 @@ unlocked lock`, (b) `JOB_STATUS_PATH` 가 모듈 전역이라 이미 **다음 �
 5. **UI 외 변경 3건이 있다 — §4.0 을 먼저 볼 것.** API 응답 필드 추가(기존 필드·status
    계약 무변경) · 테스트 격리 수정 · lint 정리. 특히 `status` 를 1M/3M 기준으로 유지한
    판단과, 운영 코드를 건드리지 않고 테스트에서 막은 판단의 타당성 확인 바람.
-6. **이 화면에는 테스트가 없다.** 신규 `CompareCards.tsx` 도 테스트 미작성 —
+6. **신규 6·12개월 필드 직접 테스트 3건 추가** (검증자 지적 반영) —
+   `tests/test_holdings_market_evidence.py`. (1) 후보 값 전달 (2) status 는 1·3개월 기준 유지
+   (3) 매칭 없으면 None(0 대체 금지). **이 중 (3)이 개발자 누락을 잡았다** —
+   `matched_candidate is None` 경로에 신규 키를 넣지 않아 같은 함수가 분기별로 다른 키
+   집합을 반환하고 있었다(API 모델 기본값이 덮어써 응답에는 드러나지 않음). 키 집합을 맞췄다.
+7. **이 화면(카드 컴포넌트)에는 여전히 테스트가 없다.** 신규 `CompareCards.tsx` 도 테스트 미작성 —
    `MarketDiscoveryView` 계열은 원래 테스트가 없었고 이번에도 추가하지 못했다.
 
 ---
