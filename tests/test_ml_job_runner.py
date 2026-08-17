@@ -564,3 +564,163 @@ def test_get_latest_returns_state_error_tuple_directly(_isolate_state):
     state, err = ml_job_runner.get_latest_status()
     assert state is None
     assert err is not None
+
+
+# ═══ A11 (2026-08-17) — 상태 파일 원자적 교체 회귀 테스트 ═══════════════════
+#
+# 검증자 REJECTED 사유: 이전 재작업은 테스트가 경쟁 구간을 **지나가게** 만든 것이라
+# 운영 결함 해소 증거가 아니었다. 여기서는 반대로 **경쟁 구간을 의도적으로 열어**
+# 두고 그 안에서 읽기·중복 start 가 안전한지 확인한다.
+#
+# 창을 여는 방법: `os.replace` 를 가로채 **교체 직전에 멈춘다**. 그 시점의 디스크
+# 상태는 "임시 파일에 새 완성본이 있고, active 는 아직 이전 완성본" 이다.
+# 비원자적 구현이었다면 이 시점에 active 가 빈 파일이었을 것이다.
+
+
+def _install_replace_gate(monkeypatch, target: Path):
+    """target 으로의 os.replace 만 교체 직전에 멈춘다. (다른 replace 는 통과)"""
+    import os as _os
+
+    reached = threading.Event()
+    proceed = threading.Event()
+    real_replace = _os.replace
+
+    def _gated(src, dst, *a, **kw):
+        if Path(dst) == target:
+            reached.set()
+            proceed.wait(timeout=10.0)
+        return real_replace(src, dst, *a, **kw)
+
+    monkeypatch.setattr(_os, "replace", _gated)
+    return reached, proceed
+
+
+def test_status_write_is_atomic_reader_never_sees_partial(_isolate_state, monkeypatch):
+    """교체 직전에 멈춰도 읽는 쪽은 **이전 완성본**을 본다 — 손상 오류 금지."""
+    job_path: Path = _isolate_state["job_path"]
+
+    prev = {"job_id": "prev-job", "status": "success", "steps": {}}
+    ml_job_runner._write_status(prev)
+    assert json.loads(job_path.read_text(encoding="utf-8"))["job_id"] == "prev-job"
+
+    reached, proceed = _install_replace_gate(monkeypatch, job_path)
+    nxt = {"job_id": "next-job", "status": "running", "steps": {}}
+    writer = threading.Thread(target=ml_job_runner._write_status, args=(nxt,))
+    writer.start()
+    try:
+        assert reached.wait(timeout=5.0), "교체 직전 지점에 도달하지 못했다"
+
+        # ── 경쟁 구간이 열린 상태에서 읽는다 ──
+        snap, err = ml_job_runner.get_latest_status()
+        assert err is None, f"손상 오류가 나면 안 된다: {err}"
+        assert snap is not None and snap["job_id"] == "prev-job"
+
+        # active 파일 자체도 완성된 이전 상태여야 한다 (빈 파일 금지).
+        raw = job_path.read_text(encoding="utf-8")
+        assert raw.strip(), "active 파일이 비어 있다 — 원자성 위반"
+        assert json.loads(raw)["job_id"] == "prev-job"
+    finally:
+        proceed.set()
+        writer.join(timeout=10.0)
+        assert not writer.is_alive()
+
+    # 재개 후에는 새 완성본.
+    snap2, err2 = ml_job_runner.get_latest_status()
+    assert err2 is None
+    assert snap2 is not None and snap2["job_id"] == "next-job"
+
+
+def test_duplicate_start_in_race_window_returns_already_running(
+    _isolate_state, monkeypatch
+):
+    """경쟁 구간에서 중복 start 는 already_running — 손상 오류가 아니다."""
+    job_path: Path = _isolate_state["job_path"]
+    import os as _os
+
+    running = {
+        "job_id": "running-job",
+        "status": "running",
+        "pid": _os.getpid(),
+        "last_heartbeat_at": ml_job_runner._now_kst_iso(),
+        "steps": {},
+    }
+    ml_job_runner._write_status(running)
+
+    reached, proceed = _install_replace_gate(monkeypatch, job_path)
+    nxt = dict(running, last_heartbeat_at=ml_job_runner._now_kst_iso())
+    writer = threading.Thread(target=ml_job_runner._write_status, args=(nxt,))
+    writer.start()
+    try:
+        assert reached.wait(timeout=5.0)
+        with pytest.raises(ml_job_runner.JobAlreadyRunningError) as ei:
+            ml_job_runner.start_evidence_refresh_job(requested_by="race-test")
+        assert ei.value.state.get("job_id") == "running-job"
+
+        # HTTP 조회도 같은 구간에서 완성된 상태를 돌려준다.
+        client = TestClient(app)
+        resp = client.get("/ml/jobs/latest")
+        assert resp.status_code == 200
+        assert resp.json()["job"]["job_id"] == "running-job"
+    finally:
+        proceed.set()
+        writer.join(timeout=10.0)
+        assert not writer.is_alive()
+
+
+def test_replace_failure_preserves_previous_active_and_cleans_tmp(
+    _isolate_state, monkeypatch
+):
+    """교체 실패 시 이전 active 를 보존하고, 임시 파일을 남기지 않는다."""
+    job_path: Path = _isolate_state["job_path"]
+    import os as _os
+
+    prev = {"job_id": "keep-me", "status": "success", "steps": {}}
+    ml_job_runner._write_status(prev)
+
+    real_replace = _os.replace
+
+    def _boom(src, dst, *a, **kw):
+        if Path(dst) == job_path:
+            raise OSError("replace 실패 주입")
+        return real_replace(src, dst, *a, **kw)
+
+    monkeypatch.setattr(_os, "replace", _boom)
+
+    with pytest.raises(OSError):
+        ml_job_runner._write_status({"job_id": "should-not-land", "steps": {}})
+
+    # 이전 active 보존 — 오류를 숨기지도, 정본을 깨지도 않는다.
+    assert json.loads(job_path.read_text(encoding="utf-8"))["job_id"] == "keep-me"
+    # 임시 파일 잔여 0건.
+    leftovers = list(job_path.parent.glob(job_path.name + ".*"))
+    assert leftovers == [], f"임시 파일이 남았다: {leftovers}"
+
+
+def test_genuinely_corrupted_active_still_fails_loud(_isolate_state):
+    """실제로 손상된 active 파일은 기존 계약대로 명시적 오류다 (은닉 금지)."""
+    job_path: Path = _isolate_state["job_path"]
+    job_path.parent.mkdir(parents=True, exist_ok=True)
+    job_path.write_text("{ this is not json", encoding="utf-8")
+
+    snap, err = ml_job_runner.get_latest_status()
+    assert snap is None
+    assert err is not None
+
+
+def test_tmp_file_is_created_in_same_directory(_isolate_state, monkeypatch):
+    """임시 파일은 **같은 디렉터리**에 만든다 — 다른 파일시스템이면 원자성이 깨진다."""
+    job_path: Path = _isolate_state["job_path"]
+    seen: list[Path] = []
+    import os as _os
+
+    real_replace = _os.replace
+
+    def _capture(src, dst, *a, **kw):
+        seen.append(Path(src))
+        return real_replace(src, dst, *a, **kw)
+
+    monkeypatch.setattr(_os, "replace", _capture)
+    ml_job_runner._write_status({"job_id": "dir-check", "steps": {}})
+
+    assert seen, "os.replace 가 호출되지 않았다 — 원자적 교체 경로가 아니다"
+    assert seen[0].parent == job_path.parent

@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import threading
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
@@ -104,9 +105,46 @@ def _build_initial_state(
 
 
 def _write_status(state: dict[str, Any]) -> None:
+    """job status 를 **원자적으로** 기록한다 (A11 · 2026-08-17).
+
+    이전 구현은 `JOB_STATUS_PATH.open("w")` 로 **active 파일을 먼저 비운 뒤** JSON 을
+    기록했다. 그 사이에 읽는 쪽(중복 start 의 disk 상태 확인, `GET /ml/jobs/latest`)이
+    끼어들면 빈 파일을 만나 `already_running` 대신 `JobStatusCorruptedError` 가 났다.
+    단일 프로세스라도 job 은 백그라운드 스레드, 조회는 HTTP 핸들러 스레드라 실제
+    운영 경로에서 발생한다.
+
+    같은 디렉터리에 임시 파일로 완성본을 쓰고 `os.replace` 로 한 번에 교체한다.
+    `os.replace` 는 동일 파일시스템에서 POSIX·Windows 모두 원자적이므로, 읽는 쪽은
+    **이전 완성본 아니면 새 완성본**만 본다 — 중간 상태가 노출되지 않는다.
+
+    - active 정본은 계속 `JOB_STATUS_PATH` 하나다. 임시 파일은 교체 전까지만 존재하는
+      작업 파일이며 조회 대상도, fallback 정본도 아니다.
+    - 기록·교체 실패 시 **기존 active 파일을 그대로 보존**하고 예외를 숨기지 않는다.
+      남은 임시 파일은 정리한다.
+    - 읽기 경로·상태 스키마·시그니처는 변경하지 않는다. 실제 active 파일이 손상된
+      경우의 `JobStatusCorruptedError` 계약도 그대로다.
+    """
     JOB_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with JOB_STATUS_PATH.open("w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2, default=str)
+    # 반드시 **같은 디렉터리** — os.replace 는 동일 파일시스템에서만 원자적이다.
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(JOB_STATUS_PATH.parent),
+        prefix=JOB_STATUS_PATH.name + ".",
+        suffix=".tmp",
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2, default=str)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, JOB_STATUS_PATH)
+    except BaseException:
+        # 교체 전에 실패했으므로 active 파일은 손상되지 않았다. 임시 파일만 치운다.
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning(f"임시 status 파일 정리 실패: {tmp_path}")
+        raise
 
 
 class JobStatusCorruptedError(RuntimeError):
