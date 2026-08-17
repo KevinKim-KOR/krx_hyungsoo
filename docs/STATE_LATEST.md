@@ -1,14 +1,16 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-17 (**보유와 비교 카드 전환 + 보유 기간 수익률 확장 + 상태 파일 원자적 교체(A11)** — `USER_UI_CONFIRMED` · 검증자 2회 `REJECTED` 후 **재검증 대기**)
+최종 업데이트: 2026-08-17 (**보유와 비교 카드 전환 + 보유 기간 수익률 확장 + 상태 파일 원자적 교체(A11)** — 검증자 2회 `REJECTED` → A11 조치 → **재검증 `VERIFIED`**)
 
 ## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
 
-**상태**: `USER_UI_CONFIRMED` · `VALIDATION_REJECTED` · `REMEDIATION_APPLIED — 재검증 대기`
+**상태**: `USER_UI_CONFIRMED` · **`VERIFIED`** (검증자 재검증 2026-08-17)
 
 - UI 는 사용자 실화면 확인 완료("화면 좋습니다. 이대로 진행하면 됩니다.").
-- **검증자 2회 REJECTED.** 1차는 테스트 격리, 2차는 **"테스트가 경쟁 구간을 피했을 뿐 운영 원인 미해소"**.
-- **A11 승인으로 운영 `_write_status` 를 원자적 교체로 수정**했다(아래). **검증자 재검증 PASS 전에는 다음 UI 작업으로 넘어가지 않는다.**
+- **검증자 2회 REJECTED 를 거쳤다.** 1차는 테스트 격리, 2차는 **"테스트가 경쟁 구간을 피했을 뿐 운영 원인 미해소"**.
+- **A11 승인으로 운영 `_write_status` 를 원자적 교체로 수정**했고(아래), 재검증에서 A-1~A-4 · B-1~B-6 전 항목 통과 **`VERIFIED`**. 위험 NONE · 범위 폭주 NONE.
+- 검증자 실측: 경쟁 전용 5건 **×10회 50/50**, `test_ml_job_runner.py` **21 passed**, 백엔드 **1,147 passed**, 프론트 **167 passed**.
+- **A11 의 "다음 UI 작업 보류" 조건은 이 판정으로 해제**됐다.
 
 **⚠ 이번은 표시 형태만의 변경이 아니다 — 백엔드 응답이 바뀌었다.**
 
@@ -64,7 +66,7 @@
 
 **결과서**: `docs/ai_result/POC3/POC3-HOLDINGS_COMPARE_CARD_CONVERSION_RESULT.md`
 
-**다음**: **검증자 재검증 PASS 전까지 다음 UI 작업 보류**(A11 명시). 이후 대상 — `OverlapTab`(11) · `AISessionsListTab`(8) · `ConstituentsTab`(6) · `EvidenceDetails`(8).
+**다음**: A11 보류 조건 **해제됨**(재검증 `VERIFIED`). 남은 표 카드 전환 대상 — `OverlapTab`(11) · `AISessionsListTab`(8) · `EvidenceDetails`(8) · `ConstituentsTab`(6). 사용자 지시로 **`OverlapTab` 부터** 착수(현재 구조 제시 → 목업 승인 → 구현 → 실화면 확인 순). `확인 필요` 탭은 표가 아니라 항목 목록이라 전환 여부 미결.
 
 ---
 
