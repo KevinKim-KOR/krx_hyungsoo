@@ -34,6 +34,7 @@ import {
   CandidateCompareCards,
 } from "./holdings_compare/CompareCards";
 import SelectedDetail from "./holdings_compare/SelectedDetail";
+import SelectedHoldingDetail from "./holdings_compare/SelectedHoldingDetail";
 
 type CandidateSortKey =
   | "default"
@@ -304,184 +305,181 @@ export default function HoldingsCompareView({ data }: Props) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 12 }}>
-        <div style={{ display: "grid", gap: 12 }}>
-          {/* 보유 ETF 표 */}
-          <div className="card" style={{ padding: 12 }}>
-            <h3 style={{ margin: 0, marginBottom: 8 }}>보유 ETF</h3>
-            {enrichedLoading ? (
-              <p>보유 정보 조회 중...</p>
-            ) : enrichedError ? (
-              <p style={{ color: "var(--danger)" }}>보유 정보 조회 실패.</p>
-            ) : aggregated.length === 0 ? (
-              <p style={{ color: "var(--muted)" }}>보유 ETF 가 없습니다.</p>
-            ) : (
-              <>
-                {/* 2026-08-16 카드 전환 — 정렬은 헤더 클릭 → 세그먼트 바로 이동.
-                    정렬 키(비중·손익률·20일 초과)는 그대로다. */}
-                <div className="holdings-sortbar" style={{ margin: "0 0 8px" }}>
-                  <span className="holdings-sortbar-label">정렬</span>
-                  <span className="holdings-sort-seg">
-                    {(
-                      [
-                        ["weight", "비중"],
-                        ["pnl", "손익률"],
-                        ["excess_20d", "20일 초과"],
-                      ] as [HoldingSortKey, string][]
-                    ).map(([k, label]) => (
-                      <button
-                        key={k}
-                        type="button"
-                        className={holdSortKey === k ? "on" : undefined}
-                        aria-pressed={holdSortKey === k}
-                        onClick={() => handleHoldSort(k)}
-                      >
-                        {label}
-                        {holdSortKey === k
-                          ? holdSortDir === "asc"
-                            ? " ▲"
-                            : " ▼"
-                          : ""}
-                      </button>
-                    ))}
-                  </span>
-                </div>
-                <HoldingCompareCards
-                  rows={sortedHoldings}
-                  evidenceByTicker={evidenceByTicker}
-                  selectedTicker={
-                    selectedKind === "holding" ? selectedHoldingTicker : null
-                  }
-                  onSelect={(tk) => {
-                    setSelectedKind("holding");
-                    setSelectedHoldingTicker(tk);
-                    setSelectedTicker(null);
-                  }}
-                />
-              </>
-            )}
-          </div>
-
-          {/* 후보 ETF 표 */}
-          <div className="card" style={{ padding: 12 }}>
-            <h3 style={{ margin: 0, marginBottom: 8 }}>후보 ETF</h3>
-            {/* 2026-08-16 카드 전환 — 정렬 키(참고점수·20일 초과·고점 대비·보유 노출)
-                는 그대로 두고 헤더 클릭 → 세그먼트 바로 옮긴다. */}
-            <div className="holdings-sortbar" style={{ margin: "0 0 8px" }}>
-              <span className="holdings-sortbar-label">정렬</span>
-              <span className="holdings-sort-seg">
-                {(
-                  [
-                    ["score", "참고점수"],
-                    ["excess_20d", "20일 초과"],
-                    ["drawdown", "고점 대비"],
-                    ["exposure", "보유 노출"],
-                  ] as [CandidateSortKey, string][]
-                ).map(([k, label]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className={candSortKey === k ? "on" : undefined}
-                    aria-pressed={candSortKey === k}
-                    onClick={() => handleCandSort(k)}
-                  >
-                    {label}
-                    {candSortKey === k
-                      ? candSortDir === "asc"
-                        ? " ▲"
-                        : " ▼"
-                      : ""}
-                  </button>
-                ))}
-              </span>
-            </div>
-            <CandidateCompareCards
-              rows={sortedCandidates}
-              basis={data.basis ?? "one_month"}
-              exposureByTicker={exposureByTicker}
-              selectedTicker={selectedKind === "candidate" ? selectedTicker : null}
-              onSelect={(tk) => {
-                setSelectedKind("candidate");
-                setSelectedTicker(tk);
-                setSelectedHoldingTicker(null);
-              }}
-            />
-          </div>
-        </div>
-
-        {/* 우측 30% — 선택 상세 (FIX r1 — 별도 컴포넌트) */}
-        <div
-          className="card"
-          style={{
-            padding: 12,
-            height: "fit-content",
-            position: "sticky",
-            top: 12,
-          }}
-        >
-          <h3 style={{ margin: 0, marginBottom: 8 }}>
-            {selectedKind === "holding" ? "선택 보유 상세" : "선택 후보 상세"}
-          </h3>
-          {selectedKind === "candidate" && selectedCandidate && selectedExposure ? (
-            <>
-              <SelectedDetail
-                candidate={selectedCandidate}
-                exposure={selectedExposure}
-                expanded={detailsExpanded}
-                onToggleExpanded={() => setDetailsExpanded((v) => !v)}
-                directHoldingEvidence={
-                  selectedExposure.directHoldingTicker
-                    ? evidenceByTicker[selectedExposure.directHoldingTicker]
-                    : undefined
-                }
-              />
-              {selectedCandidate.ticker ? (
-                <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                  <DecisionDraftPreviewCard
-                    targetKind="candidate"
-                    ticker={selectedCandidate.ticker}
-                    displayName={selectedCandidate.name ?? selectedCandidate.ticker}
-                  />
-                </div>
-              ) : null}
-            </>
-          ) : selectedKind === "holding" && selectedHoldingTicker ? (
-            <>
-              {(() => {
-                const h = aggregated.find((x) => x.ticker === selectedHoldingTicker);
-                if (!h) {
-                  return (
-                    <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
-                      보유 정보 조회 실패.
-                    </p>
-                  );
-                }
-                return (
-                  <div style={{ display: "grid", gap: 8, fontSize: "0.85em" }}>
-                    <div>
-                      <strong>{h.name ?? h.ticker}</strong>{" "}
-                      <code style={{ color: "var(--muted)" }}>{h.ticker}</code>
-                    </div>
-                    {/* 2026-08-16: 평가 비중·손익률·20일 KODEX 초과 3줄 제거.
-                        카드 전환으로 목록에 이미 같은 값이 보이므로 중복이다.
-                        상세에는 종목 식별과 판단 초안 미리보기만 남긴다. */}
-                    <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                      <DecisionDraftPreviewCard
-                        targetKind="holding"
-                        ticker={h.ticker}
-                        displayName={h.name ?? h.ticker}
-                      />
-                    </div>
-                  </div>
-                );
-              })()}
-            </>
+      {/* 2026-08-19 배치 정정 — 이 화면의 목적은 *보유와 후보를 나란히 견주는 것*이라
+          목업도 좌우 2열이었고 `.wb-hrow.compact` CSS 도 2열 전제로 쓰여 있었는데,
+          컨테이너만 이전 세로 배치(1fr 360px)로 남아 있었다. 승인받은 목업대로
+          좌우 2열로 바꾸고 선택 상세를 아래 전체 폭으로 내린다. */}
+      <div className="cmp-twocol">
+        {/* 보유 ETF */}
+        <div className="card" style={{ padding: 12 }}>
+          <h3 style={{ margin: 0, marginBottom: 8 }}>보유 ETF</h3>
+          {enrichedLoading ? (
+            <p>보유 정보 조회 중...</p>
+          ) : enrichedError ? (
+            <p style={{ color: "var(--danger)" }}>보유 정보 조회 실패.</p>
+          ) : aggregated.length === 0 ? (
+            <p style={{ color: "var(--muted)" }}>보유 ETF 가 없습니다.</p>
           ) : (
-            <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
-              보유 또는 후보 행을 클릭하면 상세 정보가 표시됩니다.
-            </p>
+            <>
+              {/* 2026-08-16 카드 전환 — 정렬은 헤더 클릭 → 세그먼트 바로 이동.
+                  정렬 키(비중·손익률·20일 초과)는 그대로다. */}
+              <div className="holdings-sortbar" style={{ margin: "0 0 8px" }}>
+                <span className="holdings-sortbar-label">정렬</span>
+                <span className="holdings-sort-seg">
+                  {(
+                    [
+                      ["weight", "비중"],
+                      ["pnl", "손익률"],
+                      ["excess_20d", "20일 초과"],
+                    ] as [HoldingSortKey, string][]
+                  ).map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      className={holdSortKey === k ? "on" : undefined}
+                      aria-pressed={holdSortKey === k}
+                      onClick={() => handleHoldSort(k)}
+                    >
+                      {label}
+                      {holdSortKey === k
+                        ? holdSortDir === "asc"
+                          ? " ▲"
+                          : " ▼"
+                        : ""}
+                    </button>
+                  ))}
+                </span>
+              </div>
+              <HoldingCompareCards
+                rows={sortedHoldings}
+                evidenceByTicker={evidenceByTicker}
+                selectedTicker={
+                  selectedKind === "holding" ? selectedHoldingTicker : null
+                }
+                onSelect={(tk) => {
+                  setSelectedKind("holding");
+                  setSelectedHoldingTicker(tk);
+                  setSelectedTicker(null);
+                }}
+              />
+            </>
           )}
         </div>
+
+        {/* 후보 ETF 표 */}
+        <div className="card" style={{ padding: 12 }}>
+          <h3 style={{ margin: 0, marginBottom: 8 }}>후보 ETF</h3>
+          {/* 2026-08-16 카드 전환 — 정렬 키(참고점수·20일 초과·고점 대비·보유 노출)
+              는 그대로 두고 헤더 클릭 → 세그먼트 바로 옮긴다. */}
+          <div className="holdings-sortbar" style={{ margin: "0 0 8px" }}>
+            <span className="holdings-sortbar-label">정렬</span>
+            <span className="holdings-sort-seg">
+              {(
+                [
+                  ["score", "참고점수"],
+                  ["excess_20d", "20일 초과"],
+                  ["drawdown", "고점 대비"],
+                  ["exposure", "보유 노출"],
+                ] as [CandidateSortKey, string][]
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={candSortKey === k ? "on" : undefined}
+                  aria-pressed={candSortKey === k}
+                  onClick={() => handleCandSort(k)}
+                >
+                  {label}
+                  {candSortKey === k
+                    ? candSortDir === "asc"
+                      ? " ▲"
+                      : " ▼"
+                    : ""}
+                </button>
+              ))}
+            </span>
+          </div>
+          <CandidateCompareCards
+            rows={sortedCandidates}
+            basis={data.basis ?? "one_month"}
+            exposureByTicker={exposureByTicker}
+            selectedTicker={selectedKind === "candidate" ? selectedTicker : null}
+            onSelect={(tk) => {
+              setSelectedKind("candidate");
+              setSelectedTicker(tk);
+              setSelectedHoldingTicker(null);
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 선택 상세 (FIX r1 — 별도 컴포넌트). 2026-08-19 배치 정정으로 우측
+          360px 열에서 2열 아래 전체 폭으로 내려왔다. 내용은 손대지 않는다. */}
+      <div className="card" style={{ padding: 12, marginTop: 12 }}>
+        <h3 style={{ margin: 0, marginBottom: 8 }}>
+          {selectedKind === "holding" ? "선택 보유 상세" : "선택 후보 상세"}
+        </h3>
+        {selectedKind === "candidate" && selectedCandidate && selectedExposure ? (
+          <>
+            <SelectedDetail
+              candidate={selectedCandidate}
+              exposure={selectedExposure}
+              expanded={detailsExpanded}
+              onToggleExpanded={() => setDetailsExpanded((v) => !v)}
+              directHoldingEvidence={
+                selectedExposure.directHoldingTicker
+                  ? evidenceByTicker[selectedExposure.directHoldingTicker]
+                  : undefined
+              }
+            />
+            {selectedCandidate.ticker ? (
+              <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                <DecisionDraftPreviewCard
+                  targetKind="candidate"
+                  ticker={selectedCandidate.ticker}
+                  displayName={selectedCandidate.name ?? selectedCandidate.ticker}
+                />
+              </div>
+            ) : null}
+          </>
+        ) : selectedKind === "holding" && selectedHoldingTicker ? (
+          <>
+            {(() => {
+              const h = aggregated.find((x) => x.ticker === selectedHoldingTicker);
+              if (!h) {
+                return (
+                  <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
+                    보유 정보 조회 실패.
+                  </p>
+                );
+              }
+              return (
+                <div style={{ display: "grid", gap: 8, fontSize: "0.85em" }}>
+                  {/* 2026-08-16 에 평가 비중·손익률·20일 초과 3줄을 뺐고(카드와 중복)
+                      2026-08-19 사용자 지적으로 **카드에 없는 값**을 채운다.
+                      계좌별 원본 행을 함께 넘겨 수량·평균단가를 계좌 계약대로 쓴다. */}
+                  <SelectedHoldingDetail
+                    holding={h}
+                    rows={enrichedRaw.filter((r) => r.ticker === h.ticker)}
+                    evidence={evidenceByTicker[h.ticker]}
+                    evidenceLoaded={evidenceLoaded}
+                  />
+                  <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                    <DecisionDraftPreviewCard
+                      targetKind="holding"
+                      ticker={h.ticker}
+                      displayName={h.name ?? h.ticker}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        ) : (
+          <p style={{ color: "var(--muted)", fontSize: "0.85em" }}>
+          보유 또는 후보 행을 클릭하면 상세 정보가 표시됩니다.
+        </p>
+      )}
       </div>
 
       <p

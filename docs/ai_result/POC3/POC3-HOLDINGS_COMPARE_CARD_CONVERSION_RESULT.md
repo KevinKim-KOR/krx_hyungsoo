@@ -1,12 +1,14 @@
 # POC3 — 보유와 비교 카드 전환 + 보유 기간 수익률 확장 (개발 결과서)
 
 - **성격**: 설계서 없는 **사용자 실화면 직접 지시** UI 개선 + **백엔드 응답 필드 추가**.
-- **작업일**: 2026-08-16 ~ 08-17 (맥북 환경)
+- **작업일**: 2026-08-16 ~ 08-19 (맥북 환경)
 - **상태**: `USER_UI_CONFIRMED` · **`VERIFIED`** (검증자 재검증 2026-08-17)
   - UI 는 사용자 실화면 확인 완료("화면 좋습니다. 이대로 진행하면 됩니다.").
   - **검증자 2회 REJECTED 를 거친 뒤** A11 승인으로 운영 경쟁 조건을 제거해 **`VERIFIED`**.
   - 재검증 실측 — 경쟁 전용 5건 ×10회 **50/50**, 백엔드 **1,147 passed**, 프론트 **167 passed**, 위험 **NONE** · 범위 폭주 **NONE**.
   - A11 의 **"다음 UI 작업 보류" 조건은 해제**됐다.
+  - **⚠ 2026-08-19 추가분(§1.6 배치 정정 · §1.7 선택 보유 상세 채움)은 이 `VERIFIED`
+    범위 밖이다.** 사용자 실화면 확인은 받았고 **검증자 미착수**.
 - **선행**: `POC3-MARKET_DISCOVERY_CARD_CONVERSION_RESULT.md` 등 카드 전환 3건
 
 **이번 작업은 앞선 UI 작업들과 성격이 다르다.** 표시 형태만 바꾼 것이 아니라
@@ -76,11 +78,15 @@ three_m = (returns_block.get("three_month") or {}).get("return_pct")
 그래서 **응답에 이미 있는 `basis` + `rank` 로 "왜 이 목록에 있는지" 를 그대로 적었다** —
 `1개월 1위`. **새 판단 문구를 만들지 않았다**(관찰값만 제공하는 원칙).
 
-### 1.4 `선택 보유 상세` 중복 제거
+### 1.4 `선택 보유 상세` 중복 제거 → **비워둔 것을 2026-08-19 에 채움**
 
 기존 상세는 `평가 비중` · `손익률` · `20일 KODEX 초과` 세 줄 + 판단 초안 미리보기였다.
 카드 전환으로 앞 세 줄이 목록에 그대로 보이게 되어 **완전 중복**이 됐다. 제거하고
 종목 식별 + `DecisionDraftPreviewCard` 만 남겼다.
+
+**⚠ 중복을 뺐지만 대신 채울 것을 넣지 않았다.** 그 결과 보유를 선택하면 종목명 한 줄만
+남았고, 아래 §1.6 배치 정정으로 상세가 전체 폭에 내려오자 **빈 영역**이 드러났다.
+사용자 지적으로 §1.7 에서 채웠다.
 
 ### 1.5 최종 배치
 
@@ -91,9 +97,59 @@ three_m = (returns_block.get("three_month") or {}).get("return_pct")
 후보 ┃ KODEX 200 [직접 보유]      1개월 1위     ┃ (같은 4칸 · 같은 자리)
 ```
 
-**무변경**: 2열 배치(좌우 견주기가 화면 목적) · 보유/후보 상호 배타 선택 ·
-`DecisionDraftPreviewCard` · 정렬 키 7개(위치만 헤더 → 세그먼트 바) ·
-`보유 노출` 3-state 라벨·색 · 값 없는 칸 표기.
+**무변경**: 보유/후보 상호 배타 선택 · `DecisionDraftPreviewCard` ·
+정렬 키 7개(위치만 헤더 → 세그먼트 바) · `보유 노출` 3-state 라벨·색 ·
+값 없는 칸 표기.
+
+> **정정 (2026-08-19)**: 이 절에 원래 *"**무변경**: 2열 배치"* 라고 적었으나 사실이 아니다.
+> 전환 이전 화면은 2열이 아니라 **`1fr 360px` 그리드에 보유/후보가 세로로 쌓인** 형태였다
+> (`git show <전환 직전>:HoldingsCompareView.tsx` 실측). 유지할 2열이 애초에 없었고,
+> 목업만 좌우 2열로 그려져 **승인 형태와 구현이 어긋난 채로 남아 있었다.** §1.6 에서 정정.
+
+---
+
+### 1.6 배치 정정 — 좌우 2열 (2026-08-19 · 사용자 지시)
+
+사용자가 실화면과 목업이 다르다는 것을 발견했다. 확인 결과 **목업이 실제 구조를 잘못
+그렸고**(있지도 않은 2열을 "지금" 으로 그림), 구현은 이전 세로 배치를 그대로 유지했다.
+
+사용자 결정: **(가) 목업대로 좌우 나란히** — *"결국은 pc에서 조회할 것이기에"*.
+
+- `1fr 360px` 그리드 제거 → **`.cmp-twocol`** (`repeat(auto-fit, minmax(430px, 1fr))`)
+- 선택 상세를 우측 360px 열 → **2열 아래 전체 폭**으로 이동, `position: sticky` 해제
+- `.wb-hrow.compact` 는 이미 `minmax(0, 1fr) 236px` 로 **2열 전제로 쓰여 있었다**
+  (주석: *"좌우 2열 안에 들어가므로"*). CSS 는 2열, JSX 만 세로였던 상태.
+- 좁은 폭에서는 기존 `max-width: 900px` 미디어쿼리로 지표 열이 카드 아래로 접힌다.
+
+**카드 내용·정렬바·선택 상세 내부는 손대지 않았다** — 컨테이너만 바꿨다.
+
+### 1.7 `선택 보유 상세` 채움 (2026-08-19 · 사용자 지시)
+
+§1.4 로 비어 있던 영역을 채웠다. **응답에 이미 있고 카드에 없는 값만** 골랐다 —
+신규 계산·신규 endpoint·외부 조회 **0건**.
+
+| 줄 | source |
+|---|---|
+| 보유 내역 | `/holdings/enriched` 계좌별 행 — 수량 합계 · 평균단가 · 평가금액 |
+| 후보 관계 | `topn_match.status` / `rank` / `basis` |
+| 단기 흐름 | `short_term_momentum` 5·10·20일 수익률 |
+| KODEX 대비 | `short_term_momentum` 5·10·20일 초과 |
+| NAV 괴리 | `nav_discount` NAV · 시장가 · 괴리율 · `asof` |
+| 구성종목 겹침 | `constituents_overlap` |
+| 확인 근거 | `evidence_notes` — **백엔드가 만든 문장을 그대로 나열**(새 문구 생성 X) |
+
+**유지한 계약 2건**:
+- **평균단가는 다계좌일 때 대표값을 만들지 않는다** → `계좌별 상이`. 평가금액 일부
+  미평가는 `(N/M)`.
+- **`미포함` 과 `확인 불가` 를 섞지 않는다** — evidence 미로드는 `확인 전`,
+  `not_in_current_topn` 은 `현재 후보 목록에 없음`, 그 외는 `확인 불가`.
+
+**수량·평균단가를 evidence 가 아니라 `/holdings/enriched` 에서 가져온 이유**: 화면의
+`evidenceByTicker` 는 `m[h.ticker] = h` 라 같은 티커가 여러 계좌면 **마지막 항목만
+남는다.** 계좌 합산에 쓸 수 없다. 그 구조 자체는 카드도 쓰는 기존 동작이라 건드리지 않았다.
+
+`DecisionDraftPreviewCard` 는 **명시 클릭 계약을 그대로 뒀다**(자동 생성으로 바꾸면 화면
+진입마다 서버 호출이 생긴다). 사용자 확인 완료.
 
 ---
 
@@ -107,7 +163,8 @@ three_m = (returns_block.get("three_month") or {}).get("return_pct")
 | `frontend/app/components/workbench/helpers.ts` | 수정 (`evidenceReturn` 4기간 지원) |
 | `frontend/app/components/holdings_compare/CompareCards.tsx` | **신규** (248줄) |
 | `frontend/app/components/HoldingsCompareView.tsx` | 수정 (표 2개 → 카드 · 499줄) |
-| `frontend/app/globals.css` | 수정 (`.wb-hrow.compact` · `.wb-hm4` · `.cand-basis-rank`) |
+| `frontend/app/globals.css` | 수정 (`.wb-hrow.compact` · `.wb-hm4` · `.cand-basis-rank` · **2026-08-19 `.cmp-twocol` · `.hcd-*`**) |
+| `frontend/app/components/holdings_compare/SelectedHoldingDetail.tsx` | **신규 (2026-08-19 · §1.7)** |
 | **`tests/test_ml_job_runner.py`** | **수정 (테스트 격리 · §4.0-②)** |
 | **`tests/test_holdings_market_evidence.py`** | **수정 (신규 필드 직접 테스트 3건 · 2026-08-17 재작업)** |
 | `docs/*` | PROGRAM_TRUTH · STATE_LATEST · 공유 보고서 · 본 문서(신규) |

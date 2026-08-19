@@ -2836,6 +2836,56 @@ textarea.decision-textarea {
   line-height: 1.55;
 }
 
+/* 선택 보유 상세 — 카드에 없는 값만 담는 정의 목록 (2026-08-19). */
+.hcd { font-size: 12.5px; }
+.hcd-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft, #e8ebf0);
+}
+.hcd-head strong { font-size: 14px; }
+.hcd-tk { color: var(--muted); font-variant-numeric: tabular-nums; }
+.hcd-acc {
+  background: #eef0f4;
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.hcd-body { display: grid; gap: 6px; margin-top: 8px; }
+.hcd-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+.hcd-k { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.hcd-v { font-variant-numeric: tabular-nums; min-width: 0; }
+.hcd-v b { font-weight: 700; }
+.hcd-sep { color: #cbd2dc; margin: 0 6px; }
+.hcd-muted { color: var(--muted); }
+.hcd-warn { color: var(--warn); }
+.hcd-asof { color: var(--muted); font-size: 11px; margin-left: 7px; }
+.hcd-chips { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.hcd-chip {
+  background: #f3f5f9;
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 11.5px;
+  color: #4b5563;
+}
+.hcd-notes { margin: 0; padding-left: 16px; color: #4b5563; }
+.hcd-notes li { margin: 2px 0; }
+
+/* 보유와 비교: 좌우 2열 (2026-08-19 배치 정정 — 목업 승인 형태).
+   이 화면의 목적이 *보유와 후보를 나란히 견주는 것*이라 좌우로 놓는다.
+   폭이 모자라면 아래로 접힌다(카드 1장 = 좌측 카드 + 지표 236px). */
+.cmp-twocol {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
 /* ── 보유와 비교: 카드 (2026-08-16 사용자 실화면 직접 지시) ──────────────────
    좌우 2열 안에 들어가므로 .wb-hrow 보다 폭이 좁다. 기간 4칸을 넣기 위해
    지표 열을 조금 넓히고 글자를 한 단계 줄인다(카드 골격은 그대로 재사용). */
