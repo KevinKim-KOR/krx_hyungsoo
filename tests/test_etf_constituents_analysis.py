@@ -136,3 +136,66 @@ def test_compute_analysis_integration(tmp_path: Path):
     assert pair["common_count_top10"] == 1
     # min(25, 30) = 25.
     assert pair["weighted_overlap_pct"] == 25.0
+
+
+# ── 2026-08-19 설계 확정: 표시 깊이와 중복률 깊이 분리 ────────────────────
+
+
+def _deep_rows(etf: str, names: list[str], *, asof="2026-08-19"):
+    """rank 1..N 을 만든다. 앞쪽일수록 비중이 크다.
+
+    겹침은 **티커**로 판정되므로 티커를 이름에서 파생시킨다 — rank 로 만들면
+    서로 다른 종목이 같은 티커를 갖게 돼 테스트가 무의미해진다.
+    """
+    return [
+        _row(etf, i, f"TK-{n}", n, float(30 - i), asof=asof)
+        for i, n in enumerate(names, start=1)
+    ]
+
+
+def test_display_depth_does_not_change_overlap_basis(tmp_path: Path):
+    """top_k 를 30 으로 올려도 중복률은 상위 10건 기준을 유지한다.
+
+    A·B 는 상위 10건이 전부 다르고 **11~20위에서만 겹친다.** 표시 깊이가
+    중복률에 새면 공통 종목이 잡히고, 분리돼 있으면 0 이다.
+    """
+    db = tmp_path / "m.sqlite"
+    a_names = [f"A{i}" for i in range(1, 11)] + [f"공통{i}" for i in range(1, 11)]
+    b_names = [f"B{i}" for i in range(1, 11)] + [f"공통{i}" for i in range(1, 11)]
+    upsert_constituents(_deep_rows("AAA", a_names), db_path=db)
+    upsert_constituents(_deep_rows("BBB", b_names), db_path=db)
+
+    out = compute_analysis(
+        tickers=["AAA", "BBB"], asof="2026-08-19", top_k=30, db_path=db
+    )
+
+    # 표시는 깊어진다.
+    by_tk = {c["etf_ticker"]: c for c in out["constituents"]}
+    assert len(by_tk["AAA"]["top_holdings"]) == 20
+
+    # 중복률은 상위 10 기준 그대로 — 겹침 0.
+    pair = out["overlap_matrix"][0]
+    assert pair["common_count_top10"] == 0, pair
+    assert pair["weighted_overlap_pct"] is None
+    assert out["repeated_core_holdings"] == []
+
+    # 응답이 두 기준을 구분해 낸다.
+    assert out["top_k"] == 30
+    assert out["overlap_top_k"] == 10
+
+
+def test_overlap_still_detected_within_top10(tmp_path: Path):
+    """상위 10건 안에서 겹치면 표시 깊이와 무관하게 잡힌다 (역검증)."""
+    db = tmp_path / "m.sqlite"
+    a_names = ["공통1", "공통2"] + [f"A{i}" for i in range(3, 21)]
+    b_names = ["공통1", "공통2"] + [f"B{i}" for i in range(3, 21)]
+    upsert_constituents(_deep_rows("AAA", a_names), db_path=db)
+    upsert_constituents(_deep_rows("BBB", b_names), db_path=db)
+
+    out = compute_analysis(
+        tickers=["AAA", "BBB"], asof="2026-08-19", top_k=30, db_path=db
+    )
+    pair = out["overlap_matrix"][0]
+    assert pair["common_count_top10"] == 2, pair
+    assert pair["weighted_overlap_pct"] is not None
+    assert len(out["repeated_core_holdings"]) == 2

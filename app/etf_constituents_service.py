@@ -33,8 +33,15 @@ from app.etf_constituents_store import (
 )
 
 MAX_TICKERS_PER_REQUEST = 10
-DEFAULT_TOP_K = 10
-MAX_TOP_K = 10
+# 2026-08-19 설계 확정 — 외부 호출을 가두는 상한(ETF 10개)과 ETF 안에서 담는
+# 깊이(구성종목)를 같은 숫자로 묶을 이유가 없다. **호출 수는 그대로 두고 깊이만**
+# 30 으로 넓힌다. 실측 확인: Naver ETFComponent 는 `pageSize=30` 한 번에 30건을
+# 반환한다(069500 · 2026-08-19 · componentCount=200). 추가 호출·페이지네이션 없음.
+DEFAULT_TOP_K = 30
+MAX_TOP_K = 30
+# 이 값으로 저장된 스냅샷은 **구 정책(상한 10)의 잘린 결과**일 수 있어 캐시 완료로
+# 보지 않는다 (설계 확정 — "기존 Top 10 캐시를 Top 30 요청 완료로 간주하지 않음").
+LEGACY_TOP_K = 10
 PER_TICKER_DELAY_SECONDS = 0.5
 TIME_BUDGET_SECONDS = 30.0
 
@@ -147,7 +154,15 @@ def refresh_constituents(
                 source=expected_source,
                 db_path=db_path,
             )
-            if existing:
+            # 캐시 우선은 유지하되, **요청한 깊이를 만족하는 캐시**만 완료로 본다.
+            # 구 정책으로 정확히 10건 잘려 저장된 스냅샷은 재수집 대상이다.
+            # (총 구성종목이 10개뿐인 ETF 는 매번 재수집된다 — §결과서에 명시)
+            stale_depth = (
+                existing is not None
+                and len(existing) < capped_top_k
+                and len(existing) == LEGACY_TOP_K
+            )
+            if existing and not stale_depth:
                 items.append(
                     RefreshItemResult(
                         ticker=tk,

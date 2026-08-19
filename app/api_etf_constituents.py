@@ -177,7 +177,11 @@ class AnalysisCoverage(BaseModel):
 class ConstituentsAnalysisResponse(BaseModel):
     status: str
     asof: str
+    # 표시 깊이 (구성종목 탭). 2026-08-19 설계 확정으로 최대 30.
     top_k: int
+    # 중복률·반복 등장 계산 기준 깊이. **표시 깊이와 무관하게 항상 10** —
+    # 화면의 `Top 10 기준` 문구가 계속 사실이어야 한다.
+    overlap_top_k: int = DEFAULT_TOP_K_FOR_OVERLAP
     coverage: AnalysisCoverage
     constituents: list[ConstituentItem] = []
     overlap_matrix: list[OverlapPair] = []

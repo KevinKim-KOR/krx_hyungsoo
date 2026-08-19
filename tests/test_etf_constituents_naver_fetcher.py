@@ -189,3 +189,56 @@ def test_build_constituent_key_priority():
     # 진짜 모두 없으면 None.
     assert _build_constituent_key(None, None, None, None) is None
     assert _build_constituent_key("", "", "", "") is None
+
+
+# ── 2026-08-19 설계 확정: 구성종목 깊이 30 (호출 수는 그대로) ─────────────
+
+
+def test_naver_fetcher_page_size_follows_top_k(monkeypatch):
+    """pageSize 가 요청 깊이를 따라간다 — 한 번의 호출로 30건을 받기 위해서다.
+
+    실측 근거: `pageSize=30` → 30건 반환 (069500 · 2026-08-19 · componentCount=200).
+    이 값이 20 으로 고정돼 있으면 30 을 요청해도 20 까지만 온다.
+    """
+    seen: list[str] = []
+
+    def capturing_get(url, timeout=10):  # noqa: ARG001
+        seen.append(url)
+        return 200, json.dumps(_domestic_items(), ensure_ascii=False)
+
+    monkeypatch.setattr(fetcher_mod, "_naver_http_get", capturing_get)
+    fetcher_mod.naver_stock_etf_component_fetcher("069500", "2026-08-19", 30)
+
+    assert len(seen) == 1, f"ETF 당 호출은 1회여야 한다 — 실제 {len(seen)}회"
+    assert "pageSize=30" in seen[0], seen[0]
+    assert "startIdx=0" in seen[0], seen[0]
+
+
+def test_naver_fetcher_small_top_k_keeps_default_page_size(monkeypatch):
+    """작은 top_k 로 pageSize 가 기본값 아래로 내려가지는 않는다."""
+    seen: list[str] = []
+
+    def capturing_get(url, timeout=10):  # noqa: ARG001
+        seen.append(url)
+        return 200, json.dumps(_domestic_items(), ensure_ascii=False)
+
+    monkeypatch.setattr(fetcher_mod, "_naver_http_get", capturing_get)
+    fetcher_mod.naver_stock_etf_component_fetcher("069500", "2026-08-19", 5)
+
+    assert f"pageSize={fetcher_mod.NAVER_DEFAULT_PAGE_SIZE}" in seen[0], seen[0]
+
+
+def test_naver_fetcher_no_pagination_when_source_returns_fewer(monkeypatch):
+    """응답이 top_k 보다 적으면 그게 전부다 — 추가 페이지를 부르지 않는다."""
+    calls: list[str] = []
+
+    def capturing_get(url, timeout=10):  # noqa: ARG001
+        calls.append(url)
+        return 200, json.dumps(_domestic_items(), ensure_ascii=False)  # 2건뿐
+
+    monkeypatch.setattr(fetcher_mod, "_naver_http_get", capturing_get)
+    res = fetcher_mod.naver_stock_etf_component_fetcher("069500", "2026-08-19", 30)
+
+    assert len(calls) == 1
+    assert res.status == "ok"
+    assert len(res.constituents) == 2

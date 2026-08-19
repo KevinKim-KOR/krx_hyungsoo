@@ -165,7 +165,9 @@ export default function ETFExposureView({ onNavigate }: Props) {
         .map((c) => c.ticker)
         .filter((t): t is string => !!t);
       if (tickers.length > 0) {
-        fetchConstituentsAnalysis(tickers, null, 10)
+        // 2026-08-19 설계 확정 — 표시 깊이 30. 중복률은 서버가 상위 10건 고정으로
+        // 계산한다(응답 `overlap_top_k`), 이 값과 무관하다.
+        fetchConstituentsAnalysis(tickers, null, 30)
           .then((a) => setAnalysis(a))
           .catch(() => setAnalysis(null));
       }

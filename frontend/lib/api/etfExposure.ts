@@ -115,7 +115,10 @@ export interface RepeatedCoreHolding {
 export interface ConstituentsAnalysisResponse {
   status: "ok";
   asof: string;
+  // 표시 깊이 (구성종목 탭). 2026-08-19 설계 확정으로 최대 30.
   top_k: number;
+  // 중복률·반복 등장 계산 기준. **표시 깊이와 무관하게 항상 10.**
+  overlap_top_k?: number;
   coverage: {
     requested_count: number;
     available_count: number;

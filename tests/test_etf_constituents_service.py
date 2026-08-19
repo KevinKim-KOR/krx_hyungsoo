@@ -15,7 +15,9 @@ from pathlib import Path
 
 from app.etf_constituents_fetcher import FetchedConstituent, FetchResult
 from app.etf_constituents_service import (
+    DEFAULT_TOP_K,
     MAX_TICKERS_PER_REQUEST,
+    MAX_TOP_K,
     PER_TICKER_DELAY_SECONDS,
     TIME_BUDGET_SECONDS,
     refresh_constituents,
@@ -223,3 +225,118 @@ def test_refresh_rejected_missing_asof(tmp_path: Path):
     )
     assert result.status == "rejected"
     assert result.reason == "missing_asof"
+
+
+# ── 2026-08-19 설계 확정: 깊이 30 · 레거시 10건 캐시는 완료로 보지 않음 ────
+
+
+def _depth_fetcher(count: int, *, source: str = "naver_stock_etf_component"):
+    """요청 깊이와 무관하게 `count` 건을 돌려주는 fetcher."""
+    calls: list[int] = []
+
+    def fn(ticker, asof, top_k):  # noqa: ARG001
+        calls.append(top_k)
+        return FetchResult(
+            status="ok",
+            source=source,
+            constituents=[
+                FetchedConstituent(
+                    rank=i,
+                    constituent_ticker=f"{i:06d}",
+                    constituent_name=f"종목{i}",
+                    weight_pct=float(30 - i),
+                )
+                for i in range(1, count + 1)
+            ],
+        )
+
+    return fn, calls
+
+
+def test_default_top_k_is_30_and_cap_allows_30(tmp_path: Path):
+    """수집 깊이 상한이 30 이다 (외부 호출 수 상한 10 과 분리)."""
+    assert DEFAULT_TOP_K == 30
+    assert MAX_TOP_K == 30
+    assert MAX_TICKERS_PER_REQUEST == 10, "ETF 1회 처리 상한은 그대로 10"
+
+    db = tmp_path / "m.sqlite"
+    fetcher, calls = _depth_fetcher(30)
+    res = refresh_constituents(
+        asof="2026-08-19", tickers=["A"], fetcher=fetcher, db_path=db
+    )
+    assert res.status == "ok"
+    assert calls == [30], "fetcher 에 전달된 깊이"
+    assert len(fetch_constituents(etf_ticker="A", asof="2026-08-19", db_path=db)) == 30
+
+
+def test_legacy_10_row_cache_is_refetched_at_depth_30(tmp_path: Path):
+    """구 정책으로 10건 잘려 저장된 캐시를 30건 요청 완료로 보지 않는다."""
+    db = tmp_path / "m.sqlite"
+    legacy, _ = _depth_fetcher(10)
+    refresh_constituents(
+        asof="2026-08-19", tickers=["A"], top_k=10, fetcher=legacy, db_path=db
+    )
+    assert len(fetch_constituents(etf_ticker="A", asof="2026-08-19", db_path=db)) == 10
+
+    deep, calls = _depth_fetcher(30)
+    res = refresh_constituents(
+        asof="2026-08-19", tickers=["A"], fetcher=deep, db_path=db
+    )
+    assert calls == [30], "레거시 10건 캐시는 재수집 대상이어야 한다"
+    assert res.items[0].from_cache is False
+    assert len(fetch_constituents(etf_ticker="A", asof="2026-08-19", db_path=db)) == 30
+
+
+def test_deep_cache_is_not_refetched(tmp_path: Path):
+    """요청 깊이를 만족하는 캐시는 그대로 쓴다 (캐시 우선 정책 유지)."""
+    db = tmp_path / "m.sqlite"
+    deep, _ = _depth_fetcher(30)
+    refresh_constituents(asof="2026-08-19", tickers=["A"], fetcher=deep, db_path=db)
+
+    def boom(ticker, asof, top_k):  # noqa: ARG001
+        raise AssertionError("캐시가 있는데 외부 호출이 일어났다")
+
+    res = refresh_constituents(
+        asof="2026-08-19", tickers=["A"], fetcher=boom, db_path=db
+    )
+    assert res.items[0].from_cache is True
+    assert res.cached_count == 1
+
+
+def test_exhausted_source_cache_is_not_refetched(tmp_path: Path):
+    """총 구성종목이 30 미만인 ETF(=소스 고갈)는 재수집하지 않는다.
+
+    10 건 정확히인 경우만 구 정책 잔재로 보고 재수집한다 — 그 외 건수는
+    "source 가 그만큼밖에 없다" 는 뜻이라 다시 불러도 같은 결과다.
+    """
+    db = tmp_path / "m.sqlite"
+    small, _ = _depth_fetcher(12)
+    refresh_constituents(asof="2026-08-19", tickers=["A"], fetcher=small, db_path=db)
+
+    def boom(ticker, asof, top_k):  # noqa: ARG001
+        raise AssertionError("고갈된 source 인데 재수집이 일어났다")
+
+    res = refresh_constituents(
+        asof="2026-08-19", tickers=["A"], fetcher=boom, db_path=db
+    )
+    assert res.items[0].from_cache is True
+
+
+def test_deep_snapshot_not_shrunk_by_shallow_refetch(tmp_path: Path):
+    """30건 스냅샷이 이후 10건 수집으로 축소되지 않는다."""
+    db = tmp_path / "m.sqlite"
+    deep, _ = _depth_fetcher(30)
+    refresh_constituents(asof="2026-08-19", tickers=["A"], fetcher=deep, db_path=db)
+
+    shallow, _ = _depth_fetcher(10)
+    refresh_constituents(
+        asof="2026-08-19",
+        tickers=["A"],
+        top_k=10,
+        force=True,
+        fetcher=shallow,
+        db_path=db,
+    )
+    rows = fetch_constituents(etf_ticker="A", asof="2026-08-19", db_path=db)
+    assert len(rows) == 30, "얕은 재수집이 깊은 스냅샷을 지우면 안 된다"
+    assert max(r.rank for r in rows) == 30

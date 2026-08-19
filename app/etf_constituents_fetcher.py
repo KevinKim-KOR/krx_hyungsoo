@@ -264,9 +264,13 @@ def naver_stock_etf_component_fetcher(
     referenceDate 는 effective_asof 로 노출 (service 가 저장 + cache key 에
     그 값을 사용).
     """
+    # 2026-08-19 — pageSize 를 요청 깊이(top_k)에 맞춘다. 같은 endpoint 를 **한 번**
+    # 부르고, 응답이 top_k 보다 적으면 그게 그 ETF 의 전부다(페이지 추가 호출 없음).
+    # 실측: pageSize=30 → 30건 반환 (069500 · 2026-08-19).
+    page_size = max(NAVER_DEFAULT_PAGE_SIZE, max(1, top_k))
     url = (
         f"{NAVER_API_BASE}/{etf_ticker}/ETFComponent"
-        f"?startIdx=0&pageSize={NAVER_DEFAULT_PAGE_SIZE}"
+        f"?startIdx=0&pageSize={page_size}"
     )
     try:
         http_status, body = _naver_http_get(url)

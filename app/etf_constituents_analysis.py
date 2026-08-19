@@ -185,6 +185,11 @@ def compute_analysis(
 
     각 ticker 에 대해 fetch_constituents → 집중도. 이후 ETF 쌍 조합으로 중복률
     계산 + repeated_core_holdings 집계.
+
+    2026-08-19 설계 확정 — **표시 깊이와 중복률 깊이를 분리한다.**
+    `top_k` 는 `top_holdings` 표시에만 쓰고, **중복률·반복 등장 집계는 언제나
+    상위 10건(`DEFAULT_TOP_K_FOR_OVERLAP`)** 으로 계산한다. 화면의 `Top 10 기준`
+    문구와 `common_count_top10` 필드명이 계속 사실이어야 하기 때문이다.
     """
     per_ticker_rows: dict[str, list[ConstituentRow]] = {}
     constituents_out: list[dict] = []
@@ -257,7 +262,10 @@ def compute_analysis(
                 }
             )
             continue
-        pair = compute_pair_overlap(left_rows, right_rows, top_k=top_k)
+        # 중복률은 표시 깊이와 무관하게 상위 10건 고정.
+        pair = compute_pair_overlap(
+            left_rows, right_rows, top_k=DEFAULT_TOP_K_FOR_OVERLAP
+        )
         overlap_matrix.append(
             {
                 "left_ticker": left_tk,
@@ -266,12 +274,18 @@ def compute_analysis(
             }
         )
 
-    repeated = compute_repeated_core_holdings(per_ticker_rows, top_k=top_k)
+    # 반복 등장 핵심 종목도 상위 10건 고정 (중복률과 같은 기준).
+    repeated = compute_repeated_core_holdings(
+        per_ticker_rows, top_k=DEFAULT_TOP_K_FOR_OVERLAP
+    )
 
     return {
         "status": "ok",
         "asof": asof,
+        # 표시 깊이. 중복률 기준(10)과 다를 수 있다 — 응답 소비자가 구분하도록
+        # overlap_top_k 를 함께 낸다.
         "top_k": top_k,
+        "overlap_top_k": DEFAULT_TOP_K_FOR_OVERLAP,
         "coverage": {
             "requested_count": len(tickers),
             "available_count": available_count,

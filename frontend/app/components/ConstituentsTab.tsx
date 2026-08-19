@@ -145,16 +145,22 @@ export default function ConstituentsTab({
 
       {analysis ? (
         <div className="card">
-          <h2>구성종목 펼쳐보기 (상위 10) + 집중도</h2>
+          <h2>상위 구성종목</h2>
           <p className="helper" style={{ marginBottom: 8 }}>
             가용 {analysis.coverage.available_count} / 요청{" "}
             {analysis.coverage.requested_count} · asof {analysis.asof}. ETF별
-            구성종목이 접히지 않고 바로 보입니다 — 후보 ETF 간 종목 비교용.
+            상위 구성종목이 접히지 않고 바로 보입니다 — 후보 ETF 간 종목 비교용.
+            중복률은 이 표시 깊이와 무관하게 상위{" "}
+            {analysis.overlap_top_k ?? 10}건 기준으로 계산합니다.
           </p>
           {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (지시문 §5.2 / AC-2) —
               구성종목 details 를 자동 펼침(open) 으로 표시. ETF별 종목이 한눈에
-              비교 가능하도록 한다. 구성종목 등락률 컬럼은 unavailable 로 표시
-              (가격 시계열 source 미연동 — 본 STEP 에서 신규 source 채택 X). */}
+              비교 가능하도록 한다.
+              2026-08-19 설계 확정 — **등락률 열 제거.** 값을 못 가져온 게 아니라
+              연결한 적 없는 자리였고, 채우려면 개별주 시세 수집이라는 새 데이터
+              계약이 필요하다. 항상 `unavailable` 인 열은 고장으로 읽히므로 열과
+              안내문을 함께 뺀다(0%·ETF 등락률·추정값으로 대체하지 않는다).
+              개별주 등락률 수집은 BACKLOG. */}
           {analysis.constituents.map((c: ConstituentItem) => (
             <details
               key={c.etf_ticker}
@@ -197,9 +203,6 @@ export default function ConstituentsTab({
                         <th style={{ width: 90 }}>티커</th>
                         <th>종목명</th>
                         <th style={{ width: 90, textAlign: "right" }}>비중</th>
-                        <th style={{ width: 120, textAlign: "right" }}>
-                          등락률
-                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -216,27 +219,27 @@ export default function ConstituentsTab({
                             <td>{h.rank}</td>
                             <td>{displayId ? <code>{displayId}</code> : DASH}</td>
                             <td>{h.name ?? DASH}</td>
-                            <td style={{ textAlign: "right" }}>{fmtPct(h.weight_pct)}</td>
-                            <td
-                              style={{
-                                textAlign: "right",
-                                color: "var(--muted)",
-                              }}
-                              title="구성종목 가격 시계열 미연결 — 본 STEP에서 source 채택 X"
-                            >
-                              unavailable
+                            <td style={{ textAlign: "right" }}>
+                              {fmtPct(h.weight_pct)}
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  {/* 2026-08-19 설계 확정 표시 계약 — 확보된 건수만 적는다.
+                      "전체 구성종목" 이라고 쓰지 않는다(ETF 전체는 더 많다). */}
                   <p
                     className="helper"
                     style={{ marginTop: 4, fontSize: "0.78rem" }}
                   >
-                    등락률 unavailable — 구성종목 가격 시계열 미연결
-                    (not_integrated).
+                    상위 {c.top_holdings.length}개 표시 · 표시 비중 합계{" "}
+                    {fmtPct(
+                      c.top_holdings.reduce(
+                        (acc, h) => acc + (h.weight_pct ?? 0),
+                        0,
+                      ),
+                    )}
                   </p>
                 </>
               ) : (
