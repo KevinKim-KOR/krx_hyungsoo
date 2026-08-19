@@ -172,6 +172,18 @@ export default function ETFExposureView({ onNavigate }: Props) {
     }
   }, []);
 
+  // 2026-08-19 중복률 탭 카드 전환 — 티커만으로는 어느 ETF 끼리 겹치는지 못 읽는다.
+  // analysis 응답의 etf_name 은 현재 캐시에서 전부 null 이라, 화면이 이미 들고 있는
+  // draft 후보 스냅샷에서 이름을 가져온다 (신규 API·백엔드 변경 없음).
+  // draft 에 없는 티커는 맵에 넣지 않는다 — 표시 측이 티커 그대로 쓴다.
+  const nameByTicker = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const c of draft?.candidate_snapshot ?? []) {
+      if (c.ticker && c.name) m[c.ticker] = c.name;
+    }
+    return m;
+  }, [draft]);
+
   const handleTransferToSessions = useCallback(() => {
     if (!draft) return;
     // 2026-05-27 FIX (검증자 A-1 NOTE 반영) — 시장 판정 + 후보 excess_return 을
@@ -301,9 +313,10 @@ export default function ETFExposureView({ onNavigate }: Props) {
           draft={draft}
           analysis={analysis}
           setAnalysis={setAnalysis}
+          nameByTicker={nameByTicker}
         />
       ) : (
-        <OverlapTab analysis={analysis} />
+        <OverlapTab analysis={analysis} nameByTicker={nameByTicker} />
       )}
 
       {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (AC-5/6) — Holdings Evidence

@@ -36,26 +36,37 @@ function fmtPct(value: number | null | undefined): string {
   return `${value.toFixed(2)}%`;
 }
 
+// 2026-08-19 — 다른 화면과 같은 배지를 쓴다(`.wb-hb` + 상태 변형). 이전에는 이
+// 화면만 테두리 있는 알약(`.constituent-status-badge`)이라 형태가 달랐다.
 function statusBadge(status: string): string {
   switch (status) {
     case "ok":
-      return "constituent-status-ok";
+      return "ok";
     case "unavailable":
-      return "constituent-status-unavailable";
+      return "mute";
     case "skipped_timeout":
-      return "constituent-status-timeout";
+      return "warn";
     default:
-      return "constituent-status-other";
+      return "mute";
   }
 }
 
 interface Props {
+  // 2026-08-19 — 티커 → ETF 이름. 응답의 etf_name 은 네이버 구성종목 API 가 ETF
+  // 자기 이름을 주지 않아 **저장 시점부터 전부 null** 이다(DB 실측). 그래서 화면이
+  // 이미 들고 있는 draft 후보 스냅샷의 이름을 쓴다. 없으면 티커만 — 지어내지 않는다.
+  nameByTicker?: Record<string, string>;
   draft: ETFExposureDraft;
   analysis: ConstituentsAnalysisResponse | null;
   setAnalysis: (a: ConstituentsAnalysisResponse | null) => void;
 }
 
-export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props) {
+export default function ConstituentsTab({
+  draft,
+  analysis,
+  setAnalysis,
+  nameByTicker,
+}: Props) {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [refreshItems, setRefreshItems] = useState<RefreshConstituentsItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -151,16 +162,28 @@ export default function ConstituentsTab({ draft, analysis, setAnalysis }: Props)
               style={{ marginBottom: 8 }}
               open
             >
-              <summary>
-                <span className={`constituent-status-badge ${statusBadge(c.status)}`}>
-                  {c.status}
-                </span>{" "}
-                <code>{c.etf_ticker}</code> · {c.etf_name ?? "-"} ·{" "}
-                {c.source ?? DASH} ·{" "}
-                {refreshByTicker[c.etf_ticker]?.from_cache ? "(캐시)" : ""}
+              {/* 2026-08-19 사용자 지시 — 다른 화면 카드와 같은 줄 규칙으로 맞춘다.
+                  이름 먼저(굵게) · 티커는 뒤에 작게 · 배지는 공용 `.wb-hb` 사용.
+                  source(`naver_stock_etf_component`)는 화면에서 뺐다 — 내부 코드
+                  문자열이고 현재 값이 한 종류뿐이다(펼친 안쪽 상단에 남긴다). */}
+              <summary className="cst-summary">
+                <b className="cst-name">
+                  {c.etf_name ?? nameByTicker?.[c.etf_ticker] ?? c.etf_ticker}
+                </b>
+                <span className={`wb-hb ${statusBadge(c.status)}`}>{c.status}</span>
+                <code className="cst-tk">{c.etf_ticker}</code>
+                {refreshByTicker[c.etf_ticker]?.from_cache ? (
+                  <span className="cst-cache">캐시</span>
+                ) : null}
               </summary>
               {c.status === "ok" ? (
                 <>
+                  {/* summary 줄에서 뺀 source 를 여기 남긴다 — 어디서 온 값인지는
+                      필요할 때 확인할 수 있어야 한다. */}
+                  <div className="cst-src">
+                    {c.source ?? DASH}
+                    {c.asof ? ` · asof ${c.asof}` : ""}
+                  </div>
                   <ul className="dashboard-status-list" style={{ marginTop: 6 }}>
                     <li>Top 1 집중도: <strong>{fmtPct(c.concentration.top1_weight_pct)}</strong></li>
                     <li>Top 3 집중도: <strong>{fmtPct(c.concentration.top3_weight_pct)}</strong></li>

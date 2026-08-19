@@ -2836,6 +2836,59 @@ textarea.decision-textarea {
   line-height: 1.55;
 }
 
+/* 구성종목 탭 summary 줄 (2026-08-19 사용자 지시 — 다른 화면 규칙에 맞춤).
+   이름 먼저 · 티커는 뒤에 작게 · 배지는 공용 .wb-hb. source 는 상세 안쪽으로. */
+.cst-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+.cst-name { font-size: 13.5px; font-weight: 700; }
+.cst-tk { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cst-cache {
+  background: #eef0f4;
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.cst-src { color: var(--muted); font-size: 11px; margin-top: 4px; }
+
+/* 중복률 탭 카드 (2026-08-19). 카드 골격은 .wb-hrow.compact 를 그대로 쓰고
+   이 화면에만 필요한 것(쌍 표기 · 공통 종목 칩 · 중복률 막대)만 더한다. */
+.ovl-vs { color: #9aa3af; font-weight: 600; margin: 0 5px; }
+.ovl-chips { display: inline-flex; gap: 5px; flex-wrap: wrap; min-width: 0; }
+.ovl-chip {
+  background: #f3f5f9;
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 11.5px;
+  color: #4b5563;
+  white-space: nowrap;
+}
+.ovl-chip b { color: var(--fg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ovl-den { font-size: 11px; color: var(--muted); font-weight: 600; }
+.ovl-bar {
+  height: 6px;
+  background: #eef0f4;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.ovl-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.ovl-cap {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 선택 보유 상세 — 카드에 없는 값만 담는 정의 목록 (2026-08-19). */
 .hcd { font-size: 12.5px; }
 .hcd-head {
