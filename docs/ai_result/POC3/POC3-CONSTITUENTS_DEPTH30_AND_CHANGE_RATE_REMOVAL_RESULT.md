@@ -3,8 +3,9 @@
 - **성격**: **설계자 확정문에 따른 구현.** 앞선 UI 라운드에서 사용자가 발견한 2건
   (`상위 10건 제한` · `등락률 미연결`)에 대한 설계 판단이 내려와 그대로 구현했다.
 - **작업일**: 2026-08-19 (맥북 환경)
-- **상태**: 구현 완료 · **검증자 대상** — 앞선 UI 라운드와 달리 **`app/` 4개 파일을
-  변경**했다. UI 전용이 아니므로 검증 예외에 해당하지 않는다.
+- **상태**: **r1 `REJECTED` → r2 재작업 완료 (재검증 대기).** 검증자 대상 —
+  앞선 UI 라운드와 달리 `app/` 4개 파일을 변경했다. UI 전용이 아니므로 검증 예외가
+  아니다. r1 지적 4건과 조치는 **§11**.
 - **입력 문서**: `docs/handoff/POC3/POC3_CONSTITUENTS_TOPK_AND_CHANGE_RATE_QUESTION.md`
   (개발자 질의 + 설계 확정문 + 구현 결과 §5)
 - **선행**: `POC3-OVERLAP_TAB_CARD_CONVERSION_RESULT.md`
@@ -156,9 +157,9 @@ repeated = compute_repeated_core_holdings(per_ticker_rows, top_k=DEFAULT_TOP_K_F
 - 표 아래 요약 **`상위 N개 표시 · 표시 비중 합계 XX.XX%`**
   (`N` 은 실제 확보 건수 — 30 미만이면 그 값)
 - 상단 안내에 *"중복률은 이 표시 깊이와 무관하게 상위 N건 기준"* 명시
-  (`analysis.overlap_top_k ?? 10`)
+  (`analysis.overlap_top_k` — **r2 에서 `?? 10` fallback 제거**, §11.5)
 - **등락률 열 · `등락률 unavailable` 안내문 제거.** 대체값 없음
-- 조회 깊이 `10` → `30`
+- 조회 깊이 `10` → `30`. **r2 에서 수집 버튼 경로까지 일괄 적용**(§11.1)
 - 중복률 화면 `ETF 쌍별 중복률 (Top 10 기준)` **문구 무변경**
 
 ---
@@ -182,14 +183,27 @@ repeated = compute_repeated_core_holdings(per_ticker_rows, top_k=DEFAULT_TOP_K_F
 | `docs/backlog/BACKLOG.md` | 수정 (기존 항목 갱신) | 5 | 4 |
 | `docs/handoff/POC3/..._QUESTION.md` | 수정 (확정문 + 구현 결과 §5) | 72 | 0 |
 | `docs/ai_result/POC3/POC3-OVERLAP_TAB_..._RESULT.md` | 수정 (오보고 정정) | 6 | 2 |
-| `docs/STATE_LATEST.md` | 수정 (오보고 정정 + 이번 라운드) | — | — |
+| `docs/PROGRAM_TRUTH.md` | 수정 (최종 반영 항목 추가) | 2 | 1 |
+| `docs/STATE_LATEST.md` | 수정 (오보고 정정 + 이번 라운드) | 38 | 4 |
 | `docs/ai_result/POC3/(본 문서)` | **신규** | — | — |
+
+> **A-2 정정 (검증자 r1 P1)**: 최초 이 표에서 **`docs/PROGRAM_TRUTH.md` 를 빠뜨렸다.**
+> 커밋 `004517f8` 은 16개 파일인데 15개로 보고했다. 위 표에 추가했다.
+
+**r2 재작업 (2026-08-19) 추가 변경** — `git diff --numstat` 실측:
+
+| 파일 | 구분 | 추가 | 삭제 |
+|---|---|---|---|
+| `frontend/app/components/ConstituentsTab.tsx` | 수정 (수집 경로 깊이 · 비중 합계 계약) | 40 | 19 |
+| `frontend/lib/api/etfExposure.ts` | 수정 (`CONSTITUENTS_TOP_K` 신설 · `overlap_top_k` optional 제거) | 8 | 2 |
+| `frontend/app/components/ETFExposureView.tsx` | 수정 (상수 사용) | 2 | 1 |
+| `frontend/app/components/ConstituentsTab.test.tsx` | **신규 (206줄)** | — | — |
 
 **DB 스키마 변경 0건. 신규 endpoint 0건. 신규 의존성 0건.**
 
 ---
 
-## 5) 회귀 테스트 10건
+## 5) 회귀 테스트 — 백엔드 10건 (r2 프론트 6건은 §11.4)
 
 | 테스트 | 검사 |
 |---|---|
@@ -269,3 +283,102 @@ ETF** 는 캐시가 있어도 매번 다시 불린다. 드물고 호출 수 상�
 | `npx tsc --noEmit` | 통과 |
 | `npm run lint` | 0건 |
 | `npx vitest run` | **167 passed (15 files)** |
+
+
+---
+
+## 11) r1 검증자 REJECTED — 지적 4건과 조치 (2026-08-19)
+
+### 11.1 [P1] 수집 버튼이 여전히 10건만 요청 — **지적이 정확했다**
+
+백엔드 깊이를 30 으로 올리고 **조회 한 곳(`ETFExposureView` 마운트 시점)만** 고쳤다.
+정작 사용자가 누르는 **수집 버튼(POST)과 수집 직후 재조회(GET)** 에는 리터럴 `10` 이
+그대로 남아 있었다. 백엔드는 *"10건 요청 + 10건 캐시"* 를 완료로 판단하므로
+**실제 사용자 경로에서는 재수집도 30건 표시도 일어나지 않았다.** 안내문도 여전히
+`상위 10개 구성종목을 수집` 이라고 적혀 있었다.
+
+**원인**: 착수 시 `top_k` 가 프론트 어디에 흩어져 있는지 **grep 으로 열거하지 않았다.**
+`CLAUDE.md §11` 의 *"안전 가드는 모든 layer 일괄 — 먼저 grep 으로 위반 가능한 모든
+layer 를 열거"* 를 지키지 않은 것이다.
+
+**조치**: 리터럴을 없애고 **단일 상수**로 모았다.
+
+```ts
+// frontend/lib/api/etfExposure.ts
+export const CONSTITUENTS_TOP_K = 30;
+```
+
+| 경로 | 이전 | 이후 |
+|---|---|---|
+| 수집 `POST /market/constituents/refresh` | `top_k: 10` | `CONSTITUENTS_TOP_K` |
+| 수집 직후 `GET .../analysis` | `10` | `CONSTITUENTS_TOP_K` |
+| 마운트 시점 `GET .../analysis` | `30` (리터럴) | `CONSTITUENTS_TOP_K` |
+| `fetchConstituentsAnalysis` 기본값 | `10` | `CONSTITUENTS_TOP_K` |
+| 안내문 | `상위 10개 구성종목` | `상위 {CONSTITUENTS_TOP_K}개 구성종목` |
+
+`grep -rn "top_k\|상위 10\|10개 구성종목" frontend/app frontend/lib` 로 전 경로를
+열거한 뒤 일괄 적용했다. 남은 `10` 은 **중복률 기준(`overlap_top_k`)** 뿐이며 이는
+설계 확정대로 고정값이다.
+
+### 11.2 [P2] 누락 비중을 0 으로 합산 — **지적이 정확했다**
+
+개별 표에서는 비중 누락을 `-` 로 표시하면서 요약 합계에서는 `weight_pct ?? 0` 으로
+조용히 0 을 더했다. **값이 없는데 완성된 합계처럼 보인다.**
+
+**조치**: 값이 있는 것만 더하고, **빠진 개수를 밝힌다.** 전부 없으면 `0.00%` 가 아니라
+`확인 불가` 로 적는다.
+
+```
+상위 2개 표시 · 표시 비중 합계 34.19% (비중 미확인 1개 제외)
+```
+
+### 11.3 [P1] 변경 파일 목록 누락 — **지적이 정확했다**
+
+`docs/PROGRAM_TRUTH.md` 를 빠뜨려 15개로 보고했으나 커밋은 16개였다. §4 에 추가하고
+정정 문구를 남겼다.
+
+### 11.4 [B-6] 프론트 수집 경로 테스트 부재 — **지적이 정확했다**
+
+백엔드 회귀 10건은 전부 통과했지만 **함수만 검사**했다. 화면이 서버에 무엇을 보내는지
+확인하는 테스트가 없어 §11.1 의 연결 누락을 잡지 못했다.
+
+**조치**: `ConstituentsTab.test.tsx` **신규 6건**.
+
+| 테스트 | 검사 |
+|---|---|
+| 수집 버튼 POST · 직후 GET | 둘 다 `top_k = 30` |
+| 안내문 | 실제 수집 깊이와 같은 숫자 |
+| 비중 일부 누락 | 값 있는 것만 합산 + **제외 개수 명시** |
+| 비중 전부 누락 | `확인 불가` (0.00% 아님) |
+| 등락률 | 열·안내문 없음 |
+| 중복률 기준 | 응답 값 그대로 (임의값으로 안 메움) |
+
+**역검증**: 검증자가 REJECT 한 커밋(`004517f8`)의 `ConstituentsTab.tsx` 로 되돌리면
+**6건 중 4건이 실패**한다. 테스트가 실제 결함을 잡는다.
+
+```
+× 수집 버튼이 top_k=30 으로 POST 하고, 직후 조회도 30 으로 한다
+× 안내문이 실제 수집 깊이와 같은 숫자를 말한다
+× 비중이 없는 종목을 0 으로 합산하지 않고 제외 개수를 밝힌다
+× 비중이 전부 없으면 0.00% 가 아니라 확인 불가 로 적는다
+Tests  4 failed | 2 passed (6)
+```
+
+### 11.5 [B-1] `overlap_top_k ?? 10` fallback — **지적이 정확했다**
+
+응답 필드를 optional 로 선언하고 `?? 10` 으로 누락을 메웠다. 백엔드 모델은 기본값을
+가진 필수 필드이므로 **항상 온다.** 타입에서 optional 을 벗기고 fallback 을 제거했다.
+
+### 11.6 [A-3] 문서와 코드 불일치
+
+`STATE_LATEST` 의 *"수집 버튼을 누르면 30건으로 재수집된다"* 가 §11.1 수정으로
+**사실이 됐다.** `PROGRAM_TRUTH` · 결과서의 "구성종목 탭 30건" 도 마찬가지다.
+
+### 11.7 r2 검증 실측
+
+| 항목 | 결과 |
+|---|---|
+| `npx tsc --noEmit` | 통과 |
+| `npm run lint` | 0건 |
+| `npx vitest run` | **173 passed (16 files)** — 직전 167 + 신규 6 |
+| 백엔드 | **변경 없음** — r2 는 프론트 전용 (r1 의 1157 passed 유효) |

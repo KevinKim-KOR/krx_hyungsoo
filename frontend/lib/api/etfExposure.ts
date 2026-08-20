@@ -112,13 +112,19 @@ export interface RepeatedCoreHolding {
   items: RepeatedCoreItem[];
 }
 
+// 2026-08-19 설계 확정 — 구성종목 표시 깊이. **수집·조회 모든 경로가 이 값 하나를
+// 쓴다.** 이전에는 리터럴 10 이 화면 3곳에 흩어져 있어, 조회 한 곳만 30 으로 고쳤을 때
+// 수집 버튼은 계속 10 을 보내 재수집이 일어나지 않았다(검증자 P1).
+export const CONSTITUENTS_TOP_K = 30;
+
 export interface ConstituentsAnalysisResponse {
   status: "ok";
   asof: string;
   // 표시 깊이 (구성종목 탭). 2026-08-19 설계 확정으로 최대 30.
   top_k: number;
   // 중복률·반복 등장 계산 기준. **표시 깊이와 무관하게 항상 10.**
-  overlap_top_k?: number;
+  // optional 이 아니다 — 없으면 화면이 임의값으로 메우게 되어 누락을 숨긴다.
+  overlap_top_k: number;
   coverage: {
     requested_count: number;
     available_count: number;
@@ -132,7 +138,7 @@ export interface ConstituentsAnalysisResponse {
 export function fetchConstituentsAnalysis(
   tickers: string[],
   asof?: string | null,
-  top_k: number = 10,
+  top_k: number = CONSTITUENTS_TOP_K,
 ): Promise<ConstituentsAnalysisResponse> {
   // 2026-06-01 FIX (검증자 A-1 NOTE 반영) — asof 는 optional. 누락 시 백엔드가
   // latest_constituent_asof MAX 를 effective asof 로 사용 (지시문 §8.2 응답

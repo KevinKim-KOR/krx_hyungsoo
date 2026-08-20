@@ -13,6 +13,7 @@ import { useCallback, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
+  CONSTITUENTS_TOP_K,
   type ConstituentItem,
   type ConstituentsAnalysisResponse,
   fetchConstituentsAnalysis,
@@ -84,7 +85,7 @@ export default function ConstituentsTab({
       const r = await refreshConstituents({
         asof: draft.asof,
         tickers,
-        top_k: 10,
+        top_k: CONSTITUENTS_TOP_K,
         force: false,
       });
       setRefreshItems(r.items);
@@ -98,7 +99,11 @@ export default function ConstituentsTab({
         // 2026-06-01 FIX (검증자 A-1 NOTE 반영) — asof 는 omit. 백엔드가
         // latest_constituent_asof MAX 를 사용 → Naver 의 referenceDate (예:
         // 2026-06-01) 와 draft.asof (예: 2026-05-28) 불일치로 인한 0건 회피.
-        const a = await fetchConstituentsAnalysis(tickers, null, 10);
+        const a = await fetchConstituentsAnalysis(
+          tickers,
+          null,
+          CONSTITUENTS_TOP_K,
+        );
         setAnalysis(a);
       }
     } catch (e) {
@@ -118,9 +123,9 @@ export default function ConstituentsTab({
       <div className="card">
         <h2>후보 ETF 구성종목 수집</h2>
         <p className="helper" style={{ marginBottom: 8 }}>
-          Naver Stock ETFComponent 기준 구성종목 데이터에서 후보 ETF 의 상위
-          10개 구성종목 + 비중을 수집합니다. 1회 최대 10개 후보까지 가능.
-          캐시가 있으면 외부 호출 없이 기존 데이터를 사용합니다.
+          Naver Stock ETFComponent 기준 구성종목 데이터에서 후보 ETF 의 상위{" "}
+          {CONSTITUENTS_TOP_K}개 구성종목 + 비중을 수집합니다. 1회 최대 10개
+          후보까지 가능. 캐시가 있으면 외부 호출 없이 기존 데이터를 사용합니다.
         </p>
         <ul className="dashboard-status-list">
           <li>기준일 (asof): <strong>{draft.asof}</strong></li>
@@ -151,7 +156,7 @@ export default function ConstituentsTab({
             {analysis.coverage.requested_count} · asof {analysis.asof}. ETF별
             상위 구성종목이 접히지 않고 바로 보입니다 — 후보 ETF 간 종목 비교용.
             중복률은 이 표시 깊이와 무관하게 상위{" "}
-            {analysis.overlap_top_k ?? 10}건 기준으로 계산합니다.
+            {analysis.overlap_top_k}건 기준으로 계산합니다.
           </p>
           {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (지시문 §5.2 / AC-2) —
               구성종목 details 를 자동 펼침(open) 으로 표시. ETF별 종목이 한눈에
@@ -228,19 +233,35 @@ export default function ConstituentsTab({
                     </tbody>
                   </table>
                   {/* 2026-08-19 설계 확정 표시 계약 — 확보된 건수만 적는다.
-                      "전체 구성종목" 이라고 쓰지 않는다(ETF 전체는 더 많다). */}
-                  <p
-                    className="helper"
-                    style={{ marginTop: 4, fontSize: "0.78rem" }}
-                  >
-                    상위 {c.top_holdings.length}개 표시 · 표시 비중 합계{" "}
-                    {fmtPct(
-                      c.top_holdings.reduce(
-                        (acc, h) => acc + (h.weight_pct ?? 0),
-                        0,
-                      ),
-                    )}
-                  </p>
+                      "전체 구성종목" 이라고 쓰지 않는다(ETF 전체는 더 많다).
+                      비중이 없는 종목을 **0 으로 합산하지 않는다** — 그렇게 하면
+                      표에는 `-` 인 값이 합계에서는 완성된 수치처럼 보인다
+                      (검증자 P2). 값이 있는 것만 더하고, 빠진 개수를 밝힌다. */}
+                  {(() => {
+                    const known = c.top_holdings.filter(
+                      (h) => h.weight_pct !== null && h.weight_pct !== undefined,
+                    );
+                    const missing = c.top_holdings.length - known.length;
+                    const sum = known.reduce(
+                      (acc, h) => acc + (h.weight_pct as number),
+                      0,
+                    );
+                    return (
+                      <p
+                        className="helper"
+                        style={{ marginTop: 4, fontSize: "0.78rem" }}
+                      >
+                        상위 {c.top_holdings.length}개 표시 · 표시 비중 합계{" "}
+                        {known.length === 0 ? "확인 불가" : fmtPct(sum)}
+                        {missing > 0 ? (
+                          <span style={{ color: "var(--warn)" }}>
+                            {" "}
+                            (비중 미확인 {missing}개 제외)
+                          </span>
+                        ) : null}
+                      </p>
+                    );
+                  })()}
                 </>
               ) : (
                 <div className="helper" style={{ marginTop: 6 }}>

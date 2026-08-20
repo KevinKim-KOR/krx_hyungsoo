@@ -14,6 +14,7 @@ import {
 } from "@/lib/marketDiscoveryCopyText";
 import {
   ApiConfigError,
+  CONSTITUENTS_TOP_K,
   ApiRequestError,
   type ConstituentsAnalysisResponse,
   fetchConstituentsAnalysis,
@@ -167,7 +168,7 @@ export default function ETFExposureView({ onNavigate }: Props) {
       if (tickers.length > 0) {
         // 2026-08-19 설계 확정 — 표시 깊이 30. 중복률은 서버가 상위 10건 고정으로
         // 계산한다(응답 `overlap_top_k`), 이 값과 무관하다.
-        fetchConstituentsAnalysis(tickers, null, 30)
+        fetchConstituentsAnalysis(tickers, null, CONSTITUENTS_TOP_K)
           .then((a) => setAnalysis(a))
           .catch(() => setAnalysis(null));
       }
