@@ -203,4 +203,20 @@ describe("표시 계약", () => {
     );
     expect(screen.getByText(/상위\s*10건 기준으로 계산합니다/)).toBeTruthy();
   });
+
+  it("응답의 overlap_top_k 가 10 이 아니어도 그 값을 쓴다", () => {
+    // 위 케이스는 입력이 옛 fallback 값(`?? 10`)과 같은 10 이라, 그것만으로는
+    // fallback 제거를 구별하지 못한다(검증자 r2 B-6 참고). 10 이 아닌 값으로
+    // "응답 값을 그대로 쓴다" 는 계약을 고정한다.
+    const a = analysis();
+    render(
+      <ConstituentsTab
+        draft={draft()}
+        analysis={{ ...a, overlap_top_k: 7 }}
+        setAnalysis={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/상위\s*7건 기준으로 계산합니다/)).toBeTruthy();
+    expect(screen.queryByText(/상위\s*10건 기준으로 계산합니다/)).toBeNull();
+  });
 });

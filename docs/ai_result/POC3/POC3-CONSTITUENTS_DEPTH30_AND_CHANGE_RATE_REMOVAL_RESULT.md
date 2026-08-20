@@ -3,9 +3,9 @@
 - **성격**: **설계자 확정문에 따른 구현.** 앞선 UI 라운드에서 사용자가 발견한 2건
   (`상위 10건 제한` · `등락률 미연결`)에 대한 설계 판단이 내려와 그대로 구현했다.
 - **작업일**: 2026-08-19 (맥북 환경)
-- **상태**: **r1 `REJECTED` → r2 재작업 완료 (재검증 대기).** 검증자 대상 —
+- **상태**: **r1·r2 `REJECTED` → r3 재작업 완료 (재검증 대기).** 검증자 대상 —
   앞선 UI 라운드와 달리 `app/` 4개 파일을 변경했다. UI 전용이 아니므로 검증 예외가
-  아니다. r1 지적 4건과 조치는 **§11**.
+  아니다. r1 지적 4건과 조치는 **§11**, r2 지적(보고 정확성)과 조치는 **§12**.
 - **입력 문서**: `docs/handoff/POC3/POC3_CONSTITUENTS_TOPK_AND_CHANGE_RATE_QUESTION.md`
   (개발자 질의 + 설계 확정문 + 구현 결과 §5)
 - **선행**: `POC3-OVERLAP_TAB_CARD_CONVERSION_RESULT.md`
@@ -166,7 +166,14 @@ repeated = compute_repeated_core_holdings(per_ticker_rows, top_k=DEFAULT_TOP_K_F
 
 ## 4) 변경된 파일 목록
 
-`git diff --numstat` 실측:
+> **측정 방법 (r3 정정)**: 아래 수치는 **커밋된 결과에서** `git show --numstat <sha>` 로
+> 뽑았다. r1·r2 는 커밋 **직전** `git diff --numstat` 값을 적었는데, 그 뒤에 문서를 더
+> 고치면서 값이 어긋났다(`STATE_LATEST` 38/4 로 보고 → 실제 47/3). 커밋 전 측정값을
+> 최종 수치로 쓰면 안 된다.
+
+### 4.1 r1 — 커밋 `004517f8` (16개 파일)
+
+`git show --numstat 004517f8` 실측:
 
 | 파일 | 구분 | 추가 | 삭제 |
 |---|---|---|---|
@@ -184,20 +191,38 @@ repeated = compute_repeated_core_holdings(per_ticker_rows, top_k=DEFAULT_TOP_K_F
 | `docs/handoff/POC3/..._QUESTION.md` | 수정 (확정문 + 구현 결과 §5) | 72 | 0 |
 | `docs/ai_result/POC3/POC3-OVERLAP_TAB_..._RESULT.md` | 수정 (오보고 정정) | 6 | 2 |
 | `docs/PROGRAM_TRUTH.md` | 수정 (최종 반영 항목 추가) | 2 | 1 |
-| `docs/STATE_LATEST.md` | 수정 (오보고 정정 + 이번 라운드) | 38 | 4 |
-| `docs/ai_result/POC3/(본 문서)` | **신규** | — | — |
+| `docs/STATE_LATEST.md` | 수정 (오보고 정정 + 이번 라운드) | 47 | 3 |
+| `docs/ai_result/POC3/(본 문서)` | **신규** | 271 | 0 |
 
-> **A-2 정정 (검증자 r1 P1)**: 최초 이 표에서 **`docs/PROGRAM_TRUTH.md` 를 빠뜨렸다.**
-> 커밋 `004517f8` 은 16개 파일인데 15개로 보고했다. 위 표에 추가했다.
+> **A-2 정정 (검증자 r1 P1)**: 최초 이 표에서 **`docs/PROGRAM_TRUTH.md` 를 빠뜨렸다**
+> (16개 파일인데 15개로 보고). **r3 추가 정정**: `STATE_LATEST` 수치도 `38/4` 로 틀렸다
+> — 실제는 `47/3`.
 
-**r2 재작업 (2026-08-19) 추가 변경** — `git diff --numstat` 실측:
+### 4.2 r2 — 커밋 `dffac9ef` (6개 파일)
+
+`git show --numstat dffac9ef` 실측:
 
 | 파일 | 구분 | 추가 | 삭제 |
 |---|---|---|---|
+| `frontend/app/components/ConstituentsTab.test.tsx` | **신규** | 206 | 0 |
 | `frontend/app/components/ConstituentsTab.tsx` | 수정 (수집 경로 깊이 · 비중 합계 계약) | 40 | 19 |
 | `frontend/lib/api/etfExposure.ts` | 수정 (`CONSTITUENTS_TOP_K` 신설 · `overlap_top_k` optional 제거) | 8 | 2 |
 | `frontend/app/components/ETFExposureView.tsx` | 수정 (상수 사용) | 2 | 1 |
-| `frontend/app/components/ConstituentsTab.test.tsx` | **신규 (206줄)** | — | — |
+| `docs/ai_result/POC3/(본 문서)` | 수정 (§11 재작업 기록) | 119 | 6 |
+| `docs/STATE_LATEST.md` | 수정 (r2 반영) | 23 | 2 |
+
+> **A-2 정정 (검증자 r2 P1)**: 최초 이 표는 **프론트 4개만** 적어 문서 2개
+> (`STATE_LATEST` · 본 문서)를 빠뜨렸다. 커밋은 6개 파일이다.
+
+### 4.3 r3 — 본 정정 라운드
+
+변경 파일 3개 — `frontend/app/components/ConstituentsTab.test.tsx`(§12.4 판별 케이스
+1건 추가) · `docs/ai_result/POC3/(본 문서)` · `docs/STATE_LATEST.md`.
+**운영 코드 변경 0건.**
+
+**수치를 적지 않는 이유**: 본 문서 자체가 변경 대상이라 **지금 수치를 쓰면 그 행위가
+수치를 바꾸는 자기참조**가 된다. 커밋 후 `git show --stat <r3 sha>` 로 확인해야 한다.
+(같은 이유로 결과서 본문에 현재 HEAD SHA 를 박지 않는다.)
 
 **DB 스키마 변경 0건. 신규 endpoint 0건. 신규 의존성 0건.**
 
@@ -382,3 +407,52 @@ Tests  4 failed | 2 passed (6)
 | `npm run lint` | 0건 |
 | `npx vitest run` | **173 passed (16 files)** — 직전 167 + 신규 6 |
 | 백엔드 | **변경 없음** — r2 는 프론트 전용 (r1 의 1157 passed 유효) |
+
+
+---
+
+## 12) r2 검증자 REJECTED — 보고 정확성 2건 (2026-08-19)
+
+기능 결함은 r2 에서 해소됐고(**A-1·A-3·B 전 항목 통과 · 위험 NONE · 폭주 NONE**),
+남은 것은 **A-2 보고 정확성** 이다. 지적 2건 모두 타당했다.
+
+### 12.1 [P1] r2 변경 파일 목록에서 문서 2개 누락
+
+r2 커밋 `dffac9ef` 는 **6개 파일**인데 표에는 **프론트 4개만** 적었다.
+`docs/STATE_LATEST.md` 와 **본 결과서 자체**가 빠졌다.
+
+### 12.2 [P1] `STATE_LATEST` numstat 불일치
+
+`38 추가 / 4 삭제` 로 적었으나 실제는 **`47 추가 / 3 삭제`** 다.
+
+### 12.3 두 건의 공통 원인 — 측정 시점이 틀렸다
+
+`git diff --numstat` 을 **커밋 직전에** 실행해 그 값을 표에 적었고, **그 뒤에도 문서를
+계속 고쳤다.** 그래서 (a) 나중에 만진 문서가 목록에서 빠지고 (b) 미리 잰 수치가 최종
+커밋과 어긋났다. *"실측"* 이라고 쓴 것이 측정 시점 때문에 사실이 아니게 됐다.
+
+**조치**: 수치를 **커밋된 결과에서** `git show --numstat <sha>` 로 다시 뽑아 §4.1·§4.2 를
+재작성하고, 측정 방법을 §4 머리에 명시했다. 본 라운드(§4.3)처럼 **결과서 자신이 변경
+대상일 때는 수치를 적지 않는다** — 적는 행위가 수치를 바꾸는 자기참조이기 때문이다.
+
+### 12.4 [B-6 참고] 중복률 테스트가 옛 fallback 을 구별하지 못한다
+
+검증자 지적대로, 기존 `overlap_top_k` 테스트는 입력값이 **옛 fallback 과 같은 10** 이라
+그 하나만으로는 `?? 10` 제거를 증명하지 못한다.
+
+**조치**: 10 이 아닌 값으로 판별하는 케이스를 추가했다 — 응답이 `overlap_top_k: 7` 이면
+화면도 `상위 7건 기준` 이라고 말하고 `10건` 문구는 없어야 한다.
+
+**한계도 그대로 적는다**: 옛 코드(`?? 10`)도 값이 있으면 7 을 쓰므로, **이 테스트가 옛
+구현에서 실패하지는 않는다.** 실질적 보증은 **타입에서 optional 을 벗겨 누락 자체를
+불가능하게 만든 것**이고, 테스트는 *"응답 값을 그대로 쓴다"* 는 계약을 고정하는 역할이다.
+
+### 12.5 r3 검증 실측
+
+| 항목 | 결과 |
+|---|---|
+| 운영 코드 변경 | **0건** (테스트 1건 추가 + 문서 정정) |
+| `npx tsc --noEmit` | 통과 |
+| `npm run lint` | 0건 |
+| `npx vitest run` | **174 passed (16 files)** — r2 173 + §12.4 신규 1 |
+| 백엔드 | r2·r3 모두 백엔드 diff 0건 — r1 의 **1157 passed** 유효 |
