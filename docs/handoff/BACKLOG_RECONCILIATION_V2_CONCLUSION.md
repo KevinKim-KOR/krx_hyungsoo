@@ -3,7 +3,8 @@
 - **수신**: 설계자 · 사용자 → (재판정 후) 검증자
 - **발신**: 개발자
 - **작성일**: 2026-08-21
-- **선행**: 1차 `..._V2_INPUT.md`(`PARTIAL`) → 2차 본 문서 초판(`REJECTED`) → **본 R2**
+- **선행**: 1차 `..._V2_INPUT.md`(`PARTIAL`) → 2차 초판(`REJECTED`) → R2(`VERIFIED`, 커밋 `87e8f661`)
+  → **본 R2.1** (설계자 판정으로 #66 재분류 · §0.4)
 - **성격**: **읽기 전용.** 코드·`BACKLOG.md`·`STATE_LATEST`·ML **전부 무변경** ·
   외부 데이터 호출 0 · 운영 write 0 · **commit·push 미수행**(지시 대기).
 - **R2 의 핵심**: **67행 원장표 하나를 단일 진실로 두고, 모든 집계·처리 목록을 그 표에서
@@ -57,8 +58,35 @@ set(원장번호) == set(분류키)   ✓ assert 통과
 | #57 runtime source | `VALID_FUTURE` · VIX 제외 | `UNKNOWN` 에서 **제외** |
 | #61~63 Layer B/C | `VALID_FUTURE` · **라벨만 제목·섹션에서 제거** | `UNKNOWN`·결함에서 **제외** |
 | #65 와이프 UI | `VALID_FUTURE` (조건부 미래 과제) | `UNKNOWN` 에서 **제외** |
-| #66 PC package | `UNKNOWN` | **유일한 `UNKNOWN`** |
+| #66 PC package | `UNKNOWN` | **R2.1 에서 `EXCLUDED` 로 재판정**(§0.4) |
 | 원장 밖 결함 | 별도 표 | **67건 합계에서 제외**(§4) |
+
+### 0.4 R2.1 개정 — #66 을 `UNKNOWN` → `EXCLUDED` (설계자 판정 2026-08-21)
+
+R2 는 #66 을 *"맥에 폴더가 없으니 PC 실측이 필요하다"* 며 유일한 `UNKNOWN` 으로 뒀다.
+**사용자 지적으로 전제가 틀렸음이 드러났다** — *"PC 에서 PUSH 를 보내는 기능은 원래
+없었다. 처음 설계할 때도 OCI 에서 보내자고 했지 PC 에서는 테스트만이었다."*
+
+**개발자 오류**: 폴더 존재 여부만 보고 **그 경로가 아직 아키텍처의 일부인지를 확인하지
+않았다.** 확인했으면 PC 를 볼 이유가 없다는 결론이 바로 나왔다.
+(같은 유형의 오류가 이번 감사에서 반복됐다 — #24 는 컬럼 존재를 안 보고 "없다", #4 는
+라우트를 안 보고 "있다". **파일·폴더 존재로 판단하고 계약을 안 본 것**이 공통 원인이다.)
+
+**실측 근거 3건**
+
+| # | 확인 | 결과 |
+|---|---|---|
+| 1 | OCI 런타임이 package 를 읽는가 | `grep -rn "package" app/three_push_runtime/*.py` → **0건**. 7개 파일 어디에도 참조 없음 |
+| 2 | OCI 가 데이터를 어떻게 얻는가 | `market_data_batch.py:1` — *"승인 대상(seed ∪ Holdings) ticker **증분 시세 갱신** → SQLite 저장 검증 → **Universe 운영 artifact 생성** → freshness 검증"* |
+| 3 | 경계 확장이 확정됐는가 | `STATE_LATEST:707` — *"정정 후 OCI 는 **승인 대상 자율 시세 갱신·운영 artifact 생성도 허용**됨"*. 통합지도 V2 `B-073 | OCI holdings source 부재 | **완료**` |
+
+**설계자 판정 근거(원문)**: PC 는 PUSH 운영 주체가 아니며 테스트 용도였다 ·
+`three_push_runtime` 은 package 를 참조하지 않는다 · OCI 가 승인 대상 시세 갱신과 운영
+artifact 생성을 자체 수행한다 · **PC→OCI package 공급 전제는 기존 아키텍처 결정으로 이미
+폐기됐다** · **PC 실측은 필요하지 않다.**
+
+**결과**: `EXCLUDED` 4 → **5** · `UNKNOWN` 1 → **0** · 제거·병합 대상 9 → **10** ·
+합계는 **67 그대로**.
 
 ---
 
@@ -68,10 +96,10 @@ set(원장번호) == set(분류키)   ✓ assert 통과
 |---|---|---|
 | `VALID_FUTURE` | **55** | #3, #4, #5, #6, #7, #8, #9, #11, #12, #13, #14, #15, #16, #17, #18, #19, #22, #23, #24, #25, #27, #28, #29, #32, #33, #34, #37, #38, #39, #40, #41, #42, #43, #44, #45, #46, #47, #48, #50, #51, #52, #53, #54, #55, #56, #57, #58, #60, #61, #62, #63, #64, #65, #67, #68 |
 | `COMPLETED` | **4** | #20, #26, #30, #49 |
-| `EXCLUDED` | **4** | #31, #35, #36, #59 |
+| `EXCLUDED` | **5** | #31, #35, #36, #59, #66 |
 | `CURRENT_DEFECT` | **2** | #2, #10 |
 | `DUPLICATE` | **1** | #21 |
-| `UNKNOWN` | **1** | #66 |
+| `UNKNOWN` | **0** | — |
 
 > **합계 67 = 고유 원장 항목 67.** 위 번호 목록에 **중복 등장하는 번호가 없다**(§7 검산).
 
@@ -147,7 +175,7 @@ set(원장번호) == set(분류키)   ✓ assert 통과
 | #63 | `B-089` | Layer C — RS / 거래량 / 정배열 복합 지표 | **`VALID_FUTURE`** | `POC2_STEP7...DESIGN.md` **§9.6** 정의 + **AC-12** *"RS/거래량/정배열 등 복합 지표는 도입하지 않는다"* | 유지. **`Layer C` 라벨 제거** |
 | #64 | `B-093` | manual seed 입력 UX 개선 (seed 편집 UI) | **`VALID_FUTURE`** | seed 편집 UI 미구현 | 유지 |
 | #65 | `B-094` | 와이프 UI 이해도 검증 | **`VALID_FUTURE`** | 검증 수행 기록 없음 | 유지. **조건부 미래 과제**(설계 확정) — `UNKNOWN` 아님 |
-| #66 | `B-095` | PC package fallback 경로 재활성화 (`state/three_push/packages/` 생성 파이프라인) | **`UNKNOWN`** | 맥에 `state/three_push/` 없음. **맥은 운영기가 아니라 판정 불가** | **PC 실측 전까지 보류** — 유일한 `UNKNOWN` |
+| #66 | `B-095` | PC package fallback 경로 재활성화 (`state/three_push/packages/` 생성 파이프라인) | **`EXCLUDED`** | **OCI 런타임이 package 참조 0건**(`app/three_push_runtime/*.py` 7파일). OCI 가 **자율 시세 갱신·운영 artifact 생성**을 직접 수행(`market_data_batch.py:1` · 경계 확장 확정 `STATE_LATEST:707`). **정식 자동 발송 경로가 `PARAM_HANDOFF_OCI_RUNTIME_3PUSH` 로 전환**(`PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` §0.1) | **폐기 — 원장에서 제거**(설계자 판정 §0.4). `packages/` 생성 파이프라인을 **정식 경로로 되살릴 근거 없음**. 기존 산출물은 manual recovery·smoke test 용도로 **보존**(§11). **PC 실측 불필요** |
 | #67 | `B-096` | 보유/외부 후보 비율 가변화 (현재는 10/10 고정) | **`VALID_FUTURE`** | 10/10 고정 · 가변화 미구현 | 유지 |
 | #68 | `B-099` | ML·백테스트 기반 seed 품질 개선 | **`VALID_FUTURE`** | ML feature 0행 → 선행 조건 미충족 | 유지 |
 ---
@@ -239,13 +267,13 @@ assert len(C) == 67                      ✓
 assert len(nums) == 67 == len(set(nums)) ✓
 assert set(nums) == set(C)               ✓   ← 원장번호 집합 == 분류키 집합
 
-분류별 (dict 에서 파생):
+분류별 (dict 에서 파생 · R2.1 반영):
   VALID_FUTURE     55
   COMPLETED         4
-  EXCLUDED          4
+  EXCLUDED          5     <- R2 4 + #66
   CURRENT_DEFECT    2
   DUPLICATE         1
-  UNKNOWN           1
+  UNKNOWN           0     <- R2 1 - #66
   합계             67
 총 67건 · 고유 67건
 ```
@@ -260,6 +288,18 @@ assert set(nums) == set(C)               ✓   ← 원장번호 집합 == 분류
 
 **개발자는 `BACKLOG.md` 를 수정하지 않았다.**
 
+**원장에서 빠지는 항목 합계 = 10건** (R2 9건 → R2.1 **10건**, #66 추가)
+
+| 구분 | 건수 | 원장 번호 |
+|---|---|---|
+| 제거 — `COMPLETED` (§8.1) | 4 | #20, #26, #30, #49 |
+| 병합 후 제거 — `DUPLICATE` (§8.2) | 1 | #21 |
+| 폐기 — `EXCLUDED` (§8.3) | **5** | #31, #35, #36, #59, **#66** |
+| **소계 (원장에서 제거)** | **10** | |
+| 결함으로 승격 (§8.4) | 2 | #2, #10 |
+| **원장에서 빠지는 총계** | **12** | |
+| 원장에 남는 `VALID_FUTURE` | **55** | 67 − 12 |
+
 ### 8.1 제거 — `COMPLETED` (4건)
 
 #20 종목명 자동 조회 · #26 구성종목 fetcher timeout · #30 복수 포트폴리오·계좌 ·
@@ -269,10 +309,10 @@ assert set(nums) == set(C)               ✓   ← 원장번호 집합 == 분류
 
 #21 종목명 자동 보정 → **#20 이력에 병합**
 
-### 8.3 폐기 — `EXCLUDED` (4건)
+### 8.3 폐기 — `EXCLUDED` (5건)
 
 #31 계좌별 세금 · #35 인증·사용자 구분 · #36 Slack·Email·모바일 PUSH ·
-#59 Cboe VIX 수동 보정
+#59 Cboe VIX 수동 보정 · **#66 PC package fallback**(R2.1 추가 · §0.4)
 
 ### 8.4 결함으로 승격 (2건, 원장에서 이동)
 
@@ -294,9 +334,10 @@ assert set(nums) == set(C)               ✓   ← 원장번호 집합 == 분류
 #6 구성종목 등락률 — 2026-08-19 에 §5 신규 생성 시도를 §2 기존 항목에 병합한 이력.
 **`DUPLICATE` 건수에는 넣지 않는다**(설계 확정).
 
-### 8.7 보류 — `UNKNOWN` (1건)
+### 8.7 보류 — `UNKNOWN` **0건**
 
-#66 PC package fallback — **PC 실측 전까지 판정 보류**
+**없다.** R2 의 유일한 `UNKNOWN` 이던 #66 은 설계자 판정으로 `EXCLUDED` 가 됐다(§0.4).
+**대기 중인 실측이 남아 있지 않다.**
 
 ### 8.8 원장 자체 정합 보정 (2건)
 
@@ -354,21 +395,36 @@ assert set(nums) == set(C)               ✓   ← 원장번호 집합 == 분류
 
 ---
 
-## 11. 남은 `UNKNOWN` 1건과 필요한 실측
+## 11. 남은 `UNKNOWN` — **없음**
 
-| ID | 항목 | 확인 주체 | 확인 조건 |
-|---|---|---|---|
-| #66 | PC package fallback 경로 재활성화 | **사용자(PC)** | 아래 5개 |
+R2 는 #66 을 `UNKNOWN` 으로 두고 **PC 실측 5개 항목**(package 경로 · `state/three_push/`
+존재 · 최근 artifact · exporter 호출자 · fallback 사용 여부)을 요청했다.
 
-1. 설정된 package 경로 — `app/three_push_package_exporter.py` 경로 상수
-2. `state/three_push/` 존재 — `ls -la state/three_push/`
-3. 최근 artifact·수정 시각 — `ls -lt state/three_push/packages/ | head`
-4. exporter 실제 호출자 — `grep -rn "three_push_package_exporter" app/ scripts/`
-5. 현재 운영의 fallback 사용 여부 — 최근 운영 로그의 package 경로 참조
+**R2.1 에서 이 요청을 철회한다.** 설계자 판정대로 **PC 실측은 필요하지 않다** —
+`packages/` 생성 파이프라인이 **정식 자동 발송 경로에서 제외**됐고(§0.4), 그 경로를
+정식으로 되살릴 근거가 없으므로 **PC 에서 무엇이 나오든 #66 판정이 달라지지 않기**
+때문이다.
 
-**맥 관찰(참고)**: `state/three_push/` 없음. 코드는 `three_push_package_exporter.py:7`
-에서 그 경로에 쓰도록 되어 있다. **맥은 운영기가 아니므로 결함이라 판정하지 않는다.**
-디렉터리 생성·package 실행·환경 설정 변경 **하지 않았다.**
+**따라서 이 감사에서 사용자·PC 에 남긴 확인 요청이 하나도 없다.**
+
+> **경계 정정 (R2.1 검증자 지적)**: 초판 R2.1 은 이 자리에 *"`Get-ScheduledTask` 로 PC
+> 스케줄러를 보라는 R2 요청도 전제가 틀렸다 · sync 자체가 불필요하다"* 라고 적었다.
+> **두 가지가 틀렸다.**
+>
+> 1. **R2 문서 §11 에는 `Get-ScheduledTask` 요청이 없었다**(`git show 87e8f661` 실측 —
+>    해당 절 안 0건). 그 항목은 개발자가 **채팅에서만** 언급한 것이라 문서에 "R2 가
+>    요청했다" 고 쓰면 사실이 아니다.
+> 2. **"sync 자체가 불필요" 는 정본보다 넓은 주장이다.**
+>    `PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` §0.2 는 `run_three_push_sync_task.ps1` +
+>    `sync_three_push_packages.py` 산출물을 **삭제하지 않으며** *manual recovery ·
+>    smoke test · OCI 파일 전달 검증 · 비상 fallback · 과거 package 기반 발송 재현* 용도로
+>    쓴다고 명시한다. `STATE_LATEST:1793` 도 *"삭제 없이 보존하되 manual recovery /
+>    smoke test 용도로 격하. 정식 자동 발송 경로는 PARAM runtime 만 사용"* 이라고 적는다.
+>
+> **정확한 표현**: PC package sync 는 **정식 자동 발송 경로에서 제외**됐고
+> (`PARAM_HANDOFF_OCI_RUNTIME_3PUSH` 로 전환), **기존 산출물은 manual recovery 등
+> 보조 용도로 보존**된다. #66 이 `EXCLUDED` 인 이유는 *"산출물이 쓸모없다"* 가 아니라
+> **"`packages/` 생성 파이프라인을 정식 경로로 되살릴 근거가 없다"** 이다.
 
 ---
 
