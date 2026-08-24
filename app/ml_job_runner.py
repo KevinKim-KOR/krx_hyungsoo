@@ -330,14 +330,31 @@ def _run_feature(state: dict[str, Any], db_path: Path) -> dict[str, Any]:
         "sample_items": [_asdict(r) for r in result.etf_rows[-5:]],
         "requested_by": "ui_job_runner",
     }
+    # 2026-08-24 POC3-ML-01 (B-2) — 가드를 snapshot 기록 **앞으로** 옮기고 조건도
+    # `and` → `or` 로 바꾼다.
+    #   ETF feature 와 market risk 는 evidence-refresh job 의 **둘 다 필수 산출물**이다.
+    #   하나라도 0건이면 sanity·baseline 이 정상 완료될 수 없으므로 feature 단계에서
+    #   성공으로 넘기면 안 된다. 이전에는 snapshot 을 먼저 써서, 실패한 job 이
+    #   "성공한 것처럼 보이는 snapshot" 을 남겼다.
+    #
+    #   `market_risk_feature_status="empty"` 는 CLI 단독 실행 / 과거·부분 적재 DB /
+    #   readiness 조회 / 실패 원인 표시의 **진단 표현**으로 계속 유효하다 — 상태 모델이
+    #   empty 를 표현할 수 있다는 것과 job 성공을 허용한다는 것은 다르다.
+    #
+    #   부분 upsert 가 이미 DB 에 반영됐어도 rollback 하지 않는다: 파생 테이블이고
+    #   멱등 upsert 라 실패 구간 재실행으로 복구된다.
+    if etf_upserted <= 0 or mkt_upserted <= 0:
+        raise RuntimeError(
+            "feature generation upsert 0건 — "
+            f"etf={etf_upserted} market={mkt_upserted}. "
+            "두 산출물 모두 필수이며 DB 가 비어있거나 universe coverage 0 이다"
+        )
+
+    # 둘 다 양수일 때만 snapshot 을 남긴다.
     SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with SNAPSHOT_PATH.open("w", encoding="utf-8") as f:
         json.dump(snap, f, ensure_ascii=False, indent=2, default=str)
 
-    if etf_upserted <= 0 and mkt_upserted <= 0:
-        raise RuntimeError(
-            "feature generation upsert 0건 — DB 가 비어있거나 universe coverage 0"
-        )
     return {
         "last_asof": last_asof,
         "etf_upserted": etf_upserted,

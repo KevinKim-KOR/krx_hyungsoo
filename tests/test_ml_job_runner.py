@@ -724,3 +724,86 @@ def test_tmp_file_is_created_in_same_directory(_isolate_state, monkeypatch):
 
     assert seen, "os.replace 가 호출되지 않았다 — 원자적 교체 경로가 아니다"
     assert seen[0].parent == job_path.parent
+
+
+# ── POC3-ML-01 (B-2) — feature 단계 0건 가드 · snapshot 기록 순서 ──────────
+#
+# 계약: ETF feature 와 market risk 는 evidence-refresh job 의 **둘 다 필수 산출물**.
+#   하나라도 0건이면 feature 단계에서 실패해야 하고, 그때 snapshot 을 남기면 안 된다.
+#   (이전에는 snapshot 을 먼저 써서 실패 job 이 "성공한 것처럼 보이는 snapshot" 을 남겼다.)
+
+
+def _feature_case(monkeypatch, tmp_path, *, etf: int, market: int):
+    """_run_feature 를 실제 함수로 돌리되 build_features/upsert 만 스텁한다.
+
+    반환: (예외 or None, snapshot 파일 존재 여부)
+    """
+    import scripts.generate_ml_features as gmf
+    from app import ml_feature_builder, ml_feature_store
+
+    snap_path = tmp_path / f"snap_{etf}_{market}.json"
+    monkeypatch.setattr(gmf, "SNAPSHOT_PATH", snap_path, raising=False)
+
+    class _Result:
+        etf_rows: list = []
+        market_rows: list = []
+        asofs = ["2026-08-20"]
+        missing_data_summary: dict = {}
+
+    monkeypatch.setattr(
+        ml_feature_builder, "build_features", lambda **kw: _Result(), raising=False
+    )
+    monkeypatch.setattr(
+        ml_feature_store, "upsert_etf_features", lambda *a, **k: etf, raising=False
+    )
+    monkeypatch.setattr(
+        ml_feature_store,
+        "upsert_market_risk_features",
+        lambda *a, **k: market,
+        raising=False,
+    )
+
+    state = ml_job_runner._build_initial_state(
+        job_id="t", requested_by="test", started_at="2026-08-24T00:00:00+09:00"
+    )
+    err = None
+    try:
+        ml_job_runner._run_feature(state, Path("dummy.sqlite"))
+    except Exception as e:  # noqa: BLE001
+        err = e
+    return err, snap_path.exists()
+
+
+def test_feature_step_fails_when_etf_zero_and_market_positive(monkeypatch, tmp_path):
+    """ETF 0 / market 양수 → 실패 · snapshot 없음."""
+    err, snap_exists = _feature_case(monkeypatch, tmp_path, etf=0, market=60)
+    assert isinstance(err, RuntimeError), f"실패해야 한다 — 실제 {err!r}"
+    assert "etf=0" in str(err)
+    assert snap_exists is False, "실패 시 snapshot 을 남기면 안 된다"
+
+
+def test_feature_step_fails_when_market_zero_and_etf_positive(monkeypatch, tmp_path):
+    """ETF 양수 / market 0 → 실패 · snapshot 없음.
+
+    이전 `and` 조건에서는 이 경우가 **성공으로 통과**했다.
+    """
+    err, snap_exists = _feature_case(monkeypatch, tmp_path, etf=100, market=0)
+    assert isinstance(err, RuntimeError), f"실패해야 한다 — 실제 {err!r}"
+    assert "market=0" in str(err)
+    assert snap_exists is False, "실패 시 snapshot 을 남기면 안 된다"
+
+
+def test_feature_step_fails_when_both_zero(monkeypatch, tmp_path):
+    """ETF 0 / market 0 → 실패 · snapshot 없음."""
+    err, snap_exists = _feature_case(monkeypatch, tmp_path, etf=0, market=0)
+    assert isinstance(err, RuntimeError), f"실패해야 한다 — 실제 {err!r}"
+    assert snap_exists is False
+
+
+def test_feature_step_succeeds_and_writes_snapshot_when_both_positive(
+    monkeypatch, tmp_path
+):
+    """ETF 양수 / market 양수 → 성공 · snapshot 생성."""
+    err, snap_exists = _feature_case(monkeypatch, tmp_path, etf=100, market=60)
+    assert err is None, f"성공해야 한다 — 실제 {err!r}"
+    assert snap_exists is True, "성공 시 snapshot 이 있어야 한다"
