@@ -45,6 +45,13 @@ def test_runner_partial_delivery_records_flag_and_no_registry_write(
     monkeypatch.setattr(runner, "telegram_send", _fake_telegram_send)
     monkeypatch.setattr(runner, "_HISTORY_PATH", tmp_path / "history.jsonl")
 
+    # 2026-08-25 — send mode 진입을 위해 autosend flag 를 **테스트가 직접** 설정한다.
+    #   같은 파일의 성공 케이스는 이미 이렇게 하고 있었고, 이 2건만 개발자 `.env`
+    #   (맥은 안전상 전부 false)에 의존해 기본 환경에서 상시 실패했다.
+    #   검증을 약화시키지 않고 fixture 만 보완한다.
+    monkeypatch.setenv("PUSH_AUTOSEND_ENABLED", "true")
+    monkeypatch.setenv("PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED", "true")
+
     registry_before = registry_count()
 
     record = runner.run("market_briefing", "send")
@@ -86,6 +93,13 @@ def test_runner_first_chunk_fail_partial_false_and_no_registry_write(
 
     monkeypatch.setattr(runner, "telegram_send", _fake_telegram_send)
     monkeypatch.setattr(runner, "_HISTORY_PATH", tmp_path / "history.jsonl")
+
+    # 2026-08-25 — send mode 진입을 위해 autosend flag 를 **테스트가 직접** 설정한다.
+    #   같은 파일의 성공 케이스는 이미 이렇게 하고 있었고, 이 2건만 개발자 `.env`
+    #   (맥은 안전상 전부 false)에 의존해 기본 환경에서 상시 실패했다.
+    #   검증을 약화시키지 않고 fixture 만 보완한다.
+    monkeypatch.setenv("PUSH_AUTOSEND_ENABLED", "true")
+    monkeypatch.setenv("PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED", "true")
 
     registry_before = registry_count()
 

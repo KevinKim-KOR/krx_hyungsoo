@@ -390,8 +390,13 @@ def _install_common_mocks(monkeypatch, tmp_path):
     monkeypatch.setattr(runner, "telegram_send", lambda *a, **kw: (True, "", False))
     monkeypatch.setattr(runner, "_HISTORY_PATH", tmp_path / "history.jsonl")
     monkeypatch.setenv("PUSH_AUTOSEND_ENABLED", "true")
-    monkeypatch.setenv("PUSH_HOLDINGS_BRIEFING_ENABLED", "true")
-    monkeypatch.setenv("PUSH_SPIKE_OR_FALLING_ALERT_ENABLED", "true")
+    # 2026-08-25 — push_kind 별 flag 이름이 코드와 어긋나 있었다.
+    #   코드는 app/three_push_runner_common.PUSH_KIND_FLAG_ENVS 의
+    #   `PUSH_AUTOSEND_<KIND>_ENABLED` 를 읽는데, 여기서는 `PUSH_<KIND>_ENABLED`
+    #   를 설정해 실제로는 개발자 `.env` 값에 의존했다(맥은 전부 false → 상시 실패).
+    #   검증을 약화시키지 않고 이름만 코드 계약에 맞춘다.
+    monkeypatch.setenv("PUSH_AUTOSEND_HOLDINGS_BRIEFING_ENABLED", "true")
+    monkeypatch.setenv("PUSH_AUTOSEND_SPIKE_OR_FALLING_ALERT_ENABLED", "true")
     # OCI Operational Market Data Refresh v1: Spike freshness guard 가 실 artifact
     # 를 읽지 않도록 fresh fixture 로 mock (compose 를 별도 mock 하는 test 기본값).
     _install_fresh_universe_artifact(monkeypatch, tmp_path=tmp_path)

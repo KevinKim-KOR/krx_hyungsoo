@@ -5,7 +5,8 @@
 - **작성일**: 2026-08-24 (**최종 보완 반영본** — 설계자 확정 M-1~M-5 · D-1~D-4 적용)
 - **입력 설계서**: `docs/ai_design/POC3/POC3-ML-01_ML_FEATURE_AND_EVIDENCE_CHAIN_RESTORATION_DESIGN_V1.md`
 - **대상 결함**: `DEF-ML-CHAIN` (`docs/backlog/BACKLOG.md` §현재 결함)
-- **상태**: **`PLAN PASS — IMPLEMENTATION AUTHORIZED`** (설계자 2026-08-24). **구현 착수.**
+- **상태**: **`PLAN PASS`** → 구현 완료(`f21143e7`) → **검증자 REJECTED r1 정정 반영**(2026-08-25).
+  결과서 `docs/ai_result/POC3/POC3-ML-01_..._RESULT.md`.
   추가 PLAN 문서·재검토 요청 없음. 다음 보고는 **구현 결과서**(`ai_result/`).
 - **본 PLAN 작성 중 수행**: 코드·DB **읽기 전용 확인만**.
   코드 0건 · DB write 0건 · 상태 파일 0건 · ML job 실행 0건 · 외부 조회 0건 · **커밋 0건**.
@@ -242,7 +243,10 @@ curl -s "http://127.0.0.1:8000/market/topn/latest?n=10&basis=one_month&order=des
 # 5. 화면 3종 + 고점대비 정렬 확인
 
 # 6. 체인 A 전체 backfill — 연도 단위 분할, --db 명시
-python scripts/generate_ml_features.py --db "$DB" --start-date 2014-04-09 --end-date 2014-12-31
+#    ⚠ 시작일은 **lookback 충족 최초일**(D-1). KODEX200 첫 거래일(2014-04-09)이 아니다.
+#      첫 거래일부터 돌리면 20일 lookback 불가로 risk proxy 전부 NULL 인 행이 생겨
+#      sanity 가 error 가 된다 (2026-08-24 실행에서 실제 발생 · 결과서 §3.4).
+python scripts/generate_ml_features.py --db "$DB" --start-date 2014-05-12 --end-date 2014-12-31
 # ... 연도별 반복 ...
 python scripts/generate_ml_features.py --db "$DB" --start-date 2026-01-01 --end-date 2026-08-20
 
