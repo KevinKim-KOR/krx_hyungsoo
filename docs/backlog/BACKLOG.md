@@ -85,22 +85,40 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ## 현재 결함 (원장 밖 관리 · 2026-08-24 승격)
 
-**BACKLOG 는 "지금 안 하는 게 맞는 미래 과제" 를 담는다. 아래 2건은 그것이 아니라
+**BACKLOG 는 "지금 안 하는 게 맞는 미래 과제" 를 담는다. 아래는 그것이 아니라
 "지금 제공하기로 되어 있는데 동작하지 않는 것" 이라 원장에서 분리한다.**
 근거: `docs/handoff/BACKLOG_RECONCILIATION_V2_CONCLUSION.md` §4 (검증자 VERIFIED · 커밋 `a22ddae5`).
 
-### DEF-ML-CHAIN — ML feature/evidence 생성 체인 미작동
+**현재 열린 결함: 1건** (`DEF-FDR-TIMEOUT`). `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
-- **원장 출처**: 구 §1 `ML 기반 초안 생성 / 분석 연결` (B-002)
-- **현재 동작**: 후보 화면의 **참고점수·판단 사유·고점 대비가 전 종목 `null`**.
-  `GET /market/topn/latest` 실측 — `relative_upside_score_status = "unavailable"`.
-- **직접 원인**: `etf_ml_feature_daily` **0행** · `market_risk_feature_daily` **0행** ·
-  `state/ml/relative_upside_score_latest.json` **부재** · 마지막 job `failed`
-  (`sanity_status=error / errors=3`).
-- **사용자 영향**: 화면에 열은 있는데 값이 없다. **`고점 대비` 정렬을 눌러도 순서가 안 바뀐다**
-  (열·정렬은 설계 확정으로 유지).
-- **참고**: 원천 가격은 이미 있다 — `etf_daily_price` **1,379,939행 (2014-04-09~)**.
-  없는 것은 그로부터 만드는 feature 뿐이다.
+### ~~DEF-ML-CHAIN — ML feature/evidence 생성 체인 미작동~~ → **해소 (2026-08-25)**
+
+**Step**: `POC3-ML-01` · **검증자 `VERIFIED`** · 완료조건 11개 전부 충족.
+근거 — `docs/ai_result/POC3/POC3-ML-01_ML_FEATURE_AND_EVIDENCE_CHAIN_RESTORATION_RESULT.md`
+(DESIGN `ai_design/POC3/POC3-ML-01_..._DESIGN_V1.md` · PLAN `ai_plan/POC3/POC3-ML-01_..._PLAN_V1.md`).
+
+| 항목 | 해소 전 | 해소 후 |
+|---|---|---|
+| `etf_ml_feature_daily` | 0행 | **1,376,524행** (`2014-05-12`~`2026-08-20` · ticker 1,171) |
+| `market_risk_feature_daily` | 0행 | **3,013행** |
+| `relative_upside_score_latest.json` | 부재 | **1,157종목** (`asof 2026-08-20`) |
+| `GET /market/topn/latest` | `status="unavailable"` · 3필드 전부 `null` | **`status="ok"`** · 참고점수·사유·`drawdown_20d` 실제 값 |
+| ML job | `failed` | **3단계 success** |
+| sanity | `error` (errors 3) | **`warn` · errors 0** |
+| readiness | 축 전부 `empty` | **7축 전부 `available`** |
+| 화면 | 열은 있는데 값 없음 · 정렬 무의미 | **참고점수·사유·고점 대비 표시 + 고점대비 정렬 실동작** (사용자 실화면 확인 완료) |
+
+**원인**: 코드 결함이 아니라 **live DB 대상으로 실행된 적이 없었다.** 원천 가격은 이미
+있었고(`etf_daily_price` 1,379,939행) 없던 것은 그로부터 만드는 feature 뿐이었다.
+
+**코드 변경은 1건** — `ml_job_runner._run_feature` 의 0건 가드를 snapshot 기록 **앞으로**
+옮기고 조건을 `and` → `or` 로 바꿨다(두 산출물 모두 필수). 회귀 테스트 4건 추가.
+
+**계산 불가 종목은 `0` 으로 위장하지 않는다** — lookback 미충족 13종목은 점수에서 제외되고
+화면에 `—` 로 표시된다. warm-up 구간 `return_20d IS NULL` 20,190행 유지.
+
+**증분 갱신은 수동**(설계 확정 D-3) — `ML 실험` → `ML 근거 갱신` 또는
+`POST /ml/jobs/evidence-refresh`. 자동 스케줄러·OCI 역할 변경 없음.
 
 ---
 

@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-21 (**BACKLOG 정합 Step 진입** — 직전 UI `PARTIAL` 1건 정리 완료 · 열린 `REJECTED`/`PARTIAL` 없음)
+최종 업데이트: 2026-08-25 (**POC3-ML-01 ML feature·evidence 체인 복구 — 검증자 `VERIFIED`** · `DEF-ML-CHAIN` 해소)
 
 ## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
 
@@ -65,6 +65,61 @@
 **검증**: black 276 unchanged · flake8 0 · tsc 0 · eslint 0 · vitest **167 passed (15 files)** · 백엔드 전체 pytest **1142 passed · 실패 0건 (3회 반복 모두)** · 프론트 200.
 
 **결과서**: `docs/ai_result/POC3/POC3-HOLDINGS_COMPARE_CARD_CONVERSION_RESULT.md`
+
+### 2026-08-25 POC3-ML-01 — ML feature·evidence 체인 복구 (`DEF-ML-CHAIN` 해소)
+
+**상태**: **검증자 `VERIFIED`** · 완료조건 11개 전부 충족 · 사용자 실화면 확인 완료.
+DESIGN `ai_design/POC3/POC3-ML-01_..._DESIGN_V1.md` ·
+PLAN `ai_plan/POC3/POC3-ML-01_..._PLAN_V1.md` ·
+결과서 `ai_result/POC3/POC3-ML-01_..._RESULT.md`.
+
+**핵심 발견 — 두 개의 독립 체인이었다.** 설계서는 `feature → evidence` 직렬로 그렸으나
+실제 코드는 병렬이다. 참고점수·사유·`drawdown_20d` 는 `etf_ml_feature_daily` 를 **거치지
+않고** `etf_daily_price` 를 직접 읽는다. 그래서 **화면 복구를 feature backfill 보다 먼저**
+수행했다(설계 확정 M-2).
+
+**원인**: 코드 결함이 아니라 **live DB 대상으로 실행된 적이 없었다.** 원천 가격은 이미
+1,379,939행 있었고, 없던 것은 그로부터 만드는 feature 뿐이었다. 실패로 남아 있던 job 은
+테스트 스레드 누수의 잔여물이며 그 누수는 A11(2026-08-17)에서 이미 해소된 상태였다.
+
+**실행 결과 (Mac · live DB 절대경로 확인 후)**
+
+| 산출물 | 결과 |
+|---|---|
+| `etf_ml_feature_daily` | **1,376,524행** · `2014-05-12`~`2026-08-20` · ticker **1,171** |
+| `market_risk_feature_daily` | **3,013행** |
+| `relative_upside_score_latest.json` | **1,157종목** · CPU fallback **15.7초** |
+| ML job | **3단계 success** (상태 파일 편집 0건 — M-5) |
+| sanity | `warn` · **errors 0** |
+| baseline v0 | `status=ok` · **누수 없음** |
+| readiness | **7축 전부 `available`** |
+| 화면 | 참고점수·사유·고점 대비 표시 + **고점대비 정렬 실동작** |
+
+**코드 변경 1건** — `ml_job_runner._run_feature` 의 0건 가드를 snapshot 기록 **앞으로**
+옮기고 조건을 `and` → `or` 로(두 산출물 모두 필수 · 설계 확정 D-4). 회귀 4건 추가.
+**B-1 은 철회** — 상태 경로 5개가 2026-06-11부터 이미 격리돼 있었다.
+
+**⚠ 개발자 실행 실수 1건**: `--start-date 2014-01-01` 로 돌려 확정 D-1(*"lookback 충족
+최초일 이후"*)을 어겼다. 첫 거래일은 20일 lookback 이 불가능해 risk proxy 전부 `NULL` 인
+행이 생겨 sanity 가 `error` 였다. **사용자 승인 후** `2014-05-12` 미만 구간을 제거했다
+(파생 1,985행 · 가격 원천 무변경 · 멱등이라 복원 가능). **PLAN 재실행 명령도 정정**했다.
+
+**검증 라운드 2회**: r1 — 전체 pytest 3건 실패(테스트가 `.env` 의 `PUSH_AUTOSEND` 에 의존 ·
+그중 하나는 **플래그 이름이 코드 계약과 어긋나** 설정하는 시늉만 했다) · PLAN 재실행 명령이
+삭제 구간을 되살림 · 멱등성이 표본만 비교 · sanity 수치 stale. r2 — 승인 기록 모순 ·
+sha256 축약 표기. **전부 정정 후 `VERIFIED`**.
+
+**검증 실측**: `black` 246 files unchanged · `flake8` 0건 ·
+**전체 pytest 1,161 passed (환경변수 없이 · `.env` 기본)** ·
+멱등성 **전 구간 · `created_at` 제외 전 컬럼 해시 재실행 전후 동일**.
+
+**증분 갱신은 수동**(D-3) — `ML 실험` → `ML 근거 갱신`. 자동 스케줄러·OCI 역할 변경 없음.
+
+**다음**: 남은 UI 표 카드 전환(`AISessionsListTab` · `EvidenceDetails` ·
+`ConstituentsTab` 구성종목 표) 또는 설계자가 지정하는 다음 기능 Step.
+열린 결함은 **`DEF-FDR-TIMEOUT` 1건**.
+
+---
 
 ### 2026-08-19 (3) 구성종목 수집 깊이 30 + 등락률 열 제거 (설계 확정 구현)
 
