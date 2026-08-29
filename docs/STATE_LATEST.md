@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-25 (**POC3-ML-01 ML feature·evidence 체인 복구 — 검증자 `VERIFIED`** · `DEF-ML-CHAIN` 해소)
+최종 업데이트: 2026-08-29 (**A/B 운영 사실 확인 + PUSH 차단 분기 테스트 보완 — 검증자 `VERIFIED`**)
 
 ## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
 
@@ -65,6 +65,75 @@
 **검증**: black 276 unchanged · flake8 0 · tsc 0 · eslint 0 · vitest **167 passed (15 files)** · 백엔드 전체 pytest **1142 passed · 실패 0건 (3회 반복 모두)** · 프론트 200.
 
 **결과서**: `docs/ai_result/POC3/POC3-HOLDINGS_COMPARE_CARD_CONVERSION_RESULT.md`
+
+### 2026-08-29 A/B 운영 사실 확인 + PUSH 차단 분기 테스트 보완
+
+**성격**: 읽기 전용 운영 실측(A·B) → B 결함만 테스트 보완. **검증자 `VERIFIED`.**
+운영 코드·문서·`.env`·cron 변경 0건 · 실제 PUSH 발송 0건.
+
+#### A. Holdings freshness — 판정 `STALE_PRICE` (**Mac UI 한정**)
+
+세 가지 신선도를 분리해 실측했다. **하나로 뭉뚱그리면 오판한다.**
+
+| 경로 | 기준일 | 판정 |
+|---|---|---|
+| 보유 원장 (로컬·OCI) | 32건 · 고유 29 ticker | **`FRESH`** — **sha256 완전 일치**(`62712039…4c7caf3b`) |
+| **Mac UI 평가 가격** | `market_cache` **2026-08-14** | **`STALE_PRICE`** — 15일 경과 |
+| Mac evidence(시장) | SQLite `2026-08-27` | `FRESH` |
+| **OCI PUSH** | **실행 시점 직접 조회** | **`FRESH`** |
+
+**OCI PUSH 는 `market_cache` 를 읽지 않는다.** 실행할 때마다 시세를 직접 가져온다 —
+최근 `holdings_briefing`(2026-08-28T06:40Z sent) 기록 실측:
+`runtime_price_refresh = {"attempted": 32, "success": 29, "failed": 0}`.
+
+**→ stale 데이터를 소비한 PUSH 0건.** 최근 60건 중
+`holdings_briefing sent 17` · `market_briefing sent 5` · `spike sent 5` · `spike skipped 33`.
+
+`SOURCE_DIVERGENCE` 아니다 — 원장은 동일하고 **가격 조회 시점만 경로별로 다르다**
+(UI 는 캐시 read-only, OCI 는 runtime fetch). 설계된 차이로 보인다.
+
+**개별주 3종목**(`000660`·`005930`·`006400`): 보유 목록은 최신이고 **가격만** 정지
+(저장 `2026-08-12` · UI `2026-08-14` · PUSH runtime). 시장 갱신 대상이 `etf_master` 라
+개별주가 빠지기 때문이다 — 기존 관찰사항, PUSH 무영향.
+
+**지정 날짜 2건 확인 실패**: `2026-07-14 snapshot` · `2026-08-16 미결 사항` 은 저장소·OCI
+어디에서도 holdings 관련 기록을 찾지 못했다. STATE 의 해당 날짜는 각각 Holdings
+Publication FIX 라운드 / 보유 탭 배지 정리로 **다른 맥락**이다.
+
+#### B. PUSH 플래그 테스트 — `PARTIAL` → **`SEMANTICALLY_VALID`**
+
+**문제**: true(발송 허용) 분기만 검증돼 있고 **false(차단) 분기 테스트가 0건**이었다
+(`grep "autosend_disabled|push_kind_disabled" tests/` → 0). 가드 순서가 바뀌어 registry
+기록이 먼저 일어나도 아무 테스트도 깨지지 않는 상태였다.
+
+**보완**: false 분기 테스트 2건 추가(`spike_or_falling_alert` · `holdings_briefing`).
+**전역 `PUSH_AUTOSEND_ENABLED` 는 `true` 로 두고 종류별 flag 만 `false`** 로 해서
+차단 사유가 `autosend_disabled`(전역)가 아니라 **`push_kind_disabled`(종류별)** 임을
+분리 검증한다 — 이번 사고의 원인이 종류별 플래그 이름이었기 때문이다.
+
+검증 항목: `skipped` · `push_kind_disabled` · `telegram_send` 미호출 · `mark_sent` 미호출 ·
+registry 미증가 · `telegram_sent is not True` · 종료 기록은 허용(`_finish` 계약).
+
+**역검증**: flag 를 `true` 로 되돌리면 **2건 다 실패**(`'sent' == 'skipped'` ·
+`'no_signal' == 'push_kind_disabled'`).
+
+**잔존 환경변수명 정정 1건**: `tests/test_oci_market_data_refresh.py` 의
+`PUSH_SPIKE_OR_FALLING_ALERT_ENABLED` → `PUSH_AUTOSEND_SPIKE_OR_FALLING_ALERT_ENABLED`.
+이 테스트는 freshness 가드가 flag 가드보다 **먼저 반환**하므로 기존 `freshness_stale`
+검증 의미는 불변이다(무해했으나 오해를 부르는 잔존이었다). **잘못된 이름 잔존 0건.**
+
+**검증 실측**(환경변수 없이 · `.env` 4개 전부 `false`): 관련 3파일 **73 passed** ·
+true 분기 회귀 **45 passed** · `black` 246 files unchanged · `flake8` 0건.
+
+#### 설계자 판단 대기 3건 (BACKLOG 미등재 — 임의 등재하지 않음)
+
+1. **Mac UI 가격 캐시 갱신 정책** — UI 는 캐시를 read-only 로만 읽고 자동 갱신이 없다.
+   사용자가 `시세 갱신` 을 누르지 않으면 계속 낡는다.
+2. **개별주 3종목 가격 정지** — 시장 갱신 대상에서 구조적으로 제외됨. UI 만 영향.
+3. **OCI `state/three_push/packages/latest_holdings_briefing.json`**(2026-06-18) 잔여물 —
+   현재 PARAM 경로를 쓰므로 미소비. 정리 여부 판단 필요.
+
+---
 
 ### 2026-08-25 POC3-ML-01 — ML feature·evidence 체인 복구 (`DEF-ML-CHAIN` 해소)
 

@@ -1068,3 +1068,92 @@ def test_target_tickers_accepts_valid_scored_true(monkeypatch):
         ),
     )
     assert collect_target_tickers("spike_or_falling_alert") == ["000660"]
+
+
+# ── PUSH 종류별 flag = false → 차단 분기 (2026-08-29) ──────────────────────
+#
+# 계약: `PUSH_AUTOSEND_<KIND>_ENABLED=false` 면 발송 경로에 도달하기 전에 멈춘다.
+#   scripts/run_three_push_runtime_oci.run() §6 enable flag guard 가
+#   `_finish("skipped", "push_kind_disabled")` 로 즉시 반환하므로,
+#   telegram_send(§542)·mark_sent(§558,§565) 는 호출되지 않는다.
+#
+# 왜 필요한가: 지금까지 true(발송 허용) 분기만 검증돼 있었고 차단 분기를 지키는
+#   테스트가 0건이었다. 가드 순서가 바뀌어 registry 기록이 먼저 일어나도
+#   아무 테스트도 깨지지 않는 상태였다.
+#
+# status/history 종료 기록은 차단 시에도 남는 것이 정상이다(_finish 계약).
+
+
+def _install_mocks_with_kind_disabled(monkeypatch, tmp_path, kind_flag_env: str):
+    """공용 mock 을 깐 뒤 해당 push_kind flag 만 false 로 되돌린다.
+
+    전역 `PUSH_AUTOSEND_ENABLED` 는 true 로 두어, 차단 사유가
+    `autosend_disabled` 가 아니라 **`push_kind_disabled`** 임을 분리 검증한다.
+    """
+    runner = _install_common_mocks(monkeypatch, tmp_path)
+    monkeypatch.setenv(kind_flag_env, "false")
+
+    calls: list[str] = []
+    marked: list[tuple] = []
+
+    def _tracking_send(text: str, *a, **kw):
+        calls.append(text)
+        return True, "", False
+
+    monkeypatch.setattr(runner, "telegram_send", _tracking_send)
+    monkeypatch.setattr(
+        runner,
+        "mark_sent",
+        lambda *a, **kw: marked.append((a, kw)),
+        raising=False,
+    )
+    return runner, calls, marked
+
+
+def test_runner_spike_skipped_when_kind_flag_disabled(tmp_path, monkeypatch):
+    """spike/falling: flag=false → skipped(push_kind_disabled) · 발송·registry 미호출."""
+    from app.runtime_sent_registry_store import count as registry_count
+
+    _seed_and_get_param(tmp_path)
+    runner, calls, marked = _install_mocks_with_kind_disabled(
+        monkeypatch, tmp_path, "PUSH_AUTOSEND_SPIKE_OR_FALLING_ALERT_ENABLED"
+    )
+    monkeypatch.setattr(runner, "_collect_target_tickers", lambda pk: [])
+
+    before = registry_count()
+    rec = runner.run("spike_or_falling_alert", "send")
+
+    assert rec["status"] == "skipped", f"차단돼야 한다 — 실제 {rec['status']}"
+    assert (
+        rec["reason"] == "push_kind_disabled"
+    ), f"전역 flag 는 true 이므로 사유가 push_kind_disabled 여야 한다 — 실제 {rec['reason']}"
+    assert calls == [], "차단 시 telegram_send 가 호출되면 안 된다"
+    assert marked == [], "차단 시 mark_sent 가 호출되면 안 된다"
+    assert registry_count() == before, "차단 시 sent registry 가 증가하면 안 된다"
+    assert rec.get("telegram_sent") is not True
+    # status/history 종료 기록은 차단 시에도 남는다 (_finish 계약).
+    assert rec.get("finished_at")
+
+
+def test_runner_holdings_skipped_when_kind_flag_disabled(tmp_path, monkeypatch):
+    """holdings briefing: flag=false → skipped(push_kind_disabled) · 발송·registry 미호출."""
+    from app.runtime_sent_registry_store import count as registry_count
+
+    _seed_and_get_param(tmp_path)
+    runner, calls, marked = _install_mocks_with_kind_disabled(
+        monkeypatch, tmp_path, "PUSH_AUTOSEND_HOLDINGS_BRIEFING_ENABLED"
+    )
+    monkeypatch.setattr(runner, "_collect_target_tickers", lambda pk: [])
+
+    before = registry_count()
+    rec = runner.run("holdings_briefing", "send", slot_id="OPEN")
+
+    assert rec["status"] == "skipped", f"차단돼야 한다 — 실제 {rec['status']}"
+    assert (
+        rec["reason"] == "push_kind_disabled"
+    ), f"전역 flag 는 true 이므로 사유가 push_kind_disabled 여야 한다 — 실제 {rec['reason']}"
+    assert calls == [], "차단 시 telegram_send 가 호출되면 안 된다"
+    assert marked == [], "차단 시 mark_sent 가 호출되면 안 된다"
+    assert registry_count() == before, "차단 시 sent registry 가 증가하면 안 된다"
+    assert rec.get("telegram_sent") is not True
+    assert rec.get("finished_at")

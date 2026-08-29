@@ -269,7 +269,11 @@ def test_runner_spike_freshness_stale_fail_closed(tmp_path, monkeypatch):
     activate_param_version(vid, activated_by="test")
 
     monkeypatch.setenv("PUSH_AUTOSEND_ENABLED", "true")
-    monkeypatch.setenv("PUSH_SPIKE_OR_FALLING_ALERT_ENABLED", "true")
+    # 2026-08-29 — 과거 이름 정정. 운영 코드는 app/three_push_runner_common.
+    #   PUSH_KIND_FLAG_ENVS 의 `PUSH_AUTOSEND_<KIND>_ENABLED` 를 읽는다.
+    #   (본 테스트는 freshness guard 가 §6 flag guard 보다 먼저 반환하므로
+    #    기존 freshness_stale 검증 의미는 그대로다 — 이름만 계약에 맞춘다.)
+    monkeypatch.setenv("PUSH_AUTOSEND_SPIKE_OR_FALLING_ALERT_ENABLED", "true")
     monkeypatch.setattr(runner, "telegram_send", lambda *a, **kw: (True, "", False))
     monkeypatch.setattr(runner, "_HISTORY_PATH", tmp_path / "history.jsonl")
     # price refresh guard 우회 (대상 없음).
