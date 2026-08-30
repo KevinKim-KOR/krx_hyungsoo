@@ -485,3 +485,143 @@ describe("Workbench — 탭 전환 시 선택 상세 해제 (사용자 지적 20
     expect(document.querySelector(".wb-detail")).toBeNull();
   });
 });
+
+// --- 2026-08-29 POC3-ML-02 REJECT Closeout 계약 -----------------------------
+// 픽스처(candOk)에 `relative_upside_score: 72.3` 이 들어 있다. 값이 와도 화면에
+// 나오지 않고 순서에도 개입하지 않는 것을 고정한다.
+describe("REJECT Closeout — 참고점수 비활성", () => {
+  it("C-1 점수·사유·참고점수 라벨이 화면에 없다", async () => {
+    const { container } = render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText("KODEX 200")).toBeInTheDocument();
+    });
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("72.3");
+    expect(text).not.toContain("참고점수");
+  });
+
+  it("C-2 정렬 선택지에 `참고점수` 가 없다 / C-7 나머지 5개는 남는다", async () => {
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText("KODEX 200")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: /참고점수/ }),
+    ).not.toBeInTheDocument();
+    for (const label of ["순위", "1M", "3M", "KODEX초과", "고점대비"]) {
+      expect(
+        screen.getByRole("button", { name: new RegExp(`^${label}`) }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  // --- C-3 / C-4 : 원본 · 점수 역순 · 점수 전부 null 세 변형 ---------------
+  //
+  // 정렬 실동작(C-7)까지 한 픽스처로 보려고 3종목을 쓴다. 각 정렬 키가
+  // **서로 다른 순서**를 만들도록 값을 설계했다 (useSort 첫 클릭은 asc).
+  //   rank        asc → A B C
+  //   one_month   asc → B C A   (A=3 · B=1 · C=2)
+  //   three_month asc → C A B   (A=2 · B=3 · C=1)
+  //   excess      asc → A C B   (A=1 · B=3 · C=2)
+  //   drawdown    asc → B A C   (A=-2 · B=-3 · C=-1 → ×100)
+  function sortTrio(scores: (number | null)[] = [10, 20, 30]) {
+    const mk = (
+      ticker: string,
+      name: string,
+      rank: number,
+      one: number,
+      three: number,
+      excess: number,
+      dd: number,
+      score: number | null,
+    ) => ({
+      rank,
+      ticker,
+      name,
+      returns: {
+        one_month: { return_pct: one },
+        three_month: { return_pct: three },
+      },
+      excess_return: { vs_kodex200_1m_pctp: excess },
+      relative_upside_score: score,
+      drawdown_20d: dd,
+      data_quality: { status: "ok" },
+    });
+    return {
+      ...candOk(),
+      candidates: [
+        mk("AAA111", "가나다 ETF", 1, 3, 2, 1, -0.02, scores[0]),
+        mk("BBB222", "라마바 ETF", 2, 1, 3, 3, -0.03, scores[1]),
+        mk("CCC333", "사아자 ETF", 3, 2, 1, 2, -0.01, scores[2]),
+      ],
+    };
+  }
+
+  const TRIO = ["AAA111", "BBB222", "CCC333"];
+
+  function orderIn(container: HTMLElement, tickers: string[]): string[] {
+    const text = container.textContent ?? "";
+    return tickers
+      .map((t) => ({ t, at: text.indexOf(t) }))
+      .filter((x) => x.at >= 0)
+      .sort((a, b) => a.at - b.at)
+      .map((x) => x.t);
+  }
+
+  async function renderTrio(scores?: (number | null)[]) {
+    fetchMarketTopnLatest.mockReset().mockResolvedValue(sortTrio(scores));
+    const utils = render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText("가나다 ETF")).toBeInTheDocument();
+    });
+    return utils;
+  }
+
+  it("C-3 / C-4 원본·점수 역순·점수 전부 null 세 변형의 순서가 모두 같고 API 순서다", async () => {
+    const variants: (number | null)[][] = [
+      [10, 20, 30], // (a) 원본
+      [30, 20, 10], // (b) 점수 역순
+      [null, null, null], // (c) 점수 제거
+    ];
+    const results: string[][] = [];
+    for (const scores of variants) {
+      const { container, unmount } = await renderTrio(scores);
+      results.push(orderIn(container, TRIO));
+      unmount();
+      __resetQueryCache();
+    }
+    expect(results[0]).toEqual(TRIO); // C-4 — API 순서 그대로
+    expect(results[1]).toEqual(results[0]); // C-3
+    expect(results[2]).toEqual(results[0]); // C-3
+  });
+
+  it("C-7 정상 정렬 5종이 **실제로 순서를 바꾼다**", async () => {
+    const { container } = await renderTrio();
+    const order = () => orderIn(container, TRIO);
+    const click = (label: string) =>
+      fireEvent.click(
+        screen.getByRole("button", { name: new RegExp(`^${label}`) }),
+      );
+
+    expect(order()).toEqual(TRIO); // 기본 = rank asc
+
+    click("1M");
+    expect(order()).toEqual(["BBB222", "CCC333", "AAA111"]);
+
+    click("3M");
+    expect(order()).toEqual(["CCC333", "AAA111", "BBB222"]);
+
+    click("KODEX초과");
+    expect(order()).toEqual(["AAA111", "CCC333", "BBB222"]);
+
+    click("고점대비");
+    expect(order()).toEqual(["BBB222", "AAA111", "CCC333"]);
+
+    click("순위");
+    expect(order()).toEqual(TRIO);
+
+    // 같은 키 재클릭 → desc 전환.
+    click("순위");
+    expect(order()).toEqual([...TRIO].reverse());
+  });
+});

@@ -36,12 +36,9 @@ import {
 import SelectedDetail from "./holdings_compare/SelectedDetail";
 import SelectedHoldingDetail from "./holdings_compare/SelectedHoldingDetail";
 
-type CandidateSortKey =
-  | "default"
-  | "score"
-  | "excess_20d"
-  | "drawdown"
-  | "exposure";
+// 2026-08-29 POC3-ML-02 REJECT Closeout — `"score"` 리터럴을 타입에서 뺐다.
+// 타입 수준에서 참고점수 정렬의 재도입을 막는다.
+type CandidateSortKey = "default" | "excess_20d" | "drawdown" | "exposure";
 type HoldingSortKey = "default" | "weight" | "pnl" | "excess_20d";
 type SortDirection = "desc" | "asc";
 
@@ -165,8 +162,6 @@ export default function HoldingsCompareView({ data }: Props) {
     const dirMul = candSortDir === "desc" ? -1 : 1;
     const getKey = (c: MarketCandidate): number | null => {
       switch (candSortKey) {
-        case "score":
-          return c.relative_upside_score ?? null;
         case "excess_20d":
           return c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null;
         case "drawdown":
@@ -369,14 +364,14 @@ export default function HoldingsCompareView({ data }: Props) {
         {/* 후보 ETF 표 */}
         <div className="card" style={{ padding: 12 }}>
           <h3 style={{ margin: 0, marginBottom: 8 }}>후보 ETF</h3>
-          {/* 2026-08-16 카드 전환 — 정렬 키(참고점수·20일 초과·고점 대비·보유 노출)
-              는 그대로 두고 헤더 클릭 → 세그먼트 바로 옮긴다. */}
+          {/* 2026-08-16 카드 전환 — 헤더 클릭 → 세그먼트 바로 옮긴다.
+              2026-08-29 REJECT Closeout — `참고점수` 선택지를 제거했다. 비활성
+              선택지로 남기지 않는다. 나머지 정렬은 그대로 동작한다. */}
           <div className="holdings-sortbar" style={{ margin: "0 0 8px" }}>
             <span className="holdings-sortbar-label">정렬</span>
             <span className="holdings-sort-seg">
               {(
                 [
-                  ["score", "참고점수"],
                   ["excess_20d", "20일 초과"],
                   ["drawdown", "고점 대비"],
                   ["exposure", "보유 노출"],

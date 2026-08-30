@@ -35,7 +35,6 @@ import {
   fmtAsofKst,
   fmtSignedPct,
   fmtPlainPct,
-  fmtScore,
   directionColor,
   candReturn,
   candExcess,
@@ -444,8 +443,6 @@ function CandidateTable({
         return candReturn(c, "three_month") ?? -Infinity;
       case "excess":
         return candExcess(c) ?? -Infinity;
-      case "score":
-        return c.relative_upside_score ?? -Infinity;
       case "drawdown":
         return candDrawdown(c) ?? -Infinity;
       default:
@@ -483,7 +480,6 @@ function CandidateTable({
           {S("one_month", "1M")}
           {S("three_month", "3M")}
           {S("excess", "KODEX초과")}
-          {S("score", "참고점수")}
           {S("drawdown", "고점대비")}
         </span>
         <span className="holdings-sortbar-hint">
@@ -542,10 +538,10 @@ function CandidateTable({
                       )}
                     </span>
                   </div>
-                  <div className="wb-hrow-pnl">
-                    <span className="amt">{fmtScore(c.relative_upside_score)}</span>
-                    <span className="rate wb-hmuted">참고점수</span>
-                  </div>
+                  {/* 2026-08-29 POC3-ML-02 REJECT Closeout — 참고점수 자리를
+                      **제거**했다. 아래 facts 줄에 순위·1M·3M·KODEX초과·고점대비가
+                      이미 있어 같은 값을 큰 숫자로 되풀이하지 않는다.
+                      0·"사용 불가"·경고 배지 같은 대체 표시도 두지 않는다. */}
                 </div>
                 <div className="wb-hrow-bot">
                   <div className="wb-hrow-facts">
@@ -797,7 +793,6 @@ function SelectedDetail({
           label="KODEX 초과"
           v={fmtSignedPct(candExcess(c) ?? evidenceExcess(ev))}
         />
-        <DetailCell label="참고점수" v={fmtScore(c?.relative_upside_score)} />
         <DetailCell label="고점 대비" v={fmtPlainPct(candDrawdown(c))} />
         <DetailCell label="보유 여부" v={relLabel(heldSt, "보유 중", "미보유")} />
         <DetailCell

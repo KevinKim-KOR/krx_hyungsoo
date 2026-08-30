@@ -6,11 +6,14 @@
 // ETF 비교하기·확인 근거와 같은 카드 규칙: 좌측 2단 카드 + 우측 지표 열 + 정상이면 배지 숨김.
 //
 // 17열을 버리지 않고 나눈다 — 자주 보는 것은 카드에, 나머지는 행을 펼쳤을 때.
-//   카드 : 순위 · ETF명 · 티커 · 참고점수 · 시장가 · NAV · 괴리율
+//   카드 : 순위 · ETF명 · 티커 · 1개월 수익률 · 시장가 · NAV · 괴리율
 //   지표 : 일간 · 1개월 · 3개월 + KODEX200 대비 1M
 //          (아랫줄이 KODEX 대비 지표인 것은 ETF 비교하기·확인 근거와 같은 배치)
 //   배지 : 보유 여부 3-state · 데이터 상태(정상이면 숨김)
-//   펼침 : 6개월 · 12개월 · 3년 · KODEX200 대비 3M · 고점 대비 · 점수 근거
+//   펼침 : 6개월 · 12개월 · 3년 · KODEX200 대비 3M · 고점 대비
+//
+// 2026-08-29 POC3-ML-02 REJECT Closeout — `relative_upside_v0` 이 REJECT 판정을
+// 받아 참고점수 배지와 점수 근거를 뺐다. 큰 숫자 자리는 1개월 수익률이 대신한다.
 //
 // "1년" 열은 없앴다 — backend `twelve_month` 를 두 번 표시하던 중복이었다
 // (기존 코드 주석에 "동일 값 또 표시" 로 명시돼 있었다). 17열 → 16열.
@@ -120,15 +123,18 @@ export default function CandidateCards({
                       )}
                     </span>
                   </div>
+                  {/* 2026-08-29 POC3-ML-02 REJECT Closeout — 참고점수를 뺀 자리에
+                      1개월 수익률을 둔다. compute_topn 기본 정렬 기준(one_month desc)
+                      과 같은 값이라 "왜 이 순서인지"를 그대로 설명한다.
+                      값이 없으면 0 으로 채우지 않고 기존 결측 표기(DASH)를 따른다. */}
                   <div className="wb-hrow-pnl">
-                    {c.relative_upside_score != null ? (
-                      <span className="amt">
-                        {c.relative_upside_score.toFixed(1)}
-                      </span>
-                    ) : (
-                      <span className="amt wb-hmuted">—</span>
-                    )}
-                    <span className="rate wb-hmuted">참고점수</span>
+                    <span
+                      className={oneRet == null ? "amt wb-hmuted" : "amt"}
+                      style={{ color: dirColor(oneRet) }}
+                    >
+                      {fmtPct(oneRet)}
+                    </span>
+                    <span className="rate wb-hmuted">1개월</span>
                   </div>
                 </div>
                 <div className="wb-hrow-bot">
@@ -201,18 +207,6 @@ export default function CandidateCards({
                   />
                   <DetailCell label="고점 대비" value={fmtPct(drawdown)} color={dirColor(drawdown)} />
                 </div>
-                {c.relative_upside_reasons && c.relative_upside_reasons.length > 0 ? (
-                  <div className="cand-detail-reasons">
-                    <span className="k">점수 근거</span>
-                    <ul>
-                      {c.relative_upside_reasons.map((r, i) => (
-                        <li key={i}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="cand-detail-reasons wb-hmuted">점수 근거 없음</p>
-                )}
               </div>
             ) : null}
           </div>

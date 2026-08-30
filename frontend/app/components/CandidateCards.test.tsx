@@ -34,20 +34,24 @@ function cand(over: Partial<MarketCandidate> = {}): MarketCandidate {
 }
 
 describe("후보 카드 (요즘 잘 오르는 ETF)", () => {
-  it("카드에 티커·시장가·NAV·괴리율과 참고점수·기간 지표가 나온다", () => {
+  it("카드에 티커·시장가·NAV·괴리율과 1개월 수익률·기간 지표가 나온다", () => {
     render(<CandidateCards candidates={[cand()]} heldTickers={new Set()} />);
     const list = screen.getByTestId("candidate-card-list");
     expect(within(list).getByText("069500")).toBeInTheDocument();
     expect(within(list).getByText("10,935")).toBeInTheDocument(); // 시장가
     expect(within(list).getByText("10,919")).toBeInTheDocument(); // NAV
     expect(within(list).getByText("+0.15%")).toBeInTheDocument(); // 괴리율
-    expect(within(list).getByText("72.3")).toBeInTheDocument(); // 참고점수
+    // 2026-08-29 REJECT Closeout — 참고점수 자리는 1개월 수익률이 대신한다.
+    // 큰 숫자 자리와 지표 행에 같은 값이 함께 나오므로 2개다.
+    expect(within(list).getAllByText("+6.01%")).toHaveLength(2);
+    expect(within(list).getAllByText("1개월")).toHaveLength(2);
+    expect(within(list).queryByText("72.3")).not.toBeInTheDocument();
     expect(within(list).getByText("+11.91%")).toBeInTheDocument(); // KODEX200 대비 1M
   });
 
   it("카드에 없는 항목은 펼쳐야 보인다 (열을 버리지 않는다)", () => {
     render(<CandidateCards candidates={[cand()]} heldTickers={new Set()} />);
-    // 접힘 상태 — 6개월·3년·KODEX200 대비 3M·고점 대비·점수 근거 없음.
+    // 접힘 상태 — 6개월·3년·KODEX200 대비 3M·고점 대비 없음.
     expect(screen.queryByText("6개월")).not.toBeInTheDocument();
     expect(screen.queryByText("KODEX200 대비 3M")).not.toBeInTheDocument();
     expect(screen.queryByText(/거래대금 충분/)).not.toBeInTheDocument();
@@ -59,7 +63,8 @@ describe("후보 카드 (요즘 잘 오르는 ETF)", () => {
     expect(screen.getByText("3년")).toBeInTheDocument();
     expect(screen.getByText("KODEX200 대비 3M")).toBeInTheDocument();
     expect(screen.getByText("고점 대비")).toBeInTheDocument();
-    expect(screen.getByText(/거래대금 충분/)).toBeInTheDocument();
+    // 2026-08-29 REJECT Closeout — 점수 근거는 펼쳐도 나오지 않는다.
+    expect(screen.queryByText(/거래대금 충분/)).not.toBeInTheDocument();
   });
 
   it("보유 여부는 3-state — 미보유와 '확인 불가' 를 구분한다", () => {

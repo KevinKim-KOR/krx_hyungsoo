@@ -620,10 +620,6 @@ export default function MarketDiscoveryView({
             basis={basis}
             order={order}
             onSort={handleSort}
-            relativeUpsideScoreStatus={data.relative_upside_score_status ?? null}
-            relativeUpsideScoreUserNotice={
-              data.relative_upside_score_user_notice ?? null
-            }
           />
           <SummaryHeader data={data} />
         </>

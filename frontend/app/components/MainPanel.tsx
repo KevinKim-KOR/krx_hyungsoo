@@ -81,7 +81,7 @@ export default function MainPanel() {
       break;
     case "ml":
       // 2026-08-16 사용자 지시 — 흩어져 있던 ML 카드 5개를 한 메뉴로 모음.
-      view = <MLView onNavigate={setActive} />;
+      view = <MLView />;
       break;
     case "data_status":
       // 2026-08-16 — POC3-07 이 diagnostics 로 흡수했던 것을 정상 업무 조회로 복원.

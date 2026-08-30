@@ -14,8 +14,13 @@
 //
 // 동작:
 //   1. 버튼 클릭 → 기존 relative_upside_score_v0 실행
-//   2. 성공 시 onSuccess() 호출 (부모가 후보 표 재조회)
-//   3. 실행 중 버튼 중복 클릭 차단
+//   2. 실행 중 버튼 중복 클릭 차단
+//
+// 2026-08-29 POC3-ML-02 REJECT Closeout:
+//   `relative_upside_v0` 은 유효성 검증에서 REJECT 판정을 받았다. 이 카드는
+//   **연구용 baseline 재현 경로**로만 남는다. 판정 상태를 카드 안에 명시하고,
+//   이 문구와 점수는 ML 화면 밖 어디에도 노출하지 않는다.
+//   자동 실행·스케줄러·후보 화면 연결은 추가하지 않는다.
 //
 // 일반 UI 노출 X (지시문):
 //   CUDA device name / loss / epoch / artifact path / raw traceback /
@@ -136,6 +141,37 @@ export default function RelativeUpsideRunCard({
       <h3 id="relative-upside-run-h" style={{ margin: 0 }}>
         상대상승 참고점수 계산
       </h3>
+      {/* 2026-08-29 REJECT Closeout — 모델 식별자·판정·용도를 카드 안에 명시한다. */}
+      <div
+        style={{
+          marginTop: 8,
+          padding: "8px 10px",
+          border: "1px solid #fca5a5",
+          borderRadius: 6,
+          backgroundColor: "#fef2f2",
+          fontSize: "0.85em",
+          lineHeight: 1.5,
+        }}
+      >
+        <div>
+          <strong>relative_upside_v0</strong>{" "}
+          <span
+            style={{
+              display: "inline-block",
+              padding: "1px 6px",
+              borderRadius: 4,
+              backgroundColor: "#dc2626",
+              color: "white",
+              fontSize: "0.9em",
+            }}
+          >
+            REJECT
+          </span>
+        </div>
+        <div style={{ marginTop: 4, color: "#7f1d1d" }}>
+          연구용 baseline이며 투자 판단에 사용하지 않음
+        </div>
+      </div>
       <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
         <div>
           <span style={{ color: "#6b7280" }}>상태: </span>

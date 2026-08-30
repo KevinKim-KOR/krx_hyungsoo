@@ -44,11 +44,6 @@ export function fmtIndex(v: number | null | undefined): string {
   return v.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
 }
 
-export function fmtScore(v: number | null | undefined): string {
-  if (v == null) return "—";
-  return v.toFixed(1);
-}
-
 // 금액 요약 (억/만). 상세 정확 금액은 별도.
 export function fmtAmountSummary(v: number | null | undefined): string {
   if (v == null) return "—";

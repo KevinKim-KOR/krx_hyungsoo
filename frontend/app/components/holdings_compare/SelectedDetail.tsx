@@ -4,7 +4,9 @@
 //
 // 순서 고정 (지시문 §3):
 //   1. 보유 노출 요약 (직접 보유 / 겹침 보유 ETF 수 / 가장 큰 겹침 대상)
-//   2. 후보 흐름 (참고점수 + 근거 + 5/10/20일 + KODEX 초과 + 고점 대비 + 품질)
+//   2. 후보 흐름 (5/10/20일 + KODEX 초과 + 고점 대비 + 품질)
+//      2026-08-29 POC3-ML-02 REJECT Closeout — `relative_upside_v0` REJECT 판정으로
+//      참고점수와 점수 근거를 뺐다.
 //   3. 세부 근거 (구성종목 목록 + overlap 수치) — 기본 접힘
 
 import type {
@@ -13,7 +15,6 @@ import type {
 } from "@/lib/api";
 import {
   type ExposureSummary,
-  STATE_NO_DATA,
   STATE_UNAVAIL,
   STATE_UNCHECKED,
   candidateDataState,
@@ -98,22 +99,6 @@ export default function SelectedDetail({
       {/* 2. 후보 흐름 */}
       <section>
         <div style={{ fontWeight: "bold", marginBottom: 4 }}>후보 흐름</div>
-        <div>
-          <span style={{ color: "var(--muted)" }}>참고점수: </span>
-          <strong>
-            {candidate.relative_upside_score != null
-              ? candidate.relative_upside_score.toFixed(1)
-              : STATE_NO_DATA}
-          </strong>
-        </div>
-        {candidate.relative_upside_reasons &&
-        candidate.relative_upside_reasons.length > 0 ? (
-          <ul style={{ margin: "4px 0 0 0", paddingLeft: "1.2em" }}>
-            {candidate.relative_upside_reasons.map((r, i) => (
-              <li key={i}>{r}</li>
-            ))}
-          </ul>
-        ) : null}
         <div style={{ marginTop: 6 }}>
           <span style={{ color: "var(--muted)" }}>최근 수익률: </span>
         </div>

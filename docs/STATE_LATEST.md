@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-29 (**POC3-ML-02 종료 — Step `PASS` · 모델 `REJECT` 확정 · 다음: 화면 참고점수 비활성화**)
+최종 업데이트: 2026-08-31 (**POC3-ML-02 REJECT Closeout `CLOSED` — 검증자 `VERIFIED` + 실화면 확인 완료**)
 
 ## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
 
@@ -65,6 +65,78 @@
 **검증**: black 276 unchanged · flake8 0 · tsc 0 · eslint 0 · vitest **167 passed (15 files)** · 백엔드 전체 pytest **1142 passed · 실패 0건 (3회 반복 모두)** · 프론트 200.
 
 **결과서**: `docs/ai_result/POC3/POC3-HOLDINGS_COMPARE_CARD_CONVERSION_RESULT.md`
+
+### 2026-08-29 (5) POC3-ML-02 REJECT Closeout — 화면 참고점수 비활성
+
+**상태**: **`CLOSED`** — 검증자 **`VERIFIED`**(r3) + 사용자 실화면 확인 완료
+
+```text
+step_status          = CLOSED
+verification         = VERIFIED   (r1 REJECTED → r2 REJECTED → r3 VERIFIED)
+user_screen_check    = DONE
+ui_action            = DEACTIVATE_AND_HIDE → 적용 완료
+api_contract         = UNCHANGED
+oci_push_cron_impact = NONE
+```
+**결과서**: `docs/ai_result/POC3/POC3-ML-02-CLOSEOUT_REJECTED_SCORE_DEACTIVATION_RESULT.md`
+**설계서**: `docs/ai_design/POC3/POC3-ML-02-CLOSEOUT_..._DESIGN_V1.md` (설계자 `CONDITIONAL_PASS` → V1.1 → PASS)
+
+`relative_upside_v0` 이 `REJECT` 확정돼 **판단 화면에서 소비하지 않는다**.
+표시·정렬을 **5곳**에서 제거했다.
+
+| 화면 | 제거 |
+|---|---|
+| 후보 표 `CandidateTable` | 점수 열 · 점수 근거 열 · **점수 정렬 토글** · 사용자 고지 배너 · prop 2개 |
+| 후보 카드 `CandidateCards` | 점수 배지 · 점수 근거 (빈 자리는 **1개월 수익률**) |
+| `ETF 비교하기` | **정렬 키 `score`** · 정렬 버튼 `참고점수` · 행 표시 자리 · 선택 상세 |
+| `보유와 비교` | **타입에서 `"score"` 리터럴** · 정렬 키 · 정렬 버튼 |
+| `보유와 비교` 선택 상세 | 점수 · 사유 |
+
+**대체 표시를 두지 않는다** — 비활성 선택지·`0`·`사용 불가`·경고 배지 전부 없음.
+
+**설계자 모호점 판정 반영**: M-1 5곳 전부 / M-2 ML→후보 이동 링크 제거 /
+M-3 1개월 수익률(순위 아님, 결측은 `0` 아닌 `—`) / M-4 검증자+실화면 둘 다 /
+CompareCards 주석을 `relative_upside_v0 REJECT 판정` 으로 정정.
+
+**순서 계약**: 후보 순서는 **API 응답 순서 그대로**. 세 화면 모두 기본 정렬이 이미
+API 순서였다(표 `scoreSort="off"` · 워크벤치 `useSort("rank")` · 보유와비교 `"default"`).
+**정상 정렬은 보존** — 워크벤치 5개(`순위·1M·3M·KODEX초과·고점대비`),
+보유와비교 3개(`20일 초과·고점 대비·보유 노출`). `참고점수` 하나만 사라졌다.
+
+**유지**: API 응답 필드·백엔드·DB·artifact·OCI·PUSH·cron **전부 무변경**.
+`ML 실험` 수동 실행은 연구용 baseline 으로 유지하고 카드 안에
+`relative_upside_v0` · `REJECT` · `연구용 baseline이며 투자 판단에 사용하지 않음` 을
+명시한다(이 문구와 점수는 ML 화면 밖 미노출).
+
+**검증자 r1 `REJECTED` → r2 보완**: C-7 이 정렬 **선택지 존재만** 검사했고,
+워크벤치 C-3/C-4 가 3변형이 아니라 점수 역순 1회였다. r2 에서 워크벤치 5종·
+보유와비교 3종이 **실제로 순서를 바꾸는지** 확인하고, 3변형((a)원본 (b)점수 역순
+(c)전부 `null`)의 직접 동등성을 검증한다. 보고 정확성 4건도 정정했다
+(§6 3변형 과장 · C-7 주장 과장 · 백엔드 수치 누락 · grep 경계 불일치).
+`act(...)` 경고는 ML 형제 카드 stub + holdings mock 으로 **0건**.
+
+**검수**: 신규 계약 test **13 passed** · 워크벤치 **30 passed** ·
+프론트 전체 **191 passed**(17파일) · 백엔드 전체 **1,268 passed** ·
+`tsc` 0건 · `eslint` 0건 · `act` 경고 0건 ·
+`git status -- app/ scripts/ state/ .env` **0건** · grep 가드 허용 위치 외 **0건**.
+역검증 **7종** — 후보 표 점수 정렬 복원 1건 실패 · 보유와비교 `참고점수` 복원 2건 실패 ·
+워크벤치 `rows.sort` 무력화 2건 실패 · 보유와비교 후보 정렬 무력화 1건 실패 ·
+**`exposure` 분기 제거 1건 실패** · **`exposureSortRank` 상수화 1건 실패**.
+
+**검증자 r2 `REJECTED` → r3 보완 (1건)**: `보유 노출` 정렬 테스트가 **맨 앞 종목을
+보유**하게 만들어 기본 순서와 결과가 같았다 — 분기를 지워도 통과했다. **맨 뒤 종목**
+을 보유하게 바꿔 결과가 기본 순서와 달라지게 하고 **전체 ticker 순서**를 단언한다.
+
+**PLAN 과 달라진 것 1건**: 워크벤치 행의 빈 자리를 후보 카드처럼 1개월 수익률로
+채웠다가 아래 facts 줄의 `1M` 과 중복돼 기존 테스트가 깨졌다. PLAN §2.3 이 원래
+"열 자체 제거"였으므로 되돌렸다.
+
+**남은 관찰 1건**: 후보 카드에 `1개월` 값이 두 번 나온다(큰 숫자 자리 + 지표 행).
+M-3 확정을 임의로 바꾸지 않았고 실화면 확인에서 승인됐다.
+
+**커밋·푸시 미수행** — 설계자 명시대로 이번 UI 구현은 별도 승인 대상.
+
+---
 
 ### 2026-08-29 (4) POC3-ML-02 r3 — 검증자 r2 `REJECTED` 대응
 
