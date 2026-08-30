@@ -205,6 +205,10 @@ state/ml/ml_baseline_v0_report_latest.json
 state/ml/relative_upside_score_latest.json
 state/ml/relative_upside_score_run_latest.json
 
+# POC3-ML-02 참고점수 유효성 평가 (2026-08-29) — 실행마다 재생성, 재현 가능 산출물.
+state/ml/validity/relative_upside_validity_v1_latest.json
+state/ml/validity/relative_upside_validity_v1_run_latest.json
+
 # ML evidence refresh job status (2026-06-11 UI 안전실행) — UI 실행마다 갱신, 운영 artifact.
 state/ml/ml_job_status_latest.json
 

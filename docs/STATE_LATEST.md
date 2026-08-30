@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-29 (**A/B 운영 사실 확인 + PUSH 차단 분기 테스트 보완 — 검증자 `VERIFIED`**)
+최종 업데이트: 2026-08-29 (**POC3-ML-02 — 검증자 `VERIFIED` · 모델 `REJECT` 후보 · 설계자 최종 판정 대기**)
 
 ## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
 
@@ -65,6 +65,167 @@
 **검증**: black 276 unchanged · flake8 0 · tsc 0 · eslint 0 · vitest **167 passed (15 files)** · 백엔드 전체 pytest **1142 passed · 실패 0건 (3회 반복 모두)** · 프론트 200.
 
 **결과서**: `docs/ai_result/POC3/POC3-HOLDINGS_COMPARE_CARD_CONVERSION_RESULT.md`
+
+### 2026-08-29 (4) POC3-ML-02 r3 — 검증자 r2 `REJECTED` 대응
+
+**상태**: **`VERIFIED (기술 검증) / 설계자 최종 판정 대기`**
+`verification`: r1 `REJECTED` → r2 `REJECTED` → r3 `REJECTED` → **r3.1 `VERIFIED`**
+`model_verdict_candidate = REJECT` — **여전히 후보.** 확정은 설계자 판정 사항이다.
+
+> 검증자 `VERIFIED` 는 "코드·산출물·보고가 정합하다" 는 뜻이지 "모델을 버려라" 가
+> 아니다. **화면 참고점수 처리 여부(제거·비활성·문구)는 설계자 판정 + 사용자 승인**
+> 이 필요하며, 본 Step 에서 화면·API·발송은 **하나도 바꾸지 않았다**.
+
+검증자 P1 2건을 닫았다.
+
+**P1-1 실제 fail-closed 경로 미검증** — r2 는 `preflight_gate()` **반환값만** 보고
+"실패가 실제 실행을 막는지까지 검증" 이라고 적었다. **과장이었다.**
+`tests/test_ml_score_validity_cli.py` **7건 신설** — CLI `main()` 을 실제로 돌려
+`aggregate` 미호출 · `run_latest` 의 `BLOCKED_*`+날짜 기록 · `validity_latest`
+**미발행**(기존 파일 제거 포함) · **rc=3** 을 확인한다. 무거운 경로(라이브 DB·U2·E1)만
+monkeypatch 하고 **게이트·발행 분기는 실제 코드**를 태운다.
+역검증 — 차단 분기 무력화 시 **4건 실패**, 차단 시 결과파일 삭제 제거 시 **1건 실패**.
+
+**P1-2 결과서 정합성** — 정정 3건:
+- §0 판정문의 r1 수치 `−1.217% · [−2.499%, −0.216%]` → **r2/r3 값 `−1.214% · [−2.495%, −0.213%]`**
+- §9 "커버리지 min=0" → **E2 평가일 145개 최소 99.34% · 평균 99.99% · 70% 미만 0건**
+- §11 "Black 7개" ↔ 다른 절 8개 불일치 → **r1 시점 7 / r3 시점 9** 로 통일
+
+**r3.1 정정 (검증자 A-2 지적)**: 결과서 §8.2 전체 pytest 수치가 r2 값
+(`1,261 passed · 141.41초`) 으로 남아 있었다 → **`1,268 passed · 132.62초`** 로 정정.
+동류 전수 grep 으로 §8.4 의 `58 passed`(r1 시점)도 **`105 passed`** 로 정정하고
+역검증 표에 r2·r3 라운드를 추가했다. STATE 의 1,261·1,221 은 각각 r2·r1
+**이력 블록**이라 그대로 뒀다.
+
+**커밋·푸시**: 검증자 `VERIFIED` 후 사용자 지시로 수행했다.
+
+**검수**: `black --check` 9파일 unchanged · `flake8` 0건 · 신규 테스트 **105 passed**
+(metrics 30 · eval 29 · contracts 39 · cli 7) · 백엔드 전체 **1,268 passed** (132.62초) ·
+라이브 ML 산출물 3개 sha256 불변 · 운영 코드 변경 **0건**. 평가 산출물은 r2 실행본 그대로이며 **수치 변화 없음**
+(코드 변경이 테스트·문서에 한정).
+
+---
+
+### 2026-08-29 (3) POC3-ML-02 r2 — 검증자 `REJECTED` 보완
+
+**당시 상태**: `IMPLEMENTED / REVERIFICATION_PENDING` → **이후 검증자 `REJECTED`**
+(P1 2건: 실제 fail-closed 경로 미검증 · 결과서 r1 수치 잔존). r3 에서 해소.
+
+| 항목 | 값 |
+|---|---|
+| `model_verdict_candidate` | **`REJECT`** — **후보 결론** (확정 아님) |
+| `verification` | r1 **`REJECTED`** → r2 **재검증 대기** |
+| `step_status` | `REMEDIATION_REQUIRED` → 보완 완료 |
+
+검증자 PASS 전에는 `VERIFIED` · `DONE` · 최종 `REJECT` 로 기록하지 않는다.
+**화면 점수 제거·UI 변경·종료 문서·다음 Step 을 수행하지 않았다.**
+
+**설계자 보완 지시 8건 전부 반영**
+
+| # | 항목 | 처리 |
+|---|---|---|
+| 1 | E2 warmup + S-3 fail-closed | `PRE_EVALUATION_WARMUP_DATES` 사전 고정 · `assert_evaluation_window()` 로 **2014-06-30 시작 · 145개** 강제 · `preflight_gate()` 가 집계 **전에** `BLOCKED_COVERAGE`/`BLOCKED_LEAKAGE`/`BLOCKED_METRIC_CONTROL` 로 중단 (막히면 `validity_latest` 미발행, rc=3) |
+| 2 | coverage 분모 20거래일 조건 | `is_pit_eligible()` — 태그 제외 **AND** 유효종가 ≥21 **AND** 첫 종가 후 benchmark 20거래일 |
+| 3 | 3M 비중첩 집계 연결 | `e2.three_month_non_overlapping` 신설 (중첩본과 분리) |
+| 4 | 점수 기준 top-N 바스켓 | `e2.score_top10_basket` 신설 (화면 슬레이트와 구분) |
+| 5 | L-4 전체 결정성 | `canonical_sha256` — 전체 결과 객체, 승인 메타데이터만 제외 |
+| 6 | A-6 tri-state | `{"status":"NOT_EVALUABLE","passed":null}` · fallback 제거 · `all_numeric_passed` 도 3상태 |
+| 7 | 테스트 연결 보강 | `tests/test_ml_score_validity_contracts.py` **39건 신규** |
+| 8 | 결과서·STATE 정정 | Black 대상 **8파일**(r1 "6파일" 오기 정정) · r1 이력 보존 |
+
+**r2 실측 (E2 평가일 145 · 2014-06-30 ~ 2026-06-30)**
+
+| 지표 | 실측 |
+|---|---|
+| 평균 rank IC | −0.0435 · CI [−0.0906, **+0.0011**] |
+| **상위 10% net(25bp)** | **−1.214 %/월** · CI **[−2.495%, −0.213%]** → **R-3 발동** |
+| **3M 비중첩(48건)** net 25bp | **−4.259 %/3M** · CI **[−8.871%, −1.307%]** · 승률 31.25% |
+| score top-10 바스켓 net 25bp | −1.062 %/월 · CI [−2.568%, **+0.098%**] — 판정 미사용 |
+| coverage | 평균 **99.99%** · 최소 **99.34%** · 70% 미만 **0건** |
+| 연도별 양(+) | 4 / 13 · 시장 3상태 모두 음수 |
+| A-6 | **`NOT_EVALUABLE` · `passed=null`** (E1_UNAVAILABLE) |
+| `all_numeric_passed` | **False** |
+
+**L-4 전체 결정성**: 동일 seed 2회 실행 → canonical SHA-256
+`a0a905fd7877ee7a4a14c66f040b37e6da83c27bcb910f8de75fbf50759c8fd2` **양쪽 동일**.
+제외 필드 `generated_at` · `e1.elapsed_seconds`, 자기참조 필드는 `null` 정규화.
+실행 780.70초 / 777.78초 (Mac cpu · torch 2.13.0).
+
+**구현 중 자체 발견·수정 1건**: 기록된 해시를 저장 파일에서 재계산할 수 없었다
+(자기참조 필드 미정규화 → 검증자 재현 불가). 계산 시 `null` 로 되돌리도록 고쳤고
+**해시 값 자체는 불변**임을 실측 확인했다.
+
+**C-4 보류 (설계자 확정 · BACKLOG 이관 대상 — 원장 미등재)**
+> 보류 사유: 현재 운영 호출자는 `asof` 를 전달하지 않아 운영 영향이 없음
+> 보류된 위험: 향후 `compute_topn(asof=과거일)` 을 직접 사용하면 미래 가격이 섞임
+> 재검토 트리거: 해당 함수를 백테스트·과거 화면·과거 API 에서 사용하기 전
+
+BACKLOG.md 임의 등재는 하지 않았다 — 원장 갱신 지시 시 반영한다.
+
+**검수**: `black --check` 8파일 unchanged · `flake8` 0건 · 신규 테스트 **98 passed**
+(metrics 30 · eval 29 · contracts 39) · 백엔드 전체 **1,261 passed** · 라이브 ML 산출물 3개 sha256 불변 ·
+운영 코드 변경 **0건** · 커밋·푸시 **미수행**.
+
+---
+
+### 2026-08-29 (2) POC3-ML-02 r1 — 상대상승 참고점수 유효성 게이트 (검증자 `REJECTED`)
+
+> **아래 r1 기록은 보완 이력 보존을 위해 지우지 않는다.** 계약 누락 7건으로
+> 검증자 `REJECTED` 를 받았고, r2 에서 전부 수정했다(위 항목).
+> r1 의 "커버리지 min=0% · S-3 고지" 는 **오분류**였고, 두 날짜는 평가일이 아니라
+> `PRE_EVALUATION_WARMUP` 이다. r1 의 "Black 6파일" 도 **8파일** 로 정정한다.
+
+**상태**: `IMPLEMENTED — 검증 대기` · 최종 판정 **`REJECT`**
+**결과서**: `docs/ai_result/POC3/POC3-ML-02_RELATIVE_UPSIDE_SCORE_VALIDITY_GATE_RESULT.md`
+**설계서**: `docs/ai_design/POC3/POC3-ML-02_..._DESIGN_V1.md` (설계자 `PLAN PASS`)
+**PLAN**: `docs/ai_plan/POC3/POC3-ML-02_..._PLAN_V1.md` (`PLAN_REVISE_REQUIRED` → 수정 8건 반영 → `PLAN PASS` + 확정사항 5건 반영)
+
+화면에 붙어 있는 `relative-upside baseline v0` 점수가 실제로 KODEX200 대비 우수한
+ETF 를 골라내는지 과거 데이터로 검증했다.
+
+**판정 `REJECT` — 발동 조건은 R-3 단독**
+
+| 지표 (E2 · 1M · 필터 universe · n=145) | 실측 |
+|---|---|
+| 평균 rank IC | −0.0435 · 95% CI [−0.0906, **+0.0011**] |
+| **상위 10% net(편도 25bp)** | **−1.217 %/월** · CI **[−2.499%, −0.216%]** |
+| Q5 − Q1 | −0.831 %/월 |
+| 월간 turnover | 82.73 % |
+| 상위군 승월 비율 | 44.83 % |
+| 연도별 양(+) | **4 / 13** |
+| 시장 상태 | bull −0.029 · neutral −0.059 · bear −0.062 (셋 다 음수) |
+| 화면 Top10 상위−하위 | −0.176 %/월 (승월 55.17%) |
+
+- **R-1(음의 예측력)은 미발동**했다 — IC 의 CI 상한이 +0.0011 로 0 을 포함한다.
+  "점수가 반대로 맞힌다" 고 단정하지 않았다. 근거는 **"상위군이 비용을 넘지 못한다"** 다.
+- **부호 오류 아님**: 같은 라벨에서 단순 20일 모멘텀 IC **+0.0226** vs ML **−0.0435**.
+  재현 계수 `return_20d = −0.2209` 가 뒷받침.
+- 무결성: 누수 **L-1/L-2/L-3 위반 0건** · N-1 negative control **통과**
+  (100회 permutation 평균 −0.00065, 구간 [−0.0113, +0.0135] 0 포함) · 커버리지 97.00%.
+- **E1 = `E1_UNAVAILABLE`**: G-1(1,157종 일치)·G-4(Spearman 0.99995 · top100 1.0)는
+  통과, **G-3 최대 절대오차 8.99 > 1.0 실패**. 기준 완화 없이 E2 만 수행.
+  원인 실측 — snapshot 생성(08-24 14:23Z) 이후 **08-27 에 08-20 이전 행 86,376개
+  (1,171 ticker) 재수집**. 입력 데이터가 바뀌어 비트 재현 불가.
+- 실행: **775.75초** · Mac(cpu · torch 2.13.0). 산출물 `state/ml/validity/` (gitignore).
+
+**발견 — `compute_topn(asof=…)` 는 과거를 재현하지 않는다 (C-4)**
+`_compute_period` 가 최신가를 `history[-1]` 에서 가져오고 `fetch_price_history` 는
+날짜 제한이 없어, `asof` 는 기준일만 바꾼다. `asof="2016-06-30"` 이 1개월 수익률
+**1017.26%** 를 반환했다. **운영 영향 0건** — 호출자 7곳 전부 `asof` 미전달.
+운영 코드를 고치지 않고 절단 임시 DB 에 `compute_topn` 을 무수정 호출해 재현했다
+(1017.26% → 5.38%).
+
+**KS-10**: 최초 구현에서 CLI 가 827줄이 되어 트리거 #4(백엔드 650줄)에 걸렸다.
+실행을 중단하고 집계·판정을 `ml_score_validity_report.py` 로 분리했다. 최대 564줄.
+분리 전후 **147개 기준일 IC 전량 일치** (L-4 결정성 실증).
+
+**검수**: `black --check` 신규 6파일 unchanged · `flake8` 0건 ·
+신규 테스트 **58 passed** · 관련 회귀 67 passed · 백엔드 전체 **1,221 passed** ·
+라이브 ML 산출물 3개 sha256 실행 전후 동일 · 운영 코드 변경 **0건**.
+
+**설계자·사용자 판단 대기**: `REJECT` 는 평가 결론일 뿐이고 **화면·API·발송은
+하나도 바꾸지 않았다.** 점수는 지금도 표시되며 후보 정렬에 쓰인다. 제거·비활성·문구
+변경 여부는 별도 판정이 필요하다.
 
 ### 2026-08-29 A/B 운영 사실 확인 + PUSH 차단 분기 테스트 보완
 
