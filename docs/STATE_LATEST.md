@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-29 (**POC3-ML-02 — 검증자 `VERIFIED` · 모델 `REJECT` 후보 · 설계자 최종 판정 대기**)
+최종 업데이트: 2026-08-29 (**POC3-ML-02 종료 — Step `PASS` · 모델 `REJECT` 확정 · 다음: 화면 참고점수 비활성화**)
 
 ## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
 
@@ -68,13 +68,44 @@
 
 ### 2026-08-29 (4) POC3-ML-02 r3 — 검증자 r2 `REJECTED` 대응
 
-**상태**: **`VERIFIED (기술 검증) / 설계자 최종 판정 대기`**
-`verification`: r1 `REJECTED` → r2 `REJECTED` → r3 `REJECTED` → **r3.1 `VERIFIED`**
-`model_verdict_candidate = REJECT` — **여전히 후보.** 확정은 설계자 판정 사항이다.
+**Step 종료 상태 (설계자 최종 판정 · 2026-08-29)**
 
-> 검증자 `VERIFIED` 는 "코드·산출물·보고가 정합하다" 는 뜻이지 "모델을 버려라" 가
-> 아니다. **화면 참고점수 처리 여부(제거·비활성·문구)는 설계자 판정 + 사용자 승인**
-> 이 필요하며, 본 Step 에서 화면·API·발송은 **하나도 바꾸지 않았다**.
+```text
+step_status       = PASS
+verification      = VERIFIED
+model_verdict     = REJECT
+model_scope       = relative_upside_v0
+ui_action         = DEACTIVATE_AND_HIDE
+oci_push_impact   = NONE
+next_gate         = REJECTED_SCORE_DEACTIVATION
+```
+
+`verification` 이력: r1 `REJECTED` → r2 `REJECTED` → r3 `REJECTED` → **r3.1 `VERIFIED`**.
+**기술 검증 3회 반려 이력은 지우지 않는다** — 최종 수치가 계약을 통과했다는 근거다.
+
+**판정 표현의 한계 (설계자 확정 — 넓게 주장 금지)**
+> 현재 점수가 반대로 예측한다고 통계적으로 확정한 것은 아니다.
+> 점수가 높은 ETF군이 거래비용을 반영한 KODEX200 대비 성과 기준을 통과하지 못했으므로
+> 판단 보조지표로 사용할 근거가 없다.
+
+**이 판정이 의미하지 않는 것**: ML 전체 무효 아님 · 모멘텀 전략 무효 아님 ·
+단순 20일 모멘텀 폐기 아님 · 평가 코드/artifact 삭제 아님.
+**`relative_upside_v0` 점수 하나만 `REJECT`** 다.
+
+**화면 처리 확정 — `DEACTIVATE_AND_HIDE`** (후속 Step 에서 수행, 본 Step 미변경)
+- `CandidateTable`·`JudgmentWorkbench` 의 참고점수 기반 **재정렬 중단**
+- 기본 화면에서 참고점수·점수 사유 **비노출**
+- 후보 순서는 기존 `compute_topn` 기본 순서 유지
+- **`0`·`미제공`·`참고용` 으로 대체 표시하지 않음** · 경고 문구 붙여 계속 노출도 기각
+- 모델/평가 코드·JSON artifact **삭제하지 않고 보존** (연구 baseline · 실패 근거)
+- OCI·PUSH·cron **무변경**
+
+**C-4 → BACKLOG 등재 완료**: `docs/backlog/BACKLOG.md` 결함 섹션에
+`DEF-COMPUTE-TOPN-ASOF-HISTORICAL` 추가 (설계자 승인). 열린 결함 **2건**
+(`DEF-FDR-TIMEOUT` · 신규). 원장 항목 55건 **불변** — 결함은 원장 밖 관리다.
+
+**다음 작업**: `POC3-ML-02 REJECT Closeout — 화면 참고점수 비활성화`.
+새 모델 개발·튜닝으로 바로 넘어가지 않는다.
 
 검증자 P1 2건을 닫았다.
 
@@ -111,13 +142,13 @@ monkeypatch 하고 **게이트·발행 분기는 실제 코드**를 태운다.
 **당시 상태**: `IMPLEMENTED / REVERIFICATION_PENDING` → **이후 검증자 `REJECTED`**
 (P1 2건: 실제 fail-closed 경로 미검증 · 결과서 r1 수치 잔존). r3 에서 해소.
 
-| 항목 | 값 |
+| 항목 | **r2 당시** 값 |
 |---|---|
-| `model_verdict_candidate` | **`REJECT`** — **후보 결론** (확정 아님) |
-| `verification` | r1 **`REJECTED`** → r2 **재검증 대기** |
+| `model_verdict_candidate` | `REJECT` — 당시엔 후보 결론 (**2026-08-29 설계자 확정**) |
+| `verification` | r1 `REJECTED` → r2 재검증 대기 (**결과: `REJECTED`**) |
 | `step_status` | `REMEDIATION_REQUIRED` → 보완 완료 |
 
-검증자 PASS 전에는 `VERIFIED` · `DONE` · 최종 `REJECT` 로 기록하지 않는다.
+(당시 원칙) 검증자 PASS 전에는 `VERIFIED` · `DONE` · 최종 `REJECT` 로 기록하지 않는다.
 **화면 점수 제거·UI 변경·종료 문서·다음 Step 을 수행하지 않았다.**
 
 **설계자 보완 지시 8건 전부 반영**

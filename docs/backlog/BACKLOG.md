@@ -89,7 +89,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 "지금 제공하기로 되어 있는데 동작하지 않는 것" 이라 원장에서 분리한다.**
 근거: `docs/handoff/BACKLOG_RECONCILIATION_V2_CONCLUSION.md` §4 (검증자 VERIFIED · 커밋 `a22ddae5`).
 
-**현재 열린 결함: 1건** (`DEF-FDR-TIMEOUT`). `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
+**현재 열린 결함: 2건** (`DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL`).
+`DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
 ### ~~DEF-ML-CHAIN — ML feature/evidence 생성 체인 미작동~~ → **해소 (2026-08-25)**
 
@@ -121,6 +122,34 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 `POST /ml/jobs/evidence-refresh`. 자동 스케줄러·OCI 역할 변경 없음.
 
 ---
+
+### DEF-COMPUTE-TOPN-ASOF-HISTORICAL — `compute_topn(asof=과거일)` 이 과거를 재현하지 않음
+
+**등재**: 2026-08-29 · 설계자 승인 (POC3-ML-02 판정문). **발견 Step**: `POC3-ML-02`.
+
+- 상태: BACKLOG
+- 발견 Step: POC3-ML-02
+- 문제:
+  `compute_topn(asof=과거일)` 호출 시 기준일만 과거로 이동하고 최신가격은
+  `history[-1]`을 사용하므로 미래 가격이 섞인 수익률을 반환한다.
+- 현재 운영 영향:
+  없음. 확인된 운영 호출자 7곳은 모두 `asof`를 전달하지 않고 DB 최신일을 사용한다.
+- 보류 사유:
+  현재 운영 경로에는 영향이 없으며, 이번 Step에서 운영 함수까지 수정하면 범위가 확대된다.
+- 보류된 위험:
+  향후 백테스트·과거 화면·과거 API가 `asof`를 사용하면 미래 데이터가 섞인 결과를
+  정상값으로 오인할 수 있다.
+- 재검토 트리거:
+  `compute_topn(asof=...)`를 운영 외 과거 재현·백테스트·API에서 사용하기 전.
+- 현재 우회:
+  POC3-ML-02 평가에서는 기준일 이후 데이터를 제거한 임시 SQLite를 사용해
+  기존 `compute_topn`을 변경 없이 호출한다.
+
+**실측 근거** — `app/market_topn_helpers.py:140 _compute_period()` 가 최신가를
+`history[-1]` 에서 가져오고, `app/market_topn.py:207` 이 `fetch_price_history(tk)` 를
+날짜 제한 없이 호출한다. `compute_topn(n=10, asof="2016-06-30")` 이 1개월 수익률
+**1017.26%** 를 반환했고(해당 종목 실제 종가는 연속적), 절단 임시 DB 로 재현하면
+**5.38%** 다. 상세: `docs/ai_result/POC3/POC3-ML-02_..._RESULT.md` §10.
 
 ### DEF-FDR-TIMEOUT — FDR 호출 timeout 부재
 

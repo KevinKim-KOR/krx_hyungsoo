@@ -6,34 +6,40 @@
 - **대응 설계서**: `docs/ai_design/POC3/POC3-ML-02_RELATIVE_UPSIDE_SCORE_VALIDITY_GATE_DESIGN_V1.md`
 - **대응 PLAN**: `docs/ai_plan/POC3/POC3-ML-02_RELATIVE_UPSIDE_SCORE_VALIDITY_GATE_PLAN_V1.md`
   (설계자 판정 **`PLAN PASS — IMPLEMENTATION AUTHORIZED`** · 확정사항 5건 반영 완료)
-- **상태**: **`VERIFIED (기술 검증) / 설계자 최종 판정 대기`**
+- **상태**: **`PASS` — 설계자 최종 판정 완료 (2026-08-29)**
 - **개정 이력**
   | 라운드 | 결과 |
   |---|---|
   | r1 (2026-08-29) | 최초 구현·평가 → 검증자 **`REJECTED`** (계약 누락 7건) |
   | r2 (2026-08-29) | 설계자 보완 지시 8개 항목 반영 + 전체 재평가 → 검증자 **`REJECTED`** (P1 2건) |
   | r3 (2026-08-29) | **실제 실행 차단 CLI 통합 테스트 신설** + 결과서 정합성 정정 → 검증자 **`REJECTED`** (A-2 수치 잔존 1건) |
-  | r3.1 (2026-08-29) | 전체 pytest 수치 정정(+ 동류 1건 전수 정정) → **검증자 `VERIFIED`**. **본 문서** |
+  | r3.1 (2026-08-29) | 전체 pytest 수치 정정(+ 동류 1건 전수 정정) → **검증자 `VERIFIED`** |
+  | 종료 (2026-08-29) | 설계자 **최종 판정**: Step `PASS` · 모델 **`REJECT` 확정** · 화면 **비활성+비노출** · C-4 BACKLOG 등재. **본 문서** |
 
-> ### 현재 상태 (설계자 확정 · §11)
-> | 항목 | 값 |
-> |---|---|
-> | `model_verdict_candidate` | **`REJECT`** — **여전히 후보 결론.** 확정은 설계자 판정 |
-> | `verification` | r1 `REJECTED` → r2 `REJECTED` → r3 `REJECTED` → **r3.1 `VERIFIED`** |
-> | `step_status` | 기술 검증 통과 · **설계자 최종 판정 대기** |
+> ### 최종 상태 (설계자 판정 · 2026-08-29)
+> ```text
+> step_status       = PASS
+> verification      = VERIFIED
+> model_verdict     = REJECT
+> model_scope       = relative_upside_v0
+> ui_action         = DEACTIVATE_AND_HIDE
+> oci_push_impact   = NONE
+> next_gate         = REJECTED_SCORE_DEACTIVATION
+> ```
 >
-> **검증자 `VERIFIED` 는 "코드·산출물·보고가 정합하다" 는 뜻이지 "모델을 버려라"
-> 가 아니다.** 모델 `REJECT` 확정과 **화면 참고점수 처리 여부는 설계자 판정 사항**
-> 이며, 본 Step 에서 화면 점수 제거·UI 변경·종료 문서·다음 Step 은
-> **수행하지 않았다**.
+> `verification` 이력: r1 `REJECTED` → r2 `REJECTED` → r3 `REJECTED` → **r3.1 `VERIFIED`**.
+> **기술 검증 3회 반려 이력은 지우지 않는다** — 최종 수치가 계약을 통과했다는 근거다.
+>
+> 본 Step 에서 화면·API·발송은 **하나도 바꾸지 않았다**. 화면 비활성은
+> 후속 Step(`POC3-ML-02 REJECT Closeout`)에서 수행한다.
 
 ---
 
 ## 0. 최종 판정
 
-> ## `REJECT` — **모델 판정 후보 (`model_verdict_candidate`)**
+> ## `REJECT` — **모델 판정 확정** (설계자, 2026-08-29)
 >
-> 검증자 재검증 통과 전까지 확정 결론이 아니다.
+> 대상은 **`relative_upside_v0` 점수 하나**다.
 
 발동 조건은 **R-3** 단 하나이며, 그것으로 충분하다.
 
@@ -42,6 +48,27 @@
 >
 > (r1 값 `−1.217% · [−2.499%, −0.216%]` 는 warmup 2건이 비용 시계열에 섞여 있던
 > 수치다. 현재 판정값이 아니다.)
+
+### 표현의 한계 (설계자 확정 문구 — 넓게 주장하지 않는다)
+
+> **현재 점수가 반대로 예측한다고 통계적으로 확정한 것은 아니다.**
+> **점수가 높은 ETF군이 거래비용을 반영한 KODEX200 대비 성과 기준을 통과하지
+> 못했으므로 판단 보조지표로 사용할 근거가 없다.**
+
+R-1(음의 예측력)은 발동하지 않았다 — IC 의 CI 상한이 `+0.0011` 로 0 을 포함한다.
+
+### 이 판정이 의미하지 않는 것 (설계자 확정)
+
+- ML 전체가 무효라는 뜻이 **아니다**
+- 모멘텀 전략이 무효라는 뜻이 **아니다**
+- 단순 20일 모멘텀까지 폐기한다는 뜻이 **아니다**
+- 평가 코드와 결과 artifact 를 삭제한다는 뜻이 **아니다**
+
+**현재 `relative_upside_v0` 점수만 `REJECT` 다.**
+`E1_UNAVAILABLE` 은 최종 판정을 막지 않는다 — 주 평가 계약은 E2 였고 E2 의 R-3 가
+사전 기준대로 발동했다.
+
+### 판정 상한과의 관계
 
 PLAN §2.6 의 판정 상한(`RESEARCH_ONLY`)은 **`ADOPT` 를 막는 장치**이지 `REJECT` 를
 막는 장치가 아니다. 설계자 확정문 그대로:
@@ -631,13 +658,19 @@ E1 만 `E1_UNAVAILABLE` 인데, 이는 **미처리가 아니라 계약대로의 
 
 ### 7) 사용자 확인이 필요한 항목
 
-1. **`REJECT` 는 "현재 화면 참고점수를 판단 근거로 쓰지 말라"는 뜻**이다.
-   다만 본 Step 범위는 **평가뿐**이라 화면·API·발송은 **하나도 바꾸지 않았다**.
-   점수는 지금도 화면에 그대로 표시되며 후보 정렬에 쓰인다.
-   **제거·비활성·문구 변경 여부는 설계자 판정과 사용자 승인이 필요하다.**
+1. **설계자 판정: 화면 `DEACTIVATE_AND_HIDE`** — 후속 Step
+   `POC3-ML-02 REJECT Closeout` 에서 수행한다. 본 Step 에서는 화면·API·발송을
+   **하나도 바꾸지 않았고**, 점수는 지금도 표시되며 후보 정렬에 쓰인다.
+   확정된 처리 원칙: `CandidateTable`·`JudgmentWorkbench` 의 점수 기반 재정렬 중단 ·
+   기본 화면에서 참고점수·점수 사유 비노출 · 후보 순서는 `compute_topn` 기본 순서 유지 ·
+   **`0`/`미제공`/`참고용` 으로 대체 표시하지 않음** · 경고 문구를 붙여 계속 노출하지 않음 ·
+   모델/평가 코드·JSON artifact 는 **삭제하지 않고 연구 baseline·실패 근거로 보존** ·
+   OCI·PUSH·cron 무변경.
 2. **커밋·푸시** — 검증자 `VERIFIED` 후 사용자 지시로 수행했다.
 3. `.gitignore` 수정을 기존 ML artifact 규약에 맞춰 진행했다(§4-3).
    결과 JSON 을 저장소에 남기길 원하면 되돌리겠다.
+4. **C-4 → `DEF-COMPUTE-TOPN-ASOF-HISTORICAL`** 로 `docs/backlog/BACKLOG.md`
+   **결함 섹션에 등재했다**(설계자 승인). 원장 항목 수 55건은 불변 — 결함은 원장 밖 관리다.
 
 ---
 
