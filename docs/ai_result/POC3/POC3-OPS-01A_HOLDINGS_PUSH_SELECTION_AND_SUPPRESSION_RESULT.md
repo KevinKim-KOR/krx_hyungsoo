@@ -3,8 +3,10 @@
 - **작성**: 개발자 (VSCode Claude)
 - **수신**: 검증자 (Codex)
 - **작성일**: 2026-09-04
-- **상태**: **`VERIFIED`** (검증자 r10, 2026-09-05) · **`AWAITING_USER_PREVIEW_CONFIRM`** — 사용자 preview 형식 확인이 아직 없다.
-  기술 검증은 끝났으나 이 확인 전까지 `CLOSED` 로 올리지 않는다(§10-1).
+- **상태**: **`CLOSED`** — 검증자 r10 **`VERIFIED`** + **사용자 형식 확인 완료** (2026-09-05).
+  사용자 확인 원문: *"일단 지금보다는 나을 것 같습니다. 받아보면서 결정하겠습니다."*
+  → **조건부 승인**이다. 실제 발송을 받아본 뒤 형식 조정이 올 수 있다(§10-1).
+  **단, 받아보려면 OCI 배포가 선행돼야 한다 — 현재 미배포**(§10-2).
 - **검증 라운드**: r1~r4 `REJECTED` → 개발자 영역 전건 처리. **2026-09-05 설계자 확정 회신**으로 계약 2건 해소(§9.7) → r5~r9 `REJECTED` 정정 → **r10 `VERIFIED`**. r9·r10 에서 기능·구조·안전 계약 위반 0건. §9.3·§9.5·§9.6·§9.7·§9.9~§9.14 참조
 - **설계서**: `docs/ai_design/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_DESIGN_V1.md`
 - **PLAN**: `docs/ai_plan/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_PLAN_V1.md`
@@ -67,7 +69,7 @@
 
 **변경 없음**: cron · API 응답 계약 · DB 스키마 · 시장 브리핑 · 급등락 · PC/Mac UI · ML.
 
-#### 2.1 git 실측 전체 경로 (r3 — 문서·preview 포함 27건)
+#### 2.1 커밋 `ffca640c` 에 포함된 전체 경로 (27건)
 
 r2 까지는 `.py` 만 세어 **17개**로 적었는데, 검증자가 실제 git 상태는 **22경로**
 라고 지적했다(설계서·PLAN·RESULT·preview JSON 누락). 아래는 `git status --short
@@ -75,33 +77,33 @@ r2 까지는 `.py` 만 세어 **17개**로 적었는데, 검증자가 실제 git
 
 | 경로 | 상태 |
 |---|---|
-| `app/runtime_evidence/holdings_selection.py` | 신규(staged) |
-| `app/runtime_evidence/holdings_selection_flow.py` | 신규(staged) |
-| `app/runtime_evidence/holdings_selection_render.py` | 신규(staged) |
-| `app/runtime_evidence/holdings_selection_source.py` | 신규(staged) |
-| `app/runtime_evidence/holdings_selection_state.py` | 신규(staged) |
-| `app/three_push_runtime/non_trading_day.py` | 신규(staged) |
-| `app/three_push_runtime/price_refresh.py` | 수정(staged) |
-| `app/three_push_runtime/runner_diagnostics.py` | 신규(staged) |
-| `app/three_push_runtime/runner_spike.py` | 신규(staged) |
-| `docs/PROGRAM_TRUTH.md` | 수정(staged) |
-| `docs/STATE_LATEST.md` | 수정(staged) |
-| `docs/ai_design/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_DESIGN_V1.md` | 신규(staged) |
-| `docs/ai_plan/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_PLAN_V1.md` | 신규(staged) |
-| `docs/ai_result/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_RESULT.md` | 신규(staged) |
-| `docs/backlog/BACKLOG.md` | 수정(staged) |
-| `docs/handoff/POC3/POC3-OPS-01A_HANDOFF_CLOSEOUT.md` | 신규(staged) |
-| `scripts/build_holdings_selection_preview.py` | 신규(staged) |
-| `scripts/run_three_push_runtime_oci.py` | 수정(staged) |
-| `state/three_push/previews/holdings_selection_preview_latest.json` | 신규(staged) |
-| `tests/conftest.py` | 수정(staged) |
-| `tests/runtime_evidence/test_runtime_runner_forwarding.py` | 수정(staged) |
-| `tests/test_holdings_selection.py` | 신규(staged) |
-| `tests/test_holdings_selection_preview.py` | 신규(staged) |
-| `tests/test_holdings_selection_state.py` | 신규(staged) |
-| `tests/test_low_frequency_push_operation.py` | 수정(staged) |
-| `tests/test_runner_spike_extraction.py` | 신규(staged) |
-| `tests/test_runtime_runner_spike_no_signal.py` | 수정(staged) |
+| `app/runtime_evidence/holdings_selection.py` | 신규 |
+| `app/runtime_evidence/holdings_selection_flow.py` | 신규 |
+| `app/runtime_evidence/holdings_selection_render.py` | 신규 |
+| `app/runtime_evidence/holdings_selection_source.py` | 신규 |
+| `app/runtime_evidence/holdings_selection_state.py` | 신규 |
+| `app/three_push_runtime/non_trading_day.py` | 신규 |
+| `app/three_push_runtime/price_refresh.py` | 수정 |
+| `app/three_push_runtime/runner_diagnostics.py` | 신규 |
+| `app/three_push_runtime/runner_spike.py` | 신규 |
+| `docs/PROGRAM_TRUTH.md` | 수정 |
+| `docs/STATE_LATEST.md` | 수정 |
+| `docs/ai_design/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_DESIGN_V1.md` | 신규 |
+| `docs/ai_plan/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_PLAN_V1.md` | 신규 |
+| `docs/ai_result/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_RESULT.md` | 신규 |
+| `docs/backlog/BACKLOG.md` | 수정 |
+| `docs/handoff/POC3/POC3-OPS-01A_HANDOFF_CLOSEOUT.md` | 신규 |
+| `scripts/build_holdings_selection_preview.py` | 신규 |
+| `scripts/run_three_push_runtime_oci.py` | 수정 |
+| `state/three_push/previews/holdings_selection_preview_latest.json` | 신규 |
+| `tests/conftest.py` | 수정 |
+| `tests/runtime_evidence/test_runtime_runner_forwarding.py` | 수정 |
+| `tests/test_holdings_selection.py` | 신규 |
+| `tests/test_holdings_selection_preview.py` | 신규 |
+| `tests/test_holdings_selection_state.py` | 신규 |
+| `tests/test_low_frequency_push_operation.py` | 수정 |
+| `tests/test_runner_spike_extraction.py` | 신규 |
+| `tests/test_runtime_runner_spike_no_signal.py` | 수정 |
 
 > ⚠️ **r3 에서 이 표에 경로 오타가 있었다** — 첫 행이 `cripts/...` 로 `s` 가 빠졌다.
 > 표를 만든 스크립트가 `git status` **출력 전체에 `.strip()`** 를 걸어 첫 줄의 선행
@@ -118,10 +120,8 @@ r2 까지는 `.py` 만 세어 **17개**로 적었는데, 검증자가 실제 git
 > §2 정본 표에는 빠졌다. ② 가 없어서 헤더의 `POC3-OPS-01A_..._DESIGN_V1.md` 같은 축약
 > 표기도 방치됐다 — 전체 경로로 폈다.
 
-**전부 staged · 커밋 전 상태다.** 검증자 r6 B-5 지적(신규 모듈이 untracked 라
-Git 기반 OCI 배포에 포함되지 않음)에 따라 **`git add` 까지만** 수행했다.
-`staged 24 · unstaged 0 · untracked 0`. **커밋·푸시는 사용자 별도 지시 전까지
-하지 않는다.**
+**커밋·푸시 완료** (`ffca640c`, 2026-09-05 · 사용자 지시). 검증자 r6 B-5 지적
+(신규 모듈이 untracked 라 Git 기반 OCI 배포에 포함되지 않음)은 이로써 해소됐다.
 
 > **KS-10 해소 (r1 에서 정정)**: 최초 제출본은 `run_three_push_runtime_oci.py` 가
 > **717줄**로 임계 650 을 넘었고, 결과서에 "범위 밖" 이라 적고 넘겼다. 검증자 B-3
@@ -860,9 +860,16 @@ D-7 은 "인용까지 잡아서 못 고치게 되는" 반대 실패를 확인한
 
 ## 10. 사용자 확인이 필요한 항목
 
-1. **preview 확인** — §5 형식이 판단에 쓸 만한지.
+1. **preview 확인 — 완료 (2026-09-05)**. OPEN·MIDDAY 실제 운영 헤더 형식과 미발송 4케이스를
+   함께 제시했고 사용자가 *"일단 지금보다는 나을 것 같습니다. 받아보면서 결정하겠습니다"* 로
+   확인했다. **조건부 승인** — 운영 수신 후 형식 조정 가능.
    `state/three_push/previews/holdings_selection_preview_latest.json`
-2. **커밋·푸시 미수행** — 별도 지시 전까지 하지 않는다.
+2. **⚠️ OCI 배포 필요 — 미수행.** 저장소에만 반영됐다. **배포 전까지 실제 발송 본문은 이전
+   형식(전 종목 나열)** 이므로 사용자가 "받아보면서 결정" 할 수 없다.
+   OCI 는 `a0a0b192` 로 **69 커밋 뒤처져** 있다(2026-09-05 읽기 전용 실측). 그중 cron 진입점을
+   바꾸는 것은 `scripts/run_three_push_runtime_oci.py` 하나지만, `app/`·`scripts/` 전체로는
+   **38파일**이 함께 딸려간다(ML 체인 복구·구성종목 수집 깊이·PARAM 적용 등).
+   **배포는 쓰기 작업이라 개발자가 하지 않는다** — 사용자·설계자 판단 사항.
 3. **KS-10 해소됨**(착수 전 626 → r1 최초 717 → 현재는 §2 표). 다만 분리 과정에서 금지 문구·raw 식별자 검사가
    일시 삭제됐다가 복원된 사고가 있었다(§2). 검증자가 §4-a/§4-b 존치를 직접
    확인해 주기 바란다.
