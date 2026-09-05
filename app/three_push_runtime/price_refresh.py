@@ -26,8 +26,16 @@ def refresh_runtime_quotes(
     반환:
         (market_quotes, diag, error_str)
         market_quotes: {ticker: MarketQuote} — 조회 성공만.
-        diag: {"attempted": n, "success": n, "failed": n, "failed_tickers": [...]}.
+        diag: {"attempted": n, "success": n, "failed": n,
+               "failed_tickers": [...], "target_tickers": [...],
+               "success_tickers": [...]}.
               refresh 불필요한 push_kind 는 {"attempted":0,"success":0,"failed":0}.
+
+              ⚠️ `attempted` 는 `collect_target_tickers` 가 돌려준 **행 수**다.
+              보유는 같은 종목을 여러 계좌에서 들고 있어 행 수(32)와 고유 ticker
+              수(29)가 다르다. **완전성 판정에는 `attempted` 를 쓰지 말고
+              `target_tickers` / `success_tickers` 집합을 쓴다** (설계자 확정
+              2026-09-05).
         error_str: 예외 발생 시 "TypeName: msg[:200]" · 성공 시 None.
                    Runner 는 error_str is not None 이면 failed 로 종료.
     """
@@ -55,6 +63,9 @@ def refresh_runtime_quotes(
         "attempted": len(tickers),
         "success": sum(1 for r in results if r.quote is not None),
         "failed": sum(1 for r in results if r.quote is None),
-        "failed_tickers": [r.ticker for r in results if r.quote is None],
+        "failed_tickers": sorted({r.ticker for r in results if r.quote is None}),
+        # 완전성 판정용 집합 (설계자 확정) — 행 수가 아니라 고유 ticker 다.
+        "target_tickers": sorted(set(tickers)),
+        "success_tickers": sorted({r.ticker for r in results if r.quote is not None}),
     }
     return market_quotes, diag, None

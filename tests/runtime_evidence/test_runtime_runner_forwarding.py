@@ -92,6 +92,15 @@ def test_holdings_briefing_runner_record_forwards_all_diagnostics_r6(
     # market_naver 가 fetch_many 시 quote (asof 포함) 반환하도록.
     import types as _t
 
+    def _now_kst_iso() -> str:
+        from datetime import datetime, timedelta, timezone
+
+        return (
+            datetime.now(timezone.utc)
+            .astimezone(timezone(timedelta(hours=9)))
+            .strftime("%Y-%m-%dT%H:%M:%S+09:00")
+        )
+
     class _R:
         def __init__(self, t):
             self.ticker = t
@@ -101,7 +110,9 @@ def test_holdings_briefing_runner_record_forwards_all_diagnostics_r6(
                 ticker=t,
                 name=None,
                 current_price=100.0,
-                price_asof="2026-07-11T09:00:00+09:00",
+                # 2026-09-04 POC3-OPS-01A — 비거래일 가드가 `price_asof`
+                # 날짜를 본다. 과거 고정일이면 휴장일로 판정돼 skip 된다.
+                price_asof=_now_kst_iso(),
                 price_source="naver",
             )
 
@@ -112,17 +123,36 @@ def test_holdings_briefing_runner_record_forwards_all_diagnostics_r6(
 
     monkeypatch.setattr(_mn2, "fetch_many", fake2.fetch_many)
 
+    # 2026-09-04 POC3-OPS-01A — 선정 경로는 evidence composer 가 아니라
+    # `app.holdings.load` 를 직접 읽는다. 35건을 그대로 공급한다.
+    from dataclasses import dataclass as _dc
+
+    @_dc
+    class _H:
+        ticker: str
+        name: str
+        account_group: str = "일반"
+
+    import app.holdings as _holdings_mod
+
+    monkeypatch.setattr(
+        _holdings_mod,
+        "load",
+        lambda *a, **k: [_H(f"T{i:04d}", f"종목{i:02d}") for i in range(35)],
+    )
+
     # Low-Frequency Telegram Push Operation v1: holdings_briefing 은 slot_id 필수.
     record = runner_mod.run("holdings_briefing", "dry-run", slot_id="OPEN")
 
-    assert record["holdings_snapshot_status"] == "available"
-    assert record["holdings_snapshot_reason"] == ""
+    # 2026-09-04 POC3-OPS-01A — 보유 브리핑이 evidence 조립 경로를 타지 않는다.
+    # 전량 나열(종목당 2줄) 대신 선정 결과만 렌더하므로 evidence composer 진단
+    # (`holdings_snapshot_status` · `nav_contentful_fact_count` ·
+    # `rendered_holdings_fact_count`)은 더 이상 생성되지 않는다. 선정 진단이
+    # 그 자리를 대신하고, **안전 신호 2개는 그대로 유지**한다.
+    assert "holdings_snapshot_status" not in record
     assert record["holdings_loaded_count"] == 35
-    assert record["holdings_evidence_item_count"] == 35
-    assert record["holdings_contentful_fact_count"] == 35
-    assert record["nav_contentful_fact_count"] == 32
-    assert record["holdings_selection_result_count"] == 35
-    assert record["rendered_holdings_fact_count"] == 35
+    assert record["holdings_unique_ticker_count"] == 35
+    assert "holdings_selected_count" in record
     assert record["private_fields_exposed"] is False
     assert record["raw_identifier_exposed"] is False
     assert record["telegram_attempted"] is False

@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,60 @@ def _isolated_store(tmp_path, monkeypatch):
     market_cache.reset_for_test()
     yield
     market_cache.reset_for_test()
+
+
+@pytest.fixture(autouse=True)
+def _isolated_holdings_selection_state(tmp_path, monkeypatch):
+    """POC3-OPS-01A r3 — 보유 선정 상태 파일 격리 + 라이브 파일 **변경** 감지.
+
+    러너 테스트가 `HOLDINGS_SELECTION_STATE_PATH` 를 개별로 monkeypatch 하고
+    있었지만, **격리하지 않은 테스트는 flag guard 가 먼저 막아준 덕에** 라이브
+    경로에 쓰지 않았을 뿐이다. 역검증에서 flag guard 를 무력화하자 실제로
+    라이브 파일이 생겼다.
+
+    r1 은 러너를 `importlib` 로 직접 import 해 격리했으나 러너는 import 시
+    `load_dotenv_file()` 을 실행해 **모든 테스트 프로세스에 운영 `.env` 를 올리는
+    부작용**이 있었다(r2 B-6). r2 는 그걸 빼는 대신 감지를 "파일이 새로 생겼나"
+    로만 두어 **이미 있던 파일의 덮어쓰기를 놓쳤고**, 상대경로라 실행 위치가
+    저장소 루트가 아니면 엉뚱한 곳을 봤다(r3 B-6).
+
+    지금은 세 가지를 모두 만족시킨다.
+
+    1. 경로는 러너와 **같은 절대경로**를 쓴다. `app.three_push_runner_common` 은
+       import 해도 `.env` 를 읽지 않으므로 `STATE_DIR` 를 그대로 가져온다.
+    2. 러너가 이미 import 돼 있으면 저장 경로를 `tmp_path` 로 덮어쓴다.
+    3. import 여부와 무관하게 **생성뿐 아니라 내용 변경까지** 감지해 실패시킨다.
+       원본 바이트를 들고 있다가 달라졌으면 되돌려 놓고 실패시킨다.
+    """
+    from app.three_push_runner_common import STATE_DIR as _STATE_DIR
+
+    live = (_STATE_DIR / "holdings_selection_state_latest.json").resolve()
+
+    mod = sys.modules.get("scripts.run_three_push_runtime_oci")
+    if mod is not None:
+        monkeypatch.setattr(
+            mod,
+            "HOLDINGS_SELECTION_STATE_PATH",
+            Path(tmp_path) / "three_push" / "holdings_selection_state_latest.json",
+        )
+
+    before = live.read_bytes() if live.exists() else None
+    yield
+    after = live.read_bytes() if live.exists() else None
+    if after == before:
+        return
+    # 운영 파일을 원래대로 되돌린 뒤 실패시킨다. 테스트가 남긴 상태로 다음
+    # 테스트가 돌면 원인 추적이 불가능해진다.
+    if before is None:
+        live.unlink()
+        what = "새로 만들었다"
+    else:
+        live.write_bytes(before)
+        what = "덮어썼다"
+    pytest.fail(
+        f"테스트가 라이브 보유 선정 상태 파일을 {what}: {live}\n"
+        "경로 격리 없이 러너 저장 경로를 탄다 (원본은 되돌려 놓았다)."
+    )
 
 
 @pytest.fixture(autouse=True)

@@ -58,6 +58,24 @@ load_dotenv_file()
 from app.runtime_execution_status_store import (  # noqa: E402
     insert_status_from_record,
 )
+from app.three_push_runtime.runner_diagnostics import (  # noqa: E402
+    forward_diagnostics,
+)
+from app.three_push_runtime.runner_spike import (  # noqa: E402
+    apply_spike_reevaluation,
+    resolve_spike_duplicates,
+)
+
+# POC3-OPS-01A — 보유 브리핑 선별·그룹화·반복 억제.
+from app.runtime_evidence.holdings_selection_flow import (  # noqa: E402
+    assemble_holdings_push,
+)
+from app.runtime_evidence.holdings_selection_state import (  # noqa: E402
+    kst_today,
+    save_state,
+)
+
+HOLDINGS_SELECTION_STATE_PATH = STATE_DIR / "holdings_selection_state_latest.json"
 from app.runtime_param_store import read_active_param_dict  # noqa: E402
 from app.runtime_sent_registry_store import (  # noqa: E402
     is_already_sent,
@@ -251,13 +269,25 @@ def run(
                 "runtime_price_all_failed",
                 f"attempted={attempted} failed={failed}",
             )
-        if failed > 0:
+        if failed > 0 and push_kind != "holdings_briefing":
             # A+ 재정정: 일부 실패도 failed 종료 (partial 발송 금지).
+            # **보유 브리핑은 예외** (설계자 확정 2026-09-05): 오늘 quote 가 하나라도
+            # 있으면 진행하고 **실패한 종목만** `데이터 확인 필요` 로 표시한다.
+            # 여기서 끊으면 그 표시가 실제 OCI 경로에서 영영 나오지 않는다.
             return _finish(
                 "failed",
                 "runtime_price_partial_failed",
                 f"attempted={attempted} success={success} failed={failed}",
             )
+        if failed > 0 and push_kind == "holdings_briefing":
+            logger.warning(
+                "보유 시세 일부 실패 %d건 — 해당 종목만 '데이터 확인 필요' 로 진행",
+                failed,
+            )
+
+    holdings_selection_ctx: dict[str, Any] = {}
+    evidence = None
+    message_text = ""
 
     # ── 3-a2. Spike freshness guard (OCI Operational Market Data Refresh v1 · §4.3) ──
     # Spike 는 Universe 운영 artifact 의 Published 계약(validate_artifact) + freshness
@@ -294,103 +324,88 @@ def run(
 
         reeval_fn = _reeval
 
+    # ── 3-c. 보유 브리핑 선정 · 본문 조립 (POC3-OPS-01A) ────────────────────
+    # 조립만 한다. **모든 skip·fail 결정은 enable flag guard(§6) 뒤(§6-c)** 다 —
+    # 여기서 return 하면 push_kind 가 비활성인데도 `no_selection`·데이터 실패가
+    # 기존 계약인 `push_kind_disabled` 를 가로챈다(실제로 겪은 결함).
+    # 순서 계약은 `assemble_holdings_push` 안에 있다: 비거래일 판정 → 완전성
+    # 가드 → 선정(휴장일엔 선정·이력조회를 아예 돌리지 않는다).
+    holdings_outcome = None
+    skip_ntd = False
+    holdings_fail: Optional[tuple[str, str, str]] = None
+    if push_kind == "holdings_briefing":
+        from app.holdings import load as _load_holdings_for_selection
+        from app.market_data_store import fetch_price_history as _fetch_history
+
+        _asm = assemble_holdings_push(
+            market_quotes=market_quotes or {},
+            price_refresh_diag=price_refresh_diag,
+            today_kst=kst_today(),
+            state_path=HOLDINGS_SELECTION_STATE_PATH,
+            slot_id=slot_id,
+            runtime_kst=runtime_kst,
+            holdings_loader=_load_holdings_for_selection,
+            fetch_history=_fetch_history,
+            logger=logger,
+        )
+        record.update(_asm.diagnostics)
+        holdings_fail = _asm.fail  # 판정은 §6-c (위 주석 참조)
+        skip_ntd = _asm.skip_non_trading_day
+        holdings_outcome = _asm.outcome
+        message_text = _asm.message_text
+
     # ── 4. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
-    try:
-        evidence = compose_runtime_evidence(
-            push_kind,
-            market_quotes=(market_quotes or None),
-            universe_reevaluate_fn=reeval_fn,
-        )
-    except Exception as e:
-        logger.error("runtime evidence 조립 실패: %s", e)
-        return _finish("failed", "runtime_evidence_error", str(e)[:400])
+    # 보유 브리핑은 §3-c 에서 본문을 이미 만들었다. evidence 조립·면책 문구 부착
+    # 경로를 타지 않는다 (설계자 확정 — 보유 브리핑에 면책문구를 넣지 않는다).
+    if push_kind != "holdings_briefing":
+        try:
+            evidence = compose_runtime_evidence(
+                push_kind,
+                market_quotes=(market_quotes or None),
+                universe_reevaluate_fn=reeval_fn,
+            )
+        except Exception as e:
+            logger.error("runtime evidence 조립 실패: %s", e)
+            return _finish("failed", "runtime_evidence_error", str(e)[:400])
 
-    # ── 4-b. runtime message 생성 ────────────────────────────────────────────
-    try:
-        message_text = build_runtime_message(
-            push_kind=push_kind,
-            param=param,
-            runtime_kst_iso=runtime_kst,
-            available_sources=evidence.available_sources,
-            extra_notes=evidence.extra_notes,
-        )
-    except Exception as e:
-        logger.error("runtime message 생성 실패: %s", e)
-        return _finish("failed", "runtime_message_build_error", str(e)[:400])
+        # ── 4-b. runtime message 생성 ────────────────────────────────────────
+        try:
+            message_text = build_runtime_message(
+                push_kind=push_kind,
+                param=param,
+                runtime_kst_iso=runtime_kst,
+                available_sources=evidence.available_sources,
+                extra_notes=evidence.extra_notes,
+            )
+        except Exception as e:
+            logger.error("runtime message 생성 실패: %s", e)
+            return _finish("failed", "runtime_message_build_error", str(e)[:400])
 
-    record["message_text_length"] = len(message_text)
-    record["availability"] = availability_summary(evidence.available_sources)
-    # 지시문 §9: record 에 diagnostics summary 추가 (본문 비노출 대상은 저장하지 않음).
-    record["contentful_fact_count"] = evidence.diagnostics.get(
-        "contentful_fact_count", 0
-    )
-    record["selection_result_count"] = evidence.diagnostics.get(
-        "selection_result_count", 0
-    )
-    record["unavailable_reasons"] = evidence.diagnostics.get("unavailable_reasons", {})
-    # FIX r3 · r4 (설계자 확정본 Q7): holdings_briefing 진단 필드 record 전달 (OCI dry-run 확인용).
-    #   개인정보 · Holdings JSON 원문 · raw ticker 등은 이미 Composer 계약상 제외.
-    for k in (
-        # holdings_briefing 진단.
-        "holdings_snapshot_status",
-        "holdings_snapshot_reason",
-        "holdings_loaded_count",
-        "holdings_evidence_item_count",
-        "holdings_contentful_fact_count",
-        "nav_contentful_fact_count",
-        "holdings_selection_result_count",
-        "rendered_holdings_fact_count",
-        "private_fields_exposed",
-        "raw_identifier_exposed",
-        # spike_or_falling_alert 진단 (Universe Momentum, §14).
-        "universe_artifact_present",
-        "universe_artifact_valid",
-        "universe_artifact_status",
-        "universe_artifact_asof",
-        "universe_candidate_count",
-        "universe_selected_count",
-        "universe_contentful_fact_count",
-        "universe_snapshot_status",
-        "universe_snapshot_reason",
-        "no_signal",
-    ):
-        if k in evidence.diagnostics:
-            record[k] = evidence.diagnostics[k]
+        record["message_text_length"] = len(message_text)
+        record["availability"] = availability_summary(evidence.available_sources)
+        # 지시문 §9: record 에 diagnostics summary 추가.
+        record["contentful_fact_count"] = evidence.diagnostics.get(
+            "contentful_fact_count", 0
+        )
+        record["selection_result_count"] = evidence.diagnostics.get(
+            "selection_result_count", 0
+        )
+        record["unavailable_reasons"] = evidence.diagnostics.get(
+            "unavailable_reasons", {}
+        )
+    # FIX r3 · r4 (설계자 확정본 Q7): 진단 필드 record 전달.
+    # 2026-09-04 KS-10 분리 — 키 목록은 `runner_diagnostics` 로 옮겼다.
+    forward_diagnostics(record, evidence)
 
     # Low-Frequency Telegram Push Operation v1 A+ 재정정 (A):
     # Spike 재조건평가 결과 fingerprint 목록. 각 신규 signal 은 개별 registry.
+    # Low-Frequency Telegram Push Operation v1 A+ 재정정 (A):
+    # Spike 재조건평가 결과 fingerprint 목록. 각 신규 signal 은 개별 registry.
+    # 2026-09-04 KS-10 분리 — 본문은 `runner_spike` 로 옮겼다.
     if push_kind == "spike_or_falling_alert":
-        fps = getattr(evidence, "spike_signal_fingerprints", []) or []
-        record["spike_signal_fingerprints"] = fps
-        reeval_status = evidence.diagnostics.get("reevaluate_status")
-        record["reevaluate_status"] = reeval_status
-        record["reevaluate_missing_fields"] = evidence.diagnostics.get(
-            "reevaluate_missing_fields", []
-        )
-        record["reevaluate_quote_missing_tickers"] = evidence.diagnostics.get(
-            "reevaluate_quote_missing_tickers", []
-        )
-        record["reevaluate_candidate_missing_fields"] = evidence.diagnostics.get(
-            "reevaluate_candidate_missing_fields", {}
-        )
-        if reeval_status == "failed":
-            missing = record["reevaluate_missing_fields"]
-            return _finish(
-                "failed",
-                "reevaluate_missing_published_evidence",
-                f"missing_fields={missing}",
-            )
-        if reeval_status == "partial":
-            return _finish(
-                "failed",
-                "reevaluate_partial",
-                (
-                    "quote_missing="
-                    f"{record['reevaluate_quote_missing_tickers']}"
-                    " candidate_missing="
-                    f"{list(record['reevaluate_candidate_missing_fields'].keys())}"
-                ),
-            )
+        spike_fail = apply_spike_reevaluation(record, evidence, logger=logger)
+        if spike_fail is not None:
+            return _finish(*spike_fail)
 
     # ── 4-c. 금지 문구 검사 ──────────────────────────────────────────────────
     bad = check_forbidden_wording(message_text)
@@ -409,6 +424,9 @@ def run(
 
     # ── 5. dry-run 종료 ──────────────────────────────────────────────────────
     if mode == "dry-run":
+        # dry-run 은 발송 경로가 아니므로 조립 실패를 그대로 알린다.
+        if holdings_fail is not None:
+            return _finish(*holdings_fail)
         logger.info(
             "dry-run 완료: push_kind=%s param_id=%s msg_len=%d",
             push_kind,
@@ -450,71 +468,60 @@ def run(
             )
             return _finish("skipped", "no_signal")
 
+    # POC3-OPS-01A — 선정·억제는 **enable flag guard(§6) 뒤**에 둔다.
+    # 앞에 두면 push_kind 가 비활성인데도 선정 상태를 저장할 수 있다
+    # (검증 회귀에서 `no_selection` 이 `push_kind_disabled` 를 가로챘다).
+    # ── 6-c. 보유 브리핑 비거래일 가드 · skip 판정 (POC3-OPS-01A) ───────────
+    # 조립은 §3-c 에서 끝났다. 여기서는 발송 여부만 정한다.
+    # 비거래일 가드를 **flag guard(§6) 뒤**에 둔다 — 앞에 두면 push_kind 가
+    # 비활성인데도 `non_trading_day` 가 기존 계약인 `push_kind_disabled` 를
+    # 가로챈다 (검증자 지적).
+    # 조립 단계에서 잡힌 실패를 **flag guard 뒤**에서 확정한다.
+    if holdings_fail is not None:
+        return _finish(*holdings_fail)
+
+    if skip_ntd:
+        # 판정·evidence 기록은 §3-c 에서 끝났다. 여기서는 발송 여부만 정한다.
+        return _finish("skipped", "non_trading_day")
+
+    if holdings_outcome is not None:
+        if holdings_outcome.skip_reason:
+            if holdings_outcome.save_empty_state:
+                save_state(HOLDINGS_SELECTION_STATE_PATH, selected=[], slot_id=slot_id)
+            logger.info(
+                "보유 브리핑 skip: %s (선정 %d건)",
+                holdings_outcome.skip_reason,
+                len(holdings_outcome.selected),
+            )
+            return _finish("skipped", holdings_outcome.skip_reason)
+        holdings_selection_ctx = {
+            "selected": holdings_outcome.selected,
+            "slot_id": slot_id,
+        }
+
     # ── 7. duplicate guard (Low-Frequency Push v1 A+) ────────────────────────
     # Holdings: slot_id 접미.
     # Spike: 각 fingerprint 별로 개별 registry entry. 모든 fingerprint 가 이미 sent
     #        면 duplicate_runtime skip. 하나라도 신규면 발송 후 신규 fingerprint 만
     #        각각 registry 에 기록.
     if push_kind == "spike_or_falling_alert":
-        fps_all = record.get("spike_signal_fingerprints") or []
-        new_fps: list[str] = []
-        already_fps: list[str] = []
-        for fp in fps_all:
-            date_field = _resolve_registry_date_field(
-                runtime_date_kst, signal_fingerprint=fp
-            )
-            try:
-                if is_already_sent(push_kind, param.param_id, date_field):
-                    already_fps.append(fp)
-                else:
-                    new_fps.append(fp)
-            except Exception as e:
-                logger.error("registry DB 접근 실패 (fp=%s): %s", fp, e)
-                return _finish("failed", "registry_corrupted", str(e)[:400])
-        record["spike_new_fingerprints"] = new_fps
-        record["spike_already_sent_fingerprints"] = already_fps
-        record["duplicate_key"] = (
-            _registry_key(
-                push_kind,
-                param.param_id,
-                runtime_date_kst,
-                signal_fingerprint=new_fps[0],
-            )
-            if new_fps
-            else ""
+        # 2026-09-04 KS-10 분리 — 본문은 `runner_spike.resolve_spike_duplicates`.
+        spike_fail, rebuilt = resolve_spike_duplicates(
+            record,
+            evidence,
+            push_kind=push_kind,
+            param=param,
+            runtime_date_kst=runtime_date_kst,
+            runtime_kst=runtime_kst,
+            build_runtime_message=build_runtime_message,
+            resolve_registry_date_field=_resolve_registry_date_field,
+            registry_key=_registry_key,
+            is_already_sent=is_already_sent,
+            logger=logger,
         )
-        if not new_fps:
-            logger.info(
-                "중복 발송 차단: 신규 fingerprint 없음 (already_fps=%d)",
-                len(already_fps),
-            )
-            return _finish("skipped", "duplicate_runtime")
-        # A+ 재정정 (B): 혼합 신호 시 body 를 신규 fp 만으로 재조립. 기발송 신호가
-        # 본문에 포함되어 재발송되는 문제 해소. length mismatch 는 composer 계약
-        # 위반이므로 즉시 failed.
-        from app.three_push_runtime.spike_body import (
-            filter_extra_notes_to_new_signals,
-        )
-
-        try:
-            filtered_notes = filter_extra_notes_to_new_signals(
-                evidence.extra_notes, fps_all, new_fps
-            )
-        except ValueError as e:
-            logger.error("spike body 재조립 계약 위반: %s", e)
-            return _finish("failed", "spike_body_contract_error", str(e)[:400])
-        try:
-            message_text = build_runtime_message(
-                push_kind=push_kind,
-                param=param,
-                runtime_kst_iso=runtime_kst,
-                available_sources=evidence.available_sources,
-                extra_notes=filtered_notes,
-            )
-        except Exception as e:  # format_spike_signal_note 등의 재-빌드 예외
-            logger.error("runtime message 재조립 실패: %s", e)
-            return _finish("failed", "runtime_message_build_error", str(e)[:400])
-        record["message_text_length"] = len(message_text)
+        if spike_fail is not None:
+            return _finish(*spike_fail)
+        message_text = rebuilt
     else:
         # Market / Holdings.
         registry_date_field = _resolve_registry_date_field(
@@ -568,6 +575,17 @@ def run(
                 runtime_date_kst=registry_date_field,
                 sent_at_utc=sent_at,
             )
+        # POC3-OPS-01A · PLAN §4.6 — **전체 발송 성공 이후에만** 선정 상태 확정.
+        # 부분·전체 실패면 이 줄에 도달하지 않아 이전 상태가 유지되고, 다음
+        # 슬롯에서 같은 변화를 다시 시도한다. 미발송 신호가 발송 완료로
+        # 기록되면 안 된다.
+        if holdings_selection_ctx and not partial_delivery:
+            save_state(
+                HOLDINGS_SELECTION_STATE_PATH,
+                selected=holdings_selection_ctx["selected"],
+                slot_id=holdings_selection_ctx.get("slot_id"),
+            )
+            record["holdings_selection_state_saved"] = True
         return _finish("sent")
     else:
         logger.error("Telegram 발송 실패: %s", err)

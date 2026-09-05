@@ -1,0 +1,148 @@
+{
+  "schema_version": "holdings_selection_preview.v1",
+  "basis": "EOD_CLOSE_PROXY",
+  "basis_date": "2026-06-30",
+  "generated_at_kst": "2026-09-05T01:20:14+09:00",
+  "note": "과거 장중 현재가가 저장돼 있지 않아 종가를 분자로 사용했다. 실제 OPEN·MIDDAY 재현이 아니다. 형식 확인 전용이며 발송하지 않는다.",
+  "lookback_trading_days": 20,
+  "holdings_record_count": 32,
+  "unique_ticker_count": 29,
+  "selected_count": 11,
+  "selected": [
+    {
+      "ticker": "006400",
+      "name": "삼성SDI",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D10_PLUS",
+          "value": -25.3
+        }
+      },
+      "drawdown_20d_pct": -21.5
+    },
+    {
+      "ticker": "0167Z0",
+      "name": "KODEX 미국우주항공",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D10_PLUS",
+          "value": -21.1
+        }
+      },
+      "drawdown_20d_pct": -28.6
+    },
+    {
+      "ticker": "0131V0",
+      "name": "1Q 미국우주항공테크",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D10_PLUS",
+          "value": -18.4
+        }
+      },
+      "drawdown_20d_pct": -22.0
+    },
+    {
+      "ticker": "0035T0",
+      "name": "PLUS 글로벌휴머노이드로봇액티브",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D10_PLUS",
+          "value": -13.6
+        }
+      },
+      "drawdown_20d_pct": -16.5
+    },
+    {
+      "ticker": "0005G0",
+      "name": "IBK K-AI반도체코어테크",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D10_PLUS",
+          "value": -12.1
+        }
+      },
+      "drawdown_20d_pct": -14.5
+    },
+    {
+      "ticker": "161510",
+      "name": "PLUS 고배당주",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D10_PLUS",
+          "value": -10.7
+        }
+      },
+      "drawdown_20d_pct": -12.6
+    },
+    {
+      "ticker": "0052D0",
+      "name": "TIGER 코리아배당다우존스",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D10_PLUS",
+          "value": -10.5
+        }
+      },
+      "drawdown_20d_pct": -11.6
+    },
+    {
+      "ticker": "381170",
+      "name": "TIGER 미국테크 TOP10 INDXX",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D8_10",
+          "value": -8.0
+        }
+      },
+      "drawdown_20d_pct": -9.5
+    },
+    {
+      "ticker": "367760",
+      "name": "RISE 네트워크인프라",
+      "account_count": 2,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D5_8",
+          "value": -7.9
+        }
+      },
+      "drawdown_20d_pct": -11.4
+    },
+    {
+      "ticker": "441800",
+      "name": "TIME Korea플러스배당액티브",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D5_8",
+          "value": -7.1
+        }
+      },
+      "drawdown_20d_pct": -7.9
+    },
+    {
+      "ticker": "498860",
+      "name": "RISE 코리아금융고배당",
+      "account_count": 1,
+      "reasons": {
+        "RECENT_DECLINE": {
+          "state": "D5_8",
+          "value": -6.5
+        }
+      },
+      "drawdown_20d_pct": -12.9
+    }
+  ],
+  "message_text": "[보유 종목 관찰 브리핑 — 형식 미리보기]\n과거 종가 기준: 2026-06-30\n\n■ 20거래일 하락 10% 이상 (7)\n  삼성SDI  20거래일 -25.3%   [고점 대비 -21.5%]\n  KODEX 미국우주항공  20거래일 -21.1%   [고점 대비 -28.6%]\n  1Q 미국우주항공테크  20거래일 -18.4%   [고점 대비 -22.0%]\n  PLUS 글로벌휴머노이드로봇액티브  20거래일 -13.6%   [고점 대비 -16.5%]\n  IBK K-AI반도체코어테크  20거래일 -12.1%   [고점 대비 -14.5%]\n  PLUS 고배당주  20거래일 -10.7%   [고점 대비 -12.6%]\n  TIGER 코리아배당다우존스  20거래일 -10.5%   [고점 대비 -11.6%]\n\n■ 20거래일 하락 8~10% (1)\n  TIGER 미국테크 TOP10 INDXX  20거래일 -8.0%   [고점 대비 -9.5%]\n\n■ 20거래일 하락 5~8% (3)\n  RISE 네트워크인프라 (2개 계좌)  20거래일 -7.9%   [고점 대비 -11.4%]\n  TIME Korea플러스배당액티브  20거래일 -7.1%\n  RISE 코리아금융고배당  20거래일 -6.5%   [고점 대비 -12.9%]",
+  "message_text_length": 621,
+  "telegram_sent": false
+}

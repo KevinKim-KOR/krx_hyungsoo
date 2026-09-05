@@ -1,6 +1,43 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-08-31 (**POC3-ML-02 REJECT Closeout `CLOSED` — 검증자 `VERIFIED` + 실화면 확인 완료**)
+최종 업데이트: 2026-09-05 (**POC3-OPS-01A 보유 PUSH 선별·억제 — 검증자 `VERIFIED` · 사용자 preview 확인 대기**)
+
+## 현재 상태 — POC3-OPS-01A (2026-09-05)
+
+**상태**: **`VERIFIED`** (검증자 r10) · **`AWAITING_USER_PREVIEW_CONFIRM`** · **OCI 미배포**
+
+보유 브리핑이 보유 전 종목을 나열하던 것을 **선정된 종목만** 보내도록 바꿨다.
+2026-06-30 기준 preview 로 **8,690자 → 621자(11종목)**.
+
+**설계자 확정 계약 (2026-09-05)**
+- 비거래일 완전성 = **고유 ticker 집합 일치** (`attempted`=보유 행 수는 분모로 안 씀 — 32행/29유니크)
+- **stale 달력일 임계 폐기.** 분모 = 거래일 축에서 실행일보다 앞선 **20번째 거래일의 그 날짜 종가**. 없으면 `DATA_UNAVAILABLE_OR_STALE`, 더 오래된 종가로 대체 안 함
+- 부분 실패: 오늘 quote 가 있으면 **실패 종목만** `데이터 확인 필요` 로 표시하고 진행 (시장·급등락은 기존대로 전면 차단)
+
+**⚠️ 남은 게이트 2개**
+1. **사용자 preview 형식 확인** — 이 확인 전까지 `CLOSED` 아님
+2. **OCI 배포** — 저장소에만 반영됐다. **배포 전까지 실제 발송 본문은 이전 형식이다**
+
+**⚠️ 시한부 결함 — `DEF-PRICE-EQUITY-REFRESH`**
+보유 개별주 3종의 종가가 **2026-08-12 에 멈춰 있다**(갱신 대상이 `etf_master` 로
+제한돼 개별주가 빠짐). 지금은 기준일(2026-08-07) 종가가 있어 정상 계산되지만
+**기준일이 단절 시점을 넘기기까지 약 4 거래일** 남았다. 넘어가면 그 3종의 20일
+관찰이 전부 불가능해진다. 설계자 재검토 트리거는 "01A 종료 직후·OPS-01B 착수 전".
+
+**문서**
+- 설계서 `docs/ai_design/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_DESIGN_V1.md`
+- PLAN `docs/ai_plan/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_PLAN_V1.md` (V1.6 · §11.5 확정 · §12 종료 보고)
+- 결과서 `docs/ai_result/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_RESULT.md`
+- 인계 `docs/handoff/POC3/POC3-OPS-01A_HANDOFF_CLOSEOUT.md`
+- 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1** (미배포 명시)
+
+**실측**: 백엔드 전체 **1,354 passed** · 역검증 **26종 전부 탐지** · KS-10 러너 717→**644줄**.
+
+**검증 라운드**: r1~r9 `REJECTED` → r10 **`VERIFIED`**. r7~r10 은 기능이 아니라
+**결과서 자기참조 정합성**만 오갔고, 검증자가 판정 기준을 조정하며 마무리했다
+(경미한 이력 표기는 비차단 메모로, 문서만 바뀌면 전체 코드 검증 반복 안 함).
+
+---
 
 ## 이번 작업 요약 (보유와 비교 카드 전환 + 백엔드 확장 — 사용자 직접 지시)
 

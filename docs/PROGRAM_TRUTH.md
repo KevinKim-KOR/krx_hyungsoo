@@ -306,6 +306,34 @@ flowchart LR
 - **DUPLICATED**: 정식 `run_three_push_runtime_oci.py`(PARAM runtime, 메시지 새로 생성) vs fallback `run_three_push_oci.py`(PC package 소비) 두 경로 공존.
 - 등급: SOURCE_CONFIRMED(스크립트) / **RUNTIME_VERIFIED(스케줄·발송)**.
 
+#### C-1. 보유 브리핑 본문 계약 (POC3-OPS-01A · 2026-09-05)
+
+> ⚠️ **저장소 기준 계약이다. OCI 배포 전이므로 현재 발송되는 본문은 아직 이전
+> 형식이다.** 배포 후 이 항목의 "미배포" 표시를 지운다.
+
+`holdings_briefing` 은 보유 전 종목을 나열하지 않고 **선정된 종목만** 보낸다.
+
+| 항목 | 계약 |
+|---|---|
+| 선정 이유 | `RECENT_DECLINE`(20거래일 하락) · `DATA_UNAVAILABLE_OR_STALE` 둘뿐 |
+| 20일 수익률 | 분자 = 실행 시점 runtime 현재가(`price_asof` 가 실행일) / 분모 = **거래일 축에서 실행일보다 앞선 20번째 거래일의 그 날짜 종가** |
+| 분모 없음 | `DATA_UNAVAILABLE_OR_STALE`. **더 오래된 종가로 대체하지 않는다.** 달력일 임계 없음 |
+| 구간 | `20거래일 하락 5~8% / 8~10% / 10% 이상` (사실형 명칭) |
+| 슬롯 | OPEN(09:15) 전체 현재 상태 · MIDDAY(12:30)·CLOSE(15:40) **변화분만** |
+| 반복 억제 | identity = `ticker | sorted(reason:state)`. 같은 종목·이유·구간이면 재발송 안 함 |
+| 변화 없음 / 선정 0건 | 미발송(`skipped/no_change` · `skipped/no_selection`) |
+| 비거래일 | 완전 수집(**고유 ticker 집합 일치**) + 전 종목 `price_asof < 오늘` → `skipped/non_trading_day`, 미발송·state 불변 |
+| 부분 실패 | 오늘 quote 가 하나라도 있으면 **실패 종목만** `데이터 확인 필요` 로 표시하고 진행. 오늘 quote 0건이면 Fail-Closed 미발송 |
+| 상태 확정 | Telegram **전체 발송 성공 후에만** 저장(`state/three_push/holdings_selection_state_latest.json`) |
+| 면책 문구 | **넣지 않는다**(설계자 확정) |
+
+신규 휴장일 캘린더·신규 외부 조회·cron 변경 **0건**. 거래일 축은 walk-forward 가
+쓰는 KODEX200 시퀀스를 재사용한다.
+
+- 근거: `app/runtime_evidence/holdings_selection*.py` · `app/three_push_runtime/non_trading_day.py` ·
+  `scripts/run_three_push_runtime_oci.py` §3-c·§6-c.
+- 등급: **SOURCE_CONFIRMED** (저장소). OCI 런타임은 **미배포**.
+
 ### 프로세스 D — PC 운영 점검
 
 - **SOURCE**: `today_check`/`diagnostics`/`approval` 화면이 최신 topn·evidence·nav·run 상태를 조회. **POC3-07 이후 OCI 상태는 `diagnostics`(+today_check 한 줄)가 `GET /oci/startup-status`(기동 시 1회 읽은 캐시)로 표시** — 단 개별 PUSH job 최신 성공/실패는 UNKNOWN(단일 status 파일 한계).

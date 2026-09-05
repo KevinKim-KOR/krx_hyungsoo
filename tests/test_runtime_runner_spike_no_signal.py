@@ -52,7 +52,10 @@ def _fresh_no_signal_artifact() -> dict[str, Any]:
     }
 
 
-_NO_SIGNAL_ARTIFACT: dict[str, Any] = _fresh_no_signal_artifact()
+# ⚠️ 모듈 import 시점에 굳히지 않는다. 예전에는 여기서 한 번만 만들어 두었는데,
+# 전체 pytest 가 자정을 넘으면 artifact 의 "오늘" 과 러너의 실행 날짜가 달라져
+# freshness 가드에 걸려 2건이 실패했다 (검증자 r3 이 실제로 재현). 매 테스트에서
+# 새로 만든다.
 
 
 def _install_fresh_batch_state(monkeypatch, tmp_path, artifact) -> None:
@@ -87,7 +90,7 @@ def test_spike_no_signal_dry_run_no_send_no_registry(
     from app import draft_three_push as _dtp
     from scripts import run_three_push_runtime_oci as runner
 
-    art = dict(_NO_SIGNAL_ARTIFACT)
+    art = _fresh_no_signal_artifact()
     # 유효하지만 candidates 가 비어있는 artifact 주입.
     monkeypatch.setattr(
         _dtp,
@@ -135,7 +138,7 @@ def test_spike_no_signal_send_mode_no_telegram_no_registry(
     from app import draft_three_push as _dtp
     from scripts import run_three_push_runtime_oci as runner
 
-    art = dict(_NO_SIGNAL_ARTIFACT)
+    art = _fresh_no_signal_artifact()
     monkeypatch.setattr(
         _dtp,
         "_load_universe_artifact_for_spike",
@@ -170,3 +173,51 @@ def test_spike_no_signal_send_mode_no_telegram_no_registry(
     assert record["telegram_attempted"] is False
     assert record["telegram_sent"] is False
     assert registry_count() == registry_before
+
+
+def test_artifact_is_built_per_call_not_frozen_at_import(monkeypatch):
+    """artifact 의 '오늘' 은 **호출 시점**에 정해진다 (자정 경계 재현성).
+
+    예전에는 모듈 최상위에서 한 번만 만들어 두어, 전체 pytest 가 자정을 넘으면
+    artifact 의 날짜와 러너 실행 날짜가 갈려 freshness 가드에 걸렸다. 검증자 r3 이
+    실제로 2건 실패를 재현했다.
+
+    자정을 실제로 넘기려면 시간 고정 라이브러리가 필요한데 신규 의존성은 추가하지
+    않는다. 대신 **결함의 원인인 '고정 여부'** 를 직접 고정한다 — 날짜 소스를 바꿔
+    두 번 부르면 결과가 달라져야 한다.
+    """
+    import app.three_push_runtime_message_builder as builder
+
+    monkeypatch.setattr(builder, "kst_today_date", lambda: "2026-09-05")
+    first = _fresh_no_signal_artifact()
+    monkeypatch.setattr(builder, "kst_today_date", lambda: "2026-09-06")
+    second = _fresh_no_signal_artifact()
+
+    assert first["asof"] == "2026-09-05"
+    assert second["asof"] == "2026-09-06", "import 시점 날짜가 굳어 있다"
+    assert first["summary"]["evidence_as_of"] != second["summary"]["evidence_as_of"]
+
+
+def test_module_holds_no_frozen_artifact():
+    """모듈 최상위에 artifact 를 굳혀 두지 않는다.
+
+    함수가 지연 평가여도 **모듈이 결과를 한 번 받아 상수로 들고 있으면** 같은
+    결함이 되살아난다. 실제로 이전 코드가 `_NO_SIGNAL_ARTIFACT` 를 그렇게 들고
+    있었다. 소스를 AST 로 읽어 최상위에서 이 함수를 부르지 않는지 본다.
+    """
+    import ast
+    import pathlib
+
+    src = pathlib.Path(__file__).read_text(encoding="utf-8")
+    for node in ast.parse(src).body:
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        for sub in ast.walk(node):
+            if (
+                isinstance(sub, ast.Call)
+                and getattr(sub.func, "id", None) == "_fresh_no_signal_artifact"
+            ):
+                raise AssertionError(
+                    f"{__file__}:{node.lineno} — 모듈 최상위에서 artifact 를 "
+                    "굳혔다. 자정을 넘기면 러너 실행 날짜와 갈린다."
+                )
