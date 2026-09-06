@@ -3,13 +3,14 @@
 - **작성**: 개발자 (VSCode Claude)
 - **수신**: 검증자 (Codex)
 - **작성일**: 2026-09-04
-- **상태**: **`REOPENED — 제한 재검증 대기 (r11 결함 정정 완료)`** (2026-09-06). r10 `VERIFIED` 이후 **사용자 요청으로
+- **상태**: **`VERIFIED`** (검증자 r12, 2026-09-06 · ②항목 제한 재검증). **OCI 미배포**.
+  r10 `VERIFIED` → 사용자 요청으로 코드 변경 → r11 `REJECTED`(고점 대비 분자 결함) → r12 `VERIFIED`. r10 `VERIFIED` 이후 **사용자 요청으로
   코드가 바뀌었다**(매입 대비 손익 추가) — 기존 `VERIFIED` 를 그대로 이어 쓰지 않는다.
   설계자가 지정한 **제한 재검증 4항목**은 §9.15. 이전 상태: `CLOSED` (2026-09-05).
   사용자 확인 원문: *"일단 지금보다는 나을 것 같습니다. 받아보면서 결정하겠습니다."*
   → **조건부 승인**이다. 실제 발송을 받아본 뒤 형식 조정이 올 수 있다(§10-1).
   **단, 받아보려면 OCI 배포가 선행돼야 한다 — 현재 미배포**(§10-2).
-- **검증 라운드**: r1~r4 `REJECTED` → 개발자 영역 전건 처리. **2026-09-05 설계자 확정 회신**으로 계약 2건 해소(§9.7) → r5~r9 `REJECTED` 정정 → **r10 `VERIFIED`**. r9·r10 에서 기능·구조·안전 계약 위반 0건. §9.3·§9.5·§9.6·§9.7·§9.9~§9.14 참조
+- **검증 라운드**: r1~r4 `REJECTED` → 개발자 영역 전건 처리. **2026-09-05 설계자 확정 회신**으로 계약 2건 해소(§9.7) → r5~r9 `REJECTED` 정정 → **r10 `VERIFIED`**. r9·r10 에서 기능·구조·안전 계약 위반 0건. §9.3·§9.5·§9.6·§9.7·§9.9~§9.17 참조
 - **설계서**: `docs/ai_design/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_DESIGN_V1.md`
 - **PLAN**: `docs/ai_plan/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_PLAN_V1.md`
   (V1 `REJECTED` → V1.1 `REJECTED` → V1.2 **`PASS`** → V1.3 §9 확정 후 착수)
@@ -46,19 +47,19 @@
 
 | 파일 | 구분 | 줄수 |
 |---|---|---:|
-| `app/runtime_evidence/holdings_selection.py` | **신규** — reason 판정 · 구간 · 그룹 · fingerprint | 310 |
+| `app/runtime_evidence/holdings_selection.py` | **신규** — reason 판정 · 구간 · 그룹 · fingerprint | 354 |
 | `app/runtime_evidence/holdings_selection_state.py` | **신규** — 상태 저장 · 변화 판정 | 190 |
-| `app/runtime_evidence/holdings_selection_render.py` | **신규** — 본문 렌더 | 124 |
-| `app/runtime_evidence/holdings_selection_source.py` | **신규** — 입력 조립 | 80 |
-| `app/runtime_evidence/holdings_selection_flow.py` | **신규** — 흐름 · 비거래일 · privacy · 헤더 포맷 | 365 |
+| `app/runtime_evidence/holdings_selection_render.py` | **신규** — 본문 렌더 | 147 |
+| `app/runtime_evidence/holdings_selection_source.py` | **신규** — 입력 조립 | 118 |
+| `app/runtime_evidence/holdings_selection_flow.py` | **신규** — 흐름 · 비거래일 · privacy · 헤더 포맷 | 367 |
 | `app/three_push_runtime/non_trading_day.py` | **신규** — 비거래일 판정 | 120 |
 | `app/three_push_runtime/runner_diagnostics.py` | **신규 (r1)** — 러너 진단 전달 분리 | 43 |
 | `app/three_push_runtime/price_refresh.py` | 수정 **(r5)** — 완전성 판정용 target/success 집합 진단 추가 | 71 |
 | `app/three_push_runtime/runner_spike.py` | **신규 (r1)** — spike 재평가·중복가드 분리 | 142 |
-| `scripts/build_holdings_selection_preview.py` | **신규** — 미발송 preview | 184 |
+| `scripts/build_holdings_selection_preview.py` | **신규** — 미발송 preview | 188 |
 | `scripts/run_three_push_runtime_oci.py` | 수정 — 가드·선정 경로 연결 | 644 |
-| `tests/test_holdings_selection.py` | **신규** | 26건 |
-| `tests/test_holdings_selection_state.py` | **신규** | 36건 |
+| `tests/test_holdings_selection.py` | **신규** | 35건 |
+| `tests/test_holdings_selection_state.py` | **신규** | 38건 |
 | `tests/test_holdings_selection_preview.py` | **신규 (r1)** — T-17 preview | 6건 |
 | `tests/test_runner_spike_extraction.py` | **신규 (r2)** — spike 분리 등가성 | 8건 |
 | `tests/test_low_frequency_push_operation.py` | 수정 — 러너 계약 추가 (T-21 포함) | 52건 |
@@ -329,10 +330,10 @@ complete = target_set 비어 있지 않음
 - **비거래일 판정의 이론적 오탐**: 완전 수집(집합 일치)이고 보유 29종목 전부의
   `price_asof` 가 오늘 이전이면 거래일인데 `non_trading_day` 로 본다. `KODEX 200`
   (3계좌) 등 대표 유동 종목이 있어 현실적으로 어렵지만 **가능성은 남는다**(PLAN §9.4).
-- **개별주 20일 관찰이 곧 불가능해진다**: 보유 개별주 3종의 종가가 2026-08-12 에
-  멈춰 있고, 기준일이 그 시점을 넘기기까지 **약 4 거래일** 남았다(2026-09-05 실측).
-  넘어가면 분모가 없어져 `데이터 확인 필요` 로만 표시된다. 갱신 파이프라인 수정은
-  01A 범위 밖이라 열린 결함 `DEF-PRICE-EQUITY-REFRESH` 로 등재했다.
+- **로컬 개발 DB 는 보유 개별주를 갱신하지 않는다**: 로컬 `POST /market/refresh` 는
+  ETF 유니버스만 갱신하므로 Holdings 전용 ticker(개별주)가 정체된다. **운영(OCI)은
+  정상**이다 — 배치가 `collect_approved_tickers()` = 승인 seed ∪ Holdings 를 대상으로
+  한다. 로컬 수치로 운영을 판단하지 말 것 (§9.17 — 실제로 오등재했다).
 - **구간 쏠림**: 60거래일 종가 기준 `D10_PLUS` 가 67%(501/743)다. 확정 임계값을
   그대로 구현했고 명칭을 사실형으로 바꾼 근거이기도 하다.
 - **운영 발생 빈도 ≠ §2 분포**: PLAN §2 분포는 **종가 기준**이다. 운영은 분자가
@@ -368,9 +369,9 @@ complete = target_set 비어 있지 않음
 
 | 항목 | 결과 |
 |---|---|
-| 신규 계약 test | **76 passed** (`selection` 26 · `selection_state` 36 · `selection_preview` 6 · `runner_spike_extraction` 8) |
+| 신규 계약 test | **87 passed** (`selection` 35 · `selection_state` 38 · `selection_preview` 6 · `runner_spike_extraction` 8) |
 | 러너 계약 test | **52 passed** (`low_frequency_push`) |
-| **백엔드 전체** | **1,354 passed** (142.57초) |
+| **백엔드 전체** | **1,365 passed** (143.16초) |
 | `black --check` | 신규·수정 **19파일** unchanged (r1 11 · r2 17 은 오보) |
 | `flake8` | **0건** |
 | **라이브 상태 유출** | 전체 회귀 후 `holdings_selection_state_latest.json` **미생성**. 추가로 **flag guard 를 무력화한 상태에서도 미생성**(아래 §9.4) |
@@ -380,7 +381,7 @@ complete = target_set 비어 있지 않음
 ### 9.2 역검증 20종 — 전부 탐지 (r1 전면 재실행 · r2 6종 · r3 4종 추가)
 
 > 📌 **이 표는 r1~r3 시점 이력이다.** 설계자 확정(2026-09-05) 이후의 현행
-> 역검증은 **§9.8**(26종, 기준선 172) 을 본다.
+> 역검증은 **§9.8**(26종, 기준선 183) 을 본다.
 
 기준선 **158 passed**(당시 · 사보타주 없음). 각 사보타주는 계약 1곳만 깨고 즉시 원복한다.
 대상 테스트: `test_holdings_selection` · `test_holdings_selection_state` ·
@@ -596,7 +597,7 @@ holdings_selection_state_latest.json` 이 **실제로 생성됐다**(`entries:{}
 
 ### 9.8 역검증 26종 — 전부 탐지 (r5·r6·r7 · stale bytecode 제거 후 전량 재실행)
 
-기준선 **172 passed**. r5 에서 8종(N-20~N-27), r6·r7 에서 4종(N-28~N-31)을 추가했다.
+기준선 **183 passed**. r5 에서 8종(N-20~N-27), r6·r7 에서 4종(N-28~N-31)을 추가했다.
 
 | # | 무력화 | 실패 |
 |---|---|---:|
@@ -671,8 +672,10 @@ blocked = None            ← 집합 불일치인데 Fail-Closed 우회
 | 기준일이 단절 시점을 넘기까지 | **약 4 거래일** |
 
 "현재부터 계속 `데이터 확인 필요`" 라고 쓴 것은 과장이었다. 확정 계약대로
-**기준일이 단절 시점을 지난 뒤에만** 불가능해진다. 다만 유예가 4 거래일뿐이라
-BACKLOG 에 "유예가 지나면 트리거를 기다리지 말고 알린다" 를 덧붙였다.
+**기준일이 단절 시점을 지난 뒤에만** 불가능해진다.
+
+> ⛔ **이 절 전체가 2026-09-06 에 철회됐다.** 로컬 개발 DB만 보고 운영 결함으로
+> 단정한 것이었고 **OCI 는 정상 갱신 중**이다. 상세와 실측은 **§9.17**.
 
 ---
 
@@ -682,7 +685,7 @@ BACKLOG 에 "유예가 지나면 트리거를 기다리지 말고 알린다" 를
 |---|---|---|
 | B-1 | `target_tickers=None` 이면 **전체 시세 검색으로 조용히 회귀** (fallback 금지 위배) | 기본값 제거 → **필수 인자**. `None` 이면 `ValueError`. 인자 생략은 `TypeError` |
 | B-6 | 누락 시 fail-loud 계약 테스트 없음 | `inspect.signature` 로 **기본값이 없음까지** 단언 + 두 예외 경로 테스트 |
-| A-2 | §7 에 폐기된 7일 임계가 현행 한계로 | 삭제. 대신 **개별주 20일 관찰 유예 4거래일**을 한계로 기록 |
+| A-2 | 〈옛〉 §7 에 폐기된 7일 임계가 현행 한계로 | 삭제. 대신 개별주 유예를 한계로 기록 (**그 기록도 §9.17 에서 철회**) |
 | A-2 | §9.1 전체 회귀가 `1,340` | 실측값으로 갱신 |
 | A-2 | 머리말이 `r5 재검증 대기` | 갱신 |
 | B-5 | untracked 17 · staged 0 | 의도한 24경로 **`git add` 까지만** 수행 (커밋·푸시 금지 유지) |
@@ -957,6 +960,39 @@ r10 `VERIFIED` 이후 **사용자 요청으로 코드가 바뀌었다.** 설계�
 
 ---
 
+### 9.17 `DEF-PRICE-EQUITY-REFRESH` 철회 — 개발자 오등재 (2026-09-06)
+
+r10 결과서·PLAN §12.3·STATE·BACKLOG 에 **"보유 개별주 가격이 갱신되지 않는다 ·
+유예 4 거래일"** 을 열린 결함으로 올렸다. **틀렸다. 운영에는 결함이 없다.**
+
+**실측 (OCI 읽기 전용)**
+
+| 확인 | 값 |
+|---|---|
+| OCI 배치 최근 실행 | `attempted=41 success=41 fail=0` · `status=success` |
+| OCI DB 개별주 3종 마지막 종가 | **2026-09-03 — 정상** |
+| 로컬 DB 개별주 3종 마지막 종가 | 2026-08-12 (정체) |
+
+**원인 — 두 갱신 경로의 대상이 다르다**
+
+| 경로 | 대상 | 개별주 |
+|---|---|---|
+| OCI 배치 | `collect_approved_tickers()` = 승인 seed ∪ **Holdings** (41개) | **포함** |
+| 로컬 `POST /market/refresh` | `fdr.StockListing("ETF/KR")` → `etf_master`(~1,178) | 미포함 |
+
+`collect_approved_tickers()` 는 처음부터 Holdings 를 합친다
+(`app/three_push_runtime/market_data_batch.py:85`). 개별주가 대상에서 빠진 적이 없다.
+
+**왜 틀렸나** — 로컬 개발 DB 한 곳만 보고 운영 상태로 단정했다. 이전에도 같은
+유형의 실수를 한 적이 있다(`project_kospi_data_quality_suspect` — 시세 이상을
+의심했다가 실제 시세와 일치해 철회). **운영 판단은 OCI 를 직접 확인해야 한다.**
+
+**여파** — 설계자에게 "유예 4 거래일, 판단 필요" 로 전달해 불필요한 판단을
+요청했다. BACKLOG 열린 결함이 3건으로 잘못 늘었다(→ 2건 복구). 관련 문서
+5곳(BACKLOG·PLAN §12.3·STATE·결과서 §10·handoff)을 정정했다.
+
+---
+
 ## 10. 사용자 확인이 필요한 항목
 
 1. **preview 확인 — 완료 (2026-09-05)**. OPEN·MIDDAY 실제 운영 헤더 형식과 미발송 4케이스를
@@ -974,6 +1010,6 @@ r10 `VERIFIED` 이후 **사용자 요청으로 코드가 바뀌었다.** 설계�
    확인해 주기 바란다.
 4. **설계자 확정 완료 (2026-09-05)** — 비거래일 완전성 조건·stale 임계 2건이 확정돼
    반영을 마쳤다(§9.7·§11.5). **미확정 계약 0건.**
-5. **개별주 20일 관찰 유예 4거래일** — 보유 개별주 3종의 종가가 2026-08-12 에 멈춰
-   있고 기준일이 그 시점을 넘기면 `데이터 확인 필요` 로만 표시된다. 열린 결함
-   `DEF-PRICE-EQUITY-REFRESH` 로 등재했으나 **유예가 짧아 알린다**(§9.9).
+5. ~~개별주 20일 관찰 유예 4거래일~~ → **철회 (2026-09-06).** 개발자 오등재였다.
+   **OCI 는 정상 갱신 중**(개별주 3종 종가 2026-09-03, 배치 `41/41 success`).
+   로컬 개발 DB만 보고 운영 결함으로 단정했다. 상세 §9.17.

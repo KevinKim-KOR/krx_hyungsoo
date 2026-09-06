@@ -28,11 +28,12 @@ cron 진입점을 바꾸는 것은 `scripts/run_three_push_runtime_oci.py` 하�
 상대상승 게이트(`28a86491`)·구성종목 수집 깊이(`004517f8`)·PARAM 적용(`b39cc7c1`) 등.
 **배포는 쓰기 작업이라 개발자가 하지 않는다.**
 
-**⚠️ 시한부 결함 — `DEF-PRICE-EQUITY-REFRESH`**
-보유 개별주 3종의 종가가 **2026-08-12 에 멈춰 있다**(갱신 대상이 `etf_master` 로
-제한돼 개별주가 빠짐). 지금은 기준일(2026-08-07) 종가가 있어 정상 계산되지만
-**기준일이 단절 시점을 넘기기까지 약 4 거래일** 남았다. 넘어가면 그 3종의 20일
-관찰이 전부 불가능해진다. 설계자 재검토 트리거는 "01A 종료 직후·OPS-01B 착수 전".
+**✅ ~~시한부 결함~~ — `DEF-PRICE-EQUITY-REFRESH` 는 오등재였다 (2026-09-06 철회)**
+로컬 개발 DB만 보고 운영 결함으로 단정했다. **OCI 는 정상**이다 — 배치가
+`attempted=41 success=41 fail=0` 로 성공하고 개별주 3종 종가도 2026-09-03 까지
+갱신돼 있다. OCI 배치는 `collect_approved_tickers()` = 승인 seed ∪ **Holdings**
+를 대상으로 하고, 로컬 `POST /market/refresh` 는 ETF 유니버스만 갱신한다.
+**교훈: 로컬 DB 상태를 운영 상태로 단정하지 말 것.**
 
 **문서**
 - 설계서 `docs/ai_design/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_DESIGN_V1.md`
