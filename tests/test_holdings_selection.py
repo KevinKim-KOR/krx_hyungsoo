@@ -492,14 +492,52 @@ def _pl_select(specs, buy_prices):
     )
 
 
-def test_profit_loss_uses_same_current_price_as_return():
-    """매입 대비의 분자는 20일 수익률과 **같은 현재가**다.
+def test_three_metrics_share_the_same_current_price_numerator():
+    """**세 지표 모두** 같은 runtime 현재가를 분자로 쓴다 (설계자 확정).
 
-    사용자 확정: 세 슬롯 모두 실행 시점 시세 기준. OPEN 만 종가로 바꾸지 않는다.
+        매입 대비 = 현재가 / 수량가중평균 매입가 - 1
+        20거래일  = 현재가 / 20거래일 전 종가     - 1
+        고점 대비 = 현재가 / 기간 고점            - 1
+
+    ⚠️ 이 테스트는 원래 **두 지표만** 검사해서 고점 대비 결함을 놓쳤다
+    (검증자 r11). 고점 대비가 분자로 구간 마지막 종가를 써서, 현재가 80 ·
+    구간 종가 전부 100 인데 `0%` 를 보고했다(계약상 -20%).
+
+    분모를 셋 다 다르게 두어 **같은 분자를 쓰는지**가 실제로 드러나게 한다.
     """
+    # 구간 종가 100 (=고점) · 20거래일 전 종가 100 · 매입가 50 · 현재가 80
     items = _pl_select([("AAA", "가나다", 100.0, 80.0)], {"AAA": 50.0})
-    assert items[0].reasons[REASON_RECENT_DECLINE]["value"] == -20.0  # 80/100
-    assert items[0].profit_loss_pct == 60.0  # 80/50
+    it = items[0]
+    assert it.reasons[REASON_RECENT_DECLINE]["value"] == -20.0, "20거래일 = 80/100"
+    assert it.profit_loss_pct == 60.0, "매입 대비 = 80/50"
+    assert it.drawdown_20d_pct == -20.0, "고점 대비 = 80/100 — 분자가 현재가여야 한다"
+
+
+def test_drawdown_numerator_is_current_price_not_last_close():
+    """고점 대비 분자가 **구간 마지막 종가**면 안 된다.
+
+    마지막 종가와 현재가를 다르게 두면 둘이 구분된다. 마지막 종가를 쓰면 0%,
+    현재가를 쓰면 -30% 다.
+    """
+    from app.runtime_evidence.holdings_selection import _drawdown_pct_over_window
+
+    history = [(d, 100.0) for d in AXIS]
+    window = AXIS[-20:]
+    assert _drawdown_pct_over_window(history, window, 70.0) == -30.0
+    assert _drawdown_pct_over_window(history, window, 100.0) == 0.0
+    # 현재가가 없으면 낼 수 없다 — 종가로 대체하지 않는다
+    assert _drawdown_pct_over_window(history, window, None) is None
+    assert _drawdown_pct_over_window(history, window, 0.0) is None
+
+
+def test_drawdown_peak_is_window_high_not_current():
+    """고점(분모)은 구간 최고가다. 현재가가 그보다 높으면 양수가 된다."""
+    from app.runtime_evidence.holdings_selection import _drawdown_pct_over_window
+
+    history = [(d, 100.0) for d in AXIS[:-1]] + [(AXIS[-1], 120.0)]
+    window = AXIS[-20:]
+    # 고점 120, 현재가 60 → -50%
+    assert _drawdown_pct_over_window(history, window, 60.0) == -50.0
 
 
 def test_profit_loss_missing_buy_price_keeps_selection():

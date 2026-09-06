@@ -211,25 +211,34 @@ def _profit_loss_pct(
 
 
 def _drawdown_pct_over_window(
-    history: list[tuple[str, float]], window_days: list[str]
+    history: list[tuple[str, float]],
+    window_days: list[str],
+    current: Optional[float],
 ) -> Optional[float]:
-    """`window_days` 구간 고점 대비 현재 종가 하락률(%). **보조 정보 전용.**
+    """`window_days` 구간 고점 대비 하락률(%) = `현재가 / 기간 고점 - 1`.
 
-    설계자 확정: 구간 데이터가 불완전하면 **보조값만 생략**한다. 빠진 날이 있는
-    채로 고점을 잡으면 실제보다 얕은 하락으로 보고된다. 보조값이 없다고 해서
-    계산 가능한 `RECENT_DECLINE` 까지 버리지는 않는다.
+    **분자는 runtime 현재가다.** 20거래일 수익률·매입 대비와 **같은 값**을 쓰고
+    분모(기간 고점)만 다르다.
+
+    2026-09-06 정정 (검증자 r11): 분자로 구간 마지막 **종가**(`closes[-1]`)를
+    썼다. 그래서 현재가 80 · 구간 종가 전부 100 이면 계약상 `-20%` 인데 `0%` 가
+    나왔다. 장중에 빠진 만큼이 고점 대비에 반영되지 않아, 판단용 수치가 실제보다
+    얕은 하락으로 보고됐다.
+
+    구간 데이터가 불완전하면 **보조값만 생략**한다(설계자 확정). 빠진 날이 있는
+    채로 고점을 잡으면 하락이 얕게 나온다. 보조값이 없다고 해서 계산 가능한
+    `RECENT_DECLINE` 까지 버리지는 않는다.
     """
-    if not window_days:
+    if not window_days or not current or current <= 0:
         return None
     by_date = {d[:10]: c for d, c in history if c and c > 0}
     closes = [by_date.get(d) for d in window_days]
     if any(c is None for c in closes):
         return None  # 구간 불완전 — 보조값만 생략
     peak = max(c for c in closes if c is not None)
-    last = closes[-1]
-    if not peak or peak <= 0 or not last or last <= 0:
+    if not peak or peak <= 0:
         return None
-    return normalize_pct((last / peak - 1.0) * 100.0)
+    return normalize_pct((current / peak - 1.0) * 100.0)
 
 
 def select_holdings(
@@ -321,7 +330,7 @@ def select_holdings(
             "state": state,
             "value": return_pct,
         }
-        item.drawdown_20d_pct = _drawdown_pct_over_window(history, aux_window)
+        item.drawdown_20d_pct = _drawdown_pct_over_window(history, aux_window, current)
         selected.append(item)
 
     return sort_selected(selected)
