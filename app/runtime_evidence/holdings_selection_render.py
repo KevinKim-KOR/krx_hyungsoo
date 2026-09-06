@@ -5,8 +5,22 @@
 - 고유 ticker 1회만. 다계좌는 종목 1행 + `(N개 계좌)`.
 - **개수 상한 없음.** `최대 N개` · 상위 일부 표시 규칙을 두지 않는다.
 - 평가금액·현재가·NAV·구성종목 등 선정과 무관한 숫자 제외.
-- 보조 `RECENT_LOW_OR_DRAWDOWN` 은 행 끝 `[고점 대비 x%]` 로만.
 - 헤더의 두 날짜는 다르다 — 분모는 과거 종가일, 분자는 실행 시점 시세.
+
+**두 줄 배치 (사용자 확정 2026-09-06 · C안)**
+
+    ``  종목명 (N개 계좌)``
+    ``      매입대비 +12.3% · 20거래일 -6.7% · 고점 대비 -10.5%``
+
+한 줄에 몰면 종목명 길이에 따라 뒤 항목이 밀린다. 게다가 발송이
+``parse_mode="HTML"`` 이라 Telegram 이 **비례 글꼴**로 렌더해서 공백으로 맞춘
+열이 어차피 정렬되지 않는다. 종목명을 분리하면 그 문제가 사라진다.
+
+**매입가 대비 손익률을 맨 앞에 둔다.** 라벨은 `매입대비` 다 (설계자 확정
+2026-09-06 — `매입` 만으로는 매입가인지 손익인지 모호하다). 사용자 요청 —
+20일 하락률만으로는
+"팔지 홀딩할지" 를 못 정한다(20거래일 -6.7% 인데 매입 +89.2% 인 종목과
+20거래일 -6.1% 인데 매입 -3.5% 인 종목이 같이 있다).
 """
 
 from __future__ import annotations
@@ -39,15 +53,24 @@ def _value_cell(item: SelectedTicker) -> str:
     return "20거래일 —" if value is None else f"20거래일 {value:+.1f}%"
 
 
-def _drawdown_note(item: SelectedTicker) -> str:
+def _detail_parts(item: SelectedTicker) -> list[str]:
+    """둘째 줄 항목들. 순서 = 매입 → 20거래일 → 고점 대비."""
+    parts: list[str] = []
+    if item.profit_loss_pct is not None:
+        parts.append(f"매입대비 {item.profit_loss_pct:+.1f}%")
+    parts.append(_value_cell(item))
     dd = item.drawdown_20d_pct
-    if dd is None or dd > DRAWDOWN_NOTE_MAX_PCT:
-        return ""
-    return f"   [고점 대비 {dd:+.1f}%]"
+    if dd is not None and dd <= DRAWDOWN_NOTE_MAX_PCT:
+        parts.append(f"고점 대비 {dd:+.1f}%")
+    return parts
 
 
-def _item_line(item: SelectedTicker) -> str:
-    return f"  {_name_cell(item)}  {_value_cell(item)}{_drawdown_note(item)}"
+def _item_line(item: SelectedTicker, extra: str = "") -> str:
+    """종목 1건 = **두 줄**. `extra` 는 둘째 줄 끝에 덧붙인다(구간 이동 표기)."""
+    detail = " · ".join(_detail_parts(item))
+    if extra:
+        detail = f"{detail}{extra}"
+    return f"  {_name_cell(item)}\n      {detail}"
 
 
 def render_groups(selected: list[SelectedTicker]) -> list[str]:
@@ -100,7 +123,7 @@ def render_changes(
         lines.append(f"■ 새로 선정 ({len(changes.new)})")
         for item in changes.new:
             label = group_label(item.primary_reason, item.primary_state)
-            lines.append(f"{_item_line(item)}   ({label})")
+            lines.append(_item_line(item, extra=f"   ({label})"))
         lines.append("")
 
     if changes.moved:
@@ -110,7 +133,7 @@ def render_changes(
             after_txt = ", ".join(
                 group_label(r, v["state"]) for r, v in sorted(item.reasons.items())
             )
-            lines.append(f"{_item_line(item)}")
+            lines.append(_item_line(item))
             lines.append(f"      ({before_txt} → {after_txt})")
         lines.append("")
 

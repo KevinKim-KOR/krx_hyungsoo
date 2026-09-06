@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPS-01A 보유 PUSH 목업 — 실제 composer 출력</title>
+<style>
+:root{
+ --ink:#111b21; --sub:#667781; --line:#e3e6e8; --page:#f4f6f6;
+ --tgbg:#e5ddd5; --bub:#ffffff; --accent:#0b7285;
+ --warn:#a5551b; --warnbg:#fff6ec; --ok:#1c7c54; --okbg:#eefaf4;
+ --mono:"SFMono-Regular",Menlo,Consolas,monospace;
+ --prop:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+ :root:not([data-theme="light"]){
+  --ink:#e9edef; --sub:#8696a0; --line:#2a3942; --page:#0b141a;
+  --tgbg:#0b141a; --bub:#202c33; --accent:#53bdeb;
+  --warn:#e0a458; --warnbg:#2a2018; --ok:#6ee7b7; --okbg:#12241d;
+ }
+}
+:root[data-theme="dark"]{
+ --ink:#e9edef; --sub:#8696a0; --line:#2a3942; --page:#0b141a;
+ --tgbg:#0b141a; --bub:#202c33; --accent:#53bdeb;
+ --warn:#e0a458; --warnbg:#2a2018; --ok:#6ee7b7; --okbg:#12241d;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--prop);
+ margin:0;padding:30px 18px 70px;line-height:1.55;-webkit-text-size-adjust:100%}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:1.5rem;margin:0 0 6px;text-wrap:balance}
+h2{font-size:1.05rem;margin:36px 0 8px;padding-top:18px;border-top:1px solid var(--line)}
+h2 .meta{font-weight:400}
+p.lede{color:var(--sub);margin:0 0 20px;font-size:.9rem}
+.note{background:var(--warnbg);border-left:3px solid var(--warn);
+ padding:11px 15px;font-size:.86rem;margin:14px 0;border-radius:0 5px 5px 0}
+.good{background:var(--okbg);border-left:3px solid var(--ok)}
+.meta{color:var(--sub);font-size:.8rem;margin:4px 0 12px;font-variant-numeric:tabular-nums}
+.phone{width:352px;max-width:100%;background:var(--tgbg);border-radius:14px;
+ padding:14px 10px;border:1px solid var(--line)}
+.msg{background:var(--bub);border-radius:8px;padding:10px 12px;margin:0;
+ font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;
+ box-shadow:0 1px 1px rgba(0,0,0,.08);font-family:var(--prop)}
+.cols{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.skip{border:1px dashed var(--line);border-radius:8px;padding:14px 16px;
+ color:var(--sub);font-size:.86rem;width:340px;max-width:100%}
+.skip b{color:var(--ink)}
+code{font-family:var(--mono);font-size:.85em;background:rgba(127,127,127,.14);
+ padding:1px 5px;border-radius:3px}
+pre.formula{font-family:var(--mono);font-size:.82rem;background:rgba(127,127,127,.10);
+ padding:12px 14px;border-radius:6px;overflow-x:auto;line-height:1.7}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;font-size:.85rem;margin:10px 0}
+th,td{text-align:left;padding:6px 16px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td.n{font-variant-numeric:tabular-nums}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;width:250px;max-width:100%;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--accent)}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);
+ color:var(--sub);font-size:.78rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>보유 PUSH 목업 — 실제 composer 출력</h1>
+<p class="lede">손으로 쓴 샘플이 아니라 <b>구현 코드가 생성한 원문</b>입니다.
+Telegram 발송 · OCI · state · DB 변경 0건 · 신규 API 0건.</p>
+
+<div class="note good"><b>매입가 대비 손익을 추가했습니다</b> (사용자 요청 2026-09-06).
+20일 하락률만으로는 &ldquo;팔지 홀딩할지&rdquo;를 정할 수 없었습니다. 아래 ①에서
+같은 <b>&ldquo;20거래일 하락 10% 이상&rdquo;</b> 그룹인데 매입대비가
+<b>+64.1% / +21.9% / &minus;10.7%</b> 로 갈립니다.</div>
+
+<h2>세 지표는 같은 현재가를 <u>분자</u>로 씁니다</h2>
+<pre class="formula">매입 대비 손익률 = 현재가 / 수량가중평균 매입가 - 1
+20거래일 수익률  = 현재가 / 20거래일 전 종가     - 1
+고점 대비 수익률 = 현재가 / 기간 고점            - 1</pre>
+<p class="meta">분자는 OCI runtime quote(Naver), <b>분모만 지표마다 다릅니다.</b>
+세 슬롯(09:15 · 12:30 · 15:40) 모두 실행 시점 시세 기준이며 OPEN 만 따로 처리하지
+않습니다. 다계좌는 계좌별 매입가가 달라(실측 2종목) <b>수량 가중평균</b>
+(금액합 ÷ 수량합)으로 합칩니다.</p>
+
+<div class="note"><b>두 줄 배치(C안)를 쓴 이유.</b>
+발송이 <code>parse_mode: "HTML"</code> 이라 Telegram 이 <b>비례 글꼴</b>로 렌더합니다.
+한 줄에 몰면 종목명 길이에 따라 뒤 항목이 밀리고, 공백으로 맞춘 열도 정렬되지
+않습니다. 종목명을 분리하면 그 문제가 사라집니다.</div>
+
+<h2>① OPEN — 전체 현황
+<span class="meta">11종목 · 생략 없음</span></h2>
+<div class="note"><b>이 화면의 숫자는 종가 대용입니다.</b>
+과거 <b>장중</b> 시세는 저장돼 있지 않아 2026-06-30 <b>종가</b>를 분자로 썼습니다.
+그래서 운영 헤더(<code>09:15</code> + 조회시각) 대신 <b>미리보기 헤더</b>를 씁니다 —
+없는 장중 시세를 있다고 적지 않기 위해서입니다.
+실제 운영 메시지에는 <code>[보유 종목 관찰 브리핑] 09:15</code> 와
+<code>기준: 20거래일 전 종가 YYYY-MM-DD · 시세 YYYY-MM-DD HH:MM</code> 이 붙습니다.</div>
+<div class="meta">807자 / 한도 4000자 · chunk 1개
+<div class="bar"><i style="width:20%"></i></div></div>
+<div class="phone"><pre class="msg">[보유 종목 관찰 브리핑 — 형식 미리보기]
+과거 종가 기준: 2026-06-30
+
+■ 20거래일 하락 10% 이상 (7)
+  삼성SDI
+      매입대비 +21.9% · 20거래일 -25.3% · 고점 대비 -21.5%
+  KODEX 미국우주항공
+      매입대비 +5.3% · 20거래일 -21.1% · 고점 대비 -28.6%
+  1Q 미국우주항공테크
+      매입대비 -10.7% · 20거래일 -18.4% · 고점 대비 -22.0%
+  PLUS 글로벌휴머노이드로봇액티브
+      매입대비 +64.1% · 20거래일 -13.6% · 고점 대비 -16.5%
+  IBK K-AI반도체코어테크
+      매입대비 +17.2% · 20거래일 -12.1% · 고점 대비 -14.5%
+  PLUS 고배당주
+      매입대비 -6.9% · 20거래일 -10.7% · 고점 대비 -12.6%
+  TIGER 코리아배당다우존스
+      매입대비 +38.3% · 20거래일 -10.5% · 고점 대비 -11.6%
+
+■ 20거래일 하락 8~10% (1)
+  TIGER 미국테크 TOP10 INDXX
+      매입대비 +51.5% · 20거래일 -8.0% · 고점 대비 -9.5%
+
+■ 20거래일 하락 5~8% (3)
+  RISE 네트워크인프라 (2개 계좌)
+      매입대비 +37.4% · 20거래일 -7.9% · 고점 대비 -11.4%
+  TIME Korea플러스배당액티브
+      매입대비 +49.0% · 20거래일 -7.1%
+  RISE 코리아금융고배당
+      매입대비 -5.6% · 20거래일 -6.5% · 고점 대비 -12.9%</pre></div>
+
+<h2>② MIDDAY · CLOSE — 변화분만
+<span class="meta">2026-06-30 → 2026-07-01</span></h2>
+<div class="note">여기도 <b>종가 대용</b>입니다. 두 거래일의 종가로 상태를 각각
+계산해 비교했습니다. 헤더의 <code>12:30</code> 은 <b>슬롯 표기</b>이고 그 시각의
+장중 시세라는 뜻이 아닙니다.</div>
+<div class="meta">신규 2 · 구간 이동 5 · 정상 해소 1 · 725자 · chunk 1개
+<div class="bar"><i style="width:18%"></i></div></div>
+<div class="phone"><pre class="msg">[보유 종목 관찰 브리핑] 12:30 — 변화 8건
+
+■ 새로 선정 (2)
+  삼성전자
+      매입대비 +4.3% · 20거래일 -12.8%   (20거래일 하락 10% 이상)
+  KODEX 200 (3개 계좌)
+      매입대비 +48.9% · 20거래일 -5.0%   (20거래일 하락 5~8%)
+
+■ 구간 이동 (5)
+  PLUS 글로벌휴머노이드로봇액티브
+      매입대비 +67.1% · 20거래일 -9.5% · 고점 대비 -11.2%
+      (20거래일 하락 10% 이상 → 20거래일 하락 8~10%)
+  TIGER 코리아배당다우존스
+      매입대비 +39.2% · 20거래일 -9.4% · 고점 대비 -12.7%
+      (20거래일 하락 10% 이상 → 20거래일 하락 8~10%)
+  PLUS 고배당주
+      매입대비 -5.8% · 20거래일 -9.0% · 고점 대비 -12.7%
+      (20거래일 하락 10% 이상 → 20거래일 하락 8~10%)
+  IBK K-AI반도체코어테크
+      매입대비 +16.7% · 20거래일 -6.7%
+      (20거래일 하락 10% 이상 → 20거래일 하락 5~8%)
+  TIGER 미국테크 TOP10 INDXX
+      매입대비 +53.6% · 20거래일 -6.7% · 고점 대비 -8.1%
+      (20거래일 하락 8~10% → 20거래일 하락 5~8%)
+
+■ 정상 해소 (1)
+  RISE 네트워크인프라</pre></div>
+
+<h2>③ 메시지가 오지 않는 상태</h2>
+<p class="meta">Telegram 에는 <b>아무것도 발송되지 않고</b> 운영 기록에만 남습니다.</p>
+<div class="cols">
+<div class="skip"><b>선정 0건</b><br><code>skipped/no_selection</code><br><br>
+하락 종목이 없다. 빈 상태를 저장해 다음 슬롯이 “변화 없음”을 올바로 판정한다
+(<code>save_empty_state=true</code>).</div>
+<div class="skip"><b>변화 없음</b><br><code>skipped/no_change</code><br><br>
+직전 슬롯과 종목·이유·구간이 모두 같다. <b>매입대비가 흔들려도 재발송하지
+않는다</b> — 보조 정보라 identity 에 넣지 않았다.</div>
+<div class="skip"><b>휴장일</b><br><code>skipped/non_trading_day</code><br><br>
+전 종목 시세가 어제 이전. 29종목 “데이터 확인 필요”가 쏟아지지 않는다.</div>
+<div class="skip"><b>시세 불완전 + 오늘 체결 0건</b><br>
+<code>failed/holdings_quotes_incomplete_no_today</code><br><br>
+휴장인지 장애인지 구분할 수 없어 보내지 않는다.</div>
+</div>
+
+<h2>④ chunk 경계</h2>
+<div class="tablewrap">
+<table>
+<tr><th>화면</th><th>글자 수</th><th>chunk</th><th>경계 표시</th></tr>
+<tr><td>OPEN 전체</td><td class="n">807</td><td class="n">1</td><td>없음 — 한도 이하 단일 발송</td></tr>
+<tr><td>MIDDAY 변화분</td><td class="n">725</td><td class="n">1</td><td>없음 — 한도 이하 단일 발송</td></tr>
+</table>
+</div>
+<p class="meta">한도 <code>4000</code>자를 넘으면 줄바꿈 경계로 나뉘고 각 조각 앞에
+<code>(i/N)</code> 이 붙습니다. 보유 29종목이 <b>전부</b> 선정돼도 한 번에 담겨
+경계가 생기지 않습니다. 현행(전 종목 나열)은 <b>8,690자 = chunk 3개</b>였습니다.</p>
+
+<h2>⑤ 표시가 생략되는 경우</h2>
+<div class="tablewrap">
+<table>
+<tr><th>상황</th><th>표시</th></tr>
+<tr><td>현재가 조회 실패</td><td>종목명 + <code>현재가 조회 실패</code> — 세 지표 모두 낼 수 없다</td></tr>
+<tr><td>매입가·수량 없음</td><td><b>매입대비만 생략</b>하고 선정은 유지 — 20거래일 수치는 그대로</td></tr>
+<tr><td>고점 대비 구간 불완전</td><td><b>고점 대비만 생략</b> (위 <code>TIME Korea플러스배당액티브</code>)</td></tr>
+</table>
+</div>
+
+<footer>
+POC3-OPS-01A · 2026-09-06 생성 · 원문 출처 <code>render_full</code> ·
+<code>render_changes</code> · <code>render_groups</code> ·
+<code>_split_message_for_telegram</code> · <code>average_buy_prices</code><br>
+①② 모두 <b>종가 대용(EOD proxy)</b> 입니다. 매입대비는 <b>현재 보유 원장의
+매입가</b>를 쓰므로 과거 시점 재현이 아닙니다.
+</footer>
+
+</div>
+</body>
+</html>

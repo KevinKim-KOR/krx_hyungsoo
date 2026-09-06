@@ -268,7 +268,7 @@ def test_drawdown_note_only_when_deep_enough():
     )
     assert items[0].drawdown_20d_pct is not None
     assert items[0].drawdown_20d_pct <= DRAWDOWN_NOTE_MAX_PCT
-    assert "[고점 대비" in "\n".join(render_groups(items))
+    assert "고점 대비" in "\n".join(render_groups(items))
 
 
 def test_drawdown_is_auxiliary_only_never_a_group():
@@ -472,3 +472,99 @@ def test_privacy_check_failure_blocks_send(tmp_path, monkeypatch):
     assert out.error, "privacy 검사 실패인데 통과시켰다"
     assert "privacy_check_failed" in out.error
     assert out.save_state_on_send is False
+
+
+# --- 사용자 요청 2026-09-06 — 매입가 대비 손익률 (C안 두 줄) ----------------
+
+
+def _pl_select(specs, buy_prices):
+    """specs: [(ticker, name, base_close, current_price)]"""
+    holdings = [_holding(t, n) for t, n, _, _ in specs]
+    history = {t: _history(b, b) for t, _, b, _ in specs}
+    q = {t: FakeQuote(current_price=c) for t, _, _, c in specs if c is not None}
+    return select_holdings(
+        holdings=holdings,
+        price_history=history,
+        market_quotes=q,
+        today_kst=TODAY,
+        axis_dates=AXIS,
+        avg_buy_prices=buy_prices,
+    )
+
+
+def test_profit_loss_uses_same_current_price_as_return():
+    """매입 대비의 분자는 20일 수익률과 **같은 현재가**다.
+
+    사용자 확정: 세 슬롯 모두 실행 시점 시세 기준. OPEN 만 종가로 바꾸지 않는다.
+    """
+    items = _pl_select([("AAA", "가나다", 100.0, 80.0)], {"AAA": 50.0})
+    assert items[0].reasons[REASON_RECENT_DECLINE]["value"] == -20.0  # 80/100
+    assert items[0].profit_loss_pct == 60.0  # 80/50
+
+
+def test_profit_loss_missing_buy_price_keeps_selection():
+    """매입가가 없으면 **손익 표시만 생략**한다. 선정을 버리지 않는다."""
+    items = _pl_select([("AAA", "가나다", 100.0, 80.0)], {})
+    assert list(items[0].reasons) == [REASON_RECENT_DECLINE]
+    assert items[0].profit_loss_pct is None
+    body = "\n".join(render_groups(items))
+    assert "매입대비" not in body
+    assert "20거래일 -20.0%" in body
+
+
+def test_profit_loss_is_not_in_fingerprint():
+    """손익률은 **보조 정보**다 — identity 에 넣으면 매 슬롯 재발송된다."""
+    a = _pl_select([("AAA", "가나다", 100.0, 80.0)], {"AAA": 50.0})[0]
+    b = _pl_select([("AAA", "가나다", 100.0, 80.0)], {"AAA": 70.0})[0]
+    assert a.profit_loss_pct != b.profit_loss_pct
+    assert a.fingerprint() == b.fingerprint()
+
+
+def test_item_renders_as_two_lines_with_purchase_first():
+    """C안 — 종목명 줄 + 상세 줄. 상세는 매입 → 20거래일 → 고점 대비 순."""
+    items = _pl_select([("AAA", "가나다", 100.0, 80.0)], {"AAA": 50.0})
+    body = "\n".join(render_groups(items))
+    lines = [ln for ln in body.split("\n") if ln.strip()]
+    assert lines[1] == "  가나다"
+    assert lines[2].strip().startswith("매입대비 +60.0% · 20거래일 -20.0%")
+
+
+def test_data_unavailable_row_has_no_purchase_figure():
+    """현재가가 없으면 손익도 낼 수 없다 — 숫자를 지어내지 않는다."""
+    items = _pl_select([("AAA", "가나다", 100.0, None)], {"AAA": 50.0})
+    assert list(items[0].reasons) == [REASON_DATA_UNAVAILABLE]
+    assert items[0].profit_loss_pct is None
+    assert "매입대비" not in "\n".join(render_groups(items))
+
+
+def test_average_buy_price_is_quantity_weighted():
+    """다계좌는 계좌별 매입가가 다르다 — **금액합/수량합** 이다.
+
+    단순 평균을 내면 소량 계좌가 과대 반영된다. 실측 예: KODEX 200 이
+    84,190(3주) / 88,058(15주) / 114,941(2주).
+    """
+    from app.runtime_evidence.holdings_selection_source import average_buy_prices
+
+    rows = [
+        {"ticker": "A", "quantity": 3, "avg_buy_price": 84190.0},
+        {"ticker": "A", "quantity": 15, "avg_buy_price": 88058.0},
+        {"ticker": "A", "quantity": 2, "avg_buy_price": 114941.0},
+    ]
+    got = average_buy_prices(rows)["A"]
+    expected = (84190 * 3 + 88058 * 15 + 114941 * 2) / 20
+    assert abs(got - expected) < 1e-9
+    simple = (84190 + 88058 + 114941) / 3
+    assert abs(got - simple) > 1.0, "단순 평균과 구분되지 않는다"
+
+
+def test_average_buy_price_skips_unusable_rows():
+    from app.runtime_evidence.holdings_selection_source import average_buy_prices
+
+    rows = [
+        {"ticker": "A", "quantity": 0, "avg_buy_price": 100.0},
+        {"ticker": "A", "quantity": 5, "avg_buy_price": 200.0},
+        {"ticker": "B", "quantity": 5, "avg_buy_price": None},
+        {"ticker": "C", "quantity": "x", "avg_buy_price": 10.0},
+    ]
+    out = average_buy_prices(rows)
+    assert out == {"A": 200.0}

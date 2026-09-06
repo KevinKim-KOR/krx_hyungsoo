@@ -721,3 +721,71 @@ def test_target_tickers_is_required_and_fails_loud():
                 non_trading_day_reason=reason,
                 target_tickers=None,
             )
+
+
+def test_flow_carries_buy_price_into_message(tmp_path):
+    """**흐름 전체**를 통과해 본문에 매입 대비가 실제로 실리는지 본다.
+
+    선정기 단위 테스트만 있으면 `build_holdings_selection` 이 `avg_buy_prices`
+    를 안 넘겨도 아무도 못 잡는다(역검증 P-6 이 실제로 미탐지였다). 보유 원장의
+    `avg_buy_price` 가 최종 Telegram 본문까지 도달하는 경로를 고정한다.
+    """
+    from dataclasses import dataclass
+
+    from app.runtime_evidence.holdings_selection_flow import build_holdings_selection
+
+    @dataclass
+    class H:
+        ticker: str
+        name: str
+        account_group: str = "일반"
+        quantity: float = 10.0
+        avg_buy_price: float = 50.0
+
+    out = build_holdings_selection(
+        holdings_loader=lambda: [H("AAA", "가나다")],
+        fetch_history=lambda t, **kw: [(d, 100.0) for d in AXIS],
+        market_quotes={"AAA": FakeQuote(current_price=80.0)},
+        state_path=tmp_path / "s.json",
+        slot_id="OPEN",
+        runtime_kst=f"{TODAY}T09:15:00+09:00",
+        today_kst=TODAY,
+    )
+    assert not out.error, out.error
+    assert out.message_text, "본문이 비었다"
+    # 80 / 50 - 1 = +60.0%
+    assert "매입대비 +60.0%" in out.message_text, out.message_text
+    assert "20거래일 -20.0%" in out.message_text
+
+
+def test_flow_multi_account_uses_weighted_buy_price(tmp_path):
+    """다계좌는 흐름에서도 **수량 가중평균**으로 합쳐진다."""
+    from dataclasses import dataclass
+
+    from app.runtime_evidence.holdings_selection_flow import build_holdings_selection
+
+    @dataclass
+    class H:
+        ticker: str
+        name: str
+        account_group: str
+        quantity: float
+        avg_buy_price: float
+
+    rows = [
+        H("AAA", "가나다", "일반", 1.0, 100.0),
+        H("AAA", "가나다", "ISA", 9.0, 50.0),
+    ]
+    out = build_holdings_selection(
+        holdings_loader=lambda: rows,
+        fetch_history=lambda t, **kw: [(d, 100.0) for d in AXIS],
+        market_quotes={"AAA": FakeQuote(current_price=80.0)},
+        state_path=tmp_path / "s.json",
+        slot_id="OPEN",
+        runtime_kst=f"{TODAY}T09:15:00+09:00",
+        today_kst=TODAY,
+    )
+    assert not out.error, out.error
+    # 가중평균 = (100*1 + 50*9)/10 = 55 → 80/55-1 = +45.5%
+    assert "매입대비 +45.5%" in out.message_text, out.message_text
+    assert "(2개 계좌)" in out.message_text

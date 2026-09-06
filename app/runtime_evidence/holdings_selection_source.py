@@ -33,10 +33,48 @@ def load_holding_rows(
         account = getattr(h, "account_group", None) or (
             h.get("account_group") if isinstance(h, dict) else None
         )
+        qty = getattr(h, "quantity", None) or (
+            h.get("quantity") if isinstance(h, dict) else None
+        )
+        buy = getattr(h, "avg_buy_price", None) or (
+            h.get("avg_buy_price") if isinstance(h, dict) else None
+        )
         rows.append(
-            {"ticker": ticker, "name": name or ticker, "account_group": account}
+            {
+                "ticker": ticker,
+                "name": name or ticker,
+                "account_group": account,
+                "quantity": qty,
+                "avg_buy_price": buy,
+            }
         )
     return rows
+
+
+def average_buy_prices(rows: list[dict[str, Any]]) -> dict[str, float]:
+    """ticker → **수량 가중평균** 매입가.
+
+    같은 종목을 여러 계좌에서 사면 **계좌별 매입가가 다르다**(실측: KODEX 200 이
+    84,190 / 88,058 / 114,941, 수량 3 / 15 / 2). 단순 평균을 내면 소량 계좌가
+    과대 반영된다. "내가 산 금액 대비" 이므로 **금액합 / 수량합** 이 맞다.
+
+    수량·매입가가 없거나 0 이하인 행은 제외한다. 한 종목의 모든 행이 그렇다면
+    그 종목은 결과에 없고, 선정기가 손익 표시만 생략한다.
+    """
+    agg: dict[str, list[float]] = {}
+    for r in rows:
+        t = r.get("ticker")
+        try:
+            qty = float(r.get("quantity") or 0)
+            buy = float(r.get("avg_buy_price") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not t or qty <= 0 or buy <= 0:
+            continue
+        slot = agg.setdefault(t, [0.0, 0.0])
+        slot[0] += buy * qty
+        slot[1] += qty
+    return {t: amt / qty for t, (amt, qty) in agg.items() if qty > 0}
 
 
 def load_price_history(

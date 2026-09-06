@@ -25,6 +25,7 @@ from app.runtime_evidence.holdings_selection import (
 )
 from app.runtime_evidence.holdings_selection_render import render_changes, render_full
 from app.runtime_evidence.holdings_selection_source import (
+    average_buy_prices,
     load_holding_rows,
     load_price_history,
     load_trading_day_axis,
@@ -130,6 +131,7 @@ def build_holdings_selection(
             market_quotes=market_quotes or {},
             today_kst=today_kst,
             axis_dates=axis_dates,
+            avg_buy_prices=average_buy_prices(holding_rows),
         )
     except Exception as e:  # noqa: BLE001
         out.error = f"{type(e).__name__}: {str(e)[:200]}"

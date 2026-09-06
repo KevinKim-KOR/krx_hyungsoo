@@ -36,6 +36,9 @@ from app.runtime_evidence.holdings_selection import (  # noqa: E402
     TRADING_DAY_AXIS_TICKER,
     select_holdings,
 )
+from app.runtime_evidence.holdings_selection_source import (  # noqa: E402
+    average_buy_prices,
+)
 from app.runtime_evidence.holdings_selection_render import (  # noqa: E402
     PREVIEW_HEADER,
     render_groups,
@@ -106,6 +109,7 @@ def build_preview(
         market_quotes=quotes,
         today_kst=basis_date,
         axis_dates=axis_dates,
+        avg_buy_prices=average_buy_prices(holdings),
     )
     body = "\n".join(
         [PREVIEW_HEADER, f"과거 종가 기준: {basis_date}", "", *render_groups(selected)]

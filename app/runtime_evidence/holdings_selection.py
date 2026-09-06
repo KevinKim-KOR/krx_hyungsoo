@@ -14,7 +14,13 @@
 
     20일 수익률 = OCI 실행 시점 현재가 / 20거래일 전 종가 - 1
 
-  분자: runtime 현재가 (Naver quote). 분모: `etf_daily_price` 20거래일 전 종가.
+  **세 지표 모두 같은 runtime 현재가를 분자로 쓴다** (설계자 확정 2026-09-06):
+
+      매입 대비 손익률 = 현재가 / 수량가중평균 매입가 - 1
+      20거래일 수익률  = 현재가 / 20거래일 전 종가     - 1
+      고점 대비 수익률 = 현재가 / 기간 고점            - 1
+
+  분자는 OCI runtime quote(Naver), 분모만 지표마다 다르다.
   종가끼리 비교하면 OPEN·MIDDAY·CLOSE 가 같은 값이라 장중 변화가 생기지 않는다.
 
 구간은 **사실형 명칭**이다 (PLAN §5.1). `관찰·주의·경고` 를 쓰지 않는다 —
@@ -111,6 +117,11 @@ class SelectedTicker:
     reasons: dict[str, dict[str, Any]] = field(default_factory=dict)
     # 보조 정보 — 상태 저장·변화 판정에 쓰지 않는다.
     drawdown_20d_pct: Optional[float] = None
+    # 매입가 대비 손익률(%). 사용자 요청 2026-09-06 — "팔지 홀딩할지" 판단에
+    # 20일 하락률만으로는 부족하다(20일 -6.7% 인데 매입 +89.2% 인 종목이 있다).
+    # **보조 정보다.** fingerprint 에 넣지 않는다 — 넣으면 값이 미세하게 흔들릴
+    # 때마다 매 슬롯 재발송된다.
+    profit_loss_pct: Optional[float] = None
 
     @property
     def primary_reason(self) -> str:
@@ -184,6 +195,21 @@ def _is_same_day(day: Optional[str], today_kst: Optional[str]) -> bool:
     return day[:10] == today_kst[:10]
 
 
+def _profit_loss_pct(
+    current: Optional[float], avg_buy: Optional[float]
+) -> Optional[float]:
+    """매입가 대비 손익률(%) = `현재가 / 수량가중평균 매입가 - 1`.
+
+    **현재가가 분자다.** 20거래일 수익률·고점 대비와 같은 값을 쓰고 분모만 다르다.
+    둘 중 하나라도 없거나 0 이하면 None.
+
+    매입가가 없다고 해서 **선정을 버리지 않는다** — 손익 표시만 생략한다.
+    """
+    if not current or current <= 0 or not avg_buy or avg_buy <= 0:
+        return None
+    return normalize_pct((current / avg_buy - 1.0) * 100.0)
+
+
 def _drawdown_pct_over_window(
     history: list[tuple[str, float]], window_days: list[str]
 ) -> Optional[float]:
@@ -213,6 +239,7 @@ def select_holdings(
     market_quotes: dict[str, Any],
     today_kst: Optional[str] = None,
     axis_dates: Optional[list[str]] = None,
+    avg_buy_prices: Optional[dict[str, float]] = None,
 ) -> list[SelectedTicker]:
     """선정 결과. 이유가 없는 종목은 **결과에 넣지 않는다**.
 
@@ -222,6 +249,8 @@ def select_holdings(
       price_history  : {ticker: [(date, close), ...]} date ASC. 분모 원천.
       market_quotes  : {ticker: MarketQuote} — `current_price` · `price_asof`.
       axis_dates     : KRX 거래일 축(오름차순). 기준일 계산 원천.
+      avg_buy_prices : {ticker: 수량 가중평균 매입가}. 없으면 손익률을 생략한다
+                       (선정 자체는 그대로 한다).
 
     **분모 계약 (설계자 확정 2026-09-05)**
 
@@ -234,6 +263,7 @@ def select_holdings(
 
     반환 순서는 `GROUP_ORDER` → 근거 값 악화순 → ticker (PLAN §5.3).
     """
+    buy_prices = avg_buy_prices or {}
     axis = axis_dates or []
     base_day = reference_trading_day(axis, today_kst, LOOKBACK_TRADING_DAYS)
     # 보조값 구간: 기준일 다음 거래일 ~ 실행일 직전 거래일 (20 거래일).
@@ -276,6 +306,11 @@ def select_holdings(
             }
             selected.append(item)
             continue
+
+        # 매입가 대비 손익률. **분자는 20일 수익률·고점 대비와 같은 현재가**이고
+        # 분모만 매입가로 다르다. 세 슬롯 모두 실행 시점 시세 기준이며 OPEN 만
+        # 종가로 바꾸지 않는다 (사용자 확정 2026-09-06).
+        item.profit_loss_pct = _profit_loss_pct(current, buy_prices.get(ticker))
 
         # 판정·저장·표시 모두 **같은 정규화 값**을 쓴다 (경계 불일치 방지).
         return_pct = normalize_pct((current / base - 1.0) * 100.0)
