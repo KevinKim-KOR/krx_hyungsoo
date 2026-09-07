@@ -61,12 +61,26 @@ from app.runtime_execution_status_store import (  # noqa: E402
 from app.three_push_runtime.runner_diagnostics import (  # noqa: E402
     forward_diagnostics,
 )
+from app.three_push_runtime.runner_duplicate import (  # noqa: E402
+    check_plain_duplicate,
+)
+from app.three_push_runtime.runner_evidence import (  # noqa: E402
+    SKIP_EVIDENCE_KINDS,
+    compose_evidence_and_message,
+    record_send_success,
+)
 from app.three_push_runtime.runner_spike import (  # noqa: E402
     apply_spike_reevaluation,
     resolve_spike_duplicates,
 )
 
 # POC3-OPS-01A — 보유 브리핑 선별·그룹화·반복 억제.
+from app.runtime_evidence.holdings_risk_flow import (  # noqa: E402
+    assemble_holdings_risk_push,
+)
+from app.runtime_evidence.holdings_risk_state import (  # noqa: E402
+    save_risk_state,
+)
 from app.runtime_evidence.holdings_selection_flow import (  # noqa: E402
     assemble_holdings_push,
 )
@@ -76,6 +90,8 @@ from app.runtime_evidence.holdings_selection_state import (  # noqa: E402
 )
 
 HOLDINGS_SELECTION_STATE_PATH = STATE_DIR / "holdings_selection_state_latest.json"
+# POC3-OPS-02A — 위험 알림 상태(그날 도달한 최악 구간). 보유 브리핑과 별개 파일.
+HOLDINGS_RISK_STATE_PATH = STATE_DIR / "holdings_risk_state_latest.json"
 from app.runtime_param_store import read_active_param_dict  # noqa: E402
 from app.runtime_sent_registry_store import (  # noqa: E402
     is_already_sent,
@@ -240,7 +256,10 @@ def run(
     #   Naver 예외       → failed (runtime_price_refresh_error).
     #   전건 실패        → failed (runtime_price_all_failed).
     #   일부 실패        → failed (runtime_price_partial_failed) · 미발송.
-    from app.three_push_runtime.price_refresh import refresh_runtime_quotes
+    from app.three_push_runtime.price_refresh import (
+        evaluate_price_refresh,
+        refresh_runtime_quotes,
+    )
 
     market_quotes, price_refresh_diag, price_refresh_error = refresh_runtime_quotes(
         push_kind, _collect_target_tickers
@@ -253,37 +272,11 @@ def run(
             "runtime_price_refresh_error",
             price_refresh_error,
         )
-    attempted = price_refresh_diag.get("attempted", 0)
-    success = price_refresh_diag.get("success", 0)
-    failed = price_refresh_diag.get("failed", 0)
-    if attempted > 0:
-        logger.info(
-            "runtime price refresh: attempted=%d success=%d failed=%d",
-            attempted,
-            success,
-            failed,
-        )
-        if success == 0:
-            return _finish(
-                "failed",
-                "runtime_price_all_failed",
-                f"attempted={attempted} failed={failed}",
-            )
-        if failed > 0 and push_kind != "holdings_briefing":
-            # A+ 재정정: 일부 실패도 failed 종료 (partial 발송 금지).
-            # **보유 브리핑은 예외** (설계자 확정 2026-09-05): 오늘 quote 가 하나라도
-            # 있으면 진행하고 **실패한 종목만** `데이터 확인 필요` 로 표시한다.
-            # 여기서 끊으면 그 표시가 실제 OCI 경로에서 영영 나오지 않는다.
-            return _finish(
-                "failed",
-                "runtime_price_partial_failed",
-                f"attempted={attempted} success={success} failed={failed}",
-            )
-        if failed > 0 and push_kind == "holdings_briefing":
-            logger.warning(
-                "보유 시세 일부 실패 %d건 — 해당 종목만 '데이터 확인 필요' 로 진행",
-                failed,
-            )
+    refresh_fail = evaluate_price_refresh(
+        price_refresh_diag, push_kind=push_kind, logger=logger
+    )
+    if refresh_fail is not None:
+        return _finish(*refresh_fail)
 
     holdings_selection_ctx: dict[str, Any] = {}
     evidence = None
@@ -354,45 +347,50 @@ def run(
         holdings_outcome = _asm.outcome
         message_text = _asm.message_text
 
+    # ── 3-d. 보유 위험 즉시 알림 조립 (POC3-OPS-02A) ─────────────────────────
+    # 기존 spike 신호·본문을 재사용하지 않는다 (OPS-01C `REJECT`). 조립만 하고
+    # **모든 skip·fail 결정은 §6-c** — flag guard 뒤다.
+    risk_outcome = None
+    if push_kind == "holdings_risk_alert":
+        from app.holdings import load as _load_holdings_for_risk
+        from app.market_data_store import fetch_price_history as _fetch_history_risk
+
+        _rasm = assemble_holdings_risk_push(
+            market_quotes=market_quotes or {},
+            price_refresh_diag=price_refresh_diag,
+            today_kst=kst_today(),
+            state_path=HOLDINGS_RISK_STATE_PATH,
+            runtime_kst=runtime_kst,
+            holdings_loader=_load_holdings_for_risk,
+            fetch_history=_fetch_history_risk,
+            logger=logger,
+        )
+        record.update(_rasm.diagnostics)
+        holdings_fail = _rasm.fail  # 판정은 §6-c
+        skip_ntd = _rasm.skip_non_trading_day
+        risk_outcome = _rasm.outcome
+        message_text = _rasm.message_text
+
     # ── 4. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
     # 보유 브리핑은 §3-c 에서 본문을 이미 만들었다. evidence 조립·면책 문구 부착
     # 경로를 타지 않는다 (설계자 확정 — 보유 브리핑에 면책문구를 넣지 않는다).
-    if push_kind != "holdings_briefing":
-        try:
-            evidence = compose_runtime_evidence(
-                push_kind,
-                market_quotes=(market_quotes or None),
-                universe_reevaluate_fn=reeval_fn,
-            )
-        except Exception as e:
-            logger.error("runtime evidence 조립 실패: %s", e)
-            return _finish("failed", "runtime_evidence_error", str(e)[:400])
-
+    if push_kind not in SKIP_EVIDENCE_KINDS:
         # ── 4-b. runtime message 생성 ────────────────────────────────────────
-        try:
-            message_text = build_runtime_message(
-                push_kind=push_kind,
-                param=param,
-                runtime_kst_iso=runtime_kst,
-                available_sources=evidence.available_sources,
-                extra_notes=evidence.extra_notes,
-            )
-        except Exception as e:
-            logger.error("runtime message 생성 실패: %s", e)
-            return _finish("failed", "runtime_message_build_error", str(e)[:400])
-
-        record["message_text_length"] = len(message_text)
-        record["availability"] = availability_summary(evidence.available_sources)
-        # 지시문 §9: record 에 diagnostics summary 추가.
-        record["contentful_fact_count"] = evidence.diagnostics.get(
-            "contentful_fact_count", 0
+        ev_fail, evidence, _msg = compose_evidence_and_message(
+            record,
+            push_kind=push_kind,
+            param=param,
+            runtime_kst=runtime_kst,
+            market_quotes=market_quotes,
+            reeval_fn=reeval_fn,
+            compose_runtime_evidence=compose_runtime_evidence,
+            build_runtime_message=build_runtime_message,
+            availability_summary=availability_summary,
+            logger=logger,
         )
-        record["selection_result_count"] = evidence.diagnostics.get(
-            "selection_result_count", 0
-        )
-        record["unavailable_reasons"] = evidence.diagnostics.get(
-            "unavailable_reasons", {}
-        )
+        if ev_fail is not None:
+            return _finish(*ev_fail)
+        message_text = _msg or ""
     # FIX r3 · r4 (설계자 확정본 Q7): 진단 필드 record 전달.
     # 2026-09-04 KS-10 분리 — 키 목록은 `runner_diagnostics` 로 옮겼다.
     forward_diagnostics(record, evidence)
@@ -484,6 +482,19 @@ def run(
         # 판정·evidence 기록은 §3-c 에서 끝났다. 여기서는 발송 여부만 정한다.
         return _finish("skipped", "non_trading_day")
 
+    if risk_outcome is not None and risk_outcome.skip_reason:
+        # 신규·악화 없음 — 완화·해소·동일 구간은 발송하지 않는다.
+        logger.info(
+            "위험 알림 skip: %s (선정 %d건 · 억제 %d건)",
+            risk_outcome.skip_reason,
+            len(risk_outcome.selected),
+            len(risk_outcome.changes.suppressed) if risk_outcome.changes else 0,
+        )
+        return _finish("skipped", risk_outcome.skip_reason)
+
+    if risk_outcome is not None:
+        holdings_selection_ctx = {"risk": risk_outcome}
+
     if holdings_outcome is not None:
         if holdings_outcome.skip_reason:
             if holdings_outcome.save_empty_state:
@@ -504,6 +515,8 @@ def run(
     # Spike: 각 fingerprint 별로 개별 registry entry. 모든 fingerprint 가 이미 sent
     #        면 duplicate_runtime skip. 하나라도 신규면 발송 후 신규 fingerprint 만
     #        각각 registry 에 기록.
+    # spike 는 fingerprint 별 개별 키를 §8 에서 다시 만든다.
+    registry_date_field: Optional[str] = None
     if push_kind == "spike_or_falling_alert":
         # 2026-09-04 KS-10 분리 — 본문은 `runner_spike.resolve_spike_duplicates`.
         spike_fail, rebuilt = resolve_spike_duplicates(
@@ -523,26 +536,20 @@ def run(
             return _finish(*spike_fail)
         message_text = rebuilt
     else:
-        # Market / Holdings.
-        registry_date_field = _resolve_registry_date_field(
-            runtime_date_kst,
-            slot_id=slot_id if push_kind == "holdings_briefing" else None,
+        dup_fail, registry_date_field = check_plain_duplicate(
+            record,
+            push_kind=push_kind,
+            param=param,
+            runtime_date_kst=runtime_date_kst,
+            runtime_kst=runtime_kst,
+            slot_id=slot_id,
+            resolve_registry_date_field=_resolve_registry_date_field,
+            registry_key=_registry_key,
+            is_already_sent=is_already_sent,
+            logger=logger,
         )
-        dup_key = _registry_key(
-            push_kind,
-            param.param_id,
-            runtime_date_kst,
-            slot_id=slot_id if push_kind == "holdings_briefing" else None,
-        )
-        record["duplicate_key"] = dup_key
-        try:
-            already = is_already_sent(push_kind, param.param_id, registry_date_field)
-        except Exception as e:
-            logger.error("registry DB 접근 실패: %s", e)
-            return _finish("failed", "registry_corrupted", str(e)[:400])
-        if already:
-            logger.info("중복 발송 차단: %s", dup_key)
-            return _finish("skipped", "duplicate_runtime")
+        if dup_fail is not None:
+            return _finish(*dup_fail)
 
     # ── 8. Telegram 발송 ─────────────────────────────────────────────────────
     record["telegram_attempted"] = True
@@ -555,37 +562,23 @@ def run(
     record["partial_delivery"] = bool(partial_delivery)
 
     if sent:
-        sent_at = datetime.now(timezone.utc).isoformat()
-        if push_kind == "spike_or_falling_alert":
-            # 발송 성공 시 신규 fingerprint 각각 registry entry 기록.
-            for fp in record.get("spike_new_fingerprints", []):
-                date_field = _resolve_registry_date_field(
-                    runtime_date_kst, signal_fingerprint=fp
-                )
-                mark_sent(
-                    push_kind=push_kind,
-                    param_id=param.param_id,
-                    runtime_date_kst=date_field,
-                    sent_at_utc=sent_at,
-                )
-        else:
-            mark_sent(
-                push_kind=push_kind,
-                param_id=param.param_id,
-                runtime_date_kst=registry_date_field,
-                sent_at_utc=sent_at,
-            )
-        # POC3-OPS-01A · PLAN §4.6 — **전체 발송 성공 이후에만** 선정 상태 확정.
-        # 부분·전체 실패면 이 줄에 도달하지 않아 이전 상태가 유지되고, 다음
-        # 슬롯에서 같은 변화를 다시 시도한다. 미발송 신호가 발송 완료로
-        # 기록되면 안 된다.
-        if holdings_selection_ctx and not partial_delivery:
-            save_state(
-                HOLDINGS_SELECTION_STATE_PATH,
-                selected=holdings_selection_ctx["selected"],
-                slot_id=holdings_selection_ctx.get("slot_id"),
-            )
-            record["holdings_selection_state_saved"] = True
+        record_send_success(
+            record,
+            push_kind=push_kind,
+            param=param,
+            runtime_date_kst=runtime_date_kst,
+            runtime_kst=runtime_kst,
+            registry_date_field=registry_date_field,
+            partial_delivery=bool(partial_delivery),
+            holdings_selection_ctx=holdings_selection_ctx,
+            sent_at=datetime.now(timezone.utc).isoformat(),
+            resolve_registry_date_field=_resolve_registry_date_field,
+            mark_sent=mark_sent,
+            save_state=save_state,
+            save_risk_state=save_risk_state,
+            holdings_state_path=HOLDINGS_SELECTION_STATE_PATH,
+            risk_state_path=HOLDINGS_RISK_STATE_PATH,
+        )
         return _finish("sent")
     else:
         logger.error("Telegram 발송 실패: %s", err)

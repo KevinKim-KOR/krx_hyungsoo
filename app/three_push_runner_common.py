@@ -41,12 +41,22 @@ LOG_DIR = PROJECT_ROOT / "logs"
 
 # ── 표준 push_kind 상수 ──────────────────────────────────────────────────────
 
-VALID_PUSH_KINDS = ("market_briefing", "holdings_briefing", "spike_or_falling_alert")
+VALID_PUSH_KINDS = (
+    "market_briefing",
+    "holdings_briefing",
+    "spike_or_falling_alert",
+    # POC3-OPS-02A — 보유 위험 즉시 알림.
+    "holdings_risk_alert",
+)
 
 PUSH_KIND_FLAG_ENVS = {
     "market_briefing": "PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED",
     "holdings_briefing": "PUSH_AUTOSEND_HOLDINGS_BRIEFING_ENABLED",
     "spike_or_falling_alert": "PUSH_AUTOSEND_SPIKE_OR_FALLING_ALERT_ENABLED",
+    # POC3-OPS-02A — 보유 위험 즉시 알림. 기존 spike 와 **별개 종류**다
+    # (spike 는 REJECT·비활성 유지). 초기값 false — 검증자 VERIFIED + 사용자
+    # 목업 확인 + 별도 활성화 지시 후에만 true.
+    "holdings_risk_alert": "PUSH_AUTOSEND_HOLDINGS_RISK_ALERT_ENABLED",
 }
 
 

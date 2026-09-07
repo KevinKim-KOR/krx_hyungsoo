@@ -240,9 +240,11 @@ def test_is_push_kind_enabled():
 
 
 def test_allowed_push_kinds_constant():
-    # 계약 안정성 — 3종 외 추가되면 본 테스트가 깨져서 의도적 변경임을 강제.
+    # 계약 안정성 — 목록이 바뀌면 본 테스트가 깨져서 의도적 변경임을 강제.
+    # 2026-09-07 POC3-OPS-02A — `holdings_risk_alert` 4번째로 추가(PLAN §7.1).
     assert set(ALLOWED_PUSH_KINDS) == {
         "market_briefing",
         "holdings_briefing",
         "spike_or_falling_alert",
+        "holdings_risk_alert",
     }

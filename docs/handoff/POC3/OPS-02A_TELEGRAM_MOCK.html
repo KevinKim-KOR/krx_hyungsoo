@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POC3-OPS-02A 보유 급락 알림 — 발송 목업</title>
+<style>
+:root{color-scheme:light dark}
+body{margin:0;padding:28px 20px;background:#0e1621;color:#e9edf2;
+ font:15px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",sans-serif}
+h1{font-size:20px;margin:0 0 4px}
+p.sub{margin:0 0 28px;color:#8a99a8;font-size:13px}
+h2{font-size:14px;font-weight:600;color:#8a99a8;margin:26px 0 10px}
+.tg{max-width:560px}
+.bubble{background:#182533;border-radius:14px;padding:12px 14px;white-space:pre-wrap;
+ font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",sans-serif;
+ font-size:14px;line-height:1.55}
+footer{margin-top:32px;color:#6d7d8c;font-size:12px;max-width:560px}
+code{background:#182533;padding:1px 5px;border-radius:4px}
+</style></head><body>
+<h1>보유 급락 알림 — 발송 목업</h1>
+<p class="sub">POC3-OPS-02A · 실제 렌더러(<code>render_risk_alert</code>) 출력 그대로 ·
+Telegram 발송 0건 · 종목·수치는 합성</p>
+<section><h2>① 10:30 첫 진입 — 5종목 동시 하락 + 데이터 확인 필요 1종목</h2><div class="tg"><div class="bubble">[보유 급락 알림] 10:30 — 보유 23종목 중 5종목 동시 하락
+기준: 직전 거래일 종가 2026-09-04 · 시세 09-07 10:30
+
+■ 전일 대비 하락 10% 이상 (2)
+  SOL 미국AI전력인프라
+      전일 대비 -12.4% · 고점 대비 -18.2% · 매입대비 +31.5%
+  KODEX 미국AI전력핵심
+      전일 대비 -11.1% · 고점 대비 -16.0% · 매입대비 +8.4%
+
+■ 전일 대비 하락 7~10% (2)
+  KODEX AI전력 (2개 계좌)
+      전일 대비 -8.6% · 고점 대비 -12.7% · 매입대비 -3.2%
+  TIGER 미국AI빅테크
+      전일 대비 -7.2% · 고점 대비 -10.4% · 매입대비 +44.0%
+
+■ 전일 대비 하락 5~7% (1)
+  KODEX 미국S&amp;P500
+      전일 대비 -5.4% · 고점 대비 -6.9% · 매입대비 +62.1%
+
+■ 데이터 확인 필요 (1)
+  KODEX 200TR
+      직전 거래일 종가 또는 오늘 시세를 확인할 수 없음</div></div></section>
+<section><h2>② 12:30 악화 + 신규 — 억제된 3종목은 다시 싣지 않는다</h2><div class="tg"><div class="bubble">[보유 급락 알림] 12:30 — 보유 23종목 중 2종목 동시 하락
+기준: 직전 거래일 종가 2026-09-04 · 시세 09-07 12:30
+
+■ 전일 대비 하락 10% 이상 (1)
+  KODEX AI전력 (2개 계좌)
+      전일 대비 -13.9% · 고점 대비 -18.0% · 매입대비 -8.5%   (7~10% → 10% 이상)
+
+■ 전일 대비 하락 5~7% (1)
+  KODEX 200
+      전일 대비 -5.1% · 고점 대비 -7.8% · 매입대비 +12.0%</div></div></section>
+<section><h2>③ 단일 종목 · 경계값(정확히 −7.0% → 7~10% 구간)</h2><div class="tg"><div class="bubble">[보유 급락 알림] 14:30 — 보유 23종목 중 1종목 하락
+기준: 직전 거래일 종가 2026-09-04 · 시세 09-07 14:30
+
+■ 전일 대비 하락 7~10% (1)
+  SOL 미국AI전력인프라
+      전일 대비 -7.0% · 고점 대비 -9.1% · 매입대비 +25.0%</div></div></section>
+<footer>Telegram 은 <code>parse_mode=HTML</code> 로 비례 글꼴 렌더라 공백 정렬이
+성립하지 않는다. 그래서 종목명과 수치를 두 줄로 나눈다(OPS-01A 와 같은 배치).
+<br><br>표시하지 않는 것: 시가 대비(원본 응답에 시가 없음) · 국가/섹터 원인 해석 ·
+면책문구 · 매매 지시.</footer>
+</body></html>

@@ -13,7 +13,10 @@ from __future__ import annotations
 
 
 def collect_target_tickers(push_kind: str) -> list[str]:
-    if push_kind == "holdings_briefing":
+    """`holdings_risk_alert` 는 보유 브리핑과 **같은 대상**(보유 원장)이다.
+    기존 spike 의 universe 후보를 쓰지 않는다 (OPS-01C `REJECT`).
+    """
+    if push_kind in ("holdings_briefing", "holdings_risk_alert"):
         from app import holdings as _holdings_mod
 
         # A+ 재정정: holdings.load() 는 파일 부재 시 [] 반환. 이 경우 attempted=0

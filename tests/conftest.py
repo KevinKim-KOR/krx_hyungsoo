@@ -74,26 +74,41 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
     2. 러너가 이미 import 돼 있으면 저장 경로를 `tmp_path` 로 덮어쓴다.
     3. import 여부와 무관하게 **생성뿐 아니라 내용 변경까지** 감지해 실패시킨다.
        원본 바이트를 들고 있다가 달라졌으면 되돌려 놓고 실패시킨다.
+
+    POC3-OPS-02A — 위험 알림 상태 파일(`holdings_risk_state_latest.json`)도 같은
+    보호를 받는다. 같은 러너 §8 이 쓰므로 하나만 막으면 "한 통로 막기" 다.
     """
     from app.three_push_runner_common import STATE_DIR as _STATE_DIR
 
-    live = (_STATE_DIR / "holdings_selection_state_latest.json").resolve()
+    names = (
+        "holdings_selection_state_latest.json",
+        "holdings_risk_state_latest.json",
+    )
+    consts = (
+        "HOLDINGS_SELECTION_STATE_PATH",
+        "HOLDINGS_RISK_STATE_PATH",
+    )
+    lives = [(_STATE_DIR / n).resolve() for n in names]
 
     mod = sys.modules.get("scripts.run_three_push_runtime_oci")
     if mod is not None:
-        monkeypatch.setattr(
-            mod,
-            "HOLDINGS_SELECTION_STATE_PATH",
-            Path(tmp_path) / "three_push" / "holdings_selection_state_latest.json",
-        )
+        for const, name in zip(consts, names):
+            monkeypatch.setattr(mod, const, Path(tmp_path) / "three_push" / name)
 
-    before = live.read_bytes() if live.exists() else None
+    befores = [p.read_bytes() if p.exists() else None for p in lives]
     yield
-    after = live.read_bytes() if live.exists() else None
-    if after == before:
-        return
-    # 운영 파일을 원래대로 되돌린 뒤 실패시킨다. 테스트가 남긴 상태로 다음
-    # 테스트가 돌면 원인 추적이 불가능해진다.
+    for live, before in zip(lives, befores):
+        after = live.read_bytes() if live.exists() else None
+        if after == before:
+            continue
+        _restore_and_fail(live, before)
+
+
+def _restore_and_fail(live, before):
+    """운영 파일을 원래대로 되돌린 뒤 실패시킨다.
+
+    테스트가 남긴 상태로 다음 테스트가 돌면 원인 추적이 불가능해진다.
+    """
     if before is None:
         live.unlink()
         what = "새로 만들었다"
@@ -101,7 +116,7 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
         live.write_bytes(before)
         what = "덮어썼다"
     pytest.fail(
-        f"테스트가 라이브 보유 선정 상태 파일을 {what}: {live}\n"
+        f"테스트가 라이브 보유 상태 파일을 {what}: {live}\n"
         "경로 격리 없이 러너 저장 경로를 탄다 (원본은 되돌려 놓았다)."
     )
 

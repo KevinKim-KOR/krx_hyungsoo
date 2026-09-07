@@ -38,6 +38,10 @@ ALLOWED_PUSH_KINDS = (
     "market_briefing",
     "holdings_briefing",
     "spike_or_falling_alert",
+    # POC3-OPS-02A — 보유 위험 즉시 알림. 여기에 없으면 러너 §2 가
+    # `push_kind_not_in_param` 으로 끊는다. 발송 여부는 별도 flag
+    # `PUSH_AUTOSEND_HOLDINGS_RISK_ALERT_ENABLED`(초기값 false) 가 정한다.
+    "holdings_risk_alert",
 )
 
 ALLOWED_PARAM_SOURCES = (
