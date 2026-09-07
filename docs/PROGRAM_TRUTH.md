@@ -308,8 +308,8 @@ flowchart LR
 
 #### C-1. 보유 브리핑 본문 계약 (POC3-OPS-01A · 2026-09-05)
 
-> ⚠️ **저장소 기준 계약이다. OCI 배포 전이므로 현재 발송되는 본문은 아직 이전
-> 형식이다.** 배포 후 이 항목의 "미배포" 표시를 지운다.
+> ✅ **OCI 배포 완료 (`703eb56f`, 2026-09-07).** 아래 계약이 **현재 실제로
+> 발송되는 본문**이다. 2026-09-07 09:15 첫 실행 `sent` 519자 · 7종목 수신 확인.
 
 `holdings_briefing` 은 보유 전 종목을 나열하지 않고 **선정된 종목만** 보낸다.
 
@@ -346,7 +346,31 @@ flowchart LR
 
 - 근거: `app/runtime_evidence/holdings_selection*.py` · `app/three_push_runtime/non_trading_day.py` ·
   `scripts/run_three_push_runtime_oci.py` §3-c·§6-c.
-- 등급: **SOURCE_CONFIRMED** (저장소). OCI 런타임은 **미배포**.
+- 등급: **RUNTIME_VERIFIED** (2026-09-07 실제 발송 수신 · 실행 기록 대조).
+
+#### C-2. PUSH 종류별 자동발송 상태 (2026-09-07 설계자 확정)
+
+**3종 중 1종만 자동발송 중이다.**
+
+| 종류 | cron | `PUSH_AUTOSEND_*_ENABLED` | 상태 |
+|---|---|---|---|
+| `holdings_briefing` (09:15·12:30·15:40) | 유지 | **`true`** | **발송 중** |
+| `market_briefing` (08:00) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled` |
+| `spike_or_falling_alert` (7틱) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled` |
+
+전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 holdings 까지 멈춘다).
+**cron 과 코드는 제거하지 않고 종류별 발송만 비활성화**했다.
+
+차단 사유 (설계자 판정 2026-09-07):
+
+- **market_briefing `REJECT`** — "확인된 항목"과 "별도 확인 필요"가 실제 수치와
+  맞지 않고, 변화 여부와 무관하게 발송하며, 쓸 만한 정보가 없어도 보낸다.
+  OPS-01B Gate 가 `DATA_GAP`/`CONNECT_NONE` 이라 억지로 유지할 이유가 없다.
+- **spike_or_falling `REJECT`** — 장중 급변이 아니라 **1개월 하락 스크리닝**이고
+  보유와 무관하다(OPS-01C 판정).
+
+차단 실측: 2026-09-07 11:13 수동 실행 두 건 모두 `status=skipped ·
+reason=push_kind_disabled · telegram_attempted=false`.
 
 ### 프로세스 D — PC 운영 점검
 

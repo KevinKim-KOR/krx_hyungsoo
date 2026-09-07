@@ -89,7 +89,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 "지금 제공하기로 되어 있는데 동작하지 않는 것" 이라 원장에서 분리한다.**
 근거: `docs/handoff/BACKLOG_RECONCILIATION_V2_CONCLUSION.md` §4 (검증자 VERIFIED · 커밋 `a22ddae5`).
 
-**현재 열린 결함: 2건** (`DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL`).
+**현재 열린 결함: 3건** (`DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL` ·
+`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`).
 `DEF-PRICE-EQUITY-REFRESH` 는 **2026-09-06 오등재로 철회**됐다 (운영은 정상).
 `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
@@ -188,6 +189,45 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 > 아래는 남아 있는 **개발 환경** 한계다. 결함으로 등재하지 않는다.
 > 로컬에서 보유 개별주를 포함해 분석하려면 `collect_approved_tickers()` 경로를
 > 쓰거나 해당 ticker 를 수동 적재해야 한다.
+
+### DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY — KOSPI 벤치마크 값·기준일 정합성
+
+**등재**: 2026-09-07 · 설계자 확정 (POC3-OPS-01B-GATE 판정문). **발견 Step**: `POC3-OPS-01B-GATE`.
+
+- 상태: BACKLOG (**열림**)
+- 문제 (4개 층위 · 설계자 확정 범위 2026-09-07):
+
+  | # | 층위 | 내용 |
+  |---|---|---|
+  | 1 | **원천 최신성** | OCI `market_benchmark_daily_price` 의 KOSPI 가 **2026-07-03 정체**. OCI 배치가 benchmark 를 갱신하지 않는다(갱신 주체는 PC `/market/refresh`) |
+  | 2 | **표시 기준일** | `app/runtime_evidence/market_discovery.py:66` 이 KOSPI 자신의 `as_of_date` 가 아니라 `market_context` 전체 `asof`(같은 파일 32행)를 라벨로 쓴다 |
+  | 3 | **수익률 값 재계산** | 정체된 시리즈로 계산한 `return_1m/3m` 이 그대로 나간다. freshness 검사 없음 — 행 ≥ 61 이면 `status="ok"` |
+  | 4 | **소비처** | OCI PUSH(`market_discovery.extra_notes`) · API · UI 가 같은 `market_context` 를 쓴다. 소비처 전수 점검 필요 |
+- 현재 운영 영향:
+  **차단됨.** 이 note 는 08:00 시장 브리핑에만 실리는데, 설계자가 같은 판정문에서
+  **`PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED=false`** 로 자동발송을 끄기로 확정했다.
+  발송이 멈추면 노출 경로가 없다.
+- 실측 (2026-09-07 08:00 실제 발송 본문):
+  ```
+  • KODEX200 최근 수익률 (2026-09-04 기준): 1개월 +6.90% / 3개월 -14.60%.
+  • KOSPI 최근 수익률 (2026-09-04 기준): 1개월 -0.89% / 3개월 +48.40%.
+  ```
+  두 줄이 **같은 기준일(2026-09-04)** 로 표시됐다. OCI KOSPI benchmark 최종일은
+  **2026-07-03** 이므로(2026-09-06 실측), KOSPI 값의 실제 기준일과 라벨이
+  일치하지 않을 가능성이 크다.
+- 보류 사유:
+  설계자 확정 — **"지금 고치지 않고 POC4 의 시장 데이터 기반 작업에서 처리한다.
+  어차피 08:00 발송 자체를 끄므로 즉시 운영 노출은 막힌다."**
+- 보류된 위험:
+  08:00 브리핑을 **다시 켜면 즉시 재노출**된다. 켜기 전에 반드시 처리해야 한다.
+- 재검토 트리거:
+  **POC4 시장 데이터 기반 구축** 또는 **market_briefing autosend 재활성화 시점**
+  (둘 중 먼저 오는 것).
+
+> 개발자 경위: 처음에 `[시장 위치]` 블록(PC package 경로)을 OCI 노출 경로로
+> 잘못 지목했다. 실제 노출 경로는 `market_discovery.extra_notes` 였고, 이는
+> 배포(`703eb56f`)와 무관하게 **이전부터 있던 코드**다. 2026-09-07 실제 발송
+> 본문으로 확정했다.
 
 ### DEF-FDR-TIMEOUT — FDR 호출 timeout 부재
 

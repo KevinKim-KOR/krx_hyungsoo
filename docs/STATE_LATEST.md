@@ -1,52 +1,51 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-05 (**POC3-OPS-01A 보유 PUSH 선별·억제 `CLOSED` — 검증자 `VERIFIED` + 사용자 형식 확인 · ⚠️ OCI 미배포**)
+최종 업데이트: 2026-09-07 (**OPS-01A `CLOSED` · 01B `CONNECT_NONE` · 01C `REJECT`/`DATA_GAP`**)
 
-## 현재 상태 — POC3-OPS-01A (2026-09-05)
+## 현재 상태
 
-**상태**: **`CLOSED`** (검증자 r10 `VERIFIED` + 사용자 형식 확인) · **⚠️ OCI 미배포**
+```text
+POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 1_OF_3
+```
 
-사용자 확인은 **조건부**다 — *"일단 지금보다는 나을 것 같습니다. 받아보면서 결정하겠습니다."*
-실제 발송을 받아본 뒤 형식 조정이 올 수 있다.
+**PUSH 3종 중 1종만 자동발송 중이다.** 시장 브리핑·위험 알림은 "증명될 때까지"
+꺼 두었다. **기능이 완료된 것이 아니므로 POC3 Closeout 은 하지 않는다.**
 
-보유 브리핑이 보유 전 종목을 나열하던 것을 **선정된 종목만** 보내도록 바꿨다.
-2026-06-30 기준 preview 로 **8,690자 → 621자(11종목)**.
+| 종류 | autosend | 상태 |
+|---|---|---|
+| `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
+| `market_briefing` (08:00) | **`false`** | 차단 — OPS-01B Gate `CONNECT_NONE` |
+| `spike_or_falling_alert` (7틱) | **`false`** | 차단 — OPS-01C `REJECT` |
 
-**설계자 확정 계약 (2026-09-05)**
-- 비거래일 완전성 = **고유 ticker 집합 일치** (`attempted`=보유 행 수는 분모로 안 씀 — 32행/29유니크)
-- **stale 달력일 임계 폐기.** 분모 = 거래일 축에서 실행일보다 앞선 **20번째 거래일의 그 날짜 종가**. 없으면 `DATA_UNAVAILABLE_OR_STALE`, 더 오래된 종가로 대체 안 함
-- 부분 실패: 오늘 quote 가 있으면 **실패 종목만** `데이터 확인 필요` 로 표시하고 진행 (시장·급등락은 기존대로 전면 차단)
+전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 holdings 까지 멈춤). **cron·코드는
+제거하지 않고 종류별 발송만 비활성화**했다.
 
-**⚠️ 다음 액션 — OCI 배포 (미수행)**
+### Step 별 종료 상태
 
-저장소에만 반영됐다. **배포 전까지 실제 발송 본문은 이전 형식(전 종목 나열)** 이라
-사용자가 "받아보면서 결정" 할 수 없다.
+| Step | 상태 | 요지 |
+|---|---|---|
+| **OPS-01A** 보유 PUSH 선별·억제 | **`CLOSED`** | 배포 `703eb56f` · 2026-09-07 09:15 첫 실행 `sent` 519자 · 7종목. 억제·차단 실측 완료 |
+| **OPS-01B** 미국시장·섹터 Gate | **`DATA_GAP` / `CONNECT_NONE`** | 미국 지표 없음(VIX 1종·65일 정체) · 섹터 분류 없음(`category`=자산군 7종) · 구성종목 2.9% |
+| **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관. OCI 사전계산 위험 artifact 사용 불가 |
 
-OCI 는 `a0a0b192` 로 **69 커밋 뒤처져** 있다(2026-09-05 읽기 전용 실측).
-cron 진입점을 바꾸는 것은 `scripts/run_three_push_runtime_oci.py` 하나지만,
-`app/`·`scripts/` 전체로는 **38파일**이 함께 딸려간다 — ML 체인 복구(`f21143e7`)·
-상대상승 게이트(`28a86491`)·구성종목 수집 깊이(`004517f8`)·PARAM 적용(`b39cc7c1`) 등.
-**배포는 쓰기 작업이라 개발자가 하지 않는다.**
+### 다음
 
-**✅ ~~시한부 결함~~ — `DEF-PRICE-EQUITY-REFRESH` 는 오등재였다 (2026-09-06 철회)**
-로컬 개발 DB만 보고 운영 결함으로 단정했다. **OCI 는 정상**이다 — 배치가
-`attempted=41 success=41 fail=0` 로 성공하고 개별주 3종 종가도 2026-09-03 까지
-갱신돼 있다. OCI 배치는 `collect_approved_tickers()` = 승인 seed ∪ **Holdings**
-를 대상으로 하고, 로컬 `POST /market/refresh` 는 ETF 유니버스만 갱신한다.
-**교훈: 로컬 DB 상태를 운영 상태로 단정하지 말 것.**
+**`POC3-OPS-02A` 보유 위험 즉시 알림 최소기능** — PLAN 만 제출, 구현 없음.
+시장 브리핑 개발은 그다음 Step 으로 분리한다.
 
-**문서**
-- 설계서 `docs/ai_design/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_DESIGN_V1.md`
-- PLAN `docs/ai_plan/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_PLAN_V1.md` (V1.6 · §11.5 확정 · §12 종료 보고)
-- 결과서 `docs/ai_result/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_RESULT.md`
-- 인계 `docs/handoff/POC3/POC3-OPS-01A_HANDOFF_CLOSEOUT.md`
-- 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1** (미배포 명시)
+### 열린 결함 3건
 
-**실측**: 백엔드 전체 **1,354 passed** · 역검증 **26종 전부 탐지** · KS-10 러너 717→**644줄**.
+`DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL` ·
+**`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`**(신규 — 원천 최신성·표시 기준일·
+수익률 재계산·소비처 4층위. POC4 시장 데이터 작업에서 처리. 08:00 발송 차단으로
+현재 노출은 막혀 있다)
 
-**검증 라운드**: r1~r9 `REJECTED` → r10 **`VERIFIED`**. r7~r10 은 기능이 아니라
-**결과서 자기참조 정합성**만 오갔고, 검증자가 판정 기준을 조정하며 마무리했다
-(경미한 이력 표기는 비차단 메모로, 문서만 바뀌면 전체 코드 검증 반복 안 함).
+### 문서
+
+- OPS-01A: `docs/ai_result/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_RESULT.md` §12
+- OPS-01B: `docs/ai_design|ai_plan/POC3/POC3-OPS-01B-GATE_US_MARKET_AND_SECTOR_GATE_*.md`
+- OPS-01C: `docs/ai_result/POC3/POC3-OPS-01C_RISK_EVIDENCE_GATE_RESULT.md`
+- 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
 
 ---
 
