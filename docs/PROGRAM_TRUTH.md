@@ -348,18 +348,25 @@ flowchart LR
   `scripts/run_three_push_runtime_oci.py` §3-c·§6-c.
 - 등급: **RUNTIME_VERIFIED** (2026-09-07 실제 발송 수신 · 실행 기록 대조).
 
-#### C-2. PUSH 종류별 자동발송 상태 (2026-09-07 설계자 확정)
+#### C-2. PUSH 종류별 자동발송 상태 (2026-09-08 실측)
 
-**3종 중 1종만 자동발송 중이다.**
+**3종 중 2종이 자동발송 중이다.**
 
 | 종류 | cron | `PUSH_AUTOSEND_*_ENABLED` | 상태 |
 |---|---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | 유지 | **`true`** | **발송 중** |
+| `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화 |
 | `market_briefing` (08:00) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled` |
-| `spike_or_falling_alert` (7틱) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled` |
+| ~~`spike_or_falling_alert`~~ | **제거** | — | **폐지** — cron 7건을 `holdings_risk_alert` 로 교체 |
 
-전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 holdings 까지 멈춘다).
-**cron 과 코드는 제거하지 않고 종류별 발송만 비활성화**했다.
+전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 보유 PUSH 까지 멈춘다).
+
+**활성 PARAM** `param-20260907T152806-255383` 의 `enabled_push_kinds` 는 4종이다
+(`market_briefing` · `holdings_briefing` · `spike_or_falling_alert` ·
+`holdings_risk_alert`). `spike_or_falling_alert` 는 PARAM 에 남아 있으나 cron 이
+호출하지 않으므로 실행되지 않는다.
+
+`market_briefing` 은 cron·코드를 제거하지 않고 종류별 발송만 비활성화했다.
 
 차단 사유 (설계자 판정 2026-09-07):
 

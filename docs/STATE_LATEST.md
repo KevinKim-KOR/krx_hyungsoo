@@ -1,50 +1,79 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-07 (**OPS-01A `CLOSED` · 01B `CONNECT_NONE` · 01C `REJECT`/`DATA_GAP`**)
+최종 업데이트: 2026-09-08 (**OPS-02A 배포·활성화 완료 — PUSH 2_OF_3**)
 
 ## 현재 상태
 
 ```text
-POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 1_OF_3
+POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 ```
 
-**PUSH 3종 중 1종만 자동발송 중이다.** 시장 브리핑·위험 알림은 "증명될 때까지"
-꺼 두었다. **기능이 완료된 것이 아니므로 POC3 Closeout 은 하지 않는다.**
+**PUSH 3종 중 2종이 자동발송 중이다.** 남은 것은 08:00 시장 브리핑 하나다.
+**기능이 완료된 것이 아니므로 POC3 Closeout 은 하지 않는다.**
 
 | 종류 | autosend | 상태 |
 |---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
-| `market_briefing` (08:00) | **`false`** | 차단 — OPS-01B Gate `CONNECT_NONE` |
-| `spike_or_falling_alert` (7틱) | **`false`** | 차단 — OPS-01C `REJECT` |
+| `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화, 실발송은 2026-09-09 첫 틱부터 |
+| `market_briefing` (08:00) | `false` | 차단 — OPS-01B Gate `CONNECT_NONE` · **OPS-02B 에서 재개발** |
+| ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
-전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 holdings 까지 멈춤). **cron·코드는
-제거하지 않고 종류별 발송만 비활성화**했다.
+전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 보유 PUSH 까지 멈춘다).
 
 ### Step 별 종료 상태
 
 | Step | 상태 | 요지 |
 |---|---|---|
-| **OPS-01A** 보유 PUSH 선별·억제 | **`CLOSED`** | 배포 `703eb56f` · 2026-09-07 09:15 첫 실행 `sent` 519자 · 7종목. 억제·차단 실측 완료 |
-| **OPS-01B** 미국시장·섹터 Gate | **`DATA_GAP` / `CONNECT_NONE`** | 미국 지표 없음(VIX 1종·65일 정체) · 섹터 분류 없음(`category`=자산군 7종) · 구성종목 2.9% |
-| **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관. OCI 사전계산 위험 artifact 사용 불가 |
+| **OPS-01A** 보유 PUSH 선별·억제 | **`CLOSED`** | 배포 `703eb56f` · 2026-09-07 09:15 첫 실행 `sent` 519자 · 7종목 |
+| **OPS-01B** 미국시장·섹터 Gate | **`DATA_GAP` / `CONNECT_NONE`** | 미국 지표 없음 · 섹터 분류 없음. **실패가 아니라 정상 Gate 결과**(설계자) |
+| **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관 |
+| **OPS-02A** 보유 급락 알림 | **`IMPLEMENTED_OPERATIONAL`** | 커밋 `5d2614d6` · 검증자 `VERIFIED_WITH_NOTES`(메모 해소) · 사용자 목업 `APPROVED` · 배포·활성화 완료 |
+| **OPS-02B** 08:00 시장 브리핑 재개발 | **`NOT_STARTED`** | 설계 요청 예정. `CONNECT_NONE` 제약 하에서 무엇을 보낼지가 논점 |
+
+### OPS-02A 운영 계약 (요약)
+
+```
+DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
+```
+
+- 구간 **−5 / −7 / −10%** (상한 배타·하한 포함). 직전 종가가 없으면 더 오래된
+  값으로 대체하지 않고 **`데이터 확인 필요`** 로 본문에 표시한다.
+- **신규·악화만 발송.** 완화·해소·동일 구간·같은 날 재진입은 억제(`worst_state`).
+- 거래일 경계에서 상태 초기화. 상태 저장은 **발송 성공 뒤에만**.
+- registry 중복키 슬롯은 **실행 시각 `HH:MM`** — 일 단위 키면 같은 날 악화
+  재발송이 막힌다.
+- 표시 이름 **`[보유 급락 알림]`**, 1종목이면 `동시` 를 붙이지 않는다
+  (2026-09-07 사용자 확정). 내부 식별자 `holdings_risk_alert` 는 불변.
+
+### 배포 상태 (2026-09-08 실측)
+
+| 항목 | 값 |
+|---|---|
+| OCI HEAD | `5d2614d6` (자동 배포) |
+| 활성 PARAM | `param-20260907T152806-255383` — `enabled_push_kinds` 4종 |
+| cron | 러너 11건 + 배치 1건. 급락 알림 7틱, spike 호출 0건 |
+| 비활성 차단 실증 | 2026-09-08 7틱 전부 `skipped/push_kind_disabled` · 발송 0건 |
+| 시장 DB | `etf_daily_price` 최신 `2026-09-07` (분모 공급 정상) |
 
 ### 다음
 
-**`POC3-OPS-02A` 보유 위험 즉시 알림 최소기능** — PLAN 만 제출, 구현 없음.
-시장 브리핑 개발은 그다음 Step 으로 분리한다.
+**`POC3-OPS-02B` 08:00 시장 브리핑 재개발** — 설계자에게 설계 요청.
+완료되면 PUSH 3종이 모두 갖춰진다.
 
 ### 열린 결함 3건
 
 `DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL` ·
-**`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`**(신규 — 원천 최신성·표시 기준일·
-수익률 재계산·소비처 4층위. POC4 시장 데이터 작업에서 처리. 08:00 발송 차단으로
-현재 노출은 막혀 있다)
+**`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`**(원천 최신성·표시 기준일·수익률
+재계산·소비처 4층위. POC4 시장 데이터 작업에서 처리. 08:00 발송 차단으로 현재
+노출은 막혀 있다 — **OPS-02B 착수 시 함께 봐야 한다**)
 
 ### 문서
 
 - OPS-01A: `docs/ai_result/POC3/POC3-OPS-01A_HOLDINGS_PUSH_SELECTION_AND_SUPPRESSION_RESULT.md` §12
 - OPS-01B: `docs/ai_design|ai_plan/POC3/POC3-OPS-01B-GATE_US_MARKET_AND_SECTOR_GATE_*.md`
 - OPS-01C: `docs/ai_result/POC3/POC3-OPS-01C_RISK_EVIDENCE_GATE_RESULT.md`
+- **OPS-02A**: `docs/ai_plan|ai_result/POC3/POC3-OPS-02A_HOLDINGS_RISK_ALERT_MINIMUM_*.md`
+  · 목업 `docs/handoff/POC3/OPS-02A_TELEGRAM_MOCK.html`
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
 
 ---
