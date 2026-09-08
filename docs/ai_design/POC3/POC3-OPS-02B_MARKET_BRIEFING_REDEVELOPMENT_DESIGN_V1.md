@@ -9,7 +9,8 @@
   | 판 | 내용 |
   |---|---|
   | V1 (2026-09-08) | 최초 — PLAN V1 선제출 요구 |
-  | **V1.1** (2026-09-08) | 개발자 PLAN V1 조사 결과 반영 → 설계자 **`APPROVED_WITH_REQUIRED_EDITS`**. **Step 을 `02B-1`(Gate) / `02B-2`(메시지) 로 2분할**. 확정 사항은 **§10**. 아래 §1~§9 중 §10 과 충돌하는 서술은 **§10 이 우선**한다 |
+  | **V1.1** (2026-09-08) | 개발자 PLAN V1 조사 결과 반영 → 설계자 **`APPROVED_WITH_REQUIRED_EDITS`**. **Step 을 `02B-1`(Gate) / `02B-2`(메시지) 로 2분할**. 확정 사항은 **§10** |
+  | **V1.2** (2026-09-09) | **probe 결과에 따른 설계자 정정.** `OPEN_GAP` 원천을 **KRX Open API 무조정가**로 교체(V1.1 의 FDR 계열 지시 **폐기**) · USD/KRW **PIT 분리** · **`INDEX_LEADERSHIP` 신설** · 신규 결함 등재. 정정은 **§11**. §1~§10 과 충돌하면 **§11 이 우선**한다 |
 
 ## 1. 목표
 
@@ -289,7 +290,7 @@ ETF ticker · 기초지수 코드 · 기초지수명 · **구조화된 기초시
 
 `NOT_EVALUATED` 를 `REJECT` 에 포함하지 않는다.
 
-### 10.5 Q5 — `open` backfill 실패 시
+### 10.5 Q5 — `open` backfill 실패 시  *(V1.2 §11.1 로 대체됨)*
 
 - 먼저 FDR 반환값을 **1개 짧은 구간에서 probe**
 - 성공하면 **기존 `close` 를 보존**하면서 `open` 만 backfill
@@ -358,3 +359,136 @@ NEXT=START_02B_2|REMAIN_BLOCKED
 
 구현 중 외부 source 의 identity·필드가 PLAN 과 다르거나 `open` 750일 확보가
 실패하면 **임의 대체하지 말고 그 사실만 반환**한다.
+
+
+---
+
+## 11. [V1.2] probe 결과에 따른 정정 — 2026-09-09
+
+§1~§10 과 충돌하면 이 절이 우선한다.
+
+### 11.1 `OPEN_GAP` 원천 확정 — V1.1 의 FDR 지시 **폐기**
+
+```text
+OPEN_GAP_t  = KRX t일 무조정 시가 / KRX 직전 거래일 무조정 종가 - 1
+source      = KRX_OPEN_API
+price_basis = UNADJUSTED_TRADED_PRICE
+```
+
+- 시가·종가 **모두 KRX Open API 단일 원천**.
+- FDR 시가와 기존 DB 종가를 **혼합하지 않는다.**
+- 기존 `etf_daily_price` 의 `open`·`close` 를 **수정·덮어쓰지 않는다.**
+- `02B-1` Gate 에서는 **평가용 snapshot 으로만** 보존한다.
+- 일별 응답 전체를 적재하지 말고 **`069500` 평가 행만** 추출한다.
+- 조회 구간·행 수·결측률·수집 시각·**snapshot hash** 를 기록한다.
+- 운영 적재 구조는 Gate 결과 후 `02B-2` 에서 결정한다
+  (`database_backfill = DEFERRED`).
+
+KRX 무조정 가격에는 **분배락에 따른 실제 가격 변화**가 포함된다. 공식 분배락
+날짜를 확보할 수 있으면 민감도 결과를 별도 보고하되, 확보할 수 없으면 **임의
+보정하지 않고 한계로 기록**한다.
+
+결과 표현은 **"미국시장과 개장 갭의 예측 관계"** 로 제한하고 **인과관계로
+단정하지 않는다.**
+
+### 11.2 DB 가격 기준 혼재 — 신규 결함
+
+```text
+DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY
+status = INVESTIGATION_REQUIRED
+```
+
+근거 — KRX·DB·FDR 비율이 기간에 따라 다른 체계를 보임 · 2026-03-06 과
+2026-04-20 사이 기준 전환 정황 · `NAVER_FDR` source 표기만으로 실제 조정 기준을
+확정할 수 없음.
+
+**이번 Step 에서 수정하지 않는다.** 읽기 전용 기록만 — 전체 기간 KRX/DB 비율
+변화 · 전환 후보일 · 영향 ticker 범위 · 수익률·ML·UI·PUSH 소비 경로 · 현재 운영
+수치 실영향 여부. **KRX 단일 원천 Gate 평가를 막지 않는다.**
+
+### 11.3 USD/KRW PIT 재정렬
+
+"6종 모두 16:00 ET 종료 후 이용 가능" 판정은 **그대로 인정하지 않는다.**
+
+| 그룹 | 규칙 |
+|---|---|
+| S&P500·Nasdaq·SOX·Russell2000·VIX | 미국 세션 종료 기준 |
+| **USD/KRW** | 일별 종가의 **실제 제공 완료 시각**이 한국 개장 전임을 확인해야 함 |
+
+- 증명 불가 시 **primary feature 에서 제외.**
+- 필요하면 한국 개장일보다 **날짜가 엄격히 앞선 행만** 쓰는 **보조 민감도
+  평가**로 제한.
+- **`07:50 현재 환율` 등 표현 금지.**
+- 적용 후 **정렬 표본 수·커버리지를 다시 산출**하고 **Gate 에 사용한 feature
+  집합을 명시**한다.
+
+### 11.4 섹터·기초지수 판정
+
+```text
+SECTOR           = NOT_EVALUATED
+INDEX_LEADERSHIP = AVAILABLE
+화면·메시지 명칭  = 최근 강한 기초지수
+```
+
+- **API Key 가 섹터 분류를 해결한 것으로 기록하지 않는다.**
+- `IDX_IND_NM` 은 **기초지수명**이며 업종·테마 분류가 아니다.
+- 기초지수명 문자열을 해석해 **임의 섹터로 묶지 않는다.**
+- 08:00 메시지에서도 **`상승 섹터` 라고 표시하지 않는다.**
+- 사용자에게 **추가 계정·API Key 발급을 요청하지 않는다**
+  (`krx_credentials = NOT_REQUIRED`).
+
+**산출 계약** — 식별키 `지수산출기관 + 기초지수명` 완전일치 · fuzzy matching
+금지 · 기초자산 **주식만** · **레버리지·인버스·합성 제외** · 동일 기초지수
+그룹 중복 제거 · 그룹 수익률 **중앙값** · **5일·20일 모두 양수**인 지수만 후보 ·
+**20일 기준 상위 2개**까지 · 추종 ETF 수와 가격 기준일을 evidence 에 기록.
+
+**운영** — KRX API 로 **최신 메타데이터만** 갱신. 수동 CSV 는 정본 아님. 과거
+2,800일 메타데이터 backfill 금지. `source`·`as-of`·`hash` 를 가진 versioned
+snapshot 보존. join coverage **≥95% 사용 / <95% 미산출 / 미매칭 제외.**
+
+**표현**
+
+```text
+오늘 볼 기초지수
+• ○○지수: 5일 +x.x% · 20일 +x.x% (추종 ETF n개 기준)
+```
+
+공식 지수 분류에 따른 **가격 흐름**이지 섹터 상승을 검증한 결과가 아님을
+결과서에 명시한다.
+
+### 11.5 결정 순서
+
+본문을 지금 확정하지 않고 **OUTLOOK Gate 를 먼저 실행**한다.
+
+| 판정 | 목업 |
+|---|---|
+| `ADOPT_OUTLOOK` | 개장 압력 전망 + 최근 강한 기초지수 |
+| `FACT_ONLY` | 미국시장 관측 사실 + 최근 강한 기초지수 |
+| `REJECT` | 전망 문구 제외, 기초지수 중심 |
+| `NOT_EVALUATED` | 원인 기록 후 기초지수 중심 |
+
+**`REJECT`·`NOT_EVALUATED` 여도 세 번째 PUSH 를 폐기하지 않는다.** 모든
+evidence 가 불가능한 경우에만 `REMAIN_BLOCKED`.
+
+### 11.6 KOSPI/VIX 최소 계약
+
+① OCI 운영 배치에서 갱신 경로 확보 · ② 각 benchmark 자기 `as_of_date` 유지 ·
+③ 위치 인덱스가 아닌 **실제 거래일 기준** 수익률 · ④ **최신성 1거래일 초과 시
+미산출** · ⑤ stale 을 다른 최신 `market_context.asof` 로 표시 금지 · ⑥ 일부만
+실패하면 **실패한 블록만 제외** · ⑦ stale VIX 영향은 **읽기 전용 확인**,
+ML 재학습으로 확대 금지.
+
+**08:00 autosend 는 계속 `false`.**
+
+### 11.7 종료 보고 형식
+
+```text
+OUTLOOK             = ADOPT_OUTLOOK | FACT_ONLY | REJECT | NOT_EVALUATED
+SECTOR              = NOT_EVALUATED
+INDEX_LEADERSHIP    = AVAILABLE | NOT_EVALUATED
+KOSPI_VIX_INTEGRITY = PASS | FAIL
+NEXT                = START_02B_2 | REMAIN_BLOCKED
+```
+
+위 계약과 다른 **데이터 identity 또는 PIT 문제가 새로 발견되는 경우에만** 다시
+질의한다.
