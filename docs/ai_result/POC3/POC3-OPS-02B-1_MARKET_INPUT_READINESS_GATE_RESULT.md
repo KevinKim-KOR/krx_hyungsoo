@@ -3,7 +3,8 @@
 - **입력 문서**: `docs/ai_plan/POC3/POC3-OPS-02B_MARKET_BRIEFING_REDEVELOPMENT_PLAN_V1.md` (V1.5)
 - **설계서**: `docs/ai_design/POC3/POC3-OPS-02B_MARKET_BRIEFING_REDEVELOPMENT_DESIGN_V1.md` (V1.2)
 - **작성일**: 2026-09-10 · **독자**: 검증자(Codex)
-- **커밋**: `48babf04` (22 files, +22,269 / −44)
+- **커밋**: `48babf04`(코드·산출물) · `40f1dabd`(결과서) · **r3 보완분**
+- **라운드**: r2 (검증자 r1 `REJECTED` → 재제출)
 
 ## 0) 현재 상태
 
@@ -97,7 +98,7 @@ source      = KRX_OPEN_API   price_basis = UNADJUSTED_TRADED_PRICE
 |---|---|
 | 행 수 | **2,867일** (`20150102` ~ `20260907`) |
 | 결측 | 1일 (`20260908` KRX 미제공) |
-| sha256 | `ca94dffbc37aa338e4a92237e1f1ce94c475bd256701cf0bbf31ddff15061d`… |
+| sha256 | `ca94dffbc37aa338ea6e4e98196c6a4793a741aa4cbe10954c3d3d7304e6d361` |
 
 **한계** — 무조정가에는 분배락 실제 가격 변화가 포함된다. 공식 분배락 날짜를
 확보하지 못해 **임의 보정하지 않고 한계로 기록**한다.
@@ -165,7 +166,7 @@ CI [+0.7260, +0.8684] — **같은 결론.**
 
 | 검사 | 결과 |
 |---|---|
-| target 셔플 ×3 | 54.3 ~ 55.8% |
+| target 셔플 ×3 | **52.97 / 55.39 / 56.10%** |
 | feature 1세션 지연 | **53.75%** |
 | feature 2세션 지연 | 53.54% |
 | target +1일 이동 | 53.75% |
@@ -289,18 +290,19 @@ python scripts/ops02b1_gate/reproduce.py            # 전체
 python scripts/ops02b1_gate/reproduce.py operating  # 일부
 ```
 
-**운영 DB 를 읽지 않는다** — `sqlite3` import 자체가 없다. 커밋된 snapshot 만 쓴다.
-무결성 불일치·스크립트 부재·coverage 미달 시 **exit code 1**.
+**운영 DB 를 읽지 않는다** — `sqlite3` import 자체가 없다. 커밋된 snapshot 만
+쓰고 **tracked 산출물도 덮지 않는다**(결과 JSON 갱신은 `--write` 를 준 실행만).
+무결성 불일치·표본 미달·coverage 미달·스크립트 부재 시 **exit code 1**.
 
 | 입력 | 경로 | 행 수 | sha256 |
 |---|---|---:|---|
-| 공식 KRX ETF 기본정보 | `state/market_meta/krx_etf_basic_20260909.csv` | 1,168 | `bf07e52b…` |
-| KRX `069500` 무조정 | `state/ops02b1_gate/krx_069500_snapshot.csv` | 2,867 | `ca94dffb…` |
-| PIT 정렬 데이터셋 | `state/ops02b1_gate/gate_dataset.csv` | 2,866 | `a8e36743…` |
-| KRX API 기초지수명 | `state/ops02b1_gate/krx_api_idxname_20260904.csv` | 1,167 | `e5627965…` |
-| ETF 종가(41거래일) | `state/ops02b1_gate/etf_close_snapshot.csv` | 7,984 | `4caa9d9c…` |
-| `etf_master` ticker | `state/ops02b1_gate/etf_master_tickers.csv` | 1,178 | `4c186184…` |
-| DB `069500` 종가 | `state/ops02b1_gate/db_069500_close_snapshot.csv` | 3,044 | `caaae26e…` |
+| 공식 KRX ETF 기본정보 | `state/market_meta/krx_etf_basic_20260909.csv` | 1,168 | `bf07e52bea461b23c2402e61b5224fc1e89078e8f320f6f0742948a09e0bc576` |
+| KRX `069500` 무조정 | `state/ops02b1_gate/krx_069500_snapshot.csv` | 2,867 | `ca94dffbc37aa338ea6e4e98196c6a4793a741aa4cbe10954c3d3d7304e6d361` |
+| PIT 정렬 데이터셋 | `state/ops02b1_gate/gate_dataset.csv` | 2,866 | `a8e36743ffa42f95e51dbc892b5eca1b927631e05cef81663e681655ab631435` |
+| KRX API 기초지수명 | `state/ops02b1_gate/krx_api_idxname_20260904.csv` | 1,167 | `e5627965e6eaf5e84ecf23bc8b8b59f9f7c27fe416cddd809b1e68c05e5e3428` |
+| ETF 종가(41거래일) | `state/ops02b1_gate/etf_close_snapshot.csv` | 7,984 | `4caa9d9c90d37c1c8b75c70cd4ec4f9d9bd8e113cd9d7f06bf469a870f4a961c` |
+| `etf_master` ticker | `state/ops02b1_gate/etf_master_tickers.csv` | 1,178 | `4c186184953a1f52613f33ce0a8d521699f8d865fbde43fd9db369c480eba493` |
+| DB `069500` 종가 | `state/ops02b1_gate/db_069500_close_snapshot.csv` | 3,044 | `caaae26e94451ddcb79944777cc8da05810658662d0ed1631152b301a177231b` |
 
 **커밋된 blob 7종이 위 sha256 과 일치함을 `git cat-file` 로 확인**했다.
 `.gitattributes` 에 `state/ops02b1_gate/*.csv -text` · `state/market_meta/*.csv
@@ -309,6 +311,27 @@ python scripts/ops02b1_gate/reproduce.py operating  # 일부
 **공식 CSV 계약 이행** — `source=KRX_OFFICIAL_CSV` · `asof_date=2026-09-09` ·
 `rows=1168` · sha256 · API ticker 완전일치 join · 지수명 불일치 제외 · coverage
 95% 게이트 · **수동 편집본·가공 분류표 없음**(다운로드 원본 그대로).
+
+---
+
+## 7.1) fail-closed 실증 (r3 신규)
+
+계약 이하 입력이 **성공으로 끝나지 않는지**를 코드로 고정했다. 이전 라운드에는
+계약이 문서에만 있었다.
+
+| 강제 입력 | 결과 |
+|---|---|
+| coverage **0%** | `evaluate_coverage → ok=False` |
+| coverage **94%** | `ok=False` |
+| 표본 **700일**(비율 100%) | `ok=False` |
+| 지수명 불일치 1종 | **제외됨** (`name_mismatch`) |
+| API 부재 1종 | **제외됨** (`not_in_api`) |
+| join coverage < 95% | **블록 전체 미산출** + `return False` |
+| 섹션 실패 | `main() → exit 1` |
+
+현재 snapshot 실행에서 **API 부재 1종(`0238P0`)이 실제로 제외**된다. 그 종목은
+혼합자산이라 상품 필터에서도 걸러지므로 **`INDEX_LEADERSHIP` 수치에는 영향이
+없다**(검증자 확인과 일치).
 
 ---
 
@@ -346,6 +369,10 @@ python scripts/ops02b1_gate/reproduce.py operating  # 일부
 | 3 | **`BaseException` 삼킴** — 테스트를 통과시키려다 종료 신호까지 benchmark 실패로 바꿨다 |
 | 4 | **MANIFEST 에 없는 스크립트 8개 기재** — 실제 2개로 교체하고 존재 여부를 검사에 넣었다 |
 | 5 | **보고에서 untracked 1건 누락** |
+| 6 | **fail-closed 가 코드에 연결되지 않음** — `check_coverage()` 가 판정값을 반환하지 않아 coverage 0% 에도 exit 0 이었고, API–CSV 지수명 불일치를 **출력만** 하고 그룹은 CSV 전체로 만들었다. 계약이 문서에만 있고 실행되지 않았다 |
+| 7 | **결과서 sha256 오기** — snapshot hash 를 **손으로 옮겨 적어** 실제와 달랐다. 이제 MANIFEST 에서 **생성**한다 |
+| 8 | **shuffle 범위 오기** — 구 스크래치 실행값(54.3~55.8%)을 적었다. 실제 재현값은 **52.97 / 55.39 / 56.10%** |
+| 9 | **`reproduce.py` 가 tracked JSON 을 덮음** — "읽기 전용" 주장과 어긋났다. `--write` 옵션으로 분리했다 |
 
 ### 9.3 개발자 판단 (설계자 확정 아님)
 
@@ -371,10 +398,11 @@ python scripts/ops02b1_gate/reproduce.py operating  # 일부
 
 | 항목 | 결과 |
 |---|---|
-| `black --check app scripts tests` | `312 files would be left unchanged` |
+| `black --check app scripts tests` | `313 files would be left unchanged` |
 | `flake8 app scripts tests` | exit 0 |
 | `pytest tests/test_market_benchmark_freshness.py` | **24 passed** |
-| **전체 회귀** `pytest tests/` | **1,446 passed / 0 failed** (147.14s) |
+| `pytest tests/test_ops02b1_gate_reproduce.py` | **15 passed** (Gate 계약 test, r3 신규) |
+| **전체 회귀** `pytest tests/` | **1,461 passed / 0 failed** (140.10s) |
 | `reproduce.py` | exit 0 · 입력 7종 sha256 일치 · 스크립트 2개 존재 |
 | 커밋 | `48babf04` · 22 files · +22,269 / −44 |
 | `git status --short --untracked-files=all` | **출력 없음** (clean) |

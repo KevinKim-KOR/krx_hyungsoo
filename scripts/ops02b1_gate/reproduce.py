@@ -7,7 +7,8 @@
     python scripts/ops02b1_gate/reproduce.py outlook    # 일부만
 
 **읽기 전용이다.** 운영 DB(`etf_daily_price`·`market_benchmark_daily_price`)를
-쓰지 않고, 외부 조회도 하지 않는다. 입력은 저장소에 커밋된 snapshot 뿐이다.
+쓰지 않고, 외부 조회도 하지 않으며, **tracked 산출물도 덮지 않는다**. 입력은
+저장소에 커밋된 snapshot 뿐이다. 결과 JSON 갱신은 `--write` 를 준 실행만 한다.
 
 | 입력 | 경로 |
 |---|---|
@@ -52,6 +53,12 @@ REFIT_EVERY = 20
 BOOTSTRAP_N = 5000
 SEED = 20260910
 MIN_TICKERS_PER_INDEX = 2
+MIN_SAMPLE_DAYS = 750
+MIN_COVERAGE = 0.95
+MIN_JOIN_COVERAGE = 0.95
+
+# `--write` 를 준 실행만 tracked 결과 JSON 을 갱신한다.
+WRITE_RESULTS = False
 
 
 # ── 공통 ────────────────────────────────────────────────────────────────────
@@ -146,21 +153,50 @@ def check_snapshot():
 # ── 3. PIT 정렬 커버리지 ────────────────────────────────────────────────────
 
 
+def evaluate_coverage(all_rows):
+    """PIT 정렬 커버리지 판정. **순수 함수** — 파일을 읽지 않는다.
+
+    반환 `(stats, ok)`. `ok` 는 **750일 이상 AND 95% 이상** 일 때만 True 다.
+    호출부가 이 값을 종료코드로 이어야 한다(검증자 r3 A-1 — 판정값 미반환으로
+    coverage 0% 에도 exit 0 이었다).
+    """
+    n = len(all_rows)
+    per_feature = {
+        f: sum(1 for r in all_rows if r[f] not in ("", "None", None))
+        for f in PRIMARY_FEATURES
+    }
+    aux = sum(1 for r in all_rows if r["usdkrw_ret_1d_pct"] not in ("", "None", None))
+    complete = sum(1 for r in all_rows if r["primary_complete"] == "True")
+    ratio = (complete / n) if n else 0.0
+    ok = bool(complete >= MIN_SAMPLE_DAYS and ratio >= MIN_COVERAGE)
+    return {
+        "n": n,
+        "per_feature": per_feature,
+        "aux": aux,
+        "complete": complete,
+        "ratio": ratio,
+        "sample_ok": complete >= MIN_SAMPLE_DAYS,
+        "coverage_ok": ratio >= MIN_COVERAGE,
+    }, ok
+
+
 def check_coverage():
     all_rows = list(csv.DictReader(open(GATE / "gate_dataset.csv", encoding="utf-8")))
-    n = len(all_rows)
+    stats, ok = evaluate_coverage(all_rows)
+    n = stats["n"]
     print("\n=== 3. PIT 정렬 커버리지 (USD/KRW 는 primary 제외) ===")
-    for f in PRIMARY_FEATURES:
-        got = sum(1 for r in all_rows if r[f] not in ("", "None", None))
+    for f, got in stats["per_feature"].items():
         print(f"  {f:22} PRIMARY {got:>5}/{n} = {100 * got / n:.1f}%")
-    aux = sum(1 for r in all_rows if r["usdkrw_ret_1d_pct"] not in ("", "None", None))
-    print(f"  {'usdkrw_ret_1d_pct':22} AUX     {aux:>5}/{n} = {100 * aux / n:.1f}%")
-    complete = sum(1 for r in all_rows if r["primary_complete"] == "True")
-    print(f"\n  primary 5종 완비 {complete}/{n} = {100 * complete / n:.1f}%")
     print(
-        f"  750일 요구 {'충족' if complete >= 750 else '미달'} · "
-        f"95% 커버리지 {'충족' if complete / n >= 0.95 else '미달'}"
+        f"  {'usdkrw_ret_1d_pct':22} AUX     {stats['aux']:>5}/{n} = "
+        f"{100 * stats['aux'] / n:.1f}%"
     )
+    print(f"\n  primary 5종 완비 {stats['complete']}/{n} = {100 * stats['ratio']:.1f}%")
+    print(
+        f"  {MIN_SAMPLE_DAYS}일 요구 {'충족' if stats['sample_ok'] else '**미달**'} · "
+        f"{MIN_COVERAGE:.0%} 커버리지 {'충족' if stats['coverage_ok'] else '**미달**'}"
+    )
+    return ok
 
 
 # ── 4. OPERATING_RULE = SP500_SIGN_V1 ───────────────────────────────────────
@@ -218,9 +254,13 @@ def run_sp500_sign():
     rule = "SP500_SIGN_V1" if ok_all else "FAIL"
     print(f"\n  OPERATING_RULE = {rule}")
     result["operating_rule"] = rule
-    (GATE / "gate_sp500_sign_result.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8"
-    )
+    if WRITE_RESULTS:
+        # 기본은 **쓰지 않는다.** tracked 산출물을 재현 과정에서 덮으면
+        # "읽기 전용" 주장이 깨진다(검증자 r3 A-2).
+        (GATE / "gate_sp500_sign_result.json").write_text(
+            json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+        print("  (--write: gate_sp500_sign_result.json 갱신)")
     return ok_all
 
 
@@ -300,39 +340,77 @@ def index_groups(elig):
     return groups
 
 
-def run_index_leadership():
-    """**커밋된 snapshot 만** 사용한다 — 운영 DB 를 읽지 않는다(검증자 r2 A-3)."""
-    meta = load_meta()
-    elig = eligible(meta)
-    groups = index_groups(elig)
-    multi = {k: v for k, v in groups.items() if len(v) >= MIN_TICKERS_PER_INDEX}
-    print("\n=== 6. INDEX_LEADERSHIP ===")
-    print(f"  메타데이터 {len(meta)}종 → 필터 후 {len(elig)}종 → 그룹 {len(groups)}개")
-    print(f"  n>={MIN_TICKERS_PER_INDEX} 풀: {len(multi)}개")
+def select_index_universe(meta, api_idx_name):
+    """설계자 §3 CSV 계약 — **API 와 일치하는 종목만** 남긴다. **순수 함수**.
 
-    # API 기초지수명 ↔ CSV 기초지수명 일치 검증 (설계자 §3 계약 4)
-    api = {
+    | 계약 | 처리 |
+    |---|---|
+    | API ticker 와 정확히 join | API 에 없는 ticker **제외** |
+    | 지수명 일치 종목만 사용 | `IDX_IND_NM != 기초지수명` 이면 **제외** |
+    | 임의 보완 금지 | 이름을 고쳐 맞추지 않는다 |
+
+    r3 A-1 — 이전 구현은 CSV 전체로 그룹을 만든 뒤 불일치를 **출력만** 했다.
+    제외가 실행 코드에 연결되지 않아 계약이 성립하지 않았다.
+
+    반환 `(사용 목록, 제외 사유별 목록)`.
+    """
+    kept, excluded = [], {"not_in_api": [], "name_mismatch": []}
+    for row in meta:
+        ticker = row["단축코드"]
+        if ticker not in api_idx_name:
+            excluded["not_in_api"].append(ticker)
+            continue
+        if api_idx_name[ticker] != row["기초지수명"]:
+            excluded["name_mismatch"].append(ticker)
+            continue
+        kept.append(row)
+    return kept, excluded
+
+
+def run_index_leadership():
+    """**커밋된 snapshot 만** 사용한다 — 운영 DB 를 읽지 않는다."""
+    meta = load_meta()
+    api_idx_name = {
         r["isu_cd"]: r["idx_ind_nm"]
         for r in csv.DictReader(
             open(GATE / "krx_api_idxname_20260904.csv", encoding="utf-8")
         )
     }
-    both = [(r["단축코드"], r["기초지수명"]) for r in meta if r["단축코드"] in api]
-    same = sum(1 for t, name in both if api[t] == name)
+    print("\n=== 6. INDEX_LEADERSHIP ===")
+
+    # ① API 일치 종목만 (계약) → ② 상품 필터 → ③ 그룹 → ④ n>=2
+    matched, excluded = select_index_universe(meta, api_idx_name)
+    n_ex = len(excluded["not_in_api"]) + len(excluded["name_mismatch"])
     print(
-        f"  API IDX_IND_NM ↔ CSV 기초지수명: {same}/{len(both)} = "
-        f"{100 * same / len(both):.1f}% 완전일치"
+        f"  메타데이터 {len(meta)}종 → API 일치 {len(matched)}종 "
+        f"(제외 {n_ex}: API부재 {len(excluded['not_in_api'])} · "
+        f"지수명불일치 {len(excluded['name_mismatch'])})"
     )
-    if same != len(both):
-        print("  → 불일치 종목은 계약대로 제외 대상 (공식 CSV 교체 필요 상태)")
+    if excluded["name_mismatch"]:
+        print("  → 지수명 불일치는 공식 CSV 교체 필요 상태로 기록한다")
+
+    elig = eligible(matched)
+    groups = index_groups(elig)
+    multi = {k: v for k, v in groups.items() if len(v) >= MIN_TICKERS_PER_INDEX}
+    print(
+        f"  필터 후 {len(elig)}종 → 그룹 {len(groups)}개 → "
+        f"n>={MIN_TICKERS_PER_INDEX} 풀 {len(multi)}개"
+    )
 
     master = {
         r["ticker"]
         for r in csv.DictReader(open(GATE / "etf_master_tickers.csv", encoding="utf-8"))
     }
     elig_tickers = {r["단축코드"] for r in elig}
-    cov = len(elig_tickers & master) / len(elig_tickers) * 100
-    print(f"  join coverage {cov:.1f}%  ({'사용 가능' if cov >= 95 else '미산출'})")
+    cov = (len(elig_tickers & master) / len(elig_tickers)) if elig_tickers else 0.0
+    gate_ok = cov >= MIN_JOIN_COVERAGE
+    print(
+        f"  join coverage {cov * 100:.1f}%  "
+        f"({'사용 가능' if gate_ok else '**미산출 — 블록 전체 생략**'})"
+    )
+    if not gate_ok:
+        # 계약: coverage 95% 미만이면 **기초지수 블록 전체 미산출**.
+        return False
 
     closes: dict[str, dict[str, float]] = {}
     for r in csv.DictReader(open(GATE / "etf_close_snapshot.csv", encoding="utf-8")):
@@ -373,7 +451,7 @@ def run_index_leadership():
         f"범위 {min(counts)}~{max(counts)} · 2개 이상인 날 "
         f"{sum(1 for c in counts if c >= 2)}/{len(counts)}"
     )
-    return cov >= 95
+    return True
 
 
 # ── 7. DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY ────────────────────────────────
@@ -429,12 +507,18 @@ SECTIONS = {
 }
 
 
-def main() -> int:
-    """섹션 하나라도 실패(무결성 불일치·coverage 미달)면 **0 이 아닌 코드**로 끝난다.
+def main(argv=None) -> int:
+    """섹션 하나라도 실패(무결성·표본·coverage)하면 **0 이 아닌 코드**로 끝난다.
 
-    검증자 r2 A-3 — hash 가 어긋나도 exit 0 이면 CI·스크립트가 성공으로 읽는다.
+    r2 A-3 — hash 가 어긋나도 exit 0 이면 CI·스크립트가 성공으로 읽는다.
+    r3 A-1 — coverage 판정값이 여기까지 이어져야 한다.
     """
-    wanted = sys.argv[1:] or list(SECTIONS)
+    global WRITE_RESULTS
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--write" in argv:
+        WRITE_RESULTS = True
+        argv.remove("--write")
+    wanted = argv or list(SECTIONS)
     unknown = [w for w in wanted if w not in SECTIONS]
     if unknown:
         print(f"알 수 없는 섹션: {unknown}\n사용 가능: {list(SECTIONS)}")
