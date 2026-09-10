@@ -4,7 +4,8 @@
 - **설계서**: `docs/ai_design/POC3/POC3-OPS-02B_MARKET_BRIEFING_REDEVELOPMENT_DESIGN_V1.md` (V1.2)
 - **작성일**: 2026-09-10 · **독자**: 검증자(Codex)
 - **커밋**: `48babf04`(코드·산출물) · `40f1dabd`(결과서) · **r3 보완분**
-- **라운드**: r2 (검증자 r1 `REJECTED` → 재제출)
+- **라운드**: r2 → **검증자 `VERIFIED_WITH_NOTES`** (2026-09-10)
+- **검증 승인 커밋**: **`988b0494`** — 이후 **코드 변경 0건**
 
 ## 0) 현재 상태
 
@@ -17,7 +18,8 @@
 | `INDEX_LEADERSHIP` | `AVAILABLE` |
 | `KOSPI_VIX_INTEGRITY` | `PASS` |
 | `implementation` | `DONE` |
-| `verification` | **검증 대기** |
+| `verification` | **`VERIFIED_WITH_NOTES`** (커밋 `988b0494`) |
+| `verification_notes` | **이월 1건** (§8-7) |
 | `deployment` | `NOT_DEPLOYED` |
 | `autosend (08:00)` | **`false`** |
 | `step_status` | `GATE_COMPLETE_PENDING_VERIFICATION` |
@@ -345,6 +347,7 @@ python scripts/ops02b1_gate/reproduce.py operating  # 일부
 | 4 | 정적 메타데이터가 **수동 다운로드**다. 자동 갱신 경로는 `02B-2` 결정 |
 | 5 | `2026-09-08` KRX snapshot 결측 1일 (KRX 미제공) |
 | 6 | 로컬 Mac DB 에 테스트가 쓴 KOSPI 120행·VIX 48행이 남아 있다 (§9) |
+| 7 | **[검증자 이월]** **API 에만 있고 CSV 에는 없는 신규 ticker** 가 제외 진단 목록에 잡히지 않는다. `select_index_universe` 는 CSV 를 순회하므로 API 쪽 신규 종목을 보지 못한다. **현재 snapshot 에는 해당 사례가 없어 이번 Gate 결과에 영향이 없다.** 다만 일별 API 가 CSV 보다 최신이 되는 **운영 단계(`02B-2`)에서 확인 대상**이다 — 그때 "공식 CSV 교체 필요 상태" 로 감지해야 한다 |
 
 ---
 

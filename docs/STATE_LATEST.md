@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-08 (**OPS-02A 배포·활성화 완료 — PUSH 2_OF_3**)
+최종 업데이트: 2026-09-10 (**OPS-02B-1 Gate 검증 통과 — PUSH 2_OF_3 유지**)
 
 ## 현재 상태
 
@@ -15,7 +15,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 |---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
 | `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화, 실발송은 2026-09-09 첫 틱부터 |
-| `market_briefing` (08:00) | `false` | 차단 — OPS-01B Gate `CONNECT_NONE` · **OPS-02B 에서 재개발** |
+| `market_briefing` (08:00) | `false` | 차단 — **OPS-02B-1 Gate 통과**(`ADOPT`). 메시지·운영은 `02B-2` |
 | ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 보유 PUSH 까지 멈춘다).
@@ -28,7 +28,8 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | **OPS-01B** 미국시장·섹터 Gate | **`DATA_GAP` / `CONNECT_NONE`** | 미국 지표 없음 · 섹터 분류 없음. **실패가 아니라 정상 Gate 결과**(설계자) |
 | **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관 |
 | **OPS-02A** 보유 급락 알림 | **`IMPLEMENTED_OPERATIONAL`** | 커밋 `5d2614d6` · 검증자 `VERIFIED_WITH_NOTES`(메모 해소) · 사용자 목업 `APPROVED` · 배포·활성화 완료 |
-| **OPS-02B** 08:00 시장 브리핑 재개발 | **`NOT_STARTED`** | 설계 요청 예정. `CONNECT_NONE` 제약 하에서 무엇을 보낼지가 논점 |
+| **OPS-02B-1** 시장 입력 Gate | **`VERIFIED_WITH_NOTES`** | 커밋 `988b0494`. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
+| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`NOT_STARTED`** | 설계자 최종 Gate 확정 후 설계서 수신 |
 
 ### OPS-02A 운영 계약 (요약)
 
@@ -55,17 +56,37 @@ DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
 | 비활성 차단 실증 | 2026-09-08 7틱 전부 `skipped/push_kind_disabled` · 발송 0건 |
 | 시장 DB | `etf_daily_price` 최신 `2026-09-07` (분모 공급 정상) |
 
+### OPS-02B-1 Gate 결론 (2026-09-10)
+
+```text
+OUTLOOK_RELATIONSHIP = ADOPT              (미국시장 → 한국 개장 갭 방향 관계 유효)
+OPERATING_RULE       = SP500_SIGN_V1      (OLS = RESEARCH_REFERENCE)
+SECTOR               = NOT_EVALUATED      (구조화된 업종·테마 분류 필드 부재)
+INDEX_LEADERSHIP     = AVAILABLE          (최근 강한 기초지수 · n>=2)
+KOSPI_VIX_INTEGRITY  = PASS
+```
+
+- 표본 **2,758일** · 커버리지 **96.2%** · `SP500_SIGN_V1` 적중 **74.25%**
+  (95%CI [72.26, 76.13]) · baseline 대비 **+16.93%p**
+- **`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY` 해소** — OCI 07:20 배치에
+  benchmark 갱신 연결 + 날짜 기준 수익률 + stale 차단
+- 재현: `python scripts/ops02b1_gate/reproduce.py` (읽기 전용, exit 0)
+- 종료 문서: `docs/handoff/POC3/OPS-02B-1_CLOSEOUT.md`
+
 ### 다음
 
-**`POC3-OPS-02B` 08:00 시장 브리핑 재개발** — 설계자에게 설계 요청.
-완료되면 PUSH 3종이 모두 갖춰진다.
+**설계자 최종 Gate 확정 → `OPS-02B-2` 설계서 수신 → 개발 PLAN 회신.**
+`02B-2` 가 끝나면 PUSH 3종이 모두 갖춰진다. **08:00 autosend 는 `false` 유지.**
 
 ### 열린 결함 3건
 
 `DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL` ·
-**`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`**(원천 최신성·표시 기준일·수익률
-재계산·소비처 4층위. POC4 시장 데이터 작업에서 처리. 08:00 발송 차단으로 현재
-노출은 막혀 있다 — **OPS-02B 착수 시 함께 봐야 한다**)
+~~`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`~~ **해소** (OPS-02B-1, `988b0494`)
+
+**신규** `DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY` — `INVESTIGATION_REQUIRED`.
+KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으로 대부분 설명되고
+**운영 실영향 없음**(계열 혼합 0건). 2026-04-17→04-20 역방향 계단 1건 미해명.
+`02B-2` 이월
 
 ### 문서
 
@@ -74,6 +95,10 @@ DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
 - OPS-01C: `docs/ai_result/POC3/POC3-OPS-01C_RISK_EVIDENCE_GATE_RESULT.md`
 - **OPS-02A**: `docs/ai_plan|ai_result/POC3/POC3-OPS-02A_HOLDINGS_RISK_ALERT_MINIMUM_*.md`
   · 목업 `docs/handoff/POC3/OPS-02A_TELEGRAM_MOCK.html`
+- **OPS-02B**: `docs/ai_design|ai_plan/POC3/POC3-OPS-02B_MARKET_BRIEFING_REDEVELOPMENT_*.md`
+  · 결과서 `docs/ai_result/POC3/POC3-OPS-02B-1_MARKET_INPUT_READINESS_GATE_RESULT.md`
+  · 종료 문서 `docs/handoff/POC3/OPS-02B-1_CLOSEOUT.md`
+  · 재현 `scripts/ops02b1_gate/reproduce.py` + `state/ops02b1_gate/`
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
 
 ---
