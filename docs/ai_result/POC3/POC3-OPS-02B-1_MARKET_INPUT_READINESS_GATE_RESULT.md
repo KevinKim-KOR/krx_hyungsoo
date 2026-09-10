@@ -19,10 +19,10 @@
 | `KOSPI_VIX_INTEGRITY` | `PASS` |
 | `implementation` | `DONE` |
 | `verification` | **`VERIFIED_WITH_NOTES`** (커밋 `988b0494`) |
-| `verification_notes` | **이월 1건** (§8-7) |
+| `verification_notes` | **이월 처리 완료** — `02B-2` 필수 2건 / BACKLOG 2건으로 분리 (PLAN §18) |
 | `deployment` | `NOT_DEPLOYED` |
 | `autosend (08:00)` | **`false`** |
-| `step_status` | `GATE_COMPLETE_PENDING_VERIFICATION` |
+| `step_status` | **`CLOSED`** — 설계자 최종 Gate 확정 2026-09-11 |
 
 > **`ADOPT` 는 미국시장–한국 개장 갭의 방향 관계가 유효하다는 판정이지 OLS 의
 > 운영 채택 판정이 아니다.** 운영 규칙은 `SP500_SIGN_V1` 이다.

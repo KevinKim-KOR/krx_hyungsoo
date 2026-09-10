@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-10 (**OPS-02B-1 Gate 검증 통과 — PUSH 2_OF_3 유지**)
+최종 업데이트: 2026-09-11 (**OPS-02B-1 `CLOSED` — PUSH 2_OF_3 유지**)
 
 ## 현재 상태
 
@@ -28,7 +28,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | **OPS-01B** 미국시장·섹터 Gate | **`DATA_GAP` / `CONNECT_NONE`** | 미국 지표 없음 · 섹터 분류 없음. **실패가 아니라 정상 Gate 결과**(설계자) |
 | **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관 |
 | **OPS-02A** 보유 급락 알림 | **`IMPLEMENTED_OPERATIONAL`** | 커밋 `5d2614d6` · 검증자 `VERIFIED_WITH_NOTES`(메모 해소) · 사용자 목업 `APPROVED` · 배포·활성화 완료 |
-| **OPS-02B-1** 시장 입력 Gate | **`VERIFIED_WITH_NOTES`** | 커밋 `988b0494`. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
+| **OPS-02B-1** 시장 입력 Gate | **`CLOSED`** | 검증 `VERIFIED_WITH_NOTES` · 커밋 `988b0494` · 설계자 최종 Gate 확정 2026-09-11. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
 | **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`NOT_STARTED`** | 설계자 최종 Gate 확정 후 설계서 수신 |
 
 ### OPS-02A 운영 계약 (요약)
@@ -75,8 +75,12 @@ KOSPI_VIX_INTEGRITY  = PASS
 
 ### 다음
 
-**설계자 최종 Gate 확정 → `OPS-02B-2` 설계서 수신 → 개발 PLAN 회신.**
+**`OPS-02B-2` 설계서 수신 → 개발 PLAN 회신 → 구현.**
 `02B-2` 가 끝나면 PUSH 3종이 모두 갖춰진다. **08:00 autosend 는 `false` 유지.**
+
+**`02B-2` 필수 이월 2건** (설계자 2026-09-11 분리) — ① API 에만 있는 신규 ticker
+감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. **정적 CSV 자동
+다운로드는 범위 밖.** BACKLOG 2건(DB 가격계열 본조사 · 분배락 민감도)은 비차단.
 
 ### 열린 결함 3건
 

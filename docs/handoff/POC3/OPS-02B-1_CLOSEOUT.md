@@ -1,8 +1,21 @@
 # POC3-OPS-02B-1 종료 · 다음 챕터(`02B-2`) 진입 문서
 
-- **작성일**: 2026-09-10
-- **상태**: `OPS-02B-1` **검증 통과** (`VERIFIED_WITH_NOTES`, 커밋 `988b0494`)
-- **다음**: 설계자 최종 Gate 확정 → `OPS-02B-2` 설계
+- **작성일**: 2026-09-10 · **최종 갱신**: 2026-09-11
+- **상태**: `OPS-02B-1` **`CLOSED`** — 설계자 최종 Gate 확정 (2026-09-11)
+- **검증**: `VERIFIED_WITH_NOTES` · 승인 커밋 **`988b0494`** (이후 코드 변경 0건)
+- **다음**: **HANDOFF → `OPS-02B-2` DESIGN**
+
+```text
+step_status          = CLOSED
+verification         = VERIFIED_WITH_NOTES
+OUTLOOK_RELATIONSHIP = ADOPT
+OPERATING_RULE       = SP500_SIGN_V1
+OLS                  = RESEARCH_REFERENCE
+SECTOR               = NOT_EVALUATED
+INDEX_LEADERSHIP     = AVAILABLE
+KOSPI_VIX_INTEGRITY  = PASS
+NEXT                 = HANDOFF → OPS-02B-2 DESIGN
+```
 
 ---
 
@@ -94,14 +107,28 @@ S&P500 ±x.x% · Nasdaq ±x.x% · 반도체 ±x.x%
 
 ---
 
-## 6. `02B-2` 로 넘기는 이월 4건 (PLAN §18)
+## 6. 이월 — **필수와 BACKLOG 를 분리했다** (설계자 2026-09-11)
+
+그대로 넘기면 `02B-2` 범위가 다시 불어난다.
+
+### 6.1 `02B-2` **필수** 2건
 
 | # | 항목 |
 |---|---|
-| 1 | **API 에만 있는 신규 ticker 감지** — 검증자 이월. 현재 사례 없음 |
-| 2 | 정적 메타데이터 **자동 갱신 경로** (현재 수동 다운로드) |
-| 3 | `DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY` 본조사 |
-| 4 | 분배락 날짜 확보 시 무조정가 민감도 보고 |
+| 1 | **API 에만 있는 신규 ticker 감지** — CSV 순회 방식이라 API 쪽 신규 종목을 못 본다 |
+| 2 | **API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태** — 매일 API 대조 → 불일치 제외 → 공식 CSV 교체 필요 기록 |
+
+> **정적 CSV 자동 다운로드는 범위 밖이다.** API 가 주지 않는 필드를 억지로
+> 자동화하지 않는다. 위 2건까지만 하면 운영 안전성은 확보된다.
+
+### 6.2 BACKLOG · **비차단** 2건
+
+| # | 항목 |
+|---|---|
+| 1 | `DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY` DB 가격계열 **본조사** |
+| 2 | **분배락 민감도** 평가 (공식 분배락 날짜 확보 시) |
+
+**`02B-2` 를 막지 않는다.**
 
 ---
 
@@ -129,17 +156,21 @@ S&P500 ±x.x% · Nasdaq ±x.x% · 반도체 ±x.x%
 
 ## 9. 다음 사람이 바로 할 일
 
-1. 설계자에게 **최종 Gate 확정** 요청 (아래 §10)
-2. 설계자 `02B-2` 설계서 수신
-3. **개발 PLAN 먼저** 회신 (모호점 질문 포함) — 바로 코딩 금지
-4. 확정 후 구현 → 결과서 → 검증자
+최종 Gate 는 **확정 완료**다. 남은 순서는 이것뿐이다.
+
+1. 설계자 `02B-2` 설계서 수신
+2. **개발 PLAN 먼저** 회신 (모호점 질문 포함) — 바로 코딩 금지
+3. 확정 후 구현 → 결과서 → 검증자 → 목업·사용자 확인 → 활성화
 
 ---
 
-## 10. 설계자에게 보낼 요지
+## 10. `02B-2` 착수 조건
 
-> `OPS-02B-1` 검증자 `VERIFIED_WITH_NOTES` (커밋 `988b0494`). Gate 결론은
-> `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` /
-> `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` 입니다.
-> **최종 Gate 확정과 `02B-2` 설계서**를 부탁드립니다. 08:00 autosend 는 계속
-> `false` 이고 OCI 배포는 하지 않았습니다.
+| 조건 | 상태 |
+|---|---|
+| `OPS-02B-1` 검증 | **`VERIFIED_WITH_NOTES`** (`988b0494`) |
+| 설계자 최종 Gate 확정 | **완료** (2026-09-11) |
+| 이월 분리 | **완료** (§6) |
+| `02B-2` 설계서 | **대기** |
+
+08:00 autosend 는 계속 **`false`**, OCI 배포·실발송 **없음**.
