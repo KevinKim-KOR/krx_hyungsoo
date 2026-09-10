@@ -22,3 +22,9 @@
 *.pdf binary
 *.zip binary
 *.pkl binary
+
+# POC3-OPS-02B-1 Gate 재현 산출물 — **byte 그대로 보존**.
+# MANIFEST.json 이 sha256 으로 무결성을 검사하므로 줄바꿈·인코딩이 바뀌면
+# 다른 환경에서 재현이 깨진다. 공식 KRX CSV 는 cp949 다.
+state/ops02b1_gate/*.csv  -text
+state/market_meta/*.csv   -text

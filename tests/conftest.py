@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -153,6 +154,79 @@ def _isolated_runtime_state_db(tmp_path, monkeypatch):
     _rt_db.reset_init_cache_for_testing()
     yield
     _rt_db.reset_init_cache_for_testing()
+
+
+@pytest.fixture(autouse=True)
+def _block_live_benchmark_refresh(monkeypatch):
+    """POC3-OPS-02B-1 — 테스트가 **라이브 시장 DB 로** benchmark 를 갱신하지 못하게.
+
+    OCI 07:20 배치에 benchmark 갱신을 붙이자, 배치를 돌리는 기존 테스트가 그대로
+    외부 조회 + 기본 DB 경로를 타서 **로컬 `market_data.sqlite` 에 KOSPI 120행·
+    VIX 48행이 실제로 기록됐다**(검증자 r1 A-2·A-4). 개별 테스트를 하나씩 고치는
+    것은 "한 통로 막기" 라 여기서 일괄로 막는다.
+
+    **`db_path` 를 준 호출은 통과시킨다** — 그건 이미 격리된 호출이다. 기본값
+    (=라이브 DB)으로 들어오는 호출만 막는다.
+    """
+    import app.market_benchmark_batch as _bench
+
+    real_kospi, real_vix = _bench.refresh_kospi, _bench.refresh_vix
+
+    def _fail(name):
+        raise AssertionError(
+            f"테스트가 라이브 benchmark 갱신을 시도했다 ({name}): "
+            "FDR 외부 조회 + 기본 시장 DB 쓰기 경로다. "
+            "배치를 돌리는 테스트는 refresh_benchmarks 를 stub 하거나 "
+            "db_path 를 tmp 로 주입해야 한다."
+        )
+
+    def _guarded_kospi(*, end_date, db_path=None):
+        if db_path is None:
+            _fail("refresh_kospi")
+        return real_kospi(end_date=end_date, db_path=db_path)
+
+    def _guarded_vix(*, db_path=None):
+        if db_path is None:
+            _fail("refresh_vix")
+        return real_vix(db_path=db_path)
+
+    monkeypatch.setattr(_bench, "refresh_kospi", _guarded_kospi)
+    monkeypatch.setattr(_bench, "refresh_vix", _guarded_vix)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _detect_live_market_db_write():
+    """라이브 시장 DB 의 benchmark 테이블이 테스트로 바뀌면 **실패시킨다**.
+
+    위 stub 을 우회하는 경로가 새로 생겨도 여기서 잡힌다. 되돌리지는 않는다 —
+    시세 데이터는 임의 복원이 더 위험하므로 사실만 알린다.
+    """
+    from app.market_data_store import DEFAULT_DB_PATH
+
+    live = Path(DEFAULT_DB_PATH).resolve()
+
+    def _fingerprint():
+        if not live.exists():
+            return None
+        try:
+            con = sqlite3.connect(f"file:{live}?mode=ro", uri=True)
+            row = con.execute(
+                "select count(*), max(created_at) from market_benchmark_daily_price"
+            ).fetchone()
+            con.close()
+            return row
+        except Exception:  # noqa: BLE001
+            return None
+
+    before = _fingerprint()
+    yield
+    after = _fingerprint()
+    if before != after:
+        pytest.fail(
+            "테스트가 라이브 시장 DB 의 benchmark 테이블을 변경했다: "
+            f"{live}\n  before={before}\n  after={after}"
+        )
 
 
 @pytest.fixture(autouse=True)

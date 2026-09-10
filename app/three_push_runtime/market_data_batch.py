@@ -40,6 +40,11 @@ def write_batch_state(
     refresh_date_kst: str,
     refresh_completed_at: str,
     state_path: Optional[Path] = None,
+    price_pipeline_status: Optional[str] = None,
+    benchmark_status: Optional[str] = None,
+    benchmark_failed: Optional[list] = None,
+    kospi_as_of: Optional[str] = None,
+    vix_as_of: Optional[str] = None,
 ) -> None:
     """일일 갱신 배치의 실행 결과를 저장 (latest 1건 덮어쓰기).
 
@@ -56,6 +61,13 @@ def write_batch_state(
         "artifact_generated_at": artifact_generated_at,
         "refresh_date_kst": refresh_date_kst,
         "refresh_completed_at": refresh_completed_at,
+        # POC3-OPS-02B-1 — ETF 가격 성공과 benchmark 성공을 **별도로 남긴다.**
+        # 영구 상태에 benchmark 결과가 없으면 실패가 성공으로 묻힌다(검증자 r1 A-1).
+        "price_pipeline_status": price_pipeline_status,
+        "benchmark_status": benchmark_status,
+        "benchmark_failed": list(benchmark_failed or []),
+        "kospi_as_of": kospi_as_of,
+        "vix_as_of": vix_as_of,
     }
     state_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"

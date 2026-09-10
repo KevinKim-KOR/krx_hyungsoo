@@ -1,0 +1,76 @@
+{
+ "inputs": {
+  "krx_etf_basic": {
+   "path": "state/market_meta/krx_etf_basic_20260909.csv",
+   "source": "KRX_OFFICIAL_CSV",
+   "asof_date": "2026-09-09",
+   "fetched_by": "user_download",
+   "note": "저빈도 정적 속성 reference. 일별 시세 정본 아님. 수동 편집·가공 금지.",
+   "rows": 1168,
+   "sha256": "bf07e52bea461b23c2402e61b5224fc1e89078e8f320f6f0742948a09e0bc576"
+  },
+  "krx_069500_snapshot": {
+   "path": "state/ops02b1_gate/krx_069500_snapshot.csv",
+   "source": "KRX_OPEN_API",
+   "endpoint": "https://data-dbg.krx.co.kr/svc/apis/etp/etf_bydd_trd",
+   "price_basis": "UNADJUSTED_TRADED_PRICE",
+   "symbol": "069500",
+   "range": [
+    "20150102",
+    "20260908"
+   ],
+   "collected_at_kst": "2026-09-09",
+   "missing": [
+    "20260908 (KRX 미제공)"
+   ],
+   "rows": 2867,
+   "sha256": "ca94dffbc37aa338ea6e4e98196c6a4793a741aa4cbe10954c3d3d7304e6d361"
+  },
+  "gate_dataset": {
+   "path": "state/ops02b1_gate/gate_dataset.csv",
+   "note": "PIT 정렬. USD/KRW 는 AUX(엄격히 앞선 날짜) — primary 제외",
+   "rows": 2866,
+   "sha256": "a8e36743ffa42f95e51dbc892b5eca1b927631e05cef81663e681655ab631435"
+  },
+  "krx_api_idxname": {
+   "path": "state/ops02b1_gate/krx_api_idxname_20260904.csv",
+   "source": "KRX_OPEN_API",
+   "asof_date": "2026-09-04",
+   "note": "API IDX_IND_NM ↔ CSV 기초지수명 일치 검증용",
+   "rows": 1167,
+   "sha256": "e5627965e6eaf5e84ecf23bc8b8b59f9f7c27fe416cddd809b1e68c05e5e3428"
+  },
+  "etf_close_snapshot": {
+   "path": "state/ops02b1_gate/etf_close_snapshot.csv",
+   "note": "INDEX_LEADERSHIP 재현용. n>=2 그룹 196 ticker × 41 거래일",
+   "rows": 7984,
+   "sha256": "4caa9d9c90d37c1c8b75c70cd4ec4f9d9bd8e113cd9d7f06bf469a870f4a961c"
+  },
+  "etf_master_tickers": {
+   "path": "state/ops02b1_gate/etf_master_tickers.csv",
+   "note": "join coverage 재현용",
+   "rows": 1178,
+   "sha256": "4c186184953a1f52613f33ce0a8d521699f8d865fbde43fd9db369c480eba493"
+  },
+  "db_069500_close_snapshot": {
+   "path": "state/ops02b1_gate/db_069500_close_snapshot.csv",
+   "note": "DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY 재현용 (DB 조정 계열)",
+   "rows": 3044,
+   "sha256": "caaae26e94451ddcb79944777cc8da05810658662d0ed1631152b301a177231b"
+  }
+ },
+ "scripts": {
+  "reproduce": "scripts/ops02b1_gate/reproduce.py  # 읽기 전용 · 외부 조회 0건 · 운영 DB 미접근",
+  "fetch_snapshot": "scripts/ops02b1_gate/fetch_snapshot.py  # KRX snapshot 재수집 (KRX_API_KEY 필요)"
+ },
+ "sections": [
+  "manifest",
+  "snapshot",
+  "coverage",
+  "operating",
+  "outlook",
+  "index",
+  "basis"
+ ],
+ "note": "reproduce.py 는 섹션 실패 시 exit code 1 로 끝난다. OLS 상세는 reproduce.py outlook 출력으로 확인한다 (별도 JSON 미보관 — 공유 RNG 산물이라 재현되지 않았다)."
+}

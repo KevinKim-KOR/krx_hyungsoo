@@ -22,6 +22,11 @@ from __future__ import annotations
 
 from typing import Optional, Sequence
 
+from app.market_benchmark_freshness import (
+    evaluate_freshness,
+    return_by_trading_days,
+)
+
 # 거래일 기준 lookback (지시문 §6).
 LOOKBACK_20D = 20
 LOOKBACK_60D = 60
@@ -112,18 +117,56 @@ def compute_kodex200_metrics(history: Sequence[tuple[str, float]]) -> dict:
     }
 
 
-def compute_kospi_metrics(history: Sequence[tuple[str, float]]) -> dict:
-    """KOSPI 시계열 → 20d/60d/1m/3m 수익률 (보조). 부족 시 unavailable."""
-    closes = [c for _, c in history if c is not None and c > 0]
-    if len(closes) < LOOKBACK_60D + 1:
-        return {"status": "unavailable"}
-    return {
-        "status": "ok",
-        "return_20d_pct": _round_pct(_return_n_days_back(closes, LOOKBACK_20D)),
-        "return_60d_pct": _round_pct(_return_n_days_back(closes, LOOKBACK_60D)),
-        "return_1m_pct": _round_pct(_return_n_days_back(closes, LOOKBACK_1M)),
-        "return_3m_pct": _round_pct(_return_n_days_back(closes, LOOKBACK_3M)),
+def compute_kospi_metrics(
+    history: Sequence[tuple[str, float]],
+    *,
+    trading_days: Optional[Sequence[str]] = None,
+) -> dict:
+    """KOSPI 시계열 → 20d/60d/1m/3m 수익률 (보조).
+
+    POC3-OPS-02B-1 (`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`) — 계약 ②③④.
+
+    - 결과에 **자기 `as_of_date`** 와 `freshness` 를 담는다. 상위 `asof` 로
+      표시되지 않게 하기 위해서다.
+    - 수익률은 **거래일 축 위의 날짜**로 계산한다. 위치 인덱스가 아니다.
+    - **최신성이 1거래일을 벗어나면 수익률을 산출하지 않는다** — 값 대신
+      `status="stale"` 을 돌려주고 소비처가 문장을 만들지 않게 한다.
+
+    `trading_days` 를 주지 않으면 최신성을 판정할 수 없으므로 수익률을 내지
+    않는다(모르면 쓰지 않는다).
+    """
+    axis = [d for d in (trading_days or []) if d]
+    fresh = evaluate_freshness(history, trading_days=axis)
+    base = {
+        "as_of_date": fresh.as_of_date,
+        "freshness": fresh.to_dict(),
     }
+    if fresh.as_of_date is None:
+        return {**base, "status": "unavailable"}
+    if not axis:
+        return {**base, "status": "unavailable", "reason": "no_trading_day_axis"}
+    if not fresh.is_fresh:
+        return {**base, "status": "stale", "reason": fresh.reason}
+
+    def _r(n: int) -> Optional[float]:
+        return _round_pct(
+            return_by_trading_days(
+                history,
+                trading_days=axis,
+                lookback=n,
+                as_of_date=fresh.as_of_date,
+            )
+        )
+
+    values = {
+        "return_20d_pct": _r(LOOKBACK_20D),
+        "return_60d_pct": _r(LOOKBACK_60D),
+        "return_1m_pct": _r(LOOKBACK_1M),
+        "return_3m_pct": _r(LOOKBACK_3M),
+    }
+    if values["return_60d_pct"] is None:
+        return {**base, "status": "unavailable", "reason": "insufficient_history"}
+    return {**base, "status": "ok", **values}
 
 
 # ── POC3-06 §6.2 — KOSPI 관찰값 확장 (일간·1년·52주 고점 대비) ─────────────
@@ -335,8 +378,11 @@ def compute_market_context(
     """
     warnings: list[str] = []
     kodex_metrics = compute_kodex200_metrics(kodex200_history)
+    # POC3-OPS-02B-1 계약 ③ — 거래일 축은 KODEX200 계열이다 (OPS-01A/02A 와 동일
+    # 축 재사용, 신규 캘린더 없음).
+    trading_days = [d for d, c in (kodex200_history or []) if d and c and c > 0]
     kospi_metrics = (
-        compute_kospi_metrics(kospi_history)
+        compute_kospi_metrics(kospi_history, trading_days=trading_days)
         if kospi_history is not None
         else {"status": "unavailable"}
     )
@@ -359,7 +405,17 @@ def compute_market_context(
     score, reasons = _score_kodex200(kodex_metrics)
     code, label = _label_from_score(score)
 
-    if kospi_metrics.get("status") != "ok":
+    # 계약 ⑥ — KOSPI 가 실패해도 KODEX200 블록은 유지한다(실패한 블록만 제외).
+    kospi_status = kospi_metrics.get("status")
+    if kospi_status == "stale":
+        warnings.append(
+            "KOSPI benchmark is stale "
+            f"(as_of={kospi_metrics.get('as_of_date')}, "
+            f"lag={(kospi_metrics.get('freshness') or {}).get('lag_trading_days')} "
+            "trading days). Returns are not computed."
+        )
+        status = "partial"
+    elif kospi_status != "ok":
         warnings.append(
             "KOSPI benchmark data unavailable. Market regime uses KODEX200 only."
         )
@@ -367,9 +423,13 @@ def compute_market_context(
     else:
         status = "ok"
 
+    # 계약 ⑤ — 최상위 `asof` 는 **KODEX200 기준일**이다. benchmark 별 값은 각자
+    # `as_of_date` 를 들고 있으므로, 상위 `asof` 로 stale 값을 최신처럼 표시하는
+    # 경로를 만들지 않는다.
     return {
         "status": status,
         "asof": asof,
+        "asof_source": "KODEX200",
         "primary_benchmark": "KODEX200",
         "regime_label": label,
         "regime_code": code,

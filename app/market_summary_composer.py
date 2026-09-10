@@ -187,6 +187,11 @@ def summarize_market_position(
     )
     mc = market_context if isinstance(market_context, dict) else {}
     kospi = mc.get("kospi") or {}
+    # POC3-OPS-02B-1 계약 ④ — KOSPI 가 stale 이면 **수익률을 내지 않는다.**
+    # 값을 그대로 실으면 소비처가 최신 시장 기준일 옆에 옛 수치를 붙여 문장을
+    # 만든다 (`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY` 의 표시 층위).
+    kospi_usable = kospi.get("status") == "ok"
+    pos = (kospi_position or {}) if kospi_usable else {}
     return {
         "available": available,
         "regime_label": mc.get("regime_label"),
@@ -195,13 +200,20 @@ def summarize_market_position(
         "regime_streak_at_least": (regime_streak or {}).get("at_least", False),
         "kospi": {
             "status": kospi.get("status"),
-            "daily_return_pct": (kospi_position or {}).get("daily_return_pct"),
-            "return_1y_pct": (kospi_position or {}).get("return_1y_pct"),
+            "daily_return_pct": pos.get("daily_return_pct"),
+            "return_1y_pct": pos.get("return_1y_pct"),
             # 고점 대비: 음수%(고점이면 0). 비율(%) 표기 금지(설계자 Q1).
-            "high_52w_gap_pct": (kospi_position or {}).get("high_52w_gap_pct"),
-            "as_of_date": (kospi_position or {}).get("as_of_date"),
+            "high_52w_gap_pct": pos.get("high_52w_gap_pct"),
+            # 계약 ②⑤ — KOSPI 는 **자기 기준일**을 유지한다. stale 이어도 값 대신
+            # 기준일은 남겨 "언제 것인지" 를 숨기지 않는다.
+            "as_of_date": (
+                (kospi_position or {}).get("as_of_date") or kospi.get("as_of_date")
+            ),
+            "freshness": kospi.get("freshness"),
         },
+        # 계약 ⑤ — 이 값은 **KODEX200 기준일**이다. KOSPI 값의 기준일이 아니다.
         "market_asof": mc.get("asof"),
+        "market_asof_source": mc.get("asof_source"),
     }
 
 

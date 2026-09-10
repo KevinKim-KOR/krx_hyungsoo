@@ -81,12 +81,19 @@ def run(mode: str = "run") -> dict:
         if mode != "dry-run":
             from app.three_push_runtime.market_data_batch import write_batch_state
 
+            _bench = record.get("benchmark_refresh") or {}
             write_batch_state(
                 status=status,
                 price_data_as_of=record["price_data_as_of"],
                 artifact_generated_at=record["artifact_generated_at"],
                 refresh_date_kst=_kst_today().isoformat(),
                 refresh_completed_at=record["finished_at"],
+                # POC3-OPS-02B-1 — benchmark 결과를 **영구 상태에 남긴다.**
+                price_pipeline_status=record.get("price_pipeline_status"),
+                benchmark_status=record.get("benchmark_status"),
+                benchmark_failed=_bench.get("failed"),
+                kospi_as_of=record.get("kospi_as_of"),
+                vix_as_of=record.get("vix_as_of"),
             )
         return record
 
@@ -130,6 +137,26 @@ def run(mode: str = "run") -> dict:
         return _finish("failed", f"price_refresh_partial:fail={rr.fail}/{rr.attempted}")
     if not rr.price_data_as_of:
         return _finish("failed", "price_data_as_of_missing")
+
+    # ── 2-b. benchmark 갱신 (POC3-OPS-02B-1 계약 ①) ──────────────────────
+    # DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY — 이 배치가 benchmark 를 갱신하지
+    # 않아 ETF 가격만 최신이고 KOSPI·VIX 는 2026-07-03 에 멈춰 있었다.
+    #
+    # 설계자 확정: ETF 가격 성공과 benchmark 성공을 **별도 상태로 기록**하고,
+    # benchmark 실패를 전체 배치 성공으로 숨기지 않으며, benchmark 실패 때문에
+    # **정상 ETF 가격 적재를 롤백하지 않는다.** 그래서 여기서 return 하지 않고
+    # record 에 남기기만 한다.
+    from app.market_benchmark_batch import refresh_benchmarks
+
+    bench = refresh_benchmarks(end_date=end_date, logger=logger)
+    record["benchmark_refresh"] = bench
+    record["benchmark_status"] = bench["status"]
+    record["kospi_as_of"] = bench["kospi"]["as_of_date"]
+    record["vix_as_of"] = bench["vix"]["as_of_date"]
+    if bench["status"] != "ok":
+        logger.warning(
+            "benchmark 갱신 실패: %s — ETF 가격 적재는 유지한다", bench["failed"]
+        )
 
     # ── 3. Universe 운영 artifact 생성 (저장하지 않음 · A-1(4)) ───────────
     # A-1(4): 검증(refresh_status·validate·freshness) 통과 전에는 latest 를 덮어쓰지
@@ -178,7 +205,20 @@ def run(mode: str = "run") -> dict:
         return _finish("failed", f"artifact_save_error:{type(e).__name__}")
     record["artifact_path"] = str(artifact_path)
 
-    # 설계자 C 확정문: 배치 최종 성공 status = "success" (Spike guard 가 이 값 검증).
+    # 가격 파이프라인은 여기까지 성공이다. **별도로** 기록한다.
+    record["price_pipeline_status"] = "success"
+
+    # POC3-OPS-02B-1 (검증자 r1 A-1) — benchmark 가 실패했는데 배치를 그냥
+    # `success` 로 끝내면 **실패가 성공으로 묻힌다.** 확정 계약은 "숨기지 않는다"
+    # 이므로 종료 status 를 구분한다. 다만 계약 ③ 대로 **ETF 가격 적재는 그대로
+    # 유지**하고 롤백하지 않는다 — `price_pipeline_status` 가 그것을 증명한다.
+    _bstatus = record.get("benchmark_status")
+    if _bstatus and _bstatus != "ok":
+        _failed = (record.get("benchmark_refresh") or {}).get("failed") or []
+        return _finish(
+            "success_with_benchmark_failure",
+            f"benchmark_{_bstatus}:{','.join(_failed)}",
+        )
     return _finish("success", None)
 
 
