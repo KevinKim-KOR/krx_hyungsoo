@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from tests._helpers import stub_market_briefing_ready
+
 import json
 from pathlib import Path
 
@@ -53,6 +55,8 @@ def test_runner_partial_delivery_records_flag_and_no_registry_write(
     monkeypatch.setenv("PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED", "true")
 
     registry_before = registry_count()
+
+    stub_market_briefing_ready(monkeypatch)
 
     record = runner.run("market_briefing", "send")
 
@@ -103,6 +107,8 @@ def test_runner_first_chunk_fail_partial_false_and_no_registry_write(
 
     registry_before = registry_count()
 
+    stub_market_briefing_ready(monkeypatch)
+
     record = runner.run("market_briefing", "send")
 
     assert record["status"] == "failed"
@@ -131,6 +137,8 @@ def test_runner_all_chunks_success_partial_false_and_registry_write(
     monkeypatch.setenv("PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED", "true")
 
     registry_before = registry_count()
+
+    stub_market_briefing_ready(monkeypatch)
 
     record = runner.run("market_briefing", "send")
 

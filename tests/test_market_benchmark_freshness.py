@@ -204,10 +204,16 @@ def test_refresh_benchmarks_reports_each_source_separately(monkeypatch):
         "refresh_vix",
         lambda **kw: {"status": "failed", "as_of_date": None, "error": "boom"},
     )
+    monkeypatch.setattr(
+        mod,
+        "refresh_us_index",
+        lambda *a, **kw: {"status": "ok", "as_of_date": "2026-09-07", "error": None},
+    )
     out = mod.refresh_benchmarks(end_date=date.fromisoformat("2026-09-07"))
     assert out["status"] == "partial", "일부 실패를 ok 로 숨겼다"
     assert out["failed"] == ["vix"]
     assert out["kospi"]["status"] == "ok"
+    assert all(r["status"] == "ok" for r in out["us_indices"].values())
 
 
 def test_refresh_benchmarks_never_raises(monkeypatch):
@@ -248,33 +254,39 @@ def test_refresh_kospi_wraps_store_failure(monkeypatch, tmp_path):
     assert out["error"] == "fdr down"
 
 
-def test_conftest_blocks_live_benchmark_refresh():
-    """가드 자체를 고정한다 — 라이브 갱신 시도는 **테스트 실패**여야 한다."""
-    import app.market_benchmark_batch as mod
+def test_conftest_blocks_live_benchmark_write():
+    """가드를 고정한다 — **저장 계층**에서 라이브 쓰기를 막아야 한다.
 
-    try:
-        mod.refresh_kospi(end_date=date.fromisoformat("2026-09-07"))
-    except AssertionError as e:
-        assert "라이브 benchmark 갱신" in str(e)
-    else:
-        raise AssertionError("가드가 라이브 갱신을 막지 못했다")
-
-
-def test_conftest_allows_isolated_db_path(tmp_path, monkeypatch):
-    """`db_path` 를 준 호출은 통과해야 한다 — 그래야 실제 경로를 검사할 수 있다."""
-    import app.market_benchmark_batch as mod
+    함수별 가드는 새 갱신 함수가 추가되면 뚫린다. 실제로 `refresh_us_index` 가
+    추가됐을 때 라이브 DB 에 썼다.
+    """
     import app.market_benchmark_store as store
 
-    monkeypatch.setattr(
-        store,
-        "refresh_kospi_benchmark",
-        lambda **kw: {"status": "ok", "rows_written": 3},
+    try:
+        store.upsert_benchmark_prices(
+            benchmark_id="TEST",
+            benchmark_name="t",
+            rows=[("2026-09-07", 1.0)],
+            source="x",
+        )
+    except AssertionError as e:
+        assert "라이브 시장 DB" in str(e)
+    else:
+        raise AssertionError("가드가 라이브 쓰기를 막지 못했다")
+
+
+def test_conftest_allows_isolated_db_path(tmp_path):
+    """`db_path` 를 준 호출은 통과해야 한다 — 그래야 실제 저장 경로를 검사할 수 있다."""
+    import app.market_benchmark_store as store
+
+    n = store.upsert_benchmark_prices(
+        benchmark_id="TEST",
+        benchmark_name="t",
+        rows=[("2026-09-07", 1.0)],
+        source="x",
+        db_path=tmp_path / "x.sqlite",
     )
-    monkeypatch.setattr(store, "latest_benchmark_date", lambda *a, **k: "2026-09-07")
-    out = mod.refresh_kospi(
-        end_date=date.fromisoformat("2026-09-07"), db_path=tmp_path / "x.sqlite"
-    )
-    assert out["status"] == "ok" and out["as_of_date"] == "2026-09-07"
+    assert n == 1
 
 
 # ── 검증자 r1 A-1 — 배치가 benchmark 실패를 숨기지 않는다 ──────────────────

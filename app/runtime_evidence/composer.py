@@ -50,6 +50,9 @@ from app.runtime_evidence.holdings_composer import compose_holdings_and_nav
 from app.runtime_evidence.market_discovery import compose_market_discovery
 from app.runtime_evidence.universe_momentum import compose_universe_momentum
 
+# POC3-OPS-02B-2 — 시장 브리핑 본문은 신규 경로(§3-e)가 만든다. 러너는
+# `SKIP_EVIDENCE_KINDS` 에서 이미 끊기므로 여기를 비우면 **이중 차단**이 되고,
+# legacy market discovery 계약만 검사 불가가 된다. 라우팅은 그대로 둔다.
 _MD_PUSH_KINDS = {"market_briefing"}
 _HOLDINGS_PUSH_KINDS = {"holdings_briefing"}
 _SPIKE_PUSH_KINDS = {"spike_or_falling_alert"}

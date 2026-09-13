@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-11 (**OPS-02B-1 `CLOSED` — PUSH 2_OF_3 유지**)
+최종 업데이트: 2026-09-13 (**OPS-02B-2 `PAUSED_BY_KS10` — Cleanup 2건 `CLOSED` · PUSH 2_OF_3 유지**)
 
 ## 현재 상태
 
@@ -15,7 +15,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 |---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
 | `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화, 실발송은 2026-09-09 첫 틱부터 |
-| `market_briefing` (08:00) | `false` | 차단 — **OPS-02B-1 Gate 통과**(`ADOPT`). 메시지·운영은 `02B-2` |
+| `market_briefing` (08:00) | `false` | 차단 — **OPS-02B-1 Gate 통과**(`ADOPT`). `02B-2` 구현 중(`PAUSED`) · 추가 차단 `KRX_TRADING_CALENDAR_NOT_PROVIDED` |
 | ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 보유 PUSH 까지 멈춘다).
@@ -29,7 +29,9 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관 |
 | **OPS-02A** 보유 급락 알림 | **`IMPLEMENTED_OPERATIONAL`** | 커밋 `5d2614d6` · 검증자 `VERIFIED_WITH_NOTES`(메모 해소) · 사용자 목업 `APPROVED` · 배포·활성화 완료 |
 | **OPS-02B-1** 시장 입력 Gate | **`CLOSED`** | 검증 `VERIFIED_WITH_NOTES` · 커밋 `988b0494` · 설계자 최종 Gate 확정 2026-09-11. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
-| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`NOT_STARTED`** | 설계자 최종 Gate 확정 후 설계서 수신 |
+| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`PARTIAL_IMPLEMENTATION` / `PAUSED`** | 설계자 PLAN `APPROVED_WITH_REQUIRED_EDITS`. 모듈 6종 + 배선 완료, **uncommitted**. 러너 650줄 초과로 KS-10 Cleanup 2건 분기 → 둘 다 `CLOSED`. 남은 것: flow-through 테스트 · 보호 로직 역검증 · 전체 회귀 · 목업 7종 |
+| └ **KS10-RUNNER-EVIDENCE-EXTRACTION** | **`CLOSED`** | 러너 §4 → `runner_evidence.assemble_legacy_evidence()`. 656 → **648줄**. 설계자 `PASS` |
+| └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
 
 ### OPS-02A 운영 계약 (요약)
 

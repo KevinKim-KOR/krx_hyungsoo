@@ -78,12 +78,19 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
 
     POC3-OPS-02A — 위험 알림 상태 파일(`holdings_risk_state_latest.json`)도 같은
     보호를 받는다. 같은 러너 §8 이 쓰므로 하나만 막으면 "한 통로 막기" 다.
+
+    POC3-OPS-02B-2 — 시장 브리핑 상태도 같은 §8 이 쓴다. 다만 경로가 러너
+    상수가 아니라 `runner_market_briefing` 안에서 `STATE_DIR` 로 풀리므로,
+    **그 모듈의 `STATE_DIR` 자체**를 격리해야 막힌다. 실제로 막기 전에
+    라이브 `market_briefing_state_latest.json` 이 테스트로 덮어써졌다.
     """
     from app.three_push_runner_common import STATE_DIR as _STATE_DIR
 
     names = (
         "holdings_selection_state_latest.json",
         "holdings_risk_state_latest.json",
+        "market_briefing_state_latest.json",
+        "market_briefing_meta_consistency_latest.json",
     )
     consts = (
         "HOLDINGS_SELECTION_STATE_PATH",
@@ -93,8 +100,22 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
 
     mod = sys.modules.get("scripts.run_three_push_runtime_oci")
     if mod is not None:
-        for const, name in zip(consts, names):
+        for const, name in zip(consts, names[: len(consts)]):
             monkeypatch.setattr(mod, const, Path(tmp_path) / "three_push" / name)
+
+    # 시장 브리핑은 상수가 아니라 모듈의 `STATE_DIR` 로 경로를 푼다.
+    # 이 모듈은 import 해도 `.env` 를 읽지 않으므로 직접 가져와 격리한다.
+    from app.three_push_runtime import runner_market_briefing as _mb
+
+    iso = Path(tmp_path) / "three_push"
+    iso.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(_mb, "STATE_DIR", iso)
+
+    # 07:20 배치는 `STATE_DIR` 를 **호출 시점에** 읽어 정합성 결과를 쓴다
+    # (`run_oci_market_data_batch` 가 유일). 원본 상수도 같이 격리한다.
+    import app.three_push_runner_common as _common
+
+    monkeypatch.setattr(_common, "STATE_DIR", iso)
 
     befores = [p.read_bytes() if p.exists() else None for p in lives]
     yield
@@ -158,40 +179,38 @@ def _isolated_runtime_state_db(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _block_live_benchmark_refresh(monkeypatch):
-    """POC3-OPS-02B-1 — 테스트가 **라이브 시장 DB 로** benchmark 를 갱신하지 못하게.
+    """POC3-OPS-02B-1/2 — 테스트가 **라이브 시장 DB 로** benchmark 를 쓰지 못하게.
 
-    OCI 07:20 배치에 benchmark 갱신을 붙이자, 배치를 돌리는 기존 테스트가 그대로
-    외부 조회 + 기본 DB 경로를 타서 **로컬 `market_data.sqlite` 에 KOSPI 120행·
-    VIX 48행이 실제로 기록됐다**(검증자 r1 A-2·A-4). 개별 테스트를 하나씩 고치는
-    것은 "한 통로 막기" 라 여기서 일괄로 막는다.
+    처음에는 `refresh_kospi`/`refresh_vix` 두 함수만 감쌌다. 그런데 `02B-2` 에서
+    `refresh_us_index` 가 추가되자 **가드 밖이라 라이브 DB 에 실제로 썼다**
+    (US500·IXIC·^SOX 각 10행). 함수를 하나씩 막는 것은 "한 통로 막기" 다.
 
-    **`db_path` 를 준 호출은 통과시킨다** — 그건 이미 격리된 호출이다. 기본값
-    (=라이브 DB)으로 들어오는 호출만 막는다.
+    그래서 **저장 계층**에 건다. `upsert_benchmark_prices` 를 **기본 db_path**
+    (=라이브 DB)로 호출하면 차단한다. `db_path` 를 준 호출은 이미 격리된
+    호출이므로 통과시킨다 — 그래야 실제 저장 경로를 검사할 수 있다.
+
+    이 한 곳이 모든 현재·미래 benchmark 갱신 경로를 덮는다.
     """
-    import app.market_benchmark_batch as _bench
+    import app.market_benchmark_store as _store
+    from app.market_data_store import DEFAULT_DB_PATH as _LIVE
 
-    real_kospi, real_vix = _bench.refresh_kospi, _bench.refresh_vix
+    real_upsert = _store.upsert_benchmark_prices
+    live = Path(_LIVE).resolve()
 
-    def _fail(name):
-        raise AssertionError(
-            f"테스트가 라이브 benchmark 갱신을 시도했다 ({name}): "
-            "FDR 외부 조회 + 기본 시장 DB 쓰기 경로다. "
-            "배치를 돌리는 테스트는 refresh_benchmarks 를 stub 하거나 "
-            "db_path 를 tmp 로 주입해야 한다."
-        )
+    def _guarded_upsert(*, db_path=None, **kw):
+        # `db_path is None` 만 보면 뚫린다 — 호출부가 **기본값을 이미 해석해서**
+        # 실제 라이브 경로를 넘기기 때문이다(`refresh_kospi_benchmark` 가 그렇다).
+        # 그래서 **경로 자체**를 비교한다.
+        target = Path(db_path).resolve() if db_path is not None else live
+        if target == live:
+            raise AssertionError(
+                "테스트가 라이브 시장 DB 에 benchmark 를 쓰려 했다 "
+                f"(benchmark_id={kw.get('benchmark_id')!r}, path={target}). "
+                "db_path 를 tmp 로 주입하거나 갱신 함수를 stub 해야 한다."
+            )
+        return real_upsert(db_path=db_path, **kw)
 
-    def _guarded_kospi(*, end_date, db_path=None):
-        if db_path is None:
-            _fail("refresh_kospi")
-        return real_kospi(end_date=end_date, db_path=db_path)
-
-    def _guarded_vix(*, db_path=None):
-        if db_path is None:
-            _fail("refresh_vix")
-        return real_vix(db_path=db_path)
-
-    monkeypatch.setattr(_bench, "refresh_kospi", _guarded_kospi)
-    monkeypatch.setattr(_bench, "refresh_vix", _guarded_vix)
+    monkeypatch.setattr(_store, "upsert_benchmark_prices", _guarded_upsert)
     yield
 
 
@@ -333,3 +352,26 @@ def _isolated_universe(tmp_path, monkeypatch):
     monkeypatch.setattr(ur, "PYKRX_PER_TICKER_DELAY_SECONDS", 0.0)
 
     return {"seed_file": seed_file, "artifact_file": artifact_file}
+
+
+@pytest.fixture(autouse=True)
+def _block_live_krx_api(monkeypatch):
+    """POC3-OPS-02B-2 — 테스트가 **라이브 KRX Open API** 를 호출하지 못하게.
+
+    07:20 배치 테스트는 `refresh_benchmarks` 만 stub 했고 `sync_krx_daily` 는
+    그대로 뒀다. 맥 `.env` 에 `KRX_API_KEY` 가 있어 **실제로 외부 호출이 나갔고**
+    그 결과가 라이브 정합성 상태 파일에 쓰였다.
+
+    네트워크 경계(`_default_fetcher`)에 건다. `fetcher` 를 명시로 넘긴 호출은
+    이미 격리된 것이므로 건드리지 않는다. `sync_krx_daily` 는 예외를 올리지
+    않는 계약이라 차단 시 `api_fetch_failed` 로 떨어진다 — 테스트 환경에서
+    맞는 결과다.
+    """
+    from app.market_briefing import krx_sync
+
+    def _blocked(bas_dd, key):
+        raise AssertionError(
+            "테스트가 라이브 KRX Open API 를 호출했다. " "`fetcher=` 로 stub 을 넘겨라."
+        )
+
+    monkeypatch.setattr(krx_sync, "_default_fetcher", _blocked)

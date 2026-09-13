@@ -45,6 +45,9 @@ def write_batch_state(
     benchmark_failed: Optional[list] = None,
     kospi_as_of: Optional[str] = None,
     vix_as_of: Optional[str] = None,
+    krx_sync_status: Optional[str] = None,
+    krx_basis_date: Optional[str] = None,
+    meta_consistency_status: Optional[str] = None,
 ) -> None:
     """일일 갱신 배치의 실행 결과를 저장 (latest 1건 덮어쓰기).
 
@@ -68,6 +71,11 @@ def write_batch_state(
         "benchmark_failed": list(benchmark_failed or []),
         "kospi_as_of": kospi_as_of,
         "vix_as_of": vix_as_of,
+        # POC3-OPS-02B-2 — 08:00 runner 가 읽는다. 여기 없으면 기초지수 블록을
+        # fail-closed 한다(같은 API 를 다시 호출하지 않기 위해서다).
+        "krx_sync_status": krx_sync_status,
+        "krx_basis_date": krx_basis_date,
+        "meta_consistency_status": meta_consistency_status,
     }
     state_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"

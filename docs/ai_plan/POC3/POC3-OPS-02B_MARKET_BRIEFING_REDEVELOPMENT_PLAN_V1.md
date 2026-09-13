@@ -578,7 +578,7 @@ conftest 감지). OPS-01A·02A 에서 실제 사고가 났던 항목들입니다
 | flag | `PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED` **`false` 유지**. `02B-1` 에서 **활성화하지 않습니다** |
 | DB | `market_benchmark_daily_price` — 미국 지표 적재 여부는 `02B-2` 에서 결정 |
 | `etf_daily_price` | **변경 없음.** `open`·`close` 를 수정·덮어쓰지 않는다. `OPEN_GAP` 은 KRX 평가 snapshot 안에서만 계산한다 |
-| 배포 | OCI 자동 pull 확인됨(2026-09-08 `5d2614d6` 즉시 반영) |
+| 배포 | **수동.** 2026-09-11 실측 — OCI HEAD `5d2614d6`(2026-09-08), 저장소 HEAD 대비 **8커밋 뒤짐**. cron·systemd timer 에 `git pull` **없음**. V1.2 의 "자동 pull" 서술은 **오기였다**(같은 날 사용자가 수동 배포한 것을 자동으로 오인) |
 
 ---
 

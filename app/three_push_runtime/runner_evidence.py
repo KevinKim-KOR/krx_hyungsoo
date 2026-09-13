@@ -12,7 +12,62 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-SKIP_EVIDENCE_KINDS = ("holdings_briefing", "holdings_risk_alert")
+SKIP_EVIDENCE_KINDS = (
+    "holdings_briefing",
+    "holdings_risk_alert",
+    # POC3-OPS-02B-2 — 시장 브리핑은 §3-e 전용 helper 가 본문을 만든다.
+    "market_briefing",
+)
+
+
+def assemble_legacy_evidence(
+    record: dict[str, Any],
+    *,
+    push_kind: str,
+    param: Any,
+    runtime_kst: Optional[str],
+    market_quotes: Optional[dict[str, Any]],
+    reeval_fn: Any,
+    logger: Any,
+    evidence: Any = None,
+    message_text: str = "",
+    build_runtime_message: Any = None,
+) -> tuple[Optional[tuple[str, str, str]], Any, str]:
+    """러너 §4 전체 — **구조만 옮겼다. 판정·입출력·예외 동작 동일**.
+
+    POC3-OPS-02B-2 KS-10 Cleanup (2026-09-12). 러너가 650줄을 넘어 이 블록을
+    통째로 가져왔다. `SKIP_EVIDENCE_KINDS` 에 속한 종류는 이미 §3-c/§3-d/§3-e
+    에서 본문을 만들었으므로 **그대로 통과**시킨다 — 이전과 같다.
+
+    `spike_or_falling_alert` 는 cron 이 없지만 PARAM·수동 경로가 남아 있다.
+    **삭제하거나 동작을 바꾸지 않는다.**
+
+    반환 `(실패|None, evidence, message_text)`.
+    """
+    if push_kind in SKIP_EVIDENCE_KINDS:
+        return None, evidence, message_text
+
+    from app.runtime_evidence_composer import compose_runtime_evidence
+    from app.three_push_runtime_message_builder import availability_summary
+    from app.three_push_runtime_message_builder import (
+        build_runtime_message as _default_builder,
+    )
+
+    fail, ev, msg = compose_evidence_and_message(
+        record,
+        push_kind=push_kind,
+        param=param,
+        runtime_kst=runtime_kst,
+        market_quotes=market_quotes,
+        reeval_fn=reeval_fn,
+        compose_runtime_evidence=compose_runtime_evidence,
+        build_runtime_message=build_runtime_message or _default_builder,
+        availability_summary=availability_summary,
+        logger=logger,
+    )
+    if fail is not None:
+        return fail, ev, message_text
+    return None, ev, msg or ""
 
 
 def compose_evidence_and_message(

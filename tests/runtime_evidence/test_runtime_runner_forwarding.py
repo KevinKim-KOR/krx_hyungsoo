@@ -62,8 +62,14 @@ def test_holdings_briefing_runner_record_forwards_all_diagnostics_r6(
     )
     # Low-Frequency Telegram Push Operation v1: compose_runtime_evidence 시그니처
     # 에 market_quotes / universe_reevaluate_fn 파라미터 추가됨. mock 도 **kw 수신.
+    import app.runtime_evidence_composer as _rec
+
     monkeypatch.setattr(
-        runner_mod, "compose_runtime_evidence", lambda pk, **kw: fake_evidence
+        # KS-10 Cleanup(2026-09-12): §4 조립이 `runner_evidence` 로 빠지며
+        # import 도 옮겨졌다. helper 가 호출 시점에 가져오므로 원천을 갈아끼운다.
+        _rec,
+        "compose_runtime_evidence",
+        lambda pk, **kw: fake_evidence,
     )
     # Runner 는 holdings_briefing 시 market_naver.fetch_many 를 호출한다. 실 네트워크
     # 차단.

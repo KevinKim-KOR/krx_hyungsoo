@@ -249,3 +249,43 @@ def _seed_payload(asof: str, items: Optional[list] = None) -> dict:
             ]
         ),
     }
+
+
+def stub_market_briefing_ready(monkeypatch, *, message_text="시장 브리핑 본문"):
+    """`market_briefing` 이 발송 가능한 상태로 조립됐다고 둔다.
+
+    POC3-OPS-02B-2 에서 `market_briefing` 에 **국내 거래일 Gate** 가 붙었다.
+    공식 거래일 snapshot 이 없으면 `KRX_CALENDAR_REFRESH_REQUIRED` 로 fail-closed
+    되는 것이 **설계대로의 동작**이다.
+
+    그런데 partial delivery·registry·reeval 계약을 검사하는 기존 테스트들은
+    `market_briefing` 을 **본문이 나오는 범용 push_kind** 로 써 왔다. 그 계약들은
+    시장 브리핑과 무관하므로, 조립 단계만 통과시키고 **검사 대상은 그대로 둔다.**
+
+    Gate 자체는 `tests/test_market_briefing_contracts.py` 가 따로 고정한다.
+    """
+    from app.market_briefing import flow
+    from app.three_push_runtime import runner_market_briefing as _mb
+
+    def _ready(record, *, push_kind, **kwargs):
+        if push_kind != _mb.PUSH_KIND:
+            return None
+        record["message_text_length"] = len(message_text)
+        return flow.BriefingOutcome(message_text=message_text, fingerprint="UP#NONE")
+
+    monkeypatch.setattr(_mb, "assemble", _ready)
+
+
+def patch_compose_runtime_evidence(monkeypatch, fake):
+    """§4 legacy evidence 조립 결과를 `fake` 로 고정한다.
+
+    POC3-OPS-02B-2 KS-10 Cleanup 에서 §4 조립이 러너에서
+    `runner_evidence.assemble_legacy_evidence` 로 빠지면서 import 도 함께
+    옮겨졌다. helper 가 **호출 시점에** 원천 모듈에서 가져오므로 러너 속성이
+    아니라 **원천**을 갈아끼운다.
+
+    검사 대상(입력·본문·status·reason)은 이전과 같다.
+    """
+    import app.runtime_evidence_composer as _rec
+
+    monkeypatch.setattr(_rec, "compose_runtime_evidence", lambda pk, **kw: fake)

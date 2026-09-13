@@ -43,6 +43,10 @@ def _kst_today() -> date:
     return datetime.strptime(kst_today_date(), "%Y-%m-%d").date()
 
 
+MARKET_META_DIR = Path("state/market_meta")
+OFFICIAL_ETF_CSV = "krx_etf_basic_20260909.csv"
+
+
 def run(mode: str = "run") -> dict:
     logger = setup_logging(
         "oci_market_data_batch", log_filename="oci_market_data_batch.log"
@@ -94,6 +98,9 @@ def run(mode: str = "run") -> dict:
                 benchmark_failed=_bench.get("failed"),
                 kospi_as_of=record.get("kospi_as_of"),
                 vix_as_of=record.get("vix_as_of"),
+                krx_sync_status=record.get("krx_sync_status"),
+                krx_basis_date=record.get("krx_basis_date"),
+                meta_consistency_status=record.get("meta_consistency_status"),
             )
         return record
 
@@ -156,6 +163,32 @@ def run(mode: str = "run") -> dict:
     if bench["status"] != "ok":
         logger.warning(
             "benchmark 갱신 실패: %s — ETF 가격 적재는 유지한다", bench["failed"]
+        )
+
+    # ── 2-c. KRX 전종목 수집 (POC3-OPS-02B-2 §M-2) ───────────────────────
+    # 응답 **하나**로 두 가지를 한다 — 무조정 가격계열 적재 + API·CSV 정합성.
+    # 08:00 runner 는 같은 API 를 다시 호출하지 않는다.
+    #
+    # benchmark 와 같은 계약: 실패해도 예외를 올리지 않고, ETF 가격 적재를
+    # 롤백하지 않는다.
+    from app.market_briefing import krx_sync, meta_gate
+    from app.three_push_runner_common import STATE_DIR as _STATE_DIR
+
+    try:
+        krx = krx_sync.sync_krx_daily(
+            today=end_date,
+            official_csv_path=MARKET_META_DIR / OFFICIAL_ETF_CSV,
+            consistency_path=_STATE_DIR / meta_gate.CONSISTENCY_STATE_NAME,
+        )
+    except Exception as e:  # noqa: BLE001
+        krx = {"status": f"unexpected:{type(e).__name__}", "basis_date": None}
+    record["krx_sync"] = krx
+    record["krx_sync_status"] = krx.get("status")
+    record["krx_basis_date"] = krx.get("basis_date")
+    record["meta_consistency_status"] = krx.get("consistency_status")
+    if krx.get("status") != krx_sync.STATUS_OK:
+        logger.warning(
+            "KRX 전종목 수집 실패: %s — ETF 가격 적재는 유지한다", krx.get("status")
         )
 
     # ── 3. Universe 운영 artifact 생성 (저장하지 않음 · A-1(4)) ───────────

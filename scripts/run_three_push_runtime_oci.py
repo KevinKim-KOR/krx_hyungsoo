@@ -64,9 +64,9 @@ from app.three_push_runtime.runner_diagnostics import (  # noqa: E402
 from app.three_push_runtime.runner_duplicate import (  # noqa: E402
     check_plain_duplicate,
 )
+from app.three_push_runtime import runner_market_briefing as _mb  # noqa: E402
 from app.three_push_runtime.runner_evidence import (  # noqa: E402
-    SKIP_EVIDENCE_KINDS,
-    compose_evidence_and_message,
+    assemble_legacy_evidence,
     record_send_success,
 )
 from app.three_push_runtime.runner_spike import (  # noqa: E402
@@ -97,11 +97,7 @@ from app.runtime_sent_registry_store import (  # noqa: E402
     is_already_sent,
     mark_sent,
 )
-from app.runtime_evidence_composer import (  # noqa: E402
-    compose_runtime_evidence,
-)
 from app.three_push_runtime_message_builder import (  # noqa: E402
-    availability_summary,
     build_runtime_message,
     kst_now_iso,
     kst_today_date,
@@ -371,26 +367,30 @@ def run(
         risk_outcome = _rasm.outcome
         message_text = _rasm.message_text
 
+    # ── 3-e. 시장 흐름 브리핑 조립 (POC3-OPS-02B-2) ──────────────────────────
+    market_outcome = _mb.assemble(
+        record, push_kind=push_kind, today_kst=runtime_date_kst, runtime_kst=runtime_kst
+    )
+    if market_outcome is not None:
+        message_text = market_outcome.message_text
+
     # ── 4. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
-    # 보유 브리핑은 §3-c 에서 본문을 이미 만들었다. evidence 조립·면책 문구 부착
-    # 경로를 타지 않는다 (설계자 확정 — 보유 브리핑에 면책문구를 넣지 않는다).
-    if push_kind not in SKIP_EVIDENCE_KINDS:
-        # ── 4-b. runtime message 생성 ────────────────────────────────────────
-        ev_fail, evidence, _msg = compose_evidence_and_message(
-            record,
-            push_kind=push_kind,
-            param=param,
-            runtime_kst=runtime_kst,
-            market_quotes=market_quotes,
-            reeval_fn=reeval_fn,
-            compose_runtime_evidence=compose_runtime_evidence,
-            build_runtime_message=build_runtime_message,
-            availability_summary=availability_summary,
-            logger=logger,
-        )
-        if ev_fail is not None:
-            return _finish(*ev_fail)
-        message_text = _msg or ""
+    # 2026-09-12 KS-10 Cleanup — 블록 전체를 `runner_evidence` 로 옮겼다.
+    # 동작 동일. §3-c/§3-d/§3-e 가 본문을 만든 종류는 그대로 통과한다.
+    ev_fail, evidence, message_text = assemble_legacy_evidence(
+        record,
+        push_kind=push_kind,
+        param=param,
+        runtime_kst=runtime_kst,
+        market_quotes=market_quotes,
+        reeval_fn=reeval_fn,
+        logger=logger,
+        evidence=evidence,
+        message_text=message_text,
+        build_runtime_message=build_runtime_message,
+    )
+    if ev_fail is not None:
+        return _finish(*ev_fail)
     # FIX r3 · r4 (설계자 확정본 Q7): 진단 필드 record 전달.
     # 2026-09-04 KS-10 분리 — 키 목록은 `runner_diagnostics` 로 옮겼다.
     forward_diagnostics(record, evidence)
@@ -481,6 +481,10 @@ def run(
     if skip_ntd:
         # 판정·evidence 기록은 §3-c 에서 끝났다. 여기서는 발송 여부만 정한다.
         return _finish("skipped", "non_trading_day")
+
+    mb_fail = _mb.decide(market_outcome, logger=logger)
+    if mb_fail is not None:
+        return _finish(*mb_fail)
 
     if risk_outcome is not None and risk_outcome.skip_reason:
         # 신규·악화 없음 — 완화·해소·동일 구간은 발송하지 않는다.
@@ -579,6 +583,13 @@ def run(
             holdings_state_path=HOLDINGS_SELECTION_STATE_PATH,
             risk_state_path=HOLDINGS_RISK_STATE_PATH,
         )
+        if not partial_delivery:
+            _mb.save_state_after_send(
+                market_outcome,
+                today_kst=runtime_date_kst,
+                runtime_kst=runtime_kst,
+                record=record,
+            )
         return _finish("sent")
     else:
         logger.error("Telegram 발송 실패: %s", err)
