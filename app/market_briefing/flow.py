@@ -34,7 +34,12 @@ from typing import Any, Optional, Sequence
 
 from app.market_briefing import evidence as ev
 from app.market_briefing import krx_store, meta_gate, render
-from app.market_briefing.calendar import CalendarVerdict, check_trading_day
+from app.market_benchmark_freshness import MAX_STALE_TRADING_DAYS
+from app.market_briefing.calendar import (
+    CalendarVerdict,
+    check_trading_day,
+    load_calendar,
+)
 
 SCHEMA_VERSION = "market_briefing_state.v1"
 STATE_NAME = "market_briefing_state_latest.json"
@@ -106,11 +111,32 @@ def save_state(
 # ── 조립 ────────────────────────────────────────────────────────────────────
 
 
+def _window_lag_trading_days(
+    latest: str, *, today_kst: str, calendar_dir: Optional[Path]
+) -> Optional[int]:
+    """적재된 최신 거래일이 **직전 거래일보다 몇 거래일 뒤처졌나**.
+
+    캘린더가 없거나 해당 연도를 못 덮으면 `None` — **모르면 쓰지 않는다**.
+    """
+    cal = load_calendar(calendar_dir)
+    if cal is None:
+        return None
+    days = sorted(d for d in cal.days if d < today_kst)
+    if not days or not cal.covers(int(today_kst[:4])):
+        return None
+    if latest not in days:
+        # 적재된 최신일이 거래일 축에 없다 — 판정하지 않는다.
+        return None
+    return len(days) - 1 - days.index(latest)
+
+
 def _index_block(
     consistency: Optional[meta_gate.ConsistencyResult],
     *,
     csv_rows: Sequence[dict[str, str]],
     db_path: Optional[Path],
+    today_kst: str,
+    calendar_dir: Optional[Path] = None,
 ) -> ev.IndexLeadership:
     """기초지수 블록. 정합성이 통과해야만 가격을 쓴다.
 
@@ -135,6 +161,27 @@ def _index_block(
                 "reason": "insufficient_trading_days",
                 "required": krx_store.REQUIRED_TRADING_DAYS,
                 "stored": len(krx_store.stored_trading_days(db_path=db_path)),
+            },
+        )
+
+    # 최신성 Gate — 21일이 모였다는 것과 **그 21일이 최근이라는 것**은 다르다.
+    # 이 검사가 없으면 적재가 멈춘 뒤에도 18일 지난 종가로 "오늘 볼 기초지수" 를
+    # 만들어 보낸다(사용자 지적 2026-09-13 · 실측 재현). benchmark 와 같은 계약
+    # (`MAX_STALE_TRADING_DAYS`)을 재사용한다 — 새 임계를 만들지 않는다.
+    lag = _window_lag_trading_days(
+        window.latest, today_kst=today_kst, calendar_dir=calendar_dir
+    )
+    if lag is None or lag > MAX_STALE_TRADING_DAYS:
+        # `price_asof` 를 담지 않는다 — 쓰지 않은 기준일을 본문 `기준` 줄에
+        # 적으면 "기준일이 다른 값을 하나의 기준일로 표시" 금지(설계 §3.4)를
+        # 위반한다. 지난 날짜는 진단에만 남긴다.
+        return ev.IndexLeadership(
+            status="stale",
+            diagnostics={
+                "reason": "window_not_fresh" if lag is not None else "lag_unknown",
+                "latest_stored": window.latest,
+                "lag_trading_days": lag,
+                "max_stale_trading_days": MAX_STALE_TRADING_DAYS,
             },
         )
 
@@ -211,7 +258,13 @@ def assemble_market_briefing(
         sp500_asof=sp500_asof,
         sp500_fresh=sp500_fresh,
     )
-    index = _index_block(consistency, csv_rows=csv_rows, db_path=db_path)
+    index = _index_block(
+        consistency,
+        csv_rows=csv_rows,
+        db_path=db_path,
+        today_kst=today_kst,
+        calendar_dir=calendar_dir,
+    )
     out.diagnostics["outlook_state"] = outlook.state
     out.diagnostics["index_status"] = index.status
     out.diagnostics["index_candidates"] = [c.identifier for c in index.candidates]

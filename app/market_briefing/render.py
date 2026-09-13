@@ -73,6 +73,28 @@ def outlook_sentence(outlook: Outlook) -> Optional[str]:
     return None
 
 
+# 추종 ETF 표시 개수 (사용자 확정 2026-09-13). 코스피200 처럼 수십 개인 지수가
+# 있어 전부 나열하면 한 줄이 과하게 길어진다. 나머지는 `외 N개` 로 센다.
+MAX_SHOWN_PRODUCTS = 3
+
+
+def render_products(candidate: IndexCandidate) -> str:
+    """`추종 ...` 한 줄. 이름은 공식 `한글종목약명` 그대로.
+
+    사용자 요청(2026-09-13) — `추종 ETF 2개` 만으로는 무엇인지 알 수 없다. 다만
+    **매수 지시로 읽히지 않도록** 순서는 종목코드 오름차순 고정이고, 추천·선호를
+    뜻하는 말을 붙이지 않는다(설계 §3.4 매수/매도 지시 금지).
+
+    약명을 못 찾은 경우에는 개수만 남긴다 — 없는 이름을 만들지 않는다.
+    """
+    shown = list(candidate.products[:MAX_SHOWN_PRODUCTS])
+    if not shown:
+        return f"추종 ETF {candidate.ticker_count}개"
+    rest = candidate.ticker_count - len(shown)
+    tail = f" 외 {rest}개" if rest > 0 else ""
+    return "추종 " + ", ".join(shown) + tail
+
+
 def render_index_block(candidates: Sequence[IndexCandidate]) -> list[str]:
     """`오늘 볼 기초지수`. 표시명은 **공식 기초지수명 그대로**."""
     if not candidates:
@@ -80,9 +102,9 @@ def render_index_block(candidates: Sequence[IndexCandidate]) -> list[str]:
     lines = ["오늘 볼 기초지수"]
     for c in candidates:
         lines.append(
-            f"• {c.name}: 5일 {_pct(c.ret_5d_pct)} · 20일 {_pct(c.ret_20d_pct)} "
-            f"· 추종 ETF {c.ticker_count}개"
+            f"• {c.name}: 5일 {_pct(c.ret_5d_pct)} · 20일 {_pct(c.ret_20d_pct)}"
         )
+        lines.append(f"  {render_products(c)}")
     return lines
 
 
@@ -166,7 +188,9 @@ __all__ = [
     "STATUS_NO_CANDIDATE_NORMAL",
     "outlook_sentence",
     "render_basis_block",
+    "MAX_SHOWN_PRODUCTS",
     "render_index_block",
+    "render_products",
     "render_market_briefing",
     "render_support_block",
 ]

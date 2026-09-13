@@ -565,3 +565,166 @@ def test_consistency_failure_blocks_index_even_with_prices(tmp_path):
     out, _ = _assemble(tmp_path, sp500=1.0, consistency=bad)
     assert out.diagnostics["index_status"] == meta_gate.STATUS_CSV_REFRESH_REQUIRED
     assert "공식 기준정보 갱신이 필요해" in out.message_text
+
+
+# ═══ 2026-09-13 사용자 지적 2건 — 기준일 최신성 · 추종 ETF 표시 ═══════════════
+
+
+def _meta_named(code, index_name, short, **kw):
+    r = _meta(code, index_name, **kw)
+    r["한글종목약명"] = short
+    return r
+
+
+def test_index_line_shows_tracking_etf_short_names():
+    """`추종 ETF 2개` 만으로는 무엇인지 알 수 없다 — 공식 약명을 보여준다."""
+    rows = [
+        _meta_named("069500", "코스피200", "KODEX 200"),
+        _meta_named("102110", "코스피200", "TIGER 200"),
+    ]
+    r = _leader(rows, _closes(["069500", "102110"], latest=11000.0))
+    assert r.candidates, r.diagnostics
+    c = r.candidates[0]
+    assert c.products == ("KODEX 200", "TIGER 200"), c.products
+    line = "\n".join(render.render_index_block(r.candidates))
+    assert "KODEX 200" in line and "TIGER 200" in line
+    # 추천으로 읽히는 말을 붙이지 않는다.
+    for banned in ("추천", "유망", "매수", "매도", "교체"):
+        assert banned not in line
+
+
+def test_index_line_caps_products_and_counts_rest():
+    """수십 개인 지수는 상위 N개 + `외 N개`. 개수를 숨기지 않는다."""
+    codes = [f"00000{i}" for i in range(7)]
+    rows = [_meta_named(c, "코스피200", f"ETF{c}") for c in codes]
+    r = _leader(rows, _closes(codes, latest=11000.0))
+    c = r.candidates[0]
+    assert c.ticker_count == 7
+    text = render.render_products(c)
+    assert text.count(",") == render.MAX_SHOWN_PRODUCTS - 1, text
+    assert f"외 {7 - render.MAX_SHOWN_PRODUCTS}개" in text
+
+
+def test_products_only_count_tickers_used_in_returns():
+    """가격이 빠져 수익률에서 제외된 ticker 를 이름으로 되살리지 않는다."""
+    rows = [
+        _meta_named("A", "X", "ETF-A"),
+        _meta_named("B", "X", "ETF-B"),
+        _meta_named("C", "X", "ETF-C"),
+    ]
+    closes = _closes(["A", "B", "C"], latest=11000.0)
+    del closes["L"]["C"]  # C 는 최신 가격 결측
+    r = _leader(rows, closes)
+    c = r.candidates[0]
+    assert c.ticker_count == 2
+    assert "ETF-C" not in c.products, c.products
+
+
+def test_short_name_missing_falls_back_to_count_only():
+    """약명을 못 찾으면 개수만 남긴다 — 없는 이름을 만들지 않는다."""
+    rows = [_meta("A", "X"), _meta("B", "X")]  # 한글종목약명 없음
+    r = _leader(rows, _closes(["A", "B"], latest=11000.0))
+    c = r.candidates[0]
+    assert c.products == ()
+    assert render.render_products(c) == "추종 ETF 2개"
+
+
+def _fresh_assemble(tmp_path, *, stored_days, today="2026-09-18", axis=None):
+    """`stored_days` 만 적재한 상태로 조립한다."""
+    db = tmp_path / "m.sqlite"
+    for d in stored_days:
+        bas = d.replace("-", "")
+        rows = [
+            {"ISU_CD": t, "BAS_DD": bas, "TDD_CLSPRC": "11000"}
+            for t in ("069500", "102110")
+        ]
+        krx_store.upsert_snapshot(
+            krx_store.validate_snapshot(rows, expected_date=bas), db_path=db
+        )
+    cpath = tmp_path / "consistency.json"
+    meta_gate.save_consistency(
+        meta_gate.ConsistencyResult(
+            status=meta_gate.STATUS_OK,
+            api_ticker_count=2,
+            csv_ticker_count=2,
+            exact_match_count=2,
+            join_coverage=1.0,
+        ),
+        cpath,
+    )
+    csvp = tmp_path / "official.csv"
+    csvp.write_bytes(
+        (
+            "단축코드,기초지수명,지수산출기관,기초자산분류,추적배수,복제방법,"
+            "한글종목약명\n"
+            "069500,코스피200,KRX,주식,일반,실물(패시브),KODEX 200\n"
+            "102110,코스피200,KRX,주식,일반,실물(패시브),TIGER 200\n"
+        ).encode("cp949")
+    )
+    axis = axis or (
+        [f"2026-08-{d:02d}" for d in range(3, 32)]
+        + [
+            f"2026-09-{d:02d}"
+            for d in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18)
+        ]
+    )
+    (tmp_path / "krx_trading_days_2026.csv").write_text(
+        "date\n" + "\n".join(axis) + "\n", encoding="utf-8"
+    )
+    return flow.assemble_market_briefing(
+        today_kst=today,
+        runtime_kst=None,
+        state_path=tmp_path / "s.json",
+        consistency_path=cpath,
+        official_csv_path=csvp,
+        sp500_return_pct=1.2,
+        sp500_asof="2026-09-17",
+        sp500_fresh=True,
+        calendar_dir=tmp_path,
+        db_path=db,
+    )
+
+
+def test_stale_window_is_not_used_even_with_21_days(tmp_path):
+    """21일이 모인 것과 **그 21일이 최근인 것**은 다르다 (사용자 지적)."""
+    old = [f"2026-08-{d:02d}" for d in range(3, 31)][:21]
+    out = _fresh_assemble(tmp_path, stored_days=old)
+    assert out.diagnostics["index_status"] == "stale"
+    d = out.diagnostics["index_diagnostics"]
+    assert d["reason"] == "window_not_fresh"
+    assert d["lag_trading_days"] > d["max_stale_trading_days"]
+
+
+def test_stale_window_does_not_print_kr_basis_date(tmp_path):
+    """쓰지 않은 국내 기준일을 `기준` 줄에 적지 않는다 (설계 §3.4)."""
+    old = [f"2026-08-{d:02d}" for d in range(3, 31)][:21]
+    out = _fresh_assemble(tmp_path, stored_days=old)
+    body = out.message_text or ""
+    assert "국내" not in body, body
+    assert "2026-08" not in body, body
+
+
+def test_fresh_window_passes_and_prints_prior_trading_day(tmp_path):
+    """직전 거래일까지 적재돼 있으면 통과하고 그 날짜를 적는다."""
+    axis = [f"2026-08-{d:02d}" for d in range(3, 32)] + [
+        f"2026-09-{d:02d}" for d in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17)
+    ]
+    out = _fresh_assemble(tmp_path, stored_days=axis)
+    assert out.diagnostics["index_status"] != "stale", out.diagnostics
+    assert "국내 2026-09-17 종가" in (out.message_text or "")
+
+
+def test_window_freshness_unknown_is_fail_closed(tmp_path):
+    """지연을 **못 재면** 쓰지 않는다 — 모르면 `stale` (fail-closed).
+
+    적재된 최신일이 거래일 축에 없으면 지연을 계산할 수 없다. 그때 "아마 최근일
+    것" 으로 넘기면 최신성 Gate 가 무력화된다.
+    """
+    axis = [f"2026-08-{d:02d}" for d in range(3, 32)] + [
+        f"2026-09-{d:02d}" for d in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18)
+    ]
+    stored = [d for d in axis if d <= "2026-09-11"][-20:] + ["2026-09-12"]
+    out = _fresh_assemble(tmp_path, stored_days=stored, axis=axis)
+    assert out.diagnostics["index_status"] == "stale", out.diagnostics
+    assert out.diagnostics["index_diagnostics"]["reason"] == "lag_unknown"
+    assert "국내" not in (out.message_text or "")

@@ -96,6 +96,9 @@ class IndexCandidate:
     ret_5d_pct: float
     ret_20d_pct: float
     ticker_count: int
+    # 사용자 요청(2026-09-13) — "추종 ETF 2개" 만으로는 무엇인지 알 수 없다.
+    # 공식 CSV `한글종목약명` 을 그대로 쓴다. 축약·번역·테마명 변환 금지.
+    products: tuple[str, ...] = ()
 
     @property
     def identifier(self) -> str:
@@ -142,6 +145,20 @@ def group_by_index(rows: Sequence[dict[str, str]]) -> dict[tuple[str, str], set[
     return groups
 
 
+def product_short_names(rows: Sequence[dict[str, str]]) -> dict[str, str]:
+    """`단축코드 → 한글종목약명`. 약명이 비면 그 ticker 는 담지 않는다.
+
+    축약·번역·테마명 변환을 하지 않는다 — 공식 CSV 값 그대로다.
+    """
+    out: dict[str, str] = {}
+    for r in rows:
+        t = (r.get("단축코드") or "").strip()
+        nm = (r.get("한글종목약명") or "").strip()
+        if t and nm:
+            out[t] = nm
+    return out
+
+
 def compute_index_leadership(
     *,
     meta_rows: Sequence[dict[str, str]],
@@ -158,7 +175,9 @@ def compute_index_leadership(
     `코스피 200` 처럼 "정보 가치가 낮아 보이는" 지수를 개발자 판단으로 빼지
     않는다. 목업을 본 뒤 사용자가 판정한다.
     """
-    groups = group_by_index(eligible_products(meta_rows))
+    products = eligible_products(meta_rows)
+    groups = group_by_index(products)
+    short_names = product_short_names(products)
     cl_latest = closes.get(latest) or {}
     cl_5 = closes.get(d5) or {}
     cl_20 = closes.get(d20) or {}
@@ -168,14 +187,17 @@ def compute_index_leadership(
     for (agency, name), tickers in groups.items():
         r5: list[float] = []
         r20: list[float] = []
-        valid = 0
-        for t in tickers:
+        valid_tickers: list[str] = []
+        # 종목코드 오름차순 — 표시 순서를 위한 **고정 순서**다. 수익률·인기도 같은
+        # 새 순위 산식을 만들지 않는다(설계 §4).
+        for t in sorted(tickers):
             a, b, c = cl_latest.get(t), cl_5.get(t), cl_20.get(t)
             if not a or not b or not c or a <= 0 or b <= 0 or c <= 0:
                 continue
-            valid += 1
+            valid_tickers.append(t)
             r5.append((a / b - 1.0) * 100.0)
             r20.append((a / c - 1.0) * 100.0)
+        valid = len(valid_tickers)
         if valid < MIN_TICKERS_PER_INDEX:
             dropped_insufficient += 1
             continue
@@ -188,6 +210,11 @@ def compute_index_leadership(
                     ret_5d_pct=round(m5, 1),
                     ret_20d_pct=round(m20, 1),
                     ticker_count=valid,
+                    # 수익률 계산에 **실제로 쓰인** ticker 만. 결측·stale 로 빠진
+                    # ticker 를 이름으로 되살리지 않는다.
+                    products=tuple(
+                        short_names[t] for t in valid_tickers if t in short_names
+                    ),
                 )
             )
 
@@ -223,4 +250,5 @@ __all__ = [
     "decide_outlook",
     "eligible_products",
     "group_by_index",
+    "product_short_names",
 ]
