@@ -170,6 +170,7 @@ def fetch(bas, key):
 
 
 from datetime import date  # noqa: E402
+from datetime import date as _date  # noqa: E402
 
 b1, _, _ = krx_sync.resolve_basis_date(
     start=date(2026, 8, 18), key="K", fetcher=fetch, lookback_days=7
@@ -237,6 +238,76 @@ record(
     f"같은 상태를 다시 발송 (skip_reason={again2.skip_reason})",
     again.skip_reason == flow.REASON_NO_CHANGE and again2.skip_reason is None,
 )
+
+# ── ⑧ 실행일 파싱 가드 (검증자 r1 지적) ──────────────────────────────────────
+tmp = area()
+empty = tmp / "no_calendar"
+empty.mkdir()
+with_g = cal.check_trading_day("not-a-date", directory=empty)
+orig_parse = cal.parse_date
+cal.parse_date = lambda d: _date(2026, 9, 18)  # 아무 날짜나 읽힌 것으로 위장
+without = cal.check_trading_day("not-a-date", directory=empty)
+cal.parse_date = orig_parse
+record(
+    "⑧ 실행일 파싱 가드",
+    f"ok={with_g.ok} reason={with_g.reason}",
+    f"읽을 수 없는 날짜가 거래일로 통과 ok={without.ok}",
+    (not with_g.ok) and without.ok,
+)
+
+# ── ⑨ 손상 캘린더 예외 차단 (검증자 r1 지적) ─────────────────────────────────
+tmp = area()
+(tmp / "krx_trading_days_2026.csv").write_text(
+    "date\nnot-a-date\n2026-09-18\n", encoding="utf-8"
+)
+try:
+    v = cal.check_trading_day("2026-09-18", directory=tmp)
+    with_g9 = f"ok={v.ok} decided_by={v.decided_by}"
+    ok9 = True
+except Exception as e:  # noqa: BLE001
+    with_g9 = f"{type(e).__name__}"
+    ok9 = False
+orig_parse = cal.parse_date
+cal.parse_date = lambda d: _date(2026, 1, 1)  # 모든 행이 유효한 것으로 위장
+try:
+    v9b = cal.check_trading_day("2026-09-18", directory=tmp)
+    without9 = f"손상 행이 실려 ok={v9b.ok} reason={v9b.reason}"
+    broke9 = not v9b.ok  # 정상 평일이 막히면 그것이 해악이다
+except Exception as e:  # noqa: BLE001
+    without9 = f"{type(e).__name__}: {e}"
+    broke9 = True
+cal.parse_date = orig_parse
+record("⑨ 손상 행 적재 차단", with_g9, without9, ok9 and broke9)
+
+# ── ⑩ 실행일 형식 자르기 금지 (검증자 r2 지적) ───────────────────────────────
+tmp = area()
+empty10 = tmp / "none"
+with_g10 = cal.check_trading_day("2026-09-18T09:00:00", directory=empty10)
+orig_p10 = cal.parse_date
+
+
+def _loose(d):
+    """예전 구현 — `[:10]` 으로 자른다."""
+    text = (d or "")[:10]
+    if len(text) != 10 or text[4] != "-" or text[7] != "-":
+        return None
+    try:
+        return _date.fromisoformat(text)
+    except (ValueError, TypeError):
+        return None
+
+
+cal.parse_date = _loose
+without10 = cal.check_trading_day("2026-09-18T09:00:00", directory=empty10)
+snap10 = cal.check_trading_day("2026-09-18T09:00:00")
+cal.parse_date = orig_p10
+record(
+    "⑩ 실행일 형식 자르기 금지",
+    f"ok={with_g10.ok} reason={with_g10.reason}",
+    f"fallback ok={without10.ok} vs snapshot ok={snap10.ok} — 경로별 판정 갈림",
+    (not with_g10.ok) and without10.ok != snap10.ok,
+)
+
 
 # ── 출력 ─────────────────────────────────────────────────────────────────────
 print(f"{'보호 로직':28s} | {'가드 있을 때':44s} | 무력화하면")

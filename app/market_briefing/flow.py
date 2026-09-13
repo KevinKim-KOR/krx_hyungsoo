@@ -29,6 +29,8 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass, field
+from datetime import date as _date
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
@@ -111,21 +113,52 @@ def save_state(
 # ── 조립 ────────────────────────────────────────────────────────────────────
 
 
+def _weekday_axis_before(today_kst: str, *, span_days: int) -> list[str]:
+    """`today_kst` 직전 `span_days` 달력일 중 **평일만** 오름차순.
+
+    snapshot 이 없는 연도에서 지연을 재기 위한 축이다. 공휴일을 모르므로 실제
+    거래일보다 조금 많게 잡힐 수 있다 — 그만큼 지연 판정이 **보수적**이 된다
+    (실제보다 더 오래된 것처럼 보여 stale 로 막힐 뿐, 오래된 값을 최신으로
+    착각하지 않는다).
+    """
+    try:
+        base = _date.fromisoformat(today_kst[:10])
+    except ValueError:
+        return []
+    out = [base - timedelta(days=i) for i in range(span_days, 0, -1)]
+    return [d.isoformat() for d in out if d.weekday() < 5]
+
+
 def _window_lag_trading_days(
     latest: str, *, today_kst: str, calendar_dir: Optional[Path]
 ) -> Optional[int]:
     """적재된 최신 거래일이 **직전 거래일보다 몇 거래일 뒤처졌나**.
 
-    캘린더가 없거나 해당 연도를 못 덮으면 `None` — **모르면 쓰지 않는다**.
+    축은 거래일 Gate 와 **같은 우선순위**로 고른다(2026-09-13 사용자 정책).
+
+    | 상황 | 축 |
+    |---|---|
+    | 캘린더가 그 연도를 덮음 | snapshot 거래일 |
+    | 없음·손상·연도 미지원 | **평일 fallback** |
+
+    축에서 최신일을 못 찾으면 `None` — 지연을 모르므로 쓰지 않는다(호출부가
+    `stale` 로 막는다).
     """
-    cal = load_calendar(calendar_dir)
-    if cal is None:
-        return None
-    days = sorted(d for d in cal.days if d < today_kst)
-    if not days or not cal.covers(int(today_kst[:4])):
-        return None
-    if latest not in days:
-        # 적재된 최신일이 거래일 축에 없다 — 판정하지 않는다.
+    try:
+        cal = load_calendar(calendar_dir)
+    except Exception:  # noqa: BLE001
+        cal = None
+
+    if cal is not None and cal.covers(int(today_kst[:4])):
+        days = sorted(d for d in cal.days if d < today_kst)
+    else:
+        # 거래일 Gate 와 **같은 평일 fallback 축**을 쓴다(2026-09-13 사용자 정책).
+        # 여기서만 캘린더를 요구하면 캘린더 없는 연도에 기초지수가 늘 stale 이
+        # 되어 "평일이면 나머지 Gate 를 계속 평가한다" 는 정책이 깨진다.
+        days = _weekday_axis_before(today_kst, span_days=90)
+
+    if not days or latest not in days:
+        # 적재된 최신일이 축에 없다 — 지연을 못 재므로 쓰지 않는다.
         return None
     return len(days) - 1 - days.index(latest)
 

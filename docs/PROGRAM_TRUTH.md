@@ -124,7 +124,7 @@ flowchart LR
 | OCI PUSH 정식 runner | CLI(crontab) | `scripts/run_three_push_runtime_oci.py` (PARAM runtime) — 실측 발송(`telegram_sent:true`) | SOURCE_CONFIRMED / RUNTIME_VERIFIED |
 | OCI PUSH package fallback | CLI | `scripts/run_three_push_oci.py` (package 소비) | SOURCE_CONFIRMED / DUPLICATED / RUNTIME_UNVERIFIED |
 | Telegram 실제 발송 | 함수 | `app/three_push_runner_common.py :: telegram_send` / `_telegram_send_one` | SOURCE_CONFIRMED |
-| Telegram 메시지 생성 | 빌더 | `app/message_market_briefing.py`, `app/draft_message.py`, `app/three_push_runtime_message_builder.py` | SOURCE_CONFIRMED |
+| Telegram 메시지 생성 | 빌더 | `app/market_briefing/render.py`(08:00 시장 브리핑 · 2026-09-13~), `app/runtime_evidence/holdings_risk_render.py`, `app/draft_message.py`, `app/three_push_runtime_message_builder.py` | SOURCE_CONFIRMED |
 | DB 경로 결정 | 상수 | `market_data_store.py :: DEFAULT_DB_PATH`, `runtime_state_db.py :: DEFAULT_DB_PATH`, `decision_evidence_store.py :: DEFAULT_DB_PATH` (환경변수 override 미발견) | SOURCE_CONFIRMED |
 | scheduler/cron | OCI crontab(활성) | 저장소 문서 `docs/handoff/OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md` + **OCI 호스트 `crontab -l` 실측 활성** | RUNTIME_VERIFIED |
 
@@ -356,7 +356,7 @@ flowchart LR
 |---|---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | 유지 | **`true`** | **발송 중** |
 | `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화 |
-| `market_briefing` (08:00) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled` |
+| `market_briefing` (08:00) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled`. 메시지·억제는 `OPS-02B-2` 로 **재구현 완료**(검증자 `VERIFIED` 2026-09-13). 발송은 활성화 승인 대기 |
 | ~~`spike_or_falling_alert`~~ | **제거** | — | **폐지** — cron 7건을 `holdings_risk_alert` 로 교체 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 보유 PUSH 까지 멈춘다).
@@ -370,9 +370,15 @@ flowchart LR
 
 차단 사유 (설계자 판정 2026-09-07):
 
-- **market_briefing `REJECT`** — "확인된 항목"과 "별도 확인 필요"가 실제 수치와
-  맞지 않고, 변화 여부와 무관하게 발송하며, 쓸 만한 정보가 없어도 보낸다.
-  OPS-01B Gate 가 `DATA_GAP`/`CONNECT_NONE` 이라 억지로 유지할 이유가 없다.
+- **market_briefing `REJECT`** (2026-09-07 판정) — "확인된 항목"과 "별도 확인
+  필요"가 실제 수치와 맞지 않고, 변화 여부와 무관하게 발송하며, 쓸 만한 정보가
+  없어도 보냈다. **이 판정은 구 메시지에 대한 것이다.**
+
+  **2026-09-13 재구현 완료** — `OPS-02B-1` Gate `ADOPT` 후 `OPS-02B-2` 로 메시지·
+  억제·운영을 새로 만들었다(`app/market_briefing/` 8모듈). 구 조립 경로는
+  `SKIP_EVIDENCE_KINDS` 로 우회한다. 같은 상태가 이어지면 `no_change` 로
+  억제하고, 쓸 내용이 없으면 미발송한다. **autosend 는 여전히 `false`** 이며
+  활성화는 별도 승인 대상이다.
 - **spike_or_falling `REJECT`** — 장중 급변이 아니라 **1개월 하락 스크리닝**이고
   보유와 무관하다(OPS-01C 판정).
 
@@ -503,7 +509,7 @@ reason=push_kind_disabled · telegram_attempted=false`.
 - Backend app: `app/api.py :: post_market_refresh, post_approve, _execute_delivery`
 - Evidence/composer: `app/holdings_market_evidence.py :: build_holdings_market_evidence, _build_judgment_summary` · `app/market_summary_composer.py :: compose_judgment_summary, select_top_holdings`
 - 시장/국면: `app/market_topn.py :: compute_topn` · `app/market_regime.py :: compute_market_context, compute_kospi_position_metrics, compute_regime_streak`
-- 메시지: `app/message_market_briefing.py :: build_market_briefing_message` · `app/draft_message.py :: build_message_text, _render_today_holdings_lines` · `app/three_push_runtime_message_builder.py`
+- 메시지: `app/market_briefing/render.py :: render_market_briefing`(08:00 · 2026-09-13~) · `app/runtime_evidence/holdings_risk_render.py`(급락 알림) · `app/draft_message.py :: build_message_text, _render_today_holdings_lines` · `app/three_push_runtime_message_builder.py`
 - 발송: `app/three_push_runner_common.py :: telegram_send, _telegram_send_one`
 - 전달: `app/delivery.py :: deliver` · `scripts/sync_three_push_packages.py` · `scripts/sync_three_push_runtime_param.py`
 - OCI runner: `scripts/run_three_push_runtime_oci.py` · `scripts/run_three_push_oci.py` · `scripts/run_oci_market_data_batch.py`

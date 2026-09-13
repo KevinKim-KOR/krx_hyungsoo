@@ -366,7 +366,6 @@ def report(mocks: list[Mock]) -> str:
         n = len(body)
         parts = 1 if n == 0 else (n + TELEGRAM_LIMIT - 1) // TELEGRAM_LIMIT
         sent = not (o.skip_reason or o.fail)
-        cal = (o.diagnostics or {}).get("calendar") or {}
         lines.append(f"## {m.no} {m.title}")
         lines.append("")
         lines.append("```text")
@@ -374,8 +373,12 @@ def report(mocks: list[Mock]) -> str:
         lines.append(f"사유          = {o.skip_reason or o.fail or '-'}")
         lines.append(f"글자 수       = {n}")
         lines.append(f"분할 수       = {parts if sent else 0}")
+        # 국내 기준일은 **실제로 쓴 가격의 기준일**만 적는다. 기초지수가 빠진
+        # 경우(⑤ 정합성 실패 · ⑥ stale)에는 국내 가격을 쓰지 않았으므로 `-` 다.
+        # 예전에는 실행일로 fallback 해 마치 국내 종가 기준일인 것처럼 보였다
+        # (설계자 §8 지적 2026-09-13). 본문에는 원래 노출되지 않았다.
         idx_diag = (o.diagnostics or {}).get("index_diagnostics") or {}
-        kr_asof = idx_diag.get("price_asof") or cal.get("date_kst") or "-"
+        kr_asof = idx_diag.get("price_asof") or "-"
         lines.append(f"국내 기준일    = {kr_asof}")
         lines.append(f"미국 기준일    = {US_ASOF}")
         lines.append(

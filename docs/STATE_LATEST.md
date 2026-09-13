@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-13 (**OPS-02B-2 `PAUSED_BY_KS10` — Cleanup 2건 `CLOSED` · PUSH 2_OF_3 유지**)
+최종 업데이트: 2026-09-13 (**OPS-02B-2 구현 완료 · 검증자 `VERIFIED` — 활성화 승인 대기 · PUSH 2_OF_3 유지**)
 
 ## 현재 상태
 
@@ -15,7 +15,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 |---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
 | `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화, 실발송은 2026-09-09 첫 틱부터 |
-| `market_briefing` (08:00) | `false` | 차단 — **OPS-02B-1 Gate 통과**(`ADOPT`). `02B-2` 구현 중(`PAUSED`) · 추가 차단 `KRX_TRADING_CALENDAR_NOT_PROVIDED` |
+| `market_briefing` (08:00) | `false` | 차단 — **`02B-2` 구현 완료 · 검증자 `VERIFIED`**(2026-09-13). 거래일 캘린더 확보로 `KRX_TRADING_CALENDAR_NOT_PROVIDED` 해소. 남은 것은 **OCI 배포 + autosend 활성화**(각각 별도 승인) |
 | ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 보유 PUSH 까지 멈춘다).
@@ -29,9 +29,37 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관 |
 | **OPS-02A** 보유 급락 알림 | **`IMPLEMENTED_OPERATIONAL`** | 커밋 `5d2614d6` · 검증자 `VERIFIED_WITH_NOTES`(메모 해소) · 사용자 목업 `APPROVED` · 배포·활성화 완료 |
 | **OPS-02B-1** 시장 입력 Gate | **`CLOSED`** | 검증 `VERIFIED_WITH_NOTES` · 커밋 `988b0494` · 설계자 최종 Gate 확정 2026-09-11. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
-| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`PARTIAL_IMPLEMENTATION` / `PAUSED`** | 설계자 PLAN `APPROVED_WITH_REQUIRED_EDITS`. 모듈 6종 + 배선 완료, **uncommitted**. 러너 650줄 초과로 KS-10 Cleanup 2건 분기 → 둘 다 `CLOSED`. 남은 것: flow-through 테스트 · 보호 로직 역검증 · 전체 회귀 · 목업 7종 |
+| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`IMPLEMENTED_VERIFIED`** | 검증자 `VERIFIED`(r4). `app/market_briefing/` 8모듈 1,834줄 + 러너 배선. 목업 7종 사용자 확정. 보호 Gate 10종 역검증 `10/10`. 회귀 1,583 passed. **autosend `false` · OCI 미배포** — 설계자 종료 판정·배포·활성화 대기 |
 | └ **KS10-RUNNER-EVIDENCE-EXTRACTION** | **`CLOSED`** | 러너 §4 → `runner_evidence.assemble_legacy_evidence()`. 656 → **648줄**. 설계자 `PASS` |
 | └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
+
+### OPS-02B-2 운영 계약 (요약 · 2026-09-13 검증자 VERIFIED)
+
+**08:00 시장 흐름 브리핑.** 07:20 배치가 받은 KRX 응답 하나로 무조정 가격 적재와
+API·CSV 정합성 판정을 끝내고, 08:00 러너는 **외부 조회 없이** 그 결과만 소비한다.
+
+| 항목 | 계약 |
+|---|---|
+| 방향 | `SP500_SIGN_V1` — 직전 미국 거래일 S&P500 1일 종가 수익률의 **부호만**. `MIXED` 없음 · 0은 `FLAT` |
+| 기초지수 | 식별자 완전일치 · 주식형 · 레버리지/인버스/합성 제외 · **서로 다른 ETF 2개 이상** · 중앙값 · 5일·20일 모두 양수 · 최대 2개 |
+| 추종 ETF 표시 | 공식 `한글종목약명` · 종목코드 오름차순 **상위 3개 + 외 N개** (사용자 확정) |
+| 거래일 판정 | snapshot 우선 → 없거나 미지원·손상이면 **평일 fallback**(주말 미발송). 읽을 수 없는 실행일은 `invalid_date_kst` 로 미발송 |
+| 가격 최신성 | `MAX_STALE_TRADING_DAYS = 1`. 21거래일이 모인 것과 **최근인 것**은 다른 조건이다 |
+| 반복 억제 | fingerprint = `{전망}#{지수}` — **본문이 만들어진 뒤에만** 비교. 같으면 `no_change` 미발송 |
+| 상태 저장 | Telegram **전체 성공 뒤에만**. 실패·부분전송·dry-run 은 저장하지 않는다 |
+
+**가격 격리** — `krx_etf_daily_price_unadjusted` 는 기존 `etf_daily_price` 와
+**join 하지 않는다**. `DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY` 가 해결된 것이
+아니다.
+
+**거래일 캘린더** — `state/market_meta/krx_trading_days_2026.csv` (243일 ·
+API 실측 171 + 사용자 확인 72). **연간 갱신은 활성화 선행조건이 아니다** — 없으면
+평일 fallback 으로 돈다. 재생성·대조: `scripts/build_krx_trading_days.py`.
+
+**구현 중 잡은 결함 4건** — 휴장일 다음날마다 가격 적재 0건(연 11회) · 18일 지난
+종가로 브리핑 생성 · 손상 캘린더가 러너 중단 · 손상 행 하나가 그 해 평일 전부 차단.
+
+---
 
 ### OPS-02A 운영 계약 (요약)
 

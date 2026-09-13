@@ -424,27 +424,60 @@ def test_non_trading_day_blocked(tmp_path):
     assert not v.ok and v.reason == cal.REASON_NON_TRADING_DAY
 
 
-def test_missing_calendar_fails_closed(tmp_path):
-    v = cal.check_trading_day("2026-09-10", directory=tmp_path / "none")
-    assert not v.ok and v.reason == cal.REASON_CALENDAR_REFRESH_REQUIRED
+# ── 캘린더 부재 = 평일 fallback (2026-09-13 사용자 운영정책) ─────────────────
+# 이전 계약("캘린더 없으면 fail-closed")은 **폐기**됐다. 장이 닫힌 날 연 2~3회
+# 푸시가 오는 것은 1인 운영에서 사용자가 수용한 오차다. 대신 주말 발송·snapshot
+# 반대 판정·예외 중단은 여전히 결함이므로 아래에서 고정한다.
 
 
-def test_year_not_covered_fails_closed(tmp_path):
-    """연도가 빠졌는데 '목록에 없으니 휴장일' 로 판정하면 한 해가 조용히 죽는다."""
+def test_missing_calendar_falls_back_to_weekday(tmp_path):
+    v = cal.check_trading_day("2026-09-10", directory=tmp_path / "none")  # 목
+    assert v.ok and v.reason is None
+    assert v.decided_by == cal.SOURCE_WEEKDAY_FALLBACK
+
+
+def test_missing_calendar_still_blocks_weekend(tmp_path):
+    """주말 발송은 계속 결함이다."""
+    for d, label in (("2026-09-12", "토"), ("2026-09-13", "일")):
+        v = cal.check_trading_day(d, directory=tmp_path / "none")
+        assert not v.ok, label
+        assert v.reason == cal.REASON_NON_TRADING_DAY
+        assert v.decided_by == cal.SOURCE_WEEKDAY_FALLBACK
+
+
+def test_year_not_covered_falls_back_to_weekday(tmp_path):
+    """2027 CSV 가 없어도 평일이면 막지 않는다."""
     d = _write_calendar(tmp_path, TRADING_DAYS_2026)
-    v = cal.check_trading_day("2027-03-02", directory=d)
-    assert not v.ok and v.reason == cal.REASON_CALENDAR_REFRESH_REQUIRED
+    ok = cal.check_trading_day("2027-03-02", directory=d)  # 화
+    assert ok.ok and ok.decided_by == cal.SOURCE_WEEKDAY_FALLBACK
+    weekend = cal.check_trading_day("2027-03-06", directory=d)  # 토
+    assert not weekend.ok and weekend.reason == cal.REASON_NON_TRADING_DAY
 
 
-def test_corrupt_calendar_fails_closed(tmp_path):
+def test_corrupt_calendar_falls_back_without_raising(tmp_path):
+    """캘린더 판단 중 예외로 러너가 멈추면 안 된다."""
     (tmp_path / "krx_trading_days_2026.csv").write_text("nope\n1\n", encoding="utf-8")
     v = cal.check_trading_day("2026-09-10", directory=tmp_path)
-    assert not v.ok and v.reason == cal.REASON_CALENDAR_REFRESH_REQUIRED
+    assert v.ok and v.decided_by == cal.SOURCE_WEEKDAY_FALLBACK
 
 
-def test_calendar_module_has_no_holiday_library_or_weekday_rule():
+def test_snapshot_wins_over_weekday_fallback(tmp_path):
+    """snapshot 이 있으면 그것을 쓴다 — 평일이라고 덮어쓰지 않는다."""
+    d = _write_calendar(tmp_path, TRADING_DAYS_2026)
+    v = cal.check_trading_day("2026-09-14", directory=d)  # 평일이지만 목록에 없음
+    assert not v.ok
+    assert v.reason == cal.REASON_NON_TRADING_DAY
+    assert v.decided_by == cal.SOURCE_SNAPSHOT
+
+
+def test_calendar_module_has_no_holiday_library_or_external_call():
+    """공휴일 라이브러리·외부 호출은 계속 금지다.
+
+    평일 판정(`weekday()`)은 2026-09-13 정책으로 **허용**된다 — 주말 휴장은
+    규칙이 아니라 정의이고, 캘린더 부재 시 평일 fallback 이 확정 계약이다.
+    """
     src = _code_only(cal)
-    for banned in ("holidays", "weekday()", "isoweekday", "requests", "httpx"):
+    for banned in ("holidays", "requests", "httpx", "urllib"):
         assert banned not in src
 
 
@@ -728,3 +761,133 @@ def test_window_freshness_unknown_is_fail_closed(tmp_path):
     assert out.diagnostics["index_status"] == "stale", out.diagnostics
     assert out.diagnostics["index_diagnostics"]["reason"] == "lag_unknown"
     assert "국내" not in (out.message_text or "")
+
+
+# ── 손상 캘린더·잘못된 실행일 (검증자 r1 REJECTED · 2026-09-13) ───────────────
+# 기존 계약 테스트는 **헤더 손상만** 검사해 아래 두 경로를 놓쳤다. focused 60건과
+# 전체 회귀가 통과하는데도 운영 계약이 깨져 있었다.
+
+
+@pytest.mark.parametrize(
+    "body,decided_by",
+    [
+        # 정상 행이 섞여 있으면 그것만 쓴다 — snapshot 판정.
+        ("date\nnot-a-date\n2026-09-18\n", cal.SOURCE_SNAPSHOT),
+        ("date\n\n2026-09-18\n", cal.SOURCE_SNAPSHOT),
+        # 유효한 행이 하나도 없으면 snapshot 이 없는 것과 같다 — 평일 fallback.
+        ("date\nxx\nyy\n", cal.SOURCE_WEEKDAY_FALLBACK),
+        ("date\n20260918\n", cal.SOURCE_WEEKDAY_FALLBACK),
+        ("nope\n1\n", cal.SOURCE_WEEKDAY_FALLBACK),
+        ("date\n", cal.SOURCE_WEEKDAY_FALLBACK),
+    ],
+)
+def test_corrupt_calendar_never_raises(tmp_path, body, decided_by):
+    """어떤 손상이든 예외로 러너를 멈추지 않고, **정상 평일을 막지도 않는다.**
+
+    검증자 r2 지적 — "예외 없음" 만 보면 손상 snapshot 이 그 해 평일을 전부
+    `non_trading_day` 로 막는 **비충돌 오판**을 놓친다. 판정값까지 본다.
+    """
+    (tmp_path / "krx_trading_days_2026.csv").write_text(body, encoding="utf-8")
+    v = cal.check_trading_day("2026-09-18", directory=tmp_path)  # 금요일
+    assert isinstance(v, cal.CalendarVerdict)
+    # 어떤 손상이든 **정상 평일을 막지 않는다.**
+    assert v.ok is True, (body, v)
+    assert v.reason is None
+    assert v.decided_by == decided_by, (body, v)
+
+
+def test_corrupt_date_rows_do_not_break_year_coverage(tmp_path):
+    """형식이 깨진 행은 연도 집계에서 **빼고 센다** — 터뜨리지 않는다."""
+    (tmp_path / "krx_trading_days_2026.csv").write_text(
+        "date\nnot-a-date\n2026-09-18\n", encoding="utf-8"
+    )
+    loaded = cal.load_calendar(tmp_path)
+    assert loaded is not None
+    assert loaded.covered_years == (2026,)
+
+
+@pytest.mark.parametrize(
+    "bad", ["not-a-date", "", "2026-13-45", "20260918", "2026-9-18", "오늘"]
+)
+def test_unreadable_run_date_is_not_a_trading_day(tmp_path, bad):
+    """읽을 수 없는 실행일을 "평일" 로 통과시키지 않는다.
+
+    평일인지 주말인지 모르는데 넘기면 **주말 발송을 막는 계약이 무력화**된다.
+    모르면 보내지 않는다 — 예외는 올리지 않는다.
+    """
+    v = cal.check_trading_day(bad, directory=tmp_path / "none")
+    assert not v.ok, (bad, v)
+    assert v.reason == cal.REASON_INVALID_DATE
+
+
+def test_unreadable_run_date_blocked_even_with_snapshot(tmp_path):
+    """snapshot 이 있어도 마찬가지다."""
+    d = _write_calendar(tmp_path, TRADING_DAYS_2026)
+    v = cal.check_trading_day("not-a-date", directory=d)
+    assert not v.ok and v.reason == cal.REASON_INVALID_DATE
+
+
+def test_date_format_is_consistent_between_snapshot_and_fallback(tmp_path):
+    """같은 날짜가 형식에 따라 다르게 판정되면 안 된다.
+
+    `fromisoformat` 은 3.11+ 에서 `YYYYMMDD` 도 받지만 snapshot 경로는 문자열
+    비교를 한다. 형식을 고정해 두 경로를 일치시킨다.
+    """
+    d = _write_calendar(tmp_path, TRADING_DAYS_2026)
+    iso = cal.check_trading_day("2026-09-10", directory=d)
+    basic = cal.check_trading_day("20260910", directory=d)
+    assert iso.ok is True
+    assert basic.ok is False and basic.reason == cal.REASON_INVALID_DATE
+
+
+def test_runner_does_not_send_on_unreadable_date(tmp_path):
+    """조립까지 태워도 미발송이어야 한다."""
+    out = _fresh_assemble(tmp_path, stored_days=[], today="not-a-date")
+    assert out.skip_reason == cal.REASON_INVALID_DATE
+    assert not out.message_text
+
+
+@pytest.mark.parametrize("row", ["20260918", "2026-13-45", "2026-9-18", "not-a-date"])
+def test_corrupt_row_does_not_claim_year_coverage(tmp_path, row):
+    """손상 행이 그 연도를 덮는 것으로 오인되면 안 된다 (검증자 r2).
+
+    앞 4자리만 검사하던 때는 `20260918` 한 줄이 2026년을 덮는 것으로 쳐서
+    **정상 평일이 전부 휴장**이 됐다.
+    """
+    (tmp_path / "krx_trading_days_2026.csv").write_text(
+        f"date\n{row}\n", encoding="utf-8"
+    )
+    assert cal.load_calendar(tmp_path) is None, row
+    v = cal.check_trading_day("2026-09-18", directory=tmp_path)
+    assert v.ok and v.decided_by == cal.SOURCE_WEEKDAY_FALLBACK
+
+
+def test_corrupt_rows_dropped_but_valid_rows_kept(tmp_path):
+    """정상 행이 섞여 있으면 그것만 쓰고, 버린 수를 진단에 남긴다."""
+    (tmp_path / "krx_trading_days_2026.csv").write_text(
+        "date\n20260918\nnot-a-date\n2026-09-21\n", encoding="utf-8"
+    )
+    loaded = cal.load_calendar(tmp_path)
+    assert loaded is not None
+    assert loaded.days == frozenset({"2026-09-21"})
+    assert loaded.dropped_rows == 2
+    assert loaded.covered_years == (2026,)
+    # 목록에 없는 평일은 snapshot 기준으로 휴장이다.
+    v = cal.check_trading_day("2026-09-18", directory=tmp_path)
+    assert not v.ok and v.decided_by == cal.SOURCE_SNAPSHOT
+
+
+@pytest.mark.parametrize(
+    "bad", ["2026-09-18junk", "2026-09-18T09:00:00", "2026-09-18  ", " 2026-09-18"]
+)
+def test_date_is_not_truncated_to_ten_chars(tmp_path, bad):
+    """`[:10]` 자르기로 형식 검사를 우회하면 안 된다 (검증자 r2).
+
+    자르면 snapshot 경로(문자열 비교)와 fallback 경로의 판정이 갈린다.
+    """
+    fallback = cal.check_trading_day(bad, directory=tmp_path / "none")
+    snapshot = cal.check_trading_day(
+        bad, directory=_write_calendar(tmp_path, TRADING_DAYS_2026)
+    )
+    assert not fallback.ok and fallback.reason == cal.REASON_INVALID_DATE
+    assert fallback.ok == snapshot.ok, (bad, fallback, snapshot)

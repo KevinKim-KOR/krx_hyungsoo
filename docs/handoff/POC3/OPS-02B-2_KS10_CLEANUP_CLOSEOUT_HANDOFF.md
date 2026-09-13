@@ -183,18 +183,20 @@ flake8              = 0건
 3. `git status --short --untracked-files=all` 로 §3-1 과 대조. 불일치면 임의 정리
    금지 · 차이를 먼저 보고.
 
-### 4-2. 활성화 차단 (해소 안 됨)
+### 4-2. 활성화 차단 — **해소됨** (2026-09-13)
 
 ```text
-ACTIVATION_BLOCKED = true
-BLOCK_REASON       = KRX_TRADING_CALENDAR_NOT_PROVIDED
+ACTIVATION_BLOCKED = false
+CALENDAR_POLICY    = snapshot 우선 · 없으면 평일 fallback (주말 미발송)
+남은 승인 대상      = OCI 배포 · autosend 활성화
 ```
 
-공식 KRX 거래일 snapshot 이 없다. `app/market_briefing/calendar.py` 가 파일 부재 시
-`KRX_CALENDAR_REFRESH_REQUIRED` 로 fail-closed 하므로 **autosend 를 켜도 발송 0건**
-이다. 형식은 `date` 컬럼 1개 CSV
-(`state/market_meta/krx_trading_days_YYYY.csv`). **추정값·빈 placeholder 로 만들지
-말 것** — 사용자 승인·제공 후 별도 반영.
+ `state/market_meta/krx_trading_days_2026.csv` 가 들어갔고
+(API 실측 171일 + 사용자 확인 72일), 정책도 바뀌었다 — **snapshot 이 있으면 쓰고,
+없거나 연도가 미지원이면 평일을 거래일로 간주한다**(주말은 미발송). 캘린더 부재는
+더 이상 차단 사유가 아니며 연간 갱신은 활성화 선행조건이 아니다.
+
+남은 차단은 **autosend 활성화와 OCI 배포**뿐이고 둘 다 별도 승인 대상이다.
 
 ### 4-3. 하지 말 것
 

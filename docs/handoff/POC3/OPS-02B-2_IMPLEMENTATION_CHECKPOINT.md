@@ -36,7 +36,7 @@ COMMIT_PUSH       = NOT_AUTHORIZED
 OCI_DEPLOY        = NOT_AUTHORIZED
 AUTOSEND          = false 유지
 LIVE_SEND         = NOT_AUTHORIZED
-ACTIVATION_BLOCK  = KRX_TRADING_CALENDAR_NOT_PROVIDED
+ACTIVATION_BLOCK  = 해소됨 (2026-09-13 · §8)
 ```
 
 **선행 `OPS-02B-1` Gate 결론** (커밋 `988b0494` · `CLOSED`)
@@ -102,7 +102,7 @@ KOSPI_VIX_INTEGRITY        = PASS
 | coverage 분모 = `max(api, csv)` | 〃 — API 부분 응답 차단 |
 | 세 기준 가격 모두 있어야 `n` 포함 | `evidence.compute_index_leadership` |
 | 21거래일 미만이면 창 미생성 | `krx_store.resolve_window` |
-| 연도 미포함 캘린더 → `KRX_CALENDAR_REFRESH_REQUIRED` | `calendar.check_trading_day` |
+| 연도 미포함 캘린더 → **평일 fallback** (2026-09-13 정책 변경) | `calendar.check_trading_day` |
 | **fingerprint 는 본문이 만들어진 뒤에만 비교** | `flow.assemble_market_briefing` |
 | 정상 0개는 **안내 없이 문단 생략** | `render.render_market_briefing` |
 
@@ -209,14 +209,16 @@ PRIMARY KEY  = (date, ticker)
 
 ---
 
-## 8. autosend 활성화 차단 상태
+## 8. autosend 활성화 차단 상태 — **해소됨** (2026-09-13)
 
 ```text
-ACTIVATION_BLOCKED = true
-BLOCK_REASON       = KRX_TRADING_CALENDAR_NOT_PROVIDED
+ACTIVATION_BLOCKED = false
+CALENDAR_POLICY    = snapshot 우선 · 없으면 평일 fallback (주말 미발송)
 ```
 
-**공식 KRX 거래일 snapshot 이 없다.** 조사 결과(PLAN §F-Q1):
+`state/market_meta/krx_trading_days_2026.csv` 가 들어갔고(API 실측 171일 + 사용자
+확인 72일), **캘린더 부재는 더 이상 차단 사유가 아니다**(사용자 운영정책). 아래는
+그 결정에 이르게 된 **당시 조사 기록**이다(PLAN §F-Q1):
 
 | 후보 | 결과 |
 |---|---|
@@ -225,12 +227,10 @@ BLOCK_REASON       = KRX_TRADING_CALENDAR_NOT_PROVIDED
 | KRX 웹 휴장일 화면 | **로그인 필요** |
 | 저장소 내 캘린더 | **없음** |
 
-`calendar.check_trading_day` 는 **파일이 없으면 `KRX_CALENDAR_REFRESH_REQUIRED`
-로 fail-closed** 한다. 따라서 **autosend 를 켜도 발송이 0건**이다.
-
-**실제 snapshot 은 사용자 승인·제공 후 별도 반영**한다. 형식은 `date` 컬럼 1개
-CSV (`state/market_meta/krx_trading_days_YYYY.csv`). **추정값·빈 placeholder 로
-만들지 않는다.**
+**2026-09-13 정책 변경** — `calendar.check_trading_day` 는 snapshot 이 있으면 그것을
+쓰고, 없거나 연도가 미지원이면 **평일을 거래일로 간주**한다(주말은 미발송). 확인하지
+못한 평일 휴장일의 푸시는 사용자가 수용한 운영 오차다. 연간 캘린더 갱신은 활성화
+선행조건이 **아니다**.
 
 ---
 

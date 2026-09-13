@@ -254,9 +254,13 @@ def _seed_payload(asof: str, items: Optional[list] = None) -> dict:
 def stub_market_briefing_ready(monkeypatch, *, message_text="시장 브리핑 본문"):
     """`market_briefing` 이 발송 가능한 상태로 조립됐다고 둔다.
 
-    POC3-OPS-02B-2 에서 `market_briefing` 에 **국내 거래일 Gate** 가 붙었다.
-    공식 거래일 snapshot 이 없으면 `KRX_CALENDAR_REFRESH_REQUIRED` 로 fail-closed
-    되는 것이 **설계대로의 동작**이다.
+    POC3-OPS-02B-2 에서 `market_briefing` 에 **국내 거래일 Gate** 와 정합성·
+    최신성 Gate 가 붙었다. 그 입력(07:20 결과·가격 창)이 없으면 조립이 미발송으로
+    떨어지는 것이 **설계대로의 동작**이다.
+
+    (2026-09-13 정정: 캘린더 부재는 더 이상 차단 사유가 아니다 — 평일이면 통과
+    시키는 사용자 운영정책으로 바뀌었다. 여기서 stub 하는 이유는 캘린더가 아니라
+    정합성·가격 창 입력이 없기 때문이다.)
 
     그런데 partial delivery·registry·reeval 계약을 검사하는 기존 테스트들은
     `market_briefing` 을 **본문이 나오는 범용 push_kind** 로 써 왔다. 그 계약들은
