@@ -19,6 +19,12 @@
 | 일별 | **7달력일** |
 | 초기 적재 | **40달력일** |
 
+## 휴장일 응답은 기준일이 될 수 없다
+
+평일 휴장일에도 **행은 온다** — 가격 필드만 빈 문자열이다. `rows` 유무만 보면
+휴장일을 기준일로 집어 그 다음날 배치가 통째로 실패한다. `has_traded_prices()`
+로 판정한다.
+
 ## 예외를 올리지 않는다
 
 배치가 ETF 가격 적재를 롤백하지 않도록, 실패는 **dict 로 돌려준다**
@@ -68,6 +74,21 @@ def _default_fetcher(bas_dd: str, key: str) -> list[dict[str, Any]]:
     return r.json().get("OutBlock_1") or []
 
 
+def has_traded_prices(rows: list[dict[str, Any]]) -> bool:
+    """이 응답이 **실제로 거래가 있었던 날** 인가.
+
+    KRX Open API 는 **평일 휴장일에도 행을 돌려준다**. 다만 가격 필드가 전부 빈
+    문자열이다(실측: `20260101` `rows=1058` · `TDD_CLSPRC=""`). 거래일은 채워져
+    있다(`20260911` `rows=1168` · `TDD_CLSPRC=35130`).
+
+    따라서 `rows` 유무만 보면 **휴장일을 기준일로 집는다.** 실제로 07:20 배치가
+    휴장일 다음날마다 `invalid_snapshot` 으로 실패했다(2026년 11회).
+
+    주말은 행 자체가 없으므로(`rows=0`) 이 함수까지 오지 않는다.
+    """
+    return any((r.get("TDD_CLSPRC") or "").strip() for r in rows)
+
+
 def _candidate_dates(start: date, lookback_days: int) -> list[str]:
     """`start` 부터 과거로 `lookback_days` 일. **당일보다 미래를 만들지 않는다.**"""
     return [
@@ -94,7 +115,7 @@ def resolve_basis_date(
             rows = fetcher(bas_dd, key)
         except Exception:  # noqa: BLE001
             continue
-        if rows:
+        if rows and has_traded_prices(rows):
             return bas_dd, rows, tried
     return None, [], tried
 
@@ -252,8 +273,8 @@ def initial_backfill(
             rows = fetch(bas_dd, key)
         except Exception:  # noqa: BLE001
             continue
-        if not rows:
-            continue
+        if not rows or not has_traded_prices(rows):
+            continue  # 휴장일. 그 날짜만 건너뛴다.
         try:
             snapshot = krx_store.validate_snapshot(rows, expected_date=bas_dd)
         except krx_store.KrxSnapshotError:
@@ -279,6 +300,7 @@ __all__ = [
     "STATUS_NO_API_KEY",
     "STATUS_NO_BASIS_DATE",
     "STATUS_OK",
+    "has_traded_prices",
     "initial_backfill",
     "read_api_key",
     "resolve_basis_date",

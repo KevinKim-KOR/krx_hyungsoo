@@ -164,7 +164,13 @@ def test_whole_response_is_stored_not_only_candidates(tmp_path):
 @pytest.mark.parametrize(
     "bad_rows",
     [
-        [{"ISU_CD": "A", "BAS_DD": "20260910", "TDD_CLSPRC": ""}],
+        # 2026-09-13 정정: 전 행 빈 종가는 **휴장일 응답**이므로 여기서 빠졌다
+        # (별도 테스트 test_all_empty_close_is_holiday_not_invalid 로 고정).
+        # 원래 의도인 "종가 결측 행이 섞이면 전체 거부" 는 혼합 응답으로 유지한다.
+        [
+            {"ISU_CD": "A", "BAS_DD": "20260910", "TDD_CLSPRC": "1"},
+            {"ISU_CD": "B", "BAS_DD": "20260910", "TDD_CLSPRC": ""},
+        ],
         [{"ISU_CD": "A", "BAS_DD": "20260910", "TDD_CLSPRC": "0"}],
         [{"ISU_CD": "A", "BAS_DD": "20260910", "TDD_CLSPRC": "-5"}],
         [
@@ -383,3 +389,154 @@ def test_batch_state_records_krx_fields(tmp_path):
     assert st["krx_basis_date"] == "20260910"
     assert st["meta_consistency_status"] == "CSV_REFRESH_REQUIRED"
     assert json.loads(p.read_text(encoding="utf-8"))["price_data_as_of"] == "2026-09-10"
+
+
+# ── 휴장일 응답은 기준일이 될 수 없다 (2026-09-13 실측 결함) ──────────────────
+# KRX Open API 는 평일 휴장일에도 **행을 돌려준다**. 가격 필드만 빈 문자열이다
+# (실측: 20260101 rows=1058 TDD_CLSPRC=""). `rows` 유무만 보면 휴장일을 기준일로
+# 집어 그 다음날 07:20 배치가 invalid_snapshot 으로 통째로 실패한다(2026년 11회).
+
+
+def _holiday_rows(bas_dd: str = "20260817", n: int = 3) -> list[dict[str, object]]:
+    """휴장일 응답 — 행은 있고 가격 필드가 전부 빈 문자열."""
+    return [
+        {
+            "ISU_CD": f"00000{i}",
+            "ISU_NM": f"ETF{i}",
+            "BAS_DD": bas_dd,
+            "TDD_CLSPRC": "",
+            "ACC_TRDVOL": "",
+            "IDX_IND_NM": "KOSPI 200",
+        }
+        for i in range(n)
+    ]
+
+
+def _traded_rows(
+    bas_dd: str = "20260814", close: str = "10000", n: int = 3
+) -> list[dict[str, object]]:
+    return [
+        {
+            "ISU_CD": f"00000{i}",
+            "ISU_NM": f"ETF{i}",
+            "BAS_DD": bas_dd,
+            "TDD_CLSPRC": close,
+            "ACC_TRDVOL": "100",
+            "IDX_IND_NM": "KOSPI 200",
+        }
+        for i in range(n)
+    ]
+
+
+def test_has_traded_prices_rejects_holiday_response():
+    assert krx_sync.has_traded_prices(_traded_rows()) is True
+    assert krx_sync.has_traded_prices(_holiday_rows()) is False
+    assert krx_sync.has_traded_prices([]) is False
+
+
+def test_resolve_basis_date_skips_holiday_and_keeps_searching():
+    """휴장일을 건너뛰고 **직전 거래일**까지 계속 과거로 탐색한다."""
+    calls: list[str] = []
+
+    def fetch(bas_dd: str, key: str):
+        calls.append(bas_dd)
+        if bas_dd == "20260818":
+            return []  # 07:20 — 당일 미공시
+        if bas_dd == "20260817":
+            return _holiday_rows(bas_dd)  # 광복절 대체공휴일
+        return _traded_rows(bas_dd)
+
+    bas, rows, tried = krx_sync.resolve_basis_date(
+        start=date(2026, 8, 18), key="K", fetcher=fetch, lookback_days=7
+    )
+    assert bas == "20260816", (bas, tried)
+    assert krx_sync.has_traded_prices(rows)
+    # 휴장일을 기준일로 집지 않았다.
+    assert bas != "20260817"
+
+
+def test_resolve_basis_date_returns_none_when_only_holidays():
+    """상한 내 전부 휴장이면 **기준일 없음**. 휴장일로 위장하지 않는다."""
+
+    def fetch(bas_dd: str, key: str):
+        return _holiday_rows(bas_dd)
+
+    bas, rows, tried = krx_sync.resolve_basis_date(
+        start=date(2026, 8, 18), key="K", fetcher=fetch, lookback_days=3
+    )
+    assert bas is None
+    assert rows == []
+    assert len(tried) == 3
+
+
+def test_sync_krx_daily_uses_prior_trading_day_after_holiday(tmp_path):
+    """휴장일 다음날 배치가 실패하지 않고 직전 거래일을 적재한다."""
+
+    def fetch(bas_dd: str, key: str):
+        if bas_dd == "20260818":
+            return []
+        if bas_dd == "20260817":
+            return _holiday_rows(bas_dd)
+        return _traded_rows(bas_dd)
+
+    env = tmp_path / ".env"
+    env.write_text("KRX_API_KEY=dummy\n", encoding="utf-8")
+    out = krx_sync.sync_krx_daily(
+        today=date(2026, 8, 18),
+        official_csv_path=tmp_path / "missing.csv",
+        consistency_path=tmp_path / "consistency.json",
+        db_path=tmp_path / "krx.sqlite",
+        env_path=env,
+        fetcher=fetch,
+        lookback_days=7,
+    )
+    assert out["status"] == krx_sync.STATUS_OK, out
+    assert out["basis_date"] == "20260816"
+    assert out["rows_written"] == 3
+
+
+def test_initial_backfill_skips_holiday_dates(tmp_path):
+    """초기 적재도 휴장일을 거래일로 세지 않는다."""
+    holidays = {"20260817", "20260815", "20260816"}
+
+    def fetch(bas_dd: str, key: str):
+        return _holiday_rows(bas_dd) if bas_dd in holidays else _traded_rows(bas_dd)
+
+    env = tmp_path / ".env"
+    env.write_text("KRX_API_KEY=dummy\n", encoding="utf-8")
+    out = krx_sync.initial_backfill(
+        today=date(2026, 8, 18),
+        db_path=tmp_path / "krx.sqlite",
+        env_path=env,
+        fetcher=fetch,
+        required_days=2,
+        lookback_days=6,
+    )
+    assert out["status"] == krx_sync.STATUS_OK, out
+    for d in ("2026-08-17", "2026-08-16", "2026-08-15"):
+        assert d not in out["written_days"], out["written_days"]
+
+
+def test_all_empty_close_is_holiday_not_invalid(tmp_path):
+    """전 행 빈 종가는 **휴장일**이다 — `invalid_snapshot` 으로 분류하지 않는다.
+
+    2026-09-13 실측으로 바뀐 전제다. 예전에는 이 응답을 "종가 결측 snapshot" 으로
+    거부했는데, 실제로는 KRX 가 평일 휴장일에 돌려주는 정상 응답이다. 따라서
+    기준일 후보에서 제외되고, 상한 내 거래일이 없으면 기준일 없음이 된다.
+
+    어느 쪽이든 **아무것도 저장하지 않는다** — fail-closed 는 그대로다.
+    """
+    db = tmp_path / "m.sqlite"
+    out = krx_sync.sync_krx_daily(
+        today=date(2026, 9, 10),
+        official_csv_path=_csv(tmp_path, ["A"]),
+        consistency_path=tmp_path / "c.json",
+        db_path=db,
+        env_path=_env(tmp_path),
+        fetcher=lambda d, k: _holiday_rows(d),
+        lookback_days=3,
+    )
+    assert out["status"] == krx_sync.STATUS_NO_BASIS_DATE, out
+    assert out["status"] != krx_sync.STATUS_INVALID_SNAPSHOT
+    assert out["rows_written"] == 0
+    assert krx_store.stored_trading_days(db_path=db) == []
