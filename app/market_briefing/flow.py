@@ -48,6 +48,8 @@ STATE_NAME = "market_briefing_state_latest.json"
 
 REASON_NO_PUBLISHABLE = "no_publishable_content"
 REASON_ALL_STALE = "all_data_stale"
+# 정기 PUSH 에서는 더 이상 발송을 막지 않는다(POC3-02B-OPS-03). 진단·이력
+# 호환을 위해 상수는 남긴다.
 REASON_NO_CHANGE = "no_change"
 
 
@@ -330,8 +332,17 @@ def assemble_market_briefing(
     out.previous_fingerprint = (prev or {}).get("state_fingerprint")
     out.diagnostics["state_fingerprint"] = out.fingerprint
     out.diagnostics["previous_fingerprint"] = out.previous_fingerprint
-    if out.previous_fingerprint == out.fingerprint:
-        out.skip_reason = REASON_NO_CHANGE
+    # 같은 상태여도 **거래일마다 보낸다** (설계자 2026-09-16 · POC3-02B-OPS-03).
+    #
+    # 이전 계약은 fingerprint 가 같으면 `no_change` 로 막았다. 그런데 08:00 은
+    # "오늘 장이 어떻게 흘러갈지" 를 주는 **정기** 브리핑이다. 5거래일 연속
+    # 하락이면 그 주에 한 번만 오는 문제가 실측됐다(09-07~09-11 DOWN 연속).
+    # 하락이 이어지는 것 자체가 알아야 할 정보다.
+    #
+    # fingerprint 는 없애지 않는다 — 메시지 비교·운영 기록에 쓴다. 같은 날짜
+    # 재실행 차단은 `registry_key(push_kind, param_id, runtime_date_kst)` 가
+    # 이미 한다.
+    out.diagnostics["content_unchanged"] = out.previous_fingerprint == out.fingerprint
     return out
 
 

@@ -606,3 +606,70 @@ def test_average_buy_price_skips_unusable_rows():
     ]
     out = average_buy_prices(rows)
     assert out == {"A": 200.0}
+
+
+# --- POC3-02B-OPS-03 정기 PUSH 억제 해제 (설계자 2026-09-16) -----------------
+#
+# 이전 계약: 직전 슬롯과 선정이 같으면 `no_change` 로 **미발송**.
+# 실측(2026-09-16 MIDDAY): 오전과 달라진 게 없다는 이유로 낮 브리핑이 통째로
+# 빠졌다. 보유 브리핑은 09:15·12:30·15:40 **정기** PUSH 다.
+# 새 계약: 변화가 없으면 변화분 대신 **현재 상태 전체**를 보낸다.
+
+
+def _unchanged_slot(tmp_path, monkeypatch, slot_id):
+    from app.runtime_evidence import holdings_selection_flow as flow
+    from app.runtime_evidence.holdings_selection_state import save_state
+
+    holdings = [SimpleNamespace(ticker="AAA", name="가나다", account_group="일반")]
+    kw = dict(
+        holdings_loader=lambda: holdings,
+        fetch_history=lambda t, **k: [
+            (f"2026-08-{i + 1:02d}", 100.0) for i in range(30)
+        ],
+        market_quotes={
+            "AAA": SimpleNamespace(
+                current_price=80.0, price_asof="2026-09-04T09:00:00+09:00"
+            )
+        },
+        state_path=tmp_path / "s.json",
+        runtime_kst="2026-09-04T09:15:00+09:00",
+        today_kst="2026-09-04",
+    )
+    first = flow.build_holdings_selection(slot_id="OPEN", **kw)
+    assert first.message_text, "OPEN 이 발송되지 않았다"
+    save_state(
+        tmp_path / "s.json",
+        selected=first.selected,
+        slot_id="OPEN",
+        today_kst="2026-09-04",
+    )
+    return flow.build_holdings_selection(slot_id=slot_id, **kw)
+
+
+def test_unchanged_midday_still_sends(tmp_path, monkeypatch):
+    """오전과 달라진 게 없어도 낮 브리핑을 보낸다."""
+    out = _unchanged_slot(tmp_path, monkeypatch, "MIDDAY")
+    assert out.skip_reason is None, out.skip_reason
+    assert out.message_text, "변화가 없다고 낮 브리핑을 막았다"
+    assert out.diagnostics["content_unchanged"] is True
+
+
+def test_unchanged_close_still_sends(tmp_path, monkeypatch):
+    out = _unchanged_slot(tmp_path, monkeypatch, "CLOSE")
+    assert out.skip_reason is None
+    assert out.message_text
+
+
+def test_unchanged_slot_sends_full_state_not_changes(tmp_path, monkeypatch):
+    """변화가 없으면 **변화분이 아니라 현재 상태 전체**를 보낸다."""
+    out = _unchanged_slot(tmp_path, monkeypatch, "MIDDAY")
+    # 변화분 본문이면 "새로" / "해소" 같은 변화 어휘가 나온다.
+    assert "가나다" in out.message_text
+    assert out.diagnostics["content_unchanged"] is True
+
+
+def test_no_change_skip_reason_is_gone(tmp_path, monkeypatch):
+    """`no_change` 로 미발송되는 경로가 남아 있으면 안 된다."""
+    for slot in ("MIDDAY", "CLOSE"):
+        out = _unchanged_slot(tmp_path, monkeypatch, slot)
+        assert out.skip_reason != "no_change", slot

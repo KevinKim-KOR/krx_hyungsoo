@@ -54,6 +54,7 @@ from app.api_holdings_market_evidence import router as holdings_market_evidence_
 from app.api_holdings_oci_apply import router as holdings_oci_apply_router
 from app.api_market_topn import router as market_topn_router
 from app.api_ml_baseline import router as ml_baseline_router
+from app.intraday_config import startup as intraday_startup
 from app.api_ml_jobs import router as ml_jobs_router
 from app.api_ml_relative_upside import router as ml_relative_upside_router
 from app.api_ml_readiness import router as ml_readiness_router
@@ -61,6 +62,7 @@ from app.api_ml_sanity import router as ml_sanity_router
 from app.api_nav_discount import router as nav_discount_router
 from app.api_oci_startup_status import router as oci_startup_status_router
 from app.api_price_series import router as price_series_router
+from app.api_intraday_config import router as intraday_config_router
 from app.api_three_push_param import router as three_push_param_router
 from app.api_universe import router as universe_router
 from app.holdings import HoldingsValidationError
@@ -86,6 +88,10 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         )
     except Exception as e:  # noqa: BLE001 - 기동을 절대 막지 않는다
         logger.warning("OCI 기동 상태 읽기 중 예외(무시): %s", e)
+
+    # POC3-02C-OPS-01 §10-3(2) — 장중 설정 미수행 작업 catch-up. 기동을 막지
+    # 않는 책임은 helper 안에 있다.
+    intraday_startup.catch_up()
     yield
 
 
@@ -118,6 +124,9 @@ app.include_router(nav_discount_router)
 # POC3-02 REMEDIATION-1 (2026-07-28) — read-only GET /market/price-series.
 # 기존 etf_daily_price 저장값을 fetch_price_history 로 반환 (신규 수집·산식 없음).
 app.include_router(price_series_router)
+# POC3-02C-OPS-01 — 장중 알림 설정 번들 (2026-09-16). 후보 조회·승인/기각·
+# OCI 적용. 최초 번들은 enabled=false 라 러너 동작을 바꾸지 않는다.
+app.include_router(intraday_config_router)
 # POC2 ML 최소 데이터 레인 (2026-06-08) —
 # read-only GET /ml/readiness/latest. etf_ml_feature_daily / market_risk_feature_daily
 # row 수 + latest asof 만 read. 외부 source 호출 X.

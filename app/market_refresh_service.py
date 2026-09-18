@@ -20,6 +20,8 @@ D-2 (2026-06-30): 상태 SSOT 를 SQLite (market_refresh_state) 로 전환.
 
 from __future__ import annotations
 
+import logging
+
 import threading
 import time
 import uuid
@@ -54,6 +56,9 @@ DEFAULT_COOLDOWN_HOURS = 6
 
 # NAV refresh summary artifact 경로 (지시문 §5.5).
 NAV_REFRESH_SUMMARY_PATH = Path("state/market/nav_discount_refresh_latest.json")
+
+
+logger = logging.getLogger(__name__)
 
 
 def _write_nav_refresh_summary(summary) -> None:  # noqa: ANN001 — runtime dataclass
@@ -385,6 +390,27 @@ def _execute_refresh_job(
         # 성공/실패 모두 SQLite 영속화. 실패 경로는 last_success_* 를
         # 건드리지 않으므로 마지막 정상 성공 기록은 그대로 유지된다.
         _persist_current_state(db_path)
+
+    # 시장 데이터 갱신 **성공 후** 장중 설정 재계산 (설계자 §10-3(2)).
+    # 별도 cron 을 만들지 않는 대신 여기에 건다. lock 밖에서 돌린다 —
+    # 산출이 refresh 상태 lock 을 잡고 있을 이유가 없다.
+    if success_overall:
+        _regenerate_intraday_config(db_path)
+
+
+def _regenerate_intraday_config(db_path: Path) -> None:
+    """장중 설정 후보 재산출. **refresh thread 를 절대 죽이지 않는다.**
+
+    `generate()` 자체가 예외를 올리지 않지만 import 실패까지 막는다. 재계산이
+    안 되는 것보다 시세 갱신이 실패로 뒤집히는 게 나쁘다.
+    """
+    try:
+        from app.intraday_config import generator
+
+        out = generator.generate(db_path=db_path)
+        logger.info("장중 설정 재산출: %s", out.get("status"))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("장중 설정 재산출 실패(무시): %s", e)
 
 
 @dataclass

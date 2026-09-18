@@ -132,8 +132,73 @@ TABLE_NAMES = (
 _INITIALIZED_DBS: set[str] = set()
 
 
+# ── POC3-02C-OPS-01 — INTRADAY_ALERT_CONFIG (신규 3 table) ───────────────────
+# 기존 Cutover v1 5 table 은 **건드리지 않는다**(설계자 판단 A · 2026-09-16).
+# 신규 DB 파일을 만들지 않고 이 DB 를 재사용한다.
+#
+# PC  = 후보 버전 · 사용자 승인 · 전달 결과의 SSOT
+# OCI = 실제 운영 active 버전의 SSOT
+# JSON = 두 DB 사이의 전송·archive 형식 (DB 파일 복사 금지)
+
+INTRADAY_CONFIG_VERSION_DDL = """
+CREATE TABLE IF NOT EXISTS intraday_alert_config_version (
+    config_version_id      TEXT PRIMARY KEY,
+    schema_version         TEXT NOT NULL,
+    created_at             TEXT NOT NULL,
+    rule_version           TEXT NOT NULL,
+    -- 데이터·기준일·규칙 변경 감지용. 계산 이력에만 쓴다.
+    evaluation_input_hash  TEXT NOT NULL,
+    -- 대표·대체·사전·정책이 실제로 달라졌는지 판정. 새 버전 생성 기준.
+    effective_config_hash  TEXT NOT NULL,
+    -- 가변값(created_at/approved_*/sync/hash 자체) 제외 정규화 payload 의 sha256
+    source_hash_sha256     TEXT NOT NULL,
+    payload_json           TEXT NOT NULL,
+    -- 미승인 후보는 NULL. 승인 게이트가 이 두 값을 검사한다.
+    approved_at            TEXT,
+    approved_by            TEXT,
+    rejected_at            TEXT,
+    rejected_by            TEXT,
+    reject_reason          TEXT
+);
+"""
+
+INTRADAY_CONFIG_EFFECTIVE_INDEX_DDL = """
+CREATE INDEX IF NOT EXISTS idx_intraday_cfg_effective
+    ON intraday_alert_config_version (effective_config_hash);
+"""
+
+INTRADAY_CONFIG_ACTIVE_DDL = """
+CREATE TABLE IF NOT EXISTS intraday_alert_config_active (
+    active_scope       TEXT PRIMARY KEY,
+    config_version_id  TEXT NOT NULL,
+    activated_at       TEXT NOT NULL,
+    activated_by       TEXT NOT NULL,
+    FOREIGN KEY (config_version_id)
+        REFERENCES intraday_alert_config_version (config_version_id)
+);
+"""
+
+INTRADAY_CONFIG_SYNC_DDL = """
+CREATE TABLE IF NOT EXISTS intraday_alert_config_sync (
+    sync_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    config_version_id  TEXT NOT NULL,
+    target             TEXT NOT NULL,
+    attempted_at       TEXT NOT NULL,
+    status             TEXT NOT NULL,
+    verify_status      TEXT,
+    remote_hash        TEXT,
+    error              TEXT
+);
+"""
+
+INTRADAY_CONFIG_SYNC_INDEX_DDL = """
+CREATE INDEX IF NOT EXISTS idx_intraday_cfg_sync_version
+    ON intraday_alert_config_sync (config_version_id, attempted_at);
+"""
+
+
 def init_db(db_path: Path) -> None:
-    """5 table + index 를 idempotent 하게 생성."""
+    """5 table + 신규 3 table + index 를 idempotent 하게 생성."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(db_path))
     try:
@@ -145,6 +210,12 @@ def init_db(db_path: Path) -> None:
         con.execute(RUNTIME_EXECUTION_STATUS_DDL)
         con.execute(RUNTIME_EXECUTION_STATUS_INDEX_DDL)
         con.execute(RUNTIME_SENT_REGISTRY_DDL)
+        # POC3-02C-OPS-01 — 신규 3 table. 기존 5 table 과 독립이다.
+        con.execute(INTRADAY_CONFIG_VERSION_DDL)
+        con.execute(INTRADAY_CONFIG_EFFECTIVE_INDEX_DDL)
+        con.execute(INTRADAY_CONFIG_ACTIVE_DDL)
+        con.execute(INTRADAY_CONFIG_SYNC_DDL)
+        con.execute(INTRADAY_CONFIG_SYNC_INDEX_DDL)
         con.commit()
     finally:
         con.close()

@@ -140,8 +140,21 @@ beforeEach(() => {
 async function renderView() {
   const onNavigate = vi.fn();
   render(<TodayInvestmentCheckView onNavigate={onNavigate} />);
-  // useSharedQuery 는 effect 로 조회 → resolve 후 상태 반영 대기.
-  await screen.findByText("코스피 가격 흐름");
+  // `useSharedQuery` 는 effect 로 조회한다. **로딩 표시가 모두 사라질 때까지**
+  // 기다린다.
+  //
+  // 예전에는 「코스피 가격 흐름」을 기다렸는데 그건 KospiHeadline 의 **정적
+  // 라벨**이라 마운트 즉시 잡힌다 — 데이터 로드를 전혀 보장하지 않았다.
+  // 그래서 뒤따르는 동기 `getByText` 가 조회 resolve 와 경쟁해 전체 회귀를
+  // 연속 실행하면 간헐적으로 깨졌다(검증자 관측, 206/207).
+  await waitFor(() => {
+    expect(screen.queryByText(/불러오는 중/)).toBeNull();
+  });
+  // 시장 조회가 실제로 **반영**됐는지 확인한다. `KospiHeadline` 은 로딩 표시가
+  // 없어서(성공 전에는 그냥 "자료 없음" 을 그린다) 위 대기만으로는 부족하다.
+  // 기준일은 `fmtKstDate(null) === "자료 없음"` 이고 성공해야 `YYYY-MM-DD` 가
+  // 되므로, 어느 fixture 에서도 통하는 앵커다.
+  await screen.findByText(/마지막 자료 기준일 \d{4}-\d{2}-\d{2}/);
   return { onNavigate };
 }
 

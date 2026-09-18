@@ -146,7 +146,11 @@ def build_holdings_selection(
         "holdings_trading_day_axis_len": len(axis_dates),
     }
 
-    previous = load_state(state_path)
+    # 실행일을 **명시로 넘긴다**. 넘기지 않으면 `load_state` 가 실제 오늘 날짜로
+    # 비교해, 이 함수가 받은 `today_kst` 와 어긋나면 조용히 `date_mismatch`
+    # fallback 이 된다(POC3-02B-OPS-03 작업 중 발견). 운영에서는 두 값이 같아
+    # 동작이 바뀌지 않지만, 계약을 코드로 맞춘다.
+    previous = load_state(state_path, today_kst=today_kst)
     changes = compute_changes(
         selected=selected,
         previous=previous,
@@ -159,19 +163,30 @@ def build_holdings_selection(
             "이전 상태 비교 불가 (%s) — 전체 현재 상태 발송", changes.fallback
         )
 
-    # 변화 없음 — 발송하지 않고 상태도 건드리지 않는다.
-    if not changes.has_change:
-        out.skip_reason = "no_change"
-        return out
+    # 변화가 없어도 **슬롯마다 보낸다** (설계자 2026-09-16 · POC3-02B-OPS-03).
+    #
+    # 이전 계약은 직전 슬롯과 같으면 `no_change` 로 막았다. 그런데 보유 브리핑은
+    # 09:15·12:30·15:40 **정기** PUSH 다. 실측(2026-09-16 MIDDAY)에서 오전과
+    # 달라진 게 없다는 이유로 낮 브리핑이 통째로 빠졌다. 사용자는 "낮에도 내
+    # 종목이 어떤지" 를 보려고 그 시각을 정한 것이다.
+    #
+    # 변화가 없으면 **변화분 대신 현재 상태 전체**를 보낸다 — 보낼 내용이
+    # 없는 것이 아니라 "달라진 게 없다" 는 것이 오늘의 상태다.
+    #
+    # 같은 날짜·같은 슬롯 재실행 차단은
+    # `registry_key(..., slot_id=...)` 가 이미 한다. 여기서 또 막지 않는다.
+    content_unchanged = not changes.has_change
+    out.diagnostics["content_unchanged"] = content_unchanged
+    send_full = changes.full_send or content_unchanged
 
     # 선정 0건 — 전달할 내용이 없다. 빈 상태만 저장하고 미발송.
-    if changes.full_send and not selected:
+    if send_full and not selected:
         out.skip_reason = "no_selection"
         out.save_empty_state = True
         return out
 
     slot_label = slot_label_for(slot_id)
-    if changes.full_send:
+    if send_full:
         out.message_text = render_full(
             selected,
             slot_label=slot_label,

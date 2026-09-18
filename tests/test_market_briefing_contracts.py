@@ -521,14 +521,18 @@ def test_fingerprint_excludes_numbers(tmp_path):
         assert n not in out.fingerprint
 
 
-def test_same_state_different_numbers_is_no_change(tmp_path):
+def test_same_state_still_sends_and_records_unchanged(tmp_path):
     out, state = _assemble(tmp_path, sp500=1.0)
     flow.save_state(
         state, fingerprint=out.fingerprint, sent_date_kst="2026-09-09", runtime_kst=None
     )
     again, _ = _assemble(tmp_path, sp500=9.9)  # 숫자만 다름
     assert again.fingerprint == out.fingerprint
-    assert again.skip_reason == flow.REASON_NO_CHANGE
+    # POC3-02B-OPS-03 (2026-09-16): 정기 PUSH 는 내용이 같아도 **막지 않는다.**
+    # fingerprint 는 그대로 계산해 진단에 남긴다.
+    assert again.skip_reason is None, "내용이 같다고 정기 브리핑을 막았다"
+    assert again.diagnostics["content_unchanged"] is True
+    assert again.message_text
 
 
 def test_changed_state_sends(tmp_path):
@@ -891,3 +895,34 @@ def test_date_is_not_truncated_to_ten_chars(tmp_path, bad):
     )
     assert not fallback.ok and fallback.reason == cal.REASON_INVALID_DATE
     assert fallback.ok == snapshot.ok, (bad, fallback, snapshot)
+
+
+# ── POC3-02B-OPS-03 — 정기 PUSH 억제 해제 ───────────────────────────────────
+
+
+def test_consecutive_same_state_days_all_send(tmp_path):
+    """5거래일 연속 같은 전망이어도 매일 보낸다.
+
+    실측 근거(2026-09-07~09-11): 미국 방향이 5거래일 연속 DOWN 이었다. 이전
+    계약이었다면 그 주에 브리핑이 **월요일 한 번만** 갔다.
+    """
+    for i, day in enumerate(("2026-09-07", "2026-09-08", "2026-09-09")):
+        out, state = _assemble(tmp_path, sp500=-1.0, today=day)
+        assert out.skip_reason is None, (day, out.skip_reason)
+        assert out.message_text
+        assert out.fingerprint == "DOWN#NONE"
+        if i:
+            assert out.diagnostics["content_unchanged"] is True
+        flow.save_state(
+            state, fingerprint=out.fingerprint, sent_date_kst=day, runtime_kst=None
+        )
+
+
+def test_no_change_reason_is_no_longer_produced(tmp_path):
+    """`no_change` 로 미발송되는 경로가 남아 있으면 안 된다."""
+    out, state = _assemble(tmp_path, sp500=1.0)
+    flow.save_state(
+        state, fingerprint=out.fingerprint, sent_date_kst="2026-09-09", runtime_kst=None
+    )
+    again, _ = _assemble(tmp_path, sp500=1.0)
+    assert again.skip_reason != flow.REASON_NO_CHANGE

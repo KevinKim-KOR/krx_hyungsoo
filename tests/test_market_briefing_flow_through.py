@@ -34,7 +34,7 @@ TODAY_TRADING = "2026-09-18"
 PRIOR_TRADING = "2026-09-17"
 
 AXIS = [f"2026-08-{d:02d}" for d in range(3, 32)] + [
-    f"2026-09-{d:02d}" for d in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18)
+    f"2026-09-{d:02d}" for d in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 21)
 ]
 TICKERS = ("069500", "102110")
 
@@ -175,17 +175,39 @@ def test_flow_through_sends_and_saves_state(tmp_path, monkeypatch):
     assert record.get("market_briefing_state_saved") is True
 
 
-def test_flow_through_repeat_is_suppressed_and_state_untouched(tmp_path, monkeypatch):
-    """같은 상태가 이어지면 **두 번째는 안 보낸다**. 상태도 그대로."""
+def test_same_day_rerun_is_blocked_by_registry(tmp_path, monkeypatch):
+    """같은 거래일 재실행은 막는다. **다만 사유는 내용 동일이 아니라 중복 실행**이다.
+
+    POC3-02B-OPS-03 — 중복 차단은 `registry_key(push_kind, param_id,
+    runtime_date_kst)` 가 한다. 콘텐츠 fingerprint 는 막지 않는다.
+    """
     runner, sent, state_dir = _install(monkeypatch, tmp_path)
     assert runner.run("market_briefing", "send")["status"] == "sent"
     first = _state(state_dir)
 
     record = runner.run("market_briefing", "send")
     assert record["status"] == "skipped"
-    assert record["reason"] == flow.REASON_NO_CHANGE
-    assert len(sent) == 1, "억제되어야 하는데 다시 보냈다"
+    assert record["reason"] == "duplicate_runtime", record
+    assert record["reason"] != flow.REASON_NO_CHANGE
+    assert len(sent) == 1, "같은 날 두 번 보냈다"
     assert _state(state_dir) == first
+
+
+def test_next_trading_day_sends_even_if_content_identical(tmp_path, monkeypatch):
+    """**다음 거래일에는 내용이 같아도 보낸다.** 이번 수정의 핵심이다."""
+    runner, sent, state_dir = _install(monkeypatch, tmp_path)
+    assert runner.run("market_briefing", "send")["status"] == "sent"
+    saved = _state(state_dir)
+
+    # 같은 입력 · 날짜만 다음 거래일로.
+    monkeypatch.setattr(runner, "kst_today_date", lambda: "2026-09-21")
+    record = runner.run("market_briefing", "send")
+
+    assert record["status"] == "sent", record
+    assert len(sent) == 2, "다음 거래일인데 보내지 않았다"
+    assert sent[1] == sent[0], "같은 내용이어야 한다 (억제만 풀린 것)"
+    assert _state(state_dir)["sent_date_kst"] == "2026-09-21"
+    assert _state(state_dir)["state_fingerprint"] == saved["state_fingerprint"]
 
 
 # ── 보호 분기 ────────────────────────────────────────────────────────────────
