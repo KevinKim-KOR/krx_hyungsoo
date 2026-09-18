@@ -113,32 +113,68 @@ def test_verify_script_allowed_kinds_match_canonical():
     )
 
 
-def test_verify_script_accepts_holdings_risk_alert(tmp_path):
-    """운영에서 실제로 거부됐던 값을 통과시키는지 실행으로 확인한다."""
-    payload = {
+def _valid_param(**over) -> dict:
+    """검증기를 **실제로 통과하는** 최소 payload.
+
+    운영 `latest_runtime_param.json` 과 같은 필드 구성이다. 필수 필드를 빼먹으면
+    검증기는 다른 사유로 exit 1 을 내고, 그러면 "허용값을 통과시킨다" 를 증명하지
+    못한다 — 이전 판이 그랬다(검증자 지적).
+    """
+    body = {
         "schema_version": "three_push_runtime_param.v1",
         "param_id": "param-test",
-        "created_at": "2026-09-18T00:00:00Z",
-        "approved_at": "2026-09-18T00:00:00Z",
+        "created_at": "2026-09-18T00:00:00+00:00",
+        "approved_at": "2026-09-18T00:00:00+00:00",
+        "approved_by": "user",
         "param_source": "manual_seed",
         "enabled_push_kinds": ["holdings_risk_alert"],
+        "runtime_policy": {},
+        "evidence_policy": {},
         "safety_policy": {},
     }
-    p = tmp_path / "param.json"
-    p.write_text(json.dumps(payload), encoding="utf-8")
+    body.update(over)
+    return body
 
-    r = subprocess.run(
+
+def _run_verify(tmp_path: Path, payload: dict) -> subprocess.CompletedProcess:
+    p = tmp_path / "param.json"
+    p.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return subprocess.run(
         [sys.executable, str(VERIFY), "--path", str(p)],
         capture_output=True,
         text=True,
         timeout=60,
     )
-    assert "enabled_push_kinds 허용값 위반" not in (r.stdout + r.stderr), r.stdout
 
 
-@pytest.mark.parametrize("bad", ["not_a_kind", "market_briefingX"])
+def test_fixture_itself_passes_verification(tmp_path):
+    """**기준선.** 이 fixture 가 통과하지 못하면 아래 테스트들이 무의미하다."""
+    r = _run_verify(tmp_path, _valid_param(enabled_push_kinds=["market_briefing"]))
+    assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
+
+
+def test_verify_script_accepts_holdings_risk_alert(tmp_path):
+    """운영에서 실제로 거부됐던 값 — **종료코드 0** 까지 확인한다."""
+    r = _run_verify(tmp_path, _valid_param())
+    assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
+    assert "허용값 위반" not in (r.stdout + r.stderr)
+
+
+@pytest.mark.parametrize("bad", ["not_a_kind", "market_briefingX", "holdings_risk"])
 def test_verify_script_still_rejects_unknown_kinds(tmp_path, bad):
-    """느슨해지지 않았는지 — 모르는 종류는 여전히 막는다."""
-    from scripts.verify_three_push_param_oci import ALLOWED_PUSH_KINDS
+    """느슨해지지 않았는지 — **검증기를 실행해** 거부를 확인한다.
 
-    assert bad not in ALLOWED_PUSH_KINDS
+    상수 멤버십만 보면 "실행 시 거부한다" 를 고정하지 못한다(검증자 지적).
+    """
+    r = _run_verify(tmp_path, _valid_param(enabled_push_kinds=[bad]))
+    assert r.returncode != 0, (r.stdout, r.stderr)
+    assert f"enabled_push_kinds 허용값 위반: {bad!r}" in r.stderr, r.stderr
+
+
+def test_verify_script_rejects_mixed_known_and_unknown(tmp_path):
+    """알려진 종류에 묻어 들어온 미지값도 거부한다."""
+    r = _run_verify(
+        tmp_path, _valid_param(enabled_push_kinds=["market_briefing", "몰래"])
+    )
+    assert r.returncode != 0
+    assert "'몰래'" in r.stderr

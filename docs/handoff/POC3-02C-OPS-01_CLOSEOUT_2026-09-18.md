@@ -1,8 +1,15 @@
 # POC3-02C-OPS-01 종료 · 다음 챕터 진입 — 2026-09-18
 
 - **작성**: 개발자(VSCode Claude) · **독자**: 다음 세션 개발자
-- **상태**: 검증자 VERIFIED · commit `685de1c4` · push 완료
-- **OCI**: 아직 `b077641f` — **이 기능 코드는 OCI에 없다**
+- **상태**: 검증자 VERIFIED(`685de1c4`) 후 운영 결함 2건 수정 · **OCI 배포·적용 완료**
+- **최종 갱신**: 2026-09-19 (배포 후 실측으로 교체)
+
+```text
+로컬 / GitHub / OCI   2f341deb  (세 지점 동일)
+OCI active            intraday-20260916T144047-642949 · 27개 사업군 · 기준일 2026-09-11
+PC / OCI hash         76a7652c29edbdcc…  일치
+sync                  deployed / verify ok · action_state = None
+```
 
 ---
 
@@ -78,30 +85,29 @@ fingerprint 는 살아 있다 — 용도가 "발송 차단" 에서 "기록·비�
 
 ## 3. 지금 상태 · 다음에 할 일
 
-### 3-1. OCI 배포가 남았다
+### 3-1. OCI 배포 완료 (2026-09-18 · 사용자 실행)
 
 ```text
-로컬/GitHub   685de1c4
-OCI           b077641f   ← app/intraday_config/ 없음
+로컬 / GitHub / OCI   2f341deb
 ```
 
-`git pull` 전에는 승인 버튼을 눌러도 `precheck_failed` 다(원격 무변경).
+pull 로 발송 규칙이 바뀌었다 — **하루 고정 4건**(시장 브리핑 1 + 보유 브리핑 3).
+이전에는 내용이 같으면 빠져 실측 약 44% 만 발송됐다.
 
-**pull 하면 발송량이 바뀐다.** `market_briefing/flow.py` ·
-`holdings_selection_flow.py` 변경이 cron 경로에 들어간다 — 하루 고정 4건.
+### 3-2. 배포 직후 터진 결함 2건 (해소)
 
-### 3-2. OCI 잔존 파일 2건
+`git pull` 후 두 버튼이 모두 실패했다. 둘 다 **원격에서 실행해야만** 드러난다.
 
-사용자가 승인 버튼을 눌렀을 때(2026-09-18T12:56Z) precheck 이 **scp 뒤**에 있던
-판이라 남았다. 지금 코드에서는 재발하지 않는다.
+| 버튼 | 원인 | 수정 |
+|---|---|---|
+| 장중 급등락 설정 | 업로드 위치에서 `parents[1]` 이 루트가 아님 | `--project-root` 필수화 |
+| 현재 운영 기준 | `verify` 복제 목록에 `holdings_risk_alert` 누락 (기존 결함, `5d2614d6` 부터) | 복제본 갱신 + 정본 일치 테스트 |
 
-```text
-state/three_push/params/latest_intraday_alert_config.json
-state/three_push/params/.apply_intraday_config_oci.py
-```
+`3b0bee0d` 로 고쳐 재배포했고 **두 버튼 모두 성공**했다. 임시 스크립트도
+정리됐다(`.apply_intraday_config_oci.py` 삭제 확인 — `cleanup()` 실동작).
 
-아무 코드도 읽지 않는다. 다음 정상 전달이 덮어쓴다. 삭제는 OCI 쓰기라 사용자
-승인 대상이며 검증자가 **보류해도 안전**하다고 확인했다.
+**잔존 파일은 0건이다.** `latest_intraday_alert_config.json` 은 정상 배포된
+전송 파일이지 잔존물이 아니다.
 
 ### 3-3. 다음 작업 = `POC3-02C-OPS-02`
 
@@ -132,7 +138,7 @@ state/three_push/params/.apply_intraday_config_oci.py
 ## 5. 재현 명령
 
 ```bash
-.venv/bin/python -m pytest tests/ -q                      # 1,676 passed
+.venv/bin/python -m pytest tests/ -q                      # 1,687 passed
 .venv/bin/python scripts/ops02c/reverse_verify_guards.py  # 26가드 EXIT=0
 cd frontend && npx vitest run                             # 18 files / 207 tests
 ```

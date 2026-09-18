@@ -3,20 +3,23 @@
 작성일: 2026-09-16 · 작성자: 개발자(VSCode Claude) · 수신: 검증자
 
 ```text
-ROUND                   = FIX r9  (§12~§14 · 설계자 §15 · §16 · §17 · §18 · r8 §19)
-IMPLEMENTATION          = DONE (로컬)
-BACKEND_FULL_REGRESSION = 1,676 passed / 0 failed / 0 errors
+ROUND                   = FIX r10  (§12~§19 · 운영 실행 결함 §20 · 문서 정합 §21)
+IMPLEMENTATION          = DONE · **OCI 배포·적용 완료**
+BACKEND_FULL_REGRESSION = 1687 passed / 0 failed / 0 errors
 FRONTEND                = tsc·eslint exit 0 · vitest 18 files / 207 tests
 REVERSE_VERIFY          = 26가드 · EXIT=0
 UI_WIRED                = ApprovalTelegramView (설계자 배치 판단 (a))
 KS10                    = 474개 전수 · TRIGGER 0 · NEAR 7 · API 641 · RUNNER 648
-OCI_DEPLOY_EXECUTED     = 시도 1회 · 적용 0회 (§17)
-                          사용자가 2026-09-18T12:56:10Z 승인 버튼을 눌렀다.
-                          precheck_failed 로 멈췄으나 **그 전에 원격 파일 2개가
-                          이미 쓰였다** — OCI active·DB 는 무변경.
-OCI_LEFTOVER_FILES      = 2 (정리 미승인 · §17-3)
+
+OCI_DEPLOY_EXECUTED     = **완료** (2026-09-18 · 사용자 실행)
+OCI_ACTIVE              = intraday-20260916T144047-642949 · 27개 사업군 · 기준일 2026-09-11
+PC_OCI_HASH             = 76a7652c29edbdcc… **일치**
+SYNC_STATUS             = deployed / verify ok · action_state = None
+OCI_LEFTOVER_FILES      = **0** — 임시 스크립트 삭제 확인(cleanup 동작 실증)
+                          latest_intraday_alert_config.json 은 잔존물이 아니라
+                          정상 배포된 전송 파일이다.
 TELEGRAM / NAVER        = 0건
-COMMIT_PUSH             = 0
+COMMIT_PUSH             = **완료** — 685de1c4 · 0a206b07 · 3b0bee0d · 2f341deb
 ```
 
 입력 문서: 설계서 `docs/ai_design/POC3/POC3-02C_INTRADAY_DECISION_BRIEFING_DESIGN_V1.md`
@@ -60,12 +63,12 @@ COMMIT_PUSH             = 0
 | 162 | `app/intraday_config/generator.py` | 자동 산출 트리거 |
 | 9 | `app/intraday_config/__init__.py` | 패키지 |
 
-### 2.2 신규 — 스크립트 (484줄)
+### 2.2 신규 — 스크립트 (505줄)
 
 | 줄 | 파일 |
 |---:|---|
-| 335 | `scripts/sync_intraday_config.py` — 8단계 전달 사슬 |
-| 149 | `scripts/apply_intraday_config_oci.py` — 원격 4~7단계 (일시 업로드) |
+| 336 | `scripts/sync_intraday_config.py` — 8단계 전달 사슬 |
+| 169 | `scripts/apply_intraday_config_oci.py` — 원격 4~7단계 (일시 업로드) |
 
 ### 2.3 신규 — 프론트 (310줄) · 테스트 (515줄)
 
@@ -133,6 +136,24 @@ frontend/app/components/ThreePushParamCard.tsx  무변경
 | 42 | `app/intraday_config/startup.py` — 기동 catch-up |
 
 ---
+### 2.9 VERIFIED 이후 변경 (커밋 4건 · §20 · §21)
+
+| 줄 | 파일 | 커밋 |
+|---:|---|---|
+| 169 | `scripts/apply_intraday_config_oci.py` | `3b0bee0d` `--project-root` 필수화 |
+| 336 | `scripts/sync_intraday_config.py` | `3b0bee0d` 호출부 전달 |
+| 148 | `scripts/verify_three_push_param_oci.py` | `3b0bee0d` 복제 목록 갱신 |
+| 180 | `tests/test_remote_script_execution_contracts.py` | `3b0bee0d` 신규 · §21-1 에서 재작성 |
+| 267 | `.gitignore` | `2f341deb` 런타임 산출물 2건 |
+| 147 | `docs/handoff/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` | `0a206b07` 종료 문서 |
+
+```text
+685de1c4  feat   본체 (검증자 VERIFIED)
+0a206b07  docs   종료 문서
+3b0bee0d  fix    원격 실행 결함 2건
+2f341deb  chore  gitignore
+```
+
 
 ## 3. 보완 6건 구현 결과 (실측)
 
@@ -313,13 +334,13 @@ pointer 를 지운다(`clear_active`).
 
 ---
 
-## 7. 검증 실적 (FIX r9 재실측)
+## 7. 검증 실적 (FIX r10 재실측 · 배포 후)
 
 ```text
 신규 계약 테스트   26 passed   tests/test_intraday_config_contracts.py
 신규 통합 테스트   60 passed   tests/test_intraday_config_integration.py
 역검증            26가드 · EXIT=0   (6 → 13 → 17 → 20 → 24 → 26)
-전체 회귀         1,676 passed / 0 failed / 0 errors   (r8 과 동일 — 프론트만 수정)
+전체 회귀         1,687 passed / 0 failed / 0 errors   (본체 1,676 → §20·§21 +11)
 black             350 files unchanged
 flake8            0건
 frontend tsc      exit 0
@@ -441,15 +462,17 @@ deploy_status  precheck_failed
 화면 버튼       「OCI 적용 재시도」
 ```
 
-1. **실화면 확인** — 「승인·적용」 메뉴에서 27개 사업군과 **「OCI 적용 재시도」**
-   버튼이 보이는지. 사용자가 이미 승인했으므로(2026-09-18T12:56:10Z) 재승인은
-   필요 없다. 지금 눌러도 OCI 에 이 기능 코드가 없어 `precheck_failed` 로
-   멈춘다 — **커밋·푸시·OCI 배포 뒤에** 눌러야 성공한다.
-2. **OCI 잔존 파일 2개 정리**(§17-3). 지우는 것은 OCI 쓰기라 승인이 필요하다.
-   다음 정상 전달이 덮어쓰므로 **보류해도 안전하다**(검증자 r7 확인).
-3. **발송량이 늘어난다**(§11-8) — 08:00 시장 브리핑이 거래일마다, 보유 브리핑이
+**모두 완료됐다** (2026-09-18~19 · 사용자 실행).
+
+1. **실화면 확인 — 완료.** 사용자가 OCI `git pull` 후 두 버튼을 눌러 성공했다.
+   이 과정에서 결함 2건이 드러나 `3b0bee0d` 로 고쳤다(§20).
+2. **OCI 잔존 파일 — 0건.** 임시 스크립트는 `cleanup()` 이 지웠고,
+   `latest_intraday_alert_config.json` 은 정상 배포된 전송 파일이다(§20-6).
+3. **발송량 변경 — 반영됨.** 08:00 시장 브리핑이 거래일마다, 보유 브리핑이
    슬롯마다 온다. 하루 고정 4건. 이전에는 실측 약 44% 만 발송됐다.
-4. **커밋 미수행**
+4. **커밋·푸시 — 완료.** `685de1c4` · `0a206b07` · `3b0bee0d` · `2f341deb`.
+
+남은 사용자 판단은 없다. 미검증 대상은 `685de1c4` 이후 커밋 3건이다.
 
 > `deploy_unconfirmed` 는 **설계자 승인 완료**다(설계서 §12 · 결과서 §15).
 > 더 이상 대기 항목이 아니다.
@@ -1360,7 +1383,7 @@ test_verify_script_still_rejects_unknown_kinds      느슨해지지 않았는지
 
 무력화 실증 — `parents[1]` 로 되돌리면 **2건이 실제로 실패**한다.
 
-### 20-5. 검증
+### 20-5. 검증 (§20 수정 시점 실측 · 최신값은 §7)
 
 ```text
 전체 회귀   1,684 passed / 0 failed   (직전 1,676 -> +8)
@@ -1370,7 +1393,85 @@ black 351 · flake8 0 · tsc 0
 라이브 DB   회귀 전후 sha256 동일
 ```
 
-### 20-6. 아직 안 한 것
+### 20-6. 배포·운영 확인 (사용자 실행 · 2026-09-18)
 
-**OCI 재배포 전에는 두 버튼 모두 여전히 실패한다.** 수정은 로컬에만 있다.
-커밋·푸시·OCI `git pull` 이 필요하며 사용자 승인 대상이다.
+수정을 커밋·푸시하고 사용자가 OCI `git pull` 후 **두 버튼을 모두 눌러 성공**했다.
+
+```text
+OCI 코드      3b0bee0d
+OCI active    intraday-20260916T144047-642949 · 27개 사업군 · 기준일 2026-09-11
+PC active     동일 · source_hash 76a7652c29edbdcc… 일치
+sync          deployed / verify ok · action_state = None
+임시 스크립트  .apply_intraday_config_oci.py **삭제 확인** — cleanup() 실동작
+```
+
+이전에 "잔존 파일 2건" 으로 보고한 것 중 임시 스크립트는 사라졌고,
+`latest_intraday_alert_config.json` 은 **정상 배포된 전송 파일**이다. 잔존물이
+아니다.
+
+---
+
+## 21. r9 REJECTED — 문서 정합 · 테스트 계약 (검증자 2026-09-19)
+
+기능·배포는 통과. 반려 사유는 **최신 문서가 현재 운영 상태와 다르다**는 것과
+**신규 테스트가 보고한 계약을 실제로 검증하지 않는다**는 것이다. 둘 다 인정한다.
+
+### 21-1. 허용·거부를 "실행으로 확인" 한다고 적고 안 했다 (B-6)
+
+```python
+# 이전 판 — 허용 테스트
+payload = {... approved_by 없음 · runtime_policy 없음 · evidence_policy 없음 ...}
+assert "enabled_push_kinds 허용값 위반" not in (r.stdout + r.stderr)
+```
+
+fixture 에 **필수 필드 3개가 빠져** 검증기는 어차피 다른 사유로 `exit 1` 을
+낸다. 그런데 나는 **특정 오류 문자열의 부재만** 확인했다 — 통과해도 "허용값을
+통과시킨다" 를 증명하지 못한다. 공허하게 통과하는 테스트였다.
+
+거부 테스트는 더 심했다. 검증기를 **실행하지도 않고** 상수 멤버십만 봤다.
+
+```python
+assert bad not in ALLOWED_PUSH_KINDS      # 실행 거부 계약과 무관하다
+```
+
+**수정** — 운영 `latest_runtime_param.json` 과 같은 필드 구성의 fixture 를 쓰고
+**종료코드까지** 본다.
+
+```text
+test_fixture_itself_passes_verification        기준선 — fixture 가 exit 0 인가
+test_verify_script_accepts_holdings_risk_alert exit 0 + 위반 문구 부재
+test_verify_script_still_rejects_unknown_kinds 검증기 실행 → exit≠0 + 해당 문구 (×3)
+test_verify_script_rejects_mixed_known_and_unknown  섞여 들어온 미지값도 거부
+```
+
+무력화 실증 — 양방향 모두 잡는다.
+
+```text
+복제본에서 holdings_risk_alert 제거   → 2건 실패
+검증기의 허용 검사를 삭제             → 4건 실패
+```
+
+### 21-2. 문서가 현재 상태와 달랐다 (A-2 · A-3)
+
+VERIFIED 이후 상황이 세 번 바뀌었는데(커밋 3건 · OCI 배포 · 버튼 성공) 머리말과
+종료 문서는 그 이전 시점에 멈춰 있었다.
+
+| 위치 | 잘못 | 정정 |
+|---|---|---|
+| 머리말 | `1,676 passed` · OCI 적용 0회 · 잔존 2건 · 커밋 0 | 현재값 + 커밋 4건 명시 |
+| §20-6 | "커밋·푸시·OCI pull 필요" | 배포·운영 확인 결과로 교체 |
+| 변경 파일 표 | 신규 테스트·`.gitignore`·종료 문서 누락 | §2.9 신설 |
+| 종료 문서 | "OCI 는 아직 `b077641f` · 기능 코드 없음" | 현재 상태로 교체 |
+
+**커밋 수도 틀렸다** — 보고에 2건이라 적었으나 종료 문서 `0a206b07` 을 포함해
+**3건**이었다(이후 `.gitignore` 로 4건).
+
+### 21-3. 반복된 실수
+
+`§19-3` 에 "실측 없이 단정" 을 적었는데, 이번엔 **"고쳤다고 적고 그 고침을
+검증하지 않는"** 형태로 같은 병이 나왔다. 테스트를 계약 문장이 아니라 "내가
+고친 것" 에서 쓴 결과다 — 메모리 `feedback_verify_contract_not_diff` 의 3항이
+정확히 이 경우다.
+
+이번에는 **무력화 실증을 통과 조건에 포함**했다. 테스트가 실패하는 것을 눈으로
+보지 않으면 그 테스트는 계약을 고정한다고 말하지 않는다.
