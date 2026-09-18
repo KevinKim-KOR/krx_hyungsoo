@@ -5,10 +5,17 @@
 - **최종 갱신**: 2026-09-19 (배포 후 실측으로 교체)
 
 ```text
-로컬 / GitHub / OCI   2f341deb  (세 지점 동일)
-OCI active            intraday-20260916T144047-642949 · 27개 사업군 · 기준일 2026-09-11
-PC / OCI hash         76a7652c29edbdcc…  일치
-sync                  deployed / verify ok · action_state = None
+운영 코드        OCI 에 반영 완료 — 이후 커밋은 문서·테스트만이라 재배포 불필요
+                 (그래서 로컬과 OCI 의 커밋 SHA 는 다를 수 있다. 같아야 하는 것은
+                  기능 코드이지 SHA 가 아니다)
+OCI active       intraday-20260916T144047-642949 · 27개 사업군 · 기준일 2026-09-11
+PC / OCI hash    76a7652c29edbdcc…  일치
+sync             deployed / verify ok · action_state = None
+```
+
+```bash
+git rev-parse --short HEAD                                    # 로컬
+ssh oci-krx "cd /home/ubuntu/krx_hyungsoo && git rev-parse --short HEAD"   # OCI
 ```
 
 ---
@@ -87,9 +94,8 @@ fingerprint 는 살아 있다 — 용도가 "발송 차단" 에서 "기록·비�
 
 ### 3-1. OCI 배포 완료 (2026-09-18 · 사용자 실행)
 
-```text
-로컬 / GitHub / OCI   2f341deb
-```
+운영 코드는 OCI 에 반영돼 동작 중이다. **커밋 SHA 를 여기 적지 않는다** — 문서·
+테스트 커밋이 뒤에 붙을 때마다 틀려진다. 위 재현 명령으로 확인한다.
 
 pull 로 발송 규칙이 바뀌었다 — **하루 고정 4건**(시장 브리핑 1 + 보유 브리핑 3).
 이전에는 내용이 같으면 빠져 실측 약 44% 만 발송됐다.
@@ -103,7 +109,7 @@ pull 로 발송 규칙이 바뀌었다 — **하루 고정 4건**(시장 브리�
 | 장중 급등락 설정 | 업로드 위치에서 `parents[1]` 이 루트가 아님 | `--project-root` 필수화 |
 | 현재 운영 기준 | `verify` 복제 목록에 `holdings_risk_alert` 누락 (기존 결함, `5d2614d6` 부터) | 복제본 갱신 + 정본 일치 테스트 |
 
-`3b0bee0d` 로 고쳐 재배포했고 **두 버튼 모두 성공**했다. 임시 스크립트도
+고쳐서 재배포했고 **두 버튼 모두 성공**했다. 임시 스크립트도
 정리됐다(`.apply_intraday_config_oci.py` 삭제 확인 — `cleanup()` 실동작).
 
 **잔존 파일은 0건이다.** `latest_intraday_alert_config.json` 은 정상 배포된

@@ -19,7 +19,9 @@ OCI_LEFTOVER_FILES      = **0** — 임시 스크립트 삭제 확인(cleanup �
                           latest_intraday_alert_config.json 은 잔존물이 아니라
                           정상 배포된 전송 파일이다.
 TELEGRAM / NAVER        = 0건
-COMMIT_PUSH             = **완료** — 685de1c4 · 0a206b07 · 3b0bee0d · 2f341deb
+COMMIT_PUSH             = **완료** — 목록은 `git log --oneline 685de1c4..HEAD`
+                          (이 문서가 그 커밋에 들어가므로 SHA 를 본문에 고정하지
+                           않는다 · §21-4)
 ```
 
 입력 문서: 설계서 `docs/ai_design/POC3/POC3-02C_INTRADAY_DECISION_BRIEFING_DESIGN_V1.md`
@@ -43,7 +45,7 @@ COMMIT_PUSH             = **완료** — 685de1c4 · 0a206b07 · 3b0bee0d · 2f3
 | 보완 ⑤ checksum 범위 | **DONE** |
 | 보완 ⑥ 최초 번들 비활성 | **DONE** |
 | OCI DB 적재·활성화 사슬 5~7 (신규) | **DONE** (§5) |
-| 실제 OCI 전달 실행 | **시도 1회 · 적용 0회** — 원격 파일 2개 잔존(§17) |
+| 실제 OCI 전달 실행 | **완료** — 배포·적용 성공 · 잔존 파일 0건 (§20-6) |
 | `OPS-03` 판정 (b) — 정기 PUSH 콘텐츠 동일 억제 해제 | **DONE** (§11) |
 | `OPS-03` — 사건형(급락 알림) 억제 유지 | **DONE** — 무변경 실측 |
 | `OPS-03` — 12:30 건 (ㄱ)/(ㄴ) 판정 | **DONE** (§11-6) — (ㄱ) 슬롯 간 비교 |
@@ -136,112 +138,25 @@ frontend/app/components/ThreePushParamCard.tsx  무변경
 | 42 | `app/intraday_config/startup.py` — 기동 catch-up |
 
 ---
-### 2.9 VERIFIED 이후 변경 (커밋 4건 · §20 · §21)
+### 2.9 VERIFIED(`685de1c4`) 이후 변경 — 경로 7건
 
-| 줄 | 파일 | 커밋 |
-|---:|---|---|
-| 169 | `scripts/apply_intraday_config_oci.py` | `3b0bee0d` `--project-root` 필수화 |
-| 336 | `scripts/sync_intraday_config.py` | `3b0bee0d` 호출부 전달 |
-| 148 | `scripts/verify_three_push_param_oci.py` | `3b0bee0d` 복제 목록 갱신 |
-| 180 | `tests/test_remote_script_execution_contracts.py` | `3b0bee0d` 신규 · §21-1 에서 재작성 |
-| 267 | `.gitignore` | `2f341deb` 런타임 산출물 2건 |
-| 147 | `docs/handoff/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` | `0a206b07` 종료 문서 |
+**커밋 수·SHA 를 본문에 적지 않는다.** 이 문서 자신이 그 커밋에 들어가므로
+적는 즉시 틀린다(§21-4). 경로 목록은 이 문서를 고쳐도 늘지 않으므로 안정적이다.
 
-```text
-685de1c4  feat   본체 (검증자 VERIFIED)
-0a206b07  docs   종료 문서
-3b0bee0d  fix    원격 실행 결함 2건
-2f341deb  chore  gitignore
-```
-
-
-## 3. 보완 6건 구현 결과 (실측)
-
-### 3.1 해시 분리 — 매일 승인 요청이 생기지 않는다
-
-```text
-1차 생성        status=created    사업군 27 · 미분류 149 · 기준일 2026-09-11
-2차 생성(force) status=unchanged  같은 config_version_id
-기준일만 변경    새 버전 생성 안 함
-대표 ticker 교체 새 버전 생성
-```
-
-`evaluation_input_hash` 는 데이터·기준일·규칙 변경을 감지해 **계산 이력에만**
-쓰고, 새 버전 생성은 `effective_config_hash` 로만 판정한다.
-
-`effective_config_hash` 에 넣는 것 — 사업군 키 · 대표/대체 ticker · 토큰 사전 ·
-정책 · `rule_version`. **`data_asof` 와 시총은 넣지 않는다.**
-
-**보유 목록은 선정 입력이 아니다** — `evaluation_input_hash` 에도 넣지 않았다.
-
-### 3.2 자동 산출 시점 — cron 없음
-
-**호출자 2곳이 실제로 배선돼 있다**(r1 REJECTED 사유. §12-1):
-
-```text
-app/api.py  _lifespan   → intraday_startup.catch_up()        기동 시 catch-up
-app/market_refresh_service.py → _regenerate_intraday_config() 갱신 성공 후
-```
-
-`generator.should_regenerate()` 판정:
-
-| 상황 | 결과 |
+| 경로 | 내용 |
 |---|---|
-| 활성 버전 없음 | `no_active_version` → 즉시 |
-| 대표가 적격성 상실(상장폐지·레버리지화 등) | `representative_ineligible:<ticker>` → 주기 무관 즉시 |
-| `data_asof` 가 거래일 축에 없음 | `asof_not_on_axis` → 재계산 |
-| 20거래일 경과 | `interval_elapsed:<n>` |
-| 그 외 | `within_interval:<n>` → 하지 않음 |
+| `scripts/apply_intraday_config_oci.py` | `--project-root` 필수화 (§20-1) |
+| `scripts/sync_intraday_config.py` | 호출부가 project-root 전달 |
+| `scripts/verify_three_push_param_oci.py` | 복제 허용목록 갱신 (§20-2) |
+| `tests/test_remote_script_execution_contracts.py` | 신규 · §21-1 에서 재작성 |
+| `.gitignore` | 런타임 산출물 2건 |
+| `docs/handoff/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` | 종료 문서 |
+| `docs/ai_result/POC3/POC3-02C-OPS-01_PC_AUTO_PARAM_DELIVERY_RESULT.md` | **이 문서** |
 
-`generate()` 는 **예외를 올리지 않는다** — 실패해도 dict 를 돌려준다. 백엔드
-기동을 막으면 안 되기 때문이다(테스트로 고정).
-
-### 3.3 승인과 적용은 한 번의 동작
-
-```text
-POST /intraday-config/approve-and-apply
-  → store.approve()            (1 PC 승인 기록)
-  → sync_intraday_config.deploy()  (2~8)
+```bash
+git log --oneline 685de1c4..HEAD
+git diff --name-only 685de1c4..HEAD   # 위 7건과 일치해야 한다
 ```
-
-전달 실패 시 응답 `deploy_status = APPROVED_NOT_DEPLOYED` 이고 메시지는
-**"승인은 기록됐고 전달이 실패했다. 재시도하면 된다"** 다. 승인 행은 그대로
-남으므로 **재승인을 요구하지 않는다.**
-
-### 3.4 PC / OCI DB 역할 구분
-
-| DB | 역할 |
-|---|---|
-| PC `state/runtime/runtime_state.sqlite` | 후보 버전 · 승인 · 전달 이력 |
-| OCI 같은 경로 | 실제 운영 active |
-| JSON `state/three_push/params/latest_intraday_alert_config.json` | 전송·archive |
-
-**DB 파일을 복사하거나 덮어쓰지 않는다.** `sync` 는 JSON 만 scp 하고, OCI 에서
-`apply_intraday_config_oci.py` 가 원격 DB 에 적재한다.
-
-### 3.5 checksum 범위
-
-```text
-승인 전 source_hash  efde834da9efd10a
-승인 후 source_hash  efde834da9efd10a   (동일)
-```
-
-`VOLATILE_KEYS` 로 `created_at` · `approved_at` · `approved_by` · `rejected_*` ·
-`sync` · hash 필드 자체 · `config_version_id` 를 **재귀 제거**한 뒤 정규화 JSON
-(`sort_keys` · 공백 고정)의 sha256 을 쓴다.
-
-### 3.6 최초 번들 비활성
-
-```text
-enabled = false · policy_status = NOT_CONFIGURED
-```
-
-`enabled=true` 인데 `surge_threshold_pct` · `drop_threshold_pct` ·
-`cooldown_minutes` · `dedup_window_minutes` · `max_sends_per_run` ·
-`max_sends_per_day` 중 **하나라도 없으면 `ConfigSchemaError`** 다
-(6개 키 parametrize 테스트).
-
-`enabled=false` 인데 `policy_status=CONFIGURED` 인 모순도 거부한다.
 
 ---
 
@@ -452,27 +367,22 @@ OCI active/DB      무변경 — intraday 테이블 자체가 없다
 
 ## 10. 사용자 확인이 필요한 항목
 
-현재 상태 실측 (2026-09-18, 이 문서 작성 시점):
+**남은 항목이 없다.** 아래는 전부 완료됐다 (2026-09-18~19 · 사용자 실행).
 
-```text
-action_state   approved_not_deployed
-version        intraday-20260916T144047-642949  (27개 사업군 · 기준일 2026-09-11)
-PC active      없음
-deploy_status  precheck_failed
-화면 버튼       「OCI 적용 재시도」
+| 항목 | 결과 |
+|---|---|
+| 실화면 확인 | 두 버튼 모두 성공. 이 과정에서 결함 2건이 드러나 고쳤다(§20) |
+| OCI 잔존 파일 | **0건** — 임시 스크립트는 `cleanup()` 이 지웠다(§20-6) |
+| 발송량 변경 | 반영됨 — 하루 고정 4건. 이전에는 실측 약 44% 만 발송 |
+| 커밋·푸시 | 완료 |
+
+배포 후 실측은 머리말 블록을 보라. **커밋 SHA 목록은 본문에 고정하지 않는다**
+— 이 문서를 담은 커밋이 매번 추가돼 적는 즉시 stale 이 된다(§21-4).
+
+```bash
+git log --oneline 685de1c4..HEAD      # VERIFIED 이후 커밋
+git diff --name-only 685de1c4..HEAD   # 변경 경로
 ```
-
-**모두 완료됐다** (2026-09-18~19 · 사용자 실행).
-
-1. **실화면 확인 — 완료.** 사용자가 OCI `git pull` 후 두 버튼을 눌러 성공했다.
-   이 과정에서 결함 2건이 드러나 `3b0bee0d` 로 고쳤다(§20).
-2. **OCI 잔존 파일 — 0건.** 임시 스크립트는 `cleanup()` 이 지웠고,
-   `latest_intraday_alert_config.json` 은 정상 배포된 전송 파일이다(§20-6).
-3. **발송량 변경 — 반영됨.** 08:00 시장 브리핑이 거래일마다, 보유 브리핑이
-   슬롯마다 온다. 하루 고정 4건. 이전에는 실측 약 44% 만 발송됐다.
-4. **커밋·푸시 — 완료.** `685de1c4` · `0a206b07` · `3b0bee0d` · `2f341deb`.
-
-남은 사용자 판단은 없다. 미검증 대상은 `685de1c4` 이후 커밋 3건이다.
 
 > `deploy_unconfirmed` 는 **설계자 승인 완료**다(설계서 §12 · 결과서 §15).
 > 더 이상 대기 항목이 아니다.
@@ -1163,8 +1073,10 @@ if cmd[0] == "scp" or (cmd[0] == "ssh" and any(w in joined for w in ("mv ", "rm 
 
 ### 18-1. §10 항목이 현재 화면과 달랐다 (A-2 · A-3)
 
-「승인하고 OCI 적용」이라고 적었는데 현재는 이미 승인돼 있어 버튼이
-「OCI 적용 재시도」다. §10 을 **실측값 블록으로 교체**했다.
+「승인하고 OCI 적용」이라고 적었는데 그 시점에는 이미 승인돼 있어 버튼이
+「OCI 적용 재시도」였다. §10 을 실측값 블록으로 교체했다.
+
+> 아래는 **r7 시점(배포 전) 값**이다. 배포 후 현재값은 머리말을 보라.
 
 ```text
 action_state   approved_not_deployed
@@ -1398,7 +1310,7 @@ black 351 · flake8 0 · tsc 0
 수정을 커밋·푸시하고 사용자가 OCI `git pull` 후 **두 버튼을 모두 눌러 성공**했다.
 
 ```text
-OCI 코드      3b0bee0d
+OCI 코드      운영 코드 반영 완료 (SHA 는 `git rev-parse` 로 확인)
 OCI active    intraday-20260916T144047-642949 · 27개 사업군 · 기준일 2026-09-11
 PC active     동일 · source_hash 76a7652c29edbdcc… 일치
 sync          deployed / verify ok · action_state = None
@@ -1453,18 +1365,18 @@ test_verify_script_rejects_mixed_known_and_unknown  섞여 들어온 미지값�
 
 ### 21-2. 문서가 현재 상태와 달랐다 (A-2 · A-3)
 
-VERIFIED 이후 상황이 세 번 바뀌었는데(커밋 3건 · OCI 배포 · 버튼 성공) 머리말과
+VERIFIED 이후 상황이 세 번 바뀌었는데(커밋 추가 · OCI 배포 · 버튼 성공) 머리말과
 종료 문서는 그 이전 시점에 멈춰 있었다.
 
 | 위치 | 잘못 | 정정 |
 |---|---|---|
-| 머리말 | `1,676 passed` · OCI 적용 0회 · 잔존 2건 · 커밋 0 | 현재값 + 커밋 4건 명시 |
+| 머리말 | `1,676 passed` · OCI 적용 0회 · 잔존 2건 · 커밋 0 | 현재값으로 교체 |
 | §20-6 | "커밋·푸시·OCI pull 필요" | 배포·운영 확인 결과로 교체 |
 | 변경 파일 표 | 신규 테스트·`.gitignore`·종료 문서 누락 | §2.9 신설 |
 | 종료 문서 | "OCI 는 아직 `b077641f` · 기능 코드 없음" | 현재 상태로 교체 |
 
-**커밋 수도 틀렸다** — 보고에 2건이라 적었으나 종료 문서 `0a206b07` 을 포함해
-**3건**이었다(이후 `.gitignore` 로 4건).
+**커밋 수도 틀렸다** — 보고에 2건이라 적었으나 종료 문서 커밋을 빠뜨린
+것이었다. 지금은 수를 본문에 적지 않는다(§22-1).
 
 ### 21-3. 반복된 실수
 
@@ -1475,3 +1387,52 @@ VERIFIED 이후 상황이 세 번 바뀌었는데(커밋 3건 · OCI 배포 · �
 
 이번에는 **무력화 실증을 통과 조건에 포함**했다. 테스트가 실패하는 것을 눈으로
 보지 않으면 그 테스트는 계약을 고정한다고 말하지 않는다.
+
+---
+
+## 22. r10 REJECTED — 문서 자기참조 (검증자 2026-09-19)
+
+코드·테스트는 통과. **문서 현재형과 커밋 산술만** 남았다.
+
+### 22-1. 왜 문서가 계속 틀렸나 — 자기참조
+
+결과서가 **자기 커밋을 기술**했다. 커밋 목록·커밋 수를 본문에 적으면, 그 문장을
+담은 커밋이 생기는 순간 목록이 하나 모자라게 된다. 고칠 때마다 다시 틀린다.
+
+```text
+r9 에 "커밋 4건" 이라 적음 → 그 문장을 담은 4587bca0 이 5번째가 됨
+r10 에 4587bca0 을 추가 → 그 수정을 담은 커밋이 또 6번째가 됨 … 무한
+```
+
+내 메모리 `feedback_no_head_sha_in_result_doc` 이 정확히 이것을 금지한다.
+**규칙이 있는데 어겼다.**
+
+**수정** — SHA·커밋 수를 본문에서 뺀다. 대신 재현 명령을 적는다.
+
+```bash
+git log --oneline 685de1c4..HEAD      # 커밋 목록
+git diff --name-only 685de1c4..HEAD   # 변경 경로 (§2.9 의 7건과 일치)
+```
+
+**경로 목록은 안정적이다** — 이 문서를 또 고쳐도 경로가 늘지 않는다. 그래서
+§2.9 는 경로로 적는다.
+
+### 22-2. 개별 정정
+
+| 위치 | 잘못 | 정정 |
+|---|---|---|
+| §1 | "시도 1회·적용 0회·잔존 2개" | 완료 · 잔존 0건 |
+| §2.9 | 커밋 4건인데 목록 3건 · 경로 6건(자기 자신 누락) · `.gitignore` 줄 수 오기 | 경로 **7건** 전수 · 줄 수 제거 |
+| §10 | 상단 블록은 `precheck_failed`, 하단은 배포 완료 — 자기모순 | 상단 블록 삭제 · 완료 표로 교체 |
+| §18-1 | 배포 전 값이 현재형으로 읽힘 | "r7 시점 값" 명시 |
+| 머리말 | 커밋 SHA 나열 | 재현 명령으로 교체 |
+| 종료 문서 | 3지점 SHA 가 모두 같다고 적음 | SHA 대신 역할로 기술 |
+
+### 22-3. OCI SHA 도 내가 틀렸다
+
+나는 "OCI `2f341deb`" 라고 보고했으나 실측은 **`3b0bee0d`** 였다. 사용자가
+pull 한 시점 이후 문서·테스트 커밋이 2건 더 생겼는데, 재측정 없이 최신 로컬
+SHA 를 OCI 에도 갖다 붙였다.
+
+**기능 코드가 같다는 것과 커밋 SHA 가 같다는 것은 다르다.** 이후 커밋은
+문서·테스트만이라 OCI 재배포가 필요 없을 뿐, SHA 는 다르다.
