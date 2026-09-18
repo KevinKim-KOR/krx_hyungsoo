@@ -228,6 +228,9 @@ state/market/market_data.sqlite.bak-*
 # PC-to-OCI 3-PUSH Evidence Package Sync (2026-06-15) — sync 실행마다 갱신, 운영 artifact.
 state/three_push/packages/
 state/three_push/sync_status_latest.json
+# 시장 브리핑 런타임 산출물 (meta_gate.py · flow.py 가 실행 때마다 새로 쓴다).
+state/three_push/market_briefing_state_latest.json
+state/three_push/market_briefing_meta_consistency_latest.json
 
 # OCI 3-PUSH Crontab Runner (2026-06-15) — runner 실행마다 갱신, 운영 artifact.
 state/three_push/oci_runner_status_latest.json
