@@ -42,7 +42,8 @@ if str(_PROJECT_ROOT) not in sys.path:
 from app.intraday_config import store  # noqa: E402
 
 EXPORT_PATH = Path("state/three_push/params/latest_intraday_alert_config.json")
-DEFAULT_REMOTE_DIR = "/home/ubuntu/krx_hyungsoo/state/three_push/params"
+REMOTE_PROJECT_ROOT = "/home/ubuntu/krx_hyungsoo"
+DEFAULT_REMOTE_DIR = f"{REMOTE_PROJECT_ROOT}/state/three_push/params"
 REMOTE_NAME = "latest_intraday_alert_config.json"
 APPLY_SCRIPT = Path(__file__).resolve().parent / "apply_intraday_config_oci.py"
 TARGET = "oci"
@@ -62,7 +63,7 @@ def _run(cmd: list[str], timeout: float = 120.0) -> tuple[int, str]:
         return 1, f"{type(e).__name__}: {e}"
 
 
-_REMOTE_PY = "cd /home/ubuntu/krx_hyungsoo && venv/bin/python -c"
+_REMOTE_PY = f"cd {REMOTE_PROJECT_ROOT} && venv/bin/python -c"
 
 
 def _remote_active(target: str) -> tuple[bool, Optional[str], Optional[str]]:
@@ -254,8 +255,8 @@ def deploy(
         [
             "ssh",
             target,
-            f"cd /home/ubuntu/krx_hyungsoo && venv/bin/python {remote_apply} "
-            f"--json {remote_final}",
+            f"cd {REMOTE_PROJECT_ROOT} && venv/bin/python {remote_apply} "
+            f"--json {remote_final} --project-root {REMOTE_PROJECT_ROOT}",
         ],
         timeout=180,
     )

@@ -1273,3 +1273,104 @@ r6 은 "재측정 없이 옛 값을 현재로 옮겨 적기", r8 은 "관측 하
 이번에는 고친 뒤 **부하를 걸어 15회 돌려** 확인했고, 그래도 검증자 환경에서
 재발할 수 있으므로 "해결" 이 아니라 **"원인을 특정하고 그 지점을 고쳤다"** 로
 적는다.
+
+---
+
+## 20. VERIFIED 이후 운영 실행에서 터진 2건 (2026-09-18 · OCI 배포 후)
+
+사용자가 OCI `git pull` 후 승인·적용 화면의 **두 버튼을 모두 눌렀고 둘 다
+실패**했다. 서로 다른 버그이며 **둘 다 원격에서 실행해야만 드러난다.**
+
+### 20-1. 「장중 급등락 설정」 — 내 버그 · 업로드 위치에서 루트를 못 찾음
+
+```text
+ModuleNotFoundError: No module named 'app'
+  at /home/ubuntu/krx_hyungsoo/state/three_push/params/.apply_intraday_config_oci.py
+```
+
+```python
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]   # ← 원인
+```
+
+| 위치 | `parents[1]` |
+|---|---|
+| PC `scripts/` | `krx_hyungsoo` ✅ |
+| 원격 `state/three_push/params/` | `state/three_push` ❌ |
+
+호출부의 `cd` 는 소용없다 — `python <경로>` 는 **스크립트 디렉터리**를
+`sys.path[0]` 에 넣지 cwd 를 넣지 않는다.
+
+**수정** — 루트를 자기 위치에서 추측하지 않는다. `--project-root` 를 **필수
+인자**로 받고 호출부가 넘긴다. `app` import 는 bootstrap 이후로 미룬다.
+
+### 20-2. 「현재 운영 기준」 — 기존 버그 · 복제된 허용 목록이 낡음
+
+```text
+upload_status  ok          ← 전송은 성공했다
+verify_status  failed
+error          enabled_push_kinds 허용값 위반: 'holdings_risk_alert'
+```
+
+| 파일 | 목록 |
+|---|---|
+| `app/three_push_runner_common.py` (정본) | … + **holdings_risk_alert** |
+| `scripts/verify_three_push_param_oci.py` (복제) | 없음 |
+
+`holdings_risk_alert` 가 `POC3-OPS-02A`(commit `5d2614d6`)에서 정본에만 추가됐다.
+**그때부터 이 버튼은 계속 실패하고 있었다** — 이번 작업과 무관한 기존 결함이다.
+
+복제 자체는 불가피하다(OCI `/tmp` 에서 `python3` standalone 실행이라 `app` 을
+import 할 수 없다). 복제를 유지하되 **어긋남을 테스트가 막는다.**
+
+### 20-3. 왜 못 잡았나
+
+**검증자**: 두 건 다 원격 실행에서만 드러나므로 로컬 검증이 구조적으로 닿지
+않는다.
+
+**나**: §8 에 "3~8단계 실행 미검증" 을 한계로 **신고는 했다.** 그러나 실행해야만
+알 수 있는 게 아니었다 — `parents[1]` 과 "`params/` 로 업로드" 는 내가 쓴 두
+파일에 나란히 있었다.
+
+결정적으로 내 테스트가 이랬다.
+
+```python
+rc = apply_mod.apply_file(...)      # PC 안에서 직접 호출 — app 이 이미 import 됨
+```
+
+계약은 "이 스크립트가 **원격 위치에서** 동작한다" 인데, 검사한 것은 "app 이 이미
+있는 곳에서 함수가 동작한다" 였다. `sys.path` 로직을 한 번도 태우지 않았다.
+
+**어제 메모리에 적은 "테스트는 diff 가 아니라 계약 문장에서 쓴다" 를 바로 다음
+날 다시 어겼다.**
+
+### 20-4. 이번엔 실행으로 검사한다
+
+`tests/test_remote_script_execution_contracts.py` (8건).
+
+```text
+test_apply_script_runs_from_a_deep_upload_path      원격과 같은 3단계 깊이로
+                                                    복사해 subprocess 실행
+test_apply_script_requires_project_root             루트를 추측하지 않는다
+test_sync_passes_project_root_to_remote             호출부가 실제로 넘긴다
+test_apply_script_does_not_derive_root_...          parents[N] 코드 라인 부재
+test_verify_script_allowed_kinds_match_canonical    복제본 == 정본
+test_verify_script_accepts_holdings_risk_alert      실행으로 통과 확인
+test_verify_script_still_rejects_unknown_kinds      느슨해지지 않았는지 (×2)
+```
+
+무력화 실증 — `parents[1]` 로 되돌리면 **2건이 실제로 실패**한다.
+
+### 20-5. 검증
+
+```text
+전체 회귀   1,684 passed / 0 failed   (직전 1,676 -> +8)
+역검증      26가드 · EXIT=0
+프론트      18 files / 207 tests
+black 351 · flake8 0 · tsc 0
+라이브 DB   회귀 전후 sha256 동일
+```
+
+### 20-6. 아직 안 한 것
+
+**OCI 재배포 전에는 두 버튼 모두 여전히 실패한다.** 수정은 로컬에만 있다.
+커밋·푸시·OCI `git pull` 이 필요하며 사용자 승인 대상이다.

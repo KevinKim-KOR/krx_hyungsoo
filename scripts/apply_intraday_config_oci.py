@@ -24,11 +24,19 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
 
-from app.intraday_config import schema, store  # noqa: E402
+# **루트를 자기 위치에서 계산하지 않는다.** 이 스크립트는 원격의 임시 경로
+# (`state/three_push/params/`)로 업로드돼 실행되므로 `parents[1]` 은 프로젝트
+# 루트가 아니다 — 실제 운영에서 `ModuleNotFoundError: No module named 'app'`
+# 이 났다. 호출자가 `--project-root` 로 알려준다.
+#
+# `python <경로>` 는 **스크립트가 있는 디렉터리**를 sys.path[0] 에 넣는다.
+# 호출부의 `cd` 는 import 에 영향을 주지 않는다.
+def _bootstrap(project_root: str) -> None:
+    root = str(Path(project_root).resolve())
+    if root not in sys.path:
+        sys.path.insert(0, root)
+
 
 REQUIRED_KEYS = (
     "config_version_id",
@@ -44,6 +52,8 @@ REQUIRED_KEYS = (
 
 def _readback_matches(row: dict) -> tuple[bool, str]:
     """DB 에서 다시 읽은 active 가 방금 적용한 것과 같은가."""
+    from app.intraday_config import store
+
     try:
         back = store.get_active()
     except Exception as e:  # noqa: BLE001
@@ -59,6 +69,8 @@ def _readback_matches(row: dict) -> tuple[bool, str]:
 
 def _restore(before_id: Optional[str], activated_by: str) -> None:
     """실패 시 직전 active 로 되돌린다. **되돌리기 자체는 절대 올리지 않는다.**"""
+    from app.intraday_config import store
+
     try:
         if before_id is None:
             store.clear_active()
@@ -69,6 +81,8 @@ def _restore(before_id: Optional[str], activated_by: str) -> None:
 
 
 def apply_file(json_path: Path, *, activated_by: str = "oci_apply") -> int:
+    from app.intraday_config import schema, store
+
     """반환 0=성공. 실패 시 **active pointer 를 바꾸지 않는다.**"""
     if not json_path.exists():
         print(f"FAILED missing_file {json_path}")
@@ -141,7 +155,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", required=True, type=Path)
     ap.add_argument("--activated-by", default="oci_apply")
+    ap.add_argument(
+        "--project-root",
+        required=True,
+        help="`app` 패키지가 있는 디렉터리. 업로드 위치와 무관하게 명시한다",
+    )
     a = ap.parse_args(argv)
+    _bootstrap(a.project_root)
     return apply_file(a.json, activated_by=a.activated_by)
 
 

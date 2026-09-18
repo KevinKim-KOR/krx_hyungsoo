@@ -26,10 +26,18 @@ import json
 import sys
 
 SCHEMA_VERSION = "three_push_runtime_param.v1"
+# 이 스크립트는 OCI `/tmp` 로 업로드돼 **standalone 으로** 실행되므로 `app` 을
+# import 하지 않는다. 그래서 목록이 복제돼 있고, 복제된 쪽이 낡았다 —
+# `holdings_risk_alert`(POC3-OPS-02A, commit 5d2614d6)가 정본에만 추가돼
+# 「현재 운영 기준 OCI 적용」이 매번 verify 에서 거부됐다.
+#
+# 복제 자체는 유지하되(standalone 제약), **정본과 같은지 테스트가 고정한다**
+# — `tests/test_three_push_param_verify_contract.py`.
 ALLOWED_PUSH_KINDS = (
     "market_briefing",
     "holdings_briefing",
     "spike_or_falling_alert",
+    "holdings_risk_alert",
 )
 ALLOWED_PARAM_SOURCES = (
     "manual_seed",
