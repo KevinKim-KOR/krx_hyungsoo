@@ -161,6 +161,7 @@ KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으�
 - **02C-OPS-02**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02C-OPS-02_INTRADAY_SURGE_DROP_ALERT_*`
   · 상태 저장 계약은 설계서 **§15-2** 가 정본(D2 3상태 · D3 기록 Gate)
   · 메시지 목업·15:40 요약은 결과서 **§7**
+  · **종료·인계** `docs/handoff/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md`
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
   · 프로세스 C 「배포로 지금 바뀐 동작 2건」 · §13-7(활성화 경로 부재) · 부록 A
 
