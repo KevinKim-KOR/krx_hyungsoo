@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-13 (**OPS-02B-2 구현 완료 · 검증자 `VERIFIED` — 활성화 승인 대기 · PUSH 2_OF_3 유지**)
+최종 업데이트: 2026-09-21 (**02C-OPS-02 장중 급등락 배포 완료 · 검증자 `VERIFIED` — 활성화 경로 미구현 · PUSH 2_OF_3 유지**)
 
 ## 현재 상태
 
@@ -14,7 +14,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | 종류 | autosend | 상태 |
 |---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
-| `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화, 실발송은 2026-09-09 첫 틱부터 |
+| `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화, 실발송은 2026-09-09 첫 틱부터. 2026-09-21 `02C-OPS-02` 배포로 장중 급등락이 이 종류에 얹혔으나 **정책 `enabled=false`** 라 본문은 기존 「보유 급락 알림」 그대로 |
 | `market_briefing` (08:00) | `false` | 차단 — **`02B-2` 구현 완료 · 검증자 `VERIFIED`**(2026-09-13). 거래일 캘린더 확보로 `KRX_TRADING_CALENDAR_NOT_PROVIDED` 해소. 남은 것은 **OCI 배포 + autosend 활성화**(각각 별도 승인) |
 | ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
@@ -31,6 +31,8 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | **OPS-02B-1** 시장 입력 Gate | **`CLOSED`** | 검증 `VERIFIED_WITH_NOTES` · 커밋 `988b0494` · 설계자 최종 Gate 확정 2026-09-11. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
 | **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`IMPLEMENTED_VERIFIED`** | 검증자 `VERIFIED`(r4). `app/market_briefing/` 8모듈 1,834줄 + 러너 배선. 목업 7종 사용자 확정. 보호 Gate 10종 역검증 `10/10`. 회귀 1,583 passed. **autosend `false` · OCI 미배포** — 설계자 종료 판정·배포·활성화 대기 |
 | └ **KS10-RUNNER-EVIDENCE-EXTRACTION** | **`CLOSED`** | 러너 §4 → `runner_evidence.assemble_legacy_evidence()`. 656 → **648줄**. 설계자 `PASS` |
+| **02C-OPS-01** 장중 설정 구조(사업군·대표 ETF) | **`CLOSED`** | 검증자 `VERIFIED`(r9). 자동 분류 27개 사업군 + 승인·OCI 적용 경로. 화면 「승인·적용 > 장중 급등락 설정」 |
+| **02C-OPS-02** 장중 급등락·진입 검토/회피 | **`IMPLEMENTED_VERIFIED_DEPLOYED`** | 검증자 `VERIFIED`(2026-09-21). 신규 push_kind·cron 0. 회귀 1,904 passed · 러너 646줄. **정책 `enabled=false` · 활성화 경로 미구현**(아래 «열린 결함») |
 | └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
 
 ### OPS-02B-2 운영 계약 (요약 · 2026-09-13 검증자 VERIFIED)
@@ -76,15 +78,16 @@ DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
 - 표시 이름 **`[보유 급락 알림]`**, 1종목이면 `동시` 를 붙이지 않는다
   (2026-09-07 사용자 확정). 내부 식별자 `holdings_risk_alert` 는 불변.
 
-### 배포 상태 (2026-09-08 실측)
+### 배포 상태 (2026-09-21 실측)
 
 | 항목 | 값 |
 |---|---|
-| OCI HEAD | `5d2614d6` (자동 배포) |
+| OCI HEAD | **자동 배포.** SHA 를 여기 적지 않는다 — 커밋할 때마다 낡는다. 확인: `ssh oci-krx "cd /home/ubuntu/krx_hyungsoo && git log --oneline -1"`. 2026-09-21 실측에서 `02C-OPS-02` 커밋과 일치 |
 | 활성 PARAM | `param-20260907T152806-255383` — `enabled_push_kinds` 4종 |
-| cron | 러너 11건 + 배치 1건. 급락 알림 7틱, spike 호출 0건 |
-| 비활성 차단 실증 | 2026-09-08 7틱 전부 `skipped/push_kind_disabled` · 발송 0건 |
-| 시장 DB | `etf_daily_price` 최신 `2026-09-07` (분모 공급 정상) |
+| cron | 러너 11건 + 배치 1건. 급락 알림 7틱, spike 호출 0건. **02C-OPS-02 로 추가된 cron 0건** |
+| 발송 플래그 | `PUSH_AUTOSEND_ENABLED=true` · `HOLDINGS_BRIEFING`·`HOLDINGS_RISK_ALERT`=`true` · `MARKET_BRIEFING`=`true` · `SPIKE`=`false` (2026-09-21 실측) |
+| 장중 정책 | `enabled=false` · `policy_status=NOT_CONFIGURED` · 사업군 27개 등록됨 |
+| 시장 DB | `etf_daily_price` 최신 `2026-09-18` · `krx_etf_daily_price_unadjusted` 최신 `2026-09-17` (ticker 1,175) |
 
 ### OPS-02B-1 Gate 결론 (2026-09-10)
 
@@ -105,17 +108,38 @@ KOSPI_VIX_INTEGRITY  = PASS
 
 ### 다음
 
-**`OPS-02B-2` 설계서 수신 → 개발 PLAN 회신 → 구현.**
-`02B-2` 가 끝나면 PUSH 3종이 모두 갖춰진다. **08:00 autosend 는 `false` 유지.**
+**`02C-OPS-02` 활성화 설계 — 설계자 차례.** 코드는 배포됐지만 켤 수 없다
+(아래 «열린 결함» `DEF-INTRADAY-POLICY-ACTIVATION-PATH`). 설계자가 정해야 할 것:
 
-**`02B-2` 필수 이월 2건** (설계자 2026-09-11 분리) — ① API 에만 있는 신규 ticker
-감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. **정적 CSV 자동
+1. 임계값 12개(`REQUIRED_POLICY_KEYS`)의 값과 **투입 경로** — 화면 입력 / 시드
+   스크립트 / PARAM 중 무엇인지.
+2. 정책 비활성일 때 15:40 요약 줄 처리 — 지금은 `장중 점검 확인 불가` 가 매
+   브리핑에 붙는다(`PROGRAM_TRUTH` 프로세스 C).
+
+**사용자 확인 대기 2건** — ① 메시지 형식(결과서 §7 목업) ② 발송량(조건형 4건이
+고정 4건에 더해져 하루 최대 8건).
+
+**이월** — `02B-2` 필수 이월 2건(설계자 2026-09-11 분리): ① API 에만 있는 신규
+ticker 감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. **정적 CSV 자동
 다운로드는 범위 밖.** BACKLOG 2건(DB 가격계열 본조사 · 분배락 민감도)은 비차단.
+`market_briefing` 08:00 autosend 는 `false` 유지.
 
 ### 열린 결함 3건
 
 `DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL` ·
 ~~`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`~~ **해소** (OPS-02B-1, `988b0494`)
+
+**신규 `DEF-INTRADAY-POLICY-ACTIVATION-PATH`** — `DESIGN_REQUIRED` (2026-09-21).
+장중 급등락을 켜는 경로가 소스에 없다. `generator.py` 가 `build_payload()` 에
+`policy=` 를 넘기지 않아 항상 `enabled=False · NOT_CONFIGURED` 가 들어가고,
+`policy=` 를 넘기는 호출처는 저장소 전체에 **0건**. API 는 사업군 목록
+승인·거부 2개뿐이고 정책 값을 바꾸는 엔드포인트가 없다. 화면 카드의 `알림 상태`
+는 표시 전용이다. 기능 DEPLOYED / 활성화 MISSING.
+
+**신규 `DEF-INTRADAY-SUMMARY-WHEN-DISABLED`** — `DESIGN_REQUIRED` (2026-09-21).
+15:40 요약 부착이 정책 활성 여부로 막히지 않아, `enabled=false` 인 지금도 매
+15:40 보유 브리핑 말미에 `장중 점검 확인 불가` 한 줄이 붙는다(실측). "기능이
+꺼짐" 과 "집계를 못 읽음" 을 같은 문구로 말한다.
 
 **신규** `DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY` — `INVESTIGATION_REQUIRED`.
 KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으로 대부분 설명되고
@@ -133,7 +157,12 @@ KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으�
   · 결과서 `docs/ai_result/POC3/POC3-OPS-02B-1_MARKET_INPUT_READINESS_GATE_RESULT.md`
   · 종료 문서 `docs/handoff/POC3/OPS-02B-1_CLOSEOUT.md`
   · 재현 `scripts/ops02b1_gate/reproduce.py` + `state/ops02b1_gate/`
+- **02C-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02C-OPS-01_*`
+- **02C-OPS-02**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02C-OPS-02_INTRADAY_SURGE_DROP_ALERT_*`
+  · 상태 저장 계약은 설계서 **§15-2** 가 정본(D2 3상태 · D3 기록 Gate)
+  · 메시지 목업·15:40 요약은 결과서 **§7**
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
+  · 프로세스 C 「배포로 지금 바뀐 동작 2건」 · §13-7(활성화 경로 부재) · 부록 A
 
 ---
 

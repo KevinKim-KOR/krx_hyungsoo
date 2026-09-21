@@ -243,6 +243,8 @@ flowchart LR
 | `state/three_push/params/latest_runtime_param.json` | PARAM 생성 | OCI runtime 입력(SSOT) |
 | `state/three_push/packages/latest_*.json` + `manifest.json` | PC package 생성 | OCI fallback 입력 (6/18자 — stale) |
 | `state/ml/*_latest.json` / `.csv` | ML 스크립트 | ML evidence snapshot |
+| `state/three_push/sector_signal_state_latest.json` | `holdings_risk_alert` 조립 (OPS-02) | 장중 사업군·급등 억제 상태. **장중 정책 `enabled=true` 이고 운영 Gate 통과 회차만** 생성·갱신 |
+| `state/three_push/intraday_checkup_tally_latest.json` | 같음 | 장중 회차 집계(15:40 요약 입력). 생성 조건 동일 |
 | `state/diagnostics/*_latest.json`, `state/market/*_diagnosis_latest.json` | 진단 스크립트 | DIAGNOSTIC |
 | `*.bak-2026-07-05-150001` | 백업 | LEGACY/백업 |
 
@@ -355,11 +357,34 @@ flowchart LR
 | 종류 | cron | `PUSH_AUTOSEND_*_ENABLED` | 상태 |
 |---|---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | 유지 | **`true`** | **발송 중** |
-| `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화 |
+| `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화. 2026-09-21 `OPS-02` 배포로 **장중 급등락 통합 본문**이 이 종류에 얹혔으나 장중 정책이 `enabled=false` 라 현재 본문은 기존 「보유 급락 알림」 그대로 |
 | `market_briefing` (08:00) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled`. 메시지·억제는 `OPS-02B-2` 로 **재구현 완료**(검증자 `VERIFIED` 2026-09-13). 발송은 활성화 승인 대기 |
 | ~~`spike_or_falling_alert`~~ | **제거** | — | **폐지** — cron 7건을 `holdings_risk_alert` 로 교체 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 보유 PUSH 까지 멈춘다).
+
+#### POC3-02C-OPS-02 배포(2026-09-21)로 **지금 바뀐 동작 2건**
+
+장중 정책은 `enabled=false` 이므로 사업군 대표 ETF 조회는 0건이고 「장중 급등락」
+본문도 나가지 않는다. 다만 정책과 **무관하게** 바뀐 것이 둘 있다.
+
+1. **보유 급락·급등 판정의 분모가 바뀌었다.** 조정계열 종가 역산이 아니라
+   Naver 응답의 **무조정 D-1 등락률**(`fluctuationsRatio`)을 그대로 쓴다.
+   등락률을 못 구하면 그 종목은 선정에서 빠지고 `데이터 확인 대상` 으로 간다
+   (현재가로 역산하지 않는다). 배포 전 24거래일 재생에서 **급락 판정 변경 0건**.
+
+2. **15:40 보유 브리핑 말미에 장중 점검 요약 한 줄이 붙는다.**
+   이 부착은 **정책 활성 여부로 막히지 않는다** — 슬롯이 `CLOSE` 이고 본문이
+   있으면 붙는다. 정책이 `enabled=false` 면 집계 파일 자체가 없으므로 실측상
+   다음 한 줄이 나간다.
+
+   ```text
+   장중 점검 확인 불가
+   ```
+
+   집계 불가와 "0건" 을 구분하려는 설계(§8)인데, **기능이 꺼져 있는 상태**와
+   **켜져 있는데 집계를 못 읽은 상태**를 같은 문구로 말한다. 활성화 전까지
+   매 15:40 브리핑에 이 줄이 붙는다. 설계자 판단 대기 항목이다.
 
 **활성 PARAM** `param-20260907T152806-255383` 의 `enabled_push_kinds` 는 4종이다
 (`market_briefing` · `holdings_briefing` · `spike_or_falling_alert` ·
@@ -468,6 +493,22 @@ reason=push_kind_disabled · telegram_attempted=false`.
 
 6. **ORPHANED 후보 API** — 초기 조사에서 `/apply`·`/state`·`/run`·`/decision-draft/preview` 를 후보로 적었으나, **prefix 붙은 full path 로 FE 가 호출하는 운영 API 로 정정**(§6.2). 남은 개별 재확인 대상은 `GET /runs`(목록 — FE 는 `/runs/{id}` 단건만 호출) 뿐.
 
+7. **장중 급등락(OPS-02) 을 켤 경로가 없다** (2026-09-21 배포 후 실측)
+   - 판정·발송·상태 저장은 전부 구현·검증(`VERIFIED`)됐고 배포도 됐다. 그러나
+     **정책 `enabled=true` 를 만드는 경로가 소스에 없다.**
+   - 실측: 번들 생성부 `app/intraday_config/generator.py` 가 `schema.build_payload()`
+     를 호출할 때 `policy=` 를 넘기지 않아 항상 기본값
+     `{"enabled": False, "policy_status": "NOT_CONFIGURED"}` 가 들어간다.
+     `policy=` 를 넘기는 호출처는 저장소 전체에 **0건**.
+   - API 는 `GET /state`(읽기) · `POST /approve-and-apply` · `POST /reject` 3개이고,
+     쓰기 2개는 **사업군 목록**을 승인·거부한다. 정책 값을 바꾸는 엔드포인트는 없다.
+   - 화면 「승인·적용 > 장중 급등락 설정」 카드의 `알림 상태` 는 **표시 전용**이다.
+     승인 버튼을 눌러도 `enabled` 는 `false` 로 남는다.
+   - `enabled=true` 로 만들려면 `REQUIRED_POLICY_KEYS` 12개를 모두 채우고 범위
+     검사를 통과해야 한다(`schema.py :: validate`). 그 값을 누가·어디서 넣을지는
+     **설계자 미정**.
+   - 상태: 기능 DEPLOYED / 활성화 경로 MISSING.
+
 ---
 
 **RUNTIME_VERIFIED 로 승격됨 (개발자 직접 OCI 읽기 실측 2026-08-05, `ubuntu@krx-alertor-vm`)** — 초안에서 UNVERIFIED 로 적었으나 확인됨:
@@ -498,6 +539,18 @@ reason=push_kind_disabled · telegram_attempted=false`.
 ---
 
 ## 부록 A. Source Evidence Index (기능별 symbol)
+
+**POC3-02C-OPS-02 장중 급등락 (2026-09-21 배포 · 정책 비활성)**
+
+| symbol | 역할 |
+|---|---|
+| `app/runtime_evidence/sector_signal.py` | 사업군 대표 ETF 판정(§4-2 표) · 커버리지 Gate · provider 장애 구분 |
+| `app/runtime_evidence/sector_signal_state.py` | 억제·cooldown · 관측 3상태 저장(평가 불가 보존) |
+| `app/runtime_evidence/intraday_alert_flow.py` | 회차 조립 · 대체 조회 · 구역 상한 · 일일 상한 |
+| `app/runtime_evidence/intraday_alert_render.py` | 「장중 급등락」 본문 · 15:40 요약 한 줄 |
+| `app/runtime_evidence/intraday_checkup_tally.py` | 회차 집계(발송 상태와 별개 파일) |
+| `holdings_risk_flow :: apply_intraday_records` | 운영 Gate 통과 회차만 관측·집계 기록 |
+| `runner :: _finish` | 그 Gate 훅(모든 종료 지점) |
 
 - 화면 컨테이너: `frontend/app/components/MainPanel.tsx :: MainPanel` / `LeftSidebar.tsx :: MENU_GROUPS, MenuKey, assertMenuGroupsCover`
 - 오늘 점검: `TodayInvestmentCheckView.tsx :: JudgmentQueueSection, KospiHeadline`
