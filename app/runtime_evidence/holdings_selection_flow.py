@@ -202,21 +202,36 @@ def build_holdings_selection(
         )
     # POC3-02C-OPS-02 §8 — **15:40 슬롯 말미에 장중 점검 요약 한 줄.**
     # 별도 메시지를 만들지 않는다. 집계 실패가 브리핑을 막으면 안 되므로
-    # 예외를 삼키고, 집계 불가는 `확인 불가` 로 나간다(0 으로 위장하지 않는다).
+    # 예외를 삼킨다.
+    #
+    # OPS-03 §1 — **정책이 꺼져 있으면 줄 자체를 붙이지 않는다.**
+    # 전에는 활성 여부를 보지 않아, 비활성인데도 집계 파일이 없다는 이유로
+    # `장중 점검 확인 불가` 가 매 15:40 브리핑에 붙었다(실측). 그러면 "기능이
+    # 꺼짐" 과 "켜져 있는데 집계를 못 읽음" 을 같은 문구로 말하게 된다.
+    #
+    # ```text
+    # 비활성 · NOT_CONFIGURED       줄 없음
+    # 활성 + 정상 집계               장중 점검 N회 · 알림 M건 …
+    # 활성 + 누락·손상·읽기 실패     장중 점검 확인 불가
+    # ```
     if out.message_text and (slot_id or "") == LAST_SLOT_ID:
         try:
             from app.runtime_evidence.holdings_risk_flow import DEFAULT_TALLY_PATH
+            from app.runtime_evidence.intraday_alert_flow import active_policy
             from app.runtime_evidence.intraday_checkup_tally import (
                 load_tally,
                 render_summary_line,
             )
 
-            line = render_summary_line(
-                load_tally(DEFAULT_TALLY_PATH, today_kst=today_kst)
-            )
-            if line:
-                out.message_text = f"{out.message_text}\n\n{line}"
-                out.diagnostics["intraday_checkup_summary"] = line
+            if active_policy(logger) is None:
+                out.diagnostics["intraday_checkup_summary_omitted"] = "policy_disabled"
+            else:
+                line = render_summary_line(
+                    load_tally(DEFAULT_TALLY_PATH, today_kst=today_kst)
+                )
+                if line:
+                    out.message_text = f"{out.message_text}\n\n{line}"
+                    out.diagnostics["intraday_checkup_summary"] = line
         except Exception as e:  # noqa: BLE001
             out.diagnostics["intraday_checkup_summary_error"] = f"{type(e).__name__}"
 

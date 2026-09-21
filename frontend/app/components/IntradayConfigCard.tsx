@@ -19,7 +19,7 @@
 //
 // 기존 ThreePushParamCard 는 건드리지 않는다 — 별개 운영 경로다.
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   approveAndApplyIntradayConfig,
   fetchIntradayConfigState,
@@ -54,6 +54,49 @@ const RETRY = "approved_not_deployed";
 
 function shortHash(h: string | null): string {
   return h ? `${h.slice(0, 12)}…` : "—";
+}
+
+// OPS-03 §2 — 정책 키를 사용자 말로 옮긴다. 내부 키 이름을 그대로 보이지
+// 않는다. 값은 **읽기 전용**이다 — 고치는 입력란을 만들지 않는다.
+const POLICY_LABEL: Record<string, string> = {
+  drop_threshold_pct: "보유 급락 기준",
+  surge_threshold_pct: "보유 급등 기준",
+  sector_entry_min_pct: "진입 검토 하한",
+  sector_chase_pct: "추격 주의 기준",
+  sector_avoid_drop_pct: "진입 회피 기준",
+  sector_rank_top_pct: "순위 조건",
+  sector_min_coverage_pct: "최소 조회 성공률",
+  cooldown_minutes: "재발송 대기",
+  dedup_window_minutes: "중복 억제 창",
+  max_sends_per_run: "회차당 최대",
+  max_sends_per_day: "하루 최대",
+  max_items_per_section: "구역별 최대",
+};
+
+const PCT_KEYS = new Set([
+  "drop_threshold_pct",
+  "surge_threshold_pct",
+  "sector_entry_min_pct",
+  "sector_chase_pct",
+  "sector_avoid_drop_pct",
+  "sector_rank_top_pct",
+  "sector_min_coverage_pct",
+]);
+
+const MIN_KEYS = new Set(["cooldown_minutes", "dedup_window_minutes"]);
+
+// 이 둘은 **독립 조절 대상이 아니다**(설계자 OPS-03 필수 보완).
+// `dedup_window_minutes` 는 `cooldown_minutes` 의 호환 별칭이고,
+// `max_sends_per_run` 은 회차당 본문 1개라는 구조에서 나온 고정값이다.
+// 다른 값과 같은 목록에 두면 조절할 수 있는 것처럼 보인다.
+const DERIVED_KEYS = new Set(["dedup_window_minutes", "max_sends_per_run"]);
+
+function policyValueText(key: string, value: unknown): string {
+  // 값이 없으면 **빠졌다는 사실을 보인다.** 0 으로 위장하지 않는다.
+  if (value === null || value === undefined) return "없음";
+  if (PCT_KEYS.has(key)) return `${value}%`;
+  if (MIN_KEYS.has(key)) return `${value}분`;
+  return `${value}건`;
 }
 
 export default function IntradayConfigCard() {
@@ -174,12 +217,65 @@ export default function IntradayConfigCard() {
         <dt>확인값</dt>
         <dd>{shortHash(shown.hash)}</dd>
 
-        <dt>알림 상태</dt>
+        {/* **현재 운영 상태**다. 후보 값을 여기 쓰면 승인 전인데도 "발송 중"
+            으로 보인다(검증자 P1). 적용 후 상태는 아래 별도 행이다. */}
+        <dt>지금 알림 상태</dt>
         <dd>{policyLabel(state.policy_enabled, state.policy_status)}</dd>
+
+        {hasCandidate && state.candidate_policy_enabled !== null ? (
+          <>
+            <dt>적용 후 상태</dt>
+            <dd>
+              {state.candidate_policy_enabled
+                ? "장중 알림 발송 시작"
+                : "장중 알림 없음"}
+            </dd>
+          </>
+        ) : null}
 
         <dt>OCI 반영</dt>
         <dd>{deployLabel(state.deploy_status)}</dd>
+
+        <dt>산출 규칙</dt>
+        <dd>{state.policy_rule_version ?? "—"}</dd>
       </dl>
+
+      {state.policy_values.length > 0 ? (
+        <>
+          {/* `h3` 를 쓰지 않는다 — 이 카드의 `h3` 는 **지금 할 동작** 하나만
+              나오게 막는 계약이 있다(IntradayConfigCard.test.tsx "재시도 문단과
+              동시에 렌더되지 않는다"). 이 블록은 동작이 아니라 정보다. */}
+          <p className="tc-small">
+            <b>적용될 판정 기준</b> — PC 가 산출한 값입니다. 여기서 고치지 않고
+            버전 전체를 승인합니다.
+          </p>
+          <dl className="tc-kv">
+            {state.policy_values
+              .filter((p) => !DERIVED_KEYS.has(p.key))
+              .map((p) => (
+                <Fragment key={p.key}>
+                  <dt>{POLICY_LABEL[p.key] ?? p.key}</dt>
+                  <dd>{policyValueText(p.key, p.value)}</dd>
+                </Fragment>
+              ))}
+          </dl>
+
+          <p className="tc-muted tc-small">
+            중복 억제 창은 재발송 대기와 같은 값이고, 회차당 최대는 1건으로
+            고정입니다. 따로 조절하지 않습니다.
+          </p>
+        </>
+      ) : null}
+
+      {/* 경고는 **적용 결과**로 판단한다. `policy_enabled`(현재 상태)로 가리면
+          정작 켜지는 순간에 경고가 숨는다(검증자 P1). */}
+      {hasCandidate && state.candidate_policy_enabled ? (
+        <p className="tc-small">
+          <b>이 설정을 적용하면 장중 알림이 실제로 발송됩니다.</b> 기존 고정 4건에
+          더해 조건이 맞는 날 최대 4건이 추가됩니다(하루 최대 8건). 조건이 없으면
+          추가 발송은 없습니다.
+        </p>
+      ) : null}
 
       {hasCandidate ? (
         <>

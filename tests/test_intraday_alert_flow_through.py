@@ -1210,3 +1210,89 @@ def test_alternate_etf_entry_is_preserved_by_sector_key(rig):
     entry = _saved(rig)["entries"]["ALT000"]
     assert entry["continuous"] is True, "대체 ETF 사업군이 회복으로 기록됐다"
     assert entry.get("last_sent_at"), "대체 ETF 의 발송 이력이 지워졌다"
+
+
+# ── OPS-03 §1 · 15:40 요약 4경로 (정책 상태별) ─────────────────────────────
+#
+# 전에는 활성 여부를 보지 않아, **비활성인데도** 집계 파일이 없다는 이유로
+# `장중 점검 확인 불가` 가 매 15:40 브리핑에 붙었다(실측). "기능이 꺼짐" 과
+# "켜져 있는데 집계를 못 읽음" 을 같은 문구로 말한 것이다.
+#
+#   비활성 · NOT_CONFIGURED    → 줄 없음
+#   활성 + 정상 집계            → 장중 점검 N회 · …
+#   활성 + 누락·손상            → 장중 점검 확인 불가
+#
+# 소스 검사가 아니라 **운영 조립 함수**(`build_holdings_selection`)를 부른다.
+
+
+def _selection_at_close(monkeypatch, tmp_path, *, policy, tally_state):
+    """15:40 슬롯 본문을 만든다. `policy=None` 이면 장중 정책 비활성."""
+    from dataclasses import dataclass
+
+    from app.runtime_evidence import holdings_risk_flow as rflow
+    from app.runtime_evidence import intraday_alert_flow as iflow
+    from app.runtime_evidence import intraday_checkup_tally as tally_mod
+    from app.runtime_evidence.holdings_selection_flow import build_holdings_selection
+
+    tally = tmp_path / f"tally_{tally_state}.json"
+    if tally_state == "ok":
+        for o in [tally_mod.OUTCOME_SENT] + [tally_mod.OUTCOME_NO_SIGNAL] * 2:
+            tally_mod.record_tick(tally, today_kst=TODAY, outcome=o)
+    elif tally_state == "corrupt":
+        tally.write_text("{ 깨진 json", encoding="utf-8")
+    monkeypatch.setattr(rflow, "DEFAULT_TALLY_PATH", tally)
+    monkeypatch.setattr(iflow, "active_policy", lambda *a, **k: policy)
+
+    @dataclass
+    class _H:
+        ticker: str
+        name: str
+        account_group: str = "일반"
+        quantity: float = 10.0
+        avg_buy_price: float = 50.0
+
+    axis = [f"2026-08-{i + 1:02d}" for i in range(25)] + [TODAY]
+    out = build_holdings_selection(
+        holdings_loader=lambda: [_H("AAA", "가나다")],
+        fetch_history=lambda t, **kw: [(d, 100.0) for d in axis],
+        market_quotes={"AAA": _Q(80.0, _asof(TODAY), -20.0)},
+        state_path=tmp_path / f"sel_{tally_state}.json",
+        slot_id="CLOSE",
+        runtime_kst=f"{TODAY}T15:40:00+09:00",
+        today_kst=TODAY,
+    )
+    assert not out.error, out.error
+    assert out.message_text, "보유 브리핑 본문이 비었다"
+    return out
+
+
+def test_1540_summary_omitted_when_policy_disabled(monkeypatch, tmp_path):
+    """**비활성이면 줄 자체를 붙이지 않는다.** 이번 결함의 본체다."""
+    out = _selection_at_close(monkeypatch, tmp_path, policy=None, tally_state="none")
+    assert "장중 점검" not in out.message_text, out.message_text
+    assert out.diagnostics.get("intraday_checkup_summary_omitted") == "policy_disabled"
+
+
+def test_1540_summary_shown_when_policy_enabled_and_tally_ok(monkeypatch, tmp_path):
+    """활성 + 정상 집계 → 실제 요약."""
+    out = _selection_at_close(
+        monkeypatch, tmp_path, policy={"enabled": True}, tally_state="ok"
+    )
+    assert "장중 점검 3회 · 알림 1건" in out.message_text, out.message_text
+    assert "확인 불가" not in out.message_text
+
+
+def test_1540_summary_unknown_when_enabled_but_tally_missing(monkeypatch, tmp_path):
+    """활성인데 집계 파일이 없으면 `확인 불가` — 0 으로 위장하지 않는다."""
+    out = _selection_at_close(
+        monkeypatch, tmp_path, policy={"enabled": True}, tally_state="none"
+    )
+    assert out.message_text.endswith("장중 점검 확인 불가"), out.message_text
+
+
+def test_1540_summary_unknown_when_enabled_but_tally_corrupt(monkeypatch, tmp_path):
+    """활성인데 집계가 손상돼도 `확인 불가`."""
+    out = _selection_at_close(
+        monkeypatch, tmp_path, policy={"enabled": True}, tally_state="corrupt"
+    )
+    assert out.message_text.endswith("장중 점검 확인 불가"), out.message_text

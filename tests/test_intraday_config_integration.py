@@ -993,3 +993,275 @@ def test_healthy_payload_has_no_error(api_client, tmp_path):
     body = client.get("/intraday-config/state").json()
     assert body["payload_error"] is None
     assert body["candidate_sector_count"] >= 20
+
+
+# ── OPS-03 §2·§3 — 생성 번들이 정책을 담는다 ───────────────────────────────
+#
+# 전에는 `generate()` 가 `build_payload()` 에 `policy=` 를 넘기지 않아 스키마
+# 기본값(`enabled=False`)이 들어갔다. 그래서 장중 알림을 **켤 방법이 없었다**.
+# 사용자가 임계값을 하나씩 넣는 화면은 만들지 않는다 — PC 가 산출한 버전을
+# 통째로 승인하는 것이 계약이다.
+
+
+def test_generated_bundle_carries_enabled_policy(tmp_path):
+    """산출 번들에 `enabled=true` 정책이 들어간다."""
+    db = _db(tmp_path)
+    vid = _make(tmp_path, db)
+    payload = json.loads(store.get_version(vid, db_path=db)["payload_json"])
+    policy = payload["intraday_alert_policy"]
+    assert policy["enabled"] is True
+    assert policy["policy_status"] == schema.POLICY_CONFIGURED
+
+
+def test_generated_policy_has_all_twelve_keys_in_range(tmp_path):
+    """12개 키가 전부 있고 범위 안이다. 하나라도 빠지면 `validate` 가 막는다."""
+    db = _db(tmp_path)
+    vid = _make(tmp_path, db)
+    policy = json.loads(store.get_version(vid, db_path=db)["payload_json"])[
+        "intraday_alert_policy"
+    ]
+    missing = [k for k in schema.REQUIRED_POLICY_KEYS if policy.get(k) is None]
+    assert missing == [], f"누락: {missing}"
+    for key, lo, hi in schema.POLICY_RANGES:
+        assert lo <= policy[key] <= hi, f"{key}={policy[key]} 범위 [{lo}, {hi}] 밖"
+
+
+def test_generated_policy_matches_designer_confirmed_values(tmp_path):
+    """설계자 §3 이 값까지 못박은 것과 일치한다.
+
+    임의 생성 금지 — 이 표가 바뀌면 설계자 확정이 바뀐 것이어야 한다.
+    """
+    db = _db(tmp_path)
+    vid = _make(tmp_path, db)
+    policy = json.loads(store.get_version(vid, db_path=db)["payload_json"])[
+        "intraday_alert_policy"
+    ]
+    for key, want in {
+        "cooldown_minutes": 120,
+        "max_sends_per_day": 4,
+        "max_items_per_section": 3,
+        "sector_entry_min_pct": 1.5,
+        "sector_chase_pct": 4.0,
+        "sector_avoid_drop_pct": -1.5,
+        "sector_rank_top_pct": 20.0,
+        "sector_min_coverage_pct": 80.0,
+        # §3 목록 밖 — 설계서 확정값(§13-1 구간 · §6 회차 상한 · §5 창)
+        "surge_threshold_pct": 5.0,
+        "drop_threshold_pct": -5.0,
+        "max_sends_per_run": 1,
+        "dedup_window_minutes": 120,
+    }.items():
+        assert policy[key] == want, f"{key}: {policy[key]} != {want}"
+
+
+def test_policy_is_not_silently_taken_from_schema_defaults(tmp_path):
+    """**스키마 기본값 주입이 아니라** 생성부가 명시한 값이다(설계자 지시).
+
+    `CONFIRMED_POLICY` 를 바꾸면 산출 번들도 바뀌어야 한다. 기본값에서 조용히
+    오는 구조면 이 테스트가 잡는다.
+    """
+    db = _db(tmp_path)
+    from unittest.mock import patch
+
+    tweaked = dict(generator.CONFIRMED_POLICY)
+    # `dedup_window_minutes` 는 별칭이라 **함께** 옮겨야 한다(OPS-03 보완).
+    tweaked["cooldown_minutes"] = 90
+    tweaked["dedup_window_minutes"] = 90
+    with patch.object(generator, "CONFIRMED_POLICY", tweaked):
+        vid = _make(tmp_path, db)
+    policy = json.loads(store.get_version(vid, db_path=db)["payload_json"])[
+        "intraday_alert_policy"
+    ]
+    assert policy["cooldown_minutes"] == 90
+    assert schema.INITIAL_POLICY_VALUES["cooldown_minutes"] == 120, "기본값은 그대로"
+
+
+def test_state_api_exposes_policy_values_read_only(tmp_path, monkeypatch):
+    """`GET /state` 가 12개 키를 **읽기 전용**으로 내린다(OPS-03 §2).
+
+    값을 바꾸는 엔드포인트는 만들지 않는다 — 쓰기는 승인·기각 2개뿐이다.
+    """
+    from app import api_intraday_config as api_mod
+
+    db = _db(tmp_path)
+    _make(tmp_path, db)
+    monkeypatch.setattr(store, "DEFAULT_DB_PATH", db, raising=False)
+
+    keys = [p.key for p in api_mod.ConfigStateResponse().policy_values]
+    assert keys == []  # 기본 응답은 비어 있다(상태 없음)
+
+    routes = {
+        (m, r.path) for r in api_mod.router.routes for m in getattr(r, "methods", set())
+    }
+    writes = {(m, p) for m, p in routes if m in ("POST", "PUT", "PATCH", "DELETE")}
+    assert writes == {
+        ("POST", "/intraday-config/approve-and-apply"),
+        ("POST", "/intraday-config/reject"),
+    }, f"정책 편집 엔드포인트가 생겼다: {writes}"
+
+
+# ── OPS-03 필수 보완 — 선언만 된 설정값을 남기지 않는다 ────────────────────
+#
+# `dedup_window_minutes` 와 `max_sends_per_run` 은 실행 코드가 읽지 않는다.
+# 범위 검사만 두면 화면에 "조절 가능" 처럼 보이면서 실제 효과가 0인 장식용
+# 값이 된다. 설계자가 각각 **호환 별칭**·**고정값**으로 확정했다.
+
+
+def _policy_with(**over):
+    from app.intraday_config.generator import CONFIRMED_POLICY
+
+    p = dict(CONFIRMED_POLICY)
+    p.update(over)
+    return p
+
+
+def _build(policy):
+    return schema.build_payload(
+        rule_version="r",
+        sectors=[
+            {"sector_key": "S", "representative": {"ticker": "T", "short_name": "n"}}
+        ],
+        token_dictionary={},
+        data_asof="2026-09-17",
+        excluded=[],
+        policy=policy,
+    )
+
+
+def test_dedup_window_must_equal_cooldown():
+    """`dedup_window_minutes` 는 `cooldown_minutes` 의 호환 별칭이다."""
+    _build(_policy_with())  # 기본값은 통과
+    with pytest.raises(schema.ConfigSchemaError, match="호환 별칭"):
+        _build(_policy_with(dedup_window_minutes=90))
+    # 둘을 **같이** 옮기는 것은 허용된다 — 별칭이지 상수가 아니다.
+    _build(_policy_with(cooldown_minutes=90, dedup_window_minutes=90))
+
+
+def test_max_sends_per_run_is_fixed_at_one():
+    """회차당 본문 1개라는 **구조에서 나온 고정값**이다."""
+    # 범위(1~10) **안**이지만 1 이 아닌 값 — 고정값 규칙이 잡아야 한다.
+    for bad in (2, 5, 10):
+        with pytest.raises(schema.ConfigSchemaError, match="고정값"):
+            _build(_policy_with(max_sends_per_run=bad))
+    # 범위 밖은 기존 범위 검사가 먼저 잡는다(메시지가 다르다).
+    with pytest.raises(schema.ConfigSchemaError, match="범위 밖"):
+        _build(_policy_with(max_sends_per_run=0))
+    assert schema.FIXED_MAX_SENDS_PER_RUN == 1
+
+
+def test_derived_keys_are_named_so_ui_can_separate_them():
+    """화면이 두 키를 가려내려면 **코드가 목록을 갖고 있어야** 한다.
+
+    화면에서만 문자열로 골라내면, 키가 늘어날 때 조용히 섞인다.
+    """
+    assert set(schema.DERIVED_POLICY_KEYS) == {
+        "dedup_window_minutes",
+        "max_sends_per_run",
+    }
+    for k in schema.DERIVED_POLICY_KEYS:
+        assert k in schema.REQUIRED_POLICY_KEYS, f"{k} 는 여전히 번들에 실린다"
+
+
+def test_generated_bundle_satisfies_derived_key_rules():
+    """산출 번들이 두 규칙을 실제로 만족한다."""
+    from app.intraday_config.generator import CONFIRMED_POLICY
+
+    assert (
+        CONFIRMED_POLICY["dedup_window_minutes"] == CONFIRMED_POLICY["cooldown_minutes"]
+    )
+    assert CONFIRMED_POLICY["max_sends_per_run"] == schema.FIXED_MAX_SENDS_PER_RUN
+
+
+# ── OPS-03 P1 — 현재 active 상태와 적용 예정 후보를 구분한다 ───────────────
+#
+# `policy = (cp or ap)` 였다. 후보가 있으면 후보 값이 `policy_enabled` 로
+# 나가서, active 가 비활성인데도 화면이 「장중 알림 발송 중」 으로 보이고
+# 활성화 경고는 `!policy_enabled` 조건에 가려 숨었다(검증자 실측).
+#
+# 앞선 API 테스트는 **엔드포인트 목록만** 봤다. 응답 내용을 안 봐서 못 잡았다.
+
+
+def _pending_activation(db):
+    """active=비활성 · 후보=enabled 인 실제 승인 대기 상태를 만든다."""
+    s = [{"sector_key": "S0", "representative": {"ticker": "T0", "short_name": "n"}}]
+    act = schema.build_payload(
+        rule_version="sector_rep.v1",
+        sectors=s,
+        token_dictionary={},
+        data_asof="2026-09-10",
+        excluded=[],
+        policy={"enabled": False, "policy_status": schema.POLICY_NOT_CONFIGURED},
+    )
+    va, _ = store.create_candidate(act, evaluation_input_hash="h1", db_path=db)
+    store.approve(va, approved_by="u", db_path=db)
+    store.activate(va, activated_by="u", db_path=db)
+    cand = schema.build_payload(
+        rule_version="sector_rep.v1",
+        sectors=s
+        + [{"sector_key": "S1", "representative": {"ticker": "T1", "short_name": "m"}}],
+        token_dictionary={},
+        data_asof="2026-09-17",
+        excluded=[],
+        policy=dict(generator.CONFIRMED_POLICY),
+    )
+    vc, _ = store.create_candidate(cand, evaluation_input_hash="h2", db_path=db)
+    return va, vc
+
+
+def _state_in(db, va, vc, monkeypatch):
+    from app import api_intraday_config as api_mod
+
+    monkeypatch.setattr(
+        store, "get_active", lambda **k: store.get_version(va, db_path=db)
+    )
+    monkeypatch.setattr(
+        store,
+        "actionable_version",
+        lambda **k: (store.get_version(vc, db_path=db), "pending_approval"),
+    )
+    monkeypatch.setattr(store, "latest_sync", lambda v, **k: None)
+    return api_mod.get_state()
+
+
+def test_state_reports_active_policy_not_candidate(tmp_path, monkeypatch):
+    """`policy_enabled` 는 **지금 운영 중인** 값이다."""
+    db = _db(tmp_path)
+    r = _state_in(db, *_pending_activation(db), monkeypatch)
+    assert r.policy_enabled is False, "승인 전인데 발송 중으로 보고했다"
+    assert r.policy_status == schema.POLICY_NOT_CONFIGURED
+
+
+def test_state_reports_candidate_policy_separately(tmp_path, monkeypatch):
+    """적용하면 켜진다는 사실을 **별도 필드**로 내린다 — 경고의 근거다."""
+    db = _db(tmp_path)
+    r = _state_in(db, *_pending_activation(db), monkeypatch)
+    assert r.candidate_policy_enabled is True
+    assert r.candidate_policy_status == schema.POLICY_CONFIGURED
+
+
+def test_state_policy_values_come_from_the_version_being_approved(
+    tmp_path, monkeypatch
+):
+    """「적용될 판정 기준」 은 **승인 대상**(후보) 기준이다."""
+    db = _db(tmp_path)
+    r = _state_in(db, *_pending_activation(db), monkeypatch)
+    vals = {p.key: p.value for p in r.policy_values}
+    assert len(vals) == len(schema.REQUIRED_POLICY_KEYS)
+    assert vals["cooldown_minutes"] == generator.CONFIRMED_POLICY["cooldown_minutes"]
+    assert r.policy_rule_version == "sector_rep.v1"
+
+
+def test_state_without_candidate_has_no_candidate_policy(tmp_path, monkeypatch):
+    """후보가 없으면 적용 예정 상태도 없다 — `False` 로 위장하지 않는다."""
+    from app import api_intraday_config as api_mod
+
+    db = _db(tmp_path)
+    va, _vc = _pending_activation(db)
+    monkeypatch.setattr(
+        store, "get_active", lambda **k: store.get_version(va, db_path=db)
+    )
+    monkeypatch.setattr(store, "actionable_version", lambda **k: (None, None))
+    monkeypatch.setattr(store, "latest_sync", lambda v, **k: None)
+    r = api_mod.get_state()
+    assert r.candidate_policy_enabled is None
+    assert r.candidate_policy_status is None

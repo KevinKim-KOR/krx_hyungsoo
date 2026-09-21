@@ -25,6 +25,34 @@ from app.intraday_config import schema, selector, store
 
 REEVAL_INTERVAL_TRADING_DAYS = 20
 
+# POC3-02C-OPS-03 §3 — **PC 가 생성하는 버전된 정책 데이터.**
+#
+# 스키마 기본값으로 조용히 주입하지 않는다(설계자 지시). 산출 번들에 정책을
+# 담아 사용자가 **버전 전체를 승인**하고, OCI 는 승인된 번들을 읽어 판정한다.
+# 사용자가 임계값을 하나씩 편집하는 화면은 만들지 않는다.
+#
+# 키마다 확정 근거를 적는다 — 근거 없는 값은 만들지 않는다(설계자 지시).
+CONFIRMED_POLICY: dict[str, Any] = {
+    "enabled": True,
+    "policy_status": schema.POLICY_CONFIGURED,
+    # ── 설계자 OPS-03 §3 이 값까지 명시한 9개 ──────────────────────────
+    "cooldown_minutes": 120,  # 설계 §5 — 회복 후 재진입 120분
+    "max_sends_per_day": 4,  # 설계 §6 — 조건형 일일 상한 4건
+    #   설계자는 `max_alerts_per_day` 로 적었으나 스키마 키는
+    #   `max_sends_per_day` 다. 값(4)·의미(조건형 일일 상한)는 같아 그대로 쓴다.
+    "max_items_per_section": 3,  # 설계 §6 — 구역별 3종목
+    "sector_entry_min_pct": 1.5,  # 설계 §4-2 — 진입 검토 하한
+    "sector_chase_pct": 4.0,  # 설계 §4-2 — 추격 주의 하한
+    "sector_avoid_drop_pct": -1.5,  # 설계 §4-2 — 진입 회피(급락) 상한
+    "sector_rank_top_pct": 20.0,  # 설계 §4-2 — 상·하위 20% 순위 조건
+    "sector_min_coverage_pct": 80.0,  # 설계 §14 커버리지 Gate
+    # ── §3 목록에 없어 설계서·스키마 확정값을 쓴 3개 ───────────────────
+    "surge_threshold_pct": 5.0,  # 설계 §13-1 — 급등 최저 구간 `U5_7 = +5% 이상`
+    "drop_threshold_pct": -5.0,  # 설계 §13-1 — 급락 최저 구간 `D5_7 = -5% 이하`
+    "max_sends_per_run": 1,  # 설계 §6 — 회차당 메시지 최대 1건
+    "dedup_window_minutes": 120,  # 설계 §5 — 중복 억제 창 120분(cooldown 과 동일)
+}
+
 DEFAULT_CSV = Path("state/market_meta/krx_etf_basic_20260909.csv")
 DEFAULT_DB = Path("state/market/market_data.sqlite")
 
@@ -132,6 +160,9 @@ def generate(
             token_dictionary=dictionary,
             data_asof=asof,
             excluded=excluded,
+            # **정책을 번들에 담는다**(OPS-03 §2). 예전에는 넘기지 않아 스키마
+            # 기본값(`enabled=False`)이 들어갔고, 그래서 켤 방법이 없었다.
+            policy=dict(CONFIRMED_POLICY),
         )
         eval_hash = selector.evaluation_input_hash(
             csv_path=csv_path,

@@ -39,6 +39,15 @@ const BASE: IntradayConfigState = {
   ],
   policy_enabled: false,
   policy_status: "NOT_CONFIGURED",
+  candidate_policy_enabled: false,
+  candidate_policy_status: "NOT_CONFIGURED",
+  policy_values: [
+    { key: "drop_threshold_pct", value: -5.0 },
+    { key: "surge_threshold_pct", value: 5.0 },
+    { key: "cooldown_minutes", value: 120 },
+    { key: "max_sends_per_day", value: 4 },
+  ],
+  policy_rule_version: "sector_rep.v1",
   deploy_status: null,
   deploy_error: null,
   action_state: "pending_approval",
@@ -244,5 +253,55 @@ describe("IntradayConfigCard", () => {
     );
     expect(labels.filter((l) => l.includes("승인")).length).toBe(1);
     expect(labels.some((l) => l === "OCI 적용")).toBe(false);
+  });
+});
+
+// ── 승인 대기 중인 **활성화 후보** (검증자 P1) ─────────────────────────────
+//
+// active 는 비활성인데 후보가 `enabled=true` 인 실제 상태다. 예전에는 API 가
+// 후보 값을 `policy_enabled` 로 내려서, 승인 전인데도 「장중 알림 발송 중」 으로
+// 보이고 정작 활성화 경고는 `!policy_enabled` 조건에 가려 숨었다.
+describe("IntradayConfigCard — 활성화 후보 승인 대기", () => {
+  const ENABLING: IntradayConfigState = {
+    ...BASE,
+    policy_enabled: false, // 지금은 꺼져 있다
+    policy_status: "NOT_CONFIGURED",
+    candidate_policy_enabled: true, // 적용하면 켜진다
+    candidate_policy_status: "CONFIGURED",
+  };
+
+  async function renderEnabling() {
+    vi.mocked(fetchIntradayConfigState).mockResolvedValue(ENABLING);
+    const r = render(<IntradayConfigCard />);
+    await screen.findByText("장중 급등락 설정");
+    return r;
+  }
+
+  it("승인 전에는 '발송 중' 으로 표시하지 않는다", async () => {
+    const { container } = await renderEnabling();
+    const text = container.textContent ?? "";
+    expect(text).toContain("구조 준비 완료 · 장중 알림 정책 설정 전");
+    expect(text).not.toContain("장중 알림 발송 중");
+  });
+
+  it("적용 후 켜진다는 것을 따로 보여준다", async () => {
+    const { container } = await renderEnabling();
+    expect(container.textContent ?? "").toContain("장중 알림 발송 시작");
+  });
+
+  it("활성화 경고를 숨기지 않는다", async () => {
+    const { container } = await renderEnabling();
+    const text = container.textContent ?? "";
+    expect(text).toContain("이 설정을 적용하면 장중 알림이 실제로 발송됩니다");
+    expect(text).toContain("하루 최대 8건");
+  });
+
+  it("후보가 비활성이면 활성화 경고를 띄우지 않는다", async () => {
+    vi.mocked(fetchIntradayConfigState).mockResolvedValue(BASE);
+    const { container } = render(<IntradayConfigCard />);
+    await screen.findByText("장중 급등락 설정");
+    expect(container.textContent ?? "").not.toContain(
+      "이 설정을 적용하면 장중 알림이 실제로 발송됩니다",
+    );
   });
 });

@@ -40,6 +40,14 @@ from typing import Any, Optional
 SCHEMA_VERSION = "intraday_alert_config.v1"
 DEFAULT_ACTIVE_SCOPE = "intraday_alert"
 
+# OPS-03 — 조절 대상이 아닌 두 키.
+#
+# `dedup_window_minutes` 는 `cooldown_minutes` 의 **호환 별칭**이고,
+# `max_sends_per_run` 은 조립이 회차당 본문을 하나만 만든다는 **구조에서 나온
+# 고정값**이다. 둘 다 독립 정책처럼 표현하지 않는다(설계자 필수 보완).
+FIXED_MAX_SENDS_PER_RUN = 1
+DERIVED_POLICY_KEYS = ("dedup_window_minutes", "max_sends_per_run")
+
 POLICY_NOT_CONFIGURED = "NOT_CONFIGURED"
 POLICY_CONFIGURED = "CONFIGURED"
 
@@ -238,6 +246,23 @@ def validate(payload: dict[str, Any]) -> None:
                 raise ConfigSchemaError(f"{key} 는 숫자여야 한다: {v!r}")
             if v != v or not (lo <= float(v) <= hi):
                 raise ConfigSchemaError(f"{key} 범위 밖({lo}~{hi}): {v!r}")
+        # OPS-03 설계자 필수 보완 — **선언만 된 설정값을 남기지 않는다.**
+        #
+        # 두 키는 이번 버전에서 독립 조절 대상이 아니다. 범위 검사만 두면
+        # 실행 코드가 읽지 않는 장식용 값이 되어, 화면에 "조절 가능" 처럼
+        # 보이면서 실제로는 아무 효과가 없다.
+        if policy.get("dedup_window_minutes") != policy.get("cooldown_minutes"):
+            raise ConfigSchemaError(
+                "dedup_window_minutes 는 cooldown_minutes 의 호환 별칭이다 — "
+                f"같아야 한다: {policy.get('dedup_window_minutes')!r} != "
+                f"{policy.get('cooldown_minutes')!r}"
+            )
+        if policy.get("max_sends_per_run") != FIXED_MAX_SENDS_PER_RUN:
+            raise ConfigSchemaError(
+                "max_sends_per_run 은 회차당 본문 1개라는 구조에서 나온 고정값"
+                f"({FIXED_MAX_SENDS_PER_RUN})이다: "
+                f"{policy.get('max_sends_per_run')!r}"
+            )
     else:
         if status != POLICY_NOT_CONFIGURED:
             raise ConfigSchemaError(
@@ -274,6 +299,8 @@ def build_payload(
 
 __all__ = [
     "DEFAULT_ACTIVE_SCOPE",
+    "DERIVED_POLICY_KEYS",
+    "FIXED_MAX_SENDS_PER_RUN",
     "POLICY_CONFIGURED",
     "POLICY_NOT_CONFIGURED",
     "REQUIRED_POLICY_KEYS",

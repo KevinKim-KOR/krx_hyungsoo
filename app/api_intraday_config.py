@@ -24,6 +24,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.intraday_config import store
+from app.intraday_config.schema import REQUIRED_POLICY_KEYS
 
 router = APIRouter(prefix="/intraday-config", tags=["intraday-config"])
 
@@ -41,6 +42,17 @@ class SectorChange(BaseModel):
     after: Optional[str] = None
 
 
+class PolicyValue(BaseModel):
+    """정책 키 하나. **읽기 전용 표시용**이다(OPS-03 §2).
+
+    사용자가 값을 고치는 화면은 만들지 않는다. PC 가 산출한 버전을 통째로
+    승인하는 것이 계약이다.
+    """
+
+    key: str
+    value: Any
+
+
 class ConfigStateResponse(BaseModel):
     active_version_id: Optional[str] = None
     active_source_hash: Optional[str] = None
@@ -51,8 +63,17 @@ class ConfigStateResponse(BaseModel):
     candidate_data_asof: Optional[str] = None
     candidate_sector_count: int = 0
     changes: list[SectorChange] = []
+    # **현재 운영 중인 active 정책**의 상태다. 후보 값을 여기 섞지 않는다 —
+    # 승인 전인데 "발송 중" 으로 보이고 활성화 경고가 숨는다(검증자 P1).
     policy_enabled: bool = False
     policy_status: Optional[str] = None
+    # **적용하면 어떻게 되는지.** 후보가 없으면 `None` 이다.
+    candidate_policy_enabled: Optional[bool] = None
+    candidate_policy_status: Optional[str] = None
+    # OPS-03 §2 — 카드에 읽기 전용으로 보여줄 정책 키 12개와 산출 출처.
+    # 승인 대상 버전(후보가 있으면 후보, 없으면 active)의 값이다.
+    policy_values: list[PolicyValue] = []
+    policy_rule_version: Optional[str] = None
     deploy_status: Optional[str] = None
     deploy_error: Optional[str] = None
     # 지금 사용자가 해야 할 일. pending_approval = 승인 · approved_not_deployed =
@@ -147,7 +168,11 @@ def get_state() -> ConfigStateResponse:
             action_state=action_state,
             payload_error=str(e),
         )
-    policy = (cp or ap).get("intraday_alert_policy") or {}
+    # 현재 상태와 적용 예정 상태를 **분리해서** 읽는다.
+    active_policy = ap.get("intraday_alert_policy") or {}
+    cand_policy = (cp.get("intraday_alert_policy") or {}) if cand else {}
+    # 「적용될 판정 기준」 은 승인 대상 기준이다 — 후보가 있으면 후보.
+    shown_policy = cand_policy or active_policy
     sync = store.latest_sync(cand["config_version_id"]) if cand else None
     uni_a = ap.get("sector_representative_universe") or {}
     uni_c = cp.get("sector_representative_universe") or {}
@@ -161,8 +186,16 @@ def get_state() -> ConfigStateResponse:
         candidate_data_asof=uni_c.get("data_asof"),
         candidate_sector_count=len(uni_c.get("sectors") or []),
         changes=_diff(ap, cp) if cand else [],
-        policy_enabled=bool(policy.get("enabled")),
-        policy_status=policy.get("policy_status"),
+        policy_enabled=bool(active_policy.get("enabled")),
+        policy_status=active_policy.get("policy_status"),
+        candidate_policy_enabled=(bool(cand_policy.get("enabled")) if cand else None),
+        candidate_policy_status=(cand_policy.get("policy_status") if cand else None),
+        # 스키마가 요구하는 12개를 **그 순서대로** 내린다. 값이 없으면 `None`
+        # 으로 내려 "빠졌다" 는 사실이 화면에서도 보이게 한다(0 으로 위장 금지).
+        policy_values=[
+            PolicyValue(key=k, value=shown_policy.get(k)) for k in REQUIRED_POLICY_KEYS
+        ],
+        policy_rule_version=(cp if cand else ap).get("rule_version"),
         deploy_status=(sync or {}).get("status"),
         deploy_error=(sync or {}).get("error"),
         action_state=action_state,

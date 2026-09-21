@@ -24,8 +24,15 @@ export type IntradayConfigState = {
   candidate_data_asof: string | null;
   candidate_sector_count: number;
   changes: SectorChange[];
+  // **현재 운영 중인 active 정책** 상태. 후보 값이 아니다.
   policy_enabled: boolean;
   policy_status: string | null;
+  // **적용하면 어떻게 되는지.** 후보가 없으면 null.
+  candidate_policy_enabled: boolean | null;
+  candidate_policy_status: string | null;
+  // OPS-03 §2 — 읽기 전용 표시용. 값을 고치는 UI 는 만들지 않는다.
+  policy_values: { key: string; value: unknown }[];
+  policy_rule_version: string | null;
   deploy_status: string | null;
   deploy_error: string | null;
   // 지금 사용자가 할 일. pending_approval = 승인 · approved_not_deployed = 재시도.
