@@ -82,7 +82,7 @@ DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
 
 | 항목 | 값 |
 |---|---|
-| OCI HEAD | **자동 배포.** SHA 를 여기 적지 않는다 — 커밋할 때마다 낡는다. 확인: `ssh oci-krx "cd /home/ubuntu/krx_hyungsoo && git log --oneline -1"`. 2026-09-21 실측에서 `02C-OPS-02` 커밋과 일치 |
+| OCI HEAD | **수동 `git pull` 이다 — 자동 배포 장치가 없다**(2026-09-22 실측: user crontab 에 git 항목 0건 · 관련 systemd timer 0건 · `.git/FETCH_HEAD` 가 마지막 pull 시각). SHA 를 여기 적지 않는다 — 커밋할 때마다 낡는다. 확인: `ssh oci-krx "cd /home/ubuntu/krx_hyungsoo && git log --oneline -1"`. **푸시 후 사용자가 pull 하지 않으면 OCI 는 옛 코드로 돈다** |
 | 활성 PARAM | `param-20260907T152806-255383` — `enabled_push_kinds` 4종 |
 | cron | 러너 11건 + 배치 1건. 급락 알림 7틱, spike 호출 0건. **02C-OPS-02 로 추가된 cron 0건** |
 | 발송 플래그 | `PUSH_AUTOSEND_ENABLED=true` · `HOLDINGS_BRIEFING`·`HOLDINGS_RISK_ALERT`=`true` · `MARKET_BRIEFING`=`true` · `SPIKE`=`false` (2026-09-21 실측) |
