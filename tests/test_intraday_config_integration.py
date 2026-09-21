@@ -1265,3 +1265,131 @@ def test_state_without_candidate_has_no_candidate_policy(tmp_path, monkeypatch):
     r = api_mod.get_state()
     assert r.candidate_policy_enabled is None
     assert r.candidate_policy_status is None
+
+
+# ── OPS-03 — 정책이 바뀌면 후보가 생긴다 (사용자 실화면에서 발견) ──────────
+#
+# 재산출 게이트가 *사업군* 이 낡았는지만 봤다. 정책만 바뀌면 20거래일 동안
+# 후보조차 생기지 않아, 새 정책이 화면에 뜨지도 승인되지도 않았다.
+# 실화면 증상: 「적용될 판정 기준」 이 전부 `없음` · 「확인할 변경이 없습니다」.
+
+
+def _activate_with_policy(db, policy):
+    s = [{"sector_key": "S0", "representative": {"ticker": "T0", "short_name": "n"}}]
+    body = schema.build_payload(
+        rule_version="sector_rep.v1",
+        sectors=s,
+        token_dictionary={},
+        data_asof="2026-09-10",
+        excluded=[],
+        policy=policy,
+    )
+    vid, _ = store.create_candidate(body, evaluation_input_hash="h", db_path=db)
+    store.approve(vid, approved_by="u", db_path=db)
+    store.activate(vid, activated_by="u", db_path=db)
+    return vid
+
+
+def test_policy_change_triggers_regeneration(tmp_path, monkeypatch):
+    """active 정책이 `CONFIRMED_POLICY` 와 다르면 주기와 무관하게 재산출한다."""
+    db = _db(tmp_path)
+    _activate_with_policy(
+        db, {"enabled": False, "policy_status": schema.POLICY_NOT_CONFIGURED}
+    )
+    # 이 fixture 의 `T0` 는 실제 CSV 에 없어 적격성 검사에 먼저 걸린다.
+    # **정책 조건만** 보려고 그 앞 단계를 통과시킨다.
+    monkeypatch.setattr(
+        generator, "_representatives_still_eligible", lambda *a, **k: (True, [])
+    )
+    # 주기 게이트는 "아직 멀었다" 고 말하지만, 정책이 달라 재산출해야 한다.
+    monkeypatch.setattr(generator, "_trading_days_since", lambda *a, **k: 0)
+    need, why = generator.should_regenerate(state_db_path=db)
+    assert need is True
+    assert why == "policy_changed", why
+
+
+def test_same_policy_does_not_force_regeneration(tmp_path, monkeypatch):
+    """정책이 같으면 주기 게이트를 따른다 — 강제 순환하지 않는다."""
+    db = _db(tmp_path)
+    _activate_with_policy(db, dict(generator.CONFIRMED_POLICY))
+    monkeypatch.setattr(
+        generator, "_representatives_still_eligible", lambda *a, **k: (True, [])
+    )
+    monkeypatch.setattr(generator, "_trading_days_since", lambda *a, **k: 0)
+    need, why = generator.should_regenerate(state_db_path=db)
+    assert need is False
+    assert why.startswith("within_interval"), why
+
+
+def test_regenerated_candidate_carries_the_new_policy(tmp_path):
+    """재산출된 후보에 새 정책이 실린다 — 승인하면 그게 OCI 로 간다."""
+    db = _db(tmp_path)
+    _activate_with_policy(
+        db, {"enabled": False, "policy_status": schema.POLICY_NOT_CONFIGURED}
+    )
+    out = generator.generate(state_db_path=db)
+    assert out["status"] == "created", out
+    policy = json.loads(
+        store.get_version(out["config_version_id"], db_path=db)["payload_json"]
+    )["intraday_alert_policy"]
+    assert policy["enabled"] is True
+    assert not [k for k in schema.REQUIRED_POLICY_KEYS if policy.get(k) is None]
+    # 두 번째 호출은 같은 `effective_config_hash` 라 새 버전이 생기지 않는다.
+    assert generator.generate(state_db_path=db)["status"] == "unchanged"
+
+
+# ── OPS-03 — 승인이 끝난 뒤의 화면 (검증자 B-6) ────────────────────────────
+#
+# 기존 테스트는 **후보가 있는** 상태만 봤다. 승인이 끝나 후보가 사라지면
+# `latest_sync` 를 아예 읽지 않아, `deployed/ok` 인 운영 설정을 화면이
+# "아직 적용하지 않음" 으로 말했다. 활성화 직후가 정확히 그 상태다.
+
+
+def _activated_and_deployed(db):
+    """승인·활성화·배포까지 끝난 상태 — 후보가 없다."""
+    vid = _activate_with_policy(db, dict(generator.CONFIRMED_POLICY))
+    store.record_sync(
+        vid, target="oci", status="deployed", verify_status="ok", db_path=db
+    )
+    return vid
+
+
+def _state_active_only(db, monkeypatch):
+    from app import api_intraday_config as api_mod
+
+    vid = _activated_and_deployed(db)
+    # **원본을 먼저 잡는다** — 패치 안에서 `store.latest_sync` 를 부르면 패치된
+    # 자기 자신을 불러 무한 재귀가 된다(실측으로 잡았다).
+    real_sync, real_get = store.latest_sync, store.get_version
+    monkeypatch.setattr(store, "get_active", lambda **k: real_get(vid, db_path=db))
+    monkeypatch.setattr(store, "actionable_version", lambda **k: (None, None))
+    monkeypatch.setattr(store, "latest_sync", lambda v, **k: real_sync(v, db_path=db))
+    return api_mod.get_state(), vid
+
+
+def test_deploy_status_reported_for_active_when_no_candidate(tmp_path, monkeypatch):
+    """후보가 없어도 **active 의 배포 상태**를 읽는다."""
+    db = _db(tmp_path)
+    r, _vid = _state_active_only(db, monkeypatch)
+    assert r.candidate_version_id is None
+    assert r.deploy_status == "deployed", "배포했는데 미적용으로 보고했다"
+    assert r.deploy_error is None
+
+
+def test_activated_state_reports_enabled_and_no_candidate(tmp_path, monkeypatch):
+    """활성화 직후 — 지금 켜져 있고 적용 예정은 없다."""
+    db = _db(tmp_path)
+    r, _vid = _state_active_only(db, monkeypatch)
+    assert r.policy_enabled is True
+    assert r.policy_status == schema.POLICY_CONFIGURED
+    assert r.candidate_policy_enabled is None
+    assert r.action_state is None
+
+
+def test_active_policy_values_shown_when_no_candidate(tmp_path, monkeypatch):
+    """후보가 없으면 「적용될 판정 기준」 은 **active** 값이다 — `없음` 이 아니다."""
+    db = _db(tmp_path)
+    r, _vid = _state_active_only(db, monkeypatch)
+    vals = {p.key: p.value for p in r.policy_values}
+    assert not [k for k, v in vals.items() if v is None], vals
+    assert vals["cooldown_minutes"] == generator.CONFIRMED_POLICY["cooldown_minutes"]

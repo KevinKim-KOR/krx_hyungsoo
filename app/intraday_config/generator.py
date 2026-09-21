@@ -119,6 +119,17 @@ def should_regenerate(
     if not ok:
         return True, f"representative_ineligible:{','.join(bad[:5])}"
 
+    # **정책이 바뀌면 주기와 무관하게 재산출한다.**
+    #
+    # 아래 주기 게이트는 *사업군* 이 낡았는지만 본다. 그래서 정책만 바뀌면
+    # 20거래일 동안 후보조차 생기지 않아, 새 정책이 화면에 뜨지도 승인되지도
+    # 않는다 — 사용자 실화면에서 판정 기준이 전부 `없음` 으로 나와 발견했다.
+    #
+    # 결과가 같으면 `effective_config_hash` 가 같아 새 버전이 안 생기므로
+    # (§10-3(1)) 강제 순환이 되지 않는다.
+    if (payload.get("intraday_alert_policy") or {}) != CONFIRMED_POLICY:
+        return True, "policy_changed"
+
     uni = payload.get("sector_representative_universe") or {}
     elapsed = _trading_days_since(_stored_trading_days(db_path), uni.get("data_asof"))
     if elapsed is None:

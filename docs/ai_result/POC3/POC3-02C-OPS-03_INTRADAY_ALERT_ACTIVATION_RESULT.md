@@ -9,16 +9,18 @@ TOTAL_POLICY_FIELDS         = 14
 DERIVED_POLICY_KEYS         = 2  (dedup_window_minutes · max_sends_per_run)
 USER_EDITABLE_THRESHOLDS    = 0
 CANDIDATE_DRY_RUN           = PASS
-FLOW_THROUGH_TESTS          = PASS  (관통 57 · 설정 73)
-BACKEND_FULL_REGRESSION     = 1,921 passed / 0 failed / 0 errors
+CANDIDATE_REACHABLE         = YES  (라이브 /state 에 pending_approval · §13)
+FLOW_THROUGH_TESTS          = PASS  (관통 57 · 설정 79)
+BACKEND_FULL_REGRESSION     = 1,927 passed / 0 failed / 0 errors
 FRONTEND                    = 18 files / 211 passed · tsc·eslint 0건
 BLACK / FLAKE8              = 361 files unchanged / 0건
 KS10_TRIGGER / NEAR         = 0 / 7
 RUNNER_LINES                = 646  (동결선 648 이하 · 이번 Step 변경 0줄)
-OCI_ACTIVE_ENABLED          = false
-TELEGRAM_SENDS              = 0
+OCI_ACTIVE_ENABLED          = **true** — 사용자가 2026-09-21 23:48 KST 승인 (§14)
+TELEGRAM_SENDS              = 0  (활성화 이후 첫 틱은 2026-09-22 09:30)
 USER_MESSAGE_APPROVAL       = APPROVED (2026-09-21 · 형식 + 하루 최대 8건)
-COMMIT_PUSH_OCI_APPLY       = 미수행 (검증자 통과 전 금지)
+OCI_APPLY                   = 수행됨 — 사용자 승인 버튼 (`approved_by=user`)
+COMMIT_PUSH                 = 미수행 (검증자 통과 전 금지)
 BLOCKING_ITEM               = NONE
 ```
 
@@ -285,13 +287,13 @@ data_asof     2026-09-11
 | 줄 | 파일 | 내용 |
 |---:|---|---|
 | 419 | `app/runtime_evidence/holdings_selection_flow.py` | §1 — 15:40 요약에 정책 Gate |
-| 193 | `app/intraday_config/generator.py` | §2·§3 — `CONFIRMED_POLICY` 를 번들에 |
-| 283 | `app/api_intraday_config.py` | §2 — `policy_values` · `policy_rule_version` |
+| 204 | `app/intraday_config/generator.py` | §2·§3 — `CONFIRMED_POLICY` 를 번들에 |
+| 290 | `app/api_intraday_config.py` | §2 — `policy_values` · `policy_rule_version` |
 | 73 | `frontend/lib/api/intradayConfig.ts` | 같음 (타입) |
 | 340 | `frontend/app/components/IntradayConfigCard.tsx` | §2 — 읽기 전용 표시 · 활성화 경고 |
 | 307 | `frontend/app/components/IntradayConfigCard.test.tsx` | fixture 에 신규 필드 |
 | 1298 | `tests/test_intraday_alert_flow_through.py` | §1 관통 4건 |
-| 1267 | `tests/test_intraday_config_integration.py` | §2·§3 계약 5건 |
+| 1395 | `tests/test_intraday_config_integration.py` | §2·§3 계약 5건 |
 | 134 | `docs/ai_design/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_DESIGN_V1.md` | 설계자 지시 보존본 (신규) |
 | — | `docs/ai_result/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_RESULT.md` | 이 문서 (줄 수는 자기참조라 적지 않는다) |
 
@@ -360,10 +362,8 @@ data_asof     2026-09-11
    고정 4건 + 조건형 최대 4건 = 하루 최대 8건   승인
    ```
 
-2. **커밋·푸시·OCI 적용 미수행.** 검증자 통과 전 금지 계약을 지켰다.
-   검증자 통과 후 코드 배포는 가능하되, 기존 active 정책은 `enabled=false`
-   로 유지한다. `enabled=true` 후보의 `approve-and-apply` 는 **그 적용이 곧
-   실제 활성화**이므로 별도 시점에 수행한다.
+2. **OCI 적용은 사용자가 수행했다**(2026-09-21 23:48 KST · §14).
+   코드 커밋·푸시는 여전히 미수행이다 — 검증자 통과 전 금지 계약을 지킨다.
 
 ---
 
@@ -436,3 +436,193 @@ active 정책    enabled = False · NOT_CONFIGURED
 API 를 (cp or ap) 로 되돌림              policy_enabled=True 재현 · 백엔드 1 failed
 경고 조건을 !candidate_policy_enabled 로  프론트 2 failed
 ```
+
+---
+
+## 13. 사용자 실화면에서 발견 — 후보가 아예 생기지 않았다
+
+### 13-1. 증상
+
+검증자 `VERIFIED_WITH_NOTES` 이후 사용자가 카드를 열었더니:
+
+```text
+적용될 판정 기준
+  보유 급등 기준   없음
+  보유 급락 기준   없음
+  ...            없음      ← 12개 전부
+확인할 변경이 없습니다.
+승인 버튼 없음
+```
+
+화면은 **사실을 정확히 말하고 있었다** — active 번들에 정책 값이 없고
+(`enabled`·`policy_status` 2필드뿐), 후보도 없었다. `없음` 표시가 "빠졌다" 는
+사실을 가리지 않은 덕에 드러났다.
+
+### 13-2. 원인 — 재산출 게이트가 정책을 보지 않았다
+
+`should_regenerate()` 는 세 가지만 봤다.
+
+```text
+active 없음                  → 재산출
+대표 ETF 부적격              → 재산출
+data_asof 후 20거래일 경과    → 재산출
+그 밖                        → within_interval
+```
+
+**정책이 바뀐 것은 조건에 없다.** 실측이 `(False, 'within_interval:0')` 이었다.
+즉 `CONFIRMED_POLICY` 를 번들에 담도록 고쳤어도, **20거래일이 지나기 전에는
+후보조차 만들어지지 않아** 화면에 뜨지도 승인되지도 않는다.
+
+§3 의 "켤 수 없었다" 를 고쳤다고 했지만, 실제로는 **여전히 켤 수 없었다.**
+설계자 §4 의 2단계(정책 후보 생성)가 성립하지 않는 상태였다.
+
+### 13-3. 고친 것
+
+`app/intraday_config/generator.py` `should_regenerate()` — 대표 적격성 검사
+뒤에 정책 비교를 넣는다.
+
+```python
+if (payload.get("intraday_alert_policy") or {}) != CONFIRMED_POLICY:
+    return True, "policy_changed"
+```
+
+강제 순환은 생기지 않는다 — 결과가 같으면 `effective_config_hash` 가 같아
+새 버전이 만들어지지 않는다(§10-3(1)). 실측:
+
+```text
+should_regenerate   (True, 'policy_changed')
+generate            created   · 후보 정책 enabled=True · 값 키 12
+재호출              unchanged · 같은 버전 id
+```
+
+### 13-4. 실제 화면으로 확인
+
+백엔드가 `--reload` 로 코드 변경을 잡아 `startup.catch_up()` 이 돌았고,
+라이브 `/intraday-config/state` 가 후보를 내놓았다.
+
+```text
+active     intraday-20260916T144047-642949 · enabled = False
+후보       intraday-20260921T144447-168782 · enabled = True
+action     pending_approval
+지금 알림 상태  구조 준비 완료 · 장중 알림 정책 설정 전
+적용 후 상태    장중 알림 발송 시작
+판정 기준       10개 표시 (파생·고정 2개는 한 줄 설명)
+변경 건수       0 — 사업군은 그대로이고 **정책만** 바뀐 후보다
+```
+
+이 시점에는 active 가 `enabled=false` 였다. **그 뒤 사용자가 승인 버튼을
+눌러 활성화됐다** — §14.
+
+### 13-5. 테스트
+
+| 테스트 | 계약 |
+|---|---|
+| `test_policy_change_triggers_regeneration` | 정책이 다르면 주기와 무관하게 재산출 |
+| `test_same_policy_does_not_force_regeneration` | 같으면 주기 게이트를 따른다 (강제 순환 금지) |
+| `test_regenerated_candidate_carries_the_new_policy` | 후보에 새 정책이 실리고, 재호출은 `unchanged` |
+
+무력화 실증 — 조건을 지우면 `test_policy_change_triggers_regeneration` **1 failed**.
+(`..._carries_the_new_policy` 는 fixture 의 대표가 부적격이라 다른 경로로
+재산출돼 통과한다. 그 테스트는 트리거가 아니라 **후보 내용**을 본다.)
+
+### 13-6. 왜 자동 테스트가 못 잡았나
+
+§2·§3 의 테스트는 전부 **격리 DB 에서 `generate()` 를 직접 불렀다.** 그래서
+`should_regenerate` 의 주기 게이트가 막는 상황을 지나쳤다. "함수를 부르면
+후보가 나온다" 는 봤지만 **"운영 상태에서 후보가 나오는가"** 는 안 봤다.
+
+앞선 라운드에서도 같은 종류였다 — 엔드포인트 목록만 보고 응답 내용을 안 봤다
+(§12-3). **호출 가능성과 도달 가능성은 다르다.**
+
+---
+
+## 14. 활성화됨 · 배포 상태 표시 결함 (검증자 REJECTED)
+
+### 14-1. 활성화 사실
+
+§13 을 보고한 뒤, **사용자가 카드의 승인 버튼을 눌러 활성화했다.**
+개발자가 수행한 것이 아니다. 로컬 DB 실측:
+
+```text
+intraday-20260921T144447-168782
+  created_at    2026-09-21T14:44:47Z
+  approved_at   2026-09-21T14:48:30Z   approved_by  user
+  activated_at  2026-09-21T14:48:34Z   activated_by pc_deploy
+  policy        enabled=True · CONFIGURED
+sync  deployed · verify ok · remote_hash 785053893d5a…
+```
+
+OCI 실측(읽기 전용):
+
+```text
+version  intraday-20260921T144447-168782
+enabled  True · CONFIGURED · 값 키 12 · 사업군 27
+```
+
+**장중 급등락 알림은 지금 운영 중이다.** 기존 `holdings_risk_alert` cron 7틱과
+발송 플래그가 이미 살아 있으므로, 활성화 이후 첫 틱(2026-09-22 09:30)부터
+조건이 맞으면 실제로 발송된다. 메시지 형식과 하루 최대 8건은 사용자가 앞서
+승인했다(§11).
+
+설계자 §4 의 8단계(사용자 승인 후 `approve-and-apply`)가 수행된 것이고,
+9·10단계(OCI read-back · 다음 cron 운영 확인)가 남는다. read-back 은 위
+실측으로 끝났다 — 로컬 `remote_hash` 와 OCI active 버전이 일치한다.
+
+### 14-2. 결함 — 배포된 설정을 "아직 적용하지 않음" 으로 표시
+
+```python
+sync = store.latest_sync(cand["config_version_id"]) if cand else None
+```
+
+**후보가 없으면 sync 를 아예 읽지 않았다.** 승인이 끝나 후보가 사라진 뒤가
+정확히 그 상태라, `deployed/ok` 인 운영 설정을 화면이 "아직 적용하지 않음"
+으로 말했다. 활성화 직후가 이 분기다.
+
+수정 — 배포 상태는 **지금 화면이 가리키는 버전** 것이다. 후보가 있으면 후보,
+없으면 active.
+
+```python
+_sync_target = cand or active
+sync = store.latest_sync(_sync_target["config_version_id"]) if _sync_target else None
+```
+
+라이브 `/intraday-config/state` 실측(고친 뒤):
+
+```text
+active         intraday-20260921T144447-168782 · enabled = True
+후보           None
+deploy_status  deployed · error None
+action_state   None
+화면 OCI 반영   적용 완료
+```
+
+`지금 알림 상태: 장중 알림 발송 중` 과 승인 버튼 부재는 **맞는 표시**다 —
+active 가 실제로 켜져 있고 후보가 없다.
+
+### 14-3. 테스트 공백 (검증자 B-6)
+
+기존 테스트는 **후보가 있는** 상태만 봤다. 승인이 끝난 뒤의 화면을 아무도
+검사하지 않아 이 결함이 회귀를 통과했다.
+
+| 테스트 | 계약 |
+|---|---|
+| `test_deploy_status_reported_for_active_when_no_candidate` | 후보 없어도 active 의 배포 상태를 읽는다 |
+| `test_activated_state_reports_enabled_and_no_candidate` | 켜져 있고 적용 예정은 없다 |
+| `test_active_policy_values_shown_when_no_candidate` | 판정 기준은 active 값 — `없음` 이 아니다 |
+
+무력화 실증 — 분기를 되돌리면 첫 번째가 **1 failed**.
+
+작성 중 **내 테스트 결함 1건**도 잡았다. `latest_sync` 를 패치하면서 패치
+안에서 `store.latest_sync` 를 불러 무한 재귀가 났다 — 원본을 먼저 잡도록
+고쳤다.
+
+### 14-4. 세 라운드 연속 같은 종류였다
+
+| 라운드 | 놓친 것 |
+|---|---|
+| §12 | 엔드포인트 목록만 보고 **응답 내용**을 안 봤다 |
+| §13 | `generate()` 를 직접 불러 **주기 게이트가 막는 상황**을 지나쳤다 |
+| §14 | 후보 있는 상태만 보고 **후보가 사라진 뒤**를 안 봤다 |
+
+전부 "함수는 맞게 동작한다" 를 검사하고 **"운영 상태에서 그 경로에 도달하는가"**
+를 안 본 것이다. 상태가 바뀌면 화면이 무엇을 말하는지까지 봐야 한다.

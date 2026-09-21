@@ -173,7 +173,14 @@ def get_state() -> ConfigStateResponse:
     cand_policy = (cp.get("intraday_alert_policy") or {}) if cand else {}
     # 「적용될 판정 기준」 은 승인 대상 기준이다 — 후보가 있으면 후보.
     shown_policy = cand_policy or active_policy
-    sync = store.latest_sync(cand["config_version_id"]) if cand else None
+    # 배포 상태는 **지금 화면이 가리키는 버전** 것이다. 후보가 있으면 후보,
+    # 없으면 **active** 다. 전에는 후보가 없으면 아예 읽지 않아, 승인이 끝나
+    # 후보가 사라진 뒤에는 `deployed/ok` 인 운영 설정을 화면이 "아직 적용하지
+    # 않음" 으로 말했다(검증자 실측).
+    _sync_target = cand or active
+    sync = (
+        store.latest_sync(_sync_target["config_version_id"]) if _sync_target else None
+    )
     uni_a = ap.get("sector_representative_universe") or {}
     uni_c = cp.get("sector_representative_universe") or {}
     return ConfigStateResponse(
