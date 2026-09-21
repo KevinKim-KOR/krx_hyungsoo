@@ -37,6 +37,8 @@ from app.runtime_evidence.holdings_selection_state import (
 )
 
 FIRST_SLOT_ID = "OPEN"
+# 15:40 슬롯 — 장중 점검 요약이 여기 붙는다(POC3-02C-OPS-02 §8).
+LAST_SLOT_ID = "CLOSE"
 
 # 슬롯 → 화면 표기 시각 (cron 과 동일). 확정 계약이 `09:15/12:30/15:40` 이라
 # 내부 식별자(`OPEN`)를 그대로 헤더에 노출하지 않는다.
@@ -198,6 +200,26 @@ def build_holdings_selection(
         out.message_text = render_changes(
             changes, slot_label=slot_label, resolved_names=names
         )
+    # POC3-02C-OPS-02 §8 — **15:40 슬롯 말미에 장중 점검 요약 한 줄.**
+    # 별도 메시지를 만들지 않는다. 집계 실패가 브리핑을 막으면 안 되므로
+    # 예외를 삼키고, 집계 불가는 `확인 불가` 로 나간다(0 으로 위장하지 않는다).
+    if out.message_text and (slot_id or "") == LAST_SLOT_ID:
+        try:
+            from app.runtime_evidence.holdings_risk_flow import DEFAULT_TALLY_PATH
+            from app.runtime_evidence.intraday_checkup_tally import (
+                load_tally,
+                render_summary_line,
+            )
+
+            line = render_summary_line(
+                load_tally(DEFAULT_TALLY_PATH, today_kst=today_kst)
+            )
+            if line:
+                out.message_text = f"{out.message_text}\n\n{line}"
+                out.diagnostics["intraday_checkup_summary"] = line
+        except Exception as e:  # noqa: BLE001
+            out.diagnostics["intraday_checkup_summary_error"] = f"{type(e).__name__}"
+
     out.diagnostics["message_text_length"] = len(out.message_text)
 
     # 안전 신호 보존 — 보유 브리핑이 evidence 경로를 타지 않게 되면서

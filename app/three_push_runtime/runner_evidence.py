@@ -122,6 +122,79 @@ def compose_evidence_and_message(
     return None, evidence, message_text
 
 
+def _save_intraday_state_after_send(
+    record: dict[str, Any],
+    *,
+    intraday: Any,
+    runtime_date_kst: str,
+    runtime_kst: Optional[str],
+) -> None:
+    """장중 사업군 상태 저장. **전송 성공 뒤에만 호출된다.**
+
+    저장 실패가 "발송은 됐다" 는 사실을 뒤집으면 안 되므로 예외를 삼킨다.
+    대신 기록을 남겨 다음 회차가 중복 발송을 하더라도 원인을 알 수 있게 한다.
+    """
+    if intraday is None or not getattr(intraday, "message_text", ""):
+        return
+    try:
+        from app.runtime_evidence.holdings_risk_flow import (
+            DEFAULT_SECTOR_STATE_PATH,
+            _now_kst,
+        )
+        from app.runtime_evidence.sector_signal_state import (
+            load_sector_state,
+            merge_sector_entries,
+            save_sector_state,
+        )
+
+        now = _now_kst(runtime_kst)
+        path = getattr(intraday, "state_path", None) or DEFAULT_SECTOR_STATE_PATH
+        previous = load_sector_state(path, today_kst=runtime_date_kst)
+        # 사업군 **+ 보유 급등** 을 함께 저장한다. `changes.send` 만 쓰면
+        # 급등이 상태에 안 남아 다음 틱에 또 신규가 된다(검증자 실측).
+        sent = list(getattr(intraday, "sent_signals", None) or [])
+        observed = list(getattr(intraday, "observed", None) or [])
+        # 평가 불가 범위를 **여기에도** 넘긴다(검증자 P1). 사업군 장애 중 보유
+        # 급등만 나가는 회차에 이걸 빠뜨리면, 이 저장이 먼저 사업군 entry 를
+        # `continuous=False` 로 내리고 뒤의 관측 저장은 이미 변질된 값을 보존한다.
+        unevaluable = set(getattr(intraday, "unevaluable", None) or set())
+        save_sector_state(
+            path,
+            entries=merge_sector_entries(
+                sent=sent,
+                previous=previous,
+                now_kst=now,
+                observed=observed,
+                unevaluable=unevaluable,
+            ),
+            today_kst=runtime_date_kst,
+            # **보낸 회차만** 센다. 억제·미발송 회차는 올리지 않는다.
+            sent_today=(previous.sent_today if previous.comparable else 0) + 1,
+        )
+        # 이번 회차 집계를 `알림` 으로 확정한다(설계 §8).
+        #
+        # 집계 파일을 여기서 고치면 안 된다 — D3 이후 **이번 회차 tick 은 아직
+        # 없다**(`_finish()` 가 Gate 통과 뒤에 쓴다). 파일의 "마지막 회차" 를
+        # 고치면 **직전 회차**를 발송으로 둔갑시키고, 이번 회차는 잠정값
+        # (`신호 없음`) 으로 남는다(검증자 실측 `sent=0 · no_signal=1`).
+        # 그래서 아직 쓰이지 않은 **pending 의 잠정값**을 고친다.
+        try:
+            from app.runtime_evidence.holdings_risk_flow import PENDING_KEY
+            from app.runtime_evidence.intraday_checkup_tally import OUTCOME_SENT
+
+            pending = record.get(PENDING_KEY)
+            if pending is not None:
+                pending["tick_outcome"] = OUTCOME_SENT
+        except Exception:  # noqa: BLE001 - 집계 실패가 발송 사실을 뒤집지 않는다
+            pass
+        record["intraday_state_saved"] = True
+        record["intraday_sent_today"] = (
+            previous.sent_today if previous.comparable else 0
+        ) + 1
+    except Exception as e:  # noqa: BLE001
+        record["intraday_state_save_error"] = f"{type(e).__name__}: {str(e)[:200]}"
+
+
 def record_send_success(
     record: dict[str, Any],
     *,
@@ -175,6 +248,16 @@ def record_send_success(
             runtime_kst=runtime_kst,
         )
         record["holdings_risk_state_saved"] = True
+        # POC3-02C-OPS-02 (설계 §15-2) — 장중 **발송 진척 상태**(`sent_today`
+        # 전진 · `last_sent_at`)는 **여기서만** 전진시킨다. 이 줄에 도달 = Telegram
+        # 전송 성공이고 `partial_delivery` 가 아니다. 부분 전송이면 위에서 이미
+        # 반환됐다. 관측 상태는 조립 단계가 매 회차 저장한다.
+        _save_intraday_state_after_send(
+            record,
+            intraday=holdings_selection_ctx.get("intraday"),
+            runtime_date_kst=runtime_date_kst,
+            runtime_kst=runtime_kst,
+        )
     else:
         save_state(
             holdings_state_path,

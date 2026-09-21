@@ -265,3 +265,76 @@ def test_no_new_db_file_created(tmp_path):
     generator.generate(state_db_path=db)
     files = sorted(p.name for p in tmp_path.iterdir() if p.suffix == ".sqlite")
     assert files == ["runtime_state.sqlite"], files
+
+
+# ── POC3-02C-OPS-02 §15-3 정책 값 범위 계약 ─────────────────────────────────
+#
+# 키가 **있는 것만으로는 부족하다.** 범위 밖 값이 통과하면 커버리지 Gate 가
+# 무력화된다(`sector_min_coverage_pct = -1` 이면 언제나 통과).
+
+
+def _enabled_policy(**over):
+    p = dict(schema.INITIAL_POLICY_VALUES)
+    p.update({"enabled": True, "policy_status": schema.POLICY_CONFIGURED})
+    p.update(over)
+    return p
+
+
+def test_coverage_key_is_required(tmp_path):
+    """`sector_min_coverage_pct` 가 필수 키다(설계자 §15-3)."""
+    assert "sector_min_coverage_pct" in schema.REQUIRED_POLICY_KEYS
+    p = _payload(tmp_path)
+    policy = _enabled_policy()
+    del policy["sector_min_coverage_pct"]
+    p["intraday_alert_policy"] = policy
+    with pytest.raises(schema.ConfigSchemaError) as e:
+        schema.validate(p)
+    assert "sector_min_coverage_pct" in str(e.value)
+
+
+@pytest.mark.parametrize("bad", ["80", None, True, False, [], {}])
+def test_non_numeric_coverage_is_rejected(tmp_path, bad):
+    p = _payload(tmp_path)
+    p["intraday_alert_policy"] = _enabled_policy(sector_min_coverage_pct=bad)
+    with pytest.raises(schema.ConfigSchemaError):
+        schema.validate(p)
+
+
+@pytest.mark.parametrize("bad", [-0.1, 100.1, 1e9, float("nan")])
+def test_out_of_range_coverage_is_rejected(tmp_path, bad):
+    p = _payload(tmp_path)
+    p["intraday_alert_policy"] = _enabled_policy(sector_min_coverage_pct=bad)
+    with pytest.raises(schema.ConfigSchemaError):
+        schema.validate(p)
+
+
+@pytest.mark.parametrize("ok", [0.0, 80.0, 100.0])
+def test_in_range_coverage_passes(tmp_path, ok):
+    """하한·상한 **포함**이다."""
+    p = _payload(tmp_path)
+    p["intraday_alert_policy"] = _enabled_policy(sector_min_coverage_pct=ok)
+    schema.validate(p)
+
+
+@pytest.mark.parametrize(
+    "key,bad",
+    [
+        ("max_sends_per_day", 0),
+        ("max_items_per_section", 0),
+        ("cooldown_minutes", -1),
+        ("sector_rank_top_pct", 101.0),
+        ("drop_threshold_pct", 1.0),
+    ],
+)
+def test_other_policy_ranges_are_enforced(tmp_path, key, bad):
+    p = _payload(tmp_path)
+    p["intraday_alert_policy"] = _enabled_policy(**{key: bad})
+    with pytest.raises(schema.ConfigSchemaError) as e:
+        schema.validate(p)
+    assert key in str(e.value)
+
+
+def test_disabled_policy_skips_range_check(tmp_path):
+    """`enabled=false` 면 수치가 비어 있어도 된다(§10-3(6) 최초 번들 비활성)."""
+    p = _payload(tmp_path)
+    schema.validate(p)  # 기본 payload 는 enabled=false

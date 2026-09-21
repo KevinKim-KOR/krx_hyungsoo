@@ -69,10 +69,16 @@ def _install_runner(monkeypatch, tmp_path, *, sender=None, flag="true"):
     return runner, send
 
 
-def _install_inputs(monkeypatch, runner, *, specs, quotes_asof, axis_end=None):
+def _install_inputs(
+    monkeypatch, runner, *, specs, quotes_asof, axis_end=None, no_day_return=()
+):
     """보유 원장·종가 이력·Naver 시세를 통제. 외부 조회 0건.
 
     specs: [(ticker, name, 직전거래일 종가, 현재가)]
+
+    `no_day_return`: **분모를 구할 수 없는 ticker.** POC3-02C-OPS-02 전에는
+    종가 이력 행을 지워서 표현했는데, 이제 분모가 Naver 등락률에서 오므로
+    이력을 지워도 판정이 안 바뀐다. 같은 사실을 새 입력으로 옮기는 수단이다.
     """
     from dataclasses import dataclass
 
@@ -90,6 +96,14 @@ def _install_inputs(monkeypatch, runner, *, specs, quotes_asof, axis_end=None):
     class _Q:
         current_price: float
         price_asof: str
+        # POC3-02C-OPS-02 — 판정 입력이 "직전 종가" 에서 **무조정 D-1 등락률**로
+        # 바뀌었다(설계자 §13-2). fixture 의 `(base, current)` 가 표현하던 사실을
+        # 같은 사실인 채로 새 입력에 옮긴다 — 단언은 건드리지 않는다.
+        day_return_pct: float | None = None
+
+        def has_day_return(self):
+            v = self.day_return_pct
+            return isinstance(v, (int, float)) and not isinstance(v, bool)
 
     today = kst_today_date()
     # 실행일 **이전** 거래일 축. 축 마지막이 직전 거래일이 된다.
@@ -112,12 +126,22 @@ def _install_inputs(monkeypatch, runner, *, specs, quotes_asof, axis_end=None):
     )
 
     cur = {t: c for t, _, _, c in specs}
+    base_of = {t: b for t, _, b, _ in specs}
     fake = types.ModuleType("app.market_naver")
 
     class _R:
         def __init__(self, t):
             self.ticker = t
-            self.quote = _Q(current_price=cur[t], price_asof=quotes_asof)
+            b = base_of.get(t)
+            self.quote = _Q(
+                current_price=cur[t],
+                price_asof=quotes_asof,
+                day_return_pct=(
+                    None
+                    if t in set(no_day_return)
+                    else (round((cur[t] / b - 1.0) * 100.0, 2) if b else None)
+                ),
+            )
 
     fake.fetch_many = lambda tickers, timeout=15.0: [_R(t) for t in tickers]
     monkeypatch.setitem(sys.modules, "app.market_naver", fake)
@@ -560,6 +584,7 @@ def test_runner_reports_unavailable_tickers(monkeypatch, tmp_path, today):
         runner,
         specs=[("102110", "TIGER200", 10000.0, 9200.0)],
         quotes_asof=_asof(today),
+        no_day_return=["102110"],
     )
     # 축은 그대로 두고 이력에서 직전 거래일만 뺀다.
     trimmed = [(d, 10000.0) for d in axis[:-1]]
@@ -633,6 +658,11 @@ def test_partial_failure_ticker_appears_in_sent_body(monkeypatch, tmp_path, toda
     class _Q:
         current_price = 9000.0
         price_asof = _asof(today)
+        # 10000 → 9000 = -10.0%. 판정 입력이 등락률로 바뀌었다(설계자 §13-2).
+        day_return_pct = -10.0
+
+        def has_day_return(self):
+            return True
 
     class _R:
         def __init__(self, t):
@@ -676,6 +706,7 @@ def test_missing_previous_close_ticker_appears_in_sent_body(
             ("B00002", "라마바ETF", 10000.0, 9000.0),
         ],
         quotes_asof=_asof(today),
+        no_day_return=["B00002"],  # 분모를 구할 수 없는 종목
     )
     from app.runtime_evidence.holdings_selection import TRADING_DAY_AXIS_TICKER
 
@@ -712,6 +743,7 @@ def test_unavailable_alone_does_not_trigger_a_send(monkeypatch, tmp_path, today)
         runner,
         specs=[("B00002", "라마바ETF", 10000.0, 9900.0)],  # 하락 -1% (구간 밖)
         quotes_asof=_asof(today),
+        no_day_return=["B00002"],
     )
     full = [(d, 10000.0) for d in axis]
     monkeypatch.setattr(
@@ -751,6 +783,7 @@ def test_multi_account_unavailable_ticker_listed_once(monkeypatch, tmp_path, tod
             ("B00002", "라마바ETF", 10000.0, 9000.0),
         ],
         quotes_asof=_asof(today),
+        no_day_return=["B00002"],
     )
     monkeypatch.setattr(
         holdings_mod,

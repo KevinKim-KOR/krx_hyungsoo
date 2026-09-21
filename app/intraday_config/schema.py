@@ -51,6 +51,50 @@ REQUIRED_POLICY_KEYS = (
     "dedup_window_minutes",
     "max_sends_per_run",
     "max_sends_per_day",
+    # POC3-02C-OPS-02 — 사업군 대표 판정 (설계 §4-2). 코드 상수가 아니라
+    # 승인 PARAM 이다. 이후 백테스트·ML 로 교체할 수 있어야 한다.
+    "sector_entry_min_pct",
+    "sector_chase_pct",
+    "sector_avoid_drop_pct",
+    "sector_rank_top_pct",
+    "max_items_per_section",
+    # 설계자 §14-4 — 상대순위 최소 커버리지. 조회에 성공한 사업군 안에서만
+    # 상위 20% 를 매기면 27개 중 3개만 조회돼도 그중 하나가 후보가 된다.
+    # 그건 실패 격리가 아니라 왜곡이다.
+    "sector_min_coverage_pct",
+)
+
+# 설계 §4-2 초기 운영값. `enabled=true` 로 켤 때 채울 기준값이며, **여기서
+# 자동으로 켜지지 않는다**(§10-3(6) 최초 번들 비활성 유지).
+INITIAL_POLICY_VALUES = {
+    "surge_threshold_pct": 5.0,
+    "drop_threshold_pct": -5.0,
+    "cooldown_minutes": 120,
+    "dedup_window_minutes": 120,
+    "max_sends_per_run": 1,
+    "max_sends_per_day": 4,
+    "sector_entry_min_pct": 1.5,
+    "sector_chase_pct": 4.0,
+    "sector_avoid_drop_pct": -1.5,
+    "sector_rank_top_pct": 20.0,
+    "max_items_per_section": 3,
+    "sector_min_coverage_pct": 80.0,
+}
+
+# 설계자 §15-3 — `(키, 하한, 상한)`. 하한·상한 **포함**이다.
+POLICY_RANGES = (
+    ("sector_min_coverage_pct", 0.0, 100.0),
+    ("sector_rank_top_pct", 0.0, 100.0),
+    ("sector_entry_min_pct", -100.0, 100.0),
+    ("sector_chase_pct", -100.0, 100.0),
+    ("sector_avoid_drop_pct", -100.0, 100.0),
+    ("surge_threshold_pct", 0.0, 100.0),
+    ("drop_threshold_pct", -100.0, 0.0),
+    ("cooldown_minutes", 0, 1440),
+    ("dedup_window_minutes", 0, 1440),
+    ("max_sends_per_run", 1, 10),
+    ("max_sends_per_day", 1, 50),
+    ("max_items_per_section", 1, 20),
 )
 
 # source_hash 계산에서 빼는 가변 필드 (§10-3(5)).
@@ -186,6 +230,14 @@ def validate(payload: dict[str, Any]) -> None:
             raise ConfigSchemaError(
                 f"enabled=true 면 policy_status={POLICY_CONFIGURED} 여야 한다"
             )
+        # 설계자 §15-3 — 키가 있는 것만으로는 부족하다. **비수치·범위 밖을
+        # 거부**한다. 범위 밖 값이 통과하면 커버리지 Gate 가 무력화된다.
+        for key, lo, hi in POLICY_RANGES:
+            v = policy.get(key)
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                raise ConfigSchemaError(f"{key} 는 숫자여야 한다: {v!r}")
+            if v != v or not (lo <= float(v) <= hi):
+                raise ConfigSchemaError(f"{key} 범위 밖({lo}~{hi}): {v!r}")
     else:
         if status != POLICY_NOT_CONFIGURED:
             raise ConfigSchemaError(

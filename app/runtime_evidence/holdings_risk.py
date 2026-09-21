@@ -29,7 +29,6 @@ from app.runtime_evidence.holdings_selection import (
     DISPLAY_DECIMALS,
     LOOKBACK_TRADING_DAYS,
     _is_same_day,
-    close_on,
     normalize_pct,
     reference_trading_day,
 )
@@ -52,6 +51,66 @@ _RISK_BANDS = (
     (STATE_D7_10, -10.0, -7.0),
     (STATE_D5_7, -7.0, -5.0),
 )
+
+# ── POC3-02C-OPS-02 급등 3단계 (설계자 §13-1 · 2026-09-20) ──────────────────
+#
+# 급락 경계의 **절댓값을 양수 방향으로 대칭 적용**한다. 다만 부등호 방향이
+# 뒤집힌다 — 급락은 `상한 배타 · 하한 포함`(정확히 -5% → D5_7)이고, 급등은
+# `하한 포함 · 상한 배타`(정확히 +5% → U5_7)다. 0 에서 멀어질수록 심각해지는
+# 성질을 양쪽에서 같게 유지하려면 이렇게 돼야 한다.
+#
+# **급락 경계는 한 글자도 바꾸지 않는다** — 기존 계약이다.
+STATE_U5_7 = "U5_7"
+STATE_U7_10 = "U7_10"
+STATE_U10_PLUS = "U10_PLUS"
+
+_SURGE_BANDS = (
+    (STATE_U10_PLUS, 10.0, None),
+    (STATE_U7_10, 7.0, 10.0),
+    (STATE_U5_7, 5.0, 7.0),
+)
+
+SURGE_STATE_LABEL = {
+    STATE_U5_7: "전일 대비 상승 5~7%",
+    STATE_U7_10: "전일 대비 상승 7~10%",
+    STATE_U10_PLUS: "전일 대비 상승 10% 이상",
+}
+
+SURGE_STATE_SHORT = {
+    STATE_U5_7: "5~7%",
+    STATE_U7_10: "7~10%",
+    STATE_U10_PLUS: "10% 이상",
+}
+
+# 급등도 심각도 1·2·3 (설계자 §13-1). 급락과 **별도 축**이다 — 한 종목이
+# 동시에 양쪽일 수 없으므로 값이 겹쳐도 섞이지 않는다.
+_SURGE_SEVERITY = {STATE_U5_7: 1, STATE_U7_10: 2, STATE_U10_PLUS: 3}
+
+# 표시 순서 — 큰 상승이 위로.
+SURGE_GROUP_ORDER = (STATE_U10_PLUS, STATE_U7_10, STATE_U5_7)
+
+
+def surge_severity(state: Optional[str]) -> int:
+    """급등 구간 심각도. 미상은 0."""
+    return _SURGE_SEVERITY.get(state or "", 0)
+
+
+def classify_day_surge(pct: Optional[float]) -> Optional[str]:
+    """당일 상승률(%) → 급등 구간. 해당 없으면 None.
+
+    `classify_day_drop` 과 **대칭**이다. 경계값은 하한 포함·상한 배타 —
+    정확히 `+5%` 는 `U5_7`, 정확히 `+7%` 는 `U7_10`, 정확히 `+10%` 는 `U10_PLUS`.
+    """
+    if pct is None:
+        return None
+    for state, lower_inclusive, upper_exclusive in _SURGE_BANDS:
+        if upper_exclusive is None:
+            if pct >= lower_inclusive:
+                return state
+        elif lower_inclusive <= pct < upper_exclusive:
+            return state
+    return None
+
 
 RISK_STATE_LABEL = {
     STATE_D5_7: "전일 대비 하락 5~7%",
@@ -178,7 +237,9 @@ def select_risk_holdings(
     """
     axis = axis_dates or []
     buy_prices = avg_buy_prices or {}
-    prev_day = previous_trading_day(axis, today_kst)
+    # `previous_trading_day` 는 여기서 더 이상 분모에 쓰지 않는다 — 등락률이
+    # Naver 응답에서 온다. 함수 자체는 호출자(`holdings_risk_flow`)가 표시용
+    # 기준일로 쓰므로 남겨 둔다.
 
     today = (today_kst or "")[:10]
     before_today = [d for d in axis if d[:10] < today] if today else []
@@ -200,18 +261,16 @@ def select_risk_holdings(
         history = price_history.get(ticker) or []
         quote = market_quotes.get(ticker)
         current = getattr(quote, "current_price", None) if quote else None
-        quote_asof = getattr(quote, "price_asof", None) if quote else None
 
-        # 분자: 실행일 시세여야 한다. 분모: 직전 거래일 **그 날짜** 종가.
-        numerator_ok = (
-            bool(current) and current > 0 and _is_same_day(quote_asof, today_kst)
-        )
-        base = close_on(history, prev_day)
-        if not numerator_ok or not base or base <= 0:
+        # POC3-02C-OPS-02 (설계자 §13-2) — 분모를 조정계열 종가에서
+        # **Naver 무조정 D-1 등락률**로 교체했다. 예전에는
+        # `current(무조정) / close_on(etf_daily_price, prev_day)(조정)` 이라
+        # 두 계열이 섞여 있었다. 임계·상태·심각도 계약은 그대로다.
+        day_drop = usable_day_return(quote, today_kst)
+        if day_drop is None:
             unavailable.append(ticker)
             continue
 
-        day_drop = normalize_pct((current / base - 1.0) * 100.0)
         state = classify_day_drop(day_drop)
         if state is None:
             continue  # 위험 구간 아님 — 표시하지 않는다.
@@ -229,6 +288,97 @@ def select_risk_holdings(
         selected.append(item)
 
     return sort_risk(selected), sorted(unavailable)
+
+
+def usable_day_return(quote: Any, today_kst: Optional[str]) -> Optional[float]:
+    """판정에 쓸 수 있는 **무조정 D-1 대비 등락률(%)**. 못 쓰면 `None`.
+
+    설계자 §13-2 — `fluctuationsRatio` 를 **그대로** 쓴다. 현재가로 역산하지
+    않고, 조정계열 `etf_daily_price` 로 fallback 하지 않는다.
+
+    **기존 가격 최신성 검사는 그대로 유지한다** — 실행일 시세가 아니면 등락률이
+    있어도 쓰지 않는다. 어제 값으로 오늘을 판정하면 안 된다.
+
+    `0.0` 은 **유효한 보합**이다. 여기서 걸러지면 하락·보합이 통째로 사라진다.
+    """
+    if quote is None:
+        return None
+    current = getattr(quote, "current_price", None)
+    asof = getattr(quote, "price_asof", None)
+    # 최신성 게이트 — 기존 계약 그대로.
+    if not current or current <= 0 or not _is_same_day(asof, today_kst):
+        return None
+    getter = getattr(quote, "has_day_return", None)
+    if callable(getter):
+        if not getter():
+            return None
+        return normalize_pct(float(quote.day_return_pct))
+    # dataclass 가 아닌 대역 객체도 받는다 — 값만 보고 판단한다.
+    raw = getattr(quote, "day_return_pct", None)
+    if raw is None or isinstance(raw, bool):
+        return None
+    try:
+        n = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if n != n or abs(n) > 100.0:
+        return None
+    return normalize_pct(n)
+
+
+def select_surge_holdings(
+    *,
+    holdings: list[dict[str, Any]],
+    market_quotes: dict[str, Any],
+    today_kst: Optional[str],
+) -> list[RiskTicker]:
+    """보유 **급등** 선정 (설계자 §13-1). 급락과 **별도 축**이다.
+
+    한 종목이 동시에 급락·급등일 수 없으므로 두 목록이 겹치지 않는다.
+
+    `unavailable` 을 따로 돌려주지 않는다 — 같은 quote 를 급락 경로가 이미 보고
+    결손을 보고했다. 여기서 또 세면 같은 종목이 두 번 실린다.
+    """
+    by_ticker: dict[str, dict[str, Any]] = {}
+    for h in holdings:
+        t = h.get("ticker")
+        if not t:
+            continue
+        entry = by_ticker.setdefault(t, {"name": h.get("name") or t, "accounts": 0})
+        entry["accounts"] += 1
+        if h.get("name"):
+            entry["name"] = h["name"]
+
+    out: list[RiskTicker] = []
+    for ticker, meta in by_ticker.items():
+        pct = usable_day_return(market_quotes.get(ticker), today_kst)
+        if pct is None:
+            continue
+        state = classify_day_surge(pct)
+        if state is None:
+            continue
+        item = RiskTicker(
+            ticker=ticker,
+            name=meta["name"],
+            account_count=meta["accounts"],
+            state=state,
+            day_drop_pct=pct,  # 부호 포함 — 급등이면 양수다
+        )
+        out.append(item)
+    return sort_surge(out)
+
+
+def sort_surge(items: list[RiskTicker]) -> list[RiskTicker]:
+    """구간(큰 상승 먼저) → 상승 큰 순 → ticker."""
+    order = {s: i for i, s in enumerate(SURGE_GROUP_ORDER)}
+    return sorted(
+        items,
+        key=lambda i: (
+            order.get(i.state, len(order)),
+            -(i.day_drop_pct if i.day_drop_pct is not None else 0.0),
+            i.ticker,
+        ),
+    )
 
 
 def sort_risk(items: list[RiskTicker]) -> list[RiskTicker]:
@@ -267,6 +417,8 @@ __all__ = [
     "classify_day_drop",
     "group_label",
     "previous_trading_day",
+    "select_surge_holdings",
+    "sort_surge",
     "select_risk_holdings",
     "severity",
     "short_label",

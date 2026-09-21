@@ -44,6 +44,13 @@ PREV_DAY = AXIS[-1]
 class FakeQuote:
     current_price: float
     price_asof: str = "2026-09-07T10:30:00+09:00"
+    # POC3-02C-OPS-02 — 판정 입력이 "직전 종가" 에서 **무조정 D-1 등락률**로
+    # 바뀌었다(설계자 §13-2). `None` 이면 그 ticker 만 판정에서 빠진다.
+    day_return_pct: float | None = None
+
+    def has_day_return(self):
+        v = self.day_return_pct
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
 def _history(close: float, *, prev: float | None = None) -> list[tuple[str, float]]:
@@ -58,7 +65,15 @@ def _select(specs, *, quotes=None, axis=None, today=TODAY, buy=None):
     """specs: [(ticker, name, 직전종가, 현재가)] → select_risk_holdings"""
     holdings = [{"ticker": t, "name": n} for t, n, _, _ in specs]
     history = {t: _history(base) for t, _, base, _ in specs}
-    q = quotes if quotes is not None else {t: FakeQuote(c) for t, _, _, c in specs}
+    # `(base, current)` 가 표현하던 하락률을 같은 사실인 채로 새 입력에 옮긴다.
+    q = (
+        quotes
+        if quotes is not None
+        else {
+            t: FakeQuote(c, day_return_pct=round((c / base - 1.0) * 100.0, 2))
+            for t, _, base, c in specs
+        }
+    )
     return select_risk_holdings(
         holdings=holdings,
         price_history=history,
@@ -98,15 +113,66 @@ def test_selection_uses_normalized_pct_at_exact_boundary():
 # ── R-1 / R-2 분모·분자 ───────────────────────────────────────────────────────
 
 
-def test_denominator_is_previous_trading_day_close_not_today_open():
-    """갭 하락 — 직전 종가 10000 → 현재 9200 이면 −8.0% 다.
+def test_day_return_comes_from_quote_not_recomputed():
+    """**Naver 등락률을 그대로 쓴다** — 현재가·이력으로 역산하지 않는다.
 
-    당일 시가(가령 9300)를 분모로 쓰면 −1.1% 로 보여 선정에서 빠진다.
+    설계자 §13-2 필수 계약. 예전에는
+    `current(무조정) / close_on(etf_daily_price, prev_day)(조정)` 이라 두 계열이
+    섞여 있었다.
+
+    등락률이 현재가·이력과 **모순되게** 주어져도 코드는 등락률을 따라야 한다.
+    역산하면 이력 기준 −8.0% 가 나와 이 단언이 깨진다.
     """
-    selected, _ = _select([("102110", "TIGER200", 10000.0, 9200.0)])
+    contradictory = {"102110": FakeQuote(9200.0, day_return_pct=-10.5)}
+    selected, _ = _select(
+        [("102110", "TIGER200", 10000.0, 9200.0)], quotes=contradictory
+    )
     assert len(selected) == 1
-    assert selected[0].day_drop_pct == -8.0
-    assert selected[0].state == STATE_D7_10
+    assert selected[0].day_drop_pct == -10.5, "현재가/이력으로 역산했다"
+    assert selected[0].state == STATE_D10_PLUS
+
+
+def test_adjusted_history_is_not_used_as_denominator():
+    """조정계열 이력이 **아예 없어도** 등락률만 있으면 판정된다.
+
+    `etf_daily_price` fallback 이 남아 있으면 이력 없이는 판정이 안 된다.
+    """
+    selected, unavailable = select_risk_holdings(
+        holdings=[{"ticker": "102110", "name": "TIGER200"}],
+        price_history={},  # 조정계열 이력 0건
+        market_quotes={"102110": FakeQuote(9200.0, day_return_pct=-8.0)},
+        today_kst=TODAY,
+        axis_dates=AXIS,
+    )
+    assert unavailable == []
+    assert len(selected) == 1 and selected[0].state == STATE_D7_10
+
+
+def test_missing_day_return_excludes_only_that_ticker():
+    """필드 누락은 **그 ticker 만** 제외한다 (설계자 §13-2)."""
+    quotes = {
+        "102110": FakeQuote(9200.0, day_return_pct=-8.0),
+        "069500": FakeQuote(9000.0, day_return_pct=None),
+    }
+    selected, unavailable = _select(
+        [
+            ("102110", "TIGER200", 10000.0, 9200.0),
+            ("069500", "KODEX200", 10000.0, 9000.0),
+        ],
+        quotes=quotes,
+    )
+    assert [i.ticker for i in selected] == ["102110"]
+    assert unavailable == ["069500"]
+
+
+def test_zero_day_return_is_valid_not_missing():
+    """`0.0` 은 유효한 보합이다 — 누락으로 취급하면 하락·보합이 사라진다."""
+    selected, unavailable = _select(
+        [("102110", "TIGER200", 10000.0, 10000.0)],
+        quotes={"102110": FakeQuote(10000.0, day_return_pct=0.0)},
+    )
+    assert unavailable == [], "보합을 데이터 누락으로 처리했다"
+    assert selected == [], "보합은 위험 구간이 아니다"
 
 
 def test_numerator_must_be_todays_quote():
@@ -171,7 +237,7 @@ def test_multi_account_ticker_is_rendered_once_with_account_count():
     selected, _ = select_risk_holdings(
         holdings=holdings,
         price_history={"102110": _history(10000.0)},
-        market_quotes={"102110": FakeQuote(9200.0)},
+        market_quotes={"102110": FakeQuote(9200.0, day_return_pct=-8.0)},
         today_kst=TODAY,
         axis_dates=AXIS,
     )

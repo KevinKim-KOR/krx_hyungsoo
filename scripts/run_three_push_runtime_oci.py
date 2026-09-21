@@ -75,9 +75,7 @@ from app.three_push_runtime.runner_spike import (  # noqa: E402
 )
 
 # POC3-OPS-01A — 보유 브리핑 선별·그룹화·반복 억제.
-from app.runtime_evidence.holdings_risk_flow import (  # noqa: E402
-    assemble_holdings_risk_push,
-)
+from app.runtime_evidence import holdings_risk_flow as _hrf  # noqa: E402
 from app.runtime_evidence.holdings_risk_state import (  # noqa: E402
     save_risk_state,
 )
@@ -174,6 +172,7 @@ def run(
     def _finish(
         status: str, reason: Optional[str] = None, error: Optional[str] = None
     ) -> dict[str, Any]:
+        _hrf.apply_intraday_records(record, mode=mode, status=status, reason=reason)
         record["status"] = status
         record["reason"] = reason
         record["error"] = error
@@ -351,7 +350,7 @@ def run(
         from app.holdings import load as _load_holdings_for_risk
         from app.market_data_store import fetch_price_history as _fetch_history_risk
 
-        _rasm = assemble_holdings_risk_push(
+        _rasm = _hrf.assemble_holdings_risk_push(
             market_quotes=market_quotes or {},
             price_refresh_diag=price_refresh_diag,
             today_kst=kst_today(),
@@ -366,6 +365,7 @@ def run(
         skip_ntd = _rasm.skip_non_trading_day
         risk_outcome = _rasm.outcome
         message_text = _rasm.message_text
+        record[_hrf.PENDING_KEY] = _rasm.intraday_records
 
     # ── 3-e. 시장 흐름 브리핑 조립 (POC3-OPS-02B-2) ──────────────────────────
     market_outcome = _mb.assemble(
@@ -395,8 +395,6 @@ def run(
     # 2026-09-04 KS-10 분리 — 키 목록은 `runner_diagnostics` 로 옮겼다.
     forward_diagnostics(record, evidence)
 
-    # Low-Frequency Telegram Push Operation v1 A+ 재정정 (A):
-    # Spike 재조건평가 결과 fingerprint 목록. 각 신규 signal 은 개별 registry.
     # Low-Frequency Telegram Push Operation v1 A+ 재정정 (A):
     # Spike 재조건평가 결과 fingerprint 목록. 각 신규 signal 은 개별 registry.
     # 2026-09-04 KS-10 분리 — 본문은 `runner_spike` 로 옮겼다.
@@ -486,8 +484,8 @@ def run(
     if mb_fail is not None:
         return _finish(*mb_fail)
 
-    if risk_outcome is not None and risk_outcome.skip_reason:
-        # 신규·악화 없음 — 완화·해소·동일 구간은 발송하지 않는다.
+    if risk_outcome is not None and risk_outcome.skip_reason and not message_text:
+        # 신규·악화 없음. 단 장중 본문이 있으면 보낸다(OPS-02 사업군 단독 신호).
         logger.info(
             "위험 알림 skip: %s (선정 %d건 · 억제 %d건)",
             risk_outcome.skip_reason,
@@ -497,7 +495,7 @@ def run(
         return _finish("skipped", risk_outcome.skip_reason)
 
     if risk_outcome is not None:
-        holdings_selection_ctx = {"risk": risk_outcome}
+        holdings_selection_ctx = {"risk": risk_outcome, "intraday": _rasm.intraday}
 
     if holdings_outcome is not None:
         if holdings_outcome.skip_reason:

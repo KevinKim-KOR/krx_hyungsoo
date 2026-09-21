@@ -19,7 +19,7 @@ from typing import Optional
 
 import httpx
 
-from app.market_cache import MarketQuote
+from app.market_cache import MarketQuote, coerce_day_return
 
 logger = logging.getLogger(__name__)
 
@@ -104,12 +104,23 @@ def fetch_one(
     asof = data.get("localTradedAt")
     if not isinstance(asof, str) or not asof:
         return FetchResult(ticker=ticker, quote=None, reason="missing_asof")
+    # POC3-02C-OPS-02 — 무조정 D-1 대비 등락률(설계자 §13-2).
+    #
+    # 같은 응답에 이미 들어 있다. KRX 무조정 D-1 종가와 대조해 7/7 일치를 실측했다
+    # (PLAN §1-3). **역산하지 않고 이 값을 그대로 쓴다** — `closePrice` 로
+    # 되돌리면 반올림 오차가 끼고, `compareToPreviousClosePrice` 는 부호가 없어
+    # 방향 코드와 어긋난 사례가 실제로 나왔다(`466920`).
+    #
+    # 없거나 오염이면 `None` 이고 그 ticker 만 급등락 판정에서 빠진다. 여기서
+    # quote 자체를 실패로 만들지 않는다 — 현재가는 멀쩡하므로 보유 평가 등
+    # 기존 용도는 그대로 살아야 한다.
     quote = MarketQuote(
         ticker=ticker,
         name=name,
         current_price=price,
         price_asof=asof,
         price_source="naver",
+        day_return_pct=coerce_day_return(data.get("fluctuationsRatio")),
     )
     return quote_result_ok(ticker, quote)
 

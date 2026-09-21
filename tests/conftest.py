@@ -91,6 +91,14 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
         "holdings_risk_state_latest.json",
         "market_briefing_state_latest.json",
         "market_briefing_meta_consistency_latest.json",
+        # POC3-02C-OPS-02 — 장중 사업군 억제 상태 · 회차 집계.
+        #
+        # 전체 회귀 1회에서 라이브 경로에 집계 파일이 실제로 생겼다(파일 내용
+        # 확인). 가드를 넣은 뒤로는 3회 연속 깨끗하다. 다만 가드를 다시 빼도
+        # **재현되지 않아** 어느 줄이 막는지는 단정하지 못한다 — 그래서 감지
+        # (`names`)와 격리(`setattr`)를 **둘 다** 둔다.
+        "sector_signal_state_latest.json",
+        "intraday_checkup_tally_latest.json",
     )
     consts = (
         "HOLDINGS_SELECTION_STATE_PATH",
@@ -116,6 +124,17 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
     import app.three_push_runner_common as _common
 
     monkeypatch.setattr(_common, "STATE_DIR", iso)
+
+    # 장중 경로는 `holdings_risk_flow` 의 모듈 상수로 경로를 푼다. 호출 시점에
+    # 읽으므로 그 모듈 자체를 격리해야 막힌다.
+    from app.runtime_evidence import holdings_risk_flow as _hrf
+
+    monkeypatch.setattr(
+        _hrf, "DEFAULT_SECTOR_STATE_PATH", iso / "sector_signal_state_latest.json"
+    )
+    monkeypatch.setattr(
+        _hrf, "DEFAULT_TALLY_PATH", iso / "intraday_checkup_tally_latest.json"
+    )
 
     befores = [p.read_bytes() if p.exists() else None for p in lives]
     yield

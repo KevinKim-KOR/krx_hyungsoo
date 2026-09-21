@@ -50,9 +50,23 @@ class MarketQuote:
     current_price: Optional[float]
     price_asof: Optional[str]
     price_source: str = "naver"
+    # POC3-02C-OPS-02 — **무조정 D-1 대비 당일 등락률(%)**.
+    #
+    # Naver `fluctuationsRatio` 를 **그대로** 담는다. 설계자 §13-2 확정:
+    # 현재가로 역산하지 않고, `compareToPreviousClosePrice` 로 부호를 복원하지
+    # 않는다(부호가 없어 방향 코드와 어긋난 사례가 실측됐다). 조정계열
+    # `etf_daily_price` 로 fallback 하지 않는다.
+    #
+    # 값이 없으면 **해당 ticker 만 판정에서 빠진다** — 0.0 으로 메우지 않는다.
+    day_return_pct: Optional[float] = None
 
     def has_price(self) -> bool:
         return isinstance(self.current_price, (int, float)) and self.current_price > 0
+
+    def has_day_return(self) -> bool:
+        """등락률을 판정에 쓸 수 있는가. `0.0` 은 **유효한 보합**이다."""
+        v = self.day_return_pct
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and v == v
 
 
 def _atomic_write(path: Path, text: str) -> None:
@@ -99,18 +113,43 @@ def _load_from_disk_unlocked() -> dict[str, MarketQuote]:
                 else None
             ),
             price_source=str(raw.get("price_source") or "naver"),
+            # 옛 캐시 파일에는 이 키가 없다 — 없으면 None 이고, 그 ticker 는
+            # 다음 조회 전까지 급등락 판정에서 빠진다.
+            day_return_pct=coerce_day_return(raw.get("day_return_pct")),
         )
     return result
 
 
 def _coerce_price(value: object) -> Optional[float]:
-    if value is None:
+    if value is None or isinstance(value, bool):
         return None
     try:
         n = float(value)
     except (TypeError, ValueError):
         return None
     if n <= 0:
+        return None
+    return n
+
+
+def coerce_day_return(value: object) -> Optional[float]:
+    """등락률 정규화. **`0.0` 은 유효한 보합**이라 살려야 한다.
+
+    `_coerce_price` 는 `n <= 0` 을 버리는데 등락률에 그 규칙을 쓰면 하락과 보합이
+    통째로 사라진다. 그래서 별도 함수다.
+
+    `bool` 은 `int` 의 하위형이라 `float(True) == 1.0` 이 된다 — 명시적으로 막는다.
+    비정상 범위(±100% 초과)는 오염으로 보고 버린다.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return None
+    if n != n or n in (float("inf"), float("-inf")):
+        return None
+    if abs(n) > 100.0:
         return None
     return n
 
