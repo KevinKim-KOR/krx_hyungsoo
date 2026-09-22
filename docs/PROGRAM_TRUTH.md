@@ -352,13 +352,13 @@ flowchart LR
 
 #### C-2. PUSH 종류별 자동발송 상태 (2026-09-08 실측)
 
-**3종 중 2종이 자동발송 중이다.**
+**3종이 모두 자동발송 중이다**(2026-09-23 실측).
 
 | 종류 | cron | `PUSH_AUTOSEND_*_ENABLED` | 상태 |
 |---|---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | 유지 | **`true`** | **발송 중** |
 | `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화. **2026-09-21 23:48 장중 급등락 정책 활성화**(사용자 승인) 후 「장중 급등락」 통합 본문이 나간다. 첫 운영일 2026-09-22: 7/7틱 · 알림 4건 · 일일 상한 4건 도달 · 커버리지 27/27 · 오류 0 |
-| `market_briefing` (08:00) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled`. 메시지·억제는 `OPS-02B-2` 로 **재구현 완료**(검증자 `VERIFIED` 2026-09-13). 발송은 활성화 승인 대기 |
+| `market_briefing` (08:00) | 유지 | **`true`** | **발송 중** — `OPS-02B-2` 재구현(검증자 `VERIFIED` 2026-09-13) 후 **2026-09-15 첫 발송**. 같은 상태가 이어지면 `no_change` 로 억제(09-16 실측) |
 | ~~`spike_or_falling_alert`~~ | **제거** | — | **폐지** — cron 7건을 `holdings_risk_alert` 로 교체 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 보유 PUSH 까지 멈춘다).
@@ -400,9 +400,10 @@ OPS-02 배포로 **정책과 무관하게** 바뀐 것도 둘 있었다.
 `holdings_risk_alert`). `spike_or_falling_alert` 는 PARAM 에 남아 있으나 cron 이
 호출하지 않으므로 실행되지 않는다.
 
-`market_briefing` 은 cron·코드를 제거하지 않고 종류별 발송만 비활성화했다.
+**폐지된 것은 `spike_or_falling_alert` 하나뿐이다.** 아래는 지난 차단 이력이다
+— `market_briefing` 은 재구현 후 2026-09-15 에 다시 켜졌다.
 
-차단 사유 (설계자 판정 2026-09-07):
+차단 이력 (설계자 판정 2026-09-07):
 
 - **market_briefing `REJECT`** (2026-09-07 판정) — "확인된 항목"과 "별도 확인
   필요"가 실제 수치와 맞지 않고, 변화 여부와 무관하게 발송하며, 쓸 만한 정보가
@@ -411,13 +412,16 @@ OPS-02 배포로 **정책과 무관하게** 바뀐 것도 둘 있었다.
   **2026-09-13 재구현 완료** — `OPS-02B-1` Gate `ADOPT` 후 `OPS-02B-2` 로 메시지·
   억제·운영을 새로 만들었다(`app/market_briefing/` 8모듈). 구 조립 경로는
   `SKIP_EVIDENCE_KINDS` 로 우회한다. 같은 상태가 이어지면 `no_change` 로
-  억제하고, 쓸 내용이 없으면 미발송한다. **autosend 는 여전히 `false`** 이며
-  활성화는 별도 승인 대상이다.
+  억제하고, 쓸 내용이 없으면 미발송한다.
+
+  **2026-09-15 활성화 — 차단 해소.** 이후 매 거래일 발송하며 `no_change` 억제가
+  실제로 작동한다(09-16 실측). 위 `REJECT` 는 **구 메시지에 대한 과거 판정**이다.
 - **spike_or_falling `REJECT`** — 장중 급변이 아니라 **1개월 하락 스크리닝**이고
   보유와 무관하다(OPS-01C 판정).
 
-차단 실측: 2026-09-07 11:13 수동 실행 두 건 모두 `status=skipped ·
-reason=push_kind_disabled · telegram_attempted=false`.
+당시 차단 실측(2026-09-07 11:13): 수동 실행 두 건 모두 `status=skipped ·
+reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없다** —
+`market_briefing` 은 발송 중이고, `spike_or_falling_alert` 는 cron 자체가 없다.
 
 ### 프로세스 D — PC 운영 점검
 

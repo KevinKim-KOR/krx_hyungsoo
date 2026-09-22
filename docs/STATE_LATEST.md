@@ -1,21 +1,22 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-23 (**02C 통합 종료 — 장중 급등락 활성화·운영 확인 완료 · PUSH 2_OF_3 유지**)
+최종 업데이트: 2026-09-23 (**02C 통합 종료 — 장중 급등락 활성화·운영 확인 완료 · PUSH 3_OF_3**)
 
 ## 현재 상태
 
 ```text
-POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
+POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
 ```
 
-**PUSH 3종 중 2종이 자동발송 중이다.** 남은 것은 08:00 시장 브리핑 하나다.
-**기능이 완료된 것이 아니므로 POC3 Closeout 은 하지 않는다.**
+**PUSH 3종이 모두 자동발송 중이다**(2026-09-23 실측). 08:00 시장 브리핑은
+2026-09-15 첫 발송 이후 운영 중이다 — 이전 판의 "차단" 은 stale 이었다.
+**POC3 Closeout 여부는 별도 판단 사항이다.**
 
 | 종류 | autosend | 상태 |
 |---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
 | `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화. **2026-09-21 23:48 장중 급등락 정책 활성화**(사용자 승인) → 첫 운영일 2026-09-22 에 조건형 알림 4건 발송, 일일 상한 4건 도달 |
-| `market_briefing` (08:00) | `false` | 차단 — **`02B-2` 구현 완료 · 검증자 `VERIFIED`**(2026-09-13). 거래일 캘린더 확보로 `KRX_TRADING_CALENDAR_NOT_PROVIDED` 해소. 남은 것은 **OCI 배포 + autosend 활성화**(각각 별도 승인) |
+| `market_briefing` (08:00) | **`true`** | **운영 중** — `02B-2` 검증자 `VERIFIED`(2026-09-13) 후 **2026-09-15 첫 발송**. `no_change` 억제 작동 실측(09-16). 이전 판의 `false`·차단 표기는 stale 이었다 |
 | ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 보유 PUSH 까지 멈춘다).
@@ -29,7 +30,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관 |
 | **OPS-02A** 보유 급락 알림 | **`IMPLEMENTED_OPERATIONAL`** | 커밋 `5d2614d6` · 검증자 `VERIFIED_WITH_NOTES`(메모 해소) · 사용자 목업 `APPROVED` · 배포·활성화 완료 |
 | **OPS-02B-1** 시장 입력 Gate | **`CLOSED`** | 검증 `VERIFIED_WITH_NOTES` · 커밋 `988b0494` · 설계자 최종 Gate 확정 2026-09-11. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
-| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`IMPLEMENTED_VERIFIED`** | 검증자 `VERIFIED`(r4). `app/market_briefing/` 8모듈 1,834줄 + 러너 배선. 목업 7종 사용자 확정. 보호 Gate 10종 역검증 `10/10`. 회귀 1,583 passed. **autosend `false` · OCI 미배포** — 설계자 종료 판정·배포·활성화 대기 |
+| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`OPERATIONAL`** | 검증자 `VERIFIED`(r4). `app/market_briefing/` 8모듈 + 러너 배선. 목업 7종 사용자 확정. **2026-09-15 활성화·첫 발송** — 이후 매 거래일 발송, `no_change` 억제 작동 |
 | └ **KS10-RUNNER-EVIDENCE-EXTRACTION** | **`CLOSED`** | 러너 §4 → `runner_evidence.assemble_legacy_evidence()`. 656 → **648줄**. 설계자 `PASS` |
 | **02C-OPS-01** 장중 설정 구조(사업군·대표 ETF) | **`CLOSED`** | 검증자 `VERIFIED`(r9). 자동 분류 27개 사업군 + 승인·OCI 적용 경로. 화면 「승인·적용 > 장중 급등락 설정」 |
 | **02C-OPS-02** 장중 급등락·진입 검토/회피 | **`CLOSED`** | 검증자 `VERIFIED`(2026-09-21). 판정·본문·억제·상태 저장 엔진. 신규 push_kind·cron 0 |
@@ -122,7 +123,7 @@ KOSPI_VIX_INTEGRITY  = PASS
 **이월** — `02B-2` 필수 이월 2건(설계자 2026-09-11 분리): ① API 에만 있는 신규
 ticker 감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. **정적 CSV 자동
 다운로드는 범위 밖.** BACKLOG 2건(DB 가격계열 본조사 · 분배락 민감도)은 비차단.
-`market_briefing` 08:00 autosend 는 `false` 유지.
+`market_briefing` 08:00 은 2026-09-15 부터 운영 중이다.
 
 ### 열린 결함 3건
 
