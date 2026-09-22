@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-21 (**02C-OPS-02 장중 급등락 배포 완료 · 검증자 `VERIFIED` — 활성화 경로 미구현 · PUSH 2_OF_3 유지**)
+최종 업데이트: 2026-09-23 (**02C 통합 종료 — 장중 급등락 활성화·운영 확인 완료 · PUSH 2_OF_3 유지**)
 
 ## 현재 상태
 
@@ -14,7 +14,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | 종류 | autosend | 상태 |
 |---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
-| `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화, 실발송은 2026-09-09 첫 틱부터. 2026-09-21 `02C-OPS-02` 배포로 장중 급등락이 이 종류에 얹혔으나 **정책 `enabled=false`** 라 본문은 기존 「보유 급락 알림」 그대로 |
+| `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화. **2026-09-21 23:48 장중 급등락 정책 활성화**(사용자 승인) → 첫 운영일 2026-09-22 에 조건형 알림 4건 발송, 일일 상한 4건 도달 |
 | `market_briefing` (08:00) | `false` | 차단 — **`02B-2` 구현 완료 · 검증자 `VERIFIED`**(2026-09-13). 거래일 캘린더 확보로 `KRX_TRADING_CALENDAR_NOT_PROVIDED` 해소. 남은 것은 **OCI 배포 + autosend 활성화**(각각 별도 승인) |
 | ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
@@ -32,7 +32,9 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 2_OF_3
 | **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`IMPLEMENTED_VERIFIED`** | 검증자 `VERIFIED`(r4). `app/market_briefing/` 8모듈 1,834줄 + 러너 배선. 목업 7종 사용자 확정. 보호 Gate 10종 역검증 `10/10`. 회귀 1,583 passed. **autosend `false` · OCI 미배포** — 설계자 종료 판정·배포·활성화 대기 |
 | └ **KS10-RUNNER-EVIDENCE-EXTRACTION** | **`CLOSED`** | 러너 §4 → `runner_evidence.assemble_legacy_evidence()`. 656 → **648줄**. 설계자 `PASS` |
 | **02C-OPS-01** 장중 설정 구조(사업군·대표 ETF) | **`CLOSED`** | 검증자 `VERIFIED`(r9). 자동 분류 27개 사업군 + 승인·OCI 적용 경로. 화면 「승인·적용 > 장중 급등락 설정」 |
-| **02C-OPS-02** 장중 급등락·진입 검토/회피 | **`IMPLEMENTED_VERIFIED_DEPLOYED`** | 검증자 `VERIFIED`(2026-09-21). 신규 push_kind·cron 0. 회귀 1,904 passed · 러너 646줄. **정책 `enabled=false` · 활성화 경로 미구현**(아래 «열린 결함») |
+| **02C-OPS-02** 장중 급등락·진입 검토/회피 | **`CLOSED`** | 검증자 `VERIFIED`(2026-09-21). 판정·본문·억제·상태 저장 엔진. 신규 push_kind·cron 0 |
+| **02C-OPS-03** 장중 알림 활성화 경로 | **`CLOSED`** | 검증자 `VERIFIED_WITH_NOTES`(2026-09-22). 정책을 번들에 실어 켤 수 있게 + 15:40 비활성 요약 결함 수정 |
+| └ **02C 통합 종료** | **`IMPLEMENTED_VERIFIED_ACTIVATED`** | 첫 운영일 2026-09-22 — 7/7틱 · 알림 4건 · 일일 상한 작동 · 커버리지 27/27 · 오류 0. `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` |
 | └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
 
 ### OPS-02B-2 운영 계약 (요약 · 2026-09-13 검증자 VERIFIED)
@@ -108,16 +110,14 @@ KOSPI_VIX_INTEGRITY  = PASS
 
 ### 다음
 
-**`02C-OPS-02` 활성화 설계 — 설계자 차례.** 코드는 배포됐지만 켤 수 없다
-(아래 «열린 결함» `DEF-INTRADAY-POLICY-ACTIVATION-PATH`). 설계자가 정해야 할 것:
+**`02C` 는 종료됐다**(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`).
+남은 것은 전부 **비차단 운영 항목**이다.
 
-1. 임계값 12개(`REQUIRED_POLICY_KEYS`)의 값과 **투입 경로** — 화면 입력 / 시드
-   스크립트 / PARAM 중 무엇인지.
-2. 정책 비활성일 때 15:40 요약 줄 처리 — 지금은 `장중 점검 확인 불가` 가 매
-   브리핑에 붙는다(`PROGRAM_TRUTH` 프로세스 C).
+1. **발송 빈도 관찰** — 며칠 쌓이면 `max_sends_per_day=4` 가 적절한지 본다.
+   첫날 상한 도달은 "평소 4건" 을 뜻하지 않는다. **운영 튜닝 자료**다.
+2. 억제 회차의 진단 공백(closeout §5-1) · 파생 키 목록 중복(§5-2) — 비차단.
 
-**사용자 확인 대기 2건** — ① 메시지 형식(결과서 §7 목업) ② 발송량(조건형 4건이
-고정 4건에 더해져 하루 최대 8건).
+**사용자 확인 1건** — 2026-09-22 Telegram 「장중 급등락」 4건 수신 여부.
 
 **이월** — `02B-2` 필수 이월 2건(설계자 2026-09-11 분리): ① API 에만 있는 신규
 ticker 감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. **정적 CSV 자동
@@ -129,14 +129,21 @@ ticker 감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. **�
 `DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL` ·
 ~~`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`~~ **해소** (OPS-02B-1, `988b0494`)
 
-**신규 `DEF-INTRADAY-POLICY-ACTIVATION-PATH`** — `DESIGN_REQUIRED` (2026-09-21).
+~~`DEF-INTRADAY-POLICY-ACTIVATION-PATH`~~ **해소** (02C-OPS-03, 2026-09-22) —
+`generator` 가 `CONFIRMED_POLICY` 를 번들에 담고, 정책이 바뀌면 주기와 무관하게
+재산출한다. 사용자 승인으로 활성화까지 완료. 아래는 당시 기록이다.
+
+**`DEF-INTRADAY-POLICY-ACTIVATION-PATH`** — `DESIGN_REQUIRED` (2026-09-21).
 장중 급등락을 켜는 경로가 소스에 없다. `generator.py` 가 `build_payload()` 에
 `policy=` 를 넘기지 않아 항상 `enabled=False · NOT_CONFIGURED` 가 들어가고,
 `policy=` 를 넘기는 호출처는 저장소 전체에 **0건**. API 는 사업군 목록
 승인·거부 2개뿐이고 정책 값을 바꾸는 엔드포인트가 없다. 화면 카드의 `알림 상태`
 는 표시 전용이다. 기능 DEPLOYED / 활성화 MISSING.
 
-**신규 `DEF-INTRADAY-SUMMARY-WHEN-DISABLED`** — `DESIGN_REQUIRED` (2026-09-21).
+~~`DEF-INTRADAY-SUMMARY-WHEN-DISABLED`~~ **해소** (02C-OPS-03, 2026-09-22) —
+비활성이면 줄을 붙이지 않는다. 아래는 당시 기록이다.
+
+**`DEF-INTRADAY-SUMMARY-WHEN-DISABLED`** — `DESIGN_REQUIRED` (2026-09-21).
 15:40 요약 부착이 정책 활성 여부로 막히지 않아, `enabled=false` 인 지금도 매
 15:40 보유 브리핑 말미에 `장중 점검 확인 불가` 한 줄이 붙는다(실측). "기능이
 꺼짐" 과 "집계를 못 읽음" 을 같은 문구로 말한다.
@@ -162,6 +169,8 @@ KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으�
   · 상태 저장 계약은 설계서 **§15-2** 가 정본(D2 3상태 · D3 기록 Gate)
   · 메시지 목업·15:40 요약은 결과서 **§7**
   · **종료·인계** `docs/handoff/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md`
+- **02C-OPS-03**: `docs/ai_design|ai_result/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_*`
+- **02C 통합 종료**: `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` — 첫 운영일 실측·계약 3개·운영 방법
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
   · 프로세스 C 「배포로 지금 바뀐 동작 2건」 · §13-7(활성화 경로 부재) · 부록 A
 

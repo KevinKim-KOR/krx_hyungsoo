@@ -357,16 +357,26 @@ flowchart LR
 | 종류 | cron | `PUSH_AUTOSEND_*_ENABLED` | 상태 |
 |---|---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | 유지 | **`true`** | **발송 중** |
-| `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화. 2026-09-21 `OPS-02` 배포로 **장중 급등락 통합 본문**이 이 종류에 얹혔으나 장중 정책이 `enabled=false` 라 현재 본문은 기존 「보유 급락 알림」 그대로 |
+| `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화. **2026-09-21 23:48 장중 급등락 정책 활성화**(사용자 승인) 후 「장중 급등락」 통합 본문이 나간다. 첫 운영일 2026-09-22: 7/7틱 · 알림 4건 · 일일 상한 4건 도달 · 커버리지 27/27 · 오류 0 |
 | `market_briefing` (08:00) | 유지 | **`false`** | **차단** — `skipped/push_kind_disabled`. 메시지·억제는 `OPS-02B-2` 로 **재구현 완료**(검증자 `VERIFIED` 2026-09-13). 발송은 활성화 승인 대기 |
 | ~~`spike_or_falling_alert`~~ | **제거** | — | **폐지** — cron 7건을 `holdings_risk_alert` 로 교체 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 보유 PUSH 까지 멈춘다).
 
-#### POC3-02C-OPS-02 배포(2026-09-21)로 **지금 바뀐 동작 2건**
+#### 장중 급등락 — **운영 중** (2026-09-21 23:48 활성화)
 
-장중 정책은 `enabled=false` 이므로 사업군 대표 ETF 조회는 0건이고 「장중 급등락」
-본문도 나가지 않는다. 다만 정책과 **무관하게** 바뀐 것이 둘 있다.
+정책 `enabled=true` 이므로 7틱마다 사업군 대표 ETF 27개를 평가하고, 조건이
+맞으면 「장중 급등락」 통합 본문이 기존 「보유 급락 알림」 본문을 **대체**한다.
+
+```text
+회차당 최대 1건 · 조건형 일일 최대 4건 · 한 메시지 최대 9종목(구역 3 × 3)
+고정 4건 + 조건형 최대 4건 = 하루 최대 8건
+15:40 보유 브리핑 말미에 그날 회차 집계 한 줄
+```
+
+첫 운영일(2026-09-22) 실측은 `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` §2.
+
+OPS-02 배포로 **정책과 무관하게** 바뀐 것도 둘 있었다.
 
 1. **보유 급락·급등 판정의 분모가 바뀌었다.** 조정계열 종가 역산이 아니라
    Naver 응답의 **무조정 D-1 등락률**(`fluctuationsRatio`)을 그대로 쓴다.
@@ -374,17 +384,16 @@ flowchart LR
    (현재가로 역산하지 않는다). 배포 전 24거래일 재생에서 **급락 판정 변경 0건**.
 
 2. **15:40 보유 브리핑 말미에 장중 점검 요약 한 줄이 붙는다.**
-   이 부착은 **정책 활성 여부로 막히지 않는다** — 슬롯이 `CLOSE` 이고 본문이
-   있으면 붙는다. 정책이 `enabled=false` 면 집계 파일 자체가 없으므로 실측상
-   다음 한 줄이 나간다.
+   `OPS-03` 에서 정책 상태를 보도록 고쳤다(설계자 확정).
 
    ```text
-   장중 점검 확인 불가
+   비활성 · NOT_CONFIGURED    줄 없음
+   활성 + 정상 집계            장중 점검 7회 · 알림 4건 · 중복 억제 3건 · 신호 없음 0건
+   활성 + 누락·손상            장중 점검 확인 불가
    ```
 
-   집계 불가와 "0건" 을 구분하려는 설계(§8)인데, **기능이 꺼져 있는 상태**와
-   **켜져 있는데 집계를 못 읽은 상태**를 같은 문구로 말한다. 활성화 전까지
-   매 15:40 브리핑에 이 줄이 붙는다. 설계자 판단 대기 항목이다.
+   2026-09-22 실측은 위 가운데 줄 그대로다. **`중복 억제 N건` 은 발송이 없었던
+   회차 수**이고, 억제된 **신호 건수**와 다르다(closeout §2-2).
 
 **활성 PARAM** `param-20260907T152806-255383` 의 `enabled_push_kinds` 는 4종이다
 (`market_briefing` · `holdings_briefing` · `spike_or_falling_alert` ·
@@ -493,7 +502,11 @@ reason=push_kind_disabled · telegram_attempted=false`.
 
 6. **ORPHANED 후보 API** — 초기 조사에서 `/apply`·`/state`·`/run`·`/decision-draft/preview` 를 후보로 적었으나, **prefix 붙은 full path 로 FE 가 호출하는 운영 API 로 정정**(§6.2). 남은 개별 재확인 대상은 `GET /runs`(목록 — FE 는 `/runs/{id}` 단건만 호출) 뿐.
 
-7. **장중 급등락(OPS-02) 을 켤 경로가 없다** (2026-09-21 배포 후 실측)
+7. ~~**장중 급등락(OPS-02) 을 켤 경로가 없다**~~ — **해소** (`OPS-03`, 2026-09-22).
+   `generator` 가 `CONFIRMED_POLICY` 를 번들에 담고, 정책이 바뀌면 주기와
+   무관하게 재산출한다. 사용자 승인으로 활성화까지 완료. 아래는 당시 기록이다.
+
+   (당시) **장중 급등락을 켤 경로가 없다** (2026-09-21 배포 후 실측)
    - 판정·발송·상태 저장은 전부 구현·검증(`VERIFIED`)됐고 배포도 됐다. 그러나
      **정책 `enabled=true` 를 만드는 경로가 소스에 없다.**
    - 실측: 번들 생성부 `app/intraday_config/generator.py` 가 `schema.build_payload()`
@@ -550,6 +563,8 @@ reason=push_kind_disabled · telegram_attempted=false`.
 | `app/runtime_evidence/intraday_alert_render.py` | 「장중 급등락」 본문 · 15:40 요약 한 줄 |
 | `app/runtime_evidence/intraday_checkup_tally.py` | 회차 집계(발송 상태와 별개 파일) |
 | `holdings_risk_flow :: apply_intraday_records` | 운영 Gate 통과 회차만 관측·집계 기록 |
+| `app/intraday_config/generator.py :: CONFIRMED_POLICY` | PC 가 번들에 담는 정책 12키 (OPS-03) |
+| `app/intraday_config/schema.py :: validate` | `enabled=true` 면 12키 필수 · 파생 키 2개 고정 검사 |
 | `runner :: _finish` | 그 Gate 훅(모든 종료 지점) |
 
 - 화면 컨테이너: `frontend/app/components/MainPanel.tsx :: MainPanel` / `LeftSidebar.tsx :: MENU_GROUPS, MenuKey, assertMenuGroupsCover`
