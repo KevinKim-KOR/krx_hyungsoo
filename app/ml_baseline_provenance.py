@@ -217,6 +217,7 @@ def write_run_manifest(
     per_date: list[dict],
     status: str,
     canonical: Optional[str],
+    e2_core_canonical: Optional[str],
     result_path: Path,
     meta_path: Path,
     started: str,
@@ -259,6 +260,8 @@ def write_run_manifest(
                 "path": result_path.name,
                 "file_sha256": raw_sha256(result_path),
                 "canonical_sha256": canonical,
+                # strategy_performance 블록만 뺀 canonical — E2 평가가 바뀌지 않았는지 비교용.
+                "e2_core_canonical_sha256": e2_core_canonical,
             }
             if result_path.exists()
             else None

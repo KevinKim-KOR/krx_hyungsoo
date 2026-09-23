@@ -167,13 +167,15 @@ def test_ac8_terminal_states_block_reuse(client, monkeypatch):
     def _boom(run):
         raise delivery.DeliveryError("injected for test")
 
-    monkeypatch.setattr(delivery, "deliver", _boom)
-    _, b3 = _generate(client, _VALID_INPUT)
-    client.post(f"/runs/{b3['run_id']}/approve")
-    assert client.get(f"/runs/{b3['run_id']}").json()["status"] == "FAILED"
-    r = client.post(f"/runs/{b3['run_id']}/approve")
-    assert r.status_code == 409
-    monkeypatch.undo()
+    # 이 구간의 패치만 되돌린다. `monkeypatch.undo()` 는 conftest 의 격리 패치
+    # (store 경로 · OCI stub 등)까지 전부 풀어 라이브 state/runs 에 썼다(POC4-01 사고).
+    with monkeypatch.context() as m:
+        m.setattr(delivery, "deliver", _boom)
+        _, b3 = _generate(client, _VALID_INPUT)
+        client.post(f"/runs/{b3['run_id']}/approve")
+        assert client.get(f"/runs/{b3['run_id']}").json()["status"] == "FAILED"
+        r = client.post(f"/runs/{b3['run_id']}/approve")
+        assert r.status_code == 409
 
     # FAILED — draft input 실패 경로
     _, b4 = _generate(client, {"title": "x", "recommendations": []})

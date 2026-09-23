@@ -6,13 +6,13 @@
       --cutoff <manifest data_cutoff> --out-dir state/ml/baselines/<id>/runs/run1
   (--limit-dates 5 는 스모크)
 
-산출물 (out-dir 아래 — 기존 state/ml/validity 결과는 덮어쓰지 않는다):
+산출물 (out-dir 는 **새 폴더**여야 한다 · state/ml/validity 와 그 하위 금지):
   relative_upside_validity_v1_latest.json · relative_upside_validity_v1_run_latest.json
   run_manifest.json (입력 hash · 코드 commit · 환경 · 인자 · 결과 hash · 평가일)
 
 본 스크립트는 오케스트레이션만 한다 — 지표 산식은 `ml_score_validity_metrics`,
-PIT 재현은 `ml_score_validity_eval`, U2 재현은 `ml_score_validity_screen`,
-집계·판정은 `ml_score_validity_report` 에 있다 (KS-10 책임 분리).
+PIT 재현은 `ml_score_validity_eval`, U2 재현은 `ml_score_validity_screen`, 집계·판정은
+`ml_score_validity_report`, 성과지표·비용은 `ml_strategy_performance` 에 있다 (KS-10 책임 분리).
 
 하지 않는 것 — OCI 전달 / Telegram / PARAM / 운영 snapshot 갱신.
 """
@@ -41,6 +41,7 @@ from app.ml_baseline_provenance import (  # noqa: E402
 from app.ml_baseline_snapshot import (  # noqa: E402
     SnapshotIntegrityError,
     SnapshotSession,
+    new_run_dir,
     snapshot_session,
 )
 from app.ml_relative_upside_features import KODEX200_TICKER  # noqa: E402
@@ -91,6 +92,7 @@ from app.ml_score_validity_report import (  # noqa: E402
     preflight_gate,
 )
 from app.ml_score_validity_screen import replay_screen_slates  # noqa: E402
+from app.ml_strategy_performance import build_strategy_performance  # noqa: E402
 
 OUT_DIR = _PROJECT_ROOT / "state" / "ml" / "validity"
 RESULT_FILENAME = "relative_upside_validity_v1_latest.json"
@@ -138,13 +140,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    out_dir = Path(args.out_dir).resolve()
-    if out_dir == OUT_DIR.resolve():
-        raise RuntimeError("기존(legacy) 결과 폴더에는 쓰지 않는다 — 새 --out-dir 필요")
+    out_dir = new_run_dir(Path(args.out_dir), forbidden_root=OUT_DIR)
     code = code_provenance()
     if not code["git"].get("code_clean") and not args.allow_dirty_code:
         raise RuntimeError(f"코드가 commit 과 다르다 — 기준선 실행 불가: {code['git']}")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True)
     try:
         with snapshot_session(
             Path(args.snapshot_manifest),
@@ -155,6 +155,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             return _evaluate(args, snap, out_dir, code)
     finally:
         _cleanup(out_dir)
+        if not any(out_dir.iterdir()):
+            out_dir.rmdir()  # 아무것도 쓰지 못하고 끝난 실행은 빈 폴더도 남기지 않는다
 
 
 def _evaluate(
@@ -443,7 +445,7 @@ def _evaluate(
             time.perf_counter() - t0,
         )
 
-    def _manifest(status: str, canonical: Optional[str]) -> None:
+    def _manifest(status: str, canonical: Optional[str], core: Optional[str]) -> None:
         write_run_manifest(
             out_dir / RUN_MANIFEST_FILENAME,
             snap=snap,
@@ -452,6 +454,7 @@ def _evaluate(
             per_date=per_date,
             status=status,
             canonical=canonical,
+            e2_core_canonical=core,
             result_path=result_path,
             meta_path=meta_path,
             started=started,
@@ -508,9 +511,7 @@ def _evaluate(
         meta_path.write_text(
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        if result_path.exists():
-            result_path.unlink()
-        _manifest(gate["status"], None)
+        _manifest(gate["status"], None, None)
         log.error("%s — validity_latest 미발행", gate["status"])
         print(json.dumps(meta, ensure_ascii=False, indent=2))
         return 3
@@ -542,12 +543,20 @@ def _evaluate(
             "sha256"
         ],
     }
+    # 작업 6 — 성과지표·비용 분해 (평가 기록은 읽기만 — 아래 E2 핵심 hash 로 증명).
+    payload["strategy_performance"] = build_strategy_performance(
+        evaluation, close_maps[KODEX200_TICKER]
+    )
     payload["determinism"] = {
         "excluded_fields": list(NON_DETERMINISTIC_FIELDS),
         "canonical_sha256": None,
     }
     # 해시는 payload 가 완성된 뒤 마지막에 계산한다 (자기 자신은 None 상태로 포함).
     payload["determinism"]["canonical_sha256"] = canonical_sha256(payload)
+    # E2 핵심 hash — 성과 블록만 뺀 값. 이전 기준선의 canonical 과 같으면 E2 평가 무변경.
+    e2_core = canonical_sha256(
+        payload, exclude=NON_DETERMINISTIC_FIELDS + ("strategy_performance",)
+    )
 
     result_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
@@ -567,7 +576,9 @@ def _evaluate(
     meta_path.write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    _manifest(payload["verdict"]["final"], payload["determinism"]["canonical_sha256"])
+    _manifest(
+        payload["verdict"]["final"], payload["determinism"]["canonical_sha256"], e2_core
+    )
 
     log.info("완료 %.1fs → %s", time.perf_counter() - wall0, result_path)
     print(

@@ -108,7 +108,7 @@ def _args(tmp_path, *extra):
         "--skip-e1",
         "--allow-dirty-code",
         "--out-dir",
-        str(tmp_path),
+        str(tmp_path / "out"),  # 실행마다 새 폴더 (러너가 이미 있는 폴더를 거부한다)
         *extra,
     ]
 
@@ -119,8 +119,8 @@ def _run(tmp_path, limit=3):
 
 def _paths(tmp_path):
     return (
-        tmp_path / cli.RESULT_FILENAME,
-        tmp_path / cli.RUN_META_FILENAME,
+        tmp_path / "out" / cli.RESULT_FILENAME,
+        tmp_path / "out" / cli.RUN_META_FILENAME,
     )
 
 
@@ -170,19 +170,28 @@ def test_cli_blocks_and_does_not_emit_when_coverage_below_threshold(
         assert entry["coverage"] is None or entry["coverage"] < BLOCKING_MIN_COVERAGE
 
 
-def test_cli_removes_stale_validity_latest_when_blocked(tmp_path, monkeypatch):
-    """직전 정상 결과가 남아 있어도 차단되면 지워야 한다 (stale 발행 금지)."""
+def test_cli_refuses_existing_out_dir_and_leaves_its_files_untouched(
+    tmp_path, monkeypatch
+):
+    """이전 결과가 있는 폴더로는 실행하지 않는다 (stale 발행·덮어쓰기 금지 — 검증자 P1).
+
+    예전에는 같은 폴더를 다시 쓰고 차단 시 이전 결과를 지웠다. 지금은 폴더 자체를
+    거부하므로, 이전 결과는 그 실행의 결과로 그대로 남고 새 결과로 오인될 수 없다.
+    """
     result_path, meta_path = _paths(tmp_path)
-    tmp_path.mkdir(parents=True, exist_ok=True)
-    result_path.write_text('{"stale": true}', encoding="utf-8")
+    result_path.parent.mkdir(parents=True)
+    result_path.write_text("SENTINEL", encoding="utf-8")
+    meta_path.write_text("SENTINEL", encoding="utf-8")
 
-    _install(monkeypatch, _prices(good_count=4, stale_count=26, stale_cut="2020-07-20"))
-    rc = _run(tmp_path)
+    calls = _install(monkeypatch, _prices())
+    with pytest.raises(RuntimeError, match="이미 있다"):
+        _run(tmp_path)
 
-    assert rc == 3
-    assert not result_path.exists(), "차단 시 기존 validity_latest 도 제거돼야 한다"
-    assert json.loads(meta_path.read_text(encoding="utf-8"))["status"] == (
-        "BLOCKED_COVERAGE"
+    assert calls == []
+    assert result_path.read_text(encoding="utf-8") == "SENTINEL"
+    assert meta_path.read_text(encoding="utf-8") == "SENTINEL"
+    assert sorted(p.name for p in result_path.parent.iterdir()) == sorted(
+        [result_path.name, meta_path.name]
     )
 
 

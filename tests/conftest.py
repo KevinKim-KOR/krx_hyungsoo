@@ -16,14 +16,99 @@
 
 from __future__ import annotations
 
-import sqlite3
+import hashlib
+import os
 import sys
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app import api, delivery, holdings as holdings_module, market_cache, store
+# 라이브 state/logs 쓰기 가드 — app 모듈 import **전에** 건다(import 시점 쓰기까지 막는다).
+from tests import _live_guard  # noqa: E402
+
+_live_guard.install()
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app import (  # noqa: E402
+    api,
+    delivery,
+    holdings as holdings_module,
+    market_cache,
+    store,
+)
+
+# 세션 전후 비교 대상 — POC4-01 사고에서 전체 회귀가 실제로 쓴 라이브 경로 5곳.
+# 하위 프로세스처럼 가드 밖에서 쓰는 경우를 여기서 잡는다.
+_LIVE_WATCH_FILES = (
+    "state/market/market_data.sqlite",
+    "state/market/nav_discount_refresh_latest.json",
+    "logs/oci_market_data_batch.log",
+    "logs/three_push_runtime_cron.log",
+)
+_LIVE_WATCH_DIRS = ("state/runs",)
+
+
+def _live_fingerprint() -> dict:
+    """감시 5곳의 sha256 + state/·logs/ 전체 파일의 (크기, mtime)."""
+    root = _live_guard.PROJECT_ROOT
+    out: dict = {}
+    for rel in _LIVE_WATCH_FILES:
+        path = root / rel
+        if path.exists():
+            digest = hashlib.sha256()
+            with path.open("rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b""):
+                    digest.update(chunk)
+            out[rel] = digest.hexdigest()
+        else:
+            out[rel] = None
+    for rel in _LIVE_WATCH_DIRS:
+        path = root / rel
+        out[rel] = sorted(os.listdir(path)) if path.exists() else None
+    for live_root in _live_guard.LIVE_ROOTS:
+        for dirpath, _dirs, files in os.walk(live_root):
+            for name in files:
+                full = os.path.join(dirpath, name)
+                try:
+                    st = os.stat(full)
+                except OSError:
+                    continue
+                out[f"stat:{os.path.relpath(full, root)}"] = (
+                    st.st_size,
+                    st.st_mtime_ns,
+                )
+    return out
+
+
+def pytest_unconfigure(config):
+    _live_guard.uninstall()
+
+
+def pytest_sessionstart(session):
+    session.config._live_before = _live_fingerprint()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    before = getattr(session.config, "_live_before", None)
+    if before is None:
+        return
+    after = _live_fingerprint()
+    changed = sorted(
+        k for k in set(before) | set(after) if before.get(k) != after.get(k)
+    )
+    if not changed:
+        return
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    lines = ["[live-state] 테스트 세션 동안 라이브 경로가 바뀌었다:"] + [
+        f"  - {k}" for k in changed[:50]
+    ]
+    for line in lines:
+        if reporter is not None:
+            reporter.write_line(line, red=True)
+        else:
+            print(line)
+    session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
 
 @pytest.fixture(autouse=True)
@@ -150,12 +235,13 @@ def _restore_and_fail(live, before):
 
     테스트가 남긴 상태로 다음 테스트가 돌면 원인 추적이 불가능해진다.
     """
-    if before is None:
-        live.unlink()
-        what = "새로 만들었다"
-    else:
-        live.write_bytes(before)
-        what = "덮어썼다"
+    with _live_guard.suspended():  # 되돌리기만 — 가드가 먼저 막으므로 보통은 오지 않는다
+        if before is None:
+            live.unlink()
+            what = "새로 만들었다"
+        else:
+            live.write_bytes(before)
+            what = "덮어썼다"
     pytest.fail(
         f"테스트가 라이브 보유 상태 파일을 {what}: {live}\n"
         "경로 격리 없이 러너 저장 경로를 탄다 (원본은 되돌려 놓았다)."
@@ -234,6 +320,30 @@ def _block_live_benchmark_refresh(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolated_side_outputs(tmp_path, monkeypatch):
+    """POC4-01 사고 — 테스트가 라이브 NAV 요약·러너 로그에 쓰던 경로를 tmp 로 돌린다.
+
+    `NAV_REFRESH_SUMMARY_PATH` 와 로그 폴더는 **호출 시점에** 읽히는 모듈 상수다.
+    `scripts.three_push_oci_helpers` 는 import 하면 `.env` 를 읽으므로, 이미 import
+    된 경우에만 바꾼다(그 밖의 경로는 `_live_guard` 가 쓰는 순간 막는다).
+    """
+    from app import market_refresh_service as _mrs
+    import app.three_push_runner_common as _common
+
+    # tmp_path 바로 아래가 아니라 전용 하위 폴더 — tmp_path 를 훑는 테스트(AC-8)와 섞이지 않게.
+    side = Path(tmp_path) / "_side_outputs"
+    logs = side / "logs"
+    monkeypatch.setattr(
+        _mrs, "NAV_REFRESH_SUMMARY_PATH", side / "nav_discount_refresh_latest.json"
+    )
+    monkeypatch.setattr(_common, "LOG_DIR", logs)
+    helpers = sys.modules.get("scripts.three_push_oci_helpers")
+    if helpers is not None:
+        monkeypatch.setattr(helpers, "_LOG_DIR", logs)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _detect_live_market_db_write():
     """라이브 시장 DB 의 benchmark 테이블이 테스트로 바뀌면 **실패시킨다**.
 
@@ -248,7 +358,8 @@ def _detect_live_market_db_write():
         if not live.exists():
             return None
         try:
-            con = sqlite3.connect(f"file:{live}?mode=ro", uri=True)
+            # 사본이 아니라 라이브 파일을 본다 (가드는 라이브 경로를 세션 사본으로 돌린다).
+            con = _live_guard.real_connect(f"file:{live}?mode=ro", uri=True)
             row = con.execute(
                 "select count(*), max(created_at) from market_benchmark_daily_price"
             ).fetchone()

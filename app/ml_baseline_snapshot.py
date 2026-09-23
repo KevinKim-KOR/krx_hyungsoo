@@ -318,6 +318,32 @@ def verify_snapshot(manifest_path: Path) -> dict:
     return manifest
 
 
+def _under_alias(path: Path, root: Path) -> bool:
+    """대소문자·firmlink 같은 별칭 경로로 root 아래를 가리키는지 (있는 조상을 samefile 로 비교)."""
+    if not root.exists():
+        return False
+    for ancestor in (path, *path.parents):
+        if ancestor.exists() and os.path.samefile(ancestor, root):
+            return True
+    return False
+
+
+def new_run_dir(out_dir: Path, *, forbidden_root: Path) -> Path:
+    """실행마다 **새 폴더** (검증자 P1 — 산출물 보호).
+
+    이미 있는 폴더를 받으면 고정 파일명으로 이전 결과를 덮어쓰거나, 실패한 실행에서
+    이전 결과가 남아 새 결과처럼 보일 수 있다. legacy 결과 폴더와 그 하위는 금지한다.
+    """
+    out, root = out_dir.resolve(), forbidden_root.resolve()
+    if out == root or out.is_relative_to(root) or _under_alias(out, root):
+        raise SnapshotIntegrityError("기존(legacy) 결과 폴더와 그 하위에는 쓰지 않는다")
+    if out.exists():
+        raise SnapshotIntegrityError(
+            f"--out-dir 가 이미 있다 — 실행마다 새 폴더: {out}"
+        )
+    return out
+
+
 def _path_key(database: object) -> str:
     text = os.fspath(database) if isinstance(database, os.PathLike) else str(database)
     if text.startswith("file:"):

@@ -47,6 +47,7 @@ from app.ml_baseline_snapshot import (
 )
 from app.ml_relative_upside_features import KODEX200_TICKER
 from app.ml_score_validity_eval import load_prices
+from app.ml_score_validity_report import NON_DETERMINISTIC_FIELDS, canonical_sha256
 
 cli = importlib.import_module("scripts.run_ml_score_validity_eval_v1")
 tool = importlib.import_module("scripts.ml_baseline_tool")
@@ -247,6 +248,41 @@ def test_runner_refuses_legacy_result_dir(tmp_path):
         _run(manifest, cli.OUT_DIR)
 
 
+def test_runner_refuses_any_folder_under_legacy_result_dir(tmp_path):
+    """보존 사본 폴더 같은 legacy **하위** 폴더도 거부한다 (검증자 P1)."""
+    manifest = make_snapshot(tmp_path, synthetic_prices())
+    for sub in ("poc4_01_frozen_original", "brand_new_subdir"):
+        target = cli.OUT_DIR / sub
+        existed = target.exists()
+        with pytest.raises(RuntimeError, match="legacy"):
+            _run(manifest, target)
+        assert target.exists() == existed, "거부하기 전에 폴더를 만들었다"
+
+
+def test_new_run_dir_refuses_alias_paths_into_forbidden_root(tmp_path):
+    from app.ml_baseline_snapshot import new_run_dir
+
+    root = tmp_path / "legacy_root"
+    (root / "kept").mkdir(parents=True)
+    alias = tmp_path / "LEGACY_ROOT" / "kept" / "x"
+    if not alias.parent.exists():
+        pytest.skip("대소문자를 구분하는 파일시스템")
+    with pytest.raises(SnapshotIntegrityError, match="legacy"):
+        new_run_dir(alias, forbidden_root=root)
+    assert (
+        new_run_dir(tmp_path / "fresh", forbidden_root=root)
+        == (tmp_path / "fresh").resolve()
+    )
+
+
+def test_failed_run_leaves_no_empty_out_dir(tmp_path):
+    manifest = make_snapshot(tmp_path, synthetic_prices())
+    out = tmp_path / "run"
+    with pytest.raises(SnapshotIntegrityError, match="cutoff"):
+        _run(manifest, out, cutoff="2020-12-19")
+    assert not out.exists()
+
+
 def test_runner_refuses_dirty_code_without_explicit_flag(tmp_path, monkeypatch):
     manifest = make_snapshot(tmp_path, synthetic_prices())
     monkeypatch.setattr(cli, "code_provenance", lambda: {"git": {"code_clean": False}})
@@ -391,6 +427,27 @@ def test_run_manifest_records_full_provenance(tmp_path):
     assert m["tables"]["etf_master"]["min_date"]
     for leftover in ("_work_dataset.sqlite", WORKING_E1_NAME, cli.REPLAY_DB_NAME):
         assert not (tmp_path / "run" / leftover).exists()
+    perf = payload["strategy_performance"]
+    assert perf["status"] == "OK" and perf["periods"] == 3
+    assert "decomposed_slippage_10bp" in perf["scenarios"]
+    core = canonical_sha256(
+        payload, exclude=NON_DETERMINISTIC_FIELDS + ("strategy_performance",)
+    )
+    assert rm["result"]["e2_core_canonical_sha256"] == core
+
+
+def test_performance_block_does_not_change_e2_core(tmp_path, monkeypatch):
+    """성과 블록을 바꿔 끼워도 E2 핵심 hash 가 같다 — 성과 계산이 평가 기록을 안 바꾼다."""
+    manifest = make_snapshot(tmp_path, synthetic_prices())
+    assert _run(manifest, tmp_path / "real") == 0
+    monkeypatch.setattr(cli, "build_strategy_performance", lambda *a, **k: {"x": 1})
+    assert _run(manifest, tmp_path / "stub") == 0
+    real, stub = _manifest_of(tmp_path / "real"), _manifest_of(tmp_path / "stub")
+    assert real["result"]["canonical_sha256"] != stub["result"]["canonical_sha256"]
+    assert (
+        real["result"]["e2_core_canonical_sha256"]
+        == stub["result"]["e2_core_canonical_sha256"]
+    )
 
 
 def test_e1_reads_verified_working_copy_not_bundle_or_live_file(tmp_path, monkeypatch):

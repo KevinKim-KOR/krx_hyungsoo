@@ -37,7 +37,8 @@ def api_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setattr(etf_constituents_store, "DEFAULT_DB_PATH", fake_db)
     monkeypatch.setattr(etf_nav_store, "DEFAULT_DB_PATH", fake_db)
     monkeypatch.setattr(api_holdings_market_evidence, "MARKET_DB_PATH", fake_db)
-    market_refresh_service.reset_state_for_testing()
+    # 인자 없이 부르면 기본값(정의 시점에 묶인 라이브 DB)의 market_refresh_state 를 지운다.
+    market_refresh_service.reset_state_for_testing(db_path=fake_db)
     return TestClient(api_module.app)
 
 
