@@ -1,29 +1,54 @@
 # POC4-01 — 데이터·백테스트 기반 정비 PLAN V1
 
 ```text
-STATUS            = BLOCKED_ON_BASELINE_REPRODUCTION
-REASON            = 기존 baseline 재현 실패 — 설계자 지시 "재현 실패 시 중단·원인 보고"
-CODE_CHANGE       = 0   (실행 코드 · 운영 DB · OCI · PUSH 전부 0)
+STATUS            = RESUMED — 작업 1~5 구현 · 작업 6 착수 전 확인 요청(§5)
+OCI · PUSH = 변경 0 · 맥북 로컬 시장 DB 는 전체 pytest 가 씀(기존 테스트 격리 결함 — 결과서 §4-8)
 DEPENDENCY_ADDED  = 0
-EXTERNAL_CALLS    = 7   (기존 KRX OpenAPI 읽기 전용 · 저장 0 · DB 적재 0)
 ```
 
+### 설계자 판정 (2026-09-23)
+
+```text
+STOP_CONDITION_COMPLIED       = YES
+LEGACY_BASELINE               = NON_REPRODUCIBLE
+ROOT_CAUSE                    = MUTABLE_INPUT_DATA
+NEW_IMMUTABLE_BASELINE        = APPROVED
+KRX_HISTORICAL_SOURCE         = APPROVED_WITH_GATES
+UNBIASED_PERFORMANCE_CLAIM    = NOT_YET
+POC4_01_CONTINUE              = YES
+```
+
+- 결정 1 — 새 기준선: 기존 결과 덮어쓰지 않음 · 145 를 146 으로 단순 수정 금지 ·
+  라이브 DB 직접 baseline 실행 금지 · 입력 스냅샷·hash·cutoff·테이블 통계·schema hash·
+  코드 commit·고정 모듈 raw/정규화 AST hash·환경·인자·결과 hash·평가일 목록을 한 세트로
+  고정 · snapshot hash 불일치 시 fail-closed · 검증 기준 4개(두 번 실행 동일 / 라이브
+  새 날짜 무관 / 라이브 과거 행 변경 무관 / 누락·불일치 시 실패).
+- 결정 2 — KRX universe: PC 전용 별도 연구 DB · OCI 쓰기 0 · 운영 DB 변경 금지 · 가격
+  혼합 금지 · 2014년 이후 전체 기간 · 원응답 raw · 폐지 종목을 현재 etf_master 로
+  거르지 않음 · batch·조회일·source·payload hash 기록 · 덮어쓰기 금지 · 재수집이 다르면
+  별도 version · Gate 1~6(공식 한도 조사 → 재시작 가능 downloader → canary ≤20 →
+  중복·누락·재시도·backoff 검증 → 한도 확인 시 전체 적재 / 미확인 시 일괄 호출 금지).
+- 결정 3 — 고정 모듈 주석: 새 기준선을 만드는 커밋에서 정정하고 그 hash 를 고정 ·
+  기존 hash 갱신·위조 금지 · raw hash 는 바뀌고 정규화 AST hash 는 같음을 기록 ·
+  requirements.txt 변경도 provenance 에 포함.
+- 132MB 임시 DB: 4가지 확인 후, 불완전하면 새 스냅샷 생성·검증 뒤 **그 파일 1개만** 삭제.
+- 순서: legacy 표시 → 스냅샷·manifest·fail-closed → 결정성 검증 → KRX 연구 DB·canary →
+  한도 확인 전 전체 적재 금지 → 그다음 embargo·성과지표·비용 분해. 완료 후 검증자.
+
 - **작성**: 개발자(VSCode Claude) · **독자**: 설계자
-- **입력**: 설계자 POC4-00 판정·POC4-01 착수 지시(2026-09-23)
-- 조사 결과를 앞부분에 넣은 한 파일이다(설계자 지시 — 별도 조사 문서 없음).
+- **입력**: 설계자 POC4-00 판정·POC4-01 착수 지시·POC4-01 판정(2026-09-23)
+- 구현 증거·수치는 결과서 `docs/ai_result/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_RESULT.md`.
 
 ---
 
 ## 0. 결론
 
-**두 가지를 보고한다. 하나는 막혔고, 하나는 풀렸다.**
-
 | | 결과 |
 |---|---|
-| **baseline 재현** | **실패 — 중단.** 코드는 원본과 같다. 원인은 **라이브 DB 가 원본 실행 뒤 바뀐 것**이고, 백테스트가 고정된 입력 없이 그 DB 를 읽는다 |
-| **universe 복원** | **공식 출처로 복원 가능.** 기존 KRX OpenAPI 가 과거 시점의 ETF 전체 목록을 돌려준다. 생존편향을 **처음으로 정량화**했다 — 2015년 universe 의 **31.4%**가 우리 DB 에 없다 |
-
-재현 실패 때문에 embargo·지표·비용 정비는 **착수하지 않았다**(§4). 결정 요청은 §5.
+| **기존 baseline** | **재현 불가 확정**(`LEGACY_BASELINE_NON_REPRODUCIBLE`). 원본 결과는 덮어쓰지 않고 역사 자료로 보존했다(§1) |
+| **새 기준선** | 라이브 DB 를 한 번 동결한 **불변 스냅샷**으로만 평가한다. 평가기는 스냅샷 없이는 돌지 않는다(§4) |
+| **universe 복원** | 공식 한도(키당 10,000회/일)를 약관 원문으로 확인했다. canary 게이트 통과 후 전체 기간 적재(§2) |
+| **작업 6** | embargo 는 **E2 평가 label 에 누수가 없다**는 것을 코드로 다시 확인했다 — 어디에 걸지 결정이 필요하다. 비용 수치·지표 기준도 확인 요청(§5) |
 
 ---
 
@@ -37,7 +62,10 @@ EXTERNAL_CALLS    = 7   (기존 KRX OpenAPI 읽기 전용 · 저장 0 · DB 적�
 1  원본 artifact 고정     state/ml/validity/poc4_01_frozen_original/  (sha256 보존)
 2  같은 인자로 재실행      limit_dates=None · skip_e1=False  (원본 run_arguments 와 동일)
 3  출력을 별도 폴더로      --out-dir state/ml/validity/poc4_01_repro  (원본 덮어쓰기 0)
-4  라이브 DB 보호          평가기는 mode=ro · 쓰기는 출력 폴더의 임시 DB 로만
+4  라이브 DB 보호          가격·이름 조회(load_prices·build_tag_map)는 운영 조회 함수(_connection)로
+                          라이브 DB 를 읽기쓰기 연결로 열었다(처음 열 때 CREATE TABLE IF NOT EXISTS ·
+                          기존 테이블이라 변경 없음). mode=ro 는 U2 재현 원본과 가격 hash 계산뿐 ·
+                          산출 JSON 과 U2 임시 DB 는 출력 폴더로만
 ```
 
 실행 후 라이브 `market_data.sqlite` sha256 이 **실행 전과 같다**.
@@ -48,9 +76,10 @@ EXTERNAL_CALLS    = 7   (기존 KRX OpenAPI 읽기 전용 · 저장 0 · DB 적�
 RuntimeError: E2 평가일 수 계약 위반: 기대 145, 실제 146
 ```
 
-`app/ml_score_validity_eval.py:73` 이 평가일 수를 `E2_EXPECTED_POINT_COUNT = 145`
-로 고정하고, `assert_evaluation_window`(:529)가 다르면 멈춘다. **계약 가드가
-제대로 작동한 것이다** — 입력이 바뀌었다는 것을 잡았다.
+재현 당시 코드(`d43db726`)에서는 `app/ml_score_validity_eval.py:73` 이 평가일 수를
+`E2_EXPECTED_POINT_COUNT = 145` 로 고정했고, `assert_evaluation_window`(:529)가 개수가
+다르면 멈췄다. **계약 가드가 제대로 작동한 것이다** — 입력이 바뀌었다는 것을 잡았다.
+(`be579619` 에서 이 상수를 뺐다 — 지금은 스냅샷 manifest 의 평가일 목록과 비교한다. §4-2)
 
 ### 1-3. 코드는 바뀌지 않았다
 
@@ -120,8 +149,14 @@ app/ml_relative_upside_score.py      원본 실행과 같음
 **재현 기준을 흐리게 만들었다.**
 
 → **그 파일의 docstring 은 되돌렸다.** 고정 모듈 3개가 다시 원본과 일치한다.
-`requirements.txt` 주석 정정은 고정 대상이 아니라서 유지했다. §5-3 에서 처리 방법을
-묻는다.
+설계자 결정 3 에 따라 **새 기준선을 만드는 커밋에서 다시 정정**했다(§4-4).
+
+### 1-7. 처리 — `LEGACY_BASELINE_NON_REPRODUCIBLE`
+
+원본 두 파일은 그대로 두고(sha256 `a55e7292…` · `8d186239…`), 옆에 표시 파일
+`state/ml/validity/LEGACY_BASELINE_NON_REPRODUCIBLE.json` 을 둔다. 145 라는 평가일 수는
+이 표시 파일에만 역사 값으로 남고, 코드 상수에서는 뺐다 — 새 기준선의 평가일 수는
+스냅샷 manifest 가 정한다.
 
 ---
 
@@ -137,7 +172,8 @@ data-dbg.krx.co.kr/svc/apis/etp/etf_bydd_trd   (ETF 일별매매정보)
 인증     .env KRX_API_KEY (값 미출력)
 ```
 
-`basDd`(기준일)를 주면 **그날 거래된 ETF 전체**를 돌려준다. 과거 날짜를 주면 **그
+`basDd`(기준일)를 주면 **그날 상장돼 있던 ETF 전체**를 돌려준다(그날 거래량 0 인 종목 포함 ·
+휴장일·토요일에도 행은 오고 가격 필드는 빈 문자열). 과거 날짜를 주면 **그
 시점의 universe** 가 나오고, 이후 폐지된 ETF 도 들어 있다. 응답에 종가
 (`TDD_CLSPRC`)도 있다.
 
@@ -160,18 +196,42 @@ data-dbg.krx.co.kr/svc/apis/etp/etf_bydd_trd   (ETF 일별매매정보)
 **생존편향이 처음으로 정량화됐다.** 과거로 갈수록 누락이 크다 — 백테스트 초기
 구간일수록 수익률이 더 부풀려진다.
 
-### 2-3. 복원에 필요한 것
+### 2-3. 공식 호출 한도 — 확인됨 (Gate 1)
+
+KRX OPEN API 이용약관(2025-12-26 시행) 원문과 공식 FAQ 를 인용으로 확인하고, 인용마다
+페이지를 다시 열어 문장이 실제로 있는지 독립 검증했다(12건 모두 원문 일치).
 
 ```text
-호출 수      전 기간 3,055 거래일 · 최근 5년 1,223 거래일  (하루 1회씩)
-일일 한도    **미확인** — 저장소에 한도 기록이 없다
-저장 위치    미정 — etf_daily_price 에 섞을지, 별도 테이블로 둘지
+일일 한도     인증키당 1일(0시~24시) 10,000회 — 약관 제8조④ · FAQ "429 에러"
+초당·분당     별도 제한 없음 — FAQ
+초과 시       HTTP 429 · "서비스가 중지될 수 있다"
+제공 기간     2010-01-04 데이터부터 (서비스 목록 · API 상세 · 개발 명세서)
+이용 조건     비상업 목적 · 제3자 제공 금지(제11조②) · 화면 표출 시 출처 표시(제10조③)
+폐지 종목     "기준일 당시 상장되어 있었다면 이후 상장폐지된 종목도 포함" — FAQ
 ```
 
-**이 조사 단계에서는 적재하지 않았다**(설계자 지시 — 외부 데이터 저장·DB 적재
-금지). 적재는 §5-2 승인 사항이다.
+필요 호출(2014-01-02 ~ 2026-09-21 평일)은 **3,318회**로 한도 안이다. 운영 07:20 수집과
+같은 키일 수 있어, 한 KST 일 5,000회(한도의 절반)를 코드로 막는다.
 
-### 2-4. POC4-00 기록 정정
+### 2-4. 저장 방식 (결정 2 그대로)
+
+```text
+위치       state/ml/research/krx_etf_universe.sqlite  (PC 전용 · gitignore · 운영 DB 경로면 거부)
+원응답     krx_raw_response  — 본문 그대로 append-only · payload sha256
+호출 기록  krx_fetch_attempt — batch · 조회 시각(UTC·KST일) · HTTP 상태 · 오류
+행         krx_etf_daily_raw — 원응답 행 dict 그대로 · etf_master 로 거르지 않음
+checkpoint krx_download_plan — 날짜별 상태 · 중단 후 이어받기
+version    krx_dataset_version / member — 거래일 → 응답 1개 · 봉인 후 변경 불가
+충돌       krx_refetch_conflict — 같은 OPEN version 에 이미 붙은 거래일을 재수집해 TRADED 로 왔고
+          payload hash 가 다르면 기존 member 유지 + 기록 (재수집이 NON_TRADING·NO_ROWS 면
+          비교·기록 없음 — raw 는 남는다)
+          → 새 version 은 derive_version 으로만
+```
+
+거래일 달력 API 가 없어(FAQ) 평일 전부를 계획하고 응답으로 판정한다. 휴장 평일·토요일은
+**행은 오지만 가격이 빈 문자열**이다(canary 실측 · `NON_TRADING`).
+
+### 2-5. POC4-00 기록 정정
 
 POC4-00 §19-3 은 "**저장소 데이터만으로는** 복원 불가" 라고 적었다. 그 문장은
 맞다(상장일 필드 0/1,145). 다만 **저장소 밖 공식 출처로는 복원 가능**하다는 것이
@@ -180,7 +240,7 @@ POC4-00 §19-3 은 "**저장소 데이터만으로는** 복원 불가" 라고 �
 
 ---
 
-## 3. 이미 확정된 설계자 사항 (재확인 · 착수 대기)
+## 3. 확정된 설계자 사항
 
 ```text
 RF_COMPARISON            APPROVED   (사전 고정 설정 최대 3개 · test 보고 추가 금지)
@@ -191,101 +251,157 @@ PUSH_ML_INTEGRATION      NOT_APPROVED
 OCI_ML_PROMOTION         GATED  (POC4-00 §24-3 의 8개 조건)
 TRACK_A                  future_excess_return_20d 회귀 — 모델 비교용
 TRACK_B                  위험 구간 분류 — 사용자 출력용
+NEW_IMMUTABLE_BASELINE   APPROVED   (결정 1)
+KRX_HISTORICAL_SOURCE    APPROVED_WITH_GATES (결정 2)
+UNBIASED_PERFORMANCE_CLAIM NOT_YET
 ```
 
 ---
 
-## 4. 착수하지 않은 것 — 재현이 먼저다
+## 4. 재개 계획 — 작업 1~5 (PLAN 재제출 없음 · 설계자 지시 순서)
 
-설계자 순서(POC4-00 §24-1)는 "재현 → 고정 → **그다음** 개선" 이다. 재현이 실패해
-아래는 **설계만 적고 손대지 않았다.**
+### 4-1. 불변 스냅샷 (결정 1)
 
-| # | 항목 | 설계 메모 |
-|---|---|---|
-| 1 | purge·embargo 20거래일 | 경계 누수 위치는 `ml_relative_upside_model.py:154` 의 1회 split. train 끝 20거래일 행을 뺀다 |
-| 2 | 전략 성과지표 | MDD · 변동성 · Sharpe · equity curve → `ml_score_validity_metrics.py`(332줄, 여유 있음) |
-| 3 | 비용 분해 | 편도 bp 하나 → 슬리피지 · 수수료 · 증권거래세 |
-| 4 | `ml_score_validity_report.py` 분리 | **626줄**, 그중 `aggregate()` 가 215행부터 끝까지 약 410줄 한 함수다. 판정(A1~A5 · R1~R3) → 별도 파일, 요약·payload → 잔류. 650 넘기 전에 먼저 분리 |
-| 5 | 벤치마크 경로 단일화 | `ml_feature_builder.py:13` 의 KOSPI 지수 추가 경로 정리 |
-| 6 | NAV 최신성 한도 | 미래 참조는 없음(POC4-00 확인). stale NAV 허용 일수만 정한다 |
+```text
+만들기    scripts/ml_baseline_tool.py build --cutoff <날짜> --baseline-id <id>
+          라이브 DB 를 mode=ro 로 ATTACH → 한 읽기 트랜잭션 안에서 평가 입력 3개 테이블
+          (etf_master · etf_daily_price(cutoff 이하) · market_refresh_log) + E1 비교용 점수
+          JSON 을 새 bundle 로 복사 → 파일 0444 봉인. 이미 있는 bundle 은 덮어쓰지 않는다.
+manifest  dataset sha256 · 테이블별 행 수·종목 수·최소일·최대일·내용 hash · schema hash ·
+          cutoff · 라이브 DB 당시 통계 · E1 JSON sha256·asof · **평가일 목록과 개수**
+평가      scripts/run_ml_score_validity_eval_v1.py --snapshot-manifest · --cutoff · --out-dir
+          세 인자 모두 필수 — 라이브 DB 로 평가하는 경로는 없앴다.
+fail-closed  manifest·파일 누락 / sha256 불일치 / cutoff 불일치 / 실행 중 원본 변경 /
+          평가일 목록 불일치 / 코드가 commit 과 다름 → 결과·meta·run_manifest 를 쓰지 않고 실패
+          (예외: 코드가 commit 과 다를 때 개발·테스트용 --allow-dirty-code 를 주면 실행해서
+          결과를 쓰고 run_manifest 에 official=false 로 기록한다)
+라이브 차단  평가 중 sqlite 접속은 hash 를 확인한 작업 사본과 임시 재현 DB 로만 허용.
+          E1 JSON 도 hash 를 확인한 사본만 읽는다.
+기존 결과  state/ml/validity/ 폴더 자체를 out-dir 로 주면 거부한다(정확히 같은 경로만 비교 —
+          하위 폴더는 막지 않는다. 보존 사본 폴더 poc4_01_frozen_original/ 를 out-dir 로 주면
+          덮어써지므로 쓰지 않는다. 결과서 §5)
+```
 
-**이 중 1·2·3 은 재현 기준이 정해져야 효과를 측정할 수 있다** — "고쳤더니 좋아졌다"
-를 말하려면 출발점이 고정돼야 한다.
+작업 사본을 쓰는 이유 — 운영 조회 함수(`market_data_store._connection`)가 처음 여는 DB 에
+`CREATE TABLE IF NOT EXISTS` 를 쓴다. 봉인 파일을 직접 열면 그 쓰기가 봉인을 깬다.
+
+### 4-2. 평가일 수 계약
+
+`E2_EXPECTED_POINT_COUNT = 145` 상수를 코드에서 뺐다. 전체 실행은 **2014-06-30 시작 +
+manifest 평가일 목록과 완전 일치**를 요구한다(수만 맞고 날짜가 달라도 실패). `--limit-dates`
+스모크는 manifest 목록의 부분집합이어야 한다. 145 는 LEGACY 표시 파일에만 남는다.
+
+### 4-3. provenance (run_manifest.json)
+
+```text
+입력     baseline_id · manifest 파일 hash · manifest 내용 hash · dataset·E1 sha256 · schema hash · cutoff
+코드     git HEAD · app/·scripts/·requirements.txt 미커밋 변경 게이트(폴더 단위) ·
+         고정 모듈 3개 + 실제로 import 된 app/·scripts/ 모듈 전부의 raw sha256·정규화 AST hash
+환경     Python · torch/numpy/pandas/scipy/scikit-learn 버전 · SQLite · requirements.txt sha256
+실행     인자 전부 · official(= commit 과 같은 코드 · 전체 기간 · E1 포함)
+결과     결과 파일 sha256 · canonical sha256 · 평가일 목록·개수 · warmup 목록
+```
+
+### 4-4. 고정 모듈 docstring (결정 3)
+
+새 기준선을 만드는 커밋 `be579619` 에서 정정했다.
+
+```text
+app/ml_relative_upside_model.py   raw sha256        8cb88f9e… → b41b2a9a…
+                                   정규화 AST hash   1ba8f5cb… = 1ba8f5cb…  (동일)
+```
+
+### 4-5. 결정성 검증 (검증 기준 1~4)
+
+```text
+기준 1  같은 스냅샷으로 전체 실행 2회 → canonical sha256 · 평가일 목록 비교 (실제 데이터)
+기준 2  합성 DB 테스트 — 라이브에 새 날짜 추가 뒤 같은 스냅샷 재실행 결과 동일
+        대조군: 새 날짜를 담은 새 스냅샷이면 평가일 자체가 달라진다
+기준 3  합성 DB 테스트 — 라이브 과거 행 변경 뒤 같은 스냅샷 재실행 결과 동일
+        대조군: 변경을 담은 새 스냅샷이면 같은 평가일의 IC 가 달라진다
+기준 4  manifest·dataset·E1 누락 / hash 불일치 / 실행 중 변경 → 실패 · 아무것도 안 씀
+```
+
+### 4-6. KRX universe (결정 2 Gate 1~6)
+
+```text
+Gate 1  공식 한도 확인 — §2-3
+Gate 2  재시작 가능한 downloader — checkpoint · 날짜마다 commit
+Gate 3  canary 19개 기준일 + 같은 날짜 재수집 1회 = 호출 20회
+Gate 4  중복·누락·hash·재시도·backoff — canary 검증 + 가짜 fetcher 테스트
+        (5xx·네트워크 지수 backoff 재시도 · 429 즉시 중단 · 그 밖 4xx 즉시 중단 ·
+         연속 실패 3회 중단 · 하루 상한)
+Gate 5  한도 확인됨 → 2014-01-02 ~ 2026-09-21 평일 전체 적재
+Gate 6  (해당 없음 — 한도가 공식 확인됨)
+```
 
 ---
 
-## 5. 결정 요청
+## 5. 작업 6 착수 전 확인 요청 (embargo · 성과지표 · 비용 분해)
 
-### 5-1. 재현 기준을 어떻게 다시 세울 것인가 (**차단 해제에 필요**)
+### 5-1. 20거래일 embargo 는 어디에 거는가 — **E2 평가 label 에는 누수가 없다**
 
-원본 artifact 는 입력을 재구성할 수 없어 **똑같이 다시 만들 수 없다.** 개발자 제안:
-
-```text
-(A) 원본 artifact 는 **파일 그대로 고정**한다 (sha256 보존 · 이미 완료)
-(B) 재현 가능한 **새 기준선**을 만든다 — 입력을 함께 고정해서
-    · 데이터 컷오프를 명시한다 (예: 2026-08-27) → 원인 1 해소
-    · 그 시점 가격 입력 스냅샷을 artifact 와 함께 보존한다 → 원인 2 해소
-    · 컷오프를 넣으려면 평가기에 인자를 하나 추가해야 한다 — **코드 변경**이다
-(C) 새 기준선이 원본과 "같은 결론(REJECT)" 인지 확인한다
-    — 142/145 일치이므로 결론은 유지될 가능성이 높지만 **실측으로 확인**한다
-```
-
-**(B)의 컷오프 인자 추가는 코드 변경이라 승인이 필요하다.** 승인 없이 코드를
-고치지 않았다.
-
-> 참고 — 원본을 **데이터 날짜 컷오프만으로** 되살릴 수는 없다. 원인 2(과거 가격
-> 재적재)는 컷오프로 풀리지 않는다. 2026-04~08 가격이 이미 덮어써졌기 때문이다.
-> 그래서 (B)는 "원본 복제" 가 아니라 "**새 고정 기준선**" 이다.
-
-### 5-2. universe 복원 데이터를 적재할 것인가
+코드로 다시 확인한 사실:
 
 ```text
-확인 필요  (a) KRX OpenAPI 로 과거 universe·종가를 받아 적재할지
-          (b) 범위 — 전 기간(3,055회) / 최근 5년(1,223회)
-          (c) 저장 위치 — etf_daily_price 에 섞을지 / 별도 테이블
-          (d) 일일 호출 한도 확인 방법 (미확인)
+기준일 t 의 모델 학습 행   절단 이력(≤ t)에서 target 이 있는 행 → asof ≤ t − 20거래일
+                          (label 종료일 ≤ t — 절단 이력에서 i+20<n 일 때만 target 을 채우므로 구조상 성립.
+                          스냅샷으로 독립 재계산: t=2020-06-30·2026-07-31 모두 학습 행 target
+                          종료일 최대 = t, asof 최대 = t−20거래일)
+E2 평가 label            진입 t+1 거래일 → 청산 다음 월말+1 — 전부 t 이후
+모델 80/20 split         앞 80% 행으로만 학습 · 뒤 20% 는 test loss 계산에만 씀
+                          (예: E1 cutoff 2026-08-20 → 학습 끝 2025-07-01 ·
+                          t=2026-07-31 → 학습 마지막 asof 2025-06-13)
 ```
 
-**외부 데이터 저장·DB 적재라 별도 승인 사항**이다. 적재하면
-`SURVIVORSHIP_BIAS` 를 풀 수 있고, 안 하면 `CURRENT_SURVIVOR_UNIVERSE_BACKTEST`
-로 남는다.
+POC4-00 L-3 이 짚은 "train 끝 20거래일 label 이 test 구간 가격으로 계산됨" 은
+**모델 내부 80/20 split 의 경계**다. 그 test 구간은 E2 평가에 쓰이지 않고 test
+loss 에만 쓰인다. 따라서 이 경계에 embargo 를 넣어도 **E2 누수를 고치는 것이
+아니고**, 학습 데이터가 20거래일 줄어 점수가 조금 바뀔 뿐이다.
 
-### 5-3. 고정 모듈의 주석 정정을 어떻게 할 것인가
-
-`app/ml_relative_upside_model.py` 는 baseline 의 **고정 모듈**이라 주석만 고쳐도
-재현 해시가 깨진다. 지금은 되돌려 뒀다.
+embargo 가 실제로 필요한 곳은 **train 안에서 validation 으로 설정을 고르는
+경로**(POC4-03 RF 설정 선택 · 내부 holdout 성능 보고)다.
 
 ```text
-(a) 새 기준선을 만든 **뒤에** 주석을 고치고, 그 해시를 새 기준으로 삼는다
-(b) 주석은 그대로 두고, 금지 해제 사실은 requirements.txt 와 이 PLAN 에만 남긴다
+(a) 개발자 제안 — 연구 경로의 train/validation 분할 함수에 purge·embargo 20거래일
+    을 넣는다(평가기 쪽 신규 함수). 고정 모듈은 그대로 → 새 기준선 재현 유지.
+    20D_EMBARGO 증거 = E2 L-1~L-3 검사 + 분할 함수의 경계 누수 차단 테스트.
+(b) 고정 모듈 train_walk_forward 의 80/20 경계에도 embargo 를 넣는다.
+    → 고정 모듈 raw·AST hash 가 바뀌고 baseline 점수가 달라진다(POC4-02 재측정 대상).
 ```
 
-**개발자 제안은 (a)** — 새 기준선(§5-1 B)과 같은 커밋에서 고정 해시를 갱신하면
-기준이 한 번만 바뀐다.
+### 5-2. 비용 분해 수치
+
+지금은 편도 bp 하나(0 · 10 · 25 · 50, 주 25bp)를 `교체비율 × 편도bp × 2` 로 뺀다.
+
+```text
+분해안    편도 비용 = 수수료 + 슬리피지 + (매도 시) 증권거래세
+확인 필요  수수료 bp · 슬리피지 bp(호가 스프레드 자료가 없어 가정값) ·
+          ETF 증권거래세 적용 여부(국내 상장 ETF 매도는 비과세로 알고 있으나 설계자 확정 필요)
+제안      수수료 1.5bp 고정 · 거래세 0bp · 슬리피지 5 / 10 / 25bp 민감도
+```
+
+### 5-3. 성과지표 기준
+
+```text
+전략      월말 점수 상위 10% 동일가중 · 다음 거래일 진입 · 다음 월말+1 청산 (기간 비중첩)
+수익률    지금 label 은 KODEX200 대비 초과수익(forward_excess)이다
+(a) 초과수익 기준 — equity = Π(1+순초과수익) · MDD · 추적오차(연율 √12) ·
+    정보비율(평균/표준편차 × √12). 코드 추가가 적다.
+(b) 절대수익 기준 — 원수익 label 을 새로 계산해 Sharpe(무위험 0 또는 지정) · MDD.
+(c) 둘 다.
+```
+
 
 ---
 
 ## 6. 산출물 · 상태
 
-```text
-state/ml/validity/poc4_01_frozen_original/relative_upside_validity_v1_latest.json
-    sha256 a55e7292871106f2436ade0077a6053c4d5243c6ac69d084f51d0f99c9282290
-state/ml/validity/poc4_01_frozen_original/relative_upside_validity_v1_run_latest.json
-    sha256 8d186239d5c7ec405a796e320281b3cdf2fe131f94811af1c036bb8fd0a1d036
-state/ml/validity/poc4_01_repro/_pit_replay.sqlite   132MB 임시 DB
-    — 실행이 실패해 자동 정리되지 않았다. 커밋하지 않는다. 삭제는 승인 사항이라
-      그대로 두었다.
-```
-
-라이브 `state/market/market_data.sqlite` 는 재현 전후 sha256 이 같다.
+결과서 §4 에 실측값으로 정리한다(스냅샷 hash · 두 실행 비교 · KRX 적재 결과 · 132MB 임시 DB
+처리).
 
 ---
 
 ## 7. 이번 단계에서 한 변경
 
-| 파일 | 변경 |
-|---|---|
-| `requirements.txt` | 모델 비교 금지 **주석**을 설계자 지정 문구로 정정. 의존성 목록 해시 변경 전후 동일 |
-| `docs/ai_plan/POC4/POC4-00_..._MASTER_PLAN_V1.md` | 설계자 판정 · 필수 보완 3건(§24) 반영 |
-| `docs/ai_plan/POC4/POC4-01_..._PLAN_V1.md` | 이 문서 |
-| `app/ml_relative_upside_model.py` | **변경 없음** — 정정했다가 되돌렸다(§1-6) |
+결과서 §2 "변경된 파일 목록" 이 정본이다.

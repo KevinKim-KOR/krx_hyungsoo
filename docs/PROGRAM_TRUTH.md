@@ -223,13 +223,15 @@ flowchart LR
 
 ## 7. DB·table·artifact (§10.6)
 
-### 7.1 SQLite (3개, 모두 `state/` 로컬)
+### 7.1 SQLite (운영 3개 + PC 연구용 2종, 모두 `state/` 로컬)
 
 | 논리 이름 | 경로 | 결정 symbol | 주요 producer/consumer | 성격 |
 |---|---|---|---|---|
 | 시장 데이터 DB | `state/market/market_data.sqlite` | `market_data_store.py :: DEFAULT_DB_PATH` | producer: refresh 서비스·배치 / consumer: topn·evidence·nav·constituents·ml_feature | authoritative (시장 SSOT, `market_topn.py` 명시) |
 | runtime state DB | `state/runtime/runtime_state.sqlite` | `runtime_state_db.py :: DEFAULT_DB_PATH` | active PARAM SSOT(Cutover v1) | authoritative(PARAM) |
 | decision evidence DB | `state/decision/decision_evidence.sqlite` | `decision_evidence_store.py :: DEFAULT_DB_PATH` | decision sessions | authoritative(세션) |
+| ML 기준선 불변 스냅샷 (PC 연구) | `state/ml/baselines/<baseline_id>/dataset.sqlite` (+ `e1_score_snapshot.json` · `dataset_manifest.json` · `runs/*/run_manifest.json`) | `ml_baseline_snapshot.py :: build_snapshot` · `scripts/ml_baseline_tool.py` | producer: 시장 DB 읽기 전용 복사 1회(가격 `etf_daily_price` 만 cutoff 이하 · `etf_master`·`market_refresh_log` 는 전체) / consumer: `scripts/run_ml_score_validity_eval_v1.py` (**스냅샷 필수** — 라이브 DB 직접 평가 불가, POC4-01) | 봉인(0444) · sha256 불일치 시 평가 실패. 데이터·결과 파일 gitignore, manifest 만 git |
+| KRX 과거 universe 연구 DB (PC 연구) | `state/ml/research/krx_etf_universe.sqlite` | `ml_research_krx_universe.py :: DEFAULT_RESEARCH_DB` · `scripts/run_krx_universe_download.py` | producer: KRX Open API `etf_bydd_trd` 원응답 append-only (POC4-01) / consumer: 없음(생존편향 연구 예정) | research-only · 운영 DB 와 분리(운영 경로로 열면 거부) · OCI 미전송 · gitignore |
 
 > `etf_nav_store`·`etf_constituents_store`·`market_benchmark_store`·`ml_feature_store` 는 **같은 파일**(`market_data.sqlite`)에 별도 table 로 저장(각 파일 docstring). 환경변수 경로 override 미발견 → PC/OCI 모두 상대경로 `state/...` 사용.
 
@@ -259,8 +261,9 @@ flowchart LR
 | Naver 시세 | holdings 현재가 | `app/market_cache.py`/`market_naver` ← `post_market_refresh` | 불요(비공식) | pykrx/yfinance = POC2-Step2A 이연(미구현) | PC 사용 | SOURCE_CONFIRMED |
 | FinanceDataReader (FDR) | ETF universe·가격·KOSPI/VIX | `app/api_universe.py`, `market_benchmark_store.py`, `kospi_history_closeout.py` | 불요(비공식) | pykrx 일부 | PC·OCI | SOURCE_CONFIRMED |
 | pykrx | ETF universe·NAV·구성종목 | `etf_constituents_fetcher.py`, `etf_nav_service.py` | 불요 | — | 사용(일부 empty 응답 이력) | SOURCE_CONFIRMED |
+| KRX Open API `etf_bydd_trd` | (운영) 07:20 KRX 전종목 무조정 가격 · (PC 연구) 기준일별 과거 ETF universe(상장폐지 포함) | `market_briefing/krx_sync.py` · `ml_research_krx_universe.py :: http_fetch` | `.env` `KRX_API_KEY` (값 미출력) | — | OCI 운영 · PC 연구(POC4-01) | SOURCE_CONFIRMED · 공식 한도 키당 10,000회/일(이용약관 제8조④) |
 
-> fallback 존재해도 **동일 데이터 의미 보장은 별개**(설계서 §5.2·BACKLOG 기록). KRX Open API 잔존 의존은 미발견(진단 문서에 후보로만).
+> fallback 존재해도 **동일 데이터 의미 보장은 별개**(설계서 §5.2·BACKLOG 기록). KRX Open API 는 시장 브리핑(07:20 수집)과 PC 연구 DB 가 함께 쓴다. 두 곳이 같은 인증키인지는 확인하지 않았으므로(키 값 미출력), 연구 적재는 공식 한도의 절반인 한 KST 일 5,000회 이하로 스스로 막는다.
 > **KOSPI 데이터 정상 확인**: `market_benchmark_daily_price` 의 KOSPI 저장값(6,690대)은 **실제 지수와 일치**함이 사용자 실측(2026-08-05 종가 6,598.26 +3.76%)으로 확인됨. 산식 정확·데이터 정상 — 이전 초안의 "스케일 이상/품질 의심"은 오판이었음(정정).
 
 ---
