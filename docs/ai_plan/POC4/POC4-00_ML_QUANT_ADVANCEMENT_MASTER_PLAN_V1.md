@@ -9,6 +9,21 @@ EXTERNAL_SEND    = 0
 DEPENDENCY_ADDED = 0
 ```
 
+**데이터 판정 (설계자 확정 2026-09-23)**
+
+```text
+DATA_VOLUME_SUFFICIENT          = YES
+FIVE_YEAR_BACKTEST_MECHANICALLY = POSSIBLE
+UNBIASED_PERFORMANCE_CLAIM      = NOT_YET
+PRIMARY_BLOCKER                 = SURVIVORSHIP_BIAS
+SECONDARY_BLOCKER               = 20D_BOUNDARY_LEAKAGE
+```
+
+> 가격 행은 충분하지만 현재 생존 종목만 남은 universe 라면 **유효한 성과 검증
+> 데이터가 아니다.** 수익률 계산은 되지만 결과를 믿을 수 있다는 뜻이 아니다.
+> 초판의 "데이터는 충분하며 5년 백테스트 가능" 은 **기계적 가능성과 유효성을
+> 섞은 것**이라 위 판정으로 교체한다.
+
 - **작성**: 개발자(VSCode Claude) · **독자**: 설계자
 - **입력**: 설계자 채팅 지시(2026-09-23) · `POC3_STATUS = CLOSED` · `FIRST_STEP = POC4-00`
 - 조사와 PLAN 을 한 문서에 담는다(설계자 지시 — 별도 조사 문서를 만들지 않는다).
@@ -76,6 +91,43 @@ POC4 는 "작동하는 모델을 더 좋게" 가 아니라 **"작동하지 않�
 | `app/market_flow_*.py` 6개 | REACHABLE | `scripts/run_market_flow_*.py` 만. `app/api*.py`·`frontend/`·`deploy/` 에 `market_flow` 문자열 0건 |
 | `BacktestRunner` | **ORPHANED** | **저장소에 정의가 없다.** `CLAUDE.md:25` · `AGENTS.md:108` · `docs/agent/VERIFY_RULES.md:108` 의 "운영 경로 예시" 문구로만 존재 — **stale 규칙 문구, 정정 대상** |
 
+### 1-2-a. 「ML 실험」 의 baseline v0 은 **학습 모델이 아니다**
+
+`app/ml_baseline_v0.py:1-13` — *"ML 학습 / 외부 source / 매수·매도 판단 / 위험
+threshold 0건"*. 과거 구간 **룩백 검증**이고 두 축으로 나뉜다.
+
+```text
+candidate_baseline   상승 후보 발굴 룩백 — 평가 ticker 1,163
+risk_baseline        **위험 구간 감지 룩백** — 고위험/저위험 그룹 비교
+                     drawdown_capture_rate · high_minus_low_return ·
+                     high/low_risk_group_future_down_ratio_5d · ..._future_drawdown
+leakage_checks       feature_future_data_leakage_detected=False ·
+                     time_order_preserved=True · target 꼬리 제외(candidate 62 · risk 20)
+```
+
+`app/api_ml_baseline.py:81` 은 **저장된 파일만 읽는다**(`json.load`) — 재계산하지
+않고, 없으면 `python scripts/run_ml_baseline_v0.py` 실행을 안내한다(:75).
+
+> **`risk_baseline` 은 이미 Q6 모양이다** — 하락률 예측이 아니라 고위험/저위험
+> **그룹 분류**다. POC4 가 Q6(위험 구간 분류) 축을 다룰 때 출발점으로 쓸 수 있다.
+
+### 1-2-b. 죽은 모듈은 없다 — 끊긴 것은 산출물이다
+
+ML 모듈 14개의 호출처를 셌다(`app/`·`scripts/`, 테스트 제외).
+
+```text
+ml_baseline_candidate 1 · ml_baseline_risk 1 · ml_baseline_targets 3 · ml_baseline_evidence 4
+ml_feature_store 4 · ml_feature_primitives 3 · ml_feature_nav_lookup 2
+ml_score_validity_screen 1
+market_flow_dataset 6 · market_flow_baseline 4 · market_flow_walk_forward 4
+market_flow_v2_model_comparison 1 · market_flow_v2_predictor 1 · market_flow_v2_diagnostics 1
+```
+
+**전부 1곳 이상에서 불린다 — ORPHANED 모듈 0.** 다만 대부분 수동 스크립트
+경유라 **REACHABLE** 이다. 실제로 끊긴 것은 **산출물**이다 —
+`validity/...v1_latest.json` 은 읽는 코드가 0건이고, `market_flow_*` 산출물은
+파일 자체가 없다(§4).
+
 ### 1-3. ML 이 운영 판단에 쓰이는가 — **아니다**
 
 ```bash
@@ -110,9 +162,17 @@ label     future_excess_return_20d   (20거래일 후 KODEX200 대비 초과수�
 horizon   20거래일
 ```
 
-> **`ASSUMPTIONS` Q6 제약**: "하락 예측이 아니라 **위험 구간 분류**" 가 불변
-> 표현이다. 현재 label 은 회귀(초과수익 크기)이고 Q6 의 분류 축과 다르다.
-> POC4 에서 label 을 손대면 Q6 와 충돌하는지 먼저 확인해야 한다 — §12-2.
+> **계약 해석 (설계자 확정 2026-09-23)** — 둘은 **층이 다르다. 충돌이 아니다.**
+>
+> ```text
+> Q6 의 최종 사용자 출력        하락률 예측이 아니라 **위험 구간 분류**
+> future_excess_return_20d    기존 회귀 baseline **비교용 점수로 유지 가능**
+> 금지                        회귀 예측값을 사용자에게 **확정 수익률처럼 노출**
+> ```
+>
+> 즉 내부 비교 지표로 회귀를 쓰는 것은 허용되고, **사용자에게 보이는 출력**이
+> 위험 구간 분류여야 한다. 현재 화면은 0~100 상대순위 display score 이고
+> 수익률로 노출하지 않으므로 이 선을 지키고 있다(`ml_relative_upside_model.py:253`).
 
 ### 2-3. 이미 계산됐지만 모델이 안 쓰는 feature
 
@@ -173,8 +233,21 @@ backfill 한 형태다. `etf_master` 에 상장폐지 표식 컬럼도 없다(`l
           겹침 구간 2026-02-19~03-05 — (ticker,date) PK 중복 0건
 ```
 
-행 중복은 없으나 **두 소스의 가격 기준이 달랐다면 경계에서 수익률 점프가
-생긴다. 검증 코드 없음 — 미확인.**
+행 중복은 없다. 두 소스의 기준이 달랐다면 경계에서 수익률 점프가 생기므로
+**읽기 전용으로 분포를 비교했다**(2026-01-15~03-31, 직전 행과 source 가 다른 행을
+"전환 지점" 으로 봄).
+
+```text
+                  전환 지점 1,325건     일반 50,703건
+|수익률| 중앙값      0.76%               0.98%
+|수익률| 95%분위     5.16%               6.27%
+|수익률| > 10%       6건
+```
+
+**체계적 점프는 없다** — 전환 지점이 오히려 일반 날보다 작다. |수익률|>10% 6건
+(`0111J0` 02-19 +12.9% · `475720`·`472150` 03-03 −12% 등)은 일반 날에도 나오는
+크기라 소스 탓으로 단정할 수 없다. **분포 수준에서는 편향 없음, 개별 6건은
+POC4-01 에서 원인 확인.**
 
 ---
 
@@ -283,7 +356,7 @@ POC4-03 의 직접 템플릿. 단 **산출물이 이 PC 에 하나도 없다**(�
 | L-5 | 중첩 표본 | **부분 처리** | 3M IC 에 Newey-West(lag=2) + 분기말 비중첩 표본. bootstrap block 6개월 고정 — 민감도 분석 없음 |
 | L-6 | **조정/무조정 혼재** | **있음** | `etf_daily_price`(SOURCE_CLOSE) vs `krx_etf_daily_price_unadjusted`(무조정) 공존. **백테스트와 운영 신호가 서로 다른 가격 기준을 쓴다** |
 | L-7 | 분배락 | **미반영** | `market_timeseries_naver_yahoo_adapter.py:11` "Close 만 사용, Adj Close 금지". ETF 간 분배금 차이가 초과수익에 편향으로 남음 |
-| L-8 | 소스 전환 경계 | **미확인** | §3-3 |
+| L-8 | 소스 전환 경계 | **분포상 편향 없음** | §3-3 — 전환 지점 중앙값 0.76% < 일반 0.98%. 개별 >10% 6건만 확인 대상 |
 | L-9 | 생존편향 | **있음** | §3-2 — 가장 큰 위험 |
 
 ---
@@ -370,50 +443,51 @@ US500·IXIC·^SOX 는 각 10행뿐이라 사실상 사용 불가.
           (c) 승인 전까지 RF(sklearn)만으로 진행할지
 ```
 
-### 12-2. label 축 확정 — `ASSUMPTIONS` Q6 와의 관계
-
-현재 label 은 **회귀**(`future_excess_return_20d`)인데 Q6 는 "하락 예측이 아니라
-**위험 구간 분류**" 를 불변 표현으로 못박았다.
+### 12-2. label 축 — **설계자 확정됨 (질문 아님)**
 
 ```text
-확인 필요  POC4 가 (a) 회귀 축을 계속 쓰는가
-          (b) Q6 의 분류 축으로 옮기는가
-          (c) 둘 다 두는가
+Q6 의 최종 사용자 출력       위험 구간 분류 (하락률 예측 아님)
+future_excess_return_20d   기존 회귀 baseline 비교용 점수로 **유지**
+금지                       회귀 예측값을 사용자에게 확정 수익률처럼 노출
+Q1 "factor 1개 10줄 이내"    **모델 성능 기준이 아니라 확장성·구조 품질 기준**
 ```
 
-Q6 는 `OPEN` 상태이고 선행 조건(시계열 적재)이 상당 부분 충족됐다 — 이 판단이
-POC4-01 의 label 설계를 좌우한다.
+**두 축은 층이 다르다.** 내부 비교 지표(회귀)와 사용자 출력(분류)을 분리한다.
+POC4-02·03 은 회귀 점수로 모델을 비교하고, 사용자에게 보이는 것은 구간·순위로
+남긴다. Q1 은 POC4-03 의 **성능 판정 기준이 아니라** feature 추가 난이도를
+재는 구조 품질 지표로만 쓴다.
 
-### 12-3. 생존편향 처리 방침 (POC4-01 차단)
-
-상장폐지 ETF 데이터가 **없다**. 외부 데이터 도입은 설계자 지시상 금지
-("데이터가 없어 5년 백테스트가 불가능하면 임의 보간하거나 외부 데이터를 바로
-도입하지 않는다").
+### 12-3. 생존편향 처리 — **설계자 확정됨 (질문 아님)**
 
 ```text
-선택지  (a) 현 상태 유지 + 백테스트 최종 판정 상한을 RESEARCH_ONLY 로 고정
-            (지금 코드가 이미 그렇게 한다 — eval.py:8)
-        (b) 상장폐지 목록 확보 경로를 POC4-01 에 별도 과제로 세움
-        (c) 편향 방향·크기의 민감도 분석으로 하한을 추정
+POC4-01 최우선   시점별 상장·상장폐지 universe 복원 **가능성 조사**
+복원 불가 시     universe_basis = CURRENT_SURVIVOR_UNIVERSE_BACKTEST 명시
+                + 운영 승격 근거로 사용 금지
 ```
 
-**개발자 제안: (a)+(c).** (b) 는 외부 데이터 도입이라 별도 승인이 필요하다.
-
----
+실측 결과 **현재 저장소 데이터만으로는 복원 불가**다(§19-3) — 상장일 필드가
+0/1,145 로 비어 있고 폐지 표식이 없다. 저장소 **밖**에서 확보할 경로가 있는지가
+POC4-01 1번 과제이며, 외부 데이터 도입은 그 조사 결과를 받은 뒤 **별도 승인**
+사항이다(설계자 지시 — 임의 도입 금지).
 
 ## 13. POC4-01 — 데이터·백테스트 기반 정비
 
 ### 13-1. 할 일
 
+**우선순위는 설계자 지정을 따른다.** 1번이 최우선이다.
+
 | # | 내용 | 근거 |
 |---|---|---|
-| 1 | **성과지표 추가** — MDD · 전략 변동성 · Sharpe · 누적 equity curve | §7-2 전부 0건 |
-| 2 | **embargo 도입** — train 끝 `horizon` 만큼 잘라 경계 label 누수 차단 | L-3 |
-| 3 | **거래비용 분해** — 슬리피지 · 수수료 · 증권거래세를 bp 하나에서 분리 | §7-2 |
-| 4 | **생존편향 민감도 분석** — 편향 방향·크기 하한 추정 | §3-2 · 12-3 |
-| 5 | **소스 전환 경계 검증** — NAVER_FDR ↔ FDR 겹침 구간 가격 정합 | L-8 |
-| 6 | **가격 기준 단일화 선언** — 백테스트는 `etf_daily_price` 하나만 | L-6 |
-| 7 | **분배금 처리 결정** — price return 유지 시 그 한계를 산출물에 명시 | L-7 |
+| **1** | **시점별 상장·폐지 universe 복원 가능성 조사** — 저장소 밖 확보 경로(KRX 상장/폐지 공시 등)가 있는지. **외부 데이터 도입은 이 조사 결과를 받은 뒤 별도 승인** | §19-3 · 설계자 최우선 지정 |
+| **2** | **복원 불가 확정 시** 산출물·화면에 `universe_basis = CURRENT_SURVIVOR_UNIVERSE_BACKTEST` 명시 + **운영 승격 근거 사용 금지** 표기 | §19-4 |
+| **3** | **purge·embargo 최소 20거래일** — label 이 20거래일 전방이므로 train/test 경계에서 그만큼 잘라낸다 | L-3 · SECONDARY_BLOCKER |
+| 4 | **성과지표 추가** — MDD · 전략 변동성 · Sharpe · 누적 equity curve | §7-2 전부 0건 |
+| 5 | **거래비용 분해** — 슬리피지 · 수수료 · 증권거래세를 편도 bp 하나에서 분리 | §7-2 |
+| 6 | **가격·벤치마크 기준 일치 고정** — 백테스트는 `etf_daily_price` 단일 계열. `ml_feature_builder` 가 추가로 읽는 KOSPI 지수 경로를 정리 | §19-5 #1·#4 |
+| 7 | **분배금 한계 명시** — price return 유지 시 "분배율 차이가 초과수익에 남는다" 를 산출물에 기록 | §19-5 #2 |
+| 8 | **NAV 최신성 기준** — 미래 참조는 없음을 확인했다(§19-5 #3). 대신 as-of 보다 **며칠 이상 오래된 NAV** 를 feature 로 쓸지 허용 한도를 정한다 | §19-5 #3 |
+| 9 | **생존편향 민감도 분석** — 편향 방향·크기의 하한 추정 | §3-2 |
+| 10 | **소스 전환 경계 개별 6건 확인** — 분포상 편향은 없음을 확인했다(§3-3). |수익률|>10% 6건만 원인 확인 | L-8 |
 
 ### 13-2. 재사용 (신규 작성 아님)
 
@@ -479,16 +553,28 @@ seed 고정 · 결정성 재실행 검사
 
 ### 15-2. 비교 대상
 
-| 모델 | 의존성 | 상태 |
-|---|---|---|
-| 기존 baseline (선형회귀, torch) | 있음 | 재현값 §14 |
-| **단순 모멘텀** | 없음 | **IC +0.0226 — 현재 최강. 반드시 포함** |
-| RF (sklearn) | **있음** | 즉시 가능 |
-| XGBoost | **없음** | 승인 필요 |
-| LightGBM | **없음** | 승인 필요 |
+**설계자 확정 — 단계적 Gate 다. 모델 동물원을 먼저 만들지 않는다.**
 
-> 조사에서 나온 가장 중요한 비교 대상은 **단순 모멘텀**이다. 학습 모델(−0.0435)
-> 보다 예측력이 높다(+0.0226). 이를 이기지 못하면 ML 을 쓸 이유가 없다.
+```text
+RandomForest      기존 sklearn 으로 **우선 비교**
+XGBoost/LightGBM  **선택적 후속 Gate** — RF 결과를 보고 판단
+INSTALL           사용자 승인 전 0건
+```
+
+| 모델 | 의존성 | 단계 |
+|---|---|---|
+| 기존 baseline (선형회귀, torch) | 있음 | **1차** — 재현값 §14 |
+| **단순 모멘텀** | 없음 | **1차 — IC +0.0226, 현재 최강. 반드시 포함** |
+| RF (sklearn) | **있음** | **1차** — 신규 의존성 0 |
+| XGBoost | 없음 | **후속 Gate** — RF 가 baseline 을 유의미하게 이길 때만 |
+| LightGBM | 없음 | **후속 Gate** — 같음 |
+
+**Gate 통과 조건**: RF 가 baseline 과 단순 모멘텀을 **유의미하게** 이겨야
+XGBoost·LightGBM 으로 넘어간다. 이기지 못하면 거기서 멈춘다 — 모델을 늘려도
+관리 비용만 는다(설계자).
+
+> 가장 중요한 비교 대상은 **단순 모멘텀**이다. 학습 모델(−0.0435)보다 예측력이
+> 높다(+0.0226). 이를 이기지 못하면 ML 을 쓸 이유가 없다.
 
 ### 15-3. 과최적화 방지
 
@@ -548,20 +634,77 @@ POC3-02C 의 `intraday_config` 4테이블 구조를 스키마째 본뜬다.
 
 ---
 
-## 19. 5년 walk-forward 백테스트 가능 여부 — **가능**
+## 19. 5년 walk-forward 백테스트 — **기계적으로 가능, 유효성은 아직 아니다**
+
+설계자 판정을 그대로 따른다. 둘을 섞지 않는다.
+
+```text
+DATA_VOLUME_SUFFICIENT          = YES        가격 행·기간은 충분하다
+FIVE_YEAR_BACKTEST_MECHANICALLY = POSSIBLE   돌아가고 숫자가 나온다
+UNBIASED_PERFORMANCE_CLAIM      = NOT_YET    그 숫자를 믿을 근거가 없다
+```
+
+### 19-1. 충분한 것
 
 ```text
 가격 이력    2014-04-09 ~ 2026-09-21 (12.4년) · 1,405,608행
-벤치마크     KODEX200 069500 · 3,055행 · 결측 0
-feature      1,382,327행 · 2014-05-12 ~ 2026-08-27
+벤치마크     KODEX200 069500 · 3,055행 · close 결측 0
+feature      1,382,327행 · 2014-05-12 ~ 2026-08-27 · ticker 1,174
 거래일 축    3,038일 · 월말 149 · 평가시점 145 (기존 산출 실적)
-walk-forward 규율 · PIT 절단 · 누수 검사  이미 구현
+PIT 규율     truncate_history · 누수검사 L1/L2/L3 · warmup — 이미 구현
 ```
 
-**5년은 물론 12년도 가능하다.** 단 §12-3 의 생존편향 때문에 최종 판정 상한은
-`RESEARCH_ONLY` 로 유지하는 것이 정직하다.
+### 19-2. 막는 것 — 둘
 
----
+**PRIMARY · 생존편향** — §3-2 · §19-3.
+**SECONDARY · 20거래일 경계 누수** — label 이 20거래일 전방이므로 train 끝
+20거래일의 label 이 test 구간 가격으로 계산된다. **purge·embargo 없음**(L-3).
+
+이 둘이 남아 있는 한 산출 성과는 **운영 승격 근거로 쓸 수 없다.**
+
+### 19-3. universe 복원 가능성 — **실측 결과: 현재 불가**
+
+설계자가 POC4-01 최우선으로 지정한 항목이다. 지금 확인했다.
+
+```text
+market_timeseries_ingestion_state (1,145행)
+  confirmed_listing_date        채워짐 0/1,145        ← 상장일이 비어 있다
+  confirmed_series_start_date   채워짐 1,145/1,145    2014-04-09 ~ 2026-06-23
+  confirmed_series_end_date     채워짐 1,145/1,145    2026-06-24 ~ 2026-07-02
+etf_master 컬럼                  ticker·name·category·price·volume·market_cap·
+                                source·last_seen_at   ← 폐지 표식 없음
+```
+
+- **상장일 필드가 존재하지만 전부 비어 있다.**
+- `confirmed_series_end_date` 가 1,145건 모두 2026-06-24~07-02 인데, 이는
+  **적재 실행일**이지 폐지일이 아니다. 폐지 단서로 쓸 수 없다.
+- `confirmed_series_start_date` 는 "최초 관측일" 이라 **현재 상장 종목의**
+  상장일 대용은 되지만, 이미 사라진 종목은 애초에 행이 없다.
+
+따라서 **시점별 상장·폐지 universe 를 현재 저장소 데이터만으로 복원할 수 없다.**
+
+### 19-4. 복원 불가 시의 표기 (설계자 지시)
+
+백테스트 산출물과 문서에 다음을 **명시**하고, 운영 승격 근거로 쓰지 않는다.
+
+```text
+universe_basis = CURRENT_SURVIVOR_UNIVERSE_BACKTEST
+ceiling        = RESEARCH_ONLY
+```
+
+현재 코드가 이미 그 방향이다 — `app/ml_score_validity_eval.py:8` 이
+"생존편향으로 이번 Step 의 최대 최종 판정은 RESEARCH_ONLY 다" 라고 적고,
+산출물 `verdict.ceiling = RESEARCH_ONLY` 로 나온다. **POC4 는 이 표기를
+`universe_basis` 키로 명시화하고 산출물·화면 양쪽에 남긴다.**
+
+### 19-5. 설계자 지정 확인 4건 — 실측 결과
+
+| # | 확인 항목 | 결과 |
+|---|---|---|
+| 1 | 가격·벤치마크가 **같은 조정 기준**인가 | **예.** 대상 ETF 와 KODEX200(069500) 모두 `etf_daily_price` 한 테이블에서 읽고, `market_timeseries_ingestion_state` 의 `price_basis` 가 1,145건 전부 `SOURCE_CLOSE` 다(069500 포함, status=normal). `ml_score_validity_eval.py:565` · `ml_relative_upside_features.py:27,90` |
+| 2 | KODEX200 **분배금·조정 여부**가 대상 ETF 와 일치하는가 | **처리 방식은 일치, 기준 자체는 편향.** 둘 다 `SOURCE_CLOSE` price return 이고 Adj Close 사용이 금지돼 있다(`market_timeseries_naver_yahoo_adapter.py:11`). 같은 규칙이지만 **분배율이 다른 ETF 사이의 차이는 초과수익에 그대로 남는다.** 총수익 기준이 없다 |
+| 3 | feature 가 **당시 시점에 알 수 있었던 값**인가 (PIT) | **확인 — 미래 참조 없음.** 백테스트 경로는 `truncate_history`(`date <= t`)로 절단하고 L1/L2/L3 누수검사를 통과한다. feature 생성 경로(`ml_feature_builder.py`)는 `_resolve_asof_window`(:125)로 창을 잡고 `asof = series.dates[idx]`(:68) 기준으로 계산한다. NAV lookup 도 **미래 참조 없음을 확인했다** — `ml_feature_nav_lookup.py:56` 이 `ORDER BY etf_ticker ASC, asof DESC` 로 읽고, `lookup()`(:75-77)은 `r.asof <= asof` 인 첫 행만 돌려준다. 따라서 `nav_asof != asof` 플래그(builder:85)는 **as-of 보다 오래된(stale) NAV** 라는 뜻이지 미래값이 아니다. 남는 것은 **누수가 아니라 최신성** 문제다 |
+| 4 | 두 벤치마크 경로가 섞이는가 | **섞인다.** `ml_score_validity_eval` · `ml_relative_upside_features` 는 `etf_daily_price` 의 069500 을 쓰고, `ml_feature_builder.py:13` 은 **추가로** `market_benchmark_daily_price` 의 **KOSPI 지수**를 읽는다. 두 계열은 소스·최신성이 다르다(KOSPI 2026-09-17 vs 069500 2026-09-21) |
 
 ## 20. KS-10 측정 (현재값)
 
@@ -592,12 +735,12 @@ POC4 가 건드릴 파일 중 주의 대상:
 
 ## 22. 이 PLAN 의 한계 (정직하게)
 
-1. **조사 자동화가 일부 실패했다.** 6개 영역 병렬 조사 중 1개만 완주하고 5개가
-   stall 했다. 나머지는 개발자가 직접 훑었고, **`backtest` 영역만큼의 깊이는
-   아니다.** 특히 `app/ml_baseline_*.py` 계열(baseline v0)과
-   `app/ml_feature_*.py` 의 내부 계산은 얕게 봤다.
-2. **소스 전환 경계(L-8)는 미확인**이다. 검증하려면 코드를 돌려야 하는데 이
-   단계는 `CODE_CHANGE = 0` 이다.
+1. **조사 자동화가 두 번 멈췄다.** 1차 병렬 조사는 6개 중 1개(`backtest`)만
+   완주했고, 잔여 3영역 2차 조사는 세션 종료로 0건에서 중단됐다. 잔여 영역
+   (baseline v0 · feature PIT · 죽은 코드)은 **개발자가 직접 좁혀 확인**했다 —
+   §1-2-a · §1-2-b · §19-5 #3. `backtest` 영역만큼 전 파일을 정독하지는 않았다.
+2. **소스 전환 경계(L-8)는 분포 수준만 확인했다.** 편향은 없으나(§3-3), |수익률|>10%
+   개별 6건의 원인은 보지 않았다.
 3. **생존편향의 크기·방향을 정량화하지 못했다.** 상장폐지 목록이 없어서다.
 4. artifact 가 2026-08-30 자라 **현 코드로 재현되는지 확인하지 않았다**(POC4-02
    첫 과제).
@@ -606,13 +749,30 @@ POC4 가 건드릴 파일 중 주의 대상:
 
 ## 23. 설계자에게 묻는 것 (요약)
 
+**설계자 2026-09-23 회신으로 확정된 것 (더 묻지 않는다)**
+
 ```text
-Q1  RF/XGB/LGBM 금지 제약 해제 범위 + xgboost·lightgbm 의존성 승인     §12-1
-Q2  label 축 — 회귀 유지 / Q6 분류로 이동 / 병행                        §12-2
-Q3  생존편향 처리 방침 — (a)+(c) 제안, (b) 는 외부 데이터라 별도 승인   §12-3
-Q4  POC4-05 "evidence 연결" 범위 — 화면까지인가 PUSH 본문까지인가       §17
-Q5  단계 수 조정 필요 여부 (현재 초안 6단계 유지)                       §11
+데이터 판정          DATA_VOLUME_SUFFICIENT=YES · MECHANICALLY=POSSIBLE ·
+                    UNBIASED_CLAIM=NOT_YET · PRIMARY=생존편향 · SECONDARY=20D 경계
+label 축            Q6=사용자 출력은 위험 구간 분류 / 회귀는 비교용 유지 /
+                    확정 수익률처럼 노출 금지 / Q1 은 구조 품질 기준
+의존성              RF 우선(sklearn) · XGB·LGBM 은 후속 Gate · INSTALL 0
+생존편향            복원 조사 최우선 · 불가 시 CURRENT_SURVIVOR_UNIVERSE_BACKTEST
+                    표기 + 운영 승격 근거 사용 금지
+purge·embargo       최소 20거래일
 ```
 
-확정되면 `POC4-01` 부터 착수한다. 이 단계에서는 코드·DB·OCI·PUSH 를 변경하지
-않았다.
+**남은 질문 2건**
+
+```text
+Q1  RF/XGB/LGBM 금지 제약의 **문구 해제** — requirements.txt:18-19,25 와
+    ml_relative_upside_model.py:3-6 이 "모델 비교 금지" 를 과거 확정사항으로
+    박아 뒀다. RF 비교를 시작하려면 이 문구를 해제해야 한다(코드 변경 없이
+    주석·문서만 고치는 범위인지 포함).                                  §12-1
+Q2  POC4-05 "evidence 연결" 범위 — 화면 표시까지인가, PUSH 본문까지인가.
+    현재 ML 은 운영 판단에 0건 연결이고, 설계자 전제는 "운영 PUSH 를 건드리지
+    않는다" 이다.                                                       §17
+```
+
+확정되면 `POC4-01` **1번(universe 복원 가능성 조사)** 부터 착수한다.
+이 단계에서는 코드·DB·OCI·PUSH 를 변경하지 않았고 의존성도 설치하지 않았다.
