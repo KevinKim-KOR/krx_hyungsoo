@@ -15,14 +15,21 @@ setuptools>=68.0,<81
 finance-datareader>=0.9.202
 # torch — ML 축1 (후보 ETF 상대상승 참고점수 v0) STEP (2026-06-20).
 # PC 4070 SUPER GPU 학습용. 사용자 결정 — 지시문 §6.1 의 "신규 ML 라이브러리
-# 추가 금지" 의 예외 1회 허용 (단일 회귀 baseline 만 사용, RF/XGB/LGBM 비교
-# 금지, 자동 튜닝 금지). CUDA 12.4 wheel:
+# 추가 금지" 의 예외 1회 허용.
+# 기존 baseline 모듈 자체는 단일 선형회귀를 유지한다. POC4 연구 경로에서는
+# 사전 정의된 Gate 에 따라 단순 모멘텀과 RandomForest 비교를 허용한다. 자동
+# 튜닝과 XGBoost·LightGBM 은 별도 승인 전까지 금지한다(설계자 POC4-00 2026-09-23).
+# CUDA 12.4 wheel:
 #   pip install torch --index-url https://download.pytorch.org/whl/cu124
 torch>=2.6.0
 # scikit-learn — Market Flow ML Dataset + Baseline v1 Closeout (2026-07-05).
 # 지시문 §6 "scikit-learn 하나만 프로젝트 의존성으로 추가" 명시 허용 +
 # "실제 설치된 정확한 버전 고정" 재현성 요건 (FIX r1 정정).
-# StandardScaler + Ridge(alpha=1.0) 만 사용. RF/XGB/LGBM/자동 튜닝/모델 비교 금지.
+# StandardScaler + Ridge(alpha=1.0) 를 쓴다. RandomForest 도 scikit-learn 내장이라
+# 신규 의존성 없이 POC4 연구 경로 비교에 쓴다.
+# 기존 baseline 모듈 자체는 단일 선형회귀를 유지한다. POC4 연구 경로에서는
+# 사전 정의된 Gate 에 따라 단순 모멘텀과 RandomForest 비교를 허용한다. 자동
+# 튜닝과 XGBoost·LightGBM 은 별도 승인 전까지 금지한다(설계자 POC4-00 2026-09-23).
 scikit-learn==1.9.0
 # numpy — Market Flow ML v2 Data Validity + Model Comparison (2026-07-05).
 # 지시문 Q1 (b) 확정: quantile method="linear" / target 분포 percentile / mean /

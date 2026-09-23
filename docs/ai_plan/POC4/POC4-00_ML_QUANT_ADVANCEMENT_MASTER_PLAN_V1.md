@@ -9,6 +9,22 @@ EXTERNAL_SEND    = 0
 DEPENDENCY_ADDED = 0
 ```
 
+**설계자 판정 (2026-09-23)**
+
+```text
+POC4-00                     = PASS_WITH_MANDATORY_AMENDMENTS
+PLAN_RESUBMISSION           = NO
+POC4-01                     = AUTHORIZED
+RF_COMPARISON               = APPROVED
+AUTO_TUNING                 = NOT_APPROVED
+XGBOOST_LIGHTGBM_INSTALL    = NOT_APPROVED
+POC4-05_EVIDENCE_SCOPE      = PC_UI_ONLY
+PUSH_ML_INTEGRATION         = NOT_APPROVED
+OCI_ML_PROMOTION            = GATED
+```
+
+필수 보완 3건은 §24 에 반영했다.
+
 **데이터 판정 (설계자 확정 2026-09-23)**
 
 ```text
@@ -776,3 +792,86 @@ Q2  POC4-05 "evidence 연결" 범위 — 화면 표시까지인가, PUSH 본문�
 
 확정되면 `POC4-01` **1번(universe 복원 가능성 조사)** 부터 착수한다.
 이 단계에서는 코드·DB·OCI·PUSH 를 변경하지 않았고 의존성도 설치하지 않았다.
+
+---
+
+## 24. 설계자 필수 보완 3건 · 확정 사항 (2026-09-23)
+
+### 24-1. baseline 순서 — 재현이 먼저다
+
+`POC4-01 → POC4-02` 순서에서 "개선 전 baseline 재현" 이 어디 들어가는지 모호했다.
+다음으로 고정한다.
+
+```text
+1  POC4-01 착수 직후 · 코드 변경 전에 기존 baseline 재현
+2  재현 실패 시 중단 · 원인 보고
+3  원본 artifact 와 재현 결과 고정
+4  embargo · 지표 · 비용 기준 개선
+5  POC4-02 에서 개선된 규율로 baseline 재측정
+```
+
+**POC4-02 는 단순한 원본 재현이 아니라, 정정된 백테스트 규율의 baseline 을
+확정하는 단계**다. §14 는 이 순서로 읽는다.
+
+### 24-2. 회귀와 위험 분류는 별도 Track
+
+```text
+TRACK_A = future_excess_return_20d 회귀 — 모델 비교용
+TRACK_B = 위험 구간 분류           — 사용자 출력용
+```
+
+회귀 성능이 좋아도 **그것만으로 운영 후보가 되지 않는다.** 최종 사용자 evidence 는
+고위험 · 주의 · 보통 같은 **위험 구간**이어야 한다. 출발점은 baseline v0 의
+`risk_baseline`(고위험/저위험 그룹 비교, §1-2-a)이다.
+
+### 24-3. 운영 승격 Gate
+
+아래를 **전부** 충족하기 전에는 POC4-04 · 05 산출물을 OCI 로 보내지 않는다.
+
+```text
+UNBIASED_PERFORMANCE_CLAIM = YES
+SURVIVORSHIP_BIAS          = RESOLVED_OR_ACCEPTABLY_BOUNDED
+20D_EMBARGO                = PASS
+PIT_CHECKS                 = PASS
+BENCHMARK_BASIS            = FIXED
+MODEL_BEATS_MOMENTUM       = PASS
+VERIFIER                   = VERIFIED
+USER_APPROVAL              = YES
+```
+
+하나라도 못 채우면:
+
+```text
+ceiling        = RESEARCH_ONLY
+universe_basis = CURRENT_SURVIVOR_UNIVERSE_BACKTEST
+OCI_DEPLOY     = 0
+PUSH_USE       = 0
+```
+
+### 24-4. 모델 비교 범위 (질문 1 확정)
+
+```text
+기존 선형회귀 baseline   유지 (모듈 자체는 단일 선형회귀)
+단순 모멘텀              반드시 비교
+RandomForest            **승인** — 사전 고정 설정 **최대 3개**
+설정 선택                train/validation 내부에서만
+금지                    test 결과를 보고 설정 추가 · 광범위한 자동 탐색
+XGBoost · LightGBM       RF 가 baseline 과 단순 모멘텀을 유의미하게 이긴 뒤 별도 판단
+신규 의존성 설치          0건
+```
+
+`requirements.txt` 주석은 설계자 지정 문구로 정정했다(주석만 · 의존성 목록 해시
+변경 전후 동일). `app/ml_relative_upside_model.py` 설명은 **정정했다가 되돌렸다** —
+그 파일이 baseline 의 고정 모듈이라 주석만 바뀌어도 재현 해시가 깨진다.
+처리 방법은 POC4-01 PLAN §5-3 에서 묻는다.
+
+### 24-5. evidence 연결 범위 (질문 2 확정) — **PC 화면까지**
+
+**허용** — 「ML 실험」 에 백테스트 결과 연결 · baseline·단순 모멘텀·RF 비교 ·
+위험 구간·근거·한계 표시 · active/candidate 구분 · 모델 버전 전체 승인·기각
+
+**금지** — PUSH 문구·대상·발송 여부에 ML 사용 · 보유 선정이나 장중 사업군 판정에
+ML 사용 · OCI 에서 모델 추론 · ML 결과를 매수·매도 지시처럼 표시
+
+근거: 기존 모델 `REJECT` · 생존편향 잔존 · `UNBIASED_PERFORMANCE_CLAIM=NOT_YET` ·
+POC3 PUSH 3종이 안정 운영 중.
