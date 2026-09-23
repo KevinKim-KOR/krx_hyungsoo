@@ -1,12 +1,29 @@
 # POC4-01 — 데이터·백테스트 기반 정비 PLAN V1
 
 ```text
-STATUS            = RESUMED — 작업 1~5 구현 · 작업 6 착수 전 확인 요청(§5)
-OCI · PUSH = 변경 0 · 맥북 로컬 시장 DB 는 전체 pytest 가 씀(기존 테스트 격리 결함 — 결과서 §4-8)
+STATUS            = 작업 1~6 · 테스트 격리 · 검증자 P1 수정 구현 → 검증자 대기
+OCI · PUSH = 변경 0 · 테스트 격리 결함(전체 pytest 가 맥북 라이브 경로에 씀)은 수정 — 결과서 §4-8·§4-9
 DEPENDENCY_ADDED  = 0
 ```
 
-### 설계자 판정 (2026-09-23)
+### 설계자 판정 2차 (2026-09-24)
+
+```text
+POC4_01_WORK_1_TO_5       = ACCEPTED_PENDING_VERIFIER
+WORK_6                    = AUTHORIZED
+TEST_ISOLATION_DEFECT     = BLOCKING
+CODE_PUSH                 = HOLD        (VERIFIED 뒤 한꺼번에 push)
+HANDOFF                   = NOT_YET     (AFTER_WORK6_AND_VERIFIER)
+UNBIASED_PERFORMANCE      = NOT_YET
+```
+
+- 테스트 사고: (a) 시장 DB 1행 그대로 · (b) 테스트 단독 생성 파일만 증거 기록 후 삭제(공유 로그는 삭제 금지) ·
+  (c) 격리 수정 필수 — tmp 격리 · 라이브 경로 즉시 실패 guard · 5곳 전후 hash · 역검증 · 전체 회귀 후 불변 확인.
+- 작업 6 결정은 §5 에 반영했다.
+- 순서: checkpoint 커밋 → 사고 증거 → 가짜 파일 정리 → 격리·역검증 → 작업 6 → 전체 회귀·KS-10·5곳 불변 →
+  결과서 → 검증자 → VERIFIED 후 push → handoff. OCI·운영 PUSH·운영 DB 변경 없음.
+
+### 설계자 판정 1차 (2026-09-23)
 
 ```text
 STOP_CONDITION_COMPLIED       = YES
@@ -36,7 +53,7 @@ POC4_01_CONTINUE              = YES
   한도 확인 전 전체 적재 금지 → 그다음 embargo·성과지표·비용 분해. 완료 후 검증자.
 
 - **작성**: 개발자(VSCode Claude) · **독자**: 설계자
-- **입력**: 설계자 POC4-00 판정·POC4-01 착수 지시·POC4-01 판정(2026-09-23)
+- **입력**: 설계자 POC4-00 판정·POC4-01 착수 지시·POC4-01 판정 1차(2026-09-23)·2차(2026-09-24)·검증자 1차 판정 REJECTED(P1 산출물 보호)
 - 구현 증거·수치는 결과서 `docs/ai_result/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_RESULT.md`.
 
 ---
@@ -48,7 +65,8 @@ POC4_01_CONTINUE              = YES
 | **기존 baseline** | **재현 불가 확정**(`LEGACY_BASELINE_NON_REPRODUCIBLE`). 원본 결과는 덮어쓰지 않고 역사 자료로 보존했다(§1) |
 | **새 기준선** | 라이브 DB 를 한 번 동결한 **불변 스냅샷**으로만 평가한다. 평가기는 스냅샷 없이는 돌지 않는다(§4) |
 | **universe 복원** | 공식 한도(키당 10,000회/일)를 약관 원문으로 확인했다. canary 게이트 통과 후 전체 기간 적재(§2) |
-| **작업 6** | embargo 는 **E2 평가 label 에 누수가 없다**는 것을 코드로 다시 확인했다 — 어디에 걸지 결정이 필요하다. 비용 수치·지표 기준도 확인 요청(§5) |
+| **작업 6** | 설계자 결정(§5)대로 구현 — 20거래일 purge·embargo 는 모델·설정 선택 분할에(E2 무변경), 비용 분해(편도 11.5bp 기본 · legacy 25bp 유지), 절대·상대 성과지표 |
+| **테스트 격리** | 전체 pytest 가 맥북 라이브 경로에 쓰던 기존 결함을 막았다 — 쓰는 순간 실패하는 가드 · 라이브 DB 는 세션 사본으로 · 세션 전후 비교 |
 
 ---
 
@@ -277,9 +295,8 @@ fail-closed  manifest·파일 누락 / sha256 불일치 / cutoff 불일치 / 실
           결과를 쓰고 run_manifest 에 official=false 로 기록한다)
 라이브 차단  평가 중 sqlite 접속은 hash 를 확인한 작업 사본과 임시 재현 DB 로만 허용.
           E1 JSON 도 hash 를 확인한 사본만 읽는다.
-기존 결과  state/ml/validity/ 폴더 자체를 out-dir 로 주면 거부한다(정확히 같은 경로만 비교 —
-          하위 폴더는 막지 않는다. 보존 사본 폴더 poc4_01_frozen_original/ 를 out-dir 로 주면
-          덮어써지므로 쓰지 않는다. 결과서 §5)
+기존 결과  out-dir 는 **새 폴더**여야 한다 — state/ml/validity/ 와 그 하위, 이미 있는 폴더는 거부
+          (검증자 P1 수정 · 덮어쓰기와 실패 시 이전 결과 잔존을 구조로 막는다)
 ```
 
 작업 사본을 쓰는 이유 — 운영 조회 함수(`market_data_store._connection`)가 처음 여는 DB 에
@@ -337,61 +354,50 @@ Gate 6  (해당 없음 — 한도가 공식 확인됨)
 
 ---
 
-## 5. 작업 6 착수 전 확인 요청 (embargo · 성과지표 · 비용 분해)
+## 5. 작업 6 — 설계자 결정 (2026-09-24)
 
-### 5-1. 20거래일 embargo 는 어디에 거는가 — **E2 평가 label 에는 누수가 없다**
+개발자가 올린 질문 3개(embargo 위치 · 비용 수치 · 지표 기준)에 대한 결정이다. 구현과 결과는 결과서 §4-10.
 
-코드로 다시 확인한 사실:
-
-```text
-기준일 t 의 모델 학습 행   절단 이력(≤ t)에서 target 이 있는 행 → asof ≤ t − 20거래일
-                          (label 종료일 ≤ t — 절단 이력에서 i+20<n 일 때만 target 을 채우므로 구조상 성립.
-                          스냅샷으로 독립 재계산: t=2020-06-30·2026-07-31 모두 학습 행 target
-                          종료일 최대 = t, asof 최대 = t−20거래일)
-E2 평가 label            진입 t+1 거래일 → 청산 다음 월말+1 — 전부 t 이후
-모델 80/20 split         앞 80% 행으로만 학습 · 뒤 20% 는 test loss 계산에만 씀
-                          (예: E1 cutoff 2026-08-20 → 학습 끝 2025-07-01 ·
-                          t=2026-07-31 → 학습 마지막 asof 2025-06-13)
-```
-
-POC4-00 L-3 이 짚은 "train 끝 20거래일 label 이 test 구간 가격으로 계산됨" 은
-**모델 내부 80/20 split 의 경계**다. 그 test 구간은 E2 평가에 쓰이지 않고 test
-loss 에만 쓰인다. 따라서 이 경계에 embargo 를 넣어도 **E2 누수를 고치는 것이
-아니고**, 학습 데이터가 20거래일 줄어 점수가 조금 바뀔 뿐이다.
-
-embargo 가 실제로 필요한 곳은 **train 안에서 validation 으로 설정을 고르는
-경로**(POC4-03 RF 설정 선택 · 내부 holdout 성능 보고)다.
+### 5-1. purge·embargo — 개발자 제안 (a) 승인
 
 ```text
-(a) 개발자 제안 — 연구 경로의 train/validation 분할 함수에 purge·embargo 20거래일
-    을 넣는다(평가기 쪽 신규 함수). 고정 모듈은 그대로 → 새 기준선 재현 유지.
-    20D_EMBARGO 증거 = E2 L-1~L-3 검사 + 분할 함수의 경계 누수 차단 테스트.
-(b) 고정 모듈 train_walk_forward 의 80/20 경계에도 embargo 를 넣는다.
-    → 고정 모듈 raw·AST hash 가 바뀌고 baseline 점수가 달라진다(POC4-02 재측정 대상).
+TRAIN_VALIDATION_PURGE = 20 trading days
+E2_EVALUATION_CHANGE   = 0
+FROZEN_BASELINE_CHANGE = 0
 ```
 
-### 5-2. 비용 분해 수치
+근거(코드로 재확인) — 기준일 t 의 학습 행은 절단 이력(≤ t)에서 target 이 있는 행이라 label 종료일 ≤ t 이고
+(스냅샷으로 t=2020-06-30·2026-07-31 재계산: 학습 행 target 종료일 최대 = t · asof 최대 = t−20거래일), E2 label 은
+진입 t+1 부터다. 모델 80/20 split 의 뒤 20% 는 test loss 에만 쓴다. 그래서 20거래일 차단은 E2 가 아니라
+**모델·설정을 고르는 train/validation 분할**에 건다.
 
-지금은 편도 bp 하나(0 · 10 · 25 · 50, 주 25bp)를 `교체비율 × 편도bp × 2` 로 뺀다.
+- 계약은 날짜로 검사 — 학습 sample 의 label 종료일 < validation 시작일
+- validation 뒤 데이터를 학습에 쓰는 fold 면 validation 종료 뒤 20거래일 embargo
+- 경계를 한 줄이라도 겹치게 만들면 테스트 실패
+- RF 설정 최대 3개 모두 같은 분할
+
+### 5-2. 거래비용
 
 ```text
-분해안    편도 비용 = 수수료 + 슬리피지 + (매도 시) 증권거래세
-확인 필요  수수료 bp · 슬리피지 bp(호가 스프레드 자료가 없어 가정값) ·
-          ETF 증권거래세 적용 여부(국내 상장 ETF 매도는 비과세로 알고 있으나 설계자 확정 필요)
-제안      수수료 1.5bp 고정 · 거래세 0bp · 슬리피지 5 / 10 / 25bp 민감도
+TRANSACTION_TAX_BP = 0          국내 상장 ETF 매매 증권거래세 비징수 (공시 확인 · 설계자)
+COMMISSION_BP       = 1.5 per side   ASSUMPTION — 증권사 수수료 가정
+SLIPPAGE_BP_GRID    = 5 / 10 / 25 / 50 per side   (50 = 저유동성 스트레스)
+PRIMARY_SLIPPAGE    = 10 bp  → 편도 11.5bp
+LEGACY_COMPARISON   = all-in 25 bp per side (기존 결과와 비교용으로 유지)
+제외               배당소득세 · 매매차익 과세 (거래 시점 비용과 성격이 다르다)
 ```
 
-### 5-3. 성과지표 기준
+### 5-3. 성과지표 — (c) 절대·상대 둘 다
 
 ```text
-전략      월말 점수 상위 10% 동일가중 · 다음 거래일 진입 · 다음 월말+1 청산 (기간 비중첩)
-수익률    지금 label 은 KODEX200 대비 초과수익(forward_excess)이다
-(a) 초과수익 기준 — equity = Π(1+순초과수익) · MDD · 추적오차(연율 √12) ·
-    정보비율(평균/표준편차 × √12). 코드 추가가 적다.
-(b) 절대수익 기준 — 원수익 label 을 새로 계산해 Sharpe(무위험 0 또는 지정) · MDD.
-(c) 둘 다.
+절대   net strategy equity curve · CAGR · MDD · annualized volatility · Sharpe_0rf
+상대   KODEX200 benchmark equity curve · active return · tracking error · information ratio ·
+       relative wealth · relative MDD
+산식   절대 equity = Π(1 + 비용 차감 후 전략수익률) · benchmark = Π(1 + KODEX200 수익률) ·
+       relative = 전략 equity / benchmark equity  (차감 수익률 복리 누적 금지 — 차감은 IC·IR 에만)
 ```
 
+무위험수익률 source 가 없어 `Sharpe` 가 아니라 `Sharpe_0rf` 로 표시한다. 승격 판단의 1차 축은 상대성과다.
 
 ---
 
