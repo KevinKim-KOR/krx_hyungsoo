@@ -1,8 +1,10 @@
 """ML 축1 (후보 ETF 상대상승 참고점수 v0) — 모델 학습 + 추론 + 정규화.
 
-지시문 §6:
-- 단일 모델만 사용 (단일 회귀 baseline).
-- 자동 튜닝 / 앙상블 / 복수 모델 비교 금지.
+지시문 §6 (POC4-00 설계자 판정 2026-09-23 으로 정정):
+- 이 모듈 자체는 단일 선형회귀 baseline 을 유지한다.
+- POC4 연구 경로에서는 사전 정의된 Gate 에 따라 단순 모멘텀과 RandomForest 비교를
+  허용한다 (이 모듈 밖에서).
+- 자동 튜닝과 XGBoost·LightGBM 은 별도 승인 전까지 금지한다.
 - 기존 ml_baseline_v0 경로 (state/ml/ml_baseline_v0_report_latest.json) 미변경.
 - 신규 산출물 별도 이름: `relative_upside_score_v0`.
 

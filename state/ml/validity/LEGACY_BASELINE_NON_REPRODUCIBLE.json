@@ -1,0 +1,41 @@
+{
+  "status": "LEGACY_BASELINE_NON_REPRODUCIBLE",
+  "decision": "설계자 POC4-01 판정 (2026-09-23): LEGACY_BASELINE = NON_REPRODUCIBLE · ROOT_CAUSE = MUTABLE_INPUT_DATA · NEW_IMMUTABLE_BASELINE = APPROVED",
+  "meaning": "아래 두 파일은 2026-08-29 에 라이브 DB 를 직접 읽어 만든 결과다. 입력 DB 가 그 뒤 바뀌어 같은 결과를 다시 만들 수 없다. 역사 자료로만 보존하고 덮어쓰거나 hash 를 갱신하지 않는다. 새 기준선은 state/ml/baselines/<baseline_id>/ 의 불변 스냅샷으로 따로 만든다.",
+  "legacy_artifacts": {
+    "relative_upside_validity_v1_latest.json": {
+      "sha256": "a55e7292871106f2436ade0077a6053c4d5243c6ac69d084f51d0f99c9282290",
+      "canonical_sha256": "a0a905fd7877ee7a4a14c66f040b37e6da83c27bcb910f8de75fbf50759c8fd2",
+      "generated_at": "2026-08-29T13:17:16.077622+00:00",
+      "verdict_final": "REJECT",
+      "e2_evaluation_count": 145,
+      "e2_first_date": "2014-06-30",
+      "e2_last_date": "2026-06-30",
+      "frozen_module_sha256": {
+        "app/ml_relative_upside_features.py": "11910654204c0956486cd5fe9fb37c88f70c7e08c0eee533dd8fd30d0a52d442",
+        "app/ml_relative_upside_model.py": "8cb88f9e196428b3fa232f4f9773696e9036d888cf179dae8295a1bc7f97a004",
+        "app/ml_relative_upside_score.py": "8d53aa56457b43121ddb8a7809d7acb08583a64ffb2bbe14c4628287b55e58b9"
+      },
+      "price_projection_sha256_full": "8b52d065944a6b6b27007b9de7a218d943719b5481637893ddb663e8df0c43a7"
+    },
+    "relative_upside_validity_v1_run_latest.json": {
+      "sha256": "8d186239d5c7ec405a796e320281b3cdf2fe131f94811af1c036bb8fd0a1d036",
+      "elapsed_seconds": 777.78,
+      "finished_at": "2026-08-29T13:17:16.282861+00:00"
+    }
+  },
+  "legacy_contract": {
+    "e2_first_signal_date": "2014-06-30",
+    "e2_expected_point_count": 145,
+    "note": "이 145 는 라이브 DB 에 묶인 값이다. 새 기준선에서는 상수가 아니라 스냅샷 manifest 의 평가일 목록으로 대체됐다(145 를 146 으로 고치지 않았다)."
+  },
+  "preserved_copies": "state/ml/validity/poc4_01_frozen_original/ (위 두 파일과 sha256 동일)",
+  "reproduction_attempt_2026_09_23": {
+    "result": "RuntimeError: E2 평가일 수 계약 위반: 기대 145, 실제 146 — 계약대로 중단",
+    "cause_1": "평가 창 증가 — 라이브 DB 에 2026-07-31 평가일(청산 2026-09-01)이 새로 완성됨",
+    "cause_2": "과거 가격 재적재 — 2026-04-01~06-30 41,660/67,954행, 2026-07-01~08-27 46,145/46,235행이 다시 받아져 덮어써짐 (2026-03 이전 0행)",
+    "per_date_ic": "겹치는 145개 평가일 중 142개 IC 원본과 동일, 최근 3개(2026-04-30·05-29·06-30)만 소폭 차이",
+    "e1": "원본과 재현 모두 E1_UNAVAILABLE (E1 비교용 운영 점수 JSON 도 2026-08-30 에 asof 2026-08-27 로 덮어써짐)",
+    "detail": "docs/ai_plan/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_PLAN_V1.md"
+  }
+}

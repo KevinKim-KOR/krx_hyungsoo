@@ -70,7 +70,8 @@ MIN_TRADING_DAYS_SINCE_LISTING = RETURN_LOOKBACK_20D
 # 대상이 아니다**. 결과를 보고 제거하는 것이 아니라 PLAN 의 E2 시작일을 복원한다.
 PRE_EVALUATION_WARMUP_DATES = ("2014-04-30", "2014-05-30")
 E2_FIRST_SIGNAL_DATE = "2014-06-30"
-E2_EXPECTED_POINT_COUNT = 145
+# 평가일 수는 상수가 아니라 불변 스냅샷의 manifest 가 정한다 (POC4-01 설계자 결정 1).
+# 기존 145 는 라이브 DB 에 묶인 비재현 baseline 의 값이다 — LEGACY 마커에만 남긴다.
 
 PHASE_WARMUP = "PRE_EVALUATION_WARMUP"
 PHASE_EVALUATION = "E2_EVALUATION"
@@ -417,11 +418,16 @@ def evaluate_e1_gates(
     }
 
 
-def run_e1_gate(prices: dict, *, log: Optional[logging.Logger] = None) -> dict:
+def run_e1_gate(
+    prices: dict,
+    *,
+    log: Optional[logging.Logger] = None,
+    snapshot_path: Path = SCORE_SNAPSHOT_PATH,
+) -> dict:
     """PLAN §2.2 — 게이트 4종. 하나라도 실패하면 E1_UNAVAILABLE."""
-    if not SCORE_SNAPSHOT_PATH.exists():
+    if not snapshot_path.exists():
         return {"status": "E1_UNAVAILABLE", "reason": "운영 snapshot 파일 없음"}
-    snapshot = json.loads(SCORE_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     snap_scores = {
         c["ticker"]: c["relative_upside_score"]
         for c in snapshot.get("candidates", [])
@@ -526,8 +532,10 @@ def classify_phase(signal_date: str) -> str:
     )
 
 
-def assert_evaluation_window(evaluation_dates: list[str]) -> None:
-    """E2 평가 구간이 계약(2014-06-30 시작 · 145개)과 일치하는지 확인."""
+def assert_evaluation_window(
+    evaluation_dates: list[str], expected_dates: list[str]
+) -> None:
+    """E2 평가일이 2014-06-30 에서 시작하고, 스냅샷 manifest 의 목록과 같은지 확인."""
     if not evaluation_dates:
         raise RuntimeError("E2 평가 기준일이 0건이다")
     first = min(evaluation_dates)
@@ -535,9 +543,9 @@ def assert_evaluation_window(evaluation_dates: list[str]) -> None:
         raise RuntimeError(
             f"E2 시작일 계약 위반: 기대 {E2_FIRST_SIGNAL_DATE}, 실제 {first}"
         )
-    if len(evaluation_dates) != E2_EXPECTED_POINT_COUNT:
+    if list(evaluation_dates) != list(expected_dates):
         raise RuntimeError(
-            f"E2 평가일 수 계약 위반: 기대 {E2_EXPECTED_POINT_COUNT}, "
+            f"E2 평가일 수·목록 계약 위반: 기대 {len(expected_dates)}, "
             f"실제 {len(evaluation_dates)}"
         )
 

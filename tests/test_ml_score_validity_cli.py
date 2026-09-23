@@ -9,8 +9,11 @@
 - 차단 시 종료코드가 **3**
 - 통과 시에만 `validity_latest` 가 발행되고 종료코드가 0
 
-무거운 경로(라이브 DB 적재 · U2 재현 · E1 재현)는 monkeypatch 로 대체하고,
+무거운 경로(가격 적재 · U2 재현 · E1 재현)는 monkeypatch 로 대체하고,
 **게이트 판정과 발행 분기는 실제 코드**를 그대로 태운다.
+
+POC4-01 부터 러너는 불변 스냅샷(`--snapshot-manifest`)이 필수다. 각 테스트는
+tmp_path 에 같은 합성 가격으로 스냅샷을 만들고 그 manifest 로 실행한다.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ import pytest
 
 from app.ml_relative_upside_features import KODEX200_TICKER
 from app.ml_score_validity_eval import BLOCKING_MIN_COVERAGE
+from tests.test_ml_baseline_snapshot import CUTOFF, make_snapshot
 
 cli = importlib.import_module("scripts.run_ml_score_validity_eval_v1")
 
@@ -81,7 +85,7 @@ def _install(monkeypatch, prices, *, spy_aggregate=None):
     monkeypatch.setattr(cli, "build_tag_map", lambda *a, **k: {t: [] for t in prices})
     monkeypatch.setattr(cli, "replay_screen_slates", lambda *a, **k: {})
     monkeypatch.setattr(
-        cli, "build_frozen_descriptor", lambda: {"score_version": "test"}
+        cli, "build_frozen_descriptor", lambda *a, **k: {"score_version": "test"}
     )
     calls: list[int] = []
     real_aggregate = cli.aggregate
@@ -94,10 +98,23 @@ def _install(monkeypatch, prices, *, spy_aggregate=None):
     return calls
 
 
+def _args(tmp_path, *extra):
+    manifest = make_snapshot(tmp_path / "snapshot", _prices())
+    return [
+        "--snapshot-manifest",
+        str(manifest),
+        "--cutoff",
+        CUTOFF,
+        "--skip-e1",
+        "--allow-dirty-code",
+        "--out-dir",
+        str(tmp_path),
+        *extra,
+    ]
+
+
 def _run(tmp_path, limit=3):
-    return cli.main(
-        ["--limit-dates", str(limit), "--skip-e1", "--out-dir", str(tmp_path)]
-    )
+    return cli.main(_args(tmp_path, "--limit-dates", str(limit)))
 
 
 def _paths(tmp_path):
@@ -239,7 +256,7 @@ def test_cli_reports_warmup_dates_separately_in_payload(tmp_path, monkeypatch):
 
 
 def test_cli_enforces_evaluation_window_contract_on_full_run(tmp_path, monkeypatch):
-    """`--limit-dates` 없이 돌리면 145개·2014-06-30 계약이 강제된다."""
+    """`--limit-dates` 없이 돌리면 2014-06-30 시작 · manifest 평가일 계약이 강제된다."""
     _install(monkeypatch, _prices())
-    with pytest.raises(RuntimeError, match="시작일|평가일 수"):
-        cli.main(["--skip-e1", "--out-dir", str(tmp_path)])
+    with pytest.raises(RuntimeError, match="시작일"):
+        cli.main(_args(tmp_path))

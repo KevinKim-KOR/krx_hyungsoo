@@ -1,12 +1,14 @@
 """POC3-ML-02 — Relative Upside Score Validity Gate · 평가 실행 CLI.
 
-실행:
-  python scripts/run_ml_score_validity_eval_v1.py
-  python scripts/run_ml_score_validity_eval_v1.py --limit-dates 5   (스모크)
+실행 (POC4-01 설계자 결정 1 — 라이브 DB 직접 평가 금지, 불변 스냅샷 필수):
+  python scripts/run_ml_score_validity_eval_v1.py \
+      --snapshot-manifest state/ml/baselines/<id>/dataset_manifest.json \
+      --cutoff <manifest data_cutoff> --out-dir state/ml/baselines/<id>/runs/run1
+  (--limit-dates 5 는 스모크)
 
-PLAN V1 §8 산출물:
-  state/ml/validity/relative_upside_validity_v1_latest.json
-  state/ml/validity/relative_upside_validity_v1_run_latest.json
+산출물 (out-dir 아래 — 기존 state/ml/validity 결과는 덮어쓰지 않는다):
+  relative_upside_validity_v1_latest.json · relative_upside_validity_v1_run_latest.json
+  run_manifest.json (입력 hash · 코드 commit · 환경 · 인자 · 결과 hash · 평가일)
 
 본 스크립트는 오케스트레이션만 한다 — 지표 산식은 `ml_score_validity_metrics`,
 PIT 재현은 `ml_score_validity_eval`, U2 재현은 `ml_score_validity_screen`,
@@ -20,8 +22,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import platform
-import socket
 import sys
 import time
 from pathlib import Path
@@ -32,13 +32,23 @@ _PROJECT_ROOT = _SCRIPT_DIR.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from app.ml_baseline_provenance import (  # noqa: E402
+    build_frozen_descriptor,
+    code_provenance,
+    node_info,
+    write_run_manifest,
+)
+from app.ml_baseline_snapshot import (  # noqa: E402
+    SnapshotIntegrityError,
+    SnapshotSession,
+    snapshot_session,
+)
 from app.ml_relative_upside_features import KODEX200_TICKER  # noqa: E402
 from app.ml_relative_upside_model import (  # noqa: E402
     normalize_to_display_scores,
     predict_raw_scores,
 )
 from app.ml_score_validity_eval import (  # noqa: E402
-    E1_SNAPSHOT_ASOF,
     MIN_OBSERVATIONS,
     PHASE_EVALUATION,
     PHASE_WARMUP,
@@ -50,13 +60,11 @@ from app.ml_score_validity_eval import (  # noqa: E402
     build_calendar,
     build_close_maps,
     build_tag_map,
-    file_sha256,
     forward_excess,
     is_filter_universe,
     is_pit_eligible,
     load_prices,
     observations_upto,
-    price_projection_sha256,
     regime_at,
     reproduce_scores_at,
     run_e1_gate,
@@ -87,12 +95,8 @@ from app.ml_score_validity_screen import replay_screen_slates  # noqa: E402
 OUT_DIR = _PROJECT_ROOT / "state" / "ml" / "validity"
 RESULT_FILENAME = "relative_upside_validity_v1_latest.json"
 RUN_META_FILENAME = "relative_upside_validity_v1_run_latest.json"
-
-FROZEN_MODULES = (
-    "app/ml_relative_upside_features.py",
-    "app/ml_relative_upside_model.py",
-    "app/ml_relative_upside_score.py",
-)
+RUN_MANIFEST_FILENAME = "run_manifest.json"
+REPLAY_DB_NAME = "_pit_replay.sqlite"
 
 
 def _logger() -> logging.Logger:
@@ -105,73 +109,71 @@ def _logger() -> logging.Logger:
     return lg
 
 
-def _node_info() -> dict:
-    """실행 노드 정보 (PLAN §8.1)."""
-    info = {
-        "hostname": socket.gethostname(),
-        "platform": platform.platform(),
-        "python": platform.python_version(),
-    }
-    try:
-        import torch
-
-        info["torch"] = torch.__version__
-        info["device"] = "cpu"
-        info["cuda_available"] = torch.cuda.is_available()
-    except Exception:  # noqa: BLE001
-        pass
-    return info
-
-
 def _cleanup(out_dir: Path) -> None:
-    """U2 재현용 임시 DB 제거."""
-    replay_db = out_dir / "_pit_replay.sqlite"
-    if replay_db.exists():
-        replay_db.unlink()
-
-
-def build_frozen_descriptor() -> dict:
-    """PLAN §2.1 — 재현 기술자 6종. artifact 부재(C-1)를 대체한다."""
-    return {
-        "score_version": "relative_upside_score.v0",
-        "model_name": "relative_upside_v0_linear",
-        "module_sha256": {m: file_sha256(_PROJECT_ROOT / m) for m in FROZEN_MODULES},
-        "price_projection_sha256_full": price_projection_sha256(),
-        "price_projection_sha256_e1_cutoff": price_projection_sha256(
-            cutoff_date=E1_SNAPSHOT_ASOF
-        ),
-        "hyperparameters": {
-            "seed": 42,
-            "epochs": 200,
-            "learning_rate": 0.001,
-            "train_split_ratio": 0.8,
-            "model": "nn.Linear(7,1)",
-        },
-    }
+    """U2 재현용 임시 DB 제거 (성공·실패·예외 모두 — main 의 finally)."""
+    (out_dir / REPLAY_DB_NAME).unlink(missing_ok=True)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="POC3-ML-02 참고점수 유효성 평가")
     parser.add_argument(
+        "--snapshot-manifest",
+        required=True,
+        help="불변 입력 bundle 의 dataset_manifest.json (라이브 DB 직접 평가 금지)",
+    )
+    parser.add_argument(
+        "--cutoff",
+        required=True,
+        help="평가 cutoff — manifest data_cutoff 와 같아야 함",
+    )
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument(
         "--limit-dates", type=int, default=None, help="스모크용 기준일 제한"
     )
     parser.add_argument("--skip-e1", action="store_true")
-    parser.add_argument("--out-dir", default=None)
+    parser.add_argument(
+        "--allow-dirty-code",
+        action="store_true",
+        help="개발·테스트용 — 코드가 commit 과 달라도 실행 (official=false 기록)",
+    )
     args = parser.parse_args(argv)
 
-    log = _logger()
-    out_dir = Path(args.out_dir) if args.out_dir else OUT_DIR
+    out_dir = Path(args.out_dir).resolve()
+    if out_dir == OUT_DIR.resolve():
+        raise RuntimeError("기존(legacy) 결과 폴더에는 쓰지 않는다 — 새 --out-dir 필요")
+    code = code_provenance()
+    if not code["git"].get("code_clean") and not args.allow_dirty_code:
+        raise RuntimeError(f"코드가 commit 과 다르다 — 기준선 실행 불가: {code['git']}")
     out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with snapshot_session(
+            Path(args.snapshot_manifest),
+            cutoff=args.cutoff,
+            work_dir=out_dir,
+            extra_allowed=[out_dir / REPLAY_DB_NAME],
+        ) as snap:
+            return _evaluate(args, snap, out_dir, code)
+    finally:
+        _cleanup(out_dir)
+
+
+def _evaluate(
+    args: argparse.Namespace, snap: SnapshotSession, out_dir: Path, code: dict
+) -> int:
+    log = _logger()
     result_path = out_dir / RESULT_FILENAME
     meta_path = out_dir / RUN_META_FILENAME
 
     wall0 = time.perf_counter()
     started = now_iso()
-    log.info("가격 적재 시작")
-    prices = load_prices()
+    log.info("가격 적재 시작 (snapshot %s)", snap.manifest["baseline_id"])
+    prices = load_prices(snap.work_db)
+    latest = max(h[-1][0] for h in prices.values())
+    if latest > snap.cutoff:
+        raise SnapshotIntegrityError(f"cutoff 이후 가격이 있다: {latest}")
     days = trading_days(prices)
     close_maps = build_close_maps(prices)
-    tag_map = build_tag_map()
+    tag_map = build_tag_map(snap.work_db)
     kodex_closes = [c for _, c in prices[KODEX200_TICKER]]
     day_index = {d: i for i, d in enumerate(days)}
     log.info("ticker=%d 거래일=%d (%s ~ %s)", len(prices), len(days), days[0], days[-1])
@@ -190,7 +192,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         e1_model = None
         e1_train_end = None
     else:
-        e1 = run_e1_gate(prices, log=log)
+        e1 = run_e1_gate(prices, log=log, snapshot_path=snap.e1_path)
         e1_model = e1.pop("_model", None)
         e1.pop("_scores", None)
         e1_train_end = e1.pop("_train_end", None)
@@ -201,7 +203,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     t_screen = time.perf_counter()
     slates = replay_screen_slates(
         [p.signal_date for p in cal_1m],
-        temp_db_path=out_dir / "_pit_replay.sqlite",
+        live_db_path=snap.work_db,
+        temp_db_path=out_dir / REPLAY_DB_NAME,
     )
     log.info("U2 완료 (%.1fs)", time.perf_counter() - t_screen)
 
@@ -440,6 +443,21 @@ def main(argv: Optional[list[str]] = None) -> int:
             time.perf_counter() - t0,
         )
 
+    def _manifest(status: str, canonical: Optional[str]) -> None:
+        write_run_manifest(
+            out_dir / RUN_MANIFEST_FILENAME,
+            snap=snap,
+            code=code,
+            args=args,
+            per_date=per_date,
+            status=status,
+            canonical=canonical,
+            result_path=result_path,
+            meta_path=meta_path,
+            started=started,
+            elapsed_seconds=round(time.perf_counter() - wall0, 2),
+        )
+
     # --- warmup 분리 (설계자 보완 §1) -----------------------------------
     warmup = [r for r in per_date if r["phase"] == PHASE_WARMUP]
     evaluation = [r for r in per_date if r["phase"] == PHASE_EVALUATION]
@@ -450,9 +468,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         PHASE_EVALUATION,
         len(evaluation),
     )
+    # 평가 구간 계약 — 2014-06-30 시작 + 스냅샷 manifest 의 평가일 목록과 일치.
+    expected = snap.manifest["evaluation_calendar"]["e2_dates"]
+    evaluated = [r["signal_date"] for r in evaluation]
     if not args.limit_dates:
-        # 평가 구간 계약(2014-06-30 시작 · 145개) 위반이면 즉시 중단.
-        assert_evaluation_window([r["signal_date"] for r in evaluation])
+        assert_evaluation_window(evaluated, expected)
+    elif not set(evaluated) <= set(expected):
+        raise RuntimeError("E2 평가일이 스냅샷 manifest 달력 밖에 있다")
 
     # --- fail-closed 게이트 (설계자 보완 §1 · §7) -------------------------
     # N-1 은 게이트 입력이므로 집계 **전에** 계산한다.
@@ -466,6 +488,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     gate = preflight_gate(evaluation, n1)
     log.info("preflight: %s (%s)", gate["status"], ", ".join(gate["blocked"]) or "-")
+    # 무엇이든 쓰기 전에 — 봉인 입력이 실행 중 바뀌었으면 아무것도 기록하지 않는다.
+    snap.reverify()
 
     if gate["status"] != "OK":
         # 최종 지표와 모델 판정을 산출하지 않는다. validity_latest 미발행.
@@ -477,7 +501,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "started_at": started,
             "finished_at": now_iso(),
             "elapsed_seconds": round(time.perf_counter() - wall0, 2),
-            "node": _node_info(),
+            "node": node_info(),
             "result_path": None,
             "error": "fail-closed: 집계·최종 판정을 산출하지 않았다",
         }
@@ -486,7 +510,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
         if result_path.exists():
             result_path.unlink()
-        _cleanup(out_dir)
+        _manifest(gate["status"], None)
         log.error("%s — validity_latest 미발행", gate["status"])
         print(json.dumps(meta, ensure_ascii=False, indent=2))
         return 3
@@ -495,7 +519,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         evaluation,
         e1,
         days,
-        build_frozen_descriptor(),
+        build_frozen_descriptor(snap.work_db),
         {
             "rebalance_points_1m_total": len(per_date),
             "rebalance_points_3m": len(cal_3m),
@@ -506,6 +530,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     payload["run_arguments"] = {
         "limit_dates": args.limit_dates,
         "skip_e1": args.skip_e1,
+        "cutoff": args.cutoff,
+    }
+    # 결과를 입력 스냅샷에 묶는다 (out-dir·실행 시각처럼 실행마다 다른 값은 넣지 않는다).
+    payload["dataset"] = {
+        "baseline_id": snap.manifest["baseline_id"],
+        "data_cutoff": snap.manifest["data_cutoff"],
+        "manifest_canonical_sha256": snap.manifest_canonical_sha256,
+        "dataset_sha256": snap.manifest["files"]["dataset"]["sha256"],
+        "e1_score_snapshot_sha256": snap.manifest["files"]["e1_score_snapshot"][
+            "sha256"
+        ],
     }
     payload["determinism"] = {
         "excluded_fields": list(NON_DETERMINISTIC_FIELDS),
@@ -525,15 +560,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         "started_at": started,
         "finished_at": now_iso(),
         "elapsed_seconds": round(time.perf_counter() - wall0, 2),
-        "node": _node_info(),
+        "node": node_info(),
         "result_path": str(result_path),
         "error": None,
     }
     meta_path.write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-
-    _cleanup(out_dir)
+    _manifest(payload["verdict"]["final"], payload["determinism"]["canonical_sha256"])
 
     log.info("완료 %.1fs → %s", time.perf_counter() - wall0, result_path)
     print(

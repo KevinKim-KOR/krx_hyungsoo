@@ -205,9 +205,23 @@ state/ml/ml_baseline_v0_report_latest.json
 state/ml/relative_upside_score_latest.json
 state/ml/relative_upside_score_run_latest.json
 
-# POC3-ML-02 참고점수 유효성 평가 (2026-08-29) — 실행마다 재생성, 재현 가능 산출물.
+# POC3-ML-02 참고점수 유효성 평가 (2026-08-29) — 라이브 DB 를 읽어 만든 결과라 재현되지 않는다
+# (POC4-01 판정 LEGACY_BASELINE_NON_REPRODUCIBLE — 역사 자료로 보존, 덮어쓰지 않는다).
 state/ml/validity/relative_upside_validity_v1_latest.json
 state/ml/validity/relative_upside_validity_v1_run_latest.json
+state/ml/validity/poc4_01_frozen_original/
+state/ml/validity/poc4_01_repro/
+
+# POC4-01 불변 스냅샷 기준선 bundle — 데이터·결과 파일은 PC 로컬 보관, manifest 만 추적한다.
+state/ml/baselines/*.building/
+state/ml/baselines/**/*.sqlite
+state/ml/baselines/**/*.sqlite-journal
+state/ml/baselines/**/e1_score_snapshot.json
+state/ml/baselines/**/relative_upside_validity_v1_latest.json
+state/ml/baselines/**/relative_upside_validity_v1_run_latest.json
+
+# POC4-01 KRX 과거 universe 연구 DB — PC 전용 (KRX 약관: 제3자 제공 금지 · 원천 데이터 비공유).
+state/ml/research/
 
 # ML evidence refresh job status (2026-06-11 UI 안전실행) — UI 실행마다 갱신, 운영 artifact.
 state/ml/ml_job_status_latest.json

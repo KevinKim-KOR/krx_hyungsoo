@@ -18,7 +18,6 @@ import pytest
 
 from app.ml_score_validity_eval import (
     BLOCKING_MIN_COVERAGE,
-    E2_EXPECTED_POINT_COUNT,
     E2_FIRST_SIGNAL_DATE,
     MIN_OBSERVATIONS,
     PHASE_EVALUATION,
@@ -159,24 +158,28 @@ def test_train_rows_zero_outside_warmup_is_not_reclassified():
     assert classify_phase("2019-03-29") == PHASE_EVALUATION
 
 
+# POC4-01: 평가일 목록은 상수(기존 145)가 아니라 불변 스냅샷 manifest 가 정한다.
+_EXPECTED = [E2_FIRST_SIGNAL_DATE, "2014-07-31", "2014-08-29"]
+
+
 def test_evaluation_window_contract_is_enforced():
-    dates = [E2_FIRST_SIGNAL_DATE] + [
-        f"2015-{m:02d}-28" for m in range(1, E2_EXPECTED_POINT_COUNT)
-    ]
-    assert_evaluation_window(dates)
+    assert_evaluation_window(list(_EXPECTED), _EXPECTED)
 
 
 def test_evaluation_window_rejects_wrong_start_date():
-    dates = ["2014-05-30"] + [
-        f"2015-{m:02d}-28" for m in range(1, E2_EXPECTED_POINT_COUNT)
-    ]
     with pytest.raises(RuntimeError, match="시작일"):
-        assert_evaluation_window(dates)
+        assert_evaluation_window(["2014-05-30"] + _EXPECTED[1:], _EXPECTED)
 
 
 def test_evaluation_window_rejects_wrong_count():
+    """새 평가일이 하나 늘어도(145→146 류) manifest 와 다르면 멈춘다."""
     with pytest.raises(RuntimeError, match="평가일 수"):
-        assert_evaluation_window([E2_FIRST_SIGNAL_DATE, "2014-07-31"])
+        assert_evaluation_window(_EXPECTED + ["2014-09-30"], _EXPECTED)
+
+
+def test_evaluation_window_rejects_same_count_different_dates():
+    with pytest.raises(RuntimeError, match="목록"):
+        assert_evaluation_window(_EXPECTED[:2] + ["2014-08-28"], _EXPECTED)
 
 
 # --- 2. fail-closed: coverage / 누수 / N-1 ----------------------------------
