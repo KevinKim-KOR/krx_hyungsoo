@@ -1,8 +1,23 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-23 (**02C 통합 종료 — 장중 급등락 활성화·운영 확인 완료 · PUSH 3_OF_3**)
+최종 업데이트: 2026-09-24 (**POC4-01 종료 — 검증자 VERIFIED**) · 직전: 2026-09-23 02C 통합 종료 · PUSH 3_OF_3
 
-## 현재 상태
+## POC4 — ML·퀀트 고도화 (PC 연구 전용 · OCI·PUSH 영향 0)
+
+```text
+POC4 = IN_PROGRESS
+POC4-01 데이터·백테스트 기반 정비 = CLOSED   검증자 VERIFIED 2026-09-24
+POC4-02 = 설계서 대기 — KRX 과거 universe(krx_etf_universe_v1)로 생존편향을 줄인 연구 기준선 · RESULT = RESEARCH_ONLY
+```
+
+- 새 기준선 `relative_upside_v1_snap_20260921`(불변 스냅샷 · 두 번 실행 동일 · `REJECT`) · legacy 기준선 `NON_REPRODUCIBLE`.
+- KRX 과거 universe 연구 DB `krx_etf_universe_v1` 봉인 · 설계자 승인: POC4-02 연구 기준선 입력(운영 승격·배포·PUSH 사용 없음).
+- **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,013 passed). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
+  tmp DB·고정 fixture. 기존 229건만 읽기 전용 세션 사본(비차단 기술부채).
+- 인계: `docs/handoff/POC4-01_BASELINE_SNAPSHOT_KRX_UNIVERSE_HANDOFF_2026-09-24.md` · 결과서:
+  `docs/ai_result/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_RESULT.md`
+
+## 현재 상태 (POC3)
 
 ```text
 POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
