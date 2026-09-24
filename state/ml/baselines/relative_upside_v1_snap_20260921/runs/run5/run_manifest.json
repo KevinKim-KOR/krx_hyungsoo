@@ -1,0 +1,295 @@
+{
+  "schema_version": "ml_baseline_run_manifest.v1",
+  "status": "REJECT",
+  "official": true,
+  "dataset": {
+    "baseline_id": "relative_upside_v1_snap_20260921",
+    "manifest_path": "state/ml/baselines/relative_upside_v1_snap_20260921/dataset_manifest.json",
+    "manifest_sha256": "6b9c893823c8252f148b1cbd237b757189419bec8470e15d06a2b454a0ea7dea",
+    "manifest_canonical_sha256": "ac890e3e06f9a60d1090223478246c7e2bdce1f6d42e35cdc87e5e4692e2be23",
+    "dataset_sha256": "6fbde434af60e5e702904c36380b5ab7b906274d6697d2affdf6b1889f603781",
+    "e1_score_snapshot_sha256": "f8c41658b57975c328ae5afb0ac1716e1400b4655c85ee1148b7bfd79ba1623e",
+    "schema_sha256": "67041b5a21bc344b1a7b7510e883202c1a9aeaee532272cb1283f26089911d66",
+    "data_cutoff": "2026-09-21"
+  },
+  "code": {
+    "git": {
+      "head": "2d6547b3f314601b07cf4e951d8122b608a3aed9",
+      "code_clean": true,
+      "dirty_paths": []
+    },
+    "gate_paths": [
+      "app",
+      "scripts",
+      "requirements.txt"
+    ],
+    "frozen_modules": {
+      "app/ml_relative_upside_features.py": {
+        "raw_sha256": "11910654204c0956486cd5fe9fb37c88f70c7e08c0eee533dd8fd30d0a52d442",
+        "normalized_ast_sha256": "6eb8cad1d9ba81a6681462edf006522f85eec44de17a49eec3b6bcc428b53771"
+      },
+      "app/ml_relative_upside_model.py": {
+        "raw_sha256": "b41b2a9ac55a9d5ce1cd53b9b21aef65a0ac4db0fb82dc0d2a0ce03be99083c4",
+        "normalized_ast_sha256": "1ba8f5cbca56d4442b23981801e2e742be7a47276d4103ce7a036c49e539f803"
+      },
+      "app/ml_relative_upside_score.py": {
+        "raw_sha256": "8d53aa56457b43121ddb8a7809d7acb08583a64ffb2bbe14c4628287b55e58b9",
+        "normalized_ast_sha256": "f19c8803f59cab0c7a4b56e7308088256a12cc746706c05af248efe9d96521fc"
+      }
+    },
+    "evaluator_modules": {
+      "app/__init__.py": {
+        "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_ast_sha256": "3543b4693a36a1098850b8bc928887694ed59a6deb7d3dfd0339de01f55a77b6"
+      },
+      "app/market_benchmark_freshness.py": {
+        "raw_sha256": "a4331ffea08e8b6252f155ea64a523f10598224d5ac9c7c278254865ca9d92d4",
+        "normalized_ast_sha256": "2bc09e1d1981f024abfe280d07ec621539d9fdc582ba9b2e77ad65c6660bb831"
+      },
+      "app/market_benchmark_store.py": {
+        "raw_sha256": "383e3a2944f2c07095ab88668a93c7a03b42e75c5f62b79b07b7b728acf40ebe",
+        "normalized_ast_sha256": "f38b4e141649d727657d8a45765f7baa69bd37cea736122d9d28b5e9a0ff5ed4"
+      },
+      "app/market_data_store.py": {
+        "raw_sha256": "5e0fc15dd1fd0f62e8e843e6bdc327dafd2b3f3dc4e2fe3ff44a236eadcc5d5f",
+        "normalized_ast_sha256": "ae898f9418e483e4c3a3c375a30561b7e39aac8464c08aeaf97de895a89eaef6"
+      },
+      "app/market_regime.py": {
+        "raw_sha256": "cb1f60892f515682ac404a51c73b1b6364db9614b0356b76b50c5fd1e4982ad8",
+        "normalized_ast_sha256": "74c8a6427365df9aac489b1a1ebedac224c723ab6f93d700f2a3786ef1590e19"
+      },
+      "app/market_topn.py": {
+        "raw_sha256": "e4825c1f0a23def111be69cda365566cc41f9eb12c83d44d26fd2780e460c940",
+        "normalized_ast_sha256": "4e8dba2abbfc9baeb9aca4b07c29288df07b6f7cc978445b4167f88705cdcd9a"
+      },
+      "app/market_topn_helpers.py": {
+        "raw_sha256": "649013474e221bc04095f3d38ae7e7268e7847f82ee5054a3d0b1abe4de1e7db",
+        "normalized_ast_sha256": "c8cf9b1712dd9c26ffe9d98d9f17089265f10c882fe0e2198da8863b30542fa7"
+      },
+      "app/ml_baseline_provenance.py": {
+        "raw_sha256": "35038bb423c6dd3bbbbc807f0bbc88be9d5d70004108052024e3bd5fe92ef4ca",
+        "normalized_ast_sha256": "fedbab9e58774be8a42e3f0c41936386c632433c9f26c7159723911a0172b245"
+      },
+      "app/ml_baseline_snapshot.py": {
+        "raw_sha256": "5739f0e3599a6ad88464ac915bba668859aa46cfb9612951aed62f55dace5718",
+        "normalized_ast_sha256": "25f2acbb065856717eb57b6861db429a329206cb136b1f3d739aa45250108f7a"
+      },
+      "app/ml_score_validity_eval.py": {
+        "raw_sha256": "bb812cf13c230392a54c37e212440e82c3f31c8f22c517d2a5f85ed2fa24fac4",
+        "normalized_ast_sha256": "7477e7452d5519f04af575616a48153e0653020bd05b30ac8f67e55a3ab9ecc5"
+      },
+      "app/ml_score_validity_metrics.py": {
+        "raw_sha256": "8b7a99f2c21f79769dde06d6b76f83e994cc80bd05e136655fe0ff045d03f967",
+        "normalized_ast_sha256": "0b9cb93bb2911833d67f4daa7e9398b59423ea96f1a2ed27a05a26d07459dd42"
+      },
+      "app/ml_score_validity_report.py": {
+        "raw_sha256": "91cfb69a238f3a874ff9f9a2e7972ef7131650fda8884771a0b9b7b498eb6db0",
+        "normalized_ast_sha256": "170a73a0a60f69d7ffa8d46c1e865aa416395248c2f4ab855fd274a00f23236c"
+      },
+      "app/ml_score_validity_screen.py": {
+        "raw_sha256": "6e32794e3e58f012b41d1e626810e40989fd45750a2a2ad89885edd81e33747a",
+        "normalized_ast_sha256": "5c444f1c0c111d3b3241bf88e77dceb22e7b5d7f0ccf61141f0ca9af6dc71310"
+      },
+      "app/ml_strategy_performance.py": {
+        "raw_sha256": "3bb75c7b9d147e672452819e6bdee0bc0b564c708e8f9ce255efc48464d427fe",
+        "normalized_ast_sha256": "7e38c05a81963a417263a76f1757ad237bd50323121156d5da0bb6cf6c7765fe"
+      },
+      "scripts/run_ml_score_validity_eval_v1.py": {
+        "raw_sha256": "19faf68eee9fca65fe29dba46e8b49f87a3cf07b40a8db965a4e170147e3b018",
+        "normalized_ast_sha256": "67ba0cc99e80a827642fd012d33dabd53f43e5c99dc729e84f2392fc83906331"
+      }
+    },
+    "normalized_ast_definition": "ast.parse → 모듈·클래스·함수 첫 문장 docstring 제거 → ast.dump(annotate_fields=True, include_attributes=False) 의 sha256. 주석·빈 줄·서식·docstring 변경은 hash 를 바꾸지 않는다."
+  },
+  "environment": {
+    "python": "3.12.13",
+    "python_implementation": "CPython",
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "hostname": "HyungSooui-MacBookPro.local",
+    "sqlite": "3.53.1",
+    "packages": {
+      "torch": "2.13.0",
+      "numpy": "2.4.6",
+      "pandas": "2.3.3",
+      "scipy": "1.18.0",
+      "scikit-learn": "1.9.0"
+    },
+    "requirements_txt_sha256": "3e427a756b53363b9dce91922af04ccdd5963c8dcb6dda91b83cc8b116a651b1"
+  },
+  "run_arguments": {
+    "snapshot_manifest": "state/ml/baselines/relative_upside_v1_snap_20260921/dataset_manifest.json",
+    "cutoff": "2026-09-21",
+    "out_dir": "state/ml/baselines/relative_upside_v1_snap_20260921/runs/run5",
+    "limit_dates": null,
+    "skip_e1": false,
+    "allow_dirty_code": false
+  },
+  "evaluation": {
+    "count": 146,
+    "dates": [
+      "2014-06-30",
+      "2014-07-31",
+      "2014-08-29",
+      "2014-09-30",
+      "2014-10-31",
+      "2014-11-28",
+      "2014-12-30",
+      "2015-01-30",
+      "2015-02-27",
+      "2015-03-31",
+      "2015-04-30",
+      "2015-05-29",
+      "2015-06-30",
+      "2015-07-31",
+      "2015-08-31",
+      "2015-09-30",
+      "2015-10-30",
+      "2015-11-30",
+      "2015-12-30",
+      "2016-01-29",
+      "2016-02-29",
+      "2016-03-31",
+      "2016-04-29",
+      "2016-05-31",
+      "2016-06-30",
+      "2016-07-29",
+      "2016-08-31",
+      "2016-09-30",
+      "2016-10-31",
+      "2016-11-30",
+      "2016-12-29",
+      "2017-01-31",
+      "2017-02-28",
+      "2017-03-31",
+      "2017-04-28",
+      "2017-05-31",
+      "2017-06-30",
+      "2017-07-31",
+      "2017-08-31",
+      "2017-09-29",
+      "2017-10-31",
+      "2017-11-30",
+      "2017-12-28",
+      "2018-01-31",
+      "2018-02-28",
+      "2018-03-30",
+      "2018-04-30",
+      "2018-05-31",
+      "2018-06-29",
+      "2018-07-31",
+      "2018-08-31",
+      "2018-09-28",
+      "2018-10-31",
+      "2018-11-30",
+      "2018-12-28",
+      "2019-01-31",
+      "2019-02-28",
+      "2019-03-29",
+      "2019-04-30",
+      "2019-05-31",
+      "2019-06-28",
+      "2019-07-31",
+      "2019-08-30",
+      "2019-09-30",
+      "2019-10-31",
+      "2019-11-29",
+      "2019-12-30",
+      "2020-01-31",
+      "2020-02-28",
+      "2020-03-31",
+      "2020-04-29",
+      "2020-05-29",
+      "2020-06-30",
+      "2020-07-31",
+      "2020-08-31",
+      "2020-09-29",
+      "2020-10-30",
+      "2020-11-30",
+      "2020-12-30",
+      "2021-01-29",
+      "2021-02-26",
+      "2021-03-31",
+      "2021-04-30",
+      "2021-05-31",
+      "2021-06-30",
+      "2021-07-30",
+      "2021-08-31",
+      "2021-09-30",
+      "2021-10-29",
+      "2021-11-30",
+      "2021-12-30",
+      "2022-01-28",
+      "2022-02-28",
+      "2022-03-31",
+      "2022-04-29",
+      "2022-05-31",
+      "2022-06-30",
+      "2022-07-29",
+      "2022-08-31",
+      "2022-09-30",
+      "2022-10-31",
+      "2022-11-30",
+      "2022-12-29",
+      "2023-01-31",
+      "2023-02-28",
+      "2023-03-31",
+      "2023-04-28",
+      "2023-05-31",
+      "2023-06-30",
+      "2023-07-31",
+      "2023-08-31",
+      "2023-09-27",
+      "2023-10-31",
+      "2023-11-30",
+      "2023-12-28",
+      "2024-01-31",
+      "2024-02-29",
+      "2024-03-29",
+      "2024-04-30",
+      "2024-05-31",
+      "2024-06-28",
+      "2024-07-31",
+      "2024-08-30",
+      "2024-09-30",
+      "2024-10-31",
+      "2024-11-29",
+      "2024-12-30",
+      "2025-01-31",
+      "2025-02-28",
+      "2025-03-31",
+      "2025-04-30",
+      "2025-05-30",
+      "2025-06-30",
+      "2025-07-31",
+      "2025-08-29",
+      "2025-09-30",
+      "2025-10-31",
+      "2025-11-28",
+      "2025-12-30",
+      "2026-01-30",
+      "2026-02-27",
+      "2026-03-31",
+      "2026-04-30",
+      "2026-05-29",
+      "2026-06-30",
+      "2026-07-31"
+    ],
+    "warmup_dates": [
+      "2014-04-30",
+      "2014-05-30"
+    ]
+  },
+  "result": {
+    "path": "relative_upside_validity_v1_latest.json",
+    "file_sha256": "6f07095c8bb52b6673a4275ee50ee3146519a53f8d68033b30b7ef3461d2324c",
+    "canonical_sha256": "066ba09af85ed334acaef3a35df80a924bd2bb926bc7e9480172b8b33fb05aec",
+    "e2_core_canonical_sha256": "e1c02f6657d2d88836dbf254f2beaf2f89aa42f405b077d2e599791f97454000"
+  },
+  "run_meta": {
+    "path": "relative_upside_validity_v1_run_latest.json",
+    "file_sha256": "a07484aa6b189d1b26a216b2f52311e18e737d5a22218b828ca97627308902fc"
+  },
+  "started_at": "2026-09-24T01:40:01.169304+00:00",
+  "finished_at": "2026-09-24T01:55:42.118461+00:00",
+  "elapsed_seconds": 940.68
+}

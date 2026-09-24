@@ -1,6 +1,6 @@
 # POC4-01 작업 1~5 인계 — 불변 기준선 스냅샷 · KRX 과거 universe
 
-> **중간 인계 (2026-09-24 사용자 지시로 작성).** 설계자 판정은 `HANDOFF = NOT_YET (AFTER_WORK6_AND_VERIFIER)` 다.
+> **중간 인계 (2026-09-24 사용자 지시로 작성).** 설계자 최신 확인은 `HANDOFF = AFTER_VERIFIED_AND_PUSH` 다.
 > 이 문서는 작업 6 · 테스트 격리 수정 **전** 상태를 적었다 — 지금 상태는 결과서
 > `docs/ai_result/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_RESULT.md` 가 정본이다. POC4-01 종료 때 이 문서를 갱신한다.
 

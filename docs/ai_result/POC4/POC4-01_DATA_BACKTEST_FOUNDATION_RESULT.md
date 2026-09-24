@@ -1,25 +1,35 @@
 # POC4-01 — 데이터·백테스트 기반 정비 RESULT
 
 ```text
-STATUS             = 작업 1~6 · 테스트 격리(차단 결함) · 검증자 P1 수정 IMPLEMENTED → 검증자 재검증 대기
+STATUS             = 작업 1~6 · 테스트 격리 · 검증자 P1 · 설계자 3차 판정 교정 IMPLEMENTED
+                     · 설계자 확인 완료(§6-3 기존 테스트 수 93 → 233 → 목록 229 · 감시 읽기 예외 2 승인)
+                     · 개발자 사전 점검(검증 항목 1~8) → 가드 우회 경로 보강(§4-13 · 테스트 코드만)
+                     → READY_FOR_LIMITED_REVERIFICATION
 NEW_BASELINE       = relative_upside_v1_snap_20260921 · REJECT
-                     run3 = run4 canonical 2a6ca8c6… · E2 핵심 hash = 이전 기준선 canonical e1c02f66… (E2 무변경)
+                     run5 = run6 canonical 066ba09a… · E2 핵심 hash = e1c02f66… 그대로 (E2 무변경)
 LEGACY_BASELINE    = NON_REPRODUCIBLE 표시 · 원본 파일 무변경
-KRX_UNIVERSE       = 공식 한도 확인 → canary 통과 → 전체 기간 3,318일 적재 · verify ok · 봉인 (§4-5)
-TEST_ISOLATION     = 쓰기 가드 + 라이브 DB 는 읽기 전용 세션 사본 · 저장소 전체 회귀 1,997 passed · 라이브 5곳 sha256 전후 동일
-OCI · PUSH = 변경 0 · push 보류(설계자 CODE_PUSH = HOLD)     DEPENDENCY_ADDED = 0
+KRX_UNIVERSE       = 전체 기간 3,318일 적재 · verify ok · 봉인 (§4-5) · 설계자 승인: POC4-02 연구 기준선 입력(RESEARCH_ONLY)
+TEST_ISOLATION     = 쓰기 가드 + 라이브 DB 는 읽기 전용 세션 사본(기존 테스트 229건 목록만 · 사본 hash·integrity 검사
+                     · 사본 보호 · ATTACH/VACUUM INTO 차단 · 삼킨 가드 오류도 실패)
+                     저장소 전체 회귀 2,013 passed · 라이브 5곳 전후 동일
+AC-8               = NAV 요약 JSON 지정 경로 1개만 · 그 밖 JSON 0 (§4-12) · NAV 요약 오염 파일은 격리 보존 (§4-8 (d))
+OCI · PUSH = 변경 0 · push 보류(설계자 PUSH = HOLD)     DEPENDENCY_ADDED = 0
 ```
 
 - **작성**: 개발자(VSCode Claude) · **독자**: 검증자(Codex) · 설계자
-- **입력**: 설계자 POC4-01 판정 1차(2026-09-23) · 2차(2026-09-24) · 검증자 1차 판정 REJECTED(P1 산출물 보호) ·
-  PLAN `docs/ai_plan/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_PLAN_V1.md`
+- **입력**: 설계자 POC4-01 판정 1차(2026-09-23) · 2차 · 3차(2026-09-24) · 검증자 1차 판정 REJECTED(P1 산출물 보호) ·
+  2차 BLOCKED(설계자 계약 2건) · PLAN `docs/ai_plan/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_PLAN_V1.md`
 - **검증 범위(설계자 지시)**: `be579619` 부터 최종 문서 commit 까지 — 모두 로컬 · push 안 함.
 
 ```text
 be579619  feat  불변 스냅샷 기준선 입력 경로 + KRX universe 연구 DB        (작업 1~5 코드)
-02a0f7c5  docs  1차 결과서 · PLAN · 기준선 manifest(run1·run2) · 중간 인계  (사용자 직접 지시로 commit — §6-1)
+02a0f7c5  docs  1차 결과서 · PLAN · PROGRAM_TRUTH(§7.1·§8) · 기준선 manifest(dataset · run1·run2) · 중간 인계  (사용자 직접 지시로 commit — §6-1)
 71d50d15  fix   테스트 라이브 격리 · 산출물 보호 · 작업 6                   (코드)
-(최종)    docs  이 결과서 · PLAN · PROGRAM_TRUTH(§7.1 스냅샷 행) · 기준선 manifest(run3·run4) · 인계 문서 표시
+bdffdb4b  docs  결과서 · PLAN · PROGRAM_TRUTH(§7.1 스냅샷 행) · 기준선 manifest(run3·run4) · 인계 문서 표시
+2d6547b3  fix   strategy_performance active_return 산식 문구                 (코드 · 설계자 3차 §4)
+abf833ee  test  세션 사본 조건 · AC-8 NAV JSON 계약 · 라이브 커버리지 단언 4건 고정 입력  (테스트 · 설계자 3차 §1·§2)
+29839c75  test  가드 우회 경로 보강 — 검증 항목 사전 점검                      (테스트 · 설계자 확인 뒤 · 사용자 결정 · §4-13)
+(최종)    docs  이 결과서 · PLAN(판정 3차 · 설계자 확인) · 기준선 manifest(run5·run6) · 인계 문서 표시
 ```
 
 ---
@@ -50,7 +60,7 @@ be579619  feat  불변 스냅샷 기준선 입력 경로 + KRX universe 연구 D
 | 순서 2 | 테스트 사고 증거 기록(경로·크기·hash·mtime·테스트 근거·운영 기록과 안 섞인 근거) | DONE | §4-8 |
 | 순서 3 · (b) | 테스트 **단독 생성** 가짜 파일만 삭제 · 공유 로그 전체 삭제 금지 | DONE | 1개 삭제. 나머지는 근거 부족·덮어쓴 산출물·공유 로그라 남김(§4-8) |
 | (a) | 시장 DB `market_refresh_state` 1행은 그대로 · 가짜 복원·억지 갱신 금지 | DONE | 손대지 않음 |
-| 순서 4 · (c) | 격리 · 라이브 경로 즉시 실패 guard · 5곳 전후 hash · 역검증 · 회귀 후 불변 | DONE | §4-9 — sqlite 는 "즉시 실패" 대신 **읽기 전용 세션 사본**(쓰기는 즉시 실패) · §6-3 |
+| 순서 4 · (c) | 격리 · 라이브 경로 즉시 실패 guard · 5곳 전후 hash · 역검증 · 회귀 후 불변 | DONE | §4-9 — sqlite 는 "즉시 실패" 대신 **읽기 전용 세션 사본**(쓰기는 즉시 실패) — 설계자 3차 판정 `LIVE_DB_TEST_ACCESS = READONLY_SESSION_COPY` 로 확정 |
 | 순서 5 · 3-1 | purge·embargo 20거래일 — 모델·설정 선택 분할 · E2 변경 0 · 고정 모듈 변경 0 · 날짜 계약 · 한 줄 침범 실패 · 설정 3개 같은 분할 | DONE | §4-10 |
 | 3-2 | 거래비용 — 거래세 0 · 수수료 1.5bp(ASSUMPTION) · 슬리피지 5/10/25/50 · 기본 11.5bp · legacy 25bp 유지 · 50bp 스트레스 · 세금 제외 명시 | DONE | §4-10 |
 | 3-3 | 절대·상대 성과지표 · 상대 = equity 비율 · Sharpe_0rf | DONE | §4-10 |
@@ -60,6 +70,28 @@ be579619  feat  불변 스냅샷 기준선 입력 경로 + KRX universe 연구 D
 | 검증자 P1 | legacy 하위 폴더 허용 · 기존 out-dir 재사용 시 이전 결과 잔존 | DONE | §4-11 — 새 폴더만 허용, 기준선 두 번 재실행(run3·run4) |
 | 검증자 A-2 | "문서는 staged" 문구가 commit 뒤 사실과 달랐다 | DONE | 이 문서에서 commit 목록으로 교체 |
 | — | OCI · 운영 PUSH · 운영 DB 변경 없음 | DONE | 사고(§4-8)는 격리 수정 전 맥북 로컬 파일 · 이번 단계 전체 회귀는 라이브 5곳 불변 |
+
+### 1-3. 설계자 3차 판정 (2026-09-24) — 검증자 2차 BLOCKED 해소
+
+| # | 요구사항 | 상태 | 근거 |
+|---|---|---|---|
+| §1 | 라이브 DB 는 사본 생성 때만 읽음 · 테스트 sqlite 연결은 모두 사본 mode=ro · 쓰기 즉시 실패 | DONE · 감시 읽기 예외(설계자 승인) | 테스트 코드에서 라이브 DB 경로로 오는 연결(`sqlite3.connect`·`dbapi2`·`_sqlite3`)은 목록 테스트면 세션 사본(mode=ro), 목록 밖이면 즉시 거부. SQL 안의 `ATTACH '<경로>'`·`VACUUM INTO` 는 대상이 라이브·사본이면 거부(파일을 열지 않는다) · `ATTACH ?`·식은 SQLite 가 파일을 한 번 열지만 그 별칭 접근은 모두 거부되고 테스트가 실패한다(§4-9 · §4-13 · §5). 설계자가 승인한 감시 읽기 예외 2곳 = 세션 전후 hash(파일 바이트 읽기 · sqlite 아님) · 기존 감시 fixture 의 테스트별 benchmark 테이블 mode=ro 조회 — sqlite 로 라이브 DB 를 여는 곳은 이 benchmark 조회 1곳뿐. 파일 바이트로 전후만 비교하는 읽기 전용 감시는 §5 에 모두 적었다 |
+| §1 | 사본 생성 전후 라이브 hash 가 다르면 실패 · 사본 SQLite integrity 검사 | DONE | §4-9 사본 검사·사본 보호(0444 · 세션 끝 재측정) · 역검증 테스트 5건(`verified_copy` 3 · 사본 보호 1 · 세션 끝 재측정 1) |
+| §1 | 라이브 DB·5곳 hash 전후 동일 | DONE | §4-9 · §4-7 |
+| §1 | 운영 코드 기본 경로 계약 무변경 | DONE | 이번 테스트 commit 은 `app/`·`scripts/` 변경 0 |
+| §1 | 새 테스트는 자체 임시 DB·고정 fixture · 호환 경로는 기존 테스트에만 | DONE · **수치 정정** | 기존 테스트 목록 + 목록 밖 연결 즉시 거부(앱 코드가 삼켜도 테스트 실패) + 목록 상한·정렬. 판정문의 "93건" 은 개발자 과소 집계 — 실측 233건(§4-9 · §6-3) |
+| §1 | 정확한 데이터값 단언 테스트에는 사본 금지 | DONE | 233건 전수 분류 → 4건 고정 종가로 전환·목록 제외 → 229건(§4-9) |
+| §1 | 기존 테스트 고정 fixture 전환 = 비차단 기술부채 · POC4-01 인계에 기록 | 대기 | 최종 인계(VERIFIED·push 뒤)에 기록 · §5 |
+| §2 | AC-8 — NAV 요약 지정 경로 정확히 1개 · schema·기준일·status·집계 · 그 밖 JSON 0 · 라이브 경로 0 | DONE | §4-12 |
+| §2 | 운영 코드의 NAV JSON 쓰기 유지 | DONE | `app/market_refresh_service.py` 는 POC4-01 전 기간 변경 0(`git log be579619~1..` 0건) · abf833ee 는 `app/` 변경 0 |
+| §3 | 현재 NAV 요약 증거 기록(경로·hash·크기·mtime·테스트 값 근거) · 활성 경로 밖 격리 보존 · 수동 편집·합성 금지 | DONE | §4-8 (d) |
+| §3 | 실행 기록 156개 · 공유 로그 2개 유지 | DONE | 손대지 않음 |
+| §4 | `formulas.active_return` 에 월평균 active return · tracking error · information ratio 명시 | DONE | `2d6547b3` · `test_active_return_formula_text_names_every_actual_use` |
+| §4 | 기준선 두 번 재실행 — 결과 동일 · E2 핵심 hash 동일 · 산식·설명 외 전략 결과 변화 0 | DONE | §4-4 run5·run6 |
+| §5 | `krx_etf_universe_v1` 연구 기준선 입력 승인 · POC4-02 규칙 | 기록 | PLAN 판정 3차 · 최종 인계에 옮김 |
+| §6 순서 5 | 전체 회귀 1,997건 이상 · 라이브 5곳 불변 | DONE | §4-7 · §4-9 |
+| §6 순서 6 | 결과서 갱신 | DONE | 이 문서 |
+| §6 순서 7~9 | 검증자 제한 재검증 → VERIFIED 뒤 로컬 commit 전부 push → push 된 HEAD 확인 → 최종 인계 → 설계자 종료 보고 | 대기 | 설계자 확인 완료(§6-3) — 검증자 차례 |
 
 ---
 
@@ -104,12 +136,43 @@ be579619  feat  불변 스냅샷 기준선 입력 경로 + KRX universe 연구 D
 | `tests/test_ml_backtest_metrics.py` · `tests/test_ml_backtest_embargo.py` | 신규 (7건 · 11건) |
 | `tests/test_ml_baseline_snapshot.py` (현재 24건) · `tests/test_ml_score_validity_cli.py` | 수정 — 산출물 보호 · E2 핵심 hash |
 
-최종 문서 commit: 이 결과서 · PLAN(2차 판정 · §5 설계자 결정) · 인계 문서(맨 위 "중간 인계" 표시) ·
+`bdffdb4b` (문서): 결과서 · PLAN(2차 판정 · §5 설계자 결정) · 인계 문서(맨 위 "중간 인계" 표시) ·
 `docs/PROGRAM_TRUTH.md`(§7.1 스냅샷 행 — 실행마다 새 `--out-dir` · 결과에 `strategy_performance`) ·
 `state/ml/baselines/relative_upside_v1_snap_20260921/runs/{run3,run4}/run_manifest.json`(신규).
 
-git 밖(PC 로컬 · gitignore): 스냅샷 `dataset.sqlite`(137,666,560 B) · `e1_score_snapshot.json` · 네 실행의 결과 JSON ·
-연구 DB `state/ml/research/krx_etf_universe.sqlite`.
+`2d6547b3` (산식 문구 · 설계자 3차 §4):
+
+| 파일 | 구분 |
+|---|---|
+| `app/ml_strategy_performance.py` | 수정 — `formulas.active_return` 문구 · 모듈 docstring 1곳(계산 코드 무변경) |
+| `tests/test_ml_backtest_metrics.py` | 수정 — 문구가 실제 쓰임 3가지를 모두 적는지 테스트 1건 추가(현재 8건) |
+
+`abf833ee` (테스트 · 설계자 3차 §1·§2 · §3 gitignore):
+
+| 파일 | 구분 |
+|---|---|
+| `tests/_live_guard.py` | 수정 — 사본 검사(hash 3개 · integrity) · 기존 테스트 목록 · 기록 모드 · 목록 밖 즉시 실패 |
+| `tests/_live_db_legacy_readers.txt` | 신규 — 세션 사본을 쓸 수 있는 기존 테스트 229건(줄이기만 함) |
+| `tests/conftest.py` | 수정 — 테스트마다 nodeid 를 가드에 알림 · 종료 때 `[live-db-copy]` 출력 |
+| `tests/test_live_state_guard.py` | 수정 — 5건 추가(목록 밖 실패 · 목록 상한 · 사본 hash·integrity · 복사 중 변경 · 손상 DB) · 이 commit 기준 19건 |
+| `tests/test_market_topn_api.py` | 수정 — AC-8 테스트 교체(§4-12) |
+| `tests/test_intraday_config_integration.py` · `tests/test_intraday_config_contracts.py` | 수정 — 라이브 커버리지 단언 4건 고정 종가(§4-9) |
+| `.gitignore` | 수정 — `state/market/*.quarantine-*` (NAV 요약 격리 사본 · §4-8 (d)) |
+
+`29839c75` (테스트 · 사전 점검 뒤 가드 보강 · §4-13):
+
+| 파일 | 구분 |
+|---|---|
+| `tests/_live_guard.py` | 수정 — ATTACH·VACUUM INTO 차단(authorizer·trace) · 사본 보호·세션 끝 재측정 · 경로 판정 보강 · 다른 진입점 가드 · 막은 연산 기록 |
+| `tests/conftest.py` | 수정 — 삼킨 가드 오류도 실패 · three_push 감시는 되돌려 쓰지 않고 실패만 · `[live-db-copy]` 세션 끝 재확인 |
+| `tests/test_live_state_guard.py` | 수정 — 10건 추가 · 기록 모드 skip · 목록 정렬·중복 0 · 현재 29건 |
+| `tests/_live_db_legacy_readers.txt` | 수정 — 머리말만(목록 229건 그대로) |
+
+최종 문서 commit: 이 결과서 · PLAN(판정 3차 · 설계자 확인) · 인계 문서(맨 위 판정 표시) ·
+`state/ml/baselines/relative_upside_v1_snap_20260921/runs/{run5,run6}/run_manifest.json`(신규).
+
+git 밖(PC 로컬 · gitignore): 스냅샷 `dataset.sqlite`(137,666,560 B) · `e1_score_snapshot.json` · 여섯 실행의 결과 JSON ·
+연구 DB `state/ml/research/krx_etf_universe.sqlite` · NAV 요약 격리 사본(§4-8 (d)).
 
 ---
 
@@ -124,12 +187,16 @@ git 밖(PC 로컬 · gitignore): 스냅샷 `dataset.sqlite`(137,666,560 B) · `e
 | 항목 | 이유 |
 |---|---|
 | `.gitignore` ignore 패턴 9줄 추가(스냅샷 6 · 연구 DB 1 · legacy 보존 사본 1 · 재현 시도 출력 폴더 1) · 기존 주석 1줄을 2줄로 정정 (`git show --numstat` +15/−1 — 새 블록 주석·빈 줄 포함) | 137MB 스냅샷·연구 DB·legacy 보존 사본(`poc4_01_frozen_original/`)·재현 시도 출력 폴더(`poc4_01_repro/`)가 git 에 들어가지 않게. 기존 주석 "재현 가능 산출물" 이 사실과 달라 LEGACY 로 정정 |
-| `docs/PROGRAM_TRUTH.md` §7.1·§8 (02a0f7c5) · §7.1 스냅샷 행 재갱신(최종 문서 commit — 새 out-dir · `strategy_performance`) | 새 저장소 2종·외부 source·러너 계약 변경이 생겨 canonical 문서 갱신 규칙 적용. §8 의 "KRX Open API 잔존 의존은 미발견" 은 시장 브리핑 수집으로 이미 사실과 달라 KRX 행과 모순되므로 함께 교체 |
+| `docs/PROGRAM_TRUTH.md` §7.1·§8 (02a0f7c5) · §7.1 스냅샷 행 재갱신(bdffdb4b — 새 out-dir · `strategy_performance`) | 새 저장소 2종·외부 source·러너 계약 변경이 생겨 canonical 문서 갱신 규칙 적용. §8 의 "KRX Open API 잔존 의존은 미발견" 은 시장 브리핑 수집으로 이미 사실과 달라 KRX 행과 모순되므로 함께 교체 |
 | `build_frozen_descriptor`·`_node_info` 를 러너에서 `ml_baseline_provenance.py` 로 이동 · `new_run_dir` 를 스냅샷 모듈에 둠 | 러너를 KS-10 NEAR(600) 아래로 유지하려고 새 모듈 쪽으로 옮겼다. 커밋 기준 러너는 554줄(d43db726) → 588줄(be579619) → 599줄(71d50d15). 동작은 같고 이름만 `_node_info`→`node_info`, 파일 hash 함수 `file_sha256`→`raw_sha256`(같은 구현) |
 | `build_frozen_descriptor(db_path)` 인자 추가 | 가격 투영 hash 를 라이브 DB 가 아니라 작업 사본에서 계산하려면 경로가 필요하다 |
-| conftest 의 NAV 요약 격리 경로를 `tmp_path/_side_outputs/` 하위로 | `test_market_topn_api.py::test_post_refresh_does_not_create_json_artifact`(AC-8)가 `tmp_path` 를 훑는다. 바로 아래에 두면 격리된 NAV 요약이 그 테스트에 보인다 — 계약 판단은 §6-4 |
+| conftest 의 NAV 요약 격리 경로를 `tmp_path/_side_outputs/` 하위로 | 부수 출력을 테스트 자체 파일과 구분하려고. 새 AC-8 테스트(§4-12)는 이 지정 경로의 파일 1개를 직접 본다 |
 | 가드가 `os.utime`·`os.link`·`os.symlink` 도 막음 · `new_run_dir` 가 별칭 경로(samefile)도 봄 · `require_same_split` 설정 3개 상한 | 2차 적대 리뷰에서 "계약 위반은 아님" 으로 기각된 지적 4건 중 비용이 작은 보강을 넣었다(§6-5) |
-| 중간 인계 문서 맨 위에 "중간 인계 · 정본은 결과서" 표시 | 설계자 `HANDOFF = NOT_YET` — 새 인계를 쓰지 않고, 이미 commit 된 문서가 stale 로 읽히지 않게 표시만 |
+| 중간 인계 문서 맨 위에 "중간 인계 · 정본은 결과서" 표시 · 설계자 확인 뒤 그 줄의 판정값을 `HANDOFF = AFTER_VERIFIED_AND_PUSH` 로 | 새 인계는 VERIFIED·push 뒤. 이미 commit 된 문서가 stale 로 읽히지 않게 표시만 |
+| 사전 점검 뒤 가드 보강(ATTACH·VACUUM INTO · 사본 보호 · 경로 별칭 · 다른 진입점 · 삼킨 오류 실패) · conftest 되돌려 쓰기를 실패만으로 | 설계자 조건(쓰기 즉시 실패 · 감시는 읽기 전용)을 코드가 실제로 지키게 — 사용자 결정 "테스트 코드 보강 후 검증자"(§4-13). 운영 코드·기준선 무변경 |
+| `.gitignore` 에 `state/market/*.quarantine-*` 1줄(+주석 1줄) | 설계자 3차 §3 "활성 경로 밖 이름으로 격리 보존" — 보존 사본이 git 에 들어가지 않게 |
+| 반박 검증이 뒤집은 2건도 고정 종가로 전환(확정 2건 + 2건) | 같은 단언(`>= 20`)·같은 의존(최신일 종가 커버리지)을 한쪽만 사본에 두지 않으려고 — 판단 근거 §4-9 · §6-4 |
+| 가드 기록 모드 `KRX_LIVE_DB_READERS_RECORD` | 기존 테스트 목록을 추측이 아니라 전체 회귀 실측으로 만들려고. 평소 실행에는 영향 없음(환경 변수가 있을 때만) |
 
 ---
 
@@ -145,15 +212,40 @@ git 밖(PC 로컬 · gitignore): 스냅샷 `dataset.sqlite`(137,666,560 B) · `e
 - `dataset.sqlite` 의 sha256 은 **파일 바이트** 기준이다. 내용 hash(테이블별 `content_sha256`)를 따로 남겼다.
 - **성과지표 한계** — MDD 는 월별 기간 말 equity 기준(월중 낙폭 미반영) · 첫 달 비용 0(A2 와 같은 규칙) · 가격수익률
   기준(분배금 미반영 — 기존 `PRICE_BASIS_LABEL`) · 무위험수익률 0(`Sharpe_0rf`) · 생존편향이 남은 universe.
-- **결과 JSON 문구 1곳이 코드보다 좁다** — `strategy_performance.formulas.active_return` 은 "추적오차·정보비율에만" 이라고 적지만
-  같은 블록에 월평균 active(`mean_active_return`)도 있다. relative 를 두 equity 의 비율로 만들고 active 를 복리 누적하지 않는
-  것은 코드(`app/ml_strategy_performance.py` 의 `eq / beq`)로 확인했다. 문구를 고치면 결과 canonical 이 바뀌어 기준선을 다시 두 번
-  돌려야 해서 이번에는 두었다 — 설계자·검증자가 원하면 다음 수정 때 함께 고친다.
 - **purge·embargo 분할은 아직 소비자가 없다** — RF 설정 선택(POC4-03)이 이 분할을 받아 쓴다. 이번에는 분할과 계약 검사만.
 - **남긴 테스트 흔적** — `state/runs/` 의 과거 실행 기록 156개(모양은 테스트 산출물과 같지만 파일마다 출처 증명 불가) ·
-  테스트 값으로 덮인 NAV 요약 파일 · 공유 로그 2개(§4-8).
+  공유 로그 2개(§4-8). NAV 요약은 격리 사본으로 보존했고 활성 경로는 비어 있다(§4-8 (d)). 이 파일을 읽는 코드는 수동 진단 스크립트
+  (`scripts/run_push_content_gap_diagnosis.py` → `artifact_status`, 존재·크기·mtime 만)뿐이라, 다음 정상 NAV 갱신 전까지 그 진단이
+  "없음" 으로 보고한다. 화면·API·발송은 이 파일을 읽지 않는다(`app`·`scripts` grep).
+- **기존 테스트 229건이 아직 라이브 DB 세션 사본을 읽는다** — 고정 fixture 전환은 설계자가 정한 비차단 기술부채다.
+  최종 인계에 목록 파일(`tests/_live_db_legacy_readers.txt`)과 함께 기록한다. 사본은 세션 시작 시점의 라이브 데이터라,
+  라이브 데이터가 바뀌면 이 테스트들의 결과가 바뀔 수 있다(정확한 값 단언은 §4-9 에서 뺐다). "목록은 줄이기만" 의 자동 검사는
+  개수 상한뿐이라, 항목을 바꿔치기하면 테스트가 잡지 못한다(목록 파일 diff 로만 보인다) — 설계자 확인에서 비차단 기술부채로
+  기록 · 목록은 정렬·중복 0 을 유지하고 변경 diff 는 검증자가 확인한다.
 - 가드는 **이 pytest 프로세스 안**의 쓰기만 막는다. 하위 프로세스 쓰기는 막지 못하고 사후 감지만 된다 — 세션 종료 전후
   비교(state/·logs/ 전체)와, 일부 대상(시장 DB benchmark 테이블 · state/three_push 상태 파일 6개)의 테스트별 전후 비교.
+- 가드가 보지 못하는 쓰기 통로(저장소 코드·테스트에 사용처 0): `io.FileIO(...)` 직접 생성 · `sqlite3.Connection(...)` 직접 생성 ·
+  파일 디스크립터로 부르는 연산(`os.fchmod`·`os.ftruncate`·`os.chmod(fd)` 등) · 세션 전부터 있던 하드링크. 파일 생성·삭제·
+  이름 변경·크기·mtime 변경은 세션 전후 비교(state/·logs/ 파일의 크기·mtime)로 사후에 잡히지만, 권한·소유자·플래그만 바꾸는
+  것과 빈 폴더 생성·삭제는 그 비교에도 안 잡힌다. (`posix.*` 직접 호출 · `os.chown`·`mkfifo` 등은 29839c75 에서 막았다.)
+- `ATTACH ?`(매개변수)·식으로 라이브 경로를 붙이면 그 별칭 접근은 모두 거부되고 테스트가 실패하지만(앞에 SQL 주석이 붙어도
+  같다), SQLite 가 그 파일을 한 번 연다 — 읽기 전용 URI 가 아니고 없는 경로면 빈 파일이 생길 수 있고 세션 전후 비교가 잡는다.
+- **라이브 파일을 직접 읽는 곳**(모두 읽기 전용 · 라이브 값 단언 없음): 설계자 승인 감시 2곳(세션 전후 hash · 테스트별
+  benchmark 조회 mode=ro) 밖에 전후 바이트 비교 — conftest 의 three_push 상태 파일 6개, 기존 테스트 3개
+  (`runtime_evidence/test_failure_paths.py::test_composer_does_not_touch_real_market_db` 시장 DB 바이트 hash ·
+  `test_runtime_state_isolation.py` `state/runtime/runtime_state.sqlite` 바이트·stat · `test_market_briefing_flow_through.py::
+  test_repo_state_file_is_not_touched` `state/three_push/` 시장 브리핑 상태 바이트), 새 AC-8 테스트(라이브 NAV 요약 경로 —
+  지금은 파일이 없어 읽지 않는다) — 와 가드 자체 테스트 1개(`test_reads_and_tmp_writes_are_allowed` 가 라이브 state/ JSON
+  하나를 1바이트 읽는다)가 있다. sqlite 로 라이브 DB 를 여는 곳은 conftest 의 benchmark 감시(`real_connect` · mode=ro) 1곳뿐이다
+  — 세션 전후 hash 는 파일 바이트 sha256 이다.
+  감시 조회는 라이브 DB 가 rollback journal 모드(지금 `delete`)일 때만 파일을 만들지 않는다 — WAL 로 바뀌면 mode=ro 연결도
+  -wal·-shm 을 만든다(지금 WAL 설정 코드 0).
+- **AC-8 테스트가 못 보는 곳** — tmp_path · 라이브 state/·logs/ 밖(예: 저장소 data/ · 시스템 tmp)에 쓰는 JSON. 라이브 경로 JSON 은
+  가드가 막고 삼켜도 테스트가 실패한다.
+- **운영 코드의 옛 설명 주석이 AC-8 계약과 반대다**(이번 Step 운영 코드 무변경 조건이라 두었다) — `app/market_refresh_service.py:8`
+  "JSON artifact 생성하지 않는다" · `app/api_market_topn.py:14` · `app/market_topn.py:4`. 다음 운영 코드 Step 에서 고친다.
+- 호환 목록 id 는 저장소 루트에서 pytest 를 돌린 nodeid 기준이다(pytest ini 없음) — 다른 폴더에서 돌리면 229건이 모두
+  목록 밖으로 판정돼 실패한다(닫힌 쪽으로 실패).
 
 ---
 
@@ -162,18 +254,29 @@ git 밖(PC 로컬 · gitignore): 스냅샷 `dataset.sqlite`(137,666,560 B) · `e
 1. **`02a0f7c5` 는 사용자 직접 지시로 만든 commit 이다.** 2026-09-24 사용자가 "인계 문서 작성(3) · commit 과 push(1)" 를
    지시했다. commit 은 했고, push 는 도구 권한 검사가 막아 **실행되지 않았다**. 그 뒤 설계자가 `CODE_PUSH = HOLD` 로
    정했다. 사용자는 이 지시 사실을 설계자·검증자에게 아직 전하지 않았다고 알려 왔다 — 이 보고로 함께 전한다.
+   설계자 3차 판정: 중간 인계와 `02a0f7c5` 는 사용자 직접 지시로 생성됐다는 기록을 유지하고 별도 문제로 취급하지 않는다.
 2. **코드 commit 이 기준선 실행보다 먼저다.** run_manifest 의 코드 commit 과 맞추려면 실행 전에 commit 이 있어야 하고,
    러너는 `app/`·`scripts/`·`requirements.txt` 에 미커밋 변경이 있으면 공식 실행을 거부한다. `71d50d15` 뒤 기준선을
-   **새 폴더 run3·run4 로 두 번 다시** 돌렸다(run1·run2 는 `be579619` 기록으로 남김).
-3. **sqlite 격리는 "열려고 하면 즉시 실패" 가 아니라 "읽기 전용 세션 사본"** 이다(§4-9). 가드를 켠 첫 사본 실행에서 실패 96건
-   중 93건이 운영 조회 함수로 라이브 시장 DB 를 **읽기 위해** rw 로 연 것이었다. 경로 기본값이 함수 정의 시점에 묶여 있어 테스트마다 경로를
-   주입하려면 운영 함수 서명을 바꿔야 한다. 그래서 연결 층에서 세션 사본으로 돌리고 사본을 `mode=ro` 로 연다 —
-   **라이브 파일은 테스트가 열지 않고, 쓰기는 즉시 실패**한다(사고 패턴은 `attempt to write a readonly database`).
-   파일 쓰기는 설계자 문구대로 즉시 `LiveStateWriteError`. 설계자 판단을 받아야 할 해석이다.
-4. **AC-8 테스트 계약이 운영 동작과 다르다(수정 안 함).** `test_post_refresh_does_not_create_json_artifact` 는
-   "시장 갱신이 JSON artifact 를 만들지 않는다" 를 확인하는데, 갱신은 운영에서 `state/market/nav_discount_refresh_latest.json`
-   을 쓴다. 지금까지는 그 파일이 **라이브 폴더**에 써져 테스트가 보는 폴더 밖이라 통과했다. 격리 경로를 하위 폴더로 두어
-   이전과 같은 판정을 유지했고, 계약 정정은 범위 밖이라 설계자 판단으로 넘긴다.
+   **새 폴더 run3·run4 로 두 번 다시** 돌렸고(run1·run2 는 `be579619` 기록으로 남김), 산식 문구 정정 `2d6547b3` 뒤
+   run5·run6 으로 다시 두 번 돌렸다.
+3. **기존 테스트 수 정정 — 설계자 판정문의 "93건" 은 개발자 과소 집계였다(설계자 확인 완료).** 3차 판정의 세션 사본
+   조건 "기존 93건에만 호환 경로로 허용" 은 개발자가 2차 보고에서 전한 93 을 받은 것이다. 그 93 은 가드 첫 버전에서 rw 연결이
+   막혀 **실패한** 수다 — `mode=ro` 로 라이브 DB 를 읽는 테스트와, rw 로 열었지만 오류를 코드가 삼켜 통과한 테스트는 세지
+   않았다. 전수 실측은 **233건**(29839c75 전 측정: 목록을 비우면 199건 실패 · 34건 통과 — 29839c75 부터는 삼킨 가드 오류도
+   실패시키므로 목록 229건 전부 실패, §4-13)이다
+   (§4-9). 판정의 뜻("기존 테스트에만 · 새 테스트는 금지")대로 기존 233건을 목록으로 고정하고 목록 밖은 즉시 실패시켰으며,
+   라이브 커버리지 단언 4건을 빼 **229건**으로 줄였다. 그 93건은 모두 229건 목록 안에 있다(첫 가드 실행 실패 목록과
+   대조). 글자 그대로 93건만 허용하면 나머지 136건(229 − 93)을 모두 이번 Step 에서 고정 fixture 로 바꿔야 한다 — 29839c75
+   부터는 앱 코드가 삼킨 가드 오류도 테스트를 실패시키므로 136건 모두 사본 없이는 실패한다(29839c75 전 측정으로는 102건
+   실패(intraday_config 90 · 가드 역검증 2 · 그 밖 10) · 34건 통과, §4-9 · §4-13). 설계자가 "비차단 기술부채" 로 정한 범위라
+   하지 않았다.
+   설계자 확인(2026-09-24): `DESIGNER_CONFIRMATION = ACCEPTED` · `LEGACY_READONLY_ALLOWLIST = 229` ·
+   `MONITORING_READ_EXCEPTIONS = 2 (READ-ONLY ONLY)` — 계측 범위를 바로잡은 결과로 수용. 목록은 정렬·중복 0 이다(실측).
+4. **라이브 커버리지 단언 4건 — 반박된 2건도 전환했다.** 에이전트 분류에서 EXACT 4건 중 반박 검증이 2건을 뒤집었다
+   (`test_api_shows_candidate_after_generation` · `test_unmatched_index_is_recorded_not_dropped`). 두 반박 모두 통과 여부가
+   라이브 최신일 종가 커버리지에 달려 있다는 점은 인정했고, 앞의 것은 확정된 `test_healthy_payload_has_no_error` 와 단언이
+   같다(`candidate_sector_count >= 20`). 기준을 한쪽으로만 적용하지 않으려고 4건 모두 고정 종가로 바꿨다(§4-9 표). 나머지
+   229건의 분류(LIVE_STRUCTURAL · INDEPENDENT)는 에이전트 판정이며 반박 검증은 EXACT 후보에만 돌렸다.
 5. **자체 적대 리뷰를 두 번 돌렸다.** 1차(작업 1~5 · commit 전): 확정 5건 수정(1차 결과서 §6 에 기록). 2차(71d50d15 전):
    확정 3건 — ① 가드를 끈 역검증에서 sqlite 탐침이 라이브 DB 에 테이블을 남김 → 쓰기 전에 연결 경로부터 확인 ② 세션 사본이
    쓰기를 조용히 흡수(사고 패턴이 통과 · 테스트끼리 데이터 샘) → 사본을 읽기 전용으로 ③ ①과 같은 지적(P3). 기각 4건 중
@@ -182,19 +285,40 @@ git 밖(PC 로컬 · gitignore): 스냅샷 `dataset.sqlite`(137,666,560 B) · `e
    (`test_evaluation_window_rejects_same_count_different_dates`).
 7. KRX 토요일(2026-09-19) 응답도 행 1,171개가 왔다 — 기준일자·종목코드·종목명·상장주식수·기초지수명만 있고 나머지
    필드는 빈 문자열. `krx_sync.has_traded_prices` docstring 의 "주말은 행 자체가 없다" 와 다르다(운영 코드 무변경).
-8. 문서 사실 주장은 commit 전에 에이전트로 실측 대조한다. 1차 문서(02a0f7c5)는 두 번 대조했다(1회차 7개 구역: 맞음
-   315건·오류 19건 · 2회차 정정·사고 절 3개 구역: 맞음 131건·오류 4건). 이 최종 문서는 6개 구역을 대조했다(맞음 371건 ·
-   확정 오류 17건 · 하위 폴더 테스트 추적 누락 1건 포함). 전부 정정한 뒤 commit 했다.
+8. **사전 점검에서 바꾼 테스트 인프라 동작 2가지 — 새 실패가 생길 수 있는 변경이다.** ① 가드가 막은 연산을 앱 코드가
+   삼켜도 그 테스트를 실패시킨다(전에는 통과) ② conftest 의 three_push 상태 파일 감시는 바뀐 파일을 되돌려 쓰지 않고 실패만
+   시킨다(전에는 되돌린 뒤 실패 · POC3-OPS-01A r3 부터의 동작). ②는 이 프로세스의 쓰기를 가드가 먼저 막으므로 하위 프로세스·
+   다른 운영 프로세스의 쓰기에서만 오고, 되돌려 쓰면 진짜 운영 쓰기를 지울 수 있어서다. 전체 회귀에서 이 두 변경으로 새로
+   실패한 기존 테스트는 0건이다(§4-7).
+9. **AC-8 테스트가 잡는 것** — 사본에서 운영 코드를 일부러 바꿔 돌렸다: NAV 요약을 두 번 씀 → `2 == 1` 실패 · 다른 JSON 1개를
+   더 씀 → "NAV 요약 1개 외 JSON" 실패 · NAV 요약 쓰기를 뺌 → `0 == 1` 실패 · 원래 코드 → 통과(사본 코드는 원래대로 되돌림).
+   사전 점검 뒤 추가 실측(복제본 · 29839c75 코드): NAV 요약을 쓰는 try 안에서 라이브 경로 `state/market/market_topn_latest.json` 을 씀(옛 JSON 모양 ·
+   예외는 앱이 삼킴) → teardown ERROR("가드가 라이브 경로·사본 연산을 막았다 … io.open mode=w") · 파일 생김 0. tmp_path ·
+   라이브 state/·logs/ 밖 다른 폴더(예: 저장소 data/ · 시스템 tmp)에 쓰는 JSON 은 이 테스트가 보지 못한다(§5).
+10. **관찰 (범위 밖 · 수정 안 함 · 실행 확인 안 함)** — 격리한 NAV 요약은 1,175종목 · `cache_hit true` 다. 캐시는 프로세스 메모리
+   (`app/naver_etf_universe_fetcher.py::_UNIVERSE_CACHE`)라, 사고 pytest 실행 안에서 먼저 누군가 실제 규모의 스냅샷을 채웠다는
+   뜻이다 — 스텁 없는 Naver 실제 조회가 테스트 중에 있었을 가능성이 있다. 사전 점검에서 코드를 읽어 보니
+   `tests/test_market_topn_api.py::test_post_refresh_accepted_and_runs_inline_for_test` 와
+   `tests/test_market_refresh_state_persistence.py` 의 갱신 테스트가 `fetch_universe_snapshot` 을 대체하지 않아 기본 경로
+   (`urllib.request.urlopen(NAVER_UNIVERSE_URL)`)로 갈 수 있다. 네트워크 금지라 실행으로는 확인하지 않았다. 새 AC-8 테스트는
+   스냅샷을 고정 fixture 로 넣어 외부 호출이 없다.
+11. 문서 사실 주장은 commit 전에 에이전트로 실측 대조한다. 1차 문서(02a0f7c5)는 두 번 대조했다(1회차 7개 구역: 맞음
+   315건·오류 19건 · 2회차 정정·사고 절 3개 구역: 맞음 131건·오류 4건). bdffdb4b 문서는 6개 구역을 대조했다(맞음 371건 ·
+   확정 오류 17건 · 하위 폴더 테스트 추적 누락 1건 포함). 이번 문서(3차 판정 반영)는 3개 구역을 대조했다(맞음 254건 · 확정
+   오류 8건 · 오류 지적 1건은 수정 전 줄 번호라 기각). 확정 오류는 전부 정정했고, 의심 항목은 근거를 확인해 문구를 좁혔다
+   (§6-10 관찰 · §4-9 199건 성격 · 개수만 같은 다른 집합 · 감시 읽기 예외 등).
 
 ---
 
 ## 7) 사용자 확인이 필요한 항목
 
-- **push** — 설계자 지시대로 검증자 `VERIFIED` 뒤 네 commit(`be579619` · `02a0f7c5` · `71d50d15` · 최종 문서 commit)을
-  한꺼번에 push 한다. 지금은 모두 로컬에만 있다.
-- **§6-3 · §6-4 는 설계자 판단 사항** — sqlite 격리 방식 해석, AC-8 테스트 계약.
-- **남은 테스트 흔적** — 과거 실행 기록 156개 · 테스트 값 NAV 요약 · 공유 로그 2개(§4-8). 삭제하려면 파일별 출처 근거가
-  더 필요하다. NAV 요약은 다음 정상 NAV 갱신이, `market_refresh_state` 는 다음 정상 시장 데이터 갱신이 다시 쓴다.
+- **push** — 설계자 지시대로 검증자 `VERIFIED` 뒤 로컬 commit 전부(`be579619` · `02a0f7c5` · `71d50d15` · `bdffdb4b` ·
+  `2d6547b3` · `abf833ee` · `29839c75` · 최종 문서 commit — 8개)를 한꺼번에 push 한다. 지금은 모두 로컬에만 있다.
+- **§6-3 설계자 확인 완료** — 기존 테스트 목록 229건 · 감시 읽기 예외 2건 승인. 다음은 검증자 제한 재검증이다.
+- **사전 점검 뒤 가드 보강은 사용자 결정으로 진행했다**(2026-09-24 "테스트 코드 보강 후 검증자") — 설계자 확인 뒤에 생긴
+  commit(`29839c75`)이라 검증 범위가 7개에서 8개로 늘었다. 설계자에게는 검증 전달문과 함께 알린다(§4-13 · §6-8).
+- **남은 테스트 흔적** — 과거 실행 기록 156개 · 공유 로그 2개는 그대로다(§4-8). NAV 요약은 격리 사본으로 보존했고
+  다음 정상 NAV 갱신이 새로 만든다. `market_refresh_state` 는 다음 정상 시장 데이터 갱신이 다시 쓴다.
 - **KRX Open API 호출** — 2026-09-23 KST 탐침 7회(PLAN §2-2 · 연구 DB 미기록) + canary 20회 + 전체 적재 3,319회 =
   하루 3,346회(연구 DB 기록 3,339 · 공식 한도 10,000 · 자체 상한 5,000). 받은 데이터는 PC 연구 DB 에만 있다.
 - **연구 DB 용량** — `state/ml/research/krx_etf_universe.sqlite` 약 1.86GB(원응답 본문 보관 계약) · 맥북 로컬만.
@@ -257,7 +381,7 @@ market_refresh_log     645      —  2026-06-17 ~ 2026-09-22 (asof)
 
 ### 4-4. 결정성 검증 (기준 1~4)
 
-**기준 1 — 실제 데이터로 두 번 실행** (코드 commit 마다 두 번씩 · 네 실행 모두 `official = true`)
+**기준 1 — 실제 데이터로 두 번 실행** (코드 commit 마다 두 번씩 · 여섯 실행 모두 `official = true`)
 
 ```text
 코드       실행   canonical sha256                                                  E2 핵심 hash   평가일  시간
@@ -265,18 +389,32 @@ be579619  run1   e1c02f6657d2d88836dbf254f2beaf2f89aa42f405b077d2e599791f9745400
 be579619  run2   e1c02f6657d2d88836dbf254f2beaf2f89aa42f405b077d2e599791f97454000  (기록 없음)     146    810.1s
 71d50d15  run3   2a6ca8c6ef554942c7b80c45d6c888bce6a0d060da4f5a47fc8c6619bb3728bb  e1c02f66…      146   1030.8s
 71d50d15  run4   2a6ca8c6ef554942c7b80c45d6c888bce6a0d060da4f5a47fc8c6619bb3728bb  e1c02f66…      146    966.5s
-compare   run1↔run2 · run3↔run4  identical = true (상태·dataset·manifest 내용·cutoff·commit·모듈 hash·평가일·canonical)
+2d6547b3  run5   066ba09af85ed334acaef3a35df80a924bd2bb926bc7e9480172b8b33fb05aec  e1c02f66…      146    940.7s
+2d6547b3  run6   066ba09af85ed334acaef3a35df80a924bd2bb926bc7e9480172b8b33fb05aec  e1c02f66…      146   1005.0s
+compare   run1↔run2 · run3↔run4 · run5↔run6  identical = true (상태·dataset·manifest 내용·cutoff·commit·모듈 hash·평가일·canonical)
 ```
 
 시간 = run_manifest `elapsed_seconds`(`time.perf_counter` — macOS 절전 중에는 멈춘다). run3 는 실행 중 시스템 절전이 끼어
-`started_at`→`finished_at` 벽시계로는 1,976.7초다. run1·run2·run4 는 두 값이 거의 같다(795.1 · 810.4 · 966.8초).
+`started_at`→`finished_at` 벽시계로는 1,976.7초다. run1·run2·run4·run5·run6 은 두 값이 거의 같다(795.1 · 810.4 · 966.8 ·
+940.9 · 1,005.3초).
 
 **E2 무변경 증명** — run3·run4 의 `e2_core_canonical_sha256`(결과에서 새 `strategy_performance` 블록만 뺀 canonical)이
 `e1c02f6657d2d88836dbf254f2beaf2f89aa42f405b077d2e599791f97454000` 으로 **run1·run2 의 canonical 과 같다**. 작업 6·격리
 수정·산출물 보호가 E2 평가·판정·기록을 한 글자도 바꾸지 않았다. canonical 이 바뀐 것은 성과 블록이 더해졌기 때문이다.
 
+**산식 문구 정정 뒤 재실행 (설계자 3차 §4 · `2d6547b3`)** — run5·run6 결과 JSON 을 run3 과 필드 단위로 전부 비교했다.
+
+```text
+run5 ↔ run6   다른 필드 = generated_at · e1.elapsed_seconds 뿐 (기존 계약 NON_DETERMINISTIC_FIELDS)
+run3 ↔ run5   다른 필드 = strategy_performance.formulas.active_return (정정한 문구)
+                        · determinism.canonical_sha256 (그 문구가 canonical 에 들어가서)
+                        · generated_at · e1.elapsed_seconds
+E2 핵심 hash  run5 = run6 = e1c02f6657d2d88836dbf254f2beaf2f89aa42f405b077d2e599791f97454000 (run3·run4 기록값 · run1·run2 canonical 과 같음)
+전략 결과     strategy_performance 에서 formulas 를 뺀 나머지 run3 = run5 = run6 — 산식·설명 외 변화 0
+```
+
 결과 파일 sha256 은 `generated_at` 와 `e1.elapsed_seconds` 때문에 실행마다 다르다(run1 `52e08ddc…` · run2 `046448f5…` ·
-run3 `43905694…` · run4 `2e828f07…`) — canonical 은 이 두 필드를 뺀다(기존 계약 `NON_DETERMINISTIC_FIELDS`).
+run3 `43905694…` · run4 `2e828f07…` · run5 `6f07095c…` · run6 `37b0d8f3…`) — canonical 은 이 두 필드를 뺀다(기존 계약 `NON_DETERMINISTIC_FIELDS`).
 
 **기준 2·3 — 합성 DB 로 실제 러너 실행** (`test_same_snapshot_same_result_even_after_live_db_changes`)
 
@@ -424,12 +562,17 @@ sha256      5caa649d6f4f90823407501992cba71c881c7cedb32f28f7cb1f0dbe864de397
 ### 4-7. 자체 검수
 
 ```text
-black --check · flake8 · py_compile   71d50d15 의 변경 py 14개 통과
-pytest (전체 · 저장소)   1997 passed (3분 00초) · 세션 종료 검사 변경 0 · 라이브 5곳 sha256 전후 동일(§4-9)
-pytest (전체 · 사본)     1997 passed (3분 00초)
-pytest (재현 명령 7개 파일)  116 passed · 라이브 5곳 전후 동일
-KS-10                    전수 497 · TRIGGER 0 · NEAR 7 (기존 목록 그대로)
-                         러너 599 · snapshot 417 · provenance 277 · 성과 255 · 분할 149 · krx 532 · 가드 278
+black --check · flake8 · py_compile   2d6547b3·abf833ee·29839c75 의 변경 py 8개 통과 (71d50d15 의 변경 py 14개도 그때 통과)
+pytest (전체 · 저장소)   2013 passed (3분 19초 · 29839c75) · 세션 종료 검사 변경 0 · 세션 끝 사본 재확인 같음 ·
+                         라이브 5곳 전후 동일(§4-9) = 1,997 + 산식 문구 1 + 가드 5(abf833ee) + 가드 10(29839c75) ·
+                         AC-8 은 1건 교체 · 고정 입력 4건은 기존 테스트 수정 · 사전 점검 뒤 바꾼 테스트 인프라로 새로 실패한 기존 테스트 0
+                         (abf833ee 에서는 2003 passed · 3분 04초)
+pytest (전체 · 사본)     기록 모드 2009 passed · 4 skipped · 목록 비운 실측 229건 전부 실패(29839c75 코드 · §4-13)
+pytest (재현 명령 8개 파일)  153 passed (29839c75) · 라이브 5곳 전후 동일
+KS-10                    abf833ee·29839c75 는 테스트뿐 — 테스트 파일 최대 test_intraday_config_integration 1,423줄(임계 1,500 ·
+                         근접 1,450 미만) · 가드 도우미 tests/_live_guard.py 684줄(tests/ 안 테스트 도우미라 테스트 기준 1,500
+                         미만 — 백엔드 핵심 모듈 기준 650 이었다면 초과다 · 검증자 판단에 맡긴다) · app/ 변경은 2d6547b3 의 문구뿐(ml_strategy_performance.py 257줄 · docstring 1곳 ·
+                         formulas 문자열 1곳 · +4/−2). 71d50d15 때 전수 TRIGGER 0 · NEAR 7
 ```
 
 (이전 1961 passed 전체 회귀가 §4-8 사고를 냈다. 이번 회귀는 가드가 걸린 상태다.)
@@ -438,12 +581,12 @@ KS-10                    전수 497 · TRIGGER 0 · NEAR 7 (기존 목록 그대
 
 ```text
 python scripts/ml_baseline_tool.py verify --manifest state/ml/baselines/relative_upside_v1_snap_20260921/dataset_manifest.json
-python scripts/ml_baseline_tool.py compare state/ml/baselines/relative_upside_v1_snap_20260921/runs/run3/run_manifest.json state/ml/baselines/relative_upside_v1_snap_20260921/runs/run4/run_manifest.json
-python -m pytest tests/test_ml_baseline_snapshot.py tests/test_ml_research_krx_universe.py tests/test_ml_score_validity_cli.py tests/test_ml_score_validity_contracts.py tests/test_ml_backtest_metrics.py tests/test_ml_backtest_embargo.py tests/test_live_state_guard.py -q
+python scripts/ml_baseline_tool.py compare state/ml/baselines/relative_upside_v1_snap_20260921/runs/run5/run_manifest.json state/ml/baselines/relative_upside_v1_snap_20260921/runs/run6/run_manifest.json
+python -m pytest tests/test_ml_baseline_snapshot.py tests/test_ml_research_krx_universe.py tests/test_ml_score_validity_cli.py tests/test_ml_score_validity_contracts.py tests/test_ml_backtest_metrics.py tests/test_ml_backtest_embargo.py tests/test_live_state_guard.py tests/test_market_topn_api.py -q
 ```
 
 (스냅샷·결과 파일은 PC 로컬이라 다른 기계에서는 `verify`·`compare` 를 재현할 수 없다. dataset_manifest 와 run1·run2
-run_manifest 는 02a0f7c5 로, run3·run4 run_manifest 는 이 결과서와 같은 최종 문서 commit 으로 git 에 들어간다.)
+run_manifest 는 02a0f7c5 로, run3·run4 는 bdffdb4b 로, run5·run6 run_manifest 는 이 결과서와 같은 최종 문서 commit 으로 git 에 들어간다.)
 
 ### 4-8. 사고 — 자체 검수용 전체 pytest 가 맥북 라이브 state 에 썼다
 
@@ -465,7 +608,7 @@ run_manifest 는 02a0f7c5 로, run3·run4 run_manifest 는 이 결과서와 같�
 - `app/market_refresh_service.py:235` `reset_state_for_testing(db_path: Path = DEFAULT_DB_PATH)` — 기본값이
   **함수 정의 시점에** 라이브 경로로 묶인다. 테스트가 모듈 변수 `DEFAULT_DB_PATH` 를 monkeypatch 해도
   이 기본값은 바뀌지 않는다.
-- `tests/test_api_holdings_market_evidence.py:40` 이 인자 없이 부른다(호출은 2026-06-03 `e1e5b886` 부터 · 이 함수가 기본값 라이브 경로로 DB 행을
+- (수정 전) `tests/test_api_holdings_market_evidence.py:40` 이 인자 없이 불렀다(호출은 2026-06-03 `e1e5b886` 부터 · 이 함수가 기본값 라이브 경로로 DB 행을
   지우게 된 것은 2026-06-30 `ccbdadd0` 부터) →
   라이브 DB 의 `market_refresh_state` 행을 지운다. 사본에 행 1개를 넣고 이 파일만 돌리면 0행이 되고 DB hash 가
   바뀐다(`515098f5…` → `51879f53…`).
@@ -509,29 +652,38 @@ state/market/market_data.sqlite               419,737,600  2026-09-23 22:49:53  
   모두 null · 184 B)을 만든다. 파일 하나에 기록 하나라 다른 실행 기록과 섞이지 않는다.
 - **나머지 실행 기록 156개**(2026-08-12 ~ 09-21)도 모양이 전부 같지만, 앱 화면도 `/runs/generate` 를 부를 수
   있어 파일마다 테스트 출처를 증명하지 못했다 → **지우지 않는다.**
-- **NAV 요약 파일**은 테스트가 **덮어쓴** 라이브 산출물이다(단독 생성 아님 · 내용 asof 2024-10-31 ·
-  fetched_at 13:50:28Z) → 지우지 않는다. 다음 정상 NAV 갱신이 덮어쓴다.
+- **NAV 요약 파일**은 테스트가 **덮어쓴** 라이브 산출물이다(단독 생성 아님) → 지우지 않고, 설계자 3차 판정대로
+  **활성 경로 밖 이름으로 격리 보존**했다(아래 (d)).
 - **로그 2개**는 공유 로그다(사고 실행이 붙인 줄 — three_push 479줄: 22:49:50~53 70줄 + 22:50~22:52:38 409줄 · oci 배치
   20줄). 파일 전체를 지우지 않는다.
 
-**처리 (설계자 판정 2026-09-24 · (a)+(b)+(c))**
+**처리 (설계자 판정 2차 (a)+(b)+(c) · 3차 (d))**
 
 ```text
 (a) market_refresh_state 1행   그대로 둔다 — 가짜 값 복원·억지 갱신 없음. 다음 정상 갱신이 다시 쓴다
 (b) 테스트 단독 생성 파일       state/runs/run_20260923T135127_2dd2891c.json 1개만 삭제
 (c) 테스트 격리                 §4-9 (필수 · 차단 결함)
+(d) NAV 요약                    활성 경로 밖 이름으로 옮겨 보존 — 삭제·수동 편집·값 합성 없음. 다음 정상 NAV 갱신이 새로 만든다
+유지                            과거 실행 기록 156개 · 공유 로그 2개
 ```
 
 OCI 와 PUSH 는 영향이 없다(맥북 로컬 파일만). `market_refresh_state` 행은 복원하지 않았다.
 
-**선택지 (사용자·설계자 결정)**
+**(d) NAV 요약 격리 기록** (2026-09-24 실측)
 
 ```text
-(a) market_refresh_state 는 다음 시장 데이터 갱신(POST /market/refresh) 때 다시 써진다 — 그대로 둔다
-(b) 흔적 파일(state/runs/run_20260923T135127_2dd2891c.json 등) 정리 — 삭제 승인 필요
-(c) 테스트 격리 수정 — 위 표의 경로를 conftest 에서 tmp 로 돌리고, 라이브 경로 쓰기 감시를 이 5곳으로 넓힌다
-    (별도 작업 · 코드 변경)
+원래 경로     state/market/nav_discount_refresh_latest.json            → 지금 없음(활성 경로 비움)
+격리 경로     state/market/nav_discount_refresh_latest.json.quarantine-test-20260923T135028Z
+              같은 폴더 안 이름 변경 · 2026-09-24 10:35:27 KST(파일 ctime) · gitignore `state/market/*.quarantine-*`
+크기 · mtime  536 B · 2026-09-23 22:50:29 KST — 이름 변경 전후 같음
+sha256        9b38489a47949007233688f9f87748a32bfab6954f275cee78cd1dc439f52518 — 위 흔적 증거 표와 같음
+내용          source naver_etf_item_list · asof 2024-10-31 · status ok · fetched_at 2026-09-23T13:50:28Z ·
+              total 1,175 · success 1,175 · upserted 1,175 · cache_hit true · elapsed 0.004s
 ```
+
+테스트 값인 근거 — ① asof `2024-10-31` 은 테스트가 넣는 고정 날짜다(`test_market_refresh_state_persistence.py:74·321`
+`end_date_for_prices=date(2024, 10, 31)` · `test_market_topn_api.py` 도 같은 날짜) ② fetched_at 13:50:28Z 가 사고 pytest 실행
+구간(13:49:47Z ~ 13:52:38Z) 안이다 ③ 테스트 파일을 하나씩 돌린 실측에서 이 경로에 쓴 파일이 그 두 개다(위 표).
 
 ### 4-9. 테스트 격리 — 차단 결함 수정 (설계자 (c))
 
@@ -539,20 +691,42 @@ OCI 와 PUSH 는 영향이 없다(맥북 로컬 파일만). `market_refresh_stat
 conftest 가 **app 모듈 import 전에** 설치하고 pytest 종료 때 푼다.
 
 ```text
-파일 쓰기      open/io.open(w·a·x·+) · os.open(쓰기 플래그) · os.replace/rename · os.remove/unlink/rmdir ·
-              os.mkdir(없는 경로) · os.truncate · os.chmod · os.utime · os.link/symlink(만드는 쪽)
+파일 쓰기      open/io.open/_io.open(w·a·x·+) · os.open(과 원본 posix.open · 쓰기 플래그) · os.replace/rename ·
+              os.remove/unlink/rmdir · os.mkdir(없는 경로) · os.truncate · os.chmod · os.utime · os.symlink(만드는 쪽) ·
+              os.link(원본·만드는 쪽 — 라이브 파일의 하드링크도 라이브 파일이다)
               → 대상이 라이브 state/·logs/ 아래면 즉시 LiveStateWriteError (dir_fd 상대 경로도 실제 폴더로 풀어 판정)
-sqlite        라이브 DB 경로로 오는 연결 → 세션 임시 사본을 mode=ro 로 연다
-              읽기는 그대로 · 쓰기는 즉시 "attempt to write a readonly database" · 라이브 파일은 세션 첫 연결 때
-              사본을 만들려고 한 번 읽기만 하고(shutil.copyfile) sqlite 로는 열지 않음
+경로 판정      file: URI 를 SQLite 처럼 푼다(//localhost · %XX · ?query) · 심볼릭 링크를 먼저 따라간 뒤 비교 · 문자열로
+              안 맞으면 가장 가까운 실제 조상의 (장치, inode) 를 라이브 루트와 비교 — 대소문자만 다른 경로 · macOS
+              firmlink(/System/Volumes/Data/…) 도 라이브로 본다. unlink·rename 처럼 링크 자체만 바꾸는 연산은 마지막
+              링크를 따라가지 않는다(tmp 의 링크를 지우는 것은 라이브를 건드리지 않는다)
+sqlite        라이브 DB 경로로 오는 연결(sqlite3.connect · sqlite3.dbapi2.connect · _sqlite3.connect) → 세션 임시
+              사본을 mode=ro 로 연다. 읽기는 그대로 · 쓰기는 즉시 "attempt to write a readonly database" · 가드는
+              라이브 파일을 세션 첫 연결 때 사본을 만들 때만 읽고(복사 전·후 sha256 + shutil.copyfile) sqlite 로는 열지 않음
+SQL 안 파일    가드를 거친 모든 연결(sqlite3.Connection(...) 직접 생성은 제외 · §5)에 authorizer + trace callback —
+              ATTACH '<경로>' · VACUUM INTO 는 라이브·사본이면 준비·실행 때 거부(파일을 열지 않는다). ATTACH ?(매개변수)·
+              식은 준비 때 경로를 모르므로 실행 직전 값이 채워진 SQL(앞 SQL 주석은 걷어낸다)을 trace 가 본다 — 대상이
+              문자열 하나면(매개변수는 이렇게 채워진다) 라이브·사본일 때만 막고, 그 밖의 식('a' || 'b' 포함)은 판정
+              불가로 보아 tmp 대상이어도 막는다. 막으면 그 별칭의 모든 접근을 거부하고 막은 기록을 남긴다
+사본 검사      복사 전 라이브 sha256 → 복사 → 복사 후 라이브 sha256 → 사본 sha256. 복사 중 라이브가 바뀌거나 사본이
+              다르면 즉시 실패 · 사본에 PRAGMA integrity_check (ok 가 아니면 실패)
+사본 보호      검증을 통과한 사본은 0444 · 사본 경로로 직접 열기(목록 밖) · 쓰기 · 권한 변경 · 삭제도 라이브와 똑같이
+              막는다 · 세션 끝에 사본 sha256 을 다시 재 비교 — 다르거나 사본 검사가 실패했으면 세션 실패.
+              pytest 끝 [live-db-copy] 줄: 복사 전·후 · 사본 · integrity · 세션 끝 사본(같음/다름)
+허용 목록      tests/_live_db_legacy_readers.txt 의 기존 테스트만 사본을 연다. 목록 밖 테스트가 라이브 DB 를 열면 즉시
+              LiveStateWriteError("새 테스트는 자체 임시 DB·고정 fixture 를 쓴다 …") · 목록은 줄이기만 한다 —
+              자동 검사는 개수 상한(tests/test_live_state_guard.py::LEGACY_READERS_CEILING = 229) · id 형식 ·
+              정렬·중복 0 뿐이라 항목을 바꿔치기하면 테스트가 잡지 못한다(목록 파일 diff 로만 보인다)
+삼킨 오류      가드가 막은 연산은 모두 기록한다. 앱 코드가 except Exception 으로 가드 오류를 삼켜도 conftest 가 그
+              테스트를 실패시킨다(teardown ERROR) — 가드 자체 테스트(test_live_state_guard.py)만 뺀다
 부수 출력      NAV 요약 · 러너 로그 폴더를 tmp_path/_side_outputs 로 (호출 시점에 읽는 모듈 상수)
 세션 전후      감시 파일 4곳 sha256 + state/runs 파일 목록 + state/·logs/ 전체 (크기·mtime) — 바뀌면 [live-state] ·
               종료코드 실패
-감시 fixture   _detect_live_market_db_write 는 real_connect 로 **실제 파일**을 본다
+감시 fixture   _detect_live_market_db_write 는 real_connect 로 **실제 파일**을 mode=ro 로 본다 · three_push 상태 파일
+              6개는 테스트마다 전후 바이트를 비교해 바뀌면 실패만 시킨다(되돌려 쓰지 않는다 — 아래 §4-13)
 ```
 
 **원인 수정** — `tests/test_poc1_loop.py::test_ac8_terminal_states_block_reuse` 의 `monkeypatch.undo()` 가 conftest 의
-격리 패치(store 경로 · OCI stub 등)까지 전부 풀었다 → 구간 `monkeypatch.context()` 로. `tests/test_api_holdings_market_evidence.py:40`
+격리 패치(store 경로 · OCI stub 등)까지 전부 풀었다 → 구간 `monkeypatch.context()` 로. `tests/test_api_holdings_market_evidence.py:40`(수정 전 줄)
 의 `reset_state_for_testing()` → `reset_state_for_testing(db_path=fake_db)`.
 
 **가드를 켜자 드러난 것** (사본 전체 실행 · `test_api_holdings_market_evidence` 인자 수정은 이미 적용 · test_ac8 수정과 세션
@@ -560,7 +734,57 @@ sqlite        라이브 DB 경로로 오는 연결 → 세션 임시 사본을 m
 나머지 3건은 `state/runs` 쓰기(test_ac8) · AC-8 NAV JSON 격리 경로 · 진단 helper 호출 집합 불일치(가드 언급 없음 — 이후 실행에서
 통과)였다. 사고를 낸 `market_refresh_state` 삭제는 이 실행 전에 이미 고쳐 96건에 없다. 읽기 전용 세션 사본 도입 뒤 전체 1,997 passed.
 
-**역검증** (저장소 사본 · 대상 3파일: `test_poc1_loop` · `test_api_holdings_market_evidence` · `test_live_state_guard`)
+**기존 테스트 수 정정 — 93건이 아니라 233건** (설계자 3차 판정 "기존 93건에만 호환 경로" 의 전제)
+
+위 93건은 가드 첫 버전에서 **rw 연결이 막혀 실패한** 수다. 그 버전은 `mode=ro` URI 열기를 라이브 파일에 그대로
+허용했다 — 예: `app/intraday_config/selector.py::latest_closes` 는 `file:…?mode=ro` 로 연다(첫 버전 코드는 남아 있지 않고,
+실패 표시가 `sqlite3.connect (rw)` 뿐이며 intraday_config 테스트 실패가 0건인 기록과 맞는다). 그래서 라이브 DB 를 읽기
+전용으로 여는 테스트와, rw 로 열었지만 오류를 코드가 삼켜 통과한 테스트가 세지지 않았다. 개발자가 2차 보고에서 이 93 을
+라이브 DB 를 읽는 테스트 수처럼 전했고, 설계자 판정의 93 은 그 수치다. 기록 모드(`KRX_LIVE_DB_READERS_RECORD=<파일>`)로 전체 회귀를 돌려 전수 측정했다.
+
+```text
+세션 사본을 연 기존 테스트        233건 (전체 회귀 1,997 passed · 사본 2개: 시장 DB · decision_evidence DB)
+목록을 비우고 전체 회귀(233건 기준)  199건 실패 · 34건 통과
+고정 종가로 바꿔 목록에서 뺀 것      4건(모두 199건 쪽) → 목록 229건
+```
+
+199건 실패는 "라이브 DB 연결이 막혀서" 다 — 라이브 데이터가 있어야 하는 것만은 아니다. 아래 분류로 보면 199건 =
+LIVE_STRUCTURAL 93 · INDEPENDENT 102 · EXACT 4 이고, INDEPENDENT 102건 중 101건은 분류 근거에 "스키마만 있는 빈 DB
+(0행)로도 통과" 가 적혀 있다(에이전트 근거 · 전부 재실측하지는 않았다) — 연결 성공만 필요한 테스트다. 목록에는 POC4-01
+(71d50d15)에서 만든 가드 역검증 테스트 2건(`test_live_sqlite_opens_a_read_only_session_copy[False·True]`)도 들어 있다 — 세션
+사본 자체를 확인하는 테스트라 사본이 필요하다. 3차 판정 시점에 있던 테스트라 "기존" 에 넣었다.
+
+34건도 목록에 둔다 — 이 테스트들은 라이브 DB 를 연다. 위 측정 당시에는 목록에서 빼도 앱 코드가 가드 오류를 삼켜
+통과했지만(원래 확인하던 경로가 바뀐 채), 지금은 삼킨 가드 오류도 테스트를 실패시키므로(위 설계 "삼킨 오류") 빼면
+실패한다. 목록 밖의 기존·새 테스트가 라이브 DB 를 열면 연결은 즉시 거부되고 테스트는 실패한다
+(`test_test_outside_legacy_list_cannot_open_live_db` · 삼킨 경우는 §4-13 사본 실측).
+
+**정확한 값 단언 전수 분류** (설계자 "정확한 데이터값을 계약으로 단언하는 테스트에는 session copy 사용 금지")
+
+233건을 에이전트로 테스트마다 분류했다(근거 = 파일:줄 · 사본 측정). 1차 분류: 흐름에 라이브 데이터가 필요하지만 단언은
+구조·상태(LIVE_STRUCTURAL) 93 · 라이브 값과 무관(INDEPENDENT) 136 · 라이브 값에 기대는 단언(EXACT_LIVE_VALUE) 4.
+(이 93·136 은 위 "rw 실패 93건" · §6-3 "229 − 93 = 136건" 과 **개수만 같은 다른 집합**이다 — rw 실패 93건과 LIVE_STRUCTURAL
+93건이 겹치는 것은 1건.)
+EXACT 4건은 테스트마다 반박 검증 에이전트 1개를 따로 돌려 2건 확정 · 2건 반박됐다. 넷 다 같은 모양이라 **4건 모두** 고정 입력으로 바꿨다:
+
+| 테스트 | 라이브에 기대던 단언 | 반박 검증 |
+|---|---|---|
+| `test_intraday_config_integration.py::test_healthy_payload_has_no_error` | 사업군 수 `>= 20` — 최신일 종가가 있는 사업군만 셈 | 확정 |
+| `test_intraday_config_integration.py::test_unpriced_candidate_cannot_be_representative` | `sector_no_market_cap` 0건 — 27개 사업군 중 5개는 종가 있는 후보가 1개뿐 | 확정 |
+| `test_intraday_config_integration.py::test_api_shows_candidate_after_generation` | 위 첫째와 **같은 단언**(`>= 20`) | 반박 — 상한 27 은 고정 CSV·토큰 사전이 정하고, 종가·날짜를 바꿔도 수가 같다(부등식 단언) |
+| `test_intraday_config_contracts.py::test_unmatched_index_is_recorded_not_dropped` | 제외 사유가 `unclassified` 뿐 — 반도체 후보 전원 종가가 있어야 성립 | 반박 — 비교값(`unclassified`)이 코드 상수 |
+
+반박된 2건도 통과 여부가 **라이브 최신일 종가 커버리지**에 달려 있다는 점은 확정 2건과 같다(반박 근거도 이 의존을
+인정한다). 같은 단언을 한 곳은 사본, 한 곳은 고정 입력으로 두지 않으려고 넷 다 바꿨다. 방법: `selector.latest_closes` 를
+고정 종가(git 고정 CSV 전 종목 10,000원 · 기준일 2026-09-11)로 대체 — 후보는 git 고정 CSV 에서, 사업군은 토큰 사전에서
+나온다(integration 3건은 git 의 사전 · contracts 1건은 테스트 안 사전 `{"반도체": ["반도체"]}`). `test_unpriced_candidate_cannot_be_representative` 는 대체가 있는 사업군의 1위 종목에서 종가를 빼, 뺀 종목이 대표로
+남지 않는지도 본다. 목록을 비운 사본 실행에서 4건 passed · 대조군(`test_selection_basis_records_the_actual_value`, 목록에
+남은 테스트)은 "새 테스트는 자체 임시 DB" 로 실패 — 4건이 라이브 DB 를 열지 않음을 확인했다.
+
+**역검증 — 71d50d15 시점 기록** (저장소 사본 · 대상 3파일: `test_poc1_loop` · `test_api_holdings_market_evidence` ·
+`test_live_state_guard` 14건). 지금 가드 테스트는 29건(abf833ee 19건 → 29839c75 29건)이고, `test_api_holdings_market_evidence` 가 목록 밖이라 원인
+수정을 되돌리면 `readonly database` 가 아니라 목록 검사("새 테스트는 자체 임시 DB")에서 먼저 실패한다 — 이 표는 다시 돌리지
+않았다. 지금 가드 테스트의 가드 유무 검사는 아래 문단.
 
 | 조건 | 라이브 DB | 실행 기록 | 결과 |
 |---|---|---|---|
@@ -568,19 +792,28 @@ sqlite        라이브 DB 경로로 오는 연결 → 세션 임시 사본을 m
 | 가드 켬 + 원인 수정 되돌림 | 그대로 | 그대로 | 사고 패턴이 `readonly database` 로 즉시 실패(5건) · test_ac8 은 `LiveStateWriteError` · 종료코드 1 |
 | 가드 켬 + 원인 수정 | 그대로 | 그대로 | 37 passed · 종료코드 0 |
 
-**저장소 전체 회귀 — 라이브 5곳 sha256** (2026-09-24 02:38:53 → 02:41:56 KST · 1,997 passed)
+**저장소 전체 회귀 — 라이브 5곳 sha256** (29839c75 · 2026-09-24 19:17:55 → 19:21:17 KST · 2,013 passed)
 
 ```text
 state/market/market_data.sqlite                db0b2e9cf626d1af610e23a1bd15d07c49fa272807712ce3cfe24bc64c8592d4  전후 동일
-state/market/nav_discount_refresh_latest.json  9b38489a47949007233688f9f87748a32bfab6954f275cee78cd1dc439f52518  전후 동일
+state/market/nav_discount_refresh_latest.json  (없음 — §4-8 (d) 격리 뒤)                                          전후 없음
 logs/oci_market_data_batch.log                 df0b29f5da9c3fb7e44dd067a9b4233120dc2d75fa7b094e4a37acbb900c04a1  전후 동일
 logs/three_push_runtime_cron.log               add4a1e738644435f52d027dc06c0de339ffdce83b1107d77983780d763d167e  전후 동일
 state/runs (파일 목록 156개)                    efe6f3609317dad99441a822f42bf53dc666a375c4b23a5b782114763ae230b5  전후 동일
+NAV 요약 격리 사본                               9b38489a47949007233688f9f87748a32bfab6954f275cee78cd1dc439f52518  전후 동일
+[live-db-copy]  market_data.sqlite       복사 전 db0b2e9c… = 복사 후 = 사본 · integrity ok · 2.17s · 세션 끝 사본 같음
+                decision_evidence.sqlite 복사 전 1f446da6… = 복사 후 = 사본 · integrity ok · 0.0s · 세션 끝 사본 같음
 ```
 
-역검증 테스트(`tests/test_live_state_guard.py` 14건) 중 12건은 가드가 빠지면 실패한다. 나머지 2건(읽기·tmp 쓰기 허용 확인 ·
-감시 5곳 목록 확인)은 가드 유무와 무관하게 통과하는 확인용이다. 탐침 경로는 라이브 루트 아래 **없는 이름**만
-쓰고, sqlite 탐침은 **쓰기 전에** 연결 경로부터 확인한다 — 가드가 망가져도 라이브 데이터를 바꾸지 않는다.
+(abf833ee 회귀 — 11:31:05 → 11:34:12 KST · 2,003 passed — 와 71d50d15 회귀 — 02:38:53 → 02:41:56 KST · 1,997 passed — 도 같은
+hash 로 전후 동일이었다. 71d50d15 때는 NAV 요약이 활성 경로에 `9b38489a…` 로 있었다.)
+
+역검증 테스트(`tests/test_live_state_guard.py` 29건) 중 22건은 가드가 빠지면 실패한다(사본 복제본에서 conftest 의 가드 설치를
+빼고 실측 — 22 failed · 7 passed · 복제본 라이브 루트에 남은 탐침 0 · 복제본 시장 DB sha256 그대로). 통과한 7건은 가드 유무와 무관한 것들이다: 확인용 2건(읽기·tmp 쓰기 허용 · 감시 5곳 목록) ·
+목록 상한·정렬 1건 · 사본 검사 4건(검사 함수 `verified_copy`·`recheck_copies` 를 tmp DB 로 직접 불러 hash 일치 · 복사 중 원본
+변경 · 손상 DB · 세션 끝 재확인을 본다). 탐침 경로는 라이브 루트 아래 **없는 이름**만
+쓰고, sqlite 탐침(`test_live_sqlite_opens_a_read_only_session_copy`)은 **쓰기 전에** 연결 경로부터 확인한다. 목록 밖 테스트는 라이브 경로에 연결만 하고 닫는다(쓰기 없음) —
+가드가 망가져도 라이브 데이터를 바꾸지 않는다.
 
 ### 4-10. 작업 6 — purge·embargo · 거래비용 · 성과지표 (설계자 2차 판정 §3)
 
@@ -608,7 +841,7 @@ E2 평가 · 고정 모듈(`app/ml_relative_upside_model.py`)은 바꾸지 않�
          active(순수익 − KODEX200)는 relative 에 복리 누적하지 않고 추적오차·정보비율·월평균 active 에만 · Sharpe_0rf · 연율화 = 기간 수 / (달력일/365.25)
 ```
 
-**새 기준선 실측** (run3 · 146기간 · 2014-07-01 ~ 2026-09-01 · 4,445일 · 연 11.997기간 · 제외 기간 0)
+**새 기준선 실측** (run3 · 146기간 · 2014-07-01 ~ 2026-09-01 · 4,445일 · 연 11.997기간 · 제외 기간 0 · run5·run6 도 formulas 밖 값이 같다 — §4-4)
 
 | 시나리오 | 편도 | 전략 end | CAGR | MDD | 변동성 | Sharpe_0rf | 상대 wealth | 상대 MDD | active/월 | 추적오차 | IR |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -647,3 +880,69 @@ test_new_run_dir_refuses_alias_paths_into_forbidden_root  대소문자 별칭 �
 예전 "차단 시 이전 결과 제거" 테스트(`test_cli_removes_stale_validity_latest_when_blocked`)는 전제(같은 폴더 재사용)가 계약에서
 사라져 위 기존 폴더 거부 테스트로 바꿨다. 러너의 차단 경로에 있던 "이전 결과 파일 삭제" 코드도 새 폴더에서는 실행될 수 없어
 뺐다. 이 수정으로 러너 코드 hash 가 바뀌어 기준선을 run3·run4 로 다시 돌렸다(§4-4).
+
+### 4-12. AC-8 — 시장 갱신의 JSON 산출물 (설계자 3차 판정 `MARKET_REFRESH_NAV_JSON = REQUIRED`)
+
+`tests/test_market_topn_api.py::test_post_refresh_json_artifact_is_exactly_the_nav_summary` 가 예전
+`test_post_refresh_does_not_create_json_artifact`("JSON 을 하나도 만들지 않는다")를 대체한다. 예전 단언은 2026-06-08 NAV 요약이
+생긴 뒤로 운영 동작과 반대였고, 통과한 것은 관찰 폴더 밖에 써졌기 때문이다 — 71d50d15 전에는 라이브 폴더,
+71d50d15 뒤로는 conftest 격리 하위 폴더(`tmp_path/_side_outputs` · 예전 테스트는 시장 DB 폴더만 `iterdir` 로 봤다).
+
+```text
+계약        LEGACY_MARKET_JSON_ARTIFACTS = 0 · NAV_SUMMARY_JSON = 지정 경로 1개 · OTHER_MARKET_JSON_ARTIFACTS = 0
+지정 경로    market_refresh_service.NAV_REFRESH_SUMMARY_PATH — conftest 가 tmp_path/_side_outputs 로 격리 · 라이브 경로와 다름을 단언
+NAV 입력     고정 fixture — fetch_universe_snapshot 을 3종목 스냅샷(069500 ok · 379800 ok · 999999 unavailable)으로 대체 · 외부 호출 0
+단언        NAV 요약 쓰기 호출 정확히 1회 · 갱신 뒤 tmp_path 전체(시장 DB 폴더 포함)에 새로 생긴 JSON = {지정 경로} 뿐 ·
+            키 = NavUniverseRefreshSummary 필드 전체 · source naver_etf_item_list · asof 2024-10-31 · status ok · fetched_at ·
+            집계 total 3 · success 2 · unavailable 1 · failed 0 · ignored 0 · upserted 3 · sample_tickers [069500, 379800] ·
+            cache_hit·stale_cache_used false · 라이브 NAV 경로 바이트 전후 같음(지금은 파일 없음 → 없음 그대로)
+운영 코드    무변경 — NAV JSON 쓰기(app/market_refresh_service.py::_write_nav_refresh_summary) 유지
+```
+
+### 4-13. 사전 점검 — 검증자 제한 재검증 항목 1~8 선검증과 보강 (사용자 결정 2026-09-24)
+
+설계자가 검증자에게 준 체크리스트 1~9 중 1~8 을 개발자가 먼저 돌렸다. 에이전트 5개가 항목별로 저장소 사본의 **자기 복제본**
+에서만 테스트를 돌렸고(저장소·라이브 파일은 읽기만), 지적 27건 중 info 가 아닌 19건(high 1 · medium 9 · low 9)은 건마다 반박
+검증 에이전트 1개가 따로 재현했다(19건 모두 사실 · info 8건은 반박 검증 없음). 9번(저장소 전체 회귀)은 개발자가 직접
+돌렸다(§4-7). 보강 뒤 결과서 대조(에이전트 3개 · 지적 21건 모두 반박 검증에서 사실)에서 가드 구멍 2건이 더 나와 같이
+막았다(아래 표 마지막 두 줄).
+
+**통과** — 1 233 − 기록 모드 재현 = 고정 입력 4건(다만 목록 밖 거부 확인 테스트가 기록 모드에서도 라이브를 열어 230건 ·
+1 실패로 나왔다 → 아래 처리) · 2 정렬·중복 0 · 모든 id 가 현재 수집에 있음 · 3 사본 hash·integrity · 6 AC-8 기본 계약 ·
+7 격리 NAV 파일을 읽는 코드·동기화 경로 0 · 8 run5 = run6 · E2 핵심 hash · 필드 diff.
+
+**보강 뒤 기록 모드 재현** (저장소 사본 · 29839c75 코드 · `KRX_LIVE_DB_READERS_RECORD`) — 기록된 사본 사용 테스트 229건 =
+목록 229건(양쪽 차이 0) · 2,009 passed · 4 skipped(기록 모드에서 건너뛰는 가드 테스트 4건).
+
+**반박 검증을 거쳐 확정된 문제 → 처리** (사용자가 "테스트 코드 보강 후 검증자" 를 골랐다 · 운영 코드·기준선 무변경)
+
+| 문제 | 처리 |
+|---|---|
+| `ATTACH`·`VACUUM INTO` 로 라이브 DB 에 쓰기 가능 — 읽기 전용 사본 연결에서도(붙인 DB 는 mode=ro 를 물려받지 않는다) | 가드를 거친 모든 연결(`sqlite3.connect`·`dbapi2`·`_sqlite3`)에 authorizer + trace callback (§4-9 "SQL 안 파일" · `sqlite3.Connection(...)` 직접 생성은 제외 §5) |
+| 세션 사본을 경로로 직접 열면 쓰기 가능 · 세션 끝 재확인 없이 만들 때 hash 만 다시 찍음 | 사본 0444 · 사본 경로도 라이브처럼 보호 · 세션 끝 sha256 재측정 |
+| 경로 별칭으로 우회 — 대소문자 · firmlink · `file://localhost` · `%XX` · 링크 뒤 `..` · 하드링크 | 경로 판정 보강 (§4-9 "경로 판정") · 하드링크는 만드는 순간 막음(`os.link` 원본도 검사 — 세션 전부터 있던 하드링크는 경로 판정이 알아보지 못한다 §5) |
+| `sqlite3.dbapi2.connect`·`_sqlite3.connect`·`_io.open`·`posix.open` 미가드 | 함께 가드 |
+| 목록 밖 테스트의 라이브 DB 연결 · 라이브 경로 JSON 쓰기를 앱 코드가 `except Exception` 으로 삼키면 테스트 통과 | 막은 연산을 기록 → 삼켜도 그 테스트 실패 (§4-9 "삼킨 오류") |
+| conftest `_restore_and_fail` 이 가드를 끄고 라이브 three_push 상태 파일을 되돌려 씀 — 승인된 "읽기 전용 감시" 밖의 쓰기 | 실패만 시키고 되돌리지 않음 · 전후 크기·sha256 을 실패 메시지에 남김 |
+| 가드 자체 테스트의 `_cleanup` 이 `suspended()` 로 가드를 끈 채 라이브 루트 아래 탐침을 지운다 | 그대로 둠 — `__live_guard_probe_<uuid>` 이름 탐침이 실제로 있을 때(가드가 뚫렸을 때)만 그 탐침 하나를 지운다 · 이제 `suspended()` 를 쓰는 곳은 여기 하나뿐 |
+| 기록 모드로 재현하면 230건 · 1 실패(목록 밖 거부를 확인하는 테스트가 일부러 라이브를 연다) | 기록 모드에서 그 테스트들은 skip → 229 |
+| 결과서가 코드보다 넓게 말함 — 목록 밖 테스트 "실패" · 라이브 직접 읽기 "2곳" · 가드 테스트의 `real_connect` rw 사용 | 코드 보강으로 "실패" 성립 · 읽기 목록 공개(§5) · `_small_db` 는 `sqlite3.connect` |
+| 설계자 전달문의 검증 범위 끝 커밋 `57784ab3` 은 amend 로 없어졌다 | 사용자 전달문에서 범위 정정 |
+| (결과서 대조) `'a' \|\| 'b'` 처럼 따옴표로 시작·끝나는 식 ATTACH 를 문자열 하나로 잘못 읽어 라이브 대상도 통과 | 대상 전체가 문자열 하나일 때만 문자열로 본다 — 그 밖은 판정 불가로 막는다 |
+| (결과서 대조) 앞에 SQL 주석이 붙은 `ATTACH ?` 는 판정을 건너뜀 · `posix.*` 직접 호출 · `os.chown`·`mkfifo` 등 목록 밖 os 함수 | 앞 주석을 걷어내고 판정 · os 쓰기 함수는 원본 모듈(posix·nt)도 같이 가드 · 있는 메타데이터·특수 파일 함수 추가 (`test_os_module_originals_are_guarded`) |
+
+가드 보강 중 개발자가 만든 버그 1건도 역검증에서 잡혔다 — 링크를 먼저 따라가는 판정이 pytest 가 tmp 의 링크(라이브를
+가리키는)를 지우는 것까지 막았다. 링크 자체만 바꾸는 연산은 마지막 링크를 따라가지 않게 고치고 테스트를 더했다
+(`test_removing_a_tmp_symlink_to_live_is_allowed`).
+
+**삼킨 오류 실측** (복제본 · 29839c75 코드 · 임시 테스트 파일 · 확인 뒤 삭제) — 목록 밖 테스트가 ① 라이브 DB 연결 ② 앱 함수
+(`generator._stored_trading_days`, 안에서 `except Exception`) ③ 라이브 경로 파일 쓰기 ④ `ATTACH ?` 로 라이브 DB 를 각각
+`try/except` 로 삼키게 했다 → 4건 모두 teardown ERROR("가드가 라이브 경로·사본 연산을 막았다") · 대조 테스트 1건 통과 ·
+라이브 경로에 생긴 파일 0 · 복제본 시장 DB sha256 그대로.
+
+**목록을 비운 전체 회귀** (복제본 · 29839c75 코드) — 목록의 229건이 **전부** 실패(FAILED 또는 teardown ERROR) · 그 밖에는
+목록 상한 테스트 1건만 실패(목록이 비어서) · 나머지 1,783건 통과. pytest 요약은 '196 failed, 1817 passed, 1 warning,
+227 errors' 다 — 1,817 에는 본문은 통과하고 teardown ERROR 로 실패한 목록 34건이 함께 세어진다. 그 34건은 예전 측정
+(233건 기준 199 실패 · 34 통과)에서 통과했던 34건과 같은 테스트다 — 삼킨 가드 오류가 이제 테스트를 실패시킨다. 실행 뒤
+복제본 라이브 루트에 남은 탐침 0.
+

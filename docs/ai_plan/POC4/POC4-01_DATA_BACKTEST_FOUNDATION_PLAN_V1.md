@@ -1,10 +1,71 @@
 # POC4-01 — 데이터·백테스트 기반 정비 PLAN V1
 
 ```text
-STATUS            = 작업 1~6 · 테스트 격리 · 검증자 P1 수정 구현 → 검증자 대기
+STATUS            = 작업 1~6 · 테스트 격리 · 검증자 P1 · 설계자 3차 판정 교정 구현 · 설계자 확인 완료 ·
+                    개발자 사전 점검 뒤 가드 보강(결과서 §4-13) → READY_FOR_LIMITED_REVERIFICATION
 OCI · PUSH = 변경 0 · 테스트 격리 결함(전체 pytest 가 맥북 라이브 경로에 씀)은 수정 — 결과서 §4-8·§4-9
 DEPENDENCY_ADDED  = 0
 ```
+
+### 설계자 확인 (2026-09-24) — 3차 판정 개발자 정정(93 → 233 → 229) 수용
+
+```text
+DESIGNER_CONFIRMATION       = ACCEPTED
+LIVE_DB_OPENERS_MEASURED    = 233
+FIXED_INPUT_MIGRATED        = 4
+LEGACY_READONLY_ALLOWLIST   = 229
+MONITORING_READ_EXCEPTIONS  = 2 (READ-ONLY ONLY)
+POC4_01_STATUS              = READY_FOR_LIMITED_REVERIFICATION
+PUSH                        = HOLD_UNTIL_VERIFIED
+HANDOFF                     = AFTER_VERIFIED_AND_PUSH
+```
+
+- 93 은 최초 가드의 read-write 실패만 센 과소 측정 — 233 전수 계측 · 정확값 의존 4건 고정 입력 전환 · 남은 229건은
+  승인한 `READONLY_SESSION_COPY` 과도기 범위. 목록 밖 신규 테스트는 실패하므로 기술부채가 늘지 않는다.
+- 감시 목적 직접 읽기 2건(세션 전후 hash · 테스트별 benchmark 조회)은 `mode=ro` 전용 · 보호 장치 자체의 관찰 경로라 예외 승인.
+- 허용 목록 항목 교체를 런타임에서 완벽히 못 잡는 한계는 비차단 기술부채 — 목록은 정렬·중복 0 유지, 변경 diff 는 검증자 확인.
+- NAV 격리본 보존·활성 경로 공백 수용 — 다음 정상 갱신이 재생성, 그전까지 UI·API·PUSH 영향 없음.
+- 순서: 검증자 제한 재검증 → VERIFIED 뒤 로컬 commit 일괄 push → push 된 HEAD 확인 → POC4-01 최종 종료 인계 →
+  POC4-02 착수 전 설계자에게 종료 보고. 사용자 화면 확인·OCI 적용은 필요 없음.
+- (개발자 · 검증자 전달 전) 검증 항목 1~8 을 먼저 돌려 확정된 가드 우회 경로(ATTACH·VACUUM INTO · 사본 직접 쓰기 · 경로
+  별칭 · 다른 진입점(`sqlite3.dbapi2.connect`·`_sqlite3.connect`·`_io.open`·`posix.*`) · 삼킨 가드 오류 · conftest 되돌려 쓰기)를 **테스트 코드만** 보강해 막았다(사용자 결정 2026-09-24 · 결과서 §4-13).
+  설계 계약은 바꾸지 않았다 — 조건("쓰기 즉시 실패" · "감시는 읽기 전용")을 코드가 실제로 지키게 한 것이다.
+
+### 설계자 판정 3차 (2026-09-24) — 검증자 2차 BLOCKED(설계자 계약 2건)에 대한 결정
+
+```text
+DESIGNER_DECISION           = APPROVED_WITH_REQUIRED_CORRECTIONS
+LIVE_DB_TEST_ACCESS         = READONLY_SESSION_COPY
+MARKET_REFRESH_NAV_JSON     = REQUIRED
+KRX_ETF_UNIVERSE_V1         = APPROVED_AS_RESEARCH_BASELINE_INPUT
+FORMULA_TEXT_CORRECTION     = REQUIRED
+PUSH                        = HOLD
+HANDOFF                     = AFTER_VERIFIED
+```
+
+- 세션 사본 조건: 라이브 DB 는 사본을 만들 때만 읽음 · 테스트 sqlite 연결은 모두 임시 사본을 mode=ro 로 · 쓰기 즉시
+  실패 · 라이브 DB·5곳 hash 전후 동일 · 운영 코드 기본 경로 계약은 이번 Step 에서 바꾸지 않음 · 새 테스트는 자체
+  임시 DB·고정 fixture · 호환 경로는 기존 테스트에만(판정문: "기존 93건에만") · 사본 생성 전후 라이브 hash 가 다르면 실패 · 사본 SQLite
+  integrity 검사 · 정확한 데이터값을 계약으로 단언하는 테스트에는 세션 사본 금지 · 기존 테스트의 고정 fixture 전환은
+  비차단 기술부채(POC4-01 인계에 기록).
+  - **개발자 정정 (설계자 확인 완료 — 위 ACCEPTED)**: 판정문의 "기존 93건" 은 개발자가 보고한 수치였고 **과소 집계**였다. 실측으로
+    세션 사본을 여는 기존 테스트는 233건이었고, 그중 199건은 사본이 없으면 실패했다(29839c75 전 가드 기준 — 나머지 34건은
+    가드 오류가 삼켜져 통과했다. 지금은 삼킨 가드 오류도 테스트를 실패시켜 목록을 비우면 229건 모두 실패한다, 결과서 §4-13). 판정의 뜻(기존 테스트에만 · 새 테스트
+    금지)대로 이 목록을 고정하고, 라이브 커버리지 단언 4건을 고정 입력으로 바꿔 229건으로 줄였다. 결과서 §4-9 · §6-3.
+- AC-8: `LEGACY_MARKET_JSON_ARTIFACTS = 0` · `NAV_SUMMARY_JSON = 지정 경로 1개` · `OTHER_MARKET_JSON_ARTIFACTS = 0`.
+  운영 코드의 NAV JSON 쓰기는 제거하지 않는다.
+- 현재 NAV 요약: 증거 기록 → 활성 경로 밖 이름으로 격리 보존 → 다음 정상 NAV 갱신이 다시 만듦 · 수동 편집·합성
+  금지 · 실행 기록 156개·공유 로그 2개는 유지.
+- 산식 문구: `strategy_performance.formulas.active_return` 에 월평균 active return · tracking error · information ratio
+  명시 → 기준선 두 번 재실행(run 결과 동일 · E2 핵심 hash 동일 · 산식·설명 외 전략 결과 변화 0).
+- `krx_etf_universe_v1`: POC4-02 연구 기준선 입력으로 승인(`PURPOSE=RESEARCH_BASELINE` · `OPERATION_PROMOTION=NO` ·
+  `OCI_DEPLOY=0` · `PUSH_USE=0`). POC4-02 규칙 — 각 날짜의 KRX universe 사용 · 현재 `etf_master` 로 재필터 금지 ·
+  폐지 ETF 가격은 같은 KRX 봉인 version 에서, KODEX200(069500)도 같은 계열에서 · 결측을 생존 DB 로 채우지 않음 ·
+  결측·0·휴장 응답은 사유와 함께 제외 · dataset version·payload hash·날짜 범위 고정 ·
+  `UNBIASED_PERFORMANCE_CLAIM=YES` 아님(POC4-02 검증 전까지 `RESEARCH_ONLY`).
+- 순서: 계약 2건 반영 → NAV 오염 산출물 격리 → 산식 문구 → 기준선 2회 → 전체 회귀(1,997건 이상)·라이브 5곳 불변 →
+  결과서 → 검증자 제한 재검증 → VERIFIED 뒤 로컬 commit 전부 push → POC4-01 최종 인계.
+- 현재 중간 인계와 `02a0f7c5` 는 사용자 직접 지시로 생성됐다는 기록을 유지한다(별도 문제로 취급하지 않음).
 
 ### 설계자 판정 2차 (2026-09-24)
 
@@ -53,7 +114,7 @@ POC4_01_CONTINUE              = YES
   한도 확인 전 전체 적재 금지 → 그다음 embargo·성과지표·비용 분해. 완료 후 검증자.
 
 - **작성**: 개발자(VSCode Claude) · **독자**: 설계자
-- **입력**: 설계자 POC4-00 판정·POC4-01 착수 지시·POC4-01 판정 1차(2026-09-23)·2차(2026-09-24)·검증자 1차 판정 REJECTED(P1 산출물 보호)
+- **입력**: 설계자 POC4-00 판정·POC4-01 착수 지시·POC4-01 판정 1차(2026-09-23)·2차·3차(2026-09-24)·검증자 1차 판정 REJECTED(P1 산출물 보호)·2차 BLOCKED(설계자 계약 2건)
 - 구현 증거·수치는 결과서 `docs/ai_result/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_RESULT.md`.
 
 ---
@@ -66,7 +127,7 @@ POC4_01_CONTINUE              = YES
 | **새 기준선** | 라이브 DB 를 한 번 동결한 **불변 스냅샷**으로만 평가한다. 평가기는 스냅샷 없이는 돌지 않는다(§4) |
 | **universe 복원** | 공식 한도(키당 10,000회/일)를 약관 원문으로 확인했다. canary 게이트 통과 후 전체 기간 적재(§2) |
 | **작업 6** | 설계자 결정(§5)대로 구현 — 20거래일 purge·embargo 는 모델·설정 선택 분할에(E2 무변경), 비용 분해(편도 11.5bp 기본 · legacy 25bp 유지), 절대·상대 성과지표 |
-| **테스트 격리** | 전체 pytest 가 맥북 라이브 경로에 쓰던 기존 결함을 막았다 — 쓰는 순간 실패하는 가드 · 라이브 DB 는 세션 사본으로 · 세션 전후 비교 |
+| **테스트 격리** | 전체 pytest 가 맥북 라이브 경로에 쓰던 기존 결함을 막았다 — 쓰는 순간 실패하는 가드 · 라이브 DB 는 읽기 전용 세션 사본으로(기존 테스트 목록 229건만 · 사본 hash·integrity 검사) · 세션 전후 비교 |
 
 ---
 
