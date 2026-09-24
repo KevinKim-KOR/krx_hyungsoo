@@ -149,3 +149,13 @@ def test_tracking_error_information_ratio_and_relative_mdd_by_hand():
     )
     days = (date(2020, 4, 1) - date(2020, 2, 3)).days
     assert out["calendar_days"] == days and ppy == pytest.approx(2 / (days / 365.25))
+
+
+def test_active_return_formula_text_names_every_actual_use():
+    """설계자 2026-09-24 — 문구가 실제 사용처(월평균 active · TE · IR)를 모두 적어야 한다."""
+    out = perf.build_strategy_performance(_records()[:2], CLOSES)
+    text = out["formulas"]["active_return"]
+    for use in ("월평균 active return", "tracking error", "information ratio"):
+        assert use in text
+    assert "복리 누적하지 않는다" in text
+    assert "mean_active_return" in out["scenarios"]["legacy_all_in_25bp"]["relative"]

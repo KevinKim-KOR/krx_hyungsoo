@@ -12,7 +12,8 @@
 절대 equity    Π(1 + 비용 차감 후 전략수익률)
 benchmark      Π(1 + KODEX200 수익률)
 relative       전략 equity / benchmark equity
-active return  비용 차감 후 전략수익률 − KODEX200 수익률   (추적오차 · 정보비율에만)
+active return  비용 차감 후 전략수익률 − KODEX200 수익률   (월평균 active return · tracking error ·
+               information ratio 에만 — relative equity 에 복리 누적하지 않는다)
 Sharpe_0rf     무위험수익률 자료가 없어 0 으로 둔다 — 이름에 0rf 를 붙인다
 ```
 
@@ -208,7 +209,8 @@ def build_strategy_performance(
             "absolute_equity": "Π(1 + 비용 차감 후 전략수익률)",
             "benchmark_equity": "Π(1 + KODEX200 수익률)",
             "relative_wealth": "전략 equity / benchmark equity",
-            "active_return": "비용 차감 후 전략수익률 − KODEX200 수익률 (추적오차·정보비율에만)",
+            "active_return": "비용 차감 후 전략수익률 − KODEX200 수익률 — 월평균 active return · "
+            "tracking error · information ratio 에만 쓴다 (relative equity 에 복리 누적하지 않는다)",
             "sharpe": "Sharpe_0rf — 무위험수익률 자료가 없어 0",
             "annualization": "연간 기간 수 = 기간 수 / (첫 진입 ~ 마지막 청산 달력일 / 365.25)",
             "mdd_granularity": "기간 말(월별) equity 기준 — 월중 낙폭은 반영하지 않는다",
