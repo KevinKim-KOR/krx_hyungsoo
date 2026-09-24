@@ -108,14 +108,25 @@ def pytest_sessionfinish(session, exitstatus):
         else:
             print(line)
 
-    # 세션 사본 검증 결과 (라이브 DB 복사 전후 sha256 · 사본 sha256 · integrity_check).
-    for report in _live_guard.copy_reports().values():
+    # 세션 사본 검증 결과 (라이브 DB 복사 전후 sha256 · 사본 sha256 · integrity_check) 와
+    # 세션 끝 사본 sha256 재확인. 사본이 바뀌었거나 검사가 실패했으면 세션을 실패시킨다.
+    rechecked = {r["source"]: r for r in _live_guard.recheck_copies()}
+    for key, report in _live_guard.copy_reports().items():
+        now = rechecked[key]
         _say(
             f"[live-db-copy] {os.path.relpath(report['source'], _live_guard.PROJECT_ROOT)} "
             f"sha256 {report['source_sha256_before'][:16]} = 복사 후 "
             f"{report['source_sha256_after'][:16]} = 사본 {report['copy_sha256'][:16]} · "
-            f"integrity {report['integrity_check']} · {report['seconds']}s"
+            f"integrity {report['integrity_check']} · {report['seconds']}s · "
+            f"세션 끝 사본 {(now['now_sha256'] or '없음')[:16]} "
+            f"{'같음' if now['same'] else '다름'}",
+            red=not now["same"],
         )
+        if not now["same"]:
+            session.exitstatus = pytest.ExitCode.TESTS_FAILED
+    for failure in _live_guard.copy_failures():
+        _say(f"[live-db-copy] 사본 검사 실패: {failure}", red=True)
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
     before = getattr(session.config, "_live_before", None)
     if before is None:
         return
@@ -129,6 +140,29 @@ def pytest_sessionfinish(session, exitstatus):
     for k in changed[:50]:
         _say(f"  - {k}", red=True)
     session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
+# 가드가 막는 것을 확인하는 테스트 — 막힌 기록이 있어도 실패로 보지 않는다.
+_GUARD_SELF_TEST = "tests/test_live_state_guard.py::"
+
+
+@pytest.fixture(autouse=True)
+def _fail_on_swallowed_guard_block(request):
+    """가드가 막은 연산이 있으면 그 테스트를 **실패**시킨다 — 앱 코드가 예외를 삼켰어도.
+
+    `LiveStateWriteError` 는 AssertionError 라 앱의 `except Exception` 에 잡히면 테스트가 그대로
+    통과했다(목록 밖 테스트의 라이브 DB 연결 · try 안의 라이브 경로 JSON 쓰기). 이 fixture 를 autouse
+    중 **가장 먼저** 정의해 정리가 가장 늦게 돈다 — 다른 fixture 정리 중에 막힌 것까지 본다.
+    """
+    _live_guard.take_blocks()
+    yield
+    blocks = _live_guard.take_blocks()
+    if blocks and not request.node.nodeid.startswith(_GUARD_SELF_TEST):
+        lines = "\n".join(f"  - {b['op']}: {b['target']}" for b in blocks[:10])
+        pytest.fail(
+            "가드가 라이브 경로·사본 연산을 막았다(앱 코드가 예외를 삼켰어도 실패):\n"
+            f"{lines}\n경로를 tmp_path 로 격리하라 (tests/_live_guard.py)."
+        )
 
 
 @pytest.fixture(autouse=True)
@@ -179,7 +213,9 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
        import 해도 `.env` 를 읽지 않으므로 `STATE_DIR` 를 그대로 가져온다.
     2. 러너가 이미 import 돼 있으면 저장 경로를 `tmp_path` 로 덮어쓴다.
     3. import 여부와 무관하게 **생성뿐 아니라 내용 변경까지** 감지해 실패시킨다.
-       원본 바이트를 들고 있다가 달라졌으면 되돌려 놓고 실패시킨다.
+       되돌리지는 않는다(POC4-01 설계자 확인 2026-09-24 — 감시는 읽기 전용). 이 프로세스의 쓰기는
+       `_live_guard` 가 먼저 막으므로 여기까지 오는 변경은 하위 프로세스·다른 운영 프로세스의
+       쓰기다. 되돌려 쓰면 진짜 운영 쓰기를 지울 수 있다.
 
     POC3-OPS-02A — 위험 알림 상태 파일(`holdings_risk_state_latest.json`)도 같은
     보호를 받는다. 같은 러너 §8 이 쓰므로 하나만 막으면 "한 통로 막기" 다.
@@ -247,24 +283,24 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
         after = live.read_bytes() if live.exists() else None
         if after == before:
             continue
-        _restore_and_fail(live, before)
+        _fail_live_changed(live, before, after)
 
 
-def _restore_and_fail(live, before):
-    """운영 파일을 원래대로 되돌린 뒤 실패시킨다.
+def _fail_live_changed(live, before, after):
+    """라이브 상태 파일이 바뀌었으면 실패시킨다 — 되돌려 쓰지 않는다(읽기 전용 감시).
 
-    테스트가 남긴 상태로 다음 테스트가 돌면 원인 추적이 불가능해진다.
+    원래 내용을 찾을 수 있게 전후 크기·sha256 을 남긴다.
     """
-    with _live_guard.suspended():  # 되돌리기만 — 가드가 먼저 막으므로 보통은 오지 않는다
-        if before is None:
-            live.unlink()
-            what = "새로 만들었다"
-        else:
-            live.write_bytes(before)
-            what = "덮어썼다"
+
+    def _desc(data):
+        if data is None:
+            return "없음"
+        return f"{len(data)} B · sha256 {hashlib.sha256(data).hexdigest()[:16]}"
+
     pytest.fail(
-        f"테스트가 라이브 보유 상태 파일을 {what}: {live}\n"
-        "경로 격리 없이 러너 저장 경로를 탄다 (원본은 되돌려 놓았다)."
+        f"테스트 중 라이브 보유 상태 파일이 바뀌었다: {live}\n"
+        f"  전 {_desc(before)} → 후 {_desc(after)}\n"
+        "경로 격리 없이 러너 저장 경로를 탄다 — 되돌리지 않았다(운영 쓰기를 지우지 않으려고)."
     )
 
 

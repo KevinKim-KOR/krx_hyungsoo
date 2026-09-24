@@ -2,8 +2,9 @@
 # 설계자 확정 2026-09-24: 새 테스트는 여기에 넣지 않는다 — 자체 임시 DB·고정 fixture 를 쓴다. 목록은 줄이기만 한다
 # (상한 tests/test_live_state_guard.py::LEGACY_READERS_CEILING). 고정 fixture 전환은 비차단 기술부채(POC4-01 인계).
 # 생성: KRX_LIVE_DB_READERS_RECORD=<파일> 로 전체 회귀를 돌려 사본을 연 테스트 id 를 모았다(2026-09-24 · 233건).
-#       233건 기준으로 목록을 비우고 돌리면 199건이 실패한다(라이브 DB 연결이 막혀서 — 라이브 데이터가 필요한 것과
-#       연결 성공만 필요한 것이 섞여 있다) · 34건은 열기만 하고 없어도 통과한다.
+#       233건 기준으로 목록을 비우고 돌리면 199건이 실패했다(라이브 DB 연결이 막혀서 — 라이브 데이터가 필요한 것과
+#       연결 성공만 필요한 것이 섞여 있다) · 34건은 가드 오류가 삼켜져 통과했다. 지금은 삼킨 가드 오류도
+#       테스트를 실패시킨다(conftest `_fail_on_swallowed_guard_block`).
 #       POC4-01 에서 만든 가드 역검증 테스트 2건(test_live_sqlite_opens_a_read_only_session_copy)도 들어 있다 — 세션 사본 자체를 확인한다.
 # 라이브 최신일 종가 커버리지에 기대는 단언 4건(test_intraday_config_integration 3 · contracts 1 — 사업군 수·시총 결측·미분류만 기록)은 고정 종가로 바꿔 뺐다 → 229건.
 tests/low_frequency_push/test_holdings_runtime_line.py::test_holdings_market_quotes_overlay_does_not_modify_file
