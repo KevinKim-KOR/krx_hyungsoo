@@ -47,8 +47,20 @@ def test_conflicting_same_length_tokens_are_not_classified():
     assert selector.classify("코스피 200 금융", d) is None
 
 
-def test_unmatched_index_is_recorded_not_dropped():
-    """분류 안 된 지수를 조용히 버리지 않는다."""
+def test_unmatched_index_is_recorded_not_dropped(monkeypatch):
+    """분류 안 된 지수를 조용히 버리지 않는다.
+
+    고정 종가로 돌린다(설계자 2026-09-24) — 아래 `unclassified` 뿐이라는 단언은 라이브
+    최신일 종가 커버리지(반도체 후보 전원 종가 있음)에 기대면 안 된다.
+    """
+    closes = {
+        t: 10000.0
+        for r in selector.load_official_rows(CSV)
+        if (t := (r.get("단축코드") or "").strip())
+    }
+    monkeypatch.setattr(
+        selector, "latest_closes", lambda db_path: ("2026-09-11", closes)
+    )
     _, excluded, _ = selector.build_sectors(
         csv_path=CSV, db_path=DB, dictionary={"반도체": ["반도체"]}
     )

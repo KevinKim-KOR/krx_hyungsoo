@@ -32,6 +32,23 @@ def _make(tmp_path: Path, db: Path) -> str:
     return out["config_version_id"]
 
 
+def _fixed_closes(monkeypatch, drop=()):
+    """라이브 시장 DB 대신 **고정 종가** (설계자 2026-09-24).
+
+    정확한 값(사업군 수·시총 결측 여부)을 단언하는 테스트는 라이브 세션 사본을
+    쓰지 않는다. 후보는 git 고정 CSV 에서 오고, 종가는 전 종목 같은 값이다.
+    `drop` 은 종가를 뺄 종목.
+    """
+    closes = {
+        t: 10000.0
+        for r in selector.load_official_rows(CSV)
+        if (t := (r.get("단축코드") or "").strip()) and t not in drop
+    }
+    monkeypatch.setattr(
+        selector, "latest_closes", lambda db_path: ("2026-09-11", closes)
+    )
+
+
 # ── P1-1 자동 산출 진입점 ───────────────────────────────────────────────────
 
 
@@ -303,16 +320,25 @@ def test_activate_checks_rejection_directly(tmp_path):
 # ── P1-5 시총 결측 fallback 제거 ────────────────────────────────────────────
 
 
-def test_unpriced_candidate_cannot_be_representative(tmp_path):
+def test_unpriced_candidate_cannot_be_representative(tmp_path, monkeypatch):
     """**가격 없는 ETF 가 시총 1위로 조용히 뽑히면 안 된다.**
 
     수정 전에는 `market_cap or 0.0` 이라 전원 결측이면 ticker 오름차순으로
     고르고도 `metric="market_cap"` 이라 적었다.
+
+    고정 종가로 돌린다 — 라이브 최신일 종가 커버리지에 기대지 않는다. 대체가
+    있는 사업군의 1위에서 종가를 빼, 뺀 종목이 대표로 남지 않는지 본다.
     """
+    _fixed_closes(monkeypatch)
+    full, _, _ = selector.build_sectors(csv_path=CSV, db_path=DB)
+    dropped = {s["representative"]["ticker"] for s in full if s["alternate"]}
+    assert dropped
+    _fixed_closes(monkeypatch, drop=dropped)
     sectors, excluded, _ = selector.build_sectors(csv_path=CSV, db_path=DB)
     for s in sectors:
         basis = s["selection_basis"]
         assert basis["representative_market_cap"], s["sector_key"]
+        assert s["representative"]["ticker"] not in dropped, s["sector_key"]
     assert not [e for e in excluded if e["reason"] == "sector_no_market_cap"]
 
 
@@ -431,8 +457,9 @@ def test_api_state_is_empty_before_any_generation(api_client):
     assert body["candidate_sector_count"] == 0
 
 
-def test_api_shows_candidate_after_generation(api_client, tmp_path):
+def test_api_shows_candidate_after_generation(api_client, tmp_path, monkeypatch):
     client, db = api_client
+    _fixed_closes(monkeypatch)  # 사업군 수를 단언한다 — 라이브 사본 대신 고정 입력
     _make(tmp_path, db)
     body = client.get("/intraday-config/state").json()
     assert body["action_state"] == store.STATE_PENDING_APPROVAL
@@ -987,8 +1014,9 @@ def test_corrupt_payload_is_surfaced_not_hidden(api_client, tmp_path):
     assert body["candidate_version_id"] == vid
 
 
-def test_healthy_payload_has_no_error(api_client, tmp_path):
+def test_healthy_payload_has_no_error(api_client, tmp_path, monkeypatch):
     client, db = api_client
+    _fixed_closes(monkeypatch)  # 사업군 수를 단언한다 — 라이브 사본 대신 고정 입력
     _make(tmp_path, db)
     body = client.get("/intraday-config/state").json()
     assert body["payload_error"] is None

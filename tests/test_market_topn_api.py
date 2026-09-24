@@ -6,7 +6,7 @@
 - POST /market/refresh single-flight + cooldown.
 - GET /market/refresh/status 상태 노출.
 - 결측 0% 보정 금지 (지시문 §6).
-- JSON artifact 절대 생성 안 함 (AC-8).
+- JSON artifact 는 NAV 요약 1개(지정 경로)만 — legacy·그 밖 JSON 0 (AC-8 · 설계자 2026-09-24).
 """
 
 from __future__ import annotations
@@ -319,16 +319,65 @@ def test_post_refresh_skipped_within_cooldown(api_client: TestClient) -> None:
     assert payload["cooldown_remaining_seconds"] > 0
 
 
-def test_post_refresh_does_not_create_json_artifact(
+def test_post_refresh_json_artifact_is_exactly_the_nav_summary(
     api_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """AC-8 — POST /market/refresh 가 어떤 JSON artifact 도 생성하지 않는다."""
-    # state/market 디렉토리 (tmp_path 의 부모) 안에서 어떤 파일이 새로 생기는지 추적
-    market_dir = api_market_topn.DEFAULT_DB_PATH.parent
-    market_dir.mkdir(parents=True, exist_ok=True)
-    before = set(market_dir.iterdir())
+    """AC-8 — 설계자 확정 2026-09-24 `MARKET_REFRESH_NAV_JSON = REQUIRED`.
+
+    ```text
+    LEGACY_MARKET_JSON_ARTIFACTS = 0
+    NAV_SUMMARY_JSON             = 정확히 지정 경로 1개
+    OTHER_MARKET_JSON_ARTIFACTS  = 0
+    라이브 경로 생성·변경          = 0
+    ```
+
+    예전 단언("JSON 을 하나도 만들지 않는다")은 2026-06-08 NAV 요약(지시문 §5.5)이 생긴 뒤로 운영과
+    반대였다 — 파일이 라이브 폴더에 써져 관찰 폴더 밖이라 통과했을 뿐이다. 이제 지정 경로(conftest 가
+    tmp 로 격리한 `NAV_REFRESH_SUMMARY_PATH`)의 파일을 직접 본다. NAV 는 고정 fixture 로 주입한다 —
+    외부 호출 없이 집계값을 정확히 단언한다.
+    """
+    import dataclasses
+    import json
+
+    from app import etf_nav_service
+    from app.naver_etf_universe_fetcher import NaverUniverseItem, NaverUniverseSnapshot
+    from tests._live_guard import PROJECT_ROOT
+
+    nav_path = market_refresh_service.NAV_REFRESH_SUMMARY_PATH
+    live_nav = PROJECT_ROOT / "state" / "market" / "nav_discount_refresh_latest.json"
+    live_before = live_nav.read_bytes() if live_nav.exists() else None
+    assert (
+        nav_path.resolve() != live_nav.resolve()
+    ), "지정 경로가 tmp 로 격리돼 있어야 한다"
+    before = set(tmp_path.rglob("*.json"))
+
+    def _item(ticker, nav, price, disc, status="ok", message=None):
+        return NaverUniverseItem(
+            ticker=ticker,
+            name=f"테스트 {ticker}",
+            nav=nav,
+            market_price=price,
+            discount_rate_pct=disc,
+            change_rate_pct=None,
+            three_month_return_pct=None,
+            status=status,
+            message=message,
+        )
+
+    snapshot = NaverUniverseSnapshot(
+        status="ok",
+        fetched_at="2024-10-31T07:00:00Z",
+        items={
+            "069500": _item("069500", 11700.0, 11720.0, 0.17),
+            "379800": _item("379800", 15000.0, 15010.0, 0.07),
+            "999999": _item("999999", None, 10000.0, None, "unavailable", "nav 없음"),
+        },
+    )
+    monkeypatch.setattr(
+        etf_nav_service, "fetch_universe_snapshot", lambda **kwargs: snapshot
+    )
 
     original = market_refresh_service.start_refresh_job
 
@@ -341,13 +390,47 @@ def test_post_refresh_does_not_create_json_artifact(
 
     monkeypatch.setattr(api_market_topn, "start_refresh_job", inline_start)
 
+    writes = []
+    real_write = market_refresh_service._write_nav_refresh_summary
+
+    def counting_write(summary):
+        writes.append(summary)
+        real_write(summary)
+
+    monkeypatch.setattr(
+        market_refresh_service, "_write_nav_refresh_summary", counting_write
+    )
+
     res = api_client.post("/market/refresh")
     assert res.status_code == 200
-    after = set(market_dir.iterdir())
-    new_files = after - before
-    # SQLite 파일은 생기지만 JSON artifact 는 절대 안 생긴다
-    json_files = [p for p in new_files if p.suffix == ".json"]
-    assert json_files == []
+
+    assert len(writes) == 1, "NAV 요약은 갱신 1회에 정확히 한 번 쓴다"
+    new_json = set(tmp_path.rglob("*.json")) - before
+    assert new_json == {nav_path}, f"NAV 요약 1개 외 JSON 이 생기면 안 된다: {new_json}"
+
+    payload = json.loads(nav_path.read_text(encoding="utf-8"))
+    fields = {
+        f.name for f in dataclasses.fields(etf_nav_service.NavUniverseRefreshSummary)
+    }
+    assert set(payload) == fields
+    assert payload["source"] == etf_nav_service.NAVER_UNIVERSE_SOURCE
+    assert payload["asof"] == "2024-10-31"
+    assert payload["status"] == "ok"
+    assert payload["fetched_at"] == "2024-10-31T07:00:00Z"
+    counts = (
+        payload["total_count"],
+        payload["success_count"],
+        payload["unavailable_count"],
+        payload["failed_count"],
+        payload["ignored_count"],
+        payload["upserted_count"],
+    )
+    assert counts == (3, 2, 1, 0, 0, 3)
+    assert payload["sample_tickers"] == ["069500", "379800"]
+    assert payload["cache_hit"] is False and payload["stale_cache_used"] is False
+
+    live_after = live_nav.read_bytes() if live_nav.exists() else None
+    assert live_after == live_before, "라이브 NAV 요약 경로가 생기거나 바뀌면 안 된다"
 
 
 # ─── GET /market/refresh/status ───────────────────────────────────

@@ -85,11 +85,37 @@ def pytest_unconfigure(config):
     _live_guard.uninstall()
 
 
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_protocol(item, nextitem):
+    """가드가 지금 도는 테스트 id 를 알게 한다 — 세션 사본은 기존 호환 목록에만 허용."""
+    _live_guard.set_current_test(item.nodeid)
+    try:
+        yield
+    finally:
+        _live_guard.set_current_test(None)
+
+
 def pytest_sessionstart(session):
     session.config._live_before = _live_fingerprint()
 
 
 def pytest_sessionfinish(session, exitstatus):
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+
+    def _say(line: str, **kw) -> None:
+        if reporter is not None:
+            reporter.write_line(line, **kw)
+        else:
+            print(line)
+
+    # 세션 사본 검증 결과 (라이브 DB 복사 전후 sha256 · 사본 sha256 · integrity_check).
+    for report in _live_guard.copy_reports().values():
+        _say(
+            f"[live-db-copy] {os.path.relpath(report['source'], _live_guard.PROJECT_ROOT)} "
+            f"sha256 {report['source_sha256_before'][:16]} = 복사 후 "
+            f"{report['source_sha256_after'][:16]} = 사본 {report['copy_sha256'][:16]} · "
+            f"integrity {report['integrity_check']} · {report['seconds']}s"
+        )
     before = getattr(session.config, "_live_before", None)
     if before is None:
         return
@@ -99,15 +125,9 @@ def pytest_sessionfinish(session, exitstatus):
     )
     if not changed:
         return
-    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
-    lines = ["[live-state] 테스트 세션 동안 라이브 경로가 바뀌었다:"] + [
-        f"  - {k}" for k in changed[:50]
-    ]
-    for line in lines:
-        if reporter is not None:
-            reporter.write_line(line, red=True)
-        else:
-            print(line)
+    _say("[live-state] 테스트 세션 동안 라이브 경로가 바뀌었다:", red=True)
+    for k in changed[:50]:
+        _say(f"  - {k}", red=True)
     session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
 
@@ -330,7 +350,7 @@ def _isolated_side_outputs(tmp_path, monkeypatch):
     from app import market_refresh_service as _mrs
     import app.three_push_runner_common as _common
 
-    # tmp_path 바로 아래가 아니라 전용 하위 폴더 — tmp_path 를 훑는 테스트(AC-8)와 섞이지 않게.
+    # tmp_path 바로 아래가 아니라 전용 하위 폴더 — 테스트 자체 파일과 구분한다(AC-8 은 이 NAV 요약 1개를 직접 본다).
     side = Path(tmp_path) / "_side_outputs"
     logs = side / "logs"
     monkeypatch.setattr(

@@ -186,6 +186,8 @@ state/runtime/runtime_state.sqlite-shm
 # Naver ETF Universe NAV refresh summary (2026-06-08) — 운영 호출마다 갱신됨,
 # 검증/실행마다 작업트리가 바뀌어 staged 상태와 어긋남. commit 대상 아님.
 state/market/nav_discount_refresh_latest.json
+# POC4-01 — 테스트 값으로 덮인 NAV 요약을 활성 경로 밖으로 옮긴 격리 사본(설계자 2026-09-24 · 복구용 보존).
+state/market/*.quarantine-*
 
 # OCI 일일 시장 데이터 배치 실행 상태 (OCI Operational Market Data Refresh v1) —
 # 배치 실행마다 갱신되는 운영 산출물. commit 대상 아님.

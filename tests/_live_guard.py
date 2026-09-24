@@ -8,13 +8,19 @@
 - `open`/`io.open` 쓰기 모드(w·a·x·+) · `os.open` 쓰기 플래그
 - `os.replace`·`os.rename`(출발·도착 모두) · `os.remove`·`os.unlink`·`os.rmdir` · `os.mkdir`(없는 경로)
   · `os.truncate` · `os.chmod` · `os.utime` · `os.link`·`os.symlink`(만드는 쪽)
-- `sqlite3.connect` — 라이브 DB 경로로 오는 연결은 **세션 임시 사본을 읽기 전용(mode=ro)** 으로 연다.
-  기존 테스트 96건이 운영 조회 함수로 라이브 시장 DB 를 rw 로 열어 **읽고** 있었다(처음 열 때
-  `CREATE TABLE IF NOT EXISTS` — 이미 있는 테이블이면 읽기 전용에서도 통과). 경로 기본값이 함수 정의
-  시점에 묶여 있어 모듈 상수 monkeypatch 로는 못 돌린다 → 연결 층에서 돌린다. 읽기는 그대로 되고,
-  **쓰기(INSERT·DELETE·새 테이블 등)는 즉시 `attempt to write a readonly database` 로 실패**한다 —
-  사고를 낸 `reset_state_for_testing()` 인자 누락 같은 패턴이 조용히 통과하지 않고, 사본이 바뀌지
-  않으니 테스트끼리 데이터가 새지도 않는다. 라이브 DB 파일은 테스트가 열지 않는다.
+- `sqlite3.connect` — 라이브 DB 경로로 오는 연결 (설계자 확정 2026-09-24 `READONLY_SESSION_COPY`):
+  * **기존 호환 목록**(`tests/_live_db_legacy_readers.txt`)의 테스트만 세션 임시 사본을 읽기 전용(mode=ro)
+    으로 연다. 운영 조회 함수의 경로 기본값이 함수 정의 시점에 묶여 있어 테스트에서 경로를 못 바꾸는
+    기존 테스트들이다(처음 열 때 `CREATE TABLE IF NOT EXISTS` — 이미 있는 테이블이면 읽기 전용에서도 통과).
+  * 목록 밖의 테스트(= 새 테스트)는 라이브 DB 를 여는 순간 `LiveStateWriteError` — 자체 임시 DB·고정
+    fixture 를 써야 한다.
+  * 사본은 세션에서 처음 필요할 때 한 번 만든다. 라이브 DB 의 복사 전후 sha256 이 같고 사본 sha256 이
+    그와 같아야 하며, 사본은 `PRAGMA integrity_check` 가 `ok` 여야 한다. 아니면 즉시 실패.
+  * 쓰기(INSERT·DELETE·새 테이블 등)는 즉시 `attempt to write a readonly database` 로 실패한다 —
+    사고를 낸 `reset_state_for_testing()` 인자 누락 같은 패턴이 조용히 통과하지 않고, 사본이 바뀌지
+    않으니 테스트끼리 데이터가 새지도 않는다. 라이브 DB 파일은 사본을 만들 때 읽기만 한다.
+  * 목록 갱신 — `KRX_LIVE_DB_READERS_RECORD=<파일>` 로 전체 테스트를 돌리면 사본을 쓴 테스트 id 를
+    그 파일에 적는다(이 모드에서는 목록 밖도 허용). 목록은 줄이기만 한다(새 테스트 추가 금지).
 
 파일 읽기는 막지 않는다. `tmp_path` 등 저장소 밖 경로는 영향이 없다. 하위 프로세스는 이 가드 밖이라
 `conftest.py` 의 세션 전후 hash 비교가 따로 잡는다. 감시 코드만 `real_connect` 로 라이브 파일을 본다.
@@ -23,17 +29,21 @@
 from __future__ import annotations
 
 import builtins
+import hashlib
 import io
 import os
 import shutil
 import sqlite3
 import tempfile
+import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LIVE_ROOTS = (PROJECT_ROOT / "state", PROJECT_ROOT / "logs")
+LEGACY_READERS_FILE = Path(__file__).resolve().parent / "_live_db_legacy_readers.txt"
+RECORD_ENV = "KRX_LIVE_DB_READERS_RECORD"
 
 _WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND
 _real = {
@@ -53,8 +63,19 @@ _real = {
     "symlink": os.symlink,
     "connect": sqlite3.connect,
 }
-_state = {"installed": False, "suspended": 0, "sqlite_dir": None}
+_state = {"installed": False, "suspended": 0, "sqlite_dir": None, "current_test": None}
 _redirects: dict[str, Path] = {}
+_copy_reports: dict[str, dict] = {}
+
+
+def _load_legacy_readers() -> frozenset[str]:
+    if not LEGACY_READERS_FILE.exists():
+        return frozenset()
+    lines = LEGACY_READERS_FILE.read_text(encoding="utf-8").splitlines()
+    return frozenset(s.strip() for s in lines if s.strip() and not s.startswith("#"))
+
+
+LEGACY_READERS = _load_legacy_readers()
 
 
 class LiveStateWriteError(AssertionError):
@@ -177,8 +198,52 @@ def _guarded_mkdir(path, *args, **kwargs):
     return _real["mkdir"](path, *args, **kwargs)
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with _real["open"](path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verified_copy(src: Path, dst: Path) -> dict:
+    """src 를 dst 로 복사하고 검증한다 — 실패하면 `LiveStateWriteError`.
+
+    복사 전후 src sha256 이 같아야 하고(복사 중 라이브가 바뀌지 않음), dst sha256 이 그와 같아야
+    하며, dst 는 `PRAGMA integrity_check` 가 `ok` 여야 한다.
+    """
+    t0 = time.perf_counter()
+    before = _sha256(src)
+    shutil.copyfile(src, dst)
+    after = _sha256(src)
+    copied = _sha256(dst)
+    if before != after:
+        raise LiveStateWriteError(f"사본을 만드는 동안 라이브 DB 가 바뀌었다: {src}")
+    if copied != before:
+        raise LiveStateWriteError(f"사본 sha256 이 라이브와 다르다: {dst}")
+    try:
+        con = _real["connect"](f"file:{dst}?mode=ro", uri=True)
+        try:
+            rows = [r[0] for r in con.execute("PRAGMA integrity_check")]
+        finally:
+            con.close()
+    except sqlite3.DatabaseError as exc:
+        raise LiveStateWriteError(f"사본 integrity 검사 실패: {exc}") from exc
+    if rows != ["ok"]:
+        raise LiveStateWriteError(f"사본 integrity 검사 실패: {rows[:5]}")
+    return {
+        "source": str(src),
+        "copy": str(dst),
+        "source_sha256_before": before,
+        "source_sha256_after": after,
+        "copy_sha256": copied,
+        "integrity_check": "ok",
+        "seconds": round(time.perf_counter() - t0, 2),
+    }
+
+
 def _sandbox_copy(live: Path) -> Path:
-    """라이브 DB 의 세션 사본 경로. 처음 부를 때 한 번 복사한다(라이브는 읽기만)."""
+    """라이브 DB 의 세션 사본 경로. 처음 부를 때 한 번 복사·검증한다(라이브는 읽기만)."""
     key = str(live)
     if key not in _redirects:
         if _state["sqlite_dir"] is None:
@@ -186,14 +251,36 @@ def _sandbox_copy(live: Path) -> Path:
         copy = _state["sqlite_dir"] / live.relative_to(PROJECT_ROOT)
         copy.parent.mkdir(parents=True, exist_ok=True)
         if live.exists():
-            shutil.copyfile(live, copy)
+            _copy_reports[key] = verified_copy(live, copy)
         _redirects[key] = copy
     return _redirects[key]
+
+
+def set_current_test(nodeid: Optional[str]) -> None:
+    """conftest 의 `pytest_runtest_protocol` 이 테스트마다 부른다(설정·본문·정리 전체)."""
+    _state["current_test"] = nodeid
+
+
+def _allow_session_copy(path: Path) -> None:
+    """기존 호환 목록의 테스트만 세션 사본을 쓴다. 목록 밖이면 즉시 실패."""
+    nodeid = _state["current_test"]
+    record = os.environ.get(RECORD_ENV)
+    if record:
+        with _real["open"](record, "a", encoding="utf-8") as fh:
+            fh.write(f"{nodeid}\n")
+        return
+    if nodeid not in LEGACY_READERS:
+        raise LiveStateWriteError(
+            f"라이브 DB 를 열려 했다: {path} (테스트 {nodeid})\n"
+            "새 테스트는 자체 임시 DB·고정 fixture 를 쓴다 — 세션 사본은 "
+            "tests/_live_db_legacy_readers.txt 의 기존 테스트에만 허용된다."
+        )
 
 
 def _guarded_connect(database, *args, **kwargs):
     path = _as_path(database)
     if path is not None and not _state["suspended"] and is_live(path):
+        _allow_session_copy(path)
         copy = _sandbox_copy(path.resolve())
         text = database.decode() if isinstance(database, bytes) else os.fspath(database)
         query = (
@@ -212,6 +299,11 @@ def real_connect(*args, **kwargs):
 
 def sqlite_redirects() -> dict[str, Path]:
     return dict(_redirects)
+
+
+def copy_reports() -> dict[str, dict]:
+    """세션에서 만든 사본마다 복사 전후 sha256 · integrity 결과."""
+    return {k: dict(v) for k, v in _copy_reports.items()}
 
 
 def install() -> None:
@@ -262,6 +354,7 @@ def uninstall() -> None:
         shutil.rmtree(_state["sqlite_dir"], ignore_errors=True)
         _state["sqlite_dir"] = None
         _redirects.clear()
+        _copy_reports.clear()
 
 
 def installed() -> bool:

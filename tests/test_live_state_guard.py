@@ -17,6 +17,9 @@ import pytest
 from tests import _live_guard
 from tests._live_guard import PROJECT_ROOT, LiveStateWriteError
 
+# 호환 목록 상한 — 2026-09-24 실측(세션 사본을 연 기존 테스트 수). 목록은 줄이기만 한다.
+LEGACY_READERS_CEILING = 229
+
 
 def _probe(root: str, suffix: str = ".txt") -> Path:
     return PROJECT_ROOT / root / f"__live_guard_probe_{uuid.uuid4().hex}{suffix}"
@@ -111,3 +114,67 @@ def test_session_fingerprint_watches_the_five_incident_paths():
         "logs/three_push_runtime_cron.log",
         "state/runs",
     }
+
+
+# --- 설계자 확정 (2026-09-24) READONLY_SESSION_COPY 조건 ---------------------------------
+
+
+def test_test_outside_legacy_list_cannot_open_live_db():
+    """새 테스트(호환 목록 밖)는 라이브 DB 를 여는 순간 실패한다 — 자체 임시 DB·고정 fixture 를 쓴다.
+
+    가드가 빠지면 연결이 열리고(쓰지는 않는다) 예외가 없으니 이 테스트가 실패한다.
+    """
+    live = PROJECT_ROOT / "state" / "market" / "market_data.sqlite"
+    assert _live_guard._state["current_test"] not in _live_guard.LEGACY_READERS
+    with pytest.raises(LiveStateWriteError, match="새 테스트는 자체 임시 DB"):
+        sqlite3.connect(str(live)).close()
+
+
+def test_legacy_list_never_grows():
+    """호환 목록은 줄이기만 한다 — 새 테스트를 넣어 사본을 쓰게 하면 실패한다."""
+    readers = _live_guard.LEGACY_READERS
+    assert 0 < len(readers) <= LEGACY_READERS_CEILING
+    assert all(r.startswith("tests/") and "::" in r for r in readers)
+
+
+def _small_db(path: Path) -> Path:
+    con = _live_guard.real_connect(str(path))
+    con.execute("CREATE TABLE t (x INTEGER, y TEXT)")
+    con.executemany("INSERT INTO t VALUES (?, ?)", [(i, "v" * 200) for i in range(400)])
+    con.commit()
+    con.close()
+    return path
+
+
+def test_verified_copy_reports_hashes_and_integrity(tmp_path):
+    src = _small_db(tmp_path / "src.sqlite")
+    report = _live_guard.verified_copy(src, tmp_path / "copy.sqlite")
+    assert report["source_sha256_before"] == report["source_sha256_after"]
+    assert report["copy_sha256"] == report["source_sha256_before"]
+    assert report["integrity_check"] == "ok"
+
+
+def test_verified_copy_fails_when_source_changes_during_copy(tmp_path, monkeypatch):
+    src = _small_db(tmp_path / "src.sqlite")
+    real_copy = _live_guard.shutil.copyfile
+
+    def _copy_then_touch_source(a, b, *args, **kwargs):
+        out = real_copy(a, b, *args, **kwargs)
+        with open(a, "ab") as fh:
+            fh.write(b"x")
+        return out
+
+    monkeypatch.setattr(_live_guard.shutil, "copyfile", _copy_then_touch_source)
+    with pytest.raises(LiveStateWriteError, match="바뀌었다"):
+        _live_guard.verified_copy(src, tmp_path / "copy.sqlite")
+
+
+def test_verified_copy_fails_on_corrupted_database(tmp_path):
+    src = _small_db(tmp_path / "src.sqlite")
+    raw = bytearray(src.read_bytes())
+    page = 4096
+    start, end = page * 2, page * 3
+    raw[start:end] = os.urandom(page)  # 데이터 페이지를 망가뜨린다
+    src.write_bytes(bytes(raw))
+    with pytest.raises(LiveStateWriteError, match="integrity"):
+        _live_guard.verified_copy(src, tmp_path / "copy.sqlite")
