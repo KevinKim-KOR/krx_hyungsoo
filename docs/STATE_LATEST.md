@@ -37,9 +37,9 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
 
 | 종류 | autosend | 상태 |
 |---|---|---|
-| `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED` |
-| `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화. **2026-09-21 23:48 장중 급등락 정책 활성화**(사용자 승인) → 첫 운영일 2026-09-22 에 조건형 알림 4건 발송, 일일 상한 4건 도달 |
-| `market_briefing` (08:00) | **`true`** | **운영 중** — `02B-2` 검증자 `VERIFIED`(2026-09-13) 후 **2026-09-15 첫 발송**. `no_change` 억제 작동 실측(09-16). 이전 판의 `false`·차단 표기는 stale 이었다 |
+| `holdings_briefing` (09:15·12:30·15:40) | **`true`** | **운영 중** — OPS-01A `CLOSED`. 2026-09-18 `02C-OPS-01` 배포부터 **변화가 없어도 슬롯마다 발송**한다(변화가 없으면 현재 상태 전체 · 선정 0건이면 `no_selection` 미발송) |
+| `holdings_risk_alert` (7틱 09:30~15:20) | **`true`** | **운영 중** — OPS-02A. 2026-09-08 활성화. **2026-09-21 23:48 장중 급등락 정책 활성화**(사용자 승인) → 첫 운영일 2026-09-22 에 조건형 알림 4건 발송, 일일 상한 4건 도달. 정기 PUSH 와 달리 **동일 위험 억제를 유지**한다 |
+| `market_briefing` (08:00) | **`true`** | **운영 중** — `02B-2` 검증자 `VERIFIED`(2026-09-13) 후 **2026-09-15 첫 발송**. 2026-09-18 `02C-OPS-01` 배포부터 **내용이 같아도 거래일마다 발송**한다. 09-16 `no_change` 미발송은 변경 전 기록이다. 이전 판의 `false`·차단 표기는 stale 이었다 |
 | ~~`spike_or_falling_alert`~~ | — | **폐지** — OPS-01C `REJECT`. cron 7건을 `holdings_risk_alert` 로 교체했다 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 유지(끄면 보유 PUSH 까지 멈춘다).
@@ -53,7 +53,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
 | **OPS-01C** 위험 evidence Gate | **`REJECT` / `DATA_GAP`** | 기존 spike 는 1개월 하락 스크리닝이고 보유와 무관 |
 | **OPS-02A** 보유 급락 알림 | **`IMPLEMENTED_OPERATIONAL`** | 커밋 `5d2614d6` · 검증자 `VERIFIED_WITH_NOTES`(메모 해소) · 사용자 목업 `APPROVED` · 배포·활성화 완료 |
 | **OPS-02B-1** 시장 입력 Gate | **`CLOSED`** | 검증 `VERIFIED_WITH_NOTES` · 커밋 `988b0494` · 설계자 최종 Gate 확정 2026-09-11. `ADOPT` / `SP500_SIGN_V1` / `SECTOR=NOT_EVALUATED` / `INDEX_LEADERSHIP=AVAILABLE` / `KOSPI_VIX_INTEGRITY=PASS` |
-| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`OPERATIONAL`** | 검증자 `VERIFIED`(r4). `app/market_briefing/` 8모듈 + 러너 배선. 목업 7종 사용자 확정. **2026-09-15 활성화·첫 발송** — 이후 매 거래일 발송, `no_change` 억제 작동 |
+| **OPS-02B-2** 08:00 시장 브리핑 메시지·운영 | **`OPERATIONAL`** | 검증자 `VERIFIED`(r4). `app/market_briefing/` 8모듈 + 러너 배선. 목업 7종 사용자 확정. **2026-09-15 활성화·첫 발송**. 2026-09-18 `02C-OPS-01` 배포부터 `no_change` 억제 없이 **내용이 같아도 거래일마다 발송**한다. 09-16 `no_change` 미발송은 변경 전 기록이다 |
 | └ **KS10-RUNNER-EVIDENCE-EXTRACTION** | **`CLOSED`** | 러너 §4 → `runner_evidence.assemble_legacy_evidence()`. 656 → **648줄**. 설계자 `PASS` |
 | **02C-OPS-01** 장중 설정 구조(사업군·대표 ETF) | **`CLOSED`** | 검증자 `VERIFIED`(r9). 자동 분류 27개 사업군 + 승인·OCI 적용 경로. 화면 「승인·적용 > 장중 급등락 설정」 |
 | **02C-OPS-02** 장중 급등락·진입 검토/회피 | **`CLOSED`** | 검증자 `VERIFIED`(2026-09-21). 판정·본문·억제·상태 저장 엔진. 신규 push_kind·cron 0 |
@@ -73,7 +73,7 @@ API·CSV 정합성 판정을 끝내고, 08:00 러너는 **외부 조회 없이**
 | 추종 ETF 표시 | 공식 `한글종목약명` · 종목코드 오름차순 **상위 3개 + 외 N개** (사용자 확정) |
 | 거래일 판정 | snapshot 우선 → 없거나 미지원·손상이면 **평일 fallback**(주말 미발송). 읽을 수 없는 실행일은 `invalid_date_kst` 로 미발송 |
 | 가격 최신성 | `MAX_STALE_TRADING_DAYS = 1`. 21거래일이 모인 것과 **최근인 것**은 다른 조건이다 |
-| 반복 억제 | fingerprint = `{전망}#{지수}` — **본문이 만들어진 뒤에만** 비교. 같으면 `no_change` 미발송 |
+| 반복 억제 | **없다**(설계자 판정 2026-09-16 `POC3-02B-OPS-03` · 2026-09-18 `02C-OPS-01` 배포부터) — 내용이 같아도 거래일마다 발송한다. fingerprint `{전망}#{지수}` 는 본문을 만든 뒤 계산해 **기록·비교용**(`content_unchanged`)으로만 쓴다. 같은 날 이미 발송된 뒤의 재실행은 registry(`duplicate_runtime`)가 막는다 |
 | 상태 저장 | Telegram **전체 성공 뒤에만**. 실패·부분전송·dry-run 은 저장하지 않는다 |
 
 **가격 격리** — `krx_etf_daily_price_unadjusted` 는 기존 `etf_daily_price` 와
@@ -112,7 +112,7 @@ DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
 | 활성 PARAM | `param-20260907T152806-255383` — `enabled_push_kinds` 4종 |
 | cron | 러너 11건 + 배치 1건. 급락 알림 7틱, spike 호출 0건. **02C-OPS-02 로 추가된 cron 0건** |
 | 발송 플래그 | `PUSH_AUTOSEND_ENABLED=true` · `HOLDINGS_BRIEFING`·`HOLDINGS_RISK_ALERT`=`true` · `MARKET_BRIEFING`=`true` · `SPIKE`=`false` (2026-09-21 실측) |
-| 장중 정책 | `enabled=false` · `policy_status=NOT_CONFIGURED` · 사업군 27개 등록됨 |
+| 장중 정책 | **`enabled=true` · `policy_status=CONFIGURED` · 사업군 27개** — 2026-09-21 23:48 사용자 승인으로 활성화(OCI 읽기 전용 실측, `02C-OPS-03` 결과서 §14-1). 첫 운영일 2026-09-22 실측: 7/7틱 · 알림 4건 · 오류 0(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`) |
 | 시장 DB | `etf_daily_price` 최신 `2026-09-18` · `krx_etf_daily_price_unadjusted` 최신 `2026-09-17` (ticker 1,175) |
 
 ### OPS-02B-1 Gate 결론 (2026-09-10)
