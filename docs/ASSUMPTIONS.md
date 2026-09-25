@@ -39,7 +39,13 @@
 - **참조**: `docs/handoff/POC2/POC2_ML_RELATIVE_UPSIDE_SCORE_V0_CONCLUSION.md`.
 
 ### Q6. 위험 감지 = 위험 구간 분류 — factor / threshold / label 을 어떻게 확정할 것인가?
-- **상태**: OPEN
+- **상태**: OPEN (운영 계약) · 연구 계약은 POC4-02B 용으로 고정 (2026-09-25)
+  ```text
+  RESEARCH_CONTRACT    = FIXED_FOR_POC4_02B
+  OPERATIONAL_CONTRACT = OPEN
+  ```
+  연구 label 과 판정 기준을 고정했을 뿐 운영 임계·PUSH 계약은 아직 확정하지 않았다.
+  연구 계약: `docs/ai_plan/POC4/POC4-02B_DOWNSIDE_EARLY_WARNING_PLAN_V1.md` (설계자 판정 2026-09-25 반영).
 - **배경**: 2026-06-06 ETF Exposure Data Unfolding 1차 — ML 방향성 2축 중
   축 2 (위험 감지 = 위험 구간 분류). 사용자 목적에 더 가까운 축이지만 본 시점
   factor / threshold / label 미확정.

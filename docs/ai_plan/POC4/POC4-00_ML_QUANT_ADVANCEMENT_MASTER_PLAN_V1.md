@@ -1,5 +1,12 @@
 # POC4-00 — ML·퀀트 고도화 현황조사 및 Master Plan V1
 
+> **설계 변경 V2 (2026-09-24 · 설계자 `DESIGN_REVISION = POC4_SEQUENCE_V2`)** — 단계 구성(§11)을 설계자 표로 교체했다.
+> POC4-02 는 02A(생존편향 측정)·02B(위험 조기감지)로 나뉘어 병렬로 열리고, POC4-03 은 RF 대 단순 모멘텀 Kill Gate,
+> POC4-04·05 는 POC4-03 PASS 전에는 열지 않는다. 정본 설계서: `docs/ai_design/POC4/POC4-02_PARALLEL_RESEARCH_TRACKS_DESIGN_V2.md`.
+> 아래 §14~§17 은 V1 계획 기록으로 남긴다(V2 로 대체). 같은 V1 기준이 남은 문장 — §12-2 마지막 문단의 "POC4-02·03",
+> §22 4번 "(POC4-02 첫 과제)", §24-1 순서 5 와 마지막 문단 — 도 V1 기록이며 §11(V2)이 우선한다. V2 에서 개선 규율 기준선은
+> POC4-01 에서 확정됐고, POC4-02 는 02A 생존편향 측정 · 02B 위험 조기감지다.
+
 ```text
 CURRENT_ACTION   = SURVEY_AND_PLAN_ONLY
 CODE_CHANGE      = 0
@@ -430,18 +437,22 @@ US500·IXIC·^SOX 는 각 10행뿐이라 사실상 사용 불가.
 
 ## 11. 단계 구성
 
-설계자 초안을 유지하되, 조사 결과로 **각 단계의 내용과 순서 근거**를 채웠다.
+**설계자 V2 표 (2026-09-24 · `POC4_SEQUENCE_V2`)** — V1 표를 교체했다.
 
-| 단계 | 이름 | 핵심 | 선행 |
-|---|---|---|---|
-| **POC4-00** | 현황조사·Master Plan | 이 문서 | — |
-| **POC4-01** | 데이터·백테스트 기반 정비 | 생존편향 · 성과지표 · embargo | 00 |
-| **POC4-02** | 기존 baseline 재현 | REJECT 결과를 회귀 기준값으로 고정 | 01 |
-| **POC4-03** | RF/XGBoost/LightGBM 비교 | 공정비교 · 과최적화 방지 | 02 · **제약 해제** |
-| **POC4-04** | 모델·PARAM 후보 자동 산출 | 버전·해시·후보 생성 | 03 |
-| **POC4-05** | 승인·OCI 전달 및 evidence 연결 | 02C 구조 재사용 | 04 |
+| 단계 | 변경 후 역할 | 상태 |
+|---|---|---|
+| **POC4-01** | 불변 기준선·테스트 격리·KRX 봉인 universe 완료 | `CLOSED` · 검증자 `VERIFIED` · 원격 `94cec4e2` |
+| **POC4-02A** | 동일 KRX 가격에서 PIT 와 최종 생존 universe 비교 | PLAN 조건부 승인(2026-09-25 `PASS_WITH_MANDATORY_AMENDMENTS`) · 결과서 제출(`MEASURED` · 결정성 확인) · 설계자 `MEASURED_ACCEPTED`(2026-09-25) · 검증 대기 |
+| **POC4-02B** | 위험 구간 조기감지 가능성 검증 | PLAN 조건부 승인(2026-09-25) · 결과서 제출(`REJECT` · 결정성 확인) · 설계자 `REJECT_ACCEPTED`(2026-09-25) · **Track B 종료** · 검증 대기 |
+| **POC4-03** | RF 대 단순 모멘텀 최종 Kill Gate | 02A·02B 판정 뒤 별도 설계 |
+| **POC4-04·05** | POC4-03 PASS 전에는 미개방 | `CONDITIONAL_NOT_OPEN` |
 
-파일명 순서는 유지한다.
+POC4-01 에서 기존 baseline 재현까지 끝났으므로 POC4-02 에서 반복하지 않는다. 판정 순서(설계자 판정 2026-09-25 §12):
+결과서 2개를 따로 제출 → 설계자가 **02B 결과를 먼저 판정** → 통과 범위만 검증자 → 그 뒤에만 POC4-03 개방 여부.
+확정 계약은 설계서 끝 `# 설계자 PLAN 판정` 절과 두 PLAN 의 확정 절에 있다.
+
+V1 표(기록): 00 현황조사 → 01 데이터·백테스트 기반 → 02 기존 baseline 재현 → 03 RF/XGBoost/LightGBM 비교 → 04 모델·
+PARAM 후보 자동 산출 → 05 승인·OCI 전달.
 
 ---
 
@@ -532,7 +543,7 @@ app/market_flow_walk_forward.py  MINIMUM_TRAIN_ROW_COUNT=756 · 고정 grid anch
 
 ---
 
-## 14. POC4-02 — 기존 baseline 재현
+## 14. POC4-02 — 기존 baseline 재현 (V1 기록 · V2 로 대체 — §11)
 
 ### 14-1. 목표
 
@@ -556,7 +567,7 @@ app/market_flow_walk_forward.py  MINIMUM_TRAIN_ROW_COUNT=756 · 고정 grid anch
 
 ---
 
-## 15. POC4-03 — RF / XGBoost / LightGBM 비교
+## 15. POC4-03 — RF / XGBoost / LightGBM 비교 (V1 기록 · V2 로 대체 — §11)
 
 ### 15-1. 공정비교 규율
 
@@ -607,7 +618,7 @@ bootstrap CI + Newey-West t  이미 구현 — block 길이 민감도 추가
 
 ---
 
-## 16. POC4-04 — 모델·PARAM 후보 자동 산출
+## 16. POC4-04 — 모델·PARAM 후보 자동 산출 (V1 기록 · V2 로 대체 — §11)
 
 ```text
 PC 가 산출       학습 → 백테스트 → 후보 PARAM(모델 종류·하이퍼파라미터·feature 집합)
@@ -620,7 +631,7 @@ POC3-02C 의 `intraday_config` 4테이블 구조를 스키마째 본뜬다.
 
 ---
 
-## 17. POC4-05 — 승인·OCI 전달 및 evidence 연결
+## 17. POC4-05 — 승인·OCI 전달 및 evidence 연결 (V1 기록 · V2 로 대체 — §11)
 
 ```text
 승인·전달   approve-and-apply + deploy() 8단계 + checksum read-back 재사용
