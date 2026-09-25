@@ -1,21 +1,29 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-24 (**POC4-01 종료 — 검증자 VERIFIED**) · 직전: 2026-09-23 02C 통합 종료 · PUSH 3_OF_3
+최종 업데이트: 2026-09-25 (**POC4-02 종료 — 검증자 VERIFIED · 02A MEASURED · 02B REJECT · Track B 종료**) · 직전: 2026-09-24 POC4-01 종료
 
 ## POC4 — ML·퀀트 고도화 (PC 연구 전용 · OCI·PUSH 영향 0)
 
 ```text
 POC4 = IN_PROGRESS
-POC4-01 데이터·백테스트 기반 정비 = CLOSED   검증자 VERIFIED 2026-09-24
-POC4-02 = 설계서 대기 — KRX 과거 universe(krx_etf_universe_v1)로 생존편향을 줄인 연구 기준선 · RESULT = RESEARCH_ONLY
+POC4-01  데이터·백테스트 기반 정비          = CLOSED   검증자 VERIFIED 2026-09-24
+POC4-02A KRX PIT 생존편향 측정              = CLOSED   MEASURED_ACCEPTED · 검증자 VERIFIED 2026-09-25
+POC4-02B 위험 구간 조기감지 기준선           = CLOSED   REJECT_ACCEPTED · 재실행 없음 · Track B 종료 · 검증자 VERIFIED 2026-09-25
+POC4-03  = 설계서 대기 — Track A 최종 Kill Gate(기존 선형 · 20일 모멘텀 · RF 사전 고정 설정 ≤3) · RF ≤ 모멘텀이면 Track A 종료
+POC4-04·05 = CONDITIONAL_NOT_OPEN (POC4-03 PASS 뒤 사용자 승인으로만)
 ```
 
 - 새 기준선 `relative_upside_v1_snap_20260921`(불변 스냅샷 · 두 번 실행 동일 · `REJECT`) · legacy 기준선 `NON_REPRODUCIBLE`.
-- KRX 과거 universe 연구 DB `krx_etf_universe_v1` 봉인 · 설계자 승인: POC4-02 연구 기준선 입력(운영 승격·배포·PUSH 사용 없음).
-- **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,013 passed). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
+- KRX 과거 universe 연구 DB `krx_etf_universe_v1` 봉인 · POC4-02 에서 공용 reader `app/krx_sealed_reader.py`(읽기 전용 ·
+  `KRX_BASEPRICE_CHAIN`)로만 읽었다(운영 승격·배포·PUSH 사용 없음).
+- **POC4-02 결과**: 02A 생존편향 효과(PIT − CONTROL)는 작고 음수 · CI 0 포함(`REDUCED_NOT_ELIMINATED` · `RESEARCH_ONLY`).
+  02B 조기감지 `REJECT` — run precision 0.282 대 반응형 0.446 · 무작위 p95 0.326 미달. 사건 정의 폐기 · Track B 재시도는 새 PLAN·새
+  사전 등록으로만.
+- **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,134 passed · 2026-09-25). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
   tmp DB·고정 fixture. 기존 229건만 읽기 전용 세션 사본(비차단 기술부채).
-- 인계: `docs/handoff/POC4-01_BASELINE_SNAPSHOT_KRX_UNIVERSE_HANDOFF_2026-09-24.md` · 결과서:
-  `docs/ai_result/POC4/POC4-01_DATA_BACKTEST_FOUNDATION_RESULT.md`
+- 인계: `docs/handoff/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md`(최신) · 결과서:
+  `docs/ai_result/POC4/POC4-02A_KRX_PIT_UNIVERSE_BIAS_RESULT.md` · `POC4-02B_DOWNSIDE_EARLY_WARNING_RESULT.md` ·
+  직전 챕터 `docs/handoff/POC4-01_BASELINE_SNAPSHOT_KRX_UNIVERSE_HANDOFF_2026-09-24.md`
 
 ## 현재 상태 (POC3)
 
@@ -2575,7 +2583,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 | --- | --- | --- | --- |
 | Q1 | OPEN | 여러 factor 를 붙일 수 있는 구조의 엔진이 될 것인가? | ASSUMPTIONS §2 |
 | Q4 | OPEN | "잘 올라가는 섹터/ETF 발굴" 작동 단위 (운영 1개월 검증 필요) | ASSUMPTIONS §2 |
-| Q6 | OPEN | 위험 감지 = "위험 구간 분류" — factor / threshold / label 어떻게 확정할 것인가? (시계열 적재 선행) | ASSUMPTIONS §2 / INTENT §9.5 |
+| Q6 | OPEN (운영) | 위험 감지 = "위험 구간 분류" — factor / threshold / label 어떻게 확정할 것인가? 연구 계약은 POC4-02B 용으로 고정(`FIXED_FOR_POC4_02B`) → 02B `REJECT` 로 종료(2026-09-25) · 운영 계약 OPEN | ASSUMPTIONS §2 / INTENT §9.5 |
 | D-1 | RESOLVED | `tests/test_three_push_contract.py::test_generate_spike_alert_via_unified_endpoint` 회귀 — Cleanup Round A 에서 해소. 원인: test isolation 누락 (runtime probe mock 없음). 수정: stub 2개 추가. 617 passed 확인. | STATE_LATEST §1 |
 | D-2 | RESOLVED | `app/market_refresh_service.py` in-memory state 재시작 소실 — 2026-06-30 D-2 SQLite 영속화 STEP 에서 해소. SSOT 를 `market_refresh_state` 테이블로 전환. 재시작 시 running → failed 정규화 + detail 보존. 627 passed. | STATE_LATEST §1 / handoff/POC2/POC2_D2_MARKET_REFRESH_STATE_SQLITE_CONCLUSION.md |
 
