@@ -1,6 +1,18 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-26 (**POC4 종료 — 설계자 RESULT 판정 ACCEPTED · POC4-03 REJECT_CLOSED · COMPLETED_RESEARCH_REJECT**) · 직전: 2026-09-25 POC4-02 종료
+최종 업데이트: 2026-09-26 (**POC5-00 MASTER PLAN 확정 · 다음 POC3 운영 정정 소형 PLAN** · 같은 날 POC4 종료 — COMPLETED_RESEARCH_REJECT) · 직전: 2026-09-25 POC4-02 종료
+
+## POC5 — 운영 신호·판단 결과 원장 (OCI 전용 원장 · 운영 러너 연결 · 현행 PUSH 동작 불변)
+
+```text
+POC5-00  MASTER PLAN            = 확정 — 설계자 PASS_WITH_MANDATORY_AMENDMENT 2026-09-26 · Q1~Q30 확정
+사용자 승인                      = OCI 전용 원장 state/decision/decision_evidence.sqlite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (2026-09-26)
+다음                            = POC3 운영 정정 소형 PLAN (PRIMARY 전 필수 7건 · 아래 POC3 절 '다음')
+그 뒤                           = POC5-01a 러너 분리 → 01 원장 → 02 outcome 성숙 → 03 PC 동기화·피드백 → 04 R0/R1
+```
+
+- 원시 결과만(성공 판정 없음) · ML 재개 아님 · 방향 적중률 없음 · PRIMARY t0 = 메시지 생성에 쓴 현재가 · `runtime_state.sqlite` 변경 0.
+- 설계서 `docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md` · PLAN `docs/ai_plan/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_PLAN_V1.md`.
 
 ## POC4 — ML·퀀트 고도화 (PC 연구 전용 · OCI·PUSH 영향 0)
 
@@ -27,8 +39,7 @@ POC4-04·05 = NOT_OPENED_BY_KILL_GATE (POC4-03 REJECT · 설계서 V2 §17 · �
   ("ML 은 영원히 쓸모없다" 가 아니다). RF_C 사후 선택 재진행 금지 · 지금 데이터에 XGBoost·LightGBM 만 추가하는 것 미승인.
 - **ML 운영 모델 · 재학습**: 현재 승격 가능한 ML 모델은 없다(`CURRENT_DEPLOYABLE_ML_MODEL = none` · 자동 승격 금지 · 승격은 사용자
   승인 필수). 주기적 재학습 요구는 폐기하지 않았다(`FUTURE_ROLLING_RETRAINING = retained requirement`) — 운용할 후보가 생긴 뒤 연다.
-- **다음(제안 · 미개방)**: 설계자 제안 `POC5-00_OPERATIONAL_SIGNAL_FEEDBACK_FOUNDATION`(가칭 · 운영 PUSH 결과 자동 채점 기반) —
-  사용자 승인 시 새 설계서부터. 남은 비차단 부채: POC4-03 검증자 메모 2건(러너를 다시 쓸 때만 보완) · smoke 폴더는 사용자 삭제 승인 전까지 보존.
+- **POC4 남은 비차단 부채**: POC4-03 검증자 메모 2건(러너를 다시 쓸 때만 보완) · smoke 폴더는 사용자 삭제 승인 전까지 보존.
 - **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,229 passed · 2026-09-26). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
   tmp DB·고정 fixture. 기존 229건만 읽기 전용 세션 사본(비차단 기술부채).
 - 인계: `docs/handoff/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md`(최신) · 결과서:
@@ -144,8 +155,12 @@ KOSPI_VIX_INTEGRITY  = PASS
 
 ### 다음
 
+**POC3 운영 정정 소형 PLAN(다음 작업)** — POC5 PRIMARY 시작 전 필수 정정 7건(설계자 판정 2026-09-26 · POC5-00 PLAN §3-1):
+기초지수 구역 복구(공식 CSV 갱신·정합성) · OCI 상태 화면의 폐지 spike 요구 · 장중 본문 '현재가 —' 확인 · 상한에 잘린 보유 급락의 당일 억제 ·
+Telegram 실패의 `no_signal` 집계 · `holdings_risk_alert.message_text_length=0` · KOSPI 09-17 정지.
+
 **`02C` 는 종료됐다**(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`).
-남은 것은 전부 **비차단 운영 항목**이다.
+02C 기준으로 남은 것은 전부 **비차단 운영 항목**이다.
 
 1. **발송 빈도 관찰** — 며칠 쌓이면 `max_sends_per_day=4` 가 적절한지 본다.
    첫날 상한 도달은 "평소 4건" 을 뜻하지 않는다. **운영 튜닝 자료**다.
