@@ -1,7 +1,7 @@
 # POC4-03 종료 인계 — RF 대 20일 모멘텀 최종 Kill Gate (REJECT_CLOSED · Track A 종료)
 
-> **최종 인계 (2026-09-26 · 검증자 `VERIFIED_WITH_NOTES` · 커밋 `aa83a621` · push 전).** 정본 증거는 결과서
-> `docs/ai_result/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_RESULT.md` 와 설계서 끝의 설계자 PLAN 판정 원문이다.
+> **최종 인계 (2026-09-26 · 설계자 RESULT 판정 `ACCEPTED` · 검증자 `VERIFIED_WITH_NOTES` · POC4 연구 종료 확정).** 정본 증거는
+> 결과서 `docs/ai_result/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_RESULT.md` 와 설계서 끝의 설계자 PLAN·RESULT 판정 원문이다.
 > 이 문서는 다음 챕터가 이어받는 데 필요한 것만 추린다.
 
 - **작성**: 개발자(VSCode Claude) · **독자**: 다음 챕터 개발자
@@ -9,15 +9,15 @@
   - 설계서 `docs/ai_design/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_DESIGN_V1.md`
   - 설계자 PLAN 판정(`PASS_WITH_MANDATORY_AMENDMENT` · 2026-09-25)
   - 검증자 `VERIFIED_WITH_NOTES`(2026-09-26)
-  - 설계자 RESULT 판정은 이 인계를 쓸 때까지 전달되지 않았다.
+  - 설계자 RESULT 판정(`ACCEPTED` · 2026-09-26) — 원문은 설계서 끝 `# 설계자 RESULT 판정`
 
 ```text
-POC4-03    CLOSED — REJECT_CLOSED · 근거 "특정 기간·설정 의존" · 실패 조건 C6 · C7 · 검증자 VERIFIED_WITH_NOTES
-           설계자 RESULT 판정 대기(kill gate 결과는 설계자 PLAN 판정 §4 가 미리 정했다)
-           Track A 종료 · POC4-04·05 미개방 · CONTROL 미실행(필수 보완 C — PIT 가 PASS 후보가 아니면 돌리지 않는다)
-POC4 전체   Track A FAIL(이번) · Track B FAIL(POC4-02B REJECT) → 설계서 V2 §18 표의 다음 = "POC4 연구 종료"
-           종료 확정과 다음 방향은 설계자·사용자가 정한다(코드는 판정만 냈다)
-커밋        aa83a621 (staged 14개 한 커밋) · push 전 — caacc42f · 73be6948 과 함께 origin/main 보다 앞서 있다
+POC4-03    CLOSED — REJECT_CLOSED · 근거 "특정 기간·설정 의존" · 실패 조건 C6 · C7
+           설계자 ACCEPTED · 검증자 VERIFIED_WITH_NOTES → 설계자 수용(VERIFIER_RESULT = VERIFIED_WITH_NOTES_ACCEPTED) (2026-09-26)
+           Track A CLOSED_REJECT · POC4-04·05 NOT_OPENED_BY_KILL_GATE · CONTROL_RUN = NOT_REQUIRED
+POC4 전체   COMPLETED_RESEARCH_REJECT — 연구 종료 확정(Track A · Track B 모두 CLOSED_REJECT · 설계서 V2 §18)
+           ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MODEL = none
+커밋        aa83a621 (기능 · staged 14개 한 커밋) · 67146218 (종료 인계) — origin/main push 완료(2026-09-26)
 OCI · PUSH · 외부 호출 · 신규 의존성 = 0 (PC 연구 전용)
 ```
 
@@ -121,7 +121,8 @@ smoke_pit_last2    비공식 smoke(마지막 2개 평가일 · official=false ·
 
 **이번 챕터 (검증자 메모 포함)**
 1. **compare 가 두 실행의 입력 지문 동일을 코드로 강제하지 않는다**(검증자 B-6). 이번 두 실행은 직접 대조로 같았다.
-   공식 실행 뒤라 "실행한 코드 = 제출 코드" 를 지키려고 고치지 않았다. 이 러너를 다시 쓰면 먼저 고친다.
+   공식 실행 뒤라 "실행한 코드 = 제출 코드" 를 지키려고 고치지 않았다. 설계자 판정: 비차단 기술부채로 유지 · 이 러너를
+   다시 쓸 때만 먼저 보완한다.
 2. **summarize 출력 폴더 검사에 02A 기준 폴더 · E2 manifest 경로가 빠져 있다**(검증자 B-6). summarize 는 실행되지 않았다.
    다시 쓰면 1번과 함께 고친다.
 3. **5분위 스프레드의 경계 동점은 종목코드 순서로 갈린다** — 판정 미사용 보고 지표다.
@@ -148,21 +149,31 @@ smoke_pit_last2    비공식 smoke(마지막 2개 평가일 · official=false ·
 
 ---
 
-## 7. 다음 사람이 바로 할 일
+## 7. 설계자 결론과 다음 사람이 바로 할 일
 
-1. 설계자에게 POC4-03 결과 · 검증 결과를 보고한다(사용자 경유). 설계서 V2 §18 에 따른 **POC4 연구 종료 확정 여부**와 다음
-   방향을 받는다.
-2. push 는 사용자가 한다 — `caacc42f` · `73be6948` · `aa83a621` · 이 종료 문서 커밋.
-3. 새 연구는 새 설계서 → 개발 PLAN(모호점 질문) → 설계자 확정 → 구현 순서다. POC4-04·05 는 번호가 있다는 이유로 열지 않는다
-   (설계서 V2 §17).
-4. 봉인 KRX 데이터를 다시 쓰면 `app/krx_sealed_reader.py` 를 수정 없이 쓴다(POC4-02 인계 §2).
+**설계자 결론** (RESULT 판정 2026-09-26 · 원문은 설계서 끝)
+- "ML 은 영원히 쓸모없다" 가 아니다. 정확한 결론은 **현재 봉인 데이터·7개 feature·현재 label·선형/RF·20일 모멘텀 비교 계약에서는
+  운영 승격 가치가 입증되지 않았다** 이다.
+- RF_C 만 사후 선택해 다시 진행하는 것은 금지(결과를 본 뒤 모델 고르기) · 지금 데이터에 XGBoost·LightGBM 만 추가하는 것도
+  승인하지 않는다.
+- **주기적 재학습 요구는 폐기하지 않았다** — `FUTURE_ROLLING_RETRAINING = retained requirement` · `STATIC_MODEL_FOREVER = false`.
+  다만 지금 자동 재학습 환경을 만들면 검증에서 탈락한 모델을 정기적으로 다시 만드는 자동화가 된다. 운용할 후보가 생긴 뒤 연다.
+  현재 승격 가능한 모델은 없다(`CURRENT_DEPLOYABLE_ML_MODEL = none` · `AUTO_PROMOTION = prohibited` ·
+  `USER_APPROVAL_ON_PROMOTION = required`).
+
+**다음 사람이 바로 할 일**
+1. POC4 는 끝났다. 설계자가 다음으로 **`POC5-00_OPERATIONAL_SIGNAL_FEEDBACK_FOUNDATION`**(가칭 · 운영 PUSH 결과 자동 채점 기반)을
+   제안했다. **사용자가 승인하면** 새 설계서부터 시작한다(설계서 → 개발 PLAN(모호점 질문) → 설계자 확정 → 구현).
+2. POC4-04·05 · CONTROL 실행 · POC4-03 코드 재작업은 없다.
+3. 봉인 KRX 데이터를 다시 쓰면 `app/krx_sealed_reader.py` 를 수정 없이 쓴다(POC4-02 인계 §2). POC4-03 러너를 다시 쓰면 §5 의
+   1·2번을 먼저 고친다.
 
 ---
 
 ## 8. 문서
 
 ```text
-설계서 · 설계자 판정   docs/ai_design/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_DESIGN_V1.md (# 설계자 PLAN 판정)
+설계서 · 설계자 판정   docs/ai_design/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_DESIGN_V1.md (# 설계자 PLAN 판정 · # 설계자 RESULT 판정)
 선행 설계            docs/ai_design/POC4/POC4-02_PARALLEL_RESEARCH_TRACKS_DESIGN_V2.md Part D §16~§18
 PLAN                 docs/ai_plan/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_PLAN_V1.md
 결과서                docs/ai_result/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_RESULT.md
@@ -175,4 +186,5 @@ Master Plan          docs/ai_plan/POC4/POC4-00_ML_QUANT_ADVANCEMENT_MASTER_PLAN_
 ## 9. 사용자 확인
 
 - 화면 확인 없음 · OCI 적용 없음(PC 연구 전용).
-- smoke 폴더 삭제 여부(§4)는 사용자 승인 사항이다.
+- smoke 폴더 삭제 여부(§4)는 사용자 승인 사항이다 — 설계자 판정도 사용자 삭제 승인 전까지 보존.
+- POC5-00 개방 여부는 사용자 승인 사항이다.

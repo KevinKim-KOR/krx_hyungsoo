@@ -4,6 +4,7 @@
 > 개발 PLAN: `docs/ai_plan/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_PLAN_V1.md`
 > **설계자 PLAN 판정(2026-09-25)** 원문은 이 문서 끝 `# 설계자 PLAN 판정` 절에 그대로 붙였다 — `PASS_WITH_MANDATORY_AMENDMENT`.
 > 본문과 다른 곳은 판정이 우선한다(RF 선택 누수 제거 · 동률·결측 규칙 · CONTROL 조건부 실행 · 경계 동점 부분 가중 · Q1~Q17 확정 · 최종 kill gate).
+> **설계자 RESULT 판정(2026-09-26)** 원문은 이 문서 끝 `# 설계자 RESULT 판정` 절에 그대로 붙였다 — `ACCEPTED` · `REJECT_CLOSED` · `POC4_STATUS = COMPLETED_RESEARCH_REJECT`.
 
 # POC4-03 설계 지시
 
@@ -333,3 +334,96 @@ PIT INCONCLUSIVE     → POC4-04·05 미개방 · Track A 종료
 ```
 
 위 내용을 PLAN과 설계서 기록에 반영한 뒤 구현에 착수하십시오. 이 반영만으로는 설계자에게 다시 돌아올 필요가 없습니다. 새 데이터 소스·RF 설정 변경·성과 확인 후 기준 변경·4시간 재초과가 발생할 때만 중단 보고하면 됩니다.
+
+---
+
+# 설계자 RESULT 판정 (2026-09-26 · 설계자 원문 · 사용자 전달)
+
+판정합니다. **POC4-03 결과를 수용하고, POC4 연구를 종료합니다.** 미완성이 아니라 정해 둔 Kill Gate까지 수행해 얻은 정상적인 음성 결과입니다.
+
+```text
+DESIGNER_RESULT       = ACCEPTED
+POC4_03               = REJECT_CLOSED
+VERIFIER_RESULT       = VERIFIED_WITH_NOTES_ACCEPTED
+TRACK_A               = CLOSED_REJECT
+TRACK_B               = CLOSED_REJECT
+POC4_STATUS           = COMPLETED_RESEARCH_REJECT
+POC4_04 / POC4_05     = NOT_OPENED_BY_KILL_GATE
+CONTROL_RUN           = NOT_REQUIRED
+ML_OPERATION_PROMOTION = NOT_APPROVED
+```
+
+## 판정 근거
+
+RF의 작은 점추정 우위는 운영 근거로 인정할 수 없습니다.
+
+* IC 차이 `+0.0018`, net25 차이 `+0.00039/월`이지만 둘 다 신뢰구간에 0 포함
+* 2022년 하나만 제외해도 두 지표 모두 음수
+* 3개 기간 중 IC와 net25가 동시에 우위인 구간 `0/3`
+* 2026년 7개 평가일을 제외하면 두 지표 모두 음수
+* 모든 모델이 절대 성과에서 KODEX200보다 낮음
+* RF_C만 사후 선택해서 다시 진행하는 것은 결과를 본 뒤 모델을 고르는 것이므로 금지
+
+검증자의 비차단 메모 2건은 이번 결과를 무효화하지 않습니다. 입력 지문은 직접 동일성을 확인했고, `summarize`는 실행되지 않았습니다. 해당 러너를 다시 쓸 때만 먼저 보완합니다.
+
+## 이것이 뜻하지 않는 것
+
+이번 결론은 **“ML은 영원히 쓸모없다”가 아닙니다.**
+
+정확한 결론은 다음과 같습니다.
+
+> 현재 봉인 데이터·7개 feature·현재 label·선형/RF·20일 모멘텀 비교 계약에서는 운영 승격 가치가 입증되지 않았다.
+
+형수님이 말씀하신 주기적 재학습 구조도 폐기하지 않습니다. 다만 지금 자동 재학습 환경을 완성하면 **검증에서 탈락한 모델을 정기적으로 다시 만드는 자동화**가 됩니다. 운용할 후보가 생긴 뒤에 여는 것이 맞습니다.
+
+```text
+STATIC_MODEL_FOREVER        = false
+FUTURE_ROLLING_RETRAINING   = retained requirement
+CURRENT_DEPLOYABLE_ML_MODEL = none
+AUTO_PROMOTION              = prohibited
+USER_APPROVAL_ON_PROMOTION  = required
+```
+
+## 다음 방향 제안
+
+다음 단계는 다른 모델 이름을 꺼내는 것이 아니라, **실제 운영 PUSH의 결과를 자동으로 채점하는 기반**이 가장 적절합니다.
+
+가칭:
+
+```text
+POC5-00_OPERATIONAL_SIGNAL_FEEDBACK_FOUNDATION
+```
+
+목표는 다음과 같습니다.
+
+* 시장 브리핑·보유 브리핑·장중 급등락이 발송될 당시 입력과 판단을 고정
+* 이후 1일·5일·20일 성과와 최대 상승·하락을 자동 결합
+* 시장 전망 방향 적중률, 진입 검토·회피 신호의 사후 결과 자동 측정
+* 사용자가 일일이 정답을 입력하지 않음
+* PC가 주기적으로 분석하고, OCI는 기존 PUSH 운영만 수행
+* 이 실전 out-of-sample 기록에서 새로운 label이나 feature 가설이 생길 때만 새 ML 연구 개방
+
+이렇게 해야 “계속 상황에 맞게 학습하는 환경”이 실제 운영 데이터와 연결됩니다. 지금 데이터에서 XGBoost나 LightGBM만 추가하는 것은 같은 우물을 더 깊게 파는 일이므로 승인하지 않습니다.
+
+## 개발자에게 줄 종료 지시
+
+```text
+POC4-03 RESULT 판정 = ACCEPTED · REJECT_CLOSED
+POC4 연구           = 종료
+POC4-04·05          = 열지 않음
+CONTROL             = 실행하지 않음
+코드 재작업          = 없음
+검증자 메모 2건      = 비차단 기술부채로 유지
+smoke 폴더           = 사용자 삭제 승인 전까지 보존
+
+문서 작업:
+1. STATE_LATEST의 “설계자 RESULT 판정 대기”를 종료 상태로 교체
+2. Master Plan에서 Track A·B 종료 및 POC4-04·05 미개방 기록
+3. 종료 인계의 설계자 대기 문구를 본 판정으로 교체
+4. 향후 rolling retraining 요구는 폐기하지 않았으나 현재 승격 모델은 없다고 기록
+
+문서만 변경하면 별도 검증자 재검증 없이 커밋·push 가능
+OCI 배포·화면 확인·PUSH 변경 없음
+```
+
+따라서 POC4 종료는 확정입니다. 다음으로는 **POC5-00 운영 신호 자동채점 기반**을 여는 것을 권합니다. 이는 형수님이 승인하면 새 설계서부터 시작하면 됩니다.

@@ -1,5 +1,8 @@
 # POC4-00 — ML·퀀트 고도화 현황조사 및 Master Plan V1
 
+> **POC4 종료 (2026-09-26 · 설계자 RESULT 판정 `ACCEPTED` · `POC4_STATUS = COMPLETED_RESEARCH_REJECT`)** — Track A·B 모두 `CLOSED_REJECT` · POC4-04·05 미개방
+> · ML 운영 승격 없음. 상세는 §11 표 아래.
+>
 > **설계 변경 V2 (2026-09-24 · 설계자 `DESIGN_REVISION = POC4_SEQUENCE_V2`)** — 단계 구성(§11)을 설계자 표로 교체했다.
 > POC4-02 는 02A(생존편향 측정)·02B(위험 조기감지)로 나뉘어 병렬로 열리고, POC4-03 은 RF 대 단순 모멘텀 Kill Gate,
 > POC4-04·05 는 POC4-03 PASS 전에는 열지 않는다. 정본 설계서: `docs/ai_design/POC4/POC4-02_PARALLEL_RESEARCH_TRACKS_DESIGN_V2.md`.
@@ -444,8 +447,14 @@ US500·IXIC·^SOX 는 각 10행뿐이라 사실상 사용 불가.
 | **POC4-01** | 불변 기준선·테스트 격리·KRX 봉인 universe 완료 | `CLOSED` · 검증자 `VERIFIED` · 원격 `94cec4e2` |
 | **POC4-02A** | 동일 KRX 가격에서 PIT 와 최종 생존 universe 비교 | PLAN 조건부 승인(2026-09-25 `PASS_WITH_MANDATORY_AMENDMENTS`) · 결과서 제출(`MEASURED` · 결정성 확인) · 설계자 `MEASURED_ACCEPTED`(2026-09-25) · 검증자 `VERIFIED`(2026-09-25) · `CLOSED` |
 | **POC4-02B** | 위험 구간 조기감지 가능성 검증 | PLAN 조건부 승인(2026-09-25) · 결과서 제출(`REJECT` · 결정성 확인) · 설계자 `REJECT_ACCEPTED`(2026-09-25) · **Track B 종료** · 검증자 `VERIFIED`(2026-09-25) · `CLOSED` |
-| **POC4-03** | RF 대 단순 모멘텀 최종 Kill Gate | `CLOSED` — `REJECT_CLOSED`(C6·C7) · Track A 종료 · CONTROL 미실행 · 검증자 `VERIFIED_WITH_NOTES`(2026-09-26) · 설계자 RESULT 판정 대기 |
-| **POC4-04·05** | POC4-03 PASS 전에는 미개방 | `NOT_OPENED` (POC4-03 REJECT · 설계서 V2 §17) |
+| **POC4-03** | RF 대 단순 모멘텀 최종 Kill Gate | `CLOSED` — `REJECT_CLOSED`(C6·C7) · Track A 종료 · CONTROL 미실행 · 검증자 `VERIFIED_WITH_NOTES` · 설계자 `ACCEPTED`(2026-09-26) |
+| **POC4-04·05** | POC4-03 PASS 전에는 미개방 | `NOT_OPENED_BY_KILL_GATE` (POC4-03 REJECT · 설계서 V2 §17) |
+
+**POC4 종료 (설계자 RESULT 판정 2026-09-26)** — `POC4_STATUS = COMPLETED_RESEARCH_REJECT`. Track A(POC4-03)·Track B(POC4-02B)
+모두 `CLOSED_REJECT` 이고, 설계서 V2 §18 표(FAIL · FAIL → POC4 연구 종료)대로 POC4-04·05 는 열지 않는다. ML 운영 승격은
+`NOT_APPROVED` 다. 주기적 재학습 요구는 폐기하지 않았으나(`FUTURE_ROLLING_RETRAINING = retained requirement`) 현재 승격 가능한
+모델은 없다(`CURRENT_DEPLOYABLE_ML_MODEL = none` · 자동 승격 금지 · 승격은 사용자 승인 필수). 판정 원문:
+`docs/ai_design/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_DESIGN_V1.md` 끝 `# 설계자 RESULT 판정`.
 
 POC4-01 에서 기존 baseline 재현까지 끝났으므로 POC4-02 에서 반복하지 않는다. 판정 순서(설계자 판정 2026-09-25 §12):
 결과서 2개를 따로 제출 → 설계자가 **02B 결과를 먼저 판정** → 통과 범위만 검증자 → 그 뒤에만 POC4-03 개방 여부.

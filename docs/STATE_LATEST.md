@@ -1,16 +1,17 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-26 (**POC4-03 종료 — REJECT_CLOSED · Track A 종료 · 검증자 VERIFIED_WITH_NOTES · 설계자 RESULT 판정 대기**) · 직전: 2026-09-25 POC4-02 종료
+최종 업데이트: 2026-09-26 (**POC4 종료 — 설계자 RESULT 판정 ACCEPTED · POC4-03 REJECT_CLOSED · COMPLETED_RESEARCH_REJECT**) · 직전: 2026-09-25 POC4-02 종료
 
 ## POC4 — ML·퀀트 고도화 (PC 연구 전용 · OCI·PUSH 영향 0)
 
 ```text
-POC4 = 연구 종료 대상 — Track A FAIL(POC4-03) · Track B FAIL(POC4-02B) → 설계서 V2 §18 표의 다음 = "POC4 연구 종료" · 종료 확정은 설계자·사용자
+POC4 = COMPLETED_RESEARCH_REJECT — 연구 종료 확정(설계자 RESULT 판정 2026-09-26) · Track A CLOSED_REJECT · Track B CLOSED_REJECT
+       ML_OPERATION_PROMOTION = NOT_APPROVED
 POC4-01  데이터·백테스트 기반 정비          = CLOSED   검증자 VERIFIED 2026-09-24
 POC4-02A KRX PIT 생존편향 측정              = CLOSED   MEASURED_ACCEPTED · 검증자 VERIFIED 2026-09-25
 POC4-02B 위험 구간 조기감지 기준선           = CLOSED   REJECT_ACCEPTED · 재실행 없음 · Track B 종료 · 검증자 VERIFIED 2026-09-25
-POC4-03  RF 대 20일 모멘텀 최종 Kill Gate    = CLOSED   REJECT_CLOSED(C6·C7) · Track A 종료 · CONTROL 미실행 · 검증자 VERIFIED_WITH_NOTES 2026-09-26 · 설계자 RESULT 판정 대기
-POC4-04·05 = NOT_OPENED (POC4-03 REJECT · 설계서 V2 §17)
+POC4-03  RF 대 20일 모멘텀 최종 Kill Gate    = CLOSED   REJECT_CLOSED(C6·C7) · Track A 종료 · CONTROL 미실행 · 검증자 VERIFIED_WITH_NOTES · 설계자 ACCEPTED 2026-09-26
+POC4-04·05 = NOT_OPENED_BY_KILL_GATE (POC4-03 REJECT · 설계서 V2 §17 · 설계자 RESULT 판정 2026-09-26)
 ```
 
 - 새 기준선 `relative_upside_v1_snap_20260921`(불변 스냅샷 · 두 번 실행 동일 · `REJECT`) · legacy 기준선 `NON_REPRODUCIBLE`.
@@ -22,6 +23,12 @@ POC4-04·05 = NOT_OPENED (POC4-03 REJECT · 설계서 V2 §17)
 - **POC4-03 결과**: RF_PRIMARY − 20일 모멘텀(PIT · 146일 paired) IC +0.0018 · net25 +0.00039/월 — 둘 다 CI 0 포함 ·
   2022 한 해만 빼도 부호 역전(C6) · 3구간 중 양쪽 우위 0(C7) · 2026년을 빼면 둘 다 음수. 여섯 모델 모두 비용 전부터 KODEX200 미달
   (top-decile gross 초과수익 전부 음수 · 전략 CAGR 편도 11.5bp RF_PRIMARY 9.16% · 모멘텀 8.14% · 선형 5.19% · KODEX200 14.56%).
+  설계자 결론: 현재 봉인 데이터·7개 feature·현재 label·선형/RF·20일 모멘텀 비교 계약에서는 운영 승격 가치가 입증되지 않았다
+  ("ML 은 영원히 쓸모없다" 가 아니다). RF_C 사후 선택 재진행 금지 · 지금 데이터에 XGBoost·LightGBM 만 추가하는 것 미승인.
+- **ML 운영 모델 · 재학습**: 현재 승격 가능한 ML 모델은 없다(`CURRENT_DEPLOYABLE_ML_MODEL = none` · 자동 승격 금지 · 승격은 사용자
+  승인 필수). 주기적 재학습 요구는 폐기하지 않았다(`FUTURE_ROLLING_RETRAINING = retained requirement`) — 운용할 후보가 생긴 뒤 연다.
+- **다음(제안 · 미개방)**: 설계자 제안 `POC5-00_OPERATIONAL_SIGNAL_FEEDBACK_FOUNDATION`(가칭 · 운영 PUSH 결과 자동 채점 기반) —
+  사용자 승인 시 새 설계서부터. 남은 비차단 부채: POC4-03 검증자 메모 2건(러너를 다시 쓸 때만 보완) · smoke 폴더는 사용자 삭제 승인 전까지 보존.
 - **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,229 passed · 2026-09-26). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
   tmp DB·고정 fixture. 기존 229건만 읽기 전용 세션 사본(비차단 기술부채).
 - 인계: `docs/handoff/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md`(최신) · 결과서:
