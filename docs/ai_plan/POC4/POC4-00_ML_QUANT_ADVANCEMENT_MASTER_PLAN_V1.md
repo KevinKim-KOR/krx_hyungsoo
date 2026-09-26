@@ -442,10 +442,10 @@ US500·IXIC·^SOX 는 각 10행뿐이라 사실상 사용 불가.
 | 단계 | 변경 후 역할 | 상태 |
 |---|---|---|
 | **POC4-01** | 불변 기준선·테스트 격리·KRX 봉인 universe 완료 | `CLOSED` · 검증자 `VERIFIED` · 원격 `94cec4e2` |
-| **POC4-02A** | 동일 KRX 가격에서 PIT 와 최종 생존 universe 비교 | PLAN 조건부 승인(2026-09-25 `PASS_WITH_MANDATORY_AMENDMENTS`) · 결과서 제출(`MEASURED` · 결정성 확인) · 설계자 `MEASURED_ACCEPTED`(2026-09-25) · 검증 대기 |
-| **POC4-02B** | 위험 구간 조기감지 가능성 검증 | PLAN 조건부 승인(2026-09-25) · 결과서 제출(`REJECT` · 결정성 확인) · 설계자 `REJECT_ACCEPTED`(2026-09-25) · **Track B 종료** · 검증 대기 |
-| **POC4-03** | RF 대 단순 모멘텀 최종 Kill Gate | 02A·02B 판정 뒤 별도 설계 |
-| **POC4-04·05** | POC4-03 PASS 전에는 미개방 | `CONDITIONAL_NOT_OPEN` |
+| **POC4-02A** | 동일 KRX 가격에서 PIT 와 최종 생존 universe 비교 | PLAN 조건부 승인(2026-09-25 `PASS_WITH_MANDATORY_AMENDMENTS`) · 결과서 제출(`MEASURED` · 결정성 확인) · 설계자 `MEASURED_ACCEPTED`(2026-09-25) · 검증자 `VERIFIED`(2026-09-25) · `CLOSED` |
+| **POC4-02B** | 위험 구간 조기감지 가능성 검증 | PLAN 조건부 승인(2026-09-25) · 결과서 제출(`REJECT` · 결정성 확인) · 설계자 `REJECT_ACCEPTED`(2026-09-25) · **Track B 종료** · 검증자 `VERIFIED`(2026-09-25) · `CLOSED` |
+| **POC4-03** | RF 대 단순 모멘텀 최종 Kill Gate | `CLOSED` — `REJECT_CLOSED`(C6·C7) · Track A 종료 · CONTROL 미실행 · 검증자 `VERIFIED_WITH_NOTES`(2026-09-26) · 설계자 RESULT 판정 대기 |
+| **POC4-04·05** | POC4-03 PASS 전에는 미개방 | `NOT_OPENED` (POC4-03 REJECT · 설계서 V2 §17) |
 
 POC4-01 에서 기존 baseline 재현까지 끝났으므로 POC4-02 에서 반복하지 않는다. 판정 순서(설계자 판정 2026-09-25 §12):
 결과서 2개를 따로 제출 → 설계자가 **02B 결과를 먼저 판정** → 통과 범위만 검증자 → 그 뒤에만 POC4-03 개방 여부.

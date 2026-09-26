@@ -1,29 +1,32 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-25 (**POC4-02 종료 — 검증자 VERIFIED · 02A MEASURED · 02B REJECT · Track B 종료**) · 직전: 2026-09-24 POC4-01 종료
+최종 업데이트: 2026-09-26 (**POC4-03 종료 — REJECT_CLOSED · Track A 종료 · 검증자 VERIFIED_WITH_NOTES · 설계자 RESULT 판정 대기**) · 직전: 2026-09-25 POC4-02 종료
 
 ## POC4 — ML·퀀트 고도화 (PC 연구 전용 · OCI·PUSH 영향 0)
 
 ```text
-POC4 = IN_PROGRESS
+POC4 = 연구 종료 대상 — Track A FAIL(POC4-03) · Track B FAIL(POC4-02B) → 설계서 V2 §18 표의 다음 = "POC4 연구 종료" · 종료 확정은 설계자·사용자
 POC4-01  데이터·백테스트 기반 정비          = CLOSED   검증자 VERIFIED 2026-09-24
 POC4-02A KRX PIT 생존편향 측정              = CLOSED   MEASURED_ACCEPTED · 검증자 VERIFIED 2026-09-25
 POC4-02B 위험 구간 조기감지 기준선           = CLOSED   REJECT_ACCEPTED · 재실행 없음 · Track B 종료 · 검증자 VERIFIED 2026-09-25
-POC4-03  = 설계서 대기 — Track A 최종 Kill Gate(기존 선형 · 20일 모멘텀 · RF 사전 고정 설정 ≤3) · RF ≤ 모멘텀이면 Track A 종료
-POC4-04·05 = CONDITIONAL_NOT_OPEN (POC4-03 PASS 뒤 사용자 승인으로만)
+POC4-03  RF 대 20일 모멘텀 최종 Kill Gate    = CLOSED   REJECT_CLOSED(C6·C7) · Track A 종료 · CONTROL 미실행 · 검증자 VERIFIED_WITH_NOTES 2026-09-26 · 설계자 RESULT 판정 대기
+POC4-04·05 = NOT_OPENED (POC4-03 REJECT · 설계서 V2 §17)
 ```
 
 - 새 기준선 `relative_upside_v1_snap_20260921`(불변 스냅샷 · 두 번 실행 동일 · `REJECT`) · legacy 기준선 `NON_REPRODUCIBLE`.
-- KRX 과거 universe 연구 DB `krx_etf_universe_v1` 봉인 · POC4-02 에서 공용 reader `app/krx_sealed_reader.py`(읽기 전용 ·
+- KRX 과거 universe 연구 DB `krx_etf_universe_v1` 봉인 · POC4-02·03 에서 공용 reader `app/krx_sealed_reader.py`(읽기 전용 ·
   `KRX_BASEPRICE_CHAIN`)로만 읽었다(운영 승격·배포·PUSH 사용 없음).
 - **POC4-02 결과**: 02A 생존편향 효과(PIT − CONTROL)는 작고 음수 · CI 0 포함(`REDUCED_NOT_ELIMINATED` · `RESEARCH_ONLY`).
   02B 조기감지 `REJECT` — run precision 0.282 대 반응형 0.446 · 무작위 p95 0.326 미달. 사건 정의 폐기 · Track B 재시도는 새 PLAN·새
   사전 등록으로만.
-- **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,134 passed · 2026-09-25). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
+- **POC4-03 결과**: RF_PRIMARY − 20일 모멘텀(PIT · 146일 paired) IC +0.0018 · net25 +0.00039/월 — 둘 다 CI 0 포함 ·
+  2022 한 해만 빼도 부호 역전(C6) · 3구간 중 양쪽 우위 0(C7) · 2026년을 빼면 둘 다 음수. 여섯 모델 모두 비용 전부터 KODEX200 미달
+  (top-decile gross 초과수익 전부 음수 · 전략 CAGR 편도 11.5bp RF_PRIMARY 9.16% · 모멘텀 8.14% · 선형 5.19% · KODEX200 14.56%).
+- **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,229 passed · 2026-09-26). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
   tmp DB·고정 fixture. 기존 229건만 읽기 전용 세션 사본(비차단 기술부채).
-- 인계: `docs/handoff/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md`(최신) · 결과서:
-  `docs/ai_result/POC4/POC4-02A_KRX_PIT_UNIVERSE_BIAS_RESULT.md` · `POC4-02B_DOWNSIDE_EARLY_WARNING_RESULT.md` ·
-  직전 챕터 `docs/handoff/POC4-01_BASELINE_SNAPSHOT_KRX_UNIVERSE_HANDOFF_2026-09-24.md`
+- 인계: `docs/handoff/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md`(최신) · 결과서:
+  `docs/ai_result/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_RESULT.md` ·
+  직전 챕터 `docs/handoff/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md`(결과서 02A · 02B)
 
 ## 현재 상태 (POC3)
 
