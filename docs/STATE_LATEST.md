@@ -250,7 +250,7 @@ KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으�
   · **종료·인계** `docs/handoff/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md`
 - **02C-OPS-03**: `docs/ai_design|ai_result/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_*`
 - **02C 통합 종료**: `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` — 첫 운영일 실측·계약 3개·운영 방법
-- **02D-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_*` · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-3**(08:00 공식 CSV) · 「장중 급등락」 절 2026-09-27 정정 · §8 KOSPI 적재 정지
+- **02D-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_*` · **인계** `docs/handoff/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`(STEP 7 절차 · 09-29 확인표 · OPS-02 범위) · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-3**(08:00 공식 CSV) · 「장중 급등락」 절 2026-09-27 정정 · §8 KOSPI 적재 정지
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
   · 프로세스 C 「배포로 지금 바뀐 동작 2건」 · §13-7(활성화 경로 부재) · 부록 A
 
