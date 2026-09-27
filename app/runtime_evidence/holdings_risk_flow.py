@@ -23,6 +23,7 @@ from app.runtime_evidence.holdings_risk import (
 )
 from app.runtime_evidence.holdings_risk_render import render_risk_alert
 from app.runtime_evidence.holdings_risk_state import (
+    LoadedRiskState,
     RiskChangeSet,
     compute_risk_changes,
     load_risk_state,
@@ -60,6 +61,9 @@ class HoldingsRiskOutcome:
     error: Optional[str] = None
     diagnostics: dict[str, Any] = field(default_factory=dict)
     save_entries: Optional[dict[str, dict[str, Any]]] = None
+    # POC3-02D-OPS-01 C4 — `save_entries` 를 만든 **이전 상태**. 통합 본문이 보유
+    # 급락을 구역 상한에서 자르면 같은 이전 상태로 저장 대상을 다시 계산한다.
+    previous_state: Optional[LoadedRiskState] = None
     # POC3-02C-OPS-02 — 장중 조립이 재계산 없이 쓰기 위해 그대로 넘긴다.
     holding_rows: list[dict[str, Any]] = field(default_factory=list)
     changes: Any = None
@@ -118,6 +122,7 @@ def build_holdings_risk_alert(
     }
 
     previous = load_risk_state(state_path, today_kst=today_kst)
+    out.previous_state = previous
     changes = compute_risk_changes(selected=selected, previous=previous)
     out.changes = changes
     out.diagnostics["risk_state_fallback"] = changes.fallback
@@ -294,10 +299,34 @@ def assemble_holdings_risk_push(
             now_kst=_now_kst(runtime_kst),
             state_path=sector_state_path or DEFAULT_SECTOR_STATE_PATH,
             slot_label=_slot_label(runtime_kst),
-            quote_asof=outcome.diagnostics.get("risk_quote_asof"),
+            # POC3-02D-OPS-01 C3 — 실행 시각(헤더 HH:MM · 구 본문 '시세' 와 같은 값).
+            # 전에는 채우는 곳이 없는 진단 키를 읽어 늘 `현재가 —` 가 나갔다(사용자
+            # 실수신 원문 2026-09-27 확인 · 설계자 R2 Q9 (a)).
+            quote_asof=format_quote_asof(runtime_kst),
             base_close_date=outcome.diagnostics.get("risk_prev_trading_day"),
             logger=logger,
         )
+        # POC3-02D-OPS-01 C4 — 저장 대상을 **본문에 실린 것** 기준으로 다시 계산한다.
+        # 구역 상한에 잘린 보유 급락을 worst 로 저장하면 한 번도 안 나간 신호가
+        # 그날 억제되고(신규), 악화 알림이 사라진다(OPS-02A · 설계 §14-2).
+        # 이번 회차 보낼 대상이 아니던 선정분(억제분)은 그대로 넣는다.
+        #
+        # `out.intraday` 대입 **전**에 계산한다. 여기서 예외가 나면 아래 격리
+        # 경로가 되어 구 본문 + 위험 상태 전체 저장이고, 사업군 발송 상태·집계는
+        # 쓰지 않는다. 대입 뒤에 계산하다 예외가 나면 구 본문이 나가는데도 사업군
+        # 신호가 발송 완료로 기록된다(`runner_evidence`).
+        carried_save: Optional[dict[str, dict[str, Any]]] = None
+        if intraday.will_send() and not intraday.daily_cap_reached:
+            carried = {getattr(i, "ticker", None) for i in intraday.plan.held_drop}
+            pending_drop = {i.ticker for i in held_drop}
+            carried_save = merge_worst(
+                selected=[
+                    i
+                    for i in outcome.selected
+                    if i.ticker in carried or i.ticker not in pending_drop
+                ],
+                previous=outcome.previous_state,
+            )
         out.intraday = intraday
         out.diagnostics.update(intraday.diagnostics)
 
@@ -318,7 +347,7 @@ def assemble_holdings_risk_push(
             out.diagnostics["intraday_skip_reason"] = intraday.skip_reason
         # 회차 집계 — **보내지 않은 회차도 센다**(설계 §8). 판정만 여기서 하고
         # 기록은 러너 Gate 뒤다(위와 같은 이유). 전송 성공 여부는 아직 모르므로
-        # 잠정값이고, 성공하면 `mark_last_tick_sent` 가 정정한다.
+        # 잠정값이고, `apply_intraday_records()` 가 최종 status 로 확정한다(C5).
         if out.intraday_records is not None:
             from app.runtime_evidence.intraday_checkup_tally import (
                 OUTCOME_FAILED,
@@ -366,10 +395,18 @@ def assemble_holdings_risk_push(
             # 통합 본문이 기존 본문을 **대체**한다. 보유 급락 내용은 그 안에
             # 「보유종목」 구역으로 들어가 있다.
             out.message_text = intraday.message_text
+            # C4 — 러너는 `outcome`(`_rasm.outcome`)의 `save_entries` 를 저장한다.
+            # `out`(`RiskAssembly`)에 넣으면 새 속성만 붙고 저장에 반영되지 않는다.
+            if carried_save is not None:
+                outcome.save_entries = carried_save
     except Exception as e:  # noqa: BLE001 - 보유 경로를 절대 막지 않는다
         if logger is not None:
             logger.warning("장중 조립 실패(격리): %s", e)
         out.diagnostics["intraday_error"] = f"{type(e).__name__}: {str(e)[:200]}"
+    # POC3-02D-OPS-01 C6 — 조립된 최종 본문(통합 또는 구 본문)의 **분할 전** 길이.
+    # 이 종류는 legacy evidence 단계를 건너뛰어 러너 초기값 0 이 남았다. 뜻은
+    # 다른 종류와 같다(`holdings_selection_flow`). 발송 여부는 status 로 본다.
+    out.diagnostics["message_text_length"] = len(out.message_text)
     return out
 
 
@@ -427,14 +464,28 @@ def apply_intraday_records(
     except Exception as e:  # noqa: BLE001 - 발송 결과를 뒤집지 않는다
         record["intraday_observation_error"] = f"{type(e).__name__}"
     try:
-        from app.runtime_evidence.intraday_checkup_tally import record_tick
+        from app.runtime_evidence.intraday_checkup_tally import (
+            OUTCOME_SEND_FAILED,
+            OUTCOME_SENT,
+            record_tick,
+        )
 
+        # POC3-02D-OPS-01 C5 — 회차 결과를 **최종 status** 로 확정한다. 조립 시점
+        # 값은 잠정값이다. pending 이 있는 failed 는 조립 뒤 발송 전 출구 4곳
+        # (금지 문구 · raw 식별자 · registry 손상 · Telegram 실패 — 실제 부분
+        # 전송도 `sent=False`)뿐이다. 잠정값(`신호 없음`·`조회 실패`)으로 두면
+        # 발송 실패가 숨는다. 부분 전송 성공은 발송 완료가 아니므로 잠정값 유지.
+        tick_outcome = pending["tick_outcome"]
+        if status == "failed":
+            tick_outcome = OUTCOME_SEND_FAILED
+        elif status == "sent" and not record.get("partial_delivery"):
+            tick_outcome = OUTCOME_SENT
         record_tick(
             pending["tally_path"],
             today_kst=pending["today_kst"],
-            outcome=pending["tick_outcome"],
+            outcome=tick_outcome,
             at_kst=pending.get("runtime_kst"),
         )
-        record["intraday_tally_outcome"] = pending["tick_outcome"]
+        record["intraday_tally_outcome"] = tick_outcome
     except Exception as e:  # noqa: BLE001
         record["intraday_tally_error"] = f"{type(e).__name__}"

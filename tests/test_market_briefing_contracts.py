@@ -10,15 +10,20 @@
 from __future__ import annotations
 
 import ast
+import csv
+import hashlib
 import inspect
+import io
 import json
 import re
+from pathlib import Path
 
 import pytest
 
 from app.market_briefing import calendar as cal
 from app.market_briefing import evidence as ev
 from app.market_briefing import flow, krx_store, meta_gate, render
+from app.market_briefing import official_csv as oc
 
 # ── fixture 헬퍼 ────────────────────────────────────────────────────────────
 
@@ -294,7 +299,10 @@ def test_distinct_asof_dates_shown_separately():
 
 
 def test_api_only_ticker_forces_csv_refresh_required():
-    """API-only 1건이면 **coverage 와 무관하게** 차단."""
+    """API-only 1건이면 **coverage 와 무관하게** 차단.
+
+    d20 정보를 넘기지 않은 호출(옛 계약)이다 — 모든 API-only 가 차단 사유다.
+    """
     api = {f"T{i}": "X" for i in range(100)}
     csv_rows = [_meta(f"T{i}", "X") for i in range(99)]
     r = meta_gate.evaluate_consistency(api_index_names=api, csv_rows=csv_rows)
@@ -341,6 +349,144 @@ def test_matched_rows_do_not_repair_names():
     assert meta_gate.matched_meta_rows(rows, {"A": "코스피 200"}) == []
 
 
+# ═══ POC3-02D-OPS-01 C1 — pending gate (설계자 Q1 (c)) ═══════════════════════
+# d20 종가가 없는 API-only 는 차단하지 않고 pending(ticker · 첫 적재일)으로
+# 남긴다. d20 종가가 있는 API-only · 지수명 불일치 · coverage 규칙은 그대로다.
+
+
+def _gate(api, csv_rows, no_d20):
+    return meta_gate.evaluate_consistency(
+        api_index_names=api, csv_rows=csv_rows, no_d20_first_loaded=no_d20
+    )
+
+
+def _pending(ticker, first_loaded):
+    return {"ticker": ticker, "first_loaded": first_loaded}
+
+
+def test_api_only_without_d20_is_pending_not_blocking():
+    api = {f"T{i}": "X" for i in range(100)}
+    csv_rows = [_meta(f"T{i}", "X") for i in range(99)]
+    # T5 도 d20 종가가 없지만 CSV 에 있다 — pending 이 아니다.
+    r = _gate(api, csv_rows, {"T99": "2026-09-15", "T5": "2026-09-15"})
+    assert r.status == meta_gate.STATUS_OK, "d20 없는 신규 ETF 가 블록을 막았다"
+    assert r.usable
+    assert r.api_only == ["T99"], "증거용 API-only 전체 목록이 바뀌었다"
+    assert r.api_only_pending == [_pending("T99", "2026-09-15")]
+
+
+def test_api_only_with_d20_still_forces_csv_refresh_required():
+    api = {f"T{i}": "X" for i in range(100)}
+    csv_rows = [_meta(f"T{i}", "X") for i in range(99)]
+    r = _gate(api, csv_rows, {})  # T99 는 d20 종가가 있다
+    assert r.status == meta_gate.STATUS_CSV_REFRESH_REQUIRED
+    assert r.api_only == ["T99"]
+    assert r.api_only_pending == []
+
+
+def test_mixed_api_only_blocks_and_still_records_pending():
+    api = {f"T{i}": "X" for i in range(100)}
+    csv_rows = [_meta(f"T{i}", "X") for i in range(98)]
+    r = _gate(api, csv_rows, {"T98": "2026-09-22"})  # T99 는 d20 종가가 있다
+    assert r.status == meta_gate.STATUS_CSV_REFRESH_REQUIRED
+    assert r.api_only == ["T98", "T99"]
+    assert r.api_only_pending == [_pending("T98", "2026-09-22")]
+
+
+def test_name_mismatch_still_blocks_with_pending_present():
+    api = {f"T{i}": "X" for i in range(101)}
+    csv_rows = [_meta(f"T{i}", "X" if i else "다른이름") for i in range(100)]
+    r = _gate(api, csv_rows, {"T100": "2026-09-15"})
+    assert r.status == meta_gate.STATUS_CSV_REFRESH_REQUIRED
+    assert r.name_mismatch == ["T0"]
+    assert r.api_only_pending == [_pending("T100", "2026-09-15")]
+
+
+@pytest.mark.parametrize(
+    "matched,new,expected",
+    [
+        (95, 5, meta_gate.STATUS_OK),  # 95/100 = 0.95 — 경계는 통과
+        (94, 6, meta_gate.STATUS_COVERAGE_BELOW_THRESHOLD),  # 0.94
+    ],
+)
+def test_pending_does_not_change_coverage_rule(matched, new, expected):
+    """분자·분모가 그대로다 — pending 도 분모(큰 쪽)에 들어간다."""
+    api = {f"T{i}": "X" for i in range(matched + new)}
+    csv_rows = [_meta(f"T{i}", "X") for i in range(matched)]
+    no_d20 = {f"T{i}": "2026-09-22" for i in range(matched, matched + new)}
+    r = _gate(api, csv_rows, no_d20)
+    assert r.exact_match_count == matched
+    assert r.join_coverage == pytest.approx(matched / (matched + new))
+    assert r.status == expected
+    assert len(r.api_only_pending) == new
+
+
+def test_oci_0925_shape_is_ok_with_pending():
+    """09-25 07:20 실측 모양 — API-only 8(모두 d20 없음) · 불일치 0 · 0.993."""
+    base = [f"{100000 + i}" for i in range(1167)]
+    new = {
+        **{t: "2026-09-15" for t in ("0227L0", "0238F0", "0239Y0", "0239Z0")},
+        **{t: "2026-09-22" for t in ("0238C0", "0240J0", "0241R0", "0242S0")},
+    }
+    api = {t: "X" for t in base + list(new)}
+    csv_rows = [_meta(t, "X") for t in base + ["465780"]]
+    r = _gate(api, csv_rows, new)
+    assert r.status == meta_gate.STATUS_OK
+    assert r.api_only == sorted(new)
+    assert r.csv_only == ["465780"] and r.name_mismatch == []
+    assert r.exact_match_count == 1167
+    assert r.join_coverage == pytest.approx(1167 / 1175)
+    # 첫 적재일 순(09-15 4종 → 09-22 4종) · 같은 날은 ticker 순.
+    order = sorted(new, key=lambda t: (new[t], t))
+    assert r.api_only_pending == [_pending(t, new[t]) for t in order]
+
+
+def test_pending_roundtrip_and_old_json_without_field(tmp_path):
+    api = {f"T{i}": "X" for i in range(100)}
+    csv_rows = [_meta(f"T{i}", "X") for i in range(99)]
+    r = _gate(api, csv_rows, {"T99": "2026-09-15"})
+    d = r.to_dict()
+    assert d["api_only_pending_count"] == 1
+    assert d["api_only_pending"] == [_pending("T99", "2026-09-15")]
+    assert d["api_only"] == ["T99"] and d["api_only_count"] == 1
+
+    p = tmp_path / "c.json"
+    meta_gate.save_consistency(r, p)
+    back = meta_gate.load_consistency(p)
+    assert back.api_only_pending == r.api_only_pending
+    assert back.status == meta_gate.STATUS_OK and back.usable
+
+    # 필드가 없던 옛 07:20 JSON 도 그대로 읽힌다(pending 0).
+    old = {k: v for k, v in d.items() if not k.startswith("api_only_pending")}
+    legacy = meta_gate.ConsistencyResult.from_dict(old)
+    assert legacy.api_only_pending == []
+    assert legacy.to_dict()["api_only_pending_count"] == 0
+
+
+def test_pending_list_is_not_truncated_and_earliest_first():
+    """pending 은 자르지 않고 첫 적재일 순이다 — 08:00 이 읽어도 수·순서가 같다.
+
+    20건에서 자르면 가장 먼저 적재된 ticker(곧 d20 을 얻어 차단으로 넘어갈
+    종목)가 08:00 진단에서 빠지고 개수도 20 으로 줄었다(검토 지적).
+    """
+    api = {f"T{i:03d}": "X" for i in range(600)}
+    csv_rows = [_meta(f"T{i:03d}", "X") for i in range(575)]
+    # ticker 번호가 클수록 먼저 적재 — ticker 순과 첫 적재일 순을 일부러 어긋나게.
+    # T575 → 08-25 … T598 → 08-02, T599 는 첫 적재일 모름(맨 뒤).
+    no_d20 = {f"T{i:03d}": f"2026-08-{(600 - i):02d}" for i in range(575, 599)}
+    no_d20["T599"] = None
+    d = _gate(api, csv_rows, no_d20).to_dict()
+    assert d["api_only_pending_count"] == 25
+    assert len(d["api_only_pending"]) == 25
+    tickers = [p["ticker"] for p in d["api_only_pending"]]
+    assert tickers[0] == "T598" and tickers[-2] == "T575" and tickers[-1] == "T599"
+    firsts = [p["first_loaded"] for p in d["api_only_pending"]]
+    assert firsts[:-1] == sorted(firsts[:-1]) and firsts[-1] is None
+    back = meta_gate.ConsistencyResult.from_dict(d).to_dict()
+    assert back["api_only_pending_count"] == 25
+    assert back["api_only_pending"] == d["api_only_pending"]
+
+
 # ═══ 계약 43 · 51~52 — snapshot 검증과 저장 ═══════════════════════════════
 
 
@@ -385,6 +531,39 @@ def test_window_requires_21_trading_days(tmp_path):
     krx_store.upsert_snapshot(rows, db_path=db)
     w = krx_store.resolve_window(db_path=db)
     assert w is not None and w.latest == "2026-09-21"
+
+
+def test_first_loaded_dates_is_min_stored_date(tmp_path):
+    """POC3-02D-OPS-01 C1 — pending 의 첫 적재일은 이 계열의 `MIN(date)` 다."""
+    db = tmp_path / "m.sqlite"
+    for bas, codes in (
+        ("20260910", ["A"]),
+        ("20260911", ["A", "B"]),
+        ("20260914", ["A", "B"]),
+    ):
+        krx_store.upsert_snapshot(
+            krx_store.validate_snapshot(
+                [_api_row(c, date=bas) for c in codes], expected_date=bas
+            ),
+            db_path=db,
+        )
+    assert krx_store.first_loaded_dates(["A", "B", "ZZZ"], db_path=db) == {
+        "A": "2026-09-10",
+        "B": "2026-09-11",
+    }
+    assert krx_store.first_loaded_dates([], db_path=db) == {}
+
+    # 창이 없을 때는 응답 전 종목(약 1,200)을 묻는다 — SQLite 변수 상한과 무관해야 한다.
+    many = [f"{100000 + i}" for i in range(1200)]
+    krx_store.upsert_snapshot(
+        krx_store.validate_snapshot(
+            [_api_row(c, date="20260915") for c in many], expected_date="20260915"
+        ),
+        db_path=db,
+    )
+    got = krx_store.first_loaded_dates(many + ["A"], db_path=db)
+    assert len(got) == 1201 and got["A"] == "2026-09-10"
+    assert set(got[c] for c in many) == {"2026-09-15"}
 
 
 def _references_adjusted_table(src: str) -> bool:
@@ -596,8 +775,18 @@ def test_flow_consumes_0720_result_only(tmp_path):
 
 
 def test_consistency_failure_blocks_index_even_with_prices(tmp_path):
+    # 오늘 창의 판정이어야 저장된 status 를 쓴다(설계자 R2 Q27) — 07:20 이 적재한
+    # 기준일 1일과 그 판정을 함께 둔다.
+    krx_store.upsert_snapshot(
+        krx_store.validate_snapshot(
+            [_api_row("069500", "20260909")], expected_date="20260909"
+        ),
+        db_path=tmp_path / "m.sqlite",
+    )
     bad = meta_gate.ConsistencyResult(
-        status=meta_gate.STATUS_CSV_REFRESH_REQUIRED, api_only=["ZZZ"]
+        status=meta_gate.STATUS_CSV_REFRESH_REQUIRED,
+        api_only=["ZZZ"],
+        **_evaluated(["2026-09-09"]),
     )
     out, _ = _assemble(tmp_path, sp500=1.0, consistency=bad)
     assert out.diagnostics["index_status"] == meta_gate.STATUS_CSV_REFRESH_REQUIRED
@@ -666,6 +855,20 @@ def test_short_name_missing_falls_back_to_count_only():
     assert render.render_products(c) == "추종 ETF 2개"
 
 
+def _evaluated(stored_days):
+    """07:20 이 `stored_days` 를 적재한 직후 남기는 판정 창(설계자 R2 Q27)."""
+    days = sorted(stored_days)
+    return {
+        "evaluated_api_basis_date": days[-1].replace("-", "") if days else None,
+        "evaluated_window_d20_date": (
+            days[-1 - krx_store.LOOKBACK_20D]
+            if len(days) >= krx_store.REQUIRED_TRADING_DAYS
+            else None
+        ),
+        "evaluated_at_kst": "2026-09-18T07:20:00+09:00",
+    }
+
+
 def _fresh_assemble(tmp_path, *, stored_days, today="2026-09-18", axis=None):
     """`stored_days` 만 적재한 상태로 조립한다."""
     db = tmp_path / "m.sqlite"
@@ -686,6 +889,7 @@ def _fresh_assemble(tmp_path, *, stored_days, today="2026-09-18", axis=None):
             csv_ticker_count=2,
             exact_match_count=2,
             join_coverage=1.0,
+            **_evaluated(stored_days),
         ),
         cpath,
     )
@@ -926,3 +1130,277 @@ def test_no_change_reason_is_no_longer_produced(tmp_path):
     )
     again, _ = _assemble(tmp_path, sp500=1.0)
     assert again.skip_reason != flow.REASON_NO_CHANGE
+
+
+# ═══ POC3-02D-OPS-01 C1 — 공용 CSV resolver (설계자 C1 필수 보완 · R2 Q25) ═════
+# 07:20 · 08:00 이 같은 함수로 `krx_etf_basic_YYYYMMDD.csv` 중 파일명 날짜가 가장
+# 늦고 검사를 통과한 파일을 고른다. 합성 파일만 쓴다 — 저장소 `state/market_meta`
+# 를 읽지 않는다.
+
+
+def _krx_rows(*codes, index_name="코스피200"):
+    rows = []
+    for c in codes:
+        r = dict.fromkeys(oc.EXPECTED_HEADER, "-")
+        r.update({"단축코드": c, "기초지수명": index_name, "한글종목약명": f"ETF {c}"})
+        rows.append(r)
+    return rows
+
+
+def _krx_csv(path, rows, *, header=oc.EXPECTED_HEADER, encoding="cp949"):
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    w.writerow(header)
+    for r in rows:
+        w.writerow([r.get(h, "") for h in header])
+    path.write_bytes(buf.getvalue().encode(encoding))
+    return path
+
+
+def _sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+class _Log:
+    def __init__(self):
+        self.warnings = []
+
+    def warning(self, msg, *args):
+        self.warnings.append(msg % args)
+
+
+def test_resolver_header_is_the_approved_17_columns():
+    assert len(oc.EXPECTED_HEADER) == 17 == len(set(oc.EXPECTED_HEADER))
+    used = {"단축코드", "기초지수명", "지수산출기관", "기초자산분류", "추적배수"}
+    assert used | {"복제방법", "한글종목약명"} <= set(oc.EXPECTED_HEADER)
+
+
+def test_resolver_picks_latest_valid_file_deterministically(tmp_path):
+    _krx_csv(tmp_path / "krx_etf_basic_20260909.csv", _krx_rows("A", "B"))
+    new = _krx_csv(tmp_path / "krx_etf_basic_20260927.csv", _krx_rows("A", "B", "C"))
+    (tmp_path / "krx_trading_days_2026.csv").write_text("date\n", encoding="utf-8")
+    sel = oc.resolve_official_csv(tmp_path)
+    assert sel.ok and sel.name == new.name and sel.path == new
+    assert sel.sha256 == _sha(new)
+    assert sel.csv_asof == "2026-09-27" and sel.rows == 3
+    assert [r["단축코드"] for r in sel.records] == ["A", "B", "C"]
+    assert sel.rejected == [] and sel.error is None
+    assert oc.resolve_official_csv(tmp_path).to_dict() == sel.to_dict()
+
+
+@pytest.mark.parametrize(
+    "make,reason",
+    [
+        # Excel 등으로 UTF-8 재저장 → cp949 로 읽히지 않는다.
+        (lambda p: _krx_csv(p, _krx_rows("A"), encoding="utf-8"), oc.REASON_DECODE),
+        (
+            lambda p: _krx_csv(p, _krx_rows("A"), header=oc.EXPECTED_HEADER[:-1]),
+            oc.REASON_COLUMNS,
+        ),
+        (lambda p: _krx_csv(p, _krx_rows("A", "A")), oc.REASON_DUPLICATE_TICKER),
+        (
+            lambda p: _krx_csv(p, _krx_rows("A") + _krx_rows("B", index_name=" ")),
+            oc.REASON_EMPTY_INDEX_NAME,
+        ),
+    ],
+)
+def test_resolver_falls_back_to_previous_valid_when_latest_fails(
+    tmp_path, make, reason
+):
+    """R2 Q25 (a) — 최신 파일이 검사에 걸리면 직전의 최신 유효 파일을 쓴다."""
+    good = _krx_csv(tmp_path / "krx_etf_basic_20260909.csv", _krx_rows("A"))
+    bad = tmp_path / "krx_etf_basic_20260927.csv"
+    make(bad)
+    log = _Log()
+    sel = oc.resolve_official_csv(tmp_path, logger=log)
+    assert sel.ok and sel.name == good.name, "직전 유효 파일로 내려가지 않았다"
+    assert [(r.name, r.sha256, r.reason) for r in sel.rejected] == [
+        (bad.name, _sha(bad), reason)
+    ]
+    assert len(log.warnings) == 1
+    assert bad.name in log.warnings[0] and reason in log.warnings[0]
+    assert sel.to_dict()["rejected"][0]["sha256"] == _sha(bad)
+
+
+def test_resolver_rejects_data_row_with_wrong_field_count(tmp_path):
+    """헤더는 17컬럼 그대로인데 데이터 한 행만 16필드 → `columns` 로 거부."""
+    good = _krx_csv(tmp_path / "krx_etf_basic_20260909.csv", _krx_rows("A"))
+    bad = _krx_csv(tmp_path / "krx_etf_basic_20260927.csv", _krx_rows("A", "B"))
+    lines = bad.read_bytes().decode("cp949").split("\n")
+    lines[2] = lines[2].rsplit(",", 1)[0]  # 3번째 줄(B) 마지막 필드 제거
+    bad.write_bytes("\n".join(lines).encode("cp949"))
+    assert lines[0].split(",") == list(oc.EXPECTED_HEADER)
+    assert [len(x.split(",")) for x in lines[1:3]] == [17, 16]
+
+    chk = oc.check_file(bad)
+    assert not chk.ok and chk.reason == oc.REASON_COLUMNS
+    assert chk.detail == "line 3: 16"
+    sel = oc.resolve_official_csv(tmp_path)
+    assert sel.name == good.name
+    assert [(r.name, r.reason) for r in sel.rejected] == [(bad.name, oc.REASON_COLUMNS)]
+
+
+def test_resolver_rejects_duplicate_date_group_and_bad_names(tmp_path):
+    """같은 날짜 묶음은 통째로 무효 · 날짜를 못 읽는 이름도 거부한다."""
+    good = _krx_csv(tmp_path / "krx_etf_basic_20260909.csv", _krx_rows("A"))
+    dup_a = _krx_csv(tmp_path / "krx_etf_basic_20260927.csv", _krx_rows("A", "B"))
+    dup_b = _krx_csv(tmp_path / "krx_etf_basic_20260927 (1).csv", _krx_rows("A"))
+    no_day = _krx_csv(tmp_path / "krx_etf_basic_20260231.csv", _krx_rows("A"))
+    no_date = _krx_csv(tmp_path / "krx_etf_basic_latest.csv", _krx_rows("A"))
+    loose = _krx_csv(tmp_path / "krx_etf_basic_20260910_v2.csv", _krx_rows("A"))
+    log = _Log()
+    sel = oc.resolve_official_csv(tmp_path, logger=log)
+    assert sel.name == good.name
+    expected = {
+        dup_a.name: oc.REASON_DUPLICATE_DATE,
+        dup_b.name: oc.REASON_DUPLICATE_DATE,
+        no_day.name: oc.REASON_DATE_PARSE,
+        no_date.name: oc.REASON_DATE_PARSE,
+        loose.name: oc.REASON_NAME_PATTERN,
+    }
+    assert {r.name: r.reason for r in sel.rejected} == expected
+    assert [r.name for r in sel.rejected] == sorted(expected)
+    assert all(r.sha256 == _sha(tmp_path / r.name) for r in sel.rejected)
+    assert len(log.warnings) == len(expected)
+
+
+def test_resolver_without_valid_file_fails_closed(tmp_path):
+    none = oc.resolve_official_csv(tmp_path / "missing_dir")
+    assert not none.ok and none.error == oc.ERROR_NO_VALID_FILE
+    assert none.records == [] and none.rejected == []
+    bad = _krx_csv(tmp_path / "krx_etf_basic_20260927.csv", _krx_rows("A", "A"))
+    sel = oc.resolve_official_csv(tmp_path)
+    assert not sel.ok and sel.name is None and sel.sha256 is None
+    assert sel.error == oc.ERROR_NO_VALID_FILE
+    assert [(r.name, r.reason) for r in sel.rejected] == [
+        (bad.name, oc.REASON_DUPLICATE_TICKER)
+    ]
+
+
+def test_fixed_20260909_consumers_do_not_use_resolver():
+    """R2 · Q3 — 장중 설정 · 02B-1 재현 · 장중 역검증은 `20260909` 고정이다."""
+    from app.intraday_config import generator
+
+    root = Path(__file__).resolve().parents[1]
+    assert generator.DEFAULT_CSV == Path("state/market_meta/krx_etf_basic_20260909.csv")
+    for rel in (
+        "app/intraday_config/generator.py",
+        "scripts/ops02b1_gate/reproduce.py",
+        "scripts/ops02c/reverse_verify_guards.py",
+    ):
+        src = (root / rel).read_text(encoding="utf-8")
+        assert "krx_etf_basic_20260909.csv" in src, rel
+        assert not re.search(r"\bofficial_csv\b", src), rel
+
+
+# ── R2 Q23 — refresh_due · 주기 ──────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("count,remaining,due", [(15, 6, False), (16, 5, True)])
+def test_refresh_due_boundary_on_earliest_pending(count, remaining, due):
+    api = {f"T{i}": "X" for i in range(100)}
+    csv_rows = [_meta(f"T{i}", "X") for i in range(98)]
+    r = meta_gate.evaluate_consistency(
+        api_index_names=api,
+        csv_rows=csv_rows,
+        api_basis_date="20260917",
+        no_d20_first_loaded={"T98": "2026-08-25", "T99": "2026-09-15"},
+        stored_day_counts={"T98": count, "T99": 3},
+    )
+    assert r.status == meta_gate.STATUS_OK
+    assert r.api_only_pending == [
+        {
+            "ticker": "T98",
+            "first_loaded": "2026-08-25",
+            "stored_trading_day_count": count,
+            "remaining_trading_days": remaining,
+        },
+        {
+            "ticker": "T99",
+            "first_loaded": "2026-09-15",
+            "stored_trading_day_count": 3,
+            "remaining_trading_days": 18,
+        },
+    ]
+    meta_gate.apply_refresh_due(r, previous=None)
+    assert r.refresh_due is due
+    assert r.refresh_due_reason == (meta_gate.REFRESH_REASON_PENDING if due else None)
+    assert r.refresh_due_cycle_id == ("20260917" if due else None)
+
+
+def test_refresh_due_remaining_never_negative_and_csv_required_alone():
+    api = {f"T{i}": "X" for i in range(100)}
+    r = meta_gate.evaluate_consistency(
+        api_index_names=api,
+        csv_rows=[_meta(f"T{i}", "X") for i in range(99)],
+        no_d20_first_loaded={"T99": "2026-08-01"},
+        stored_day_counts={"T99": 30},
+    )
+    assert r.api_only_pending[0]["remaining_trading_days"] == 0
+    blocked = _gate(api, [_meta(f"T{i}", "X") for i in range(99)], {})
+    assert blocked.status == meta_gate.STATUS_CSV_REFRESH_REQUIRED
+    assert blocked.api_only_pending == []
+    meta_gate.apply_refresh_due(blocked, previous=None)
+    assert blocked.refresh_due is True
+    assert blocked.refresh_due_reason == meta_gate.REFRESH_REASON_CSV
+    quiet = _gate(api, [_meta(f"T{i}", "X") for i in range(100)], {})
+    meta_gate.apply_refresh_due(quiet, previous=None)
+    assert (quiet.refresh_due, quiet.refresh_due_reason) == (False, None)
+    assert quiet.refresh_due_cycle_id is None
+
+
+def test_refresh_due_cycle_id_carries_resets_and_renews():
+    """R2 Q24 — `false → true` 가 된 주기마다 새 id · due 가 이어지면 같은 id."""
+
+    def _verdict(basis, due, prev):
+        r = meta_gate.ConsistencyResult(
+            status=(
+                meta_gate.STATUS_CSV_REFRESH_REQUIRED if due else meta_gate.STATUS_OK
+            ),
+            api_basis_date=basis,
+            evaluated_api_basis_date=basis,
+        )
+        meta_gate.apply_refresh_due(r, previous=prev)
+        return r
+
+    first = _verdict("20260917", True, None)
+    second = _verdict("20260918", True, first)
+    off = _verdict("20260921", False, second)
+    again = _verdict("20260922", True, off)
+    assert first.refresh_due_cycle_id == second.refresh_due_cycle_id == "20260917"
+    assert (off.refresh_due, off.refresh_due_cycle_id) == (False, None)
+    assert again.refresh_due_cycle_id == "20260922"
+    back = meta_gate.ConsistencyResult.from_dict(second.to_dict())
+    assert (back.refresh_due, back.refresh_due_cycle_id) == (True, "20260917")
+    old = meta_gate.ConsistencyResult.from_dict({"status": meta_gate.STATUS_OK})
+    assert (old.refresh_due, old.refresh_due_cycle_id) == (False, None)
+
+
+# ── R2 Q27 — 저장된 판정이 오늘 창의 것인가 ───────────────────────────────────
+
+
+def test_verdict_window_check_normalizes_dates_and_fails_closed():
+    r = meta_gate.ConsistencyResult(
+        status=meta_gate.STATUS_OK,
+        evaluated_api_basis_date="20260917",
+        evaluated_window_d20_date="2026-08-20",
+        evaluated_at_kst="2026-09-18T07:20:05+09:00",
+    )
+    check = meta_gate.verdict_stale_reason
+    assert check(r, latest="2026-09-17", d20="2026-08-20") is None
+    assert check(r, latest="20260917", d20="20260820") is None
+    assert check(r, latest="2026-09-18", d20="2026-08-20") == "api_basis_date_mismatch"
+    assert check(r, latest="2026-09-17", d20="2026-08-21") == "window_d20_mismatch"
+    assert check(r, latest="2026-09-17", d20=None) == "window_d20_mismatch"
+    old = meta_gate.ConsistencyResult.from_dict(
+        {k: v for k, v in r.to_dict().items() if not k.startswith("evaluated_")}
+    )
+    assert check(old, latest="2026-09-17", d20="2026-08-20") == (
+        "evaluated_window_missing"
+    )
+    short = meta_gate.ConsistencyResult(
+        status=meta_gate.STATUS_OK,
+        evaluated_api_basis_date="20260917",
+        evaluated_at_kst="2026-09-18T07:20:05+09:00",
+    )
+    assert check(short, latest="2026-09-17", d20=None) is None  # 21일 미만끼리

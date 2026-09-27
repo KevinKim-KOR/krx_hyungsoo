@@ -46,6 +46,12 @@ def _install_telegram_and_registry_spies(monkeypatch, tmp_path: Path):
     # history JSONL 도 tmp 로 리다이렉트해서 실제 파일 오염 방지.
     monkeypatch.setattr(runner, "_HISTORY_PATH", tmp_path / "history.jsonl")
 
+    # 시장 브리핑 거래일 Gate 가 저장소 `state/market_meta` 캘린더를 읽지 않게
+    # 빈 tmp 폴더(평일 fallback)로 둔다. 공식 CSV 폴더는 conftest 가 격리한다.
+    from app.market_briefing import calendar as _cal
+
+    monkeypatch.setattr(_cal, "CALENDAR_DIR", tmp_path / "no_calendar")
+
     return telegram_calls
 
 

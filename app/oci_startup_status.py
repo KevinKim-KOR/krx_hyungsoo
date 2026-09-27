@@ -105,10 +105,13 @@ def _ssh_read(remote_cmd: str) -> tuple[bool, str]:
 # crontab 에 등록되어 있어야 하는 필수 push-kind(설계·crontab 실측 기준).
 #   이 중 하나라도 crontab 에서 빠지면 "일부 스케줄 누락" 으로 구분한다
 #   (검증자 B-6: runner 한 줄만 있어도 OPERATING 으로 판정하던 문제 정정).
+#   POC3-02D-OPS-01 C2: 운영 3종(시장·보유·장중 급등락)으로 교체. spike 는 폐지됐고
+#   2026-09 cron 교체(OPS-02A)로 spike 줄이 holdings_risk_alert 로 바뀌었다.
+#   목록 밖 kind(다시 생긴 spike 줄 등)는 판정에서 무시한다.
 _REQUIRED_PUSH_KINDS = (
     "market_briefing",
     "holdings_briefing",
-    "spike_or_falling_alert",
+    "holdings_risk_alert",
 )
 
 

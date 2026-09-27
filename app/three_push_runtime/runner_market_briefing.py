@@ -24,8 +24,9 @@ from app.three_push_runner_common import STATE_DIR
 
 PUSH_KIND = "market_briefing"
 
+# 공식 CSV 는 이 폴더에서 07:20 과 **같은 resolver** 가 고른다(POC3-02D-OPS-01
+# C1 · Q2). 파일명 상수로 고르지 않는다.
 MARKET_META_DIR = Path("state/market_meta")
-OFFICIAL_ETF_CSV = "krx_etf_basic_20260909.csv"
 
 # 전망 근거로 쓰는 미국 benchmark. 방향은 S&P500 **하나만** 결정한다.
 SP500_BENCHMARK = "US500"
@@ -83,11 +84,12 @@ def assemble(
         runtime_kst=runtime_kst,
         state_path=sdir / flow.STATE_NAME,
         consistency_path=sdir / meta_gate.CONSISTENCY_STATE_NAME,
-        official_csv_path=mdir / OFFICIAL_ETF_CSV,
+        meta_dir=mdir,
         sp500_return_pct=ret,
         sp500_asof=asof,
         sp500_fresh=fresh,
         db_path=db_path,
+        logger=logger,
     )
     record.update(outcome.diagnostics)
     record["message_text_length"] = len(outcome.message_text)
@@ -126,6 +128,9 @@ def save_state_after_send(
 
     저장 실패를 발송 실패로 기록하지 않는다 — 발송 사실과 저장 실패를 **분리**해
     남긴다(설계 §6).
+
+    CSV 갱신 안내를 보낸 주기(R2 Q24)도 여기서만 남긴다 — 전체 성공이 아니면
+    다음 실제 발송에 다시 붙는다.
     """
     if outcome is None or not outcome.fingerprint:
         return
@@ -136,6 +141,7 @@ def save_state_after_send(
             fingerprint=outcome.fingerprint,
             sent_date_kst=today_kst,
             runtime_kst=runtime_kst,
+            refresh_notice_cycle_id=outcome.refresh_notice_cycle_id,
         )
     except Exception as e:  # noqa: BLE001
         if record is not None:
@@ -147,7 +153,6 @@ def save_state_after_send(
 
 __all__ = [
     "MARKET_META_DIR",
-    "OFFICIAL_ETF_CSV",
     "PUSH_KIND",
     "SP500_BENCHMARK",
     "assemble",

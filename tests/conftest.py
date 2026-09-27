@@ -259,12 +259,21 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
     iso = Path(tmp_path) / "three_push"
     iso.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(_mb, "STATE_DIR", iso)
+    # POC3-02D-OPS-01 C1 — 공식 CSV 폴더(`MARKET_META_DIR`, 상대경로)도 격리한다.
+    # 격리하지 않으면 경로를 넘기지 않은 테스트가 거래일에 저장소
+    # `state/market_meta` 의 실제 CSV 를 resolver 로 읽는다. 격리 폴더에는 공식
+    # CSV 가 없다 — 필요한 테스트는 자기 `meta_dir` 을 넘긴다.
+    monkeypatch.setattr(_mb, "MARKET_META_DIR", iso)
 
     # 07:20 배치는 `STATE_DIR` 를 **호출 시점에** 읽어 정합성 결과를 쓴다
     # (`run_oci_market_data_batch` 가 유일). 원본 상수도 같이 격리한다.
     import app.three_push_runner_common as _common
 
     monkeypatch.setattr(_common, "STATE_DIR", iso)
+    # 07:20 배치의 공식 CSV 폴더도 같이. import 해도 `.env` 를 읽지 않는다.
+    import scripts.run_oci_market_data_batch as _batch
+
+    monkeypatch.setattr(_batch, "MARKET_META_DIR", iso)
 
     # 장중 경로는 `holdings_risk_flow` 의 모듈 상수로 경로를 푼다. 호출 시점에
     # 읽으므로 그 모듈 자체를 격리해야 막힌다.

@@ -39,8 +39,17 @@ OUTCOME_SENT = "sent"
 OUTCOME_SUPPRESSED = "suppressed"
 OUTCOME_NO_SIGNAL = "no_signal"
 OUTCOME_FAILED = "failed"
+# POC3-02D-OPS-01 C5 — 조립 뒤 발송 전 failed 출구(Telegram 실패 등). `조회 실패`
+# (조회·평가 실패)와 뜻이 달라 따로 센다. 스키마는 v1 그대로 — 값만 늘었다.
+OUTCOME_SEND_FAILED = "send_failed"
 
-VALID_OUTCOMES = (OUTCOME_SENT, OUTCOME_SUPPRESSED, OUTCOME_NO_SIGNAL, OUTCOME_FAILED)
+VALID_OUTCOMES = (
+    OUTCOME_SENT,
+    OUTCOME_SUPPRESSED,
+    OUTCOME_NO_SIGNAL,
+    OUTCOME_FAILED,
+    OUTCOME_SEND_FAILED,
+)
 
 
 @dataclass
@@ -51,6 +60,7 @@ class Tally:
     no_signal: int = 0
     failed: int = 0
     unknown: bool = False
+    send_failed: int = 0
 
 
 def load_tally(path: Path, *, today_kst: Optional[str] = None) -> Tally:
@@ -83,6 +93,8 @@ def load_tally(path: Path, *, today_kst: Optional[str] = None) -> Tally:
             t.no_signal += 1
         elif o == OUTCOME_FAILED:
             t.failed += 1
+        elif o == OUTCOME_SEND_FAILED:
+            t.send_failed += 1
     return t
 
 
@@ -159,6 +171,7 @@ def render_summary_line(tally: Tally) -> str:
         suppressed=tally.suppressed,
         no_signal=tally.no_signal,
         failed=tally.failed,
+        send_failed=tally.send_failed,
         unknown=tally.unknown,
     )
 
@@ -166,6 +179,7 @@ def render_summary_line(tally: Tally) -> str:
 __all__ = [
     "OUTCOME_FAILED",
     "OUTCOME_NO_SIGNAL",
+    "OUTCOME_SEND_FAILED",
     "OUTCOME_SENT",
     "OUTCOME_SUPPRESSED",
     "SCHEMA_VERSION",

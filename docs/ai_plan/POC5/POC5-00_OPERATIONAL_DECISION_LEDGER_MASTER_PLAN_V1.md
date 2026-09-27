@@ -5,6 +5,7 @@ STEP            = POC5-00 MASTER PLAN · 사실조사 (설계 §8 · §10)
 DESIGN          = docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md
 PLAN_DECISION   = PASS_WITH_MANDATORY_AMENDMENT (설계자 2026-09-26) · Q1~Q30 확정(§4) · 확정 계약 §2
 USER_APPROVAL   = OCI 전용 원장 SQLite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (사용자 2026-09-26)
+SUPPLEMENT      = 설계자 보완 판정 2026-09-26 — 남은 5건 확정(§2 반영) · LEGACY_OUTCOME_BACKFILL = PROHIBITED
 IMPLEMENTATION  = POC3 운영 정정 소형 PLAN → POC5-01a → 01 → 02 → 03 → 04 (단계마다 짧은 PLAN · §3)
 이번 조사의 변경   = 코드 · DB · cron · flag · OCI · Telegram 변경 0 (OCI 는 읽기 명령만 · 과거 신호 뒤 수익률은 열지 않음)
 
@@ -428,8 +429,9 @@ RUNTIME_STATE_DB_CHANGE   = 0
 - **PC**: 이미 있는 `state/decision/decision_evidence.sqlite` 에 원장 사본 · 피드백 테이블을 추가한다. 새 PC DB 는 만들지 않는다.
 - **사용자 승인(2026-09-26)**: OCI 전용 SQLite 생성 · PC 기존 파일 테이블 추가.
 - 분할 전 전문과 SHA-256 을 모두 보존한다. 파일 권한과 DB 접근은 로컬 사용자로 한정한다(Q9).
-- OCI 원장과 PC 사본이 같은 상대 경로를 쓴다. 그래서 PC 에서 러너가 실행돼도 원장에 쓰지 않게 하는 장치가 필요하다(개발자 안 · OCI 전용 쓰기 가드 등).
-  PC 사본 테이블은 POC5-03 동기화로만 채운다. 방식은 POC5-01 PLAN 에서 정한다. 근거: PC `runtime_state.sqlite` 의 출처 불명 12행이 PC 쪽 send 실행 흔적이었다(§1-10).
+- OCI 원장과 PC 사본이 같은 상대 경로를 쓴다. **확정(보완 판정)**: 러너의 원장 쓰기는 기본 비활성이다.
+  기존 OCI 역할 표식이 있으면 재사용하고, 없으면 전용 환경 플래그를 추가해 **OCI + send 모드에서만** 기록한다. hostname 추정은 금지다.
+  PC 실행 시 원장 쓰기 0건을 테스트로 고정한다. PC 사본 테이블은 POC5-03 동기화로만 채운다(근거: PC `runtime_state.sqlite` 출처 불명 12행 · §1-10).
 - 참고 사실(구현 PLAN 입력):
   - `.gitignore` 263~266행이 `state/decision/decision_evidence.sqlite` 와 `-journal` · `-wal` · `-shm` 을 이미 무시한다.
   - PC `app/decision_evidence_store.py` 는 경로(`DEFAULT_DB_PATH`, 31행)를 함수 정의 시점 기본값으로 묶는다.
@@ -509,18 +511,18 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
   - 성공 임계는 없다. kind · state · contract_version · horizon 별 원시 분포를 보고한다.
   - Q19: 같은 상태의 반복 노출은 보조(SECONDARY) 기록이다. 신규 진입 · 구간 악화 · 회복 뒤 재진입이 PRIMARY 전이 이벤트다.
   - Q29: 같은 종목 · 같은 상태 · 같은 날은 첫 노출을 PRIMARY, 반복은 SECONDARY 로 둔다. 악화 · 회복 뒤 재진입은 새 사건이다.
-  - 두 규칙은 **여러 날 이어지는 같은 상태**(예: 보유 RECENT_DECLINE 이 며칠 연속 노출)에서 갈린다.
-    둘째 날 이후 첫 노출이 Q29 로는 PRIMARY, Q19 로는 보조다. 이 경우의 규칙은 POC5-01 PLAN 에서 설계자에게 확인한 뒤 확정한다(§2-3 exposure).
+  - **확정(보완 판정)** — 여러 날 이어지는 같은 상태: 상태 진입 · 악화 · 회복 뒤 재진입만 PRIMARY 다.
+    같은 상태가 다음 날 반복되면 secondary exposure 이고, 같은 날에도 같은 상태는 첫 노출만 PRIMARY 다(§2-3 exposure).
   - 잘림 · 억제는 관측 모수에는 포함하고, 전달 효과 모수에서는 뺀다.
 - 운영 결과 · 과거 수익률은 계속 열지 않는다(설계자 판정). 결과는 R0 · R1 절차(§2-7 · Q28)로만 보고한다.
-- legacy 진단 backfill 에 가격 결과 계산 · 열람이 들어가는지와 그 조건은 POC5-02 PLAN 에서 설계자에게 확인한다. 그 전까지 legacy 가격 결과는 계산 · 열람하지 않는다.
+- **확정(보완 판정)**: 과거 가격 결과는 계산하지 않는다. legacy 는 실행 연결 · 건수 진단만 허용하고, 과거 종목별 outcome backfill 은 금지다(`LEGACY_OUTCOME_BACKFILL = PROHIBITED`).
 
 ### 2-7. cohort · 리뷰 (Q1 · Q28 · Q30)
 
 - **LEGACY_DIAGNOSTIC**:
   - 과거 실행 단위 연결은 허용한다(DB `run_id` · `(push_kind, started_at)` 정확 일치). 과거 종목 단위는 `UNLINKABLE_LEGACY` 다(Q1).
   - spike 는 legacy 에서도 제외하고, 운영 3종만 허용한다(Q30).
-  - legacy 버전과 결과는 진단 전용이고, PRIMARY 통계에 섞지 않는다. legacy 가격 결과의 계산 · 열람 여부는 §2-6 대로 POC5-02 PLAN 에서 확인한다.
+  - legacy 버전과 실행 연결 · 건수는 진단 전용이고, PRIMARY 통계에 섞지 않는다. 과거 가격 결과는 계산하지 않는다(§2-6 · 보완 판정).
 - **PRIMARY_LIVE**(Q28): PRIMARY 시작 전 운영 정정(§3-1)과 POC5-01 코드 pull 이 끝난 뒤, 첫 KRX 거래일부터다.
   시작일과 근거(OCI reflog)는 원장 메타에 기록한다.
 - **R0**: PRIMARY 10거래일 뒤 수집 점검을 한다(연결 · gap · 결측 · 현행 PUSH 회귀). 신호 효과 결론은 내지 않는다.
@@ -529,9 +531,9 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 ### 2-8. PC 동기화 · 피드백 (Q3 · Q21 ~ Q24)
 
 - **동기화**(Q21):
-  - 원장 화면을 열 때 1회 동기화하고, 수동 새로고침 버튼을 둔다. PC 전체 기동 시 자동 SSH 조회는 하지 않는다.
-  - 주의: 원장 구역이 PC 첫 기본 화면(「오늘의 투자 점검」 · `MainPanel` 기본값)에 들어간다. 그래서 구역 렌더만으로 동기화하면 PC 를 켤 때마다 SSH 가 돈다.
-    동기화를 무엇으로 시작할지(`신호 결과 원장` 펼침 · 버튼 등)는 POC5-03 PLAN 에서 설계자에게 확인한 뒤 확정한다.
+  - Q21 은 '원장 화면을 열 때 1회 동기화 + 수동 새로고침'이었으나, 보완 판정으로 좁혀졌다(아래 확정).
+  - **확정(보완 판정)**: PC 기동 · 첫 화면 진입 때 자동 SSH 는 금지다. 로컬 캐시를 보여 주고, 사용자가 `원장 새로고침` 을 눌렀을 때만 동기화한다.
+    (원장 구역이 PC 첫 기본 화면 「오늘의 투자 점검」 에 들어가기 때문이다.)
   - 방식은 OCI 측 읽기 전용 export 를 SSH 로 실행해 행을 받는 것이다. 선례는 `sync_intraday_config._remote_active` 다. 세부는 POC5-03 PLAN 에서 정한다.
   - PC 사본 upsert 키: run · delivery = `event_id` · item = `(event_id, item_seq)` · outcome = `(event_id, item_seq, horizon)`.
 - **화면**(Q23): 「오늘 확인 > 오늘의 투자 점검」 안에 새 구역 **`받은 알림 기록`** 을 두고, 상세 접기 영역은 **`신호 결과 원장`** 이다.
@@ -547,7 +549,8 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 - POC5 가 기존 `Decision Outcome Ledger` 미결 항목(POC3-00 지도 P-19 · `docs/MASTER_PLAN.md` 5번)을 이어받아 완성한다.
 - 별도 중복 원장은 만들지 않는다.
 - 기존 선행 gate 가 있다: POC3-00 지도 P-19 'First Real Decision Cycle formal PASS 와 실제 판단 1건 기록 후' · S-05 'Decision Outcome Ledger 선행 진입 금지 유지' ·
-  `docs/MASTER_PLAN.md` canonical 순서 3 → 5. 개발자는 이 gate 가 Q27 로 대체됐다고 읽는다 — 해석이 맞는지 POC5-01 PLAN 에서 설계자에게 확인한다.
+  `docs/MASTER_PLAN.md` canonical 순서 3 → 5. **확정(보완 판정)**: 이번 POC5 승인으로 superseded 다.
+  POC5 가 First Real Decision Cycle 을 만들어 내는 단계이므로 그 통과를 POC5 선행조건으로 둘 수 없다.
 - 두 기존 문서의 표기 정리와 KS-11(결정 변경 근거 기록)은 POC5-01 PLAN 에서 함께 제안한다.
 
 ---
@@ -572,8 +575,8 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 |---|---|---|---|
 | 2 | POC5-01a 러너 기계 분리 | 동작 · 문구 · 순서 불변 · KS-10 선제 | 기존 러너 테스트 전부 · 본문 byte 동일 |
 | 3 | POC5-01 운영 원장 | OCI 전용 원장 DB · 실행 진입 `event_id` · 초기 행 · 최외곽 종료 확정 · gap · flow additive payload · 비선정 결과 · 계약 버전 상수 · 운영 3종 허용 목록 | 본문 byte · 판정 · 순서 동일 · 기록 실패가 PUSH 를 막지 않음 · gap · 대조 보고 · 스냅샷 불변 · spike 제외 · 실발송 0 · tmp DB |
-| 4 | POC5-02 outcome 성숙 | 07:20 뒤 격리 단계 · t0 · 보조 기준 · 적재일 축 · 결측 · 분배락 표시 · 시장 · 기초지수 원시 결과 · legacy 진단 backfill(실행 단위 · 가격 결과 포함 여부는 설계자 확인) | 성숙 규칙 고정 fixture · KRX 적재 지연 · 배치 status 불변 · 현재가 누락 시 대체 없음 |
-| 5 | POC5-03 PC 동기화 · 피드백 | 화면 열 때 1회 동기화(시작 계기는 설계자 확인) + 새로고침 · PC `decision_evidence.sqlite` 테이블 · 로컬 API · `받은 알림 기록` 구역 · `신호 결과 원장` 접기 | API tmp DB · vitest · 외부 호출 0 · 사용자 실화면 |
+| 4 | POC5-02 outcome 성숙 | 07:20 뒤 격리 단계 · t0 · 보조 기준 · 적재일 축 · 결측 · 분배락 표시 · 시장 · 기초지수 원시 결과 · legacy 진단(실행 연결 · 건수만 · 과거 outcome backfill 금지) | 성숙 규칙 고정 fixture · KRX 적재 지연 · 배치 status 불변 · 현재가 누락 시 대체 없음 |
+| 5 | POC5-03 PC 동기화 · 피드백 | 로컬 캐시 표시 · `원장 새로고침` 버튼을 눌렀을 때만 동기화(자동 SSH 없음) · PC `decision_evidence.sqlite` 테이블 · 로컬 API · `받은 알림 기록` 구역 · `신호 결과 원장` 접기 | API tmp DB · vitest · 외부 호출 0 · 사용자 실화면 |
 | 6 | POC5-04 R0 · R1 리포트 | R0 수집 점검 · R1 정기 기술통계(날짜 블록 bootstrap) | 원시 분포만 · 성공 판정 없음 |
 
 모든 단계 공통: 신규 의존성 0 · 테스트의 라이브 DB · 외부 호출 · 실발송 0 · 전체 회귀 · KS-10 · `PROGRAM_TRUTH` 갱신(화면 · API · 저장소가 바뀌는 단계).
@@ -604,17 +607,17 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 | Q16 | 기준 가격 t0 | 장중 · 보유 신호의 PRIMARY t0 = 메시지 생성에 실제 사용한 현재가 · 신호일 · 전일 종가는 보조 · 현재가 누락 시 대체 없음 |
 | Q17 | 거래일 축 | 실제 가격 적재일 순서 · 2027 CSV 선행조건 아님 · snapshot 우선 · 평일 fallback 유지 |
 | Q18 | 결측 · 폐지 · 거래정지 | 가격 대체 금지 · `PRICE_MISSING` · `UNTRACKED_AFTER_EXIT` 등 · 거래량 필드 추가 없음 |
-| Q19 | 표본 단위 | 반복 노출은 보조 · 신규 진입 · 구간 악화 · 회복 뒤 재진입이 PRIMARY 전이 이벤트 |
+| Q19 | 표본 단위 | 반복 노출은 보조 · 신규 진입 · 구간 악화 · 회복 뒤 재진입이 PRIMARY 전이 이벤트 · 보완: 다음 날 같은 상태 반복은 secondary |
 | Q20 | 상태별 방향 | 원시 결과만 · '유리한 방향' · 단일 성공 라벨 없음 |
-| Q21 | OCI→PC 전달 | 원장 화면 열 때 1회 동기화 + 수동 새로고침 · PC 기동 시 자동 SSH 없음 |
+| Q21 | OCI→PC 전달 | 원장 화면 열 때 1회 동기화 + 수동 새로고침 · PC 기동 시 자동 SSH 없음 → 보완: 로컬 캐시 표시 · `원장 새로고침` 버튼으로만 동기화 |
 | Q22 | PC 저장 | 기존 PC `state/decision/decision_evidence.sqlite` 에 원장 · 피드백 테이블 추가 · `runtime_state.sqlite` 사용과 새 PC DB 생성은 모두 불필요 |
 | Q23 | 피드백 화면 | 「오늘의 투자 점검」 새 구역 `받은 알림 기록` · 상세 접기 `신호 결과 원장` · 메뉴 13 유지 |
 | Q24 | 피드백 규칙 | `sent` · 실제 일부 전달된 `partial` 만 · append-only · 미입력 행 없음 · 가격 결과는 피드백 전 비노출 |
 | Q25 | 성숙 계산 위치 | 07:20 배치 뒤 격리 단계 · 실패해도 배치 · 가격 적재 · 08:00 무영향 |
 | Q26 | 단계 운영 | 단계마다 짧은 PLAN · MASTER 질문 반복 없음 |
-| Q27 | Decision Outcome Ledger | POC5 가 기존 미결 항목을 이어받아 완성 · 중복 원장 없음 |
+| Q27 | Decision Outcome Ledger | POC5 가 기존 미결 항목을 이어받아 완성 · 중복 원장 없음 · 보완: 기존 선행 gate superseded |
 | Q28 | PRIMARY 시작 · 리뷰 | 운영 계약 정정 · 코드 pull 뒤 첫 거래일 · 10거래일 뒤 R0 · R1 정기 기술통계(날짜 블록 bootstrap) · 개발 대기 없음 |
-| Q29 | 성공 임계 · 집계 | 성공 임계 없음 · kind · state · contract_version · horizon 별 원시 분포 · 첫 노출 PRIMARY · 반복 SECONDARY · 악화 · 재진입 새 사건 · 잘림 · 억제는 관측 모수 포함 · 전달 효과 모수 제외 |
+| Q29 | 성공 임계 · 집계 | 성공 임계 없음 · kind · state · contract_version · horizon 별 원시 분포 · 첫 노출 PRIMARY · 반복 SECONDARY · 악화 · 재진입 새 사건 · 잘림 · 억제는 관측 모수 포함 · 전달 효과 모수 제외 · 보완: 과거 가격 결과 계산 안 함 |
 | Q30 | 운영 3종 · 폐지 1종 | 운영 3종만 · spike 는 legacy 에서도 제외 · 낡은 OCI 상태 화면은 POC5 와 분리된 작은 수정으로 먼저 |
 
 ---

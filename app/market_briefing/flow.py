@@ -21,6 +21,15 @@ state_fingerprint = "{outlook_state}#{index_leadership_state}"
 ```
 
 **근거 숫자를 넣지 않는다** — 매일 흔들려 억제가 무력화된다(OPS-02A 확정 원칙).
+
+## POC3-02D-OPS-01 C1
+
+- 공식 CSV 는 07:20 과 **같은 resolver**(`official_csv`)로 고른다(Q2).
+- 저장된 07:20 판정은 **오늘 창**의 것일 때만 쓴다. 아니면 기초지수 구역만
+  `META_GATE_STALE` 로 닫는다(R2 Q27).
+- `refresh_due` 인 주기에는 **어차피 나가는 본문** 끝에 CSV 갱신 안내 1줄을 붙인다.
+  주기마다 한 번이며, 발송이 전부 성공한 뒤에만 상태에 소진을 남긴다(R2 Q24).
+  fingerprint · 발송 여부는 바꾸지 않는다.
 """
 
 from __future__ import annotations
@@ -29,22 +38,19 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass, field
-from datetime import date as _date
-from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
+from app import trading_day_lag
 from app.market_briefing import evidence as ev
-from app.market_briefing import krx_store, meta_gate, render
+from app.market_briefing import krx_store, meta_gate, official_csv, render
 from app.market_benchmark_freshness import MAX_STALE_TRADING_DAYS
-from app.market_briefing.calendar import (
-    CalendarVerdict,
-    check_trading_day,
-    load_calendar,
-)
+from app.market_briefing.calendar import CalendarVerdict, check_trading_day
 
 SCHEMA_VERSION = "market_briefing_state.v1"
 STATE_NAME = "market_briefing_state_latest.json"
+# R2 Q24 — 안내를 이미 보낸 `refresh_due` 주기. 없던 옛 상태 파일은 "보낸 적 없음".
+STATE_NOTICE_KEY = "refresh_notice_cycle_id"
 
 REASON_NO_PUBLISHABLE = "no_publishable_content"
 REASON_ALL_STALE = "all_data_stale"
@@ -64,6 +70,9 @@ class BriefingOutcome:
     fail: Optional[tuple[str, str, str]] = None
     calendar: Optional[CalendarVerdict] = None
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    # 발송이 전부 성공하면 상태에 남길 "안내한 주기" (R2 Q24). 오늘 안내를 붙였으면
+    # 그 주기, 아니면 직전 상태의 값을 그대로 잇는다.
+    refresh_notice_cycle_id: Optional[str] = None
 
     @property
     def should_send(self) -> bool:
@@ -89,15 +98,22 @@ def load_state(path: Path) -> Optional[dict[str, Any]]:
 
 
 def save_state(
-    path: Path, *, fingerprint: str, sent_date_kst: str, runtime_kst: Optional[str]
+    path: Path,
+    *,
+    fingerprint: str,
+    sent_date_kst: str,
+    runtime_kst: Optional[str],
+    refresh_notice_cycle_id: Optional[str] = None,
 ) -> None:
     """원자적 저장. **Telegram 전체 성공 뒤에만** 호출한다."""
-    payload = {
+    payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "state_fingerprint": fingerprint,
         "sent_date_kst": sent_date_kst,
         "updated_at_kst": runtime_kst,
     }
+    if refresh_notice_cycle_id is not None:
+        payload[STATE_NOTICE_KEY] = refresh_notice_cycle_id
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
     try:
@@ -115,54 +131,39 @@ def save_state(
 # ── 조립 ────────────────────────────────────────────────────────────────────
 
 
-def _weekday_axis_before(today_kst: str, *, span_days: int) -> list[str]:
-    """`today_kst` 직전 `span_days` 달력일 중 **평일만** 오름차순.
+# 거래일-lag 축은 공용 모듈로 옮겼다(POC3-02D-OPS-01 C7 · 설계자 Q17) — KOSPI
+# 적재 감지(`refresh_kospi_benchmark`)가 **같은 축**을 쓴다. 옛 이름은 그대로
+# 묶어 둔다: `_index_block` 이 이 모듈 전역에서 찾으므로 역검증 스크립트
+# (`scripts/ops02b2/reverse_verify_guards.py` ②)의 monkeypatch 가 그대로 통한다.
+_weekday_axis_before = trading_day_lag.weekday_axis_before
+_window_lag_trading_days = trading_day_lag.window_lag_trading_days
 
-    snapshot 이 없는 연도에서 지연을 재기 위한 축이다. 공휴일을 모르므로 실제
-    거래일보다 조금 많게 잡힐 수 있다 — 그만큼 지연 판정이 **보수적**이 된다
-    (실제보다 더 오래된 것처럼 보여 stale 로 막힐 뿐, 오래된 값을 최신으로
-    착각하지 않는다).
+
+def _verdict_stale(
+    consistency: meta_gate.ConsistencyResult, *, db_path: Optional[Path]
+) -> Optional[dict[str, Any]]:
+    """R2 Q27 — 저장된 판정이 오늘 창의 것이 아니면 진단 dict, 같으면 `None`.
+
+    판정을 다시 계산하지 않는다. 오늘 창 = 저장 계열의 최신일 · d20
+    (`krx_store.resolve_window` · 21일 미만이면 d20 없음).
     """
-    try:
-        base = _date.fromisoformat(today_kst[:10])
-    except ValueError:
-        return []
-    out = [base - timedelta(days=i) for i in range(span_days, 0, -1)]
-    return [d.isoformat() for d in out if d.weekday() < 5]
-
-
-def _window_lag_trading_days(
-    latest: str, *, today_kst: str, calendar_dir: Optional[Path]
-) -> Optional[int]:
-    """적재된 최신 거래일이 **직전 거래일보다 몇 거래일 뒤처졌나**.
-
-    축은 거래일 Gate 와 **같은 우선순위**로 고른다(2026-09-13 사용자 정책).
-
-    | 상황 | 축 |
-    |---|---|
-    | 캘린더가 그 연도를 덮음 | snapshot 거래일 |
-    | 없음·손상·연도 미지원 | **평일 fallback** |
-
-    축에서 최신일을 못 찾으면 `None` — 지연을 모르므로 쓰지 않는다(호출부가
-    `stale` 로 막는다).
-    """
-    try:
-        cal = load_calendar(calendar_dir)
-    except Exception:  # noqa: BLE001
-        cal = None
-
-    if cal is not None and cal.covers(int(today_kst[:4])):
-        days = sorted(d for d in cal.days if d < today_kst)
+    window = krx_store.resolve_window(db_path=db_path)
+    if window is not None:
+        latest, d20 = window.latest, window.d20
     else:
-        # 거래일 Gate 와 **같은 평일 fallback 축**을 쓴다(2026-09-13 사용자 정책).
-        # 여기서만 캘린더를 요구하면 캘린더 없는 연도에 기초지수가 늘 stale 이
-        # 되어 "평일이면 나머지 Gate 를 계속 평가한다" 는 정책이 깨진다.
-        days = _weekday_axis_before(today_kst, span_days=90)
-
-    if not days or latest not in days:
-        # 적재된 최신일이 축에 없다 — 지연을 못 재므로 쓰지 않는다.
+        days = krx_store.stored_trading_days(db_path=db_path)
+        latest, d20 = (days[-1] if days else None), None
+    reason = meta_gate.verdict_stale_reason(consistency, latest=latest, d20=d20)
+    if reason is None:
         return None
-    return len(days) - 1 - days.index(latest)
+    return {
+        "reason": reason,
+        "evaluated_api_basis_date": consistency.evaluated_api_basis_date,
+        "evaluated_window_d20_date": consistency.evaluated_window_d20_date,
+        "evaluated_at_kst": consistency.evaluated_at_kst,
+        "current_latest": latest,
+        "current_d20": d20,
+    }
 
 
 def _index_block(
@@ -172,16 +173,34 @@ def _index_block(
     db_path: Optional[Path],
     today_kst: str,
     calendar_dir: Optional[Path] = None,
+    csv_unavailable: Optional[str] = None,
 ) -> ev.IndexLeadership:
     """기초지수 블록. 정합성이 통과해야만 가격을 쓴다.
 
     설계자 §M-3 — 정합성 실패 상태에서는 **정상 수집된 가격도 후보 계산에 쓰지
     않는다.**
+
+    `csv_unavailable` — 08:00 resolver 가 유효 파일을 하나도 못 찾았을 때의 오류.
+    CSV 행 없이 후보를 계산하면 "정상 0개" 로 조용히 사라지므로 닫는다(R2 Q25).
     """
     if consistency is None:
         return ev.IndexLeadership(
             status=meta_gate.STATUS_API_FETCH_FAILED,
             diagnostics={"reason": "no_0720_result"},
+        )
+    stale = _verdict_stale(consistency, db_path=db_path)
+    if stale is not None:
+        # `CSV_REFRESH_REQUIRED` 로 표시하지 않는다 — 불필요한 CSV 요청을 막는다.
+        return ev.IndexLeadership(
+            status=meta_gate.STATUS_META_GATE_STALE, diagnostics=stale
+        )
+    if csv_unavailable is not None:
+        return ev.IndexLeadership(
+            status=meta_gate.STATUS_CSV_REFRESH_REQUIRED,
+            diagnostics={
+                "reason": "official_csv_unavailable",
+                "error": csv_unavailable,
+            },
         )
     if not consistency.usable:
         return ev.IndexLeadership(
@@ -250,21 +269,41 @@ def _api_names_from(
     }
 
 
+def _refresh_notice_cycle(
+    consistency: Optional[meta_gate.ConsistencyResult], index_status: str
+) -> Optional[str]:
+    """R2 Q24 — 안내 대상 주기. 오늘 창의 판정이 `refresh_due` 일 때만."""
+    if consistency is None or index_status == meta_gate.STATUS_META_GATE_STALE:
+        return None
+    if not consistency.refresh_due:
+        return None
+    return consistency.refresh_due_cycle_id or None
+
+
 def assemble_market_briefing(
     *,
     today_kst: str,
     runtime_kst: Optional[str],
     state_path: Path,
     consistency_path: Path,
-    official_csv_path: Path,
     sp500_return_pct: Optional[float],
     sp500_asof: Optional[str],
     sp500_fresh: bool,
+    official_csv_path: Optional[Path] = None,
+    meta_dir: Optional[Path] = None,
     support: Sequence[ev.SupportIndex] = (),
     calendar_dir: Optional[Path] = None,
     db_path: Optional[Path] = None,
+    logger: Any = None,
 ) -> BriefingOutcome:
-    """러너 §3-e 전체. **판정하지 않고 조립만** 한다."""
+    """러너 §3-e 전체. **판정하지 않고 조립만** 한다.
+
+    공식 CSV — 운영은 `meta_dir` 을 넘겨 07:20 과 같은 resolver 로 고른다.
+    `official_csv_path` 는 파일을 직접 지정하는 옛 호출(합성 fixture · 고정 경로
+    도구)용이다. 둘 중 하나만 넘긴다.
+    """
+    if (meta_dir is None) == (official_csv_path is None):
+        raise TypeError("meta_dir 과 official_csv_path 중 하나만 넘긴다")
     out = BriefingOutcome()
 
     # ① 거래일 Gate — 결과만 담고 결정은 러너 §6-c 가 한다.
@@ -281,11 +320,18 @@ def assemble_market_briefing(
         consistency.to_dict() if consistency else {"status": "missing"}
     )
 
-    try:
-        csv_rows = meta_gate.load_official_csv(official_csv_path)
-    except (OSError, UnicodeDecodeError) as e:  # noqa: BLE001
-        csv_rows = []
-        out.diagnostics["official_csv_error"] = f"{type(e).__name__}"
+    csv_unavailable: Optional[str] = None
+    if meta_dir is not None:
+        selection = official_csv.resolve_official_csv(meta_dir, logger=logger)
+        out.diagnostics["official_csv"] = selection.to_dict()
+        csv_rows = selection.records
+        csv_unavailable = selection.error
+    else:
+        try:
+            csv_rows = meta_gate.load_official_csv(official_csv_path)
+        except (OSError, UnicodeDecodeError) as e:  # noqa: BLE001
+            csv_rows = []
+            out.diagnostics["official_csv_error"] = f"{type(e).__name__}"
 
     # ③ evidence
     outlook = ev.decide_outlook(
@@ -299,6 +345,7 @@ def assemble_market_briefing(
         db_path=db_path,
         today_kst=today_kst,
         calendar_dir=calendar_dir,
+        csv_unavailable=csv_unavailable,
     )
     out.diagnostics["outlook_state"] = outlook.state
     out.diagnostics["index_status"] = index.status
@@ -308,7 +355,12 @@ def assemble_market_briefing(
     if not outlook.usable and not index.candidates:
         out.skip_reason = (
             REASON_ALL_STALE
-            if index.status in ("stale", meta_gate.STATUS_API_FETCH_FAILED)
+            if index.status
+            in (
+                "stale",
+                meta_gate.STATUS_API_FETCH_FAILED,
+                meta_gate.STATUS_META_GATE_STALE,
+            )
             else REASON_NO_PUBLISHABLE
         )
         return out
@@ -343,6 +395,21 @@ def assemble_market_briefing(
     # 재실행 차단은 `registry_key(push_kind, param_id, runtime_date_kst)` 가
     # 이미 한다.
     out.diagnostics["content_unchanged"] = out.previous_fingerprint == out.fingerprint
+
+    # ⑥ CSV 갱신 안내 (R2 Q24) — **본문 · fingerprint 가 정해진 뒤** 끝에만 붙인다.
+    # 여기까지 왔으면 어차피 나가는 발송이다. 안내만으로 발송을 만들지 않는다.
+    notified = (prev or {}).get(STATE_NOTICE_KEY)
+    out.refresh_notice_cycle_id = notified
+    cycle = _refresh_notice_cycle(consistency, index.status)
+    appended = cycle is not None and cycle != notified
+    if appended:
+        out.message_text = render.append_refresh_notice(out.message_text)
+        out.refresh_notice_cycle_id = cycle
+    out.diagnostics["refresh_notice"] = {
+        "cycle_id": cycle,
+        "already_notified": notified,
+        "appended": appended,
+    }
     return out
 
 
@@ -352,6 +419,7 @@ __all__ = [
     "REASON_NO_PUBLISHABLE",
     "SCHEMA_VERSION",
     "STATE_NAME",
+    "STATE_NOTICE_KEY",
     "BriefingOutcome",
     "assemble_market_briefing",
     "load_state",

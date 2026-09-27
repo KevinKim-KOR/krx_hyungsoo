@@ -4,6 +4,7 @@
 > 개발 PLAN: `docs/ai_plan/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_PLAN_V1.md`
 > **설계자 PLAN 판정(2026-09-26)** 원문은 이 문서 끝 `# 설계자 PLAN 판정` 절에 그대로 붙였다 — `PASS_WITH_MANDATORY_AMENDMENT` · Q1~Q30 확정 ·
 > 사용자 승인(OCI 전용 원장 SQLite 생성 · PC 기존 `decision_evidence.sqlite` 테이블 추가 · 2026-09-26). 본문과 다른 곳은 판정이 우선한다.
+> **설계자 보완 판정(2026-09-26)** 원문은 그 뒤 `# 설계자 보완 판정` 절 — 남은 5건 확정 · 운영 정정 7건 분류 · `LEGACY_OUTCOME_BACKFILL = PROHIBITED`.
 
 검증자 의견은 일부 수용하되, **2~3개월 개발 중단은 수용하지 않겠습니다.** 지금은 기다릴 단계가 아니라, 기다리는 동안 자동으로 쌓일 기반을 만드는 단계입니다.
 
@@ -414,3 +415,51 @@ PLAN 문서에는 Q1~Q30 확정과 위 필수 보완을 반영한 뒤 커밋한�
 ```
 
 사용자님께서는 마지막으로 **OCI 전용 원장 DB 생성과 PC 기존 판단 DB의 테이블 추가**만 승인해 주시면 됩니다. 저는 두 항목 모두 승인하는 것을 권합니다.
+
+---
+
+# 설계자 보완 판정 (2026-09-26 · 설계자 원문 · 사용자 전달 · 3b6e3257 push 지시와 남은 5건 확정)
+
+**push를 먼저 하세요.** 확정된 설계·PLAN을 원격 정본으로 만든 뒤 운영 정정 PLAN을 작성하는 순서가 맞습니다.
+
+```text
+PUSH = APPROVED
+TARGET_HEAD = 3b6e3257
+OCI_PULL = NOT_REQUIRED (문서 3개뿐이며 운영 코드 변화 없음)
+```
+
+순서는 다음입니다.
+
+1. `git push origin main`
+2. `origin/main = 3b6e3257`, `origin/main..HEAD = 0건` 확인
+3. POC3 운영 정정 소형 PLAN 작성
+4. PLAN 판정 전에는 코드·CSV·OCI 상태를 변경하지 않음
+
+남은 5건도 지금 확정합니다. 단계 PLAN에서 다시 질문할 필요 없습니다.
+
+| 항목             | 확정                                                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 여러 날 같은 상태     | **상태 진입·악화·회복 후 재진입만 PRIMARY**. 같은 상태가 다음 날 반복되면 secondary exposure. 같은 날에도 같은 상태는 첫 노출만 PRIMARY.                       |
+| 과거 가격 결과       | **계산하지 않음.** Legacy는 실행 연결·건수 진단만 허용하고 과거 종목별 outcome backfill은 금지.                                                     |
+| PC 동기화 계기      | PC 기동·첫 화면 진입 때 자동 SSH 금지. 로컬 캐시를 보여 주고 사용자가 `원장 새로고침`을 눌렀을 때만 동기화.                                                     |
+| 기존 Ledger 선행조건 | 이번 POC5 승인으로 **superseded**. POC5가 First Real Decision Cycle을 만들어 내는 단계이므로 그 통과를 POC5 선행조건으로 둘 수 없음.                    |
+| PC 러너의 원장 쓰기   | 기본 비활성. 기존 OCI 역할 표식이 있으면 재사용하고, 없으면 전용 환경 플래그를 추가해 **OCI + send 모드에서만** 기록. hostname 추정 금지. PC 실행 시 원장 쓰기 0건을 테스트로 고정. |
+
+운영 정정 PLAN에는 7건을 한꺼번에 고치는 코드부터 작성하지 말고, 각각을 아래처럼 분류해야 합니다.
+
+* PRIMARY 시작 전 필수: 기초지수 구역 복구, 잘린 보유 급락의 잘못된 억제
+* 실제 문구 확인 후 수정: `현재가 —`
+* 운영 집계·증거 정정: Telegram 실패 집계, `message_text_length=0`
+* 화면 정정: 폐지 spike 필수 판정
+* 원인 조사 후 판정: KOSPI 09-17 정지
+
+KOSPI는 원인을 확인하기 전 임의 source 교체나 날짜 밀어 넣기를 금지합니다. PC의 의심 기록 12행도 계속 보존합니다.
+
+```text
+NEXT_ACTION = PUSH_3b6e3257_THEN_WRITE_POC3_OPS_MAINT_PLAN
+POC5_IMPLEMENTATION = NOT_STARTED
+PRIMARY_COHORT = NOT_STARTED
+LEGACY_OUTCOME_BACKFILL = PROHIBITED
+```
+
+> 개발자 기록(2026-09-26): 1·2 수행 — `git push origin main` → `8bf843e6..3b6e3257` · `origin/main=3b6e3257` · `origin/main..HEAD` 0건.

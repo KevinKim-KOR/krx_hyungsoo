@@ -31,6 +31,7 @@ from app.market_briefing.meta_gate import (
     STATUS_API_FETCH_FAILED,
     STATUS_COVERAGE_BELOW_THRESHOLD,
     STATUS_CSV_REFRESH_REQUIRED,
+    STATUS_META_GATE_STALE,
 )
 
 HEADER = "[시장 흐름 브리핑] 08:00"
@@ -54,6 +55,14 @@ INDEX_NOTICE = {
     STATUS_API_FETCH_FAILED: "기초지수 정보는 최신 기준을 확인하지 못해 제외했습니다.",
     "stale": "기초지수 정보는 최신성 조건을 충족하지 않아 제외했습니다.",
 }
+# POC3-02D-OPS-01 R2 Q27 — 저장된 07:20 판정이 오늘 창의 것이 아닐 때. 새 문구를
+# 만들지 않고 **기존 승인 문구**(API 조회 실패와 같은 줄)를 쓴다 — 설계자 승인
+# (2026-09-27 RESULT 판정): 판정 창을 확인하지 못한 경우에만 쓰고, 정상 0개
+# (`STATUS_NO_CANDIDATE_NORMAL`)는 안내 없이 생략한다(`render_market_briefing`).
+INDEX_NOTICE[STATUS_META_GATE_STALE] = INDEX_NOTICE[STATUS_API_FETCH_FAILED]
+
+# 설계자 R2 Q24 확정 문구 — `refresh_due` 주기마다 한 번, 본문 **맨 끝** 1줄.
+CSV_REFRESH_NOTICE = "※ 운영 안내: KRX ETF 전종목 기본정보 CSV를 갱신해 주세요."
 
 # 정상 산출 결과 후보 0개 — **안내 문구 없이 문단 자체를 생략**한다.
 STATUS_NO_CANDIDATE_NORMAL = "no_candidate_normal"
@@ -178,7 +187,13 @@ def render_market_briefing(
     return "\n".join(lines).rstrip()
 
 
+def append_refresh_notice(body: str) -> str:
+    """본문 끝에 빈 줄 하나를 두고 CSV 갱신 안내를 붙인다. 빈 본문은 그대로."""
+    return f"{body}\n\n{CSV_REFRESH_NOTICE}" if body else body
+
+
 __all__ = [
+    "CSV_REFRESH_NOTICE",
     "HEADER",
     "INDEX_NOTICE",
     "SENTENCE_DOWN",
@@ -186,6 +201,7 @@ __all__ = [
     "SENTENCE_NO_OUTLOOK",
     "SENTENCE_UP",
     "STATUS_NO_CANDIDATE_NORMAL",
+    "append_refresh_notice",
     "outlook_sentence",
     "render_basis_block",
     "MAX_SHOWN_PRODUCTS",

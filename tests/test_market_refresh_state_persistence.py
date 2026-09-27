@@ -81,6 +81,15 @@ def fake_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     db = tmp_path / "market_data.sqlite"
     monkeypatch.setattr("app.market_data_store.DEFAULT_DB_PATH", db, raising=True)
     monkeypatch.setattr("app.market_refresh_service.DEFAULT_DB_PATH", db, raising=True)
+    # 저장소 `state/market_meta` 를 읽지 않는다 — KOSPI 적재 판정 축(거래일
+    # 캘린더)은 빈 tmp 폴더(평일 fallback), 성공 뒤 장중 설정 재산출(고정 CSV
+    # `krx_etf_basic_20260909.csv`)은 이 테스트 대상이 아니라 끈다.
+    monkeypatch.setattr(
+        "app.market_briefing.calendar.CALENDAR_DIR", tmp_path / "no_calendar"
+    )
+    monkeypatch.setattr(
+        market_refresh_service, "_regenerate_intraday_config", lambda db_path: None
+    )
     reset_state_for_testing(db_path=db)
     return db
 

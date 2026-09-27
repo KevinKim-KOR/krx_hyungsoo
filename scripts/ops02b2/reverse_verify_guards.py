@@ -45,6 +45,9 @@ def setup(tmp: Path, *, through: str, consistency_status: str = meta_gate.STATUS
         krx_store.upsert_snapshot(
             krx_store.validate_snapshot(rows, expected_date=bas), db_path=db
         )
+    # POC3-02D-OPS-01 R2 Q27 — 08:00 은 **오늘 창**의 판정만 쓴다. 각 가드가 자기
+    # 관문을 시험하도록 적재한 창과 같은 판정 창을 남긴다.
+    window = krx_store.resolve_window(db_path=db)
     meta_gate.save_consistency(
         meta_gate.ConsistencyResult(
             status=consistency_status,
@@ -52,6 +55,9 @@ def setup(tmp: Path, *, through: str, consistency_status: str = meta_gate.STATUS
             csv_ticker_count=2,
             exact_match_count=2 if consistency_status == meta_gate.STATUS_OK else 0,
             join_coverage=1.0 if consistency_status == meta_gate.STATUS_OK else 0.0,
+            evaluated_api_basis_date=days[-1].replace("-", ""),
+            evaluated_window_d20_date=window.d20 if window else None,
+            evaluated_at_kst="2026-09-18T07:20:00+09:00",
         ),
         tmp / "c.json",
     )

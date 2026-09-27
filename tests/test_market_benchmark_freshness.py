@@ -458,3 +458,226 @@ def test_batch_run_benchmark_total_failure_is_not_plain_success(monkeypatch, tmp
     assert rec["status"] != "success", "benchmark 전면 실패가 success 로 묻혔다"
     assert saved["benchmark_status"] == "failed"
     assert saved["price_pipeline_status"] == "success"
+
+
+# ── POC3-02D-OPS-01 C7 — 공용 거래일-lag helper 추출 (설계자 Q17) ────────────
+#
+# `flow._weekday_axis_before` · `_window_lag_trading_days` 본체를
+# `app/trading_day_lag.py` 로 옮겼다. 08:00 시장 브리핑 판정이 **옮기기 전과
+# 같아야** 한다. 아래 `_legacy_*` 는 옮기기 전 `flow.py:118-165` 본체 사본이다
+# (비교 기준 — 운영 코드가 부르지 않는다).
+
+
+def _legacy_weekday_axis_before(today_kst: str, *, span_days: int) -> list[str]:
+    try:
+        base = date.fromisoformat(today_kst[:10])
+    except ValueError:
+        return []
+    out = [base - timedelta(days=i) for i in range(span_days, 0, -1)]
+    return [d.isoformat() for d in out if d.weekday() < 5]
+
+
+def _legacy_window_lag_trading_days(latest, *, today_kst, calendar_dir):
+    from app.market_briefing.calendar import load_calendar
+
+    try:
+        cal = load_calendar(calendar_dir)
+    except Exception:  # noqa: BLE001
+        cal = None
+
+    if cal is not None and cal.covers(int(today_kst[:4])):
+        days = sorted(d for d in cal.days if d < today_kst)
+    else:
+        days = _legacy_weekday_axis_before(today_kst, span_days=90)
+
+    if not days or latest not in days:
+        return None
+    return len(days) - 1 - days.index(latest)
+
+
+def _outcome(fn, *args, **kw):
+    """값 또는 예외 종류 — 예외 경로까지 같아야 '동작 동일' 이다."""
+    try:
+        return ("value", fn(*args, **kw))
+    except Exception as e:  # noqa: BLE001
+        return ("raise", type(e).__name__)
+
+
+def test_flow_lag_helper_names_are_bound_to_shared_module():
+    """`flow` 의 옛 이름이 공용 helper 를 가리킨다 — 역검증 스크립트
+    (`scripts/ops02b2/reverse_verify_guards.py` ②)의 monkeypatch 와 기존 호출이
+    그대로 동작한다."""
+    from app import trading_day_lag
+    from app.market_briefing import flow
+
+    assert flow._window_lag_trading_days is trading_day_lag.window_lag_trading_days
+    assert flow._weekday_axis_before is trading_day_lag.weekday_axis_before
+
+
+def test_shared_lag_helper_matches_legacy_flow_body(tmp_path):
+    """옮기기 전 본체와 같은 입력 → 같은 lag (snapshot 축 · 평일 fallback 축)."""
+    from app.market_briefing import flow
+
+    cal = tmp_path / "cal"
+    cal.mkdir()
+    # 추석 연휴(09-24 · 25 · 28)를 뺀 2026-09 거래일 — 평일 fallback 과 갈리는 날.
+    (cal / "krx_trading_days_2026.csv").write_text(
+        "date\n"
+        + "\n".join(
+            f"2026-09-{d:02d}"
+            for d in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 21, 22, 23, 29)
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / "krx_trading_days_2026.csv").write_text("nodate\nx\n", encoding="utf-8")
+    none_dir = tmp_path / "none"
+
+    cases = [
+        # (latest, today_kst, calendar_dir, 기대 lag)
+        ("2026-09-23", "2026-09-29", cal, 0),  # snapshot — 연휴 건너뜀
+        ("2026-09-22", "2026-09-29", cal, 1),
+        ("2026-09-17", "2026-09-29", cal, 4),
+        ("2026-09-01", "2026-09-29", cal, 16),
+        ("2026-09-24", "2026-09-29", cal, None),  # 휴장일 — 축에 없음
+        ("2026-09-29", "2026-09-29", cal, None),  # 기준일 당일은 축에서 뺀다
+        ("2026-08-31", "2026-09-29", cal, None),  # snapshot 범위 밖
+        ("2026-09-23", "2026-09-29", none_dir, 3),  # 평일 fallback — 연휴 포함
+        ("2026-09-23", "2026-09-29", broken, 3),  # 손상 snapshot → 평일 fallback
+        ("2027-03-09", "2027-03-10", cal, 0),  # 연도 미지원 → 평일 fallback
+        ("2027-03-05", "2027-03-10", cal, 2),
+        ("2026-12-01", "2027-03-10", cal, None),  # 90 달력일 축보다 오래됨
+        ("2027-03-06", "2027-03-10", cal, None),  # 토요일
+        ("2027-03-09", "2027-03-10T08:00:00", none_dir, 0),
+        ("2026-09-23", "not-a-date", none_dir, None),  # 평일 축 없음
+    ]
+    for latest, today, cdir, expected in cases:
+        new = _outcome(
+            flow._window_lag_trading_days, latest, today_kst=today, calendar_dir=cdir
+        )
+        old = _outcome(
+            _legacy_window_lag_trading_days, latest, today_kst=today, calendar_dir=cdir
+        )
+        assert new == old, (latest, today, cdir, new, old)
+        assert new == ("value", expected), (latest, today, cdir, new)
+
+    # 예외 경로도 같다 — snapshot 이 있을 때 연도를 못 읽는 기준일.
+    raise_case = ("2026-09-23", "not-a-date", cal)
+    new = _outcome(
+        flow._window_lag_trading_days,
+        raise_case[0],
+        today_kst=raise_case[1],
+        calendar_dir=raise_case[2],
+    )
+    old = _outcome(
+        _legacy_window_lag_trading_days,
+        raise_case[0],
+        today_kst=raise_case[1],
+        calendar_dir=raise_case[2],
+    )
+    assert new == old == ("raise", "ValueError")
+
+    for today, span in (("2026-09-29", 90), ("2027-03-10", 7), ("", 5), ("x", 3)):
+        assert flow._weekday_axis_before(
+            today, span_days=span
+        ) == _legacy_weekday_axis_before(today, span_days=span)
+
+
+# ── POC3-02D-OPS-01 C7 — 배치 관통: stale KOSPI 가 배치 종료 status 로 드러난다 ──
+
+
+def test_batch_run_marks_stale_kospi_as_benchmark_failure(monkeypatch, tmp_path):
+    """07:20 배치 `run()` 을 **benchmark 조회만 stub** 하고 끝까지 통과시킨다.
+
+    09-18~09-25 실제 사고 재현 — upstream 이 09-17 에서 멈췄는데 배치는
+    `kospi=ok(as_of=2026-09-17)` · status success 였다. 감지 정정 A 뒤에는
+    `success_with_benchmark_failure` 로 드러나고, ETF 가격 · artifact 는 그대로다.
+
+    - 조회: `FinanceDataReader` 모듈 자리에 가짜를 둔다(KOSPI · VIX · 미국 3종 공용).
+    - 저장: 실제 `refresh_benchmarks` 를 tmp DB 로 부른다.
+    - 축: `calendar.CALENDAR_DIR` 를 합성 snapshot 으로 돌린다.
+    """
+    import sys
+
+    import pandas as pd
+
+    import app.market_benchmark_batch as bench_mod
+    import scripts.run_oci_market_data_batch as batch
+    from app.market_benchmark_store import fetch_benchmark_history
+    from app.market_briefing import calendar as _cal
+
+    state_path = _install_batch_success_path(monkeypatch, batch, tmp_path)
+    saved_artifact = {"n": 0}
+
+    def _save(result):
+        saved_artifact["n"] += 1
+        return tmp_path / "art.json"
+
+    monkeypatch.setattr("app.momentum.universe_mode.save_latest_artifact", _save)
+    monkeypatch.setattr(batch, "_kst_today", lambda: date(2026, 9, 25))
+
+    cal = tmp_path / "market_meta"
+    cal.mkdir()
+    (cal / "krx_trading_days_2026.csv").write_text(
+        "date\n"
+        + "\n".join(
+            f"2026-09-{d:02d}" for d in (15, 16, 17, 18, 21, 22, 23, 24, 25, 29)
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(_cal, "CALENDAR_DIR", cal)
+
+    def _df(dates):
+        return pd.DataFrame(
+            {"Close": [100.0 + i for i in range(len(dates))]},
+            index=pd.to_datetime(dates),
+        )
+
+    calls: list[str] = []
+
+    def _data_reader(symbol, start, end):
+        calls.append(symbol)
+        if symbol == "KS11":
+            return _df(["2026-09-15", "2026-09-16", "2026-09-17"])
+        return _df(["2026-09-23", "2026-09-24"])
+
+    monkeypatch.setitem(
+        sys.modules,
+        "FinanceDataReader",
+        SimpleNamespace(DataReader=_data_reader),
+    )
+    db = tmp_path / "market_data.sqlite"
+    real_refresh = bench_mod.refresh_benchmarks
+    monkeypatch.setattr(
+        bench_mod,
+        "refresh_benchmarks",
+        lambda **kw: real_refresh(db_path=db, **kw),
+    )
+
+    rec = batch.run(mode="run")
+    saved = json.loads(state_path.read_text(encoding="utf-8"))
+
+    assert "KS11" in calls and "VIX" in calls
+    kospi = rec["benchmark_refresh"]["kospi"]
+    assert kospi["status"] == "failed", "멈춘 KOSPI 를 ok 로 숨겼다"
+    assert kospi["error"] == "source_stale:as_of=2026-09-17,ref=2026-09-24,lag=5"
+    assert kospi["as_of_date"] == "2026-09-17"
+    assert rec["benchmark_refresh"]["failed"] == ["kospi"]
+    assert rec["status"] == "success_with_benchmark_failure", rec["status"]
+    assert rec["reason"] == "benchmark_partial:kospi"
+    # ETF 가격 · artifact 는 롤백하지 않는다.
+    assert rec["price_pipeline_status"] == "success"
+    assert saved_artifact["n"] == 1
+    assert rec["artifact_path"] == str(tmp_path / "art.json")
+    # 적재한 KOSPI 행은 유지된다.
+    assert [d for d, _ in fetch_benchmark_history("KOSPI", db_path=db)] == [
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17",
+    ]
+    assert saved["status"] == "success_with_benchmark_failure"
+    assert saved["benchmark_failed"] == ["kospi"]
+    assert saved["kospi_as_of"] == "2026-09-17"

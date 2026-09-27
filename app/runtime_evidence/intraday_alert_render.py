@@ -248,11 +248,15 @@ def render_checkup_summary(
     no_signal: int,
     failed: int = 0,
     unknown: bool = False,
+    send_failed: int = 0,
 ) -> str:
     """§8 — 15:40 보유 브리핑 끝에 붙는 **한 줄**.
 
     **별도 메시지를 만들지 않는다.** 집계 불가는 `0` 으로 위장하지 않고
     `확인 불가` 로 적는다.
+
+    `발송 실패 N회`(POC3-02D-OPS-01 C5 · 설계자 Q11 문구)는 실패가 있던 날만
+    붙는다 — 0 이면 기존 줄과 byte 가 같다.
     """
     if unknown:
         return "장중 점검 확인 불가"
@@ -264,6 +268,8 @@ def render_checkup_summary(
     ]
     if failed:
         parts.append(f"조회 실패 {failed}회")
+    if send_failed:
+        parts.append(f"발송 실패 {send_failed}회")
     return " · ".join(parts)
 
 

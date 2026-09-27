@@ -1,13 +1,14 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-26 (**POC5-00 MASTER PLAN 확정 · 다음 POC3 운영 정정 소형 PLAN** · 같은 날 POC4 종료 — COMPLETED_RESEARCH_REJECT) · 직전: 2026-09-25 POC4-02 종료
+최종 업데이트: 2026-09-27 (**POC3-02D-OPS-01 운영 정정 C1~C7 검증자 VERIFIED** · 커밋 완료(이 문서 포함) · 다음 push → OCI pull → 연휴 뒤 첫 거래일 2026-09-29 확인 → POC3-02D-OPS-02) · 직전: 2026-09-26 POC5-00 MASTER PLAN 확정 · POC4 종료(COMPLETED_RESEARCH_REJECT)
 
 ## POC5 — 운영 신호·판단 결과 원장 (OCI 전용 원장 · 운영 러너 연결 · 현행 PUSH 동작 불변)
 
 ```text
 POC5-00  MASTER PLAN            = 확정 — 설계자 PASS_WITH_MANDATORY_AMENDMENT 2026-09-26 · Q1~Q30 확정
 사용자 승인                      = OCI 전용 원장 state/decision/decision_evidence.sqlite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (2026-09-26)
-다음                            = POC3 운영 정정 소형 PLAN (PRIMARY 전 필수 7건 · 아래 POC3 절 '다음')
+다음                            = POC3-02D-OPS-01 적용(VERIFIED · 커밋 완료 · push · OCI pull · 09-29 실측) → POC3-02D-OPS-02 (아래 POC3 절 '다음')
+PRIMARY 시작 조건                = POC3-02D-OPS-01 pull + POC3-02D-OPS-02 완료 + POC5-01 코드 pull 뒤 첫 KRX 거래일 (설계자 2026-09-27)
 그 뒤                           = POC5-01a 러너 분리 → 01 원장 → 02 outcome 성숙 → 03 PC 동기화·피드백 → 04 R0/R1
 ```
 
@@ -81,6 +82,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
 | **02C-OPS-03** 장중 알림 활성화 경로 | **`CLOSED`** | 검증자 `VERIFIED_WITH_NOTES`(2026-09-22). 정책을 번들에 실어 켤 수 있게 + 15:40 비활성 요약 결함 수정 |
 | └ **02C 통합 종료** | **`IMPLEMENTED_VERIFIED_ACTIVATED`** | 첫 운영일 2026-09-22 — 7/7틱 · 알림 4건 · 일일 상한 작동 · 커버리지 27/27 · 오류 0. `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` |
 | └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
+| **02D-OPS-01** PRIMARY 전 운영 정정 C1~C7 | **`VERIFIED`** (OCI 미반영) | 설계자 `PASS_TO_VERIFIER` · 검증자 `VERIFIED`(2026-09-27). 08:00 공식 CSV 공용 resolver · pending · `refresh_due` · 판정 창 검사 · 새 CSV `20260927` / OCI 상태 필수 3종 / 장중 '현재가' 시각 · 잘린 보유 급락 재판정 · `send_failed` · 본문 길이 기록 / KOSPI stale 을 `failed` 로 기록 |
 
 ### OPS-02B-2 운영 계약 (요약 · 2026-09-13 검증자 VERIFIED)
 
@@ -155,12 +157,39 @@ KOSPI_VIX_INTEGRITY  = PASS
 
 ### 다음
 
-**POC3 운영 정정 소형 PLAN(다음 작업)** — POC5 PRIMARY 시작 전 필수 정정 7건(설계자 판정 2026-09-26 · POC5-00 PLAN §3-1):
-기초지수 구역 복구(공식 CSV 갱신·정합성) · OCI 상태 화면의 폐지 spike 요구 · 장중 본문 '현재가 —' 확인 · 상한에 잘린 보유 급락의 당일 억제 ·
-Telegram 실패의 `no_signal` 집계 · `holdings_risk_alert.message_text_length=0` · KOSPI 09-17 정지.
+**`POC3-02D-OPS-01` 운영 정정 C1~C7 — 검증자 `VERIFIED`(2026-09-27) · OCI 미반영.**
+결과서 `docs/ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_RESULT.md`.
+설계자 RESULT 판정(2026-09-27)이 정한 순서:
+
+1. 커밋은 이 문서와 함께 했다(2026-09-27 · 내역은 `git log`). **push 는 별도 승인.**
+2. OCI `git pull` — 사용자가 한다. **거래일 15:40 뒤 ~ 다음 거래일 07:15 전에만**(장중
+   금지 · 07:15~08:05 금지 · PLAN STEP 7 · C4). 다음 거래일은 **2026-09-29(화)**(캘린더상
+   09-24 · 25 · 28 휴장)라 지금부터 09-29 07:15 전까지가 창이다(그 사이 07:15~08:05 도 피한다).
+   pull 직전에 개발자가 OCI 정합성 JSON 의 `api_only` 를 새 CSV 와 대조하고, d20 종가가
+   있는데 새 CSV 에 없는 ticker 가 있으면 pull 하지 않고 멈춰 보고한다(2026-09-27 읽기:
+   8종 모두 새 CSV 에 있음).
+   「OCI 운영 상태」(C2)는 PC 백엔드 재기동으로 반영된다.
+3. 연휴 뒤 첫 거래일(2026-09-29) 07:20 · 08:00 운영 확인 — 개발자 OCI 읽기(정합성
+   JSON 의 status · 선택 CSV · `api_only` · pending · `refresh_due` · 판정 창, 08:00
+   기록의 `index_status` · 후보 수 · 본문 길이, 07:20 KOSPI 기록)와 사용자 실화면
+   (08:00 '오늘 볼 기초지수' 복귀 · 「장중 급등락」 '현재가' 시각). 그 뒤 이 문서를 다시 갱신한다.
+4. **`POC3-02D-OPS-02`**(설계자 결정 · PRIMARY 전): 「오늘의 투자 점검」 OCI 한 줄
+   링크를 「OCI 운영 상태」로 · 전달되지 못한 사업군 · 급등 신호의 상태 저장 결함 2건
+   (`02D-OPS-01` 결과서 §8) · 낡은 역검증 ⑦ · 목업 ⑦ 제목 정리. 후보: KOSPI stale 화면
+   문구(Q19 · 2026-09-26 PLAN 판정 · 포함 여부는 OPS-02 PLAN 때 판정).
+5. 그 뒤 `POC5-01A`. PRIMARY 조건은 맨 위 POC5 절.
+
+**KOSPI 적재 정지** — upstream(`FinanceData/fdr_krx_data_cache` KS11 `2026.csv`)이
+2026-09-17 행에서 멈췄다. source 교체 금지(`SOURCE_SWITCH = PROHIBITED`). 재개되면
+07:20 배치의 180일 lookback 이 자동으로 채운다. 계속 멈추면 source 교체를 별도 설계로
+판단한다. 이 단계가 OCI 에 pull 된 뒤로는 멈춘 날마다 07:20 배치 로그가
+`kospi=failed(as_of=…)` 이고 실행 결과 error 가 `source_stale:…` 다. 가격 적재 등 배치의
+다른 단계가 성공한 날이면 배치 status 는 `success_with_benchmark_failure`(exit 1)다.
 
 **`02C` 는 종료됐다**(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`).
-02C 기준으로 남은 것은 전부 **비차단 운영 항목**이다.
+02C 기준으로 남은 것은 아래 두 **비차단 운영 항목**이다. **단**, 02C 장중 엔진의 사업군 ·
+급등 상태 저장 결함 2건(`02D-OPS-01` 결과서 §8)은 비차단이 아니다 — 위 4번
+`POC3-02D-OPS-02` 에서 PRIMARY 전에 고친다(설계자 결정 2026-09-27).
 
 1. **발송 빈도 관찰** — 며칠 쌓이면 `max_sends_per_day=4` 가 적절한지 본다.
    첫날 상한 도달은 "평소 4건" 을 뜻하지 않는다. **운영 튜닝 자료**다.
@@ -168,8 +197,9 @@ Telegram 실패의 `no_signal` 집계 · `holdings_risk_alert.message_text_lengt
 
 **사용자 확인 1건** — 2026-09-22 Telegram 「장중 급등락」 4건 수신 여부.
 
-**이월** — `02B-2` 필수 이월 2건(설계자 2026-09-11 분리): ① API 에만 있는 신규
-ticker 감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. **정적 CSV 자동
+~~**이월**~~ **해소** — `02B-2` 필수 이월 2건(설계자 2026-09-11 분리): ① API 에만 있는 신규
+ticker 감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. 둘 다 `02B-2`(`0b293f40`)에서
+구현됐고, `02D-OPS-01` C1 이 그 위에 pending · `refresh_due` · 공용 resolver 를 더했다. **정적 CSV 자동
 다운로드는 범위 밖.** BACKLOG 2건(DB 가격계열 본조사 · 분배락 민감도)은 비차단.
 `market_briefing` 08:00 은 2026-09-15 부터 운영 중이다.
 
@@ -220,6 +250,7 @@ KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으�
   · **종료·인계** `docs/handoff/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md`
 - **02C-OPS-03**: `docs/ai_design|ai_result/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_*`
 - **02C 통합 종료**: `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` — 첫 운영일 실측·계약 3개·운영 방법
+- **02D-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_*` · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-3**(08:00 공식 CSV) · 「장중 급등락」 절 2026-09-27 정정 · §8 KOSPI 적재 정지
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
   · 프로세스 C 「배포로 지금 바뀐 동작 2건」 · §13-7(활성화 경로 부재) · 부록 A
 

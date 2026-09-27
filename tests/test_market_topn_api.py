@@ -255,15 +255,32 @@ def _stub_price_df(start: date, end: date) -> pd.DataFrame:
     )
 
 
+def _isolate_market_meta(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """inline 갱신이 저장소 `state/market_meta` 를 읽지 않게 한다.
+
+    KOSPI 적재 판정 축(거래일 캘린더)은 빈 tmp 폴더(평일 fallback)로, 성공 뒤
+    장중 설정 재산출(고정 CSV `krx_etf_basic_20260909.csv`)은 이 테스트들의
+    대상이 아니라 끈다 — `test_refresh_job_logs_stale_kospi_...` 와 같은 방식.
+    """
+    from app.market_briefing import calendar as _cal
+
+    monkeypatch.setattr(_cal, "CALENDAR_DIR", tmp_path / "no_calendar")
+    monkeypatch.setattr(
+        market_refresh_service, "_regenerate_intraday_config", lambda db_path: None
+    )
+
+
 def test_post_refresh_accepted_and_runs_inline_for_test(
     api_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """POST /market/refresh 가 accepted 응답 + background job 시작.
 
     테스트에서는 threading 대신 inline 실행으로 강제하기 위해 start_refresh_job 의
     thread_runner 를 직접 호출하는 형태로 monkeypatch.
     """
+    _isolate_market_meta(monkeypatch, tmp_path)
     captured_calls = {"universe": 0, "prices": 0}
 
     def stub_uni():
@@ -378,6 +395,7 @@ def test_post_refresh_json_artifact_is_exactly_the_nav_summary(
     monkeypatch.setattr(
         etf_nav_service, "fetch_universe_snapshot", lambda **kwargs: snapshot
     )
+    _isolate_market_meta(monkeypatch, tmp_path)
 
     original = market_refresh_service.start_refresh_job
 
@@ -481,8 +499,10 @@ def test_status_completed_with_counts(api_client: TestClient) -> None:
 def test_market_refresh_log_is_recorded_by_refresh_job(
     api_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """POST /market/refresh 의 background job 이 market_refresh_log 를 기록."""
+    _isolate_market_meta(monkeypatch, tmp_path)
     original = market_refresh_service.start_refresh_job
 
     def inline_start(**kwargs):
@@ -500,6 +520,73 @@ def test_market_refresh_log_is_recorded_by_refresh_job(
     log = latest_refresh_log(db_path=api_market_topn.DEFAULT_DB_PATH)
     assert log is not None
     assert log["source"].startswith("FinanceDataReader")
+
+
+def test_refresh_job_logs_stale_kospi_as_failure_without_failing_refresh(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """POC3-02D-OPS-01 C7 감지 정정 A — PC 수동 갱신(`POST /market/refresh`) 경로.
+
+    09-22 PC 수동 갱신도 09-17 에서 멈춘 KOSPI 를 `market_refresh_log` success=1 로
+    남겼다. 이제 KS11 행은 success 0 · `source_stale:` 이고, **전체 갱신은 실패가
+    아니다**(지시문 §4.4 — KOSPI 실패로 전체 refresh 를 실패 처리하지 않는다).
+    """
+    from app import market_benchmark_store
+    from app.market_briefing import calendar as _cal
+    from app.market_data_store import latest_refresh_log
+
+    # 축 — 빈 폴더라 평일 fallback(2024 는 snapshot 이 없다). 저장소 캘린더를 읽지 않는다.
+    monkeypatch.setattr(_cal, "CALENDAR_DIR", tmp_path / "no_calendar")
+    # KOSPI 와 무관한 뒷단(NAV 외부 조회 · 장중 설정 재산출)은 막는다.
+    monkeypatch.setattr(
+        market_refresh_service,
+        "refresh_nav_universe",
+        lambda **kw: (_ for _ in ()).throw(RuntimeError("nav off in test")),
+    )
+    monkeypatch.setattr(
+        market_refresh_service, "_regenerate_intraday_config", lambda db_path: None
+    )
+
+    def stub_price(ticker, start, end):
+        if ticker == "KS11":
+            # upstream 이 멈춘 상황 — end(10-31 목) 기준 lag 4.
+            return _stub_price_df(start, date(2024, 10, 24))
+        return _stub_price_df(start, end)
+
+    original = market_refresh_service.start_refresh_job
+
+    def inline_start(**kwargs):
+        kwargs["universe_fetcher"] = _stub_universe_df
+        kwargs["price_fetcher"] = stub_price
+        kwargs["end_date_for_prices"] = date(2024, 10, 31)
+        kwargs["thread_runner"] = lambda runner: runner()
+        return original(**kwargs)
+
+    monkeypatch.setattr(api_market_topn, "start_refresh_job", inline_start)
+
+    res = api_client.post("/market/refresh")
+    assert res.status_code == 200
+    assert res.json()["status"] == "accepted"
+
+    db = api_market_topn.DEFAULT_DB_PATH
+    log = latest_refresh_log(source="FinanceDataReader/KS11", db_path=db)
+    assert log is not None
+    assert log["success_count"] == 0, "멈춘 KOSPI 를 성공으로 기록했다"
+    assert log["fail_count"] == 1
+    assert log["error_summary"] == "source_stale:as_of=2024-10-24,ref=2024-10-30,lag=4"
+    # 전체 갱신은 실패가 아니다 — 사유만 남긴다.
+    snap = market_refresh_service.get_state_snapshot(db_path=db)
+    assert snap.status == "completed"
+    assert snap.error_summary == (
+        "kospi_benchmark_unavailable: "
+        "source_stale:as_of=2024-10-24,ref=2024-10-30,lag=4"
+    )
+    # 적재한 KOSPI 행은 되돌리지 않는다.
+    assert market_benchmark_store.latest_benchmark_date("KOSPI", db_path=db) == (
+        "2024-10-24"
+    )
 
 
 # ─── Market Regime & Benchmark Context (2026-05-22) ─────────────────

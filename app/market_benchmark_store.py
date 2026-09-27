@@ -13,13 +13,17 @@ KOSPI 같이 ETF 가 아닌 지수만 별도 보관한다. API 응답에서는 �
 
 from __future__ import annotations
 
+import math
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
 
+from app.market_benchmark_freshness import MAX_STALE_TRADING_DAYS
+from app.market_briefing.calendar import parse_date
 from app.market_data_store import DEFAULT_DB_PATH
+from app.trading_day_lag import lag_on_axis, trading_axis_before
 
 MARKET_BENCHMARK_DAILY_PRICE_DDL = """
 CREATE TABLE IF NOT EXISTS market_benchmark_daily_price (
@@ -167,12 +171,55 @@ def _df_to_close_rows(df) -> list[tuple[str, Optional[float]]]:
     return rows
 
 
+def _latest_valid_close_date(rows: list[tuple[str, Optional[float]]]) -> Optional[str]:
+    """유효 종가가 있는 행 중 마지막 날짜. 없으면 `None`.
+
+    POC3-02D-OPS-01 C7 · 설계자 Q26(b) — 유효 종가 = 유한한 수 · 0 초과. 반환의
+    마지막 날짜를 그대로 쓰면 upstream 이 새 날짜에 종가 없는 행(NaN · None ·
+    0 · 음수)을 줄 때 lag 0 · `ok` 로 통과한다. 화면 계층
+    (`fetch_benchmark_history`)은 유효 종가 행만 보므로 여전히 멈춘 날짜를 본다.
+    """
+    valid = [
+        dt
+        for dt, close in rows
+        if close is not None and math.isfinite(close) and close > 0
+    ]
+    return max(valid) if valid else None
+
+
+def _source_lag(
+    as_of: Optional[str], *, today_kst: str, calendar_dir: Optional[Path]
+) -> tuple[Optional[int], Optional[str]]:
+    """유효 종가 마지막 날짜(`as_of`)의 거래일 lag 와 축의 마지막 날(`ref`).
+
+    축은 08:00 기초지수 최신성 관문과 같다(`end_date` **미만** 거래일 · snapshot,
+    없으면 평일 fallback). KODEX200 DB 축은 DB 가 같이 멈추면 lag 가 0 이 되는
+    순환 결함이 있어 쓰지 않는다.
+
+    - 축의 마지막 날 **이상**이면 lag 0 — 축이 기준일 당일을 빼므로, PC 수동
+      갱신(`end_date=date.today()`)에서 당일 행이 오면 정상 자료가 stale 로
+      오판된다.
+    - lag 를 못 재면 `None`(호출부가 stale 로 본다) — 유효 종가 행 없음
+      (`as_of=None`) · 파싱 불가 · 축보다 오래됨 · 축 안에 없는 과거 날짜(휴장일 등).
+    """
+    days = trading_axis_before(today_kst, calendar_dir=calendar_dir)
+    ref = days[-1] if days else None
+    # **먼저 형식을 본다.** `20260923` 같은 값은 문자열 비교로 축 끝보다 커
+    # 보여 lag 0 으로 통과한다.
+    if as_of is None or parse_date(as_of) is None:
+        return None, ref
+    if ref is not None and as_of >= ref:
+        return 0, ref
+    return lag_on_axis(as_of, days), ref
+
+
 def refresh_kospi_benchmark(
     *,
     end_date,
     lookback_days: int = 180,
     price_fetcher=None,
     db_path: Path = DEFAULT_DB_PATH,
+    calendar_dir: Optional[Path] = None,
 ) -> dict:
     """KOSPI (FDR symbol 'KS11') 시계열 fetch + upsert.
 
@@ -181,6 +228,19 @@ def refresh_kospi_benchmark(
     Discovery refresh 를 실패 처리하지 않는다").
 
     price_fetcher 가 None 이면 lazy import 로 FDR 직접 호출. 테스트는 stub 주입.
+
+    POC3-02D-OPS-01 C7(감지 정정 A · 설계자 Q17) — 반환이 비어 있지 않아도
+    `as_of`(아래)가 `MAX_STALE_TRADING_DAYS` 보다 뒤처졌으면(lag 를 못 재는 경우
+    포함) `failed` + `source_stale:` 이다. 09-18 부터 upstream 이 멈췄는데 배치는
+    매일 `kospi=ok(as_of=2026-09-17)` 였다. **적재한 행은 되돌리지 않는다** —
+    upstream 이 재개되면 다음 적재의 lookback 이 빈 날을 채운다.
+
+    `as_of` 는 **유효 종가(유한 · 0 초과)가 있는 마지막 날짜**다(설계자 Q26(b)).
+    더 최신 날짜에 NaN · None · 0 · 음수 행이 있어도 신선한 자료로 치지 않는다.
+    유효 종가 행이 하나도 없으면 `source_stale:as_of=unknown` 이다. 이때도 행은
+    지금처럼 적재하고 되돌리지 않는다.
+
+    calendar_dir 가 None 이면 거래일 snapshot 기본 경로를 쓴다. 테스트는 tmp 주입.
     """
     from datetime import timedelta
 
@@ -215,5 +275,24 @@ def refresh_kospi_benchmark(
             "status": "failed",
             "error": f"store: {type(e).__name__}: {e}"[:200],
             "rows_written": 0,
+        }
+    # 같은 날짜가 두 번 오면 적재(upsert)처럼 **마지막 행**이 남는다 — 판정도
+    # 그 행으로 한다. 앞 행의 유효 종가로 신선하다고 보면 저장값과 갈린다.
+    as_of = _latest_valid_close_date(list(dict(rows).items()))
+    lag, ref = _source_lag(
+        as_of, today_kst=end_date.isoformat()[:10], calendar_dir=calendar_dir
+    )
+    if lag is None or lag > MAX_STALE_TRADING_DAYS:
+        # 배치 계층(`market_benchmark_batch.refresh_kospi`)이 ok 가 아닌 값을
+        # 이미 failed 로 바꾸므로 배치 status 는 `success_with_benchmark_failure`
+        # 가 된다 — 벤치마크 실패를 전체 성공으로 숨기지 않는다(OPS-02B-1 계약 ②).
+        return {
+            "status": "failed",
+            "error": (
+                f"source_stale:as_of={'unknown' if as_of is None else as_of},"
+                f"ref={ref or 'unknown'},"
+                f"lag={'unknown' if lag is None else lag}"
+            ),
+            "rows_written": written,
         }
     return {"status": "ok", "error": None, "rows_written": written}

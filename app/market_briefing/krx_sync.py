@@ -5,6 +5,14 @@
 1. 신규 무조정 가격계열 **일별 적재** (`krx_store`)
 2. API ticker·기초지수명과 공식 CSV **정합성 판정** (`meta_gate`)
 
+정합성 판정의 pending gate 입력(d20 종가 유무 · 첫 적재일 · 저장 거래일 수)도
+**적재 직후 같은 응답**으로 여기서 정한다(POC3-02D-OPS-01 Q1 (c) · R2 Q23). 08:00 은
+결과만 읽는다.
+
+공식 CSV 는 운영에서 **공용 resolver**(`official_csv`)가 고른다 — 08:00 과 같은
+함수다(Q2). 판정에 쓴 창(`evaluated_*`)과 `refresh_due` 를 매회 기록한다(R2 Q23 ·
+Q27).
+
 **08:00 runner 는 같은 API 를 다시 호출하지 않는다.** 여기가 유일한 외부 조회
 지점이다.
 
@@ -33,11 +41,14 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+import sqlite3
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 
-from app.market_briefing import krx_store, meta_gate
+from app.market_briefing import krx_store, meta_gate, official_csv
+
+_KST = timezone(timedelta(hours=9))
 
 KRX_ETF_DAILY_URL = "https://data-dbg.krx.co.kr/svc/apis/etp/etf_bydd_trd"
 DAILY_LOOKBACK_DAYS = 7
@@ -128,6 +139,29 @@ def _index_names(rows: list[dict[str, Any]]) -> dict[str, str]:
     }
 
 
+def _no_d20_first_loaded(
+    tickers: Iterable[str],
+    *,
+    db_path: Optional[Path],
+    window: Optional[krx_store.PriceWindow],
+) -> dict[str, Optional[str]]:
+    """저장 계열에서 **d20 종가가 없는** ticker → 첫 적재일.
+
+    POC3-02D-OPS-01 Q1 (c) — d20 은 08:00 과 **같은 창**
+    (`krx_store.resolve_window`)의 d20 이다. 창이 없으면(21 거래일 미만) 어느
+    ticker 도 d20 종가가 없다. 창은 호출자가 한 번 정해 넘긴다 — 판정 기록
+    (`evaluated_window_d20_date`)과 같은 창이어야 한다(R2 Q27).
+    """
+    have_d20: set[str] = (
+        set(krx_store.closes_on([window.d20], db_path=db_path).get(window.d20) or {})
+        if window is not None
+        else set()
+    )
+    missing = sorted(set(tickers) - have_d20)
+    first = krx_store.first_loaded_dates(missing, db_path=db_path)
+    return {t: first.get(t) for t in missing}
+
+
 def _csv_meta(path: Path) -> dict[str, Any]:
     import hashlib
 
@@ -152,28 +186,74 @@ def _asof_from_name(name: str) -> Optional[str]:
     )
 
 
+def _kst_now() -> str:
+    return datetime.now(_KST).isoformat(timespec="seconds")
+
+
+def _save_not_evaluated(
+    result: meta_gate.ConsistencyResult,
+    path: Path,
+    previous: Optional[meta_gate.ConsistencyResult],
+) -> dict[str, Any]:
+    """판정하지 못한 날 — `refresh_due` 는 직전 값을 잇고 판정 창은 비운다.
+
+    창이 비어 있으므로 08:00 은 이 JSON 을 `META_GATE_STALE` 로 본다(R2 Q27).
+    """
+    result.evaluated_at_kst = _kst_now()
+    meta_gate.carry_refresh_due(result, previous=previous)
+    meta_gate.save_consistency(result, path)
+    return _refresh_fields(result)
+
+
+def _refresh_fields(result: meta_gate.ConsistencyResult) -> dict[str, Any]:
+    return {
+        "refresh_due": result.refresh_due,
+        "refresh_due_reason": result.refresh_due_reason,
+        "refresh_due_cycle_id": result.refresh_due_cycle_id,
+        "csv_name": result.csv_name,
+        "csv_rejected_count": len(result.csv_rejected),
+    }
+
+
 def sync_krx_daily(
     *,
     today: date,
-    official_csv_path: Path,
     consistency_path: Path,
+    official_csv_path: Optional[Path] = None,
+    meta_dir: Optional[Path] = None,
     db_path: Optional[Path] = None,
     env_path: Optional[Path] = None,
     fetcher: Optional[Callable[[str, str], list[dict[str, Any]]]] = None,
     lookback_days: int = DAILY_LOOKBACK_DAYS,
+    logger: Any = None,
 ) -> dict[str, Any]:
     """07:20 진입점. **예외를 올리지 않는다.**
 
     성공하면 가격 1일치를 적재하고 정합성 결과를 남긴다. 실패해도 배치가
     ETF 가격 적재를 롤백하지 않도록 dict 로 돌려준다.
+
+    공식 CSV — 운영은 `meta_dir` 을 넘겨 **공용 resolver** 가 고르게 한다.
+    `official_csv_path` 는 파일을 직접 지정하는 옛 호출(합성 fixture · 고정 경로
+    도구)용이며 resolver 검사를 거치지 않는다. 둘 중 하나만 넘긴다 — 호출 인자
+    오류만 `TypeError` 로 올린다(실행 중 실패는 올리지 않는다).
     """
+    if (meta_dir is None) == (official_csv_path is None):
+        raise TypeError("meta_dir 과 official_csv_path 중 하나만 넘긴다")
+    # R2 Q24 — 직전 판정의 `refresh_due` 주기를 잇기 위해 **덮어쓰기 전에** 읽는다.
+    previous = meta_gate.load_consistency(consistency_path)
+
     key = read_api_key(env_path)
     if not key:
         result = meta_gate.ConsistencyResult(
             status=meta_gate.STATUS_API_FETCH_FAILED, error=STATUS_NO_API_KEY
         )
-        meta_gate.save_consistency(result, consistency_path)
-        return {"status": STATUS_NO_API_KEY, "basis_date": None, "rows_written": 0}
+        extra = _save_not_evaluated(result, consistency_path, previous)
+        return {
+            "status": STATUS_NO_API_KEY,
+            "basis_date": None,
+            "rows_written": 0,
+            **extra,
+        }
 
     fetch = fetcher or _default_fetcher
     bas_dd, rows, tried = resolve_basis_date(
@@ -185,12 +265,13 @@ def sync_krx_daily(
             status=meta_gate.STATUS_API_FETCH_FAILED,
             error=f"no_response_within_{lookback_days}d",
         )
-        meta_gate.save_consistency(result, consistency_path)
+        extra = _save_not_evaluated(result, consistency_path, previous)
         return {
             "status": STATUS_NO_BASIS_DATE,
             "basis_date": None,
             "rows_written": 0,
             "tried_dates": tried,
+            **extra,
         }
 
     # ① 가격 적재 — 검사를 통과한 **전체 ETF** 를 저장한다(196종만 저장하지 않는다).
@@ -202,32 +283,79 @@ def sync_krx_daily(
             api_basis_date=bas_dd,
             error=f"invalid_snapshot:{e}",
         )
-        meta_gate.save_consistency(result, consistency_path)
+        extra = _save_not_evaluated(result, consistency_path, previous)
         return {
             "status": STATUS_INVALID_SNAPSHOT,
             "basis_date": bas_dd,
             "rows_written": 0,
             "error": str(e),
+            **extra,
         }
     written = krx_store.upsert_snapshot(snapshot, db_path=db_path)
 
-    # ② 정합성 판정 — **같은 응답**을 쓴다. 다시 호출하지 않는다.
+    api_names = _index_names(rows)
+    # pending gate 입력 — 적재 **직후** · 같은 응답의 ticker 로 본다
+    # (POC3-02D-OPS-01 Q1 (c) · R2 Q23). 창은 한 번만 정한다(R2 Q27 기록과 같은 창).
+    window: Optional[krx_store.PriceWindow] = None
+    no_d20: Optional[dict[str, Optional[str]]]
+    counts: Optional[dict[str, int]]
     try:
-        csv_rows = meta_gate.load_official_csv(official_csv_path)
-    except (OSError, UnicodeDecodeError) as e:  # noqa: BLE001
-        csv_rows = []
-        csv_error = f"{type(e).__name__}"
-    else:
-        csv_error = None
+        window = krx_store.resolve_window(db_path=db_path)
+        no_d20 = _no_d20_first_loaded(api_names, db_path=db_path, window=window)
+        counts = krx_store.stored_day_counts(no_d20, db_path=db_path)
+        pending_error = None
+    except sqlite3.Error as e:
+        # 조회 실패 — 옛 계약(모든 API-only 차단)으로 fail-closed 한다.
+        no_d20, counts = None, None
+        pending_error = f"pending_lookup:{type(e).__name__}"
 
-    result = meta_gate.evaluate_consistency(
-        api_index_names=_index_names(rows),
-        csv_rows=csv_rows,
-        api_basis_date=bas_dd,
-        csv_meta=_csv_meta(official_csv_path),
-    )
+    # ② 정합성 판정 — **같은 응답**을 쓴다. 다시 호출하지 않는다.
+    selection: Optional[official_csv.CsvSelection] = None
+    csv_error: Optional[str] = None
+    if meta_dir is not None:
+        selection = official_csv.resolve_official_csv(meta_dir, logger=logger)
+        csv_rows = selection.records
+        csv_meta = selection.csv_meta()
+    else:
+        try:
+            csv_rows = meta_gate.load_official_csv(official_csv_path)
+        except (OSError, UnicodeDecodeError) as e:  # noqa: BLE001
+            csv_rows = []
+            csv_error = f"{type(e).__name__}"
+        csv_meta = _csv_meta(official_csv_path)
+
+    if selection is not None and not selection.ok:
+        # 유효 파일이 하나도 없다 — CSV 갱신 필요로 fail-closed(R2 Q25).
+        result = meta_gate.ConsistencyResult(
+            status=meta_gate.STATUS_CSV_REFRESH_REQUIRED,
+            api_ticker_count=len(api_names),
+            api_basis_date=bas_dd,
+            error=selection.error,
+            evaluated_at=datetime.now(timezone.utc).isoformat(),
+        )
+    else:
+        result = meta_gate.evaluate_consistency(
+            api_index_names=api_names,
+            csv_rows=csv_rows,
+            api_basis_date=bas_dd,
+            csv_meta=csv_meta,
+            no_d20_first_loaded=no_d20,
+            stored_day_counts=counts,
+        )
     if csv_error and result.error is None:
         result.error = f"official_csv:{csv_error}"
+    if pending_error and result.error is None:
+        result.error = pending_error
+    if selection is not None:
+        result.csv_name = selection.name
+        result.csv_rejected = [r.to_dict() for r in selection.rejected]
+    elif official_csv_path is not None and official_csv_path.exists():
+        result.csv_name = official_csv_path.name
+    # R2 Q27 — 판정에 쓴 창 · R2 Q23 — refresh_due 와 주기.
+    result.evaluated_api_basis_date = bas_dd
+    result.evaluated_window_d20_date = window.d20 if window is not None else None
+    result.evaluated_at_kst = _kst_now()
+    meta_gate.apply_refresh_due(result, previous=previous)
     meta_gate.save_consistency(result, consistency_path)
 
     return {
@@ -238,6 +366,7 @@ def sync_krx_daily(
         "consistency_status": result.status,
         "join_coverage": round(result.join_coverage, 6),
         "tried_dates": tried,
+        **_refresh_fields(result),
     }
 
 

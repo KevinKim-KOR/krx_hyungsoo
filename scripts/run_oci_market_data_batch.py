@@ -43,8 +43,9 @@ def _kst_today() -> date:
     return datetime.strptime(kst_today_date(), "%Y-%m-%d").date()
 
 
+# 공식 CSV 는 이 폴더에서 08:00 과 **같은 resolver** 가 고른다(POC3-02D-OPS-01
+# C1 · Q2). 파일명 상수로 고르지 않는다.
 MARKET_META_DIR = Path("state/market_meta")
-OFFICIAL_ETF_CSV = "krx_etf_basic_20260909.csv"
 
 
 def run(mode: str = "run") -> dict:
@@ -177,8 +178,9 @@ def run(mode: str = "run") -> dict:
     try:
         krx = krx_sync.sync_krx_daily(
             today=end_date,
-            official_csv_path=MARKET_META_DIR / OFFICIAL_ETF_CSV,
+            meta_dir=MARKET_META_DIR,
             consistency_path=_STATE_DIR / meta_gate.CONSISTENCY_STATE_NAME,
+            logger=logger,
         )
     except Exception as e:  # noqa: BLE001
         krx = {"status": f"unexpected:{type(e).__name__}", "basis_date": None}
@@ -190,6 +192,19 @@ def run(mode: str = "run") -> dict:
         logger.warning(
             "KRX 전종목 수집 실패: %s — ETF 가격 적재는 유지한다", krx.get("status")
         )
+    # POC3-02D-OPS-01 R2 Q23 · Q24 — CSV 갱신 필요 판정을 **매회** 남긴다.
+    # 정합성 JSON 에는 `sync_krx_daily` 가 이미 썼다. 예외로 끝나 모르면 None.
+    record["meta_refresh_due"] = krx.get("refresh_due")
+    record["meta_refresh_due_reason"] = krx.get("refresh_due_reason")
+    record["meta_refresh_due_cycle_id"] = krx.get("refresh_due_cycle_id")
+    record["official_csv_name"] = krx.get("csv_name")
+    logger.info(
+        "공식 CSV 갱신 판정: refresh_due=%s reason=%s cycle=%s csv=%s",
+        krx.get("refresh_due", "unknown"),
+        krx.get("refresh_due_reason"),
+        krx.get("refresh_due_cycle_id"),
+        krx.get("csv_name"),
+    )
 
     # ── 3. Universe 운영 artifact 생성 (저장하지 않음 · A-1(4)) ───────────
     # A-1(4): 검증(refresh_status·validate·freshness) 통과 전에는 latest 를 덮어쓰지

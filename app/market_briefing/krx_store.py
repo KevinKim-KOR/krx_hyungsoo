@@ -186,6 +186,70 @@ def closes_on(
         con.close()
 
 
+# SQLite 변수 상한(옛 버전 999)과 무관하게 묻도록 나눠 묻는다.
+_IN_CHUNK = 500
+
+
+def first_loaded_dates(
+    tickers: Iterable[str], *, db_path: Optional[Path] = None
+) -> dict[str, str]:
+    """`{ticker: 이 계열의 첫 적재일 MIN(date)}`. **값을 쓰지 않는다.**
+
+    POC3-02D-OPS-01 C1 — pending gate 가 d20 종가 없는 신규 ETF 의 첫 적재일을
+    기록할 때 쓴다(설계자 Q1 (c)). 적재 기록이 없는 ticker 는 담지 않는다.
+    """
+    wanted = sorted(set(tickers))
+    if not wanted:
+        return {}
+    init_db(db_path)
+    con = _connect(db_path)
+    try:
+        out: dict[str, str] = {}
+        for start in range(0, len(wanted), _IN_CHUNK):
+            end = start + _IN_CHUNK
+            chunk = wanted[start:end]
+            q = ",".join("?" * len(chunk))
+            for t, d in con.execute(
+                f"SELECT ticker, MIN(date) FROM {TABLE} "
+                f"WHERE ticker IN ({q}) GROUP BY ticker",
+                chunk,
+            ):
+                out[t] = d
+        return out
+    finally:
+        con.close()
+
+
+def stored_day_counts(
+    tickers: Iterable[str], *, db_path: Optional[Path] = None
+) -> dict[str, int]:
+    """`{ticker: 이 계열에 저장된 거래일 수}`. **값을 쓰지 않는다.**
+
+    POC3-02D-OPS-01 R2 Q23 — pending 이 d20 종가를 얻기까지 남은 거래일
+    (`21 - 수`)을 셀 때 쓴다. 적재 기록이 없는 ticker 는 담지 않는다.
+    """
+    wanted = sorted(set(tickers))
+    if not wanted:
+        return {}
+    init_db(db_path)
+    con = _connect(db_path)
+    try:
+        out: dict[str, int] = {}
+        for start in range(0, len(wanted), _IN_CHUNK):
+            end = start + _IN_CHUNK
+            chunk = wanted[start:end]
+            q = ",".join("?" * len(chunk))
+            for t, n in con.execute(
+                f"SELECT ticker, COUNT(*) FROM {TABLE} "
+                f"WHERE ticker IN ({q}) GROUP BY ticker",
+                chunk,
+            ):
+                out[t] = int(n)
+        return out
+    finally:
+        con.close()
+
+
 @dataclass(frozen=True)
 class PriceWindow:
     """수익률 계산에 쓰는 세 기준일. 셋 다 있어야 유효하다."""
@@ -224,8 +288,10 @@ __all__ = [
     "KrxSnapshotError",
     "SnapshotRow",
     "closes_on",
+    "first_loaded_dates",
     "init_db",
     "resolve_window",
+    "stored_day_counts",
     "stored_trading_days",
     "upsert_snapshot",
     "validate_snapshot",

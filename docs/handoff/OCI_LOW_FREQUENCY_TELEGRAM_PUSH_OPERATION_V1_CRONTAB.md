@@ -1,5 +1,7 @@
 # OCI Low-Frequency Telegram Push Operation v1 — Crontab 초안 + 실측 명령셋
 
+> **SUPERSEDED (2026-09-27 · `POC3-02D-OPS-01` Q15)** — 이 문서는 07-25 초안(spike 7틱 · UTC 표기)이다. 지금 cron 은 `holdings_risk_alert` 7틱이고 `spike_or_falling_alert` 는 폐지됐다. 현재 스케줄은 `docs/PROGRAM_TRUTH.md` §3 · §10 · §9 C-2 를 본다.
+
 작성일: 2026-07-25
 Step: `LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1`
 상태: **DRAFT (사용자 실측 대기)** — crontab 미적용 · commit/push 미승인

@@ -22,6 +22,7 @@ python scripts/build_market_briefing_mockups.py --md OUT   # 마크다운 저장
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -83,10 +84,23 @@ MOCK_TRADING_DAYS = (
 
 
 def _seed_prices(
-    db: Path, tickers: list[str], *, latest: float, d5: float, d20: float
+    db: Path,
+    tickers: list[str],
+    *,
+    latest: float,
+    d5: float,
+    d20: float,
+    days_limit: Optional[int] = None,
 ) -> None:
-    """직전 거래일까지 채운다. 창이 성립하고 **최신성 Gate도 통과**해야 한다."""
+    """직전 거래일까지 채운다. 창이 성립하고 **최신성 Gate도 통과**해야 한다.
+
+    `days_limit` 를 주면 마지막 N 거래일만 채운다 — 21 거래일 미만으로 **창이
+    성립하지 않는** 경우(⑥)를 만들 때 쓴다. 07:20 은 적재한 날을 판정 기준일로
+    남기므로, 빈 DB 가 아니라 적재가 짧은 DB 여야 운영과 같은 모양이다.
+    """
     days = [d for d in MOCK_TRADING_DAYS if d < "2026-09-18"]
+    if days_limit is not None:
+        days = days[-days_limit:]
     for i, day in enumerate(days):
         # 창은 최신일 기준 21개다. -20 위치에 d20, -5 위치에 d5 를 둔다.
         if i == len(days) - 21:
@@ -127,11 +141,22 @@ def _run(
 ) -> Any:
     state = tmp / "state.json"
     cpath = tmp / "consistency.json"
-    if consistency is not None:
-        meta_gate.save_consistency(consistency, cpath)
     db = tmp / "krx.sqlite"
     if seed:
         _seed_prices(db, **seed)
+    if consistency is not None:
+        # POC3-02D-OPS-01 R2 Q27 — 08:00 은 **오늘 창**의 판정만 쓴다. 07:20 이
+        # 남기는 판정 창(`evaluated_*`)을 적재된 창에서 계산해 붙인다. 없으면
+        # 모든 목업이 `META_GATE_STALE` 로 나온다.
+        window = krx_store.resolve_window(db_path=db)
+        days = krx_store.stored_trading_days(db_path=db)
+        consistency = dataclasses.replace(
+            consistency,
+            evaluated_api_basis_date=days[-1].replace("-", "") if days else None,
+            evaluated_window_d20_date=window.d20 if window else None,
+            evaluated_at_kst=f"{TODAY}T07:20:00+09:00",
+        )
+        meta_gate.save_consistency(consistency, cpath)
     if prev_fingerprint:
         flow.save_state(
             state,
@@ -305,7 +330,14 @@ def build() -> list[Mock]:
                 fresh=False,
                 csv_rows=two,
                 consistency=_consistency(4),
-                seed=None,  # 거래일 21개 미만 → 창 미성립
+                # 거래일 21개 미만 → 창 미성립(판정 창은 적재한 날 기준으로 남는다)
+                seed={
+                    "tickers": two_tickers,
+                    "latest": 11000.0,
+                    "d5": 10500.0,
+                    "d20": 10000.0,
+                    "days_limit": 5,
+                },
             ),
             False,
             "미발송 — 상태 저장 없음",
