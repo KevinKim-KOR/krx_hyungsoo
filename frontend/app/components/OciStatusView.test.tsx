@@ -2,6 +2,10 @@
 //
 // 표시만 바꿨다 — 응답은 백엔드 `oci_startup_status` 가 실제로 만드는 모양 그대로
 // fixture 로 둔다(job 이름 · 상태값 · detail 문구 · UTC ISO 시각).
+//
+// 2026-09-27 사용자 직접 지시: 이 패널은 「OCI 운영·적용」 화면의 ① 섹션으로
+// 들어갔다(`oci_status` 메뉴 없음). 자기 h1 을 두지 않는다 — 화면 제목 · 섹션
+// 제목은 ApprovalTelegramView 가 단다(ApprovalTelegramView.test.tsx).
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
@@ -15,7 +19,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
   };
 });
 
-import OciStatusView, { fmtKst } from "./OciStatusView";
+import OciStatusPanel, { fmtKst } from "./OciStatusView";
 
 function operating() {
   return {
@@ -55,12 +59,14 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("OciStatusView — 요약 + 표", () => {
+describe("OciStatusPanel — 요약 + 표", () => {
   it("정상: 요약 한 줄 · 한국어 항목 · 한국 시간", async () => {
     fetchOciStartupStatus.mockResolvedValue(operating());
-    const { container } = render(<OciStatusView />);
+    const { container } = render(<OciStatusPanel />);
 
     expect(await screen.findByText("정상 운영 중")).toBeInTheDocument();
+    // 패널이다 — 화면 제목(h1)은 합친 화면이 단다.
+    expect(container.querySelector("h1")).toBeNull();
     expect(screen.getByText("자동 발송 예약이 모두 등록되어 있습니다")).toBeInTheDocument();
     // 09:58 UTC = 18:58 KST (2026-09-27 일요일)
     expect(screen.getByText("PC 백엔드 시작 때 1번 확인 · 9/27(일) 18:58")).toBeInTheDocument();
@@ -87,7 +93,7 @@ describe("OciStatusView — 요약 + 표", () => {
     s.overall = "DEGRADED";
     s.jobs[0] = { job: "crontab", status: "STALE", detail: "일부 스케줄 누락: holdings_risk_alert" };
     fetchOciStartupStatus.mockResolvedValue(s);
-    render(<OciStatusView />);
+    render(<OciStatusPanel />);
 
     expect(await screen.findByText("일부 예약 누락")).toBeInTheDocument();
     expect(screen.getByText("빠진 예약: 장중 급등락")).toBeInTheDocument();
@@ -106,7 +112,7 @@ describe("OciStatusView — 요약 + 표", () => {
       jobs: [],
       note: "OCI 접속 대상이 설정되지 않아 기동 시 조회를 건너뛰었습니다.",
     });
-    render(<OciStatusView />);
+    render(<OciStatusPanel />);
 
     expect(await screen.findByText("확인 불가")).toBeInTheDocument();
     expect(screen.getByText("OCI 상태 미확인 (OCI_SSH_TARGET 미설정)")).toBeInTheDocument();
@@ -117,7 +123,7 @@ describe("OciStatusView — 요약 + 표", () => {
     const s = operating();
     s.jobs.push({ job: "new_job", status: "WEIRD", detail: "새 항목 원문" });
     fetchOciStartupStatus.mockResolvedValue(s);
-    render(<OciStatusView />);
+    render(<OciStatusPanel />);
 
     const row = within(await screen.findByText("new_job", { selector: "td" }).then((c) => c.closest("tr") as HTMLElement));
     expect(row.getByText("WEIRD")).toBeInTheDocument();
@@ -126,7 +132,7 @@ describe("OciStatusView — 요약 + 표", () => {
 
   it("조회 실패: 기존 오류 문구 그대로", async () => {
     fetchOciStartupStatus.mockRejectedValue(new Error("down"));
-    render(<OciStatusView />);
+    render(<OciStatusPanel />);
     expect(await screen.findByText("알 수 없는 오류: down")).toBeInTheDocument();
   });
 

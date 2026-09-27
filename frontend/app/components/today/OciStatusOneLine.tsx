@@ -12,7 +12,12 @@ import type { MenuKey } from "../LeftSidebar";
 // ── 컨테이너 ─────────────────────────────────────────────────────────────────
 // POC3-07: 기동 시 읽은 OCI 상태 한 줄. 이 GET 은 백엔드 캐시를 반환하며 OCI 를
 // 재조회하지 않는다. 실패·미확인이면 UNKNOWN 으로 조용히 한 줄만 표시(첫 화면을
-// 막지 않음). 상세는 진단·상태로 이동.
+// 막지 않음). 상세는 「OCI 운영·적용」(`approval`)의 ① 지금 OCI 상태로 이동.
+// POC3-02D-OPS-02 3-1 — 2026-08-16 메뉴 분리 뒤에도 이 링크만 「개발·실험용」
+// (`diagnostics` · OCI 상세 없음)으로 가던 것을 실제 도착 화면으로 고쳤다. 문구도
+// 도착 화면의 메뉴 이름(LeftSidebar `approval` label)을 그대로 쓴다.
+// 2026-09-27 사용자 직접 지시: 「OCI 운영 상태」(`oci_status`)가 「승인·적용」과
+// 합쳐져 「OCI 운영·적용」(`approval`)이 됐다 → 도착 key · 문구를 함께 바꿨다.
 export default function OciStatusOneLine({
   onNavigate,
 }: {
@@ -55,9 +60,9 @@ export default function OciStatusOneLine({
           <button
             type="button"
             className="tc-linklike"
-            onClick={() => onNavigate("diagnostics")}
+            onClick={() => onNavigate("approval")}
           >
-            진단·상태에서 상세 보기 →
+            OCI 운영·적용에서 상세 보기 →
           </button>
         </>
       ) : null}

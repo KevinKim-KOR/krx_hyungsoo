@@ -1,10 +1,15 @@
 "use client";
 
-// OCI 운영 상태 (oci_status) — 2026-08-16 사용자 직접 지시로 독립 메뉴화.
+// OCI 운영 상태 패널 — 「OCI 운영·적용」(`approval`) 화면의 ① 지금 OCI 상태 (읽기만).
 //
-// 배경: POC3-07 이 이 카드를 `diagnostics`(진단·상태) 화면 안에 두었으나, 내용은
-// "PC 백엔드 기동 시 읽은 OCI 운영 상태" 로 **정상 업무 조회**다. 미리보기·샘플·LEGACY
-// 와 한 서랍에 있으면 성격이 섞인다. 카드 내용·API 는 그대로 두고 위치만 분리한다.
+// 2026-08-16 사용자 직접 지시로 `diagnostics`(진단·상태)에서 떼어 독립 메뉴
+// (`oci_status`)로 두었다. 내용이 "PC 백엔드 기동 시 읽은 OCI 운영 상태" 로 **정상
+// 업무 조회**라 미리보기·샘플·LEGACY 와 섞이면 안 되기 때문이다.
+//
+// 2026-09-27 사용자 직접 지시: 「승인·적용」과 한 화면 「OCI 운영·적용」으로 합쳤다.
+// 그래서 이 파일은 **화면이 아니라 패널**이다 — 자기 h1 을 두지 않고, 화면 제목과
+// 섹션 제목(h2)은 ApprovalTelegramView 가 단다. `oci_status` 메뉴는 없어졌다.
+// 부제(확인 시각) · 요약 · 표 · 각주 · 오류/로딩 표시는 그대로다.
 //
 // 이 GET 은 백엔드 캐시를 반환하며 OCI 를 재조회하지 않는다(설계자 Q2).
 // 자동 polling·수동 새로고침 버튼을 두지 않는다.
@@ -122,7 +127,7 @@ function summaryOf(s: OciStartupStatus): { icon: string; title: string; sub: str
   };
 }
 
-export default function OciStatusView() {
+export default function OciStatusPanel() {
   const [status, setStatus] = useState<OciStartupStatus | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -149,8 +154,7 @@ export default function OciStatusView() {
   const summary = status ? summaryOf(status) : null;
 
   return (
-    <section aria-labelledby="oci-startup-h">
-      <h1 id="oci-startup-h">OCI 운영 상태</h1>
+    <div>
       <p className="subtitle">
         PC 백엔드 시작 때 1번 확인{checked ? ` · ${checked}` : ""}
       </p>
@@ -205,6 +209,6 @@ export default function OciStatusView() {
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

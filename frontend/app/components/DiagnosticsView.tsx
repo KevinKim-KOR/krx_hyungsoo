@@ -10,6 +10,7 @@
 //       POC3-07 이 "placeholder" 로 보고 흡수했으나, 실제로는 2026-06-08 NAV/Discount
 //       Display FIX 로 이미 전체 ETF NAV·괴리율 조회 화면이 된 상태였다(판단 근거가 낡음).
 //   - OciStartupStatusDetail → `oci_status`(OCI 운영 상태) 메뉴로 분리. 정상 업무 조회다.
+//       (2026-09-27 사용자 직접 지시로 `oci_status` 는 「OCI 운영·적용」(`approval`)에 합쳐졌다.)
 //   - ML 카드 3개            → `ml`(ML 실험) 메뉴로 이동.
 //
 // 남은 것은 미리보기·샘플(PREVIEW/TEST) · 개발 호환 점검 · LEGACY 대시보드뿐이다.
@@ -33,8 +34,8 @@ export default function DiagnosticsView({ run, setRun, onNavigate }: Props) {
       <h1 id="diagnostics-h">개발·실험용</h1>
       <p className="helper" style={{ marginBottom: 16 }}>
         정상 업무 화면이 아닙니다. 미리보기·샘플(PREVIEW/TEST), 개발 호환 점검,
-        참고용 이전 화면(LEGACY)을 이곳에서 관리합니다. 데이터 상태·OCI 운영 상태·ML
-        실험은 각각 별도 메뉴로 분리됐습니다.
+        참고용 이전 화면(LEGACY)을 이곳에서 관리합니다. 데이터 상태·ML 실험은 각각
+        별도 메뉴로, OCI 운영 상태는 「OCI 운영·적용」으로 옮겼습니다.
       </p>
 
       {/* A. 미리보기·샘플 (approval 에서 이동, PREVIEW/TEST 성격) */}

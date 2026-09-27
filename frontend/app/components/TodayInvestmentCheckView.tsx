@@ -110,7 +110,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
           구분합니다.
         </p>
         {/* POC3-07 §4.2·§5.1: 기동 시 읽은 OCI 상태를 한 줄로만 표시.
-            상세는 진단·상태로. 여기서 OCI 를 재조회하지 않는다(백엔드 캐시). */}
+            상세는 「OCI 운영·적용」으로. 여기서 OCI 를 재조회하지 않는다(백엔드 캐시). */}
         <OciStatusOneLine onNavigate={onNavigate} />
       </header>
 

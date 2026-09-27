@@ -12,6 +12,11 @@
 // 표시 X (지시문 §5.2):
 //   param_id / manual_seed / remote path / SSH target / 파일명 /
 //   실행 명령 / raw traceback / token / chat_id.
+//
+// 2026-09-27 사용자 직접 지시(가독성 · 배치만): 한 줄에 몰아 쓰던 값을
+//   제목 오른쪽 상태 배지 + 정렬된 행(적용 기준 · 마지막 적용 · OCI 반영)으로
+//   나눴다. 값 · 문구 · 시각 형식(YYYY-MM-DD HH:MM, 없으면 "—") · 버튼 · 동작은
+//   그대로다. 배지 색은 「OCI 운영·적용」 ① 표와 같은 `.oci-state` 톤을 쓴다.
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -38,19 +43,20 @@ function statusBadgeText(status: ThreePushParamStatus): string {
   }
 }
 
-function statusBadgeColor(status: ThreePushParamStatus): string {
+// `.oci-state` 톤 (globals.css). 완료 = ok · 실패/확인 필요 = warn ·
+// 진행 중 = info · 미적용 = unknown(회색 — 실패처럼 보이지 않게).
+function statusBadgeTone(status: ThreePushParamStatus): string {
   switch (status) {
     case "applied":
-      return "#16a34a"; // green
+      return "ok";
     case "applying":
-      return "#0284c7"; // blue
+      return "info";
     case "failed":
-      return "#dc2626"; // red
     case "verification_required":
-      return "#d97706"; // amber
+      return "warn";
     case "not_applied":
     default:
-      return "#6b7280"; // gray
+      return "unknown";
   }
 }
 
@@ -116,91 +122,54 @@ export default function ThreePushParamCard() {
 
   if (loading && !state) {
     return (
-      <section
-        aria-labelledby="three-push-param-h"
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 8,
-          padding: 16,
-          marginBottom: 16,
-        }}
-      >
-        <h3 id="three-push-param-h" style={{ margin: 0 }}>
-          현재 운영 기준
-        </h3>
-        <p style={{ marginTop: 8, color: "#6b7280" }}>상태 조회 중...</p>
+      <section aria-labelledby="three-push-param-h" className="tc-card ops-card">
+        <div className="ops-card-head">
+          <h3 id="three-push-param-h">현재 운영 기준</h3>
+        </div>
+        <p className="tc-muted tc-small">상태 조회 중...</p>
       </section>
     );
   }
 
   return (
-    <section
-      aria-labelledby="three-push-param-h"
-      style={{
-        border: "1px solid #e5e7eb",
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 16,
-      }}
-    >
-      <h3 id="three-push-param-h" style={{ margin: 0 }}>
-        현재 운영 기준
-      </h3>
+    <section aria-labelledby="three-push-param-h" className="tc-card ops-card">
+      <div className="ops-card-head">
+        <h3 id="three-push-param-h">현재 운영 기준</h3>
+        {state ? (
+          <span className={`oci-state ${statusBadgeTone(state.status)}`}>
+            {statusBadgeText(state.status)}
+          </span>
+        ) : null}
+      </div>
       {state ? (
-        <div style={{ marginTop: 10 }}>
-          {/* 컴팩트 한 줄 — 현재 적용 기준 · OCI 반영 상태 · 마지막 적용 시각. */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: "6px 16px",
-            }}
-          >
-            <span>
-              <span style={{ color: "#6b7280" }}>현재 적용 기준 </span>
+        <div>
+          <dl className="ops-kv">
+            <dt>적용 기준</dt>
+            <dd>
               <strong>{state.display_label}</strong>
-            </span>
-            <span
-              style={{
-                display: "inline-block",
-                padding: "2px 8px",
-                borderRadius: 4,
-                backgroundColor: statusBadgeColor(state.status),
-                color: "white",
-                fontSize: "0.85em",
-              }}
-            >
-              {statusBadgeText(state.status)}
-            </span>
-            <span style={{ color: "#6b7280", fontSize: "0.9em" }}>
-              마지막 적용 {state.applied_at ?? "—"}
-            </span>
-          </div>
-          <div style={{ color: "#6b7280", fontSize: "0.85em", marginTop: 4 }}>
-            {state.message}
-          </div>
+            </dd>
+
+            {/* 형식 계약(지시문 §5.2): YYYY-MM-DD HH:MM, 없으면 "—". 다시 바꾸지 않는다. */}
+            <dt>마지막 적용</dt>
+            <dd>{state.applied_at ?? "—"}</dd>
+
+            <dt>OCI 반영</dt>
+            <dd>{state.message}</dd>
+          </dl>
           {appliedHash ? (
             <div
-              style={{ color: "#9ca3af", fontSize: "0.78em", marginTop: 2 }}
+              className="ops-note"
               title="전송 내용 식별용 해시 (성공 판정은 OCI 검증)"
             >
               적용 내용 해시 {appliedHash.slice(0, 12)}…
             </div>
           ) : null}
           {state.status === "failed" ? (
-            <div
-              style={{
-                color: "#6b7280",
-                fontSize: "0.82em",
-                marginTop: 6,
-                lineHeight: 1.5,
-              }}
-            >
+            <p className="tc-muted tc-small ops-explain">
               OCI(운영 서버) 연결이 없는 환경에서는 적용이 실패할 수 있습니다.
               이 경우 기존 적용 기준은 그대로 유지되며, 실제 운영 환경에서 다시
               적용하면 됩니다. (화면 오류가 아니라 OCI 반영 단계의 실패입니다.)
-            </div>
+            </p>
           ) : null}
         </div>
       ) : null}

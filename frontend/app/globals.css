@@ -3047,3 +3047,106 @@ textarea.decision-textarea {
   color: var(--muted);
   background: #f3f4f6;
 }
+
+/* 진행 중(적용 중) — ① 표에는 없고 ② 적용 카드 배지에서만 쓴다. */
+.oci-state.info {
+  color: var(--accent);
+  background: #eff6ff;
+}
+
+/* 「OCI 운영·적용」 (2026-09-27 사용자 직접 지시 — 승인·적용 + OCI 운영 상태 합침)
+   ① 지금 OCI 상태 (읽기만) · ② OCI 에 적용 (버튼으로 반영) 두 섹션과,
+   ② 의 적용 카드 두 장(현재 운영 기준 · 장중 급등락 설정)의 정렬된 행. */
+.ops-section {
+  margin-top: 28px;
+}
+.ops-section-h {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+.ops-card {
+  margin-bottom: 16px;
+}
+/* 카드 제목 + 오른쪽 상태 배지 한 줄. 좁으면 배지가 아래로 내려간다. */
+.ops-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+/* 두 카드 제목(h2 · h3)을 같은 크기로 — 섹션 제목(.ops-section-h)보다 한 단계 작게. */
+.ops-card-head h2,
+.ops-card-head h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+/* 이름 | 값 정렬 행. 이름 칸은 가장 긴 이름 폭에 맞춘다. */
+.ops-kv {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 20px;
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.ops-kv dt,
+.ops-kv dd {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.ops-kv dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+.ops-kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ops-kv dt:last-of-type,
+.ops-kv dd:last-of-type {
+  border-bottom: none;
+}
+.ops-sub {
+  margin: 16px 0 4px;
+}
+.ops-note {
+  color: #9ca3af;
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+.ops-explain {
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.ops-card .tc-h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+.ops-card .tc-list {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  font-size: 14px;
+}
+.ops-card .tc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+details.ops-details {
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+details.ops-details > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 4px 0;
+}
+details.ops-details[open] > summary {
+  margin-bottom: 4px;
+}

@@ -18,6 +18,7 @@ const fetchHoldingsMarketEvidence = vi.fn();
 const fetchNavDiscountLatest = vi.fn();
 const fetchBenchmarkSeries = vi.fn();
 const refreshMarket = vi.fn();
+const fetchOciStartupStatus = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   fetchMarketTopnLatest: (...a: unknown[]) => fetchMarketTopnLatest(...a),
@@ -26,6 +27,7 @@ vi.mock("@/lib/api", () => ({
   fetchNavDiscountLatest: (...a: unknown[]) => fetchNavDiscountLatest(...a),
   fetchBenchmarkSeries: (...a: unknown[]) => fetchBenchmarkSeries(...a),
   refreshMarket: (...a: unknown[]) => refreshMarket(...a),
+  fetchOciStartupStatus: (...a: unknown[]) => fetchOciStartupStatus(...a),
 }));
 
 import TodayInvestmentCheckView from "./TodayInvestmentCheckView";
@@ -129,6 +131,20 @@ function primeAll() {
   fetchNavDiscountLatest.mockResolvedValue(navOk());
   fetchBenchmarkSeries.mockResolvedValue(kospiSeriesOk());
   refreshMarket.mockResolvedValue({ status: "ok" });
+  fetchOciStartupStatus.mockResolvedValue(ociOk());
+}
+
+// POC3-02D-OPS-02 3-1 — OCI 한 줄이 쓰는 기동 시 상태(백엔드 캐시 응답 모양).
+function ociOk() {
+  return {
+    checked_at: "2026-09-27T08:18:31+00:00",
+    reachable: true,
+    overall: "OPERATING",
+    summary_line: "OCI 자동 운영 스케줄 활성 (필수 3종 등록 · 기동 시 확인)",
+    crontab_active: true,
+    jobs: [],
+    note: "",
+  };
 }
 
 beforeEach(() => {
@@ -364,6 +380,34 @@ describe("TodayInvestmentCheckView", () => {
     expect(await screen.findByText("3개")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "ETF 비교하기" }));
     expect(onNavigate).toHaveBeenCalledWith("workbench");
+  });
+
+  // 2026-09-27 사용자 직접 지시: 「OCI 운영 상태」(oci_status)가 「승인·적용」과 합쳐져
+  // 「OCI 운영·적용」(approval)이 됐다. 도착 key · 문구가 함께 바뀐다.
+  it("POC3-02D-OPS-02 3-1: OCI 한 줄 링크 → 「OCI 운영·적용」(approval)", async () => {
+    const { onNavigate } = await renderView();
+    const ociLabel = MENU_ITEMS.find((m) => m.key === "approval")?.label;
+    expect(ociLabel).toBe("OCI 운영·적용");
+    // 문구가 도착 화면 이름을 그대로 쓴다 — '진단·상태'(그룹명) · 「개발·실험용」 아님.
+    const link = await screen.findByRole("button", {
+      name: `${ociLabel}에서 상세 보기 →`,
+    });
+    expect(link.textContent).not.toMatch(/진단·상태|개발·실험용/);
+    fireEvent.click(link);
+    expect(onNavigate).toHaveBeenCalledWith("approval");
+    expect(onNavigate).not.toHaveBeenCalledWith("diagnostics");
+    expect(onNavigate).not.toHaveBeenCalledWith("oci_status");
+  });
+
+  it("POC3-02D-OPS-02 3-1: OCI 조회가 실패해도 링크는 approval 로 간다", async () => {
+    fetchOciStartupStatus.mockRejectedValue(new Error("down"));
+    const { onNavigate } = await renderView();
+    expect(await screen.findByText(/OCI 상태 미확인/)).toBeInTheDocument();
+    const ociLabel = MENU_ITEMS.find((m) => m.key === "approval")?.label;
+    fireEvent.click(screen.getByRole("button", { name: `${ociLabel}에서 상세 보기 →` }));
+    expect(onNavigate).toHaveBeenCalledWith("approval");
+    expect(onNavigate).not.toHaveBeenCalledWith("diagnostics");
+    expect(onNavigate).not.toHaveBeenCalledWith("oci_status");
   });
 
   it("AC-14 정비 이동: 항목별 직접 라우팅 (구성종목 → etf_exposure)", async () => {

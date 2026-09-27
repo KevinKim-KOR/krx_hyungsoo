@@ -17,7 +17,6 @@ import ApprovalTelegramView from "./ApprovalTelegramView";
 import DiagnosticsView from "./DiagnosticsView";
 import MLView from "./MLView";
 import DataStatusView from "./DataStatusView";
-import OciStatusView from "./OciStatusView";
 import TodayInvestmentCheckView from "./TodayInvestmentCheckView";
 import JudgmentWorkbenchView from "./JudgmentWorkbenchView";
 import ETFExposureView from "./ETFExposureView";
@@ -70,11 +69,14 @@ export default function MainPanel() {
       view = <HoldingsEvidenceView onNavigate={setActive} />;
       break;
     case "approval":
+      // 「OCI 운영·적용」 — ① 지금 OCI 상태(읽기만) · ② OCI 에 적용.
+      //   2026-09-27 사용자 직접 지시로 「OCI 운영 상태」(`oci_status`)를 여기로 합쳤다.
       view = <ApprovalTelegramView />;
       break;
     case "diagnostics":
-      // POC3-07 §5.3: 진단·상태 — 기동 시 OCI 상태 상세 · 데이터 진단 ·
-      //   미리보기/샘플(PREVIEW/TEST) · LEGACY 대시보드 흡수. run state 공유.
+      // 「개발·실험용」 — 미리보기/샘플(PREVIEW/TEST) · LEGACY 대시보드. run state 공유.
+      //   (POC3-07 때 흡수했던 기동 시 OCI 상태 · 데이터 상태는 2026-08-16 에
+      //   따로 나갔다. OCI 상태는 2026-09-27 부터 「OCI 운영·적용」(`approval`) 안에 있다.)
       view = (
         <DiagnosticsView run={run} setRun={setRun} onNavigate={setActive} />
       );
@@ -86,9 +88,6 @@ export default function MainPanel() {
     case "data_status":
       // 2026-08-16 — POC3-07 이 diagnostics 로 흡수했던 것을 정상 업무 조회로 복원.
       view = <DataStatusView />;
-      break;
-    case "oci_status":
-      view = <OciStatusView />;
       break;
   }
 

@@ -57,7 +57,10 @@ const BASE: IntradayConfigState = {
 async function renderWith(state: Partial<IntradayConfigState> = {}) {
   vi.mocked(fetchIntradayConfigState).mockResolvedValue({ ...BASE, ...state });
   const r = render(<IntradayConfigCard />);
-  await waitFor(() => expect(screen.getByText("확인할 변경")).toBeTruthy());
+  // 2026-09-27: 「확인할 변경」이 행 이름(dt)에도 나와서 동작 제목(h3)으로 특정한다.
+  await waitFor(() =>
+    expect(screen.getByRole("heading", { name: "확인할 변경" })).toBeTruthy(),
+  );
   return r;
 }
 
@@ -217,9 +220,10 @@ describe("IntradayConfigCard", () => {
   it("설계자 요구 항목을 모두 보여준다", async () => {
     const { container } = await renderWith();
     const text = container.textContent ?? "";
-    expect(text).toContain("27개"); // 자동 분류 사업군
-    expect(text).toContain("27종목"); // 적용 예정 대표 ETF
-    expect(text).toContain("2026-09-11"); // 데이터 기준일
+    expect(text).toContain("27개"); // 지켜보는 / 적용 예정 사업군
+    // 2026-09-27: 사업군 수 · 대표 ETF 수 두 행을 한 행으로 합쳤다(사용자 지시).
+    expect(text).toContain("27개 (사업군마다 대표 ETF 1종목)"); // 적용 예정 대표 ETF
+    expect(text).toContain("2026-09-11"); // 자료 기준일
     expect(text).toContain("intraday-20260916T124928-439563"); // 설정 버전
     expect(text).toContain("bbbbbbbbbbbb"); // checksum 앞자리
   });
@@ -303,5 +307,223 @@ describe("IntradayConfigCard — 활성화 후보 승인 대기", () => {
     expect(container.textContent ?? "").not.toContain(
       "이 설정을 적용하면 장중 알림이 실제로 발송됩니다",
     );
+  });
+});
+
+// ── 2026-09-27 사용자 직접 지시 — 배치 정리(배지 · 정렬 행 · 자세히 보기) ─────────
+//
+// 배치만 바꿨다. 위의 표시 계약(현재/후보 분리 · 승인 대기 금지 · 미확정 · h3 하나 ·
+// 값 없음 표시 · 파생 키 숨김)은 그대로 위 test 들이 지킨다.
+function rowValue(container: HTMLElement, label: string): string | null {
+  const dt = Array.from(container.querySelectorAll("dt")).find(
+    (d) => d.textContent === label,
+  );
+  return dt ? (dt.nextElementSibling?.textContent ?? null) : null;
+}
+
+function headBadge(container: HTMLElement): HTMLElement {
+  return container.querySelector(".ops-card-head .oci-state") as HTMLElement;
+}
+
+const NO_CANDIDATE: Partial<IntradayConfigState> = {
+  candidate_version_id: null,
+  candidate_source_hash: null,
+  candidate_data_asof: null,
+  candidate_sector_count: 0,
+  candidate_policy_enabled: null,
+  candidate_policy_status: null,
+  changes: [],
+  action_state: null,
+  deploy_status: "deployed",
+};
+
+async function renderNoCandidate(extra: Partial<IntradayConfigState> = {}) {
+  vi.mocked(fetchIntradayConfigState).mockResolvedValue({
+    ...BASE,
+    ...NO_CANDIDATE,
+    ...extra,
+  });
+  const r = render(<IntradayConfigCard />);
+  await screen.findByText("확인할 변경이 없습니다.");
+  return r;
+}
+
+describe("IntradayConfigCard — 배치 정리 (2026-09-27)", () => {
+  it("제목 옆 배지는 **지금** 상태다 — 후보가 알림을 켜도 배지는 켜지지 않는다", async () => {
+    vi.mocked(fetchIntradayConfigState).mockResolvedValue({
+      ...BASE,
+      policy_enabled: false,
+      policy_status: "NOT_CONFIGURED",
+      candidate_policy_enabled: true,
+      candidate_policy_status: "CONFIGURED",
+    });
+    const { container } = render(<IntradayConfigCard />);
+    await screen.findByRole("heading", { name: "확인할 변경" });
+    const badge = headBadge(container);
+    expect(badge.textContent).toBe("구조 준비 완료 · 장중 알림 정책 설정 전");
+    expect(badge.className).toContain("unknown");
+    expect(badge.className).not.toContain("ok");
+    // 켜진다는 사실은 배지가 아니라 「적용 후 상태」 행이 말한다.
+    expect(rowValue(container, "적용 후 상태")).toBe("장중 알림 발송 시작");
+  });
+
+  it("지금 켜져 있으면 배지가 '장중 알림 발송 중' (ok)", async () => {
+    const { container } = await renderNoCandidate({
+      policy_enabled: true,
+      policy_status: "CONFIGURED",
+    });
+    const badge = headBadge(container);
+    expect(badge.textContent).toBe("장중 알림 발송 중");
+    expect(badge.className).toContain("ok");
+  });
+
+  it("후보가 있으면 '적용 예정 사업군' · 없으면 '지켜보는 사업군'", async () => {
+    const withCand = await renderWith();
+    expect(rowValue(withCand.container, "적용 예정 사업군")).toBe(
+      "27개 (사업군마다 대표 ETF 1종목)",
+    );
+    expect(rowValue(withCand.container, "지켜보는 사업군")).toBeNull();
+    expect(rowValue(withCand.container, "자료 기준일")).toBe("2026-09-11");
+    cleanup();
+
+    const noCand = await renderNoCandidate();
+    expect(rowValue(noCand.container, "지켜보는 사업군")).toBe(
+      "26개 (사업군마다 대표 ETF 1종목)",
+    );
+    expect(rowValue(noCand.container, "적용 예정 사업군")).toBeNull();
+    expect(rowValue(noCand.container, "자료 기준일")).toBe("2026-09-10");
+    // 후보가 없으면 「적용 후 상태」 행이 없다.
+    expect(rowValue(noCand.container, "적용 후 상태")).toBeNull();
+  });
+
+  it("설정 버전 · 확인값 · 산출 규칙만 「자세히 보기」 안에 있고 기본은 접혀 있다", async () => {
+    const { container } = await renderWith();
+    const details = container.querySelector("details") as HTMLDetailsElement;
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(false);
+    expect(details.querySelector("summary")?.textContent).toBe(
+      "자세히 보기 (설정 버전 · 확인값 · 산출 규칙)",
+    );
+    const inside = Array.from(details.querySelectorAll("dt")).map((d) => d.textContent);
+    expect(inside).toEqual(["설정 버전", "확인값", "산출 규칙"]);
+    expect(rowValue(details, "설정 버전")).toBe("intraday-20260916T124928-439563");
+    expect(rowValue(details, "확인값")).toBe(`${"b".repeat(12)}…`);
+    expect(rowValue(details, "산출 규칙")).toBe("sector_rep.v1");
+    // 판단에 쓰는 행은 접힌 영역 밖이다.
+    for (const label of ["적용 예정 사업군", "자료 기준일", "OCI 반영", "확인할 변경"]) {
+      const dt = Array.from(container.querySelectorAll("dt")).find(
+        (d) => d.textContent === label,
+      );
+      expect(dt?.closest("details")).toBeNull();
+    }
+  });
+
+  it("판정 기준 값은 펼치지 않아도 보인다 · 파생 키 숨김 · 값 없음은 '없음'", async () => {
+    const { container } = await renderWith({
+      policy_values: [
+        { key: "drop_threshold_pct", value: -5.0 },
+        { key: "cooldown_minutes", value: 120 },
+        { key: "dedup_window_minutes", value: 120 },
+        { key: "max_sends_per_run", value: 1 },
+        { key: "max_sends_per_day", value: null },
+      ],
+    });
+    const drop = screen.getByText("보유 급락 기준", { selector: "dt" });
+    expect(drop.closest("details")).toBeNull();
+    expect(drop).toBeVisible();
+    expect(rowValue(container, "보유 급락 기준")).toBe("-5%");
+    expect(rowValue(container, "재발송 대기")).toBe("120분");
+    expect(rowValue(container, "하루 최대")).toBe("없음");
+    const text = container.textContent ?? "";
+    expect(screen.queryByText("중복 억제 창", { selector: "dt" })).toBeNull();
+    expect(screen.queryByText("회차당 최대", { selector: "dt" })).toBeNull();
+    expect(text).toContain("중복 억제 창은 재발송 대기와 같은 값이고");
+  });
+
+  it("「확인할 변경」 행: 후보 없음 → 없음 · 바뀐 사업군 n → n건 · 첫 설정/변경 0 → 있음", async () => {
+    const two = await renderWith();
+    expect(rowValue(two.container, "확인할 변경")).toBe("2건");
+    cleanup();
+
+    const empty = await renderWith({ changes: [] });
+    expect(rowValue(empty.container, "확인할 변경")).toBe("있음");
+    expect(empty.container.textContent ?? "").toContain(
+      "직전 승인본과 달라진 사업군이 없습니다.",
+    );
+    cleanup();
+
+    const first = await renderWith({ active_version_id: null });
+    expect(rowValue(first.container, "확인할 변경")).toBe("있음");
+    expect(first.container.textContent ?? "").toContain("첫 설정입니다.");
+    cleanup();
+
+    const none = await renderNoCandidate();
+    expect(rowValue(none.container, "확인할 변경")).toBe("없음");
+    // 후보가 없으면 동작 제목 · 버튼이 없다.
+    expect(none.container.querySelectorAll("h3").length).toBe(0);
+    expect(none.container.querySelectorAll("button").length).toBe(0);
+  });
+
+  it("「OCI 반영」 은 배지로 보이고 문구는 그대로다", async () => {
+    const { container } = await renderWith({ deploy_status: null });
+    expect(rowValue(container, "OCI 반영")).toBe("아직 적용하지 않음");
+    cleanup();
+    const done = await renderNoCandidate({ deploy_status: "deployed" });
+    expect(rowValue(done.container, "OCI 반영")).toBe("적용 완료");
+  });
+});
+
+describe("IntradayConfigCard — 합친 화면 보완 (2026-09-27 검토 반영)", () => {
+  it("후보가 있으면 '지금 알림 상태' 와 '적용 후 상태' 를 글로 나란히 보인다", async () => {
+    const { container } = await renderWith({
+      policy_enabled: false,
+      policy_status: "NOT_CONFIGURED",
+      candidate_policy_enabled: true,
+      candidate_policy_status: "CONFIGURED",
+    });
+    expect(rowValue(container, "지금 알림 상태")).toBe(
+      "구조 준비 완료 · 장중 알림 정책 설정 전",
+    );
+    expect(rowValue(container, "적용 후 상태")).toBe("장중 알림 발송 시작");
+  });
+
+  it("후보가 없으면 '지금 알림 상태' 행을 따로 두지 않는다(배지로 충분)", async () => {
+    const { container } = await renderNoCandidate({ policy_enabled: true });
+    expect(rowValue(container, "지금 알림 상태")).toBeNull();
+    expect(headBadge(container).textContent).toBe("장중 알림 발송 중");
+  });
+
+  it("재시도 · 미확정(승인 기록됨)에는 '확인할 변경' 행이 없다", async () => {
+    vi.mocked(fetchIntradayConfigState).mockResolvedValue({
+      ...BASE,
+      action_state: "approved_not_deployed",
+      deploy_status: "scp_failed",
+      deploy_error: "boom",
+    });
+    const retry = render(<IntradayConfigCard />);
+    await screen.findByRole("heading", { name: "적용하지 못한 설정" });
+    expect(rowValue(retry.container, "확인할 변경")).toBeNull();
+    cleanup();
+
+    vi.mocked(fetchIntradayConfigState).mockResolvedValue({
+      ...BASE,
+      action_state: "approved_not_deployed",
+      deploy_status: "deploy_unconfirmed",
+    });
+    const unconf = render(<IntradayConfigCard />);
+    await screen.findByRole("heading", { name: "OCI 적용 여부 확인 필요" });
+    expect(rowValue(unconf.container, "확인할 변경")).toBeNull();
+    // 동작 제목(h3)은 여전히 하나다.
+    expect(unconf.container.querySelectorAll("h3")).toHaveLength(1);
+  });
+
+  it("카드 제목은 화면 ② 섹션 아래 3단계 제목이다(h3 요소는 늘리지 않음)", async () => {
+    const { container } = await renderWith();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "장중 급등락 설정" }),
+    ).toBeTruthy();
+    expect(Array.from(container.querySelectorAll("h3")).map((h) => h.textContent)).toEqual([
+      "확인할 변경",
+    ]);
   });
 });

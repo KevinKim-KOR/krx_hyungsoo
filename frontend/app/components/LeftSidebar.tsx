@@ -32,8 +32,7 @@ export type MenuKey =
   | "approval"
   | "diagnostics"
   | "ml"
-  | "data_status"
-  | "oci_status";
+  | "data_status";
 
 export interface MenuItem {
   key: MenuKey;
@@ -81,11 +80,14 @@ export const MENU_GROUPS: MenuGroup[] = [
   },
   // 2026-08-05 POC3-07 §5.4·§10.1: "승인·알림" → "승인·적용" 역할 축소
   //   (실제 승인 대상 = PARAM·seed OCI 적용). 정보 PUSH 카드·빈 승인 카드 없음.
+  // 2026-09-27 사용자 직접 지시: 「승인·적용」과 「OCI 운영 상태」(`oci_status`)를
+  //   한 화면 「OCI 운영·적용」으로 합쳤다. route key 는 `approval` 그대로이고
+  //   `oci_status` 는 없앴다(① 지금 OCI 상태 → ② OCI 에 적용).
   {
     id: "ops",
     title: "승인·운영",
     items: [
-      { key: "approval", label: "승인·적용", hint: "운영 기준 승인 / OCI 적용" },
+      { key: "approval", label: "OCI 운영·적용", hint: "OCI 상태 · 운영 기준 적용" },
     ],
   },
   // 2026-08-05 POC3-07 §5.3: 정상 업무와 시각적으로 분리된 마지막 관리 그룹.
@@ -94,12 +96,12 @@ export const MENU_GROUPS: MenuGroup[] = [
     id: "diagnostics",
     title: "진단·상태",
     // 2026-08-16 사용자 직접 지시 — 진단 서랍에 정상 업무가 섞여 있어 분리했다.
-    //   순서: 정상 업무(데이터 상태 → OCI 운영 상태) → ML 실험 → 개발·실험용.
+    //   순서: 정상 업무(데이터 상태) → ML 실험 → 개발·실험용.
     //   data_status 는 POC3-07 이 "placeholder" 로 보고 흡수했으나, 실제로는
     //   2026-06-08 부터 전체 ETF NAV·괴리율 조회 화면이었다(판단 근거가 낡음) → 복원.
+    //   (「OCI 운영 상태」는 2026-09-27 에 승인·운영 그룹 「OCI 운영·적용」으로 합쳤다.)
     items: [
       { key: "data_status", label: "데이터 상태", hint: "전체 ETF NAV · 괴리율 · 수집 상태" },
-      { key: "oci_status", label: "OCI 운영 상태", hint: "기동 시 1회 읽은 OCI 상태" },
       { key: "ml", label: "ML 실험", hint: "학습 자료 상태 · baseline · 참고점수" },
       { key: "diagnostics", label: "개발·실험용", hint: "미리보기 · 샘플 · 개발 호환 · LEGACY" },
     ],
@@ -126,7 +128,6 @@ const ALL_MENU_KEYS: MenuKey[] = [
   "diagnostics",
   "ml",
   "data_status",
-  "oci_status",
 ];
 
 function assertMenuGroupsCover(): void {
