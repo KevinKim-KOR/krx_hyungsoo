@@ -99,7 +99,7 @@ LEGACY_OUTCOME_BACKFILL = PROHIBITED
 ## 2. 공통 사실
 
 - **OCI 코드 = 저장소 코드.** OCI HEAD 는 `8bf843e6` 이고 추적 파일 변경은 0이다. `8bf843e6..3b6e3257` 은 문서 3개뿐이다(`git diff --stat`). 그래서 이 PLAN 의 코드 줄 번호가 OCI 에서 실제로 도는 코드와 같다.
-- **다음 거래일은 2026-09-29(화)다.** `krx_trading_days_2026.csv` 에 09-24 · 09-25 · 09-28 이 없다.
+- **다음 거래일은 2026-09-28(월)이다**(2026-09-27 정정 · 설계자 지적). 처음에는 `krx_trading_days_2026.csv` 에 09-28 이 없어 09-29 로 적었다. 그 캘린더의 09-28 휴장 표기가 잘못이었다 — 설 · 추석 대체공휴일은 일요일과 겹칠 때만 생기고 2026 추석 연휴는 토요일과 겹친다. 캘린더는 같은 날 정정했다.
 - **러너는 건드리지 않는다.** `scripts/run_three_push_runtime_oci.py` 는 646줄이다(KS-10 트리거 650). 확정안 모두 러너 변경 0이다.
 - **활성 장중 정책**(`intraday-20260921T144447-168782`): enabled True · `max_items_per_section` 3 · `max_sends_per_day` 4 · `cooldown_minutes` 120.
 - **정책 활성 뒤 `holdings_risk_alert`**: 09-22 · 09-23 에 14틱이 돌았다. 발송 8 · skip 6(일일 상한 5 · 신규 · 악화 없음 1)이다. 09-24 · 25 는 비거래일 skip 이다.

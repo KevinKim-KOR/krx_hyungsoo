@@ -1,13 +1,13 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-27 (**POC3-02D-OPS-01 운영 정정 C1~C7 검증자 VERIFIED** · 커밋 완료(이 문서 포함) · 다음 push → OCI pull → 연휴 뒤 첫 거래일 2026-09-29 확인 → POC3-02D-OPS-02) · 직전: 2026-09-26 POC5-00 MASTER PLAN 확정 · POC4 종료(COMPLETED_RESEARCH_REJECT)
+최종 업데이트: 2026-09-27 (**POC3-02D-OPS-01 운영 정정 C1~C7 검증자 VERIFIED** · push · OCI pull 완료 · 거래일 캘린더 09-28 오기 정정(재 pull 필요) · 다음 첫 거래일 2026-09-28 07:20 · 08:00 확인 · POC3-02D-OPS-02 병행) · 직전: 2026-09-26 POC5-00 MASTER PLAN 확정 · POC4 종료(COMPLETED_RESEARCH_REJECT)
 
 ## POC5 — 운영 신호·판단 결과 원장 (OCI 전용 원장 · 운영 러너 연결 · 현행 PUSH 동작 불변)
 
 ```text
 POC5-00  MASTER PLAN            = 확정 — 설계자 PASS_WITH_MANDATORY_AMENDMENT 2026-09-26 · Q1~Q30 확정
 사용자 승인                      = OCI 전용 원장 state/decision/decision_evidence.sqlite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (2026-09-26)
-다음                            = POC3-02D-OPS-01 적용(VERIFIED · 커밋 완료 · push · OCI pull · 09-29 실측) → POC3-02D-OPS-02 (아래 POC3 절 '다음')
+다음                            = POC3-02D-OPS-01 운영 확인(2026-09-28 07:20 · 08:00 실측) · POC3-02D-OPS-02 병행 (아래 POC3 절 '다음')
 PRIMARY 시작 조건                = POC3-02D-OPS-01 pull + POC3-02D-OPS-02 완료 + POC5-01 코드 pull 뒤 첫 KRX 거래일 (설계자 2026-09-27)
 그 뒤                           = POC5-01a 러너 분리 → 01 원장 → 02 outcome 성숙 → 03 PC 동기화·피드백 → 04 R0/R1
 ```
@@ -103,8 +103,9 @@ API·CSV 정합성 판정을 끝내고, 08:00 러너는 **외부 조회 없이**
 **join 하지 않는다**. `DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY` 가 해결된 것이
 아니다.
 
-**거래일 캘린더** — `state/market_meta/krx_trading_days_2026.csv` (243일 ·
-API 실측 171 + 사용자 확인 72). **연간 갱신은 활성화 선행조건이 아니다** — 없으면
+**거래일 캘린더** — `state/market_meta/krx_trading_days_2026.csv` (244일 ·
+API 실측 171 + 사용자 확인 73 · 2026-09-27 정정: 09-28(월)은 거래일 — 추석 대체공휴일이
+아니다. 처음 목록에 휴장으로 잘못 넣었다). **연간 갱신은 활성화 선행조건이 아니다** — 없으면
 평일 fallback 으로 돈다. 재생성·대조: `scripts/build_krx_trading_days.py`.
 
 **구현 중 잡은 결함 4건** — 휴장일 다음날마다 가격 적재 0건(연 11회) · 18일 지난
@@ -161,15 +162,16 @@ KOSPI_VIX_INTEGRITY  = PASS
 결과서 `docs/ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_RESULT.md`.
 설계자 RESULT 판정(2026-09-27)이 정한 순서:
 
-1. 커밋은 이 문서와 함께 했다(2026-09-27 · 내역은 `git log`). **push 는 별도 승인.**
-2. OCI `git pull` — 사용자가 한다. **거래일 15:40 뒤 ~ 다음 거래일 07:15 전에만**(장중
-   금지 · 07:15~08:05 금지 · PLAN STEP 7 · C4). 다음 거래일은 **2026-09-29(화)**(캘린더상
-   09-24 · 25 · 28 휴장)라 지금부터 09-29 07:15 전까지가 창이다(그 사이 07:15~08:05 도 피한다).
-   pull 직전에 개발자가 OCI 정합성 JSON 의 `api_only` 를 새 CSV 와 대조하고, d20 종가가
-   있는데 새 CSV 에 없는 ticker 가 있으면 pull 하지 않고 멈춰 보고한다(2026-09-27 읽기:
-   8종 모두 새 CSV 에 있음).
-   「OCI 운영 상태」(C2)는 PC 백엔드 재기동으로 반영된다.
-3. 연휴 뒤 첫 거래일(2026-09-29) 07:20 · 08:00 운영 확인 — 개발자 OCI 읽기(정합성
+1. 커밋 · push 완료(2026-09-27 · 기능 `4dd7e526` · 인계 `f3a56508`).
+2. OCI `git pull` 완료 — 2026-09-27 17:13 KST(사용자) · HEAD `f3a56508` · 추적 파일 변경 0 ·
+   새 CSV sha256 일치 · OCI 에서 resolver 실행 → `krx_etf_basic_20260927.csv`(1,175행 · 거부 0).
+   pull 직전 대조: API 전용 8종 모두 새 CSV 에 있음. PC 백엔드 재기동 2026-09-27 17:18:31 →
+   「OCI 운영 상태」 OPERATING · crontab SUCCESS '필수 스케줄(시장·보유·급등락) 모두 등록됨' ·
+   PC `PUSH_AUTOSEND_*` 4줄 false.
+   **거래일 캘린더 정정(09-28 거래일)은 별도 커밋이라 2026-09-28 07:15 전에 한 번 더 pull 해야
+   08:00 시장 브리핑이 그날을 휴장일로 건너뛰지 않는다.** pull 시간 규칙: 거래일 15:40 뒤 ~
+   다음 거래일 07:15 전(장중 · 07:15~08:05 금지).
+3. 연휴 뒤 첫 거래일(**2026-09-28** · 설계자 정정) 07:20 · 08:00 운영 확인 — 개발자 OCI 읽기(정합성
    JSON 의 status · 선택 CSV · `api_only` · pending · `refresh_due` · 판정 창, 08:00
    기록의 `index_status` · 후보 수 · 본문 길이, 07:20 KOSPI 기록)와 사용자 실화면
    (08:00 '오늘 볼 기초지수' 복귀 · 「장중 급등락」 '현재가' 시각). 그 뒤 이 문서를 다시 갱신한다.
@@ -250,7 +252,7 @@ KRX 무조정가와 DB 조정 계열의 기준 차이. 분기 배당 조정으�
   · **종료·인계** `docs/handoff/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md`
 - **02C-OPS-03**: `docs/ai_design|ai_result/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_*`
 - **02C 통합 종료**: `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` — 첫 운영일 실측·계약 3개·운영 방법
-- **02D-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_*` · **인계** `docs/handoff/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`(STEP 7 절차 · 09-29 확인표 · OPS-02 범위) · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-3**(08:00 공식 CSV) · 「장중 급등락」 절 2026-09-27 정정 · §8 KOSPI 적재 정지
+- **02D-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_*` · **인계** `docs/handoff/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`(STEP 7 절차 · 09-28 확인표 · OPS-02 범위) · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-3**(08:00 공식 CSV) · 「장중 급등락」 절 2026-09-27 정정 · §8 KOSPI 적재 정지
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
   · 프로세스 C 「배포로 지금 바뀐 동작 2건」 · §13-7(활성화 경로 부재) · 부록 A
 
