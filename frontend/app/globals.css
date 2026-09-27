@@ -2966,3 +2966,84 @@ textarea.decision-textarea {
   font-weight: 700;
   color: var(--accent);
 }
+
+/* 「OCI 운영 상태」 요약 + 표 (2026-09-27 사용자 직접 지시 · 가독성) */
+.oci-summary {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.oci-summary.ok {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.oci-summary.warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.oci-summary.unknown {
+  background: #f3f4f6;
+  border-color: var(--border);
+}
+.oci-summary-icon {
+  font-size: 22px;
+  line-height: 1.2;
+}
+.oci-summary-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.oci-summary-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.oci-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.oci-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.oci-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+.oci-table tr:last-child td {
+  border-bottom: none;
+}
+.oci-table-item {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.oci-state {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.oci-state.ok {
+  color: var(--ok);
+  background: #f0fdf4;
+}
+.oci-state.warn {
+  color: var(--warn);
+  background: #fffbeb;
+}
+.oci-state.unknown {
+  color: var(--muted);
+  background: #f3f4f6;
+}
