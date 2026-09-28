@@ -1,7 +1,7 @@
-# POC3-02D-OPS-01 인계 — PRIMARY 전 운영 정정 C1~C7 (검증 완료 · OCI 적용 대기)
+# POC3-02D-OPS-01 인계 — PRIMARY 전 운영 정정 C1~C7 (검증 · OCI 반영 · 2026-09-28 운영 확인 완료)
 
-> **인계 시점 (2026-09-27 · 설계자 RESULT `PASS_TO_VERIFIER` · 검증자 `VERIFIED`).** 구현과 검증은 끝났다. **OCI 적용(STEP 7)과
-> 연휴 뒤 첫 거래일 확인은 남아 있다.** 정본 증거는 결과서와 설계서 끝의 설계자 판정 원문이다. 이 문서는 다음 사람이 바로
+> **인계 시점 (2026-09-27 · 설계자 RESULT `PASS_TO_VERIFIER` · 검증자 `VERIFIED`).** 구현 · 검증 · OCI 적용(STEP 7)과
+> 연휴 뒤 첫 거래일(2026-09-28) 운영 확인까지 끝났다(결과는 `docs/STATE_LATEST.md`). 정본 증거는 결과서와 설계서 끝의 설계자 판정 원문이다. 이 문서는 다음 사람이 바로
 > 이어받는 데 필요한 것만 추린다.
 
 - **작성**: 개발자(VSCode Claude) · **독자**: 다음 세션 개발자(STEP 7 · `POC3-02D-OPS-02` 진입)
@@ -12,10 +12,10 @@
   - 검증자 `VERIFIED`(2026-09-27 · 읽기 전용 정적 검증 · C1~C7 한정 · OCI 적용 · PRIMARY 승인 아님)
 
 ```text
-POC3-02D-OPS-01  VERIFIED — C1~C7 구현 · 검증 완료 · OCI 미반영
+POC3-02D-OPS-01  IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED — C1~C7 · OCI 반영 2026-09-27 · 운영 확인 2026-09-28
                  설계자 RESULT PASS_TO_VERIFIER · 검증자 VERIFIED (2026-09-27)
 커밋             4dd7e526 (기능 · 37개 파일) + 이 인계 문서 커밋 — 둘 다 origin/main push (2026-09-27)
-남은 것          OCI pull 완료(2026-09-27 17:13) · 캘린더 정정 재 pull(09-28 07:15 전) → 2026-09-28 07:20 · 08:00 확인 → STATE_LATEST 2차 갱신
+진행            OCI pull 완료(2026-09-27 17:13) · 캘린더 정정 재 pull 완료(17:49 · 검증자 제한 재검증 VERIFIED_WITH_NOTES) · 2026-09-28 07:20 · 08:00 운영 확인 완료(OPERATION_CONFIRMED · STATE_LATEST)
 다음 단계         POC3-02D-OPS-02 (설계자 결정 · PRIMARY 전) → POC5-01A
 PRIMARY          NOT_STARTED — 이 단계 pull + OPS-02 완료 + POC5-01 코드 pull 뒤 첫 KRX 거래일
 러너 · 스키마 · 신규 의존성 · 외부 API 변경 = 0 · SOURCE_SWITCH(KOSPI) = PROHIBITED
@@ -56,7 +56,7 @@ OCI 는 **읽기 전용**으로만 접속한다(`ssh oci-krx "<읽기 명령>"` 
 2. **pull 시간(사용자)** — **거래일 15:40 뒤 ~ 다음 거래일 07:15 전에만**, 그 사이에도 07:15~08:05 는 피한다(PLAN STEP 7 · C4 ·
    Q4). 다음 거래일은 **2026-09-28(월)**이다(설계자 정정 2026-09-27). 저장소 캘린더가 09-28 을 '추석 대체공휴일'로
    잘못 빼고 있었다 — 설 · 추석 대체공휴일은 일요일과 겹칠 때만 생긴다(2026 은 토요일 9/26). 캘린더 정정은 별도 커밋이므로
-   09-28 07:15 전에 한 번 더 pull 해야 그날 08:00 시장 브리핑이 휴장일로 건너뛰지 않는다.
+   09-28 07:15 전에 한 번 더 pull 해야 했다 — 2026-09-27 17:49 재 pull 완료(`3e13fbec` · 검증자 제한 재검증 `VERIFIED_WITH_NOTES`).
 3. **pull 확인(개발자)** — `git log --oneline -1` 이 `origin/main` 과 같은지, `sha256sum state/market_meta/krx_etf_basic_20260927.csv`
    가 `0f0c0742…22314` 인지.
 4. **PC 백엔드 재기동(사용자)** — C2 는 PC 가 기동할 때 OCI crontab 을 읽으므로 재기동해야 「OCI 운영 상태」가 OPERATING 이 된다.

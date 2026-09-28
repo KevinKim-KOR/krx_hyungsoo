@@ -1,14 +1,14 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-27 (**POC3-02D-OPS-01 운영 정정 C1~C7 검증자 VERIFIED** · push · OCI pull 완료 · 거래일 캘린더 09-28 오기 정정(재 pull 필요) · 다음 첫 거래일 2026-09-28 07:20 · 08:00 확인 · POC3-02D-OPS-02 병행) · 직전: 2026-09-26 POC5-00 MASTER PLAN 확정 · POC4 종료(COMPLETED_RESEARCH_REJECT)
+최종 업데이트: 2026-09-28 (**POC3-02D-OPS-01 운영 확인 완료** — 연휴 뒤 첫 거래일 07:20 · 08:00 정상 · 08:00 기초지수 구역 복귀 · POC3-02D-OPS-02 진행 중 · 「OCI 운영·적용」 화면 합침) · 직전: 2026-09-27 POC3-02D-OPS-01 검증자 VERIFIED · 캘린더 09-28 정정 · 2026-09-26 POC5-00 MASTER PLAN 확정
 
 ## POC5 — 운영 신호·판단 결과 원장 (OCI 전용 원장 · 운영 러너 연결 · 현행 PUSH 동작 불변)
 
 ```text
 POC5-00  MASTER PLAN            = 확정 — 설계자 PASS_WITH_MANDATORY_AMENDMENT 2026-09-26 · Q1~Q30 확정
 사용자 승인                      = OCI 전용 원장 state/decision/decision_evidence.sqlite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (2026-09-26)
-다음                            = POC3-02D-OPS-01 운영 확인(2026-09-28 07:20 · 08:00 실측) · POC3-02D-OPS-02 병행 (아래 POC3 절 '다음')
-PRIMARY 시작 조건                = POC3-02D-OPS-01 pull + POC3-02D-OPS-02 완료 + POC5-01 코드 pull 뒤 첫 KRX 거래일 (설계자 2026-09-27)
+다음                            = POC3-02D-OPS-02 (3-2 · 3-4 설계자 확인 대기 · 아래 POC3 절 '다음')
+PRIMARY 시작 조건                = POC3-02D-OPS-01 pull(완료 2026-09-27) + POC3-02D-OPS-02 완료 + POC5-01 코드 pull 뒤 첫 KRX 거래일 (설계자 2026-09-27)
 그 뒤                           = POC5-01a 러너 분리 → 01 원장 → 02 outcome 성숙 → 03 PC 동기화·피드백 → 04 R0/R1
 ```
 
@@ -82,7 +82,8 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
 | **02C-OPS-03** 장중 알림 활성화 경로 | **`CLOSED`** | 검증자 `VERIFIED_WITH_NOTES`(2026-09-22). 정책을 번들에 실어 켤 수 있게 + 15:40 비활성 요약 결함 수정 |
 | └ **02C 통합 종료** | **`IMPLEMENTED_VERIFIED_ACTIVATED`** | 첫 운영일 2026-09-22 — 7/7틱 · 알림 4건 · 일일 상한 작동 · 커버리지 27/27 · 오류 0. `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` |
 | └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
-| **02D-OPS-01** PRIMARY 전 운영 정정 C1~C7 | **`VERIFIED`** (OCI 미반영) | 설계자 `PASS_TO_VERIFIER` · 검증자 `VERIFIED`(2026-09-27). 08:00 공식 CSV 공용 resolver · pending · `refresh_due` · 판정 창 검사 · 새 CSV `20260927` / OCI 상태 필수 3종 / 장중 '현재가' 시각 · 잘린 보유 급락 재판정 · `send_failed` · 본문 길이 기록 / KOSPI stale 을 `failed` 로 기록 |
+| **02D-OPS-01** PRIMARY 전 운영 정정 C1~C7 | **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`** | 설계자 `PASS_TO_VERIFIER` · 검증자 `VERIFIED`(2026-09-27) · 캘린더 09-28 정정 검증자 `VERIFIED_WITH_NOTES` · OCI pull 2026-09-27 · 첫 거래일 2026-09-28 07:20 · 08:00 운영 확인. 08:00 공식 CSV 공용 resolver · pending · `refresh_due` · 판정 창 검사 · 새 CSV `20260927` / OCI 상태 필수 3종 / 장중 '현재가' 시각 · 잘린 보유 급락 재판정 · `send_failed` · 본문 길이 기록 / KOSPI stale 을 `failed` 로 기록 |
+| **UI** 「OCI 운영·적용」 한 화면 | **`CLOSED`** | 사용자 직접 지시(2026-09-27) · UI 전용. 「OCI 운영 상태」 요약 + 표(`62425b4c`) → 「승인·적용」과 합침 · MenuKey 13→12 · 적용 카드 2장 배치 정리 · 「오늘의 투자 점검」 링크 → 「OCI 운영·적용」(`b5b15509` · OPS-02 3-1 포함) · 사용자 실화면 확인 |
 
 ### OPS-02B-2 운영 계약 (요약 · 2026-09-13 검증자 VERIFIED)
 
@@ -137,7 +138,7 @@ DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
 | cron | 러너 11건 + 배치 1건. 급락 알림 7틱, spike 호출 0건. **02C-OPS-02 로 추가된 cron 0건** |
 | 발송 플래그 | `PUSH_AUTOSEND_ENABLED=true` · `HOLDINGS_BRIEFING`·`HOLDINGS_RISK_ALERT`=`true` · `MARKET_BRIEFING`=`true` · `SPIKE`=`false` (2026-09-21 실측) |
 | 장중 정책 | **`enabled=true` · `policy_status=CONFIGURED` · 사업군 27개** — 2026-09-21 23:48 사용자 승인으로 활성화(OCI 읽기 전용 실측, `02C-OPS-03` 결과서 §14-1). 첫 운영일 2026-09-22 실측: 7/7틱 · 알림 4건 · 오류 0(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`) |
-| 시장 DB | `etf_daily_price` 최신 `2026-09-18` · `krx_etf_daily_price_unadjusted` 최신 `2026-09-17` (ticker 1,175) |
+| 시장 DB | 2026-09-28 07:20 실측 — `etf_daily_price`(승인 대상 41종목) 최신 `2026-09-23` · `krx_etf_daily_price_unadjusted` 최신 `2026-09-22`(07:20 KRX 기준일 · 실행일보다 2거래일 늦음) · ticker 1,175 · KOSPI `2026-09-17`(upstream 정지) |
 
 ### OPS-02B-1 Gate 결론 (2026-09-10)
 
@@ -158,35 +159,46 @@ KOSPI_VIX_INTEGRITY  = PASS
 
 ### 다음
 
-**`POC3-02D-OPS-01` 운영 정정 C1~C7 — 검증자 `VERIFIED`(2026-09-27) · OCI 미반영.**
-결과서 `docs/ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_RESULT.md`.
-설계자 RESULT 판정(2026-09-27)이 정한 순서:
+**`POC3-02D-OPS-01` — `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(2026-09-28 연휴 뒤 첫 거래일 실측).
+결과서 `docs/ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_RESULT.md` ·
+인계 `docs/handoff/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`.
 
-1. 커밋 · push 완료(2026-09-27 · 기능 `4dd7e526` · 인계 `f3a56508`).
-2. OCI `git pull` 완료 — 2026-09-27 17:13 KST(사용자) · HEAD `f3a56508` · 추적 파일 변경 0 ·
-   새 CSV sha256 일치 · OCI 에서 resolver 실행 → `krx_etf_basic_20260927.csv`(1,175행 · 거부 0).
-   pull 직전 대조: API 전용 8종 모두 새 CSV 에 있음. PC 백엔드 재기동 2026-09-27 17:18:31 →
-   「OCI 운영 상태」 OPERATING · crontab SUCCESS '필수 스케줄(시장·보유·급등락) 모두 등록됨' ·
-   PC `PUSH_AUTOSEND_*` 4줄 false.
-   **거래일 캘린더 정정(09-28 거래일)은 별도 커밋이라 2026-09-28 07:15 전에 한 번 더 pull 해야
-   08:00 시장 브리핑이 그날을 휴장일로 건너뛰지 않는다.** pull 시간 규칙: 거래일 15:40 뒤 ~
-   다음 거래일 07:15 전(장중 · 07:15~08:05 금지).
-3. 연휴 뒤 첫 거래일(**2026-09-28** · 설계자 정정) 07:20 · 08:00 운영 확인 — 개발자 OCI 읽기(정합성
-   JSON 의 status · 선택 CSV · `api_only` · pending · `refresh_due` · 판정 창, 08:00
-   기록의 `index_status` · 후보 수 · 본문 길이, 07:20 KOSPI 기록)와 사용자 실화면
-   (08:00 '오늘 볼 기초지수' 복귀 · 「장중 급등락」 '현재가' 시각). 그 뒤 이 문서를 다시 갱신한다.
-4. **`POC3-02D-OPS-02`**(설계자 결정 · PRIMARY 전): 「오늘의 투자 점검」 OCI 한 줄
-   링크를 「OCI 운영 상태」로 · 전달되지 못한 사업군 · 급등 신호의 상태 저장 결함 2건
-   (`02D-OPS-01` 결과서 §8) · 낡은 역검증 ⑦ · 목업 ⑦ 제목 정리. 후보: KOSPI stale 화면
-   문구(Q19 · 2026-09-26 PLAN 판정 · 포함 여부는 OPS-02 PLAN 때 판정).
-5. 그 뒤 `POC5-01A`. PRIMARY 조건은 맨 위 POC5 절.
+- **배포**: 기능 `4dd7e526` · 인계 `f3a56508`(OCI pull 2026-09-27 17:13) · 거래일 캘린더 09-28 정정
+  `3e13fbec`(검증자 제한 재검증 `VERIFIED_WITH_NOTES` · OCI pull 17:49). PC 백엔드 재기동 17:18:31 →
+  OCI 상태 OPERATING · PC `PUSH_AUTOSEND_*` 4줄 false.
+- **07:20 배치**(OCI 읽기): `success_with_benchmark_failure`(reason `benchmark_partial:kospi` · 가격 적재
+  success · price_as_of 2026-09-23). 선택 CSV `krx_etf_basic_20260927.csv` · sha256 `0f0c0742…22314` ·
+  1,175행 · 거부 0. 정합성 `ok` — API 전용 0 · CSV 전용 0 · 기초지수명 불일치 0 · coverage 1.0 · KRX
+  기준일 20260922 · 판정 창 d20 2026-08-25 · `refresh_due=False`. KOSPI `failed` · as_of 2026-09-17 ·
+  `source_stale:as_of=2026-09-17,ref=2026-09-23,lag=4`(정정대로 드러남 · upstream 아직 정지).
+- **08:00 시장 브리핑**: `sent` · 전체 발송(부분 전송 아님) · 245자(1개 메시지) · 거래일 판정 snapshot
+  244행 통과(캘린더 정정이 없었으면 휴장일로 건너뛰었다) · 전망 UP · **기초지수 구역 `ok` · 후보 2**
+  (KRX 반도체 · KRX 정보기술) · 국내 기준일 2026-09-22 · 안내 줄 없음 · `content_unchanged=false`
+  (직전 `DOWN#NONE` — CSV 차단으로 기초지수가 빠졌던 날) · `no_change` 억제 없음 · 수동 재발송 0.
+- **장중 · 보유(같은 날)**: 「장중 급등락」 발송 4(09:30 · 10:30 · 11:30 · 13:30 · 본문 길이 139~184 기록 —
+  C6) · 12:30 신규 · 악화 없음 · 14:30 · 15:20 일일 상한 · 집계 sent 4 · suppressed 3 · 발송 실패 0 ·
+  구역 상한 잘림 0. 보유 브리핑 09:15 · 12:30 · 15:40 발송(12:30 · 15:40 은 내용이 같아도 발송).
+- **사용자 확인 대상**: 「장중 급등락」 '기준' 다음 줄에 시각(`현재가 2026-09-28 HH:MM`)이 찍혔는지(C3 —
+  본문은 저장되지 않아 OCI 기록으로는 볼 수 없다).
+
+**다음**
+
+1. **`POC3-02D-OPS-02`**(PRIMARY 전) — 설계서 · PLAN
+   `docs/ai_design|ai_plan/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_*`(미커밋).
+   - 3-1 OCI 링크: 완료 · 커밋 `b5b15509`(사용자 지시로 「승인·적용」+「OCI 운영 상태」 →
+     「OCI 운영·적용」 한 화면과 함께 · 링크 도착지도 그 화면).
+   - 3-3 낡은 역검증 ⑦ · 목업 ⑦ 정리: 구현 · 테스트 완료(미커밋).
+   - 3-2 장중 전달 상태 · 3-4 KOSPI 화면 표시: 설계자 확인(PLAN §6 Q1~Q6 · 중단 조건 해석) 대기.
+2. 그 뒤 결과서 → 설계자 RESULT → 검증자 → 커밋 · push(별도 승인) → OCI pull · 운영 확인 → `POC5-01A`.
+   PRIMARY 조건은 맨 위 POC5 절.
 
 **KOSPI 적재 정지** — upstream(`FinanceData/fdr_krx_data_cache` KS11 `2026.csv`)이
 2026-09-17 행에서 멈췄다. source 교체 금지(`SOURCE_SWITCH = PROHIBITED`). 재개되면
 07:20 배치의 180일 lookback 이 자동으로 채운다. 계속 멈추면 source 교체를 별도 설계로
 판단한다. 이 단계가 OCI 에 pull 된 뒤로는 멈춘 날마다 07:20 배치 로그가
 `kospi=failed(as_of=…)` 이고 실행 결과 error 가 `source_stale:…` 다. 가격 적재 등 배치의
-다른 단계가 성공한 날이면 배치 status 는 `success_with_benchmark_failure`(exit 1)다.
+다른 단계가 성공한 날이면 배치 status 는 `success_with_benchmark_failure`(exit 1)다. 2026-09-28
+07:20 실측이 그대로다(lag 4).
 
 **`02C` 는 종료됐다**(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`).
 02C 기준으로 남은 것은 아래 두 **비차단 운영 항목**이다. **단**, 02C 장중 엔진의 사업군 ·
@@ -197,7 +209,8 @@ KOSPI_VIX_INTEGRITY  = PASS
    첫날 상한 도달은 "평소 4건" 을 뜻하지 않는다. **운영 튜닝 자료**다.
 2. 억제 회차의 진단 공백(closeout §5-1) · 파생 키 목록 중복(§5-2) — 비차단.
 
-**사용자 확인 1건** — 2026-09-22 Telegram 「장중 급등락」 4건 수신 여부.
+~~**사용자 확인 1건** — 2026-09-22 Telegram 「장중 급등락」 4건 수신 여부.~~ **해소** — 사용자가
+09-22 「장중 급등락」 실수신 원문을 전달했다(2026-09-27 · `02D-OPS-01` C3).
 
 ~~**이월**~~ **해소** — `02B-2` 필수 이월 2건(설계자 2026-09-11 분리): ① API 에만 있는 신규
 ticker 감지 ② API·CSV 불일치 감지 + `CSV_REFRESH_REQUIRED` 상태. 둘 다 `02B-2`(`0b293f40`)에서
