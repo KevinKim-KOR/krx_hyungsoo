@@ -660,7 +660,7 @@ def test_calendar_module_has_no_holiday_library_or_external_call():
         assert banned not in src
 
 
-# ═══ 계약 16~19 · 27~28 — fingerprint 와 억제 ═════════════════════════════
+# ═══ 계약 16~19 · 27~28 — fingerprint 와 content_unchanged (억제 폐지) ═════
 
 
 def _assemble(tmp_path, *, sp500=1.0, fresh=True, consistency=None, days=None, **kw):

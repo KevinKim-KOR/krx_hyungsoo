@@ -131,6 +131,11 @@ def _save_intraday_state_after_send(
 ) -> None:
     """장중 사업군 상태 저장. **전송 성공 뒤에만 호출된다.**
 
+    `intraday` 는 통합 본문이 구 본문을 대체한 회차에만 있다(POC3-02D-OPS-02 Q2 ·
+    `holdings_risk_flow`). 구 본문만 나간 회차(조립 뒤 예외 포함)는 `None` 이라
+    장중 신호를 발송 완료로 기록하지 않는다. 본문에 실린 `sent_signals` 만
+    `last_delivered_state` · `last_sent_at` 이 전진한다(설계자 Q1).
+
     저장 실패가 "발송은 됐다" 는 사실을 뒤집으면 안 되므로 예외를 삼킨다.
     대신 기록을 남겨 다음 회차가 중복 발송을 하더라도 원인을 알 수 있게 한다.
     """
@@ -248,10 +253,13 @@ def record_send_success(
             runtime_kst=runtime_kst,
         )
         record["holdings_risk_state_saved"] = True
-        # POC3-02C-OPS-02 (설계 §15-2) — 장중 **발송 진척 상태**(`sent_today`
-        # 전진 · `last_sent_at`)는 **여기서만** 전진시킨다. 이 줄에 도달 = Telegram
-        # 전송 성공이고 `partial_delivery` 가 아니다. 부분 전송이면 위에서 이미
-        # 반환됐다. 관측 상태는 조립 단계가 매 회차 저장한다.
+        # POC3-02C-OPS-02 (설계 §15-2 · POC3-02D-OPS-02 Q1 개정) — 장중 **발송 진척
+        # 상태**(`sent_today` 전진 · `last_sent_at` · `last_delivered_state`)는
+        # **여기서만** 전진시킨다. 이 줄에 도달 = Telegram 전송 성공이고
+        # `partial_delivery` 가 아니다. 부분 전송이면 위에서 이미 반환됐다. 관측
+        # 상태는 러너 `_finish` 의 `apply_intraday_records()` 가 Gate 통과 회차마다
+        # 쓴다(설계자 D3) — 전달 상태를 전진시키지 않는다(구파일 entry 는 추정
+        # 전달 상태를 그대로 옮겨 적기만 한다 · 설계자 Q1).
         _save_intraday_state_after_send(
             record,
             intraday=holdings_selection_ctx.get("intraday"),

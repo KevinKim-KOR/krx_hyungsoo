@@ -8,6 +8,7 @@
 import type { QueryState } from "@/lib/api/queryCache";
 import type { MarketTopNResponse } from "@/lib/api";
 import KospiChart from "./KospiChart";
+import { KospiStatusBadges, KospiStatusLines } from "../KospiStatusNote";
 import {
   fmtKstDate,
   fmtPct,
@@ -39,9 +40,14 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
 
         <div className="tc-headline-stats">
           {/* 코스피 수익률·위치 (저장 KOSPI 시계열 기반 · POC3-06 §6.2 실제값).
-              일간·1년·최근 1년 고점 대비를 실제 저장값으로 표시(개발 중 자리표시 제거). */}
+              일간·1년·최근 1년 고점 대비를 실제 저장값으로 표시(개발 중 자리표시 제거).
+              POC3-02D-OPS-02 3-4 — 최신성 상태 배지 · 기준 줄 · 사유 줄은 「요즘 잘 오르는
+              ETF」 시장 배경 카드와 같은 생성기(KospiStatusNote)를 쓴다. */}
           <div className="tc-stat-block">
-            <div className="tc-label">코스피 수익률·위치</div>
+            <div className="tc-label">
+              코스피 수익률·위치{" "}
+              <KospiStatusBadges kospi={kospi} phase={market.phase} />
+            </div>
             {kospi && kospi.status === "ok" ? (
               <ul className="tc-list-plain">
                 <li>
@@ -65,9 +71,8 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
                     : "자료 없음"}
                 </li>
               </ul>
-            ) : (
-              <span className="tc-muted">수익률·위치 자료 없음</span>
-            )}
+            ) : null}
+            <KospiStatusLines kospi={kospi} phase={market.phase} />
           </div>
 
           {/* 기존 시장 판정 — KODEX200 기준임을 명시. 코스피와 합치지 않음(§3.1). */}

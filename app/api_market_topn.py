@@ -36,6 +36,7 @@ from app.api_market_topn_service import (
     entry_to_model,
     market_context_to_model,
     merge_relative_upside_score,
+    with_kospi_display,
 )
 from app.market_data_store import DEFAULT_DB_PATH
 from app.market_refresh_service import (
@@ -125,7 +126,10 @@ def get_market_topn_latest(
         filter_exclusions=payload.get("filter_exclusions", {}),
         candidate_filter_exclusions=payload.get("candidate_filter_exclusions", {}),
         topn_caveat=payload.get("topn_caveat"),
-        market_context=market_context_to_model(payload.get("market_context")),
+        # POC3-02D-OPS-02 3-4 — KOSPI 화면 상태 선택 필드(이 응답에만 · 설계자 Q4).
+        market_context=market_context_to_model(
+            with_kospi_display(payload.get("market_context"), db_path=DEFAULT_DB_PATH)
+        ),
         relative_upside_score_status=score_meta.get("relative_upside_score_status"),
         relative_upside_score_asof_date=score_meta.get(
             "relative_upside_score_asof_date"

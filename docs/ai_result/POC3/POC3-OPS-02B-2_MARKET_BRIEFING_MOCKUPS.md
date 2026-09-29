@@ -185,6 +185,10 @@ fingerprint   = -
 
 ## ⑦ 동일 fingerprint (미발송)
 
+> 적용 기간: 2026-09-18 운영분까지 적용 · 2026-09-18 밤 `02C-OPS-01` OCI 반영으로 폐지 · 새 계약 첫 운영일 2026-09-21. 지금은 같은
+> fingerprint 도 다음 거래일에 발송한다(`content_unchanged` 기록만 · POC3-02D-OPS-02
+> 에서 `scripts/build_market_briefing_mockups.py` ⑦ 정정). 아래는 당시 생성본이다.
+
 ```text
 발송          = 아니오
 사유          = no_change

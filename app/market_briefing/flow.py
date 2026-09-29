@@ -1,7 +1,8 @@
-"""POC3-OPS-02B-2 — 조립 흐름 · fingerprint · 반복 억제 · 상태.
+"""POC3-OPS-02B-2 — 조립 흐름 · fingerprint 기록 · 상태.
 
 runner 가 **1회만** 호출하는 진입점이다. 러너에 본문 책임을 추가하지 않기 위해
-조립·정합성·억제를 전부 여기서 끝낸다(설계 §7).
+조립·정합성·skip 사유를 전부 여기서 끝낸다(설계 §7). fingerprint 는 발송을 막지
+않는다 — 2026-09-18 `02C-OPS-01` 배포부터 `content_unchanged` 기록만 한다(⑤).
 
 ## 판정하지 않는다
 
@@ -20,7 +21,8 @@ runner 가 **1회만** 호출하는 진입점이다. 러너에 본문 책임을 
 state_fingerprint = "{outlook_state}#{index_leadership_state}"
 ```
 
-**근거 숫자를 넣지 않는다** — 매일 흔들려 억제가 무력화된다(OPS-02A 확정 원칙).
+**근거 숫자를 넣지 않는다** — 매일 흔들려 `content_unchanged` 비교가 뜻을 잃는다
+(OPS-02A 확정 원칙 · 2026-09-18 운영분까지는 `no_change` 억제의 기준이었다).
 
 ## POC3-02D-OPS-01 C1
 

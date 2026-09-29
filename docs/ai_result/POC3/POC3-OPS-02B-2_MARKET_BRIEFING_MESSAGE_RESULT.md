@@ -162,7 +162,7 @@ basDd=20260911 (금)    rows=1168  TDD_CLSPRC=35130   ← 거래일
 | ④ | 전망 불가 + 기초지수만 | 예 | - | 218 | 1 | 예 |
 | ⑤ | `CSV_REFRESH_REQUIRED` | 예 | - | 127 | 1 | 예 |
 | ⑥ | 전체 stale | **아니오** | `all_data_stale` | 0 | 0 | 아니오 |
-| ⑦ | 동일 fingerprint | **아니오** | `no_change` | (236) | 0 | 아니오 |
+| ⑦ | 동일 fingerprint (2026-09-18 운영분까지 적용 · 2026-09-18 밤 `02C-OPS-01` OCI 반영으로 폐지 · 새 계약 첫 운영일 2026-09-21) | **아니오** | `no_change` | (236) | 0 | 아니오 |
 
 **전부 Telegram 1건 이내. 분할 0건.** 사용 기준일은 미국 `2026-09-17` · 국내
 `2026-09-17`(직전 거래일).
@@ -182,7 +182,7 @@ basDd=20260911 (금)    rows=1168  TDD_CLSPRC=35130   ← 거래일
 | 테스트 | 고정하는 계약 |
 |---|---|
 | `sends_and_saves_state` | §3-e → §6-c → 발송 → §8 저장이 한 줄로 이어진다 |
-| `repeat_is_suppressed_and_state_untouched` | 같은 상태면 두 번째는 안 보낸다 |
+| `repeat_is_suppressed_and_state_untouched` | 같은 상태면 두 번째는 안 보낸다 (2026-09-18 운영분까지 적용 · 2026-09-18 밤 `02C-OPS-01` OCI 반영으로 폐지 · 새 계약 첫 운영일 2026-09-21) |
 | `flag_guard_wins_over_non_trading_day` | **flag 가 꺼져 있으면 휴장일이어도 `push_kind_disabled`** |
 | `non_trading_day_skips_without_send_or_state` | 휴장일 미발송 · 상태 미저장 |
 | `stale_window_does_not_send_kr_basis` | 창이 오래되면 국내 기준일을 적지 않는다 |
@@ -206,7 +206,7 @@ basDd=20260911 (금)    rows=1168  TDD_CLSPRC=35130   ← 거래일
 | ④ 21거래일 창 요구 | `window=None` | `IndexError` 로 터짐 |
 | ⑤ 휴장일 응답 판정 | 기준일 `20260816` (거래일) | 기준일 `20260817` (휴장일 · 종가 0행) |
 | ⑥ `n≥2` 요구 | 후보 0 | 단일 ETF 지수가 후보로 승격 |
-| ⑦ fingerprint 억제 | `skip_reason=no_change` | 같은 상태를 다시 발송 |
+| ⑦ fingerprint 억제 (2026-09-18 운영분까지 적용 · 2026-09-18 밤 `02C-OPS-01` OCI 반영으로 폐지 · 새 계약 첫 운영일 2026-09-21 · POC3-02D-OPS-02 에서 ⑦-a·⑦-b 로 교체) | `skip_reason=no_change` | 같은 상태를 다시 발송 |
 | ⑧ 실행일 파싱 가드 | `ok=False` `invalid_date_kst` | **읽을 수 없는 날짜가 거래일로 통과** |
 | ⑨ 손상 행 적재 차단 | `ok=True` `decided_by=snapshot` | **`ValueError` 로 러너 중단** |
 | ⑩ 실행일 형식 자르기 금지 | `ok=False` `invalid_date_kst` | **fallback 과 snapshot 판정이 갈림** |
@@ -360,7 +360,7 @@ DESIGNER_REVIEW = ACCEPT_FOR_VERIFICATION
 
 **여전히 결함으로 분류하는 것** — 주말 발송 · 정상 snapshot 과 반대 판정 · 캘린더
 판단 중 예외로 러너 중단 · stale·정합성·21거래일 창 Gate 우회 · 중복 fingerprint
-재발송. 전부 테스트로 고정했다(§5·§6).
+재발송(2026-09-18 운영분까지 적용 · 2026-09-18 밤 `02C-OPS-01` OCI 반영으로 폐지 · 새 계약 첫 운영일 2026-09-21). 전부 테스트로 고정했다(§5·§6).
 
 ### 9.2 추종 ETF 이름 표시 — 설계 §3 메시지 계약에 없음
 

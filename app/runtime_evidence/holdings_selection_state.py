@@ -1,7 +1,9 @@
-"""POC3-OPS-01A — 보유 브리핑 반복 억제 상태 (저장 · fingerprint · 변화 판정).
+"""POC3-OPS-01A — 보유 브리핑 선정 상태 (저장 · fingerprint · 변화 판정).
 
-OPEN 은 당일 최초 전체 상태를 보내고, MIDDAY·CLOSE 는 **변화분만** 보낸다.
-동일 종목·동일 이유·동일 구간은 반복하지 않는다.
+OPEN 은 당일 최초 전체 상태를 보낸다. MIDDAY·CLOSE 는 변화가 있으면 **변화분만**
+(같은 종목·이유·구간은 다시 적지 않는다), 변화가 없으면 **현재 상태 전체**를
+보낸다(`holdings_selection_flow` · 2026-09-18 `02C-OPS-01` 부터). 그 전에는 변화
+없음을 `no_change` 로 막았다(2026-09-18 운영분까지 적용 · 새 계약 첫 운영일 2026-09-21).
 
 설계자 확정 (PLAN §4 · V1.3):
 - 비교 identity = `ticker | sorted(reason:state)` — **reason별로** 비교한다.

@@ -154,7 +154,7 @@ class MarketContextKodex200(BaseModel):
 
 
 class MarketContextKospi(BaseModel):
-    status: str  # ok / unavailable
+    status: str  # ok / stale / unavailable
     return_20d_pct: Optional[float] = None
     return_60d_pct: Optional[float] = None
     return_1m_pct: Optional[float] = None
@@ -166,6 +166,12 @@ class MarketContextKospi(BaseModel):
     return_1y_pct: Optional[float] = None
     high_52w_gap_pct: Optional[float] = None
     as_of_date: Optional[str] = None
+    # POC3-02D-OPS-02 3-4 (설계자 Q4~Q6 · 2026-09-28) — 화면 상태 **선택** 필드. 기존 필드
+    # 의미 불변. `trading_day_lag` 는 C7 공용 거래일 계산(캘린더 축)이다 — KODEX200
+    # 적재일 축으로 잰 운영 판정 lag 와 다른 값이다.
+    display_state: Optional[str] = None
+    trading_day_lag: Optional[int] = None
+    today_is_trading_day: Optional[bool] = None
 
 
 class MarketContextRegimeStreak(BaseModel):

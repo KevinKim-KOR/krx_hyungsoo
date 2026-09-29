@@ -4,7 +4,8 @@
 
 **발송 진척 상태는 여기서 전진시키지 않는다.** 러너가 Telegram 전체 발송 성공을
 확인한 뒤에 전진시킨다(OPS-01A 와 같은 계약 — 미발송 악화가 발송 완료로 기록되면
-안 된다). 장중(OPS-02)의 **관측 상태**는 여기서 매 회차 저장한다(설계 §15-2).
+안 된다). 장중(02C-OPS-02)의 **관측 상태**는 여기서 쓸 내용만 정하고, 러너 Gate
+를 통과한 회차에 `apply_intraday_records()` 가 쓴다(설계자 D3).
 
 비거래일 판정·완전성 가드는 **OPS-01A 것을 그대로 재사용**한다. 신규 발명 금지.
 """
@@ -214,7 +215,13 @@ def _slot_label(runtime_kst: Optional[str]) -> str:
 @dataclass
 class RiskAssembly:
     intraday: Any = None
-    """러너 §3-d 의 결과. `fail` 이 있으면 러너가 `_finish(*fail)` 한다."""
+    """러너 §3-d 의 결과. `fail` 이 있으면 러너가 `_finish(*fail)` 한다.
+
+    `intraday` 는 **통합 본문이 구 본문을 대체한 회차에만** 채운다(POC3-02D-OPS-02
+    Q2). 러너는 이 값으로 전송 성공 뒤 장중 발송 진척을 저장하므로, 통합 본문이
+    나가지 않는 회차(정책 비활성 · 일일 상한 · 신호 없음 · 조립 뒤 예외)는 `None`
+    이다.
+    """
 
     outcome: Optional[HoldingsRiskOutcome] = None
     skip_non_trading_day: bool = False
@@ -311,10 +318,8 @@ def assemble_holdings_risk_push(
         # 그날 억제되고(신규), 악화 알림이 사라진다(OPS-02A · 설계 §14-2).
         # 이번 회차 보낼 대상이 아니던 선정분(억제분)은 그대로 넣는다.
         #
-        # `out.intraday` 대입 **전**에 계산한다. 여기서 예외가 나면 아래 격리
-        # 경로가 되어 구 본문 + 위험 상태 전체 저장이고, 사업군 발송 상태·집계는
-        # 쓰지 않는다. 대입 뒤에 계산하다 예외가 나면 구 본문이 나가는데도 사업군
-        # 신호가 발송 완료로 기록된다(`runner_evidence`).
+        # 여기서 예외가 나면 아래 격리 경로가 되어 구 본문 + 위험 상태 전체
+        # 저장이고, 사업군 발송 상태·관측·집계는 쓰지 않는다(OPS-02 Q2).
         carried_save: Optional[dict[str, dict[str, Any]]] = None
         if intraday.will_send() and not intraday.daily_cap_reached:
             carried = {getattr(i, "ticker", None) for i in intraday.plan.held_drop}
@@ -327,7 +332,10 @@ def assemble_holdings_risk_push(
                 ],
                 previous=outcome.previous_state,
             )
-        out.intraday = intraday
+        # `out.intraday` 는 여기서 대입하지 **않는다**(OPS-02 Q2) — 아래 본문 대체
+        # 분기에서만 대입한다. 전에는 여기서 대입해, 이 아래(진단 갱신 · 회차 결과
+        # 분류)에서 예외가 나 구 본문만 나가도 사업군·급등 신호가 발송 완료로
+        # 기록됐다(OPS-01 결과서 §8 결함 2).
         out.diagnostics.update(intraday.diagnostics)
 
         # 관측 상태는 **여기서 쓰지 않는다**(설계자 D3). dry-run · flag-off ·
@@ -395,6 +403,10 @@ def assemble_holdings_risk_push(
             # 통합 본문이 기존 본문을 **대체**한다. 보유 급락 내용은 그 안에
             # 「보유종목」 구역으로 들어가 있다.
             out.message_text = intraday.message_text
+            # 발송 진척 저장 대상은 **이 분기에서만** 넘긴다(OPS-02 Q2 · 계약 7·8).
+            # 러너는 전체 전송 성공 뒤 `intraday.sent_signals`(본문에 실린 것)만
+            # 발송 완료로 기록한다(`runner_evidence`).
+            out.intraday = intraday
             # C4 — 러너는 `outcome`(`_rasm.outcome`)의 `save_entries` 를 저장한다.
             # `out`(`RiskAssembly`)에 넣으면 새 속성만 붙고 저장에 반영되지 않는다.
             if carried_save is not None:
@@ -403,6 +415,11 @@ def assemble_holdings_risk_push(
         if logger is not None:
             logger.warning("장중 조립 실패(격리): %s", e)
         out.diagnostics["intraday_error"] = f"{type(e).__name__}: {str(e)[:200]}"
+        # OPS-02 Q2 — 구 본문만 나가는 회차다. 조립 뒤 어느 지점에서 터졌든 장중
+        # 발송 진척 · 관측 · 집계를 쓰지 않는다(조립 전 예외와 같은 경로). 보유
+        # 급락 D* 는 구 본문 기준(`save_entries` 전체)으로 전송 성공 뒤에만 저장된다.
+        out.intraday = None
+        out.intraday_records = None
     # POC3-02D-OPS-01 C6 — 조립된 최종 본문(통합 또는 구 본문)의 **분할 전** 길이.
     # 이 종류는 legacy evidence 단계를 건너뛰어 러너 초기값 0 이 남았다. 뜻은
     # 다른 종류와 같다(`holdings_selection_flow`). 발송 여부는 status 로 본다.

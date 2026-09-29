@@ -1,4 +1,4 @@
-"""POC3-OPS-01A — 반복 억제 상태 · 비거래일 가드 계약 test.
+"""POC3-OPS-01A — 선정 상태 변화 판정 · 비거래일 가드 계약 test.
 
 PLAN §7.1 T-5~T-12 · T-14 · T-15 · T-17 · §9.5 T-19~T-21 대응.
 합성 fixture + tmp_path 만 사용한다. 라이브 state 미접근 · 외부 조회 0건.
@@ -129,7 +129,7 @@ def test_t5_first_slot_always_full_send(tmp_path):
     assert ch.full_send is True
 
 
-# --- T-6 동일 상태 억제 -------------------------------------------------------
+# --- T-6 동일 상태 = 변화 없음 판정 (발송은 막지 않음 · 2026-09-18~) ----------
 
 
 def test_t6_identical_state_produces_no_change(tmp_path):
@@ -226,7 +226,12 @@ def test_t10_secondary_reason_change_is_detected(tmp_path):
 
 
 def _simulate_slot(path, *, selected, send_ok: bool, slot_id: str):
-    """러너 순서 재현: 변화 계산 → 발송 → 전체 성공일 때만 저장 (PLAN §4.6)."""
+    """2026-09-18 운영분까지의 러너 순서 재현: 변화 계산 → 발송 → 전체 성공일 때만 저장.
+
+    (PLAN §4.6) 변화 없음 → `no_change` 분기는 옛 계약이다(2026-09-18 `02C-OPS-01`
+    배포로 폐지 · 지금 러너는 현재 상태 전체를 보내고 선정 0건만 `no_selection`).
+    이 helper 가 고정하는 것은 '전체 성공일 때만 저장' 이고, 그 계약은 지금도 같다.
+    """
     previous = load_state(path, today_kst=TODAY)
     changes = compute_changes(
         selected=selected, previous=previous, is_first_slot=(slot_id == "OPEN")

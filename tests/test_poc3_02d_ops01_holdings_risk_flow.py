@@ -256,11 +256,14 @@ def test_c4_recompute_exception_falls_back_to_legacy_path(
 def test_c4_exception_after_intraday_assignment_keeps_full_save(
     monkeypatch, tmp_path, market_db
 ):
-    """재계산은 성공 · `out.intraday` 대입 **뒤** 예외 → 구 본문 5 · 저장 5.
+    """재계산은 성공 · 장중 조립 **뒤**(본문 대체 전) 예외 → 구 본문 5 · 저장 5.
 
     저장 대상은 본문 대체 분기에서만 바뀐다(PLAN C4 조건 1). 계산 직후에
     대입하면 구 본문 5종목이 나가는데 3종목만 저장돼, 다음 틱에 이미 보낸
-    2종목이 다시 나간다. 사업군 상태는 단언하지 않는다(Q8 알려진 한계 경로).
+    2종목이 다시 나간다. 이름의 '대입' 은 OPS-01 당시 `out.intraday` 대입 위치다
+    — POC3-02D-OPS-02 Q2 로 그 대입은 본문 대체 분기로 옮겨졌고, 이 경로의
+    사업군 발송 상태 · 관측 · 집계 0 은 `test_poc3_02d_ops02_delivery_state.py`
+    가 단언한다(OPS-01 때는 Q8 알려진 한계였다).
     """
     import app.runtime_evidence.intraday_alert_flow as iflow
 
@@ -270,7 +273,7 @@ def test_c4_exception_after_intraday_assignment_keeps_full_save(
 
     def _bad_unevaluable(**kw):
         res = real(**kw)
-        # 대입 뒤 `intraday_records` 구성의 `set(...)` 에서 TypeError 가 난다.
+        # 조립 뒤 `intraday_records` 구성의 `set(...)` 에서 TypeError 가 난다.
         res.unevaluable = 5
         return res
 

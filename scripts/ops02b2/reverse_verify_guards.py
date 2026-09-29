@@ -4,19 +4,31 @@
 있을 때 통과하는 것만으로는 "그 가드가 일하고 있다" 를 증명하지 못한다.
 
 실경로를 쓰지 않는다 — 전부 임시 디렉터리·임시 DB·stub fetcher 다.
+
+러너 스크립트(`scripts/run_three_push_runtime_oci.py`)는 import 하지 않는다 —
+import 하면 `.env` 를 읽는다. ⑦ 은 러너가 부르는 `app.three_push_runtime` 함수를
+러너와 같은 순서로 부른다.
 """
 
 from __future__ import annotations
 
+import logging
 import sys
 import tempfile
+from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from app import runtime_sent_registry_store as reg  # noqa: E402
 from app.market_briefing import calendar as cal  # noqa: E402
 from app.market_briefing import evidence as ev  # noqa: E402
 from app.market_briefing import flow, krx_store, krx_sync, meta_gate  # noqa: E402
+from app.three_push_runtime import registry_key as rk  # noqa: E402
+from app.three_push_runtime import runner_duplicate as dup  # noqa: E402
+from app.three_push_runtime import runner_evidence as rev  # noqa: E402
+from app.three_push_runtime import runner_market_briefing as mb  # noqa: E402
 
 AXIS = [f"2026-08-{d:02d}" for d in range(3, 32)] + [
     f"2026-09-{d:02d}" for d in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18)
@@ -79,7 +91,8 @@ def assemble(tmp: Path, db: Path, *, today="2026-09-18", sp500=1.2, fresh=True):
     return flow.assemble_market_briefing(
         today_kst=today,
         runtime_kst=None,
-        state_path=tmp / "s.json",
+        # 러너 §8 `save_state_after_send` 가 쓰는 이름과 같게 둔다(⑦-a).
+        state_path=tmp / flow.STATE_NAME,
         consistency_path=tmp / "c.json",
         official_csv_path=tmp / "official.csv",
         sp500_return_pct=sp500,
@@ -223,26 +236,112 @@ record(
     not r1.candidates and bool(r2.candidates),
 )
 
-# ── ⑦ fingerprint 반복 억제 ──────────────────────────────────────────────────
+# ── ⑦ 정기 PUSH 발송 계약 (POC3-02D-OPS-02 · 옛 ⑦ 교체) ─────────────────────
+# 옛 ⑦ 은 "같은 fingerprint 면 `no_change` 로 막는다" 를 요구했다. 그 계약은
+# 2026-09-18 운영분까지 적용 · 2026-09-18 밤 `02C-OPS-01` OCI 반영으로 폐지(새 계약 첫
+# 운영일 2026-09-21). 지금 계약은 둘이다.
+#   ⑦-a 다음 거래일의 같은 fingerprint 도 보낸다(`content_unchanged` 기록만).
+#   ⑦-b 같은 날 재실행은 registry 일 단위 키가 막는다.
+
+# ⑦-a — 발송 → 러너 §8 저장 → 다음 거래일 조립 · 러너 §6-c 판정.
 tmp = area()
+db = setup(tmp, through="2026-09-16")
+day1 = assemble(tmp, db, today="2026-09-17")
+d1 = mb.decide(day1)
+mb.save_state_after_send(day1, today_kst="2026-09-17", runtime_kst=None, state_dir=tmp)
 db = setup(tmp, through="2026-09-17")
-first = assemble(tmp, db)
-flow.save_state(
-    tmp / "s.json",
-    fingerprint=first.fingerprint,
-    sent_date_kst="2026-09-17",
-    runtime_kst=None,
-)
-again = assemble(tmp, db)
-orig_load = flow.load_state
-flow.load_state = lambda p: None  # 직전 상태를 못 읽는 것으로 위장
-again2 = assemble(tmp, db)
-flow.load_state = orig_load
+day2 = assemble(tmp, db, today="2026-09-18")
+d2 = mb.decide(day2)
+unchanged = day2.diagnostics.get("content_unchanged")
+orig_asm = flow.assemble_market_briefing
+
+
+def _old_no_change(**kw):
+    """2026-09-18 운영분까지의 계약 — 같은 fingerprint 면 막는다."""
+    out = orig_asm(**kw)
+    if out.fingerprint and out.previous_fingerprint == out.fingerprint:
+        out.skip_reason = flow.REASON_NO_CHANGE
+    return out
+
+
+flow.assemble_market_briefing = _old_no_change
+d2x = mb.decide(assemble(tmp, db, today="2026-09-18"))
+flow.assemble_market_briefing = orig_asm
 record(
-    "⑦ fingerprint 반복 억제",
-    f"skip_reason={again.skip_reason}",
-    f"같은 상태를 다시 발송 (skip_reason={again2.skip_reason})",
-    again.skip_reason == flow.REASON_NO_CHANGE and again2.skip_reason is None,
+    "⑦-a 다음 거래일 동일 fp 발송",
+    f"decide={d2} · content_unchanged={unchanged} · 직전 fp 같음="
+    f"{day2.previous_fingerprint == day2.fingerprint}",
+    f"옛 no_change 억제를 씌우면 decide={d2x} (다음 거래일이 빠진다)",
+    d1 is None
+    and d2 is None
+    and unchanged is True
+    and bool(day2.fingerprint)
+    and day2.previous_fingerprint == day2.fingerprint
+    and d2x == ("skipped", flow.REASON_NO_CHANGE, None),
+)
+
+# ⑦-b — 러너 §7 중복 판정 → (중복 아니면) §8 `mark_sent` 를 **같은 키**로.
+PARAM = SimpleNamespace(param_id="ops02b2-param")
+TICKS = (
+    "2026-09-17T08:00:00+09:00",
+    "2026-09-17T08:05:00+09:00",  # 같은 날 재실행
+    "2026-09-18T08:00:00+09:00",  # 다음 거래일
+)
+
+
+def _slot(db_path: Path, runtime_kst: str) -> str:
+    rec: dict = {}
+    today = runtime_kst[:10]
+    fail, date_field = dup.check_plain_duplicate(
+        rec,
+        push_kind=mb.PUSH_KIND,
+        param=PARAM,
+        runtime_date_kst=today,
+        runtime_kst=runtime_kst,
+        slot_id=None,
+        resolve_registry_date_field=rk.resolve_registry_date_field,
+        registry_key=rk.registry_key,
+        is_already_sent=partial(reg.is_already_sent, db_path=db_path),
+        logger=logging.getLogger("ops02b2"),
+    )
+    if fail is not None:
+        return fail[1]
+    rev.record_send_success(
+        rec,
+        push_kind=mb.PUSH_KIND,
+        param=PARAM,
+        runtime_date_kst=today,
+        runtime_kst=runtime_kst,
+        registry_date_field=date_field,
+        partial_delivery=False,
+        holdings_selection_ctx=None,
+        sent_at=f"{today}T00:00:00+00:00",
+        resolve_registry_date_field=rk.resolve_registry_date_field,
+        mark_sent=partial(reg.mark_sent, db_path=db_path),
+        save_state=None,
+        save_risk_state=None,
+        holdings_state_path=None,
+        risk_state_path=None,
+    )
+    return "sent"
+
+
+db7 = area() / "runtime_state.sqlite"
+with_7b = [_slot(db7, t) for t in TICKS]
+orig_slot = dup.resolve_duplicate_slot
+# 무력화 — 위험 알림처럼 **실행 시각 HH:MM** 을 시장 브리핑 키에 붙인다.
+dup.resolve_duplicate_slot = lambda push_kind, *, slot_id, runtime_kst: (
+    runtime_kst[11:16]
+)
+db7x = area() / "runtime_state.sqlite"
+without_7b = [_slot(db7x, t) for t in TICKS]
+dup.resolve_duplicate_slot = orig_slot
+record(
+    "⑦-b 같은 날 재실행 차단",
+    f"08:00·08:05·다음날 = {with_7b}",
+    f"분 단위 키면 = {without_7b} (08:05 재실행이 또 나간다)",
+    with_7b == ["sent", "duplicate_runtime", "sent"]
+    and without_7b == ["sent", "sent", "sent"],
 )
 
 # ── ⑧ 실행일 파싱 가드 (검증자 r1 지적) ──────────────────────────────────────

@@ -2453,6 +2453,17 @@ textarea.decision-textarea {
 .tc-badge-dev { background: #eef1f4; color: var(--muted); border: 1px solid var(--border); }
 /* 이번 단계 미도입 — 개발 중과 시각적으로 구분(더 옅게). */
 .tc-badge-off { background: #f5f5f7; color: #9aa0a6; border: 1px dashed var(--border); }
+/* POC3-02D-OPS-02 3-4 — KOSPI 최신성 상태(「오늘의 투자 점검」 · 「요즘 잘 오르는 ETF」 공용). */
+.kospi-badge {
+  display: inline-block; font-size: 12px; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; margin-left: 4px; vertical-align: middle;
+}
+.kospi-badge.warn { color: var(--warn); background: #fffbeb; }
+.kospi-badge.neutral { color: var(--muted); background: #f3f4f6; }
+.kospi-status { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.kospi-status-basis { font-size: 14px; }
+.kospi-status-reason,
+.kospi-status-loading { font-size: 14px; color: var(--muted); }
 /* §4.3 정비 큐 그룹. */
 .tc-maint-group { margin-top: 4px; }
 /* 제목 행: 제목 + 건수 + 경량 갱신 버튼 1개 + 상태 문구 (사용자 요청). */

@@ -97,8 +97,18 @@ export interface MarketContextKodex200 {
   ma60_distance_pct?: number | null;
 }
 
+// POC3-02D-OPS-02 3-4 — KOSPI 최신성 화면 상태(백엔드 판정 · 설계자 Q4~Q6).
+export type KospiDisplayState =
+  | "ok"
+  | "stale"
+  | "source_failed"
+  | "no_result"
+  | "not_evaluated"
+  | "holiday";
+
 export interface MarketContextKospi {
-  status: "ok" | "unavailable";
+  // 백엔드 `compute_kospi_metrics` 는 "stale"(수익률 미산출)도 준다(POC3-OPS-02B-1).
+  status: "ok" | "stale" | "unavailable";
   return_20d_pct?: number | null;
   return_60d_pct?: number | null;
   return_1m_pct?: number | null;
@@ -109,6 +119,11 @@ export interface MarketContextKospi {
   return_1y_pct?: number | null;
   high_52w_gap_pct?: number | null;
   as_of_date?: string | null;
+  // POC3-02D-OPS-02 3-4 — 기존 응답의 선택 필드(설계자 Q4). trading_day_lag 는 C7 공용
+  // 거래일 계산값(KOSPI 기준일이 직전 거래일보다 몇 거래일 늦나) — 화면이 계산하지 않는다.
+  display_state?: KospiDisplayState | null;
+  trading_day_lag?: number | null;
+  today_is_trading_day?: boolean | null;
 }
 
 // 2026-08-03 POC3-06 §6.2 — 현재 국면 라벨이 이어진 거래일 수.

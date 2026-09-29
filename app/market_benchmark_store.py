@@ -21,9 +21,8 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from app.market_benchmark_freshness import MAX_STALE_TRADING_DAYS
-from app.market_briefing.calendar import parse_date
 from app.market_data_store import DEFAULT_DB_PATH
-from app.trading_day_lag import lag_on_axis, trading_axis_before
+from app.trading_day_lag import benchmark_lag_trading_days
 
 MARKET_BENCHMARK_DAILY_PRICE_DDL = """
 CREATE TABLE IF NOT EXISTS market_benchmark_daily_price (
@@ -187,32 +186,6 @@ def _latest_valid_close_date(rows: list[tuple[str, Optional[float]]]) -> Optiona
     return max(valid) if valid else None
 
 
-def _source_lag(
-    as_of: Optional[str], *, today_kst: str, calendar_dir: Optional[Path]
-) -> tuple[Optional[int], Optional[str]]:
-    """유효 종가 마지막 날짜(`as_of`)의 거래일 lag 와 축의 마지막 날(`ref`).
-
-    축은 08:00 기초지수 최신성 관문과 같다(`end_date` **미만** 거래일 · snapshot,
-    없으면 평일 fallback). KODEX200 DB 축은 DB 가 같이 멈추면 lag 가 0 이 되는
-    순환 결함이 있어 쓰지 않는다.
-
-    - 축의 마지막 날 **이상**이면 lag 0 — 축이 기준일 당일을 빼므로, PC 수동
-      갱신(`end_date=date.today()`)에서 당일 행이 오면 정상 자료가 stale 로
-      오판된다.
-    - lag 를 못 재면 `None`(호출부가 stale 로 본다) — 유효 종가 행 없음
-      (`as_of=None`) · 파싱 불가 · 축보다 오래됨 · 축 안에 없는 과거 날짜(휴장일 등).
-    """
-    days = trading_axis_before(today_kst, calendar_dir=calendar_dir)
-    ref = days[-1] if days else None
-    # **먼저 형식을 본다.** `20260923` 같은 값은 문자열 비교로 축 끝보다 커
-    # 보여 lag 0 으로 통과한다.
-    if as_of is None or parse_date(as_of) is None:
-        return None, ref
-    if ref is not None and as_of >= ref:
-        return 0, ref
-    return lag_on_axis(as_of, days), ref
-
-
 def refresh_kospi_benchmark(
     *,
     end_date,
@@ -279,7 +252,9 @@ def refresh_kospi_benchmark(
     # 같은 날짜가 두 번 오면 적재(upsert)처럼 **마지막 행**이 남는다 — 판정도
     # 그 행으로 한다. 앞 행의 유효 종가로 신선하다고 보면 저장값과 갈린다.
     as_of = _latest_valid_close_date(list(dict(rows).items()))
-    lag, ref = _source_lag(
+    # lag 계산은 공용 함수(`app.trading_day_lag.benchmark_lag_trading_days`) — 화면
+    # KOSPI 상태(POC3-02D-OPS-02 3-4)가 같은 값을 쓴다.
+    lag, ref = benchmark_lag_trading_days(
         as_of, today_kst=end_date.isoformat()[:10], calendar_dir=calendar_dir
     )
     if lag is None or lag > MAX_STALE_TRADING_DAYS:

@@ -1,7 +1,7 @@
 """POC3-OPS-02B-2 — 사용자 목업 Gate 7종 생성 (설계서 §9).
 
 ① 상승+지수2 ② 하락+지수1 ③ 전망만(정상 0개) ④ 전망 불가+지수만
-⑤ `CSV_REFRESH_REQUIRED` ⑥ 전체 stale ⑦ 동일 fingerprint 미발송
+⑤ `CSV_REFRESH_REQUIRED` ⑥ 전체 stale ⑦ 동일 fingerprint · 다음 거래일 발송
 
 **손으로 쓴 본문이 아니다.** 운영과 같은 `flow.assemble_market_briefing()` 을
 그대로 호출해 나온 본문을 찍는다. 각 목업에 실제 글자 수 · 분할 수 · 사용 기준일
@@ -344,9 +344,12 @@ def build() -> list[Mock]:
         )
     )
 
-    # ⑦ 동일 fingerprint — 반복 억제.
-    # 손으로 fingerprint 를 적지 않는다. ① 과 같은 입력으로 **한 번 조립해 발송
-    # 성공 상태를 저장**한 뒤 **다시 조립**한다 — 운영에서 실제로 벌어지는 순서다.
+    # ⑦ 동일 fingerprint · 다음 거래일 — 발송한다(POC3-02D-OPS-02 정정).
+    # 2026-09-18 운영분까지는 `no_change` 로 막았다. 2026-09-18 밤 `02C-OPS-01` OCI 반영
+    # (새 계약 첫 운영일 2026-09-21)부터
+    # 정기 PUSH 는 내용이 같아도 거래일마다 보낸다(`content_unchanged` 기록만).
+    # 손으로 fingerprint 를 적지 않는다. ① 과 같은 입력으로 **한 번 조립해 직전
+    # 거래일(09-17) 발송 성공 상태를 저장**한 뒤 **실행일에 다시 조립**한다.
     m7 = area("m7")
     seed7 = {
         "tickers": two_tickers,
@@ -368,20 +371,23 @@ def build() -> list[Mock]:
         sent_date_kst="2026-09-17",
         runtime_kst=None,
     )
+    again = _run(
+        m7,
+        sp500=1.24,
+        fresh=True,
+        csv_rows=two,
+        consistency=_consistency(4),
+        seed=None,  # 이미 적재돼 있다
+    )
+    unchanged = str(again.diagnostics.get("content_unchanged")).lower()
     out.append(
         Mock(
             "⑦",
-            "동일 fingerprint (미발송)",
-            _run(
-                m7,
-                sp500=1.24,
-                fresh=True,
-                csv_rows=two,
-                consistency=_consistency(4),
-                seed=None,  # 이미 적재돼 있다
-            ),
-            False,
-            "미발송 — 상태 저장 없음 (직전과 동일)",
+            "동일 fingerprint · 다음 거래일 (발송)",
+            again,
+            True,
+            f"발송 성공 후 fingerprint 저장 · content_unchanged={unchanged} · "
+            "같은 날 재실행은 registry duplicate_runtime 이 막는다",
         )
     )
     return out

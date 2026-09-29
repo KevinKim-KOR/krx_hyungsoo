@@ -7,5 +7,5 @@
 | `calendar` | 국내 거래일 snapshot 로더 · 거래일 Gate |
 | `evidence` | `SP500_SIGN_V1` 방향 + 기초지수 산출 |
 | `render` | 본문 · 부분 산출 · 안내 문구 |
-| `flow` | 조립 흐름 · fingerprint · 억제 · 상태 |
+| `flow` | 조립 흐름 · fingerprint 기록 · 상태 |
 """

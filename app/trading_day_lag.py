@@ -7,6 +7,7 @@
 |---|---|
 | `app/market_briefing/flow.py` | 08:00 기초지수 창 최신성 관문 |
 | `app/market_benchmark_store.refresh_kospi_benchmark` | KOSPI 적재 source 정지 감지 |
+| `app/api_market_topn_service.with_kospi_display` | KOSPI 화면 상태의 거래일 지연 (OPS-02 3-4) |
 
 본체는 `flow._weekday_axis_before` · `_window_lag_trading_days` 에서 **그대로**
 옮겼다(설계자 Q17 — store 가 flow 의 private helper 를 import 하지 않는다).
@@ -23,7 +24,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Optional, Sequence
 
-from app.market_briefing.calendar import load_calendar
+from app.market_briefing.calendar import load_calendar, parse_date
 
 
 def weekday_axis_before(today_kst: str, *, span_days: int) -> list[str]:
@@ -86,7 +87,37 @@ def window_lag_trading_days(
     )
 
 
+def benchmark_lag_trading_days(
+    as_of: Optional[str], *, today_kst: str, calendar_dir: Optional[Path]
+) -> tuple[Optional[int], Optional[str]]:
+    """유효 종가 마지막 날짜(`as_of`)의 거래일 lag 와 축의 마지막 날(`ref`).
+
+    POC3-02D-OPS-01 C7 KOSPI 적재 감지(`market_benchmark_store`)의 계산을 **본문 그대로**
+    옮겼다(POC3-02D-OPS-02 3-4 · 설계자 Q6 — 화면도 같은 값을 쓴다).
+
+    축은 08:00 기초지수 최신성 관문과 같다(`today_kst` **미만** 거래일 · snapshot,
+    없으면 평일 fallback). KODEX200 DB 축은 DB 가 같이 멈추면 lag 가 0 이 되는
+    순환 결함이 있어 쓰지 않는다.
+
+    - 축의 마지막 날 **이상**이면 lag 0 — 축이 기준일 당일을 빼므로, PC 수동
+      갱신(`end_date=date.today()`)에서 당일 행이 오면 정상 자료가 stale 로
+      오판된다.
+    - lag 를 못 재면 `None`(호출부가 stale 로 본다) — 유효 종가 행 없음
+      (`as_of=None`) · 파싱 불가 · 축보다 오래됨 · 축 안에 없는 과거 날짜(휴장일 등).
+    """
+    days = trading_axis_before(today_kst, calendar_dir=calendar_dir)
+    ref = days[-1] if days else None
+    # **먼저 형식을 본다.** `20260923` 같은 값은 문자열 비교로 축 끝보다 커
+    # 보여 lag 0 으로 통과한다.
+    if as_of is None or parse_date(as_of) is None:
+        return None, ref
+    if ref is not None and as_of >= ref:
+        return 0, ref
+    return lag_on_axis(as_of, days), ref
+
+
 __all__ = [
+    "benchmark_lag_trading_days",
     "lag_on_axis",
     "trading_axis_before",
     "weekday_axis_before",

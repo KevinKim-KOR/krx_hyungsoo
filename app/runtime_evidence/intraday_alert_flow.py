@@ -96,7 +96,8 @@ class IntradayAssembly:
 def _as_signal(item: Any) -> SectorSignal:
     """보유 급등 항목을 억제 판정용 `SectorSignal` 로 감싼다.
 
-    상태 파일 entries 는 ticker 키 + `state` 필드다. 급등(`U*`)과 사업군 상태
+    상태 파일 entries 는 ticker 키 + `state`(관측) · `last_delivered_state`(전달 ·
+    억제 비교 기준 — POC3-02D-OPS-02 Q1) 필드다. 급등(`U*`)과 사업군 상태
     (`AVOID_*`·`ENTRY_REVIEW`)는 값이 겹치지 않아 한 파일을 공유해도 섞이지
     않는다. 급락(`D*`)은 이 파일이 아니라 `holdings_risk_state` 가 억제한다.
     `fingerprint`(`ticker#state`)는 저장 필드가 아닌 파생 식별자다(설계 §15-2).
@@ -398,7 +399,8 @@ def assemble_intraday_alert(
     sent_surge_tickers = {s.ticker for s in surge_changes.send}
     held_surge = [i for i in held_surge if i.ticker in sent_surge_tickers]
 
-    # 관측 목록 — 조립 단계에서 **매 회차** 저장된다(`save_observation`).
+    # 관측 목록 — Gate 를 통과한 회차에 `apply_intraday_records()` 가 저장한다
+    # (`save_observation` · 설계자 D3). 조립 단계는 저장하지 않는다.
     # 발송 목록(`sent_signals`)은 구역 상한을 적용한 **뒤에** 확정한다 — 아래.
     out.observed = list(sector.signals) + surge_signals
 

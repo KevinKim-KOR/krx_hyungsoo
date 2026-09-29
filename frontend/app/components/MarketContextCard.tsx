@@ -5,12 +5,14 @@
 // 책임:
 // - 시스템 1차 시장 국면 라벨 (상승장 / 보합장 / 하락장 / 판정불가) 표시.
 // - KODEX200 (필수) 20거래일 / 60거래일 수익률 + MA20/MA60 위치 표시.
-// - KOSPI (보조) 20거래일 / 60거래일 수익률 표시 (unavailable 이면 N/A).
+// - KOSPI (보조) 20거래일 / 60거래일 수익률 표시. 값이 없을 때의 상태 배지 · 기준 줄 ·
+//   사유 줄은 「오늘의 투자 점검」과 같은 생성기(KospiStatusNote · POC3-02D-OPS-02 3-4).
 // - regime_reasons + warnings 표시.
 //
 // 별도 파일로 분리한 이유: MarketDiscoveryView.tsx 의 KS-10 회피.
 
 import type { MarketContext } from "@/lib/api";
+import { KospiStatusBadges, KospiStatusLines } from "./KospiStatusNote";
 
 const DASH = "-";
 
@@ -27,6 +29,13 @@ function fmtMoney(value: number | null | undefined): string {
   return value.toLocaleString("ko-KR", {
     maximumFractionDigits: 2,
   });
+}
+
+// POC3-02D-OPS-02 3-4 (사용자 확정 2026-09-28) — KOSPI 영문 경고는 화면에서만 숨긴다.
+// 그 lag 는 KODEX200 적재일 축이라 KOSPI 상태 줄의 거래일 지연(C7 축)과 숫자가 다르다.
+// 응답의 warnings 는 그대로다. KODEX200 경고는 계속 보인다.
+function isKospiWarning(w: string): boolean {
+  return w.startsWith("KOSPI benchmark");
 }
 
 function regimeClass(code: string): string {
@@ -56,6 +65,7 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
 
   const kodex = ctx.kodex200;
   const kospi = ctx.kospi;
+  const warnings = ctx.warnings.filter((w) => !isKospiWarning(w));
 
   return (
     <div className="card market-context-card">
@@ -96,15 +106,16 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
           )}
         </div>
         <div>
-          <h3>(KS11) KOSPI (보조)</h3>
+          <h3>
+            (KS11) KOSPI (보조) <KospiStatusBadges kospi={kospi} />
+          </h3>
           {kospi.status === "ok" ? (
             <ul className="dashboard-status-list">
               <li>20거래일 수익률: <strong>{fmtPct(kospi.return_20d_pct)}</strong></li>
               <li>60거래일 수익률: <strong>{fmtPct(kospi.return_60d_pct)}</strong></li>
             </ul>
-          ) : (
-            <div className="helper">N/A — KOSPI 시계열이 수집되지 않았습니다.</div>
-          )}
+          ) : null}
+          <KospiStatusLines kospi={kospi} />
         </div>
       </div>
 
@@ -119,9 +130,9 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
         </details>
       ) : null}
 
-      {ctx.warnings.length > 0 ? (
+      {warnings.length > 0 ? (
         <div className="helper" style={{ marginTop: 8 }}>
-          {ctx.warnings.map((w, idx) => (
+          {warnings.map((w, idx) => (
             <div key={idx}>⚠ {w}</div>
           ))}
         </div>
