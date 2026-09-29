@@ -1,6 +1,6 @@
 # POC3-02D-OPS-02 개발 결과서 — RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS
 
-작성일: 2026-09-28 · 갱신: 2026-09-29(검증자 r1 정정) · 작성자: 개발자(VSCode Claude) · 수신: 설계자 → 검증자
+작성일: 2026-09-28 · 갱신: 2026-09-29(검증자 r1 정정 · 배포 확인) · 작성자: 개발자(VSCode Claude) · 수신: 설계자 → 검증자
 
 ```text
 STEP_ID                   = POC3-02D-OPS-02
@@ -9,7 +9,7 @@ PREDECESSOR / SUCCESSOR   = POC3-02D-OPS-01 / POC5-01A
 PLAN                      = CONFIRMED (설계자 판정 2026-09-28 · Q1~Q6)
 USER_UI_CONTRACT_APPROVED = YES (2026-09-28 · 사용자가 3-4 화면 초안(목업) 승인 · 문구는 설계자 규칙)
 IMPLEMENTED_UI_CHECK      = PASSED (2026-09-28 21:41 KST 무렵 · 사용자 회신 '화면에 둘다 잘 보입니다' — 「오늘의 투자 점검」 · 「요즘 잘 오르는 ETF」 시장 배경 · 브라우저 새로고침 뒤)
-IMPLEMENTATION            = 3-1 커밋 · push 완료(b5b15509) · 3-2 · 3-3 · 3-4 DONE (검증자 VERIFIED 뒤 이 문서와 함께 커밋 · OCI 미반영)
+IMPLEMENTATION            = 3-1 커밋 · push 완료(b5b15509) · 3-2 · 3-3 · 3-4 DONE (커밋 eff609a0 · OCI 반영 2026-09-29)
 RED_ON_BASE_CODE          = 3-2 새 테스트 49건 중 29건 실패(기준 1489896d) · 3-4 백엔드 새 테스트 수집 실패(함수 없음 — `kospi_display_state` · `with_kospi_display` import 실패) · §1-3
 SABOTAGE                  = 3-2 리뷰 무력화 14종 + 추가 2종 · 3-4 백엔드 5종 · 프론트 5종(M1 포함) — 결함 모양 되돌림은 전부 테스트가 잡음(`out.intraday` 앞 대입만 되돌리는 1종은 동작이 같아 0건 · §6)
 BACKEND_FULL_REGRESSION   = 2,430 passed / 0 failed / 0 errors (exit 0 · 362s · 백엔드 코드 수정을 모두 마친 뒤 실행 · 그 뒤 바뀐 것은 프론트 M1 · 문서뿐 — 백엔드 변경 0 이라 재실행하지 않음)
@@ -19,9 +19,11 @@ PC_LIVE_STATE             = PC `state/` · `logs/`(`state/ml/research` 제외) 2
 PC_PUSH_AUTOSEND_*        = 4줄 모두 false
 OCI / TELEGRAM            = 이 단계 구현 · 검증 중 OCI 접속 0 · OCI 쓰기 0 · 실발송 0 (전송기 · 시세 · 상태 경로 전부 대역 · tmp). §1-5 의 OCI 07:20 값은 OPS-01 운영 확인(2026-09-28 아침) 때 읽은 기록. 2026-09-28 밤 이 단계 밖의 데이터 최신성 조사로 OCI 읽기 전용 접속 1회(쓰기 0)
 KS10_TRIGGER              = 0 (러너 646줄 · 변경 0 · §8)
-DESIGNER_RESULT_DECISION  = PASS_WITH_MANDATORY_AMENDMENT (2026-09-28 · CORE PASS · RESULT 판정 Q1~Q3(구파일 다음 정상 저장 · 회복 → 미전달 Y → X · KOSPI 최신성) APPROVED · 필수 보완 M1 · M2 반영 · 원문은 설계서 끝)
+DESIGNER_RESULT_DECISION  = PASS (설계자 통합 판정 2026-09-29 · 원문은 `docs/ai_design/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_DESIGN_V1.md`) — 앞선 PASS_WITH_MANDATORY_AMENDMENT(2026-09-28 · CORE PASS · RESULT 판정 Q1~Q3(구파일 다음 정상 저장 · 회복 → 미전달 Y → X · KOSPI 최신성) APPROVED · 필수 보완 M1 · M2 반영 · 원문은 설계서 끝)
 VERIFIER                  = VERIFIED (r2 · 2026-09-29 · A-1~A-4 · B-1~B-6 통과 · 위험 NONE · 범위 폭주 NONE) — r1 REJECTED(A-2 결과서의 화면 확인 표기가 완료 · 대기로 동시에 적힘) 정정 뒤
-COMMIT_PUSH_OCI           = 검증자 VERIFIED → 커밋(이 문서 포함) · push 별도 승인 · OCI pull 대기
+COMMIT_PUSH_OCI           = 커밋 eff609a0 · push 2026-09-29 · OCI pull 2026-09-29 밤(사용자) · 재기동 불필요
+DEPLOYMENT                = CONFIRMED (2026-09-29 20:4x · OCI 읽기 전용 5항목 — HEAD eff609a0 · 추적 파일 변경 0 · 배포본에 `last_delivered_state` 계약 · cron 12줄 · flag 불변 · KOSPI 상태 계약은 OCI 공용 lag 함수 + PC API 응답으로 확인)
+RUNTIME_FIELD_OBSERVED    = PENDING_FIRST_NATURAL_SEND (pull 이 장 마감 뒤라 새 코드 첫 장중 실행은 2026-09-30 09:30 · 인계 `docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md`)
 ```
 
 입력 문서
@@ -258,7 +260,7 @@ COMMIT_PUSH_OCI           = 검증자 VERIFIED → 커밋(이 문서 포함) · 
 
 ## 5. 알려진 한계 / 미완성
 
-- **OCI 미반영** — 3-2 · 3-3 은 OCI pull 전까지 OCI 에서 옛 동작이다. 3-4 는 PC 화면이다 — PC 백엔드 응답은 새 필드를 실측으로 확인했고(§1-5), 화면(프론트 dev 서버)도 사용자가 확인했다(2026-09-28 · `IMPLEMENTED_UI_CHECK = PASSED`).
+- **OCI 반영** — 2026-09-29 밤 사용자 pull 로 3-2 · 3-3 이 OCI 에 반영됐다(그날 장중 실행은 pull 전 옛 코드). 새 코드 첫 장중 실행은 2026-09-30 이고, `last_delivered_state` 실측은 첫 자연 발송 뒤다. 3-4 는 PC 화면이다 — PC 백엔드 응답은 새 필드를 실측으로 확인했고(§1-5), 화면(프론트 dev 서버)도 사용자가 확인했다(2026-09-28 · `IMPLEMENTED_UI_CHECK = PASSED`).
 - **조립 뒤 예외 회차의 실행 기록**: 장중 진단값(`intraday_sector_sent_count` 등)이 run record 에 남는다. `intraday_error` 가 함께 남고 이 값을 읽는 코드는 없다(grep 0).
 - **발송이 늘 수 있다**: 전달 못 한 상태 변화가 다음 틱에 다시 나가므로 일일 상한 4건에 더 일찍 닿을 수 있다(상한 · cooldown · 임계값 불변).
 - **3-4 lag 축**: C7 과 같이 오늘 당일을 축에서 뺀다. 거래일 저녁에 당일 자료가 없어도 직전 거래일 자료는 지연 0 이다.

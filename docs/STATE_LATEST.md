@@ -1,14 +1,14 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-09-29 (**POC3-02D-OPS-01 운영 확인 완료** — 연휴 뒤 첫 거래일 07:20 · 08:00 정상 · 08:00 기초지수 구역 복귀 · **POC3-02D-OPS-02 설계자 RESULT `PASS_WITH_MANDATORY_AMENDMENT` · 필수 보완 M1 · M2 반영 · 사용자 구현 화면 확인 완료(2026-09-28) · 검증자 `VERIFIED`(r2 · 2026-09-29) · 커밋 · push · OCI pull 대기** · 「OCI 운영·적용」 화면 합침) · 직전: 2026-09-27 POC3-02D-OPS-01 검증자 VERIFIED · 캘린더 09-28 정정 · 2026-09-26 POC5-00 MASTER PLAN 확정
+최종 업데이트: 2026-09-29 (**POC3-02D-OPS-01 운영 확인 완료** — 연휴 뒤 첫 거래일 07:20 · 08:00 정상 · 08:00 기초지수 구역 복귀 · **POC3-02D-OPS-02 설계자 RESULT `PASS_WITH_MANDATORY_AMENDMENT` · 필수 보완 M1 · M2 반영 · 사용자 구현 화면 확인 완료(2026-09-28) · 검증자 `VERIFIED`(r2) · 커밋 `eff609a0` · push · OCI pull · 배포 확인(2026-09-29) · 설계자 RESULT `PASS`** · **운영 상태 `OPERATING_DEGRADED`**(국내 추세 T-2 · KOSPI 정지) · **`POC3-02D-OPS-03` 개시(URGENT)** · 「OCI 운영·적용」 화면 합침) · 직전: 2026-09-27 POC3-02D-OPS-01 검증자 VERIFIED · 캘린더 09-28 정정 · 2026-09-26 POC5-00 MASTER PLAN 확정
 
 ## POC5 — 운영 신호·판단 결과 원장 (OCI 전용 원장 · 운영 러너 연결 · 현행 PUSH 동작 불변)
 
 ```text
 POC5-00  MASTER PLAN            = 확정 — 설계자 PASS_WITH_MANDATORY_AMENDMENT 2026-09-26 · Q1~Q30 확정
 사용자 승인                      = OCI 전용 원장 state/decision/decision_evidence.sqlite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (2026-09-26)
-다음                            = POC3-02D-OPS-02 커밋 · push(별도 승인) · OCI pull · 운영 확인 → 데이터 최신성(KOSPI 정지 · 07:20 KRX T-2) 설계자 판정 (아래 POC3 절 '다음')
-PRIMARY 시작 조건                = POC3-02D-OPS-01 pull(완료 2026-09-27) + POC3-02D-OPS-02 완료 + POC5-01 코드 pull 뒤 첫 KRX 거래일 (설계자 2026-09-27)
+다음                            = POC3-02D-OPS-03 구현(PLAN 설계자 `PASS_WITH_MANDATORY_AMENDMENTS` 2026-09-29 · 시간 계약 08:00 → 08:30 명시 개정 · KRX 08:10~08:27 · 09:20 보강) · 병행: OPS-02 첫 자연 발송 실측 (아래 POC3 절 '다음')
+PRIMARY 시작 조건                = POC3-02D-OPS-01 pull(완료 2026-09-27) + POC3-02D-OPS-02 완료(배포 2026-09-29) + **POC3-02D-OPS-03 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(설계자 2026-09-29 — `POC5-01A = BLOCKED_BY_OPS-03`) + POC5-01 코드 pull 뒤 첫 KRX 거래일
 그 뒤                           = POC5-01a 러너 분리 → 01 원장 → 02 outcome 성숙 → 03 PC 동기화·피드백 → 04 R0/R1
 ```
 
@@ -83,7 +83,7 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
 | └ **02C 통합 종료** | **`IMPLEMENTED_VERIFIED_ACTIVATED`** | 첫 운영일 2026-09-22 — 7/7틱 · 알림 4건 · 일일 상한 작동 · 커버리지 27/27 · 오류 0. `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` |
 | └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
 | **02D-OPS-01** PRIMARY 전 운영 정정 C1~C7 | **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`** | 설계자 `PASS_TO_VERIFIER` · 검증자 `VERIFIED`(2026-09-27) · 캘린더 09-28 정정 검증자 `VERIFIED_WITH_NOTES` · OCI pull 2026-09-27 · 첫 거래일 2026-09-28 07:20 · 08:00 운영 확인. 08:00 공식 CSV 공용 resolver · pending · `refresh_due` · 판정 창 검사 · 새 CSV `20260927` / OCI 상태 필수 3종 / 장중 '현재가' 시각 · 잘린 보유 급락 재판정 · `send_failed` · 본문 길이 기록 / KOSPI stale 을 `failed` 로 기록 |
-| **02D-OPS-02** 장중 전달 상태 · 운영 UI 정합성 | **`IMPLEMENTED_VERIFIED`**(설계자 RESULT `PASS_WITH_MANDATORY_AMENDMENT` → M1 · M2 반영 · 사용자 구현 화면 확인 2026-09-28 · 검증자 `VERIFIED` r2 2026-09-29(r1 REJECTED A-2 정정) · OCI 미반영) | 설계자 Q1~Q6 확정(2026-09-28) · 3-4 문구 계약 사용자 초안(목업) 승인 + 설계자 규칙 · 구현 화면 사용자 확인 완료(2026-09-28). 3-1 OCI 링크(`b5b15509`) · 3-2 억제 비교 = 마지막 성공 전달 상태 `last_delivered_state` · 조립 뒤 예외 회차 장중 기록 0 · 3-3 낡은 역검증 ⑦ · 목업 ⑦ 정리 · 3-4 KOSPI 상태 배지 · 기준 줄 · 사유 줄(두 화면 공용). 백엔드 전체 2,430 passed · 프론트 261 · 결과서 `docs/ai_result/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_RESULT.md` |
+| **02D-OPS-02** 장중 전달 상태 · 운영 UI 정합성 | **`IMPLEMENTED_VERIFIED_DEPLOYED`**(설계자 RESULT `PASS`(2026-09-29 · 앞서 M1 · M2 반영) · 사용자 구현 화면 확인 2026-09-28 · 검증자 `VERIFIED` r2 2026-09-29 · 커밋 `eff609a0` · OCI pull · 배포 확인 2026-09-29 · 첫 자연 발송 실측 대기) | 설계자 Q1~Q6 확정(2026-09-28) · 3-4 문구 계약 사용자 초안(목업) 승인 + 설계자 규칙 · 구현 화면 사용자 확인 완료(2026-09-28). 3-1 OCI 링크(`b5b15509`) · 3-2 억제 비교 = 마지막 성공 전달 상태 `last_delivered_state` · 조립 뒤 예외 회차 장중 기록 0 · 3-3 낡은 역검증 ⑦ · 목업 ⑦ 정리 · 3-4 KOSPI 상태 배지 · 기준 줄 · 사유 줄(두 화면 공용). 백엔드 전체 2,430 passed · 프론트 261 · 결과서 `docs/ai_result/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_RESULT.md` |
 | **UI** 「OCI 운영·적용」 한 화면 | **`CLOSED`** | 사용자 직접 지시(2026-09-27) · UI 전용. 「OCI 운영 상태」 요약 + 표(`62425b4c`) → 「승인·적용」과 합침 · MenuKey 13→12 · 적용 카드 2장 배치 정리 · 「오늘의 투자 점검」 링크 → 「OCI 운영·적용」(`b5b15509` · OPS-02 3-1 포함) · 사용자 실화면 확인 |
 
 ### OPS-02B-2 운영 계약 (요약 · 2026-09-13 검증자 VERIFIED)
@@ -190,14 +190,23 @@ KOSPI_VIX_INTEGRITY  = PASS
      「OCI 운영·적용」 한 화면과 함께 · 링크 도착지도 그 화면).
    - 3-2 · 3-3 · 3-4: 설계자 Q1~Q6 확정(2026-09-28) 뒤 구현 · 개발자 전체 검증(STEP 5) 완료 · 검증자 `VERIFIED`(r2 · 2026-09-29). 3-4 는 PC
      화면이라 PC 에는 이미 떠 있다(백엔드 `--reload` · 프론트 dev) — 사용자 실화면 확인 완료(2026-09-28).
-2. 검증자 `VERIFIED`(r2 · 2026-09-29) → 커밋 · push(별도 승인) → OCI pull · 운영 확인.
-3. **데이터 최신성 — 사용자 지시 최우선(2026-09-28)**: KOSPI 원자료 09-17 정지(PC 화면만) · 07:20 KRX 국내 자료 매 거래일 T-2(08:00 「오늘 볼 기초지수」 · 장중 「신규 진입 검토」 5일 · 20일). OCI 실측 완료 · 설계자 판정 요청 → 그 뒤 `POC5-01A`.
+   - 배포: 커밋 `eff609a0` · push · OCI pull(2026-09-29 밤 · 사용자) · 배포 확인 5항목 `CONFIRMED`. 인계
+     `docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md`.
+   - 남은 관측: 새 코드 첫 장중 자연 발송(2026-09-30~) 뒤 `last_delivered_state` 실측(수동 발송 금지 · 신호 없으면 실패 아님).
+2. **`POC3-02D-OPS-03` 운영 데이터 최신성 · 자료원 복구 — URGENT**(설계자 2026-09-29 · 설계서
+   `docs/ai_design/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_DESIGN_V1.md`). 운영 상태 `OPERATING_DEGRADED`: 08:00 「오늘 볼 기초지수」 · 장중 「신규 진입 검토」 5일 · 20일이
+   매 거래일 T-2 · KOSPI 원자료 09-17 정지. 확정 계약 = 국내 추세 정상 기준 T-1(없으면 생략 · 고지) · KOSPI
+   `SOURCE_SWITCH` 해제(1순위 KRX 공식 지수) · S&P500 기대 기준일. **원인 확인**: KRX OPEN API 는 전일 자료를 익영업일
+   08:00 에 공개(공식 FAQ) → 07:20 수집은 늘 T-2. **사용자 결정(2026-09-29)**: 시장 흐름 브리핑 08:00 → 08:30 · KRX 수집
+   08:10 · 08:15 · 08:20 · 08:24 시도 · 마감 08:27 · 09:20 보강 1회. PLAN 제출(`docs/ai_plan/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_PLAN_V1.md`)
+   → 설계자 판정 `PASS_WITH_MANDATORY_AMENDMENTS`(2026-09-29 · KRX KOSPI 조회 사용자 승인) → 구현 → 검증 → 배포(cron 08:10 · 08:30 ·
+   09:20 같은 회차) → 첫 거래일 운영 확인 → `POC5-01A`.
    PRIMARY 조건은 맨 위 POC5 절.
 
 **KOSPI 적재 정지** — upstream(`FinanceData/fdr_krx_data_cache` KS11 `2026.csv`)이
-2026-09-17 행에서 멈췄다. source 교체 금지(`SOURCE_SWITCH = PROHIBITED`). 재개되면
-07:20 배치의 180일 lookback 이 자동으로 채운다. 계속 멈추면 source 교체를 별도 설계로
-판단한다. 이 단계가 OCI 에 pull 된 뒤로는 멈춘 날마다 07:20 배치 로그가
+2026-09-17 행에서 멈췄다. `SOURCE_SWITCH = PROHIBITED` 는 `POC3-02D-OPS-03` 범위에서 해제됐다(설계자
+2026-09-29 · 1순위 KRX 공식 지수). 2026-09-29 읽기 전용 대조: 09-15 · 09-16 은 KRX 공식 종가와 같고
+09-17 행(6,724.34)은 공식 종가(6,715.41)와 다르다 — 캐시가 그날 장중에 멈춘 값으로 보인다. OPS-01 C7 이 OCI 에 pull 된 뒤(2026-09-27)로는 멈춘 날마다 07:20 배치 로그가
 `kospi=failed(as_of=…)` 이고 실행 결과 error 가 `source_stale:…` 다. 가격 적재 등 배치의
 다른 단계가 성공한 날이면 배치 status 는 `success_with_benchmark_failure`(exit 1)다. 2026-09-28
 07:20 실측이 그대로다(lag 4).
@@ -205,7 +214,7 @@ KOSPI_VIX_INTEGRITY  = PASS
 **`02C` 는 종료됐다**(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`).
 02C 기준으로 남은 것은 아래 두 **비차단 운영 항목**이다. **단**, 02C 장중 엔진의 사업군 ·
 급등 상태 저장 결함 2건(`02D-OPS-01` 결과서 §8)은 비차단이 아니다 — 위 '다음' 1번
-`POC3-02D-OPS-02` 에서 PRIMARY 전에 고친다(설계자 결정 2026-09-27 · 2026-09-28 구현 · OCI 미반영).
+`POC3-02D-OPS-02` 에서 PRIMARY 전에 고쳤다(설계자 결정 2026-09-27 · 2026-09-28 구현 · OCI 반영 2026-09-29).
 
 1. **발송 빈도 관찰** — 며칠 쌓이면 `max_sends_per_day=4` 가 적절한지 본다.
    첫날 상한 도달은 "평소 4건" 을 뜻하지 않는다. **운영 튜닝 자료**다.
