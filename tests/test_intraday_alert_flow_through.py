@@ -20,6 +20,7 @@ import sqlite3
 import sys
 import types
 from dataclasses import dataclass
+from datetime import date, timedelta
 
 import pytest
 
@@ -32,6 +33,23 @@ RISK_KIND = "holdings_risk_alert"
 from app.three_push_runtime_message_builder import kst_today_date  # noqa: E402
 
 TODAY = kst_today_date()
+
+# POC3-02D-OPS-03 — 추세 기준일(기대 T-1)과 보유 거래일 축은 **거래일 캘린더**로
+# 정한다. fixture 날짜를 실행일 직전 25일(기존처럼 매일)로 두고, 같은 날짜 + 실행일을
+# 담은 합성 캘린더를 rig 에 건다 — 날짜가 흘러도 기대 T-1 = 마지막 날이다.
+FIXTURE_DAYS = [
+    (date.fromisoformat(TODAY) - timedelta(days=25 - i)).isoformat() for i in range(25)
+]
+
+
+def _fixture_calendar(tmp_path):
+    """`FIXTURE_DAYS` + 실행일 합성 거래일 캘린더 폴더(라이브 캘린더를 읽지 않는다)."""
+    cal = tmp_path / "market_meta_fixture"
+    cal.mkdir(parents=True, exist_ok=True)
+    (cal / "krx_trading_days_fixture.csv").write_text(
+        "date\n" + "\n".join(FIXTURE_DAYS + [TODAY]) + "\n", encoding="utf-8"
+    )
+    return cal
 
 
 def _asof(day):
@@ -80,7 +98,7 @@ def market_db(tmp_path):
     )
     rows = []
     for i in range(10):
-        rows += [(f"T{i:05d}", f"2026-08-{d + 1:02d}", 100.0 + d) for d in range(25)]
+        rows += [(f"T{i:05d}", d, 100.0 + n) for n, d in enumerate(FIXTURE_DAYS)]
     con.executemany("INSERT INTO krx_etf_daily_price_unadjusted VALUES(?,?,?)", rows)
     con.commit()
     con.close()
@@ -170,13 +188,19 @@ def _build_rig(monkeypatch, tmp_path, market_db, *, sender=None, flag="true"):
     # 라이브 집계 파일을 건드리지 않는다.
     monkeypatch.setattr(rflow, "DEFAULT_TALLY_PATH", tmp_path / "tally.json")
 
-    # 거래일 축 · 이력
+    # 거래일 축 · 이력 — 축은 캘린더다(POC3-02D-OPS-03). 합성 캘린더를 건다.
+    import app.market_briefing.calendar as calendar_mod
     import app.market_data_store as store2
 
-    axis = [f"2026-08-{i + 1:02d}" for i in range(25)] + [TODAY]
+    monkeypatch.setattr(calendar_mod, "CALENDAR_DIR", _fixture_calendar(tmp_path))
+    axis = FIXTURE_DAYS + [TODAY]
     monkeypatch.setattr(
         store2, "fetch_price_history", lambda t, **kw: [(d, 10000.0) for d in axis]
     )
+    # 설계자 RESULT STEP 1 — 보유 ETF 구간 종가는 KRX 무조정 표(위 이력을 그 값으로).
+    from tests._helpers import install_etf_basis_from_store
+
+    install_etf_basis_from_store(monkeypatch)
     monkeypatch.setattr(
         runner,
         "_collect_target_tickers",
@@ -1251,15 +1275,21 @@ def _selection_at_close(monkeypatch, tmp_path, *, policy, tally_state):
         quantity: float = 10.0
         avg_buy_price: float = 50.0
 
-    axis = [f"2026-08-{i + 1:02d}" for i in range(25)] + [TODAY]
+    from tests._helpers import etf_basis_source
+
+    axis = FIXTURE_DAYS + [TODAY]
+    fetch = lambda t, **kw: [(d, 100.0) for d in axis]  # noqa: E731
     out = build_holdings_selection(
         holdings_loader=lambda: [_H("AAA", "가나다")],
-        fetch_history=lambda t, **kw: [(d, 100.0) for d in axis],
+        fetch_history=fetch,
         market_quotes={"AAA": _Q(80.0, _asof(TODAY), -20.0)},
         state_path=tmp_path / f"sel_{tally_state}.json",
         slot_id="CLOSE",
         runtime_kst=f"{TODAY}T15:40:00+09:00",
         today_kst=TODAY,
+        calendar_dir=_fixture_calendar(tmp_path),
+        # 설계자 RESULT STEP 1 — ETF 과거 종가는 KRX 무조정 표(위 이력을 그 값으로).
+        price_basis_source=etf_basis_source(fetch),
     )
     assert not out.error, out.error
     assert out.message_text, "보유 브리핑 본문이 비었다"
@@ -1271,6 +1301,20 @@ def test_1540_summary_omitted_when_policy_disabled(monkeypatch, tmp_path):
     out = _selection_at_close(monkeypatch, tmp_path, policy=None, tally_state="none")
     assert "장중 점검" not in out.message_text, out.message_text
     assert out.diagnostics.get("intraday_checkup_summary_omitted") == "policy_disabled"
+
+
+def test_1540_summary_omission_names_config_read_failure(monkeypatch, tmp_path):
+    """설정을 못 읽은 장애는 꺼짐과 구분해 남긴다(설계자 RESULT STEP 2) — 줄은 없다."""
+    from app.intraday_config import store as config_store
+
+    def _boom(**kw):
+        raise RuntimeError("runtime db locked")
+
+    monkeypatch.setattr(config_store, "get_active", _boom)
+    out = _selection_at_close(monkeypatch, tmp_path, policy=None, tally_state="none")
+    assert "장중 점검" not in out.message_text, out.message_text
+    omitted = out.diagnostics.get("intraday_checkup_summary_omitted")
+    assert omitted == "intraday_config_unavailable"
 
 
 def test_1540_summary_shown_when_policy_enabled_and_tally_ok(monkeypatch, tmp_path):

@@ -18,6 +18,7 @@ import type {
   MarketProductTag,
   MarketTopNFilters,
 } from "./api";
+import { KOSPI_SOURCE_LINE, kospiStatusText, kospiValuesUsable } from "./kospiStatus";
 
 const TAG_LABEL_KO: Record<MarketProductTag, string> = {
   inverse: "인버스",
@@ -144,12 +145,15 @@ function appendMarketContextSection(
     lines.push(`- KODEX200 현재가: 20일 이동평균 ${ma20} / 60일 이동평균 ${ma60}`);
   }
   const kp = ctx.kospi;
-  if (kp.status === "ok") {
+  // POC3-02D-OPS-03 확정 계약 9 — 화면 KOSPI 카드와 같은 판정 · 같은 문구('N/A' 대신).
+  // 값은 정상 · 휴장일(직전 거래일 자료가 최신)일 때만 싣는다.
+  // 설계자 RESULT STEP 4-2 — KOSPI 값을 싣는 줄 끝에 공식 자료원을 붙인다(같은 줄 · ' · ').
+  if (kospiValuesUsable(kp)) {
     lines.push(
-      `- KOSPI 보조 기준: 20거래일 ${formatPct(kp.return_20d_pct)}, 60거래일 ${formatPct(kp.return_60d_pct)}`,
+      `- KOSPI 보조 기준: 20거래일 ${formatPct(kp.return_20d_pct)}, 60거래일 ${formatPct(kp.return_60d_pct)} · ${KOSPI_SOURCE_LINE}`,
     );
   } else {
-    lines.push("- KOSPI 보조 기준: 데이터 없음 (N/A)");
+    lines.push(`- KOSPI 보조 기준: ${kospiStatusText(kp)}`);
   }
 }
 

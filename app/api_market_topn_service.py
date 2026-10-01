@@ -29,7 +29,8 @@ from pathlib import Path
 
 from app.etf_nav_fetcher import classify_discount_flag
 from app.etf_nav_store import fetch_latest_nav
-from app.market_benchmark_freshness import MAX_STALE_TRADING_DAYS
+from app.market_benchmark_freshness import kospi_freshness
+from app.market_benchmark_store import KOSPI_SOURCE
 from app.market_briefing.calendar import check_trading_day
 from app.market_data_store import latest_refresh_log
 from app.trading_day_lag import benchmark_lag_trading_days
@@ -267,11 +268,16 @@ def enrich_candidates_with_evidence(
 
 # ─── POC3-02D-OPS-02 3-4 — KOSPI 최신성 화면 상태 (설계자 Q4~Q6 · 2026-09-28) ────
 # 기존 응답 `market_context.kospi` 에 **선택 필드 3개**만 더한다(설계자 Q4 — 신규
-# 엔드포인트 · 기존 필드 의미 변경 · 외부 호출 0). 이미 가진 DB(KS11 적재 기록)와
-# 거래일 캘린더만 읽는다. 운영 판정(`compute_kospi_metrics` · 임계값)은 그대로다.
+# 엔드포인트 · 기존 필드 의미 변경 · 외부 호출 0). 이미 가진 DB(KOSPI 적재 기록)와
+# 거래일 캘린더만 읽는다.
 # 화면 문구는 프론트 `KospiStatusNote` 가 상태 → 설계자 확정 문구로 옮긴다.
+#
+# POC3-02D-OPS-03 확정 계약 9 — 최신 = `kospi_as_of == expected_previous_trading_day`
+# (`market_benchmark_freshness.kospi_freshness` · 배치 적재 판정 · 계산 경로와 같은
+# 함수). C7 `lag ≤ 1` 폐기 — T-2 는 정상이 아니다. 적재 기록 source 는 자료원 전환에
+# 맞춰 KRX 로 바꿨다(옛 KS11 기록은 읽지 않는다).
 
-KOSPI_REFRESH_SOURCE = "FinanceDataReader/KS11"
+KOSPI_REFRESH_SOURCE = KOSPI_SOURCE
 _KST = timezone(timedelta(hours=9))
 
 
@@ -279,11 +285,16 @@ def _kst_today() -> str:
     return datetime.now(_KST).date().isoformat()
 
 
+def kospi_today_kst() -> str:
+    """화면 API 의 '오늘'(KST). 계산 경로와 화면 상태가 **같은 날**로 판정한다."""
+    return _kst_today()
+
+
 def kospi_display_state(
     *,
     status: Optional[str],
     as_of: Optional[str],
-    lag: Optional[int],
+    is_fresh: bool,
     last_refresh: Optional[dict],
     today_is_trading_day: Optional[bool],
 ) -> str:
@@ -291,7 +302,7 @@ def kospi_display_state(
 
     | 조건 | 상태 |
     |---|---|
-    | 저장 KOSPI 없음 · KS11 적재 기록 없음 | `not_evaluated` |
+    | 저장 KOSPI 없음 · KOSPI 적재 기록 없음 | `not_evaluated` |
     | 저장 KOSPI 없음 · 마지막 적재가 호출 실패 | `source_failed` |
     | 저장 KOSPI 없음 | `no_result` |
     | 최신 아님(아래) · 마지막 적재가 호출 실패 | `source_failed` |
@@ -300,11 +311,11 @@ def kospi_display_state(
     | 오늘이 거래일 아님 | `holiday` |
     | 그 밖 | `ok` |
 
-    - **최신** = 운영 판정이 `stale` 이 아니고, 거래일 지연(`lag`)을 쟀고
-      `MAX_STALE_TRADING_DAYS` 이하. 지연을 못 재면 최신으로 보지 않는다(C7 과 같다).
-    - **호출 실패** = 마지막 KS11 적재 기록이 실패이고 사유가 `source_stale:` 가
-      아님(자료원이 멈춘 것은 `stale`). 자료가 최신이면 그 뒤 호출 실패는 화면 값에
-      영향이 없어 보지 않는다.
+    - **최신** = 운영 판정이 `stale` 이 아니고 `is_fresh`(= `kospi_freshness` · 기준일이
+      기대 T-1 과 같음 · POC3-02D-OPS-03 확정 계약 9).
+    - **호출 실패** = 마지막 KOSPI 적재 기록이 실패이고 사유가 `source_stale:` 가
+      아님(자료원이 아직 T-1 을 주지 않은 것은 `stale`). 자료가 최신이면 그 뒤 호출
+      실패는 화면 값에 영향이 없어 보지 않는다.
     """
     fetch_failed = bool(
         last_refresh
@@ -315,7 +326,7 @@ def kospi_display_state(
         if last_refresh is None:
             return "not_evaluated"
         return "source_failed" if fetch_failed else "no_result"
-    fresh = status != "stale" and lag is not None and lag <= MAX_STALE_TRADING_DAYS
+    fresh = status != "stale" and is_fresh
     if not fresh:
         return "source_failed" if fetch_failed else "stale"
     if status != "ok":
@@ -335,8 +346,9 @@ def with_kospi_display(
     """`market_context.kospi` 에 `display_state` · `trading_day_lag` ·
     `today_is_trading_day` 를 더한 **사본**. 입력 dict 는 바꾸지 않는다.
 
-    `trading_day_lag` 는 C7 KOSPI 적재 감지와 **같은 함수**
-    (`benchmark_lag_trading_days` — 거래일 캘린더 축, 없으면 평일 fallback)다.
+    최신 판정은 배치 적재 판정과 **같은 함수**(`kospi_freshness` · 기대 T-1 정확 일치 ·
+    POC3-02D-OPS-03 확정 계약 9)다. `trading_day_lag` 는 표시용 지연 거래일 수
+    (`benchmark_lag_trading_days` — 적재 기록 `source_stale:…lag=N` 과 같은 값)다.
     KODEX200 적재일 축 lag(`freshness.lag_trading_days`)와 섞지 않는다(설계자 Q6).
     읽기가 실패하면 필드를 더하지 않는다 — 화면은 기존 `status` 로 표시한다.
     """
@@ -352,13 +364,14 @@ def with_kospi_display(
         lag, _ref = benchmark_lag_trading_days(
             as_of, today_kst=today, calendar_dir=calendar_dir
         )
+        fresh = kospi_freshness(as_of, today_kst=today, calendar_dir=calendar_dir)
         trading_today = check_trading_day(today, directory=calendar_dir).ok
     except Exception:  # noqa: BLE001 — 표시 보조 필드가 응답 전체를 깨면 안 된다
         return market_context
     state = kospi_display_state(
         status=kospi.get("status"),
         as_of=as_of,
-        lag=lag,
+        is_fresh=fresh.is_fresh,
         last_refresh=last_refresh,
         today_is_trading_day=trading_today,
     )

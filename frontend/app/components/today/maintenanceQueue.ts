@@ -10,6 +10,7 @@ import type {
   MarketTopNResponse,
   NavDiscountLatestResponse,
 } from "@/lib/api";
+import { kospiStatusText, kospiStatusView } from "@/lib/kospiStatus";
 import type { MenuKey } from "../LeftSidebar";
 
 // ── §4.3 정비 큐 항목 (자료 상태) ────────────────────────────────────────────
@@ -79,6 +80,20 @@ export function collectMaintenance(
         target: "market_discovery",
         actionLabel: "시장 자료 업데이트로",
         reason: "시장 불안 지표(VIX) 자료가 아직 수집되지 않았습니다.",
+      });
+    }
+    // POC3-02D-OPS-03 설계자 RESULT STEP 4 · PLAN STEP 7-4 — KOSPI 가 정상 · 휴장일이 아니면
+    // VIX 지연과 같은 모양의 항목 하나(PC 화면만 · Telegram 없음). 판정 · 문구는 KOSPI
+    // 카드와 같은 생성기(lib/kospiStatus) — 사유 문장(끝 마침표 뺌) + 기준 줄, ⓘ 는 상태 한 줄.
+    const kospi = kospiStatusView(market.data.market_context?.kospi);
+    if (!kospi.loading && kospi.state !== "ok" && kospi.state !== "holiday" && kospi.reason) {
+      const head = kospi.reason.replace(/\.$/, "");
+      list.push({
+        text: kospi.basisLine ? `${head} (${kospi.basisLine})` : head,
+        kind: "heavy",
+        target: "market_discovery",
+        actionLabel: "시장 자료 업데이트로",
+        reason: kospiStatusText(market.data.market_context?.kospi),
       });
     }
   }

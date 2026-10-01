@@ -8,6 +8,7 @@
   보유 급락 주의
 
 신규 진입 검토
+추세 기준 2026-09-18 종가
 • 반도체 · KODEX 반도체: +2.1%
   5일 +4.3% · 20일 +8.7%
 
@@ -23,6 +24,11 @@
 
 **후보가 없는 구역은 통째로 생략**하고, 모든 구역이 비면 빈 문자열을 돌려준다
 (러너가 미발송 처리).
+
+POC3-02D-OPS-03 확정 계약 8 — 「신규 진입 검토」 구역을 낼 때는 구역 머리에
+`추세 기준 YYYY-MM-DD 종가` 한 줄을 반드시 넣는다. 본문 끝 `기준` 줄(실시간
+현재가 · 직전 종가)과 섞지 않는다. 추세 기준일이 없는 진입 신호는 본문을 만들지
+않고 예외로 끝낸다(호출자가 구 본문으로 격리한다).
 
 한 메시지 안 우선순위(§6) — 상한에 걸리면 **아래쪽부터** 잘린다.
 
@@ -67,6 +73,10 @@ DISCLAIMER = "※ 자동 감지 결과이며, 최종 판단은 사용자가 합�
 SECTION_HELD = "보유종목"
 SECTION_ENTRY = "신규 진입 검토"
 SECTION_AVOID = "진입 회피"
+# 설계자 확정 문구(설계서 §3 · STEP 6 · 확정 계약 8).
+TREND_BASIS_LINE = "추세 기준 {date} 종가"
+# 15:40 요약의 진입 검토 생략 집계(확정 계약 13 · **초안 — 사용자 확인 대기**).
+ENTRY_OMITTED_SUMMARY = "신규 진입 검토 생략 {n}회"
 
 
 @dataclass
@@ -196,6 +206,20 @@ def _sector_lines(items: list[SectorSignal], *, with_window: bool) -> list[str]:
     return out
 
 
+def trend_basis_line(items: list[SectorSignal]) -> str:
+    """「신규 진입 검토」 구역 머리 줄. 기준일이 하나로 정해지지 않으면 예외.
+
+    5일 · 20일은 모두 같은 기대 T-1 에서 계산된다. 기준일이 없거나 둘 이상이면
+    최신성을 확인하지 못한 수치다 — 줄 없이 내보내지 않는다(확정 계약 8).
+    """
+    dates = {getattr(s, "trend_basis_date", None) for s in items}
+    if len(dates) != 1 or None in dates:
+        raise ValueError(
+            f"진입 검토 추세 기준일이 하나가 아니다: {sorted(map(str, dates))}"
+        )
+    return TREND_BASIS_LINE.format(date=dates.pop())
+
+
 def render_intraday_alert(
     plan: SectionPlan,
     *,
@@ -224,7 +248,8 @@ def render_intraday_alert(
         lines += ["", SECTION_HELD] + held
 
     if plan.entry:
-        lines += ["", SECTION_ENTRY] + _sector_lines(plan.entry, with_window=True)
+        lines += ["", SECTION_ENTRY, trend_basis_line(plan.entry)]
+        lines += _sector_lines(plan.entry, with_window=True)
 
     avoid = plan.avoid_drop + plan.avoid_chase
     if avoid:
@@ -249,6 +274,7 @@ def render_checkup_summary(
     failed: int = 0,
     unknown: bool = False,
     send_failed: int = 0,
+    entry_omitted: int = 0,
 ) -> str:
     """§8 — 15:40 보유 브리핑 끝에 붙는 **한 줄**.
 
@@ -257,6 +283,9 @@ def render_checkup_summary(
 
     `발송 실패 N회`(POC3-02D-OPS-01 C5 · 설계자 Q11 문구)는 실패가 있던 날만
     붙는다 — 0 이면 기존 줄과 byte 가 같다.
+
+    `신규 진입 검토 생략 N회`(POC3-02D-OPS-03 확정 계약 13 · 문구 사용자 확인
+    대기)도 같다 — 추세 기준일(T-1)을 확인하지 못해 구역을 뺀 회차 수다.
     """
     if unknown:
         return "장중 점검 확인 불가"
@@ -270,18 +299,23 @@ def render_checkup_summary(
         parts.append(f"조회 실패 {failed}회")
     if send_failed:
         parts.append(f"발송 실패 {send_failed}회")
+    if entry_omitted:
+        parts.append(ENTRY_OMITTED_SUMMARY.format(n=entry_omitted))
     return " · ".join(parts)
 
 
 __all__ = [
     "DISCLAIMER",
+    "ENTRY_OMITTED_SUMMARY",
     "HEADER",
     "PREVIEW_HEADER",
     "SECTION_AVOID",
     "SECTION_ENTRY",
     "SECTION_HELD",
+    "TREND_BASIS_LINE",
     "SectionPlan",
     "build_section_plan",
     "render_checkup_summary",
     "render_intraday_alert",
+    "trend_basis_line",
 ]

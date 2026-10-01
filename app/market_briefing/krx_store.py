@@ -13,8 +13,16 @@ TABLE        = krx_etf_daily_price_unadjusted
 무조정 실거래가다. 두 계열을 이어 붙이면 구간 경계에서 수익률이 깨진다
 (`DEF-ETF-DAILY-PRICE-BASIS-CONSISTENCY`). 그래서 **join 하지 않고 분리**한다.
 
-**이 테이블이 하는 일은 하나다** — `최근 강한 기초지수` 계산의 가격 공급.
-UI·ML·보유 PUSH 로 확장하지 않는다.
+**이 테이블이 하는 일** — `최근 강한 기초지수` 계산의 가격 공급. 이전 Step 에서
+승인돼 이미 읽는 곳이 더 있다 — 장중 사업군 5·20일 추세(`runtime_evidence.sector_signal`)
+와 장중 설정 대표 선정 · 생성(`intraday_config.selector` · `generator` · 시장 갱신 뒤
+후보 생성). 이번 개정(설계자 RESULT STEP 1)으로 더한 예외는 아래 보유 PUSH ETF 가격
+증거뿐이다. UI 표시 · ML · 그 밖의 경로로 확장하지 않는다.
+
+**보유 PUSH 는 ETF 가격 증거에 한해서만 허용한다** (설계자 RESULT STEP 1 ·
+2026-09-30 개정). 보유 브리핑 · 장중 보유 위험의 ETF 20거래일 기준 종가 · 구간
+종가를 현재가(Naver 무조정)와 같은 무조정 계열로 맞추기 위해서다
+(`read_holdings_etf_prices`). 개별주 가격 · UI · ML 에는 쓰지 않는다.
 
 **하지 않는 것**
 
@@ -250,6 +258,50 @@ def stored_day_counts(
         con.close()
 
 
+def read_holdings_etf_prices(
+    tickers: Iterable[str],
+    dates: Sequence[str] = (),
+    *,
+    db_path: Optional[Path] = None,
+) -> tuple[set[str], dict[str, dict[str, float]]]:
+    """보유 PUSH ETF 가격 증거 전용 읽기 (설계자 RESULT STEP 1 · 2026-09-30).
+
+    반환 `(이 계열에 적재 기록이 있는 ticker, {ticker: {date: close}})`. 종가는
+    `dates` 에 든 날짜만 담는다. **읽기 전용으로 연다** — 테이블을 만들지 않는다.
+    DB · 테이블이 없으면 `sqlite3.Error` 를 그대로 올린다. 호출자가 '읽을 수
+    없음' 으로 fail-closed 한다(없는 표를 '적재 기록 없음' 으로 읽지 않는다).
+    """
+    wanted = sorted(set(tickers))
+    days = sorted(set(dates))
+    present: set[str] = set()
+    closes: dict[str, dict[str, float]] = {}
+    if not wanted:
+        return present, closes
+    uri = Path(db_path or DEFAULT_DB_PATH).resolve().as_uri() + "?mode=ro"
+    con = sqlite3.connect(uri, uri=True)
+    try:
+        for start in range(0, len(wanted), _IN_CHUNK):
+            end = start + _IN_CHUNK
+            chunk = wanted[start:end]
+            q = ",".join("?" * len(chunk))
+            for (t,) in con.execute(
+                f"SELECT DISTINCT ticker FROM {TABLE} WHERE ticker IN ({q})", chunk
+            ):
+                present.add(t)
+            if not days:
+                continue
+            dq = ",".join("?" * len(days))
+            for t, d, c in con.execute(
+                f"SELECT ticker, date, close FROM {TABLE} WHERE ticker IN ({q}) "
+                f"AND date IN ({dq}) AND close > 0",
+                [*chunk, *days],
+            ):
+                closes.setdefault(t, {})[d] = float(c)
+        return present, closes
+    finally:
+        con.close()
+
+
 @dataclass(frozen=True)
 class PriceWindow:
     """수익률 계산에 쓰는 세 기준일. 셋 다 있어야 유효하다."""
@@ -277,20 +329,212 @@ def resolve_window(*, db_path: Optional[Path] = None) -> Optional[PriceWindow]:
     )
 
 
+# ── POC3-02D-OPS-03 — 목표일 적재 보조 · 거래일 날짜 창 ────────────────────────
+
+
+def row_count_on(date: str, *, db_path: Optional[Path] = None) -> int:
+    """`date` 에 저장된 행 수. 적재 뒤 read-back(확정 계약 3 ⑤)에 쓴다."""
+    init_db(db_path)
+    con = _connect(db_path)
+    try:
+        (n,) = con.execute(
+            f"SELECT COUNT(*) FROM {TABLE} WHERE date=?", (date,)
+        ).fetchone()
+        return int(n)
+    finally:
+        con.close()
+
+
+def baseline_row_count(
+    date: str, *, db_path: Optional[Path] = None
+) -> tuple[Optional[str], Optional[int]]:
+    """`date` 의 **직전 정상 적재**(앞선 최신 저장일)와 그 행 수(확정 계약 3 ③).
+
+    저장된 날은 모두 검사를 통과한 전종목 snapshot 이다. 앞선 날이 없으면(빠진
+    날 채우기에서 창 맨 앞) 뒤로 가장 가까운 저장일을 쓴다. 둘 다 없으면
+    `(None, None)` — 비교 대상이 없다.
+    """
+    init_db(db_path)
+    con = _connect(db_path)
+    try:
+        row = con.execute(
+            f"SELECT date, COUNT(*) FROM {TABLE} WHERE date < ? "
+            f"GROUP BY date ORDER BY date DESC LIMIT 1",
+            (date,),
+        ).fetchone()
+        if row is None:
+            row = con.execute(
+                f"SELECT date, COUNT(*) FROM {TABLE} WHERE date > ? "
+                f"GROUP BY date ORDER BY date ASC LIMIT 1",
+                (date,),
+            ).fetchone()
+        return (row[0], int(row[1])) if row else (None, None)
+    finally:
+        con.close()
+
+
+def rows_on(date: str, *, db_path: Optional[Path] = None) -> dict[str, float]:
+    """`date` 에 저장된 `{ticker: close}`. 적재 뒤 read-back(확정 계약 3 ⑤)에 쓴다."""
+    init_db(db_path)
+    con = _connect(db_path)
+    try:
+        return {
+            t: float(c)
+            for t, c in con.execute(
+                f"SELECT ticker, close FROM {TABLE} WHERE date=?", (date,)
+            )
+        }
+    finally:
+        con.close()
+
+
+def replace_date(rows: Iterable[SnapshotRow], *, db_path: Optional[Path] = None) -> int:
+    """같은 날짜 저장분을 **한 트랜잭션에서** 지우고 검사를 통과한 `rows` 로 다시 쓴다.
+
+    판정 전 중단 등으로 남은 부분 · 다른 저장분을 이번 snapshot 과 같게 맞출 때만 쓴다
+    (검증자 r1 A-1). 판정까지 끝난 T-1 은 호출자가 다시 받지 않는다(already_loaded).
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    init_db(db_path)
+    now = _utcnow()
+    con = _connect(db_path)
+    try:
+        with con:
+            con.execute(f"DELETE FROM {TABLE} WHERE date=?", (rows[0].date,))
+            con.executemany(
+                f"INSERT INTO {TABLE} (date, ticker, close, source, price_basis, "
+                f"collected_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [(r.date, r.ticker, r.close, SOURCE, PRICE_BASIS, now) for r in rows],
+            )
+    finally:
+        con.close()
+    return len(rows)
+
+
+def delete_date(date: str, *, db_path: Optional[Path] = None) -> int:
+    """`date` 행을 지운다. 이 날짜를 쓴(또는 바꿔 쓴) 호출의 read-back 이 어긋났을 때만
+    쓴다 — 부분 snapshot 을 남기지 않기 위해서다(fail-closed · 그 날짜는 비어 실패로 남는다).
+    """
+    init_db(db_path)
+    con = _connect(db_path)
+    try:
+        cur = con.execute(f"DELETE FROM {TABLE} WHERE date=?", (date,))
+        con.commit()
+        return int(cur.rowcount or 0)
+    finally:
+        con.close()
+
+
+@dataclass(frozen=True)
+class CalendarWindow:
+    """거래일 날짜로 정한 창(확정 계약 5). 저장 행 위치로 밀리지 않는다.
+
+    `missing_days` — 창(21거래일) 안에서 저장되지 않은 날. 계산에 쓰는 세 날짜
+    (`latest` · `d5` · `d20`) 가운데 하나라도 없으면 `usable=False` — 호출부가
+    fail-closed 한다(6 · 21거래일 전 값으로 대신하지 않는다).
+
+    `unconfirmed_days` — 캘린더 없는 해의 평일(fallback) 가운데 저장되지 않은 날.
+    휴장일이면 5 · 20거래일 셈이 하루 틀어지므로 창 안 어디에 있든 `usable=False`
+    (`trading_day_lag.unconfirmed_days` · 확정 계약 5).
+    """
+
+    latest: str
+    d5: Optional[str]
+    d20: Optional[str]
+    window_days: tuple[str, ...]
+    missing_days: tuple[str, ...]
+    unconfirmed_days: tuple[str, ...] = ()
+
+    @property
+    def missing_required(self) -> tuple[str, ...]:
+        need = (self.latest, self.d5, self.d20)
+        base = tuple(d for d in need if d is None or d in self.missing_days)
+        return base + tuple(d for d in self.unconfirmed_days if d not in base)
+
+    @property
+    def usable(self) -> bool:
+        return (
+            self.d5 is not None and self.d20 is not None and not self.missing_required
+        )
+
+    def price_window(self) -> Optional[PriceWindow]:
+        """세 날짜가 정해졌으면 `PriceWindow`. 저장 여부는 보지 않는다."""
+        if self.d5 is None or self.d20 is None:
+            return None
+        return PriceWindow(latest=self.latest, d5=self.d5, d20=self.d20)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "latest": self.latest,
+            "d5": self.d5,
+            "d20": self.d20,
+            "window_day_count": len(self.window_days),
+            "missing_days": list(self.missing_days),
+            "missing_required": [d for d in self.missing_required if d],
+            "unconfirmed_days": list(self.unconfirmed_days),
+            "usable": self.usable,
+        }
+
+
+def resolve_calendar_window(
+    latest: str,
+    *,
+    calendar_dir: Optional[Path] = None,
+    db_path: Optional[Path] = None,
+) -> CalendarWindow:
+    """`latest`(보통 기대 T-1)에서 거래일 캘린더로 d5 · d20 과 21거래일 창을 정한다.
+
+    `resolve_window` 는 저장 행 순서로 날짜를 고른다 — 하루가 빠지면 5 · 20일이
+    6 · 21일이 된다. 이 함수는 날짜를 캘린더로 정하고 **저장 여부만** 본다.
+    """
+    from app import trading_day_lag
+
+    dates = trading_day_lag.trading_window_dates(
+        latest, calendar_dir=calendar_dir, lookbacks=(LOOKBACK_5D, LOOKBACK_20D)
+    )
+    d5, d20 = (dates[1], dates[2]) if dates else (None, None)
+    days = tuple(
+        trading_day_lag.trading_days_ending(
+            latest, REQUIRED_TRADING_DAYS, calendar_dir=calendar_dir
+        )
+    )
+    stored = set(stored_trading_days(db_path=db_path))
+    return CalendarWindow(
+        latest=latest,
+        d5=d5,
+        d20=d20,
+        window_days=days,
+        missing_days=tuple(d for d in days if d not in stored),
+        unconfirmed_days=trading_day_lag.unconfirmed_days(
+            days, stored, calendar_dir=calendar_dir
+        ),
+    )
+
+
 __all__ = [
     "LOOKBACK_20D",
     "LOOKBACK_5D",
     "PRICE_BASIS",
+    "CalendarWindow",
     "PriceWindow",
     "REQUIRED_TRADING_DAYS",
     "SOURCE",
     "TABLE",
     "KrxSnapshotError",
     "SnapshotRow",
+    "baseline_row_count",
     "closes_on",
+    "delete_date",
     "first_loaded_dates",
     "init_db",
+    "read_holdings_etf_prices",
+    "replace_date",
+    "resolve_calendar_window",
     "resolve_window",
+    "row_count_on",
+    "rows_on",
     "stored_day_counts",
     "stored_trading_days",
     "upsert_snapshot",

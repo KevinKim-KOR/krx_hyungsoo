@@ -728,6 +728,10 @@ def test_target_tickers_is_required_and_fails_loud():
             )
 
 
+def _flow_history(ticker, **kw):
+    return [(d, 100.0) for d in AXIS]
+
+
 def test_flow_carries_buy_price_into_message(tmp_path):
     """**흐름 전체**를 통과해 본문에 매입 대비가 실제로 실리는지 본다.
 
@@ -738,6 +742,7 @@ def test_flow_carries_buy_price_into_message(tmp_path):
     from dataclasses import dataclass
 
     from app.runtime_evidence.holdings_selection_flow import build_holdings_selection
+    from tests._helpers import etf_basis_source
 
     @dataclass
     class H:
@@ -749,12 +754,14 @@ def test_flow_carries_buy_price_into_message(tmp_path):
 
     out = build_holdings_selection(
         holdings_loader=lambda: [H("AAA", "가나다")],
-        fetch_history=lambda t, **kw: [(d, 100.0) for d in AXIS],
+        fetch_history=_flow_history,
         market_quotes={"AAA": FakeQuote(current_price=80.0)},
         state_path=tmp_path / "s.json",
         slot_id="OPEN",
         runtime_kst=f"{TODAY}T09:15:00+09:00",
         today_kst=TODAY,
+        # 설계자 RESULT STEP 1 — ETF 과거 종가는 KRX 무조정 표(같은 이력을 그 값으로).
+        price_basis_source=etf_basis_source(_flow_history),
     )
     assert not out.error, out.error
     assert out.message_text, "본문이 비었다"
@@ -768,6 +775,7 @@ def test_flow_multi_account_uses_weighted_buy_price(tmp_path):
     from dataclasses import dataclass
 
     from app.runtime_evidence.holdings_selection_flow import build_holdings_selection
+    from tests._helpers import etf_basis_source
 
     @dataclass
     class H:
@@ -783,12 +791,14 @@ def test_flow_multi_account_uses_weighted_buy_price(tmp_path):
     ]
     out = build_holdings_selection(
         holdings_loader=lambda: rows,
-        fetch_history=lambda t, **kw: [(d, 100.0) for d in AXIS],
+        fetch_history=_flow_history,
         market_quotes={"AAA": FakeQuote(current_price=80.0)},
         state_path=tmp_path / "s.json",
         slot_id="OPEN",
         runtime_kst=f"{TODAY}T09:15:00+09:00",
         today_kst=TODAY,
+        # 설계자 RESULT STEP 1 — ETF 과거 종가는 KRX 무조정 표(같은 이력을 그 값으로).
+        price_basis_source=etf_basis_source(_flow_history),
     )
     assert not out.error, out.error
     # 가중평균 = (100*1 + 50*9)/10 = 55 → 80/55-1 = +45.5%

@@ -1,0 +1,21 @@
+# NYSE 휴장일 · 조기 폐장일 2026 — POC3-02D-OPS-03 확정 계약 11 (정본 = NYSE 공식 휴장일 공지)
+# source_url: https://www.nyse.com/markets/hours-calendars
+# served_url: https://www.nyse.com/trade/hours-calendars
+# retrieved_at_utc: 2026-09-29T17:05:34Z
+# page_sha256: b7c8c2fa1923de735a0bc29a4697b94957a6cc6ad7e219739282fea871d2de6f
+# table_sha256: 82b8ce7c079b5269df884de7963840be91e60b4f70ca33041833f0817c94c091
+# created_kst: 2026-09-30
+# note: 공식 표 'Holidays & Trading Hours' 의 2026 열과 조기 폐장 각주(1:00 p.m. ET) 그대로 · 추정 없음
+date,kind,name,close_et
+2026-01-01,holiday,New Year's Day,
+2026-01-19,holiday,"Martin Luther King, Jr. Day",
+2026-02-16,holiday,Washington's Birthday,
+2026-04-03,holiday,Good Friday,
+2026-05-25,holiday,Memorial Day,
+2026-06-19,holiday,Juneteenth National Independence Day,
+2026-07-03,holiday,Independence Day (observed),
+2026-09-07,holiday,Labor Day,
+2026-11-26,holiday,Thanksgiving Day,
+2026-11-27,early_close,early close (day after Thanksgiving),13:00
+2026-12-24,early_close,early close (Christmas Day note),13:00
+2026-12-25,holiday,Christmas Day,

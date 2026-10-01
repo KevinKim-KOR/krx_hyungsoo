@@ -32,6 +32,18 @@ state_fingerprint = "{outlook_state}#{index_leadership_state}"
 - `refresh_due` 인 주기에는 **어차피 나가는 본문** 끝에 CSV 갱신 안내 1줄을 붙인다.
   주기마다 한 번이며, 발송이 전부 성공한 뒤에만 상태에 소진을 남긴다(R2 Q24).
   fingerprint · 발송 여부는 바꾸지 않는다.
+
+## POC3-02D-OPS-03 (설계자 PLAN 판정 2026-09-29)
+
+- 시장 브리핑은 08:30 · 배치는 08:10(확정 계약 1 · 2). 위 '07:20' · '08:00' 은 옛 시각이다.
+- 국내 최신성 = `actual_basis_date == expected_previous_trading_day`(확정 계약 6) —
+  lag 숫자로 판정하지 않는다. 아니면 기초지수 구역만 빼고 설계자 확정 안내 1줄
+  (`STATUS_PREV_DAY_MISSING`). T-2 값 · 날짜는 본문에 쓰지 않는다.
+- 5일 · 20일은 거래일 **날짜**로 정한다(`krx_store.resolve_calendar_window` · 확정
+  계약 5). 그 날짜가 저장돼 있지 않으면 구역 fail-closed(6 · 21일 전 값으로 밀지 않는다).
+- 저장된 판정은 기대 T-1 과 그 날짜 창 d20 의 것일 때만 쓴다(08:10 목표일 수집과 같은 창).
+- 뒤 PUSH 에 영향을 주는 배치 실패는 본문 끝 1줄 · 낼 내용이 없으면 그 1줄만 담은
+  본문(확정 계약 13 · PLAN STEP 7-3). 하루 1회는 일 단위 registry 가 보장한다.
 """
 
 from __future__ import annotations
@@ -46,7 +58,6 @@ from typing import Any, Optional, Sequence
 from app import trading_day_lag
 from app.market_briefing import evidence as ev
 from app.market_briefing import krx_store, meta_gate, official_csv, render
-from app.market_benchmark_freshness import MAX_STALE_TRADING_DAYS
 from app.market_briefing.calendar import CalendarVerdict, check_trading_day
 
 SCHEMA_VERSION = "market_briefing_state.v1"
@@ -137,24 +148,24 @@ def save_state(
 # 적재 감지(`refresh_kospi_benchmark`)가 **같은 축**을 쓴다. 옛 이름은 그대로
 # 묶어 둔다: `_index_block` 이 이 모듈 전역에서 찾으므로 역검증 스크립트
 # (`scripts/ops02b2/reverse_verify_guards.py` ②)의 monkeypatch 가 그대로 통한다.
+# POC3-02D-OPS-03 — 기초지수 구역은 lag 로 판정하지 않는다(확정 계약 6). 두 이름은
+# 호환(기존 테스트 · 도구)으로만 남긴다.
 _weekday_axis_before = trading_day_lag.weekday_axis_before
 _window_lag_trading_days = trading_day_lag.window_lag_trading_days
+# 확정 계약 6 의 기대 기준일. 모듈 전역에서 찾으므로 역검증
+# (`scripts/ops02b2/reverse_verify_guards.py` ②)이 갈아끼울 수 있다.
+_expected_previous_trading_day = trading_day_lag.expected_previous_trading_day
 
 
 def _verdict_stale(
-    consistency: meta_gate.ConsistencyResult, *, db_path: Optional[Path]
+    consistency: meta_gate.ConsistencyResult, window: krx_store.CalendarWindow
 ) -> Optional[dict[str, Any]]:
     """R2 Q27 — 저장된 판정이 오늘 창의 것이 아니면 진단 dict, 같으면 `None`.
 
-    판정을 다시 계산하지 않는다. 오늘 창 = 저장 계열의 최신일 · d20
-    (`krx_store.resolve_window` · 21일 미만이면 d20 없음).
+    판정을 다시 계산하지 않는다. 오늘 창 = 기대 T-1 과 그 **거래일 날짜** d20
+    (POC3-02D-OPS-03 — 08:10 목표일 수집이 판정에 남기는 창과 같다).
     """
-    window = krx_store.resolve_window(db_path=db_path)
-    if window is not None:
-        latest, d20 = window.latest, window.d20
-    else:
-        days = krx_store.stored_trading_days(db_path=db_path)
-        latest, d20 = (days[-1] if days else None), None
+    latest, d20 = window.latest, window.d20
     reason = meta_gate.verdict_stale_reason(consistency, latest=latest, d20=d20)
     if reason is None:
         return None
@@ -184,13 +195,33 @@ def _index_block(
 
     `csv_unavailable` — 08:00 resolver 가 유효 파일을 하나도 못 찾았을 때의 오류.
     CSV 행 없이 후보를 계산하면 "정상 0개" 로 조용히 사라지므로 닫는다(R2 Q25).
+
+    POC3-02D-OPS-03 — **국내 기준일 확인이 맨 앞이다**(확정 계약 6). 저장 계열의
+    최신일(= 이 구역이 쓸 국내 기준일)이 기대 T-1 과 다르면 다른 관문을 보기 전에
+    닫는다 — T-1 부재를 CSV 갱신 · 판정 실패로 잘못 안내하지 않는다.
     """
+    expected = _expected_previous_trading_day(today_kst, calendar_dir=calendar_dir)
+    stored = krx_store.stored_trading_days(db_path=db_path)
+    actual = stored[-1] if stored else None
+    if expected is None or actual != expected:
+        # 지난 날짜는 진단에만 남긴다 — 본문 `기준` 줄에 쓰지 않는다(설계 §3.4).
+        return ev.IndexLeadership(
+            status=render.STATUS_PREV_DAY_MISSING,
+            diagnostics={
+                "reason": "basis_date_not_expected",
+                "expected_previous_trading_day": expected,
+                "actual_basis_date": actual,
+            },
+        )
     if consistency is None:
         return ev.IndexLeadership(
             status=meta_gate.STATUS_API_FETCH_FAILED,
             diagnostics={"reason": "no_0720_result"},
         )
-    stale = _verdict_stale(consistency, db_path=db_path)
+    window = krx_store.resolve_calendar_window(
+        expected, calendar_dir=calendar_dir, db_path=db_path
+    )
+    stale = _verdict_stale(consistency, window)
     if stale is not None:
         # `CSV_REFRESH_REQUIRED` 로 표시하지 않는다 — 불필요한 CSV 요청을 막는다.
         return ev.IndexLeadership(
@@ -209,48 +240,26 @@ def _index_block(
             status=consistency.status, diagnostics=consistency.to_dict()
         )
 
-    window = krx_store.resolve_window(db_path=db_path)
-    if window is None:
+    # 확정 계약 5 — d5 · d20 은 거래일 **날짜**다. 창(21거래일) 안 빠진 날이 계산에
+    # 쓰는 세 날짜에 걸리면 구역을 닫는다(6 · 21일 전 값으로 밀지 않는다). 옛
+    # '21일 미만' · 'lag 초과' 관문은 위 T-1 확인과 이 확인이 함께 대신한다.
+    prices = window.price_window()
+    if prices is None or not window.usable:
         return ev.IndexLeadership(
             status="stale",
-            diagnostics={
-                "reason": "insufficient_trading_days",
-                "required": krx_store.REQUIRED_TRADING_DAYS,
-                "stored": len(krx_store.stored_trading_days(db_path=db_path)),
-            },
+            diagnostics={"reason": "window_missing_days", **window.to_dict()},
         )
 
-    # 최신성 Gate — 21일이 모였다는 것과 **그 21일이 최근이라는 것**은 다르다.
-    # 이 검사가 없으면 적재가 멈춘 뒤에도 18일 지난 종가로 "오늘 볼 기초지수" 를
-    # 만들어 보낸다(사용자 지적 2026-09-13 · 실측 재현). benchmark 와 같은 계약
-    # (`MAX_STALE_TRADING_DAYS`)을 재사용한다 — 새 임계를 만들지 않는다.
-    lag = _window_lag_trading_days(
-        window.latest, today_kst=today_kst, calendar_dir=calendar_dir
-    )
-    if lag is None or lag > MAX_STALE_TRADING_DAYS:
-        # `price_asof` 를 담지 않는다 — 쓰지 않은 기준일을 본문 `기준` 줄에
-        # 적으면 "기준일이 다른 값을 하나의 기준일로 표시" 금지(설계 §3.4)를
-        # 위반한다. 지난 날짜는 진단에만 남긴다.
-        return ev.IndexLeadership(
-            status="stale",
-            diagnostics={
-                "reason": "window_not_fresh" if lag is not None else "lag_unknown",
-                "latest_stored": window.latest,
-                "lag_trading_days": lag,
-                "max_stale_trading_days": MAX_STALE_TRADING_DAYS,
-            },
-        )
-
-    closes = krx_store.closes_on(list(window.dates), db_path=db_path)
+    closes = krx_store.closes_on(list(prices.dates), db_path=db_path)
     matched = meta_gate.matched_meta_rows(
         csv_rows, {t: n for t, n in _api_names_from(consistency, csv_rows).items()}
     )
     result = ev.compute_index_leadership(
         meta_rows=matched,
         closes=closes,
-        latest=window.latest,
-        d5=window.d5,
-        d20=window.d20,
+        latest=prices.latest,
+        d5=prices.d5,
+        d20=prices.d20,
     )
     result.diagnostics.update(consistency.to_dict())
     if not result.candidates:
@@ -274,8 +283,14 @@ def _api_names_from(
 def _refresh_notice_cycle(
     consistency: Optional[meta_gate.ConsistencyResult], index_status: str
 ) -> Optional[str]:
-    """R2 Q24 — 안내 대상 주기. 오늘 창의 판정이 `refresh_due` 일 때만."""
-    if consistency is None or index_status == meta_gate.STATUS_META_GATE_STALE:
+    """R2 Q24 — 안내 대상 주기. 오늘 창의 판정이 `refresh_due` 일 때만.
+
+    T-1 이 없는 날(`STATUS_PREV_DAY_MISSING`)의 판정도 오늘 창의 것이 아니다.
+    """
+    if consistency is None or index_status in (
+        meta_gate.STATUS_META_GATE_STALE,
+        render.STATUS_PREV_DAY_MISSING,
+    ):
         return None
     if not consistency.refresh_due:
         return None
@@ -297,12 +312,15 @@ def assemble_market_briefing(
     calendar_dir: Optional[Path] = None,
     db_path: Optional[Path] = None,
     logger: Any = None,
+    batch_failure: Sequence[str] = (),
 ) -> BriefingOutcome:
     """러너 §3-e 전체. **판정하지 않고 조립만** 한다.
 
     공식 CSV — 운영은 `meta_dir` 을 넘겨 07:20 과 같은 resolver 로 고른다.
     `official_csv_path` 는 파일을 직접 지정하는 옛 호출(합성 fixture · 고정 경로
     도구)용이다. 둘 중 하나만 넘긴다.
+
+    `batch_failure` — 러너가 배치 상태로 정한 고지 사유(PLAN STEP 7-3 · 비면 고지 없음).
     """
     if (meta_dir is None) == (official_csv_path is None):
         raise TypeError("meta_dir 과 official_csv_path 중 하나만 넘긴다")
@@ -354,31 +372,41 @@ def assemble_market_briefing(
     out.diagnostics["index_candidates"] = [c.identifier for c in index.candidates]
     out.diagnostics["index_diagnostics"] = index.diagnostics
 
+    # ④ 본문 — 낼 내용이 없으면 skip. 단 뒤 PUSH 에 영향을 주는 배치 실패가 있으면
+    # 고지 1줄만 담은 본문을 만든다(PLAN STEP 7-3 · 그 밖의 안내는 붙이지 않는다).
+    notice = {"reasons": list(batch_failure), "appended": False, "notice_only": False}
+    out.diagnostics["batch_failure_notice"] = notice
+    would_skip: Optional[str] = None
     if not outlook.usable and not index.candidates:
-        out.skip_reason = (
+        would_skip = (
             REASON_ALL_STALE
             if index.status
             in (
                 "stale",
                 meta_gate.STATUS_API_FETCH_FAILED,
                 meta_gate.STATUS_META_GATE_STALE,
+                render.STATUS_PREV_DAY_MISSING,
             )
             else REASON_NO_PUBLISHABLE
         )
-        return out
-
-    # ④ 본문
-    out.message_text = render.render_market_briefing(
-        outlook=outlook,
-        index_status=index.status,
-        candidates=index.candidates,
-        support=support,
-        us_asof=sp500_asof if sp500_fresh else None,
-        kr_asof=index.price_asof,
-    )
-    if not out.message_text:
-        out.skip_reason = REASON_NO_PUBLISHABLE
-        return out
+    else:
+        out.message_text = render.render_market_briefing(
+            outlook=outlook,
+            index_status=index.status,
+            candidates=index.candidates,
+            support=support,
+            us_asof=sp500_asof if sp500_fresh else None,
+            kr_asof=index.price_asof,
+        )
+        if not out.message_text:
+            would_skip = REASON_NO_PUBLISHABLE
+    if would_skip is not None:
+        if not batch_failure:
+            out.skip_reason = would_skip
+            return out
+        out.diagnostics["would_skip_reason"] = would_skip
+        out.message_text = render.render_notice_only()
+        notice.update(appended=True, notice_only=True)
 
     # ⑤ fingerprint — **본문이 만들어진 뒤에만** 비교한다 (설계자 §6).
     out.fingerprint = f"{outlook.fingerprint_state}#{index.fingerprint_state}"
@@ -398,11 +426,19 @@ def assemble_market_briefing(
     # 이미 한다.
     out.diagnostics["content_unchanged"] = out.previous_fingerprint == out.fingerprint
 
+    # ⑥-a 배치 실패 고지 — fingerprint 가 정해진 뒤 끝에 붙인다(CSV 안내보다 앞).
+    if batch_failure and not notice["notice_only"]:
+        out.message_text = render.append_batch_notice(out.message_text)
+        notice["appended"] = True
+
     # ⑥ CSV 갱신 안내 (R2 Q24) — **본문 · fingerprint 가 정해진 뒤** 끝에만 붙인다.
-    # 여기까지 왔으면 어차피 나가는 발송이다. 안내만으로 발송을 만들지 않는다.
+    # 여기까지 왔으면 어차피 나가는 발송이다. 안내만으로 발송을 만들지 않는다 —
+    # 고지만 담은 본문에도 붙이지 않는다(다음 실제 본문에 붙는다).
     notified = (prev or {}).get(STATE_NOTICE_KEY)
     out.refresh_notice_cycle_id = notified
     cycle = _refresh_notice_cycle(consistency, index.status)
+    if notice["notice_only"]:
+        cycle = None
     appended = cycle is not None and cycle != notified
     if appended:
         out.message_text = render.append_refresh_notice(out.message_text)

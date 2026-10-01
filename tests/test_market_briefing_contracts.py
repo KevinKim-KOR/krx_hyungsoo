@@ -768,7 +768,17 @@ def test_flow_makes_no_external_call():
 
 
 def test_flow_consumes_0720_result_only(tmp_path):
-    """07:20 결과가 없으면 기초지수 블록은 fail-closed 다."""
+    """07:20 결과가 없으면 기초지수 블록은 fail-closed 다.
+
+    POC3-02D-OPS-03 — 국내 기준일(T-1) 확인이 맨 앞이다. 판정 파일 부재 경로를 보려면
+    T-1(2026-09-09) 가격은 적재돼 있어야 한다(없으면 `STATUS_PREV_DAY_MISSING`).
+    """
+    krx_store.upsert_snapshot(
+        krx_store.validate_snapshot(
+            [_api_row("069500", "20260909")], expected_date="20260909"
+        ),
+        db_path=tmp_path / "m.sqlite",
+    )
     out, _ = _assemble(tmp_path, sp500=1.0, consistency=None)
     assert out.diagnostics["index_status"] == meta_gate.STATUS_API_FETCH_FAILED
     assert out.should_send, "전망이 유효하면 전망만이라도 발송한다"
@@ -927,21 +937,30 @@ def _fresh_assemble(tmp_path, *, stored_days, today="2026-09-18", axis=None):
 
 
 def test_stale_window_is_not_used_even_with_21_days(tmp_path):
-    """21일이 모인 것과 **그 21일이 최근인 것**은 다르다 (사용자 지적)."""
+    """21일이 모인 것과 **그 21일이 최근인 것**은 다르다 (사용자 지적).
+
+    POC3-02D-OPS-03 확정 계약 6 — lag 숫자가 아니라 국내 기준일 == 기대 T-1 로 닫는다.
+    """
     old = [f"2026-08-{d:02d}" for d in range(3, 31)][:21]
     out = _fresh_assemble(tmp_path, stored_days=old)
-    assert out.diagnostics["index_status"] == "stale"
+    assert out.diagnostics["index_status"] == render.STATUS_PREV_DAY_MISSING
     d = out.diagnostics["index_diagnostics"]
-    assert d["reason"] == "window_not_fresh"
-    assert d["lag_trading_days"] > d["max_stale_trading_days"]
+    assert d["reason"] == "basis_date_not_expected"
+    assert d["expected_previous_trading_day"] == "2026-09-17"
+    assert d["actual_basis_date"] == old[-1]
 
 
 def test_stale_window_does_not_print_kr_basis_date(tmp_path):
-    """쓰지 않은 국내 기준일을 `기준` 줄에 적지 않는다 (설계 §3.4)."""
+    """쓰지 않은 국내 기준일을 `기준` 줄에 적지 않는다 (설계 §3.4).
+
+    POC3-02D-OPS-03 — 본문에는 설계자 확정 안내 1줄('국내 기초지수는 …')만 있고
+    국내 날짜(`국내 YYYY-MM-DD 종가`)는 없다.
+    """
     old = [f"2026-08-{d:02d}" for d in range(3, 31)][:21]
     out = _fresh_assemble(tmp_path, stored_days=old)
     body = out.message_text or ""
-    assert "국내" not in body, body
+    assert render.INDEX_NOTICE[render.STATUS_PREV_DAY_MISSING] in body, body
+    assert "국내 2026" not in body, body
     assert "2026-08" not in body, body
 
 
@@ -966,9 +985,11 @@ def test_window_freshness_unknown_is_fail_closed(tmp_path):
     ]
     stored = [d for d in axis if d <= "2026-09-11"][-20:] + ["2026-09-12"]
     out = _fresh_assemble(tmp_path, stored_days=stored, axis=axis)
-    assert out.diagnostics["index_status"] == "stale", out.diagnostics
-    assert out.diagnostics["index_diagnostics"]["reason"] == "lag_unknown"
-    assert "국내" not in (out.message_text or "")
+    # POC3-02D-OPS-03 확정 계약 6 — 축 밖 최신일도 기대 T-1(09-17)과 다르면 닫는다.
+    assert out.diagnostics["index_status"] == render.STATUS_PREV_DAY_MISSING
+    d = out.diagnostics["index_diagnostics"]
+    assert d["reason"] == "basis_date_not_expected"
+    assert "국내 2026" not in (out.message_text or "")
 
 
 # ── 손상 캘린더·잘못된 실행일 (검증자 r1 REJECTED · 2026-09-13) ───────────────

@@ -33,6 +33,8 @@ const JOB_LABEL: Record<string, string> = {
   holdings_source: "보유 종목 파일",
   runtime_state_db: "운영 설정 DB",
   push_job_results: "PUSH 발송 결과",
+  // POC3-02D-OPS-03 확정 계약 11 — 한국 · 미국 거래일 달력 올해 · 다음 해 파일 준비 상태.
+  trading_calendar: "거래일 달력",
 };
 
 const PUSH_KIND_LABEL: Record<string, string> = {
@@ -77,8 +79,11 @@ function missingKinds(detail: string): string {
 
 function stateOf(j: OciJobStatus): { label: string; tone: Tone } {
   if (j.status === "SUCCESS") return { label: "정상", tone: "ok" };
-  if (j.status === "STALE")
-    return { label: j.job === "crontab" ? "일부 누락" : "오래됨", tone: "warn" };
+  if (j.status === "STALE") {
+    if (j.job === "crontab") return { label: "일부 누락", tone: "warn" };
+    if (j.job === "trading_calendar") return { label: "준비 필요", tone: "warn" };
+    return { label: "오래됨", tone: "warn" };
+  }
   if (j.status === "UNKNOWN") return { label: "확인 불가", tone: "unknown" };
   return { label: j.status, tone: "unknown" };
 }

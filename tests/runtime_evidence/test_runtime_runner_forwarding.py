@@ -146,6 +146,11 @@ def test_holdings_briefing_runner_record_forwards_all_diagnostics_r6(
         "load",
         lambda *a, **k: [_H(f"T{i:04d}", f"종목{i:02d}") for i in range(35)],
     )
+    # 설계자 RESULT STEP 1 — 가격 기준 원천(ETF 마스터 CSV · KRX 표)을 대역으로.
+    # 라이브 `state/market_meta` CSV 를 읽지 않는다.
+    from tests._helpers import install_etf_basis_from_store
+
+    install_etf_basis_from_store(monkeypatch)
 
     # Low-Frequency Telegram Push Operation v1: holdings_briefing 은 slot_id 필수.
     record = runner_mod.run("holdings_briefing", "dry-run", slot_id="OPEN")

@@ -386,6 +386,12 @@ def _install_batch_success_path(monkeypatch, batch, tmp_path):
         "app.momentum.universe_mode.save_latest_artifact",
         lambda result: tmp_path / "art.json",
     )
+    # POC3-02D-OPS-03 — KRX 단계는 실제 시각으로 시도 시각표를 정하므로(08:10~08:24
+    # 대기) 여기서는 대역으로 둔다. KRX 단계 계약은 test_poc3_02d_ops03_krx_* 가 본다.
+    monkeypatch.setattr(
+        "app.market_briefing.krx_target_sync.sync_krx_target",
+        lambda **kw: {"status": "skipped_before_open", "attempts": []},
+    )
     return tmp_path / "batch_state.json"
 
 
@@ -595,7 +601,8 @@ def test_batch_run_marks_stale_kospi_as_benchmark_failure(monkeypatch, tmp_path)
     `kospi=ok(as_of=2026-09-17)` · status success 였다. 감지 정정 A 뒤에는
     `success_with_benchmark_failure` 로 드러나고, ETF 가격 · artifact 는 그대로다.
 
-    - 조회: `FinanceDataReader` 모듈 자리에 가짜를 둔다(KOSPI · VIX · 미국 3종 공용).
+    - 조회: `FinanceDataReader` 모듈 자리에 가짜를 둔다(VIX · 미국 3종 공용). KOSPI 는
+      POC3-02D-OPS-03 자료원 전환(확정 계약 9) — KRX `idx/kospi_dd_trd` 대역.
     - 저장: 실제 `refresh_benchmarks` 를 tmp DB 로 부른다.
     - 축: `calendar.CALENDAR_DIR` 를 합성 snapshot 으로 돌린다.
     """
@@ -640,9 +647,18 @@ def test_batch_run_marks_stale_kospi_as_benchmark_failure(monkeypatch, tmp_path)
 
     def _data_reader(symbol, start, end):
         calls.append(symbol)
-        if symbol == "KS11":
-            return _df(["2026-09-15", "2026-09-16", "2026-09-17"])
         return _df(["2026-09-23", "2026-09-24"])
+
+    from app.market_briefing import krx_sync
+
+    def _krx_kospi(bas_dd, key):
+        calls.append(f"KRX:{bas_dd}")
+        if bas_dd > "20260917":
+            return []  # 자료원이 09-17 에서 멈춘 모양
+        return [{"BAS_DD": bas_dd, "IDX_NM": "코스피", "CLSPRC_IDX": "2700.00"}]
+
+    monkeypatch.setattr(krx_sync, "_default_kospi_fetcher", _krx_kospi)
+    monkeypatch.setattr(krx_sync, "read_api_key", lambda env_path=None: "TEST-KEY")
 
     monkeypatch.setitem(
         sys.modules,
@@ -660,11 +676,16 @@ def test_batch_run_marks_stale_kospi_as_benchmark_failure(monkeypatch, tmp_path)
     rec = batch.run(mode="run")
     saved = json.loads(state_path.read_text(encoding="utf-8"))
 
-    assert "KS11" in calls and "VIX" in calls
+    assert "KS11" not in calls and "VIX" in calls
+    assert "KRX:20260917" in calls and "KRX:20260918" in calls
     kospi = rec["benchmark_refresh"]["kospi"]
     assert kospi["status"] == "failed", "멈춘 KOSPI 를 ok 로 숨겼다"
-    assert kospi["error"] == "source_stale:as_of=2026-09-17,ref=2026-09-24,lag=5"
+    assert kospi["error"] == (
+        "source_stale:as_of=2026-09-17,expected=2026-09-24,lag=5,"
+        "reason=no_rows@2026-09-18"
+    )
     assert kospi["as_of_date"] == "2026-09-17"
+    assert kospi["source"] == "KRX_OPEN_API/idx_kospi_dd_trd"
     assert rec["benchmark_refresh"]["failed"] == ["kospi"]
     assert rec["status"] == "success_with_benchmark_failure", rec["status"]
     assert rec["reason"] == "benchmark_partial:kospi"

@@ -9,11 +9,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from fastapi.testclient import TestClient
 
 from app import market_cache
+
+if TYPE_CHECKING:
+    from app.runtime_evidence.holdings_price_basis import PriceBasisSource
 
 # ─── POC1 ────────────────────────────────────────────────────────────
 
@@ -293,3 +296,56 @@ def patch_compose_runtime_evidence(monkeypatch, fake):
     import app.runtime_evidence_composer as _rec
 
     monkeypatch.setattr(_rec, "compose_runtime_evidence", lambda pk, **kw: fake)
+
+
+# ─── POC3-02D-OPS-03 설계자 RESULT STEP 1 — 보유 PUSH 가격 기준 대역 ────────────
+# 보유 흐름 테스트 여러 모듈이 쓴다. 보유 종목을 전부 ETF(KRX 표 적재 기록)로 두고
+# KRX 종가를 그 테스트의 이력 함수에서 가져와, 기존 단언의 뜻('이 종가 이력이 기준 ·
+# 고점을 정한다')을 지킨다. 라이브 CSV · 라이브 KRX 표를 열지 않는다.
+
+
+def etf_basis_source(
+    fetch: Callable[[str], list], *, master: Iterable[str] = ()
+) -> "PriceBasisSource":
+    """요청 종목 전부 KRX 표 적재 기록(ETF) · KRX 종가 = `fetch(ticker)` 행(날짜만 골라)."""
+    from app.runtime_evidence import holdings_price_basis as hpb
+
+    def _krx(tickers, dates=()):
+        wanted = {str(d)[:10] for d in dates}
+        closes = {}
+        if wanted:
+            for t in tickers:
+                rows = fetch(t) or []
+                closes[t] = {
+                    str(d)[:10]: float(c)
+                    for d, c in rows
+                    if str(d)[:10] in wanted and c
+                }
+        return set(tickers), closes
+
+    return hpb.PriceBasisSource(
+        etf_master=lambda: (frozenset(master), "fixture.csv"), krx_prices=_krx
+    )
+
+
+def stock_basis_source() -> "PriceBasisSource":
+    """두 원천을 읽었고 어디에도 없다 — 요청 종목 전부 개별주(FDR `fetch_history`)."""
+    from app.runtime_evidence import holdings_price_basis as hpb
+
+    return hpb.PriceBasisSource(
+        etf_master=lambda: (frozenset(), "fixture.csv"),
+        krx_prices=lambda tickers, dates=(): (set(), {}),
+    )
+
+
+def install_etf_basis_from_store(monkeypatch) -> "PriceBasisSource":
+    """러너 경유 테스트용 — 운영 원천을 `etf_basis_source(store.fetch_price_history)` 로.
+
+    `fetch_price_history` 는 호출 시점에 모듈 속성으로 읽는다(테스트 패치를 따른다).
+    """
+    import app.market_data_store as store_mod
+    from app.runtime_evidence import holdings_price_basis as hpb
+
+    src = etf_basis_source(lambda t: store_mod.fetch_price_history(t))
+    monkeypatch.setattr(hpb, "default_source", lambda **kw: src)
+    return src

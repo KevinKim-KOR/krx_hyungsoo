@@ -24,6 +24,24 @@ const config = [
       "*.tsbuildinfo",
     ],
   },
+  // POC3-02D-OPS-03 설계자 RESULT STEP 5 — lib 는 화면 컴포넌트(app/components)를
+  // 가져오지 않는다. 같은 검사를 lib/dependencyDirection.test.ts 가 테스트로도 한다.
+  {
+    files: ["lib/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "(^@/|(^|/)\\.\\./)(.*/)?app/components(/|$)",
+              message: "frontend/lib 는 app/components 를 가져오지 않는다(설계자 RESULT STEP 5).",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default config;

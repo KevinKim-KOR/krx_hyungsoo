@@ -1,7 +1,9 @@
-"""POC3-OPS-02B-2 — 사용자 목업 Gate 7종 생성 (설계서 §9).
+"""POC3-OPS-02B-2 — 사용자 목업 Gate 생성 (설계서 §9 · POC3-02D-OPS-03 3종 추가).
 
 ① 상승+지수2 ② 하락+지수1 ③ 전망만(정상 0개) ④ 전망 불가+지수만
 ⑤ `CSV_REFRESH_REQUIRED` ⑥ 전체 stale ⑦ 동일 fingerprint · 다음 거래일 발송
+⑧ 국내 T-1 없음(T-2 만) ⑨ 배치 실패 고지 ⑩ 고지만 담은 본문 — POC3-02D-OPS-03
+(시장 브리핑 08:30 · 국내 기준일 == 기대 T-1 · 배치 실패 하루 1회 고지)
 
 **손으로 쓴 본문이 아니다.** 운영과 같은 `flow.assemble_market_briefing()` 을
 그대로 호출해 나온 본문을 찍는다. 각 목업에 실제 글자 수 · 분할 수 · 사용 기준일
@@ -39,7 +41,7 @@ from app.market_briefing import flow, krx_store, meta_gate  # noqa: E402
 TELEGRAM_LIMIT = 4096
 
 TODAY = "2026-09-18"  # 거래일 (2026 캘린더 실측 기준 금요일)
-RUNTIME = "2026-09-18T08:00:00+09:00"
+RUNTIME = "2026-09-18T08:30:00+09:00"  # POC3-02D-OPS-03 확정 계약 1
 US_ASOF = "2026-09-17"
 
 CSV_HEADER = (
@@ -91,6 +93,7 @@ def _seed_prices(
     d5: float,
     d20: float,
     days_limit: Optional[int] = None,
+    through: str = "2026-09-17",
 ) -> None:
     """직전 거래일까지 채운다. 창이 성립하고 **최신성 Gate도 통과**해야 한다.
 
@@ -98,7 +101,7 @@ def _seed_prices(
     성립하지 않는** 경우(⑥)를 만들 때 쓴다. 07:20 은 적재한 날을 판정 기준일로
     남기므로, 빈 DB 가 아니라 적재가 짧은 DB 여야 운영과 같은 모양이다.
     """
-    days = [d for d in MOCK_TRADING_DAYS if d < "2026-09-18"]
+    days = [d for d in MOCK_TRADING_DAYS if d <= through]
     if days_limit is not None:
         days = days[-days_limit:]
     for i, day in enumerate(days):
@@ -138,23 +141,31 @@ def _run(
     consistency: Any,
     seed: Optional[dict] = None,
     prev_fingerprint: Optional[str] = None,
+    batch_failure: tuple[str, ...] = (),
 ) -> Any:
     state = tmp / "state.json"
     cpath = tmp / "consistency.json"
     db = tmp / "krx.sqlite"
+    cal_dir = _calendar(tmp)
     if seed:
         _seed_prices(db, **seed)
     if consistency is not None:
-        # POC3-02D-OPS-01 R2 Q27 — 08:00 은 **오늘 창**의 판정만 쓴다. 07:20 이
-        # 남기는 판정 창(`evaluated_*`)을 적재된 창에서 계산해 붙인다. 없으면
-        # 모든 목업이 `META_GATE_STALE` 로 나온다.
-        window = krx_store.resolve_window(db_path=db)
+        # POC3-02D-OPS-01 R2 Q27 — 브리핑은 **오늘 창**의 판정만 쓴다. 08:10 목표일
+        # 수집(POC3-02D-OPS-03)이 남기는 판정 창 = 적재한 기준일과 그 **거래일 날짜**
+        # d20(`resolve_calendar_window`). 없으면 모든 목업이 `META_GATE_STALE` 로 나온다.
         days = krx_store.stored_trading_days(db_path=db)
+        window = (
+            krx_store.resolve_calendar_window(
+                days[-1], calendar_dir=cal_dir, db_path=db
+            )
+            if days
+            else None
+        )
         consistency = dataclasses.replace(
             consistency,
             evaluated_api_basis_date=days[-1].replace("-", "") if days else None,
             evaluated_window_d20_date=window.d20 if window else None,
-            evaluated_at_kst=f"{TODAY}T07:20:00+09:00",
+            evaluated_at_kst=f"{TODAY}T08:10:40+09:00",
         )
         meta_gate.save_consistency(consistency, cpath)
     if prev_fingerprint:
@@ -173,8 +184,9 @@ def _run(
         sp500_return_pct=sp500,
         sp500_asof=US_ASOF,
         sp500_fresh=fresh,
-        calendar_dir=_calendar(tmp),
+        calendar_dir=cal_dir,
         db_path=db,
+        batch_failure=batch_failure,
     )
 
 
@@ -390,6 +402,65 @@ def build() -> list[Mock]:
             "같은 날 재실행은 registry duplicate_runtime 이 막는다",
         )
     )
+
+    # ── POC3-02D-OPS-03 ────────────────────────────────────────────────────
+    # ⑧ 08:27 까지 T-1(09-17)을 못 받았다 — 저장 최신일은 T-2(09-16). 옛 lag ≤ 1
+    # 관문은 통과시켰다. 이제 기초지수 구역을 빼고 설계자 확정 안내 1줄.
+    t2_seed = {**seed7, "through": "2026-09-16"}
+    out.append(
+        Mock(
+            "⑧",
+            "국내 T-1 없음 (T-2 만) · 상승 전망",
+            _run(
+                area("m8"),
+                sp500=1.24,
+                fresh=True,
+                csv_rows=two,
+                consistency=_consistency(4),
+                seed=t2_seed,
+            ),
+            True,
+            "발송 성공 후 fingerprint 저장 · 08:30 재발송 없음(09:20 보강은 장중용)",
+        )
+    )
+
+    # ⑨ FDR 가격 단계 실패(08:10) — 본문은 그대로 · 끝에 고지 1줄(하루 1회).
+    out.append(
+        Mock(
+            "⑨",
+            "배치 실패 고지 (본문 끝 1줄)",
+            _run(
+                area("m9"),
+                sp500=1.24,
+                fresh=True,
+                csv_rows=two,
+                consistency=_consistency(4),
+                seed=seed7,
+                batch_failure=("fdr_price_failed",),
+            ),
+            True,
+            "발송 성공 후 fingerprint 저장 · 고지는 fingerprint 에 넣지 않는다",
+        )
+    )
+
+    # ⑩ 배치가 08:30 까지 끝나지 않았다 — 미국 · 국내 모두 없음. 예전에는 미발송.
+    out.append(
+        Mock(
+            "⑩",
+            "고지만 담은 본문 (전망 불가 + T-1 없음 + 배치 미완료)",
+            _run(
+                area("m10"),
+                sp500=None,
+                fresh=False,
+                csv_rows=two,
+                consistency=_consistency(4),
+                seed=t2_seed,
+                batch_failure=("batch_not_today",),
+            ),
+            True,
+            "발송 성공 후 fingerprint(NONE#NONE) 저장 · 같은 날 재실행은 registry 가 막는다",
+        )
+    )
     return out
 
 
@@ -417,6 +488,7 @@ def report(mocks: list[Mock]) -> str:
         # (설계자 §8 지적 2026-09-13). 본문에는 원래 노출되지 않았다.
         idx_diag = (o.diagnostics or {}).get("index_diagnostics") or {}
         kr_asof = idx_diag.get("price_asof") or "-"
+        notice = (o.diagnostics or {}).get("batch_failure_notice") or {}
         lines.append(f"국내 기준일    = {kr_asof}")
         lines.append(f"미국 기준일    = {US_ASOF}")
         lines.append(
@@ -428,6 +500,7 @@ def report(mocks: list[Mock]) -> str:
         lines.append(
             f"지수 후보      = {(o.diagnostics or {}).get('index_candidates') or []}"
         )
+        lines.append(f"배치 고지      = {notice.get('reasons') or '-'}")
         lines.append(f"fingerprint   = {o.fingerprint or '-'}")
         lines.append(f"직전 fp       = {o.previous_fingerprint or '-'}")
         lines.append(

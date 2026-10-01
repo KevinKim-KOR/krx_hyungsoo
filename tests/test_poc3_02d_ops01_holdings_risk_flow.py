@@ -43,7 +43,8 @@ _CUT = ["H00001", "H00002"]  # 잘린 것
 
 # '기준' 다음 줄. C3 반영 뒤 `현재가` 는 러너 실행 시각(`runtime_kst`)이다 — byte
 # 테스트는 헤더와 같은 시계에서 실행 시각을 고정한 뒤 이 형식으로 비교한다.
-_QUOTE_LINE = "현재가 {when} · 직전 종가 2026-08-25"
+# POC3-02D-OPS-03 — 직전 종가 날짜는 거래일 캘린더의 기대 T-1(rig 합성 캘린더의 마지막 날).
+_QUOTE_LINE = "현재가 {when} · 직전 종가 " + ft.FIXTURE_DAYS[-1]
 _DISCLAIMER = "※ 자동 감지 결과이며, 최종 판단은 사용자가 합니다."
 
 
@@ -65,6 +66,11 @@ def _rig(monkeypatch, tmp_path, market_db, **kw):
         iflow,
         "load_unadjusted_history",
         lambda tickers, *, db_path: real(tickers, db_path=market_db),
+    )
+    # POC3-02D-OPS-03 — 추세 기준일(표 최신 저장일)도 같은 tmp DB 에서 읽는다.
+    latest = iflow.latest_unadjusted_date
+    monkeypatch.setattr(
+        iflow, "latest_unadjusted_date", lambda *, db_path: latest(db_path=market_db)
     )
     return rig
 
@@ -324,7 +330,7 @@ def _legacy_five_body(rec):
     rk = rec["runtime_kst"]
     lines = [
         f"[보유 급락 알림] {rk[11:16]} — 보유 5종목 중 5종목 동시 하락",
-        f"기준: 직전 거래일 종가 2026-08-25 · 시세 {rk[:10]} {rk[11:16]}",
+        f"기준: 직전 거래일 종가 {ft.FIXTURE_DAYS[-1]} · 시세 {rk[:10]} {rk[11:16]}",
         "",
         "■ 전일 대비 하락 5~7% (5)",
     ]
@@ -858,12 +864,15 @@ def _non_trading_day(monkeypatch, rig):
 
 
 def _assembly_error(monkeypatch, rig):
-    import app.market_data_store as store2
+    # 설계자 RESULT STEP 1 — ETF 는 `fetch_price_history` 를 부르지 않고 KRX 표를
+    # 못 읽어도 파생값만 닫는다(오류가 아니다). 조립 오류는 가격 이력 적재 단계
+    # 자체의 예외로 만든다(같은 `try` 안 · 같은 `holdings_risk_error`).
+    import app.runtime_evidence.holdings_risk_flow as rflow
 
-    def _boom(t, **kw):
+    def _boom(*a, **kw):
         raise RuntimeError("이력 조회 폭발")
 
-    monkeypatch.setattr(store2, "fetch_price_history", _boom)
+    monkeypatch.setattr(rflow, "load_basis_history", _boom)
     _set_quotes(rig, {"H00001": -6.0})
 
 

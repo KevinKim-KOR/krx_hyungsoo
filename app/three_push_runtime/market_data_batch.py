@@ -18,12 +18,14 @@ Spike 조건 평가와 분리된다 (Spike 는 이 배치를 반복 실행하지
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import json
+import time
 
 from app.market_data_store import DEFAULT_DB_PATH, get_last_price_date
 
@@ -48,6 +50,16 @@ def write_batch_state(
     krx_sync_status: Optional[str] = None,
     krx_basis_date: Optional[str] = None,
     meta_consistency_status: Optional[str] = None,
+    stage_status: Optional[dict] = None,
+    krx_target_date: Optional[str] = None,
+    krx_stage_mode: Optional[str] = None,
+    krx_attempts: Optional[list] = None,
+    calendar_readiness: Optional[dict] = None,
+    krx_representatives: Optional[dict] = None,
+    representatives_refresh_due: Optional[bool] = None,
+    krx_backfill: Optional[dict] = None,
+    kospi_attempts: Optional[list] = None,
+    kospi_retry: Optional[dict] = None,
 ) -> None:
     """일일 갱신 배치의 실행 결과를 저장 (latest 1건 덮어쓰기).
 
@@ -55,6 +67,10 @@ def write_batch_state(
     단일 소스. 신규 DB 아닌 기존 JSON state 패턴.
 
     state_path=None 이면 모듈 상수를 **런타임에** 참조 (test monkeypatch 지원).
+
+    POC3-02D-OPS-03 — 단계별 상태(`stage_status`)와 KRX 시도 기록을 **덧붙인다.**
+    기존 키는 이름 · 뜻을 바꾸지 않는다(`spike_freshness` 가 읽는 `status` ·
+    `refresh_date_kst` · `price_data_as_of` 그대로).
     """
     state_path = state_path or MARKET_DATA_BATCH_STATE_PATH
     state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -76,10 +92,107 @@ def write_batch_state(
         "krx_sync_status": krx_sync_status,
         "krx_basis_date": krx_basis_date,
         "meta_consistency_status": meta_consistency_status,
+        # POC3-02D-OPS-03 — 단계 격리(FDR · 미국 · KOSPI · VIX · KRX)와 KRX 시도별
+        # 기록(시각 · 목표일 · HTTP · 행 수 · 결과). 키 · 가격 값은 담지 않는다.
+        "stage_status": dict(stage_status or {}),
+        "krx_target_date": krx_target_date,
+        "krx_stage_mode": krx_stage_mode,
+        "krx_attempts": list(krx_attempts or []),
+        # POC3-02D-OPS-03 확정 계약 11 — 한국 · 미국 거래일 달력 올해 · 다음 해 준비
+        # 상태(`us_trading_calendar.calendar_readiness_for_dir`). 모르면 None.
+        "calendar_readiness": calendar_readiness,
+        # 설계자 RESULT STEP 2 — 적재 뒤 대표 ETF 커버리지(status · missing)와 장중 설정
+        # 갱신 필요 표시. 공식 CSV 갱신 안내(`refresh_due`)와 별개다. 적재 전 · 실패면 None.
+        "krx_representatives": krx_representatives,
+        "representatives_refresh_due": representatives_refresh_due,
+        # 설계자 RESULT STEP 6 — 창 안 빈 날 채우기의 실제 호출 날짜 · 오늘 호출 횟수.
+        "krx_backfill": krx_backfill,
+        # 설계자 RESULT STEP 3 — KOSPI 시도마다 시각 · 날짜별 결과 · 예외 종류(키 · 가격
+        # 값 없음)와 재시도 요약(시각표 · 멈춘 사유). `kospi_as_of` 는 마지막 시도 기준.
+        "kospi_attempts": kospi_attempts,
+        "kospi_retry": kospi_retry,
     }
     state_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+
+
+# ── POC3-02D-OPS-03 — 09:20 KRX 전용 보강 기록 (08:10 배치 상태와 분리) ────────
+
+KRX_REINFORCEMENT_STATE_PATH = Path("state/market/oci_krx_reinforcement_state.json")
+
+
+def write_krx_reinforcement_state(
+    payload: dict, *, state_path: Optional[Path] = None
+) -> None:
+    """09:20 보강 1회의 결과. **08:10 배치 상태 JSON 을 건드리지 않는다.**
+
+    state_path=None 이면 모듈 상수를 **런타임에** 참조 (test monkeypatch 지원).
+    """
+    state_path = state_path or KRX_REINFORCEMENT_STATE_PATH
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
+def read_krx_reinforcement_state(
+    state_path: Optional[Path] = None,
+) -> Optional[dict]:
+    """저장된 보강 결과. 없거나 파싱 실패 시 None."""
+    p = state_path or KRX_REINFORCEMENT_STATE_PATH
+    if not p.exists():
+        return None
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None
+    return d if isinstance(d, dict) else None
+
+
+# ── POC3-02D-OPS-03 — FDR 요청 timeout (DEF-FDR-TIMEOUT) ──────────────────────
+#
+# FinanceDataReader 는 `requests.get(url)` 을 timeout 없이 부른다(네이버 fchart ·
+# Yahoo). 한 종목이 멈추면 배치 전체가 멈춰 08:30 브리핑의 국내 · 미국 자료가
+# 빠진다. FDR 을 부르는 **동안만** `requests.Session.request` 에 기본 timeout 을
+# 넣는다 — 빠져나오면 원래 함수로 되돌린다(전역으로 새지 않는다).
+
+FDR_REQUEST_TIMEOUT_SECONDS = 20.0
+# FDR 단계 전체 시간 상한. 원천이 통째로 응답하지 않으면 종목마다 timeout 이 쌓여
+# (41종목 × 20초 ≈ 14분) KRX 08:15 · 08:20 시도가 사라진다(확정 계약 2). 상한을 넘으면
+# 남은 종목은 시작하지 않고 실패로 센다. 평소 41종목은 수 초(PC 1,183종 80.6초 실측).
+FDR_STAGE_TIME_BUDGET_SECONDS = 180.0
+# `Session.request(method, url, params, data, headers, cookies, files, auth,
+# timeout, ...)` — `timeout` 앞 위치 인자 수. 위치로 이미 넘겼으면 건드리지 않는다.
+_TIMEOUT_POSITION = 7
+
+
+@contextmanager
+def fdr_request_timeout(seconds: float = FDR_REQUEST_TIMEOUT_SECONDS):
+    """이 블록 안의 `requests` 호출에 timeout 이 없으면 `seconds` 를 넣는다.
+
+    timeout 이 나면 `requests` 예외가 올라와 그 종목 실패로 집계되고 배치는
+    계속된다(`refresh_price_history` · `refresh_benchmarks` 가 종목 단위로 잡는다).
+    `requests` 가 없으면 아무것도 하지 않는다.
+    """
+    try:
+        import requests
+    except ImportError:  # pragma: no cover - OCI · PC 모두 FDR 의존성으로 설치됨
+        yield
+        return
+
+    original = requests.Session.request
+
+    def _request(self, method, url, *args, **kwargs):
+        if len(args) < _TIMEOUT_POSITION and kwargs.get("timeout") is None:
+            kwargs["timeout"] = seconds
+        return original(self, method, url, *args, **kwargs)
+
+    requests.Session.request = _request
+    try:
+        yield
+    finally:
+        requests.Session.request = original
 
 
 def read_batch_state(
@@ -145,6 +258,8 @@ class RefreshResult:
     fail: int = 0
     failures: list[dict] = field(default_factory=list)
     price_data_as_of: Optional[str] = None  # 갱신 후 대상 ticker 공통 최신일
+    # POC3-02D-OPS-03 — 시간 상한으로 시작하지 않은 종목(실패로 센다).
+    budget_skipped: list[str] = field(default_factory=list)
 
 
 def refresh_approved_prices(
@@ -153,6 +268,8 @@ def refresh_approved_prices(
     end_date: date,
     db_path: Path = DEFAULT_DB_PATH,
     refresh_fn: Callable[..., Any] = None,
+    time_budget_seconds: Optional[float] = None,
+    clock: Callable[[], float] = time.monotonic,
 ) -> RefreshResult:
     """승인 ticker 의 일별 시세를 마지막 저장일 이후만 증분 갱신.
 
@@ -163,13 +280,27 @@ def refresh_approved_prices(
     - Fail-Closed: refresh 결과에 success 필드 없음 · DB 최신일 형식 손상 ·
       유효 종가(close>0) 전무 대상은 모두 fail 로 집계 (성공 위장 금지).
     - 전체 대상이 유효 종가를 확보한 경우에만 price_data_as_of 확정 (아니면 None).
+    - POC3-02D-OPS-03 — `time_budget_seconds` 를 넘기면 남은 종목은 시작하지 않고
+      실패로 센다(`budget_skipped` · 원천 전체 불통이 KRX 단계를 밀지 않게).
     """
     from app.market_data_fdr import refresh_price_history
 
     _refresh = refresh_fn or refresh_price_history
     result = RefreshResult(attempted=len(tickers))
+    started = clock()
 
-    for tk in tickers:
+    for i, tk in enumerate(tickers):
+        if time_budget_seconds is not None and clock() - started >= time_budget_seconds:
+            result.budget_skipped = list(tickers[i:])
+            result.fail += len(result.budget_skipped)
+            if len(result.failures) < 10:
+                result.failures.append(
+                    {
+                        "ticker": tk,
+                        "error": f"stage_time_budget:{len(result.budget_skipped)}",
+                    }
+                )
+            break
         # 증분 시작점: close 유효성 무관 MAX(date) (어느 날짜까지 row 가 있나).
         last = get_last_price_date(tk, db_path=db_path, require_valid_close=False)
         if last is None:
@@ -232,7 +363,8 @@ def refresh_approved_prices(
         d = get_last_price_date(tk, db_path=db_path, require_valid_close=True)
         if d:
             latest_dates.append(d)
-        else:
+        elif tk not in result.budget_skipped:
+            # 시작하지 않은 종목은 위에서 이미 실패로 셌다(이중 집계 금지).
             missing_valid.append(tk)
     if missing_valid:
         # 유효 종가 없는 ticker 는 fetch 단계에서 success 로 집계됐을 수 있으므로

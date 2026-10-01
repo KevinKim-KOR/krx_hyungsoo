@@ -104,6 +104,10 @@ def test_holdings_partial_failure_with_today_quote_proceeds(tmp_path, monkeypatc
     monkeypatch.setattr(
         store_mod, "fetch_price_history", lambda t, **kw: [(d, 100.0) for d in axis]
     )
+    # 설계자 RESULT STEP 1 — 보유 ETF 과거 종가는 KRX 무조정 표(위 이력을 그 값으로).
+    from tests._helpers import install_etf_basis_from_store
+
+    install_etf_basis_from_store(monkeypatch)
     monkeypatch.setattr(runner, "kst_today", lambda: today, raising=False)
 
     rec = runner.run("holdings_briefing", "send", slot_id="OPEN")

@@ -20,10 +20,12 @@ excess_return dict.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional, Sequence
 
 from app.market_benchmark_freshness import (
     evaluate_freshness,
+    kospi_freshness,
     return_by_trading_days,
 )
 
@@ -121,6 +123,8 @@ def compute_kospi_metrics(
     history: Sequence[tuple[str, float]],
     *,
     trading_days: Optional[Sequence[str]] = None,
+    today_kst: Optional[str] = None,
+    calendar_dir: Optional[Path] = None,
 ) -> dict:
     """KOSPI 시계열 → 20d/60d/1m/3m 수익률 (보조).
 
@@ -134,6 +138,12 @@ def compute_kospi_metrics(
 
     `trading_days` 를 주지 않으면 최신성을 판정할 수 없으므로 수익률을 내지
     않는다(모르면 쓰지 않는다).
+
+    POC3-02D-OPS-03 확정 계약 9 — `today_kst` 를 주면(화면 API 경로) 최신성은
+    `kospi_freshness`(기대 T-1 정확 일치)로만 판정한다. 배치 · API 상태와 같은 함수다.
+    `trading_days`(KODEX200 축)는 수익률 날짜를 찾는 데만 쓴다 — 그 축에 기준일이
+    없으면 수익률을 못 내므로 `unavailable` 이다. `today_kst` 가 없으면(과거 재현 ·
+    다른 호출부) 예전 판정 그대로다.
     """
     axis = [d for d in (trading_days or []) if d]
     fresh = evaluate_freshness(history, trading_days=axis)
@@ -143,9 +153,17 @@ def compute_kospi_metrics(
     }
     if fresh.as_of_date is None:
         return {**base, "status": "unavailable"}
-    if not axis:
+    if today_kst is not None:
+        t1 = kospi_freshness(
+            fresh.as_of_date, today_kst=today_kst, calendar_dir=calendar_dir
+        )
+        if not t1.is_fresh:
+            return {**base, "status": "stale", "reason": "not_expected_previous_day"}
+        if fresh.as_of_date not in axis:
+            return {**base, "status": "unavailable", "reason": "as_of_not_on_axis"}
+    elif not axis:
         return {**base, "status": "unavailable", "reason": "no_trading_day_axis"}
-    if not fresh.is_fresh:
+    elif not fresh.is_fresh:
         return {**base, "status": "stale", "reason": fresh.reason}
 
     def _r(n: int) -> Optional[float]:
@@ -366,6 +384,7 @@ def compute_market_context(
     asof: Optional[str],
     kodex200_history: Sequence[tuple[str, float]],
     kospi_history: Optional[Sequence[tuple[str, float]]] = None,
+    kospi_today_kst: Optional[str] = None,
 ) -> dict:
     """KODEX200 + KOSPI 시계열 → market_context dict.
 
@@ -381,8 +400,12 @@ def compute_market_context(
     # POC3-OPS-02B-1 계약 ③ — 거래일 축은 KODEX200 계열이다 (OPS-01A/02A 와 동일
     # 축 재사용, 신규 캘린더 없음).
     trading_days = [d for d, c in (kodex200_history or []) if d and c and c > 0]
+    # POC3-02D-OPS-03 확정 계약 9 — 화면 API 는 `kospi_today_kst` 를 넘겨 KOSPI 최신성을
+    # 기대 T-1 로 판정한다(배치 · 화면 상태와 같은 함수).
     kospi_metrics = (
-        compute_kospi_metrics(kospi_history, trading_days=trading_days)
+        compute_kospi_metrics(
+            kospi_history, trading_days=trading_days, today_kst=kospi_today_kst
+        )
         if kospi_history is not None
         else {"status": "unavailable"}
     )

@@ -119,6 +119,22 @@ describe("OciStatusPanel — 요약 + 표", () => {
     expect(screen.queryByRole("table")).toBeNull();
   });
 
+  it("거래일 달력(POC3-02D-OPS-03): 한국어 항목 · 준비 필요 · 백엔드 문구 그대로", async () => {
+    const s = operating();
+    s.jobs.push({
+      job: "trading_calendar",
+      status: "STALE",
+      detail: "2027년 파일 없음: 한국 — 준비 필요",
+    });
+    fetchOciStartupStatus.mockResolvedValue(s);
+    const { container } = render(<OciStatusPanel />);
+
+    const row = within(await screen.findByText("거래일 달력", { selector: "td" }).then((c) => c.closest("tr") as HTMLElement));
+    expect(row.getByText("준비 필요")).toBeInTheDocument();
+    expect(row.getByText("2027년 파일 없음: 한국 — 준비 필요")).toBeInTheDocument();
+    expect(container.textContent ?? "").not.toContain("trading_calendar");
+  });
+
   it("모르는 job · 상태 · 문구는 원문 그대로 보인다(숨기지 않는다)", async () => {
     const s = operating();
     s.jobs.push({ job: "new_job", status: "WEIRD", detail: "새 항목 원문" });

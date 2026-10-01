@@ -41,6 +41,13 @@ def _rising(n=25, start=100.0, step=1.0):
     return _hist(*[start + step * i for i in range(n)])
 
 
+# POC3-02D-OPS-03 — 진입 검토는 추세 기준(기대 T-1 = 표 최신일 · 거래일 날짜 d5 ·
+# d20)이 확인된 날만 나온다. `_hist` 날짜(08-01~)에 맞춘 기준이다.
+TREND = ss.TrendBasis(
+    expected="2026-08-25", table_latest="2026-08-25", d5="2026-08-20", d20="2026-08-05"
+)
+
+
 # ── §4-2 판정 표 ────────────────────────────────────────────────────────────
 
 
@@ -105,23 +112,36 @@ def test_chase_wins_over_entry():
     )
 
 
-# ── 창 수익률 ───────────────────────────────────────────────────────────────
+# ── 창 수익률 (거래일 날짜 기준 · POC3-02D-OPS-03 확정 계약 5) ─────────────
 
 
-def test_window_return_needs_n_plus_one_closes():
-    """`N일 수익률` 은 종가 N+1 개가 있어야 한다."""
-    assert ss.window_return_pct(_hist(100.0, 101.0, 102.0), 5) is None
-    assert ss.window_return_pct(_rising(6), 5) is not None
+def test_trend_returns_need_the_t1_close():
+    """그 종목에 기대 T-1 종가가 없으면 계산하지 않는다 — 사유 `ticker_not_t1`."""
+    assert ss.trend_returns(_hist(100.0, 101.0, 102.0), TREND) == (
+        None,
+        None,
+        ss.REASON_TICKER_NOT_T1,
+    )
+    r5, r20, why = ss.trend_returns(_rising(), TREND)
+    assert r5 is not None and r20 is not None and why is None
 
 
-def test_window_return_does_not_substitute_older_close():
-    """모자라면 **더 오래된 종가로 대체하지 않는다** — None 이다."""
-    assert ss.window_return_pct(_rising(20), ss.LOOKBACK_20D) is None
-    assert ss.window_return_pct(_rising(21), ss.LOOKBACK_20D) is not None
+def test_trend_returns_do_not_substitute_older_close():
+    """d20 **날짜** 종가가 없으면 더 오래된 종가로 대체하지 않는다 — None 이다."""
+    hist = [row for row in _rising() if row[0] != TREND.d20]
+    r5, r20, why = ss.trend_returns(hist, TREND)
+    assert r5 is not None and r20 is None and why == ss.REASON_SHORT_HISTORY
 
 
-def test_window_return_value():
-    assert ss.window_return_pct(_hist(100.0, 0, 0, 0, 0, 110.0), 5) == 10.0
+def test_trend_returns_value():
+    hist = [("2026-08-05", 50.0), ("2026-08-20", 100.0), ("2026-08-25", 110.0)]
+    assert ss.trend_returns(hist, TREND) == (10.0, 120.0, None)
+
+
+def test_trend_returns_closed_when_basis_is_not_t1():
+    """표 최신일 ≠ 기대 T-1 이면 이력이 있어도 계산하지 않는다."""
+    stale = ss.TrendBasis(expected="2026-08-26", table_latest="2026-08-25")
+    assert ss.trend_returns(_rising(), stale) == (None, None, ss.REASON_TREND_NOT_T1)
 
 
 # ── 순위 ────────────────────────────────────────────────────────────────────
@@ -143,6 +163,7 @@ def test_rank_is_computed_among_evaluable_only():
         history={f"T{i:05d}": _rising() for i in range(10)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.evaluated_count == 5
     assert all(s.candidate_count == 5 for s in out.signals)
@@ -164,6 +185,7 @@ def test_missing_quote_excludes_only_that_sector():
         history={f"T{i:05d}": _rising() for i in range(10)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.evaluated_count == 9
     assert out.coverage_ok is True
@@ -171,14 +193,19 @@ def test_missing_quote_excludes_only_that_sector():
 
 
 def test_alternate_is_tried_once_when_primary_fails():
-    """대표 실패 시 **대체 1개만**. 재귀 대체 금지(설계자 §13-4)."""
+    """대표 실패 시 **대체 1개만**. 재귀 대체 금지(설계자 §13-4).
+
+    대표 `T00001` 도 무조정 표에 T-1 종가가 있다 — 없으면 진입 검토 구역 전체가
+    빠진다(설계자 RESULT STEP 2 · 대표 커버리지 100%).
+    """
     sectors = [_sector("A", "T00001", alt=("T99999", "대체ETF"))]
     out = ss.select_sector_signals(
         sectors=sectors,
         market_quotes={"T99999": Q(2.0)},
-        history={"T99999": _rising()},
+        history={"T00001": _rising(), "T99999": _rising()},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.evaluated_count == 1
     assert out.signals and out.signals[0].used_alternate is True
@@ -193,6 +220,7 @@ def test_primary_success_never_queries_alternate():
         history={"T00001": _rising(), "T99999": _rising()},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.signals[0].ticker == "T00001"
     assert out.signals[0].used_alternate is False
@@ -208,23 +236,29 @@ def test_short_history_excludes_only_entry_candidate():
     out = ss.select_sector_signals(
         sectors=sectors,
         market_quotes={"T00001": Q(2.5), "T00002": Q(2.0)},
-        history={"T00001": _rising(3), "T00002": _rising()},
+        # T-1(08-25)은 있고 d5 · d20 날짜가 없다 — 최근 3일만 있는 종목.
+        history={"T00001": _rising()[-3:], "T00002": _rising()},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert [e["reason"] for e in out.excluded] == [ss.REASON_SHORT_HISTORY]
     assert [s.ticker for s in out.signals] == []
 
 
 def test_sector_outside_rank_never_needs_window_history():
-    """순위 밖 사업군은 이력이 없어도 조용히 지나간다 — 제외 사유도 안 남는다."""
+    """순위 밖 사업군은 d5 · d20 이력이 없어도 조용히 지나간다 — 제외 사유도 안 남는다.
+
+    T-1 종가는 있다(최근 3일) — 대표 T-1 커버리지는 구역 관문이다(설계자 RESULT STEP 2).
+    """
     sectors = [_sector("A", "T00001"), _sector("B", "T00002")]
     out = ss.select_sector_signals(
         sectors=sectors,
         market_quotes={"T00001": Q(2.5), "T00002": Q(2.0)},
-        history={"T00001": _rising(), "T00002": _rising(3)},
+        history={"T00001": _rising(), "T00002": _rising()[-3:]},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.excluded == []
     assert [s.ticker for s in out.signals] == ["T00001"]
@@ -239,6 +273,7 @@ def test_held_ticker_is_not_an_entry_candidate():
         history={"T00001": _rising()},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
         held_tickers={"T00001"},
     )
     assert out.signals == []
@@ -254,6 +289,7 @@ def test_stale_quote_is_excluded():
         history={"T00001": _rising()},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.signals == []
 
@@ -305,6 +341,7 @@ def test_low_coverage_drops_whole_sector_section():
         history={f"T{i:05d}": _rising() for i in range(27)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.signals == []
     assert out.coverage_ok is False
@@ -322,6 +359,7 @@ def test_coverage_at_threshold_is_allowed():
         history={f"T{i:05d}": _rising() for i in range(10)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.coverage_ok is True
     assert out.coverage_pct == 80.0
@@ -336,6 +374,7 @@ def test_coverage_just_below_threshold_is_blocked():
         history={f"T{i:05d}": _rising() for i in range(10)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.coverage_ok is False and out.signals == []
 
@@ -358,7 +397,12 @@ def test_coverage_threshold_comes_from_policy_not_code():
 def test_zero_evaluable_is_low_coverage_not_crash():
     sectors = [_sector("A", "T00001")]
     out = ss.select_sector_signals(
-        sectors=sectors, market_quotes={}, history={}, today_kst=TODAY, policy=POLICY
+        sectors=sectors,
+        market_quotes={},
+        history={},
+        today_kst=TODAY,
+        policy=POLICY,
+        trend=TREND,
     )
     assert out.signals == [] and out.coverage_ok is False
 
@@ -397,6 +441,7 @@ def test_single_ticker_failure_allows_one_alternate_lookup():
         | {f"A{i:05d}": _rising() for i in range(10)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.provider_down is False
     alt_lookups = [t for t in q.looked_up if t.startswith("A")]
@@ -419,6 +464,7 @@ def test_provider_failure_makes_zero_alternate_lookups():
         history={f"A{i:05d}": _rising() for i in range(27)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.provider_down is True
     alt_lookups = [t for t in q.looked_up if t.startswith("A")]
@@ -438,6 +484,7 @@ def test_alternate_is_never_recursed():
         history={f"T{i:05d}": _rising() for i in range(10)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert q.looked_up.count("A00000") == 1
     assert out.evaluated_count == 9
@@ -456,6 +503,7 @@ def test_half_failure_is_not_provider_down():
         | {f"A{i:05d}": _rising() for i in range(10)},
         today_kst=TODAY,
         policy=POLICY,
+        trend=TREND,
     )
     assert out.provider_down is False
     assert [t for t in q.looked_up if t.startswith("A")]

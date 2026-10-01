@@ -3,9 +3,11 @@
 `GET /market/topn/latest` 의 `market_context.kospi` 에 선택 필드 3개
 (`display_state` · `trading_day_lag` · `today_is_trading_day`)를 더한다.
 
-- 상태표: 저장 자료 · KS11 적재 기록 · 거래일 지연 · 운영 판정 · 오늘 거래일 여부 → 상태 하나.
-- 거래일 지연은 C7 KOSPI 적재 감지와 **같은 함수** — 같은 날 · 같은 자료로 적재 기록의
+- 상태표: 저장 자료 · KOSPI 적재 기록 · 최신 여부 · 운영 판정 · 오늘 거래일 여부 → 상태 하나.
+- 거래일 지연은 KOSPI 적재 감지와 **같은 함수** — 같은 날 · 같은 자료로 적재 기록의
   `source_stale:…lag=N` 과 화면 lag 가 같다(설계자 Q6).
+- POC3-02D-OPS-03 확정 계약 9 — 최신 = 기준일 == 기대 T-1(`kospi_freshness`). C7
+  `lag ≤ 1` 폐기(T-2 는 정상 아님) · 적재 기록 source = KRX `idx/kospi_dd_trd`.
 - 기존 필드 불변 · 입력 dict 불변 · 읽기 실패 시 필드 없음 · 외부 호출 0.
 - 모두 tmp DB · tmp 캘린더(라이브 `state/` 를 열지 않는다).
 """
@@ -23,12 +25,15 @@ from app import api as api_module
 from app import api_market_topn, api_market_topn_service, market_data_store
 from app import market_refresh_service
 from app.api_market_topn_service import kospi_display_state, with_kospi_display
-from app.market_benchmark_store import refresh_kospi_benchmark, upsert_benchmark_prices
+from app.market_benchmark_store import (
+    KOSPI_SOURCE,
+    refresh_kospi_benchmark,
+    upsert_benchmark_prices,
+)
 from app.market_briefing import calendar as _cal
 from app.market_data_store import init_db, log_refresh
-from tests.test_market_topn_api import _seed_kodex200_long_history
+from tests.test_market_topn_api import _krx_kospi_until, _seed_kodex200_long_history
 
-KS11 = "FinanceDataReader/KS11"
 # 2026-09-24(목) · 09-25(금) 추석 연휴 — 실제 캘린더와 같은 모양의 tmp 캘린더.
 HOLIDAYS = {"2026-09-24", "2026-09-25"}
 
@@ -65,9 +70,10 @@ def _seed_kospi_until(db: Path, last: str, n_days: int = 120) -> None:
 
 
 def _log_ks11(db: Path, *, ok: bool, error: str | None, run: str = "r1") -> None:
+    """KOSPI 적재 기록 한 줄(이름은 OPS-02 그대로 · source 는 OPS-03 KRX)."""
     log_refresh(
         run_id=f"kospi-benchmark-{run}",
-        source=KS11,
+        source=KOSPI_SOURCE,
         asof="2026-09-22",
         attempted=1,
         success=1 if ok else 0,
@@ -101,71 +107,35 @@ OK_LOG = {"fail_count": 0, "error_summary": None}
 
 
 @pytest.mark.parametrize(
-    "status,as_of,lag,log,trading,expected",
+    "status,as_of,fresh,log,trading,expected",
     [
         # 저장 KOSPI 없음
-        ("unavailable", None, None, None, True, "not_evaluated"),
-        ("unavailable", None, None, FAILED, True, "source_failed"),
-        ("unavailable", None, None, OK_LOG, True, "no_result"),
-        ("unavailable", None, None, STALE_LOG, True, "no_result"),
+        ("unavailable", None, False, None, True, "not_evaluated"),
+        ("unavailable", None, False, FAILED, True, "source_failed"),
+        ("unavailable", None, False, OK_LOG, True, "no_result"),
+        ("unavailable", None, False, STALE_LOG, True, "no_result"),
         # 최신 아님
-        ("stale", "2026-09-17", 4, OK_LOG, True, "stale"),
-        ("stale", "2026-09-17", 4, STALE_LOG, True, "stale"),
-        ("stale", "2026-09-17", 4, FAILED, True, "source_failed"),
-        (
-            "ok",
-            "2026-09-21",
-            2,
-            OK_LOG,
-            True,
-            "stale",
-        ),  # KODEX200 도 멈춘 PC — 캘린더로 잡는다
-        (
-            "ok",
-            "2026-09-17",
-            None,
-            OK_LOG,
-            True,
-            "stale",
-        ),  # 지연을 못 재면 최신 아님(C7)
-        (
-            "stale",
-            "2026-09-22",
-            1,
-            OK_LOG,
-            True,
-            "stale",
-        ),  # 운영 판정 stale 은 그대로 존중
-        (
-            "stale",
-            "2026-09-17",
-            4,
-            OK_LOG,
-            False,
-            "stale",
-        ),  # 휴장일이어도 오래된 자료는 지연
-        # 최신
-        ("ok", "2026-09-23", 0, OK_LOG, True, "ok"),
-        ("ok", "2026-09-22", 1, OK_LOG, True, "ok"),
-        (
-            "ok",
-            "2026-09-23",
-            0,
-            FAILED,
-            True,
-            "ok",
-        ),  # 최신이면 그 뒤 호출 실패는 값에 영향 없음
-        ("ok", "2026-09-23", 0, None, True, "ok"),
-        ("unavailable", "2026-09-23", 0, OK_LOG, True, "no_result"),  # 수익률 미산출
-        ("ok", "2026-09-23", 0, OK_LOG, False, "holiday"),
+        ("stale", "2026-09-17", False, OK_LOG, True, "stale"),
+        ("stale", "2026-09-17", False, STALE_LOG, True, "stale"),
+        ("stale", "2026-09-17", False, FAILED, True, "source_failed"),
+        # OPS-03 확정 계약 9 — T-2(옛 lag 1)는 더 이상 정상이 아니다.
+        ("ok", "2026-09-22", False, OK_LOG, True, "stale"),
+        ("stale", "2026-09-23", True, OK_LOG, True, "stale"),  # 운영 판정 stale 존중
+        ("stale", "2026-09-17", False, OK_LOG, False, "stale"),  # 휴장일이어도 지연
+        # 최신(기준일 == 기대 T-1)
+        ("ok", "2026-09-23", True, OK_LOG, True, "ok"),
+        ("ok", "2026-09-23", True, FAILED, True, "ok"),  # 최신이면 그 뒤 호출 실패 무관
+        ("ok", "2026-09-23", True, None, True, "ok"),
+        ("unavailable", "2026-09-23", True, OK_LOG, True, "no_result"),  # 수익률 미산출
+        ("ok", "2026-09-23", True, OK_LOG, False, "holiday"),
     ],
 )
-def test_display_state_table(status, as_of, lag, log, trading, expected) -> None:
+def test_display_state_table(status, as_of, fresh, log, trading, expected) -> None:
     assert (
         kospi_display_state(
             status=status,
             as_of=as_of,
-            lag=lag,
+            is_fresh=fresh,
             last_refresh=log,
             today_is_trading_day=trading,
         )
@@ -173,22 +143,23 @@ def test_display_state_table(status, as_of, lag, log, trading, expected) -> None
     )
 
 
-# ── C7 과 같은 lag ────────────────────────────────────────────────────────────
+# ── 적재 감지와 같은 lag ──────────────────────────────────────────────────────
 
 
 def test_lag_is_the_c7_value_for_same_day_and_data(db: Path, cal: Path) -> None:
-    """같은 날(09-28) · 같은 자료(09-17 에서 멈춤)로 C7 적재 감지가 남기는 lag 와 화면 lag 가 같다."""
-    import pandas as pd
-
-    def fetch(symbol, start, end):
-        idx = pd.to_datetime([d for d in pd.bdate_range(start, "2026-09-17")])
-        return pd.DataFrame({"Close": [2700.0] * len(idx)}, index=idx)
-
+    """같은 날(09-28) · 같은 자료(09-17 까지 공개)로 적재 기록의 lag 와 화면 lag 가 같다."""
     res = refresh_kospi_benchmark(
-        end_date=date(2026, 9, 28), price_fetcher=fetch, db_path=db, calendar_dir=cal
+        end_date=date(2026, 9, 28),
+        fetcher=_krx_kospi_until("2026-09-17"),
+        api_key="TEST-KEY",
+        db_path=db,
+        calendar_dir=cal,
     )
     assert res["status"] == "failed"
-    assert res["error"] == "source_stale:as_of=2026-09-17,ref=2026-09-23,lag=4"
+    assert res["error"] == (
+        "source_stale:as_of=2026-09-17,expected=2026-09-23,lag=4,"
+        "reason=no_rows@2026-09-18"
+    )
 
     out = with_kospi_display(
         {"kospi": {"status": "stale", "as_of_date": "2026-09-17"}},
@@ -197,6 +168,7 @@ def test_lag_is_the_c7_value_for_same_day_and_data(db: Path, cal: Path) -> None:
         calendar_dir=cal,
     )
     assert out["kospi"]["trading_day_lag"] == 4
+    assert out["kospi"]["display_state"] == "stale"
 
 
 # ── 선택 필드 덧붙이기 (tmp DB · tmp 캘린더) ─────────────────────────────────

@@ -41,6 +41,7 @@ from tests.test_holdings_risk_alert_runner import (
     _tick,
 )
 from tests.test_market_briefing_flow_through import TODAY_TRADING
+from tests.test_market_briefing_flow_through import _advance_window
 from tests.test_market_briefing_flow_through import _install as _install_market
 
 HOLDINGS = "holdings_briefing"
@@ -68,7 +69,9 @@ def _holdings_rig(monkeypatch, tmp_path):
     import app.market_data_store as store_mod
 
     end = date.fromisoformat(today)
-    rows = [((end - timedelta(days=29 - i)).isoformat(), 100.0) for i in range(30)]
+    # POC3-02D-OPS-03 — 20거래일 기준일은 거래일 캘린더로 정한다. 휴장일이 끼어도
+    # 기준일 종가가 있도록 달력일 45일을 둔다(예전 30일은 저장 가격 축 기준이었다).
+    rows = [((end - timedelta(days=44 - i)).isoformat(), 100.0) for i in range(45)]
     rows[-1] = (rows[-1][0], 88.0)
     monkeypatch.setattr(store_mod, "fetch_price_history", lambda t, **kw: rows)
 
@@ -198,7 +201,7 @@ def test_market_next_day_same_fp_sends_and_same_day_rerun_is_duplicate(
     tmp_path, monkeypatch
 ):
     """(e) 08:00 발송 → 08:05 재실행 `duplicate_runtime` → 다음 거래일 같은 fp 발송."""
-    runner, sent, _ = _install_market(monkeypatch, tmp_path)
+    runner, sent, state_dir = _install_market(monkeypatch, tmp_path)
     _at(monkeypatch, runner, TODAY_TRADING, "08:00")
     first = runner.run(MARKET, "send")
     assert first["status"] == "sent", first
@@ -211,6 +214,9 @@ def test_market_next_day_same_fp_sends_and_same_day_rerun_is_duplicate(
 
     monkeypatch.setattr(runner, "kst_today_date", lambda: "2026-09-21")
     _at(monkeypatch, runner, "2026-09-21", "08:00")
+    # POC3-02D-OPS-03 확정 계약 6 — 다음 거래일은 그날 T-1(09-18)이 적재 · 판정돼야
+    # 같은 fingerprint 가 나온다(옛 lag ≤ 1 은 전날 창을 받아 줬다).
+    _advance_window(tmp_path, state_dir)
     nxt = runner.run(MARKET, "send")
 
     assert nxt["status"] == "sent", f"실제 {nxt['status']}/{nxt['reason']}"

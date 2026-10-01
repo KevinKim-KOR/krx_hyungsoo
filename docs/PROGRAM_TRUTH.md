@@ -2,7 +2,7 @@
 
 현행 프로그램 통합 설계서 (PROGRAM_TRUTH_RECONSTRUCTION_V1)
 
-- **최종 반영**: 2026-09-29 — **`POC3-02D-OPS-02` 장중 전달 상태 · KOSPI 화면 상태 (검증자 VERIFIED 2026-09-29 · OCI 반영 2026-09-29 밤 · 새 코드 첫 장중 실행 2026-09-30)** · **운영 상태 `OPERATING_DEGRADED`(설계자 2026-09-29)** — 08:00 「오늘 볼 기초지수」 · 장중 「신규 진입 검토」 5일 · 20일이 매 거래일 T-2(07:20 에 KRX 가 T-1 을 아직 주지 않음 · OCI 실측) · KOSPI 원자료 09-17 정지 → `POC3-02D-OPS-03` 에서 복구(`POC5-01A` 는 그 뒤): 장중 급등락 억제 비교를 관측 `state` 가 아니라 마지막 성공 전달 상태(`last_delivered_state`)와 한다 — 잘림 · 전송 실패 · 부분 전송 · 조립 뒤 예외로 전달되지 못한 상태 변화가 다음 틱에 다시 후보가 된다(장중 급등락 절). 「오늘의 투자 점검」 · 「요즘 잘 오르는 ETF」 KOSPI 표시가 상태별 배지 · 기준 줄 · 사유 줄로 바뀐다(`GET /market/topn/latest` 선택 필드 3개 · §13-4). 낡은 fingerprint 역검증 ⑦ 정리(3-3). (그 전) 2026-09-27 — **메뉴 합침(사용자 직접 지시 · UI 전용)**: 「승인·적용」과 「OCI 운영 상태」를 한 화면 **「OCI 운영·적용」**(`approval`)으로 합쳤다 — ① 지금 OCI 상태(읽기만) · ② OCI 에 적용(현재 운영 기준 · 장중 급등락 설정). MenuKey 13→12(`oci_status` 없음). 두 적용 카드는 배치만 정리(문구 · 상태 구분 · 버튼 동작 불변 · §5.2). (같은 날) **`POC3-02D-OPS-01` 운영 정정 C1~C7 (검증자 VERIFIED 2026-09-27 · OCI 반영 2026-09-27 · 첫 거래일 2026-09-28 운영 확인)**. 08:00 기초지수 구역의 공식 CSV 를 파일명 상수 대신 공용 resolver 가 고르고(최신 유효 `krx_etf_basic_YYYYMMDD.csv`), 적재가 짧은 신규 ETF 는 차단하지 않고 pending 으로 기록하며, 갱신이 필요하면 08:00 본문 끝에 안내 1줄을 붙인다(C-3) · 「OCI 운영 상태」 필수 판정 = 운영 3종(§9-D) · 「장중 급등락」 '기준' 줄 실행 시각 · 잘린 보유 급락 재판정 · 15:40 '발송 실패 N회'(장중 급등락 절) · KOSPI 적재 stale 을 `failed` 로 기록(§8). OCI 쪽 정정(07:20 · 08:00 · 장중 · 15:40 · OCI 배치 KOSPI)은 2026-09-27 OCI `git pull` 로 반영됐고 2026-09-28 첫 거래일에 07:20 · 08:00 정상 동작을 확인했다(08:00 기초지수 구역 복귀 · STATE_LATEST). PC 쪽(OCI 상태 판정 · PC 수동 갱신 KOSPI)은 PC 백엔드 재기동(2026-09-27)으로 반영됐다. (그 전) 2026-09-26 — KRX 연구 DB consumer 에 POC4-03 러너 추가(§7.1). 2026-09-25 — **POC3 운영 상태 정정**. 장중 급등락 정책 `enabled=true`(2026-09-21 23:48 사용자 승인) · 정기 PUSH(시장 브리핑 08:00 · 보유 브리핑 3슬롯)는 2026-09-18 `02C-OPS-01` 배포부터 **내용이 같아도 발송**(C-1·C-2) · 보유 브리핑 상태 저장 3경우(C-1 `상태 확정`) · 현재 cron 7틱은 `holdings_risk_alert`, 폐지된 `spike_or_falling_alert` 는 cron 0건(§3·§10·§12) · KRX 연구 DB 는 공용 reader 와 POC4-02·03 러너만 읽는다(§7.1). 2026-08-29 이후의 본문 갱신(OPS-01A · OPS-02A · OPS-02B-2 · 02C · POC4-01·02)은 이 머리글에 따로 적지 않았다 — 각 절 참조.
+- **최종 반영**: 2026-09-30 — **`POC3-02D-OPS-03` 운영 데이터 최신성 · 자료원 복구 (구현 · 설계자 RESULT `PASS_WITH_MANDATORY_AMENDMENTS`(2026-09-30) · 필수 보완 STEP 1~6 반영 · 보완 화면 · 새 문구 사용자 확인 완료(2026-10-01) · 검증자 `VERIFIED` r3(2026-10-01) · OCI 반영 전 — 커밋 · push → 거래일 15:40 뒤 OCI pull → 같은 회차 cron 3줄 변경 뒤 적용)** · 운영 상태 `OPERATING_DEGRADED` 유지(OCI 는 아직 옛 코드 · 07:20 배치 · 08:00 브리핑 · 국내 KRX 기준일 매 거래일 T-2 · KOSPI 09-17 정지). 저장소 코드 기준으로 바뀐 것: 시간 계약 명시 개정(설계자 2026-09-29 · 사용자 결정) — 배치 07:20 → **08:10** · KRX 목표일(T-1) 시도 08:10 · 08:15 · 08:20 · 08:24 · 마감 08:27 · 시장 브리핑 08:00 → **08:30** · 09:20 KRX 전용 보강 1회(프로세스 C-4). 국내 최신성 = 기준일 == 기대 직전 거래일(T-1) · 5일 · 20일 = 거래일 날짜(시장 브리핑 · 장중 「신규 진입 검토」 · C-4 · 장중 급등락 절). 배치 단계별 실패 격리 · FDR timeout · 배치 실패 고지 하루 1회(C-4). KOSPI 자료원 KRX `idx/kospi_dd_trd` 공식 종가 · 최신 = 기대 T-1 정확 일치(C7 `lag ≤ 1` 폐기) · 09-17 정정 증거 · 차트 · AI 복사 텍스트 · 스냅샷도 같은 판정(§8 · §13-4). S&P500 = 가장 최근 완료 NYSE 세션(C-4). 보유 브리핑 20거래일 기준일 = 거래일 캘린더(C-1). 「OCI 운영·적용」 ① `거래일 달력` 행(§5.2). 설계자 RESULT 필수 보완(2026-09-30 · 저장소 코드 기준): 보유 PUSH 가격 기준 `ETF_KRX_UNADJUSTED__STOCK_FDR` — ETF 20거래일 전 · 구간 종가 = KRX 무조정 표 · 개별주 20거래일 수익률 · 고점 대비는 혼합 확정으로 늘 닫음(확정 계약 10 `DONE` · C-1) · KRX 적재 성공 조건에서 대표 ETF 커버리지 제외 · 장중 「신규 진입 검토」만 대표 27종 T-1 100% 관문(C-4 · 장중 급등락 절) · 창 빈 날 채우기 같은 날짜 하루 1회 호출 기록(C-4) · KOSPI 08:15 · 08:20 · 08:24 재시도(§8) · KOSPI 화면 제목 `KOSPI (보조)` · 출처 `출처: 한국거래소(KRX)` · KOSPI 카드 기준일 = KOSPI 기준일 · 정비 큐 KOSPI 항목 · 판정 · 문구 생성기 `frontend/lib/kospiStatus.ts`(§5.2 · §13-4). 미결: 한국 2027 거래일 캘린더 없음(2026-11-30 까지 준비). (그 전) 2026-09-29 — **`POC3-02D-OPS-02` 장중 전달 상태 · KOSPI 화면 상태 (검증자 VERIFIED 2026-09-29 · OCI 반영 2026-09-29 밤 · 새 코드 첫 장중 실행 2026-09-30)** · **운영 상태 `OPERATING_DEGRADED`(설계자 2026-09-29)** — 08:00 「오늘 볼 기초지수」 · 장중 「신규 진입 검토」 5일 · 20일이 매 거래일 T-2(07:20 에 KRX 가 T-1 을 아직 주지 않음 · OCI 실측) · KOSPI 원자료 09-17 정지 → `POC3-02D-OPS-03` 에서 복구(`POC5-01A` 는 그 뒤): 장중 급등락 억제 비교를 관측 `state` 가 아니라 마지막 성공 전달 상태(`last_delivered_state`)와 한다 — 잘림 · 전송 실패 · 부분 전송 · 조립 뒤 예외로 전달되지 못한 상태 변화가 다음 틱에 다시 후보가 된다(장중 급등락 절). 「오늘의 투자 점검」 · 「요즘 잘 오르는 ETF」 KOSPI 표시가 상태별 배지 · 기준 줄 · 사유 줄로 바뀐다(`GET /market/topn/latest` 선택 필드 3개 · §13-4). 낡은 fingerprint 역검증 ⑦ 정리(3-3). (그 전) 2026-09-27 — **메뉴 합침(사용자 직접 지시 · UI 전용)**: 「승인·적용」과 「OCI 운영 상태」를 한 화면 **「OCI 운영·적용」**(`approval`)으로 합쳤다 — ① 지금 OCI 상태(읽기만) · ② OCI 에 적용(현재 운영 기준 · 장중 급등락 설정). MenuKey 13→12(`oci_status` 없음). 두 적용 카드는 배치만 정리(문구 · 상태 구분 · 버튼 동작 불변 · §5.2). (같은 날) **`POC3-02D-OPS-01` 운영 정정 C1~C7 (검증자 VERIFIED 2026-09-27 · OCI 반영 2026-09-27 · 첫 거래일 2026-09-28 운영 확인)**. 08:00 기초지수 구역의 공식 CSV 를 파일명 상수 대신 공용 resolver 가 고르고(최신 유효 `krx_etf_basic_YYYYMMDD.csv`), 적재가 짧은 신규 ETF 는 차단하지 않고 pending 으로 기록하며, 갱신이 필요하면 08:00 본문 끝에 안내 1줄을 붙인다(C-3) · 「OCI 운영 상태」 필수 판정 = 운영 3종(§9-D) · 「장중 급등락」 '기준' 줄 실행 시각 · 잘린 보유 급락 재판정 · 15:40 '발송 실패 N회'(장중 급등락 절) · KOSPI 적재 stale 을 `failed` 로 기록(§8). OCI 쪽 정정(07:20 · 08:00 · 장중 · 15:40 · OCI 배치 KOSPI)은 2026-09-27 OCI `git pull` 로 반영됐고 2026-09-28 첫 거래일에 07:20 · 08:00 정상 동작을 확인했다(08:00 기초지수 구역 복귀 · STATE_LATEST). PC 쪽(OCI 상태 판정 · PC 수동 갱신 KOSPI)은 PC 백엔드 재기동(2026-09-27)으로 반영됐다. (그 전) 2026-09-26 — KRX 연구 DB consumer 에 POC4-03 러너 추가(§7.1). 2026-09-25 — **POC3 운영 상태 정정**. 장중 급등락 정책 `enabled=true`(2026-09-21 23:48 사용자 승인) · 정기 PUSH(시장 브리핑 08:00 · 보유 브리핑 3슬롯)는 2026-09-18 `02C-OPS-01` 배포부터 **내용이 같아도 발송**(C-1·C-2) · 보유 브리핑 상태 저장 3경우(C-1 `상태 확정`) · 현재 cron 7틱은 `holdings_risk_alert`, 폐지된 `spike_or_falling_alert` 는 cron 0건(§3·§10·§12) · KRX 연구 DB 는 공용 reader 와 POC4-02·03 러너만 읽는다(§7.1). 2026-08-29 이후의 본문 갱신(OPS-01A · OPS-02A · OPS-02B-2 · 02C · POC4-01·02)은 이 머리글에 따로 적지 않았다 — 각 절 참조.
 - (그 전) 2026-08-29 — **REJECT 참고점수 판단 화면 비활성 (POC3-ML-02 REJECT Closeout)**. `relative_upside_v0` 이 유효성 검증에서 **`REJECT` 확정**(상위 10% net 25bp `−1.214 %/월` · CI `[−2.495%, −0.213%]`)돼 **판단 화면에서 소비하지 않는다**. 표시·정렬을 5곳에서 제거했다 — `요즘 잘 오르는 ETF` 후보 **표**(점수 열·점수 근거 열·점수 정렬 토글·사용자 고지 배너) · 후보 **카드**(점수 배지·점수 근거) · `ETF 비교하기`(정렬 키 `score`·정렬 버튼 `참고점수`·행 표시·선택 상세) · `보유와 비교`(타입에서 `"score"` 리터럴 삭제·정렬 키·정렬 버튼) · `보유와 비교` **선택 상세**(점수·사유). **대체 표시를 두지 않는다** — 비활성 선택지·`0`·`사용 불가`·경고 배지 전부 없음. 후보 카드의 빈 큰 숫자 자리만 **1개월 수익률**로 채웠고(결측은 `0` 아닌 `—`), `ETF 비교하기` 행은 자리 자체를 없앴다(아래 facts 줄에 이미 1M 이 있어 중복을 만들지 않는다). **후보 순서는 API 응답 순서 그대로** — 점수의 존재·부재·크기가 순서에 개입하지 않는다(세 화면 모두 기본 정렬이 이미 API 순서였다: 표 `scoreSort="off"` · 워크벤치 `useSort("rank")` · 보유와비교 `"default"`). **정상 정렬은 보존** — 워크벤치 `순위·1M·3M·KODEX초과·고점대비` 5개, 보유와비교 `20일 초과·고점 대비·보유 노출` 3개. **API 응답 필드는 유지**(`relative_upside_score`·`relative_upside_reasons` 등) — 계약 보존·연구 재현용이며 화면이 소비하지 않을 뿐이다. **백엔드·DB·artifact·OCI·PUSH·cron 변경 0건.** `ML 실험` 화면의 수동 실행은 **연구용 baseline 으로 유지**하고 그 카드 안에 `relative_upside_v0` · `REJECT` · `연구용 baseline이며 투자 판단에 사용하지 않음` 을 명시한다(이 문구와 점수는 ML 화면 밖에 노출하지 않는다). 실행 성공 후 후보 화면으로 넘어가던 링크는 제거했다. 결과서 `docs/ai_result/POC3/POC3-ML-02-CLOSEOUT_REJECTED_SCORE_DEACTIVATION_RESULT.md`.
 - (그 전) 2026-08-25 — **ML feature·evidence 체인 복구 (POC3-ML-01 · 검증자 `VERIFIED`)**. `요즘 잘 오르는 ETF`·`ETF 비교하기`·`보유와 비교` 의 **참고점수·판단 사유·고점 대비가 실제 값으로 표시**되고 **`고점대비` 정렬이 실동작**한다(이전에는 전 종목 `null` 이라 정렬이 무의미했다). `etf_ml_feature_daily` **1,376,524행**(`2014-05-12`~`2026-08-20` · ETF **1,171**) · `market_risk_feature_daily` **3,013행** · 점수 snapshot **1,157종목** 적재. **두 체인은 독립이다** — 참고점수·사유·`drawdown_20d` 는 feature 테이블을 거치지 않고 `etf_daily_price` 를 직접 읽는다(`ml_relative_upside_features.py`). **증분 갱신은 수동** — `ML 실험` → `ML 근거 갱신`(`POST /ml/jobs/evidence-refresh`). 자동 스케줄러·OCI 역할 변경 0건. 코드 변경은 `ml_job_runner._run_feature` 의 0건 가드 1건뿐이며 (가드를 snapshot 기록 앞으로 + `and`→`or`), **계산 불가 종목은 `0` 으로 위장하지 않고 `—`** 로 둔다. 결과서 `docs/ai_result/POC3/POC3-ML-01_ML_FEATURE_AND_EVIDENCE_CHAIN_RESTORATION_RESULT.md`. **⚠ 2026-08-29 정정**: 이 항목의 *"참고점수·판단 사유가 실제 값으로 표시된다"* 는 **더 이상 사실이 아니다** — `relative_upside_v0` REJECT 확정으로 판단 화면에서 제거했다(맨 위 항목). `고점 대비` 표시와 `고점대비` 정렬은 그대로 살아 있다.
 - (그 전) 2026-08-19 — **구성종목 수집 깊이 30 + 등락률 열 제거 (설계 확정 구현)**. 외부 호출을 가두는 상한(**ETF 1회 10개 · delay 0.5s · 예산 30s · 캐시 우선**)은 그대로 두고, **ETF 안에서 담는 깊이만 10 → 30**. 같은 source·endpoint 를 **1회** 부르되 `pageSize` 를 요청 깊이에 맞춘다(실측: `pageSize=30` → 30건, `componentCount=200` · 069500 · 2026-08-19). **표시 깊이와 중복률 깊이를 분리** — `top_holdings` 는 30, **중복률·반복 등장 집계는 항상 상위 10 고정**이라 `Top 10 기준` 문구와 `common_count_top10` 필드명이 계속 사실이다. 응답에 `overlap_top_k` 추가. **구 정책으로 정확히 10건 저장된 캐시는 완료로 보지 않고 재수집**하되, 그 외 건수(= source 고갈)는 캐시를 그대로 쓴다. `upsert` 가 rank 단위 `ON CONFLICT` 라 **30건 스냅샷이 이후 10건 수집으로 축소되지 않는다**(회귀 테스트로 고정). 구성종목 탭 제목 `상위 구성종목` · 요약 `상위 N개 표시 · 표시 비중 합계 XX.XX%`(`전체 구성종목` 표현 금지). **등락률 열·`unavailable` 안내문 제거** — 대체값 없음, API·DB 에 빈 필드 추가 없음. 개별주 등락률 수집은 **BACKLOG**(§2 기존 항목 갱신). **DB 스키마·신규 endpoint·신규 의존성 0건.** 결과서 `docs/ai_result/POC3/POC3-CONSTITUENTS_DEPTH30_AND_CHANGE_RATE_REMOVAL_RESULT.md`.
@@ -104,7 +104,7 @@ flowchart LR
 | 메시지 artifact·초안 생성 | OCI | 양쪽 — PC `app/draft.py`, OCI `run_three_push_runtime_oci.py`. OCI 로그에 35종목 처리 기록 | 부분 CONTRADICTION / OCI RUNTIME_VERIFIED |
 | Telegram PUSH 발송 | **OCI** | **PC 에도 직접 발송 함수 존재** — `app/three_push_runner_common.py :: telegram_send`. **정식 발송은 OCI crontab 이 수행**(사용자 "PUSH 잘 받고 있다" + `oci_runtime_status_latest.json` `telegram_sent:true`) | **CONTRADICTION**(PC 소스에도 존재·호출 가능) / **OCI 정식 발송 RUNTIME_VERIFIED** |
 | freshness·중복·실패 기록 | OCI | OCI runner 소스에 존재(`oci_runtime_status_latest.json` `status:"sent"`) | SOURCE_CONFIRMED / RUNTIME_VERIFIED(스냅샷 2026-07-09자) |
-| 정기 스케줄 | OCI crontab | **crontab 활성·등록됨** — Market 08:00·Holdings 09:15/12:30/15:40·배치 07:20·`holdings_risk_alert` 7틱(09:30~15:20). 러너 11건 + 배치 1건(2026-09-21 실측). 폐지된 `spike_or_falling_alert` 는 cron 0건 | **RUNTIME_VERIFIED** |
+| 정기 스케줄 | OCI crontab | **crontab 활성·등록됨** — Market 08:00·Holdings 09:15/12:30/15:40·배치 07:20·`holdings_risk_alert` 7틱(09:30~15:20). 러너 11건 + 배치 1건(2026-09-21 실측 · 2026-09-30 읽기 전용 확인 12줄 · 서버 시간대 KST). 폐지된 `spike_or_falling_alert` 는 cron 0건. **`POC3-02D-OPS-03` 배포 회차에 바뀐다(아직 적용 전)**: 배치 08:10 · Market 08:30 · 09:20 KRX 전용 보강(`run_oci_market_data_batch.py --krx-only`) 1줄 추가 → 러너 11건 + 배치 2건(프로세스 C-4) | **RUNTIME_VERIFIED** |
 | ML·백테스트·튜닝 | PC | PC — `scripts/run_ml_*.py`, `run_market_flow_*.py` | 일치 |
 
 > 핵심: 지시문이 "OCI 전담"으로 승인한 **시세 갱신·평가·Telegram 발송이 PC 소스에도 구현되어 실행 가능**하다. 이는 이번 문서가 드러낸 최대 구조 불일치다(§13 참조).
@@ -121,13 +121,13 @@ flowchart LR
 | PC 시장 universe 갱신 | REST 핸들러(BG) | `app/api_market_topn.py :: @router.post("/market/refresh")` → `app/market_refresh_service.py` (FDR) | SOURCE_CONFIRMED |
 | PC→OCI package 전달 | SSH/SCP 스크립트 | `scripts/sync_three_push_packages.py` | SOURCE_CONFIRMED / RUNTIME_UNVERIFIED |
 | PC→OCI PARAM 전달 | SSH/SCP 스크립트 | `scripts/sync_three_push_runtime_param.py` | SOURCE_CONFIRMED / RUNTIME_UNVERIFIED |
-| OCI 시장데이터 배치 | CLI(crontab 07:20) | `scripts/run_oci_market_data_batch.py` — 실측 실행(`state/market`·`universe` Aug 5 07:20) | SOURCE_CONFIRMED / RUNTIME_VERIFIED |
+| OCI 시장데이터 배치 | CLI(crontab 07:20 · `POC3-02D-OPS-03` 배포 뒤 08:10 + 09:20 `--krx-only` 보강) | `scripts/run_oci_market_data_batch.py` — 실측 실행(`state/market`·`universe` Aug 5 07:20). OPS-03 코드: `run`(단계 격리 · KRX 목표일 T-1 · KOSPI 재시도) · `run_krx_only`(목표일 1회(T-1 미확보 날만) + 창 빈 날 채우기 · 같은 날짜 하루 1회) — 프로세스 C-4 | SOURCE_CONFIRMED / RUNTIME_VERIFIED(07:20 옛 코드) |
 | OCI PUSH 정식 runner | CLI(crontab) | `scripts/run_three_push_runtime_oci.py` (PARAM runtime) — 실측 발송(`telegram_sent:true`) | SOURCE_CONFIRMED / RUNTIME_VERIFIED |
 | OCI PUSH package fallback | CLI | `scripts/run_three_push_oci.py` (package 소비) | SOURCE_CONFIRMED / DUPLICATED / RUNTIME_UNVERIFIED |
 | Telegram 실제 발송 | 함수 | `app/three_push_runner_common.py :: telegram_send` / `_telegram_send_one` | SOURCE_CONFIRMED |
-| Telegram 메시지 생성 | 빌더 | `app/market_briefing/render.py`(08:00 시장 브리핑 · 2026-09-13~), `app/runtime_evidence/holdings_risk_render.py`, `app/draft_message.py`, `app/three_push_runtime_message_builder.py` | SOURCE_CONFIRMED |
+| Telegram 메시지 생성 | 빌더 | `app/market_briefing/render.py`(시장 브리핑 · 2026-09-13~ · 머리 `08:00` → `08:30` 은 `POC3-02D-OPS-03` 코드 · OCI 반영 전), `app/runtime_evidence/holdings_risk_render.py`, `app/draft_message.py`, `app/three_push_runtime_message_builder.py` | SOURCE_CONFIRMED |
 | DB 경로 결정 | 상수 | `market_data_store.py :: DEFAULT_DB_PATH`, `runtime_state_db.py :: DEFAULT_DB_PATH`, `decision_evidence_store.py :: DEFAULT_DB_PATH` (환경변수 override 미발견) | SOURCE_CONFIRMED |
-| scheduler/cron | OCI crontab(활성) | 저장소 문서 `docs/handoff/OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md`(07-25 초안 · spike 7틱 · **SUPERSEDED** 2026-09-27 — 현재 구성은 §3 · §10) + **OCI 호스트 `crontab -l` 실측 활성** | RUNTIME_VERIFIED |
+| scheduler/cron | OCI crontab(활성) | 저장소 문서 `docs/handoff/OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md`(07-25 초안 · spike 7틱 · **SUPERSEDED** 2026-09-27 — 현재 구성은 §3 · §10) + **OCI 호스트 `crontab -l` 실측 활성**. `POC3-02D-OPS-03` 배포 회차에 바꿀 3줄(KST) = `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 맨 위 OPS-03 절 | RUNTIME_VERIFIED |
 
 > crontab 은 **저장소에는 문서로만** 존재(`.service`/실제 crontab 파일은 저장소에 없음)하지만, **OCI 호스트에는 실제로 등록·활성**되어 있음이 사용자 `crontab -l` 실측(2026-08-05)으로 확인됨 → OCI 스케줄 = RUNTIME_VERIFIED. (저장소 tracked 아님 = 배포는 사람이 OCI 에 직접 등록.)
 
@@ -167,13 +167,13 @@ flowchart LR
 
 ### 5.2 화면별 요지 (근거 symbol)
 
-- **today_check** (`TodayInvestmentCheckView`): 최초 진입 시 `fetchMarketTopnLatest` · `fetchEnrichedHoldings` · `fetchHoldingsMarketEvidence` · `fetchNavDiscountLatest` 자동 조회. KOSPI 위치·국면·오늘 먼저 볼 보유 ETF 최대 3건(= backend `judgment_summary` 표시)·정비 큐. **표시 데이터가 저장 DB/캐시에 의존** → 데이터 부실 시 빈 화면(§13). KOSPI 카드 '코스피 수익률·위치' 는 최신성 상태 배지 · 기준 줄 · 사유 줄을 보인다(`POC3-02D-OPS-02` 3-4 · 「요즘 잘 오르는 ETF」 시장 배경 카드와 같은 생성기 `KospiStatusNote` · §13-4).
-- **market_discovery** (`MarketDiscoveryView`): "최신 시장 데이터 갱신" 버튼 → `POST /market/refresh` (FDR BG job). **PC가 외부 수집을 트리거하는 운영 경로**.
+- **today_check** (`TodayInvestmentCheckView`): 최초 진입 시 `fetchMarketTopnLatest` · `fetchEnrichedHoldings` · `fetchHoldingsMarketEvidence` · `fetchNavDiscountLatest` 자동 조회. KOSPI 위치·국면·오늘 먼저 볼 보유 ETF 최대 3건(= backend `judgment_summary` 표시)·정비 큐. **표시 데이터가 저장 DB/캐시에 의존** → 데이터 부실 시 빈 화면(§13). KOSPI 카드 '코스피 수익률·위치' 는 최신성 상태 배지 · 기준 줄 · 사유 줄을 보인다(`POC3-02D-OPS-02` 3-4 · 「요즘 잘 오르는 ETF」 시장 배경 카드와 같은 생성기 — 판정 · 문구 `frontend/lib/kospiStatus.ts` · 배지 · 상태 줄 컴포넌트 `KospiStatusNote` · §13-4). 같은 카드의 「코스피 가격 흐름」 차트(`today/KospiChart.tsx`)도 부모가 받은 같은 KOSPI 판정으로 배지 · 기준 줄을 달고(정상이면 줄 없음 · 휴장일은 `휴장일` 배지 · 사유 줄은 오른쪽 '코스피 수익률·위치' 에만) 정상 · 휴장일이 아니면 선을 경고색으로 그린다(`POC3-02D-OPS-03` 확정 계약 9 ⑥ · 저장소 코드 기준 · 사용자 실화면 확인 2026-09-30). `POC3-02D-OPS-03` 설계자 RESULT STEP 4(저장소 코드 기준 · 보완 화면 사용자 실화면 확인 PASSED 2026-10-01): KOSPI 카드 맨 아래 한 줄 = `마지막 자료 기준일 YYYY-MM-DD · 출처: 한국거래소(KRX)`(`today/KospiHeadline.tsx` · 날짜 = KOSPI `as_of_date` — 예전 값은 KODEX200 기준일 · KOSPI 기준일이 없으면 날짜 없이 `출처: 한국거래소(KRX)` 만 · 차트에는 따로 달지 않는다). 정비 큐(「자료 최신화 필요」 · `today/maintenanceQueue.ts :: collectMaintenance` · PLAN STEP 7-4)에 KOSPI 항목: 시장 응답이 성공이고 KOSPI 판정이 정상 · 휴장일이 아니면 VIX 지연 항목과 같은 모양(`heavy` · 버튼 `시장 자료 업데이트로` → 「요즘 잘 오르는 ETF」) · 문구 = 확정 사유 문장(끝 마침표 뺌) + 기준 줄이 있으면 ` (기준 줄)` · ⓘ = 상태 한 줄(AI 복사 텍스트와 같은 `kospiStatusText`) · 새 낱말 없음.
+- **market_discovery** (`MarketDiscoveryView`): "최신 시장 데이터 갱신" 버튼 → `POST /market/refresh` (FDR BG job). **PC가 외부 수집을 트리거하는 운영 경로**. 시장 배경 카드(`MarketContextCard`) KOSPI 칸: 제목 `KOSPI (보조)`(`POC3-02D-OPS-03` 설계자 RESULT STEP 4-1 · 예전 `(KS11) KOSPI (보조)` — 자료원이 KRX 공식 지수라 FDR 기호 `KS11` 제거) · 상태 배지 · 기준 줄 · 사유 줄(§13-4) · 칸 맨 아래 `출처: 한국거래소(KRX)` 한 줄(STEP 4-2 · KRX 약관 제10조③ · KOSPI 상태와 무관하게 늘).
 - **holdings_manage**: `PUT /holdings`(saveHoldings) → `state/holdings/holdings_latest.json` 로컬 저장 + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)**. 저장과 OCI 적용은 **별도 동작**. 적용은 단일 payload atomic replace(별도 manifest 파일 없음, active 재독출 hash 확인). 사용자 명시 클릭만. **POC3-08 (A·B·D)**: 종목코드 입력 시 `GET /holdings/etf-name` 로 `etf_master` 종목명 자동조회(있으면 이름칸 자동채움·✓, 없으면 개별주 경고 ⚠·저장 허용). 형식(영숫자 6자) 위반은 저장 차단(✗) — `PUT /holdings` 가 `strict_ticker=True` 로 최종 방어(`app/holdings.py :: TICKER_PATTERN`). 단 `load()`(읽기)는 lenient 유지(기존 비정형 값 하위호환). 계좌는 추천 목록 select 로 제한(자유입력 차단). 저장 흐름(경고·오류→저장→결과)은 하단 고정 액션바. **정렬 컨트롤**(`sortRowsWithMetas`) — 조회(로드/저장 직후) 시 계좌순 자동 정렬 + 계좌순/종목명순/종목코드순 수동 버튼(편집 중 자동 재정렬 X, rows·metas 짝 보존).
 - **holdings**(보유 현황): `POST /holdings/market/refresh`(Naver) + `fetchEnrichedHoldings`. 시세 갱신은 PC 직접. **POC3-08: 정렬 컨트롤**(`EnrichedHoldingsSection.tsx :: sortHoldings`) — 계좌순(기본, 일반·ISA·연금·오픈뱅킹·기타 순 + 계좌 내 종목명 가나다)·종목명순·종목코드순. **증권사 스타일 표시 개편**(`HoldingsHero`·`CompositionBar`·`AccountSection`·`HoldingRow`) — 상단 큰 평가 배너(총 평가금액·평가손익 + 계좌별 구성 막대) + 계좌 소계 헤더 + 종목 행 2단×2열(종목명·판단배지 / 손익 / 티커·수량·비중숫자 / 매입가→현재가), 행 클릭 상세 펼침. 구성 막대 = 계좌별 평가금액 비율(계좌순·계좌색). 표시 방식만 교체(평가·계산·요약·정렬 계약 무변경, 신규 API·계산 없음, 손익색은 기존 pnlClass 초록/빨강 재사용).
 - **approval**(OCI 운영·적용 · 2026-09-27 합침): `ApprovalTelegramView` — h1 「OCI 운영·적용」(`OciAlertHeader`) 아래 **① 지금 OCI 상태 (읽기만)**(`OciStatusView` 패널 · 버튼 없음)와 **② OCI 에 적용 (버튼으로 반영)**(`ThreePushParamCard` → `IntradayConfigCard`). 두 카드는 제목 옆 상태 배지 + 줄 맞춘 행으로 정리했다. 「현재 운영 기준」: 적용 기준 · 마지막 적용(`YYYY-MM-DD HH:MM` 그대로) · OCI 반영. 「장중 급등락 설정」: 배지 = **지금** 알림 상태 · 지켜보는/적용 예정 사업군 · 자료 기준일 · (후보가 있으면) 지금 알림 상태 · 적용 후 상태 · OCI 반영 · 확인할 변경(재시도 · 미확정에는 없음) · 판정 기준은 늘 펼침 · 설정 버전 · 확인값 · 산출 규칙만 '자세히 보기'. 표시 계약('승인 대기' 금지 · 현재/후보 분리 · 동작 h3 하나 · 값 없음 '없음')은 그대로다. 정보 PUSH 카드 · 미리보기 · 샘플 · 개발호환 · 현재 run 표시는 POC3-07 때 `diagnostics` 로 이동했다. 빈 승인 카드 안 만듦(직전 POC3 확정).
 - **diagnostics**(개발·실험용): `DiagnosticsView` — 미리보기·샘플(`ManualPreviewSection`·`DevCompatSection`, PREVIEW/TEST 표기) · `DashboardView`(LEGACY, details 접힘). 정상 업무 아님. POC3-07 때 흡수했던 기동 시 OCI 상태와 `DataStatusView` 는 2026-08-16 에 각각 `oci_status` · `data_status` 메뉴로 나갔다(§5.1 주석). `oci_status` 는 2026-09-27 「OCI 운영·적용」으로 합쳐졌다.
-- **OCI 운영·적용 ① 지금 OCI 상태**(구 `oci_status` 화면 · 2026-09-27 합침): `OciStatusView`(패널) — 기동 시 OCI 상태 상세(`GET /oci/startup-status`). 화면은 **요약 한 줄 + 표**(항목 · 상태 · 내용)다 — 자동 발송 예약 · 보유 종목 파일 · 운영 설정 DB · PUSH 발송 결과를 한국어 이름 · 정상/일부 누락/확인 불가 · 한국 시간으로 보인다(2026-09-27 사용자 직접 지시 · 표시만 · 응답 · 판정 불변 · 모르는 값은 원문 그대로). 판정은 `app/oci_startup_status.py` 가 `crontab -l` 의 `--push-kind` 를 모아 한다. 하나도 없으면 UNKNOWN, 있는데 **필수 3종 `market_briefing` · `holdings_briefing` · `holdings_risk_alert`** 중 하나라도 빠지면 DEGRADED(빠진 이름 표시), 셋 다 있으면 OPERATING 이다. 필수 밖 kind(예: 폐지된 spike)는 OPERATING 을 막지 않는다(`_REQUIRED_PUSH_KINDS` · 2026-09-27 `POC3-02D-OPS-01` C2 — 그 전에는 폐지된 `spike_or_falling_alert` 가 필수여서 지금 cron 에서 DEGRADED 거짓 경보가 코드상 났다). 백엔드 재기동 때 반영된다.
+- **OCI 운영·적용 ① 지금 OCI 상태**(구 `oci_status` 화면 · 2026-09-27 합침): `OciStatusView`(패널) — 기동 시 OCI 상태 상세(`GET /oci/startup-status`). 화면은 **요약 한 줄 + 표**(항목 · 상태 · 내용)다 — 자동 발송 예약 · 보유 종목 파일 · 운영 설정 DB · PUSH 발송 결과를 한국어 이름 · 정상/일부 누락/확인 불가 · 한국 시간으로 보인다(2026-09-27 사용자 직접 지시 · 표시만 · 응답 · 판정 불변 · 모르는 값은 원문 그대로). 판정은 `app/oci_startup_status.py` 가 `crontab -l` 의 `--push-kind` 를 모아 한다. 하나도 없으면 UNKNOWN, 있는데 **필수 3종 `market_briefing` · `holdings_briefing` · `holdings_risk_alert`** 중 하나라도 빠지면 DEGRADED(빠진 이름 표시), 셋 다 있으면 OPERATING 이다. 필수 밖 kind(예: 폐지된 spike)는 OPERATING 을 막지 않는다(`_REQUIRED_PUSH_KINDS` · 2026-09-27 `POC3-02D-OPS-01` C2 — 그 전에는 폐지된 `spike_or_falling_alert` 가 필수여서 지금 cron 에서 DEGRADED 거짓 경보가 코드상 났다). 백엔드 재기동 때 반영된다. **`거래일 달력` 행**(`POC3-02D-OPS-03` 확정 계약 11 · 저장소 코드 기준): 같은 SSH 읽기에 `ls -1 state/market_meta` 를 더해 한국(`krx_trading_days_YYYY.csv`) · 미국(`nyse_holidays_YYYY.csv`) 올해 · 다음 해 파일이 있는지 보인다(`oci_startup_status.calendar_job` · 판정 규칙은 배치와 같은 `us_trading_calendar.calendar_readiness`). 올해 파일 없음 또는 12월인데 다음 해 파일 없음 = 상태 `준비 필요`(STALE) · 11월 = `… — 11월 30일까지 준비 필요` · 10월까지 = `… — 11월 30일까지 준비`(상태 `정상`) · 다 있으면 `한국·미국 {올해}년·{다음 해}년 파일 있음`. 폴더 목록이 없는 옛 응답이면 행을 만들지 않는다. Telegram 은 보내지 않는다. **대표 ETF 커버리지(`POC3-02D-OPS-03` 설계자 RESULT STEP 2 · `intraday_config_unavailable` · `representative_missing` · `representatives_refresh_due`)는 이 화면에 없다** — `oci_startup_status` 는 OCI 배치 상태 JSON 을 읽지 않는다. OCI 배치 상태 JSON · 09:20 보강 기록 · 장중 실행 기록 · 로그에만 남는다(C-4 · 장중 급등락 절 · 화면에 올릴지는 설계자 · 사용자 결정 대상).
 - **첫 화면 OCI 한 줄**(POC3-07): `today_check` 상단 `OciStatusOneLine` 이 `GET /oci/startup-status` 로 기동 시 읽은 OCI 상태 한 줄 + 'OCI 운영·적용에서 상세 보기 →' 링크를 보인다. 링크는 「OCI 운영·적용」(`approval`)으로 간다(`POC3-02D-OPS-02` 3-1 · 2026-09-27 · 같은 날 사용자 지시로 「OCI 운영 상태」가 이 화면에 합쳐졌다 · 그 전에는 2026-08-16 메뉴 분리 뒤에도 OCI 상세가 없는 「개발·실험용」(`diagnostics`)으로 가며 '진단·상태에서 상세 보기 →' 라고 적혀 있었다). 이 GET 은 **백엔드 기동 시 1회 읽은 캐시** 반환(요청·새로고침으로 OCI 재조회 안 함).
 
 > 전체 버튼→handler→API 매핑은 §6 API 표 + 부록 A 색인에서 교차 확인.
@@ -193,7 +193,7 @@ flowchart LR
 | refreshMarket(holdings) | POST `/holdings/market/refresh` | 운영 (Naver 직접) |
 | refreshMarket(universe) | POST `/market/refresh` | 운영 (FDR BG) |
 | fetchMarketRefreshStatus | GET `/market/refresh/status` | 조회 |
-| fetchMarketTopnLatest | GET `/market/topn/latest` | 운영 · `market_context.kospi` 선택 필드 `display_state` · `trading_day_lag` · `today_is_trading_day`(2026-09-28 `POC3-02D-OPS-02` 3-4 · 응답 조립 때 기존 DB · 캘린더만 읽음) |
+| fetchMarketTopnLatest | GET `/market/topn/latest` | 운영 · `market_context.kospi` 선택 필드 `display_state` · `trading_day_lag` · `today_is_trading_day`(2026-09-28 `POC3-02D-OPS-02` 3-4 · 응답 조립 때 기존 DB · 캘린더만 읽음). `POC3-02D-OPS-03`(저장소 코드 기준): KOSPI 계산(`compute_topn` 의 `kospi_today_kst`)과 `display_state` 가 같은 '오늘'로 같은 함수 `kospi_freshness`(기준일 == 기대 T-1)를 쓴다 · `trading_day_lag` 는 표시용 지연 거래일 수 · 필드 · 경로 추가 0 · 「오늘의 투자 점검」 KOSPI 카드 `마지막 자료 기준일` 은 기존 필드 `market_context.kospi.as_of_date` 를 쓴다(설계자 RESULT STEP 4-3 · 백엔드 변경 없음) |
 | fetchHoldingsMarketEvidence | GET `/holdings/market-evidence/latest` | 운영(judgment_summary 포함) |
 | fetchNavDiscountLatest | GET `/market/nav-discount/latest` | 조회 |
 | fetchPriceSeries / fetchBenchmarkSeries | GET `/market/price-series` | 조회 |
@@ -250,9 +250,14 @@ flowchart LR
 | `state/ml/*_latest.json` / `.csv` | ML 스크립트 | ML evidence snapshot |
 | `state/three_push/sector_signal_state_latest.json` | `holdings_risk_alert` 조립 (OPS-02) | 장중 사업군·급등 억제 상태. **장중 정책 `enabled=true` 이고 운영 Gate 통과 회차만** 생성·갱신. entry = 관측(`state` · `continuous`) + 전달(`last_delivered_state` · `last_sent_at`) · 파일 수준 `sent_today`(`POC3-02D-OPS-02` · OCI 반영 2026-09-29 · `schema_version` 불변) |
 | `state/three_push/intraday_checkup_tally_latest.json` | 같음 | 장중 회차 집계(15:40 요약 입력). 생성 조건 동일. 전송 실패 회차는 `send_failed`(2026-09-27 C5) |
-| `state/market_meta/krx_etf_basic_YYYYMMDD.csv` | 사용자가 KRX Data Marketplace(`증권상품 > ETF > 전종목 기본정보`)에서 받은 원본을 개발자가 byte 그대로 추가(git 추적 폴더 — OCI 는 `git pull` 로 받는다) | 08:00 기초지수 구역의 공식 기준정보. 공용 resolver 가 최신 유효 파일을 고른다(§9 C-3) |
-| `state/three_push/market_briefing_meta_consistency_latest.json` | 07:20 배치(`krx_sync`) | API 대 공식 CSV 정합성 판정 · 선택 CSV · pending · `refresh_due` · 판정 창(`evaluated_*`). 08:00 은 읽기만 한다 |
-| `state/three_push/market_briefing_state_latest.json` | 08:00 전체 발송 성공 뒤 | 시장 브리핑 상태(fingerprint 등) · 안내를 보낸 `refresh_notice_cycle_id` |
+| `state/market_meta/krx_etf_basic_YYYYMMDD.csv` | 사용자가 KRX Data Marketplace(`증권상품 > ETF > 전종목 기본정보`)에서 받은 원본을 개발자가 byte 그대로 추가(git 추적 폴더 — OCI 는 `git pull` 로 받는다) | 시장 브리핑 기초지수 구역의 공식 기준정보. 공용 resolver 가 최신 유효 파일을 고른다(§9 C-3) |
+| `state/market_meta/nyse_holidays_YYYY.csv` | 개발자가 NYSE 공식 휴장일 공지(`https://www.nyse.com/markets/hours-calendars`)에서 옮김 · 머리 주석에 출처 URL · 받은 시각 · 페이지 · 표 sha256(`POC3-02D-OPS-03` 확정 계약 11) | 미국 완료 세션 판정(휴장 · 조기 폐장 `close_et`) · 없는 해 · 손상 파일은 평일 fallback. 2026 · 2027 두 파일은 git 에 추가됨(staged · 2026-10-01) — 커밋 · push · OCI pull 해야 OCI 로 간다 |
+| `state/three_push/market_briefing_meta_consistency_latest.json` | 배치 KRX 단계(OCI 옛 코드 = 07:20 `krx_sync` 역탐색 · `POC3-02D-OPS-03` 코드 = 08:10 `krx_target_sync` 목표일 T-1) | API 대 공식 CSV 정합성 판정 · 선택 CSV · pending · `refresh_due` · 판정 창(`evaluated_*` · OPS-03 코드는 거래일 날짜 d20). 시장 브리핑은 읽기만 한다. OPS-03 코드: 목표일을 못 받은 날도 T-1 판정이 든 파일은 덮지 않는다 |
+| `state/three_push/market_briefing_state_latest.json` | 시장 브리핑 전체 발송 성공 뒤 | 시장 브리핑 상태(fingerprint 등) · 안내를 보낸 `refresh_notice_cycle_id` |
+| `state/market/oci_market_data_batch_state.json` | OCI 배치(`market_data_batch.write_batch_state` · gitignore) | 배치 실행 상태 — Spike freshness 입력 · `POC3-02D-OPS-03` 코드부터 08:30 배치 실패 고지 입력(`refresh_date_kst` · `stage_status.fdr_price`). OPS-03 코드는 KRX 단계 **전과 뒤 두 번** 쓰고 `stage_status` · `krx_target_date` · `krx_stage_mode` · `krx_attempts` · `calendar_readiness` 를 더한다(기존 키 불변). 설계자 RESULT 보완 뒤 선택 키 5개를 더 쓴다(옛 호출은 None): `krx_representatives`(적재 뒤 대표 ETF 커버리지 `{source, status, expected_previous_trading_day, count, missing, representatives_refresh_due}` · 적재 실패면 None) · `representatives_refresh_due` · `krx_backfill`(`backfill` · `backfill_retry` 각 `missing_before` · `called` · `skipped_called_today` · `filled` · `failed` · `stopped` · `calls_today`) · `kospi_attempts`(시도별 kind · slot · at_kst · 날짜별 결과 · result · as_of · error · error_type · 키 · 가격 값 없음) · `kospi_retry`(mode · slots · retries · stopped). 읽는 화면은 없다(§5.2) |
+| `state/market/oci_krx_reinforcement_state.json` | 09:20 `--krx-only`(`POC3-02D-OPS-03` · gitignore) | KRX 전용 보강 1회 기록 · 하루 1회 판정 입력. 08:10 배치 상태 파일과 따로 쓴다. KRX 단계 기록(`krx_representatives` · `representatives_refresh_due` · `krx_backfill` 포함)을 그대로 싣는다 |
+| `state/market/krx_backfill_ledger.json` | 창 빈 날 채우기(`krx_backfill.fill_missing` · `POC3-02D-OPS-03` 설계자 RESULT STEP 6 · gitignore `krx_backfill_ledger.json*` — 저장 중 임시 파일 포함) | 오늘(KST) 날짜별 채우기 호출 횟수 `{"date_kst", "calls"}` — 같은 날짜는 하루 1회(08:10 첫 채우기 · 같은 실행의 `backfill_retry` · 09:20 · 수동 재실행 합산). 부르기 전에 먼저 기록 · 기록을 못 쓰면 부르지 않음 · 오늘 쓴 파일을 못 읽으면 채우기를 멈춤 · 날짜가 바뀌면(지난날 파일) 새로 시작. KRX 표와 같은 폴더 |
+| `state/market/kospi_source_corrections/kospi_correction_*.json` | KOSPI 적재가 기존 행을 바꿀 때 **덮어쓰기 전**(`POC3-02D-OPS-03` · gitignore) | 정정 증거 — 기존 값 · source · 행 sha256 · 새 값 · 적용 뒤 상태(§8) |
 | `state/diagnostics/*_latest.json`, `state/market/*_diagnosis_latest.json` | 진단 스크립트 | DIAGNOSTIC |
 | `*.bak-2026-07-05-150001` | 백업 | LEGACY/백업 |
 
@@ -265,13 +270,15 @@ flowchart LR
 | source | 목적 | 진입점 (symbol) | 인증 | fallback | 현재 사용 | 등급 |
 |---|---|---|---|---|---|---|
 | Naver 시세 | holdings 현재가 | `app/market_cache.py`/`market_naver` ← `post_market_refresh` | 불요(비공식) | pykrx/yfinance = POC2-Step2A 이연(미구현) | PC 사용 | SOURCE_CONFIRMED |
-| FinanceDataReader (FDR) | ETF universe·가격·KOSPI/VIX | `app/api_universe.py`, `market_benchmark_store.py`, `kospi_history_closeout.py` | 불요(비공식) | pykrx 일부 | PC·OCI | SOURCE_CONFIRMED |
+| FinanceDataReader (FDR) | ETF universe·가격·KOSPI/VIX(KOSPI 는 `POC3-02D-OPS-03` 코드부터 KRX 공식 지수 — OCI 반영 전까지 OCI 는 FDR `KS11`) | `app/api_universe.py`, `market_benchmark_store.py`, `kospi_history_closeout.py` | 불요(비공식) | pykrx 일부 | PC·OCI | SOURCE_CONFIRMED · OPS-03 코드: OCI 배치 FDR · 벤치마크 요청 timeout 20초(`market_data_batch.fdr_request_timeout`) · FDR 가격 단계 상한 180초(`FDR_STAGE_TIME_BUDGET_SECONDS` · 넘으면 남은 종목은 실패로 센다) |
+| KRX Open API `idx/kospi_dd_trd` | (운영 · `POC3-02D-OPS-03` 코드) KOSPI 공식 종가(`IDX_NM='코스피'` · `CLSPRC_IDX`) | `market_briefing/krx_sync.py :: _default_kospi_fetcher` ← `market_benchmark_store.py :: refresh_kospi_benchmark`(OCI 08:10 배치 벤치마크 단계 + T-1 이 아니면 08:15 · 08:20 · 08:24 재시도 `market_benchmark_kospi_retry.KospiRetry` · PC 수동 갱신 `POST /market/refresh` 같은 함수 · 재시도 없음) | `.env` `KRX_API_KEY`(기존 키 · 사용자 승인 2026-09-29) | — | 저장소 코드 · OCI 반영 전 | SOURCE_CONFIRMED · 08:10 평소 1~2회(저장 최신일 재확인 + T-1) · 08:10 결과가 T-1 이 아니면 재시도 최대 3회차(각 회차는 빠진 날만 · 이번 실행이 확인한 저장 최신일은 빼고) · 전환 첫 OCI 실행은 09-17 ~ T-1 약 8~10회(예상) · 회차 상한 40 |
 | pykrx | ETF universe·NAV·구성종목 | `etf_constituents_fetcher.py`, `etf_nav_service.py` | 불요 | — | 사용(일부 empty 응답 이력) | SOURCE_CONFIRMED |
-| KRX Open API `etf_bydd_trd` | (운영) 07:20 KRX 전종목 무조정 가격 · (PC 연구) 기준일별 과거 ETF universe(상장폐지 포함) | `market_briefing/krx_sync.py` · `ml_research_krx_universe.py :: http_fetch` | `.env` `KRX_API_KEY` (값 미출력) | — | OCI 운영 · PC 연구(POC4-01) | SOURCE_CONFIRMED · 공식 한도 키당 10,000회/일(이용약관 제8조④) |
+| KRX Open API `etf_bydd_trd` | (운영) 07:20 KRX 전종목 무조정 가격(옛 역탐색 · 매 거래일 T-2) · `POC3-02D-OPS-03` 코드: 08:10 목표일 T-1 단일 날짜 조회(최대 4회 · 마감 08:27) + 창 빠진 날 채우기 + 09:20 보강 1회 · (PC 연구) 기준일별 과거 ETF universe(상장폐지 포함) | `market_briefing/krx_sync.py` · OPS-03 `market_briefing/krx_target_sync.py` · `ml_research_krx_universe.py :: http_fetch` | `.env` `KRX_API_KEY` (값 미출력) | — | OCI 운영 · PC 연구(POC4-01) | SOURCE_CONFIRMED · 공식 한도 키당 10,000회/일(이용약관 제8조④) · 공개 = 전일 자료를 익영업일 08:00(공식 FAQ) |
 
-> fallback 존재해도 **동일 데이터 의미 보장은 별개**(설계서 §5.2·BACKLOG 기록). KRX Open API 는 시장 브리핑(07:20 수집)과 PC 연구 DB 가 함께 쓴다. 두 곳이 같은 인증키인지는 확인하지 않았으므로(키 값 미출력), 연구 적재는 공식 한도의 절반인 한 KST 일 5,000회 이하로 스스로 막는다.
+> fallback 존재해도 **동일 데이터 의미 보장은 별개**(설계서 §5.2·BACKLOG 기록). KRX Open API 는 시장 브리핑(07:20 수집 · `POC3-02D-OPS-03` 코드부터 08:10 · KOSPI 지수 포함)과 PC 연구 DB 가 함께 쓴다. 두 곳이 같은 인증키인지는 확인하지 않았으므로(키 값 미출력), 연구 적재는 공식 한도의 절반인 한 KST 일 5,000회 이하로 스스로 막는다.
 > **KOSPI 데이터 정상 확인**: `market_benchmark_daily_price` 의 KOSPI 저장값(6,690대)은 **실제 지수와 일치**함이 사용자 실측(2026-08-05 종가 6,598.26 +3.76%)으로 확인됨. 산식 정확·데이터 정상 — 이전 초안의 "스케일 이상/품질 의심"은 오판이었음(정정).
 > **KOSPI 적재 정지 (2026-09-18 자료부터)**: FDR `KS11` 은 제3자 GitHub 캐시(`FinanceData/fdr_krx_data_cache` master `data/index/year_ks11/{연도}.csv`)를 읽는데, 그 `2026.csv` 가 2026-09-17 행에서 멈췄다(설계자 확인 2026-09-27 · 파일 최신 커밋 09-17 12:22 KST). 그래서 09-18 이후 KOSPI 행이 없다. 전에는 반환이 비어 있지만 않으면 `ok` 로 기록했다. 2026-09-27 `POC3-02D-OPS-01` C7 부터 `refresh_kospi_benchmark` 가 유효 종가(> 0)의 마지막 날짜를 KRX 거래일 축(`app/trading_day_lag.py`)에 대 `MAX_STALE_TRADING_DAYS=1` 을 넘으면 `failed` + `source_stale:as_of=…,ref=…,lag=N` 으로 기록한다(행은 유지). OCI 07:20 배치는 가격 적재 등 다른 단계가 성공한 날이면 `success_with_benchmark_failure` · exit 1(로그 `kospi=failed(as_of=…)` · `source_stale:` 은 실행 결과 `benchmark_refresh.kospi.error`), PC 수동 갱신은 `market_refresh_log` KS11 행 success 0 이 된다(OCI 는 pull 뒤부터 · PC 는 백엔드 재기동 뒤부터). `SOURCE_SWITCH = PROHIBITED` 는 `POC3-02D-OPS-03` 범위에서 해제됐다(설계자 2026-09-29 · 1순위 현재 KRX 키의 공식 지수 — 2026-09-29 읽기 전용 조회로 `idx/kospi_dd_trd` 가 되는 것을 확인). 같은 날짜 대조: 09-15 · 09-16 은 KRX 공식 종가와 같고, **09-17 행(6,724.34)은 공식 종가(6,715.41)와 다르다** — 캐시가 그날 장중에 멈춘 값으로 보인다(교체 때 바로잡을 대상). 화면 표시(stale 구분)는 `POC3-02D-OPS-02` 3-4(§13-4). lag 계산은 3-4 에서 `trading_day_lag.benchmark_lag_trading_days` 로 옮겨 적재 감지와 화면이 같은 함수를 쓴다(본문 불변).
+> **KOSPI 공식 자료원 (`POC3-02D-OPS-03` 확정 계약 9 · 저장소 코드 기준 · OCI 반영 전 — 배포 뒤 첫 08:10 배치부터 · 그 전까지 OCI 07:20 배치는 위 C7 동작 그대로)**: `refresh_kospi_benchmark` 의 자료원이 FDR `KS11` 에서 KRX `idx/kospi_dd_trd` 공식 종가로 바뀌었다(source `KRX_OPEN_API/idx_kospi_dd_trd` · 기존 키 · 사용자 승인 2026-09-29). 조회 = **저장 최신일(포함)부터 기대 T-1 까지** 거래일 날짜당 1회(같은 실행의 재시도는 아래 예외) · 오래된 날부터 · 회차 상한 40(넘으면 다음 회차가 잇는다). 새 날짜가 비면 거기서 멈춘다(빈 날을 만들지 않는다 · 저장 최신일 재확인만 비어도 넘어간다) · 호출 예외는 곧바로 멈춘다. 기존 행과 값 또는 source 가 다르면 **덮어쓰기 전에** 증거 JSON(`state/market/kospi_source_corrections/` · 기존 값 · source · created_at · 행 sha256 · 새 값)을 쓰고, 못 쓰면 아무것도 저장하지 않는다. 저장 뒤 날짜별 read-back · 결과에 전후 건수 · 기준일 · 정정 값. 최신 = 기준일 == 기대 T-1(`market_benchmark_freshness.kospi_freshness` — 배치 적재 판정 · 계산 `market_regime.compute_kospi_metrics`(화면 API 경로) · `api_market_topn_service.with_kospi_display` 공용). **C7 `lag ≤ 1` 은 KOSPI 에 쓰지 않는다 — T-2 는 정상이 아니다.** 아니면 `failed` + `source_stale:as_of=…,expected=…,lag=…`(예전 `ref=` 자리) · 키 없음 · 호출 예외는 `api_key_missing` · `fetch_failed:…` · 증거 · 저장 · read-back 실패는 기준일이 T-1 이어도 `failed`. **OCI 는 KOSPI 를 08:10 배치에서만 받는다 — 벤치마크 단계 1회 + 재시도(설계자 RESULT STEP 3 · `app/market_benchmark_kospi_retry.py`)**: 벤치마크 단계 결과가 기대 T-1 이 아니면 KRX 단계와 같은 시각표로 08:15 · 08:20 · 08:24 에 다시 조회한다(마감 08:27 · 벤치마크 단계 시작 뒤 60초 이상 남은 시각만 · 밀린 시각은 1회로 합침 · T-1 을 저장하면 곧바로 끝). 08:00 전 · 08:27 뒤 시작이면 재시도 없음. KRX 단계의 곁 작업(`krx_target_sync.sync_krx_target(side_task=…)`)이라 ETF 시도 사이와 ETF 판정 · 정합성 JSON 을 쓴 뒤에만 돌고(같은 시각이면 ETF 먼저 · ETF 가 성공 · 실패 · 예외로 끝나도 남은 KOSPI 시각은 돈다 · KOSPI 예외는 ETF 결과를 바꾸지 않는다) ETF 시도 · 브리핑을 막지 않는다. 재시도는 첫 시도 전 저장 최신일을 이번 실행이 `ok` 로 확인했고 무결성 오류(증거 · 저장 · read-back)가 없을 때만 그 날짜를 빼고(`recheck_latest=False`) 그 뒤 빠진 날만 부른다 — 아니면 다시 포함한다(`latest_confirmed` · 09-17 같은 정정이 빠지지 않게). 키 없음(`api_key_missing`) · 기대 T-1 미정(`expected_date_unknown`)이면 재시도하지 않는다. 재시도가 있으면 `benchmark_refresh.kospi` 를 이번 실행 전체로 합친다(상태 · 기준일 · 오류 = 마지막 시도 · 호출 수 · 날짜별 시도 · 정정 · 행 수 = 합계 · `before` = 첫 시도) · benchmark 상태와 종료 status 를 다시 센다(KOSPI 만 실패였고 재시도로 T-1 을 받으면 `success_with_benchmark_failure` → `success` · 벤치마크 단계가 예외로 끝난 날은 `failed` 유지). 08:27 까지 T-1 이 없으면 OCI 저장 기준일이 그대로 남아 `source_stale` 이고 Telegram 경고는 없다(`batch_failure_reasons` 는 KOSPI 를 보지 않는다). 시도 기록 = 배치 상태 JSON `kospi_attempts` · `kospi_retry`. 09:20 보강에는 KOSPI 가 없다 · KOSPI 는 PUSH 본문에 없다. PC 화면은 PC DB 를 읽고, PC DB 는 수동 갱신(`POST /market/refresh`) 때 같은 함수로 따로 받아 같은 정정을 한다(재시도 없음 · OCI 재시도는 PC 화면 기준일을 바꾸지 않는다). **OCI 영향 날짜 대조(확정 계약 9 ② · 2026-09-30 읽기 전용)**: OCI KOSPI 3,052행(2014-04-10 ~ 2026-09-17 · `NAVER_FDR` 2,870 · `FinanceDataReader/KS11` 182)을 공식 기준값(PC 연구 DB KRX `etf_bydd_trd` 원문의 코스피 ETF `OBJ_STKPRC_IDX` · 2,718일)과 공통 2,716일 대조 → **불일치 1일 = 2026-09-17**(6,724.34 vs 6,715.41) · 정지 원천 182행은 전부 대조됨 · 기준값이 없는 336행은 2014-04-10 ~ 2015-08-21 `NAVER_FDR`. 정정 대상은 09-17 한 건이고 첫 OCI 실행이 증거 JSON 을 남기고 바로잡는다(예상 · 배포 뒤 확인).
 
 ---
 
@@ -359,9 +366,54 @@ flowchart LR
 신규 휴장일 캘린더·신규 외부 조회·cron 변경 **0건**. 거래일 축은 walk-forward 가
 쓰는 KODEX200 시퀀스를 재사용한다.
 
+> **`POC3-02D-OPS-03` 정정(확정 계약 10 · 저장소 코드 기준 · OCI 반영 전 — 그 전까지 OCI 는 위 KODEX200 축)**:
+> 거래일 축은 KODEX200(`069500`) `etf_daily_price` 저장 날짜가 아니라 **거래일 캘린더**다
+> (`holdings_selection_source.trading_day_axis` · `trading_day_lag` — 시장 브리핑 · 장중과 같은 함수).
+> 예전에는 배치가 실패해 T-1 행이 없으면 축 끝이 T-2 가 되어 21거래일 전 종가를 '20거래일' 로 보고했다.
+> 이제 기준일은 늘 캘린더 T-20 이다. 그날 KRX 표에 T-1 행이 없으면 ETF 는 `고점 대비` 보조값만 빠진다(구간 불완전 ·
+> 위 표). 기준일 종가가 없으면 기존대로 `DATA_UNAVAILABLE_OR_STALE`. 캘린더가 그해를 덮지 않는 해에 저장되지 않은
+> 평일이 축에 있으면 빈 축(전 종목 데이터 확인 대상 · 19거래일을 20거래일로 보고하지 않는다). 장중 위험
+> 경로(`holdings_risk_flow`)의 `직전 종가` 날짜 · 고점 대비 구간도 같은 축이다.
+>
+> **보유 PUSH 가격 기준 — `ETF_KRX_UNADJUSTED__STOCK_FDR`(설계자 RESULT STEP 1 · 2026-09-30 · 선택지 (a) + 가드 ·
+> 확정 계약 10 `DONE` · 저장소 코드 기준 · OCI 반영 전 — 그 전까지 OCI 는 분모 = FDR `etf_daily_price` 종가)**:
+> 현재가와 과거 종가를 같은 성격으로 맞춘다. 가격수익률이다(분배금 포함 총수익률과 섞지 않는다). 보유 브리핑 ·
+> 장중 보유 위험 두 흐름이 `app/runtime_evidence/holdings_price_basis.py :: load_basis_history` 로 과거 종가를 읽는다.
+>
+> - 자산 유형 = 종목 마스터: 공식 KRX ETF 마스터 CSV(`krx_etf_basic_*.csv` 최신 유효 파일 · 시장 브리핑과 같은
+>   resolver)에 있거나 KRX 무조정 표에 적재 기록이 있으면 ETF(`class_source` = `etf_master_csv` · `krx_table`) · 두 원천을
+>   모두 읽었고 어디에도 없으면 개별주 · 그 밖(한쪽을 못 읽었고 읽은 쪽에도 없음)은 미상 → 파생값을 닫는다(추측하지 않는다).
+> - ETF: 현재가 = 네이버 무조정 · 20거래일 전 종가 · 구간 종가 = KRX 무조정 표 `krx_etf_daily_price_unadjusted`
+>   (`krx_store.read_holdings_etf_prices` · 읽기 전용 `mode=ro` · 표를 만들지 않음 · 못 읽으면 그 회차 ETF 파생값만 닫음
+>   `krx_unreadable`). FDR 조정 계열(`etf_daily_price`) fallback · 두 계열 혼합 없음. `krx_store` 모듈 계약(UI · ML ·
+>   그 밖 경로로 확장 금지)은 보유 PUSH 의 ETF 가격 증거에 한해서만 개정했다. ETF 의 기준 종가 · 고점 대비는 08:10 ·
+>   09:20 KRX 적재에 달린다.
+> - 개별주: 현재가 · 과거 종가 = 기존 FDR/Naver 경로 · KRX ETF 표 가격을 읽지 않는다. **20거래일 수익률 · 고점 대비는
+>   늘 닫는다**(`reason = price_basis_mismatch` · `derived = blocked`) — FDR(Naver fchart) 개별주 일봉 종가가 KRX 정규장
+>   종가가 아니라서다. 2026-09-29 KRX `sto/stk_bydd_trd` 공식 종가(000660 1,765,000 · 005930 272,500 · 006400 511,000 ·
+>   리드 1회 읽기 전용 조회 · 코드 경로 아님) = 네이버 전일 종가 ≠ FDR 종가(1,790,000 · 275,000 · 517,000 · +0.9 ~ +1.4% ·
+>   시간외 체결 포함 추정). 현재가(정규장)와 과거 종가가 구조적으로 섞여 설계자 STEP 1-7 fail-closed 가 발동했다. T-1
+>   가드(FDR 캘린더 T-1 종가 vs 네이버 전일 종가 · 0.5%)는 닫는 판정에 쓰지 않고 그날 차이 기록으로만 남긴다. FDR 은
+>   여전히 읽는다(가드 기록 · 캘린더 없는 해의 평일 확인 근거). 같은 성격 원천(예: KRX 주식 일별 `sto/stk_bydd_trd`)으로
+>   되살리려면 새 외부 호출 · 저장 계약이 필요하다(설계자 · 사용자 결정 · 이번에 하지 않음).
+> - 닫힌 종목의 표시: 보유 브리핑(09:15 · 12:30 · 15:40) `■ 데이터 확인 필요` 그룹 · 값 칸 `20거래일 데이터 확인 불가`
+>   (`holdings_selection_render._value_cell` · 설계자 문구 `데이터 확인 불가` 앞에 대상을 붙인 조합 문구 · 사용자 확인
+>   요청 중). `현재가 조회 실패` 는 현재가 자체가 실패했을 때만(둘 다면 현재가 실패). 상태 identity
+>   `DATA_UNAVAILABLE_OR_STALE` 그대로. 구간 종가만 빠지면 `고점 대비` 보조값만 표시 없이 생략. 장중 보유 위험 알림은
+>   급락 판정(네이버 등락률) 그대로 · `고점 대비` 보조값만 빠진다. PC 보유 목록 기준(2026-09-30 읽기 전용) 개별주
+>   3종(000660 · 005930 · 006400)은 09:15(전체 현재 상태)와 변화가 없는 12:30 · 15:40 에 이 그룹으로 나오고, 다른
+>   종목 변화가 있는 12:30 · 15:40(변화분만)에는 나오지 않는다(identity 가 슬롯 사이에 같다 · `holdings_selection_state.py:129-146`).
+> - 실행 기록 evidence: 보유 브리핑 `holdings_price_basis` · 장중 위험 `risk_price_basis` = `contract` · `etf_master` ·
+>   `krx_table` · `tickers{asset_type, class_source, price_source(KRX_OPEN_API/etf_bydd_trd · FinanceDataReader),
+>   price_basis(unadjusted · fdr_naver), guard(개별주만 · t1 · fdr_close · naver_prev_close · diff_pct · ok),
+>   reason(price_basis_mismatch · asset_type_unknown · krx_unreadable), derived{base_close, window}}`.
+> - 개정 전 근거(OCI 2026-09-30 읽기 전용): `etf_daily_price` 와 KRX 무조정 표의 같은 (종목 · 날짜) 1,102행 중 6행이
+>   0.2 ~ 0.6% 달랐다(모두 FDR < KRX · 2026-08-27 · 09-11 · FDR 증분 수집이 마지막 저장일부터(포함) 다시 받아 분배락 뒤
+>   그날 행을 조정값으로 다시 씀). ETF 는 이제 이 FDR 종가를 쓰지 않는다.
+
 - 근거: `app/runtime_evidence/holdings_selection*.py` · `app/three_push_runtime/non_trading_day.py` ·
-  `scripts/run_three_push_runtime_oci.py` §3-c·§6-c.
-- 등급: **RUNTIME_VERIFIED** (2026-09-07 실제 발송 수신 · 실행 기록 대조).
+  `scripts/run_three_push_runtime_oci.py` §3-c·§6-c · 가격 기준 `app/runtime_evidence/holdings_price_basis.py`(`POC3-02D-OPS-03`).
+- 등급: **RUNTIME_VERIFIED** (2026-09-07 실제 발송 수신 · 실행 기록 대조). `POC3-02D-OPS-03` 정정 · 가격 기준은 SOURCE_CONFIRMED(OCI 반영 전).
 
 #### C-2. PUSH 종류별 자동발송 상태 (2026-09-08 실측)
 
@@ -371,7 +423,7 @@ flowchart LR
 |---|---|---|---|
 | `holdings_briefing` (09:15·12:30·15:40) | 유지 | **`true`** | **발송 중** — 2026-09-18 `02C-OPS-01` 배포부터 **변화가 없어도 슬롯마다 발송**(변화가 없으면 현재 상태 전체 · 선정 0건이면 `skipped/no_selection` 미발송 — C-1 표) |
 | `holdings_risk_alert` (7틱 09:30·10:30·11:30·12:30·13:30·14:30·15:20) | **신규** | **`true`** | **발송 중** — 2026-09-08 활성화. **2026-09-21 23:48 장중 급등락 정책 활성화**(사용자 승인) 후 「장중 급등락」 통합 본문이 나간다. 첫 운영일 2026-09-22: 7/7틱 · 알림 4건 · 일일 상한 4건 도달 · 커버리지 27/27 · 오류 0. 정기 PUSH 와 달리 **동일 위험 억제를 유지**한다 |
-| `market_briefing` (08:00) | 유지 | **`true`** | **발송 중** — `OPS-02B-2` 재구현(검증자 `VERIFIED` 2026-09-13) 후 **2026-09-15 첫 발송**. 2026-09-18 `02C-OPS-01` 배포부터 **내용이 같아도 거래일마다 발송**(fingerprint 는 기록·비교용). 09-16 `no_change` 미발송은 변경 전 기록이다 |
+| `market_briefing` (08:00 · `POC3-02D-OPS-03` 배포 · cron 변경 뒤 08:30) | 유지 | **`true`** | **발송 중** — `OPS-02B-2` 재구현(검증자 `VERIFIED` 2026-09-13) 후 **2026-09-15 첫 발송**. 2026-09-18 `02C-OPS-01` 배포부터 **내용이 같아도 거래일마다 발송**(fingerprint 는 기록·비교용). 09-16 `no_change` 미발송은 변경 전 기록이다. OPS-03 코드: 낼 내용이 없는 날도 배치 실패면 머리 + 고지 1줄을 보낸다(C-4 · 설계자 승인 RESULT STEP 6 · 사용자 문구 확인 `APPROVED` 2026-09-30) |
 | ~~`spike_or_falling_alert`~~ | **제거** | — | **폐지** — cron 7건을 `holdings_risk_alert` 로 교체 |
 
 전역 `PUSH_AUTOSEND_ENABLED=true` 는 유지한다(끄면 보유 PUSH 까지 멈춘다).
@@ -383,6 +435,10 @@ flowchart LR
 > `krx_etf_basic_20260909.csv` · API 전용 1건이라도 있으면 차단) 때문에 2026-09-17 ~ 09-23 에는
 > 매 거래일 기초지수 구역이 `CSV_REFRESH_REQUIRED` 로 빠졌다(발송 5건 모두 후보 0 · 09-15 · 09-22
 > 상장 ETF 8종이 CSV 에 없었다).
+>
+> **`POC3-02D-OPS-03`(저장소 코드 기준 · OCI 반영 전)**: 아래 '07:20' 은 08:10 배치 KRX 단계, '08:00' 은 08:30
+> 시장 브리핑으로 읽는다. 판정 창은 기대 T-1 과 그 **거래일 날짜** d20 이고, 국내 기준일이 T-1 이 아니면 이 절의
+> 관문보다 먼저 구역을 닫는다 — C-4.
 
 07:20 배치가 KRX API 응답과 공식 CSV 를 대조해 판정을 남기고, 08:00 은 그 판정을
 읽기만 한다. 판정 파일은 `state/three_push/market_briefing_meta_consistency_latest.json`.
@@ -408,9 +464,106 @@ ETF 이름 · 기초지수 · 분류 같은 **공식 메타정보를 독립적�
 
 1. 사용자가 KRX Data Marketplace `증권상품 > ETF > 전종목 기본정보` 에서 CSV 를 받는다. Excel 로 열어 다시 저장하지 않는다(인코딩 · byte 가 바뀐다).
 2. 개발자가 byte 그대로 `state/market_meta/krx_etf_basic_YYYYMMDD.csv`(다운로드 · 스냅샷 날짜)로 추가하고 `python scripts/check_krx_etf_basic_csv.py --meta-dir state/market_meta` 로 확인한다(PC 전용 · 외부 호출 0). 새 파일이 선택되지 않거나, 비슷한 이름이 resolver 후보에서 빠지면 exit 1 이다. `--compare` 로 옛 파일 대비 추가 · 삭제 ticker 와 기초지수명 변경을 본다.
-3. commit · push · OCI pull 은 각각 승인받는다. OCI pull 은 07:15~08:05 에 하지 않는다.
+3. commit · push · OCI pull 은 각각 승인받는다. OCI pull 은 07:15~08:05 에 하지 않는다(`POC3-02D-OPS-03` 배포 · cron 변경 뒤에는 08:05~08:35 · PLAN STEP 9-3).
 
 저장소 현황(2026-09-27 작업 트리): `krx_etf_basic_20260909.csv`(1,168행 · 커밋됨) · `krx_etf_basic_20260927.csv`(1,175행 · KRX Data Marketplace `증권상품 > ETF > 전종목 기본정보` · 사용자가 2026-09-27 추석 연휴 중 KRX 에서 직접 다운로드한 스냅샷 · 설계자 원본 대조 · `POC3-02D-OPS-01` 커밋 대기 · 작업 트리 resolver 선택 · 추가 8 · 삭제 1 `465780` · 기초지수명 변경 0). OCI 는 이 파일이 커밋 · pull 되기 전까지 `20260909` 를 쓴다.
+
+#### C-4. 시장 브리핑 08:30 · KRX 목표일 수집 · 국내 · 미국 최신성 (`POC3-02D-OPS-03` · 2026-09-30)
+
+> **저장소 코드 기준 · OCI 반영 전 — 코드 push → OCI pull → 같은 회차 cron 변경(08:10 · 08:30 · 09:20 추가 ·
+> `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` OPS-03 절) 뒤 적용.** 그 전까지 OCI 는 옛 코드다 — 07:20
+> 배치의 KRX 역탐색은 매 거래일 T-2(KRX 는 전일 자료를 익영업일 08:00 에 공개 · 공식 FAQ · OCI 10회 실측) ·
+> 08:00 브리핑은 lag ≤ 1 이면 T-2 도 쓴다. 설계자 PLAN 판정 `PASS_WITH_MANDATORY_AMENDMENTS`(2026-09-29) ·
+> 확정 계약 15항 · PLAN `docs/ai_plan/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_PLAN_V1.md`.
+
+**시간 계약(명시 개정 · 설계자 2026-09-29 · 사용자 결정)** — 고정 PUSH 수 불변.
+
+```text
+08:10  시장 데이터 배치(07:20 폐지) — FDR · 미국 · KOSPI · VIX → artifact → KRX 목표일(T-1)
+       KRX 시도 08:10 · 08:15 · 08:20 · 08:24 · 수집 마감 08:27
+       KOSPI 가 T-1 이 아니면 같은 시각표로 08:15 · 08:20 · 08:24 재시도(ETF 와 독립 · §8)
+08:30  시장 흐름 브리핑(08:00 → 08:30 · 본문 머리 `[시장 흐름 브리핑] 08:30`)
+09:20  KRX 전용 보강 1회(`run_oci_market_data_batch.py --krx-only`) — T-1 을 못 받은 날은 목표일 1회 시도 · 이미 받은 날은 창 빈 날 중 오늘 아직 안 부른 날만 채움(없으면 조회 0)
+09:30  장중 첫 틱(그대로)
+```
+
+**배치 단계와 실패 격리**(`scripts/run_oci_market_data_batch.py :: run`): 대상 수집 → FDR 가격(요청 timeout
+20초 · 단계 상한 180초 · 넘으면 남은 종목은 실패로 센다) → 벤치마크(US500 · IXIC · ^SOX · KOSPI · VIX · `requests`
+호출에 같은 timeout · KOSPI · KRX 요청은 자체 40초) → artifact(가격이 성공한 날만) → 배치 상태 1차 기록(`stage_status.krx = pending`) → KRX 단계 → 최종
+기록. 수집 · FDR 실패가 뒤 단계를 막지 않는다(예전은 FDR 한 종목 실패로 `return`). 종료 status 는 예전 그대로다
+(가격 실패 `failed` · 벤치마크 실패 `success_with_benchmark_failure` · KRX 결과는 status 를 바꾸지 않는다 · KOSPI 재시도
+결과로 벤치마크 상태와 종료 status 를 KRX 단계 뒤 다시 센다 — §8). 미국 · FDR 은 회차당 1회다. KRX 재시도와 KOSPI
+재시도(설계자 RESULT STEP 3)는 KRX 단계 시각표 안에서만 돈다 — KOSPI 는 곁 작업이라 ETF 시도 · 판정 · 정합성 JSON 을
+막지 않는다. KOSPI 가 끝까지 실패한 날은 마지막 상태 기록이 08:24 KOSPI 시도 뒤로 밀리고 그동안 `stage_status.krx` 는
+`pending` 이다(08:30 배치 실패 고지 입력은 `refresh_date_kst` · `stage_status.fdr_price` 라 영향 없음).
+
+**KRX 목표일 수집**(`app/market_briefing/krx_target_sync.py :: sync_krx_target` · 예외를 올리지 않는다):
+
+| KRX 단계 시작 | 시도 |
+|---|---|
+| 08:00 전 | 건너뛰고 기록(`skipped_before_open`) — 표 · 정합성 JSON 을 건드리지 않는다(배포와 cron 변경 사이 옛 07:20 줄이 새 코드를 돌려도 헛재시도 없음) |
+| 08:00 ~ 08:27 | 08:10(그 뒤 시작이면 시작 즉시) · 08:15 · 08:20 · 08:24 중 남은 시각 · 최대 4회 · 08:27 뒤 새 시도 없음 |
+| 08:27 뒤 | 1회(수동 재실행 · 09:20 보강) |
+
+- 목표일 = 거래일 캘린더의 직전 거래일(`trading_day_lag.expected_previous_trading_day`) · **단일 날짜 조회**. 0행 ·
+  가격 빈 응답은 휴장이 아니라 '공개 전'(다음 시도) · 다른 기준일 응답(T-2 등)은 `basis_date_mismatch` 로 표에
+  쓰지 않는다. 옛 역탐색(`krx_sync.resolve_basis_date`)은 쓰지 않는다.
+- 적재 성공 조건(확정 계약 3 · 설계자 RESULT STEP 2 개정 · `app/market_briefing/krx_target_checks.py :: check_response`):
+  ① 반환 기준일 == 요청일(목표일 = 기대 T-1) ③ 행 수 ≥ 직전 정상 적재 × 0.95(`MIN_ROW_RATIO` · 연구 DB 3,138쌍 최소
+  0.954) ④ 관계식(저가 ≤ 시가 · 종가 ≤ 고가 · 시 · 고 · 저 전부 0 인 거래 없음 행은 통과) · 중복 · 0행 · 결측 ⑤ 저장 뒤
+  read-back — 저장 뒤 다시 읽은 행(종목 · 종가 · 건수)이 이번 snapshot 과 같아야 성공 · 같은 날짜에 같은 내용이 있으면 다시 쓰지 않고, 다르면(판정 전 중단으로 남은 부분 저장 · 다른 값) 한 트랜잭션에서 바꿔 쓴 뒤 다시 읽는다 · 어긋나면 그 날짜를 비운다(fail-closed · 검증자 r1 A-1) — `krx_target_checks._save_and_read_back` · `krx_store.rows_on` · `replace_date`. **대표 ETF 커버리지(옛 ②)는 적재 성공 조건이 아니다.**
+- 대표 ETF 커버리지 기록(설계자 RESULT STEP 2 · `krx_target_checks.evaluate_representatives` · 판정 규칙은 장중 관문과 같은
+  `app/intraday_config/representatives.py :: evaluate_coverage`): 적재가 성공한 뒤(첫 적재 · 이미 받은 날 모두 · 적재
+  실패일은 판정하지 않음) 활성 장중 설정의 사업군 대표(27종)가 T-1 행을 갖는지 따로 판정해 기록만 한다 — `ok` ·
+  `intraday_config_unavailable`(활성 설정 없음 · 못 읽음 · 사업군이 비었거나 대표 없는 사업군이 있음 · 정책 `enabled` 와 무관) ·
+  `representative_missing`(대표 일부 T-1 행 없음 · 상장폐지 등) · T-1 행을 못 읽으면 `not_evaluated`. `ok` 가 아니면
+  `representatives_refresh_due = true`(장중 설정 재승인 필요 표시 · 정합성 JSON 의 공식 CSV 갱신 `refresh_due` 와 다른
+  필드 · 08:30 CSV 안내를 움직이지 않는다). 기록 = 배치 상태 JSON `krx_representatives` · `representatives_refresh_due` ·
+  09:20 보강 기록 · 로그(화면 표시 없음 · §5.2). 장중 설정을 못 읽거나 대표가 상장폐지돼도 KRX 전체 적재와 08:30
+  기초지수는 막히지 않는다 — 장중 「신규 진입 검토」만 자기 관문으로 생략한다(장중 급등락 절).
+- **성공한 T-1 은 덮지 않는다**: T-1 행이 있고 정합성 JSON 이 T-1 판정이면 다시 조회 · 저장 · 판정하지 않는다
+  (`already_loaded`). 판정 전 중단으로 남은 같은 날짜 저장분은 이번 snapshot 과 다를 때만 한 트랜잭션에서 바꿔 쓴다(⑤). 목표일을 못 받은 날도 T-1 판정이 든 정합성 JSON 은
+  '판정 못 함' 으로 덮지 않는다.
+- 빠진 거래일 채우기(`app/market_briefing/krx_backfill.py :: fill_missing` · PLAN STEP 3-3 · 설계자 RESULT STEP 6): 목표일
+  (T-1)로 끝나는 창(21거래일) 안 빈 날만(목표일 자신 제외 · 적재 조건 ①③④⑤) · **같은 날짜는 KST 하루 1회** — 08:10 첫
+  채우기 · 같은 실행의 `backfill_retry` · 09:20 · 수동 재실행을 모두 합친 하루 호출 기록 `state/market/krx_backfill_ledger.json`
+  (부르기 전에 먼저 기록 · 기록을 못 쓰면 부르지 않음 · 오늘 쓴 기록을 못 읽으면 채우기를 멈춤 · 지난날 파일이면 새로
+  시작 · §7.2). 부르는 때: 목표일 조회가 원천에 닿은(`fetch_error` 아님) 첫 시도 뒤 한 번(원천 불통 중에는 부르지 않고
+  다음 시도로 미룬다) · 그 채우기가 원천 오류 · 마감 등으로 멈췄고 뒤 시도에서 T-1 을 받으면 한 번 더(`backfill_retry` ·
+  오늘 아직 안 부른 날만) · 이미 받은 날(`already_loaded` · 09:20 · 재실행)도 채운다(T-1 재조회 · 재판정 없음 · 빈 날이
+  없으면 조회 0). 정기 실행은 08:27 마감 · 조회 오류에서 멈춘다. 기록 `called` · `skipped_called_today` · `calls_today`
+  (+ `missing_before` · `filled` · `failed` · `stopped`) → 배치 상태 JSON · 09:20 보강 기록 `krx_backfill`. 결과: 채우기
+  조회가 원천 오류로 실패한 창 안 날짜는 그날 다시 부르지 않는다(다음 날 실행이 채운다) — 그 날짜가 d5 · d20 이면 그날
+  08:30 기초지수 · 장중 진입 검토가 닫히고, 구간 날짜면 ETF 보유 `고점 대비` 가 빠진다.
+- 시도 기록(시각 · 목표일 · HTTP · 행 수 · 가격 채움 · 결과 · 예외 종류 · 키 · 가격 값 없음)은 배치 JSON
+  `krx_attempts` 와 로그에 남는다 — 매 거래일 실제 공개 시각이 쌓인다.
+- **09:20 보강**(`run_krx_only` · 확정 계약 7 · 설계자 승인 RESULT STEP 6): 목표일 시도 1회(T-1 을 이미 받았으면 목표일 조회 0 · 창 빈 날 중 오늘 아직 안 부른 날만 채움 · 위 하루 호출 기록) ·
+  하루 1회 = 목표일을 시도한 실행만 기록으로 막는다(채우기만 한 실행은 막지 않음 · cron 은 하루 1줄 ·
+  `state/market/oci_krx_reinforcement_state.json`) · FDR · 미국 · KOSPI · VIX · 네이버 호출 없음 · 08:10 배치 상태
+  파일을 덮지 않는다 · 08:30 브리핑을 다시 보내지 않는다. 성공하면 09:30 부터 장중 「신규 진입 검토」 정상(대표 27종
+  T-1 행도 모두 있어야 · 장중 급등락 절), 실패하면 그 구역만 계속 생략.
+
+**08:30 시장 브리핑**(`app/market_briefing/flow.py :: assemble_market_briefing` · 러너
+`app/three_push_runtime/runner_market_briefing.py`):
+
+| 항목 | 계약(OPS-03 코드) |
+|---|---|
+| 국내 최신성 | 저장 최신일 == 기대 T-1 일 때만 기초지수 구역을 계산한다(**맨 앞 관문** · lag 숫자 아님). 아니면 구역만 빼고 `국내 기초지수는 직전 거래일 자료를 확인하지 못해 제외했습니다.`(설계자 확정 · `STATUS_PREV_DAY_MISSING`) · T-2 값 · 날짜는 본문에 쓰지 않는다 · 그날은 CSV 갱신 안내를 붙이지 않는다 · 미국 전망은 정상 조건이면 그대로 |
+| 5일 · 20일 | 거래일 **날짜**(`krx_store.resolve_calendar_window`). 최신일 · d5 · d20 중 저장 안 된 날이 있거나 캘린더 없는 해의 빈 평일이 창에 있으면 구역을 닫는다(`기초지수 정보는 최신성 조건을 충족하지 않아 제외했습니다.`) — 6 · 21일 전 값으로 밀지 않는다 |
+| 대표 ETF · 장중 설정 | 읽지 않는다(설계자 RESULT STEP 2 · 시장 브리핑과 장중 설정 장애를 묶지 않는다). 기초지수 커버리지는 기존 관문으로 판정한다 — 판정 창 · 전 종목 조인 95%(`meta_gate.MIN_JOIN_COVERAGE`) · 그룹마다 세 날짜(최신 · d5 · d20) 종가가 있는 종목 2개 미만이면 그 그룹만 뺀다(`evidence.MIN_TICKERS_PER_INDEX`). 기초지수에 필요한 종목만 따로 센 새 관문은 두지 않았다 |
+| 판정 창 | 저장된 판정은 기대 T-1 과 그 거래일 날짜 d20 의 것일 때만 쓴다(아니면 `META_GATE_STALE` · C-3) |
+| S&P500 | 저장 최신 세션 == **가장 최근 완료 NYSE 세션**(`app/us_trading_calendar.py` · 뉴욕 16:00 · 조기 폐장일은 CSV `close_et` 뒤) 이고 직전 행 == 그 바로 앞 세션일 때만 전망. 아니면 기존 문장 `미국시장 방향 근거가 최신성 조건을 충족하지 않아 최근 강한 기초지수만 확인합니다.` · 그해 NYSE 파일이 없거나 손상이면 평일 fallback. 실행 기록 `sp500_asof` · `sp500_expected_session` · `sp500_fresh` · `sp500_session_check` |
+| 배치 실패 고지 | 입력 = 배치 상태 JSON 없음 · `refresh_date_kst` ≠ 오늘 · `stage_status.fdr_price` ≠ `ok`(옛 파일은 `status == failed`). KOSPI · VIX · IXIC · SOX · US500 · KRX 결과는 넣지 않는다(PC 전용 · 또는 본문 자기 줄). 본문 끝(CSV 안내보다 앞) 1줄 `※ 운영 안내: 오늘 아침 보유 종목 시세 갱신이 끝나지 않아 고점 대비 값이 빠질 수 있습니다.`(사용자 문구 확인 `APPROVED` · 설계자 RESULT 2026-09-30). 낼 내용이 없는 날(전망 불가 + 기초지수 없음)은 머리 + 이 1줄만 보낸다(예전 미발송 · 설계자 승인 RESULT STEP 6 · CSV 안내는 붙이지 않는다). fingerprint 는 고지와 무관 · 하루 1회는 기존 일 단위 registry. **가격 기준 개정(C-1) 뒤 사실**: FDR 가격 단계만 실패한 날의 보유 영향은 사실상 없다(ETF 과거 종가 = KRX 표 · 개별주 파생값은 늘 닫힘) — 그날 고지는 과잉일 수 있다. 배치가 아예 돌지 않은 날(상태 JSON 없음 · `refresh_date_kst` ≠ 오늘)은 KRX 단계도 돌지 않아 ETF `고점 대비` 가 빠진다. 발동 입력에서 FDR 단계를 뺄지는 설계자 결정 대상이다(PLAN STEP 7-3 입력이라 그대로 둠) |
+| 재발송 | 08:30 브리핑은 나중에 다시 보내지 않는다(09:20 보강은 장중용) |
+
+**거래일 달력 준비 상태**(확정 계약 11): 배치 JSON `calendar_readiness` · PC 「OCI 운영·적용」 ① `거래일 달력` 행
+(§5.2). 한국 `krx_trading_days_YYYY.csv` · 미국 `nyse_holidays_YYYY.csv` 올해 · 다음 해 — 올해 없음 · 12월에 다음 해
+없음 = 경고 · 11월 = 점검 안내. **한국 2027 캘린더가 아직 없다** — 2026-11-30 까지 준비하지 않으면 12-01 부터 경고,
+2027-01-01 부터 평일 fallback(평일 휴장 다음 날 국내 구역 생략 · 휴장이 낀 창은 fail-closed).
+
+목업(생성기 출력 · ⑧ 국내 T-1 없음 · ⑨ 배치 실패 고지 · ⑩ 고지만 담은 본문):
+`docs/ai_result/POC3/POC3-OPS-02B-2_MARKET_BRIEFING_MOCKUPS.md` 「POC3-02D-OPS-03 재생성본」 절. rollback: 코드 revert +
+OCI pull → crontab 원복(PLAN STEP 9-4).
 
 #### 장중 급등락 — **운영 중** (2026-09-21 23:48 활성화)
 
@@ -476,6 +629,39 @@ OPS-02 배포로 **정책과 무관하게** 바뀐 것도 둘 있었다.
   (통합 또는 구 본문)의 분할 전 길이를 남긴다. 발송 여부는 status · `telegram_sent`
   로 본다(길이 > 0 ≠ 발송). 배포 전 행의 0 은 미기록이다(고치지 않는다).
 
+**`POC3-02D-OPS-03` 정정** (확정 계약 5 · 8 · 13 · 저장소 코드 기준 · OCI 반영 전 — 배포 뒤 첫 장중부터. 그 전까지
+OCI 는 KRX 표 최신 행을 날짜 검사 없이 읽어 5일 · 20일이 매 거래일 T-2 기준이다):
+
+- **추세 기준 = 기대 T-1**(`sector_signal.resolve_trend_basis` · `TrendBasis`): 무조정 표 최신 저장일
+  (`latest_unadjusted_date`)이 T-1 이 아니거나, d5 · d20 날짜가 대표 · 대체 이력에 하나도 없거나, 캘린더 없는 해의
+  빈 평일이 창에 있으면 **「신규 진입 검토」 구역 전체를 생략**한다. 대표에 T-1 종가가 없으면 구역 전체 생략(아래
+  대표 커버리지 관문) · 대체 종목에 T-1 종가가 없으면 그 사업군만(`ticker_not_t1`) · d5 · d20 날짜 종가가 없으면 그
+  사업군만(`short_history`) 뺀다. 「진입 회피」(장중 급락 · 추격 주의 · 당일 등락률)와 보유 급등락(네이버 실시간)은
+  그대로다.
+- **대표 커버리지 관문**(설계자 RESULT STEP 2 · `sector_signal.select_sector_signals` · 배치 기록과 같은 규칙
+  `app/intraday_config/representatives.py :: evaluate_coverage`): 활성 대표 27종 **전부**가 KRX 표 이력에 기대 T-1 종가를
+  가질 때만 「신규 진입 검토」를 낸다. 아니면 구역 전체를 생략한다(회피 · 보유 급등락 그대로). 생략 사유 순서 =
+  `trend_not_t1`(추세 기준일 미확인) → `intraday_config_unavailable`(사업군 목록을 모름) · `representative_missing`
+  (상장폐지 등 · 폐지 전 창 행이 남아도 T-1 행이 없으면 생략). 실행 기록 `intraday_entry_omitted_reason` ·
+  `intraday_representatives`(없는 대표 목록 포함). 생략 회차는 아래 15:40 생략 집계에 들어가고, 그 회차의 직전 진입
+  검토 관측은 회복으로 적지 않는다(D2 보존 목록 `intraday_alert_flow.ENTRY_UNEVALUABLE_REASONS`).
+- **설정 읽기 실패**(설계자 RESULT STEP 2 · `intraday_alert_flow.config_read_error`): 활성 설정을 읽다 예외가 나거나
+  payload 가 깨지면 `skip_reason` · `intraday_entry_omitted_reason` = `intraday_config_unavailable` · `intraday_config_error`
+  (예외 종류)를 남긴다(발송 동작 불변 · 활성 버전 없음 · `enabled=false` 는 예전대로 `policy_disabled`). 이 틱은 집계
+  틱을 쓰지 않는다(관측 없이 상태를 쓰면 직전 관측이 회복으로 기록될 위험 · D2). 15:40 에도 설정을 못 읽으면 요약 줄이
+  빠지고 실행 기록 `intraday_checkup_summary_omitted = intraday_config_unavailable` 을 남긴다. 정책은 읽혔는데 사업군
+  목록이 없으면 진입 검토를 생략으로 세고 사업군 평가는 불가로 둔다.
+- 5일 · 20일 = 거래일 **날짜**(캘린더) 종가(`trend_returns`) — 저장 행 위치로 세지 않는다(6 · 21일 전 값으로 밀지 않는다).
+- 구역을 낼 때 구역 머리 바로 다음 줄 `추세 기준 YYYY-MM-DD 종가`(설계자 확정 문구 · `TREND_BASIS_LINE`) —
+  본문 끝 '기준' · `현재가 … · 직전 종가 …` 줄과 따로다.
+- 생략한 회차는 집계 틱에 `entry_omitted: true`(참일 때만 · 스키마 버전 불변) → 15:40 요약 끝
+  ` · 신규 진입 검토 생략 N회`(`ENTRY_OMITTED_SUMMARY` · 설계자 승인 RESULT STEP 6 · 사용자 문구 확인 `APPROVED` 2026-09-30 · 0 이면 줄이 예전과 byte 동일).
+  매 회차 실행 기록에 `intraday_trend_basis` · `intraday_entry_omitted`. 틱마다 경고하지 않는다.
+- 추세 기준일을 확인하지 못해 평가 못 한 진입 검토 항목은 회복으로 기록하지 않는다(직전 관측이 진입 검토였던
+  항목만 보존 · 회피 항목은 당일 등락률로 정상 평가).
+- 보유 급락 '기준' 줄 `직전 종가` 날짜 · 구 본문 고점 대비 구간도 거래일 캘린더(C-1 과 같은 축).
+- 09:20 KRX 보강(C-4)이 성공하면 09:30 부터 진입 검토가 정상으로 돌아온다(대표 27종 T-1 행이 모두 있을 때).
+
 **활성 PARAM** `param-20260907T152806-255383` 의 `enabled_push_kinds` 는 4종이다
 (`market_briefing` · `holdings_briefing` · `spike_or_falling_alert` ·
 `holdings_risk_alert`). `spike_or_falling_alert` 는 PARAM 에 남아 있으나 cron 이
@@ -519,8 +705,8 @@ reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없�
 
 ## 10. 자동 운영 구조 (§10.8)
 
-- scheduler: **OCI crontab 활성** → Market 08:00·Holdings 09:15/12:30/15:40·배치 07:20·`holdings_risk_alert` 7틱(09:30~15:20). 폐지된 `spike_or_falling_alert` 는 cron 0건(2026-09-21 실측). RUNTIME_VERIFIED.
-- 최신화: `run_oci_market_data_batch.py`(OCI, crontab 07:20 실측 실행) + PC `/market/refresh`·`/holdings/market/refresh`.
+- scheduler: **OCI crontab 활성** → Market 08:00·Holdings 09:15/12:30/15:40·배치 07:20·`holdings_risk_alert` 7틱(09:30~15:20). 폐지된 `spike_or_falling_alert` 는 cron 0건(2026-09-21 실측). RUNTIME_VERIFIED. `POC3-02D-OPS-03` 배포 회차에 배치 08:10 · Market 08:30 · 09:20 KRX 전용 보강 1줄 추가로 바뀐다(아직 적용 전 · §9 C-4).
+- 최신화: `run_oci_market_data_batch.py`(OCI, crontab 07:20 실측 실행 · OPS-03 코드는 08:10 전체 + 09:20 `--krx-only`) + PC `/market/refresh`·`/holdings/market/refresh`.
 - 평가: `holdings_market_evidence.build_holdings_market_evidence`(PC API), OCI 평가는 로그상 35종목 처리 RUNTIME_VERIFIED.
 - artifact/Telegram/freshness/중복: OCI runner 소스에 존재, **crontab 으로 실행·발송됨**(`telegram_sent:true`) RUNTIME_VERIFIED.
 - 로그: `logs/low_freq_push_cron.log`(OCI) — 사용자 tail 로 Aug 5 활동·holdings 35종목 확인.
@@ -533,7 +719,7 @@ reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없�
 |---|---|
 | today_check / holdings / holdings_manage / holdings_evidence / market_discovery / workbench / approval | IMPLEMENTED_UNVERIFIED (운영 의도, 런타임 데이터 의존) |
 | diagnostics(개발·실험용) | DIAGNOSTIC (미리보기/샘플·개발 호환·LEGACY 대시보드). 기동 OCI 상태와 DataStatus 는 2026-08-16 에 `oci_status` · `data_status` 정상 메뉴로 분리(§5.1 주석) |
-| approval ① 지금 OCI 상태(OCI 운영·적용) | 운영 조회 — 기동 시 1회 읽은 OCI 상태 · 필수 판정 운영 3종(§5.2) · 같은 화면 ② 는 OCI 적용(운영) |
+| approval ① 지금 OCI 상태(OCI 운영·적용) | 운영 조회 — 기동 시 1회 읽은 OCI 상태 · 필수 판정 운영 3종(§5.2) · `거래일 달력` 준비 행(`POC3-02D-OPS-03` 코드) · 같은 화면 ② 는 OCI 적용(운영) |
 | `DashboardView`(→diagnostics 내 LEGACY) | LEGACY. 정상 메뉴 진입점 제거됨(POC3-07) |
 | `oci_startup_status.py`·`holdings_oci_apply.py`(POC3-07 신규) | 운영 — 기동 시 1회 OCI 읽기(읽기전용) · Holdings 단일 payload OCI 적용 |
 | `frontend .../_orphaned/HoldingsClient.tsx`, `_orphaned/HoldingsMarketEvidenceCard.tsx` | ORPHANED (참조 끊김, POC3-05) |
@@ -548,11 +734,11 @@ reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없�
 
 ## 12. 현재 운영 방법 (소스로 가능한 실제 절차)
 
-- **평상시 자동 운영**: **정상 작동** — OCI crontab 이 시장데이터 배치(07:20)·Holdings PUSH(09:15/12:30/15:40)·Market(08:00)·보유 급락 알림 `holdings_risk_alert`(7틱)를 자동 실행하고 Telegram 발송(`telegram_sent:true`, 사용자 수신 확인). RUNTIME_VERIFIED(2026-08-05 · 7틱 구성은 2026-09-21 실측). 폐지된 `spike_or_falling_alert` 는 cron 0건.
+- **평상시 자동 운영**: **정상 작동** — OCI crontab 이 시장데이터 배치(07:20)·Holdings PUSH(09:15/12:30/15:40)·Market(08:00)·보유 급락 알림 `holdings_risk_alert`(7틱)를 자동 실행하고 Telegram 발송(`telegram_sent:true`, 사용자 수신 확인). RUNTIME_VERIFIED(2026-08-05 · 7틱 구성은 2026-09-21 실측). 폐지된 `spike_or_falling_alert` 는 cron 0건. `POC3-02D-OPS-03` 배포 회차부터 배치 08:10 · Market 08:30 · 09:20 KRX 전용 보강(§9 C-4 · 아직 적용 전).
 - **Holdings 변경**: 종목 관리 화면 저장(PC 로컬) + **POC3-07: OCI 적용 버튼(`POST /holdings/apply`)** 으로 화면에서 OCI 반영. 저장·적용 별도 동작(Q3). 실전 write 는 사용자 명시 클릭(Q11).
 - **PARAM·seed 변경**: PC 생성 후 `sync_three_push_runtime_param.py` 수동 실행 필요.
 - **수동 운영 점검**: today_check/approval 화면에서 PC 조회 가능. OCI 실행 결과를 PC 화면이 직접 가져오는 경로는 미확인(§9 프로세스 D).
-- **최신화 실패 확인**: PC `/market/refresh/status` 로 PC 갱신 상태 확인 가능. OCI 배치 실패는 OCI `logs/low_freq_push_cron.log` 로 확인(사용자 tail 로 실측 가능).
+- **최신화 실패 확인**: PC `/market/refresh/status` 로 PC 갱신 상태 확인 가능. OCI 배치 실패는 OCI `logs/low_freq_push_cron.log` 로 확인(사용자 tail 로 실측 가능). 시장 데이터 배치 자체의 로그는 `logs/oci_market_data_batch.log`(배치 cron 출력 · `setup_logging(log_filename="oci_market_data_batch.log")`) · 상태 파일 `state/market/oci_market_data_batch_state.json`. `POC3-02D-OPS-03` 코드부터 뒤 PUSH 에 영향을 주는 배치 실패(배치 미완료 · FDR 가격 단계 실패)는 08:30 시장 브리핑 끝 1줄로 하루 1회 알린다(C-4). 대표 ETF 커버리지 · 창 빈 날 채우기 · KOSPI 재시도 기록은 같은 상태 파일(`krx_representatives` · `representatives_refresh_due` · `krx_backfill` · `kospi_attempts` · `kospi_retry`)과 09:20 보강 기록 `state/market/oci_krx_reinforcement_state.json` 에만 남는다(화면 · Telegram 표시 없음 · §7.2).
 - **Telegram 미수신 확인**: **정식 경로 = OCI crontab 이 정상 발송 중**. PC 개발자 세션에서 PUSH 가 안 가는 것은 정상 — PC 는 `telegram_send` 직접 호출(비정식·수동)만 가능하고, 자동 발송은 OCI 담당이기 때문.
 
 > 미적용/미검증으로 잘못 단정하지 않는다. OCI 자동 운영은 사용자 실측으로 RUNTIME_VERIFIED.
@@ -584,7 +770,8 @@ reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없�
 4. **KOSPI 데이터 정상 (이전 의심 철회)**
    - 산식 정확, 저장값(6,690대)도 **실제 지수와 일치**(사용자 실측 2026-08-05 종가 6,598.26). today_check·PUSH 값의 큰 변동은 실제 시장 움직임을 정직하게 반영한 것.
    - 상태: 코드·데이터 모두 정상(2026-08-05 기준). 초안의 "품질 의심"은 컷오프 기준 오판이었음(정정). 단 아래 09-18 정지 · 09-17 행 불일치는 별개(`POC3-02D-OPS-03`).
-   - **단, 2026-09-18 자료부터 적재가 멈췄다**(upstream 캐시 `2026.csv` 정지 · §8). 값이 틀린 것이 아니라 새 날짜가 들어오지 않는다(단 09-17 행은 공식 종가와 다르다 — §8 · `POC3-02D-OPS-03` 에서 정정). C7(2026-09-27 검증)이 OCI 에 pull 된 뒤 07:20 배치부터 배치 기록에 드러난다 — 로그 `kospi=failed(as_of=…)` · 실행 결과 `benchmark_refresh.kospi.error` 의 `source_stale:…`. 가격 적재 등 배치의 다른 단계가 성공한 날이면 배치 status 가 `success_with_benchmark_failure`(exit 1)다. 화면(`POC3-02D-OPS-02` 3-4 · 검증자 VERIFIED 2026-09-29 — PC 는 2026-09-28 부터 이 코드로 떠 있고 같은 날 사용자 화면 확인): 「오늘의 투자 점검」 KOSPI 카드 '코스피 수익률·위치' 와 「요즘 잘 오르는 ETF」 시장 배경 카드 '(KS11) KOSPI (보조)' 가 같은 생성기(`KospiStatusNote`)로 상태를 보인다. 상태는 백엔드가 정한다(`api_market_topn_service.kospi_display_state` — 저장 KOSPI · KS11 적재 기록 · C7 거래일 지연 · 운영 판정 · 오늘 거래일 여부). 문구(설계자 확정 2026-09-28): 정상 = 배지 · 사유 없이 `KOSPI 기준일 YYYY-MM-DD` · `기준일 지연` = `KOSPI 기준일 … · N거래일 지연` + 'KOSPI 원자료가 최근 거래일까지 갱신되지 않았습니다.' · `자료원 확인 실패`(마지막 적재가 호출 실패 · 화면 요청 실패) · `수집 결과 없음`(기준일이 없으면 '저장된 KOSPI 자료가 없습니다.' · 기준일은 있으나 수익률이 없으면 'KOSPI 수익률을 계산할 자료가 충분하지 않습니다.' — 설계자 RESULT M1) · `아직 평가되지 않음`(KS11 적재 기록도 저장 자료도 없음) · 화면 요청 중은 로딩 `확인 중` · 휴장일은 중립 `휴장일` 배지(직전 거래일 자료는 지연으로 경고하지 않는다). N 은 C7 공용 거래일 계산값이고 화면은 계산하지 않는다(KODEX200 적재일 축 lag 와 섞지 않는다). 운영 판정(`compute_kospi_metrics` · `MAX_STALE_TRADING_DAYS=1`)은 그대로다. 영문 KOSPI 경고 줄은 화면에서만 숨긴다(응답 `warnings` 불변 · KODEX200 경고는 보인다).
+   - **단, 2026-09-18 자료부터 적재가 멈췄다**(upstream 캐시 `2026.csv` 정지 · §8). 값이 틀린 것이 아니라 새 날짜가 들어오지 않는다(단 09-17 행은 공식 종가와 다르다 — §8 · `POC3-02D-OPS-03` 에서 정정). C7(2026-09-27 검증)이 OCI 에 pull 된 뒤 07:20 배치부터 배치 기록에 드러난다 — 로그 `kospi=failed(as_of=…)` · 실행 결과 `benchmark_refresh.kospi.error` 의 `source_stale:…`. 가격 적재 등 배치의 다른 단계가 성공한 날이면 배치 status 가 `success_with_benchmark_failure`(exit 1)다. 화면(`POC3-02D-OPS-02` 3-4 · 검증자 VERIFIED 2026-09-29 — PC 는 2026-09-28 부터 이 코드로 떠 있고 같은 날 사용자 화면 확인): 「오늘의 투자 점검」 KOSPI 카드 '코스피 수익률·위치' 와 「요즘 잘 오르는 ETF」 시장 배경 카드 KOSPI 칸(제목은 `POC3-02D-OPS-03` 부터 `KOSPI (보조)`)이 같은 생성기로 상태를 보인다(`POC3-02D-OPS-03` 부터 판정 · 문구는 `frontend/lib/kospiStatus.ts` · 배지 · 상태 줄 컴포넌트는 `KospiStatusNote`). 상태는 백엔드가 정한다(`api_market_topn_service.kospi_display_state` — 저장 KOSPI · KS11 적재 기록 · C7 거래일 지연 · 운영 판정 · 오늘 거래일 여부). 문구(설계자 확정 2026-09-28): 정상 = 배지 · 사유 없이 `KOSPI 기준일 YYYY-MM-DD` · `기준일 지연` = `KOSPI 기준일 … · N거래일 지연` + 'KOSPI 원자료가 최근 거래일까지 갱신되지 않았습니다.' · `자료원 확인 실패`(마지막 적재가 호출 실패 · 화면 요청 실패) · `수집 결과 없음`(기준일이 없으면 '저장된 KOSPI 자료가 없습니다.' · 기준일은 있으나 수익률이 없으면 'KOSPI 수익률을 계산할 자료가 충분하지 않습니다.' — 설계자 RESULT M1) · `아직 평가되지 않음`(KS11 적재 기록도 저장 자료도 없음) · 화면 요청 중은 로딩 `확인 중` · 휴장일은 중립 `휴장일` 배지(직전 거래일 자료는 지연으로 경고하지 않는다). N 은 C7 공용 거래일 계산값이고 화면은 계산하지 않는다(KODEX200 적재일 축 lag 와 섞지 않는다). 운영 판정(`compute_kospi_metrics` · `MAX_STALE_TRADING_DAYS=1`)은 그대로다. 영문 KOSPI 경고 줄은 화면에서만 숨긴다(응답 `warnings` 불변 · KODEX200 경고는 보인다).
+   - **`POC3-02D-OPS-03` 정정**(확정 계약 9 · 저장소 코드 기준 · PC 화면은 PC 백엔드 · 프론트가 이 코드로 뜬 뒤 · OCI 적재는 배포 뒤): 자료원 KRX `idx/kospi_dd_trd` 공식 종가(§8). **최신 = 기준일 == 기대 T-1** — C7 `lag ≤ 1` 은 KOSPI 에서 폐기(T-2 는 `기준일 지연`). 배치 적재 판정 · 화면 API 경로의 계산(`compute_kospi_metrics` 에 `today_kst` 를 넘길 때) · `kospi_display_state`(최신 = 운영 판정이 stale 아님 + `kospi_freshness`)가 같은 함수를 쓴다. 적재 기록 source 는 `KRX_OPEN_API/idx_kospi_dd_trd`(옛 KS11 기록은 읽지 않는다). 다른 `compute_topn` 호출부(보유 evidence · draft · ML 과거 재현)는 옛 판정 그대로다(설계자 승인 RESULT STEP 6 — T-1 판정은 운영 화면 API 에만 · 과거 재현은 평가 기준일을 따로 쓴다). 같은 판정 · 문구를 더 쓰는 곳: 「코스피 가격 흐름」 차트(배지 · 기준 줄 · 선 경고색 · §5.2) · AI 복사 텍스트 `[시스템 시장 판정]` KOSPI 줄(예전 `데이터 없음 (N/A)` 대신 `{배지} · {기준 줄} · {사유}` · 정상 · 휴장일은 수익률 줄 `- KOSPI 보조 기준: 20거래일 …, 60거래일 … · 출처: 한국거래소(KRX)` — 출처는 값을 싣는 줄에만) · AI 세션 · ETF 노출 draft 스냅샷 `market_context_snapshot.kospi` 에 `as_of_date` · `display_state` · `state_text`(기존 키 불변) · LEGACY 대시보드(「개발·실험용」) 영문 KOSPI 경고 숨김(`isKospiWarning` · KODEX200 경고는 그대로) · 정비 큐 KOSPI 항목(§5.2). **설계자 RESULT STEP 4 반영**(2026-09-30 · 저장소 코드 기준 · 보완 화면 사용자 실화면 확인 PASSED 2026-10-01): 시장 배경 카드 제목 `KOSPI (보조)`(`KS11` 제거) · 출처 `출처: 한국거래소(KRX)`(상수 `KOSPI_SOURCE_LINE` · 시장 배경 카드 KOSPI 칸 맨 아래 · 「오늘의 투자 점검」 KOSPI 카드 하단 줄 · AI 복사 텍스트 값 줄 끝 · KRX 약관 제10조③) · KOSPI 카드 하단 `마지막 자료 기준일` = KOSPI `as_of_date`(예전 KODEX200 기준일 · §5.2). **STEP 5 의존 방향**: 판정 · 문구 생성기(`kospiStatusView` · `kospiStatusText` · `kospiValuesUsable` · 배지 · 사유 문구표 · `KOSPI_SOURCE_LINE`)는 `frontend/lib/kospiStatus.ts`(React 없음)에 있다 — React 컴포넌트(`KospiStatusNote` · `today/KospiChart.tsx` · `today/KospiHeadline.tsx` · `MarketContextCard` · `today/maintenanceQueue.ts` · `TransferToAISessionsCard`)와 AI 복사 텍스트(`lib/marketDiscoveryCopyText.ts` · `lib/etfExposureDraft.ts`)가 lib 를 가져온다. `frontend/lib` 는 `app/components` 를 가져오지 않는다 — `frontend/eslint.config.mjs` 의 `lib/**` `no-restricted-imports`(정적 import · re-export) + `frontend/lib/dependencyDirection.test.ts`(lib 아래 모든 `.ts/.tsx` · 동적 import · require 포함). 문구는 옮기기 전과 같다. PC DB 는 OCI 와 따로라, 그날 08:00(KRX 공개) 뒤에 PC 수동 갱신을 하지 않으면 PC 화면의 KOSPI 는 `기준일 지연` 으로 보인다(PLAN STEP 5-7).
 
 5. **DUPLICATED OCI PUSH runner** (정식 runtime vs package fallback) — 정리 대상.
 
@@ -625,7 +812,7 @@ reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없�
 - PC 배포 revision · OCI 배포 revision(정확한 커밋 sha): UNKNOWN.
 - 로그의 `private_fields_exposed` 항목: **소스 확인 완료(2026-08-06)** — 값을 노출하는 필드가 아니라 `app/runtime_evidence/diagnostics.py :: detect_private_values_exposed` 로 개인값 노출 여부를 실측 스캔한 **탐지 boolean**(하드코드 False 금지 가드). 값 자체는 민감정보 아님. 단 실제 `true` 관측 이력(=실제 노출 발생) 조사는 런타임 로그 분석 BACKLOG.
 - `GET /runs`(run 목록)의 실제 소비자: UNKNOWN(FE 는 `/runs/{id}` 단건만 호출). 나머지 `/apply`·`/state`·`/run`·`/decision-draft/preview` 는 FE 호출 확인됨(§6.2 정정).
-- `market_data.sqlite` KOSPI 데이터: **정상 확인됨**(실제 지수와 일치, 2026-08-05 실측). 원천 파이프라인 자체의 세부 검증은 별도지만 값 정합은 확인. 단 2026-09-18 자료부터 upstream 정지로 새 행이 없고, 09-17 행은 공식 종가와 다르다(§8 · `POC3-02D-OPS-03` 에서 정정).
+- `market_data.sqlite` KOSPI 데이터: **정상 확인됨**(실제 지수와 일치, 2026-08-05 실측). 원천 파이프라인 자체의 세부 검증은 별도지만 값 정합은 확인. 단 2026-09-18 자료부터 upstream 정지로 새 행이 없고, 09-17 행은 공식 종가와 다르다(§8 · `POC3-02D-OPS-03` 에서 정정). OCI 전 행 대조(2026-09-30 읽기 전용): 공식 기준값과 공통 2,716일 중 불일치는 09-17 하루뿐 — 정정은 OPS-03 배포 뒤 첫 08:10 배치(§8).
 
 ---
 
@@ -645,11 +832,12 @@ reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없�
 
 | symbol | 역할 |
 |---|---|
-| `app/runtime_evidence/sector_signal.py` | 사업군 대표 ETF 판정(§4-2 표) · 커버리지 Gate · provider 장애 구분 |
+| `app/runtime_evidence/sector_signal.py` | 사업군 대표 ETF 판정(§4-2 표) · 커버리지 Gate · provider 장애 구분 · 추세 기준 T-1 · 거래일 날짜 5일 · 20일(`resolve_trend_basis` · `TrendBasis` · `trend_returns` · `latest_unadjusted_date` · `POC3-02D-OPS-03`) · 대표 27종 T-1 커버리지 관문(`select_sector_signals` · `SectorOutcome.entry_omitted_reason` · `representatives` · 설계자 RESULT STEP 2) |
+| `app/intraday_config/representatives.py` | 대표 목록 추출 · T-1 커버리지 판정(`representative_tickers` · `evaluate_coverage` · `RepresentativeCoverage` · 상태 `ok` · `intraday_config_unavailable` · `representative_missing`) — 장중 관문과 08:10 · 09:20 배치 기록이 같이 쓴다(`POC3-02D-OPS-03` 설계자 RESULT STEP 2) |
 | `app/runtime_evidence/sector_signal_state.py` | 억제·cooldown · 관측 3상태 저장(평가 불가 보존) · 전달 상태(`last_delivered_state`) 기준 억제(`POC3-02D-OPS-02`) |
-| `app/runtime_evidence/intraday_alert_flow.py` | 회차 조립 · 대체 조회 · 구역 상한 · 일일 상한 |
-| `app/runtime_evidence/intraday_alert_render.py` | 「장중 급등락」 본문 · 15:40 요약 한 줄 |
-| `app/runtime_evidence/intraday_checkup_tally.py` | 회차 집계(발송 상태와 별개 파일) |
+| `app/runtime_evidence/intraday_alert_flow.py` | 회차 조립 · 대체 조회 · 구역 상한 · 일일 상한 · 설정 읽기 실패 구분(`config_read_error` · `intraday_config_unavailable`) · D2 보존 목록(`ENTRY_UNEVALUABLE_REASONS` · `POC3-02D-OPS-03`) |
+| `app/runtime_evidence/intraday_alert_render.py` | 「장중 급등락」 본문 · 15:40 요약 한 줄 · `TREND_BASIS_LINE` · `ENTRY_OMITTED_SUMMARY`(`POC3-02D-OPS-03`) |
+| `app/runtime_evidence/intraday_checkup_tally.py` | 회차 집계(발송 상태와 별개 파일) · 틱 `entry_omitted`(`POC3-02D-OPS-03`) |
 | `holdings_risk_flow :: apply_intraday_records` | 운영 Gate 통과 회차만 관측·집계 기록 |
 | `app/intraday_config/generator.py :: CONFIRMED_POLICY` | PC 가 번들에 담는 정책 12키 (OPS-03) |
 | `app/intraday_config/schema.py :: validate` | `enabled=true` 면 12키 필수 · 파생 키 2개 고정 검사 |
@@ -666,10 +854,14 @@ reason=push_kind_disabled · telegram_attempted=false`. **현재는 해당 없�
 - Evidence/composer: `app/holdings_market_evidence.py :: build_holdings_market_evidence, _build_judgment_summary` · `app/market_summary_composer.py :: compose_judgment_summary, select_top_holdings`
 - 시장/국면: `app/market_topn.py :: compute_topn` · `app/market_regime.py :: compute_market_context, compute_kospi_position_metrics, compute_regime_streak`
 - **08:00 공식 CSV(POC3-02D-OPS-01 C1)**: `app/market_briefing/official_csv.py :: resolve_official_csv, check_file` · `app/market_briefing/meta_gate.py :: evaluate_consistency, apply_refresh_due, carry_refresh_due, verdict_stale_reason` · `app/market_briefing/flow.py :: assemble_market_briefing`(판정 창 검사 · 안내 줄) · `render.py :: CSV_REFRESH_NOTICE, append_refresh_notice` · PC 전용 검증 `scripts/check_krx_etf_basic_csv.py`
-- **거래일 lag 공용(C7)**: `app/trading_day_lag.py :: trading_axis_before, lag_on_axis, window_lag_trading_days, benchmark_lag_trading_days` ← `market_briefing/flow.py`(같은 이름 유지) · `market_benchmark_store.py :: refresh_kospi_benchmark` · `api_market_topn_service.py :: with_kospi_display`
-- **KOSPI 화면 상태(POC3-02D-OPS-02 3-4)**: `app/api_market_topn_service.py :: kospi_display_state, with_kospi_display` ← `app/api_market_topn.py :: get_market_topn_latest` · `frontend/app/components/KospiStatusNote.tsx :: kospiStatusView, KospiStatusBadges, KospiStatusLines` ← `today/KospiHeadline.tsx` · `MarketContextCard.tsx`
-- **OCI 운영·적용 화면**: `ApprovalTelegramView.tsx` · `OciStatusView.tsx`(① 패널) · `today/OciStatusOneLine.tsx`(첫 화면 한 줄) · `app/oci_startup_status.py :: _REQUIRED_PUSH_KINDS`
-- 메시지: `app/market_briefing/render.py :: render_market_briefing`(08:00 · 2026-09-13~) · `app/runtime_evidence/holdings_risk_render.py`(급락 알림) · `app/draft_message.py :: build_message_text, _render_today_holdings_lines` · `app/three_push_runtime_message_builder.py`
+- **거래일 lag 공용(C7)**: `app/trading_day_lag.py :: trading_axis_before, lag_on_axis, window_lag_trading_days, benchmark_lag_trading_days` ← `market_briefing/flow.py`(같은 이름 유지) · `market_benchmark_store.py :: refresh_kospi_benchmark` · `api_market_topn_service.py :: with_kospi_display`. `POC3-02D-OPS-03` 추가: `expected_previous_trading_day, is_trading_day, trading_days_ending, trading_days_back, trading_window_dates, unconfirmed_days`(기대 T-1 · 거래일 날짜 창 · 캘린더 없는 해의 미확인 평일)
+- **KRX 목표일 수집 · 08:30 · 09:20 (POC3-02D-OPS-03)**: `app/market_briefing/krx_target_sync.py :: sync_krx_target, attempt_plan`(시각표 · 곁 작업 `side_task`) · `app/market_briefing/krx_target_checks.py :: check_response, attempt_once, evaluate_representatives, load_required_representatives`(한 날짜 1회 시도 · 적재 조건 ①③④⑤ · 대표 커버리지 기록) · `app/market_briefing/krx_backfill.py :: fill_missing, read_calls_today, ledger_path_for`(창 빈 날 채우기 · 하루 호출 기록) · `app/market_briefing/krx_store.py :: resolve_calendar_window, CalendarWindow` · `app/market_briefing/krx_sync.py :: judge_and_save_consistency` · `scripts/run_oci_market_data_batch.py :: run, run_krx_only, _krx_stage, _benchmark_stage` · `app/three_push_runtime/market_data_batch.py :: write_batch_state, fdr_request_timeout, FDR_STAGE_TIME_BUDGET_SECONDS, write_krx_reinforcement_state, read_krx_reinforcement_state` · `app/market_briefing/flow.py :: _index_block` · `render.py :: HEADER, STATUS_PREV_DAY_MISSING, BATCH_FAILURE_NOTICE, append_batch_notice, render_notice_only` · `app/three_push_runtime/runner_market_briefing.py :: batch_failure_reasons, _sp500_input`
+- **미국 세션 · 달력 준비 (POC3-02D-OPS-03)**: `app/us_trading_calendar.py :: expected_completed_session, session_check, calendar_readiness, calendar_readiness_for_dir, calendar_readiness_for_names` · `app/oci_startup_status.py :: calendar_job` · `state/market_meta/nyse_holidays_YYYY.csv`
+- **보유 거래일 축 · 가격 기준 (POC3-02D-OPS-03 · 설계자 RESULT STEP 1)**: `app/runtime_evidence/holdings_price_basis.py :: load_basis_history, classify_assets, default_source, naver_previous_close, CONTRACT` ← `holdings_selection_flow.py` · `holdings_risk_flow.py` → `app/runtime_evidence/holdings_selection_source.py :: trading_day_axis, history_dates, load_price_history`(개별주 FDR) · `app/market_briefing/krx_store.py :: read_holdings_etf_prices`(ETF KRX 무조정 · 읽기 전용) · 표시 `holdings_selection_render.py :: _value_cell`(`20거래일 데이터 확인 불가`)
+- **KOSPI 화면 상태(POC3-02D-OPS-02 3-4 · OPS-03 설계자 RESULT STEP 4 · 5)**: `app/api_market_topn_service.py :: kospi_display_state, with_kospi_display` ← `app/api_market_topn.py :: get_market_topn_latest` · 판정 · 문구 `frontend/lib/kospiStatus.ts :: kospiStatusView, kospiStatusText, kospiValuesUsable, KOSPI_SOURCE_LINE` · 컴포넌트 `frontend/app/components/KospiStatusNote.tsx :: KospiStatusBadges, KospiStatusLines` ← `today/KospiHeadline.tsx` · `MarketContextCard.tsx` · 정비 큐 `today/maintenanceQueue.ts :: collectMaintenance` · 의존 방향 검사 `frontend/eslint.config.mjs`(`lib/**` `no-restricted-imports`) · `frontend/lib/dependencyDirection.test.ts`
+- **KOSPI 공식 자료원 · 같은 최신성 (POC3-02D-OPS-03)**: `app/market_benchmark_store.py :: refresh_kospi_benchmark(recheck_latest=), KOSPI_SOURCE, KOSPI_EVIDENCE_DIR, KOSPI_MAX_CALLS_PER_RUN` · `app/market_benchmark_batch.py :: refresh_kospi, overall_status` · KOSPI 재시도 `app/market_benchmark_kospi_retry.py :: KospiRetry, retry_slots, latest_confirmed`(← `scripts/run_oci_market_data_batch.py :: _benchmark_stage` · `krx_target_sync.sync_krx_target(side_task=)`) · `app/market_briefing/krx_sync.py :: _default_kospi_fetcher` · `app/market_benchmark_freshness.py :: kospi_freshness` ← `market_regime.py :: compute_kospi_metrics` · `api_market_topn_service.py :: with_kospi_display, kospi_today_kst` · `market_refresh_service.py`(PC 수동 갱신) · 프론트 `today/KospiChart.tsx` · `lib/kospiStatus.ts :: kospiStatusText, kospiValuesUsable` ← `lib/marketDiscoveryCopyText.ts` · `TransferToAISessionsCard.tsx` · `lib/etfExposureDraft.ts` · `today/maintenanceQueue.ts` · `DashboardView.tsx`(`MarketContextCard.isKospiWarning`)
+- **OCI 운영·적용 화면**: `ApprovalTelegramView.tsx` · `OciStatusView.tsx`(① 패널 · `trading_calendar` 행 라벨 `거래일 달력` · 상태 `준비 필요`) · `today/OciStatusOneLine.tsx`(첫 화면 한 줄) · `app/oci_startup_status.py :: _REQUIRED_PUSH_KINDS, calendar_job`
+- 메시지: `app/market_briefing/render.py :: render_market_briefing`(시장 브리핑 · 2026-09-13~ · 머리 08:30 은 `POC3-02D-OPS-03` 코드) · `app/runtime_evidence/holdings_risk_render.py`(급락 알림) · `app/draft_message.py :: build_message_text, _render_today_holdings_lines` · `app/three_push_runtime_message_builder.py`
 - 발송: `app/three_push_runner_common.py :: telegram_send, _telegram_send_one`
 - 전달: `app/delivery.py :: deliver` · `scripts/sync_three_push_packages.py` · `scripts/sync_three_push_runtime_param.py`
 - OCI runner: `scripts/run_three_push_runtime_oci.py` · `scripts/run_three_push_oci.py` · `scripts/run_oci_market_data_batch.py`

@@ -14,6 +14,7 @@ import type {
   MarketCandidate,
   MarketContext,
 } from "./api";
+import { kospiStatusText } from "./kospiStatus";
 
 // 2026-05-27 FIX (검증자 A-1 NOTE 반영) — schema v2 로 승격.
 // ETF Exposure → AI Sessions 흐름에서 시장 판정 + 후보별 초과수익이 손실되던
@@ -132,10 +133,14 @@ export function toMarketContextSnapshot(
       ma20_position: ctx.kodex200.ma20_position ?? null,
       ma60_position: ctx.kodex200.ma60_position ?? null,
     },
+    // POC3-02D-OPS-03 확정 계약 9 — 화면 KOSPI 카드와 같은 판정 · 문구를 함께 남긴다.
     kospi: {
       status: ctx.kospi.status,
       return_20d_pct: ctx.kospi.return_20d_pct ?? null,
       return_60d_pct: ctx.kospi.return_60d_pct ?? null,
+      as_of_date: ctx.kospi.as_of_date ?? null,
+      display_state: ctx.kospi.display_state ?? null,
+      state_text: kospiStatusText(ctx.kospi),
     },
     candidate_excess_returns: candidates.map((c) => ({
       rank: c.rank ?? null,

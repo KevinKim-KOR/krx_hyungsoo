@@ -20,9 +20,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Sequence
 
+from app.market_briefing.calendar import parse_date
+from app.trading_day_lag import expected_previous_trading_day
+
 # 최신성 허용 폭 — 축의 마지막 거래일로부터 몇 거래일까지 허용하는가.
+# POC3-02D-OPS-03 확정 계약 9 — KOSPI 는 이 폭을 쓰지 않는다(`kospi_freshness`).
 MAX_STALE_TRADING_DAYS = 1
 
 
@@ -114,9 +119,59 @@ def return_by_trading_days(
     return (latest / base - 1.0) * 100.0
 
 
+# ── POC3-02D-OPS-03 확정 계약 9 — KOSPI 최신성 = 기대 T-1 정확 일치 ─────────────
+#
+# 정상 = `kospi_as_of == expected_previous_trading_day`. C7 `lag ≤ 1` 은 KOSPI 에 쓰지
+# 않는다(T-2 는 정상이 아니다). 배치(`market_benchmark_store.refresh_kospi_benchmark`) ·
+# 계산(`market_regime.compute_kospi_metrics`) · API(`api_market_topn_service.
+# with_kospi_display`)가 **이 함수 하나**로 판정한다(확정 계약 9 ⑤).
+
+
+@dataclass(frozen=True)
+class KospiFreshness:
+    """KOSPI 기준일 · 기대 T-1 · 판정."""
+
+    as_of_date: Optional[str]
+    expected_date: Optional[str]
+    is_fresh: bool
+    reason: Optional[str]
+
+    def to_dict(self) -> dict:
+        return {
+            "as_of_date": self.as_of_date,
+            "expected_date": self.expected_date,
+            "is_fresh": self.is_fresh,
+            "reason": self.reason,
+        }
+
+
+def kospi_freshness(
+    as_of: Optional[str], *, today_kst: str, calendar_dir: Optional[Path] = None
+) -> KospiFreshness:
+    """`as_of` 가 `today_kst` 의 직전 거래일(T-1)과 **같은 날짜**인가.
+
+    기대 T-1 은 `trading_day_lag.expected_previous_trading_day`(캘린더 · 없는 해는 평일
+    fallback)다. 기대일보다 뒤인 날짜(당일 장중 행 등)도 정상이 아니다 — 정확 일치만
+    본다. 읽을 수 없는 날짜 · 기대일을 못 정하면 정상이 아니다(모르면 쓰지 않는다).
+    """
+    expected = expected_previous_trading_day(today_kst, calendar_dir=calendar_dir)
+    if not as_of:
+        return KospiFreshness(None, expected, False, "no_data")
+    if parse_date(as_of) is None:
+        return KospiFreshness(as_of, expected, False, "invalid_date")
+    if expected is None:
+        return KospiFreshness(as_of, None, False, "expected_unknown")
+    if as_of == expected:
+        return KospiFreshness(as_of, expected, True, None)
+    reason = "before_expected" if as_of < expected else "after_expected"
+    return KospiFreshness(as_of, expected, False, reason)
+
+
 __all__ = [
     "MAX_STALE_TRADING_DAYS",
     "BenchmarkFreshness",
+    "KospiFreshness",
     "evaluate_freshness",
+    "kospi_freshness",
     "return_by_trading_days",
 ]

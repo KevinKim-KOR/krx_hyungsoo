@@ -1,4 +1,4 @@
-"""POC3-OPS-02B-2 보호 로직 역검증.
+"""POC3-OPS-02B-2 보호 로직 역검증 (POC3-02D-OPS-03 — 08:30 · 국내 T-1 정확 일치로 갱신).
 
 각 가드를 **일시 무력화**했을 때 실제로 나쁜 일이 일어나는지 확인한다. 가드가
 있을 때 통과하는 것만으로는 "그 가드가 일하고 있다" 를 증명하지 못한다.
@@ -57,9 +57,13 @@ def setup(tmp: Path, *, through: str, consistency_status: str = meta_gate.STATUS
         krx_store.upsert_snapshot(
             krx_store.validate_snapshot(rows, expected_date=bas), db_path=db
         )
-    # POC3-02D-OPS-01 R2 Q27 — 08:00 은 **오늘 창**의 판정만 쓴다. 각 가드가 자기
-    # 관문을 시험하도록 적재한 창과 같은 판정 창을 남긴다.
-    window = krx_store.resolve_window(db_path=db)
+    (tmp / "krx_trading_days_2026.csv").write_text(
+        "date\n" + "\n".join(AXIS) + "\n", encoding="utf-8"
+    )
+    # POC3-02D-OPS-01 R2 Q27 — 브리핑은 **오늘 창**의 판정만 쓴다. 각 가드가 자기
+    # 관문을 시험하도록 적재한 창과 같은 판정 창을 남긴다. POC3-02D-OPS-03 — 판정 창
+    # d20 은 08:10 목표일 수집과 같은 **거래일 날짜** 창이다.
+    window = krx_store.resolve_calendar_window(days[-1], calendar_dir=tmp, db_path=db)
     meta_gate.save_consistency(
         meta_gate.ConsistencyResult(
             status=consistency_status,
@@ -68,8 +72,8 @@ def setup(tmp: Path, *, through: str, consistency_status: str = meta_gate.STATUS
             exact_match_count=2 if consistency_status == meta_gate.STATUS_OK else 0,
             join_coverage=1.0 if consistency_status == meta_gate.STATUS_OK else 0.0,
             evaluated_api_basis_date=days[-1].replace("-", ""),
-            evaluated_window_d20_date=window.d20 if window else None,
-            evaluated_at_kst="2026-09-18T07:20:00+09:00",
+            evaluated_window_d20_date=window.d20,
+            evaluated_at_kst="2026-09-18T08:10:40+09:00",
         ),
         tmp / "c.json",
     )
@@ -80,9 +84,6 @@ def setup(tmp: Path, *, through: str, consistency_status: str = meta_gate.STATUS
             "069500,코스피200,KRX,주식,일반,실물(패시브),KODEX 200\n"
             "102110,코스피200,KRX,주식,일반,실물(패시브),TIGER 200\n"
         ).encode("cp949")
-    )
-    (tmp / "krx_trading_days_2026.csv").write_text(
-        "date\n" + "\n".join(AXIS) + "\n", encoding="utf-8"
     )
     return db
 
@@ -120,23 +121,29 @@ record(
     with_g == "non_trading_day" and bool(without.message_text),
 )
 
-# ── ② 창 최신성 Gate ─────────────────────────────────────────────────────────
+# ── ② 국내 기준일 == 기대 T-1 (POC3-02D-OPS-03 확정 계약 6) ──────────────────
+# 옛 ② 는 lag ≤ 1 관문이었다 — T-2 가 늘 통과했다(07:20 수집이 구조적으로 T-2).
+# 이제 T-2(09-16)만 있는 날은 구역을 빼고 설계자 확정 안내 1줄.
 tmp = area()
-db = setup(tmp, through="2026-08-31")  # 12거래일 지연
+db = setup(tmp, through="2026-09-16")  # 실행일 09-18 의 T-2
 out = assemble(tmp, db)
-_leak = "국내" in (out.message_text or "")
+_leak = [x for x in (out.message_text or "").splitlines() if "국내 20" in x]
 with_g = f"index_status={out.diagnostics['index_status']} · 국내 날짜 노출={_leak}"
-orig_lag = flow._window_lag_trading_days
-flow._window_lag_trading_days = lambda latest, **kw: 0  # 항상 최신이라고 거짓말
+orig_exp = flow._expected_previous_trading_day
+# 무력화 — 기대 기준일을 저장 최신일로 둔다(= 옛 관문처럼 T-2 를 받아 준다).
+flow._expected_previous_trading_day = lambda today, **kw: "2026-09-16"
 out2 = assemble(tmp, db)
-flow._window_lag_trading_days = orig_lag
-leaked = [x for x in (out2.message_text or "").splitlines() if "국내" in x]
+flow._expected_previous_trading_day = orig_exp
+leaked = [x for x in (out2.message_text or "").splitlines() if "국내 20" in x]
 record(
-    "② 창 최신성 Gate",
+    "② 국내 기준일 T-1 정확 일치",
     with_g,
-    f"18일 지난 종가로 후보 생성 · 기준줄={leaked}",
-    out.diagnostics["index_status"] == "stale"
-    and bool(out2.diagnostics["index_candidates"]),
+    f"T-2 종가로 후보 생성 · 기준줄={leaked}",
+    out.diagnostics["index_status"] == "prev_trading_day_missing"
+    and not _leak
+    and "직전 거래일 자료를 확인하지 못해" in (out.message_text or "")
+    and bool(out2.diagnostics["index_candidates"])
+    and bool(leaked),
 )
 
 # ── ③ 정합성 Gate (CSV_REFRESH_REQUIRED 면 가격 미사용) ──────────────────────
@@ -283,9 +290,9 @@ record(
 # ⑦-b — 러너 §7 중복 판정 → (중복 아니면) §8 `mark_sent` 를 **같은 키**로.
 PARAM = SimpleNamespace(param_id="ops02b2-param")
 TICKS = (
-    "2026-09-17T08:00:00+09:00",
-    "2026-09-17T08:05:00+09:00",  # 같은 날 재실행
-    "2026-09-18T08:00:00+09:00",  # 다음 거래일
+    "2026-09-17T08:30:00+09:00",  # POC3-02D-OPS-03 — 08:30
+    "2026-09-17T08:35:00+09:00",  # 같은 날 재실행
+    "2026-09-18T08:30:00+09:00",  # 다음 거래일
 )
 
 
@@ -338,8 +345,8 @@ without_7b = [_slot(db7x, t) for t in TICKS]
 dup.resolve_duplicate_slot = orig_slot
 record(
     "⑦-b 같은 날 재실행 차단",
-    f"08:00·08:05·다음날 = {with_7b}",
-    f"분 단위 키면 = {without_7b} (08:05 재실행이 또 나간다)",
+    f"08:30·08:35·다음날 = {with_7b}",
+    f"분 단위 키면 = {without_7b} (08:35 재실행이 또 나간다)",
     with_7b == ["sent", "duplicate_runtime", "sent"]
     and without_7b == ["sent", "sent", "sent"],
 )

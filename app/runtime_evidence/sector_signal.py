@@ -21,6 +21,24 @@
 계산한다. 조정계열은 OCI 에서 하루 41종목만 갱신돼 대표 27개 중 4개만 커버한다
 (PLAN §1-2 실측).
 
+## 추세 기준일 (POC3-02D-OPS-03 · 확정 계약 5 · 8)
+
+5일 · 20일은 **기대 T-1**(`trading_day_lag.expected_previous_trading_day`)과 그
+거래일 **날짜**(d5 · d20)의 종가로 계산한다. 저장 행 위치로 세지 않는다.
+
+```text
+표 최신 저장일 ≠ 기대 T-1          → 「신규 진입 검토」 구역 전체 생략(ENTRY 0건)
+d5 · d20 날짜가 이력 전체에 없음     → 구역 전체 생략(캘린더 없는 해의 빈 평일 포함)
+활성 대표 중 T-1 종가 없는 종목 있음 → 구역 전체 생략(설계자 RESULT STEP 2 · 대표 100%)
+활성 대표 목록을 모름               → 구역 전체 생략(설정을 읽지 못함)
+대체 종목에 T-1 종가 없음           → 그 사업군만 ENTRY 제외
+그 종목에 d5 · d20 날짜 종가 없음   → 그 사업군만 ENTRY 제외(21일 전 값으로 밀지 않는다)
+```
+
+대표 커버리지는 08:10 · 09:20 배치 기록과 같은 규칙(`intraday_config.representatives`)이다.
+
+「진입 회피」(AVOID_*)는 당일 등락률만 쓰므로 그대로 판정한다.
+
 ## 하지 않는 것
 
 - 전체 ETF 장중 조회 (설계 §2 금지)
@@ -33,8 +51,16 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Collection, Optional
 
+from app import trading_day_lag
+from app.intraday_config.representatives import (
+    COVERAGE_CONFIG_UNAVAILABLE,
+    COVERAGE_REPRESENTATIVE_MISSING,
+    RepresentativeCoverage,
+    evaluate_coverage,
+    representative_tickers,
+)
 from app.runtime_evidence.holdings_risk import usable_day_return
 from app.runtime_evidence.holdings_selection import normalize_pct
 
@@ -56,6 +82,12 @@ REASON_SHORT_HISTORY = "short_history"
 REASON_HELD = "held"
 REASON_LOW_COVERAGE = "low_coverage"
 REASON_PROVIDER_DOWN = "provider_down"
+# POC3-02D-OPS-03 — 추세 기준일 미확인으로 **진입 검토만** 평가하지 못했다.
+REASON_TREND_NOT_T1 = "trend_not_t1"  # 표 최신일 ≠ 기대 T-1 · 창 빈 날 (구역 생략)
+REASON_TICKER_NOT_T1 = "ticker_not_t1"  # 그 종목에 T-1 종가 없음
+# 설계자 RESULT STEP 2 — 대표 커버리지 미달로 「신규 진입 검토」 구역 생략.
+REASON_CONFIG_UNAVAILABLE = COVERAGE_CONFIG_UNAVAILABLE
+REASON_REPRESENTATIVE_MISSING = COVERAGE_REPRESENTATIVE_MISSING
 
 # 설계자 §14-5 — primary 가 **이 비율 이상** 실패하면 provider 단위 장애로 보고
 # 대체 조회를 한 건도 하지 않는다. ticker 한 건의 누락·오염과 구분하기 위한
@@ -67,8 +99,8 @@ PROVIDER_DOWN_FAILURE_RATIO = 0.5
 # 그냥 ticker 한 건의 실패다 — 대체를 막을 이유가 없다.
 PROVIDER_DOWN_MIN_SECTORS = 5
 
-# 5일·20일 수익률에 필요한 **거래일 수**. `N일 수익률` 은 N+1 개 종가가 있어야
-# 계산된다(기준일 1개 + N일 전 1개 사이를 포함).
+# 5일·20일 수익률의 **거래일 수**. 기대 T-1 에서 거래일 N 개 전 **날짜**의 종가가
+# 분모다(POC3-02D-OPS-03 확정 계약 5 · 저장 행 위치로 세지 않는다).
 LOOKBACK_5D = 5
 LOOKBACK_20D = 20
 
@@ -87,6 +119,8 @@ class SectorSignal:
     rank: Optional[int] = None
     candidate_count: Optional[int] = None
     used_alternate: bool = False
+    # 5일 · 20일의 기준일(= 기대 T-1). 추세를 확인하지 못했으면 `None`.
+    trend_basis_date: Optional[str] = None
 
     def fingerprint(self) -> str:
         """`ticker#state`. **숫자는 넣지 않는다**(설계 §5).
@@ -105,9 +139,55 @@ class SectorOutcome:
     coverage_pct: Optional[float] = None
     coverage_ok: bool = True
     provider_down: bool = False
+    # POC3-02D-OPS-03 — 추세 기준일 판정과 「신규 진입 검토」 구역 생략 여부 · 사유.
+    trend: Optional["TrendBasis"] = None
+    entry_omitted: bool = False
+    entry_omitted_reason: Optional[str] = None
+    # 설계자 RESULT STEP 2 — 활성 대표의 T-1 종가 커버리지.
+    representatives: Optional[RepresentativeCoverage] = None
 
     def by_state(self, state: str) -> list[SectorSignal]:
         return [s for s in self.signals if s.state == state]
+
+
+@dataclass(frozen=True)
+class TrendBasis:
+    """5일 · 20일 추세 기준(확정 계약 5 · 8).
+
+    `usable` 은 표 최신 저장일이 기대 T-1 과 **정확히 같고** d5 · d20 날짜가
+    정해졌을 때만 참이다. lag 숫자로 판정하지 않는다(확정 계약 6).
+
+    `missing_days` — 대표 · 대체 종목 이력에 **하나도** 없는 d5 · d20 날짜와, 캘린더
+    없는 해의 평일 가운데 저장되지 않은 날(`trading_day_lag.unconfirmed_days`).
+    있으면 `usable=False` — 08:30 기초지수 창(`krx_store.CalendarWindow`)과 같은
+    규칙으로 구역을 닫고 생략으로 센다(확정 계약 5 · 13).
+    """
+
+    expected: Optional[str]
+    table_latest: Optional[str]
+    d5: Optional[str] = None
+    d20: Optional[str] = None
+    missing_days: tuple[str, ...] = ()
+
+    @property
+    def usable(self) -> bool:
+        return (
+            self.expected is not None
+            and self.table_latest == self.expected
+            and self.d5 is not None
+            and self.d20 is not None
+            and not self.missing_days
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "expected_previous_trading_day": self.expected,
+            "table_latest": self.table_latest,
+            "d5": self.d5,
+            "d20": self.d20,
+            "missing_days": list(self.missing_days),
+            "usable": self.usable,
+        }
 
 
 def load_unadjusted_history(
@@ -138,21 +218,98 @@ def load_unadjusted_history(
     return out
 
 
-def window_return_pct(
-    history: list[tuple[str, float]], lookback: int
-) -> Optional[float]:
-    """`lookback` 거래일 수익률(%). 이력이 모자라면 `None`.
+def latest_unadjusted_date(*, db_path: Path) -> Optional[str]:
+    """무조정 표에서 종가가 있는 최신 저장일. 읽기 전용 · 실패하면 `None`.
 
-    **더 오래된 종가로 대체하지 않는다** — 대체하면 20거래일이 아닌 구간의
-    수익률을 20거래일이라고 보고하게 된다(`close_on` 과 같은 원칙).
+    `None` 이면 추세 기준일을 확인하지 못한 것이다 — 진입 검토를 닫는다.
     """
-    if len(history) < lookback + 1:
+    try:
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    except sqlite3.Error:
         return None
-    base = history[-(lookback + 1)][1]
-    last = history[-1][1]
-    if not base or base <= 0:
+    try:
+        # 날짜 내림차순 1행 — (date, ticker) 기본키 색인을 거꾸로 읽는다(매 틱 호출).
+        row = con.execute(
+            "SELECT date FROM krx_etf_daily_price_unadjusted WHERE close > 0 "
+            "ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+    except sqlite3.Error:
         return None
-    return normalize_pct((last / base - 1.0) * 100.0)
+    finally:
+        con.close()
+    return str(row[0])[:10] if row and row[0] else None
+
+
+def resolve_trend_basis(
+    today_kst: Optional[str],
+    *,
+    table_latest: Optional[str],
+    calendar_dir: Optional[Path] = None,
+    stored_days: Optional[Collection[str]] = None,
+) -> TrendBasis:
+    """기대 T-1 과 그 거래일 날짜 d5 · d20 (확정 계약 5 · 6).
+
+    표 최신일이 기대 T-1 이 아니면 d5 · d20 을 정하지 않는다 — 그날은 진입
+    검토를 계산하지 않는다(T-2 로 대신하지 않는다).
+
+    `stored_days` — 대표 · 대체 종목 이력에 있는 날짜. 넘기면 창(21거래일)의 빈
+    날을 본다(`TrendBasis.missing_days`). 없으면 보지 않는다(순수 호출 · 테스트).
+    """
+    expected = (
+        trading_day_lag.expected_previous_trading_day(
+            str(today_kst)[:10], calendar_dir=calendar_dir
+        )
+        if today_kst
+        else None
+    )
+    if expected is None or table_latest != expected:
+        return TrendBasis(expected=expected, table_latest=table_latest)
+    dates = trading_day_lag.trading_window_dates(
+        expected, calendar_dir=calendar_dir, lookbacks=(LOOKBACK_5D, LOOKBACK_20D)
+    )
+    if not dates:
+        return TrendBasis(expected=expected, table_latest=table_latest)
+    d5, d20 = dates[1], dates[2]
+    missing: tuple[str, ...] = ()
+    if stored_days is not None:
+        window = trading_day_lag.trading_days_ending(
+            expected, LOOKBACK_20D + 1, calendar_dir=calendar_dir
+        )
+        gaps = [d for d in (d5, d20) if d not in stored_days]
+        gaps += trading_day_lag.unconfirmed_days(
+            window, stored_days, calendar_dir=calendar_dir
+        )
+        missing = tuple(sorted(set(gaps)))
+    return TrendBasis(
+        expected=expected,
+        table_latest=table_latest,
+        d5=d5,
+        d20=d20,
+        missing_days=missing,
+    )
+
+
+def trend_returns(
+    history: list[tuple[str, float]], trend: TrendBasis
+) -> tuple[Optional[float], Optional[float], Optional[str]]:
+    """`(5일 %, 20일 %, 빠진 사유)` — **거래일 날짜**의 종가만 쓴다(확정 계약 5).
+
+    저장 행 위치로 세면 하루가 빠질 때 6 · 21일 전 값이 5 · 20일로 보고된다.
+    그 날짜 종가가 없으면 그 수익률은 `None` 이다(더 오래된 값으로 대체하지
+    않는다 — `close_on` 과 같은 원칙).
+    """
+    if not trend.usable:
+        return None, None, REASON_TREND_NOT_T1
+    by_date = {str(d)[:10]: c for d, c in history if c and c > 0}
+    last = by_date.get(str(trend.expected))
+    if last is None:
+        return None, None, REASON_TICKER_NOT_T1
+    base5, base20 = by_date.get(str(trend.d5)), by_date.get(str(trend.d20))
+    r5 = normalize_pct((last / base5 - 1.0) * 100.0) if base5 else None
+    r20 = normalize_pct((last / base20 - 1.0) * 100.0) if base20 else None
+    if r5 is None or r20 is None:
+        return r5, r20, REASON_SHORT_HISTORY
+    return r5, r20, None
 
 
 def _top_cut(n: int, top_pct: float) -> int:
@@ -222,14 +379,38 @@ def select_sector_signals(
     today_kst: Optional[str],
     policy: dict[str, Any],
     held_tickers: Optional[set[str]] = None,
+    trend: Optional[TrendBasis] = None,
 ) -> SectorOutcome:
     """사업군 후보 선정.
 
     `held_tickers` 에 든 대표는 **신규 진입 후보에서 뺀다**(설계 §4-2) — 보유
     구역에만 나온다. 제외 사유는 남긴다.
+
+    `trend` — 추세 기준(POC3-02D-OPS-03). 없거나 `usable` 이 아니면 **진입 검토를
+    하나도 내지 않는다**(확정 계약 8 · fail-closed). 회피 판정은 그대로다.
+
+    대표 커버리지(설계자 RESULT STEP 2) — 활성 대표 전부가 `history` 에 기대 T-1
+    종가를 가져야 진입 검토를 낸다. 아니면 구역 전체를 생략한다(회피는 그대로).
     """
     out = SectorOutcome()
     held = held_tickers or set()
+    basis = trend if trend is not None else TrendBasis(None, None)
+    out.trend = basis
+    t1 = basis.expected
+    with_t1 = {
+        t
+        for t, rows in history.items()
+        for d, c in rows
+        if c and c > 0 and str(d)[:10] == t1
+    }
+    reps = evaluate_coverage(representative_tickers(sectors), with_t1, expected=t1)
+    out.representatives = reps
+    # 구역 생략 사유 — 추세 기준일 미확인이 먼저다(그날은 대표 전부 T-1 이 없다).
+    entry_block = (
+        REASON_TREND_NOT_T1 if not basis.usable else (None if reps.ok else reps.status)
+    )
+    out.entry_omitted = bool(sectors) and entry_block is not None
+    out.entry_omitted_reason = entry_block if out.entry_omitted else None
 
     # 0차 — primary 결과부터 본다. **provider 단위 장애를 먼저 판정**한다.
     #
@@ -332,29 +513,31 @@ def select_sector_signals(
     rank_of = {t[2]: i + 1 for i, t in enumerate(ordered_desc)}
 
     for s, key, ticker, ret, used_alt in usable:
-        hist = history.get(ticker) or []
-        r5 = window_return_pct(hist, LOOKBACK_5D)
-        r20 = window_return_pct(hist, LOOKBACK_20D)
+        # 확정 계약 5 — 기대 T-1 · d5 · d20 **날짜**의 종가. 없으면 `None`.
+        r5, r20, missing = trend_returns(history.get(ticker) or [], basis)
+        # 구역 생략이면 진입 판정에만 추세를 넘기지 않는다(회피 판정은 그대로).
+        e5, e20 = (None, None) if entry_block else (r5, r20)
         is_top = ticker in top_risers
         state = classify_sector(
             day_return_pct=ret,
-            return_5d_pct=r5,
-            return_20d_pct=r20,
+            return_5d_pct=e5,
+            return_20d_pct=e20,
             is_top_riser=is_top,
             is_bottom_faller=ticker in bottom_fallers,
             policy=policy,
         )
         if state is None:
-            # 진입 후보가 될 뻔했는데 **이력이 모자라** 빠진 경우를 구분해 남긴다.
-            # 추정값으로 메우지 않는다.
+            # 진입 후보가 될 뻔했는데 **추세를 계산하지 못해** 빠진 경우를 구분해
+            # 남긴다 — 표 최신일 ≠ T-1 · 대표 커버리지 미달 · 종목 T-1 없음 ·
+            # d5/d20 날짜 없음. 추정값으로 메우지 않는다.
             if is_entry_band(
                 day_return_pct=ret, is_top_riser=is_top, policy=policy
-            ) and (r5 is None or r20 is None):
+            ) and (e5 is None or e20 is None):
                 out.excluded.append(
                     {
                         "sector_key": key,
                         "ticker": ticker,
-                        "reason": REASON_SHORT_HISTORY,
+                        "reason": entry_block or missing or REASON_SHORT_HISTORY,
                     }
                 )
             continue
@@ -378,6 +561,7 @@ def select_sector_signals(
                 rank=rank_of.get(ticker),
                 candidate_count=len(usable),
                 used_alternate=used_alt,
+                trend_basis_date=basis.expected if basis.usable else None,
             )
         )
     return out
@@ -386,23 +570,30 @@ def select_sector_signals(
 __all__ = [
     "LOOKBACK_20D",
     "LOOKBACK_5D",
+    "REASON_CONFIG_UNAVAILABLE",
     "REASON_HELD",
     "REASON_LOW_COVERAGE",
     "PROVIDER_DOWN_FAILURE_RATIO",
     "PROVIDER_DOWN_MIN_SECTORS",
     "REASON_PROVIDER_DOWN",
+    "REASON_REPRESENTATIVE_MISSING",
     "REASON_NO_DAY_RETURN",
     "REASON_NO_QUOTE",
     "REASON_SHORT_HISTORY",
+    "REASON_TICKER_NOT_T1",
+    "REASON_TREND_NOT_T1",
     "STATE_AVOID_CHASE",
     "STATE_AVOID_DROP",
     "STATE_ENTRY_REVIEW",
     "STATE_LABEL",
     "SectorOutcome",
     "SectorSignal",
+    "TrendBasis",
     "classify_sector",
     "is_entry_band",
+    "latest_unadjusted_date",
     "load_unadjusted_history",
+    "resolve_trend_basis",
     "select_sector_signals",
-    "window_return_pct",
+    "trend_returns",
 ]

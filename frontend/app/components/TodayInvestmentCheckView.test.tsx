@@ -167,10 +167,11 @@ async function renderView() {
     expect(screen.queryByText(/불러오는 중/)).toBeNull();
   });
   // 시장 조회가 실제로 **반영**됐는지 확인한다. `KospiHeadline` 은 로딩 표시가
-  // 없어서(성공 전에는 그냥 "자료 없음" 을 그린다) 위 대기만으로는 부족하다.
-  // 기준일은 `fmtKstDate(null) === "자료 없음"` 이고 성공해야 `YYYY-MM-DD` 가
-  // 되므로, 어느 fixture 에서도 통하는 앵커다.
-  await screen.findByText(/마지막 자료 기준일 \d{4}-\d{2}-\d{2}/);
+  // 없어서 위 대기만으로는 부족하다. 기존 시장 판정 줄의 ` · 기준일 YYYY-MM-DD`
+  // 는 시장 응답이 반영돼야 나오고, 어느 fixture 에서도 통하는 앵커다.
+  // (POC3-02D-OPS-03 설계자 RESULT STEP 4-3 — '마지막 자료 기준일' 은 이제 KOSPI
+  // 기준일이라 KOSPI 기준일이 없는 fixture 에서는 나오지 않아 앵커로 쓰지 않는다.)
+  await screen.findByText(/· 기준일 \d{4}-\d{2}-\d{2}/);
   return { onNavigate };
 }
 
@@ -347,6 +348,34 @@ describe("TodayInvestmentCheckView", () => {
     expect(
       within(maint).getByText(/ETF 기준가 자료 상태를 확인할 수 없습니다/),
     ).toBeInTheDocument();
+  });
+
+  it("POC3-02D-OPS-03 RESULT STEP 4: KOSPI 지연은 정비 큐 항목 · 카드 기준일은 KOSPI 기준일", async () => {
+    const base = marketOk();
+    fetchMarketTopnLatest.mockResolvedValue({
+      ...base,
+      market_context: {
+        ...base.market_context,
+        kospi: {
+          status: "stale",
+          as_of_date: "2026-07-23",
+          display_state: "stale",
+          trading_day_lag: 1,
+          today_is_trading_day: true,
+        },
+      },
+    });
+    await renderView();
+    const maint = screen.getByLabelText("자료 최신화 필요");
+    const row = within(maint).getByText(/KOSPI 원자료가 최근 거래일까지 갱신되지 않았습니다/);
+    expect(row.textContent).toContain("(KOSPI 기준일 2026-07-23 · 1거래일 지연)");
+    expect(within(maint).getAllByRole("button", { name: "시장 자료 업데이트로" }).length).toBeGreaterThan(0);
+    // 판단 큐에는 들어가지 않는다(AC-4/AC-5).
+    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    expect(within(judgment).queryByText(/KOSPI 원자료/)).toBeNull();
+    // 카드 하단 기준일은 KOSPI 기준일(시장 판정 기준일 2026-07-24 아님).
+    const headline = screen.getByLabelText("KOSPI 현재 위치");
+    expect(headline.textContent).toContain("마지막 자료 기준일 2026-07-23 · 출처: 한국거래소(KRX)");
   });
 
   it("AC-7 사용자 언어: 본문 + 툴팁(title/aria-label)에 내부 용어가 없다", async () => {

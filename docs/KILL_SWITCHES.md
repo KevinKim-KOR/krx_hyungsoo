@@ -118,7 +118,7 @@
 - Mobile Decision Cockpit 은 DEFERRED_BY_USER 상태로 보류
 - 현재 모바일 운영 채널은 Telegram PUSH 로 제한
 - **전체 PUSH 횟수를 하루 3회로 고정하지 않음** (이전 "일 3회 자동 PUSH" 전역 제한 제거)
-- Market briefing 은 현재 평일 08:00 1회 유지
+- Market briefing 은 평일 1회 유지 — 08:30 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 그 전까지 08:00)
 - Holdings 평가·브리핑은 평일 하루 3개 슬롯으로 운영
 - Spike/Falling Alert 는 고정 시각 발송이 아닌 조건 발생형 알림으로 운영
 - 평가 실행 횟수와 사용자 알림 횟수 구분

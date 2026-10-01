@@ -250,4 +250,26 @@ describe("DashboardView — VIX stale · 예외 · 일부 실패", () => {
     expect(await screen.findByText(/시장 데이터 확인 불가 \(invalid\)/)).toBeInTheDocument();
     expect(screen.queryByText("확인된 예외 없음")).not.toBeInTheDocument();
   });
+
+  // POC3-02D-OPS-03 PLAN STEP 5-5 — LEGACY 대시보드도 KOSPI 영문 경고를 시장 배경 카드처럼 숨긴다.
+  it("KOSPI 영문 경고는 숨기고 KODEX200 경고는 그대로 둔다", async () => {
+    const base = marketOk();
+    fetchMarketTopnLatest.mockResolvedValue(
+      marketOk({
+        market_context: {
+          ...base.market_context,
+          warnings: [
+            "KOSPI benchmark is stale (as_of=2026-09-28, lag=1 trading days). Returns are not computed.",
+            "KODEX200 benchmark data is insufficient.",
+          ],
+        },
+      }),
+    );
+    render(<DashboardView onNavigate={vi.fn()} />);
+    fireEvent.click(screen.getByText("시장 상태 불러오기"));
+    expect(
+      await screen.findByText(/시장 국면: KODEX200 benchmark data is insufficient\./),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/KOSPI benchmark/)).not.toBeInTheDocument();
+  });
 });

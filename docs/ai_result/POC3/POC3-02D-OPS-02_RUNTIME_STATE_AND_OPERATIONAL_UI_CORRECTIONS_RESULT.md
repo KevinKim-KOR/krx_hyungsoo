@@ -23,7 +23,7 @@ DESIGNER_RESULT_DECISION  = PASS (설계자 통합 판정 2026-09-29 · 원문�
 VERIFIER                  = VERIFIED (r2 · 2026-09-29 · A-1~A-4 · B-1~B-6 통과 · 위험 NONE · 범위 폭주 NONE) — r1 REJECTED(A-2 결과서의 화면 확인 표기가 완료 · 대기로 동시에 적힘) 정정 뒤
 COMMIT_PUSH_OCI           = 커밋 eff609a0 · push 2026-09-29 · OCI pull 2026-09-29 밤(사용자) · 재기동 불필요
 DEPLOYMENT                = CONFIRMED (2026-09-29 20:4x · OCI 읽기 전용 5항목 — HEAD eff609a0 · 추적 파일 변경 0 · 배포본에 `last_delivered_state` 계약 · cron 12줄 · flag 불변 · KOSPI 상태 계약은 OCI 공용 lag 함수 + PC API 응답으로 확인)
-RUNTIME_FIELD_OBSERVED    = PENDING_FIRST_NATURAL_SEND (pull 이 장 마감 뒤라 새 코드 첫 장중 실행은 2026-09-30 09:30 · 인계 `docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md`)
+RUNTIME_FIELD_OBSERVED    = OBSERVED (2026-09-30 09:30 틱 · OCI 읽기 전용 09:32 · HEAD eff609a0) — 장중 통합 본문 `sent` · `partial_delivery` false · `sent_today` 1 · 관측 4종 모두 `last_delivered_state` = 전달 상태 · `last_sent_at` 09:30 · `continuous` true · 첫 틱 새 파일(date_reset) · 잘림 · 전송 실패 틱 0 — 판정 기준 1~4 충족 · 인계 `docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md`
 ```
 
 입력 문서

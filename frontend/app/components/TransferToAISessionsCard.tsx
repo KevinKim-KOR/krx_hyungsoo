@@ -22,6 +22,7 @@ import {
   type AISessionsDraft,
 } from "@/lib/aiSessionsDraft";
 import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
+import { kospiStatusText } from "@/lib/kospiStatus";
 import type { MenuKey } from "./LeftSidebar";
 
 interface Props {
@@ -63,10 +64,14 @@ function _toMarketContextSnapshot(
       ma20_position: ctx.kodex200.ma20_position ?? null,
       ma60_position: ctx.kodex200.ma60_position ?? null,
     },
+    // POC3-02D-OPS-03 확정 계약 9 — 화면 KOSPI 카드와 같은 판정 · 문구를 함께 남긴다.
     kospi: {
       status: ctx.kospi.status,
       return_20d_pct: ctx.kospi.return_20d_pct ?? null,
       return_60d_pct: ctx.kospi.return_60d_pct ?? null,
+      as_of_date: ctx.kospi.as_of_date ?? null,
+      display_state: ctx.kospi.display_state ?? null,
+      state_text: kospiStatusText(ctx.kospi),
     },
     candidate_excess_returns: candidates.map((c) => ({
       rank: c.rank ?? null,

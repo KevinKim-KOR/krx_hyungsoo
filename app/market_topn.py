@@ -81,8 +81,12 @@ def compute_topn(
     exclude_leveraged: bool = True,
     exclude_synthetic: bool = True,
     exclude_futures: bool = True,
+    kospi_today_kst: Optional[str] = None,
 ) -> dict:
     """SQLite etf_daily_price 기준 일간 / 1개월 / 3개월 TOP N 산출.
+
+    `kospi_today_kst` — POC3-02D-OPS-03 확정 계약 9. 화면 API 만 넘긴다(KOSPI 최신성 =
+    기대 T-1). 없으면 KOSPI 판정은 예전 그대로다(과거 재현 호출부 무변경).
 
     DB 부재 시 status="missing". DB 가 있어도 가격 데이터 없음/필수 테이블 부재면
     각각 status="empty"/"invalid". 본 함수는 외부 fetch / write 없음 — SQLite read only.
@@ -309,6 +313,7 @@ def compute_topn(
         asof=asof_iso,
         kodex200_history=kodex200_history,
         kospi_history=kospi_history if kospi_history else None,
+        kospi_today_kst=kospi_today_kst,
     )
     # 2026-08-03 POC3-06 §6.2 — KOSPI 관찰값(일간·1년·52주 고점 대비) additive 병합
     # + 국면 지속 거래일 수. 기존 저장 series read 만 사용(신규 source·DB 0).

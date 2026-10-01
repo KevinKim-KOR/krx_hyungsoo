@@ -17,6 +17,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from app.runtime_evidence.holdings_price_basis import (
+    PriceBasisSource,
+    load_basis_history,
+)
 from app.runtime_evidence.holdings_risk import (
     RiskTicker,
     previous_trading_day,
@@ -38,8 +42,6 @@ from app.runtime_evidence.holdings_selection_flow import (
 from app.runtime_evidence.holdings_selection_source import (
     average_buy_prices,
     load_holding_rows,
-    load_price_history,
-    load_trading_day_axis,
 )
 
 # 실행 시각 → 화면 표기 없음. 위험 알림은 슬롯 개념이 없고 7틱마다 돈다.
@@ -82,18 +84,35 @@ def build_holdings_risk_alert(
     runtime_kst: Optional[str],
     today_kst: Optional[str] = None,
     logger: Any = None,
+    calendar_dir: Optional[Path] = None,
+    price_basis_source: Optional[PriceBasisSource] = None,
 ) -> HoldingsRiskOutcome:
-    """선정 → 변화 판정 → 본문. 예외는 `error` 로 돌려 러너가 failed 처리한다."""
+    """선정 → 변화 판정 → 본문. 예외는 `error` 로 돌려 러너가 failed 처리한다.
+
+    POC3-02D-OPS-03 — 거래일 축은 캘린더다(`trading_day_axis` · 확정 계약 10).
+    `직전 종가` 날짜(= 네이버 전일 대비의 기준일)와 `고점 대비` 20거래일 구간이
+    배치 실패일에 하루 밀리지 않는다 — 그 구간 종가가 빠지면 보조값만 생략된다.
+
+    `고점 대비` 구간 종가는 자산 유형별 한 계열이다(설계자 RESULT STEP 1 ·
+    `holdings_price_basis`). 급락 판정(Naver 등락률)은 그대로다.
+    """
     out = HoldingsRiskOutcome(today_kst=today_kst)
     try:
         holding_rows = load_holding_rows(holdings_loader)
         tickers = sorted({r["ticker"] for r in holding_rows})
-        history = load_price_history(tickers, fetch_history=fetch_history)
-        axis_dates = load_trading_day_axis(fetch_history=fetch_history)
+        basis = load_basis_history(
+            tickers,
+            fetch_history=fetch_history,
+            market_quotes=market_quotes or {},
+            today_kst=today_kst,
+            calendar_dir=calendar_dir,
+            source=price_basis_source,
+        )
+        axis_dates = basis.axis
         prev_day = previous_trading_day(axis_dates, today_kst)
         selected, unavailable = select_risk_holdings(
             holdings=holding_rows,
-            price_history=history,
+            price_history=basis.history,
             market_quotes=market_quotes or {},
             today_kst=today_kst,
             axis_dates=axis_dates,
@@ -120,6 +139,8 @@ def build_holdings_risk_alert(
         "risk_selected_count": len(selected),
         "risk_prev_trading_day": prev_day,
         "risk_data_unavailable_tickers": unavailable,
+        # 설계자 RESULT STEP 1-5 — 종목별 자산 유형 · price_source · price_basis.
+        "risk_price_basis": basis.evidence,
     }
 
     previous = load_risk_state(state_path, today_kst=today_kst)
@@ -246,6 +267,8 @@ def assemble_holdings_risk_push(
     sector_state_path: Optional[Path] = None,
     tally_path: Optional[Path] = None,
     logger: Any = None,
+    calendar_dir: Optional[Path] = None,
+    price_basis_source: Optional[PriceBasisSource] = None,
 ) -> RiskAssembly:
     """러너 §3-d 전체 — 비거래일·완전성 가드 → 선정·변화·본문 조립.
 
@@ -278,6 +301,8 @@ def assemble_holdings_risk_push(
         runtime_kst=runtime_kst,
         today_kst=today_kst,
         logger=logger,
+        calendar_dir=calendar_dir,
+        price_basis_source=price_basis_source,
     )
     out.outcome = outcome
     out.diagnostics.update(outcome.diagnostics)
@@ -312,6 +337,7 @@ def assemble_holdings_risk_push(
             quote_asof=format_quote_asof(runtime_kst),
             base_close_date=outcome.diagnostics.get("risk_prev_trading_day"),
             logger=logger,
+            calendar_dir=calendar_dir,
         )
         # POC3-02D-OPS-01 C4 — 저장 대상을 **본문에 실린 것** 기준으로 다시 계산한다.
         # 구역 상한에 잘린 보유 급락을 worst 로 저장하면 한 번도 안 나간 신호가
@@ -388,6 +414,9 @@ def assemble_holdings_risk_push(
             else:
                 tick_outcome = OUTCOME_NO_SIGNAL
             out.intraday_records["tick_outcome"] = tick_outcome
+            # POC3-02D-OPS-03 확정 계약 13 — 추세 기준일(T-1) 미확인으로 진입 검토
+            # 구역을 뺀 회차. 15:40 요약에 센다(틱마다 따로 경고하지 않는다).
+            out.intraday_records["entry_omitted"] = bool(intraday.sector.entry_omitted)
             # 평가 불가 범위는 관측에서 제외 — 회복으로 기록하지 않는다(D2).
             out.intraday_records["unevaluable"] = set(intraday.unevaluable or set())
         if intraday.daily_cap_reached and outcome is not None:
@@ -502,6 +531,7 @@ def apply_intraday_records(
             today_kst=pending["today_kst"],
             outcome=tick_outcome,
             at_kst=pending.get("runtime_kst"),
+            entry_omitted=bool(pending.get("entry_omitted")),
         )
         record["intraday_tally_outcome"] = tick_outcome
     except Exception as e:  # noqa: BLE001

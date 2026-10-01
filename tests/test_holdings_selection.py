@@ -420,6 +420,7 @@ def test_price_history_exception_becomes_outcome_error_not_raise(tmp_path):
     (`runtime_evidence_error` 가 아니다 — 결과서 r1 오보).
     """
     from app.runtime_evidence.holdings_selection_flow import build_holdings_selection
+    from tests._helpers import stock_basis_source
 
     def _boom(ticker, **kw):
         raise RuntimeError("가격 DB 잠김")
@@ -434,6 +435,8 @@ def test_price_history_exception_becomes_outcome_error_not_raise(tmp_path):
         slot_id="OPEN",
         runtime_kst="2026-09-04T09:15:00+09:00",
         today_kst="2026-09-04",
+        # 설계자 RESULT STEP 1 — `fetch_history`(FDR)는 개별주만 부른다. 개별주로 둔다.
+        price_basis_source=stock_basis_source(),
     )
     assert out.error, "예외가 error 로 수렴하지 않았다"
     assert "가격 DB 잠김" in out.error
@@ -452,13 +455,16 @@ def test_privacy_check_failure_blocks_send(tmp_path, monkeypatch):
         "detect_privacy_on_body",
         lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("탐지기 고장")),
     )
+    from tests._helpers import etf_basis_source
+
+    fetch = lambda t, **kw: [  # noqa: E731
+        (f"2026-08-{i + 1:02d}", 100.0) for i in range(30)
+    ]
     out = flow.build_holdings_selection(
         holdings_loader=lambda: [
             SimpleNamespace(ticker="AAA", name="가나다", account_group="일반")
         ],
-        fetch_history=lambda t, **kw: [
-            (f"2026-08-{i + 1:02d}", 100.0) for i in range(30)
-        ],
+        fetch_history=fetch,
         market_quotes={
             "AAA": SimpleNamespace(
                 current_price=80.0, price_asof="2026-09-04T09:00:00+09:00"
@@ -468,6 +474,8 @@ def test_privacy_check_failure_blocks_send(tmp_path, monkeypatch):
         slot_id="OPEN",
         runtime_kst="2026-09-04T09:15:00+09:00",
         today_kst="2026-09-04",
+        # 설계자 RESULT STEP 1 — ETF 과거 종가는 KRX 무조정 표(같은 이력을 그 값으로).
+        price_basis_source=etf_basis_source(fetch),
     )
     assert out.error, "privacy 검사 실패인데 통과시켰다"
     assert "privacy_check_failed" in out.error
@@ -620,12 +628,17 @@ def _unchanged_slot(tmp_path, monkeypatch, slot_id):
     from app.runtime_evidence import holdings_selection_flow as flow
     from app.runtime_evidence.holdings_selection_state import save_state
 
+    from tests._helpers import etf_basis_source
+
     holdings = [SimpleNamespace(ticker="AAA", name="가나다", account_group="일반")]
+    fetch = lambda t, **k: [  # noqa: E731
+        (f"2026-08-{i + 1:02d}", 100.0) for i in range(30)
+    ]
     kw = dict(
         holdings_loader=lambda: holdings,
-        fetch_history=lambda t, **k: [
-            (f"2026-08-{i + 1:02d}", 100.0) for i in range(30)
-        ],
+        fetch_history=fetch,
+        # 설계자 RESULT STEP 1 — ETF 과거 종가는 KRX 무조정 표(같은 이력을 그 값으로).
+        price_basis_source=etf_basis_source(fetch),
         market_quotes={
             "AAA": SimpleNamespace(
                 current_price=80.0, price_asof="2026-09-04T09:00:00+09:00"

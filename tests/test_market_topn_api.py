@@ -515,11 +515,31 @@ def test_market_refresh_log_is_recorded_by_refresh_job(
     monkeypatch.setattr(api_market_topn, "start_refresh_job", inline_start)
 
     api_client.post("/market/refresh")
+    from app.market_benchmark_store import KOSPI_SOURCE
     from app.market_data_store import latest_refresh_log
 
-    log = latest_refresh_log(db_path=api_market_topn.DEFAULT_DB_PATH)
+    db = api_market_topn.DEFAULT_DB_PATH
+    log = latest_refresh_log(db_path=db)
     assert log is not None
-    assert log["source"].startswith("FinanceDataReader")
+    # 마지막 기록은 KOSPI 적재 — POC3-02D-OPS-03 자료원 전환(KRX 공식 지수 · 확정 계약 9).
+    assert log["source"] == KOSPI_SOURCE
+    # ETF 가격 수집 기록도 남는다.
+    assert latest_refresh_log(source="FinanceDataReader/prices", db_path=db)
+
+
+def _krx_kospi_until(last_published: str):
+    """KRX `idx/kospi_dd_trd` 대역 — `last_published` 까지만 공개된 자료원(외부 조회 0)."""
+
+    def fetch(bas_dd: str, key: str) -> list[dict]:
+        iso = f"{bas_dd[:4]}-{bas_dd[4:6]}-{bas_dd[6:]}"
+        if iso > last_published:
+            return []
+        return [
+            {"BAS_DD": bas_dd, "IDX_NM": "코스피 200", "CLSPRC_IDX": "900.00"},
+            {"BAS_DD": bas_dd, "IDX_NM": "코스피", "CLSPRC_IDX": "2,700.50"},
+        ]
+
+    return fetch
 
 
 def test_refresh_job_logs_stale_kospi_as_failure_without_failing_refresh(
@@ -530,15 +550,21 @@ def test_refresh_job_logs_stale_kospi_as_failure_without_failing_refresh(
     """POC3-02D-OPS-01 C7 감지 정정 A — PC 수동 갱신(`POST /market/refresh`) 경로.
 
     09-22 PC 수동 갱신도 09-17 에서 멈춘 KOSPI 를 `market_refresh_log` success=1 로
-    남겼다. 이제 KS11 행은 success 0 · `source_stale:` 이고, **전체 갱신은 실패가
+    남겼다. 이제 KOSPI 행은 success 0 · `source_stale:` 이고, **전체 갱신은 실패가
     아니다**(지시문 §4.4 — KOSPI 실패로 전체 refresh 를 실패 처리하지 않는다).
+
+    POC3-02D-OPS-03 — 자료원이 KRX `idx/kospi_dd_trd` 로 바뀌었다(확정 계약 9). 적재
+    기록 source 도 KRX 이고, 최신성은 기대 T-1(10-31 목 → 10-30) 정확 일치다.
     """
     from app import market_benchmark_store
+    from app.market_benchmark_store import KOSPI_SOURCE
     from app.market_briefing import calendar as _cal
+    from app.market_briefing import krx_sync
     from app.market_data_store import latest_refresh_log
 
     # 축 — 빈 폴더라 평일 fallback(2024 는 snapshot 이 없다). 저장소 캘린더를 읽지 않는다.
     monkeypatch.setattr(_cal, "CALENDAR_DIR", tmp_path / "no_calendar")
+    monkeypatch.setattr(krx_sync, "read_api_key", lambda env_path=None: "TEST-KEY")
     # KOSPI 와 무관한 뒷단(NAV 외부 조회 · 장중 설정 재산출)은 막는다.
     monkeypatch.setattr(
         market_refresh_service,
@@ -549,17 +575,13 @@ def test_refresh_job_logs_stale_kospi_as_failure_without_failing_refresh(
         market_refresh_service, "_regenerate_intraday_config", lambda db_path: None
     )
 
-    def stub_price(ticker, start, end):
-        if ticker == "KS11":
-            # upstream 이 멈춘 상황 — end(10-31 목) 기준 lag 4.
-            return _stub_price_df(start, date(2024, 10, 24))
-        return _stub_price_df(start, end)
-
     original = market_refresh_service.start_refresh_job
 
     def inline_start(**kwargs):
         kwargs["universe_fetcher"] = _stub_universe_df
-        kwargs["price_fetcher"] = stub_price
+        kwargs["price_fetcher"] = lambda tk, s, e: _stub_price_df(s, e)
+        # upstream 이 멈춘 상황 — 10-24 까지만 공개(10-31 목 기준 lag 4).
+        kwargs["kospi_fetcher"] = _krx_kospi_until("2024-10-24")
         kwargs["end_date_for_prices"] = date(2024, 10, 31)
         kwargs["thread_runner"] = lambda runner: runner()
         return original(**kwargs)
@@ -571,18 +593,21 @@ def test_refresh_job_logs_stale_kospi_as_failure_without_failing_refresh(
     assert res.json()["status"] == "accepted"
 
     db = api_market_topn.DEFAULT_DB_PATH
-    log = latest_refresh_log(source="FinanceDataReader/KS11", db_path=db)
+    log = latest_refresh_log(source=KOSPI_SOURCE, db_path=db)
     assert log is not None
     assert log["success_count"] == 0, "멈춘 KOSPI 를 성공으로 기록했다"
     assert log["fail_count"] == 1
-    assert log["error_summary"] == "source_stale:as_of=2024-10-24,ref=2024-10-30,lag=4"
+    stale = (
+        "source_stale:as_of=2024-10-24,expected=2024-10-30,lag=4,"
+        "reason=no_rows@2024-10-25"
+    )
+    assert log["error_summary"] == stale
+    # 옛 KS11 적재 기록은 더 쓰지 않는다.
+    assert latest_refresh_log(source="FinanceDataReader/KS11", db_path=db) is None
     # 전체 갱신은 실패가 아니다 — 사유만 남긴다.
     snap = market_refresh_service.get_state_snapshot(db_path=db)
     assert snap.status == "completed"
-    assert snap.error_summary == (
-        "kospi_benchmark_unavailable: "
-        "source_stale:as_of=2024-10-24,ref=2024-10-30,lag=4"
-    )
+    assert snap.error_summary == "kospi_benchmark_unavailable: " + stale
     # 적재한 KOSPI 행은 되돌리지 않는다.
     assert market_benchmark_store.latest_benchmark_date("KOSPI", db_path=db) == (
         "2024-10-24"
@@ -649,8 +674,19 @@ def test_topn_latest_includes_market_context_unavailable_when_short_history(
 
 def test_topn_latest_includes_market_context_ok_with_both_benchmarks(
     api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    """KODEX200 + KOSPI 모두 충분 시계열이면 market_context.status=ok + 상승장."""
+    """KODEX200 + KOSPI 모두 충분 시계열이면 market_context.status=ok + 상승장.
+
+    POC3-02D-OPS-03 확정 계약 9 — 화면 API 의 KOSPI 최신성은 기대 T-1 이다. 시드
+    마지막 날(05-22 금)이 T-1 이 되는 날(05-25 월 · 평일 fallback)로 '오늘' 을 둔다.
+    """
+    from app import api_market_topn_service
+    from app.market_briefing import calendar as _cal
+
+    monkeypatch.setattr(_cal, "CALENDAR_DIR", tmp_path / "no_calendar")
+    monkeypatch.setattr(api_market_topn_service, "_kst_today", lambda: "2026-05-25")
     db = api_market_topn.DEFAULT_DB_PATH
     end = date(2026, 5, 22)
     _seed_kodex200_long_history(db, end, n_days=80)

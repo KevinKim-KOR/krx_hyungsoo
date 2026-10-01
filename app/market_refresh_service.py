@@ -31,7 +31,11 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from app.etf_nav_service import refresh_nav_universe
-from app.market_benchmark_store import refresh_kospi_benchmark
+from app.market_benchmark_store import (
+    KOSPI_SOURCE,
+    KospiFetcher,
+    refresh_kospi_benchmark,
+)
 from app.market_data_fdr import (
     DEFAULT_LOOKBACK_DAYS,
     PriceFetcher,
@@ -264,6 +268,7 @@ def _execute_refresh_job(
     universe_fetcher: Optional[UniverseFetcher],
     price_fetcher: Optional[PriceFetcher],
     end_date_for_prices: date,
+    kospi_fetcher: Optional[KospiFetcher] = None,
 ) -> None:
     """background thread 안에서 실행되는 실제 수집 작업.
 
@@ -319,17 +324,19 @@ def _execute_refresh_job(
 
     # KOSPI benchmark — 실패해도 전체 refresh 흐름을 중단시키지 않는다
     # (지시문 §4.4). 별도 log row 로 결과 보존, in-memory state 에는 노출 X.
+    # POC3-02D-OPS-03 확정 계약 9 — 자료원 KRX `idx/kospi_dd_trd`(OCI 08:10 배치와 같은
+    # 함수). log source 는 화면 상태가 읽는 `KOSPI_SOURCE` 와 같아야 한다.
     try:
         kospi_result = refresh_kospi_benchmark(
             end_date=end_date_for_prices,
-            price_fetcher=price_fetcher,
+            fetcher=kospi_fetcher,
             db_path=db_path,
         )
         kospi_status = kospi_result.get("status", "failed")
         kospi_error = kospi_result.get("error")
         log_refresh(
             run_id=f"kospi-benchmark-{refresh_id}",
-            source="FinanceDataReader/KS11",
+            source=KOSPI_SOURCE,
             asof=end_date_for_prices.isoformat(),
             attempted=1,
             success=1 if kospi_status == "ok" else 0,
@@ -345,7 +352,7 @@ def _execute_refresh_job(
         try:
             log_refresh(
                 run_id=f"kospi-benchmark-{refresh_id}",
-                source="FinanceDataReader/KS11",
+                source=KOSPI_SOURCE,
                 asof=end_date_for_prices.isoformat(),
                 attempted=1,
                 success=0,
@@ -429,6 +436,7 @@ def start_refresh_job(
     price_fetcher: Optional[PriceFetcher] = None,
     end_date_for_prices: Optional[date] = None,
     thread_runner: Optional[Callable[[Callable[[], None]], None]] = None,
+    kospi_fetcher: Optional[KospiFetcher] = None,
 ) -> StartResult:
     """POST /market/refresh (ETF universe + 가격 수집) 의 진입점.
 
@@ -472,6 +480,7 @@ def start_refresh_job(
             universe_fetcher=universe_fetcher,
             price_fetcher=price_fetcher,
             end_date_for_prices=end_for_prices,
+            kospi_fetcher=kospi_fetcher,
         )
 
     if thread_runner is not None:

@@ -274,6 +274,12 @@ def _isolated_holdings_selection_state(tmp_path, monkeypatch):
     import scripts.run_oci_market_data_batch as _batch
 
     monkeypatch.setattr(_batch, "MARKET_META_DIR", iso)
+    # POC3-02D-OPS-03 설계자 RESULT STEP 1 — 보유 PUSH 가격 기준(ETF/개별주 구분)도 같은
+    # 공식 CSV 폴더를 읽는다(세 번째 소비자). 격리하지 않으면 대역 없이 보유 흐름을 도는
+    # 테스트가 저장소의 실제 CSV 로 종목을 조용히 분류한다.
+    from app.runtime_evidence import holdings_price_basis as _hpb
+
+    monkeypatch.setattr(_hpb, "DEFAULT_META_DIR", iso)
 
     # 장중 경로는 `holdings_risk_flow` 의 모듈 상수로 경로를 푼다. 호출 시점에
     # 읽으므로 그 모듈 자체를 격리해야 막힌다.
@@ -561,6 +567,9 @@ def _block_live_krx_api(monkeypatch):
     이미 격리된 것이므로 건드리지 않는다. `sync_krx_daily` 는 예외를 올리지
     않는 계약이라 차단 시 `api_fetch_failed` 로 떨어진다 — 테스트 환경에서
     맞는 결과다.
+
+    POC3-02D-OPS-03 — KOSPI 공식 지수 경계(`_default_kospi_fetcher`)도 같이 막는다.
+    `refresh_kospi_benchmark` 도 예외를 결과로 돌려주므로 `fetch_failed:` 로 떨어진다.
     """
     from app.market_briefing import krx_sync
 
@@ -570,3 +579,4 @@ def _block_live_krx_api(monkeypatch):
         )
 
     monkeypatch.setattr(krx_sync, "_default_fetcher", _blocked)
+    monkeypatch.setattr(krx_sync, "_default_kospi_fetcher", _blocked)

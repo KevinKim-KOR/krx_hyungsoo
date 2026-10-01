@@ -17,7 +17,7 @@ POC3-02D-OPS-02            IMPLEMENTED_VERIFIED_DEPLOYED — 3-1 · 3-2 · 3-3 �
                            검증자 VERIFIED r2 (2026-09-29 · r1 REJECTED = 결과서 화면 확인 표기 모순)
 커밋                       b5b15509 (3-1 · 「OCI 운영·적용」 합침과 함께) · eff609a0 (3-2 · 3-3 · 3-4 · 35파일) — origin/main push
 OCI                        pull 2026-09-29 밤(사용자) · 재기동 불필요 · POC3-02D-OPS-02_DEPLOYMENT = CONFIRMED
-RUNTIME_FIELD_OBSERVED     = PENDING_FIRST_NATURAL_SEND (새 코드 첫 장중 실행 2026-09-30 09:30)
+RUNTIME_FIELD_OBSERVED     = OBSERVED (2026-09-30 09:30 틱 · OCI 읽기 전용 09:32 · HEAD eff609a0) — 장중 통합 본문 `sent` · `partial_delivery` false · `sent_today` 1 · 관측 4종 모두 `last_delivered_state` = 전달 상태 · `last_sent_at` 09:30 · `continuous` true · 첫 틱 새 파일(date_reset) · 잘림 · 전송 실패 틱 0 — 판정 기준 1~4 충족
 사용자 구현 화면 확인       PASSED (2026-09-28)
 운영 상태                  OPERATING_DEGRADED (설계자 2026-09-29) — 국내 추세 T-2 · KOSPI 정지 → POC3-02D-OPS-03
 러너 646줄 변경 0 · 신규 의존성 · 신규 API · DB 스키마 · cron · flag 변경 0

@@ -30,6 +30,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from app.intraday_config.representatives import (
+    COVERAGE_CONFIG_UNAVAILABLE,
+    RepresentativeCoverage,
+)
 from app.runtime_evidence.holdings_risk import (
     select_surge_holdings,
     usable_day_return,
@@ -40,12 +44,19 @@ from app.runtime_evidence.intraday_alert_render import (
     render_intraday_alert,
 )
 from app.runtime_evidence.sector_signal import (
+    REASON_CONFIG_UNAVAILABLE,
     REASON_HELD,
     REASON_NO_DAY_RETURN,
     REASON_NO_QUOTE,
+    REASON_REPRESENTATIVE_MISSING,
+    REASON_TICKER_NOT_T1,
+    REASON_TREND_NOT_T1,
+    STATE_ENTRY_REVIEW,
     SectorOutcome,
     SectorSignal,
+    latest_unadjusted_date,
     load_unadjusted_history,
+    resolve_trend_basis,
     select_sector_signals,
 )
 from app.runtime_evidence.sector_signal_state import (
@@ -155,6 +166,26 @@ def active_policy(logger: Any = None) -> Optional[dict[str, Any]]:
         return None
 
 
+def config_read_error(logger: Any = None) -> Optional[str]:
+    """활성 설정을 **읽지 못했으면** 예외 종류. 읽었으면(활성 없음 · 꺼짐 포함) `None`.
+
+    설계자 RESULT STEP 2 — 설정을 못 읽는 장애(`intraday_config_unavailable`)를 의도적
+    꺼짐(`policy_disabled`)과 구분해 기록한다. 발송 동작은 같다(승인 PARAM 없이 보내지
+    않는다). `active_policy` 가 `None` 일 때만 부른다.
+    """
+    try:
+        from app.intraday_config import store
+
+        active = store.get_active()
+        if active:
+            json.loads(active["payload_json"])
+        return None
+    except Exception as e:  # noqa: BLE001
+        if logger is not None:
+            logger.warning("장중 설정 읽기 실패: %s", e)
+        return type(e).__name__
+
+
 def fetch_alternate_quotes(
     sectors: list[dict[str, Any]],
     market_quotes: dict[str, Any],
@@ -222,12 +253,29 @@ def build_sector_outcome(
     db_path: Path = DEFAULT_MARKET_DB,
     fetch_many: Any = None,
     logger: Any = None,
+    calendar_dir: Optional[Path] = None,
 ) -> tuple[SectorOutcome, Optional[str]]:
-    """사업군 후보. **절대 예외를 올리지 않는다** — `(결과, 오류문자열)`."""
+    """사업군 후보. **절대 예외를 올리지 않는다** — `(결과, 오류문자열)`.
+
+    POC3-02D-OPS-03 — 추세 기준(기대 T-1 · 거래일 캘린더)을 표 최신 저장일과
+    대조해 넘긴다. 다르면 진입 검토를 하나도 내지 않는다(확정 계약 8).
+
+    설계자 RESULT STEP 2 — 정책은 읽혔는데 사업군(대표 목록)을 읽지 못하면 진입
+    검토를 생략으로 센다(`intraday_config_unavailable`). 회피도 평가할 사업군이 없다 —
+    평가 불가(`coverage_ok=False`)로 두어 직전 사업군 관측을 회복으로 적지 않는다(D2).
+    """
     try:
         sectors = _load_active_sectors(logger)
         if not sectors:
-            return SectorOutcome(), None
+            return (
+                SectorOutcome(
+                    coverage_ok=False,
+                    entry_omitted=True,
+                    entry_omitted_reason=REASON_CONFIG_UNAVAILABLE,
+                    representatives=RepresentativeCoverage(COVERAGE_CONFIG_UNAVAILABLE),
+                ),
+                None,
+            )
         # 대표 실패분의 대체를 **여기서 한 번** 채운다. 없으면 평가 함수가
         # 대체를 볼 방법이 없다(검증자 지적).
         extra = fetch_alternate_quotes(
@@ -242,6 +290,14 @@ def build_sector_outcome(
                 if isinstance(t, str) and t:
                     tickers.append(t)
         history = load_unadjusted_history(sorted(set(tickers)), db_path=db_path)
+        # d5 · d20 이 대표 · 대체 이력에 하나도 없으면 구역 생략으로 센다(08:30 과 같은
+        # 규칙 · 모든 사업군 `short_history` 로 조용히 비지 않게).
+        trend = resolve_trend_basis(
+            today_kst,
+            table_latest=latest_unadjusted_date(db_path=db_path),
+            calendar_dir=calendar_dir,
+            stored_days={str(d)[:10] for rows in history.values() for d, _ in rows},
+        )
         return (
             select_sector_signals(
                 sectors=sectors,
@@ -250,6 +306,7 @@ def build_sector_outcome(
                 today_kst=today_kst,
                 policy=policy,
                 held_tickers=held_tickers,
+                trend=trend,
             ),
             None,
         )
@@ -263,6 +320,19 @@ def build_sector_outcome(
 # `short_history` 는 제외한다 — 당일 등락률은 쓸 수 있었고 진입 분기만
 # 미정이므로, 급락·추격 조건은 정상 평가된 것이다.
 UNEVALUABLE_REASONS = frozenset({REASON_NO_QUOTE, REASON_NO_DAY_RETURN, REASON_HELD})
+
+# POC3-02D-OPS-03 — 추세 기준일(T-1) · 대표 커버리지(설계자 RESULT STEP 2)를 확인하지
+# 못해 **진입 검토만** 평가하지 못한 사유. 회피는 당일 등락률로 정상 평가됐으므로 위
+# 집합과 다르다 — 직전 관측이 `ENTRY_REVIEW` 인 entry 만 보존한다(D2 · 모르는 것을
+# 회복으로 기록하지 않는다).
+ENTRY_UNEVALUABLE_REASONS = frozenset(
+    {
+        REASON_TREND_NOT_T1,
+        REASON_TICKER_NOT_T1,
+        REASON_CONFIG_UNAVAILABLE,
+        REASON_REPRESENTATIVE_MISSING,
+    }
+)
 
 
 def _unevaluable_tickers(
@@ -308,6 +378,20 @@ def _unevaluable_tickers(
             keep.add(str(ex["ticker"]))
     if down_keys:
         keep.update(tk for tk, row in rows if str(row.get("sector_key")) in down_keys)
+    # 추세 기준일 미확인 — 진입 검토 관측만 보존한다(위 `ENTRY_UNEVALUABLE_REASONS`).
+    entry_down = [
+        ex
+        for ex in sector.excluded or []
+        if ex.get("reason") in ENTRY_UNEVALUABLE_REASONS
+    ]
+    entry_keys = {str(ex["sector_key"]) for ex in entry_down if ex.get("sector_key")}
+    entry_tickers = {str(ex["ticker"]) for ex in entry_down if ex.get("ticker")}
+    keep.update(
+        tk
+        for tk, row in rows
+        if row.get("state") == STATE_ENTRY_REVIEW
+        and (tk in entry_tickers or str(row.get("sector_key")) in entry_keys)
+    )
     for row in holding_rows or []:
         ticker = str(row.get("ticker") or "")
         if ticker and usable_day_return(market_quotes.get(ticker), today_kst) is None:
@@ -328,6 +412,7 @@ def assemble_intraday_alert(
     base_close_date: Optional[str] = None,
     db_path: Path = DEFAULT_MARKET_DB,
     logger: Any = None,
+    calendar_dir: Optional[Path] = None,
 ) -> IntradayAssembly:
     """한 회차 조립. `held_drop` 은 **이미 선정된** 보유 급락 목록이다.
 
@@ -341,6 +426,14 @@ def assemble_intraday_alert(
         # 검증 전에는 여기서 끝난다. 보유 급락은 기존 경로가 이미 보냈다.
         out.skip_reason = "policy_disabled"
         out.diagnostics["intraday_policy_enabled"] = False
+        read_error = config_read_error(logger)
+        if read_error is not None:
+            # 설계자 RESULT STEP 2 — 설정을 못 읽은 장애는 꺼짐과 구분해 남긴다
+            # (신규 진입 생략 · 운영 상태 `intraday_config_unavailable`).
+            out.skip_reason = REASON_CONFIG_UNAVAILABLE
+            out.diagnostics["intraday_config_error"] = read_error
+            out.diagnostics["intraday_entry_omitted"] = True
+            out.diagnostics["intraday_entry_omitted_reason"] = REASON_CONFIG_UNAVAILABLE
         return out
     out.diagnostics["intraday_policy_enabled"] = True
 
@@ -365,8 +458,21 @@ def assemble_intraday_alert(
         held_tickers=held_tickers,
         db_path=db_path,
         logger=logger,
+        calendar_dir=calendar_dir,
     )
     out.sector, out.sector_error = sector, sector_error
+    # POC3-02D-OPS-03 — 추세 기준일과 진입 검토 생략 여부는 **매 회차** 남긴다
+    # (발송이 없는 회차도 · 확정 계약 14 '09:30 장중 추세 기준일' 실측).
+    out.diagnostics["intraday_trend_basis"] = (
+        sector.trend.to_dict() if sector.trend is not None else None
+    )
+    out.diagnostics["intraday_entry_omitted"] = bool(sector.entry_omitted)
+    # 설계자 RESULT STEP 2 — 생략 사유(trend_not_t1 · intraday_config_unavailable ·
+    # representative_missing)와 활성 대표 커버리지(없는 대표 목록 포함).
+    out.diagnostics["intraday_entry_omitted_reason"] = sector.entry_omitted_reason
+    out.diagnostics["intraday_representatives"] = (
+        sector.representatives.to_dict() if sector.representatives else None
+    )
 
     previous = load_sector_state(state_path, today_kst=today_kst)
     out.unevaluable = _unevaluable_tickers(
@@ -467,4 +573,5 @@ __all__ = [
     "active_policy",
     "assemble_intraday_alert",
     "build_sector_outcome",
+    "config_read_error",
 ]

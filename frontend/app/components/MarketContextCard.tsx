@@ -6,12 +6,13 @@
 // - 시스템 1차 시장 국면 라벨 (상승장 / 보합장 / 하락장 / 판정불가) 표시.
 // - KODEX200 (필수) 20거래일 / 60거래일 수익률 + MA20/MA60 위치 표시.
 // - KOSPI (보조) 20거래일 / 60거래일 수익률 표시. 값이 없을 때의 상태 배지 · 기준 줄 ·
-//   사유 줄은 「오늘의 투자 점검」과 같은 생성기(KospiStatusNote · POC3-02D-OPS-02 3-4).
+//   사유 줄은 「오늘의 투자 점검」과 같은 생성기(lib/kospiStatus · POC3-02D-OPS-02 3-4).
 // - regime_reasons + warnings 표시.
 //
 // 별도 파일로 분리한 이유: MarketDiscoveryView.tsx 의 KS-10 회피.
 
 import type { MarketContext } from "@/lib/api";
+import { KOSPI_SOURCE_LINE } from "@/lib/kospiStatus";
 import { KospiStatusBadges, KospiStatusLines } from "./KospiStatusNote";
 
 const DASH = "-";
@@ -34,7 +35,8 @@ function fmtMoney(value: number | null | undefined): string {
 // POC3-02D-OPS-02 3-4 (사용자 확정 2026-09-28) — KOSPI 영문 경고는 화면에서만 숨긴다.
 // 그 lag 는 KODEX200 적재일 축이라 KOSPI 상태 줄의 거래일 지연(C7 축)과 숫자가 다르다.
 // 응답의 warnings 는 그대로다. KODEX200 경고는 계속 보인다.
-function isKospiWarning(w: string): boolean {
+// POC3-02D-OPS-03 — LEGACY 대시보드(「개발·실험용」)도 같은 함수로 숨긴다.
+export function isKospiWarning(w: string): boolean {
   return w.startsWith("KOSPI benchmark");
 }
 
@@ -106,8 +108,10 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
           )}
         </div>
         <div>
+          {/* POC3-02D-OPS-03 설계자 RESULT STEP 4-1 — 자료원이 KRX 공식 지수로 바뀌어
+              FDR 기호 'KS11' 을 뺀다. */}
           <h3>
-            (KS11) KOSPI (보조) <KospiStatusBadges kospi={kospi} />
+            KOSPI (보조) <KospiStatusBadges kospi={kospi} />
           </h3>
           {kospi.status === "ok" ? (
             <ul className="dashboard-status-list">
@@ -116,6 +120,8 @@ export default function MarketContextCard({ ctx }: { ctx: MarketContext | null }
             </ul>
           ) : null}
           <KospiStatusLines kospi={kospi} />
+          {/* 설계자 RESULT STEP 4-2 — 공식 자료원 표시(KRX 약관 제10조③) 한 줄. */}
+          <div className="helper">{KOSPI_SOURCE_LINE}</div>
         </div>
       </div>
 

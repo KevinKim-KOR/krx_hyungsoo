@@ -34,6 +34,7 @@ import {
   DASH_KEY_NAV,
 } from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
+import { isKospiWarning } from "./MarketContextCard";
 
 interface Props {
   onNavigate: (key: MenuKey) => void;
@@ -139,7 +140,11 @@ function collectExceptions(
       });
       anyUnavailable = true;
     }
-    for (const w of market.data.market_context?.warnings ?? []) {
+    // POC3-02D-OPS-03 (PLAN STEP 5-5) — KOSPI 영문 경고는 시장 배경 카드처럼 숨긴다.
+    // 그 lag 는 KODEX200 적재일 축이라 KOSPI 판정(기대 T-1)과 다르다. KODEX200 경고는 그대로.
+    for (const w of (market.data.market_context?.warnings ?? []).filter(
+      (x) => !isKospiWarning(x),
+    )) {
       list.push({
         text: `시장 국면: ${w}`,
         action: "market_discovery",

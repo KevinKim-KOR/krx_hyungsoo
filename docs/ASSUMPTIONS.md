@@ -132,7 +132,7 @@
     approved PARAM 과 published data snapshot 생성. PC 는 24시간 상시 실행을
     전제로 하지 않는다.
   - **OCI = 상시 운영·조회 평면**: latest approved PARAM 보관, PUSH 별 독립
-    정책 (Market 평일 08:00 1회 · Holdings 평일 3 슬롯 · Spike 조건 발생형) 에
+    정책 (Market 평일 08:30 1회 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00) · Holdings 평일 3 슬롯 · Spike 조건 발생형) 에
     따른 Runtime 평가·Telegram 발송. (2026-07-24 정정: 이전 "일 3회 3-PUSH"
     전역 표현은 §5.2 에 따라 제거됨.) 장기 역할 — 외부 / 모바일에서 마지막
     published 데이터와 운영 상태를 조회할 수 있는 read-only 환경으로 확장. OCI
@@ -274,7 +274,7 @@ Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2/POC2_MOBILE_DECISI
 
 | PUSH | 정책 | 발송 조건 |
 |---|---|---|
-| Market briefing | 평일 08:00 KST 1회 정기 | 정기 시각 |
+| Market briefing | 평일 08:30 KST 1회 정기 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00) | 정기 시각 |
 | Holdings briefing | 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감) | 각 슬롯 발송 · 동일 슬롯 재실행은 중복 차단 · 서로 다른 슬롯은 같은 날짜에도 발송 허용 |
 | Spike/Falling Alert | 조건 발생형 예외 알림 (고정 시각·횟수 없음) | 정해진 간격 조건 평가 → 신호 없음 미발송 · 동일 신호 지속 중복 미발송 · 신규 신호만 알림 |
 

@@ -968,7 +968,7 @@ def test_0720_and_0800_share_one_resolver(tmp_path, monkeypatch):
         "date\n2026-09-17\n2026-09-18\n", encoding="utf-8"
     )
     monkeypatch.setattr(_cal, "CALENDAR_DIR", meta)
-    monkeypatch.setattr(mb, "_sp500_input", lambda _t: (1.0, "2026-09-17", True))
+    monkeypatch.setattr(mb, "_sp500_input", lambda _t, **_kw: (1.0, "2026-09-17", True))
     record: dict = {}
     mb.assemble(
         record,
@@ -1026,7 +1026,10 @@ def test_batch_run_passes_meta_dir_and_records_refresh_due(
             "csv_name": "krx_etf_basic_20260909.csv",
         }
 
-    monkeypatch.setattr(krx_sync, "sync_krx_daily", _sync)
+    # POC3-02D-OPS-03 — 배치의 KRX 단계는 목표일 수집(`krx_target_sync`)이다.
+    from app.market_briefing import krx_target_sync
+
+    monkeypatch.setattr(krx_target_sync, "sync_krx_target", _sync)
     monkeypatch.setattr(
         batch,
         "_build_universe_artifact",

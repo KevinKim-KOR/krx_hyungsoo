@@ -4,6 +4,11 @@
 책임별로 분해할 때 **helper 만 모았다**. 각 함수 본문은 원본에서 한 줄도
 고치지 않았다 — 바뀐 것은 파일 배치와 import 경로뿐이다.
 
+POC3-02D-OPS-03 — 예외 하나: `_stub_holdings_selection_inputs` 의 가격 이력 날짜와
+거래일 캘린더 고정(`_pin_weekday_calendar`). 보유 20거래일 기준일이 저장 가격 축이
+아니라 캘린더로 정해지면서(확정 계약 10) 고정 날짜 이력(2026-08)이 기준일을 담지
+못하게 됐다. test 본문 · assertion 은 고치지 않았다.
+
 선례: `tests/runtime_evidence/_fixtures.py` 와 같은 역할이다.
 """
 
@@ -259,6 +264,39 @@ def _install_mocks_with_kind_disabled(monkeypatch, tmp_path, kind_flag_env: str)
 # 테스트가 운영 상태를 건드리는 것은 금지다. 경로 주입이 실제로 먹는지 고정한다.
 
 
+def _calendar_days_ending_today(n: int) -> list[str]:
+    """실행일(KST)까지 달력일 `n` 개(오름차순 · 주말 포함)."""
+    from datetime import date, timedelta
+
+    from app.three_push_runtime_message_builder import kst_today_date
+
+    end = date.fromisoformat(kst_today_date())
+    return [(end - timedelta(days=n - 1 - i)).isoformat() for i in range(n)]
+
+
+def _pin_weekday_calendar(monkeypatch) -> None:
+    """거래일 판정을 **휴장일 없는 평일 캘린더**(작년 · 올해 · 내년)로 고정한다.
+
+    `trading_day_lag` 가 읽는 캘린더만 바꾼다(파일을 쓰지 않는다). 실행일 기준 30
+    달력일 이력(`test_holdings_runner_message_uses_user_facing_header`)에도 20거래일
+    전(= 28 달력일 전 안쪽)이 들어간다.
+    """
+    from datetime import date, timedelta
+
+    from app import trading_day_lag
+    from app.market_briefing.calendar import TradingCalendar
+    from app.three_push_runtime_message_builder import kst_today_date
+
+    year = int(kst_today_date()[:4])
+    day, end, days = date(year - 1, 1, 1), date(year + 1, 12, 31), []
+    while day <= end:
+        if day.weekday() < 5:
+            days.append(day.isoformat())
+        day += timedelta(days=1)
+    cal = TradingCalendar(days=frozenset(days), source_path="fixture", rows=len(days))
+    monkeypatch.setattr(trading_day_lag, "load_calendar", lambda directory=None: cal)
+
+
 def _stub_holdings_selection_inputs(monkeypatch, runner, *, quotes_asof):
     """보유 원장·가격·시세를 통제. 외부 조회 0건."""
     from dataclasses import dataclass
@@ -278,12 +316,20 @@ def _stub_holdings_selection_inputs(monkeypatch, runner, *, quotes_asof):
     import app.market_data_store as store_mod
 
     monkeypatch.setattr(holdings_mod, "load", lambda *a, **k: [_H("AAA", "가나다")])
-    # 20거래일 전 종가 대비 변화 없음 → 선정 0건.
+    # POC3-02D-OPS-03 — 20거래일 기준일은 **거래일 캘린더**로 정한다
+    # (`holdings_selection_source.trading_day_axis`). 실행일(실제 시계) 기준 합성 평일
+    # 캘린더를 고정해 라이브 캘린더 · 휴장일 · 실행 날짜에 따라 결과가 바뀌지 않게 한다.
+    _pin_weekday_calendar(monkeypatch)
+    # 20거래일 전 종가 대비 변화 없음 → 선정 0건. 이력은 실행일까지 달력일 45일.
     monkeypatch.setattr(
         store_mod,
         "fetch_price_history",
-        lambda ticker, **kw: [(f"2026-08-{i + 1:02d}", 100.0) for i in range(30)],
+        lambda ticker, **kw: [(d, 100.0) for d in _calendar_days_ending_today(45)],
     )
+    # 설계자 RESULT STEP 1 — 보유 ETF 과거 종가는 KRX 무조정 표(위 이력을 그 값으로).
+    from tests._helpers import install_etf_basis_from_store
+
+    install_etf_basis_from_store(monkeypatch)
     monkeypatch.setattr(
         runner,
         "_collect_target_tickers",

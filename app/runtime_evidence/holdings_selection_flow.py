@@ -22,6 +22,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from app.runtime_evidence.holdings_price_basis import (
+    PriceBasisSource,
+    load_basis_history,
+)
 from app.runtime_evidence.holdings_selection import (
     LOOKBACK_TRADING_DAYS,
     SelectedTicker,
@@ -32,8 +36,6 @@ from app.runtime_evidence.holdings_selection_render import render_changes, rende
 from app.runtime_evidence.holdings_selection_source import (
     average_buy_prices,
     load_holding_rows,
-    load_price_history,
-    load_trading_day_axis,
 )
 from app.runtime_evidence.holdings_selection_state import (
     ChangeSet,
@@ -121,20 +123,37 @@ def build_holdings_selection(
     runtime_kst: Optional[str],
     today_kst: Optional[str] = None,
     logger: Any = None,
+    calendar_dir: Optional[Path] = None,
+    price_basis_source: Optional[PriceBasisSource] = None,
 ) -> HoldingsSelectionOutcome:
-    """선정 → 변화 판정 → 본문. 예외는 `error` 로 돌려 러너가 failed 처리한다."""
+    """선정 → 변화 판정 → 본문. 예외는 `error` 로 돌려 러너가 failed 처리한다.
+
+    20거래일 기준일은 **거래일 캘린더**로 정한다(POC3-02D-OPS-03 확정 계약 10 ·
+    `trading_day_axis`). 저장 가격 축을 쓰면 배치 실패일에 21거래일 전이 된다.
+
+    과거 종가는 자산 유형별 한 계열이다(설계자 RESULT STEP 1 · `holdings_price_basis`):
+    ETF = KRX 무조정 · 개별주 = `fetch_history`(FDR) · 파생값은 혼합 확정으로 늘 닫힘. `price_basis_source`
+    가 없으면 운영 원천(공식 ETF 마스터 CSV · KRX 무조정 표)을 쓴다.
+    """
     out = HoldingsSelectionOutcome()
     # 조립 전 구간 전체를 감싼다. 가격 이력 조회 예외가 밖으로 새면 러너의
     # 정상 실패 기록 경로(`_finish("failed", ...)`)를 우회한다 (검증자 지적).
     try:
         holding_rows = load_holding_rows(holdings_loader)
         tickers = sorted({r["ticker"] for r in holding_rows})
-        history = load_price_history(tickers, fetch_history=fetch_history)
-        axis_dates = load_trading_day_axis(fetch_history=fetch_history)
+        basis = load_basis_history(
+            tickers,
+            fetch_history=fetch_history,
+            market_quotes=market_quotes or {},
+            today_kst=today_kst,
+            calendar_dir=calendar_dir,
+            source=price_basis_source,
+        )
+        axis_dates = basis.axis
         base_day = reference_trading_day(axis_dates, today_kst, LOOKBACK_TRADING_DAYS)
         selected = select_holdings(
             holdings=holding_rows,
-            price_history=history,
+            price_history=basis.history,
             market_quotes=market_quotes or {},
             today_kst=today_kst,
             axis_dates=axis_dates,
@@ -149,8 +168,12 @@ def build_holdings_selection(
         "holdings_unique_ticker_count": len(tickers),
         "holdings_selected_count": len(selected),
         # 설계자 확정 — 기준일은 거래일 축에서 고른다. 진단에 남겨 사후 확인 가능.
+        # POC3-02D-OPS-03 — 축은 캘린더다(마지막 = 기대 T-1).
         "holdings_base_trading_day": base_day,
         "holdings_trading_day_axis_len": len(axis_dates),
+        "holdings_axis_last_trading_day": axis_dates[-1] if axis_dates else None,
+        # 설계자 RESULT STEP 1-5 — 종목별 자산 유형 · price_source · price_basis.
+        "holdings_price_basis": basis.evidence,
     }
 
     # 실행일을 **명시로 넘긴다**. 넘기지 않으면 `load_state` 가 실제 오늘 날짜로
@@ -222,14 +245,22 @@ def build_holdings_selection(
     if out.message_text and (slot_id or "") == LAST_SLOT_ID:
         try:
             from app.runtime_evidence.holdings_risk_flow import DEFAULT_TALLY_PATH
-            from app.runtime_evidence.intraday_alert_flow import active_policy
+            from app.runtime_evidence.intraday_alert_flow import (
+                active_policy,
+                config_read_error,
+            )
             from app.runtime_evidence.intraday_checkup_tally import (
                 load_tally,
                 render_summary_line,
             )
 
             if active_policy(logger) is None:
-                out.diagnostics["intraday_checkup_summary_omitted"] = "policy_disabled"
+                # 설정을 못 읽은 장애는 꺼짐과 구분해 남긴다(설계자 RESULT STEP 2).
+                out.diagnostics["intraday_checkup_summary_omitted"] = (
+                    "policy_disabled"
+                    if config_read_error(logger) is None
+                    else "intraday_config_unavailable"
+                )
             else:
                 line = render_summary_line(
                     load_tally(DEFAULT_TALLY_PATH, today_kst=today_kst)
@@ -370,6 +401,8 @@ def assemble_holdings_push(
     holdings_loader: Callable[[], list[Any]],
     fetch_history: Callable[..., list[tuple[str, float]]],
     logger: Any = None,
+    calendar_dir: Optional[Path] = None,
+    price_basis_source: Optional[PriceBasisSource] = None,
 ) -> HoldingsAssembly:
     """보유 브리핑 §3-c 전체 — 비거래일 판정 → 완전성 가드 → 선정·본문 조립.
 
@@ -412,6 +445,8 @@ def assemble_holdings_push(
         runtime_kst=runtime_kst,
         today_kst=today_kst,
         logger=logger,
+        calendar_dir=calendar_dir,
+        price_basis_source=price_basis_source,
     )
     out.outcome = outcome
     out.diagnostics.update(outcome.diagnostics)

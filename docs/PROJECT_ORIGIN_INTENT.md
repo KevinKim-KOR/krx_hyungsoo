@@ -110,7 +110,7 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
 - **OCI 작업 빈도 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1)**:
   이전 "일 3회 자동 PUSH (장초 / 점심 / 장마감 전)" 전역 제한 표현을 제거한다.
   각 PUSH 는 목적에 맞는 독립 운영 정책을 가진다:
-  - **Market briefing**: 평일 08:00 KST 1회 정기 발송 (전일 시장 흐름 · 장 시작 전 확인).
+  - **Market briefing**: 평일 08:30 KST (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00) 1회 정기 발송 (전일 시장 흐름 · 장 시작 전 확인).
   - **Holdings briefing**: 평일 하루 **3개 평가·발송 슬롯** (오전 · 장중 · 마감).
     정확한 실행 시각은 다음 STEP (Low-Frequency Telegram Push Operation v1) 에서 확정.
   - **Spike/Falling Alert**: 고정 시각 발송 아님. **조건 발생형 예외 알림**.
@@ -125,7 +125,7 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
     PARAM 과 published data snapshot 생성. PC 는 24시간 상시 실행을 전제로
     하지 않는다.
   - **OCI = 상시 운영·조회 평면**: latest approved PARAM 보관, PUSH 별 목적에
-    맞는 독립 운영 (Market briefing 평일 08:00 · Holdings briefing 평일 3 슬롯 ·
+    맞는 독립 운영 (Market briefing 평일 08:30 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00) · Holdings briefing 평일 3 슬롯 ·
     Spike/Falling Alert 조건 발생형), Telegram 발송. **OCI 장기 역할 — 외부 /
     모바일에서 마지막 published 데이터와 운영 상태를 조회할 수 있는 read-only
     환경**으로 확장. OCI 는 ML 학습을 수행하지 않는다.
@@ -207,7 +207,7 @@ PC 작업 (주 2회 예상, 상한 아님):
 OCI 작업 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1 — 이전 "일 3회 자동 PUSH" 전역 제한 표현 제거):
 
 7. Holdings briefing (보조 PUSH 1) — 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감).
-8. Market briefing (보조 PUSH 2) — 평일 08:00 KST 1회 정기.
+8. Market briefing (보조 PUSH 2) — 평일 08:30 KST 1회 정기 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00).
 9. Spike/Falling Alert (보조 PUSH 3) — 조건 발생형 예외 알림 (고정 시각·횟수 없음).
 10. 알림 수신 후 사용자가 PC 작업으로 넘어갈지 판단.
 
@@ -225,7 +225,7 @@ OCI 작업 (2026-07-24 정정, Telegram Push Operating Boundary Amendment v1 —
     출력 정의(§3) 가 확정되기 전까지는 자동 연결하지 않는다.
 - OCI crontab 구조 (daily_ops, spike_watch, holding_watch)
   → **새 param 구조와 PUSH 별 목적 기반 운영 흐름에 연결 필요** (2026-07-24
-    정정, 이전 "일 3회 자동 PUSH" 표현 제거). Market 평일 08:00 · Holdings 평일
+    정정, 이전 "일 3회 자동 PUSH" 표현 제거). Market 평일 08:30 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00) · Holdings 평일
     3 슬롯 · Spike 조건 발생형. PC 작업 1~5단계가 정착된 뒤 OCI 작업 (운영
     사이클 7~10단계) 에 연결.
 - Telegram 연동

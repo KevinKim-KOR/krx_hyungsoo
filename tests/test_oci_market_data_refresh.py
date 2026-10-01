@@ -755,6 +755,12 @@ def test_batch_failed_refresh_status_does_not_save(tmp_path, monkeypatch):
         ),
     )
     monkeypatch.setattr(batch, "_HISTORY_PATH_UNUSED", None, raising=False)
+    # POC3-02D-OPS-03 — KRX 단계(실제 시각 시도 시각표)는 대역. 계약은
+    # test_poc3_02d_ops03_krx_* 가 본다.
+    monkeypatch.setattr(
+        "app.market_briefing.krx_target_sync.sync_krx_target",
+        lambda **kw: {"status": "skipped_before_open", "attempts": []},
+    )
     rec = batch.run(mode="run")
     assert rec["status"] == "failed"
     assert rec["reason"].startswith("refresh_status")

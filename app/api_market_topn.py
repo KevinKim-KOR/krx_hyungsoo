@@ -34,6 +34,7 @@ from app.api_market_topn_service import (
     candidate_to_model,
     enrich_candidates_with_evidence,
     entry_to_model,
+    kospi_today_kst,
     market_context_to_model,
     merge_relative_upside_score,
     with_kospi_display,
@@ -80,7 +81,11 @@ def get_market_topn_latest(
       · 프론트 로컬 reverse 가 아니다.
     invalid basis / order 는 FastAPI Literal 가 422 응답으로 차단.
     필터링은 TOP N limit 이전에 적용된다 (지시문 §3.1).
+
+    POC3-02D-OPS-03 확정 계약 9 — KOSPI 계산 경로와 화면 상태가 **같은 '오늘'** 로
+    같은 최신성 함수(기대 T-1)를 쓴다.
     """
+    today = kospi_today_kst()
     payload = compute_topn(
         n=n,
         db_path=DEFAULT_DB_PATH,
@@ -90,6 +95,7 @@ def get_market_topn_latest(
         exclude_leveraged=exclude_leveraged,
         exclude_synthetic=exclude_synthetic,
         exclude_futures=exclude_futures,
+        kospi_today_kst=today,
     )
     latest_refresh = payload.get("latest_refresh")
     filters_raw = payload.get("filters") or {}
@@ -128,7 +134,9 @@ def get_market_topn_latest(
         topn_caveat=payload.get("topn_caveat"),
         # POC3-02D-OPS-02 3-4 — KOSPI 화면 상태 선택 필드(이 응답에만 · 설계자 Q4).
         market_context=market_context_to_model(
-            with_kospi_display(payload.get("market_context"), db_path=DEFAULT_DB_PATH)
+            with_kospi_display(
+                payload.get("market_context"), db_path=DEFAULT_DB_PATH, today_kst=today
+            )
         ),
         relative_upside_score_status=score_meta.get("relative_upside_score_status"),
         relative_upside_score_asof_date=score_meta.get(

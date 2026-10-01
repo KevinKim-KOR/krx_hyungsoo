@@ -24,7 +24,7 @@ DEFERRED_BY_USER
 ### Telegram PUSH 운영 경계 정정 (2026-07-24)
 
 - 전체 PUSH 의 전역 "일 3회" 제한 제거. 각 PUSH 는 목적별 독립 운영 정책.
-- Market briefing: 평일 08:00 KST 1회.
+- Market briefing: 평일 08:30 KST 1회 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00).
 - Holdings briefing: 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감). 정확한 시각은 다음 STEP.
 - Spike/Falling Alert: 조건 발생형 예외 알림. 고정 시각·횟수 없음.
 - 평가 실행 횟수 ↔ 사용자 알림 횟수 구분.
@@ -97,7 +97,7 @@ PENDING 판단 초안 (GenerateDraft → PENDING_APPROVAL 저장)
 
 다음은 매 발송 전 사용자 승인을 요구하지 않는다:
 
-- **Market briefing**: 평일 08:00 KST 1회 정기 발송
+- **Market briefing**: 평일 08:30 KST 1회 정기 발송 (2026-09-29 설계자 명시 개정 · 사용자 결정 · OPS-03 배포부터 · 이전 08:00)
 - **Holdings briefing**: 평일 하루 3개 평가·발송 슬롯 (오전 · 장중 · 마감). 정확한 시각은 다음 STEP `Low-Frequency Telegram Push Operation v1` 에서 확정
 - **Spike/Falling Alert**: 고정 시각·횟수 없음. **조건 발생형 예외 알림** (정해진 간격 조건 평가 → 신호 없음/중복은 미발송 · 신규 신호만 알림). 평가 간격은 다음 STEP 에서 확정
 - **OCI evidence · artifact publication**: 사용자 승인 하 controlled publication 완료 후 정기 발행

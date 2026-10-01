@@ -121,6 +121,11 @@ def _install_inputs(
     monkeypatch.setattr(
         store_mod, "fetch_price_history", lambda t, **kw: rows.get(t, [])
     )
+    # 설계자 RESULT STEP 1 — ETF 구간 종가는 KRX 무조정 표에서 온다. 위 이력을 그
+    # 표의 값으로 넣는다(라이브 CSV · DB 를 열지 않는다 · 가격 기준은 price_basis 테스트).
+    from tests._helpers import install_etf_basis_from_store
+
+    install_etf_basis_from_store(monkeypatch)
     monkeypatch.setattr(
         runner, "_collect_target_tickers", lambda pk: [t for t, _, _, _ in specs]
     )

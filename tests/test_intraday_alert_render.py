@@ -49,7 +49,11 @@ class H:
 
 
 def _sig(ticker, state, pct, *, key="반도체", r5=4.3, r20=8.7):
-    return SectorSignal(key, ticker, f"{key}ETF", state, pct, r5, r20)
+    # POC3-02D-OPS-03 — 진입 검토는 추세 기준일(T-1)이 있어야 본문에 실린다.
+    basis = "2026-09-15" if state == STATE_ENTRY_REVIEW else None
+    return SectorSignal(
+        key, ticker, f"{key}ETF", state, pct, r5, r20, trend_basis_date=basis
+    )
 
 
 # ── §5 억제와 cooldown ──────────────────────────────────────────────────────

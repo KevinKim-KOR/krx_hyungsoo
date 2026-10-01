@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import Optional
 
 from app.runtime_evidence.holdings_selection import (
+    CAUSE_BASE_CLOSE,
     DRAWDOWN_NOTE_MAX_PCT,
     GROUP_ORDER,
     REASON_DATA_UNAVAILABLE,
@@ -48,6 +49,10 @@ def _name_cell(item: SelectedTicker) -> str:
 
 def _value_cell(item: SelectedTicker) -> str:
     if item.primary_reason == REASON_DATA_UNAVAILABLE:
+        # 설계자 RESULT STEP 1 — 현재가는 멀쩡하고 20거래일 기준 종가만 없으면
+        # 그 파생값만 `데이터 확인 불가` 다. `현재가 조회 실패` 는 현재가 실패일 때만.
+        if item.unavailable_cause == CAUSE_BASE_CLOSE:
+            return "20거래일 데이터 확인 불가"
         return "현재가 조회 실패"
     value = item.reasons[item.primary_reason].get("value")
     return "20거래일 —" if value is None else f"20거래일 {value:+.1f}%"

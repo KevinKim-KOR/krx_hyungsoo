@@ -1,4 +1,4 @@
-"""POC3-OPS-02B-2 — 08:00 본문 렌더.
+"""POC3-OPS-02B-2 — 시장 흐름 브리핑 본문 렌더 (POC3-02D-OPS-03 부터 08:30).
 
 설계자 §3 확정 형식. **문구 변경이 계산에 영향을 주지 않도록** 렌더를 분리한다.
 
@@ -34,7 +34,8 @@ from app.market_briefing.meta_gate import (
     STATUS_META_GATE_STALE,
 )
 
-HEADER = "[시장 흐름 브리핑] 08:00"
+# POC3-02D-OPS-03 확정 계약 1 — 시장 브리핑 08:00 → 08:30 (시간 계약 명시 개정).
+HEADER = "[시장 흐름 브리핑] 08:30"
 
 # 설계자 §3.2 확정 문장 — `직전 미국 거래일` 로 기간을 명시한다.
 SENTENCE_UP = (
@@ -60,6 +61,25 @@ INDEX_NOTICE = {
 # (2026-09-27 RESULT 판정): 판정 창을 확인하지 못한 경우에만 쓰고, 정상 0개
 # (`STATUS_NO_CANDIDATE_NORMAL`)는 안내 없이 생략한다(`render_market_briefing`).
 INDEX_NOTICE[STATUS_META_GATE_STALE] = INDEX_NOTICE[STATUS_API_FETCH_FAILED]
+
+# POC3-02D-OPS-03 확정 계약 6 — 국내 기준일 ≠ 기대 직전 거래일(T-1). 설계자 확정
+# 문구(설계서 §2 예시 · PLAN STEP 3-8). T-2 값 · 날짜는 본문 어디에도 쓰지 않는다.
+STATUS_PREV_DAY_MISSING = "prev_trading_day_missing"
+INDEX_NOTICE[STATUS_PREV_DAY_MISSING] = (
+    "국내 기초지수는 직전 거래일 자료를 확인하지 못해 제외했습니다."
+)
+
+# POC3-02D-OPS-03 확정 계약 13 · PLAN STEP 7-3 — 뒤 PUSH 판단에 영향을 주는 08:10 배치
+# 실패(배치 미완료 · FDR 가격 단계 실패) 고지. 하루 최대 1회는 시장 브리핑 일 단위
+# registry 가 보장한다. 문구는 사용자 승인(B3 · 2026-09-30 APPROVED).
+# 설계자 RESULT STEP 1 뒤: ETF 의 20거래일 기준 종가 · 고점 대비는 KRX 무조정 표(08:10 KRX
+# 단계)에서 오고, 개별주 파생값은 혼합 확정으로 늘 닫힌다(`holdings_price_basis`). 그래서
+# FDR 단계만 실패한 날의 보유 영향은 사실상 없다 — 배치가 아예 안 돈 날(KRX 도 없음 →
+# ETF 고점 대비 생략)에만 맞는 고지다. 발동 입력에서 FDR 을 뺄지는 설계자 결정 대상.
+BATCH_FAILURE_NOTICE = (
+    "※ 운영 안내: 오늘 아침 보유 종목 시세 갱신이 끝나지 않아 "
+    "고점 대비 값이 빠질 수 있습니다."
+)
 
 # 설계자 R2 Q24 확정 문구 — `refresh_due` 주기마다 한 번, 본문 **맨 끝** 1줄.
 CSV_REFRESH_NOTICE = "※ 운영 안내: KRX ETF 전종목 기본정보 CSV를 갱신해 주세요."
@@ -192,7 +212,18 @@ def append_refresh_notice(body: str) -> str:
     return f"{body}\n\n{CSV_REFRESH_NOTICE}" if body else body
 
 
+def append_batch_notice(body: str) -> str:
+    """본문 끝에 빈 줄 하나를 두고 배치 실패 고지를 붙인다. 빈 본문은 그대로."""
+    return f"{body}\n\n{BATCH_FAILURE_NOTICE}" if body else body
+
+
+def render_notice_only(header: str = HEADER) -> str:
+    """낼 내용이 없는 날의 배치 실패 고지 본문 — 머리 + 고지 한 줄(PLAN STEP 7-3)."""
+    return f"{header}\n\n{BATCH_FAILURE_NOTICE}"
+
+
 __all__ = [
+    "BATCH_FAILURE_NOTICE",
     "CSV_REFRESH_NOTICE",
     "HEADER",
     "INDEX_NOTICE",
@@ -201,6 +232,8 @@ __all__ = [
     "SENTENCE_NO_OUTLOOK",
     "SENTENCE_UP",
     "STATUS_NO_CANDIDATE_NORMAL",
+    "STATUS_PREV_DAY_MISSING",
+    "append_batch_notice",
     "append_refresh_notice",
     "outlook_sentence",
     "render_basis_block",
@@ -208,5 +241,6 @@ __all__ = [
     "render_index_block",
     "render_products",
     "render_market_briefing",
+    "render_notice_only",
     "render_support_block",
 ]

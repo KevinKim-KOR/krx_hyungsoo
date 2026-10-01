@@ -7,6 +7,7 @@
 
 import type { QueryState } from "@/lib/api/queryCache";
 import type { MarketTopNResponse } from "@/lib/api";
+import { KOSPI_SOURCE_LINE } from "@/lib/kospiStatus";
 import KospiChart from "./KospiChart";
 import { KospiStatusBadges, KospiStatusLines } from "../KospiStatusNote";
 import {
@@ -24,7 +25,9 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
     market.phase === "success" ? market.data.market_context ?? null : null;
   const kodex = ctx?.kodex200;
   const kospi = ctx?.kospi;
-  const asof = ctx?.asof ?? (market.phase === "success" ? market.data.asof : null);
+  // 설계자 RESULT STEP 4-3 — '마지막 자료 기준일' 은 KOSPI 기준일이다(KODEX200 날짜 아님).
+  // KOSPI 기준일이 없으면 날짜를 내지 않는다(다른 날짜로 대신하지 않는다).
+  const kospiAsOf = kospi?.as_of_date ?? null;
 
   return (
     <section className="tc-card tc-headline" aria-label="KOSPI 현재 위치">
@@ -35,7 +38,8 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
       <div className="tc-headline-grid">
         <div className="tc-headline-chart">
           <div className="tc-label">코스피 가격 흐름</div>
-          <KospiChart />
+          {/* POC3-02D-OPS-03 — 차트도 같은 KOSPI 판정(배지 · 기준 줄)을 단다. */}
+          <KospiChart kospi={kospi} phase={market.phase} />
         </div>
 
         <div className="tc-headline-stats">
@@ -132,8 +136,11 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
             </span>
           </div>
 
+          {/* 설계자 RESULT STEP 4-2 — 공식 자료원 표시(KRX 약관 제10조③). 차트 · 수익률을
+              합친 이 카드에 한 줄(기준일과 같은 줄). */}
           <div className="tc-muted tc-small tc-divider" style={{ paddingTop: 12 }}>
-            마지막 자료 기준일 {fmtKstDate(asof)}
+            {kospiAsOf ? `마지막 자료 기준일 ${fmtKstDate(kospiAsOf)} · ` : null}
+            {KOSPI_SOURCE_LINE}
           </div>
         </div>
       </div>

@@ -51,8 +51,19 @@ def _result(
     return out
 
 
-def refresh_kospi(*, end_date: date, db_path=None) -> dict[str, Any]:
-    """KOSPI benchmark 갱신. 실패해도 예외를 올리지 않는다."""
+def refresh_kospi(
+    *, end_date: date, db_path=None, recheck_latest: bool = True
+) -> dict[str, Any]:
+    """KOSPI benchmark 갱신. 실패해도 예외를 올리지 않는다.
+
+    POC3-02D-OPS-03 확정 계약 9 — 자료원은 KRX `idx/kospi_dd_trd` 공식 종가다
+    (`market_benchmark_store.refresh_kospi_benchmark`). 설계자 판정 '호출량과 응답
+    근거를 운영 기록에 남기십시오' — 호출 수 · 날짜별 시도 · 정정 · 증거 경로 · 전후
+    건수를 배치 JSON 에 그대로 남긴다(키 · 가격 원문 없음 · 정정 값만).
+
+    `recheck_latest=False` — 08:15 · 08:20 · 08:24 재시도가 이번 실행에서 이미 확인한
+    저장 최신일을 빼고 부를 때(설계자 RESULT STEP 3 · `market_benchmark_kospi_retry`).
+    """
     try:
         from app.market_benchmark_store import (
             latest_benchmark_date,
@@ -64,13 +75,18 @@ def refresh_kospi(*, end_date: date, db_path=None) -> dict[str, Any]:
         kwargs = {"end_date": end_date}
         if db_path is not None:
             kwargs["db_path"] = db_path
+        if not recheck_latest:
+            kwargs["recheck_latest"] = False
         res = refresh_kospi_benchmark(**kwargs)
     except Exception as e:  # noqa: BLE001
         return _result("failed", error=f"{type(e).__name__}: {str(e)[:200]}")
     # `refresh_kospi_benchmark` 는 실패를 dict 로 돌려준다(예외를 올리지 않는다).
-    status = (res or {}).get("status") or "failed"
+    res = res or {}
+    status = res.get("status") or "failed"
     try:
-        as_of = latest_benchmark_date(
+        # 적재 함수가 판정에 쓴 기준일(유효 종가 마지막 날짜)을 그대로 남긴다 —
+        # 화면 · API 판정과 같은 날짜다. 없으면(옛 반환) 저장 최신일.
+        as_of = res.get("as_of_date") or latest_benchmark_date(
             BENCHMARK_KOSPI, **({"db_path": db_path} if db_path is not None else {})
         )
     except Exception:  # noqa: BLE001
@@ -78,9 +94,25 @@ def refresh_kospi(*, end_date: date, db_path=None) -> dict[str, Any]:
     return _result(
         "ok" if status == "ok" else "failed",
         as_of=as_of,
-        error=(res or {}).get("error"),
-        written=(res or {}).get("rows_written"),
+        error=res.get("error"),
+        written=res.get("rows_written"),
+        **{k: res[k] for k in _KOSPI_RECORD_KEYS if k in res},
     )
+
+
+# 배치 기록에 옮기는 KOSPI 적재 근거(설계자 판정 STEP 7 · '호출량과 응답 근거').
+_KOSPI_RECORD_KEYS = (
+    "source",
+    "expected_as_of_date",
+    "calls",
+    "attempts",
+    "corrections",
+    "replaced",
+    "evidence_path",
+    "before",
+    "after",
+    "note",
+)
 
 
 def refresh_vix(*, db_path=None) -> dict[str, Any]:
@@ -186,6 +218,16 @@ def refresh_us_index(
     return _result("ok", as_of=as_of, written=written, sessions=len(rows))
 
 
+def overall_status(failed_count: int, total: int) -> str:
+    """개별 결과 → 전체 상태. 실패 없음 `ok` · 전부 실패 `failed` · 그 밖 `partial`.
+
+    KOSPI 재시도 뒤 다시 셀 때도 이 규칙을 쓴다(`market_benchmark_kospi_retry`).
+    """
+    if not failed_count:
+        return "ok"
+    return "failed" if failed_count >= total else "partial"
+
+
 def refresh_benchmarks(*, end_date: date, db_path=None, logger=None) -> dict[str, Any]:
     """KOSPI·VIX 를 각각 갱신하고 **개별 상태**를 돌려준다.
 
@@ -235,12 +277,7 @@ def refresh_benchmarks(*, end_date: date, db_path=None, logger=None) -> dict[str
 
     pairs = [("kospi", kospi), ("vix", vix)] + [(f"us:{k}", v) for k, v in us.items()]
     failed = [n for n, r in pairs if r["status"] != "ok"]
-    if not failed:
-        status = "ok"
-    elif len(failed) == len(pairs):
-        status = "failed"
-    else:
-        status = "partial"
+    status = overall_status(len(failed), len(pairs))
     if logger is not None:
         logger.info(
             "benchmark 갱신: kospi=%s(as_of=%s) vix=%s(as_of=%s) -> %s",
@@ -265,6 +302,7 @@ __all__ = [
     "US_BENCHMARKS",
     "US_LOOKBACK_DAYS",
     "US_REQUIRED_SESSIONS",
+    "overall_status",
     "refresh_us_index",
     "refresh_benchmarks",
     "refresh_kospi",

@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from app.config import optional_env, require_env
@@ -164,7 +164,8 @@ def refresh_snapshot() -> OciStartupSnapshot:
     #   1) crontab 에 등록된 push-kind 목록(--push-kind 인자 추출)
     #   2) holdings 소스 파일 최근 수정 epoch
     #   3) runtime_state.sqlite 최근 수정 epoch·크기
-    # 구분자 '###' 로 세 블록을 나눠 파싱한다.
+    #   4) POC3-02D-OPS-03 — 거래일 달력 폴더 파일 이름(한국 · 미국 올해 · 다음 해)
+    # 구분자 '###' 로 블록을 나눠 파싱한다.
     remote_cmd = (
         "crontab -l 2>/dev/null "
         "| grep -oE -- '--push-kind [a-z_]+' | awk '{print $2}' | sort -u; "
@@ -172,7 +173,9 @@ def refresh_snapshot() -> OciStartupSnapshot:
         f"stat -c '%Y' {_REMOTE_HOME}/state/holdings/holdings_latest.json "
         "2>/dev/null || echo 0; "
         f"stat -c '%Y %s' {_REMOTE_HOME}/state/runtime/runtime_state.sqlite "
-        "2>/dev/null || echo '0 0'"
+        "2>/dev/null || echo '0 0'; "
+        "echo '###'; "
+        f"ls -1 {_REMOTE_HOME}/state/market_meta 2>/dev/null || true"
     )
     ok, out = _ssh_read(remote_cmd)
 
@@ -238,6 +241,11 @@ def refresh_snapshot() -> OciStartupSnapshot:
             detail="개별 PUSH job 최신 성공/실패는 기동 읽기 범위 밖 (Q5)",
         )
     )
+    # POC3-02D-OPS-03 확정 계약 11 — 거래일 달력 준비 상태. 넷째 블록이 없던 옛 응답이면
+    # 행을 만들지 않는다(모르는 것을 '없음' 으로 보이지 않는다).
+    if len(parts) > 2:
+        names = [ln.strip() for ln in parts[2].splitlines() if ln.strip()]
+        jobs.append(calendar_job(names, _today_kst()))
 
     if overall == "OPERATING":
         summary = "OCI 자동 운영 스케줄 활성 (필수 3종 등록 · 기동 시 확인)"
@@ -260,6 +268,50 @@ def refresh_snapshot() -> OciStartupSnapshot:
         ),
     )
     return _snapshot
+
+
+_KST = timezone(timedelta(hours=9))
+_MARKET_KO = {"KRX": "한국", "NYSE": "미국"}
+
+
+def _today_kst() -> date:
+    return datetime.now(_KST).date()
+
+
+def calendar_job(names: list[str], today: date) -> OciJobStatus:
+    """OCI 달력 폴더 파일 이름으로 만든 `trading_calendar` 행(확정 계약 11).
+
+    올해 파일이 없거나 12월인데 다음 해 파일이 없으면 STALE. 11월은 점검 기간
+    안내만(SUCCESS). 판정 규칙은 배치와 같다(`us_trading_calendar.calendar_readiness`).
+    """
+    from app.us_trading_calendar import (
+        READY_DUE,
+        READY_WARN,
+        calendar_readiness_for_names,
+    )
+
+    r = calendar_readiness_for_names(today, names)
+    cur, nxt = r["current_year"], r["next_year"]
+
+    def _ko(markets: list[str]) -> str:
+        return "·".join(_MARKET_KO.get(m, m) for m in markets)
+
+    parts: list[str] = []
+    if r["missing_current"]:
+        parts.append(
+            f"{cur}년 파일 없음: {_ko(r['missing_current'])} — 평일 기준으로 대신 판정 중"
+        )
+    if r["missing_next"]:
+        if r["state"] == READY_WARN:
+            tail = "준비 필요"
+        elif r["state"] == READY_DUE:
+            tail = "11월 30일까지 준비 필요"
+        else:
+            tail = "11월 30일까지 준비"
+        parts.append(f"{nxt}년 파일 없음: {_ko(r['missing_next'])} — {tail}")
+    detail = " · ".join(parts) or f"한국·미국 {cur}년·{nxt}년 파일 있음"
+    status = "STALE" if r["state"] == READY_WARN else "SUCCESS"
+    return OciJobStatus(job="trading_calendar", status=status, detail=detail)
 
 
 def _epoch_detail(label: str, epoch_str: str) -> str:

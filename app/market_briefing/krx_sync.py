@@ -85,6 +85,25 @@ def _default_fetcher(bas_dd: str, key: str) -> list[dict[str, Any]]:
     return r.json().get("OutBlock_1") or []
 
 
+# POC3-02D-OPS-03 확정 계약 9 — KOSPI 공식 종가(사용자 승인 2026-09-29 · 같은 키).
+# 네트워크 경계를 ETF 조회와 같은 모듈에 둔다 — 테스트 가드(`tests/conftest.py`
+# `_block_live_krx_api`)가 두 경계를 함께 막는다. 소비처는 `market_benchmark_store`.
+KRX_KOSPI_DAILY_URL = "https://data-dbg.krx.co.kr/svc/apis/idx/kospi_dd_trd"
+
+
+def _default_kospi_fetcher(bas_dd: str, key: str) -> list[dict[str, Any]]:
+    import httpx
+
+    r = httpx.get(
+        KRX_KOSPI_DAILY_URL,
+        params={"basDd": bas_dd},
+        headers={"AUTH_KEY": key},
+        timeout=REQUEST_TIMEOUT,
+    )
+    r.raise_for_status()
+    return r.json().get("OutBlock_1") or []
+
+
 def has_traded_prices(rows: list[dict[str, Any]]) -> bool:
     """이 응답이 **실제로 거래가 있었던 날** 인가.
 
@@ -227,7 +246,12 @@ def sync_krx_daily(
     lookback_days: int = DAILY_LOOKBACK_DAYS,
     logger: Any = None,
 ) -> dict[str, Any]:
-    """07:20 진입점. **예외를 올리지 않는다.**
+    """옛 07:20 진입점(역탐색). **예외를 올리지 않는다.**
+
+    POC3-02D-OPS-03 부터 08:10 배치 · 09:20 보강은 목표일 수집
+    (`krx_target_sync.sync_krx_target`)을 쓴다 — 역탐색은 T-1 이 없으면 같은 호출
+    안에서 T-2 를 돌려주므로 재시도 계약과 맞지 않는다. 이 함수는 옛 계약 그대로
+    남긴다(기존 테스트 · 도구).
 
     성공하면 가격 1일치를 적재하고 정합성 결과를 남긴다. 실패해도 배치가
     ETF 가격 적재를 롤백하지 않도록 dict 로 돌려준다.
@@ -293,6 +317,48 @@ def sync_krx_daily(
         }
     written = krx_store.upsert_snapshot(snapshot, db_path=db_path)
 
+    # 창은 한 번만 정한다(R2 Q27 기록과 같은 창) — 저장 행 순서 창(옛 계약).
+    judged = judge_and_save_consistency(
+        rows,
+        bas_dd=bas_dd,
+        window_fn=lambda: krx_store.resolve_window(db_path=db_path),
+        consistency_path=consistency_path,
+        previous=previous,
+        meta_dir=meta_dir,
+        official_csv_path=official_csv_path,
+        db_path=db_path,
+        logger=logger,
+    )
+    return {
+        "status": STATUS_OK,
+        "basis_date": bas_dd,
+        "rows_written": written,
+        "api_ticker_count": judged["api_ticker_count"],
+        "consistency_status": judged["consistency_status"],
+        "join_coverage": judged["join_coverage"],
+        "tried_dates": tried,
+        **judged["refresh"],
+    }
+
+
+def judge_and_save_consistency(
+    rows: list[dict[str, Any]],
+    *,
+    bas_dd: str,
+    window_fn: Callable[[], Optional[krx_store.PriceWindow]],
+    consistency_path: Path,
+    previous: Optional[meta_gate.ConsistencyResult],
+    meta_dir: Optional[Path],
+    official_csv_path: Optional[Path],
+    db_path: Optional[Path],
+    logger: Any = None,
+) -> dict[str, Any]:
+    """적재를 마친 **같은 응답**으로 정합성을 판정하고 JSON 에 남긴다.
+
+    `sync_krx_daily`(옛 역탐색)와 POC3-02D-OPS-03 목표일 수집(`krx_target_sync`)이
+    함께 쓴다. 창은 호출자가 정한다 — 목표일 수집은 거래일 날짜 창(확정 계약 5)을
+    넘긴다.
+    """
     api_names = _index_names(rows)
     # pending gate 입력 — 적재 **직후** · 같은 응답의 ticker 로 본다
     # (POC3-02D-OPS-01 Q1 (c) · R2 Q23). 창은 한 번만 정한다(R2 Q27 기록과 같은 창).
@@ -300,7 +366,7 @@ def sync_krx_daily(
     no_d20: Optional[dict[str, Optional[str]]]
     counts: Optional[dict[str, int]]
     try:
-        window = krx_store.resolve_window(db_path=db_path)
+        window = window_fn()
         no_d20 = _no_d20_first_loaded(api_names, db_path=db_path, window=window)
         counts = krx_store.stored_day_counts(no_d20, db_path=db_path)
         pending_error = None
@@ -359,14 +425,10 @@ def sync_krx_daily(
     meta_gate.save_consistency(result, consistency_path)
 
     return {
-        "status": STATUS_OK,
-        "basis_date": bas_dd,
-        "rows_written": written,
         "api_ticker_count": result.api_ticker_count,
         "consistency_status": result.status,
         "join_coverage": round(result.join_coverage, 6),
-        "tried_dates": tried,
-        **_refresh_fields(result),
+        "refresh": _refresh_fields(result),
     }
 
 
@@ -425,12 +487,14 @@ __all__ = [
     "DAILY_LOOKBACK_DAYS",
     "INITIAL_LOOKBACK_DAYS",
     "KRX_ETF_DAILY_URL",
+    "KRX_KOSPI_DAILY_URL",
     "STATUS_INVALID_SNAPSHOT",
     "STATUS_NO_API_KEY",
     "STATUS_NO_BASIS_DATE",
     "STATUS_OK",
     "has_traded_prices",
     "initial_backfill",
+    "judge_and_save_consistency",
     "read_api_key",
     "resolve_basis_date",
     "sync_krx_daily",

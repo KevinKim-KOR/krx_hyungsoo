@@ -22,6 +22,10 @@ intraday_checkup_tally_latest.json  매 회차 기록 (집계 전용 · 발송 �
 ```
 
 집계 파일이 깨져도 **발송 판단은 영향받지 않는다.** 요약만 `확인 불가` 가 된다.
+
+POC3-02D-OPS-03 확정 계약 13 — 추세 기준일(T-1)을 확인하지 못해 「신규 진입
+검토」 구역을 뺀 회차는 틱에 선택 필드 `entry_omitted: true` 를 남긴다. 스키마
+버전은 그대로다(OPS-02 Q1 선례 — 없는 틱은 옛 파일과 byte 가 같다).
 """
 
 from __future__ import annotations
@@ -61,6 +65,8 @@ class Tally:
     failed: int = 0
     unknown: bool = False
     send_failed: int = 0
+    # 진입 검토 구역을 뺀 회차 수 — `outcome` 과 **별개 축**이다(한 틱이 둘 다).
+    entry_omitted: int = 0
 
 
 def load_tally(path: Path, *, today_kst: Optional[str] = None) -> Tally:
@@ -95,6 +101,8 @@ def load_tally(path: Path, *, today_kst: Optional[str] = None) -> Tally:
             t.failed += 1
         elif o == OUTCOME_SEND_FAILED:
             t.send_failed += 1
+        if isinstance(item, dict) and item.get("entry_omitted") is True:
+            t.entry_omitted += 1
     return t
 
 
@@ -136,16 +144,25 @@ def _read_raw(path: Path, today_kst: str) -> dict[str, Any]:
 
 
 def record_tick(
-    path: Path, *, today_kst: str, outcome: str, at_kst: Optional[str] = None
+    path: Path,
+    *,
+    today_kst: str,
+    outcome: str,
+    at_kst: Optional[str] = None,
+    entry_omitted: bool = False,
 ) -> None:
     """한 회차 기록. **보내지 않은 회차도 센다.**
 
     집계 실패가 발송을 막으면 안 되므로 호출자가 예외를 삼킨다.
+    `entry_omitted` 는 참일 때만 필드를 쓴다(스키마 버전 유지).
     """
     if outcome not in VALID_OUTCOMES:
         outcome = OUTCOME_NO_SIGNAL
     body = _read_raw(path, today_kst)
-    body["ticks"].append({"outcome": outcome, "at": at_kst})
+    tick: dict[str, Any] = {"outcome": outcome, "at": at_kst}
+    if entry_omitted:
+        tick["entry_omitted"] = True
+    body["ticks"].append(tick)
     _write(path, body)
 
 
@@ -173,6 +190,7 @@ def render_summary_line(tally: Tally) -> str:
         failed=tally.failed,
         send_failed=tally.send_failed,
         unknown=tally.unknown,
+        entry_omitted=tally.entry_omitted,
     )
 
 

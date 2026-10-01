@@ -9,7 +9,7 @@ import type { QueryState } from "@/lib/api/queryCache";
 
 vi.mock("./today/KospiChart", () => ({ default: () => null }));
 
-import { kospiStatusView } from "./KospiStatusNote";
+import { kospiStatusView } from "@/lib/kospiStatus";
 import KospiHeadline from "./today/KospiHeadline";
 import MarketContextCard from "./MarketContextCard";
 
@@ -254,7 +254,7 @@ describe("두 화면이 같은 생성기를 쓴다", () => {
         ])}
       />,
     );
-    const h3 = screen.getByRole("heading", { name: /\(KS11\) KOSPI \(보조\)/ });
+    const h3 = screen.getByRole("heading", { name: /^KOSPI \(보조\)/ });
     expect(within(h3).getByText("기준일 지연")).toHaveClass("kospi-badge", "warn");
     const body = document.body.textContent ?? "";
     expect(body).toContain("KOSPI 기준일 2026-09-17 · 4거래일 지연");
@@ -283,7 +283,7 @@ describe("두 화면이 같은 생성기를 쓴다", () => {
     expect(today.textContent).not.toContain(hidden);
     unmount();
     render(<MarketContextCard ctx={ctxWith(kospi)} />);
-    const h3 = screen.getByRole("heading", { name: /\(KS11\) KOSPI \(보조\)/ });
+    const h3 = screen.getByRole("heading", { name: /^KOSPI \(보조\)/ });
     expect(within(h3).getByText("수집 결과 없음")).toHaveClass("kospi-badge", "warn");
     const body = document.body.textContent ?? "";
     expect(body).toContain(shown);

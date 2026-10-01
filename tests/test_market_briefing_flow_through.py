@@ -133,7 +133,10 @@ def _install(
 
     monkeypatch.setattr(mb, "STATE_DIR", state_dir)
     monkeypatch.setattr(mb, "MARKET_META_DIR", meta_dir)
-    monkeypatch.setattr(mb, "_sp500_input", lambda _today: sp500)
+    monkeypatch.setattr(mb, "_sp500_input", lambda _today, **_kw: sp500)
+    # POC3-02D-OPS-03 — 08:10 배치 상태는 정상으로 둔다(배치 실패 고지는
+    # `tests/test_poc3_02d_ops03_briefing.py` 가 따로 본다).
+    monkeypatch.setattr(mb, "_batch_failure", lambda *_a, **_kw: [])
 
     # 캘린더·가격 DB 경로를 조립에 주입한다 (라이브 미접근).
     real_assemble = mb.assemble
@@ -169,6 +172,34 @@ def _install(
         "PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED", "true" if kind_enabled else "false"
     )
     return runner, sent, state_dir
+
+
+NEXT_TRADING = "2026-09-21"
+NEXT_PRIOR = TODAY_TRADING  # 2026-09-21(월) 의 직전 거래일
+
+
+def _advance_window(tmp_path: Path, state_dir: Path, through: str = NEXT_PRIOR) -> None:
+    """다음 거래일 — 08:10 이 그날 T-1 까지 적재 · 판정한 모양으로 둔다.
+
+    POC3-02D-OPS-03 확정 계약 6 — 기초지수 구역은 국내 기준일 == 기대 T-1 일 때만
+    나온다(옛 lag ≤ 1 은 전날 창을 그대로 받아 줬다). 판정 파일의 다른 필드
+    (`refresh_due` 등)는 그대로 둔다.
+    """
+    db = tmp_path / "krx.sqlite"
+    _seed_window(db, through=through)
+    window = krx_store.resolve_calendar_window(
+        through, calendar_dir=tmp_path / "market_meta", db_path=db
+    )
+    _patch_verdict(
+        state_dir,
+        evaluated_api_basis_date=through.replace("-", ""),
+        evaluated_window_d20_date=window.d20,
+    )
+
+
+def _next_day_body(body: str) -> str:
+    """전날 본문에서 국내 기준일만 다음 거래일의 T-1 로 바꾼 것."""
+    return body.replace(f"국내 {PRIOR_TRADING} 종가", f"국내 {NEXT_PRIOR} 종가")
 
 
 def _state(state_dir: Path) -> dict | None:
@@ -223,13 +254,15 @@ def test_next_trading_day_sends_even_if_content_identical(tmp_path, monkeypatch)
     assert runner.run("market_briefing", "send")["status"] == "sent"
     saved = _state(state_dir)
 
-    # 같은 입력 · 날짜만 다음 거래일로.
-    monkeypatch.setattr(runner, "kst_today_date", lambda: "2026-09-21")
+    # 같은 입력 · 날짜만 다음 거래일로(08:10 이 그날 T-1 을 적재 · 판정했다).
+    monkeypatch.setattr(runner, "kst_today_date", lambda: NEXT_TRADING)
+    _advance_window(tmp_path, state_dir)
     record = runner.run("market_briefing", "send")
 
     assert record["status"] == "sent", record
     assert len(sent) == 2, "다음 거래일인데 보내지 않았다"
-    assert sent[1] == sent[0], "같은 내용이어야 한다 (억제만 풀린 것)"
+    # 국내 기준일(T-1)만 하루 넘어간다 — 나머지는 같은 내용(억제만 풀린 것).
+    assert sent[1] == _next_day_body(sent[0]), "같은 내용이어야 한다"
     assert _state(state_dir)["sent_date_kst"] == "2026-09-21"
     assert _state(state_dir)["state_fingerprint"] == saved["state_fingerprint"]
 
@@ -270,7 +303,9 @@ def test_stale_window_does_not_send_kr_basis(tmp_path, monkeypatch):
     record = runner.run("market_briefing", "send")
     assert record["status"] == "sent", record  # 전망은 살아 있다
     body = sent[0]
-    assert "국내" not in body, body
+    # POC3-02D-OPS-03 — 국내 날짜 대신 설계자 확정 안내 1줄만.
+    assert render.INDEX_NOTICE[render.STATUS_PREV_DAY_MISSING] in body, body
+    assert "국내 2026" not in body and "2026-08" not in body, body
     assert "오늘 볼 기초지수" not in body
 
 
@@ -654,11 +689,13 @@ def test_refresh_notice_once_per_cycle_and_body_otherwise_identical(
     assert s1["refresh_notice_cycle_id"] == "20260917"
     assert s1["state_fingerprint"] == "UP#KRX|코스피200", "안내가 fingerprint 를 바꿨다"
 
-    # 다음 거래일 — 같은 주기가 이어진다 → 다시 붙이지 않는다 · 나머지는 byte 동일.
-    monkeypatch.setattr(runner, "kst_today_date", lambda: "2026-09-21")
+    # 다음 거래일 — 같은 주기가 이어진다 → 다시 붙이지 않는다 · 나머지는 byte 동일
+    # (국내 기준일 T-1 만 하루 넘어간다 · POC3-02D-OPS-03).
+    monkeypatch.setattr(runner, "kst_today_date", lambda: NEXT_TRADING)
+    _advance_window(tmp_path, state_dir)
     r2 = runner.run("market_briefing", "send")
     assert r2["status"] == "sent", r2
-    assert sent[1] == sent[0][: -len(NOTICE_TAIL)]
+    assert sent[1] == _next_day_body(sent[0][: -len(NOTICE_TAIL)])
     assert r2["state_fingerprint"] == r1["state_fingerprint"]
     assert _state(state_dir)["refresh_notice_cycle_id"] == "20260917"
 
@@ -682,7 +719,8 @@ def test_new_cycle_is_notified_and_old_state_file_loads(tmp_path, monkeypatch):
     assert _state(state_dir)["refresh_notice_cycle_id"] == "20260917"
 
     # 이미 알린 주기와 다른 새 주기면 다시 한 번.
-    monkeypatch.setattr(runner, "kst_today_date", lambda: "2026-09-21")
+    monkeypatch.setattr(runner, "kst_today_date", lambda: NEXT_TRADING)
+    _advance_window(tmp_path, state_dir)
     _patch_verdict(state_dir, refresh_due_cycle_id="20260921")
     assert runner.run("market_briefing", "send")["status"] == "sent"
     assert sent[1].endswith(NOTICE_TAIL)
@@ -708,7 +746,8 @@ def test_refresh_notice_waits_for_next_actual_send(tmp_path, monkeypatch, first_
 
     monkeypatch.setattr(runner, "telegram_send", ok_send)
     monkeypatch.setenv("PUSH_AUTOSEND_MARKET_BRIEFING_ENABLED", "true")
-    monkeypatch.setattr(runner, "kst_today_date", lambda: "2026-09-21")
+    monkeypatch.setattr(runner, "kst_today_date", lambda: NEXT_TRADING)
+    _advance_window(tmp_path, state_dir)
     assert runner.run("market_briefing", "send")["status"] == "sent"
     assert sent[-1].endswith(NOTICE_TAIL)
     assert _state(state_dir)["refresh_notice_cycle_id"] == "20260917"

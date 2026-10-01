@@ -8,9 +8,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Collection, Optional
 
-from app.runtime_evidence.holdings_selection import TRADING_DAY_AXIS_TICKER
+from app import trading_day_lag
+from app.runtime_evidence.holdings_selection import LOOKBACK_TRADING_DAYS
 
 
 def load_holding_rows(
@@ -99,20 +100,43 @@ def load_price_history(
     return out
 
 
-def load_trading_day_axis(
+def trading_day_axis(
+    today_kst: Optional[str],
     *,
-    fetch_history: Callable[..., list[tuple[str, float]]],
-    db_path: Optional[Path] = None,
+    calendar_dir: Optional[Path] = None,
+    stored_dates: Optional[Collection[str]] = None,
 ) -> list[str]:
-    """KRX 거래일 축 (오름차순 날짜).
+    """실행일 **미만** 거래일 축(오름차순) — **거래일 캘린더**로 정한다.
 
-    설계자 확정 2026-09-05 — 기준일을 **거래일 축**에서 고른다. 신규 휴장일
-    캘린더를 만들지 않고, walk-forward 가 이미 쓰는 KODEX200 거래일 시퀀스를
-    그대로 재사용한다. **신규 외부 조회 0건** (같은 `fetch_history` 를 쓴다).
+    POC3-02D-OPS-03 확정 계약 10 — 예전에는 `069500` 의 `etf_daily_price` 저장
+    날짜를 축으로 썼다. 08:10 배치가 실패해 T-1 행이 없으면 축의 마지막이 T-2 가
+    되어 **21거래일 전 종가를 '20거래일' 로** 보고했다(조용한 밀림). 이제 축은
+    실행일 기준 캘린더다(`trading_day_lag` · 08:30 · 장중과 같은 함수) — 가격이
+    빠지면 그 지표만 fail-closed 된다(`close_on` · 보조값 구간 불완전).
+
+    캘린더가 그해를 덮지 않으면 평일 fallback(`trading_day_lag` 규칙). 그 평일 가운데
+    `stored_dates`(보유 종목 가격 이력의 날짜)에 **하나도** 없는 날이 축에 있으면 빈
+    축이다 — 휴장일인지 적재 누락인지 몰라 20거래일 셈이 하루 틀어질 수 있다
+    (확정 계약 5 · 19거래일을 20거래일로 보고하지 않는다).
+    실행일을 읽을 수 없으면 빈 축 — 기준일이 없어 전 종목이 데이터 확인 대상이다.
     """
-    rows = (
-        fetch_history(TRADING_DAY_AXIS_TICKER, db_path=db_path)
-        if db_path is not None
-        else fetch_history(TRADING_DAY_AXIS_TICKER)
+    if not today_kst:
+        return []
+    prev = trading_day_lag.expected_previous_trading_day(
+        str(today_kst)[:10], calendar_dir=calendar_dir
     )
-    return [d for d, _ in (rows or [])]
+    if prev is None:
+        return []
+    axis = trading_day_lag.trading_days_ending(
+        prev, LOOKBACK_TRADING_DAYS, calendar_dir=calendar_dir
+    )
+    if stored_dates is not None and trading_day_lag.unconfirmed_days(
+        axis, stored_dates, calendar_dir=calendar_dir
+    ):
+        return []
+    return axis
+
+
+def history_dates(history: dict[str, list[tuple[str, float]]]) -> set[str]:
+    """보유 종목 가격 이력에 한 번이라도 나온 날짜(`trading_day_axis` 의 저장 근거)."""
+    return {str(d)[:10] for rows in history.values() for d, _ in rows}

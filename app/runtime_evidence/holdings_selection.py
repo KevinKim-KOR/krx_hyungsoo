@@ -63,6 +63,12 @@ DECLINE_STATE_LABEL = {
 }
 DATA_UNAVAILABLE_LABEL = "데이터 확인 필요"
 
+# `데이터 확인 필요` 의 원인 (설계자 RESULT STEP 1 · 2026-09-30). 그룹 · 상태
+# identity 는 그대로이고 값 칸 문구만 가른다 — 현재가는 멀쩡한데 20거래일 기준
+# 종가가 없는 종목을 `현재가 조회 실패` 로 적지 않는다.
+CAUSE_CURRENT_PRICE = "current_price"
+CAUSE_BASE_CLOSE = "base_close"
+
 # 그룹 표시 순서 (PLAN §5.3).
 GROUP_ORDER = (
     (REASON_RECENT_DECLINE, STATE_D10_PLUS),
@@ -77,8 +83,11 @@ DRAWDOWN_NOTE_MAX_PCT = -8.0
 LOOKBACK_TRADING_DAYS = 20
 
 # KRX 거래일 축 기준 ticker. 기존 walk-forward 가 쓰는 것과 같은 축을 쓴다
-# (`app/market_flow_dataset.BENCHMARK_KODEX200_TICKER`). 신규 휴장일 캘린더를
-# 만들지 않고 이미 있는 거래일 시퀀스를 그대로 재사용한다.
+# (`app/market_flow_dataset.BENCHMARK_KODEX200_TICKER`).
+# POC3-02D-OPS-03 확정 계약 10 — **운영 흐름(보유 브리핑 · 장중 위험)은 더 이상
+# 이 축을 쓰지 않는다.** 저장 가격 날짜 축은 배치 실패일에 하루 밀려 21거래일 전을
+# '20거래일' 로 만들었다. 운영 축은 거래일 캘린더(`holdings_selection_source.
+# trading_day_axis`)다. 이 상수는 PC 과거 미리보기 도구만 쓴다.
 TRADING_DAY_AXIS_TICKER = "069500"
 
 DISPLAY_DECIMALS = 1
@@ -122,6 +131,9 @@ class SelectedTicker:
     # **보조 정보다.** fingerprint 에 넣지 않는다 — 넣으면 값이 미세하게 흔들릴
     # 때마다 매 슬롯 재발송된다.
     profit_loss_pct: Optional[float] = None
+    # `DATA_UNAVAILABLE_OR_STALE` 일 때만 채운다(`CAUSE_*`). 표시 전용 —
+    # fingerprint · 상태 저장에 넣지 않는다.
+    unavailable_cause: Optional[str] = None
 
     @property
     def primary_reason(self) -> str:
@@ -256,6 +268,8 @@ def select_holdings(
       holdings       : [{"ticker","name","account_group",...}] — 계좌별 행.
                        같은 ticker 가 여러 계좌에 있으면 **1건으로 합친다**.
       price_history  : {ticker: [(date, close), ...]} date ASC. 분모 원천.
+                       운영 흐름은 자산 유형별 한 계열만 넣는다(ETF = KRX 무조정 ·
+                       개별주 = FDR · 설계자 RESULT STEP 1 · `holdings_price_basis`).
       market_quotes  : {ticker: MarketQuote} — `current_price` · `price_asof`.
       axis_dates     : KRX 거래일 축(오름차순). 기준일 계산 원천.
       avg_buy_prices : {ticker: 수량 가중평균 매입가}. 없으면 손익률을 생략한다
@@ -313,6 +327,10 @@ def select_holdings(
                 "state": STATE_ACTIVE,
                 "value": None,
             }
+            # 현재가 실패가 먼저다 — 둘 다 없으면 현재가 문제로 적는다.
+            item.unavailable_cause = (
+                CAUSE_BASE_CLOSE if numerator_ok else CAUSE_CURRENT_PRICE
+            )
             selected.append(item)
             continue
 
