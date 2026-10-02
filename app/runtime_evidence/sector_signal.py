@@ -157,9 +157,9 @@ class TrendBasis:
     `usable` 은 표 최신 저장일이 기대 T-1 과 **정확히 같고** d5 · d20 날짜가
     정해졌을 때만 참이다. lag 숫자로 판정하지 않는다(확정 계약 6).
 
-    `missing_days` — 대표 · 대체 종목 이력에 **하나도** 없는 d5 · d20 날짜와, 캘린더
-    없는 해의 평일 가운데 저장되지 않은 날(`trading_day_lag.unconfirmed_days`).
-    있으면 `usable=False` — 08:30 기초지수 창(`krx_store.CalendarWindow`)과 같은
+    `missing_days` — 대표 · 대체 종목 이력에 **하나도** 없는 d5 · d20 날짜(연도 파일이
+    없는 해는 저장 자료가 없는 평일을 휴장으로 건너뛰어 날짜를 정한다 · 한국 거래일
+    계약 2026-09-11). 있으면 `usable=False` — 08:30 기초지수 창(`krx_store.CalendarWindow`)과 같은
     규칙으로 구역을 닫고 생략으로 센다(확정 계약 5 · 13).
     """
 
@@ -265,21 +265,17 @@ def resolve_trend_basis(
     if expected is None or table_latest != expected:
         return TrendBasis(expected=expected, table_latest=table_latest)
     dates = trading_day_lag.trading_window_dates(
-        expected, calendar_dir=calendar_dir, lookbacks=(LOOKBACK_5D, LOOKBACK_20D)
+        expected,
+        calendar_dir=calendar_dir,
+        lookbacks=(LOOKBACK_5D, LOOKBACK_20D),
+        stored=stored_days,
     )
     if not dates:
         return TrendBasis(expected=expected, table_latest=table_latest)
     d5, d20 = dates[1], dates[2]
     missing: tuple[str, ...] = ()
     if stored_days is not None:
-        window = trading_day_lag.trading_days_ending(
-            expected, LOOKBACK_20D + 1, calendar_dir=calendar_dir
-        )
-        gaps = [d for d in (d5, d20) if d not in stored_days]
-        gaps += trading_day_lag.unconfirmed_days(
-            window, stored_days, calendar_dir=calendar_dir
-        )
-        missing = tuple(sorted(set(gaps)))
+        missing = tuple(sorted({d for d in (d5, d20) if d not in stored_days}))
     return TrendBasis(
         expected=expected,
         table_latest=table_latest,

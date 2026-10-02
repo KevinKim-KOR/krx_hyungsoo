@@ -114,10 +114,10 @@ def trading_day_axis(
     실행일 기준 캘린더다(`trading_day_lag` · 08:30 · 장중과 같은 함수) — 가격이
     빠지면 그 지표만 fail-closed 된다(`close_on` · 보조값 구간 불완전).
 
-    캘린더가 그해를 덮지 않으면 평일 fallback(`trading_day_lag` 규칙). 그 평일 가운데
-    `stored_dates`(보유 종목 가격 이력의 날짜)에 **하나도** 없는 날이 축에 있으면 빈
-    축이다 — 휴장일인지 적재 누락인지 몰라 20거래일 셈이 하루 틀어질 수 있다
-    (확정 계약 5 · 19거래일을 20거래일로 보고하지 않는다).
+    캘린더가 그해를 덮지 않으면 평일 기본(`trading_day_lag` 규칙 · 5월 1일 · 12월 31일
+    제외). 그때 `stored_dates`(보유 종목 가격 이력의 날짜)를 넘기면 T-1 이전 평일 가운데
+    저장 자료가 없는 날은 휴장으로 건너뛴다(한국 거래일 계약 2026-09-11 · 축을 비우지
+    않고 운영 · 오판은 계약상 허용).
     실행일을 읽을 수 없으면 빈 축 — 기준일이 없어 전 종목이 데이터 확인 대상이다.
     """
     if not today_kst:
@@ -127,14 +127,9 @@ def trading_day_axis(
     )
     if prev is None:
         return []
-    axis = trading_day_lag.trading_days_ending(
-        prev, LOOKBACK_TRADING_DAYS, calendar_dir=calendar_dir
+    return trading_day_lag.trading_days_ending(
+        prev, LOOKBACK_TRADING_DAYS, calendar_dir=calendar_dir, stored=stored_dates
     )
-    if stored_dates is not None and trading_day_lag.unconfirmed_days(
-        axis, stored_dates, calendar_dir=calendar_dir
-    ):
-        return []
-    return axis
 
 
 def history_dates(history: dict[str, list[tuple[str, float]]]) -> set[str]:

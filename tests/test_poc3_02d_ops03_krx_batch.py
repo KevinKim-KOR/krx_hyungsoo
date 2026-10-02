@@ -622,25 +622,45 @@ def test_s11_already_loaded_run_fills_window_gap_without_t1_refetch(env):
     assert w.missing_days == ("2026-09-18",)
 
 
-def test_uncovered_year_unstored_weekday_fails_window_closed(tmp_path):
-    """캘린더 없는 해 — 평일 fallback 날이 저장돼 있지 않으면(휴장일일 수 있다) 창을 닫는다.
+def test_uncovered_year_unstored_weekday_is_skipped_window_stays_usable(tmp_path):
+    """연도 파일이 없는 해 — 저장 자료가 없는 평일은 휴장으로 건너뛰고 창을 닫지 않는다.
 
-    2027-01-01(금 · 신정)을 거래일로 치면 d5 · d20 이 하루씩 늦은 날로 잡혀 4 · 19거래일
-    수익률을 5 · 20일로 보고한다(리뷰 L2-2). 저장된 평일만 있으면 그대로 쓴다.
+    한국 거래일 계약(2026-09-11 사용자 확정 · 설계자 2026-10-02 복원): 파일이 없으면
+    평일 기본으로 운영한다. 2027-01-01(금 · 신정)이 저장돼 있지 않으면 그날을 빼고 센다
+    — d5 가 하루 앞(2026-12-25 · 이 합성 캘린더에서는 거래일)으로 간다.
     """
-    cal = _calendar(tmp_path)  # 2026 만 덮는다
+    cal = _calendar(tmp_path)  # 2026 만 덮는다(합성 · 12-31 은 목록에 없다)
     db = tmp_path / "m.sqlite"
     latest = "2027-01-05"
-    days = trading_day_lag.trading_days_ending(latest, 21, calendar_dir=cal)
-    assert "2027-01-01" in days  # fallback 이 휴장일을 거래일로 친다
+    days = trading_day_lag.trading_days_ending(latest, 22, calendar_dir=cal)
+    assert "2027-01-01" in days  # 저장 근거 없이 세면 평일 기본이 신정을 거래일로 친다
     _seed(db, [d for d in days if d != "2027-01-01"])
     w = krx_store.resolve_calendar_window(latest, calendar_dir=cal, db_path=db)
-    assert w.unconfirmed_days == ("2027-01-01",)
-    assert w.usable is False and "2027-01-01" in w.to_dict()["missing_required"]
+    assert "2027-01-01" not in w.window_days and len(w.window_days) == 21
+    assert w.missing_days == () and w.usable is True
+    assert (w.d5, w.d20) == ("2026-12-25", "2026-12-04")
 
-    _seed(db, ["2027-01-01"])  # 그 평일이 실제로 저장돼 있으면(거래일) 쓸 수 있다
+    _seed(db, ["2027-01-01"])  # 그 평일이 실제로 저장돼 있으면(거래일) 그대로 센다
     w2 = krx_store.resolve_calendar_window(latest, calendar_dir=cal, db_path=db)
-    assert w2.unconfirmed_days == () and w2.usable is True
+    assert "2027-01-01" in w2.window_days and w2.d5 == "2026-12-28"
+
+
+def test_fallback_year_closes_may_1_and_dec_31_only(tmp_path):
+    """연도 파일이 없는 해의 평일 기본 = 주말 · 5월 1일 · 12월 31일 제외(한국 거래일 계약)."""
+    from app.market_briefing.calendar import check_trading_day
+
+    cal = _calendar(tmp_path)  # 2026 만 덮는다
+    v = check_trading_day("2027-12-31", directory=cal)  # 금요일
+    assert v.ok is False and v.decided_by == "weekday_fallback"
+    assert check_trading_day("2028-05-01", directory=cal).ok is False  # 월요일
+    assert check_trading_day("2028-05-02", directory=cal).ok is True
+    assert (
+        check_trading_day("2027-01-01", directory=cal).ok is True
+    )  # 등록 안 된 공휴일
+    exp = trading_day_lag.expected_previous_trading_day
+    assert exp("2028-01-03", calendar_dir=cal) == "2027-12-30"
+    assert exp("2028-05-02", calendar_dir=cal) == "2028-04-28"
+    assert trading_day_lag.is_trading_day("2027-12-31", calendar_dir=cal) is False
 
 
 def test_window_helpers_match_calendar(tmp_path):

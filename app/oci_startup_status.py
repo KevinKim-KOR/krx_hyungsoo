@@ -243,6 +243,7 @@ def refresh_snapshot() -> OciStartupSnapshot:
     )
     # POC3-02D-OPS-03 확정 계약 11 — 거래일 달력 준비 상태. 넷째 블록이 없던 옛 응답이면
     # 행을 만들지 않는다(모르는 것을 '없음' 으로 보이지 않는다).
+    jobs.append(trading_day_basis_job())
     if len(parts) > 2:
         names = [ln.strip() for ln in parts[2].splitlines() if ln.strip()]
         jobs.append(calendar_job(names, _today_kst()))
@@ -272,6 +273,16 @@ def refresh_snapshot() -> OciStartupSnapshot:
 
 _KST = timezone(timedelta(hours=9))
 _MARKET_KO = {"KRX": "한국", "NYSE": "미국"}
+# 한국 거래일 계약(2026-09-11 사용자 확정 · 설계자 2026-10-02 화면 계약) — 연도 파일이
+# 없어도 경고하지 않는다(`준비 필요` · `오래됨` · 마감 경고 없음).
+KOREA_TRADING_DAY_BASIS = "평일 기본 운영 · 등록된 공휴일·명절·5월 1일·12월 31일 제외"
+
+
+def trading_day_basis_job() -> OciJobStatus:
+    """한국 거래일 기준 행 — 늘 SUCCESS · 고정 문구(설계자 2026-10-02)."""
+    return OciJobStatus(
+        job="trading_day_basis", status="SUCCESS", detail=KOREA_TRADING_DAY_BASIS
+    )
 
 
 def _today_kst() -> date:
@@ -279,7 +290,8 @@ def _today_kst() -> date:
 
 
 def calendar_job(names: list[str], today: date) -> OciJobStatus:
-    """OCI 달력 폴더 파일 이름으로 만든 `trading_calendar` 행(확정 계약 11).
+    """OCI 달력 폴더 파일 이름으로 만든 `trading_calendar` 행(확정 계약 11 · **미국 NYSE
+    휴장일 파일만**). 한국은 `trading_day_basis_job` 이 따로 맡는다.
 
     올해 파일이 없거나 12월인데 다음 해 파일이 없으면 STALE. 11월은 점검 기간
     안내만(SUCCESS). 판정 규칙은 배치와 같다(`us_trading_calendar.calendar_readiness`).
@@ -309,7 +321,7 @@ def calendar_job(names: list[str], today: date) -> OciJobStatus:
         else:
             tail = "11월 30일까지 준비"
         parts.append(f"{nxt}년 파일 없음: {_ko(r['missing_next'])} — {tail}")
-    detail = " · ".join(parts) or f"한국·미국 {cur}년·{nxt}년 파일 있음"
+    detail = " · ".join(parts) or f"미국 {cur}년·{nxt}년 파일 있음"
     status = "STALE" if r["state"] == READY_WARN else "SUCCESS"
     return OciJobStatus(job="trading_calendar", status=status, detail=detail)
 

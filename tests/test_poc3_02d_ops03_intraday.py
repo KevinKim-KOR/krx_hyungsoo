@@ -307,10 +307,11 @@ def test_resolve_trend_basis_uses_calendar(tmp_path):
     assert ss.resolve_trend_basis(None, table_latest=T1).usable is False
 
 
-def test_trend_basis_uncovered_year_unstored_weekday_is_not_usable(tmp_path):
-    """캘린더 없는 해 — 평일 fallback 날(휴장일일 수 있다)이 이력에 없으면 닫는다.
+def test_trend_basis_uncovered_year_unstored_weekday_is_skipped(tmp_path):
+    """연도 파일이 없는 해 — 저장 자료가 없는 평일(2027-01-01)은 휴장으로 건너뛴다.
 
-    2027-01-01(신정)을 거래일로 치면 d5 · d20 이 하루씩 늦게 잡힌다(리뷰 L2-2).
+    한국 거래일 계약(2026-09-11 · 설계자 2026-10-02 복원): 창을 닫지 않고 평일 기본으로
+    운영한다. d5 · d20 은 저장된 날로 센다.
     """
     from app import trading_day_lag
 
@@ -323,18 +324,18 @@ def test_trend_basis_uncovered_year_unstored_weekday_is_not_usable(tmp_path):
         d += timedelta(days=1)
     (cal / "krx_trading_days_2026.csv").write_text("\n".join(lines) + "\n", "utf-8")
     today, expected = "2027-01-06", "2027-01-05"
-    window = trading_day_lag.trading_days_ending(expected, 21, calendar_dir=cal)
+    window = trading_day_lag.trading_days_ending(expected, 22, calendar_dir=cal)
     assert "2027-01-01" in window
     stored = set(window) - {"2027-01-01"}
     tb = ss.resolve_trend_basis(
         today, table_latest=expected, calendar_dir=cal, stored_days=stored
     )
-    assert tb.expected == expected and tb.missing_days == ("2027-01-01",)
-    assert tb.usable is False
+    assert tb.expected == expected and tb.missing_days == () and tb.usable is True
+    assert tb.d5 == "2026-12-25"  # 신정을 세면 12-28 — 하루 앞으로 간다
     ok = ss.resolve_trend_basis(
         today, table_latest=expected, calendar_dir=cal, stored_days=set(window)
     )
-    assert ok.missing_days == () and ok.usable is True
+    assert ok.usable is True and ok.d5 == "2026-12-28"
 
 
 # ── 본문 — 추세 기준일 없는 진입 검토는 만들지 않는다 ───────────────────────

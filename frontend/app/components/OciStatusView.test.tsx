@@ -119,20 +119,33 @@ describe("OciStatusPanel — 요약 + 표", () => {
     expect(screen.queryByRole("table")).toBeNull();
   });
 
-  it("거래일 달력(POC3-02D-OPS-03): 한국어 항목 · 준비 필요 · 백엔드 문구 그대로", async () => {
+  it("거래일 기준(한국 · 고정 문구 · 정상) · 미국 휴장일 달력(준비 필요) 행을 따로 보인다", async () => {
     const s = operating();
-    s.jobs.push({
-      job: "trading_calendar",
-      status: "STALE",
-      detail: "2027년 파일 없음: 한국 — 준비 필요",
-    });
+    s.jobs.push(
+      {
+        job: "trading_day_basis",
+        status: "SUCCESS",
+        detail: "평일 기본 운영 · 등록된 공휴일·명절·5월 1일·12월 31일 제외",
+      },
+      {
+        job: "trading_calendar",
+        status: "STALE",
+        detail: "2027년 파일 없음: 미국 — 준비 필요",
+      },
+    );
     fetchOciStartupStatus.mockResolvedValue(s);
     const { container } = render(<OciStatusPanel />);
 
-    const row = within(await screen.findByText("거래일 달력", { selector: "td" }).then((c) => c.closest("tr") as HTMLElement));
-    expect(row.getByText("준비 필요")).toBeInTheDocument();
-    expect(row.getByText("2027년 파일 없음: 한국 — 준비 필요")).toBeInTheDocument();
-    expect(container.textContent ?? "").not.toContain("trading_calendar");
+    const kr = within(await screen.findByText("거래일 기준", { selector: "td" }).then((c) => c.closest("tr") as HTMLElement));
+    expect(kr.getByText("정상")).toBeInTheDocument();
+    expect(kr.getByText("평일 기본 운영 · 등록된 공휴일·명절·5월 1일·12월 31일 제외")).toBeInTheDocument();
+    const us = within(screen.getByText("미국 휴장일 달력", { selector: "td" }).closest("tr") as HTMLElement);
+    expect(us.getByText("준비 필요")).toBeInTheDocument();
+    expect(us.getByText("2027년 파일 없음: 미국 — 준비 필요")).toBeInTheDocument();
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("trading_calendar");
+    expect(text).not.toContain("trading_day_basis");
+    expect(text).not.toContain("한국 — 준비 필요");
   });
 
   it("모르는 job · 상태 · 문구는 원문 그대로 보인다(숨기지 않는다)", async () => {

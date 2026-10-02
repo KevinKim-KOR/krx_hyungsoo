@@ -47,7 +47,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
-from app.market_briefing.calendar import CALENDAR_DIR, load_calendar, parse_date
+from app.market_briefing.calendar import CALENDAR_DIR, parse_date
 
 NYSE_GLOB = "nyse_holidays_*.csv"
 _NYSE_NAME = re.compile(r"^nyse_holidays_(\d{4})\.csv$")
@@ -267,7 +267,9 @@ def session_check(
     return out
 
 
-# ── 거래일 달력 준비 상태 (확정 계약 11) ──────────────────────────────────────
+# ── 거래일 달력 준비 상태 (확정 계약 11 · 미국만) ─────────────────────────────
+# 한국 거래일은 연도 파일이 보조자료다 — 없으면 평일 기본으로 운영하고 경고하지 않는다
+# (2026-09-11 사용자 확정 · 설계자 2026-10-02 복원 · `app.market_briefing.calendar`).
 
 READY_OK = "ok"
 READY_DUE = "due"
@@ -275,7 +277,7 @@ READY_WARN = "warn"
 READY_UNKNOWN = "unknown"
 CHECK_FROM_MONTH = 11
 WARN_FROM_MONTH = 12
-MARKETS = ("KRX", "NYSE")
+MARKETS = ("NYSE",)
 _FILE_PREFIX = {"KRX": "krx_trading_days_", "NYSE": "nyse_holidays_"}
 
 
@@ -322,20 +324,12 @@ def calendar_readiness_for_names(today: date, names: Iterable[str]) -> dict[str,
 def calendar_readiness_for_dir(
     today: date, directory: Optional[Path] = None
 ) -> dict[str, Any]:
-    """폴더의 파일을 **읽어서**(배치). 손상 파일은 없는 것으로 본다. 예외를 올리지 않는다."""
-    base = directory or CALENDAR_DIR
-    try:
-        krx = load_calendar(base)
-    except Exception:  # noqa: BLE001
-        krx = None
-    nyse = load_nyse_calendar(base)
-
-    def _present(market: str, year: int) -> bool:
-        if market == "KRX":
-            return krx is not None and krx.covers(year)
-        return nyse.covers(year)
-
-    return calendar_readiness(today, _present, basis="file_content")
+    """폴더의 파일을 **읽어서**(배치 · 미국만). 손상 파일은 없는 것으로 본다. 예외를
+    올리지 않는다."""
+    nyse = load_nyse_calendar(directory or CALENDAR_DIR)
+    return calendar_readiness(
+        today, lambda _market, year: nyse.covers(year), basis="file_content"
+    )
 
 
 __all__ = [

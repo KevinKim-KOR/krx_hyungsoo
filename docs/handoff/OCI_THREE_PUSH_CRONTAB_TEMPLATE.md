@@ -14,7 +14,7 @@ Step 이력: OCI_THREE_PUSH_CRONTAB_RUNNER_AUTOSEND → OCI_THREE_PUSH_OPERATION
 
 ---
 
-## OPS-03. 배포 회차에 바꿀 cron 3줄 (`POC3-02D-OPS-03` · 2026-09-30 기록 · **아직 적용 전**)
+## OPS-03. cron 3줄 (`POC3-02D-OPS-03` · 2026-09-30 기록 · **2026-10-01 적용** · 리드 read-back 16:32 · 13줄)
 
 이 절만 지금 OCI 기준이다. 아래 §0 ~ §10 은 이력(UTC 표기 옛 템플릿)이다. OCI 서버 시간대는
 `Asia/Seoul`(`date` = KST · 2026-09-30 읽기 전용 확인)이라 아래 시각은 **KST 그대로** 쓴다.
@@ -22,9 +22,10 @@ Step 이력: OCI_THREE_PUSH_CRONTAB_RUNNER_AUTOSEND → OCI_THREE_PUSH_OPERATION
 순서(확정 계약 12 · PLAN STEP 9 · 설계자 RESULT STEP 8 · 2026-09-30): 검증자 `VERIFIED` → 커밋 · push →
 거래일 15:40 뒤 OCI pull → **같은 회차에** 아래 3줄 변경 → `crontab -l` read-back → PC 백엔드 재기동 → 다음 거래일
 08:10 · 08:30 · 09:20 · 09:30 실측 → 다음 월요일에 한 번 더 실측 → `STATE_LATEST` · `PROGRAM_TRUTH` · handoff 최종
-갱신. cron 만 먼저 바꾸지 않는다(설계자 판정 STEP 10).
+갱신. cron 만 먼저 바꾸지 않는다(설계자 판정 STEP 10). **실제**: 2026-10-01 pull · 3줄 변경 · read-back → 2026-10-02 첫 거래일
+실측 통과 → 사용자 결정으로 다음 월요일 실측 생략 · 종료.
 
-| 줄 | 지금(옛 코드와 함께 도는 줄) | 바꾼 뒤 |
+| 줄 | 옛 줄(2026-10-01 까지) | 지금(2026-10-01 적용) |
 |---|---|---|
 | 시장 데이터 배치 | `20 7 * * 1-5 … scripts/run_oci_market_data_batch.py >> logs/oci_market_data_batch.log 2>&1` | `10 8 * * 1-5 …`(명령 부분 그대로) |
 | 시장 흐름 브리핑 | `0 8 * * 1-5 … --push-kind market_briefing --mode send >> logs/low_freq_push_cron.log 2>&1` | `30 8 * * 1-5 …`(명령 부분 그대로) |
@@ -37,10 +38,10 @@ Step 이력: OCI_THREE_PUSH_CRONTAB_RUNNER_AUTOSEND → OCI_THREE_PUSH_OPERATION
 - 위 두 줄은 **시각 필드(분 · 시)만** 바꾼다. `…` 부분은 지금 OCI crontab 줄 그대로다(전체 줄은
   `crontab -l` 로 본다 · 이 문서에 옮겨 적지 않았다).
 - 그대로 두는 줄: 보유 브리핑 09:15 · 12:30 · 15:40 · 보유 위험 `holdings_risk_alert` 7틱(09:30 ~ 15:20).
-  지금 12줄(PATH 제외 · 2026-09-30 읽기 전용 확인) → 바꾼 뒤 13줄.
-- 배포 전 필수: `state/market_meta/nyse_holidays_2026.csv` · `nyse_holidays_2027.csv` 를 커밋에 넣는다
-  (2026-10-01 git 에 추가됨(staged) · 커밋 · pull 전에는 OCI 에 없다 · 없으면 OCI 는 미국 세션을 평일 기준으로 판정한다).
-- OCI pull 금지 시간: 바꾼 뒤 08:05 ~ 08:35(PLAN STEP 9-3 · 바꾸기 전 07:15 ~ 08:05).
+  12줄(PATH 제외 · 2026-09-30 읽기 전용 확인) → 13줄(2026-10-01 read-back).
+- `state/market_meta/nyse_holidays_2026.csv` · `nyse_holidays_2027.csv` 는 커밋 `7feddf2c` 로 OCI 에 있다(2026-10-01 확인 ·
+  없으면 OCI 는 미국 세션을 평일 기준으로 판정한다).
+- OCI pull 금지 시간: 08:05 ~ 08:35(PLAN STEP 9-3 · 2026-10-01 까지는 07:15 ~ 08:05).
 - rollback: 코드 revert + OCI pull → 위 3줄 원복(PLAN STEP 9-4).
 - 시각표 · 판정 계약: `docs/PROGRAM_TRUTH.md` 프로세스 C-4.
 

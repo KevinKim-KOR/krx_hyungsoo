@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
+from app import trading_day_lag
 from app.runtime_evidence.holdings_risk import usable_day_return
 from app.runtime_evidence.holdings_selection import (
     LOOKBACK_TRADING_DAYS,
@@ -70,6 +71,11 @@ REASON_KRX_UNREADABLE = "krx_unreadable"
 
 # 개별주 T-1 가드 허용 폭(%) — 설계자 RESULT STEP 1-6 · 1-7. 가드는 기록용이다(파생값은 늘 닫는다).
 MISMATCH_TOLERANCE_PCT = 0.5
+
+# 연도 파일이 없는 해에는 저장 자료가 없는 평일을 휴장으로 건너뛰어 축이 앞쪽으로 늘어난다
+# (한국 거래일 계약 2026-09-11 · `trading_day_lag` `stored`). 그만큼 KRX 종가를 앞쪽까지
+# 읽어 둔다 — 설 · 추석 연휴(대체 포함)를 넉넉히 덮는다.
+FETCH_EXTRA_TRADING_DAYS = 10
 
 # 시장 브리핑과 같은 폴더 · 같은 resolver(`runner_market_briefing.MARKET_META_DIR`).
 DEFAULT_META_DIR = Path("state/market_meta")
@@ -203,6 +209,17 @@ def _derived(
     }
 
 
+def _fetch_days(raw_axis: list[str], calendar_dir: Optional[Path]) -> list[str]:
+    """KRX 종가를 읽을 날짜 — 평일 기본 축 + 앞쪽 여유(`FETCH_EXTRA_TRADING_DAYS`)."""
+    if not raw_axis:
+        return []
+    return trading_day_lag.trading_days_ending(
+        raw_axis[-1],
+        len(raw_axis) + FETCH_EXTRA_TRADING_DAYS,
+        calendar_dir=calendar_dir,
+    )
+
+
 def load_basis_history(
     tickers: Sequence[str],
     *,
@@ -220,6 +237,7 @@ def load_basis_history(
     """
     src = source or default_source()
     raw_axis = trading_day_axis(today_kst, calendar_dir=calendar_dir)
+    fetch_days = _fetch_days(raw_axis, calendar_dir)
     kinds, status = classify_assets(tickers, src)
     etfs = [t for t in tickers if kinds[t][0] == ASSET_ETF]
     stocks = [t for t in tickers if kinds[t][0] == ASSET_STOCK]
@@ -227,7 +245,7 @@ def load_basis_history(
     krx: Optional[dict[str, dict[str, float]]] = {}
     if etfs and raw_axis:
         try:
-            _, krx = src.krx_prices(etfs, raw_axis)
+            _, krx = src.krx_prices(etfs, fetch_days)
             status["krx_table"] = "ok"
         except Exception as e:  # noqa: BLE001 - ETF 파생값만 닫는다
             krx = None
@@ -247,7 +265,7 @@ def load_basis_history(
                 item["reason"] = REASON_KRX_UNREADABLE
             else:
                 closes = krx.get(t) or {}
-                rows = [(d, closes[d]) for d in raw_axis if d in closes]
+                rows = [(d, closes[d]) for d in fetch_days if d in closes]
         elif kind == ASSET_STOCK:
             item.update(price_source=PRICE_SOURCE_FDR, price_basis=PRICE_BASIS_FDR)
             loaded = fdr.get(t) or []

@@ -435,9 +435,8 @@ class CalendarWindow:
     (`latest` · `d5` · `d20`) 가운데 하나라도 없으면 `usable=False` — 호출부가
     fail-closed 한다(6 · 21거래일 전 값으로 대신하지 않는다).
 
-    `unconfirmed_days` — 캘린더 없는 해의 평일(fallback) 가운데 저장되지 않은 날.
-    휴장일이면 5 · 20거래일 셈이 하루 틀어지므로 창 안 어디에 있든 `usable=False`
-    (`trading_day_lag.unconfirmed_days` · 확정 계약 5).
+    연도 파일이 없는 해는 저장 자료가 없는 평일을 휴장으로 건너뛰어 날짜를 정한다
+    (`trading_day_lag` `stored` · 한국 거래일 계약 2026-09-11 · 창을 닫지 않는다).
     """
 
     latest: str
@@ -445,13 +444,11 @@ class CalendarWindow:
     d20: Optional[str]
     window_days: tuple[str, ...]
     missing_days: tuple[str, ...]
-    unconfirmed_days: tuple[str, ...] = ()
 
     @property
     def missing_required(self) -> tuple[str, ...]:
         need = (self.latest, self.d5, self.d20)
-        base = tuple(d for d in need if d is None or d in self.missing_days)
-        return base + tuple(d for d in self.unconfirmed_days if d not in base)
+        return tuple(d for d in need if d is None or d in self.missing_days)
 
     @property
     def usable(self) -> bool:
@@ -473,7 +470,6 @@ class CalendarWindow:
             "window_day_count": len(self.window_days),
             "missing_days": list(self.missing_days),
             "missing_required": [d for d in self.missing_required if d],
-            "unconfirmed_days": list(self.unconfirmed_days),
             "usable": self.usable,
         }
 
@@ -491,25 +487,25 @@ def resolve_calendar_window(
     """
     from app import trading_day_lag
 
+    stored = set(stored_trading_days(db_path=db_path))
     dates = trading_day_lag.trading_window_dates(
-        latest, calendar_dir=calendar_dir, lookbacks=(LOOKBACK_5D, LOOKBACK_20D)
+        latest,
+        calendar_dir=calendar_dir,
+        lookbacks=(LOOKBACK_5D, LOOKBACK_20D),
+        stored=stored,
     )
     d5, d20 = (dates[1], dates[2]) if dates else (None, None)
     days = tuple(
         trading_day_lag.trading_days_ending(
-            latest, REQUIRED_TRADING_DAYS, calendar_dir=calendar_dir
+            latest, REQUIRED_TRADING_DAYS, calendar_dir=calendar_dir, stored=stored
         )
     )
-    stored = set(stored_trading_days(db_path=db_path))
     return CalendarWindow(
         latest=latest,
         d5=d5,
         d20=d20,
         window_days=days,
         missing_days=tuple(d for d in days if d not in stored),
-        unconfirmed_days=trading_day_lag.unconfirmed_days(
-            days, stored, calendar_dir=calendar_dir
-        ),
     )
 
 

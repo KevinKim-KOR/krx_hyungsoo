@@ -33,8 +33,10 @@ const JOB_LABEL: Record<string, string> = {
   holdings_source: "보유 종목 파일",
   runtime_state_db: "운영 설정 DB",
   push_job_results: "PUSH 발송 결과",
-  // POC3-02D-OPS-03 확정 계약 11 — 한국 · 미국 거래일 달력 올해 · 다음 해 파일 준비 상태.
-  trading_calendar: "거래일 달력",
+  // 한국 거래일 계약(2026-09-11 사용자 확정 · 설계자 2026-10-02) — 고정 문구 · 늘 정상.
+  trading_day_basis: "거래일 기준",
+  // POC3-02D-OPS-03 확정 계약 11 — 미국(NYSE) 휴장일 파일 올해 · 다음 해 준비 상태.
+  trading_calendar: "미국 휴장일 달력",
 };
 
 const PUSH_KIND_LABEL: Record<string, string> = {

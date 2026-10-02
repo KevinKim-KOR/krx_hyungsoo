@@ -173,6 +173,17 @@ def is_weekend(date_kst: str) -> bool:
     return d.weekday() >= 5 if d else False
 
 
+# 한국 거래일 계약(2026-09-11 사용자 확정 · 설계자 2026-10-02 복원) — 연도 파일이 없어도
+# 해마다 같은 날 쉬는 5월 1일 · 12월 31일은 휴장. 그 밖의 평일은 운영(공휴일 · 명절은
+# 연도 파일이 있을 때만 안다 · 연 2~3회 오판은 결함이 아니다).
+FIXED_HOLIDAYS_MMDD = frozenset({(5, 1), (12, 31)})
+
+
+def is_fallback_trading_day(d: _date) -> bool:
+    """연도 파일이 없을 때의 거래일 규칙 — 평일이고 5월 1일 · 12월 31일이 아니다."""
+    return d.weekday() < 5 and (d.month, d.day) not in FIXED_HOLIDAYS_MMDD
+
+
 def _fallback_verdict(date_kst: str, cal: Optional[TradingCalendar]) -> CalendarVerdict:
     """snapshot 이 없거나 그 연도를 안 덮을 때. **평일이면 통과시킨다.**
 
@@ -190,10 +201,10 @@ def _fallback_verdict(date_kst: str, cal: Optional[TradingCalendar]) -> Calendar
             rows=cal.rows if cal else 0,
             decided_by=SOURCE_WEEKDAY_FALLBACK,
         )
-    weekend = is_weekend(date_kst)
+    closed = not is_fallback_trading_day(parse_date(date_kst))
     return CalendarVerdict(
-        ok=not weekend,
-        reason=REASON_NON_TRADING_DAY if weekend else None,
+        ok=not closed,
+        reason=REASON_NON_TRADING_DAY if closed else None,
         date_kst=date_kst,
         source_path=cal.source_path if cal else None,
         covered_years=cal.covered_years if cal else (),
@@ -212,7 +223,7 @@ def check_trading_day(
     | snapshot 있음 · 목록에 있음 | O | `None` | `snapshot` |
     | snapshot 있음 · 목록에 없음 | X | `non_trading_day` | `snapshot` |
     | snapshot 없음·손상·연도 미지원 · **평일** | **O** | `None` | `weekday_fallback` |
-    | snapshot 없음·손상·연도 미지원 · 주말 | X | `non_trading_day` | `weekday_fallback` |
+    | snapshot 없음·손상·연도 미지원 · 주말 · 5월 1일 · 12월 31일 | X | `non_trading_day` | `weekday_fallback` |
 
     **예외를 올리지 않는다** — 캘린더 판단으로 러너가 멈추면 안 된다.
     """
@@ -243,6 +254,7 @@ __all__ = [
     "CALENDAR_DIR",
     "CALENDAR_GLOB",
     "CalendarVerdict",
+    "FIXED_HOLIDAYS_MMDD",
     "REASON_CALENDAR_REFRESH_REQUIRED",
     "REASON_INVALID_DATE",
     "REASON_NON_TRADING_DAY",
@@ -250,6 +262,7 @@ __all__ = [
     "SOURCE_WEEKDAY_FALLBACK",
     "TradingCalendar",
     "check_trading_day",
+    "is_fallback_trading_day",
     "is_weekend",
     "parse_date",
     "load_calendar",

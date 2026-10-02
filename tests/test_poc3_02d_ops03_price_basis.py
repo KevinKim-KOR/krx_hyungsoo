@@ -177,7 +177,8 @@ def test_etf_uses_krx_closes_even_when_fdr_differs(tmp_path):
     assert "20거래일 -12.0%" in out.message_text
     assert "고점 대비 -20.0%" in out.message_text  # 88 / 110(KRX 고점) − 1
     assert fetch.calls == []  # ETF 는 조정계열을 부르지 않는다
-    assert (tuple([ETF]), tuple(PAST[-20:])) in spy.calls
+    # 축 20거래일 + 앞쪽 여유 10거래일(연도 파일 없는 해의 휴장 평일 건너뛰기 대비).
+    assert (tuple([ETF]), tuple(PAST[-30:])) in spy.calls
 
 
 def test_etf_missing_krx_base_is_not_filled_from_fdr(tmp_path):

@@ -266,51 +266,63 @@ def _names(*pairs: tuple[str, int]) -> list[str]:
 
 
 ALL_2026_2027 = _names(("KRX", 2026), ("NYSE", 2026), ("KRX", 2027), ("NYSE", 2027))
+# 한국 다음 해 파일은 없고 미국은 다 있다 — 한국 거래일 계약(2026-09-11 · 설계자 2026-10-02
+# 복원)상 한국 파일 유무로는 경고하지 않는다.
 NO_KRX_2027 = _names(("KRX", 2026), ("NYSE", 2026), ("NYSE", 2027))
+NO_NYSE_2027 = _names(("KRX", 2026), ("NYSE", 2026), ("KRX", 2027))
+KOREA_BASIS = "평일 기본 운영 · 등록된 공휴일·명절·5월 1일·12월 31일 제외"
 
 
 @pytest.mark.parametrize(
     "today,names,state,missing_next",
     [
-        (date(2026, 10, 31), NO_KRX_2027, uc.READY_OK, ["KRX"]),
-        (date(2026, 11, 1), NO_KRX_2027, uc.READY_DUE, ["KRX"]),
-        (date(2026, 11, 30), NO_KRX_2027, uc.READY_DUE, ["KRX"]),
-        (date(2026, 12, 1), NO_KRX_2027, uc.READY_WARN, ["KRX"]),
+        (date(2026, 12, 1), NO_KRX_2027, uc.READY_OK, []),  # 한국 파일 없음 = 경고 아님
+        (date(2026, 10, 31), NO_NYSE_2027, uc.READY_OK, ["NYSE"]),
+        (date(2026, 11, 1), NO_NYSE_2027, uc.READY_DUE, ["NYSE"]),
+        (date(2026, 11, 30), NO_NYSE_2027, uc.READY_DUE, ["NYSE"]),
+        (date(2026, 12, 1), NO_NYSE_2027, uc.READY_WARN, ["NYSE"]),
         (date(2026, 12, 1), ALL_2026_2027, uc.READY_OK, []),
     ],
 )
-def test_readiness_november_check_and_december_warning(
+def test_readiness_is_us_only_november_check_and_december_warning(
     today, names, state, missing_next
 ):
     r = uc.calendar_readiness_for_names(today, names)
     assert (r["state"], r["missing_next"]) == (state, missing_next)
 
 
-def test_readiness_current_year_missing_warns_any_month():
-    r = uc.calendar_readiness_for_names(
-        date(2027, 3, 2), ALL_2026_2027[:2] + NO_KRX_2027
+def test_readiness_current_year_missing_warns_any_month_us_only():
+    no_krx_any = _names(("NYSE", 2027), ("NYSE", 2028))
+    assert uc.calendar_readiness_for_names(date(2027, 3, 2), no_krx_any)["state"] == (
+        uc.READY_OK
     )
-    assert r["state"] == uc.READY_WARN and r["missing_current"] == ["KRX"]
+    r = uc.calendar_readiness_for_names(date(2027, 3, 2), _names(("KRX", 2027)))
+    assert r["state"] == uc.READY_WARN and r["missing_current"] == ["NYSE"]
 
 
-def test_readiness_from_directory_reads_content(tmp_path, cal_dir):
-    """배치는 파일을 읽는다 — 손상 파일은 없는 것과 같다."""
+def test_readiness_from_directory_reads_content(tmp_path):
+    """배치는 파일을 읽는다(미국만) — 손상 파일은 없는 것과 같다 · 한국 파일은 보지 않는다."""
+    cal_dir = tmp_path / "meta_us_only"
+    cal_dir.mkdir()
+    shutil.copy(REPO_META / "nyse_holidays_2026.csv", cal_dir)
     shutil.copy(REPO_META / "krx_trading_days_2026.csv", cal_dir)
     r = uc.calendar_readiness_for_dir(date(2026, 12, 1), cal_dir)
     assert r["basis"] == "file_content"
     assert (r["state"], r["missing_current"], r["missing_next"]) == (
         uc.READY_WARN,
         [],
-        ["KRX"],
+        ["NYSE"],
     )
-    (cal_dir / "krx_trading_days_2027.csv").write_text("date\n2027-01-04\n", "utf-8")
     (cal_dir / "nyse_holidays_2027.csv").write_text("broken\n", encoding="utf-8")
     r2 = uc.calendar_readiness_for_dir(date(2026, 12, 1), cal_dir)
     assert r2["missing_next"] == ["NYSE"]
+    shutil.copy(REPO_META / "nyse_holidays_2027.csv", cal_dir)
+    r3 = uc.calendar_readiness_for_dir(date(2026, 12, 1), cal_dir)
+    assert (r3["state"], r3["missing_next"]) == (uc.READY_OK, [])  # 한국 2027 없어도 ok
 
 
 def test_batch_state_records_calendar_readiness(batch, tmp_path):  # noqa: F811
-    """08:10 배치 JSON 에 준비 상태가 남는다(MARKET_META_DIR 는 conftest 격리 폴더)."""
+    """08:10 배치 JSON 에 준비 상태가 남는다(미국만 · MARKET_META_DIR 는 conftest 격리 폴더)."""
     import json
 
     from app.three_push_runtime import market_data_batch as mdb
@@ -320,8 +332,9 @@ def test_batch_state_records_calendar_readiness(batch, tmp_path):  # noqa: F811
     saved = json.loads(mdb.MARKET_DATA_BATCH_STATE_PATH.read_text("utf-8"))
     assert rec["calendar_readiness"] == saved["calendar_readiness"]
     assert saved["calendar_readiness"]["checked_date"] == "2026-09-30"
-    assert saved["calendar_readiness"]["missing_current"] == ["KRX"]
-    assert saved["calendar_readiness"]["state"] == uc.READY_WARN
+    assert saved["calendar_readiness"]["missing_current"] == []
+    assert saved["calendar_readiness"]["missing_next"] == ["NYSE"]
+    assert saved["calendar_readiness"]["state"] == uc.READY_OK  # 9월 — 점검 기간 전
 
 
 # ── PC 「OCI 운영·적용」 ① 상태 표 행 ────────────────────────────────────────
@@ -339,50 +352,69 @@ def _snap(monkeypatch, out: str, today: date):
 CRON = "holdings_briefing\nholdings_risk_alert\nmarket_briefing\n"
 
 
+def _row(snap, job):
+    return [j for j in snap.jobs if j.job == job][0]
+
+
 @pytest.mark.parametrize(
-    "today,status,detail",
-    [
-        (
-            date(2026, 9, 30),
-            "SUCCESS",
-            "2027년 파일 없음: 한국 — 11월 30일까지 준비",
-        ),
-        (
-            date(2026, 11, 2),
-            "SUCCESS",
-            "2027년 파일 없음: 한국 — 11월 30일까지 준비 필요",
-        ),
-        (date(2026, 12, 1), "STALE", "2027년 파일 없음: 한국 — 준비 필요"),
-    ],
+    "today", [date(2026, 9, 30), date(2026, 11, 2), date(2026, 12, 1), date(2027, 3, 2)]
 )
-def test_oci_status_calendar_row(monkeypatch, today, status, detail):
+def test_oci_status_korea_basis_row_is_always_normal(monkeypatch, today):
+    """한국 거래일 행 = 고정 문구 · 늘 정상 — 다음 해 파일 없음으로 준비 필요 · STALE 금지."""
     listing = "\n".join(["krx_etf_basic_20260927.csv", *NO_KRX_2027])
     snap = _snap(monkeypatch, f"{CRON}###\n1\n1 1\n###\n{listing}", today)
-    row = [j for j in snap.jobs if j.job == "trading_calendar"][0]
-    assert (row.status, row.detail) == (status, detail)
+    row = _row(snap, "trading_day_basis")
+    assert (row.status, row.detail) == ("SUCCESS", KOREA_BASIS)
+    assert "한국" not in _row(snap, "trading_calendar").detail
     assert snap.overall == "OPERATING", "달력 행이 전체 운영 판정을 바꾸면 안 된다"
 
 
-def test_oci_status_calendar_row_all_present_and_old_output(monkeypatch):
+@pytest.mark.parametrize(
+    "today,status,detail",
+    [
+        (date(2026, 9, 30), "SUCCESS", "2027년 파일 없음: 미국 — 11월 30일까지 준비"),
+        (
+            date(2026, 11, 2),
+            "SUCCESS",
+            "2027년 파일 없음: 미국 — 11월 30일까지 준비 필요",
+        ),
+        (date(2026, 12, 1), "STALE", "2027년 파일 없음: 미국 — 준비 필요"),
+    ],
+)
+def test_oci_status_us_calendar_row(monkeypatch, today, status, detail):
+    listing = "\n".join(["krx_etf_basic_20260927.csv", *NO_NYSE_2027])
+    snap = _snap(monkeypatch, f"{CRON}###\n1\n1 1\n###\n{listing}", today)
+    row = _row(snap, "trading_calendar")
+    assert (row.status, row.detail) == (status, detail)
+    assert snap.overall == "OPERATING"
+
+
+def test_oci_status_us_row_all_present_and_old_output(monkeypatch):
     snap = _snap(
         monkeypatch,
-        f"{CRON}###\n1\n1 1\n###\n" + "\n".join(ALL_2026_2027),
+        f"{CRON}###\n1\n1 1\n###\n" + "\n".join(NO_KRX_2027),
         date(2026, 12, 1),
     )
-    row = [j for j in snap.jobs if j.job == "trading_calendar"][0]
-    assert (row.status, row.detail) == ("SUCCESS", "한국·미국 2026년·2027년 파일 있음")
-    # 넷째 블록이 없는 옛 응답 — 모르는 것을 '없음' 으로 보이지 않는다(행 없음).
+    assert (
+        _row(snap, "trading_calendar").status,
+        _row(snap, "trading_calendar").detail,
+    ) == (
+        "SUCCESS",
+        "미국 2026년·2027년 파일 있음",
+    )
+    # 넷째 블록이 없는 옛 응답 — 미국 행은 만들지 않는다(모르는 것을 '없음' 으로 보이지 않는다).
+    # 한국 기준 행은 OCI 파일과 무관한 고정 문구라 그대로 있다.
     old = _snap(monkeypatch, f"{CRON}###\n1\n1 1", date(2026, 12, 1))
     assert [j.job for j in old.jobs if j.job == "trading_calendar"] == []
+    assert _row(old, "trading_day_basis").status == "SUCCESS"
 
 
-def test_oci_status_current_year_missing(monkeypatch):
+def test_oci_status_us_current_year_missing(monkeypatch):
     snap = _snap(monkeypatch, f"{CRON}###\n1\n1 1\n###\n", date(2026, 9, 30))
-    row = [j for j in snap.jobs if j.job == "trading_calendar"][0]
+    row = _row(snap, "trading_calendar")
     assert row.status == "STALE"
-    assert row.detail.startswith(
-        "2026년 파일 없음: 한국·미국 — 평일 기준으로 대신 판정 중"
-    )
+    assert row.detail.startswith("2026년 파일 없음: 미국 — 평일 기준으로 대신 판정 중")
+    assert _row(snap, "trading_day_basis").status == "SUCCESS"
 
 
 from tests.test_poc3_02d_ops03_krx_batch_stages import batch  # noqa: E402,F401

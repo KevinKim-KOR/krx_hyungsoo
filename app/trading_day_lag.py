@@ -28,11 +28,15 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Collection, Optional, Sequence
 
-from app.market_briefing.calendar import load_calendar, parse_date
+from app.market_briefing.calendar import (
+    is_fallback_trading_day,
+    load_calendar,
+    parse_date,
+)
 
 
 def weekday_axis_before(today_kst: str, *, span_days: int) -> list[str]:
-    """`today_kst` 직전 `span_days` 달력일 중 **평일만** 오름차순.
+    """`today_kst` 직전 `span_days` 달력일 중 **평일만**(5월 1일 · 12월 31일 제외) 오름차순.
 
     snapshot 이 없는 연도에서 지연을 재기 위한 축이다. 공휴일을 모르므로 실제
     거래일보다 조금 많게 잡힐 수 있다 — 그만큼 지연 판정이 **보수적**이 된다
@@ -44,7 +48,7 @@ def weekday_axis_before(today_kst: str, *, span_days: int) -> list[str]:
     except ValueError:
         return []
     out = [base - timedelta(days=i) for i in range(span_days, 0, -1)]
-    return [d.isoformat() for d in out if d.weekday() < 5]
+    return [d.isoformat() for d in out if is_fallback_trading_day(d)]
 
 
 def trading_axis_before(today_kst: str, *, calendar_dir: Optional[Path]) -> list[str]:
@@ -134,8 +138,20 @@ def benchmark_lag_trading_days(
 _WALK_LIMIT_DAYS = 60
 
 
-def _trading_day_test(calendar_dir: Optional[Path]):
-    """`date` → 거래일 여부. 캘린더는 한 번만 읽는다."""
+def _trading_day_test(
+    calendar_dir: Optional[Path],
+    *,
+    stored: Optional[Collection[str]] = None,
+    anchor: Optional[_date] = None,
+):
+    """`date` → 거래일 여부. 캘린더는 한 번만 읽는다.
+
+    연도 파일이 덮는 해는 파일 그대로. 없는 해는 평일 기본(5월 1일 · 12월 31일 제외 ·
+    한국 거래일 계약 2026-09-11). `stored`(저장된 날짜)를 넘기면 없는 해의 `anchor`
+    **이전** 평일은 저장된 날만 거래일로 센다 — 저장 자료가 없는 평일은 휴장으로
+    건너뛴다(5 · 20거래일 창을 닫지 않고 평일 기본으로 운영 · 오판은 계약상 허용).
+    `anchor` 자신은 저장 여부와 무관하다(T-1 이 아직 없으면 그 값만 빠진다).
+    """
     try:
         cal = load_calendar(calendar_dir)
     except Exception:  # noqa: BLE001
@@ -144,7 +160,11 @@ def _trading_day_test(calendar_dir: Optional[Path]):
     def _is_trading(d: _date) -> bool:
         if cal is not None and cal.covers(d.year):
             return d.isoformat() in cal.days
-        return d.weekday() < 5
+        if not is_fallback_trading_day(d):
+            return False
+        if stored is not None and anchor is not None and d < anchor:
+            return d.isoformat() in stored
+        return True
 
     return _is_trading
 
@@ -176,17 +196,21 @@ def expected_previous_trading_day(
 
 
 def trading_days_ending(
-    anchor_date: str, count: int, *, calendar_dir: Optional[Path]
+    anchor_date: str,
+    count: int,
+    *,
+    calendar_dir: Optional[Path],
+    stored: Optional[Collection[str]] = None,
 ) -> list[str]:
     """`anchor_date` **이하** 거래일 `count` 개(오름차순 · anchor 가 거래일이면 포함).
 
     상한 안에서 `count` 개를 못 모으면 모은 만큼만 돌려준다 — 호출부가 길이로
-    판정한다. 읽을 수 없는 날짜면 `[]`.
+    판정한다. 읽을 수 없는 날짜면 `[]`. `stored` 는 `_trading_day_test` 참조.
     """
     base = parse_date(anchor_date)
     if base is None or count <= 0:
         return []
-    is_trading = _trading_day_test(calendar_dir)
+    is_trading = _trading_day_test(calendar_dir, stored=stored, anchor=base)
     out: list[str] = []
     limit = _WALK_LIMIT_DAYS + count * 3
     for i in range(0, limit + 1):
@@ -199,7 +223,11 @@ def trading_days_ending(
 
 
 def trading_days_back(
-    anchor_date: str, n: int, *, calendar_dir: Optional[Path]
+    anchor_date: str,
+    n: int,
+    *,
+    calendar_dir: Optional[Path],
+    stored: Optional[Collection[str]] = None,
 ) -> Optional[str]:
     """`anchor_date` 에서 **거래일 `n` 개 전** 날짜. `n=0` 이면 anchor 자신.
 
@@ -208,37 +236,20 @@ def trading_days_back(
     """
     if n < 0 or not is_trading_day(anchor_date, calendar_dir=calendar_dir):
         return None
-    days = trading_days_ending(anchor_date, n + 1, calendar_dir=calendar_dir)
+    days = trading_days_ending(
+        anchor_date, n + 1, calendar_dir=calendar_dir, stored=stored
+    )
     if len(days) != n + 1 or days[-1] != anchor_date:
         return None
     return days[0]
 
 
-def unconfirmed_days(
-    days: Sequence[str], stored: Collection[str], *, calendar_dir: Optional[Path]
-) -> tuple[str, ...]:
-    """캘린더가 그 **연도**를 덮지 않아 평일로 거래일로 친 날 가운데 저장되지 않은 날.
-
-    그런 날은 휴장일인지 적재 누락인지 모른다 — 휴장일이면 그 창의 5 · 20거래일
-    셈이 하루 틀어진다(4 · 19일을 5 · 20일로 보고). 호출부가 창을 fail-closed
-    한다(확정 계약 5). 캘린더가 덮는 해의 날짜는 여기서 보지 않는다.
-    """
-    try:
-        cal = load_calendar(calendar_dir)
-    except Exception:  # noqa: BLE001
-        cal = None
-    out: list[str] = []
-    for day in days:
-        d = parse_date(day)
-        if d is None or (cal is not None and cal.covers(d.year)):
-            continue
-        if day not in stored:
-            out.append(day)
-    return tuple(out)
-
-
 def trading_window_dates(
-    latest: str, *, calendar_dir: Optional[Path], lookbacks: Sequence[int] = (5, 20)
+    latest: str,
+    *,
+    calendar_dir: Optional[Path],
+    lookbacks: Sequence[int] = (5, 20),
+    stored: Optional[Collection[str]] = None,
 ) -> Optional[tuple[str, ...]]:
     """`(latest, latest 의 5거래일 전, 20거래일 전)` — **거래일 날짜 기준**.
 
@@ -246,7 +257,7 @@ def trading_window_dates(
     """
     out: list[str] = [latest]
     for n in lookbacks:
-        d = trading_days_back(latest, n, calendar_dir=calendar_dir)
+        d = trading_days_back(latest, n, calendar_dir=calendar_dir, stored=stored)
         if d is None:
             return None
         out.append(d)
@@ -262,7 +273,6 @@ __all__ = [
     "trading_days_back",
     "trading_days_ending",
     "trading_window_dates",
-    "unconfirmed_days",
     "weekday_axis_before",
     "window_lag_trading_days",
 ]

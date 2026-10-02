@@ -213,16 +213,16 @@ def _calendar_2026_only(tmp_path):
     return cal
 
 
-def test_uncovered_year_unstored_weekday_empties_axis_instead_of_shifting(tmp_path):
-    """휴장일일 수 있는 평일을 거래일로 세면 기준일이 하루 늦게 잡혀 19거래일을
-    '20거래일' 로 보고한다(확정 계약 5). 그 평일이 이력에 있으면 그대로 쓴다."""
+def test_uncovered_year_unstored_weekday_is_skipped_not_emptied(tmp_path):
+    """연도 파일이 없는 해 — 저장 자료가 없는 평일은 휴장으로 건너뛰고 축을 비우지 않는다
+    (한국 거래일 계약 2026-09-11 · 설계자 2026-10-02 복원). 그 평일이 이력에 있으면 센다."""
     cal = _calendar_2026_only(tmp_path)
     axis = trading_day_axis(NEXT_YEAR_TODAY, calendar_dir=cal)
     assert NEW_YEAR in axis and axis[-1] == "2027-01-05" and len(axis) == 20
     unstored = set(axis) - {NEW_YEAR}
-    assert (
-        trading_day_axis(NEXT_YEAR_TODAY, calendar_dir=cal, stored_dates=unstored) == []
-    )
+    skipped = trading_day_axis(NEXT_YEAR_TODAY, calendar_dir=cal, stored_dates=unstored)
+    assert NEW_YEAR not in skipped and len(skipped) == 20
+    assert skipped[-1] == "2027-01-05" and skipped[0] < axis[0]  # 하루 앞에서 채운다
     assert (
         trading_day_axis(NEXT_YEAR_TODAY, calendar_dir=cal, stored_dates=set(axis))
         == axis
@@ -230,9 +230,12 @@ def test_uncovered_year_unstored_weekday_empties_axis_instead_of_shifting(tmp_pa
 
 
 def test_uncovered_year_gap_reaches_both_holdings_flows(tmp_path):
-    """두 흐름이 보유 이력 날짜를 축에 넘긴다 — 빈 평일이면 기준일 · 보조값을 닫는다."""
+    """두 흐름이 보유 이력 날짜를 축에 넘긴다 — 저장 자료가 없는 평일은 건너뛰고 계산한다."""
+    from app import trading_day_lag
+
     cal = _calendar_2026_only(tmp_path)
     axis = trading_day_axis(NEXT_YEAR_TODAY, calendar_dir=cal)
+    wide = trading_day_lag.trading_days_ending("2027-01-05", 25, calendar_dir=cal)
     asof = f"{NEXT_YEAR_TODAY}T09:14:00+09:00"
 
     def _run(days):
@@ -261,11 +264,14 @@ def test_uncovered_year_gap_reaches_both_holdings_flows(tmp_path):
         )
         return sel, risk
 
-    sel, risk = _run([d for d in axis if d != NEW_YEAR])
-    assert sel.selected[0].primary_reason == "DATA_UNAVAILABLE_OR_STALE"
-    assert "20거래일 -" not in sel.message_text
-    assert risk.selected[0].drawdown_pct is None  # 보조값만 닫힌다(판정은 네이버)
-    assert risk.diagnostics["risk_prev_trading_day"] is None
+    sel, risk = _run(
+        [d for d in wide if d != NEW_YEAR]
+    )  # 신정 행 없음 · 하루 앞 행 있음
+    assert (
+        "20거래일 -12.0%" in sel.message_text
+    )  # 축이 신정을 건너뛰어 기준일 종가가 있다
+    assert risk.selected[0].drawdown_pct == -6.0
+    assert risk.diagnostics["risk_prev_trading_day"] == "2027-01-05"
 
     sel, risk = _run(axis)
     assert "20거래일 -12.0%" in sel.message_text
