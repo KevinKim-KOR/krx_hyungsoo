@@ -3,7 +3,7 @@
 작성일: 2026-09-30(설계자 RESULT 판정 보완 반영) · 종료 갱신 2026-10-02(배포 · 첫 거래일 실측 · 한국 거래일 계약 정정) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(설계자 RESULT STEP 7 — 보완 뒤 설계자 재판정 없이)
 
 ```text
-STATUS               = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED (2026-10-02)
+STATUS               = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED (2026-10-02) — 설계자 종료 수용 2026-10-02(RECHECK_20261006 = WAIVED_BY_USER · 7d507951 = 비차단 · 다음 정기 OCI pull · 잔여 판단 5건 → POC3-02D-OPS-04 · 원문 = 설계서 끝)
 DEPLOYMENT           = CONFIRMED (커밋 7feddf2c · OCI pull + cron 3줄 2026-10-01 · read-back 16:32 — §8-1 · §8-2)
 OPERATION            = CONFIRMED (2026-10-02 첫 거래일 실측 · 사용자 결정으로 10-06 재실측 생략 — §8-5)
 IMPLEMENTATION       = DONE
@@ -15,10 +15,11 @@ DESIGNER_RESULT      = PASS_WITH_MANDATORY_AMENDMENTS (2026-09-30) — 보완 �
 
 STEP_ID                   = POC3-02D-OPS-03
 STEP_NAME                 = 운영 데이터 최신성·자료원 복구
-PREDECESSOR / SUCCESSOR   = POC3-02D-OPS-02 / POC5-01A (개방 — 설계자 STEP 8 · OPS-03 운영 확인 2026-10-02)
+PREDECESSOR / SUCCESSOR   = POC3-02D-OPS-02 / POC5-01A (개방 — 설계자 STEP 8 · OPS-03 운영 확인 2026-10-02 · 설계자 정정 2026-10-02: POC5-01A = 세 PUSH 러너 기계 분리 → POC3-02D-OPS-04 → POC5-01B 운영 원장)
 PLAN                      = CONFIRMED (설계자 PASS_WITH_MANDATORY_AMENDMENTS 2026-09-29 · 확정 계약 15항목 · RESULT 판정 STEP 1~8 이 그 위에 우선)
 VERIFIER                  = VERIFIED (r3 · 2026-10-01 · A-1~A-4 · B-1~B-6 통과 · 위험 NONE · 범위 폭주 MINOR) — r1 REJECTED(A-1 기존 날짜 행이 있으면 건수 확인 없이 성공 · A-2 `untracked` 표기 충돌) · r2 REJECTED(A-2 옛 함수 테스트 호출처 1파일로 적음 · 실제 2파일) 정정 뒤 · §1-0
 CURRENT_OPERATION         = OPERATING (2026-10-02 · OPERATING_DEGRADED 해제 — 원인 국내 T-2 · KOSPI 정지 둘 다 해소 · §8-5)
+POST_DEPLOY_CHECK         = 2026-10-03 — 종료 커밋 7d507951 OCI 반영 확인(2026-10-02 17:56 KST pull · §12) · 아래 줄의 'OCI 미반영' 은 작성 당시 기록
 COMMIT / PUSH / OCI       = 커밋 7feddf2c · push 2026-10-01(사용자 승인) · OCI pull + cron 3줄 2026-10-01(사용자) · read-back 16:32(리드 읽기 전용) — 종료 커밋(한국 거래일 계약 정정 · §11)은 OCI 미반영 · 다음 pull 때 적용
 CRON                      = 변경 완료 2026-10-01 (13줄 · PATH 제외 · 08:10 배치 · 08:30 시장 브리핑 · 09:20 `--krx-only` 추가 — §8-2)
 RED_ON_BASE_CODE          = 1차: 7e60f536 사본 + 새 테스트 — briefing 25/25 실패 · intraday 16/18 실패 · 5파일 수집 오류 · KospiStatusSurfaces 7/9 실패 / 보완: 보완 전 스테이지 사본 + 새 테스트 — 백엔드 3파일 수집 오류(파일당 1건 · 93건 미실행 · 새 모듈 없음 · import 단계) · dependencyDirection 1/2 실패 — §1-4
@@ -518,3 +519,12 @@ OCI 읽기 전용(리드 · 08:54 · 10:26 · 배치 상태 JSON · 09:20 보강
 **검증**: OPS-03 새 테스트 10파일 `pytest --collect-only` 292건(briefing_calendar 45 · krx_batch 47) · 프론트 `OciStatusView.test.tsx` 7 passed · tsc 0 · eslint 0(바뀐 2파일) · 백엔드 전체 회귀 = 2,709 passed / 0 failed(exit 0 · 393.21s · 2026-10-02 10:4x · 종료 커밋 코드 전부 뒤 마지막 1회 · PC `state/` · `logs/` 226파일 sha256 전후 동일) · 프론트 전체 vitest 24파일 287 · tsc 0 · eslint 0.
 
 **문서**(같은 커밋): 설계서(끝 절 설계자 정정 · 사용자 결정 원문 기록) · 이 결과서(종료 갱신) · `docs/STATE_LATEST.md` · `docs/PROGRAM_TRUTH.md` · PLAN(확정 계약 11 정정 주석) · `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md`(OPS-03 절 적용 기록) · 신규 인계 `docs/handoff/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_HANDOFF_2026-10-02.md`. `docs/backlog/BACKLOG.md` 에는 한국 다음 연도 달력 항목이 없었다(grep 0 · 변경 없음). 커밋 SHA 는 `git log` 로 확인한다.
+
+## 12. 2026-10-03 후속 배포 확인
+
+```text
+한국 거래일 계약 정정 커밋 7d507951은 2026-10-02 17:56 KST OCI pull로 반영됐다. OCI HEAD는 7d507951이며 OCI runner blob은 저장소 기준 blob
+f256677020232600627d207c54baf5081c70c6e2와 일치한다. OPS-03은 재개방하지 않는다.
+```
+
+확인 방법(2026-10-03 · 개발자 · OCI 읽기 전용 명령 1회): `git log --oneline -3` 맨 위 `7d507951` · `.git/FETCH_HEAD` 수정 시각 2026-10-02 17:56:26 KST · `git hash-object scripts/run_three_push_runtime_oci.py` = `f256677020232600627d207c54baf5081c70c6e2`(저장소 HEAD `7d507951` 의 같은 파일 blob 과 같음) · 추적 파일 변경 0(`git status --short` 에는 기존 백업 · 옛 빈 DB 같은 untracked 만). 위 본문의 'OCI 미반영 · 다음 pull' 기록은 작성 당시 사실이라 그대로 둔다(설계자 2026-10-03 판정).

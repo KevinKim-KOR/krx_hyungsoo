@@ -1,6 +1,6 @@
 # POC3-02D-OPS-03 인계 — 운영 데이터 최신성 · 자료원 복구 (2026-10-02)
 
-- **작성**: 개발자(VSCode Claude) · **독자**: 다음 세션 개발자(`POC5-01A` 시작 · OPS-03 후속 결정 처리)
+- **작성**: 개발자(VSCode Claude) · **독자**: 다음 세션 개발자(`POC5-01A` 시작 · OPS-03 후속 결정 처리) — 설계자 정정(2026-10-02): `POC5-01A` = 세 PUSH 러너 기계 분리 · 원장은 `POC5-01B` · 후속 결정 5건은 `POC3-02D-OPS-04`(POC5-01A 뒤 · POC5-01B 배포 전)
 - **입력**
   - 설계서 `docs/ai_design/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_DESIGN_V1.md` — 설계자 지시 · PLAN 판정 · RESULT 판정 · 한국 거래일 계약 정정(2026-10-02) · 사용자 종료 결정 원문(문서 끝)
   - PLAN `docs/ai_plan/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_PLAN_V1.md` — 맨 위 '확정 계약' 15항
@@ -14,8 +14,10 @@ POC3-02D-OPS-03   IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED (2026-10-02)
 배포              커밋 7feddf2c push 2026-10-01 · OCI pull + cron 3줄(사용자) · read-back 16:32(13줄)
 운영 확인          2026-10-02 첫 거래일 실측 통과 · 사용자 결정으로 10-06 재실측 생략(1인 운영)
 운영 상태          OPERATING (OPERATING_DEGRADED 해제 — 국내 T-2 · KOSPI 정지 해소)
-다음              POC5-01A 개방(설계자 RESULT STEP 8) — 설계서 대기
+다음              POC5-01A 개방(설계자 RESULT STEP 8) → 설계자 정정(2026-10-02): POC5-01A 러너 기계 분리 → POC3-02D-OPS-04 → POC5-01B 운영 원장
+                  설계서 docs/ai_design/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_DESIGN_V1.md
 종료 커밋          한국 거래일 계약 정정(설계자 2026-10-02) — OCI 미반영 · 다음 pull 때 적용(급하지 않음)
+후속 배포 확인      2026-10-03 — 종료 커밋 7d507951 OCI 반영됨(2026-10-02 17:56 KST pull · §7) · 위 줄은 작성 당시 기록
 ```
 
 ---
@@ -89,3 +91,12 @@ PY'
 - **결과서 주장 = 코드 · 실측**: 호출처 · 상태 표기(untracked/staged)는 전수 grep · 그 자리 실측으로만 적는다(검증자 r1 · r2 반려 원인).
 - **기존 저장분이 있다는 이유로 성공 처리하지 않는다**: read-back 은 이번 snapshot 과 내용까지 같아야 한다(검증자 r1).
 - 서브에이전트가 멈추면(stall) 재시작 대신 남은 범위를 직접 마무리하는 편이 빨랐다.
+
+## 7. 2026-10-03 후속 배포 확인
+
+```text
+한국 거래일 계약 정정 커밋 7d507951은 2026-10-02 17:56 KST OCI pull로 반영됐다. OCI HEAD는 7d507951이며 OCI runner blob은 저장소 기준 blob
+f256677020232600627d207c54baf5081c70c6e2와 일치한다. OPS-03은 재개방하지 않는다.
+```
+
+확인 방법(2026-10-03 · 개발자 · OCI 읽기 전용 명령 1회): `git log --oneline -3` 맨 위 `7d507951` · `.git/FETCH_HEAD` 수정 시각 2026-10-02 17:56:26 KST · `git hash-object scripts/run_three_push_runtime_oci.py` = `f256677020232600627d207c54baf5081c70c6e2`(저장소 HEAD `7d507951` 의 같은 파일 blob 과 같음) · 추적 파일 변경 0(`git status --short` 에는 기존 백업 · 옛 빈 DB 같은 untracked 만). 위 본문의 'OCI 미반영 · 다음 pull' 기록은 작성 당시 사실이라 그대로 둔다(설계자 2026-10-03 판정).

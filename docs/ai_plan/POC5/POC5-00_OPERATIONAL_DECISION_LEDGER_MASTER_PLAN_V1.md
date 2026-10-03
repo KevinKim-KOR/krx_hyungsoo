@@ -6,7 +6,10 @@ DESIGN          = docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER
 PLAN_DECISION   = PASS_WITH_MANDATORY_AMENDMENT (설계자 2026-09-26) · Q1~Q30 확정(§4) · 확정 계약 §2
 USER_APPROVAL   = OCI 전용 원장 SQLite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (사용자 2026-09-26)
 SUPPLEMENT      = 설계자 보완 판정 2026-09-26 — 남은 5건 확정(§2 반영) · LEGACY_OUTCOME_BACKFILL = PROHIBITED
-IMPLEMENTATION  = POC3 운영 정정 소형 PLAN → POC5-01a → 01 → 02 → 03 → 04 (단계마다 짧은 PLAN · §3)
+IMPLEMENTATION  = POC3 운영 정정 소형 PLAN → POC5-01A → OPS-04 → 01B → 02 → 03 → 04 (단계마다 짧은 PLAN · §3)
+STEP_NAMES      = 설계자 정정 2026-10-02 — 옛 `POC5-01a`(러너 기계 분리) = POC5-01A · 옛 `POC5-01`(운영 원장) = POC5-01B · 그 사이
+                  POC3-02D-OPS-04(POC5-01B 배포 전 완료) · 이름만 바꿈 · 범위 · 확정 내용 불변
+                  (원문 docs/ai_design/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_DESIGN_V1.md STEP 2 · 4)
 이번 조사의 변경   = 코드 · DB · cron · flag · OCI · Telegram 변경 0 (OCI 는 읽기 명령만 · 과거 신호 뒤 수익률은 열지 않음)
 
 사실조사 요약 (설계 §10 · 15항목 · §1 · 제출 당시 요약 — 미결·제안 표현은 §2 · §4 확정이 우선):
@@ -29,7 +32,7 @@ IMPLEMENTATION  = POC3 운영 정정 소형 PLAN → POC5-01a → 01 → 02 → 
  10 저장소       원장 테이블은 어디에도 없다 → 신규 테이블 필요 · OCI→PC 데이터 전달 경로도 없다
  11 피드백 위치   PC 에 '최근 받은 메시지' 화면이 없다 · 후보 3곳(Q23)
  12 PC 미가동     OCI 07:20 배치 뒤 독립 단계에서 성숙 outcome 계산 가능(신규 cron 없음 · OCI 배포는 필요 · Q2·Q25)
- 13 PRIMARY 시작  → 확정(Q28): 운영 정정(§3-1) · OCI 에 POC5-01 코드 pull 확인(reflog) 뒤 첫 KRX 거래일 (§2-7)
+ 13 PRIMARY 시작  → 확정(Q28): 운영 정정(§3-1) · OCI 에 POC5-01B 코드 pull 확인(reflog) 뒤 첫 KRX 거래일 (§2-7)
  14 최초 리뷰     → 확정(Q28 · Q29): 10거래일 뒤 R0 수집 점검 · R1 정기 기술통계(날짜 블록 bootstrap) · 성공 임계 없음
  15 KS-10·경계   528파일 TRIGGER 0 · NEAR 7(러너 646 · api.py 641 …) → 러너 선분리 필요 · 라이브 가드는 state/·logs/ 자동 보호
                  · Telegram 전역 차단 없음(테스트별 stub)
@@ -265,7 +268,7 @@ OCI `market_data.sqlite` 실측(값은 출력하지 않고 건수·기간만):
   - 한 틱 안에서 종목은 최대 1개 상태를 가진다. 그래서 `(날짜, 틱 HH:MM, ticker, state)` 가 틱 안에서 유일하다.
   - 사업군은 `sector_key`(토큰 사전 키 · 두 config 버전에서 27개 모두 같음)로 안정적이다.
   - 대표가 조회에 실패하면 대체 ticker 로 바뀐다.
-- **outcome 정의**: 가능하다. 다만 틱 시점 현재가 · 가격 시각 · 원시 등락률 · 잘린 신호 · 억제 신호는 지금 저장되지 않아 POC5-01 부터 새로 기록해야 한다.
+- **outcome 정의**: 가능하다. 다만 틱 시점 현재가 · 가격 시각 · 원시 등락률 · 잘린 신호 · 억제 신호는 지금 저장되지 않아 POC5-01B 부터 새로 기록해야 한다.
 - **현행 동작 관찰(§5)**
   - 정책이 켜진 상태에서 구역 상한에 잘린 보유 급락도 발송 성공 뒤 `worst_state` 가 기록된다. 그래서 그날 같은 구간이 억제된다(`holdings_risk_flow.py:134` · `runner_evidence.py:241-250`).
   - 집계 파일의 outcome 은 조립 시점 잠정값이라, Telegram 실패 때 `no_signal`·`suppressed` 로 남을 수 있다.
@@ -353,7 +356,7 @@ OCI `market_data.sqlite` 실측(값은 출력하지 않고 건수·기간만):
   - 243거래일 중 09-11 까지 171일은 KRX 실측이고, 09-14 부터 72일은 `USER_CONFIRMED` 다.
   - 2027 파일은 없다.
   - 다음 거래일은 09-28 이다(2026-09-27 정정 — 처음 적은 09-29 는 캘린더의 09-28 휴장 오기를 따른 것이었다). +20 거래일이 2026 캘린더 안에 드는 마지막 신호일은 12-01 이다.
-- **제출 때 제안**: PRIMARY 시작일 = ① 설계자의 채점 계약 동결 ② OCI 에 POC5-01 코드 pull 확인(reflog 인용) — 둘 다 된 뒤 첫 KRX 거래일.
+- **제출 때 제안**: PRIMARY 시작일 = ① 설계자의 채점 계약 동결 ② OCI 에 POC5-01B 코드 pull 확인(reflog 인용) — 둘 다 된 뒤 첫 KRX 거래일.
   → **확정(Q28)**: 운영 계약 정정(§3-1) · 코드 pull 뒤 첫 거래일(§2-7).
   - 동결 전·배포 전 이벤트는 LEGACY_DIAGNOSTIC 이다.
   - 동결일과 배포일은 원장 메타에 기록한다.
@@ -388,7 +391,7 @@ OCI `market_data.sqlite` 실측(값은 출력하지 않고 건수·기간만):
 - **KS-10 실측**(`git ls-files '*.py' '*.ts' '*.tsx'` · 528개 · 2026-09-26):
   - TRIGGER 0
   - NEAR 7: 러너 `scripts/run_three_push_runtime_oci.py` 646 · `app/api.py` 641 · `scripts/ops02c/reverse_verify_guards.py` 638 · `app/ml_score_validity_report.py` 626 · `app/holdings_market_evidence.py` 616 · `app/draft.py` 602 · `frontend/app/components/JudgmentWorkbenchView.tsx` 855
-  - 러너는 650까지 4줄 남았다. 원장 책임을 러너에 더하면 트리거 5('같은 대형 파일에 신규 책임')에 해당한다 → **POC5-01 앞에 러너 기계 분리(Cleanup)가 필요하다**(Q6).
+  - 러너는 650까지 4줄 남았다. 원장 책임을 러너에 더하면 트리거 5('같은 대형 파일에 신규 책임')에 해당한다 → **POC5-01B 앞에 러너 기계 분리(Cleanup · POC5-01A)가 필요하다**(Q6).
   - `app/api.py` 는 라우터 include 2줄만 늘린다.
 - **라이브 가드**:
   - `tests/_live_guard.py` 는 경로 루트(state/·logs/) 기반이다. 새 테이블·새 파일도 자동으로 막는다.
@@ -457,14 +460,14 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 ```
 
 - run · signal_item · delivery 는 이벤트 당시 **INSERT 만** 한다. 미래 결과가 당시 스냅샷을 바꾸지 않는다(설계 §11 · 테스트로 고정).
-- run 은 예외적으로 '종료 상태 확정'을 1회 기록한다(초기 행 STARTED → 최외곽에서 종료 상태 · Q6). 방식(같은 행 1회 갱신 또는 종료 행 추가)은 POC5-01 PLAN 에서 정한다.
+- run 은 예외적으로 '종료 상태 확정'을 1회 기록한다(초기 행 STARTED → 최외곽에서 종료 상태 · Q6). 방식(같은 행 1회 갱신 또는 종료 행 추가)은 POC5-01B PLAN 에서 정한다.
 - outcome 은 결과가 확정될 때 1회 INSERT 한다(개발자 안 · POC5-02 PLAN 에서 확정). 성숙 전은 행이 없는 상태이고, 조회 때 `PENDING` 으로 표시한다.
 - 'outcome' 이름이 장중 회차 결과와 겹치므로 가격 결과는 `price_outcome` 으로 부른다(§1-10).
 - 테이블 · 컬럼 이름은 단계 PLAN 에서 확정한다.
 
 ### 2-4. 실행 추적 · 누락 gap (Q6 · Q7 · Q8 · Q10 · Q11)
 
-- **순서**: POC5-01a 에서 러너를 먼저 기계 분리한다(동작 · 문구 · 순서 불변 · KS-10).
+- **순서**: POC5-01A 에서 러너를 먼저 기계 분리한다(동작 · 문구 · 순서 불변 · KS-10).
 - **실행 진입**: `event_id` 를 발급하고 원장에 초기 행(STARTED)을 쓴다. `run_id` · `started_at` 은 보조키다.
 - **최외곽 종료 확정**: 실행 종료 상태를 가장 바깥에서 확정한다.
   - 발송 전후의 미포착 예외도 종료 상태로 남긴다. PUSH 동작은 바꾸지 않는다.
@@ -505,7 +508,7 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 - **시장 브리핑**(Q13 (d) · Q14):
   - 방향 적중률은 계산하지 않는다. S&P500 상태와 한국 시장 원시 결과만 나란히 둔다. 어떤 한국 시장 계열을 둘지는 POC5-02 PLAN 에서 정한다.
   - 기초지수 후보(운용사|기초지수명 그룹 · 실제 사용 ticker)는 별도로 1·5·20거래일 원시 성과를 기록하되 추천 적중률로 부르지 않는다(설계 §4.2).
-    후보 ticker 는 POC5-01 flow payload 로 실행 시점에 기록한다(Q7).
+    후보 ticker 는 POC5-01B flow payload 로 실행 시점에 기록한다(Q7).
   - 별도 태그: FLAT/NONE · 동일 미국 세션 · 연휴 직후 · 입력 지연.
 - **집계**(Q19 · Q29):
   - 성공 임계는 없다. kind · state · contract_version · horizon 별 원시 분포를 보고한다.
@@ -523,7 +526,7 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
   - 과거 실행 단위 연결은 허용한다(DB `run_id` · `(push_kind, started_at)` 정확 일치). 과거 종목 단위는 `UNLINKABLE_LEGACY` 다(Q1).
   - spike 는 legacy 에서도 제외하고, 운영 3종만 허용한다(Q30).
   - legacy 버전과 실행 연결 · 건수는 진단 전용이고, PRIMARY 통계에 섞지 않는다. 과거 가격 결과는 계산하지 않는다(§2-6 · 보완 판정).
-- **PRIMARY_LIVE**(Q28): PRIMARY 시작 전 운영 정정(§3-1)과 POC5-01 코드 pull 이 끝난 뒤, 첫 KRX 거래일부터다.
+- **PRIMARY_LIVE**(Q28): PRIMARY 시작 전 운영 정정(§3-1)과 POC5-01B 코드 pull 이 끝난 뒤, 첫 KRX 거래일부터다.
   시작일과 근거(OCI reflog)는 원장 메타에 기록한다.
 - **R0**: PRIMARY 10거래일 뒤 수집 점검을 한다(연결 · gap · 결측 · 현행 PUSH 회귀). 신호 효과 결론은 내지 않는다.
 - **R1**: 정기 기술통계다. 겹치는 날짜는 날짜 블록 bootstrap 으로 처리한다. 다음 개발을 기다리게 하지 않는다.
@@ -551,7 +554,7 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 - 기존 선행 gate 가 있다: POC3-00 지도 P-19 'First Real Decision Cycle formal PASS 와 실제 판단 1건 기록 후' · S-05 'Decision Outcome Ledger 선행 진입 금지 유지' ·
   `docs/MASTER_PLAN.md` canonical 순서 3 → 5. **확정(보완 판정)**: 이번 POC5 승인으로 superseded 다.
   POC5 가 First Real Decision Cycle 을 만들어 내는 단계이므로 그 통과를 POC5 선행조건으로 둘 수 없다.
-- 두 기존 문서의 표기 정리와 KS-11(결정 변경 근거 기록)은 POC5-01 PLAN 에서 함께 제안한다.
+- 두 기존 문서의 표기 정리와 KS-11(결정 변경 근거 기록)은 POC5-01B PLAN 에서 함께 제안한다.
 
 ---
 
@@ -573,8 +576,8 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 
 | 순서 | 단계 | 범위 | 핵심 검증 |
 |---|---|---|---|
-| 2 | POC5-01a 러너 기계 분리 | 동작 · 문구 · 순서 불변 · KS-10 선제 | 기존 러너 테스트 전부 · 본문 byte 동일 |
-| 3 | POC5-01 운영 원장 | OCI 전용 원장 DB · 실행 진입 `event_id` · 초기 행 · 최외곽 종료 확정 · gap · flow additive payload · 비선정 결과 · 계약 버전 상수 · 운영 3종 허용 목록 | 본문 byte · 판정 · 순서 동일 · 기록 실패가 PUSH 를 막지 않음 · gap · 대조 보고 · 스냅샷 불변 · spike 제외 · 실발송 0 · tmp DB |
+| 2 | POC5-01A 러너 기계 분리 | 동작 · 문구 · 순서 불변 · KS-10 선제 | 기존 러너 테스트 전부 · 본문 byte 동일 |
+| 3 | POC5-01B 운영 원장 | OCI 전용 원장 DB · 실행 진입 `event_id` · 초기 행 · 최외곽 종료 확정 · gap · flow additive payload · 비선정 결과 · 계약 버전 상수 · 운영 3종 허용 목록 | 본문 byte · 판정 · 순서 동일 · 기록 실패가 PUSH 를 막지 않음 · gap · 대조 보고 · 스냅샷 불변 · spike 제외 · 실발송 0 · tmp DB |
 | 4 | POC5-02 outcome 성숙 | 07:20 뒤 격리 단계 · t0 · 보조 기준 · 적재일 축 · 결측 · 분배락 표시 · 시장 · 기초지수 원시 결과 · legacy 진단(실행 연결 · 건수만 · 과거 outcome backfill 금지) | 성숙 규칙 고정 fixture · KRX 적재 지연 · 배치 status 불변 · 현재가 누락 시 대체 없음 |
 | 5 | POC5-03 PC 동기화 · 피드백 | 로컬 캐시 표시 · `원장 새로고침` 버튼을 눌렀을 때만 동기화(자동 SSH 없음) · PC `decision_evidence.sqlite` 테이블 · 로컬 API · `받은 알림 기록` 구역 · `신호 결과 원장` 접기 | API tmp DB · vitest · 외부 호출 0 · 사용자 실화면 |
 | 6 | POC5-04 R0 · R1 리포트 | R0 수집 점검 · R1 정기 기술통계(날짜 블록 bootstrap) | 원시 분포만 · 성공 판정 없음 |
@@ -594,7 +597,7 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 | Q3 | PC 로컬 API 가 공개 API 인가 | `127.0.0.1` 전용 API 는 공개 API 아님 |
 | Q4 | AVOID_SURGE 표기 | 코드 값 `AVOID_CHASE` 정본 · 이름 변경 없음 |
 | Q5 | OCI 원장 저장 위치 | OCI 전용 `state/decision/decision_evidence.sqlite` 생성 · `runtime_state.sqlite` 와 분리 · 짧은 트랜잭션 · WAL · busy timeout |
-| Q6 | 러너 부착 · 누락 경로 · §11 | POC5-01a 러너 선분리 · 실행 진입 때 `event_id` · 초기 행 · 최외곽 종료 확정 · 기록 실패는 PUSH 를 막지 않되 오류 · 대조 보고 · 모집단 축소 불승인 |
+| Q6 | 러너 부착 · 누락 경로 · §11 | POC5-01A 러너 선분리 · 실행 진입 때 `event_id` · 초기 행 · 최외곽 종료 확정 · 기록 실패는 PUSH 를 막지 않되 오류 · 대조 보고 · 모집단 축소 불승인 |
 | Q7 | 종목 단위 payload | flow 반환값에 additive · 본문 byte · 판정 · 순서 동일 테스트 필수 |
 | Q8 | 대조군(비선정) | 이미 계산된 보유 · 27 사업군 비선정 결과 기록 · 추가 조회 · 재계산 금지 |
 | Q9 | 본문 보존 | 분할 전 전문 + SHA-256 · 파일 권한 · DB 접근 로컬 사용자 한정 |
@@ -672,5 +675,5 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 
 1. 이 확정 PLAN 과 설계서 기록(설계자 PLAN 판정 원문 · 사용자 승인)을 커밋한다(설계자 판정). push 는 사용자가 따로 정한다.
 2. **POC3 운영 정정 소형 PLAN**(§3-1)을 작성해 설계자에게 제출한다.
-3. 그 뒤 POC5-01a → 01 → 02 → 03 → 04 순서로, 단계마다 짧은 PLAN → 판정 → 구현 → 결과서 → 설계자 → 검증자 → 커밋 → 사용자 pull.
+3. 그 뒤 POC5-01A → OPS-04 → 01B → 02 → 03 → 04 순서로, 단계마다 짧은 PLAN → 판정 → 구현 → 결과서 → 설계자 → 검증자 → 커밋 → 사용자 pull.
 4. PRIMARY 는 §2-7 시작 규칙대로 시작한다. R0 · R1 을 기다리는 동안 다른 UI · 운영 개선 작업은 막지 않는다.
