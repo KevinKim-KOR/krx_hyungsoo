@@ -14,7 +14,8 @@ COMMIT/PUSH/OCI = 별도 사용자 승인 유지(이 판정에 포함되지 않�
   1 KS-10 전체 인벤토리     §1-13 — 추적 .py/.ts/.tsx 560개 실측 · TRIGGER 0 · NEAR 7
   2 변경 파일 목록          §2-4 — 코드 5개(신규 4 = 운영 모듈 3 + 검증 스크립트 1 · 수정 1 = 러너) · 테스트 0 · 문서 5
   3 동등성 기준점 고정       §1-0 · §3-1 — 기준 HEAD 7d507951 · 러너 blob f256677020232600627d207c54baf5081c70c6e2 · 비교 전 확인 4단계
-  4 monkeypatch 경계 증거   §1-8 — 13개 이름 각각 처리(러너 잔류 / 호출 시 전달) · 원래 행 · 결합 시점 · 새 모듈 직접 import 0
+  4 monkeypatch 경계 증거   §1-8 — 14개 이름 각각 처리(러너 잔류 / 호출 시 전달) · 원래 행 · 결합 시점 · 새 모듈 직접 import 0
+                            (정정 2026-10-04 · 검증자 r1 A-2: 처음 13개 → `is_already_sent` 누락 · 전체 테스트 런타임 전수 기록으로 14개 확정)
 
 사실조사 요약:
   러너         646줄 · run() 128~594행(467줄) · CLI 597~646행 · 종료 = return _finish( 27곳
@@ -91,7 +92,7 @@ COMMIT/PUSH/OCI = 별도 사용자 승인 유지(이 판정에 포함되지 않�
 ```text
 140 setup_logging(f"three_push_runtime_runner.{push_kind}")      # logger 이름 = 운영 로그 경로
 144 started_at(datetime.now) · 145 kst_now_iso() · 146 kst_today_date()
-148 record dict 23키 초기화
+148 record dict 21키 초기화 (정정 2026-10-04: 처음 '23키' 는 오기 · 독립 검토 실측)
 172 _finish closure (1-2)
 201 §1  read_active_param_dict() → param_from_dict()             try/except Exception → param_load_error
 213     assert_no_sensitive_keys(param)                           try/except RuntimeError → param_secret_exposed
@@ -202,7 +203,13 @@ _finish → apply_intraday_records: failed → 집계 send_failed · sent(부분
 
 ### 1-8. 기존 테스트가 쓰는 러너 이름 · 바꿔 끼우기 경계 (항목 8 · 판정 보정 4)
 
-AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 변수 포함 · 2026-10-02):
+> **정정(2026-10-04 · 검증자 r1 A-2 · A-3)**: 처음 AST 스캔(2026-10-02)은 `runner` 같은 이름 변수만 봤다. 그래서 두 곳을 놓쳤다 —
+> `tests/test_poc3_02d_ops01_holdings_risk_flow.py:590` 의 `monkeypatch.setattr(rig["runner"], "is_already_sent", …)`(딕셔너리 원소 형태)와
+> `tests/test_poc4_02b_runner_guards.py:76 · 159`(poc4 파일 제외). 다시 셀 때는 전체 테스트(2709 passed · 2026-10-04 12:09 ~ 12:15)를 돌리면서
+> 러너 모듈의 모든 속성 쓰기를 런타임에 기록했다(import 순간 모듈 클래스를 기록용으로 바꾸는 관찰 플러그인 · 동작 변경 없음).
+> 결과는 **정확히 14개**다. 아래 표의 건수 · 파일은 그 기록의 '고유 호출 위치 수 · 파일 수'다(conftest 포함).
+
+AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 변수 포함 · 2026-10-02 — 위 정정 참조):
 
 - **호출 · 읽기**: `run`(13파일) · `HOLDINGS_SELECTION_STATE_PATH` 읽기(1) · `telegram_send` 읽기(1 · 원복용). `_finish` · `main` · `_parse_args` 를 직접 부르는 테스트는 없다.
 - `tests/conftest.py:195-253` autouse fixture 가 러너가 import 돼 있으면 두 상태 경로 상수를 `tmp_path` 로 바꾼다.
@@ -210,9 +217,9 @@ AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 
 - 줄 수(646 · 648 · 650)를 단언하는 테스트는 없다(grep 0).
 - **기준선**(2026-10-02 · 분리 전): 러너 구동 테스트 16파일 `305 passed, 1 warning in 11.09s`(warning = fastapi testclient 제3자). 실행 뒤 `git status` 에 새 파일 · 변경 없음.
 
-**바꿔 끼우는 이름 13개 — 처리 · 결합 시점**
+**바꿔 끼우는 이름 14개 — 처리 · 결합 시점**
 
-공통 규칙: **13개 이름의 전역 바인딩(정의 · import)은 모두 러너에서 이동하지 않는다.** 새 운영 모듈이 이 13개 중 하나라도 스스로 import 하거나 모듈 상수로 들고 있는 경우는 0 이다 — 구현 뒤 동등성 스크립트의 AST 검사로 보인다(§3-1 ⑤).
+공통 규칙: **14개 이름의 전역 바인딩(정의 · import)은 모두 러너에서 이동하지 않는다.** 새 운영 모듈이 이 14개 중 하나라도 스스로 import 하거나 모듈 상수로 들고 있는 경우는 0 이다 — 구현 뒤 동등성 스크립트의 AST 검사로 보인다(§3-1 ⑤).
 
 - 처리 (가) **러너 잔류** — 쓰는 코드가 러너에 그대로 남는다(줄 변경 없음).
 - 처리 (나) **호출 시 전달** — 쓰는 코드는 새 모듈로 옮기고, 러너가 그 함수를 부르는 순간 자기 전역에서 꺼내 인자로 넘긴다.
@@ -221,7 +228,7 @@ AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 
 |---|---|---|---|---|
 | 1 | `telegram_send` (30 · 12) | 558 §8 | (가) | 558 실행 때 → 같음 |
 | 2 | `_collect_target_tickers` (17 · 8) | 260 §3 | (가) — 가격 조회 블록은 옮기지 않음(Q1 a) | 260 → 같음 |
-| 3 | `kst_now_iso` (2 · 2) — 시간 | 145 | (가) | run 입구 1회 → 같음 |
+| 3 | `kst_now_iso` (4 · 3) — 시간 | 145 | (가) | run 입구 1회 → 같음 |
 | 4 | `kst_today_date` (7 · 3) — 시간 | 146 | (가) | run 입구 1회 → 같음 |
 | 5 | `build_runtime_message` (2 · 2) | 390 §4 · 531 §7 | (가) — 기존 helper 에 인자로 넘기는 두 줄 그대로 | 390 · 531 → 같음 |
 | 6 | `mark_sent` (1 · 1 · `raising=False`) | 578 §8 | (가) — `record_send_success(mark_sent=…)` 줄 그대로 | 578 → 같음 |
@@ -230,8 +237,9 @@ AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 
 | 9 | `read_active_param_dict` (2 · 2) | 203 §1 | (나) `runner_preflight.load_param_and_check_slot(read_active_param_dict=…)` · 같은 try 안에서 부름 | 203 → 그 호출의 입구(호출 직후 try 첫 줄에서 실행) |
 | 10 | `param_from_dict` (2 · 2) | 204 §1 | (나) 같은 함수 인자 · 같은 try 안 둘째 줄 | 204(read_active 실행 뒤) → 호출 입구(read_active 실행 전) |
 | 11 | `kst_today` (1 · 1 · `raising=False`) — 시간 | 331 §3-c · 356 §3-d | (나) `runner_dispatch.assemble_push_kind(kst_today=…)` · **함수 객체**로 넘기고 원래 가지 안 같은 자리에서 부름 | 함수 객체 조회: 호출 입구 · 날짜 계산: 원래와 같은 자리 |
-| 12 | `HOLDINGS_SELECTION_STATE_PATH` (9 · 4 + conftest) — 상태 경로 | 332 §3-c · 503 §6-c · 581 §8 | 332 → (나) `assemble_push_kind(holdings_state_path=…)` · 503 → (나) `decide_after_flag_guard(holdings_state_path=…)` · 581 → (가) | 각 호출 입구(원래 블록 시작 지점) · 581 같음 |
-| 13 | `HOLDINGS_RISK_STATE_PATH` (1 · 1 + conftest) — 상태 경로 | 357 §3-d · 582 §8 | 357 → (나) `assemble_push_kind(risk_state_path=…)` · 582 → (가) | 호출 입구 · 582 같음 |
+| 12 | `HOLDINGS_SELECTION_STATE_PATH` (12 · 6 · conftest 포함) — 상태 경로 | 332 §3-c · 503 §6-c · 581 §8 | 332 → (나) `assemble_push_kind(holdings_state_path=…)` · 503 → (나) `decide_after_flag_guard(holdings_state_path=…)` · 581 → (가) | 각 호출 입구(원래 블록 시작 지점) · 581 같음 |
+| 13 | `HOLDINGS_RISK_STATE_PATH` (4 · 3 · conftest 포함) — 상태 경로 | 357 §3-d · 582 §8 | 357 → (나) `assemble_push_kind(risk_state_path=…)` · 582 → (가) | 호출 입구 · 582 같음 |
+| 14 | `is_already_sent` (1 · 1) — 정정 2026-10-04 추가 | 534 §7 spike · 550 §7 그 밖 | (가) — 기존 helper(`resolve_spike_duplicates` · `check_plain_duplicate`)에 인자로 넘기는 두 줄 그대로 | 534 · 550 → 같음 |
 
 - **앞당겨지는 조회(7 · 8 · 10 · 11 · 12 · 13)**: 같은 호출 안에서 이름을 읽는 순간만 블록 입구로 당겨진다. 그 사이 실행되는 코드(`apply_intraday_records` · 상태 필드 기록 · `read_active_param_dict`)는 러너 전역을 다시 묶지 않는다. 테스트 대역도 그렇다(예: `insert_status_from_record` 대역은 `lambda r: None` · `test_runtime_runner_forwarding.py:86` · `test_runtime_universe.py:319`). 테스트는 모두 `run()` 을 부르기 **전에** 바꿔 끼운다. 그래서 읽히는 값이 같다. 동등성 비교 ④가 이것을 실행으로 보인다(§3-1).
 - **바꿔 끼우지 않는 다른 시간 · 모듈 참조**: `datetime.now` 144(started_at · 러너 잔류) · 179(finished_at → `finish_run` 안 원래 순서) · 576(sent_at · 러너 잔류)은 테스트가 바꾸지 않는다(스캔 0). 모듈 속성 참조(`_hrf.apply_intraday_records` · `_hrf.assemble_holdings_risk_push` · `_hrf.PENDING_KEY` · `_mb.assemble` · `_mb.decide`)는 새 모듈에서도 **모듈 속성으로 호출 때 조회**한다(`tests/_helpers.py:283` 이 `_mb.assemble` 을 바꿔 끼운다). `assemble_holdings_push`(이름 import) · `save_state` 는 테스트가 러너에서 바꾸지 않는다(스캔 0). `save_state` 는 기존 `record_send_success` 처럼 러너가 넘긴다.
@@ -253,7 +261,7 @@ AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 
 ### 1-10. 분리 후 예상 러너 줄 수 (항목 10)
 
 - 확정안(A · B · D · E): 646 − (22 + 34 + 47 + 35) + import 증감 약 +8 = **약 516줄**(범위 510~525 · 구현 뒤 실측으로 보고). KS-10 근접(600) 밖으로 나간다.
-- import 증감: 새 모듈 3개 import +11 · 쓰지 않게 되는 `holdings_risk_flow as _hrf`(78) · `assemble_holdings_push`(82~84) · `assert_no_sensitive_keys`(47) 제거 −5. 1-8 의 13개 이름과 `save_state` · `save_risk_state` 는 러너에 남는다.
+- import 증감: 새 모듈 3개 import +11 · 쓰지 않게 되는 `holdings_risk_flow as _hrf`(78) · `assemble_holdings_push`(82~84) · `assert_no_sensitive_keys`(47) 제거 −5. 1-8 의 14개 이름과 `save_state` · `save_risk_state` 는 러너에 남는다.
 
 ### 1-11. OCI 전용 모듈 import 제약 (항목 11)
 
@@ -312,7 +320,7 @@ AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 
 
 | 새/기존 모듈 | 이동 전(러너) | 이동 후 함수 | 대략 줄 수 |
 |---|---|---|---|
-| **신규** `app/three_push_runtime/runner_record.py` | 148~170 record 23키 dict | `new_run_record(push_kind, mode, *, started_at, runtime_kst, runtime_date_kst) -> dict` | 약 75 |
+| **신규** `app/three_push_runtime/runner_record.py` | 148~170 record 21키 dict | `new_run_record(push_kind, mode, *, started_at, runtime_kst, runtime_date_kst) -> dict` | 약 75 |
 | 〃 | 172~192 `_finish` 본문 | `finish_run(record, status, reason, error, *, push_kind, mode, logger, history_path, insert_status) -> dict` | |
 | **신규** `app/three_push_runtime/runner_preflight.py` | 201~245 §1 · §1-b · §2 | `load_param_and_check_slot(record, *, push_kind, slot_id, logger, read_active_param_dict, param_from_dict) -> (param \| None, fail \| None)` | 약 80 |
 | **신규** `app/three_push_runtime/runner_dispatch.py` | 315~375 §3-c · §3-d · §3-e | `KindAssembly`(dataclass: holdings_outcome · risk_outcome · market_outcome · intraday · fail · skip_non_trading_day · message_text) · `assemble_push_kind(record, *, push_kind, market_quotes, price_refresh_diag, slot_id, runtime_kst, runtime_date_kst, kst_today, holdings_state_path, risk_state_path, logger) -> KindAssembly` | 약 170 |
@@ -334,9 +342,9 @@ def _finish(status, reason=None, error=None):
 ### 2-2. 동작 불변 규칙 (설계 STEP 8 대조)
 
 1. **옮긴 코드의 문장 순서 · 조건 · 반환 튜플 모양**(2개 · 3개 인자)을 그대로 둔다. 러너는 `return _finish(*fail)` 로 받는다(기존 helper 와 같은 규약).
-2. **13개 이름은 1-8 표대로** 처리한다 — 새 모듈의 직접 import 0.
+2. **14개 이름은 1-8 표대로** 처리한다 — 새 모듈의 직접 import 0.
 3. **logger 는 러너 것을 넘긴다**. 새 모듈은 모듈 전역 logger 를 두지 않는다(`runner_spike` 선례 · `tests/test_runner_spike_extraction.py:178-182` — 이름 붙은 logger 에만 운영 로그 handler 가 붙는다).
-4. **record 키 삽입 순서 불변** — `new_run_record` 는 같은 23키를 같은 순서로 만든다(JSONL 은 `json.dumps` 라 키 순서가 그대로 기록된다).
+4. **record 키 삽입 순서 불변** — `new_run_record` 는 같은 21키를 같은 순서로 만든다(JSONL 은 `json.dumps` 라 키 순서가 그대로 기록된다).
 5. **지연 import 는 같은 자리에서 지연 import**(1-7). 모듈 머리 import 는 1-11 의 67개 안에서만.
 6. **새 try/except 0 · 삼키는 예외 0 · 새 쓰기 0**. 미포착 예외 경로(1-2)는 그대로 빠진다.
 7. **기존 모듈 blob 불변**(1-0 표 20개) — `scripts/ops02b2/reverse_verify_guards.py` 가 그 helper 함수들을 직접 부른다.
@@ -381,8 +389,8 @@ def _finish(status, reason=None, error=None):
 - ① 기준 러너 = `git cat-file blob f256677020232600627d207c54baf5081c70c6e2` 의 바이트. 실행 전에 git blob 해시(`sha1("blob <len>\0" + bytes)`)를 다시 계산해 상수와 같은지 확인한다. 다르면 exit 2 로 끝낸다. 같으면 그 바이트를 임시 파일 · 별도 모듈 이름으로 올린다. 비교 대상 = 작업 트리 러너. 둘을 **같은 프로세스 · 같은 실행**에서 돌린다(CLAUDE.md §2.2 — 과거 결과 재사용 없음).
 - ② 대역: tmp state · tmp `runtime_state.sqlite` · Telegram stub(두 러너 모듈의 `telegram_send` 모두) · 시세 stub · `socket.connect` 차단(외부 호출 0) · 두 러너에 같은 고정 시각(`kst_now_iso` · `kst_today_date` · `kst_today`) · 같은 환경변수 flag.
 - ③ 시나리오: 종료 27곳 중 도달 가능한 전부 + 부분 전송 + 미포착 예외 3종(조립 예외 · 발송 뒤 `mark_sent` 예외 · `insert_status` 예외).
-- ④ 비교 항목(설계 STEP 8): Telegram 본문 byte · status · reason · error · JSONL 줄 내용과 키 순서 · `runtime_execution_status` · `runtime_sent_registry` 행 · 상태 파일 6종 존재 · 내용 · `main()` 종료 코드 · 예외 종류와 전파 여부 · 로그 줄(logger 이름 포함) · 1-8 의 13개 이름을 `run()` 전에 바꿔 끼웠을 때 두 러너가 같은 대역을 쓰는지. 실제 시계를 쓰는 `started_at` · `finished_at` · 등록부 `sent_at_utc` 만 정규화한다.
-- ⑤ 정적 검사: 새 운영 모듈 3개의 AST 에 1-8 의 13개 이름 import 0 · 모듈 전역 logger 0 · 1-0 의 기존 모듈 20개 blob 이 상수와 같음.
+- ④ 비교 항목(설계 STEP 8): Telegram 본문 byte · status · reason · error · JSONL 줄 내용과 키 순서 · `runtime_execution_status` · `runtime_sent_registry` 행 · 상태 파일 6종 존재 · 내용 · `main()` 종료 코드 · 예외 종류와 전파 여부 · 로그 줄(logger 이름 포함) · 1-8 의 14개 이름을 `run()` 전에 바꿔 끼웠을 때 두 러너가 같은 대역을 쓰는지. 실제 시계를 쓰는 `started_at` · `finished_at` · 등록부 `sent_at_utc` 만 정규화한다.
+- ⑤ 정적 검사: 새 운영 모듈 3개의 AST 에 1-8 의 14개 이름 import 0 · 모듈 전역 logger 0 · 1-0 의 기존 모듈 20개 blob 이 상수와 같음.
 - 출력: 시나리오별 같음/다름 표 · 기대 = 다름 0 · exit 0. 읽기 전용(저장소 · 라이브 `state/` · `logs/` 를 열지 않음).
 - 도구 자체 검증: 구현 전에 '기준 러너 대 기준 러너'로 돌려 다름 0 을 먼저 보이고, 파괴 시험(§3-3)으로 다름을 잡는지 보인다.
 
@@ -415,7 +423,7 @@ def _finish(status, reason=None, error=None):
 | 조건 | 판정 | 근거 |
 |---|---|---|
 | 메시지 · 판정 · 상태 저장 순서를 바꾸지 않고 분리할 수 없음 | 해당 없음 | 옮기는 블록은 문장 순서 그대로 · 쓰기 지점(1-3)은 같은 함수에서 같은 순서 |
-| 기존 테스트가 함수 위치 자체를 운영 계약으로 사용 | **해당 없음(1건 회피)** | `getsource(runner.run)` 테스트(1-8)가 spike 신선도 블록 위치를 고정 → 그 블록을 옮기지 않는다. 13개 이름 바꿔 끼우기는 1-8 표대로 유지(테스트 수정 0) |
+| 기존 테스트가 함수 위치 자체를 운영 계약으로 사용 | **해당 없음(1건 회피)** | `getsource(runner.run)` 테스트(1-8)가 spike 신선도 블록 위치를 고정 → 그 블록을 옮기지 않는다. 14개 이름 바꿔 끼우기는 1-8 표대로 유지(테스트 수정 0) |
 | 순환 import 를 피하려면 운영 동작 변경 필요 | 해당 없음 | 1-7 |
 | 새 DB · API · cron · 외부 호출 필요 | 해당 없음 | 0 (검증 스크립트도 외부 호출 차단) |
 | 570줄 이하로 만들려면 기능 삭제 · 의미 변경 필요 | 해당 없음 | 약 516줄 · spike 경로 유지 |
@@ -479,7 +487,7 @@ python -m pytest -q -p no:cacheprovider \
   tests/test_poc3_02d_ops01_holdings_risk_flow.py tests/test_poc3_02d_ops02_delivery_state.py
 ```
 
-13개 이름 스캔: `tests/` 의 모든 `monkeypatch.setattr(<runner|runner_mod|mod>, "<이름>", …)` 을 AST 로 모은다(poc4 러너 제외).
+14개 이름 전수: 전체 테스트를 돌리며 러너 모듈의 모든 속성 쓰기를 런타임 기록한다(정정 2026-10-04 · 첫 AST 스캔 `monkeypatch.setattr(<runner|runner_mod|mod>, …)` 은 딕셔너리 원소 형태 · poc4 파일을 놓쳤다).
 
 ## 부록 B. 이 PLAN 이 인용한 원문 경로 (설계자 OPEN_BLOCKERS 대응)
 

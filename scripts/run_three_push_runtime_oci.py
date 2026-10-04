@@ -44,7 +44,6 @@ from app.three_push_runner_common import (  # noqa: E402
     PUSH_KIND_FLAG_ENVS,
     STATE_DIR,
     VALID_PUSH_KINDS,
-    assert_no_sensitive_keys,
     check_forbidden_wording,
     check_raw_identifiers,
     env_bool,
@@ -65,6 +64,17 @@ from app.three_push_runtime.runner_duplicate import (  # noqa: E402
     check_plain_duplicate,
 )
 from app.three_push_runtime import runner_market_briefing as _mb  # noqa: E402
+from app.three_push_runtime.runner_dispatch import (  # noqa: E402
+    assemble_push_kind,
+    decide_after_flag_guard,
+)
+from app.three_push_runtime.runner_preflight import (  # noqa: E402
+    load_param_and_check_slot,
+)
+from app.three_push_runtime.runner_record import (  # noqa: E402
+    finish_run,
+    new_run_record,
+)
 from app.three_push_runtime.runner_evidence import (  # noqa: E402
     assemble_legacy_evidence,
     record_send_success,
@@ -75,12 +85,8 @@ from app.three_push_runtime.runner_spike import (  # noqa: E402
 )
 
 # POC3-OPS-01A — 보유 브리핑 선별·그룹화·반복 억제.
-from app.runtime_evidence import holdings_risk_flow as _hrf  # noqa: E402
 from app.runtime_evidence.holdings_risk_state import (  # noqa: E402
     save_risk_state,
-)
-from app.runtime_evidence.holdings_selection_flow import (  # noqa: E402
-    assemble_holdings_push,
 )
 from app.runtime_evidence.holdings_selection_state import (  # noqa: E402
     kst_today,
@@ -145,51 +151,30 @@ def run(
     runtime_kst = kst_now_iso()
     runtime_date_kst = kst_today_date()
 
-    record: dict[str, Any] = {
-        "push_kind": push_kind,
-        "mode": mode,
-        "slot_id": None,
-        "status": "failed",
-        "reason": None,
-        "started_at": started_at_utc,
-        "finished_at": "",
-        "runtime_kst": runtime_kst,
-        "runtime_date_kst": runtime_date_kst,
-        "param_id": "",
-        "param_source": "",
-        "message_text_length": 0,
-        "availability": {},
-        "contentful_fact_count": 0,
-        "selection_result_count": 0,
-        "unavailable_reasons": {},
-        "duplicate_key": "",
-        "telegram_attempted": False,
-        "telegram_sent": False,
-        "partial_delivery": False,
-        "error": None,
-    }
+    record = new_run_record(
+        push_kind,
+        mode,
+        started_at=started_at_utc,
+        runtime_kst=runtime_kst,
+        runtime_date_kst=runtime_date_kst,
+    )
 
     def _finish(
         status: str, reason: Optional[str] = None, error: Optional[str] = None
     ) -> dict[str, Any]:
-        _hrf.apply_intraday_records(record, mode=mode, status=status, reason=reason)
-        record["status"] = status
-        record["reason"] = reason
-        record["error"] = error
-        record["finished_at"] = datetime.now(timezone.utc).isoformat()
-        # Refactor v1 Q9 (c): DB latest status + history JSONL 을 runner 에서 분리 호출.
-        insert_status_from_record(record)
-        _HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with _HISTORY_PATH.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        logger.info(
-            "runtime runner 완료: push_kind=%s mode=%s status=%s reason=%s",
-            push_kind,
-            mode,
+        # POC5-01A: 본문은 `runner_record.finish_run`. 테스트가 바꿔 끼우는 러너 전역
+        # (`_HISTORY_PATH` · `insert_status_from_record`)은 호출 때마다 넘긴다.
+        return finish_run(
+            record,
             status,
             reason,
+            error,
+            push_kind=push_kind,
+            mode=mode,
+            logger=logger,
+            history_path=_HISTORY_PATH,
+            insert_status=insert_status_from_record,
         )
-        return record
 
     logger.info(
         "runtime runner 시작: push_kind=%s mode=%s runtime_kst=%s",
@@ -198,51 +183,17 @@ def run(
         runtime_kst,
     )
 
-    # ── 1. active PARAM 로드 (runtime_state.sqlite 기준) ─────────────────────
-    try:
-        param_dict = read_active_param_dict()
-        param = param_from_dict(param_dict)
-    except Exception as e:
-        logger.error("active PARAM 로드/검증 실패: %s", e)
-        return _finish("failed", "param_load_error", str(e)[:400])
-
-    record["param_id"] = param.param_id
-    record["param_source"] = param.param_source
-
-    # PARAM 자체에 secret 포함 여부 점검 (정책상 금지지만 방어적)
-    try:
-        assert_no_sensitive_keys(param.to_dict(), path="param")
-    except RuntimeError as e:
-        logger.error("PARAM secret 노출: %s", e)
-        return _finish("failed", "param_secret_exposed", str(e)[:400])
-
-    # ── 1-b. slot_id 계약 검증 (holdings_briefing 만) ────────────────────────
-    # Low-Frequency Telegram Push Operation v1: holdings_briefing 은 OPEN/MIDDAY/CLOSE
-    # 세 슬롯으로 나뉜다. slot_id 는 registry key 문자열에 삽입되어 슬롯별 중복 차단.
-    if push_kind == "holdings_briefing":
-        if slot_id is None:
-            logger.error("holdings_briefing 은 --slot-id 필수 (OPEN/MIDDAY/CLOSE)")
-            return _finish("failed", "slot_id_required")
-        if slot_id not in HOLDINGS_SLOT_IDS:
-            logger.error("잘못된 slot_id=%s (허용값 %s)", slot_id, HOLDINGS_SLOT_IDS)
-            return _finish("failed", "slot_id_invalid")
-        record["slot_id"] = slot_id
-    else:
-        if slot_id is not None:
-            logger.info(
-                "slot_id=%s 는 push_kind=%s 에서 무시됨 (holdings_briefing 만 유효)",
-                slot_id,
-                push_kind,
-            )
-
-    # ── 2. PARAM에서 push_kind 활성화 확인 ────────────────────────────────────
-    if not param.is_push_kind_enabled(push_kind):
-        logger.info(
-            "PARAM enabled_push_kinds 미포함: push_kind=%s param_id=%s",
-            push_kind,
-            param.param_id,
-        )
-        return _finish("skipped", "push_kind_not_in_param")
+    # ── 1 · 1-b · 2. PARAM · slot_id · push_kind 활성 (POC5-01A runner_preflight) ──
+    param, pre_fail = load_param_and_check_slot(
+        record,
+        push_kind=push_kind,
+        slot_id=slot_id,
+        logger=logger,
+        read_active_param_dict=read_active_param_dict,
+        param_from_dict=param_from_dict,
+    )
+    if pre_fail is not None:
+        return _finish(*pre_fail)
 
     # ── 3. Runtime 가격 조회 (Low-Frequency Telegram Push Operation v1 A+ 재정정) ──
     # Fail-Closed 계약 (사용자 확정):
@@ -273,7 +224,6 @@ def run(
     if refresh_fail is not None:
         return _finish(*refresh_fail)
 
-    holdings_selection_ctx: dict[str, Any] = {}
     evidence = None
     message_text = ""
 
@@ -312,67 +262,22 @@ def run(
 
         reeval_fn = _reeval
 
-    # ── 3-c. 보유 브리핑 선정 · 본문 조립 (POC3-OPS-01A) ────────────────────
-    # 조립만 한다. **모든 skip·fail 결정은 enable flag guard(§6) 뒤(§6-c)** 다 —
-    # 여기서 return 하면 push_kind 가 비활성인데도 `no_selection`·데이터 실패가
-    # 기존 계약인 `push_kind_disabled` 를 가로챈다(실제로 겪은 결함).
-    # 순서 계약은 `assemble_holdings_push` 안에 있다: 비거래일 판정 → 완전성
-    # 가드 → 선정(휴장일엔 선정·이력조회를 아예 돌리지 않는다).
-    holdings_outcome = None
-    skip_ntd = False
-    holdings_fail: Optional[tuple[str, str, str]] = None
-    if push_kind == "holdings_briefing":
-        from app.holdings import load as _load_holdings_for_selection
-        from app.market_data_store import fetch_price_history as _fetch_history
-
-        _asm = assemble_holdings_push(
-            market_quotes=market_quotes or {},
-            price_refresh_diag=price_refresh_diag,
-            today_kst=kst_today(),
-            state_path=HOLDINGS_SELECTION_STATE_PATH,
-            slot_id=slot_id,
-            runtime_kst=runtime_kst,
-            holdings_loader=_load_holdings_for_selection,
-            fetch_history=_fetch_history,
-            logger=logger,
-        )
-        record.update(_asm.diagnostics)
-        holdings_fail = _asm.fail  # 판정은 §6-c (위 주석 참조)
-        skip_ntd = _asm.skip_non_trading_day
-        holdings_outcome = _asm.outcome
-        message_text = _asm.message_text
-
-    # ── 3-d. 보유 위험 즉시 알림 조립 (POC3-OPS-02A) ─────────────────────────
-    # 기존 spike 신호·본문을 재사용하지 않는다 (OPS-01C `REJECT`). 조립만 하고
-    # **모든 skip·fail 결정은 §6-c** — flag guard 뒤다.
-    risk_outcome = None
-    if push_kind == "holdings_risk_alert":
-        from app.holdings import load as _load_holdings_for_risk
-        from app.market_data_store import fetch_price_history as _fetch_history_risk
-
-        _rasm = _hrf.assemble_holdings_risk_push(
-            market_quotes=market_quotes or {},
-            price_refresh_diag=price_refresh_diag,
-            today_kst=kst_today(),
-            state_path=HOLDINGS_RISK_STATE_PATH,
-            runtime_kst=runtime_kst,
-            holdings_loader=_load_holdings_for_risk,
-            fetch_history=_fetch_history_risk,
-            logger=logger,
-        )
-        record.update(_rasm.diagnostics)
-        holdings_fail = _rasm.fail  # 판정은 §6-c
-        skip_ntd = _rasm.skip_non_trading_day
-        risk_outcome = _rasm.outcome
-        message_text = _rasm.message_text
-        record[_hrf.PENDING_KEY] = _rasm.intraday_records
-
-    # ── 3-e. 시장 흐름 브리핑 조립 (POC3-OPS-02B-2) ──────────────────────────
-    market_outcome = _mb.assemble(
-        record, push_kind=push_kind, today_kst=runtime_date_kst, runtime_kst=runtime_kst
+    # ── 3-c · 3-d · 3-e. kind 별 조립 (POC5-01A runner_dispatch) ──────────────
+    # 조립만 한다. **모든 skip·fail 결정은 enable flag guard(§6) 뒤(§6-c)** 다.
+    asm = assemble_push_kind(
+        record,
+        push_kind=push_kind,
+        market_quotes=market_quotes,
+        price_refresh_diag=price_refresh_diag,
+        slot_id=slot_id,
+        runtime_kst=runtime_kst,
+        runtime_date_kst=runtime_date_kst,
+        kst_today=kst_today,
+        holdings_state_path=HOLDINGS_SELECTION_STATE_PATH,
+        risk_state_path=HOLDINGS_RISK_STATE_PATH,
+        logger=logger,
     )
-    if market_outcome is not None:
-        message_text = market_outcome.message_text
+    message_text = asm.message_text
 
     # ── 4. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
     # 2026-09-12 KS-10 Cleanup — 블록 전체를 `runner_evidence` 로 옮겼다.
@@ -421,8 +326,8 @@ def run(
     # ── 5. dry-run 종료 ──────────────────────────────────────────────────────
     if mode == "dry-run":
         # dry-run 은 발송 경로가 아니므로 조립 실패를 그대로 알린다.
-        if holdings_fail is not None:
-            return _finish(*holdings_fail)
+        if asm.fail is not None:
+            return _finish(*asm.fail)
         logger.info(
             "dry-run 완료: push_kind=%s param_id=%s msg_len=%d",
             push_kind,
@@ -464,53 +369,19 @@ def run(
             )
             return _finish("skipped", "no_signal")
 
-    # POC3-OPS-01A — 선정·억제는 **enable flag guard(§6) 뒤**에 둔다.
-    # 앞에 두면 push_kind 가 비활성인데도 선정 상태를 저장할 수 있다
-    # (검증 회귀에서 `no_selection` 이 `push_kind_disabled` 를 가로챘다).
-    # ── 6-c. 보유 브리핑 비거래일 가드 · skip 판정 (POC3-OPS-01A) ───────────
-    # 조립은 §3-c 에서 끝났다. 여기서는 발송 여부만 정한다.
-    # 비거래일 가드를 **flag guard(§6) 뒤**에 둔다 — 앞에 두면 push_kind 가
-    # 비활성인데도 `non_trading_day` 가 기존 계약인 `push_kind_disabled` 를
-    # 가로챈다 (검증자 지적).
-    # 조립 단계에서 잡힌 실패를 **flag guard 뒤**에서 확정한다.
-    if holdings_fail is not None:
-        return _finish(*holdings_fail)
-
-    if skip_ntd:
-        # 판정·evidence 기록은 §3-c 에서 끝났다. 여기서는 발송 여부만 정한다.
-        return _finish("skipped", "non_trading_day")
-
-    mb_fail = _mb.decide(market_outcome, logger=logger)
-    if mb_fail is not None:
-        return _finish(*mb_fail)
-
-    if risk_outcome is not None and risk_outcome.skip_reason and not message_text:
-        # 신규·악화 없음. 단 장중 본문이 있으면 보낸다(OPS-02 사업군 단독 신호).
-        logger.info(
-            "위험 알림 skip: %s (선정 %d건 · 억제 %d건)",
-            risk_outcome.skip_reason,
-            len(risk_outcome.selected),
-            len(risk_outcome.changes.suppressed) if risk_outcome.changes else 0,
-        )
-        return _finish("skipped", risk_outcome.skip_reason)
-
-    if risk_outcome is not None:
-        holdings_selection_ctx = {"risk": risk_outcome, "intraday": _rasm.intraday}
-
-    if holdings_outcome is not None:
-        if holdings_outcome.skip_reason:
-            if holdings_outcome.save_empty_state:
-                save_state(HOLDINGS_SELECTION_STATE_PATH, selected=[], slot_id=slot_id)
-            logger.info(
-                "보유 브리핑 skip: %s (선정 %d건)",
-                holdings_outcome.skip_reason,
-                len(holdings_outcome.selected),
-            )
-            return _finish("skipped", holdings_outcome.skip_reason)
-        holdings_selection_ctx = {
-            "selected": holdings_outcome.selected,
-            "slot_id": slot_id,
-        }
+    # ── 6-c. kind 별 skip 판정 (POC5-01A runner_dispatch) ─────────────────────
+    # **enable flag guard(§6) 뒤**에 둔다 — 앞에 두면 push_kind 가 비활성인데도
+    # `no_selection`·`non_trading_day` 가 기존 계약인 `push_kind_disabled` 를 가로챈다.
+    gate_fail, holdings_selection_ctx = decide_after_flag_guard(
+        asm,
+        message_text=message_text,
+        slot_id=slot_id,
+        save_state=save_state,
+        holdings_state_path=HOLDINGS_SELECTION_STATE_PATH,
+        logger=logger,
+    )
+    if gate_fail is not None:
+        return _finish(*gate_fail)
 
     # ── 7. duplicate guard (Low-Frequency Push v1 A+) ────────────────────────
     # Holdings: slot_id 접미.
@@ -583,7 +454,7 @@ def run(
         )
         if not partial_delivery:
             _mb.save_state_after_send(
-                market_outcome,
+                asm.market_outcome,
                 today_kst=runtime_date_kst,
                 runtime_kst=runtime_kst,
                 record=record,

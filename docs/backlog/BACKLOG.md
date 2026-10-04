@@ -617,6 +617,19 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+- **항목**: **(설계자 판단 요청 · 2026-10-04 등재)** PC 「OCI 운영·적용」의 '현재 운영 기준 적용'은 OCI 의 **JSON 파일만** 바꾸고, OCI 러너가 실제로 읽는 **활성 PARAM(DB)은 바꾸지 않는다**. 화면의 'OCI 반영' 표시가 OCI 러너의 실제 PARAM 을 뜻하지 않는다.
+- **관찰 근거(2026-10-04 · 코드 읽기 + OCI 읽기 전용 확인)**:
+  - 적용 API `POST /apply`(`app/api_three_push_param.py:306` `apply_param_to_oci`)는 ① PC DB 에 새 PARAM 생성 · 활성(`_create_approved_manual_seed_param` · `:226` · `activated_by="api_param_apply"`) + PC JSON 기록 ② `scripts/sync_three_push_runtime_param.py` 로 OCI 에 JSON 을 scp(`.tmp`) → `mv`(`:153-166`) ③ `scripts/verify_three_push_param_oci.py` 로 **JSON 만** 검사(파싱 · 스키마 · 필드 · 허용값 · `:74`)한다. OCI DB 를 건드리는 단계가 없다.
+  - OCI 러너는 `read_active_param_dict`(`app/runtime_param_store.py:369`)로 DB 활성 포인터 → version → 값만 읽는다. 주석 그대로 "JSON fallback 코드 경로 없음"(`:379`). OCI DB 활성 포인터를 바꾸는 경로는 OCI 에서 `scripts/create_three_push_runtime_param.py`(`activated_by="create_script_approve"` · `:111`)나 컷오버 seed(`scripts/run_runtime_state_db_cutover.py`)를 직접 돌리는 것뿐이다.
+  - 2026-10-04 사용자가 PC 에서 적용을 눌렀다. 그 뒤 OCI 상태: `latest_runtime_param.json` = `param-20261004T020942-999570`(파일 시각 10-04 11:09), DB `runtime_param_active` = **`param-20260907T152806-255383`**(`create_script_approve` · 2026-09-07) **그대로**.
+  - 값 비교(OCI 읽기 전용 · 2026-10-04): 활성 DB PARAM 14키(`enabled_push_kinds[0..3]` + 정책 10) 와 새 JSON 을 같은 키로 펼쳐 비교 → **차이 0**. 버전 ID 만 다르다. 그래서 **지금 운영 동작에는 영향이 없다**.
+  - 러너 머리 docstring(`scripts/run_three_push_runtime_oci.py:8`)은 아직 "`latest_runtime_param.json` 로드"라고 적혀 있다(Cutover 전 문구 · POC5-01A 는 동작 변경 0 단계라 고치지 않았다).
+- **보류 사유**: 설계 결정 영역이다(개발자 판단 금지). 선택지 예: (a) 적용 경로가 OCI DB 에도 같은 버전을 만들고 활성화한다 (b) 화면 · 문구를 'JSON 업로드'로 낮추고 DB 활성 버전을 따로 보인다 (c) 현 구조 유지 + 값 차이 경보만. 어느 쪽도 POC5-01A(동작 변경 0) 범위가 아니다.
+- **보류된 위험**: 나중에 PC 에서 **값을 바꿔** 적용하면 화면은 'OCI 반영 · 검증 성공'인데 OCI 러너는 옛 값으로 계속 돈다(발송 kind · 정책 불일치를 아무도 모른다). 지금은 값이 같아 드러나지 않는다.
+- **재검토 트리거**: 설계자 판정 수신 시 · PC 에서 PARAM **값을 바꾸는** 적용이 필요해질 때(그 전에 반드시 해소) · POC5-01B 설계(원장이 '어떤 PARAM 으로 판정했는가'를 기록하면 이 불일치가 그대로 기록된다).
+
+---
+
 ## 13. Universe / Cache 후순위
 
 - **항목**: pykrx 외 fallback 데이터 source

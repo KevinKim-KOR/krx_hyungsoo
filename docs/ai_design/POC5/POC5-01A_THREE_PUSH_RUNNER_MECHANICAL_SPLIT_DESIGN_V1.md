@@ -355,3 +355,39 @@ POC5-01A 범위는 A·B·D·E의 기계적 분리뿐이다.
 로컬 구현 착수를 승인한다.
 커밋·push·OCI pull은 이 판정에 포함되지 않으며 기존 별도 승인 절차를 유지한다.
 ```
+
+---
+
+# 설계자 RESULT 판정 (2026-10-04 · 설계자 원문 · 사용자 전달)
+
+> 기록 정보 — 아래 code block 은 설계자가 '설계서 기록 원문'으로 지정한 부분 그대로다. 같은 전달문의 나머지 지시는 다음과 같다.
+> - 판정 요약: `RESULT_DECISION = PASS_TO_VERIFIER` · `CODE_REMEDIATION = NONE` · `IMPLEMENTATION_STATUS = IMPLEMENTED_LOCAL` · `COMMIT / PUSH / OCI = HOLD — 검증자 완료 및 사용자 별도 승인 전 금지`.
+> - 지시문 외 변경 4건 판정: `intraday` → `risk_assembly` 수용 · record 23키 → 21키 수용(사실 오기 정정) · `inserted_at` 정규화 추가 수용 · 기존 blob 을 `7d507951` 에서 읽음 수용.
+> - 예외 `__context__` 차이: 코드 재작업 사유 아님. 결과서의 절대 표현 '코드 동작 차이 0' 은 다음 문구로 정정: "운영 계약 차이 0. 단, PARAM 실패와 insert_status 실패가 겹친 경로에서 traceback __context__ 연결 차이 1건이 있으며 §6-1에 기록했다."
+> - 검증자 전달 전 필수 문서 처리: ① 이 원문 기록 ② 결과서 표현 정정 ③ 변경 목록 · Git 상태 재실측(코드 5 · 테스트 0 · staged 는 설계서 추가로 9 → 10) ④ 종료 HANDOFF 는 검증 완료 뒤.
+> - 검증자 중점: `risk_assembly` 조회 시점 · PARAM 이중 실패의 예외 범위 · 13개 monkeypatch 경계 · staged 범위와 테스트 무변경. PC PARAM 적용 관찰은 POC5-01A 차단 사유가 아니며 이번 단계에서 수정하지 않는다.
+
+```text
+# 설계자 RESULT 판정 — 2026-10-04
+
+RESULT_DECISION = PASS_TO_VERIFIER
+
+POC5-01A는 승인된 A·B·D·E 범위로 구현됐다.
+러너는 646줄에서 517줄로 감소했고, 테스트·DB·cron·스키마는 변경되지 않았다.
+
+분리 전 고정 blob과 구현본을 49개 시나리오에서 비교했으며,
+27개 종료 지점을 모두 포함해 운영 계약 차이 0을 확인했다.
+러너 구동 테스트 305개와 전체 회귀 2,709개가 통과했고,
+파괴 시험 8종을 동등성 도구가 모두 탐지했다.
+KS-10은 TRIGGER 0이며 러너는 NEAR 대상에서 해소됐다.
+
+KindAssembly의 risk_assembly 필드는 원래 속성 조회 시점을 보존하기 위한
+타당한 PLAN 이탈로 수용한다.
+
+PARAM 실패와 insert_status 실패가 겹친 경로의 traceback __context__
+연결 차이 1건은 문서화된 진단 차이로 수용한다.
+예외 종류·메시지·전파 여부와 운영 기록 계약은 변하지 않는다.
+
+코드 재작업 없이 검증자 단계로 넘긴다.
+검증 완료 전 커밋·push·OCI pull은 승인하지 않는다.
+```
