@@ -37,6 +37,9 @@ const JOB_LABEL: Record<string, string> = {
   trading_day_basis: "거래일 기준",
   // POC3-02D-OPS-03 확정 계약 11 — 미국(NYSE) 휴장일 파일 올해 · 다음 해 준비 상태.
   trading_calendar: "미국 휴장일 달력",
+  // POC3-02D-OPS-04 항목 3 · 6(사용자 목업 확정 2026-10-06).
+  intraday_representatives: "장중 대표 ETF",
+  param_active: "운영 기준 활성",
 };
 
 const PUSH_KIND_LABEL: Record<string, string> = {
@@ -80,10 +83,15 @@ function missingKinds(detail: string): string {
 }
 
 function stateOf(j: OciJobStatus): { label: string; tone: Tone } {
-  if (j.status === "SUCCESS") return { label: "정상", tone: "ok" };
+  if (j.status === "SUCCESS") {
+    if (j.job === "param_active") return { label: "일치", tone: "ok" };
+    return { label: "정상", tone: "ok" };
+  }
   if (j.status === "STALE") {
     if (j.job === "crontab") return { label: "일부 누락", tone: "warn" };
     if (j.job === "trading_calendar") return { label: "준비 필요", tone: "warn" };
+    if (j.job === "intraday_representatives") return { label: "확인 필요", tone: "warn" };
+    if (j.job === "param_active") return { label: "다름", tone: "warn" };
     return { label: "오래됨", tone: "warn" };
   }
   if (j.status === "UNKNOWN") return { label: "확인 불가", tone: "unknown" };
@@ -134,7 +142,13 @@ function summaryOf(s: OciStartupStatus): { icon: string; title: string; sub: str
   };
 }
 
-export default function OciStatusPanel() {
+export default function OciStatusPanel({
+  reloadKey = 0,
+}: {
+  // POC3-02D-OPS-04 — ② 전달이 끝나면 바뀐다. 다시 읽어도 OCI 는 재조회하지 않는다
+  // (백엔드 캐시 + '운영 기준 활성' 행만 지금 PC 운영 기준과 다시 비교).
+  reloadKey?: number;
+} = {}) {
   const [status, setStatus] = useState<OciStartupStatus | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -143,7 +157,10 @@ export default function OciStatusPanel() {
     (async () => {
       try {
         const s = await fetchOciStartupStatus();
-        if (!cancelled) setStatus(s);
+        if (!cancelled) {
+          setStatus(s);
+          setErrorMsg(null); // 다시 읽기(reloadKey)가 성공하면 앞선 오류를 지운다
+        }
       } catch (e) {
         if (cancelled) return;
         if (e instanceof ApiConfigError) setErrorMsg(`구성 오류: ${e.message}`);
@@ -155,7 +172,7 @@ export default function OciStatusPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const checked = status ? fmtKst(status.checked_at, true) : null;
   const summary = status ? summaryOf(status) : null;

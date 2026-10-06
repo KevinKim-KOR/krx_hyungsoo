@@ -60,6 +60,7 @@ def write_batch_state(
     krx_backfill: Optional[dict] = None,
     kospi_attempts: Optional[list] = None,
     kospi_retry: Optional[dict] = None,
+    krx_holdings_stocks: Optional[dict] = None,
 ) -> None:
     """일일 갱신 배치의 실행 결과를 저장 (latest 1건 덮어쓰기).
 
@@ -93,7 +94,8 @@ def write_batch_state(
         "krx_basis_date": krx_basis_date,
         "meta_consistency_status": meta_consistency_status,
         # POC3-02D-OPS-03 — 단계 격리(FDR · 미국 · KOSPI · VIX · KRX)와 KRX 시도별
-        # 기록(시각 · 목표일 · HTTP · 행 수 · 결과). 키 · 가격 값은 담지 않는다.
+        # 기록(시각 · 목표일 · HTTP · 행 수 · 결과 · 조회 예외면 일시 오류 여부
+        # `transient` — POC3-02D-OPS-04). 키 · 가격 값은 담지 않는다.
         "stage_status": dict(stage_status or {}),
         "krx_target_date": krx_target_date,
         "krx_stage_mode": krx_stage_mode,
@@ -111,6 +113,9 @@ def write_batch_state(
         # 값 없음)와 재시도 요약(시각표 · 멈춘 사유). `kospi_as_of` 는 마지막 시도 기준.
         "kospi_attempts": kospi_attempts,
         "kospi_retry": kospi_retry,
+        # POC3-02D-OPS-04 항목 1 — 보유 코스피 개별주 공식 종가 채우기(호출 날짜 · 보강 ·
+        # 실패 · 오늘 호출 횟수). ETF 표 · 판정과 별개다. KRX 단계 전 · 실패면 None.
+        "krx_holdings_stocks": krx_holdings_stocks,
     }
     state_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"

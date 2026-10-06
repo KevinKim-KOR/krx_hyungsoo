@@ -277,13 +277,18 @@ def test_verdict_for_row_position_window_is_meta_gate_stale(tmp_path):
             {"refresh_date_kst": TODAY, "status": "failed", "stage_status": {}},
             ["batch_failed"],
         ),
+        # POC3-02D-OPS-04 Q2 a — FDR 가격 단계 실패 · 건너뜀은 고지하지 않는다(기록만).
         (
             {"refresh_date_kst": TODAY, "stage_status": {"fdr_price": "failed"}},
-            ["fdr_price_failed"],
+            [],
         ),
         (
-            {"refresh_date_kst": TODAY, "stage_status": {"fdr_price": "skipped"}},
-            ["fdr_price_skipped"],
+            {
+                "refresh_date_kst": TODAY,
+                "status": "failed",
+                "stage_status": {"fdr_price": "skipped", "collect": "failed"},
+            },
+            [],
         ),
         # 넣지 않는 것 — KOSPI · VIX · IXIC · SOX · US500 · KRX 실패(자기 줄 · PC 전용).
         (
@@ -333,7 +338,7 @@ def test_batch_notice_is_appended_last_before_csv_notice(tmp_path):
         refresh_due_cycle_id="20260917",
     )
     plain = _assemble(tmp_path)
-    failed = _assemble(tmp_path, batch_failure=["fdr_price_failed"])
+    failed = _assemble(tmp_path, batch_failure=["batch_not_today"])
     assert failed.message_text.endswith(
         f"\n\n{render.BATCH_FAILURE_NOTICE}\n\n{render.CSV_REFRESH_NOTICE}"
     )
@@ -341,7 +346,7 @@ def test_batch_notice_is_appended_last_before_csv_notice(tmp_path):
     assert failed.message_text.startswith(core)
     assert failed.fingerprint == plain.fingerprint, "고지가 fingerprint 를 바꿨다"
     assert failed.diagnostics["batch_failure_notice"] == {
-        "reasons": ["fdr_price_failed"],
+        "reasons": ["batch_not_today"],
         "appended": True,
         "notice_only": False,
     }
@@ -385,13 +390,32 @@ def test_notice_only_body_has_no_csv_notice_while_refresh_cycle_is_live(tmp_path
         refresh_due_cycle_id="20260917",
     )
     out = _assemble(
-        tmp_path, sp500=None, fresh=False, batch_failure=["fdr_price_failed"]
+        tmp_path, sp500=None, fresh=False, batch_failure=["batch_not_today"]
     )
     assert out.diagnostics["index_status"] == "stale"
     assert out.diagnostics["batch_failure_notice"]["notice_only"] is True
     assert out.message_text == f"{render.HEADER}\n\n{render.BATCH_FAILURE_NOTICE}"
     assert out.diagnostics["refresh_notice"]["appended"] is False
     assert out.refresh_notice_cycle_id is None
+
+
+def test_fdr_failure_alone_no_longer_sends_notice_only_body(tmp_path):
+    """POC3-02D-OPS-04 Q2 a — 전망 불가 + T-1 없음인 날 FDR 단계만 실패했으면 예전에는
+    고지만 담은 본문을 보냈다. 이제 고지 사유가 아니라서 보내지 않는다(발송 1건 → 0건)."""
+    _setup(tmp_path, stored=_axis_before(T2), judged_for=T2)
+    reasons = mb.batch_failure_reasons(
+        {
+            "refresh_date_kst": TODAY,
+            "status": "failed",
+            "stage_status": {"fdr_price": "failed", "krx": "ok"},
+        },
+        TODAY,
+    )
+    assert reasons == []
+    out = _assemble(tmp_path, sp500=None, fresh=False, batch_failure=reasons)
+    assert out.skip_reason == flow.REASON_ALL_STALE
+    assert out.message_text == "" and not out.should_send
+    assert out.diagnostics["batch_failure_notice"]["notice_only"] is False
 
 
 def test_nothing_to_send_without_batch_failure_still_skips(tmp_path):
@@ -424,7 +448,24 @@ def test_batch_notice_once_per_day_through_runner(tmp_path, monkeypatch):
     assert render.BATCH_FAILURE_NOTICE not in sent[1]
 
 
-def test_runner_assemble_reads_batch_state_path(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "state,reasons",
+    [
+        # POC3-02D-OPS-04 Q2 a — FDR 단계만 실패한 날은 고지가 붙지 않는다.
+        (
+            {
+                "refresh_date_kst": TODAY,
+                "status": "failed",
+                "stage_status": {"fdr_price": "failed", "krx": "ok"},
+            },
+            [],
+        ),
+        # 배치가 안 돈 날(오늘 기록 아님)은 그대로 고지한다.
+        ({"refresh_date_kst": "2026-09-17", "status": "success"}, ["batch_not_today"]),
+    ],
+    ids=["fdr_failed_no_notice", "batch_not_today_notice"],
+)
+def test_runner_assemble_reads_batch_state_path(tmp_path, monkeypatch, state, reasons):
     """`assemble(batch_state_path=…)` → 실제 파일 판정이 본문까지 이어진다."""
     _setup(tmp_path, stored=_axis_before(T1))
     monkeypatch.setattr(mb, "_sp500_input", lambda _t, **_k: (1.0, T1, True))
@@ -437,16 +478,7 @@ def test_runner_assemble_reads_batch_state_path(tmp_path, monkeypatch):
     meta = tmp_path / "meta"
     meta.mkdir()
     bs = tmp_path / "bs.json"
-    bs.write_text(
-        json.dumps(
-            {
-                "refresh_date_kst": TODAY,
-                "status": "failed",
-                "stage_status": {"fdr_price": "failed", "krx": "ok"},
-            }
-        ),
-        encoding="utf-8",
-    )
+    bs.write_text(json.dumps(state), encoding="utf-8")
     record: dict = {}
     out = mb.assemble(
         record,
@@ -458,5 +490,5 @@ def test_runner_assemble_reads_batch_state_path(tmp_path, monkeypatch):
         db_path=tmp_path / "krx.sqlite",
         batch_state_path=bs,
     )
-    assert record["batch_failure_notice"]["reasons"] == ["fdr_price_failed"]
-    assert out.message_text.endswith(render.BATCH_FAILURE_NOTICE)
+    assert record["batch_failure_notice"]["reasons"] == reasons
+    assert out.message_text.endswith(render.BATCH_FAILURE_NOTICE) is bool(reasons)

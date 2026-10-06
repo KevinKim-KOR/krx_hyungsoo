@@ -1,6 +1,6 @@
 // POC2 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 STEP (2026-06-20).
 //
-// 현재 운영 기준 카드 + [현재 기준 OCI 적용] 단일 동작.
+// 현재 운영 기준 카드 + 단일 동작(POC3-02D-OPS-04 부터 [현재 기준 OCI 전달] — OCI JSON 전달만).
 //
 // 응답은 raw 식별자(param_id / SSH target / remote path / 파일명) 노출 0건
 // 으로 제한된 사용자 중심 dict (지시문 §6 데이터 계약).

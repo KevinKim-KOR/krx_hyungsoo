@@ -344,6 +344,10 @@ def _isolated_runtime_state_db(tmp_path, monkeypatch):
     test_history_dir.mkdir(parents=True, exist_ok=True)
     test_latest_path = test_param_dir / "latest_runtime_param.json"
     monkeypatch.setattr(_api, "_LATEST_PATH", test_latest_path)
+    # POC3-02D-OPS-04 — 전달 결과 파일도 격리한다(① '운영 기준 활성' 행 · /state 가 읽는다).
+    monkeypatch.setattr(
+        _api, "_SYNC_STATUS_PATH", test_param_dir / "param_sync_status_latest.json"
+    )
     monkeypatch.setattr(_create, "_LATEST_PATH", test_latest_path)
     monkeypatch.setattr(_create, "_HISTORY_DIR", test_history_dir)
     monkeypatch.setattr(_create, "_PARAM_DIR", test_param_dir)
@@ -570,6 +574,10 @@ def _block_live_krx_api(monkeypatch):
 
     POC3-02D-OPS-03 — KOSPI 공식 지수 경계(`_default_kospi_fetcher`)도 같이 막는다.
     `refresh_kospi_benchmark` 도 예외를 결과로 돌려주므로 `fetch_failed:` 로 떨어진다.
+
+    POC3-02D-OPS-04 — 보유 개별주 경계(`_default_stock_fetcher` · `sto/stk_bydd_trd`)도
+    막는다. `krx_stock_sync` 는 호출 때 모듈 속성으로 부르므로 이 교체가 걸리고, 시도
+    기록은 `fetch_error` · `error_type=AssertionError` 로 떨어진다.
     """
     from app.market_briefing import krx_sync
 
@@ -580,3 +588,4 @@ def _block_live_krx_api(monkeypatch):
 
     monkeypatch.setattr(krx_sync, "_default_fetcher", _blocked)
     monkeypatch.setattr(krx_sync, "_default_kospi_fetcher", _blocked)
+    monkeypatch.setattr(krx_sync, "_default_stock_fetcher", _blocked)

@@ -556,8 +556,8 @@ def test_s10_backfill_retried_once_after_later_t1_success(env):
 
 def test_s10_backfill_waits_while_target_fetch_cannot_reach_source(env, tmp_path):
     """08:10 원천 불통(목표일 `fetch_error`) — 채우기를 부르지 않고 원천에 닿은 시도 뒤로
-    미룬다. 불통 중에 부르면 ledger 가 그 날짜를 오늘 부른 것으로 남겨 원천이 돌아와도
-    오늘(09:20 포함) 다시 부르지 못한다(설계자 RESULT STEP 6)."""
+    미룬다. 불통 중에 부르면 ledger 가 그 날짜를 오늘 부른 것으로 남긴다(설계자 RESULT
+    STEP 6 · 일시 오류면 09:20 보강 1회만 남는다 — POC3-02D-OPS-04)."""
     krx_store.delete_date("2026-09-18", db_path=env["db"])
     ledger = tmp_path / "ledger.json"
     clock = Clock(8, 10, 20)
@@ -593,8 +593,9 @@ def test_s10_no_backfill_when_every_target_attempt_is_fetch_error(env, tmp_path)
 def test_s11_already_loaded_run_fills_window_gap_without_t1_refetch(env):
     """T-1 은 받았고 창에 빈 날 — 09:20 실행이 빈 날만 채운다(T-1 재조회 · 재판정 없음).
 
-    설계자 RESULT STEP 6 — 08:10 에 이미 부른 날(09-18)은 09:20 에 다시 부르지 않고,
-    08:10 에 원천 오류로 멈춰 못 부른 날(09-21)만 부른다.
+    설계자 RESULT STEP 6 — 08:10 에 이미 부른 날(09-18 · 영구 실패)은 09:20 에 다시 부르지
+    않고, 08:10 에 원천 오류로 멈춰 못 부른 날(09-21)만 부른다(일시 오류 날짜의 09:20 보강
+    1회는 POC3-02D-OPS-04 · 이 호출은 보강 표시가 없다).
     """
     clock = Clock(8, 10, 20)
 
@@ -610,11 +611,13 @@ def test_s11_already_loaded_run_fills_window_gap_without_t1_refetch(env):
 
     clock2 = Clock(9, 20, 0)
     f = Fetcher(clock2, lambda b, i: _rows(b))
-    again = _sync(env, clock2, f)
+    # 운영 09:20(`run_krx_only`)은 보강 표시를 넘긴다 — 영구 실패(RuntimeError)는 그래도 안 부른다.
+    again = _sync(env, clock2, f, backfill_reinforcement=True)
     assert again["mode"] == "already_loaded"
     assert f.calls == [("09:20:00", "20260921")]
     assert again["backfill"]["skipped_called_today"] == ["2026-09-18"]
     assert again["backfill"]["filled"] == ["2026-09-21"]
+    assert again["backfill"]["retried"] == []
     assert env["cpath"].read_bytes() == snap
     w = krx_store.resolve_calendar_window(
         T1, calendar_dir=env["cal"], db_path=env["db"]

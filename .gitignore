@@ -197,6 +197,8 @@ state/market/oci_krx_reinforcement_state.json
 # POC3-02D-OPS-03 설계자 RESULT STEP 6 — KRX 창 빈 날 채우기 하루 호출 기록(ledger · 저장 중
 # 임시 파일 `.<임의>.tmp` 포함). 운영 산출물. commit 대상 아님.
 state/market/krx_backfill_ledger.json*
+# POC3-02D-OPS-04 항목 1 — 보유 코스피 개별주 채우기 하루 호출 기록(저장 중 임시 파일 포함).
+state/market/krx_stock_backfill_ledger.json*
 
 # ML 최소 데이터 레인 (2026-06-08) — feature snapshot 은 CLI 실행마다 갱신.
 # 운영 artifact 라 commit 대상 아님.

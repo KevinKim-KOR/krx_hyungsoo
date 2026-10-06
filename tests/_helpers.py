@@ -328,13 +328,32 @@ def etf_basis_source(
     )
 
 
-def stock_basis_source() -> "PriceBasisSource":
-    """두 원천을 읽었고 어디에도 없다 — 요청 종목 전부 개별주(FDR `fetch_history`)."""
+def stock_basis_source(
+    fetch: Optional[Callable[[str], list]] = None,
+) -> "PriceBasisSource":
+    """두 원천을 읽었고 어디에도 없다 — 요청 종목 전부 개별주.
+
+    POC3-02D-OPS-04 — 개별주 과거 종가 = KRX 공식 종가 표. `fetch(ticker)` 가 있으면 그
+    행(날짜만 골라)을 개별주 표 종가로 준다. 없으면 표는 읽히지만 행이 없다.
+    """
     from app.runtime_evidence import holdings_price_basis as hpb
+
+    def _stock(tickers, dates=()):
+        wanted = {str(d)[:10] for d in dates}
+        closes = {}
+        if fetch is not None and wanted:
+            for t in tickers:
+                closes[t] = {
+                    str(d)[:10]: float(c)
+                    for d, c in (fetch(t) or [])
+                    if str(d)[:10] in wanted and c
+                }
+        return (set(tickers) if fetch is not None else set()), closes
 
     return hpb.PriceBasisSource(
         etf_master=lambda: (frozenset(), "fixture.csv"),
         krx_prices=lambda tickers, dates=(): (set(), {}),
+        stock_prices=_stock,
     )
 
 

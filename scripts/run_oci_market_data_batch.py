@@ -57,6 +57,10 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 # 공식 CSV 는 이 폴더에서 08:00 과 **같은 resolver** 가 고른다(POC3-02D-OPS-01
 # C1 · Q2). 파일명 상수로 고르지 않는다.
 MARKET_META_DIR = Path("state/market_meta")
@@ -117,6 +121,7 @@ def run(mode: str = "run") -> dict:
             krx_backfill=record.get("krx_backfill"),
             kospi_attempts=record.get("kospi_attempts"),
             kospi_retry=record.get("kospi_retry"),
+            krx_holdings_stocks=record.get("krx_holdings_stocks"),
         )
 
     def _finish(status: str, reason=None) -> dict:
@@ -375,12 +380,15 @@ def _krx_stage(
     *,
     max_attempts: Optional[int] = None,
     side_task=None,
+    reinforcement: bool = False,
 ) -> dict:
     """KRX 전종목 목표일 수집 — 가격 적재 + 정합성 판정(POC3-OPS-02B-2 §M-2).
 
     응답 **하나**로 무조정 가격계열 적재와 API·CSV 정합성을 함께 한다. 08:30
     runner 는 같은 API 를 다시 호출하지 않는다. 실패해도 예외를 올리지 않고
     ETF 가격 적재를 롤백하지 않는다. `side_task` = 08:10 KOSPI 재시도(09:20 은 없음).
+    `reinforcement` = 09:20 보강만 True — 첫 호출이 일시 오류였던 창 안 날짜 1회 보강
+    (POC3-02D-OPS-04 Q6 b).
     """
     from app.market_briefing import krx_target_sync, meta_gate
     from app.three_push_runner_common import STATE_DIR as _STATE_DIR
@@ -393,6 +401,7 @@ def _krx_stage(
             max_attempts=max_attempts,
             logger=logger,
             side_task=side_task,
+            backfill_reinforcement=reinforcement,
         )
     except Exception as e:  # noqa: BLE001
         krx = {"status": f"unexpected:{type(e).__name__}", "basis_date": None}
@@ -409,6 +418,8 @@ def _krx_stage(
     record["krx_backfill"] = {
         k: krx[k] for k in ("backfill", "backfill_retry") if k in krx
     } or None
+    # POC3-02D-OPS-04 항목 1 — 보유 코스피 개별주 공식 종가 채우기 기록(없으면 None).
+    record["krx_holdings_stocks"] = krx.get("holdings_stocks")
     record.setdefault("stage_status", {})["krx"] = krx.get("status")
     if krx.get("status") != krx_target_sync.STATUS_OK:
         logger.warning(
@@ -433,9 +444,11 @@ def _krx_stage(
 def run_krx_only() -> dict:
     """09:20 KRX 전용 보강 1회 (확정 계약 7).
 
-    08:27 까지 T-1 을 못 받은 날만 목표일을 조회한다(이미 받았으면 목표일 조회 0 · 창 안
+    08:27 까지 ETF T-1 을 못 받은 날만 ETF 목표일을 조회한다(이미 받았으면 조회 0 · 창 안
     빈 거래일 중 오늘 아직 부르지 않은 날만 채운다 · PLAN STEP 3-3 · 설계자 RESULT
-    STEP 6 ledger). 하루 1회(목표일 시도 기준) ·
+    STEP 6 ledger · 첫 호출(보강 아닌 실행)이 일시 오류였던 날짜는 **09:20 회차 창(09:20:00 ~
+    09:29:59 KST)에 시작한 실행만** 한 번 더 · POC3-02D-OPS-04 Q6 b). 보유 코스피 개별주
+    곁 작업도 1칸 돈다(ETF 와 따로 · `krx_stock_sync`). 하루 1회(ETF 목표일 시도 기준) ·
     FDR · 미국 · KOSPI · VIX · 네이버를 부르지 않는다 · 08:30 브리핑을 다시 보내지
     않는다. **08:10 배치 상태 JSON 을 덮지 않는다** — 기록은 별도 파일이다.
     """
@@ -466,7 +479,11 @@ def run_krx_only() -> dict:
         logger.info("KRX 보강 건너뜀: 오늘 이미 조회했다(%s)", prev.get("finished_at"))
         return record
 
-    _krx_stage(record, today, logger, max_attempts=1)
+    # POC3-02D-OPS-04 항목 5(PLAN §2-5) — 보강은 09:20 회차 창에 시작한 실행만(수동 재실행 제외).
+    from app.market_briefing.krx_backfill import in_reinforcement_window
+
+    reinforce = record["backfill_reinforcement"] = in_reinforcement_window(_now())
+    _krx_stage(record, today, logger, max_attempts=1, reinforcement=reinforce)
     record["attempted"] = bool(record.get("krx_attempts"))
     record["status"] = record.get("krx_sync_status")
     record["finished_at"] = _utc_now()

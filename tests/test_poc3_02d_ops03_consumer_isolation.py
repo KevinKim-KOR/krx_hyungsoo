@@ -7,6 +7,7 @@ KRX 전체 적재     ① 기준일 ③ 행 수 95% ④ 관계식 · 중복 · 0
 장중 신규 진입     활성 대표 전부 T-1 행이 있을 때만 · 아니면 구역 생략 · 회피 · 보유 그대로
 CSV 갱신 안내      정합성 JSON `refresh_due` — 대표 결과로 바뀌지 않는다
 빈 날 채우기       21거래일 창 안만 · 같은 날짜 KST 하루 1회(08:10 · 재시도 · 09:20 · 재실행 합산)
+                  (일시 오류 날짜의 09:20 보강 1회는 POC3-02D-OPS-04 · test_poc3_02d_ops04_krx_backfill_retry)
 ```
 
 합성 캘린더 · 임시 DB · 가짜 fetcher · 가짜 시계만 쓴다. **외부 조회 0건 · 라이브 DB ·
@@ -455,12 +456,21 @@ def test_same_window_date_not_called_twice_across_0810_retry_0920_rerun(env):
     assert retry["called"] == ["2026-09-21", "2026-09-22"]
     assert retry["filled"] == ["2026-09-22"]
 
-    # 09:20 --krx-only(이미 받음) · 10:05 수동 재실행 — 오늘 부른 날은 다시 안 부른다.
+    # 09:20 --krx-only(이미 받음) · 10:05 수동 재실행 — 오늘 부른 날은 다시 안 부른다
+    # (09-18 실패는 RuntimeError = 영구 실패 · 보강 표시 없는 호출이라 보강도 없다).
     fetchers = [f1]
     for hh, mm in ((9, 20), (10, 5)):
         c = kb.Clock(hh, mm, 0)
         f = kb.Fetcher(c, lambda b, i: kb._rows(b))
-        again = _sync(env, c, f, required_tickers=REPS_27, max_attempts=1)
+        # 09:20 은 운영처럼 보강 표시를 넘긴다(10:05 수동 run 은 넘기지 않는다).
+        again = _sync(
+            env,
+            c,
+            f,
+            required_tickers=REPS_27,
+            max_attempts=1,
+            backfill_reinforcement=(hh, mm) == (9, 20),
+        )
         assert again["mode"] == krx_target_sync.MODE_ALREADY_LOADED
         assert f.calls == []
         assert again["backfill"]["skipped_called_today"] == ["2026-09-18", "2026-09-21"]
@@ -676,6 +686,7 @@ def test_reinforcement_record_carries_representatives_and_backfill(
     assert saved["representatives_refresh_due"] is True
     bf = saved["krx_backfill"]["backfill"]
     assert bf["called"] == ["2026-09-21"] and bf["calls_today"] == {"2026-09-21": 1}
+    assert bf["retried"] == []  # POC3-02D-OPS-04 — 보강 기록 키가 09:20 기록까지 간다
     ledger = krx_backfill.ledger_path_for(env["db"])
     assert json.loads(ledger.read_text("utf-8"))["calls"] == {"2026-09-21": 1}
 

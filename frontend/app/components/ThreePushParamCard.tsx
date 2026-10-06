@@ -2,11 +2,11 @@
 
 // POC2 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 STEP (2026-06-20).
 //
-// 지시문 §5 — 현재 운영 기준 카드 + [현재 기준 OCI 적용] 단일 버튼.
+// 지시문 §5 — 현재 운영 기준 카드 + 단일 버튼(POC3-02D-OPS-04 부터 [현재 기준 OCI 전달]).
 //
 // 표시 항목 (지시문 §5.2):
 //   - 현재 적용 기준 (display_label)
-//   - OCI 반영 상태 (applied / failed / not_applied / verification_required)
+//   - OCI 전달 상태 (applied / failed / not_applied / verification_required · OPS-04 전 'OCI 반영')
 //   - 마지막 적용 시각 (YYYY-MM-DD HH:MM, 없으면 "—")
 //
 // 표시 X (지시문 §5.2):
@@ -17,6 +17,11 @@
 //   제목 오른쪽 상태 배지 + 정렬된 행(적용 기준 · 마지막 적용 · OCI 반영)으로
 //   나눴다. 값 · 문구 · 시각 형식(YYYY-MM-DD HH:MM, 없으면 "—") · 버튼 · 동작은
 //   그대로다. 배지 색은 「OCI 운영·적용」 ① 표와 같은 `.oci-state` 톤을 쓴다.
+//
+// 2026-10-06 POC3-02D-OPS-04 항목 6(설계자 Q7 b · 사용자 목업 확정): 이 버튼은 OCI 에
+//   운영 기준 JSON 을 **전달**만 한다(OCI 러너가 쓰는 활성값은 바꾸지 않는다). 그래서
+//   배지 · 행 · 버튼 · 진행 문구를 '적용 · 반영' 에서 '전달' 로 바꿨다. 실제로 쓰이는지는
+//   ① 표 '운영 기준 활성' 행이 보인다 — 전달이 끝나면 `onDelivered` 로 ① 을 다시 읽게 한다.
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -30,16 +35,16 @@ import { ApiConfigError, ApiRequestError } from "@/lib/api";
 function statusBadgeText(status: ThreePushParamStatus): string {
   switch (status) {
     case "applied":
-      return "적용 완료";
+      return "전달 완료";
     case "applying":
-      return "적용 중";
+      return "전달 중";
     case "failed":
-      return "적용 실패";
+      return "전달 실패";
     case "verification_required":
       return "확인 필요";
     case "not_applied":
     default:
-      return "미적용";
+      return "미전달";
   }
 }
 
@@ -68,13 +73,18 @@ function describeError(e: unknown): string {
   return "알 수 없는 오류가 발생했습니다.";
 }
 
-export default function ThreePushParamCard() {
+export default function ThreePushParamCard({
+  onDelivered,
+}: {
+  // 전달 시도가 끝나면 부른다 — ① '운영 기준 활성' 행을 다시 읽게 한다(OCI 재조회 없음).
+  onDelivered?: () => void;
+} = {}) {
   const [state, setState] = useState<ThreePushParamState | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [applying, setApplying] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  // 진행 상태 단계 표시 (지시문 §5.4): "운영 기준 생성 중" → "OCI 에 적용 중" →
-  // "OCI 반영 확인 중" → "적용 완료".
+  // 진행 상태 단계 표시 (지시문 §5.4): "운영 기준 생성 중" → "OCI 에 전달 중" →
+  // "OCI 전달 확인 중" → "전달 완료"(POC3-02D-OPS-04 문구).
   const [progressStage, setProgressStage] = useState<string | null>(null);
   // POC3-07 (Q4): 표시용 전송 payload SHA-256 (성공 판정 아님, 대조 참고용).
   const [appliedHash, setAppliedHash] = useState<string | null>(null);
@@ -102,8 +112,8 @@ export default function ThreePushParamCard() {
     setErrorMsg(null);
     setProgressStage("운영 기준 생성 중");
     // 동기 호출이지만 사용자에게는 단계 진행이 보이도록 표시.
-    setTimeout(() => setProgressStage("OCI 에 적용 중"), 400);
-    setTimeout(() => setProgressStage("OCI 반영 확인 중"), 1200);
+    setTimeout(() => setProgressStage("OCI 에 전달 중"), 400);
+    setTimeout(() => setProgressStage("OCI 전달 확인 중"), 1200);
     try {
       const result = await applyThreePushParamToOci();
       setState(result);
@@ -117,8 +127,9 @@ export default function ThreePushParamCard() {
       await refresh();
     } finally {
       setApplying(false);
+      onDelivered?.();
     }
-  }, [applying, refresh]);
+  }, [applying, refresh, onDelivered]);
 
   if (loading && !state) {
     return (
@@ -153,9 +164,14 @@ export default function ThreePushParamCard() {
             <dt>마지막 적용</dt>
             <dd>{state.applied_at ?? "—"}</dd>
 
-            <dt>OCI 반영</dt>
+            <dt>OCI 전달</dt>
             <dd>{state.message}</dd>
           </dl>
+          {state.status === "applied" ? (
+            <p className="tc-muted tc-small ops-explain">
+              실제로 쓰이는지는 위 ① 표 &lsquo;운영 기준 활성&rsquo; 행에서 확인하세요.
+            </p>
+          ) : null}
           {appliedHash ? (
             <div
               className="ops-note"
@@ -166,9 +182,9 @@ export default function ThreePushParamCard() {
           ) : null}
           {state.status === "failed" ? (
             <p className="tc-muted tc-small ops-explain">
-              OCI(운영 서버) 연결이 없는 환경에서는 적용이 실패할 수 있습니다.
-              이 경우 기존 적용 기준은 그대로 유지되며, 실제 운영 환경에서 다시
-              적용하면 됩니다. (화면 오류가 아니라 OCI 반영 단계의 실패입니다.)
+              OCI(운영 서버) 연결이 없는 환경에서는 전달이 실패할 수 있습니다.
+              이 경우 기존 운영 기준은 그대로 유지되며, 실제 운영 환경에서 다시
+              전달하면 됩니다. (화면 오류가 아니라 OCI 전달 단계의 실패입니다.)
             </p>
           ) : null}
         </div>
@@ -198,7 +214,7 @@ export default function ThreePushParamCard() {
             cursor: applying ? "not-allowed" : "pointer",
           }}
         >
-          {applying ? "적용 진행 중..." : "현재 기준 OCI 적용"}
+          {applying ? "전달 진행 중..." : "현재 기준 OCI 전달"}
         </button>
       </div>
     </section>

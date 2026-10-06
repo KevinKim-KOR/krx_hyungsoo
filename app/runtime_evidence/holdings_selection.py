@@ -269,7 +269,8 @@ def select_holdings(
                        같은 ticker 가 여러 계좌에 있으면 **1건으로 합친다**.
       price_history  : {ticker: [(date, close), ...]} date ASC. 분모 원천.
                        운영 흐름은 자산 유형별 한 계열만 넣는다(ETF = KRX 무조정 ·
-                       개별주 = FDR · 설계자 RESULT STEP 1 · `holdings_price_basis`).
+                       개별주 = KRX 공식 종가 · 설계자 RESULT STEP 1 · POC3-02D-OPS-04 ·
+                       `holdings_price_basis`).
       market_quotes  : {ticker: MarketQuote} — `current_price` · `price_asof`.
       axis_dates     : KRX 거래일 축(오름차순). 기준일 계산 원천.
       avg_buy_prices : {ticker: 수량 가중평균 매입가}. 없으면 손익률을 생략한다

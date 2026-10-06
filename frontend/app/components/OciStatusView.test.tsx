@@ -172,3 +172,73 @@ describe("OciStatusPanel — 요약 + 표", () => {
     expect(fmtKst(null, true)).toBeNull();
   });
 });
+
+// POC3-02D-OPS-04 항목 3 · 6(사용자 목업 확정 2026-10-06) — 새 2행 · ② 전달 뒤 다시 읽기.
+describe("OciStatusPanel — 장중 대표 ETF · 운영 기준 활성 행", () => {
+  function withRows(reps: { status: string; detail: string }, param: { status: string; detail: string }) {
+    const s = operating();
+    return {
+      ...s,
+      jobs: [
+        ...s.jobs,
+        { job: "intraday_representatives", ...reps },
+        { job: "param_active", ...param },
+      ],
+    };
+  }
+
+  it.each([
+    ["SUCCESS", "정상", "SUCCESS", "일치"],
+    ["STALE", "확인 필요", "STALE", "다름"],
+    ["UNKNOWN", "확인 불가", "UNKNOWN", "확인 불가"],
+  ])("상태 %s → %s · %s → %s", async (rs, rl, ps, pl) => {
+    fetchOciStartupStatus.mockResolvedValue(
+      withRows({ status: rs, detail: "기준일 10/2 · 26/27 준비됨" }, { status: ps, detail: "값 비교 문구" }),
+    );
+    const { container } = render(<OciStatusPanel />);
+    await screen.findByText("정상 운영 중");
+    const reps = within(rowOf("장중 대표 ETF"));
+    expect(reps.getByText(rl)).toBeInTheDocument();
+    expect(reps.getByText("기준일 10/2 · 26/27 준비됨")).toBeInTheDocument();
+    const param = within(rowOf("운영 기준 활성"));
+    expect(param.getByText(pl)).toBeInTheDocument();
+    expect(param.getByText("값 비교 문구")).toBeInTheDocument();
+    // 영어 job 이름 · 내부 상태값을 그대로 보이지 않는다.
+    expect(container.textContent).not.toMatch(/intraday_representatives|param_active|SUCCESS|STALE/);
+  });
+
+  it("확인 불가 행은 백엔드 문구만 보인다(숫자 · 0/27 을 만들지 않는다)", async () => {
+    fetchOciStartupStatus.mockResolvedValue(
+      withRows(
+        { status: "UNKNOWN", detail: "기록을 읽지 못함" },
+        { status: "UNKNOWN", detail: "OCI 에서 쓰는 값을 읽지 못함" },
+      ),
+    );
+    render(<OciStatusPanel />);
+    await screen.findByText("정상 운영 중");
+    const reps = rowOf("장중 대표 ETF");
+    expect(within(reps).getByText("기록을 읽지 못함")).toBeInTheDocument();
+    expect(reps.textContent).not.toMatch(/\d+\/\d+/);
+    expect(within(rowOf("운영 기준 활성")).getByText("OCI 에서 쓰는 값을 읽지 못함")).toBeInTheDocument();
+  });
+
+  it("처음 조회가 실패해도 다시 읽기가 성공하면 오류를 지우고 표를 보인다", async () => {
+    fetchOciStartupStatus.mockRejectedValueOnce(new Error("backend restarting"));
+    const { rerender } = render(<OciStatusPanel reloadKey={0} />);
+    expect(await screen.findByText(/알 수 없는 오류/)).toBeInTheDocument();
+    fetchOciStartupStatus.mockResolvedValue(operating());
+    rerender(<OciStatusPanel reloadKey={1} />);
+    expect(await screen.findByText("정상 운영 중")).toBeInTheDocument();
+    expect(screen.queryByText(/알 수 없는 오류/)).toBeNull();
+  });
+
+  it("reloadKey 가 바뀌면 다시 읽는다(② 전달 뒤 · OCI 재조회는 백엔드가 하지 않는다)", async () => {
+    fetchOciStartupStatus.mockResolvedValue(operating());
+    const { rerender } = render(<OciStatusPanel reloadKey={0} />);
+    await screen.findByText("정상 운영 중");
+    expect(fetchOciStartupStatus).toHaveBeenCalledTimes(1);
+    rerender(<OciStatusPanel reloadKey={1} />);
+    await screen.findByText("정상 운영 중");
+    expect(fetchOciStartupStatus).toHaveBeenCalledTimes(2);
+  });
+});

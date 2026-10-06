@@ -70,12 +70,11 @@ INDEX_NOTICE[STATUS_PREV_DAY_MISSING] = (
 )
 
 # POC3-02D-OPS-03 확정 계약 13 · PLAN STEP 7-3 — 뒤 PUSH 판단에 영향을 주는 08:10 배치
-# 실패(배치 미완료 · FDR 가격 단계 실패) 고지. 하루 최대 1회는 시장 브리핑 일 단위
-# registry 가 보장한다. 문구는 사용자 승인(B3 · 2026-09-30 APPROVED).
-# 설계자 RESULT STEP 1 뒤: ETF 의 20거래일 기준 종가 · 고점 대비는 KRX 무조정 표(08:10 KRX
-# 단계)에서 오고, 개별주 파생값은 혼합 확정으로 늘 닫힌다(`holdings_price_basis`). 그래서
-# FDR 단계만 실패한 날의 보유 영향은 사실상 없다 — 배치가 아예 안 돈 날(KRX 도 없음 →
-# ETF 고점 대비 생략)에만 맞는 고지다. 발동 입력에서 FDR 을 뺄지는 설계자 결정 대상.
+# 실패(배치가 안 돈 날) 고지. 하루 최대 1회는 시장 브리핑 일 단위 registry 가 보장한다.
+# 문구는 사용자 승인(B3 · 2026-09-30 APPROVED).
+# POC3-02D-OPS-04 Q2 a(설계자 2026-10-04): FDR 가격 단계 실패는 발동 입력에서 뺐다 — 보유
+# 파생값은 KRX 무조정 계열(ETF 표 · 개별주 표 · 항목 1)에서 오고 FDR 을 쓰지 않는다. 배치가 아예 안 돈 날
+# (KRX 도 없음 → 고점 대비 생략)에만 나가는 고지다(`runner_market_briefing.batch_failure_reasons`).
 BATCH_FAILURE_NOTICE = (
     "※ 운영 안내: 오늘 아침 보유 종목 시세 갱신이 끝나지 않아 "
     "고점 대비 값이 빠질 수 있습니다."

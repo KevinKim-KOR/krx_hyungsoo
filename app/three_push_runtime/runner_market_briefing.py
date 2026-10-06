@@ -19,8 +19,10 @@
   `us_trading_calendar`). 아니면 전망 없음(기존 문장 `SENTENCE_NO_OUTLOOK`). 기대 세션 ·
   저장 세션을 실행 기록에 남긴다.
 - 배치 실패 고지 입력(PLAN STEP 7-3 한정) = 배치 상태 JSON 없음 · `refresh_date_kst` ≠
-  오늘 · FDR 가격 단계 실패. KOSPI · VIX · IXIC · SOX 실패는 넣지 않는다(PC 전용 ·
-  Telegram 없음). US500 실패 · KRX T-1 부재는 본문의 자기 줄로만 알린다(같은 원인 두 줄
+  오늘(배치가 안 돈 날) · 옛 상태 파일의 `status == "failed"`. **FDR 가격 단계 실패는
+  넣지 않는다**(POC3-02D-OPS-04 Q2 a — 보유 파생값이 FDR 을 쓰지 않는다 · 배치 상태
+  `stage_status.fdr_price` · 로그에는 그대로 남는다). KOSPI · VIX · IXIC · SOX 실패도 넣지
+  않는다(PC 전용 · Telegram 없음). US500 실패 · KRX T-1 부재는 본문의 자기 줄로만 알린다(같은 원인 두 줄
   금지).
 """
 
@@ -104,9 +106,10 @@ def _sp500_input(
 def batch_failure_reasons(state: Optional[dict[str, Any]], today_kst: str) -> list[str]:
     """PLAN STEP 7-3 — 뒤 PUSH 판단에 영향을 주는 08:10 배치 실패 사유. 없으면 `[]`.
 
-    `stage_status.fdr_price`(POC3-02D-OPS-03 배치)가 있으면 그것만 본다 — `failed` ·
-    `skipped`(대상 수집 실패로 FDR 을 못 돌림). 옛 상태 파일이면 `status == "failed"`.
-    benchmark(KOSPI · VIX · IXIC · SOX · US500) · KRX 필드는 보지 않는다.
+    배치가 안 돈 날(상태 없음 · 오늘 기록 아님)만 고지한다. `stage_status`(POC3-02D-OPS-03
+    배치)가 있는 상태에서 FDR 가격 단계 실패 · 건너뜀은 **고지하지 않는다**(POC3-02D-OPS-04
+    Q2 a — 실제로 빠지는 값은 그 자리에서 생략 · `확인 불가`로 보인다). 옛 상태 파일이면
+    `status == "failed"`. benchmark(KOSPI · VIX · IXIC · SOX · US500) · KRX 필드는 보지 않는다.
     """
     if not isinstance(state, dict):
         return ["batch_state_missing"]
@@ -114,9 +117,7 @@ def batch_failure_reasons(state: Optional[dict[str, Any]], today_kst: str) -> li
         return ["batch_not_today"]
     stages = state.get("stage_status")
     if isinstance(stages, dict) and "fdr_price" in stages:
-        if stages.get("fdr_price") != "ok":
-            return [f"fdr_price_{stages.get('fdr_price')}"]
-        return []
+        return []  # FDR 단계 결과는 고지 사유가 아니다(OPS-04 Q2 a · 기록만)
     return ["batch_failed"] if state.get("status") == "failed" else []
 
 

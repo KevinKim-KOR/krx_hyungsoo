@@ -11,6 +11,12 @@
 읽기 전용 SSH 만 사용한다(BatchMode=yes). 원격 쓰기·job 실행·Telegram 발송·재시작은
 이 모듈에서 절대 하지 않는다.
 
+POC3-02D-OPS-04(설계자 Q4 a · Q8 a): 같은 1회 읽기에 블록 2개를 맨 뒤에 더한다 — 08:10 · 09:20 KRX
+기록의 장중 대표 ETF 커버리지(상태 파일 JSON 읽기) · OCI 러너가 쓰는 활성 PARAM 값(DB
+`mode=ro` · 표준 라이브러리 `python3` · OCI 에 `sqlite3` 명령이 없다). 둘 다 읽기만 한다.
+⑤ 의 값은 응답에 싣지 않고 숨겨 둔다 — `GET /oci/startup-status` 가 요청 때 PC 운영 기준
+JSON 과 비교해 '운영 기준 활성' 행을 만든다(`param_active_job` · `param_id` 는 보이지 않는다).
+
 민감정보(토큰·chat id·원격 경로·raw payload)는 스냅샷에 담지 않는다(설계 §13).
 """
 
@@ -23,6 +29,13 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from app.config import optional_env, require_env
+from app.oci_status_rows import (  # noqa: F401 - POC3-02D-OPS-04 행 · 블록(재노출)
+    param_active_job,
+    param_values_block,
+    parse_param_values,
+    representatives_block,
+    representatives_job,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +67,9 @@ class OciStartupSnapshot:
     crontab_active: Optional[bool] = None
     jobs: list[OciJobStatus] = field(default_factory=list)
     note: str = ""  # 사용자용 요약(민감정보 없음)
+    # POC3-02D-OPS-04 — OCI 활성 PARAM 값 `{param_key: (type, num, text, bool)}`. 응답에 싣지
+    # 않는다(API 가 요청 때 PC 운영 기준과 비교만 한다). 못 읽으면 None.
+    oci_param_values: Optional[dict[str, tuple]] = None
 
 
 # 프로세스 로컬 캐시. 기동 시 1회 채워지고 이후 재조회하지 않는다.
@@ -165,7 +181,9 @@ def refresh_snapshot() -> OciStartupSnapshot:
     #   2) holdings 소스 파일 최근 수정 epoch
     #   3) runtime_state.sqlite 최근 수정 epoch·크기
     #   4) POC3-02D-OPS-03 — 거래일 달력 폴더 파일 이름(한국 · 미국 올해 · 다음 해)
-    # 구분자 '###' 로 블록을 나눠 파싱한다.
+    #   5) POC3-02D-OPS-04 — 장중 대표 ETF 커버리지(08:10 · 09:20 KRX 기록)
+    #   6) POC3-02D-OPS-04 — OCI 활성 PARAM 값(runtime_state.sqlite · mode=ro)
+    # 구분자 '###' 로 블록을 나눠 파싱한다. 새 블록은 맨 뒤에 붙인다(옛 응답 호환).
     remote_cmd = (
         "crontab -l 2>/dev/null "
         "| grep -oE -- '--push-kind [a-z_]+' | awk '{print $2}' | sort -u; "
@@ -175,7 +193,11 @@ def refresh_snapshot() -> OciStartupSnapshot:
         f"stat -c '%Y %s' {_REMOTE_HOME}/state/runtime/runtime_state.sqlite "
         "2>/dev/null || echo '0 0'; "
         "echo '###'; "
-        f"ls -1 {_REMOTE_HOME}/state/market_meta 2>/dev/null || true"
+        f"ls -1 {_REMOTE_HOME}/state/market_meta 2>/dev/null || true\n"
+        "echo '###'\n"
+        f"{representatives_block(_REMOTE_HOME)}\n"
+        "echo '###'\n"
+        f"{param_values_block(_REMOTE_HOME)}\n"
     )
     ok, out = _ssh_read(remote_cmd)
 
@@ -247,6 +269,10 @@ def refresh_snapshot() -> OciStartupSnapshot:
     if len(parts) > 2:
         names = [ln.strip() for ln in parts[2].splitlines() if ln.strip()]
         jobs.append(calendar_job(names, _today_kst()))
+    # POC3-02D-OPS-04 — 블록이 없던 옛 응답이면 대표 ETF 행을 만들지 않는다.
+    if len(parts) > 3:
+        jobs.append(representatives_job(parts[3]))
+    oci_param_values = parse_param_values(parts[4]) if len(parts) > 4 else None
 
     if overall == "OPERATING":
         summary = "OCI 자동 운영 스케줄 활성 (필수 3종 등록 · 기동 시 확인)"
@@ -265,8 +291,10 @@ def refresh_snapshot() -> OciStartupSnapshot:
         note=(
             "기동 시 1회 읽은 읽기 전용 스냅샷입니다. crontab 필수 push-kind 등록 "
             "여부와 artifact 최신성을 표시합니다. 개별 PUSH job 의 최신 성공/실패는 "
-            "기존 단일 status 파일만으로 신뢰성 있게 구분할 수 없어 UNKNOWN 으로 둡니다."
+            "기존 단일 status 파일만으로 신뢰성 있게 구분할 수 없어 UNKNOWN 으로 둡니다. "
+            "운영 기준 활성 행은 기동 때 읽은 OCI 활성값과 조회 때의 PC 운영 기준을 비교합니다."
         ),
+        oci_param_values=oci_param_values,
     )
     return _snapshot
 

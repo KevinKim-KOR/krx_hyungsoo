@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from types import SimpleNamespace
 
+import pytest
+
 from app.runtime_evidence.holdings_selection import (
     DRAWDOWN_NOTE_MAX_PCT,
     REASON_DATA_UNAVAILABLE,
@@ -413,29 +415,30 @@ def test_incomplete_aux_window_drops_only_the_note_not_the_selection():
     assert items[0].drawdown_20d_pct is None, "불완전 구간인데 보조값을 만들었다"
 
 
-def test_price_history_exception_becomes_outcome_error_not_raise(tmp_path):
-    """가격 이력 조회 예외는 밖으로 새지 않고 `outcome.error` 로 수렴한다.
+def test_assembly_exception_becomes_outcome_error_not_raise(tmp_path):
+    """조립 중 예외는 밖으로 새지 않고 `outcome.error` 로 수렴한다.
 
     러너는 이 값을 보고 `holdings_selection_error` 로 끝낸다
     (`runtime_evidence_error` 가 아니다 — 결과서 r1 오보).
+
+    POC3-02D-OPS-04 항목 1 — 개별주도 KRX 공식 종가 표를 읽고 그 표를 못 읽으면 그
+    종목 파생값만 닫는다(오류 아님 · `test_poc3_02d_ops03_price_basis`). 그래서 예전
+    '가격 이력(FDR) 조회 예외' 대신 보유 읽기 예외로 같은 수렴 계약을 고정한다.
     """
     from app.runtime_evidence.holdings_selection_flow import build_holdings_selection
     from tests._helpers import stock_basis_source
 
-    def _boom(ticker, **kw):
+    def _boom():
         raise RuntimeError("가격 DB 잠김")
 
     out = build_holdings_selection(
-        holdings_loader=lambda: [
-            SimpleNamespace(ticker="AAA", name="가나다", account_group="일반")
-        ],
-        fetch_history=_boom,
+        holdings_loader=_boom,
+        fetch_history=lambda ticker, **kw: pytest.fail("FDR 을 읽지 않는다"),
         market_quotes={},
         state_path=tmp_path / "s.json",
         slot_id="OPEN",
         runtime_kst="2026-09-04T09:15:00+09:00",
         today_kst="2026-09-04",
-        # 설계자 RESULT STEP 1 — `fetch_history`(FDR)는 개별주만 부른다. 개별주로 둔다.
         price_basis_source=stock_basis_source(),
     )
     assert out.error, "예외가 error 로 수렴하지 않았다"

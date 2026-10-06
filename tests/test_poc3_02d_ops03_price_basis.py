@@ -1,10 +1,11 @@
-"""POC3-02D-OPS-03 설계자 RESULT STEP 1 — 보유 PUSH 가격 기준 계약 (2026-09-30).
+"""보유 PUSH 가격 기준 계약 — POC3-02D-OPS-03 설계자 RESULT STEP 1 · POC3-02D-OPS-04 항목 1.
 
 ```text
 ETF     현재가 = Naver 무조정 · 20거래일 전 종가 · 구간 종가 = KRX 무조정
         조정계열(etf_daily_price · fetch_history) fallback 금지 · 두 계열을 섞지 않는다
-개별주  현재가 · 과거 종가 = 기존 FDR/Naver · KRX ETF 표 가격을 읽지 않는다
-        파생값은 늘 fail-closed(혼합 확정 2026-09-30) · T-1 가드(0.5%)는 기록만
+개별주  현재가 = Naver 무조정 · 20거래일 전 종가 · 구간 종가 = KRX 공식 종가(stk_bydd_trd)
+        FDR(fetch_history)을 읽지 않는다 · KRX ETF 표 가격을 읽지 않는다
+        개별주 표를 못 읽으면 그 종목 파생값만 닫는다 · T-1 가드(0.5%)는 기록만
 구분    공식 ETF 마스터 CSV 또는 KRX 표 적재 기록 = ETF · 둘 다 읽고 없음 = 개별주 · 그 밖 = 미상
 ```
 
@@ -96,13 +97,16 @@ def _rows(value=100.0, *, drop=(), special=None):
 
 
 class _Spy:
-    """원천 호출 기록 대역. `master=None` · `krx=None` 은 '읽을 수 없음'."""
+    """원천 호출 기록 대역. `master=None` · `krx=None` · `stock=None` 은 '읽을 수 없음'."""
 
-    def __init__(self, *, master=(), krx=None, present=None):
+    def __init__(self, *, master=(), krx=None, present=None, stock=()):
         self.master = master
         self.krx = krx  # {ticker: [(date, close)]} · None = 읽기 실패
         self.present = present
+        # 개별주 KRX 공식 종가 표(POC3-02D-OPS-04) · () = 읽을 수 있고 행 없음 · None = 읽기 실패
+        self.stock = dict(stock) if stock is not None else None
         self.calls: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
+        self.stock_calls: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
 
     def source(self) -> hpb.PriceBasisSource:
         def _master():
@@ -123,7 +127,21 @@ class _Spy:
             }
             return present & set(tickers), closes
 
-        return hpb.PriceBasisSource(etf_master=_master, krx_prices=_krx)
+        def _stock(tickers, dates=()):
+            self.stock_calls.append((tuple(tickers), tuple(dates)))
+            if self.stock is None:
+                raise sqlite3.OperationalError("no such table")
+            wanted = set(dates)
+            closes = {
+                t: {d: c for d, c in self.stock.get(t, []) if d in wanted}
+                for t in tickers
+                if t in self.stock and wanted
+            }
+            return set(self.stock) & set(tickers), closes
+
+        return hpb.PriceBasisSource(
+            etf_master=_master, krx_prices=_krx, stock_prices=_stock
+        )
 
 
 class _Fetch:
@@ -239,65 +257,103 @@ def test_krx_unreadable_closes_only_etf_derived_values(tmp_path):
     assert ev["tickers"][ETF]["reason"] == "krx_unreadable"
 
 
-# ── 개별주 = FDR + 혼합 가드 ───────────────────────────────────────────────────
+# ── 개별주 = KRX 공식 종가 (POC3-02D-OPS-04 항목 1) ──────────────────────────────
 
 
-def test_stock_uses_fdr_and_never_reads_krx_prices(tmp_path):
-    """개별주 과거 종가는 FDR. KRX 표는 구분(적재 기록)만 묻고 가격은 묻지 않는다.
+def test_stock_uses_krx_stock_table_and_never_fdr(tmp_path):
+    """개별주 과거 종가는 KRX 공식 종가 표 · FDR(`fetch_history`)은 부르지 않는다.
 
-    혼합 확정(설계자 RESULT STEP 1-7) — 가드가 통과해도 파생값은 닫는다.
+    KRX ETF 표는 구분(적재 기록)만 묻고 개별주 가격은 묻지 않는다.
     """
-    spy = _Spy(master={ETF}, krx={ETF: _rows()})
-    fetch = _Fetch({STOCK: _rows()})
-    quotes = {ETF: Q(99.0, -1.0), STOCK: Q(88.0, -12.0)}  # Naver 전일 = 100 = FDR T-1
+    spy = _Spy(master={ETF}, krx={ETF: _rows()}, stock={STOCK: _rows()})
+    fetch = _Fetch({STOCK: _rows(value=90.0)})  # FDR 이었다면 기준 90 → -2.2%
+    quotes = {ETF: Q(99.0, -1.0), STOCK: Q(88.0, -12.0)}  # Naver 전일 = 100 = KRX T-1
     out = _selection(tmp_path, spy=spy, fetch=fetch, quotes=quotes)
-    assert fetch.calls == [STOCK]
-    price_calls = [c for c in spy.calls if c[1]]
-    assert price_calls and all(STOCK not in tickers for tickers, _ in price_calls)
-    assert ((STOCK,), ()) in spy.calls  # 구분용 적재 기록 조회(날짜 없음)
-    assert "20거래일 데이터 확인 불가" in out.message_text
-    assert "20거래일 -12.0%" not in out.message_text
-    ev = out.diagnostics["holdings_price_basis"]["tickers"][STOCK]
-    assert ev["reason"] == "price_basis_mismatch"
-    assert ev["derived"] == {"base_close": "blocked", "window": "blocked"}
+    assert fetch.calls == []
+    etf_price_calls = [c for c in spy.calls if c[1]]
+    assert etf_price_calls and all(STOCK not in t for t, _ in etf_price_calls)
+    assert spy.stock_calls == [((STOCK,), tuple(PAST[-30:]))]
+    assert "20거래일 -12.0%" in out.message_text  # 88 / 100(KRX) − 1
+    ev = out.diagnostics["holdings_price_basis"]
+    assert ev["krx_stock_table"] == "ok"
+    st = ev["tickers"][STOCK]
+    assert "reason" not in st
+    assert st["derived"] == {"base_close": "ok", "window": "ok"}
     assert (
-        ev["asset_type"] == "STOCK" and ev["class_source"] == "etf_master_csv+krx_table"
+        st["asset_type"] == "STOCK" and st["class_source"] == "etf_master_csv+krx_table"
     )
-    assert (
-        ev["price_source"] == "FinanceDataReader" and ev["price_basis"] == "fdr_naver"
-    )
-    assert ev["guard"]["ok"] is True and ev["guard"]["diff_pct"] == 0.0
-    assert ev["guard"]["t1"] == T1
+    assert st["price_source"] == "KRX_OPEN_API/stk_bydd_trd"
+    assert st["price_basis"] == "unadjusted"
+    assert st["guard"]["ok"] is True and st["guard"]["diff_pct"] == 0.0
+    assert st["guard"]["t1"] == T1 and st["guard"]["krx_close"] == 100.0
 
 
 @pytest.mark.parametrize(
-    "fdr_t1, day_return, guard_ok",
+    "krx_t1, day_return, guard_ok",
     [
-        (100.4, -12.0, True),  # +0.4% — 허용 폭 안(그래도 닫는다)
+        (100.4, -12.0, True),  # +0.4% — 허용 폭 안
         (99.0, -12.0, False),  # -1.0% — 그날 차이
         (100.0, None, False),  # Naver 등락률 없음 — 비교 불가
-        (None, -12.0, False),  # FDR T-1 종가 없음(배치 실패) — 비교 불가
     ],
 )
-def test_stock_derived_values_always_fail_closed_guard_is_recorded(
-    tmp_path, fdr_t1, day_return, guard_ok
-):
-    """개별주 FDR 일봉 종가 ≠ KRX 정규장 종가(혼합 확정) — 가드 결과와 무관하게 닫는다."""
-    special = {T1: fdr_t1} if fdr_t1 is not None else {}
-    rows = _rows(special=special, drop=[T1] if fdr_t1 is None else ())
-    spy = _Spy(master=set(), krx={})
+def test_stock_guard_is_record_only(tmp_path, krx_t1, day_return, guard_ok):
+    """가드(KRX T-1 vs Naver 전일)는 기록만 — 파생값을 막지 않는다."""
+    spy = _Spy(master=set(), krx={}, stock={STOCK: _rows(special={T1: krx_t1})})
     out = _selection(
-        tmp_path,
-        spy=spy,
-        fetch=_Fetch({STOCK: rows}),
-        quotes={STOCK: Q(88.0, day_return)},
+        tmp_path, spy=spy, fetch=_Fetch({}), quotes={STOCK: Q(88.0, day_return)}
     )
     ev = out.diagnostics["holdings_price_basis"]["tickers"][STOCK]
     assert ev["guard"]["ok"] is guard_ok
-    assert ev["reason"] == "price_basis_mismatch"
-    assert ev["derived"] == {"base_close": "blocked", "window": "blocked"}
+    assert "reason" not in ev
+    assert ev["derived"] == {"base_close": "ok", "window": "ok"}
+    assert "20거래일 -12.0%" in out.message_text
+
+
+def test_stock_table_unreadable_closes_only_stock_derived_values(tmp_path):
+    """개별주 표를 못 읽으면(첫 08:10 적재 전 · PC) 그 종목 파생값만 닫는다 — 0 · 정상 아님."""
+    spy = _Spy(master={ETF}, krx={ETF: _rows()}, stock=None)
+    quotes = {ETF: Q(88.0, -1.0), STOCK: Q(88.0, -12.0)}
+    out = _selection(tmp_path, spy=spy, fetch=_Fetch({STOCK: _rows()}), quotes=quotes)
+    assert not out.error, out.error
+    ev = out.diagnostics["holdings_price_basis"]
+    assert ev["krx_stock_table"] == "unreadable:OperationalError"
+    assert ev["tickers"][STOCK]["reason"] == "krx_stock_unreadable"
+    assert ev["tickers"][STOCK]["derived"] == {
+        "base_close": "blocked",
+        "window": "blocked",
+    }
+    assert ev["tickers"][ETF]["derived"] == {"base_close": "ok", "window": "ok"}
+    assert "20거래일 데이터 확인 불가" in out.message_text  # 개별주
+    assert "20거래일 -12.0%" in out.message_text  # ETF 는 그대로
+
+
+def test_stock_without_krx_rows_never_falls_back_to_fdr(tmp_path):
+    """개별주 KRX 행이 하나도 없으면(첫 적재 전) 파생값만 없다 — FDR 이력이 있어도 쓰지 않는다."""
+    spy = _Spy(master=set(), krx={}, stock={})
+    fetch = _Fetch({STOCK: _rows(value=90.0)})
+    out = _selection(tmp_path, spy=spy, fetch=fetch, quotes={STOCK: Q(88.0, -12.0)})
+    assert fetch.calls == []
     assert "20거래일 데이터 확인 불가" in out.message_text
-    assert "20거래일 -" not in out.message_text
+    derived = out.diagnostics["holdings_price_basis"]["tickers"][STOCK]["derived"]
+    assert derived == {"base_close": "missing", "window": "missing:20"}
+
+
+def test_stock_missing_base_or_window_day_is_not_filled(tmp_path):
+    """개별주 KRX 기준일 종가가 없으면 20거래일 값만 · 구간이 빠지면 고점 대비만 생략."""
+    spy = _Spy(master=set(), krx={}, stock={STOCK: _rows(drop=[BASE])})
+    out = _selection(
+        tmp_path, spy=spy, fetch=_Fetch({}), quotes={STOCK: Q(88.0, -12.0)}
+    )
+    assert "20거래일 데이터 확인 불가" in out.message_text
+    derived = out.diagnostics["holdings_price_basis"]["tickers"][STOCK]["derived"]
+    assert derived == {"base_close": "missing", "window": "missing:1"}
+
+    spy2 = _Spy(master=set(), krx={}, stock={STOCK: _rows(drop=[PAST[-4]])})
+    out2 = _selection(
+        tmp_path, spy=spy2, fetch=_Fetch({}), quotes={STOCK: Q(88.0, -12.0)}
+    )
+    assert "20거래일 -12.0%" in out2.message_text
+    assert out2.selected[0].drawdown_20d_pct is None
 
 
 # ── 자산 유형 구분 ─────────────────────────────────────────────────────────────
@@ -343,10 +399,10 @@ def test_unknown_asset_type_fails_closed_in_both_flows(tmp_path):
 # ── 캘린더 없는 해(평일 fallback) ──────────────────────────────────────────────
 
 
-def test_blocked_stock_dates_still_confirm_weekdays_in_uncovered_year(tmp_path):
-    """가드에 막힌 개별주 FDR 날짜도 '그 평일은 거래일' 근거다 — 가격 성격이 달라도
-    거래가 있었다는 사실은 같다. 빼면 KRX 적재가 하루 빈 ETF 의 20거래일 수익률까지
-    닫힌다(기준일 종가는 있는데)."""
+def test_stock_krx_dates_confirm_weekdays_in_uncovered_year(tmp_path):
+    """개별주 KRX 저장 날짜도 '그 평일은 거래일' 근거다(POC3-02D-OPS-04 — 예전에는 FDR
+    날짜). 빼면 KRX ETF 적재가 하루 빈 ETF 의 20거래일 수익률까지 닫힌다(기준일 종가는
+    있는데)."""
     cal = tmp_path / "cal2026"
     cal.mkdir()
     d, days = date(2026, 1, 1), []
@@ -362,8 +418,12 @@ def test_blocked_stock_dates_still_confirm_weekdays_in_uncovered_year(tmp_path):
     assert axis[-2] == "2027-01-04"
     gap = axis[-2]  # 2027-01-04 — KRX 적재가 빈 평일(캘린더 없는 해 · 기준일 아님)
     asof = f"{today}T09:14:00+09:00"
-    spy = _Spy(master={ETF}, krx={ETF: [(x, 100.0) for x in axis if x != gap]})
-    fetch = _Fetch({STOCK: [(x, 100.0) for x in axis[:-1]] + [(axis[-1], 103.0)]})
+    spy = _Spy(
+        master={ETF},
+        krx={ETF: [(x, 100.0) for x in axis if x != gap]},
+        stock={STOCK: [(x, 100.0) for x in axis]},
+    )
+    fetch = _Fetch({})
     out = build_holdings_selection(
         holdings_loader=lambda: [H(ETF, "ETF하나"), H(STOCK, "주식하나")],
         fetch_history=fetch,
@@ -376,42 +436,56 @@ def test_blocked_stock_dates_still_confirm_weekdays_in_uncovered_year(tmp_path):
         price_basis_source=spy.source(),
     )
     ev = out.diagnostics["holdings_price_basis"]["tickers"]
-    assert ev[STOCK]["reason"] == "price_basis_mismatch"  # FDR 103 vs Naver 전일 100
     assert out.diagnostics["holdings_trading_day_axis_len"] == 20
-    assert "20거래일 -12.0%" in out.message_text  # ETF — KRX 기준일 종가 있음
+    assert fetch.calls == []
     assert ev[ETF]["derived"] == {"base_close": "ok", "window": "missing:1"}
-    assert "20거래일 데이터 확인 불가" in out.message_text  # 개별주 — 혼합 확정
+    assert ev[STOCK]["derived"] == {"base_close": "ok", "window": "ok"}
+    assert "20거래일 데이터 확인 불가" not in out.message_text
+    assert out.message_text.count("20거래일 -12.0%") == 2  # ETF · 개별주 모두
 
 
 # ── 장중 보유 위험 경로 ────────────────────────────────────────────────────────
 
 
-def test_risk_drawdown_uses_krx_for_etf_and_fdr_for_stock(tmp_path):
-    spy = _Spy(master={ETF}, krx={ETF: _rows(special={PAST[-2]: 125.0})})
+def test_risk_drawdown_uses_krx_for_etf_and_krx_stock_table_for_stock(tmp_path):
+    spy = _Spy(
+        master={ETF},
+        krx={ETF: _rows(special={PAST[-2]: 125.0})},
+        stock={STOCK: _rows(special={PAST[-6]: 110.0})},
+    )
     fetch = _Fetch(
-        {ETF: _rows(special={PAST[-2]: 200.0}), STOCK: _rows(special={PAST[-6]: 110.0})}
+        {ETF: _rows(special={PAST[-2]: 200.0}), STOCK: _rows(special={PAST[-6]: 300.0})}
     )
     quotes = {ETF: Q(94.0, -6.0), STOCK: Q(94.0, -6.0)}
     out = _risk(tmp_path, spy=spy, fetch=fetch, quotes=quotes)
     by = {i.ticker: i for i in out.selected}
     assert by[ETF].drawdown_pct == -24.8  # 94 / 125(KRX) − 1 · FDR 200 이 아니다
-    # 개별주 — FDR 을 읽어 가드는 통과하지만 혼합 확정으로 고점 대비는 닫는다 · 급락은 그대로.
-    assert by[STOCK].drawdown_pct is None and by[STOCK].state == "D5_7"
-    assert fetch.calls == [STOCK]
+    assert by[STOCK].drawdown_pct == -14.5  # 94 / 110(KRX 공식) − 1 · FDR 300 이 아니다
+    assert by[STOCK].state == "D5_7"
+    assert fetch.calls == []
     ev = out.diagnostics["risk_price_basis"]["tickers"]
     assert ev[ETF]["price_source"] == "KRX_OPEN_API/etf_bydd_trd"
-    assert ev[STOCK]["guard"]["ok"] is True
-    assert ev[STOCK]["reason"] == "price_basis_mismatch"
+    assert ev[STOCK]["price_source"] == "KRX_OPEN_API/stk_bydd_trd"
+    assert ev[STOCK]["guard"]["ok"] is True and "reason" not in ev[STOCK]
 
 
-def test_risk_stock_mismatch_omits_drawdown_but_keeps_day_drop(tmp_path):
-    spy = _Spy(master=set(), krx={})
-    fetch = _Fetch({STOCK: _rows(special={T1: 103.0})})  # Naver 전일 100 과 3% 차이
-    out = _risk(tmp_path, spy=spy, fetch=fetch, quotes={STOCK: Q(94.0, -6.0)})
+def test_risk_stock_window_gap_omits_only_drawdown(tmp_path):
+    """개별주 KRX 구간에 하루가 빠지면 장중 고점 대비만 생략 — 급락 판정은 그대로(항목 4 규칙)."""
+    spy = _Spy(master=set(), krx={}, stock={STOCK: _rows(drop=[PAST[-4]])})
+    out = _risk(tmp_path, spy=spy, fetch=_Fetch({}), quotes={STOCK: Q(94.0, -6.0)})
     assert out.selected and out.selected[0].state == "D5_7"
     assert out.selected[0].drawdown_pct is None
     ev = out.diagnostics["risk_price_basis"]["tickers"][STOCK]
-    assert ev["reason"] == "price_basis_mismatch" and ev["guard"]["diff_pct"] == 3.0
+    assert ev["derived"] == {"base_close": "ok", "window": "missing:1"}
+
+
+def test_risk_stock_table_unreadable_omits_drawdown_but_keeps_day_drop(tmp_path):
+    spy = _Spy(master=set(), krx={}, stock=None)
+    out = _risk(tmp_path, spy=spy, fetch=_Fetch({}), quotes={STOCK: Q(94.0, -6.0)})
+    assert out.selected and out.selected[0].state == "D5_7"
+    assert out.selected[0].drawdown_pct is None
+    ev = out.diagnostics["risk_price_basis"]["tickers"][STOCK]
+    assert ev["reason"] == "krx_stock_unreadable"
 
 
 # ── evidence · 러너 기록 ───────────────────────────────────────────────────────
@@ -419,7 +493,7 @@ def test_risk_stock_mismatch_omits_drawdown_but_keeps_day_drop(tmp_path):
 
 def test_evidence_fields_reach_assembly_diagnostics_as_json(tmp_path):
     """러너는 `record.update(_asm.diagnostics)` 로 실행 기록에 싣는다 — JSON 직렬화 가능."""
-    spy = _Spy(master={ETF}, krx={ETF: _rows()})
+    spy = _Spy(master={ETF}, krx={ETF: _rows()}, stock={STOCK: _rows()})
     quotes = {ETF: Q(88.0, -1.0), STOCK: Q(88.0, -12.0)}
     asm = assemble_holdings_push(
         market_quotes=quotes,
@@ -435,8 +509,9 @@ def test_evidence_fields_reach_assembly_diagnostics_as_json(tmp_path):
     )
     assert asm.fail is None, asm.fail
     ev = json.loads(json.dumps(asm.diagnostics["holdings_price_basis"]))
-    assert ev["contract"] == "ETF_KRX_UNADJUSTED__STOCK_FDR"
+    assert ev["contract"] == "ETF_KRX_UNADJUSTED__STOCK_KRX_UNADJUSTED"
     assert ev["etf_master"] == "krx_etf_basic_fixture.csv" and ev["krx_table"] == "ok"
+    assert ev["krx_stock_table"] == "ok"
     assert ev["tickers"][ETF] == {
         "asset_type": "ETF",
         "class_source": "etf_master_csv",
@@ -444,7 +519,8 @@ def test_evidence_fields_reach_assembly_diagnostics_as_json(tmp_path):
         "price_basis": "unadjusted",
         "derived": {"base_close": "ok", "window": "ok"},
     }
-    assert ev["tickers"][STOCK]["price_basis"] == "fdr_naver"
+    assert ev["tickers"][STOCK]["price_basis"] == "unadjusted"
+    assert ev["tickers"][STOCK]["price_source"] == "KRX_OPEN_API/stk_bydd_trd"
 
 
 def test_runner_record_and_history_carry_price_basis(monkeypatch, tmp_path):

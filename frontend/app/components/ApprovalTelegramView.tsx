@@ -22,12 +22,18 @@
 //   내부 approval route key·MainPanel 분기는 불변. run/setRun 은 더 이상 이 화면에서
 //   사용하지 않는다(미리보기가 진단·상태로 이동).
 
+import { useCallback, useState } from "react";
+
 import OciAlertHeader from "./approval/OciAlertHeader";
 import OciStatusPanel from "./OciStatusView";
 import ThreePushParamCard from "./ThreePushParamCard";
 import IntradayConfigCard from "./IntradayConfigCard";
 
 export default function ApprovalTelegramView() {
+  // POC3-02D-OPS-04 항목 6 — ② 운영 기준 전달이 끝나면 ① 을 다시 읽어 '운영 기준 활성'
+  // 행이 바로 바뀌게 한다(OCI 는 다시 읽지 않는다).
+  const [ociReload, setOciReload] = useState(0);
+  const onDelivered = useCallback(() => setOciReload((k) => k + 1), []);
   return (
     <section aria-labelledby="approval-h">
       {/* 화면 역할 안내 (① 읽기 · ② OCI 적용) */}
@@ -38,7 +44,7 @@ export default function ApprovalTelegramView() {
         <h2 id="ops-now-h" className="ops-section-h">
           ① 지금 OCI 상태 (읽기만)
         </h2>
-        <OciStatusPanel />
+        <OciStatusPanel reloadKey={ociReload} />
       </section>
 
       {/* ② 버튼으로 반영 — 운영 기준 → 장중 급등락 설정 순서(설계자 배치 판단 (a)).
@@ -47,7 +53,7 @@ export default function ApprovalTelegramView() {
         <h2 id="ops-apply-h" className="ops-section-h">
           ② OCI 에 적용 (버튼으로 반영)
         </h2>
-        <ThreePushParamCard />
+        <ThreePushParamCard onDelivered={onDelivered} />
         <IntradayConfigCard />
       </section>
     </section>

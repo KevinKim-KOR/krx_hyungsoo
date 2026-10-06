@@ -78,28 +78,6 @@ def average_buy_prices(rows: list[dict[str, Any]]) -> dict[str, float]:
     return {t: amt / qty for t, (amt, qty) in agg.items() if qty > 0}
 
 
-def load_price_history(
-    tickers: list[str],
-    *,
-    fetch_history: Callable[..., list[tuple[str, float]]],
-    db_path: Optional[Path] = None,
-) -> dict[str, list[tuple[str, float]]]:
-    """ticker → (date, close) ASC. 분모(20거래일 전 종가)만 쓴다.
-
-    행이 부족한 ticker 도 그대로 넘긴다 — 선정기가
-    `DATA_UNAVAILABLE_OR_STALE` 로 판정한다(조용히 빼지 않는다).
-    """
-    out: dict[str, list[tuple[str, float]]] = {}
-    for ticker in tickers:
-        rows = (
-            fetch_history(ticker, db_path=db_path)
-            if db_path is not None
-            else fetch_history(ticker)
-        )
-        out[ticker] = rows or []
-    return out
-
-
 def trading_day_axis(
     today_kst: Optional[str],
     *,

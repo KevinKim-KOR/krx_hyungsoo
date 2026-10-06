@@ -104,6 +104,24 @@ def _default_kospi_fetcher(bas_dd: str, key: str) -> list[dict[str, Any]]:
     return r.json().get("OutBlock_1") or []
 
 
+# POC3-02D-OPS-04 항목 1 — 보유 코스피 개별주 공식 종가(사용자 승인 2026-10-04 · 같은 키).
+# 같은 모듈 · 같은 테스트 가드. 소비처(`krx_stock_sync`)는 호출 때 이 모듈 속성으로 부른다.
+KRX_STOCK_DAILY_URL = "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd"
+
+
+def _default_stock_fetcher(bas_dd: str, key: str) -> list[dict[str, Any]]:
+    import httpx
+
+    r = httpx.get(
+        KRX_STOCK_DAILY_URL,
+        params={"basDd": bas_dd},
+        headers={"AUTH_KEY": key},
+        timeout=REQUEST_TIMEOUT,
+    )
+    r.raise_for_status()
+    return r.json().get("OutBlock_1") or []
+
+
 def has_traded_prices(rows: list[dict[str, Any]]) -> bool:
     """이 응답이 **실제로 거래가 있었던 날** 인가.
 
@@ -488,6 +506,7 @@ __all__ = [
     "INITIAL_LOOKBACK_DAYS",
     "KRX_ETF_DAILY_URL",
     "KRX_KOSPI_DAILY_URL",
+    "KRX_STOCK_DAILY_URL",
     "STATUS_INVALID_SNAPSHOT",
     "STATUS_NO_API_KEY",
     "STATUS_NO_BASIS_DATE",

@@ -13,7 +13,8 @@
 검토」만 자기 관문(`sector_signal`)으로 생략된다.
 
 시도마다 시각 · 목표일 · HTTP · 행 수 · 가격 채움 · 결과 · 예외 종류를 남긴다(키 ·
-가격 값은 남기지 않는다).
+가격 값은 남기지 않는다). 조회 예외(`fetch_error`)에는 일시 오류 여부(`transient`)를
+더한다(POC3-02D-OPS-04 — `is_transient_fetch_error`).
 """
 
 from __future__ import annotations
@@ -132,6 +133,33 @@ def _http_status(e: BaseException) -> Optional[int]:
     return code if isinstance(code, int) else None
 
 
+def http_status(e: BaseException) -> Optional[int]:
+    """조회 예외의 HTTP 상태 코드(없으면 None). 개별주 시도(`krx_stock_sync`)도 같은 규칙을 쓴다."""
+    return _http_status(e)
+
+
+def is_transient_fetch_error(e: BaseException) -> bool:
+    """조회 예외가 **일시 오류**인가(POC3-02D-OPS-04 Q6 b) — 09:20 보강 1회 대상.
+
+    일시 오류 = HTTP 5xx · 429 · timeout(`httpx.TimeoutException`) · 연결 오류
+    (`httpx.NetworkError` — 연결 실패 · 송수신 끊김) · `httpx.RemoteProtocolError`(서버 쪽
+    프로토콜 오류 — 연결 끊김 · 잘못된 응답 모두 · 설계자 2026-10-06: 읽기 전용 GET 이고
+    09:20 1회뿐이라 오류 문자열로 나누지 않는다). 그 밖(3xx · 다른 4xx · JSON 이 아닌 응답 ·
+    그 밖 예외)은 같은 날 다시 부르지 않는다. httpx 는 TLS · DNS 실패도 연결 오류
+    (`ConnectError`)로 낸다.
+    """
+    code = _http_status(e)
+    if code is not None:
+        return code == 429 or 500 <= code <= 599
+    try:
+        import httpx
+    except ImportError:  # pragma: no cover - 운영 · 개발 모두 설치돼 있다
+        return False
+    return isinstance(
+        e, (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError)
+    )
+
+
 def attempt_once(
     bas_dd: str,
     *,
@@ -155,6 +183,7 @@ def attempt_once(
     except Exception as e:  # noqa: BLE001 - 시도 실패로 기록하고 다음 시도로
         entry.update(result=R_FETCH_ERROR, error_type=type(e).__name__)
         entry["http"] = _http_status(e)
+        entry["transient"] = is_transient_fetch_error(e)
         return entry, None
     # 기본 fetcher 는 `raise_for_status` 를 통과해야 돌아온다(2xx).
     entry["http"] = 200
@@ -287,7 +316,9 @@ __all__ = [
     "attempt_once",
     "check_response",
     "evaluate_representatives",
+    "http_status",
     "iso_date",
+    "is_transient_fetch_error",
     "load_required_representatives",
     "relation_violation",
 ]

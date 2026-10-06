@@ -11,7 +11,7 @@
 // - 투자 판단 초안·승인 대기·빈 자리표시자를 만들지 않는다.
 // - 내부 route key 'approval' 이 화면 텍스트로 노출되지 않는다.
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, act, within } from "@testing-library/react";
+import { render, screen, act, within, fireEvent, waitFor } from "@testing-library/react";
 
 const fetchThreePushParamState = vi.fn().mockResolvedValue(null);
 const applyThreePushParamToOci = vi.fn();
@@ -133,7 +133,27 @@ describe("OCI 운영·적용 — ① 읽기 · ② 적용 합친 화면 (2026-09
     expect(
       param.compareDocumentPosition(intraday) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(within(apply).getByRole("button", { name: "현재 기준 OCI 적용" })).toBeTruthy();
+    // POC3-02D-OPS-04 항목 6 — 운영 기준 카드 버튼은 '전달'(② 제목 · 화면 안내는 그대로).
+    expect(within(apply).getByRole("button", { name: "현재 기준 OCI 전달" })).toBeTruthy();
+  });
+
+  it("② 운영 기준 전달이 끝나면 ① 을 다시 읽는다(POC3-02D-OPS-04 항목 6)", async () => {
+    applyThreePushParamToOci.mockResolvedValue({
+      status: "applied",
+      display_label: "기본 운영 기준",
+      applied_at: "2026-10-06 10:30",
+      oci_verified: true,
+      message: "OCI 에 전달되었습니다.",
+      content_sha256: null,
+    });
+    await renderView();
+    const before = fetchOciStartupStatus.mock.calls.length;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "현재 기준 OCI 전달" }));
+    });
+    await waitFor(() =>
+      expect(fetchOciStartupStatus.mock.calls.length).toBe(before + 1),
+    );
   });
 
   it("안내: 정보 PUSH 는 승인 대상 아님 · 발송 여부는 Telegram · 진단·상태 안내 없음", async () => {

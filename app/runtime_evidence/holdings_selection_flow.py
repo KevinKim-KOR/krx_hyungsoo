@@ -132,8 +132,9 @@ def build_holdings_selection(
     `trading_day_axis`). 저장 가격 축을 쓰면 배치 실패일에 21거래일 전이 된다.
 
     과거 종가는 자산 유형별 한 계열이다(설계자 RESULT STEP 1 · `holdings_price_basis`):
-    ETF = KRX 무조정 · 개별주 = `fetch_history`(FDR) · 파생값은 혼합 확정으로 늘 닫힘. `price_basis_source`
-    가 없으면 운영 원천(공식 ETF 마스터 CSV · KRX 무조정 표)을 쓴다.
+    ETF = KRX 무조정 · 개별주 = KRX 공식 종가(POC3-02D-OPS-04 항목 1 · `fetch_history` 는 더 읽지
+    않는다). `price_basis_source` 가 없으면 운영 원천(공식 ETF 마스터 CSV · KRX 무조정 ETF 표 ·
+    KRX 개별주 표)을 쓴다.
     """
     out = HoldingsSelectionOutcome()
     # 조립 전 구간 전체를 감싼다. 가격 이력 조회 예외가 밖으로 새면 러너의

@@ -283,8 +283,8 @@ def select_risk_holdings(
             day_drop_pct=day_drop,
         )
         # 보조 2종 — 표시 전용. 구간 종가는 자산 유형별 한 계열이다(ETF = KRX
-        # 무조정 · 개별주 = FDR · 설계자 RESULT STEP 1). 닫힌 종목은 이력이 비어
-        # `고점 대비` 만 생략된다.
+        # 무조정 · 개별주 = KRX 공식 종가 · 설계자 RESULT STEP 1 · POC3-02D-OPS-04).
+        # 닫힌 종목은 이력이 비어 `고점 대비` 만 생략된다.
         item.drawdown_pct = _drawdown_pct(history, aux_window, current)
         item.profit_loss_pct = _ratio_pct(current, buy_prices.get(ticker))
         selected.append(item)

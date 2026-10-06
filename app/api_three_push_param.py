@@ -1,6 +1,6 @@
 """POC2 3-PUSH PARAM 적용 UI 연결 API (2026-06-20).
 
-지시문 §5 / §6 — 사용자가 CLI 없이 UI 한 번으로 현재 운영 기준을 OCI 에 적용.
+지시문 §5 / §6 — 사용자가 CLI 없이 UI 한 번으로 현재 운영 기준을 OCI 에 전달(POC3-02D-OPS-04 부터 '전달' — 활성화는 OCI 에서).
 
 제공 endpoint:
   GET  /three-push/param/state   — 현재 운영 기준 카드 표시용 read-only state
@@ -147,6 +147,36 @@ def _read_sync_status() -> tuple[str, dict[str, Any]]:
     return SYNC_STATE_OK, data
 
 
+def latest_param_path() -> Path:
+    """PC 운영 기준 JSON 경로(호출 때 모듈 속성 — 테스트 격리를 따른다).
+
+    POC3-02D-OPS-04 항목 6 — 「OCI 운영·적용」 ① '운영 기준 활성' 행이 OCI 활성값과 비교한다.
+    """
+    return _LATEST_PATH
+
+
+def last_sync_succeeded() -> Optional[bool]:
+    """**지금 PC 운영 기준이** OCI 에 전달(scp + 검증)됐는가. 기록이나 PC 기준을 못 읽으면 None.
+
+    마지막 전달 기록이 성공이어도 그 기록의 PARAM 이 지금 PC 운영 기준과 다르면(전달 뒤 PC 에서
+    다시 만들었고 아직 전달하지 않음 · 전달이 기록 전에 멈춤) 성공으로 보지 않는다. 식별자는
+    내부 비교에만 쓰고 응답 · 화면에 싣지 않는다.
+    """
+    state, record = _read_sync_status()
+    if state != SYNC_STATE_OK:
+        return None
+    try:
+        current = json.loads(_LATEST_PATH.read_text(encoding="utf-8")).get("param_id")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return (
+        record.get("status") == "success"
+        and record.get("verify_status") == "success"
+        and bool(current)
+        and record.get("param_id") == current
+    )
+
+
 def _status_to_user_response(sync_record: dict[str, Any]) -> dict[str, Any]:
     """sync_status 레코드를 사용자용 응답으로 변환. raw 식별자/경로 마스킹."""
     raw_status = sync_record.get("status")
@@ -155,7 +185,7 @@ def _status_to_user_response(sync_record: dict[str, Any]) -> dict[str, Any]:
             "status": "applied",
             "applied_at": _format_applied_at(sync_record.get("completed_at")),
             "oci_verified": (sync_record.get("verify_status") == "success"),
-            "message": "OCI 반영이 완료되었습니다.",
+            "message": "OCI 에 전달되었습니다.",
         }
     if raw_status == "failed":
         return {
@@ -163,7 +193,7 @@ def _status_to_user_response(sync_record: dict[str, Any]) -> dict[str, Any]:
             "applied_at": _format_applied_at(sync_record.get("completed_at")),
             "oci_verified": False,
             "message": (
-                "OCI 반영에 실패했습니다. 기존 적용 기준은 유지됩니다. "
+                "OCI 전달에 실패했습니다. 기존 운영 기준은 유지됩니다. "
                 "운영 상세에서 마지막 확인 시각을 확인하세요."
             ),
         }
@@ -171,7 +201,7 @@ def _status_to_user_response(sync_record: dict[str, Any]) -> dict[str, Any]:
         "status": "not_applied",
         "applied_at": None,
         "oci_verified": False,
-        "message": "아직 OCI 에 적용되지 않았습니다.",
+        "message": "아직 OCI 에 전달되지 않았습니다.",
     }
 
 
@@ -198,7 +228,7 @@ def get_param_state() -> ParamStateResponse:
             display_label=display_label,
             applied_at=None,
             oci_verified=False,
-            message="아직 OCI 에 적용되지 않았습니다.",
+            message="아직 OCI 에 전달되지 않았습니다.",
         )
     if sync_state == SYNC_STATE_CORRUPTED:
         # 손상은 부재와 구분 — 사용자에게 확인 필요 상태 표시.
@@ -208,7 +238,7 @@ def get_param_state() -> ParamStateResponse:
             applied_at=None,
             oci_verified=False,
             message=(
-                "운영 상태 파일을 읽지 못했습니다. 한 번 더 적용 후 결과를 "
+                "운영 상태 파일을 읽지 못했습니다. 한 번 더 전달 후 결과를 "
                 "확인해 주세요."
             ),
         )
@@ -329,7 +359,7 @@ def apply_param_to_oci() -> ParamApplyResponse:
             applied_at=None,
             oci_verified=False,
             message=(
-                "운영 기준 생성에 실패했습니다. 기존 적용 기준은 유지됩니다. "
+                "운영 기준 생성에 실패했습니다. 기존 운영 기준은 유지됩니다. "
                 "운영 상세에서 마지막 확인 시각을 확인하세요."
             ),
             content_sha256=_latest_param_sha256(),
@@ -345,7 +375,7 @@ def apply_param_to_oci() -> ParamApplyResponse:
         summary["status"] = "failed"
         summary["oci_verified"] = False
         summary["message"] = (
-            "OCI 반영에 실패했습니다. 기존 적용 기준은 유지됩니다. "
+            "OCI 전달에 실패했습니다. 기존 운영 기준은 유지됩니다. "
             "운영 상세에서 마지막 확인 시각을 확인하세요."
         )
 

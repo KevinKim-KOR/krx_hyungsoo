@@ -33,9 +33,17 @@ JSON 을 '판정 못 함' 으로 덮지 않는다.
 
 **빠진 거래일 채우기**(`krx_backfill` · PLAN STEP 3-3 · 설계자 RESULT STEP 6) — 매 실행
 창(21거래일) 안 빠진 날을 채우되 **같은 날짜는 KST 하루 1회**(모든 실행 합산 ·
-ledger). 목표일 조회가 원천에 닿은(`fetch_error` 아님) 첫 시도 뒤에 채운다 — 원천
-불통 중에는 부르지 않는다. 첫 채우기가 원천 오류 · 마감으로 멈췄으면 T-1 성공 뒤 한
-번 더(`backfill_retry` · 오늘 아직 안 부른 날만). 이미 받은 날(09:20)도 채운다.
+ledger). 단 첫 호출이 일시 오류(HTTP 5xx · 429 · timeout · 연결 오류 · RemoteProtocolError)였던 날짜는 09:20
+보강(`backfill_reinforcement=True` · 09:20 회차 창에 시작한 `run_krx_only` 만)이 한 번 더 부른다(POC3-02D-OPS-04
+Q6 b · 날짜별 하루 최대 2회). 목표일 조회가 원천에 닿은(`fetch_error` 아님) 첫 시도 뒤에
+채운다 — 원천 불통 중에는 부르지 않는다. 첫 채우기가 원천 오류 · 마감으로 멈췄으면 T-1
+성공 뒤 한 번 더(`backfill_retry` · 오늘 아직 안 부른 날만 · 보강 없음). 이미 받은
+날(09:20)도 채운다.
+
+**보유 코스피 개별주 공식 종가**(`krx_stock_sync.HoldingsStockTask` · POC3-02D-OPS-04 항목 1 ·
+PLAN §2-1 2) — 단계 시작 때 만드는 또 하나의 곁 작업이다(ETF 와 독립 · 같은 시각표 · 같은
+마감 08:27 · 같은 09:20 보강 표시). 넘겨받은 `side_task` 와 묶어(`_Sides` · 하나의 예외가
+다른 것을 막지 않는다) 같은 자리에서 돈다. 결과는 `out["holdings_stocks"]`.
 """
 
 from __future__ import annotations
@@ -48,7 +56,13 @@ from typing import Any, Callable, Optional, Sequence
 
 from app import trading_day_lag
 from app.intraday_config.representatives import COVERAGE_OK
-from app.market_briefing import krx_backfill, krx_store, krx_sync, meta_gate
+from app.market_briefing import (
+    krx_backfill,
+    krx_stock_sync,
+    krx_store,
+    krx_sync,
+    meta_gate,
+)
 from app.market_briefing import krx_target_checks as checks
 
 _KST = timezone(timedelta(hours=9))
@@ -165,24 +179,47 @@ def sync_krx_target(
     logger: Any = None,
     backfill_ledger_path: Optional[Path] = None,
     side_task: Any = None,
+    backfill_reinforcement: bool = False,
+    stock_fetcher: Optional[Callable[[str, str], list[dict[str, Any]]]] = None,
+    stock_ledger_path: Optional[Path] = None,
 ) -> dict[str, Any]:
-    """08:10 배치 · 09:20 보강의 KRX 단계. **예외를 올리지 않는다.**
+    """08:10 배치 · 09:20 보강의 KRX 단계.
 
     조회 · 검사 · 저장 오류는 시도 기록(`fetch_error` · `store_error` 등)으로 남긴다.
-    호출 인자 오류(`meta_dir` · `official_csv_path` 둘 다 · 둘 다 없음)만
-    `TypeError` 로 올린다(`krx_sync.sync_krx_daily` 와 같다). 배치는 그래도 한 번 더
-    감싼다(`_krx_stage`).
+    호출 인자 오류(`meta_dir` · `official_csv_path` 둘 다 · 둘 다 없음)는
+    `TypeError` 로 올린다(`krx_sync.sync_krx_daily` 와 같다). 그 밖 ETF 단계 예외는 곁
+    작업의 남은 시각을 마저 돈 뒤 다시 올린다 — 배치가 감싼다(`_krx_stage`).
 
     `required_tickers` — 대표 커버리지 판정용 대표 목록(없으면 활성 장중 설정).
     적재 성공 여부에는 쓰지 않는다(설계자 RESULT STEP 2).
     `backfill_ledger_path` — 채우기 하루 호출 기록. 없으면 KRX 표와 같은 폴더.
     `side_task` — 같은 시각표의 곁 작업(`run_due(now)` · `next_slot()`). 08:10 배치의
-    KOSPI 재시도만 넘긴다(설계자 RESULT STEP 3). 09:20 보강은 넘기지 않는다.
+    KOSPI 재시도만 넘긴다(설계자 RESULT STEP 3). 09:20 보강은 넘기지 않는다. 보유 개별주
+    곁 작업은 여기서 만들어 함께 돈다(POC3-02D-OPS-04 항목 1 · `out["holdings_stocks"]`).
+    `backfill_reinforcement` — 09:20 회차 창에 시작한 `run_krx_only` 만 True. 첫 호출이 일시 오류였던
+    창 안 날짜를 한 번 더 부른다(POC3-02D-OPS-04 Q6 b · `krx_backfill.fill_missing`).
+    `stock_fetcher` · `stock_ledger_path` — 보유 코스피 개별주 곁 작업(`krx_stock_sync`).
+    없으면 기본 경계 · 시장 DB 옆 ledger.
     """
     if (meta_dir is None) == (official_csv_path is None):
         raise TypeError("meta_dir 과 official_csv_path 중 하나만 넘긴다")
     now = clock or _now_kst
     pause = sleep or _sleep
+    start = _as_kst(now())
+    stocks, stocks_out = _stock_task(
+        start,
+        today=today,
+        max_attempts=max_attempts,
+        env_path=env_path,
+        db_path=db_path,
+        calendar_dir=calendar_dir,
+        fetch=stock_fetcher,
+        ledger_path=stock_ledger_path,
+        reinforcement=backfill_reinforcement,
+        clock=now,
+        logger=logger,
+    )
+    side = _Sides(side_task, stocks)
     kw = dict(
         today=today,
         consistency_path=consistency_path,
@@ -197,16 +234,74 @@ def sync_krx_target(
         max_attempts=max_attempts,
         logger=logger,
         backfill_ledger_path=backfill_ledger_path,
+        backfill_reinforcement=backfill_reinforcement,
     )
     try:
-        out = _sync_target(now=now, pause=pause, side=side_task, **kw)
+        out = _sync_target(start=start, now=now, pause=pause, side=side, **kw)
     except Exception:
-        # ETF 단계 예외(배치가 다시 감싼다)도 곁 작업의 남은 시각을 막지 않는다.
-        _drain_side(side_task, now, pause)
+        # ETF 단계 예외(배치가 다시 감싼다)도 곁 작업의 남은 시각을 막지 않는다. 개별주
+        # 기록은 배치 상태에 실리지 않으므로 로그에 남긴다.
+        _drain_side(side, now, pause)
+        if stocks is not None:
+            stocks.log_summary("ETF 단계 예외")
         raise
     # 판정 · 정합성 JSON 을 쓴 뒤에 곁 작업의 남은 시각을 돈다(ETF 를 늦추지 않는다).
-    _drain_side(side_task, now, pause)
+    _drain_side(side, now, pause)
+    out["holdings_stocks"] = stocks.summary() if stocks is not None else stocks_out
     return out
+
+
+def _stock_task(
+    start: datetime, *, today: date, max_attempts: Optional[int], env_path, **kw: Any
+) -> tuple[Optional[krx_stock_sync.HoldingsStockTask], Optional[dict[str, Any]]]:
+    """보유 코스피 개별주 곁 작업(ETF 와 같은 시각표 · 마감). 만들다 실패하면 기록만 남긴다."""
+    try:
+        target = trading_day_lag.expected_previous_trading_day(
+            today.isoformat(), calendar_dir=kw.get("calendar_dir")
+        )
+        mode, plan = attempt_plan(start, max_attempts=max_attempts)
+        deadline = _at(start.date(), STAGE_DEADLINE) if mode == MODE_SCHEDULED else None
+        task = krx_stock_sync.HoldingsStockTask(
+            today=today,
+            target_iso=target,
+            key=krx_sync.read_api_key(env_path),
+            mode=mode,
+            slots=plan,
+            deadline=deadline,
+            **kw,
+        )
+    except Exception as e:  # noqa: BLE001 - 개별주 준비 오류가 ETF 단계를 막지 않는다
+        return None, {"status": f"unexpected:{type(e).__name__}"}
+    return task, None
+
+
+class _Sides:
+    """곁 작업 여럿(KOSPI 재시도 · 보유 개별주)을 하나의 `side_task` 로. 넘겨받은 순서대로 돈다.
+
+    예외를 낸 곁 작업은 이번 실행에서 뺀다 — 다른 곁 작업의 시각을 막지 않는다.
+    """
+
+    def __init__(self, *tasks: Any) -> None:
+        self.tasks = [t for t in tasks if t is not None]
+
+    def run_due(self, now: datetime) -> None:
+        for t in list(self.tasks):
+            try:
+                t.run_due(now)
+            except Exception:  # noqa: BLE001 - 곁 작업끼리 격리
+                self.tasks.remove(t)
+
+    def next_slot(self) -> Optional[datetime]:
+        slots = []
+        for t in list(self.tasks):
+            try:
+                nxt = t.next_slot()
+            except Exception:  # noqa: BLE001 - 곁 작업끼리 격리
+                self.tasks.remove(t)
+                continue
+            if nxt is not None:
+                slots.append(_as_kst(nxt))
+        return min(slots, default=None)
 
 
 def _sync_target(
@@ -224,12 +319,13 @@ def _sync_target(
     max_attempts: Optional[int],
     logger: Any,
     backfill_ledger_path: Optional[Path],
+    backfill_reinforcement: bool,
+    start: datetime,
     now: Callable[[], datetime],
     pause: Callable[[float], None],
     side: Any,
 ) -> dict[str, Any]:
     """`sync_krx_target` 본체(목표일 시각표 · 판정). 곁 작업은 ETF 시도 사이에만 부른다."""
-    start = _as_kst(now())
     out: dict[str, Any] = {
         "status": None,
         "mode": None,
@@ -288,8 +384,9 @@ def _sync_target(
         if key:
             # PLAN STEP 3-3 — 창 안 빈 날은 매 실행 채운다(없으면 조회 0 · T-1 재조회 아님).
             # 설계자 RESULT STEP 6 — 오늘 이미 부른 날짜는 다시 부르지 않는다(ledger).
+            # 09:20 보강만 첫 호출이 일시 오류였던 날짜를 한 번 더 부른다(OPS-04 Q6 b).
             out["backfill"] = krx_backfill.fill_missing(
-                target, deadline=deadline, **fill
+                target, deadline=deadline, reinforcement=backfill_reinforcement, **fill
             )
         _record_representatives(out, target, logger=logger, **reps)
         return out
@@ -328,14 +425,17 @@ def _sync_target(
                 # 빠진 거래일 채우기 — 원천에 닿은 첫 시도 뒤 한 번(성공이면 판정 전에
                 # 창을 채운다). 목표일 조회가 원천 불통(`fetch_error`)이면 부르지 않고
                 # 다음 시도로 미룬다 — 불통 중에 부르면 ledger 가 그 날짜를 오늘 부른
-                # 것으로 남겨 원천이 돌아와도 오늘 다시 부르지 못한다(설계자 RESULT STEP 6).
+                # 것으로 남긴다(설계자 RESULT STEP 6 · 일시 오류면 09:20 보강 1회만 남는다).
                 out["backfill"] = krx_backfill.fill_missing(
-                    target, deadline=deadline, **fill
+                    target,
+                    deadline=deadline,
+                    reinforcement=backfill_reinforcement,
+                    **fill,
                 )
         elif rows is not None and out["backfill"].get("stopped"):
             # 원천 오류 · 마감으로 멈춰 못 부른 날이 남았으면 T-1 을 받은 뒤 한 번 더
             # (08:10 일시 장애로 창이 비지 않게). 이미 부른 날은 ledger 가 건너뛴다
-            # (설계자 RESULT STEP 6 — 같은 날짜 하루 1회).
+            # (설계자 RESULT STEP 6 — 같은 날짜 하루 1회 · 이 재채우기는 보강하지 않는다).
             out["backfill_retry"] = krx_backfill.fill_missing(
                 target, deadline=deadline, **fill
             )

@@ -154,6 +154,7 @@ app.include_router(three_push_param_router)
 app.include_router(decision_draft_preview_router)
 # POC3-07 (2026-08-05) — OCI 기동 시 상태 스냅샷 조회 (읽기 전용).
 # GET /oci/startup-status: 기동 시 1회 읽은 프로세스 로컬 캐시 반환(재조회 없음).
+# POC3-02D-OPS-04: '운영 기준 활성' 행만 요청 때 PC 운영 기준 JSON 과 비교해 붙인다(OCI 재조회 없음).
 # OCI runner·crontab 미수정. 요청·새로고침·타이머마다 SSH 재실행 안 함(설계자 Q2).
 app.include_router(oci_startup_status_router)
 # POC3-07 (2026-08-05) — Holdings OCI 명시적 적용 (전송 → 검증 → 원자 적용).
