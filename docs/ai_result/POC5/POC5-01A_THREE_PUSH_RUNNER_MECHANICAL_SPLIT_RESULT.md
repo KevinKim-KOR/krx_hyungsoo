@@ -3,7 +3,7 @@
 작성 2026-10-03 · 갱신 2026-10-04(독립 검토 반영 · 설계자 RESULT 판정 반영 · 검증자 재검증 VERIFIED 기록) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED — 커밋 · push 사용자 승인(2026-10-04) · OCI pull(사용자) · 첫 거래일 확인 대기(§11)
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED — 커밋 · push(사용자 승인 2026-10-04) · OCI pull · 읽기 확인(2026-10-04) · 첫 거래일 2026-10-06 확인 통과(§11)
 DESIGNER_RESULT        = PASS_TO_VERIFIER (2026-10-04 · 코드 재작업 없음 · 지시문 외 변경 4건 수용 · __context__ 차이 수용 · 원문 = 설계서 끝)
 STEP_ID                = POC5-01A 세 PUSH 러너 기계 분리
 DESIGN                 = docs/ai_design/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_DESIGN_V1.md
@@ -258,10 +258,12 @@ M  scripts/run_three_push_runtime_oci.py
 
 줄 수 합계는 이 결과서 자신이 들어가 바뀌므로 적지 않는다(`git show --stat` 로 실측). 바로 앞 커밋은 선행 문서 커밋 `a0a2c514` 이고, 두 커밋이 함께 push 된다.
 
-## 11. 배포 절차 (1 완료 · 2 부터 남음)
+## 11. 배포 절차 (1 ~ 4 완료)
 
 1. 설계자 RESULT 판정 `PASS_TO_VERIFIER` → 검증자 `VERIFIED` → 커밋 · push(사용자 승인 2026-10-04).
 2. OCI `git pull`(사용자 · 거래일 15:45 뒤 또는 휴장일). cron · `.env` 변경 없음.
 3. 읽기 전용 확인: OCI 러너 blob = 새 blob · 새 모듈 3개 존재 · fastapi 등 차단 import 정상.
-4. 첫 거래일(OCI 읽기 전용): 08:30 · 09:15 · 09:30~15:20 · 12:30 · 15:40 실행 기록 status · reason · 길이가 평소 모양 · `logs/` Traceback 0 · 발송 수 변화 0 → 그 뒤 `POC3-02D-OPS-04`.
+   → **완료(2026-10-04 · OCI pull 은 사용자 · 휴장 중)**: OCI 커밋 `87238e1e` · 러너 `9284291f…` · `runner_record` `a9f8572c…` · `runner_preflight` `0d50532b…` · `runner_dispatch` `8fd068cf…` 모두 저장소 HEAD blob 과 같음 · 러너 517줄 · OCI venv 에서 러너 · 새 모듈 import 정상 · cron 줄 그대로 · 마지막 실행 기록 10-02 15:40(그 뒤 휴장).
+4. 첫 거래일(OCI 읽기 전용): 08:30 · 09:15 · 09:30~15:20 · 12:30 · 15:40 실행 기록 status · reason · 길이가 평소 모양 · `logs/` Traceback 0 · 발송 수 변화 0 → 그 뒤 `POC3-02D-OPS-04`
+   → **통과(2026-10-06 · 16:4x 읽기 전용)**: 실행 11회(10-02 와 같음) — 08:30 시장 브리핑 sent(본문 261자) · 09:15 · 12:30 · 15:40 보유 브리핑 sent(175 · 175 · 215) · 장중 위험 09:30 · 10:30 · 11:30 · 12:30 sent · 13:30 · 14:30 · 15:20 `intraday_daily_cap_reached`(기존 일일 상한) · 실행 기록 키 수 10-02 와 같음(40 · 37 · 55 · 38) · 일일 상한 skip 기록 46키 = 10-01(41키) + OPS-03 기능 키 5개(`intraday_entry_omitted` · `intraday_entry_omitted_reason` · `intraday_representatives` · `intraday_trend_basis` · `risk_price_basis` · 10-01 15:20 은 OPS-03 OCI 반영 16:32 전) · `logs/low_freq_push_cron.log` · `oci_market_data_batch.log` Traceback 0 · 08:10 배치 `success` · KRX `already_loaded`(10-02) · 대표 27/27 · 09:20 보강 정상 · OCI HEAD `87238e1e`..
 5. 롤백 = 커밋 revert + OCI pull(분리 전용 스키마 · 데이터 변경이 없어 되돌릴 데이터가 없다).
