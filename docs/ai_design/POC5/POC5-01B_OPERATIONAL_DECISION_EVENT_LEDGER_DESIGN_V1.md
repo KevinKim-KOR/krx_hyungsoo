@@ -218,3 +218,37 @@ OCI_DEPLOYMENT    = OPS-04 종료 뒤
 271줄은 이번에는 허용합니다. 대부분 실제 코드 조사와 검증표이며, 불필요한 것은 과거 인계 문서 수정과 줄 수 맞추기 정도였습니다.
 
 개발자에게는 이 답변을 그대로 전달하면 됩니다. **OPS-04 확인을 기다리지 말고 로컬 구현·검증까지 진행할 수 있습니다.** 다만 OCI 환경 플래그 추가와 배포는 OPS-04 종료 후 사용자 승인으로 진행합니다.
+
+
+## 설계자 RESULT 판정 — 2026-10-07 (사용자 전달 원문 · 검증자 r3 VERIFIED · 커밋 `9cbbd419` push 뒤)
+
+> 맞습니다. 직전에는 판정 요청문만 있었고, 이번에는 결과서가 정상 첨부됐습니다. 270줄 전체를 확인했습니다.
+
+```text
+RESULT_DECISION       = PASS_TO_DEPLOY
+CODE_REMEDIATION      = NONE
+VERIFIER              = VERIFIED r3
+TRACEBACK_DIFFERENCE  = ACCEPTED
+EXTRA_CHANGES         = ACCEPTED 11/11
+OPS-04                = CLOSED
+OCI_PULL              = AUTHORIZED_AFTER_15:45
+```
+
+> 판정 내용은 다음과 같습니다.
+>
+> 1. traceback frame 추가는 수용합니다. 최외곽 원장 경계를 넣으면서 생긴 비기능적 차이이며 예외 종류·메시지·exit code·기존 DB·JSONL은 같습니다. 설계서 AC 1은 이 차이를 명시한 상태로 충족한 것으로 봅니다.
+>
+> 2. 지시문 외 변경 11건은 모두 수용합니다. `evaluable`, `ledger_market` 분리, `surge_error` 등은 새로운 기능 확장이 아니라 잘못된 전이 기록을 막거나 기존 계산값을 안전하게 운반하기 위한 변경입니다.
+>
+> 3. 기존 `mark_absent_entries`의 급등 회복 오기록은 01B 배포를 막지 않습니다. PUSH 억제 동작을 바꾸므로 이번에 고치지 않은 판단이 맞습니다. 첫 운영일 인계 문서에 BACKLOG 한 줄만 남기고, 실제 `surge_error`가 발생했을 때 재검토합니다.
+>
+> 4. OPS-04는 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`로 최종 종료합니다. 10월 7일 `09:15 skipped/no_selection`은 결함이 아니라 잘못된 상시 발송이 사라진 정상 결과입니다. 재개방하지 않습니다.
+>
+> 5. POC5-01B OCI 배포를 승인합니다. 오늘은 **15:45 이후**에만 다음 두 작업을 진행합니다.
+>
+>    - OCI `git pull`
+>    - OCI `.env`에 `DECISION_LEDGER_ENABLED=true` 추가
+>
+> 원장에는 분할 전 본문, 현재가, 매입 대비 비율이 0600 권한으로 저장됩니다. 매입가를 근사할 수 있지만 1인 운영의 OCI 로컬 파일이고 외부 노출이 없으므로 저는 수용을 권고합니다.
+>
+> 개발자에게는 이 답변을 그대로 전달하면 됩니다. 첫 거래일에는 09:35 이후 세 PUSH 종류가 한 번씩 실행된 뒤 읽기 전용 확인하면 충분합니다. 그 확인을 기다리는 동안 **POC5-02 설계와 PLAN은 바로 진행해도 됩니다.**

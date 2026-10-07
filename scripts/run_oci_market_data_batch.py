@@ -565,14 +565,30 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _price_outcome_maturity() -> None:
+    """POC5-02 — 기록 · 출력이 끝난 뒤 원장 가격 결과 성숙(격리 · status · exit code 불변)."""
+    log = setup_logging(
+        "oci_market_data_batch", log_filename="oci_market_data_batch.log"
+    )
+    try:
+        from app.three_push_runtime.ledger_outcome import run_maturity
+
+        log.info("price outcome maturity: %s", run_maturity())
+    except Exception as e:  # noqa: BLE001 - 성숙 실패는 배치 결과를 바꾸지 않는다
+        log.warning("price outcome maturity 실패: err=%s", type(e).__name__)
+
+
 def main() -> None:
     args = _parse_args()
     if args.krx_only:
         result = run_krx_only()
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        _price_outcome_maturity()
         sys.exit(0 if result.get("status") == "ok" else 1)
     result = run(mode="dry-run" if args.dry_run else "run")
     print(json.dumps(result, ensure_ascii=False, indent=2))
+    if not args.dry_run:
+        _price_outcome_maturity()
     sys.exit(0 if result.get("status") in ("success", "dry_run_success") else 1)
 
 

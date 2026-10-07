@@ -372,6 +372,10 @@ def _isolated_decision_ledger(tmp_path, monkeypatch):
         _ls, "DEFAULT_DB_PATH", Path(tmp_path) / "decision" / "decision_evidence.sqlite"
     )
     monkeypatch.setattr(_lc, "CALENDAR_DIR", Path(tmp_path) / "ledger_market_meta")
+    # POC5-02 — 배치 성숙은 플래그를 `.env` 에서 직접 읽는다 → 라이브 `.env` 대신 tmp(없음).
+    from app.three_push_runtime import ledger_outcome as _lo
+
+    monkeypatch.setattr(_lo, "ENV_PATH", Path(tmp_path) / "no_such.env")
     _ls.reset_init_cache_for_testing()
     yield
     _ls.reset_init_cache_for_testing()

@@ -42,6 +42,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="POC5-01B 원장 읽기 전용 대조")
     parser.add_argument("--ledger", default=str(ledger_store.DEFAULT_DB_PATH))
     parser.add_argument("--runtime", default=str(runtime_state_db.DEFAULT_DB_PATH))
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        help="(POC5-02) 원장 cohort 별 run 수 · run_id 연결 수 · 원장 이전 runtime send 수",
+    )
     args = parser.parse_args(argv)
     try:
         ledger, runtime = Path(args.ledger), Path(args.runtime)
@@ -49,6 +54,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if not p.exists():
                 raise FileNotFoundError(p.name)
         out = ledger_store.reconcile(ledger, runtime, kinds=CONTRACT_VERSIONS)
+        legacy = (
+            ledger_store.legacy_summary(ledger, runtime, kinds=CONTRACT_VERSIONS)
+            if args.legacy
+            else None
+        )
     except Exception as e:  # noqa: BLE001 - 예외 종류만 출력한다
         print(f"status=FAILED error_class={type(e).__name__}")
         return 3
@@ -57,6 +67,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for k in _ORDER[1:]:
         if out[k]["ids"]:
             print(f"{k}_ids={','.join(str(i) for i in out[k]['ids'])}")
+    if legacy is not None:
+        for r in legacy["ledger_runs"]:
+            print(
+                f"legacy cohort={r['cohort']} kind={r['push_kind']} runs={r['runs']}"
+                f" run_id_linked={r['run_id_linked']}"
+            )
+        for kind, n in legacy["runtime_send_before_ledger"].items():
+            print(f"legacy runtime_send_before_ledger kind={kind} runs={n}")
     return 0
 
 

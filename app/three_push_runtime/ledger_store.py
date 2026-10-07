@@ -473,6 +473,57 @@ def reconcile(
     }
 
 
+def legacy_summary(
+    ledger_path: Path, runtime_path: Path, *, kinds: Iterable[str]
+) -> dict[str, Any]:
+    """POC5-02 Q-D — 실행 연결 · 건수 진단만(읽기 전용 · 가격 결과 0).
+
+    원장 cohort · kind 별 run 수와 runtime `run_id` 연결 수, 원장 이전(첫 활성 시각 전)
+    runtime send 실행 수(kind 별)를 돌려준다.
+    """
+    kinds = tuple(kinds)
+    marks = ", ".join("?" for _ in kinds)
+    led = _ro(ledger_path)
+    try:
+        floor_row = led.execute(
+            "SELECT value FROM ledger_meta WHERE key = 'first_active_at'"
+        ).fetchone()
+        runs = led.execute(
+            "SELECT cohort, push_kind, COUNT(*), SUM(run_id IS NOT NULL)"
+            f" FROM evaluation_run WHERE push_kind IN ({marks})"
+            " GROUP BY cohort, push_kind ORDER BY cohort, push_kind",
+            kinds,
+        ).fetchall()
+    finally:
+        led.close()
+    floor = floor_row[0] if floor_row else None
+    before: list[tuple] = []
+    if floor is not None:
+        rt = _ro(runtime_path)
+        try:
+            before = rt.execute(
+                "SELECT push_kind, COUNT(*) FROM runtime_execution_status"
+                f" WHERE mode = 'send' AND push_kind IN ({marks}) AND started_at < ?"
+                " GROUP BY push_kind ORDER BY push_kind",
+                (*kinds, floor),
+            ).fetchall()
+        finally:
+            rt.close()
+    return {
+        "floor": floor,
+        "ledger_runs": [
+            {
+                "cohort": r[0],
+                "push_kind": r[1],
+                "runs": r[2],
+                "run_id_linked": r[3] or 0,
+            }
+            for r in runs
+        ],
+        "runtime_send_before_ledger": {r[0]: r[1] for r in before},
+    }
+
+
 __all__ = [
     "DEFAULT_DB_PATH",
     "DIR_MODE",
@@ -485,6 +536,7 @@ __all__ = [
     "ever_active",
     "finalize",
     "insert_started",
+    "legacy_summary",
     "meta_get",
     "meta_put_once",
     "previous_item",

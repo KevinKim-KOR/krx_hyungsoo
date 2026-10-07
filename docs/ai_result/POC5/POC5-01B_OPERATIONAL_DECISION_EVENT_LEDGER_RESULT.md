@@ -3,9 +3,10 @@
 작성 2026-10-07 · 갱신 2026-10-07(검증자 r1 REJECTED 정정) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED — 검증자 r3 VERIFIED(2026-10-07 · 위험 NONE · 범위 폭주 NONE) · 커밋 · push(사용자 승인 2026-10-07) · 설계자 RESULT 판정 대기 · OCI 배포는 설계자 RESULT 판정 뒤
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED — 검증자 r3 VERIFIED(2026-10-07 · 위험 NONE · 범위 폭주 NONE) · 커밋 · push(사용자 승인 2026-10-07) · 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-07) · OCI pull 2026-10-07 15:56:59 + 플래그(사용자) · 개발자 읽기 전용 확인 완료 · 종료 = 첫 거래일 2026-10-08 운영 확인 뒤(§10-5)
                          사용자 승인(배포 게이트 = OPS-04 첫 거래일 확인 · 종료 · 설계서 §10)
 STEP_ID                = POC5-01B 운영 의사결정 이벤트 원장
+DESIGNER_RESULT        = PASS_TO_DEPLOY(2026-10-07 · 코드 수정 없음 · traceback 차이 수용 · 지시문 외 변경 11/11 수용 · OPS-04 CLOSED · OCI pull 15:45 이후 승인) — 원문 = 설계서 끝
 VERIFIER               = r1 REJECTED(2026-10-07 · A-1 · A-2 · A-3 · 위험 MEDIUM · 범위 폭주 NONE) → 처리 §6-0 → r2 REJECTED(2026-10-07 · r1 지적 모두 해결 · A-2 · A-3 = §8-5 원장 모듈 최대 줄 수 516 → 실측 514 · 코드 재작업 없음 · 위험 NONE) → §8-5 정정 → **r3 VERIFIED**(2026-10-07 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 위험 NONE · 범위 폭주 NONE)
 DESIGN                 = docs/ai_design/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_DESIGN_V1.md (설계자 2026-10-06 새 판 · 끝에 PLAN 판정 원문)
 PLAN                   = docs/ai_plan/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_PLAN_V1.md (설계자 PASS_WITH_MANDATORY_AMENDMENTS 2026-10-06 · 필수 보정 5)
@@ -136,7 +137,7 @@ record 에는 키를 더하지 않는다(DB · JSONL · stdout 불변). 항목 �
    - 첫 활성 실행과 git 이 실패한 실행은 발송 전에 `git rev-parse`(timeout 5초)를 한 번 더 부른다.
    - 검토 반박 검증에서 결함 아님(결과 · 순서 · 본문 동일)으로 판정했다. 지금 원장을 쓰는 프로세스는 러너뿐이고 12:30 에만 두 실행이 겹친다.
 3. **실제 전달 chunk 수는 모른다** — `telegram_send` 가 돌려주지 않는다(Q-E). `planned_chunk_count` 는 같은 본문의 계획 chunk 수다.
-4. **기존 장중 관측 저장은 급등 선정 예외 회차를 회복으로 기록한다(원장과 다름 · 기존 동작)** — 원장은 r1 정정으로 그 회차의 '상태 없음' 행을 평가 불가로 둔다(§6-0). 그러나 기존 `sector_signal_state.mark_absent_entries` 는 급등 관측이 빈 회차에 보유 급등 entry 를 `SIGNAL_ABSENT`(회복)로 기록한다(관측에 없고 `unevaluable` 에도 없음 · `intraday_alert_flow.py` 의 `_unevaluable_tickers` 는 급등 예외를 넣지 않는다). PUSH 억제 동작을 바꾸는 일이라 01B 범위가 아니어서 고치지 않았다 — 다음 설계자 차례에 전달한다.
+4. **기존 장중 관측 저장은 급등 선정 예외 회차를 회복으로 기록한다(원장과 다름 · 기존 동작)** — 원장은 r1 정정으로 그 회차의 '상태 없음' 행을 평가 불가로 둔다(§6-0). 그러나 기존 `sector_signal_state.mark_absent_entries` 는 급등 관측이 빈 회차에 보유 급등 entry 를 `SIGNAL_ABSENT`(회복)로 기록한다(관측에 없고 `unevaluable` 에도 없음 · `intraday_alert_flow.py` 의 `_unevaluable_tickers` 는 급등 예외를 넣지 않는다). PUSH 억제 동작을 바꾸는 일이라 01B 범위가 아니어서 고치지 않았다 — 설계자 RESULT(2026-10-07): 01B 배포를 막지 않음 · 첫 운영일 인계 문서에 BACKLOG 한 줄 · 실제 `surge_error` 가 발생하면 재검토.
 5. **대조 하한** — runtime 행은 `started_at ≥ first_active_at` 만 본다(PLAN §2-6). 첫 활성 때 두 실행이 동시에 시작해 늦게 시작한 쪽이 `first_active_at` 을 먼저 쓰면 먼저 시작한 실행이 `ledger_only` 로 보일 수 있다(동시 실행 = 12:30 뿐 · 검토 판정 도달 불가에 가까움).
 6. **종료 트랜잭션 잠금 시간은 이력에 비례한다** — 직전 평가 조회가 subject 인덱스 + 정렬이다. 검토 실측(PC · 합성 이력): item 70,000(약 1년치) 88.0 ms · 350,000(약 5년치) 406.0 ms. busy timeout 5초보다 작다.
 7. **시장 상위 2 밖 기초지수 그룹은 기록하지 않는다** — 코드가 보존하지 않는다(PLAN §1-3 · 설계서 §6 은 선택된 그룹만 요구).
@@ -264,7 +265,7 @@ record 에는 키를 더하지 않는다(DB · JSONL · stdout 불변). 항목 �
 ## 10. 배포 절차
 
 1. OPS-04 첫 거래일(2026-10-07) 확인 · 종료 커밋 — 완료(`f0eb6f06` · push).
-2. 01B PROGRAM_TRUTH · STATE_LATEST 반영 — 완료(2026-10-07) → 검증자 r3 VERIFIED(2026-10-07) → 설계자 RESULT 판정(대기).
+2. 01B PROGRAM_TRUTH · STATE_LATEST 반영 — 완료(2026-10-07) → 검증자 r3 VERIFIED(2026-10-07) → 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-07).
 3. 커밋 · push — 완료(사용자 승인 2026-10-07 · 검증자 VERIFIED 뒤 · 설계자 RESULT 판정 전 · OPS-04 와 같은 순서).
-4. OCI `git pull` → `.env` 에 `DECISION_LEDGER_ENABLED=true`(사용자 · 거래일 15:45 이후나 비거래일).
-5. 첫 거래일 확인(개발자 · OCI 읽기 전용): 원장 4테이블 행 수 · STARTED 잔류 0 · 대조 CLI(정상 = runtime send 행 수) · 폴더 0700 · 파일 0600 · 로그 원장 오류 0 · reflog pull 시각 인용.
+4. OCI `git pull` → `.env` 에 `DECISION_LEDGER_ENABLED=true` — **완료**(사용자 · reflog `HEAD@{2026-10-07 15:56:59 +0900}: pull: Fast-forward` · `.env` 키 grep 1). 개발자 읽기 전용 확인(2026-10-07 16:03): OCI HEAD = 이 단계 커밋 · 추적 파일 변경 0 · 원장 모듈 4 + 대조 CLI 있음 · 러너 529줄 · cron 14줄 불변 · `state/decision` 아직 없음(첫 활성 실행 전) · `is_active` send 3종 True · dry-run · spike False · 러너 import 정상. 첫 활성 거래일 = 2026-10-08.
+5. 첫 거래일 확인(개발자 · OCI 읽기 전용 · 설계자: 09:35 이후 세 PUSH 종류가 한 번씩 실행된 뒤): 원장 4테이블 행 수 · STARTED 잔류 0 · 대조 CLI(정상 = runtime send 행 수) · 폴더 0700 · 파일 0600 · 로그 원장 오류 0 · reflog pull 시각 인용.
