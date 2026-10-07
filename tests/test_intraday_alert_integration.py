@@ -69,7 +69,7 @@ def db(tmp_path):
 def _patch(monkeypatch, *, policy=None, sectors=None, raise_on_sectors=False):
     monkeypatch.setattr(flow, "active_policy", lambda logger=None: policy)
 
-    def _sec(logger=None):
+    def _sec(logger=None, meta=None):
         if raise_on_sectors:
             raise RuntimeError("의도적 실패")
         return sectors or []
@@ -467,7 +467,9 @@ def test_alternate_fetch_failure_is_isolated():
 def test_build_sector_outcome_uses_fetched_alternate(monkeypatch, tmp_path, db):
     """조회한 대체가 실제 판정에 쓰인다."""
     sectors = _sectors_with_alt(10)
-    monkeypatch.setattr(flow, "_load_active_sectors", lambda logger=None: sectors)
+    monkeypatch.setattr(
+        flow, "_load_active_sectors", lambda logger=None, meta=None: sectors
+    )
     quotes = {f"T{i:05d}": Q(2.0 - i * 0.1) for i in range(1, 10)}
     out, err = flow.build_sector_outcome(
         market_quotes=quotes,

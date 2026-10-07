@@ -14,6 +14,8 @@
 3. First Real Decision Cycle v1                      (현재 활성)
 4. 실제 사용에서 발견된 PC 판단 흐름 차단 결함 해소
 5. Decision Outcome Ledger v1
+   [2026-09-26 POC5-00 Q27] POC5(운영 신호·판단 결과 원장)가 이어받는다 · 3 → 5 선행 gate 는 superseded
+   (POC5 가 First Real Decision Cycle 을 만드는 단계라 그 통과를 선행조건으로 둘 수 없다 · KILL_SWITCHES KS-11 기록)
 6. Universe · ML · factor · PC UI 품질 개선
 
 모바일:

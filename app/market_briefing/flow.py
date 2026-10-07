@@ -86,6 +86,9 @@ class BriefingOutcome:
     # 발송이 전부 성공하면 상태에 남길 "안내한 주기" (R2 Q24). 오늘 안내를 붙였으면
     # 그 주기, 아니면 직전 상태의 값을 그대로 잇는다.
     refresh_notice_cycle_id: Optional[str] = None
+    # POC5-01B — 원장이 읽는 계산 결과(본문 · diagnostics 에는 넣지 않는다).
+    outlook: Optional[ev.Outlook] = None
+    index: Optional[ev.IndexLeadership] = None
 
     @property
     def should_send(self) -> bool:
@@ -371,6 +374,7 @@ def assemble_market_briefing(
     out.diagnostics["index_status"] = index.status
     out.diagnostics["index_candidates"] = [c.identifier for c in index.candidates]
     out.diagnostics["index_diagnostics"] = index.diagnostics
+    out.outlook, out.index = outlook, index
 
     # ④ 본문 — 낼 내용이 없으면 skip. 단 뒤 PUSH 에 영향을 주는 배치 실패가 있으면
     # 고지 1줄만 담은 본문을 만든다(PLAN STEP 7-3 · 그 밖의 안내는 붙이지 않는다).

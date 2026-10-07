@@ -145,6 +145,10 @@ class SectorOutcome:
     entry_omitted_reason: Optional[str] = None
     # 설계자 RESULT STEP 2 — 활성 대표의 T-1 종가 커버리지.
     representatives: Optional[RepresentativeCoverage] = None
+    # POC5-01B — 평가한 사업군의 이미 계산된 값(원장 기록용): (sector_key, ticker,
+    # used_alternate, 당일, 5일, 20일, 순위, state|None). 시세는 `quotes`(대체 병합본 참조).
+    evaluated: list[tuple] = field(default_factory=list)
+    quotes: dict[str, Any] = field(default_factory=dict)
 
     def by_state(self, state: str) -> list[SectorSignal]:
         return [s for s in self.signals if s.state == state]
@@ -521,6 +525,18 @@ def select_sector_signals(
             is_top_riser=is_top,
             is_bottom_faller=ticker in bottom_fallers,
             policy=policy,
+        )
+        out.evaluated.append(
+            (
+                key,
+                ticker,
+                used_alt,
+                ret,
+                r5,
+                r20,
+                rank_of.get(ticker),
+                state,
+            )
         )
         if state is None:
             # 진입 후보가 될 뻔했는데 **추세를 계산하지 못해** 빠진 경우를 구분해

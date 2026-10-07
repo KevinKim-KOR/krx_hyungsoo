@@ -99,6 +99,10 @@ class IntradayAssembly:
     daily_cap_reached: bool = False
     sector_error: Optional[str] = None
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    # POC5-01B — 이번 회차가 읽은 활성 장중 설정 버전(원장 기록용 · 이미 읽은 행에서).
+    config_version_id: Optional[str] = None
+    # POC5-01B — 보유 급등 선정이 예외로 격리됐으면 예외 종류(원장이 '급등 미평가' 로 읽음).
+    surge_error: Optional[str] = None
 
     def will_send(self) -> bool:
         return bool(self.message_text)
@@ -125,14 +129,21 @@ def _as_signal(item: Any) -> SectorSignal:
     )
 
 
-def _load_active_sectors(logger: Any = None) -> list[dict[str, Any]]:
-    """승인·활성 사업군. **실패하면 빈 목록** — 보유 경로를 막지 않는다."""
+def _load_active_sectors(
+    logger: Any = None, meta: Optional[dict[str, Any]] = None
+) -> list[dict[str, Any]]:
+    """승인·활성 사업군. **실패하면 빈 목록** — 보유 경로를 막지 않는다.
+
+    `meta` 를 넘기면 이미 읽은 활성 행의 `config_version_id` 를 담는다(POC5-01B).
+    """
     try:
         from app.intraday_config import store
 
         active = store.get_active()
         if not active:
             return []
+        if meta is not None:
+            meta["config_version_id"] = active.get("config_version_id")
         payload = json.loads(active["payload_json"])
         uni = payload.get("sector_representative_universe") or {}
         sectors = uni.get("sectors")
@@ -254,6 +265,7 @@ def build_sector_outcome(
     fetch_many: Any = None,
     logger: Any = None,
     calendar_dir: Optional[Path] = None,
+    config_meta: Optional[dict[str, Any]] = None,
 ) -> tuple[SectorOutcome, Optional[str]]:
     """사업군 후보. **절대 예외를 올리지 않는다** — `(결과, 오류문자열)`.
 
@@ -265,7 +277,7 @@ def build_sector_outcome(
     평가 불가(`coverage_ok=False`)로 두어 직전 사업군 관측을 회복으로 적지 않는다(D2).
     """
     try:
-        sectors = _load_active_sectors(logger)
+        sectors = _load_active_sectors(logger, meta=config_meta)
         if not sectors:
             return (
                 SectorOutcome(
@@ -298,18 +310,17 @@ def build_sector_outcome(
             calendar_dir=calendar_dir,
             stored_days={str(d)[:10] for rows in history.values() for d, _ in rows},
         )
-        return (
-            select_sector_signals(
-                sectors=sectors,
-                market_quotes=market_quotes,
-                history=history,
-                today_kst=today_kst,
-                policy=policy,
-                held_tickers=held_tickers,
-                trend=trend,
-            ),
-            None,
+        outcome = select_sector_signals(
+            sectors=sectors,
+            market_quotes=market_quotes,
+            history=history,
+            today_kst=today_kst,
+            policy=policy,
+            held_tickers=held_tickers,
+            trend=trend,
         )
+        outcome.quotes = market_quotes  # POC5-01B — 병합된 시세 참조(원장 t0)
+        return outcome, None
     except Exception as e:  # noqa: BLE001 - 보유 경로를 막지 않는다
         if logger is not None:
             logger.warning("사업군 경로 실패(격리): %s", e)
@@ -449,8 +460,10 @@ def assemble_intraday_alert(
     except Exception as e:  # noqa: BLE001
         if logger is not None:
             logger.warning("보유 급등 선정 실패(격리): %s", e)
+        out.surge_error = type(e).__name__
         held_surge = []
 
+    config_meta: dict[str, Any] = {}
     sector, sector_error = build_sector_outcome(
         market_quotes=market_quotes or {},
         today_kst=today_kst,
@@ -459,8 +472,10 @@ def assemble_intraday_alert(
         db_path=db_path,
         logger=logger,
         calendar_dir=calendar_dir,
+        config_meta=config_meta,
     )
     out.sector, out.sector_error = sector, sector_error
+    out.config_version_id = config_meta.get("config_version_id")
     # POC3-02D-OPS-03 — 추세 기준일과 진입 검토 생략 여부는 **매 회차** 남긴다
     # (발송이 없는 회차도 · 확정 계약 14 '09:30 장중 추세 기준일' 실측).
     out.diagnostics["intraday_trend_basis"] = (

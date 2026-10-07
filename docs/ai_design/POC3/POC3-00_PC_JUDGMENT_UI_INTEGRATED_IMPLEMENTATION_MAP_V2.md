@@ -77,7 +77,7 @@
 | S-02 | POC3-02 Judgment Workbench | **PASS / CLOSED** · 검증자 확인·1440×900 브라우저 확인 완료 · commit `c2b7df13` | `STATE_LATEST`·handoff의 `IMPLEMENTED_AWAITING_VERIFICATION`은 STALE |
 | S-03 | POC3-01 오늘의 투자 점검 대시보드 전면 개편 | **COMPLETED / VERIFIED / 사용자 실화면 확인 완료 (2026-08-01)** · commit `31428ce1` | 결과서 AC-15·STATE의 대기 표기는 2026-08-01 사용자 실화면 PASS 로 대체됨(반영 완료) |
 | S-04 | POC3-REF-01 친구 프로젝트 소스 사실 조사 | **VERIFIED / CLOSED** · commit `16d56702` push 완료 | 최신 결과서 표기와 일치 |
-| S-05 | First Real Decision Cycle v1 | 운영 관찰 활성 · formal PASS 근거 없음 | Decision Outcome Ledger 선행 진입 금지 유지 |
+| S-05 | First Real Decision Cycle v1 | 운영 관찰 활성 · formal PASS 근거 없음 | Decision Outcome Ledger 선행 진입 금지 유지 **[2026-09-26 POC5-00 Q27]** superseded — 원장은 POC5(운영 신호·판단 결과 원장)가 이어받는다 · POC5 가 이 사이클을 만드는 단계라 선행조건이 될 수 없다 |
 | S-06 | BACKLOG 항목 수 | 현재 105개 | 감사 당시 91개 표기는 STALE. 이후 14개 추가 반영 필요 |
 | S-07 | `docs/handoff/STATE_LATEST.md` | 비정규 pointer 문서 | redirect 외 Step 본문을 제거하고 canonical `docs/STATE_LATEST.md`만 갱신해야 함 |
 | S-08 | POC3 번호 충돌 | 과거 문서명은 이력으로 유지 | 새 Step은 `POC3-03`부터 신규 순번으로 진행하고 `POC3-01/02`를 다시 쓰지 않음 |
@@ -108,8 +108,8 @@
 | P-16 | Workbench benchmark 비교 시계열 | 조건부 보류 | 표의 기존 초과수익만으로 실제 판단이 막힌다는 사용자 보고 시 |
 | P-17 | Dashboard 캐시 무효화 실제 컴포넌트 통합 테스트 | 확정 개발 | POC3 Flow Closeout에 포함. 신규 기능 아님 |
 | P-18 | 상태→판정→실행 전체 동선 Closeout | 확정 개발 | P-04(완료)·승인·알림 재배치(완료, P-05 폐기 대체) 이후 Closeout 필수 데이터 결함 처리 후 |
-| P-19 | Decision Outcome Ledger | 후속 개발 | First Real Decision Cycle formal PASS와 실제 판단 1건 기록 후 |
-| P-20 | ML·백테스트·튜닝 | 후속 개발 | P-19 이후. factor·label·threshold는 해당 Step에서만 확정 |
+| P-19 | Decision Outcome Ledger | 후속 개발 | First Real Decision Cycle formal PASS와 실제 판단 1건 기록 후 **[2026-09-26 POC5-00 Q27]** 선행 gate superseded — POC5 가 이어받는다(중복 원장 없음) |
+| P-20 | ML·백테스트·튜닝 | 후속 개발 | P-19 이후. factor·label·threshold는 해당 Step에서만 확정 **[2026-09-26 POC5-00 Q27]** P-19 의 선행 gate 는 superseded(원장 = POC5) |
 
 ---
 
@@ -124,8 +124,8 @@
 | POC3-05 | Holdings Risk Evidence Foundation v1 | **COMPLETED · PASS / CLOSED · 검증자 VERIFIED · 완료 revision `b431f9a6`** — **[2026-08-03]** DESIGN_V2 화면 분리로 완료. 보유·자료 관리 4하위(보유 현황·종목 관리·확인 근거·데이터 상태, MenuKey 9→11). 기존 evidence 재사용(신규 산식·API 0). 급락 신호는 BACKLOG. 초안 생성 → OCI 적용·알림 이동. |
 | POC3-06 | Market Position & Data Quality Completeness v1 | 예상 · VIX/freshness/시장 위치 누락 귀속 |
 | POC3-07 | PC Judgment Flow Closeout v1 | 예상 |
-| POC4 | Decision Outcome Ledger v1 | 선행 gate 충족 후 |
-| POC5 | Universe·ML·Backtest·Tuning | Ledger evidence 이후 |
+| POC4 | Decision Outcome Ledger v1 | 선행 gate 충족 후 **[2026-09-26 POC5-00 Q27]** superseded — 원장은 POC5 가 이어받는다 · 실제 POC4 = ML·퀀트 연구 |
+| POC5 | Universe·ML·Backtest·Tuning | Ledger evidence 이후 **[2026-09-26 POC5-00 Q27]** 실제 POC5 = 운영 신호·판단 결과 원장(POC5-00 ~ 04) · 이 Lane 표의 번호는 설계자 정리 대상 |
 
 **[2026-08-01]** POC3-04(독립 Operations Panel)는 삭제됐다 — "상태→판정→실행" 은 화면 3개를 새로 만드는 것이 아니라 기존 화면의 **역할·배치 원칙**이며, 승인·알림 화면 정돈으로 귀속됐다(P-05·B-072 참조). POC3-03 종료 후 다음 실제 Step 은 설계자가 남은 Lane(POC3-05 등) 중 하나를 사용자 실화면·운영 evidence 로 확정한다.
 
@@ -207,7 +207,7 @@
 | B-035 | 중복률 임계 경고 | 조건부 보류 | 반복 노출 실측 후 기준 합의 시 |
 | B-036 | 구성종목 fuzzy 매칭 | 조건부 보류 | 실제 미스매치 시 |
 | B-037 | 시장 국면 고도화 | 후속 개발 | POC3-05 이후 Q6/POC5 |
-| B-038 | 판단 근거 저장 후속·성과 추적 | 후속 개발 | POC4 Decision Outcome Ledger로 통합 |
+| B-038 | 판단 근거 저장 후속·성과 추적 | 후속 개발 | POC4 Decision Outcome Ledger로 통합 **[2026-09-26 POC5-00 Q27]** 통합 대상 = POC5 운영 원장 |
 
 ### 6.3 Holdings·Telegram·UI
 
@@ -287,7 +287,7 @@
 | B-100 | spike all-unavailable test fixture | 완료 | Telegram Spike closeout에서 해소 |
 | B-101 | PUSH2 금지문구 substring test | 완료 | Telegram Spike closeout에서 해소 |
 | B-102 | 저빈도 scheduler 운영 | 완료 | Market/Holdings/Spike OCI ACTIVE |
-| B-103 | Decision Outcome Ledger | 후속 개발 | B-038과 통합 · First Real Decision Cycle PASS 후 |
+| B-103 | Decision Outcome Ledger | 후속 개발 | B-038과 통합 · First Real Decision Cycle PASS 후 **[2026-09-26 POC5-00 Q27]** 선행 gate superseded — POC5 가 이어받는다 |
 | B-104 | Universe·ML·factor·PC UI 품질 개선 | 후속 개발 | umbrella 항목. B-082·B-085·B-097로 실행 분할 |
 | B-105 | Dashboard 캐시 무효화 통합 테스트 | 확정 개발 | POC3-07 Closeout |
 

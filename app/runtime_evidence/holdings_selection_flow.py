@@ -111,6 +111,8 @@ class HoldingsSelectionOutcome:
     save_empty_state: bool = False
     save_state_on_send: bool = False
     error: Optional[str] = None
+    # POC5-01B — 평가한 전 종목의 이미 계산된 값(원장 기록용 · diagnostics 미포함).
+    observations: list[dict[str, Any]] = field(default_factory=list)
 
 
 def build_holdings_selection(
@@ -152,6 +154,7 @@ def build_holdings_selection(
         )
         axis_dates = basis.axis
         base_day = reference_trading_day(axis_dates, today_kst, LOOKBACK_TRADING_DAYS)
+        observations: list[dict[str, Any]] = []
         selected = select_holdings(
             holdings=holding_rows,
             price_history=basis.history,
@@ -159,11 +162,13 @@ def build_holdings_selection(
             today_kst=today_kst,
             axis_dates=axis_dates,
             avg_buy_prices=average_buy_prices(holding_rows),
+            observations=observations,
         )
     except Exception as e:  # noqa: BLE001
         out.error = f"{type(e).__name__}: {str(e)[:200]}"
         return out
     out.selected = selected
+    out.observations = observations
     out.diagnostics = {
         "holdings_loaded_count": len(holding_rows),
         "holdings_unique_ticker_count": len(tickers),

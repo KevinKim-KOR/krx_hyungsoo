@@ -177,6 +177,12 @@
   - **권고**: 분기 1회 PROJECT_ORIGIN_INTENT.md 재확인 — 결정의 닻이 흔들릴 때 PROJECT_ORIGIN_INTENT 원칙으로 복귀하는 reference 체크포인트.
   **남은 주의**: 명시적 KS 위반은 아니지만 비슷한 의도 흐름 약화는 발생 가능. 분기 1회 PROJECT_ORIGIN_INTENT 재확인 권고.
 
+### A-7. 'Decision Outcome Ledger' 는 실제 판단 1건 · First Real Decision Cycle PASS 뒤에만 시작하는가?
+- **상태**: ANSWERED (2026-09-26 · 문서 기록 2026-10-06 POC5-01B)
+- **답**: 아니다. POC5(운영 신호·판단 결과 원장)가 기존 Decision Outcome Ledger 미결 항목을 이어받는다. 기존 선행 gate 는 superseded 다.
+- **근거**: POC5-00 PLAN §1-10 실측(원장 테이블 0 · 종목 단위 연결 0%) · 설계자 보완 판정 · 사용자 승인(POC5-00 Q27). POC5 가 판단 사이클을 만들어 내는 단계라 그 통과를 선행조건으로 둘 수 없다.
+- **KS-11**: 결정 변경 근거는 `docs/KILL_SWITCHES.md` KS-11 '2026-09-26 POC5-00' 기록에 있다.
+
 ---
 
 ## 4. 장기 재검토 대상 (Phase 1 교훈)

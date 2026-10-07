@@ -22,6 +22,8 @@ OCI 에서 crontab 으로 실행 (정식 운영 command):
   - 외부 API 직접 호출 (Naver/Yahoo/뉴스 등)
   - 매수/매도/비중조절/조정장/위험 threshold 판단
   - 신규 DB / scheduler framework / ML 학습
+    (단 POC5-01B 운영 원장 DB — DECISION_LEDGER_ENABLED=true ∧ send ∧ 운영 3종일 때만 쓴다 ·
+    플래그는 OCI .env 에만 둔다)
 """
 
 from __future__ import annotations
@@ -79,6 +81,7 @@ from app.three_push_runtime.runner_evidence import (  # noqa: E402
     assemble_legacy_evidence,
     record_send_success,
 )
+from app.three_push_runtime import ledger_context as _ledger  # noqa: E402
 from app.three_push_runtime.runner_spike import (  # noqa: E402
     apply_spike_reevaluation,
     resolve_spike_duplicates,
@@ -131,6 +134,7 @@ from app.three_push_runtime.target_tickers import (  # noqa: E402
 )
 
 
+@_ledger.boundary  # POC5-01B — 미포착 예외를 원장 failed 로 확정한 뒤 그대로 다시 올린다
 def run(
     push_kind: str,
     mode: str,
@@ -158,13 +162,17 @@ def run(
         runtime_kst=runtime_kst,
         runtime_date_kst=runtime_date_kst,
     )
+    # POC5-01B — 원장 진입(비활성이면 no-op · record 에 키를 더하지 않는다).
+    led = _ledger.begin(
+        record, push_kind=push_kind, mode=mode, slot_id=slot_id, logger=logger
+    )
 
     def _finish(
         status: str, reason: Optional[str] = None, error: Optional[str] = None
     ) -> dict[str, Any]:
         # POC5-01A: 본문은 `runner_record.finish_run`. 테스트가 바꿔 끼우는 러너 전역
         # (`_HISTORY_PATH` · `insert_status_from_record`)은 호출 때마다 넘긴다.
-        return finish_run(
+        rec = finish_run(
             record,
             status,
             reason,
@@ -173,8 +181,10 @@ def run(
             mode=mode,
             logger=logger,
             history_path=_HISTORY_PATH,
-            insert_status=insert_status_from_record,
+            insert_status=led.wrap_insert_status(insert_status_from_record),
         )
+        led.finalize(rec)  # POC5-01B — 기존 기록이 끝난 뒤 원장 종료 확정
+        return rec
 
     logger.info(
         "runtime runner 시작: push_kind=%s mode=%s runtime_kst=%s",
@@ -278,6 +288,7 @@ def run(
         logger=logger,
     )
     message_text = asm.message_text
+    led.attach_assembly(asm)
 
     # ── 4. runtime evidence 조립 (Runtime Evidence DB Connection v1) ─────────
     # 2026-09-12 KS-10 Cleanup — 블록 전체를 `runner_evidence` 로 옮겼다.
@@ -427,6 +438,7 @@ def run(
     # ── 8. Telegram 발송 ─────────────────────────────────────────────────────
     record["telegram_attempted"] = True
     sent, err, partial_delivery = telegram_send(message_text)
+    led.attach_send(message_text)
     record["telegram_sent"] = sent
     # A+ 재정정 (B-6): telegram chunk 전송의 부분 결과만 telegram_partial_delivery
     # 필드로 저장. 데이터 품질 partial 은 이미 상위에서 failed 로 처리되므로 여기에는

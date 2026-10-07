@@ -114,7 +114,9 @@ def _patch(monkeypatch):
         for i, t in enumerate(TICKERS)
     ]
     monkeypatch.setattr(flow, "active_policy", lambda logger=None: policy)
-    monkeypatch.setattr(flow, "_load_active_sectors", lambda logger=None: sectors)
+    monkeypatch.setattr(
+        flow, "_load_active_sectors", lambda logger=None, meta=None: sectors
+    )
 
 
 # T00009 · T00007 = 상승 상위 20%(진입 검토 모양) · T00000 = 급락 회피.
@@ -227,7 +229,9 @@ def test_alternate_without_t1_row_is_excluded_alone(monkeypatch, tmp_path):
     _patch(monkeypatch)
     sectors = [dict(s) for s in flow._load_active_sectors()]
     sectors[9]["alternate"] = {"ticker": "A00009", "short_name": "대체9"}
-    monkeypatch.setattr(flow, "_load_active_sectors", lambda logger=None: sectors)
+    monkeypatch.setattr(
+        flow, "_load_active_sectors", lambda logger=None, meta=None: sectors
+    )
     quotes = {k: v for k, v in QUOTES.items() if k != "T00009"} | {"A00009": Q(2.0)}
     out = flow.assemble_intraday_alert(
         held_drop=[],

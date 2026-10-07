@@ -227,8 +227,12 @@ def select_risk_holdings(
     today_kst: Optional[str] = None,
     axis_dates: Optional[list[str]] = None,
     avg_buy_prices: Optional[dict[str, float]] = None,
+    evaluated: Optional[list[dict[str, Any]]] = None,
 ) -> tuple[list[RiskTicker], list[str]]:
     """위험 구간에 든 보유종목만 반환.
+
+    `evaluated` — POC5-01B. 넘기면 평가한 **전 종목**(구간 밖 · 결손 포함)의 이미 계산된
+    값을 append 한다. 반환 · 판정은 그대로다.
 
     반환: `(선정 목록, 데이터 확인 대상 ticker 목록)`.
 
@@ -267,11 +271,22 @@ def select_risk_holdings(
         # `current(무조정) / close_on(etf_daily_price, prev_day)(조정)` 이라
         # 두 계열이 섞여 있었다. 임계·상태·심각도 계약은 그대로다.
         day_drop = usable_day_return(quote, today_kst)
+        state = classify_day_drop(day_drop) if day_drop is not None else None
+        if evaluated is not None:
+            evaluated.append(
+                {
+                    "ticker": ticker,
+                    "current": current,
+                    "price_asof": getattr(quote, "price_asof", None) if quote else None,
+                    "day_return": day_drop,
+                    "state": state,
+                    "unavailable": day_drop is None,
+                }
+            )
         if day_drop is None:
             unavailable.append(ticker)
             continue
 
-        state = classify_day_drop(day_drop)
         if state is None:
             continue  # 위험 구간 아님 — 표시하지 않는다.
 

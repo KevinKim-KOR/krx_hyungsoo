@@ -261,6 +261,7 @@ def select_holdings(
     today_kst: Optional[str] = None,
     axis_dates: Optional[list[str]] = None,
     avg_buy_prices: Optional[dict[str, float]] = None,
+    observations: Optional[list[dict[str, Any]]] = None,
 ) -> list[SelectedTicker]:
     """선정 결과. 이유가 없는 종목은 **결과에 넣지 않는다**.
 
@@ -275,6 +276,8 @@ def select_holdings(
       axis_dates     : KRX 거래일 축(오름차순). 기준일 계산 원천.
       avg_buy_prices : {ticker: 수량 가중평균 매입가}. 없으면 손익률을 생략한다
                        (선정 자체는 그대로 한다).
+      observations   : POC5-01B — 넘기면 평가한 **전 종목**(비선정 포함)의 이미 계산된 값을
+                       append 한다. 반환 · 판정은 그대로다.
 
     **분모 계약 (설계자 확정 2026-09-05)**
 
@@ -320,6 +323,7 @@ def select_holdings(
         #         장중 값이 아니므로 그 종목만 뺀다.
         # 달력일 임계로 배제하지 않고, 오래된 종가로 대체하지도 않는다.
         quote_asof = getattr(quote, "price_asof", None) if quote else None
+        _obs: dict[str, Any] = {"ticker": ticker}
         numerator_ok = (
             bool(current) and current > 0 and _is_same_day(quote_asof, today_kst)
         )
@@ -333,6 +337,17 @@ def select_holdings(
                 CAUSE_BASE_CLOSE if numerator_ok else CAUSE_CURRENT_PRICE
             )
             selected.append(item)
+            if observations is not None:
+                observations.append(
+                    dict(
+                        _obs,
+                        current=current,
+                        quote_asof=quote_asof,
+                        base_close=base,
+                        base_day=base_day,
+                        cause=item.unavailable_cause,
+                    )
+                )
             continue
 
         # 매입가 대비 손익률. **분자는 20일 수익률·고점 대비와 같은 현재가**이고
@@ -343,6 +358,19 @@ def select_holdings(
         # 판정·저장·표시 모두 **같은 정규화 값**을 쓴다 (경계 불일치 방지).
         return_pct = normalize_pct((current / base - 1.0) * 100.0)
         state = classify_decline(return_pct)
+        if observations is not None:
+            observations.append(
+                dict(
+                    _obs,
+                    current=current,
+                    quote_asof=quote_asof,
+                    base_close=base,
+                    base_day=base_day,
+                    return_pct=return_pct,
+                    state=state,
+                    profit_loss_pct=item.profit_loss_pct,
+                )
+            )
         if state is None:
             continue  # 선정 이유 없음 — 표시하지 않는다.
         item.reasons[REASON_RECENT_DECLINE] = {

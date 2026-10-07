@@ -358,6 +358,26 @@ def _isolated_runtime_state_db(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolated_decision_ledger(tmp_path, monkeypatch):
+    """POC5-01B — 운영 원장은 기본 비활성이다. 러너를 import 하면 PC `.env` 가 올라오므로
+    활성 플래그를 지우고, 원장 경로 · 한국 거래일 캘린더를 tmp 로 돌린다.
+
+    원장 테스트만 tmp 경로에서 `DECISION_LEDGER_ENABLED=true` 로 켠다.
+    """
+    from app.three_push_runtime import ledger_context as _lc
+    from app.three_push_runtime import ledger_store as _ls
+
+    monkeypatch.delenv(_lc.FLAG_ENV, raising=False)
+    monkeypatch.setattr(
+        _ls, "DEFAULT_DB_PATH", Path(tmp_path) / "decision" / "decision_evidence.sqlite"
+    )
+    monkeypatch.setattr(_lc, "CALENDAR_DIR", Path(tmp_path) / "ledger_market_meta")
+    _ls.reset_init_cache_for_testing()
+    yield
+    _ls.reset_init_cache_for_testing()
+
+
+@pytest.fixture(autouse=True)
 def _block_live_benchmark_refresh(monkeypatch):
     """POC3-OPS-02B-1/2 — 테스트가 **라이브 시장 DB 로** benchmark 를 쓰지 못하게.
 

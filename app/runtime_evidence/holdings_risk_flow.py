@@ -73,6 +73,8 @@ class HoldingsRiskOutcome:
     today_kst: Optional[str] = None
     # (ticker, 종목명) — 본문 `데이터 확인 필요` 그룹에 그대로 실린다.
     unavailable: list[tuple[str, str]] = field(default_factory=list)
+    # POC5-01B — 평가한 전 보유 종목의 이미 계산된 값(원장 기록용 · diagnostics 미포함).
+    evaluated: list[dict[str, Any]] = field(default_factory=list)
 
 
 def build_holdings_risk_alert(
@@ -110,6 +112,7 @@ def build_holdings_risk_alert(
         )
         axis_dates = basis.axis
         prev_day = previous_trading_day(axis_dates, today_kst)
+        evaluated: list[dict[str, Any]] = []
         selected, unavailable = select_risk_holdings(
             holdings=holding_rows,
             price_history=basis.history,
@@ -117,12 +120,14 @@ def build_holdings_risk_alert(
             today_kst=today_kst,
             axis_dates=axis_dates,
             avg_buy_prices=average_buy_prices(holding_rows),
+            evaluated=evaluated,
         )
     except Exception as e:  # noqa: BLE001
         out.error = f"{type(e).__name__}: {str(e)[:200]}"
         return out
 
     out.selected = selected
+    out.evaluated = evaluated
     out.holding_rows = holding_rows
     # PLAN §4.6 부분 실패 · §4.7 결손 — 진단에만 남기지 않고 **본문까지** 보낸다.
     # 이름은 보유 원장에서 찾는다. 여러 계좌에 같은 ticker 가 있어도 한 번만.
@@ -253,6 +258,9 @@ class RiskAssembly:
     # 관측·집계 내용. 조립 단계에서 바로 쓰면 dry-run 만 돌려도 라이브 파일이
     # 바뀐다(설계자 D3). `None` 이면 쓸 것이 없다(정책 비활성·조립 실패).
     intraday_records: Optional[dict[str, Any]] = None
+    # POC5-01B — 원장이 읽는 장중 조립 결과(일일 상한 · 신호 없음 회차 포함 · 같은 객체).
+    # `intraday`(본문 대체 회차만 · 발송 진척 저장용)와 뜻이 다르다. 격리 경로는 None.
+    intraday_eval: Any = None
 
 
 def assemble_holdings_risk_push(
@@ -339,6 +347,7 @@ def assemble_holdings_risk_push(
             logger=logger,
             calendar_dir=calendar_dir,
         )
+        out.intraday_eval = intraday
         # POC3-02D-OPS-01 C4 — 저장 대상을 **본문에 실린 것** 기준으로 다시 계산한다.
         # 구역 상한에 잘린 보유 급락을 worst 로 저장하면 한 번도 안 나간 신호가
         # 그날 억제되고(신규), 악화 알림이 사라진다(OPS-02A · 설계 §14-2).
@@ -449,6 +458,7 @@ def assemble_holdings_risk_push(
         # 급락 D* 는 구 본문 기준(`save_entries` 전체)으로 전송 성공 뒤에만 저장된다.
         out.intraday = None
         out.intraday_records = None
+        out.intraday_eval = None
     # POC3-02D-OPS-01 C6 — 조립된 최종 본문(통합 또는 구 본문)의 **분할 전** 길이.
     # 이 종류는 legacy evidence 단계를 건너뛰어 러너 초기값 0 이 남았다. 뜻은
     # 다른 종류와 같다(`holdings_selection_flow`). 발송 여부는 status 로 본다.

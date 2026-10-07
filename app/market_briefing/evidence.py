@@ -99,6 +99,8 @@ class IndexCandidate:
     # 사용자 요청(2026-09-13) — "추종 ETF 2개" 만으로는 무엇인지 알 수 없다.
     # 공식 CSV `한글종목약명` 을 그대로 쓴다. 축약·번역·테마명 변환 금지.
     products: tuple[str, ...] = ()
+    # POC5-01B — 수익률 계산에 실제로 쓴 ticker(원장 기록용 · 본문 · fingerprint 미사용).
+    tickers: tuple[str, ...] = ()
 
     @property
     def identifier(self) -> str:
@@ -215,6 +217,7 @@ def compute_index_leadership(
                     products=tuple(
                         short_names[t] for t in valid_tickers if t in short_names
                     ),
+                    tickers=tuple(valid_tickers),
                 )
             )
 

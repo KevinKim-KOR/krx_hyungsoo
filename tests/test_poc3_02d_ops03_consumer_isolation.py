@@ -138,7 +138,9 @@ def _intraday(monkeypatch, env, reps, *, entry, avoid="T000", state_path=None):
     """08:10 이 적재한 **같은 tmp DB** 를 장중 경로가 읽는다."""
     sectors = _sectors(reps) if reps is not None else []
     monkeypatch.setattr(iflow, "active_policy", lambda logger=None: _policy())
-    monkeypatch.setattr(iflow, "_load_active_sectors", lambda logger=None: sectors)
+    monkeypatch.setattr(
+        iflow, "_load_active_sectors", lambda logger=None, meta=None: sectors
+    )
     quotes = {t: Q(0.0) for t in TICKERS} | {entry: Q(2.0), avoid: Q(-2.5)}
     return iflow.assemble_intraday_alert(
         held_drop=[],

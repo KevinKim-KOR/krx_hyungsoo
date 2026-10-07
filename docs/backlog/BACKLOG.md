@@ -618,6 +618,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ---
 
 - **처리 (2026-10-06 · `POC3-02D-OPS-04` 항목 6 · 커밋 `a308353c` · OPS-04 종료 2026-10-07)**: 설계자 Q7 b — 화면이 '전달'(② 카드 · 버튼 `현재 기준 OCI 전달`)과 '활성'(① `운영 기준 활성` 행 · OCI 러너가 쓰는 유효값 14개와 PC 운영 기준 비교 · 버전 ID 가 달라도 값이 같으면 일치)을 나눠 보인다. 자동 활성화 · 새 원격 쓰기는 하지 않았다 — **남은 것 = 아래 'PC 에서 OCI PARAM 자동 활성화'**(설계서 §7 BACKLOG).
+- **처리 (2026-10-07 · `POC5-01B` · 저장소 코드 · OCI 미배포)**: 원장 `evaluation_run.param_id` = 러너가 실제로 읽은 DB 활성 PARAM(record `param_id` · `runner_preflight.load_param_and_check_slot` 의 `read_active_param_dict`)이다. JSON 버전 ID 는 원장에 남지 않는다 — 원장은 실제 판정 PARAM 을 기록한다. JSON 과의 값 차이(유효값 14개)만 「OCI 운영·적용」 ① `운영 기준 활성` 행이 보이고, 버전 ID 만 다르면 ① 행도 「일치」 라 이 항목의 ID 불일치는 원장 · 화면 어디에도 남지 않는다. 재검토 트리거 'POC5-01B 설계' 는 도달했다. 남은 위험은 아래 '보류된 위험' 그대로다.
 - **항목**: **(설계자 판단 요청 · 2026-10-04 등재)** PC 「OCI 운영·적용」의 '현재 운영 기준 적용'은 OCI 의 **JSON 파일만** 바꾸고, OCI 러너가 실제로 읽는 **활성 PARAM(DB)은 바꾸지 않는다**. 화면의 'OCI 반영' 표시가 OCI 러너의 실제 PARAM 을 뜻하지 않는다.
 - **관찰 근거(2026-10-04 · 코드 읽기 + OCI 읽기 전용 확인)**:
   - 적용 API `POST /apply`(`app/api_three_push_param.py:306` `apply_param_to_oci`)는 ① PC DB 에 새 PARAM 생성 · 활성(`_create_approved_manual_seed_param` · `:226` · `activated_by="api_param_apply"`) + PC JSON 기록 ② `scripts/sync_three_push_runtime_param.py` 로 OCI 에 JSON 을 scp(`.tmp`) → `mv`(`:153-166`) ③ `scripts/verify_three_push_param_oci.py` 로 **JSON 만** 검사(파싱 · 스키마 · 필드 · 허용값 · `:74`)한다. OCI DB 를 건드리는 단계가 없다.

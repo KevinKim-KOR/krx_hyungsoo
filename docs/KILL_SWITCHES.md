@@ -151,6 +151,21 @@
 - `docs/MASTER_PLAN.md` (OCI 자율 시장 데이터 경계 정정 섹션)
 - `docs/handoff/POC2/POC2_OCI_AUTONOMOUS_MARKET_DATA_BOUNDARY_AMENDMENT_CONCLUSION.md`
 
+#### KS-11 변경 근거 기록 (2026-09-26, POC5-00 운영 신호·판단 결과 원장 — Decision Outcome Ledger 선행 gate superseded)
+
+**KS-11 자체는 변경/약화하지 않는다.** 다음은 '실제 판단 1건 · First Real Decision Cycle PASS 뒤 Decision Outcome Ledger' 순서를 바꾼 근거다(문서 기록 · POC5-01B 에서 정리).
+
+- **변경 근거(새 데이터)**: POC5-00 PLAN §1-10 실측 — 원장 테이블 0 · 기존 실행 기록과 종목 단위 연결 0% · PUSH 가 무엇을 판단 · 전달했는지 남지 않는다. 판단 사이클의 '실제 판단 1건' 을 증명하려면 그 판단을 담을 원장이 먼저 있어야 한다.
+- **결정**: 설계자 보완 판정 · 사용자 승인(2026-09-26 · POC5-00 Q27) — POC5 가 기존 Decision Outcome Ledger 미결 항목을 이어받아 완성한다 · 중복 원장 없음 · 기존 선행 gate(POC3-00 지도 S-05 · P-19 · MASTER_PLAN canonical 순서 3 → 5)는 superseded.
+- **유지되는 것**: 투자 판단 자동화 금지 · 성공 임계 · 단일 성공 라벨 없음 · 과거 성과 backfill 금지(POC5-00 Q29) · PC · OCI 역할 경계.
+
+**기록 위치**:
+- `docs/ASSUMPTIONS.md` §3 A-7
+- `docs/MASTER_PLAN.md` (현재 canonical 순서 5번 주석)
+- `docs/STATE_LATEST.md` §6 Next action (canonical 순서 5번 주석)
+- `docs/ai_design/POC3/POC3-00_PC_JUDGMENT_UI_INTEGRATED_IMPLEMENTATION_MAP_V2.md` (S-05 · P-19 · P-20 · Lane POC4 · POC5 · B-038 · B-103 주석)
+- `docs/ai_plan/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_PLAN_V1.md` §2-9
+
 사용자 요청만으로 KS-11 예외를 허용하지 않는다. 본 기록은 규칙 변경이 아니라 운영 정책 결정 근거의 문서화이다.
 
 ---
