@@ -202,3 +202,27 @@ POC5-01B              = HOLD
 ## 사용자 결정 (2026-10-06 · 위 판정 뒤)
 
 개발자가 재제출 전 점검에서 PLAN §2-1 2 · 3 이탈 2건(개별주가 ETF T-1 을 받은 뒤에만 돎 · '목표일이 저장돼야 창' 조건)을 찾아 사용자 결정으로 PLAN 원문대로 재작업했다(위 판정보다 먼저). 판정의 '추가 구조 개선 없음' 과 엇갈려 다시 물었고, 사용자는 **'유지'** 를 골랐다 — 구조 개선이 아니라 확정 PLAN 과의 일치 정정으로 본다. 설계자에게는 검증자 `VERIFIED` 뒤 RESULT 판정 때 함께 보고한다(결과서 §6-0-2).
+
+## 설계자 RESULT 최종 판정 — 2026-10-06 (사용자 전달 원문 · 검증자 r2 VERIFIED 뒤)
+
+```text
+RESULT_DECISION       = PASS_TO_DEPLOY
+CODE_REMEDIATION      = NONE
+VERIFIER              = VERIFIED r2
+IMPLEMENTATION_STATUS = IMPLEMENTED_VERIFIED_AWAITING_DEPLOYMENT
+OCI_PULL              = AUTHORIZED
+STEP_CLOSE            = 첫 KRX 거래일 운영 확인 뒤
+POC5-01B_IMPLEMENT    = HOLD
+```
+
+> 확인 결과: 설계 AC 1~10 충족 · PLAN 이탈 2건은 원계약대로 복원 · r1 지적 3건 정정 완료 · 사용자 화면 확인 완료 · 백엔드 2,833건 · 프론트 296건 통과 · production build 통과 · 라이브 상태 파일 변경 0 · KS-10 신규 트리거 없음 · 커밋 `a308353c` push 완료 · 알려진 한계와 실제 코드가 일치.
+>
+> 알려진 한계 2건은 그대로 수용합니다.
+> - 09:20 전 수동 `--krx-only` 실행 문제는 실제 발생 시에만 재검토
+> - 초기 창 적재로 KOSPI 재시도가 밀릴 수 있는 문제는 KOSPI가 PC 표시용이고 일시적이므로 비차단
+>
+> 현재 시각은 10월 6일 21시 이후이므로 `08:05~15:45` 금지 시간 밖입니다. OCI pull을 진행해도 됩니다.
+>
+> 배포 후 다음 KRX 거래일에 아래만 확인합니다: 08:10 `krx_holdings_stocks` · 개별주 표 행 수 · 09:15 개별주 파생값 · 09:20 보강 기록 · 로그 Traceback 0.
+>
+> 통과하면 OPS-04를 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`로 종료하고 HANDOFF를 작성합니다. 추가 코드 수정이나 검증 라운드는 필요 없습니다.
