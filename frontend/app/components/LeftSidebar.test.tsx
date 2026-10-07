@@ -9,6 +9,8 @@
 //   독립 메뉴로 복원하고, 남은 diagnostics 라벨을 '개발·실험용' 으로 변경(사용자 지시).
 // - 2026-09-27: 「승인·적용」+「OCI 운영 상태」를 한 화면 「OCI 운영·적용」(approval)으로
 //   합쳐 oci_status 제거 → 13→12 (사용자 직접 지시).
+// - 2026-10-07 POC5-03 설계 개정 2: 진단·상태에 「받은 알림 기록」(alert_records) 추가 → 12→13
+//   (사용자 목업 결정 · ML 실험 바로 아래).
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import LeftSidebar, {
@@ -29,6 +31,7 @@ const ALL_KEYS: MenuKey[] = [
   "approval",
   "diagnostics",
   "ml",
+  "alert_records",
   "data_status",
 ];
 
@@ -63,11 +66,11 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(titles.length).toBe(GROUP_TITLES.length);
   });
 
-  it("AC-2: 12개 key 가 그룹에 정확히 1회씩 귀속(중복·누락·신규 0)", () => {
+  it("AC-2: 13개 key 가 그룹에 정확히 1회씩 귀속(중복·누락·신규 0)", () => {
     const keys = MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key));
     expect(keys.sort()).toEqual([...ALL_KEYS].sort());
-    expect(new Set(keys).size).toBe(12);
-    expect(keys.length).toBe(12);
+    expect(new Set(keys).size).toBe(13);
+    expect(keys.length).toBe(13);
     expect(MENU_ITEMS.map((i) => i.key).sort()).toEqual([...ALL_KEYS].sort());
   });
 
@@ -165,13 +168,17 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
 
   it("진단·상태 그룹은 정상 업무→ML→개발용 순서이며 승인·운영 뒤에 온다 (POC3-07 §5.3 · 2026-08-16 재편)", () => {
     const diag = MENU_GROUPS.find((g) => g.title === "진단·상태")!;
-    // 사용자 지시 순서: 데이터 상태 → ML 실험 → 개발·실험용.
+    // 사용자 지시 순서: 데이터 상태 → ML 실험 → 받은 알림 기록(2026-10-07) → 개발·실험용.
     //   (OCI 운영 상태는 2026-09-27 승인·운영 그룹 「OCI 운영·적용」으로 합쳐졌다.)
     expect(diag.items.map((i) => i.key)).toEqual([
       "data_status",
       "ml",
+      "alert_records",
       "diagnostics",
     ]);
+    const alerts = diag.items.find((i) => i.key === "alert_records")!;
+    expect(alerts.label).toBe("받은 알림 기록");
+    expect(alerts.hint).toBe("받은 알림 · 당시 근거 · 이후 결과");
     const order = MENU_GROUPS.map((g) => g.title);
     expect(order.indexOf("진단·상태")).toBe(order.indexOf("승인·운영") + 1);
     // 제거된 key 는 어디에도 없다.

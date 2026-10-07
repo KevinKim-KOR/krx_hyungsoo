@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import AISessionsView from "./AISessionsView";
+import AlertRecordsView from "./AlertRecordsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
 import DiagnosticsView from "./DiagnosticsView";
 import MLView from "./MLView";
@@ -84,6 +85,10 @@ export default function MainPanel() {
     case "ml":
       // 2026-08-16 사용자 지시 — 흩어져 있던 ML 카드 5개를 한 메뉴로 모음.
       view = <MLView />;
+      break;
+    case "alert_records":
+      // 2026-10-07 POC5-03 설계 개정 2 — 받은 알림 · 당시 근거 · 이후 결과(사후 ML 검토용).
+      view = <AlertRecordsView />;
       break;
     case "data_status":
       // 2026-08-16 — POC3-07 이 diagnostics 로 흡수했던 것을 정상 업무 조회로 복원.

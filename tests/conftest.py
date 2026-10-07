@@ -376,6 +376,17 @@ def _isolated_decision_ledger(tmp_path, monkeypatch):
     from app.three_push_runtime import ledger_outcome as _lo
 
     monkeypatch.setattr(_lo, "ENV_PATH", Path(tmp_path) / "no_such.env")
+    # POC5-03 — PC 원장 사본 · 이름 조회도 tmp 로(라이브 decision · 보유 · 시장 DB 를 열지 않는다).
+    from app.ledger_copy import store as _lcs
+    from app.ledger_copy import views as _lcv
+
+    monkeypatch.setattr(
+        _lcs,
+        "DEFAULT_DB_PATH",
+        Path(tmp_path) / "decision" / "decision_evidence.sqlite",
+    )
+    monkeypatch.setattr(_lcv, "HOLDINGS_FILE", Path(tmp_path) / "no_holdings.json")
+    monkeypatch.setattr(_lcv, "MARKET_DB", Path(tmp_path) / "no_market.sqlite")
     _ls.reset_init_cache_for_testing()
     yield
     _ls.reset_init_cache_for_testing()

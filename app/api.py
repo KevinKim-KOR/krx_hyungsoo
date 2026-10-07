@@ -48,6 +48,7 @@ from app import (
     store,
 )
 from app.api_decision_draft_preview import router as decision_draft_preview_router
+from app.api_decision_ledger import router as decision_ledger_router
 from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
 from app.api_holdings_market_evidence import router as holdings_market_evidence_router
@@ -114,6 +115,7 @@ app.add_middleware(
 app.include_router(universe_router)
 app.include_router(market_topn_router)
 app.include_router(decision_sessions_router)
+app.include_router(decision_ledger_router)  # POC5-03 받은 알림 기록
 app.include_router(etf_constituents_router)
 # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) —
 # read-only GET /holdings/market-evidence/latest. 외부 fetch X, 신규 저장 X.

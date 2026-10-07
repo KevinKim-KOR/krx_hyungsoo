@@ -3161,3 +3161,73 @@ details.ops-details > summary {
 details.ops-details[open] > summary {
   margin-bottom: 4px;
 }
+
+/* POC5-03 설계 개정 2 — 「진단·상태 > 받은 알림 기록」(AlertRecordsView · alert_records/).
+   매일 보는 화면이 아니라 사후 검토 기록이라 일반 화면 양식(.card · h1 · .subtitle)을 따른다.
+   결과 수익률에는 성공 · 실패 색을 쓰지 않는다(설계 §5). */
+.ar-toolbar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.ar-gap-top { margin-top: 14px; }
+.ar-spacer { flex: 1; }
+.ar-note { font-size: 13px; color: var(--muted); }
+button.ar-ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+button.ar-ghost:hover:not(:disabled) { background: rgba(58, 122, 254, 0.08); }
+button.ar-ghost:disabled { background: transparent; color: var(--muted); }
+button.ar-btn-sm { padding: 5px 12px; font-size: 13px; }
+.ar-date {
+  font: inherit; font-size: 14px; padding: 5px 10px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg);
+}
+.ar-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.ar-seg button {
+  background: var(--card); color: var(--fg); border: none; border-right: 1px solid var(--border);
+  border-radius: 0; padding: 5px 12px; font-size: 13px; font-weight: 500;
+}
+.ar-seg button:last-child { border-right: none; }
+.ar-seg button:hover:not(:disabled) { background: rgba(58, 122, 254, 0.08); }
+.ar-seg button[aria-pressed="true"] { background: rgba(58, 122, 254, 0.15); color: var(--accent); font-weight: 600; }
+.ar-alerts { list-style: none; margin: 0; padding: 0; }
+.ar-alert { padding: 12px 0; border-bottom: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 10px; }
+.ar-alert:last-child { border-bottom: none; }
+.ar-alert-top { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
+.ar-time { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+.ar-kind { font-weight: 600; font-size: 16px; }
+.ar-status { font-size: 13px; color: var(--muted); }
+.ar-badge-warn {
+  display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px;
+  border-radius: 999px; color: var(--warn); background: #fffbeb;
+}
+.ar-items { font-size: 14px; }
+.ar-mine { font-size: 13px; color: var(--muted); }
+.ar-detail {
+  border: 1px solid var(--border-soft); border-radius: 8px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px; background: var(--bg);
+}
+.ar-sec-h { font-size: 13px; font-weight: 700; color: var(--muted); }
+.ar-body-warn { font-size: 13px; color: var(--warn); margin-top: -6px; }
+pre.ar-body { white-space: pre-wrap; font-family: inherit; font-size: 14px; background: var(--card); }
+.ar-table-wrap { overflow-x: auto; }
+.ar-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.ar-table th, .ar-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+.ar-table th { font-weight: 600; color: var(--muted); font-size: 12px; }
+.ar-table td.ar-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ar-table td.ar-fact { color: var(--muted); }
+.ar-feedback { display: flex; flex-direction: column; gap: 6px; }
+.ar-fb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ar-fb-row button.ar-fb-btn {
+  background: var(--card); color: var(--fg); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 500;
+}
+.ar-fb-row button.ar-fb-btn[aria-pressed="true"] {
+  border-color: var(--accent); background: rgba(58, 122, 254, 0.15); color: var(--accent); font-weight: 600;
+}
+.ar-fb-row select {
+  font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--card); color: var(--fg);
+}
+.ar-fb-row input[type="text"] { width: auto; flex: 1 1 220px; min-width: 0; padding: 5px 10px; font-size: 13px; }
+details.ar-ledger > summary { font-size: 16px; font-weight: 600; cursor: pointer; }
+details.ar-ledger[open] > summary { margin-bottom: 6px; }

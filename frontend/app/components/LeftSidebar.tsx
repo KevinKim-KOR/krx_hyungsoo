@@ -32,6 +32,7 @@ export type MenuKey =
   | "approval"
   | "diagnostics"
   | "ml"
+  | "alert_records"
   | "data_status";
 
 export interface MenuItem {
@@ -103,6 +104,9 @@ export const MENU_GROUPS: MenuGroup[] = [
     items: [
       { key: "data_status", label: "데이터 상태", hint: "전체 ETF NAV · 괴리율 · 수집 상태" },
       { key: "ml", label: "ML 실험", hint: "학습 자료 상태 · baseline · 참고점수" },
+      // 2026-10-07 POC5-03 설계 개정 2(사용자 결정): 받은 알림 · 당시 근거 · 이후 결과 기록.
+      //   매일 보는 「오늘 확인」이 아니라 사후 ML 검토용이라 ML 실험 바로 아래에 둔다.
+      { key: "alert_records", label: "받은 알림 기록", hint: "받은 알림 · 당시 근거 · 이후 결과" },
       { key: "diagnostics", label: "개발·실험용", hint: "미리보기 · 샘플 · 개발 호환 · LEGACY" },
     ],
   },
@@ -127,6 +131,7 @@ const ALL_MENU_KEYS: MenuKey[] = [
   "approval",
   "diagnostics",
   "ml",
+  "alert_records",
   "data_status",
 ];
 
