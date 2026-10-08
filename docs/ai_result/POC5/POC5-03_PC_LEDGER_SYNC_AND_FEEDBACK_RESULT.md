@@ -3,7 +3,7 @@
 작성 2026-10-07 · 갱신 2026-10-07(검증자 r1 정정 · r2 VERIFIED · 설계자 RESULT 처리 문구 반영) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED — 검증자 r2 VERIFIED(2026-10-07 · 위험 NONE · 범위 폭주 NONE) · 설계자 RESULT `PASS_TO_USER_CHECK`(2026-10-07 · 지시문 외 변경 5/5 · 충돌 정책 수용 · 재작업 · 재제출 없음 · 처리 문구 확정 반영) · 남은 것 = 사용자 실화면 · OCI 실데이터 동기화(10-08 09:35 이후) · 실제 가격 결과(POC5-02 배포 · 첫 성숙 뒤) · STEP 미종료
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED — 검증자 r2 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_USER_CHECK`(2026-10-07) · 커밋 `4e92d0c5` · 사용자 실화면 확인(2026-10-07 · 메뉴 · 빈 화면 · 실패 표시) · 실데이터 동기화 확인(2026-10-08 10:15 · PC 사본 실행 3 · item 88 · delivery 3 · meta 8 · outcome 0 = OCI 10:13 행 수 · 평가 저장 1) · 남은 것 = 실제 가격 결과 표시(2026-10-12 08:10 이후) · STEP 미종료
 STEP_ID                = POC5-03 PC 원장 동기화 · 선택 평가(받은 알림 기록)
 DESIGNER_RESULT        = PASS_TO_USER_CHECK(2026-10-07 · EXTRA_CHANGES 5/5 · SYNC_CONFLICT_POLICY ACCEPTED · FUNCTIONAL_REWORK NONE · STEP_CLOSED NO) — 원문 = 설계서 끝
 VERIFIER               = r2 VERIFIED(2026-10-07 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 결과서 §7 문구 · PLAN 말미 공백은 검증자가 직접 정정) · r1 REJECTED(2026-10-07 · A-1 · A-3 · B-1 — ① 원장 기본 표 누락 · 빈 SQLite 를 정상 동기화로 처리 ② 원장 새로고침 뒤 펼친 결과 원장을 다시 읽지 않음) → 정정(§6-3) · STATE_LATEST 메뉴 위치 문구는 검증자가 직접 정정
@@ -16,7 +16,7 @@ TESTS                  = backend 새 파일 67 passed · frontend vitest 전체 
 REVIEW                 = backend 독립 검토 1회(읽기 전용) — MEDIUM 2 · LOW 8 · 추측 2 · 테스트 약점 4 → 반영(§6-2) · 검증자 r1 정정은 변이 시험 4종 모두 탐지(§6-3)
 KS-10                  = 트리거 0 · api.py 642 → 644(임계 650 아래) · 새 backend 모듈 최대 340 · 새 컴포넌트 최대 177 · 테스트 최대 1,161
 BACKEND_FULL_REGRESSION= 3002 passed / 0 failed · exit 0 · 380.99s(2026-10-07 21:20:29 ~ 21:26:51 · r1 정정 뒤 최종 코드) · PC state/logs 1,153파일 해시 전후 동일 · 회귀 시작 뒤 코드 변경 0
-USER_SCREEN            = 대기(§7)
+USER_SCREEN            = 확인(2026-10-07 메뉴 · 빈 화면 · 실패 표시 · 2026-10-08 실데이터 3건 · 자세히 보기 · 평가 저장 · 결과 원장 '집계 중')
 ```
 
 ## 0. 요약

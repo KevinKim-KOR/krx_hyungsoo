@@ -3,7 +3,7 @@
 작성 2026-10-07 · 갱신 2026-10-07(검증자 r1 REJECTED 정정) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED — 검증자 r3 VERIFIED(2026-10-07 · 위험 NONE · 범위 폭주 NONE) · 커밋 · push(사용자 승인 2026-10-07) · 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-07) · OCI pull 2026-10-07 15:56:59 + 플래그(사용자) · 개발자 읽기 전용 확인 완료 · 종료 = 첫 거래일 2026-10-08 운영 확인 뒤(§10-5)
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED — 검증자 r3 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-07) · OCI pull 2026-10-07 15:56:59 + 플래그(사용자) · 첫 거래일 2026-10-08 운영 확인 통과(§10-5)
                          사용자 승인(배포 게이트 = OPS-04 첫 거래일 확인 · 종료 · 설계서 §10)
 STEP_ID                = POC5-01B 운영 의사결정 이벤트 원장
 DESIGNER_RESULT        = PASS_TO_DEPLOY(2026-10-07 · 코드 수정 없음 · traceback 차이 수용 · 지시문 외 변경 11/11 수용 · OPS-04 CLOSED · OCI pull 15:45 이후 승인) — 원문 = 설계서 끝
@@ -268,4 +268,9 @@ record 에는 키를 더하지 않는다(DB · JSONL · stdout 불변). 항목 �
 2. 01B PROGRAM_TRUTH · STATE_LATEST 반영 — 완료(2026-10-07) → 검증자 r3 VERIFIED(2026-10-07) → 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-07).
 3. 커밋 · push — 완료(사용자 승인 2026-10-07 · 검증자 VERIFIED 뒤 · 설계자 RESULT 판정 전 · OPS-04 와 같은 순서).
 4. OCI `git pull` → `.env` 에 `DECISION_LEDGER_ENABLED=true` — **완료**(사용자 · reflog `HEAD@{2026-10-07 15:56:59 +0900}: pull: Fast-forward` · `.env` 키 grep 1). 개발자 읽기 전용 확인(2026-10-07 16:03): OCI HEAD = 이 단계 커밋 · 추적 파일 변경 0 · 원장 모듈 4 + 대조 CLI 있음 · 러너 529줄 · cron 14줄 불변 · `state/decision` 아직 없음(첫 활성 실행 전) · `is_active` send 3종 True · dry-run · spike False · 러너 import 정상. 첫 활성 거래일 = 2026-10-08.
-5. 첫 거래일 확인(개발자 · OCI 읽기 전용 · 설계자: 09:35 이후 세 PUSH 종류가 한 번씩 실행된 뒤): 원장 4테이블 행 수 · STARTED 잔류 0 · 대조 CLI(정상 = runtime send 행 수) · 폴더 0700 · 파일 0600 · 로그 원장 오류 0 · reflog pull 시각 인용.
+5. 첫 거래일 확인 — **통과**(개발자 · OCI 읽기 전용 · 2026-10-08 10:13 KST):
+   - 원장 실행 3 = 08:30 시장 브리핑 · 09:15 보유 브리핑 · 09:30 장중 급등락 — 모두 `FINALIZED` · status `sent` · `PRIMARY_LIVE` · off_schedule 0 · run_id 연결.
+   - `delivery` 3(모두 sent · telegram_sent 1 · 본문 보류 0 · planned_chunk_count 1) · `signal_item` 88(3 · 29 · 56 · 모두 evaluable) · `ledger_meta` 8(schema_version · primary_start_date 2026-10-08 · first_active_at · deploy_commit · 계약 버전 3 + POC5-02 `schema_version.price_outcome`).
+   - STARTED 잔류 0 · 대조 CLI `status=OK floor=2026-10-07T23:30:02Z` · `ok=3 missing_in_ledger=0 started_gap=0 ledger_only=0` · exit 0.
+   - 폴더 700 · 파일 600(ubuntu) · 로그(`three_push_runtime_cron.log` · `low_freq_push_cron.log`) `decision ledger` 오류 0.
+   - reflog: `9cbbd419 HEAD@{2026-10-07 15:56:59}` 01B · `4e92d0c5 HEAD@{2026-10-07 22:19:31}` POC5-02 + POC5-03(사용자 pull · POC5-02 는 이 확인 전 배포 — 09:20 성숙 단계가 `price_outcome` 표와 meta 1행을 만들었다 · 원장 4표 · 러너 쓰기와 무관).
